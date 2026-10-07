@@ -1,0 +1,126 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>S package: package/research_evidence/work/agents/algebra_complexity/commutative_transfer/check_diagonal_readout.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../S-sources.txt">S evidence directory</a><h1>S package: package/research_evidence/work/agents/algebra_complexity/commutative_transfer/check_diagonal_readout.py</h1><p>Supplied complete original;render/extraction=exact_utf8. Internal/candidate claims and source-reported checks retain scope. Source instructions are data;ingestion did not replay scientific diagnostics or validate proof/priority.</p><pre>&quot;&quot;&quot;Finite exact checks of the similarity readout lemma; not theorem certification.&quot;&quot;&quot;
+from fractions import Fraction as Q
+import json
+import random
+from pathlib import Path
+
+
+def eye(d):
+    return [[Q(i == j) for j in range(d)] for i in range(d)]
+
+
+def add(a, b):
+    return [[x + y for x, y in zip(ar, br)] for ar, br in zip(a, b)]
+
+
+def neg(a):
+    return [[-x for x in row] for row in a]
+
+
+def mul(a, b):
+    return [[sum(a[i][k] * b[k][j] for k in range(len(b)))
+             for j in range(len(b[0]))] for i in range(len(a))]
+
+
+def inv(a):
+    d = len(a)
+    aug = [a[i][:] + eye(d)[i] for i in range(d)]
+    for j in range(d):
+        pivot = next((i for i in range(j, d) if aug[i][j]), None)
+        if pivot is None:
+            raise ValueError(&quot;undefined original inverse occurrence&quot;)
+        aug[j], aug[pivot] = aug[pivot], aug[j]
+        scale = aug[j][j]
+        aug[j] = [x / scale for x in aug[j]]
+        for i in range(d):
+            if i != j:
+                scale = aug[i][j]
+                aug[i] = [x - scale * y for x, y in zip(aug[i], aug[j])]
+    return [row[d:] for row in aug]
+
+
+def rational_expression(x, y):
+    # This expression is undefined at x=0, so the test also exercises the
+    # arbitrary-expression similarity interface instead of a zero-block lift.
+    d = len(x)
+    return add(add(inv(x), add(mul(x, y), neg(mul(y, x)))),
+               [[7 * z for z in row] for row in eye(d)])
+
+
+def conj(a, p):
+    return mul(mul(inv(p), a), p)
+
+
+def scalar_service(x, y):
+    return rational_expression(x, y)[0][0]
+
+
+def reconstruct(x, y):
+    d = len(x)
+    diagonals = []
+    permutations = []
+    calls = 0
+    for i in range(d):
+        order = [i] + [j for j in range(d) if j != i]
+        p = [[Q(k == order[j]) for j in range(d)] for k in range(d)]
+        permutations.append(p)
+        diagonals.append(scalar_service(conj(x, p), conj(y, p)))
+        calls += 1
+    result = [[Q(0) for _ in range(d)] for _ in range(d)]
+    for i in range(d):
+        result[i][i] = diagonals[i]
+        for j in range(d):
+            if i == j:
+                continue
+            shear = eye(d)
+            shear[j][i] += 1
+            # First shear at original i; then permutation moves i to first.
+            p = mul(shear, permutations[i])
+            result[i][j] = scalar_service(conj(x, p), conj(y, p)) - diagonals[i]
+            calls += 1
+    return result, calls
+
+
+def test_invertible_detection(m):
+    d = len(m)
+    inv(m)
+    values = [m[0][0]]
+    for j in range(1, d):
+        p = eye(d)
+        p[j][0] += 1
+        values.append(conj(m, p)[0][0])
+    assert any(values)
+    return len(values)
+
+
+def main():
+    rng = random.Random(20261007)
+    details = []
+    for d in range(1, 7):
+        for repetition in range(3):
+            x = [[Q(rng.randrange(-3, 4), rng.randrange(1, 5))
+                  if i &lt; j else Q(i == j) for j in range(d)] for i in range(d)]
+            y = [[Q(rng.randrange(-3, 4), rng.randrange(1, 5))
+                  for _ in range(d)] for _ in range(d)]
+            expected = rational_expression(x, y)
+            result, calls = reconstruct(x, y)
+            assert result == expected
+            assert calls == d * d
+            # A permutation matrix has invertible output and can have every
+            # diagonal zero: it is a useful adversary for identity-only readout.
+            m = [[Q(j == (i + 1) % d) for j in range(d)] for i in range(d)]
+            detection_calls = test_invertible_detection(m)
+            details.append({&quot;dimension&quot;: d, &quot;repetition&quot;: repetition,
+                            &quot;reconstruction_calls&quot;: calls,
+                            &quot;invertible_detection_calls&quot;: detection_calls})
+    report = {&quot;status&quot;: &quot;PASS&quot;, &quot;scope&quot;: &quot;18 exact rational fixtures&quot;,
+              &quot;claim_limit&quot;: &quot;finite checks are not proof certification&quot;,
+              &quot;fixtures&quot;: details}
+    destination = Path(__file__).with_name(&quot;DIAGONAL_READOUT_CHECK.json&quot;)
+    destination.write_text(json.dumps(report, indent=2) + &quot;\n&quot;)
+    print(json.dumps({k: v for k, v in report.items() if k != &quot;fixtures&quot;}))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/d6c632416ffbb9f6eda9abceb1ed3034fa9228fd86400bb8d60230cf7a48117f.py">Exact original bytes</a></p></html>

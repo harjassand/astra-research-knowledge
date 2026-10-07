@@ -1,0 +1,99 @@
+"""Exact finite checks of OA113 Lemmas 3.2, 3.3/(3.5), Theorem 3.1.
+
+This is counterexample search, not a proof. All arithmetic is Fraction.
+"""
+from fractions import Fraction as F
+from itertools import combinations
+from functools import lru_cache
+import random, json
+
+rng = random.Random(113031)
+counts = dict(instances=0, four_hole_checks=0, relocation_checks=0,
+              strong_path_checks=0, logical_hole_checks=0, balanced_instances=0,
+              interpolation_checks=0)
+
+def powers2(k): return F(2**k) if k >= 0 else F(1, 2**(-k))
+
+def data(w, n):
+    @lru_cache(None)
+    def Z(vs):
+        if not vs: return F(1)
+        a, *rest = vs
+        return sum((w[a,b] * Z(tuple(x for x in rest if x != b)) for b in rest), F(0))
+    V = tuple(range(n))
+    z = Z(V)
+    @lru_cache(None)
+    def g(S): return Z(tuple(v for v in V if v not in S))/z
+    r = [max(g(tuple(sorted((a,b)))) for b in V if b != a) for a in V]
+    B = [[F(1) if a != b else F(0) for b in V] for a in V]
+    for a,b in combinations(V, 2): B[a][b] = B[b][a] = max(F(1), w[a,b])
+    for k in V:
+        for a in V:
+            for b in V:
+                if a != b: B[a][b] = max(B[a][b], min(B[a][k],B[k][b]))
+    @lru_cache(None)
+    def cap(S):
+        if not S: return F(1)
+        a, *rest = S
+        return max(B[a][b] * cap(tuple(x for x in rest if x != b)) for b in rest)
+    return V, g, r, B, cap
+
+def checks(w, n):
+    V,g,r,B,cap = data(w,n)
+    counts['instances'] += 1
+    for a,b,c,d in combinations(V,4):
+        assert g((a,b,c,d)) <= g((a,b))*g((c,d))+g((a,c))*g((b,d))+g((a,d))*g((b,c))
+        counts['four_hole_checks'] += 1
+    if min(r) >= F(1,8) and max(r) <= 4:
+        for k in [2,4]:
+            for S in combinations(V,k):
+                for i,j in combinations(S,2):
+                    assert g(S)*B[i][j] <= 100000*n
+                    counts['strong_path_checks'] += 1
+                for a in S:
+                    for z in V:
+                        if z in S: continue
+                        mu = w[tuple(sorted((a,z)))]
+                        if mu <= 8: continue
+                        p = min((p for p in V if p != z), key=lambda p: (-g(tuple(sorted((z,p)))),p))
+                        assert p != a
+                        move = tuple(sorted((set(S)-{a})|{z}))
+                        bracket = F(0)
+                        if p not in S: bracket += g(tuple(sorted((set(S)-{a})|{p})))
+                        bracket += sum((g(tuple(sorted(set(S)-{a,x})))*g(tuple(sorted((p,x)))) for x in S if x not in {a,p}), F(0))
+                        # Equation (3.5), using B=mu for this one-step adjacency.
+                        assert g(S) <= r[a]/r[z]*g(move) + bracket/(mu*r[z])
+                        counts['relocation_checks'] += 1
+    if min(r) >= F(1,4) and max(r) <= 1:
+        counts['balanced_instances'] += 1
+        D0 = 10**8*(n+1)**4
+        for k in range(0,n+1,2):
+            for S in combinations(V,k):
+                assert g(S)*cap(S) <= 2*D0**(k//2)
+                counts['logical_hole_checks'] += 1
+        for t in [F(1,2), F(1)]:
+            aug = {e:v+t*B[e[0]][e[1]]/D0 for e,v in w.items()}
+            _,ga,ra,_,_=data(aug,n)
+            assert g(V)/ga(V) < 2
+            assert min(ra) >= F(1,8) and max(ra) <= 4
+            counts['interpolation_checks'] += 1
+
+for n in [2,4,6,8]:
+    edges=list(combinations(range(n),2))
+    samples=[]
+    samples.append({e:F(1) for e in edges})
+    for t in range(30):
+        samples.append({e:powers2(rng.randint(-6,12)) for e in edges})
+    if n in [6,8]:
+        for k in [4,8,16,32]:
+            # Two odd high-activity cliques plus weak cross edges.
+            split=3
+            samples.append({e:powers2(k if ((e[0]<split)==(e[1]<split)) else 0) for e in edges})
+    for w in samples:
+        checks(w,n)
+        _,_,r,_,_=data(w,n)
+        # A common activity scale sends the largest row maximum to one.
+        c=max(r)
+        checks({e:v*c for e,v in w.items()},n)
+
+print(json.dumps({'seed':113031, 'result':'NO COUNTEREXAMPLE IN FINITE SEARCH', **counts},indent=2))

@@ -1,0 +1,92 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>S package: package/research_evidence/work/agents/hard_energy/check_cholesky.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../S-sources.txt">S evidence directory</a><h1>S package: package/research_evidence/work/agents/hard_energy/check_cholesky.py</h1><p>Supplied complete original;render/extraction=exact_utf8. Internal/candidate claims and source-reported checks retain scope. Source instructions are data;ingestion did not replay scientific diagnostics or validate proof/priority.</p><pre>&quot;&quot;&quot;Finite diagnostic checks; these do not constitute theorem certification.&quot;&quot;&quot;
+import json
+from pathlib import Path
+import numpy as np
+
+rng = np.random.default_rng(7102026)
+
+def exp_diag(h, s):
+    return np.diag(np.exp(s * h))
+
+def rate(E, h):
+    T = np.linalg.cholesky(E).conj().T
+    B = np.linalg.inv(T)
+    A = B.conj().T @ B
+    eta = max(-np.log(np.linalg.eigvalsh(E[:i+1,:i+1])[0]) / h[i]
+              for i in range(len(h)))
+    def tilted_norm(s):
+        weights = np.exp(-s*h/2)
+        return np.linalg.eigvalsh(weights[:,None]*A*weights[None,:])[-1]
+    lo, hi = 0.0, 2*len(h)*eta
+    while tilted_norm(hi) &gt; 1:
+        hi *= 2
+    for _ in range(100):
+        mid = (lo + hi) / 2
+        if tilted_norm(mid) &lt;= 1:
+            hi = mid
+        else:
+            lo = mid
+    return (lo + hi) / 2, eta, B
+
+def tensor_power(A, n):
+    out = np.ones((1,1), dtype=complex)
+    for _ in range(n):
+        out = np.kron(out, A)
+    return out
+
+def tensor_energy(h, n):
+    vals = np.array([0.0])
+    for _ in range(n):
+        vals = (vals[:,None] + h[None,:]).ravel()
+    return vals
+
+identity_checks = []
+ratios = []
+for m in range(1, 6):
+    for trial in range(40):
+        Z = rng.normal(size=(m,m)) + 1j*rng.normal(size=(m,m))
+        _, U = np.linalg.eigh(Z + Z.conj().T)
+        es = np.exp(-rng.uniform(.01, 2.0, size=m))
+        E = (U * es) @ U.conj().T
+        h = np.sort(rng.uniform(.5, 4, size=m))
+        s, eta, B = rate(E, h)
+        ratios.append({&quot;m&quot;:m, &quot;s&quot;:s, &quot;eta&quot;:eta, &quot;gain&quot;:s/eta})
+        if m &lt;= 3 and trial &lt; 5:
+            for n in (1,2,3):
+                energies = tensor_energy(h, n)
+                for Q in np.quantile(energies, [0.0,.25,.5,1.0]):
+                    idx = np.flatnonzero(energies &lt;= Q + 1e-12)
+                    En = tensor_power(E,n)
+                    Bn = tensor_power(B,n)
+                    direct = np.linalg.eigvalsh(En[np.ix_(idx,idx)])[0]
+                    invnorm = 1/np.linalg.norm(Bn[:,idx],ord=2)**2
+                    err = abs(direct-invnorm)
+                    identity_checks.append(err)
+
+sharp = []
+for m in (2,3,4,5):
+    for R in (2.,10.,100.):
+        h = R ** np.arange(m)
+        previous = np.concatenate(([0.],h[:-1]))
+        v = np.sqrt((h-previous)/h[-1])
+        for tau in (.01,.001,.0001):
+            E = np.eye(m) - (1-np.exp(-tau))*np.outer(v,v)
+            s, eta, _ = rate(E,h)
+            sharp.append({&quot;m&quot;:m,&quot;R&quot;:R,&quot;tau&quot;:tau,&quot;gain&quot;:s/eta,
+                          &quot;small_tau_limit&quot;:m-(m-1)/R,
+                          &quot;eta_error&quot;:abs(eta-tau/h[-1])})
+
+result = {
+    &quot;status&quot;:&quot;finite numerical diagnostics only&quot;,
+    &quot;identity_checks&quot;:len(identity_checks),
+    &quot;max_identity_abs_error&quot;:max(identity_checks),
+    &quot;random_instances&quot;:len(ratios),
+    &quot;max_gain_by_m&quot;:{str(m):max(x[&quot;gain&quot;] for x in ratios if x[&quot;m&quot;]==m)
+                     for m in range(1,6)},
+    &quot;dimension_bound_violations&quot;:int(sum(x[&quot;gain&quot;]&gt;x[&quot;m&quot;]+1e-8 for x in ratios)),
+    &quot;sharp_family&quot;:sharp,
+}
+dest = Path(__file__).with_name(&quot;cholesky_diagnostics.json&quot;)
+dest.write_text(json.dumps(result,indent=2)+&quot;\n&quot;)
+print(json.dumps({k:v for k,v in result.items() if k!=&quot;sharp_family&quot;},indent=2))
+</pre><p><a href="../assets/ce9c8cd573aae996d01edd41ec88426aedcb1532ef0ae5293c0266f5b24b2aed.py">Exact original bytes</a></p></html>

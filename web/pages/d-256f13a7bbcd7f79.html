@@ -1,0 +1,127 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>S package: package/research_evidence/work/agents/gaussian_heralding/fixed_cardinality/verify_reductions.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../S-sources.txt">S evidence directory</a><h1>S package: package/research_evidence/work/agents/gaussian_heralding/fixed_cardinality/verify_reductions.py</h1><p>Supplied complete original;render/extraction=exact_utf8. Internal/candidate claims and source-reported checks retain scope. Source instructions are data;ingestion did not replay scientific diagnostics or validate proof/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact finite checks of support and bounded-multiplicity reductions; no FPRAS.&quot;&quot;&quot;
+from functools import lru_cache
+from itertools import combinations
+from pathlib import Path
+import json
+import random
+
+
+def hafnian_table(B):
+    n = len(B)
+
+    @lru_cache(None)
+    def h(mask):
+        if mask == 0:
+            return 1
+        if mask.bit_count() % 2:
+            return 0
+        low = mask &amp; -mask
+        i = low.bit_length() - 1
+        rest = mask ^ low
+        return sum(B[i][j] * h(rest ^ (1 &lt;&lt; j))
+                   for j in range(i + 1, n) if rest &amp; (1 &lt;&lt; j))
+
+    return h
+
+
+def cycle_rank(B):
+    n = len(B)
+    edges = sum(B[i][j] != 0 for i in range(n) for j in range(i + 1, n))
+    unseen = set(range(n))
+    components = 0
+    while unseen:
+        components += 1
+        stack = [unseen.pop()]
+        while stack:
+            i = stack.pop()
+            for j in list(unseen):
+                if B[i][j]:
+                    unseen.remove(j)
+                    stack.append(j)
+    return edges - n + components
+
+
+def dummy_matrix(B, q, required):
+    n = len(B)
+    ndummy = n - q
+    A = [row + [0] * ndummy for row in B]
+    A.extend([[0] * (n + ndummy) for _ in range(ndummy)])
+    for d in range(n, n + ndummy):
+        for i in range(n):
+            if i not in required:
+                A[d][i] = A[i][d] = 1
+    return A
+
+
+def run():
+    summary = {&quot;unweighted_graphs&quot;: 0, &quot;induced_multiplicity_checks&quot;: 0,
+               &quot;weighted_instances&quot;: 0, &quot;pinned_dummy_checks&quot;: 0,
+               &quot;status&quot;: &quot;PASS&quot;, &quot;scope&quot;: &quot;finite exact diagnostics, not FPRAS implementation&quot;}
+    # Exhaustive small support graphs: matching multiplicity injects into cycle space.
+    for n in (4, 5, 6):
+        E = list(combinations(range(n), 2))
+        for edge_mask in range(1 &lt;&lt; len(E)):
+            B = [[0] * n for _ in range(n)]
+            for j, (u, v) in enumerate(E):
+                if edge_mask &amp; (1 &lt;&lt; j):
+                    B[u][v] = B[v][u] = 1
+            h = hafnian_table(B)
+            R = 1 &lt;&lt; cycle_rank(B)
+            for mask in range(1 &lt;&lt; n):
+                if mask.bit_count() % 2 == 0:
+                    assert h(mask) &lt;= R
+                    summary[&quot;induced_multiplicity_checks&quot;] += 1
+            summary[&quot;unweighted_graphs&quot;] += 1
+
+    rng = random.Random(20261007)
+    for _ in range(250):
+        n = 6
+        B = [[0] * n for _ in range(n)]
+        for u, v in combinations(range(n), 2):
+            B[u][v] = B[v][u] = rng.choice((0, 0, 1, 2, 5, 9))
+        h = hafnian_table(B)
+        d = hafnian_table([[v * v for v in row] for row in B])
+        r = hafnian_table([[int(v != 0) for v in row] for row in B])
+        for mask in range(1 &lt;&lt; n):
+            if mask.bit_count() % 2 == 0:
+                assert d(mask) &lt;= h(mask) ** 2 &lt;= r(mask) * d(mask)
+        # Include/exclude pins are varied before the dummy construction.
+        forbidden = {i for i in range(n) if rng.randrange(4) == 0}
+        allowed = [i for i in range(n) if i not in forbidden]
+        C = [[B[u][v] for v in allowed] for u in allowed]
+        N = len(C)
+        ch = hafnian_table(C)
+        cd = hafnian_table([[v * v for v in row] for row in C])
+        required = {i for i in range(N) if rng.randrange(3) == 0}
+        H = sum(1 &lt;&lt; i for i in required)
+        for q in range(0, N + 1, 2):
+            masks = [m for m in range(1 &lt;&lt; N) if m.bit_count() == q and m &amp; H == H]
+            target = sum(ch(m) ** 2 for m in masks)
+            single = sum(ch(m) for m in masks)
+            squared_edge = sum(cd(m) for m in masks)
+            A = dummy_matrix(C, q, required)
+            pm = hafnian_table(A)((1 &lt;&lt; len(A)) - 1)
+            A2 = dummy_matrix([[v * v for v in row] for row in C], q, required)
+            pm2 = hafnian_table(A2)((1 &lt;&lt; len(A2)) - 1)
+            factor = 1
+            for j in range(1, N - q + 1):
+                factor *= j
+            assert pm == factor * single
+            assert pm2 == factor * squared_edge
+            assert (target &gt; 0) == (pm &gt; 0)
+            # Rejection unnormalized output mass is exactly desired h_S^2/R.
+            R = 1 &lt;&lt; cycle_rank(C)
+            for m in masks:
+                if cd(m):
+                    assert cd(m) &lt;= ch(m) ** 2 &lt;= R * cd(m)
+            summary[&quot;pinned_dummy_checks&quot;] += 1
+        summary[&quot;weighted_instances&quot;] += 1
+    path = Path(__file__).with_name(&quot;verification_results.json&quot;)
+    path.write_text(json.dumps(summary, indent=2) + &quot;\n&quot;)
+    print(json.dumps(summary, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    run()
+</pre><p><a href="../assets/6b5819aeefd9326d31db8d8aa74a317708c58959638807d12cd4f9e79767e536.py">Exact original bytes</a></p></html>

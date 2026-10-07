@@ -1,0 +1,117 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>S package: package/research_evidence/work/agents/discrete_probability/check_heterogeneous.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../S-sources.txt">S evidence directory</a><h1>S package: package/research_evidence/work/agents/discrete_probability/check_heterogeneous.py</h1><p>Supplied complete original;render/extraction=exact_utf8. Internal/candidate claims and source-reported checks retain scope. Source instructions are data;ingestion did not replay scientific diagnostics or validate proof/priority.</p><pre>from fractions import Fraction as F
+from itertools import product, combinations
+import json, math
+from pathlib import Path
+P=Path(__file__).parent
+checks={}
+
+def mass(x,ps):
+    a=F(1)
+    for b,p in zip(x,ps): a*=p if b else 1-p
+    return a
+
+def exact_case(ps,typ,fn):
+    n=len(ps); xs=list(product((0,1),repeat=n)); vals={x:fn(x) for x in xs}; ex=sum(mass(x,ps)*vals[x] for x in xs); var=ex-ex*ex
+    infl=[]
+    for i in range(n):
+        js=[j for j in range(n) if j!=i]; z=F(0)
+        for y in product((0,1),repeat=n-1):
+            a=[0]*n
+            for j,b in zip(js,y):a[j]=b
+            b=a.copy(); b[i]=1
+            if vals[tuple(a)]!=vals[tuple(b)]:z+=mass(y,[ps[j] for j in js])
+        infl.append(z)
+    fhat2={}
+    for mask in range(1&lt;&lt;n):
+        S=[i for i in range(n) if mask&gt;&gt;i&amp;1]; coeff=F(0); denom=F(1)
+        for i in S:denom*=ps[i]*(1-ps[i])
+        for x in xs:
+            ch=F(1)
+            for i in S: ch*=x[i]-ps[i]
+            coeff+=mass(x,ps)*vals[x]*ch
+        fhat2[mask]=coeff*coeff/denom
+    assert sum(v for k,v in fhat2.items() if k)==var
+    # r=2 -&gt; alpha=2, W(S)=sum_i 1/[p_i(1-p_i)]
+    weighted=sum(sum(1/(ps[i]*(1-ps[i])) for i in range(n) if mask&gt;&gt;i&amp;1)*v for mask,v in fhat2.items())
+    assert weighted==sum(infl)
+    # one-coordinate Parseval independently
+    for i in range(n):assert sum(v for mask,v in fhat2.items() if mask&gt;&gt;i&amp;1)==ps[i]*(1-ps[i])*infl[i]
+    # anisotropic resampling covariance, both Fourier and direct pair
+    noise=[F(1,3) if t==0 else F(2,5) for t in typ]
+    cf=sum(v*math.prod((1-noise[i] for i in range(n) if mask&gt;&gt;i&amp;1)) for mask,v in fhat2.items() if mask)
+    cp=F(0)
+    for x in xs:
+        for y in xs:
+            cond=F(1)
+            for i in range(n):cond*=((1-noise[i]) if x[i]==y[i] else 0)+noise[i]*(ps[i] if y[i] else 1-ps[i])
+            cp+=mass(x,ps)*cond*vals[x]*vals[y]
+    assert cp-ex*ex==cf
+    return {&#x27;coordinates&#x27;:n,&#x27;mean&#x27;:str(ex),&#x27;variance&#x27;:str(var),&#x27;influence&#x27;:str(sum(infl)),&#x27;identity_count&#x27;:n+3}
+
+# two vertices: unary marker and ordered directed binary relation, loops allowed.
+# Property: either marked-to-unmarked directed edge exists, XOR odd loop count.
+def f2(x):
+    label=x[:2]; edges={(0,0):x[2],(0,1):x[3],(1,0):x[4],(1,1):x[5]}
+    hit=any(label[u] and not label[v] and edges[u,v] for u,v in ((0,1),(1,0)))
+    return int(hit ^ bool(edges[0,0]^edges[1,1]))
+checks[&#x27;mixed_directed_loops&#x27;]=exact_case([F(1,7)]*2+[F(4,5)]*4,[0]*2+[1]*4,f2)
+for x in product((0,1),repeat=6):
+    y=(x[1],x[0],x[5],x[4],x[3],x[2]); assert f2(x)==f2(y)
+
+# Extreme heterogeneous probabilities and nonmonotone invariant Boolean event.
+def f3(x):return int(sum(x[:3])%2==1 and sum(x[3:])&gt;=2)
+checks[&#x27;extreme_bias_mixed_arity&#x27;]=exact_case([F(1,1000003)]*3+[F(1000002,1000003)]*3,[0]*3+[1]*3,f3)
+
+# Exact categorical encoding identities for every local Boolean section, all k&lt;=6.
+def make_tree(indices):
+    if len(indices)==1:return indices[0]
+    j=len(indices)//2;return (make_tree(indices[:j]),make_tree(indices[j:]))
+def get_nodes(tree,pi,out):
+    if isinstance(tree,int):return pi[tree]
+    idx=len(out);out.append(None)
+    l=get_nodes(tree[0],pi,out);r=get_nodes(tree[1],pi,out);out[idx]=(tree,l+r,l/(l+r));return l+r
+
+def evaluate(tree,coins,nodemap):
+    while not isinstance(tree,int):tree=tree[0] if coins[nodemap[tree]] else tree[1]
+    return tree
+cat_checks=0
+for k in range(2,7):
+    for schedule in range(2):
+        raw=list(range(1,k+1)) if schedule==0 else [1]*(k-1)+[1000]
+        pi=[F(v,sum(raw)) for v in raw];tree=make_tree(list(range(k)));nodes=[];get_nodes(tree,pi,nodes);mapping={t:i for i,(t,_,_) in enumerate(nodes)};ps=[p for _,_,p in nodes]
+        ell=sum(a for _,a,_ in nodes);assert ell&lt;=math.ceil(math.log2(k))
+        # exact leaf law from all independent node coins
+        law=[F(0)]*k
+        for c in product((0,1),repeat=k-1):law[evaluate(tree,c,mapping)]+=mass(c,ps)
+        assert law==pi
+        for vals in product((0,1),repeat=k):
+            total=F(0)
+            for i in range(k-1):
+                js=[j for j in range(k-1) if j!=i]
+                for y in product((0,1),repeat=k-2):
+                    a=[0]*(k-1)
+                    for j,b in zip(js,y):a[j]=b
+                    b=a.copy();b[i]=1
+                    if vals[evaluate(tree,a,mapping)]!=vals[evaluate(tree,b,mapping)]:total+=mass(y,[ps[j] for j in js])
+            assert total&lt;=ell*int(len(set(vals))&gt;1)
+            cat_checks+=1
+checks[&#x27;categorical_exact_sections&#x27;]=cat_checks
+
+# Weighted capture inequality over arbitrary type sizes, extreme biases, r=2..8.
+cap=0
+for r in range(2,9):
+    alpha=r/(r-1)
+    for q in range(1,7):
+        for z in range(500):
+            # deterministic pseudo grid, no optimization or claim of asymptotic test
+            sig=[.5*10**(-((z*(t+3)+t*19)%25)/3) for t in range(q)]
+            s=[1+((z*(t+7)+t*11)%1000) for t in range(q)]
+            W=sum(st/stg**alpha for st,stg in zip(s,sig));vbound=(sum(s)/q)**(1/r)
+            incidence_bound=r*sum(st*math.log(4/stg) for st,stg in zip(s,sig))/vbound
+            rhs=2*r*q**(1/r)*W**(1/alpha)
+            assert incidence_bound&lt;=rhs*(1+1e-12)
+            cap+=1
+checks[&#x27;weighted_holder_capture_checks&#x27;]=cap
+(P/&#x27;HETEROGENEOUS_CHECKS.json&#x27;).write_text(json.dumps(checks,indent=2)+&#x27;\n&#x27;)
+print(json.dumps(checks,indent=2))
+</pre><p><a href="../assets/47fda3c841adbeaf945cbb7bb1e7eb26f39a1ef3b083dbab2649adc6b0cb5cab.py">Exact original bytes</a></p></html>

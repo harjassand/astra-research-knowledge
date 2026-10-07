@@ -1,0 +1,93 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>S package: package/research_evidence/work/agents/discrete_probability/robust_progressions/q_outer/check_shift_law.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../S-sources.txt">S evidence directory</a><h1>S package: package/research_evidence/work/agents/discrete_probability/robust_progressions/q_outer/check_shift_law.py</h1><p>Supplied complete original;render/extraction=exact_utf8. Internal/candidate claims and source-reported checks retain scope. Source instructions are data;ingestion did not replay scientific diagnostics or validate proof/priority.</p><pre>&quot;&quot;&quot;Exact finite checks for the Q-colour shared-key sparse-shift interface.
+
+These are finite implementation/interface checks, not asymptotic proof.
+All probabilities have an integer common denominator; no sampling is used.
+&quot;&quot;&quot;
+
+from collections import Counter
+from itertools import product
+from math import comb
+from pathlib import Path
+import json
+
+
+def verify(Q, reciprocal_p, keys, word):
+    distinct = sorted(set(keys))
+    first = [keys.index(key) for key in distinct]
+    s = len(distinct)
+    den = reciprocal_p * (Q - 1)
+    weights = [(reciprocal_p - 1) * (Q - 1)] + [1] * (Q - 1)
+    rep_distributions = [Counter() for _ in range(Q)]
+    full_distributions = [Counter() for _ in range(Q)]
+    assignments = 0
+    for shifts in product(range(Q), repeat=s):
+        shift_map = dict(zip(distinct, shifts))
+        final = [(color + shift_map[key]) % Q for color, key in zip(word, keys)]
+        weight = 1
+        for shift in shifts:
+            weight *= weights[shift]
+        reps = [final[index] for index in first]
+        for target in range(Q):
+            count_rep = reps.count(target)
+            count_full = final.count(target)
+            assert count_full &gt;= count_rep
+            rep_distributions[target][count_rep] += weight
+            full_distributions[target][count_full] += weight
+        assignments += 1
+    normalizer = den ** s
+    for target in range(Q):
+        assert sum(rep_distributions[target].values()) == normalizer
+        assert sum(full_distributions[target].values()) == normalizer
+        # Each representative succeeds with probability at least 1/den.
+        # Check every exact lower CDF against Binomial(s,1/den).
+        for cutoff in range(s + 1):
+            actual = sum(weight for count, weight in rep_distributions[target].items()
+                         if count &lt;= cutoff)
+            control = sum(comb(s, count) * (den - 1) ** (s - count)
+                          for count in range(cutoff + 1))
+            assert actual &lt;= control, (Q, reciprocal_p, keys, word, target, cutoff)
+    return assignments, Q * (s + 1)
+
+
+def main():
+    words_checked = assignments_checked = cdf_checks = 0
+    key_words = [(0, 0, 1, 1), (0, 1, 0, 1), (0, 0, 1, 2)]
+    for Q in range(2, 7):
+        for reciprocal_p in (8, 20):
+            for keys in key_words:
+                for word in product(range(Q), repeat=len(keys)):
+                    assignments, checks = verify(Q, reciprocal_p, keys, word)
+                    words_checked += 1
+                    assignments_checked += assignments
+                    cdf_checks += checks
+    # Curated longer paths: distinct keys and mixed-colour double occurrences.
+    for Q in range(2, 9):
+        for reciprocal_p in (8, 20):
+            for keys in [(0, 1, 2, 3, 4, 5), (0, 1, 0, 2, 1, 2)]:
+                for word in [tuple(0 for _ in keys), tuple(i % Q for i in range(len(keys))),
+                             tuple((i * i + 1) % Q for i in range(len(keys)))]:
+                    assignments, checks = verify(Q, reciprocal_p, keys, word)
+                    words_checked += 1
+                    assignments_checked += assignments
+                    cdf_checks += checks
+    result = {
+        &quot;status&quot;: &quot;PASS&quot;,
+        &quot;palette_sizes_exhaustive&quot;: [2, 3, 4, 5, 6],
+        &quot;palette_sizes_curated&quot;: [2, 3, 4, 5, 6, 7, 8],
+        &quot;reciprocal_p&quot;: [8, 20],
+        &quot;word_key_interfaces_checked&quot;: words_checked,
+        &quot;shift_assignments_checked&quot;: assignments_checked,
+        &quot;exact_lower_cdf_checks&quot;: cdf_checks,
+        &quot;checks&quot;: [&quot;Common key applies identical modular shift at every occurrence&quot;,
+                   &quot;Final colour count dominates first-occurrence representative count&quot;,
+                   &quot;Representative lower CDF is dominated by Binomial(s,p/(Q-1))&quot;],
+        &quot;scope&quot;: &quot;Finite shared-key shift-law checks only; not an asymptotic theorem certificate&quot;
+    }
+    output = Path(__file__).with_name(&quot;FINITE_CHECKS.json&quot;)
+    output.write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+    print(json.dumps(result, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/80c1844baff822c1bfa21ed860885cdbdcbad769fd53fef53c9c71440a3af6d3.py">Exact original bytes</a></p></html>

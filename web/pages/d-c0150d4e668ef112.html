@@ -1,0 +1,108 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>S package: package/research_evidence/work/agents/hard_energy_computation/check_exact.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../S-sources.txt">S evidence directory</a><h1>S package: package/research_evidence/work/agents/hard_energy_computation/check_exact.py</h1><p>Supplied complete original;render/extraction=exact_utf8. Internal/candidate claims and source-reported checks retain scope. Source instructions are data;ingestion did not replay scientific diagnostics or validate proof/priority.</p><pre>&quot;&quot;&quot;Exact-integer diagnostics for the hard-budget qutrit.
+
+The bounds below are rational Collatz-Wielandt certificates, not floating
+eigensolver outputs. mpmath is used only to print logarithms of exact integers
+or fractions. The algebraic proof is in REPORT.txt and does not rely on checks.
+&quot;&quot;&quot;
+from math import comb
+from fractions import Fraction
+import json
+from pathlib import Path
+import mpmath as mp
+
+mp.mp.dps = 70
+OUT = Path(__file__).parent
+
+def score(k, i):
+    &quot;&quot;&quot;Exact reciprocal miss of the explicit row/Dicke probe, cost k+i.&quot;&quot;&quot;
+    s = sum(comb(i, t) * comb(k-i, i-t) * 3**t
+            for t in range(max(0, 2*i-k), i+1))
+    return (s &lt;&lt; (k-i)) if k &gt;= i else Fraction(s, 2**(i-k))
+
+def best_explicit(q):
+    vals = [(score(k, q-k), k) for k in range((q+1)//2, q+1)]
+    val, k = max(vals)
+    return val, k, q-k
+
+def perron_bounds(k, b, iterations=140):
+    &quot;&quot;&quot;Exact rational enclosure for rho(M), M similar to 2^(k+b) A.
+
+    M_ij=2^(b-i) sum_t C(j,t) C(k-j,i-t) 3^t is positive integer.
+    Any positive integer vector v certifies min(Mv/v)&lt;=rho&lt;=max(Mv/v).
+    Power iteration creates the vector; its convergence is not assumed.
+    &quot;&quot;&quot;
+    b = min(k, b)
+    mat = [[0]*(b+1) for _ in range(b+1)]
+    for i in range(b+1):
+        for j in range(b+1):
+            s = sum(comb(j,t)*comb(k-j,i-t)*3**t
+                    for t in range(max(0,i+j-k),min(i,j)+1))
+            mat[i][j] = s &lt;&lt; (b-i)
+    scale = 1 &lt;&lt; max(256,8*k)
+    v = [scale]*(b+1)
+    for _ in range(iterations):
+        mv = [sum(a*x for a,x in zip(row,v)) for row in mat]
+        vmax = max(mv)
+        v = [max(1, a*scale//vmax) for a in mv]
+    mv = [sum(a*x for a,x in zip(row,v)) for row in mat]
+    ratios = [Fraction(a,x) for a,x in zip(mv,v)]
+    return min(ratios),max(ratios)
+
+def mp_fraction(x):
+    return mp.mpf(x.numerator)/x.denominator
+
+def rate_from_rho(k,b,x):
+    return ((k-b)*mp.log(2)+mp.log(mp_fraction(x)))/(k+b)
+
+def finite_optimum(q):
+    # Ground patterns give k&lt;=Q; full-cutoff sectors k&lt;Q/2 are admissible too.
+    rows=[]
+    for k in range(1,q+1):
+        b=min(k,q-k)
+        lo,hi=perron_bounds(k,b)
+        # reciprocal miss is rho(M)*2^(k-b), irrespective of unused budget.
+        wl=lo*(1 &lt;&lt; (k-b))
+        wu=hi*(1 &lt;&lt; (k-b))
+        rows.append((wl,wu,k,b))
+    wl=max(x[0] for x in rows)
+    wu=max(x[1] for x in rows)
+    winner=max(rows,key=lambda x:x[0])
+    return {
+      &#x27;Q&#x27;:q,&#x27;k&#x27;:winner[2],&#x27;b&#x27;:winner[3],
+      &#x27;rate_lower&#x27;:str(mp.log(mp_fraction(wl))/q),
+      &#x27;rate_upper&#x27;:str(mp.log(mp_fraction(wu))/q),
+      &#x27;relative_width&#x27;:str(mp_fraction(wu/wl-1)),
+      &#x27;reciprocal_lower_numerator&#x27;:str(wl.numerator),
+      &#x27;reciprocal_lower_denominator&#x27;:str(wl.denominator),
+      &#x27;reciprocal_upper_numerator&#x27;:str(wu.numerator),
+      &#x27;reciprocal_upper_denominator&#x27;:str(wu.denominator),
+    }
+
+def check_generating_coefficients(maxq=24):
+    fs=[1,1]
+    for q in range(2,maxq+1): fs.append(fs[-1]+4*fs[-2])
+    for q in range(maxq+1):
+        direct=sum(score(k,q-k) for k in range((q+1)//2,q+1))
+        assert direct==sum(fs[:q+1]),(q,direct,sum(fs[:q+1]))
+
+if __name__==&#x27;__main__&#x27;:
+    check_generating_coefficients()
+    data={
+      &#x27;hard_rate&#x27;:str(mp.log((1+mp.sqrt(17))/2)),
+      &#x27;hard_separable_rate&#x27;:str(mp.log(2)),
+      &#x27;expected_entangled_rate&#x27;:str(mp.mpf(5)/6*mp.log(4)),
+      &#x27;optimal_high_fraction&#x27;:str((7-mp.sqrt(17))/10),
+      &#x27;coefficient_identity_checked_through_Q&#x27;:24,
+      &#x27;finite_optimum&#x27;:[], &#x27;explicit_probe&#x27;:[]}
+    for q in [1,2,3,4,6,8,12,16,24,32,48]:
+        row=finite_optimum(q)
+        data[&#x27;finite_optimum&#x27;].append(row)
+        print(&#x27;OPT&#x27;,q,row[&#x27;k&#x27;],row[&#x27;b&#x27;],row[&#x27;rate_lower&#x27;][:20],row[&#x27;relative_width&#x27;][:10],flush=True)
+    for q in [3,6,12,24,48,96,192,384,768,1024]:
+        val,k,i=best_explicit(q)
+        row={&#x27;Q&#x27;:q,&#x27;k&#x27;:k,&#x27;b&#x27;:i,&#x27;reciprocal_miss_exact_integer&#x27;:str(val),
+             &#x27;rate&#x27;:str(mp.log(val)/q)}
+        data[&#x27;explicit_probe&#x27;].append(row)
+        print(&#x27;ROW&#x27;,q,k,i,row[&#x27;rate&#x27;][:20],flush=True)
+    (OUT/&#x27;exact_checks.json&#x27;).write_text(json.dumps(data,indent=2))
+</pre><p><a href="../assets/8c75bc19c9406ada3ce34a7c2323e9e88fc537b5a3f01e8e1c93823a267e9047.py">Exact original bytes</a></p></html>

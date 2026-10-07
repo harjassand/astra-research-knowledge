@@ -1,0 +1,67 @@
+"""Exact finite check of the derived resolvent-Hankel identities.
+
+This checks one non-monogenic commuting Frobenius example; it is not proof.
+"""
+import sympy as s
+
+t, z, radial, x, y = s.symbols("t z radial x y")
+# K[x,y]/(x^2,y^2), basis (1,x,y,xy); lambda extracts xy.
+A = s.Matrix([[0,0,0,0],[1,0,0,0],[0,0,0,0],[0,0,1,0]])
+B = s.Matrix([[0,0,0,0],[0,0,0,0],[1,0,0,0],[0,1,0,0]])
+gamma = s.Matrix([1,0,0,0])
+lam = s.Matrix([[0,0,0,1]])
+eye = s.eye(4)
+assert A*B == B*A
+
+def R(point):
+    return (eye-point[0]*A-point[1]*B).inv()
+
+def f(point):
+    return s.expand((lam*R(point)*gamma)[0])
+
+points = [(0,0),(1,0),(0,1),(1,1)]
+H = s.zeros(4)
+K = [s.zeros(4),s.zeros(4)]
+for i,u in enumerate(points):
+    for j,v in enumerate(points):
+        segment = tuple((1-t)*u[k]+t*v[k] for k in range(2))
+        radial_f = f(tuple(radial*a for a in segment))
+        g = s.diff(radial*radial_f, radial).subs(radial,1)
+        H[i,j] = s.integrate(g,(t,0,1))
+        assert H[i,j] == (lam*R(u)*R(v)*gamma)[0]
+        for k,C in enumerate([A,B]):
+            shifted = tuple(segment[jj]+(z if jj==k else 0) for jj in range(2))
+            h = s.diff(f(shifted),z).subs(z,0)
+            K[k][i,j] = s.integrate(h,(t,0,1))
+            assert K[k][i,j] == (lam*R(u)*C*R(v)*gamma)[0]
+        antiderivative = t*R(u)*R(segment)
+        assert s.simplify(s.diff(antiderivative,t)-R(segment)**2)==s.zeros(4)
+
+assert H.det()!=0
+alpha = H.inv()*s.Matrix([f(p) for p in points])
+beta = s.Matrix([[f(p) for p in points]])
+learned = [H.inv()*k for k in K]
+assert learned[0]*learned[1]==learned[1]*learned[0]
+reconstructed = s.factor((beta*(eye-x*learned[0]-y*learned[1]).inv()*alpha)[0])
+assert reconstructed == f((x,y)) == 2*x*y
+# Every linear combination has cube zero, although minimal dimension is four.
+assert (x*A+y*B)**3==s.zeros(4)
+assert H.rank()==4
+print("PASS: exact non-monogenic 4-state commuting example; f=2*x*y; H rank 4")
+
+# A diagonal example exercises actual rational denominators and poles.
+D1 = s.diag(1,2)
+D2 = s.diag(3,5)
+row = s.Matrix([[1,2]])
+col = s.Matrix([3,4])
+u=(s.Rational(1,7),s.Rational(1,11))
+v=(s.Rational(1,13),s.Rational(1,17))
+def RD(point):
+    return (s.eye(2)-point[0]*D1-point[1]*D2).inv()
+segment=tuple((1-t)*u[k]+t*v[k] for k in range(2))
+for C in [s.eye(2),D1,D2]:
+    integrand=s.factor((row*C*RD(segment)**2*col)[0])
+    F=t*(row*C*RD(u)*RD(segment)*col)[0]
+    assert s.factor(s.diff(F,t)-integrand)==0
+    assert s.factor(F.subs(t,1)-F.subs(t,0)-(row*C*RD(u)*RD(v)*col)[0])==0
+print("PASS: exact rational 2-state diagonal example; all antiderivative identities")
