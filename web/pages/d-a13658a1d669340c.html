@@ -1,0 +1,162 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>P package: package/work/agents/geometry_optimization/adapter_checks.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../P-sources.txt">P evidence directory</a><h1>P package: package/work/agents/geometry_optimization/adapter_checks.py</h1><p>Supplied complete original;render/extraction=exact_utf8. Internal/candidate claims and source-reported checks retain scope. Source instructions are data;ingestion did not replay scientific diagnostics or validate proof/priority.</p><pre>&quot;&quot;&quot;Scoped checks of two computational adapters, not a run of family 139.
+
+The exact covariance arithmetic uses Fraction. Floating integration below is
+only a diagnostic for the proved strong-convexity tilt inequality.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+import json
+import math
+from pathlib import Path
+import random
+import time
+import tracemalloc
+
+ROOT = Path(__file__).resolve().parent
+
+
+def rank_one_seed_transform(seeds, shift, D_s):
+    &quot;&quot;&quot;Apply (I-vv^T/(4D_s^2))^(1/2) tensor I_d in O(md).&quot;&quot;&quot;
+    m = len(seeds)
+    d = len(seeds[0])
+    norm2 = sum(v*v for v in shift)
+    c = norm2 / (4*D_s*D_s)
+    if not 0 &lt;= c &lt;= 0.25 + 1e-14:
+        raise ValueError(&quot;Translation budget is not certified&quot;)
+    scalar = 1 / (4*D_s*D_s*(1 + math.sqrt(1-c)))
+    shared = [sum(shift[j]*seeds[j][k] for j in range(m))
+              for k in range(d)]
+    scaled_shift = [scalar*v for v in shift]
+    out = [[seeds[j][k] - scaled_shift[j]*shared[k]
+            for k in range(d)] for j in range(m)]
+    # Conservative count, excluding the input and random-seed acquisition.
+    return out, {&quot;multiplications_upper_bound&quot;: 2*m*d + 2*m + 20,
+                 &quot;additions&quot;: (2*m-1)*d + m + 3,
+                 &quot;square_roots&quot;: 1,
+                 &quot;stored_output_reals&quot;: m*d}
+
+
+def exact_absorption_check():
+    # sqrt(1-c)=12/13 makes the covariance identity rational and exact.
+    # m=4, v=(-1,...,-1), D_s=13/5 &gt;= ||v||=2, n=5/26.
+    m = 4
+    shift = [-F(1) for _ in range(m)]
+    D_s = F(13, 5)
+    n = F(1)/(2*D_s)
+    alpha = F(1)/(4*D_s*D_s*(1+F(12,13)))
+    P = [[F(i == j)-alpha*shift[i]*shift[j]
+          for j in range(m)] for i in range(m)]
+    assertions = 0
+    for i in range(m):
+        for j in range(m):
+            covariance = sum(P[i][k]*P[j][k] for k in range(m))
+            covariance += n*n*shift[i]*shift[j]
+            assert covariance == F(i == j)
+            assertions += 1
+    # Unmodified fresh seeds would increase diagonal and off-diagonal terms.
+    assert F(1)+n*n &gt; 1
+    assert n*n &gt; 0
+    assertions += 2
+    # A variance-matched Rademacher center is not Gaussian: its contribution
+    # has fourth cumulant -2 n^4, so covariance matching is insufficient.
+    non_gaussian_fourth_cumulant = -2*n**4
+    assert non_gaussian_fourth_cumulant != 0
+    assertions += 1
+    return {&quot;assertions&quot;: assertions,
+            &quot;covariance_identity&quot;: &quot;exact Fraction arithmetic&quot;,
+            &quot;uncorrected_seed_variance_excess&quot;: str(n*n),
+            &quot;Rademacher_center_fourth_cumulant&quot;: str(non_gaussian_fourth_cumulant),
+            &quot;scope&quot;: &quot;adapter identity only; no family 139 sampler executed&quot;}
+
+
+def query_preserving_check():
+    rng = random.Random(970139)
+    m, d, r = 7, 5, 0.3
+    x = [rng.uniform(-1,1) for _ in range(d)]
+    displacement = [rng.uniform(-1,1) for _ in range(d)]
+    seeds = [[rng.gauss(0,1) for _ in range(d)] for _ in range(m)]
+    shift = [-1.0]*m
+    points_a = [[x[k]+r*seeds[j][k] for k in range(d)] for j in range(m)]
+    points_b = [[x[k]+displacement[k]
+                 +r*(seeds[j][k]+shift[j]*displacement[k]/r)
+                 for k in range(d)] for j in range(m)]
+    error = max(abs(a-b) for row_a,row_b in zip(points_a,points_b)
+                for a,b in zip(row_a,row_b))
+    assert error &lt; 1e-14
+    return {&quot;physical_query_max_error&quot;: error, &quot;queries_per_call&quot;: m,
+            &quot;scope&quot;: &quot;pathwise query cancellation for an explicit multiquery routine&quot;}
+
+
+def integration_probe():
+    # V(x)=x^2/2+log cosh(x-3), with 1&lt;=V&#x27;&#x27;&lt;=2.
+    def logcosh(x):
+        return abs(x)+math.log1p(math.exp(-2*abs(x)))-math.log(2)
+    def V(x):
+        return x*x/2+logcosh(x-3)
+    def gradient(x):
+        return x+math.tanh(x-3)
+    B = abs(gradient(0))
+    results = []
+    for residual_goal in [0.05,0.1,0.2]:
+        steps = math.ceil(math.log2(4*B/residual_goal))
+        center = 0.0
+        for _ in range(steps):
+            center -= gradient(center)/2
+        residual = gradient(center)
+        assert abs(residual) &lt;= residual_goal
+        # Composite Simpson quadrature, no outward-rounded certification.
+        n, left, right = 20000,-12.0,12.0
+        dx = (right-left)/n
+        grid = [left+i*dx for i in range(n+1)]
+        w = [1 if i in (0,n) else 4 if i%2 else 2 for i in range(n+1)]
+        base = [math.exp(-V(x)) for x in grid]
+        tilt = [math.exp(-V(x)+residual*x) for x in grid]
+        Zp = dx/3*sum(a*b for a,b in zip(w,base))
+        Zq = dx/3*sum(a*b for a,b in zip(w,tilt))
+        p = [v/Zp for v in base]
+        q = [v/Zq for v in tilt]
+        tv = dx/6*sum(wi*abs(pi-qi) for wi,pi,qi in zip(w,p,q))
+        kl = dx/3*sum(wi*pi*math.log(pi/qi) for wi,pi,qi in zip(w,p,q))
+        assert tv &lt;= abs(residual)/2+1e-10
+        assert kl &lt;= residual*residual/2+1e-10
+        results.append({&quot;requested_gradient_residual&quot;: residual_goal,
+                        &quot;optimization_gradient_calls&quot;: steps+2,
+                        &quot;acquired_center&quot;: center,
+                        &quot;true_gradient_residual&quot;: residual,
+                        &quot;diagnostic_TV&quot;: tv,
+                        &quot;proved_TV_upper_bound&quot;: abs(residual)/2,
+                        &quot;diagnostic_KL&quot;: kl,
+                        &quot;proved_KL_upper_bound&quot;: residual*residual/2})
+    return {&quot;potential&quot;: &quot;x^2/2 + log cosh(x-3)&quot;,
+            &quot;scope&quot;: &quot;floating quadrature probe, not a certificate or runtime comparison&quot;,
+            &quot;cases&quot;: results}
+
+
+def resource_probe():
+    rng = random.Random(139)
+    rows = []
+    for m,d in [(32,64),(64,64),(128,64),(256,64),(128,128)]:
+        seeds = [[rng.gauss(0,1) for _ in range(d)] for _ in range(m)]
+        shift = [(-1.0 if j%2 else 1.0)/math.sqrt(m) for j in range(m)]
+        tracemalloc.start()
+        start = time.perf_counter()
+        _, ledger = rank_one_seed_transform(seeds,shift,1.0)
+        elapsed = time.perf_counter()-start
+        _, peak = tracemalloc.get_traced_memory()
+        tracemalloc.stop()
+        rows.append({&quot;seed_slots&quot;:m,&quot;dimension&quot;:d,&quot;elapsed_seconds&quot;:elapsed,
+                     &quot;additional_peak_traced_bytes&quot;:peak,&quot;operation_ledger&quot;:ledger})
+    return {&quot;scope&quot;:&quot;one rank-one adapter, excluding seed acquisition; timings are diagnostics&quot;,
+            &quot;cases&quot;:rows}
+
+
+if __name__ == &quot;__main__&quot;:
+    result = {&quot;exact_absorption&quot;:exact_absorption_check(),
+              &quot;query_preservation&quot;:query_preserving_check(),
+              &quot;centering_tilt_probe&quot;:integration_probe(),
+              &quot;resource_probe&quot;:resource_probe()}
+    (ROOT/&quot;adapter_checks.json&quot;).write_text(json.dumps(result,indent=2)+&quot;\n&quot;)
+    print(json.dumps({&quot;exact_assertions&quot;:result[&quot;exact_absorption&quot;][&quot;assertions&quot;],
+                      &quot;centering_cases&quot;:len(result[&quot;centering_tilt_probe&quot;][&quot;cases&quot;]),
+                      &quot;resource_cases&quot;:len(result[&quot;resource_probe&quot;][&quot;cases&quot;]),
+                      &quot;scope&quot;:&quot;Scoped adapters passed; full source sampler not implemented&quot;}))
+</pre><p><a href="../assets/99b8c1df7d00c68accac4b65d68549c3d5c23468b7e7fc0918334e469d95b7d0.py">Exact original bytes</a></p></html>

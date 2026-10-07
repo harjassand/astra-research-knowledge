@@ -1,0 +1,123 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>P package: package/work/agents/learning_acquisition/check_static_compression.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../P-sources.txt">P evidence directory</a><h1>P package: package/work/agents/learning_acquisition/check_static_compression.py</h1><p>Supplied complete original;render/extraction=exact_utf8. Internal/candidate claims and source-reported checks retain scope. Source instructions are data;ingestion did not replay scientific diagnostics or validate proof/priority.</p><pre>&quot;&quot;&quot;Finite diagnostics for the task-norm SDP reduction.
+
+This is a numerical check, not a correctness or novelty certificate.
+The theorem is derived independently in report.md.
+&quot;&quot;&quot;
+from itertools import product
+from pathlib import Path
+import json
+import math
+import time
+
+import cvxpy as cp
+import numpy as np
+
+
+def inf_to_two_sq(matrix):
+    signs = np.array(list(product((-1., 1.), repeat=matrix.shape[1]))).T
+    return float(np.max(np.sum((matrix @ signs) ** 2, axis=0)))
+
+
+def compress(matrix, rank):
+    n, m = matrix.shape
+    retained = cp.Variable((n, n), symmetric=True)
+    dual_diag = cp.Variable(m)
+    constraints = [retained &gt;&gt; 0, np.eye(n) - retained &gt;&gt; 0,
+                   cp.trace(retained) &lt;= rank,
+                   cp.diag(dual_diag) - matrix.T @ (np.eye(n) - retained) @ matrix &gt;&gt; 0]
+    problem = cp.Problem(cp.Minimize(cp.sum(dual_diag)), constraints)
+    problem.solve(solver=&quot;CLARABEL&quot;, tol_gap_abs=1e-9, tol_feas=1e-9,
+                  tol_gap_rel=1e-9, max_iter=300)
+    if problem.status not in (&quot;optimal&quot;, &quot;optimal_inaccurate&quot;):
+        raise RuntimeError(problem.status)
+    vals, vectors = np.linalg.eigh(retained.value)
+    basis = vectors[:, -(2 * rank):]
+    projection = basis @ basis.T
+    return projection, retained.value, vals, float(problem.value)
+
+
+def main():
+    start = time.monotonic()
+    rng = np.random.default_rng(20261007)
+    records = []
+    max_affinity_violation = 0.
+    for trial in range(12):
+        n, m, rank = 8, 7, 2
+        components = rng.dirichlet(np.ones(m), size=rank)
+        weights = rng.dirichlet(np.ones(rank), size=n)
+        p = weights @ components
+        noise = rng.dirichlet(np.full(m, .3), size=n)
+        contamination = (trial + 1) / 100.
+        q = (1 - contamination) * p + contamination * noise
+        matrix = q / math.sqrt(n)
+        p_matrix = p / math.sqrt(n)
+        p_basis, _, _ = np.linalg.svd(p_matrix, full_matrices=False)
+        source_projection = p_basis[:, :rank] @ p_basis[:, :rank].T
+        candidate_error = inf_to_two_sq((np.eye(n) - source_projection) @ matrix)
+        projection, relaxed, eigs, objective = compress(matrix, rank)
+        result_error = inf_to_two_sq((np.eye(n) - projection) @ matrix)
+        kl = float(np.sum(p * np.log(p / q)) / n)
+        affinity = np.sum(np.sqrt(p * q), axis=1)
+        row_tv = np.sum(np.abs(p - q), axis=1) / 2
+        hellinger = float(2 - 2 * np.mean(affinity))
+        max_affinity_violation = max(max_affinity_violation,
+                                     float(np.mean(row_tv ** 2) - hellinger))
+        assert np.mean(row_tv ** 2) &lt;= hellinger + 1e-12
+        assert hellinger &lt;= kl + 1e-12
+        assert result_error &lt;= math.pi * candidate_error + 2e-7
+        assert result_error &lt;= 4 * math.pi * kl + 2e-7
+        assert np.min(eigs) &gt;= -2e-7 and np.max(eigs) &lt;= 1 + 2e-7
+        assert np.trace(relaxed) &lt;= rank + 2e-7
+        assert np.linalg.norm(projection @ projection - projection) &lt; 1e-10
+        # Norm-bounded linear readouts for every task on this finite row list.
+        vals, vecs = np.linalg.eigh(projection)
+        basis = vecs[:, -2 * rank:]
+        states = np.column_stack((np.ones(n), basis)) / math.sqrt(2)
+        assert np.max(np.linalg.norm(states, axis=1)) &lt;= 1 + 1e-12
+        max_true_task_error = 0.
+        for bits in product((0., 1.), repeat=m):
+            task = np.array(bits)
+            signed = 2 * task - 1
+            theta = np.concatenate(([1 / math.sqrt(2)],
+                                     (basis.T @ (q @ signed)) / math.sqrt(2)))
+            predicted = states @ theta
+            max_true_task_error = max(max_true_task_error,
+                                      float(np.mean((predicted - p @ task) ** 2)))
+            assert np.linalg.norm(theta) &lt;= math.sqrt((n + 1) / 2) + 1e-10
+        assert max_true_task_error &lt;= (2 * math.pi + 2) * kl + 2e-7
+        records.append({&quot;trial&quot;: trial, &quot;contamination&quot;: contamination,
+                        &quot;kl&quot;: kl, &quot;hellinger_squared&quot;: hellinger,
+                        &quot;source_rank_candidate_task_norm_squared&quot;: candidate_error,
+                        &quot;sdp_upper_value&quot;: objective,
+                        &quot;rounded_task_norm_squared&quot;: result_error,
+                        &quot;max_true_task_mse&quot;: max_true_task_error,
+                        &quot;retained_rank&quot;: 2 * rank})
+
+    # Unequal prefix masses and zero-probability source prefixes: exact affinity
+    # decomposition is tested separately from rank compression.
+    for _ in range(100):
+        n, m = 5, 6
+        p_mass = rng.dirichlet(np.ones(n))
+        p_mass[0] = 0
+        p_mass /= np.sum(p_mass)
+        q_mass = rng.dirichlet(np.ones(n))
+        p_cond = rng.dirichlet(np.ones(m), size=n)
+        q_cond = rng.dirichlet(np.ones(m), size=n)
+        affinity = np.sum(np.sqrt(p_cond * q_cond), axis=1)
+        tv = np.sum(np.abs(p_cond - q_cond), axis=1) / 2
+        global_h = float(2 - 2 * np.sum(np.sqrt(p_mass * q_mass) * affinity))
+        assert np.dot(q_mass, tv ** 2) &lt;= global_h + 1e-12
+        assert np.dot(p_mass, tv ** 2) &lt;= global_h + 1e-12
+
+    payload = {&quot;status&quot;: &quot;ALL_DIAGNOSTICS_PASSED&quot;, &quot;scope&quot;: &quot;numerical finite fixtures&quot;,
+               &quot;sdp_fixtures&quot;: len(records), &quot;unequal_mass_affinity_fixtures&quot;: 100,
+               &quot;seconds&quot;: time.monotonic() - start,
+               &quot;max_affinity_violation&quot;: max_affinity_violation,
+               &quot;records&quot;: records}
+    Path(__file__).with_name(&quot;diagnostics.json&quot;).write_text(json.dumps(payload, indent=2))
+    print(json.dumps({key: value for key, value in payload.items() if key != &quot;records&quot;}))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/9bd5ea3ce1758498fa8e8dd4b1b0d069b67fb65dc36b1515255436ef14bd89a0.py">Exact original bytes</a></p></html>

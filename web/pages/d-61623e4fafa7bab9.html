@@ -1,0 +1,276 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>P package: package/work/agents/sparse_archive_implementation/certified.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../P-sources.txt">P evidence directory</a><h1>P package: package/work/agents/sparse_archive_implementation/certified.py</h1><p>Supplied complete original;render/extraction=exact_utf8. Internal/candidate claims and source-reported checks retain scope. Source instructions are data;ingestion did not replay scientific diagnostics or validate proof/priority.</p><pre>&quot;&quot;&quot;Outward dyadic intervals for the Gaussian calculations in this experiment.
+
+Only Python integers and Fraction enter certified arithmetic. Gaussian integrals
+use an integrated Taylor polynomial and its Lagrange remainder, not an adaptive
+quadrature error estimate. This small module is not a reviewed interval library.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from fractions import Fraction
+from functools import lru_cache
+from math import isqrt
+
+BITS = 1024
+SCALE = 1 &lt;&lt; BITS
+
+
+def ceil_div(a: int, b: int) -&gt; int:
+    return -((-a) // b)
+
+
+@dataclass(frozen=True)
+class IV:
+    lo: int
+    hi: int
+
+    def __post_init__(self):
+        if self.lo &gt; self.hi:
+            raise ValueError(&quot;Invalid interval&quot;)
+
+    @staticmethod
+    def exact(x=0):
+        if isinstance(x, IV):
+            return x
+        x = Fraction(x)
+        n = x.numerator * SCALE
+        d = x.denominator
+        return IV(n // d, ceil_div(n, d))
+
+    def __add__(self, other):
+        other = IV.exact(other)
+        return IV(self.lo + other.lo, self.hi + other.hi)
+
+    __radd__ = __add__
+
+    def __neg__(self):
+        return IV(-self.hi, -self.lo)
+
+    def __sub__(self, other):
+        return self + (-IV.exact(other))
+
+    def __rsub__(self, other):
+        return IV.exact(other) - self
+
+    def __mul__(self, other):
+        other = IV.exact(other)
+        ps = (self.lo * other.lo, self.lo * other.hi,
+              self.hi * other.lo, self.hi * other.hi)
+        return IV(min(ps) // SCALE, ceil_div(max(ps), SCALE))
+
+    __rmul__ = __mul__
+
+    def __truediv__(self, other):
+        other = IV.exact(other)
+        if other.lo &lt;= 0 &lt;= other.hi:
+            raise ArithmeticError(&quot;Division by an interval containing zero&quot;)
+        qs = [(n * SCALE, d) for n in (self.lo, self.hi)
+              for d in (other.lo, other.hi)]
+        lows = [n // d for n, d in qs]
+        highs = [ceil_div(n, d) for n, d in qs]
+        return IV(min(lows), max(highs))
+
+    def __rtruediv__(self, other):
+        return IV.exact(other) / self
+
+    def sqrt(self):
+        if self.lo &lt; 0:
+            raise ArithmeticError(&quot;Square root of a negative interval&quot;)
+        low = isqrt(self.lo * SCALE)
+        high = isqrt(self.hi * SCALE)
+        if high * high &lt; self.hi * SCALE:
+            high += 1
+        return IV(low, high)
+
+    def abs_bound(self):
+        return max(abs(self.lo), abs(self.hi))
+
+    def clip_probability(self):
+        if self.hi &lt; 0 or self.lo &gt; SCALE:
+            raise ArithmeticError(&quot;Probability interval misses [0,1]&quot;)
+        return IV(max(0, self.lo), min(SCALE, self.hi))
+
+    def width(self):
+        return Fraction(self.hi - self.lo, SCALE)
+
+    def midpoint(self):
+        return Fraction(self.lo + self.hi, 2 * SCALE)
+
+    def contains(self, x):
+        x = Fraction(x)
+        return self.lo * x.denominator &lt;= x.numerator * SCALE &lt;= self.hi * x.denominator
+
+    def decimal_bounds(self, digits=45):
+        # Integer-directed conversion avoids rounding a near-one probability
+        # to one before printing the lower decimal endpoint.
+        decimal_scale = 10**digits
+        low = self.lo * decimal_scale // SCALE
+        high = ceil_div(self.hi * decimal_scale, SCALE)
+
+        def render(n):
+            sign = &quot;-&quot; if n &lt; 0 else &quot;&quot;
+            t = str(abs(n)).zfill(digits + 1)
+            return sign + (t if not digits else t[:-digits] + &quot;.&quot; + t[-digits:])
+
+        return [render(low), render(high)]
+
+
+@lru_cache(maxsize=None)
+def arctan_recip(q: int) -&gt; IV:
+    &quot;&quot;&quot;Alternating arctan series, plus the next-term remainder enclosure.&quot;&quot;&quot;
+    q2 = q * q
+    power = q
+    total = IV.exact(0)
+    n = 0
+    sign = 1
+    while True:
+        term = IV.exact(Fraction(1, power * (2 * n + 1)))
+        total = total + sign * term
+        n += 1
+        power *= q2
+        next_term = IV.exact(Fraction(1, power * (2 * n + 1)))
+        if next_term.hi &lt;= 1:
+            # The ordinary alternating-series remainder has this magnitude.
+            return total + IV(-next_term.hi, next_term.hi)
+        sign = -sign
+
+
+@lru_cache(maxsize=None)
+def pi_interval() -&gt; IV:
+    # Machin&#x27;s identity is exact.
+    return 16 * arctan_recip(5) - 4 * arctan_recip(239)
+
+
+@lru_cache(maxsize=None)
+def normal_constant() -&gt; IV:
+    return 1 / (2 * pi_interval()).sqrt()
+
+
+@lru_cache(maxsize=None)
+def exp_neg(z: Fraction) -&gt; IV:
+    &quot;&quot;&quot;Enclose exp(-z), z&gt;=0, by Taylor and repeated squaring.&quot;&quot;&quot;
+    z = Fraction(z)
+    if z &lt; 0:
+        raise ValueError(&quot;exp_neg needs z &gt;= 0&quot;)
+    if not z:
+        return IV.exact(1)
+    squares = 0
+    while z &gt; 1:
+        z /= 2
+        squares += 1
+    term = IV.exact(1)
+    total = term
+    n = 0
+    while True:
+        n += 1
+        term = term * z / n
+        total = total + (-term if n % 2 else term)
+        nxt = term * z / (n + 1)
+        if nxt.hi &lt;= 2:
+            # Taylor&#x27;s Lagrange remainder: exp(-xi)&lt;=1 on [0,z].
+            total = total + IV(-nxt.hi, nxt.hi)
+            break
+    for _ in range(squares):
+        total = total * total
+    return total
+
+
+@lru_cache(maxsize=150000)
+def normal_pdf(x: Fraction) -&gt; IV:
+    x = Fraction(x)
+    return normal_constant() * exp_neg(x * x / 2)
+
+
+@lru_cache(maxsize=150000)
+def normal_cdf(x: Fraction) -&gt; IV:
+    &quot;&quot;&quot;Certified integral over [0,x] of the Gaussian density.
+
+    integral(exp(-t^2/2),0,z)=sum_n(-1)^n z^(2n+1)/(2^n n!(2n+1)).
+    Taylor&#x27;s Lagrange formula under the integral bounds the remainder by
+    z^(2N+3)/(2^(N+1)(N+1)!(2N+3)), for every z&gt;=0, even before
+    the terms become decreasing. No float participates in this enclosure.
+    &quot;&quot;&quot;
+    x = Fraction(x)
+    if x &lt; 0:
+        return (1 - normal_cdf(-x)).clip_probability()
+    if not x:
+        return IV.exact(Fraction(1, 2))
+    z2 = x * x / 2
+    # base_n=x^(2n+1)/(2^n n!), divided by 2n+1 below.
+    base = IV.exact(x)
+    total = base
+    n = 0
+    while True:
+        n += 1
+        base = base * z2 / n
+        term = base / (2 * n + 1)
+        total = total + (-term if n % 2 else term)
+        nxt_base = base * z2 / (n + 1)
+        nxt = nxt_base / (2 * n + 3)
+        if nxt.hi &lt;= 2 and n &gt; z2:
+            total = total + IV(-nxt.hi, nxt.hi)
+            break
+        if n &gt; 20000:
+            raise ArithmeticError(&quot;CDF Taylor series exceeded bounded-job guard&quot;)
+    return (Fraction(1, 2) + normal_constant() * total).clip_probability()
+
+
+def normal_mass(left: Fraction | None, right: Fraction | None, mean=Fraction(0)) -&gt; IV:
+    mean = Fraction(mean)
+    fl = IV.exact(0) if left is None else normal_cdf(Fraction(left) - mean)
+    fr = IV.exact(1) if right is None else normal_cdf(Fraction(right) - mean)
+    return (fr - fl).clip_probability()
+
+
+@lru_cache(maxsize=None)
+def atanh_series(z: Fraction) -&gt; IV:
+    z = Fraction(z)
+    if not 0 &lt;= z &lt;= Fraction(1, 3):
+        raise ValueError(&quot;atanh series argument outside [0,1/3]&quot;)
+    zi = IV.exact(z)
+    z2 = zi * zi
+    power = zi
+    total = IV.exact(0)
+    n = 0
+    while True:
+        total = total + 2 * power / (2 * n + 1)
+        n += 1
+        power = power * z2
+        # All omitted positive terms are bounded by this geometric remainder.
+        rem = 2 * power / (2 * n + 1) / (1 - z2)
+        if rem.hi &lt;= 4:
+            return total + IV(0, rem.hi)
+
+
+@lru_cache(maxsize=150000)
+def log_point(n: int) -&gt; IV:
+    &quot;&quot;&quot;Certified ln(n/2^BITS), n&gt;0, using binary scaling and atanh.&quot;&quot;&quot;
+    if n &lt;= 0:
+        raise ArithmeticError(&quot;log requires positive endpoint&quot;)
+    k = n.bit_length() - BITS - 1
+    # u=(n/SCALE)/2^k lies in [1,2).
+    u = Fraction(n, SCALE &lt;&lt; k) if k &gt;= 0 else Fraction(n &lt;&lt; (-k), SCALE)
+    z = (u - 1) / (u + 1)
+    return atanh_series(z) + k * atanh_series(Fraction(1, 3))
+
+
+def log_interval(x: IV) -&gt; IV:
+    if x.lo &lt;= 0:
+        raise ArithmeticError(&quot;Increase precision: positive probability has zero lower bound&quot;)
+    return IV(log_point(x.lo).lo, log_point(x.hi).hi)
+
+
+def sqrt_log_upper_endpoint(a: Fraction, h: Fraction, fractional_bits=50) -&gt; Fraction:
+    &quot;&quot;&quot;Dyadic upper bound on a+sqrt(2 ln(8/h^2)); comparisons remain rational.&quot;&quot;&quot;
+    bound = IV.exact(a) + (2 * log_interval(IV.exact(8 / (h * h)))).sqrt()
+    den = 1 &lt;&lt; fractional_bits
+    return Fraction(ceil_div(bound.hi * den, SCALE), den)
+
+
+def interval_json(x: IV):
+    return {&quot;decimal_interval&quot;: x.decimal_bounds(),
+            &quot;dyadic_integer_low&quot;: str(x.lo),
+            &quot;dyadic_integer_high&quot;: str(x.hi),
+            &quot;dyadic_denominator_power&quot;: BITS}
+</pre><p><a href="../assets/44b524720ee7bf0c659b646cca09e2f2bc3d4769b82f0c8cd04ea9fcca60b7f6.py">Exact original bytes</a></p></html>

@@ -1,0 +1,579 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>P package: package/work/agents/reaction_certificates/certificate.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../P-sources.txt">P evidence directory</a><h1>P package: package/work/agents/reaction_certificates/certificate.py</h1><p>Supplied complete original;render/extraction=exact_utf8. Internal/candidate claims and source-reported checks retain scope. Source instructions are data;ingestion did not replay scientific diagnostics or validate proof/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact, dependency-free bounded PL mass-action certificate checker.
+
+This is a deliberately small reference implementation, not an efficient solver.
+Every numerical quantity used for acceptance is a fractions.Fraction. Rational
+powers use outward dyadic bounds obtained by integer comparisons. A bounded
+run may return UNKNOWN. REFUTED requires an exact or rigorous interval witness.
+The report explains the theorem proved by a CERTIFIED result.
+&quot;&quot;&quot;
+from fractions import Fraction as Q
+from itertools import combinations, product
+from pathlib import Path
+import argparse
+import copy
+import json
+import time
+
+
+def q(x):
+    if isinstance(x, float):
+        raise ValueError(&quot;Supply rationals as integers or strings, never floats&quot;)
+    return Q(x)
+
+
+def dot(a, b):
+    return sum((x * y for x, y in zip(a, b)), Q(0))
+
+
+def rref(matrix):
+    a = [list(row) for row in matrix]
+    if not a:
+        return a, []
+    rows, cols = len(a), len(a[0])
+    pivots, k = [], 0
+    for j in range(cols):
+        pivot = next((i for i in range(k, rows) if a[i][j]), None)
+        if pivot is None:
+            continue
+        a[k], a[pivot] = a[pivot], a[k]
+        scale = a[k][j]
+        a[k] = [z / scale for z in a[k]]
+        for i in range(rows):
+            if i != k and a[i][j]:
+                scale = a[i][j]
+                a[i] = [z - scale * w for z, w in zip(a[i], a[k])]
+        pivots.append(j)
+        k += 1
+        if k == rows:
+            break
+    return a, pivots
+
+
+def solve_unique(matrix, rhs, n):
+    &quot;&quot;&quot;Return unique rational solution of a possibly overdetermined system.&quot;&quot;&quot;
+    aug = [list(row) + [b] for row, b in zip(matrix, rhs)]
+    reduced, pivots = rref(aug)
+    if n in pivots or any(not any(row[:n]) and row[n] for row in reduced):
+        return None
+    if len([j for j in pivots if j &lt; n]) != n:
+        return None
+    ans = [Q(0)] * n
+    for row, pivot in zip(reduced, pivots):
+        if pivot &lt; n:
+            ans[pivot] = row[n]
+    return tuple(ans)
+
+
+def nullspace(matrix, d):
+    reduced, pivots = rref(matrix)
+    basis = []
+    for free in (j for j in range(d) if j not in pivots):
+        v = [Q(0)] * d
+        v[free] = Q(1)
+        for row, pivot in zip(reduced, pivots):
+            v[pivot] = -row[free]
+        basis.append(tuple(v))
+    return basis
+
+
+def box_inequalities(box):
+    d = len(box)
+    out = []
+    for i, (lo, hi) in enumerate(box):
+        a = [Q(0)] * d
+        a[i] = Q(1)
+        out.append((tuple(a), -lo))
+        a = [Q(0)] * d
+        a[i] = Q(-1)
+        out.append((tuple(a), hi))
+    return out
+
+
+def vertices(equations, rhs, inequalities, box):
+    &quot;&quot;&quot;Exact vertices of a bounded polyhedron, including lower-dimensional ones.
+
+    Inequalities are a.x+b &gt;= 0. Boundedness is supplied by box. Enumerating
+    all bases is expensive but complete; an empty vertex list means empty.
+    &quot;&quot;&quot;
+    d = len(box)
+    inequalities = list(inequalities) + box_inequalities(box)
+    dim = d - len(equations)
+    points = set()
+    for basis in combinations(range(len(inequalities)), dim):
+        a = list(equations) + [inequalities[i][0] for i in basis]
+        b = list(rhs) + [-inequalities[i][1] for i in basis]
+        v = solve_unique(a, b, d)
+        if v is not None and all(dot(normal, v) + offset &gt;= 0
+                                 for normal, offset in inequalities):
+            points.add(v)
+    return sorted(points)
+
+
+def conic_witness(inequalities, equations, rhs, target):
+    &quot;&quot;&quot;Farkas witness target = sum nonnegative inequality/equality columns.
+
+    Columns are (a,b) for inequalities, both signs of (E,-rhs) for equalities,
+    and (0,1). The last column permits a nonnegative constant residual.
+    &quot;&quot;&quot;
+    d = len(target) - 1
+    columns = [tuple(a) + (b,) for a, b in inequalities]
+    names = [&quot;inequality:&quot; + str(i) for i in range(len(inequalities))]
+    for i, (a, b) in enumerate(zip(equations, rhs)):
+        columns += [tuple(a) + (-b,), tuple(-z for z in a) + (b,)]
+        names += [&quot;equation:+&quot; + str(i), &quot;equation:-&quot; + str(i)]
+    columns.append(tuple([Q(0)] * d + [Q(1)]))
+    names.append(&quot;constant&quot;)
+    if not any(target):
+        return []
+    for size in range(1, min(d + 1, len(columns)) + 1):
+        for chosen in combinations(range(len(columns)), size):
+            matrix = [[columns[j][i] for j in chosen] for i in range(d + 1)]
+            weights = solve_unique(matrix, target, size)
+            if weights is not None and all(z &gt;= 0 for z in weights):
+                return [{&quot;column&quot;: names[j], &quot;vector&quot;: columns[j], &quot;weight&quot;: w}
+                        for j, w in zip(chosen, weights) if w]
+    return None
+
+
+def verify_conic(witness, target):
+    if witness is None or any(row[&quot;weight&quot;] &lt; 0 for row in witness):
+        return False
+    return all(sum((row[&quot;weight&quot;] * row[&quot;vector&quot;][i] for row in witness), Q(0))
+               == target[i] for i in range(len(target)))
+
+
+def power_bounds(base, exponent, bits):
+    &quot;&quot;&quot;Rigorous rational bounds for base**exponent, base &gt;= 0, exponent &gt;= 0.&quot;&quot;&quot;
+    if base &lt; 0 or exponent &lt; 0:
+        raise ValueError(&quot;The checker supports nonnegative complexes and boxes&quot;)
+    p, n = exponent.numerator, exponent.denominator
+    if not p:
+        return Q(1), Q(1)
+    if n == 1:
+        value = base ** p
+        return value, value
+    value, scale = base ** p, 1 &lt;&lt; bits
+    target = value.numerator * scale ** n
+    denom = value.denominator
+    lo, hi = 0, 1
+    while hi ** n * denom &lt;= target:
+        hi *= 2
+    while hi - lo &gt; 1:
+        mid = (lo + hi) // 2
+        if mid ** n * denom &lt;= target:
+            lo = mid
+        else:
+            hi = mid
+    lower = Q(lo, scale)
+    upper = lower if lo ** n * denom == target else Q(hi, scale)
+    return lower, upper
+
+
+def monomial_bounds(box, source, bits):
+    lo = hi = Q(1)
+    for (left, right), exponent in zip(box, source):
+        left_bound, _ = power_bounds(left, exponent, bits)
+        _, right_bound = power_bounds(right, exponent, bits)
+        lo *= left_bound
+        hi *= right_bound
+    return lo, hi
+
+
+def derivative_bounds(normal, reactions, kappa, cap, box, bits):
+    &quot;&quot;&quot;Minimize each independent rate exactly before interval bounding in x.&quot;&quot;&quot;
+    lower = upper = Q(0)
+    rates = []
+    for source, nu in reactions:
+        signed = dot(normal, nu)
+        rate = kappa if signed &gt;= 0 else cap
+        rates.append(rate)
+        coeff = signed * rate
+        mlo, mhi = monomial_bounds(box, source, bits)
+        if coeff &gt;= 0:
+            lower += coeff * mlo
+            upper += coeff * mhi
+        else:
+            lower += coeff * mhi
+            upper += coeff * mlo
+    return lower, upper, rates
+
+
+def parse(spec):
+    c = tuple(map(q, spec[&quot;c&quot;]))
+    d = len(c)
+    if not d or min(c) &lt;= 0:
+        raise ValueError(&quot;c must be a positive rational vector&quot;)
+    kappa, cap, delta = map(q, (spec[&quot;kappa&quot;], spec[&quot;K&quot;], spec[&quot;delta&quot;]))
+    if not 0 &lt; kappa &lt;= cap or delta &lt;= 0:
+        raise ValueError(&quot;Require 0 &lt; kappa &lt;= K and delta &gt; 0&quot;)
+    reactions = []
+    for edge in spec[&quot;reactions&quot;]:
+        y, target = tuple(map(q, edge[&quot;source&quot;])), tuple(map(q, edge[&quot;target&quot;]))
+        if len(y) != d or len(target) != d or min(y + target) &lt; 0:
+            raise ValueError(&quot;Complexes must be nonnegative rational d-vectors&quot;)
+        reactions.append((y, tuple(z - w for z, w in zip(target, y))))
+    labels = [(tuple(map(q, row[&quot;normal&quot;])), q(row[&quot;offset&quot;]))
+              for row in spec[&quot;labels&quot;]]
+    if any(len(a) != d for a, _ in labels):
+        raise ValueError(&quot;Wrong label dimension&quot;)
+    if (tuple([Q(0)] * d), Q(0)) not in labels:
+        raise ValueError(&quot;Include the constant zero plateau label&quot;)
+    outer = tuple(tuple(map(q, row)) for row in spec[&quot;outer_box&quot;])
+    inner = tuple(tuple(map(q, row)) for row in spec[&quot;inner_box&quot;])
+    margin = q(spec[&quot;containment_margin&quot;])
+    if len(inner) != d or len(outer) != d or margin &lt;= 0:
+        raise ValueError(&quot;Boxes and containment margin malformed&quot;)
+    for (ol, oh), (il, ih) in zip(outer, inner):
+        if not 0 &lt;= ol &lt; il &lt; ih &lt; oh or il &lt;= 0 or il + margin &gt;= ih - margin:
+            raise ValueError(&quot;Inner positive box must lie strictly inside outer box&quot;)
+    equations = nullspace([nu for _, nu in reactions], d)
+    rhs = [dot(row, c) for row in equations]
+    return c, reactions, labels, outer, inner, margin, equations, rhs, kappa, cap, delta
+
+
+def check(spec, maxdepth=8, bits=32):
+    started = time.perf_counter()
+    (c, reactions, labels, outer, inner, margin, equations, rhs,
+     kappa, cap, delta) = parse(spec)
+    d = len(c)
+    if any(dot(a, c) + b &lt; 0 for a, b in labels):
+        return {&quot;status&quot;: &quot;REFUTED&quot;, &quot;reason&quot;: &quot;c is outside plateau&quot;}
+    result = {&quot;status&quot;: &quot;CERTIFIED&quot;, &quot;scope&quot;: &quot;invariant_and_box_conditional_entry&quot;,
+              &quot;equations&quot;: equations, &quot;rhs&quot;: rhs, &quot;delta&quot;: delta,
+              &quot;containment&quot;: [], &quot;active_cells&quot;: [], &quot;stats&quot;: {&quot;nodes&quot;: 0}}
+    for i, (il, ih) in enumerate(inner):
+        for sign, bound in ((1, -(il + margin)), (-1, ih - margin)):
+            a = tuple(Q(sign) if j == i else Q(0) for j in range(d))
+            target = a + (bound,)
+            witness = conic_witness(labels, equations, rhs, target)
+            if not verify_conic(witness, target):
+                return {&quot;status&quot;: &quot;UNKNOWN&quot;, &quot;reason&quot;: &quot;No inner-box containment witness&quot;}
+            result[&quot;containment&quot;].append({&quot;target&quot;: target, &quot;witness&quot;: witness})
+
+    def recurse(normal, cell_inequalities, box, depth):
+        result[&quot;stats&quot;][&quot;nodes&quot;] += 1
+        points = vertices(equations, rhs, cell_inequalities, box)
+        if not points:
+            return {&quot;kind&quot;: &quot;empty&quot;, &quot;box&quot;: box}
+        hull = tuple((min(v[i] for v in points), max(v[i] for v in points))
+                     for i in range(d))
+        lower, upper, rates = derivative_bounds(normal, reactions, kappa, cap,
+                                                hull, bits + 2 * depth)
+        if lower &gt;= delta:
+            return {&quot;kind&quot;: &quot;positive&quot;, &quot;box&quot;: box, &quot;hull&quot;: hull,
+                    &quot;lower_bound&quot;: lower, &quot;vertices&quot;: points}
+        # Any rigorous upper bound below delta at an active rational point
+        # refutes this particular candidate, not the network&#x27;s permanence.
+        for point in points:
+            pbox = tuple((v, v) for v in point)
+            plo, phi, prates = derivative_bounds(normal, reactions, kappa, cap,
+                                                 pbox, bits + 2 * depth)
+            if phi &lt; delta:
+                return {&quot;kind&quot;: &quot;refuted&quot;, &quot;point&quot;: point,
+                        &quot;derivative_interval&quot;: (plo, phi), &quot;rates&quot;: prates}
+        if depth &gt;= maxdepth:
+            return {&quot;kind&quot;: &quot;unknown&quot;, &quot;box&quot;: hull, &quot;lower_bound&quot;: lower,
+                    &quot;upper_bound&quot;: upper, &quot;reason&quot;: &quot;Subdivision/precision budget&quot;}
+        widths = [hi - lo for lo, hi in hull]
+        coordinate = max(range(d), key=lambda i: widths[i])
+        if not widths[coordinate]:
+            return recurse(normal, cell_inequalities, hull, depth + 1)
+        mid = sum(hull[coordinate], Q(0)) / 2
+        left, right = list(hull), list(hull)
+        left[coordinate] = (hull[coordinate][0], mid)
+        right[coordinate] = (mid, hull[coordinate][1])
+        children = [recurse(normal, cell_inequalities, tuple(part), depth + 1)
+                    for part in (left, right)]
+        return {&quot;kind&quot;: &quot;split&quot;, &quot;box&quot;: box, &quot;coordinate&quot;: coordinate,
+                &quot;midpoint&quot;: mid, &quot;children&quot;: children}
+
+    def tree_status(tree):
+        if tree[&quot;kind&quot;] == &quot;split&quot;:
+            statuses = [tree_status(child) for child in tree[&quot;children&quot;]]
+            return &quot;REFUTED&quot; if &quot;REFUTED&quot; in statuses else (
+                &quot;UNKNOWN&quot; if &quot;UNKNOWN&quot; in statuses else &quot;CERTIFIED&quot;)
+        return {&quot;empty&quot;: &quot;CERTIFIED&quot;, &quot;positive&quot;: &quot;CERTIFIED&quot;,
+                &quot;refuted&quot;: &quot;REFUTED&quot;, &quot;unknown&quot;: &quot;UNKNOWN&quot;}[tree[&quot;kind&quot;]]
+
+    for i, (normal, offset) in enumerate(labels):
+        if all(dot(normal, nu) == 0 for _, nu in reactions):
+            # This affine value is constant on P and &gt;= 0 at c; hence it
+            # cannot be active where F &lt; 0. Its derivative is exactly zero.
+            result[&quot;active_cells&quot;].append({&quot;label&quot;: i, &quot;kind&quot;: &quot;S_perp&quot;})
+            continue
+        cell = [(tuple(v - u for u, v in zip(normal, a)), b - offset)
+                for a, b in labels]
+        tree = recurse(normal, cell, outer, 0)
+        result[&quot;active_cells&quot;].append({&quot;label&quot;: i, &quot;tree&quot;: tree})
+        status = tree_status(tree)
+        if status == &quot;REFUTED&quot; or result[&quot;status&quot;] == &quot;CERTIFIED&quot;:
+            result[&quot;status&quot;] = status
+
+    # Optional finite proof that the entire nonnegative class is in outer.
+    # This converts conditional entry to GLOBAL entry when finite positivity
+    # follows from y_i &gt;= 1 for every reaction that consumes species i.
+    if result[&quot;status&quot;] == &quot;CERTIFIED&quot; and spec.get(&quot;global_bounded_class&quot;):
+        nonnegative = []
+        for i in range(d):
+            a = tuple(Q(1) if j == i else Q(0) for j in range(d))
+            nonnegative.append((a, Q(0)))
+        witnesses = []
+        for a, b in box_inequalities(outer):
+            target = a + (b,)
+            witness = conic_witness(nonnegative, equations, rhs, target)
+            if not verify_conic(witness, target):
+                result[&quot;status&quot;] = &quot;UNKNOWN&quot;
+                result[&quot;reason&quot;] = &quot;The entire class was not proved bounded by outer&quot;
+                break
+            witnesses.append({&quot;target&quot;: target, &quot;witness&quot;: witness})
+        dominance = all(y[i] &gt;= 1 for y, nu in reactions for i in range(d)
+                        if nu[i] &lt; 0)
+        if result[&quot;status&quot;] == &quot;CERTIFIED&quot; and not dominance:
+            result[&quot;status&quot;] = &quot;UNKNOWN&quot;
+            result[&quot;reason&quot;] = &quot;Finite positive-time boundary avoidance not certified&quot;
+        if result[&quot;status&quot;] == &quot;CERTIFIED&quot;:
+            points = vertices(equations, rhs, nonnegative, outer)
+            fmin = min(dot(a, v) + b for a, b in labels for v in points)
+            result[&quot;scope&quot;] = &quot;global_invariant_absorber_on_this_bounded_class&quot;
+            result[&quot;class_containment&quot;] = witnesses
+            result[&quot;uniform_entry_time_upper_bound&quot;] = -fmin / delta
+    result[&quot;stats&quot;][&quot;elapsed_seconds_diagnostic&quot;] = time.perf_counter() - started
+    return result
+
+
+def stringify(value):
+    if isinstance(value, Q):
+        return str(value)
+    if isinstance(value, dict):
+        return {k: stringify(v) for k, v in value.items()}
+    if isinstance(value, (tuple, list)):
+        return [stringify(v) for v in value]
+    return value
+
+
+def sample():
+    return {&quot;c&quot;: [&quot;1/2&quot;, &quot;1/2&quot;], &quot;kappa&quot;: 1, &quot;K&quot;: 4, &quot;delta&quot;: &quot;5/16&quot;,
+            &quot;reactions&quot;: [{&quot;source&quot;: [2, 0], &quot;target&quot;: [1, 1]},
+                          {&quot;source&quot;: [0, 2], &quot;target&quot;: [1, 1]}],
+            &quot;labels&quot;: [{&quot;normal&quot;: [0, 0], &quot;offset&quot;: 0},
+                       {&quot;normal&quot;: [1, 0], &quot;offset&quot;: &quot;-1/4&quot;},
+                       {&quot;normal&quot;: [-1, 0], &quot;offset&quot;: &quot;3/4&quot;}],
+            &quot;outer_box&quot;: [[0, 1], [0, 1]],
+            &quot;inner_box&quot;: [[&quot;1/8&quot;, &quot;7/8&quot;], [&quot;1/8&quot;, &quot;7/8&quot;]],
+            &quot;containment_margin&quot;: &quot;1/16&quot;, &quot;global_bounded_class&quot;: True}
+
+
+def enumerate_local_candidates(network, initial_vertices=(), maxheight=None):
+    &quot;&quot;&quot;Exhaustive rational candidate stream; extremely expensive on purpose.
+
+    This is an implementable search specification, not a useful performance
+    claim. Height simultaneously dovetails box index, label count, rational
+    coefficient heights, positivity margin, root precision, and subdivision.
+    For any one strict rational certificate in this box family, some later
+    finite height includes its data and enough verification resources.
+    &quot;&quot;&quot;
+    d = len(network[&quot;c&quot;])
+    c = tuple(map(q, network[&quot;c&quot;]))
+    initial_vertices = [tuple(map(q, v)) for v in initial_vertices]
+    if any(len(v) != d for v in initial_vertices):
+        raise ValueError(&quot;Initial vertices have the wrong dimension&quot;)
+    stoichiometry = [tuple(q(v) - q(u) for u, v in zip(edge[&quot;source&quot;], edge[&quot;target&quot;]))
+                     for edge in network[&quot;reactions&quot;]]
+    equations = nullspace(stoichiometry, d)
+    rhs = [dot(row, c) for row in equations]
+    if any(min(v) &lt;= 0 or any(dot(a, v) != b for a, b in zip(equations, rhs))
+           for v in initial_vertices):
+        raise ValueError(&quot;Initial vertices must be positive and in P&quot;)
+    height = 4
+    while maxheight is None or height &lt;= maxheight:
+        rationals = sorted({Q(p, den) for den in range(1, height + 1)
+                            for p in range(-height, height + 1)})
+        # This retained pool itself has exponential dependence on dimension.
+        pool = [(tuple(row[:d]), row[d]) for row in product(rationals, repeat=d + 1)
+                if any(row[:d]) or row[d] != 0]
+        pool = [(a, b) for a, b in pool
+                if all(dot(a, v) + b &gt;= 0 for v in [c] + initial_vertices)]
+        for n in range(4, height + 1):
+            if not all(Q(1, n) &lt; v &lt; n for v in c):
+                continue
+            for count in range(1, height + 1):
+                for chosen in combinations(pool, count):
+                    spec = copy.deepcopy(network)
+                    spec.update({&quot;delta&quot;: str(Q(1, height)),
+                                 &quot;outer_box&quot;: [[str(Q(1, n)), n] for _ in range(d)],
+                                 &quot;inner_box&quot;: [[str(Q(2, n)), str(Q(n, 2))]
+                                               for _ in range(d)],
+                                 &quot;containment_margin&quot;: str(Q(1, height)),
+                                 &quot;global_bounded_class&quot;: False,
+                                 &quot;labels&quot;: [{&quot;normal&quot;: [0] * d, &quot;offset&quot;: 0}] +
+                                           [{&quot;normal&quot;: [str(z) for z in a],
+                                             &quot;offset&quot;: str(b)} for a, b in chosen]})
+                    # At a small height the requested margin might leave no
+                    # inner interval; skip it instead of throwing on parsing.
+                    if Q(2, n) + Q(1, height) &gt;= Q(n, 2) - Q(1, height):
+                        continue
+                    yield height, spec
+        height += 1
+
+
+def search_local(network, initial_vertices=(), maxheight=None, max_candidates=None):
+    &quot;&quot;&quot;Dovetailed local safety/box-entry compiler. Total only with existence.&quot;&quot;&quot;
+    count = 0
+    for height, spec in enumerate_local_candidates(network, initial_vertices, maxheight):
+        count += 1
+        result = check(spec, maxdepth=height, bits=height)
+        if result[&quot;status&quot;] == &quot;CERTIFIED&quot;:
+            return {&quot;status&quot;: &quot;CERTIFIED&quot;, &quot;candidate&quot;: spec, &quot;certificate&quot;: result,
+                    &quot;search_candidates&quot;: count, &quot;height&quot;: height}
+        if max_candidates is not None and count &gt;= max_candidates:
+            break
+    return {&quot;status&quot;: &quot;UNKNOWN&quot;, &quot;reason&quot;: &quot;Finite search budget&quot;, &quot;search_candidates&quot;: count}
+
+
+def interval_family_search(network, maxn=20):
+    &quot;&quot;&quot;Small actual acquisition search over two-species conservative intervals.
+
+    This restricted family has no advertised completeness for other networks.
+    It supplies a candidate rather than taking the interval endpoints as input.
+    &quot;&quot;&quot;
+    if len(network[&quot;c&quot;]) != 2:
+        raise ValueError(&quot;Restricted search expects two species&quot;)
+    mass = sum(map(q, network[&quot;c&quot;]), Q(0))
+    attempts = []
+    for n in range(3, maxn + 1):
+        lower = mass / n
+        spec = copy.deepcopy(network)
+        spec.update({&quot;delta&quot;: str(Q(1, n)), &quot;global_bounded_class&quot;: True,
+                     &quot;labels&quot;: [{&quot;normal&quot;: [0, 0], &quot;offset&quot;: 0},
+                                {&quot;normal&quot;: [1, 0], &quot;offset&quot;: str(-lower)},
+                                {&quot;normal&quot;: [-1, 0], &quot;offset&quot;: str(mass - lower)}],
+                     &quot;outer_box&quot;: [[0, str(mass)], [0, str(mass)]],
+                     &quot;inner_box&quot;: [[str(lower / 2), str(mass - lower / 2)]] * 2,
+                     &quot;containment_margin&quot;: str(lower / 4)})
+        result = check(spec)
+        attempts.append({&quot;n&quot;: n, &quot;status&quot;: result[&quot;status&quot;]})
+        if result[&quot;status&quot;] == &quot;CERTIFIED&quot;:
+            return {&quot;status&quot;: &quot;CERTIFIED&quot;, &quot;candidate&quot;: spec,
+                    &quot;certificate&quot;: result, &quot;attempts&quot;: attempts}
+    return {&quot;status&quot;: &quot;UNKNOWN&quot;, &quot;attempts&quot;: attempts, &quot;reason&quot;: &quot;Finite search budget&quot;}
+
+
+def check_chain(specifications, initial_vertices, transition_margin, maxdepth=8, bits=32):
+    &quot;&quot;&quot;Finite GLOBAL absorption certificate for the supplied compact initial set.
+
+    Q_0 contains A=conv(initial_vertices), every Q_j is invariant, and Q_j is
+    strictly inside the next certificate&#x27;s box. This does not assert that one
+    finite chain covers every initial point of an unbounded class.
+    &quot;&quot;&quot;
+    if not specifications:
+        raise ValueError(&quot;A chain must be nonempty&quot;)
+    parsed = [parse(spec) for spec in specifications]
+    initial_vertices = [tuple(map(q, v)) for v in initial_vertices]
+    margin = q(transition_margin)
+    if margin &lt;= 0 or not initial_vertices:
+        raise ValueError(&quot;Supply a positive transition margin and initial vertices&quot;)
+    first = parsed[0]
+    c, reactions, labels, _, _, _, equations, rhs, kappa, cap, _ = first
+    for data in parsed[1:]:
+        if data[0] != c or data[1] != reactions or data[8:10] != (kappa, cap):
+            raise ValueError(&quot;All chain entries must describe the same class and kinetics&quot;)
+    for v in initial_vertices:
+        if len(v) != len(c) or min(v) &lt;= 0 or any(dot(a, v) != b for a, b in zip(equations, rhs)):
+            raise ValueError(&quot;Initial polytope vertices must be positive and in P&quot;)
+        if any(dot(a, v) + b &lt; 0 for a, b in labels):
+            return {&quot;status&quot;: &quot;REFUTED&quot;, &quot;reason&quot;: &quot;Initial set not inside Q_0&quot;, &quot;point&quot;: v}
+    local = [check(spec, maxdepth, bits) for spec in specifications]
+    if any(row[&quot;status&quot;] != &quot;CERTIFIED&quot; for row in local):
+        return {&quot;status&quot;: &quot;UNKNOWN&quot;, &quot;reason&quot;: &quot;Some local chain member was not certified&quot;,
+                &quot;local_certificates&quot;: local}
+    transitions, total_time = [], Q(0)
+    for j in range(len(parsed) - 1):
+        previous, nxt = parsed[j], parsed[j + 1]
+        prev_labels, prev_outer = previous[2], previous[3]
+        next_labels, next_outer, next_delta = nxt[2], nxt[3], nxt[10]
+        witnesses = []
+        for a, b in box_inequalities(next_outer):
+            target = a + (b - margin,)
+            witness = conic_witness(prev_labels, equations, rhs, target)
+            if not verify_conic(witness, target):
+                return {&quot;status&quot;: &quot;UNKNOWN&quot;, &quot;reason&quot;: &quot;Missing box transition containment&quot;}
+            witnesses.append({&quot;target&quot;: target, &quot;witness&quot;: witness})
+        points = vertices(equations, rhs, prev_labels, prev_outer)
+        fmin = min(dot(a, v) + b for a, b in next_labels for v in points)
+        entry_time = -fmin / next_delta
+        total_time += entry_time
+        transitions.append({&quot;from&quot;: j, &quot;to&quot;: j + 1, &quot;containment&quot;: witnesses,
+                            &quot;entry_time_upper_bound&quot;: entry_time})
+    return {&quot;status&quot;: &quot;CERTIFIED&quot;, &quot;scope&quot;: &quot;global_absorption_for_supplied_initial_polytope&quot;,
+            &quot;local_certificates&quot;: local, &quot;transitions&quot;: transitions,
+            &quot;entry_time_upper_bound&quot;: total_time}
+
+
+def demo(directory):
+    directory.mkdir(parents=True, exist_ok=True)
+    spec = sample()
+    (directory / &quot;example.json&quot;).write_text(json.dumps(spec, indent=2) + &quot;\n&quot;)
+    result = check(spec)
+    (directory / &quot;example_certificate.json&quot;).write_text(
+        json.dumps(stringify(result), indent=2) + &quot;\n&quot;)
+    wider = copy.deepcopy(spec)
+    wider[&quot;K&quot;] = 16
+    bad = check(wider)
+    (directory / &quot;failed_wider_rates.json&quot;).write_text(
+        json.dumps(stringify(bad), indent=2) + &quot;\n&quot;)
+    # Exercise genuine noninteger-complex rational power bounds without
+    # pretending that this diagnostic proves a general theorem.
+    fractional = copy.deepcopy(spec)
+    fractional[&quot;reactions&quot;] = [
+        {&quot;source&quot;: [&quot;3/2&quot;, 0], &quot;target&quot;: [&quot;1/2&quot;, 1]},
+        {&quot;source&quot;: [0, &quot;3/2&quot;], &quot;target&quot;: [1, &quot;1/2&quot;]}]
+    fractional[&quot;K&quot;] = 2
+    fractional[&quot;delta&quot;] = &quot;1/4&quot;
+    fractional_result = check(fractional)
+    (directory / &quot;fractional_example.json&quot;).write_text(
+        json.dumps(fractional, indent=2) + &quot;\n&quot;)
+    (directory / &quot;fractional_certificate.json&quot;).write_text(
+        json.dumps(stringify(fractional_result), indent=2) + &quot;\n&quot;)
+    acquired = interval_family_search({k: spec[k] for k in (&quot;c&quot;, &quot;kappa&quot;, &quot;K&quot;, &quot;reactions&quot;)})
+    (directory / &quot;acquired_interval.json&quot;).write_text(
+        json.dumps(stringify(acquired), indent=2) + &quot;\n&quot;)
+    wide_plateau = copy.deepcopy(spec)
+    wide_plateau.update({&quot;global_bounded_class&quot;: False, &quot;delta&quot;: &quot;3/4&quot;,
+                         &quot;labels&quot;: [{&quot;normal&quot;: [0, 0], &quot;offset&quot;: 0},
+                                    {&quot;normal&quot;: [1, 0], &quot;offset&quot;: &quot;-1/16&quot;},
+                                    {&quot;normal&quot;: [-1, 0], &quot;offset&quot;: &quot;15/16&quot;}],
+                         &quot;inner_box&quot;: [[&quot;1/32&quot;, &quot;31/32&quot;]] * 2,
+                         &quot;containment_margin&quot;: &quot;1/64&quot;})
+    final_plateau = copy.deepcopy(spec)
+    final_plateau.update({&quot;global_bounded_class&quot;: False,
+                          &quot;outer_box&quot;: [[&quot;1/32&quot;, &quot;31/32&quot;]] * 2})
+    initial_vertices = [[&quot;1/16&quot;, &quot;15/16&quot;], [&quot;15/16&quot;, &quot;1/16&quot;]]
+    chain = check_chain([wide_plateau, final_plateau], initial_vertices, &quot;1/64&quot;)
+    (directory / &quot;finite_chain.json&quot;).write_text(
+        json.dumps(stringify(chain), indent=2) + &quot;\n&quot;)
+    return {&quot;integer_example&quot;: result[&quot;status&quot;], &quot;integer_scope&quot;: result[&quot;scope&quot;],
+            &quot;entry_time&quot;: result.get(&quot;uniform_entry_time_upper_bound&quot;),
+            &quot;wider_rate_candidate&quot;: bad[&quot;status&quot;],
+            &quot;fractional_example&quot;: fractional_result[&quot;status&quot;],
+            &quot;fractional_scope&quot;: fractional_result[&quot;scope&quot;],
+            &quot;acquisition_search&quot;: acquired[&quot;status&quot;], &quot;search_attempts&quot;: acquired[&quot;attempts&quot;],
+            &quot;finite_chain&quot;: chain[&quot;status&quot;], &quot;chain_scope&quot;: chain.get(&quot;scope&quot;),
+            &quot;chain_entry_time&quot;: chain.get(&quot;entry_time_upper_bound&quot;)}
+
+
+if __name__ == &quot;__main__&quot;:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(&quot;input&quot;, nargs=&quot;?&quot;, type=Path)
+    parser.add_argument(&quot;--demo&quot;, type=Path)
+    parser.add_argument(&quot;--maxdepth&quot;, type=int, default=8)
+    parser.add_argument(&quot;--bits&quot;, type=int, default=32)
+    args = parser.parse_args()
+    if args.demo:
+        result = demo(args.demo)
+    elif args.input:
+        result = check(json.loads(args.input.read_text()), args.maxdepth, args.bits)
+    else:
+        parser.error(&quot;Supply a JSON candidate or --demo DIRECTORY&quot;)
+    print(json.dumps(stringify(result), indent=2))
+</pre><p><a href="../assets/8810f06470323b7e58dda00bef388d8acaf1231d665125eb72d51278abca367d.py">Exact original bytes</a></p></html>

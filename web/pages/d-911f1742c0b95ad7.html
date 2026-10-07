@@ -1,0 +1,205 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>P package: package/work/agents/groups_operator_algebras/check_cocycle.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../P-sources.txt">P evidence directory</a><h1>P package: package/work/agents/groups_operator_algebras/check_cocycle.py</h1><p>Supplied complete original;render/extraction=exact_utf8. Internal/candidate claims and source-reported checks retain scope. Source instructions are data;ingestion did not replay scientific diagnostics or validate proof/priority.</p><pre>&quot;&quot;&quot;Finite convention checks for quantitative_cocycle.md; not a theorem prover.&quot;&quot;&quot;
+from collections import defaultdict, deque
+from fractions import Fraction
+from pathlib import Path
+import json
+import math
+import mpmath as mp
+
+OUT = Path(__file__).resolve().parent
+
+
+def reduce_word(word):
+    stack = []
+    for letter in word:
+        if stack and stack[-1] == -letter:
+            stack.pop()
+        else:
+            stack.append(letter)
+    return tuple(stack)
+
+
+def inverse(word):
+    return tuple(-x for x in reversed(word))
+
+
+def multiply(a, b):
+    out = defaultdict(int)
+    for x, c in a.items():
+        for y, d in b.items():
+            out[reduce_word(x + y)] += c * d
+    return {x: c for x, c in out.items() if c}
+
+
+def root_moments(m, count):
+    &quot;&quot;&quot;Number of walks of length 2r at the root of the (m+1)-tree.&quot;&quot;&quot;
+    state = {0: 1}
+    answer = [1]
+    for step in range(1, 2 * count + 1):
+        nxt = defaultdict(int)
+        for depth, value in state.items():
+            nxt[depth + 1] += value * (m + 1 if depth == 0 else m)
+            if depth:
+                nxt[depth - 1] += value
+        state = dict(nxt)
+        if step % 2 == 0:
+            answer.append(state.get(0, 0))
+    return answer
+
+
+def schreier_basis(k):
+    n = 1 &lt;&lt; k
+    mask = n - 1
+
+    def rotate(v):
+        return ((v &lt;&lt; 1) &amp; mask) | (v &gt;&gt; (k - 1))
+
+    perm = [{v: rotate(v) for v in range(n)},
+            {v: rotate(v) ^ 1 for v in range(n)}]
+    invperm = [{w: v for v, w in p.items()} for p in perm]
+    assert all(len(p) == n for p in invperm)
+    words = {0: ()}
+    tree_edges = set()
+    queue = deque([0])
+    while queue:
+        v = queue.popleft()
+        for colour in range(2):
+            letter = colour + 2  # a=1, y=2, z=3
+            for sign, p in [(1, perm[colour]), (-1, invperm[colour])]:
+                w = p[v]
+                if w not in words:
+                    words[w] = words[v] + (sign * letter,)
+                    tree_edges.add((v if sign == 1 else w, colour))
+                    queue.append(w)
+    basis = []
+    for v in range(n):
+        for colour in range(2):
+            if (v, colour) not in tree_edges:
+                w = perm[colour][v]
+                word = reduce_word(words[v] + (colour + 2,) + inverse(words[w]))
+                assert word
+                # Replay the word as an actual loop in the covering graph.
+                current = 0
+                for letter in word:
+                    colour2 = abs(letter) - 2
+                    current = (perm if letter &gt; 0 else invperm)[colour2][current]
+                assert current == 0
+                basis.append(word)
+    assert len(words) == n
+    assert len(tree_edges) == n - 1
+    assert len(basis) == n + 1
+    assert max(map(len, words.values())) &lt;= k
+    assert max(map(len, basis)) &lt;= 2 * k + 1
+    prefixes = []
+    p = ()
+    for bword in basis[:n]:
+        p = reduce_word(p + (1,) + bword)
+        prefixes.append(p)
+    w = reduce_word(p + (1,))
+    # Every a occurrence is positive and its preceding prefix is exactly p_j.
+    seen = [()]
+    running = ()
+    for letter in w:
+        if letter == 1 and running:
+            seen.append(running)
+        assert letter != -1
+        running = reduce_word(running + (letter,))
+    assert seen == [()] + prefixes
+    assert len(w) &lt;= 2 * n * (k + 1) + 1
+    return {
+        &quot;k&quot;: k, &quot;vertices&quot;: n, &quot;basis_count&quot;: len(basis),
+        &quot;max_basis_word_length&quot;: max(map(len, basis)),
+        &quot;w_length&quot;: len(w), &quot;w_length_bound&quot;: 2 * n * (k + 1) + 1,
+        &quot;positive_a_count&quot;: n + 1,
+    }
+
+
+def theta_density(m, theta):
+    if m == 1:
+        return mp.mpf(2) / mp.pi
+    return (4 * m * (m + 1) * mp.cos(theta)**2 /
+            (mp.pi * ((m + 1)**2 - 4*m*mp.sin(theta)**2)))
+
+
+def integrate_density(m, fn, delta=None):
+    cuts = [mp.mpf(0)]
+    if delta is not None:
+        cuts.extend([mp.sqrt(delta) / 10, mp.sqrt(delta), 10 * mp.sqrt(delta)])
+    cuts.extend([mp.pi / 8, mp.pi / 4, mp.pi / 2])
+    cuts = sorted(set(x for x in cuts if 0 &lt;= x &lt;= mp.pi / 2))
+    return mp.quad(lambda t: fn(4 * mp.sin(t)**2) * theta_density(m, t), cuts)
+
+
+def main():
+    mp.mp.dps = 65
+    exact = []
+    for m in [1, 2, 3, 4]:
+        t = {(): 1, **{(j,): 1 for j in range(1, m + 1)}}
+        ts = {inverse(w): c for w, c in t.items()}
+        q = multiply(t, ts)
+        moments = root_moments(m, 4)
+        qp = {(): 1}
+        for r in range(5):
+            assert qp.get((), 0) == moments[r]
+            exact.append({&quot;m&quot;: m, &quot;r&quot;: r, &quot;group_ring_moment&quot;: moments[r]})
+            if r &lt; 4:
+                qp = multiply(qp, q)
+    spectral = []
+    for m in [1, 2, 3, 4, 16, 256]:
+        moments = root_moments(m, 6)
+        for r in range(7):
+            val = integrate_density(m, lambda x, r=r: x**r)
+            expected = mp.mpf(moments[r]) / m**r
+            error = abs(val - expected)
+            assert error &lt; mp.mpf(&quot;1e-55&quot;)
+            spectral.append({&quot;m&quot;: m, &quot;r&quot;: r, &quot;abs_error&quot;: str(error)})
+    ridge = []
+    resource = []
+    for eta_frac in [Fraction(1), Fraction(1, 2), Fraction(1, 4), Fraction(1, 8)]:
+        eta = mp.mpf(eta_frac.numerator) / eta_frac.denominator
+        need = Fraction(2048, 1) / eta_frac**4
+        m = 1
+        while m &lt; need:
+            m &lt;&lt;= 1
+        delta = eta**4 / 4096
+        size2 = integrate_density(m, lambda x: x / (x+delta)**2, delta) / m
+        error2 = integrate_density(m, lambda x: delta**2 / (x+delta)**2, delta)
+        assert size2 &lt;= 3 * eta**2 / 64
+        assert error2 &lt;= 3 * eta**2 / 128
+        # The real-log value is only a resource upper estimate, not the exact test.
+        L = int(mp.ceil(5 / delta * mp.log(4 / eta)))
+        k = m.bit_length() - 1
+        w_bound = 2 * m * (k+1) + 1
+        support_log10 = math.log10(m+1) + L * math.log10((m+1)**2+1)
+        ridge.append({&quot;eta&quot;: str(eta_frac), &quot;m&quot;: m,
+                      &quot;ridge_norm&quot;: str(mp.sqrt(size2)),
+                      &quot;ridge_residual_norm&quot;: str(mp.sqrt(error2)),
+                      &quot;norm_bound_eta_over_4&quot;: str(eta / 4)})
+        resource.append({&quot;eta&quot;: str(eta_frac), &quot;m&quot;: m, &quot;k&quot;: k,
+                         &quot;L_safe_upper&quot;: L, &quot;w_length_upper&quot;: w_bound,
+                         &quot;expanded_support_log10_upper&quot;: support_log10})
+    # Negative control: the same sum with cyclic powers is not a free-prefix sum.
+    m = 4
+    cyclic_second = (m+1)**2 + 2 * sum(j*j for j in range(1, m+1))
+    tree_second = root_moments(m, 2)[2]
+    assert cyclic_second == 85 and tree_second == 45
+    result = {
+        &quot;scope&quot;: &quot;Finite exact group-ring and covering checks; numerical integrals corroborate formulas only.&quot;,
+        &quot;exact_moment_checks&quot;: exact,
+        &quot;spectral_integral_checks&quot;: spectral,
+        &quot;ridge_integrals&quot;: ridge,
+        &quot;covering_checks&quot;: [schreier_basis(k) for k in range(1, 9)],
+        &quot;resources_not_emitted&quot;: resource,
+        &quot;negative_control&quot;: {&quot;m&quot;: m, &quot;cyclic_second_moment&quot;: cyclic_second,
+                             &quot;free_second_moment&quot;: tree_second},
+    }
+    (OUT / &quot;cocycle_checks.json&quot;).write_text(json.dumps(result, indent=2))
+    print(json.dumps({&quot;exact_checks&quot;: len(exact), &quot;spectral_checks&quot;: len(spectral),
+                      &quot;covering_checks&quot;: 8, &quot;ridge_checks&quot;: len(ridge),
+                      &quot;negative_control&quot;: result[&quot;negative_control&quot;],
+                      &quot;output&quot;: str(OUT / &quot;cocycle_checks.json&quot;)}, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/f4b8782377ec3ec428278f4ab98adbe58cc7ea97c675bc02b51669d3245e393d.py">Exact original bytes</a></p></html>

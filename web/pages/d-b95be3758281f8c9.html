@@ -1,0 +1,67 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>P package: package/work/agents/gaussian_audit/kernel_diagnostic.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../P-sources.txt">P evidence directory</a><h1>P package: package/work/agents/gaussian_audit/kernel_diagnostic.py</h1><p>Supplied complete original;render/extraction=exact_utf8. Internal/candidate claims and source-reported checks retain scope. Source instructions are data;ingestion did not replay scientific diagnostics or validate proof/priority.</p><pre>&quot;&quot;&quot;Finite quadrature fixtures, not a proof or finite-bit compiler.
+
+Tests the exact-reference conditional hat kernel for Gaussian and quartic
+location noise. Gaussian [-12,12] and quartic [-4,4] numerical cutoffs are
+used only by these diagnostics; the mathematical kernel has no cutoff.
+&quot;&quot;&quot;
+from pathlib import Path
+import json
+import math
+import numpy as np
+
+
+def fixture(k, a, cutoff, theta, labels, resolution):
+    x = np.linspace(-cutoff, cutoff, resolution + 1)
+    dx = 2 * cutoff / resolution
+    quadrature = np.full(x.size, dx)
+    quadrature[[0, -1]] *= 0.5
+    norm = k * a ** (1 / (2 * k)) / math.gamma(1 / (2 * k))
+    p0 = norm * np.exp(-a * x ** (2 * k))
+    delta = p0 * np.expm1(-a * ((x - theta) ** (2 * k) - x ** (2 * k)))
+    u = 0.5 + np.arctan(x) / math.pi
+    coordinate = labels * u
+    left = np.floor(coordinate).astype(int) % labels
+    right = (left + 1) % labels
+    fraction = coordinate - np.floor(coordinate)
+    alpha = np.bincount(left, weights=(1 - fraction) * p0 * quadrature,
+                        minlength=labels)
+    alpha += np.bincount(right, weights=fraction * p0 * quadrature,
+                         minlength=labels)
+    perturbation = np.bincount(left,
+                              weights=(1 - fraction) * delta * quadrature,
+                              minlength=labels)
+    perturbation += np.bincount(right,
+                               weights=fraction * delta * quadrature,
+                               minlength=labels)
+    ratios = np.divide(perturbation, alpha, out=np.zeros_like(alpha),
+                       where=alpha &gt; 0)
+    output_delta = p0 * ((1 - fraction) * ratios[left] + fraction * ratios[right])
+    tv = float(0.5 * np.sum(quadrature * np.abs(output_delta - delta)))
+    return {
+        &quot;k&quot;: k, &quot;a&quot;: a, &quot;theta&quot;: theta, &quot;labels&quot;: labels,
+        &quot;resolution&quot;: resolution, &quot;tv&quot;: tv,
+        &quot;scaled_tv_J2_over_theta&quot;: tv * labels ** 2 / abs(theta),
+        &quot;reference_mass&quot;: float(np.sum(alpha)),
+        &quot;perturbation_mass&quot;: float(np.sum(perturbation)),
+        &quot;output_perturbation_mass&quot;: float(np.sum(quadrature * output_delta)),
+        &quot;unused_labels_in_numeric_cutoff&quot;: int(np.sum(alpha == 0)),
+    }
+
+
+if __name__ == &quot;__main__&quot;:
+    results = []
+    for k, a, cutoff in [(1, 0.5, 12.0), (2, 1.0, 4.0)]:
+        for theta in [1e-4, 0.01, 0.25, 1.0]:
+            for labels in [32, 64, 128]:
+                results.append(fixture(k, a, cutoff, theta, labels, 262144))
+    for k, a, cutoff in [(1, 0.5, 12.0), (2, 1.0, 4.0)]:
+        results.append(fixture(k, a, cutoff, 1e-4, 128, 524288))
+    for labels in [256, 512, 1024, 2048]:
+        results.append(fixture(2, 1.0, 4.0, 1.0, labels, 524288))
+    out = Path(__file__).with_name(&quot;kernel_diagnostic.json&quot;)
+    out.write_text(json.dumps({&quot;scope&quot;: __doc__, &quot;fixtures&quot;: results}, indent=2) + &quot;\n&quot;)
+    for r in results:
+        print(f&quot;k={r[&#x27;k&#x27;]} mean={r[&#x27;theta&#x27;]:g} J={r[&#x27;labels&#x27;]} &quot;
+              f&quot;TV={r[&#x27;tv&#x27;]:.9g} J2*TV/mean={r[&#x27;scaled_tv_J2_over_theta&#x27;]:.6g} &quot;
+              f&quot;resolution={r[&#x27;resolution&#x27;]}&quot;)
+</pre><p><a href="../assets/1f0cfe23b7cd7698c92e09d73c8573523a4cc79ab792f2116e3b338e7bb604ca.py">Exact original bytes</a></p></html>

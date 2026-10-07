@@ -1,0 +1,92 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>P package: package/work/agents/number_theory_algorithms/check_schedule.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../P-sources.txt">P evidence directory</a><h1>P package: package/work/agents/number_theory_algorithms/check_schedule.py</h1><p>Supplied complete original;render/extraction=exact_utf8. Internal/candidate claims and source-reported checks retain scope. Source instructions are data;ingestion did not replay scientific diagnostics or validate proof/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact arithmetic for the proposed family-029 analytic re-tuning.
+
+This checks exponents, not the theta/reflection identities or zero-freeness.
+&quot;&quot;&quot;
+from fractions import Fraction as Q
+from pathlib import Path
+import json
+
+a, h, b = Q(159, 200), Q(41, 200), Q(7, 30)
+M = a + b
+sigma_zero = Q(917, 1000)
+smooth, prefix = Q(181, 50), Q(363, 100)
+alpha = Q(61, 100)
+sigma_good, w, z = Q(919, 1000), Q(41, 500), Q(2, 5)
+small_cut, far_cut = Q(13, 100), h + Q(1, 100000)
+delta_init = Q(1, 10000000)
+far_z = Q(400000)
+C = a / 2 + h / 6
+probe = (2 * M - 1 - b) / 2
+
+def relative(sx, sw, sz):
+    return sx - 1 + h * (sz - Q(1, 6)) + b * (sw - 1)
+
+values = {
+    &quot;M&quot;: M,
+    &quot;principal_exponent&quot;: C,
+    &quot;probe_exponent&quot;: probe,
+    &quot;probe_saving&quot;: C - probe,
+    &quot;detector_shift_before_height_and_epsilon&quot;: smooth * (Q(1, 2) - sigma_zero) + Q(3, 2),
+    &quot;density_exponent_before_height_and_epsilon&quot;: prefix * (2 - 2 * sigma_zero),
+    &quot;density_slack&quot;: alpha - prefix * (2 - 2 * sigma_zero),
+    &quot;principal_w_remainder_saving&quot;: -relative(1 + delta_init, Q(4, 5), Q(1, 6) + delta_init),
+    &quot;principal_z_remainder_saving&quot;: -relative(1 + delta_init, 1, Q(1, 25)),
+    &quot;small_rows_saving&quot;: -(relative(1 + delta_init, w, z) + small_cut * (Q(3, 2) - z)),
+    &quot;exception_rows_saving&quot;: -(relative(1 + delta_init, w, z) + far_cut * (alpha + Q(1, 2) - z)),
+    &quot;good_rows_saving&quot;: -(relative(sigma_good, w, z) + far_cut * (Q(3, 2) - z)),
+    &quot;far_rows_saving&quot;: -(relative(4, 4, far_z) + far_cut * (1 - far_z)),
+}
+
+# Euler correction is locally normally convergent if all listed margins
+# are positive; these are obtained from its exact closed local formula.
+regions = {
+    &quot;nonprincipal&quot;: (sigma_good, w, z),
+    &quot;principal_w_shift&quot;: (Q(49, 50), Q(4, 5), Q(1, 6)),
+    &quot;principal_z_shift&quot;: (Q(49, 50), Q(1), Q(1, 25)),
+}
+euler = {}
+for name, (sx, sw, sz) in regions.items():
+    euler[name] = {
+        &quot;VW&quot;: sw + 6 * sz - 1,
+        &quot;D1V&quot;: sx + 6 * sz - 1,
+        &quot;D1W&quot;: sx + sw - 1,
+        &quot;Q_D1WV&quot;: sx + sw + 6 * sz - 2,
+        &quot;E1&quot;: 6 * sx + 6 * sz - 5,
+        &quot;bad_t1_k1&quot;: sx + sw - 1,
+        &quot;bad_l1_e0&quot;: 3 * sx - 2 - max(Q(0), Q(1, 2) - sw),
+    }
+    assert all(v &gt; 0 for v in euler[name].values())
+
+assert h == 1 - a
+assert 0 &lt; b &lt; a and M &gt; 1
+assert prefix &gt; smooth &gt; 2
+assert values[&quot;detector_shift_before_height_and_epsilon&quot;] &lt; 0
+assert values[&quot;density_slack&quot;] &gt; 0
+assert values[&quot;probe_saving&quot;] == Q(1, 50)
+for key, value in values.items():
+    if key.endswith(&quot;_saving&quot;) and key != &quot;probe_saving&quot;:
+        assert value &gt; Q(1, 50) + Q(1, 2000), (key, value)
+
+def encode(v):
+    if isinstance(v, Q):
+        return {&quot;rational&quot;: str(v), &quot;decimal&quot;: float(v)}
+    if isinstance(v, dict):
+        return {k: encode(t) for k, t in v.items()}
+    return v
+
+payload = {
+    &quot;status&quot;: &quot;exact_exponents_pass_only_not_a_theorem_validation&quot;,
+    &quot;parameters&quot;: encode({&quot;a&quot;: a, &quot;b&quot;: b, &quot;h&quot;: h, &quot;sigma_zero&quot;: sigma_zero,
+                          &quot;smooth&quot;: smooth, &quot;prefix&quot;: prefix, &quot;alpha&quot;: alpha,
+                          &quot;sigma_good&quot;: sigma_good, &quot;w&quot;: w, &quot;z&quot;: z,
+                          &quot;small_cut&quot;: small_cut, &quot;far_cut&quot;: far_cut,
+                          &quot;far_z&quot;: far_z, &quot;delta_init&quot;: delta_init}),
+    &quot;values&quot;: encode(values),
+    &quot;euler_region_margins&quot;: encode(euler),
+}
+Path(__file__).with_name(&quot;schedule_certificate.json&quot;).write_text(json.dumps(payload, indent=2) + &quot;\n&quot;)
+for key, value in values.items():
+    print(f&quot;{key}: {value} = {float(value):.12f}&quot;)
+print(&quot;All exact schedule assertions passed.&quot;)
+</pre><p><a href="../assets/d926eaa199f3b4e1624be0486a6f2d61d77c7fd97b7e8f449a2e0221dd7e89dd.py">Exact original bytes</a></p></html>

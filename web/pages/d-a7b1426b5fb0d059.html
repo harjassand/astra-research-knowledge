@@ -1,0 +1,90 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>P package: package/work/agents/sparse_gaussian_upper/check_hat.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../P-sources.txt">P evidence directory</a><h1>P package: package/work/agents/sparse_gaussian_upper/check_hat.py</h1><p>Supplied complete original;render/extraction=exact_utf8. Internal/candidate claims and source-reported checks retain scope. Source instructions are data;ingestion did not replay scientific diagnostics or validate proof/priority.</p><pre>&quot;&quot;&quot;Deterministic quadrature diagnostic; not a proof of the asymptotic bounds.&quot;&quot;&quot;
+from math import erf, erfc, exp, log, pi, sqrt, tan
+import csv
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent
+SQ2 = sqrt(2.0)
+SQ2PI = sqrt(2.0*pi)
+
+def phi(x):
+    return exp(-0.5*x*x)/SQ2PI
+
+def cdf(x):
+    return 0.5*erfc(-x/SQ2)
+
+def mass(a,b):
+    if a &gt; 0:
+        return 0.5*(erfc(a/SQ2)-erfc(b/SQ2))
+    return cdf(b)-cdf(a)
+
+def linear_mass(a,b,left,right,theta):
+    m = mass(a-theta,b-theta)
+    first = theta*m + phi(a-theta)-phi(b-theta)
+    return left*m + (right-left)*(first-a*m)/(b-a)
+
+def hat_mass(nodes,i,theta):
+    c = nodes[i]
+    if i == 0:
+        total = cdf(c-theta)
+    else:
+        total = linear_mass(nodes[i-1],c,0.0,1.0,theta)
+    if i == len(nodes)-1:
+        total += 0.5*erfc((c-theta)/SQ2)
+    else:
+        total += linear_mass(c,nodes[i+1],1.0,0.0,theta)
+    return total
+
+def simpson(fun,a,b,panels=128):
+    if a == b:
+        return 0.0
+    h=(b-a)/panels
+    total=fun(a)+fun(b)
+    total+=4*sum(fun(a+(2*i-1)*h) for i in range(1,panels//2+1))
+    total+=2*sum(fun(a+2*i*h) for i in range(1,panels//2))
+    return total*h/3
+
+def diagnostic(J,theta,panels):
+    cutoff=8+sqrt(16*log(J))
+    nodes=[tan(pi*(j/J-0.5)) for j in range(1,J)]
+    nodes=[x for x in nodes if abs(x)&lt;=cutoff]
+    reference=[hat_mass(nodes,i,0.0) for i in range(len(nodes))]
+    shifted=[hat_mass(nodes,i,theta) for i in range(len(nodes))]
+    ratios=[p/q for p,q in zip(shifted,reference)]
+    tv=chi=0.0
+    intervals=[(-max(12,nodes[-1]+8),nodes[0],ratios[0],ratios[0])]
+    intervals.extend((a,b,ratios[i],ratios[i+1]) for i,(a,b) in enumerate(zip(nodes,nodes[1:])))
+    intervals.append((nodes[-1],max(12,nodes[-1]+8),ratios[-1],ratios[-1]))
+    for a,b,c,d in intervals:
+        def qratio(x):
+            return c+(d-c)*(x-a)/(b-a)
+        def tv_fun(x):
+            likelihood=exp(theta*x-0.5*theta*theta)
+            return 0.5*phi(x)*abs(qratio(x)-likelihood)
+        def chi_fun(x):
+            likelihood=exp(theta*x-0.5*theta*theta)
+            return phi(x)*(qratio(x)-likelihood)**2/likelihood
+        tv+=simpson(tv_fun,a,b,panels)
+        chi+=simpson(chi_fun,a,b,panels)
+    return dict(J=J,theta=theta,alphabet=len(nodes),panels=panels,
+                normalizer0=sum(reference),normalizer1=sum(shifted),
+                tv=tv,chi2=chi,tv_scaled=tv*J*J/abs(theta),
+                chi_scaled=chi*J**4/(theta*theta))
+
+if __name__ == &#x27;__main__&#x27;:
+    rows=[]
+    for J in (16,32,64,128,256,512,1024):
+        for theta in (1.0,0.1,0.0001):
+            for panels in (128,256):
+                rows.append(diagnostic(J,theta,panels))
+    with (ROOT/&#x27;hat_diagnostic.csv&#x27;).open(&#x27;w&#x27;,newline=&#x27;&#x27;) as stream:
+        writer=csv.DictWriter(stream,fieldnames=rows[0].keys())
+        writer.writeheader()
+        writer.writerows(rows)
+    for row in rows:
+        if row[&#x27;panels&#x27;]==256:
+            print(f&quot;J={row[&#x27;J&#x27;]:4} theta={row[&#x27;theta&#x27;]:.4g} &quot;
+                  f&quot;TV*J²/theta={row[&#x27;tv_scaled&#x27;]:.6g} &quot;
+                  f&quot;chi²*J⁴/theta²={row[&#x27;chi_scaled&#x27;]:.6g} &quot;
+                  f&quot;mass0={row[&#x27;normalizer0&#x27;]:.12g} mass1={row[&#x27;normalizer1&#x27;]:.12g}&quot;)
+</pre><p><a href="../assets/cf32ce5d6284675a1de01886fda77810c24bd2f8c6d8af6a21c60c6677ea7b78.py">Exact original bytes</a></p></html>

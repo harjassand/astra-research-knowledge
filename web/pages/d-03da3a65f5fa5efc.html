@@ -1,0 +1,188 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>P package: package/work/agents/combinatorics_complexity/loop_sampler.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../P-sources.txt">P evidence directory</a><h1>P package: package/work/agents/combinatorics_complexity/loop_sampler.py</h1><p>Supplied complete original;render/extraction=exact_utf8. Internal/candidate claims and source-reported checks retain scope. Source instructions are data;ingestion did not replay scientific diagnostics or validate proof/priority.</p><pre>&quot;&quot;&quot;Finite-bit even-walk sampler for a supplied nonnegative rational pure GBS matrix.
+
+See nonnegative_gbs_sampling.md for the proof and scope. No hafnian oracle is used.
+This reference implementation emphasizes exact arithmetic and explicit TV budgets,
+not optimized performance. A seeded run is a reproducible diagnostic; the theorem
+assumes independent random bits. The default unseeded run uses SystemRandom.
+&quot;&quot;&quot;
+from fractions import Fraction
+from math import ceil
+from random import Random, SystemRandom
+from pathlib import Path
+import argparse
+import json
+import time
+
+
+def multiply(a, b):
+    return [[sum(a[i][k]*b[k][j] for k in range(len(b)))
+             for j in range(len(b[0]))] for i in range(len(a))]
+
+
+def inverse(matrix):
+    n = len(matrix)
+    rows = [[Fraction(x) for x in row] + [Fraction(i == j) for j in range(n)]
+            for i, row in enumerate(matrix)]
+    for column in range(n):
+        pivot = next((i for i in range(column, n) if rows[i][column]), None)
+        if pivot is None:
+            raise ValueError(&#x27;Singular matrix.&#x27;)
+        rows[column], rows[pivot] = rows[pivot], rows[column]
+        divisor = rows[column][column]
+        rows[column] = [x/divisor for x in rows[column]]
+        for i in range(n):
+            if i != column:
+                factor = rows[i][column]
+                rows[i] = [x-factor*y for x, y in zip(rows[i], rows[column])]
+    return [row[n:] for row in rows]
+
+
+def require_positive_definite(matrix):
+    n = len(matrix)
+    l = [[Fraction(i == j) for j in range(n)] for i in range(n)]
+    d = []
+    for i in range(n):
+        pivot = matrix[i][i] - sum(l[i][k]**2*d[k] for k in range(i))
+        if pivot &lt;= 0:
+            raise ValueError(&#x27;The supplied symmetric B does not satisfy ||B|| &lt; 1.&#x27;)
+        d.append(pivot)
+        for j in range(i+1, n):
+            l[j][i] = (matrix[j][i]-sum(l[j][k]*l[i][k]*d[k]
+                                      for k in range(i)))/pivot
+
+
+class EvenWalkSampler:
+    def __init__(self, b, epsilon, *, seed=None, max_powers=2500,
+                 max_bernoullis=10_000_000):
+        self.b = [[Fraction(x) for x in row] for row in b]
+        self.epsilon = Fraction(epsilon)
+        self.m = len(self.b)
+        if not 0 &lt; self.epsilon &lt; 1:
+            raise ValueError(&#x27;epsilon must be in (0, 1).&#x27;)
+        if not self.m or any(len(row) != self.m for row in self.b):
+            raise ValueError(&#x27;B must be a nonempty square matrix.&#x27;)
+        if self.b != [list(row) for row in zip(*self.b)]:
+            raise ValueError(&#x27;B must be symmetric.&#x27;)
+        if any(x &lt; 0 for row in self.b for x in row):
+            raise ValueError(&#x27;B must be entrywise nonnegative.&#x27;)
+        b2 = multiply(self.b, self.b)
+        t = [[Fraction(i == j)-b2[i][j] for j in range(self.m)]
+             for i in range(self.m)]
+        require_positive_definite(t)
+        q = inverse(t)
+        self.mean = sum(q[i][i] for i in range(self.m))-self.m
+        self.k = ceil(2*self.mean/self.epsilon) if self.mean else 0
+        if max_powers is not None and 2*self.k &gt; max_powers:
+            raise RuntimeError(f&#x27;Workload guard: requires {2*self.k} matrix powers; &#x27;
+                               f&#x27;allowed {max_powers}. This instance was not sampled.&#x27;)
+        self.rng = SystemRandom() if seed is None else Random(seed)
+        self.powers = [[[Fraction(i == j) for j in range(self.m)]
+                        for i in range(self.m)]]
+        for _ in range(2*self.k):
+            self.powers.append(multiply(self.powers[-1], self.b))
+        self.lengths = []
+        for length in range(2, 2*self.k+1, 2):
+            intensity = sum(self.powers[length][i][i]
+                            for i in range(self.m))/length
+            if intensity:
+                trials = ceil(max(Fraction(1), intensity,
+                                  8*self.k*intensity**2/self.epsilon))
+                self.lengths.append((length, intensity, trials))
+        self.total_trials = sum(r for _, _, r in self.lengths)
+        if max_bernoullis is not None and self.total_trials &gt; max_bernoullis:
+            raise RuntimeError(f&#x27;Workload guard: requires {self.total_trials} Bernoulli &#x27;
+                               f&#x27;trials per sample; allowed {max_bernoullis}. &#x27;
+                               &#x27;This instance was not sampled.&#x27;)
+        draw_bound = self.total_trials + self.m*sum(r*(length+1)
+                                                  for length, _, r in self.lengths)
+        self.bits = max(1, ceil(4*draw_bound/self.epsilon).bit_length())
+        self.denominator = 1 &lt;&lt; self.bits
+        self.plan = [(length, intensity, trials,
+                      int(intensity*self.denominator/trials))
+                     for length, intensity, trials in self.lengths]
+        self.categorical_cache = {}
+
+    def categorical(self, weights):
+        key = tuple(weights)
+        if key not in self.categorical_cache:
+            total = sum(weights)
+            if total &lt;= 0:
+                raise ValueError(&#x27;Zero conditional table reached.&#x27;)
+            cumulative = Fraction(0)
+            boundaries = []
+            for weight in weights:
+                cumulative += weight
+                # U/2^bits &lt; cumulative/total iff U &lt; ceil(2^bits*cumulative/total).
+                boundaries.append(ceil(self.denominator*cumulative/total))
+            self.categorical_cache[key] = boundaries
+        u = self.rng.getrandbits(self.bits)
+        return next(i for i, boundary in enumerate(self.categorical_cache[key])
+                    if u &lt; boundary)
+
+    def walk(self, length, counts):
+        start = self.categorical([self.powers[length][i][i]
+                                  for i in range(self.m)])
+        current = start
+        for remaining in range(length, 0, -1):
+            counts[current] += 1
+            current = self.categorical([self.b[current][j]
+                                        * self.powers[remaining-1][j][start]
+                                        for j in range(self.m)])
+        if current != start:
+            raise AssertionError(&#x27;Closed-walk bridge failed to return.&#x27;)
+
+    def sample(self):
+        counts = [0]*self.m
+        for length, _, trials, threshold in self.plan:
+            loops = sum(self.rng.getrandbits(self.bits) &lt; threshold
+                        for _ in range(trials))
+            for _ in range(loops):
+                self.walk(length, counts)
+        return counts
+
+    def metadata(self):
+        return {
+            &#x27;interface&#x27;: &#x27;pure, zero displacement, entrywise nonnegative rational B; full photon counts&#x27;,
+            &#x27;mean_photons&#x27;: str(self.mean), &#x27;epsilon&#x27;: str(self.epsilon),
+            &#x27;max_walk_length&#x27;: 2*self.k, &#x27;bernoulli_trials_per_sample&#x27;: self.total_trials,
+            &#x27;random_bits_per_draw&#x27;: self.bits,
+            &#x27;tv_budget&#x27;: {&#x27;discarded_walks&#x27;: str(self.epsilon/4),
+                          &#x27;poisson_binomial&#x27;: str(self.epsilon/4),
+                          &#x27;finite_bits&#x27;: str(self.epsilon/4)},
+            &#x27;retained_matrix_entries&#x27;: (2*self.k+1)*self.m*self.m,
+            &#x27;cached_categorical_tables&#x27;: len(self.categorical_cache),
+            &#x27;cached_categorical_entries&#x27;: self.m*len(self.categorical_cache),
+            &#x27;max_photons_per_sample&#x27;: sum(length*r for length, _, r in self.lengths),
+        }
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(&#x27;--matrix&#x27;, type=Path)
+    parser.add_argument(&#x27;--epsilon&#x27;, default=&#x27;1/20&#x27;)
+    parser.add_argument(&#x27;--samples&#x27;, type=int, default=10000)
+    parser.add_argument(&#x27;--seed&#x27;, type=int, default=177113)
+    parser.add_argument(&#x27;--output&#x27;, type=Path)
+    args = parser.parse_args()
+    b = json.loads(args.matrix.read_text()) if args.matrix else [[&#x27;0&#x27;, &#x27;1/3&#x27;], [&#x27;1/3&#x27;, &#x27;0&#x27;]]
+    started = time.perf_counter()
+    sampler = EvenWalkSampler(b, args.epsilon, seed=args.seed)
+    histogram = {}
+    totals = [0]*sampler.m
+    for _ in range(args.samples):
+        sample = sampler.sample()
+        key = str(tuple(sample))
+        histogram[key] = histogram.get(key, 0)+1
+        totals = [x+y for x, y in zip(totals, sample)]
+    result = {&#x27;status&#x27;: &#x27;seeded finite diagnostic, not theorem or external validation&#x27;,
+              &#x27;sampler_plan&#x27;: sampler.metadata(), &#x27;seed&#x27;: args.seed, &#x27;sample_count&#x27;: args.samples,
+              &#x27;empirical_mode_means&#x27;: [x/args.samples for x in totals],
+              &#x27;histogram&#x27;: histogram, &#x27;elapsed_seconds&#x27;: time.perf_counter()-started}
+    if args.output:
+        args.output.write_text(json.dumps(result, indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({k: v for k, v in result.items() if k != &#x27;histogram&#x27;}, indent=2))
+
+
+if __name__ == &#x27;__main__&#x27;:
+    main()
+</pre><p><a href="../assets/2aca7bfe89b8d0778a5b322acba2785bdf4c6ccf699243b0987900882d680090.py">Exact original bytes</a></p></html>

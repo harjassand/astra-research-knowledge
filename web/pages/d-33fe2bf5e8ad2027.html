@@ -1,0 +1,94 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>P package: package/work/agents/sparse_archive_implementation/audit_delivery.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../P-sources.txt">P evidence directory</a><h1>P package: package/work/agents/sparse_archive_implementation/audit_delivery.py</h1><p>Supplied complete original;render/extraction=exact_utf8. Internal/candidate claims and source-reported checks retain scope. Source instructions are data;ingestion did not replay scientific diagnostics or validate proof/priority.</p><pre>&quot;&quot;&quot;Fast final audit, compact-codec test and finite-input precision budget.
+
+Run after run_experiment.py. This intentionally does not repeat its six-minute
+high-precision experiment. It validates stored tables and tests the compact
+streaming API against every message in the 5,250-message demonstration.
+&quot;&quot;&quot;
+
+from fractions import Fraction as F
+from itertools import product
+import csv
+import hashlib
+import json
+from pathlib import Path
+import time
+
+from archive import make_archive
+from certified import IV, SCALE, normal_constant, interval_json
+
+BASE = Path(__file__).resolve().parent
+
+
+def main():
+    started = time.monotonic()
+    results = json.loads((BASE / &quot;results.json&quot;).read_text())
+    old_manifest = json.loads((BASE / &quot;MANIFEST.json&quot;).read_text())
+    # Runtime measurements are from the saved bounded run; these three data
+    # files are checked against that run&#x27;s manifest before metadata cleanup.
+    for name in (&quot;results.json&quot;, &quot;memory_comparison.csv&quot;, &quot;sampler_tables.json&quot;):
+        assert hashlib.sha256((BASE / name).read_bytes()).hexdigest() == old_manifest[name]
+    archive = make_archive(1, 1, F(1, 4), 8)
+    checked = 0
+    for labels in product(*(range(axis.labels) for axis in archive.axes)):
+        message = archive.pack(labels)
+        assert archive.unpack(message) == labels
+        representatives = []
+        for axis, label in zip(archive.axes, labels):
+            left, right = axis.bounds(label)
+            representatives.append(right - 1 if left is None else left + 1 if right is None else (left + right) / 2)
+        assert archive.encode_packed(iter(representatives)) == message
+        checked += 1
+    assert checked == archive.alphabet_size
+    tables = json.loads((BASE / &quot;sampler_tables.json&quot;).read_text())
+    denom = 1 &lt;&lt; tables[&quot;random_bits_per_coordinate&quot;]
+    rows = [tables[&quot;reference&quot;]] + [row for axisrows in tables[&quot;axes&quot;].values() for row in axisrows]
+    for row in rows:
+        assert len(row) == 97 and all(isinstance(x, int) and 0 &lt;= x &lt;= denom for x in row)
+        assert all(a &lt;= b for a, b in zip(row, row[1:]))
+    assert len(rows) * 97 == results[&quot;finite_grid_sampler&quot;][&quot;table_entries&quot;]
+    spacing = F(1, 2**24)
+    H = F(8)
+    assert all(axis.T &lt; H for axis in archive.axes)
+    boundaries = sum(axis.M + 1 for axis in archive.axes)
+    enc_error = spacing * boundaries * normal_constant()
+    dec_error = F(results[&quot;finite_grid_sampler&quot;][&quot;worst_case_kernel_TV_error&quot;])
+    combined = IV.exact(F(1, 8)) + enc_error + dec_error
+    input_cells = int(2 * H / spacing) + 1
+    input_bits = (input_cells - 1).bit_length()
+    # Rename a descriptive column that previously suggested an unproved lower
+    # bound; this does not alter any numeric result or any experimental scheme.
+    for row in results[&quot;memory_comparisons&quot;]:
+        if &quot;dimension_lower_target&quot; in row:
+            row[&quot;effective_cutoff_scale&quot;] = row.pop(&quot;dimension_lower_target&quot;)
+    csvrows = list(csv.DictReader((BASE / &quot;memory_comparison.csv&quot;).open()))
+    for row in csvrows:
+        if &quot;dimension_lower_target&quot; in row:
+            row[&quot;effective_cutoff_scale&quot;] = row.pop(&quot;dimension_lower_target&quot;)
+    with (BASE / &quot;memory_comparison.csv&quot;).open(&quot;w&quot;, newline=&quot;&quot;) as f:
+        writer = csv.DictWriter(f, fieldnames=csvrows[0])
+        writer.writeheader()
+        writer.writerows(csvrows)
+    (BASE / &quot;results.json&quot;).write_text(json.dumps(results, indent=2) + &quot;\n&quot;)
+    checks = {&quot;status&quot;: &quot;passed&quot;, &quot;codec_messages_checked&quot;: checked,
+              &quot;cdf_rows_checked&quot;: len(rows), &quot;cdf_entries_checked&quot;: len(rows) * 97,
+              &quot;source_observation_grid&quot;: {&quot;spacing&quot;: &quot;1/16777216&quot;, &quot;clipping_range&quot;: [&quot;-8&quot;, &quot;8&quot;],
+                                          &quot;symbols&quot;: input_cells, &quot;bits_per_streamed_observation&quot;: input_bits},
+              &quot;active_encoder_boundaries&quot;: boundaries,
+              &quot;encoder_grid_error_bound&quot;: interval_json(enc_error),
+              &quot;uniform_rounded_output_TV_bound_with_input_and_decoder_compiler&quot;: interval_json(combined),
+              &quot;elapsed_seconds&quot;: time.monotonic() - started,
+              &quot;post_run_changes&quot;: &quot;Added and exhaustively tested compact streaming API; renamed cutoff scale metadata; no experimental numeric changes.&quot;}
+    (BASE / &quot;delivery_checks.json&quot;).write_text(json.dumps(checks, indent=2) + &quot;\n&quot;)
+    files = [&quot;certified.py&quot;, &quot;archive.py&quot;, &quot;run_experiment.py&quot;, &quot;audit_delivery.py&quot;, &quot;report.md&quot;,
+             &quot;results.json&quot;, &quot;memory_comparison.csv&quot;, &quot;sampler_tables.json&quot;, &quot;delivery_checks.json&quot;,
+             &quot;primary_variance_1106.5985.pdf&quot;]
+    manifest = {name: hashlib.sha256((BASE / name).read_bytes()).hexdigest() for name in files}
+    (BASE / &quot;MANIFEST.json&quot;).write_text(json.dumps(manifest, indent=2) + &quot;\n&quot;)
+    print(f&quot;Passed compact codec {checked} messages; {len(rows)} CDF rows; input bits={input_bits}; active boundaries={boundaries}&quot;)
+    print(&quot;Encoder input-grid TV bound:&quot;, enc_error.decimal_bounds(30))
+    print(&quot;Uniform rounded-output bound with both errors:&quot;, combined.decimal_bounds(30))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/db9adde339631a0c8629dce5a34dcea4f65884ee40e6668eb8df0df98bfc1a42.py">Exact original bytes</a></p></html>

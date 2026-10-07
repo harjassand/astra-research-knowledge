@@ -1,0 +1,193 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>P package: package/work/agents/statistical_mechanics/check_jump_safety.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../P-sources.txt">P evidence directory</a><h1>P package: package/work/agents/statistical_mechanics/check_jump_safety.py</h1><p>Supplied complete original;render/extraction=exact_utf8. Internal/candidate claims and source-reported checks retain scope. Source instructions are data;ingestion did not replay scientific diagnostics or validate proof/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact, scoped arithmetic checks for the jump-safety appendix.
+
+The analytic proofs in jump_safety.md and jump_safety_appendix.tex carry
+the universal quantifiers. These finite checks preserve rational arithmetic,
+including insufficient-reactant cases, and evaluate the certified horizon.
+No long-horizon trajectory simulation or external theorem validation occurs.
+&quot;&quot;&quot;
+
+from fractions import Fraction as F
+from itertools import product
+from math import ceil, exp, factorial, prod
+from pathlib import Path
+import json
+import random
+import time
+
+
+START = time.perf_counter()
+
+
+def falling(n, q):
+    if n &lt; q:
+        return 0
+    return prod(range(n - q + 1, n + 1))
+
+
+def monomial(x, y):
+    return prod((v ** q for v, q in zip(x, y)), start=F(1))
+
+
+def propensity(n, y, volume):
+    return F(prod(falling(v, q) for v, q in zip(n, y)), volume ** sum(y))
+
+
+def error_bound(upper, y):
+    result = F(0)
+    for j, q in enumerate(y):
+        if q &gt;= 2:
+            term = F(q * (q - 1), 2) * upper[j] ** (q - 1)
+            term *= prod((upper[l] ** y[l] for l in range(len(y)) if l != j),
+                         start=F(1))
+            result += term
+    return result
+
+
+factorial_checks = 0
+insufficient_checks = 0
+for volume in range(1, 21):
+    for upper in (F(1, 2), F(3, 4), F(1), F(3, 2), F(2)):
+        for count in range((upper * volume).numerator // (upper * volume).denominator + 1):
+            for degree in range(9):
+                x = (F(count, volume),)
+                y = (degree,)
+                phi = propensity((count,), y, volume)
+                deficit = monomial(x, y) - phi
+                assert 0 &lt;= deficit &lt;= error_bound((upper,), y) / volume
+                positive_part = prod((max(F(count - q, volume), 0)
+                                      for q in range(degree)), start=F(1))
+                assert phi == positive_part
+                factorial_checks += 1
+                insufficient_checks += int(count &lt; degree)
+
+rng = random.Random(20261007)
+for _ in range(5000):
+    d = rng.randrange(1, 5)
+    volume = rng.randrange(1, 65)
+    upper = tuple(rng.choice((F(1, 2), F(3, 4), F(1), F(3, 2), F(2)))
+                  for _ in range(d))
+    count = tuple(rng.randrange(int(u * volume) + 1) for u in upper)
+    y = tuple(rng.randrange(7) for _ in range(d))
+    x = tuple(F(n, volume) for n in count)
+    deficit = monomial(x, y) - propensity(count, y, volume)
+    assert 0 &lt;= deficit &lt;= error_bound(upper, y) / volume
+    factorial_checks += 1
+    insufficient_checks += int(any(n &lt; q for n, q in zip(count, y)))
+
+theta = F(12, 25)
+exp_upper = 1 + theta + theta ** 2 / (2 * (1 - theta / 3))
+assert exp_upper == F(283, 175)
+ratio_lower = F(529, 324)
+assert exp_upper &lt; ratio_lower
+assert exp(float(theta)) &lt; float(exp_upper)
+for j in range(2, 101):
+    assert factorial(j) &gt;= 2 * 3 ** (j - 2)
+
+assert F(3, 4) ** 2 - 4 * F(1, 4) ** 2 == F(5, 16)
+assert F(23, 32) ** 2 - 4 * F(9, 32) ** 2 == F(205, 1024)
+assert theta / 32 == F(3, 200)
+assert theta / 4 == F(3, 25)
+assert 2 * F(5, 2) * (exp_upper - 1) == F(108, 35)
+
+volumes = list(range(2, 130, 2)) + [256, 512, 1000, 3000, 5000]
+rate_corners = list(product((1, 4), repeat=2))
+activity_checks = 0
+facet_generator_checks = 0
+for volume in volumes:
+    assert F(volume // 2, volume) - F(1, 4) == F(1, 4)
+    for j in range(ceil(F(volume, 4)), int(F(3 * volume, 4)) + 1):
+        x = F(j, volume)
+        y = 1 - x
+        base_death = F(falling(j, 2), volume ** 2)
+        base_birth = F(falling(volume - j, 2), volume ** 2)
+        for k_a, k_b in rate_corners:
+            death = k_a * base_death
+            birth = k_b * base_birth
+            assert birth + death &lt;= F(5, 2)
+            activity_checks += 1
+            if x &lt;= F(9, 32):
+                assert birth &gt;= exp_upper * death
+                # q=e^theta upper: exact rational sufficient generator bound.
+                assert birth * (1 / exp_upper - 1) + death * (exp_upper - 1) &lt;= 0
+                facet_generator_checks += 1
+            if x &gt;= F(23, 32):
+                assert death &gt;= exp_upper * birth
+                assert death * (1 / exp_upper - 1) + birth * (exp_upper - 1) &lt;= 0
+                facet_generator_checks += 1
+
+# Generic conservative certificate for the same example, independently of
+# the sharper birth/death-ratio certificate above.
+generic = {
+    &quot;D&quot;: F(6),
+    &quot;J&quot;: F(1),
+    &quot;B&quot;: F(9, 2),
+    &quot;Lambda&quot;: F(9, 2),
+    &quot;gamma&quot;: F(205, 1024),
+}
+generic[&quot;V0&quot;] = ceil(2 * generic[&quot;D&quot;] / generic[&quot;gamma&quot;])
+generic[&quot;theta&quot;] = min(1 / generic[&quot;J&quot;], generic[&quot;gamma&quot;] / (6 * generic[&quot;B&quot;]))
+generic[&quot;c_star&quot;] = generic[&quot;theta&quot;] / 32
+assert generic[&quot;V0&quot;] == 60
+assert generic[&quot;theta&quot;] == F(205, 27648)
+assert generic[&quot;c_star&quot;] == F(205, 884736)
+
+horizons = []
+for volume in (1000, 2000, 3000, 5000, 10000):
+    horizon = exp(3 * volume / 400)
+    initial_term = 2 * exp(-3 * volume / 25)
+    turnover_term = (108 / 35) * volume * exp(-3 * volume / 400)
+    horizons.append({
+        &quot;V&quot;: volume,
+        &quot;time_unit&quot;: &quot;units of the assumed reaction-rate bounds&quot;,
+        &quot;T&quot;: horizon,
+        &quot;certified_exit_bound_raw&quot;: initial_term + turnover_term,
+        &quot;probability_bound_capped_at_one&quot;: min(1, initial_term + turnover_term),
+        &quot;expected_candidate_events_upper&quot;: (5 / 2) * volume * horizon,
+        &quot;simulation_performed&quot;: False,
+    })
+v3000 = next(row for row in horizons if row[&quot;V&quot;] == 3000)
+assert v3000[&quot;certified_exit_bound_raw&quot;] &lt; 1.57e-6
+
+# Extinction limitation example: A+B -&gt; 2A at k=2, A -&gt; B at k=1.
+# An exact positive death rate from every j&gt;0 and a finite state space make
+# 0 accessible from every state; the proof of almost-sure absorption is
+# analytic, not estimated by this finite check.
+extinction_checks = 0
+for volume in (6, 16, 100, 3000):
+    for j in range(volume + 1):
+        birth = F(2 * j * (volume - j), volume)
+        death = F(j)
+        assert birth &gt;= 0 and death &gt;= 0
+        assert (birth == death == 0) if j == 0 else death &gt; 0
+        extinction_checks += 1
+assert F(1, 4) * (1 - 2 * F(1, 4)) == F(1, 8)
+assert -F(3, 4) * (1 - 2 * F(3, 4)) == F(3, 8)
+
+result = {
+    &quot;status&quot;: &quot;PASS: finite exact arithmetic only; universal theorem is proved in the appendix&quot;,
+    &quot;factorial_correction_checks&quot;: factorial_checks,
+    &quot;insufficient_reactant_checks&quot;: insufficient_checks,
+    &quot;count_activity_checks_at_rate_corners&quot;: activity_checks,
+    &quot;exact_collar_generator_checks_at_rate_corners&quot;: facet_generator_checks,
+    &quot;even_volumes_checked&quot;: volumes,
+    &quot;rational_exp_upper&quot;: str(exp_upper),
+    &quot;rational_birth_death_ratio_lower&quot;: str(ratio_lower),
+    &quot;generic_example_certificate&quot;: {k: str(v) for k, v in generic.items()},
+    &quot;optimized_certificate&quot;: {
+        &quot;theta&quot;: str(theta),
+        &quot;collar&quot;: &quot;1/32&quot;,
+        &quot;initial_facet_gap&quot;: &quot;1/4&quot;,
+        &quot;Lambda&quot;: &quot;5/2&quot;,
+        &quot;exit_bound&quot;: &quot;2 exp(-3V/25) + (108/35) V T exp(-3V/200)&quot;,
+        &quot;horizon&quot;: &quot;exp(3V/400)&quot;,
+    },
+    &quot;numerical_horizon_evaluations&quot;: horizons,
+    &quot;extinction_example_rate_checks&quot;: extinction_checks,
+    &quot;scope_limit&quot;: &quot;No long-horizon simulation, recurrence test, release replay or external novelty validation.&quot;,
+    &quot;wall_seconds&quot;: time.perf_counter() - START,
+}
+destination = Path(__file__).with_suffix(&quot;.json&quot;)
+destination.write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+print(json.dumps(result, indent=2))
+</pre><p><a href="../assets/695f17797a0226f0dd01249ae6b9f067f0726c23f7aafd135fdc8d212ed59faf.py">Exact original bytes</a></p></html>

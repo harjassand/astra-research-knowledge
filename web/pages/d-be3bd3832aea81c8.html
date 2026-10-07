@@ -1,0 +1,55 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>P package: package/work/agents/quantum_coding/cat_factory_exact.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../P-sources.txt">P evidence directory</a><h1>P package: package/work/agents/quantum_coding/cat_factory_exact.py</h1><p>Supplied complete original;render/extraction=exact_utf8. Internal/candidate claims and source-reported checks retain scope. Source instructions are data;ingestion did not replay scientific diagnostics or validate proof/priority.</p><pre>from fractions import Fraction
+import json
+
+def factory(n):
+    # Data 0..n-1; edge-syndrome ancillas n..2*n-2.
+    layers = []
+    for edge_parity in (0, 1):
+        for endpoint in (0, 1):
+            gates = [(i+endpoint, n+i) for i in range(n-1) if i % 2 == edge_parity]
+            wires = [w for g in gates for w in g]
+            assert len(wires) == len(set(wires))
+            layers.append(gates)
+    # Equal amplitudes initially after one Hadamard layer on the data.
+    basis = {x: x for x in range(1 &lt;&lt; n)}
+    for gates in layers:
+        for original, state in list(basis.items()):
+            for control, target in gates:
+                if (state &gt;&gt; control) &amp; 1:
+                    state ^= 1 &lt;&lt; target
+            basis[original] = state
+    branches = {}
+    mask = (1 &lt;&lt; n) - 1
+    for state in basis.values():
+        syndrome = state &gt;&gt; n
+        branches.setdefault(syndrome, []).append(state &amp; mask)
+    assert len(branches) == 1 &lt;&lt; (n-1)
+    for syndrome, data in branches.items():
+        assert len(data) == 2 and data[0] ^ data[1] == mask
+        correction = 0
+        bit = 0
+        for i in range(n-1):
+            bit ^= (syndrome &gt;&gt; i) &amp; 1
+            correction |= bit &lt;&lt; (i+1)
+        assert set(x ^ correction for x in data) == {0, mask}
+    raw_prob = Fraction(1, 1 &lt;&lt; n)
+    felinity = 2 * (1 &lt;&lt; n) * raw_prob * raw_prob
+    correction_collision = Fraction(1, len(branches))
+    assert felinity == correction_collision
+    return {
+        &#x27;n&#x27;: n, &#x27;total_qubits&#x27;: 2*n-1,
+        &#x27;quantum_unitary_layers_before_measurement&#x27;: 5,
+        &#x27;measured_syndrome_bits&#x27;: n-1,
+        &#x27;successful_adaptive_yield&#x27;: 1,
+        &#x27;success_without_feedback_accept_only_zero_syndrome&#x27;: str(correction_collision),
+        &#x27;correction_frames&#x27;: len(branches),
+        &#x27;collision_entropy_bits&#x27;: n-1,
+        &#x27;raw_felinity&#x27;: str(felinity),
+        &#x27;all_branches_correct_to_GHZ&#x27;: True,
+        &#x27;collision_bound_is_equality&#x27;: True
+    }
+
+if __name__ == &#x27;__main__&#x27;:
+    results = [factory(n) for n in range(2, 13)]
+    print(json.dumps(results, indent=2))
+</pre><p><a href="../assets/a9864b3c9373c1e7ca2f7807363fd97ff43e8f93bd8f73aa7ba733acaf4c277b.py">Exact original bytes</a></p></html>

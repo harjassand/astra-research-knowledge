@@ -1,0 +1,160 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>P package: package/work/agents/pde_physics/chemical_graph_checks.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../P-sources.txt">P evidence directory</a><h1>P package: package/work/agents/pde_physics/chemical_graph_checks.py</h1><p>Supplied complete original;render/extraction=exact_utf8. Internal/candidate claims and source-reported checks retain scope. Source instructions are data;ingestion did not replay scientific diagnostics or validate proof/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact corner algebra for the graph certificate&#x27;s concrete example.
+
+No stochastic trajectory, rare event estimate or continuum simulation is used.
+The global probability theorem is the analytic stopped-generator proof.
+&quot;&quot;&quot;
+
+from fractions import Fraction as F
+from itertools import combinations, product
+from pathlib import Path
+import json
+
+
+FACETS = (
+    ((F(1), F(0)), F(-1)),
+    ((F(-1), F(0)), F(3)),
+    ((F(0), F(1)), F(-1)),
+    ((F(0), F(-1)), F(3)),
+    ((F(1), F(1)), F(-3)),
+)
+
+
+def gap(constraint, point):
+    normal, offset = constraint
+    return sum(a * b for a, b in zip(normal, point)) + offset
+
+
+def vertices(constraints):
+    points = set()
+    for (n1, b1), (n2, b2) in combinations(constraints, 2):
+        determinant = n1[0] * n2[1] - n1[1] * n2[0]
+        if not determinant:
+            continue
+        x = (-b1 * n2[1] + b2 * n1[1]) / determinant
+        y = (-n1[0] * b2 + n2[0] * b1) / determinant
+        point = (x, y)
+        if all(gap(c, point) &gt;= 0 for c in constraints):
+            points.add(point)
+    return sorted(points)
+
+
+def frac(value):
+    return str(value)
+
+
+def check():
+    poly_vertices = vertices(FACETS)
+    assert poly_vertices == [
+        (F(1), F(2)), (F(1), F(3)), (F(2), F(1)),
+        (F(3), F(1)), (F(3), F(3)),
+    ]
+    width = F(1, 4)
+    summaries = []
+    total_corners = 0
+    for facet in FACETS:
+        normal, offset = facet
+        # The extra inequality is eta-g_i &gt;= 0.
+        collar = FACETS + ((tuple(-a for a in normal), width - offset),)
+        collar_vertices = vertices(collar)
+        values = []
+        for local, neighbor, diffusion in product(
+            collar_vertices, poly_vertices, (F(0), F(1))
+        ):
+            reaction = tuple(F(2) - x for x in local)
+            drift = sum(n * f for n, f in zip(normal, reaction))
+            drift += diffusion * (gap(facet, neighbor) - gap(facet, local))
+            values.append(drift)
+        assert min(values) == F(1, 2)
+        total_corners += len(values)
+
+        # Birth/death intensities at one site are 2,x,2,y. An incident
+        # species hop has two scaled intensities D*x_j and D*y_j.
+        squared_bounds = []
+        affected_rate_bounds = []
+        for local, neighbor, diffusion in product(
+            poly_vertices, poly_vertices, (F(0), F(1))
+        ):
+            variance_rate = sum(
+                n * n * (F(2) + x + diffusion * (x + y))
+                for n, x, y in zip(normal, local, neighbor)
+            )
+            squared_bounds.append(variance_rate)
+            affected_rate_bounds.append(
+                F(4) + sum(local)
+                + diffusion * (sum(local) + sum(neighbor))
+            )
+        expected_q = F(22) if normal == (F(1), F(1)) else F(11)
+        assert max(squared_bounds) == expected_q
+        assert max(affected_rate_bounds) == F(22)
+        summaries.append({
+            &quot;normal&quot;: [frac(n) for n in normal],
+            &quot;offset&quot;: frac(offset),
+            &quot;collar_width&quot;: frac(width),
+            &quot;collar_vertices&quot;: [[frac(c) for c in p] for p in collar_vertices],
+            &quot;corner_checks&quot;: len(values),
+            &quot;minimum_total_drift&quot;: frac(min(values)),
+            &quot;maximum_projected_variance_rate&quot;: frac(max(squared_bounds)),
+            &quot;maximum_site_affected_rate&quot;: frac(max(affected_rate_bounds)),
+            &quot;theta_valid_formula&quot;: f&quot;1/({int(expected_q)}*e)&quot;,
+        })
+
+    epsilon = F(1, 1000)
+    first_initial = (F(1) + epsilon, F(2))
+    second_initial = (F(2), F(1) + epsilon)
+    initial_gaps = [
+        [gap(c, p) for c in FACETS]
+        for p in (first_initial, second_initial)
+    ]
+    assert min(g for row in initial_gaps for g in row) == epsilon
+    u = F(99, 100)
+    # Exact solution for common reaction drifts 2-x_j with different
+    # exchange coefficients D_A=1 and D_B=3.
+    first_x = F(2) - (F(1) - epsilon) * (u + u ** 3) / 2
+    first_y = F(2) - (F(1) - epsilon) * u / 2 + (F(1) - epsilon) * u ** 7 / 2
+    sum_gap = first_x + first_y - 3
+    claimed_gap = F(1) - (F(1) - epsilon) * (u + u ** 3 / 2 - u ** 7 / 2)
+    assert sum_gap == claimed_gap &lt; 0
+    assert F(1) &lt; first_x &lt; F(3) and F(1) &lt; first_y &lt; F(3)
+    total_rate = F(2) * F(10) + F(2) * F(1) * F(2) * F(3) * F(1)
+    assert total_rate == 32
+    return {
+        &quot;classification&quot;: &quot;exact rational endpoint algebra, not rare-event simulation&quot;,
+        &quot;common_diffusion&quot;: {
+            &quot;N&quot;: 2,
+            &quot;edges&quot;: 1,
+            &quot;maximum_degree&quot;: 1,
+            &quot;D_max&quot;: 1,
+            &quot;coordinate_bound_R&quot;: 3,
+            &quot;total_collar_corner_checks&quot;: total_corners,
+            &quot;site_affected_scaled_rate_bound&quot;: 22,
+            &quot;global_scaled_rate_bound&quot;: frac(total_rate),
+            &quot;minimum_reliability_exponent_formula&quot;: &quot;1/(88*e)&quot;,
+            &quot;facets&quot;: summaries,
+        },
+        &quot;unequal_diffusion_counterexample&quot;: {
+            &quot;epsilon&quot;: frac(epsilon),
+            &quot;D_A&quot;: 1,
+            &quot;D_B&quot;: 3,
+            &quot;initial_gaps&quot;: [[frac(g) for g in row] for row in initial_gaps],
+            &quot;evaluation_time&quot;: &quot;-log(99/100)&quot;,
+            &quot;first_site_x&quot;: frac(first_x),
+            &quot;first_site_y&quot;: frac(first_y),
+            &quot;first_site_sum_facet_gap&quot;: frac(sum_gap),
+            &quot;first_site_sum_facet_gap_decimal&quot;: float(sum_gap),
+            &quot;verified_negative&quot;: True,
+        },
+    }
+
+
+if __name__ == &quot;__main__&quot;:
+    result = check()
+    path = Path(__file__).with_name(&quot;chemical_graph_checks.json&quot;)
+    path.write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+    print(json.dumps({
+        &quot;output&quot;: str(path),
+        &quot;collar_corner_checks&quot;: result[&quot;common_diffusion&quot;][&quot;total_collar_corner_checks&quot;],
+        &quot;unequal_diffusion_gap&quot;: result[&quot;unequal_diffusion_counterexample&quot;][&quot;first_site_sum_facet_gap&quot;],
+        &quot;passed&quot;: True,
+    }))
+</pre><p><a href="../assets/00e9a58ad4a04399567e468cd669bb5b48bf0e70e6e6fc2a718216cfd7134c11.py">Exact original bytes</a></p></html>

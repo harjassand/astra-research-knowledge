@@ -1,0 +1,1494 @@
+PAGE 1
+Quantized Estimation of Gaussian Sequence Models in Euclidean Balls
+Yuancheng Zhu and John Lafferty
+Department of Statistics
+The University of Chicago
+September 10, 2018
+Abstract:
+A central result in statistical theory is Pinsker’s theorem, which characterizes the minimax
+rate in the normal means model of nonparametric estimation. In this paper, we present an
+extension to Pinsker’s theorem where estimation is carried out under storage or communication
+constraints. In particular, we place limits on the number of bits used to encode an estimator,
+and analyze the excess risk in terms of this constraint, the signal size, and the noise level.
+We give sharp upper and lower bounds for the case of a Euclidean ball, which establishes the
+Pareto-optimal minimax tradeoff between storage and risk in this setting.
+Keywords and phrases: nonparametric estimation, minimax bounds, rate distortion theory,
+constrained estimation.
+1. Introduction
+Classical statistical theory studies the rate at which the error in an estimation problem decreases as
+the sample size increases. Methodology for a particular problem is developed to make estimation
+efﬁcient, and lower bounds establish how quickly the error can decrease in principle. Asymptoti-
+cally matching upper and lower bounds together yield the minimax rate of convergence
+Rn(F) = inf
+ˆf
+sup
+f∈F
+R( ˆf , f).
+This is the worst-case error in estimating an element of a model class F, where R( ˆf , f) is the risk
+or expected loss, and ˆf is an estimator constructed on a data sample of size n. The corresponding
+sample complexity of the estimation problem is n(ϵ, F) = min{n : Rn(F) < ϵ}.
+In the classical setting, the inﬁmum is over all estimators. In contemporary settings, it is in-
+creasingly of interest to understand how error depends on computation. For instance, when the
+data are high dimensional and the sample size is large, constructing the estimator using standard
+methods may be computationally prohibitive. The use of heuristics and approximation algorithms
+may make computation more efﬁcient, but it is important to understand the loss in statistical efﬁ-
+ciency that this incurs. In the minimax framework, this can be formulated by placing computational
+constraints on the estimator:
+Rn(F, Bn) = inf
+ˆf:C( ˆf)≤Bn
+sup
+f∈F
+R( ˆf , f).
+1
+arXiv:1409.6833v1  [math.ST]  24 Sep 2014
+
+PAGE 2
+Here C( ˆf)≤ Bn indicates that the computationC( ˆf) used to construct ˆf is required to fall within a
+“computational budget” Bn. Minimax lower bounds on the risk as a function of the computational
+budget thus determine a feasible region for computation-constrained estimation, and a Pareto-
+optimal tradeoff for error versus computation.
+One important measure of computation is the number of ﬂoating point operations, or the running
+time of an algorithm. Chandrasekaran and Jordan [3] have studied upper bounds for statistical
+estimation with computational constraints of this form in the normal means model. However, useful
+lower bounds are elusive. This is due to the difﬁcult nature of establishing tight lower bounds for
+this model of computation in the polynomial hierarchy, apart from any statistical concerns. Another
+important measure of computation is storage, or the space used by a procedure. In particular, we
+may wish to limit the number of bits used to represent our estimatorˆf. The question then becomes,
+how does the excess risk depend on the budget Bn imposed on the number of bits C( ˆf) used to
+encode the estimator?
+This problem is naturally motivated by certain applications. For instance, the Kepler telescope
+collects ﬂux data for approximately 150,000 stars [6]. The central statistical task is to estimate
+the lightcurve of each star nonparametrically, in order to denoise and detect planet transits. If this
+estimation is done on board the telescope, the estimated function values may need to be sent back
+to earth for further analysis. To limit communication costs, the estimates can be quantized. The
+fundamental question is, what is lost in terms of statistical risk in quantizing the estimates? Or, in a
+cloud computing environment (such as Amazon EC2), a large number of nonparametric estimates
+might be constructed over a cluster of compute nodes and then stored (for example in Amazon
+S3) for later analysis. To limit the storage costs, which could dominate the compute costs in many
+scenarios, it is of interest to quantize the estimates. How much is lost in terms of risk, in principle,
+by using different levels of quantization?
+With such applications as motivation, we address in this paper the problem of risk-storage
+tradeoffs in the normal means model of nonparametric estimation. The normal means model is
+a centerpiece of nonparametric estimation. It arises naturally when representing an estimator in
+terms of an orthogonal basis [8, 11]. Our main result is a sharp characterization of the Pareto-
+optimal tradeoff curve for quantized estimation of a normal means vector, in the minimax sense.
+We consider the case of a Euclidean ball of unknown radius in Rn. This case exhibits many of the
+key technical challenges that arise in nonparametric estimation over richer spaces, including the
+Stein phenomenon and the problem of adaptivity.
+As will be apparent to the reader, the problem we consider is intimately related to classical rate
+distortion theory [7]. Indeed, our results require a marriage of minimax theory and rate distortion
+ideas. We thus build on the fundamental connection between function estimation and lossy source
+coding that was elucidated in Donoho’s 1998 Wald Lectures [4]. This connection can also be used
+to advantage for practical estimation schemes. As we discuss further below, recent advances on
+computationally efﬁcient, near-optimal lossy compression using sparse regression algorithms [12]
+can perhaps be leveraged for quantized nonparametric estimation.
+2
+
+PAGE 3
+X n Encoder
+φn
+Decoder
+ψn
+ˇX n = ψn (φn(X n))
+φn(Xn)∈ C(B)
+θn X n Encoder
+φn
+Decoder
+ψn
+ˇθn = ψn (φn(X n))
+φn(Xn)∈ C(B)
+FIGURE 1. Encoding and decoding process for lossy compression (top) and quantized estimation (bottom). For quan-
+tized estimation, the model (mean vector) θn is deterministic, not random.
+In the following section, we present relevant background and give a detailed statement of our
+results. In Section 3 we sketch a proof of our main result on the excess risk for the Euclidean
+ball case. Section 4 presents simulations to illustrate our theoretical analyses. Section 5 discusses
+related work, and outlines future directions that our results suggest.
+2. Background and problem formulation
+In this section we brieﬂy review the essential elements of rate-distortion theory and minimax the-
+ory, to establish notation. We then state our main result, which bridges these classical theories.
+In the rate-distortion setting we have a source that produces a sequenceXn = (X1, X2, . . . , Xn),
+each component of which is independent and identically distributed as N (0, σ2). The goal is to
+transmit a realization from this sequence of random variables using a ﬁxed number of bits, in such
+a way that results in the minimal expected distortion with respect to the original dataXn. Suppose
+that we are allowed to use a total budget ofnB bits, so that the average number of bits per variable
+is B, which is referred to as therate. To transmit or store the data, theencoder describes the source
+sequence Xn by an index φn(Xn), where
+φn : Rn→{ 1, 2, . . . ,2nB}≡ C(B)
+is the encoding function. The nB-bit index is then transmitted or stored without loss. A decoder,
+when receiving or retrieving the data, represents Xn by an estimate ˇXn based on the index using a
+decoding function
+ψn :{1, 2, . . . ,2nB}→ Rn.
+The image of the decoding function ψn is called the codebook, which is a discrete set in Rn with
+cardinality no larger than 2nB. The process is illustrated in Figure 1, and variously referred to as
+source coding, lossy compression, or quantization. We call the pair of encoding and decoding func-
+tions Qn = (φn, ψn) an (n, B)-rate distortion code. We will also useQn to denote the composition
+of the two functions, i.e., Qn(·) = ψn(φn(·)).
+A distortion measure, or a loss function, d : R×R→ R+ is used to evaluate the performance of
+the above coding and transmission process. In this paper, we will use the squared lossd(Xi, ˇXi) =
+(Xi− ˇXi)2. The distortion between two sequences Xn and ˇXn is then deﬁned by dn(Xn, ˇXn) =
+3
+
+PAGE 4
+1
+n
+∑n
+i=1(Xi− ˇXi)2, the average of the per observation distortions. We drop the subscriptn in d when
+it is clear from the context. Thedistortion, or risk, for a (n, B)-rate distortion code Qn is deﬁned as
+the expected loss E d (Xn, Qn(Xn)). Denoting byQn,B the set of all (n, B)-rate distortion codes,
+the distortion rate function is deﬁned as
+R(B, σ) = lim inf
+n→∞
+inf
+Qn∈Qn,B
+E d (Xn, Qn(Xn)) .
+This distortion rate function depends on the rate B as well as the source distribution. For the i.i.d.
+N (0, σ2) source, according to the well-known rate distortion theorem [7],
+R(B, σ) = σ22−2B.
+When B is zero, meaning no information gets encoded at all, this bound becomes σ2, which is the
+expected loss when each random variable is represented by its mean. AsB approaches inﬁnity, the
+distortion goes to zero.
+The previous discussion assumes the source random variables are independent and follow a
+common distributionN (0, σ2). The goal is to minimize the expected distortion in the reconstruc-
+tion of Xn after transmitting or storing the data under a communication constraint. Now suppose
+that
+Xi
+ind.
+∼N (θi, σ2) for i = 1, 2, . . . , n.
+We assume the variance σ2 is known and the means θn = ( θ1, . . . , θn) are unknown. Suppose,
+furthermore, that instead of trying to minimize the recovery distortion d(Xn, ˇXn), we want to
+estimate the means with a risk as small as possible, but again using a budget of B bits per index.
+Without the communication constraint, this problem has been very well studied [10, 9]. Let
+ˆθ(Xn) ≡ ˆθn = ( ˆθ1, . . . ,ˆθn) denote an estimator of the true mean θn. For a parameter space
+Θn⊂ Rn, the minimax risk over Θn is deﬁned as
+inf
+ˆθn
+sup
+θn∈Θn
+E d(θn, ˆθn) = inf
+ˆθn
+sup
+θn∈Θn
+E 1
+n
+n∑
+i=1
+(θi− ˆθi)2.
+For the L2 ball of radius c,
+Θn(c) =
+{
+(θ1, . . . , θn) : 1
+n
+n∑
+i=1
+θ2
+i≤ c2
+}
+, (2.1)
+Pinsker’s theorem gives the exact, limiting form of the minimax risk
+lim inf
+n→∞
+inf
+ˆθn
+sup
+θn∈Θn(c)
+E d(θn, ˆθn) = σ2c2
+σ2 + c2 .
+To impose a communication constraint, we incorporate a variant of the source coding scheme
+described above into this minimax framework of estimation. Deﬁne a (n, B)-rate estimation code
+4
+
+PAGE 5
+Mn = ( φn, ψn), as a pair of encoding and decoding functions, as before. The encoding function
+φn : Rn →{ 1, 2, . . . ,2nB} is a mapping from observations Xn to an index set. The decoding
+function is a mapping from indices to models ˇθn∈ Rn. We write the composition of the encoder
+and decoder as Mn(Xn) = ψn(φn(Xn)) = ˇθn, which we call a quantized estimator. Denoting by
+Mn,B the set of all (n, B)-rate estimation codes, we then deﬁne the quantized minimax risk as
+Rn(B, σ, Θn) = inf
+Mn∈Mn,B
+sup
+θn∈Θn
+E d(θn, Mn(Xn)).
+We will focus on the case where our parameter space is the L2 ball deﬁned in (2.1), and write
+Rn(B, σ, c) = Rn(B, σ, Θn(c)).
+In this setting, we let n go to inﬁnity and deﬁne the asymptotic quantized minimax risk as
+R(B, σ, c) = lim inf
+n→∞
+Rn(B, σ, c) = lim inf
+n→∞
+inf
+Mn∈Mn,B
+sup
+θn∈Θn(c)
+E d(θn, Mn(Xn)). (2.2)
+Note that we could estimate θn based on the quantized data ˇXn = Qn(Xn). Once again denoting
+byQn,B the set of all (n, B)-rate distortion codes, such an estimator is written ˇθn = ˇθn(Qn(Xn)).
+Clearly, if the decoding functions ψn ofQn are injective, then this formulation is equivalent. The
+quantized minimax risk is then expressed as
+Rn(B, σ, Θn) = inf
+ˇθn
+inf
+Qn∈Qn,B
+sup
+θn∈Θn
+E d(θn, ˇθn).
+The many normal means problem exhibits much of the complexity and subtlety of general
+nonparametric regression and density estimation problems. It arises naturally in the estimation of
+a function expressed in terms of an orthogonal function basis [8, 13]. Our main result sharply
+characterizes the excess risk that communication constraints impose on minimax estimation for
+Θ(c).
+3. Main results
+Our ﬁrst result gives a lower bound on the exact quantized asymptotic risk in terms ofB, σ, and c.
+Theorem 3.1. For B≥ 0, σ > 0 and c > 0, the asymptotic minimax risk deﬁned in (2.2) satisﬁes
+R(B, σ, c)≥ σ2c2
+σ2 + c2 + c4
+σ2 + c2 2−2B. (3.1)
+This lower bound on the limiting minimax risk can be viewed as the usual minimax risk without
+quantization, plus an excess risk term due to quantization. If we takeB to be zero, the risk becomes
+c2, which is obtained by estimating all of the means simply by zero. On the other hand, letting
+B→∞ , we recover the minimax risk in Pinsker’s theorem. This tradeoff is illustrated in Figure 2.
+5
+
+PAGE 6
+2
+4
+6
+0 1 2 3 4 5
+Bits per symbol B
+Risk R
+Figure 2. Our result establishes the
+Pareto-optimal tradeoff in the nonpara-
+metric normal means problem for risk
+versus number of bits:
+R(σ2, c2, B) = c2σ2
+σ2 + c2 + c42−2B
+σ2 + c2
+Curves for ﬁve signal sizes are shown,
+c2 = 2, 3, 4, 5, 6. The noise level is σ2 =
+1. With zero bits, the rate is c2, the high-
+est point on the risk curve. The rate for
+large B approaches the Pinsker bound
+σ2c2/(σ2 + c2).
+The proof of the theorem is technical and we defer it to the supplementary material. Here we
+sketch the basic idea of the proof. Suppose we are able to ﬁnd a prior distribution πn on θn and a
+random vector ˜θn such that for any (n, B)-rate estimation code Mn the following holds:
+σ2c2
+σ2 + c2 + c4
+σ2 + c2 2−2B (I)
+=
+∫
+EXnd(θn, ˜θn)dπn(θn)
+(II)
+≤
+∫
+EXnd(θn, Mn(Xn))dπn(θn)
+(III)
+≤ sup
+θn∈Θn(c)
+EXnd(θn, Mn(Xn)).
+Then taking an inﬁmum over Mn∈M n,B gives us the desired result. In fact, we can take πn, the
+prior on θn, to beN (0, c2In), and the model becomes θi∼N (0, c2) and Xi| θi∼N (θi, σ2). Then
+according to Lemma 3.1, inequality (II) holds with ˜θn being the minimizer to the optimization
+problem
+min
+p(˜θn|Xn,θn)
+E d(θn, ˜θn)
+subject to I(Xn; ˜θn)≤ nB,
+p(˜θn| Xn, θn) = p(˜θn| Xn).
+The equality (I) holds due to Lemma 3.2. The inequality (III) can be shown by a limiting concen-
+tration argument on the prior distribution, which is included in the supplementary material.
+Lemma 3.1. Suppose that X1, . . . , Xn are independent and generated by θi∼ π(θi) and Xi| θi∼
+p(xi| θi). Suppose Mn is an (n, B)-rate estimation code with risk E d(θn, Mn(Xn))≤ D. Then
+6
+
+PAGE 7
+the rate B is lower bounded by the solution to the following problem:
+min
+p(˜θn|Xn,θn)
+I(Xn; ˜θn)
+subject to E d(θn, ˜θn)≤ D, (3.2)
+p(˜θn| Xn, θn) = p(˜θn| Xn).
+The next lemma gives the solution to problem (3.2) when we have θi∼N (0, c2) and Xi| θi∼
+N (θi, σ2)
+Lemma 3.2. Suppose θi∼N (0, c2) and Xi| θi∼N (θi, σ2) for i = 1 , . . . , n. For any random
+vector ˜θn satisfying E d(θn, ˜θn)≤ D and p(˜θn| Xn, θn) = p(˜θn| Xn) we have
+I(Xn; ˜θn)≥ n
+2 log c4
+(σ2 + c2)(D− σ2c2
+σ2+c2 ) .
+Combining the above two lemmas, we obtain a lower bound of the risk assuming thatθn follows
+the prior distribution πn:
+Corollary 3.1. Suppose Mn is a (n, B)-rate estimation code for the source θi∼N (0, c2) and
+Xi| θi∼N (θi, σ2), then
+E d(θn, Mn(Xn))≥ σ2c2
+σ2 + c2 + c4
+σ2 + c2 2−2B. (3.3)
+3.1. An adaptive source coding method
+We now present a source coding method, which we will show attains the minimax lower bound
+asymptotically with high probability.
+Suppose that the encoder is given a sequence of observations (X1, . . . , Xn), and both the en-
+coder and the decoder know the radius c of the L2 ball in which the mean vector lies. The steps of
+the source coding method are outlined below:
+Step 1. Generating codebooks. The codebooks are distributed to both the encoder and the decoder.
+(a) Generate codebookB ={1/√n, 2/√n, . . . ,⌈c2√n⌉/√n}.
+(b) Generate codebook X which consists of 2nB i.i.d. random vectors from the uniform
+distribution on the n-dimensional unit sphere Sn−1.
+Step 2. Encoding.
+(a) Encode ˆb2 = 1
+n∥X∥2− σ2 by
+ϕB(ˆb2) = arg min{|b2− ˆb2| : b2∈B} .
+7
+
+PAGE 8
+(b) Encode Xn by
+ϕX (Xn) = arg max{⟨Xn, xn⟩ : xn∈X}
+Step 3. Transmit or store
+(
+ϕB(ˆb2), ϕX (Xn)
+)
+using log c2 + 1
+2 log n + nB bits.
+Step 4. Decoding.
+(a) Decode ˇb2 = ψB
+(
+ϕB(ˆb2)
+)
+and ˇXn = ψX (ϕX (Xn)), where the decoding function
+ψC(i) returns the ith element in the codebookC.
+(b) Estimate θ by
+ˇθn =
+√
+nˇb4(1− 2−2B)
+ˇb2 + σ2 · ˇXn.
+We make several remarks on this quantized estimation method.
+Remark 1. The rate of this coding method is B + logc2
+n + logn
+2n , which is asymptotically B bits.
+Remark 2. The method is probabilistic; the randomness comes from the construction of the
+codebookX . Denoting byM∗
+n,B,σ,c the ensemble of such random quantizers, there is then a nat-
+ural one-to-one mapping between M∗
+n,B,σ,c and (Sn−1)2nB
+and we attach probability measure to
+M∗
+n,B,σ,c corresponding to the product uniform distribution on (Sn−1)2nB
+.
+Remark 3. The main idea behind this coding scheme is to encode the magnitude and the direc-
+tion of the observation vector separately, in such a way that the procedure adapts to sources with
+different norms of the mean vectors.
+Remark 4. The computational complexity of this source coding method is exponential in n.
+Therefore, like the Shannon random codebook, this is a demonstration of the asymptotic achiev-
+ability of the lower bound (3.1), rather than a practical scheme to be implemented. We discuss
+possible computationally efﬁcient algorithms in Section 5.
+The following shows that with high probability this procedure will attain the desired lower
+bound asymptotically.
+Theorem 3.2. For a sequence of vectors{θn}∞
+n=1 satisfying θn∈ Rn and∥θn∥2/n = b2≤ c2, as
+n→∞
+P
+(
+d(θn, Mn(Xn)) > σ2b2
+σ2 + b2 + b4
+σ2 + b2 2−2B + C
+√
+log n
+n
+)
+−→0 (3.4)
+for some constant C that does not depend on n (but could possibly depend on b, σ and B). The
+probability measure is with respect to both Mn∈M∗
+n,B,σ,c and Xn∈ Rn.
+This theorem shows that the source coding method not only achieves the desired minimax
+lower bound for the L2 ball with high probability with respect to the random codebook and source
+distribution, but also adapts to the true magnitude of the mean vectorθn. It agrees with the intuition
+that the hardest mean vector to estimate lies on the boundary of theL2 ball. Based on Theorem 3.2
+we can obtain a uniform high probability bound for mean vectors in the L2 ball.
+8
+
+PAGE 9
+Corollary 3.2. For any sequence of vectors {θn}∞
+n=1 satisfying θn∈ Rn and∥θn∥2/n≤ c2, as
+n→∞
+P
+(
+d(θn, Mn(Xn)) > σ2c2
+σ2 + c2 + c4
+σ2 + c2 2−2B + C′
+√
+log n
+n
+)
+−→0
+for some constant C′ that does not depend on n.
+We include the details of the proof of Theorem 3.2 in the supplementary material, which care-
+fully analyzes the three terms in the following decomposition of the loss function:
+d(θn, ˇθn) = 1
+n
+ˇθn− θn2
+= 1
+n
+ˇθn− ˆγXn + ˆγXn− θn2
+= 1
+n
+ˇθn− ˆγXn2
+  
+A1
++ 1
+n∥ˆγXn− θn∥2
+  
+A2
++ 2
+n⟨ˇθn− ˆγXn, ˆγXn− θn⟩
+  
+A3
+where ˆγ =
+ˆb2
+ˆb2+σ2 with ˆb2 =∥Xn∥2/n− σ2. Term A1 characterizes the quantization error. Term
+A2 does not involve the random codebook, and is the loss of a type of James-Stein estimator. The
+cross term A3 vanishes as n→∞ .
+4. Simulations
+In this section we present a set of simulation results showing the empirical performance of the
+proposed quantized estimation method. Throughout the simulation, we ﬁx the noise level σ2 = 1,
+while varying the other parameters c and B.
+First we show in Figure 3 the effect of quantized estimation and compare it with the James-
+Stein estimator. Setting n = 15 and c = 2 , we randomly generate a mean vector θn∈ Rn with
+∥θ∥2/n = c2. A random vector X is then drawn fromN (θn, In) and quantized estimates with rates
+B∈{ 0.1, 0.2, 0.5, 1} are calculated; for comparison we also compute the James-Stein estimator,
+given by ˆθn
+JS =
+(
+1− (n−2)σ2
+∥Xn∥2
+)
+Xn. We repeat this sampling and estimation procedure 100 times
+and report the averaged risk estimates in Figure 3. We see that the quantized estimator essentially
+shrinks the random vector towards zero. With small rates, the shrinkage is strong, with all the
+estimates close to zero. Estimates with larger rates approach the James-Stein estimator.
+In our second set of simulations, we choosec from{0.1, 0.5, 1, 5, 10} to reﬂect different signal-
+to-noise ratios, and choose B from{0.1, 0.2, 0.5, 1}. For each combination of the values of c and
+B, we vary n, the dimension of the mean vector, which is also the number of observations. Given a
+set of parameters c, B and n, a mean vector θn is generated uniformly on the sphere∥θn∥2/n = c2
+and data Xn are generated following the distributionN (θn, σ2In). We quantize the data using the
+source coding method, and compute the mean squared error between the estimator and the true
+mean vector. The procedure is repeated 100 times for each of the parameter combinations, and the
+9
+
+PAGE 10
+−4
+−2
+0
+2
+4
+Index
+Estimate
+B=0.1
+B=0.2
+B=0.5
+B=1
+James−Stein
+FIGURE 3. Comparison of the quantized estimates with different rates B, the James-Stein estimator, and the
+true mean vector. The heights of the bars are the averaged estimates based on 100 replicates. Each large
+background rectangle indicates the original mean component θj.
+● ● ● ● ● ● ● ● ● ● ● ● ●
+● ● ● ● ● ● ● ● ● ● ● ● ●
+● ● ● ● ● ● ● ● ● ● ● ● ●
+● ● ● ● ● ● ● ● ● ● ● ● ●
+1
+100
+4 8 12
+n
+MSE
+B=0.1
+● ● ● ● ● ● ● ● ● ● ● ● ●
+● ● ● ● ● ● ● ● ● ● ● ● ●
+● ● ● ● ● ● ● ● ● ● ● ● ●
+● ● ● ● ● ● ● ● ● ● ● ● ●
+1
+100
+4 8 12
+n
+B=0.2
+● ● ● ● ● ● ● ● ● ● ● ● ●
+● ● ● ● ● ● ● ● ● ● ● ● ●
+● ● ● ● ● ● ● ● ● ● ● ● ●
+● ● ● ● ● ● ● ● ● ● ● ● ●
+1
+100
+4 8 12
+n
+B=0.5
+● ● ● ● ● ● ● ● ● ● ● ● ●
+● ● ● ● ● ● ● ● ● ● ● ● ●
+●
+● ●
+● ● ● ● ● ● ● ● ● ●
+●
+● ● ● ● ● ● ● ● ● ● ● ●
+1
+100
+4 8 12
+n
+B=1
+●
+●
+●
+●
+c=0.5
+c=1
+c=5
+c=10
+FIGURE 4. Mean squared errors and standard deviations of the quantized estimator versus n for different values of
+(B, c). The horizontal dashed lines indicate the lower bounds.
+average and standard deviation of the mean squared errors are recorded. The results are shown in
+Figure 4. We see that asn increases, the average error decreases and approaches the theoretic lower
+bound in Theorem 3.1. Moreover, the standard deviation of the mean squared errors also decreases,
+conﬁrming the result of Theorem 3.2 that the convergence is with high probability.
+5. Discussion and future work
+In this paper, we establish a sharp lower bound on the asymptotic minimax risk for quantized
+estimators of nonparametric normal means for the case of a Euclidean ball. Similar techniques can
+be applied to the setting where the parameter space is an ellipsoid Θ =
+{
+θ : ∑∞
+j=1 a2
+j θ2
+j≤ c2
+}
+.
+A principal case of interest is the Sobolev ellipsoid of order m where a2
+j ∼ (πj)2m as j→∞ .
+The Sobolev ellipsoid arises naturally in nonparametric function estimation and is thus of great
+importance. We leave this to future work.
+Donoho discusses the parallel between rate distortion theory and Pinsker’s work in his Wald
+Lectures [4]. Focusing on the case of the Sobolev space of order m, which we denote by Fm, it
+is shown that the Kolmogorov entropy Hϵ(Fm) and the rate distortion function R(D, X) satisfy
+10
+
+PAGE 11
+Hϵ(Fm)≍ sup{R(ϵ2, X) : P(X∈ Fm) = 1} as ϵ→ 0. This connects the worst-case minimax
+analysis and least-favorable rate distortion function for the function class. Another information-
+theoretic formulation of minimax rates lies in the so-called “le Cam equation” Hϵ(F) = nϵ2 [14,
+15]. However, both are different from the direction we pursue in this paper, which is to impose
+communication constraints in minimax analysis.
+In other related work, researchers in communications theory have studied estimation problems
+in sensor networks under communication constraints. Draper and Wornell [5] obtain a result on the
+so-called “one-step problem” for the quadratic-Gaussian case, which is essentially the same as the
+statement in our Corollary 3.1. In fact, they consider a similar setting, but treat the mean vector
+as random and generated independently from a known normal distribution. In contrast, we assume
+a ﬁxed but unknown mean vector and establish a minimax lower bound as well as an adaptive
+source coding method that adapts to the ﬁxed mean vector within the parameter space. Zhang et
+al. [16] also consider minimax bounds with communication constraints. However, the analysis in
+[16] is focused on distributed parametric estimation, where the data are distributed between several
+machines. Information is shared between the machines in order to construct a parameter estimate,
+and constraints are placed on the amount of communication that is allowed.
+In addition to treating more general ellipsoids, an important direction for future work is to
+design computationally efﬁcient quantized nonparametric estimators. One possible method is to
+divide the variables into smaller blocks and quantize them separately. A more interesting and
+promising approach is to adapt the recent work of Venkataramanan et al. [12] that uses sparse
+regression for lossy compression. We anticipate that with appropriate modiﬁcations, this scheme
+can be applied to quantized nonparametric estimation to yield practical algorithms, trading off a
+worse error exponent in the convergence rate to the optimal quantized minimax risk for reduced
+complexity encoders and decoders.
+Appendix A: Proofs
+A.1. Proof of Theorem 3.1
+Proof of Lemma 3.1. Denote the solution to problem (3.2) by B∗(D). Suppose that Mn is an
+(n, B)-rate estimation code Mn with risk E d(θn, Mn(Xn))≤ D. We have
+B≥ I(Xn; Mn(Xn))/n (A.1)
+≥ B∗ (E d(θn, Mn(Xn))) (A.2)
+≥ B∗(D), (A.3)
+where (A.1) follows from the fact that Mn(Xn) takes at most 2nB values; (A.2) follows from the
+deﬁnition of B∗(·); (A.3) follows from the monotonicity ofB∗(·) and the fact thatE d(θn, Mn(Xn))≤
+D.
+11
+
+PAGE 12
+Proof of Lemma 3.2. Suppose that ˜θn satisﬁes the conditions in problem (3.2). Writeγ = c2/(σ2+
+c2). For i = 1, 2, . . . , n, consider the decomposition
+E(θi− ˜θi)2 = E(θi− γXi + γXi− ˜θi)2
+= E(θi− γXi)2 + E(˜θi− γXi)2− 2E
+(
+(θi− γXi)(˜θi− γXi)
+)
+= σ2c2
+σ2 + c2 + E(˜θi− γXi)2.
+The last equality follows from
+E
+(
+(˜θi− γXi)(θi− γXi)
+)
+= E
+(
+E(θi− γXi| Xi)E(˜θi− γXi| Xi)
+)
+= 0,
+where we have used the fact that θi→ Xi→ ˜θi is a Markov chain and that E(θi| Xi) = γXi.
+Summing over i = 1, . . . , n, we have
+E d(θn, ˜θn) = σ2c2
+σ2 + c2 + E d(˜θn, γXn).
+A lower bound on the mutual information can be obtained as
+1
+n I(Xn; ˜θn) = 1
+n I(γXn; ˜θn)≥ 1
+n
+n∑
+i=1
+I(γXi; ˜θi)
+= 1
+n
+n∑
+i=1
+(
+h(γXi)− h(γXi| ˜θi)
+)
+= 1
+n
+n∑
+i=1
+(
+h(γXi)− h(γXi− ˜θi| ˜θi)
+)
+≥ 1
+n
+n∑
+i=1
+(
+h(γXi)− h(γXi− ˜θi)
+)
+≥ 1
+n
+n∑
+i=1
+(
+h(γXi)− h
+(
+N (0, E(γXi− ˜θi)2
+))
+(A.4)
+= 1
+n
+n∑
+i=1
+(1
+2 log c4
+σ2 + c2− 1
+2 log E(γXi− ˜θi)2
+)
+= 1
+2 log c4
+σ2 + c2− 1
+n
+n∑
+i=1
+1
+2 log E(γXi− ˜θi)2
+≥ 1
+2 log c4
+σ2 + c2− 1
+2 log E d(˜θn, γXn) (A.5)
+= 1
+2 log
+c4
+σ2+c2
+E d(θn, ˜θn)− σ2c2
+σ2+c2
+12
+
+PAGE 13
+where (A.4) follows from the fact that the normal distribution maximizes the entropy for a given
+second moment, (A.5) follows from the concavity of the log function, and the other inequalities
+follow from the properties of mutual information and entropy. Since E d(θn, ˜θn)≤ D, we have
+1
+n I(Xn; ˜θn)≥ 1
+2 log
+c4
+σ2+c2
+D− σ2c2
+σ2+c2
+.
+On the other hand, a calculation shows that the following joint distribution
+˜θn∼N
+(
+0, γ2(σ2 + c2− D)In
+)
+, X n∼N
+(
+˜θn/γ, DIn
+)
+, θ n∼N (γXn, γσ2In). (A.6)
+achieves the lower bound, which concludes the proof.
+Proof of Theorem 3.1. Suppose that Mn is an (n, B)-rate estimation code. Let πn, the prior on θn,
+beN (0, c2In). According to Lemmas 3.1 and 3.2
+σ2c2
+σ2 + c2 + c4
+σ2 + c2 2−2B =
+∫
+EXnd(θn, ˜θn)dπn(θn)
+≤
+∫
+EXnd(θn, Mn(Xn))dπn(θn),
+where ˜θn follows the distribution speciﬁed in (A.6). It then sufﬁces to show that as n→∞∫
+EXnd(θn, Mn(Xn))dπn(θn)≤ sup
+θn∈Θn(c)
+EXnd(θn, Mn(Xn)).
+In fact, if the above inequality holds, taking a supremum overMn∈M n,B gives the desired lower
+bound. Recall that Θn(c) ={θn : 1
+n
+∑n
+i=1 θ2
+i≤ c2}. Paralleling the argument in [9, 13], we have
+∫
+EXnd(θn, Mn(Xn))dπn(θn)
+=
+∫
+Θn(c)
+EXnd(θn, Mn(Xn))dπn(θn) +
+∫
+Θn(c)
+EXnd(θn, Mn(Xn))dπn(θn)
+≤ sup
+Θn(c)
+EXnd(θn, Mn(Xn)) +
+∫
+Θn(c)
+EXnd(θn, Mn(Xn))dπn(θn).
+It remains to show that ∫
+Θn(c)
+EXnd(θn, Mn(Xn))dπn(θn)−→0.
+where Θn(c) denotes the complement of Θn(c). For a ﬁxed δ∈ (0, 1), let πn,δ be aN (0, c2δ2In)
+prior on θn. Replacing πn by πn,δ, and using the Cauchy-Schwarz inequality, we get
+∫
+Θn(c)
+EXnd(θn, Mn(Xn))dπn,δ(θn)
+≤ 2
+∫
+Θn(c)
+1
+n∥θn∥2dπn,δ(θn) + 2
+∫
+Θn(c)
+EXn
+1
+n∥M(Xn)∥2dπn,δ(θn)
+≤ 2
+n
+√
+πn,δ
+(
+Θn(c)
+)√
+Eπn,δ∥θn∥4 + 2c2πn,δ
+(
+Θn(c)
+)
+. (A.7)
+13
+
+PAGE 14
+Now we bound the two terms in the formula above. First,
+πn,δ
+(
+Θn(c)
+)
+= P
+(
+1
+n
+n∑
+i=1
+θ2
+i > c2
+)
+= P
+(
+1
+n
+n∑
+i=1
+(( θi
+δc
+)2
+− 1
+)
+> 1− δ2
+δ2
+)
+≤ 2 exp
+(
+− n(1− δ2)2
+8δ4
+)
+where the last inequality is due to the following large deviation inequality: ifZ1, . . . , Zn∼N (0, 1)
+and 0 < t < 1, then
+P
+(⏐⏐⏐⏐⏐
+1
+n
+n∑
+i=1
+(Z2
+i− 1)
+⏐⏐⏐⏐⏐ > t
+)
+≤ 2e−nt2/8.
+Next, we note that
+Eπn,δ∥θn∥4 =
+n∑
+i=1
+Eπn,δ θ4
+i +
+∑
+i̸=j
+Eπn,δ θ2
+i· Eπn,δ θ2
+j
+= nEπn,δ θ4
+1 +
+(n
+2
+)
+c2δ2
+= O(n2).
+Therefore, we have from (A.7)
+∫
+Θn(c)
+EXnd(θn, Mn(Xn))dπn,δ(θn)
+≤ 2
+n·
+√
+2 exp
+(
+− n(1− δ2)2
+16δ4
+)
+O(n) + 2c2 exp
+(
+− n(1− δ2)2
+8δ4
+)
+−→0
+for any δ∈ (0, 1). The conclusion then follows by letting δ↑ 1.
+A.2. Proof of Theorem 3.2
+Proof of Theorem 3.2. Suppose that∥θn∥/n = b2≤ c2 and that Xi∼N (θi, σ2). Writing ˆb2 =
+∥Xn∥2/n− σ2 and ˆγ =
+ˆb2
+σ2+ˆb2 , we have the decomposition of the loss
+d(θn, ˇθn) = 1
+n
+ˇθn− θn2
+= 1
+n
+ˇθn− ˆγXn + ˆγXn− θn2
+= 1
+n
+ˇθn− ˆγXn2
+  
+A1
++ 1
+n∥ˆγXn− θn∥2
+  
+A2
++ 2
+n⟨ˇθn− ˆγXn, ˆγXn− θn⟩
+  
+A3
+.
+14
+
+PAGE 15
+(i) Term A1 characterizes the quantization error. It has the following decomposition
+A1 = 1
+n∥ˇθn∥2 + 1
+n ˆγ2∥Xn∥2− 2
+n⟨ˇθn, ˆγXn⟩.
+By Lemma A.1 and Lemma A.3 below, we have
+1
+n∥Xn∥2− b2− σ2 = OP
+( 1√n
+)
+, ⟨Xn, ˇXn⟩
+∥X∥ −
+√
+1− 2−2B = OP
+(log n
+n
+)
+,
+and therefore
+1
+n∥ˇθn∥2 =
+ˇb4(1− 2−2B)
+σ2 + ˇb2 = b4
+σ2 + b2 (1− 2−2B) + OP
+( 1√n
+)
+,
+1
+n ˆγ2∥Xn∥2 =
+ˆb4
+σ2 + ˆb2
+= b4
+σ2 + b2 + OP
+( 1√n
+)
+,
+2
+n⟨ˇθn, ˆγXn⟩ = 2
+n
+ˆb2
+σ2 + ˆb2
+√
+nˇb4(1− 2−2B)
+σ2 + ˇb2 ·⟨ Xn, ˇXn⟩
+= 2ˆb2ˇb2√
+1− 2−2B
+√
+(σ2 + ˆb2)(σ2 + ˇb2)
+⟨X, ˇX⟩
+∥X∥
+= 2b4
+σ2 + b2 (1− 2−2B) + OP
+( 1√n
+)
+.
+which, combined together, gives us
+A1 = b4
+σ2 + b2 (1− 2−2B) + b4
+σ2 + b2− 2b4
+σ2 + b2 (1− 2−2B) + OP
+( 1√n
+)
+= b4
+σ2 + b2 2−2B + OP
+( 1√n
+)
+.
+(ii) Term A2 does not involve random codebook, and is essentially the average loss of a James-
+Stein-type estimator. Suppose that An is an n× n orthonormal matrix such that Anθn =
+(√nb, 0, . . . ,0)T , which we will denote by τn. Let Yn = AnXn. Then Yn∼N (τn, σ2I)
+and∥Xn∥ =∥Yn∥. Expressing A2 in terms of Yn, we have
+A2 = 1
+n∥ˆγXn− θn∥2
+= 1
+n∥ˆγAnXn− Anθn∥2
+= 1
+n∥ˆγY n− τn∥2
+= 1
+n ˆγ2∥Yn∥2− 2ˆγb Y1√n + b2
+= b2σ2
+σ2 + b2 + OP
+( 1√n
+)
+.
+15
+
+PAGE 16
+The last equality is because
+1
+n∥Yn∥2− b2− σ2 = OP
+( 1√n
+)
+, Y1√n− b = OP
+( 1√n
+)
+.
+(iii) Finally, it can be shown that the cross term satisﬁes A3 = OP (
+√
+logn
+n ) by exploiting the
+geometry of the vectors, and using the fact that most vectors are nearly orthogonal to each
+other in a high dimensional space. In fact, write
+ˆθn =
+√
+nˆb4(1− 2−2B)
+ˆb2 + σ2
+· ˇXn.
+Then in the decomposition
+2
+n⟨ˇθn− ˆγXn, ˆγXn− θn⟩ = 2
+n⟨ˇθn− ˆθn, ˆγXn− θn⟩+ 2
+n⟨ˆθn, ˆγXn− θn⟩− 2
+n⟨ˆγXn, ˆγXn− θn⟩,
+the ﬁrst term is OP ( 1√n), since 1√n∥ˇθn− ˆθn∥ = OP ( 1√n) and 1√n∥ˆγXn− θn∥ has bounded
+second moment, and the third term is
+2
+n⟨ˆγXn, ˆγXn− θn⟩ = 2
+n⟨ˆγY n, ˆγY n− τn⟩
+= 2
+n ˆγ2∥Yn∥2− 2ˆγb Y1√n = OP
+( 1√n
+)
+.
+Now consider the second term
+2
+n⟨ˆθn, ˆγXn− θn⟩ = 2
+n⟨ˆθn, ˜γXn− θn⟩ + 2
+n(ˆγ− ˜γ)⟨ˆθn, Xn⟩
+where
+˜γ ≜
+∑n
+i=1 θiXi
+∥Xn∥2 , satisfying 2
+n(ˆγ− ˜γ)⟨ˆθn, Xn⟩ = OP
+( 1√n
+)
+and⟨Xn, ˜γXn− θn⟩ = 0.
+Thus, we are left with one last term to analyze:
+2
+n⟨ˆθn, ˜γXn− θn⟩ = 2
+n
+√
+nˆb4(1− 2−2B)
+ˆb2 + σ2
+⟨ ˇXn, ˜γXn− θn⟩
+=
+√
+4ˆb4(1− 2−2B)
+ˆb2 + σ2
+⟨ ˇXn, 1√n(˜γXn− θn)⟩
+The scaling factor in front of the inner product is some constant plus an OP ( 1√n) term, so
+we consider the inner product. Notice that the projection of ˇXn onto the orthogonal space
+of Xn, ProjXn⊥( ˇXn), is independent of Xn. Furthermore, by symmetry, ProjXn⊥( ˇXn) has a
+spherical distribution in Rn−1, and has a length
+√
+1− 2−2B + OP ( logn
+n ). That is, we can write
+ProjXn⊥( ˇXn) = Ln· Un
+16
+
+PAGE 17
+where Un follows the uniform distribution on sphereSn−1 and Ln =
+√
+1− 2−2B + OP ( logn
+n ).
+Conditioning on Xn, since⟨Xn, ˜γXn− θn⟩ = 0, we have
+P
+(
+⟨ ˇXn, 1√n(˜γXn− θn)⟩ > t| Xn = xn
+)
+= P
+(
+⟨ProjXn⊥( ˇXn), ProjXn⊥( 1√n(˜γXn− θn))⟩ > t| Xn = xn
+)
+= P
+(
+Ln∥ 1√n(˜γxn− θn)∥⟨Un, en⟩ > t
+)
+≤ K1
+√n
+(
+1− t2
+K2∥ 1√n(˜γxn− θn)∥2
+)n−2
+2
+.
+where K1 and K2 are positive constants, and the last inequality follows from Lemma A.4
+below. It then follows that
+P
+(
+⟨ ˇXn, 1√n(˜γXn− θn)⟩ > t
+)
+=
+∫
+P
+(
+⟨ ˇXn, 1√n(˜γXn− θn)⟩ > t| Xn = xn
+)
+pXn(xn)dxn
+≤ K1
+√n
+∫ (
+1− t2
+K2∥ 1√n(˜γxn− θn)∥2
+)n−2
+2
+pXn(xn)dxn
+≤ K1
+√n
+(
+1− t2
+K′
+2
+)n−2
+2
++ P
+(1
+n∥Xn∥2 > b2 + σ2 + K3
+)
+.
+for positive constants K1, K2 and K3. This implies that⟨ ˇXn, 1√n(˜γXn− θn)⟩ = OP (
+√
+logn
+n )
+and thus A3 = OP (
+√
+logn
+n ).
+Combining the above analyses for A1, A2 and A3 together gives us the theorem.
+Lemma A.1. Suppose that Xi
+ind.
+∼ N(θi, σ2), for i = 1, . . . , nand that 1
+n
+∑n
+i=1 θ2
+i = b2. Then
+P
+(⏐⏐⏐⏐⏐
+1
+n
+n∑
+i=1
+X2
+i− b2− σ2
+⏐⏐⏐⏐⏐≥ t
+)
+≤ 2 exp
+(
+− nt2
+32σ4
+)
++ 8σb√
+2πnt2
+exp
+(
+− nt2
+32σ2b2
+)
+.
+Speciﬁcally, if we write ˆb2 =∥X∥2/n− σ2, we have ˆb2− b2 = OP ( 1√n).
+Proof. Writing Xi = θi + ϵi, we have
+P
+(⏐⏐⏐⏐⏐
+1
+n
+n∑
+i=1
+X2
+i− b2− σ2
+⏐⏐⏐⏐⏐ > t
+)
+= P
+(⏐⏐⏐⏐⏐
+1
+n
+n∑
+i=1
+(ϵ2
+i− σ2) + 2
+n
+n∑
+i=1
+θiϵi
+⏐⏐⏐⏐⏐ > t
+)
+17
+
+PAGE 18
+≤ P
+(⏐⏐⏐⏐⏐
+1
+n
+n∑
+i=1
+(ϵ2
+i− σ2)
+⏐⏐⏐⏐⏐ > t
+2
+)
++ P
+(⏐⏐⏐⏐⏐
+2
+n
+n∑
+i=1
+θiϵi
+⏐⏐⏐⏐⏐ > t
+2
+)
+≤ P
+(⏐⏐⏐⏐⏐
+1
+n
+n∑
+i=1
+((ϵi
+σ
+)2
+− 1
+)⏐⏐⏐⏐⏐ > t
+2σ2
+)
++ P
+(⏐⏐⏐⏐
+2
+nN (0, nσ2b2)
+⏐⏐⏐⏐ > t
+2
+)
+≤ 2 exp
+(
+− nt2
+32σ4
+)
++ 8σb√
+2πnt2
+exp
+(
+− nt2
+32σ2b2
+)
+where the last inequality follows from the previously mentioned large deviation inequality and the
+upper tail inequality for the normal distribution.
+Lemma A.2 (Lemma 4.1 from [2]). Suppose that Y is uniformly distributed on the n-dimensional
+unit sphere Sn−1. For x∈ Rn such that∥x∥2 = 1, the inner product ρ =⟨x, Y⟩ between x and
+Y has density function
+f(ρ) = 1√π
+Γ(n
+2 )
+Γ(n−1
+2 )(1− ρ2)
+n−3
+2 I(|ρ| < 1).
+Lemma A.3. Suppose that p = enβ and Y1, . . . , Yp are independent and identically distributed
+with a uniform distribution on the n-dimensional sphere Sn−1. For a ﬁxed unit vector x∈ Rn,
+let ρi = ⟨x, Yi⟩ and Ln = max 1≤i≤p ρi . Then Ln →
+√
+1− e−2β in probability as n → ∞.
+Furthermore, Ln−
+√
+1− e−2β = OP ( logn
+n ).
+Proof. Let kn = n
+logn. For any ﬁxed u∈ R
+P
+(
+kn
+(
+Ln−
+√
+1− e−2β
+)
+≤ u
+)
+= P
+(
+Ln≤ u
+kn
++
+√
+1− e−2β
+)
+= P
+(
+ρ1≤ u
+kn
++
+√
+1− e−2β
+)p
+=
+(
+1−
+∫ 1
+u/kn+
+√
+1−e−2β
+1√π
+Γ(n
+2 )
+Γ(n−1
+2 )(1− ρ2)
+n−3
+2 dρ
+)p
+∼
+
+1−
+√n√
+2π(n− 3)( u
+kn
++
+√
+1− e−2β)
+(
+1−
+( u
+kn
++
+√
+1− e−2β
+)2)n−1
+2
+
+
+p
+∼ exp
+
+−p·
+√n√
+2π(n− 3)( u
+kn
++
+√
+1− e−2β)
+(
+1−
+( u
+kn
++
+√
+1− e−2β
+)2)n−1
+2
+
+
+≜ exp(−M).
+Taking the logarithm of the exponent M, we get
+log M = log p + n− 1
+2 log
+(
+1−
+( u
+kn
++
+√
+1− e−2β
+)2)
++ log
+√n√
+2π(n− 3)( u
+kn
++
+√
+1− e−2β)
+18
+
+PAGE 19
+∼ nβ + n− 1
+2 log
+(
+e−2β− u2
+k2
+n
+− 2u
+kn
+√
+1− e−2β
+)
+− 1
+2 log n− 1
+2 log
+(
+1− e−2β)
+− 1
+2 log(2π)
+∼ nβ− (n− 1)β− n− 1
+2
+u2
+k2
+n
+− (n− 1) u
+kn
+√
+1− e−2β− 1
+2 log n− 1
+2 log
+(
+1− e−2β)
+− 1
+2 log(2π)
+∼ β−
+(
+u
+√
+1− e−2β + 1
+2
+)
+log n− 1
+2 log
+(
+1− e−2β)
+− 1
+2 log(2π).
+If u > 0, then as n → ∞, M → 0, and thus P
+(
+kn
+(
+Ln−
+√
+1− e−2β
+)
+≤ u
+)
+→ 0. If u <
+− 1
+2
+√
+1−2−2β
+, then as n→∞ , M→∞ , and hence P
+(
+kn
+(
+Ln−
+√
+1− e−2β
+)
+≤ u
+)
+→ 1. We can
+then conclude that|Ln−
+√
+1− e−2β| = OP ( logn
+n ).
+Lemma A.4. Let U have a uniform distribution on the unit sphere Sn−1 and let x∈ Rn be a ﬁxed
+vector. Then
+P (|⟨U, x⟩| > ϵ)≤ K√n(1− ϵ2)
+n−2
+2 .
+for all n≥ 2 and ϵ∈ (0, 1), where K is a universal constant. Therefore,
+⟨U, x⟩ = OP
+(√
+log n
+n
+)
+.
+Proof. This is a direct result from Proposition 1 in [1].
+Acknowledgements
+Research supported in part by NSF grants IIS-1116730, AFOSR grant FA9550-09-1-0373, ONR
+grant N000141210762, and an Amazon AWS in Education Machine Learning Research grant.
+The authors thank Andrew Barron, John Duchi, and Alfred Hero for valuable comments on this
+work.
+References
+[1] T. Tony Cai, Jianqing Fan, and Tiefeng Jiang. Distributions of angles in random packing on
+spheres. The Journal of Machine Learning Research, 14(1):1837–1864, 2013.
+[2] T. Tony Cai and Tiefeng Jiang. Phase transition in limiting distributions of coherence of
+high-dimensional random matrices. Journal of Multivariate Analysis, 107:24–39, 2012.
+[3] Venkat Chandrasekarana and Michael I. Jordan. Computational and statistical tradeoffs via
+convex relaxation. PNAS, 110(13):E1181–E1190, March 2013.
+[4] David L. Donoho. Wald lecture I: Counting bits with Kolmogorov and Shannon. 2000.
+[5] Stark C. Draper and Gregory W. Wornell. Side information aware coding strategies for sensor
+networks. Selected Areas in Communications, IEEE Journal on, 22(6):966–976, 2004.
+19
+
+PAGE 20
+[6] Jon M. Jenkins et al. Overview of the Kepler science processing pipeline. The Astrophysical
+Journal Letters, 713(2):L87, 2010.
+[7] Robert G. Gallager. Information Theory and Reliable Communication. John Wiley & Sons,
+1968.
+[8] Iain M. Johnstone. Function estimation and Gaussian sequence models. 2002. Unpublished
+manuscript.
+[9] Michael Nussbaum. Minimax risk: Pinsker bound. Encyclopedia of Statistical Sciences ,
+3:451–460, 1999.
+[10] Mark Semenovich Pinsker. Optimal ﬁltering of square-integrable signals in Gaussian noise.
+Problemy Peredachi Informatsii, 16(2):52–68, 1980.
+[11] Alexandre B. Tsybakov. Introduction to Nonparametric Estimation. Springer Series in Statis-
+tics, 1st edition, 2008.
+[12] Ramji Venkataramanan, Tuhin Sarkar, and Sekhar Tatikonda. Lossy compression via sparse
+linear regression: Computationally efﬁcient encoding and decoding. In IEEE International
+Symposium on Information Theory (ISIT), pages 1182–1186. IEEE, 2013.
+[13] Larry Wasserman. All of Nonparametric Statistics. Springer-Verlag, 2006.
+[14] Wing Hung Wong and Xiaotong Shen. Probability inequalities for likelihood ratios and con-
+vergence rates of sieve MLEs. The Annals of Statistics, 23:339–362, 1995.
+[15] Yuhong Yang and Andrew Barron. Information-theoretic determination of minimax rates of
+convergence. The Annals of Statistics, 27(5):1564–1599, 1999.
+[16] Yuchen Zhang, John Duchi, Michael Jordan, and Martin J. Wainwright. Information-theoretic
+lower bounds for distributed statistical estimation with communication constraints. In Ad-
+vances in Neural Information Processing Systems, pages 2328–2336, 2013.
+20
