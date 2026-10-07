@@ -1,0 +1,155 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>!/usr/bin/env python3</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>!/usr/bin/env python3</h1><p>Source ID d-210d1dcdc8aee7a7; literature/sources/d_example/cycle3/asymmetric_converter_before_ledger.py; 2573 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Separate asymmetric target; fresh physical classification per repair attempt.&quot;&quot;&quot;
+from pathlib import Path
+from fractions import Fraction as F
+from math import isqrt,comb
+import importlib.util,json,time,csv,hashlib
+ROOT=Path(__file__).resolve().parents[4];OUT=ROOT/&#x27;results/d_example/cycle3/asymmetric&#x27;
+spec=importlib.util.spec_from_file_location(&#x27;symmetric_primitives&#x27;,ROOT/&#x27;work/d_example/cycle3/implicit_converter.py&#x27;)
+s=importlib.util.module_from_spec(spec);spec.loader.exec_module(s)
+G=[[F(4,5),F(1,10),F(1,10)],[F(1,5),F(7,10),F(1,10)],[F(1,10),F(1,5),F(7,10)]]
+
+def ratio(c,i,k):
+    r=F(1)
+    for x in range(3):r*=(G[i][x]/G[k][x])**c[x]
+    return r
+
+def threshold(c,k,eta):
+    target=max(F(1),*(ratio(c,k,j) for j in range(3) if j!=k))/eta
+    lo=-1;hi=sum(c)+s.ceil_log9_integer(eta.denominator)+1
+    while hi-lo&gt;1:
+        mid=(hi+lo)//2
+        if 9**mid*target.denominator&gt;=target.numerator:hi=mid
+        else:lo=mid
+    return hi
+
+def relative_T(c,k,p):
+    h=[ratio(c,i,k) for i in range(3)]
+    passes=[]
+    for j in range(3):
+        b=threshold(c,j,p[&#x27;eta&#x27;]);passes.append((s.verifier_pass(b,p[&#x27;L&#x27;],True),s.verifier_pass(b,p[&#x27;L&#x27;],False)))
+    out=[]
+    for i in range(3):
+        q=p[&#x27;thinning&#x27;]*sum(((1-2*p[&#x27;b0&#x27;] if i==j else p[&#x27;b0&#x27;])*h[j]*passes[j][0 if i==j else 1] for j in range(3)),F(0))
+        out.append(h[i]-q)
+        assert p[&#x27;eta&#x27;]*h[i]&lt;=out[-1]&lt;=6*p[&#x27;eta&#x27;]*h[i]
+    return out
+
+def accept(c,k,p):
+    T=relative_T(c,k,p);w=(T[k]-p[&#x27;bR&#x27;]*sum(T))/(1-3*p[&#x27;bR&#x27;])
+    assert w&gt;=0 and w&lt;=7*p[&#x27;eta&#x27;]
+    return w/(7*p[&#x27;eta&#x27;])
+
+def compile_program(n):
+    start=time.perf_counter();eta=F(1,30*n);r0=1
+    while 2*s.classifier_b(r0)&gt;eta:r0+=1
+    b0=s.classifier_b(r0);rR=s.exact_r_for_bound(n,36);bR=s.classifier_b(rR)
+    assert bR&lt;=F(1,36*8**n)
+    root=isqrt(2*n)
+    if root*root&lt;2*n:root+=1
+    L=s.ceil_log9_integer(eta.denominator)
+    kl_checks=[]
+    for i in range(3):
+        for j in range(3):
+            if i==j:continue
+            exact=F(1)
+            for x in range(3):
+                assert F(1,8)&lt;=G[i][x]/G[j][x]&lt;=8
+                exponent=10*G[i][x];assert exponent.denominator==1
+                exact*=(G[i][x]/G[j][x])**exponent.numerator
+            assert exact&lt;=8**7
+            kl_checks.append({&#x27;i&#x27;:i,&#x27;j&#x27;:j,&#x27;exp_10_directed_KL&#x27;:exact,&#x27;bound&#x27;:8**7})
+    bound=3*r0+(F(19,20)*(F(7*n,10)+root)+L+1)/F(4,5)+eta*L/F(4,5)+21*eta*rR
+    return {&#x27;n&#x27;:n,&#x27;target_G&#x27;:G,&#x27;eta&#x27;:eta,&#x27;r0&#x27;:r0,&#x27;b0&#x27;:b0,&#x27;rR&#x27;:rR,&#x27;bR&#x27;:bR,&#x27;L&#x27;:L,
+        &#x27;thinning&#x27;:(1-eta)/(1+2*eta),&#x27;fluctuation_upper&#x27;:root,
+        &#x27;finite_expected_source_cost_upper&#x27;:bound,&#x27;proved_below_n_every_state&#x27;:bound&lt;n,
+        &#x27;KL_integer_product_certificates&#x27;:kl_checks,&#x27;compile_wall_seconds&#x27;:time.perf_counter()-start,
+        &#x27;repair_scope&#x27;:&#x27;Every rejected auxiliary proposal triggers a fresh paid balanced physical classifier. No common delta assumption.&#x27;}
+
+def propose(n,k,rng):
+    weights=[int(10*x) for x in G[k]];c=[0,0,0]
+    for _ in range(n):
+        u=rng.randrange(10)
+        for x,w in enumerate(weights):
+            if u&lt;w:c[x]+=1;break
+            u-=w
+    return tuple(c)
+
+def repair(p,observe,rng,ledger):
+    attempts=0
+    while True:
+        # Essential: reclassify on EVERY attempt, because delta_i differs.
+        k=s.classify(p[&#x27;rR&#x27;],observe,rng);c=propose(p[&#x27;n&#x27;],k,rng);attempts+=1
+        a=accept(c,k,p);ledger[&#x27;maximum_coin_bits&#x27;]=max(ledger[&#x27;maximum_coin_bits&#x27;],a.denominator.bit_length())
+        if s.coin(a,rng):ledger[&#x27;repair_attempts&#x27;]+=attempts;return c
+
+def convert(p,observe,rng,ledger):
+    k=s.classify(p[&#x27;r0&#x27;],observe,rng);c=propose(p[&#x27;n&#x27;],k,rng);B=threshold(c,k,p[&#x27;eta&#x27;]);score=0
+    while -p[&#x27;L&#x27;]&lt;score&lt;B:score+=1 if observe(k)==0 else -1
+    if score==B and s.coin(p[&#x27;thinning&#x27;],rng):return c
+    ledger[&#x27;repair_flags&#x27;]+=1;return repair(p,observe,rng,ledger)
+
+def finite_audit(n,p):
+    atoms=[(a,b,n-a-b) for a in range(n+1) for b in range(n-a+1)];H=[];T=[];W=[]
+    for c in atoms:
+        coefficient=comb(n,c[0])*comb(n-c[0],c[1]);h=[]
+        for i in range(3):
+            h.append(F(coefficient))
+            for x in range(3):h[-1]*=G[i][x]**c[x]
+        H.append(h);t=[v*h[0] for v in relative_T(c,0,p)];T.append(t)
+        W.append([(t[k]-p[&#x27;bR&#x27;]*sum(t))/(1-3*p[&#x27;bR&#x27;]) for k in range(3)])
+    delta=[sum(t[i] for t in T) for i in range(3)]
+    assert len(set(delta))&gt;1 # Detect the assumption that would break old fixed-k repair.
+    for i in range(3):
+        for y,c in enumerate(atoms):
+            accepted=sum((1-2*p[&#x27;bR&#x27;] if i==k else p[&#x27;bR&#x27;])*H[y][k]*accept(c,k,p) for k in range(3))
+            assert accepted==T[y][i]/(7*p[&#x27;eta&#x27;])
+        assert p[&#x27;eta&#x27;]&lt;=delta[i]&lt;=6*p[&#x27;eta&#x27;]
+    return {&#x27;n&#x27;:n,&#x27;histograms&#x27;:len(atoms),&#x27;statewise_delta&#x27;:delta,
+        &#x27;deltas_differ&#x27;:True,&#x27;per_attempt_accepted_mass_T_over_7eta&#x27;:True,
+        &#x27;expected_physical_repair_samples_conditional&#x27;:[7*p[&#x27;eta&#x27;]*3*p[&#x27;rR&#x27;]/d for d in delta],
+        &#x27;unconditional_expected_repair_samples_each_state&#x27;:21*p[&#x27;eta&#x27;]*p[&#x27;rR&#x27;]}
+
+def main():
+    OUT.mkdir(parents=True,exist_ok=True);horizons=[512,1024];configuration={&#x27;horizons&#x27;:horizons,
+        &#x27;target_G&#x27;:G,&#x27;trials_per_state&#x27;:80,&#x27;forced_repairs_per_state&#x27;:4,&#x27;seed&#x27;:116600,
+        &#x27;source_sha256&#x27;:hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+        &#x27;scope&#x27;:&#x27;Separate asymmetric target, declared after symmetric run; not its original held-out target.&#x27;}
+    (OUT/&#x27;configuration.json&#x27;).write_text(json.dumps(s.encode(configuration),indent=2)+&#x27;\n&#x27;)
+    audits=[finite_audit(n,compile_program(n)) for n in [1,2,3,5,8]]
+    (OUT/&#x27;small_exact_audits.json&#x27;).write_text(json.dumps(s.encode(audits),indent=2)+&#x27;\n&#x27;)
+    certificates=[];runs=[];stress=[];started=time.perf_counter()
+    with (OUT/&#x27;runtime_trials.csv&#x27;).open(&#x27;w&#x27;,newline=&#x27;&#x27;) as f:
+        writer=csv.writer(f);writer.writerow([&#x27;n&#x27;,&#x27;truth&#x27;,&#x27;trial&#x27;,&#x27;c0&#x27;,&#x27;c1&#x27;,&#x27;c2&#x27;,&#x27;source_samples&#x27;,&#x27;repair_flag&#x27;])
+        for n in horizons:
+            p=compile_program(n);certificates.append(p)
+            print(json.dumps({&#x27;n&#x27;:n,&#x27;finite_upper&#x27;:float(p[&#x27;finite_expected_source_cost_upper&#x27;]),
+                &#x27;r0&#x27;:p[&#x27;r0&#x27;],&#x27;rR&#x27;:p[&#x27;rR&#x27;],&#x27;below_target_every_state&#x27;:p[&#x27;proved_below_n_every_state&#x27;]}),flush=True)
+            for c in [(n,0,0),(0,n,0),(0,0,n),(n//3,n//3,n-2*(n//3))]:
+                for k in range(3):assert 0&lt;=accept(c,k,p)&lt;=1
+            for truth in range(3):
+                rng=s.CountingRandom(configuration[&#x27;seed&#x27;]+100*n+truth);source_samples=[0]
+                def observe(a):source_samples[0]+=1;return int(rng.randrange(10)&lt;(1 if a==truth else 9))
+                ledger={&#x27;repair_flags&#x27;:0,&#x27;repair_attempts&#x27;:0,&#x27;maximum_coin_bits&#x27;:0};costs=[];mean_c=[0,0,0]
+                for trial in range(configuration[&#x27;trials_per_state&#x27;]):
+                    before=source_samples[0];oldflags=ledger[&#x27;repair_flags&#x27;];c=convert(p,observe,rng,ledger)
+                    seen=[0,0,0]
+                    for x in s.uniform_order(c,rng):seen[x]+=1
+                    assert tuple(seen)==c;costs.append(source_samples[0]-before)
+                    for k in range(3):mean_c[k]+=c[k]
+                    writer.writerow([n,truth,trial,*c,costs[-1],ledger[&#x27;repair_flags&#x27;]-oldflags])
+                runs.append({&#x27;n&#x27;:n,&#x27;truth&#x27;:truth,&#x27;trials&#x27;:len(costs),
+                    &#x27;empirical_mean_source_samples&#x27;:sum(costs)/len(costs),&#x27;paid_source_samples&#x27;:sum(costs),
+                    &#x27;empirical_mean_target_counts&#x27;:[x/len(costs) for x in mean_c],**ledger})
+                before=source_samples[0];ledger2={&#x27;repair_flags&#x27;:0,&#x27;repair_attempts&#x27;:0,&#x27;maximum_coin_bits&#x27;:0}
+                for _ in range(configuration[&#x27;forced_repairs_per_state&#x27;]):assert sum(repair(p,observe,rng,ledger2))==n
+                stress.append({&#x27;n&#x27;:n,&#x27;truth&#x27;:truth,&#x27;forced_repair_trials&#x27;:configuration[&#x27;forced_repairs_per_state&#x27;],
+                    &#x27;paid_source_samples&#x27;:source_samples[0]-before,**ledger2})
+    (OUT/&#x27;finite_certificates.json&#x27;).write_text(json.dumps(s.encode(certificates),indent=2)+&#x27;\n&#x27;)
+    (OUT/&#x27;runtime_summary.json&#x27;).write_text(json.dumps({&#x27;runs&#x27;:runs,&#x27;stress&#x27;:stress,
+        &#x27;regular_trials&#x27;:sum(r[&#x27;trials&#x27;] for r in runs),&#x27;paid_regular_samples&#x27;:sum(r[&#x27;paid_source_samples&#x27;] for r in runs),
+        &#x27;paid_forced_repair_samples&#x27;:sum(r[&#x27;paid_source_samples&#x27;] for r in stress),&#x27;wall_seconds&#x27;:time.perf_counter()-started,
+        &#x27;scope&#x27;:&#x27;Ideal randomness proves law; seeded PRNG executions diagnose arithmetic and control flow only.&#x27;},indent=2)+&#x27;\n&#x27;)
+
+if __name__==&#x27;__main__&#x27;:main()
+</pre></html>

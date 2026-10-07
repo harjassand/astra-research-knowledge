@@ -1,0 +1,112 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>&quot;&quot;&quot;Independent all-degree fixed-D2 two-shear obstruction certificate.</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>&quot;&quot;&quot;Independent all-degree fixed-D2 two-shear obstruction certificate.</h1><p>Source ID d-f9dd9f5a9fcd28f5; literature/sources/charges_design9/cycle15/INDEPENDENT_TWO_SHEAR_CHECK_INITIAL.py; 1888 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>&quot;&quot;&quot;Independent all-degree fixed-D2 two-shear obstruction certificate.
+
+Universal free-jet identities accompany the divisor/degree proof. No peer
+script or finite-degree fixture is imported or substituted for that proof.
+&quot;&quot;&quot;
+from pathlib import Path
+import sympy as s
+import hashlib,json,time
+
+begin=time.monotonic()
+checks={}
+def check(name,z):
+    v=s.factor(s.cancel(s.expand(z)))
+    assert v==0,(name,v)
+    checks[name]={&#x27;pass&#x27;:True,&#x27;residual&#x27;:&#x27;0&#x27;}
+def mcheck(name,M):
+    v=[s.factor(s.expand(z)) for z in M]
+    assert all(z==0 for z in v),(name,v)
+    checks[name]={&#x27;pass&#x27;:True,&#x27;residuals&#x27;:[&#x27;0&#x27;]*len(v)}
+
+# Full nonlinear Hessian correction for s=rho+F(b,eta).
+Fx,Fy,Fe,Ws=s.symbols(&#x27;Fx Fy Feta Ws&#x27;)
+Fxx,Fxy,Fxe,Fyy,Fye,Fee=s.symbols(&#x27;Fxx Fxy Fxeta Fyy Fyeta Fetaeta&#x27;)
+Js=s.eye(4)
+Js[2,0]=Fx;Js[2,1]=Fy;Js[2,3]=Fe
+Jphi=Js.inv()
+HF=s.Matrix([[Fxx,Fxy,0,Fxe],[Fxy,Fyy,0,Fye],[0,0,0,0],[Fxe,Fye,0,Fee]])
+entries=s.symbols(&#x27;h0:10&#x27;)
+HW=s.zeros(4)
+k=0
+for i in range(4):
+    for j in range(i,4):
+        HW[i,j]=HW[j,i]=entries[k];k+=1
+Hold=Js.T*HW*Js+Ws*HF
+mcheck(&#x27;nonlinear_Hessian_correction&#x27;,Jphi.T*Hold*Jphi-HW-Ws*HF)
+check(&#x27;global_fibre_chart_det1&#x27;,Js.det()-1)
+
+# The leading s degree of the corrected 3x3 block is3d-2. The only
+# remaining entry capable of making degree4d-3 is dE Fetaeta.
+d,E,Ex,Ey,Exx,Exy,Eyy=s.symbols(&#x27;d E Ex Ey Exx Exy Eyy&#x27;)
+HE=s.Matrix([[Exx,Exy],[Exy,Eyy]])
+gE=s.Matrix([Ex,Ey])
+U=(gE.T*HE.adjugate()*gE)[0]
+Md=(d-1)*E*HE.det()-d*U
+lead3=HE.row_join(d*gE).col_join((d*gE).T.row_join(s.Matrix([[d*(d-1)*E]])))
+check(&#x27;universal_leading_bordered3&#x27;,lead3.det()-d*Md)
+check(&#x27;universal_highest_two_shear_coefficient&#x27;,d*E*Fee*lead3.det()-d**2*E*Fee*Md)
+
+# Exact generic g-adic leading term for E=g^m h. The rescaled Hessian
+# avoids fractional/negative symbolic exponents and covers m=1 as well.
+eps,m,h,gx,gy,hx,hy=s.symbols(&#x27;eps m h gx gy hx hy&#x27;)
+gxx,gxy,gyy,hxx,hxy,hyy=s.symbols(&#x27;gxx gxy gyy hxx hxy hyy&#x27;)
+gg=s.Matrix([gx,gy]);gh=s.Matrix([hx,hy])
+Hg=s.Matrix([[gxx,gxy],[gxy,gyy]])
+Hh=s.Matrix([[hxx,hxy],[hxy,hyy]])
+AA=m*(m-1)*h*(gg*gg.T)+m*eps*(h*Hg+gg*gh.T+gh*gg.T)+eps**2*Hh
+vv=m*h*gg+eps*gh
+scaled=s.expand((d-1)*h*AA.det()-d*(vv.T*AA.adjugate()*vv)[0])
+Kg=(gg.T*Hg.adjugate()*gg)[0]
+check(&#x27;g_adic_constant_rank1_cancellation&#x27;,scaled.subs(eps,0))
+check(&#x27;g_adic_leading_multiplicity_coefficient&#x27;,s.Poly(scaled,eps).coeff_monomial(eps)
+      +m**2*(d+m-1)*h**3*Kg)
+check(&#x27;multiplicity_one_exception_included&#x27;,s.Poly(scaled,eps).coeff_monomial(eps).subs(m,1)+d*h**3*Kg)
+
+# Euler identities for a homogeneous polynomial of degree e&gt;1.
+x,y,rho,eta,ee=s.symbols(&#x27;x y rho eta e&#x27;)
+xx=s.Matrix([x,y])
+ge=HE*xx/(ee-1)
+Ev=(xx.T*HE*xx)[0]/(ee*(ee-1))
+Uv=(ge.T*HE.adjugate()*ge)[0]
+check(&#x27;homogeneous_Euler_contraction&#x27;,Uv-ee*Ev*HE.det()/(ee-1))
+check(&#x27;homogeneous_M_factor&#x27;,(d-1)*Ev*HE.det()-d*Uv
+      +(d+ee-1)*Ev*HE.det()/(ee-1))
+
+# Fixed D2 pair computed in cycle14; verify its decisive algebra directly.
+G1=-x**3-x**2*y+2*x*y+37*x+25*y
+G2=2*x**3+2*x**2*y+4*x**2-50*x-34*y
+a=x**2-17
+b=x**3+2*x**2-25*x
+rr=34-8*x
+check(&#x27;G2_primitive_y_form&#x27;,G2-2*(a*y+b))
+check(&#x27;primitive_remainder&#x27;,b-(x+2)*a-rr)
+check(&#x27;primitive_Bezout&#x27;,s.Rational(16,17)*a+s.Rational(2,17)*(x+s.Rational(17,4))*rr-1)
+assert s.gcd(a,b)==1
+checks[&#x27;primitive_gcd1&#x27;]={&#x27;pass&#x27;:True,&#x27;residual&#x27;:&#x27;gcd=1&#x27;}
+def curve(P):
+    u=s.Matrix([s.diff(P,x),s.diff(P,y)])
+    return s.expand((u.T*s.hessian(P,(x,y)).adjugate()*u)[0])
+check(&#x27;first_only_shear_curvature_nonzero&#x27;,curve(G1).subs({x:0,y:0})+3700)
+check(&#x27;second_only_shear_curvature_nonzero&#x27;,curve(G2).subs({x:0,y:0})-9248)
+Jac=s.Matrix([G1,G2]).jacobian((x,y)).det()
+expected=-4*((x**2+8*x+17)*y+x**3+10*x**2+25*x+2)
+check(&#x27;no_shear_Jacobian_nonconstant&#x27;,Jac-expected)
+
+result={
+ &#x27;checks&#x27;:checks,
+ &#x27;interface&#x27;:&#x27;psi=h0+G1[rho+F(b,eta)]+G2[eta+H(b,rho+F)], fixed D2, F/H arbitrary polynomial tails with globally zero constant and first fibre jets; old base and pivot fixed.&#x27;,
+ &#x27;source_legality&#x27;:&#x27;Two triangular shears and the prescribed unimodular D2 have global polynomial inverses at every base. Fixed normalizing U/C0 and polynomial critical section are prior gated inputs.&#x27;,
+ &#x27;generic_coefficient&#x27;:&#x27;For d=deg_s H&gt;=2,E=G2 H_d, highest corrected determinant coefficient s^(4d−3)=d² E F_etaeta M_d(E).&#x27;,
+ &#x27;elementary_lemma&#x27;:&#x27;For polynomial E!=0,d&gt;=2,M_d(E)=0 implies E is a polynomial in one affine linear form. Complete divisor/tangent/Euler proof saved separately; these exact free-jet gates support it.&#x27;,
+ &#x27;class_consequence&#x27;:&#x27;There is no nonzero constant Hessian determinant in this entire all-degree normalized two-shear class. Simultaneously nonlinear F/H fail via irreducible G2; one-shear cases fail via K_Gi!=0; the zero-shear case has nonconstant JacG².&#x27;,
+ &#x27;attribution&#x27;:&#x27;All-degree two-shear/cylinder lead proposed by charges_design9; complete chain, multiplicity lemma, divisor proof and all degenerate branches independently reconstructed here. No peer script executed.&#x27;,
+ &#x27;not_claimed&#x27;:[&#x27;Arbitrary legal source charts excluded&#x27;,&#x27;Affine fibre jets changing the prescribed D2 covered&#x27;,&#x27;Old-pivot-moving charts covered&#x27;,&#x27;All direct degree7 repairs impossible&#x27;,&#x27;Historical novelty or external validation&#x27;,&#x27;HC4 or JC2 resolved&#x27;],
+ &#x27;elapsed_seconds&#x27;:time.monotonic()-begin,
+ &#x27;script_sha256&#x27;:hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+ &#x27;sympy_version&#x27;:s.__version__,
+}
+dest=Path(&#x27;results/hessian_check12/cycle15/two_shear_irreducible_obstruction.json&#x27;)
+dest.parent.mkdir(parents=True,exist_ok=True)
+dest.write_text(json.dumps(result,indent=2,ensure_ascii=False)+&#x27;\n&#x27;)
+print(json.dumps({&#x27;pass&#x27;:True,&#x27;checks&#x27;:len(checks),&#x27;elapsed_seconds&#x27;:result[&#x27;elapsed_seconds&#x27;],&#x27;result&#x27;:str(dest)},indent=2))
+</pre></html>

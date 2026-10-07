@@ -1,0 +1,193 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>\section{Meta Algorithm}</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>\section{Meta Algorithm}</h1><p>Source ID d-07b990d0faa386b8; literature/sources/metric_geometry10/cycle18/2007.01445v5_meta_algo.tex; 5184 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>\section{Meta Algorithm}
+\label{sec:meta_algo}
+
+In this section, we present a simple meta algorithm (\Cref{alg:meta_algo}) that achieves the oracle complexity in \Cref{thm:polyhedra}. While this meta algorithm requires computing the centroids and covariance matrices of polytopes and is therefore not efficient, its oracle complexity analysis contains most of the key insights of this paper. 
+We give an efficient (but more complicated) implementation of this meta algorithm and prove \Cref{thm:polyhedra} in \Cref{sec:implementation}. 
+
+\begin{theorem}[Oracle Complexity in \Cref{thm:polyhedra}] \label{thm:meta_algo}
+Given a separation oracle $\SO$ for a convex function $f$ defined on $\mathbb{R}^n$, and a $\gamma$-approximation algorithm $\textsc{ApproxSVP}$ for the shortest vector problem. 
+If the set of minimizers $K^*$ of $f$ is a rational polyhedron contained in a box of radius $R$ and has LCM vertex complexity at most $\varphi \geq 0$, then there is a randomized algorithm that with high probability finds a vertex of $K^*$ using $O(n(\varphi + \log(\gamma n R)))$ calls to $\SO$.
+\end{theorem}
+
+
+\subsection{The Meta Algorithm}
+\label{subsec:the_meta_algo}
+By the argument in the beginning of \Cref{subsec:proof_overview}, we may assume without loss of generality that $f$ has a unique minimizer $x^* \in S_\varphi^n$. We therefore describe our algorithm under this assumption. 
+
+Our meta algorithm maintains an affine subspace $W$, a polytope $K \subseteq W$ containing the rational minimizer $x^*$ of $f$, and a lattice $\Lambda$. 
+It also maintains the centroid $x_K$ and covariance matrix $\Sigma_K$ of the polytope $K$. 
+In the beginning, the affine subspace $W = \mathbb{R}^n$, polytope $K = B_\infty(R)$ and lattice $\Lambda = \mathbb{Z}^n$. 
+In each iteration of the algorithm (i.e. each while loop), the algorithm uses the $\gamma$-approximation algorithm \textsc{ApproxSVP} to find a short non-zero vector $v \in \Lambda$ under $\Sigma_K$-norm. 
+If the vector $v$ satisfies $\norm{v}_{\Sigma_K} \geq \frac{1}{10n2^{2 \varphi}}$,
+then the algorithm runs the center of gravity method (\Cref{thm:CG}) for one more step, and updates $x_K$ and $\Sigma_K$ to be the centroid and covariance matrix of the new polytope $K$. 
+We remark that the criterion for performing the cutting plane step comes from the convex geometry fact that $K \subseteq x_K + 2n \cdot E(\Sigma_K^{-1})$ (Theorem~\ref{thm:isotropic_rounding}).
+
+
+If, on the other hand, that $\norm{v}_{\Sigma_K} &lt; \frac{1}{10n2^{2 \varphi}}$, then the algorithm uses Lemma~\ref{lem:reduce_dimension} to find a hyperplane $P$ that contains $K \cap S_\varphi^n$, where we recall from \Cref{defn:Sphi} that $S_\varphi^n$ is the set of all rational vectors in $\mathbb{R}^n$ with LCM vertex complexity at most $\varphi$. 
+Specifically, the hyperplane $P = \{x: v^\top x = (v - z)^\top x_K + \lceil z^\top x_K \rfloor_\varphi \}$ for some integral vector $z \in \mathbb{Z}^n$ such that $v = \Pi_{W_0}(z)$ and $W_0 = -x_K + W$ is the translation of $W$ that passes through the origin.
+One may find such a vector $z \in \mathbb{Z}^n$ efficiently by solving the closest vector problem $\min_{z \in \mathbb{Z}^n} \norm{z - v}_{P_{W_0}}$, where $P_{W_0}$ is the projection matrix onto the subspace $W_0$. 
+As mentioned earlier, the rounding $\lceil \cdot \rfloor_\varphi$ can also be performed efficiently using the continued fraction method. 
+After constructing the hyperplane $P$, the algorithm then recurses on the lower-dimensional affine subspace $W \cap P$, updates $K$ to be $K \cap P$, and updates $x_K$ and $\Sigma_K$ to be the centroid and covariance matrix of the new polytope $K \cap P$. 
+The algorithm obtains a new lattice with rank reduced by one by projecting the current lattice $\Lambda$ onto $P_0$, a translation of $P$ that passes through the origin.
+
+
+
+The above procedure stops when $\dim(W) = 0$, in which case $K$ contains a unique rational point $x^*$ which will be the output of the algorithm. 
+Note that when $\dim(W) = 1$, the algorithm reduces to a binary search on the segment $K \subseteq W$. 
+A formal description of the algorithm is given in \Cref{alg:meta_algo}.
+
+
+We remark that \Cref{alg:meta_algo} is not efficient since it requires the computation of the centroid and covariance matrix in Line \ref{line:cg_1} and \ref{line:cg_2}. Line \ref{line:cg_1} can easily be made efficient using the approximate center of gravity method as in \Cref{thm:randomwalkcg}. However, it is not clear how to efficiently implement Line \ref{line:cg_2} since we do not know an ellipsoid satisfying condition \eqref{eq:warm_start} in \Cref{thm:sampling_polytope}, and thus approximate centroid and covariance matrix might not be efficiently computable by sampling. We address this computational issue in the next section. 
+
+
+\begin{algorithm}[H]\caption{}\label{alg:meta_algo}
+\begin{algorithmic}[1]
+\Procedure{\textsc{MetaALG}}{$\SO,R, \varphi$} 
+\State Affine subspace $W \leftarrow \mathbb{R}^n$, polytope $K \leftarrow B_\infty(R)$, lattice $\Lambda \leftarrow \mathbb{Z}^n$
+\State Centroid $x_K \leftarrow \cg(K)$, covariance matrix $\Sigma_K \leftarrow \Cov(K)$ 
+\Comment{$x_K + E(\Sigma_K^{-1}) / 2 \subseteq K \subseteq x_K + 2n \cdot E(\Sigma_K^{-1})$}
+\While{$\dim(W) &gt; 0$} 
+	\State $v \leftarrow \textsc{ApproxSVP}(\Lambda, \Sigma_K)$ 
+   \Comment{$v \in \Lambda \setminus \{0\}$}
+	\If{$\norm{v}_{\Sigma_K} \geq \frac{1}{10n 2^{2 \varphi}}$}
+		\State $K \leftarrow \textsc{CenterOfGravity}(\SO, K)$ \label{line:CG}
+		%\State $(K&#x27;, x_{K&#x27;}, \Sigma_{K&#x27;}) \leftarrow \textsc{CenterOfGravity}(\SO,K, T, \epsilon)$ as in Theorem~\ref{thm:randomwalkcg} \label{line:randomwalkcg} 
+		\State $x_K \leftarrow \cg(K)$, $\Sigma_K \leftarrow \Cov(K)$ \label{line:cg_1}
+	\Else
+	\State Find $z \in \mathbb{Z}^n$ such that $v = \Pi_{W_0}(z)$ \label{line:dim_reduce_start_improved} 
+	\Comment{Subspace $W_0 = -x_K + W$} 
+	\State Construct $P \leftarrow \{y: v^\top y = (v - z)^\top x_K + \lceil z^\top x_K \rfloor_\varphi \}$ 
+	\label{line:reduce_dim_begin}
+	\State $W \leftarrow W \cap P$, $K \leftarrow K \cap P$ 
+	\Comment{Dimension reduction}
+	\State $x_K \leftarrow \cg(K)$, $\Sigma_K \leftarrow \Cov(K)$ \label{line:cg_2}
+	\State Construct hyperplane $P_0 \leftarrow \{y : v^\top y = 0\}$
+	\State $\Lambda \leftarrow \Pi_{P_0}(\Lambda)$ \label{line:reduce_dim_end} \Comment{Lattice projection}
+	\EndIf
+\EndWhile
+\State \textbf{Return} unique point $x^* \in K$
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+
+
+
+
+\subsection{Oracle Complexity Analysis}
+
+%By the argument in the beginning of Section~\ref{subsec:proof_overview}, we can assume wlog that $f$ has a unique minimizer $x^* \in S_\varphi^n$.  
+We start by proving the correctness of \Cref{alg:meta_algo}.
+
+
+
+\begin{lemma}[Correctness of \textsc{MetaALG}] \label{lem:correctness_meta_algo}
+Assuming the conditions in \Cref{thm:meta_algo} and that $f$ has a unique minimizer $x^* \in S_\varphi^n$, \Cref{alg:meta_algo} finds $x^*$. 
+\end{lemma}
+
+\begin{proof}
+Note that in the beginning of each iteration, we have  
+$K \subseteq W$ and $\Lambda \subseteq W_0$, where $W_0$ is the translation of $W$ that passes through the origin. 
+We first argue that the lattice $\Lambda$ is in fact the orthogonal projection of $\mathbb{Z}^n$ onto the subspace $W_0$, i.e. $\Lambda = \Pi_{W_0}(\mathbb{Z}^n)$. 
+This is required for Lemma~\ref{lem:reduce_dimension} to be applicable. 
+Clearly $\Lambda = \Pi_{W_0}(Z)$ holds in the beginning of the algorithm since $\Lambda = \mathbb{Z}^n$ and $W = \mathbb{R}^n$.
+Notice that the \textsc{CenterOfGravity} procedure in Line~\ref{line:CG} keeps $\Lambda$ and $W$ the same. 
+Each time we reduce the dimension in Line~\ref{line:reduce_dim_begin}-\ref{line:reduce_dim_end}, we have
+\begin{align*}
+\Pi_{W_0 \cap P_0}(\mathbb{Z}^n) = \Pi_{W_0 \cap P_0}(\Pi_{W_0}(\mathbb{Z}^n)) = \Pi_{W_0 \cap P_0}(\Lambda) ,
+\end{align*}
+where the first equality follows because $W_0 \cap P_0$ is a subspace of $W_0$.
+Since $\Pi_{P_0}(\Lambda) = \Pi_{W_0 \cap P_0}(\Lambda)$ as $v \in W_0$, this shows that the invariant $\Lambda = \Pi_{W_0}(\mathbb{Z}^n)$ holds throughout the algorithm. 
+
+
+
+%As we have assumed that $f$ has a unique minimizer $x^* \in S_\varphi^n$, 
+We now prove that Algorithm~\ref{alg:meta_algo} finds the unique minimizer $x^* \in S_\varphi^n$.  
+Note that in the beginning of the algorithm, we have $x^* \in K$. 
+Since \textsc{CenterOfGravity} in Line~\ref{line:CG} always preserves $x^* \in K$, we only need to prove that dimension reduction in Line~\ref{line:reduce_dim_begin}-\ref{line:reduce_dim_end} preserves $x^* \in K$.
+In the following, we show the stronger statement that each dimension reduction iteration in Line~\ref{line:reduce_dim_begin}-\ref{line:reduce_dim_end} preserves all rational points in $K \cap S_\varphi^n$. 
+
+
+Since \Cref{alg:meta_algo} maintains $x_K = \cg(K)$ and $\Sigma_K = \Cov(K)$ in every iteration,
+an immediate application of \Cref{thm:isotropic_rounding} gives the following sandwiching condition: 
+\begin{align} \label{eq:sandwiching_conditon}
+x_K + E(\Sigma_K^{-1})/2 \subseteq K \subseteq x_K + 2n \cdot E(\Sigma_K^{-1}).
+\end{align}
+
+Now we proceed to show that each dimension reduction iteration preserves all rational points in $K \cap S_\varphi^n$. 
+By the RHS of \eqref{eq:sandwiching_conditon}, we have $K \cap S_\varphi^n \subseteq (x_K + 2n \cdot E(\Sigma_K^{-1})) \cap S_\varphi^n$. 
+Since $\norm{v}_{\Sigma_K} &lt; \frac{1}{10n2^{2 \varphi}}$ is satisfied in a dimension reduction iteration, Lemma~\ref{lem:reduce_dimension} shows that all rational points in $(x_K + 2n \cdot E(\Sigma_K^{-1})) \cap S_\varphi^n$ lie on the hyperplane given by $P = \{y: v^\top y = (v - z)^\top x_K + \lceil z^\top x_K \rfloor_\varphi \}$. 
+Thus we have $K \cap S_\varphi^n \subseteq K \cap P$ and this finishes the proof of the lemma. 
+\end{proof}
+
+
+
+Next, we prove the oracle complexity upper bound of \Cref{alg:meta_algo} in \Cref{thm:meta_algo}. 
+
+\begin{lemma}[Oracle complexity of \textsc{MetaALG}] \label{lem:oracle_complexity_meta_algo}
+Assuming the conditions in 
+\Cref{thm:meta_algo} and that $f$ has a unique minimizer $x^* \in S_\varphi^n$, \Cref{alg:meta_algo} makes at most $O(n (\varphi + \log(\gamma n R)))$ calls to $\SO$. 
+\end{lemma}
+
+\begin{proof}
+We note that the oracle is only called when \textsc{CenterOfGravity} is invoked in Line~\ref{line:CG}, and each run of \textsc{CenterOfGravity} makes one call to $\SO$ according to \Cref{thm:CG}. 
+To upper bound the total number of runs of \textsc{CenterOfGravity}, we consider the potential function 
+\begin{align*}
+\Phi = \log(\vol(K) \cdot \det(\Lambda)).
+\end{align*}
+In the beginning, $\Phi = \log(\vol(B_\infty(R)) \cdot \det(I)) = n \log (R)$. 
+Each time \textsc{CenterOfGravity} is called in Line~\ref{line:CG}, we have from \Cref{thm:CG} that the volume of $K$ decreases by at least a constant factor, so the potential function decreases by at least $\Omega(1)$ additively. 
+
+
+
+To analyze the change in the potential function after dimension reduction, we consider a maximal sequence of consecutive dimension reduction iterations $t_0+1, \cdots, t_0 + k$, i.e. \textsc{CenterOfGravity} is invoked in iteration $t_0$ and $t_0 + k+1$, while every iteration in $t_0 + 1,\cdots, t_0 + k$ decreases the dimension by one. 
+We shall use superscript $(i)$ to denote the corresponding notations in the beginning of iteration $t_0 + i$, for any integer $i \geq 0$. 
+In particular, in the beginning of iteration $t_0 + 1$, we have a convex body $K^{(1)} \subseteq K^{(0)} \subseteq W^{(0)} = W^{(1)}$, and after the sequence of dimension reduction iterations, we reach a convex body $K^{(k + 1)} = K^{(1)} \cap W^{(k + 1)} \subseteq K^{(0)} \cap W^{(k+1)}$. 
+The lattice changes from $\Lambda^{(0)} = \Lambda^{(1)} \subseteq W_0^{(1)}$ to $\Lambda^{(k + 1)} = \Pi_{W_0^{(k + 1)}}(\Lambda^{(1)}) = \Pi_{W_0^{(k + 1)}}(\Lambda^{(0)})$, where we recall that subspaces $W_0^{(i)}$ are translations of the affine subspaces $W^{(i)}$ that pass through the origin. 
+Note that the potential at the beginning of this maximal sequence of dimension reduction iterations is 
+\begin{align*}
+e^{\Phi^{(0)}} = \vol(K^{(0)}) \cdot \det(\Lambda^{(0)}) = \frac{\vol(K^{(0)})}{\det( (\Lambda^{(0)})^*)} .
+\end{align*}
+The potential after this sequence of dimension reduction iterations is
+\begin{align*}
+e^{\Phi^{(k+1)} } &amp; = \vol(K^{(k+1)}) \cdot \det(\Lambda^{(k+1)}) 
+ = \vol(K^{(1)} \cap W^{(k+1)}) \cdot \det(\Pi_{W_0^{(k+1)}}(\Lambda^{(0)})) \\
+&amp; = \frac{\vol(K^{(1)} \cap W^{(k+1)})}{\det( (\Pi_{W_0^{(k+1)}}(\Lambda^{(0)}))^* )} = \frac{\vol(K^{(1)} \cap W^{(k+1)})}{\det( (\Lambda^{(0)})^* \cap W_0^{(k+1)} )} \leq \frac{\vol(K^{(0)} \cap W^{(k+1)})}{\det( (\Lambda^{(0)})^* \cap W_0^{(k+1)} )},
+\end{align*}
+where the last equality follows from the duality $(\Pi_{W_0^{(k+1)}}(\Lambda^{(0)}))^* = (\Lambda^{(0)})^* \cap W_0^{(k+1)}$ in Fact~\ref{fact:lattice_duality}.
+Since $W^{(k+1)}$ is a translation of the subspace $W_0^{(k+1)}$, we can apply \Cref{lem:high_dim_slicing} by taking $L = (\Lambda^{(0)})^*$ to obtain
+
+\begin{align} \label{eq:pot_change_dim_reduce_1}
+e^{\Phi^{(k+1)} } \leq e^{\Phi^{(0)}} \cdot \frac{k^{O(k)}}{\lambda_1(\Lambda^{(0)}, K^{(0)})^k},
+\end{align} 
+where $\lambda_1(\Lambda^{(0)}, K^{(0)})$ is the shortest non-zero vector in $\Lambda^{(0)}$ under the norm $\norm{ \cdot}_{\Cov(K^{(0)})}$.
+As \textsc{CenterOfGravity} is invoked in iteration $t_0$, we have $\norm{v^{(0)}}_{\Sigma_K^{(0)}} \geq \frac{1}{10n 2^{2 \varphi}}$ for the output vector $v^{(0)} \in \Lambda^{(0)} \setminus \{0\}$. 
+Since the \textsc{ApproxSVP} procedure is $\gamma$-approximation and that $\Sigma_K^{(0)} = \Cov(K^{(0)})$, this implies that $\lambda_1(\Lambda^{(0)}, K^{(0)}) \geq \frac{\Omega(1)}{\gamma n 2^{2 \varphi}}$. It then follows that
+\begin{align*}
+e^{\Phi^{(k+1)} } \leq e^{\Phi^{(0)}} \cdot (\gamma n 2^{\varphi})^{O(k)}.
+\end{align*}
+This shows that after a sequence of $k$ dimension reduction iterations, the potential increases additively by at most $O(k \log(\gamma n 2^{\varphi}))$. 
+As there are at most $n$ dimension reduction iterations, the total amount of potential increase due to dimension reduction iterations is thus at most $O(n \log(\gamma n 2^{\varphi}))$. 
+
+
+Finally we note that whenever the potential becomes smaller than $-10 n \log(20 n \gamma 2^{2 \varphi})$, Minkowski&#x27;s first theorem (Theorem~\ref{thm:minkowski_shortest_vector}) shows the existence of a non-zero vector $v \in \Lambda$ with $\norm{v}_{\Sigma_K} &lt; \frac{1}{20n \gamma 2^{2 \varphi}}$. 
+This implies that the $\gamma$-approximation algorithm \textsc{ApproxSVP} for the shortest vector problem will find a non-zero vector $v&#x27; \in \Lambda$ that satisfies $\norm{v&#x27;}_{\Sigma_K} &lt; \frac{1}{20n 2^{2 \varphi}}$, and thus such an iteration will not invoke $\textsc{CenterOfGravity}$. 
+Therefore, \Cref{alg:meta_algo} runs $\textsc{CenterOfGravity}$ at most $O(n \log(\gamma n 2^{\varphi}) + n \log(R)) = O(n(\varphi + \log(\gamma n R)))$ times. 
+Since each run of $\textsc{CenterOfGravity}$ makes one call to $\SO$, the total number of calls to $\SO$ made by \Cref{alg:meta_algo} is thus $O(n(\varphi + \log(\gamma n R)))$. 
+This finishes the proof of the lemma. 
+\end{proof}
+
+
+
+
+\begin{proof}[Proof of \Cref{thm:meta_algo}]
+By the argument in the beginning of \Cref{subsec:proof_overview}, we may assume without loss of generality that $f$ has a unique minimizer $x^* \in S_\varphi^n$.
+The correctness of \Cref{alg:meta_algo} is given in \Cref{lem:correctness_meta_algo}, and its oracle complexity is upper bounded in \Cref{lem:oracle_complexity_meta_algo}. 
+These finish the proof of the theorem. 
+\end{proof}
+
+
+
+
+ 
+</pre></html>

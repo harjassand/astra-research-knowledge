@@ -1,0 +1,53 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>&quot;&quot;&quot;Exact affine stationary-cofactor construction and finite EP checks.&quot;&quot;&quot;</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>&quot;&quot;&quot;Exact affine stationary-cofactor construction and finite EP checks.&quot;&quot;&quot;</h1><p>Source ID d-3a63a7a0c9b584a4; literature/sources/r11_logic/cycle6/r17_nonequilibrium__ep_certificate_replay.py; 794 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>&quot;&quot;&quot;Exact affine stationary-cofactor construction and finite EP checks.&quot;&quot;&quot;
+from pathlib import Path
+import json,math
+import sympy as s
+import numpy as np
+
+root=Path(__file__).resolve().parents[2]
+records=[]
+for n in [3,4,5,6]:
+    q=s.zeros(n)
+    for i in range(n-1):
+        q[i,i+1]=s.Rational(3+i,3)
+        q[i+1,i]=s.Rational(8+(i%2),4)
+    u,v=0,n-1;a=s.Rational(3,2);q[v,u]=a
+    for i in range(n):q[i,i]=-sum(q[i,j] for j in range(n) if j!=i)
+    perturb=s.zeros(n);perturb[u,v]=1;perturb[u,u]=-1
+    b=s.symbols(&#x27;b&#x27;,real=True)
+    taus=[(-q-b*perturb).minor_submatrix(i,i).det() for i in range(n)]
+    Ai=[z.subs(b,0) for z in taus];Bi=[s.expand(z).coeff(b) for z in taus]
+    assert all(s.cancel(taus[i]-Ai[i]-b*Bi[i])==0 for i in range(n))
+    assert all(x&gt;0 for x in Ai) and all(x&gt;=0 for x in Bi)
+    A=sum(Ai);Bb=sum(Bi)
+    pi=s.Matrix(1,n,[(Ai[i]+b*Bi[i])/(A+b*Bb) for i in range(n)])
+    assert all(s.cancel(z)==0 for z in pi*(q+b*perturb))
+    Ki=[abs(A*Bi[i]-Ai[i]*Bb)/A**2 for i in range(n)]
+    Ci=[];ci=[]
+    for i in range(n):
+        cb=s.Rational(0);ce=s.Rational(0)
+        for j in range(n):
+            if i==j or {i,j}=={u,v} or q[i,j]==0:continue
+            assert q[j,i]&gt;0
+            ratio=q[i,j]/q[j,i]
+            cb+=q[i,j]*(max(ratio,1/ratio)-1)
+            ce+=q[i,j]*s.log(ratio)
+        Ci.append(cb);ci.append(ce)
+    H=a*Ki[v]+1+Ki[u];La=max(a,1/a)-1
+    Cep=s.factor(sum(Ki[i]*Ci[i] for i in range(n))+H*(La+1)+(a+1))
+    J=a*pi[v]-b*pi[u]
+    sigma=sum(pi[i]*ci[i] for i in range(n))+J*s.log(a/b)
+    ds=s.diff(sigma,b)
+    f=s.lambdify(b,b*ds,&#x27;numpy&#x27;)
+    grid=np.logspace(-10,0,500)
+    maximum=float(np.max(np.abs(f(grid))))
+    assert maximum&lt;=float(Cep)*(1+1e-10)
+    records.append({&#x27;n&#x27;:n,&#x27;A_i&#x27;:[str(x) for x in Ai],&#x27;B_i&#x27;:[str(x) for x in Bi],
+                    &#x27;stationary_identity_exact&#x27;:True,&#x27;C_EP_rational&#x27;:str(Cep),
+                    &#x27;C_EP_float&#x27;:float(Cep),&#x27;finite_max_b_abs_EP_derivative&#x27;:maximum,
+                    &#x27;limiting_EP_log_coefficient&#x27;:str(s.factor(a*Ai[v]/A))})
+result={&#x27;scope&#x27;:&#x27;Affine cofactor/stationarity identities exact. Universal derivative bound proved in EFFECTIVE_EP_CERTIFICATE.md; numerical derivative grid is supporting only. Ordinary rates are supplied rationals.&#x27;,
+        &#x27;records&#x27;:records}
+(root/&#x27;results/r17_nonequilibrium/ep_certificate.json&#x27;).write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+print(json.dumps(records,indent=2))
+</pre></html>

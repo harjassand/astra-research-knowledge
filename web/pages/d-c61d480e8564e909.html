@@ -1,0 +1,180 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Cycle 2: actual gradient secants lose a true differential-energy budget</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>Cycle 2: actual gradient secants lose a true differential-energy budget</h1><p>Source ID d-c61d480e8564e909; literature/notes/c_gaussian/cycle2/structured_secant_audit.md; 3388 o200k tokens; role research_note; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre># Cycle 2: actual gradient secants lose a true differential-energy budget
+
+Worker c_gaussian, 2026-10-06. Old artifacts are unchanged. The source is Chen–Chewi–Lu–Zhang, arXiv:2609.38710v1, Appendix B.2–B.3 and Algorithm 3.4. I re-read the actual forward/reverse recursions, independently checked the formulas, and exchanged them with r10 and team C. Agreement is an internal cross-check, not external validation.
+
+**Verdict:** a specific smooth composition permitted by Appendix B.3 has Φ≡0 and a uniformly tiny smoothed-comparison Jacobian, while the source&#x27;s realized secants have full output-coordinate differential energy. Their actual first likelihood estimator has L² norm asymptotic to L²α² sqrt(n)/8. Thus the exact-Jacobian r-only moment proof cannot transfer on the basis of the true/comparison differential budget alone. This example does not establish a nonzero final-output sampling bias: its near-symmetric noise may be protected by clipping cancellation. It is a structured implementation obstruction, stronger than the previous abstract robust-noise example but narrower in its conclusion.
+
+## 1. Fully specified legal composition
+
+Let n≥256, m=n, 0&lt;α≤1/2, 0&lt;L≤1/2. For a frequency ω&gt;0 define
+
+V(x)=sum_{j=1}^n [x_j²/4−α cos(ωx_j)/ω²],
+f(x)=∇V(x)=x/2+(α/ω)sin(ωx), componentwise.
+
+The Hessian is diagonal with entries 1/2+αcos(ωx_j), so V is globally convex, f is 1-Lipschitz and C∞, and f(0)=0. No frequency bound or Hessian-continuity modulus occurs in B.3&#x27;s hypotheses.
+
+Use exactly three steps:
+
+z_0=g, z_1=f(g), z_2=f(g), z_3=(L/2)(z_1−z_2), Φ(g)=z_3.
+
+The third primitive is the identity, and all offsets are zero. The supplied coefficient bound (B.5) holds: for arbitrary B_i with ||B_i||op≤1,
+
+T_1=B_1, T_2=B_2, T_3=(L/2)B_3(B_1−B_2), ||T_3||op≤L.
+
+The graph has S=3, m_0=n, and W=2 bounds all coefficients and f(0). The actual value implementation gives exactly zero, so Φ=hatΦ=0 and ||DΦ||F=0. A compiler could coalesce the duplicate branches and avoid this noise; the source&#x27;s stated recursion does not perform that optimization. This observation limits the inference from the true map to this implementation, rather than proving that every implementation must fail.
+
+## 2. Use the source&#x27;s actual radius relations
+
+Appendix B.3 prescribes
+
+B_graph=(8W)^{4(S+1)}m_0(1+R),
+t=ε min(1,L)/(C B_graph²),
+s_i=t^{S−i+1}, r_i=t s_i.
+
+Here s_1=t³, s_2=t², r_1=t⁴, r_2=t³. The final identity is unaffected by smoothing. One may take R_n=4sqrt(n), fixed ε∈(0,1/2), and any sufficiently large fixed C. Choose
+
+q_n=100sqrt(2log n)/L,
+ω=q_n/s_1.
+
+This is allowed because ω is absent from the source coefficient/gradient-norm bounds. Then
+
+ωs_1=q_n, ωs_2=q_n/t,
+ωr_1=a_n=tq_n→0, ωr_2=b_n=q_n,
+b_n L→∞.
+
+The source primitive remains 1-smooth for every ω. This is a sequence of increasingly oscillatory but uniformly smooth gradients; third and higher derivative bounds diverge, and the source explicitly supplies none. Evaluating the enormous frequency at finite precision can be costly. The mathematical oracle is exact-real gradient access, matching the source model.
+
+## 3. Even the comparison map has a uniform low-energy promise
+
+Gaussian convolution gives
+
+(P_s f)(g)=g/2+(α/ω)e^{−ω²s²/2}sin(ωg).
+
+Consequently
+
+Φ°(g)=(Lα/(2ω))[e^{−q_n²/2}−e^{−q_n²/(2t²)}]sin(ωg),
+
+sup_g ||DΦ°(g)||F²
+≤(nL²α²/4)e^{−q_n²}
+≤L²α²/(4n).
+
+Thus both the original map and the source&#x27;s actual smooth comparison map meet r=1 uniformly. The means of Φ, hatΦ, and Φ° under the standard Gaussian are all zero by oddness. The value discrepancy is at most Lαsqrt(n)e^{−q_n²/2}/(2ω), exponentially tiny. This avoids the loophole that smoothing might destroy the original low-energy promise.
+
+## 4. Exact forward and reverse routines
+
+For a branch with radii r_i,s_i and independent ξ_i, the centered secant is
+
+D_i(v)=v/2+α C_i h_i(v),
+C_i=cos[ω(g+s_i ξ_i)], h_i(v)=sin(ωr_i v)/(ωr_i),
+
+componentwise. The source draws fresh independent branch seeds. Its forward action is
+
+J_g(v)=(Lα/2)[C_1 h_{a_n}(v)−C_2 h_{b_n}(v)].
+
+Its reverse action is different away from zero:
+
+J_g^T(w)=α[C_1 h_{a_n}(Lw/2)−C_2 h_{b_n}(Lw/2)].
+
+This follows by starting w_3=w, propagating w_1=Lw/2 and w_2=−Lw/2, then adding their branch contributions to w_0. Each routine is odd and globally L-Lipschitz, as required by the source. The notation J^T denotes its approximate reverse routine; it is not literally the transpose of a nonlinear map.
+
+At direction zero both have Jacobian
+
+D_v J_g(0)=D_w J_g^T(0)=(Lα/2)diag(C_1−C_2).
+
+For each coordinate and any fixed input g_j,
+
+E C_i=e^{−(ωs_i)²/2}cos(ωg_j),
+E C_i²=½[1+e^{−2(ωs_i)²}cos(2ωg_j)].
+
+Therefore, uniformly in g,
+
+E ||D J_g(0)||F²=(1+o(1)) nL²α²/4.
+
+This contradicts deriving an implemented r=1 Frobenius budget from the true map&#x27;s zero energy. It is not a finite rounding artifact. The reverse routine obeys the same statement.
+
+For the actual covariance action hatΣ(v)=J_{g_1}(J_{g_2}^T(v)) with fresh forward/reverse seeds, the direction derivative at zero is a diagonal product. Uniformly in g_1,g_2,
+
+E ||D hatΣ(0)||F²=(1+o(1)) nL⁴α⁴/16,
+
+instead of the exact-Jacobian budget rL⁴. This remains true when g_1,g_2 are the Gaussian inputs sampled by the cloud gadget, since the lower bounds are uniform in those inputs.
+
+## 5. Large energy at Gaussian directions, not just at zero
+
+For Z standard, put F(a)=E[sin(aZ)/a]²=(1−e^{−2a²})/(2a²). The mixed moment is
+
+G(a,b)=E[sin(aZ)sin(bZ)/(ab)]
+=[e^{−(a−b)²/2}−e^{−(a+b)²/2}]/(2ab).
+
+At g=0 the exact forward action energy is
+
+E||J_0(Z)||²=n(Lα/2)²[q_1F(a_n)+q_2F(b_n)−2μ_1μ_2G(a_n,b_n)],
+
+where q_i=E C_i², μ_i=E C_i. As a_n→0, b_n→∞, and phases become uniform,
+
+E||J_0(Z)||²∼nL²α²/8.
+
+A simple uniform lower bound is nL²α²/16 for sufficiently large n. The first secant branch is essentially a random diagonal linear action. The second branch has bounded output ≤1/b_n and vanishes on ordinary Gaussian directions. Averaging their means is accurate, but their realized energy does not cancel.
+
+## 6. Actual first likelihood estimator loses the r-only moment bound
+
+Let A=Lα/2, and use independent branch seeds in forward and reverse routines. Both maps are coordinatewise, with the same realization reused on Z and Z′ as Algorithm 3.4 requires. On one coordinate,
+
+J_g^T(z)=A C_{r,1}z+e_r(z),
+hatΣ(z)=A² C_{f,1}C_{r,1}z+e_S(z).
+
+Using |sin u−u|≤|u|³/6, |h_b(v)|≤1/b, and the global L-Lipschitz bound on the reverse map gives
+
+||z e_S(z)||L²(N(0,1))
+≤C_α A²[a_n²L²+(b_nL)^−1]=o(A²).
+
+The cosine phases are independent across branches and coordinates. Their second moments tend to 1/2 uniformly in the input, so E(C_{f,1}C_{r,1})²→1/4. For the k=1 summand
+
+W_j=½[Z_j′ hatΣ_j(Z_j′)−Z_j hatΣ_j(Z_j)],
+
+the leading L² norm is A²/2, because E(Z′²−Z²)²=4. The preceding error is o(A²). Every W_j has conditional mean zero given the action realization, since Z_j,Z_j′ are identically distributed. Hence cross-coordinate covariance is exactly zero even after mixing over Brownian inputs, and
+
+||W_1||L²(Q)∼A²sqrt(n)/2=L²α²sqrt(n)/8.
+
+Choosing L_n=n^{−1/8} gives L_n²=n^{−1/4} and
+
+||W_1||2∼(α²/8)n^{1/4}→∞,
+
+while the would-be r=1 clipping scale at p=2 is
+
+L_n²(sqrt(2)+2)+L_n⁴=O(n^{−1/4})→0.
+
+Thus the proposed exact-Jacobian moment refinement is false for this actual secant implementation, despite a uniformly tiny comparison Jacobian. This is a failure of a transfer lemma. Unlike the prior asymmetric scalar-I noise example, no final-output TV lower bound has been established here; the approximate uniform cosine symmetry could make clipped conditional means small despite huge estimator moments.
+
+## 7. Independent audit of team C&#x27;s nonlinear replacement bound
+
+Team C and r10 proposed a weaker sufficient lemma. Suppose S:R^n→R^n is odd, C¹, a-Lipschitz, and uniformly
+
+||DS(x)||F²≤ρa², ||DS(x)||_*≤ρa, ρ≥1.
+
+I independently verified
+
+E exp[tG·S(G)]≤exp[|t|ρa+C t²ρa²], |t|a≤c,
+
+and thus ||G·S(G)||p≤Ca[ρ+sqrt(ρp)+p]. This is uncentered and has a leading ρ term; it does not reproduce the sharper exact-matrix sqrt(ρ) cancellation.
+
+Proof: y=x−tS(x) is a global diffeomorphism for |t|a&lt;1, by the contraction mapping argument, and its determinant is positive. The exponent −||x||²/2+t x·S(x) becomes −||y||²/2+t²||S(x(y))||²/2. The log determinant power series gives
+
+−log det(I−tDS)≤|t|ρa+C t²ρa²,
+
+using |tr(DS)^j|≤||DS||F² a^{j−2} for j≥2. Also ||S(x(y))||≤||S(y)||/(1−|t|a). Oddness plus Gaussian Poincaré gives E||S(G)||²≤ρa². For R=||S(G)||, Gaussian concentration and an independent scalar H~N(0,1) give
+
+Eexp(λR²)=E_H E_Gexp(sqrt(2λ)HR)
+≤(1−2λa²)^{−1/2}exp[λ(ER)²/(1−2λa²)].
+
+For λa²≤c this is ≤exp(Cλρa²). Substitute λ=t²/[2(1−|t|a)²], then apply Chernoff and tail integration. The proof extends to Lipschitz S with justified area/change-of-variables approximation; C¹ suffices for the source&#x27;s smooth constructed maps. I found no fatal gap.
+
+A supplied realized-action derivative budget can therefore support a weaker nonlinear correction bound. It must control the implementation throughout the direction domain, not just DΦ. A robust coefficient-graph promise, or primitive Hessian/action-energy bounds propagated through the graph, is a possible sufficient interface. The cancelling example shows that true-map energy alone is insufficient. Acquisition and verification of such a uniform promise remain separate costs.
+
+## 8. Finite reconstruction, limitations, next step
+
+Run `python3 work/c_gaussian/cycle2/structured_secants.py`. It uses exactly the source forward/reverse formulas in scaled coordinates and saves results/c_gaussian/cycle2/structured_secants.json. It imports no other worker code. For n=65,536, L=.25, α=.25, the true derivative energy is zero, the comparison-energy log upper bound is below −3.5 million, the expected forward direction-Jacobian energy is 64 against budget .0625, and Gaussian-direction action energy is 32.0000. The covariance-action direction-Jacobian energy is approximately .0625 against budget .00390625. The empirical W_1 L² norm is .1346 versus asymptotic .125; finite simulation is illustrative, and the analytic limit proves failure of the moment transfer.
+
+To avoid inaccurate floating-point reduction of the enormous exact-real ω, Monte Carlo uses uniform wrapped phases. A wrapped N(0,σ²) phase differs from uniform phase in TV by at most sum_{k≥1}e^{−k²σ²/2}. Here σ≥q_n; all 4n phases jointly differ by at most 4n e^{−q_n²/2}/(1−e^{−q_n²/2}), with log bound below −1.7 million in the final case. Exact closed-form moments retain the true Gaussian phases. Finite precision and gradient-function evaluation costs are not measured.
+
+No novelty claim is made for branch cancellation, Gaussian convolution, or the weaker nonlinear lemma. The consequence is a precise missing hypothesis for future low-r samplers: a true differential-energy promise does not certify the realized source secants. The next falsifiable step is to add shared-seed/common-branch reuse or a structural coefficient budget, derive the resulting action energy and nonlinear quadratic bound, and compare charged work against simplifying this graph to the identically zero map. No whole-sampler improvement is claimed.
+</pre></html>

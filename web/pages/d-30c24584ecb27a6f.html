@@ -1,0 +1,244 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>!/usr/bin/env python3</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>!/usr/bin/env python3</h1><p>Source ID d-30c24584ecb27a6f; literature/sources/stat_exec15/cycle18/metric_use10_cycle18_rational_spectral_basis.py; 3911 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact observed-matrix spectral purification and rational basis selection.
+
+No eigenvectors, floating spectrum or hidden frame are read. Polynomial
+iterations use one common denominator. Inverses/inertia/LDL are exact rational
+arithmetic. A declared local resource limit can yield UNKNOWN.
+&quot;&quot;&quot;
+from __future__ import annotations
+from fractions import Fraction as F
+from math import gcd, lcm
+from pathlib import Path
+import hashlib, json, resource, sys, time, gzip
+sys.set_int_max_str_digits(0)
+
+class Limit(Exception): pass
+class Invalid(Exception): pass
+
+class Budget:
+    def __init__(self,caps):
+        self.start=time.monotonic(); self.caps=caps
+        self.peak_bits=0; self.matmuls=0; self.inverses=0; self.scalar_products=0
+    def check(self):
+        if time.monotonic()-self.start&gt;self.caps[&#x27;max_seconds&#x27;]: raise Limit(&#x27;wall_time_cap&#x27;)
+    def observe(self,values):
+        self.check()
+        for x in values:
+            if isinstance(x,F): sizes=(abs(x.numerator).bit_length(),x.denominator.bit_length())
+            else: sizes=(abs(x).bit_length(),)
+            self.peak_bits=max(self.peak_bits,*sizes)
+        if self.peak_bits&gt;self.caps[&#x27;max_integer_bits&#x27;]: raise Limit(&#x27;integer_bit_cap&#x27;)
+    def predict(self,number):
+        self.check()
+        if number&gt;self.caps[&#x27;max_integer_bits&#x27;]: raise Limit(&#x27;predicted_integer_bit_cap&#x27;)
+    def report(self):
+        peak=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        if sys.platform!=&#x27;darwin&#x27;: peak*=1024
+        return {&#x27;seconds&#x27;:time.monotonic()-self.start,&#x27;peak_integer_bits&#x27;:self.peak_bits,
+                &#x27;rational_matrix_products&#x27;:self.matmuls,&#x27;rational_inverses&#x27;:self.inverses,
+                &#x27;exact_scalar_products&#x27;:self.scalar_products,
+                &#x27;process_peak_bytes_including_libraries&#x27;:peak,&#x27;caps&#x27;:self.caps}
+
+class Mat:
+    def __init__(self,data,den=1,budget=None):
+        self.a=[list(map(int,row)) for row in data]; self.d=int(den)
+        self.n=len(self.a); self.m=len(self.a[0]) if self.n else 0; self.budget=budget
+        if self.d==0 or any(len(row)!=self.m for row in self.a): raise Invalid(&#x27;matrix_shape_or_zero_denominator&#x27;)
+        if self.d&lt;0: self.d=-self.d; self.a=[[-x for x in row] for row in self.a]
+        if budget: budget.observe([self.d]+[x for row in self.a for x in row])
+        g=self.d
+        for row in self.a:
+            for x in row:g=gcd(g,abs(x))
+        if g&gt;1: self.d//=g; self.a=[[x//g for x in row] for row in self.a]
+    @classmethod
+    def fractions(cls,data,budget=None):
+        fs=[[F(x) for x in row] for row in data]; den=1
+        for row in fs:
+            for x in row: den=lcm(den,x.denominator)
+        if budget:budget.observe([den]+[x for row in fs for x in row])
+        return cls([[x.numerator*(den//x.denominator) for x in row] for row in fs],den,budget)
+    @classmethod
+    def eye(cls,n,budget=None):return cls([[int(i==j) for j in range(n)] for i in range(n)],budget=budget)
+    def fr(self):return [[F(x,self.d) for x in row] for row in self.a]
+    def strings(self):return [[str(x) for x in row] for row in self.fr()]
+    def trans(self):return Mat([list(row) for row in zip(*self.a)],self.d,self.budget)
+    def bits(self):return max([self.d.bit_length()]+[abs(x).bit_length() for row in self.a for x in row])
+    def times(self,b):
+        if self.m!=b.n:raise Invalid(&#x27;product_shape&#x27;)
+        if self.budget:
+            self.budget.predict(self.bits()+b.bits()+max(1,self.m.bit_length())+2)
+            self.budget.matmuls+=1
+        ans=[[sum(self.a[i][k]*b.a[k][j] for k in range(self.m)) for j in range(b.m)] for i in range(self.n)]
+        return Mat(ans,self.d*b.d,self.budget)
+    def add(self,b):
+        if (self.n,self.m)!=(b.n,b.m):raise Invalid(&#x27;sum_shape&#x27;)
+        den=lcm(self.d,b.d); p=den//self.d;q=den//b.d
+        return Mat([[p*x+q*y for x,y in zip(ar,br)] for ar,br in zip(self.a,b.a)],den,self.budget)
+    def scale(self,c):
+        c=F(c);return Mat([[c.numerator*x for x in row] for row in self.a],self.d*c.denominator,self.budget)
+    def inverse(self):
+        if self.n!=self.m:raise Invalid(&#x27;inverse_shape&#x27;)
+        n=self.n
+        if self.budget:
+            self.budget.predict(8*(n+1)**2*(self.bits()+n.bit_length()+1));self.budget.inverses+=1
+        rows=[row+[F(int(i==j)) for j in range(n)] for i,row in enumerate(self.fr())]
+        for j in range(n):
+            choices=[i for i in range(j,n) if rows[i][j]]
+            if not choices:raise Invalid(&#x27;singular_matrix&#x27;)
+            pivot=max(choices,key=lambda i:abs(rows[i][j]));rows[j],rows[pivot]=rows[pivot],rows[j]
+            div=rows[j][j];rows[j]=[x/div for x in rows[j]]
+            for i in range(n):
+                if i!=j and rows[i][j]:
+                    c=rows[i][j];rows[i]=[x-c*y for x,y in zip(rows[i],rows[j])]
+            if self.budget:self.budget.observe([x for row in rows for x in row])
+        return Mat.fractions([row[n:] for row in rows],self.budget)
+    def purify(self):
+        if self.n!=self.m:raise Invalid(&#x27;purification_shape&#x27;)
+        if self.budget:
+            self.budget.predict(3*self.bits()+2*self.n.bit_length()+6)
+        pp=Mat(self.a,budget=self.budget); p2=pp.times(pp);p3=p2.times(pp)
+        num=[[3*self.d*x-2*y for x,y in zip(r2,r3)] for r2,r3 in zip(p2.a,p3.a)]
+        return Mat(num,self.d**3,self.budget)
+
+def inertia(matrix):
+    &quot;&quot;&quot;Rational symmetric congruence, including 2x2 zero-diagonal pivots.&quot;&quot;&quot;
+    if matrix.n!=matrix.m or matrix.a!=matrix.trans().a:raise Invalid(&#x27;nonsymmetric_matrix&#x27;)
+    a=matrix.fr(); positive=negative=zero=0; budget=matrix.budget
+    while a:
+        n=len(a); pos=next((i for i in range(n) if a[i][i]),None)
+        if pos is not None:
+            order=[pos]+[i for i in range(n) if i!=pos];a=[[a[i][j] for j in order] for i in order]
+            pivot=a[0][0];positive+=int(pivot&gt;0);negative+=int(pivot&lt;0)
+            a=[[a[i][j]-a[i][0]*a[0][j]/pivot for j in range(1,n)] for i in range(1,n)]
+        else:
+            pair=next(((i,j) for i in range(n) for j in range(i+1,n) if a[i][j]),None)
+            if pair is None:zero+=n;break
+            i,j=pair;order=[i,j]+[k for k in range(n) if k not in pair];a=[[a[p][q] for q in order] for p in order]
+            cross=a[0][1];positive+=1;negative+=1
+            a=[[a[p][q]-(a[p][0]*a[1][q]+a[p][1]*a[0][q])/cross for q in range(2,n)] for p in range(2,n)]
+        if budget:budget.observe([v for row in a for v in row])
+    return [positive,negative,zero]
+
+def ldl(matrix):
+    n=matrix.n;a=matrix.fr(); lower=[[F(int(i==j)) for j in range(n)] for i in range(n)];diag=[]
+    for i in range(n):
+        d=a[i][i]-sum(lower[i][k]**2*diag[k] for k in range(i))
+        if d&lt;=0:raise Invalid(&#x27;nonpositive_LDL_pivot&#x27;)
+        diag.append(d)
+        for j in range(i+1,n):lower[j][i]=(a[j][i]-sum(lower[j][k]*diag[k]*lower[i][k] for k in range(i)))/d
+        if matrix.budget:matrix.budget.observe(diag+[v for row in lower for v in row])
+    return Mat.fractions(lower,matrix.budget),diag
+
+def dyadic_normalizer(d):
+    d=F(d)
+    if d&lt;=0:raise Invalid(&#x27;nonpositive_normalization&#x27;)
+    exponent=d.numerator.bit_length()-d.denominator.bit_length()
+    power=F(2**exponent) if exponent&gt;=0 else F(1,2**(-exponent))
+    if d&lt;power:exponent-=1
+    k=-(exponent//2)
+    two=F(2**k) if k&gt;=0 else F(1,2**(-k))
+    t=d*two**2
+    assert 1&lt;=t&lt;4
+    c=F(1) if t&lt;=F(3,2) else (F(3,4) if t&lt;2 else F(1,2))
+    s=two*c;test=d*s*s
+    assert F(1,2)&lt;=test&lt;=F(3,2)
+    return s,{&#x27;d&#x27;:str(d),&#x27;k&#x27;:k,&#x27;t&#x27;:str(t),&#x27;mantissa&#x27;:str(c),&#x27;scale&#x27;:str(s),&#x27;d_scale_squared&#x27;:str(test)}
+
+def normalize_basis(B):
+    lower,diag=ldl(B.trans().times(B));C=B.times(lower.inverse().trans())
+    scalings=[];records=[]
+    for d in diag:
+        s,record=dyadic_normalizer(d);scalings.append(s);records.append(record)
+    scalemat=Mat.fractions([[scalings[i] if i==j else F(0) for j in range(B.m)] for i in range(B.m)],B.budget)
+    Y=C.times(scalemat); gram=Y.trans().times(Y).fr()
+    for i in range(B.m):
+        for j in range(B.m):
+            assert gram[i][j]==(diag[i]*scalings[i]**2 if i==j else 0)
+    return Y,{&#x27;L&#x27;:lower.strings(),&#x27;D&#x27;:list(map(str,diag)),&#x27;scalings&#x27;:records,&#x27;Y_Gram&#x27;:[[str(x) for x in row] for row in gram]}
+
+def primitive_columns(Q,columns):
+    vectors=[];gcds=[]
+    for j in columns:
+        col=[Q.a[i][j] for i in range(Q.n)];g=0
+        for x in col:g=gcd(g,abs(x))
+        if not g:raise Invalid(&#x27;zero_selected_column&#x27;)
+        gcds.append(g);vectors.append([x//g for x in col])
+    return Mat([[vectors[j][i] for j in range(len(vectors))] for i in range(Q.n)],budget=Q.budget),gcds
+
+def greedy_columns(Q,r,K):
+    selected=[];scores=[];B=None
+    for k in range(r):
+        inv=None if B is None else B.trans().times(B).inverse()
+        best=None
+        for j in range(Q.m):
+            if j in selected:continue
+            vec=[Q.a[i][j] for i in range(Q.n)]
+            score=F(sum(x*x for x in vec))
+            if B is not None:
+                h=[sum(B.a[i][p]*vec[i] for i in range(Q.n)) for p in range(k)]
+                iv=inv.fr();score-=sum(F(h[i])*iv[i][j]*h[j] for i in range(k) for j in range(k))
+            if Q.budget:Q.budget.scalar_products+=1;Q.budget.observe([score])
+            if best is None or score&gt;best[0]:best=(score,j)
+        score,j=best
+        if score&lt;=0:raise Invalid(&#x27;greedy_rank_failure&#x27;)
+        actual=score/Q.d**2
+        if actual&lt;F(1,4*K*Q.n):raise Invalid(&#x27;greedy_proof_bound_failed&#x27;)
+        selected.append(j);scores.append(str(actual));B,_=primitive_columns(Q,selected)
+    return B,selected,scores
+
+def acquire(observed):
+    caps=observed.get(&#x27;budget&#x27;,{&#x27;max_N&#x27;:8,&#x27;max_iterations&#x27;:11,&#x27;max_integer_bits&#x27;:1000000,&#x27;max_seconds&#x27;:45})
+    budget=Budget(caps); output={&#x27;status&#x27;:&#x27;UNKNOWN&#x27;,&#x27;interface&#x27;:&#x27;rational S,W and exact scalar bounds only; no eigenspace/frame&#x27;,&#x27;case&#x27;:observed.get(&#x27;case&#x27;)}
+    try:
+        S=Mat.fractions(observed[&#x27;S&#x27;],budget);W=Mat.fractions(observed[&#x27;W&#x27;],budget)
+        N=S.n;r=int(observed[&#x27;r&#x27;]);gamma=F(observed[&#x27;gamma&#x27;]);eps=F(observed[&#x27;epsilon&#x27;]);eta=F(observed[&#x27;eta&#x27;])
+        if N&gt;caps[&#x27;max_N&#x27;]:raise Limit(&#x27;matrix_order_cap&#x27;)
+        if S.m!=N or (W.n,W.m)!=(N,N) or not 0&lt;=r&lt;=N:raise Invalid(&#x27;shape_or_rank_admission&#x27;)
+        if gamma&lt;=0 or eps&lt;0 or eps&gt;gamma/4 or not 0&lt;eta&lt;1:raise Invalid(&#x27;scalar_gap_or_accuracy_admission&#x27;)
+        iS=inertia(S);iW=inertia(W)
+        if iS[1] or iW!=[N,0,0]:raise Invalid(&#x27;PSD_or_metric_admission&#x27;)
+        Winv=W.inverse()
+        iHigh=inertia(S.add(Winv.scale(-gamma)));iLow=inertia(S.add(Winv.scale(-eps)))
+        if iHigh[0]+iHigh[2]!=r or iHigh[1]!=N-r:raise Invalid(&#x27;top_eigenvalue_certificate_failed&#x27;)
+        if iLow[0]!=r or iLow[1]+iLow[2]!=N-r:raise Invalid(&#x27;tail_eigenvalue_certificate_failed&#x27;)
+        traceW=sum(W.fr()[i][i] for i in range(N));traceInv=sum(Winv.fr()[i][i] for i in range(N))
+        cond=traceW*traceInv;K=max(1,(cond.numerator+cond.denominator-1)//cond.denominator)
+        output[&#x27;inertia&#x27;]={&#x27;S&#x27;:iS,&#x27;W&#x27;:iW,&#x27;at_gamma&#x27;:iHigh,&#x27;at_epsilon&#x27;:iLow}
+        output[&#x27;K&#x27;]=str(K);output[&#x27;condition_bound_method&#x27;]=&#x27;ceil(trace(W)trace(W^-1))&#x27;
+        if r in (0,N):
+            Y=Mat([[] for _ in range(N)],budget=budget) if r==0 else Mat.eye(N,budget)
+            output.update(status=&#x27;PASS&#x27;,Y=Y.strings(),range_error_bound=&#x27;0&#x27;,purification_iterations=0)
+        else:
+            A=S.times(W);Q=A.times(A.add(Mat.eye(N,budget).scale(gamma/2)).inverse())
+            tau=F(1,2**(2*r)*K**r*N**r);target=min(F(1,2*K),eta*tau/K)
+            delta=F(1,3);history=[];steps=0
+            while delta&gt;target:
+                if steps&gt;=caps[&#x27;max_iterations&#x27;]:raise Limit(&#x27;iteration_cap&#x27;)
+                Q=Q.purify();steps+=1;delta=F(7,27) if steps==1 else 3*delta**2
+                history.append({&#x27;step&#x27;:steps,&#x27;shared_entry_bits&#x27;:Q.bits(),&#x27;delta&#x27;:str(delta)})
+            B,columns,scores=greedy_columns(Q,r,K)
+            Y,norm=normalize_basis(B)
+            output.update(status=&#x27;PASS&#x27;,Y=Y.strings(),selected_columns=columns,selected_squared_residuals=scores,
+                          primitive_basis=B.strings(),normalization=norm,purification_iterations=steps,
+                          delta=str(delta),delta_target=str(target),tau=str(tau),range_error_bound=str(K*delta/tau),
+                          filter_Q={&#x27;numerator&#x27;:[[str(v) for v in row] for row in Q.a],&#x27;denominator&#x27;:str(Q.d)},history=history)
+        output[&#x27;resources&#x27;]=budget.report()
+    except (Limit,Invalid) as e:
+        output[&#x27;reason&#x27;]=str(e);output[&#x27;resources&#x27;]=budget.report()
+    return output
+
+def main():
+    if len(sys.argv)!=3:raise SystemExit(&#x27;usage: rational_spectral_basis.py OBSERVED.json OUTPUT.json[.gz]&#x27;)
+    source=Path(sys.argv[1]);dest=Path(sys.argv[2]);observed=json.loads(source.read_text())
+    result=acquire(observed);result[&#x27;input_sha256&#x27;]=hashlib.sha256(source.read_bytes()).hexdigest()
+    result[&#x27;algorithm_sha256&#x27;]=hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
+    text=json.dumps(result,indent=2)+&#x27;\n&#x27;;result_bytes=text.encode()
+    if dest.suffix==&#x27;.gz&#x27;:
+        with gzip.open(dest,&#x27;wb&#x27;) as f:f.write(result_bytes)
+    else:dest.write_bytes(result_bytes)
+    print(json.dumps({&#x27;case&#x27;:result.get(&#x27;case&#x27;),&#x27;status&#x27;:result[&#x27;status&#x27;],&#x27;reason&#x27;:result.get(&#x27;reason&#x27;),
+                      &#x27;steps&#x27;:result.get(&#x27;purification_iterations&#x27;),&#x27;decoded_output_bytes&#x27;:len(result_bytes),
+                      &#x27;resources&#x27;:result[&#x27;resources&#x27;]}),flush=True)
+
+if __name__==&#x27;__main__&#x27;:main()
+</pre></html>

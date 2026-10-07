@@ -1,0 +1,230 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>&quot;&quot;&quot;Independent exact-rational certificate controls; imports no release/peer code.</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>&quot;&quot;&quot;Independent exact-rational certificate controls; imports no release/peer code.</h1><p>Source ID d-01bbed6f07d0c612; literature/sources/stat_exec15/cycle19/first_certificate_run/pressure_certificates.py; 3614 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>&quot;&quot;&quot;Independent exact-rational certificate controls; imports no release/peer code.
+
+The executed cases audit finite expressions and stopping rules, not the global
+Mezard--Parisi theorem or the all-density perceptron proof. No stochastic draws.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from functools import lru_cache
+from math import factorial, comb
+import hashlib, json, resource, time
+from pathlib import Path
+
+BITS = 80
+GRID = 1 &lt;&lt; BITS
+COUNTS = {&quot;interval_arithmetic_calls&quot;: 0, &quot;exp_scalar_queries&quot;: 0,
+          &quot;log_scalar_queries&quot;: 0, &quot;series_terms&quot;: 0, &quot;assertions&quot;: 0}
+
+def chk(b):
+    COUNTS[&quot;assertions&quot;] += 1
+    if not b:
+        raise AssertionError(&quot;certificate assertion failed&quot;)
+
+def floor_grid(x): return F(x.numerator * GRID // x.denominator, GRID)
+def ceil_grid(x): return -floor_grid(-x)
+
+class I:
+    def __init__(self, lo, hi=None, rounded=True):
+        lo, hi = F(lo), F(lo if hi is None else hi)
+        if lo &gt; hi: raise ValueError(&quot;reversed interval&quot;)
+        self.lo = floor_grid(lo) if rounded else lo
+        self.hi = ceil_grid(hi) if rounded else hi
+    @staticmethod
+    def of(x): return x if isinstance(x, I) else I(x)
+    def __add__(self, other):
+        COUNTS[&quot;interval_arithmetic_calls&quot;] += 1
+        y=I.of(other); return I(self.lo+y.lo, self.hi+y.hi)
+    __radd__=__add__
+    def __neg__(self): return I(-self.hi,-self.lo)
+    def __sub__(self,other): return self+-I.of(other)
+    def __rsub__(self,other): return I.of(other)+-self
+    def __mul__(self,other):
+        COUNTS[&quot;interval_arithmetic_calls&quot;] += 1
+        y=I.of(other); vals=[a*b for a in (self.lo,self.hi) for b in (y.lo,y.hi)]
+        return I(min(vals),max(vals))
+    __rmul__=__mul__
+    def __truediv__(self,other):
+        COUNTS[&quot;interval_arithmetic_calls&quot;] += 1
+        y=I.of(other)
+        if y.lo &lt;= 0 &lt;= y.hi: raise ValueError(&quot;division through zero&quot;)
+        return self*I(1/y.hi,1/y.lo)
+    def __rtruediv__(self,other): return I.of(other)/self
+    def json(self):
+        return {&quot;lo&quot;:str(self.lo),&quot;hi&quot;:str(self.hi),&quot;outward_decimal_summary&quot;:[float(self.lo),float(self.hi)],&quot;width&quot;:str(self.hi-self.lo)}
+
+@lru_cache(maxsize=20000)
+def exp_scalar(x):
+    x=F(x); COUNTS[&quot;exp_scalar_queries&quot;] += 1
+    if x &lt; 0: return 1/exp_scalar(-x)
+    k=0
+    while x &gt; 1: x/=2; k+=1
+    term=I(1); acc=I(1); n=0
+    while True:
+        n+=1; term=term*x/n; acc+=term; COUNTS[&quot;series_terms&quot;]+=1
+        # All omitted positive terms have successive ratio at most x/(n+2).
+        tail=x**(n+1)/factorial(n+1)/(1-x/F(n+2))
+        if tail &lt;= F(1,1&lt;&lt;(BITS+8)): break
+    out=I(acc.lo,acc.hi+tail)
+    for _ in range(k): out=out*out
+    return out
+
+def exp_i(x):
+    x=I.of(x); return I(exp_scalar(x.lo).lo,exp_scalar(x.hi).hi)
+
+@lru_cache(maxsize=20000)
+def log_base_1_2(x):
+    # Exact identity log x = 2 sum_{j&gt;=0} z^(2j+1)/(2j+1), z=(x-1)/(x+1).
+    x=F(x)
+    if not 1 &lt;= x &lt;= 2: raise ValueError(&quot;log normalization&quot;)
+    z=(x-1)/(x+1); z2=z*z; power=I(z); acc=I(0); j=0
+    while True:
+        acc+=power/F(2*j+1); COUNTS[&quot;series_terms&quot;]+=1
+        tail=2*z**(2*j+3)/F(2*j+3)/(1-z2)
+        if tail &lt;= F(1,1&lt;&lt;(BITS+8)): break
+        power=power*z2; j+=1
+    return I((2*acc).lo,(2*acc).hi+tail)
+
+@lru_cache(maxsize=20000)
+def log_scalar(x):
+    x=F(x); COUNTS[&quot;log_scalar_queries&quot;] += 1
+    if x &lt;= 0: raise ValueError(&quot;nonpositive log&quot;)
+    k=0
+    while x &lt; 1: x*=2; k-=1
+    while x &gt;= 2: x/=2; k+=1
+    return log_base_1_2(x)+k*log_base_1_2(F(2))
+
+def log_i(x):
+    x=I.of(x); return I(log_scalar(x.lo).lo,log_scalar(x.hi).hi)
+def logcosh(x): return log_i((exp_scalar(F(x))+exp_scalar(-F(x)))/2)
+def mean_log(log_values, weights, exponent):
+    chk(len(log_values)==len(weights) and sum(weights,F(0))==1)
+    chk(all(w&gt;=0 for w in weights) and 0 &lt; exponent &lt; 1)
+    return log_i(sum((w*exp_i(exponent*v) for w,v in zip(weights,log_values)),I(0)))/exponent
+
+def poisson_tail_majorants(lam,J):
+    # e^-lam &lt;= 1; ratios yield exact rational, conservative upper bounds.
+    chk(lam&gt;=0 and J+1&gt;lam)
+    probability=lam**(J+1)/factorial(J+1)/(1-lam/F(J+2))
+    first_moment=lam*lam**J/factorial(J)/(1-lam/F(J+1))
+    return probability,first_moment
+
+def triangle_two_spin_pressure(alpha,J,coupling):
+    &quot;&quot;&quot;Exact finite-volume N=2 aggregation for symmetric p=2 coupling.
+
+    Self-loops contribute a mean-zero additive constant. Cross-edge increment
+    D is 0 with probability 1/2 and +/-1 with probability 1/4 each. Conditional
+    partition is 4*cosh(coupling*D), up to that additive constant.
+    &quot;&quot;&quot;
+    lam=2*alpha; law={0:F(1)}; pois=exp_scalar(-lam); total=I(0)
+    cardinalities=[]
+    for k in range(J+1):
+        chk(sum(law.values(),F(0))==1)
+        cond=sum((prob*logcosh(coupling*d)/2 for d,prob in law.items()),I(0))
+        total+=pois*cond; cardinalities.append(len(law))
+        nextlaw={}
+        for d,p in law.items():
+            for step,w in ((0,F(1,2)),(-1,F(1,4)),(1,F(1,4))):
+                nextlaw[d+step]=nextlaw.get(d+step,F(0))+p*w
+        law=nextlaw;pois=pois*lam/F(k+1)
+    _,moment=poisson_tail_majorants(lam,J)
+    # logcosh(coupling*D)/2 &lt;= |coupling|*k/2.
+    return log_scalar(F(2))+total+I(0,abs(coupling)*moment/2),cardinalities
+
+def one_level_trial(alpha,J,coupling,mag,exponent):
+    &quot;&quot;&quot;r=1, root law delta_(fair +/-mag), h=0. Finite binomial sums.
+
+    Physical symmetric coupling signs permute the fair message signs, so every
+    fixed physical realization has the same conditional power mean. Labels
+    remain independent throughout; no physical disorder is annealed inside it.
+    &quot;&quot;&quot;
+    ec=exp_scalar(coupling); em=exp_scalar(-coupling)
+    c=(ec+em)/2; sh=(ec-em)/2
+    up=c+mag*sh; down=c-mag*sh
+    lam=2*alpha;pois=exp_scalar(-lam);total=I(0)
+    for k in range(J+1):
+        values=[];weights=[]
+        for j in range(k+1):
+            vp=I(1);vm=I(1)
+            for _ in range(j): vp*=up;vm*=down
+            for _ in range(k-j):vp*=down;vm*=up
+            values.append(log_i((vp+vm)/2));weights.append(F(comb(k,j),2**k))
+        total+=pois*mean_log(values,weights,exponent)
+        pois=pois*lam/F(k+1)
+    _,moment=poisson_tail_majorants(lam,J)
+    site=total+I(-abs(coupling)*moment,abs(coupling)*moment)
+    edge=mean_log([log_i(c+mag*mag*sh),log_i(c-mag*mag*sh)],[F(1,2)]*2,exponent)
+    return log_scalar(F(2))+site-alpha*edge
+
+def independent_field_pressure(t): return log_scalar(F(2))+logcosh(t)
+
+def derivative_certificate(t,epsilon):
+    records=[]
+    for k in range(1,24):
+        h=F(1,2**k)
+        left=(independent_field_pressure(t)-independent_field_pressure(t-h))/h
+        right=(independent_field_pressure(t+h)-independent_field_pressure(t))/h
+        interval=I(left.lo,right.hi)
+        records.append({&quot;k&quot;:k,&quot;h&quot;:str(h),&quot;slope&quot;:interval.json()})
+        if interval.hi-interval.lo &lt; epsilon:return interval,records
+    raise RuntimeError(&quot;predeclared derivative cap exceeded&quot;)
+
+def magnetization_chernoff(m,step):
+    # Public C=0, rational safe compactification R=(2C+1)/(1-|m|)=2.
+    R=F(1)/(1-abs(m));chk((R/step).denominator==1)
+    values=[]
+    for j in range(-int(R/step),int(R/step)+1):
+        t=j*step;v=m*t-logcosh(t);values.append((t,v))
+    best_lo=max(v.lo for _,v in values);best_hi=max(v.hi for _,v in values)
+    # Nearest grid point &lt;= step/2 away; objective Lipschitz &lt;= 1+|m|.
+    out=I(best_lo,best_hi+(1+abs(m))*step/2)
+    return out,{&quot;R&quot;:str(R),&quot;step&quot;:str(step),&quot;queries&quot;:len(values),&quot;best_grid_t&quot;:str(max(values,key=lambda tv:tv[1].lo)[0])}
+
+def main():
+    start=time.perf_counter()
+    alpha=F(1,8);coupling=F(1);cutoff=10
+    lower,card=triangle_two_spin_pressure(alpha,cutoff,coupling)
+    upper=log_scalar(F(2))+alpha*logcosh(coupling)
+    chk(lower.lo&lt;=upper.hi)
+    chk(upper.hi-lower.lo &lt; F(1,32))
+    chk(upper.lo-log_scalar(F(2)).hi &gt; F(1,32))
+    r1=one_level_trial(alpha,cutoff,coupling,F(1,2),F(1,2))
+    chk(lower.lo &lt;= r1.hi)
+    # These are rigorous finite-expression certificates, not optimality/coverage.
+    t=F(1,3);derivative,derivtrace=derivative_certificate(t,F(1,1024))
+    e2=exp_scalar(2*t);truth=(e2-1)/(e2+1)
+    chk(derivative.lo&lt;=truth.lo and truth.hi&lt;=derivative.hi)
+    pressure=independent_field_pressure(t)
+    entropy=pressure-t*derivative
+    kl=t*derivative-pressure+independent_field_pressure(F(0))
+    chk(entropy.lo&gt;=0 and kl.lo&gt;=0)
+    chernoff,grid=magnetization_chernoff(F(1,2),F(1,128))
+    chernoff_truth=((1+F(1,2))*log_scalar(1+F(1,2))+(1-F(1,2))*log_scalar(1-F(1,2)))/2
+    chk(chernoff.lo&lt;=chernoff_truth.lo and chernoff_truth.hi&lt;=chernoff.hi)
+    chk(chernoff.hi-chernoff.lo &lt; F(1,128))
+    oscillatory=[]
+    for n in (16,32,64,128):
+        epsilon=F(1,n);p=1-F(1,n**3);q=1-epsilon
+        # K=1. a0=I0(1)&gt;=1+1/4; all Fourier coefficients nonnegative.
+        gap=log_scalar(F(5,4))-exp_scalar(F(2)-F(n,2))-exp_scalar(-F(n*n,2))-F(1,2*n)
+        chk(gap.lo&gt;F(1,8) and 0&lt;q&lt;p&lt;1)
+        oscillatory.append({&quot;n&quot;:n,&quot;frequency&quot;:n,&quot;q&quot;:str(q),&quot;p&quot;:str(p),&quot;L1_path_distance&quot;:str(p-q),&quot;rigorous_pattern_gap_lower&quot;:str(gap.lo)})
+    rare=[]
+    for count in (1,16,1024,1000000):
+        epsilon=F(1,10*count);amplitude=F(1)/epsilon
+        bernoulli_bound=1-count*epsilon
+        no_hit=(1-epsilon)**count if count&lt;=16 else None
+        chk(bernoulli_bound==F(9,10) and epsilon*amplitude==1)
+        if no_hit is not None:chk(no_hit&gt;=bernoulli_bound)
+        rare.append({&quot;samples&quot;:count,&quot;contamination_probability&quot;:str(epsilon),&quot;amplitude&quot;:str(amplitude),&quot;mean_shift&quot;:&quot;1&quot;,&quot;same_zero_transcript_probability_exact&quot;:str(no_hit) if no_hit is not None else None,&quot;same_zero_transcript_probability_lower_bound&quot;:str(bernoulli_bound),&quot;lower_bound_proof&quot;:&quot;Bernoulli inequality (1-epsilon)^samples &gt;= 1-samples*epsilon; huge rational power intentionally not materialized.&quot;})
+    result={&quot;status&quot;:&quot;PASS&quot;,&quot;claim_scope&quot;:&quot;Exact finite-control certificates only. Universal consequences are proved separately conditional on the named global manuscript theorem; no sampler, optimizer, phase threshold, coverage, novelty or advantage claim.&quot;,
+      &quot;rational_interval_grid_bits&quot;:BITS,&quot;noncoordinate_diluted_case&quot;:{&quot;alpha&quot;:str(alpha),&quot;p&quot;:2,&quot;symmetric_coupling&quot;:str(coupling),&quot;N&quot;:2,&quot;poisson_cutoff&quot;:cutoff,&quot;aggregate_state_counts&quot;:card,&quot;finite_volume_enclosure&quot;:lower.json(),&quot;r0_upper&quot;:upper.json(),&quot;r1_trial_enclosure&quot;:r1.json(),&quot;certified_pressure_bracket&quot;:[str(lower.lo),str(upper.hi)],&quot;certified_width&quot;:str(upper.hi-lower.lo),&quot;N1_did_not_meet_requested_width&quot;:&quot;1/32&quot;},
+      &quot;derivative&quot;:{&quot;parameter&quot;:str(t),&quot;epsilon&quot;:&quot;1/1024&quot;,&quot;trace&quot;:derivtrace,&quot;output&quot;:derivative.json(),&quot;post_output_exact_tanh_control&quot;:truth.json(),&quot;entropy&quot;:entropy.json(),&quot;relative_entropy_density_to_zero_field&quot;:kl.json()},
+      &quot;chernoff&quot;:{&quot;magnetization&quot;:&quot;1/2&quot;,&quot;certificate&quot;:chernoff.json(),&quot;grid&quot;:grid,&quot;post_output_binary_entropy_control&quot;:chernoff_truth.json()},
+      &quot;bounded_potential_nonuniform_path_modulus&quot;:oscillatory,&quot;first_moment_only_sample_obstruction&quot;:rare,&quot;counters&quot;:COUNTS,
+      &quot;body_seconds&quot;:time.perf_counter()-start,&quot;peak_process_rss_bytes&quot;:resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
+      &quot;cost_scope&quot;:&quot;Whole Python checker body and process peak RSS; imports/process startup excluded from body timer. Counts are declared interval calls and series terms, not library-internal integer operations or a general pressure-algorithm benchmark.&quot;,&quot;code_sha256&quot;:hashlib.sha256(Path(__file__).read_bytes()).hexdigest()}
+    output=Path(__file__).resolve().parents[3]/&quot;results/stat_exec15/cycle19/PRESSURE_CERTIFICATE_CONTROLS.json&quot;
+    output.write_text(json.dumps(result,indent=2)+&quot;\n&quot;)
+    print(json.dumps({k:result[k] for k in (&quot;status&quot;,&quot;body_seconds&quot;,&quot;peak_process_rss_bytes&quot;,&quot;counters&quot;)}))
+
+if __name__==&quot;__main__&quot;:main()
+</pre></html>

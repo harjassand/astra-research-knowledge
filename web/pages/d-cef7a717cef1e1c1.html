@@ -1,0 +1,989 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>The Fast Loaded Dice Roller: A Near-Optimal</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>The Fast Loaded Dice Roller: A Near-Optimal</h1><p>Source ID d-cef7a717cef1e1c1; literature/sources/d_prior/cycle2/fldr2020.txt; 12507 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>The Fast Loaded Dice Roller: A Near-Optimal
+Exact Sampler for Discrete Probability Distributions
+Feras A. Saad Cameron E. Freer Martin C. Rinard Vikash K. Mansinghka
+MIT EECS MIT BCS MIT EECS MIT BCS
+Abstract
+This paper introduces a new algorithm for
+the fundamental problem of generating a ran-
+dom integer from a discrete probability dis-
+tribution using a source of independent and
+unbiased random coin ﬂips. We prove that
+this algorithm, which we call the Fast Loaded
+Dice Roller (FLDR), is highly eﬃcient in
+both space and time: (i) the size of the sam-
+pler is guaranteed to be linear in the number
+of bits needed to encode the input distribu-
+tion; and (ii) the expected number of bits of
+entropy it consumes per sample is at most
+6 bits more than the information-theoreti-
+cally optimal rate. We present fast imple-
+mentations of the linear-time preprocessing
+and near-optimal sampling algorithms using
+unsigned integer arithmetic. Empirical eval-
+uations on a broad set of probability distribu-
+tions establish that FLDR is 2x–10x faster in
+both preprocessing and sampling than multi-
+ple baseline algorithms, including the widely-
+used alias and interval samplers. It also uses
+up to 10000x less space than the information-
+theoretically optimal sampler, at the expense
+of less than 1.5x runtime overhead.
+1 INTRODUCTION
+The problem of generating a discrete random vari-
+able is as follows: given a probability distribution
+p := ( p1,...,p n) and access to a random source
+that outputs an independent stream of fair bits, re-
+turn integer i with probability pi. A classic theo-
+rem from Knuth and Yao (1976) states that the most
+eﬃcient sampler, in terms of the expected number
+Proceedings of the 23 rdInternational Conference on Artiﬁ-
+cial Intelligence and Statistics (AISTATS) 2020, Palermo,
+Italy. PMLR: Volume 108. Copyright 2020 by the au-
+thor(s).
+of random bits consumed from the source, uses be-
+tween H(p) and H(p) + 2 bits in expectation, where
+H(p) :=∑n
+i=1pi log(1/pi) is the Shannon entropy ofp.
+This entropy-optimal sampler is obtained by building
+a decision tree using the binary expansions of the pi.
+Despite the fact that the Knuth and Yao algorithm
+provides the most time-eﬃcient sampler for any prob-
+ability distribution, this paper shows that its construc-
+tion can require exponentially larger space than the
+number of bits needed to encode the input instance p
+and may thus be infeasible to construct in practice. In
+light of this negative result, we aim to develop a sam-
+pling algorithm whose entropy consumption is close to
+the optimal rate and whose space scales polynomially.
+This paper presents a new sampling algorithm where,
+instead of using an entropy-optimal sampler to simu-
+late (p1,...,p n) directly, we deﬁne a proposal distribu-
+tion (q1,...,q n,qn+1) on an extended domain whose
+probabilities qi are dyadic rationals that are “close”
+to the probabilities pi and then simulate the proposal
+with an entropy-optimal sampler followed by an ac-
+cept/reject step. We prove that this sampling al-
+gorithm, which we call the Fast Loaded Dice Roller
+(FLDR), is eﬃcient in both space and time: its size
+scales linearly in the number of bits needed to encode
+the input instance p and it consumes between H(p)
+andH(p)+6 bits in expectation, which is near the op-
+timal rate and does not require exponential memory.
+We present an implementation of FLDR using fast in-
+teger arithmetic and show empirically that it is 2x–10x
+faster than several exact baseline samplers, and uses
+up to 10000x less space than the entropy-optimal sam-
+pler of Knuth and Yao. To the best of our knowledge,
+this paper presents the ﬁrst theoretical characteriza-
+tion and practical implementation of using entropy-
+optimal proposal distributions for accept-reject sam-
+pling, as well as benchmark measurements that high-
+light the space and runtime beneﬁts of FLDR over
+multiple existing exact sampling algorithms. A proto-
+type implementation in C is released with the paper.
+The remainder of this paper is structured as follows.The F ast Loaded Dice Roller: A Near-Optimal Exact Sampler for Discrete Probability Distributions
+Section 2 formally introduces the random bit model
+of computation for studying the sampling algorithms
+used throughout the paper. Section 3 establishes the
+worst-case exponential space of the entropy-optimal
+Knuth and Yao sampler. Section 4 presents a system-
+atic study of the space–time complexity of three com-
+mon baseline rejection algorithms. Section 5 presents
+FLDR and establishes its linear memory and near-
+optimal entropy consumption. Section 6 presents mea-
+surements of the preprocessing time, sampling time,
+and memory consumption of FLDR and demonstrates
+improvements over existing exact samplers.
+2 PRELIMINARIES
+Algebraic model Many algorithms for sampling
+discrete random variables (Walker, 1977; Vose, 1991;
+Smith, 2002; Bringmann and Panagiotou, 2017) oper-
+ate in a model of computation where the space–time
+complexity of both preprocessing and sampling are an-
+alyzed assuming a real RAM model (Blum et al., 1998)
+(i.e., storing and arithmetically manipulating inﬁnitely
+precise numbers can be done in constant time (De-
+vroye, 1986, Assumptions I, III)). Algorithms in this
+model apply a sequence of transformations to a uni-
+form random variable U∈ [0, 1], which forms the ba-
+sic unit of randomness (Devroye, 1986, Assumption
+II). While often useful in practice, this model does
+not permit a rigorous study of either the complex-
+ity, entropy consumption, or sampling error of diﬀer-
+ent samplers. More speciﬁcally, real RAM sampling
+algorithms typically generate random variates which
+are only approximately distributed according to the
+target distribution when implemented on physically-
+existing machines due to limited numerical precision,
+e.g., IEEE double-precision ﬂoating-point (Bringmann
+and Friedrich, 2013). This sampling error is challeng-
+ing to quantify in practice (Devroye, 1982; Monahan,
+1985). In addition, the real RAM model does not ac-
+count for the complexity of drawing and manipulating
+the random variable U from the underlying source (a
+single uniform random variate has the same amount
+of entropy as countably inﬁnitely many such variates)
+and thus ignores a key design constraint for samplers.
+Random bit model This paper focuses on exact
+sampling (i.e., with zero sampling error) in a word
+RAM model of computation where the basic unit of
+randomness is an independent, unbiased bitB∈{ 0, 1}
+returned from a primitive operation Flip. The ran-
+dom bit model is widely used, both in information
+theory (Han and Verd´ u, 1993) and in formal descrip-
+tions of sampling algorithms for discrete distributions
+that use ﬁnite precision arithmetic and random fair
+bits. Examples include the uniform (Lumbroso, 2013),
+discrete Gaussian (Foll´ ath, 2014), geometric (Bring-
+mann and Panagiotou, 2017), random graph (Blanca
+and Mihail, 2012), and general categorical (Knuth and
+Yao, 1976; Uyematsu and Li, 2003) distributions. The
+model has also been generalized to the setting of us-
+ing a biased or non-i.i.d. source of coin ﬂips for sam-
+pling (von Neumann, 1951; Elias, 1972; Blum, 1986;
+Roche, 1991; Peres, 1992; Abrahams, 1996; Pae and
+Loui, 2006; Kozen and Soloviev, 2018).
+Problem Formulation Given a list (a1,...,a n) of
+n positive integers which sum to m and access to a
+stream of independent fair bits (i.e., Flip), sample in-
+teger i with probability ai/m (i = 1,...,n ).
+Designing algorithms and data structures for this
+problem of “dice rolling” has received widespread at-
+tention in the computer science literature; see Schwarz
+(2011) for a survey. We next describe a framework for
+describing the computational behavior of any sampling
+algorithm implemented in the random bit model.
+Discrete distribution generating trees Knuth
+and Yao (1976) present a computational framework for
+expressing any sampling algorithm in the random bit
+model in terms of a (possibly inﬁnite) rooted binary
+treeT , called a discrete distribution generating (DDG)
+tree, which has the following properties: (i) each inter-
+nal node has exactly two children (i.e., T is full); and
+(ii) each leaf node is labeled with one outcome from the
+set{1, 2,...,n }. The algorithm is as follows: starting
+at the root, obtain a random bit B∼ Flip. Proceed
+to the left child ifB = 0 and proceed to the right child
+if B = 1. If the child node is a leaf, return the label
+assigned to that leaf and halt. Otherwise, draw a new
+random bit B and repeat the process. For any node
+x∈ T , let l(x) denote its label and d(x) its level (by
+convention, the root is at level 0 and all internal nodes
+are labeled 0). Since Flip returns fair bits, the output
+probability distribution (p1,...,p n) is
+pi := P[T returns i] =
+∑
+x|l(x)=i
+2−d(x) (i = 1,...,n ).
+The number of coin ﬂips LT used when simulating T
+is, in expectation, the average depth of the leaves, i.e.,
+E[LT ] =
+∑
+x|l(x)&gt;0
+d(x)2−d(x).
+The operators P and E are deﬁned over the sequence
+b∈{ 0, 1}∞ of bits from the random source, ﬁnitely
+many of which are consumed during a halting execu-
+tion (which occurs with probability one). The follow-
+ing classic theorem establishes tight bounds on the
+minimal expected number of bits consumed by any
+sampling algorithm for a given distributionp, and pro-
+vides an explicit construction of an optimal DDG tree.F eras A. Saad, Cameron E. F reer, Martin C. Rinard, Vikash K. Mansinghka
+Theorem 2.1 (Knuth and Yao (1976)) . Let p :=
+(p1,...,p n), where n &gt; 1. Any sampling algorithm
+with DDG tree T and output distribution p whose ex-
+pected number of input bits is minimal (among all
+trees T′ whose output distribution equals p) satisﬁes
+H(p) ≤ E[LT ] &lt; H(p) + 2. These bounds are the
+tightest possible. In addition, T contains exactly 1 leaf
+node labeled i at level j if and only if pij = 1, where
+(0.pi1pi2... )2 denotes the binary expansion of each pi
+(which ends in ¯0 whenever pi is dyadic).
+We now present examples of DDG trees.
+Example 2.2. Letp := (1/2, 1/4, 1/4). By Thm. 2.1,
+an entropy-optimal DDG tree forp can be constructed
+directly from the binary expansions of the pi, where
+pij corresponds to the jth bit in the binary expan-
+sion of pi (i = 1, 2, 3;j ≥ 0). Since p1 = (0.10)2
+and p2 = p3 = (0.01)2 are all dyadic, the entropy-
+optimal tree has three levels, and the sampler always
+halts after consuming at most 2 bits. Also shown is
+an entropy-suboptimal tree for p, which always halts
+after consuming at most 3 bits.
+1
+23
+Optimal DDG tree
+23
+1
+32
+1
+Suboptimal DDG tree
+Example 2.3. Let p := (3/10, 7/10). Although p1
+and p2 have inﬁnite binary expansions, they are ra-
+tional numbers which can be encoded using a ﬁnite
+preﬁx and a bar atop a ﬁnite repeating suﬃx; i.e.,
+p1 = (0.01001)2,p 2 = (0.10110)2. While any DDG
+tree for p has inﬁnitely many levels, it can be ﬁnitely
+encoded by using back-edges (shown in red). The
+entropy-optimal tree has ﬁve levels and a back-edge
+from level 4 to level 1, corresponding to the binary ex-
+pansions of the pi, where the suﬃxes have four digits
+and preﬁxes have one digit.
+2
+1
+2
+2
+1
+Optimal DDG tree
+2
+12
+2
+Suboptimal DDG tree
+Deﬁnition 2.4 (Depth of a DDG tree) . Let T be
+a DDG tree over {1,...,n } with output distribution
+(p1,...,p n), where each pi∈ Q. We say that T has
+depth k if the longest path from the root node to any
+leaf node in the shortest ﬁnite tree encoding ofT (using
+back-edges, as in Example 2.2) consists of k edges.
+In this paper, we do not consider distributions with
+irrational entries, as their DDG trees are inﬁnite and
+cannot be ﬁnitely encoded. Thm. 2.1 settles the prob-
+lem of constructing the most “eﬃcient” sampler for a
+target distribution, when eﬃciency is measured by the
+expected number of bits consumed.
+However, designing an entropy-eﬃcient sampler that
+is also space-eﬃcient remains an open problem. In
+particular, as we show in Section 3, the size of the
+optimal DDG tree T is exponentially larger than the
+number of bits needed to encode p and is therefore of-
+ten infeasible to construct in practice. Knuth and Yao
+(1976) allude to this issue, saying “most of the algo-
+rithms which achieve these optimum bounds are very
+complex, requiring a tremendous amount of space”.
+3 COMPLEXITY OF ENTROPY-
+OPTIMAL SAMPLING
+This section recounts background results from Saad
+et al. (2020, Section 3) about the class of entropy-
+optimal samplers given in Thm. 2.1. These results
+establish the worst-case exponential space of entropy-
+sampling and formally motivate the need for space-
+eﬃcient and near-optimal samplers developed in Sec-
+tion 5. For completeness, the proofs are presented in
+Appendix A.
+For entropy-optimal DDG trees that have depthk≥ 1
+(Deﬁnition 2.4), the output probabilities are described
+by a ﬁxed-point k-bit number. The ﬁxed-point k-
+bit numbers x are those such that for some inte-
+ger l satisfying 0 ≤ l ≤ k, there is an element
+(x1,...,x k) ∈ {0, 1}l×{ 0, 1}k−l, where the ﬁrst l
+bits correspond to a ﬁnite preﬁx and the ﬁnal k−l
+bits correspond to an inﬁnitely repeating suﬃx, i.e.,
+x = (0.x1...x lxl+1...x k)2. Write Bkl for the set of
+rationals in [0, 1] describable in this way.
+Proposition 3.1. For integersk andl with 0≤l≤k,
+deﬁne Zkl := 2k− 2l1l&lt;k. Then
+Bkl =
+{ 0
+Zkl
+, 1
+Zkl
+,..., Zkl− 1
+Zkl
+,Zkl
+Zkl
+1l&lt;k
+}
+.
+The next result establishes that the number systems
+Bkl (k∈ N, 0≤l≤k) from Prop. 3.1 describe the out-
+put probabilities of optimal DDG trees with depth- k.
+Theorem 3.2. LetT be an entropy-optimal DDG tree
+with a non-degenerate output distribution (pi)n
+i=1 for
+n &gt;1. The depth of T is the smallest integer k such
+that there exists an integer l∈{ 0,...,k } for which all
+the pi are integer multiples of 1/Zkl (hence in Bkl).
+Corollary 3.3. Every back-edge in an entropy-
+optimal depth-k DDG tree originates at level k−1 and
+ends at the same level l, where 0≤l&lt;k − 1.The F ast Loaded Dice Roller: A Near-Optimal Exact Sampler for Discrete Probability Distributions
+The next result, Thm. 3.4, implies that an entropy-
+optimal DDG tree for a coin with weight 1 /m has
+depth at most m− 1. Thm. 3.5 shows that this bound
+is tight for manym, and Rem. 3.6 notes that it is likely
+tight for inﬁnitely many m.
+Theorem 3.4. Suppose p is deﬁned by pi = ai/m
+(i = 1,...,n ), where ∑n
+i=1ai =m. The depth of any
+entropy-optimal sampler for p is at most m− 1.
+Theorem 3.5. Letp be as in Thm. 3.4. If m is prime
+and 2 is a primitive root modulo m, then the depth of
+an entropy-optimal DDG tree for p is m− 1.
+Remark 3.6. The bound in Thm. 3.4 is likely the tight-
+est possible for inﬁnitely many m. Assuming Artin’s
+conjecture, there are inﬁnitely many primes m for
+which 2 is a primitive root, which by Thm. 3.5 im-
+plies any entropy-optimal DDG tree has depth m.
+Holdingn ﬁxed, the tight upper boundm on the depth
+of an entropy-optimal DDG tree for any distribution
+having an entry 1 /m is thus exponentially larger (in
+m) than the n log(m) bits needed to encode the input
+instance (each of a1,...,a n requires a word of size at
+least log(m) bits). Fig. 2 shows a plot of the scaling
+characteristics from Thm. 3.4 and provides evidence
+for the tightness conjectured in Rem. 3.6.
+4 REJECTION SAMPLING
+We now present several alternative algorithms for ex-
+act sampling based on the rejection method (Devroye,
+1986, II.3), which lead to the Fast Loaded Dice Roller
+presented in Section 5. Rejection sampling operates
+as follows: given a target distribution p := (p1,...,p n)
+and proposal distributionq := (q1,...,q l) (withn≤l),
+ﬁrst ﬁnd a rejection bound A &gt;0 such that pi≤ Aqi
+(i = 1,...,n ). Next, sample Y ∼ q and ﬂip a coin
+with weightpY/(AqY ) (wherepn+1 =... =pl = 0): if
+the outcome is heads accept Y , otherwise repeat. The
+probability of halting in any given round is:
+Pr
+[
+Bernoulli
+( pY
+AqY
+)
+= 1
+]
+=
+n∑
+i=1
+pi/(Aqi)qi = 1/A.
+The number of trials thus follows a geometric distri-
+bution with rate 1/A, whose mean is A. We next re-
+view common implementations of random-bit rejection
+samplers and their space–time characteristics. All al-
+gorithms take n positive integers (a1,...,a n) and the
+sum m as input, and return i with probability ai/m.
+Uniform Proposal Consider the uniform proposal
+distribution q := (1/n,..., 1/n). Set D := maxi(ai)
+and set A := Dn/m, which gives a tight rejection
+bound since pi≤ maxi(pi) =D/m = (Dn/m)(1/n) =
+Aqi, so that i is accepted with probability ai/D
+(i = 1,...,n ). Alg. 1 presents an implementation
+where (i) simulating the uniform proposal (line 3), and
+(ii) accepting/rejecting the proposed sample (line 4),
+are both achieved using the two entropy-optimal sam-
+plers in Lumbroso (2013) for uniform and Bernoulli
+generation. The only extra storage needed by Alg. 1
+is in computing the maximum D during preprocessing
+(line 1). For runtime, A =nD trials occur on average;
+each trial uses log n bits for sampling Uniform(n) and
+2 bits for sampling Bernoulli(ai/D) on average. The
+entropy is therefore order n(m−n) logn≥n logn≫
+logn bits. Thus, despite its excellent space and pre-
+processing characteristics, the method can be expo-
+nentially wasteful of bits.
+Algorithm 1 Rejection sampler (uniform)
+// PREPROCESS
+1: Let D ← max(a1, . . . , an);
+// SAMPLE
+2: while true do
+3: i ∼ F astDiceRoller(n); (Lumbroso (2013, p. 4))
+4: x ∼ Bernoulli(ai, D); (Lumbroso (2013, p. 21))
+5: if (x = 1) then return i;
+Dyadic Proposal Consider the following proposal
+distribution. Let k∈ N be such that 2 k−1 &lt; m≤ 2k
+(i.e., k− 1&lt; log(m)≤k so that k =⌈logm⌉) and set
+q := (a1/2k,...,a n/2k, 1−m/2k). (1)
+The tightest rejection bound A = 2k/m, since pi =
+ai/m = (2k/m)ai/2k =Aqi (i = 1,...,n ) and pn+1 =
+0≤ (2k−m)/2k = qn+1. Thus, i is always accepted
+when 1≤i≤n and always rejected when i =n + 1.
+Lookup-table Implementation. Devroye (1986) imple-
+ments the rejection sampler with proposal Eq. (1) us-
+ing a length-m lookup table T , which has exactly ai
+elements labeled i (i = 1,...,n ), shown in Alg. 2.
+The sampler draws k random bits (b1,...,b k), forms
+an integer W := ∑k
+i=1bi2i−1, and returns T [W ] if
+0≤W &lt;m or repeats ifm≤W≤ 2k−1. For ﬁxedn,
+them logm space required byT is exponentially larger
+(in m) than the n logm bits needed to encode the in-
+put. Further, the number of bits per trial is always k,
+sok2k/m≥k≈ logm bits are used on average, which
+(whenevern≪m) can be much higher than the opti-
+mal rate, which is at most H(p) + 2≤ logn + 2.
+Algorithm 2 Rejection sampler (dyadic + lookup table)
+// PREPROCESS
+1: Let k ← ⌈log m⌉;
+2: Make size- m table T with ai entries i (i = 1, . . . , n);
+// SAMPLE
+3: while true do
+4: Draw k bits, forming integer W ∈ {0, . . . ,2k−1};
+5: if (W &lt; m ) then return T [W ];F eras A. Saad, Cameron E. F reer, Martin C. Rinard, Vikash K. Mansinghka
+Binary Search Implementation. The exponential mem-
+ory of the lookup table in Alg. 2 can be eliminated
+by inversion sampling the proposal Eq. (1) using bi-
+nary search on the cumulative frequencies, as shown
+in Alg. 3. This algorithm consumes the same num-
+ber of bits k as Alg. 2. Its exponential improvement
+in space from m logm to n logm introduces a loga-
+rithmic runtime factor the inner loop of the sampler,
+i.e., line 5 of Alg. 3 sometimes uses Ω(log n) time as
+opposed to the constant indexing time from line 5 of
+Alg. 2, representing a typical space–runtime tradeoﬀ.
+Algorithm 3 Rejection sampler (dyadic + binary search)
+// PREPROCESS
+1: Let k ← ⌈log m⌉;
+2: Deﬁne array T , where T [j] := ∑j
+i=1 ai (j = 1, . . . , n)
+// SAMPLE
+3: while true do
+4: Draw k bits, forming integer W ∈ {0, . . . ,2k−1};
+5: if (W &lt; m ) then return min{j | W &lt; T [j]};
+5 F AST LOADED DICE ROLLER
+Section 4 shows that for rejection sampling using the
+dyadic proposal Eq. (1), a lookup table requires expo-
+nential memory and constant lookup time, whereas bi-
+nary search uses linear memory but logn lookup time.
+Moreover, these methods use k bits/sample, which is
+highly wasteful for low-entropy distributions. The key
+idea of the Fast Loaded Dice Roller (FLDR) presented
+in this section is to eliminate these memory, runtime,
+and entropy ineﬃciencies by simulating the proposal
+distribution q using an entropy-optimal sampler.
+Algorithm 4 Fast Loaded Dice Roller (sketch)
+1. Let k := ⌈log m⌉ and deﬁne the proposal distribution
+q := (a1/2k, . . . , an/2k, 1 − m/2k).
+2. Simulate X ∼ q, using an entropy-optimal sampler as
+described in Thm. 2.1.
+3. If X ≤ n, then return X, else go to Step 2.
+4
+4
+1
+1
+(a) Optimal DDG tree
+4
+1
+(b) FLDR DDG tree
+Figure 1: Comparison of DDG trees forp = (1/5, 4/5).
+Fig. 1 shows a comparison of an entropy-optimal DDG
+tree and a FLDR DDG tree. We next establish the
+linear space and near-optimal entropy of Alg. 4.
+Theorem 5.1. The DDG tree T of FLDR in Alg. 4
+has at most 2(n + 1)⌈logm⌉ nodes.
+Proof. Suppose the DDG tree Tq of the entropy-
+optimal sampler for q in Step 2 of Alg. 4 has N total
+nodes, s &lt; Nleaf nodes, and depth k. Since Tq is a
+full binary tree it has N− 1 edges. Moreover, the root
+has degree two, the s leaves have degree one, and the
+N−s− 1 internal nodes have degree three. Equating
+the degrees and solving 2(N−1) = 2+s+3(N−s− 1)
+gives N = 2s− 1. Next, since q is a dyadic distribu-
+tion over{1,...,n +1} with base⌈logm⌉,Tq has depth
+k =⌈logm⌉ (Thm. 3.2). From the entropy-optimality
+of the depth- k tree Tq over{1,...,n + 1}, we have
+s≤ (n + 1)k, since each of the k levels has at most 1
+leaf node labeled i (i = 1,...,n + 1) (Thm. 2.1). Thus
+N = 2s−1≤ 2(n+1)k−1≤ 2(n+1)⌈logm⌉. Finally,
+the DDG tree T of FLDR is identical to Tq, except for
+additional back-edges from each leaf node labeledn+1
+to the root (i.e., the rejection branch when X =n + 1
+in Step 3).
+Theorem 5.2. The DDG tree T of FLDR in Alg. 4
+satisﬁes
+0≤ E[LT ]−H(p)&lt; 6. (2)
+Proof. Let Tq be an entropy-optimal DDG tree for
+the proposal distribution q deﬁned in Step 1, so that
+E[LTq] = H(q) +tq for some tq satisfying 0≤ tq &lt; 2
+(by Thm. 2.1). Since the expected number of trials
+of Alg. 4 is 2 k/m and the number of trials is inde-
+pendent of the bits consumed in each round, we have
+E[LT ] = (2k/m)E[LTq].
+Ifm = 2k thenp =q, and we have E[LT ]−H(p) =tq,
+so Eq. (2) holds. Now suppose m&lt; 2k. Then
+E[LT ]−H(p)
+= (2k/m)(H(q) +tq)−H(p)
+= (2k/m)H(q)−H(p) + 2ktq/m
+= 2k/m
+[∑n
+i=1ai/2k log(2k/ai)
++ (2k−m)/2k log(2k/(2k−m))
+]
+−∑n
+i=1ai/m log(m/ai) + 2ktq/m
+= ∑n
+i=1ai/m[log(2k/ai)− log(m/ai)]
++ (2k−m)/m log(2k/(2k−m)) + 2ktq/m
+= log(2k/m) + (2k−m)/m log(2k/(2k−m))
++ 2ktq/m.
+(3)
+We now bound Eq. (3) under our restriction 2 k−1 &lt;
+m&lt; 2k. All three terms are monotonically decreasing
+inm∈{ 2k−1,..., 2k−1}, hence maximized whenm =
+2k−1+1, achieving a value less than that form = 2k−1.The F ast Loaded Dice Roller: A Near-Optimal Exact Sampler for Discrete Probability Distributions
+Hence the ﬁrst term is less than log(2k/2k−1) = 1, the
+second term less than
+(2k− 2k−1)
+2k−1 log
+( 2k
+2k− (2k−1)
+)
+= log
+( 2k
+2k−1
+)
+= 1,
+and the third term less than 2 tq &lt; 4. All three terms
+are positive, thus establishing bound Eq. (2).
+Thms. 5.1 and 5.2 together imply that Alg. 4 uses
+O(n logm) space on a size n logm input instance and
+guarantees an entropy gap of at most 6 bits sample, for
+any target distribution p. Fig. 2 compares the asymp-
+totic scaling of the size of the FLDR DDG tree from
+Thm. 5.1 with that of the entropy-optimal sampler,
+and Fig. 3 decomposes the entropy gap from Thm. 5.2
+according to the three terms in Eq. (3).
+Alg. 5 provides one of many possible implementations
+of FLDR (sketched in Alg. 4) that uses unsigned in-
+teger arithmetic to preprocess and sample an encod-
+ing of the underlying DDG tree. This algorithm uses
+two data structures to eliminate the O(n) inner-loop
+of the DDG tree sampler in Roy et al. (2013, Alg. 1)
+(at the expense of more memory), where arrayh stores
+the number of leaf nodes at each level and matrix H
+stores their labels in increasing order. (A sparse ma-
+trix can often be used for H, as most of its entries are
+zero.) Alternative DDG tree preprocessing and sam-
+pling algorithms that operate on an explicit tree data
+structure can be found in Saad et al. (2020, Section 5).
+Algorithm 5 Implementation of the Fast Loaded Dice
+Roller using unsigned integer arithmetic
+Input: Positive integers (a1, . . . , an), m := ∑n
+i=1 ai.
+Output: Random integer i with probability ai/m.
+// PREPROCESS
+1: k ← ⌈log(m)⌉;
+2: an+1 ← 2k − m;
+3: initialize h int[k];
+4: initialize H int[n + 1][k];
+5: for j = 0, . . . , k − 1 do
+6: d ← 0;
+7: for i = 1, . . . , n+ 1 do
+8: bool w ← (ai &gt;&gt; (k − 1) − j)) &amp; 1;
+9: h[j] ← h[j] + w;
+10: if w then
+11: H[d, j] ← i;
+12: d ← d + 1;
+// SAMPLE
+13: d ← 0, c ← 0;
+14: while true do
+15: b ∼ Flip();
+16: d ← 2 · d + (1 − b);
+17: if d &lt; h [c] then
+18: if H[d, c] ≤ n then
+19: return H[d, c];
+20: else {d ← 0; c ← 0;}
+21: else {d ← d − h[c]; c ← c + 1;}
+Figure 2: Depth of DDG tree for a distribution having an
+entry 1/m, using the Knuth and Yao entropy-optimal sam-
+pler (black) and FLDR (red) for m = 3, . . . ,105 (computed
+analytically). The y-axis is on a logarithmic scale: the
+entropy-optimal sampler scales exponentially (Thm. 3.5)
+and FLDR scales linearly (Thm. 5.1).
+21 22 23 24 25 26 27 28 29 210
+Sum of Integers in Input Instance ( m)
+0
+1
+2
+3
+4
+5
+6FLDR Entropy Gap (Upper Bound)
+Eq (3); Total
+Eq (3), Term 3
+Eq (3), Term 2
+Eq (3), Term 1
+Figure 3: Plot of the three terms in Eq. (3) in the entropy
+gap (y-axis) from Thm. 5.2, for varying m (x-axis).
+6 EMPIRICAL EV ALUATION
+We next empirically evaluate the memory, runtime,
+preprocessing, and entropy properties of the Fast
+Loaded Dice Roller from Section 5 and compare them
+to the following six baseline algorithms which, like
+FLDR, all produce exact samples from the target dis-
+tribution and operate in the random bit model:
+(i) entropy-optimal sampler (Knuth and Yao, 1976),
+using a variant of Alg. 5 (lines 13–21);
+(ii) rejection sampler with uniform proposal (Alg. 1);
+(iii) rejection sampler with dyadic proposal (Devroye,
+1986), using a lookup table (Alg. 2);
+(iv) rejection sampler with dyadic proposal (Devroye,
+1986), using binary search (Alg. 3);
+(v) exact interval sampler (Han and Hoshi, 1997), us-
+ing Alg. 1 of Devroye and Gravel (2015);
+(vi) exact alias sampler (Walker, 1977), using entropy-
+optimal uniform and Bernoulli sampling (Lum-
+broso, 2013) and the one-table implementa-
+tion (Vose, 1991).F eras A. Saad, Cameron E. F reer, Martin C. Rinard, Vikash K. Mansinghka
+2−26 2−25 2−24 2−23 2−22 2−21 2−20 2−19 2−18 2−17 2−16
+Sampler Runtime (Seconds per Sample)
+29
+210
+211
+212
+213
+214
+215
+216
+217
+218
+219
+220
+221
+222
+Sampler Memory (Bytes)
+Exact
+Alias Sampler Exact
+Interval Sampler
+Entropy-Optimal Sampler
+Rejection Sampler
+(Dyadic; Binary Search)
+Fast Loaded Dice
+Roller (FLDR)
+Rejection Sampler
+(Dyadic; Lookup Table)
+Rejection Sampler
+(Uniform)
+(a)
+0 1 2 3 4 5 6 7 8 9 10
+Entropy of Target Distribution
+2−26
+2−25
+2−24
+2−23
+2−22
+2−21
+2−20
+2−19
+2−18
+2−17
+2−16
+Sampler Runtime (Seconds per Sample)
+Rejection Sampler (Uniform)
+Exact Interval Sampler
+Rejection Sampler (Dyadic; Binary Search)
+Rejection Sampler (Dyadic; Lookup Table)
+Exact Alias Sampler
+Fast Loaded Dice Roller (FLDR)
+Entropy-Optimal Sampler (b)
+Figure 4: Comparison of memory and runtime performance for sampling 500 random frequency distributions overn = 1000
+dimensions with sum m = 40000, using FLDR and six baseline exact samplers. (a) shows a scatter plot of the sampler
+runtime (x-axis; seconds per sample) versus sampler memory (y-axis; bytes); and (b) shows how the sampler runtime
+varies with the entropy of the target distribution, for each method and each of the 500 distributions.
+All algorithms were implemented in C and compiled
+with gcc level 3 optimizations, using Ubuntu 16.04 on
+AMD Opteron 6376 1.4GHz processors. 1
+6.1 Sampler Memory and Runtime
+We deﬁned 100 frequency distributions ( a1,...,a n)
+over n = 100 dimensions which sum to m = 40000,
+randomly chosen with entropies equally spaced from
+0.034 to 6 .64≈ log 100 bits. For each sampling al-
+gorithm and each distribution, we measured (i) the
+size of the data structure created during preprocess-
+ing; and (ii) the wall-clock time taken to generate one
+million random samples. Fig. 4a shows a scatter plot
+of the sampler memory (y-axis, in bytes) and sampler
+runtime (x-axis, in seconds per sample) for each al-
+gorithm and for each of the 100 distributions in the
+benchmark set, and Fig. 4b shows a scatter plot of the
+sampler runtime (y-axis, in seconds per sample) with
+the entropy of that target distribution (x-axis, in bits).
+The runtime of FLDR (purple) most closely follows the
+runtime of the optimal sampler (green), while using up
+to 16000x less memory—the memory improvement of
+FLDR grows at an exponential rate as m increases
+(Fig. 2.4). In addition, for low-entropy distributions
+(bottom-left part of purple curve), FLDR uses even
+less memory than the linear bound from Thm. 5.1.
+The lookup table rejection sampler (brown) uses up
+to 256x more memory and is up to 4x slower than
+1All experiments in this section use target distributions
+with integer weights. We note that the reference implemen-
+tations of FLDR in C and Python additionally contain pre-
+processing algorithms for exact sampling given IEEE 754
+ﬂoating-point weights. All samplers and experiments are
+at https://github.com/probcomp/fast-loaded-dice-roller .
+FLDR, since it draws a constant k = 16 bits/sample
+and uses a large size- m table—the memory improve-
+ment of FLDR again grows at an exponential rate as
+m increases. The binary search rejection sampler (red)
+uses up to 32x less than FLDR since it only stores run-
+ning sums, but has up to 16x slower runtime due to the
+cost of binary search—this runtime factor grows at a
+logarithmic rate as n increases. Rejection sampling
+with a uniform proposal (pink) performs poorly at
+low-entropy distributions (many rejections) and mod-
+erately at higher entropies where the target distribu-
+tion is more uniform.
+It is worthwhile to note that the Han and Hoshi in-
+terval sampler (orange) has a tighter theoretical up-
+per bound on entropy gap than FLDR (3 bits versus
+6 bits). However, FLDR is up to 16x faster in our
+experiments, since we can directly simulate the un-
+derlying DDG tree using Alg. 5. In contrast, imple-
+mentations of the interval sampler in the literature for
+unbiased sources do not sample the underlying DDG
+tree, instead using expensive integer divisions and bi-
+nary search in the main sampling loop (Han and Hoshi,
+1997; Uyematsu and Li, 2003; Devroye and Gravel,
+2015). In addition, the array on which binary search
+is performed changes dynamically over the course of
+sampling. To the best of our knowledge, unlike with
+FLDR, there is no existing implementation of interval
+sampling that directly simulates the underlying DDG
+tree so as to fully leverage its entropy eﬃciency.
+The alias method (blue) is the most competitive base-
+line, which is up to 2x slower than FLDR (at low en-
+tropies) while using between 1x (at low-entropy dis-
+tributions) and 8x less memory (at high entropies) to
+store the alias table. While the alias method is com-
+monly said to require constant runtime, this analysisThe F ast Loaded Dice Roller: A Near-Optimal Exact Sampler for Discrete Probability Distributions
+100 101 102 103 104
+Dimension n
+2−19
+2−17
+2−15
+2−13
+2−11
+2−9
+2−7
+Preprocessing Time (Sec)
+m = 1000
+GNU GSL
+Floating-Point
+Alias Sampler
+FLDR
+100 101 102 103 104
+Dimension n
+m = 10000
+100 101 102 103 104
+Dimension n
+m = 1000000
+Figure 5: Comparison of the preprocessing times (y-axes;
+wall-clock seconds) of FLDR with those of the alias sam-
+pler, for distributions with dimension ranging from n =
+100, . . .2 × 104 (x-axes) and normalizers m = 1000, 10000,
+and 1000000 (left, center, and right panels, respectively).
+only holds in the real RAM model and typical ﬂoating-
+point implementations of the alias method have non-
+zero sampling error. For producing exact samples in
+the random bit model, the alias method requires (on
+average) between log n and log n + 1 bits to sample
+a uniform over {1,...,n } and two bits to sample a
+Bernoulli, which gives a total of logn + 3 bits/sample,
+independently ofH(p) (horizontal blue line in Fig. 4b).
+In contrast, FLDR requires at most H(p) + 6 bits on
+average, which is less than alias sampling whenever
+H(p)≪ logn. For ﬁxed n, the constant rate of the
+alias sampler corresponds to the “worst-case” runtime
+of FLDR: in Fig. 4b, the gap between purple (FLDR)
+and blue (alias) curves is largest at lower entropies and
+narrows as H(p) increases.
+6.2 Preprocessing Time
+We next compared the preprocessing time of FLDR
+(Alg. 5, lines 1–12) for varying ( n,m ) with that of
+the alias sampler (Walker, 1977), which is the most
+competitive baseline method. To measure the prepro-
+cessing time of the alias method, we used the open-
+source implementation in the C GNU Scientiﬁc Li-
+brary (GSL) 2. Fig. 5 shows a log-log plot of the pre-
+processing time (y-axis; wall-clock seconds) and di-
+mensions (x-axis; n) for distributions with m = 1000,
+10000, 1000000 (panels left to right). Our C imple-
+mentation of FLDR (orange) has a lower preprocess-
+ing time than the GSL alias sampler (blue) in all these
+regimes. Since the matrixH constructed during FLDR
+preprocessing has n + 1 rows and log m columns, the
+gap between the two curves narrows (at a logarithmic
+rate) as m increases. On a 64-bit architecture we may
+assume thatm&lt; 264 (i.e., unsigned long long in C)
+and so the n logm≈ 64n preprocessing time of FLDR
+is highly scalable, growing linearly in n.
+2The gsl ran discrete preproc function from the
+gsl randist GSL library implements the O(n) alias table
+preprocessing algorithm from Vose (1991).
+Table 1: Number of PRNG calls and wall-clock time when
+drawing 106 samples from n = 1000 dimensional distribu-
+tions, using FLDR &amp; approximate ﬂoating-point samplers.
+Method Entropy Number of PRNG Wall
+(bits) PRNG Calls Time (ms)
+FLDR
+1 123,607 3.69
+3 182,839 4.27
+5 258,786 5.66
+7 325,781 7.90
+9 383,138 8.68
+Floating Point all 1,000,000 21.51
+6.3 Calls to Random Number Generator
+This paper has emphasized exact sampling in the
+random bit model, where the sampling algorithm
+lazily draws a random bit B∼ Flip on demand. As
+discussed in Section 2, most sampling algorithms
+in existing software libraries operate under the real
+RAM model and approximate an ideal uniform vari-
+ate U∼ Uniform([0, 1]) using a high-precision ﬂoating-
+point number. Floating-point samplers produce non-
+exact samples—both as U is not exactly uniform and
+as arithmetic operations involvingU (such as division)
+are non-exact. Further, these implementations can be
+highly wasteful of computation. (As an illustrative ex-
+ample, sampling a fair coin requires only one random
+bit, but comparingU &lt;0.5 in ﬂoating-point consumes
+a full machine word, e.g., 64 pseudo-random bits, to
+generate U.) Following Lumbroso (2013), our imple-
+mentation of Flip maintains a buﬀer of 64 pseudo-
+random bits. Table 1 shows a comparison of the num-
+ber of calls to the pseudo-random number generator
+(PRNG) and wall-clock time for generating 10 6 sam-
+ples from 1000-dimensional distributions with various
+entropies, using FLDR and ﬂoating-point samplers (we
+have conservatively assumed that the latter makes ex-
+actly one PRNG call per sample). The results in
+Table 1 highlight that, by calling the PRNG nearly
+as many times as is information-theoretically optimal
+(Thm. 5.2), FLDR spends signiﬁcantly less time call-
+ing the PRNG than do ﬂoating-point samplers (with
+the added beneﬁt of producing exact samples).
+7 CONCLUSION
+This paper has presented the Fast Loaded Dice Roller,
+a new method for generating discrete random variates.
+The sampler has near-optimal entropy consumption,
+uses a linear amount of storage, and requires linear
+setup time. Due to its theoretical eﬃciency, ease-of-
+implementation using fast integer arithmetic, guaran-
+tee of generating exact samples, and high performance
+in practice, we expect FLDR to be a valuable addition
+to the suite of existing sampling algorithms.F eras A. Saad, Cameron E. F reer, Martin C. Rinard, Vikash K. Mansinghka
+References
+Julia Abrahams. 1996. Generation of Discrete Distri-
+butions from Biased Coins. IEEE Trans. Inf. Theory
+42, 5 (Sept. 1996), 1541–1546. https://doi.org/10.
+1109/18.532895
+Antonio Blanca and Milena Mihail. 2012. Eﬃcient
+Generation ϵ-close to G(n,p ) and Generalizations.
+(April 2012). arXiv:1204.5834
+Lenore Blum, Felipe Cucker, Michael Shub, and Steve
+Smale. 1998. Complexity and Real Computation .
+Springer-Verlag, New York.
+Manuel Blum. 1986. Independent Unbiased Coin Flips
+from a Correlated Biased Source: A Finite State
+Markov Chain. Combinatorica 6, 2 (June 1986),
+97–108. https://doi.org/10.1007/BF02579167
+Karl Bringmann and Tobias Friedrich. 2013. Ex-
+act and Eﬃcient Generation of Geometric Ran-
+dom Variates and Random Graphs. In ICALP
+2013: Proceedings of the 40th International Collo-
+quium on Automata, Languages and Programming
+(Riga, Latvia). Lecture Notes in Computer Science,
+Vol. 7965. Springer, Heidelberg, 267–278. https:
+//doi.org/10.1007/978-3-642-39206-1 23
+Karl Bringmann and Konstantinos Panagiotou. 2017.
+Eﬃcient Sampling Methods for Discrete Distribu-
+tions. Algorithmica 79, 2 (Oct. 2017), 484–508.
+https://doi.org/10.1007/s00453-016-0205-0
+Luc Devroye. 1982. A Note on Approximations in Ran-
+dom Variate Generation. J. Stat. Comput. Simul.
+14, 2 (1982), 149–158.
+Luc Devroye. 1986. Non-Uniform Random Variate
+Generation. Springer-Verlag, New York.
+Luc Devroye and Claude Gravel. 2015. Sampling with
+Arbitrary Precision. (Feb. 2015). arXiv:1502.02539
+Peter Elias. 1972. The Eﬃcient Construction of an
+Unbiased Random Sequence. Ann. Math. Stat. 43,
+3 (June 1972), 865–870. https://doi.org/10.1214/
+aoms/1177692552
+J´ anos Foll´ ath. 2014. Gaussian Sampling in Lattice
+Based Cryptography. Tatra Mount. Math. Pub.
+60, 1 (Sept. 2014), 1–23. https://doi.org/10.2478/
+tmmp-2014-0022
+Te Sun Han and Mamoru Hoshi. 1997. Interval Al-
+gorithm for Random Number Generation. IEEE
+Trans. Inf. Theory 43, 2 (March 1997), 599–611.
+https://doi.org/10.1109/18.556116
+Te Sun Han and Sergio Verd´ u. 1993. Approxima-
+tion Theory of Output Statistics. IEEE Trans.
+Inf. Theory 39, 3 (May 1993), 752–772. https:
+//doi.org/10.1109/18.256486
+Donald E. Knuth and Andrew C. Yao. 1976. The Com-
+plexity of Nonuniform Random Number Generation.
+In Algorithms and Complexity: New Directions and
+Recent Results, Joseph F. Traub (Ed.). Academic
+Press, Inc., Orlando, FL, 357–428.
+Dexter Kozen and Matvey Soloviev. 2018. Coal-
+gebraic Tools for Randomness-Conserving Proto-
+cols. In RAMiCS 2018: Proceedings of the 17th
+International Conference on Relational and Alge-
+braic Methods in Computer Science (Groningen,
+The Netherlands). Lecture Notes in Computer Sci-
+ence, Vol. 11194. Springer, Cham, 298–313. https:
+//doi.org/10.1007/978-3-030-02149-8 18
+J´ ermie Lumbroso. 2013. Optimal Discrete Uniform
+Generation from Coin Flips, and Applications.
+(April 2013). arXiv:1304.1916
+John F. Monahan. 1985. Accuracy in Random Number
+Generation. Math. Comput. 45, 172 (Oct. 1985),
+559–568. https://doi.org/10.2307/2008146
+Sung-il Pae and Michael C Loui. 2006. Randomizing
+Functions: Simulation of a Discrete Probability Dis-
+tribution Using a Source of Unknown Distribution.
+IEEE Trans. Inf. Theory 52, 11 (Nov. 2006), 4965–
+4976. https://doi.org/10.1109/TIT.2006.883555
+Yuval Peres. 1992. Iterating von Neumann’s Proce-
+dure for Extracting Random Bits. Ann. Stat. 20,
+1 (March 1992), 590–597. https://doi.org/10.1214/
+aos/1176348543
+James R. Roche. 1991. Eﬃcient Generation of Random
+Variables from Biased Coins. InISIT 1991: Proceed-
+ings of the IEEE International Symposium on Infor-
+mation Theory (Budapest, Hungary). IEEE Press,
+Piscataway, 169–169. https://doi.org/10.1109/ISIT.
+1991.695225
+Sinha S. Roy, Frederik Vercauteren, and Ingrid Ver-
+bauwhede. 2013. High Precision Discrete Gaus-
+sian Sampling on FPGAs. In SAC 2013: Proceed-
+ings of the 20th International Conference on Se-
+lected Areas in Cryptography (Burnaby, Canada).
+Lecture Notes in Computer Science, Vol. 8282.
+Springer, Berlin, 383–401. https://doi.org/10.1007/
+978-3-662-43414-7 19
+Feras A. Saad, Cameron E. Freer, Martin C. Rinard,
+and Vikash K. Mansinghka. 2020. Optimal Approx-
+imate Sampling from Discrete Probability Distribu-
+tions. Proc. ACM Program. Lang. 4, POPL, Article
+36 (Dec. 2020), 31 pages. https://doi.org/10.1145/
+3371104
+Keith Schwarz. 2011. Darts, Dice, and Coins. Re-
+trieved Oct 5, 2019 from http://www.keithschwarz.
+com/darts-dice-coins/The F ast Loaded Dice Roller: A Near-Optimal Exact Sampler for Discrete Probability Distributions
+Warren D. Smith. 2002. How To Sample from a Proba-
+bility Distribution. Technical Report DocNumber17.
+NEC Research.
+Tomohiko Uyematsu and Yuan Li. 2003. Two Al-
+gorithms for Random Number Generation Imple-
+mented by Using Arithmetic of Limited Precision.
+IEICE Trans. Fund. Elec. Comm. Comp. Sci 86, 10
+(Oct. 2003), 2542–2551.
+John von Neumann. 1951. Various Techniques Used
+in Connection with Random Digits. In Monte
+Carlo Method , A. S. Householder, G. E. Forsythe,
+and H. H. Germond (Eds.). National Bureau of
+Standards Applied Mathematics Series, Vol. 12.
+U.S. Government Printing Oﬃce, Washington, DC,
+Chapter 13, 36–38.
+Michael D. Vose. 1991. A Linear Algorithm for Gener-
+ating Random Numbers with a Given Distribution.
+IEEE Trans. Softw. Eng. 17, 9 (Sept. 1991), 972–
+975. https://doi.org/10.1109/32.92917
+Alastair J. Walker. 1977. An Eﬃcient Method for
+Generating Discrete Random Variables with Gen-
+eral Distributions. ACM Trans. Math. Softw. 3,
+3 (Sept. 1977), 253–256. https://doi.org/10.1145/
+355744.355749</pre></html>

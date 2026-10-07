@@ -1,0 +1,1702 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>PAGE 1</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>PAGE 1</h1><p>Source ID d-e2470aa64113838f; literature/sources/c_priorart/multilevel_2604.10209v1.txt; 19985 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>PAGE 1
+Scalable Generative Sampling and Multilevel Estimation for Lattice Field Theories
+Near Criticality
+A. Singha, 1, 2,∗ J. Kauffmann, 1, 2 E. Cellini, 3 K. Jansen, 4 and S. Nakajima 1, 2, 5,†
+1Berlin Institute for the Foundations of Learning and Data (BIFOLD), Germany
+2Technische Universit¨ at Berlin, Germany
+3Higgs Centre for Theoretical Physics, School of Physics and Astronomy,
+The University of Edinburgh, Edinburgh EH9 3FD, United Kingdom
+4Deutsches Elektronen-Synchrotron (DESY), Germany
+5RIKEN Center for Advanced Intelligence Project (AIP), Japan
+(Dated: April 14, 2026)
+Sampling lattice field theories near criticality is severely hindered by critical slowing down, which
+makes standard Markov chain methods increasingly inefficient at large lattice volumes. We in-
+troduce a multiscale generative sampler, inspired by renormalization-group ideas, that models the
+Boltzmann distribution through a coarse-to-fine hierarchy across length scales. At each level, a con-
+ditional Gaussian mixture model captures the main local dependence of newly introduced variables
+on the already-sampled coarse field, while a masked continuous normalizing flow refines the remain-
+ing conditional structure. Coarse levels encode the dominant long-wavelength modes, and finer
+levels progressively add short-distance fluctuations. In addition, because the architecture preserves
+coarse fields exactly during refinement, it provides exact restriction maps at no additional computa-
+tional cost and directly enables unbiased Multilevel Monte Carlo (MLMC) variance reduction. For
+the two-dimensional scalarϕ 4 theory at criticality, the method achieves integrated autocorrelation
+times orders of magnitude smaller than Hybrid Monte Carlo (HMC) on large volumes, maintains
+high importance-sampling efficiency relative to other generative baselines, and reproduces unbiased
+physical observables in statistical agreement with long HMC simulations.
+I. INTRODUCTION
+Markov Chain Monte Carlo (MCMC) simulations are
+the standard framework for sampling lattice field theo-
+ries and computing observables from first principles [1–
+3]. Their impact is particularly evident in lattice QCD,
+where large-scale simulations have enabled precision de-
+terminations of hadronic observables [4], as well as first-
+principles calculations of hadronic contributions to the
+muon anomalous magnetic moment [5, 6]. At the same
+time, the reliability and scope of these calculations de-
+pend directly on the availability of algorithms capable of
+generating representative field configurations efficiently
+across a wide range of couplings, lattice spacings, and
+volumes.
+A major limitation of MCMC methods is the rapid in-
+crease of computational cost near criticality, and more
+generally as the continuum limit is approached. As
+the correlation length grows in lattice units, slow long-
+wavelength modes come to dominate the dynamics and
+conventional Markov-chain algorithms suffer from severe
+critical slowing down [7–9]. Quantitatively, the inte-
+grated autocorrelation time typically scales as a power of
+the correlation length,τ int ∼ξ z, so the cost of producing
+statistically independent configurations rises rapidly with
+increasing system size and decreasing lattice spacing. In
+some theories, this problem is further compounded by the
+slow evolution of global or topological modes. Overcom-
+∗ a.singha@tu-berlin.de
+† nakajima@tu-berlin.de
+ing these dynamical bottlenecks is therefore essential for
+extending precision lattice calculations to larger volumes
+and finer lattices.
+Motivated by these limitations, and by the rapid
+progress of deep learning methods in high-dimensional
+generative modeling, alternative sampling strategies
+based on neural networks have attracted increasing atten-
+tion in lattice field theory. The central idea is to learn a
+parametric approximation of the target Boltzmann mea-
+sure, thereby enabling the generation of proposals with
+low autocorrelation. Among the corresponding deep gen-
+erative models, Normalizing Flows (NFs) [10–13] have
+emerged as a particularly prominent framework. These
+have been explored in several forms, including coupling-
+layer flows [14–28], continuous normalizing flows [29–32],
+and stochastic normalizing flows [33–37]. Other gener-
+ative approaches have also been studied, notably vari-
+ational autoregressive networks [38–41], diffusion mod-
+els [42–47] and GANs [48–50]
+However, their practical usefulness for large-scale lat-
+tice simulations is ultimately limited by scalability [51,
+52]. This limitation is particularly severe at criticality for
+single-scale architectures, where the model must learn the
+joint distribution of the entire lattice at a single resolu-
+tion. Capturing the long-range correlations at criticality
+typically requires large receptive fields or very deep net-
+works, leading to a rapid increase in training cost, mem-
+ory usage, and sampling inefficiency at criticality as the
+system size grows.
+Several strategies have been proposed to mitigate
+these issues. In particular, stochastic normalizing flows
+can improve scalability by introducing auxiliary non-
+arXiv:2604.10209v1  [hep-lat]  11 Apr 2026
+PAGE 2
+2
+equilibrium MCMC updates and effectively constructing
+non-equilibrium transport paths between simple and tar-
+get distributions [36, 37]. While this stochasticity can sig-
+nificantly enhance sampling efficiency at large volumes,
+it comes at the cost of requiring a predefined annealing
+schedule and a more involved generation procedure.
+Normalizing flows can nevertheless be highly effective
+in specific applications. A notable example is the calcu-
+lations of derivatives of physical observables, where flow-
+based changes of variables in the path integral can be
+optimized to reduce the variance of the corresponding es-
+timators [21, 23, 53]. However, this advantage is tied to
+the optimization of specific observables and does not di-
+rectly translate into scalable, fully generative samplers of
+the full lattice distribution. The tension between expres-
+sivity, scalability, and generation cost therefore remains
+a central challenge for their application to large-scale lat-
+tice field theory.
+A natural route towards improving scalability is to ex-
+ploit the multiscale structure of critical lattice systems.
+Under coarse graining, the slow infrared modes of the
+fine lattice are transferred to coarser levels, where they
+appear as shorter-wavelength modes in lattice units and
+can therefore be treated more efficiently. This idea un-
+derlies a long history of multiscale methods in lattice
+field theory and Monte Carlo simulations, including early
+multigrid Monte Carlo approaches [54–56] and simula-
+tion techniques inspired by renormalization-groups [57–
+60]. In multigrid Monte Carlo, long-distance modes of
+the fine lattice are represented and updated on coarser
+grids, after which the resulting coarse-grid corrections
+are interpolated back to the fine lattice as collective up-
+dates. This strategy can significantly reduce critical slow-
+ing down in controlled settings, such as free or weakly
+interacting theories. However, it remains an accelera-
+tion method for fine-lattice MCMC rather than a direct
+coarse-to-fine generative scheme, and its performance can
+deteriorate when efficient coarse-grid updates become dif-
+ficult to construct for the underlying theory [61] and also
+in the presence of a nontrivial global or topological struc-
+ture [55].
+Renormalization-group-inspired approaches [57–60],
+by contrast, proceed more directly in a coarse-to-fine
+direction, aiming to reconstruct fine configurations by
+sequentially introducing short-distance fluctuations from
+coarse variables. However, this requires renormalized ef-
+fective densities at each scale, which are generally in-
+tractable beyond simple models. Deep generative mod-
+els offer a way around this limitation by learning such
+effective distributions implicitly, without requiring their
+explicit construction. This idea has been successfully
+leveraged in Ref. [39], where variational autoregres-
+sive networks were used to model the coarse scale of
+the two-dimensional Ising model, leading to an efficient
+deep generative sampler with reduced training and sam-
+pling costs relative to single-scale models. Similar ma-
+chine learning approaches have also been investigated in
+Refs. [40, 41, 62–65].
+In this work, we generalize the multilevel generative
+strategy of Ref. [39], originally developed for discrete sys-
+tems, to continuous lattice field theories. We introduce
+a multiscale generative sampling framework in which
+the Boltzmann measure is represented through a hierar-
+chy of coarse-to-fine conditional densities such that long-
+range correlations are captured at coarse levels and short-
+distance fluctuations are introduced progressively during
+refinement. At each refinement step, a conditional Gaus-
+sian mixture model provides a tractable local approxi-
+mation to the conditional distribution of the newly intro-
+duced fine degrees of freedom given the coarse field, and a
+continuous normalizing flow then refines this approxima-
+tion toward the target conditional density. The resulting
+hierarchical construction enables scalable coarse-to-fine
+sampling at large lattice volumes, particularly in the crit-
+ical regime where both conventional sampling methods
+and single-scale generative models become increasingly
+inefficient.
+We demonstrate the method for two-dimensional scalar
+ϕ4 lattice field theory at criticality. The resulting sampler
+reproduces physical observables in agreement, within sta-
+tistical uncertainties, with Hybrid Monte Carlo (HMC)
+reference runs, exhibits more favorable scaling with lat-
+tice size than existing generative baselines, and achieves
+orders-of-magnitude smaller autocorrelations than HMC
+on the largest lattices considered. Additionally, in our
+proposed method the coarse-to-fine hierarchy induces a
+built-in coupling between neighboring resolutions, pro-
+viding exactly the structure needed to construct multi-
+level Monte Carlo (MLMC) estimators [60, 66] and en-
+abling further variance reduction at fixed computational
+cost.
+The remainder of this paper is organized as follows.
+In Sec. II we review the sampling problem in continuous
+lattice systems near criticality. In Sec. III we introduce
+the multiscale generative framework and the associated
+multilevel estimator. In Sec. IV we present numerical
+results for the two-dimensional scalarϕ 4 theory. Finally,
+Sec. V concludes with a broader discussion of possible
+future directions, including further developments of the
+multiscale generative framework and its application to
+more challenging lattice field theories.
+II. BACKGROUND: SAMPLING LFT NEAR
+CRITICALITY
+We consider lattice field theories defined on a hyper-
+cubic lattice Λ L ={1, . . . , L} D with continuous degrees
+of freedomϕ x ∈Rat each sitex∈Λ L. A field con-
+figurationϕ={ϕ x}x∈ΛL is distributed according to the
+Boltzmann measure
+p(ϕ) = 1
+Z exp
+
+−S(ϕ)
+
+,(1)
+whereS(ϕ) is a local action functional and
+Z=
+R
+Dϕ e−S(ϕ) is the partition function.
+PAGE 3
+3
+Physical observables are expectation values
+⟨O⟩=Z −1R
+DϕO(ϕ)e −S(ϕ), which in practice are
+estimated numerically from ensembles of configurations
+generated by Markov chain Monte Carlo (MCMC).
+A standard workhorse algorithm for continuous-
+variable lattice systems is Hybrid Monte Carlo
+(HMC) [67], which combines molecular-dynamics tra-
+jectories with a Metropolis acceptance step to generate
+global proposals for the field configuration.
+A. Critical Slowing Down
+A central measure of sampling efficiency is the inte-
+grated autocorrelation time of an observableO,
+τint[O] = 1
+2 +
+∞X
+t=1
+CO(t)
+CO(0) ,(2)
+whereC O(t) =⟨O(ϕ (0))O(ϕ(t))⟩ − ⟨O⟩2 is the autocorre-
+lation function of the Markov chain [68, 69]. IfMcorre-
+lated configurations are available, the statistical error on
+⟨O⟩scales as
+δ⟨O⟩ ∼
+r
+2τint[O]
+M σO,(3)
+so that the effective number of independent samples is
+Meff =M/(2τ int). Achieving a fixed target precision
+therefore requiresM∝τ int configurations, making large
+autocorrelation times directly expensive.
+Near a second-order phase transition, the physical cor-
+relation lengthξ∼ |g−g c|−ν diverges as the couplingg
+approaches the critical valueg c. At finite volume,ξis
+bounded byL, but the integrated autocorrelation time
+typically grows with system size as a power law,
+τint ∼ξ zdyn ∼L zdyn ,(4)
+wherez dyn is the dynamical critical exponent of the al-
+gorithm [7, 9]. For HMC applied to scalar field theories,
+zdyn ≈2 [67], so that the cost of obtainingM eff indepen-
+dent samples scales as
+CHMC ∼M eff τint LD ∼M eff LD+zdyn =M eff LD+2.(5)
+This power-law growth becomes prohibitive near criti-
+cality at large lattice volumes, where the long-distance
+physics of interest resides. It therefore constitutes a cen-
+tral bottleneck for scalable lattice simulations and mo-
+tivates sampling strategies that explicitly exploit scale
+separation in configuration space.
+III. MULTISCALE GENERATIVE SAMPLING
+A. Renormalization of the Action
+Renormalization-group (RG) transformations provide
+a natural framework for describing the scale dependence
+𝑞0(𝜙(0)) 𝑞1(𝜙(1) ∣ 𝜙(≤0)) 𝑞2(𝜙(2) ∣ 𝜙(≤1))
+𝜙(≤0) 𝜙(≤1) 𝜙
+coarse 𝜙(0) intermediate 𝜙(1) fine 𝜙(2)
+FIG. 1. Kadanoff-inspired multilevel partition of a periodic
+lattice into coarse (ϕ(0), circles), intermediate (ϕ(1), squares),
+and fine (ϕ(2), diamonds) sites, illustrating the coarse-to-fine
+factorization (11). Each panel samples new variables (col-
+ored markers) conditioned on previously sampled sites (gray
+markers); connections show the nearest-neighbor dependen-
+cies used by the conditional modelsq ℓ.
+of lattice field theories by systematically integrating out
+short-distance degrees of freedom. Consider a lattice field
+configurationϕ∈R V distributed according to the Boltz-
+mann measure
+p(ϕ) = 1
+Z exp
+h
+−S(ϕ;{K (0)
+i })
+i
+,(6)
+whereS(ϕ;{K (0)
+i }) denotes the microscopic action
+parametrized by a set of couplings{K (0)
+i }. The effec-
+tive coarse-grained actionS (1) is defined implicitly by
+integrating out fine degrees of freedom,
+exp
+h
+−S(1)(ϕ(1))
+i
+∝
+Z
+Dϕ δ
+
+ϕ(1) −B(ϕ)
+
+exp
+h
+−S(ϕ;{K (0)
+i })
+i
+,
+(7)
+whereϕ (1) =B(ϕ) is a blocking map from the fine lattice
+to a coarser one. In general, the renormalized action
+takes the form
+S(1)(ϕ(1)) =
+X
+i
+K(1)
+i Oi(ϕ(1)).(8)
+Iterating this construction yields a sequence of effective
+actions{S (ℓ)}on lattices of progressively lower resolu-
+tion, together with corresponding couplings{K (ℓ)
+i }. Un-
+der RG flow, the operator basis{O i}grows rapidly, so
+that the effective action generally acquires higher-order
+and increasingly nonlocal interactions even when the mi-
+croscopic action is local. Although the exact coarse-
+grained action is therefore intractable in practice, the RG
+picture motivates a hierarchical construction in which dif-
+ferent resolutions are modeled separately.
+B. Multiscale Generative Decomposition
+From a generative-sampling perspective, the RG pic-
+ture motivates a reverse, coarse-to-fine construction in
+PAGE 4
+4
+which configurations are generated from low to high res-
+olution. Concretely, we introduce a multilevel partition
+of lattice sites inspired by Kadanoff blocking [70] (see
+Figure 1):
+ϕ≡ϕ (ℓmax) − → {ϕ(0), ϕ(1), . . . , ϕ(ℓmax)}.(9)
+Here,ϕ (0) denotes the coarsest degrees of freedom, while
+ϕ(ℓmax) corresponds to the full field on the finest lattice.
+The exact distribution can then be factorized as
+p(ϕ) =p(ϕ (0))
+ℓmaxY
+ℓ=1
+p
+
+ϕ(ℓ) |ϕ (≤ℓ−1)
+
+,(10)
+which we approximate by a learned hierarchical genera-
+tive model
+q(ϕ) =q 0(ϕ(0))
+ℓmaxY
+ℓ=1
+qℓ
+
+ϕ(ℓ) |ϕ (≤ℓ−1)
+
+.(11)
+Here,ϕ (≤ℓ) ={ϕ (0), ϕ(1), . . . , ϕ(ℓ)}denotes the collection
+of variables up to levelℓ. The sampling goes from coarse
+to fine, where one first drawsϕ (0) fromq 0, and then suc-
+cessively samples the newly introduced variables from the
+conditional modelsq ℓ.
+A practical advantage of this decomposition is that,
+when variables at levelϕ (ℓ) are sampled, their nearest
+neighbors have already been assigned at coarser levels
+and are contained inϕ (≤ℓ−1). As a result, the conditional
+modelsq ℓ only require local conditioning and can be im-
+plemented with relatively small receptive fields. Closely
+related multilevel generative constructions have previ-
+ously been explored in discrete systems [39], where vari-
+ational autoregressive networks (VANs) [38] are used for
+the coarse and intermediate levels and exact heat-bath
+updates are performed at the finest scale.
+For continuous systems, however, the conditional dis-
+tributions required for coarse-to-fine refinement are gen-
+erally not available in closed form, so exact heat-bath
+sampling is no longer feasible. We therefore replace exact
+local updates by learned approximate conditional sam-
+plers, which provide tractable priors for subsequent flow-
+based refinement.
+C. Approximate Local Conditional Sampler with
+Gaussian Mixture Models
+At intermediate and finest levels, we approximate the
+exact coarse-to-fine conditional distributions using local
+conditional models, which later be used as prior distribu-
+tion for the refinement process. Concretely, we assume
+that the newly introduced variables at levelℓare con-
+ditionally independent given the already-sampled neigh-
+boring variables inϕ (≤ℓ−1), and model this approxima-
+tion with a conditional Gaussian mixture model (GMM),
+qGMM
+ℓ
+
+z(ℓ) |ϕ (≤ℓ−1)
+
+=
+Y
+x∈Λ(ℓ)
+qGMM
+ℓ,x
+
+z(ℓ)
+x |ϕ (≤ℓ−1)
+N N(x)
+
+,
+(12)
+where Λ (ℓ) are the lattice sites to be sampled at levell
+and
+qGMM
+ℓ,x
+
+z(ℓ)
+x |ϕ (≤ℓ−1)
+NN(x)
+
+=
+KX
+k=1
+π(ℓ)
+k,x N
+
+z(ℓ)
+x
+ µ(ℓ)
+k,x, σ 2 (ℓ)
+k,x
+
+.
+(13)
+Here, the mixture weightsπ (ℓ)
+k,x, meansµ (ℓ)
+k,x, and vari-
+ancesσ 2 (ℓ)
+k,x are functions of the neighboring coarse vari-
+ablesϕ (≤ℓ−1)
+NN(x) and are parameterized by fully Convolu-
+tional neural networks.
+The GMM provides an explicit, tractable density that
+can be sampled and evaluated efficiently, making it well
+suited as a local conditional prior within the hierarchical
+framework. It also allows parallel sampling across lattice
+sites.
+D. Conditional Sampling with Continuous
+Normalizing Flows
+Although, the GMM captures the leading local con-
+ditional structure at each refinement level, but it does
+not represent the full target conditional distribution. To
+model the remaining mismatch, we refine GMM sam-
+plesz (ℓ) with a conditional continuous normalizing flow
+(CNF) [13]. Specifically, we define an invertible transfor-
+mation
+ϕ(ℓ) =f ℓ
+
+z(ℓ);ϕ (≤ℓ−1)
+
+,(14)
+The mapf ℓ is generated by integrating a conditional neu-
+ral ordinary differential equation,
+dϕ(t)
+dt =v ℓ
+
+ϕ(t), t;ϕ (≤ℓ−1)
+
+, t∈[0,1],(15)
+withϕ(0) =z (ℓ) andϕ(1) =ϕ (ℓ). The corresponding
+conditional density is
+logq ℓ(ϕ(ℓ) |ϕ (≤ℓ−1)) = logq GMM
+ℓ (z(ℓ) |ϕ (≤ℓ−1))
+−
+Z 1
+0
+dt∇·v ℓ
+
+ϕ(t), t;ϕ (≤ℓ−1)
+
+.
+(16)
+Together, the GMM and CNF provide a tractable ap-
+proximation to each conditional factor in Eq. (10).
+E. Continuous Multilevel Sampler
+The full multilevel model is obtained by combin-
+ing these ingredients across all resolutions according to
+Eq. (11). At the coarsest level, the unconditional model
+q0 is a CNF with a standard Gaussian prior. At each
+finer level, the conditional modelq ℓ is given by a contin-
+uous normalizing flow with the corresponding conditional
+GMM as its prior. Description of the architecture and its
+PAGE 5
+5
+relations to existing methods including Super Resolving
+NF (SR-NF) [64] are given in Appendix B.
+The model parameters of the multilevel sampler are
+optimized by minimizing the reverse Kullback–Leibler di-
+vergence between the hierarchical model and the target
+distribution,
+L= KL(q(ϕ)∥p(ϕ)).(17)
+Once trained, the model generates samples by ancestral
+coarse-to-fine sampling, thereby avoiding Markov-chain
+autocorrelations and enabling efficient exploration of con-
+figuration space near criticality.
+F. Multilevel Control Variates for Variance
+Reduction
+CNF samplers are typically used as single-level im-
+portance samplers where one generatesNconfigurations
+from the learned distributionq (L) on anL×Llattice and
+computes the self-normalized importance sampling (IS)
+estimator
+bOIS =
+NX
+n=1
+¯wn O(ϕn),(18)
+where
+w(ϕ) = e−S(ϕ)
+q(ϕ) ,¯w n = w(ϕn)PNL
+m=1 w(ϕm)
+.(19)
+Its variance scales as VarIS ∝1/N. The difficulty is that
+sampling at the finest level is expensive and each sam-
+ple requires integrating all upsampling CNFs over the
+fullL 2-dimensional space accordingly the per-sample cost
+grows roughly asc L ∼L 2. Achieving a fixed target preci-
+sion, therefore, becomes increasingly costly as the lattice
+size grows.
+Multilevel Monte Carlo [66] addresses this by exploit-
+ing the fact that expensive fine-level evaluations are only
+needed to correct cheaper coarse-level estimates. Since
+coarser levels have costsc ℓ ≪c L, much more number
+of samples can be generated for the same computational
+budget.
+Given samples{ϕ (≤ℓ)
+n }Nℓ
+n=1 from the hierarchical model
+q(ℓ)(ϕ(≤ℓ)), and level-dependent observablesO (ℓ) with
+O(L) =OandO (−1) ≡0, we consider two multilevel
+estimators.
+Finest-level weighted estimator.In practice, the tar-
+get marginalsp (ℓ) are generally unavailable at intermedi-
+ate levels. We therefore define importance weights only
+at the finest level,
+w(L)(ϕ) = e−S(ϕ)
+q(ϕ) ,¯w (L)
+n = w(L)(ϕn)PNL
+m=1 w(L)(ϕm)
+.(20)
+This yields the estimator
+bOMLMC =
+NLX
+n=1
+[ ¯w(L)
+n O(L)(ϕ(≤L)
+n )− 1
+NL
+O(L−1)(ϕ(≤L−1)
+n )]
++
+L−1X
+ℓ=0
+1
+Nℓ
+NℓX
+n=1
+h
+O(ℓ)(ϕ(≤ℓ)
+n )− O (ℓ−1)(ϕ(≤ℓ−1)
+n )
+i
+.
+(21)
+Its efficiency depends on the inter-level corrections of
+O(ℓ) andO (ℓ−1) reflecting to the variance of the each
+term in the form ofO (ℓ) − O(ℓ−1).Near criticality, the
+coupling between successive levels is strong, so the finer
+level terms have lower variances and can be accurately
+estimated with fewer samples. Consequently, the over-
+all computational budget is reduced, which makes the
+proposed MLMC estimator especially well suited to hier-
+archical sampling in the critical regime.
+IV. NUMERICAL EXPERIMENTS
+A. Model and Simulation Setup
+We study the two-dimensional scalarϕ 4 lattice field
+theory at criticality as a representative continuous lattice
+system with local interactions. The theory is defined on
+a square lattice of linear sizeLwith periodic boundary
+conditions where a real-valued field variableϕ x ∈Ris
+assigned at each lattice sitex.
+The Euclidean lattice action is
+S(ϕ) =
+X
+x
+
+(1−2λ)ϕ 2
+x +λ ϕ 4
+x
+
+−2κ
+X
+x,µ
+ϕxϕx+ˆµ,(22)
+whereκdenotes the nearest-neighbor coupling,λcontrols
+the quartic self-interaction, and the second sum runs over
+nearest neighbors in the two lattice directionsµ= 1,2.
+The action is invariant under the globalZ 2 symmetry
+ϕx → −ϕ x, which is spontaneously broken in the ordered
+phase. The model undergoes a second-order phase transi-
+tion between symmetric and broken phases and therefore
+provides a standard benchmark for critical sampling in
+continuous lattice field theories.
+We determine the critical couplingκ c from the Binder
+cumulant [71],
+U4 = 1− ⟨m4⟩
+3⟨m2⟩2 , m=L −2X
+x
+ϕx.(23)
+As a challenging benchmark point, we chooseκ c =
+0.2705±0.0007, estimated from the crossing of the Binder
+cumulant forL= 32 andL= 64. This estimate is
+used only to define a representative near-critical simu-
+lation point; our aim is not a precision determination
+of the critical coupling, but to study the method in a
+regime where critical slowing down is particularly pro-
+nounced. Figure 2 showsU 4(κ) obtained from 5×10 5
+PAGE 6
+6
+0.2695 0.2700 0.2705 0.2710 0.2715 0.2720 0.2725
+0.45
+0.50
+0.55
+0.60
+0.65U4( )
+c = 0.2705
+L = 32
+L = 64
+FIG. 2. Binder cumulantU 4(κ) forL= 32 andL= 64
+from HMC (5×10 5 configurations each). The curves cross
+atκ c = 0.2705 (dashed vertical line). Error bars are blocked
+jackknife estimates.
+HMC configurations for each lattice size. The curves
+cross atκ c = 0.2705, whereU 4(L= 32) = 0.567 and
+U4(L= 64) = 0.566 differ by only 0.001 (≪1σ). This is
+also the regime where HMC critical slowing down is se-
+vere, withτ int(|m|)≈4930 atL= 128 (see Appendix A).
+We evaluate the proposed sampler at this critical point
+on lattices of sizeL∈ {16,32,64,128,256}. As a bench-
+mark observable, we consider the absolute magnetization
+|m|=
+L−2X
+x
+ϕx
+ ,(24)
+and the connected susceptibility
+χconn =L 2 
+⟨m2⟩ − ⟨|m|⟩2
+.(25)
+We use HMC as the reference baseline for three pur-
+poses. First, the HMC runs provide reference estimates
+of physical observables, such asχ conn and⟨|m|⟩, against
+which the generative samplers are tested for statistical
+bias. Second, they determine the autocorrelation time
+τint(|m|), which quantifies the severity of the critical slow-
+down at each lattice size. Third, they define the refer-
+ence computational target i.e. we measure how much
+wall-clock time each generative method requires to match
+the effective number of independent samples obtained by
+HMC. ForL≤128 we run HMC chains of 2×10 6 steps;
+forL= 256 we run a chain of 3×10 6 steps. Autocorrela-
+tion times are estimated with the Wolff method [68, 69].
+Further details of the HMC simulations are given in Ap-
+pendix A.
+Generative methods.We compare four flow-based
+samplers, all trained atκ c = 0.2705 with the reverse-KL
+objective:
+•Our Multilevel method: The multilevel coarse-to-
+fine sampler introduced in Sec. III, evaluated at
+L∈ {16,32,64,128,256}(see Appendix B 1).
+•Super Resolving CNF[64]: the same hierarchical
+structure but with full-lattice CNF upsampling and
+without coarse-site preservation, evaluated atL∈
+{16,32,64,128,256}(see Appendix B 2).
+•Dense CNF[30]: A single CNF on the target
+distribution with a Gaussian prior, evaluated at
+L∈ {16,32,64}; training becomes prohibitive be-
+yondL= 64 (see Appendix B 3).
+•Hutch CNF: The Hutch CNF uses multiple CNN
+layers with the Hutchinson stochastic trace esti-
+mator [72] estimating the divergence stochastically,
+evaluated atL∈ {16,32}(see Appendix B 4).
+For each model, physical observables are estimated
+fromN= 10 5 samples using self-normalized impor-
+tance sampling (IS) Eq. (19). Autocorrelation times for
+the generative samplers are measured from independent
+Metropolis–Hastings (IMH) chains of 5×10 4 steps after
+a burn-in of 2×10 3 steps, using the Sokal windowing
+estimator [73]. All timing measurements are reported as
+wall-clock time on the same NVIDIA A100 GPU.
+B. Mixing and Autocorrelation Time
+Table I reports the integrated autocorrelation time
+τint(|m|) for all methods across lattice sizes. For HMC,
+the dynamical exponentz= 1.99±0.10 is obtained from
+a power-law fit to chains atL≤128; theL= 256 entry
+is measured directly from a 3×10 6-step chain but car-
+ries large uncertainty (N eff ≈113), consistent with the
+fit (see Appendix A).
+Three regimes can be distinguished. At small vol-
+umes (L≤32), our method, Dense CNF, and SR-NF
+all achieveτ int &lt;3, indicating very low autocorrelation
+compared with the HMC values 65–228. Hutch CNF is
+already substantially worse (τ int = 25.7 atL= 16), re-
+flecting the additional variance introduced during train-
+ing by stochastic log-determinant estimation.
+AtL= 64, the methods begin to separate. Our
+method maintainsτ int = 1.16, Dense CNF remains com-
+petitive at 0.95, whereas SR-NF rises to 7.99, signal-
+ing the onset of degraded mixing as the full-lattice CNF
+struggles to represent the growing configuration space.
+The contrast becomes much stronger at larger volumes:
+atL= 128 andL= 256, our method yieldsτ int = 3.7
+and 302, respectively, while SR-NF increases to 161 and
+2926±3166 (SR-NFτ int value is an unreliable atL= 256
+due to low ESS).
+Even atL= 256, our method remains roughly 44×
+below the measured HMC value of 13265±4321 demon-
+strating that the hierarchical construction substantially
+mitigates critical slowing down at lattice sizes where con-
+ventional HMC becomes prohibitively expensive. Low
+autocorrelation is meaningful only when accompanied by
+sufficient importance-sampling efficiency; the ESS/Nval-
+ues reported in Fig. 7 confirm that our method maintains
+PAGE 7
+7
+TABLE I. Integrated autocorrelation timeτ int(|m|) atκ c = 0.2705,λ= 0.022. HMC: Wolff method on 2×10 6-step chains
+(L≤128) and 3×10 6 steps (L= 256). Generative methods: IMH chains of 5×10 4 steps, 2×10 3 burn-in. The corresponding
+importance-sampling efficiency ESS/Nfor all methods is reported in Fig. 7 (Appendix B 7).
+MethodL= 16L= 32L= 64L= 128L= 256
+HMC 64.6±1.3 228±9 1370±120 4930±850 13265±4321
+Our method 0.72±0.02 0.80±0.02 1.16±0.03 3.73±0.15 302±105
+SR-NF 0.86±0.01 1.46±0.01 6.96±0.12 161.4±13.0 — a
+Dense CNF 0.70±0.02 0.76±0.02 0.95±0.03 — —
+Hutch CNF 25.7±2.6 55.4±8.3 — — —
+a The independence Metropolis–Hastings chain for SR-NF atL= 256 has an acceptance rate below 0.2% and sometimes gets stuck in a
+single configuration, so theτ int estimate unreliable; we therefore omit it.
+16 32 64 128 256
+Lattice size L
+100
+75
+50
+25
+0
+25
+50
+75
+100
+( ML HMC)/ HMC [%]
+HMC bands
+HMC 1
+HMC 2
+HMC 3
+Our method
+SR-NF
+Dense CNF
+Hutch CNF
+16 32 64 128 256
+12
+10
+8
+6
+4
+2
+0
+2
+4
+FIG. 3. Relative deviation of the connected susceptibility
+from HMC, (χ ML −χ HMC)/χHMC, versus lattice sizeLat
+κc = 0.2705. Grey bands show the 1σ, 2σ, and 3σHMC
+uncertainty intervals for visual guidance. For clearer visual-
+ization of the error bars, we also included a zoomed-in view.
+ESS/N≥0.19 up toL= 128, where SR-NF drops to
+ESS/N≈6×10 −4 at the same scale, rendering its low
+τint practically unusable at large volumes.
+C. Physical Observable Consistency
+A generative sampler is only useful if its importance-
+weighted estimates remain statistically consistent with
+the target distribution. We test this by comparing
+importance-sampling estimates of the connected suscep-
+tibilityχ conn, obtained fromN= 10 5 samples, with the
+long HMC reference runs. Figure 3 shows the relative de-
+viation (χML −χHMC)/χHMC, with gray bands indicating
+the uncertainty 1/2/3σof the HMC reference.
+The Dense CNF [30] and our method reproduce the
+HMC reference values forχ conn and⟨|m|⟩within 1–2σ
+across all tested lattice sizes (L= 16 to 256), indicating
+no statistically significant bias at our level of precision.
+By contrast, SR-NF estimates become increasingly unre-
+liable in large volumes: atL= 256, where IS efficiency
+drops below.1%, the reweightedχ conn acquires uncer-
+tainties that exceed the central value, and the mean devi-
+ates well beyond the HMC error bands. The Hutchinson-
+trace CNF exhibits substantial mode-dropping already at
+bothL= 16,32, rendering its IS estimates systematically
+biased. Our method, in contrast, maintains a sub-percent
+relative deviation from HMC up toL= 256, providing
+stable and accurate observable estimates at scales where
+the baseline methods become unreliable or non-trainable
+D. Time to Match HMC Precision
+Importance-sampling efficiency and sample-generation
+rate together determine the practical cost of a generative
+sampler. We measure this by recording the wall-clock
+time each method needs to achieve the same effective
+number of independent samples as the HMC reference
+run.
+At each lattice sizeL, the HMC reference usesN HMC
+steps (2×10 6 forL≤128, 3×10 6 forL= 256), corre-
+sponding to
+NHMC
+eff = NHMC
+2τint
+(26)
+effectively independent samples. For a generative method
+with IS efficiency ESS/Nand sample-generation rate Γ,
+the time required to accumulate the same number of ef-
+fective samples is
+T= NHMC
+eff
+(ESS/N) Γ.(27)
+The HMC wall-clock time
+THMC =N HMC tstep (28)
+is measured on the same CPU hardware used for the
+reference chains, witht step benchmarked from 500 HMC
+steps at each lattice size.
+Figure 4 compares the wall clock time of generat-
+ing samples with the HMC reference. Across these lat-
+tice sizes, the generative methods stay below the HMC
+baseline, suggesting a practical computational advantage.
+PAGE 8
+8
+16 32 64 128 256
+Lattice size L
+101
+102
+103
+104
+105
+Wall-clock time T [s]
+HMC
+Our method
+SR-NF
+Dense CNF
+Hutch CNF
+FIG. 4. Wall-clock time required to match the effective num-
+ber of independent samples obtained in the HMC reference
+run, as a function of lattice sizeL[Eq. (27)]. The black line
+shows the actual HMC wall-clock time.
+Our method achieves speedups of 48×atL= 16, 1245×
+atL= 64, and 66×atL= 256 relative to HMC. SR-NF
+is competitive at smallLbut rises close to the HMC line
+atL= 128 and 256, where its ESS drops to 0.06% and
+0.01% respectively. The inference-time comparison above
+excludes the one-time offline training cost. GPU train-
+ing times for all methods and lattice sizes are reported
+in Table V (Appendix C). At the largest lattice consid-
+ered, our method requires 10.3 GPU-hours atL= 256.
+The evolution of the training ESS/Nas a function of
+GPU time for our method and SR-NF is shown in Fig. 8
+(Appendix C), demonstrating that our masked architec-
+ture reaches higher efficiency in less training time at both
+L= 64 andL= 128. Dense CNF remains faster than
+HMC forL≤64 but cannot be trained beyond that scale;
+the memory scaling underlying this limitation is analyzed
+in Appendix D.
+These results show that the hierarchical coarse-to-fine
+construction yields a substantial computational advan-
+tage at large lattice sizes when both sampling efficiency
+and generation cost are taken into account.
+E. Multi-Level Monte Carlo Variance Reduction
+We compare the MLMC estimator against plain im-
+portance sampling (IS) at equal wall-clock budget,
+T=N IS cL,
+withN IS = 10 5, wherec L is the measured per-sample
+cost at the finest level. Per-level costsc ℓ and correction
+variancesσ 2
+ℓ are estimated from a probe run, and the
+sample allocation is then chosen according to the stan-
+dard MLMC rule
+Nℓ ∝
+q
+σ2
+ℓ /cℓ.(29)
+As observable, we use absolute magnetization|m|. We
+compute our estimator forL= 32 andL= 64, with the
+IS MLMC-B
+0
+1
+2
+3
+4
+5
+6
+7
+8Var at equal budget T
+1e 7
+ L = 32
+IS MLMC-B
+0
+2
+4
+6
+8Var at equal budget T
+1e 7
+ L = 64
+FIG. 5. MLMC vs plain IS variance at equal budgetT=
+105cL for our method atL= 32 andL= 64. MLMC
+(blue) achieves lower variance than IS (red) at both sizes,
+with|z|&lt;2 indicating statistical consistency with the IS ref-
+erence (Table VIII).
+coarsest level fixed atL 0 = 2. Fig. 5 summarizes the
+results of our estimator. The MLMC estimator achieves
+lower variance than plain IS at the same computational
+budget at both lattice sizes. AtL= 32, the variance re-
+duction corresponds to a 38% savings in wall-clock time
+for a fixed precision target. AtL= 64, the speedup
+is 21% and the lower gain atL= 64 can be traced to
+the reduction in the finest-level of IS efficiency, from
+ESS/N= 86% atL= 32 to 67% atL= 64. As
+the ESS of the model drops, the finest-level term of the
+MLMC estimator has a larger variance which contributes
+to a larger fraction of the total variance budget, leaving
+less room to invest time in other levels for overall vari-
+ance reduction. This suggests that the attainable MLMC
+speedup is currently limited by finest-level model quality.
+An unbiased MLMC estimator could be constructed
+for SR-NF by running the reverse ODE at each level to
+reconstruct the exact coarse ancestor. However, this re-
+quires an additional integration of the full-lattice CNF
+per level, effectively doubling the sampling cost and re-
+moving the computational benefit of the multilevel ap-
+proach.
+V. CONCLUSION
+We have introduced a multiscale generative sampling
+framework for continuous lattice field theories at critical-
+ity. The method combines a hierarchical coarse-to-fine
+factorization of the target distribution with learned local
+conditional priors and flow-based refinement across res-
+olutions. The important long-range correlation is mod-
+eled at coarse levels, whereas finer resolutions are gen-
+erated through conditional GMM priors and continuous
+normalizing flows that refine the newly introduced vari-
+ables while preserving the embedded coarse sites.
+Applied to the two-dimensional scalar theoryϕ 4 at
+criticality, the proposed method shows clear advantages
+over all flow-based baselines considered in this work. It
+PAGE 9
+9
+achieves substantially lower integrated autocorrelation
+times at the large lattice sizes, while maintaining higher
+ESS than baseline generative models. Physical observ-
+ables are reproduced in statistical agreement with long
+HMC reference simulations across all tested lattice sizes.
+In addition, the hierarchical construction enables the use
+of an MLMC estimator, which provides variance reduc-
+tion near criticality beyond plain importance sampling.
+Several directions remain open. The decrease in ESS
+at the largest volumes suggests that further gains may
+be possible through larger models or improved training
+at the finest levels, which would likely also enhance the
+attainable MLMC speedup. More broadly, the present
+results establish hierarchical generative sampling as a
+promising strategy for continuous lattice systems in the
+critical regime. An important next step is the extension
+of this framework to continuous group-valued theories
+such as lattice gauge theories.
+ACKNOWLEDGMENTS
+This work was supported by the German Ministry
+for Education and Research (BMBF) under the grant
+BIFOLD25B, and the European Union’s HORIZON
+MSCA Doctoral Networks programme project AQTI-
+VATE (101072344). We thank Stefan K¨ uhn for helpful
+discussions and valuable comments on the manuscript.
+[1] K. G. Wilson and J. Kogut, Phys. Rep.12, 75 (1974).
+[2] M. Creutz,Quarks, gluons and lattices(Cambridge Uni-
+versity Press, 1983).
+[3] M. Creutz, L. Jacobs, and C. Rebbi, Physics Reports95,
+201 (1983).
+[4] Y. Aokiet al.(Flavour Lattice Averaging Group
+(FLAG)), Phys. Rev. D113, 014508 (2026),
+arXiv:2411.04268 [hep-lat].
+[5] T. Aoyamaet al., Phys. Rept.887, 1 (2020),
+arXiv:2006.04822 [hep-ph].
+[6] R. Alibertiet al., Phys. Rept.1143, 1 (2025),
+arXiv:2505.21476 [hep-ph].
+[7] U. Wolff, Nuclear Physics B17, 93 (1990).
+[8] U. Wolff, Comp. Phys. Comm.156, 143 (2004).
+[9] S. Schaefer, R. Sommer, and F. Virotta (ALPHA), Nucl.
+Phys. B845, 93 (2011), arXiv:1009.5228 [hep-lat].
+[10] E. G. Tabak and E. Vanden-Eijnden, Communications in
+Mathematical Sciences8, 217 (2010).
+[11] E. G. Tabak and C. V. Turner, Communications on Pure
+and Applied Mathematics66, 145 (2013).
+[12] D. Rezende and S. Mohamed, inProceedings of the 32nd
+International Conference on Machine Learning, Vol. 37
+(2015) pp. 1530–1538.
+[13] R. T. Chen, Y. Rubanova, J. Bettencourt, and D. K. Du-
+venaud, Advances in neural information processing sys-
+tems31(2018), arXiv:1806.07366 [cs.LG].
+[14] M. S. Albergo, G. Kanwar, and P. E. Shanahan, Phys.
+Rev. D100, 034515 (2019).
+[15] G. Kanwar, M. S. Albergo, D. Boyda, K. Cranmer,
+D. C. Hackett, S. Racani` ere, D. J. Rezende, and
+P. E. Shanahan, Phys. Rev. Lett.125, 121601 (2020),
+arXiv:2003.06413 [hep-lat].
+[16] M. S. Albergo, G. Kanwar, S. Racani` ere, D. J. Rezende,
+J. M. Urban, D. Boyda, K. Cranmer, D. C. Hackett,
+and P. E. Shanahan, Phys. Rev. D104, 114507 (2021),
+arXiv:2106.05934 [hep-lat].
+[17] K. A. Nicoli, S. Nakajima, N. Strodthoff, W. Samek,
+et al., Phys. Rev. E101, 023304 (2020).
+[18] K. A. Nicoli, C. J. Anders, L. Funcke, T. Hartung,et al.,
+Phys. Rev. Lett.126, 032001 (2021).
+[19] A. Singha, D. Chakrabarti, and V. Arora, Phys. Rev. D
+107, 014512 (2023).
+[20] A. Singha, D. Chakrabarti, and V. Arora, Phys. Rev. D
+108, 074518 (2023).
+[21] R. Abbott, A. Botev, D. Boyda, D. C. Hackett, G. Kan-
+war, S. Racani` ere, D. J. Rezende, F. Romero-L´ opez, P. E.
+Shanahan, and J. M. Urban, Phys. Rev. D109, 094514
+(2024), arXiv:2401.10874 [hep-lat].
+[22] P. Tuo, Z. Zeng, J. Chen, and B. Cheng, Journal of Chem-
+ical Theory and Computation21, 11427 (2025).
+[23] R. Abbott, D. Boyda, Y. Fu, D. C. Hackett, G. Kan-
+war, F. Romero-L´ opez, P. E. Shanahan, and J. M. Urban,
+Variance reduction in lattice QCD observables via nor-
+malizing flows (2026), arXiv preprint, arXiv:2603.02984
+[hep-lat].
+[24] A. Faraz, A. Singha, D. Chakrabarti, S. Nakajima,
+and V. Arora, PoSLATTICE2024, 036 (2025),
+arXiv:2308.08615 [physics.comp-ph].
+[25] J. Finkenrath, PoSLATTICE2023, 022 (2024).
+[26] J. Kreit, A. Bulgarelli, L. Funcke, T. Luu, D. Schuh,
+S. Singh, and L. Verzichelli, in42th International Sym-
+posium on Lattice Field Theory(2026) arXiv:2601.18273
+[cond-mat.str-el].
+[27] D. Schuh, L. Funcke, J. Kreit, T. Luu, and S. Singh,
+arXiv (2026), arXiv:2603.18205 [cond-mat.str-el].
+[28] V. Kanaujia, M. S. Scheurer, and V. Arora, SciPost Phys.
+16, 132 (2024).
+[29] S. Bacchio, P. Kessel, S. Schaefer, and L. Vaitl, Phys.
+Rev. D107, L051504 (2023), arXiv:2212.08469 [hep-lat].
+[30] M. Gerdes, P. de Haan, C. Rainone, R. Bondesan,et al.,
+SciPost Physics15, 238 (2023).
+[31] M. Caselle, E. Cellini, and A. Nada, JHEP02, 048,
+arXiv:2307.01107 [hep-lat].
+[32] M. Gerdes, P. de Haan, R. Bondesan, and
+M. C. N. Cheng, Phys. Rev. D112, 094516 (2025),
+arXiv:2410.13161 [hep-lat].
+[33] M. Caselle, E. Cellini, A. Nada, and M. Panero, JHEP
+07, 015, arXiv:2201.08862 [hep-lat].
+[34] M. Caselle, E. Cellini, and A. Nada, JHEP02, 090,
+arXiv:2409.15937 [hep-lat].
+[35] A. Bulgarelli, E. Cellini, K. Jansen, S. K¨ uhn, A. Nada,
+S. Nakajima, K. A. Nicoli, and M. Panero, Phys. Rev.
+Lett.134, 151601 (2025), arXiv:2410.14466 [quant-ph].
+[36] A. Bulgarelli, E. Cellini, and A. Nada, Phys. Rev. D111,
+074517 (2025), arXiv:2412.00200 [hep-lat].
+[37] C. Bonanno, A. Bulgarelli, E. Cellini, A. Nada, D. Pan-
+falone, D. Vadacchino, and L. Verzichelli, JHEP04, 051,
+arXiv:2510.25704 [hep-lat].
+PAGE 10
+10
+[38] D. Wu, L. Wang, and P. Zhang, Phys. Rev. Lett.122,
+080602 (2019).
+[39] A. Singha, E. Cellini, K. A. Nicoli, K. Jansen, S. K¨ uhn,
+and S. Nakajima, inThe Thirteenth International
+Conference on Learning Representations (ICLR 2025)
+(2025).
+[40] P. Bia las, P. Korcyl, and T. Stebel, Computer Physics
+Communications281, 108502 (2022).
+[41] X. Du, J. Nam, S. Liu, and R. G´ omez-Bombarelli, Scaling
+autoregressive models for lattice thermodynamics (2026),
+arXiv:2603.14695 [cond-mat.stat-mech].
+[42] L. Wang, G. Aarts, and K. Zhou, JHEP05, 060,
+arXiv:2309.17082 [hep-lat].
+[43] Q. Zhu, G. Aarts, W. Wang, K. Zhou, and L. Wang,
+arXiv (2025), arXiv:2502.05504 [hep-lat].
+[44] G. Kanwar and O. Vega, in42th International Sympo-
+sium on Lattice Field Theory(2025) arXiv:2512.19877
+[hep-lat].
+[45] O. Vega, J. Komijani, A. El-Khadra, and M. Marinkovic,
+arXiv preprint arXiv:2510.26081 (2025).
+[46] V. Kanaujia and V. Arora, arXiv (2025),
+arXiv:2510.21330 [cs.LG].
+[47] H. Alharazin, J. Y. Panteleeva, and B. D. Sun, arXiv
+(2026), arXiv:2602.09045 [hep-lat].
+[48] J. M. Pawlowski and J. M. Urban, Machine Learning:
+Science and Technology1, 045011 (2020).
+[49] J. Singh, M. Scheurer, and V. Arora, SciPost Physics11,
+10.21468/scipostphys.11.2.043 (2021).
+[50] A. Singha, D. Chakrabarti, and V. Arora, SciPost Phys.
+Core5, 052 (2022).
+[51] L. Del Debbio, J. M. Rossney, and M. Wilson, Phys. Rev.
+D104, 094507 (2021), arXiv:2105.12481 [hep-lat].
+[52] R. Abbottet al., Eur. Phys. J. A59, 257 (2023),
+arXiv:2211.07541 [hep-lat].
+[53] G. Catumba and A. Ramos, Eur. Phys. J. C85, 1037
+(2025), arXiv:2502.15570 [hep-lat].
+[54] J. Goodman and A. D. Sokal, Phys. Rev. Lett.56, 1015
+(1986).
+[55] J. Goodman and A. D. Sokal, Phys. Rev. D40, 2035
+(1989).
+[56] W. Janke and T. Sauer, Phys. Rev. E49, 3475 (1994),
+arXiv:hep-lat/9305016.
+[57] K. E. Schmidt, Phys. Rev. Lett.51, 2175 (1983).
+[58] M. Faas and H. Hilhorst, Physica A: Statistical Mechan-
+ics and its Applications135, 571 (1986).
+[59] M. G. Endres, R. C. Brower, W. Detmold, K. Orginos,
+and A. V. Pochinsky, Phys. Rev. D92, 114516 (2015),
+arXiv:1510.04675 [hep-lat].
+[60] K. Jansen, E. H. M¨ uller, and R. Scheichl, Phys. Rev. D
+102, 114512 (2020), arXiv:2008.03090 [hep-lat].
+[61] M. Grabenstein and B. Mikeska, Phys. Rev. D47, R3103
+(1993).
+[62] P. Bia las, P. Czarnota, P. Korcyl, and T. Stebel, Phys.
+Rev. E107, 054127 (2023), arXiv:2212.04955 [cond-
+mat.stat-mech].
+[63] R. Abbott, M. S. Albergo, D. Boyda, D. C. Hackett,
+et al., PoSLATTICE2023, 035 (2024), 2404.10819.
+[64] M. Bauer, R. Kapust, J. M. Pawlowski, and F. L. Tem-
+men, SciPost Physics19, 077 (2025).
+[65] F. Ihssen, R. Kapust, and J. M. Pawlowski, Gener-
+ative sampling with physics-informed kernels (2025),
+arXiv:2510.26678 [hep-lat].
+[66] M. B. Giles, Acta Numerica24, 259 (2015).
+[67] S. Duane, A. Kennedy, B. J. Pendleton, and D. Roweth,
+Physics Letters B195, 216 (1987).
+[68] N. Madras and A. D. Sokal, J. Stat. Phys.50, 109 (1988).
+[69] U. Wolff, Comp. Phys. Comm.156, 143 (2004),
+arXiv:hep-lat/0306017 [hep-lat].
+[70] L. P. Kadanoff, Physics Physique Fizika2, 263 (1966).
+[71] K. Binder, Z. Phys. B43, 119 (1981).
+[72] M. F. Hutchinson, Commun. Stat. Simul.19, 433 (1990).
+[73] U. Wolff (ALPHA), Comput. Phys. Commun.156,
+143 (2004), [Erratum: Comput.Phys.Commun. 176, 383
+(2007)], arXiv:hep-lat/0306017.
+[74] D. P. Kingma and J. Ba, Adam: A method for stochastic
+optimization (2017), arXiv:1412.6980 [cs.LG].
+Appendix A: HMC Simulation: Critical Slowing
+Down and Scaling
+1. Simulation Details
+ForL∈ {8,16,32,64,128}we run HMC chains with
+molecular-dynamics trajectory lengthτ MD = 1 and
+nleap = 10 leapfrog steps (step sizeϵ= 0.1), fixed
+across all lattice sizes. All simulations are performed at
+κc = 0.2705,λ= 0.022. The acceptance rate decreases
+withLsince the step size is not re-tuned per volume
+(Table II).
+TABLE II. HMC acceptance rate and wall-clock time for the
+reference chains atκ c = 0.2705,λ= 0.022,τ MD = 1,n leap =
+10,ϵ= 0.1.
+LChain length Acceptance Wall-clock time
+8 2×10 6 98% 0.5 hr
+16 2×10 6 96% 0.5 hr
+32 2×10 6 91% 0.7 hr
+64 2×10 6 85% 1.5 hr
+128 2×10 6 67% 3.9 hr
+256 3×10 6 41% 27.9 hr
+The integrated autocorrelation timeτ int(|m|) is esti-
+mated from each chain using the Wolff method [68, 69],
+the Sokal automatic windowing procedure.
+2. Power-Law Fit and Extrapolation
+Table III collects the measuredτ int(|m|) values. The
+dynamical critical exponentz dyn is extracted by fitting
+the power-law ansatzτ int =A L zdyn in log-log space us-
+ing an unweighted least-squares fit to the five measured
+pointsL∈ {8,16,32,64,128}:
+zdyn = 1.99±0.10, A= 0.30,(A1)
+where the uncertainty is a bootstrap standard deviation
+(50,000 resamples). This is consistent with the theoreti-
+cally expected valuez dyn ≈2 for HMC applied to scalar
+field theories [67], and with other measurements [7, 60].
+ForL= 256 we ran a chain of 3×10 6 steps and directly
+measuredτ int(|m|) = 13,265±4,321. The large relative
+PAGE 11
+11
+uncertainty (33%) reflects the small effective sample size
+Neff = 3×10 6/(2×13,265)≈113, which is insufficient
+to determineτ int precisely at this scale. The power-law
+extrapolation fromL≤128 gives∼18,600, consistent
+with the direct measurement within 1.2σ.
+TABLE III. HMC integrated autocorrelation timeτ int(|m|) at
+κc = 0.2705,λ= 0.022, measured by the Wolff method [69].
+TheL= 256 entry is a direct measurement with large un-
+certainty; the power-law extrapolation fromL≤128 gives
+∼18,600 (consistent within 1.2σ).
+LChain lengthτ int(|m|) Note
+8 2×10 6 22.9(3)
+16 2×10 6 64.6(1.3)
+32 2×10 6 228(9)τ int ∝L 1.99±0.10
+64 2×10 6 1370(120)
+128 2×10 6 4930(850)
+256 3×10 6 13,265(4321) direct;N eff ≈113
+8 16 32 64 128 256
+Lattice size L
+102
+103
+104
+int(|m|)
+Fit: L1.99 ± 0.10
+HMC (L 128)
+HMC (L = 256, large uncertainty)
+FIG. 6. HMC integrated autocorrelation timeτ int(|m|) vs.
+Lon a log-log scale atκ c = 0.2705. Filled circles: directly
+measured values (Table III). Open circle: extrapolatedL=
+256 value. Red line: power-law fitτ int = 0.30L 1.99 (zdyn =
+1.99±0.10).
+Appendix B: Model Architecture Details and
+Hyperparameters
+1. Our Multilevel Method
+a. Overall structure.Our method is a hierarchical
+coarse-to-fine sampler. It starts from a coarse 8×8 lat-
+tice and appliesK= log 2(L/8) successive upsampling
+steps, each doubling the linear lattice size. The full model
+therefore consists of a standalone coarse-level CNF fol-
+lowed byKupsampling modules.
+b. Coarse-level CNF.The coarse 8×8 field is gen-
+erated by a dense CNF [30] with an FFT-based vector
+field, integrated with the RK4 solver forn coarse
+steps = 40
+function evaluations. The vector field is conditioned on a
+Fourier basis withnsin = 15 sine harmonics andn time = 8
+time-kernel features; bond (nearest-neighbour) interac-
+tions are encoded withn bond
+freq = 18 andn bond
+time = 18.
+c. Upsampling step.When refining anL ℓ ×L ℓ lat-
+tice to 2Lℓ ×2L ℓ, the fine lattice is partitioned into even-
+even coarse sites, odd-odd body-centre sites, and edge
+sites (2i+ 1,2j), (2i,2j+ 1). The even-even sites carry
+the coarse field and remain fixed throughout the upsam-
+pling step, while the odd-odd and edge sites are gener-
+ated sequentially, see Fig. 1. First, a conditional GMM
+followed by a masked convolutional CNF generates the
+body-centre sites conditioned on the coarse field. Sec-
+ond, the same procedure is applied to the edge sites con-
+ditioned on both coarse and body-centre variables. Be-
+cause the CNF vector field is masked to zero at even-even
+sites, those coordinates are unmodified by the ODE in-
+tegration, and the restrictionϕ (ℓ+1) →ϕ (ℓ) obtained by
+reading off the even-even positions is exact.
+d. GMM and CNF hyperparameters.At each up-
+sampling level, the GMM network uses two convolutional
+layers, 32 hidden channels, and kernel size 5×5, with
+H= 6 mixture components at intermediate levels and
+H= 12 at the finest level. The body-centre and edge
+CNFs both use convolutional vector fields with periodic
+boundary conditions, the same Fourier-basis conditioning
+as the coarse CNF, and RK4 integration withnsteps = 20.
+Kernel sizes follow the schedule in Table IV.
+2. SR-NF
+SR-NF follows the coarse-to-fine upsampling architec-
+ture of [64], replacing the HMC-based coarsest sampler
+with the same dense CNF used in our method (RK4,
+40 steps). At each upsampling step, the coarse field is
+naively repeated on a 2×2 block, Gaussian block noise
+is injected, and a full-lattice (unmasked) CNF refines all
+L2
+ℓ+1 sites jointly.
+We use a finer coarse latticeL 0 = 2 (K= log 2(L/2)
+upsampling levels), compared toL 0 = 8 for our method.
+This deeper hierarchy was found necessary for training
+stability: shallower variants withL 0 = 8 collapse after
+initially reaching high ESS, with the loss diverging irre-
+versibly (see Appendix D for details). The kernel-size
+schedule also differs from our method and is listed in Ta-
+ble IV. The number of integration steps isn steps = 70 at
+all sizes exceptL= 256 wheren steps = 60 ( smaller ode
+steps makes training unstable).
+3. Dense CNF
+Dense CNF [30] is a single-scale baseline: one CNF acts
+directly on the fullL×Llattice, starting from an isotropic
+Gaussian prior. The vector field is adensesingle-layer
+FFT-based parameterisation in which each spatial mode
+PAGE 12
+12
+interacts with all others, withO(L 4) parameters. It is
+integrated with RK4 forn steps = 50 evaluations. A richer
+Fourier basis is used:n sin = 49,n time = 11,n bond
+freq = 20,
+nbond
+time = 20. TheO(L 4) memory cost of the exact log-
+determinant makes training infeasible beyondL= 64.
+Dense CNF was run atL∈ {16,32,64}with batch size
+256,128,64 and 3,000,5,000,10,000 epochs.
+4. Hutch CNF
+Hutch CNF is also a single-scale baseline acting di-
+rectly on the full lattice. Its vector field is a 3-layer
+convolutional network with 32 hidden channels, 7×7
+kernels, and GELU activations. The divergence is esti-
+mated with the Hutchinson stochastic trace. The ODE
+is solved with a fixed-step RK4 integrator atn steps = 40,
+and gradient checkpointing is used to reduce memory.
+The same Fourier basis as our method is used (nsin = 15,
+ntime = 8). Hutch CNF was run atL∈ {16,32}with
+batch size 256,128 and 3,000,5,000 epochs.
+5. Training
+All methods are trained end-to-end with the reverse-
+KL objective using the Adam optimizer [74] (β 1 = 0.8,
+β2 = 0.9). Our method and SR-NF use initial learning
+rate 10−2; Dense CNF uses 5×10 −3 as in Ref. [30]. All
+methods apply an exponential learning-rate decay with
+γ= 0.9994 and minimum 10 −4. Gradient norms are
+clipped at 0.5 for our method, SR-NF, and Hutch CNF,
+and at 1.0 for Dense CNF. All runs use a single NVIDIA
+A100 GPU.
+6. Hyperparameters
+Table IV lists hyperparameters that vary with target
+lattice sizeLfor the two hierarchical methods.
+7. IS Efficiency Comparison
+ESS per sample is computed following Eq. (19) as
+ESS/N= 1
+NPN
+i=1 ¯w2
+i
+Figure 7 shows the IS efficiency ESS/NatN= 10 5
+samples for all four methods. Our method maintains
+ESS/N≥0.67 up toL= 64 and 0.19 atL= 128, while
+SR-NF drops to 0.06% atL= 128 and colapses to 0.010%
+atL= 256. Dense CNF is competitive up toL= 64
+(ESS/N= 0.68) but cannot be trained at larger volumes.
+Hutch CNF achieves near-zero efficiency even at smallL
+(0.5% atL= 16), reflecting mode collapses and noisier
+training signal from the stochastic log-determinant.
+16 32 64 128 256
+Lattice size L
+10 4
+10 3
+10 2
+10 1
+100
+IS efficiency  ESS/N
+Our method SR-NF Dense CNF Hutch CNF Ideal (ESS=1)
+FIG. 7. IS efficiency ESS/Nvs.Latκ c = 0.2705. Evaluations
+useN= 10 5 IS samples per method. Our method (blue cir-
+cles) maintains high efficiency across all evaluated sizes; SR-
+NF (orange squares) collapses at largeL; Dense CNF (green
+triangles) is limited toL≤64; Hutch CNF (purple diamonds)
+suffers from stochastic-estimator noise.
+8. Training and Sampling Time
+Table V reports the total GPU time consumed during
+training for each method and lattice size, all on a sin-
+gle NVIDIA A100 80 GB GPU. Our method and SR-NF
+scale moderately withL, reaching 10.3 and 16.0 GPU-
+hours atL= 256 , respectively. Hutch CNF is dispro-
+portionately expensive atL= 32 (4.1 GPU-hours) rel-
+ative to its model capacity, reflecting the high memory
+and compute overhead of the graph-retention divergence
+estimator discussed in Appendix D. Dense CNF is cheap
+at smallLbut cannot be trained beyondL= 64.
+Table VI reports the raw sampling time (generated
+samples per second) for each method inκ c = 0.2705,
+measured during the importance sample evaluation with
+batch size 256 on an NVIDIA A100 80 GB GPU.
+Appendix C: Training Efficiency: ESS vs. GPU Time
+Figure 8 shows the evolution of the training ESS/N
+(20-epoch moving average) as a function of wall-clock
+GPU time, clipped to a 4-hour budget, for our method
+and SR-NF atL= 64 andL= 128.
+a.L= 64.Our method completes its full training
+schedule (10,000 epochs) in≈2.3 GPU-hours, reaching
+a ESS/N≈0.67 at the 4 hr mark. SR-NF requires
+≈4.3 GPU-hours for the same number of epochs and
+achieves ESS/N≈0.21 at the 4-hour mark. The strug-
+gle of SR-NF in order to increase ESS is maily failing to
+learn the long range correlation faster at criticality.
+b.L= 128.The training time gap widens: our
+method processes each epoch roughly 1.7×faster than
+SR-NF because only 3/4 of the sites participate in the
+PAGE 13
+13
+TABLE IV. Per-size hyperparameters atκ c = 0.2705. Our method usesL 0 = 8; SR-NF usesL 0 = 2.Kdenotes the number
+of upsampling levels.n steps is the fine-level ODE budget per upsampling CNF; the coarse dense CNF always uses 40 steps.
+L K(ours) Kernel sizes (ours)K(SR-NF) Kernel sizes (SR-NF)n steps (ours)n steps (SR-NF) Batch (ours) Batch (SR-NF)
+16 1 [7] 3 [9,9,7] 20 70 256 200
+32 2 [9,7] 4 [9,9,9,7] 20 70 128 128
+64 3 [9,9,7] 5 [9,9,9,9,7] 20 70 100 100
+128 4 [9,9,7,7] 6 [7,7,7,7,7,7] 20 70 100 32
+256 5 [9,9,7,7,7] 7 [5,5,5,5,5,5,5] 20 60 24 12
+TABLE V. Training cost in GPU-hours (NVIDIA A100
+80 GB) atκ c = 0.2705,λ= 0.022. Dashes indicate lattice
+sizes not trained for that method.
+LOur method SR-NF Dense CNF Hutch CNF
+16 0.4 0.4 0.3 0.6
+32 0.8 1.4 0.5 4.1
+64 2.3 4.3 2.3 —
+128 10.1 15.5 — —
+256 10.3 16.0 — —
+TABLE VI. Raw sampling throughput [samples/s] atκ c =
+0.2705,λ= 0.022. Measured during IS evaluation (batch size
+256). Dashes indicate sizes not run for that method.
+LOur method SR-NF Dense CNF Hutch CNF
+16 463 805 740 516
+32 298 475 720 336
+64 259 196 284 —
+128 89 17 — —
+256 28 11 — —
+CNF ODE at each level. Within 4 GPU-hours, our
+method achieves higher ESS/Nthan SR-NF, with a
+steeper improvement trajectory. The full run of our
+method (20,000 epochs, 10.1 GPU-hours) reaches ESS/N
+≈0.19, whereas SR-NF at its full run (20,000epochs, 15.5
+GPU-hours) plateaus at a substantially lower value.
+Appendix D: Computational Scaling Analysis
+LetN=L 2 denote the number of lattice sites andB
+the batch size. We analyze the peak training memory
+and explain why three of the four methods fail to scale
+to large lattices.
+A common implementation detail is that all models are
+trained by backpropagating through the full ODE inte-
+gration trajectory, rather than using the adjoint method.
+As a result, the complete computation graph over all eval-
+uations of the ODE functions must be retained in mem-
+ory during training. For an RK4 integrator withn steps
+steps, this corresponds to storing activations from evalu-
+ations of functions 4n steps .
+0.00 0.25 0.50 0.75 1.00 1.25 1.50 1.75 2.00
+GPU hours
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0Training ESS/N
+L = 64
+Our method
+SR-NF
+0.0 0.5 1.0 1.5 2.0 2.5 3.0 3.5 4.0
+GPU hours
+L = 128
+Our method
+SR-NF
+FIG. 8. Training ESS/N(MA-20) vs. GPU hours, clipped to
+4 hr, for our method (solid blue) and SR-NF (dashed orange)
+atL= 64 (left) andL= 128 (right). Filled circles mark the
+ESS at the end of the clipped window.
+1. Dense CNF
+The Dense CNF vector field is a dense operator that
+is translationally andD 4-equivariant acting on the entire
+lattice. With the FFT implementation [30], the number
+of independent parameters scales asO(N/8) due to orbit
+reduction, while the forward cost per ODE evaluation
+scales as
+Cfwd
+Dense ∼ O(Fbasis NlogN),(D1)
+where
+Fbasis =n sin ×n time = 49×11 = 539.(D2)
+The divergence is available in closed form and is there-
+fore relatively cheap; the dominant bottleneck is memory.
+At each ODE evaluation the model materializes a basis-
+expansion tensor of shape
+[B, N, F basis],(D3)
+so the peak training memory scales as
+MDense ∼4n steps ×B×N×F basis ×sizeof(float32),(D4)
+where the leading factor of 4 accounts for the four stages
+of the RK4 integrator, each of which must retain its ac-
+tivations for backpropagation. ForL= 64 (N= 4096,
+B= 64,n steps = 50), this gives
+4×50×64×4096×539×4 B≈113 GB,(D5)
+PAGE 14
+14
+which already exceeds the 80 GB hardware limit and ex-
+plains why, atL= 64, Dense CNF was trained with
+batch sizeB= 64, whereas the hierarchical methods use
+B= 100 at the same lattice size (Table V). The mem-
+ory cost of exact divergence evaluation prevents Dense
+CNF from reaching the same batch size. AtL= 128
+(N= 16384), the lattice volume quadruples, driving the
+memory requirement to approximately 450 GB, far be-
+yond available hardware. Thus the effective scaling limi-
+tation of Dense CNF is
+MDense ∼ O(Fbasis nsteps B N),(D6)
+with a very large prefactor that makes the method
+memory-infeasible beyondL= 64 even at reduced batch
+sizes.
+2. Hutch CNF
+Hutch CNF replaces the exact divergence by a stochas-
+tic estimator. The vector field is a 3-layer convolutional
+network with parameter count independent ofL, and the
+forward cost per ODE evaluation scales as
+Cfwd
+Hutch ∼ O(DHK 2N),(D7)
+which is formally well behaved in lattice volume.
+However, the stochastic divergence estimator requires
+differentiating through an additional Jacobian-based
+quantity at every ODE evaluation. This introduces a sub-
+stantial memory overhead beyond the forward pass. The
+peak training memory therefore scales approximately as
+MHutch ∼4n steps ×B×N×
+ 
+Fbasis+D×H
+
+×cdiv,(D8)
+wherec div &gt;1 represents the extra graph-storage cost of
+the stochastic divergence evaluation. In practice, despite
+the smaller parameter count, this makes the peak train-
+ing memory comparable to Dense CNF:L= 16 remains
+feasible on a 40 GB GPU, but alreadyL= 32 requires
+80 GB-class hardware.
+The second limitation is statistical rather than
+memory-related. The stochastic divergence estimate has
+variance that grows with system size,
+Var
+h
+cdiv(v)
+i
+∝N 2 ∝L 4,(D9)
+so the gradient signal-to-noise ratio deteriorates rapidly
+withL. The combined effect of increased memory use
+and increasingly noisy training limits Hutch CNF to
+small lattices.
+3. SR-NF vs. Our Method
+Both SR-NF and our method are hierarchical models
+withK= log 2(L/8) levels, the same convolutional archi-
+tecture, and the sameO(L 2) asymptotic memory scaling.
+The difference is therefore not the formal scaling law, but
+the amount of work performed per level and the resulting
+statistical efficiency.
+At levelℓ, our method transports only the newly in-
+troduced sites, i.e. 3
+4 Nℓ, whereas SR-NF transports all
+Nℓ sites. In addition, SR-NF uses 70–100 ODE steps per
+level, whereas our method uses 20. As a result, SR-NF is
+several times more expensive per refinement level, even
+though both methods have the same asymptoticO(L 2)
+scaling.
+The more important difference is statistical. In our
+method, the masked CNF leaves the coarse sites un-
+changed, so the restrictionϕ (ℓ+1) →ϕ (ℓ) is exact. Each
+refinement level therefore only has to learn the condi-
+tional distribution of the newly introduced sites given the
+coarse field. The associated per-level log-weight variance
+σ2
+ℓ remains controlled asLgrows.
+In SR-NF, by contrast, the full-lattice CNF updates
+all sites at every level, including the embedded coarse
+ones. Each level must therefore both correct the newly
+introduced variables and re-correct the coarse field. This
+makes the task progressively harder as the lattice be-
+comes larger, so thatσ 2
+ℓ increases withL ℓ. Since the
+overall IS efficiency behaves as
+ESS
+N ∝exp
+ 
+−1
+2
+X
+ℓ
+σ2
+ℓ
+!
+,(D10)
+the accumulated variance across levels leads to an expo-
+nential deterioration of IS efficiency with depth. This
+is consistent with the observed growth of the induced
+autocorrelation time fromτ int = 352 (L= 128) to
+τint = 2926 (L= 256).
+So, Dense CNF fails because of the large memory foot-
+print of its dense exact-divergence architecture, Hutch
+CNF fails because of both memory overhead and rapidly
+growing gradient noise, and SR-NF fails because its un-
+masked hierarchical transport causes strong deterioration
+in IS efficiency. Our method is the only one that avoids all
+three failure modes simultaneously in the tested regime.
+Appendix E: MLMC Estimator
+TABLE VII. Per-level costcℓ (µs/sample) and optimal sample
+countN ℓ [Eq. (29)] for our method at equal wall-clock budget
+T=N IS ×c L withN IS = 105.
+Lℓ L= 32 runL= 64 run
+cℓ (µs)N ℓ cℓ (µs)N ℓ
+2 13.9 4.76×10 6 6.5 6.85×10 6
+4 34.4 2.46×10 6 17.8 3.51×10 6
+8 135.3 6.32×10 5 73.2 9.08×10 5
+16 406.6 1.53×10 5 238.2 2.23×10 5
+32 6286 5.24×10 4 1003.6 5.13×10 4
+64 — — 12812 7.83×10 4
+PAGE 15
+15
+TABLE VIII. Comparison of plain IS and MLMC estimators
+for⟨|m|⟩using our method atκ c = 0.2705, evaluated at equal
+computational budgetT.
+L T[s] IS estimate MLMC estimate Variance reduction
+32 614 0.7129±0.0012 0.7137±0.0007 66%
+64 1266 0.5999±0.0011 0.5989±0.0008 47%
+1. SR-NF
+The MLMC estimator (Sec. IV E) requires anexact re-
+striction map: given a fine-level sampleϕ (≤ℓ), the restric-
+tionR(ϕ (≤ℓ)) =ϕ (≤ℓ−1) must recover exactly the coarse
+sample that was used to generate it. For our method
+this holds by construction: the masked CNF leaves the
+coarse sites untouched throughout integration, so read-
+ing them back always returns the originalϕ (≤ℓ−1) (see
+Appendix B 1).
+For SR-NF the restriction fails. At each upsampling
+step, the full-lattice CNF is applied toallsites of the
+fine grid, including those that carry the coarse field values
+placed at the start of the step. After integration, those
+sites have been displaced and no longer coincide with the
+coarse part of the originalϕ (≤ℓ−1). Projecting the fine
+output back onto the coarse sublattice therefore yields
+a configuration that is different from the coarse sample
+used during generation, and that was never drawn from
+q(≤ℓ−1).
+Formally, define the level-ℓMLMC correction for a fine
+sampleϕ (≤ℓ)
+n as
+∆(ℓ)
+n =O (ℓ) 
+ϕ(≤ℓ)
+n
+
+− O(ℓ−1) 
+ϕ(≤ℓ−1)
+n
+
+,(E1)
+where
+ϕ(≤ℓ−1)
+n =R
+
+ϕ(≤ℓ)
+n
+
+.(E2)
+For our method,Rrecovers the exact coarse ancestor,
+so the pair
+ 
+ϕ(≤ℓ)
+n , ϕ(≤ℓ−1)
+n
+
+is jointly distributed under
+the hierarchical model and contributes correctly to the
+telescoping sum.
+For SR-NF, however,R(ϕ (≤ℓ)
+n ) is a distorted coarse
+configuration whose distribution does not match the re-
+quiredq (≤ℓ−1). Consequently, the inter-level coupling re-
+quired by MLMC is broken and the estimator becomes
+biased.
+In principle, SR-NF can be made unbiased. For a given
+ϕ(≤ℓ)
+n , one could run thereverseODE at levelℓto recover
+the exact coarse inputϕ (≤ℓ−1)
+n before the CNF displaced
+it. This would restore the exact restriction and make the
+MLMC correction unbiased. However, running the re-
+verse ODE requires one additional full-lattice CNF inte-
+gration per level, doubling the sampling cost at each up-
+sampling step. Since the variance reduction from MLMC
+is only beneficial when the correction terms are cheap to
+evaluate relative to the fine-level estimator, this extra
+cost eliminates the computational advantage of the mul-
+tilevel approach entirely. The bias is therefore not an
+incidental implementation detail but a fundamental con-
+sequence of the full-lattice upsampling design.
+2. Fully weighted estimator.
+We can define another MLMC estimator for the multi-
+level approach, this is unbiased when we know the target
+distribution at each level. Define level-dependent impor-
+tance weights
+w(ℓ)(ϕ(≤ℓ)) = p(ℓ)(ϕ(≤ℓ))
+q(ℓ)(ϕ(≤ℓ)) ,¯w (ℓ)
+n = w(ℓ)(ϕ(≤ℓ)
+n )
+PNℓ
+m=1 w(ℓ)(ϕ(≤ℓ)
+m )
+.
+(E3)
+The corresponding multilevel estimator is
+bO(A)
+ML =
+LX
+ℓ=0
+NℓX
+n=1
+¯w(ℓ)
+n
+h
+O(ℓ)(ϕ(≤ℓ)
+n )− O (ℓ−1)(ϕ(≤ℓ−1)
+n )
+i
+.
+(E4)
+Herew (ℓ) =p (ℓ)/q(ℓ) reweights against the level-ℓtar-
+get marginal. This estimator is unbiased, but it requires
+access top (ℓ) at every level.
+3. Per-Level Budget Allocation
+Table VII gives the per-level costs and optimal sample
+counts for our method atL= 32 andL= 64, derived
+from a probe run of 10 4 samples per level. The coarser
+levels are sampled with orders-of-magnitude more config-
+urations than the finest level, concentrating the fine-level
+budget on the highest-variance IS correction while amor-
+tizing the cheap corrections across many more samples.
+d be zero.</pre></html>

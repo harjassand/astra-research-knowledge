@@ -1,0 +1,354 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>&quot;&quot;&quot;Independent rational harmonic and elementary centroid primitives.</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>&quot;&quot;&quot;Independent rational harmonic and elementary centroid primitives.</h1><p>Source ID d-2bc090ac3d862834; literature/sources/handoff_sol_max_check/cycle13/exact_sphere_prerequisite.py; 3473 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>&quot;&quot;&quot;Independent rational harmonic and elementary centroid primitives.
+
+The harmonic basis comes from a Laplacian nullspace and exact sphere
+integration, not from the producer&#x27;s associated-Legendre formula.
+All interval endpoints are Fractions; mpmath/numerical solvers are unused.
+&quot;&quot;&quot;
+
+try:
+    from flint import fmpq as Q
+    ARITHMETIC_BACKEND = &quot;python-flint exact rationals&quot;
+except ImportError:
+    from fractions import Fraction as Q
+    ARITHMETIC_BACKEND = &quot;Python Fraction exact rationals&quot;
+from math import factorial, isqrt, lcm
+
+
+def dot(a, b):
+    assert len(a) == len(b)
+    return sum((u*v for u, v in zip(a, b)), Q(0))
+
+
+def monomials(degree):
+    if degree &lt; 0:
+        return []
+    return [(a, b, degree-a-b) for a in range(degree, -1, -1)
+            for b in range(degree-a, -1, -1)]
+
+
+def nullspace(rows, n):
+    A = [list(map(Q, row)) for row in rows]
+    pivots, r = [], 0
+    for c in range(n):
+        j = next((j for j in range(r, len(A)) if A[j][c]), None)
+        if j is None:
+            continue
+        A[r], A[j] = A[j], A[r]
+        v = A[r][c]
+        A[r] = [x/v for x in A[r]]
+        for j in range(len(A)):
+            if j != r and A[j][c]:
+                v = A[j][c]
+                A[j] = [a-v*b for a, b in zip(A[j], A[r])]
+        pivots.append(c)
+        r += 1
+        if r == len(A):
+            break
+    result = []
+    for free in [j for j in range(n) if j not in pivots]:
+        v = [Q(0)]*n
+        v[free] = 1
+        for row, p in zip(A, pivots):
+            v[p] = -row[free]
+        result.append(v)
+    return result
+
+
+def polynomial_add(a, b, scale=Q(1)):
+    result = dict(a)
+    for exp, c in b.items():
+        result[exp] = result.get(exp, Q(0))+scale*c
+        if result[exp] == 0:
+            del result[exp]
+    return result
+
+
+def derivative(p, j):
+    result = {}
+    for exp, c in p.items():
+        if exp[j]:
+            ee = list(exp)
+            ee[j] -= 1
+            result[tuple(ee)] = c*exp[j]
+    return result
+
+
+def laplacian(p):
+    result = {}
+    for j in range(3):
+        result = polynomial_add(result, derivative(derivative(p, j), j))
+    return result
+
+
+def double_factorial(n):
+    out = 1
+    while n &gt; 0:
+        out *= n
+        n -= 2
+    return out
+
+
+def sphere_monomial_integral(exp):
+    if any(j % 2 for j in exp):
+        return Q(0)
+    return Q(double_factorial(exp[0]-1)*double_factorial(exp[1]-1)*double_factorial(exp[2]-1),
+             double_factorial(sum(exp)+1))
+
+
+def sphere_inner(a, b):
+    return sum((ca*cb*sphere_monomial_integral(tuple(u+v for u, v in zip(ea, eb)))
+                for ea, ca in a.items() for eb, cb in b.items()), Q(0))
+
+
+def evaluate(p, x):
+    return sum((c*x[0]**exp[0]*x[1]**exp[1]*x[2]**exp[2] for exp, c in p.items()), Q(0))
+
+
+def harmonic_basis(T):
+    basis, norms, degrees = [], [], []
+    for ell in range(1, T+1):
+        exps, target = monomials(ell), monomials(ell-2)
+        rows = []
+        for to in target:
+            row = []
+            for fr in exps:
+                value = 0
+                for j in range(3):
+                    if fr[j] &gt;= 2:
+                        ee = list(fr)
+                        ee[j] -= 2
+                        if tuple(ee) == to:
+                            value += fr[j]*(fr[j]-1)
+                row.append(Q(value))
+            rows.append(row)
+        raw = nullspace(rows, len(exps))
+        assert len(raw) == 2*ell+1
+        for v in raw:
+            p = {exp: c for exp, c in zip(exps, v) if c}
+            assert not laplacian(p)
+            for old, nu in zip(basis, norms):
+                p = polynomial_add(p, old, -sphere_inner(p, old)/nu)
+            nu = sphere_inner(p, p)
+            assert nu &gt; 0 and sphere_inner(p, {(0, 0, 0): Q(1)}) == 0
+            assert all(sphere_inner(p, old) == 0 for old in basis)
+            assert not laplacian(p)
+            basis.append(p)
+            norms.append(nu)
+            degrees.append(ell)
+    assert len(basis) == T*(T+2)
+    return basis, norms, degrees
+
+
+def moments_and_derivative(points, basis):
+    N = len(points)
+    assert N and all(dot(x, x) == 1 for x in points)
+    values = [[evaluate(p, x) for p in basis] for x in points]
+    mean = [sum(row[j] for row in values)/N for j in range(len(basis))]
+    J = []
+    for p in basis:
+        gradients = [derivative(p, j) for j in range(3)]
+        row = []
+        for x in points:
+            g = [evaluate(v, x) for v in gradients]
+            radial = dot(g, x)
+            row.extend((v-radial*z)/N for v, z in zip(g, x))
+        J.append(row)
+    return values, mean, J
+
+
+def normalized_mean_squared(mean, norms):
+    return sum((v*v/nu for v, nu in zip(mean, norms)), Q(0))
+
+
+def gram_matrix(values):
+    N, M = len(values), len(values[0])
+    return [[sum(v[j]*v[k] for v in values)/N for k in range(M)] for j in range(M)]
+
+
+def positive_definite_certificate(matrix):
+    &quot;&quot;&quot;Fraction-free Sylvester certificate: all leading minors positive.
+
+    A shared rational denominator is cleared once; Bareiss avoids repeated
+    huge Fraction gcd operations. Returns exact integer minors and scale.
+    &quot;&quot;&quot;
+    n = len(matrix)
+    assert all(len(row) == n for row in matrix)
+    assert all(matrix[j][k] == matrix[k][j] for j in range(n) for k in range(n))
+    scale = lcm(*(v.denominator for row in matrix for v in row))
+    A = [[(v*scale).numerator for v in row] for row in matrix]
+    previous, minors = 1, []
+    for k in range(n):
+        pivot = A[k][k]
+        minors.append(pivot)
+        if pivot &lt;= 0:
+            return False, scale, minors
+        for i in range(k+1, n):
+            for j in range(k+1, n):
+                numerator = pivot*A[i][j]-A[i][k]*A[k][j]
+                assert numerator % previous == 0
+                A[i][j] = numerator//previous
+        for i in range(k+1, n):
+            A[i][k] = 0
+        previous = pivot
+    return True, scale, minors
+
+
+def stereographic(point):
+    sign = 1 if point[2] &gt;= 0 else -1
+    den = 1+sign*point[2]
+    assert den &gt; 0
+    return sign, [point[0]/den, point[1]/den]
+
+
+def sphere_map(sign, parameter):
+    s, t = parameter
+    norm = s*s+t*t
+    den = 1+norm
+    return [2*s/den, 2*t/den, sign*(1-norm)/den]
+
+
+def tangent_projection(point, ambient):
+    radial = dot(point, ambient)
+    return [w-radial*x for w, x in zip(ambient, point)]
+
+
+def cayley(point, tangent):
+    assert dot(point, point) == 1 and dot(point, tangent) == 0
+    quarter = dot(tangent, tangent)/4
+    result = [((1-quarter)*x+v)/(1+quarter) for x, v in zip(point, tangent)]
+    assert dot(result, result) == 1
+    return result
+
+
+# Closed rational interval operations.
+def interval(a, b=None):
+    lo, hi = Q(a), Q(a if b is None else b)
+    assert lo &lt;= hi
+    return lo, hi
+
+
+def outward_dyadic(a, bits=120):
+    den = 2**bits
+    lower = (a[0]*den).numerator//(a[0]*den).denominator
+    upper_q = a[1]*den
+    upper = -((-upper_q.numerator)//upper_q.denominator)
+    result = Q(lower, den), Q(upper, den)
+    assert result[0] &lt;= a[0] &lt;= a[1] &lt;= result[1]
+    return result
+
+
+def iadd(a, b):
+    return a[0]+b[0], a[1]+b[1]
+
+
+def imul(a, b):
+    vals = [u*v for u in a for v in b]
+    return min(vals), max(vals)
+
+
+def iscale(a, b):
+    return imul(a, interval(b))
+
+
+def ipower(a, n):
+    assert n &gt;= 0
+    if n == 0:
+        return interval(1)
+    if n % 2:
+        return a[0]**n, a[1]**n
+    vals = [a[0]**n, a[1]**n]
+    return (Q(0) if a[0] &lt;= 0 &lt;= a[1] else min(vals)), max(vals)
+
+
+def idiv(a, b):
+    assert not b[0] &lt;= 0 &lt;= b[1]
+    return imul(a, (1/b[1], 1/b[0]))
+
+
+def rational_sqrt_bounds(q, bits=100):
+    assert q &gt;= 0
+    den = 2**bits
+    lower = isqrt((q.numerator*den*den)//q.denominator)
+    lo, hi = Q(lower, den), Q(lower+1, den)
+    assert lo*lo &lt;= q &lt; hi*hi
+    return lo, hi
+
+
+def isqrt_interval(a, bits=100):
+    assert a[0] &gt;= 0
+    return rational_sqrt_bounds(a[0], bits)[0], rational_sqrt_bounds(a[1], bits)[1]
+
+
+def atan_inverse_integer(q, terms=60):
+    total = sum((Q((-1)**j, (2*j+1)*q**(2*j+1)) for j in range(terms)), Q(0))
+    error = Q(1, (2*terms+1)*q**(2*terms+1))
+    # Alternating remainder; symmetric bounds keep the primitive simple.
+    return total-error, total+error
+
+
+def pi_bounds(terms=60):
+    return outward_dyadic(iadd(iscale(atan_inverse_integer(5, terms), 16),
+                              iscale(atan_inverse_integer(239, terms), -4)))
+
+
+def trig_bounds(angle, sine, terms=50):
+    assert 0 &lt;= angle[0] &lt;= angle[1] &lt;= 7
+    # Horner rounding errors may be amplified by at most 49 per level.
+    # Reserve 6 bits per level rather than rounding every coefficient at
+    # the final output precision (which would produce useless intervals).
+    working_bits = 130+6*terms
+    square = outward_dyadic(ipower(angle, 2), working_bits)
+    total = interval(0)
+    for j in range(terms-1, -1, -1):
+        power = 2*j+int(sine)
+        total = outward_dyadic(iadd(imul(total, square), interval(Q((-1)**j, factorial(power)))), working_bits)
+    if sine:
+        total = outward_dyadic(imul(total, angle), working_bits)
+    # Taylor/Lagrange bound uses |sin|,|cos|&lt;=1 on the real interval.
+    last_power = 2*(terms-1)+int(sine)
+    error = angle[1]**(last_power+1)/factorial(last_power+1)
+    return outward_dyadic((max(Q(-1), total[0]-error), min(Q(1), total[1]+error)))
+
+
+def centroid_chart_bounds(q, j, k, hemisphere, terms=80, bits=120):
+    &quot;&quot;&quot;Certified chart of a true normalized ambient equal-area centroid.&quot;&quot;&quot;
+    assert q &gt;= 1 and 1 &lt;= j &lt;= q and 0 &lt;= k &lt; 2*j-1 and hemisphere in (-1, 1)
+    m = 2*j-1
+    if m == 1:
+        return [interval(0), interval(0)], {&quot;polar&quot;: True, &quot;terms&quot;: terms, &quot;sqrt_bits&quot;: bits}
+    r0, r1 = Q(j-1, q), Q(j, q)
+    coefficient, integral = Q(1), Q(0)
+    for ell in range(terms+1):
+        if ell:
+            coefficient *= Q(3-2*ell, 2*ell)*Q(-1, 2)
+        integral += coefficient*(r1**(2*ell+3)-r0**(2*ell+3))/(2*ell+3)
+    root2 = rational_sqrt_bounds(Q(2), bits)
+    tail = Q(1, 2**terms)  # sqrt series before its sqrt2 factor
+    I = imul(root2, interval(integral-tail/3, integral+tail/3))
+    A = outward_dyadic(iscale(I, Q(2*q*q, m)), bits)
+    pi = pi_bounds()
+    alpha = outward_dyadic(iscale(pi, Q(1, m)), bits)
+    phi = outward_dyadic(iscale(pi, Q(2*k+1, m)), bits)
+    sinc = outward_dyadic(idiv(trig_bounds(alpha, True), alpha), bits)
+    mx = outward_dyadic(imul(imul(A, sinc), trig_bounds(phi, False)), bits)
+    my = outward_dyadic(imul(imul(A, sinc), trig_bounds(phi, True)), bits)
+    mz = Q(1)-(r0*r0+r1*r1)/2
+    norm = isqrt_interval(iadd(iadd(ipower(mx, 2), ipower(my, 2)), interval(mz*mz)), bits)
+    denominator = iadd(norm, interval(mz))
+    assert denominator[0] &gt; 0
+    result = [outward_dyadic(idiv(mx, denominator), bits), outward_dyadic(idiv(my, denominator), bits)]
+    # Hemisphere sign changes the z coordinate, not the chart parameters.
+    return result, {&quot;polar&quot;: False, &quot;terms&quot;: terms, &quot;sqrt_bits&quot;: bits,
+                    &quot;centroid_norm_lower&quot;: str(norm[0]), &quot;denominator_lower&quot;: str(denominator[0])}
+
+
+def interval_distance_squared(point, box):
+    assert len(point) == len(box)
+    return sum((max(abs(v-lo), abs(v-hi))**2 for v, (lo, hi) in zip(point, box)), Q(0))
+
+
+def basis_json(basis, norms, degrees):
+    return [{&quot;degree&quot;: degree, &quot;squared_norm&quot;: str(nu),
+             &quot;coefficients&quot;: [{&quot;exponent&quot;: list(exp), &quot;coefficient&quot;: str(c)} for exp, c in p.items()]}
+            for p, nu, degree in zip(basis, norms, degrees)]
+</pre></html>

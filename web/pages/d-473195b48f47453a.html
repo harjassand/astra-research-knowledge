@@ -1,0 +1,3381 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Efficiently estimating quantum thermal propertiesfrom exponentially fewer samples</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>Efficiently estimating quantum thermal propertiesfrom exponentially fewer samples</h1><p>Source ID d-473195b48f47453a; literature/sources/r11_logic/cycle5/2603.16845v2.txt; 32548 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>
+
+
+Efficiently estimating quantum thermal propertiesfrom exponentially fewer samples
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+    
+      
+Report GitHub Issue
+      ×
+    
+
+    
+
+      Title:
+      
+
+      
+Content selection saved. Describe the issue below:
+
+      Description:
+      
+    
+
+    
+      Submit without GitHub
+      Submit in GitHub
+    
+  
+
+
+    
+    arXiv is now an independent nonprofit!
+    Learn more
+    ×
+  
+
+
+  
+
+    
+      Back to arXiv
+    
+  
+  
+  
+    Why HTML?
+    
+      
+        
+      
+      Report Issue
+    
+    
+      
+        
+        
+      
+      Back to Abstract
+    
+    
+    
+      
+        
+      
+      Download PDF
+    
+    
+      
+        
+        
+      
+    
+    
+    
+      
+        
+      
+    
+    
+    
+      
+        
+          
+          
+        
+      
+      
+        
+          
+          
+        
+      
+      
+        
+          
+          
+        
+      
+    
+  
+
+
+
+
+Abstract
+
+1 Introduction
+
+
+1.1 Prior work
+
+1.2 Problem setup
+
+1.3 Main results
+
+
+Proof ideas.
+
+Tight sample bounds.
+
+
+
+2 Discussion
+
+3 Methods
+
+
+3.1 Efficiently implementable detailed-balanced measurement channels
+
+3.2 The proof of our main result: 
+
+3.3 Continuous-time approach
+
+Acknowledgements
+
+
+References
+
+A Concentration of the average of subsequent measurements
+
+B Sample optimality of our protocol in a black-box model
+
+
+B.1 Our zero-temperature Gibbs states are no harder than low-temperature ones
+
+B.2 Learning distributions given by uniform sampling over a subset
+
+B.3 Hybrid method for bounding small probability advantages
+
+B.4 Assembling the proof of 
+
+
+
+
+
+
+
+  
+    License: arXiv.org perpetual non-exclusive license
+  
+  
+
+arXiv:2603.16845v2 [quant-ph] 29 Sep 2026
+
+
+
+
+Efficiently estimating quantum thermal properties
+from exponentially fewer samples
+
+
+
+Chi-Fang Chen
+††thanks: EECS, University of California, Berkeley, CA 94720, USA &amp;
+Center for Theoretical Physics, Massachusetts Institute of Technology, Cambridge, MA 02139, USA.
+achifchen@gmail.com
+  
+András Gilyén
+††thanks: Alfréd Rényi Institute of Mathematics, Budapest, Hungary.
+gilyen@renyi.hu
+
+
+
+Abstract
+    
+
+We present an efficient protocol for estimating  M  observables to precision  \varepsilon  from only  \mathcal{O}(\log(M)/\varepsilon^{2})  copies of a Gibbs state  \bm{\rho}\propto\exp(-\beta\bm{H}) , given access to its Hamiltonian  \bm{H} . The protocol uses single-copy, nonadaptive measurements and a total Hamiltonian simulation time of  \widetilde{\mathcal{O}}(\beta M/\varepsilon^{2}) ; we show that the sample complexity is optimal in a black-box setting. The key idea of our protocol is a new interpretation of quantum Gibbs samplers as detailed-balanced measurement channels: measurements that preserve the Gibbs state when outcomes are marginalized, and thus enable Gibbs samples to be reused for measuring subsequent observables. Consequently, shadow tomography of thermal states admits a general efficient algorithm when controlled Hamiltonian simulation is available, substantially boosting the data acquisition rate in quantum thermal simulation workflows.
+  
+
+
+Contents
+
+
+1 Introduction
+
+
+1.1 Prior work
+
+1.2 Problem setup
+
+1.3 Main results
+
+
+2 Discussion
+
+3 Methods
+
+
+3.1 Efficiently implementable detailed-balanced measurement channels
+
+3.2 The proof of our main result: 
+
+3.3 Continuous-time approach
+
+Acknowledgements
+
+
+References
+
+A Concentration of the average of subsequent measurements
+
+B Sample optimality of our protocol in a black-box model
+
+
+B.1 Our zero-temperature Gibbs states are no harder than low-temperature ones
+
+B.2 Learning distributions given by uniform sampling over a subset
+
+B.3 Hybrid method for bounding small probability advantages
+
+B.4 Assembling the proof of 
+
+
+
+
+
+
+
+1 Introduction
+
+
+
+
+Simulation of quantum many-body systems is widely expected to be a major application of future quantum computers. Consequently, preparing quantum thermal and ground states—central tasks in this vision—has motivated a broad array of sophisticated quantum algorithm proposals [TOV+11, SM21, CKBG25, DLL25, JI24, DCL24, RWW23] as well as experimental demonstrations [MMS+24].
+
+
+
+
+Nevertheless, many end-to-end applications in chemistry and materials science, especially when integrated with machine learning workflows, ultimately require estimating a large collection of observables. Because quantum measurements are inherently destructive, this task leads to a rich set of fundamental problems in quantum state tomography [HHJ+17, OW16, KOS07, HWM+22, BMBO20, ZRM21, WHLB23, KGKB25, PSTW25].
+Despite important progress on some aspects of this problem [Aar18, HKP20], the best general-purpose efficient protocol [Sin25]
+for estimating many observables only achieves a quadratic improvement over the straightforward measure, discard, and repeat procedure that uses an extensive number of samples.
+This heavy multiplicative overhead from tomography threatens to narrow the regime of quantum advantage in quantum simulation, especially because the competing classical approaches (e.g., tensor networks [Sch11, Orú19, VNS+23]) typically provide an explicit description of the samples, which often enables extracting observables with an additive cost.
+
+
+
+
+In this work, we introduce a general measurement protocol for estimating many thermal observables which is:
+
+
+• 
+
+
+
+Sample efficient. The number of thermal samples scales logarithmically with the number of observables and quadratically with the desired precision.
+
+
+• 
+
+
+
+Computationally efficient. The protocol uses single-copy measurements. The total (controlled) Hamiltonian evolution time scales linearly with the inverse temperature and the number of observables, and quadratically with the precision.
+
+
+
+
+
+
+Generally, shadow tomography [Aar18] has shown that many observables can be estimated information-theoretically from a small number of copies of an unknown quantum state. However, it relies on entangled operations across many copies and appears computationally inefficient. Classical shadow methods with single-copy measurements can provide computationally efficient protocols, but only for restricted classes of observables, such as low-rank or few-body operators [HKP20]. Further developments in this direction have shown [KGKB25], that using two-copy measurements one can efficiently estimate a broader class of observables, however the corresponding protocols are more involved and often feature degraded precision dependence. By contrast, our single-copy measurement protocol matches the corresponding tight classical sample-complexities, and can be efficiently implemented for arbitrary bounded and efficiently measurable observables, including Green’s functions and high-weight operators that commonly arise in quantum simulation.
+
+
+
+
+The key idea behind our protocol is a new use of recently constructed quantum Gibbs samplers as
+
+
+
+
+measurement channels that preserve the Gibbs state when outcomes are ignored.
+
+
+
+Operationally, the measurement protocol can be viewed as running a carefully designed Gibbs sampling algorithm, where the Kraus operators are tailored to the desired observables. Conceptually, the mechanism for estimating multiple observables resembles making statistical inferences from trajectories of classical Markov chains. Our results show that the destructive nature of quantum measurements can be effectively circumvented by exploiting quantum detailed balance, and the quantum trajectories can give surprisingly powerful statistics. Even though our work focuses entirely on tomography and keeps the thermal state preparation as a black box, we expect the interplay between the algorithmic and tomographic nature of quantum Gibbs samplers to be a fertile ground [JLL26].
+
+
+
+
+More broadly, our protocol suggests that many black-box tomography problems admit fundamentally different solutions when additional structure of the initial state—such as knowledge of the Hamiltonian—is available [CK25]. In such cases, this structure can translate into orders-of-magnitude reductions in state-preparation costs in practical quantum simulation workflows, and substantially accelerate acquisition of quantum data at scale.
+
+
+
+
+1.1 Prior work
+
+
+
+
+Due to the destructive nature of quantum measurements, the tomography of general unknown quantum states has become a rich and rapidly evolving field. A major breakthrough was the proposal of shadow tomography [Aar18], which showed that  M  (spectrally bounded) observables can be estimated using only polylogarithmically many copies of an unknown quantum state.11
+              1
+              
+              
+              
+            A few months after our manuscript was posted, two preprints further improved the sample complexity of general shadow tomography. The first improves the sample complexity to  \mathcal{O}\big(\frac{\log(M)\sqrt{\log(d)}}{\varepsilon^{3}}\big)  [COPW26] (for a small fixed  \delta ) and works even in an adversarial online setting, while the second claims a sample complexity of  \mathcal{O}\left(\frac{\log(M)\log(M/\delta)}{\varepsilon^{2}}\right)  [JHL26] – removing any dimension dependence. It is unknown whether these protocols can be implemented in a computationally efficient way. However, the original formulation focuses primarily on information-theoretic learnability. Implementing the protocol appears computationally challenging, as it relies on entangled measurements across many copies and classical post-processing steps such as matrix multiplicative weight updates of exponentially large matrices. It remains unclear whether these procedures admit efficient algorithms.
+
+
+
+
+Subsequently, the widely celebrated framework of classical shadows [HKP20] demonstrated that the central promise of shadow tomography can be achieved efficiently for certain classes of observables, particularly low-rank or low-weight operators. An appealing feature of this protocol is that the observables need only be specified after the measurements are performed. However, the sample complexity depends on a quantity known as the shadow norm, which can grow prohibitively large for high-rank or high-weight observables.
+More recently, a rapidly growing family of shadow-based tomography protocols established non-trivial tradeoffs between sample complexity and the class of observables that can be estimated [CLL24, KGKB25]. Nevertheless, it remains open whether a sample complexity logarithmic in the number of observables can be achieved for arbitrary observables.
+
+
+
+
+A complementary line of work seeks polynomial improvements over the naive  M/\varepsilon^{2}  scaling in a setting where a purification of the quantum state can be prepared in a coherent fashion, enabling the use of advanced quantum algorithmic techniques [HWM+22, vACGN23]. While these approaches can provide non-trivial quadratic speedups, it seems unlikely that larger improvements are achievable using similar methodology.
+
+
+
+
+Our protocol offers a different conceptual route for reducing tomography costs: implicit knowledge about the initial state. In many quantum simulation settings, the Hamiltonian is known, even though preparing the corresponding Gibbs state may be computationally hard. We show that this structure can be exploited to effectively reuse Gibbs samples by designing measurement protocols that satisfy (KMS) quantum detailed balance. Concretely, we construct a Gibbs sampler whose Kraus operators are associated with the desired observables, allowing measurements to be performed while preserving the Gibbs state when outcomes are ignored. The key distinction from the general shadow tomography problem is that the thermal setting is fundamentally computational: information-theoretically, the Gibbs state is already specified by the Hamiltonian. Remarkably, access to the Hamiltonian alone suffices to achieve shadow-tomography-like sample complexity while avoiding the destructive overhead coming from extensive repeated state preparation.
+
+
+
+
+Method
+Sample Complexity
+Efficient
+Observable Class
+
+Classical random variables
+ \displaystyle\Theta\!\bigg(\frac{\log(M/\delta)}{\varepsilon^{2}}\bigg)_{\phantom{f}} 
+yes
+ |O_{i}|\leq 1 
+
+Thermal samples – 1 &amp; 2
+ \displaystyle\Theta\!\bigg(\frac{\log(M/\delta)}{\varepsilon^{2}}\bigg) 
+yes,  \displaystyle\widetilde{\mathcal{O}}\left(\frac{\beta M}{\varepsilon^{2}}\right) 
+ \|\bm{A}_{i}\|\leq 1 
+
+Naive
+ \displaystyle\mathcal{O}\left(\frac{M\log(M/\delta)}{\varepsilon^{2}}\right) 
+yes
+ \|\bm{A}_{i}\|\leq 1 
+
+Best general &amp; efficient protocol [Sin25]
+ \displaystyle\mathcal{O}\bigg(\frac{\sqrt{M}\log(M/\delta)}{\varepsilon^{2}}\bigg) 
+yes
+ \|\bm{A}_{i}\|\leq 1 
+
+Shadow tomography [Aar18, BO24]
+ \displaystyle\widetilde{\mathcal{O}}\left(\frac{\log^{2}(M)\,\log(D)}{\varepsilon^{4}}\right) 
+unknown
+ \|\bm{A}_{i}\|\leq 1 
+
+Classical shadows
+ \displaystyle\mathcal{O}\left(\frac{\log(M/\delta)}{\varepsilon^{2}}\,c_{\text{shadow}}\right)_{\phantom{f}} 
+sometimes
+ 
+
+
+low-rank or
+
+low-weight
+
+
+Table 1: 
+Comparison of measurement strategies for estimating  M  observables. The sample complexity of our 1 is tight under the assumption that we can only use controlled Hamiltonian simulation for a subexponential amount of time, see 2.
+The naive algorithm uses  \mathcal{O}\left(\frac{\log(M/\delta)}{\varepsilon^{2}}\right)  fresh Gibbs samples for each of the  M  observables. The improved sample complexity of shadow tomography1 is proven in [BO24] and that of classical shadows can be found in [HKP20]. When two-copy measurements are also allowed, high-weight Pauli operators can be also efficiently estimated [KGKB25], however with a quartic precision dependence.
+
+
+
+
+
+1.2 Problem setup
+
+
+
+
+Given an  n -qubit Hamiltonian  \bm{H}  and inverse temperature  \beta\geq 0 , consider the Gibbs state
+
+
+
+
+ \displaystyle\bm{\rho}_{\beta}=\frac{e^{-\beta\bm{H}}}{\mathrm{Tr}[e^{-\beta\bm{H}}]}. 
+
+
+
+We are interested in bounded Hermitian observables
+
+
+
+
+ \displaystyle\bm{A}_{1},\ldots,\bm{A}_{M}\quad\text{such that}\quad\bm{A}_{i}=\bm{A}_{i}^{\dagger},\quad\|{\bm{A}_{i}}\|\leq 1\quad\text{for each}\quad 1\leq i\leq M. 
+
+
+
+Our goal is to estimate all thermal expectations
+
+
+
+
+ \displaystyle\mathrm{Tr}[\bm{\rho}_{\beta}\bm{A}_{i}]\in[-1,1]\quad\text{to precision}\quad\varepsilon, 
+
+
+
+with failure probability at most  \delta  on a (fault-tolerant) quantum computer. Even though our presentation will assume full digital control, we believe the key methodology shall be transferable to analog settings.
+
+
+
+
+We make the following assumptions:
+
+
+• 
+
+
+
+(Gibbs samples.) We assume (black-box) access to independent copies of the Gibbs state  \bm{\rho}_{\beta} .
+
+
+• 
+
+
+
+(Hamiltonian simulation.) Our protocol requires (black-box) access to controlled Hamiltonian time evolutions  e^{\pm i\bm{H}t} .
+
+
+• 
+
+
+
+(Access to observables.) We assume block-encoding access to each observable  \bm{A}_{i} . This assumption is automatically satisfied when  \bm{A}_{i}  is implemented by a self-adjoint unitary circuit, such as a Pauli string.
+
+
+
+To keep our results clean, we use the asymptotic notation  \widetilde{\mathcal{O}}(T)=\mathcal{O}\!\left(T\mathrm{Poly}\!\log(T+M+\beta+\left\|\bm{H}\right\|+\frac{1}{\varepsilon}+\frac{1}{\delta})\right) .
+
+
+
+
+
+1.3 Main results
+
+
+
+
+Our main result is a general measurement algorithm with provable guarantees.
+
+
+
+
+Theorem 1 (Measuring many observables with very few samples of Gibbs states).
+
+
+
+Consider  M  Hermitian observables  \bm{A}_{1},\cdots,\bm{A}_{M}  such that  \|{\bm{A}_{i}}\|\leq 1 , a Hamiltonian  \bm{H} , and inverse temperature  \beta\geq 0.  Then, we can estimate all thermal expectations  \mathrm{Tr}[\bm{\rho}_{\beta}\bm{A}_{i}]  within error  \varepsilon , with failure probability at most  \delta  using
+
+
+
+
+ \displaystyle S 
+ \displaystyle=\mathcal{O}\left(\frac{\log(M/\delta)}{\varepsilon^{2}}\right)\quad\text{samples of the Gibbs state}\quad\bm{\rho}_{\beta}, 
+
+
+
+ \displaystyle b 
+ \displaystyle=\widetilde{\mathcal{O}}\left(\frac{M}{\varepsilon^{2}}\right)\quad\text{total uses of block encodings of}\quad\{\bm{A}_{i}\}\text{, and} 
+
+
+
+ \displaystyle t 
+ \displaystyle=\widetilde{\mathcal{O}}\left(\frac{\beta M}{\varepsilon^{2}}\right)\quad\text{total Hamiltonian simulation time}. 
+
+
+
+
+
+
+
+In fact, the observables can be given in a (non-adversarial) online fashion, the measurement scheme is nonadaptive, and only uses a single copy of the quantum Gibbs state at a time. We only displayed the Hamiltonian simulation time and the total number of observable block-encoding uses, as these together dominate the cost of the quantum computation. Here we assume that one is given access to the bounded observable  \bm{A}_{i}  via a unitary block-encoding, since any efficient implementation of a single-copy estimation procedure can be turned into an efficient block encoding [vAG19, Definition 2 and Equation 14].
+
+
+
+
+Alternatively, if all observables are known ahead of time, we can also perform all measurements on a single  n -qubit register, as long as we are willing to wait for a mixing time to get another fresh Gibbs sample. In fact, one can use the Gibbs state as a “warm-start” for preparing the next Gibbs sample [JLL26], where the “autocorrelation” time can be faster than a mixing time from worst-case initial states, as also noted by [CJLY26].
+
+
+
+
+Proof ideas.
+
+
+
+
+Recently, a new wave of quantum algorithms emerged for preparing thermal states using detailed-balanced Lindbladians or quantum channels [TOV+11, SM21, RWW23, CKBG25, DCL24, DLL25, GCDK24]. Operationally, these algorithms can be viewed as implementing carefully controlled system–ancilla interactions. When the ancillae are traced out, the resulting effective dynamics can be designed to satisfy an exact structural property—quantum detailed balance [CKG23]—that guarantees the Gibbs state to be a fixed point.
+
+
+
+
+The key idea of our protocol is a conceptual extension of these quantum Gibbs-sampling algorithms. Rather than discarding the ancilla, we realize that the ancilla—recording which transition or “jump” has occurred—already functions as a metrological device. This perspective leads us to introduce the central primitive of our algorithm: detailed-balanced measurement channels (Figure 1).
+
+ \bm{\rho}_{\beta}  \mathcal{N}  \bm{\rho}_{\beta}  \bm{\rho}_{\beta}  \mathcal{E}  \bm{K}_{i}\bm{\rho}_{\beta}\bm{K}_{i}^{\dagger}  i 
+Figure 1: The averaged channel  \mathcal{N}  (top) preserves  \bm{\rho}_{\beta}  when the measurement outcomes are marginalized. The full measurement channel  \mathcal{E}  (bottom) outputs the post-measurement state conditioned on outcome  i .
+
+
+
+
+Definition 1 (Detailed-balanced measurement channel).
+
+
+
+Given a Hermitian observable  \bm{A}  and a full-rank quantum state  \bm{\rho} , we say a collection of Kraus operators  \{\bm{K}_{i}\}  with  \sum_{i}\bm{K}_{i}^{\dagger}\bm{K}_{i}=\bm{I}  forms a  \bm{\rho} -detailed-balanced  w -weak measurement channel for  \bm{A}  if:
+
+
+• 
+
+
+
+(detailed-balanced on average) When the measurement outcomes are marginalized, the resulting channel  \mathcal{N}[\cdot]=\sum_{i}\bm{K}_{i}[\cdot]\bm{K}_{i}^{\dagger}  satisfies (KMS) detailed balance with respect to  \bm{\rho} , implying  \mathcal{N}[\bm{\rho}]=\bm{\rho} .
+
+
+• 
+
+
+
+(informative outcomes) A bounded linear combination of the outcome probabilities  \langle\bm{K}_{i}^{\dagger}\bm{K}_{i}\rangle_{\bm{\rho}}  provides an unbiased estimator of  \langle\bm{A}\rangle_{\bm{\rho}} , i.e.,  \langle w\bm{A}\rangle_{\bm{\rho}}=\sum_{i}\lambda_{i}\langle\bm{K}_{i}^{\dagger}\bm{K}_{i}\rangle_{\bm{\rho}}  for some known coefficients  \lambda_{i}\in[-1,1] , and
+
+
+
+
+ \Bigg\lVert\sum_{i\colon\lambda_{i}\neq 0}\bm{K}_{i}^{\dagger}\bm{K}_{i}\Bigg\rVert=\mathcal{O}\left(w\right). 
+
+
+
+
+
+
+
+
+
+Ideally, we would like the “weakness” parameter  w  to be as large as possible. Our current construction yields Kraus operators that are observed with probability scaling logarithmically with the system size and the inverse temperature. To retain the optimal sample complexity we carefully design a readout scheme by repeating these measurements  \mathcal{O}\left(1/w\right)  many times per sample. In the Methods we also describe a continuous-time Lindbladian counterpart of the above discrete measurement channel that in some sense circumvents this weakness.
+
+
+
+
+It will be useful to distinguish between the averaged channel and the full measurement apparatus (including the appended ancillae):
+
+
+
+
+ \displaystyle\mathcal{E}[\bm{\sigma}]:=\sum_{i}\bm{K}_{i}\bm{\sigma}\bm{K}_{i}^{\dagger}\otimes|i\rangle\!\langle i|,\qquad\text{such that}\qquad\mathrm{Tr}_{anc}[\mathcal{E}]=\mathcal{N}. 
+
+
+
+
+
+
+Using the above  \bm{\rho} -detailed-balanced measurement channel as a black-box primitive, we can sketch the main estimation algorithm (Figure 2). Consider performing the following sequential measurement procedure  r  times on  r  independent copies of  \bm{\rho} :
+
+
+
+
+ \displaystyle\mathcal{E}^{(1)}_{M}\cdots\mathcal{E}^{(1)}_{1}[ 
+ \displaystyle\bm{\rho}]\quad\text{such that}\quad\mathcal{N}^{(1)}_{M}[\bm{\rho}]=\cdots=\mathcal{N}^{(1)}_{1}[\bm{\rho}]=\bm{\rho}, 
+
+
+
+
+
+
+
+ \displaystyle\mathcal{E}^{(r)}_{M}\cdots\mathcal{E}^{(r)}_{1}[ 
+ \displaystyle\bm{\rho}]\quad\text{such that}\quad\mathcal{N}^{(r)}_{M}[\bm{\rho}]=\cdots=\mathcal{N}^{(r)}_{1}[\bm{\rho}]=\bm{\rho}. 
+
+
+
+
+
+
+For each copy, we record the outcome of every  \mathcal{E}_{m}^{(j)} .
+To estimate the observable  \bm{A}_{m} , we only consider the statistics of the outcome labels in the  m -th column, i.e., marginalize over all other outcomes. Due to the detailed-balance property, the distribution of the outcomes in the  m -th column (tracing out the previous measurement history) is identical to the distribution obtained by directly measuring on the Gibbs state:
+
+
+
+
+ \displaystyle\mathcal{E}^{(1)}_{m}\mathcal{N}^{(1)}_{m-1}\cdots\mathcal{N}^{(1)}_{1}[\bm{\rho}] 
+ \displaystyle=\mathcal{E}^{(1)}_{m}[\bm{\rho}], 
+
+
+
+
+ \displaystyle\,\,\vdots 
+
+
+
+ \displaystyle\mathcal{E}^{(r)}_{m}\mathcal{N}^{(r)}_{m-1}\cdots\mathcal{N}^{(r)}_{1}[\bm{\rho}] 
+ \displaystyle=\mathcal{E}^{(r)}_{m}[\bm{\rho}]. 
+
+
+
+
+
+
+The quadratic  1/\varepsilon^{2}  scaling arises from standard mean estimation, while the  \log(M/\delta)  dependence follows from a union bound over the tail bounds of the  M  (possibly correlated) mean estimates. For technical reasons our efficiently implementable detailed-balanced measurements constructed from Gibbs samplers actually provide a weak measurement  \mathcal{E}_{i}(w) , that only produces a meaningful outcome with probability  \mathcal{O}\left(w\right) , where  w  is known and scales as  \sim\log^{\!-2}(\beta\left\|\bm{H}\right\|) . Thus, a single application of  \mathcal{E}_{i}(w)  can only provide a bounded unbiased estimator of  \langle w\bm{A}\rangle_{\bm{\rho}} . We denote by  \mathcal{E}_{i}  the repeated application of  \mathcal{E}_{i}(w)  about  2/w  times, which boosts this to a constant variance unbiased estimator of  \langle\bm{A}\rangle_{\bm{\rho}} , while using the same copy of the Gibbs state (see 4 in Appendix A). Using  \mathcal{E}_{i}  thus enables retaining a  w -independent optimal sample complexity.
+
+
+
+
+Intriguingly, the sequential measurement outcomes for different observables on the same Gibbs sample can be highly correlated.
+Indeed, conditioned on observing any previous outcome, the post-selected quantum state may become very far from Gibbs.22
+                2
+                
+                
+                
+              Actually, this is the case for the family of Hamiltonians and observables that we use in our sample complexity lower bound, the proof of 2. Nevertheless, for the purposes of estimating individual observables, the post-measurement state can be treated effectively as the Gibbs state “on average”, when we only consider the empirical measurement mean from sufficiently many  (\sim\log(M))  independent copies.
+
+
+
+
+
+Tight sample bounds.
+
+
+
+
+We show that our main result 1 has an optimal sample complexity (up to a constant factor) in a setting where one is given black-box access to the system Hamiltonian  \bm{H} , and we are only allowed to perform black-box Hamiltonian simulation for a sub-exponential amount of time (in terms of the number of qubits); this is a standard lower bound setting in distribution learning. Our lower bound, formalized in 2, holds even for classical Hamiltonians.
+
+
+
+
+Theorem 2.
+
+
+
+For all  \varepsilon,\delta\in(0,\frac{1}{10})  and  M\geq 1  there is a set of  n -qubit observables  \{\bm{O}_{i}\colon i\in[M]\}  of operator norm at most  1  for some  n=\Omega\big(\log(\frac{\log(M+1)}{\varepsilon\delta})\big) , a family of classical Hamiltonians  \bm{H}\in\{0,1\}^{2^{n}\times 2^{n}} , and an inverse temperature  \beta=\mathcal{O}\left(n\right) ,
+for which estimating to precision within  \varepsilon  the expectation of all observables  \bm{O}_{i}  with success probability at least  1-\delta  requires  \Omega\big(\frac{\log(M/\delta)}{\varepsilon^{2}}\big)  Gibbs samples in the worst case. This lower bound holds even if we are allowed to make  2^{\frac{n}{3}}  (controlled) quantum queries to the phase oracle  \left|j\right\rangle\rightarrow(-1)^{\bm{H}_{\!jj}}\left|j\right\rangle .
+
+
+
+
+
+Note that for simplicity we stated the above lower bound in terms of discrete (phase) queries. However, this also implies qualitatively the same bound when we consider the total Hamiltonian simulation time as the complexity measure, because a fractional query algorithm can be efficiently simulated by discrete queries [CGM+09], e.g., to trace distance  \delta  by using  \mathcal{O}\left(T\log(T/\delta)\right)  discrete queries [BCC+14, Theorem 1.3].
+Indeed, assume towards a contradiction that by allowing a total simulation time of  T=2^{\frac{n}{4}} , it suffices to take  o\big(\frac{\log(M/\delta)}{\varepsilon^{2}}\big)  Gibbs samples. Then this protocol could be simulated to error at most  \delta  with  T\log(T/\delta)=2^{\frac{n}{4}}\mathcal{O}\left(n^{2}\right)\ll 2^{\frac{n}{3}}  discrete phase queries (and still  o\big(\frac{\log(M/\delta)}{\varepsilon^{2}}\big)  Gibbs samples), which contradicts 2.
+
+
+
+
+Our proof’s core idea is a reduction33
+                3
+                
+                
+                
+              While our lower bound 2 is stated as a worst case result, via our reduction it implicitly inherits average case hardness from the distribution learning lower bound of [Dia19, Lecture 4] corresponding to the following explicit distribution of Hamiltonians.
+Let  B_{k}\subset\{0,1\}^{n}  denote the  k -th bin of equal size  2^{n-\mu}  for  \mu=\lfloor\log_{2}\lfloor\log_{2}(M+1)+1\rfloor\rfloor , and let  b\in\{-1,1\}^{\frac{m}{2}}  be uniformly random where  m=2^{\mu} . Let  \bm{H}_{jj}:=f(j) ,  w:=2\left\lfloor\frac{\delta^{2}}{8m^{2}}2^{\frac{n}{3}}\right\rfloor , and  f\colon\{0,1\}^{n}\rightarrow\{0,1\}  a uniformly random Boolean function of Hamming weight  2^{n}-\frac{mw}{2}  such that  \forall i\in[\frac{m}{2}]  we have  |f^{-1}(0)\cap(B_{2i}\cup B_{2i-1})|=w  and  |f^{-1}(0)\cap B_{2i}|-|f^{-1}(0)\cap B_{2i-1}|=b_{i}\lceil\varepsilon w\rceil . The  M\approx 2^{m}  observables are simple indicators over unions of the  m  bins  B_{k}  as in the proof of 2. to the known sample complexity lower bound  \Omega\left(\frac{m+\log(1/\delta)}{\varepsilon^{2}}\right)  for learning a classical distribution on  m  elements to total variation distance  \varepsilon  with success probability at least  1-\delta  [Can22, Theorem 1.3],[Dia19, Lecture 4]. We apply this lower bound to a distribution on  m\approx\log(M)  elements induced by  m  bins of the configuration space featuring a specific zero-temperature Gibbs state corresponding to a classical  \{0,1\} -valued Hamiltonian. Observing that  \log(M/\delta)=\Theta(m+\log(1/\delta)) , this implies the above theorem by simply setting the  M  observables to the  2^{m}  indicators corresponding to all possible combinations of the  m  bins. Indeed, it is easy to see that learning all these  2^{m}  indicators to  \varepsilon  precision also implies learning the distribution induced on the  m  bins to total variation distance  2\varepsilon .
+
+
+
+
+Our specific zero-temperature Gibbs distribution is fairly close to a Gibbs state at a reasonably low temperature (see 5 in Appendix B), for which therefore the same lower bound holds. Nevertheless, it is conceptually cleaner for us to reduce to the zero-temperature case, because that simply corresponds to a uniform distribution over zero-energy states
+
+
+
+
+We choose a classical (diagonal) Hamiltonian with less than  2^{\frac{n}{3}}  zero-energy configurations, and since the spectrum is binary, after seeing a sample, querying that element does not reveal any new information. Also because the zero-energy states are exponentially rare (have frequency about  \sim 2^{\frac{-2n}{3}} ) it requires an exponential amount of queries to obtain any previously unseen sample. This tells us that the query access reveals very little information, and therefore the  \Omega\left(\frac{m+\log(1/\delta)}{\varepsilon^{2}}\right)  sample lower bound holds (see 3 in Appendix B), unless an exponential number of queries are used. We formally quantify the above quantum query complexity argument using a low-probability version of the hybrid lower bound method (see 7 in Appendix B).
+
+
+
+
+
+
+
+2 Discussion
+
+
+
+
+To overcome the apparent measurement overhead in quantum simulation, we designed a protocol that measures  M  observables using only  \log(M)  thermal states. The protocol only requires the observables to be spectrally bounded (which captures most physical observables, such as Green’s functions), can be efficiently implemented on a quantum computer with access to (controlled) time-evolution by the system Hamiltonian, and is sample-optimal in a certain black-box model. We believe our protocol could play an important role in practical applications by enhancing the rate of data acquisition in thermal simulation workflows. In turn, this could fundamentally accelerate quantum data-intensive chemistry and materials applications in broader settings.
+
+
+
+
+Broadly, our results provide a novel way of reusing complex quantum states by designing measurements that statistically preserve the given mixed quantum state. We briefly compare our results to other related developments as follows. Recently, quantum Gibbs states (and approximate stationary states of detailed-balanced Lindbladians) have been proved to satisfy a local Markov property: perturbations coming from local noise can be locally removed by the natural Lindbladian dynamics [CR25, BCV25]. However, this Markov property turns out to be unnecessary to our shadow tomography statement; we do not need to run any additional Lindbladian between our detailed balanced measurements, provided access to multiple independent Gibbs states. To our knowledge, so far the Markov property has only been shown to be useful for measurements with an additional assumption of correlation decay, where a single copy of the state can produce effectively independent measurement results by interspersing measurements with Lindbladian dynamics [BCV25, Che26].
+
+
+
+
+In the case of estimating properties of a gapped ground state — another natural target of quantum simulation — a single copy of the state is sufficient for measuring observables [FGH+10, CK25] regardless the precision and the number of observables. However, this is unique to the pure state setting, and the efficiency depends on the corresponding spectral gap. By contrast, our shadow tomography protocol for the Gibbs state only requires the efficient simulation of the system Hamiltonian on top of providing independent quantum Gibbs samples.
+
+
+
+
+Extending efficient shadow tomography beyond thermal states brings additional caveats. Indeed, our protocol heavily relies on the exact interplay between the Gibbs state, detailed balance, and knowledge of the Hamiltonian.
+For (approximate) stationary states [GHC+25] of generic Lindbladians that do not correspond to sensible thermal states, however, much less is currently known both from an algorithmic and a theoretical perspective.
+Indeed, when the measurement channel no longer preserves the target state, the  \log(M)  scaling may be lost, as each measurement can accumulate systematic deviation from the target state.
+
+
+
+
+That said, we believe our protocol shall be extendable to approximate stationary states of Gibbs samplers [BCV25], although one likely needs to restrict to observables that preserve the approximate stationary state to a sufficiently high extent.
+In the case where the Hamiltonian is only known approximately, or the algorithmic implementation is noisy — such as when interfacing with analog samples — the number of observables one can measure on the same state will depend on the errors. Even though our presentation focuses on fault-tolerant, digital simulation settings, we believe the idea of detailed-balanced measurements will be a valuable component in broader settings and may be instantiated in many different ways in practical quantum simulation workflows.
+
+
+
+
+
+3 Methods
+
+
+
+
+The main algorithmic result is instantiating the detailed-balanced measurement channel via a quantum Gibbs sampler. Conceptually, it may be cleaner to think in discrete time, but we also introduce the continuous-time version for completeness. Once such primitives are instantiated using an off-the-shelf Gibbs sampling framework (with some specification), the proof of the main results (1) follows naturally.
+
+
+
+
+3.1 Efficiently implementable detailed-balanced measurement channels
+
+
+
+
+A natural instantiation of a detailed-balanced measurement channel is a detailed balanced Gibbs sampler with carefully designed Kraus operators. Our construction builds on the discrete-time Gibbs sampler of [GCDK24] which constructs a single complementary Kraus operator, that is a detailed-balanced quantum analogue of the “reject” step in the classical Metropolis algorithm. Unlike in the classical case, this additional Kraus operator depends non-trivially and non-linearly on the “transition” part; to bound the non-linearity and to efficiently construct this Kraus operator [GCDK24] requires a mild “weakness” condition on the “transition” part which is the reason why we need to resort to using somewhat weaker than ideal measurements.
+
+ \bm{\rho}  \mathcal{E}^{(1)}_{1}  \cdots  \mathcal{E}^{(1)}_{i}  \cdots  \mathcal{E}^{(1)}_{M}  s^{(1)}_{1}  s^{(1)}_{i}  s^{(1)}_{M}  \vdots  \vdots  \vdots  \vdots  \bm{\rho}  \mathcal{E}^{(r)}_{1}  \cdots  \mathcal{E}^{(r)}_{i}  \cdots  \mathcal{E}^{(r)}_{M}  s^{(r)}_{1}  s^{(r)}_{i}  s^{(r)}_{M}  \mathrm{Tr}[\bm{\rho}\bm{A}_{1}]  \mathrm{Tr}[\bm{\rho}\bm{A}_{i}]  \mathrm{Tr}[\bm{\rho}\bm{A}_{M}]  \begin{array}[]{c}5\frac{\ln(2M/\delta)}{\varepsilon^{2}}\\
+\text{independent samples}\end{array} correlatedindependent
+Figure 2: Parallel measurements  \mathcal{E}_{i}  applied to multiple samples of  \bm{\rho}  to estimate the expectation value of  \mathrm{Tr}[\bm{\rho}\bm{A}_{i}] . We estimate  \mathrm{Tr}[\bm{\rho}\bm{A}_{i}]  to precision  \varepsilon\leq\frac{1}{2}  with failure probability  \leq\delta/M  by averaging each outcome  s_{i}^{(k)}  (obtained on the  k -th sample); this requires a number of independent copies that scales merely with  \log(M) . By the union bound this ensures an overall  \leq\delta  failure probability. Here, each  \mathcal{E}_{i}  for a given  \bm{A}_{i}  will further be decomposed into repeated detailed-balanced weak measurement channels  \mathcal{E}_{i}(w) , which are constructed in 1.
+
+
+
+
+
+Lemma 1 (Efficient detailed-balanced weak-measurement channels from Gibbs sampling).
+
+
+
+For any self-adjoint observable  \bm{A}  of operator norm at most  1 , Hamiltonian  \bm{H} , and inverse temperature  \beta\geq 0 , there is a  \bm{\rho}_{\beta} -detailed-balanced  w -weak measurement channel with Kraus operators  \{\bm{K}_{+},\bm{K}_{0},\bm{K}_{-}\}  and a scalar  w=\Theta\Big(\frac{1}{\log^{2}(2+\beta\left\|\bm{H}\right\|)}\Big)  such that  \|\bm{K}_{+}^{\dagger}\bm{K}_{+}+\bm{K}_{-}^{\dagger}\bm{K}_{-}\|\leq\frac{2}{\sqrt{3}}w  and
+
+
+
+
+ \displaystyle\mathrm{Tr}[\bm{\rho}_{\beta}\bm{K}^{\dagger}_{+}\bm{K}_{+}]-\mathrm{Tr}[\bm{\rho}_{\beta}\bm{K}^{\dagger}_{-}\bm{K}_{-}]=w\mathrm{Tr}[\bm{\rho}_{\beta}\bm{A}]. 
+
+
+
+Furthermore, this channel can be implemented to diamond norm error  \varepsilon  using  \tilde{\mathcal{O}}(\beta)  Hamiltonian simulation time and  \tilde{\mathcal{O}}(1)  uses of an  a -qubit block-encoding for the observable  \bm{A}  with the help of  \tilde{\mathcal{O}}(a+1)  many ancillas.
+
+
+
+
+
+For measuring one specific observable, this bears no benefit compared to directly measuring  \bm{A} . However, having the averaged channel detailed-balanced will become crucial for estimating many observables.
+
+
+
+
+For our proof, recall the Bohr-frequency decomposition [CKG23]
+
+
+
+
+ \displaystyle\bm{A}=\sum_{\nu\in B(\bm{H})}\bm{A}_{\nu},\quad\text{where}\quad\bm{A}_{\nu} 
+ \displaystyle:=\sum_{E_{2}-E_{1}=\nu}\bm{P}_{E_{2}}\bm{A}\bm{P}_{E_{1}}\quad\text{satisfies that}\quad(\bm{A}_{\nu})^{\dagger}=(\bm{A}^{\dagger})_{-\nu}, 
+
+(1)
+
+
+where  \bm{P}_{E}  is the eigenspace projector with respect to  \bm{H}  for an energy  E\in\text{Spec}(\bm{H}) .
+
+
+
+
+Proof.
+
+
+
+For any self-adjoint observable  \bm{A},  consider
+
+
+
+
+ \displaystyle\hat{\bm{A}}_{f} 
+ \displaystyle:=\int_{-\infty}^{\infty}f(t)e^{\mathrm{i}\bm{H}t}\bm{A}e^{-\mathrm{i}\bm{H}t}\mathrm{d}t 
+
+
+
+
+ \displaystyle=\sum_{\nu}\bm{A}_{\nu}g(\nu) 
+
+(setting  g(-\nu):=\hat{f}(\nu)=\int_{-\infty}^{\infty}f(t)e^{-\mathrm{i}\nu t}\mathrm{d}t )
+
+
+and construct a pair of “polarizations”
+
+
+
+
+ \displaystyle\bm{A}_{+} 
+ \displaystyle:=\frac{1}{2}\bm{I}+\frac{1}{2}\hat{\bm{A}}_{f},\text{ and} 
+
+
+
+ \displaystyle\bm{A}_{-} 
+ \displaystyle:=\frac{1}{2}\bm{I}-\frac{1}{2}\hat{\bm{A}}_{f}, 
+
+
+
+which will be proportional to our ultimate Kraus operators. We would like to have a normalized  f  function
+
+
+
+
+ \displaystyle\int_{-\infty}^{\infty}\left|{f(t)}\right|\mathrm{d}t=1, 
+
+
+
+such that the function  g(\nu)=\hat{f}(-\nu)  has the property (cf. [GCDK24, Theorem 8])
+
+
+
+
+ \displaystyle g^{*}(\nu) 
+ \displaystyle=g(-\nu)e^{-\beta\nu/2} 
+
+
+
+so that crucially
+
+
+
+
+ \displaystyle e^{\beta\bm{H}/2}\bm{A}_{+}e^{-\beta\bm{H}/2} 
+ \displaystyle=\bm{A}_{+}^{\dagger},\text{ and} 
+
+
+
+ \displaystyle e^{\beta\bm{H}/2}\bm{A}_{-}e^{-\beta\bm{H}/2} 
+ \displaystyle=\bm{A}_{-}^{\dagger}, 
+
+
+
+which ensures that the transition part of the final channel is detailed-balanced [DLL25, GCDK24].
+
+
+
+
+A good choice is a shifted Gaussian
+
+
+
+
+ \displaystyle g(\nu)=\hat{f}(-\nu):=\exp\left(-\frac{(\sigma\nu+\beta/\sigma)^{2}}{8}\right) 
+
+
+
+so that, up to phase,  f  is a Gaussian with standard deviation  \frac{\sigma}{2} :
+
+
+
+
+ \displaystyle f(t)=\frac{\sqrt{2/\pi}}{\sigma}\exp\left(-\frac{2t^{2}-\mathrm{i}\beta t}{\sigma^{2}}\right). 
+
+
+
+We also have that
+ \|{\bm{A}_{+}}\|,\|{\bm{A}_{-}}\|\leq 1, 
+since
+ \|{\hat{\bm{A}}_{f}}\|\leq\|{\bm{A}}\|\cdot\int_{-\infty}^{\infty}\left|{f(t)}\right|\mathrm{d}t=\|{\bm{A}}\|\leq 1. 
+
+
+
+
+The actual outcome probability will be determined by the (composite) observables
+
+
+
+
+ \displaystyle\bm{A}_{+}^{\dagger}\bm{A}_{+}=\frac{1}{4}(\bm{I}+\hat{\bm{A}}_{f})^{\dagger}(\bm{I}+\hat{\bm{A}}_{f}) 
+
+
+
+ \displaystyle\bm{A}_{-}^{\dagger}\bm{A}_{-}=\frac{1}{4}(\bm{I}-\hat{\bm{A}}_{f})^{\dagger}(\bm{I}-\hat{\bm{A}}_{f}). 
+
+
+
+Adding the two, we obtain
+
+
+
+
+ \displaystyle\left\|\bm{A}_{+}^{\dagger}\bm{A}_{+}\!+\bm{A}_{-}^{\dagger}\bm{A}_{-}\right\|=\bigg\lVert\frac{\bm{I}}{2}+\!\frac{(\hat{\bm{A}}_{f})^{\dagger}\hat{\bm{A}}_{f}}{2}\bigg\rVert\leq\frac{1+\lVert\hat{\bm{A}}_{f}\rVert^{2}}{2}\leq\frac{1+\lVert\bm{A}\rVert^{2}}{2}\leq 1, 
+
+(2)
+
+
+while by subtracting them, we obtain
+
+
+
+
+ \displaystyle\bm{A}_{+}^{\dagger}\bm{A}_{+}-\bm{A}_{-}^{\dagger}\bm{A}_{-}=\frac{1}{2}(\hat{\bm{A}}_{f})^{\dagger}+\frac{1}{2}\hat{\bm{A}}_{f}. 
+
+
+
+
+
+
+Therefore, for any state that is diagonal in the energy basis, in particular the Gibbs state, we have that
+
+
+
+
+ \displaystyle\mathrm{Tr}\left[\bm{\rho}(\bm{A}_{+}^{\dagger}\bm{A}_{+}-\bm{A}_{-}^{\dagger}\bm{A}_{-})\right] 
+ \displaystyle=\frac{1}{2}\mathrm{Tr}[\bm{\rho}\hat{\bm{A}}_{f}+\bm{\rho}(\hat{\bm{A}}_{f})^{\dagger}] 
+
+
+
+
+ \displaystyle=\frac{1}{2}\mathrm{Tr}[\bm{\rho}\sum_{\nu}\bm{A}_{\nu}g(\nu)+\bm{\rho}\big(\sum_{\nu}\bm{A}_{\nu}g(\nu)\big)^{\dagger}] 
+
+
+
+
+ \displaystyle=\frac{1}{2}\mathrm{Tr}[\bm{\rho}\bm{A}_{0}g(0)+\bm{\rho}(\bm{A}_{0})^{\dagger}g^{*}\!(0)] 
+
+(Gibbs state is diagonal)
+
+
+
+ \displaystyle=\mathrm{Re}(g(0))\mathrm{Tr}[\bm{\rho}\bm{A}_{0}] 
+
+( \bm{A}=\bm{A}^{\dagger}  implies that  \bm{A}_{0}=(\bm{A}_{0})^{\dagger} )
+
+
+
+ \displaystyle=\mathrm{Re}(g(0))\mathrm{Tr}[\bm{\rho}\bm{A}] 
+
+(Gibbs state is diagonal)
+
+
+
+ \displaystyle=\exp\left(-\frac{\beta^{2}}{8\sigma^{2}}\right)\mathrm{Tr}[\bm{\rho}\bm{A}]. 
+
+
+
+
+
+
+Lastly, for a normalizing constant  w=\Theta\left(\frac{1}{\log^{2}(2+\beta\left\|\bm{H}\right\|)}\right)  we set
+
+
+
+
+ \displaystyle\mathcal{T}[\cdot] 
+ \displaystyle:=w\exp\left(\frac{\beta^{2}}{8\sigma^{2}}\right)(\bm{A}_{+}[\cdot]\bm{A}_{+}^{\dagger}+\bm{A}_{-}[\cdot]\bm{A}_{-}^{\dagger}) 
+
+
+
+
+ \displaystyle=:\bm{K}_{+}[\cdot]\bm{K}_{+}^{\dagger}+\bm{K}_{-}[\cdot]\bm{K}_{-}^{\dagger} 
+
+
+
+such that due to Equation 2 if  \sigma\geq\beta  we are guaranteed to have
+
+
+
+
+ \displaystyle\left\|\bm{K}_{+}^{\dagger}\bm{K}_{+}\!+\bm{K}_{-}^{\dagger}\bm{K}_{-}\right\|=w\exp\left(\frac{\beta^{2}}{8\sigma^{2}}\!\right)\left\|\bm{A}_{+}^{\dagger}\bm{A}_{+}\!+\bm{A}_{-}^{\dagger}\bm{A}_{-}\right\|\leq w\exp\left(\frac{\beta^{2}}{8\sigma^{2}}\!\right)\leq\frac{2w}{\sqrt{3}}. 
+
+
+
+Since the CP map  \mathcal{T}  is itself detailed balanced, the general recipe of [GCDK24] gives a suitable rejection term44
+                  4
+                  
+                  
+                  
+                Note that this way we get a valid measurement channel whenever  w\leq\exp\big(\frac{-\beta^{2}}{8\sigma^{2}}\big) , however we only know how to efficiently implement the corresponding “rejection term”  \bm{K}_{0}  when  w=\mathcal{O}\big(\log^{-2}(\beta\left\|\bm{H}\right\|)\big) , see [GCDK24]. with Kraus operator  \bm{K}_{0}=\sqrt{\sqrt{\bm{\rho}_{\beta}}(\bm{I}-\mathcal{T}^{\dagger}[\bm{I}])\sqrt{\bm{\rho}_{\beta}}}\bm{\rho}_{\beta}^{-\frac{1}{2}}  such that total channel is trace-preserving ( \bm{K}_{0}^{\dagger}\bm{K}_{0}+\bm{K}_{+}^{\dagger}\bm{K}_{+}+\bm{K}_{-}^{\dagger}\bm{K}_{-}=\bm{I} ) and detailed balanced.
+
+
+
+
+For our choice of  w=\Theta\left(\frac{1}{\log^{2}(2+\beta\left\|\bm{H}\right\|)}\right) , if we set  \sigma=\Theta\big(\beta\log^{\frac{3}{2}}(1/\varepsilon)\big)  a block-encoding of the additional (subnormalised) Kraus operator  \bm{K}_{0}/2  can be implemented up to error  \mathcal{O}\left(\varepsilon\right)  by a quantum circuit using  \tilde{\mathcal{O}}(\beta)  Hamiltonian simulation time and  \tilde{\mathcal{O}}(1)  uses of an  a -qubit block-encoding for the observable  \bm{A}  with the help of  \tilde{\mathcal{O}}(a+1)  many ancillas [GCDK24, Corollary 3, Lemma 12]. Using robust oblivious amplitude amplification [CW17, GSLW19] this enables implementing a Stinespring dilation of the entire  w -weak measurement channel defined by the Kraus operators  \{\bm{K}_{+},\bm{K}_{0},\bm{K}_{-}\}  up to error  \varepsilon  (in diamond norm).
+∎
+
+
+
+
+
+The above lemma provides a detailed-balanced measurement channel for  w\bm{A} . In order to estimate  \mathrm{Tr}[\bm{A}\bm{\rho}] , one could just consider the classical random variable  a  associated with the outcome from the ancilla such that
+
+
+
+
+ \displaystyle a=\begin{cases}\phantom{-}\frac{1}{w}\quad&amp;\text{if outcome label is}\quad+,\\
+-\frac{1}{w}\quad&amp;\text{if outcome label is}\quad-,\\
+\phantom{-}0\quad&amp;\text{else.}\end{cases} 
+
+(3)
+
+
+Then, the random variable  a  is an unbiased estimator
+
+
+
+
+ \displaystyle\mathbb{E}[a]=\frac{1}{w}\mathrm{Tr}[\bm{K}^{\dagger}_{+}\bm{K}_{+}\bm{\rho}]-\frac{1}{w}\mathrm{Tr}[\bm{K}^{\dagger}_{-}\bm{K}_{-}\bm{\rho}]=\mathrm{Tr}[\bm{\rho}\bm{A}]. 
+
+
+
+However, directly estimating the expectation  \mathbb{E}[a]  incurs an extra multiplicative loss of  w  for the number of samples.
+
+
+
+
+Remark 1.
+
+
+
+The subnormalizing constant  w  is unwanted, and intuitively speaking, means that when the measurement channel is applied we effectively only perform a meaningful measurement with probability  w . Indeed,  \|\bm{K}_{+}^{\dagger}\bm{K}_{+}+\bm{K}_{-}^{\dagger}\bm{K}_{-}\|=\mathcal{O}\left(w\right)  means that the probability of seeing measurement label  +  or  -  is  \mathcal{O}\left(w\right)  for any quantum state. However, we can avoid overheads in sample complexity by “boosting” the signal via repeating the same detailed-balanced measurement channel  \Omega(1/w)  times. This effectively removes the adverse effect of the subnormalization by  w , see 4 and 2 in Appendix A for a formal statement.
+
+
+
+
+
+
+3.2 The proof of our main result: 1
+
+
+
+
+The following lemma is instructive.
+
+
+
+
+Lemma 2 (Estimating one observable through a  \bm{\rho} -detailed-balanced measurement channel).
+
+
+
+Consider an observable  \bm{A}  such that  \|{\bm{A}}\|\leq 1  and a Hamiltonian  \bm{H} .
+Let  \varepsilon,\delta\in(0,\frac{1}{2}) , then we can estimate  \mathrm{Tr}[\bm{\rho}\bm{A}]  (without bias) within error  \varepsilon  with success probability at least  1-\delta  using
+
+
+
+
+ \displaystyle S 
+ \displaystyle\geq(3.9+2\varepsilon)\frac{\ln(2/\delta)}{\varepsilon^{2}}\quad\text{samples of the full-rank state}\quad\bm{\rho}, 
+
+
+
+by applying a (perfect, error-free) measurement channel as in 1 repeated  \lceil\frac{2}{w}\rceil  times per sample.
+Furthermore, when marginalizing all measurement outcomes, each copy of  \bm{\rho}  remains statistically the same.
+
+
+
+
+
+Proof of 2.
+
+
+
+We will apply the detailed-balanced measurement for  k=\lceil\frac{2}{w}\rceil  times on each copy of  \bm{\rho} 
+
+
+
+
+ \displaystyle\mathcal{E}^{k(1)}[ 
+ \displaystyle\bm{\rho}]\rightarrow(a_{1}^{(1)},a_{2}^{(1)},\ldots,a_{k}^{(1)})\rightarrow s^{(1)} 
+
+
+
+
+
+
+
+ \displaystyle\mathcal{E}^{k(r)}[ 
+ \displaystyle\bm{\rho}]\rightarrow(a_{1}^{(r)},a_{2}^{(r)},\ldots,a_{k}^{(r)})\rightarrow s^{(r)} 
+
+
+
+where
+
+
+
+
+ \displaystyle\mathcal{E}^{k(i)}=\underset{k\hskip 8.19447pt\text{times}}{\underbrace{\mathcal{E}^{(i)}\circ\cdots\circ\mathcal{E}^{(i)}}}. 
+
+
+
+Since the measurement channel is detailed-balanced, after each application of the channel (ignoring previous measurement results, i.e., tracing out ancillas) the quantum state remains distributed as  \bm{\rho} . Thus the random variable  a_{j}  from Equation 3 associated to the  j -th application of the measurement channel satisfies  \mathbb{E}[a_{j}]=\mathrm{Tr}[\bm{\rho}\bm{A}] .
+
+
+
+
+Since in each application of the channel, the probability of seeing a non-zero ancilla label is at most  \frac{2}{\sqrt{3}}w  for any prior measurement outcome history, an elementary exercise in probability (see 4) shows that taking the average of  \geq\frac{1}{w}  subsequent measurements  a_{j}  yields a sample mean  s=\frac{a_{1}+\ldots+a_{k}}{k}  with bounded variance while by the linearity of expectation we have  \mathbb{E}[s]=\mathrm{Tr}[\bm{\rho}\bm{A}] . Then, using standard median-of-means estimation (see 2) we can obtain an estimate of  \mathbb{E}[s]=\mathrm{Tr}[\bm{\rho}\bm{A}]  with the desired precision and success probability using the independent measurement statistics  s^{(i)}  from  r=\Theta\big(\frac{\log(1/\delta)}{\varepsilon^{2}}\big)  copies of the mixed state  \bm{\rho} .
+
+
+
+
+Alternatively, if we take  k=\lceil\frac{2}{w}\rceil  subsequent applications of the measurement channel, and average the independent measurement statistics  s^{(i)}  obtained on  r\geq(3.9+2\varepsilon)\frac{\ln(2/\delta)}{\varepsilon^{2}}  copies of  \bm{\rho} , then the average is an unbiased estimator of  \mathbb{E}[s^{(i)}]=\mathrm{Tr}[\bm{\rho}\bm{A}]  that is within precision  \varepsilon  with probability at least  1-\delta  as shown by Bernstein’s concentration inequality (see 2 for the details of the argument).
+∎
+
+
+
+
+
+Proof of 1.
+
+
+
+The idea is to simply apply the procedure of 2 to each of the  M  observables subsequently, but with an elevated success probability  1-\frac{\delta}{2M} . Then, by the union bound, we get an estimate of all expectation values that are correct simultaneously with probability at least  1-\frac{\delta}{2} .
+Applying the protocol of 2 to different subsequent observables is possible, because we only apply detailed-balanced quantum channels on each copy of the Gibbs state, therefore each time we apply 2 its assumption is satisfied, we have  r  independent copies of the Gibbs state (when ignoring previous measurement outcomes).55
+                  5
+                  
+                  
+                  
+                Considering a single Gibbs state, the sequential statistics of the  M  different observables  (s_{1}^{(1)},\ldots,s_{M}^{(1)}),  may be highly correlated, however this does not matter, as we are using a union bound regarding the error probability of different observables.
+
+
+
+
+We can implement each measurement channel to precision  \frac{\delta}{2Mrk}=\Omega\big(\mathrm{Poly}\left(\frac{w\delta\varepsilon}{M}\right)\big)  in diamond norm according to 1. Then, by the composition properties of the diamond norm, the entire protocol is implemented to diamond norm error  \frac{\delta}{2} , implying that the measurement statistics cannot change by more than  \frac{\delta}{2}  compared to the protocol using the ideal channels, so we succeed with probability at least  1-\delta  even using the implemented slightly noisy channels.
+∎
+
+
+
+
+
+
+3.3 Continuous-time approach
+
+
+
+
+While the above exploits discrete-time Gibbs samplers, an analogous result can be achieved with continuous-time Gibbs sampling, which is very similar to the discrete-time case, except that the measurement outcomes are described by jump occurrences.
+
+
+
+
+The main idea is to apply a sequential  \bm{\rho} -detailed-balanced continuous-time measurement for  t=\widetilde{\mathcal{O}}\left(1\right)  and  \bm{A}_{1},\cdots,\bm{A}_{M},  and repeat  r  times on  r  copies of  \bm{\rho} 
+
+
+
+
+ \displaystyle\mathcal{E}^{(1)}_{M}\cdots\mathcal{E}^{(1)}_{1}[ 
+ \displaystyle\bm{\rho}]\quad\text{such that}\quad\exp(\mathcal{L}^{(1)}_{M})=\cdots=\exp(\mathcal{L}^{(1)}_{1})[\bm{\rho}]=\bm{\rho} 
+
+
+
+
+
+
+
+ \displaystyle\mathcal{E}^{(r)}_{M}\cdots\mathcal{E}^{(r)}_{1}[ 
+ \displaystyle\bm{\rho}]\quad\text{such that}\quad\exp(\mathcal{L}^{(r)}_{M})=\cdots=\exp(\mathcal{L}^{(r)}_{1})[\bm{\rho}]=\bm{\rho}. 
+
+
+
+The rest of the argument is completely analogous to the above discrete case and 1.
+
+
+
+
+For completeness, we provide explicit definitions of the required continuous-time measurement and provide a high-level proof sketch.
+
+
+
+
+Definition 2 (Detailed-balanced continuous-time measurements).
+
+
+
+Given a Hermitian observable  \bm{A}  and a full-rank quantum state  \bm{\rho} , we say a collection of Lindblad operators  \{\bm{L}_{j}\}  and a Hermitian “coherent term”  \bm{C} , forms a  \bm{\rho} -detailed-balanced continuous-time measurement for  \bm{A}  if  \|\sum_{j}\bm{L}_{j}^{\dagger}\bm{L}_{j}\|=\mathcal{O}\left(1\right) , and
+
+
+• 
+
+
+
+(detailed-balanced on average) When marginalizing over the observed jump labels  j , the resulting Lindbladian  \mathcal{L}[\cdot]=-\mathrm{i}[\bm{C},\cdot]+\sum_{j\in[\ell]}\bm{L}_{j}[\cdot]\bm{L}^{\dagger}_{j}-\frac{1}{2}\{\bm{L}_{j}^{\dagger}\bm{L}_{j},\cdot\}  satisfies (KMS) detailed balance with respect to  \bm{\rho} .
+
+
+• 
+
+
+
+(informative outcomes) A bounded linear combination of the rates  \langle\bm{L}_{j}^{\dagger}\bm{L}_{j}\rangle_{\bm{\rho}}  provides an unbiased estimator of  \langle\bm{A}\rangle_{\bm{\rho}} , i.e.,  \langle\bm{A}\rangle_{\bm{\rho}}=\sum_{j\in[\ell]}\lambda_{j}\langle\bm{L}_{j}^{\dagger}\bm{L}_{j}\rangle_{\bm{\rho}}  for some known coefficients  \lambda_{j}\in[-1,1] .
+
+
+
+
+
+
+
+The continuous-time Lindbladian evolution can be described using its Duhamel-Dyson series as follows:
+
+
+
+
+ \displaystyle e^{t\mathcal{L}}[\cdot] 
+ \displaystyle=\sum_{k=0}^{\infty}\sum_{(j_{1},\ldots,j_{k})\in[\ell]^{k}}\iiint\limits_{\kern 5.69054ptt\geq t_{k}&gt;\cdots&gt;t_{1}&gt;0}\bm{K}_{j_{k},t_{k},\cdots,j_{1},t_{1}}[\cdot]\bm{K}_{j_{k},t_{k},\cdots,j_{1},t_{1}}^{\dagger}\mathrm{d}t_{1}\cdots\mathrm{d}t_{k},\text{ where } 
+
+
+
+ \displaystyle\bm{K}_{j_{k},t_{k},\cdots,j_{2},t_{2},j_{1},t_{1}} 
+ \displaystyle=e^{(t-t_{k})\bm{H}_{\mathrm{eff}}}\bm{L}_{j_{k}}e^{(t_{k}-t_{k-1})\bm{H}_{\mathrm{eff}}}\cdot\ldots\cdot\bm{L}_{j_{2}}e^{(t_{2}-t_{1})\bm{H}_{\mathrm{eff}}}\bm{L}_{j_{1}}e^{t_{1}\bm{H}_{\mathrm{eff}}}\text{ and }\bm{H}_{\mathrm{eff}}=-\mathrm{i}\bm{C}-\frac{1}{2}\sum_{j\in[\ell]}\bm{L}_{j}^{\dagger}\bm{L}_{j}. 
+
+
+
+
+
+
+It will also be useful to distinguish between the measurement protocol  \mathcal{E}^{t}[\cdot]  that records the trajectories  (j_{k},t_{k},\cdots,j_{2},t_{2},j_{1},t_{1}) , and the averaged channel  e^{t\mathcal{L}}=\mathrm{Tr}_{traj}[\mathcal{E}^{t}] . Applying  \mathcal{E}^{t}[\cdot]  on  \bm{\rho}  with a Lindbladian as in the above definition, we can get an unbiased estimator for the desired observable
+
+
+
+
+ \displaystyle\langle\bm{A}\rangle_{\bm{\rho}}=\frac{1}{t}\sum_{j\in[\ell]}\lambda_{j}\cdot\mathbb{E}[\text{number of observed jumps }j]. 
+
+(4)
+
+
+Unlike for the discrete-time version, the trajectory unraveling here uses a continuum of Kraus operators [LW23]. In an actual implementation, we need to represent the trajectories finitely, so we introduce coarse jump times  \bar{t}  that are discrete multiples of a fixed  \tau :
+
+
+
+
+ \displaystyle\bar{\mathcal{E}}_{\tau}^{t}[\cdot]=\sum_{k=0}^{\!\lfloor t/\tau\rfloor\!}\sum_{\underset{t\geq\bar{t}_{k}&gt;\cdots&gt;\bar{t}_{1}&gt;0}{\,(j_{1},\ldots,j_{k})\in[\ell]^{k}}\,}\!\!\left(\iiint\limits_{\kern 5.69054ptt_{i}\in(\bar{t}_{i}-\tau,\bar{t}_{i}]}\!\!\!\!\bm{K}_{j_{k},t_{k},\cdots,j_{1},t_{1}}[\cdot]\bm{K}_{j_{k},t_{k},\cdots,j_{1},t_{1}}^{\dagger}\mathrm{d}t_{1}\cdots\mathrm{d}t_{k}\!\right)\!\otimes\left|j_{k},\bar{t}_{k},\cdots,j_{1},\bar{t}_{1}\right\rangle\left\langle j_{k},\bar{t}_{k},\cdots,j_{1},\bar{t}_{1}\right|. 
+
+
+
+This is done by “rounding” the event time-labels to the next discrete time step and ignoring cases when multiple jumps occur in the same discrete  \tau  time-window. This introduces only a small (subnormalising) discretisation error  \|e^{t\mathcal{L}}-\mathrm{Tr}_{traj}[\bar{\mathcal{E}}_{\tau}^{t}]\|_{\diamond}=\mathcal{O}\left(t\tau\right)  proportional to  \tau , which can be ignored when the discretisation is fine enough.
+
+
+
+
+Lemma 3 (Detailed-balanced continuous-time measurement from Gibbs sampling).
+
+
+
+For any self-adjoint observable  \bm{A},  Hamiltonian  \bm{H} , and inverse temperature  \beta\geq 0 , there is a  \bm{\rho}_{\beta} -detailed-balanced continuous-time measurement  \{\bm{L}_{i}\}  (with appropriate coherent term  \bm{C} ) as in 2 such that
+
+
+
+
+ \displaystyle\mathrm{Tr}[\bm{L}^{\dagger}_{1}\bm{L}_{1}\bm{\rho}_{\beta}]-\mathrm{Tr}[\bm{L}^{\dagger}_{2}\bm{L}_{2}\bm{\rho}_{\beta}]=\mathrm{Tr}[\bm{A}\bm{\rho}_{\beta}]. 
+
+
+
+Furthermore, a quantum channel  \varepsilon -approximating  \bar{\mathcal{E}}_{\varepsilon}^{t}  (in the completely bounded one-to-one norm  \|\cdot\|_{\diamond} ) can be implemented using  \tilde{\mathcal{O}}(t\beta)  Hamiltonian simulation time and  \tilde{\mathcal{O}}(1)  block-encodings for the observable  \bm{A},  and  \tilde{\mathcal{O}}(1)  many ancillas, assuming (for simplicity) that  \bm{A}  is provided with an  \widetilde{\mathcal{O}}\left(1\right) -ancilla block-encoding.
+
+
+
+
+
+Proof.
+
+
+
+Consider the Lindbladian with Lindblad operators  \bm{L}_{1}\!:=\exp\left(\frac{\beta^{2}}{16\sigma^{2}}\!\right)\bm{A}_{+},\bm{L}_{2}\!:=\exp\left(\frac{\beta^{2}}{16\sigma^{2}}\!\right)\bm{A}_{-}  as in 1 and invoke high-precision Lindbladian simulation algorithms [CW17, CKBG23] to approximate the above  \bar{\mathcal{E}}_{\varepsilon}^{t} .
+
+
+
+
+As shown by [CKG23, GCDK24] the coherent term  \bm{C}=\bm{C}_{1}+\bm{C}_{2}  can be chosen and efficiently implemented via linear combination of unitaries (LCU) according to the formula
+
+
+
+
+ \displaystyle\bm{C}_{j}=\int_{\!-\infty}^{\infty}\frac{1}{\sinh(2\pi t)}\left(e^{\mathrm{i}\beta\bm{H}t}\bm{L}^{\dagger}_{j}\bm{L}_{j}e^{-\mathrm{i}\beta\bm{H}t}-\bm{L}^{\dagger}_{j}\bm{L}_{j}\right)\mathrm{d}t. 
+
+∎
+
+
+
+
+
+
+Most Lindbladian simulation algorithms [CW17, CKBG23] discretize the time-evolution by effectively iterating  t/\tau  times an approximate implementation of a tiny discrete time-step  \tau 
+
+
+
+
+ \displaystyle\bar{\mathcal{E}}_{\tau}^{\tau}[\cdot] 
+ \displaystyle=\bm{L}_{0}[\cdot]\bm{L}_{0}^{\dagger}\otimes|0\rangle\!\langle 0|+\tau\sum_{j\in[\ell]}\bm{L}_{j}[\cdot]\bm{L}^{\dagger}_{j}\otimes|j\rangle\!\langle j|+\mathcal{O}\left(\tau^{2}\right),\text{ where } 
+
+
+
+ \displaystyle\bm{L}_{0} 
+ \displaystyle=\bm{I}-\tau\sum_{j\in[\ell]}\bigg(\frac{\bm{L}_{j}^{\dagger}\bm{L}_{j}}{2}+\mathrm{i}\bm{C}_{j}\bigg)=\sqrt{\sqrt{\bm{\rho}_{\beta}}\Big(\bm{I}-\tau\sum_{j\in[\ell]}\bm{L}_{j}^{\dagger}\bm{L}_{j}\Big)\sqrt{\bm{\rho}_{\beta}}}\bm{\rho}_{\beta}^{-\frac{1}{2}}+\mathcal{O}(\tau^{2}), 
+
+
+
+making the approximation that only one jump is allowed in each discrete  \tau  time-window. So we can think about the discrete time-steps of the resulting dynamics as a special case of the discrete-time measurement channel from 1, but with a tiny  w=\tau  subnormalization. Since our proven sample complexity is independent of  w , the previous analysis is still applicable, noting that in these implementation methods, the ancillae store the discrete trajectory labels in a potentially compressed form [CW17, CKBG23].
+
+
+
+
+Corollary 1 (Estimating one observable through detailed-balanced continuous-time measurements).
+
+
+
+Consider an observable  \bm{A}  such that  \|{\bm{A}}\|\leq 1 . Then, we can estimate  \mathrm{Tr}[\bm{\rho}\bm{A}]  to error  \varepsilon  with failure probability  \delta  using
+
+
+
+
+ \displaystyle S 
+ \displaystyle=\mathcal{O}\left(\frac{\log(1/\delta)}{\varepsilon^{2}}\right)\quad\text{samples of the full-rank state}\quad\bm{\rho}, 
+
+
+
+and a total of  \mathcal{O}(1)  Lindbladian simulation time per sample with a Lindbladian as in 3.
+Moreover, if the Lindbladian simulation is executed perfectly, and we marginalize over all trajectory labels, then each copy of  \bm{\rho}  remains statistically the same due to detailed balance.
+
+
+
+
+
+As in the proof of 1, we can use the above result subsequently to all  M  measurement operators with elevated success probability  1-\frac{\delta}{2M}  to recover all the  M  expectation values to precision  \varepsilon  with success probability at least  1-\delta . Finally, applying approximate Lindbladian simulation with imprecision  \ll\frac{\varepsilon}{M}  ensures a bounded perturbation  \ll\varepsilon  in each copy of  \bm{\rho}  throughout the process.
+
+
+
+
+
+Acknowledgements
+
+
+
+
+The authors developed the key ideas and wrote the manuscript. LLMs were used only to aid in completing details of the standard technical proofs of 2, 4, and 6 in the Appendices, and to provide feedback on the writing. CFC is supported by a Simons-CIQC postdoctoral fellowship through NSF QLCI Grant No. 2016245. AG is supported by the Lendület “Momentum” program of the Hungarian Academy of Sciences under grant agreement no. LP2025-8/2025.
+The authors are grateful for insightful discussions with Scott Aaronson, Anurag Anshu, Richard Allen, Ryan Babbush, Sitan Chen, Soonwon Choi, Hsin-Yuan Huang, William Huggins, Jiaqing Jiang, Robbie King, Daniel Mark, Ankur Moitra, Anand Natarajan, Nicholas Rubin, Matteo Votto, Alec White, and John Wright.
+
+
+
+
+
+
+References
+
+
+      
+
+[Aar18]
+
+Scott Aaronson.
+
+
+Shadow
+Tomography of Quantum States.
+
+
+In Proceedings of the 50th ACM Symposium on the Theory of
+Computing (STOC), pages 325–338, 2018.
+
+
+arXiv:
+1711.01053
+
+
+      
+
+[Ahl22]
+
+Thomas D. Ahle.
+
+
+Sharp and
+simple bounds for the raw moments of the binomial and Poisson
+distributions.
+
+
+Statistics &amp; Probability Letters, 182:109306, 2022.
+
+
+arXiv:
+2103.17027
+
+
+      
+
+[Amb00]
+
+Andris Ambainis.
+
+
+Quantum lower bounds
+by quantum arguments.
+
+
+In Proceedings of the 32nd ACM Symposium on the Theory of
+Computing (STOC), pages 636–643, 2000.
+
+
+arXiv:
+quant-ph/0002066
+
+
+      
+
+[vACGN23]
+
+Joran van Apeldoorn, Arjan Cornelissen, András
+Gilyén, and Giacomo Nannicini.
+
+
+Quantum
+tomography using state-preparation unitaries.
+
+
+In Proceedings of the 34th ACM-SIAM Symposium on Discrete Algorithms
+(SODA), pages 1265–1318, 2023.
+
+
+arXiv:
+2207.08800
+
+
+      
+
+[vAG19]
+
+Joran van Apeldoorn and András Gilyén.
+
+
+Improvements in
+quantum SDP-solving with applications.
+
+
+In Proceedings of the 46th International Colloquium on Automata, Languages, and
+Programming (ICALP), pages 99:1–99:15, 2019.
+
+
+arXiv:
+1804.05058
+
+
+      
+
+[BBBV97]
+
+Charles H. Bennett, Ethan Bernstein, Gilles Brassard, and Umesh Vazirani.
+
+
+Strengths and
+weaknesses of quantum computing.
+
+
+SIAM Journal on
+Computing, 26(5):1510–1523, 1997.
+
+
+arXiv:
+quant-ph/9701001
+
+
+      
+
+[BCC+14]
+
+Dominic W. Berry, Andrew M. Childs, Richard Cleve, Robin Kothari, and
+Rolando D. Somma.
+
+
+Exponential
+improvement in precision for simulating sparse Hamiltonians.
+
+
+In Proceedings of the 46th ACM Symposium on the Theory of
+Computing (STOC), pages 283–292, 2014.
+
+
+arXiv:
+1312.1414
+
+
+      
+
+[BCV25]
+
+Thiago Bergamaschi, Chi-Fang Chen, and Umesh Vazirani.
+
+
+A structural theory of quantum metastability: Markov properties and
+area laws.
+
+
+arXiv:
+2510.08538, 2025.
+
+
+      
+
+[Bel15]
+
+Aleksandrs Belovs.
+
+
+Variations on quantum adversary.
+
+
+arXiv:
+1504.06943, 2015.
+
+
+      
+
+[BLM13]
+
+Stéphane Boucheron, Gábor Lugosi, and Pascal Massart.
+
+
+Concentration Inequalities: A Nonasymptotic Theory of Independence.
+
+
+Oxford University Press, 2013.
+
+
+      
+
+[BMBO20]
+
+Xavier Bonet-Monroig, Ryan Babbush, and Thomas E O’Brien.
+
+
+Nearly optimal
+measurement scheduling for partial tomography of quantum states.
+
+
+Physical
+Review X, 10(3):031064, 2020.
+
+
+arXiv:
+1908.05628
+
+
+      
+
+[BO24]
+
+Costin Bădescu and Ryan O’Donnell.
+
+
+Improved quantum
+data analysis.
+
+
+TheoretiCS, 3, 2024.
+
+
+Earlier version in
+STOC’21. arXiv:
+2011.10908
+
+
+      
+
+[Can22]
+
+Clément L. Canonne.
+
+
+Topics and techniques in
+distribution testing: A biased but representative sample.
+
+
+Foundations and Trends in Communications and Information
+Theory, 19(6):1032–1198, 2022.
+
+
+      
+
+[CGM+09]
+
+Richard Cleve, Daniel Gottesman, Michele Mosca, Rolando D. Somma, and David L.
+Yonge-Mallo.
+
+
+Efficient
+discrete-time simulations of continuous-time quantum query algorithms.
+
+
+In Proceedings of the 41st ACM Symposium on the Theory of
+Computing (STOC), pages 409–416, 2009.
+
+
+arXiv:
+0811.4428
+
+
+      
+
+[Che26]
+
+Chi-Fang Chen.
+
+
+Note on strong quantum Markov properties.
+
+
+arXiv:
+2605.02877, 2026.
+
+
+      
+
+[CJLY26]
+
+Hongrui Chen, Jiaqing Jiang, Bowen Li, and Lexing Ying.
+
+
+Thermal expectation estimation via single-trajectory Gibbs sampling
+with non-destructive measurements.
+
+
+arXiv:
+2603.21595, 2026.
+
+
+      
+
+[CK25]
+
+Chi-Fang Chen and Robbie King.
+
+
+Catalytic tomography of ground states.
+
+
+arXiv:
+2512.10247, 2025.
+
+
+      
+
+[CKBG23]
+
+Chi-Fang Chen, Michael J. Kastoryano, Fernando G. S. L. Brandão, and András
+Gilyén.
+
+
+Quantum thermal state preparation.
+
+
+arXiv:
+2303.18224, 2023.
+
+
+      
+
+[CKBG25]
+
+Chi-Fang Chen, Michael J. Kastoryano, Fernando G.S.L. Brandão, and András
+Gilyén.
+
+
+Efficient quantum
+thermal simulation.
+
+
+Nature, 646(8085):561–566, 2025.
+
+
+      
+
+[CKG23]
+
+Chi-Fang Chen, Michael J. Kastoryano, and András Gilyén.
+
+
+An efficient and exact noncommutative quantum Gibbs sampler.
+
+
+arXiv:
+2311.09207, 2023.
+
+
+      
+
+[CLL24]
+
+Sitan Chen, Jerry Li, and Allen Liu.
+
+
+An optimal tradeoff
+between entanglement and copy complexity for state tomography.
+
+
+In Proceedings of the 56th ACM Symposium on the Theory of
+Computing (STOC), pages 1331–1342, 2024.
+
+
+arXiv:
+2402.16353
+
+
+      
+
+[COPW26]
+
+Sitan Chen, Ryan O’Donnell, Angelos Pelecanos, and John Wright.
+
+
+Online shadow tomography matching the classical bounds.
+
+
+arXiv:
+2607.29686, 2026.
+
+
+      
+
+[CR25]
+
+Chi-Fang Chen and Cambyse Rouzé.
+
+
+Quantum Gibbs states are locally Markovian.
+
+
+arXiv:
+2504.02208, 2025.
+
+
+      
+
+[CW17]
+
+Richard Cleve and Chunhao Wang.
+
+
+Efficient
+quantum algorithms for simulating Lindblad evolution.
+
+
+In Proceedings of the 44th International Colloquium on Automata, Languages, and
+Programming (ICALP), pages 17:1–17:14, 2017.
+
+
+arXiv:
+1612.09512
+
+
+      
+
+[DCL24]
+
+Zhiyan Ding, Chi-Fang Chen, and Lin Lin.
+
+
+Single-ancilla
+ground state preparation via Lindbladians.
+
+
+Physical Review Research, 6(3):033147, 2024.
+
+
+arXiv:
+2308.15676
+
+
+      
+
+[Dia19]
+
+Ilias Diakonikolas.
+
+
+Advanced
+Learning Theory, 2019.
+
+
+Lecture notes.
+
+
+      
+
+[DLL25]
+
+Zhiyan Ding, Bowen Li, and Lin Lin.
+
+
+Efficient quantum
+Gibbs samplers with Kubo–Martin–Schwinger detailed balance
+condition.
+
+
+Communications in
+Mathematical Physics, 406(3):67, 2025.
+
+
+arXiv:
+2404.05998
+
+
+      
+
+[FGH+10]
+
+Edward Farhi, David Gosset, Avinatan Hassidim, Andrew Lutomirski, Daniel Nagaj,
+and Peter Shor.
+
+
+Quantum state
+restoration and single-copy tomography for ground states of hamiltonians.
+
+
+Physical Review Letters, 105(19):190503, 2010.
+
+
+arXiv:
+0912.3823
+
+
+      
+
+[GAW19]
+
+András Gilyén, Srinivasan Arunachalam, and Nathan Wiebe.
+
+
+Optimizing
+quantum optimization algorithms via faster quantum gradient computation.
+
+
+In Proceedings of the 30th ACM-SIAM Symposium on Discrete Algorithms
+(SODA), pages 1425–1444, 2019.
+
+
+arXiv:
+1711.00465
+
+
+      
+
+[GCDK24]
+
+András Gilyén, Chi-Fang Chen, Joao F. Doriguello, and Michael J. Kastoryano.
+
+
+Quantum generalizations of Glauber and Metropolis dynamics.
+
+
+arXiv:
+2405.20322, 2024.
+
+
+      
+
+[GHC+25]
+
+Jinkang Guo, Oliver Hart, Chi-Fang Chen, Aaron J Friedman, and Andrew Lucas.
+
+
+Designing open
+quantum systems with known steady states: Davies generators and beyond.
+
+
+Quantum, 9:1612, 2025.
+
+
+arXiv:
+2404.14538
+
+
+      
+
+[GSLW19]
+
+András Gilyén, Yuan Su, Guang Hao Low, and Nathan Wiebe.
+
+
+Quantum singular
+value transformation and beyond: Exponential improvements for quantum
+matrix arithmetics.
+
+
+In Proceedings of the 51st ACM Symposium on the Theory of
+Computing (STOC), pages 193–204, 2019.
+
+
+Full version in arXiv:
+1806.01838
+
+
+      
+
+[HHJ+17]
+
+Jeongwan Haah, Aram W. Harrow, Zhengfeng Ji, Xiaodi Wu, and Nengkun Yu.
+
+
+Sample-optimal
+tomography of quantum states.
+
+
+IEEE Transactions on Information Theory, 63(9):5628–5641, 2017.
+
+
+Earlier version in
+STOC’16, arXiv:
+1508.01797
+
+
+      
+
+[HKP20]
+
+Hsin-Yuan Huang, Richard Kueng, and John Preskill.
+
+
+Predicting many
+properties of a quantum system from very few measurements.
+
+
+Nature Physics, 16(10):1050–1057, 2020.
+
+
+arXiv:
+2002.08953
+
+
+      
+
+[HŠ05]
+
+Peter Høyer and Robert Špalek.
+
+
+Lower bounds on
+quantum query complexity.
+
+
+Bulletin of the EATCS, 87:78–103, 2005.
+
+
+arXiv:
+quant-ph/0509153
+
+
+      
+
+[HWM+22]
+
+William J. Huggins, Kianna Wan, Jarrod McClean, Thomas E. O’Brien, Nathan
+Wiebe, and Ryan Babbush.
+
+
+Nearly
+optimal quantum algorithm for estimating multiple expectation values.
+
+
+Physical Review Letters, 129(24):240501, 2022.
+
+
+arXiv:
+2111.09283
+
+
+      
+
+[JHL26]
+
+Fernando Granha Jeronimo, Qizhao Huang, and Lenny Liu.
+
+
+Dimension-free polylogarithmic quantum shadow tomography from
+sequential pretty-good measurements.
+
+
+arXiv:
+2608.06345, 2026.
+
+
+      
+
+[JI24]
+
+Jiaqing Jiang and Sandy Irani.
+
+
+Quantum Metropolis sampling via weak measurement.
+
+
+arXiv:
+2406.16023, 2024.
+
+
+      
+
+[JLL26]
+
+Jiaqing Jiang, Jiaqi Leng, and Lin Lin.
+
+
+Predicting properties of quantum thermal states from a single
+trajectory.
+
+
+arXiv:
+2602.12539, 2026.
+
+
+      
+
+[JVV86]
+
+Mark Jerrum, Leslie G. Valiant, and Vijay V. Vazirani.
+
+
+Random
+generation of combinatorial structures from a uniform distribution.
+
+
+Theor. Comput. Sci., 43:169–188, 1986.
+
+
+      
+
+[KGKB25]
+
+Robbie King, David Gosset, Robin Kothari, and Ryan Babbush.
+
+
+Triply efficient
+shadow tomography.
+
+
+PRX
+Quantum, 6(1):010336, 2025.
+
+
+Earlier version in
+SODA’25,
+arXiv:
+2404.19211
+
+
+      
+
+[KOS07]
+
+Emanuel Knill, Gerardo Ortiz, and Rolando D Somma.
+
+
+Optimal quantum
+measurements of expectation values of observables.
+
+
+Physical
+Review A, 75(1):012328, 2007.
+
+
+arXiv:
+quant-ph/0607019
+
+
+      
+
+[LMR+11]
+
+Troy Lee, Rajat Mittal, Ben W. Reichardt, Robert Špalek, and
+Márió Szegedy.
+
+
+Quantum query
+complexity of state conversion.
+
+
+In Proceedings of the 52nd IEEE Symposium on Foundations
+of Computer Science (FOCS), pages 344–353, 2011.
+
+
+arXiv:
+1011.3020
+
+
+      
+
+[LW23]
+
+Xiantao Li and Chunhao Wang.
+
+
+Simulating
+Markovian open quantum systems using higher-order series expansion.
+
+
+In Proceedings of the 50th International Colloquium on Automata, Languages, and
+Programming (ICALP), pages 87:1–87:20, 2023.
+
+
+arXiv:
+2212.02051
+
+
+      
+
+[MMS+24]
+
+Xiao Mi, AA Michailidis, Sara Shabani, KC Miao, PV Klimov, J Lloyd,
+E Rosenberg, R Acharya, I Aleiner, TI Andersen, et al.
+
+
+Stable
+quantum-correlated many-body states through engineered dissipation.
+
+
+Science, 383(6689):1332–1337, 2024.
+
+
+arXiv:
+2304.13878
+
+
+      
+
+[Mon11]
+
+Ashley Montanaro.
+
+
+Quantum computation, 2011.
+
+
+Lecture notes.
+
+
+      
+
+[Orú19]
+
+Román Orús.
+
+
+Tensor networks
+for complex quantum systems.
+
+
+Nature Reviews Physics, 1(9):538–550, 2019.
+
+
+arXiv:
+1812.04011
+
+
+      
+
+[OW16]
+
+Ryan O’Donnell and John Wright.
+
+
+Efficient quantum
+tomography.
+
+
+In Proceedings of the 48th ACM Symposium on the Theory of
+Computing (STOC), pages 899–912, 2016.
+
+
+arXiv:
+1508.01907
+
+
+      
+
+[PSTW25]
+
+Angelos Pelecanos, Jack Spilecki, Ewin Tang, and John Wright.
+
+
+Mixed state tomography reduces to pure state tomography.
+
+
+arXiv:
+2511.15806, 2025.
+
+
+      
+
+[RWW23]
+
+Patrick Rall, Chunhao Wang, and Pawel Wocjan.
+
+
+Thermal state
+preparation via rounding promises.
+
+
+Quantum, 7:1132, 2023.
+
+
+arXiv:
+2210.01670
+
+
+      
+
+[Sch11]
+
+Ulrich Schollwöck.
+
+
+The density-matrix
+renormalization group in the age of matrix product states.
+
+
+Annals of Physics, 326(1):96–192, 2011.
+
+
+arXiv:
+1008.3477
+
+
+      
+
+[Sin25]
+
+Pulkit Sinha.
+
+
+Dimension
+independent and computationally efficient shadow tomography.
+
+
+In Proceedings of the 57th ACM Symposium on the Theory of
+Computing (STOC), pages 1242–1253, 2025.
+
+
+arXiv:
+2411.01420
+
+
+      
+
+[SM21]
+
+Oles Shtanko and Ramis Movassagh.
+
+
+Preparing thermal states on noiseless and noisy programmable quantum
+processors.
+
+
+arXiv:
+2112.14688, 2021.
+
+
+      
+
+[TOV+11]
+
+Kristan Temme, Tobias J. Osborne, Karl G. Vollbrecht, David Poulin, and Frank
+Verstraete.
+
+
+Quantum Metropolis
+sampling.
+
+
+Nature, 471(7336):87–90, 2011.
+
+
+arXiv:
+0911.3635
+
+
+      
+
+[VNS+23]
+
+Frank Verstraete, Tomotoshi Nishino, Ulrich Schollwöck, Mari Carmen
+Bañuls, Garnet K Chan, and Miles E Stoudenmire.
+
+
+Density matrix
+renormalization group, 30 years on.
+
+
+Nature Reviews Physics, 5(5):273–276, 2023.
+
+
+      
+
+[WHLB23]
+
+Kianna Wan, William J Huggins, Joonho Lee, and Ryan Babbush.
+
+
+Matchgate shadows
+for fermionic quantum simulation.
+
+
+Communications in
+Mathematical Physics, 404(2):629–700, 2023.
+
+
+arXiv:
+2207.13723
+
+
+      
+
+[ZRM21]
+
+Andrew Zhao, Nicholas C Rubin, and Akimasa Miyake.
+
+
+Fermionic
+partial tomography via classical shadows.
+
+
+Physical Review Letters, 127(11):110504, 2021.
+
+
+arXiv:
+2010.16094
+
+
+    
+
+
+
+
+
+Appendix A Concentration of the average of subsequent measurements
+
+
+
+
+In this appendix we first recall some useful concentration inequalities, which we then use for showing that  \Theta(\frac{1}{w})  repetitions of our  w -weak measurements statistically behave essentially as good as a single normal (full-strength) measurement, without requiring extra copies of the Gibbs state.
+
+
+
+
+Proposition 1 (Bernstein’s Inequality [BLM13, Corollary 2.11]).
+
+
+
+Let  X_{i}\colon i\in[k]  be independent real-valued random variables, and  c,v&gt;0  positive numbers such that
+ \frac{1}{k}\sum_{i=1}^{k}\mathbb{E}[X_{i}^{2}]\leq v 
+and for all integers  q\geq 3\colon 
+
+
+
+
+ \displaystyle\frac{1}{k}\sum_{i=1}^{k}\mathbb{E}[(X_{i})_{+}^{q}]\leq\frac{q!}{2}vc^{q-2}, 
+
+
+
+where  x_{+}=\max(x,0)  denotes the positive part of a number.
+Let
+ S_{k}=\frac{1}{k}\sum_{i=1}^{k}X_{i}-\mathbb{E}[X_{i}], 
+then for all  \varepsilon&gt;0 
+
+
+
+
+ \displaystyle\Pr[S_{k}\geq\varepsilon]\leq\exp\left(-\frac{\varepsilon^{2}k}{2(v+c\varepsilon)}\right). 
+
+
+
+
+
+
+
+Proposition 2 (Median of means [JVV86]).
+
+
+
+Let  X  be a random variable with variance  \sigma^{2}.  Then,  K 
+independent sample means of size  N=34\sigma^{2}/\varepsilon^{2}  suffice to construct a median of means estimator
+ \hat{\mu}(N,K)  such that
+
+
+
+
+ \displaystyle\Pr[\left|{\hat{\mu}(N,K)-\mathbb{E}[X]}\right|\geq\varepsilon]\leq 2e^{-K/2}. 
+
+
+
+
+
+
+
+Lemma 4.
+
+
+
+Let  w\in(0,1] , and  X_{0},X_{1},X_{2},\dots  be (not necessarily independent) random variables taking values in  \big\{-\frac{1}{w},\,0,\,\frac{1}{w}\big\} ,
+such that almost surely
+
+
+
+
+ \Pr[X_{i}\neq 0\mid X_{0},\dots,X_{i-1}]\leq\frac{2}{\sqrt{3}}w. 
+
+
+
+Then the sample mean
+ S_{k}=\frac{X_{0}+X_{1}+\cdots+X_{k-1}}{k}  satisfies  \mathbb{E}[S_{k}^{2}]\leq\frac{4}{3}+\frac{2}{\sqrt{3}kw} , and for all  q&gt;0  we have
+
+
+
+
+ \mathbb{E}[|S_{k}|^{q}]\leq\mathbb{E}\bigg[\bigg(\frac{\mathrm{Bin}\big(k,\min(1,\frac{2}{\sqrt{3}}w)\big)}{kw}\bigg)^{\!\!q\,}\bigg]. 
+
+
+
+
+
+
+
+Proof.
+
+
+
+Since  X_{i}\in\big\{-\frac{1}{w},\,0,\,\frac{1}{w}\big\} , for  Z_{i}:=\mathbf{1}_{\{X_{i}\neq 0\}}  we have
+
+
+
+
+ \displaystyle|S_{k}|\leq\frac{1}{k}\sum_{i=0}^{k-1}|X_{i}|=\frac{1}{wk}\sum_{i=0}^{k-1}Z_{i}. 
+
+(5)
+
+
+
+
+
+The main idea is that we construct a coupling between the binary random variables  Z_{i}=\mathbf{1}_{\{X_{i}\neq 0\}}  and  k  independent binary Bernoulli random variables  B_{i}  such that  w^{\prime}:=\min(1,\frac{2}{\sqrt{3}}w)=\mathbb{E}[B_{i}] . We realize the random variable  B_{i}  using i.i.d. uniform random variables  U_{i}  over  [0,1] , by simply setting  B_{i}=\mathbf{1}_{\{U_{i}\leq w^{\prime}\}} .
+
+
+
+
+We define the random variable  Z^{\prime}_{i}  recursively as follows. Let  Z^{\prime}_{0}:=\mathbf{1}_{\{U_{0}\leq\Pr[Z_{0}=1]\}}  and let
+
+
+
+
+ Z^{\prime}_{i}:=\mathbf{1}_{\{U_{i}\leq\Pr[Z_{i}=1|(Z_{0},Z_{1},\ldots,Z_{i-1})=b]\}}\text{ if }(Z^{\prime}_{0},Z^{\prime}_{1},\ldots,Z^{\prime}_{i-1})=b\in\{0,1\}^{i}. 
+
+
+
+One can easily see that the law of  (Z_{i})_{i=0}^{k-1}  and  (Z^{\prime}_{i})_{i=0}^{k-1}  coincide, since
+
+
+
+
+ \displaystyle\Pr[(Z^{\prime}_{0},\ldots,Z^{\prime}_{k-1})=b] 
+ \displaystyle=\prod_{\ell=0}^{k-1}\Pr[Z^{\prime}_{\ell}=b_{\ell}|(Z^{\prime}_{0},\ldots,Z^{\prime}_{\ell-1})=(b_{0},\ldots,b_{\ell-1})] 
+
+
+
+
+ \displaystyle=\prod_{\ell=0}^{k-1}\Pr[Z_{\ell}=b_{\ell}|(Z_{0},\ldots,Z_{\ell-1})=(b_{0},\ldots,b_{\ell-1})]=\Pr[(Z_{0},\ldots,Z_{k-1})=b]. 
+
+
+
+On the other hand, the coupling is constructed in such a way that  Z^{\prime}_{i}\leq B_{i} . Therefore, we have that
+
+
+
+
+ \displaystyle\sum_{i=0}^{k-1}Z^{\prime}_{i}\leq\sum_{i=0}^{k-1}B_{i}\sim\mathrm{Bin}(k,w^{\prime}). 
+
+(6)
+
+
+
+
+
+By Equation 5-6 and the above coupling we have for all  q&gt;0 
+
+
+
+
+ \displaystyle\mathbb{E}[|S_{k}|^{q}]\leq\frac{1}{(kw)^{q}}\mathbb{E}[(\mathrm{Bin}(k,w^{\prime}))^{q}]. 
+
+
+
+In particular, for  q=2  this implies
+
+
+
+
+ \displaystyle\mathbb{E}[|S_{k}|^{2}]\leq\frac{\mathbb{E}[\mathrm{Bin}(k,w^{\prime})]^{2}+\mathrm{Var}[\mathrm{Bin}(k,w^{\prime})]}{(kw)^{2}}\leq\frac{4}{3}+\frac{w^{\prime}(1\!-\!w^{\prime})}{kw^{2}}\leq\frac{4}{3}+\frac{2}{\sqrt{3}kw}. 
+
+∎
+
+
+
+
+
+
+Corollary 2.
+
+
+
+Let  w\in(0,1] , and  X^{(i)}_{0},X^{(i)}_{1},X^{(i)}_{2},\dots  be as in 4, then
+the sample mean
+ S^{(i)}_{k}=\frac{X^{(i)}_{0}+X^{(i)}_{1}+\cdots+X^{(i)}_{k-1}}{k}  satisfies  |S^{(i)}_{k}|\leq\frac{1}{w}  almost surely. Let  \varepsilon,\delta\in(0,\frac{1}{2}) , and suppose that  S^{(i)}_{k}  are mutually independent for  i\in[r] , then for  k\geq\frac{2}{w}  we have that  O_{r}:=\frac{S^{(1)}_{k}+S^{(2)}_{k}+\cdots+S^{(r)}_{k}}{r}  satisfies
+
+
+
+
+ \displaystyle\Pr[|O_{r}-\mathbb{E}[O_{r}]|&gt;\varepsilon]\leq\delta\text{ for all }r\geq(3.9+2\varepsilon)\frac{\ln(2/\delta)}{\varepsilon^{2}}. 
+
+(7)
+
+
+
+
+
+
+Proof.
+
+
+
+Equation 7 follows directly from Bernstein’s inequality (1) setting  X_{i}:=S_{k}^{(i)} ,  v=1.95 , and  c=1 . Indeed, by 4 we have that
+
+
+
+
+ \displaystyle\mathbb{E}[S_{k}^{2}]\leq\frac{4}{3}+\frac{2}{\sqrt{3}kw}\leq\frac{4}{3}+\frac{1}{\sqrt{3}}&lt;1.95=v. 
+
+
+
+Let  w^{\prime}:=\min(1,\frac{2}{\sqrt{3}}w) ; to verify the validity of our choice of  c=1  we now show that for all  q\geq 3  integer
+
+
+
+
+ \displaystyle\mathbb{E}[|S_{k}|^{q}] 
+ \displaystyle\leq\mathbb{E}\bigg[\bigg(\frac{\mathrm{Bin}\big(k,w^{\prime}\big)}{kw}\bigg)^{\!q\,}\bigg] 
+
+(by 4)
+
+
+
+ \displaystyle\leq\Big(\frac{q}{kw\ln(1+q/(kw^{\prime}))}\Big)^{\!q\,} 
+
+(Ahle’s raw moment bound [Ahl22])
+
+
+
+ \displaystyle\leq\Big(\frac{q}{2\ln(1+(qw/w^{\prime})/2)}\Big)^{\!q\,} 
+
+( kw\geq 2  and  \forall a&gt;0\colon x\mapsto x\ln(1+a/x)  is monotone increasing)
+
+
+
+ \displaystyle\leq\Big(\frac{q}{2\ln\big(1+\frac{\sqrt{3}}{4}q\big)}\Big)^{\!q\,} 
+
+( \frac{w}{w^{\prime}}\geq\frac{\sqrt{3}}{2} )
+
+
+
+ \displaystyle\leq 0.975q!=\frac{q!}{2}vc^{q-2}, 
+
+(8)
+
+
+where the last inequality for  q\geq 7  follows from
+
+
+
+
+ \displaystyle\frac{\Big(\frac{q}{2\ln\big(1+\frac{\sqrt{3}}{4}q\big)}\Big)^{\!q\,}}{q!} 
+ \displaystyle&lt;\Big(\frac{e}{2\ln\big(1+\frac{\sqrt{3}}{4}q\big)}\Big)^{\!q\,} 
+
+(since  q!&gt;(q/e)^{q} )
+
+
+
+ \displaystyle\leq\Big(\frac{e}{2\ln\big(1+7\sqrt{3}/4\big)}\Big)^{\!q\,} 
+
+(since  q\geq 7 )
+
+
+
+ \displaystyle\leq\Big(\frac{e}{2\ln\big(1+7\sqrt{3}/4\big)}\Big)^{\!7}&lt;0.975. 
+
+
+
+
+
+
+ q 
+3
+4
+5
+6
+
+ \dfrac{1}{q!}\bigg(\dfrac{q}{2\ln\big(1+\frac{\sqrt{3}}{4}q\big)}\bigg)^{\!q\,} 
+ 0.97495 
+ 0.65336 
+ 0.4008 
+ 0.22979 
+
+Table 2: Direct verification of the inequality (8) for  q=3,4,5,6 .
+
+
+
+
+Finally, for  3\leq q\leq 6  we can verify the inequality (8) by direct computation as shown in Table 2.
+∎
+
+
+
+
+
+
+Appendix B Sample optimality of our protocol in a black-box model
+
+
+
+
+In this appendix we present a detailed proof of 2. We begin by proving a series of technical lemmas, building on which we complete the proof at the end.
+
+
+
+
+B.1 Our zero-temperature Gibbs states are no harder than low-temperature ones
+
+
+
+
+We use the following lemma to show that the zero-temperature state of our classical binary Hamiltonian on  n -bits is close to a reasonable temperature Gibbs state, so that the simplification of working with a zero-temperature Gibbs state is essentially without loss of generality:
+
+
+
+
+Lemma 5.
+
+
+
+For every  \beta\geq\ln(2)n+r  and  f:\{0,1\}^{n}\to\{0,1\}  such that  |\{b:f(b)=0\}|\geq 1  we have
+
+
+
+
+ \|\rho_{\beta}-\rho_{\infty}\|_{\mathrm{TV}}\leq e^{-r}. 
+
+
+
+
+
+
+
+Proof.
+
+
+
+At inverse temperature  \beta  the Gibbs distribution is  \rho_{\beta}(x)\propto e^{-\beta f(x)} .
+Let us define  k:=|\{b\colon f(b)=0\}|\geq 1 .
+Since  f  is Boolean, zeros receive weight  1  and ones receive weight  e^{-\beta} , so that
+ Z_{\beta}\;=\;k+(2^{n}-k)\,e^{-\beta}  and
+
+
+
+
+ \rho_{\beta}=\frac{\chi[f(b)=0]+e^{-\beta}\chi[f(b)=1]}{Z_{\beta}}. 
+
+
+
+
+
+
+At  \beta=\infty  the Gibbs state reduces to the uniform distribution over the  k  zeros:
+ \rho_{\infty}=\frac{\chi[f(x)=0]}{k} , assigning more weight to preimages of  0  and less (actually zero) to preimages of  1  compared to the finite temperature  \rho_{\beta} . Therefore, using that  e^{-\beta}\leq 2^{-n}\cdot e^{-r} , it is easy to see that
+
+
+
+
+
+
+
+ \displaystyle\|\rho_{\beta}-\rho_{\infty}\|_{\mathrm{TV}}=\frac{1}{2}\sum_{b\in\{0,1\}^{n}}\!\!|\rho_{\beta}(b)-\rho_{\infty}(b)|=\!\sum_{b\colon f(b)=1}\!\!\rho_{\beta}(b)-0=(2^{n}\!-k)\frac{e^{-\beta}}{Z_{\beta}}\leq(2^{n}\!-k)\frac{2^{-n}\cdot e^{-r}}{k}\leq e^{-r}.\! 
+
+∎
+
+
+
+
+
+
+Note that the above readily applies to Hamiltonians with  \left\|\beta\bm{H}\right\|=\mathcal{O}\left(n\right) , which is the natural scale for local Hamiltonians, constraint satisfaction problems, etc.
+
+
+
+
+
+B.2 Learning distributions given by uniform sampling over a subset
+
+
+
+
+A key step in our proof is binning: we reduce a distribution on  2^{n}  elements to one on  m\ll 2^{n}  elements. Moreover, in our proof, the original distribution is uniform over a subset  I  of the  2^{n}  elements. The following lemma shows that if  K=|I|  is large enough, then such induced distributions over  m  bins are essentially no easier to work with than arbitrary distributions that are natively given on  m  elements. In order to handle the discretization of arbitrary distributions we introduce a form of rounding that produces distributions whose probabilities are multiples of  1/K . Consider the “rounding function”  q=r(p)  that carefully rounds the probabilities of  p\in\Delta_{m}  to multiples of  1/K  while keeping their sum equal to  1 , where  q_{i}  is defined recursively as
+
+
+
+
+ q_{1}=\frac{\lfloor p_{1}K+\frac{1}{2}\rfloor}{K},\qquad q_{1}+q_{2}=\frac{\lfloor(p_{1}+p_{2})\,K+\frac{1}{2}\rfloor}{K},\qquad\ldots 
+
+
+
+
+
+
+It is easy to see that  |q_{i}-p_{i}|\leq 1/K , and therefore
+ d_{\mathrm{TV}}(p,r(p))\leq\frac{m}{2K} .
+
+
+
+
+Also for a  P\subseteq\Delta_{m}  let us define  r(P):=\{r(p)\colon p\in P\} .
+
+
+
+
+Lemma 6.
+
+
+
+Let  f\colon\Delta_{m}\to\mathbb{R}^{k}  be  L -Lipschitz with respect to the metric  D  and total variation distance:
+
+
+
+
+ D(f(p),f(q))\leq L\cdot d_{\mathrm{TV}}(p,q)\qquad\text{for all }p,q\in\Delta_{m}. 
+
+
+
+Assume that any algorithm which, given i.i.d. samples from an unknown distribution  p\in P\subseteq\Delta_{m} , outputs a value  v\in\mathbb{R}^{k} y such that
+
+
+
+
+ D(f(p),v)\leq 2\varepsilon 
+
+
+
+with probability at least  1-3\delta , must use at least  S+1  samples from  p .
+
+
+
+
+Let
+
+
+
+
+ K\;\geq\;\max\left\{\frac{Lm}{2\varepsilon},\frac{Sm}{2\delta},\frac{S^{2}}{2\delta}\right\},\qquad\text{and}\qquad n\geq\log_{2}(mK). 
+
+
+
+Given an unknown distribution  q\in r(P)  on  m  elements, partition  \{0,1\}^{n}  into  m  bins  B_{1},\dots,B_{m}  of sizes differing by at most  1 .
+Let  I  be a uniformly random (unknown) subset  I\subseteq\{0,1\}^{n}  with  |I|=K , so that
+ \frac{|I\cap B_{i}|}{|I|}\;=\;q_{i} .
+Then any algorithm that outputs  v\in\mathbb{R}^{k}  such that
+
+
+
+
+ D(f(q),v)\leq\varepsilon 
+
+
+
+with probability at least  1-\delta , must use at least  S+1  i.i.d. uniform random samples from elements of  I .
+
+
+
+
+
+Proof.
+
+
+
+We first show that even for the rounded distributions  r(P) , estimating  f  to accuracy  \varepsilon  with confidence  1-2\delta  requires at least  S+1  samples. The key observation is that with our choice of  K  for every  p\in\Delta_{m}  we have
+
+
+
+
+ d_{\mathrm{TV}}(p,r(p))\leq\frac{m}{2K}\leq\min\left\{\frac{\delta}{S},\frac{\varepsilon}{L}\right\}. 
+
+
+
+
+
+
+Towards a contradiction suppose that there exists an algorithm  \mathcal{A}  using at most  S  samples such that for every  q\in r(P) ,
+
+
+
+
+ \Pr\left[D(\mathcal{A}(X_{1},\dots,X_{S}),f(q))\leq\varepsilon\right]\geq 1-2\delta, 
+
+
+
+where  X_{1},\dots,X_{S}  are i.i.d. from  q .
+
+
+
+
+Now let  p\in P  be arbitrary, and set  q:=r(p) . Run  \mathcal{A}  on  S  i.i.d. samples from  p . By coupling the two one-sample distributions and taking a union bound over the  S  samples,
+
+
+
+
+ d_{\mathrm{TV}}\!\left(p^{\times S},q^{\times S}\right)\leq S\,d_{\mathrm{TV}}(p,q)\leq\delta. 
+
+
+
+Hence the success probability of  \mathcal{A}  for estimating  f(q)  with samples from  p  is at least
+
+
+
+
+ (1-2\delta)-\delta=1-3\delta. 
+
+
+
+Furthermore, whenever  \mathcal{A} ’s output  v  satisfies  D(v,f(q))\leq\varepsilon , by the triangle inequality we have
+
+
+
+
+ D(v,f(p))\leq D(v,f(q))+D(f(q),f(p))\leq\varepsilon+L\cdot d_{\mathrm{TV}}(p,q)\leq 2\varepsilon. 
+
+
+
+So we would obtain an  S -sample algorithm that estimates  f(p)  to accuracy  2\varepsilon  with confidence  1-3\delta , contradicting the assumed lower bound. This proves the claim about  r(P) .
+
+
+
+
+We now pass to the subset-element-sampling model. Fix  q\in r(P) . Since each  Kq_{i}  is an integer, we can realize  q  by a subset  I\subseteq\{0,1\}^{n}  of size  K  satisfying
+
+
+
+
+ |I\cap B_{i}|=Kq_{i}\qquad\text{for all }i\in[m]. 
+
+
+
+Assume, toward contradiction, that there is an algorithm  \mathcal{A}  which uses at most  S  samples from uniformly random elements of  I , and outputs an  \varepsilon -accurate estimate of  f(q)  with probability at least  1-\delta  when  \mathcal{A}  is run for a uniformly random such  I .
+
+
+
+
+We compare two transcript distributions of length  S .
+
+
+
+
+(1) True subset-element-sampling transcript.
+Sample  Y_{1},\dots,Y_{S}  i.i.d. uniformly from the  K  elements of  I .
+
+
+
+
+(2) Simulated transcript from sample access to  q .
+Sample  J_{1},\dots,J_{S}  i.i.d. from  q . Each time  J_{t}=i , we output a fresh uniformly random string from bin  B_{i} , never reusing a previously output string from that bin.
+
+
+
+
+The second procedure only needs sample access to  q . Moreover, we can couple the two transcripts such that they only differ if the subset-element-sampling returns some element of  I  twice, i.e.,  Y_{i}=Y_{j}  for some  i\neq j . Indeed, consider a sequence of distinct elements  (e_{1},e_{2},\ldots,e_{S})  and let  (b_{1},b_{2},\ldots,b_{S})  denote the corresponding bins, then considering that  I  is uniformly random we have that
+
+
+
+
+ \displaystyle\Pr[(Y_{1},\ldots,Y_{S})\!=\!(e_{1},\ldots,e_{S})] 
+ \displaystyle=\Pr[(Y_{1},\ldots,Y_{S})\!=\!(e_{1},\ldots,e_{S})|Y_{1}\!\in\!B_{b_{1}},\ldots,Y_{S}\!\in\!B_{b_{S}}]\cdot\Pr[Y_{1}\!\in\!B_{b_{1}},\ldots,Y_{S}\!\in\!B_{b_{S}}] 
+
+
+
+
+ \displaystyle\leq\Pr[Y_{1}\!\in\!B_{b_{1}},\ldots,Y_{S}\!\in\!B_{b_{S}}]\cdot\prod_{i=1}^{S}\frac{1}{|B_{b_{i}}|-|\{j&lt;i\colon b_{j}=b_{i}\}|} 
+
+
+
+
+ \displaystyle=\Pr[J_{1}=b_{1},\ldots,J_{S}=b_{S}]\cdot\prod_{i=1}^{S}\frac{1}{|B_{b_{i}}|-|\{j&lt;i\colon b_{j}=b_{i}\}|} 
+
+
+
+
+ \displaystyle=\Pr[(\text{simulated transcript})\!=\!(e_{1},\ldots,e_{S})]. 
+
+
+
+Thus
+
+
+
+
+ d_{\mathrm{TV}}\!\left((Y_{1},\dots,Y_{S}),(\text{simulated transcript})\right)\leq\Pr[\exists\,s&lt;t\leq S:\ Y_{s}=Y_{t}]. 
+
+
+
+By the union bound,
+
+
+
+
+ \Pr[\exists\,s&lt;t\leq S:\ Y_{s}=Y_{t}]\leq\binom{S}{2}\frac{1}{K}\leq\frac{S^{2}}{2K}\leq\delta. 
+
+
+
+Therefore, the simulated procedure also succeeds with probability at least
+
+
+
+
+ (1-\delta)-\delta=1-2\delta. 
+
+
+
+
+
+
+But this yields an algorithm using at most  S  ordinary samples from  q\in r(P)  that estimates  f(q)  to accuracy  \varepsilon  with confidence at least  1-2\delta , contradicting the lower bound on  r(P)  proved above.
+Hence, no algorithm using  S  uniform subset-element-samples can estimate  f(p^{\prime})  to accuracy  \varepsilon  with confidence  1-\delta .
+∎
+
+
+
+
+
+Corollary 3.
+
+
+
+Let  \varepsilon,\delta\leq\frac{1}{8} ,  K=\Omega\Big(\frac{m^{2}+\log^{2}(1/\delta)}{\varepsilon^{4}\delta}\Big) ,  n\geq\log_{2}(mK) , and suppose  \{0,1\}^{n}  is partitioned into  m  bins  B_{1},\dots,B_{m}  of sizes differing by at most  1 .
+Suppose that  p^{\prime}=(\frac{k_{1}}{K},\frac{k_{2}}{K},\ldots,\frac{k_{m}}{K})  is an unknown distribution of rational probabilities on  m  elements, and we are given a uniformly random subset  I\subseteq\{0,1\}^{n}  with  |I|=K , so that
+ p^{\prime}_{i}\;=\;\frac{|I\cap B_{i}|}{|I|} .
+Then any algorithm that outputs an estimate  q\in[0,1]^{m}  of  p^{\prime}  within total variation distance  \varepsilon  with probability at least  1-\delta , must use at least  \Omega\Big(\frac{m+\log(1/\delta)}{\varepsilon^{2}}\Big)  i.i.d. uniform random samples from elements of  I .
+
+
+
+
+
+Proof.
+
+
+
+Apply 6 for the problem of learning a distribution on  m  elements to total variation distance  \varepsilon , i.e., set  f  to the identity function,  L=1 , and  S=\Omega\bigg(\frac{m+\log(1/\delta)}{\varepsilon^{2}}\bigg)  according to the distribution learning lower bounds [Can22, Theorem 1.3], [Dia19, Lecture 4].
+∎
+
+
+
+
+
+
+B.3 Hybrid method for bounding small probability advantages
+
+
+
+
+In order to formalize the intuition of the limited information retrieval from the queries, we use the well-known quantum query lower bound technique called the hybrid method. While the following general lower bound result and its proof is based on the standard hybrid method, unlike the usual formulations, it also considers the low probability regime. This is a standard technique, but we could not find a readily applicable low-probability variant in the literature, so for completeness, we present a proof here. This technique was originally introduced for proving a lower bound for quantum search by Bennett et al. [BBBV97], and can be viewed as a simplified version of the adversary method [Amb00, HŠ05, LMR+11, Bel15].
+Our proof closely follows the presentation of the hybrid method in Montanaro’s lecture notes [Mon11, Section 1], and that of [GAW19].
+
+
+
+
+Lemma 7.
+
+
+
+Let  B  be a (finite) set of labels and let  \mathcal{H}:=\mathrm{Span}(\left|b\right\rangle\colon b\in B)  be a Hilbert space. For a function  f:B\rightarrow\mathbb{R}  let  \mathrm{O}_{\!f}  be the phase oracle acting on  \mathcal{H}  such that
+
+
+
+
+ \mathrm{O}_{\!f}\colon\left|b\right\rangle\to\exp(\pi\mathrm{i}f(b))\left|b\right\rangle\quad\text{ for every }b\in B. 
+
+
+
+Suppose that  \mathcal{F}  is a finite set of functions  B\rightarrow\{0,1\} . Let  \bm{\rho}_{\mathcal{F}}  denote the output of a quantum algorithm that makes  T  queries to a (controlled) phase oracle  \mathrm{O}_{\!f}  for a fixed but random  f  chosen according to some distribution on  \mathcal{F} , and let  \bm{\rho}_{f_{0}}  denote its output when all queries are replaced by  \mathrm{O}_{\!f_{0}} .
+The trace distance of these states has
+
+
+
+
+ \frac{1}{2}\left\|\bm{\rho}_{\mathcal{F}}-\bm{\rho}_{f_{0}}\right\|_{1}\leq T\max_{b\in B}\sqrt{\underset{\mathcal{F}}{\mathbb{E}}[|\exp(\pi\mathrm{i}f(b))-\exp(\pi\mathrm{i}f_{0}(b))|^{2}]}\leq 2T\max_{b\in B}\sqrt{\Pr[f(b)\neq f_{0}(b)]}. 
+
+
+
+
+
+
+
+Proof.
+
+
+
+According to the church of the larger Hilbert space, more precisely due to the triangle and data processing inequalities, we can assume without loss of generality that the algorithm’s starting state is pure  \left|\bm{0}\right\rangle  and the algorithm is unitary (i.e., does not involve measurements).
+
+
+
+
+Suppose that  \mathcal{F}=\{f_{j}\colon j\in\{1,\ldots,K\}\} . Let  \mathcal{A}_{j}  denote the algorithm which uses phase oracle  \mathrm{O}_{\!f_{j}}  and let  \left|\psi_{j}\right\rangle:=\mathcal{A}_{j}\left|\bm{0}\right\rangle  denote the final state of the algorithm.
+Since  \frac{1}{2}\left\||\psi_{j}\rangle\!\langle\psi_{j}|-|\psi_{0}\rangle\!\langle\psi_{0}|\right\|_{1}\leq\left\|\left|\psi_{j}\right\rangle-\left|\psi_{0}\right\rangle\right\| , due to the triangle inequality it suffices to bound
+
+
+
+
+ \displaystyle\frac{1}{2}\left\|\bm{\rho}_{\mathcal{F}}-\bm{\rho}_{f_{0}}\right\|_{1}=\frac{1}{2}\left\|\mathbb{E}[|\psi_{j}\rangle\!\langle\psi_{j}|]-|\psi_{0}\rangle\!\langle\psi_{0}|\right\|_{1}\leq\mathbb{E}[\frac{1}{2}\left\||\psi_{j}\rangle\!\langle\psi_{j}|-|\psi_{0}\rangle\!\langle\psi_{0}|\right\|_{1}]\leq\mathbb{E}[\left\|\left|\psi_{j}\right\rangle-\left|\psi_{0}\right\rangle\right\|]. 
+
+(9)
+
+
+
+
+
+We can assume without loss of generality that  \mathrm{O}_{f}  is a controlled oracle, i.e., there is a known element  b_{0}\in B  such that  f_{j}(b_{0})=0  for all  j\in\{0,1,\ldots,K\} .
+In general the quantum algorithm might use some workspace  \mathcal{W}=\underset{w\in W}{\mathrm{Span}}\{\left|w\right\rangle:w\in W\}  along with the Hilbert space  \mathcal{H} . With a slight abuse of notation, from now on we account for the presence of this additional Hilbert space by replacing  \mathrm{O}_{f}  by  \mathrm{O}_{f}\otimes I_{\mathcal{W}}  and  B  by  B\times W , so that the elements of  \mathcal{H}\otimes\mathcal{W}  can be labeled by the elements of  B .
+
+
+
+
+Let us define for  t\in\{0,1,\ldots,T\} 
+
+
+
+
+ \left|\psi_{j}^{(t)}\right\rangle:=\left(\prod_{\tau=1}^{t}\bm{U}_{\tau}\mathrm{O}_{\!f_{j}}\right)\bm{U}_{0}\left|\bm{0}\right\rangle, 
+
+
+
+the state of algorithm  \mathcal{A}_{j}  after making  t  queries. We now prove by induction that for all  t\in\{0,1,\ldots,T\} 
+
+
+
+
+ \displaystyle\left\|\left|\psi_{j}^{(t)}\right\rangle-\left|\psi_{0}^{(t)}\right\rangle\right\|\leq\sum_{\tau=0}^{t-1}\left\|(\mathrm{O}_{\!f_{j}}-\mathrm{O}_{\!f_{0}})\left|\psi_{0}^{(\tau)}\right\rangle\right\|. 
+
+(10)
+
+
+For  t=0  the left-hand side is  0 , so the base case holds. Let us assume that (10) holds for  t-1 , we prove the inductive step as follows:
+
+
+
+
+ \displaystyle\left\|\left|\psi_{j}^{(t)}\right\rangle-\left|\psi_{0}^{(t)}\right\rangle\right\| 
+ \displaystyle=\left\|\bm{U}_{t}\mathrm{O}_{\!f_{j}}\left|\psi_{j}^{(t-1)}\right\rangle-\bm{U}_{t}\mathrm{O}_{\!f_{0}}\left|\psi_{0}^{(t-1)}\right\rangle\right\| 
+
+
+
+
+ \displaystyle=\left\|\mathrm{O}_{\!f_{j}}\left|\psi_{j}^{(t-1)}\right\rangle-\mathrm{O}_{\!f_{0}}\left|\psi_{0}^{(t-1)}\right\rangle\right\| 
+
+(since norms are unitarily invariant)
+
+
+
+ \displaystyle=\left\|\mathrm{O}_{\!f_{j}}\left(\left|\psi_{j}^{(t-1)}\right\rangle-\left|\psi_{0}^{(t-1)}\right\rangle+\left|\psi_{0}^{(t-1)}\right\rangle\right)-\mathrm{O}_{\!f_{0}}\left|\psi_{0}^{(t-1)}\right\rangle\right\| 
+
+
+
+
+ \displaystyle\leq\left\|\mathrm{O}_{\!f_{j}}\left(\left|\psi_{j}^{(t-1)}\right\rangle-\left|\psi_{0}^{(t-1)}\right\rangle\right)\right\|+\left\|(\mathrm{O}_{\!f_{j}}-\mathrm{O}_{\!f_{0}})\left|\psi_{0}^{(t-1)}\right\rangle\right\| 
+
+(triangle inequality)
+
+
+
+ \displaystyle=\left\|\left|\psi_{j}^{(t-1)}\right\rangle-\left|\psi_{0}^{(t-1)}\right\rangle\right\|+\left\|(\mathrm{O}_{\!f_{j}}-\mathrm{O}_{\!f_{0}})\left|\psi_{0}^{(t-1)}\right\rangle\right\| 
+
+
+
+
+ \displaystyle\leq\sum_{\tau=0}^{t-1}\left\|(\mathrm{O}_{\!f_{j}}-\mathrm{O}_{\!f_{0}})\left|\psi_{0}^{(\tau)}\right\rangle\right\|. 
+
+(by the induction hypothesis)
+
+
+
+
+
+Since  \left|\psi_{j}\right\rangle=\left|\psi_{j}^{(T)}\right\rangle , we additionally have that
+
+
+
+
+ \left\|\left|\psi_{j}\right\rangle-\left|\psi_{0}\right\rangle\right\|^{2}\leq\left(\sum_{\tau=0}^{T-1}\left\|(\mathrm{O}_{\!f_{j}}-\mathrm{O}_{\!f_{0}})\left|\psi_{0}^{(\tau)}\right\rangle\right\|\right)^{\!\!2}\leq T\sum_{\tau=0}^{T-1}\left\|(\mathrm{O}_{\!f_{j}}-\mathrm{O}_{\!f_{0}})\left|\psi_{0}^{(\tau)}\right\rangle\right\|^{2}, 
+
+
+
+where the last inequality uses the Cauchy-Schwarz inequality.
+By Jensen’s inequality, we also have
+
+
+
+
+ \displaystyle\mathbb{E}[\left\|\left|\psi_{j}\right\rangle-\left|\psi_{0}\right\rangle\right\|]=\mathbb{E}[\sqrt{\left\|\left|\psi_{j}\right\rangle-\left|\psi_{0}\right\rangle\right\|^{2}}] 
+ \displaystyle\leq\sqrt{T\sum_{\tau=0}^{T-1}\mathbb{E}\left[\left\|(\mathrm{O}_{\!f_{j}}-\mathrm{O}_{\!f_{0}})\left|\psi_{0}^{(\tau)}\right\rangle\right\|^{2}\right]} 
+
+
+
+
+ \displaystyle\leq T\sqrt{\max_{\tau\in\{0,\ldots,T-1\}}\mathbb{E}\left[\left\|(\mathrm{O}_{\!f_{j}}-\mathrm{O}_{\!f_{0}})\left|\psi_{0}^{(\tau)}\right\rangle\right\|^{2}\right]}. 
+
+(11)
+
+
+We now upper bound the right-hand side of Eq. (11) for an arbitrary pure state  \left|\psi\right\rangle  to conclude the proof.
+
+
+
+
+ \displaystyle\mathbb{E}\left[\left\|(\mathrm{O}_{\!f_{j}}-\mathrm{O}_{\!f_{0}})\left|\psi\right\rangle\right\|^{2}\right] 
+ \displaystyle=\mathbb{E}\left[\left\|\left(\sum_{b\in B}|b\rangle\!\langle b|\right)(\mathrm{O}_{\!f_{j}}-\mathrm{O}_{\!f_{0}})\left(\sum_{b^{\prime}\in B}|b^{\prime}\rangle\!\langle b^{\prime}|\right)\left|\psi\right\rangle\right\|^{2}\right] 
+
+
+
+
+ \displaystyle=\mathbb{E}\left[\left\|\sum_{b\in B}|b\rangle\!\langle b|(\mathrm{O}_{\!f_{j}}-\mathrm{O}_{\!f_{0}})|b\rangle\!\langle b|\left|\psi\right\rangle\right\|^{2}\right] 
+
+(since  \langle b|\mathrm{O}_{\!f_{j}}|b^{\prime}\rangle=0  for  b\neq b^{\prime} )
+
+
+
+ \displaystyle=\sum_{b\in B}\left|\langle b|\psi\rangle\right|^{2}\mathbb{E}\left[\left|\left\langle b\right|(\mathrm{O}_{\!f_{j}}-\mathrm{O}_{\!f_{0}})\left|b\right\rangle\right|^{2}\right] 
+
+
+
+
+ \displaystyle\leq\max_{b\in B}\mathbb{E}\left[\left|\left\langle b\right|(\mathrm{O}_{\!f_{j}}-\mathrm{O}_{\!f_{0}})\left|b\right\rangle\right|^{2}\right] 
+
+
+
+
+ \displaystyle=\max_{b\in B}\mathbb{E}\left[|\exp(\pi\mathrm{i}f(b))-\exp(\pi\mathrm{i}f_{0}(b))|^{2}\right] 
+
+
+
+
+ \displaystyle\leq\max_{b\in B}4\Pr[f(b)\neq f_{0}(b)]. 
+
+
+
+Combining this upper bound with Eqs. (9) and (11), we obtain the desired inequality.
+∎
+
+
+
+
+
+
+B.4 Assembling the proof of 2
+
+
+
+
+See 2
+
+
+
+
+Proof of 2.
+
+
+
+First, let us establish the lower bound in the absence of queries to  H , assuming that  n=\lfloor\log_{2}\lfloor\log_{2}(M+1)+1\rfloor\rfloor . We will use the folklore bound that learning distributions on  m  elements to total variation distance  \varepsilon  requires  \Omega\Big(\frac{m+\log(1/\delta)}{\varepsilon^{2}}\Big)  samples [Can22, Theorem 1.3] (even if we are promised that all  p_{i}\in[\frac{1}{2m},\frac{3}{2m}]  [Dia19, Lecture 4]). Set  m=2^{n} , and let us use the observables  \{\chi_{s}\colon s\subseteq\{0,1\}^{n}\}  that correspond to the indicator functions of the  2^{n} -element configuration space, i.e., for all  n -bit configuration  c  we have  \chi_{s}(c)=1  if and only if  c\in s . Let  v_{s}:=\mathbb{E}[\chi_{s}]=\Pr[c\in s]  denote the expectation value of  \chi_{s} . Since  v_{\bar{s}}=1-v_{s}  for  \bar{s}=\{0,1\}^{n}\setminus s , it follows that it suffices to choose half of the subsets  \emptyset\subsetneq s\subsetneq\{0,1\}^{n}  for estimating  \mathbb{E}[\chi_{s}]=\Pr[c\in s]  within precision  \varepsilon  to provide an  \varepsilon -precise estimate of  v_{s}  for all  s\subseteq\{0,1\}^{n} .
+
+
+
+
+Thus, by estimating  2^{m-1}-1\leq M  (indicator) observables to precision  \varepsilon  we recover  v_{s}  values such that the (Gibbs) distribution  \rho=(p_{1},p_{2},\ldots,p_{m})  satisfies  |v_{s}-\sum_{c\in s}p_{c}|\leq\varepsilon . By the triangle inequality, for all distribution  q  satisfying  |v_{s}-\sum_{c\in s}q_{c}|\leq\varepsilon  we have  |\sum_{c\in s}p_{c}-\sum_{c\in s}q_{c}|\leq 2\varepsilon , i.e., we can recover a probability distribution  (q_{1},q_{2},\ldots,q_{m})  on  m=2^{n}  elements that is within total variation distance  2\varepsilon  of the (Gibbs) distribution.
+
+
+
+
+Note that when  p_{i}\in[\frac{1}{2m},\frac{3}{2m}] , at  \beta=1 , the corresponding diagonal Hamiltonian with  H_{i}:=-\ln(mp_{i})  satisfies  |H|\leq 1 . The distribution learning lower bounds [Can22, Theorem 1.3], [Dia19, Lecture 4] then imply that  \Omega\Big(\frac{m+\log(1/\delta)}{4\varepsilon^{2}}\Big)=\Omega\Big(\frac{\log(M/\delta)}{\varepsilon^{2}}\Big)  Gibbs samples are necessary for solving this estimation task, however one can also directly solve the problem by querying all  m=\mathcal{O}\left(\log(M)\right)  diagonal entries of the classical Hamiltonian  H .
+
+
+
+
+In the general case in order to prove that a subexponential number of queries to  H  does not help significantly reducing the sample complexity, we will consider a carefully crafted family of classical Hamiltonians  H_{f}\in\{0,1\}^{2^{n}\times 2^{n}}  whose diagonal elements are associated to a Boolean function  f\colon\{0,1\}^{n}\mapsto\{0,1\} . The corresponding Gibbs state  \rho_{\beta}  assigns probability  \rho_{\beta}(b)=e^{-\beta f(b)}/Z_{\beta}  to configuration  b  where  Z_{\beta}=\sum_{b\in\{0,1\}^{n}}e^{-\beta f(b)} .
+
+
+
+
+By 5  \beta\geq\ln(2)n+\ln(\frac{8S}{\varepsilon\delta})=\Theta(n)  ensures that
+
+
+
+
+ \|\rho_{\beta}-\rho_{\infty}\|_{\mathrm{TV}}\leq\min\Big\{\frac{\varepsilon}{4},\frac{\delta}{2S}\Big\}, 
+
+
+
+implying that  \mathbb{E}_{\rho_{\beta}}[O_{i}]-\mathbb{E}_{\rho_{\infty}}[O_{i}]\leq\frac{\varepsilon}{2} , therefore estimating the expectation values of one of the distributions  \rho_{\beta},\rho_{\infty}  to precision  \frac{\varepsilon}{2}  suffices for estimating those of the other to precision  \varepsilon . Similarly, as long as one uses at most  S  samples and the protocol succeeds with probability at least  1-\frac{\delta}{2}  using one of the distributions, then the same protocol also succeeds with probability at least  1-\delta  when samples of the other Gibbs state are provided.
+
+
+
+
+So if we can estimate all expectation values with respect to  \rho_{\beta}  with precision  \frac{\varepsilon}{2}  and success probability at least  1-\frac{\delta}{2}  using  S  Gibbs samples  \rho_{\beta}  and  Q  queries to  f , then we can also solve with the same algorithm the same estimation problem with respect to  \rho_{\infty}  but with a doubled  \varepsilon  and  \delta  parameter. Therefore, it suffices to prove a lower bound for the latter problem.
+
+
+
+
+To connect this scenario to the previous lower bound we will work with a distribution  p  on  m=\lfloor\log_{2}(M+1)+1\rfloor  elements induced by the Gibbs state  \rho_{\infty} , and show how to use the estimation of  M  expectation values of the Gibbs state  \rho_{\infty}  to learn the induced distribution  p .
+For this we partition the configuration space to bins of almost equal size  \lceil\frac{2^{n}}{m}\rfloor . We denote the indicator of the  \ell -th bin by  \chi_{\ell} . For each  b\in\{0,1\}^{m}  we define the observable
+
+
+
+
+ O_{b}=\sum_{\ell\in[m]}b_{\ell}\chi_{\ell}. 
+
+(12)
+
+
+The same argument that we used at the beginning of the proof shows that successfully providing an estimate  v_{b}  to all observable expectation values  \mathbb{E}[O_{b}]=\sum_{\ell\in[m]}b_{\ell}\mathbb{E}[\chi_{\ell}]  of precision  \varepsilon  implies that we can recover a probability distribution  q=(q_{1},q_{2},\ldots,q_{m})  on  m  elements that is within total variation distance  2\varepsilon  of the distribution  p=(\mathbb{E}[\chi_{1}],\mathbb{E}[\chi_{2}],\ldots,\mathbb{E}[\chi_{m}])  induced by our Gibbs state  \rho_{\infty} .
+
+
+
+
+Like before, we use a reduction to the above cited distribution learning lower bound [Can22, Theorem 1.3], [Dia19, Lecture 4]. Let us set  f^{-1}(0):=\left\lfloor\frac{\delta^{2}}{8m}2^{\frac{n}{3}}\right\rfloor  for a sufficiently large  n\geq\Omega\left(\log\left(\frac{m}{\varepsilon\delta}\right)\right) . The motivation for this choice is the following: if  f  is a uniformly random function satisfying  f^{-1}(0)=\Omega\left(\frac{\log^{2}(M/\delta)}{\varepsilon^{4}\delta}\right) , then as in 3, it is not difficult to see that sampling  \ll\Big(\frac{\log(M/\delta)}{\varepsilon^{2}}\Big)  uniformly random elements of  f^{-1}(0) , i.e., taking that many samples from  \rho_{\infty} , reveals essentially no more information from the distribution  p_{\ell}=|\chi^{-1}_{\ell}(1)\cap f^{-1}(0)|/|f^{-1}(0)|  than directly taking the same amount of i.i.d. samples from  p . Thus, for such  f , the same asymptotic lower bound  \Omega\Big(\frac{\log(M/\delta)}{\varepsilon^{2}}\Big)  holds for the number of required Gibbs samples.
+
+
+
+
+Now we complete the argument by bounding the advantage given by the (quantum) queries. Because the samples are independent of everything the estimation protocol does, we can assume without loss of generality that it first receives the i.i.d. samples  (i_{i},i_{2},\ldots,i_{S})  of  \rho_{\infty}  and subsequently makes  Q  queries to  f . The main idea of the lower bound proof is to choose an arbitrary (rounded) distribution  p\in\Delta_{m}  and a corresponding random66
+                  6
+                  
+                  
+                  
+                Note that we use here the same uniform distribution over the different realizations of a distribution for which the hardness is established by 3, so the classical and quantum lower bound arguments match up.  f  with Hamming weight  2^{n}-\left\lfloor\frac{\delta^{2}}{8m}2^{\frac{n}{3}}\right\rfloor  so that once the algorithm receives the samples  \rho_{\infty}  (which are just uniformly random preimages of  0 ) it cannot gain any more information about the set  f^{-1}(0)  with probability greater than  \delta , when it makes  Q\leq 2^{\frac{n}{3}}  queries. The intuition behind this lower bound is that using the (optimal) Grover search algorithm with  Q\leq 2^{\frac{n}{3}}  queries cannot even provide a single yet unseen element  f^{-1}(0)  with probability greater than  \delta .
+
+
+
+
+We formalize our intuition about the limited information retrieval from the queries using a low-probability version of the hybrid method proved in 7, which we recite here for better readability:
+
+
+
+
+See 7
+
+
+
+
+Let  f_{0}  be the function that is all- 1  except  f(i_{j})=0  for the indices  i_{j}  that were revealed by the  S  samples. Let  \mathcal{F}  be the conditional distribution after seeing the samples, i.e., the uniform distribution over functions  f  that evaluate to  0  on the  S  sampled indices, have Hamming weight as above, and correspond to the fixed (unknown)  p\in\Delta_{m} . Then, for all  i\notin\{i_{j}\colon j\in[S]\}  the bit  f(i)  equals  0  with probability at most  \frac{|f^{-1}(0)|\cdot p_{\ell}}{\lfloor 2^{n}/m\rfloor}\leq\frac{\delta^{2}}{4}2^{\frac{-2n}{3}} , since the more zeros were revealed from bin  \ell  by the initial samples, the less likely it becomes for other indices in that bin to evaluate to  0 .
+If the algorithm makes at most  2^{\frac{n}{3}}  queries, then according to 7, the algorithm’s output cannot change by more than probability  \delta  when we replace the true  f  queries by the known dummy  f_{0} . Thus, if the protocol only succeeds with probability  &lt;1-2\delta  after receiving the samples and running the algorithm using dummy  f_{0}  queries, it would not be able to achieve success probability at least  1-\delta  even using the proper  f  (quantum) queries. However, since the dummy  f_{0}  queries reveal absolutely no information about the distribution, to achieve such high success probability we need the stated number of samples.
+∎
+
+
+
+
+
+
+
+
+  
+
+    Experimental support, please
+    view the build logs
+    for errors. Generated by
+    
+      
+        L
+        A
+        T
+        E
+      
+      xml
+      
+    .
+  
+  
+
+    
+Instructions for reporting errors
+    
+We are continuing to improve HTML versions of papers, and your feedback helps enhance accessibility and mobile
+      support. To report errors in the HTML that will help us improve conversion and rendering, choose any of the
+      methods listed below:
+    
+      
+Click the &quot;Report Issue&quot; (
+            
+          ) button, located in the page header.
+    
+    
+Tip: You can select the relevant text first, to include it in your report.
+    
+Our team has already identified the following issues. We appreciate your time reviewing and reporting rendering errors we
+      may not have found yet. Your efforts will help us improve the HTML versions for all readers, because disability
+      should not be a barrier to accessing research. Thank you for your continued support in championing open access for
+      all.
+    
+Have a free development cycle? Help support accessibility at arXiv! Our collaborators at LaTeXML maintain a list of packages that need conversion, and welcome developer contributions.
+  
+
+  
+
+    
+
+      
+
+        We gratefully acknowledge support from
+        our major funders,
+        member institutions, ,
+        and all contributors.
+      
+      
+        About
+        ·
+        Help
+        ·
+        Contact
+        ·
+        Subscribe
+        ·
+        Copyright
+        ·
+        Privacy
+        ·
+        Accessibility
+        ·
+        Operational Status (opens in new tab)
+      
+    
+
+    
+
+      
+Major funding support from
+      
+
+        
+          
+        
+        
+          
+        
+        
+          
+        
+      
+    
+  
+
+
+  
+    
+      
+    
+  
+
+
+</pre></html>

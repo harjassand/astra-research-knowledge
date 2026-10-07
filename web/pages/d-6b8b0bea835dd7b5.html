@@ -1,0 +1,548 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Optimal Deterministic Fully Sparse Matrix Multiplication</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>Optimal Deterministic Fully Sparse Matrix Multiplication</h1><p>Source ID d-6b8b0bea835dd7b5; literature/sources/frontier_tensor_bridge/cycle19/prior/optimal_fully_sparse_2608.18496v1.txt; 19489 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>Optimal Deterministic Fully Sparse Matrix Multiplication
+Report GitHub Issue
+×
+Title:
+Content selection saved. Describe the issue below:
+Description:
+Submit without GitHub
+Submit in GitHub
+arXiv is now an independent nonprofit!
+Learn more
+×
+Back to arXiv
+Why HTML?
+Report Issue
+Back to Abstract
+Download PDF
+Abstract
+1 Introduction
+1.1 Main Results
+1.2 Previous Work
+1.3 Technical Overview
+2 Preliminaries
+2.1 Notation and computational model.
+2.2 Deterministic sparse recovery.
+2.3 Direct-product rings and binary matrices.
+3 Nested Deterministic Recovery
+4 Proof of Main Result
+5 Optimality
+6 Conclusion
+References
+License: arXiv.org perpetual non-exclusive license
+arXiv:2608.18496v1 [cs.DS] 19 Aug 2026
+Optimal Deterministic Fully Sparse Matrix Multiplication
+Omar Graia
+August 19, 2026
+Abstract
+We give the first deterministic algorithm for fully sparse matrix multiplication that attains the optimal running-time exponent. This result matches the best previously known randomized algorithm running-time exponent. Given compatible matrices A and B over an arbitrary associative ring with identity, with \operatorname{nnz}(A),\operatorname{nnz}(B)=O(n^{\delta_{\mathrm{in}}}) and \operatorname{nnz}(AB)=O(n^{\delta_{\mathrm{out}}}) , our algorithm finds the support of AB and computes the product exactly in
+O\!\left(n^{\beta_{R}(\delta_{\mathrm{in}},\min\{\delta_{\mathrm{out}},2\delta_{\mathrm{in}}\})+\varepsilon}\right)
+operations, where \beta_{R}(\delta_{\mathrm{in}},\delta) denotes the maximum of \delta_{\mathrm{in}} and \omega_{\delta_{\mathrm{in}},R}(a,1,b) over all a,b\in[0,1] satisfying a+b=\delta .
+For dense inputs over a commutative ring, this bound simplifies to O(n^{\omega_{R}((\delta_{\mathrm{out}}-1)_{+},1,1)+\varepsilon}) . With the current rectangular matrix multiplication bounds, this is nearly quadratic, namely O(n^{2+\varepsilon}) , for every \delta_{\mathrm{out}}\leq 1.321334 , improving the previous deterministic range of \delta_{\mathrm{out}}\leq 0.642668 . To prove this result, we develop a general deterministic recovery technique that finds and fixes sparse parts of an unknown matrix while keeping temporary errors in denser parts under control.
+1 Introduction
+Matrix multiplication is a central algorithmic problem in computer science. Its dense complexity is bounded by the matrix multiplication exponent \omega , whose current upper bound was recently shown by Google DeepMind to be \omega&lt;2.371177 [10], improving the previous bound \omega&lt;2.371339 of Alman et al. [2]. A natural question asks whether matrix products can be computed faster when the input matrices, the output matrix, or both, are sparse i.e., having a large number of entries being 0 . This question has been heavily studied from algebraic, combinatorial, database, graph-algorithmic, communication, and numerical perspectives [16, 31, 3, 18, 26, 19, 29, 1, 12].
+In fully sparse matrix multiplication, the input is two matrices A and B whose dimensions are at most n that are represented by canonical sparse lists. For sparsity exponents \delta_{\mathrm{in}},\delta_{\mathrm{out}}\in[0,2] , the (\delta_{\mathrm{in}},\delta_{\mathrm{out}}) -FSMM problem satisfies \nnz(A),\nnz(B)=O(n^{\delta_{\mathrm{in}}}) and \nnz(AB)=O(n^{\delta_{\mathrm{out}}}) . The constants hidden in these sparsity bounds are fixed promise constants and may be used by the algorithm. The goal of this problem is to output the canonical sparse list of AB .
+Note the support of AB is not supplied to the algorithm which is the main difficulty. Even when we know that the output is sparse, it is not immediately clear as to which rows or columns contain the output entries, and cancellations over a general ring can make the support of the product different from what the input supports alone would suggest. However, random sampling and verification have been shown to effectively reveal the unknown support efficiently which is why the previous strongest bounds were randomized algorithms [1, 5]. Earlier deterministic algorithms either worked over a more restricted domain or were inefficient, paying a larger exponent [23, 22, 5].
+This paper gives an optimal deterministic algorithm over arbitrary rings. The zero ring is trivial, while the optimality statement for the running-time exponent concerns nontrivial rings. The algorithm combines two levels of deterministic sparse recovery with one within columns and one across columns. We update a residual matrix which is the difference between the true product and the algorithm’s current approximation.
+The inner recovery matrix sketches entries within each residual column. The resulting column sketches are treated as elements of a direct-product ring, and an outer recovery matrix identifies the nonzero sketches. A geometric sequence of thresholds eventually makes every residual column sparse enough for exact inner recovery. A bounded total decoder controls the size of speculative updates on columns that are still too dense. When the unknown matrix is C=AB , each required two-sided sketch is evaluated by one sparse rectangular product through H(AB)G^{\mathsf{T}}=(HA)(BG^{\mathsf{T}}) .
+1.1 Main Results
+For a,b\geq 0 , let \omega_{\delta_{\mathrm{in}},R}(a,1,b) be the deterministic exponent for multiplying an n^{a}\times n matrix by an n\times n^{b} matrix over R when each factor contains at most O(n^{\delta_{\mathrm{in}}}) nonzeros. We give a more formal definition in Section 2. Define
+\beta_{R}(\delta_{\mathrm{in}},\delta):=\max\!\left\{\delta_{\mathrm{in}},\max_{\begin{subarray}{c}a,b\in[0,1]\\
+a+b=\delta\end{subarray}}\omega_{\delta_{\mathrm{in}},R}(a,1,b)\right\}.
+The output sparsity constraint is bounded by \nnz(AB)\leq\nnz(A)\nnz(B). Hence, when \delta_{\text{out}}&gt;2\delta_{\text{in}} , \nnz(AB)=O(n^{\delta_{\mathrm{out}}}) gives no extra information than the constraint with exponent 2\delta_{\text{in}} . This is why the theorem below evaluates the function \beta_{R} at \min\{\delta_{\mathrm{out}},2\delta_{\mathrm{in}}\} .
+Theorem 1.1 (Deterministic FSMM upper bound).
+Let R be an associative ring with identity, let \delta_{\mathrm{in}},\delta_{\mathrm{out}}\in[0,2] , and let \varepsilon&gt;0 . Then (\delta_{\mathrm{in}},\delta_{\mathrm{out}}) -FSMM over R can be solved deterministically and exactly in
+O\!\left(n^{\beta_{R}(\delta_{\mathrm{in}},\min\{\delta_{\mathrm{out}},2\delta_{\mathrm{in}}\})+\varepsilon}\right)
+ring and word operations.
+In Section 5, we adapt the rectangular padding argument underlying Bennett, Gajulapalli, Golovnev, and Warton [5, Proposition 4.3] to our parameter range and combine it with Theorem 1.1 to show that this exponent is optimal.
+For dense inputs, the maximization making up \beta_{R} simplifies to get the following result.
+Corollary 1.2.
+Let R be a commutative ring in a setting where the standard bilinear rectangular exponents are defined, let \delta_{\mathrm{out}}\in[0,2] , and let \varepsilon&gt;0 . Dense-input output-sparse matrix multiplication has a deterministic exact algorithm with running time
+O\!\left(n^{\omega_{R}((\delta_{\mathrm{out}}-1)_{+},1,1)+\varepsilon}\right).
+The dual rectangular exponent is \omega_{R}^{\perp}:=\sup\{\alpha\geq 0:\omega_{R}(\alpha,1,1)=2\} . The current bounds \omega&lt;2.371177 and \omega_{R}^{\perp}\geq 0.321334 follow from Dupont et al. and Vassilevska Williams, Xu, Xu, and Zhou [10, 30].
+Corollary 1.3.
+In every commutative-ring setting in which \omega_{R}^{\perp}\geq 0.321334 , dense-input output-sparse matrix multiplication can be solved deterministically in O(n^{2+\varepsilon}) operations for every \delta_{\mathrm{out}}\leq 1.321334 .
+The lower-bound reduction was known previously. The new contribution of this paper is the deterministic arbitrary-ring upper bound that attains it, hence giving an optimal algorithm over every nontrivial ring.
+1.2 Previous Work
+Sparse matrix multiplication has a long history. Gustavson’s classical algorithm organizes a sparse product through sparse outer products [16]. Yuster and Zwick gave faster input-sparse algorithms by separating high-degree and low-degree coordinates and applying rectangular matrix multiplication to the remaining dense part [31]. Related rectangular techniques appear in work of Kaplan, Sharir, and Verbin [20]. Boolean matrix multiplication with sparse outputs and related database problems were studied by Lingas, Amossen and Pagh, Van Gucht et al., and Deep, Hu, and Koutris [24, 3, 29, 9]. Pagh introduced compressed matrix multiplication, and later work gave algorithms whose running time depends on the output sparsity, as well as external-memory bounds [26, 19, 27].
+Compressed sensing can be used for exact recovery when each output column is sparse. Iwen and Spencer observed that one can compute HAB=(HA)B and then recover the columns independently [18]. This builds on literature on sparse recovery and expander-based measurement matrices [8, 17, 6, 14, 15]. A bound on the total output sparsity is weaker than a separate sparsity bound on every column. Bennett et al. handled this with a deterministic two-pass compressed-sensing algorithm. They first recover the sparse columns and then apply a transposed pass to the residual [5].
+The main earlier deterministic algorithms for sparse-output matrix multiplication are due to Kutzkov and Künnemann. Kutzkov used deterministic group-testing ideas over the reals and obtained O(n^{2}+nm_{\mathrm{out}}^{2}) time [23]. Künnemann connected output-sparse multiplication with deterministic correction of matrix products over the integers and obtained \widetilde{O}(n^{2}\sqrt{m_{\mathrm{out}}}+m_{\mathrm{out}}^{2}) time [22]. Here m_{\mathrm{out}}:=\nnz(AB) . Matrix product verification and correction were also studied by Freivalds, Kimbrel and Sinha, Gasieniec et al., Roche, and Bennett et al. [11, 21, 13, 28, 4]. In particular, Bennett et al. studied matrix multiplication verification under a sparsity promise on the error matrix AB-C [4], a closely related sparse-residual setting.
+Table 1: Comparison of fully sparse matrix multiplication algorithms in the nonvacuous range \delta_{\mathrm{out}}\leq 2\delta_{\mathrm{in}} . When \delta_{\mathrm{out}}&gt;2\delta_{\mathrm{in}} , the same bounds hold after replacing \delta_{\mathrm{out}} by 2\delta_{\mathrm{in}} . The support of the product is not supplied to any of the algorithms.
+Year
+Result
+Randomness
+Running time
+Scope / comment
+2013
+Kutzkov
+Deterministic
+O\!\left(n^{2}+n\,m_{\mathrm{out}}^{2}\right)
+Real-valued; ignores input sparsity
+2018
+Künnemann
+Deterministic
+\widetilde{O}\!\left(n^{2}\sqrt{m_{\mathrm{out}}}+m_{\mathrm{out}}^{2}\right)
+Integer-valued; ignores input sparsity
+2024
+Abboud et al.
+Randomized
+O\!\left(n^{\beta_{R}(\delta_{\mathrm{in}},\delta_{\mathrm{out}})+\varepsilon}\right)
+General rings; Boolean deterministic
+2025
+Bennett et al.
+Deterministic
+O\!\left(n^{\max\left\{\begin{subarray}{c}1+\delta_{\mathrm{out}}/2,\\[-2.0pt]
+\omega_{\delta_{\mathrm{in}},R}(\delta_{\mathrm{out}}/2,1,1)\end{subarray}\right\}+\varepsilon}\right)
+Suboptimal in some regimes
+2025
+Bennett et al.
+Randomized
+O\!\left(n^{\beta_{R}(\delta_{\mathrm{in}},\delta_{\mathrm{out}})+\varepsilon}\right)
+Optimal randomized curve
+2026
+This work
+Deterministic
+\boldsymbol{O\!\left(n^{\beta_{R}(\delta_{\mathrm{in}},\delta_{\mathrm{out}})+\varepsilon}\right)}
+Optimal in all regimes
+The recent study of fully sparse matrix multiplication was initiated by Abboud, Bringmann, Fischer, and Künnemann. They introduced an algorithm that reduces sparse multiplication to smaller rectangular products. They were able to achieve the optimal curve over arbitrary rings but used randomization in their algorithm. They also give deterministic results for Boolean and nonnegative products and connect fully sparse multiplication with all-edge triangle problems [1]. Bennett et al. later gave an arbitrary-ring deterministic algorithm with exponent \max\{1+\delta_{\mathrm{out}}/2,\omega_{\delta_{\mathrm{in}},R}(\delta_{\mathrm{out}}/2,1,1)\} and a different randomized algorithm that achieves the optimal curve [5].
+For dense inputs, their deterministic compressed-sensing bound is nearly quadratic only for \delta_{\mathrm{out}}\leq 0.642668 , while the randomized optimal curve remains nearly quadratic through \delta_{\mathrm{out}}\leq 1.321334 under the current rectangular bounds. Figure 1 compares dense-input output-sparse exponents for different algorithms. The optimal curve was previously attained only by randomized arbitrary-ring algorithms. The deterministic bound in this paper follows the same blue curve.
+Figure 1: Running-time exponents for dense-input output-sparse matrix multiplication, where \delta=\delta_{\mathrm{out}} . The blue curve plots the current upper bound on the optimal exponent \omega_{R}((\delta_{\mathrm{out}}-1)_{+},1,1) , attained randomly in prior work and deterministically here. The purple curve is the deterministic bound of Bennett et al. The orange and red curves are the bounds of Kutzkov and Künnemann. The horizontal line is the current upper bound on the square matrix multiplication exponent.
+Their randomized algorithm also uses a geometric sequence of column-sparsity thresholds, but relies on randomized column verification. Our outer deterministic recovery step replaces that verification and lets the inner and outer dimensions vary along the full rectangular curve. Bringmann, Fischer, and Nakos recently studied a robust version in which the goal is to recover a sparse approximation with error controlled by the output tail [7].
+1.3 Technical Overview
+Here we give an overview of our algorithm. Let C=AB , let K be an upper bound on \nnz(C) , and let D be the current approximation for C that the algorithm uses. The algorithm uses rounds with scales t=1,2,4,\dots and at scale t , its goal is to make every column of C with at most t nonzero entries corrected in D exactly.
+The difference E:=C-D is the residual matrix. Its j th column is the correction that must be added to the current column of D , since
+D_{*j}+E_{*j}=D_{*j}+(C-D)_{*j}=C_{*j}.
+Thus the algorithm recovers residual columns and adds them to D . If E_{*j} is recovered exactly, then the update D_{*j}\leftarrow D_{*j}+E_{*j} makes column j equal to C_{*j} .
+Now suppose that every column of C with at most t/2 nonzeros was corrected in the previous round. Any column that is still incorrect must then have more than t/2 nonzeros in C . Since C has at most K nonzeros in total, only O(K/t) columns can remain incorrect. This allows the outer sparse recovery step to find the remaining incorrect columns.
+We now explain how a column is recovered. We choose an inner measurement matrix H that only recovers vectors with sparsity of t plus the maximum support already stored in a column D . We need to account for extra support stored in the columns since a denser column of D may contain extra entries from earlier rounds of recovery targeting sparser columns. For every column j , define the measurement \xi_{j}:=H(C-D)_{*j}=HE_{*j}. If column j of C has at most t nonzeros, then the residual column E_{*j}=C_{*j}-D_{*j} has support at most the support of C_{*j} plus the support already stored in D_{*j} . This is within the inner recovery bound, so \xi_{j} determines E_{*j} exactly. Adding the recovered residual to D_{*j} then makes the column equal to C_{*j} .
+The algorithm still needs to find which measurements \xi_{j} are nonzero. Each \xi_{j} is a vector in R^{m} , where m is the number of rows of H and we view each such vector as one element of the direct-product ring R^{m} . The vector \xi=(\xi_{1},\ldots,\xi_{c})\in(R^{m})^{c} has nonzero coordinates only when the corresponding column of D is incorrect and does not match C . Since we know only O(K/t) columns can remain incorrect at this round, \xi has only O(K/t) nonzero coordinates. Hence we can use another measurement matrix G over R^{m} to recover all of its nonzero coordinates.
+The two levels of measurements can be written as
+(C-D)\xrightarrow{\text{inner measurements }H}\text{column measurements in }R^{m}\xrightarrow{\text{outer measurements }G}H(C-D)G^{\mathsf{T}}.
+The first step takes a measurement of every residual column and the second step finds the nonzero measurements among those columns. Formally, after identifying (R^{m})^{g} with m\times g matrices over R , the outer measurements of \xi are exactly H(C-D)G^{\mathsf{T}} .
+For every nonzero measurement returned by the outer decoder, the algorithm runs the inner decoder and adds its output to the corresponding column of D . If the column has at most t nonzeros then the inner decoder is able to recover the exact residual and hence correct the column. If the column has more than t nonzeros however, then exact recovery is not guaranteed in that round for the column. Even then, any temporary update adds only a bounded number of entries to D , and the next round includes those stored entries in its recovery bound. Thus, columns with more nonzero entries will still be fully corrected in later rounds.
+At each round, the scale doubles. At scale t the inner recovery sparsity is \widetilde{O}(t) and the outer recovery sparsity is O(K/t) so their product is \widetilde{O}(K) . This keeps the total decoding and update work within K^{1+\alpha}\operatorname{polylog}n for every fixed \alpha&gt;0 . At a large enough scale, every column would be within the inner recovery bound and at that point all columns of D would equal the corresponding columns of C .
+The algorithm is able to find the measurements of E=C-D without actually computing C by noting that H(C-D)G^{\mathsf{T}}=(HA)(BG^{\mathsf{T}})-HDG^{\mathsf{T}}. Since H and G are binary with polylogarithmic column sparsity, forming HA and BG^{\mathsf{T}} increases the number of nonzeros by only polylogarithmic factors. As t doubles, the resulting rectangular products cover the dimensions used in \beta_{R}(\delta_{\mathrm{in}},\min\{\delta_{\mathrm{out}},2\delta_{\mathrm{in}}\}) .
+The rest of the paper proves this overview. Section 2 gives the recovery and rectangular-multiplication tools that we use throughout. Section 3 proves the general nested recovery theorem. Section 4 proves Theorem 1.1. Section 5 combines the upper bound with the known rectangular padding reduction to show that this run time is optimal.
+2 Preliminaries
+2.1 Notation and computational model.
+For a positive integer N , define [N]=\{1,\ldots,N\} . For a real number x , define (x)_{+}:=\max\{x,0\} . For a vector or matrix X let \nnz(X) be the number of nonzero entries in X and let \supp(X) be their index set. Note that X_{*j} refers to the j th column of X and we use \widetilde{O}(\cdot) to hide factors polynomial in \log n .
+Throughout this paper, R is an arbitrary associative ring with identity and we do not assume commutativity unless stated otherwise. We count each ring operation, zero test, and operation on an O(\log n) -bit index as one unit of cost. Sparse vectors are stored as sorted lists of their nonzero entries, together with each entry’s position. Sparse matrices are stored as lists of their sparse columns. Further, merging sparse lists of total length M takes M\operatorname{polylog}n ring and word operations. Computing a matrix product means outputting the sparse list of all its nonzero entries, hence the running time includes reading the input and writing the output.
+For the run time analysis, we use the following sparse rectangular matrix-multiplication exponent, defined in the same computational model as FSMM.
+Definition 2.1 (Sparse rectangular exponent).
+Let a,b,c,\delta\geq 0 . The exponent \omega_{\delta,R}(a,b,c) is the infimum over all exponents \gamma such that, for every \eta&gt;0 , there is a deterministic algorithm that multiplies an \left\lceil n^{a}\right\rceil\times\left\lceil n^{b}\right\rceil matrix by an \left\lceil n^{b}\right\rceil\times\left\lceil n^{c}\right\rceil matrix over R in O(n^{\gamma+\eta}) ring and word operations, assuming each input matrix has at most O(n^{\delta}) nonzero entries and is given as a canonical sparse list. The algorithm must output the requested product as a canonical sparse list.
+In particular, for every \eta&gt;0 there is such an algorithm running in O(n^{\omega_{\delta,R}(a,b,c)+\eta}) ring and word operations.
+The sparse rectangular exponent uses the same computational model as FSMM, including the cost of writing the sparse output [1, 5]. If O(n^{\delta}) exceeds the number of entries in an input matrix, then the sparsity bound gives no extra restriction. We use \omega_{\delta,R}(a,1,b) when the middle dimension is n . For dense inputs, \omega_{R}(a,b,c) denotes the corresponding exponent with no sparsity condition. Because the dense exponent already accounts for all output entries, explicitly writing and zero-testing the dense product does not change the exponent. Hence \omega_{2,R}(a,1,b)=\omega_{R}(a,1,b) for all a,b\in[0,1] .
+Notice that if R is nontrivial and \delta\geq\max\{a,c\} , then we have that
+\omega_{\delta,R}(a,1,c)\geq a+c.
+This is because if we place 1_{R} in the same inner coordinate of every row of the left factor and every column of the right factor then the left and right factors will have \Theta(n^{a}) and \Theta(n^{c}) nonzero entries respectively, and all \Theta(n^{a+c}) entries of the product are equal to 1_{R} . Thus, any algorithm following the model of Definition 2.1 must spend \Omega(n^{a+c}) time writing the output.
+Now we prove two straightforward consequences of the definition that will be used in the run time analysis.
+Lemma 2.2.
+Let a,b,\delta\geq 0 .
+1.
+If a^{\prime}\geq a and b^{\prime}\geq b , then
+\omega_{\delta,R}(a,1,b)\leq\omega_{\delta,R}(a^{\prime},1,b^{\prime})\leq\omega_{\delta,R}(a,1,b)+(a^{\prime}-a)+(b^{\prime}-b).
+2.
+Replacing the input sparsity bound O(n^{\delta}) by O(n^{\delta}\operatorname{polylog}n) does not change the exponent.
+Proof.
+For (1) , the first inequality follows by zero padding. Any n^{a}\times n and n\times n^{b} instance can be enlarged to dimensions n^{a^{\prime}}\times n and n\times n^{b^{\prime}} by adding zero rows and columns. Restricting the padded product to the original rows and columns recovers the original product, so \omega_{\delta,R}(a,1,b)\leq\omega_{\delta,R}(a^{\prime},1,b^{\prime}) .
+Now for the second inequality, we split the first matrix into O(n^{a^{\prime}-a}) row blocks with each having at most n^{a} rows, and then split the second matrix into O(n^{b^{\prime}-b}) column blocks with each having at most n^{b} columns. From there, every row block and column block still has at most O(n^{\delta}) nonzero entries so we can thus multiply each pair using the algorithm for dimensions n^{a}\times n and n\times n^{b} . There are O(n^{(a^{\prime}-a)+(b^{\prime}-b)}) pairs, and putting the resulting blocks together gives
+\omega_{\delta,R}(a^{\prime},1,b^{\prime})\leq\omega_{\delta,R}(a,1,b)+(a^{\prime}-a)+(b^{\prime}-b).
+For (2) , one inequality is immediate since an O(n^{\delta}) sparsity bound is stronger than an O(n^{\delta}\operatorname{polylog}n) bound. For the converse, fix \gamma&gt;\omega_{\delta,R}(a,1,b) and \zeta&gt;0 . Suppose first that \delta&gt;0 . Choose \theta&gt;0 so that (1+\theta)(\gamma+\zeta/4)\leq\gamma+\zeta . For all sufficiently large n , \operatorname{polylog}n\leq n^{\delta\theta} . Taking N=\left\lceil n^{1+\theta}\right\rceil and padding to dimensions N^{a}\times N and N\times N^{b} , each factor has O(N^{\delta}) nonzeros. Definition 2.1 therefore gives a running time
+O\!\left(N^{\gamma+\zeta/4}\right)=O\!\left(n^{\gamma+\zeta}\right).
+The original product is obtained by restricting the padded product to its original rows and columns.
+If \delta=0 , let s_{A} and s_{B} be the numbers of nonzero entries in the two inputs. Then s_{A},s_{B}=\operatorname{polylog}n . Considering at most s_{A}s_{B}=\operatorname{polylog}^{2}n pairs, multiply the stored entries directly. Both sorting the resulting entries by position and combining equal positions also take polylogarithmic time each, hence the whole computation takes \operatorname{polylog}n=O(n^{\zeta}) for every \zeta&gt;0 , thus the exponent remains 0 .
+Since \gamma&gt;\omega_{\delta,R}(a,1,b) and \zeta&gt;0 were arbitrary, the extra polylogarithmic factor in the sparsity bound does not change the exponent.
+∎
+Lemma 2.2(1) also implies that (a,b)\mapsto\omega_{\delta,R}(a,1,b) is continuous, since changing the two outer exponents by \Delta a and \Delta b changes the sparse rectangular exponent by at most |\Delta a|+|\Delta b| . Hence the maximum in the definition of \beta_{R}(\delta_{\mathrm{in}},\delta) is attained.
+For dense rectangular exponents, we use the properties developed by Lotti and Romani [25].
+Proposition 2.3 (Lotti and Romani [25]).
+Let R be a commutative ring in a setting where the usual bilinear rectangular exponents are defined. The exponent \omega_{R}(a,b,c) is invariant under permutations of its arguments, is homogeneous, continuous, is nondecreasing in every argument, and satisfies
+\omega_{R}(a_{1}+a_{2},b_{1}+b_{2},c_{1}+c_{2})\leq\omega_{R}(a_{1},b_{1},c_{1})+\omega_{R}(a_{2},b_{2},c_{2}).
+Moreover, \max\{a+b,a+c,b+c\}\leq\omega_{R}(a,b,c)\leq a+b+c .
+We will also use the inequality \omega_{R}(a,b,c)\leq\omega_{R}(a,1,b+c-1) for a,b,c\in[0,1] with b+c\geq 1 , as stated by Bennett et al. [5, Corollary 2.6].
+2.2 Deterministic sparse recovery.
+A recovery pair for vectors in R^{N} with sparsity k consists of a binary matrix H\in\{0,1\}^{m\times N} and a deterministic decoder \operatorname{Rec}_{H,k} . Exact recovery means that \operatorname{Rec}_{H,k}(Hx)=x for every x\in R^{N} with \nnz(x)\leq k .
+Bennett et al. [5, Theorem 3.2], building on the compressed-sensing construction of Berinde et al. [6] and the expander construction of Guruswami, Umans, and Vadhan [15], give the following recovery theorem that we use over arbitrary rings.
+Theorem 2.4.
+Let R be a ring and let \alpha&gt;0 be a constant. For every universe size N and sparsity 1\leq k\leq N , there is a deterministic recovery pair (H,\operatorname{Rec}_{H,k}) with
+\operatorname{rows}(H)=O\!\left(k^{1+\alpha}\operatorname{polylog}N\right).
+The matrix H is binary and d -column-sparse for d=\operatorname{polylog}N . A sparse representation of H can be constructed in \widetilde{O}(N) word operations. The decoder uses O(k^{1+\alpha}\operatorname{polylog}N) operations over R , and multiplying H by a sparse vector x takes \nnz(x)\operatorname{polylog}N additions over R .
+The construction of the binary recovery matrix depends only on N,k and \alpha , not on a ring. This decoder works over an arbitrary ring and only uses the ring operations stated in the theorem. Hence, we can apply the theorem to rings that vary with n , including direct-product rings R^{m} .
+If the identity matrix has fewer rows than the recovery matrix, we use it instead. In this case, define \operatorname{SafeRec}_{I,k}(y):=y when \nnz(y)\leq k , and \operatorname{SafeRec}_{I,k}(y):=0 otherwise. Thus, for a constant C_{\alpha} depending only on \alpha , we may assume
+\operatorname{rows}(H)\leq\min\left\{N,C_{\alpha}k^{1+\alpha}\operatorname{polylog}N\right\}.
+The identity case occurs only when N\leq C_{\alpha}k^{1+\alpha}\operatorname{polylog}N , so reading its input and producing the sparse output takes time within the same bound.
+The next lemma extends the decoder to arbitrary inputs, including vectors that may not equal Hx for any k -sparse vector x .
+Lemma 2.5.
+For the recovery pair in Theorem 2.4, there is a deterministic algorithm \operatorname{SafeRec}_{H,k} such that, for every input vector y\in R^{m} ,
+1.
+\operatorname{SafeRec}_{H,k}(y) is a canonical sparse vector with at most k nonzero entries;
+2.
+if x\in R^{N} is k -sparse, then \operatorname{SafeRec}_{H,k}(Hx)=x ;
+3.
+the algorithm uses O(k^{1+\alpha}\operatorname{polylog}N) ring and word operations, whether or not y=Hx for a k -sparse vector.
+Proof.
+We use the concrete recovery algorithm in Algorithms 5 and 6 of Bennett et al. [5, Appendix A.3]. For an input y\in R^{m} , that algorithm performs at most \left\lceil\log_{2}(2k)\right\rceil iterations. In each iteration it calls the deterministic Reduce procedure to obtain a proposed vector.
+The Reduce algorithm runs in m\operatorname{polylog}N time for any input vector. This is because it scans the same measurement blocks each time and adds at most one candidate from each block. Thus there are just O(m) candidates, and the proposed vector can be stored as a sparse list within the same time bound. This does not require the input to be of the form Hx for a k -sparse vector x . The Recovery algorithm then counts the nonzero entries in the proposed vector before multiplying it by H . If there are more than 3k/2 , it returns zero immediately. Otherwise the proposed vector has at most 3k/2 nonzeros, and since H has polylogarithmic column sparsity, multiplying it by H takes k\operatorname{polylog}N operations. Hence every iteration has bounded cost even when y does not come from a sparse vector, and the run time analysis in the proof of Bennett et al.’s Theorem 3.2 gives O(k^{1+\alpha}\operatorname{polylog}N) ring operations in total.
+Run the decoder while retaining the proposed sparse vectors. If the Recovery procedure terminates because a proposed vector has more than 3k/2 nonzeros, return the zero vector. Otherwise, each proposed vector has at most 3k/2 nonzeros. Since there are at most \left\lceil\log_{2}(2k)\right\rceil iterations, the total size of all proposed sparse lists is O(k\log k) . Combine repeated coordinates and delete zero entries. If the resulting vector has more than k nonzeros, return the zero vector. Otherwise return it. This takes O(k\log k\operatorname{polylog}N) operations, which is within O(k^{1+\alpha}\operatorname{polylog}N) . This proves the first and third claims.
+If x is k -sparse and y=Hx , the original decoder returns x exactly. Since \nnz(x)\leq k , the final support check does not change it. Hence \operatorname{SafeRec}_{H,k}(Hx)=x .
+∎
+Exact recovery also implies injectivity. If x is k -sparse and Hx=0 , then
+x=\operatorname{SafeRec}_{H,k}(Hx)=\operatorname{SafeRec}_{H,k}(0)=0.
+2.3 Direct-product rings and binary matrices.
+For m\geq 1 , let S=R^{m} . Addition and multiplication in S are performed separately in each coordinate, and its identity is 1_{S}=(1_{R},\ldots,1_{R}) . Thus one ring operation or zero test in S takes O(m) operations or zero tests in R . We view a vector in S^{g} as an m\times g matrix over R , with one element of S in each column.
+If G\in\{0,1\}^{g\times c} is a binary matrix and T is a ring, write G^{(T)} for the matrix obtained by interpreting each bit as 0_{T} or 1_{T} . For every x\in T , we have 0_{T}x=x0_{T}=0_{T} and 1_{T}x=x1_{T}=x , even when T is noncommutative. Thus G^{(R)} and G^{(S)} have 1 -entries in the same positions, so one sparse list can represent both. Hence, we do not store a separate copy of 1_{S} for each nonzero entry of G . We omit the superscript when the ring is clear.
+3 Nested Deterministic Recovery
+We first study a more general recovery problem that does not depend on matrix multiplication. Let C\in R^{r\times c} be unknown with r,c\leq n and \nnz(C)\leq K for an integer K\geq 0 . For binary recovery matrices H and G chosen by the algorithm, assume that the algorithm can compute HC\bigl(G^{(R)}\bigr)^{\mathsf{T}}. In Section 4 we show how to compute these two-sided measurements when C=AB.
+We begin by defining the parameters used by the recovery algorithm. First replace K with \min\{K,rc\} . If K=0 then we return the zero matrix. Otherwise set t_{-1}:=0 and Q_{-1}:=0 , and for i\geq 0 define t_{i}:=2^{i} ,
+q_{i}:=\min\{r,t_{i}+Q_{i-1}\}, and Q_{i}:=Q_{i-1}+q_{i}. The value t_{i} is the true column sparsity that is corrected by the end of round i . The inner decoder capacity q_{i} includes both the true support and the support already stored in a column. The value Q_{i} bounds the stored support after round i .
+Also define p_{0}:=\min\{c,K\} and p_{i}:=\min\!\left\{c,\left\lceil K/t_{i-1}\right\rceil\right\}\text{for }i\geq 1, and let L:=\left\lceil\log_{2}\min\{r,K\}\right\rceil . At round i choose an inner recovery pair (H_{i},\operatorname{Rec}_{H_{i},q_{i}}) over R , where H_{i}\in\{0,1\}^{m_{i}\times r} . Let S_{i}:=R^{m_{i}} and choose an outer recovery pair (G_{i},\operatorname{Rec}^{S_{i}}_{G_{i},p_{i}}) over S_{i} , where G_{i}\in\{0,1\}^{g_{i}\times c} . The same binary matrix G_{i} is used in both places. In the two-sided measurement, its 0 - 1 entries are taken in R , while the outer decoder uses the same entries in S_{i}=R^{m_{i}} .
+The algorithm starts with D^{(0)}=0 . At round i it forms
+W_{i}:=H_{i}(C-D^{(i)})\bigl(G_{i}^{(R)}\bigr)^{\mathsf{T}},
+applies the outer decoder \operatorname{SafeRec}^{S_{i}}_{G_{i},p_{i}} to recover the vector of measurements \bigl(H_{i}(C-D^{(i)})_{*j}\bigr)_{j\in[c]} , and applies \operatorname{SafeRec}_{H_{i},q_{i}} to each recovered nonzero measurement. The modified columns are then canonicalized.
+Algorithm 1 Nested deterministic recovery from two-sided measurements
+Input: Dimensions r,c ; an upper bound K\geq\nnz(C) ; access to HC(G^{(R)})^{\mathsf{T}} .
+Output: The canonical sparse list of C .
+K\leftarrow\min\{K,rc\}
+if K=0 then
+return the empty list
+end if
+D\leftarrow 0 ; Q\leftarrow 0 ; T\leftarrow\min\{r,K\} ; L\leftarrow\left\lceil\log_{2}T\right\rceil
+for i\leftarrow 0 to L do
+t\leftarrow 2^{i} ; q\leftarrow\min\{r,t+Q\}
+if i=0 then
+p\leftarrow\min\{c,K\}
+else
+p\leftarrow\min\{c,\left\lceil K/2^{i-1}\right\rceil\}
+end if
+Construct an inner recovery pair (H,\operatorname{Rec}_{H,q}) over R
+S\leftarrow R^{\operatorname{rows}(H)}
+Construct an outer recovery pair (G,\operatorname{Rec}^{S}_{G,p}) over S
+W\leftarrow HC(G^{(R)})^{\mathsf{T}}-HD(G^{(R)})^{\mathsf{T}}
+\xi\leftarrow\operatorname{SafeRec}^{S}_{G,p}(W) , viewing the columns of W as elements of S
+foreach j\in\supp(\xi) do
+z\leftarrow\operatorname{SafeRec}_{H,q}(\xi_{j})
+D_{*j}\leftarrow D_{*j}+z
+end foreach
+Canonicalize the modified sparse columns of D
+Q\leftarrow Q+q
+end for
+return D
+The first lemma explains how the two recovery layers work together.
+Lemma 3.1.
+Let E\in R^{r\times c} have at most p nonzero columns. Let H\in\{0,1\}^{m\times r} and define \xi_{j}:=HE_{*j}\in R^{m} for j\in[c] . View \xi=(\xi_{1},\ldots,\xi_{c}) as a vector in S^{c} over S:=R^{m} . Then \xi is p -sparse. For every binary G\in\{0,1\}^{g\times c} , the vector G^{(S)}\xi\in S^{g} , represented as an m\times g matrix over R , is exactly
+HE\bigl(G^{(R)}\bigr)^{\mathsf{T}}.
+If G belongs to an exact p -sparse recovery pair over S , the outer decoder therefore recovers every measurement HE_{*j} exactly.
+Proof.
+If the j th column of E is zero, then \xi_{j}=HE_{*j}=0 . Thus \supp(\xi) is contained in the set of nonzero columns of E , and \nnz(\xi)\leq p .
+Fix \ell\in[g] . The \ell th coordinate of G^{(S)}\xi is
+\bigl(G^{(S)}\xi\bigr)_{\ell}=\sum_{j=1}^{c}\bigl(G_{\ell j}1_{S}\bigr)\xi_{j}.
+Since each G_{\ell j} is either 0 or 1 , the factor G_{\ell j}1_{S} either makes \xi_{j} zero or leaves it unchanged. Moreover, multiplication by G_{\ell j}1_{R} has the same effect on either side. Thus this coordinate is the vector \sum_{j=1}^{c}G_{\ell j}HE_{*j}=\sum_{j=1}^{c}HE_{*j}G_{\ell j}\in R^{m} . That vector is the \ell th column of HE(G^{(R)})^{\mathsf{T}} . So the displayed matrix represents G^{(S)}\xi . Since \xi is p -sparse, the bounded outer decoder is exact on this input and returns it in canonical form.
+∎
+Lemma 3.2.
+For every i\in\{0,\ldots,L\} , right before round i the following statements hold.
+1.
+Every column C_{*j} with \nnz(C_{*j})\leq t_{i-1} equals D^{(i)}_{*j} .
+2.
+Every column of D^{(i)} has at most Q_{i-1} nonzero entries.
+Immediately after round i , the same statements hold with t_{i} , Q_{i} , and D^{(i+1)} in place of t_{i-1} , Q_{i-1} , and D^{(i)} . In particular, D^{(L+1)}=C .
+Proof.
+For i=0 , every column of C with at most t_{-1}=0 nonzeros is zero and agrees with D^{(0)}=0 . Every column of D^{(0)} has support Q_{-1}=0 .
+Assume the two statements hold immediately before round i and let E^{(i)}:=C-D^{(i)} . If i=0 , every nonzero column of E^{(0)}=C contains at least one nonzero entry, so there are at most \min\{c,K\}=p_{0} such columns. If i\geq 1 , every incorrect column has more than t_{i-1} true nonzeros by the first inductive hypothesis. Since C has at most K nonzeros, the number of incorrect columns is at most K/t_{i-1} and so at most p_{i} . Therefore E^{(i)} has at most p_{i} nonzero columns.
+Apply Lemma 3.1 with E=E^{(i)} , H=H_{i} , and G=G_{i} . The bounded outer decoder recovers
+\xi^{(i)}=\bigl(H_{i}E^{(i)}_{*1},\ldots,H_{i}E^{(i)}_{*c}\bigr)
+exactly over S_{i}=R^{m_{i}} .
+Fix a column j with \nnz(C_{*j})\leq t_{i} . The second inductive hypothesis gives
+\nnz(E^{(i)}_{*j})\leq\nnz(C_{*j})+\nnz(D^{(i)}_{*j})\leq t_{i}+Q_{i-1}.
+Clearly since E^{(i)}_{*j}\in R^{r} , it has at most r nonzero entries. Because \nnz(E^{(i)}_{*j})\leq t_{i}+Q_{i-1} we get
+\nnz(E^{(i)}_{*j})\leq\min\{r,t_{i}+Q_{i-1}\}=q_{i} . If the residual is zero then the column is already correct. Otherwise, exact recovery of H_{i} implies H_{i}E^{(i)}_{*j}\neq 0 , so the outer output contains coordinate j . Lemma 2.5 then gives
+\operatorname{SafeRec}_{H_{i},q_{i}}\bigl(H_{i}E^{(i)}_{*j}\bigr)=E^{(i)}_{*j}.
+Adding the update makes column j equal to C_{*j} .
+For a column with more than t_{i} true nonzeros, the inner input may have more than q_{i} nonzeros. Lemma 2.5 still guarantees an update with at most q_{i} nonzeros. After canonicalization, every current column has support at most Q_{i-1}+q_{i}=Q_{i} . This proves the statement after round i .
+Finally, t_{L}\geq\min\{r,K\} . Every column of C has at most r positions and at most K nonzero entries, so every column has support at most t_{L} . The first statement after round L gives D^{(L+1)}=C .
+∎
+Theorem 3.3.
+Let C\in R^{r\times c} satisfy r,c\leq n and \nnz(C)\leq K for an integer K\geq 0 , and let \alpha&gt;0 . Suppose that the algorithm can compute H_{i}C(G_{i}^{(R)})^{\mathsf{T}} for every pair H_{i},G_{i} needed by Algorithm 1. Then Algorithm 1 recovers C exactly and deterministically from O(1+\log(1+\min\{r,K\})) two-sided measurements. In addition to the cost of computing those measurements, it uses
+\widetilde{O}\!\left(r+c+K^{1+\alpha}\right)
+ring and word operations.
+Proof.
+After replacing K by \min\{K,rc\} , if K=0 , the algorithm returns the zero matrix without computing a two-sided measurement. Now assume that K\geq 1 and let L:=\left\lceil\log_{2}\min\{r,K\}\right\rceil . Algorithm 1 computes one two-sided measurement in each round i\in\{0,\ldots,L\} , for a total of L+1=O(1+\log(1+\min\{r,K\})) two-sided measurements. Lemma 3.2 shows that after round L the current matrix equals C , so it remains to bound the work performed outside the computation of these measurements.
+We first show that the inner and outer sparsity parameters remain balanced.
+Claim 1.
+For every round i , p_{i}q_{i}=O(K\log n) .
+Proof of claim.
+We first bound q_{i} . We show by induction that Q_{i}\leq(i+1)2^{i} for every i\geq 0 and q_{i}\leq(i+2)2^{i-1} for every i\geq 1 . At round 0 , we have q_{0}=Q_{0}=1 . Now suppose that i\geq 1 and Q_{i-1}\leq i2^{i-1} . Since the cap at r can only decrease q_{i} , we have q_{i}\leq 2^{i}+Q_{i-1}\leq(i+2)2^{i-1} . It follows that Q_{i}=Q_{i-1}+q_{i}\leq(i+1)2^{i} . Thus q_{i}=O(t_{i}\log n) and Q_{i}=O(t_{i}\log n) .
+For i=0 , we have p_{0}q_{0}\leq K . Now fix i\geq 1 . Since i\leq L , we have t_{i-1}&lt;\min\{r,K\} , so K/t_{i-1}\geq 1 . Therefore p_{i}\leq\left\lceil K/t_{i-1}\right\rceil\leq 2K/t_{i-1}=4K/t_{i} . Combining this with q_{i}=O(t_{i}\log n) gives p_{i}q_{i}=O(K\log n) .
+∎
+The proof of the claim also gives q_{i}=O(t_{i}\log n) and Q_{i}=O(t_{i}\log n) , which we will use below. The bounded outer decoder returns at most p_{i} nonzero measurements in round i , and each call to \operatorname{SafeRec}_{H_{i},q_{i}} returns at most q_{i} nonzero entries. Thus the inner decoders propose at most p_{i}q_{i}=O(K\log n) entries in one round and O(K\log^{2}n) entries over all rounds.
+We next bound the cost of the decoder calls.
+Claim 2.
+The outer and inner decoder calls use \widetilde{O}(K^{1+\alpha}) ring and word operations in total.
+Proof of claim.
+Let m_{i} be the number of rows of H_{i} . Theorem 2.4, together with the identity fallback, gives m_{i}=O(q_{i}^{1+\alpha}\operatorname{polylog}n) . Lemma 2.5 shows that the bounded outer decoder performs O(p_{i}^{1+\alpha}\operatorname{polylog}n) operations over S_{i}=R^{m_{i}} . Since one operation or zero test in S_{i} can be performed using O(m_{i}) ring operations or zero tests in R , the outer-decoding cost in round i is
+O\!\left(m_{i}p_{i}^{1+\alpha}\operatorname{polylog}n\right)=O\!\left((p_{i}q_{i})^{1+\alpha}\operatorname{polylog}n\right)=O\!\left(K^{1+\alpha}\operatorname{polylog}n\right).
+There are at most p_{i} inner decoder calls in that round. Lemma 2.5 bounds their combined cost by
+p_{i}\,O\!\left(q_{i}^{1+\alpha}\operatorname{polylog}n\right)\leq O\!\left((p_{i}q_{i})^{1+\alpha}\operatorname{polylog}n\right)=O\!\left(K^{1+\alpha}\operatorname{polylog}n\right).
+Summing over the O(\log n) rounds changes only the polylogarithmic factor.
+∎
+It remains to account for the recovery matrices, the residual measurement terms, and the sparse updates. The recovery matrices are binary and have polylogarithmic column sparsity. They can be generated in \widetilde{O}(r+c) time in each round from the construction in Theorem 2.4. Since there are O(\log n) rounds, their total construction time is \widetilde{O}(r+c) . Each outer matrix is stored as a sparse list of its 1 -entries. The matrix G_{i} is stored as the list of positions where its entries are 1 . We use this same list over R and over S_{i} , so we do not need to store a separate copy of 1_{S_{i}} for each nonzero entry.
+The size of the two-sided measurements are also accounted for. In round i , the matrix W_{i} has m_{i}g_{i} entries. Theorem 2.4 and the identity fallback give m_{i}=O(q_{i}^{1+\alpha}\operatorname{polylog}n) and g_{i}=O(p_{i}^{1+\alpha}\operatorname{polylog}n) , so
+m_{i}g_{i}=O\!\left((p_{i}q_{i})^{1+\alpha}\operatorname{polylog}^{2}n\right)=\widetilde{O}\!\left(K^{1+\alpha}\right).
+Thus, once the two terms defining W_{i} have been computed, representing W_{i} and performing their entrywise subtraction costs \widetilde{O}(K^{1+\alpha}) operations in round i . Summing over all rounds changes only the polylogarithmic factor.
+Every nonzero entry in D^{(i)} comes from an update proposed by an inner decoder in an earlier round. Since the inner decoders propose O(K\log^{2}n) entries over all rounds, \nnz(D^{(i)})=O(K\log^{2}n) . To compute H_{i}D^{(i)}(G_{i}^{(R)})^{\mathsf{T}} , we go through the nonzero entries of D^{(i)} and the corresponding nonzero entries in the relevant columns of H_{i} and G_{i} . Since both matrices have polylogarithmic column sparsity, this takes \widetilde{O}(K) operations in each round and \widetilde{O}(K) operations over all rounds.
+Finally, in round i , at most p_{i} columns are modified. Before round i , each modified column has at most Q_{i-1} stored entries by Lemma 3.2, and the new update has at most q_{i} entries by Lemma 2.5. Thus processing all modified columns costs \widetilde{O}\!\left(p_{i}(Q_{i-1}+q_{i})\right)=\widetilde{O}(K) . For i\geq 1 , this follows from Q_{i-1}+q_{i}=O(t_{i}\log n) and p_{i}=O(K/t_{i}) . Round 0 also costs \widetilde{O}(K) . Summing over all rounds only adds polylogarithmic factors.
+Therefore, the recovery matrices, decoder calls, residual measurements, and sparse updates together use
+\widetilde{O}\!\left(r+c+K^{1+\alpha}\right)
+ring and word operations, not including the cost of the two-sided measurements. This proves the theorem.
+∎
+4 Proof of Main Result
+We are now ready to prove our main result which is Theorem 1.1.
+To do this, we apply Theorem 3.3 with C=AB . The only extra step is to compute a two-sided measurement efficiently.
+Proof of Theorem 1.1.
+If R is the zero ring, then AB=0 for every input. Reading the input and returning the empty list costs O(n^{\delta_{\mathrm{in}}}) . This is within the claimed bound since \beta_{R}(\delta_{\mathrm{in}},\min\{\delta_{\mathrm{out}},2\delta_{\mathrm{in}}\})\geq\delta_{\mathrm{in}} . We therefore assume that R is nontrivial.
+We first remove coordinates that do not affect the product. Let I_{\mathrm{row}} be the nonzero rows of A , let I_{\mathrm{col}} be the nonzero columns of B , and let I_{\mathrm{mid}} contain the indices that are both nonzero columns of A and nonzero rows of B . Entries of AB outside I_{\mathrm{row}}\times I_{\mathrm{col}} are zero, and indices outside I_{\mathrm{mid}} make no contribution to the product. Therefore
+(AB)[I_{\mathrm{row}},I_{\mathrm{col}}]=A[I_{\mathrm{row}},I_{\mathrm{mid}}]B[I_{\mathrm{mid}},I_{\mathrm{col}}].
+Sorting and merging the input indices gives active matrices A_{0}\in R^{r\times p} and B_{0}\in R^{p\times c} in \widetilde{O}(\nnz(A)+\nnz(B)) operations. Restoring the original row and column labels at the end takes time linear in the output size. If r=0 , p=0 , or c=0 , then A_{0}B_{0}=0 , so the algorithm returns the empty list. From now on, assume r,p,c\geq 1 . Since every row in I_{\mathrm{row}} is a nonzero row of A , every column in I_{\mathrm{col}} is a nonzero column of B , and every index in I_{\mathrm{mid}} is both a nonzero column of A and a nonzero row of B , we have
+r\leq\min\{n,\nnz(A)\},\qquad c\leq\min\{n,\nnz(B)\},\qquad p\leq\min\{n,\nnz(A),\nnz(B)\}.
+Therefore
+r,p,c=O\!\left(n^{\min\{1,\delta_{\mathrm{in}}\}}\right).
+Let C:=A_{0}B_{0} and set \delta:=\min\{\delta_{\mathrm{out}},2\delta_{\mathrm{in}}\} . Choose a constant \rho&gt;0 sufficiently small that 8\rho&lt;\varepsilon , and choose the recovery parameter \alpha&gt;0 so that 2\alpha\leq\rho . Let C_{\mathrm{out}} be the fixed constant in the output-sparsity promise, so \nnz(C)\leq C_{\mathrm{out}}n^{\delta_{\mathrm{out}}} , and set
+K:=\min\left\{\left\lceil C_{\mathrm{out}}n^{\delta_{\mathrm{out}}}\right\rceil,rc,\nnz(A_{0})\nnz(B_{0})\right\}.
+Every nonzero entry of C comes from at least one pair of nonzero input entries, so \nnz(C)\leq K . Since we know K\leq C_{\mathrm{out}}n^{\delta_{\mathrm{out}}} and K\leq\nnz(A_{0})\nnz(B_{0})=O(n^{2\delta_{\mathrm{in}}}) , we have K=O(n^{\min\{\delta_{\mathrm{out}},2\delta_{\mathrm{in}}\}})=O(n^{\delta}) .
+For sufficiently large n , every fixed constant and polylogarithmic factor below can be absorbed into an extra factor of n^{\rho} . Run Algorithm 1 on C and compute each two-sided measurement by
+HC(G^{(R)})^{\mathsf{T}}=H(A_{0}B_{0})(G^{(R)})^{\mathsf{T}}=(HA_{0})\bigl(B_{0}(G^{(R)})^{\mathsf{T}}\bigr).
+The first equality follows from C=A_{0}B_{0} , and the second follows from associativity. Because no ring entries are reordered, the ring does not need to possess commutativity. Theorem 3.3 thus shows that the algorithm recovers C exactly.
+Now, we bound the work outside the rectangular products. There is a running time of \widetilde{O}(n^{\delta_{\mathrm{in}}}) for removing inactive coordinates. In round i , each nonzero of A_{0} can contribute through only the nonzero entries in one column of H_{i} . Since each column of H_{i} has \operatorname{polylog}n nonzeros, H_{i}A_{0} has at most O(\nnz(A_{0})\operatorname{polylog}n) contributions. The same argument gives at most O(\nnz(B_{0})\operatorname{polylog}n) contributions to B_{0}(G_{i}^{(R)})^{\mathsf{T}} . Sorting and combining these contributions constructs both compressed factors in
+\widetilde{O}\!\left(\nnz(A_{0})+\nnz(B_{0})\right)=\widetilde{O}(n^{\delta_{\mathrm{in}}})
+operations in each round. There are O(\log n) rounds, so all compressed-factor construction costs \widetilde{O}(n^{\delta_{\mathrm{in}}}) in total.
+Theorem 3.3 bounds the remaining recovery overhead by
+\widetilde{O}\!\left(r+c+K^{1+\alpha}\right)=\widetilde{O}\!\left(n^{\delta_{\mathrm{in}}}+n^{\delta(1+\alpha)}\right).
+We also have \beta_{R}(\delta_{\mathrm{in}},\delta)\geq\delta . Indeed, \delta\leq 2\min\{1,\delta_{\mathrm{in}}\} , so we may choose a,b\in[0,\min\{1,\delta_{\mathrm{in}}\}] with a+b=\delta . Then a,b\leq\delta_{\mathrm{in}} , and the output-size observation following Definition 2.1 gives \omega_{\delta_{\mathrm{in}},R}(a,1,b)\geq a+b=\delta . The definition of \beta_{R} gives the desired inequality. Since \delta\leq 2 and 2\alpha\leq\rho ,
+\delta(1+\alpha)=\delta+\delta\alpha\leq\beta_{R}(\delta_{\mathrm{in}},\delta)+\rho,
+so all nonmultiplication work is O(n^{\beta_{R}(\delta_{\mathrm{in}},\delta)+3\rho}) after absorbing polylogarithmic factors.
+It remains to bound the rectangular product in a fixed round i . Let m_{i} and g_{i} be the numbers of rows of the inner and outer recovery matrices. The identity fallback gives m_{i}\leq r and g_{i}\leq c . The parameter bounds in the proof of Theorem 3.3 give q_{i}=O(t_{i}\log n) and p_{i}=O(1+K/t_{i}) . Also, t_{i}\leq 2K=O(n^{\delta}) . Therefore, using Theorem 2.4 and the bounds above, we obtain
+\displaystyle m_{i}
+\displaystyle\leq\min\left\{r,C_{\alpha}q_{i}^{1+\alpha}\operatorname{polylog}n\right\}
+\displaystyle\leq\min\left\{O\!\left(n^{\min\{1,\delta_{\mathrm{in}}\}}\right),C_{\alpha}(t_{i}\log n)^{1+\alpha}\operatorname{polylog}n\right\}
+\displaystyle\leq n^{\min\{1,\delta_{\mathrm{in}},\delta,\log_{n}t_{i}\}+2\rho},
+and similarly
+\displaystyle g_{i}
+\displaystyle\leq\min\left\{c,C_{\alpha}p_{i}^{1+\alpha}\operatorname{polylog}n\right\}
+\displaystyle\leq\min\left\{O\!\left(n^{\min\{1,\delta_{\mathrm{in}}\}}\right),C_{\alpha}(1+K/t_{i})^{1+\alpha}\operatorname{polylog}n\right\}
+\displaystyle\leq n^{\min\{1,\delta_{\mathrm{in}},(\delta-\log_{n}t_{i})_{+}\}+2\rho}.
+Here the 2\rho slack absorbs the factors coming from the (1+\alpha) powers, the fixed constants, and the polylogarithmic terms. The active inner dimension satisfies p\leq n and may be zero padded to n .
+The compressed factors remain input-sparse. The contribution bounds above give
+\displaystyle\nnz(H_{i}A_{0})
+\displaystyle=O(\nnz(A_{0})\operatorname{polylog}n)=O(n^{\delta_{\mathrm{in}}}\operatorname{polylog}n),
+\displaystyle\nnz\bigl(B_{0}(G_{i}^{(R)})^{\mathsf{T}}\bigr)
+\displaystyle=O(\nnz(B_{0})\operatorname{polylog}n)=O(n^{\delta_{\mathrm{in}}}\operatorname{polylog}n).
+By Lemma 2.2, the polylogarithmic increase in input sparsity does not affect the sparse exponent.
+We now make the use of Definition 2.1 uniform over the rounds. Let \mathcal{G}:=\{\min\{j\rho,1\}:0\leq j\leq\left\lceil 1/\rho\right\rceil\} . For each round i , choose \bar{a}_{i},\bar{b}_{i}\in\mathcal{G} so that m_{i}\leq n^{\bar{a}_{i}} , g_{i}\leq n^{\bar{b}_{i}} , and
+\min\{1,\delta_{\mathrm{in}},\delta,\log_{n}t_{i}\}\leq\bar{a}_{i}\leq\min\{1,\delta_{\mathrm{in}},\delta,\log_{n}t_{i}\}+3\rho,
+\min\{1,\delta_{\mathrm{in}},(\delta-\log_{n}t_{i})_{+}\}\leq\bar{b}_{i}\leq\min\{1,\delta_{\mathrm{in}},(\delta-\log_{n}t_{i})_{+}\}+3\rho.
+These choices are possible since the bounds above are within 2\rho of the target exponents and the values in \mathcal{G} are spaced by at most \rho . Since \rho depends on only \varepsilon we know that \mathcal{G} has constant size, so only a constant number of exponent pairs can occur. By Lemma 2.2, allowing O(n^{\delta_{\mathrm{in}}}\operatorname{polylog}n) nonzeros in the compressed factors does not change the sparse exponent. For each pair in \mathcal{G}^{2} , fix a deterministic algorithm with exponent slack \rho . Increasing the two outer exponents to \bar{a}_{i} and \bar{b}_{i} adds at most 3\rho to each one. By Lemma 2.2, this increases the sparse rectangular exponent by at most 6\rho in total. The algorithm for the resulting grid point uses another \rho of exponent slack. Thus the round- i product costs
+O\!\left(n^{\omega_{\delta_{\mathrm{in}},R}\left(\min\{1,\delta_{\mathrm{in}},\delta,\log_{n}t_{i}\},1,\min\{1,\delta_{\mathrm{in}},(\delta-\log_{n}t_{i})_{+}\}\right)+7\rho}\right).
+The two outer exponents in this expression lie in [0,1] and have sum at most \delta . If \log_{n}t_{i}\leq\delta , their sum is at most \log_{n}t_{i}+(\delta-\log_{n}t_{i})=\delta . If \log_{n}t_{i}&gt;\delta , the second exponent is zero and the first is at most \delta . We can increase the two exponents until their sum is exactly \delta . If their current sum is s , we need to add \delta-s , while we can add up to 2-s before either exponent exceeds 1 . Since \delta\leq 2 , we have \delta-s\leq 2-s , so this increase is always possible. Lemma 2.2 and the definition of \beta_{R} then give
+\omega_{\delta_{\mathrm{in}},R}\left(\min\{1,\delta_{\mathrm{in}},\delta,\log_{n}t_{i}\},1,\min\{1,\delta_{\mathrm{in}},(\delta-\log_{n}t_{i})_{+}\}\right)\leq\max_{\begin{subarray}{c}a,b\in[0,1]\\
+a+b=\delta\end{subarray}}\omega_{\delta_{\mathrm{in}},R}(a,1,b)\leq\beta_{R}(\delta_{\mathrm{in}},\delta).
+Therefore every rectangular product costs O(n^{\beta_{R}(\delta_{\mathrm{in}},\delta)+7\rho}) . There are O(\log n) rounds, and the remaining logarithmic factor is at most n^{\rho} for all sufficiently large n . Since 8\rho&lt;\varepsilon , the total running time is
+O\!\left(n^{\beta_{R}(\delta_{\mathrm{in}},\delta)+\varepsilon}\right)=O\!\left(n^{\beta_{R}(\delta_{\mathrm{in}},\min\{\delta_{\mathrm{out}},2\delta_{\mathrm{in}}\})+\varepsilon}\right).
+Finally, restore the original row and column labels. The output remains canonical, which completes the proof.
+∎
+Now that we have proved the general deterministic upper bound, we give two consequences. The first is the dense-input case over a commutative ring, where we simplify the maximization in \beta_{R} . The second uses the best current rectangular matrix-multiplication bounds to find the range where the running time is nearly quadratic.
+Proof of Corollary 1.2.
+Set \delta_{\mathrm{in}}=2 . Since \delta_{\mathrm{out}}\leq 2 , the minimum in Theorem 1.1 equals \delta_{\mathrm{out}} , and \omega_{2,R}(a,1,b)=\omega_{R}(a,1,b) . Hence
+\beta_{R}(2,\delta_{\mathrm{out}})=\max\!\left\{2,\max_{a+b=\delta_{\mathrm{out}}}\omega_{R}(a,1,b)\right\}.
+If 0\leq\delta_{\mathrm{out}}\leq 1 , Proposition 2.3 gives \omega_{R}(a,1,b)\leq a+1+b=1+\delta_{\mathrm{out}}\leq 2 for every a+b=\delta_{\mathrm{out}} . Thus \beta_{R}(2,\delta_{\mathrm{out}})=2=\omega_{R}(0,1,1) .
+Assume 1\leq\delta_{\mathrm{out}}\leq 2 . For a,b\in[0,1] with a+b=\delta_{\mathrm{out}} , permutation symmetry and the rectangular interpolation inequality of Lotti and Romani, as recorded in Bennett et al. [5, Corollary 2.6], give
+\omega_{R}(a,1,b)=\omega_{R}(1,a,b)\leq\omega_{R}(1,1,\delta_{\mathrm{out}}-1)=\omega_{R}(\delta_{\mathrm{out}}-1,1,1).
+Equality is attained at (a,b)=(\delta_{\mathrm{out}}-1,1) . Therefore \beta_{R}(2,\delta_{\mathrm{out}})=\omega_{R}((\delta_{\mathrm{out}}-1)_{+},1,1) , and the result follows from Theorem 1.1.
+∎
+Proof of Corollary 1.3.
+If \delta_{\mathrm{out}}\leq 1.321334 , then (\delta_{\mathrm{out}}-1)_{+}\leq 0.321334 . By the definition of \omega_{R}^{\perp} , monotonicity, and continuity from Proposition 2.3, the current rectangular bound \omega_{R}^{\perp}\geq 0.321334 [30] gives \omega_{R}((\delta_{\mathrm{out}}-1)_{+},1,1)=2 . Corollary 1.2 therefore gives O(n^{2+\varepsilon}) time.
+∎
+5 Optimality
+The rectangular padding argument underlying our lower bound appears in Bennett et al. [5, Proposition 4.3]. We give the argument in our notation, extend it to the full parameter range needed here, and combine it with Theorem 1.1.
+Theorem 5.1 (Optimality).
+Let R be a nontrivial associative ring with identity and let \delta_{\mathrm{in}},\delta_{\mathrm{out}}\in[0,2] . Suppose that, for some \gamma\geq 0 , (\delta_{\mathrm{in}},\delta_{\mathrm{out}}) -FSMM over R can be solved deterministically in O(n^{\gamma+\varepsilon}) ring and word operations for every constant \varepsilon&gt;0 . Then
+\gamma\geq\beta_{R}(\delta_{\mathrm{in}},\min\{\delta_{\mathrm{out}},2\delta_{\mathrm{in}}\}).
+Consequently, the running-time exponent in Theorem 1.1 is optimal.
+Proof.
+By the computational model of Section 2, the running time includes reading the input. Since the two sparse input lists may have total length \Theta(n^{\delta_{\mathrm{in}}}) , we have \gamma\geq\delta_{\mathrm{in}} .
+Fix a,b\in[0,1] with a+b=\min\{\delta_{\mathrm{out}},2\delta_{\mathrm{in}}\} . Consider matrices X\in R^{\left\lceil n^{a}\right\rceil\times n} and Y\in R^{n\times\left\lceil n^{b}\right\rceil} with at most O(n^{\delta_{\mathrm{in}}}) nonzero entries each. Add zero rows to X and zero columns to Y to obtain square matrices X^{\prime},Y^{\prime}\in R^{n\times n} . This does not change their sparsities, and the nonzero part of X^{\prime}Y^{\prime} is exactly XY . Also,
+\nnz(X^{\prime}Y^{\prime})\leq\left\lceil n^{a}\right\rceil\left\lceil n^{b}\right\rceil=O(n^{a+b})=O(n^{\min\{\delta_{\mathrm{out}},2\delta_{\mathrm{in}}\}})=O(n^{\delta_{\mathrm{out}}}).
+Thus (X^{\prime},Y^{\prime}) satisfies the (\delta_{\mathrm{in}},\delta_{\mathrm{out}}) -FSMM sparsity bounds. Running the assumed FSMM algorithm on X^{\prime} and Y^{\prime} and removing the padded rows and columns then computes the canonical sparse list of XY within the same asymptotic running time. Definition 2.1 therefore gives \gamma\geq\omega_{\delta_{\mathrm{in}},R}(a,1,b) .
+Since this holds for every a,b\in[0,1] with a+b=\min\{\delta_{\mathrm{out}},2\delta_{\mathrm{in}}\} ,
+\gamma\geq\max\!\left\{\delta_{\mathrm{in}},\max_{\begin{subarray}{c}a,b\in[0,1]\\
+a+b=\min\{\delta_{\mathrm{out}},2\delta_{\mathrm{in}}\}\end{subarray}}\omega_{\delta_{\mathrm{in}},R}(a,1,b)\right\}=\beta_{R}(\delta_{\mathrm{in}},\min\{\delta_{\mathrm{out}},2\delta_{\mathrm{in}}\}).
+Theorem 1.1 gives a deterministic upper bound with the same exponent, which proves optimality.
+∎
+The padding reduction and the matching randomized upper bound were known previously [1, 5]. Theorem 1.1 gives the deterministic arbitrary-ring upper bound needed to match the same exponent without randomization.
+6 Conclusion
+We gave a deterministic exact algorithm for fully sparse matrix multiplication whose exponent matches the optimal randomized curve in every input-output sparsity range. Our main contribution is a nested recovery theorem for a sparse matrix that is not given explicitly. From there, an outer bounded decoder over a direct-product ring is able to find the nonzero inner measurements. A geometric sequence of scales balances the two sparsity levels and keeps the temporary updates under control.
+Several questions still remain though. The k^{1+\alpha}\operatorname{polylog}n deterministic recovery method is one source of the exponent slack in our upper bound. A near-linear exact recovery scheme over arbitrary rings would remove this source of overhead. It would also be useful to understand whether nested recovery can work for approximately sparse products, building on the robust reductions of Bringmann, Fischer, and Nakos [7]. The nested recovery theorem may also apply when an unknown sparse object is the output of a bilinear computation whose measurements factor efficiently.
+References
+[1]
+A. Abboud, K. Bringmann, N. Fischer, and M. Künnemann.
+The time complexity of fully sparse matrix multiplication.
+In Proceedings of the 2024 ACM-SIAM Symposium on Discrete Algorithms (SODA), pages 4670–4703, 2024.
+[2]
+J. Alman, R. Duan, V. Vassilevska Williams, Y. Xu, Z. Xu, and R. Zhou.
+More asymmetry yields faster matrix multiplication.
+In Proceedings of the 2025 ACM-SIAM Symposium on Discrete Algorithms (SODA), pages 2005–2039, 2025.
+[3]
+R. R. Amossen and R. Pagh.
+Faster join-projects and sparse matrix multiplications.
+In Proceedings of the 12th International Conference on Database Theory (ICDT), pages 121–126, 2009.
+[4]
+H. Bennett, K. Gajulapalli, A. Golovnev, and E. Warton.
+Matrix multiplication verification using coding theory.
+In Approximation, Randomization, and Combinatorial Optimization. Algorithms and Techniques (APPROX/RANDOM), volume 317 of LIPIcs, pages 42:1–42:13, 2024.
+[5]
+H. Bennett, K. Gajulapalli, A. Golovnev, and E. Warton.
+Output-sparse matrix multiplication using compressed sensing.
+arXiv:2508.10250, 2025.
+[6]
+R. Berinde, A. C. Gilbert, P. Indyk, H. Karloff, and M. J. Strauss.
+Combining geometry and combinatorics: A unified approach to sparse signal recovery.
+In Proceedings of the 46th Annual Allerton Conference on Communication, Control, and Computing, pages 798–805, 2008.
+[7]
+K. Bringmann, N. Fischer, and V. Nakos.
+Robustifying sparse matrix multiplication.
+arXiv:2607.01427, 2026.
+[8]
+E. J. Candès, J. Romberg, and T. Tao.
+Robust uncertainty principles: Exact signal reconstruction from highly incomplete frequency information.
+IEEE Transactions on Information Theory, 52(2):489–509, 2006.
+[9]
+S. Deep, X. Hu, and P. Koutris.
+Fast join project query evaluation using matrix multiplication.
+In Proceedings of the 2020 ACM SIGMOD International Conference on Management of Data, pages 1213–1223, 2020.
+[10]
+E. Dupont, M. Eisenberger, B. Kozlovskii, A. Mehrabian, F. J. R. Ruiz, A. See, R. Zhou, J. Alman, V. Vassilevska Williams, and M. Balog.
+Improving the matrix multiplication exponent with modern optimization and AlphaEvolve.
+arXiv:2608.16884, 2026.
+[11]
+R. Freivalds.
+Fast probabilistic algorithms.
+In Mathematical Foundations of Computer Science (MFCS), volume 74 of Lecture Notes in Computer Science, pages 57–69, 1979.
+[12]
+J. Gao, W. Ji, F. Chang, S. Han, B. Wei, Z. Liu, and Y. Wang.
+A systematic survey of general sparse matrix-matrix multiplication.
+ACM Computing Surveys, 55(12):244:1–244:36, 2023.
+[13]
+L. Gasieniec, C. Levcopoulos, A. Lingas, R. Pagh, and T. Tokuyama.
+Efficiently correcting matrix products.
+Algorithmica, 79(2):428–443, 2017.
+[14]
+A. C. Gilbert and P. Indyk.
+Sparse recovery using sparse matrices.
+Proceedings of the IEEE, 98(6):937–947, 2010.
+[15]
+V. Guruswami, C. Umans, and S. Vadhan.
+Unbalanced expanders and randomness extractors from Parvaresh-Vardy codes.
+Journal of the ACM, 56(4):20:1–20:34, 2009.
+[16]
+F. G. Gustavson.
+Two fast algorithms for sparse matrices: Multiplication and permuted transposition.
+ACM Transactions on Mathematical Software, 4(3):250–269, 1978.
+[17]
+P. Indyk.
+Explicit constructions for compressed sensing of sparse signals.
+In Proceedings of the 19th ACM-SIAM Symposium on Discrete Algorithms (SODA), pages 30–33, 2008.
+[18]
+M. A. Iwen and C. V. Spencer.
+A note on compressed sensing and the complexity of matrix multiplication.
+Information Processing Letters, 109(10):468–471, 2009.
+[19]
+R. Jacob and M. Stöckel.
+Fast output-sensitive matrix multiplication.
+In Algorithms, ESA 2015, volume 9294 of Lecture Notes in Computer Science, pages 766–778, 2015.
+[20]
+H. Kaplan, M. Sharir, and E. Verbin.
+Colored intersection searching via sparse rectangular matrix multiplication.
+In Proceedings of the 22nd ACM Symposium on Computational Geometry, pages 52–60, 2006.
+[21]
+T. Kimbrel and R. K. Sinha.
+A probabilistic algorithm for verifying matrix products using O(n^{2}) time and \log_{2}n+O(1) random bits.
+Information Processing Letters, 45(2):107–110, 1993.
+[22]
+M. Künnemann.
+On nondeterministic derandomization of Freivalds’ algorithm: Consequences, avenues and algorithmic progress.
+In 26th Annual European Symposium on Algorithms (ESA), volume 112 of LIPIcs, pages 56:1–56:16, 2018.
+[23]
+K. Kutzkov.
+Deterministic algorithms for skewed matrix products.
+In 30th International Symposium on Theoretical Aspects of Computer Science (STACS), volume 20 of LIPIcs, pages 466–477, 2013.
+[24]
+A. Lingas.
+A fast output-sensitive algorithm for Boolean matrix multiplication.
+In 17th Annual European Symposium on Algorithms (ESA), volume 5757 of Lecture Notes in Computer Science, pages 408–419, 2009.
+[25]
+G. Lotti and F. Romani.
+On the asymptotic complexity of rectangular matrix multiplication.
+Theoretical Computer Science, 23(2):171–185, 1983.
+[26]
+R. Pagh.
+Compressed matrix multiplication.
+In Proceedings of the 3rd Innovations in Theoretical Computer Science Conference (ITCS), pages 442–451, 2012.
+[27]
+R. Pagh and M. Stöckel.
+The input/output complexity of sparse matrix multiplication.
+In Algorithms, ESA 2014, volume 8737 of Lecture Notes in Computer Science, pages 750–761, 2014.
+[28]
+D. S. Roche.
+Error correction in fast matrix multiplication and inverse.
+In Proceedings of the 2018 ACM International Symposium on Symbolic and Algebraic Computation (ISSAC), pages 343–350, 2018.
+[29]
+D. Van Gucht, R. Williams, D. P. Woodruff, and Q. Zhang.
+The communication complexity of distributed set-joins with applications to matrix multiplication.
+In Proceedings of the 34th ACM Symposium on Principles of Database Systems (PODS), pages 199–212, 2015.
+[30]
+V. Vassilevska Williams, Y. Xu, Z. Xu, and R. Zhou.
+New bounds for matrix multiplication: From alpha to omega.
+In Proceedings of the 2024 ACM-SIAM Symposium on Discrete Algorithms (SODA), pages 3792–3835, 2024.
+[31]
+R. Yuster and U. Zwick.
+Fast sparse matrix multiplication.
+ACM Transactions on Algorithms, 1(1):2–13, 2005.
+Experimental support, please
+view the build logs
+for errors. Generated by
+L
+A
+T
+E
+xml
+.
+Instructions for reporting errors
+We are continuing to improve HTML versions of papers, and your feedback helps enhance accessibility and mobile
+support. To report errors in the HTML that will help us improve conversion and rendering, choose any of the
+methods listed below:
+Click the &quot;Report Issue&quot; (
+) button, located in the page header.
+Tip: You can select the relevant text first, to include it in your report.
+Our team has already identified the following issues. We appreciate your time reviewing and reporting rendering errors we
+may not have found yet. Your efforts will help us improve the HTML versions for all readers, because disability
+should not be a barrier to accessing research. Thank you for your continued support in championing open access for
+all.
+Have a free development cycle? Help support accessibility at arXiv! Our collaborators at LaTeXML maintain a list of packages that need conversion, and welcome developer contributions.
+We gratefully acknowledge support from
+our major funders,
+member institutions, ,
+and all contributors.
+About
+·
+Help
+·
+Contact
+·
+Subscribe
+·
+Copyright
+·
+Privacy
+·
+Accessibility
+·
+Operational Status (opens in new tab)
+Major funding support from
+</pre></html>

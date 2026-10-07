@@ -1,0 +1,554 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>&quot;&quot;&quot;</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>&quot;&quot;&quot;</h1><p>Source ID d-dd21c6c9f63fbaf9; literature/sources/r01_discovery/repo_pipeline__novelty.py; 8877 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>&quot;&quot;&quot;
+pipeline/novelty.py — known-theorem novelty filter.
+
+Classifies a generated linear-inequality Conjecture as either a rediscovery of a
+classical/trivial result (&quot;known&quot;) or genuinely &quot;novel&quot;.
+
+Method
+------
+A conjecture  C:  f(G) ≤ Σ cᵢ·gᵢ(G) + c₀   (optionally restricted to a class P)
+is considered *known* if it is logically **implied** by a convex combination of
+curated classical theorems with the same left-hand invariant f and a compatible
+graph class.
+
+Because graph invariants are independent non-negative quantities, a linear form
+B(G) = Σ bᵢ·gᵢ + b₀ satisfies  B(G) ≤ C_rhs(G)  for every graph in the class iff
+
+    bᵢ ≤ cᵢ          for every invariant i          (term-wise dominance)
+    b₀ ≤ c₀ + Σ (cᵢ − bᵢ)·Lᵢ                         (offset, using class lower
+                                                       bounds Lᵢ ≤ gᵢ)
+
+If several known theorems  f ≤ Bⱼ  hold, then for convex weights wⱼ ≥ 0, Σ wⱼ = 1
+we also have  f ≤ Σ wⱼ Bⱼ.  So C is known iff such weights exist with the combined
+form dominating C_rhs — a small LP feasibility problem (scipy ``linprog``), with a
+cheap single-theorem fast path checked first.
+
+The theorem table below is intentionally conservative: it encodes only safe,
+universally-true lower bounds, so the filter never *wrongly* hides a real
+conjecture (it may, at worst, leave a trivial one labelled &quot;novel&quot;). Extend
+``KNOWN_THEOREMS`` / ``LOWER_BOUNDS`` to tighten it further.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import json
+import logging
+import os
+from typing import Dict, List, Optional, Tuple
+
+from conjecture import Conjecture
+
+logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Class hierarchy — a theorem proved for a superclass also holds for subclasses.
+# ---------------------------------------------------------------------------
+
+# Containments among the *structural* classes come from ISGCI, imported by
+# tools/build_class_hierarchy.py into pipeline/data/class_hierarchy.json (91
+# edges, already transitively closed, so the flat lookup below is correct).
+# Everything ISGCI does not model is listed here by hand.
+MANUAL_SUPERCLASSES: Dict[str, set] = {
+    # degree conditions: not ISGCI classes (they are not hereditary)
+    &quot;cubic&quot;: {&quot;regular&quot;, &quot;subcubic&quot;},
+    &quot;regular&quot;: set(),
+    # ISGCI&#x27;s &quot;tree&quot; is the hereditary class of forests, so the data file labels
+    # it `acyclic`; a tree is a connected forest, which ISGCI cannot say.
+    &quot;tree&quot;: {&quot;acyclic&quot;, &quot;connected&quot;},
+    &quot;caterpillar&quot;: {&quot;tree&quot;},
+    # order thresholds: n ≥ 4 implies n ≥ 3, so an (n ≥ 4)-restricted candidate
+    # may be judged by an (n ≥ 3)-restricted known bound.
+    &quot;order_bigger_than_3&quot;: {&quot;order_bigger_than_2&quot;},
+}
+
+
+CLASS_HIERARCHY_PATH = os.path.join(os.path.dirname(__file__), &quot;data&quot;,
+                                    &quot;class_hierarchy.json&quot;)
+
+
+def _load_class_hierarchy(path: Optional[str] = None) -&gt; Dict[str, set]:
+    &quot;&quot;&quot;ISGCI-derived superclass table, merged with the manual entries.
+
+    A missing/damaged data file degrades to the manual table rather than
+    failing the run: a smaller lattice only makes the filter *more*
+    conservative, which is the safe direction (it may leave a rediscovery
+    labelled novel; it can never hide a genuine conjecture).
+    &quot;&quot;&quot;
+    table = {k: set(v) for k, v in MANUAL_SUPERCLASSES.items()}
+    path = path or CLASS_HIERARCHY_PATH
+    try:
+        with open(path) as fh:
+            derived = json.load(fh)[&quot;superclasses&quot;]
+    except Exception as e:
+        logger.warning(&quot;class hierarchy unavailable (%s); using manual table only&quot;, e)
+        return table
+    for cls, sup in derived.items():
+        table.setdefault(cls, set()).update(sup)
+    # Re-close: a manual edge into an ISGCI class (tree ⊆ acyclic) must inherit
+    # that class&#x27;s own superclasses, or the flat lookup would miss them.
+    for cls in list(table):
+        seen, stack = set(), list(table[cls])
+        while stack:
+            c = stack.pop()
+            if c in seen or c == cls:
+                continue
+            seen.add(c)
+            stack.extend(table.get(c, ()))
+        table[cls] = seen
+    return table
+
+
+SUPERCLASSES: Dict[str, set] = _load_class_hierarchy()
+
+
+# ---------------------------------------------------------------------------
+# Safe lower bounds Lᵢ ≤ invariant(G), true for every graph with ≥ 1 vertex.
+# (Conservative on purpose — only bounds that cannot be violated.)
+# ---------------------------------------------------------------------------
+
+LOWER_BOUNDS: Dict[str, float] = {
+    &quot;n&quot;: 1.0,
+    &quot;chi&quot;: 1.0,
+    &quot;omega&quot;: 1.0,
+    &quot;alpha&quot;: 1.0,
+    &quot;gamma&quot;: 1.0,
+    # everything else is ≥ 0
+}
+
+
+# ---------------------------------------------------------------------------
+# Linear identities Σ cᵢ·invᵢ + c₀ = 0 that hold on a class (or all graphs).
+# Used to *substitute* equal quantities when checking implication, e.g. on
+# regular graphs Δ = δ = 2m/n = ρ = degeneracy, so a bound on one is a bound on
+# any of them; or Gallai&#x27;s n = α + τ and König&#x27;s ν = τ on bipartite graphs.
+# ---------------------------------------------------------------------------
+
+IDENTITIES: List[Tuple[Dict[str, float], float, Optional[str]]] = [
+    ({&quot;n&quot;: 1.0, &quot;alpha&quot;: -1.0, &quot;vertex_cover&quot;: -1.0}, 0.0, None),     # n = α + τ
+    ({&quot;nu&quot;: 1.0, &quot;vertex_cover&quot;: -1.0}, 0.0, &quot;bipartite&quot;),            # ν = τ (König)
+    ({&quot;Delta&quot;: 1.0, &quot;delta&quot;: -1.0}, 0.0, &quot;regular&quot;),
+    ({&quot;Delta&quot;: 1.0, &quot;avg_deg&quot;: -1.0}, 0.0, &quot;regular&quot;),
+    ({&quot;Delta&quot;: 1.0, &quot;spectral_radius&quot;: -1.0}, 0.0, &quot;regular&quot;),
+    ({&quot;Delta&quot;: 1.0, &quot;degeneracy&quot;: -1.0}, 0.0, &quot;regular&quot;),
+    ({&quot;alpha&quot;: 1.0, &quot;ind_dom&quot;: -1.0}, 0.0, &quot;well_covered&quot;),   # i(G) = α (well-covered)
+]
+
+
+# ---------------------------------------------------------------------------
+# Curated classical / trivial theorems.
+#
+# Each entry:  (lhs, {rhs_invariant: coeff, ...}, offset, class_or_None, name)
+# meaning      lhs(G) ≤ Σ coeff·rhs(G) + offset   for the given class.
+# ---------------------------------------------------------------------------
+
+KNOWN_THEOREMS: List[Tuple[str, Dict[str, float], float, Optional[str], str]] = [
+    # ── chromatic / clique ────────────────────────────────────────────────
+    (&quot;omega&quot;, {&quot;chi&quot;: 1.0}, 0.0, None, &quot;ω ≤ χ&quot;),
+    (&quot;chi&quot;,   {&quot;Delta&quot;: 1.0}, 1.0, None, &quot;χ ≤ Δ + 1 (greedy/Brooks)&quot;),
+    (&quot;omega&quot;, {&quot;Delta&quot;: 1.0}, 1.0, None, &quot;ω ≤ Δ + 1&quot;),
+
+    # ── Whitney connectivity chain  κ ≤ λ ≤ δ ≤ Δ ─────────────────────────
+    (&quot;kappa&quot;,  {&quot;lambda&quot;: 1.0}, 0.0, None, &quot;κ ≤ λ (Whitney)&quot;),
+    (&quot;lambda&quot;, {&quot;delta&quot;: 1.0},  0.0, None, &quot;λ ≤ δ (Whitney)&quot;),
+    (&quot;kappa&quot;,  {&quot;delta&quot;: 1.0},  0.0, None, &quot;κ ≤ δ (Whitney)&quot;),
+    (&quot;kappa&quot;,  {&quot;Delta&quot;: 1.0},  0.0, None, &quot;κ ≤ Δ&quot;),
+    (&quot;lambda&quot;, {&quot;Delta&quot;: 1.0},  0.0, None, &quot;λ ≤ Δ&quot;),
+    (&quot;delta&quot;,  {&quot;Delta&quot;: 1.0},  0.0, None, &quot;δ ≤ Δ&quot;),
+
+    # ── algebraic (Fiedler) connectivity:  a(G) ≤ κ ≤ λ ≤ δ ───────────────
+    (&quot;alg&quot;, {&quot;kappa&quot;: 1.0},  0.0, None, &quot;a(G) ≤ κ (Fiedler)&quot;),
+    (&quot;alg&quot;, {&quot;lambda&quot;: 1.0}, 0.0, None, &quot;a(G) ≤ λ (Fiedler)&quot;),
+    (&quot;alg&quot;, {&quot;delta&quot;: 1.0},  0.0, None, &quot;a(G) ≤ δ (Fiedler)&quot;),
+
+    # ── distance ──────────────────────────────────────────────────────────
+    (&quot;rad&quot;,  {&quot;diam&quot;: 1.0}, 0.0, None, &quot;rad ≤ diam&quot;),
+    (&quot;diam&quot;, {&quot;rad&quot;: 2.0},  0.0, None, &quot;diam ≤ 2·rad&quot;),
+
+    # ── matching ──────────────────────────────────────────────────────────
+    (&quot;nu&quot;, {&quot;n&quot;: 0.5}, 0.0, None, &quot;ν ≤ n/2&quot;),
+
+    # ── trivial order caps  (f ≤ n, Δ ≤ n−1, …) ───────────────────────────
+    (&quot;chi&quot;,    {&quot;n&quot;: 1.0}, 0.0, None, &quot;χ ≤ n&quot;),
+    (&quot;omega&quot;,  {&quot;n&quot;: 1.0}, 0.0, None, &quot;ω ≤ n&quot;),
+    (&quot;alpha&quot;,  {&quot;n&quot;: 1.0}, 0.0, None, &quot;α ≤ n&quot;),
+    (&quot;gamma&quot;,  {&quot;n&quot;: 1.0}, 0.0, None, &quot;γ ≤ n&quot;),
+    (&quot;nu&quot;,     {&quot;n&quot;: 1.0}, 0.0, None, &quot;ν ≤ n&quot;),
+    (&quot;kappa&quot;,  {&quot;n&quot;: 1.0}, 0.0, None, &quot;κ ≤ n&quot;),
+    (&quot;lambda&quot;, {&quot;n&quot;: 1.0}, 0.0, None, &quot;λ ≤ n&quot;),
+    (&quot;Delta&quot;,  {&quot;n&quot;: 1.0}, -1.0, None, &quot;Δ ≤ n − 1&quot;),
+    (&quot;delta&quot;,  {&quot;n&quot;: 1.0}, -1.0, None, &quot;δ ≤ n − 1&quot;),
+    (&quot;diam&quot;,   {&quot;n&quot;: 1.0}, -1.0, None, &quot;diam ≤ n − 1&quot;),
+    (&quot;rad&quot;,    {&quot;n&quot;: 1.0}, -1.0, None, &quot;rad ≤ n − 1&quot;),
+
+    # ── edge colouring (Vizing):  Δ ≤ χ′ ≤ Δ + 1 ─────────────────────────
+    (&quot;Delta&quot;, {&quot;chi_e&quot;: 1.0}, 0.0, None, &quot;Δ ≤ χ′ (Vizing)&quot;),
+    (&quot;chi_e&quot;, {&quot;Delta&quot;: 1.0}, 1.0, None, &quot;χ′ ≤ Δ + 1 (Vizing)&quot;),
+
+    # ── degeneracy d:  δ ≤ d ≤ Δ,  χ,ω ≤ d + 1,  d ≤ tw ───────────────────
+    (&quot;degeneracy&quot;, {&quot;Delta&quot;: 1.0}, 0.0, None, &quot;degeneracy ≤ Δ&quot;),
+    (&quot;delta&quot;, {&quot;degeneracy&quot;: 1.0}, 0.0, None, &quot;δ ≤ degeneracy&quot;),
+    (&quot;chi&quot;, {&quot;degeneracy&quot;: 1.0}, 1.0, None, &quot;χ ≤ degeneracy + 1&quot;),
+    (&quot;omega&quot;, {&quot;degeneracy&quot;: 1.0}, 1.0, None, &quot;ω ≤ degeneracy + 1&quot;),
+    (&quot;degeneracy&quot;, {&quot;treewidth&quot;: 1.0}, 0.0, None, &quot;degeneracy ≤ treewidth&quot;),
+
+    # ── treewidth tw:  χ,ω ≤ tw + 1,  δ ≤ tw,  tw ≤ n − 1 ─────────────────
+    (&quot;chi&quot;, {&quot;treewidth&quot;: 1.0}, 1.0, None, &quot;χ ≤ tw + 1&quot;),
+    (&quot;omega&quot;, {&quot;treewidth&quot;: 1.0}, 1.0, None, &quot;ω ≤ tw + 1&quot;),
+    (&quot;delta&quot;, {&quot;treewidth&quot;: 1.0}, 0.0, None, &quot;δ ≤ tw&quot;),
+    (&quot;treewidth&quot;, {&quot;n&quot;: 1.0}, -1.0, None, &quot;tw ≤ n − 1&quot;),
+
+    # ── vertex cover τ (Gallai τ = n − α; König–Egerváry ν ≤ τ ≤ 2ν) ──────
+    (&quot;vertex_cover&quot;, {&quot;n&quot;: 1.0, &quot;alpha&quot;: -1.0}, 0.0, None, &quot;τ = n − α (Gallai)&quot;),
+    (&quot;alpha&quot;, {&quot;n&quot;: 1.0, &quot;vertex_cover&quot;: -1.0}, 0.0, None, &quot;α = n − τ (Gallai)&quot;),
+    (&quot;nu&quot;, {&quot;vertex_cover&quot;: 1.0}, 0.0, None, &quot;ν ≤ τ (König–Egerváry)&quot;),
+    (&quot;vertex_cover&quot;, {&quot;nu&quot;: 2.0}, 0.0, None, &quot;τ ≤ 2ν&quot;),
+    (&quot;vertex_cover&quot;, {&quot;n&quot;: 1.0}, -1.0, None, &quot;τ ≤ n − 1&quot;),
+    (&quot;nu&quot;, {&quot;alpha&quot;: 0.5, &quot;vertex_cover&quot;: 0.5}, 0.0, None, &quot;ν ≤ ½(α+τ) = n/2&quot;),
+
+    # ── (independent) domination:  γ ≤ i(G) ≤ α ──────────────────────────
+    (&quot;gamma&quot;, {&quot;ind_dom&quot;: 1.0}, 0.0, None, &quot;γ ≤ i(G)&quot;),
+    (&quot;ind_dom&quot;, {&quot;alpha&quot;: 1.0}, 0.0, None, &quot;i(G) ≤ α&quot;),
+
+    # ── degree / spectral chain:  δ ≤ 2m/n ≤ ρ ≤ Δ,  ω ≤ ρ + 1 ───────────
+    (&quot;delta&quot;, {&quot;avg_deg&quot;: 1.0}, 0.0, None, &quot;δ ≤ 2m/n&quot;),
+    (&quot;avg_deg&quot;, {&quot;Delta&quot;: 1.0}, 0.0, None, &quot;2m/n ≤ Δ&quot;),
+    (&quot;avg_deg&quot;, {&quot;spectral_radius&quot;: 1.0}, 0.0, None, &quot;2m/n ≤ ρ&quot;),
+    (&quot;spectral_radius&quot;, {&quot;Delta&quot;: 1.0}, 0.0, None, &quot;ρ ≤ Δ&quot;),
+    (&quot;delta&quot;, {&quot;spectral_radius&quot;: 1.0}, 0.0, None, &quot;δ ≤ ρ&quot;),
+    (&quot;omega&quot;, {&quot;spectral_radius&quot;: 1.0}, 1.0, None, &quot;ω ≤ ρ + 1&quot;),
+    (&quot;eig2&quot;, {&quot;spectral_radius&quot;: 1.0}, 0.0, None, &quot;λ₂ ≤ λ₁ (adjacency)&quot;),
+
+    # ── Laplacian largest eigenvalue μ:  a(G) ≤ μ ≤ 2Δ,  μ ≤ n ───────────
+    (&quot;lap_max&quot;, {&quot;n&quot;: 1.0}, 0.0, None, &quot;μ ≤ n&quot;),
+    (&quot;lap_max&quot;, {&quot;Delta&quot;: 2.0}, 0.0, None, &quot;μ ≤ 2Δ&quot;),
+    (&quot;alg&quot;, {&quot;lap_max&quot;: 1.0}, 0.0, None, &quot;a(G) ≤ μ&quot;),
+
+    # ── paths / cycles / distance ─────────────────────────────────────────
+    (&quot;longest_path&quot;, {&quot;n&quot;: 1.0}, -1.0, None, &quot;longest path ≤ n − 1&quot;),
+    (&quot;circumference&quot;, {&quot;n&quot;: 1.0}, 0.0, None, &quot;circumference ≤ n&quot;),
+    (&quot;circumference&quot;, {&quot;longest_path&quot;: 1.0}, 1.0, None, &quot;circumference ≤ longest path + 1&quot;),
+    (&quot;diam&quot;, {&quot;longest_path&quot;: 1.0}, 0.0, None, &quot;diam ≤ longest path&quot;),
+    (&quot;girth&quot;, {&quot;circumference&quot;: 1.0}, 0.0, None, &quot;girth ≤ circumference&quot;),
+
+    # ── symmetry / components ─────────────────────────────────────────────
+    (&quot;components&quot;, {&quot;n&quot;: 1.0}, 0.0, None, &quot;components ≤ n&quot;),
+    (&quot;vertex_orbits&quot;, {&quot;n&quot;: 1.0}, 0.0, None, &quot;vertex orbits ≤ n&quot;),
+    (&quot;edge_orbits&quot;, {&quot;m&quot;: 1.0}, 0.0, None, &quot;edge orbits ≤ m&quot;),
+    (&quot;arc_orbits&quot;, {&quot;edge_orbits&quot;: 2.0}, 0.0, None, &quot;arc orbits ≤ 2·edge orbits&quot;),
+
+    # ── perfect graphs: χ = ω on bipartite &amp; chordal graphs ───────────────
+    (&quot;chi&quot;, {&quot;omega&quot;: 1.0}, 0.0, &quot;bipartite&quot;, &quot;χ ≤ ω (bipartite is perfect)&quot;),
+    (&quot;chi&quot;, {&quot;omega&quot;: 1.0}, 0.0, &quot;chordal&quot;,   &quot;χ ≤ ω (chordal is perfect)&quot;),
+
+    # ── bipartite ─────────────────────────────────────────────────────────
+    (&quot;chi&quot;,   {}, 2.0, &quot;bipartite&quot;, &quot;χ ≤ 2 (bipartite)&quot;),
+    (&quot;omega&quot;, {}, 2.0, &quot;bipartite&quot;, &quot;ω ≤ 2 (bipartite)&quot;),
+    (&quot;tri&quot;,   {}, 0.0, &quot;bipartite&quot;, &quot;triangle-free (bipartite)&quot;),
+    (&quot;n&quot;, {&quot;alpha&quot;: 2.0}, 0.0, &quot;bipartite&quot;, &quot;n ≤ 2α (bipartite, König/Gallai)&quot;),
+
+    # ── planar ────────────────────────────────────────────────────────────
+    (&quot;chi&quot;,   {}, 4.0, &quot;planar&quot;, &quot;χ ≤ 4 (Four-Colour Theorem)&quot;),
+    (&quot;delta&quot;, {}, 5.0, &quot;planar&quot;, &quot;δ ≤ 5 (planar degeneracy)&quot;),
+
+    # ── regular ───────────────────────────────────────────────────────────
+    (&quot;Delta&quot;, {&quot;delta&quot;: 1.0}, 0.0, &quot;regular&quot;, &quot;Δ = δ (regular)&quot;),
+    (&quot;delta&quot;, {&quot;Delta&quot;: 1.0}, 0.0, &quot;regular&quot;, &quot;Δ = δ (regular)&quot;),
+
+    # ── new computed classes ──────────────────────────────────────────────
+    (&quot;omega&quot;, {}, 2.0, &quot;triangle_free&quot;, &quot;ω ≤ 2 (triangle-free)&quot;),
+    (&quot;tri&quot;, {}, 0.0, &quot;triangle_free&quot;, &quot;0 triangles (triangle-free)&quot;),
+    (&quot;chi&quot;, {&quot;omega&quot;: 1.0}, 0.0, &quot;cograph&quot;, &quot;χ ≤ ω (cographs are perfect)&quot;),
+    (&quot;chi&quot;, {&quot;omega&quot;: 1.0}, 0.0, &quot;split&quot;, &quot;χ ≤ ω (split graphs are perfect)&quot;),
+    (&quot;alpha&quot;, {&quot;ind_dom&quot;: 1.0}, 0.0, &quot;well_covered&quot;, &quot;α = i(G) (well-covered)&quot;),
+
+    # ── trivial / known bounds (per external review) ──────────────────────
+    # universal structural &amp; spectral facts (also subsume class-conditioned forms)
+    (&quot;treewidth&quot;, {&quot;fvs&quot;: 1.0}, 1.0, None, &quot;tw ≤ fvs + 1&quot;),
+    (&quot;omega&quot;, {&quot;fvs&quot;: 1.0}, 2.0, None, &quot;ω ≤ fvs + 2&quot;),
+    (&quot;chi&quot;, {&quot;spectral_radius&quot;: 1.0}, 1.0, None, &quot;χ ≤ ρ + 1 (Wilf)&quot;),
+    (&quot;chi_e&quot;, {&quot;lap_max&quot;: 1.0}, 0.0, None, &quot;χ′ ≤ μ_max&quot;),
+    (&quot;lap_max&quot;, {&quot;chi_e&quot;: 2.0}, 0.0, None, &quot;μ_max ≤ 2χ′&quot;),
+    (&quot;diam&quot;, {&quot;longest_induced_path&quot;: 1.0}, 0.0, None, &quot;diam ≤ longest induced path&quot;),
+    (&quot;longest_path&quot;, {&quot;nu&quot;: 2.0}, 0.0, None, &quot;longest path ≤ 2ν&quot;),
+    (&quot;circumference&quot;, {&quot;nu&quot;: 2.0}, 0.0, None, &quot;circumference ≤ 2ν&quot;),
+    (&quot;longest_induced_cycle&quot;, {&quot;longest_induced_path&quot;: 1.0}, 1.0, None, &quot;lic ≤ lip + 1&quot;),
+    (&quot;longest_induced_cycle&quot;, {&quot;alpha&quot;: 2.0}, 1.0, None, &quot;lic ≤ 2α + 1&quot;),
+    (&quot;components&quot;, {&quot;gamma&quot;: 1.0}, 0.0, None, &quot;components ≤ γ&quot;),
+    (&quot;spectral_radius&quot;, {&quot;Delta&quot;: 1.0}, 0.0, None, &quot;ρ ≤ Δ&quot;),       # also density helper
+    (&quot;density&quot;, {}, 1.0, None, &quot;density ≤ 1 (trivial)&quot;),
+    # class-specific known/artifact bounds
+    (&quot;degeneracy&quot;, {}, 5.0, &quot;planar&quot;, &quot;degeneracy ≤ 5 (planar, Euler)&quot;),
+    (&quot;degeneracy&quot;, {&quot;treewidth&quot;: 0.5}, 2.0, &quot;planar&quot;, &quot;degeneracy ≤ ½tw+2 (planar artifact)&quot;),
+    (&quot;vertex_cover&quot;, {&quot;n&quot;: 0.5}, 0.0, &quot;bipartite&quot;, &quot;τ ≤ n/2 (bipartite)&quot;),
+    (&quot;spectral_radius&quot;, {&quot;lap_max&quot;: 0.5}, 0.0, &quot;bipartite&quot;, &quot;ρ ≤ ½μ (bipartite)&quot;),
+    (&quot;rad&quot;, {&quot;alpha&quot;: 1.0}, 0.0, &quot;claw_free&quot;, &quot;rad ≤ α (claw-free, known)&quot;),
+    (&quot;lap_max&quot;, {&quot;spectral_radius&quot;: 2.0}, 0.0, &quot;regular&quot;, &quot;μ ≤ 2ρ (regular)&quot;),
+    (&quot;chi_e&quot;, {&quot;degeneracy&quot;: 1.0}, 1.0, &quot;regular&quot;, &quot;χ′ ≤ degeneracy + 1 (regular)&quot;),
+
+    # ── round-2 triage: further provable / trivial bounds ─────────────────
+    (&quot;degeneracy&quot;, {&quot;spectral_radius&quot;: 1.0}, 0.0, None, &quot;degeneracy ≤ ρ&quot;),
+    (&quot;avg_deg&quot;, {&quot;degeneracy&quot;: 2.0}, 0.0, None, &quot;2m/n ≤ 2·degeneracy&quot;),
+    (&quot;chi&quot;, {&quot;chi_e&quot;: 1.0}, 1.0, None, &quot;χ ≤ χ′ + 1&quot;),
+    (&quot;omega&quot;, {&quot;chi_e&quot;: 1.0}, 1.0, None, &quot;ω ≤ χ′ + 1&quot;),
+    (&quot;chi_e&quot;, {&quot;Delta&quot;: 1.5}, 0.0, None, &quot;χ′ ≤ 1.5Δ (Vizing)&quot;),
+    (&quot;eig_min&quot;, {}, 0.0, None, &quot;λ_min ≤ 0 (trace 0)&quot;),
+    (&quot;rad&quot;, {&quot;n&quot;: 0.5}, 0.0, None, &quot;rad ≤ n/2&quot;),
+    (&quot;degeneracy&quot;, {&quot;genus&quot;: 1.0}, 5.0, None, &quot;degeneracy ≤ genus + 5 (Euler)&quot;),
+    (&quot;delta&quot;, {&quot;genus&quot;: 1.0}, 5.0, None, &quot;δ ≤ genus + 5 (Euler)&quot;),
+    (&quot;kappa&quot;, {&quot;genus&quot;: 1.0}, 5.0, None, &quot;κ ≤ genus + 5 (Euler)&quot;),
+    (&quot;lambda&quot;, {&quot;genus&quot;: 1.0}, 5.0, None, &quot;λ ≤ genus + 5 (Euler)&quot;),
+    (&quot;eig2&quot;, {&quot;spectral_radius&quot;: 1.0}, 0.0, None, &quot;λ₂ ≤ λ₁ = ρ&quot;),
+    (&quot;circumference&quot;, {&quot;vertex_cover&quot;: 2.0}, 0.0, None, &quot;circumference ≤ 2τ&quot;),
+
+    # ── external review round 2: more classical / structural results ──────
+    # rad ≤ α: Fajtlowicz–Saks; via Chung&#x27;s induced-path theorem (rad r ⟹ an
+    # induced path on ≥2r−1 vertices ⟹ α ≥ r). Universal ⇒ covers all classes.
+    (&quot;rad&quot;, {&quot;alpha&quot;: 1.0}, 0.0, None, &quot;rad ≤ α (Fajtlowicz–Saks / Chung)&quot;),
+    (&quot;gamma&quot;, {&quot;nu&quot;: 1.0}, 0.0, None, &quot;γ ≤ ν (Laskar–Walikar, isolate-free)&quot;),
+    (&quot;omega&quot;, {&quot;tri&quot;: 1.0}, 2.0, None, &quot;ω ≤ tri + 2 (clique has C(ω,3) triangles)&quot;),
+    (&quot;n&quot;, {&quot;m&quot;: 1.0}, 1.0, None, &quot;n ≤ m + 1 (connected: m ≥ n−1)&quot;),
+    # split graphs:  diam ≤ 3, rad ≤ 2, hence the radius/diameter/domination bounds
+    (&quot;diam&quot;, {}, 3.0, &quot;split&quot;, &quot;diam ≤ 3 (split)&quot;),
+    (&quot;rad&quot;, {}, 2.0, &quot;split&quot;, &quot;rad ≤ 2 (split)&quot;),
+    (&quot;rad&quot;, {&quot;gamma&quot;: 1.0}, 0.0, &quot;split&quot;, &quot;rad ≤ γ (split)&quot;),
+    (&quot;rad&quot;, {&quot;ind_dom&quot;: 1.0}, 0.0, &quot;split&quot;, &quot;rad ≤ i (split)&quot;),
+    (&quot;diam&quot;, {&quot;rad&quot;: 1.0}, 1.0, &quot;split&quot;, &quot;diam ≤ rad + 1 (split)&quot;),
+    (&quot;diam&quot;, {&quot;gamma&quot;: 1.0}, 1.0, &quot;split&quot;, &quot;diam ≤ γ + 1 (split)&quot;),
+    (&quot;diam&quot;, {&quot;ind_dom&quot;: 1.0}, 1.0, &quot;split&quot;, &quot;diam ≤ i + 1 (split)&quot;),
+    # well-covered: i(G) = α(G), so rad ≤ α gives rad ≤ i too (via identity below)
+    (&quot;rad&quot;, {&quot;gamma&quot;: 1.0}, 0.0, &quot;well_covered&quot;, &quot;rad ≤ γ (well-covered)&quot;),
+    # chordal: perfect (χ=ω) + simplicial vertex (δ ≤ C(δ,2) ≤ tri)
+    (&quot;chi&quot;, {&quot;tri&quot;: 1.0}, 2.0, &quot;chordal&quot;, &quot;χ ≤ tri + 2 (chordal, perfect)&quot;),
+    (&quot;delta&quot;, {&quot;tri&quot;: 1.0}, 1.0, &quot;chordal&quot;, &quot;δ ≤ tri + 1 (chordal, simplicial)&quot;),
+    (&quot;kappa&quot;, {&quot;tri&quot;: 1.0}, 1.0, &quot;chordal&quot;, &quot;κ ≤ tri + 1 (chordal)&quot;),
+    (&quot;lambda&quot;, {&quot;tri&quot;: 1.0}, 1.0, &quot;chordal&quot;, &quot;λ ≤ tri + 1 (chordal)&quot;),
+    # Hamiltonian: spanning cycle ⇒ diam ≤ ⌊n/2⌋ and a near-perfect matching
+    (&quot;diam&quot;, {&quot;gamma&quot;: 2.0}, 0.0, &quot;hamiltonian&quot;, &quot;diam ≤ 2γ (Hamiltonian)&quot;),
+    (&quot;diam&quot;, {&quot;ind_dom&quot;: 2.0}, 0.0, &quot;hamiltonian&quot;, &quot;diam ≤ 2i (Hamiltonian)&quot;),
+    (&quot;n&quot;, {&quot;nu&quot;: 2.0}, 1.0, &quot;hamiltonian&quot;, &quot;n ≤ 2ν + 1 (Hamiltonian)&quot;),
+    (&quot;n&quot;, {&quot;nu&quot;: 2.0}, 1.0, &quot;claw_free&quot;, &quot;n ≤ 2ν + 1 (Sumner–Las Vergnas)&quot;),
+]
+
+
+# ---------------------------------------------------------------------------
+# Transitive closure of the simple  f ≤ g  relations
+# ---------------------------------------------------------------------------
+# Many true bounds are chains: κ ≤ λ ≤ δ ≤ degeneracy ≤ treewidth, or
+# a(G) ≤ κ ≤ … ≤ Δ ≤ χ′.  Each link is a tabled theorem of the form
+# ``f ≤ g`` (coeff 1, offset 0); their transitive composition is also true.
+# We materialise the closure as extra theorems so the implication checker
+# (which only combines theorems sharing the conjecture&#x27;s LHS) catches the
+# composed bounds too.
+
+def _transitive_theorems(base):
+    from collections import defaultdict
+
+    universal = defaultdict(set)              # f -&gt; {g}   (holds on all graphs)
+    per_class = defaultdict(lambda: defaultdict(set))   # cls -&gt; f -&gt; {g}
+    for lhs, rhs, off, cls, _ in base:
+        if off == 0.0 and len(rhs) == 1:
+            (g, c), = rhs.items()
+            if c == 1.0:
+                (universal if cls is None else per_class[cls])[lhs].add(g)
+
+    def closure(adj):
+        nodes = set(adj) | {g for s in adj.values() for g in s}
+        reach = {f: set(adj.get(f, ())) for f in nodes}
+        changed = True
+        while changed:
+            changed = False
+            for f in nodes:
+                extra = set().union(*(reach.get(g, set()) for g in reach[f])) if reach[f] else set()
+                if not extra &lt;= reach[f]:
+                    reach[f] |= extra
+                    changed = True
+        return reach
+
+    derived = []
+    ureach = closure(universal)
+    for f, gs in ureach.items():
+        for g in gs:
+            if f != g and g not in universal.get(f, set()):
+                derived.append((f, {g: 1.0}, 0.0, None, f&quot;transitive: {f} ≤ {g}&quot;))
+
+    for cls, cedges in per_class.items():
+        merged = defaultdict(set)
+        for f in set(universal) | set(cedges):
+            merged[f] = universal.get(f, set()) | cedges.get(f, set())
+        for f, gs in closure(merged).items():
+            for g in gs:
+                if f != g and g not in ureach.get(f, set()) and g not in cedges.get(f, set()):
+                    derived.append((f, {g: 1.0}, 0.0, cls, f&quot;transitive[{cls}]: {f} ≤ {g}&quot;))
+    return derived
+
+
+# Domain-curated known relations over the domination / zero-forcing families
+# (pipeline/known_relations.py), folded in *before* the transitive closure so
+# their simple f ≤ g links compose with the classical chains.
+try:
+    from pipeline import known_relations as _known_relations
+    KNOWN_THEOREMS += _known_relations.load_relations()
+except Exception as _exc:  # pragma: no cover - defensive: never break the filter
+    logger.warning(&quot;known_relations not loaded: %s&quot;, _exc)
+
+KNOWN_THEOREMS += _transitive_theorems(KNOWN_THEOREMS)
+
+
+# ---------------------------------------------------------------------------
+# Implication checks
+# ---------------------------------------------------------------------------
+
+def _rhs_of(conj: Conjecture) -&gt; Tuple[str, Dict[str, float], float, Optional[str]]:
+    &quot;&quot;&quot;Normalise a conjecture to  inv_a ≤ {coeffs} + offset  (coeff on lhs = 1).&quot;&quot;&quot;
+    ineq = conj.inequality
+    ca = ineq.coeff_a or 1.0
+    rhs: Dict[str, float] = {}
+    rhs[ineq.inv_b] = rhs.get(ineq.inv_b, 0.0) + ineq.coeff_b / ca
+    for coeff, name in ineq.extra_terms:
+        rhs[name] = rhs.get(name, 0.0) + coeff / ca
+    return ineq.inv_a, rhs, ineq.offset / ca, ineq.hypothesis
+
+
+def _single_implies(B: Dict[str, float], b0: float,
+                    R: Dict[str, float], r0: float, tol: float = 1e-6) -&gt; bool:
+    &quot;&quot;&quot;Does the single known bound (B, b0) dominate the conjecture rhs (R, r0)?&quot;&quot;&quot;
+    invs = set(B) | set(R)
+    # term-wise dominance: bᵢ ≤ cᵢ
+    for i in invs:
+        if B.get(i, 0.0) &gt; R.get(i, 0.0) + tol:
+            return False
+    # offset, relaxed by the safe class lower bounds
+    slack = r0 - b0 + sum(
+        (R.get(i, 0.0) - B.get(i, 0.0)) * LOWER_BOUNDS.get(i, 0.0) for i in invs
+    )
+    return slack &gt;= -tol
+
+
+def _convex_implies(theorems: List[Tuple[Dict[str, float], float, str]],
+                    R: Dict[str, float], r0: float,
+                    identities: Optional[List[Tuple[Dict[str, float], float]]] = None,
+                    tol: float = 1e-6) -&gt; Optional[List[str]]:
+    &quot;&quot;&quot;LP feasibility (Farkas): is  f ≤ R  implied by  {f ≤ Bⱼ}, the safe lower
+    bounds Lᵢ ≤ gᵢ, and the class identities Eₖ(g) = 0 ?
+
+    We seek convex weights wⱼ ≥ 0 (Σ = 1), slacks sᵢ ≥ 0, t ≥ 0 and free
+    multipliers μₖ with, identically in g,
+        R(g) − Σ wⱼ Bⱼ(g) = Σ sᵢ (gᵢ − Lᵢ) + Σ μₖ Eₖ(g) + t.
+    Matching coefficients gives an equality-constrained LP. Returns the names of
+    the positively-weighted theorems if feasible, else None.
+    &quot;&quot;&quot;
+    try:
+        import numpy as np
+        from scipy.optimize import linprog
+    except Exception:
+        return None
+
+    identities = identities or []
+    m = len(theorems)
+    K = len(identities)
+    invs = sorted(set(R)
+                  | {i for B, _, _ in theorems for i in B}
+                  | {i for E, _ in identities for i in E})
+    p = len(invs)
+    # variables: w(0..m-1), s(0..p-1), t, mu(0..K-1)
+    nvars = m + p + 1 + K
+
+    def col_w(j): return j
+    def col_s(idx): return m + idx
+    col_t = m + p
+    def col_mu(k): return m + p + 1 + k
+
+    A_eq, b_eq = [], []
+    # per-invariant:  Σ wⱼ Bⱼ[i] + sᵢ + Σ μₖ Eₖ[i] = R[i]
+    for idx, i in enumerate(invs):
+        row = [0.0] * nvars
+        for j, (B, _, _) in enumerate(theorems):
+            row[col_w(j)] = B.get(i, 0.0)
+        row[col_s(idx)] = 1.0
+        for k, (E, _) in enumerate(identities):
+            row[col_mu(k)] = E.get(i, 0.0)
+        A_eq.append(row)
+        b_eq.append(R.get(i, 0.0))
+    # constant:  Σ wⱼ b0ⱼ − Σ sᵢ Lᵢ + t + Σ μₖ E0ₖ = r0
+    row = [0.0] * nvars
+    for j, (_, b0, _) in enumerate(theorems):
+        row[col_w(j)] = b0
+    for idx, i in enumerate(invs):
+        row[col_s(idx)] = -LOWER_BOUNDS.get(i, 0.0)
+    row[col_t] = 1.0
+    for k, (_, e0) in enumerate(identities):
+        row[col_mu(k)] = e0
+    A_eq.append(row)
+    b_eq.append(r0)
+    # Σ wⱼ = 1
+    row = [0.0] * nvars
+    for j in range(m):
+        row[col_w(j)] = 1.0
+    A_eq.append(row)
+    b_eq.append(1.0)
+
+    bounds = [(0.0, None)] * (m + p + 1) + [(None, None)] * K
+    res = linprog(c=[0.0] * nvars,
+                  A_eq=np.array(A_eq, float), b_eq=np.array(b_eq, float),
+                  bounds=bounds, method=&quot;highs&quot;)
+    if not res.success:
+        return None
+    return [theorems[j][2] for j in range(m) if res.x[j] &gt; 1e-6]
+
+
+# ---------------------------------------------------------------------------
+# Public API
+# ---------------------------------------------------------------------------
+
+def classify(conj: Conjecture) -&gt; Tuple[bool, Optional[str]]:
+    &quot;&quot;&quot;Return (is_known, matched_theorem_description).
+
+    is_known == True  ⟹ the conjecture is implied by classical/trivial theorems.
+    &quot;&quot;&quot;
+    if conj.inequality is None:
+        return False, None
+
+    lhs, R, r0, cls = _rhs_of(conj)
+    applicable = {None, cls} | SUPERCLASSES.get(cls, set())
+    theorems = [
+        (B, b0, name)
+        for (tlhs, B, b0, tcls, name) in KNOWN_THEOREMS
+        if tlhs == lhs and tcls in applicable
+    ]
+    if not theorems:
+        return False, None
+
+    # Cheap path: a single known bound already dominates the conjecture.
+    for B, b0, name in theorems:
+        if _single_implies(B, b0, R, r0):
+            return True, name
+
+    # General path: convex combination of known bounds + class identities
+    # (e.g. κ ≤ ½δ + ½λ via Whitney, or regular-graph degree substitutions).
+    idents = [(E, e0) for (E, e0, ecls) in IDENTITIES if ecls in applicable]
+    used = _convex_implies(theorems, R, r0, idents)
+    if used:
+        return True, &quot; + &quot;.join(used)
+
+    return False, None
+
+
+def annotate(conjectures: List[Conjecture]) -&gt; Tuple[List[Conjecture], List[Conjecture]]:
+    &quot;&quot;&quot;Tag every conjecture&#x27;s metadata with novelty info; return (novel, known).&quot;&quot;&quot;
+    novel: List[Conjecture] = []
+    known: List[Conjecture] = []
+    for c in conjectures:
+        # The known-theorem table is expressed as upper bounds (LHS ≤ RHS); a
+        # lower-bound (≥) conjecture is not comparable to it, so treat as novel.
+        if c.inequality is not None and getattr(c.inequality, &quot;op&quot;, &quot;&lt;=&quot;) != &quot;&lt;=&quot;:
+            c.metadata[&quot;novelty&quot;] = &quot;novel&quot;
+            novel.append(c)
+            continue
+        is_known, matched = classify(c)
+        c.metadata[&quot;novelty&quot;] = &quot;known&quot; if is_known else &quot;novel&quot;
+        if matched:
+            c.metadata[&quot;matched_theorem&quot;] = matched
+        (known if is_known else novel).append(c)
+    return novel, known
+</pre></html>

@@ -1,0 +1,1228 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>PAGE 1</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>PAGE 1</h1><p>Source ID d-7f273fa3b8d758c6; literature/sources/check_causal/2604.09309v1.txt; 20670 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>PAGE 1
+Iterative Identification Closure:
+Amplifying Causal Identifiability in Linear SEMs
+Ziyi Ding
+Tsinghua Shenzhen International
+Graduate School, Tsinghua University
+Shenzhen, China
+Xiao-Ping Zhang∗
+Tsinghua Shenzhen International
+Graduate School, Tsinghua University
+Shenzhen, China
+Abstract
+The Half-Trek Criterion (HTC) is the primary graphical tool for determining
+generic identifiability of causal effect coefficients in linear structural equation
+models (SEMs) with latent confounders. However, HTC is inherentlynode-wise:
+it simultaneously resolves all incoming edges of a node, leaving a gap of “in-
+conclusive” causal effects (15–23% in moderate graphs). We introduceIterative
+Identification Closure (IIC), a general framework thatdecouplescausal identifi-
+cation into two phases: (1) aseed function S0 that identifies an initial set of edges
+from any external source of information (instrumental variables, interventions,
+non-Gaussianity, prior knowledge, etc.); and (2)Reduced HTC propagationthat
+iteratively substitutes known coefficients to reduce system dimension, enabling
+identification of edges that standard HTC cannot resolve. The core novelty is
+iterative identification propagation: newly identified edges feed back to unlock
+further identification—a mechanism absent from all existing graphical criteria,
+which treat each edge (or node) in isolation. This propagation is non-trivial: coeffi-
+cient substitution alters the covariance structure, and soundness requires proving
+that the modified Jacobian retains generic full rank—a new theoretical result (Re-
+duced HTC Theorem). We prove that IIC is sound, monotone, converges in O(|E|)
+iterations (empirically ≤2 ), and strictly subsumes both HTC and ancestor de-
+composition. Exhaustive verification on all graphs with n≤5 (134,144 edges)
+confirms 100% precision (zero false positives); with combined seeds, IIC reduces
+the HTC gap by over 80%. The propagation gain is γ≈4× (2 seeds identifying
+∼3% of edges → 97.5% total identification), far exceeding the γ≤1.2× of prior
+methods that incorporate side information without iterative feedback. Code is
+available athttps://anonymous.4open.science/r/iic-code-EB57/.
+1 Introduction
+Linear structural equation models (SEMs) are a cornerstone of causal inference [2, 14], providing a
+principled framework for relating observational data to causal effects. A central challenge iscausal
+parameter identifiability: can each causal effect coefficient be uniquely recovered from the covariance
+matrix ΣV ? The algebraic approach of Drton et al. [4] gives necessary and sufficient conditions
+but is NP-hard. The Half-Trek Criterion (HTC) [5] provides polynomial-time sufficient graphical
+conditions and is the most powerful existing tool, yet it is inherentlynode-wise: it simultaneously
+judges all incoming edges of a node, yielding an “all-or-nothing” verdict. When some—but not
+all—parents are confounded, HTC declares all incoming edgesinconclusive, leaving 15–23% of
+edges unresolved on moderate graphs.
+∗Corresponding author:xpzhang@ieee.org
+Preprint.
+arXiv:2604.09309v1  [stat.ML]  10 Apr 2026
+
+PAGE 2
+Key insight.In practice, researchers rarely start from scratch: instrumental variables [ 1, 17] (e.g.,
+quarter of birth [ 18]) identify the coefficient of Z→T ; experimental interventions [ 19, 20] fix
+outgoing edges; non-Gaussianity [ 11, 21] resolves simple sub-models. Yetno existing method
+exploits this partial knowledge to identify further edges. Chen et al. [10] and Xie et al. [13] identify
+individual effects in isolation; HTC ignores any externally known coefficients entirely. This leaves
+a fundamental question:can partial causal identification be systematically amplified into broader
+identification?
+We answer affirmatively withIterative Identification Closure (IIC), the first framework forcausal
+identification amplification. Figure 1 illustrates the complete framework and its core mechanism on
+a 4-node example (panel b): an IV seed identifies Z→T ; substituting BZT reduces |pa(Y)| from
+2 to 1, enabling a weaker “Reduced HTC” to resolve the remaining edges—which standard HTC
+cannot. This mechanism is intuitive butnon-trivial: substitution alters the covariance structure, and
+soundness requires a new proof (Theorem 4.3; Remark 4.4).
+Our contributions are:(1) Framework.We introduce IIC (Section 4), the first framework that
+systematicallyamplifiespartial identification into global identification, with a modular seed-function
+interface supporting any source of side information.(2) Reduced HTC.We prove that substituting
+known coefficients and checking HTC on remaining parents is sound (Theorem 4.3)—not a trivial
+corollary: the substitution alters the covariance structure, and soundness requires proving that
+the modified Jacobian retains generic full rank (Remark 4.4).(3) Theoretical guarantees.We
+prove soundness, monotonicity, O(|E|)-step convergence, optimality within node-wise methods, and
+strict subsumption of both HTC and ancestor decomposition (Section 4.4).(4) Amplification.On
+random graphs, IIC amplifies 2 intervention seeds (∼3% of edges) into 97.5% total identification—a
+propagation gain of4×, far exceeding theγ≤1.2×of prior methods [10, 13] that incorporate side
+information without iterative propagation. On the MR case study, 4 IV seeds yield 13/13 edges (3.3×
+amplification).(5) Verification.Exhaustive evaluation on all graphs with n≤5 (134,144 edges)
+confirms 100% precision (zero false positives); with combined seeds, IIC reduces the HTC gap by
+over 80% (Section 5).
+2 Related Work
+Identifiability in linear SEMs.Wright [14] introduced path analysis; Bollen [16] systematized
+SEM identification via rank and order conditions. Foygel et al. [5] introduced HTC, providing
+polynomial-time sufficient graphical conditions for generic identifiability—the current gold standard.
+Stanghellini &amp; Wermuth [24] studied Gaussian DAG models; Drton &amp; Weihs[6] extended HTC’s
+reach via ancestor decomposition; Weihs et al. [7] generalized IV-type tools via determinantal
+methods; Barber et al. [8] extended HTC to general latent variable models. All remain node-wise and
+cannot leverage partially known edges.
+Instrumental variables.IV methods have a long history in econometrics [ 1, 15, 17]. Brito &amp; Pearl
+[9] gave graphical criteria for effect identification in linear models; Chen et al. [10] developed the
+auxiliary variables framework, strictly extending classical IV . Kumor et al.[26] provided efficient
+algorithms for causal effect identification. However, these methods identify individual causal effects
+without propagating the identification to other edges.
+Causal graph discovery.FCI [ 3] and its extensions [27] recover Markov equivalence classes. Score-
+based methods [20, 28] search over DAG or CPDAG spaces. LiNGAM [11] and its extensions [21–23]
+exploit non-Gaussianity for identifiability without latent confounding; Tramontano et al.[12] extended
+non-Gaussian identification to models with latent confounders. Tian &amp; Pearl [25] characterized
+nonparametric identifiability via c-components. Adams et al. [29] studied identification in linear
+non-Gaussian models with partial observation; Xie et al. [13] gave graphical conditions for causal
+structure identification in linear non-Gaussian latent variable models; Squires et al.[31] developed
+active structure learning with interventions. IIC differs from all these in three respects: (i) IIC makes
+no distributional assumptions—it leverages structural side information rather than non-Gaussianity;
+(ii) IIC introducesiterative propagationvia Reduced HTC, where newly identified edges feed back
+to unlock further identification—a mechanism absent in prior work; (iii) IIC iscomposable: any
+identification method (including [11, 13]) can serve as a seed function, so combining them strictly
+improves the result (Theorem 4.12).
+2
+
+PAGE 3
+3 Problem Formulation
+We formalize the causal identification problem for linear SEMs with latent confounders.Given:a
+linear SEM with mixed causal graph G= (V, D, B) , observational covariance matrix ΣV , and op-
+tional side information I (instrumental variables, interventions, non-Gaussianity, or prior knowledge).
+Goal:determine which causal effect coefficientsB ji aregenerically identifiablefrom(Σ V , I).
+Definition 3.1(Linear SEM).Let V={1, . . . , n} be observed variables with structural equations:
+Xi =
+X
+j∈paG(i)
+Bji Xj +ε i, i∈V,(1)
+where Bji ̸= 0⇔j→i∈G , and εi are independent or correlated due to latent variables. The
+model is represented by a mixed graph G= (V, D, B) : D is the set of directed edges and B is the
+set of bidirected edges (i↔jwhenCov(ε i, εj)̸= 0).
+We use standard notation: pa(i) (parents), ch(i) (children), desc(i) (descendants), sib(i) ={j:i↔
+j∈B}(siblings).
+Definition 3.2(Generic Identifiability).Edge coefficient Bji isgenerically identifiableif there exists
+a rational functionfsuch thatf(Σ V ) =B ji for Lebesgue-almost-all parameter values [5].
+Definition 3.3(Half-trek [ 5]).Ahalf-trekfrom v to w is either a directed path v→ · · · →w , or a
+path v← · · · ←h↔s→ · · · →w . Theleft sideconsists of all nodes on the left portion (including
+v).
+Definition 3.4(HTC [ 5]).Edge j→i isHTC-identifiableif ∃W⊆V\ {i} with |W|=|pa(i)|
+such that a system of half-treks from W to pa(i) exists with (a) pairwise disjoint left sides, and (b) no
+left-side node insib(i).
+Intuitively, HTC asks whether enough independent “probe sources” exist to separate each parent’s
+contribution toi; the sibling-free condition prevents confounders from contaminating these probes.
+Theorem 3.5(HTC [ 5]).(a) HTC-identifiable ⇒ generically identifiable. (b) HTC-infinite-to-one ⇒
+generically non-identifiable. (c) A gap of inconclusive edges exists between (a) and (b).
+The HTC gap—edges that are neither HTC-identifiable nor HTC-infinite-to-one—constitutes 15–23%
+of edges in moderate graphs (Section 5). This motivates the central problem addressed in this paper:
+Problem Statement.Given a mixed graph G= (V, D, B) , observational covariance ΣV , and side
+information I, identify the maximal set of generically identifiable edge coefficients beyond what HTC
+alone can resolve.
+4 Methodology
+We present the IIC framework (Figure 1a), designed around a key separation of concerns:whatto
+identify initially (seed functions, Section 4.1) vs.howto propagate identification (Reduced HTC,
+Section 4). This separation yields modularity—any identification source can serve as a seed—and
+composability (Theorem 4.12).
+4.1 Seed Functions
+Definition 4.1(Seed Function).Aseed function S:(Graph, Side Info)→2 D maps a graph and
+auxiliary information to a set of initially identifiable edges. A seed function must satisfysoundness:
+∀e∈ S(G, I), the coefficient ofeis generically identifiable (given the side informationI).
+IIC accommodates diverse seed function types.(1) IV seeds:Given an IV triple (Z, T, Y) sat-
+isfying relevance, exogeneity, and exclusion with Z exogenous, SIV ={Z→T} with BZT =
+Cov(Z, T)/Var(Z); if additionally no mediating path exists, BT Y = Cov(Z, Y)/Cov(Z, T) (The-
+orem A.1, Appendix A).(2) Intervention seeds:For an intervened node v, SInt ={v→c:c∈
+ch(v)}.(3) Non-Gaussianity seeds:In confounding-free bivariate sub-models, SNG ={j→i:
+j=sole parent,sib(i) =∅}.(4) Prior knowledge:User-specified edges with known coefficients.
+3
+
+PAGE 4
+Figure 1: Overview of Iterative Identification Closure (IIC).(a)Framework: diverse seed functions
+provide initial identifiable edges S0; Standard HTC and the novel Reduced HTC operate in parallel
+to expand the identified set; the red dashed arrow represents iterative feedback—newly identified
+edges feed back to reduce |pa(i)|, enabling Reduced HTC to resolve further edges until fixed-point
+convergence.(b)Core mechanism on a 4-node example: HTC fails for Y (T∈pa(Y)∩sib(Y) ); IV
+seed identifies Z→T ; after substituting known BZT , Reduced HTC only needs |R|= 1 remaining
+parent and successfully identifies T→Y and W→Y .(c)IIC achieves 97.5% identification
+(propagation gainγ≈4×) vs. 77–85% for HTC alone, with zero false positives on 134,144 edges.
+4.2 Reduced HTC: The Propagation Rule
+Definition 4.2(Reduced HTC).Let pa(i) =K∪R where the coefficients of edges in K are known
+and R contains the remaining unknown parents. Edge j→i (j∈R ) satisfies theReduced HTCif
+there exists W⊆V\(desc(i)∪ {i}) with |W|=|R| such that a system of half-treks from W to R
+exists satisfying: (a) no-sided-intersection, (b) no left-side node is a sibling ofi.
+Theorem 4.3(Reduced HTC Soundness).Suppose every edge in K⊆pa(i) has a generically
+identifiable coefficient. If R= pa(i)\K satisfies the Reduced HTC for node i, then the coefficient
+Bji of every edgej→iwithj∈Ris also generically identifiable.
+Proof sketch. Substitute known coefficients: X ′
+i :=X i −P
+k∈K BkiXk =P
+r∈R BriXr +ε i. For
+non-descendant sourcesWsatisfying the Reduced HTC, the Jacobian[∂Σ wl,i/∂Brm,i] = [Σwl,rm]
+is generically full rank by the half-trek conditions (Lemma 3.3 of [5]), implying generic identifiability
+of{B ri}r∈R. See Appendix A for the full proof.
+Remark 4.4(Non-triviality of Reduced HTC).A common intuition is that “removing known parents
+and checking HTC on fewer parents should obviously work. ” This is incorrect: the substitution
+X ′
+i =X i −P
+k∈K BkiXk introduces correlations between X ′
+i and the sources W through the
+subtracted terms, potentially violating the independence conditions that HTC relies on. Soundness
+requires proving that the Jacobian of themodifiedcovariance system retains generic full rank—a
+property that depends on the half-trek structure of the reduced parent setR, not the original set pa(i).
+4.3 IIC Closure
+Definition 4.5(Iterative Identification Closure).Given a graph G and seed edge set S0, define the
+iterative sequence:
+I0 =S 0 ∪ {e∈D:eHTC-identifiable},(2)
+Ik+1 =I k ∪ {j→i:∃K⊆ {p: (p, i)∈ I k}s.t. Reduced HTC holds forR= pa(i)\K}.(3)
+4
+
+PAGE 5
+Algorithm 1IIC: Iterative Identification Closure
+Require:Mixed graphG, seed functionS, side informationI, target edge setE ⋆
+Ensure:Status of each edge∈ {ID,NON-ID,INC}
+1:I ← S(G, I)
+2:fore∈E ⋆ do
+3:ifeHTC-identifiable inGthen
+4:I ← I ∪ {e}
+5:end if
+6:end for
+7:changed←TRUE
+8:whilechangeddo
+9:changed←FALSE
+10:forj→i∈E ⋆ \ Ido
+11:K← {p∈pa(i) : (p, i)∈ I}
+12:ifK̸=∅AND Reduced HTC holds forR= pa(i)\Kthen
+13:I ← I ∪ {j→i};changed←TRUE
+14:end if
+15:end for
+16:end while
+17:fore∈E ⋆ \ Ido
+18:ifeHTC-infinite-to-onethen
+19:status(e)←NON-ID
+20:else
+21:status(e)←INC
+22:end if
+23:end for
+24:returnstatus
+t= 0: Seed
+Z T
+Y WU
+✓
+t= 1: Reduced HTC
+Z T
+Y WU
+new
+newnew
+t= 2: Fixed Point
+Z T
+Y WU
+Figure 2: Iterative propagation of IIC (5-node example).Green= identified;Yellow= newly
+identified this round. t= 0 : IV seed identifies Z→T and Z→U . t= 1 : After substituting known
+edges, all 3 incoming edges of Y satisfy Reduced HTC. t= 2 : All edges identified; fixed point
+reached. Standard HTC cannot identify any incoming edge ofY(sinceT, W∈sib(Y)).
+IIC closure:IIC(S 0) = limk→∞ Ik.
+Figure 2 illustrates the iterative propagation process on a 5-node example.
+4.4 Theoretical Guarantees
+Theorem 4.6(Soundness).If the seed function S is sound, then every edge in IIC(S0) is generically
+identifiable.
+Proof sketch. By induction: I0 edges are guaranteed by seed soundness or HTC; edges in Ik+1
+follow from Theorem 4.3 with the inductive hypothesis. See Appendix A for the full proof.
+Theorem 4.7(Monotonicity).S 0 ⊆ S ′
+0 =⇒IIC(S 0)⊆IIC(S ′
+0).
+Proof sketch. A larger seed provides more known parents at each iteration, yielding smaller |R| and
+weaker Reduced HTC conditions, soI k ⊆ I ′
+k at every step. See Appendix A for the full proof.
+Theorem 4.8(Convergence).IIC converges after at most|D|iterations.
+5
+
+PAGE 6
+Proof sketch. Each iteration adds≥1 edge; |D| is finite, so the algorithm terminates. See Appendix A
+for the full proof.
+Theorem 4.9(Subsumption of HTC). IIC(∅)⊇ {e:eHTC-identifiable} . When S0 ̸=∅ , IIC(S0)⊇
+IIC(∅).
+Proof sketch.I 0 of IIC(∅) includes all HTC-identifiable edges by construction; the second part
+follows from Monotonicity. See Appendix A for the full proof.
+Corollary 4.10(Subsumption of Ancestor Decomposition).Let AD-HTC denote the set of edges
+identifiable via ancestor decomposition followed by HTC [6]. ThenIIC(∅)⊇AD-HTC.
+Proof sketch. Any half-trek system valid in the ancestral subgraphGanc(i) is also valid in G (subgraph
+paths remain valid; the sibling-free condition transfers since left-side ancestors that are siblings of
+i appear in both graphs). Thus AD-HTC⊆HTC ; combined with Theorem 4.9, the result follows.
+IIC’s advantage over AD isnotthis set-theoretic containment, but the Reduced HTC propagation that
+identifies edgesbeyondboth HTC and AD when seeds are available (Theorem 4.11). See Appendix A
+for the full proof.
+Theorem 4.11(Strict Improvement).If S0 ̸=∅ and ∃j→i failing HTC with some k∈pa(i)∩ S 0
+andR= pa(i)\ {k}satisfying Reduced HTC, thenIIC(S 0)⊋HTC-identifiable set∪ S 0.
+Proof sketch. The edge j→i is in IIC (via Reduced HTC) but not in HTC ∪S0, establishing strict
+containment. See Appendix A for the full proof.
+Theorem 4.12(Composability).For any two sound seed functions SA,S B: IIC(SA ∪ S B)⊇
+IIC(SA)∪IIC(S B).
+Proof sketch. By Monotonicity (Theorem 4.7), IIC(SA ∪ SB)⊇IIC(S A) and ⊇IIC(S B); taking
+the union yields the result.
+Composability is practically important: researchers can freely combine IV , intervention, non-
+Gaussianity, and prior knowledge as seed sources, and IIC guarantees that combining them is
+at least as good as applying each separately. Additional theoretical results—order independence
+(Theorem B.1), optimality within node-wise HTC methods (Theorem B.2), complexity analysis
+(Proposition B.4), completeness characterizations (Appendix B.2), and a quantitative analysis of the
+IIC gap (Appendix B.3)—are presented in Appendix B.
+5 Experiments
+Our experiments address three questions:Q1Does IIC genuinelyamplifypartial knowledge into
+broader identification? Answered inSeed sourcesandPropagation gain.Q2How does IIC compare
+with existing methods? Answered inComparison with related methodsandMR case study.Q3Is IIC
+reliable (precision, robustness, estimation quality)? Answered inPrecision,Scalability,Robustness,
+andEstimation quality.
+Setup.We evaluate IIC on two graph families.(i) Exhaustive IV-structured graphs( n∈ {4,5} ):
+we enumerateallDAGs with at least one valid IV triple(Z, T, Y)—whereZis exogenous,Z→T
+exists, and no direct Z→Y edge—yielding 48 graphs for n= 4 (336 edges) and 2,576 graphs for
+n= 5 (134,144 edges). Bidirected edges are added for all non-ancestor pairs, following the maximal
+confounding model of Foygel et al. [5].(ii) Random Erd ˝os–Rényi graphs( n∈ {5, . . . ,100} ):
+directed edge probability 0.3, bidirected edge probability 0.2; 200 graphs per size. Edge coefficients
+are sampled i.i.d. from Uniform([−2,−0.5]∪[0.5,2]) to avoid near-zero values.Ground truth
+verification: for each edge, we compute the Jacobian of the covariance-to-parameter map at 50
+random parameter realizations and declare an edge identifiable if the Jacobian has full column rank
+(tolerance 10−8) in all 50 trials. This numerical test agrees with analytic HTC on all edges where
+HTC is conclusive. Full experimental details and additional tables are in Appendices C–E.
+6
+
+PAGE 7
+Table 1: IIC with intervention seeds on general random graphs (n= 6, 1881 graphs)
+Seed Source Id Rate Gain vs. HTC Total Edges
+No seed (= HTC) 85.6% — 10,283
+Intervention (k= 1) 93.4% +7.8% 10,283
+Intervention (k= 2)97.5% +11.9%10,283
+Table 2: IIC identification rates under different seed sources (IV-structured graphs, exhaustive
+enumeration)
+Seed Sourcen=4Id Raten=4Gapn=5Id Raten=5Gap
+No seed (= HTC) 85.7% 14.3% 80.8% 19.2%
+IV seed88.7% 11.3% 82.3% 17.7%
+Exogenous seed 85.7% 14.3% 80.8% 19.2%
+IV + Exogenous88.7% 11.3% 82.3% 17.7%
+IIC with different seed sources.Table 2 shows that IV seeds improve identification rates over
+standard HTC on exhaustively enumerated IV-structured graphs, while exogenous seeds alone do
+not help. The IV gain (+3.0% for n= 4 , +1.5% for n= 5 ) comes entirely from Reduced HTC
+propagation: IV seeds identify Z→T edges, enabling neighboring nodes to satisfy weaker conditions.
+On general random graphs (n= 6 ) with intervention seeds (Table 1), a single intervened node raises
+identification from 85.6% to 93.4% (+7.8%), and two nodes achieve 97.5% (+11.9%). Notably, the
+7.8% gain from one intervention exceeds what interventions alone contribute (the outgoing edges of
+the intervened node are ∼3% of all edges); the remaining ∼5% comes from iterative Reduced HTC
+propagation.
+IIC vs. Ancestor Decomposition.Exhaustive comparison ( n≤5 ) confirms that every AD-
+identifiable edge is also IIC-identifiable (Corollary 4.10), and IIC with seeds identifies 1.6–3.0%
+additional edges beyond both HTC and AD, while AD identifies zero edges that IIC cannot.
+Precision and convergence.Across all 2,090 newly identified edges (n≤5), IIC achieves100%
+precision(zero false positives), fully verifying soundness. IIC converges within ≤2 iterations on all
+tested graphs (n≤7). Additional precision and convergence details are in Appendix C, Tables 7–6.
+Scalability.Figure 3 shows IIC’s performance as graph size increases from 10 to 100 nodes. IIC con-
+sistently outperforms HTC, with the largest gains on moderate-size graphs (n= 10 : +2.5%, n= 20 :
++2.2%). On 100-node graphs, the HTC gap shrinks below 0.5%, limiting IIC’s marginal contribution—
+but IIC remains polynomial-time and completes in&lt;6seconds (Table 9, Appendix C.7).
+Propagation gain: identification amplification.A central question is whether IIC merelyuses
+additional information oramplifiesit. We define thepropagation gainas the ratio of IIC-identified
+edges (beyond HTC) to the number of seed edges: γ=|IIC(S 0)\HTC|/|S 0|. On random graphs
+(n= 6 , k= 2 interventions), seed edges account for ∼3% of total edges, yet IIC achieves +11.9%
+identification gain (γ≈4.0× ). On the MR case study, 4 IV seeds produce 9 additionally identified
+edges (γ= 2.3× ). By contrast, directly applying the seed information without propagation (i.e.,
+counting only the seed edges themselves) would yield γ= 1.0× . Chen et al. [10] achieves γ≈1.2×
+(modest amplification without iteration), and Xie et al. [13] achieves γ≈1.0× (no amplification
+beyond direct identification). This amplification effect—absent from all prior methods—is IIC’s core
+empirical contribution.
+Comparison with related methods.Table 3 compares IIC with Chen et al. [10] (auxiliary variables)
+and Xie et al. [13] (non-Gaussianity) on random mixed graphs (n= 6 , 1881 graphs). IIC with modest
+intervention seeds (k= 2 ) outperforms both (+11.9% over HTC vs. +7.5% and +1.3%), and crucially
+identifies 554 edges that neither baseline can—gains arising from iterative Reduced HTC propagation.
+Both methods arecomplementaryto IIC: they can serve as seed functions, and combining them with
+IIC strictly improves identification (Theorem 4.12).
+7
+
+PAGE 8
+10 20 50 100
+96
+98
+100
+Number of nodes|V|
+Identification rate (%)HTC
+IIC
+0
+2,000
+4,000
+6,000
+Runtime (ms)
+Runtime
+Figure 3: HTC vs. IIC identification rate (left axis, solid lines) and IIC runtime (right axis, dashed
+line) on log-scale x-axis. IIC consistently outperforms HTC across all graph sizes, with runtime &lt;6
+seconds for 100-node graphs.
+n= 4, IV n= 5, IV n= 5, comb. n= 6, Int
+0
+25
+50
+75
+100
+Edges (%)
+(a) Identification breakdown
+HTC IIC gain Gap
+0 1 2 3 4 5
+Direct only
+Xie et al.
+Chen et al.
+IIC (IV)
+IIC (Int)
+no amplification
+1×
+1×
+1.2×
+2.3×
+4×
+Propagation gainγ
+(b) Amplification factorγ
+Figure 4: Identification amplification analysis.(a)Breakdown of edge classification: HTC base-
+line (blue), IIC additional gains via Reduced HTC propagation (orange), and remaining gap (red).
+Combined seeds (IV+intervention) reduce the gap from 17% to 2.6%.(b)Propagation gain
+γ=|IIC(S 0)\HTC|/|S 0|: IIC achieves up to 4.0× amplification, far exceeding prior methods
+(γ≤1.2).
+Real-world case study: Mendelian randomization.We construct a 9-node linear SEM modeling
+cardiovascular disease risk factors (Figure 5), inspired by multivariable MR studies [ 30]. Three
+genetic instruments (Gbmi, Gldl, Gbp) serve as IVs; four latent confounders create bidirected edges
+between exposures and CHD. HTC leaves all 5 edges into CHD unresolved (38.5% gap): CHD
+has 5 parents, 4 of which are confounded siblings, exhausting all available half-trek witnesses. IIC
+identifies Gbmi →BMI and BMI→CHD via IV (exclusion restriction holds), similarly Gbp →SBP
+and SBP→CHD. With known_pa(CHD)={BMI,SBP} , Reduced HTC resolves the remaining 3
+parents (|R|= 3vs. original|pa|= 5), achieving100% identification(13/13 edges).
+Robustness to graph misspecification.IIC assumes a known graph. Appendix C.13 (Table 12)
+evaluates IIC under four types of structural error (missing/extra directed or bidirected edges) at
+10–30% perturbation rates. Even with 30% error, precision remains ≥96.4% and recall ≥96.5% .
+The most dangerous perturbation—overlooking latent confounders—reduces precision to 96.5%;
+overly conservative confounding mainly reduces recall but preserves precision, a safe failure mode.
+8
+
+PAGE 9
+Table 3: Identification rates on random mixed graphs (n= 6, 1881 graphs, 10283 edges)
+Method Id. Rate↑vs. HTC↑Unique gains↑
+HTC (baseline) 85.6% — —
+Chen et al. [10] 93.1% +7.5% 104
+Xie et al. [13] 86.8% +1.3% 15
+IIC (intervk=2) 97.5% +11.9% 554
+“Unique gains” = edges identified by this method but not by IIC (for baselines) or not by Chen et al. (for IIC).
+Gb
+Gl
+Gp
+BMI
+LDL
+SBP CRP
+SMK
+CHD
+Figure 5: MR network for CHD (9 nodes, 13 directed, 4 bidirected edges). HTC gap: 5/13 edges (all
+into CHD). IIC with IV seeds: 13/13 identified (100%). Details in Appendix C.10.
+Estimation quality.IIC yields a plug-in estimator (Algorithm 2, Appendix D) achieving √n-
+consistency (Theorem D.1; Tables 13–14). Estimation errors propagate multiplicatively through the
+chain with an amplification factor depending on condition numbers, but the √n rate is preserved at
+every depth (Proposition D.2, Appendix D.1). On confounded edges, OLS bias is 0.13–0.21 and does
+not vanish withn, while IIC bias is&lt;0.003(Appendix C.8, Figure 6).
+Additional case studies.IIC is further validated on the Sachs protein signaling network (Ap-
+pendix C.9) and a returns-to-education IV model (Appendix C.11); small-graph completeness is
+verified exhaustively (Theorem C.1, Appendix C).
+Experimental design guidance.The first 2–3 intervention nodes contribute the largest gains,
+with diminishing returns thereafter (Figure 7, Appendix C.12)—providing a quantitative basis for
+intervention budget allocation.
+6 Discussion
+Main finding: identification amplification.IIC’s core result is that a small seed (2 interventions,
+∼3% of edges) propagates into 97.5% identification (4× amplification), enabled by soundness (Theo-
+rem 4.6), monotonicity (Theorem 4.7), O(|D|)-convergence (Theorem 4.8), and strict subsumption
+of HTC and AD (Theorems 4.9–4.10), with zero false positives across 134,144 edges. Composability
+(Theorem 4.12) lets users freely combine heterogeneous sources, with largest gains on densely
+confounded graphs ( n= 4 –20, HTC gap 5–20%).Broader significance.IIC bridges the gap
+between partial identification—common in practice when only a few instruments or interventions
+are available—and near-complete identifiability. This is demonstrated on Mendelian randomization
+networks (Appendix C.10), returns-to-education models (Appendix C.11), and the Sachs protein
+signaling network (Appendix C.9), suggesting broad applicability in epidemiology, economics,
+and systems biology.Limitations and future work.IIC is optimal within node-wise methods
+(Theorem B.2) and assumes a known causal graph, though it is robust under 30% misspecification
+(Appendix C.13). Extending IIC to nonlinear SEMs, developing cross-node techniques that jointly
+exploit half-trek structures, and integrating with graph discovery algorithms are promising directions.
+9
+
+PAGE 10
+References
+[1] J. D. Angrist, G. W. Imbens, D. B. Rubin. Identification of causal effects using instrumental
+variables.JASA, 91(434):444–455, 1996.
+[2] J. Pearl.Causality. Cambridge Univ. Press, 2nd ed., 2009.
+[3] P. Spirtes, C. N. Glymour, R. Scheines.Causation, Prediction, and Search. MIT Press, 2nd ed.,
+2000.
+[4] M. Drton, R. Foygel, S. Sullivant. Global identifiability of linear structural equation models.
+Ann. Statist., 39(2):865–886, 2011.
+[5] R. Foygel, J. Draisma, M. Drton. Half-trek criterion for generic identifiability of linear structural
+equation models.Ann. Statist., 40(3):1682–1713, 2012.
+[6] M. Drton, L. Weihs. Generic identifiability of linear structural equation models by ancestor
+decomposition.Scand. J. Statist., 43(4):1035–1045, 2016.
+[7] L. Weihs et al. Determinantal generalizations of instrumental variables.J. Causal Inference,
+6(1), 2018.
+[8] R. F. Barber, M. Drton, N. Sturma, L. Weihs. Half-trek criterion for identifiability of latent
+variable models.Ann. Statist., 50(6):3174–3196, 2022.
+[9] C. Brito, J. Pearl. A graphical criterion for the identification of causal effects in linear models.
+InAAAI, 2002.
+[10] B. Chen, D. Kumor, E. Bareinboim. Identification and model testing in linear SEMs using
+auxiliary variables. InICML, 2017.
+[11] S. Shimizu, P. O. Hoyer, A. Hyvärinen, A. Kerminen. A linear non-Gaussian acyclic model for
+causal discovery.JMLR, 7:2003–2030, 2006.
+[12] D. Tramontano, B. Kivva, S. Salehkaleybar, M. Drton, N. Kiyavash. Causal effect identification
+in LiNGAM models with latent confounders. InICML, 2024.
+[13] F. Xie, B. Huang, Z. Chen, R. Cai, C. Glymour, Z. Geng, K. Zhang. Generalized independent
+noise condition for estimating causal structure with latent variables.JMLR, 25(97):1–57, 2024.
+[14] S. Wright. Correlation and causation.J. Agricultural Research, 20:557–585, 1921.
+[15] P. G. Wright.The Tariff on Animal and Vegetable Oils. Macmillan, 1928.
+[16] K. A. Bollen.Structural Equations with Latent Variables. Wiley, 1989.
+[17] G. W. Imbens. Instrumental variables: an econometrician’s perspective.Statist. Sci., 29(3):323–
+358, 2014.
+[18] J. D. Angrist, A. B. Krueger. Does compulsory school attendance affect schooling and earnings?
+QJE, 106(4):979–1014, 1991.
+[19] F. Eberhardt, C. Glymour, R. Scheines. Interventions and causal inference.Phil. Sci., 74(5):981–
+995, 2007.
+[20] A. Hauser, P. Bühlmann. Characterization and greedy learning of interventional Markov equiva-
+lence classes.JMLR, 13:2409–2464, 2012.
+[21] A. Hyvärinen, K. Zhang, S. Shimizu, P. O. Hoyer. Estimation of a structural vector autoregres-
+sion model using non-Gaussianity.JMLR, 11:1709–1731, 2010.
+[22] P. O. Hoyer, S. Shimizu, A. J. Kerminen, M. Palviainen. Estimation of causal effects using linear
+non-Gaussian causal models with hidden variables.Int. J. Approx. Reasoning, 49(2):362–378,
+2008.
+[23] G. Lacerda, P. Spirtes, J. Ramsey, P. O. Hoyer. Discovering cyclic causal models by independent
+components analysis. InUAI, 2008.
+[24] E. Stanghellini, N. Wermuth. On the identification of path analysis models with one hidden
+variable.Biometrika, 92(2):337–350, 2005.
+[25] J. Tian, J. Pearl. A general identification condition for causal effects. InAAAI, 2002.
+[26] D. Kumor, C. Cinelli, E. Bareinboim. Efficient identification in linear structural causal models
+with auxiliary cutsets. InICML, 2020.
+10
+
+PAGE 11
+[27] J. Zhang. On the completeness of orientation rules for causal discovery in the presence of latent
+confounders.Artif. Intell., 172(16):1873–1896, 2008.
+[28] D. M. Chickering. Optimal structure identification with greedy search.JMLR, 3:507–554, 2002.
+[29] J. Adams, N. R. Hansen, K. Zhang. Identification of partially observed linear causal models:
+graphical conditions for the non-Gaussian and heterogeneous cases. InNeurIPS, 2021.
+[30] S. Burgess, S. G. Thompson. Multivariable Mendelian randomization: the use of pleiotropic
+genetic variants to estimate causal effects.Am. J. Epidemiol., 181(4):251–260, 2015.
+[31] C. Squires, S. Magliacane, K. Greenewald, D. Katz, M. Kocaoglu, K. Shanmugam. Active
+structure learning of causal DAGs via directed clique trees. InNeurIPS, 2020.
+11
+
+PAGE 12
+A Proofs of Main Results
+A.1 Proof of Theorem 4.3 (Reduced HTC Soundness)
+Proof.Step 1 (Substitution).Substitute known coefficients into the structural equation for nodei:
+X ′
+i :=X i −
+X
+k∈K
+BkiXk =
+X
+r∈R
+BriXr +ε i.
+Since edges in K are generically identifiable, eachBki is a rational function fk(ΣV ) of the covariance
+matrix.
+Step 2 (Covariance equations).Let L= (I−B) −1 (reduced form) and Σ =LΩL T . For
+w /∈desc(i)∪ {i}(a non-descendant source):
+Σwi =
+X
+p∈pa(i)
+Bpi Σwp +P
+v Lwv Ωvi
+| {z }
+=:c wi
+.(4)
+Note that cwi = Cov(Xw, εi) collects contributions throughallnodes v∈sib(i)∪ {i} connected to
+ivia bidirected edges; in generalc wi ̸= Ωwi.
+Step 3 (Jacobian argument).We show that cwi does not depend on {Bri}r∈R. By the matrix
+identity ∂L
+∂Bri
+=L E ir L (where Eir is the elementary matrix with 1 in position (i, r)), we have
+∂Lwv
+∂Bri
+=L wi Lrv. Since w /∈desc(i), there is no directed path from i to w in the DAG, so Lwi = 0.
+Consequently, ∂cwi
+∂Bri
+=P
+v
+∂Lwv
+∂Bri
+Ωvi =P
+v LwiLrvΩvi = 0.
+For the Jacobian entry with respect toB rmi, differentiating (4):
+∂Σwi
+∂Brmi
+= Σw,rm +
+X
+p∈pa(i)
+Bpi
+∂Σwp
+∂Brmi
++ ∂cwi
+∂Brmi
+.
+The second term vanishes because each p∈pa(i) precedes i in topological order, so Σwp does
+not depend on Brmi (see [5], Lemma 3.2). The third term is zero by the argument above. Hence
+∂Σwi
+∂Brmi
+= Σw,rm.
+Step 4 (Jacobian matrix).Choose W={w 1, . . . , w|R|} satisfying the Reduced HTC conditions.
+The resulting Jacobian matrix is:
+J=
+ ∂Σwl,i
+∂Brm,i
+|R|
+l,m=1
+= [Σwl,rm]|R|
+l,m=1.
+Step 5 (Generic full rank).By Lemma 3.3 of Foygel et al. [5], the no-sided-intersection and
+sibling-free half-trek system from W to R guarantees that det[Σwl,rm] is a non-identically-zero
+polynomial on the parameter space. Hence J is invertible for Lebesgue-almost-all parameter values.
+Step 6 (Conclusion).Generic invertibility of J implies that the parameter map ϕ is generically
+locally injective in the {Bri}r∈R directions. For algebraic/polynomial maps, local identifiability
+implies generic identifiability [4]. Therefore {Bri}r∈R are generically identifiable, expressible as
+rational functions ofΣ V .
+A.2 Proof of Theorem 4.6 (Soundness)
+Proof. By induction. Edges in I0 are guaranteed by soundness of seeds or standard HTC [5]. Edges
+added in Ik+1 are guaranteed by Reduced HTC (Theorem 4.3), whose premise—that edges in K are
+generically identifiable—holds by the inductive hypothesis.
+A.3 Proof of Theorem 4.7 (Monotonicity)
+Proof.S 0 ⊆ S ′
+0 implies I0 ⊆ I ′
+0. At each iteration of Reduced HTC, a larger Ik provides more
+known parentsK, yielding a smaller|R|and thus weaker conditions. HenceI k+1 ⊆ I ′
+k+1.
+12
+
+PAGE 13
+A.4 Proof of Theorem 4.8 (Convergence)
+Proof. Each iteration adds at least one new edge to Ik (otherwise changed=FALSE and the
+algorithm terminates). Since |D| is the total number of directed edges, at most |D| iterations are
+needed.
+A.5 Proof of Theorem 4.9 (Subsumption of HTC)
+Proof.I 0 of IIC(∅) contains all HTC-identifiable edges (Phase 1). The second part follows from
+Monotonicity.
+A.6 Proof of Theorem 4.10 (Subsumption of Ancestor Decomposition)
+Proof. The core idea of ancestor decomposition (AD) [ 6] is: for node i, consider the ancestral
+subgraph Ganc(i) (containing only ancestors of i and their edges), then check HTC on this subgraph.
+Drton &amp; Weihs proved that if j→i is HTC-identifiable on the subgraph, then Bji is also generically
+identifiable in the full graph.
+We need to show that IIC(∅) also identifies these edges. Suppose j→i is HTC-identifiable on
+Ganc(i), i.e., ∃W⊆V(G anc(i))\ {i} , |W|=|pa Ganc(i)(i)|, with a no-sided-intersection, sibling-free
+half-trek system fromWtopa(i).
+Note paGanc(i)(i) = pa G(i) (all parents of i are ancestors of i). A half-trek system existing in the
+subgraph⇒exists in the full graph (subgraph edges are a subset; paths remain valid).
+The critical sibling-free condition requires left-side nodes not in sibG(i). Left-side nodes of subgraph
+half-treks lie in V(G anc(i)). If v∈V(G anc(i)) and v /∈sibGanc(i)(i), then v /∈sibG(i) (since if v↔i
+exists in G and v is an ancestor of i, it must appear in the subgraph). Thus sibling-free in the subgraph
+⇒sibling-free in the full graph.
+Therefore j→i is HTC-identifiable in the full graph G, establishing AD-HTC⊆HTC . Combined
+with Theorem 4.9 (IIC(∅)⊇HTC), we getIIC(∅)⊇AD-HTC.
+Remark.This result shows that ancestor decomposition does not extend the reach of standard HTC as
+a graphical condition: any edge identified by AD+HTC on a subgraph is already HTC-identifiable on
+the full graph. The practical advantage of IIC over AD is qualitatively different: when seeds S0 ̸=∅ ,
+Reduced HTC propagation identifies edgesbeyondboth HTC and AD (Theorem 4.11; empirically
+1.6–3.0% additional edges, Section 5).
+A.7 Proof of Theorem 4.11 (Strict Improvement)
+Proof. Since j→i fails standard HTC (some parent inR= pa(i)\ {k} prevents half-trek matching),
+it is not in the HTC-identifiable set. Since k∈ S 0 and the remaining parents R satisfy Reduced HTC,
+Theorem 4.3 gives j→i∈IIC(S 0). Thus j→i is in IIC but not in HTC-identifiable ∪ S0, proving
+strict inclusion.
+A.8 Proof of Theorem A.1 (IV Seed Rules)
+Theorem A.1(IV Seed Rules).In GIV: (a) If paGIV(Z) =∅ and sibGIV(Z) =∅ , then BZT =
+Cov(Z, T)/Var(Z). (b) If (a) holds and there is no mediating path (no descendant of T is a parent
+ofY), thenB T Y = Cov(Z, Y)/Cov(Z, T).
+Definition A.2(IV-Augmented Graph).Given an IV triple (Z, T, Y) satisfying relevance, exogeneity,
+and exclusion, define GIV = (V, DIV, BIV) by removing all directed edges from Z that bypass T
+and all bidirected edges incident toZ.
+Proof. We use the IV-augmented graph GIV (Definition A.2). (a) The structural equation for Z is
+XZ =ε Z with Cov(εZ, εk) = 0∀k . In Σ = (I−B) −1Ω[(I−B) −1]T , the row [(I−B) −1]Z·
+has a one only at position Z (since Z has no incoming edges), so ΣZT = ΩZZ ·[(I−B) −1]T Z =
+Var(εZ)·B ZT , givingB ZT = ΣZT /ΣZZ .
+13
+
+PAGE 14
+(b) Similarly, ΣZY = Var(εZ)·[(I−B) −1]Y Z . By exclusion, all paths from Z to Y pass through
+T : [(I−B) −1]Y Z = [(I−B) −1]T Z ·τ T Y , where τT Y is the total effect from T to Y . The absence
+of mediating paths impliesτ T Y =B T Y , henceΣ ZY /ΣZT =B T Y .
+B Additional Theoretical Results
+B.1 Proof of Theorem 4.12 (Composability)
+Proof. By Monotonicity, IIC(SA ∪ SB)⊇IIC(S A) and IIC(SA ∪ SB)⊇IIC(S B). Taking the
+union yields the result.
+Theorem B.1(Order Independence &amp; Uniqueness).Define the propagation operator F: 2 D →2 D:
+F(I) =I ∪ {j→i:standard HTC or Reduced HTC w.r.t.K= pa(i)∩ I}.
+(a) F is monotone (I ⊆ I ′ ⇒F(I)⊆F(I ′)). (b) IIC(S0) is the least fixed point of F above S0,
+anddoes not depend onthe processing order of edges within each iteration.
+Proof. (a) If I ⊆ I ′, then for any j→i , K= pa(i)∩ I ⊆K ′ = pa(i)∩ I ′, so |R|=|pa(i)\K| ≥
+|R′|=|pa(i)\K ′|. The Reduced HTC condition is easier to satisfy for R′ (since |R′| ≤ |R| ), hence
+every edge identified inF(I)is also identified inF(I ′).
+(b) Since F is monotone and (2D,⊆) forms a complete lattice, the Knaster–Tarski theorem guarantees
+that {F k(S0)}∞
+k=0 converges to the least fixed point aboveS0. The least fixed point does not depend
+on the order in which edges are traversed within each application of F , because F itself is a set-to-set
+mapping that considersalledges simultaneously.
+Theorem B.2(Optimality within Node-wise HTC Methods).Define thenode-wise HTC method
+classMas the set of all identification strategies satisfying:
+(i) Start from a seed setS 0;
+(ii) At each step, selectsomenode i, choose K⊆pa(i) (already identified),W⊆V\(desc(i)∪
+{i}) with |W|=|pa(i)\K| , and check the no-sided-intersection and sibling-free conditions
+of the half-trek system;
+(iii) If the conditions are satisfied, mark all edges inpa(i)\Kas identified.
+Then for any M∈ M , the edge set ultimately identified by M satisfies ⊆IIC(S 0). That is, IIC(S0)
+is optimal withinM.
+Proof. Let M∈ M identify edge set I M
+T after T steps. We prove I M
+t ⊆IIC(S 0) by induction on
+stept.
+Base:I M
+0 =S 0 ⊆IIC(S 0)(trivially).
+Step: Suppose I M
+t ⊆IIC(S 0). At step t+1, M selects some i, Kt, Wt and identifies Rt = pa(i)\K t.
+By the induction hypothesis, Kt ⊆ I M
+t ⊆IIC(S 0). The half-trek conditions with respect to Wt hold
+in graphG.
+Consider the fixed point IIC(S0). Since Kt ⊆IIC(S 0), at some iteration of IIC, K⊇K t (because
+IIC accumulates more known edges), so |R|=|pa(i)\K| ≤ |R t|. The Reduced HTC condition for
+R is weaker than for Rt (|R| ≤ |R t|; |R| sources from Wt suffice, and the half-trek conditions form
+a subset of those forR t). Hence IIC also identifies the edges inR, including those inR t.
+ThereforeI M
+t+1 ⊆IIC(S 0).
+Remark B.3(Beyond Node-wise HTC).IIC is not optimal among all possible methods. Cross-node
+approaches—such as jointly solving systems of covariance equations involving multiple nodes— may
+identify edges that IIC cannot. The global identifiability criterion of Drton et al. [4] (based on ideals
+and Gröbner bases) can handle arbitrary algebraic constraints, but the decision problem is NP-hard.
+The value of IIC lies in achieving optimality within the class of methods decidable inpolynomial
+time.
+14
+
+PAGE 15
+Proposition B.4(Complexity).The time complexity of Algorithm 1 is O(|D|2 · |V| dmax+1), where
+dmax = maxi |pa(i)|. For bounded-degree graphs, this reduces toO(|D| 2 · |V| c).
+Proof sketch. The outer loop iterates until convergence. By Theorem 4.8, the identified set grows
+monotonically and is bounded by |D|, so the loop runs at most |D| times. Each iteration examines
+every edge j→i (|D| edges). For each edge, Reduced HTC checks all subsets W of size |R|=
+|pa(i)\K| from O(|V|) candidates: at most
+ |V|
+|R|
+
+subsets. For each W , the half-trek matching check
+involves permutations of |R| elements and disjoint-set verification, costing O(|R|!· |V|) in the worst
+case but O(|R|2 · |V|) with the greedy matching of Foygel et al. [5]. Since |R| ≤d max, the per-edge
+cost is O(|V| dmax ·d 2
+max · |V|) =O(|V| dmax+1). Multiplying by |D| edges and |D| iterations gives
+O(|D|2 · |V| dmax+1). For bounded-degree graphs ( dmax ≤c for constant c), this is polynomial in
+|V|.
+B.2 Completeness Results
+Theorem B.5(Parent-Sibling Separation ⇒ Full Identification).If pa(i)∩sib(i) =∅ holds for all
+i∈V (i.e., no node has a parent that is simultaneously a confounded sibling), thenalledges in the
+graph are HTC-identifiable.
+Proof. For any edge j→i , set W= pa(i) . For each pl ∈pa(i) , the trivial half-trek from pl to pl
+(directed path of length0) has left-hand side={p l}.
+• No-sided-intersection: {p1}, . . . ,{pk} are pairwise disjoint (since elements of pa(i) are
+distinct).✓
+• Sibling-free:p l /∈sib(i), becausepa(i)∩sib(i) =∅.✓
+Hencej→iis HTC-identifiable.
+Remark B.6.Theorem B.5 precisely characterizes the source of the HTC gap:allgap edges occur
+at nodes where pa(i)∩sib(i)̸=∅ . Exhaustive verification (n≤5 , 24,064 graphs, 134,144 edges)
+confirms that among the10,374edges satisfyingpa(i)∩sib(i) =∅, the gap is0.
+Theorem B.7(IIC Gap Characterization).Suppose IIC has converged with seed S0, and let K={p:
+(p, i)∈IIC(S 0)} be the set of known parents and R= pa(i)\K the remaining unknown parents. If
+j→i lies in the IIC gap (neither identified nor determined to be non-identifiable), thennecessarily
+R∩sib(i)̸=∅(at least one unknown parent is a confounded sibling ofi).
+Proof. By contradiction. Suppose R∩sib(i) =∅ . Set W=R ; for each rl ∈R , the trivial
+half-trek has left-hand side ={r l}. Since rl /∈sib(i) (by assumption) and the left-hand sides
+are pairwise disjoint, the Reduced HTC conditions are satisfied, so j→i should be identified—a
+contradiction.
+Theorem B.8(Single-Unknown Completeness).If after IIC convergence |R|=|pa(i)\K|= 1 (j
+is the sole unknown parent ofi), then IIC correctly classifies this edge:
+(a) Ifj /∈sib(i):B ji is generically identifiable (Reduced HTC succeeds trivially).
+(b) Ifj∈sib(i):B ji is generically non-identifiable.
+Proof. (a) |R|= 1 , j /∈sib(i): W={j} , trivial half-trek, left-hand side ={j} ̸⊆sib(i) . Reduced
+HTC succeeds.
+(b)|R|= 1,j∈sib(i):
+Step 1 (Residualized model).After substituting all known parent coefficients K, the structural
+equation for i reduces to X ′
+i =B jiXj +ε i, with Ωji = Cov(εj, εi)̸= 0 (since j∈sib(i) ). The pair
+(Bji,Ω ji)constitutes two free parameters.
+15
+
+PAGE 16
+Step 2 (Entangled covariance equations).For any non-descendant source w /∈desc(i)∪ {i} ,
+Theorem 4.3’s decomposition gives:
+Σwi =B ji Σwj +L wj Ωji| {z }
+confounding
++rw,
+where Lwj = [(I−B) −1]wj and rw = P
+v̸=j LwvΩvi collects terms independent of (Bji,Ω ji).
+Thus each equation couplesB ji andΩ ji linearly.
+Step 3 (Structural obstruction ⇒ rank deficiency).The extended Jacobian with respect to (Bji,Ω ji)
+isJ ext = [Σwlj, L wlj]|W|
+l=1. For identifiability,rank(J ext)≥2is necessary.
+At IIC convergence, Reduced HTC has failed for every possible source: every half-trek from any
+valid w to j has some left-side node s∈sib(i) . This means Ωsi ̸= 0, and the directed sub-path from
+s to w ensures Lws ̸= 0, so the term LwsΩsi contributes to cwi. Crucially, a source w can contribute
+a non-zero Σwj (signal for Bji)only ifa trek from w to j exists; but every such trek passes through
+some s∈sib(i) , simultaneously contributing a non-zero LwsΩsi (confounding). This structural
+entanglement—thesamepathway that makes w informative about Bji also makes it contaminated by
+Ωsi—generically preventsrank(J ext)≥2over the available source set.
+Step 4 (Base case).In the simplest instance ( |V|= 2 , single edge j→i with j↔i ), the covariance
+matrix has 3 free entries and 4 parameters(Bji,Ω jj ,Ω ji,Ω ii). No external source exists; the equation
+Σji =B jiΩjj + Ωji has two unknowns and one equation—manifestly non-identifiable. After IIC
+convergence with |R|= 1 and j∈sib(i) , the residualized model inherits this same structure: every
+available equation entangles Bji with confounding parameters, with no “clean” source to break the
+degeneracy.
+Step 5 (Exhaustive verification).This algebraic argument is confirmed by exhaustive numerical
+verification: across all graphs with n≤5 (24,064 graphs, 134,144 edges), every |R|= 1 gap
+edge with j∈sib(i) is algebraically non-identifiable (Jacobian rank test at 50 random parameter
+realizations; zero exceptions).
+Corollary B.9(Precise Structure of the IIC Gap).Every edge j→i in the IIC gap necessarily
+satisfies: (i) |R| ≥2 (at least two unknown parents); (ii) |R∩sib(i)| ≥1 (at least one unknown
+parent is a confounded sibling). The gap is concentrated in the “multivariate confounding” region.
+B.3 Quantitative Analysis of the IIC Gap
+We characterize the algebraic structure of the IIC gap through exhaustive analysis onn= 5 graphs
+(2,576 graphs, 134,144 total edges).
+Gap distribution by |R| and |R∩sib(i)| .Table 4 decomposes the remaining 3,536 IIC-gap edges
+by the size of the residual unknown parent setRand the confounded subsetR∩sib(i).
+Table 4: Algebraic structure of IIC-gap edges (n= 5, exhaustive)
+|R| |R∩sib(i)|Gap edges
+2 1 2,784 (78.7%)
+2 2 544 (15.4%)
+3 1 176 (5.0%)
+3 2 28 (0.8%)
+3 3 4 (0.1%)
+Algebraic interpretation.The gap edges with |R|= 2 , |R∩sib(i)|= 1 dominate (78.7%). In this
+regime, one unknown parent r1 ∈sib(i) creates a coupled system where the covariance equations
+for (Br1,i,Ω r1,i) involve the second unknown parent r2, yielding a system of |W| equations in
+|R|+|R∩sib(i)|= 3 unknowns. With |W|=|R|= 2 available non-descendant sources (the
+Reduced HTC requirement), we have 2 equations but 3 unknowns—generically under-determined.
+This confirms that closing the gap requires either: (a) additional side information to reduce |R| below
+the confounding dimension, or (b) cross-node algebraic methods that simultaneously solve systems
+involving multiple target nodes—beyond the scope of any node-wise HTC approach (Theorem B.2).
+16
+
+PAGE 17
+C Additional Experiments
+C.1 Experiment: IIC with Intervention Seeds
+Results for intervention seeds on general random graphs (n= 6 ) are presented in Table 1 (Section 5).
+Intervening on a single node raises the identification rate from 85.6% to 93.4% (+7.8%), and
+intervening on two nodes achieves 97.5% (+11.9%). The gains arise not only from the intervened
+edges themselves, but more importantly from thepropagation effectof Reduced HTC: known
+outgoing edges of the intervened node reduce |R| for its children, enabling Reduced HTC to succeed
+on previously intractable nodes.
+C.2 Experiment: IIC vs. Ancestor Decomposition
+Table 5 compares the identification power of IIC (with IV seed) and Ancestor Decomposition (AD)
+through exhaustive enumeration.
+Table 5: IIC (IV seed) vs. Ancestor Decomposition: exhaustive comparison
+nBoth IIC Only AD Only Neither
+4 288 (85.7%) 10 (3.0%)038 (11.3%)
+5 108,368 (80.8%) 2,080 (1.6%)023,696 (17.7%)
+Every AD-identifiable edge is also IIC-identifiable, but IIC identifies 1.6–3.0% additional edges. AD
+identifies zero edges that IIC cannot, confirming strict subsumption.
+C.3 Experiment: Convergence Speed
+Table 6 reports the number of IIC iterations required for convergence.
+Table 6: IIC convergence speed
+nGraphs Mean Iter Max Iter≤2Iter
+4 96 1.83 2 100%
+5 24,064 1.97 2 100%
+6 (random) 982 1.96 2 100%
+7 (random) 500 1.99 2 100%
+Across all tested graphs, IIC converges within ≤2 iterations. The theoretical upper bound is |D|
+(linear), but convergence is extremely fast in practice.
+C.4 Experiment: Precision Verification
+Table 7 verifies the soundness of IIC by comparing newly identified edges against a numerical
+Jacobian ground truth.
+Table 7: IIC newly identified edges vs. numerical Jacobian ground truth (IV-structured graphs)
+nNewly Id True Pos. False Pos. Precision
+4 10 10 0 100%
+5 2,080 2,080 0 100%
+0 false positives.The soundness of IIC is fully verified through exhaustive enumeration.
+17
+
+PAGE 18
+Ground truth verification protocol.For each edge j→i classified by IIC as “newly identified,”
+we verify identifiability via the numerical Jacobian rank test: (1) Sample 50 independent parameter
+realizations from Uniform([−2,−0.5]∪[0.5,2]) . (2) At each realization, compute the Jacobian J
+of the map Bji 7→Σ V via finite differences (δ= 10 −7). (3) Declare Bji identifiable if rank(J)≥
+|pa(i)| with tolerance 10−8 in all 50 trials. This test can detect generic rank deficiency with probability
+&gt;1−10 −12 per edge (the probability that all 50 random parameter values fall on the zero set of a
+non-trivial polynomial is at most (1−ϵ) 50 where ϵ &gt;0 by the Schwartz–Zippel lemma). Across
+all 134,480 edges in the n≤5 dataset, the Jacobian test agrees with HTC on every HTC-conclusive
+edge (0 disagreements), confirming its reliability as ground truth.
+C.5 Experiment: Small-Graph Completeness
+Theorem C.1(Small-Graph Completeness).For all IV-augmented mixed graphs with n≤4 nodes,
+IIC (with IV seed) achieves a complete binary classification into identifiable / non-identifiable, with
+gap = 0.
+Exhaustive verification: 96 four-node graphs, 336 edges. IIC classifies 298 edges as identifiable
+(all numerically verified as true), and 38 edges as inconclusive (all numerically verified as non-
+identifiable).
+C.6 Experiment: Completeness Condition Verification
+Table 8 examines various graph-level conditions and their relation to IIC gap closure.
+Table 8: Graph class conditions and IIC gap (n= 5, exhaustive verification)
+Condition Graphs Edges Gap Complete?
+All graphs 24,064 134,144 17.1% NO
+pa(i)∩sib(i) =∅ ∀i2,142 10,374 0.0% YES
+|sib(i)|= 0∀i376 2,096 0.0% YES
+Tree-like (|pa(i)| ≤1) 1,600 5,760 0.0% YES
+|sib(i)| ≤1∀i3,760 20,960 4.9% NO
+max|pa(i)| ≤215,808 80,384 9.4% NO
+Key finding: pa(i)∩sib(i) =∅ (Parent-Sibling Separation) is theweakestgraph-level condition
+ensuring IIC gap = 0 (independent of in-degree or sibling count constraints).
+C.7 Experiment: Scalability
+Table 9 shows IIC’s identification rate and runtime as graph size increases from 10 to 100 nodes.
+Table 9: Scalability of IIC on large random graphs (intervention seed, k=n/5 nodes, 200 graphs ±
+std)
+n|E| |S 0|HTC% IIC% Gain Time (ms)
+10 14 2 96.1±2.3 98.6±1.1 +2.5 18±5
+20 57 4 97.0±1.8 99.2±0.7 +2.2 72±12
+50 368 10 98.6±0.9 99.3±0.5 +0.7 580±45
+100 1,485 20 99.5±0.3 99.7±0.2 +0.1 5,595±310
+IIC completes in &lt;6 seconds even on 100-node graphs and consistently outperforms HTC. The gains
+decrease with graph size because large sparse graphs have small HTC gaps (&lt;1% at n= 100 ). Note
+that this experiment uses k=n/5 intervention nodes (20% of variables); when fewer interventions
+are available, IIC still provides gains (Table 11 shows that evenk= 1 –2 interventions yield 60–70%
+of the total gain).
+18
+
+PAGE 19
+C.8 Experiment: IIC Estimation vs. 2SLS vs. OLS
+Table 10 and Figure 6 compare estimation accuracy across IIC, 2SLS, and OLS on a 6-node graph
+with confounding.
+Table 10: IIC-Estimate vs. 2SLS vs. OLS (6-node graph, n= 5000 samples, averaged over 100 trials
+±std).Bold= best method per edge group.
+Edge Method|Bias| ↓RMSE↓
+Z→T(no conf.)
+IIC 0.003±0.016 0.017±0.003
+2SLS 0.003±0.016 0.017±0.003
+OLS0.002±0.015 0.015±0.003
+T→Y(conf.)
+IIC 0.001±0.019 0.020±0.004
+2SLS 0.001±0.019 0.020±0.004
+OLS 0.213±0.015 0.213±0.003
+W1 →Y(conf.) IIC 0.003±0.018 0.019±0.004
+OLS 0.130±0.015 0.130±0.003
+W2 →Y(conf.) IIC 0.000±0.019 0.020±0.004
+OLS 0.168±0.015 0.168±0.003
+W3 →W 2 (no conf.) IIC 0.000±0.014 0.014±0.003
+OLS 0.000±0.014 0.014±0.003
+Key findings: (1) On unconfounded edges, IIC ≈ OLS ≈ 2SLS. (2) On confounded edges, OLS
+exhibits severe bias (∼0.13–0.21), whereas IIC bias is &lt;0.003 . (3) IIC can estimate edges that 2SLS
+cannot (W1 →Y,W 2 →Yhave no available IV).
+Z→T T→Y W1→Y W2→Y W3→W2
+0
+5·10 −2
+0.1
+0.15
+0.2
+0.25
+N/A N/A N/A
+Absolute Error| ˆB−B ∗|
+IIC 2SLS OLS
+Figure 6: Box plot of per-trial absolute estimation error ( | ˆBji −B ∗
+ji|, 100 trials, n= 5000 ). On
+confounded edges ( T→Y , W1→Y , W2→Y ), OLS exhibits large systematic bias; IIC achieves
+near-zero error. 2SLS matches IIC where an IV exists butcannotestimate edges without a valid IV
+(marked N/A).
+C.9 Experiment: Sachs Protein Signaling Network
+We apply IIC to the 11-node protein signaling network of Sachs et al. (2005) (17 directed edges,
+with 6 bidirected edges added to model latent confounding). IIC determines thatall 17 edges are
+identifiable(HTC alone suffices, without any seed). This is because the hub nodes (PKA, PKC) in the
+Sachs network provide abundant half-trek sources. Finite-sample estimation (n= 2000 , intervening
+on PKA + PKC) yields a median bias of 0.024, consistent with Table 13.
+19
+
+PAGE 20
+C.10 Case Study: Mendelian Randomization for Cardiovascular Disease
+We construct a 9-node linear SEM inspired by multivariable Mendelian randomization studies of
+cardiovascular disease risk factors [30]. The graph (Figure 5) models three genetic instruments (Gbmi,
+Gldl, Gbp), three exposures (BMI, LDL cholesterol, systolic blood pressure), an inflammatory marker
+(CRP), a behavioral confounder (smoking), and the outcome (coronary heart disease, CHD). Four
+latent confounders create bidirected edges: BMI↔CHD (shared lifestyle), LDL↔CHD (shared diet),
+SBP↔CHD (shared vascular factors), and CRP↔CHD (shared inflammatory pathways).
+HTC analysis.Standard HTC identifies 8 of 13 edges but leaves all 5 edges into CHDinconclusive
+(38.5% gap). This occurs because CHD has 5 parents, 4 of which are confounded siblings; the graph
+lacks enough “clean” half-trek witnesses.
+IIC with IV seeds. Gbmi satisfies the exclusion restriction for BMI→CHD (BMI has no mediator
+path to CHD), identifying both Gbmi →BMI and BMI→CHD. Similarly, Gbp identifies Gbp →SBP
+and SBP→CHD. Gldl identifies Gldl →LDL butnotLDL →CHD (violated by the mediator path
+LDL→SBP→CHD).
+With known_pa(CHD) = {BMI, SBP} from IV seeds, IIC applies Reduced HTC to the remaining
+parents R={LDL,CRP,SMK} (|R|= 3 , down from |pa(CHD)|= 5 ). The witness system
+Gldl →LDL, Gbp →CRP, SMK→SMK has pairwise disjoint left sides, none in sib(CHD). Reduced
+HTC succeeds, identifying all 3 remaining edges.Result: IIC identifies all 13/13 edges (100%),
+resolving the entire HTC gap.
+Semi-synthetic estimation (n= 5000 , 500 replications) confirms that OLS bias on confounded edges
+(BMI→CHD, LDL→CHD, SBP→CHD, CRP→CHD) ranges from 0.08 to 0.15 and does not vanish
+withn, whereas IIC-based estimation is consistent.
+See Figure 5 (main text) for the graph structure.
+C.11 Case Study: Returns to Education
+We construct a stylized 6-node linear SEM inspired by the classical returns-to-education literature [1]:
+Quarter-of-birth(Q)→Education(E) , E→Earnings(Y) , Ability(A)→E , A→Y (latent
+confounder ⇒E↔Y ), Region(R)→Y , Experience(X)→Y , X→E . Standard HTC fails for
+E→Y because A creates a sibling pair ( E↔Y ) that blocks the half-trek system. However, Q
+serves as an IV for the Q→E edge. IIC identifies Q→E via the IV seed, then applies Reduced
+HTC: with BQE known, the remaining parents of E satisfy Reduced HTC, enabling identification of
+A→E (via known Q→E ). Subsequently, A→Y and E→Y are identified in the next iteration.
+This demonstrates IIC’s practical value: in a standard econometric setting, IIC identifiesallstructural
+coefficients that economists care about, while standard HTC leaves the key causal effect E→Y
+unresolved.
+C.12 Experiment: Seed Size vs. Identification Rate
+Table 11 and Figure 7 show how the number of intervention nodes affects the identification rate.
+Table 11: Number of intervention nodeskvs. identification rate (random graphs, mean±std)
+k n=10Rate Gainn=20Rate Gain
+0 95.5% — 96.5% —
+1 97.2% +1.7% 97.3% +0.9%
+2 98.6% +3.1% 98.2% +1.7%
+3 99.1% +3.6% 98.5% +2.1%
+5 99.7% +4.2% 99.2% +2.7%
+7 100.0% +4.4% 99.6% +3.1%
+10 100.0% +4.5% 99.8% +3.4%
+The identification rate increasesmonotonicallywith k (validating Theorem 4.7), but with diminishing
+marginal returns: the first 2–3 interventions contribute the largest gains, after which returns diminish.
+20
+
+PAGE 21
+This provides a quantitative basis forexperimental budget optimization: given a budget of k inter-
+ventions, IIC can answer “how many additional edges can be identified by intervening on one more
+node.”
+0 2 4 6 8 10
+94
+96
+98
+100
+sweet spot
+Intervention nodesk
+Id. rate (%)
+|V|= 10
+|V|= 20
+Figure 7: Identification rate vs. number of intervention nodes. The first 2 nodes yield ∼60–70% of
+the total gain.
+C.13 Robustness to Graph Misspecification
+IIC assumes a known mixed graph G. In practice, the graph may be estimated and contain errors. We
+evaluate IIC’s robustness under four types of misspecification on random mixed graphs (n= 6 , 500
+graphs). Ground truth: IIC on the correct graph.
+Table 12: IIC robustness under graph misspecification (n= 6, interventionk= 1)
+Perturbation Rate Precision Recall Id. Rate
+None (correct) 0% 1.000 1.000 0.925
+Missing directed 10% 0.994 0.987 0.918
+20% 0.994 0.987 0.918
+30% 0.991 0.983 0.917
+Extra directed 10% 0.991 0.981 0.914
+20% 0.991 0.980 0.913
+30% 0.989 0.975 0.910
+Missing confounders 10% 0.965 0.989 0.948
+20% 0.965 0.989 0.948
+30% 0.964 0.989 0.948
+Extra confounders 10% 0.981 0.973 0.915
+20% 0.981 0.973 0.915
+30% 0.983 0.965 0.907
+Findings.IIC is remarkably robust: even with 30% graph error, precision remains ≥96.4% and recall
+≥96.5% . The most dangerous perturbation ismissing confounders(overlooking latent variables),
+which reduces precision to 96.5%—some edges are incorrectly claimed as identifiable when the true
+confounding structure is more complex. Missing or extra directed edges have milder effects (precision
+≥98.9% ). Extra confounders (overly conservative) reduce recall but maintain precision—a safe
+failure mode.
+D Finite-Sample Estimation
+IIC not only determines which edges are identifiable, but also naturally yields a plug-in estimation
+algorithm.
+21
+
+PAGE 22
+Algorithm 2IIC-ESTIMATE: Finite-Sample IIC Estimation
+Require:DataX∈R n×|V| , graphG, seed functionS, auxiliary informationI
+Ensure:Estimates ˆBji and confidence intervals (for all identifiable edges)
+1:Compute sample covariance ˆΣ = 1
+n−1 XT X
+2:Run Algorithm 1 to determine identifiable edge setI
+3:// Phase 1: Estimate seed edges
+4:fore∈ S 0 do
+5:Compute ˆBe using a seed-specific estimator (e.g., IV: ˆBZT = ˆΣZT /ˆΣZZ )
+6:end for
+7:// Phase 2: Iterative Reduced HTC estimation
+8:whilenew edges can be estimateddo
+9:forj→i∈ Inot yet estimateddo
+10:K←already-estimated parents inpa(i)
+11:R←pa(i)\K
+12:Find Reduced HTC system(W,assignment)
+13:Construct ˆΣ′
+wli = ˆΣwli −P
+k∈K ˆBki ˆΣwlk
+14:Solve linear system[ ˆΣwlrm][ ˆBri] = [ˆΣ′
+wli]
+15:end for
+16:end while
+17:// Phase 3: Bootstrap standard errors
+18:Forb= 1, . . . , N boot: resampleX (b), repeat Phases 1–2 to obtain ˆB(b)
+19:ˆ se(ˆBji) = sd({ ˆB(b)
+ji }b)
+20:return ˆBji ±z 0.975 ˆ se
+Theorem D.1( √n-Consistency).Let ˆBji be the estimate produced by Algorithm 2 for an IIC-
+identifiable edge j→i . If n samples are drawn i.i.d. from a linear SEM with finite fourth moments,
+then: √n( ˆBji −B ji)
+d
+− → N(0, σ2
+ji)
+whereσ 2
+ji can be consistently estimated by bootstrap.
+Proof sketch. IIC guarantees that Bji =g(Σ) for some rational function g. The plug-in estimate
+is ˆBji =g( ˆΣ). By the CLT, √n(ˆΣ−Σ)
+d
+− → N(0,Γ). By the Delta method, √n(g( ˆΣ)−g(Σ))
+d
+− →
+N(0,∇g·Γ· ∇g T ). Bootstrap consistency follows from the continuous differentiability of g [4].
+D.1 Error Propagation Analysis
+IIC-Estimate identifies edges sequentially: seed edges first, then propagated edges that depend on the
+seed estimates. A natural concern is whether estimation errorsaccumulatethrough the propagation
+chain.
+Proposition D.2(Error Propagation Bound).Consider IIC-Estimate (Algorithm 2) applied to a
+propagation chain of depth d: seed edge e0 is estimated first; edge et (t= 1, . . . , d) is estimated at
+iteration t using the estimates of edges identified at iterations &lt; t. At step t, the linear system solved
+has coefficient matrix Mt = [Σwl,rm]|Rt|
+l,m=1 with condition number κt =∥M −1
+t ∥ · ∥Mt∥. Then for n
+i.i.d. samples with finite fourth moments:
+RMSE( ˆB(d))≤ Cd√n , C d =C 0
+dY
+t=1
+ 
+1 +κ t ·γ t
+
+,(5)
+where C0 =O(1) is the seed-estimation constant and γt =∥M −1
+t ∥ ·max k∈Kt ∥ˆΣ·,k∥ captures the
+scale of covariance entries used in substitution. In particular:
+(a) The √nconvergence rate is preserved at every propagation depth.
+(b) For well-conditioned systems (κ t ≈1),C d =O(1)uniformly ind.
+22
+
+PAGE 23
+(c) Since IIC converges in ≤2 iterations empirically (Table 6), d≤2 and the bound is tight in
+practice.
+Proof. Seed step ( t= 0 ).The estimator ˆB(0) satisfies ∥ ˆB(0) −B (0)∥=O p(1/√n) by the CLT
+and delta method (Theorem D.1), with leading constant C0 depending on the seed estimator (e.g.,
+C0 =
+p
+Var(Z)/Cov(Z, T)2 for an IV seed).
+Propagation step (t≥1).At stept, the system solved is:
+Mt ˆβt = ˆσ′
+t,ˆσ ′
+t,l = ˆΣwl,i −
+X
+k∈Kt
+ˆBk ˆΣwl,k.
+The right-hand side error decomposes as:
+ˆσ′
+t −σ ′
+t = ( ˆΣwl,i −Σ wl,i)| {z }
+sampling:O p(1/√n)
+−
+X
+k∈Kt
+( ˆBk −B k)| {z }
+prior error
+Σwl,k −
+X
+k∈Kt
+ˆBk (ˆΣwl,k −Σ wl,k)| {z }
+sampling:O p(1/√n)
+.
+ApplyingM −1
+t and taking norms:
+∥ ˆβt −β t∥ ≤ ∥M −1
+t ∥
+ 
+ct√n +
+X
+k∈Kt
+∥ ˆBk −B k∥ ∥Σ·,k∥
+!
+≤ ct∥M −1
+t ∥√n +κ tγt max
+k∈Kt
+∥ ˆBk −B k∥,(6)
+wherec t =O(1)absorbs constant factors from sampling andγ t =∥M −1
+t ∥max k ∥Σ·,k∥.
+Unrolling the recursion.Let ∆t =∥ ˆβt −β t∥. From (6): ∆t ≤a t/√n+b t∆t−1 with bt =κ tγt.
+Unrolling:∆ d ≤ 1√n
+Pd
+t=0 at
+Qd
+s=t+1 bs ≤ C0√n
+Qd
+t=1(1 +b t), establishing (5).
+Remark D.3(Practical implications).The bound (5) shows that error accumulation ismultiplicative
+in the condition numbers, not in the sample size: the 1/√n rate is always preserved. For IIC’s typical
+propagation depth d≤2 (Table 6), the amplification factor is at most(1 +κ 1γ1)(1 +κ 2γ2), which
+is moderate for well-conditioned half-trek systems. The finite-sample results in Tables 13–10 confirm
+that propagated-edge RMSE is comparable to seed-edge RMSE (e.g., B12 RMSE = 0.033 vs. B01
+RMSE= 0.027atn= 2000, a factor of1.2×), consistent withκγ≈0.2in those experiments.
+D.2 Finite-Sample Simulation Results
+We evaluate finite-sample estimation quality across varying sample sizes. Table 13 reports RMSE
+and 95% confidence interval coverage; Figure 8 visualizes the √n-convergence.
+Table 13: IIC-IV estimation: 5-node graph, 3/5 edges identifiable ( B∗
+01 = 0.8 , B∗
+12 =−0.5 ,
+B∗
+31 = 0.6)
+RMSE Coverage (95%)
+n B 01 B12 B31 B01 B12 B31
+100 0.116 0.160 0.096 95.5% 97.0% 94.5%
+500 0.056 0.068 0.046 94.0% 96.0% 94.5%
+2,000 0.027 0.033 0.025 94.5% 94.0% 93.5%
+10,000 0.012 0.015 0.010 96.5% 93.5% 97.0%
+RMSE ∝1/ √n (√n-consistency);
+coverage ranges from 93.5% to 97.0% (close to the nominal 95%). Results averaged over 200
+replications.
+23
+
+PAGE 24
+100 500 2000 100000
+0.04
+0.08
+0.12
+0.16
+Sample sizen
+RMSE
+B01 (seed)
+B12 (propagated)
+B31 (propagated)
+O(1/√n)
+Figure 8: Convergence of IIC-Estimate RMSE with sample size. The RMSE of all three edges
+decreases along theO(1/ √n)reference line, validating the √n-consistency of Theorem D.1.
+Table 14: IIC-Intervention estimation: 6-node graph, 2 nodes intervened, 7/7 edges identifiable
+nMean|Bias|RMSE
+200 0.157 0.280
+1,000 0.057 0.081
+5,000 0.027 0.038
+All 7 edges are successfully estimated; bias and RMSE decrease at the expectedO(1/ √n)rate.
+E Bridge Theorem and Counterexamples
+Theorem E.1(Parameter → Structure).Assume the linear SEM satisfies faithfulness. If Bji is
+generically identifiable, then edgej→iis structurally generically identifiable.
+Proof. Let G+ contain j→i and G− not contain it. The parameter space Θ− embeds naturally
+into Θ+ (by setting Bji = 0). Since Bji is generically identifiable, ∃ a rational function f such that
+f(Σ V ) =B ji for almost every θ∈Θ +. Applying f to the image of Θ− yields f(ϕ −(θ′)) = 0. If
+the true model (G+, θ∗) is faithful, then Bji(θ∗)̸= 0 , so f(Σ V )̸= 0 . But if ∃θ ′ ∈Θ − such that
+ϕ−(θ′) = ΣV , thenf(Σ V ) = 0, a contradiction.
+E.1 CE-1: Standard HTC Fails but IIC Succeeds
+A 4-node graph: V={0,1,2,3} , 0→1→2 , 3→2 , 1↔2 , 3↔2 . Z= 0, T= 1, Y= 2 .
+pa(2) ={1,3} , sib(2) ={1,3} . Standard HTC fails ( pa(2)⊆sib(2) ). IIC: B01 is identified by
+the IV seed, giving K={0} for node 1. In GIV, pa(1) may consist only of {0}, so Reduced HTC
+succeeds trivially. Subsequently, B12 is known, K={1} for node 2, and R={3} . Reduced HTC
+requires only 1 source for{3}—success.
+E.2 CE-2: Exogeneity Violation⇒Non-identifiability
+U→Z,U→Y,Z→T→Y.Cov(Z, Y)/Cov(Z, T)̸=B T Y .
+24</pre></html>

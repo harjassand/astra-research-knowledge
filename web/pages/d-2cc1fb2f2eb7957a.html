@@ -1,0 +1,141 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>&quot;&quot;&quot;Independent audit of charges_design9&#x27;s degree2 compatible chart.</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>&quot;&quot;&quot;Independent audit of charges_design9&#x27;s degree2 compatible chart.</h1><p>Source ID d-2cc1fb2f2eb7957a; literature/sources/charges_design9/cycle14/independent_quadratic_chart_checks.py; 2130 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>&quot;&quot;&quot;Independent audit of charges_design9&#x27;s degree2 compatible chart.
+
+The prior U,C0 normalization and original witness are inputs already
+independently established in cycle13. No peer script is imported or run.
+&quot;&quot;&quot;
+from pathlib import Path
+from itertools import combinations, permutations
+import sympy as s
+import json, hashlib, time
+
+begin=time.monotonic()
+x,y,rho,eta=s.symbols(&#x27;x y rho eta&#x27;)
+V=(x,y,rho,eta)
+out={}
+def check(name,expr):
+    r=s.factor(s.expand(expr))
+    assert r==0,(name,r)
+    out[name]={&#x27;pass&#x27;:True,&#x27;residual&#x27;:&#x27;0&#x27;}
+def matrix_check(name,M):
+    r=[s.factor(s.expand(z)) for z in M]
+    assert all(z==0 for z in r),(name,r)
+    out[name]={&#x27;pass&#x27;:True,&#x27;residuals&#x27;:[&#x27;0&#x27;]*len(r)}
+def degree(f):
+    return -1000 if f==0 else s.Poly(s.expand(f),*V).total_degree()
+def hom(f,n):
+    P=s.Poly(s.expand(f),*V)
+    return s.Add(*(co*s.prod(z**k for z,k in zip(V,mon))
+                   for mon,co in P.terms() if sum(mon)==n))
+
+P=s.Matrix([[1,4],[s.Rational(1,2),3]])
+M=s.Matrix([[x,x**2-1],[1,x]])
+D=(P*M*P.inv()).applyfunc(s.expand)
+check(&#x27;chart_det1&#x27;,D.det()-1)
+matrix_check(&#x27;chart_polynomial_inverse&#x27;,D*D.adjugate()-s.eye(2))
+c=s.Matrix([[2*y,4*x]])
+cplus=s.Matrix([[-3,4]])
+cminus=-cplus
+matrix_check(&#x27;firstjet_plus&#x27;,cplus*D.subs(x,1)-cplus)
+matrix_check(&#x27;firstjet_minus&#x27;,cminus*D.subs(x,-1)-cplus)
+T=s.Matrix([rho+eta**2,eta+(rho+eta**2)**2])
+check(&#x27;shear_det1&#x27;,T.jacobian((rho,eta)).det()-1)
+G=c*D
+F=s.expand((G*T)[0])
+beta=y**2*(6*x**2*y**2+15*x*y+4)
+base_h=-(s.Rational(45,4)+beta)**2
+psi=base_h+F
+H=s.hessian(psi,V)
+pts=[{x:1,y:-s.Rational(3,2),rho:0,eta:0},
+     {x:-1,y:s.Rational(3,2),rho:0,eta:0}]
+grad=s.Matrix([s.diff(psi,z) for z in V])
+for j,pt in enumerate(pts):
+    matrix_check(&#x27;collision_&#x27;+str(j),grad.subs(pt)-s.Matrix([0,0,-3,4]))
+
+HF=s.hessian(F,V)
+Hb=s.hessian(base_h,(x,y))
+check(&#x27;G2_top3&#x27;,hom(G[1],3)-2*x**2*(x+y))
+check(&#x27;dual_top8&#x27;,hom(HF[2:4,2:4].det(),8)-32*x**4*(x+y)**2*eta**2)
+check(&#x27;base_top20&#x27;,hom(Hb.det(),20)+456192*x**6*y**14)
+check(&#x27;base_no_degree19&#x27;,hom(Hb.det(),19))
+top28=-14598144*x**10*y**14*(x+y)**2*eta**2
+check(&#x27;det_top28&#x27;,hom(Hb.det(),20)*hom(HF[2:4,2:4].det(),8)-top28)
+weights=[s.Rational(5,2),s.Rational(5,2),s.Rational(3,2),s.Rational(5,2)]
+assert all(degree(HF[i,j])&lt;=weights[i]+weights[j] for i in range(4) for j in range(4))
+degrees=[[degree(H[i,j]) for j in range(4)] for i in range(4)]
+minor_bounds={}
+for size in [1,2,3]:
+    minor_bounds[str(size)]=max(sum(degrees[rr[i]][cc[pp[i]]] for i in range(size))
+         for rr in combinations(range(4),size) for cc in combinations(range(4),size)
+         for pp in permutations(range(size)))
+assert minor_bounds=={&#x27;1&#x27;:10,&#x27;2&#x27;:20,&#x27;3&#x27;:25}
+cof_bounds=[]
+for i in range(4):
+    line=[]
+    for j in range(4):
+        rr=[r for r in range(4) if r!=j]
+        cc=[r for r in range(4) if r!=i]
+        line.append(max(sum(degrees[rr[z]][cc[pp[z]]] for z in range(3))
+                        for pp in permutations(range(3))))
+    cof_bounds.append(line)
+assert cof_bounds[2][2]==25
+assert cof_bounds[2][3]==cof_bounds[3][2]==24
+assert all(cof_bounds[i][j]&lt;=23 for i in range(4) for j in range(4)
+           if (i,j) not in [(2,2),(2,3),(3,2)])
+check(&#x27;cofactor_rr_top25&#x27;,hom(Hb.det(),20)*hom(HF[3,3],5)
+      +10948608*x**8*y**14*(x+y)*eta**2)
+check(&#x27;cofactor_re_top24&#x27;,-hom(Hb.det(),20)*hom(HF[2,3],4)
+      -3649536*x**8*y**14*(x+y)*eta)
+
+# General degree5 repair is forced by the unique degree25 cofactor.
+R5=-s.Rational(2,3)*x**2*(x+y)*rho**2
+HR5=s.hessian(R5,V)
+dual_after=HF[2:4,2:4]+HR5[2:4,2:4]
+check(&#x27;degree5_cancels_top28&#x27;,hom(dual_after.det(),8))
+C27=hom(Hb.det(),20)*hom(dual_after.det(),7)
+check(&#x27;degree27_eta0_obstruction&#x27;,C27.subs(eta,0)
+      +9732096*rho*x**10*y**14*(x+y)**2)
+A4_eta,R4_rr=s.symbols(&#x27;A4_eta R4_rhorho&#x27;)
+general27=C27+2*(3649536*x**8*y**14*(x+y)*eta)*A4_eta
+general27+=(-10948608*x**8*y**14*(x+y)*eta**2)*R4_rr
+check(&#x27;general_degree27_eta0_obstruction&#x27;,general27.subs(eta,0)
+      +9732096*rho*x**10*y**14*(x+y)**2)
+for j,pt in enumerate(pts):
+    matrix_check(&#x27;forced_R5_preserves_collision_&#x27;+str(j),s.Matrix([s.diff(R5,z) for z in V]).subs(pt))
+
+# Exact rank certificate and separate pointwise determinant falsification.
+pairs=[(i,j) for i in range(4) for j in range(i,4)]
+coeff=[s.Poly(H[i,j],*V).as_dict() for i,j in pairs]
+mons=sorted(set().union(*(set(a) for a in coeff))-{(0,0,0,0)})
+A=s.Matrix([[a.get(m,0) for a in coeff] for m in mons])
+selected=list(A.T.rref()[1])
+rank=len(selected)
+minor=A[selected,:].det()
+assert rank==10 and minor!=0
+evals=[H.subs({x:0,y:0,rho:0,eta:0}).det()]+[H.subs(pt).det() for pt in pts]
+assert len(set(evals))&gt;1
+out[&#x27;certificate&#x27;]={
+ &#x27;D&#x27;:[[str(z) for z in row] for row in D.tolist()],
+ &#x27;chart_firstjet_minimal_degree&#x27;:2,
+ &#x27;global_coordinate_scope&#x27;:&#x27;U^-1(t,C0 D T), reusing independently verified prior U,C0; D,T have global polynomial inverses&#x27;,
+ &#x27;collision&#x27;:{&#x27;sources&#x27;:[[&#x27;1&#x27;,&#x27;-3/2&#x27;,&#x27;0&#x27;,&#x27;0&#x27;],[&#x27;-1&#x27;,&#x27;3/2&#x27;,&#x27;0&#x27;,&#x27;0&#x27;]],
+              &#x27;common_gradient&#x27;:[&#x27;0&#x27;,&#x27;0&#x27;,&#x27;-3&#x27;,&#x27;4&#x27;]},
+ &#x27;span&#x27;:{&#x27;shape&#x27;:[A.rows,A.cols],&#x27;rank&#x27;:rank,&#x27;selected_monomials&#x27;:[list(mons[j]) for j in selected],
+         &#x27;minor_determinant&#x27;:str(minor)},
+ &#x27;det_values&#x27;:[str(z) for z in evals],
+ &#x27;highest_det_degree&#x27;:28,&#x27;highest_det_part&#x27;:str(top28),
+ &#x27;minor_degree_bounds&#x27;:minor_bounds,&#x27;cofactor_degree_bounds&#x27;:cof_bounds,
+ &#x27;forced_R5&#x27;:&#x27;−(2/3)x²(x+y)rho²+rho A4(x,y,eta)+B5(x,y,eta)&#x27;,
+ &#x27;universal_degree27_eta0&#x27;:&#x27;−9732096 rho x10 y14 (x+y)²&#x27;,
+ &#x27;universal_repair_result&#x27;:&#x27;Every polynomial repair of degree&lt;=5 fails determinant constancy, without collision constraints; degree6 necessary only.&#x27;,
+ &#x27;multi_repair_degree5_bound&#x27;:26,
+ &#x27;attribution&#x27;:&#x27;D2 construction/minimal-degree/repair frontier proposed by charges_design9; independently reconstructed here.&#x27;,
+ &#x27;not_claimed&#x27;:[&#x27;HC4 counterexample&#x27;,&#x27;degree6 repair existence&#x27;,&#x27;successful determinant repair&#x27;,&#x27;historical priority or external validation&#x27;],
+}
+out[&#x27;elapsed_seconds&#x27;]=time.monotonic()-begin
+out[&#x27;script_sha256&#x27;]=hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
+out[&#x27;sympy_version&#x27;]=s.__version__
+dest=Path(&#x27;results/hessian_check12/cycle14/quadratic_chart_checks.json&#x27;)
+dest.write_text(json.dumps(out,indent=2,ensure_ascii=False)+&#x27;\n&#x27;)
+print(json.dumps({&#x27;pass&#x27;:True,&#x27;spanrank&#x27;:rank,&#x27;minor&#x27;:str(minor),&#x27;det_values&#x27;:out[&#x27;certificate&#x27;][&#x27;det_values&#x27;],
+                  &#x27;elapsed_seconds&#x27;:out[&#x27;elapsed_seconds&#x27;],&#x27;result&#x27;:str(dest)},indent=2))
+</pre></html>

@@ -1,0 +1,99 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>!/usr/bin/env python3</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>!/usr/bin/env python3</h1><p>Source ID d-c092552ade60bad6; literature/sources/metric_prior/cycle17/internal_snapshots/check_matrix_free_outputs.py; 1847 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Independent final-projection/dual/terminal replay, no producer imports.
+
+The binary checker materializes only its tiny source matrices to check the
+reported implicit projections; it makes no matrix-free peak-memory claim.
+It does not remeasure or rerun the producer&#x27;s CG trajectory.
+&quot;&quot;&quot;
+import hashlib,json,time
+from pathlib import Path
+import sympy as sp
+ROOT=Path(__file__).resolve().parents[3]
+SOURCE=ROOT/&#x27;results/metric_prior/cycle17/matrix_free_binary.json&#x27;
+OUT=ROOT/&#x27;results/metric_use10/cycle17/matrix_free_output_independent_checks.json&#x27;
+start=time.perf_counter();data=json.loads(SOURCE.read_text())
+x,y,u,v=sp.symbols(&#x27;x y u v&#x27;);xs=(x,y);vs=(u,v)
+fixtures=[]
+for item in data[&#x27;fixtures&#x27;]:
+    f=sum(sp.Integer(c)*x**(4-k)*y**k for k,c in enumerate(item[&#x27;coefficients&#x27;]))
+    F=f.subs({x:u,y:v});g=sum(sp.diff(F,vs[i])*xs[i] for i in range(2))/4
+    t13=0;t22=0
+    import itertools
+    for inds in itertools.product(range(2),repeat=4):
+        T=sp.diff(f,*[xs[i] for i in inds])/24
+        t13+=T*vs[inds[0]]*xs[inds[1]]*xs[inds[2]]*xs[inds[3]]
+        t22+=T*vs[inds[0]]*vs[inds[1]]*xs[inds[2]]*xs[inds[3]]
+    polar=sp.Poly(sp.expand(64*(F**2*t13-3*F*g*t22+2*g**3)),x,y)
+    generators=[sp.Poly(polar.coeff_monomial(x**(3-k)*y**k),u,v) for k in range(4)]
+    checks=[];K=[]
+    for key in [&#x27;degree29&#x27;,&#x27;degree30&#x27;]:
+        record=item[key];D=record[&#x27;D&#x27;];dd=D-24;C=D+1;shifts=D-8
+        assert record[&#x27;C&#x27;]==C and record[&#x27;R&#x27;]==4*shifts and record[&#x27;N&#x27;]==dd+1
+        # Producer names its first vector coordinate v and its second u.
+        # This independent checker names the first u and the second v.
+        for pp,expr in zip(generators,record[&#x27;templates&#x27;]):assert sp.expand(pp.as_expr()-sp.sympify(expr,locals={&#x27;u&#x27;:v,&#x27;v&#x27;:u}))==0
+        M=sp.zeros(C,4*shifts)
+        for gi,pp in enumerate(generators):
+            for shift in range(shifts):
+                for k in range(10):M[k+shift,gi*shifts+shift]=pp.coeff_monomial(u**(9-k)*v**k)
+        basis=M.T.nullspace();rank=C-len(basis)
+        assert rank==C-6
+        cokernel=sp.Matrix.hstack(*basis)
+        f6=sp.Poly(sp.expand(F**6),u,v);W=sp.zeros(C,dd+1)
+        for shift in range(dd+1):
+            for k in range(25):W[k+shift,shift]=f6.coeff_monomial(u**(24-k)*v**k)
+        raw=[]
+        for cert in record[&#x27;annihilator_certificates&#x27;]:
+            z=sp.Matrix([sp.Rational(int(a),int(cert[&#x27;z_denominator&#x27;])) for a in cert[&#x27;z_numerators&#x27;]])
+            probe=sp.Matrix(cert[&#x27;probe&#x27;]);projected=probe-z
+            assert M.T*z==sp.zeros(M.cols,1)
+            assert cokernel.T*projected==sp.zeros(cokernel.cols,1)
+            raw.append(list((z.T*W)[0,:]))
+        R=sp.Matrix(raw);Kd=sp.Matrix(record[&#x27;dual_rows&#x27;])
+        assert R.rank()==Kd.rank()==6
+        assert sp.Matrix.vstack(R,Kd).rank()==6
+        trueker=(cokernel.T*W).nullspace()
+        gotker=Kd.nullspace()
+        assert len(trueker)==len(gotker)==(dd+1)-6
+        if gotker:
+            assert Kd*trueker[0]==sp.zeros(6,1)
+        checks.append({&#x27;D&#x27;:D,&#x27;source_rank&#x27;:rank,&#x27;C&#x27;:C,&#x27;R&#x27;:M.cols,&#x27;verified_projections&#x27;:len(raw),&#x27;dual_rank&#x27;:6,&#x27;preimage_kernel_dimension&#x27;:len(gotker),
+                       &#x27;checker_dense_entries&#x27;:C*M.cols,&#x27;CG_trajectory_reexecuted&#x27;:False})
+        K.append(Kd)
+    K5,K6=K
+    # Actual full degree6 preimage equals the classical original derivative sextic.
+    Hess=sp.hessian(f,(x,y)).det();sextic=sp.expand(sp.diff(f,x)*sp.diff(Hess,y)-sp.diff(f,y)*sp.diff(Hess,x))
+    declared=sp.sympify(item[&#x27;classical_control&#x27;][&#x27;sextic&#x27;],locals={&#x27;x&#x27;:x,&#x27;y&#x27;:y})
+    assert sp.expand(sextic-declared)==0
+    coeff6=sp.Matrix([sp.Poly(sextic,x,y).coeff_monomial(x**(6-j)*y**j) for j in range(7)])
+    assert K6*coeff6==sp.zeros(6,1)
+    # Reconstruct small quotient sections and multiplication descent.
+    piv=K5.rref()[1];P=sp.zeros(6,6)
+    for j,k in enumerate(piv):P[k,j]=1
+    section=P*(K5*P).inv();Ux=sp.zeros(7,6);Uy=sp.zeros(7,6)
+    for j in range(6):Ux[j,j]=1;Uy[j+1,j]=1
+    Bi=[K6*T*section for T in [Ux,Uy]]
+    for T,Bi0 in zip([Ux,Uy],Bi):assert K6*T==Bi0*K5
+    chart=item[&#x27;output&#x27;][&#x27;chart&#x27;];Be=Bi[0]+chart*Bi[1];ops=[Be.inv()*B for B in Bi]
+    assert ops[0]*ops[1]==ops[1]*ops[0]
+    char=(ops[0]+item[&#x27;output&#x27;][&#x27;separator&#x27;]*ops[1]).charpoly(sp.Symbol(&#x27;lambda&#x27;)).as_expr()
+    declared_char=sp.sympify(item[&#x27;output&#x27;][&#x27;separator_polynomial&#x27;].replace(&#x27;lambda&#x27;,&#x27;lam&#x27;),locals={&#x27;lam&#x27;:sp.Symbol(&#x27;lambda&#x27;)})
+    assert sp.expand(char-declared_char)==0
+    assert sp.gcd(char,sp.diff(char,sp.Symbol(&#x27;lambda&#x27;)))==1
+    output=item[&#x27;output&#x27;];L=sp.Matrix(output[&#x27;returned_L&#x27;]);Q=sp.Matrix(output[&#x27;returned_Q&#x27;]);metric=sp.Matrix(output[&#x27;metric&#x27;])
+    latent=L*sp.Matrix([x,y]);mass=sp.Matrix([a*a for a in latent])
+    assert sp.expand((mass.T*Q*mass)[0]-f)==0
+    assert Q[0,0]&gt;0 and Q.det()&gt;0 and metric[0,0]&gt;0 and metric.det()&gt;0
+    V=L.inv();aligned=V.T*metric*V;assert aligned[0,1]==0 and aligned[0,0]&gt;0 and aligned[1,1]&gt;0
+    sos=Q[0,0]*(latent[0]**2+Q[0,1]/Q[0,0]*latent[1]**2)**2+Q.det()/Q[0,0]*latent[1]**4
+    assert sp.expand(sos-f)==0
+    assert set(map(tuple,output[&#x27;rational_reflection_rays&#x27;]))==set(map(tuple,item[&#x27;classical_control&#x27;][&#x27;rational_reflection_rays&#x27;]))
+    assert K5[:1,:].rank()&lt;2 # the concrete one-row attempt fails the minimum dimension admission
+    fixtures.append({&#x27;name&#x27;:item[&#x27;name&#x27;],&#x27;checks&#x27;:checks,&#x27;original_sextic_control&#x27;:True,&#x27;small_sections_descent_squarefree&#x27;:True,
+                     &#x27;terminal_even_QPD_metric_and_weighted_square_identity&#x27;:True,&#x27;one_row_admission_rejected&#x27;:True})
+result={&#x27;status&#x27;:&#x27;PASS independent original-source projection/dual/quotient/terminal replay&#x27;,
+ &#x27;fixtures&#x27;:fixtures,&#x27;producer_imports&#x27;:False,&#x27;source_sha256&#x27;:hashlib.sha256(SOURCE.read_bytes()).hexdigest(),
+ &#x27;scope&#x27;:&#x27;two producer binary executions; no new acquisition fixture, universal proof inference or independent timing/peak verification&#x27;,
+ &#x27;runtime_seconds&#x27;:time.perf_counter()-start}
+OUT.write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;);print(json.dumps({&#x27;status&#x27;:result[&#x27;status&#x27;],&#x27;seconds&#x27;:result[&#x27;runtime_seconds&#x27;]}))
+</pre></html>

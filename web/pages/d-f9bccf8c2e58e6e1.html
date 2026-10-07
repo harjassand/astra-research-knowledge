@@ -1,0 +1,3260 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Identity Testing for Circuits with Exponentiation Gates</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>Identity Testing for Circuits with Exponentiation Gates</h1><p>Source ID d-f9bccf8c2e58e6e1; literature/sources/rounding_prior/cycle13/LW_ITCS2026.html; 36052 o200k tokens; role primary_source_or_metadata; extraction html_text_discovery_only_math_may_be_lossy. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>Identity Testing for Circuits with Exponentiation Gates
+
+            Abstract
+            
+1 Introduction
+            
+2 Preliminaries
+            
+3 Circuit and Query Models
+            
+4 Exponential Polynomials
+            
+5 Algorithms for Identity Testing
+            References
+
+Identity Testing for Circuits with Exponentiation Gates
+
+Jiatu Li
+
+Massachusetts Institute of Technology, Cambridge, MA, USA
+
+Mengdi Wu
+
+Carnegie Mellon University, Pittsburgh, PA, USA
+
+Abstract
+
+Motivated by practical applications in the design of optimization compilers for neural networks, we initiated the study of identity testing problems for arithmetic circuits augmented with exponentiation gates that compute the real function 
+x\mapsto e^{x}
+x↦ex. These circuits compute real functions of form 
+P(\vec{x})/P^{\prime}(\vec{x})
+P⁢(x→)/P′⁢(x→), where both 
+P(\vec{x})
+P⁢(x→) and 
+P^{\prime}(\vec{x})
+P′⁢(x→) are exponential polynomials
+
+\sum_{i=1}^{k}f_{i}(\vec{x})\cdot\exp\left(\frac{g_{i}(\vec{x})}{h_{i}(\vec{x}%
+)}\right),
+∑i=1kfi⁢(x→)⋅exp⁡(gi⁢(x→)hi⁢(x→)),
+
+for polynomials 
+f_{i}(\vec{x}),g_{i}(\vec{x})
+fi⁢(x→),gi⁢(x→), and 
+h_{i}(\vec{x})
+hi⁢(x→).
+
+We formalize a black-box query model over finite fields for this class of circuits, which is mathematical simple and reflects constraints faced by real-world neural network compilers. We proved that a simple and efficient randomized identity testing algorithm achieves perfect completeness and non-trivial soundness. Concurrent with our work, the algorithm has been implemented in the optimization compiler Mirage by Wu et al. (OSDI 2025), demonstrating promising empirical performance in both efficiency and soundness error. Finally, we propose a number-theoretic conjecture under which our algorithm is sound with high probability.
+
+Keywords and phrases: Polynomial Identity Testing, Exponential Polynomials
+
+Funding: Jiatu Li: received support from the National Science Foundation under Grant CCF-2127597.
+
+Mengdi Wu: received support from NSF awards CNS-2147909, CNS-2211882, and CNS-2239351 and research awards from Amazon, Cisco, Google, Meta, NVIDIA, Oracle, Qualcomm, and Samsung.
+
+Copyright and License: 
+ © Jiatu Li and Mengdi Wu; licensed under Creative Commons License CC-BY 4.0
+
+2012 ACM Subject Classification: Theory of computation 
+\rightarrow
+→ Circuit complexity
+
+Related Version: 
+Full Version: https://arxiv.org/abs/2506.04529
+
+Acknowledgements: We are grateful to Seyoon Ragavan for mentioning the connection of our results to [11] and related works. We also thank Ryan O’Donnell and Ryan Williams for discussions about the identity testing algorithm and its analysis, and Zhihao Jia and Oded Padon for discussions about modeling the real-world problem.
+
+DOI: 10.4230/LIPIcs.ITCS.2026.95
+
+    Event: 
+    17th Innovations in Theoretical Computer Science Conference (ITCS 2026)
+
+    Editor: 
+    Shubhangi Saraf
+
+    Series and Publisher: 
+     Leibniz International Proceedings in Informatics, Schloss Dagstuhl – Leibniz-Zentrum für Informatik
+
+1 Introduction
+
+Polynomial Identity Testing (PIT) is a central problem of theoretical computer science. Given a multi-variate polynomial 
+f:\mathbb{F}^{n}\to\mathbb{F}
+f:𝔽n→𝔽 with certain properties, the goal of the problem is to verify whether 
+f
+f is identically zero.
+
+Early results on identity testing of polynomials date back to DeMillo and Lipton [8], Zippel [26], and Schwartz [19] (see also [14] for a special case on finite fields). It is proved that a black-box probabilistic testing, namely checking whether 
+f(\vec{x})=0
+f⁢(x→)=0 for a random element 
+\vec{x}\in\mathbb{F}^{n}
+x→∈𝔽n, works well for low-degree polynomials. This simple algorithm serves as a key step in many randomized algorithms (see, e.g., [22, 12, 1]) as well as probabilistic proof systems, including the celebrated interactive proof system for 
+\mathsf{PSPACE}
+𝖯𝖲𝖯𝖠𝖢𝖤 [20] and the PCP theorem [3]. Subsequently, there has been a rich literature on identity testing of various types of polynomials, including sparse polynomials and polynomials computed by depth-
+3
+3 algebraic circuits (see, e.g., [17, 18] and the references therein).
+
+Perhaps surprisingly, the probabilistic identity testing algorithm for low-degree polynomials has recently been found useful in developing optimization compilers for deep neural networks. Loosely speaking, deep neural networks are represented as a high-level programming language, and the optimization compiler is designed to automatically identify redundancy in programs to improve the efficiency of the neural network. In a recent optimization compiler PET [24], Wang et al. observed that redundancy detection in partial neural network computation without non-linear activation can be naturally modeled as black-box identity testing of low-degree polynomials. By applying the classical probabilistic testing algorithm [8, 26, 19], PET achieves a significant speed-up over its benchmark.
+
+\blacktriangleright
+▶ Remark 1 (black-box model).
+
+In the black-box setting, the algorithm is given oracle access to the polynomial rather than its description. For the optimization compilers of neural networks (e.g., [24]), the neural networks are gigantic and are usually loaded into optimization devices such as GPUs or TPUs. Black-box identity testing algorithms are favorable, as evaluation on (partial) neural networks exploits the optimization devices and is therefore efficient in practice. In contrast, algorithms analyzing the circuit in white-box, even when they have lower computational complexity in theory, may still be less efficient if they cannot make full use of optimization devices.111Moreover, black-box algorithms are much easier to implement, as one can reuse the existing software infrastructure for evaluating neural networks, making them more reliable while reducing human efforts.
+
+A natural question is, therefore, whether this approach can be extended to neural networks with non-linear activation. In a subsequent work, Wu et al. [25] introduced a framework, Mirage, that could benefit from extending the redundancy detection algorithm in PET [24] to neural network components with exponentiation operators. This enables the modeling of non-linear activation functions such as 
+\mathsf{softmax}(\cdot)
+𝗌𝗈𝖿𝗍𝗆𝖺𝗑⁢(⋅). In the language of circuit complexity, the program representation in Mirage can be modeled as integer-coefficient arithmetic circuits with “exponentiation gates”, where there is at most one exponentiation gate in each path from output gates to input gates (see Section 3.1). The goal of Mirage is to “efficiently” check whether a circuit 
+C:\mathbb{R}^{n}\to\mathbb{R}
+C:ℝn→ℝ of such form is identical to 
+0
+0 on 
+\mathbb{R}
+ℝ in a black-box query model that is practically satisfactory.
+
+Compared to polynomials and standard arithmetic circuits computing polynomials, the behavior of circuits with exponentiation gates is not well studied. Integer-coefficient polynomials can be naturally evaluated over 
+\mathbb{F}_{p}
+𝔽p with modular arithmetic. However, it is not a-prior clear what it the correct way to define the evaluation of circuits with exponentiation gates over finite fields, as there is no standard analogy of the exponentiation function in finite fields. This makes it hard to even define a suitable “black-box query model” for the identity testing problem that is easy to analyze and captures the real-world constraints. Moreover, it is unclear whether the standard randomized algorithm [8, 19, 26] works after we define the evaluation of such circuits.
+
+Our Contribution.
+
+Motivated by the practical applications, we initiate a theoretical analysis of the identity testing of circuit with exponentiation gates.
+
+\blacksquare
+■ 
+
+We introduce a natural circuit model that formalizes circuits with exponentiation gates 
+x\mapsto\exp(x)
+x↦exp⁡(x), which suffices to captures components of modern neural networks such as Attention [23] with certain non-linear activation functions. The circuit model generalizes the standard algebraic circuit model by allowing exponentiation gates.
+
+\blacksquare
+■ 
+
+We prove that in the idealized model where the algorithm could query the circuit on any real number, a simple probabilistic testing is correct with high probability.
+
+\blacksquare
+■ 
+
+We introduce an algebraic query model that captures the real-world constraints in optimization compilers for deep neural networks such as Mirage [25], and design a simple randomized algorithm that is perfectly complete and non-trivially sound. Concurrent with our work, this algorithm is implemented in Mirage as one of its two redundancy detection algorithms. We also introduce a conjecture about sparse polynomials in finite field, under which our randomized algorithm in algebraic query model is sound with high probability.
+
+1.1 Main Results: A Simplified Setting
+
+Before formally describing our circuit and query models in Section 3, we try to describe a simplified version of the main mathematical problem. Let 
+k\in\mathbb{N}
+k∈ℕ, 
+f_{i},g_{i},h_{i}
+fi,gi,hi be 
+n
+n-variate degree-
+d
+d polynomials with integer coefficients in 
+[-w,w]
+[−w,w], and 
+P:\mathbb{R}^{n}\to\mathbb{R}\cup\{\bot\}
+P:ℝn→ℝ∪{⊥} be a partial real function defined as
+
+P(\vec{x})\triangleq\sum_{i=1}^{k}f_{i}(\vec{x})\exp\left(\frac{g_{i}(\vec{x})%
+}{h_{i}(\vec{x})}\right),
+P⁢(x→)≜∑i=1kfi⁢(x→)⁢exp⁡(gi⁢(x→)hi⁢(x→)),
+
+where 
+\exp(x)\triangleq e^{x}
+exp⁡(x)≜ex. This function is similar to the exponential polynomials that are used in, e.g., transcendental number theory [4, Chapter 12]. For simplicity, we will call 
+P(\vec{x})
+P⁢(x→) a degree-
+d
+d exponential polynomial. The number of terms 
+k
+k in 
+P(\vec{x})
+P⁢(x→) is said to be the width of 
+P(\vec{x})
+P⁢(x→). We call 
+\{f_{i}(\vec{x})\}_{i\in[k]}
+{fi⁢(x→)}i∈[k] the coefficient polynomials of 
+P(\vec{x})
+P⁢(x→), and 
+\{g_{i}(\vec{x})/h_{i}(\vec{x})\}_{i\in[k]}
+{gi⁢(x→)/hi⁢(x→)}i∈[k] the exponent fractions of it.
+
+The algorithmic problem we are interested in is to check whether 
+P(\vec{x})
+P⁢(x→) is identically zero on 
+\mathbb{R}^{n}
+ℝn with queries of one of the following two forms:
+
+\blacksquare
+■ 
+
+(Real): Given 
+\vec{x}\in\mathbb{Q}^{n}
+x→∈ℚn, the oracle outputs 
+\{0,1,\bot\}
+{0,1,⊥} indicating that 
+P(\vec{x})=0
+P⁢(x→)=0, 
+P(\vec{x})\in\mathbb{R}\setminus\{0\}
+P⁢(x→)∈ℝ∖{0}, and 
+P(\vec{x})=\bot
+P⁢(x→)=⊥ (i.e. undefined due to division-by-zero), respectively.
+
+\blacksquare
+■ 
+
+(Algebraic): Let 
+p,q
+p,q be prime numbers such that 
+q\mid p-1
+q∣p−1, 
+G=\langle g\rangle
+G=⟨g⟩ be the unique multiplicative subgroup of 
+\mathbb{F}_{p}^{*}
+𝔽p∗ of order 
+q
+q. Given 
+\vec{u}\in\mathbb{F}_{p}^{n},\vec{v}\in\mathbb{F}_{q}^{n}
+u→∈𝔽pn,v→∈𝔽qn, and 
+a\in G
+a∈G, the oracle outputs
+
+P_{a}(\vec{u},\vec{v})\triangleq\left(\sum_{i=1}^{k}f_{i}(\vec{u})\cdot a^{g_{%
+i}(\vec{v})\cdot(h_{i}(\vec{v}))^{-1}\bmod q}\right)\bmod p,
+Pa⁢(u→,v→)≜(∑i=1kfi⁢(u→)⋅agi⁢(v→)⋅(hi⁢(v→))−1modq)modp,
+
+where 
+(\cdot)^{-1}
+(⋅)−1 on the exponent denotes the multiplicative inverse in 
+\mathbb{F}_{q}
+𝔽q. The oracle returns 
+\bot
+⊥ if 
+h_{i}(\vec{v})\bmod q=0
+hi⁢(v→)modq=0 for any 
+i\in[k]
+i∈[k].
+
+Before introducing our results, we make a few short remarks on our modeling of the identity testing problem and its connection to real world engineering practice.
+
+\blacktriangleright
+▶ Remark 2 (numerical stability issues).
+
+Testing whether 
+P(\vec{x})
+P⁢(x→) (modeling a program) is identically zero on 
+\mathbb{R}^{n}
+ℝn is motivated by the following compilation task – compilers may replace a (sub)program by another optimized one provided that they compute the same function over real numbers. As real numbers are only an idealized model for, say, floating point numbers, this optimization strategy may cause numerical stability issues. Nevertheless, most modern classical and neural network compilers offer the option for users to enable such optimizations as it may significantly improve performance, e.g., the -Ofast option of GCC  [21, Chapter 3] and the FlashAttention [7] implementation in PyTorch [15, 16]; see also [10, 24, 25].
+
+\blacktriangleright
+▶ Remark 3 (query models).
+
+The former type of query is an idealized model. In practical applications (e.g. [24, 25]), there is no efficient algorithm to implement the oracle that checks whether 
+P(\vec{x})=0
+P⁢(x→)=0 precisely given 
+\vec{x}
+x→, and the approximation of real numbers using floating-point numbers is also unsatisfactory in practice. The latter type of query is more realistic; indeed, it is implemented in the optimization compiler Mirage [25] where the explicit representation of 
+P(\vec{x})
+P⁢(x→) is a (partial) neural network.222The special case of the algebraic query model without exponentiation functions is implemented in [24]. See Section 1.2 and 3 for more detailed discussions.
+
+Identity Testing Algorithms in the Simplified Setting.
+
+Now we describe our identity testing algorithms in the simplified setting. First, we show that a simple randomized algorithm with one query works in the real query model. The algorithm is to randomly sample 
+\vec{x}\in[B]^{n}
+x→∈[B]n for 
+B=20\cdot d\cdot k^{2}
+B=20⋅d⋅k2 and accepts if 
+P(\vec{x})\in\{0,\bot\}
+P⁢(x→)∈{0,⊥}. It is clear that the algorithm is perfectly complete, and the soundness is given by the following theorem:
+
+Theorem 4 (Theorem 22, simplified).
+
+Let 
+P(\vec{x})
+P⁢(x→) be an 
+n
+n-variate degree-
+d
+d exponential polynomial of width 
+k
+k that is not identically zero on its domain, and 
+S\subseteq\mathbb{Q}
+S⊆ℚ be any finite non-empty set. For 
+\vec{x}\in S^{n}
+x→∈Sn sampled uniformly at random, 
+\Pr[P(\vec{x})\in\{0,\bot\}]\leq 8dk^{2}/|S|
+Pr⁡[P⁢(x→)∈{0,⊥}]≤8⁢d⁢k2/|S|.
+
+As the second result, we analyze the following simple randomized identity testing algorithm in the algebraic query model: Let 
+p,q,G
+p,q,G be defined as above, the algorithm randomly samples 
+\vec{u}\in\mathbb{F}_{p}^{n}
+u→∈𝔽pn, 
+\vec{v}\in\mathbb{F}_{q}^{n}
+v→∈𝔽qn, and 
+a\in G
+a∈G, and accepts if 
+P_{a}(\vec{u},\vec{v})\in\{0,\bot\}
+Pa⁢(u→,v→)∈{0,⊥}. The following theorem formalizes the completeness and soundness of the algorithm:
+
+Theorem 5 (Theorem 7, simplified).
+
+Let 
+P(\vec{x})
+P⁢(x→) be an 
+n
+n-variate degree-
+d
+d exponential polynomial of width 
+k
+k. Let 
+p,q
+p,q be prime numbers, 
+q\mid p-1
+q∣p−1, and 
+G=\langle g\rangle
+G=⟨g⟩ be the unique order-
+q
+q multiplicative subgroup of 
+\mathbb{F}_{p}^{*}
+𝔽p∗. Suppose that all integer coefficients in 
+P(\vec{x})
+P⁢(x→) are within 
+[-w,w]
+[−w,w], 
+q&gt;2w
+q&gt;2⁢w, then:
+
+\blacksquare
+■ 
+
+(Completeness). If 
+P(\vec{x})
+P⁢(x→) is identically zero on its domain as a partial real function, for any 
+a\in G
+a∈G, 
+\vec{u}\in\mathbb{F}_{p}^{n}
+u→∈𝔽pn, and 
+\vec{v}\in\mathbb{F}_{q}^{n}
+v→∈𝔽qn, 
+P_{a}(\vec{u},\vec{v})\in\{0,\bot\}
+Pa⁢(u→,v→)∈{0,⊥}.
+
+\blacksquare
+■ 
+
+(Soundness). If 
+P(\vec{x})
+P⁢(x→) is not identically zero on its domain as a partial real function, 
+p,q\geq 2kw
+p,q≥2⁢k⁢w, then for uniformly random 
+a\in G
+a∈G, 
+\vec{u}\in\mathbb{F}_{p}^{n}
+u→∈𝔽pn, and 
+\vec{v}\in\mathbb{F}_{q}^{n}
+v→∈𝔽qn, the probability that 
+P_{a}(\vec{u},\vec{v})\in\{0,\bot\}
+Pa⁢(u→,v→)∈{0,⊥} is at most 
+q^{-\frac{1}{k-1}}+O(dk^{2}/q)
+q−1k−1+O⁢(d⁢k2/q).
+
+Note that for sufficiently large 
+k,q\in\mathbb{N}
+k,q∈ℕ such that 
+\ln q\leq k-1
+ln⁡q≤k−1, we have
+
+1-\frac{2\ln q}{k-1}\leq q^{-\frac{1}{k-1}}\leq 1-\frac{\ln q}{2(k-1)}.
+1−2⁢ln⁡qk−1≤q−1k−1≤1−ln⁡q2⁢(k−1).
+
+Thus in a typical setting that 
+dk^{3}\leq q\leq k^{O(1)}
+d⁢k3≤q≤kO⁢(1), the soundness error is 
+1-\Theta(\log k/(k-1))
+1−Θ⁢(log⁡k/(k−1)).333The error probability is constant if 
+q
+q is exponential in 
+k
+k. However, this setting is not meaningful: The width 
+k
+k is usually comparable to the input length, and thus the arithmetic operations over 
+q
+q would be extremely inefficient. By parallel repetition of the randomized algorithm for 
+O(k\log k/\log q)
+O⁢(k⁢log⁡k/log⁡q) times, we can boost the error probability to 
+1/k^{O(1)}
+1/kO⁢(1). This leads to an efficient randomized identity testing algorithm when 
+k
+k is relatively small and the evaluation is much more efficient than obtaining the description of 
+P(\vec{x})
+P⁢(x→), which, in particular, captures the real-world constraints for the optimization compilers such as Mirage [25].
+
+1.2 Connection to the Circuit Models
+
+We stress that the abstraction in previous subsection is mathematically clean but omits crucial details in modeling the real-world problem. Specifically:
+
+\blacksquare
+■ 
+
+It is not immediately clear how the identity testing results for exponential polynomials apply to our motivating real-world application, namely identity testing of neural networks formalized by “circuits with exponentiation gates” [24, 25].
+
+\blacksquare
+■ 
+
+It is also not clear how the function 
+P_{a}(\vec{u},\vec{v})
+Pa⁢(u→,v→) in Theorem 7 relates to the circuits, and why it can be computed efficiently when 
+P(\vec{x})
+P⁢(x→) is explicitly given by a “circuit with exponentiation gates”. This is important as in real-world applications, see [25], the function 
+P_{a}(\vec{u},\vec{v})
+Pa⁢(u→,v→) is implemented on specialized devices such as GPU or TPU, which are optimized for specific computation patterns. Moreover, it is unclear where the restrictions in the algebraic query model (e.g., 
+a
+a must be in 
+G
+G) come from.
+
+Circuit Model.
+
+We briefly explain our circuit model (called 
+\mathsf{AExp}^{1}
+𝖠𝖤𝗑𝗉1 circuits) and refer readers to Sections 3 and 4 for more details. We work with (arithmetic) circuits with integer coefficients, unbounded fan-in addition and multiplication gates, fan-in two division gates, and fan-in one exponentiation gates. In addition, we impose the restriction that on each path from input variables to output gates, there is at most one exponentiation gates – the circuit cannot compute double exponential 
+x\mapsto e^{e^{x}}
+x↦eex by composing exponentiation gates.
+
+The evaluation of circuits over real numbers is defined by a standard gate-by-gate evaluation algorithm, where the exponentiation gate is interpreted as the function 
+x\mapsto e^{x}
+x↦ex. However, it is unclear how to define the evaluation of such circuits over finite fields, as there is no standard interpretation of the exponential function.
+
+Let 
+p
+p be a prime number. To define the evaluation of an 
+\mathsf{AExp}^{1}
+𝖠𝖤𝗑𝗉1 circuit 
+C
+C over 
+\mathbb{F}_{p}
+𝔽p, a natural idea is to replace the exponential function by 
+x\mapsto a^{x}
+x↦ax for some element 
+a\in\mathbb{F}_{p}
+a∈𝔽p. This is not ideal as such an interpretation is inconsistent with the evaluation over 
+\mathbb{R}
+ℝ: It could be the case that
+
+a^{x_{1}+x_{2}\bmod p}\not\equiv a^{x_{1}}a^{x_{2}}\pmod{p}
+ax1+x2modp≢ax1⁢ax2(modp)
+
+for 
+x_{1},x_{2}\in\mathbb{F}_{p}
+x1,x2∈𝔽p, while 
+e^{x_{1}+x_{2}}=e^{x_{1}}e^{x_{2}}
+ex1+x2=ex1⁢ex2 for any 
+x_{1},x_{2}\in\mathbb{R}
+x1,x2∈ℝ. As a result, this definition cannot be used for the identity testing of 
+\mathsf{AExp}^{1}
+𝖠𝖤𝗑𝗉1 circuits.
+
+To address the issue, we exploit the algebraic structure of finite fields by using different moduli over and under the exponents. Let 
+p,q
+p,q be prime numbers such that 
+q\mid p-1
+q∣p−1, 
+G\subseteq\mathbb{F}_{p}^{*}
+G⊆𝔽p∗ be the unique order-
+q
+q multiplicative subgroup, and 
+a\in G
+a∈G. It follows that
+
+a^{x_{1}+x_{2}\bmod q}\equiv a^{x_{1}}\cdot a^{x_{2}}\pmod{p}
+ax1+x2modq≡ax1⋅ax2(modp)
+
+for any 
+x_{1},x_{2}\in\mathbb{F}_{q}
+x1,x2∈𝔽q. If we use 
+q
+q as the modulus “over the exponent” and 
+p
+p as the modulus “under the exponent”, the function 
+x\mapsto a^{x}
+x↦ax will be consistent with the arithmetic law 
+e^{x_{1}+x_{2}}=e^{x_{1}}\cdot e^{x_{2}}
+ex1+x2=ex1⋅ex2. Following the intuition, we define the evaluation of 
+C
+C with respect to 
+(p,q,a)
+(p,q,a) using a gate-by-gate evaluation algorithm such that:
+
+\blacksquare
+■ 
+
+Each input variable or wire carries a pair 
+(u,v)\in(\mathbb{F}_{p}\cup\{\bot\})\times(\mathbb{F}_{q}\cup\{\bot\})
+(u,v)∈(𝔽p∪{⊥})×(𝔽q∪{⊥}).
+
+\blacksquare
+■ 
+
+Addition, multiplication, and division gates are implemented coordinate-wisely.
+
+\blacksquare
+■ 
+
+The exponentiation gate is implemented by 
+(u,v)\mapsto(a^{v}\bmod p,\bot)
+(u,v)↦(avmodp,⊥).
+
+This evaluation algorithm can be implemented efficiently given the description of the circuit 
+C
+C. We refer readers to Section 3 for more details.
+
+A Structural Lemma.
+
+Let 
+\vec{u}=(u_{1},\dots,u_{n})\in\mathbb{F}_{p}^{n}
+u→=(u1,…,un)∈𝔽pn, 
+\vec{v}=(v_{1},\dots,v_{n})\in\mathbb{F}_{q}^{n}
+v→=(v1,…,vn)∈𝔽qn, we use 
+C_{a}(\vec{u},\vec{v})
+Ca⁢(u→,v→) to denote the output of the evaluation algorithm where the 
+i
+i-th input variable is assigned to 
+(u_{i},v_{i})
+(ui,vi). Similar to the standard results that algebraic circuits compute polynomials [2, Section 16], we can then prove that 
+\mathsf{AExp}^{1}
+𝖠𝖤𝗑𝗉1 circuits can be converted to an equivalent fraction of exponential polynomials:
+
+Lemma 6 (Lemma 20, informal).
+
+For every 
+n
+n-input 
+\mathsf{AExp}^{1}
+𝖠𝖤𝗑𝗉1 circuit 
+C
+C, there are 
+n
+n-variate integer-coefficient exponential polynomials 
+P(\vec{x})
+P⁢(x→) and 
+P^{\prime}(\vec{x})
+P′⁢(x→) such that the following holds:
+
+\blacksquare
+■ 
+
+For each 
+\vec{u}\in\vec{\mathbb{R}}
+u→∈ℝ→, 
+C(\vec{u})=P(\vec{u})/P^{\prime}(\vec{u})
+C⁢(u→)=P⁢(u→)/P′⁢(u→).
+
+\blacksquare
+■ 
+
+Let 
+p,q
+p,q be prime numbers such that 
+q\mid p-1
+q∣p−1, 
+G_{p,q}
+Gp,q be the multiplicative subgroup of 
+\mathbb{F}_{p}^{*}
+𝔽p∗ of order 
+q
+q, and 
+a\in G_{p,q}
+a∈Gp,q. Then for every 
+(\vec{u},\vec{v})\in\vec{\mathbb{F}}_{p}\times\vec{\mathbb{F}}_{q}
+(u→,v→)∈𝔽→p×𝔽→q, 
+C_{a}(\vec{u},\vec{v})\equiv P_{a}(\vec{u},\vec{v})\cdot(P^{\prime}_{a}(\vec{u%
+},\vec{v}))^{-1}\pmod{p}
+Ca⁢(u→,v→)≡Pa⁢(u→,v→)⋅(Pa′⁢(u→,v→))−1(modp), where 
+(a)^{-1}
+(a)−1 denotes the multiplicative inverse of 
+a
+a modulo 
+p
+p.
+
+We stress that the structural lemma does not provide a polynomial upper bound on the degree, width, or integer weight of the integer-coefficient exponential polynomials 
+P,P^{\prime}
+P,P′. Nevertheless, it can be verified that the exponential polynomials 
+P,P^{\prime}
+P,P′ for 
+\mathsf{AExp}^{1}
+𝖠𝖤𝗑𝗉1 circuits from real-world neural network applications, such as 
+\mathsf{softmax}(\cdot)
+𝗌𝗈𝖿𝗍𝗆𝖺𝗑⁢(⋅) and Attention with softmax activations [23], tend to have relatively small degree, width, and weight; interested readers are referred to Section 4.5 for more discussion, and [25] for experimental results.
+
+The Main Theorem.
+
+Let 
+\mathsf{dom}_{\mathbb{R}}(C)
+𝖽𝗈𝗆ℝ⁢(C) be the domain of the circuit 
+C
+C, i.e., the set of 
+\vec{x}\in\mathbb{R}^{n}
+x→∈ℝn such that 
+C(\vec{x})\neq\bot
+C⁢(x→)≠⊥. An 
+\mathsf{AExp}^{1}
+𝖠𝖤𝗑𝗉1 circuit 
+C
+C is said to have degree 
+d
+d, width 
+k
+k, and weight 
+w
+w if there are integer-coefficient degree-
+d
+d width-
+k
+k exponential polynomials 
+P(\vec{x})
+P⁢(x→) and 
+P^{\prime}(\vec{x})
+P′⁢(x→) with all integer coefficients within 
+[-w,w]
+[−w,w] that satisfy Lemma 6.
+
+By generalizing Theorems 4 and 5 to fractions of exponential polynomials and combining them with Lemma 6, we can obtain the final result:
+
+Theorem 7.
+
+Let 
+C:\mathbb{R}^{n}\to\mathbb{R}
+C:ℝn→ℝ be an 
+\mathsf{AExp}^{1}
+𝖠𝖤𝗑𝗉1 circuit of width 
+k
+k, degree 
+d
+d and weight 
+w
+w, 
+p
+p and 
+q
+q be prime numbers such that 
+q\mid p-1
+q∣p−1 and 
+q&gt;2(kw)^{2}
+q&gt;2⁢(k⁢w)2. Let 
+G_{p,q}
+Gp,q be the unique multiplicative subgroup of 
+\mathbb{F}_{p}^{*}
+𝔽p∗ of order 
+q
+q. The following hold:
+
+\blacksquare
+■ 
+
+(Completeness). If 
+C
+C is identically zero on 
+\mathsf{dom}_{\mathbb{R}}(C)
+𝖽𝗈𝗆ℝ⁢(C), then for every 
+a\in G_{p,q}
+a∈Gp,q, 
+C_{a}(\vec{u},\vec{v})\in\{0,\bot\}
+Ca⁢(u→,v→)∈{0,⊥} for every 
+(\vec{u},\vec{v})\in\mathbb{F}_{p}^{n}\times\mathbb{F}_{q}^{n}
+(u→,v→)∈𝔽pn×𝔽qn.
+
+\blacksquare
+■ 
+
+(Soundness). If 
+C
+C is not identically zero on 
+\mathsf{dom}_{\mathbb{R}}(C)
+𝖽𝗈𝗆ℝ⁢(C), then for uniformly random 
+\vec{u}\leftarrow\mathbb{F}_{p}^{n},\vec{v}\leftarrow\mathbb{F}_{q}^{n},a%
+\leftarrow G_{p,q}
+u→←𝔽pn,v→←𝔽qn,a←Gp,q, 
+\Pr[C_{a}(\vec{u},\vec{v})\notin\{0,\bot\}]\geq 1-8dk^{4}\cdot q^{-1}-q^{-1/(k%
+^{2}-1)}
+Pr⁡[Ca⁢(u→,v→)∉{0,⊥}]≥1−8⁢d⁢k4⋅q−1−q−1/(k2−1).
+
+1.3 Technical Overview
+
+We briefly explain the proof of our simplified technical results Theorem 4 and Theorem 5 in the simplified setting, as well as the main theorem (see Theorem 7) that generalizes the results to the circuit setting.
+
+Real Queries.
+
+The idea behind Theorem 4 is very simple: We manage to combine the Schwartz-Zippel lemma and Lindemann-Weierstrass theorem, i.e., 
+e
+e is transcendental (see Theorem 13).
+
+To avoid technical subtlety, we assume that 
+P(\vec{x})
+P⁢(x→) is a degree-
+d
+d exponential polynomial where the exponent fractions 
+g_{i}(\vec{x})/h_{i}(\vec{x})
+gi⁢(x→)/hi⁢(x→) are pairwisely distinct; that is, for every pair of indices 
+i,j\in[k]
+i,j∈[k], 
+i\neq j
+i≠j, 
+g_{i}(\vec{x})h_{j}(\vec{x})-g_{j}(\vec{x})h_{i}(\vec{x})
+gi⁢(x→)⁢hj⁢(x→)−gj⁢(x→)⁢hi⁢(x→) is not a zero polynomial. Such an exponential polynomial is said to be condensed, and the general case can be reduced to the condensed case by considering another exponential polynomial 
+\hat{P}
+P^ that “groups” coefficients based on the exponent fraction; see Section 4.3. Moreover, we assume without loss of generality that 
+f_{i}\neq 0
+fi≠0 and 
+h_{i}\neq 0
+hi≠0 for each 
+i\in[k]
+i∈[k].
+
+Let 
+S\subseteq\mathbb{Q}
+S⊆ℚ be a non-empty finite set, we know by the Schwartz-Zippel lemma that for any 
+i\in[k]
+i∈[k], 
+j\in[k]
+j∈[k], 
+i\neq j
+i≠j, each of the following non-zero polynomials of degree at least 
+2d
+2⁢d
+
+f_{i}(\vec{x}),\quad h_{i}(\vec{x}),\quad g_{i}(\vec{x})h_{j}(\vec{x})-g_{j}(%
+\vec{x})h_{i}(\vec{x})
+fi⁢(x→),hi⁢(x→),gi⁢(x→)⁢hj⁢(x→)−gj⁢(x→)⁢hi⁢(x→)
+
+evaluates to zero with probability at most 
+2d/|S|
+2⁢d/|S| for a uniformly random 
+\vec{x}\in S^{n}
+x→∈Sn. By the union bound, we can further prove that with probability at least 
+1-3dk^{2}/|S|
+1−3⁢d⁢k2/|S|, none of the polynomials evaluate to 
+0
+0. For each of such 
+\vec{x}
+x→, we can see that for the rational numbers 
+\alpha_{i}\triangleq g_{i}(\vec{x})/h_{i}(\vec{x})
+αi≜gi⁢(x→)/hi⁢(x→) and 
+\beta_{i}\triangleq f_{i}(\vec{x})
+βi≜fi⁢(x→), we have
+
+P(\vec{x})=\beta_{1}e^{\alpha_{1}}+\beta_{2}e^{\alpha_{2}}+\dots+\beta_{k}e^{%
+\alpha_{k}},
+P⁢(x→)=β1⁢eα1+β2⁢eα2+⋯+βk⁢eαk,
+
+which must be non-zero as 
+e
+e is transcendental.
+
+Connection to Algebraic Queries.
+
+Unwinding the proof of Theorem 4, we could actually give a necessary and sufficient condition for an exponential polynomial with integer weights to be identically zero over real evaluations. Let 
+P(\vec{x})
+P⁢(x→) be a condensed degree-
+d
+d exponential polynomial
+
+P(\vec{x})=\sum_{i=1}^{k}f_{i}(\vec{x})\exp\left(\frac{g_{i}(\vec{x})}{h_{i}(%
+\vec{x})}\right)
+P⁢(x→)=∑i=1kfi⁢(x→)⁢exp⁡(gi⁢(x→)hi⁢(x→))
+
+with integer coefficients, then 
+P(\vec{x})
+P⁢(x→) is identically zero on its domain (over real evaluation) if and only if for every 
+i\in[k]
+i∈[k], 
+f_{i}=0
+fi=0. Subsequently, if 
+p,q
+p,q are chosen to be larger than the integer coefficients, the identity testing of a condensed exponential function 
+P(\vec{x})
+P⁢(x→) is equivalent to testing whether 
+f_{i}=0\pmod{p}
+fi=0(modp) for every 
+i\in[k]
+i∈[k].
+
+With the characterization above, the completeness of Theorem 5 is relatively simple, so we will focus on the soundness property.
+
+We try to mimic the strategy in the proof of Theorem 4. Suppose that 
+P(\vec{x})
+P⁢(x→) is not identically zero on real evaluations, we know by the discussion above that when 
+p
+p are sufficiently large, there is at least one 
+f_{i}\neq 0\pmod{p}
+fi≠0(modp) for any 
+i\in[k]
+i∈[k]. Moreover, if 
+q
+q is sufficiently large, we know that for any 
+i\neq j
+i≠j, 
+g_{i}h_{j}-g_{j}h_{i}\neq 0\pmod{q}
+gi⁢hj−gj⁢hi≠0(modq). Assume without loss of generality that 
+f_{i}\neq 0
+fi≠0 for all 
+i\in[k]
+i∈[k]. For 
+\vec{u}\in\mathbb{F}_{p}^{n}
+u→∈𝔽pn and 
+\vec{v}\in\mathbb{F}_{q}^{n}
+v→∈𝔽qn sampled uniformly at random, we still know by the Schwartz-Zippel lemma and the union bound that with probability at least 
+1-3dk^{2}/q
+1−3⁢d⁢k2/q, none of
+
+f_{i}(\vec{x})\bmod p,\quad h_{i}(\vec{x})\bmod q,\quad g_{i}(\vec{x})h_{j}(%
+\vec{x})-g_{j}(\vec{x})h_{i}(\vec{x})\bmod q
+fi⁢(x→)modp,hi⁢(x→)modq,gi⁢(x→)⁢hj⁢(x→)−gj⁢(x→)⁢hi⁢(x→)modq
+
+evaluates to zero for 
+i,j\in[k]
+i,j∈[k], 
+i\neq j
+i≠j. We can then define 
+\alpha_{i}\triangleq g_{i}(\vec{x})/h_{i}(\vec{x})\bmod q
+αi≜gi⁢(x→)/hi⁢(x→)modq and 
+\beta_{i}\triangleq f_{i}(\vec{x})\bmod p
+βi≜fi⁢(x→)modp for 
+i\in[k]
+i∈[k] such that
+
+P_{a}(\vec{u},\vec{v})=\beta_{1}a^{\alpha_{1}}+\dots\beta_{k}a^{\alpha_{k}}%
+\bmod p,
+Pa⁢(u→,v→)=β1⁢aα1+…⁢βk⁢aαkmodp,
+
+where 
+\beta_{1},\dots,\beta_{k}
+β1,…,βk are non-zero and 
+\alpha_{1},\dots,\alpha_{k}
+α1,…,αk are pairwisely distinct.
+
+A Weak Descartes’ Rule in Finite Fields.
+
+It then suffices to prove that for any non-zero 
+\beta_{1},\dots,\beta_{k}\in\mathbb{F}_{p}
+β1,…,βk∈𝔽p and distinct 
+\alpha_{1},\dots,\alpha_{k}\in\mathbb{F}_{q}
+α1,…,αk∈𝔽q, 
+k\geq 1
+k≥1, if we sample 
+a\in G
+a∈G uniformly at random, the probability that 
+\beta_{1}a^{\alpha_{1}}+\dots\beta_{k}a^{\alpha_{k}}\bmod p=0
+β1⁢aα1+…⁢βk⁢aαkmodp=0 is at most 
+q^{-1/(k-1)}
+q−1/(k−1). We note that this can be viewed as a generalization of the Descartes’ Rule (see also [11]), which asserts that any univariate polynomial with 
+k
+k monomials has at most 
+2k
+2⁢k roots.
+
+We provide an elementary proof of a weaker result: The probability that 
+\beta_{1}a^{\alpha_{1}}+\dots\beta_{k}a^{\alpha_{k}}\bmod p=0
+β1⁢aα1+…⁢βk⁢aαkmodp=0 is at most 
+1-1/k
+1−1/k. Theorem 5 is proved using a lemma from [11], which employs a similar but slightly more complicated argument.
+
+Recall that the order-
+q
+q multiplicative subgroup 
+G\subseteq\mathbb{F}_{p}^{*}
+G⊆𝔽p∗ is a cyclic group. For any fixed 
+i\in\mathbb{F}_{q}
+i∈𝔽q, a random element 
+a\in G
+a∈G can be viewed as generated from randomly sampling 
+g\in G
+g∈G and outputting 
+g^{i}
+gi. Our idea is to choose a good 
+i\in\mathbb{F}_{q}
+i∈𝔽q such that at least a 
+1/k
+1/k fraction of 
+g
+g satisfies that 
+\beta_{1}g^{i\cdot\alpha_{1}}+\dots\beta_{k}g^{i\cdot\alpha_{k}}\bmod p\neq 0
+β1⁢gi⋅α1+…⁢βk⁢gi⋅αkmodp≠0.
+
+We say that an index 
+i\in\mathbb{F}_{q}
+i∈𝔽q is good for 
+\alpha\in\mathbb{F}_{q}
+α∈𝔽q if 
+i\cdot\alpha\bmod q\leq(1-1/k)\cdot q
+i⋅αmodq≤(1−1/k)⋅q, and is said to be good if for every 
+j\in[k]
+j∈[k], 
+i
+i is good for 
+\alpha_{i}
+αi. It turns out that if there is a good 
+i\in\mathbb{F}_{q}
+i∈𝔽q,
+
+\beta_{1}g^{i\cdot\alpha_{1}}+\dots+\beta_{k}g^{i\cdot\alpha_{k}}
+β1⁢gi⋅α1+⋯+βk⁢gi⋅αk
+
+can be viewed as a polynomial in 
+\mathbb{F}_{p}[g]
+𝔽p⁢[g] of degree at most 
+(1-1/k)\cdot q
+(1−1/k)⋅q; in that case, there are at most 
+(1-1/k)\cdot q
+(1−1/k)⋅q roots in 
+\mathbb{F}_{p}
+𝔽p (and also in 
+G
+G).
+
+Therefore, it remains to prove the existence of a good 
+i
+i. Since 
+i\mapsto i\cdot\alpha
+i↦i⋅α is a bijection in 
+\mathbb{F}_{q}
+𝔽q, we know that for any fixed 
+\alpha
+α, the probability that a random 
+i\in\mathbb{F}_{q}
+i∈𝔽q is good for 
+\alpha
+α is at least 
+1-1/k
+1−1/k. By the union bound, we know that a random 
+i\in\mathbb{F}_{q}
+i∈𝔽q is good for 
+\alpha_{1},\dots,\alpha_{k}
+α1,…,αk with non-zero probability. This implies that there must be a good 
+i\in\mathbb{F}_{q}
+i∈𝔽q, which completes the proof.
+
+\blacktriangleright
+▶ Remark 8 (related results).
+
+The analogy of Descartes’ Rule over finite fields has been studied prior to our work. Motivated by understanding the security of the Diffie-Hellman cryptosystem, Canettie et al. [5] proved an upper bound on the number of roots of sparse univariate polynomials. This upper bound was later improved by Kelley [11]. We use the techniques from [5, 11] and obtain similar upper bounds. Note that [5, 11] considers the number of roots in 
+\mathbb{F}_{p}
+𝔽p, while we consider the number of roots in a multiplicative subgroup 
+G\subseteq\mathbb{F}_{P}^{*}
+G⊆𝔽P∗; as a result, our upper bound is cleaner and easier to prove.
+
+Generalization to the Circuit Setting.
+
+There are a few technical issues to obtain the main theorem (see Theorem 7).
+
+First, the proof overview above assumes that the exponential polynomial is condensed, i.e., its exponent fractions are pairwisely distinct. For exponential polynomials that are not condensed, we need to first condense the polynomial by merging terms with equivalent exponent fractions. For instance, the following exponential polynomial 
+P(\vec{x})=\exp\left(\frac{x^{2}-3x}{x-3}\right)+\exp\left(\frac{x^{2}-2x}{x-2%
+}\right)
+P⁢(x→)=exp⁡(x2−3⁢xx−3)+exp⁡(x2−2⁢xx−2) may be condensed to 
+\hat{P}(\vec{x})=2\exp\left(\frac{x^{2}-3x}{x-3}\right)
+P^⁢(x→)=2⁢exp⁡(x2−3⁢xx−3). In general, such condensation procedure results into another exponential polynomial 
+\hat{P}
+P^ that has larger domain and agree with 
+P
+P on the domain of 
+P
+P (see Proposition 19). We need to bridge the gap between 
+P
+P and 
+\hat{P}
+P^ with standard probability analysis.
+
+Second, as shown in Section 1.2, 
+\mathsf{AExp}^{1}
+𝖠𝖤𝗑𝗉1 circuits are converted to fractions 
+P/P^{\prime}
+P/P′ of exponential polynomials rather than exponential polynomials. This requires a careful (but straightforward) adaption of the techniques above. In particular, in the soundness analysis, we use the observation that 
+P/P^{\prime}
+P/P′ is identically zero on its domain (over 
+\mathbb{R}
+ℝ) if and only if the exponential polynomial 
+P\cdot P^{\prime}
+P⋅P′ is identically zero on its domain (over 
+\mathbb{R}
+ℝ). This leads to a quadratic overhead (in 
+k
+k) in the soundness error of Theorem 7 compared to Theorem 5, as 
+P\cdot P^{\prime}
+P⋅P′ may have width up to 
+k^{2}
+k2 when both 
+P
+P and 
+P^{\prime}
+P′ are of width 
+k
+k.
+
+Organization of the Paper.
+
+We review basic definitions and classical results that we will need in Section 2. In Section 3, we formally describe our circuit model as well as the query models we considered in our paper – the idealized real query model and the algebraic query model; we also briefly explain why the algebraic query model is a better abstraction in the application of optimization compilers for neural networks. In Section 4, we define exponential polynomials, discuss its basic properties, and prove the structural lemma that converts circuits to fractions of exponential polynomials. In Section 5, we prove the correctness of our probabilistic testing algorithm in the real and algebraic query models.
+
+1.4 Discussion and Open Problems
+
+The most interesting open problem is to improve the soundness error of Theorem 5 and Theorem 7. We conjecture that the actual soundness error is 
+1-\Omega(1)
+1−Ω⁢(1). In particular, we propose the following number-theoretic conjecture under which the soundness error is indeed 
+1-\Omega(1)
+1−Ω⁢(1):
+
+Conjecture 9 (Strong Descartes’ Rule Conjecture over Finite Fields).
+
+There are constants 
+\varepsilon,\delta&lt;1
+ε,δ&lt;1 such that the following holds. Let 
+p
+p, 
+q
+q be sufficiently large prime numbers such that 
+q\mid p-1
+q∣p−1, 
+g\in\mathbb{F}_{q}
+g∈𝔽q be an element of order 
+g
+g, and 
+G\triangleq\langle g\rangle
+G≜⟨g⟩ be the unique multiplicative subgroup of 
+\mathbb{F}_{p}^{*}
+𝔽p∗ of order 
+q
+q. For any 
+k\leq q^{\delta}
+k≤qδ, distinct 
+\alpha_{1},\dots,\alpha_{k}\in\mathbb{F}_{q}
+α1,…,αk∈𝔽q, and 
+\beta_{1},\dots,\beta_{k}\in\mathbb{F}_{p}\setminus\{0\}
+β1,…,βk∈𝔽p∖{0}, the non-zero univariate polynomial
+
+f(z)\triangleq\beta_{1}z^{\alpha_{1}}+\beta_{2}z^{\alpha_{2}}+\dots+\beta_{k}z%
+^{\alpha_{k}}
+f⁢(z)≜β1⁢zα1+β2⁢zα2+⋯+βk⁢zαk
+
+has at most 
+\varepsilon\cdot q
+ε⋅q roots in 
+G
+G.
+
+This conjecture can be interpreted as a property of the isomorphism mapping
+
+I:[f]\mapsto(f(1),f(g),\dots,f(g^{q-1}))
+I:[f]↦(f⁢(1),f⁢(g),…,f⁢(gq−1))
+
+from 
+\mathbb{F}_{p}[x]/(x^{q}-1)
+𝔽p⁢[x]/(xq−1) onto 
+\mathbb{F}_{p}^{q}
+𝔽pq. It states that there is no non-zero polynomial 
+[f]\in\mathbb{F}_{p}[x]/(x^{q}-1)
+[f]∈𝔽p⁢[x]/(xq−1) such that both 
+f
+f and 
+I([f])
+I⁢([f]) are very sparse. This seems to be an analogy of the “uncertainty principle” in Fourier analysis (see, e.g., [13, Exercise 3.15]). We also note that numerical experiments (see, e.g., [11, 6]) suggest that it is hard to construct sparse polynomials over 
+\mathbb{F}_{p}
+𝔽p with many roots for prime 
+p
+p.
+
+Complexity-theoretic Perspectives.
+
+It is also interesting to consider whether we can design better identity testing algorithms for some restricted classes of 
+\mathsf{AExp}^{1}
+𝖠𝖤𝗑𝗉1 circuits (e.g. of small constant depth). This would potentially lead to real-world applications, as the structure of circuits from neural networks is relatively simple. To start with, one may consider adapting existing techniques for identity testing of algebraic circuits (see, e.g., [17, 18]) to 
+\mathsf{AExp}^{1}
+𝖠𝖤𝗑𝗉1 circuits.
+
+On the other hand, it is interesting to consider whether there are conditional or unconditional lower bounds for identity testing of 
+\mathsf{AExp}^{1}
+𝖠𝖤𝗑𝗉1 circuits in black-box models, such as the algebraic query models that we introduced in Section 1.2.
+
+Other Modeling of the Problem.
+
+We note the the algebraic query model in Section 1.2 is not necessarily the only reasonable formalization of the real world problem. Recall that in optimization compilers for neural networks [24, 25], the neural network (modeled by an 
+\mathsf{AExp}^{1}
+𝖠𝖤𝗑𝗉1 circuit) is loaded into specialized devices (such as GPU or TPU) that are optimized for specific computation patterns and have high communication overhead with the CPU. Algorithms in other black-box models are potentially useful for real-world applications if:
+
+1. 
+
+the queries can be efficiently implemented on those specialized devices; and
+
+2. 
+
+the communication overhead is small.
+
+We are not aware of other natural models that satisfies these constraints for identity testing of 
+\mathsf{AExp}^{1}
+𝖠𝖤𝗑𝗉1 circuits, and it remains an interesting open problem that may require joint efforts of system and theory communities. Note that it may make it possible to design better identity testing algorithms if we work with another black-box query model that has better mathematical properties.
+
+2 Preliminaries
+
+2.1 Abstract Algebra
+
+We assume basic familiarity to elementary ring and field theory (see, e.g., [9]). We will use the standard notation: 
+R[x_{1},\dots,x_{m}]
+R⁢[x1,…,xm] denotes the ring of 
+m
+m-variate polynomials with coefficients in 
+R
+R; for any ideal 
+I
+I in 
+R
+R, 
+R/I
+R/I denotes the quotient ring of 
+R
+R modulo 
+I
+I; 
+\mathsf{Quot}(R)
+𝖰𝗎𝗈𝗍⁢(R) denotes the quotient field (i.e. the field of fraction) extending an integral domain 
+R
+R. For any prime 
+p
+p and 
+u\in\mathbb{F}_{p}\setminus\{0\}
+u∈𝔽p∖{0}, we use 
+\mathsf{Inv}_{p}(u)
+𝖨𝗇𝗏p⁢(u) to denote the multiplicative inverse of 
+u
+u modulo 
+p
+p.
+
+Recall that an integral domain is a non-zero commutative ring where the multiplication of two non-zero elements is non-zero. We will need the following result for polynomials.
+
+Lemma 10 ([9, Proposition 1 of Section 9.1]).
+
+For any integral domain 
+R
+R, the ring of 
+R
+R-coefficient multi-variate polynomials 
+R[x_{1},\dots,x_{m}]
+R⁢[x1,…,xm] is also an integral domain.
+
+2.2 Schwartz-Zippel Lemma
+
+Lemma 11 ([8, 26, 19]).
+
+Let 
+R
+R be an integral domain and 
+S\subseteq R
+S⊆R be a finite subset of 
+R
+R. For any 
+m,d\in\mathbb{N}
+m,d∈ℕ and any non-zero 
+m
+m-variate polynomial 
+f:R^{m}\to\mathbb{R}
+f:Rm→ℝ of total degree 
+d
+d
+
+\Pr_{\vec{x}\in S^{m}}[f(\vec{x})=0]\leq\frac{d}{|S|},
+Prx→∈Sm⁡[f⁢(x→)=0]≤d|S|,
+
+where 
+\vec{x}=(x_{1},\dots,x_{m})
+x→=(x1,…,xm) is uniformly sampled from 
+S^{m}
+Sm.
+
+2.3 Transcendental Number Theory
+
+Definition 12.
+
+A complex number 
+\alpha\in\mathbb{C}
+α∈ℂ is called algebraic if it is the root of a non-zero integer-coefficient polynomial of finite degree, and called transcendental if it is not algebraic.
+
+Algebraic numbers, denoted by 
+\overline{\mathbb{Q}}
+ℚ¯, is a sub-field of 
+\mathbb{C}
+ℂ. In particular, any rational number 
+\alpha=p/q
+α=p/q is algebraic as it is the root of the degree-
+1
+1 integer-coefficient polynomial 
+qx-p
+q⁢x−p.
+
+Theorem 13 (Lindemann–Weierstrass Theorem [4, Theorem 1.4]).
+
+If 
+\alpha_{1},\dots,\alpha_{n}\in\overline{\mathbb{Q}}
+α1,…,αn∈ℚ¯ are distinct algebraic numbers, 
+e^{\alpha_{1}},\dots,e^{\alpha_{n}}\in\mathbb{C}
+eα1,…,eαn∈ℂ are linearly independent over the field 
+\overline{\mathbb{Q}}
+ℚ¯ of algebraic numbers. In particular, 
+e
+e is transcendental.
+
+3 Circuit and Query Models
+
+3.1 Definition of the Circuit Model
+
+The circuit model we introduce next extends the standard arithmetic circuit model by exponentiation gates that is intended to model the exponential function 
+\exp(x)\triangleq e^{x}
+exp⁡(x)≜ex over real numbers. Formally, an 
+\mathsf{AExp}^{1}
+𝖠𝖤𝗑𝗉1 circuit is a DAG consisting of vertices that are either an input variable or a gate of the following types (all gates are of fan-out 
+1
+1):
+
+1. 
+
+constant gates 
+\mathsf{C}_{a}
+𝖢a of fan-in 
+0
+0 intended to model a fixed integer 
+a
+a;
+
+2. 
+
+addition gates 
+\Sigma(x_{1},\dots,x_{m})
+Σ⁢(x1,…,xm) of unbounded fan-in that are intended to model the addition of real numbers, i.e., 
+x_{1}+\dots+x_{m}
+x1+⋯+xm;
+
+3. 
+
+multiplication gates 
+\Pi(x_{1},\dots,x_{m})
+Π⁢(x1,…,xm) of unbounded fan-in that are intended to model the multiplication of real numbers, i.e., 
+x_{1}x_{2}\dots x_{n}
+x1⁢x2⁢…⁢xn.
+
+4. 
+
+division gates 
+\mathsf{Frac}(x,y)
+𝖥𝗋𝖺𝖼⁢(x,y) of fan-in 
+2
+2 intended to model the division of real numbers, i.e., 
+x/y
+x/y;
+
+5. 
+
+exponentiation gates 
+\mathsf{Exp}(x)
+𝖤𝗑𝗉⁢(x) of fan-in 
+1
+1 intended to model the exponential function, i.e., 
+e^{x}
+ex.
+
+In addition, we do not allow compositions of exponentiation gates in 
+\mathsf{AExp}^{1}
+𝖠𝖤𝗑𝗉1 circuits; that is, for any 
+\mathsf{AExp}^{1}
+𝖠𝖤𝗑𝗉1 circuit, there is at most one exponentiation gate along any path from an input variable to an output gate.444Similarly, one can define 
+\mathsf{AExp}^{k}
+𝖠𝖤𝗑𝗉k circuits where there are at most 
+k
+k exponential gates along any such path. In this work, we focus on 
+\mathsf{AExp}^{1}
+𝖠𝖤𝗑𝗉1 circuits as it is natural and is more relevant to the practical motivation of this work. We assume by default that an 
+\mathsf{AExp}^{1}
+𝖠𝖤𝗑𝗉1 circuit has only one output gate, though the definitions and our results can be easily generalized to multi-output circuits.
+
+Evaluation of 
+\mathsf{AExp}^{1}
+𝗔𝗘𝘅𝗽𝟏 Circuits over Real Numbers.
+
+The evaluation of 
+\mathsf{AExp}^{1}
+𝖠𝖤𝗑𝗉1 circuits over real numbers should be clear through the definition. Let 
+C
+C be any 
+n
+n-input 
+\mathsf{AExp}^{1}
+𝖠𝖤𝗑𝗉1 circuit and 
+\vec{x}\in\mathbb{R}^{n}
+x→∈ℝn, the evaluation of 
+C(\vec{x})
+C⁢(x→) is defined as the output of the output gate, where the output values of gates are defined by gate-by-gate evaluation following a topological order.
+
+In particular, if the divisor of a division gate is zero, 
+C(\vec{x})
+C⁢(x→) is undefined. Therefore, an 
+\mathsf{AExp}^{1}
+𝖠𝖤𝗑𝗉1 circuit may compute a partial function 
+C:\mathbb{R}^{n}\to\mathbb{R}
+C:ℝn→ℝ. We define the domain of a 
+C(\vec{x})
+C⁢(x→) circuit on 
+\mathbb{R}
+ℝ, denoted by 
+\mathsf{dom}_{\mathbb{R}}(C)
+𝖽𝗈𝗆ℝ⁢(C), as the set of 
+\vec{x}\in\mathbb{R}^{n}
+x→∈ℝn such that 
+C(\vec{x})
+C⁢(x→) is defined. For any 
+\vec{x}\notin\mathsf{dom}_{\mathbb{R}}(C)
+x→∉𝖽𝗈𝗆ℝ⁢(C), we may also say 
+C(\vec{x})=\bot
+C⁢(x→)=⊥.
+
+Practical Motivation: Modeling Components in Neural Networks.
+
+Our circuit model is a straightforward formalization of the program representation in Mirage [25]. Intuitively, the motivation to introduce 
+\mathsf{AExp}^{1}
+𝖠𝖤𝗑𝗉1 circuit is to model components that are widely used in model artificial neural networks that consist of non-linear activation functions.
+
+3.2 Query Model over Reals, and Why it is not Satisfactory
+
+Since 
+\mathsf{AExp}^{1}
+𝖠𝖤𝗑𝗉1 circuits compute functions over 
+\mathbb{R}
+ℝ, a natural idealized model for the identity testing problem is that the algorithm can evaluate the circuit over any real input. Formally, a identity testing algorithm for 
+\mathsf{AExp}^{1}
+𝖠𝖤𝗑𝗉1 circuits 
+C
+C in real query model is allowed to query the following oracle:
+
+\blacksquare
+■ 
+
+(Evaluation). Given an input 
+\vec{x}\in\mathbb{Q}^{n}
+x→∈ℚn, the evaluation oracle reports whether 
+C(\vec{x})
+C⁢(x→) is undefined, 
+C(\vec{x})=0
+C⁢(x→)=0, or 
+C(\vec{x})\in\mathbb{R}\setminus\{0\}
+C⁢(x→)∈ℝ∖{0}.
+
+The main problem of the real query model is that computers cannot deal with real numbers. For real-world applications, real numbers are usually approximated by floating-point numbers, which does not satisfy arithmetic laws such as the commutativity and associativity of addition. This leads two-sided errors in the implementation of a testing algorithm in real query model:
+
+\blacksquare
+■ 
+
+(Completeness). Even if 
+C
+C is identically zero over 
+\mathbb{R}
+ℝ, it may evaluate to a non-zero value on some inputs when the evaluation queries are implemented in float-point numbers.
+
+\blacksquare
+■ 
+
+(Soundness). Even if 
+C
+C is not identically zero, it may evaluate to 
+0
+0 on any input when evaluation queries are implemented in float-point numbers, either because of the precision issue or because of the failure of arithmetic laws.
+
+The occurrences of errors on both sides reduce the consistency and reliability of the testing algorithms. Take the example of optimization compilers PET [24] or Mirage [25] that aim to detect redundancy in neural networks modeled as 
+\mathsf{AExp}^{1}
+𝖠𝖤𝗑𝗉1 circuits. Two sided error will make the algorithms less predictable and reliable to users; indeed, it could be possible that the oracle will hardly ever report 
+C(\vec{x})\in\mathbb{R}\setminus\{0\}
+C⁢(x→)∈ℝ∖{0} even if 
+C(\vec{x})
+C⁢(x→) is defined and non-zero for most or all 
+\vec{x}
+x→ due to the floating-point issue. In that case, the optimization compiler will barely find any redundancy. It is worth noting that the error is on top of the completeness and soundness error of the identity testing algorithm, so it cannot be resolved by a better (e.g., deterministic) testing algorithm.
+
+3.3 Query Model over Finite Fields
+
+Next, we introduce a natural query model for the identity testing problem of 
+\mathsf{AExp}^{1}
+𝖠𝖤𝗑𝗉1 circuits over finite fields that can be implemented in real-world applications without the precision issue.
+
+Evaluation over Finite Fields.
+
+Let 
+p,q
+p,q be two primes such that 
+q\mid p-1
+q∣p−1, and 
+G_{p,q}
+Gp,q be the (unique) multiplicative subgroup of 
+\mathbb{F}_{p}^{*}
+𝔽p∗ of order 
+q
+q. Equivalently, 
+G_{p,q}
+Gp,q contains the roots of the univariate polynomial 
+z^{q}-1
+zq−1 over 
+\mathbb{F}_{p}
+𝔽p. Loosely speaking, we will define the evaluation of 
+C
+C on the input 
+(\vec{u},\vec{v})\in\mathbb{F}_{p}^{n}\times\mathbb{F}_{q}^{n}
+(u→,v→)∈𝔽pn×𝔽qn and 
+a\in G_{p,q}
+a∈Gp,q (modulo 
+(p,q)
+(p,q)) by
+
+\blacksquare
+■ 
+
+interpreting the exponentiation gate by the function 
+x\mapsto a^{x}\bmod p
+x↦axmodp,
+
+\blacksquare
+■ 
+
+implementing all computation “on the exponent” in 
+\mathbb{F}_{q}
+𝔽q,
+
+\blacksquare
+■ 
+
+implementing all computation “under the exponent” in 
+\mathbb{F}_{p}
+𝔽p,
+
+and evaluating the circuit gate by gate.
+
+We use 
+C_{a}(\vec{u},\vec{v})
+Ca⁢(u→,v→) to denote the evaluation above; see the full version for its formal definition.
+
+Similar to the evaluation of 
+\mathsf{AExp}^{1}
+𝖠𝖤𝗑𝗉1 circuits on 
+\mathbb{R}
+ℝ, 
+C_{a}(\vec{u},\vec{v})
+Ca⁢(u→,v→) may be undefined, denoted by 
+C_{a}(\vec{u},\vec{v})=\bot
+Ca⁢(u→,v→)=⊥, due to division-by-zero. For each 
+a\in G_{p,q}
+a∈Gp,q, we define the domain of 
+C
+C with respect to 
+a
+a modulo 
+(p,q)
+(p,q), denoted by 
+\mathsf{dom}_{p,q,a}(C)
+𝖽𝗈𝗆p,q,a⁢(C), as 
+\{(\vec{u},\vec{v})\in\mathbb{F}_{p}^{n}\times\mathbb{F}_{q}^{n}\mid C_{a}(%
+\vec{u},\vec{v})\neq\bot\}
+{(u→,v→)∈𝔽pn×𝔽qn∣Ca⁢(u→,v→)≠⊥}.
+
+Algebraic Query Model.
+
+Subsequently, we define the identity testing problem for an 
+\mathsf{AExp}^{1}
+𝖠𝖤𝗑𝗉1 circuit 
+C
+C over the algebraic query model as follows. Let 
+p,q,G_{p,q}
+p,q,Gp,q be specified above. The algorithm for identity testing is allowed to query the following oracle:
+
+\blacksquare
+■ 
+
+(Evaluation). Given 
+(\vec{u},\vec{v})\in\mathbb{F}_{p}^{n}\times\mathbb{F}_{q}^{n}
+(u→,v→)∈𝔽pn×𝔽qn and 
+a\in G_{p,q}
+a∈Gp,q, the oracle reports 
+C_{a}(\vec{u},\vec{v})\in\mathbb{F}_{p}\cup\{\bot\}
+Ca⁢(u→,v→)∈𝔽p∪{⊥}.
+
+This query model is efficient both theoretically and practically. It can be observed, for instance, that the oracle in the algebraic query model can be implemented by algorithms in 
+O(s\cdot(\log p+\log q))
+O⁢(s⋅(log⁡p+log⁡q)) space and polynomial time. In practice, the simplicity of the evaluation model makes it possible to implement it in the neural network compiler scenario (see [24, 25] for more details).
+
+4 Exponential Polynomials
+
+To understand the functions computed by 
+\mathsf{AExp}^{1}
+𝖠𝖤𝗑𝗉1 circuits, we will define exponential polynomials that, intuitively, generalize (multi-variate) polynomials by allowing terms of form 
+\exp(\cdot)
+exp⁡(⋅). Formally:
+
+Definition 14 (exponential polynomial).
+
+Let 
+R
+R be an integral domain and 
+d,m
+d,m be integers, 
+d\geq 0
+d≥0, 
+m\geq 1
+m≥1. An 
+m
+m-variate 
+R
+R-coefficient exponential polynomial 
+P(\vec{x})
+P⁢(x→) of degree 
+d
+d is defined as
+
+P(\vec{x})\triangleq f_{1}(\vec{x})\exp\left(\frac{g_{1}(\vec{x})}{h_{1}(\vec{%
+x})}\right)+f_{2}(\vec{x})\exp\left(\frac{g_{2}(\vec{x})}{h_{2}(\vec{x})}%
+\right)+\dots+f_{k}(\vec{x})\exp\left(\frac{g_{k}(\vec{x})}{h_{k}(\vec{x})}%
+\right),
+P⁢(x→)≜f1⁢(x→)⁢exp⁡(g1⁢(x→)h1⁢(x→))+f2⁢(x→)⁢exp⁡(g2⁢(x→)h2⁢(x→))+⋯+fk⁢(x→)⁢exp⁡(gk⁢(x→)hk⁢(x→)),
+
+where 
+\vec{x}=(x_{1},\dots,x_{m})
+x→=(x1,…,xm) denotes the indeterminates, 
+f_{i}
+fi, 
+g_{i}
+gi and 
+h_{i}
+hi are 
+m
+m-variate polynomials of degree 
+d
+d with coefficients from 
+R
+R.
+
+The number of terms 
+k
+k is said to be the width of 
+P(\vec{x})
+P⁢(x→), 
+\{f_{i}(\vec{x})\}_{i\in[k]}
+{fi⁢(x→)}i∈[k] are said to be the coefficient polynomials of 
+P(\vec{x})
+P⁢(x→), and 
+\{g_{i}(\vec{x})/h_{i}(\vec{x})\}_{i\in[k]}
+{gi⁢(x→)/hi⁢(x→)}i∈[k] are said to be the exponent fractions of 
+P(\vec{x})
+P⁢(x→).
+
+In this paper, we only use the special case where 
+R=\mathbb{Z}
+R=ℤ, i.e., integer-coefficient exponential polynomials. Nevertheless, we will develop the elementary arithmetic of exponential polynomials with respect to an arbitrary integral domain 
+R
+R for coefficients.
+
+4.1 Basic Arithmetic Properties
+
+We stress that an exponential polynomial should be considered as an abstract expression rather than a function. In particular, 
+\exp(\cdot)
+exp⁡(⋅) should be considered as a symbol instead of the exponential function over 
+\mathbb{R}
+ℝ. For simplicity, we will also use the summation symbol 
+\sum
+∑ to define an exponential polynomial, i.e.,
+
+P(\vec{x})\triangleq\sum_{i=1}^{k}f_{i}(\vec{x})\exp\left(\frac{g_{i}(\vec{x})%
+}{h_{i}(\vec{x})}\right),
+P⁢(x→)≜∑i=1kfi⁢(x→)⁢exp⁡(gi⁢(x→)hi⁢(x→)),
+
+where the summation symbol is a shorthand of the 
+k
+k-term summation in Definition 14.
+
+We first define the addition and multiplication of exponential polynomials. Let 
+R
+R be a ring and 
+P(\vec{x}),P^{\prime}(\vec{x})
+P⁢(x→),P′⁢(x→) be 
+R
+R-coefficient exponential polynomials defined as
+
+\displaystyle P(\vec{x})\triangleq\sum_{i=1}^{k}f_{i}(\vec{x})\exp\left(\frac{%
+g_{i}(\vec{x})}{h_{i}(\vec{x})}\right),\quad P^{\prime}(\vec{x})\triangleq\sum%
+_{i=1}^{k^{\prime}}f^{\prime}_{i}(\vec{x})\exp\left(\frac{g^{\prime}_{i}(\vec{%
+x})}{h^{\prime}_{i}(\vec{x})}\right).
+P⁢(x→)≜∑i=1kfi⁢(x→)⁢exp⁡(gi⁢(x→)hi⁢(x→)),P′⁢(x→)≜∑i=1k′fi′⁢(x→)⁢exp⁡(gi′⁢(x→)hi′⁢(x→)).
+
+(1)
+
+We can naturally define the addition and multiplication of 
+P(\vec{x})
+P⁢(x→) and 
+P^{\prime}(\vec{x})
+P′⁢(x→) as:
+
+\displaystyle P(\vec{x})+P^{\prime}(\vec{x})\triangleq\sum_{i=1}^{k}f_{i}(\vec%
+{x})\exp\left(\frac{g_{i}(\vec{x})}{h_{i}(\vec{x})}\right)+\sum_{i=1}^{k^{%
+\prime}}f^{\prime}_{i}(\vec{x})\exp\left(\frac{g^{\prime}_{i}(\vec{x})}{h^{%
+\prime}_{i}(\vec{x})}\right).
+P⁢(x→)+P′⁢(x→)≜∑i=1kfi⁢(x→)⁢exp⁡(gi⁢(x→)hi⁢(x→))+∑i=1k′fi′⁢(x→)⁢exp⁡(gi′⁢(x→)hi′⁢(x→)).
+
+(2)
+
+\displaystyle P(\vec{x})\cdot P^{\prime}(\vec{x})\triangleq\sum_{i=1}^{k}\sum_%
+{j=1}^{k^{\prime}}f_{i}(\vec{x})f^{\prime}_{j}(\vec{x})\exp\left(\frac{g_{i}(%
+\vec{x})h^{\prime}_{j}(\vec{x})+g^{\prime}_{j}(\vec{x})h_{i}(\vec{x})}{h_{i}(%
+\vec{x})h^{\prime}_{j}(\vec{x})}\right).
+P⁢(x→)⋅P′⁢(x→)≜∑i=1k∑j=1k′fi⁢(x→)⁢fj′⁢(x→)⁢exp⁡(gi⁢(x→)⁢hj′⁢(x→)+gj′⁢(x→)⁢hi⁢(x→)hi⁢(x→)⁢hj′⁢(x→)).
+
+(3)
+
+Next, we consider the arithmetic laws for exponential polynomials. As hinted at in the definitions of addition and multiplication, both operations are commutative and associative, and multiplication is distributive over addition. Moreover, it is implicit in the definition of multiplication that exponentiation symbol satisfies
+
+\exp\left(\frac{g(\vec{x})}{h(\vec{x})}\right)\cdot\exp\left(\frac{g^{\prime}(%
+\vec{x})}{h^{\prime}(\vec{x})}\right)=\exp\left(\frac{g(\vec{x})h^{\prime}(%
+\vec{x})+g^{\prime}(\vec{x})h(\vec{x})}{h(\vec{x})h^{\prime}(\vec{x})}\right).
+exp⁡(g⁢(x→)h⁢(x→))⋅exp⁡(g′⁢(x→)h′⁢(x→))=exp⁡(g⁢(x→)⁢h′⁢(x→)+g′⁢(x→)⁢h⁢(x→)h⁢(x→)⁢h′⁢(x→)).
+
+(4)
+
+Furthermore, we impose the following axiom that allows merging terms with the same exponent fraction:
+
+\displaystyle f(\vec{x})\exp\left(\frac{g(\vec{x})}{h(\vec{x})}\right)+f^{%
+\prime}(\vec{x})\exp\left(\frac{g(\vec{x})}{h(\vec{x})}\right)=(f(\vec{x})+f^{%
+\prime}(\vec{x}))\exp\left(\frac{g(\vec{x})}{h(\vec{x})}\right).
+f⁢(x→)⁢exp⁡(g⁢(x→)h⁢(x→))+f′⁢(x→)⁢exp⁡(g⁢(x→)h⁢(x→))=(f⁢(x→)+f′⁢(x→))⁢exp⁡(g⁢(x→)h⁢(x→)).
+
+(5)
+
+We say that 
+P(\vec{x})
+P⁢(x→) and 
+P^{\prime}(\vec{x})
+P′⁢(x→) are identical, denoted by 
+P(\vec{x})=P^{\prime}(\vec{x})
+P⁢(x→)=P′⁢(x→), if they can be transformed to each other using the arithmetic laws above.
+
+We note that the following two exponential polynomials
+
+P_{1}(\vec{x})=\exp\left(x\right);\quad P_{2}(\vec{x})=\exp\left(\frac{x^{2}-2%
+x}{x-2}\right)
+P1⁢(x→)=exp⁡(x);P2⁢(x→)=exp⁡(x2−2⁢xx−2)
+
+are not identical as the division law is not allowed in the exponentiation symbol. This is intentional as in the evaluation of 
+\mathsf{AExp}^{1}
+𝖠𝖤𝗑𝗉1 circuits, we will only evaluate the circuit gate by gate without trying to simplify the circuit using the division law.
+
+4.2 Evaluation of Exponential Polynomials
+
+Similar to standard multivariate polynomials, we can define the evaluation of exponential polynomials that explains how to view such abstract expressions as functions. In particular, we will introduce two definitions corresponding to the real evaluation model and algebraic evaluation model of 
+\mathsf{AExp}^{1}
+𝖠𝖤𝗑𝗉1 circuits.
+
+Let 
+P(\vec{x})
+P⁢(x→) be an 
+n
+n-variate integer-coefficient exponential polynomial defined by the coefficient polynomials 
+\{f_{i}\}_{i\in[k]}
+{fi}i∈[k] and exponent fractions 
+\{g_{i}/h_{i}\}_{i\in[k]}
+{gi/hi}i∈[k].
+
+Evaluation of Exponential Polynomials on Real Numbers.
+
+We can view 
+P(\vec{x})
+P⁢(x→) as a function 
+P(\cdot):\mathbb{R}^{n}\to\mathbb{R}
+P⁢(⋅):ℝn→ℝ as follows. Given an input 
+\vec{u}\in\mathbb{R}^{n}
+u→∈ℝn, the evaluation of 
+P(\vec{x})
+P⁢(x→) on the input 
+\vec{u}
+u→ is defined as
+
+P(\vec{u})\triangleq\sum_{i=1}^{k}f_{i}(\vec{u})\cdot\exp\left(\frac{g_{i}(%
+\vec{u})}{h_{i}(\vec{u})}\right)
+P⁢(u→)≜∑i=1kfi⁢(u→)⋅exp⁡(gi⁢(u→)hi⁢(u→))
+
+where all the operators (i.e., additions, divisions, multiplications, and exponentiations) are interpreted as corresponding functions in 
+\mathbb{R}
+ℝ. If for some 
+i\in[k]
+i∈[k], 
+h_{i}(\vec{u})=0
+hi⁢(u→)=0, the exponential polynomial is said to be undefined on 
+\vec{u}
+u→. The domain of 
+P(\vec{x})
+P⁢(x→) over 
+\mathbb{R}
+ℝ, denoted by 
+\mathsf{dom}_{\mathbb{R}}(P)
+𝖽𝗈𝗆ℝ⁢(P), is defined as 
+\mathsf{dom}_{\mathbb{R}}(P)\triangleq\{\vec{u}\in\mathbb{R}^{n}\mid h_{i}(%
+\vec{u})\neq 0\;\forall i\in[k]\}
+𝖽𝗈𝗆ℝ⁢(P)≜{u→∈ℝn∣hi⁢(u→)≠0⁢∀i∈[k]}.
+
+Evaluation of Exponential Polynomials on Finite Fields.
+
+Similar to the algebraic query model for 
+\mathsf{AExp}^{1}
+𝖠𝖤𝗑𝗉1 circuits, we require two finite fields for the computation under and over exponents to define the evaluation of 
+P
+P over finite fields. Let 
+p,q
+p,q be two primes such that 
+q\mid p-1
+q∣p−1, and 
+G_{p,q}
+Gp,q be the multiplicative subgroup of 
+\mathbb{F}_{p}^{*}
+𝔽p∗ of order 
+q
+q. Given inputs 
+\vec{u}\in\mathbb{F}_{p}^{n},\vec{v}\in\mathbb{F}_{q}^{n}
+u→∈𝔽pn,v→∈𝔽qn, and 
+a\in G_{p,q}
+a∈Gp,q, the evaluation of 
+P
+P on 
+\vec{u}
+u→ and 
+\vec{u}
+u→, denoted by 
+P_{a}(\vec{u},\vec{v})
+Pa⁢(u→,v→), is defined as:
+
+P_{a}(\vec{u},\vec{v})\triangleq\left(\sum_{i=1}^{k}f_{i}(\vec{u})\cdot a^{g_{%
+i}(\vec{v})\cdot(h_{i}(\vec{v}))^{-1}\bmod q}\right)\bmod p.
+Pa⁢(u→,v→)≜(∑i=1kfi⁢(u→)⋅agi⁢(v→)⋅(hi⁢(v→))−1modq)modp.
+
+Note that 
+P_{a}(\vec{u},\vec{v})
+Pa⁢(u→,v→) is undefined, denoted by 
+P_{a}(\vec{u},\vec{v})=\bot
+Pa⁢(u→,v→)=⊥, if 
+h_{i}(\vec{v})\bmod q=0
+hi⁢(v→)modq=0 for some 
+i\in[k]
+i∈[k]. The domain of 
+P(\vec{x})
+P⁢(x→) over 
+(p,q,a)
+(p,q,a) is defined as
+
+\mathsf{dom}_{p,q,a}(P(\vec{x}))\triangleq\{(\vec{u},\vec{v})\in\mathbb{F}_{p}%
+^{n}\times\mathbb{F}_{q}^{n}\mid h_{i}(\vec{u})\neq 0\bmod q\;\forall i\in[k]\}.
+𝖽𝗈𝗆p,q,a⁢(P⁢(x→))≜{(u→,v→)∈𝔽pn×𝔽qn∣hi⁢(u→)≠0modq⁢∀i∈[k]}.
+
+Proposition 15.
+
+Let 
+P(\vec{x})
+P⁢(x→) and 
+P^{\prime}(\vec{x})
+P′⁢(x→) be identical integer-coefficient exponential polynomials, 
+p,q
+p,q be two primes such that 
+q\mid p-1
+q∣p−1. For any 
+a
+a in the multiplicative subgroup of 
+\mathbb{F}_{p}^{*}
+𝔽p∗ of order 
+q
+q, we have that 
+\mathsf{dom}_{p,q,a}(P)=\mathsf{dom}_{p,q,a}(P^{\prime})
+𝖽𝗈𝗆p,q,a⁢(P)=𝖽𝗈𝗆p,q,a⁢(P′) and 
+P_{a}(\vec{u},\vec{v})=P^{\prime}_{a}(\vec{u},\vec{v})
+Pa⁢(u→,v→)=Pa′⁢(u→,v→) for any 
+\vec{u}\in\mathbb{F}_{p}^{n},\vec{v}\in\mathbb{F}_{q}^{n}
+u→∈𝔽pn,v→∈𝔽qn.
+
+4.3 Condensation of Exponential Polynomials
+
+Recall that two exponential polynomials are said to be identical if they can be transformed to each other by arithmetic laws. As there is no division law for the exponent fractions, the exponential polynomials
+
+P_{1}(x)\triangleq\exp\left(x\right);\quad P_{2}(x)\triangleq\exp\left(\frac{x%
+^{2}-2x}{x-2}\right)
+P1⁢(x)≜exp⁡(x);P2⁢(x)≜exp⁡(x2−2⁢xx−2)
+
+are not considered to be the same polynomial. In particular, we can notice that 
+\mathsf{dom}_{\mathbb{R}}(P_{1})\neq\mathsf{dom}_{\mathbb{R}}(P_{2})
+𝖽𝗈𝗆ℝ⁢(P1)≠𝖽𝗈𝗆ℝ⁢(P2). Nevertheless, these two exponential polynomials as functions are essentially the same over all but the input 
+x=2
+x=2.
+
+We now introduce the condensation of integer-coefficient exponential polynomials that simplifies an exponential polynomial by merging terms with “essentially the same” exponent fractions together, which will be useful in proving our main results.
+
+Equivalent Exponential Fractions.
+
+Let 
+P(\vec{x})
+P⁢(x→) be a multi-variate integer-coefficient exponential polynomial of width 
+k
+k, 
+\{g_{i}(\vec{x})/h_{i}(\vec{x})\}_{i\in[k]}
+{gi⁢(x→)/hi⁢(x→)}i∈[k] be the exponent fractions of 
+P(\vec{x})
+P⁢(x→). Suppose that for each 
+i\in[k]
+i∈[k], 
+h_{i}
+hi is not a zero polynomial. We define 
+\sim_{P}
+∼P to be the relation over 
+[k]
+[k] such that
+
+i\sim_{P}j\quad\text{ iff }\quad g_{i}(\vec{x})h_{j}(\vec{x})-g_{j}(\vec{x})h_%
+{i}(\vec{x})=0.
+i∼Pj iff gi⁢(x→)⁢hj⁢(x→)−gj⁢(x→)⁢hi⁢(x→)=0.
+
+Note that 
+g_{i}(\vec{x})h_{j}(\vec{x})-g_{j}(\vec{x})h_{i}(\vec{x})=0
+gi⁢(x→)⁢hj⁢(x→)−gj⁢(x→)⁢hi⁢(x→)=0 means that it is a zero integer-coefficient polynomial, or equivalently, 
+g_{i}(\vec{u})h_{j}(\vec{u})-g_{j}(\vec{u})h_{i}(\vec{u})=0
+gi⁢(u→)⁢hj⁢(u→)−gj⁢(u→)⁢hi⁢(u→)=0 for any 
+\vec{x}\in\vec{\mathbb{R}}
+x→∈ℝ→.
+
+Lemma 16.
+
+Suppose that 
+h_{i}(\vec{x})
+hi⁢(x→) is not a zero polynomial for any 
+i\in[k]
+i∈[k], then 
+\sim_{P}
+∼P is an equivalence relation over 
+[k]
+[k].
+
+Condensation of Exponential Polynomials.
+
+Subsequently, we define a condensation 
+\hat{P}
+P^ of an exponential polynomial 
+P
+P as obtained by grouping the coefficient polynomials according to the relation 
+\sim_{P}
+∼P. Formally:
+
+Definition 17 (Condensation of exponential polynomials).
+
+Let 
+P(\vec{x})
+P⁢(x→) be an integer-coefficient exponential polynomial of degree 
+d
+d and width 
+k
+k, 
+\{f_{i}(\vec{x})\}_{i\in[k]}
+{fi⁢(x→)}i∈[k] be the coefficient polynomials of 
+P(\vec{x})
+P⁢(x→), 
+\{g_{i}(\vec{x})/h_{i}(\vec{x})\}
+{gi⁢(x→)/hi⁢(x→)} be the exponent fractions of 
+P(\vec{x})
+P⁢(x→) such that 
+h_{i}(\vec{x})
+hi⁢(x→) is not a zero polynomial for each 
+i\in[k]
+i∈[k]. Let 
+\pi=\{[i_{1}]_{\pi},[i_{2}]_{\pi},\dots,[i_{t}]_{\pi}\}
+π={[i1]π,[i2]π,…,[it]π} be the partition of 
+[k]
+[k] induced by 
+\sim_{P}
+∼P, and 
+i_{1},\dots,i_{t}
+i1,…,it be arbitrary representation elements. We say that 
+\hat{P}(\vec{x})
+P^⁢(x→) is a condensation of 
+P(\vec{x})
+P⁢(x→) if it is of form
+
+\tilde{P}(\vec{x})\triangleq F_{1}(\vec{x})\cdot\exp\left(\frac{g_{i_{1}}(\vec%
+{x})}{h_{i_{1}}(\vec{x})}\right)+\dots+F_{t}(\vec{x})\cdot\exp\left(\frac{g_{i%
+_{t}}(\vec{x})}{h_{i_{t}}(\vec{x})}\right)
+P~⁢(x→)≜F1⁢(x→)⋅exp⁡(gi1⁢(x→)hi1⁢(x→))+⋯+Ft⁢(x→)⋅exp⁡(git⁢(x→)hit⁢(x→))
+
+where 
+F_{j}(\vec{x})\triangleq\sum_{i\in[i_{j}]_{\pi}}f_{i}(\vec{x})
+Fj⁢(x→)≜∑i∈[ij]πfi⁢(x→) is an integer-coefficient polynomial of degree at most 
+\hat{d}
+d^.
+
+Definition 18 (Condensed exponential polynomials).
+
+Let 
+P(\vec{x})
+P⁢(x→) be an exponential polynomial with exponent fractions 
+\{g_{i}(\vec{x})/h_{i}(\vec{x})\}_{i\in[k]}
+{gi⁢(x→)/hi⁢(x→)}i∈[k]. 
+P(\vec{x})
+P⁢(x→) is a condensed exponential polynomial if 
+h_{i}
+hi’s are not zero polynomials and 
+g_{i}(\vec{x})h_{j}(\vec{x})\neq h_{i}(\vec{x})g_{j}(\vec{x})
+gi⁢(x→)⁢hj⁢(x→)≠hi⁢(x→)⁢gj⁢(x→) for 
+i,j\in[k]
+i,j∈[k] and 
+i\neq j
+i≠j.
+
+We stress that the condensation of an exponential polynomial is not unique as we can choose the representative elements 
+i_{1},\dots,i_{t}
+i1,…,it arbitrarily from their equivalent classes. The following proposition shows that 
+\hat{P}
+P^ may have a larger domain compared to 
+P
+P, but they agree on the domain of 
+\hat{P}
+P^.
+
+Proposition 19.
+
+Let 
+\hat{P}
+P^ be a condensation of an integer-coefficient exponential polynomial 
+P
+P. Then:
+
+\blacksquare
+■ 
+
+\mathsf{dom}_{\mathbb{R}}(P)\subseteq\mathsf{dom}_{\mathbb{R}}(\hat{P})
+𝖽𝗈𝗆ℝ⁢(P)⊆𝖽𝗈𝗆ℝ⁢(P^), and 
+P,\hat{P}
+P,P^ agree on 
+\mathsf{dom}_{\mathbb{R}}(P)
+𝖽𝗈𝗆ℝ⁢(P).
+
+\blacksquare
+■ 
+
+Let 
+p,q
+p,q be prime numbers such that 
+q\mid p-1
+q∣p−1, 
+G_{p,q}
+Gp,q be the multiplicative subgroup of 
+\mathbb{F}_{p}^{*}
+𝔽p∗ of order 
+q
+q, and 
+a\in G_{p,q}
+a∈Gp,q. Then 
+\mathsf{dom}_{p,q,a}(P)\subseteq\mathsf{dom}_{p,q,a}(\hat{P})
+𝖽𝗈𝗆p,q,a⁢(P)⊆𝖽𝗈𝗆p,q,a⁢(P^), and 
+P,\hat{P}
+P,P^ agree on 
+\mathsf{dom}_{p,q,a}(P)
+𝖽𝗈𝗆p,q,a⁢(P).
+
+4.4 Structural Lemma for 
+\mathsf{AExp}^{1}
+𝗔𝗘𝘅𝗽𝟏 Circuits
+
+Now we are ready to prove a structural lemma showing that 
+\mathsf{AExp}^{1}
+𝖠𝖤𝗑𝗉1 circuits can be seen as fractions of exponential polynomials.
+
+For simplicity, we introduce the following notation. Let 
+P,P^{\prime}
+P,P′ be 
+n
+n-variate exponential polynomials, we define 
+\mathsf{dom}_{\mathbb{R}}(P/P^{\prime})
+𝖽𝗈𝗆ℝ⁢(P/P′) be the set 
+\{\vec{u}\in\mathsf{dom}_{\mathbb{R}}(P)\cap\mathsf{dom}_{\mathbb{R}}(P^{%
+\prime})\mid P^{\prime}(\vec{u})\neq 0\}
+{u→∈𝖽𝗈𝗆ℝ⁢(P)∩𝖽𝗈𝗆ℝ⁢(P′)∣P′⁢(u→)≠0}, i.e., the domain of the fraction 
+P(\vec{x})/P^{\prime}(\vec{x})
+P⁢(x→)/P′⁢(x→). Similarly, let 
+p,q
+p,q be prime numbers such that 
+q\mid p-1
+q∣p−1, 
+G_{p,q}
+Gp,q be the multiplicative subgroup of 
+\mathbb{F}_{p}^{*}
+𝔽p∗ of order 
+q
+q, and 
+a\in G_{p,q}
+a∈Gp,q, we define 
+\mathsf{dom}_{p,q,a}(P/P^{\prime})
+𝖽𝗈𝗆p,q,a⁢(P/P′) as the set 
+\{\vec{u}\in\mathsf{dom}_{p,q,a}(P)\cap\mathsf{dom}_{p,q,a}(P^{\prime})\mid P^%
+{\prime}(\vec{u})\neq 0\}
+{u→∈𝖽𝗈𝗆p,q,a⁢(P)∩𝖽𝗈𝗆p,q,a⁢(P′)∣P′⁢(u→)≠0}.
+
+Lemma 20.
+
+For every 
+n
+n-input 
+\mathsf{AExp}^{1}
+𝖠𝖤𝗑𝗉1 circuit 
+C
+C, there are 
+n
+n-variate integer-coefficient exponential polynomials 
+P(\vec{x})
+P⁢(x→) and 
+P^{\prime}(\vec{x})
+P′⁢(x→) such that the following holds:
+
+\blacksquare
+■ 
+
+\mathsf{dom}_{\mathbb{R}}(C)=\mathsf{dom}_{\mathbb{R}}(P/P^{\prime})
+𝖽𝗈𝗆ℝ⁢(C)=𝖽𝗈𝗆ℝ⁢(P/P′), and for each 
+\vec{u}\in\mathsf{dom}_{\mathbb{R}}(C)
+u→∈𝖽𝗈𝗆ℝ⁢(C), 
+C(\vec{u})=P(\vec{u})/P^{\prime}(\vec{u})
+C⁢(u→)=P⁢(u→)/P′⁢(u→).
+
+\blacksquare
+■ 
+
+Let 
+p,q
+p,q be prime numbers such that 
+q\mid p-1
+q∣p−1, 
+G_{p,q}
+Gp,q be the multiplicative subgroup of 
+\mathbb{F}_{p}^{*}
+𝔽p∗ of order 
+q
+q, and 
+a\in G_{p,q}
+a∈Gp,q. Then 
+\mathsf{dom}_{p,q,a}(C)=\mathsf{dom}_{p,q,a}(P/P^{\prime})
+𝖽𝗈𝗆p,q,a⁢(C)=𝖽𝗈𝗆p,q,a⁢(P/P′) and for every 
+(\vec{u},\vec{v})\in\mathsf{dom}_{p,q,a}(C)
+(u→,v→)∈𝖽𝗈𝗆p,q,a⁢(C), 
+C_{a}(\vec{u},\vec{v})\equiv P_{a}(\vec{u},\vec{v})\cdot\mathsf{Inv}_{p}(P^{%
+\prime}_{a}(\vec{u},\vec{v}))\pmod{p}
+Ca⁢(u→,v→)≡Pa⁢(u→,v→)⋅𝖨𝗇𝗏p⁢(Pa′⁢(u→,v→))(modp).
+
+In particular, if 
+C
+C does not contain exponentiation gates, both 
+P
+P and 
+P^{\prime}
+P′ do not contain the exponentiation symbol, i.e., 
+P
+P and 
+P^{\prime}
+P′ are integer-coefficient polynomials.
+
+The proof is left to the full version of the paper.
+
+4.5 Width, Degree, and Weight of Concrete Neural Network Components
+
+It is proved in Lemma 20 that any 
+\mathsf{AExp}^{1}
+𝖠𝖤𝗑𝗉1 circuit can be transformed to an equivalent fraction of exponential polynomials. We can therefore define the width, degree, and weight of an 
+\mathsf{AExp}^{1}
+𝖠𝖤𝗑𝗉1 circuit.
+
+Definition 21 (width, degree, and weight of 
+\mathsf{AExp}^{1}
+𝖠𝖤𝗑𝗉1 circuits).
+
+An 
+\mathsf{AExp}^{1}
+𝖠𝖤𝗑𝗉1 circuit 
+C
+C is said to have width 
+k
+k, degree 
+d
+d, and weight 
+w
+w if there are integer-coefficient degree-
+d
+d width-
+k
+k exponential polynomials 
+P(\vec{x})
+P⁢(x→) and 
+P^{\prime}(\vec{x})
+P′⁢(x→) that satisfy both conditions in Lemma 20.
+
+We note that the transformation in Lemma 20 may not be efficient – the width, degree, and the bit-length of the integer coefficients may grow exponentially with respect to the size of the circuit. Nevertheless, it can be verified that many neural network components can be simulated by fractions of exponential polynomials with relatively small width, degree, and coefficients. We refer readers to the full version for more discussions.
+
+5 Algorithms for Identity Testing
+
+Now we are ready to describe our identity testing algorithms in real and algebraic query models. Indeed, our algorithms are essentially the same one: Randomly sample an input 
+x
+x (in corresponding models) and check whether the circuit evaluates to zero or 
+\bot
+⊥ on the input 
+\vec{x}
+x→. We will first prove the correctness of the algorithm in real query model (see Section 5.1), and generalize the proof to the algebraic query models in subsequent subsections.
+
+5.1 Identity Testing in Real Query Model
+
+Formally, the identity testing algorithm in real query model works as follows: Suppose that 
+C:\mathbb{R}^{n}\to\mathbb{R}
+C:ℝn→ℝ is an 
+\mathsf{AExp}^{1}
+𝖠𝖤𝗑𝗉1 circuit of width 
+k
+k and degree 
+d
+d, let 
+B=20dk^{2}
+B=20⁢d⁢k2 be sufficiently large and 
+S=\{1,2,\dots,B\}
+S={1,2,…,B}, the algorithm uniformly sample 
+x_{1},x_{2},\dots,x_{n}\in S
+x1,x2,…,xn∈S, and accept if 
+C(x_{1},\dots,x_{n})\neq 0
+C⁢(x1,…,xn)≠0.
+
+It is clear that the algorithm is perfectly complete, and the soundness can be formalized as the following theorem.
+
+Theorem 22.
+
+Let 
+C:\mathbb{R}^{n}\to\mathbb{R}
+C:ℝn→ℝ be an 
+\mathsf{AExp}^{1}
+𝖠𝖤𝗑𝗉1 circuit of width 
+k
+k and degree 
+d
+d that is not identically zero on 
+\mathsf{dom}_{\mathbb{R}}(C)
+𝖽𝗈𝗆ℝ⁢(C). Then for any non-empty finite subset 
+S\subseteq\mathbb{Q}
+S⊆ℚ, if 
+\vec{x}\in S^{n}
+x→∈Sn is sampled uniformly at random, 
+\Pr[C(\vec{x})\in\{0,\bot\}]\leq 8dk^{2}/|S|
+Pr⁡[C⁢(x→)∈{0,⊥}]≤8⁢d⁢k2/|S|.
+
+The key step for proving Theorem 22 is a necessary and sufficient condition for an exponential polynomial 
+P
+P to be identically zero. Intuitively, if the exponent fractions 
+g_{1}/h_{1},\dots,g_{k}/h_{k}
+g1/h1,…,gk/hk of 
+P
+P are pairwisely distinct, then 
+P
+P is identically zero on 
+\mathbb{R}^{n}
+ℝn if and only if all coefficient polynomials 
+f_{1},\dots,f_{k}
+f1,…,fk are all identically zero. Formally:
+
+Lemma 23.
+
+Let 
+P:\mathbb{R}^{n}\to\mathbb{R}
+P:ℝn→ℝ be a condensed exponential polynomial of form
+
+P(\vec{x})=\sum_{i=1}^{k}f_{i}(\vec{x})\cdot\exp\left(\frac{g_{i}(\vec{x})}{h_%
+{i}(\vec{x})}\right),
+P⁢(x→)=∑i=1kfi⁢(x→)⋅exp⁡(gi⁢(x→)hi⁢(x→)),
+
+where 
+f_{i},g_{i},h_{i}
+fi,gi,hi are integer-coefficient polynomials of total degree 
+d
+d and 
+h_{i}(\vec{x})
+hi⁢(x→) is not identically zero on 
+\mathbb{R}^{n}
+ℝn for every 
+i\in[k]
+i∈[k]. Then the following statements are equivalent:
+
+1. 
+
+P
+P is identically zero on 
+\mathsf{dom}_{\mathbb{R}}(P)
+𝖽𝗈𝗆ℝ⁢(P);
+
+2. 
+
+\Pr[P(\vec{x})\in\{0,\bot\}]&gt;3dk^{2}/|S|
+Pr⁡[P⁢(x→)∈{0,⊥}]&gt;3⁢d⁢k2/|S| for 
+\vec{x}\in S^{n}
+x→∈Sn sampled uniformly at random for any non-empty finite subset 
+S\subseteq\mathbb{Q}
+S⊆ℚ.
+
+3. 
+
+For every 
+i\in[k]
+i∈[k], 
+f_{i}
+fi is identically zero on 
+\mathbb{R}^{n}
+ℝn.
+
+The proof is omitted; see the full version of the paper.
+
+We are now ready to prove Theorem 22.
+
+Proof of Theorem 22.
+
+Let 
+C:\mathbb{R}^{n}\to\mathbb{R}
+C:ℝn→ℝ be an 
+\mathsf{AExp}^{1}
+𝖠𝖤𝗑𝗉1 circuit of width 
+k
+k and degree 
+d
+d that is not identically zero on 
+\mathsf{dom}_{\mathbb{R}}(C)
+𝖽𝗈𝗆ℝ⁢(C). Let 
+S\subseteq\mathbb{Q}
+S⊆ℚ be a non-empty finite set. Then by the definition of degree and width of 
+C
+C, there are exponential polynomials 
+P,P^{\prime}
+P,P′ defined by
+
+\displaystyle P(\vec{x})
+P⁢(x→)
+
+\displaystyle\triangleq\sum_{i\in[k]}f_{i}(\vec{x})\cdot\exp\left(\frac{g_{i}(%
+\vec{x})}{h_{i}(\vec{x})}\right),\quad P^{\prime}(\vec{x})\triangleq\sum_{j\in%
+[k]}f_{j}^{\prime}(\vec{x})\cdot\exp\left(\frac{g_{j}^{\prime}(\vec{x})}{h_{j}%
+^{\prime}(\vec{x})}\right).
+≜∑i∈[k]fi⁢(x→)⋅exp⁡(gi⁢(x→)hi⁢(x→)),P′⁢(x→)≜∑j∈[k]fj′⁢(x→)⋅exp⁡(gj′⁢(x→)hj′⁢(x→)).
+
+such that 
+C(\vec{x})=P(\vec{x})/P^{\prime}(\vec{x})
+C⁢(x→)=P⁢(x→)/P′⁢(x→) for every 
+\vec{x}\in\mathbb{R}^{n}
+x→∈ℝn, and for each 
+i\in[k],j\in[k]
+i∈[k],j∈[k], 
+f_{i},g_{i},h_{i},f^{\prime}_{j},g^{\prime}_{j},h^{\prime}_{j}
+fi,gi,hi,fj′,gj′,hj′ are integer-coefficient 
+n
+n-variate polynomials of total degree at most 
+d
+d.
+
+Note that for each 
+i\in[k],j\in[k]
+i∈[k],j∈[k], we have that 
+h_{i}(\vec{x}),h_{j}^{\prime}(\vec{x})
+hi⁢(x→),hj′⁢(x→) are not identically zero on 
+\mathbb{R}^{n}
+ℝn. This is because otherwise at least one of 
+P(\vec{x}),P^{\prime}(\vec{x})
+P⁢(x→),P′⁢(x→) is undefined on every 
+\vec{x}\in\mathbb{R}^{n}
+x→∈ℝn, which implies that 
+\mathsf{dom}_{\mathbb{R}}(C)=\varnothing
+𝖽𝗈𝗆ℝ⁢(C)=∅. Moreover, we know that 
+P
+P and 
+P^{\prime}
+P′ are not identically zero on their domains, respectively, as otherwise 
+C
+C must be identically zero on its domain.
+
+Let 
+\hat{P}(\vec{x})
+P^⁢(x→) be a condensation of 
+P(\vec{x})
+P⁢(x→). As 
+P
+P is not identically zero on its domain, we know by Proposition 19 that 
+\hat{P}(\vec{x})
+P^⁢(x→) is not identically zero on its domain. Consider the random variable 
+\vec{x}\in S^{n}
+x→∈Sn sampled uniformly at random. We calculate the probability of the following events:
+
+\blacksquare
+■ 
+
+Let 
+\mathcal{E}_{\hat{P}}
+ℰP^ be the event that 
+\hat{P}(\vec{x})\notin\{0,\bot\}
+P^⁢(x→)∉{0,⊥}, i.e., 
+\hat{P}(\vec{x})
+P^⁢(x→) is defined and 
+\hat{P}(\vec{x})\neq 0
+P^⁢(x→)≠0. By Lemma 23, we can see that 
+\Pr[\mathcal{E}_{\hat{P}}]\geq 1-3dk^{2}/|S|
+Pr⁡[ℰP^]≥1−3⁢d⁢k2/|S|.
+
+\blacksquare
+■ 
+
+Let 
+\mathcal{E}_{\bot}
+ℰ⊥ be the event that 
+P(\vec{x})
+P⁢(x→) is defined, i.e., 
+h_{i}(\vec{x})\neq 0
+hi⁢(x→)≠0 for every 
+i\in[k]
+i∈[k]. Note that 
+\Pr[h_{i}(\vec{x})=0]\leq d/|S|
+Pr⁡[hi⁢(x→)=0]≤d/|S| for every fixed 
+i\in[k]
+i∈[k] by Lemma 11. By the union bound, we know that 
+\Pr[\mathcal{E}_{\bot}]=1-\Pr[\lnot\mathcal{E}_{\bot}]\geq 1-dk/|S|
+Pr⁡[ℰ⊥]=1−Pr⁡[¬ℰ⊥]≥1−d⁢k/|S|.
+
+\blacksquare
+■ 
+
+Let 
+\mathcal{E}_{P}
+ℰP be the event that 
+P(\vec{x})\notin\{0,\bot\}
+P⁢(x→)∉{0,⊥}. Notice that
+
+\Pr[\mathcal{E}_{\hat{P}}]=\Pr[\mathcal{E}_{\hat{P}}\land\mathcal{E}_{\bot}]+%
+\Pr[\mathcal{E}_{\hat{P}}\land\lnot\mathcal{E}_{\bot}]\geq 1-3dk^{2}/|S|,
+Pr⁡[ℰP^]=Pr⁡[ℰP^∧ℰ⊥]+Pr⁡[ℰP^∧¬ℰ⊥]≥1−3⁢d⁢k2/|S|,
+
+where 
+\Pr[\mathcal{E}_{\hat{P}}\land\mathcal{E}_{\bot}]=\Pr[\mathcal{E}_{P}]
+Pr⁡[ℰP^∧ℰ⊥]=Pr⁡[ℰP] by Proposition 19 and 
+\Pr[\mathcal{E}_{\hat{P}}\land\lnot\mathcal{E}_{\bot}]\leq\Pr[\lnot\mathcal{E}%
+_{\bot}]\leq dk/|S|
+Pr⁡[ℰP^∧¬ℰ⊥]≤Pr⁡[¬ℰ⊥]≤d⁢k/|S|. Therefore, 
+\Pr[\mathcal{E}_{P}]\geq 1-3dk^{2}/|S|-dk/|S|\geq 1-4dk^{2}/|S|
+Pr⁡[ℰP]≥1−3⁢d⁢k2/|S|−d⁢k/|S|≥1−4⁢d⁢k2/|S|.
+
+Following the same argument, we can prove that 
+\Pr[P^{\prime}(\vec{x})\notin\{0,\bot\}]\geq 1-4dk^{2}/|S|
+Pr⁡[P′⁢(x→)∉{0,⊥}]≥1−4⁢d⁢k2/|S| over uniformly random 
+\vec{x}\in S^{n}
+x→∈Sn. It follows that
+
+\displaystyle\Pr[C(\vec{x})\in\{0,\bot\}]
+Pr⁡[C⁢(x→)∈{0,⊥}]
+
+\displaystyle=\Pr[P(\vec{x})\in\{0,\bot\}\lor P^{\prime}(\vec{x})\in\{0,\bot\}]
+=Pr⁡[P⁢(x→)∈{0,⊥}∨P′⁢(x→)∈{0,⊥}]
+
+\displaystyle\leq\Pr[P(\vec{x})\in\{0,\bot\}]+\Pr[P^{\prime}(\vec{x})\in\{0,%
+\bot\}]\leq 8dk^{2}/|S|.
+≤Pr⁡[P⁢(x→)∈{0,⊥}]+Pr⁡[P′⁢(x→)∈{0,⊥}]≤8⁢d⁢k2/|S|.
+
+This completes the proof.
+
+\hfill\blacktriangleleft
+◀
+
+5.2 A Weak Descartes’ Rule over Finite Fields
+
+Theorem 24.
+
+Let 
+p
+p, 
+q
+q be prime numbers such that 
+q\mid p-1
+q∣p−1, 
+g\in\mathbb{F}_{p}
+g∈𝔽p be an element of order 
+q
+q, and 
+G\triangleq\langle g\rangle
+G≜⟨g⟩ be the unique multiplicative subgroup of 
+\mathbb{F}_{p}^{*}
+𝔽p∗ of order 
+q
+q. Let 
+k\leq q
+k≤q, 
+\alpha_{1},\dots,\alpha_{k}\in\mathbb{F}_{q}
+α1,…,αk∈𝔽q be distinct, and 
+\beta_{1},\dots,\beta_{k}\in\mathbb{F}_{p}
+β1,…,βk∈𝔽p. Then the univariate polynomial
+
+f(z)\triangleq\beta_{1}z^{\alpha_{1}}+\beta_{2}z^{\alpha_{2}}+\dots+\beta_{k}z%
+^{\alpha_{k}}
+f⁢(z)≜β1⁢zα1+β2⁢zα2+⋯+βk⁢zαk
+
+has at most 
+q^{1-1/(k-1)}
+q1−1/(k−1) roots in 
+G
+G.
+
+The key idea of the proof (which follows from [5, 11]) is to find a low-degree polynomial that has as many roots as 
+f(z)
+f⁢(z) in 
+G
+G. Let 
+p,q
+p,q be prime numbers such that 
+q\mid p-1
+q∣p−1, and 
+G=\langle g\rangle
+G=⟨g⟩ be the unique multiplicative subgroup of 
+\mathbb{F}^{*}_{p}
+𝔽p∗ of order 
+q
+q. Formally:
+
+Proposition 25.
+
+Let 
+c\in\{1,2,\dots,q-1\}
+c∈{1,2,…,q−1} and 
+f_{c}(z)
+fc⁢(z) be the polynomial
+
+f_{c}(z)\triangleq\beta_{1}z^{c\alpha_{1}\bmod q}+\beta_{2}z^{c\alpha_{2}\bmod
+q%
+}+\dots+\beta_{k}z^{c\alpha_{k}\bmod q}.
+fc⁢(z)≜β1⁢zc⁢α1modq+β2⁢zc⁢α2modq+⋯+βk⁢zc⁢αkmodq.
+
+Then the polynomials 
+\{f_{c}(z)\}_{c\in[q-1]}
+{fc⁢(z)}c∈[q−1] have the same number of roots in 
+G
+G.
+
+Lemma 26 (Lemma 4.1 of [11]).
+
+For 
+\alpha_{1},\dots,\alpha_{t},N\in\mathbb{N}
+α1,…,αt,N∈ℕ and 
+n\leq N/\gcd(\alpha_{1},\dots,\alpha_{t},N)
+n≤N/gcd⁡(α1,…,αt,N), there is a 
+c\in[n-1]
+c∈[n−1] such that
+
+\max_{i\in[t]}\{\alpha_{i}\cdot c\bmod N\}\leq\frac{N}{n^{1/t}}.
+maxi∈[t]⁡{αi⋅cmodN}≤Nn1/t.
+
+Proof of Theorem 24.
+
+Fix 
+p,q\in\mathbb{N},g\in\mathbb{F}_{p},k
+p,q∈ℕ,g∈𝔽p,k, elements 
+\alpha_{1},\dots,\alpha_{k}\in\mathbb{F}_{q}
+α1,…,αk∈𝔽q and 
+\beta_{1},\dots,\beta_{k}\in\mathbb{F}_{p}
+β1,…,βk∈𝔽p. Let 
+f_{c}(z)\in\mathbb{F}_{p}[z]
+fc⁢(z)∈𝔽p⁢[z] be the univariate polynomial
+
+f_{c}(z)\triangleq\beta_{1}z^{c\alpha_{1}\bmod q}+\beta_{2}z^{c\alpha_{2}\bmod
+q%
+}+\dots+\beta_{k}z^{c\alpha_{k}\bmod q}
+fc⁢(z)≜β1⁢zc⁢α1modq+β2⁢zc⁢α2modq+⋯+βk⁢zc⁢αkmodq
+
+and 
+f(z)=f_{1}(z)
+f⁢(z)=f1⁢(z). Assume that 
+\alpha_{1}\leq\alpha_{2}\leq\dots\leq\alpha_{k}
+α1≤α2≤⋯≤αk. We may further assume without loss of generality that 
+\alpha_{1}=0
+α1=0, as otherwise we can consider the polynomial 
+f(z)/z^{\alpha_{1}}
+f⁢(z)/zα1 that has the same number of roots in 
+G
+G.
+
+Let 
+N\triangleq q
+N≜q and 
+n=q
+n=q, we have 
+\gcd(\alpha_{2},\dots,\alpha_{k},N)=1
+gcd⁡(α2,…,αk,N)=1 and thus 
+n\leq N/\gcd(\alpha_{2},\dots,\alpha_{k},N)
+n≤N/gcd⁡(α2,…,αk,N). By Lemma 26, there exists some 
+c\in\{1,2,\dots,q-1\}
+c∈{1,2,…,q−1} such that for every 
+i\in\{2,3,\dots,k\}
+i∈{2,3,…,k},
+
+\alpha_{i}\cdot c\bmod q\leq q^{1-1/(k-1)},
+αi⋅cmodq≤q1−1/(k−1),
+
+which further implies that the polynomial 
+f_{c}(z)
+fc⁢(z) is of degree at most 
+q^{1-1/(k-1)}
+q1−1/(k−1). Subsequently, 
+f_{c}(z)
+fc⁢(z) has at most 
+q^{1-1/(k-1)}
+q1−1/(k−1) roots in 
+G
+G. This completes the proof as 
+f(z)
+f⁢(z) and 
+f_{c}(z)
+fc⁢(z) have the same number of roots in 
+G
+G by Proposition 25.
+
+\hfill\blacktriangleleft
+◀
+
+5.3 Identity Testing in Algebraic Query Model
+
+Theorem 7.
+[Restated, see original statement.]
+
+Let 
+C:\mathbb{R}^{n}\to\mathbb{R}
+C:ℝn→ℝ be an 
+\mathsf{AExp}^{1}
+𝖠𝖤𝗑𝗉1 circuit of width 
+k
+k, degree 
+d
+d and weight 
+w
+w, 
+p
+p and 
+q
+q be prime numbers such that 
+q\mid p-1
+q∣p−1 and 
+q&gt;2(kw)^{2}
+q&gt;2⁢(k⁢w)2. Let 
+G_{p,q}
+Gp,q be the unique multiplicative subgroup of 
+\mathbb{F}_{p}^{*}
+𝔽p∗ of order 
+q
+q. The following hold:
+
+\blacksquare
+■ 
+
+(Completeness). If 
+C
+C is identically zero on 
+\mathsf{dom}_{\mathbb{R}}(C)
+𝖽𝗈𝗆ℝ⁢(C), then for every 
+a\in G_{p,q}
+a∈Gp,q, 
+C_{a}(\vec{u},\vec{v})\in\{0,\bot\}
+Ca⁢(u→,v→)∈{0,⊥} for every 
+(\vec{u},\vec{v})\in\mathbb{F}_{p}^{n}\times\mathbb{F}_{q}^{n}
+(u→,v→)∈𝔽pn×𝔽qn.
+
+\blacksquare
+■ 
+
+(Soundness). If 
+C
+C is not identically zero on 
+\mathsf{dom}_{\mathbb{R}}(C)
+𝖽𝗈𝗆ℝ⁢(C), then for uniformly random 
+\vec{u}\leftarrow\mathbb{F}_{p}^{n},\vec{v}\leftarrow\mathbb{F}_{q}^{n},a%
+\leftarrow G_{p,q}
+u→←𝔽pn,v→←𝔽qn,a←Gp,q, 
+\Pr[C_{a}(\vec{u},\vec{v})\notin\{0,\bot\}]\geq 1-8dk^{4}\cdot q^{-1}-q^{-1/(k%
+^{2}-1)}
+Pr⁡[Ca⁢(u→,v→)∉{0,⊥}]≥1−8⁢d⁢k4⋅q−1−q−1/(k2−1).
+
+We first prove two lemmas: Lemma 27 is used to prove the completeness property, and Lemma 28 is used to prove the soundness property.
+
+Lemma 27.
+
+Let 
+\hat{P}
+P^ be a condensation of an integer-coefficient exponential polynomial 
+P
+P. If 
+P
+P is identically zero on 
+\mathsf{dom}_{\mathbb{R}}(P)
+𝖽𝗈𝗆ℝ⁢(P) and 
+\mathsf{dom}_{\mathbb{R}}(P)\neq\varnothing
+𝖽𝗈𝗆ℝ⁢(P)≠∅, then 
+\hat{P}
+P^ is identically zero on 
+\mathsf{dom}_{\mathbb{R}}(\hat{P})
+𝖽𝗈𝗆ℝ⁢(P^).
+
+The proof is omitted; see the full version of the paper.
+
+Lemma 28.
+
+Let 
+p,q
+p,q be prime numbers such that 
+q\mid p-1
+q∣p−1, 
+G_{p,q}
+Gp,q be the unique multiplicative subgroup of 
+\mathbb{F}_{p}^{*}
+𝔽p∗ of order 
+q
+q. Let 
+P
+P be a condensed integer-coefficient exponential polynomial
+
+P(\vec{x})=\sum_{i\in[k]}f_{i}(\vec{x})\cdot\exp\left(\frac{g_{i}(\vec{x})}{h_%
+{i}(\vec{x})}\right)
+P⁢(x→)=∑i∈[k]fi⁢(x→)⋅exp⁡(gi⁢(x→)hi⁢(x→))
+
+of degree 
+d
+d and width 
+k
+k. Suppose that for every 
+i\in[k]
+i∈[k], 
+f_{i}(\vec{x})
+fi⁢(x→) is not identically zero on 
+\mathbb{F}_{p}
+𝔽p and 
+h_{i}(\vec{x})
+hi⁢(x→) is not identically zero on 
+\mathbb{F}_{q}
+𝔽q, then for 
+(\vec{u},\vec{v},a)
+(u→,v→,a) uniformly sampled from 
+\mathbb{F}_{p}^{n}\times\mathbb{F}_{q}^{n}\times G_{p,q}
+𝔽pn×𝔽qn×Gp,q,
+
+\Pr[P_{a}(\vec{u},\vec{v})\in\{0,\bot\}]\leq 3dk^{2}\cdot q^{-1}+q^{-1/(k-1)}.
+Pr⁡[Pa⁢(u→,v→)∈{0,⊥}]≤3⁢d⁢k2⋅q−1+q−1/(k−1).
+
+The proof is similar to that of Lemma 23; see the full version of the paper.
+
+Proof of Theorem 7.
+
+By the definition of width, degree of 
+\mathsf{AExp}
+𝖠𝖤𝗑𝗉 circuits, there are exponential polynomials
+
+P(\vec{x})=\sum_{i\in[k]}f_{i}(\vec{x})\cdot\exp\left(\frac{g_{i}(\vec{x})}{h_%
+{i}(\vec{x})}\right),P^{\prime}(\vec{x})=\sum_{i\in[k]}f^{\prime}_{i}(\vec{x})%
+\cdot\exp\left(\frac{g^{\prime}_{i}(\vec{x})}{h^{\prime}_{i}(\vec{x})}\right)
+P⁢(x→)=∑i∈[k]fi⁢(x→)⋅exp⁡(gi⁢(x→)hi⁢(x→)),P′⁢(x→)=∑i∈[k]fi′⁢(x→)⋅exp⁡(gi′⁢(x→)hi′⁢(x→))
+
+such that the following hold:
+
+\blacksquare
+■ 
+
+f_{i},g_{i},h_{i},f^{\prime}_{i},g_{i}^{\prime},h^{\prime}_{i}
+fi,gi,hi,fi′,gi′,hi′ are 
+d
+d-degree polynomials with coefficients in 
+[-w,w]\cap\mathbb{Z}
+[−w,w]∩ℤ,
+
+\blacksquare
+■ 
+
+\mathsf{dom}_{\mathbb{R}}(C)=\mathsf{dom}_{\mathbb{R}}(P/P^{\prime})
+𝖽𝗈𝗆ℝ⁢(C)=𝖽𝗈𝗆ℝ⁢(P/P′), and 
+C(\vec{u})=P(\vec{u})/P^{\prime}(\vec{u})
+C⁢(u→)=P⁢(u→)/P′⁢(u→) for 
+\vec{u}\in\mathsf{dom}_{\mathbb{R}}(C)
+u→∈𝖽𝗈𝗆ℝ⁢(C),
+
+\blacksquare
+■ 
+
+\mathsf{dom}_{p,q,a}(C)=\mathsf{dom}_{p,q,a}(P/P^{\prime})
+𝖽𝗈𝗆p,q,a⁢(C)=𝖽𝗈𝗆p,q,a⁢(P/P′), and 
+C_{a}(\vec{u},\vec{v})=P(\vec{u},\vec{v})\cdot\mathsf{Inv}_{p}(P^{\prime}(\vec%
+{u},\vec{v}))
+Ca⁢(u→,v→)=P⁢(u→,v→)⋅𝖨𝗇𝗏p⁢(P′⁢(u→,v→)) for any 
+a\in G_{p,q}
+a∈Gp,q and 
+(\vec{u},\vec{v})\in\mathsf{dom}_{p,q,a}(C)
+(u→,v→)∈𝖽𝗈𝗆p,q,a⁢(C).
+
+Proof of Completeness.
+
+Let 
+C
+C be an 
+\mathsf{AExp}^{1}
+𝖠𝖤𝗑𝗉1 circuit that is identically zero on 
+\mathsf{dom}_{\mathbb{R}}(C)
+𝖽𝗈𝗆ℝ⁢(C). We first prove that either 
+P(\vec{x})
+P⁢(x→) is identically zero on 
+\mathsf{dom}_{\mathbb{R}}(P)
+𝖽𝗈𝗆ℝ⁢(P), or 
+P^{\prime}(\vec{x})
+P′⁢(x→) is identically zero on 
+\mathsf{dom}_{\mathbb{R}}(P^{\prime})
+𝖽𝗈𝗆ℝ⁢(P′).
+
+Towards a contradiction, we assume that 
+P
+P is not identically zero on 
+\mathsf{dom}_{\mathbb{R}}(P)
+𝖽𝗈𝗆ℝ⁢(P) and 
+P^{\prime}
+P′ is not identically zero on 
+\mathsf{dom}_{\mathbb{R}}(P^{\prime})
+𝖽𝗈𝗆ℝ⁢(P′). Let 
+S\subseteq\mathbb{Z}
+S⊆ℤ be a set of size 
+30dk^{2}
+30⁢d⁢k2. By Theorem 22, we know that for 
+\vec{x}\in S^{n}
+x→∈Sn sampled uniformly at random,
+
+\Pr[P(\vec{x})\in\{0,\bot\}],\Pr[P^{\prime}(\vec{x})\in\{0,\bot\}]&lt;\frac{1}{3}.
+Pr⁡[P⁢(x→)∈{0,⊥}],Pr⁡[P′⁢(x→)∈{0,⊥}]&lt;13.
+
+By the union bound, we know that for 
+\vec{x}\in S^{n}
+x→∈Sn sampled uniformly at random, with probability at least 
+1/3
+1/3, 
+P(\vec{x}),P^{\prime}(\vec{x})\notin\{0,\bot\}
+P⁢(x→),P′⁢(x→)∉{0,⊥}. For any such 
+\vec{x}\in S^{m}
+x→∈Sm, we have that 
+\vec{x}\in\mathsf{dom}_{\mathbb{R}}(C)
+x→∈𝖽𝗈𝗆ℝ⁢(C) and 
+C(\vec{x})=P(\vec{x})/P^{\prime}(\vec{x})\neq 0
+C⁢(x→)=P⁢(x→)/P′⁢(x→)≠0, which is impossible as 
+C
+C is identically zero on its domain.
+
+Suppose that 
+P(\vec{x})
+P⁢(x→) is identically zero on 
+\mathsf{dom}_{\mathbb{R}}(P)
+𝖽𝗈𝗆ℝ⁢(P), we know by Lemma 27 that the condensation 
+\hat{P}(\vec{x})
+P^⁢(x→) of 
+P(\vec{x})
+P⁢(x→) is also identically zero on 
+\mathsf{dom}_{\mathbb{R}}(\hat{P})
+𝖽𝗈𝗆ℝ⁢(P^). Let 
+k^{\prime}
+k′ be the width of 
+\hat{P}
+P^ and
+
+\hat{P}(\vec{x})=\sum_{i\in[k^{\prime}]}\hat{f}_{i}(\vec{x})\cdot\exp\left(%
+\frac{\hat{g}_{i}(\vec{x})}{\hat{h}_{i}(\vec{x})}\right).
+P^⁢(x→)=∑i∈[k′]f^i⁢(x→)⋅exp⁡(g^i⁢(x→)h^i⁢(x→)).
+
+By Lemma 23, we know that for every 
+i\in[k^{\prime}]
+i∈[k′], 
+\hat{f}_{i}(\vec{x})
+f^i⁢(x→) is identically zero on 
+\mathbb{R}^{n}
+ℝn, or equivalently, 
+\hat{f}_{i}(\vec{x})
+f^i⁢(x→) is a zero polynomial. In that case, we must have 
+\hat{f}_{i}(\vec{x})\equiv 0\pmod{p}
+f^i⁢(x→)≡0(modp) for every 
+p
+p. This implies that
+
+\hat{P}_{a}(\vec{u},\vec{v})=\sum_{i\in[k^{\prime}]}\hat{f}_{i}(\vec{u})\cdot%
+\exp\left(\frac{\hat{g}_{i}(\vec{v})}{\hat{h}_{i}(\vec{v})}\right)\in\{0,\bot\}.
+P^a⁢(u→,v→)=∑i∈[k′]f^i⁢(u→)⋅exp⁡(g^i⁢(v→)h^i⁢(v→))∈{0,⊥}.
+
+Subsequently, 
+P_{a}(\vec{u},\vec{v})\in\{0,\bot\}
+Pa⁢(u→,v→)∈{0,⊥} as 
+\hat{P}
+P^ and 
+P
+P agree on 
+\mathsf{dom}_{p,q,a}(P)
+𝖽𝗈𝗆p,q,a⁢(P) (see Proposition 19), which further implies that 
+C_{a}(\vec{u},\vec{v})\in\{0,\bot\}
+Ca⁢(u→,v→)∈{0,⊥}.
+
+Similarly, if 
+P^{\prime}(\vec{x})
+P′⁢(x→) is identically zero on 
+\mathsf{dom}_{\mathbb{R}}(P^{\prime})
+𝖽𝗈𝗆ℝ⁢(P′), then 
+P^{\prime}_{a}(\vec{u},\vec{v})\in\{0,\bot\}
+Pa′⁢(u→,v→)∈{0,⊥}, which implies that 
+C_{a}(\vec{u},\vec{v})=\bot
+Ca⁢(u→,v→)=⊥. This concludes the completeness of the algorithm.
+
+Proof of Soundness.
+
+Let 
+R(\vec{x})=P(\vec{x})\cdot P^{\prime}(\vec{x})
+R⁢(x→)=P⁢(x→)⋅P′⁢(x→). It can be verified that it is an exponential polynomial with width 
+k^{2}
+k2, degree 
+2d
+2⁢d and weight 
+w^{2}
+w2. It follows that:
+
+\blacksquare
+■ 
+
+For any 
+\vec{x}\in\mathbb{R}^{n}
+x→∈ℝn, 
+C(\vec{x})=P(\vec{x})/P^{\prime}(\vec{x})\in\{0,\bot\}
+C⁢(x→)=P⁢(x→)/P′⁢(x→)∈{0,⊥} if and only if 
+R(\vec{x})\in\{0,\bot\}
+R⁢(x→)∈{0,⊥}.
+
+\blacksquare
+■ 
+
+For any 
+\vec{x}\in\mathbb{F}_{p}^{n}\times\mathbb{F}_{q}^{n},\vec{a}\in G_{p,q}
+x→∈𝔽pn×𝔽qn,a→∈Gp,q, 
+C_{a}(\vec{x})=P_{a}(\vec{x})/P^{\prime}_{a}(\vec{x})\in\{0,\bot\}
+Ca⁢(x→)=Pa⁢(x→)/Pa′⁢(x→)∈{0,⊥} if and only if 
+R_{a}(\vec{x})\in\{0,\bot\}
+Ra⁢(x→)∈{0,⊥}.
+
+Since 
+C
+C is not identically zero on 
+\mathsf{dom}_{\mathbb{R}}(C)
+𝖽𝗈𝗆ℝ⁢(C), i.e., 
+C(x)\notin\{0,\bot\}
+C⁢(x)∉{0,⊥} for some 
+\vec{x}\in\mathbb{R}^{n}
+x→∈ℝn, 
+R
+R is not identically zero on 
+\mathsf{dom}_{\mathbb{R}}(R)
+𝖽𝗈𝗆ℝ⁢(R). Let 
+\hat{R}
+R^ be a condensation of 
+R
+R. By Proposition 19, 
+\hat{R}
+R^ is not identically zero on 
+\mathsf{dom}_{\mathbb{R}}(\hat{R})
+𝖽𝗈𝗆ℝ⁢(R^).
+
+Let 
+\{f^{\prime\prime}_{i}\}_{i\in[k^{2}]}
+{fi′′}i∈[k2] be the coefficient polynomials of 
+\hat{R}
+R^, and 
+\{g^{\prime\prime}_{i}/h^{\prime\prime}_{i}\}_{i\in[k^{2}]}
+{gi′′/hi′′}i∈[k2] be the exponent fractions of 
+\hat{R}
+R^. Note that 
+h^{\prime\prime}_{i}
+hi′′ is non-zero for every 
+i\in[k^{2}]
+i∈[k2], as otherwise 
+\mathsf{dom}_{\mathbb{R}}(R)=\varnothing
+𝖽𝗈𝗆ℝ⁢(R)=∅. By Lemma 23, we know that 
+f^{\prime\prime}_{i}
+fi′′ is non-zero for some 
+i\in[k^{2}]
+i∈[k2] and, without loss of generality, we may assume that 
+f^{\prime\prime}_{i}
+fi′′ is non-zero for every 
+i\in[k^{2}]
+i∈[k2].
+
+It can be verified that the integer weights in 
+h^{\prime\prime}_{i}
+hi′′ are within 
+[-w^{2},w^{2}]
+[−w2,w2]. Moreover, the integer weights in 
+f^{\prime\prime}_{i}
+fi′′ are within 
+[-(kw)^{2},(kw)^{2}]
+[−(k⁢w)2,(k⁢w)2], as each 
+f^{\prime\prime}_{i}
+fi′′ is a summation of at most 
+k^{2}
+k2 polynomials that have integer weights within 
+[-w^{2},w^{2}]
+[−w2,w2]. As 
+p&gt;q&gt;2(kw)^{2}
+p&gt;q&gt;2⁢(k⁢w)2, we know that for every 
+i\in[k^{2}]
+i∈[k2], 
+f^{\prime\prime}_{i}
+fi′′ is not identically zero on 
+\mathbb{F}_{p}^{n}
+𝔽pn and 
+h^{\prime\prime}_{i}
+hi′′ is not identically zero on 
+\mathbb{F}_{q}^{n}
+𝔽qn.
+
+Let 
+\vec{x}=(\vec{u},\vec{v})\in\mathbb{F}_{p}^{n}\times\mathbb{F}_{q}^{n}
+x→=(u→,v→)∈𝔽pn×𝔽qn and 
+a\in G_{p,q}
+a∈Gp,q be random variables sampled uniformly at random. We calculate the probability of the following events:
+
+\blacksquare
+■ 
+
+Let 
+\mathcal{E}_{\hat{R}}
+ℰR^ be the event that 
+\hat{R}(\vec{x})\notin\{0,\bot\}
+R^⁢(x→)∉{0,⊥}. By Lemma 28, 
+\Pr[\mathcal{E}_{\hat{R}}]\geq 1-6dk^{4}/q-q^{-1/(k^{2}-1)}
+Pr⁡[ℰR^]≥1−6⁢d⁢k4/q−q−1/(k2−1).
+
+\blacksquare
+■ 
+
+Let 
+\mathcal{E}_{\bot}
+ℰ⊥ be the event that 
+h^{\prime\prime}_{i}(\vec{v})\neq 0
+hi′′⁢(v→)≠0 for every 
+i\in[k^{2}]
+i∈[k2]. For every fixed 
+i\in[k^{2}]
+i∈[k2], by Lemma 11, 
+\Pr[h^{\prime\prime}_{i}(\vec{v})=0]\leq 2d/q
+Pr⁡[hi′′⁢(v→)=0]≤2⁢d/q. Then by the union bound, 
+\Pr[\mathcal{E}_{\bot}]=1-\Pr[\neg\mathcal{E}_{\bot}]\geq 1-2dk^{2}/q
+Pr⁡[ℰ⊥]=1−Pr⁡[¬ℰ⊥]≥1−2⁢d⁢k2/q.
+
+\blacksquare
+■ 
+
+Let 
+\mathcal{E}_{R}
+ℰR be the event that 
+R(\vec{x})\notin\{0,\bot\}
+R⁢(x→)∉{0,⊥}. Notice that
+
+\Pr[\mathcal{E}_{\hat{R}}]=\Pr[\mathcal{E}_{\hat{R}}\wedge\mathcal{E}_{\bot}]+%
+\Pr[\mathcal{E}_{\hat{R}}\wedge\neg\mathcal{E}_{\bot}]\geq 1-6dk^{4}/q-q^{-1/(%
+k^{2}-1)},
+Pr⁡[ℰR^]=Pr⁡[ℰR^∧ℰ⊥]+Pr⁡[ℰR^∧¬ℰ⊥]≥1−6⁢d⁢k4/q−q−1/(k2−1),
+
+where 
+\Pr[\mathcal{E}_{\hat{R}}\wedge\mathcal{E}_{\bot}]=\Pr[\mathcal{E}_{R}]
+Pr⁡[ℰR^∧ℰ⊥]=Pr⁡[ℰR] and 
+\Pr[\mathcal{E}_{\hat{R}}\wedge\neg\mathcal{E}_{\bot}]\leq 2dk^{2}/q
+Pr⁡[ℰR^∧¬ℰ⊥]≤2⁢d⁢k2/q. Therefore,
+
+\Pr[\mathcal{E}_{R}]\geq 1-6dk^{4}/q-q^{-1/(k^{2}-1)}-2dk^{2}/q\geq 1-8dk^{4}/%
+q-q^{-1/(k^{2}-1)}.
+Pr⁡[ℰR]≥1−6⁢d⁢k4/q−q−1/(k2−1)−2⁢d⁢k2/q≥1−8⁢d⁢k4/q−q−1/(k2−1).
+
+This completes the proof, as 
+C_{a}(\vec{x})\in\{0,\bot\}
+Ca⁢(x→)∈{0,⊥} if and only if 
+R_{a}(\vec{x})\in\{0,\bot\}
+Ra⁢(x→)∈{0,⊥}.
+
+\hfill\blacktriangleleft
+◀
+
+References
+
+[1]
+
+Manindra Agrawal and Somenath Biswas.
+
+Primality and identity testing via chinese remaindering.
+
+J. ACM, 50(4):429–443, 2003.
+
+doi:10.1145/792538.792540.
+
+[2]
+
+Sanjeev Arora and Boaz Barak.
+
+Computational Complexity - A Modern Approach.
+
+Cambridge University Press, 2009.
+
+URL:
+http://www.cambridge.org/catalogue/catalogue.asp?isbn=9780521424264.
+
+[3]
+
+Sanjeev Arora and Shmuel Safra.
+
+Probabilistic checking of proofs: A new characterization of NP.
+
+J. ACM, 45(1):70–122, 1998.
+
+doi:10.1145/273865.273901.
+
+[4]
+
+Alan Baker.
+
+Transcendental Number Theory.
+
+Cambridge Mathematical Library. Cambridge University Press, 2022.
+
+[5]
+
+Ran Canetti, John Friedlander, Sergei Konyagin, Michael Larsen, Daniel Lieman,
+and Igor Shparlinski.
+
+On the statistical properties of diffie-hellman distributions.
+
+Israel Journal of Mathematics, 120:23–46, 2000.
+
+[6]
+
+Qi Cheng, Shuhong Gao, J. Maurice Rojas, and Daqing Wan.
+
+Sparse univariate polynomials with many roots over finite fields.
+
+Finite Fields Their Appl., 46:235–246, 2017.
+
+doi:10.1016/J.FFA.2017.03.006.
+
+[7]
+
+Tri Dao.
+
+FlashAttention-2: Faster attention with better parallelism and work
+partitioning.
+
+In International Conference on Learning Representations (ICLR),
+2024.
+
+[8]
+
+Richard A. DeMillo and Richard J. Lipton.
+
+A probabilistic remark on algebraic program testing.
+
+Inf. Process. Lett., 7(4):193–195, 1978.
+
+doi:10.1016/0020-0190(78)90067-4.
+
+[9]
+
+David Steven Dummit and Richard M Foote.
+
+Abstract algebra, volume 3.
+
+Wiley Hoboken, 2004.
+
+[10]
+
+Zhihao Jia, Oded Padon, James Thomas, Todd Warszawski, Matei Zaharia, and Alex
+Aiken.
+
+Taso: optimizing deep learning computation with automatic generation
+of graph substitutions.
+
+In Proceedings of the 27th ACM Symposium on Operating Systems
+Principles, SOSP ’19, pages 47–62, New York, NY, USA, 2019. Association for
+Computing Machinery.
+
+doi:10.1145/3341301.3359630.
+
+[11]
+
+Zander Kelley.
+
+Roots of sparse polynomials over a finite field.
+
+LMS Journal of Computation and Mathematics, 19(A):196–204,
+2016.
+
+doi:10.1112/S1461157016000334.
+
+[12]
+
+László Lovász.
+
+On determinants, matchings, and random algorithms.
+
+In Lothar Budach, editor, Fundamentals of Computation Theory,
+FCT 1979, Proceedings of the Conference on Algebraic, Arthmetic, and
+Categorial Methods in Computation Theory, Berlin/Wendisch-Rietz, Germany,
+September 17-21, 1979, pages 565–574. Akademie-Verlag, Berlin, 1979.
+
+[13]
+
+Ryan O’Donnell.
+
+Analysis of Boolean Functions.
+
+Cambridge University Press, 2014.
+
+URL:
+http://www.cambridge.org/de/academic/subjects/computer-science/algorithmics-complexity-computer-algebra-and-computational-g/analysis-boolean-functions.
+
+[14]
+
+Øystein Ore.
+
+Über höhere kongruenzen.
+
+Grøndahl, 1921.
+
+[15]
+
+Adam Paszke, Sam Gross, Francisco Massa, Adam Lerer, James Bradbury, Gregory
+Chanan, Trevor Killeen, Zeming Lin, Naresh Gimelshein, Luca Antiga, Alban
+Desmaison, Andreas Kopf, Edward Liang, Mengli Liu, Ignasi Mattei, Suriya
+Singh, Jonathan Smith, Nikolaus Sygnowski, Agata Wu, Yongfei Yao, Zachary
+Bell, Gregory Devito, Jie Yuan, Brian Zhu, Michael Zick, Luke Jia, Tero
+Maggioni, Soumith Chintala, and Gavin Stevens.
+
+Pytorch: An imperative style, high-performance deep learning library.
+
+In Advances in Neural Information Processing Systems,
+volume 32, 2019.
+
+[16]
+
+PyTorch.
+
+PyTorch Documentation, entry:
+torch.nn.functional.scaled_dot_product_attention.
+
+https://docs.pytorch.org/docs/2.2/generated/torch.nn.functional.scaled_dot_product_attention.html,
+2025.
+
+Accessed: 2025-11-27.
+
+[17]
+
+Nitin Saxena.
+
+Progress on polynomial identity testing.
+
+Bull. EATCS, 99:49–79, 2009.
+
+[18]
+
+Nitin Saxena.
+
+Progress on polynomial identity testing-II.
+
+In Perspectives in Computational Complexity: The Somenath Biswas
+Anniversary Volume, pages 131–146. Springer, 2014.
+
+[19]
+
+Jacob T. Schwartz.
+
+Fast probabilistic algorithms for verification of polynomial
+identities.
+
+J. ACM, 27(4):701–717, 1980.
+
+doi:10.1145/322217.322225.
+
+[20]
+
+Adi Shamir.
+
+IP = PSPACE.
+
+J. ACM, 39(4):869–877, 1992.
+
+doi:10.1145/146585.146609.
+
+[21]
+
+Richard M. Stallman and the GCC Developer Community.
+
+Using the GNU Compiler Collection.
+
+GNU Press, Boston, MA, USA, 2025.
+
+For GCC version 15.2.0.
+
+URL: https://gcc.gnu.org/onlinedocs/gcc-15.2.0/gcc.pdf.
+
+[22]
+
+William T Tutte.
+
+The factorization of linear graphs.
+
+Journal of the London Mathematical Society, 1(2):107–111,
+1947.
+
+[23]
+
+Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones,
+Aidan N Gomez, Ł ukasz Kaiser, and Illia Polosukhin.
+
+Attention is all you need.
+
+In I. Guyon, U. Von Luxburg, S. Bengio, H. Wallach, R. Fergus,
+S. Vishwanathan, and R. Garnett, editors, Advances in Neural Information
+Processing Systems, volume 30. Curran Associates, Inc., 2017.
+
+URL:
+https://proceedings.neurips.cc/paper_files/paper/2017/file/3f5ee243547dee91fbd053c1c4a845aa-Paper.pdf.
+
+[24]
+
+Haojie Wang, Jidong Zhai, Mingyu Gao, Zixuan Ma, Shizhi Tang, Liyan Zheng,
+Yuanzhi Li, Kaiyuan Rong, Yuanyong Chen, and Zhihao Jia.
+
+PET: Optimizing tensor programs with partially equivalent
+transformations and automated corrections.
+
+In 15th USENIX Symposium on Operating Systems Design and
+Implementation (OSDI 21), pages 37–54. USENIX Association, July 2021.
+
+URL:
+https://www.usenix.org/conference/osdi21/presentation/wang.
+
+[25]
+
+Mengdi Wu, Xinhao Cheng, Shengyu Liu, Chunan Shi, Jianan Ji, Kit Ao, Praveen
+Velliengiri, Xupeng Miao, Oded Padon, and Zhihao Jia.
+
+Mirage: A multi-level superoptimizer for tensor programs.
+
+In 19th USENIX Symposium on Operating Systems Design and
+Implementation (OSDI 25), Boston, MA, July 2025. USENIX Association.
+
+URL:
+https://www.usenix.org/conference/osdi25/presentation/wu-mengdi.
+
+[26]
+
+Richard Zippel.
+
+Probabilistic algorithms for sparse polynomials.
+
+In Edward W. Ng, editor, Symbolic and Algebraic Computation,
+EUROSAM ’79, An International Symposiumon Symbolic and Algebraic
+Computation, Marseille, France, June 1979, Proceedings, volume 72 of Lecture Notes in Computer Science, pages 216–226. Springer, 1979.
+
+doi:10.1007/3-540-09519-5_73.
+
+Generated  by LaTeXML</pre></html>

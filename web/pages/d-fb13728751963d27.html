@@ -1,0 +1,148 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>&quot;&quot;&quot;Costed unknown-rate/unknown-noise acquisition and structural obstructions.</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>&quot;&quot;&quot;Costed unknown-rate/unknown-noise acquisition and structural obstructions.</h1><p>Source ID d-fb13728751963d27; literature/sources/check_causal/cycle3/r01_moment_acquisition_snapshot.py; 2901 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>&quot;&quot;&quot;Costed unknown-rate/unknown-noise acquisition and structural obstructions.
+Standard library only. No physical observations or discovery-engine evaluation.
+&quot;&quot;&quot;
+import json, math, random
+from fractions import Fraction as F
+from pathlib import Path
+
+def transpose(a): return [list(x) for x in zip(*a)]
+def mm(a,b): return [[sum(x*y for x,y in zip(row,col)) for col in zip(*b)] for row in a]
+def eye(n): return [[int(i==j) for j in range(n)] for i in range(n)]
+def power(a,n):
+ out=eye(len(a))
+ for _ in range(n): out=mm(out,a)
+ return out
+def moment(a,n,v=None):
+ if v is None: return power(a,n)[0][0]
+ p=power(a,n);return sum(v[i]*p[i][j]*v[j] for i in range(len(v)) for j in range(len(v)))
+def matrix_log_contraction(e,terms=200):
+ n=len(e);q=[[int(i==j)-e[i][j] for j in range(n)] for i in range(n)]
+ out=[[0.]*n for _ in range(n)];p=eye(n)
+ for h in range(1,terms+1):
+  p=mm(p,q)
+  for i in range(n):
+   for j in range(n): out[i][j]-=p[i][j]/h
+ return out
+
+def reaction_e(lam,k,delta):
+ w=math.sqrt(k*k+delta*delta);f=math.exp(-(lam+k));s=math.sinh(w)/w
+ return [[f*(math.cosh(w)+k*s),-delta*f*s],[-delta*f*s,f*(math.cosh(w)-k*s)]]
+
+class Oracle:
+ def __init__(self,e,sigma,seed):
+  self._e=e;self._sigma=sigma;self._rng=random.Random(seed)
+  self.cost={&#x27;zero_observations&#x27;:0,&#x27;pulse_observations&#x27;:0,&#x27;actions&#x27;:0,&#x27;wait_time&#x27;:0.,&#x27;protocols&#x27;:set()}
+ def zero(self):
+  self.cost[&#x27;zero_observations&#x27;]+=1;self.cost[&#x27;actions&#x27;]+=2
+  return self._rng.gauss(0,self._sigma)
+ def assay(self,h):
+  self.cost[&#x27;pulse_observations&#x27;]+=1;self.cost[&#x27;actions&#x27;]+=4;self.cost[&#x27;wait_time&#x27;]+=h;self.cost[&#x27;protocols&#x27;].add(h)
+  return self._rng.gauss(float(moment(self._e,h)),self._sigma)
+ def ledger(self):
+  return dict(self.cost,protocols=sorted(self.cost[&#x27;protocols&#x27;]))
+
+def calibrate(oracle,eta):
+ # D=(Z1-Z2)/sqrt2 cancels any constant zero-protocol mean.
+ c=math.log(2)/2-.25;m=math.ceil(math.log(1/eta)/c)
+ s=sum(((oracle.zero()-oracle.zero())/math.sqrt(2))**2 for _ in range(m))/m
+ return {&#x27;pairs&#x27;:m,&#x27;S&#x27;:s,&#x27;sigma_squared_upper&#x27;:2*s}
+
+def acquire(oracle,H,tau,eta,mode):
+ # No access to the private kinetic matrix or sigma in either algorithm.
+ cal=calibrate(oracle,eta/2);u=cal[&#x27;sigma_squared_upper&#x27;]
+ if mode==&#x27;moment_certificate&#x27;:
+  choose=H*(H-1)/2;w=tau/(2*(H+6*choose))
+  R=max(1,math.ceil(2*u*math.log(8/eta)/(w*w)))
+  a=max(0.,min(1.,sum(oracle.assay(1) for _ in range(R))/R))
+  c=max(0.,min(1.,sum(oracle.assay(2) for _ in range(R))/R))
+  aL,aU=max(0.,a-w),min(1.,a+w);cL,cU=max(0.,c-w),min(1.,c+w)
+  rU=max(0.,cU-aL*aL);rL=max(0.,cL-aU*aU)
+  errors=[h*w+h*(h-1)*rU/2 for h in range(1,H+1)]
+  pred=[a**h for h in range(1,H+1)]
+  status=&#x27;CERTIFIED&#x27; if max(errors)&lt;=tau else &#x27;UNKNOWN&#x27;
+  if cU&lt;aL*aL:status=&#x27;UNKNOWN_MODEL_OR_NOISE&#x27;
+  report={&#x27;a&#x27;:a,&#x27;variance_interval&#x27;:[rL,rU],&#x27;mean_width&#x27;:w,&#x27;predictions&#x27;:pred,&#x27;error_bounds&#x27;:errors,&#x27;status&#x27;:status}
+ else:
+  # Competent direct impulse-response retaining control covers every h&lt;=H.
+  w=tau;R=max(1,math.ceil(2*u*math.log(4*H/eta)/(w*w)))
+  pred=[max(0.,min(1.,sum(oracle.assay(h) for _ in range(R))/R)) for h in range(1,H+1)]
+  report={&#x27;predictions&#x27;:pred,&#x27;error_bounds&#x27;:[tau]*H,&#x27;status&#x27;:&#x27;CERTIFIED&#x27;}
+ return dict(report,calibration=cal,repetitions_per_protocol=R,cost=oracle.ledger())
+
+def exact_two_protocol_obstruction():
+ a,b=F(4,5),F(1,50);models=[[[a,b],[b,F(1,5)]],[[a,b],[b,F(3,5)]]]
+ rows=[]
+ for e in models:
+  af=[[float(x) for x in r] for r in e];g=matrix_log_contraction(af)
+  k=(g[0][0]-g[1][1])/2;lam=-g[0][0];delta=-g[0][1]
+  assert lam&gt;abs(delta) and k&gt;0
+  mu=[moment(e,h) for h in range(5)]
+  r=mu[2]-mu[1]**2;trace=(mu[3]-mu[1]*mu[2])/r;det=trace*mu[1]-mu[2]
+  assert trace==e[0][0]+e[1][1] and det==e[0][0]*e[1][1]-e[0][1]**2
+  pred=[F(1),mu[1]]
+  for h in range(2,9):pred.append(trace*pred[-1]-det*pred[-2])
+  assert all(pred[h]==moment(e,h) for h in range(9))
+  rows.append({&#x27;E&#x27;:[[str(x) for x in rr] for rr in e],&#x27;moments_0_to_4&#x27;:[str(x) for x in mu],&#x27;physical_rates_log_numerical&#x27;:{&#x27;lambda&#x27;:lam,&#x27;k&#x27;:k,&#x27;delta&#x27;:delta},&#x27;trace_recovered&#x27;:str(trace),&#x27;det_recovered&#x27;:str(det)})
+ assert moment(models[0],1)==moment(models[1],1) and moment(models[0],2)==moment(models[1],2)
+ gap=moment(models[1],3)-moment(models[0],3);assert gap==F(1,6250)
+ return {&#x27;models&#x27;:rows,&#x27;exact_mu3_gap&#x27;:str(gap),&#x27;scope&#x27;:&#x27;first two balanced means fail to identify third mean even inside the two-species kinetic class&#x27;}
+
+def nonreversible_counterexample():
+ a,g,eps=.5,.1,.01
+ v=[1/math.sqrt(3)]*3;u=[1/math.sqrt(2),-1/math.sqrt(2),0.];w=[1/math.sqrt(6),1/math.sqrt(6),-2/math.sqrt(6)]
+ q=transpose([v,u,w]);cycle=[[0.,0.,1.],[1.,0.,0.],[0.,1.,0.]]
+ n=mm(mm(q,cycle),transpose(q))
+ e=[[a*int(i==j)+g*v[i]*v[j]+eps*n[i][j] for j in range(3)] for i in range(3)]
+ generator=matrix_log_contraction(e)
+ assert min(x for row in e for x in row)&gt;0
+ assert min(generator[i][j] for i in range(3) for j in range(3) if i!=j)&gt;0
+ assert max(sum(generator[i][j] for i in range(3)) for j in range(3))&lt;0
+ mu=[moment(e,h,v) for h in range(4)]
+ assert abs(mu[1]-.6)&lt;1e-14 and abs(mu[2]-.36)&lt;1e-14
+ assert abs(mu[3]-(.216+eps**3))&lt;1e-14
+ # Analytic log perturbation bound using ||I-D||=.5 and ||eps*N||=eps.
+ log_difference_bound=math.log(a/(a-eps));base_offdiag=math.log((a+g)/a)/3
+ assert log_difference_bound&lt;base_offdiag
+ assert math.sqrt(3)*log_difference_bound&lt;-math.log(a+g)
+ return {&#x27;E&#x27;:e,&#x27;log_E&#x27;:generator,&#x27;moments&#x27;:mu,&#x27;zero_spectral_variance_but_mu3_excess&#x27;:mu[3]-mu[1]**3,&#x27;analytic_log_difference_bound&#x27;:log_difference_bound,&#x27;baseline_generator_offdiag&#x27;:base_offdiag,&#x27;log_series_tail_bound&#x27;:(.51**201)/(201*(1-.51)),&#x27;scope&#x27;:&#x27;positive finite-rate 3-species kinetics, non-self-adjoint; exact first two pulse means do not certify the structural premise&#x27;}
+
+def four_moment_certificate():
+ nodes=[F(1,5),F(1,2),F(4,5)]
+ mu=[sum(x**h for x in nodes)/3 for h in range(13)]
+ a,c,d=mu[1:4];r=c-a*a;T=(d-a*c)/r;D=T*a-c
+ rho=mu[4]-T*mu[3]+D*mu[2]
+ residual=sum((x*x-T*x+D)**2 for x in nodes)/3
+ assert residual==rho
+ pred=[F(1),a]
+ for h in range(2,13):pred.append(T*pred[-1]-D*pred[-2])
+ rows=[]
+ for h in range(13):
+  bound=F(math.comb(h,4))*rho if h&gt;=4 else F(0)
+  assert 0&lt;=mu[h]-pred[h]&lt;=bound
+  rows.append({&#x27;h&#x27;:h,&#x27;true&#x27;:str(mu[h]),&#x27;two_mode_prediction&#x27;:str(pred[h]),&#x27;error&#x27;:str(mu[h]-pred[h]),&#x27;bound&#x27;:str(bound)})
+ return {&#x27;moments_0_to_4&#x27;:[str(x) for x in mu[:5]],&#x27;recurrence_trace&#x27;:str(T),&#x27;recurrence_det&#x27;:str(D),&#x27;rho&#x27;:str(rho),&#x27;rows&#x27;:rows,&#x27;scope&#x27;:&#x27;exact rational Gauss-quadrature residual certificate; not a noisy full-law acquisition implementation&#x27;}
+
+def main():
+ H,tau,eta,sigma,trials=4,.02,.05,.001,400
+ rows=[]
+ for delta in [0.,.02,.1,.2]:
+  e=reaction_e(.3,.7,delta);truth=[moment(e,h) for h in range(1,H+1)]
+  r=truth[1]-truth[0]**2
+  assert all(-1e-14&lt;=truth[h-1]-truth[0]**h&lt;=h*(h-1)*r/2+1e-14 for h in range(1,H+1))
+  stats={}
+  for mode in [&#x27;moment_certificate&#x27;,&#x27;direct_impulse_control&#x27;]:
+   reports=[];bad=0;cert=0
+   for seed in range(trials):
+    out=acquire(Oracle(e,sigma,seed+1729),H,tau,eta,mode)
+    if out[&#x27;status&#x27;]==&#x27;CERTIFIED&#x27;:
+     cert+=1
+     if any(abs(a-b)&gt;z+1e-13 for a,b,z in zip(out[&#x27;predictions&#x27;],truth,out[&#x27;error_bounds&#x27;])):bad+=1
+    reports.append(out)
+   stats[mode]={&#x27;trials&#x27;:trials,&#x27;certified_reports&#x27;:cert,&#x27;false_certificates&#x27;:bad,&#x27;mean_charged_actions&#x27;:sum(x[&#x27;cost&#x27;][&#x27;actions&#x27;] for x in reports)/trials,&#x27;mean_wait_time&#x27;:sum(x[&#x27;cost&#x27;][&#x27;wait_time&#x27;] for x in reports)/trials,&#x27;first_report&#x27;:reports[0]}
+  rows.append({&#x27;delta_hidden_from_algorithms&#x27;:delta,&#x27;truth_moments&#x27;:truth,&#x27;true_spectral_variance&#x27;:r,&#x27;algorithms&#x27;:stats})
+ out={&#x27;scope&#x27;:&#x27;actual individually drawn synthetic observations; finite diagnostics not universal validation&#x27;,&#x27;parameters&#x27;:{&#x27;H&#x27;:H,&#x27;tau&#x27;:tau,&#x27;eta&#x27;:eta,&#x27;true_sigma_hidden_from_algorithms&#x27;:sigma,&#x27;trials_per_row_per_algorithm&#x27;:trials},&#x27;acquisition_rows&#x27;:rows,&#x27;exact_two_protocol_obstruction&#x27;:exact_two_protocol_obstruction(),&#x27;nonreversible_physical_obstruction&#x27;:nonreversible_counterexample(),&#x27;four_moment_residual_certificate&#x27;:four_moment_certificate(),&#x27;interpretation&#x27;:&#x27;two-moment certificate acquires a reusable approximate law without microscopic rates or known sigma; direct impulse control costs less in this fixture; no architecture advantage claimed&#x27;}
+ Path(&#x27;results/r01_discovery/cycle3/moment_acquisition.json&#x27;).write_text(json.dumps(out,indent=2))
+ print(json.dumps({&#x27;rows&#x27;:[{&#x27;delta&#x27;:x[&#x27;delta_hidden_from_algorithms&#x27;],&#x27;variance&#x27;:x[&#x27;true_spectral_variance&#x27;],&#x27;stats&#x27;:{k:{kk:vv for kk,vv in v.items() if kk!=&#x27;first_report&#x27;} for k,v in x[&#x27;algorithms&#x27;].items()}} for x in rows],&#x27;two_protocol_gap&#x27;:out[&#x27;exact_two_protocol_obstruction&#x27;][&#x27;exact_mu3_gap&#x27;],&#x27;nonreversible_mu3_excess&#x27;:out[&#x27;nonreversible_physical_obstruction&#x27;][&#x27;zero_spectral_variance_but_mu3_excess&#x27;]},indent=2))
+
+if __name__==&#x27;__main__&#x27;: main()
+</pre></html>

@@ -1,0 +1,153 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>!/usr/bin/env python3</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>!/usr/bin/env python3</h1><p>Source ID d-9b88d6ef590d5758; literature/sources/pde_gate10/stripe_neumann_author_2026-10-07.py; 1933 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Symbolic checks for the actual-E, finite Dirichlet stripe parametrix.
+
+No global PDE solver or numerical proof is claimed. The analytic localization,
+soft derivative and stable return estimates remain in the companion note.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import argparse
+import json
+import math
+from pathlib import Path
+
+import sympy as sp
+
+
+def run() -&gt; dict:
+    h, v, b = sp.symbols(&quot;h v b&quot;, real=True)
+    R, t, a, K, n = sp.symbols(&quot;R t a K n&quot;, positive=True)
+    g = sp.Function(&quot;g&quot;)(R, t)
+    E = sp.exp(-a * R)
+    mu = t / R
+    rr = 1 - K**2 / R**2
+    lapR = (n - 1) / R + K**2 / R**3
+    dR = K**2 / R**2 + lapR / a
+
+    def slow_lap(q):
+        return (rr * sp.diff(q, R, 2) + lapR * sp.diff(q, R)
+                + 2 * mu * sp.diff(q, R, t) + sp.diff(q, t, 2))
+
+    def Bop(q):
+        return -2 * mu * q + 2 / a * (sp.diff(q, t) + mu * sp.diff(q, R))
+
+    def Cop(q):
+        return (-2 / a * (rr * sp.diff(q, R) + mu * sp.diff(q, t))
+                + slow_lap(q) / a**2 - dR * q)
+
+    # Compute the transformed Laplacian by differentiating E*g before using
+    # any claimed operator coefficient. Its phi, phi&#x27;, phi&#x27;&#x27; coefficients
+    # must be Cop(g)+g, Bop(g), and g respectively.
+    phi_coefficient = slow_lap(E * g) / (a**2 * E)
+    phiprime_coefficient = 2 / (a * E) * (
+        sp.diff(E * g, t) + mu * sp.diff(E * g, R))
+    checks = {
+        &quot;exact_operator_phi_coefficient&quot;: sp.simplify(phi_coefficient - Cop(g) - g) == 0,
+        &quot;exact_operator_phiprime_coefficient&quot;: sp.simplify(phiprime_coefficient - Bop(g)) == 0,
+    }
+
+    inverse_cache = {}
+    inverse_records = []
+
+    def L0(f):
+        return sp.diff(f, h, 2) + f
+
+    def inverse(f):
+        f = sp.trigsimp(sp.expand(f))
+        key = sp.srepr(f)
+        if key in inverse_cache:
+            return inverse_cache[key]
+        # Variation of constants with zero data at h=0, then adjust both
+        # homogeneous constants to impose the ACTUAL stripe walls +/-b.
+        cv = sp.integrate(sp.cos(v) * f.subs(h, v), (v, 0, h))
+        sv = sp.integrate(sp.sin(v) * f.subs(h, v), (v, 0, h))
+        up = sp.trigsimp(sp.expand(sp.sin(h) * cv - sp.cos(h) * sv))
+        ub, umb = up.subs(h, b), up.subs(h, -b)
+        ac = -(ub + umb) / (2 * sp.cos(b))
+        bs = -(ub - umb) / (2 * sp.sin(b))
+        u = sp.trigsimp(sp.expand(up + ac * sp.cos(h) + bs * sp.sin(h)))
+        record = {
+            &quot;forcing&quot;: str(f),
+            &quot;solution&quot;: str(u),
+            &quot;L0_inverse&quot;: sp.trigsimp(sp.expand(L0(u) - f)) == 0,
+            &quot;left_trace&quot;: sp.trigsimp(u.subs(h, -b)) == 0,
+            &quot;right_trace&quot;: sp.trigsimp(u.subs(h, b)) == 0,
+        }
+        inverse_records.append(record)
+        inverse_cache[key] = u
+        return u
+
+    # Keep separable terms, rather than silently truncating the exact slow
+    # coefficients. There are 2, 4, 8 terms at orders one, two, three.
+    stages = [[(sp.Integer(1), -sp.sin(h))]]
+    stage_records = []
+    for order in (1, 2, 3):
+        new_terms = []
+        identity_checks = []
+        for coeff, fast in stages[-1]:
+            bf, cf = Bop(coeff), Cop(coeff)
+            inv_derivative = inverse(sp.diff(fast, h))
+            inv_fast = inverse(fast)
+            new_terms.extend([(-bf, inv_derivative), (-cf, inv_fast)])
+            identity_checks.extend([
+                sp.trigsimp(sp.expand(L0(inv_derivative) - sp.diff(fast, h))) == 0,
+                sp.trigsimp(sp.expand(L0(inv_fast) - fast)) == 0,
+            ])
+        stages.append(new_terms)
+        stage_records.append({
+            &quot;order&quot;: order,
+            &quot;term_count&quot;: len(new_terms),
+            &quot;all_inverse_identities&quot;: all(identity_checks),
+            &quot;slow_coefficient_ops&quot;: [int(sp.count_ops(q)) for q, _ in new_terms],
+            &quot;fast_coefficient_ops&quot;: [int(sp.count_ops(f)) for _, f in new_terms],
+        })
+
+    p = b * sp.tan(b) * sp.cos(h) - h * sp.sin(h)
+    r_D = (h * sp.cos(h) - b * sp.cot(b) * sp.sin(h)) / 2
+    U1 = sum(q * f for q, f in stages[1])
+    checks[&quot;first_corrector_exact&quot;] = sp.trigsimp(sp.expand(U1 - mu * p - dR * r_D)) == 0
+    checks[&quot;finite_telescope_exact&quot;] = all(x[&quot;all_inverse_identities&quot;] for x in stage_records)
+    checks[&quot;all_Dirichlet_inverse_checks&quot;] = all(
+        x[&quot;L0_inverse&quot;] and x[&quot;left_trace&quot;] and x[&quot;right_trace&quot;] for x in inverse_records)
+
+    zeta = sp.symbols(&quot;zeta&quot;, real=True)
+    csc_adjoint = sp.diff(1 / sp.sin(zeta), zeta, 2) + 1 / sp.sin(zeta)
+    checks[&quot;csc_adjoint_exact&quot;] = sp.trigsimp(csc_adjoint - 2 / sp.sin(zeta)**3) == 0
+
+    hs, mm = sp.symbols(&quot;h_sigma mu_symbol&quot;, real=True)
+    crest_quadratic = 2 * mm * (-(1 - hs) * mm) - 2 * hs * mm**2
+    checks[&quot;smoothing_cancels_from_crest_quadratic&quot;] = sp.expand(crest_quadratic + 2 * mm**2) == 0
+
+    tc0, rr0 = sp.symbols(&quot;t0 r0&quot;, positive=True)
+    neighboring_crests = -2 * a / rr0**2 * ((tc0 + sp.pi / (2*a))**2 - (tc0 - sp.pi / (2*a))**2)
+    checks[&quot;neighboring_crest_difference_exact&quot;] = sp.simplify(neighboring_crests + 4*sp.pi*tc0/rr0**2) == 0
+
+    bb, ss = 0.1, 0.025
+    excess_bound = 4 * (bb + ss) * math.exp(ss) * bb * math.tan(bb) / math.cos(bb + ss)**3
+    checks[&quot;fixed_finite_kernel_B_bound&quot;] = excess_bound &lt; 0.006 and excess_bound &lt; math.pi
+    eta, rj = sp.symbols(&quot;eta rj&quot;, positive=True)
+    checks[&quot;required_scale_identity&quot;] = sp.simplify(
+        (sp.sqrt(rj/a) / rj**2).subs(rj, 1/(a*eta**2)) - a*eta**3) == 0
+
+    return {
+        &quot;scope&quot;: &quot;Exact symbolic operator/finite Dirichlet recursion checks; analytic folded-return gate remains separate.&quot;,
+        &quot;sympy_version&quot;: sp.__version__,
+        &quot;checks&quot;: checks,
+        &quot;all_checks_pass&quot;: all(checks.values()),
+        &quot;B_excess_bound_at_max_parameters&quot;: excess_bound,
+        &quot;stages&quot;: stage_records,
+        &quot;inverse_count&quot;: len(inverse_records),
+        &quot;inverse_records&quot;: inverse_records,
+    }
+
+
+if __name__ == &quot;__main__&quot;:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(&quot;--output&quot;, type=Path, required=True)
+    args = parser.parse_args()
+    result = run()
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    args.output.write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+    print(json.dumps({k: result[k] for k in (&quot;scope&quot;, &quot;all_checks_pass&quot;, &quot;checks&quot;, &quot;stages&quot;, &quot;inverse_count&quot;, &quot;B_excess_bound_at_max_parameters&quot;)}, indent=2))
+    raise SystemExit(0 if result[&quot;all_checks_pass&quot;] else 1)
+</pre></html>

@@ -1,0 +1,127 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Cycle 3: an implicit exact converter with a finite same-budget certificate</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>Cycle 3: an implicit exact converter with a finite same-budget certificate</h1><p>Source ID d-1a48b490ccc07b49; literature/notes/d_example/cycle3/RESULT.md; 3141 o200k tokens; role research_note; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre># Cycle 3: an implicit exact converter with a finite same-budget certificate
+
+**Result.** For the supplied three-state known sensor model below, one executable controlled-source policy reproduces the entire law of 1024 independent target observations exactly, simultaneously in every state, using at most **113216857/122880 = 921.361140951 expected source observations**. No target-output probability table or residual normalizer is computed. The n=512 bound is **29875969/61440 = 486.262516276**. Both include initial classification, incorrect candidate verification, rejection, thinning, and residual physical samples. The mathematics uses ideal independent state-independent random bits and fresh source observations; seeded PRNG executions are implementation diagnostics.
+
+Cycle 1 and 2 artifacts are preserved. This is a finite known-model exact-law construction, not structure acquisition, a proof of scientific novelty, or a general research-agent result.
+
+## Interface and target
+
+State i is one of {0,1,2}, fixed throughout. Source action a costs one and returns an independent conditional Bernoulli signal with probability1/10 of a one if a=i and9/10 otherwise. All source and target laws are known. Action choice is a state-independent function of observed history and auxiliary randomization.
+
+The target experiment G_i on {0,1,2} puts4/5 on i and1/10 on each alternative. The requested output is the FULL ordered n-sample target transcript, not a state label or approximate histogram. Store only counts c=(c0,c1,c2), sum c=n. Its statewise mass is
+
+    H_i(c) = multinomial(n;c) * 8^(c_i) / 10^n.
+
+Only ratios are evaluated: H_i(c)/H_k(c)=8^(c_i-c_k). Proposing from H_k needs n categorical draws and three counters, not a probability table. Conditional on counts, every ordering is equally likely under every state. Streaming choices proportional to remaining counts generate that uniform ordering using three counters, recovering the exact ordered transcript law.
+
+## Exact classifier and scalar verifier
+
+Take eta=1/(30n). A balanced classifier reads every action r times, chooses the smallest success count, and breaks all ties uniformly. Its confusion matrix has diagonal1-2b(r) and off-diagonal b(r). The exact O(r)-term integer formula in `classifier_b` uses low/high binomial count weights with common denominator10^r; the diagonal numerator has denominator3*10^(3r), including three-way ties. No enumeration of 2^(3r) source transcripts is used. Initial r0 is the first integer with2b(r0)&lt;=eta.
+
+Given classifier candidate k, propose counts c~H_k. Source action k alone has the same log-likelihood ratio against both alternatives: steps are +log9 on a zero and -log9 on a one. Let
+
+    L = min integer with9^L &gt;= 1/eta,
+    B_k(c) = min integer with9^B &gt;= 8^max_j[c_k-c_j]_+ / eta.
+
+All comparisons are exact integer comparisons. Stop this scalar verifier at +B (accept) or -L (reject). For upward probability p, r=(1-p)/p,
+
+    pass = (1-r^L)/(1-r^(B+L)),
+    expected samples = ((B+L)*pass-L)/(2p-1).
+
+Under the candidate state p=9/10; under either wrong state p=1/10. Therefore
+
+    correct pass = 9^B*(9^L-1)/(9^(B+L)-1),
+    wrong pass = (9^L-1)/(9^(B+L)-1).
+
+These are rational. Correct verification expected cost is &lt;=5B/4, wrong verification &lt;=5L/4. The finite absorbing walk terminates integrably in every state.
+
+Thin a pass independently with probability a=(1-eta)/(1+2eta). Write A0 for the initial confusion matrix and
+
+    Q_i(c)=a sum_k A0_i(k) H_k(c) p_i(pass|k,c),
+    T_i(c)=H_i(c)-Q_i(c),    delta_i=sum_c T_i(c).
+
+Wrong pass/correct pass=9^-B, so threshold choice bounds cross-state accepted mass. Combined with classification error&lt;=eta and correct pass&gt;=1-2eta, this gives the pointwise sandwich
+
+    eta H_i(c) &lt;= T_i(c) &lt;= 6eta H_i(c).              (1)
+
+The implementation evaluates T_i(c)/H_k(c) from the three ratios and the three scalar pass fractions only. It never evaluates multinomial masses or sums the n-dimensional report law.
+
+## Symmetry and normalization-free residual sampler
+
+Permuting state indices, source action names and target count coordinates leaves A0, proposal laws, thresholds, scalar pass probabilities and thinning unchanged. Consequently T_{pi(i)}(pi(c))=T_i(c). The count permutation is a bijection, so all three failure masses are the SAME delta, with eta&lt;=delta&lt;=6eta. This is the exact symmetry assumption behind the optimized repair below.
+
+Choose rR such that bR=b(rR)&lt;=1/(18*8^n), and bR&lt;=1/6. The source classifier satisfies b(r)&lt;=(9/25)^r: for each competing sensor the half-likelihood Chernoff bound is (9/25)^r; union bounds error by twice that, and symmetry divides it by two. The code finds rR using the exact integer condition18*8^n*9^r&lt;=25^r and computes bR once with the integer binomial formula. Put lambda=1-3bR. The classifier A_R=lambda I+bR J has inverse(I-bR J)/lambda.
+
+Define the UNNORMALIZED output kernel
+
+    W_k(c) = [T_k(c)-bR sum_iT_i(c)]/lambda.
+
+Because sum_iT_i(c)&lt;=18eta*8^n H_k(c), the subtracted term is &lt;=eta H_k(c), so W_k&gt;=0 by (1). Also lambda&gt;=1/2 implies W_k&lt;=12eta H_k(c). Symmetry gives sum_cW_k(c)=[delta-3bR delta]/lambda=delta for EVERY row k. Finally A_R W=T exactly.
+
+On a rejection/thinning flag, take FRESH balanced rR samples per action and classify as k. Repeatedly propose c~H_k and accept with exact rational probability
+
+    W_k(c)/(12eta H_k(c)).
+
+This acceptance probability is evaluated pointwise using ratios. Its average is delta/(12eta), so proposals accepted by this loop have law W_k/delta WITHOUT computing delta. Expected auxiliary proposals are12eta/delta&lt;=12. The classifier is performed only once in this symmetric repair. Thus the repaired conditional law in state i is(A_R W)_i/delta=T_i/delta. The final law is Q_i+delta(T_i/delta)=H_i, followed by uniform ordering. All source experiments, including the fresh repair classifier, are charged.
+
+## Rigorous finite cost bound
+
+Under truth i, define two count differences D_j=C_i-C_j. Each has mean7n/10 and variance41n/100. Writing Z_j=D_j-7n/10,
+
+    max_j[D_j]_+ &lt;= 7n/10 + sqrt(Z_1^2+Z_2^2),
+    E max_j[D_j]_+ &lt;= 7n/10 + sqrt(41n/50).
+
+The two centered differences need not be independent. Their individual second moments and Jensen suffice. Integer inequality8^20&lt;9^19 proves log8/log9&lt;19/20. Therefore
+
+    E B_i(C) &lt;= (19/20)(7n/10 + ceil sqrt(41n/50)) + L + 1.
+
+Use the correct-verifier cost bound, wrong candidate probability&lt;=eta, and repair flag probability&lt;=6eta. All states satisfy
+
+    E_i N &lt;= 3r0
+      + (5/4)[(19/20)(7n/10+ceil sqrt(41n/50))+L+1]
+      + (5/4)eta L + 18eta rR.                         (2)
+
+Every term is exact rational except the square root, which the executable bounds by a certified integer. At n1024, r0=9, L=5, rR=2088 and the root bound is29. Equation(2) is113216857/122880&lt;1024. At n512 it is29875969/61440&lt;512. The sufficient bound DOES NOT establish savings at64,128,256; those no-certificate outcomes are retained and do not mean the converter is impossible or incorrect.
+
+| n | Certified expected source upper | Target samples | Savings proved in every state |
+|---:|---:|---:|---|
+|64|91.2089|64|No certificate|
+|128|147.9513|128|No certificate|
+|256|263.3414|256|No certificate|
+|512|486.2625|512|Yes|
+|640|595.0372|640|Yes|
+|1024|921.3611|1024|Yes|
+|1536|1358.2728|1536|Yes|
+
+Horizon640 and1536 were declared separate held-out runtime horizons before the symmetric run; no parameter fitting used their results. This label concerns implementation stress, not empirical proof of the theorem.
+
+## Competent controls and obstruction
+
+For frozen IID action frequencies q, the stopped source transcript has i-versus-j KL D(q_i+q_j)E_iN, where D=(4/5)log9. Full target n-transcripts have directed KL n g, g=(7/10)log8. Exact output reproduction and data processing force
+
+    E_iN &gt;= n g/[D(q_i+q_j)] for every ordered pair.
+
+Some pair has q_i+q_j&lt;=2/3. Thus EVERY fixed IID design, allowing arbitrary retention, randomization, stopping and reporting, has some state with expected cost at least[21log8/(16log9)]n=1.24214295234n. Uniform q has that lower bound in EVERY state. Strict excess over n is certified by8^21&gt;9^16. This is a converse against a competent comparator class, not merely a simulation of a weak fixed stopping rule. Arbitrary predetermined nonstationary source schedules remain outside this converse.
+
+A direct balanced classifier/inverse-kernel construction is also available. A certified sufficient length uses b&lt;=1/(3*8^n), costing6258 source samples at n1024. This is an executable comparison construction, not its minimal possible length nor an optimality claim over all simulators.
+
+## Costs, execution, evidence and limitations
+
+Run `python3 work/d_example/cycle3/implicit_converter.py` then `python3 work/d_example/cycle3/verify.py`. The program uses no target output table and does not compute delta. Its persistent target state is three count integers; full ordering is streamed. The offline classifier calculation temporarily stores O(r) integer binomial terms, each O(r) bits, hence O(r^2) temporary bits. Exact pointwise acceptance fractions also have O(n) bits in this fixed model. These finite resource bounds are specific to the supplied laws and scalar verifier, not a generic efficient compiler theorem.
+
+At n1024 compilation took0.187 seconds, with cumulative process peak RSS26.5MB. The stored bR denominator uses20,772 bits. Forced residual acceptance coins reached25,567 denominator bits at this horizon and38,227 at n1536. Actual generated auxiliary random bits are counted separately from bits used to simulate the source environment. Uniform ordering uses O(n log n) random bits with this simple implementation; preserving the original proposed sequence would trade O(n) stored output symbols for fewer random draws.
+
+The final diagnostic run contains1680 regular trials and888,393 source observations, plus168 forced residual trials costing611,352 observations. At n1024,80 trials per state gave mean source costs887.4000,888.3375,891.7875. Large-n regular runs recorded zero repair flags, so those means do not empirically validate the rare residual contribution or exact output law. The forced residual trials explicitly exercise that branch and every source sample is charged. Exactness comes from the proof, with ideal random bits; fixed-seed PRNG runs test arithmetic/control flow only.
+
+The first execution completed all sampling but failed while serializing exact integers beyond Python&#x27;s4300-decimal-digit guard. Its trial CSV is preserved. A process-local guard change repaired serialization; rerun produced the exact same seeded CSV and added random-bit accounting. Both executions are charged in execution_history.json:2,999,490 total model-source observations. Failed tests, repairs and their costs are not omitted.
+
+Own verification recomputed all seven rational budgets, independently enumerated small classifier count triples, checked1680 raw trial records and source hash, and checked the repeated-run accounting. Exact small-n enumeration at1,2,3,5,8 verifies common delta, nonnegative W, row mass delta, A_R W=T, and auxiliary proposal counts. `d_math` independently reconstructed the complete proof and checked code/formulas; `check_selection` audited the symmetry and full-law conversion. These are independent internal checks, not external validation. Their artifacts are notes/d_math/cycle3/code_conformity_audit.md and results/check_selection/cycle3.
+
+Source model/adaptive testing rates are classic controlled-sensing prior art. This implementation removes the explicit transcript table from this finite rational family and certifies savings at a concrete horizon. Historical novelty of the normalization-free repair or broader controlled-source theorem remains unestablished. The models, experiment meanings and likelihood calibration are still supplied. A real scientific application must acquire and validate those likelihoods separately.
+
+## Extension implemented separately: asymmetric target
+
+See notes/d_example/cycle3/ASYMMETRIC.md and work/d_example/cycle3/asymmetric. This replaces G by rows(.8,.1,.1),(.2,.7,.1),(.1,.2,.7), where failure masses need not agree. A different repair loop reclassifies on EVERY retry, preserving exact output law without any common-normalizer assumption. It proves cost&lt;=941.752547201&lt;1024 in every state. Existing symmetric results are preserved; this is a newly declared target, not relabeled original held-out evidence.
+
+The separately implemented controlled program in PROGRAM.md makes target actions depend on previous observations and retains original controller coin outcomes. It preserves its full record and nontrivial Boolean projection with the same 941.752547201 upper bound. Every frozen IID source mixture needs more than 1042.513511872 expected observations in some state to preserve that full record; no such lower bound is claimed for the Boolean alone. Complete cycle-three physical cost, including all replays and forced tests, is 4,341,951 model-source observations.
+</pre></html>

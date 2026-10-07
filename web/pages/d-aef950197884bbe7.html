@@ -1,0 +1,1305 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BAYESIAN EXPERIMENTAL DESIGN FOR HEAD IMAGING BY</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>BAYESIAN EXPERIMENTAL DESIGN FOR HEAD IMAGING BY</h1><p>Source ID d-aef950197884bbe7; literature/sources/a_prior/cycle2/hyvonen_head.txt; 19634 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>BAYESIAN EXPERIMENTAL DESIGN FOR HEAD IMAGING BY
+ELECTRICAL IMPEDANCE TOMOGRAPHY
+N. HYV ¨ONEN†, A. J ¨A¨ASKEL¨AINEN†, R. MAITY †, AND A. VAVILOV†
+Abstract. This work considers the optimization of electrode positions in head imaging by
+electrical impedance tomography. The study is motivated by maximizing the sensitivity of electrode
+measurements to conductivity changes when monitoring the condition of a stroke patient, which
+justifies adopting a linearized version of the complete electrode model as the forward model. The
+algorithm is based on finding a (locally) A-optimal measurement configuration via gradient descent
+with respect to the electrode positions. The efficient computation of the needed derivatives of the
+complete electrode model is one of the focal points. Two algorithms are introduced and numerically
+tested on a three-layer head model. The first one assumes a region of interest and a Gaussian prior
+for the conductivity in the brain, and it can be run offline, i.e., prior to taking any measurements.
+The second algorithm first computes a reconstruction of the conductivity anomaly caused by the
+stroke with an initial electrode configuration by combining lagged diffusivity iteration with sequential
+linearizations, which can be interpreted to produce an approximate Gaussian probability density for
+the conductivity perturbation. It then resorts to the first algorithm to find new, more informative
+positions for the available electrodes with the constructed density as the prior.
+Key words. Electrical impedance tomography, head imaging, Bayesian experimental design,
+A-optimality, adaptivity, edge-promoting prior, lagged diffusivity
+AMS subject classifications. 35Q60, 62K05, 62F15, 65F10, 65N21, 78A46
+1. Introduction. This work considers Bayesian optimal experimental design
+(OED) for choosing positions of electrodes for monitoring stroke byelectrical impedance
+tomography (EIT). The goal of EIT is to reconstruct (useful information on) the inter-
+nal conductivity of an imaged physical body from boundary measurements of current
+and voltage at contact electrodes attached to the boundary of the body. This task
+constitutes an inverse boundary value problem that is nonlinear and severely illposed.
+For general information on EIT, we refer to the review articles [6, 14, 48].
+We resort to a linearized version of the smoothened complete electrode model
+(CEM) [15, 46, 28] as the forward model for the EIT measurements and aim to choose
+the positions of the available finite number of electrodes so that they maximize the
+information on the conductivity changes in aregion of interest (ROI) that corresponds
+to an area of the brain affected by a stroke. Our study is motivated by the potential
+application of EIT to bed-side monitoring of stroke in intensive care [47]: When a
+stroke patient enters a hospital, a computed tomography (CT) image of the patient’s
+head is taken, which reveals the head anatomy and the location of the stroke. In
+particular, the linearization of the forward model around a background conductivity
+can be motivated by the goal of detecting regrowth of a hemorrhagic stroke or sec-
+ondary bleeding induced by an ischemic stroke, both of which are presumed to cause
+moderate conductivity changes around the initially damaged part of the brain. How-
+ever, the linearization also considerably simplifies the application of Bayesian OED
+as explained in the following.
+A Bayesian optimal designd∗ is defined as an admissible maximizer for the expec-
+tation of a given utility function Υ(w,y ;d), with the expectation taken with respect to
+†Aalto University, Department of Mathematics and Systems Analysis, P.O. Box 11100, FI-
+00076 Aalto, Finland (nuutti.hyvonen@aalto.fi, altti.jaaskelainen@aalto.fi, ruma.maity@aalto.fi, an-
+ton.vavilov@aalto.fi). This work was supported the Jane and Aatos Erkko Foundation and the
+Academy of Finland (decision 348503, 353081).
+1
+arXiv:2312.10383v1  [math.NA]  16 Dec 2023
+2 N. HYV ¨ONEN, A. J ¨A¨ASKEL¨AINEN, R. MAITY, AND A. VAVILOV
+the data y∈Y and the parameter of interest w∈W [1, 12, 42, 44]. In mathematical
+terms,
+d∗ = arg max
+d∈D
+Z
+Y
+Z
+W
+Υ(w,y ;d)π(w,y|d) dw dy, (1.1)
+whereD is the space of admissible designs and π(w,y|d) is the joint probability
+density of the parameter and data for the design d. In this work, Υ is chosen to be a
+negative quadratic loss function that measures distance fromw to the mean bw(y;d) of
+the posterior density π(w|y;d), which leads to the concept of Bayesian A-optimality
+in our linear(ized) setting. Another common choice for Υ is related to the Kullback–
+Leibler distance between the posterior and prior distributions, which would in turn
+correspond to Bayesian D-optimality. D-optimality is not considered in this work,
+although it could be tackled with the same techniques, cf. [30].
+For the considered inverse problem of EIT,d determines the positions of the elec-
+trodes involved in the design process, w represents the (discretized) change in the
+conductivity of the imaged head, and y carries the measured potential differences at
+the electrodes. Due to the employed linearization of the relation between w and y, a
+Gaussian prior for w and an additive Gaussian noise model that is independent of w
+enable explicit evaluation of the double integral in (1.1), leading to minimization of a
+weighted trace of the posterior covariance with respect tod. As mentioned above, this
+corresponds to finding an A-optimal design [2, 12]. The posterior covariance allows a
+simple representation in terms of the linearized forward map and the prior and noise
+covariances, which enables performing the experimental design offline assuming the
+additive noise process is independent of d. Take note, however, that minimizing the
+trace of the posterior covariance with respect to d by a gradient-based minimization
+algorithm requires evaluating derivatives of the linearized forward model with respect
+to the electrode positions, i.e., computing certain second order derivatives of the for-
+ward solutions. This setting of experimental design for EIT has been considered in two
+spatial dimensions in [30] for the standard CEM, but the computation of the required
+derivatives is computationally more demanding in our three-dimensional setting than
+in [30].
+In addition to the offline optimization of the positions of the electrodes, we also
+consider an alternative approach that is not as straightforwardly applicable to the
+bed-side monitoring task used as a motivation above due to the requirement to be
+able to alter the positions of the electrodes attached to the head of the patient. How-
+ever, it has potential to not require a CT image of the patient, cf. [10]. The idea is to
+assume an edge-promoting (weighted and smoothened) total variation (TV) prior [43]
+for the conductivity change in the ROI and to choose an initial set of electrodes for
+which measurement data is measured (or, in our studies, simulated). A preliminary
+reconstruction is then formed by combining sequential linearizations and the lagged
+diffusivity iteration [51]; see [24] for the introduction of this approach to EIT and [10]
+for its application to head imaging without precise knowledge of the patient’s anatomy.
+In particular, the initial reconstruction accounts for the nonlinearity of the forward
+model. According to a Bayesian interpretation [5, 8, 26], the lagged diffusivity itera-
+tion also produces a Gaussian approximation for the non-Gaussian posterior induced
+by the TV prior. The covariance of this approximation can then be employed to find
+more informative positions for the available electrodes in the same manner as in the
+offline approach described above, with the aim of using the new positions to better
+monitor possible further changes in the conductivity close to the initially detected
+EXPERIMENTAL DESIGN FOR HEAD IMAGING BY EIT 3
+one, i.e., close to the region initially affected by the stroke. A closely related tech-
+nique for dealing with a TV prior in Bayesian OED has previously been considered
+for the linear inverse problems of X-ray and magnetorelaxometry imaging in [25, 26].
+Our approach to Bayesian OED is based on linearization and discretization of an
+inverse boundary value problem for an elliptic partial differential equation. Although
+convenient in our computationally demanding setting, especially with the TV prior
+that is not discretization invariant [36], these steps of linearization and discretization
+are not necessary for formulating and solving Bayesian OED problems for models
+involving partial differential equations. We refer the reader to [1] for information on
+the state-of-the-art for such OED problems and note that certain stability properties
+of Bayesian OED with respect to approximations in the forward model have recently
+been studied in [20], providing a first step toward formally justifying our approach.
+In particular, the optimization of electrode positions in EIT has previously been con-
+sidered in [27, 30, 34, 45]. The papers [30, 34, 45] tackle two-dimensional settings:
+[30] essentially corresponds to our offline optimization approach in two-dimensions,
+[45] applies deep learning to the OED problem, and [34] works with the less accu-
+rate shunt model [15] and evaluates the expected utility by resorting to a double-loop
+Monte Carlo method. In [27], a large set of point electrodes (cf. [22]) is set at prede-
+fined positions, and an optimization method with sparsity constraints for the current
+injections and potential measurements is applied to select a feasible set of electrodes.
+This article is organized as follows. The CEM, its linearization and discretiza-
+tion, as well as the needed derivatives with respect to the electrode positions are
+introduced in Section 2. Section 3 recalls the basics of finite-dimensional Bayesian
+inversion, including the Bayesian interpretation of the lagged diffusivity iteration and
+the reconstruction algorithm based on sequential linearizations used in connection to
+the TV prior. Section 4 considers OED and introduces the related numerical opti-
+mization algorithms. Section 5 documents the numerical experiments, and Section 6
+contains the concluding remarks.
+2. Complete electrode model. This section recalls the CEM and its deriva-
+tives with respect to the conductivity and the electrode contacts and positions. We
+also introduce the discretized computational models that are used in the numerical
+experiments.
+2.1. Forward problem. Let M ∈ N\{ 1} contact electrodes E1,...,E M be
+attached to the boundary of the imaged head that is modeled as a bounded Lipschitz
+domain Ω⊂ R3. The electrodes are represented as open connected subsetsE1,...,E M
+of the boundary ∂Ω with mutually disjoint closures. The union of the electrodes is
+denoted byE =∪Em. A single measurement of EIT consists in driving a net current
+patternI∈ CM
+⋄ through the electrodes and measuring the resulting constant electrode
+potentials U∈ CM
+⋄ , with
+CM
+⋄ =
+n
+V ∈ CM
+
+MX
+m=1
+Vm = 0
+o
+.
+The current pattern I belongs to CM
+⋄ due to conservation of charge and U based on
+an appropriate choice for the ground level of potential. The latter vector is identified
+in the following with the piecewise constant function
+U =
+MX
+m=1
+Umχm, (2.1)
+4 N. HYV ¨ONEN, A. J ¨A¨ASKEL¨AINEN, R. MAITY, AND A. VAVILOV
+where χm is the characteristic function of Em on ∂Ω.
+A mathematical model that accurately predicts real-life EIT measurements is the
+CEM [15]. Here we employ its smoothened version [28] that carries better regular-
+ity properties without severely compromising modeling accuracy. According to the
+smoothened CEM, the electromagnetic potential u inside Ω and the potentials on the
+electrodes U satisfy the elliptic boundary value
+∇· (σ∇u) = 0 in Ω ,
+ν·σ∇u =ζ(U−u) on ∂Ω,Z
+Em
+ν·σ∇u dS =Im, m = 1,...,M,
+(2.2)
+interpreted in the weak sense and with ν denoting the exterior unit normal on ∂Ω.
+The conductivity σ is assumed to be isotropic and belong to
+L∞
++ (Ω) :={ς∈L∞(Ω)| ess inf Re(ς)&gt; 0}, (2.3)
+whereas the contact conductivity ζ is modeled as an element of
+Z :=
+
+ξ∈L∞(E)
+ Reξ≥ 0 and ess sup
+
+Re(ξ|Em)
+
+&gt; 0 for allm = 1,...,M
+	
+, (2.4)
+which is interpreted as a subset of L∞(∂Ω) via zero-continuation. The variational
+formulation of (2.2) is to find ( u,U )∈H 1 :=H1(Ω)⊕ CM
+⋄ such that
+Bσ,ζ
+
+(u,U ), (v,V )
+
+= I·V for all (v,V )∈H 1, (2.5)
+where· denotes the real dot product and the bounded and coercive bilinear form
+Bσ,ζ :H1×H 1→ C is defined by
+Bσ,ζ
+
+(w,W ), (v,V )
+
+=
+Z
+Ω
+σ∇w·∇v dx +
+Z
+∂Ω
+ζ(W−w)(V−v) dS. (2.6)
+Note that we intentionally exclude complex conjugations and work with bilinear forms
+instead of sesquilinear ones because such an approach simplifies certain expressions
+in what follows. Under the above assumptions, the potential pair ( u,U )∈ H1 is
+uniquely determined by (2.5) [28]. For physical justification of (2.2), see [15, 28].
+The functional dependence of the electrode potentials on the conductivities and
+the applied electrode currents is denoted as U(σ,ζ ;I)∈ CM
+⋄ . In what follows, we
+employ a basis I1,...,I M−1 for CM
+⋄ as the electrode current patterns and adopt the
+notation
+U
+
+σ,ζ ;I1,...,I M−1
+
+=
+
+U(σ,ζ ;I1)⊤,...,U (σ,ζ ;IM−1)⊤⊤
+∈ CM(M−1). (2.7)
+As the current basis is typically either clear from the context or unimportant for the
+presented arguments, the dependence of U on I1,...,I M−1 is often suppressed.
+2.2. Derivatives of the CEM solution. We next consider the derivatives of
+the forward solution (u,U )∈H 1 with respect to the conductivities and the electrode
+positions. For simplicity, let∂Ω and∂E be of classC∞ and assume the conductivities
+in (2.2) satisfy σ∈ L∞
++ (Ω)∩C 0,1(Ω) and ζ ∈Z∩ H1(∂Ω), although this level of
+regularity is not needed for all results presented in this section. 1 We refer to [30] for
+1In particular, it would be sufficient for all presented results to only assume that σ is Lipschitz
+continuous in some neighborhood of the boundary ∂Ω.
+EXPERIMENTAL DESIGN FOR HEAD IMAGING BY EIT 5
+careful analysis on the existence of the considered derivatives in the less regular case
+that ζ is piecewise constant and to [9, 28] for considerations on differentiation with
+respect to electrode positions when ζ∈ H1(∂Ω). Apart from assuming a smoother
+contact conductivity, the main difference to [30] is that we deduce more efficient com-
+putational formula for the mixed derivative with respect to the internal conductivity
+and the electrode positions. Since we consider the presented results straightforward,
+yet arguably tedious modifications of material in [28, 30], we do not present detailed
+proofs. Moreover, we do not claim that our regularity assumptions are optimal; the
+conditions on σ and its perturbations are required in [30] due to the discontinuities
+in ζ that make the derivatives with respect to the electrode positions singular in a
+certain sense [17].
+To begin with, let us define how electrodes are moved along∂Ω. Let a∈C 1(E, R3)
+and define a perturbed set of electrodes via
+Ea
+m =
+
+Px
+
+x +a(x)
+x∈Em
+	
+⊂∂Ω, m = 1,...,M, (2.8)
+where Px : R3⊃ Bρ(x)→ ∂Ω is the projection in the direction of ν(x) onto ∂Ω,
+and Bρ(x) is an open ball of small enough radius ρ &gt;0 centered at x. The contact
+conductivity ζ :∂Ω→ C is assumed to stretch accordingly, that is, the conductivity
+on the perturbed electrodes is defined via
+ζa
+Px(x +a(x))
+
+=ζ(x), x ∈E, (2.9)
+and it vanishes on∂Ω\Ea. It can be shown that there exists a constantc =c(E, Ω)&gt; 0
+such that the definitions (2.8) and (2.9) are unambiguous if ∥a∥C1(E,R3) &lt;c ; see [17]
+for the proof of a closely related result. For a fixed set of electrodes E1,...,E M,
+we can now interpret the electrode potentials (as well as the interior potential) as a
+function of four variables, that is,
+U :
+(
+(σ,ζ,a,I )7→U(σ,ζ,a ;I),
+L∞
++ (Ω)×Z×B c× CM
+⋄ → CM
+⋄ , (2.10)
+whereU(σ,ζ,a ;I) is the second part of the solution to (2.5) withE1,...,E M replaced
+byEa
+1,...,E a
+M, andBc denotes the origin-centered open ball of radiusc in the topology
+ofC1(E, R3).
+Let us then introduce the required derivatives. It is well known that the map
+U :L∞
++ (Ω)×Z×B c× CM
+⋄ → CM
+⋄ is Fr´ echet differentiable with respect to its first vari-
+able, but the same also holds for the second variable [18] although it is a less obvious
+result due to the fact that even an infinitesimally small perturbation can make the real
+part of the contact conductivity negative on some parts of the electrodes. These differ-
+entiability results, in fact, hold without more regularity than is assumed in Section 2.1.
+Let us start with the derivative with respect to the internal conductivity: The Fr´ echet
+derivative of U at σ∈ L∞
++ (Ω) in the direction η∈ L∞(Ω), i.e., DσU(σ;η)∈ CM
+⋄ , is
+the second part of the unique solution ( Dσu(σ;η),DσU(σ;η))∈H 1 to
+Bσ,ζ
+
+(Dσu(σ;η),DσU(σ;η)), (v,V )
+
+=−
+Z
+Ω
+η∇u·∇v dx for all (v,V )∈H 1,
+(2.11)
+where (u,U ) ∈ H1 is the solution to (2.5). From the computational standpoint,
+it is important to note that this derivative can be assembled using the formula
+6 N. HYV ¨ONEN, A. J ¨A¨ASKEL¨AINEN, R. MAITY, AND A. VAVILOV
+(see, e.g., [29])
+DσU(σ;η)· ˜I =−
+Z
+Ω
+η∇u·∇ ˜u dx, (2.12)
+where (˜u, ˜U)∈H 1 is the solution to (2.5) for an auxiliary current pattern ˜I∈ CM
+⋄ .
+In the following, all solutions for variational equations marked with ∼ have ˜I as the
+underlying electrode current pattern, and the ones without ∼ are associated to I.
+The Fr´ echet derivative ofU with respect to the contact conductivity allows a similar
+sampling formula [18],
+DζU(ζ;ω)· ˜I =−
+Z
+∂Ω
+ω(U−u)( ˜U− ˜u) dS (2.13)
+for ζ∈Z and a surface conductivity perturbation ω∈L∞(E).
+The map U : L∞
++ (Ω)×Z∩ H1(∂Ω)×Bc× CM
+⋄ → CM
+⋄ is also Fr´ echet differen-
+tiable with respect to its third variable at the origin [17, 28]. The associated Fr´ echet
+derivativeDaU(0;h) in the direction h∈C 1(E, R3) is defined by the second part of
+the unique solution (Dau(0;h),DaU(0;h))∈H 1 to
+Bσ,ζ
+
+(Dau(0;h),DaU(0;h)), (v,V )
+
+=
+Z
+∂Ω
+hτ· Grad(ζ) (U−u)(V−v) dS (2.14)
+for all (v,V )∈H 1. Here hτ is the tangential component of h and Grad is the surface
+gradient [16]. This derivative also allows a sampling formula similar to (2.12) and
+(2.13) for its efficient numerical evaluation, but it is omitted since it is not utilized in
+our numerical studies.
+Let us finally consider the mixed derivativeDaDσU that is a main building block
+in our OED algorithm. To be precise, we consider DσDaU without proving that
+the order of differentiation can be reversed. Moreover, we focus our attention on
+conductivity perturbations that are supported at a distance from ∂Ω; this choice
+conveniently follows the material in [30], but such perturbations are also sufficient for
+our purposes because the ROI in our numerical experiments always lies in the brain
+tissue, i.e., in the interior of the computational head model. If we define
+L∞
+δ (Ω) ={κ∈L∞(Ω)
+ dist(suppκ,∂ Ω)≥δ}, δ &gt; 0,
+to be the space of admissible conductivity perturbations, the second Fr´ echet derivative
+DσDaU is well defined at (σ,ζ, 0,I ) for any (σ,ζ,I )∈L∞
++ (Ω)∩C 0,1(Ω)×Z∩H1(∂Ω)×
+CM
+⋄ . Moreover, it can be assembled via
+DσDaU(σ,ζ, 0;η,h )· ˜I =
+Z
+∂Ω
+hτ· Grad(ζ)
+
+(DσU(σ;η)−Dσu(σ;η))( ˜U− ˜u)
++ (U−u)(Dσ ˜U(σ;η)−Dσ ˜u(σ;η))
+
+dS, (2.15)
+where the perturbation directions satisfy η∈ L∞
+δ (Ω) and h∈C 1(E, R3). The corre-
+sponding formula [30, (2.21)] for the case of piecewise constant contact conductivity
+can be deduced from (2.15) by noting that hτ· Grad(ζ) corresponds to a weighted
+delta distribution on ∂E for a piecewise constant ζ.
+A computational issue with (2.15) is that to evaluateDσDaU(σ,ζ, 0;η,h ) for allη
+corresponding to a discretization of the internal conductivity, the variational problem
+(2.11) must first be solved for each basis current and for as many right-hand sides as
+EXPERIMENTAL DESIGN FOR HEAD IMAGING BY EIT 7
+there are degrees of freedom in the parametrization of L∞
+δ (Ω). On the other hand,
+(2.15) can be used to conveniently handle perturbations of the electrode positions as
+one simply needs to plug in (2.15) as many differenth as there are admissible directions
+to which the electrodes can move. As the electrode positions are parametrized by their
+polar and azimuthal angles in our numerical experiments, there are only 2 M ways to
+move the electrodes, which is significantly less than the number of basis functions in
+the parametrization of the conductivity perturbations. To conclude, it would thus be
+computationally advantageous to replace (2.15) by a formula that would not involve
+solving (2.11) for all conductivity perturbations but instead (2.14) for all admissible
+electrode perturbation directions.
+For this reason, interpret the two terms on the right-hand side of (2.15) as
+right-hand sides for (2.14) with the test function pairs ( Dσu(σ;η),DσU(σ;η)) and
+(Dσ ˜u(σ;η),Dσ ˜U(σ;η)), respectively. By the symmetry of the bilinear form Bσ,ζ :
+H×H→ C, this leads to
+DσDaU(σ,ζ, 0;η,h )· ˜I =Bσ,ζ
+
+(Dσ ˜u(σ;η),Dσ ˜U(σ;η)), (Dau(0;h),DaU(0;h))
+
++Bσ,ζ
+
+(Dσu(σ;η),DσU(σ;η)), (Da˜u(0;h),Da ˜U(0;h))
+
+.
+The two terms on the right-hand side can now be interpreted as left-hand sides for
+(2.11), which finally yields the computationally more attractive formula
+DσDaU(σ,ζ, 0;η,h )· ˜I =−
+Z
+Ω
+η
+
+∇Dau(0;h)·∇ ˜u +∇u·∇Da˜u(0;h)
+
+dx (2.16)
+for building a discretized version of the derivative DσDaU.
+2.3. Head model and computational implementation. We adopt the three-
+layer head model introduced in [9, 11], with the layers corresponding to the scalp, the
+highly resistive skull and the interior brain. The construction in [9, 11] models typical
+variations in the head anatomy over the human population by building a principal
+component model based on the library of 50 heads in [38]. However, here we restrict
+our attention to a single head anatomy, shown in Figure 2.1, without studying the
+effect of anatomical variations on the optimal electrode configurations. All electrodes
+shown in Figure 2.1 and employed in our numerical studies are discoidal in the sense
+that they are defined by intersections of the head surface with a circular cylinder of a
+given radiusR&gt; 0 and having its central axis aligned with the normal of the surface.
+Before reviewing how a finite element method (FEM) can be used to approximate
+the solution for (2.5) and the derivatives of its second component with the help of
+(2.12), (2.13), (2.14) and (2.16), the choice of the perturbation vector field h in (2.14)
+must be considered. We follow the construction in [9]. An electrode position is
+parametrized by the polar θm ∈ (0,π/ 2) and azimuthal ϕm ∈ [0, 2π) angles of its
+center with respect to the midpoint of the bottom face of the head model in Figure 2.1.
+The tangent vectors for ∂Ω at the center xm of Em obtained by differentiating the
+parametrization of the head surface (cf. [9]) with respect to the polar and azimuthal
+angles are denoted by ˆθm, ˆϕm∈ R3, respectively.
+We extend ˆθm as a constant vector field onto the whole electrode Em and set
+˜hθ
+m(x) :=
+ˆθm(x)
+
+τ, x ∈Em,
+to be its tangential component. To ensure that all points on Em move as much in the
+tangential direction so that the area of the electrode is approximately conserved, we
+8 N. HYV ¨ONEN, A. J ¨A¨ASKEL¨AINEN, R. MAITY, AND A. VAVILOV
+Fig. 2.1: A finite element discretization of the sample head anatomy used in our
+numerical studies. Left: the surface of the head model with a set of electrodes. Right:
+the bottom of the computational model showing the skin, skull and brain layers. The
+unit of length is meter.
+apply a scaling
+hθ
+m(x) :=|˜hθ
+m(xm)|
+|˜hθm(x)|
+˜hθ
+m(x), x ∈Em,
+with|·| denoting the Euclidean norm, and finally extend hθ
+m as zero on to the other
+electrodes. Although the perturbation of Em by such a vector field hθ
+m in the spirit
+of (2.8) does not exactly maintain the shape of the electrode Em, it seems feasible
+that the variations in its size are small compared to the moved distance for a regular
+spherical surface and small electrodes depicted in Figure 2.1. A perturbation vector
+field hϕ
+m corresponding to the azimuthal angle of the center for Em is constructed in
+an equivalent manner. The derivatives of solutions to (2.5) with respect to the polar
+or the azimuthal angle of an electrode Em are approximated by solving (2.14) with
+h =hθ
+m or h =hϕ
+m, respectively, for (Dau(0;h),DaU(0;h)).
+In order to parametrize the dependence of the solution to (2.5) on the contact
+conductivity, we assume the contact takes a common fixed form on each electrode.
+To be more precise, following [9, Section 4.2], we define the restriction of ζ to Em,
+m = 1,...,M , as
+ζ|Em(rm,ωm) =ζm ˆζ(rm,ωm), r m∈ [0,R ), ωm∈ [0, 2π), (2.17)
+in the polar coordinates ( rm,ωm) induced by orthogonally projecting the electrode
+onto a cross-section of the circular cylinder defining it. As in [9], the shape of an
+individual contact is defined by the smooth function
+ˆζ(r,ω ) = exp
+
+τ− τR 2
+R2−r2
+
+that vanishes to infinite order at |r| = R. In our numerical experiments, the value
+τ = 0.4 is used for the shape parameter. The free parameter ζm∈ C, with Reζm &gt; 0,
+in (2.17) defines the net conductance onEm. In what follows, we abuse the notation by
+identifying the contact conductance function with the vectorζ = [ζ1,...,ζ M]⊤∈ CM
++ ,
+where C+ denotes the open right half of the complex plain.
+In the rest of this work, we consider a discretized version of (2.5) by parametrizing
+the conductivity σ as
+σ =
+NX
+j=1
+σjφj, (2.18)
+EXPERIMENTAL DESIGN FOR HEAD IMAGING BY EIT 9
+whereσj∈ C+ andφj∈H1(Ω),j = 1,...,N , are the piecewise linear basis functions
+corresponding to a finite element (FE) mesh of Ω. 2 We refer to [9, 11] for more
+information on the construction of tetrahedral FE meshes such as shown in Figure 2.1.
+We denote by σ both the vector σ∈ CN
++ and the corresponding conductivity defined
+by (2.18); such an identification between linear combinations of the FE basis functions
+and vectors of CN is employed throughout this text. By the solution ( u,U ) of (2.5)
+we mean from here on the approximate FE solution in the subspace
+span{φj}N
+j=1⊕ CM
+⋄ ⊂H1(Ω)⊕ CM
+⋄ ;
+consult, e.g., [49, 50] for the implementation details.
+Summarizing the above developments, we (re)define a finite-dimensional forward
+map
+U :
+(
+(σ,ζ,θ,ϕ )→U (σ,ζ,θ,ϕ ),
+CN
++× CM
++× (0,π/ 2)M× [0, 2π)M→ CM(M−1) (2.19)
+that is a discretized version of (2.7) with the dependence on the electrode angles
+explicitly accounted for. The Jacobian of Jσ = Jσ(σ,ζ,θ,ϕ )∈ CM(M−1)×N with
+respect to σ∈ CN
++ can be computed by letting η run through the FE basis functions
+in (2.12) for all I and ˜I in the employed current basis. Similarly, the Jacobian Jζ =
+Jζ(σ,ζ,θ,ϕ )∈ CM(M−1)×M with respect to ζ∈ CM
++ can be assembled by choosing ω
+in (2.13) to be of the form (2.17) with ζ going through the standard basis vectors of
+CM. Finally, the elementwise derivatives
+∂(Jσ)ij
+∂θm
+(σ,ζ,θ,ϕ ) and ∂(Jσ)ij
+∂ϕm
+(σ,ζ,θ,ϕ ) (2.20)
+for i = 1,...,M (M− 1), j = 1,...,N and m = 1,...,M , needed in the OED
+algorithm for the linearized model, are approximated by setting h = hθ
+m or h = hϕ
+m
+on the right-hand side of (2.16), choosing η = φj, setting the current pattern I to
+be the one corresponding to the index i inU(σ,ζ,θ,ϕ ) (cf. (2.7)), and letting ˜I run
+through the whole current basis of CM
+⋄ .
+Let us then assume the knowledge of background conductivity levels σ0∈ CN
++
+and ζ0∈ CM
++ . In the stroke monitoring framework, the former would be based on
+information on the physiology of the patient, whereas the latter would correspond
+to empirical information on the expected quality of electrode contacts. We resort to
+linearizing the mapU : CN
++× CM
++× (0,π/ 2)M× [0, 2π)M→ CM(M−1) with respect to
+either its first or both its first and second variables. Assuming a noiseless measurement
+V∈ CM(M−1) and performing the linearization with respect to both σ andζ leads to
+the approximate measurement model
+U(σ0,ζ 0) +Jσ(σ0,ζ 0)(σ−σ0) +Jζ(σ0,ζ 0)(ζ−ζ0) =V,
+where the dependence of the Jacobians on the design parameters θ and ϕ has been
+suppressed for brevity. Denoting κ =σ−σ0, ξ =ζ−ζ0, y =V−U (σ0,ζ 0),
+J = [Jσ(σ0,ζ 0),Jζ(σ0,ζ 0)] and w =
+κ
+ξ
+
+, (2.21)
+2In fact, the basis functions φj and their number N change when electrodes move on ∂Ω due to
+remeshing.
+10 N. HYV ¨ONEN, A. J ¨A¨ASKEL¨AINEN, R. MAITY, AND A. VAVILOV
+we arrive at the model
+Jw =y (2.22)
+that is further analyzed from Bayesian standpoint in the next section.
+When considering the actual problem of OED, we assume thatζ0 is a good enough
+estimate for the contacts and set J =Jσ and w =κ in (2.22). That is, the complete
+linearized model (2.22) is only considered when computing reconstructions with the
+TV prior by the algorithm based on the lagged diffusivity iteration. The reason for
+this choice is two-fold: we do not expect the dependence of the model on ζ to severely
+affect the optimal designs aiming at reconstructingσ and we want to avoid introducing
+extra technical material in the form of another second derivative DζDaU in addition
+to DσDaU. In the following, we denote the design variables by d = (θ,ϕ ) and stress
+that J =J(d).
+3. Bayesian inversion. In this section, we first describe a fully Gaussian prob-
+abilistic version of the linearized model (2.22), with the dependence on the contact
+conductivity suppressed. Subsequently, a smoothened TV prior and the lagged diffu-
+sivity iteration are considered. For the rest of this text, we assume for simplicity that
+all variables are real-valued.
+3.1. A fully Gaussian model for OED. Let us consider a probabilistic version
+of (2.22) with the dependence on the contact conductivity ignored:
+Y =JσW +E, (3.1)
+where the measurement data Y ∈ RM(M−1) and the unknown internal conductivity
+perturbationW∈ RN are interpreted as independent random variables. The additive
+noise process E is assumed to be a zero-mean Gaussian with a symmetric positive-
+definite covariance matrix Γnoise∈ RM(M−1)×M(M−1).
+Let us assume that a priori W∼N (0, Γprior), where the prior covariance Γprior∈
+RN×N is also symmetric and positive definite. In such a case, it is well known that
+the posterior densityπ(w|y) is a Gaussian as well (see, e.g., [31]), with the covariance
+Γpost = Γprior− ΓpriorJ⊤
+σ
+
+JσΓpriorJ⊤
+σ + Γnoise
+−1
+JσΓprior (3.2)
+and the mean
+bw = ΓpriorJ⊤
+σ
+
+JσΓpriorJ⊤
+σ + Γnoise
+−1
+y. (3.3)
+In particular, the posterior covariance does not depend on the measured data y, and
+thus an optimal design aiming to make the posterior as localized as possible can be
+sought offline, i.e., prior to taking any measurements.
+In our numerical experiments on OED for the head model, a weighted trace of the
+posterior covariance Γpost = Γpost(d) is minimized with respect to the design variable
+d. Note that the dependence of Γ post on d is inherited from that of Jσ =Jσ(d). The
+prior covariance in (3.2) originates either froma priori assumption on the conductivity
+perturbation, or it is a byproduct of a reconstruction algorithm based on sequential
+linearizations and the lagged diffusivity iteration, as described in the following section.
+3.2. Total variation prior and lagged diffusivity. Let us then assume that
+the prior density is of the form
+π(w) = exp(−γΦ(κ)), (3.4)
+EXPERIMENTAL DESIGN FOR HEAD IMAGING BY EIT 11
+where
+Φ(κ) =
+Z
+Ω
+υ(x)φ
+
+|∇κ|
+
+dx, with φ(t) =
+p
+t2 +T 2≈|t|, (3.5)
+accompanied by the information that the interior conductivity perturbationκ vanishes
+on ∂Ω. As in [10], υ : Ω→ R+ is the reciprocal of a smooth cut-off function,
+υ(x) =
+1
+2
+
+1 + tanh(cυ(dist(x,∂ Ω)−bυ))
+−1
+, x ∈ Ω, (3.6)
+wherecυ &gt; 0 andbυ &gt; 0 are chosen so that the value ofυ is large in the skin layer and
+decreases to almost one within the skull layer. The role of υ in the prior is to encode
+the assumption that a stroke mainly causes conductivity changes in the brain tissue,
+but in the computational experiments it also mitigates the tendency of electrodes to
+approach the bottom face of the head model because υ also makes changes in the
+conductivity improbable in the lower parts of the brain. Note that the vector of
+perturbations in the peak values of the contact conductivity, ξ, is assumed to have an
+uninformative prior, which explains why ξ does not appear on the right-hand side of
+(3.4). In particular, the dependence of the linearized model (2.22) on ξ is not ignored
+in this section. We assume that there are N′ &lt;N interior nodes in the employed FE
+mesh and identify κ in the rest of this section with an element of RN ′
+, instead of one
+in RN.
+Let us continue to assume a zero-mean Gaussian noise model that is independent
+ofW and follow the treatment in [24]. The quest for a MAP estimate for the linearized
+model (2.22) leads now to considering a nonquadratic Tikhonov functional
+1
+2
+
+y−Jw)⊤Γ−1
+noise
+
+y−Jw
+
++γ Φ(κ). (3.7)
+The necessary condition for a minimizer of (3.7) is (cf. (2.21))
+J⊤Γ−1
+noiseJw +γ
+&quot;
+(∇κΦ)(κ)
+0
+#
+=J⊤Γ−1
+noisey, (3.8)
+where 0∈ RM. Utilizing the identification of vectors in RN ′
+with elements of H1
+0(Ω)
+via the employed FE basis, it is straightforward to check that
+(∇κΦ)(κ) = Θ(κ)κ, (3.9)
+where the multiplier matrix Θ(κ) is given elementwise as
+Θi,j(κ) :=
+Z
+Ω
+υ(x)p
+|∇xκ(x)|2 +T 2∇φi(x)·∇φj(x) dx, i,j = 1,...,N ′.
+As reasoned in [24], the invertibility of Θ( κ) for any κ∈ RN ′
+is guaranteed via an
+interpretation as a FE system matrix originating from a discretization of an elliptic
+differential operator combined with a homogeneous Dirichlet boundary condition.
+Plugging the presentation (3.9) in (3.8) and expanding gives
+&quot;
+J⊤
+σ Γ−1
+noiseJσ +γ Θ(κ) J⊤
+σ Γ−1
+noiseJζ
+J⊤
+ζ Γ−1
+noiseJσ J⊤
+ζ Γ−1
+noiseJζ
+#
+w =
+&quot;
+J⊤
+σ
+J⊤
+ζ
+#
+Γ−1
+noisey. (3.10)
+12 N. HYV ¨ONEN, A. J ¨A¨ASKEL¨AINEN, R. MAITY, AND A. VAVILOV
+Denoting Bσ = Γ−1/2
+noiseJσ, Bζ = Γ−1/2
+noiseJζ and solving the second row of (3.10) for ξ
+gives
+ξ =
+
+B⊤
+ζ Bζ
+−1
+B⊤
+ζ
+
+Γ−1/2
+noisey−Bσκ
+
+. (3.11)
+Substituting this for ξ on the first row of (3.10) results in the formula
+
+ATA +γΘ(κ)
+
+κ =ATb, (3.12)
+where
+A =QBσ and b =QΓ−1/2
+noisey,
+with Q = I−Bζ(B⊤
+ζ Bζ)−1B⊤
+ζ being the orthogonal projection onto the orthogonal
+complement of the range of Bζ in RM(M−1). Here and in what follows, an identity
+matrix of an appropriate size is denoted by I.
+The idea is now to solve (3.12) by means of the lagged diffusivity iteration [13, 19,
+51], which can be interpreted to produce a Gaussian approximation for the posterior
+of κ as its byproduct [5, 8, 26]. Start from an initial guess κ0 = 0 for the solution
+of (3.12). Assuming to have κ(j) in hand, Θ( κ) is replaced in (3.12) by Θ( κ(j)),
+which yields a linear equation for κ. The solution of this equation is the mean of the
+Gaussian posterior defined by the model for Aκ =b, assuming a zero-mean Gaussian
+prior for κ with the inverse covariance matrix γΘ(κ(j)) and an additive white noise
+model [31]. Using the Woodbury matrix identity (cf. (3.2)–(3.3)), the mean and the
+covariance of this posterior allow the representations
+κ(j+1) = Θ(κ(j))−1A⊤
+γI +AΘ(κ(j))−1A⊤−1
+b (3.13)
+and
+Γ(j+1) =γ−1
+
+Θ(κ(j))−1−Θ(κ(j))−1A⊤
+γI+AΘ(κ(j))−1A⊤−1
+AΘ(κ(j))−1
+
+, (3.14)
+respectively.
+The iteration (3.13) is terminated after a predefined stopping criterion is satisfied.
+The final posterior mean and covariance, say, κ(J) and Γ(J), then define a Gaussian
+density that can be used in choosing new positions for the electrodes as explained in
+Section 4. Note that the iteration defined by (3.13) is not overly expensive compu-
+tationally because A has only M(M− 1) rows and operating with the inverse of the
+sparse matrix Θ(κ(j)) that originates from a FE discretization can be performed effi-
+ciently. Moreover, the covariance matrix in (3.14) only needs to be computed at the
+final iteration, since (3.13) is independent of (3.14). After computing a MAP estimate
+for the posterior by the above scheme, the peak values of the contact conductivity
+perturbation could be updated according (3.11) with κ =κ(J).
+Remark 3.1. In the numerical experiments of Section 5, we compute the TV-
+based reconstructions by combining the lagged diffusivity iteration with sequential lin-
+earizations of the forward model. That is, once a conductivity perturbation pair, say,
+wk = (κk,ξk), has been computed by the above iteration, the forward model is re-
+linearized at the corresponding new base point (σk,ζk) = (σ0 +κk,ζ 0 +ξk) and the
+lagged diffusivity iteration is once again applied to the nonquadratic Tikhonov func-
+tional corresponding to the negative log-likelihood for the TV prior. The unknown
+EXPERIMENTAL DESIGN FOR HEAD IMAGING BY EIT 13
+(κk+1,ξk+1) that is sought for in the new round of iteration still corresponds to a
+deviation from the background level (σ0,ζ 0), which means that one must redefine
+y =V−U (σk,ζk) +Jσ(σk,ζk)κk +Jζ(σk,ζk)ξk +e
+in the analysis of this section, with e denoting the considered realization of the additive
+measurement noise process E. The reason for this choice is that it is natural to as-
+sume the TV prior for the change in the internal conductivity compared to the original
+background level σ0, not compared to the latest reconstruction σk. Once the nested
+iterations corresponding to the sequential linearizations and the lagged diffusivity ar-
+gument have been terminated, the final approximate Gaussian posterior covariance
+for the perturbation from the background conductivity σ0 can be used for choosing
+new electrode positions as explained in the next section. See [10, 24] for previous
+applications of such a reconstruction algorithm to EIT, with the difference that uti-
+lizing the Woodbury matrix formula for (3.13) is in [10, 24] replaced by a certain
+priorconditioned LSQR iteration and the Morozov discrepancy principle.
+4. Optimal experimental design. In this section, we briefly describe the con-
+cept of A-optimality in our setting and consider numerically solving the associated
+optimization problems. We refer to [2, 12] for more information on Bayesian OED
+and to [40] for material on numerical optimization.
+4.1. A-optimality. Assume that the forward model has been linearized around
+a given internal background conductivity and that the prior information on the con-
+ductivity perturbation is given in the form of a zero-mean Gaussian prior with a
+covariance matrix Γprior. In other words, we assume the setting of Section 3.1. The
+prior information may originate from one of two sources:
+1. A Gaussian prior is directly assumed for the linearized model, and the com-
+putations are performed offline in a nonadaptive manner.
+2. The algorithm based on sequential linearizations, a TV prior and the lagged
+diffusivity iteration, described in Section 3.2, is first applied to measurements
+on an initial electrode configuration. After the algorithm has been termi-
+nated, the covariance of the final Gaussian approximation for the internal
+conductivity perturbation is dubbed Γ prior.
+In both cases, the covariance Γ post of the Gaussian posterior for the linearized
+model is given by (3.2). The A-optimality criterion corresponds to minimizing the
+trace of a weighted version of this covariance:
+dA = arg min
+d
+ΨA(d), with ΨA(d) := tr
+
+AΓpost(d)A⊤
+= tr
+
+A⊤AΓpost(d)
+
+, (4.1)
+where the last equality follows from a cyclic property of the matrix trace. In other
+words, an A-optimal design dA minimizes the expected squared distance of the un-
+known from the posterior mean in the seminorm defined by the positive semidefinite
+matrixA⊤A; see, e.g., [7]. In our setting, the weighing provided byA for the diagonal
+elements of Γpost is essential as they correspond to the nodal values of FE basis func-
+tions with supports of different sizes. To be able to measure distances in the squared
+L2(Ω) norm, the proper choice forA⊤A is thus the mass matrix corresponding to the
+used FE basis; see, e.g., [23]. Moreover, if only a certain ROI inside the head model
+is considered, as is often the case in our numerical tests, the FE basis functions corre-
+sponding to the nodes outside the ROI are replaced by zero functions when forming
+the mass matrix.
+14 N. HYV ¨ONEN, A. J ¨A¨ASKEL¨AINEN, R. MAITY, AND A. VAVILOV
+Algorithm 1 (Gradient descent)
+Choose a tolerance ϵ &gt;0, an initial guess d0, the maximum number of iterations
+NGD, and a step size parameter λ&gt; 0. Initialize i = 0.
+while|∇ΨA(di)|&gt;ϵ and i&lt;N GD do
+▷ Compute the search direction q = ˜q/|˜q|, with ˜q =−∇ΨA(di).
+▷ Select the step size ¯λ based on Algorithm 2 with an initial guess λ.
+▷ Set di+1 =di + ¯λq.
+▷ Update i =i + 1.
+end while
+return di
+Algorithm 2 (Inexact line search with Armijo’s rule)
+Choose the maximum number of iterations NArmijo and scaling parameters α,β ∈
+(0, 1). Initialize a counter as l = 0. The initial step size λ&gt; 0, the considered base
+point di, and the search direction q are given as inputs.
+while l&lt;N Armijo do
+if ΨA(di +λq)− ΨA(di)&lt;λα∇ΨA(di)⊤q then
+▷ Return ¯λ =λ.
+else
+▷ Set λ =βλ.
+end if
+▷ Set l =l + 1.
+end while
+return ¯λ =λ
+When visualizing the evolution of the A-optimality target during its minimization,
+instead ΨA itself, the value ofeΨA = Ψ1/2
+A is monitored. With the above choice for the
+weightA, the value of eΨA is the square root of the expected squared L2 error over
+the ROI under the linearized measurement model.
+4.2. Minimization of the A-optimality target. The minimization of the
+A-optimality target Ψ A is performed with gradient descent accompanied by an in-
+exact line search based on Armijo’s rule; see, e.g., [40]. The complete minimization
+algorithm is given as a combination of Algorithms 1 and 2.
+Observe that in (3.2), only the Jacobian matrixJσ =Jσ(d) depends on the design
+parameter vector d that determines the positions of the electrodes. The elementwise
+derivatives of Jσ(d) can be approximated using (2.20). Hence, the derivatives of the
+optimization target Ψ A(d) needed in Algorithm 1 can also be computed straight-
+forwardly, yet tediously, by applying (2.20) and well-known matrix differentiation
+formulas to (3.2) and (4.1). However, we do not stress this matter any further here,
+but simply assume that we have access to an approximation of the gradient of Ψ A
+when running Algorithms 1 and 2.
+Remark 4.1. When the polar angle θm of the center of the electrode Em is
+small, i.e., the electrode lies close to the ‘north pole’ of the head model, the derivative
+with respect to the azimuthal angle ϕm of the center of Em in Algorithms 1 and 2 is
+not used to update the azimuthal angle itself but the projected position of the electrode
+center along a straight line on the tangent plane touching the head model at the north
+pole. The reason for this is to prevent electrodes with small polar angles from rotating
+EXPERIMENTAL DESIGN FOR HEAD IMAGING BY EIT 15
+Fig. 5.1: The employed initial configurations with M = 12 electrodes. The feeding
+electrode is shown in red. Top: a symmetric initial electrode configuration from two
+perspectives. Bottom: an initial electrode configuration concentrated close to the ROI
+or stroke in the right posterior quadrant of the brain from two perspectives.
+around the north pole during the optimization process.
+5. Numerical experiments. The computations are performed on the three-
+layer head model presented in Figure 2.1. The employed FE meshes, used for dis-
+cretizing both the conductivity and the first component of a solution to (2.5), have
+approximatelyN = 15 000 nodes and 70 000 tetrahedra with appropriate refinements
+at the electrodes. The precise characteristics of the mesh depend on the positions of
+the electrodes on the surface of the head. However, when the positions of the elec-
+trodes are altered, the mesh only changes in the skin and skull layers, i.e., the mesh
+for the brain is the same in all computations. The needed FE meshes are formed
+using an updated version of the workflow introduced in [9, 11], with emphasis on the
+robustness of meshing when electrodes are close to each other or near the bottom edge
+of the head model.
+The number of electrodes is chosen to be M = 12 in all numerical experiments,
+and their common radius is set to 7 .5 mm. Denoting the lth Cartesian basis vector
+by el, the employed current basis are Im = e 1− em+1, m = 1,...,M − 1, that is,
+the same electrode always feeds the current into the head and it flows out in turns
+through the other M− 1 electrodes. In the numerical tests, we consider the two
+initial configurations for the electrodes shown in Figure 5.1, with the current feeding
+electrodes marked in red. Although the effect of the initial position for the feeding
+electrode is briefly discussed in Section 5.1, we refrain from further analysis on the
+role of the current patterns and settle for referring to [32, 33] for their optimization
+in the Bayesian framework.
+The peak values of the contact conductances are assumed to be known and set
+to ζ1,...,ζ M = 10 3 S/m−2, which corresponds to good contacts in the framework
+16 N. HYV ¨ONEN, A. J ¨A¨ASKEL¨AINEN, R. MAITY, AND A. VAVILOV
+of the smoothened CEM; see [28, Section 4.3]. For the lagged diffusivity iteration
+with the smoothened TV prior in Section 3.2 this means that the linearization of the
+forward model is always performed at the correct value of ζ; in the terminology of
+Remark 3.1, the update formula (3.11) is not utilized, but one simply sets ξk = 0.
+Although it is not realistic to assume the contact conductances are known in a practical
+measurement setup for EIT, we have decided to reduce their role in our numerical
+tests to enable concentrating on the effect the head geometry and the location of the
+ROI or a stroke have on the A-optimized electrode positions. The conductivities of
+healthy skin, skull and brain tissues are chosen as 0 .2 S/m, 0.06 S/m and 0.2 S/m,
+respectively (cf. [21, 35, 37, 39, 41]).
+The zero-mean Gaussian measurement noise is assumed to have a diagonal co-
+variance matrix of the form η2I, where the standard deviation is defined to be
+η =ω
+
+maxU(σ,ζ ;I1,...,I M−1)− minU(σ,ζ ;I1,...,I M−1)
+
+. (5.1)
+Here, max and min operations are taken over the components of the complete mea-
+surement vectorU∈ RM(M−1), the conductivityσ is defined by the background levels
+for the three-layer head model, and the current patterns are those for the symmetric
+initial electrode configuration shown on the first row of Figure 5.1. We choose the
+valueω = 10−3 for the free scaling parameter and keep the noise covariance matrix
+fixed throughout the numerical studies.
+The free parameters in Algorithms 1 and 2 are set to ϵ = 0, NGD = 40, λ = 0.5,
+NArmijo = 30,α = 1/2 and β = 5/6. In particular, we always simply run Algorithm 1
+for 40 rounds without considering stopping it earlier because the effect of numerical
+errors makes it difficult to reliably infer whether a local minimum has been reached.
+The choices of ϵ, λ, α and β have an effect on the performance of the optimization
+routine, but this aspect is not further analyzed here.
+5.1. Gaussian prior with a region of interest. Let us start with a Gaus-
+sian prior for the conductivity perturbation, which allows offline minimization for
+the A-optimality target Ψ A in our linearized setting. The prior covariance is given
+elementwise as
+(Γprior)i,j =ς2 exp
+
+−|xi−xj|2
+2ℓ2
+
+, (5.2)
+where ℓ = 0.05 is the assumed correlation length, ς = 0.2 is the pixelwise standard
+deviation, and xi and xj are the coordinates of the nodes with indices i and j in the
+FE mesh.
+The first numerical test assumes the ROI is the intersection of the brain with the
+half-space{x∈ R3|x3≥ 0.02}. The initial and optimized electrode configuration are
+shown on the top row of Figure 5.1 and in Figure 5.2, respectively. The electrodes
+have reorganized themselves but not moved much in total, which is not surprising
+since the initial measurement configuration and the ROI are both symmetric. Be
+that as it may, the evolution of eΨA plotted in the bottom right image of Figure 5.2
+reveals a decrease of 3.67% during the minimization process. If the feeding electrode
+in the initial configuration on the top row of Figure 5.1 and in the setup of Figure 5.2
+is chosen to be another electrode, the reduction in the value of eΨA when switching
+from the initial configuration to the one in Figure 5.2 is still 3.14–3.80% depending on
+the chosen feeding electrode. Take note that the optimization algorithm is not rerun
+to deduce these numbers, but the index of the current-feeding electrode is simply
+EXPERIMENTAL DESIGN FOR HEAD IMAGING BY EIT 17
+0 5 10 15 20 25 30 35 40
+iteration number
+3.22
+3.24
+3.26
+3.28
+3.3
+3.32
+3.34
+3.36 10-3
+Fig. 5.2: Gaussian Test 1. The ROI is the brain with its bottom layer of height 2 cm
+excluded. Top and bottom left: the optimized electrode setup deduced by starting
+from the symmetric initial configuration of Figure 5.1. Bottom right: the evolution
+of eΨA during the application of Algorithm 1.
+chosen to go through all other options when evaluating eΨA for the two electrode
+configurations. Although the choice of the feeding electrode has an effect on the A-
+optimal configuration, optimizing the configuration for a fixed feeding electrode thus
+seems to reduce the value of the A-optimality target for other choices of the feeding
+electrode as well — at least for the considered parameter values.
+In the second test the ROI is chosen to be the intersection of the brain with the
+three half spaces
+{x∈ R3|x3≥ 0.02}, {x∈ R3|x1≤ 0}, {x∈ R3|x2≤ 0}.
+In other words, it is essentially the right posterior quadrant of the brain, which
+could, e.g., reflect one’s knowledge on the position of the stroke based on a CT image.
+The top and bottom rows of Figure 5.3 illustrate the optimized electrode positions
+starting from the top and bottom initial configurations in Figure 5.1, respectively. For
+both initial configurations, the minimization algorithm moves most of the electrodes
+to the vicinity of the right posterior quadrant of the brain, with a couple of electrodes,
+including the feeding one, situated at a longer distance from the ROI. Although qual-
+itatively similar, the optimized configurations are not precisely the same, which may
+be caused by local minima or numerical inaccuracies in the evaluation of Ψ A and its
+derivatives during the minimization process.
+Figure 5.4 shows the evolution of eΨA during Algorithm 1 for the considered two
+initial configurations. The initial electrode setup that is concentrated in the vicinity
+of the ROI leads to a slightly, i.e., 1.30%, lower minimized value foreΨA. However, the
+difference in the corresponding initial values for eΨA is significant: the square root of
+the expected squared L2 reconstruction error over the ROI for the symmetric initial
+configuration is 15.08% higher than that for the initial configuration accounting for
+18 N. HYV ¨ONEN, A. J ¨A¨ASKEL¨AINEN, R. MAITY, AND A. VAVILOV
+Fig. 5.3: Gaussian Test 2. The ROI is the right posterior quadrant of the brain with
+its bottom layer of height 2 cm excluded. Top: the optimized electrode setup deduced
+by starting from the symmetric initial configuration on the top row of Figure 5.1.
+Bottom: the optimized electrode setup deduced by starting from the pre-optimized
+initial configuration on the bottom row of Figure 5.1.
+0 5 10 15 20 25 30 35 40
+iteration number
+1.3
+1.35
+1.4
+1.45
+1.5
+1.55
+1.6
+1.65
+1.7
+1.75 10-3
+0 5 10 15 20 25 30 35 40
+iteration number
+1.3
+1.32
+1.34
+1.36
+1.38
+1.4
+1.42
+1.44
+1.46
+1.48
+10-3
+Fig. 5.4: Gaussian Test 2. The evolution of eΨA during Algorithm 1 when the ROI
+is the right posterior quadrant of the brain. Left: the symmetric initial configuration
+on the top row of Figure 5.1. Right: the pre-optimized initial configuration on the
+bottom row of Figure 5.1.
+the location of the ROI to a certain extent. This demonstrates that the intuition of
+placing most available electrodes close to the ROI seems correct. For the symmetric
+initial configuration, running Algorithm 1 resulted in a reduction of 22 .82% in the
+value of eΨA, whereas the reduction was only 12 .34% for the ‘pre-optimized’ initial
+configuration.
+5.2. Total variation with an inclusion. Assume there is a spherical conduc-
+tive anomaly of radius 1 .8 cm in the right posterior quadrant of the brain as illus-
+trated in Figure 5.5. The inhomogeneity could model a hemorrhagic stroke [47]. We
+first measure (i.e., simulate) noisy data (cf. (5.1)) with an initial electrode configu-
+EXPERIMENTAL DESIGN FOR HEAD IMAGING BY EIT 19
+0.5 1 1.5 2
+Fig. 5.5: Cross-sections of the investigated head model with a spherical conductive
+inclusion in the right posterior quadrant of the brain. The horizontal slices are at
+heights 3 cm, 4 cm, 5 cm and 6 cm. The unit of conductivity is S/m.
+ration and then compute a reconstruction corresponding to a smoothened TV prior
+by combining lagged diffusivity iteration with sequential linearizations, as explained
+in Section 3.2. The lagged diffusivity iteration associated to the final linearization of
+the measurement model can be interpreted to produce a Gaussian posterior for the
+conductivity perturbation, with its mean and covariance given by (3.13) and (3.14),
+respectively, cf. Remark 3.1. This covariance is finally used as Γ prior in (3.2) and
+indirectly in (4.1) to enable finding new, more informative positions for the available
+electrodes via minimizing the induced A-optimality target.
+In the following numerical tests, we choose the values T = 10−6, γ = 105, cυ =
+300 and bυ = 0.01 for the free parameters in (3.5) and compute reconstructions
+of the conductivity perturbation by applying five lagged diffusivity steps to each of
+five subsequent linearizations, which results in reconstructions of the conductivity
+perturbation that are adequately in line with the smoothened TV prior. We do not
+consider choosing the number of lagged diffusivity steps or sequential linearizations
+in more detail here but instead refer to [10, 24, 25, 26] for more information on this
+aspect in different settings.
+Let us first consider the symmetric initial electrode configuration presented on
+the top row of Figure 5.1. The reconstruction computed from the associated mea-
+surements is presented at top in Figure 5.6, with the diagonal of the accompanying
+posterior covariance visualized in the bottom images of the same figure. Although the
+diagonal of the posterior covariance, which is used as the prior for finding new posi-
+tions for the electrodes, does not reveal all characteristics of the associated Gaussian
+distribution, it in any case indicates that the highest variances in the nodal degrees
+of freedom in the conductivity reconstruction are found close to the boundaries of
+the reconstructed inhomogeneity. It is thus to be expected that the minimization of
+ΨA leads to the electrodes moving to positions where more information about the
+corresponding area of high uncertainty can be obtained.
+Indeed, running Algorithm 1 with the prior visualized at bottom in Figure 5.6
+results in the electrode positions shown in the top row of Figure 5.7. As expected,
+most electrodes have gathered close to the edges in the reconstruction formed from
+the data simulated with the initial electrode setup. Since the electrodes have heavily
+clustered during the optimization process, it is almost inevitable that the depicted
+A-optimized positions only correspond to a local minimum of Ψ A as the electrodes
+presumably block one another’s paths to more optimal positions.
+The bottom row of Figure 5.7 presents the electrode setup that results from min-
+20 N. HYV ¨ONEN, A. J ¨A¨ASKEL¨AINEN, R. MAITY, AND A. VAVILOV
+0 0.01 0.02 0.03 0.04 0.05
+0 0.5 1 1.5
+10-3
+Fig. 5.6: Top: cross-sections of the reconstruction of the conductivity perturbation
+shown in Figure 5.5 for the symmetric initial electrode configuration in Figure 5.1.
+Bottom: the diagonal of the corresponding posterior covariance. The horizontal slices
+are at heights 3 cm, 4 cm, 5 cm and 6 cm.
+imizing ΨA with the prior covariance obtained as a side product when reconstructing
+the conductivity perturbation from data simulated with the electrodes concentrated
+around the right posterior quadrant of the head shown on the bottom row of Fig-
+ure 5.1. Since the electrodes lie initially closer to the inclusion, the obtained recon-
+struction of the perturbation (not shown here) is somewhat better localized to the
+vicinity of the true conductivity perturbation. This leads to the A-optimized electrode
+positions also being slightly closer to the location of the stroke than on the top row
+of Figure 5.7, where a couple of electrodes even remain on the uninteresting side of
+the head.
+The evolution of the square root of the A-optimality target, i.e., eΨA, for the
+optimization processes leading to the two electrode configurations in Figure 5.7 are
+plotted in Figure 5.8. Note that the values of eΨA in the two convergence plots are
+not comparable as such because they correspond to two separate priors containing
+different levels of information on the whereabouts of the conductivity perturbation.
+The idea of computing a reconstruction and finding new positions for the available
+electrodes based on the covariance matrix formed as a side product of the reconstruc-
+tion algorithm of Section 3.2 can be iterated. Indeed, a reconstruction computed from
+data simulated with the bottom electrode setup in Figure 5.7 is illustrated at top in
+Figure 5.9, and the resulting newly A-optimized electrode setup is presented at bot-
+tom in that same figure. Since the electrodes shown in the bottom row of Figure 5.7
+are positioned closer to the location of the stroke than the symmetric initial electrode
+configuration in Figure 5.1, the reconstruction in Figure 5.9 is somewhat more accu-
+EXPERIMENTAL DESIGN FOR HEAD IMAGING BY EIT 21
+Fig. 5.7: Top: the electrode configuration optimized based on the (prior) covariance
+obtained as a side product when forming the reconstruction in Figure 5.6 from data
+corresponding to the symmetric electrode configuration in Figure 5.1. Bottom: the
+electrode configuration optimized based on the (prior) covariance obtained as a side
+product when forming a reconstruction from data corresponding to the electrode
+configuration concentrated around the right posterior quadrant in Figure 5.1.
+0 5 10 15 20 25 30 35 40
+iteration number
+2.824
+2.826
+2.828
+2.83
+2.832
+2.834
+2.836
+2.838
+2.84
+2.842 10-4
+0 5 10 15 20 25 30 35 40
+iteration number
+3.27
+3.275
+3.28
+3.285
+3.29
+3.295 10-4
+Fig. 5.8: The evolution of eΨA during Algorithm 1. Left: the prior covariance is
+obtained by forming a reconstruction from data simulated with the symmetric elec-
+trode configuration in Figure 5.1. Right: the prior covariance is obtained by forming
+a reconstruction from data simulated with the electrode configuration concentrated
+around the right posterior quadrant in Figure 5.1.
+rate than that in Figure 5.6. This is also reflected in the (doubly) optimized electrodes
+in Figure 5.9 being more tightly packed around the location of the stroke than either
+of the (singly) optimized configurations in Figure 5.7.
+6. Concluding remarks. This paper tackled the optimization of electrode po-
+sitions in head imaging by EIT, with the underlying motivation to monitor stroke
+patients in intensive care. After linearizing the smoothened CEM to introduce an
+22 N. HYV ¨ONEN, A. J ¨A¨ASKEL¨AINEN, R. MAITY, AND A. VAVILOV
+0 0.01 0.02 0.03 0.04 0.05 0.06
+Fig. 5.9: Top: cross-sections of the reconstruction of the conductivity perturbation
+shown in Figure 5.5 for the electrode configuration at bottom in Figure 5.7. Bottom:
+the electrode configuration optimized based on the covariance obtained as a side
+product when forming the presented reconstruction.
+approximate linear forward model, two algorithms based on the concept of Bayesian
+A-optimality were introduced. The first one can be run offline to find informative
+positions for the available electrodes assuming a Gaussian prior for the conductivity
+perturbation and assigning a ROI inside the patient’s head. The second algorithm
+is an extension of the first one, with the Gaussian prior for the optimization process
+produced by a reconstruction method based on an initial electrode configuration and
+a combination of sequential linearizations and the lagged diffusivity iteration. Both
+algorithms produced intuitively acceptable results in the sense that the electrodes
+moved closer to the area of interest during the optimization process. In particular,
+the first algorithm led to significant reductions in the expected squaredL2 reconstruc-
+tion errors under the linearized forward model.
+Interesting topics for future research include simultaneous optimization of the
+electrode positions and employed current patterns (cf. [32, 33]) as well as studying the
+effect of the particular anatomy of the patient on the optimal electrode positions. In
+this work, we mainly ignored the choice of the feeding electrode, although it certainly
+affects optimal configurations and the associated expected reconstruction errors, and
+we only considered a single head anatomy. Moreover, the introduced gradient-based
+optimization scheme should in the future be compared with a sparsification approach
+[3, 4, 27] for choosing the optimal electrode positions.
+Acknowledgements. We would like to thank Valentina Candiani for her help
+with the computational head model.
+REFERENCES
+EXPERIMENTAL DESIGN FOR HEAD IMAGING BY EIT 23
+[1] Alexanderian, A. Optimal experimental design for infinite-dimensional Bayesian inverse prob-
+lems governed by PDEs: A review. Inverse Problems (2021), 043001.
+[2] Alexanderian, A., Gloor, P. J., Ghattas, O., et al. On Bayesian A- and D-optimal
+experimental designs in infinite dimensions. Bayesian Anal. 11 , 3 (2016), 671–695.
+[3] Alexanderian, A., Petra, N., Stadler, G., and Ghattas, O. A-optimal design of ex-
+periments for infinite-dimensional Bayesian linear inverse problems with regularized l0-
+sparsification. SIAM J. Sci. Comput. 36 , 5 (2014), A2122–A2148.
+[4] Alexanderian, A., Petra, N., Stadler, G., and Ghattas, O. A fast and scalable method
+for A-optimal design of experiments for infinite-dimensional Bayesian nonlinear inverse
+problems. SIAM J. Sci. Comput. 38 , 1 (2016), A243–A272.
+[5] Bardsley, J. M. Computational uncertainty quantification for inverse problems , vol. 19 of
+Computational Science &amp; Engineering . Society for Industrial and Applied Mathematics
+(SIAM), Philadelphia, PA, 2018.
+[6] Borcea, L. Electrical impedance tomography. Inverse problems 18 (2002), R99–R136.
+[7] Burger, M., Hauptmann, A., Helin, T., Hyv ¨onen, N., and Puska, J.-P. Sequentially
+optimized projections in x-ray imaging. Inverse Problems 37 (2014), 0750006.
+[8] Calvetti, D., and Somersalo, E. Hypermodels in the Bayesian imaging framework. Inverse
+Problems 24 (2008), 034013.
+[9] Candiani, V., Hannukainen, A., and Hyv ¨onen, N. Computational framework for applying
+electrical impedance tomography to head imaging. SIAM J. Sci. Comput. 41 (2019),
+B1034–B1060.
+[10] Candiani, V., Hyv ¨onen, N., Kaipio, J. P., and Kolehmainen, V. Approximation error
+method for imaging the human head by electrical impedance tomography.Inverse Problems
+37, 12 (2021), 125008.
+[11] Candiani, V., and Santacesaria, M. Neural networks for classification of stroke in electrical
+impedance tomography on a 3D head model. Mathematics in Engineering 4 (2022), 1–22.
+[12] Chaloner, K., and Verdinelli, I. Bayesian experimental design: A review. Stat. Sci. (1995),
+273–304.
+[13] Chan, T. F., and Mulet, P. On the convergence of the lagged diffusivity fixed point method
+in total variation image restoration. SIAM J. Numer. Anal. 36 , 2 (1999), 354–367.
+[14] Cheney, M., Isaacson, D., and Newell, J. Electrical impedance tomography. SIAM Rev.
+41 (1999), 85–101.
+[15] Cheng, K.-S., Isaacson, D., Newell, J. S., and Gisser, D. G. Electrode models for electric
+current computed tomography. IEEE Trans. Biomed. Eng. 36 (1989), 918–924.
+[16] Colton, D., and Kress, R. Inverse acoustic and electromagnetic scattering theory, second ed.,
+vol. 93 of Applied Mathematical Sciences. Springer-Verlag, Berlin, 1998.
+[17] Dard´e, J., Hakula, H., Hyv ¨onen, N., and Staboulis, S. Fine-tuning electrode information
+in electrical impedance tomography. Inverse Probl. Imag. 6 (2012), 399–421.
+[18] Dard´e, J., Hyv¨onen, N., Kuutela, T., and Valkonen, T. Contact adapting electrode model
+for electrical impedance tomography. SIAM J. Appl. Math. 82 (2022), 427–229.
+[19] Dobson, D. C., and Vogel, C. R. Convergence of an iterative method for total variation
+denoising. SIAM J. Numer. Anal. 34 , 5 (1997), 1779–1791.
+[20] Duong, D.-L., Helin, T., and Rojo-Garcia, J. R. Stability estimates for the expected utility
+in Bayesian optimal experimental design. Inverse Problems 39 (2022), 125008.
+[21] Gabriel, S., Lau, R. W., and Gabriel, C. The dielectric properties of biological tissues: II.
+Measurements in the frequency range 10 Hz to 20 GHz. Phys. Med. Biol. 41 (1996), 2251.
+[22] Hanke, M., Harrach, B., and Hyv ¨onen, N. Justification of point electrode models in elec-
+trical impedance tomography. Math. Models Methods Appl. Sci. 21 (2011), 1395–1413.
+[23] Hannukainen, A., Hyv ¨onen, N., and Perkki ¨o, L. Inverse heat source problem and exper-
+imental design for determining iron loss distribution. SIAM J. Sci. Comput 43 (2021),
+B243–B270.
+[24] Harhanen, L., Hyv ¨onen, N., Majander, H., and Staboulis, S. Edge-enhancing recon-
+struction algorithm for three-dimensional electrical impedance tomography. SIAM J. Sci.
+Comput. 37 (2015), B60–B78.
+[25] Helin, T., Hyv ¨onen, N., J., M., and Puska, J.-P. Bayesian design of measurements for
+magnetorelaxometry imaging. Inverse Problems (2023), 125020.
+[26] Helin, T., Hyv ¨onen, N., and Puska, J.-P. Edge-promoting adaptive Bayesian experimental
+design for x-ray imaging. SIAM J. Sci. Comput. 44 (2022), B506–B530.
+[27] Horesh, L., Haber, E., and Tenorio, L. Optimal Experimental Design for the Large-Scale
+Nonlinear Ill-Posed Problem of Impedance Imaging , in ‘Large-Scale Inverse Problems and
+Quantification of Uncertainty’. Wiley, 2010.
+[28] Hyv¨onen, N., and Mustonen, L. Smoothened complete electrode model. SIAM J. Appl.
+24 N. HYV ¨ONEN, A. J ¨A¨ASKEL¨AINEN, R. MAITY, AND A. VAVILOV
+Math. 77 (2017), 2250–2271.
+[29] Hyv¨onen, N., and Mustonen, L. Generalized linearization techniques in electrical impedance
+tomography. Numer. Math. 140 (2018), 95–120.
+[30] Hyv¨onen, N., Sepp ¨anen, A., and Staboulis, S. Optimizing electrode positions in electrical
+impedance tomography. SIAM J. Appl. Math. 74 (2014), 1831–1851.
+[31] Kaipio, J., and Somersalo, E. Statistical and Computational Inverse Problems , vol. 160.
+Springer Science &amp; Business Media, 2006.
+[32] Kaipio, J. P., Sepp ¨anen, A., Somersalo, E., and Haario, H. Posterior covariance related
+optimal current patterns in electrical impedance tomography. Inverse Problems 20 (2004),
+919–936.
+[33] Kaipio, J. P., Sepp ¨anen, A., Voutilainen, A., and Haario, H. Optimal current patterns in
+dynamical electrical impedance tomography imaging. Inverse Problems 23 (2007), 1201–
+1214.
+[34] Karimi, A., Taghizadeh, L., and Heitzinger, C. Optimal Bayesian experimental design for
+electrical impedance tomography in medical imaging. Comput. Methods Appl. Mech. Eng.
+373 (2021), 113489.
+[35] Lai, Y., Van Drongelen, W., Ding, L., Hecox, K. E., Towle, V. L., Frim, D. M., and
+He, B. Estimation of in vivo human brain-to-skull conductivity ratio from simultaneous
+extra-and intra-cranial electrical potential recordings. Clin. Neurophysiol. 116 (2005),
+456–465.
+[36] Lassas, M., and Siltanen, S. Can one use total variation prior for edge-preserving bayesian
+inversion? Inverse Problems 20 , 5 (2004), 1537.
+[37] Latikka, J. A., Hyttinen, J. A., Kuurne, T. A., Eskola, H. J., and Malmivuo, J. A.
+The conductivity of brain tissue: Comparison of results in vivo and in vitro measurement.
+In Proceedings of the 23rd Annual International Conference of the IEEE Engineering in
+Medicine and Biology Society (Instanbul, Turkey, October 2001), vol. 4, IEEE, pp. 910–
+912.
+[38] Lee, E., Duffy, W., Hadimani, R., Waris, M., Siddiqui, W., Islam, F., Rajamani, M.,
+Nathan, R., and Jiles, D. Investigational effect of brain-scalp distance on the efficacy of
+transcranial magnetic stimulation treatment in depression. IEEE Trans. Magn. 52 (2016),
+1–4.
+[39] McCann, H., Pisano, G., and Beltrachini, L. Variation in reported human head tissue
+electrical conductivity values. Brain Topogr. 32 (2019), 825–858.
+[40] Nocedal, J., and Wright, S. J. Numerical optimization, second ed. Springer, New York,
+2006.
+[41] Oostendorp, T. F., Delbeke, J., and Stegeman, D. F. The conductivity of the human
+skull: results of in vivo and in vitro measurements. IEEE Trans. Biomed. Eng. 47 (2000),
+1487–1492.
+[42] Rainforth, T., Foster, A., Ivanova, D. R., and Smith, F. B.Modern Bayesian experimental
+design. arXiv preprint arXiv:2302.14545 (2023).
+[43] Rudin, L. I., Osher, S., and Fatemi, E. Nonlinear total variation based noise removal algo-
+rithms. Physica D 60 (1992), 259–268.
+[44] Ryan, E. G., Drovandi, C. C., McGree, J. M., and Pettitt, A. N. A review of modern
+computational algorithms for Bayesian optimal design. Int. Stat. Rev. 84 , 1 (2016), 128–
+154.
+[45] Smyl, D., and Liu, D. Optimizing electrode positions in 2-D electrical impedance tomography
+using deep learning. IEEE Trans. Instrum. Meas. 69 , 9 (2020), 6030–6044.
+[46] Somersalo, E., Cheney, M., and Isaacson, D. Existence and uniqueness for electrode models
+for electric current computed tomography. SIAM J. Appl. Math. 52 (1992), 1023–1040.
+[47] Toivanen, J., H ¨anninen, A., Savolainen, T., Forss, N., and Kolehmainen, V. 8 - mon-
+itoring hemorrhagic strokes using eit. In Bioimpedance and Spectroscopy, P. Annus and
+M. Min, Eds. Academic Press, 2021, pp. 271–298.
+[48] Uhlmann, G. Electrical impedance tomography and Calder´ on’s problem.Inverse Problems 25
+(2009), 123011.
+[49] Vauhkonen, M. Electrical impedance tomography with prior information , vol. 62. Kuopio
+University Publications C (Dissertation), 1997.
+[50] Vauhkonen, P. J., Vauhkonen, M., Savolainen, T., and Kaipio, J. P. Three-dimensional
+electrical impedance tomography based on the complete electrode model. IEEE Trans.
+Biomed. Eng. 46 (1999), 1150–1160.
+[51] Vogel, C. R., and Oman, M. E. Iterative methods for total variation denoising. SIAM J.
+Sci. Comput. 17 (1996), 227–238.</pre></html>

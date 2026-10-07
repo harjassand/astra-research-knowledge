@@ -1,0 +1,113 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>&quot;&quot;&quot;Frozen heldout nonradial finite FEM experiment; no training selection here.</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>&quot;&quot;&quot;Frozen heldout nonradial finite FEM experiment; no training selection here.</h1><p>Source ID d-130ea1d7da966558; literature/sources/r07_analysis/cycle2/evaluate_snapshot.py; 2575 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>&quot;&quot;&quot;Frozen heldout nonradial finite FEM experiment; no training selection here.
+
+Data are floating evaluations of the SAME exact normalized physical design.
+No continuum or floating-roundoff certificate is asserted.
+&quot;&quot;&quot;
+import json,time,hashlib,itertools
+from fractions import Fraction as F
+from pathlib import Path
+import numpy as np
+from model import build
+
+ROOT=Path(__file__).resolve().parents[3];OUT=ROOT/&#x27;results/rank_pde/cycle2&#x27;
+def fnum(x):return float(F(x))
+def physical_port(model):
+    P=np.zeros((len(model[&#x27;points&#x27;]),len(model[&#x27;boundary_nodes&#x27;])))
+    P[model[&#x27;boundary_nodes&#x27;]]=model[&#x27;boundary_mass&#x27;]
+    return P[1:]
+
+def operator_rows(plan):
+    E=fnum(plan[&#x27;total_raw_energy&#x27;]);rows=[]
+    for g,block,norms in zip(plan[&#x27;raw_currents&#x27;],plan[&#x27;raw_tests&#x27;],plan[&#x27;raw_test_norms&#x27;]):
+        g=np.array([fnum(x) for x in g])/np.sqrt(E)
+        for q,N in zip(block,norms):
+            q=np.array([fnum(x) for x in q])/np.sqrt(fnum(N));rows.append(np.outer(q,g).reshape(-1))
+    return np.array(rows)
+
+class Oracle:
+    def __init__(self,model,port=None):
+        self.model=model;self.P=physical_port(model) if port is None else port
+        self.cache={};self.factorizations=0;self.RHS=0;self.requests=0
+    def get(self,theta):
+        self.requests+=1;key=tuple(np.asarray(theta,dtype=float))
+        if key not in self.cache:
+            A=self.model[&#x27;A0&#x27;]+np.einsum(&#x27;j,jab-&gt;ab&#x27;,theta,self.model[&#x27;A&#x27;])
+            self.cache[key]=self.P.T@np.linalg.solve(A,self.P)
+            self.factorizations+=1;self.RHS+=self.P.shape[1]
+        return self.cache[key]
+
+def fit(oracle,R,grid,pred,obs):
+    residual=np.linalg.norm(pred-obs,axis=1);k=int(np.argmin(residual));best=grid[k].copy();score=residual[k]
+    spacing=.1/40;evals=0
+    for level in range(5):
+        lo=np.maximum(-.05,best-spacing);hi=np.minimum(.05,best+spacing)
+        xs=np.linspace(lo[0],hi[0],7);ys=np.linspace(lo[1],hi[1],7)
+        candidates=np.vstack([np.array(list(itertools.product(xs,ys))),best])
+        values=np.array([R@oracle.get(theta).reshape(-1) for theta in candidates]);evals+=len(candidates)
+        residual=np.linalg.norm(values-obs,axis=1);k=int(np.argmin(residual))
+        if residual[k]&lt;=score:best=candidates[k].copy();score=float(residual[k])
+        spacing/=3
+    return best,float(score),evals
+
+def summary(records):
+    out={}
+    for label in [&#x27;random_single&#x27;,&#x27;optimized_single&#x27;,&#x27;optimized_multi&#x27;]:
+        for sigma in [.0003,.001,.003]:
+            data=[z for z in records if z[&#x27;method&#x27;]==label and z[&#x27;noise_SD&#x27;]==sigma]
+            errors=np.array([z[&#x27;parameter_error&#x27;] for z in data]);bounds=[z[&#x27;global_grid_error_bound_diagnostic&#x27;] for z in data if z[&#x27;global_grid_error_bound_diagnostic&#x27;] is not None]
+            out[label+&#x27;_&#x27;+str(sigma)]={&#x27;trials&#x27;:len(data),&#x27;RMSE&#x27;:float(np.sqrt(np.mean(errors**2))),&#x27;median_error&#x27;:float(np.median(errors)),&#x27;p95_error&#x27;:float(np.quantile(errors,.95)),&#x27;maximum_error&#x27;:float(max(errors)),&#x27;positive_certificate_trials&#x27;:len(bounds),&#x27;max_error_over_bound&#x27;:max([z[&#x27;parameter_error&#x27;]/z[&#x27;global_grid_error_bound_diagnostic&#x27;] for z in data if z[&#x27;global_grid_error_bound_diagnostic&#x27;] is not None],default=None)}
+    return out
+
+def main():
+    start=time.perf_counter();plans=json.loads((OUT/&#x27;frozen_designs.json&#x27;).read_text());certs=json.loads((OUT/&#x27;exact_certificates.json&#x27;).read_text())
+    frozen_hash=hashlib.sha256((OUT/&#x27;frozen_designs.json&#x27;).read_bytes()).hexdigest()
+    assert frozen_hash==&#x27;021fbe5d6fafb2fd9a3ddb997d20cb2f8a17d68e9cdbbdd199fef1cf8d46bf4d&#x27;
+    m=build();oracle=Oracle(m)
+    grid=np.array(list(itertools.product(np.linspace(-.05,.05,41),repeat=2)))
+    grid_F=np.array([oracle.get(t).reshape(-1) for t in grid])
+    allplans=[plans[&#x27;optimized_single&#x27;],plans[&#x27;optimized_multi&#x27;]]+plans[&#x27;random&#x27;];Rs=np.array([operator_rows(p) for p in allplans])
+    gridpred=np.einsum(&#x27;ta,pra-&gt;ptr&#x27;,grid_F,Rs)
+    # Only now open the preregistered heldout draws, after physical-design freeze.
+    truth=np.random.default_rng(2026100643).uniform(-.05,.05,(64,2))
+    noise=np.random.default_rng(2026100645).normal(size=(3,128,4))
+    truth_F=np.array([oracle.get(t).reshape(-1) for t in truth])
+    truth_y=np.einsum(&#x27;ta,pra-&gt;ptr&#x27;,truth_F,Rs)
+    records=[];fit_start=time.perf_counter();fit_queries=0
+    for si,sigma in enumerate([.0003,.001,.003]):
+        for trial in range(128):
+            ti=trial%64;eps=sigma*noise[si,trial]
+            for label,pi,cert in [(&#x27;random_single&#x27;,2+trial,certs[&#x27;random&#x27;][trial]),(&#x27;optimized_single&#x27;,0,certs[&#x27;optimized_single&#x27;]),(&#x27;optimized_multi&#x27;,1,certs[&#x27;optimized_multi&#x27;])]:
+                obs=truth_y[pi,ti]+eps;estimate,residual,queries=fit(oracle,Rs[pi],grid,gridpred[pi],obs);fit_queries+=queries
+                kappa=fnum(cert[&#x27;global_secant_lower&#x27;]);L=fnum(cert[&#x27;parameter_Lipschitz_upper&#x27;]);eta=L*(.1/40)*np.sqrt(2)/2
+                bound=(2*np.linalg.norm(eps)+eta)/kappa if kappa&gt;0 else None
+                records.append({&#x27;noise_SD&#x27;:sigma,&#x27;trial&#x27;:trial,&#x27;truth_index&#x27;:ti,&#x27;method&#x27;:label,&#x27;design_index&#x27;:pi,&#x27;truth&#x27;:truth[ti].tolist(),&#x27;standard_noise&#x27;:noise[si,trial].tolist(),&#x27;observation&#x27;:obs.tolist(),&#x27;estimate&#x27;:estimate.tolist(),&#x27;residual&#x27;:residual,&#x27;parameter_error&#x27;:float(np.linalg.norm(estimate-truth[ti])),&#x27;certificate_status&#x27;:cert[&#x27;status&#x27;],&#x27;global_grid_residual_slack&#x27;:eta,&#x27;global_grid_error_bound_diagnostic&#x27;:bound,&#x27;local_forward_requests&#x27;:queries,&#x27;bound_scope&#x27;:&#x27;Exact-arithmetic grid theorem evaluated in ordinary floats; no rounding enclosure&#x27;})
+    fit_seconds=time.perf_counter()-fit_start
+    # Admitted finite normalized secant diagnostic, separate from certificates.
+    diag_start=time.perf_counter();rng=np.random.default_rng(2026100646);pairs=rng.uniform(-.05,.05,(5000,2,2))
+    S=[];singular=[]
+    V=m[&#x27;boundary_values&#x27;]
+    for a,b in pairs:
+        delta=(oracle.get(a)-oracle.get(b))/np.linalg.norm(a-b);S.append(delta.reshape(-1));singular.append(np.linalg.svd(V.T@delta@V,compute_uv=False))
+    S=np.array(S);singular=np.array(singular)
+    separations=np.linalg.norm(np.einsum(&#x27;ta,pra-&gt;ptr&#x27;,S,Rs),axis=2)
+    finite_min=separations.min(axis=1)
+    diagnostics={&#x27;pair_count&#x27;:5000,&#x27;scope&#x27;:&#x27;Finite sampled minima are upper bounds on true global minima; no lower certificate from sampling&#x27;,&#x27;measurement_secant_minimum&#x27;:{p[&#x27;label&#x27;]:float(v) for p,v in zip(allplans,finite_min)},&#x27;full_mode_operator_singular_values&#x27;:{str(k):{&#x27;sample_min&#x27;:float(singular[:,k-1].min()),&#x27;median&#x27;:float(np.median(singular[:,k-1])),&#x27;p05&#x27;:float(np.quantile(singular[:,k-1],.05))} for k in [1,2,4,8,15]},&#x27;seconds&#x27;:time.perf_counter()-diag_start}
+    # Fine mesh: prolong the same physical traces, not fine-specific modes.
+    fine=build(8,4);T=np.zeros((32,16))
+    for i in range(32):
+        if i%2==0:T[i,i//2]=1
+        else:T[i,i//2]=.5;T[i,(i//2+1)%16]=.5
+    fineoracle=Oracle(fine,physical_port(fine)@T)
+    coarse0=oracle.get([0,0]);fine0=fineoracle.get([0,0]);diff0=V.T@(fine0-coarse0)@V
+    fine_F=np.array([fineoracle.get(t).reshape(-1) for t in truth[:16]])
+    discrepancy=(fine_F-truth_F[:16]);fine_results={&#x27;scope&#x27;:&#x27;Nested Galerkin diagnostic only; coarse/fine agreement is not a continuum error or secant approximation bound&#x27;,&#x27;reference_mode_operator_discrepancy_norm&#x27;:float(np.linalg.norm(diff0,2)),&#x27;reference_difference_eigenvalue_min&#x27;:float(np.linalg.eigvalsh(diff0)[0]),&#x27;response_max_difference_by_plan&#x27;:{p[&#x27;label&#x27;]:float(np.linalg.norm(discrepancy@R.T,axis=1).max()) for p,R in zip(allplans[:2],Rs[:2])},&#x27;normalized_secant_max_discrepancy_by_plan&#x27;:{},&#x27;fine_factorizations&#x27;:fineoracle.factorizations,&#x27;fine_RHS&#x27;:fineoracle.RHS}
+    for p,R in zip(allplans[:2],Rs[:2]):
+        fine_results[&#x27;normalized_secant_max_discrepancy_by_plan&#x27;][p[&#x27;label&#x27;]]=max(float(np.linalg.norm(R@(discrepancy[i]-discrepancy[j]))/np.linalg.norm(truth[i]-truth[j])) for i,j in itertools.combinations(range(16),2))
+    costs={&#x27;wall_seconds&#x27;:time.perf_counter()-start,&#x27;fitting_seconds&#x27;:fit_seconds,&#x27;heldout_fit_count&#x27;:len(records),&#x27;fixed_grid_parameter_count&#x27;:len(grid),&#x27;requested_local_forward_calls&#x27;:fit_queries,&#x27;naive_per_fit_forward_budget&#x27;:len(grid)+250,&#x27;actual_cached_coarse_factorizations&#x27;:oracle.factorizations,&#x27;actual_cached_coarse_RHS&#x27;:oracle.RHS,&#x27;actual_coarse_requests&#x27;:oracle.requests,&#x27;fine_factorizations&#x27;:fineoracle.factorizations,&#x27;fine_RHS&#x27;:fineoracle.RHS,&#x27;current_exposures&#x27;:{&#x27;single&#x27;:1,&#x27;multi&#x27;:2},&#x27;scalar_readings_per_trial&#x27;:4,&#x27;total_input_energy&#x27;:1,&#x27;input_detector_mode_dimension&#x27;:15,&#x27;coarse_free_DOF&#x27;:24,&#x27;fine_free_DOF&#x27;:80,&#x27;cost_note&#x27;:&#x27;Shared offline forward cache reused by equally informed methods; actual cache cost and per-fit naive query budget both reported. Synthetic truth: exact same finite Galerkin forward, not physical continuum observations.&#x27;}
+    (OUT/&#x27;trials.jsonl&#x27;).write_text(&#x27;&#x27;.join(json.dumps(r)+&#x27;\n&#x27; for r in records))
+    result={&#x27;freeze_hash&#x27;:frozen_hash,&#x27;summary&#x27;:summary(records),&#x27;secant_diagnostics&#x27;:diagnostics,&#x27;mesh_diagnostic&#x27;:fine_results,&#x27;costs&#x27;:costs}
+    (OUT/&#x27;evaluation.json&#x27;).write_text(json.dumps(result,indent=2))
+    np.savez_compressed(OUT/&#x27;raw_arrays.npz&#x27;,truths=truth,standard_noise=noise,grid=grid,grid_ports=grid_F,truth_ports=truth_F,secant_pairs=pairs,normalized_port_secants=S,operator_singular_values=singular,measurement_secant_norms=separations,fine_truth_ports=fine_F,physical_measurement_rows=Rs)
+    print(json.dumps({&#x27;summary&#x27;:result[&#x27;summary&#x27;],&#x27;mesh&#x27;:fine_results,&#x27;costs&#x27;:costs},indent=2))
+if __name__==&#x27;__main__&#x27;:main()
+</pre></html>

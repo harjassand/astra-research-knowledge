@@ -1,0 +1,990 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Neurosymbolic Discovery ofAlgebraic Graph Constructions</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>Neurosymbolic Discovery ofAlgebraic Graph Constructions</h1><p>Source ID d-f0f62cf5ad05fd38; literature/sources/r16_proof_methods/graph-constructions-v1.html; 10673 o200k tokens; role primary_source_or_metadata; extraction html_text_discovery_only_math_may_be_lossy. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>Neurosymbolic Discovery ofAlgebraic Graph Constructions
+
+      Report GitHub Issue
+      ×
+
+      Title:
+
+Content selection saved. Describe the issue below:
+
+      Description:
+
+      Submit without GitHub
+      Submit in GitHub
+
+    arXiv is now an independent nonprofit!
+    Learn more
+    ×
+
+      Back to arXiv
+
+    License: arXiv.org perpetual non-exclusive license
+
+arXiv:2608.08118v1 [cs.AI] 08 Aug 2026
+
+Neurosymbolic Discovery of
+
+Algebraic Graph ConstructionsThanks: To appear in the Proceedings of the 20th Conference on Neurosymbolic Learning and Reasoning (NeSy 2026), Proceedings of Machine Learning Research (PMLR), vol. 284.
+
+David Seka
+
+  
+Stefan Szeider
+
+Affiliation: Algorithms and Complexity Group
+
+Affiliation: TU Wien, Vienna, Austria
+
+Email: {dseka,sz}@ac.tuwien.ac.at
+
+Abstract
+
+There are several methods for searching for graphs with prescribed properties, such as SAT solvers and specialized generators.
+These methods return the result as raw data: an adjacency matrix or an equivalent string encoding.
+The raw data certifies that the graph exists, but it does not reveal any structural properties of the graph: no algebraic construction or decomposition.
+We ask whether one can automatically discover a short algebraic description if only this raw data is provided.
+We look for a description such as a Cayley graph 
+\operatorname{Cay}(\Gamma,S)
+Cay⁡(Γ,S)\operatorname{Cay}(\Gamma,S) or a lexicographic product 
+C_{5}[K_{3}]
+C5​[K3]C_{5}[K_{3}].
+The description must be precise such that one can create an isomorphic copy of the given graph from the description.
+
+We address this question by means of a neurosymbolic approach.
+We propose an agent that runs on a general-purpose large language model with no fine-tuning or per-target training.
+The model interleaves reasoning with calls to a computer algebra system.
+This way it analyzes the target graph and proposes and tests candidate constructions.
+The agent runs the construction and revises it until the output matches the target.
+The agent communicates with the computer algebra system through a Model Context Protocol (MCP) server.
+We release this server as a general-purpose bridge between agents and the computer algebra system SageMath.
+Whether the construction matches the target is checked by a single exact isomorphism test, and therefore rests on the symbolic side and not on the model.
+Wrong proposals are rejected, not trusted.
+We test the approach on a benchmark of 100 highly symmetric graphs, namely two-orbit graphs on up to 25 vertices, that are likely to allow an algebraic construction; the benchmark was fixed in advance.
+Our agent could find verified algebraic constructions for all of them, without falling back to raw encodings.
+A strong template-enumeration baseline reaches only about 
+20\%
+20%20\%.
+Also, a catalog lookup could not identify any of these graphs.
+However, construction quality declines when symmetry is removed, as expected.
+The agent returns the raw encoding only when no symmetry-exploitable structure is available.
+
+As a concrete application of our approach, we identify the smallest known counterexample to the Bernhart–Kainen dispersability conjecture, a 
+16
+1616-vertex graph that enumeration found as raw data.
+For this graph, our agent found an explicit algebraic construction.
+
+1 Introduction
+
+A standard technique in combinatorics is to search for a graph with a prescribed property by means of a generator or a SAT solver.
+If the graph is found, it is available as raw data.
+For instance, exhaustive generators based on canonical augmentation [McKay, 1998, McKay and Piperno, 2014] enumerate every graph of a given order and output them as graph6 strings.
+For eleven vertices, such a catalog already contains more than a billion graphs.
+Specialized generators can limit the search to special graph classes like cubic graphs [Brinkmann et al., 2011].
+On the other hand, SAT-based search can be used to find graphs satisfying properties encoded in propositional logic.
+Examples of such approaches have been proposed by Codish et al. [2013] using symmetry-broken search, by the SAT modulo symmetries tool [Kirchweger and Szeider, 2024], and by the SAT+CAS tool [Bright et al., 2019].
+All these approaches have in common that the output is an object of the same kind: an adjacency matrix, a graph6 string, or an isomorphism certificate.
+This output proves existence, but it does not provide any insight into the structure of the graph.
+Two graphs with similar raw data might be very different objects.
+One could be a vertex-transitive circulant, the other a structureless random regular graph.
+Just looking at the raw data does not distinguish these graphs.
+However, an algebraic description such as a Cayley graph 
+\operatorname{Cay}(\Gamma,S)
+Cay⁡(Γ,S)\operatorname{Cay}(\Gamma,S) exposes the automorphism group order, regularity, diameter, and structural invariants.
+This explains what the graph is.
+
+Just comparing the raw data to a standard catalog or a template-matching approach is insufficient.
+On a benchmark of 
+100
+100100 graphs (Section 4), template enumeration over a hand-built grammar covered only 
+21
+2121 graphs.
+Literature lookup against the House of Graphs database [Brinkmann et al., 2013] together with recognition checks for circulants, strongly regular graphs, Kneser graphs, Paley graphs, and line graphs could not identify a single one of these hundred graphs.
+The remaining 
+79
+7979 graphs have constructions that are outside the predefined grammar.
+As we shall see, these graphs also have algebraic structure, which our approach revealed.
+
+We therefore propose a neurosymbolic approach to the discovery of a construction that goes beyond retrieving one from a catalog or a fixed template.
+Our LLM-based agent discovers the construction by analyzing the target graph and testing hypotheses by means of a computer algebra system.
+The agent follows the ReAct pattern of interleaved reasoning and action [Yao et al., 2023].
+The agent can read various properties of the graph under investigation, like degrees and orbit structure, and make hypotheses for a construction.
+It can test the hypothesis via the computer algebra system to check against the given target graph.
+The agent tries different constructions, revises and corrects errors that surface on execution, until it finds a graph that matches the target.
+If the agent cannot find a construction, it can fall back to a construction that replicates the raw data.
+For the connection between the agent and the computer algebra system SageMath, we created a dedicated MCP (Model Context Protocol) server.
+
+The correctness of the construction is certified from the symbolic side, by the computer algebra system, which functions as the trust base.
+A wrong hypothesis is rejected: the model proposes but is never trusted.
+We also verify the constructions independently with the computer algebra system after the agent has terminated its work.
+Our contribution is therefore the pairing of a neural proposer, which is not based on any fixed template or grammar, with a symbolic verifier that makes the result reliable.
+This design does not depend on a particular LLM.
+For our experiments, we use a general-purpose frontier model, run at temperature 
+0
+00 (Section 3).
+However, the choice of the model does affect how often and how well constructions are found.
+We compare candidate models (Section 4.3.1).
+We release the MCP server as a standalone contribution that provides any MCP-compatible agent access to the SageMath computer algebra system (Section 3).
+We also release the benchmark with the baselines.
+
+For each admissible order 
+n\leq 25
+n≤25n\leq 25 (defined in Section 4.1), the benchmark takes the ten connected two-orbit graphs with the largest number of automorphisms, restricted to regular non-joins.
+This gives 
+100
+100100 graphs in total.
+These are fixed in advance.
+These hundred graphs are highly symmetric on purpose, so that it is reasonable to assume that some algebraic construction exists.
+On these hundred graphs, the agent found verified constructions for all of them, not using the fallback to explicit constructions.
+The strongest baseline only reached 
+21
+2121 of these graphs.
+We rated the constructions in terms of algebraic canonicity with an LLM judge on a scale of zero to five (Section 4.2.1).
+The hundred constructions achieved a mean of 
+4.4
+4.44.4.
+In contrast, we tested the agent on 
+50
+5050 random regular graphs with 
+16
+1616 vertices, stratified by the number of automorphisms.
+As expected, the construction-quality grade falls monotonically from 
+5.0
+5.05.0 for the most symmetric graphs to 
+2.3
+2.32.3 for the least symmetric.
+In that group, the trivial raw-encoding fallback appears only for the graphs with low symmetry.
+On a set of twenty graphs with planted constructions, the agent recovered nineteen (Section 4.3.3).
+Therefore, overall, the fallback reflects the absence of structure and not that the search failed.
+
+We provide the agent’s process for a single example in full in Section 4.
+It is a 
+16
+1616-vertex two-orbit graph, which we identified as the smallest known counterexample to the Bernhart–Kainen dispersability conjecture [Bernhart and Kainen, 1979, Alam et al., 2021].
+It improves upon the 
+20
+2020-vertex Folkman graph, the previously smallest known counterexample.
+We found the graph by searching through the catalog of two-orbit graphs we published recently [Seka and Szeider, 2026].
+With our agent, we could determine an algebraic construction of this graph.
+
+2 Task Formalization
+
+The task is to turn a graph into a construction.
+The input to the task is an undirected simple graph 
+G
+GG, given as raw data, i.e., an adjacency matrix (in practice, the equivalent graph6 string).
+The output is a short program 
+p
+pp in SageMath (a computer algebra system; henceforth Sage), assembled from standard graph-construction primitives, whose result 
+\operatorname{eval}(p)
+eval⁡(p)\operatorname{eval}(p) is isomorphic to 
+G
+GG; we call such a 
+p
+pp a construction for 
+G
+GG and say it is accepted.
+Isomorphism is the only correctness requirement, and Sage’s method is_isomorphic decides correctness.
+
+The agent accesses Sage via the MCP protocol and has all the Sage primitives and operations at its disposal.
+This includes a library of algebraic structures, named families of graphs such as cycles 
+C_{n}
+CnC_{n}, paths 
+P_{n}
+PnP_{n}, complete graphs 
+K_{n}
+KnK_{n}, complete bipartite 
+K_{a,b}
+Ka,bK_{a,b} and multipartite 
+K_{a_{1},\ldots,a_{k}}
+Ka1,…,akK_{a_{1},\ldots,a_{k}} graphs, and graph operations such as complement, line graph, subdivision, join 
+\vee
+∨\vee, disjoint union 
+\sqcup
+⊔\sqcup, and the Cartesian 
+\square
+□\square product.
+This is not an exhaustive list.
+In our experiments, the agent mainly used groups to construct the target graphs.
+A construction is any well-formed Sage expression that builds a graph.
+We write 
+\mathcal{L}
+ℒ\mathcal{L} for this open construction language.
+
+A graph will have many possible constructions.
+Among those, we want a simple and elegant one, ideally one that exhibits structure, such as a 
+5
+55-cycle with every vertex replaced by a triangle.
+At the other extreme, a construction can spell out the graph edge by edge.
+Although this is a valid construction, we refer to it as a fallback: the program Graph(g6(
+G
+GG)) reads the graph from its raw data.
+Here we keep the term “simplest” informal rather than giving a fixed definition.
+We grade accepted constructions for simplicity and elegance in a further process (Section 4.2.1).
+
+As a baseline, we define a subset 
+\mathcal{T}\subseteq\mathcal{L}
+𝒯⊆ℒ\mathcal{T}\subseteq\mathcal{L} of standard templates.
+It contains all constructions built from cycles, complete, and complete multipartite graphs by at most three nested operations, plus a fixed list of named schemas: 
+K_{a,b}
+Ka,bK_{a,b} with a decorated remainder, two cliques with an apex, prisms and cycles attached to a 
+K_{a,b}
+Ka,bK_{a,b}, lexicographic products with edgeless factors, crown graphs, Cartesian products, and complements of these.
+Whether 
+p\in\mathcal{T}
+p∈𝒯p\in\mathcal{T} can be decided by inspecting its expression tree.
+
+Sage’s is_isomorphic implements partition-refinement canonical labeling, the exhaustively tested technique behind nauty and Traces [McKay and Piperno, 2014]; at 
+n\leq 25
+n≤25n\leq 25 it runs in well under a second per call, and its correctness on these instances is unconditional.
+SageMath provides the trust base.
+Every 
+p
+pp reported as accepted is certified by SageMath.
+This is deterministic and does not involve the language model.
+
+3 Method
+
+We observe a strong asymmetry.
+Finding a candidate construction is costly as it involves searching a large open hypothesis space.
+In contrast, verifying a candidate construction is cheap as it requires just one isomorphism test.
+We facilitate the construction discovery by means of an agentic loop in which a language model proposes constructions and utilizes the computer algebra system Sage to test properties of the graph and certify candidate constructions (Figure 1).
+
+Input:graph6 stringOutput:algebraic constructionReAct Agent(LLM)MCP server(mcp-sage)SageMath(trust base)
+
+Figure 1: Overview of the system: the ReAct agent (a frozen LLM) receives the graph6 string of the target graph, interacts with SageMath through the mcp-sage MCP server, and returns a verified algebraic construction.
+
+Inside the agentic loop we use a frozen, general-purpose language model without any fine-tuning or per-target adaptation.
+It runs as a ReAct agent [Yao et al., 2023] where it interleaves reasoning with Sage actions.
+The agent decides on its workflow and on the sequence of actions, which include analyzing the target (computing the automorphism group, the orbits, and the induced subgraph on each), hypothesizing a construction from that structure, generating Sage code that builds the graph, and checking the result against the input graph.
+The agent might refine a hypothesis across several attempts, abandon one for another, backtrack to re-analyze, or probe an auxiliary question such as taking the complement of the graph.
+
+Each target 
+G
+GG is presented as a fixed feature record. This record consists of the graph6 encoding together with 
+n
+nn, regularity, 
+|\operatorname{Aut}(G)|
+|Aut⁡(G)||\operatorname{Aut}(G)|, and the orbit sizes.
+All four are invariants the agent could compute from the encoding, so supplying them saves a call and adds no information; nothing about the target’s origin, its membership in a named family, or the construction that produced it is disclosed.
+A system prompt for the agent explains the vocabulary of 
+\mathcal{L}
+ℒ\mathcal{L}, the acceptance criterion, and the graph6 fallback.
+Whether a construction lies within the template grammar 
+\mathcal{T}
+𝒯\mathcal{T} is determined independently and not shown to the agent.
+
+The agent interacts with Sage through an MCP server that we contribute as a general-purpose interface. It exposes sage_exec (run a snippet and return its result, standard output, and any error) plus four session-management operations.
+The agent is restricted to these tool calls, with no shell or file-system access, so every computation occurs inside Sage. The MCP server is independent of the graph-construction tasks studied in this paper, and we release it for reuse by any MCP-compatible agentic system.
+
+We verify the construction proposed by the agent by running Sage’s is_isomorphic test against the input graph; the Graph(g6(
+G
+GG)) fallback is recognized by its syntax.
+
+We used a lightweight agent harness, released as mcp-minion, which wraps a language model and has access to any MCP server provided.
+For our experiments, we connect it to OpenAI GPT-5.5 (gpt-5.5, released 2026-04-24) via OpenRouter (access date 2026-05) at temperature 
+T=0
+T=0T=0.
+We selected this model from four candidates in a separate pre-study on 
+40
+4040 graphs (Section 4.3.1).
+Each run can use at most 
+80
+8080 agentic steps and 
+500{,}000
+500,000500{,}000 tokens (input plus output; all token counts in this paper are such totals).
+The token cap was introduced after the pre-study of Section 4.3.1 and was never reached in any run.
+
+4 Experiments
+
+We run experiments on a 
+100
+100100-graph benchmark of highly symmetric graphs, a comparison of different LLMs on a 
+40
+4040-graph pre-study, an evaluation on 
+50
+5050 random regular graphs, stratified by the number of automorphisms, and a twenty-graph recall test where we selected graphs with planted constructions.
+Finally, we run the agent on our new counterexample to the Bernhart–Kainen conjecture.
+
+4.1 Benchmark population
+
+Not every graph has an elegant algebraic construction.
+It is usually assumed that whether a graph has such a construction is correlated with how symmetric the graph is, i.e., how many automorphisms it possesses.
+Running our agent on a graph that does not have an algebraic construction is an impossible task.
+Hence, for the main experiment, we focused on a hundred highly symmetric graphs for which we assume that they possess such constructions.
+We utilized the catalog of over seven million two-orbit graphs on up to twenty-five vertices that we published recently [Seka and Szeider, 2026].
+From those, we only considered regular non-joins, since graphs that are joins have a trivial construction.
+However, being a non-join forces 
+\gcd(a,b)&gt;1
+gcd⁡(a,b)&gt;1\gcd(a,b)&gt;1 for the orbit sizes 
+a
+aa and 
+b
+bb [Seka and Szeider, 2026].
+Hence, we dropped graphs where the number of vertices is a prime, as those are all joins.
+We start at 
+n=12
+n=12n=12: smaller orders have very few regular non-joins (none for 
+n\leq 7
+n≤7n\leq 7, two each at 
+n=8
+n=8n=8 and 
+9
+99, and eighteen at 
+n=10
+n=10n=10), and graphs this small are easy to identify directly.
+From each admissible order 
+n\in\{12,14,15,16,18,20,21,22,24,25\}
+n∈{12,14,15,16,18,20,21,22,24,25}n\in\{12,14,15,16,18,20,21,22,24,25\}, we selected the ten graphs with the largest number of automorphisms, giving 
+10\times 10
+10×1010\times 10 target graphs in total.
+Each order’s ten graphs were fixed before the corresponding agent runs; the 
+n=24
+n=24n=24 order was added by the same rule once its enumeration became feasible.
+
+4.2 Capability
+
+Given only the raw data of the graph, the agent returned a verified non-fallback construction for each of the hundred target graphs.
+We analyzed the constructions and identified four recurring families, each with a distinct algebraic signature.
+We write 
+O_{1}\oplus O_{2}
+O1⊕O2O_{1}\oplus O_{2} for a construction in which the first orbit induces 
+O_{1}
+O1O_{1} and the second induces 
+O_{2}
+O2O_{2}.
+In such a construction, the cross-edges are supplied by a stated rule and not edge by edge.
+
+The largest family, with 35 targets spread across all even orders from 
+n=12
+n=12n=12 to 
+24
+2424, partitions one orbit into two halves, each joined completely to one part of a bipartite second orbit, as in 
+C_{4}\oplus K_{4,4}
+C4⊕K4,4C_{4}\oplus K_{4,4}.
+A second family, with 17 targets again across the even orders, sets cross-edges by a parity predicate that crosses standard product boundaries, as in 
+Q_{3}\oplus 2K_{4}
+Q3⊕2​K4Q_{3}\oplus 2K_{4} coupled by Hamming weight mod 
+2
+22.
+A third family, with 19 targets confined to 
+n=15
+n=15n=15 and 
+21
+2121, generalizes crown graphs to three 
+\mathbb{Z}_{3}
+ℤ3\mathbb{Z}_{3}-indexed parts with cyclic avoidance rules, as in 
+3K_{3}\oplus\overline{K_{6}}
+3​K3⊕K6¯3K_{3}\oplus\overline{K_{6}} sending 
+T_{i}
+TiT_{i} to 
+B_{j\neq i}
+Bj≠iB_{j\neq i} and realizing the automorphism group as a wreath product.
+The fourth family, with 10 targets all at 
+n=25
+n=25n=25, uses 
+D_{5}
+D5D_{5}-symmetric constructions built on the 
+5
+55-cycle, such as 
+C_{5}[K_{3}]\oplus C_{5}[\overline{K_{2}}]
+C5​[K3]⊕C5​[K2¯]C_{5}[K_{3}]\oplus C_{5}[\overline{K_{2}}].
+The remaining nineteen constructions are inhomogeneous, but still structured.
+The group holds nine apex-over-cliques constructions (two cliques indexed by 
+\mathbb{Z}_{2}
+ℤ2\mathbb{Z}_{2}, each carrying apex vertices joined to the whole clique, the apexes typically matched across the two blocks), six weighted blow-ups of a small Cayley base (
+\operatorname{Cay}(\mathbb{Z}_{6},\{+1,-1\})
+Cay⁡(ℤ6,{+1,−1})\operatorname{Cay}(\mathbb{Z}_{6},\{+1,-1\}) or the triangular prism) with fiber sizes forced by regularity and supported on a distinguished subgroup, three incidence constructions over 
+\mathbb{F}_{2}
+𝔽2\mathbb{F}_{2} or 
+\mathbb{Z}_{4}
+ℤ4\mathbb{Z}_{4}, and one lexicographic product 
+C_{6}[K_{2}]
+C6​[K2]C_{6}[K_{2}] augmented by a vertex per antipodal pair.
+To exemplify the agent’s range, let us look at one individual construction.
+The target graph has 
+21
+2121 vertices, is 
+14
+1414-regular, and has orbit sizes 
+6+15
+6+156+15.
+The first orbit consists of the six directed edges of the complete graph 
+K_{3}
+K3K_{3}, where two arcs are adjacent unless they are reverses of each other, which gives the octahedron 
+K_{2,2,2}
+K2,2,2K_{2,2,2}.
+The second orbit consists of three fibers of five vertices each, indexed by 
+\mathbb{Z}_{3}
+ℤ3\mathbb{Z}_{3}.
+The fibers are pairwise completely joined; there are no edges inside a fiber.
+Finally, each directed edge is joined to every fiber except the one at its tail.
+As a result, the automorphism group of the graph is the wreath product 
+S_{5}\wr S_{3}
+S5≀S3S_{5}\wr S_{3} of order 
+(5!)^{3}\cdot 3!=10{,}368{,}000
+(5!)3⋅3!=10,368,000(5!)^{3}\cdot 3!=10{,}368{,}000.
+This is visible in the construction since the three fibers permute independently and 
+\mathbb{Z}_{3}
+ℤ3\mathbb{Z}_{3} relabels everything.
+
+4.2.1 Grading construction quality
+
+To quantify how mathematically interesting and algebraically elegant a construction is, we grade each construction on a zero-to-five canonicity rubric with an LLM judge.
+Here five refers to a construction that cleanly combines named families and standard operations.
+Zero refers to the fallback with an explicit construction edge by edge.
+As a judge, we used Claude Opus 4.7 (released 2026-04-16), run at 
+T=0
+T=0T=0 with a fixed prompt.
+Among the hundred constructions, 
+47
+4747 received grade 
+5
+55, 
+44
+4444 grade 
+4
+44, and 
+9
+99 grade 
+3
+33, with a median of 
+4
+44 and a mean of 
+4.38
+4.384.38.
+The fallback was not used at all.
+We compared the LLM judge with a human judge on a 
+25
+2525-graph subset (hand-labeled by one author).
+The subset was drawn from the original 
+90
+9090-graph benchmark, before the 
+n=24
+n=24n=24 extension.
+The constructions in the subset were presented as LaTeX-rendered notation rather than raw Sage.
+The judge is systematically 
+0.32
+0.320.32 grades stricter.
+But 
+24/25
+24/2524/25 of its grades differ from the human grade by at most one, 
+14/25
+14/2514/25 are exact, and the mean absolute error is 
+0.48
+0.480.48.
+The LLM judge can be considered a reasonable proxy for a human judge.
+Grades below five identify constructions that are correct but do not achieve full algebraic elegance.
+The typical pattern, seen in the audit, is that while some elements are canonical, some parts are fixed by ad-hoc choices.
+Such gradations in the quality of a construction cannot be tested by the isomorphism test and tend to rely on some subjective evaluation.
+
+The MCP server11
+                1
+
+              https://github.com/szeider/mcp-sage and the lightweight ReAct agent22
+                2
+
+              https://pypi.org/project/mcp-minion/ are released independently as open-source tools.
+We also release the system prompt, the grading prompt, the run transcripts, and the per-experiment data.33
+                3
+
+              https://doi.org/10.5281/zenodo.21850460
+
+4.2.2 Comparison with systematic baselines
+
+We compare the agentic constructions with two baseline methods.
+The first baseline, literature lookup, checks each target graph against a database of 
+121{,}000
+121,000121{,}000 named graphs (House of Graphs [Brinkmann et al., 2013, Coolsaet et al., 2023] and strongly regular catalogs) and runs recognition checks for circulants, strongly regular graphs, Kneser graphs, named graphs such as Petersen and Paley, line graphs, lexicographic products, and complements of circulants.
+The second baseline, strong template enumeration, enumerates all constructions in a fixed grammar: base components (complete bipartite and multipartite graphs, cycles and their complements, triangular prisms, cliques) combined by a fixed set of construction patterns with cross-edge rules, testing each candidate against every target.
+
+The literature lookup could not identify any of the hundred graphs.
+Strong template enumeration found twenty-one of them, all sharing a 
+K_{k,k}
+Kk,kK_{k,k}-core motif (with a small added component such as 
+C_{4}
+C4C_{4} or a prism, joined by simple split cross-edges).
+These twenty-one graphs are also among the graphs with the largest number of automorphisms for their vertex count.
+The remaining seventy-nine graphs require constructions outside the predefined grammar.
+It is possible that a stronger non-LLM competitor would find more constructions, for instance, by means of inductive logic programming.
+
+4.3 Additional experiments
+
+We have three further experiments: (i) about the LLM chosen for the agent, (ii) whether construction quality changes if the graph is less symmetric, and (iii) whether a fallback is due to the nonexistence of a canonical construction or the agent’s failure to recover an existing one.
+
+4.3.1 Backbone dependence and cost
+
+Before fixing the main LLM for our experiments, we ran four candidate LLMs using the same agentic system, prompt, and verifier.
+For this, we used forty random regular graphs with sixteen vertices and orbit counts in 
+\{2,6,10,14\}
+{2,6,10,14}\{2,6,10,14\}.
+These graphs contained symmetric as well as almost structureless ones.
+
+Table 1: Backbone comparison on the 40-graph pre-study, with the harness, prompt, and verifier held fixed. Solved counts verified non-fallback constructions; the mean grade is over all 40 targets, where runs that produced no construction score 
+0
+00 and all other runs carry their judge grade.
+
+Model
+Solved
+Mean grade
+Tokens
+Cost
+
+GPT-5.5
+
+38/40
+38/4038/40
+
+\mathbf{3.00}
+3.00\mathbf{3.00}
+
+1.9
+1.91.9M
+$
+15.53
+15.5315.53
+
+Gemini 3 Flash
+
+31/40
+31/4031/40
+
+2.27
+2.272.27
+
+9.1
+9.19.1M
+$
+5.62
+5.625.62
+
+Gemini 3.1 Pro
+
+21/40
+21/4021/40
+
+1.80
+1.801.80
+
+8.8
+8.88.8M
+$
+22.65
+22.6522.65
+
+Claude Sonnet 4.6
+
+13/40
+13/4013/40
+
+1.48
+1.481.48
+
+60.8
+60.860.8M
+$
+201.95
+201.95201.95
+
+Table 1 shows the results of the study.
+It indicates that performance is not strongly correlated with price, and GPT-5.5 stands out as the clear winner within this group.
+
+The method is inexpensive at this scale.
+The average run on the 100-graph benchmark uses 
+27{,}000
+27,00027{,}000 tokens and 
+6
+66 Sage calls, and the maximum is 
+108{,}000
+108,000108{,}000 tokens and 
+14
+1414 calls.
+The per-run cap of 
+500{,}000
+500,000500{,}000 tokens was therefore never approached, and no target was decided by exhaustion of budget.
+The full run on the hundred graphs cost about $
+23
+2323.
+
+4.3.2 Symmetry-tracking grade
+
+We run another experiment on fifty random regular graphs with sixteen vertices.
+This experiment is intended to see how construction quality depends on the symmetry of the target graph.
+Therefore, we categorize these graphs by their number of automorphisms and put them into four bins.
+The grades of the LLM judge fall monotonically from 
+5.00
+5.005.00 over the ten graphs with 
+|\operatorname{Aut}|\geq 64
+|Aut|≥64|\operatorname{Aut}|\geq 64 to 
+3.25
+3.253.25 over the eight in 
+8
+88–
+63
+6363, 
+2.50
+2.502.50 over the twenty-two in 
+2
+22–
+7
+77, and 
+2.30
+2.302.30 over the ten asymmetric ones.
+All ten graphs in the most symmetric bin are complements of disjoint unions of cycles, so this bin is also structurally homogeneous.
+The agent found proper constructions for forty-seven of the fifty graphs and used the fallback construction for three.
+The three fallbacks appeared in the two bins of lowest symmetry.
+
+4.3.3 Recall on planted constructions
+
+The final experiment addresses the question whether the agent misses constructions for graphs for which constructions exist.
+In that case, a fallback can be considered a failure of the agent.
+Therefore, we ran the agent on twenty graphs built from planted constructions.
+Nineteen of these graphs have compositional algebraic constructions.
+One is asymmetric, i.e., has only the trivial automorphism, but is still algebraically defined: it has the vertex set 
+\mathbb{Z}_{31}
+ℤ31\mathbb{Z}_{31}, with 
+x
+xx joined to 
+x+1
+x+1x+1, 
+x-1
+x−1x-1, and 
+x^{2}+3x+7
+x2+3​x+7x^{2}+3x+7.
+Given only the graph6 string, without the symmetry fields (Section 3), the agent recovered verified constructions for the nineteen compositional graphs; it used the fallback for the asymmetric graph.
+It identified some graphs as circulants or Cayley graphs instead of the planted product construction.
+
+4.4 Bernhart–Kainen case study
+
+In this section, we report on an application of our agent to construct a graph we found by enumeration.
+Here we consider the Bernhart–Kainen conjecture on dispersable book embeddings [Bernhart and Kainen, 1979].
+It states that every 
+k
+kk-regular bipartite graph admits a vertex ordering and a proper edge coloring with 
+k
+kk colors such that edges of the same color do not interleave.
+The smallest previously known counterexample is the 
+20
+2020-vertex Folkman graph [Alam et al., 2021].
+We checked all two-orbit graphs in our recently published catalog [Seka and Szeider, 2026] and identified a 
+5
+55-regular two-orbit graph on sixteen vertices that is also a counterexample to the conjecture.
+It is now the smallest counterexample known.
+
+Figure 2: Smallest known counterexample to the Bernhart–Kainen conjecture: a 5-regular two-orbit graph on 16 vertices. The 10-cycle forms the outer ring, light red and blue marking odd and even positions. Groups 
+A
+AA (dark red, inner) and 
+B
+BB (dark blue, outer) are independent triples; each vertex of 
+A
+AA joins every odd cycle vertex, each vertex of 
+B
+BB every even one.
+
+We provided our agent the graph6 string and metadata, and it came up with a verified construction.
+It used six tool calls and 
+27{,}700
+27,70027{,}700 tokens, with a cost of about $
+0.22
+0.220.22.
+The found construction builds the graph as 
+C_{10}\oplus 2\overline{K_{3}}
+C10⊕2​K3¯C_{10}\oplus 2\overline{K_{3}}: the 
+10
+1010-cycle 
+\operatorname{Cay}(\mathbb{Z}_{10},\{+1,-1\})
+Cay⁡(ℤ10,{+1,−1})\operatorname{Cay}(\mathbb{Z}_{10},\{+1,-1\}) as one orbit, two independent triples (
+2\overline{K_{3}}
+2​K3¯2\overline{K_{3}}) as the other, joined by a parity cross-edge rule that sends each triple to all five cycle vertices of one parity class under the quotient 
+\mathbb{Z}_{10}\to\mathbb{Z}_{2}
+ℤ10→ℤ2\mathbb{Z}_{10}\to\mathbb{Z}_{2} (Figure 2): the first triple to the odd cycle vertices, the second to the even. Then each vertex has degree 
+5
+55, and the graph is bipartite.
+This construction exposes the parity coupling between the cycle and the two triples.
+Dispersability can therefore be checked by inspecting the construction rather than by exhaustive search over vertex orderings and page assignments.
+
+5 Related Work
+
+Symbolic graph enumeration.
+There are several methods to compute exhaustive lists of graphs with a given property, recorded as graph6 strings.
+These methods include canonical augmentation [McKay, 1998], SAT modulo symmetries [Kirchweger and Szeider, 2024], and SAT+CAS [Bright et al., 2019].
+Such lists certify existence, but provide no explanation or algebraic interpretation.
+This is the input setting that we address, not methods we compete with.
+Our benchmark graphs come from such an enumeration [Seka and Szeider, 2026].
+
+Template- and library-based algebraic discovery.
+The survey by Pérez-Rosés [2014] lists various methods for constructing large degree-diameter graphs.
+The most successful ones operate within fixed catalogs of algebraic families, where voltage assignments account for about 
+60\%
+60%60\% of the record entries.
+The remaining graphs are Cayley and circulant constructions found with computer search that optimizes parameters within a human-supplied family.
+Jooken [2025], by contrast, surveys computer-assisted graph theory more broadly and observes that LLMs have not yet produced breakthrough results in the field.
+Our template-enumeration baseline (Section 4.2.2) follows this line of research but only recovers a fraction of the constructions found by our agent.
+
+LLMs and agents for mathematical discovery.
+Language-model-based agents have been used extensively over the last few years for mathematical discovery.
+However, they are mainly used for proof construction or object search.
+Some prominent examples include the following.
+FunSearch [Romera-Paredes et al., 2024] pairs an LLM with an evolutionary program database and a domain-specific scoring evaluator.
+AlphaGeometry [Trinh et al., 2024] uses a transformer model trained on 
+100
+100100 million synthetic theorems coupled with a forward-chaining deduction engine; it solved math-olympiad geometry problems.
+AlphaProof [Hubert et al., 2026] emits Lean tactics in a reinforcement-learning loop, again trained on millions of auto-formalized problems, with days of per-target test-time adaptation.
+It also solves olympiad-level mathematics problems.
+All three place a sound verifier or evaluator in their trust base, as we do.
+However, each uses heavy training or per-target adaptation and a domain-specific verifier.
+In contrast, our proposer is an off-the-shelf frozen language model, and our verifier decides an exact target.
+Also, our approach is not focused on the discovery of new theorems, but on the explanation of objects found by search or enumeration.
+
+6 Conclusion
+
+We have established and tested a neurosymbolic pairing of a frozen, general-purpose LLM agent that proposes constructions over an open language and uses an exact symbolic verifier as a trust base.
+The agent proposes; the symbolic side verifies.
+The agent interacts with a computer algebra system via our MCP interface.
+We tested this approach on different graphs and graded the quality (canonicity) of the proposed constructions.
+
+For the main experiment on the hundred symmetric benchmark graphs, the agent could find genuine algebraic constructions for all of them.
+Our additional experiments establish the robustness of this approach.
+We applied our approach to the new Bernhart–Kainen counterexample, which is now the smallest known, and found an algebraic construction.
+
+Our approach applies to any discrete object beyond graphs.
+Our MCP server, which connects agents to the Sage computer algebra system, can be used beyond our focus area of finding and verifying algebraic constructions.
+For future research, we suggest a systematic construction of all graphs with ten vertices, starting with a template that gets extended incrementally by new constructions found by the agent.
+
+Acknowledgments
+
+This research was funded by the Austrian Science Fund (FWF), grants 10.55776/COE12 and 10.55776/P36688.
+
+References
+
+Alam et al. [2021]
+
+Muhammad Jawaherul Alam, Michael A. Bekos, Vida Dujmovic, Martin Gronemann,
+Michael Kaufmann, and Sergey Pupyrev.
+
+On dispersable book embeddings.
+
+Theor. Comput. Sci., 861:1–22, 2021.
+
+URL https://doi.org/10.1016/j.tcs.2021.01.035.
+
+Bernhart and Kainen [1979]
+
+Frank Bernhart and Paul C. Kainen.
+
+The book thickness of a graph.
+
+J. Comb. Theory B, 27(3):320–331, 1979.
+
+URL https://doi.org/10.1016/0095-8956(79)90021-2.
+
+Bright et al. [2019]
+
+Curtis Bright, Dragomir Z. Dokovic, Ilias S. Kotsireas, and Vijay Ganesh.
+
+The SAT+CAS method for combinatorial search with applications to
+best matrices.
+
+Ann. Math. Artif. Intell., 87(4):321–342,
+2019.
+
+URL https://doi.org/10.1007/s10472-019-09681-3.
+
+Brinkmann et al. [2011]
+
+Gunnar Brinkmann, Jan Goedgebeur, and Brendan D. McKay.
+
+Generation of cubic graphs.
+
+Discret. Math. Theor. Comput. Sci., 13(2):69–80, 2011.
+
+URL https://doi.org/10.46298/dmtcs.551.
+
+Brinkmann et al. [2013]
+
+Gunnar Brinkmann, Kris Coolsaet, Jan Goedgebeur, and Hadrien Mélot.
+
+House of graphs: A database of interesting graphs.
+
+Discret. Appl. Math., 161(1-2):311–314,
+2013.
+
+URL https://doi.org/10.1016/j.dam.2012.07.018.
+
+Codish et al. [2013]
+
+Michael Codish, Alice Miller, Patrick Prosser, and Peter James Stuckey.
+
+Breaking symmetries in graph representation.
+
+In Francesca Rossi, editor, IJCAI 2013, Proceedings of the
+23rd International Joint Conference on Artificial Intelligence, Beijing,
+China, August 3-9, 2013, pages 510–516. IJCAI/AAAI, 2013.
+
+URL
+http://www.aaai.org/ocs/index.php/IJCAI/IJCAI13/paper/view/6480.
+
+Coolsaet et al. [2023]
+
+Kris Coolsaet, Sven D’hondt, and Jan Goedgebeur.
+
+House of graphs 2.0: A database of interesting graphs and more.
+
+Discret. Appl. Math., 325:97–107, 2023.
+
+URL https://doi.org/10.1016/j.dam.2022.10.013.
+
+Hubert et al. [2026]
+
+Thomas Hubert, Rishi Mehta, Laurent Sartran, Miklós Z. Horváth, Goran
+Žužić, Eric Wieser, Aja Huang, Julian Schrittwieser, Yannick
+Schroecker, Hussain Masoom, Ottavia Bertolli, Tom Zahavy, Amol Mandhane,
+Jessica Yung, Iuliya Beloshapka, Borja Ibarz, Vivek Veeriah, Lei Yu, Oliver
+Nash, Paul Lezeau, Salvatore Mercuri, Calle Sönne, Bhavik Mehta, Alex
+Davies, Daniel Zheng, Fabian Pedregosa, Yin Li, Ingrid von Glehn, Mark
+Rowland, Samuel Albanie, Ameya Velingker, Simon Schmitt, Edward Lockhart,
+Edward Hughes, Henryk Michalewski, Nicolas Sonnerat, Demis Hassabis, Pushmeet
+Kohli, and David Silver.
+
+Olympiad-level formal mathematical reasoning with reinforcement
+learning.
+
+Nature, 651(8106):607–613, 2026.
+
+URL https://doi.org/10.1038/s41586-025-09833-y.
+
+Jooken [2025]
+
+Jorik Jooken.
+
+Computer-assisted graph theory: a survey.
+
+CoRR, abs/2508.20825, 2025.
+
+URL https://doi.org/10.48550/arXiv.2508.20825.
+
+Kirchweger and Szeider [2024]
+
+Markus Kirchweger and Stefan Szeider.
+
+SAT modulo symmetries for graph generation and enumeration.
+
+ACM Trans. Comput. Log., 25(3):1–30,
+2024.
+
+URL https://doi.org/10.1145/3670405.
+
+McKay [1998]
+
+Brendan D. McKay.
+
+Isomorph-free exhaustive generation.
+
+J. Algorithms, 26(2):306–324, 1998.
+
+URL https://doi.org/10.1006/jagm.1997.0898.
+
+McKay and Piperno [2014]
+
+Brendan D. McKay and Adolfo Piperno.
+
+Practical graph isomorphism, II.
+
+J. Symb. Comput., 60:94–112, 2014.
+
+URL https://doi.org/10.1016/j.jsc.2013.09.003.
+
+Pérez-Rosés [2014]
+
+Hebert Pérez-Rosés.
+
+Algebraic and computer-based methods in the undirected
+degree/diameter problem - A brief survey.
+
+Electron. J. Graph Theory Appl., 2(2):166–190, 2014.
+
+URL https://doi.org/10.5614/ejgta.2014.2.2.9.
+
+Romera-Paredes et al. [2024]
+
+Bernardino Romera-Paredes, Mohammadamin Barekatain, Alexander Novikov, Matej
+Balog, M. Pawan Kumar, Emilien Dupont, Francisco J. R. Ruiz, Jordan S.
+Ellenberg, Pengming Wang, Omar Fawzi, Pushmeet Kohli, and Alhussein Fawzi.
+
+Mathematical discoveries from program search with large language
+models.
+
+Nat., 625(7995):468–475, 2024.
+
+URL https://doi.org/10.1038/s41586-023-06924-6.
+
+Seka and Szeider [2026]
+
+David Seka and Stefan Szeider.
+
+Enumerating two-orbit graphs.
+
+CoRR, abs/2604.00898, 2026.
+
+URL https://doi.org/10.48550/arXiv.2604.00898.
+
+Trinh et al. [2024]
+
+Trieu H. Trinh, Yuhuai Wu, Quoc V. Le, He He, and Thang Luong.
+
+Solving olympiad geometry without human demonstrations.
+
+Nat., 625(7995):476–482, 2024.
+
+URL https://doi.org/10.1038/s41586-023-06747-5.
+
+Yao et al. [2023]
+
+Shunyu Yao, Jeffrey Zhao, Dian Yu, Nan Du, Izhak Shafran, Karthik R.
+Narasimhan, and Yuan Cao.
+
+React: Synergizing reasoning and acting in language models.
+
+In The Eleventh International Conference on Learning
+Representations, ICLR 2023, Kigali, Rwanda, May 1-5, 2023. OpenReview.net,
+2023.
+
+URL https://openreview.net/forum?id=WE_vluYUL-X.
+
+    Experimental support, please
+    view the build logs
+    for errors. Generated by
+
+        L
+        A
+        T
+        E
+      
+      xml
+      
+    .
+
+Instructions for reporting errors
+
+We are continuing to improve HTML versions of papers, and your feedback helps enhance accessibility and mobile
+      support. To report errors in the HTML that will help us improve conversion and rendering, choose any of the
+      methods listed below:
+
+Click the &quot;Report Issue&quot; (
+            
+          ) button, located in the page header.
+
+Tip: You can select the relevant text first, to include it in your report.
+
+Our team has already identified the following issues. We appreciate your time reviewing and reporting rendering errors we
+      may not have found yet. Your efforts will help us improve the HTML versions for all readers, because disability
+      should not be a barrier to accessing research. Thank you for your continued support in championing open access for
+      all.
+
+Have a free development cycle? Help support accessibility at arXiv! Our collaborators at LaTeXML maintain a list of packages that need conversion, and welcome developer contributions.
+
+        We gratefully acknowledge support from
+        our major funders,
+        member institutions, ,
+        and all contributors.
+
+Major funding support from</pre></html>

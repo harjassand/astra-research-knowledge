@@ -1,0 +1,1156 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Fast Rational Univariate Representation via Gaussian Elimination</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>Fast Rational Univariate Representation via Gaussian Elimination</h1><p>Source ID d-112f13ce909fe9cf; literature/sources/equal_charge_audit/cycle8/2607.06397v1.html; 11568 o200k tokens; role primary_source_or_metadata; extraction html_text_discovery_only_math_may_be_lossy. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>Fast Rational Univariate Representation via Gaussian Elimination
+
+      Report GitHub Issue
+      ×
+
+      Title:
+
+Content selection saved. Describe the issue below:
+
+      Description:
+
+      Submit without GitHub
+      Submit in GitHub
+
+    arXiv is now an independent nonprofit!
+    Learn more
+    ×
+
+      Back to arXiv
+
+    License: CC BY 4.0
+
+arXiv:2607.06397v1 [cs.SC] 07 Jul 2026
+
+Fast Rational Univariate Representation via Gaussian Elimination
+
+Alexander Demin
+††thanks: 
+Alexander Demin has been supported by an ERC-2023-ADG grant for the ODELIX project (number 101142171).
+
+Funded by the European Union. Views and opinions expressed are however those of the author(s) only and do not necessarily reflect those of the European Union or the European Research Council Executive Agency. Neither the European Union nor the granting authority can be held responsible for them.
+
+Affiliation: Laboratoire d’informatique de l’École polytechnique,
+
+LIX, UMR 7161, CNRS,
+
+1 rue Honoré d’Estienne d’Orves,
+
+91120 Palaiseau, France
+
+E-mail demin@lix.polytechnique.fr
+
+  
+Fabrice Rouillier
+
+Affiliation: Sorbonne Université, CNRS, Inria, Paris, France 
+
+E-mail Fabrice.Rouillier@inria.fr
+
+Abstract
+
+In this note, we present RationalUnivariateRepresentation.jl, a Julia package for computing rational univariate representations of zero-dimensional polynomial systems.
+The package uses dense linear algebra and Gaussian elimination for the FGLM-like stage.
+The purpose of this contribution is to advocate for this choice and explain the implementation details that turn the algorithm into practical software.
+In particular, we show that our implementation can compute guaranteedly correct parametrizations of ideals with thousands of solutions within seconds.
+
+Keywords: zero-dimensional polynomial systems, rational univariate representation, FGLM, Gröbner bases, Julia
+
+1 Introduction
+
+Let 
+k
+kk be a field and 
+\bar{k}
+k¯\bar{k} its algebraic closure. Let 
+I\subseteq k[x_{1},\ldots,x_{n}]
+I⊆k⁡[x1,…,xn]I\subseteq k[x_{1},\ldots,x_{n}] be a zero-dimensional ideal. A rational univariate representation [8] of the roots of 
+I
+II in 
+\bar{k}^{n}
+k¯n\bar{k}^{n} consists of a linear form 
+t=a_{1}x_{1}+\cdots+a_{n}x_{n}
+t=a1​x1+⋯+an​xnt=a_{1}x_{1}+\cdots+a_{n}x_{n} that is injective on the roots, where 
+a_{1},\ldots,a_{n}\in k
+a1,…,an∈ka_{1},\ldots,a_{n}\in k, together with polynomials 
+f,f_{1},\dots,f_{n}\in k[T]
+f,f1,…,fn∈k⁡[T]f,f_{1},\dots,f_{n}\in k[T]. Each root of 
+I
+II can be recovered from a root 
+\beta\in\bar{k}
+β∈k¯\beta\in\bar{k} of 
+f
+ff via 
+x_{i}=f_{i}(\beta)/f^{\prime}(\beta)
+xi=fi​(β)/f′​(β)x_{i}=f_{i}(\beta)/f^{\prime}(\beta). Our goal is to compute such parametrizations of the roots of the radical 
+\sqrt{I}
+I\sqrt{I}.
+
+When the ideal is in shape position,
+a lexicographic Gröbner basis of 
+I
+II yields such a parametrization, and it can be efficiently computed from a degrevlex Gröbner basis using the FGLM algorithm [3]. In general, with a random change of variables, the radical can be placed in shape position with high probability. Several strategies exploit the sparsity of the multiplication matrices arising in FGLM through the Wiedemann algorithm [9] or Block Krylov methods [4, 6]; these are implemented in solvers such as msolve [1] or Giac [7].
+
+In this paper, we make several practical observations. For example, the multiplication matrices arising in the FGLM algorithm are often only moderately sparse (see Section 5.1), which makes sparse linear algebra less compelling than one might expect. We then discuss how these observations motivate the use of classical Gaussian elimination for computing parametrizations.
+
+We present an optimized deterministic implementation of the algorithm of Demin, Rouillier, and Ruiz [2], based on dense linear algebra and classical Gaussian elimination, and show experimentally that this design leads to competitive performance with state-of-the-art software.
+
+2 Background
+
+2.1 Shape position
+
+Let 
+I\subseteq k[x_{1},\ldots,x_{n}]
+I⊆k⁡[x1,…,xn]I\subseteq k[x_{1},\ldots,x_{n}] be a zero-dimensional ideal.
+Let 
+V(I)\subseteq\bar{k}^{n}
+V⁡(I)⊆k¯nV(I)\subseteq\bar{k}^{n} denote the algebraic variety of 
+I
+II.
+Let 
+D
+DD be the dimension of the quotient algebra 
+k[x_{1},\ldots,x_{n}]/I
+k⁡[x1,…,xn]/Ik[x_{1},\ldots,x_{n}]/I as a 
+k
+kk-vector space. Equivalently, 
+D
+DD is the number of roots of 
+I
+II counted with multiplicities.
+
+A particularly simple parametrization arises when the ideal is in shape position:
+
+Definition 1 (Shape position)
+
+An ideal 
+I
+II is said to be in shape position with respect to the indeterminate 
+x_{n}
+xnx_{n} if the reduced Gröbner basis with respect to the lexicographical ordering with 
+x_{n}&lt;\ldots&lt;x_{1}
+xn&lt;…&lt;x1x_{n}&lt;\ldots&lt;x_{1} is
+
+G=\{g(x_{n}),x_{1}-g_{1}(x_{n}),\ldots,x_{n}-g_{n}(x_{n})\},
+G={g⁡(xn),x1−g1​(xn),…,xn−gn​(xn)},G=\{g(x_{n}),x_{1}-g_{1}(x_{n}),\ldots,x_{n}-g_{n}(x_{n})\},
+
+with 
+g,g_{1},\ldots,g_{n}\in k[T]
+g,g1,…,gn∈k⁡[T]g,g_{1},\ldots,g_{n}\in k[T], where 
+\operatorname{deg}(g)=D
+deg⁡(g)=D\operatorname{deg}(g)=D and 
+\operatorname{deg}(g_{i})&lt;D
+deg⁡(gi)&lt;D\operatorname{deg}(g_{i})&lt;D for 
+i=1,\ldots,n
+i=1,…,ni=1,\ldots,n.
+
+If the ideal 
+I
+II is in shape position with respect to 
+x_{n}
+xnx_{n}, then the linear form 
+t:=x_{n}
+t:=xnt:=x_{n} and the polynomials 
+f:=g
+f:=gf:=g and 
+f_{i}:=-g_{i}f^{\prime}\operatorname{mod}f
+fi:=−gi​f′​mod⁡ff_{i}:=-g_{i}f^{\prime}\operatorname{mod}f for 
+i=1,\ldots,n
+i=1,…,ni=1,\ldots,n yield a rational univariate representation of 
+V(I)
+V⁡(I)V(I), where 
+f^{\prime}
+f′f^{\prime} denotes the derivative of 
+f
+ff.
+Note that 
+I
+II is in shape position with respect to 
+x_{n}
+xnx_{n} if and only if the linear form 
+t:=x_{n}
+t:=xnt:=x_{n} is injective on 
+V(I)
+V⁡(I)V(I); in particular, every root is uniquely determined by its 
+x_{n}
+xnx_{n}-coordinate.
+
+2.2 From shape position to the general case
+
+As we have seen, ideals in shape position admit a particularly simple parametrization. In general, however, an ideal need not be in shape position with respect to any of its indeterminates.
+
+Let 
+T
+TT be a new indeterminate and let
+
+t=a_{1}x_{1}+\cdots+a_{n}x_{n}
+t=a1​x1+⋯+an​xnt=a_{1}x_{1}+\cdots+a_{n}x_{n}
+
+with 
+a_{1},\ldots,a_{n}\in k
+a1,…,an∈ka_{1},\ldots,a_{n}\in k. Consider the ideal
+
+I_{T}:=I+\langle T-t\rangle~\subseteq~k[T,x_{1},\ldots,x_{n}],
+IT:=I+⟨T−t⟩⊆k⁡[T,x1,…,xn],I_{T}:=I+\langle T-t\rangle~\subseteq~k[T,x_{1},\ldots,x_{n}],
+
+where 
+\langle T-t\rangle
+⟨T−t⟩\langle T-t\rangle denotes the ideal generated by 
+T-t
+T−tT-t. If 
+k
+kk is infinite, then there exists a choice of the coefficients 
+a_{1},\ldots,a_{n}
+a1,…,ana_{1},\ldots,a_{n} such that 
+\sqrt{I_{T}}
+IT\sqrt{I_{T}} is in shape position with respect to 
+T
+TT [8].
+In this case, and since the roots of 
+\sqrt{I_{T}}
+IT\sqrt{I_{T}} and 
+\sqrt{I}
+I\sqrt{I} are in bijection, a rational univariate representation for 
+\sqrt{I_{T}}
+IT\sqrt{I_{T}} readily yields one for 
+\sqrt{I}
+I\sqrt{I}.
+
+2.3 Verifying the linear form
+
+One remaining task is to determine whether the chosen linear form 
+t=a_{1}x_{1}+\cdots+a_{n}x_{n}
+t=a1​x1+⋯+an​xnt=a_{1}x_{1}+\cdots+a_{n}x_{n} is injective on 
+V(I)
+V⁡(I)V(I), or equivalently, whether 
+\sqrt{I_{T}}
+IT\sqrt{I_{T}} is in shape position with respect to 
+T
+TT. Following [2], this question reduces to the bivariate elimination ideals:
+
+Lemma 1
+
+The ideal 
+I_{T}
+ITI_{T} is in shape position with respect to 
+T
+TT if and only if,
+for every 
+i=1,\ldots,n
+i=1,…,ni=1,\ldots,n, the ideal
+
+I_{T}\cap k[T,x_{i}]
+IT∩k⁡[T,xi]I_{T}\cap k[T,x_{i}]
+is in shape position with respect to 
+T
+TT.
+
+Thus, it suffices to verify the shape position property separately for each bivariate elimination ideal. For every 
+i=1,\ldots,n
+i=1,…,ni=1,\ldots,n, when the Gröbner basis of
+
+I_{T}\cap k[T,x_{i}]
+IT∩k⁡[T,xi]I_{T}\cap k[T,x_{i}]
+in the lexicographic ordering with 
+T&lt;x_{i}
+T&lt;xiT&lt;x_{i} is known, one can apply the algorithm from [2] to verify this. Moreover, for every 
+i=1,\ldots,n
+i=1,…,ni=1,\ldots,n, the polynomial 
+f_{i}(T)
+fi​(T)f_{i}(T) appearing in the parametrization can be recovered from the bivariate Gröbner basis using the formulas from [2].
+
+3 Implemented algorithm
+
+Following the previous section, computing a rational univariate representation reduces to several computational tasks: computing the minimal polynomial of 
+T
+TT in 
+I_{T}\cap k[T]
+IT∩k⁡[T]I_{T}\cap k[T], computing the lexicographic Gröbner basis of bivariate elimination ideals 
+I_{T}\cap k[T,x_{i}]
+IT∩k⁡[T,xi]I_{T}\cap k[T,x_{i}] for 
+i=1,\ldots,n
+i=1,…,ni=1,\ldots,n, and verifying that the chosen linear form is injective. Once these are available, the polynomials 
+f_{1},\ldots,f_{n}
+f1,…,fnf_{1},\ldots,f_{n} appearing in the parametrization are recovered directly from the bivariate Gröbner bases.
+
+We implement the algorithm due to Demin, Rouillier, and Ruiz [2], which can be seen as a variant of the FGLM algorithm [3]. The algorithm accepts as input the reduced degrevlex Gröbner basis of a zero-dimensional ideal 
+I
+II, and produces a parametrization of the roots of 
+\sqrt{I}
+I\sqrt{I}. It applies to arbitrary zero-dimensional ideals.
+
+Algorithm 1  Parametrization of the roots of the radical
+
+Input:
+A reduced Gröbner basis 
+G
+GG of a zero-dimensional ideal 
+I\subseteq k[x_{1},\ldots,x_{n}]
+I⊆k⁡[x1,…,xn]I\subseteq k[x_{1},\ldots,x_{n}].
+
+Output:
+
+f,f_{1},\ldots,f_{n}\in k[T]
+f,f1,…,fn∈k⁡[T]f,f_{1},\ldots,f_{n}\in k[T], a parametrization of the roots of 
+\sqrt{I}
+I\sqrt{I}.
+
+(1.) 
+
+Construct the multiplication matrices
+
+M_{x_{1}},\ldots,M_{x_{n}}\in k^{D\times D}
+Mx1,…,Mxn∈kD×DM_{x_{1}},\ldots,M_{x_{n}}\in k^{D\times D}, as in Section 4.1.
+
+(2.) 
+
+Choose a linear form
+
+t=a_{1}x_{1}+\cdots+a_{n}x_{n}
+t=a1​x1+⋯+an​xnt=a_{1}x_{1}+\cdots+a_{n}x_{n} with 
+a_{1},\ldots,a_{n}\in k
+a1,…,an∈ka_{1},\ldots,a_{n}\in k.
+
+(3.) 
+
+Set 
+M_{T}:=a_{1}M_{x_{1}}+\ldots+a_{n}M_{x_{n}}
+MT:=a1​Mx1+…+an​MxnM_{T}:=a_{1}M_{x_{1}}+\ldots+a_{n}M_{x_{n}}.
+
+(4.) 
+
+For 
+i=1,2,\ldots
+i=1,2,…i=1,2,\ldots do  // Compute the minimal polynomial
+
+(a) 
+
+Compute 
+v(T^{i}):=M_{T}\;v(T^{i-1})
+v⁡(Ti):=MT​v​(Ti−1)v(T^{i}):=M_{T}\;v(T^{i-1}).
+
+(b) 
+
+If there exist 
+c_{0},\ldots,c_{i-1}\in k
+c0,…,ci−1∈kc_{0},\ldots,c_{i-1}\in k with 
+c_{0}v(T^{0})+\ldots+c_{i-1}v(T^{i-1})+v(T^{i})=0
+c0​v​(T0)+…+ci−1​v​(Ti−1)+v⁡(Ti)=0c_{0}v(T^{0})+\ldots+c_{i-1}v(T^{i-1})+v(T^{i})=0, then set 
+d:=i
+d:=id:=i and 
+f:=T^{d}+c_{d-1}T^{d-1}\ldots+c_{0}
+f:=Td+cd−1​Td−1​…+c0f:=T^{d}+c_{d-1}T^{d-1}\ldots+c_{0} and break.
+
+(5.) 
+
+For 
+i=1,\ldots,n
+i=1,…,ni=1,\ldots,n  // Compute bivariate elimination bases
+
+(a) 
+
+Compute 
+G_{i}\subseteq k[T,x_{i}]
+Gi⊆k⁡[T,xi]G_{i}\subseteq k[T,x_{i}], the reduced Gröbner basis of 
+I_{T}\cap k[T,x_{i}]
+IT∩k⁡[T,xi]I_{T}\cap k[T,x_{i}] in the lexicographical ordering with 
+T&lt;x_{i}
+T&lt;xiT&lt;x_{i}, as in Section 4.3.
+
+(6.) 
+
+For 
+i=1,\ldots,n
+i=1,…,ni=1,\ldots,n  // Test shape lemma
+
+(a) 
+
+Test if 
+\sqrt{I_{T}}\cap k[T,x_{i}]
+IT∩k⁡[T,xi]\sqrt{I_{T}}\cap k[T,x_{i}] is in shape position with respect to 
+T
+TT using 
+G_{i}
+GiG_{i} with the test from [2]. If the test fails, go to step (2.).
+
+(7.) 
+
+For 
+i=1,\ldots,n
+i=1,…,ni=1,\ldots,n do  // Recover parametrization of coordinates
+
+(a) 
+
+Recover 
+f_{i}
+fif_{i} from 
+G_{i}
+GiG_{i} using the formulas from [2].
+
+(8.) 
+
+Return
+
+f,f_{1},\ldots,f_{n}.
+f,f1,…,fn.f,f_{1},\ldots,f_{n}.
+
+The algorithm is summarized in Algorithm 1. For every monomial 
+m
+mm, let 
+v(m)\in k^{D}
+v⁡(m)∈kDv(m)\in k^{D} denote the representation of 
+m
+mm in the quotient 
+k[x_{1},\ldots,x_{n}]/I
+k⁡[x1,…,xn]/Ik[x_{1},\ldots,x_{n}]/I in the monomial basis 
+\mathcal{B}
+ℬ\mathcal{B}. For every 
+i=1,\ldots,n
+i=1,…,ni=1,\ldots,n, denote by 
+M_{x_{i}}
+MxiM_{x_{i}} the matrix of the map
+
+\displaystyle M_{x_{i}}:
+Mxi:\displaystyle M_{x_{i}}:
+
+\displaystyle k[x_{1},\ldots,x_{n}]/I
+k⁡[x1,…,xn]/I\displaystyle k[x_{1},\ldots,x_{n}]/I
+
+\displaystyle\to
+→\displaystyle\to
+
+\displaystyle k[x_{1},\ldots,x_{n}]/I
+k⁡[x1,…,xn]/I\displaystyle k[x_{1},\ldots,x_{n}]/I
+
+\displaystyle m
+m\displaystyle m
+
+\displaystyle\mapsto
+↦\displaystyle\mapsto
+
+\displaystyle x_{i}m.
+xi​m.\displaystyle x_{i}m.
+
+The algorithm first constructs the multiplication matrices 
+M_{x_{1}},\ldots,M_{x_{n}}
+Mx1,…,MxnM_{x_{1}},\ldots,M_{x_{n}} and chooses a linear form 
+t
+tt. Note that multiplication matrices for 
+I
+II and 
+I_{T}
+ITI_{T} coincide except for matrix 
+M_{T}
+MTM_{T} for the newly introduced indeterminate 
+T
+TT.
+The minimal polynomial of 
+T
+TT in 
+I_{T}\cap k[T]
+IT∩k⁡[T]I_{T}\cap k[T] is then obtained by finding a linear relation among the vectors 
+v(1),v(T),v(T^{2}),\ldots
+v⁡(1),v⁡(T),v⁡(T2),…v(1),v(T),v(T^{2}),\ldots. Let 
+d
+dd be the degree of the minimal polynomial.
+
+Then, for every 
+i=1,\ldots,n
+i=1,…,ni=1,\ldots,n, the algorithm computes the reduced Gröbner basis of the bivariate elimination ideal 
+I_{T}\cap k[T,x_{i}]
+IT∩k⁡[T,xi]I_{T}\cap k[T,x_{i}]. This can be done by applying a part of the FGLM algorithm; for details, we refer to Section 4.3.
+The bivariate bases are subsequently used both to verify that the chosen linear form places the radical in shape position and to recover the coordinate polynomials. The next section describes the implementation of these stages, with particular emphasis on the linear algebra.
+
+Remark 1 (On the choice of the linear form)
+
+Choosing the coefficients 
+a_{1},\ldots,a_{n}
+a1,…,ana_{1},\ldots,a_{n} at random in step (2.) is a reliable way to obtain an injective linear form. Nevertheless, the algorithm may start with any linear form because injectivity is verified in step (6.). In practice, one may first try sparse linear forms, for example with only a few nonzero coefficients.
+
+4 Implementation details
+
+4.1 Multiplication matrices
+
+The first stage of Algorithm 1 constructs the multiplication matrices 
+M_{x_{1}},\ldots,M_{x_{n}}
+Mx1,…,MxnM_{x_{1}},\ldots,M_{x_{n}} and 
+M_{T}
+MTM_{T}. This amounts to computing the columns of 
+M_{x_{1}},\ldots,M_{x_{n}}
+Mx1,…,MxnM_{x_{1}},\ldots,M_{x_{n}}.
+
+Recall 
+G
+GG is the reduced degrevlex Gröbner basis of 
+I
+II and 
+\mathcal{B}
+ℬ\mathcal{B} is the monomial basis of 
+k[x_{1},\ldots,x_{n}]/I
+k⁡[x1,…,xn]/Ik[x_{1},\ldots,x_{n}]/I. Note the quotient algebras
+
+k[x_{1},\ldots,x_{n}]/I
+k⁡[x1,…,xn]/Ik[x_{1},\ldots,x_{n}]/I and
+
+k[T,x_{1},\ldots,x_{n}]/I_{T}
+k⁡[T,x1,…,xn]/ITk[T,x_{1},\ldots,x_{n}]/I_{T}
+share the monomial basis 
+\mathcal{B}
+ℬ\mathcal{B}.
+For every 
+w_{j}\in\mathcal{B}
+wj∈ℬw_{j}\in\mathcal{B} and every 
+x_{i}
+xix_{i} with 
+i=1,\ldots,n
+i=1,…,ni=1,\ldots,n, consider the product 
+m:=w_{j}x_{i}
+m:=wj​xim:=w_{j}x_{i}.
+Recall 
+v(m)\in k^{D}
+v⁡(m)∈kDv(m)\in k^{D} denotes the representation of 
+m
+mm in the quotient algebra.
+Three cases may occur:
+
+Case 1. 
+
+m\in\mathcal{B}
+m∈ℬm\in\mathcal{B}; in this case, 
+v(m)
+v⁡(m)v(m) is a standard unit vector.
+
+Case 2. 
+
+m\in\operatorname{lt}(G)
+m∈lt⁡(G)m\in\operatorname{lt}(G); in this case, 
+v(m)
+v⁡(m)v(m) can be read off an element of 
+G
+GG.
+
+Case 3. 
+
+m\notin\mathcal{B}\cup\operatorname{lt}(G)
+m∉ℬ∪lt⁡(G)m\notin\mathcal{B}\cup\operatorname{lt}(G). We choose a variable 
+x_{k}
+xkx_{k} dividing 
+w_{j}
+wjw_{j} such that
+
+m^{\prime}:=m/x_{k}=(w_{j}/x_{k})x_{i}
+m′:=m/xk=(wj/xk)​xim^{\prime}:=m/x_{k}=(w_{j}/x_{k})x_{i}
+
+Since 
+\mathcal{B}
+ℬ\mathcal{B} is closed under division, 
+(w_{j}/x_{k})\in\mathcal{B}
+(wj/xk)∈ℬ(w_{j}/x_{k})\in\mathcal{B}, so 
+m^{\prime}
+m′m^{\prime} is again of the form 
+wx_{i}
+w​xiwx_{i} with 
+w\in\mathcal{B}
+w∈ℬw\in\mathcal{B}.
+If 
+v(m^{\prime})=a_{1}w_{1}+\cdots+a_{D}w_{D}
+v⁡(m′)=a1​w1+⋯+aD​wDv(m^{\prime})=a_{1}w_{1}+\cdots+a_{D}w_{D} for 
+a_{1},\ldots,a_{D}\in k
+a1,…,aD∈ka_{1},\ldots,a_{D}\in k, then
+
+v(m)=v(m^{\prime}x_{k})=a_{1}v(w_{1}x_{k})+\ldots+a_{D}v(w_{D}x_{k}).
+v⁡(m)=v⁡(m′​xk)=a1​v​(w1​xk)+…+aD​v​(wD​xk).v(m)=v(m^{\prime}x_{k})=a_{1}v(w_{1}x_{k})+\ldots+a_{D}v(w_{D}x_{k}).
+
+(1)
+
+Note that 
+m^{\prime}\notin\mathcal{B}
+m′∉ℬm^{\prime}\notin\mathcal{B}, otherwise (1) would be circular.
+
+To evaluate (1) for a particular 
+m
+mm, we must know 
+v(w_{i}x_{k})
+v⁡(wi​xk)v(w_{i}x_{k}) for every 
+a_{i}\neq 0
+ai≠0a_{i}\neq 0.
+Hence, we traverse the monomials and compute 
+v(m)
+v⁡(m)v(m) in an order that ensures that all vectors on the right-hand side of (1) have already been computed.
+
+Once the vectors 
+v(w_{j}x_{i})
+v⁡(wj​xi)v(w_{j}x_{i}) are computed, the matrices are known column-wise. In the implementation, columns corresponding to case 1 are stored as unit vectors, whereas the remaining columns are stored densely.
+Then, 
+v(1)
+v⁡(1)v(1) is a unit vector, and 
+v(T^{i})=M_{T}v(T^{i-1})
+v⁡(Ti)=MT​v​(Ti−1)v(T^{i})=M_{T}v(T^{i-1}) for 
+i=1,2,\ldots
+i=1,2,…i=1,2,\ldots. We compute these matrix-vector products in step (4.) of Algorithm 1 as a linear combination of the matrix columns.
+
+4.2 Minimal polynomial
+
+The second stage of Algorithm 1 computes the generator of the ideal 
+I_{T}\cap k[T]
+IT∩k⁡[T]I_{T}\cap k[T], namely the minimal polynomial of 
+T
+TT. This amounts to finding the first linear dependence over 
+k
+kk among 
+v(1)
+v⁡(1)v(1), 
+v(T)
+v⁡(T)v(T), 
+v(T^{2})
+v⁡(T2)v(T^{2}), 
+\ldots
+…\ldots.
+
+We construct the row echelon form incrementally. For every 
+i=1,2,\ldots
+i=1,2,…i=1,2,\ldots, let 
+V^{(i)}\in k^{i\times D}
+V(i)∈ki×DV^{(i)}\in k^{i\times D} denote the matrix with the rows 
+v(1),\ldots,v(T^{i-1})
+v⁡(1),…,v⁡(Ti−1)v(1),\ldots,v(T^{i-1}), which are obtained as in Section 4.1.
+For every 
+i=1,2,\ldots
+i=1,2,…i=1,2,\ldots, our implementation maintains and updates a decomposition
+
+L^{(i)}V^{(i)}=U^{(i)},
+L(i)​V(i)=U(i),L^{(i)}V^{(i)}=U^{(i)},
+
+(2)
+
+where 
+L^{(i)}\in k^{i\times i}
+L(i)∈ki×iL^{(i)}\in k^{i\times i} is lower triangular and 
+U^{(i)}\in k^{i\times D}
+U(i)∈ki×DU^{(i)}\in k^{i\times D} is in row-echelon form.
+
+Algorithm 2  Update in incremental minimal polynomial computation
+
+Input: 
+V^{(i)}
+V(i)V^{(i)}, 
+L^{(i)}
+L(i)L^{(i)}, and 
+U^{(i)}
+U(i)U^{(i)} as in
+(2), the vector 
+v(T^{i})
+v⁡(Ti)v(T^{i}).
+
+Output:
+either 
+c_{0},\ldots,c_{i-1}\in k
+c0,…,ci−1∈kc_{0},\ldots,c_{i-1}\in k, not all zero, such that 
+c_{0}v(T^{0})+\cdots+c_{i-1}v(T^{i-1})+v(T^{i})=0
+c0​v​(T0)+⋯+ci−1​v​(Ti−1)+v⁡(Ti)=0c_{0}v(T^{0})+\cdots+c_{i-1}v(T^{i-1})+v(T^{i})=0, if such exist; otherwise, the updated matrices
+
+V^{(i+1)}
+V(i+1)V^{(i+1)}, 
+L^{(i+1)}
+L(i+1)L^{(i+1)}, and 
+U^{(i+1)}
+U(i+1)U^{(i+1)}.
+
+(1.) 
+
+Set
+
+r:=v(T^{i})
+r:=v⁡(Ti)r:=v(T^{i}) and 
+\gamma:=e_{i+1}
+γ:=ei+1\gamma:=e_{i+1}, the standard unit vector.
+
+(2.) 
+
+Reduce 
+r
+rr with respect to the rows of 
+U^{(i)}
+U(i)U^{(i)},
+applying the same row operations on 
+\gamma
+γ\gamma using the corresponding rows of 
+L^{(i)}
+L(i)L^{(i)}.
+
+(3.) 
+
+If 
+r=0
+r=0r=0, return the relation 
+\gamma=(c_{0},\ldots,c_{i-1},1)
+γ=(c0,…,ci−1,1)\gamma=(c_{0},\ldots,c_{i-1},1).
+
+(4.) 
+
+Make 
+r
+rr monic and append it as a new row to 
+U^{(i)}
+U(i)U^{(i)}. Append the corresponding coefficient vector to 
+L^{(i)}
+L(i)L^{(i)} and append 
+v(T^{i})
+v⁡(Ti)v(T^{i}) to 
+V^{(i)}
+V(i)V^{(i)}.
+
+(5.) 
+
+Return 
+V^{(i+1)},L^{(i+1)},U^{(i+1)}.
+V(i+1),L(i+1),U(i+1).V^{(i+1)},L^{(i+1)},U^{(i+1)}.
+
+At the first step, 
+v(1)
+v⁡(1)v(1) is a unit vector, and we have
+
+V^{(1)}=[v(1)],\qquad L^{(1)}=[1],\qquad U^{(1)}=[v(1)],
+V(1)=[v⁡(1)],L(1)=[1],U(1)=[v⁡(1)],V^{(1)}=[v(1)],\qquad L^{(1)}=[1],\qquad U^{(1)}=[v(1)],
+
+Algorithm 2 is applied for 
+i=1,2,\ldots
+i=1,2,…i=1,2,\ldots until a dependence is found. This occurs when 
+i=d
+i=di=d, where 
+d
+dd denotes the degree of the minimal polynomial.
+
+In our implementation, since both 
+L^{(i)}
+L(i)L^{(i)} and 
+U^{(i)}
+U(i)U^{(i)} are triangular, we do not materialize them separately; instead, their entries are packed in a single dense matrix, so storing them requires storing only 
+dD
+d​DdD field elements.
+
+We instantiate the algorithm over the finite field 
+k=\mathbb{F}_{p}
+k=𝔽pk=\mathbb{F}_{p}, where 
+p
+pp is a machine prime.
+Row reduction in Algorithm 2 consists of repeated dense AXPY operations (updates of vectors of the form 
+y:=\alpha x+y
+y:=α​x+yy:=\alpha x+y).
+With 
+p
+pp being a 
+28
+2828-bit prime and using 
+64
+6464-bit integers for representing field elements, we may accumulate 
+2^{7}
+272^{7} such row multiples in one buffer before modular reduction is required. Overall, packing of the matrices 
+L^{(i)}
+L(i)L^{(i)} and 
+U^{(i)}
+U(i)U^{(i)} together with delaying modular reductions yields a simple inner loop that Julia automatically vectorizes using SIMD.
+
+4.3 Bivariate elimination bases
+
+One of the final stages of Algorithm 1 computes, for every
+
+i=1,\ldots,n
+i=1,…,ni=1,\ldots,n, the reduced lexicographic Gröbner basis of the bivariate ideal 
+I_{T}\cap k[T,x_{i}]
+IT∩k⁡[T,xi]I_{T}\cap k[T,x_{i}].
+
+Let 
+i\in\{1,\ldots,n\}
+i∈{1,…,n}i\in\{1,\ldots,n\}. Linear dependencies among the vectors 
+v(T^{j}x_{i}^{k})
+v⁡(Tj​xik)v(T^{j}x_{i}^{k}) with 
+j,k\in\mathbb{N}
+j,k∈ℕj,k\in\mathbb{N} correspond to polynomial relations in 
+I_{T}\cap k[T,x_{i}]
+IT∩k⁡[T,xi]I_{T}\cap k[T,x_{i}]. Consequently, constructing a row echelon form of these vectors yields a lexicographical Gröbner basis of the ideal.
+
+As in Section 4.2, we generate and reduce the vectors incrementally using Gaussian elimination. Whenever a newly generated vector is linearly dependent on the preceding ones, the corresponding dependency yields an element of the basis of 
+I_{T}\cap k[T,x_{i}]
+IT∩k⁡[T,xi]I_{T}\cap k[T,x_{i}].
+
+The row echelon form of 
+v(1),v(T),\ldots,v(T^{d-1})
+v⁡(1),v⁡(T),…,v⁡(Td−1)v(1),v(T),\ldots,v(T^{d-1}) has already been computed in Section 4.2. We therefore initialize the computation with this echelon basis and only generate the vectors 
+v(T^{j}x_{i}^{k})
+v⁡(Tj​xik)v(T^{j}x_{i}^{k}) involving positive powers of 
+x_{i}
+xix_{i}, thus reusing the reductions of the pure powers of 
+T
+TT.
+
+5 Motivation for dense linear algebra
+
+5.1 On sparsity of multiplication matrices
+
+The computation of the vectors 
+v(1),v(T),\ldots,v(T^{d})
+v⁡(1),v⁡(T),…,v⁡(Td)v(1),v(T),\ldots,v(T^{d}) is one of the main parts of Algorithm 1. Sparse methods aim to exploit the sparsity of 
+M_{T}
+MTM_{T} when repeatedly performing sparse matrix-vector products 
+v(T^{i}):=M_{T}v(T^{i-1})
+v⁡(Ti):=MT​v​(Ti−1)v(T^{i}):=M_{T}v(T^{i-1}) for 
+i=1,\ldots,d
+i=1,…,di=1,\ldots,d. Consequently, the sparsity of 
+M_{T}
+MTM_{T} is one of the main factors determining the practical efficiency of such methods.
+
+Figure 1: Density of the multiplication matrix 
+M_{T}
+MTM_{T}, measured as the ratio of nonzero entries. In each example, the radical is put in shape position with respect to 
+T
+TT. 
+
+Figure 1 reports the density of the multiplication matrix 
+M_{T}
+MTM_{T} on our benchmark suite. We observe that the density is at least 10% in 
+35
+3535 out of 
+45
+4545 examples, and the median density is approximately 19.5%. Thus, the multiplication matrices encountered in practice can be far from sparse.
+
+These observations suggest that sparse operations may not always be the most natural choice for computing 
+v(1),v(T),\ldots,v(T^{d})
+v⁡(1),v⁡(T),…,v⁡(Td)v(1),v(T),\ldots,v(T^{d}) in general. This motivates considering dense linear algebra as an alternative.
+
+Remark 2 (Shape position does not imply sparsity)
+
+As we have seen, one may always construct 
+I_{T}\subseteq k[T,x_{1},\ldots,x_{n}]
+IT⊆k⁡[T,x1,…,xn]I_{T}\subseteq k[T,x_{1},\ldots,x_{n}] whose radical is in shape position with respect to 
+T
+TT. Recall
+
+I_{T}=I+\langle T-t\rangle,
+IT=I+⟨T−t⟩,I_{T}=I+\langle T-t\rangle,
+where 
+t=a_{1}x_{1}+\cdots+a_{n}x_{n}
+t=a1​x1+⋯+an​xnt=a_{1}x_{1}+\cdots+a_{n}x_{n} with 
+a_{1},\ldots,a_{n}\in k
+a1,…,an∈ka_{1},\ldots,a_{n}\in k. The multiplication matrix of 
+T
+TT is then
+
+M_{T}=a_{1}M_{x_{1}}+\cdots+a_{n}M_{x_{n}},
+MT=a1​Mx1+⋯+an​Mxn,M_{T}=a_{1}M_{x_{1}}+\cdots+a_{n}M_{x_{n}},
+
+which need not be sparse when several of 
+a_{i}
+aia_{i} are nonzero. Thus, although 
+\sqrt{I_{T}}
+IT\sqrt{I_{T}} is in shape position, the multiplication matrix of 
+T
+TT may be rather dense.
+
+5.2 On the cost of Gaussian elimination
+
+The computation of the coefficients 
+c_{0},\ldots,c_{d-1}\in k
+c0,…,cd−1∈kc_{0},\ldots,c_{d-1}\in k in the relation 
+c_{0}v(1)+c_{1}v(T)+\ldots+v(T^{d})=0
+c0​v​(1)+c1​v​(T)+…+v⁡(Td)=0c_{0}v(1)+c_{1}v(T)+\ldots+v(T^{d})=0 is the second major part of Algorithm 1.
+
+This relation can be computed by Gaussian elimination, as in Section 4.2. Alternatively, methods based on the Wiedemann algorithm replace Gaussian elimination by a Berlekamp–Massey reconstruction, whose cost is nearly linear in the degree of the minimal polynomial. However, they typically require at least twice as many matrix-vector multiplications, thus computing at least 
+2d
+2​d2d vectors instead of 
+d
+dd. This speeds up the computation of the relation at the expense of additional matrix-vector products.
+
+Table 1: The running time of two parts of Algorithm 1: computing 
+v(1),\ldots,v(T^{d})
+v⁡(1),…,v⁡(Td)v(1),\ldots,v(T^{d}) as in Section 4.1 and computing 
+c_{0},\ldots,c_{d-1}
+c0,…,cd−1c_{0},\ldots,c_{d-1} via Gaussian elimination as in Section 4.2.
+
+System
+
+D
+DD
+Matrix-vector products
+Gaussian elimination
+
+Chandra-13
+4096
+7.8 s
+7.8 s
+
+Eco-14
+4096
+9.9 s
+7.8 s
+
+Henrion-7
+5040
+4.1 s
+14.7 s
+
+Noon-8
+6545
+10.8 s
+33.3 s
+
+Katsura-14
+8192
+45.9 s
+71.0 s
+
+Reimer-8
+14400
+101.7 s
+380.8 s
+
+Table 1 reports the running time of these two tasks over 
+k:=\mathbb{F}_{p}
+k:=𝔽pk:=\mathbb{F}_{p}, where 
+p
+pp is a machine prime. Our main observation is that, although Gaussian elimination is often more expensive, the cost of matrix-vector products is of the same order of magnitude. Thus, neither stage is a negligible part of the computation.
+
+These measurements suggest that accelerating one part of the computation does not necessarily yield a much faster implementation. Moreover, if one performs matrix-vector products in the sparse regime in the Wiedemann algorithm, the computation of 
+2d
+2​d2d matrix-vector products instead of 
+d
+dd could itself become expensive when the matrix is not as sparse, e.g., as in examples in Section 5.1.
+
+5.3 Amortizing the cost of Gaussian elimination
+
+The previous subsection showed that Gaussian elimination is one of the computationally intensive parts of the algorithm. Nevertheless, this cost may be compensated by two additional benefits.
+
+First, our goal is to compute a guaranteedly correct parametrization. The incremental Gaussian elimination in Sections 4.2 and 4.3 is fully deterministic. Consequently, in our implementation of step (6.) of Algorithm 1, we are able to apply the test of [2] to certify the computed parametrizations.
+
+Second, as described in Section 4.3, the row echelon form computed during the minimal polynomial computation is reused in the construction of the bivariate elimination ideals. In particular, the reductions of the vectors 
+v(1)
+v⁡(1)v(1), 
+v(T)
+v⁡(T)v(T), 
+\ldots
+…\ldots, 
+v(T^{d-1})
+v⁡(Td−1)v(T^{d-1})
+are performed only once and are reused throughout the remaining stages of Algorithm 1. Thus, the cost of Gaussian elimination is amortized over the whole computation.
+
+6 Experimental results
+
+It is difficult to compare our implementation with msolve [1] or Giac [7].
+Indeed, Giac can compute a parametrization only when the input ideal is radical. msolve can handle general ideals, but in our experiments it incurred a large overhead when the quotient is “non-generic” (following the terminology used in the msolve logs). When msolve encounters such non-generic quotient, it recomputes everything (the Gröbner basis and the parametrization), first attempting to change the monomial ordering and, if necessary, performing a generic change of coordinates.
+
+On the other hand, our algorithm relies on the separation test [2] to check if a linear form is injective and therefore requires less recomputation.
+In both implementations, a reason for these repeated attempts is to test optimizations that are intended to improve efficiency in subsequent multi-modular computations for systems with rational coefficients, which is not in the scope of this paper.
+
+Table 2 reports the performance of the implementations on benchmark systems that have been transformed into the radical shape lemma case by adding a separating linear form to the system.
+
+Table 2: The running time of msolve and our implementation (the timings include the computation of degrevlex Gröbner bases).
+
+System
+
+D
+DD
+msolve
+our method
+
+Katsura-13-EXT
+4096
+68.0 s
+26.8 s
+
+Chandra-13-EXT
+4096
+54.0 s
+24.0 s
+
+Eco-14-EXT
+4096
+129.4 s
+39.9 s
+
+Henrion-7-EXT
+5040
+19.7 s
+20.5 s
+
+Noon-8-EXT
+6545
+not generic
+37.5 s
+
+No5-sq-a-EXT
+8192
+not generic
+91.4 s
+
+Reimer-8-EXT
+14400
+690.0 s
+516.8 s
+
+To obtain a more representative view of the overall performance, it is also informative to consider the multi-modular computations on systems with rational coefficients (see [2]).
+
+The experiments of Table 2 were performed on MacBook PRO MAX m2 running OSX 26.5 with 64 GB of RAM. Both implementations were run modulo the largest 28-bit prime. We used msolve [1] version 0.10.0, from the official website, compiled with clang and the option -O3. The binary was run with the default options. Our method uses the implementation in Julia in RationalUnivariateRepresentation.jl and uses Groebner.jl for degrevlex Gröbner bases [5].
+
+7 Conclusion
+
+We presented a practical implementation for computing guaranteedly correct rational univariate representations of arbitrary zero-dimensional ideals based on the deterministic approach from [2]. The implementation is available in the Julia package RationalUnivariateRepresentation.jl.
+
+Our implementation is based on dense linear algebra and incremental Gaussian elimination. We argued that this design is well suited for practical computations: multiplication matrices are often only moderately sparse, the cost of matrix-vector products is often non-negligible, and the row echelon basis computed during the minimal polynomial computation is reused throughout the remaining stages of the algorithm. Experimental results show that these implementation choices lead to performance competitive with state-of-the-art software while producing certified parametrizations.
+
+References
+
+[1]
+J. Berthomieu, C. Eder, and M. Safey El Din (2021)
+
+msolve: a library for solving polynomial systems.
+
+In Proceedings of the 2021 International Symposium on Symbolic and Algebraic Computation,
+
+pp. 51–58.
+
+External Links: Document
+
+Cited by: §1,
+§6,
+§6.
+
+[2]
+A. Demin, F. Rouillier, and J. Ruiz (2024)
+
+Reading rational univariate representations on lexicographic Gr&quot;obner bases.
+
+arXiv preprint arXiv:2402.07141.
+
+External Links: Link
+
+Cited by: §1,
+§2.3,
+§2.3,
+item (6.)a,
+item (7.)a,
+§3,
+§5.3,
+§6,
+§6,
+§7.
+
+[3]
+J. Faugère, P. Gianni, D. Lazard, and T. Mora (1993)
+
+Efficient computation of zero-dimensional Gröbner bases by change of ordering.
+
+Journal of Symbolic Computation 16 (4), pp. 329–344.
+
+Cited by: §1,
+§3.
+
+[4]
+J. Faugère and C. Mou (2017)
+
+Sparse FGLM algorithms.
+
+Journal of Symbolic Computation 80, pp. 538–569.
+
+External Links: Document
+
+Cited by: §1.
+
+[5]
+S. Gowda and A. Demin (2023)
+
+Groebner.jl: a package for Gr&quot;obner bases computations in julia.
+
+arXiv preprint arXiv:2304.06935.
+
+External Links: Link
+
+Cited by: §6.
+
+[6]
+S. G. Hyun, V. Neiger, H. Rahkooy, and É. Schost (2020)
+
+Block-Krylov techniques in the context of sparse-FGLM algorithms.
+
+Journal of Symbolic Computation 98, pp. 163–191.
+
+Note: Special Issue on Symbolic and Algebraic Computation: ISSAC 2017
+
+External Links: ISSN 0747-7171,
+Document,
+Link
+
+Cited by: §1.
+
+[7]
+B. Parisse (2021)
+
+Certifying a probabilistic parallel modular algorithm for rational univariate representation.
+
+arXiv preprint arXiv:2106.10912.
+
+External Links: Link
+
+Cited by: §1,
+§6.
+
+[8]
+F. Rouillier (1999)
+
+Solving zero-dimensional systems through the rational univariate representation.
+
+Applicable Algebra in Engineering, Communication and Computing 9 (5), pp. 433–461.
+
+External Links: Document
+
+Cited by: §1,
+§2.2.
+
+[9]
+D. Wiedemann (1986)
+
+Solving sparse linear equations over finite fields.
+
+IEEE Transactions on Information Theory 32 (1), pp. 54–62.
+
+External Links: Document
+
+Cited by: §1.
+
+    Experimental support, please
+    view the build logs
+    for errors. Generated by
+
+        L
+        A
+        T
+        E
+      
+      xml
+      
+    .
+
+Instructions for reporting errors
+
+We are continuing to improve HTML versions of papers, and your feedback helps enhance accessibility and mobile
+      support. To report errors in the HTML that will help us improve conversion and rendering, choose any of the
+      methods listed below:
+
+Click the &quot;Report Issue&quot; (
+            
+          ) button, located in the page header.
+
+Tip: You can select the relevant text first, to include it in your report.
+
+Our team has already identified the following issues. We appreciate your time reviewing and reporting rendering errors we
+      may not have found yet. Your efforts will help us improve the HTML versions for all readers, because disability
+      should not be a barrier to accessing research. Thank you for your continued support in championing open access for
+      all.
+
+Have a free development cycle? Help support accessibility at arXiv! Our collaborators at LaTeXML maintain a list of packages that need conversion, and welcome developer contributions.
+
+        We gratefully acknowledge support from
+        our major funders,
+        member institutions, ,
+        and all contributors.
+
+Major funding support from</pre></html>

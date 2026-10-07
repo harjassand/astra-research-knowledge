@@ -1,0 +1,206 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>\section{Efficient Implementation of the Meta Algorithm}</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>\section{Efficient Implementation of the Meta Algorithm}</h1><p>Source ID d-75736eaa9fc8c0c4; literature/sources/metric_geometry10/cycle18/2007.01445v5_implementation.tex; 5609 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>\section{Efficient Implementation of the Meta Algorithm}
+
+\label{sec:implementation}
+
+In this section, we give an efficient implementation of \Cref{alg:meta_algo} from the previous section and prove \Cref{thm:polyhedra} which we restate below for convenience. 
+
+\thmpolyhedra* 
+
+
+
+\subsection{The Efficient Implementation}
+
+By the argument in the beginning of \Cref{subsec:proof_overview}, we may assume without loss of generality that $f$ has a unique minimizer $x^* \in S_\varphi^n$. For simplicity, we present our algorithm under this assumption. 
+
+%As mentioned earlier, \Cref{alg:meta_algo} requires the exact computation of the centroid and covariance matrix of $K$ in Line \ref{line:cg_1} and \ref{line:cg_2}, and is therefore not efficient. 
+%While it is easy to efficiently implement Line \ref{line:cg_1}  by using the approximate center of gravity method in \Cref{thm:randomwalkcg} instead, one might not be able to efficiently implement Line \ref{line:cg_2} by sampling since we do not know an ellipsoid satisfying condition \eqref{eq:warm_start} in \Cref{thm:sampling_polytope}. We address this issue in the following. 
+
+As mentioned in the last paragraph of \Cref{subsec:the_meta_algo}, we can efficiently implement Line \ref{line:cg_1} of \Cref{alg:meta_algo} by using the approximate center of gravity method in \Cref{thm:randomwalkcg}. We now address the issue of efficiently implementing Line \ref{line:cg_2} of \Cref{alg:meta_algo} in the following. 
+
+%requires the exact computation of the centroid and covariance matrix of $K$ in Line \ref{line:cg_1} and \ref{line:cg_2}, and is therefore not efficient. 
+%While it is easy to efficiently implement Line \ref{line:cg_1}  by using the approximate center of gravity method in \Cref{thm:randomwalkcg} instead, one might not be able to efficiently implement Line \ref{line:cg_2} by sampling since we do not know an ellipsoid satisfying condition \eqref{eq:warm_start} in \Cref{thm:sampling_polytope}. We address this issue in the following. 
+
+
+To obtain an approximate centroid and covariance matrix of the polytope $K$ after dimension reduction, our efficient algorithm maintains two polytopes $K_{\SO} \subseteq K_{\free}$. The polytope $K_{\SO}$ plays the same role as $K$ in \Cref{alg:meta_algo}, and is the polytope formed by the separating hyperplanes from $\SO$. 
+And $K_{\free}$ is a simple polytope for which we always know an approximate centroid $x_K$ and covariance matrix $\Sigma_K$. 
+Our algorithm explicitly maintains the lists of constraints for the polytopes $K_{\SO}$ and $K_{\free}$ to efficiently perform computations on them.  
+In particular, our algorithm can efficiently certify\footnote{In general, our algorithm might not be able to efficiently verify that the geometric objects $K_{\free}$ being the same as $K_{\SO}$. So whenever we say $K_{\free} = K_{\SO}$, we always mean it in the sense that it can be efficiently certified by checking that all constraints for $K_{\SO}$ appear in the list of constraints for $K_{\free}$.} that $K_{\free} = K_{\SO}$ when all the constraints for $K_{\SO}$ appear in the list of constraints for $K_{\free}$, since it is always maintained that $K_{\SO} \subseteq K_{\free}$. 
+
+
+In the beginning of the algorithm, $K_{\free} = K_{\SO}$ and we run $\textsc{RandomWalkCG}$ for both polytopes at the same time. 
+When dimension reduction happens in Line \ref{line:dim_reduce_start_implementation}-\ref{line:dim_reduce_end_implementation}, $K_{\SO}$ is updated to be $K^{\new}_{\SO} = K_{\SO} \cap P$ and we no longer have approximations to $\cg(K^{\new}_{\SO})$ and $\Cov(K^{\new}_{\SO})$. 
+To bypass this difficulty, our strategy is to update $K_{\free}$ to be a simple polytope $K^{\new}_{\free}$ containing $K^{\new}_{\SO}$ for which we know $\cg(K^{\new}_{\free})$ and $\Cov(K^{\new}_{\free})$, and ``learn&#x27;&#x27; $\cg(K^{\new}_{\SO})$ and $\Cov(K^{\new}_{\SO})$ by shrinking $K^{\new}_{\free}$ via $\textsc{RandomWalkCG}$ until it coincides with $K^{\new}_{\SO}$. 
+Whenever $K^{\new}_{\free} = K^{\new}_{\SO}$ happens again (in the aforementioned sense that the constraints for $K^{\new}_{\SO}$ all appear in the list of constraints $K^{\new}_{\free}$), we have successfully learned an approximate centroid and covariance matrix of $K^{\new}_{\SO}$, and can continue to shrink $K^{\new}_{\SO}$ using $\textsc{RandomWalkCG}$ as before. 
+
+Now we specify our choice of $K^{\new}_{\free}$ in the strategy above. 
+Note that $K^\new_{\SO} \subseteq P \cap (x_K + 2n \cdot E(\Sigma_K^{-1}))$. 
+Denoting the ellipsoid 
+$P \cap (x_K + 2n \cdot E(\Sigma_K^{-1})) = E(w, A)$,
+we can simply choose $K^{\new}_{\free}$ to be the smallest hyperrectangle containing $E(w, A)$, i.e. $K^{\new}_{\free} = w + A^{-1/2} B_\infty$, for which it is easy to compute an exact centroid and covariance matrix. 
+
+Such choice of $K^{\new}_{\free}$ blows up the volume of the outer ellipsoid $P \cap (x_K + 2n \cdot E(\Sigma_K^{-1}))$ by a factor of $n^{O(n)}$, and thus shrinking $K^{\new}_{\free}$ seems to require much more $\SO$ calls. 
+The crucial observation here is that when we shrink the volume of $K^{\new}_{\free}$, we do not need to make calls to $\SO$ since we already know the polytope $K^{\new}_{\SO} \subseteq K^{\new}_{\free}$. Instead, we simulate the separation oracle using the smaller polytope $K^{\new}_{\SO}$ via the procedure \textsc{FreeCG} (see \Cref{alg:freeCG}) until we have $K^{\new}_{\free} = K^{\new}_{\SO}$ again, at which point we regain approximations to $\cg(K^{\new}_{\SO})$ and $\Cov(K^{\new}_{\SO})$. 
+If we are ever able to find a hyperplane $P^{\new}$ containing $K^{\new}_{\free} \cap S_\varphi^n$ even before reaching the point $K^{\new}_{\free} = K^{\new}_{\SO}$, we can further reduce the dimension. 
+A formal description of the efficient implementation is given in \Cref{alg:implementation}.
+
+
+
+
+\begin{algorithm}[htp!]\caption{}\label{alg:implementation}
+\begin{algorithmic}[1]
+\Procedure{\textsc{Main}}{$\SO,R, \varphi$} 
+\State Affine subspace $W \leftarrow \mathbb{R}^n$, lattice $\Lambda \leftarrow \mathbb{Z}^n$
+\State Polytopes $(K_{\free}, K_{\SO}) \leftarrow (B_\infty(R), B_\infty(R))$ \Comment{Maintain constraints explicitly for $K_{\free}$ and $K_{\SO}$}
+\State $x_K \leftarrow \cg(K_{\free})$ and $\Sigma_K \leftarrow \Cov(K_{\free})$ 
+\Comment{$x_K + E(\Sigma_K^{-1}) / 2 \subseteq K_{\free} \subseteq x_K + 2n \cdot E(\Sigma_K^{-1})$}
+\State $\epsilon \leftarrow 0.01$, $\delta \leftarrow 1/\poly(n, \varphi, \log(\gamma R))$ \Comment{Parameters in Theorem~\ref{thm:randomwalkcg}}
+\While{$\dim(W) &gt; 0$} 
+	\State $v \leftarrow \textsc{ApproxSVP}(\Lambda, \Sigma_K)$ 
+   \Comment{$v \in \Lambda \setminus \{0\}$}
+	\If{$\norm{v}_{\Sigma_K} \geq \frac{1}{10n2^{2 \varphi}}$}
+		\If{$K_{\free} = K_{\SO}$} \Comment{List of constraints for $K_{\free}$ include that of $K_{\SO}$} 
+		\State $(K&#x27;, x_{K&#x27;}, \Sigma_{K&#x27;}) \leftarrow \textsc{RandomWalkCG}(\SO, K_{\free}, x_K, \Sigma_K, \epsilon, \delta)$ as in Theorem~\ref{thm:randomwalkcg} \label{line:randomwalkcg} 
+		\State $(K_{\free}, K_{\SO}) \leftarrow (K&#x27;, K&#x27;)$, $x_K \leftarrow x_{K&#x27;}$, $\Sigma_K \leftarrow \Sigma_{K&#x27;}$ 
+		\Else
+		\State $(K_{\free}, x_K, \Sigma_K) \leftarrow \textsc{FreeCG}(K_{\free}, K_{\SO}, x_K, \Sigma_K)$ \label{line:freecg} \Comment{No $\SO$ call in this step}
+		\EndIf
+	\Else
+	\State Find $z \in \mathbb{Z}^n$ such that $v = \Pi_{W_0}(z)$ \label{line:dim_reduce_start_implementation} 
+	\Comment{Subspace $W_0 = -x_K + W$} 
+	\State Hyperplane $P \leftarrow \{y: v^\top y = (v - z)^\top x_K + \lceil z^\top x_K \rfloor_\varphi \}$  
+	\State $W \leftarrow W \cap P$, $K_{\SO} \leftarrow K_{\SO} \cap P$ \Comment{Dimension reduction} 
+	\State $K_{\free} \leftarrow w + A^{-1/2} B_\infty$ \Comment{Ellipsoid $E(w, A) := P \cap (x_K + 2n \cdot E(\Sigma_K^{-1}))$} 
+	\State $x_K \leftarrow \cg(K_{\free})$, $\Sigma_K \leftarrow \Cov(K_{\free})$
+	\State Hyperplane $P_0 \leftarrow \{y : v^\top y = 0\}$, lattice $\Lambda \leftarrow \Pi_{P_0}(\Lambda)$  \Comment{Lattice projection} 
+	\label{line:dim_reduce_end_implementation}
+	\EndIf
+\EndWhile
+\State \textbf{Return} unique point $x^* \in K_{\SO}$
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+
+
+\begin{algorithm}[htp!]\caption{}\label{alg:freeCG}
+\begin{algorithmic}[1]
+\Procedure{\textsc{FreeCG}}{$K_{\free},K_{\SO}, x_K, \Sigma_K$} 
+\If{$x_K \notin K_{\SO}$} \Comment{Check the constraints for $K_{\SO}$} 
+	\State Find constraint $a^\top x \leq b$ of $K_{\SO}$ violated by $x_K$
+	\State $H \leftarrow \{x:a^\top x \leq a^\top x_K\}$ \Comment{$x_K$ lies on the boundary of $H$}
+	\State $K&#x27;_{\free} \leftarrow K_{\free} \cap H$ \Comment{Volume of $K_{\free}$ shrinks}
+	\State Obtain $\epsilon$-approx. centroid $x_{K&#x27;}$ and cov. $\Sigma_{K&#x27;}$ of $K&#x27;_{\free}$ as in \Cref{thm:randomwalkcg} 
+\Else
+	\State Find any constraint $H = \{x:a^\top x \leq b\}$ of $K_{\SO}$ that is not a constraint of $K_{\free}$ \Comment{$x_K \in H$}
+	\State $K&#x27;_{\free} \leftarrow K_{\free} \cap H$ \Comment{$K_{\free}$ learns one more constraint of $K_{\SO}$}
+	\State Obtain $\epsilon$-approx. centroid $x_{K&#x27;}$ and cov. $\Sigma_{K&#x27;}$ of $K&#x27;_{\free}$ as in \Cref{thm:sampling_polytope} \Comment{Validity by \Cref{lem:covariance_change}}
+\EndIf
+\State \textbf{Return} $K&#x27;_{\free}, x_{K&#x27;}, \Sigma_{K&#x27;}$
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+
+
+
+
+
+\subsection{Proof of Main Result}
+
+By the argument in the beginning of \Cref{subsec:proof_overview}, we can assume wlog that $f$ has a unique minimizer $x^* \in S_\varphi^n$.  
+We first prove the correctness and oracle complexity of \Cref{alg:implementation}.
+These proofs are very similar to the proofs of \Cref{lem:correctness_meta_algo} and \ref{lem:oracle_complexity_meta_algo} from the previous section, so we only highlight the differences. 
+
+
+\begin{lemma}[Correctness of \textsc{Main}] \label{lem:correctness_implementation}
+Assuming the conditions in \Cref{thm:polyhedra} and that $f$ has a unique minimizer $x^* \in S_\varphi^n$, \Cref{alg:implementation} finds $x^*$. 
+\end{lemma}
+
+\begin{proof}
+As in the proof of \Cref{lem:correctness_meta_algo}, we only need to verify that $x^* \in K_{\SO}$ is preserved under dimension reduction in Line \ref{line:dim_reduce_start_implementation}-\ref{line:dim_reduce_end_implementation}.
+Let&#x27;s assume that $x^* \in K_{\SO}$ before dimension reduction. 
+Since \Cref{thm:randomwalkcg} guarantees $\|x_K - \cg(K_{\free})\|_{(\Sigma_K)^{-1}} \leq \epsilon$ and $(1-\epsilon) \cdot \Cov(K_{\free}) \preceq \Sigma_K \preceq (1+\epsilon) \cdot \Cov(K_{\free})$ with $\epsilon = 0.01$, it follows from \Cref{thm:isotropic_rounding} that \eqref{eq:sandwiching_conditon} still holds with $K$ replaced by $K_{\free}$: 
+\begin{align*}
+x_K + E(\Sigma_K^{-1})/2 \subseteq K_{\free} \subseteq x_K + 2n \cdot E(\Sigma_K^{-1}).
+\end{align*}
+
+Proceeding from here, the same argument as in the proof of \Cref{lem:correctness_meta_algo} shows that $K_{\free} \cap S_\varphi^n \subseteq P$. 
+Also note that \Cref{alg:implementation} always maintains $K_{\SO} \subseteq K_{\free}$.
+It follows that $K_{\SO} \cap S_{\varphi}^n \subseteq K_{\free} \cap S_\varphi^n \subseteq P$, i.e. all rational points in $K_{\SO} \cap S_{\varphi}^n$ are preserved during dimension reduction. This implies that $x^* \in K_{\SO} \cap P$ after dimension reduction and completes the proof of the lemma. 
+\end{proof}
+
+
+
+
+\begin{lemma}[Oracle complexity of \textsc{Main}] \label{lem:oracle_complexity_implementation}
+Assuming the conditions in 
+\Cref{thm:polyhedra} and that $f$ has a unique minimizer $x^* \in S_\varphi^n$, \Cref{alg:implementation} makes at most $O(n (\varphi + \log(\gamma n R)))$ calls to the separation oracle $\SO$ with high probability. 
+\end{lemma}
+
+\begin{proof}
+Note that \Cref{alg:implementation} always maintains $K_{\SO} \subseteq K_{\free}$, and $\SO$ is only called in Line \ref{line:randomwalkcg} when $K_{\SO} = K_{\free}$. 
+Since each run of \textsc{RandomWalkCG} in Line \ref{line:randomwalkcg} succeeds with probability $\delta = 1/\poly(n, \varphi, \log(\gamma R))$ for a large enough polynomial by \Cref{thm:randomwalkcg}, union bound implies that with high probability, the first $O(n (\varphi + \log(\gamma n R)))$ run of \textsc{RandomWalkCG} in Line \ref{line:randomwalkcg} all succeed.
+We condition on this event. 
+Then applying exactly the same analysis as in the proof of \Cref{lem:oracle_complexity_meta_algo} to the potential function
+\begin{align*}
+\Phi_{\SO} := \log(\vol(K_{\SO}) \cdot \det(\Lambda))
+\end{align*}
+gives the oracle complexity bound in the lemma. 
+\end{proof}
+
+
+
+Next, we show that \Cref{alg:implementation} makes at most $\poly(n, \varphi, \log(\gamma R))$ calls to $\textsc{FreeCG}$ with high probability. Since each call to $\textsc{FreeCG}$ can be implemented in $\poly(n, \varphi, \log(\gamma R))$ time by checking all the constraints of $K_{\SO}$, this will imply the bound on the number of arithmetic operations in \Cref{thm:polyhedra}.
+
+
+
+\begin{lemma}[Number of \textsc{FreeCG} calls] \label{lem:freecg_steps}
+Assuming the conditions in \Cref{thm:polyhedra} and that $f$ has a unique minimizer $x^* \in S_\varphi^n$, \Cref{alg:implementation} makes at most $\poly(n, \varphi, \log(\gamma R))$ calls to $\textsc{FreeCG}$ with high probability. 
+\end{lemma}
+
+\begin{proof}
+As in the proof above, we condition on the high probability event that the first $\poly(n, \varphi, \log(\gamma R))$ calls to \textsc{RandomWalkCG} as well as the sampling algorithm in \Cref{thm:sampling_polytope} all succeed.
+In the beginning of the algorithm, $K_{\SO} = B_{\infty}(R)$ and thus can be specified using $2n$ constaints. 
+An additional constraint is placed on $K_{\SO}$ each time $\SO$ is called, and since the number of $\SO$ calls is at most $O(n(\varphi + \log(\gamma n R))$, the number of constraints \Cref{alg:implementation} maintains for the specification of $K_{\SO}$ can be at most $O(n(\varphi + \log(\gamma n R))$ throughout. 
+
+Now we upper bound the number of calls to $\textsc{FreeCG}$. In fact, we show that the total number of cutting plane steps for $K_{\free}$ in Line \ref{line:randomwalkcg} and \ref{line:freecg} of \Cref{alg:implementation} is at most $\poly(n,\varphi, \log(\gamma R))$. Our strategy is to consider the potential function
+\begin{align*}
+\Phi_{\free} := \log(\vol(K_{\free}) \cdot \det(\Lambda)) ,
+\end{align*}
+and repeat the analysis as in the proof of \Cref{lem:oracle_complexity_meta_algo}. However, there are two main differences that we highlight below. 
+
+The first main difference is that when we reduce the dimension in Line \ref{line:dim_reduce_start_implementation}-\ref{line:dim_reduce_end_implementation} of \Cref{alg:implementation}, we are not simply slicing $K_{\free}$ by the hyperplane $P$. Instead, we first replace $K_{\free}$ by its outer containing ellipsoid $x_K + 2n \cdot E(\Sigma_K^{-1})$, then further replace the sliced ellipsoid $E(w, A) = P \cap (x_K + 2n \cdot E(\Sigma_K^{-1}))$ by its outer containing hyperrectangle $K^{\new}_{\free} := w + A^{-1/2} B_\infty$. 
+Since we have the sandwiching condition that
+\begin{align*}
+x_K + E(\Sigma_K^{-1})/2 \subseteq K_{\free} \subseteq x_K + 2n \cdot E(\Sigma_K^{-1}),
+\end{align*}
+replacing $K_{\free}$ by $x_K + 2n \cdot E(\Sigma_K^{-1})$ increases its volume by at most $n^{O(n)}$. Also note that replacing an ellipsoid by its outer containing hyperrectangle increases its volume by at most $n^{O(n)}$. 
+It then follows that these replacements contribute to at most a factor of $n^{O(n)}$ to $\vol(K_{\free})$ for each dimension reduction step. As there are at most $n$ dimension reduction steps, the increase in $\Phi_{\free}$ due to these replacements is at most $O(n^2 \log(n))$ additively. 
+
+The second main difference is that not every call to \textsc{FreeCG} decreases $\vol(K_{\free})$ by a constant factor. In particular, this is the case if $x_K \in K_{\SO}$ in \Cref{alg:freeCG} and we add to $K_{\free}$ one constraint of $K_{\SO}$ that is currently not a constraint of $K_{\free}$.
+However, since we have shown above that $K_{\SO}$ has at most $O(n (\varphi + \log(\gamma n R)))$ constraints, this case can happen at most $O(n (\varphi + \log(\gamma n R)))$ in each dimension until all the constraints for $K_{\SO}$ appear in the list of constraints for $K_{\free}$, in which case our algorithm can efficiently certify that $K_{\free} = K_{\SO}$. 
+Whenever this happens, no additional call to \textsc{FreeCG} will happen until the dimension is further reduced. 
+
+Incorporating the above two differences into the analysis as in the proof of  \Cref{lem:oracle_complexity_meta_algo}, we obtain that the total number of cutting plane steps in Line \ref{line:randomwalkcg} and \ref{line:freecg} applied to $K_{\free}$ is at most $O(n^2(\varphi + \log (\gamma n R)))$. This is also an upper bound on the number of calls to \textsc{FreeCG}, and thus proves the lemma. 
+\end{proof}
+
+
+
+\begin{proof}[Proof of \Cref{thm:polyhedra}]
+By the argument in the beginning of \Cref{subsec:proof_overview}, we may assume without loss of generality that $f$ has a unique minimizer $x^* \in S_\varphi^n$. 
+The correctness of \Cref{alg:implementation} is given in \Cref{lem:correctness_implementation}, and its oracle complexity is upper bounded in \Cref{lem:oracle_complexity_implementation}. 
+We are thus left to upper bound the total number of arithmetic operations used by \Cref{alg:implementation}. 
+
+
+By \Cref{lem:freecg_steps}, \Cref{alg:implementation} makes at most $\poly(n, \varphi, \log(\gamma R))$ calls to \textsc{FreeCG} and each such step can be implemented using $\poly(n, \varphi, \log(\gamma R))$ arithmetic operations. 
+Since $\textsc{ApproxSVP}$ is called after each cutting plane step in Line \ref{line:randomwalkcg} and \ref{line:freecg}, the total number of calls to $\textsc{ApproxSVP}$ is at most $\poly(n, \varphi, \log(\gamma R))$. 
+Note that the remaining part of the algorithm takes $\poly(n, \varphi, \log(\gamma R))$ arithmetic operations. 
+This gives the upper bound on the number of arithmetic operations
+and finishes the proof of the theorem. 
+\end{proof}
+
+
+
+
+ 
+</pre></html>

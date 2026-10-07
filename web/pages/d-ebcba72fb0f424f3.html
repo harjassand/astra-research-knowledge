@@ -1,0 +1,86 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>&quot;&quot;&quot;Independent finite symbolic check of the reconstructed response ledger.</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>&quot;&quot;&quot;Independent finite symbolic check of the reconstructed response ledger.</h1><p>Source ID d-ebcba72fb0f424f3; literature/sources/pde_spectrum9/cycle11/independent_curl_reconstruction.py; 1569 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>&quot;&quot;&quot;Independent finite symbolic check of the reconstructed response ledger.
+
+The mathematical proof is in the owned gate. This checks ODE solutions,
+moving-endpoint expressions and mean boundary fluxes using only explicit
+Fourier moments. It does not run the author&#x27;s script or solve the actual PDE.
+&quot;&quot;&quot;
+import json
+from pathlib import Path
+import sympy as sp
+
+u, d, h, z, v = sp.symbols(&quot;u d h z v&quot;, positive=True)
+s, c = sp.sin(d), sp.cos(d)
+k = (c - d/s)/2
+H = s*(c-k)/(u**2*c**3)
+L = lambda f: sp.diff(f,h,2) + sp.diff(f,z,2) + f
+simp = lambda f: sp.simplify(sp.trigsimp(sp.expand_trig(f)))
+ru = (h*sp.cos(h)-d*sp.cot(d)*sp.sin(h))/2
+rv = (h**2-d**2)*sp.cos(z)/2
+du = -k*sp.cos(z)/(u*c)
+dv = -d*sp.sin(h)/(2*u*c*s) - d*sp.sinh(sp.sqrt(3)*h)*sp.cos(2*z)/(2*u*c*sp.sinh(sp.sqrt(3)*d))
+ddu = H*sp.sin(h)/(2*s) + H*sp.sinh(sp.sqrt(3)*h)*sp.cos(2*z)/(2*sp.sinh(sp.sqrt(3)*d))
+checks = []
+def check(name, expression):
+    assert simp(expression) == 0, name
+    checks.append(name)
+
+check(&quot;unperturbed_u_ODE&quot;, L(ru)+sp.sin(h))
+check(&quot;unperturbed_v_ODE&quot;, L(rv)-sp.cos(z))
+for name, f in [(&quot;u_shape1&quot;,du),(&quot;v_shape1&quot;,dv),(&quot;u_shape2&quot;,ddu)]:
+    check(name+&quot;_ODE&quot;, L(f))
+for sign in (-1,1):
+    a = sign*d
+    hp = sp.cos(z)/(u*c)
+    hpp = sign*s*sp.cos(z)**2/(u**2*c**3)
+    check(f&quot;u_trace0_{sign}&quot;,ru.subs(h,a))
+    check(f&quot;v_trace0_{sign}&quot;,rv.subs(h,a))
+    check(f&quot;u_trace1_{sign}&quot;,(du+sp.diff(ru,h)*hp).subs(h,a))
+    check(f&quot;v_trace1_{sign}&quot;,(dv+sp.diff(rv,h)*hp).subs(h,a))
+    check(f&quot;u_trace2_{sign}&quot;,(ddu+2*sp.diff(du,h)*hp+sp.diff(ru,h,2)*hp**2+sp.diff(ru,h)*hpp).subs(h,a))
+
+# First two even outside antiderivative integrals over the full two-strip
+# complement. Endpoint movement is kept separately, never folded into bulk.
+I2 = 4*c/s
+I4 = 4*(c/s+c**3/(3*s**3))
+B = 2*(u**2-2*u*v*sp.sin(h)*sp.cos(z)+v**2)/(-u*sp.sin(h)+v*sp.cos(z))**3
+B1 = simp(sp.diff(B,v).subs(v,0))
+check(&quot;B_first_variation&quot;,B1-sp.cos(z)/u**2*(4/sp.sin(h)**2-6/sp.sin(h)**4))
+B2 = sp.diff(B,v,2).subs(v,0)
+mean_cos_moments = lambda f: simp(sp.integrate(sp.expand_trig(f),(z,0,2*sp.pi))/(2*sp.pi))
+check(&quot;u_bulk_second_variation&quot;,mean_cos_moments(-sp.sin(h)*B2)-(12/sp.sin(h)**4-8/sp.sin(h)**2)/u**3)
+
+v_bulk = -(4*I2-6*I4)/(4*sp.pi*u**2)
+v_endpoints = -2/(sp.pi*u**2*c*s**3)
+v_regular = simp(v_bulk+v_endpoints)
+check(&quot;v_regular_row&quot;,v_regular+2/(sp.pi*u**2*c*s))
+
+u_bulk = -(12*I4-8*I2)/(2*sp.pi*u**3)
+# Three moving-endpoint terms: 2F_v h&#x27;, F_h(h&#x27;)², and F h&#x27;&#x27;.
+u_endpoints = ((-8/s+12/s**3)/c - 4/(c*s**3) + 2/(s*c**3))/(sp.pi*u**3)
+u_regular = simp(u_bulk+u_endpoints)
+check(&quot;u_regular_row&quot;,u_regular-2/(sp.pi*u**3*c**3*s))
+
+# Boundary fluxes include r_h(1+h_z²). Their second-variation mean
+# has the four terms below; the last is the surface factor.
+mean_u_flux2 = H*c/(2*s) + (-c-k)/(2*u**2*c**2) - s**2/(2*u**2*c**3) + k/(u**2*c**2)
+check(&quot;mean_u_boundary_flux2&quot;,mean_u_flux2+s**2/(2*u**2*c**3))
+u_defect = (4*mean_u_flux2/(u*s**3)+8/(u**3*c*s))/sp.pi
+check(&quot;u_defect_row&quot;,u_defect-(8/c-2/c**3)/(sp.pi*u**3*s))
+
+mean_v_flux1 = -d/(2*u*s)+1/(2*u*c)
+v_defect = (4*mean_v_flux1/(u*s**3)-4*d/(u**2*s**2))/sp.pi
+check(&quot;v_defect_row&quot;,v_defect-(-2*d/s**4+2/(c*s**3)-4*d/s**2)/(sp.pi*u**2))
+
+Cu2 = simp(u_regular+u_defect)
+Cv1 = simp(v_regular+v_defect)
+check(&quot;total_Cu_vv&quot;,Cu2-8/(sp.pi*u**3*c*s))
+check(&quot;total_Cv_v&quot;,Cv1-2/(sp.pi*u**2)*(c/s**3-d/s**4-2*d/s**2))
+# tau is fixed: d=arcsin(tau/u), d_u=−tan(d)/u.
+curl = simp(Cu2-sp.diff(Cv1,u)+sp.tan(d)/u*sp.diff(Cv1,d))
+target = 2*(2*d-sp.sin(2*d))/(sp.pi*u**3*s**4)
+check(&quot;fixed_tau_curl&quot;,curl-target)
+out = {&quot;status&quot;:&quot;PASS&quot;, &quot;scope&quot;:&quot;Independent symbolic transcription check of explicit shape/endpoint/full-defect algebra; not a global PDE or spectral computation&quot;, &quot;checks&quot;:checks, &quot;Cu_vv&quot;:str(Cu2),&quot;Cv_v&quot;:str(Cv1),&quot;curl_coefficient_per_v&quot;:str(target),&quot;positive_coefficient_reason&quot;:&quot;2d−sin(2d)&gt;0 for d&gt;0; derivative2−2cos(2d)&gt;0 on0&lt;d&lt;1/10&quot;}
+root = Path(__file__).resolve().parents[3]
+(root/&#x27;results/pde_gate10/cycle11/response_curl_reconstruction.json&#x27;).write_text(json.dumps(out,indent=2)+&#x27;\n&#x27;)
+print(json.dumps({&quot;status&quot;:out[&#x27;status&#x27;],&quot;checks&quot;:len(checks),&quot;scope&quot;:out[&#x27;scope&#x27;]},indent=2))
+</pre></html>

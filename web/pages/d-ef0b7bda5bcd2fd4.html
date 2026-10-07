@@ -1,0 +1,358 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>!/usr/bin/env python3</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>!/usr/bin/env python3</h1><p>Source ID d-ef0b7bda5bcd2fd4; literature/sources/rounding_prior/cycle13/PDE_independent_checker.py; 4192 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Independent exact finite evidence for the PIT gate; no author-code imports.
+
+The universal claims are proved in the accompanying gate note.  This program
+checks literal instances and preserves counterexamples to omitted assumptions.
+It cannot validate effective Linnik or asymptotic novelty.
+&quot;&quot;&quot;
+
+from fractions import Fraction
+from pathlib import Path
+import json
+import math
+import sympy as sp
+
+
+ROOT = Path(__file__).resolve().parents[3]
+OUT = ROOT / &quot;results/pde_spectrum9/cycle13_pit_gate/independent_exact_checks.json&quot;
+Z = sp.Symbol(&quot;z&quot;)
+CHECKS = []
+CHARGES = {&quot;candidate_tests&quot;: 0, &quot;trial_divisions&quot;: 0, &quot;order_power_tests&quot;: 0}
+
+
+def check(name, condition, evidence=None):
+    if not condition:
+        raise AssertionError((name, evidence))
+    CHECKS.append({&quot;name&quot;: name, &quot;pass&quot;: True, &quot;evidence&quot;: evidence})
+
+
+def floor_log2(n):
+    assert n &gt;= 1
+    return n.bit_length() - 1
+
+
+def ceil_log2(n):
+    assert n &gt;= 1
+    return (n - 1).bit_length()
+
+
+def ceil_div(a, b):
+    return (a + b - 1) // b
+
+
+def charge_delta(before):
+    return {key: CHARGES[key] - before[key] for key in CHARGES}
+
+
+def is_prime(n, charged=False):
+    if charged:
+        CHARGES[&quot;candidate_tests&quot;] += 1
+    if n &lt; 2:
+        return False
+    for t in range(2, math.isqrt(n) + 1):
+        if charged:
+            CHARGES[&quot;trial_divisions&quot;] += 1
+        if n % t == 0:
+            return False
+    return True
+
+
+def primes_upto(bound):
+    return [p for p in range(2, bound + 1) if is_prime(p)]
+
+
+def rank_mod(matrix, p):
+    rows = [[int(v) % p for v in row] for row in matrix.tolist()]
+    m, n = len(rows), len(rows[0])
+    rank = 0
+    for c in range(n):
+        pivot = next((r for r in range(rank, m) if rows[r][c]), None)
+        if pivot is None:
+            continue
+        rows[rank], rows[pivot] = rows[pivot], rows[rank]
+        inv = pow(rows[rank][c], -1, p)
+        rows[rank] = [(v * inv) % p for v in rows[rank]]
+        for r in range(m):
+            if r != rank and rows[r][c]:
+                a = rows[r][c]
+                rows[r] = [(v - a * u) % p for v, u in zip(rows[r], rows[rank])]
+        rank += 1
+        if rank == m:
+            break
+    return rank
+
+
+def primitive_roots(q, p):
+    return [a for a in range(2, p) if pow(a, q, p) == 1]
+
+
+def evaluate_poly(poly, a, p):
+    return sum(int(c) * pow(a, int(e[0]), p) for e, c in sp.Poly(poly, Z).terms()) % p
+
+
+def quotient_matrix(q, poly):
+    phi = sum(Z**j for j in range(q))
+    cols = []
+    for j in range(q - 1):
+        rem = sp.Poly(sp.rem(poly * Z**j, phi, Z), Z)
+        cols.append([rem.nth(i) for i in range(q - 1)])
+    return sp.Matrix(q - 1, q - 1, lambda i, j: cols[j][i]), phi
+
+
+def root_budget_case(q, poly):
+    matrix, phi = quotient_matrix(q, poly)
+    resultant = int(sp.resultant(phi, poly, Z))
+    norm = sum(abs(int(c)) for c in sp.Poly(poly, Z).all_coeffs())
+    check(f&quot;q{q}:{poly}:integer determinant&quot;, int(matrix.det()) == resultant)
+    check(f&quot;q{q}:{poly}:nonzero norm and triangle bound&quot;,
+          0 &lt; abs(resultant) &lt;= norm ** (q - 1), {&quot;R&quot;: resultant, &quot;W&quot;: norm})
+    pool = [p for p in primes_upto(1000) if p % q == 1]
+    root_rows = []
+    capacity_numerator = 0
+    total_weight = 0
+    product = 1
+    for p in pool:
+        roots = primitive_roots(q, p)
+        r = sum(evaluate_poly(poly, a, p) == 0 for a in roots)
+        nullity = q - 1 - rank_mod(matrix, p)
+        assert len(roots) == q - 1 and r == nullity
+        assert resultant % (p ** r) == 0
+        product *= p ** r
+        ell = floor_log2(p)
+        capacity_numerator += ell * r
+        total_weight += ell
+        if r:
+            root_rows.append({&quot;p&quot;: p, &quot;roots&quot;: r, &quot;nullity&quot;: nullity})
+    check(f&quot;q{q}:{poly}:all modular roots equal nullity and divide determinant&quot;, True,
+          {&quot;p_count&quot;: len(pool), &quot;nonzero_root_rows&quot;: root_rows})
+    check(f&quot;q{q}:{poly}:distinct-prime product&quot;, abs(resultant) % product == 0)
+    probability = Fraction(capacity_numerator, (q - 1) * total_weight)
+    upper = Fraction(ceil_log2(norm), total_weight)
+    check(f&quot;q{q}:{poly}:weighted exact probability&quot;, probability &lt;= upper,
+          {&quot;probability&quot;: str(probability), &quot;upper&quot;: str(upper)})
+    return {&quot;q&quot;: q, &quot;C&quot;: str(poly), &quot;R&quot;: resultant, &quot;W&quot;: norm,
+            &quot;pool_size&quot;: len(pool), &quot;nonzero_root_rows&quot;: root_rows,
+            &quot;weighted_probability&quot;: str(probability), &quot;capacity_bound&quot;: str(upper)}
+
+
+def acquire_q(U, target):
+    pool, capacity, q = [], 0, U + 1
+    while capacity &lt; target:
+        if is_prime(q, charged=True):
+            pool.append(q)
+            capacity += floor_log2(q)
+        q += 1
+    return pool, capacity
+
+
+def order_element(q, p):
+    for h in range(2, p):
+        CHARGES[&quot;order_power_tests&quot;] += 1
+        gamma = pow(h, (p - 1) // q, p)
+        if gamma != 1:
+            assert 1 &lt; gamma &lt; p and pow(gamma, q, p) == 1
+            return gamma
+    raise AssertionError(&quot;Cyclic field group supplies an order-q element&quot;)
+
+
+def acquire_p(q, target):
+    pool, capacity, j = [], 0, 1
+    while capacity &lt; target:
+        p = j * q + 1
+        if is_prime(p, charged=True):
+            pool.append({&quot;p&quot;: p, &quot;gamma&quot;: order_element(q, p)})
+            capacity += floor_log2(p)
+        j += 1
+    return pool, capacity
+
+
+def exact_composed_tester():
+    # Fixed integer target P(X)=1-2 exp(X), not a p/q-adaptive input.
+    k, d, w = 2, 1, 2
+    L = k + k * (k - 1) // 2
+    U = max(k, 6 * d * (k * k + 1))
+    inner_target = 6 * L * ceil_log2(w)
+    outer_target = 6 * ceil_log2(k * w)
+    before_q = dict(CHARGES)
+    q_pool, Tq = acquire_q(U, inner_target)
+    q_charges = charge_delta(before_q)
+    probability = Fraction(0)
+    rows = []
+    p_min = None
+    capacities = []
+    binary_rows = []
+    for q in q_pool:
+        before_root_pool = dict(CHARGES)
+        pool, Tp = acquire_p(q, outer_target)
+        root_pool_charges = charge_delta(before_root_pool)
+        capacities.append(Tp)
+        q_probability = Fraction(0)
+        p_rows = []
+        for item in pool:
+            p, gamma = item[&quot;p&quot;], item[&quot;gamma&quot;]
+            p_min = p if p_min is None else min(p_min, p)
+            roots = [pow(gamma, r, p) for r in range(1, q)]
+            check(f&quot;prototype q{q},p{p}: order certificate and distinct primitive roots&quot;,
+                  len(set(roots)) == q - 1 and set(roots) == set(primitive_roots(q, p)))
+            failures = sum((1 - 2 * pow(a, v, p)) % p == 0
+                           for v in range(q) for a in roots)
+            probability_p = Fraction(failures, q * (q - 1))
+            q_probability += Fraction(floor_log2(p), Tp) * probability_p
+            p_rows.append({&quot;p&quot;: p, &quot;gamma&quot;: gamma, &quot;ell&quot;: floor_log2(p),
+                           &quot;failures&quot;: failures, &quot;sample_pairs&quot;: q * (q - 1),
+                           &quot;exact_false_accept&quot;: str(probability_p)})
+        probability += Fraction(floor_log2(q), Tq) * q_probability
+        rows.append({&quot;q&quot;: q, &quot;ell&quot;: floor_log2(q), &quot;Tp&quot;: Tp, &quot;pool&quot;: p_rows,
+                     &quot;acquisition_charges&quot;: root_pool_charges,
+                     &quot;exact_false_accept_given_q&quot;: str(q_probability)})
+        # Same-oracle strong baseline: any p|R is treated as complete failure.
+        binary_target = 6 * (q - 1) * ceil_log2(k * w)
+        before_binary_pool = dict(CHARGES)
+        binary_pool, binary_capacity = acquire_p(q, binary_target)
+        binary_rows.append({&quot;q&quot;: q, &quot;target&quot;: binary_target,
+                            &quot;root_weighted_target&quot;: outer_target,
+                            &quot;pool_size&quot;: len(binary_pool), &quot;capacity&quot;: binary_capacity,
+                            &quot;acquisition_charges&quot;: charge_delta(before_binary_pool),
+                            &quot;largest_p&quot;: binary_pool[-1][&quot;p&quot;]})
+    bound = (Fraction(L * ceil_log2(w), Tq)
+             + Fraction(d * k * k, min(q_pool))
+             + Fraction(d, p_min)
+             + Fraction(ceil_log2(k * w), min(capacities)))
+    check(&quot;prototype: fixed-input exact false acceptance bounded&quot;, probability &lt;= bound,
+          {&quot;actual&quot;: str(probability), &quot;bound&quot;: str(bound)})
+    check(&quot;prototype: admitted bound less than one half&quot;, bound &lt; Fraction(1, 2))
+    check(&quot;prototype: counterexamples are not masked by identically zero failure rate&quot;,
+          probability &gt; 0)
+    Mq = ceil_div(inner_target, floor_log2(U + 1))
+    check(&quot;prototype: acquired q_max obeys elementary numerical bound&quot;,
+          max(q_pool) &lt;= 16 * (U + Mq) ** 2)
+    return {&quot;target&quot;: &quot;1 - 2 exp(X)&quot;, &quot;parameters&quot;: {&quot;k&quot;: k, &quot;d&quot;: d, &quot;w&quot;: w},
+            &quot;inner_acquisition_charges&quot;: q_charges,
+            &quot;finite_oracle_enumeration_count&quot;: sum(
+                item[&quot;sample_pairs&quot;] for row in rows for item in row[&quot;pool&quot;]),
+            &quot;q_pool&quot;: q_pool, &quot;Tq&quot;: Tq, &quot;rows&quot;: rows,
+            &quot;exact_false_accept&quot;: str(probability), &quot;bound&quot;: str(bound),
+            &quot;binary_norm_control&quot;: binary_rows}
+
+
+def ordinary_supply_checks():
+    for n in range(3, 65):
+        bc = math.comb(2 * n, n)
+        pi = len(primes_upto(2 * n))
+        assert bc * (2 * n + 1) &gt;= 4 ** n
+        assert bc &lt;= (2 * n) ** pi
+        assert 2 * n + 1 &lt;= 2 ** n
+    check(&quot;ordinary supply: central binomial instances n=3..64&quot;, True)
+    rows = []
+    for U, M in [(1, 1), (10, 4), (30, 5), (73, 20)]:
+        N = 16 * (U + M) ** 2
+        # Check only the first M certified primes in the legal interval.
+        got = []
+        for p in range(U + 1, N + 1):
+            if is_prime(p):
+                got.append(p)
+                if len(got) == M:
+                    break
+        assert len(got) == M
+        rows.append({&quot;U&quot;: U, &quot;M&quot;: M, &quot;bound&quot;: N, &quot;primes&quot;: got})
+    check(&quot;ordinary supply: finite U,M fixtures&quot;, True, rows)
+    return rows
+
+
+def crt_checks():
+    rows = []
+    for q, M in [(2, 3), (3, 4), (7, 5), (31, 6)]:
+        V = max(q, M)
+        ell = next(p for p in range(V + 1, 16 * (V + 1) ** 2 + 1) if is_prime(p))
+        modulus = q * ell
+        classes, witnesses = [], []
+        for t in range(1, M + 1):
+            a = next(a for a in range(modulus) if a % q == 1 and a % ell == t)
+            assert math.gcd(a, modulus) == 1
+            classes.append(a)
+            p = a
+            while not is_prime(p):
+                p += modulus
+            assert p % q == 1 and p % ell == t
+            witnesses.append(p)
+        check(f&quot;CRT q{q},M{M}: distinct units and distinct prime witnesses&quot;,
+              len(set(classes)) == M and len(set(witnesses)) == M,
+              {&quot;ell&quot;: ell, &quot;classes&quot;: classes, &quot;prime_witnesses&quot;: witnesses})
+        rows.append({&quot;q&quot;: q, &quot;M&quot;: M, &quot;ell&quot;: ell, &quot;classes&quot;: classes,
+                     &quot;prime_witnesses&quot;: witnesses})
+    return rows
+
+
+def excluded_interface_counterexamples():
+    # Composite q: sparse C can equal Phi_q, so its cyclotomic norm is zero.
+    C = 1 + Z**2
+    composite = int(sp.resultant(sp.cyclotomic_poly(4, Z), C, Z))
+    check(&quot;exclusion: composite q=4 invalidates sparse nonzero norm&quot;, composite == 0)
+    # Repetition buys no additional divisibility.  Both primitive cube roots vanish.
+    q, p, C = 3, 7, sp.Integer(7)
+    r = sum(evaluate_poly(C, a, p) == 0 for a in primitive_roots(q, p))
+    repeated_capacity = 6 * floor_log2(p)
+    fake_bound = Fraction(ceil_log2(7), repeated_capacity)
+    check(&quot;exclusion: repeated prime artificial capacity contradicts actual root probability&quot;,
+          r == q - 1 and fake_bound == Fraction(1, 4))
+    # Each per-query input respects the same w, but is chosen after the characteristic.
+    p_pool = [p for p in primes_upto(100) if p &gt; 2][:20]
+    w_p, Tp = max(p_pool), sum(floor_log2(p) for p in p_pool)
+    p_fake_bound = Fraction(ceil_log2(w_p), Tp)
+    check(&quot;exclusion: p-adaptive constant C_p=p vanishes on every sampled field&quot;,
+          all(p % p == 0 for p in p_pool) and p_fake_bound &lt; 1,
+          {&quot;pool&quot;: p_pool, &quot;w&quot;: w_p, &quot;capacity&quot;: Tp, &quot;illegal_bound&quot;: str(p_fake_bound)})
+    q_pool = primes_upto(100)[:20]
+    w_q, Tq = max(q_pool), sum(floor_log2(q) for q in q_pool)
+    q_fake_bound = Fraction(ceil_log2(w_q), Tq)
+    check(&quot;exclusion: q-adaptive denominator h_q=q makes every query undefined&quot;,
+          all(q % q == 0 for q in q_pool) and q_fake_bound &lt; 1,
+          {&quot;pool&quot;: q_pool, &quot;w&quot;: w_q, &quot;capacity&quot;: Tq, &quot;illegal_bound&quot;: str(q_fake_bound)})
+    return {&quot;composite_q_norm&quot;: composite,
+            &quot;repeated_p&quot;: {&quot;q&quot;: 3, &quot;p&quot;: 7, &quot;copies&quot;: 6,
+                           &quot;actual_probability&quot;: &quot;1&quot;, &quot;fake_bound&quot;: str(fake_bound)},
+            &quot;p_adaptive&quot;: {&quot;actual_probability&quot;: &quot;1&quot;, &quot;fake_bound&quot;: str(p_fake_bound),
+                           &quot;T_p&quot;: Tp, &quot;w&quot;: w_p},
+            &quot;q_adaptive&quot;: {&quot;actual_undefined_probability&quot;: &quot;1&quot;, &quot;fake_bound&quot;: str(q_fake_bound),
+                           &quot;T_q&quot;: Tq, &quot;w&quot;: w_q}}
+
+
+def disclosed_payload_correction():
+    # Literal reported arguments, independently recomputed; no producer import.
+    p, q, a, u, v = 5337407, 7919, 1791144, [4346646], [5246]
+    old = p.bit_length() * (len(u) + 1) + q.bit_length() * (len(v) + 1)
+    correct = p.bit_length() * (len(u) + 2) + q.bit_length() * (len(v) + 1)
+    minimal = sum(x.bit_length() for x in [p, q, a, *u, *v])
+    check(&quot;reported payload: p omitted from frozen producer counter&quot;,
+          old == 72 and correct == 95 and minimal == 93 and correct - old == p.bit_length())
+    return {&quot;source&quot;: &quot;rounding_prior cycle13 costed_replay.json literal reported arguments&quot;,
+            &quot;producer_counter&quot;: old, &quot;correct_argument_upper_bits&quot;: correct,
+            &quot;minimal_integer_bits_before_framing&quot;: minimal,
+            &quot;full_producer_replay_not_adopted&quot;: True}
+
+
+def main():
+    norm_cases = [root_budget_case(q, poly) for q, poly in
+                  [(3, 2 - Z), (3, sp.Integer(7)), (5, 1 - 2 * Z),
+                   (5, sp.Integer(11)), (7, 2 - Z), (11, 2 - Z),
+                   (7, 5 + 3 * Z**2 - 2 * Z**6)]]
+    report = {&quot;status&quot;: &quot;PASS&quot;, &quot;worker&quot;: &quot;pde_spectrum9&quot;, &quot;model&quot;: &quot;gpt-6.1-sol&quot;,
+              &quot;reasoning_effort&quot;: &quot;max&quot;, &quot;nested_workers&quot;: 0,
+              &quot;scope&quot;: &quot;Independent exact finite instances and excluded-interface counterexamples; universal proof is analytic; Linnik is an external theorem.&quot;,
+              &quot;root_norm_cases&quot;: norm_cases,
+              &quot;ordinary_supply&quot;: ordinary_supply_checks(), &quot;crt&quot;: crt_checks(),
+              &quot;prototype&quot;: exact_composed_tester(),
+              &quot;excluded_interfaces&quot;: excluded_interface_counterexamples(),
+              &quot;disclosed_payload_correction&quot;: disclosed_payload_correction(),
+              &quot;charged_work&quot;: CHARGES, &quot;checks&quot;: CHECKS, &quot;check_count&quot;: len(CHECKS)}
+    OUT.parent.mkdir(parents=True, exist_ok=True)
+    OUT.write_text(json.dumps(report, indent=2) + &quot;\n&quot;)
+    print(json.dumps({&quot;status&quot;: report[&quot;status&quot;], &quot;checks&quot;: len(CHECKS),
+                      &quot;exact_false_accept&quot;: report[&quot;prototype&quot;][&quot;exact_false_accept&quot;],
+                      &quot;bound&quot;: report[&quot;prototype&quot;][&quot;bound&quot;],
+                      &quot;charged_work&quot;: CHARGES, &quot;output&quot;: str(OUT)}))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre></html>

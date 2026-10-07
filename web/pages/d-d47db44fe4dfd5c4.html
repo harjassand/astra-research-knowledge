@@ -1,0 +1,82 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>&quot;&quot;&quot;Execute only the frozen source-iteration comparison or its charged sampler.&quot;&quot;&quot;</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>&quot;&quot;&quot;Execute only the frozen source-iteration comparison or its charged sampler.&quot;&quot;&quot;</h1><p>Source ID d-d47db44fe4dfd5c4; literature/sources/metric_geometry10/cycle17/frozen_run_matched_hirai.py; 1033 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>&quot;&quot;&quot;Execute only the frozen source-iteration comparison or its charged sampler.&quot;&quot;&quot;
+from pathlib import Path
+import argparse
+import gzip
+import hashlib
+import json
+import resource
+import sys
+import time
+from hirai_exact import run_source_iteration
+from prime_sampler import bad_prime_bound, sample_probable_prime
+
+BASE = Path(__file__).resolve().parents[3]
+OUT = BASE / &quot;results/metric_geometry10/cycle17&quot;
+
+
+def max_rss_bytes():
+    value = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    return value if sys.platform == &quot;darwin&quot; else value * 1024
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(&quot;mode&quot;, choices=(&quot;sample&quot;, &quot;run&quot;))
+    parser.add_argument(&quot;--case&quot;)
+    parser.add_argument(&quot;--field&quot;, choices=(&quot;Q&quot;, &quot;sample&quot;, &quot;7&quot;))
+    args = parser.parse_args()
+    start = time.perf_counter()
+    protocol_path = OUT / &quot;FROZEN_PROTOCOL.json&quot;
+    protocol = json.loads(protocol_path.read_text())
+    if args.mode == &quot;sample&quot;:
+        distinct = {case[&quot;input_id&quot;]: case for case in protocol[&quot;instances&quot;]}
+        bound = sum(bad_prime_bound(case[&quot;n&quot;], len(case[&quot;costs&quot;]), case[&quot;height_bound&quot;]) for case in distinct.values())
+        data = sample_probable_prime(bound, protocol[&quot;failure_probability&quot;])
+        data[&quot;input_id_union&quot;] = sorted(distinct)
+        data[&quot;protocol_sha256&quot;] = hashlib.sha256(protocol_path.read_bytes()).hexdigest()
+        data[&quot;process_measured_seconds&quot;] = time.perf_counter() - start
+        data[&quot;process_cpu_seconds&quot;] = time.process_time()
+        data[&quot;peak_rss_bytes&quot;] = max_rss_bytes()
+        (OUT / &quot;PRIME_SAMPLING.json&quot;).write_text(json.dumps(data, indent=2) + &quot;\n&quot;)
+        print(json.dumps({k: data[k] for k in (&quot;outcome&quot;, &quot;candidates_used&quot;, &quot;candidate&quot;, &quot;core_seconds&quot;, &quot;peak_rss_bytes&quot;)}))
+        return
+    if args.case is None or args.field is None:
+        raise SystemExit(&quot;run requires --case and --field&quot;)
+    instance = next(case for case in protocol[&quot;instances&quot;] if case[&quot;name&quot;] == args.case)
+    if args.field == &quot;Q&quot;:
+        modulus, label = None, &quot;Q&quot;
+    elif args.field == &quot;7&quot;:
+        if instance[&quot;name&quot;] != &quot;triangle_capped&quot;:
+            raise SystemExit(&quot;F7 negative control frozen only for triangle_capped&quot;)
+        modulus, label = 7, &quot;F7_negative_control&quot;
+    else:
+        sample = json.loads((OUT / &quot;PRIME_SAMPLING.json&quot;).read_text())
+        if sample[&quot;outcome&quot;] != &quot;PROBABLE_PRIME&quot;:
+            raise SystemExit(&quot;sampler returned UNKNOWN; do not resample silently&quot;)
+        modulus, label = int(sample[&quot;candidate&quot;]), &quot;sample_Fp&quot;
+    source_call_start = time.perf_counter()
+    summary, trace = run_source_iteration(instance, modulus)
+    summary[&quot;source_call_seconds&quot;] = time.perf_counter() - source_call_start
+    stem = instance[&quot;name&quot;] + &quot;_&quot; + label
+    trace_path = OUT / (stem + &quot;_trace.json.gz&quot;)
+    write_start = time.perf_counter()
+    with trace_path.open(&quot;wb&quot;) as raw:
+        with gzip.GzipFile(fileobj=raw, mode=&quot;wb&quot;, mtime=0) as output:
+            output.write(json.dumps(trace, separators=(&quot;,&quot;, &quot;:&quot;)).encode())
+    summary[&quot;trace_write_seconds&quot;] = time.perf_counter() - write_start
+    summary[&quot;trace_path&quot;] = str(trace_path.relative_to(BASE))
+    summary[&quot;trace_sha256&quot;] = hashlib.sha256(trace_path.read_bytes()).hexdigest()
+    summary[&quot;trace_bytes&quot;] = trace_path.stat().st_size
+    summary[&quot;protocol_sha256&quot;] = hashlib.sha256(protocol_path.read_bytes()).hexdigest()
+    summary[&quot;process_measured_seconds&quot;] = time.perf_counter() - start
+    summary[&quot;process_measured_scope&quot;] = &quot;main entry through trace writing/hashing and summary construction; excludes imports/interpreter startup and final summary write&quot;
+    summary[&quot;process_cpu_seconds&quot;] = time.process_time()
+    summary[&quot;peak_rss_bytes&quot;] = max_rss_bytes()
+    summary[&quot;source_code_sha256&quot;] = {name: hashlib.sha256((Path(__file__).parent / name).read_bytes()).hexdigest() for name in (&quot;hirai_exact.py&quot;, &quot;prime_sampler.py&quot;, &quot;run_matched_hirai.py&quot;)}
+    (OUT / (stem + &quot;_summary.json&quot;)).write_text(json.dumps(summary, indent=2) + &quot;\n&quot;)
+    print(json.dumps({k: summary[k] for k in (&quot;instance&quot;, &quot;field&quot;, &quot;sweeps_completed&quot;, &quot;best_sweep&quot;, &quot;best_value&quot;, &quot;certified_fixture_gap&quot;, &quot;accuracy_met&quot;, &quot;core_seconds&quot;, &quot;max_field_operand_bits&quot;, &quot;peak_rss_bytes&quot;)}))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre></html>

@@ -1,0 +1,226 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>GIMPS - The Math - PrimeNet</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>GIMPS - The Math - PrimeNet</h1><p>Source ID d-e9a88475f93ae1f6; literature/sources/metric_prior/cycle17/mersenne_math.html; 3545 o200k tokens; role primary_source_or_metadata; extraction html_text_discovery_only_math_may_be_lossy. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>GIMPS - The Math - PrimeNet
+
+Username
+
+Password
+Log In Register Forgot password?    
+
+    Great Internet Mersenne Prime Search
+
+    GIMPS
+
+    Finding World Record Primes Since 1996
+
+Last updated: Oct 16, 2024
+
+Mathematics and Research Strategy
+
+        This page discusses some of the math behind and the computer algorithms used in an efficient search for Mersenne primes.  As I am more a computer programmer than a mathematician,
+        I will not go into too much mathematical detail but will try to provide pointers instead.
+
+Overview
+
+Forming an Exponent List
+
+Trial Factoring
+
+P-1 Factoring
+
+PRP (Probable Prime) Testing
+
+Lucas-Lehmer Primality Testing
+
+Double-Checking
+
+Overview
+
+        Mersenne numbers are of the simple form 2P-1, where P is the exponent to be tested. It is easy to prove
+        that if 2P-1 is prime, then P must be a prime. Thus, the first step in the search is to create a list of prime exponents to test.
+
+        If a Mersenne number has a factor it cannot be a Mersenne Prime, so the first step is to spend some time trying various factorization methods to find small factors to eliminate candidate exponents.
+        The amount of effort spent looking for factors is balanced against the probability of finding a factor. There are two main factoring tests that GIMPS uses: trial factoring (TF) and P-1.
+
+        If no factor is found after an appropriate amount of effort, the Mersenne number is tested with a PRP (Probable Prime) test. If that says composite, the candidate is not a Mersenne Prime.
+        In the (rare) case that PRP says probably prime, the number is re-tested with Lucas-Lehmer test to verify primality.
+
+        At this point the Mersenne number is known to be either prime or composite, but for some of the smallest composite Mersenne numbers an additional level of factoring is attempted using the
+        Elliptic Curve Method (ECM) which may be able to find some factors too large for TF or P-1.
+
+Trial Factoring
+
+        The first step in trying to eliminate candidate exponents is by trying to find a small factor. There are very efficient algorithms for determining if a number divides 2P-1. For example, let&#x27;s see
+        if 47 divides 223-1. Convert the exponent 23 to binary, you get 10111. Starting with 1, repeatedly square, remove the top bit of the exponent and if 1 multiply squared
+        value by 2, then compute the remainder upon division by 47.
+
+Square        top bit  mul by 2       mod 47
+------------  -------  -------------  ------
+1*1 = 1       1  0111  1*2 = 2           2
+2*2 = 4       0   111     no             4
+4*4 = 16      1    11  16*2 = 32        32
+32*32 = 1024  1     1  1024*2 = 2048    27
+27*27 = 729   1        729*2 = 1458      1
+
+        Thus, 223 = 1 mod 47. Subtract 1 from both sides. 223-1 = 0 mod 47. Since we&#x27;ve shown that 47 is a factor, 223-1 is not prime.
+
+        One very nice property of Mersenne numbers is that any factor q of 2p-1 must be of the form 2kp+1. Furthermore, q must be 1 or 7 mod 8. A proof
+        is available.  Finally, an efficient program can take advantage of the fact that any potential factor q must be prime.
+
+        The GIMPS factoring code creates a modified sieve of Eratosthenes with each bit representing a potential
+        2kp+1 factor. The sieve then eliminates any potential factors that are divisible by prime numbers below 40,000 or so.  Also, bits representing potential factors of 3 or 5 mod 8 are
+        cleared. This process eliminates roughly 95% of potential factors. The remaining potential factors are tested using the powering algorithm above.
+
+        Now the only question remaining is how much trial factoring should be done? The answer depends on three variables: the cost of factoring, the chance of finding a factor, and the cost of
+        a primality test. The formula used is:
+
+factoring_cost &lt; chance_of_finding_factor * primality_test_cost
+
+        That is, the time spent factoring must be less than the expected time saved. If a factor is found we can avoid running both the first-time PRP test and certification. Looking at past
+        factoring data we see that the chance of finding a factor between 2X and 2X+1 is about 1/x.  The factoring cost and primality test costs are computed by timing the
+        program.  At present, the program trial factors to these limits:
+
+TF cutoff levels last updated 2021-Dec-09 according to Prime95 v30.7b9 source code
+
+            Exponents up to
+            Trial factor to
+
+1,071,000,000281
+
+842,000,000280
+
+662,000,000279
+
+516,800,000278
+
+408,400,000277
+
+322,100,000276
+
+253,500,000275
+
+199,500,000274
+
+153,400,000273
+
+120,000,000272
+
+96,830,000271
+
+77,910,000270
+
+60,940,000269
+
+48,800,000268
+
+38,300,000267
+
+29,690,000266
+
+P-1 Factoring
+
+        There is another factoring method that GIMPS uses to find factors and thereby avoid costly primality tests. This method is called Pollard&#x27;s (P-1) method.
+        If q is a factor of a number, then the P-1 method will find the factor q if q-1 is highly composite – that is, it has nothing but small factors.
+
+        This method when adapted to Mersenne numbers is even more effective. Remember, that the factor q is of the form 2kp+1. It is easy to modify the P-1 method such that it will find the
+        factor q whenever k is highly composite.
+
+        The P-1 method is quite simple. In stage 1 we pick a bound B1. P-1 factoring will find the factor q as long as all factors of k are less than B1 (k is called B1-smooth). We compute E –
+        the product of all primes less than B1. Then we compute x = 3E*2*P. Finally, we check the GCD (x-1, 2P-1) to see if a factor was found.
+
+        There is an enhancement to Pollard&#x27;s algorithm called stage 2 that uses a second bound, B2. Stage 2 will find the factor q if k has just one factor between B1 and B2 and all remaining
+        factors are below B1. This stage uses lots of memory; for exponents around 150M the minimum RAM for an effective run is around 32GB, more is better (allows for higher B2 in not much more time).
+
+        GIMPS has used this method to find some impressive factors. For example:
+
+217504141-1 is divisible by 426315489966437174530195419710289226952407399.
+
+426315489966437174530195419710289226952407399 expressed as 2kp+1 is 2 × 12177561011603973440633145599955154239 × 17504141 + 1
+
+The value k, 12177561011603973440633145599955154239, is very smooth (has many small factors):
+12177561011603973440633145599955154239 = 3 × 191 × 307 × 593 × 839 × 3593 × 3989 × 4051 × 6691 × 152429 × 2349679
+
+        So how does GIMPS intelligently choose B1 and B2?  We use a variation of the formula used in trial factoring.  We must maximize:
+
+chance_of_finding_factor * primality_test_cost - factoring_cost
+
+The chance of finding a factor and the factoring cost both vary with different B1 and B2 values. Dickman&#x27;s function
+        (see Knuth&#x27;s Art of Computer Programming Vol. 2) is used to determine the probability of
+        finding a factor, that is k is B1-smooth or B1-smooth with just one factor between B1 and B2. The program tries many values of B1 and (if there is sufficient available memory) several values
+        of B2, selecting the B1 and B2 values that maximize the formula above.
+
+PRP (Probable Prime) Testing
+
+        The methods described above are first used to attempt to find a factor for the Mersenne number and therefore eliminate the prime exponent P from the testing list before performing the
+        relatively costly primality test.
+
+         Starting in 2018, GIMPS started using a Fermat probable prime test as a first-time primality check.
+         Prior to 2018 all primality testing was done with Lucas-Lehmer, see below, which required two independent matching tests to be certain of the result.
+         Robert Gerbicz devised a way to almost completely eliminate the chance of a hardware error
+         corrupting the primality test. Even though results are 99.999+% reliable double-checking is still necessary to guard against program error or
+         forged results. Gerbicz error checking does mean that GIMPS is extremely unlikely to miss a new Mersenne prime on the first test -- a big improvement over
+         the previous 1 or 2% chance of missing a new Mersenne prime on the first test.
+
+         Another breakthrough lets GIMPS completely avoid the double-checking process! Krzysztof Pietrzak showed how to create a
+         PRP proof that cannot be faked and can be verified over 100 times faster than
+         a standard double-check. In 2020 proofs were added to the GIMPS software and PRP with proofs became the preferred way to search
+         for new Mersenne primes.
+
+         If the PRP test says composite, the exponent can be eliminated as a possible Mersenne Prime. If it says it&#x27;s probably prime, it probably is, although there is a (very small) chance it could be composite.
+         To know for certain, we need to run multiple Lucas-Lehmer tests (on different software and hardware) to confidently say that the Mersenne number is a Mersenne Prime.
+
+Lucas-Lehmer Primality Testing
+
+        The Lucas-Lehmer primality test is remarkably simple. It states that for P &gt; 2, 2P-1 is prime if and only if Sp-2
+        is zero in this sequence: S0 = 4, SN = (SN-12 - 2) mod (2P-1).
+
+        For example, to prove 27 - 1 is prime:
+
+S0 = 4
+S1 = (4 * 4 - 2) mod 127 = 14
+S2 = (14 * 14 - 2) mod 127 = 67
+S3 = (67 * 67 - 2) mod 127 = 42
+S4 = (42 * 42 - 2) mod 127 = 111
+S5 = (111 * 111 - 2) mod 127 = 0
+
+        To implement the Lucas-Lehmer test efficiently, one must find the fastest way to square huge numbers modulo 2P-1. Since the late 1960&#x27;s the fastest algorithm for squaring large
+        numbers is to split the large number into pieces forming a large array, then perform a Fast Fourier Transform (FFT), a squaring, and an Inverse Fast Fourier Transform (IFFT). See the &quot;How
+        Fast Can We Multiply?&quot; section in Knuth&#x27;s Art of Computer Programming Vol. 2. In a January, 1994 Mathematics of Computation article by Richard Crandall
+        and Barry Fagin titled &quot;Discrete Weighted Transforms and Large-Integer Arithmetic&quot;, the concept of using an irrational base FFT was
+        introduced. This improvement more than doubled the speed of the squaring by allowing us to use a smaller FFT and it performs the mod 2P-1 step for free. Although GIMPS uses a
+        floating point FFT for reasons specific to the Intel Pentium architecture, Peter Montgomery showed that an all-integer weighted transform
+        can also be used.
+
+        As mentioned in the last paragraph, GIMPS uses floating point FFTs written in highly pipelined, cache friendly assembly language. Since floating point computations are inexact, after every
+        iteration the floating point values are rounded back to integers. The discrepancy between the proper integer result and the actual floating point result is called the convolution or roundoff error. If
+        the convolution error ever exceeds 0.5 then the rounding step will produce incorrect results – meaning a larger FFT should have been used. One of GIMPS&#x27; error checks is to make sure
+        the maximum convolution error does not exceed 0.4.
+
+        What are the chances that the Lucas-Lehmer test will find a new Mersenne prime number? A simple approach is to repeatedly apply the observation that the chance of finding a factor between
+        2X and 2X+1 is about 1/x. For example, you are testing 210,000,139-1 for which trial factoring has proved there are no factors less than 264.
+        The chance that it is prime is the chance of no 65-bit factor * chance of no 66-bit factor * ... * chance of no 5,000,070-bit factor.  That is:
+
+64   65         5000069
+-- * -- * ... * -------
+65   66         5000070
+
+        This simplifies to 64 / 5000070 or 1 in 78126. This simple approach isn&#x27;t quite right. It would give a formula of how_far_factored divided by (exponent divided by 2). However, more rigorous
+        work has shown the formula to be (how_far_factored-1) / (exponent times Euler&#x27;s constant (0.577...)). In this case, 1 in 91623.
+        Even these more rigourous formulas are unproven.
+
+Double-Checking
+
+        To verify that a first-time Lucas-Lehmer primality test was performed without error, GIMPS runs the primality test a second time. During each Lucas-Lehmer primality test, the low order 64 bits
+        of the final SP-2 value, called a residue, are sent to PrimeNet and recorded. If these match, then GIMPS declares the exponent properly double-checked. If they do not match, then the
+        primality test is run again until a match finally occurs. The double-check, which takes just as long as a first-time test, is usually done about 8 years after the first-time test. GIMPS assigns
+        double-checks to slower PCs because the exponents are smaller than first-time tests, resulting in work units that can complete in a reasonable time on a slower PC.
+
+        GIMPS double-checking goes a bit further to guard against programming errors. Prior to starting the Lucas-Lehmer test, the S0 value is left-shifted by a random amount. Each squaring
+        just doubles how much we have shifted the S value. Note that the mod 2P-1 step merely rotates the p-th bits and above to the least significant bits, so there is no loss of information.
+        Why do we go to this trouble? If there were a bug in the FFT code, then the shifting of the S values ensures that the FFTs in the first primality test are dealing with completely different data
+        than the FFTs in the second primality test. It would be near impossible for a programming bug to produce the same final 64 bit residues.
+
+        Historically, the error rate for a Lucas-Lehmer test where no serious errors were reported during the run is around 1.5%. For Lucas-Lehmer tests where an error was reported the error rate is in
+        the neighborhood of 50%.
+
+©1996-2026 Mersenne Research, Inc.
+
+Current time: 2026-10-07 01:29 UTC - Page rendered in 0.0054s</pre></html>

@@ -1,0 +1,268 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>&quot;&quot;&quot;Independent negative-triangle chart/transport/raw-coefficient gate.</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>&quot;&quot;&quot;Independent negative-triangle chart/transport/raw-coefficient gate.</h1><p>Source ID d-cc98d375bf2d701d; literature/sources/metric_prior/cycle14/internal_snapshots/work__metric_use10__cycle14__check_negative_triangle_cover.py; 3989 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>&quot;&quot;&quot;Independent negative-triangle chart/transport/raw-coefficient gate.
+
+Reads only serialized certificate data. Imports no peer source constructor,
+eliminator or checker. Strict inequalities and exhaustion are proved in the
+companion note; the exact identities checked here support those proofs.
+&quot;&quot;&quot;
+import ast
+import hashlib
+import itertools
+import json
+import time
+from pathlib import Path
+
+import sympy as sy
+
+
+BASE = Path(__file__).resolve().parents[3]
+OUT = BASE / &#x27;results/metric_use10/cycle14/negative_triangle_gate.json&#x27;
+
+
+def arithmetic(text, names):
+    def rec(node):
+        if isinstance(node, ast.Constant) and type(node.value) is int:
+            return sy.Integer(node.value)
+        if isinstance(node, ast.Name) and node.id in names:
+            return names[node.id]
+        if isinstance(node, ast.UnaryOp):
+            value = rec(node.operand)
+            if isinstance(node.op, ast.USub): return -value
+            if isinstance(node.op, ast.UAdd): return value
+        if isinstance(node, ast.BinOp):
+            lhs, rhs = rec(node.left), rec(node.right)
+            if isinstance(node.op, ast.Add): return lhs + rhs
+            if isinstance(node.op, ast.Sub): return lhs - rhs
+            if isinstance(node.op, ast.Mult): return lhs * rhs
+            if isinstance(node.op, ast.Div): return lhs / rhs
+            if isinstance(node.op, ast.Pow) and rhs.is_Integer:
+                return lhs ** rhs
+        raise ValueError(ast.dump(node))
+    return rec(ast.parse(text, mode=&#x27;eval&#x27;).body)
+
+
+def zero(expression):
+    assert sy.cancel(expression) == 0, str(expression)
+
+
+def generators(q, m, s):
+    result = {f&#x27;A{i}&#x27;: (1-2*m[i]*s[i])*(q[i,i]-s[i]**2)
+              for i in range(3)}
+    for i, j in itertools.permutations(range(3), 2):
+        result[f&#x27;H{i}{j}&#x27;] = ((1-4*m[i]*s[i])*(q[i,j]-s[i]*s[j])
+                             -2*m[i]*s[j]*(q[i,i]-s[i]**2))
+    result[&#x27;B&#x27;] = (3*sy.prod(s)-sum(q[j,k]*s[i]
+                                 for i,j,k in [(0,1,2),(1,0,2),(2,0,1)]))
+    return result
+
+
+def chart_gate():
+    a,b,c,d,A,B = sy.symbols(&#x27;a b c d A B&#x27;)
+    path = BASE/&#x27;results/metric_prior/cycle13/generic_d8_divisor_factors.json&#x27;
+    data = json.loads(path.read_text())
+    factors = [arithmetic(t, {&#x27;a&#x27;:a,&#x27;b&#x27;:b,&#x27;c&#x27;:c}) for t in data[&#x27;factors&#x27;]]
+    assert len(factors)==28 and len(set(factors))==28
+    # Audit every original divisor decomposition too: its factors must come
+    # from the precise finite list used in the gated generic raw identity.
+    for record in data[&#x27;decompositions&#x27;]:
+        own = arithmetic(record[&#x27;constant&#x27;], {})
+        for text, exponent in record[&#x27;factors&#x27;]:
+            factor=arithmetic(text, {&#x27;a&#x27;:a,&#x27;b&#x27;:b,&#x27;c&#x27;:c})
+            assert factor in factors
+            own *= factor**exponent
+        zero(own-arithmetic(record[&#x27;divisor&#x27;], {&#x27;a&#x27;:a,&#x27;b&#x27;:b,&#x27;c&#x27;:c}))
+    assert len(data[&#x27;decompositions&#x27;])==42
+
+    # Exact sign-transparent rewrites: signs use 0&lt;a,b&lt;1,c&lt;0,|c|&lt;1.
+    sign_forms = {
+        0: b*(7*a*a-27)+a*c*(14*a*a+6),
+        1: a*(b*b+3*c*c)+b*c*(2*a*a-6),
+        2: b*c*(2*a*a+5)-7*a,
+        3: a*(2*a*a-7)+5*b*c,
+        4: b*b*(2*a*a-9)-a*a*c*c+a*b*c*(2*a*a+6),
+        5: c*c*(2*a*a-9)-a*a*b*b+a*b*c*(2*a*a+6),
+        6: c*(a*a*(2*a*a-2*b*b+13)+5*b*b)-a*b*(11*c*c+7),
+        18: a*a*b*b+(9-2*b*b)*c*c-2*a*b*c*(b*b+3),
+        19: b*(a-3)+2*a*c,
+        22: b*(a+3)-2*a*c,
+        23: a*c-b,
+    }
+    for i, expression in sign_forms.items(): zero(factors[i]-expression)
+    simple=[9,10,11,12,13,14,15,16,24,25,26,27]
+    exceptions=[7,8,17,20,21]
+    assert sorted(simple+list(sign_forms)+exceptions)==list(range(28))
+
+    # Two initial exclusions are removed by ordered-edge inequalities.
+    R=factors[17]; giant=factors[8]
+    L=63-33*B-2*B*B+(A-B)*(12*B+24)
+    K=B*(63-33*B-16*B*B)+(A-B)*(63-18*B-16*B*B)
+    zero(giant.subs(c,-d)-(7*A*B*(A+B)+a*b*d*L+d*d*K).subs({A:a*a,B:b*b}))
+    zero(R.subs(c,-d)-b*(9+a*a-b*b+d*d)+6*a*d)
+
+    cases={
+        &#x27;w=0&#x27;: (a*b/3, [-13*a*b/3,b*(a*a/3-3),b*(a*a/3-1),
+                       a*a-9+b*b*(1-a*a/9)]),
+        &#x27;u=0&#x27;: (a*b, [-3*a*b,b*(a*a-3),b*(a*a-1),
+                     3+a*a+b*b*(1-a*a)]),
+        &#x27;z=0&#x27;: (2*b/(5*a), [b*(4-25*a*a)/(5*a),-13*b/5,-3*b/5,
+                            9-14*a*a+b*b*(1-4/(25*a*a))]),
+    }
+    chart2={a:a,b:d,c:-b}
+    c2={}
+    for label,(relation, expected) in cases.items():
+        # Recompute all 28 transformed polynomials, not just selected entries.
+        values=[sy.cancel(f.subs(chart2,simultaneous=True).subs(d,relation)) for f in factors]
+        observed=[values[7],values[20],values[21],values[17]/relation]
+        for p,q in zip(observed,expected): zero(p-q)
+        c2[label]=[str(v) for v in observed]
+    chart3={a:b,b:a,c:-2*b/(5*a)}
+    c3=[sy.cancel(f.subs(chart3,simultaneous=True)) for f in factors]
+    expected3={
+        7:2*(a*a-b*b)/a,
+        20:b*(5*a*a-6)/(5*a),
+        21:b*(5*a*a-2)/(5*a),
+        17:a*(9+b*b-a*a-56*b*b/(25*a*a)),
+        8:7*b*b*(5*a**6+90*a*a*(1-a*a)+b*b*(33*a**4+24*a*a+36))/(25*a*a),
+    }
+    for i,v in expected3.items(): zero(c3[i]-v)
+    # Exact certificate for the inequality R(C3)/a &gt; 144/25:
+    # R/a -144/25 = (1-A)+B+(56/25)*(1-B/A).
+    zero(expected3[17]/a-sy.Rational(144,25)-
+         (1-a*a+b*b+sy.Rational(56,25)*(1-b*b/(a*a))))
+    exceptional={a:sy.Rational(2,5),b:sy.Rational(2,5),c:-sy.Rational(2,5)}
+    q=sy.Matrix([[1,a,b],[a,1,c],[b,c,1]]).subs(exceptional)
+    eps=sy.diag(-1,1,1)
+    assert eps*q*eps == sy.Matrix([[1,-sy.Rational(2,5),-sy.Rational(2,5)],
+                                 [-sy.Rational(2,5),1,-sy.Rational(2,5)],
+                                 [-sy.Rational(2,5),-sy.Rational(2,5),1]])
+    assert q.det()==sy.Rational(49,125)
+    return {&#x27;complete_factor_count&#x27;:28,&#x27;exact_divisor_decompositions&#x27;:42,
+            &#x27;factor_file_sha256&#x27;:hashlib.sha256(path.read_bytes()).hexdigest(),
+            &#x27;universally_safe&#x27;:sorted(simple+list(sign_forms)),
+            &#x27;ordered_chart_possible_zeros&#x27;:[7,20,21],
+            &#x27;C2_exception_curve_values&#x27;:c2,
+            &#x27;C3_z_curve_values&#x27;:{str(i):str(v) for i,v in expected3.items()},
+            &#x27;residual&#x27;:&#x27;a=b=d=2/5; auxiliary sign congruent to r=-2/5&#x27;,
+            &#x27;residual_PD_determinant&#x27;:str(q.det()),
+            &#x27;strict_domain_coverage&#x27;:&#x27;proved in companion note, not inferred from sampling&#x27;}
+
+
+def raw_transport_gate():
+    m=sy.symbols(&#x27;m0:3&#x27;); s=sy.symbols(&#x27;s0:3&#x27;)
+    q00,q11,q22,q01,q02,q12=sy.symbols(&#x27;q00 q11 q22 q01 q02 q12&#x27;)
+    q=sy.Matrix([[q00,q01,q02],[q01,q11,q12],[q02,q12,q22]])
+    own=generators(q,m,s)
+    checked=0
+    for perm in itertools.permutations(range(3)):
+        for signs in itertools.product([-1,1],repeat=3):
+            qt=sy.Matrix(3,3,lambda i,j: signs[i]*signs[j]*q[perm[i],perm[j]])
+            mt=[signs[i]*m[perm[i]] for i in range(3)]
+            st=[signs[i]*s[perm[i]] for i in range(3)]
+            image=generators(qt,mt,st)
+            for i in range(3): zero(image[f&#x27;A{i}&#x27;]-own[f&#x27;A{perm[i]}&#x27;])
+            for i,j in itertools.permutations(range(3),2):
+                zero(image[f&#x27;H{i}{j}&#x27;]-signs[i]*signs[j]*own[f&#x27;H{perm[i]}{perm[j]}&#x27;])
+            zero(image[&#x27;B&#x27;]-sy.prod(signs)*own[&#x27;B&#x27;])
+            checked+=1
+    u=sy.symbols(&#x27;u0:3&#x27;,nonzero=True)
+    q=sy.Matrix([[u[0]**2,q01,q02],[q01,u[1]**2,q12],[q02,q12,u[2]**2]])
+    own=generators(q,m,s)
+    qt=sy.Matrix(3,3,lambda i,j:q[i,j]/(u[i]*u[j]))
+    image=generators(qt,[u[i]*m[i] for i in range(3)], [s[i]/u[i] for i in range(3)])
+    for i in range(3):zero(u[i]**2*image[f&#x27;A{i}&#x27;]-own[f&#x27;A{i}&#x27;])
+    for i,j in itertools.permutations(range(3),2):
+        zero(u[i]*u[j]*image[f&#x27;H{i}{j}&#x27;]-own[f&#x27;H{i}{j}&#x27;])
+    zero(sy.prod(u)*image[&#x27;B&#x27;]-own[&#x27;B&#x27;])
+    return {&#x27;signed_vertex_permutation_charts&#x27;:checked,
+            &#x27;positive_diagonal_normalization&#x27;:&#x27;all ten raw generators checked symbolically&#x27;,
+            &#x27;warning&#x27;:&#x27;auxiliary sign changes; real hidden-axis signs do not change Q&#x27;}
+
+
+def polar_gate():
+    # Independently derive polarization from the quartic, by coefficient
+    # extraction in t, and every cubic-x coefficient of the polar expression.
+    v=sy.symbols(&#x27;v0:3&#x27;); x=sy.symbols(&#x27;x0:3&#x27;); t=sy.symbols(&#x27;t&#x27;)
+    q00,q11,q22,q01,q02,q12=sy.symbols(&#x27;q00 q11 q22 q01 q02 q12&#x27;)
+    q=sy.Matrix([[q00,q01,q02],[q01,q11,q12],[q02,q12,q22]])
+    def f(y):return sum(q[i,j]*y[i]**2*y[j]**2 for i in range(3) for j in range(3))
+    expansion=sy.Poly(f([v[i]+t*x[i] for i in range(3)]),t)
+    F=expansion.nth(0)
+    g=expansion.nth(1)/4
+    T2=expansion.nth(2)/6
+    T3=expansion.nth(3)/4
+    S=[sum(q[i,j]*v[j]**2 for j in range(3)) for i in range(3)]
+    P=sy.Poly(sy.expand(F*F*T3-3*F*g*T2+2*g**3),*x)
+    A=[(F-2*v[i]**2*S[i])*(q[i,i]*F-S[i]**2) for i in range(3)]
+    H={(i,j):(F-4*v[i]**2*S[i])*(q[i,j]*F-S[i]*S[j])
+        -2*v[i]**2*S[j]*(q[i,i]*F-S[i]**2)
+        for i,j in itertools.permutations(range(3),2)}
+    B=3*sy.prod(S)-F*sum(q[j,k]*S[i] for i,j,k in [(0,1,2),(1,0,2),(2,0,1)])
+    for i in range(3):
+        ex=[0]*3;ex[i]=3
+        zero(P.coeff_monomial(tuple(ex))-v[i]*A[i])
+    for i,j in itertools.permutations(range(3),2):
+        ex=[0]*3;ex[i]=2;ex[j]=1
+        zero(P.coeff_monomial(tuple(ex))-v[j]*H[i,j])
+    zero(P.coeff_monomial((1,1,1))-4*sy.prod(v)*B)
+    return {&#x27;raw_polar_cubic_coefficients&#x27;:10,
+            &#x27;degree_in_v&#x27;:max(sum(ex) for ex,_ in sy.Poly(P.as_expr(),*v).terms()),
+            &#x27;method&#x27;:&#x27;quartic t-polarization and exact coefficient extraction&#x27;,
+            &#x27;scope&#x27;:&#x27;symbolic ternary identities; ambient extension follows unchanged because S_i may include outside indices&#x27;}
+
+
+def exchangeable_residual_gate():
+    path=BASE/&#x27;results/metric_prior/cycle12/exchangeable_degree8_symbolic_reduced.json&#x27;
+    record=json.loads(path.read_text())
+    r=sy.symbols(&#x27;r&#x27;); value=-sy.Rational(2,5)
+    m=sy.symbols(&#x27;m0:3&#x27;);s=sy.symbols(&#x27;s0:3&#x27;);variables=tuple(m+s)
+    names={str(x):x for x in variables};names[&#x27;r&#x27;]=r
+    q=sy.Matrix(3,3,lambda i,j:1 if i==j else value)
+    raw=generators(q,m,s)
+    rawterms={key:sy.Poly(p,*variables,domain=sy.QQ).terms() for key,p in raw.items()}
+    for key,text in record[&#x27;generator_expressions&#x27;].items():
+        zero(arithmetic(text,names).subs(r,value)-raw[key])
+    denominator=arithmetic(record[&#x27;denominator&#x27;],names).subs(r,value)
+    assert denominator.is_Rational and denominator!=0
+    full={};count=0;maxdegree=0
+    for source,text in zip(record[&#x27;sources&#x27;],record[&#x27;coefficient_numerators&#x27;]):
+        weight=arithmetic(text,names).subs(r,value)
+        assert weight.is_Rational
+        if not weight:continue
+        count+=1;typ=source[&#x27;type&#x27;];mon=source[&#x27;monomial_exponents&#x27;]
+        assert len(mon)==6 and all(type(e) is int and e&gt;=0 for e in mon)
+        assert sum(mon)%2==(1 if typ==&#x27;B&#x27; else 0)
+        assert sum(mon)&lt;=(5 if typ==&#x27;B&#x27; else 4)
+        for perm in itertools.permutations(range(3)):
+            shift=[0]*6
+            for i in range(3):shift[perm[i]]=mon[i];shift[perm[i]+3]=mon[i+3]
+            key=f&#x27;A{perm[0]}&#x27; if typ==&#x27;A&#x27; else f&#x27;H{perm[0]}{perm[1]}&#x27; if typ==&#x27;H&#x27; else &#x27;B&#x27;
+            for ex,co in rawterms[key]:
+                combined=tuple(ex[i]+shift[i] for i in range(6))
+                maxdegree=max(maxdegree,sum(combined))
+                full[combined]=full.get(combined,0)+weight*co
+    unit=(0,)*6
+    full[unit]=full.get(unit,0)-denominator
+    assert all(co==0 for co in full.values()) and maxdegree&lt;=8
+    return {&#x27;file&#x27;:str(path.relative_to(BASE)),
+            &#x27;sha256&#x27;:hashlib.sha256(path.read_bytes()).hexdigest(),
+            &#x27;parameter&#x27;:str(value),&#x27;denominator&#x27;:str(denominator),
+            &#x27;nonzero_source_weights&#x27;:count,&#x27;full_uncompressed_auxiliary_keys&#x27;:len(full),
+            &#x27;maximum_source_product_degree&#x27;:maxdegree,
+            &#x27;identity&#x27;:&#x27;sum of actual raw polynomial coefficients equals nonzero denominator&#x27;}
+
+
+def main():
+    started=time.monotonic()
+    result={&#x27;status&#x27;:&#x27;PASS conditional on previously independently gated generic D8 DAG&#x27;,
+            &#x27;chart_algebra&#x27;:chart_gate(), &#x27;raw_transport&#x27;:raw_transport_gate(),
+            &#x27;original_polar_coefficients&#x27;:polar_gate(),
+            &#x27;residual_exchangeable_certificate&#x27;:exchangeable_residual_gate(),
+            &#x27;scope&#x27;:&#x27;All real PD negative triangle products; rational descent is finite coefficient linear algebra. No all-QPD D8 or practical acquisition claim.&#x27;}
+    result[&#x27;seconds&#x27;]=time.monotonic()-started
+    OUT.parent.mkdir(parents=True,exist_ok=True)
+    OUT.write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({&#x27;status&#x27;:result[&#x27;status&#x27;],&#x27;seconds&#x27;:result[&#x27;seconds&#x27;],
+                      &#x27;output&#x27;:str(OUT)}))
+
+
+if __name__==&#x27;__main__&#x27;:main()
+</pre></html>

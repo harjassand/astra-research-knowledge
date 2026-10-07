@@ -1,0 +1,55 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>&quot;&quot;&quot;Exact fixed-current reference output-design primal/dual certificate.</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>&quot;&quot;&quot;Exact fixed-current reference output-design primal/dual certificate.</h1><p>Source ID d-99c3ca90339acd32; literature/sources/r07_analysis/cycle2/optimality_certificate_snapshot.py; 1127 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>&quot;&quot;&quot;Exact fixed-current reference output-design primal/dual certificate.
+
+For test counts k_j and normalized full-output Jacobians A_j, any parameter
+W&gt;=0,trW=1 gives optimal minimum information &lt;= sum k_j lambda_max(A_j W A_j^T).
+The finalized tests supply a primal lower bound. No outer-current optimum claim.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+import json,math,time
+import numpy as np
+from certificate import Verifier,mv,dot,fracstr,OUT
+
+def exact_parameter_output_gram(V,g,E):
+    u=mv(V.inv,V.load(g));derivs=[]
+    for A in V.regions:
+        du=[-x for x in mv(V.inv,mv(A,u))];full=[F(0)]+du
+        bd=[full[n] for n in V.nodes];mean=sum(bd)/16
+        derivs.append([x-mean for x in bd])
+    return [[dot(derivs[i],mv(V.M,derivs[j]))/E for j in range(2)] for i in range(2)]
+
+def eigen_upper_product(S,W):
+    A=[[sum(S[i][k]*W[k][j] for k in range(2)) for j in range(2)] for i in range(2)]
+    tr=A[0][0]+A[1][1];det=A[0][0]*A[1][1]-A[0][1]*A[1][0]
+    # PSD factors ensure both eigenvalues real nonnegative. Accept rational
+    # upper iff it lies to the right of the larger characteristic root.
+    guess=(float(tr)+math.sqrt(max(0,float(tr*tr-4*det))))/2
+    upper=F(math.ceil(guess*10**12)+2,10**12)
+    while upper&lt;tr/2 or upper**2-tr*upper+det&lt;0:upper+=F(1,10**12)
+    return upper
+
+def main():
+    start=time.perf_counter();V=Verifier();plans=json.loads((OUT/&#x27;frozen_designs.json&#x27;).read_text());certs=json.loads((OUT/&#x27;exact_certificates.json&#x27;).read_text());report={}
+    for name in [&#x27;optimized_single&#x27;,&#x27;optimized_multi&#x27;]:
+        p=plans[name];E=F(p[&#x27;total_raw_energy&#x27;]);Ss=[exact_parameter_output_gram(V,[F(x) for x in g],E) for g in p[&#x27;raw_currents&#x27;]]
+        G=[[F(x) for x in row] for row in certs[name][&#x27;normalized_Gram&#x27;]]
+        if len(Ss)==1:
+            S=Ss[0];det=S[0][0]*S[1][1]-S[0][1]*S[1][0];tr=S[0][0]+S[1][1]
+            upper=4*det/tr
+            W=[[S[1][1]/tr,-S[0][1]/tr],[-S[1][0]/tr,S[0][0]/tr]]
+        else:
+            # Any dual PSD trace1 matrix is valid. Use the finalized primal
+            # minimum eigendirection with tiny isotropic regularization, then
+            # dyadic parameter rounding accepted ONLY by an exact PSD test.
+            _,U=np.linalg.eigh(np.array(G,dtype=float));w=U[:,0];matrix=np.outer(w,w)*(1-2**-20)+np.eye(2)*2**-21
+            r1=F(round((matrix[0,0]-matrix[1,1])*2**40),2**40);r2=F(round(2*matrix[0,1]*2**40),2**40)
+            W=[[(1+r1)/2,r2/2],[r2/2,(1-r1)/2]]
+            assert W[0][0]&gt;=0 and W[1][1]&gt;=0 and W[0][0]*W[1][1]&gt;=W[0][1]**2
+            upper=sum(len(block)*eigen_upper_product(S,W) for S,block in zip(Ss,p[&#x27;raw_tests&#x27;]))
+        lower=F(certs[name][&#x27;reference_sigma_lower&#x27;])**2
+        assert upper&gt;=lower
+        report[name]={&#x27;exact_primal_reference_information_lower&#x27;:fracstr(lower),&#x27;exact_dual_reference_information_upper&#x27;:fracstr(upper),&#x27;relative_gap_upper&#x27;:fracstr((upper-lower)/upper),&#x27;relative_gap_diagnostic&#x27;:float((upper-lower)/upper),&#x27;dual_W&#x27;:[[fracstr(x) for x in row] for row in W],&#x27;fixed_current_full_output_parameter_Grams&#x27;:[[[fracstr(x) for x in row] for row in S] for S in Ss],&#x27;scope&#x27;:&#x27;Exact reference E-optimal OUTPUT design bound for same finalized fixed physical currents and unit-L2 tests; not global secant/current-design optimality&#x27;}
+    report[&#x27;costs&#x27;]={&#x27;seconds&#x27;:time.perf_counter()-start,&#x27;exact_reference_inverse_dimension&#x27;:24,&#x27;reference_inverse_count&#x27;:1,&#x27;extra_parameterized_inverse_count&#x27;:0}
+    (OUT/&#x27;exact_output_optimality.json&#x27;).write_text(json.dumps(report,indent=2))
+    print(json.dumps({k:{kk:vv for kk,vv in v.items() if kk not in [&#x27;dual_W&#x27;,&#x27;fixed_current_full_output_parameter_Grams&#x27;]} for k,v in report.items()},indent=2))
+if __name__==&#x27;__main__&#x27;:main()
+</pre></html>

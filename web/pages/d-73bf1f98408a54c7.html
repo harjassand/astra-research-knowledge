@@ -1,0 +1,2101 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>PDF PAGE 1</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>PDF PAGE 1</h1><p>Source ID d-73bf1f98408a54c7; literature/sources/rounding_prior/cycle10/yamin2025_conference.pdf.txt; 16693 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>
+PDF PAGE 1
+Dependent Randomized Rounding for Budget Constrained Experimental Design
+Khurram Yamin1 Edward Kennedy1 Bryan Wilder1
+1Carnegie Mellon University, Pittsburgh, Pennsylvania, USA
+Abstract
+Policymakers in resource-constrained settings re-
+quire experimental designs that satisfy strict budget
+limits while ensuring precise estimation of treat-
+ment effects. We propose a framework that applies
+a dependent randomized rounding procedure to
+convert assignment probabilities into binary treat-
+ment decisions. Our proposed solution preserves
+the marginal treatment probabilities while inducing
+negative correlations among assignments, leading
+to improved estimator precision through variance
+reduction. We establish theoretical guarantees for
+the inverse propensity weighted and general lin-
+ear estimators, and demonstrate through empirical
+studies that our approach yields efficient and accu-
+rate inference under fixed budget constraints.
+1 INTRODUCTION
+Experimental design in many fields requires balancing two
+competing sets of objectives. On one side, practical con-
+straints such as limited budgets or fixed resource availability
+demand that the total number of treated units be strictly
+bounded. On the other side, the design must preserve the
+individual-level assignment probabilities that have been de-
+termined—often based on factors such as risk or potential
+benefit—to ensure that the estimation of treatment effects is
+both statistically efficient and unbiased. In many settings, as-
+signment probabilities for an experiment may be chosen to
+reflect concerns like strategy-proofness or allocating treat-
+ment to higher-need individuals. [Kido, 2023, Chassang
+et al., 2012, Narita, 2021, Wilder and Welle, 2024]
+Consider, for example, a public health intervention during
+a flu outbreak where only a limited number of vaccines are
+available. In such a setting, independent Bernoulli random-
+ization might preserve each individual’s target probability
+of being treated, but it does not guarantee that the total
+number of vaccinations will exactly match the available sup-
+ply. Conversely, methods that force a deterministic count
+of treatments (e.g., conditional Poisson sampling) may en-
+force the resource constraint, yet they risk distorting the
+pre-specified assignment probabilities. [Hájek, 1964, Graf-
+ström, 2005] When the intended probabilities are altered,
+individuals who are at higher risk and thus designed to have
+a greater chance of receiving the vaccine may end up being
+underrepresented in the treated group. Such misallocation
+can lead to poorer health outcomes for those who need the in-
+tervention the most. Conversely, individuals with lower risk
+might be overtreated, potentially wasting limited resources
+and causing unnecessary exposure to the treatment’s side
+effects. In both cases, the fairness and overall effectiveness
+of the intervention are compromised. Moreover, from a sta-
+tistical standpoint, the mis-specified weights that would be
+used in an inverse probability weighted (IPW) estimator no
+longer reflect the true design, thereby inflating the variance
+of effect estimates [Hájek, 1964, Grafström, 2005].
+In this paper, we propose a framework based on dependent
+randomized rounding—specifically, a swap rounding algo-
+rithm as introduced in [Chekuri and V ondrák, 2009]—that
+addresses these challenges. Swap rounding operates by it-
+eratively pairing fractional assignment probabilities and
+redistributing probability mass between the paired units in
+a randomized manner. This procedure continues until an
+integral solution is reached. Our method exactly enforces
+a fixed treatment count while preserving the marginal as-
+signment probabilities determined by the experimental de-
+sign. Moreover, by inducing negative correlations among
+the treatment indicators, our approach leads to a reduction
+in the variance of standard estimators, such as the inverse
+probability weighted (IPW) estimator. As such, we balance
+the competing objectives of satisfying resource constraints
+while maintaining an unbiased and low-variance estimator.
+Furthermore, our variance reduction benefits are empirically
+substantial enough for small samples that our technique may
+be of interest just as a variance reduction technique even
+when budget constraints are not themselves at play. The ben-
+Proceedings of the 41st Conference on Uncertainty in Artificial Intelligence (UAI 2025), PMLR 244:4681–4700.
+
+PDF PAGE 2
+efits achieved in this regime from swap-rounding are some-
+what surprising as despite the fact that the swap-rounding
+algorithm is solving an ostensibly similar problem, it was
+proposed for different purposes, primarily in the design of
+algorithms for submodular optimization [Chekuri and V on-
+drák, 2009]. To our knowledge, no previous work has made
+this connection between budget-constrained experimental
+design and combinatorial optimization. Furthermore, while
+the swap-rounding algorithm had been analyzed for the pur-
+poses of optimization, its statistical properties which we
+explore in this paper had not previously been analyzed.
+The remainder of the paper is organized as follows. We
+describe our dependent randomized rounding mechanism
+as well as the causal assumptions we make. We then dis-
+cuss our strategy for integrating swap rounding into IPW
+estimation and derive an estimator for the variance of IPW
+using swap-rounding. We discuss the estimator’s theoretical
+guarantees (unbiased estimation and lower variance when
+IPW is used with swap rounding than without). We then
+detail the unbiasedness and variance reduction properties
+for general linear estimators under our approach. Following
+this, we propose a modification to swap-rounding where we
+prioritize swaps between units with similar covariates. To
+demonstrate the efficacy of our approach in empirical stud-
+ies, we use a combination of synthetic and semi-synthetic
+examples based on real-world data in two domains: infant
+health and public housing. Finally, we conclude with a dis-
+cussion of the broader implications for experimental design
+in settings with competing constraints.
+2 RELATED WORKS
+Experimental design under resource constraints has long
+been a topic of interest in both survey sampling and causal
+inference. Classical approaches, such as conditional Poisson
+sampling [Hájek, 1964], were introduced to ensure that a
+fixed sample size is achieved. However, these methods can
+distort the intended assignment probabilities and introduce
+bias into estimators [Aires, 2000, Grafström, 2005]. Sim-
+ilar challenges have been observed in unequal probability
+sampling [Isaki and Fuller, 1984], where the balancing of
+inclusion probabilities is critical to obtain reliable estimates.
+These limitations motivate the search for alternative methods
+that maintain the original probability structure while strictly
+enforcing allocation constraints, and that also preserve de-
+sirable properties such as unbiasedness and robustness in
+finite samples.
+More recently, advances in combinatorial optimization have
+led to the development of dependent randomized rounding
+techniques. In particular, swap rounding [Chekuri and V on-
+drák, 2009] is a powerful method for converting fractional
+assignment solutions into integral ones while preserving
+marginal probabilities. This approach not only maintains un-
+biasedness by ensuring that the marginal assignment proba-
+bilities are exactly retained but also imposes a negative corre-
+lation structure among the rounded variables. Related work
+in submodular maximization [Ageev and Sviridenko, 2004]
+and robust approximation algorithms [Srinivasan, 2001]
+further demonstrates that these rounding procedures yield
+solutions with enhanced concentration properties, improved
+stability, and robustness to model misspecification, all of
+which are critical for reliable inference in experimental set-
+tings. Our work builds on these ideas by employing swap
+rounding to enforce an exact treatment count while retain-
+ing the desired statistical properties of the design, which
+in turn improves the precision and decreases the variance
+of standard estimators like the inverse propensity weighted
+(IPW) and doubly robust (DR) estimators.
+In addition, re-randomization methods have been explored
+to improve covariate balance and enhance the efficiency of
+experimental designs [Morgan and Rubin, 2012, Li et al.,
+2018]. Re-randomization repeatedly randomizes the treat-
+ment assignments until a desired balance is achieved. Our
+framework, in contrast, directly enforces the resource con-
+straint and connects with optimal allocation strategies such
+as Neyman allocation [Neyman, 1934] that similarly adjusts
+sampling probabilities to minimize variance. This unified
+approach preserves the key statistical properties of the ini-
+tial design and is particularly relevant in settings like public
+health interventions and social programs [Athey and Im-
+bens, 2017, Imbens and Rubin, 2015], where efficient use
+of limited resources can have a significant social impact.
+3 PROBLEM FORMULATION
+In many experimental settings, researchers are given a de-
+sired set of assignment probabilities that are designed to
+balance goals like welfare, efficiency, or fairness. Suppose
+we have a set of n candidate units. For each unit i we have
+a fractional assignment probability pi ∈ [0, 1] such that
+nX
+i=1
+pi = B,
+where B represents a fixed resource constraint (for example,
+the exact number of vaccines available in a public health in-
+tervention). Our goal is to convert this fractional probability
+vector into a distribution over binary treatment assignments
+A ∈ {0, 1}n that meets the following criteria:
+1. Feasibility: Every assignment A satisfies the resource
+constraint exactly, i.e.,
+nX
+i=1
+Ai = B.
+2. Preservation of Marginals: For each unit i, the
+marginal probability of treatment remains unchanged,
+i.e.,
+Pr(Ai = 1) = pi.
+4682
+
+PDF PAGE 3
+3. Estimation Efficiency: The joint distribution of the
+binary assignment vector should be such that when
+used to estimate treatment effects (e.g., via an inverse
+probability weighted estimator), the estimator’s vari-
+ance is minimized compared to a baseline method (e.g.,
+independent randomization).
+In other words, the problem is to construct a randomized pro-
+cedure that maps the fractional vector p = (p1, p2, . . . , pn)
+(which exactly sums to B) to a valid binary assignment
+vector A that satisfies the above three criteria.
+3.1 PROPOSED APPROACH: SW AP ROUNDING
+For the algorithm we use to address this problem and create
+new treatment assignments, we take inspiration from the
+swap rounding algorithm described by Chekuri and V ondrák,
+2009 for B-uniform matroid polytopes. Swap rounding it-
+eratively selects a pair of fractional entries and transfers as
+much probability mass as possible between them—using
+a probabilistic randomized decision—to attempt to drive
+the entries to 0 or 1 until an integral solution is achieved
+for all units. We outline this algorithm in psuedo-code in
+Algorithm 1 (full algorithm described in Appendix).
+Algorithm 1: Concise Swap Rounding Pseudocode with
+Explicit Probabilities
+Input: A fractional vector p withPn
+i=1 pi = B
+Output: A binary vector A withPn
+i=1 Ai = B
+1 Set p(0) ← p, t ← 0
+2 while p(t) is not binary do
+3 Select two indices i, j with 0 &lt; p(t)
+i , p(t)
+j &lt; 1
+4 if p(t)
+i + p(t)
+j ≤ 1 then
+5 Case 1: With probability p(t)
+i
+p(t)
+i +p(t)
+j
+, set
+p(t+1)
+i ← p(t)
+i + p(t)
+j and p(t+1)
+j ← 0;
+otherwise, set p(t+1)
+i ← 0 and
+p(t+1)
+j ← p(t)
+i + p(t)
+j
+6 end
+7 else
+8 Case 2: With probability 1−p(t)
+i
+2−p(t)
+i −p(t)
+j
+, round
+p(t)
+i up to 1 (i.e., set p(t+1)
+i ← 1) and let
+p(t+1)
+j ← p(t)
+i + p(t)
+j − 1; otherwise, round
+p(t)
+j up to 1 and let p(t+1)
+i ← p(t)
+i + p(t)
+j − 1
+9 end
+10 For all other indices k, set p(t+1)
+k ← p(t)
+k
+11 Increment t
+12 end
+13 return A ← p(t)
+The key features of the swap rounding algorithm are as
+follows:
+• Exact Feasibility: Starting with the fractional vector p
+(withPn
+i=1 pi = B), the algorithm iteratively “swaps”
+probability mass between pairs of units. In each step, it
+carefully transfers probability so that at the end, every
+pi becomes either 0 or 1, ensuring that exactly B units
+are treated.
+• Marginal Preservation: The swapping is performed
+in a manner that guarantees the marginal probability for
+each unit remains equal to its original value pi. Thus,
+even after rounding, we have
+Pr(Ai = 1) = pi for all i.
+• Negative Correlation: By coupling the rounding de-
+cisions where one probability is increased while the
+other is decreased, swap rounding induces negative cor-
+relations between the binary A. We will formally show
+below that this reduces the variance of treatment effect
+estimators compared to independent randomization.
+In our setting, the use of swap rounding is particularly ap-
+pealing because it simultaneously satisfies the hard resource
+constraint and preserves the designed assignment probabili-
+ties. This dual property is essential for both fair allocation
+in real-world interventions and for achieving efficient esti-
+mation in statistical analyses.
+3.2 NOTATIONS AND ASSUMPTIONS
+Each unit has potential outcomes Yi(1) and Yi(0) under
+treatment and non-treatment respectively. We consider two
+possible sets of distributional assumptions for the units. We
+start with the design-based setting where potential outcomes
+are viewed as fixed. A subset of our key results hold in this
+setting, e.g., Proposition 1 guaranteeing unbiased estimates
+and Proposition 2 guaranteeing that swap rounding reduces
+variance. Then, we impose additional assumptions and move
+to the superpopulation setting where Yi(1), Yi(0) are drawn
+iid from some distribution P. We show that imposing this
+assumption enables additional results like a central limit
+theorem and the construction of confidence intervals. In the
+superpopulation setting, we optionally consider unit-level
+covariates. That is, for each unit i, we optionally observe
+covariates Vi where Yi(0), Yi(1), Vi are jointly sampled iid
+from some distribution P and the assignment probability is
+a function of the covariates p(Vi) = P(A = 1|Vi).
+Given that this is an RCT, we assume ignorability
+(Y (1), Y (0) ⊥ ⊥A) , and the standard assumptions of con-
+sistency ( Y = Y (A) whenever A = a), and positivity
+(pi, (1 − pi), p(Vi), 1 − p(Vi) &gt; 0). We will also that
+Y (0) and Y (1) are always nonnegative (this can simply
+be achieved by scalar translation of Y if it does not hold
+a-priori).
+4683
+
+PDF PAGE 4
+4 METHODOLOGY
+4.1 IPW ESTIMATOR
+Our goal in this section is to analyze the statistical proper-
+ties of the binary treatment assignments produced by our
+swap rounding procedure. In particular, we focus on the in-
+verse probability weighted (IPW) estimator for the average
+treatment effect (ATE) when these assignments are used. In
+later sections, we will further extend our analysis to general
+linear estimators. Here, we will show that:
+• The sequence of partial IPW estimators, constructed
+using the intermediate fractional values from swap
+rounding, forms a martingale. This property is crucial
+for establishing that the final estimator is unbiased.
+• By inducing negative correlations among treatment
+assignments, swap rounding yields an estimator with a
+lower variance compared to one based on independent
+assignment.
+4.1.1 Treatment effect estimators
+Our main results compare two ways of drawing the assign-
+ment variables and we introduce separate notation for both.
+First, Ai is sampled independently with probability pi. Sec-
+ond, A′ is produced via swap rounding applied to {pi}n
+i=1.
+The corresponding inverse propensity weighted estimators
+for the average treatment effect (ATE)τ are
+τIPW = 1
+n
+nX
+i=1
+Ai Yi(1)
+pi
+− (1 − Ai) Yi(0)
+1 − pi
+, (1)
+τswap = 1
+n
+nX
+i=1
+A′
+i Yi(1)
+pi
+− (1 − A′
+i) Yi(0)
+1 − pi
+. (2)
+4.1.2 Martingale Property of the Estimator
+Let p(0)
+i denote the initial target (fractional) treatment prob-
+ability for unit i, and let p(t)
+i denote the (partial) probability
+after the tth swap rounding step. Furthermore, let T denote
+the total number of swap-rounding time steps. Note that
+T ≤ m since swap rounding converts at least one of the m
+entries to an integer at each step and may terminate early
+if it converts two to integers on a single step (which occurs
+when pi = pj = 0.5). Define the IPW-based estimator at
+step t as
+xt = 1
+n
+nX
+i=1
+ 
+p(t)
+i Yi(1)
+p(0)
+i
+− 1 − p(t)
+i
+1 − p(0)
+i
+Yi(0)
+!
+. (3)
+Because the swap rounding procedure is constructed so that
+E
+h
+p(t)
+i
+ p(t−1)
+i
+i
+= p(t−1)
+i , (4)
+it follows immediately that
+E
+h
+xt
+ xt−1
+i
+= xt−1. (5)
+Thus, the sequence {xt} forms a martingale. When t = T
+(i.e., after complete rounding), p(T)
+i = Ai ∈ {0, 1} and xT
+is the final IPW estimator. This martingale property allows
+us to establishing unbiasedness as it implies that E[XT ] =
+E[X0]. Formally, let us define the Sample Average Treat-
+ment Effect (ATE) asτSAT E = 1
+n
+Pn
+i=0 Yi(1) − Yi(0). In
+the superpopulation setting, we can also define the Popu-
+lation Average Treatment Effect as τP AT E = E[Y (1) −
+Y (0)].
+Proposition 1 (Unbiasedness of IPW Swap Rounding for
+sample ATE). Let Y1:n(0), Y1:n(1) denote the vectors of
+sample potential outcomes. Conditional on Y1:n(0), Y1:n(1)
+(and so including in the design-based setting), we have
+E [τswap|Y1:n(0), Y1:n(1)] = τSAT E.
+In the superpopulation setting, we additionally have
+E[τswap] = τP AT E, where the expectation is taken over
+A and the Y1:n(0), Y1:n(1).
+Intuitively, this result holds because swap rounding guar-
+antees that the marginal probability for any individual to
+be treated is identical as if the assignments were sampled
+independently, and so the result follows from linearity of
+expectation. Next, we leverage negative correlation between
+assignments to show that τswap can only have lower variance
+than τIPW.
+4.1.3 Variance Decomposition
+Define the individual summand for each unit appear in the
+IPW estimator as
+Xi = A′
+i Yi(1)
+p(0)
+i
+− (1 − A′
+i) Yi(0)
+1 − p(0)
+i
+. (6)
+The variance of the final estimator xT can be written as
+V
+ 
+xT
+
+= 1
+n2
+&quot; nX
+i=1
+V
+ 
+Xi
+
++ 2
+X
+i,j∈S
+cov
+ 
+Xi, Xj
+
+#
+, (7)
+where S is the set of T pairs of indices where the swap
+rounding algorithm made swaps. The key advantage of swap
+rounding is that it introduces negative correlations between
+the A′
+i’s. In particular, if we denote
+ρij = cov
+ 
+A′
+i, A′
+j
+
+, (8)
+then one can show that
+ρij =
+(
+− p(0)
+i p(0)
+j , if p(0)
+i + p(0)
+j ≤ 1,
+−
+ 
+1 − p(0)
+i
+ 
+1 − p(0)
+j
+
+, if p(0)
+i + p(0)
+j &gt; 1.
+(9)
+4684
+
+PDF PAGE 5
+This negative covariance (which does not occur with in-
+dependent sampling) decreases the overall variance of xT
+relative to the estimator based on independent assignments.
+4.1.4 Standard Estimator Variance
+From the variance of the IPW estimator (derivation in ap-
+pendix), we have V(Xi|Yi(0), Yi(1)) as
+Yi(1)2
+p0
+i
++ Yi(0)2
+1 − p0
+i
+− [Yi(1) − Yi(0)]2 (10)
+4.1.5 Covariance Analysis
+Utilizing the fact that the swap rounding procedure preserves
+the marginals but induces a negative covariance between
+the two treatment assignments involved in the swap leads
+(with omitted proof in the Appendix) to the final covariance
+expression: cov(Xi, Xj|Yi,j(0), Yi,j(1)) =
+ρij
+ 
+Yi(1)
+p(0)
+i
++ Yi(0)
+1 − p(0)
+i
+! 
+Yj(1)
+p(0)
+j
++ Yj(0)
+1 − p(0)
+j
+!
+(11)
+Because of our non-negativity assumption on outcome val-
+ues and the fact that ρij is negative, we see thatcov(Xi, Xj)
+is always negative as ρij remains negative. Thus, by “cou-
+pling” the rounding of different units, our procedure further
+reduces variance relative to independent assignment. As 4.4
+details the standard variance of the IPW variance, the fact
+that cov(Xi, Xj) is always negative means that we have
+Proposition 2.
+Proposition 2 (Variance Reduction). Under the swap round-
+ing procedure, the negative dependence between the assign-
+ment indicators ensures that for any value of the potential
+outcomes Yi:n(0), Yi:n(1)
+V (τswap|Yi:n(0), Yi:n(1)) ≤ V (τIPW|Yi:n(0), Yi:n(1)) .
+If there exists at least one swapped pair i, j where
+Yi(0), Yi(1), Yj(0), Yj(1) are not all simultaneously zero,
+the inequality is strict. In the superpopulation setting, we
+also have unconditionally that V (τswap) ≤ V (τIPW).
+This indicates that precision of inference will never decrease
+if we draw the assignments using swap rounding.
+4.1.6 Inference
+We now turn to providing inferential guarantees, includ-
+ing asymptotically valid confidence intervals, for the swap
+rounding estimator. Our first task is to construct a consis-
+tent estimator for V (τswap). At this stage, all of our re-
+sults will require the superpopulation assumption that units
+are sampled iid. The challenge is that terms of the form
+[Yi(1) − Yi(0)]2 appear in the variance of the estimator
+conditional on the potential outcomes, but both potential
+outcomes are never observed simultaneously for the same
+unit. In the superpopulation setting, the unconditional vari-
+ance of the estimator instead contains terms of the form
+E[Y (1) − Y (0)]2 that can be proxied with τswap itself. For
+all other terms, appearing in V (τswap), we use inverse-
+propensity weighted estimates. Let Yi = Yi(A′
+i) denote the
+observed outcome for unit i. This yields the final variance
+estimator:
+ˆσ = 1
+n2
+ nX
+i=1
+  A′
+i(Yi)2
+(p0
+i )2 + (1 − A′
+i)(Yi)2
+(1 − p0
+i )2
+
+− nτ 2
+swap
+(12)
++ 2
+X
+i,j∈S
+ρij
+ 
+A′
+iYi
+p(0)
+i
++ (1 − A′
+i)Yi
+1 − p(0)
+i
+!
+(13)
+ 
+A′
+jYj
+p(0)
+j
++ (1 − A′
+j)Yj
+1 − p(0)
+j
+!
+(14)
+As the assignment probabilities pi are known exactly, we
+establish that:
+Proposition 3 (Unbiasedness and Consistency of IPW Swap
+Rounding Variance Estimator). ˆσ is a consistent and un-
+biased Estimator of V[τswap] under the superpopulation
+assumption.
+Finally, we use a martingale central limit theorem to show
+that τswap is asymptotically normal. Combined with Propo-
+sition 3, this enables the construction of valid confidence
+intervals.
+Theorem 1 (Asymptotic Normality and Valid Confidence
+Intervals). Given the superpopulation assumption and un-
+der the further assumptions that:,
+• Bounded Moments: Yi(1) and Yi(0) have uniformly
+bounded second moments by a constant M &lt; ∞.
+• Lower Bound on Quadratic V ariation:There exists a
+constant c &gt; 0 such that for all sufficiently large n,
+
+x
+
+T = 1
+n
+TX
+t=1
+E
+
+∆2
+t | xt−1
+
+≥ c .
+Them, the IPW estimator obtained via swap rounding,τswap,
+is asymptotically normal. That is,
+√n (τswap − τ)
+d
+− →N(0, σ2),
+where σ2 is the asymptotic variance given by the expression
+in Equation 7. Consequently, we have for bσ2, the 1 − α
+4685
+
+PDF PAGE 6
+confidence interval
+τswap ± z1−α/2
+bσ√n
+has asymptotically nominal coverage.
+4.2 GENERAL PROPERTIES OF LINEAR
+ESTIMATORS UNDER SW AP ROUNDING
+In fact, these properties extend beyond the IPW estimator
+as we show that a key property of swap rounding is that
+any estimator that is linear in the treatment assignments is
+automatically unbiased and has lower variance relative to
+the case of independent assignments. To state this formally,
+we have Theorem 2 (omitted proof in Appendix).
+Theorem 2 (Unbiasedness and Variance Reduction for Lin-
+ear Estimators). Let
+ψ =
+nX
+i=1
+aiAi + b (15)
+be an estimator that is linear in the treatment assignments
+Ai for ai ≥ 0. Define ψswap and ψIP W as the versions of
+this estimator where the A are sampled from swap rounding
+and independently, respectively. Treatingai and b as fixed
+and analyzing the estimators conditional on them,
+E[ψswap] = E[ψIP W ] =
+nX
+i=1
+ai pi + b, (16)
+V(ψswap) =
+nX
+i=1
+a2
+i V(A′
+i) + 2
+X
+i,j∈S
+ai aj cov(A′
+i, A′
+j)
+≤
+nX
+i=1
+a2
+i V(Ai) = V(ψIP W ), (17)
+i.e., the variance is lower than (or equal to) what would be
+achieved under independent assignment. If there is any pair
+where ai, aj ̸= 0, the inequality is strict.
+5 COV ARIATE-ORDERED SW AP
+ROUNDING
+In addition to preserving marginal treatment probabilities
+and inducing negative correlations through swap rounding,
+it is beneficial to pair units with similar covariates to fur-
+ther reduce variance. The intuition is that when units are
+similar in their covariate profiles, they are likely to have
+similar baseline outcomes. Thus, any difference induced by
+the randomized rounding is less variable. This idea paral-
+lels matching methods in causal inference, where pairing
+or matching treated and control units based on covariate
+similarity improves the precision of effect estimates [Stuart,
+2010]. We will introduce an extension of our swap-rounding
+methodology that leverages this intuition.
+We first order the n units by their covariate vectors Vi using
+a distance metric
+d(Vi, Vj) = ∥Vi − Vj∥,
+and solve
+min
+π∈P(n)
+nX
+k=2
+d
+
+Vπ(k), Vπ(k−1)
+
+, (18)
+where P(n) denotes the set of all permutations of
+{1, . . . , n}. (This is analogous to a TSP, which can be ap-
+proximately solved via heuristics Johnson and McGeoch
+[1997], Kirkpatrick et al. [1983].) Swap rounding is then
+applied only to adjacent pairs in the ordering, ensuring that
+negative correlations are induced primarily between similar
+units.
+Next, we layout the assumptions needed to ensure covariate
+ordering swapping reduces variance. While these assump-
+tions are restrictive, this should be seen a stylized model to
+get a sense of ideal conditions that would exist for covariate
+ordering to be beneficial, and not something we expect to al-
+ways hold. Essentially, we want to show that this technique
+works better for conditions when outcomes are closer for
+similar covariates than for dissimilar covariates.
+Assume the potential outcomes follow
+Yi(0) = f(Vi) + ϵi0, (19)
+Yi(1) = f(Vi) + τ(Vi) + ϵi1, (20)
+with f and τ Lipschitz (with constants Lf and Lτ , respec-
+tively), ϵ as random mean-zero error terms that are indepen-
+dent of the V , and that the target treatment probabilitiesp(0)
+i
+are Lipschitz in Vi (with constant Lp).
+Let A′
+i be the final assignment from swap rounding and
+Cov(A′
+i, A′
+j) = ρij &lt; 0 ( i ̸= j).
+The unit-level IPW estimator is
+Xi = A′
+i Yi(1)
+p(0)
+i
+− (1 − A′
+i) Yi(0)
+1 − p(0)
+i
+.
+Define the effective weight by
+Mi ≜ E[Yi(1)]
+p(0)
+i
++ E[Yi(0)]
+1 − p(0)
+i
+= f(Vi) + τ(Vi)
+p(0)
+i
++ f(Vi)
+1 − p(0)
+i
+. (21)
+Then, it can be shown that
+Cov(Xi, Xj) = ρij Mi Mj.
+4686
+
+PDF PAGE 7
+To exploit covariate similarity, we assume thatM(·) is bi-
+Lipschitz; i.e., there exist constants ℓM , LM &gt; 0 such that
+for all Vi, Vj
+ℓM ∥Vi − Vj∥ ≤ | Mi − Mj| ≤ LM ∥Vi − Vj∥. (22)
+Let Sopt denote the set of pairs of neighboring units that are
+swapped under the covariate-optimized pairing andSrand be
+a fixed alternative ordering. We will compare the variance
+of treatment effect estimates for the swap rounding estima-
+tor under Sopt to Srand. This will require formalizing the
+idea that the optimization algorithm succeeds in finding an
+ordering where neighboring units are all significantly closer
+than the average under Srand. First, for Sopt, suppose that
+∥Vi − Vj∥ ≤ δ,
+for all i, j for some δ &gt; 0. Hence,
+|Mi − Mj| ≤ LM δ ≜ ∆opt. (23)
+In contrast, let the expected squared covariate distance under
+Srand be
+E(i,j)∼Srand
+h
+∥Vi − Vj∥2
+i
+= c2, (24)
+for some c &gt; 0. Now, assume that c &gt; δ , i.e., that the
+optimized ordering places all neighboring units closer than
+the average under . Then by the lower bound in (22) and
+Jensen’s inequality,
+∆2
+rand ≜ E(i,j)∼Srand
+h
+(Mi − Mj)2
+i
+≥ ℓ2
+M c2,
+∆rand ≥ ℓM c. (25)
+Thus, if
+LM δ &lt; ℓ M c, (26)
+then ∆opt &lt; ∆rand. Since
+MiMj =
+ Mi + Mj
+2
+2
+−
+ Mi − Mj
+2
+2
+,
+a smaller |Mi − Mj| (for a fixed average) leads to a larger
+MiMj. Consequently, the negative covariance ρij MiMj
+is stronger under covariate-ordered pairing, reducing the
+overall variance of the IPW estimator.
+Proposition 4 (Variance Reduction via Covariate-Ordered
+Pairing). Assume that units are paired via covariate-ordered
+swap rounding so that for each pair (i, j) in the optimal
+pairing Sopt we have
+∥Vi − Vj∥ ≤ δ,
+and that the effective weight function M(·) satisfies (22).
+Further, suppose an arbitrary pairing Srand satisfies
+E(i,j)∼Srand
+h
+∥Vi − Vj∥2
+i
+≥ c2, (27)
+with c &gt; δ and that condition (26) holds. Then,
+V
+ 
+τIPW
+
+Sopt
+&lt; V
+ 
+τIPW
+
+Srand
+.
+6 EXPERIMENTS
+6.1 GENERAL SETUP
+For our experiments, we generate consider 3 different set-
+tings. Firstly, a fully synthetic setting where we generate
+potential outcomes, assignment probabilities and covariates
+through simulation. We then consider a semi-synthetic set-
+ting involving 2 real datasets.
+6.2 BASELINES
+Below, we briefly describe the baseline methods we compare
+our swap-rounding IPW estimator and Covariate-Matched
+Swap-Rounding IPW Estimator to.
+1. Standard IPW Estimator We use the standard con-
+struct of the Horvitz–Thompson IPW estimator
+2. Budget Limited Bernoulli Assignment: A condi-
+tional assignment procedure that repeatedly draws inde-
+pendent Bernoulli assignments until the draw satisfiesP
+i Ai = B, akin to conditional Poisson sampling
+Hájek [1964], Grafström [2005].
+3. Re-randomization with Effective Propensity Adjust-
+ment: Multiple candidate assignments are drawn from
+the Bernoulli model, and one is selected based on a
+Mahalanobis distance criterion that enforces covariate
+balance (see Morgan and Rubin [2012]). An effective
+propensity is then computed using the methodology
+described in Branson and Miao [2019] for max sam-
+pling for optimal selection and used to adjust the IPW
+estimator to un-bias the estimates.
+4. Random Assignment Based on Total Probabilities:
+Exactly B units are selected uniformly at random (with-
+out replacement) for treatment. This corresponds to
+simple random sampling Cochran [1977]. As such, this
+method does not preserve target probability values p0.
+5. Self-Normalized IPW: With independent Bernoulli
+assignments, the self-normalized IPW estimator is com-
+puted as
+ˆτ =
+P
+i AiYi/piP
+i Ai/pi
+−
+P
+i(1 − Ai)Yi/(1 − pi)P
+i(1 − Ai)/(1 − pi) ,
+This method was designed to reduce the impact of ex-
+treme weights and to reduced variance (which it tends
+to do extremely well) as compared to standard IPW
+estimators Liu et al. [2016]. However, in finite sam-
+ples this estimator is not unbiased. [Datta and Polson,
+2011]. While this method and Random Assignment are
+biased, we include them to show the variance we hope
+to empirically achieve.
+4687
+
+PDF PAGE 8
+6.3 SYNTHETIC EXPERIMENTS
+6.3.1 Synthetic Experiment Setup
+For each sample size n (we use various sample sizes), we
+generate 100 unique scenarios with covariates V ∈ Rn×3
+(with entries drawn from a standard normal), and outcomes
+given by
+Yi(0) = β0 + V ⊤
+i β, Y i(1) = Yi(0) + τtrue + ϵi,
+with τtrue = 2 and ϵi ∼ N (0, 1). The distribution of the
+initial probabilities p0 is computed via the methodology
+described in section 6.1.
+In this setting, we consider 3 methodologies for assigning
+target treatment probabilities p(0).
+1. Uniform Distribution: p(0) ∼ Uniform (0.01,0.99)
+2. Gaussian Distribution: p(0) ∼ N (.5, .25) with prob-
+abilities clipped between (0.01,0.99)
+3. Covariate Based Distribution: p0 is computed via a
+logistic model of V (clipping probabilities between .01
+and .99)
+Each of these scenarios is then replicated 100 times. All
+code is provided is supplementary materials.
+6.3.2 Experiments
+We conduct 3 separate experiments, each one different by
+the methodology of how the target probabilities p(0) are
+distributed. In all 3 experiments (Uniform, Gaussian and
+Covariate-Based Distribution seen in Figures 1, 2, 3), we
+notice a general trend. Covariate Based Swap Rounding
+performs the best (minimum variance) by a considerable
+margin, followed by Random Assignment, then standard
+Swap Rounding, Self-Normalized IPW and then other meth-
+ods. This result is especially significant because our method-
+ology outperforms estimators like Self-Normalized IPW
+and Random Assignment that were designed to minimize
+variance at the cost of bias. We also notice several other
+interesting trends such as the standard IPW estimator per-
+forming worst in all experiments. At large sample sizes, all
+estimators converge to negligible variance.
+6.4 SEMI-SYNTHETIC DATA
+For the type of data that is needed to test these methods,
+we need access to the true propensity scores underlying
+trial selection as well as access to both potential outcomes
+for each individual. This obviously is not possible so we
+have to sacrifice data quality in some places and make it up
+with simulation. That being said, we proceed with two data
+sources that provide different levels of information.
+50 100 250 500 1000 5000
+Sample Size (n)
+0.0
+0.1
+0.2
+0.3
+0.4
+0.5
+0.6
+0.7Empirical Variance of 
+Uniform Distributed p-values
+Standard IPW
+Swap Rounding
+Covariate Matched Swap
+Random Assignment
+Limited Bernoulli
+Re-randomization
+Self-Normalized IPW
+Figure 1: Synthetic Experiment with p(0) ∼ Uniform
+(0.01,0.99). Mean empirical variance with 95 % CI.
+50 100 250 500 1000 5000
+Sample Size (n)
+0.0
+0.1
+0.2
+0.3
+0.4
+0.5Empirical Variance of 
+Gaussian p-values
+Standard IPW
+Swap Rounding
+Covariate Matched Swap
+Random Assignment
+Limited Bernoulli
+Re-randomization
+Self-Normalized IPW
+Figure 2: Synthetic Experiment with p(0) ∼ N (.5, .25)
+50 100 250 500 1000 5000
+Sample Size (n)
+0.0
+0.1
+0.2
+0.3
+0.4
+0.5
+0.6Empirical Variance of 
+Covariate Based p-values
+Standard IPW
+Swap Rounding
+Covariate Matched Swap
+Random Assignment
+Limited Bernoulli
+Re-randomization
+Self-Normalized IPW
+Figure 3: Synthetic Experiment where p0 is computed via a
+logistic model of the covariates V
+6.4.1 IDHP Dataset
+Our first data source is the IDHP Dataset. [Gross, 2024]
+The dataset (747 individuals) is based off an RCT that was
+conducted between 1985-1988 where they tested the impact
+of early interventions in reducing developmental problems
+associated with low weight and premature infants where the
+outcome was a continuous measure of cognitive develop-
+ment. We used simulated counterfactual outcomes for each
+individual as well propensity scores estimated via logistic
+regression. Our results are shown in Figure 4 (the Random
+Assignment line is hidden underneath the Self-Normalized
+IPW line). In this setting again our methodology remains
+competitive with the biased methodologies while perform-
+ing superior to those methods who are unbiased.
+6.4.2 Housing Dataset
+In this setting, we use data provided by the Allegheny
+County Department of Human Services. The dataset (3163
+4688
+
+PDF PAGE 9
+50 100 250 500
+Sample Size (n)
+0
+1
+2
+3
+4
+5Empirical Variance of 
+IDHP
+Standard IPW
+Swap Rounding
+Covariate Matched Swap
+Random Assignment
+Limited Bernoulli
+Re-randomization
+Self-Normalized IPW
+Figure 4: Semi-Synthetic Experiment IDHP dataset
+individuals) was introduced by Wilder and Welle [2024] and
+contains individuals eligible for public housing assistance
+and simulates the effect of an intervention on the binary
+outcome whether they will have at least 4 emergency room
+visits in the upcoming year. The hypothetical intervention’s
+effect is characterized by τ(X) = .1 · P (Y (0) = 1 | X)
+where 0.1 quantifies the proportional decrease in the occur-
+rence of an adverse outcomes resulting from the treatment,
+and the probability P (Y (0) = 1 | X
+
+is estimated using a
+random forest model. Our results are shown in Figure 5. In
+this experiment, regular swap rounding performs the best.
+50 100 250 500 1000
+Sample Size (n)
+0.0
+0.1
+0.2
+0.3Empirical Variance of 
+Housing Data
+No Swap (IPW)
+Swap Rounding
+Covariate Matched Swap
+Random Assignment
+Limited Bernoulli
+Re-randomization
+Self-Normalized IPW
+Figure 5: Semi-Synthetic Experiment Housing Dataset
+7 DISCUSSION
+We theoretically show that incorporating swap rounding,
+due the negative correlations it induces, leads to an unbiased
+and variance-reduced IPW estimator that can enforce strict
+budget constraints. Moreover, by incorporating covariate-
+ordered pairing, our approach further refines variance re-
+duction, particularly in settings where units share similar
+characteristics. These findings highlight the potential of
+our method for designing efficient and fair experiments in
+resource-constrained environments.
+8 ACKNOWLEDGMENTS
+This project was supported by the AI2050 program at
+Schmidt Sciences (Grant G-22-64474) and the AI Research
+Institutes Program funded by the National Science Founda-
+tion under AI Institute for Societal Decision Making (AI-
+SDM), Award No. 2229881. We would also like to acknowl-
+edge Naveen Raman, Nima Jadali and Albert Ting for their
+contributions in editing and advising on the paper.
+References
+A. A. Ageev and M. Sviridenko. Approximation algorithms
+for maximization of submodular functions. In Proceed-
+ings of the 35th Annual ACM Symposium on Theory of
+Computing (STOC), pages 793–802, 2004.
+Nibia Aires. Comparisons between conditional pois-
+son sampling and pareto πps sampling designs.
+Journal of Statistical Planning and Inference ,
+88(1):133–147, 2000. ISSN 0378-3758. doi:
+https://doi.org/10.1016/S0378-3758(99)00205-0.
+URL https://www.sciencedirect.com/
+science/article/pii/S0378375899002050.
+S. Athey and G. W. Imbens. The state of applied econo-
+metrics: Causality and policy evaluation. Journal of Eco-
+nomic Perspectives, 31(2):3–32, 2017.
+R Branson and Q Miao. Maximally balanced sampling in
+randomized experiments. Journal of Statistical Planning
+and Inference, 205:1–10, 2019.
+Sylvain Chassang, Gerard Padró I Miquel, and Erik Snow-
+berg. Selective trials: A principal-agent approach to ran-
+domized controlled experiments. American Economic
+Review, 102(4):1279–1309, June 2012. doi: 10.1257/
+aer.102.4.1279. URL https://www.aeaweb.org/
+articles?id=10.1257/aer.102.4.1279.
+Chandra Chekuri and Jan V ondrák. Randomized pipage
+rounding for matroid polytopes and applications. CoRR,
+abs/0909.4348, 2009. URL http://arxiv.org/
+abs/0909.4348.
+William G Cochran. Sampling Techniques. John Wiley &amp;
+Sons, 1977.
+Jyotishka Datta and Nicholas G. Polson. Inverse probability
+weighting: from survey sampling to evidence estimation.
+Working paper, Department of Statistics, Virginia Tech
+and
+Booth School of Business, University of Chicago, 2011.
+Unpublished manuscript.
+Anton Grafström. Comparisons of methods for generat-
+ing conditional poisson samples and sampford samples.
+2005. URL https://api.semanticscholar.
+org/CorpusID:56873261.
+Ruth T. Gross. Infant health and development pro-
+gram (ihdp): Enhancing the outcomes of low birth
+weight, premature infants in the united states, 1985–1988.
+Inter-university Consortium for Political and Social Re-
+search, 2024. URL https://doi.org/10.3886/
+4689
+
+PDF PAGE 10
+ICPSR09795.v2. Dataset, Version V2, released Febru-
+ary 14, 2024.
+J Hájek. Asymptotic theory of rejective sampling with vary-
+ing probabilities. The Annals of Mathematical Statistics,
+pages 1006–1018, 1964.
+G. W. Imbens and D. B. Rubin. Causal Inference in Statis-
+tics, Social, and Biomedical Sciences. Cambridge Uni-
+versity Press, 2015.
+C. Isaki and W. A. Fuller. Estimation for finite population
+sampling. Journal of the American Statistical Association,
+79(387):137–145, 1984.
+David S. Johnson and Laurence A. McGeoch. The traveling
+salesman problem: A case study in local optimization.
+In Local Search in Combinatorial Optimization , pages
+215–310. Princeton University Press, 1997.
+Daido Kido. Incorporating preferences into treatment assign-
+ment problems, 2023. URL https://arxiv.org/
+abs/2311.08963.
+S. Kirkpatrick, C. D. Gelatt, and M. P. Vecchi. Optimization
+by simulated annealing. Science, 220(4598):671–680,
+1983.
+X. Li, P. Ding, and D. B. Rubin. Rerandomization in ex-
+periments: A review. Annual Review of Statistics and Its
+Application, 5:1–19, 2018.
+Lan Liu, Michael G Hudgens, and Sara Becker-Dreps. On
+inverse probability-weighted estimators in the presence
+of interference. Biometrika, 103(4):829–842, 2016. doi:
+10.1093/biomet/asw047.
+D. L. Morgan and D. B. Rubin. Rerandomization to improve
+covariate balance in experiments. Journal of the Royal
+Statistical Society: Series B (Statistical Methodology), 74
+(4):515–532, 2012.
+Yusuke Narita. Incorporating ethics and welfare into ran-
+domized experiments. Proceedings of the National
+Academy of Sciences, 118(1):e2008740118, 2021. doi: 10.
+1073/pnas.2008740118. URL https://www.pnas.
+org/doi/abs/10.1073/pnas.2008740118.
+J. Neyman. On the problem of the most efficient alloca-
+tion of units in stratified sampling. Journal of the Royal
+Statistical Society, 97:544–557, 1934.
+A. Srinivasan. Distributions on level-sets with applications
+to approximation algorithms. In Proceedings of the 42nd
+IEEE Symposium on Foundations of Computer Science
+(FOCS), pages 588–597, 2001.
+Elizabeth A. Stuart. Matching methods for causal inference:
+A review and a look forward. Statistical Science, 25(1):
+1–21, 2010.
+Bryan Wilder and Pim Welle. Learning treatment effects
+while treating those in need, 2024. URL https://
+arxiv.org/abs/2407.07596.
+4690
+
+PDF PAGE 11
+9 SW AP ROUNDING ALGORITHM
+Algorithm 2: Simplified Swap Rounding for B-Uniform Matroid
+Input: Fractional vector p ∈ [0, 1]n withPn
+i=1 pi = B
+Output: Binary vector A ∈ {0, 1}n withPn
+i=1 Ai = B
+1 t ← 0, p (0) ← p
+2 while p(t) is not integral, do
+3 Select indices i and j such that 0 &lt; p(t)
+i &lt; 1 and 0 &lt; p(t)
+j &lt; 1
+4 if p(t)
+i + p(t)
+j ≤ 1 then
+5 Let δ = min{p(t)
+i , p (t)
+j }
+6 With probability p(t)
+i
+p(t)
+i +p(t)
+j
+, set
+p(t+1)
+i = p(t)
+i − δ, p (t+1)
+j = p(t)
+j + δ;
+otherwise set
+p(t+1)
+i = p(t)
+i + δ, p (t+1)
+j = p(t)
+j − δ;
+7 else
+8 Let δ = min{1 − p(t)
+i , 1 − p(t)
+j }
+9 With probability 1−p(t)
+i
+2−p(t)
+i −p(t)
+j
+, set
+p(t+1)
+i = p(t)
+i + δ, p (t+1)
+j = p(t)
+j − δ;
+otherwise set
+p(t+1)
+i = p(t)
+i − δ, p (t+1)
+j = p(t)
+j + δ;
+10 end
+11 For all k /∈ {i, j}, let p(t+1)
+k = p(t)
+k
+12 t ← t + 1
+13 end
+14 return A = p(t)
+4691
+
+PDF PAGE 12
+10 IPW PROOFS
+10.1 IPSW- SW AP ROUNDING
+We want to figure out which subjects to assign treatments to so that we can use an IPSW estimator to estimateˆτ - the average
+treatment effect. We start with a vector of probabilities p. This vector then undergoes iterative swap rounding results in A, a
+vector of binary treatments. The negative correlation aspect of swap rounding allows us to maintain concentration bounds
+when we don’t have a very large number of samples. We observe the outcomes Y(A) and use them in our IPSW estimator
+for ˆτ. We define the following variables:
+pt: probabilities after step t of swap rounding
+p0: target probabilites (pre-rounding)
+pT : A1, ..., An (binary treatments)
+xt = 1
+n
+X
+i
+pt
+iYi(1)
+p0
+i
+− (1 − pt
+i)Yi(0)
+1 − p0
+i
+x0 = 1
+n
+X
+i
+Y (1) − Y (0)
+xT = 1
+n
+X
+i
+AiY (1)
+p0
+i
+− (1 − Ai)Y (0)
+1 − p0
+i
+10.2 SHOWING MARTINGALE PROPERTY
+First, we want to show that
+E[xt|xt−1] = xt−1
+We have
+E[xt|xt−1] = 1
+n
+X
+i
+E[pt
+i|pt−1
+i ]Yi(1)
+p0
+i
+− (1 − E[pt
+i|pt−1
+i ])Yi(0)
+1 − p0
+i
+= 1
+n
+X
+i
+pt−1
+i Yi(1)
+p0
+i
+− (1 − pt−1
+i )Yi(0)
+1 − p0
+i
+= xt−1
+10.3 V ARIANCE-COV ARIANCE DECOMPOSITION
+V[XT ] = 1
+n2
+  NX
+i=1
+V( AiYi(1)
+p0
+i
+− (1 − Ai)Yi(0)
+1 − p0
+i
+) + 2
+X
+i,j∈S
+Cov( AiYi(1)
+p0
+i
+− (1 − Ai)Yi(0)
+1 − p0
+i
+, AjYj(1)
+p0
+j
+− (1 − Aj)Yj(0)
+1 − p0
+j
+)
+
+where S is the set of swaps in order. For the variance component, we have
+SINGLE-UNIT V ARIANCE
+Define
+Xi = A′
+i Yi(1)
+p0
+i
+− (1 − A′
+i) Yi(0)
+1 − p0
+i
+.
+Then
+X2
+i =
+ A′
+i Yi(1)
+p0
+i
+− (1 − A′
+i) Yi(0)
+1 − p0
+i
+2
+= A′
+i Yi(1)2
+(p0
+i )2 + (1 − A′
+i) Yi(0)2
+(1 − p0
+i )2 − 2 A′
+i (1 − A′
+i) Yi(1) Yi(0)
+p0
+i (1 − p0
+i ) .
+4692
+
+PDF PAGE 13
+Taking expectations (using E[A′
+i] = p0
+i and E[A′
+i (1 − A′
+i)] = 0) yields
+E[X2
+i ] = Yi(1)2
+p0
+i
++ Yi(0)2
+1 − p0
+i
+.
+Since E[Xi] = Yi(1) − Yi(0), it follows that
+Var(Xi) = Yi(1)2
+p0
+i
++ Yi(0)2
+1 − p0
+i
+−
+
+Yi(1) − Yi(0)
+2
+.
+SUPER POPULATION
+If
+ 
+Yi(0), Y i(1), p 0
+i
+
+is drawn i.i.d. from a larger (hypothetically infinite) population, then taking an outer expectation of the
+above result gives
+V(Xi) = E
+
+Yi(1)2
+p0
+i
++ E
+
+Yi(0)2
+1 − p0
+i
+− E
+
+Yi(1) − Yi(0)
+2
+.
+10.4 COV ARIANCE OF Xi AND Xj
+Now, we aim to calculate the covariance - for a pair of units Xi, Xj
+Cov(Xi, Xj) = E[XiXj] − E[Xi]E[Xj],
+where
+Xi = AiYi(1)
+p0
+i
+− (1 − Ai)Yi(0)
+1 − p0
+i
+, X j = AjYj(1)
+p0
+j
+− (1 − Aj)Yj(0)
+1 − p0
+j
+.
+10.5 EXPANDING XiXj
+The product XiXj expands as:
+XiXj =
+ AiYi(1)
+p0
+i
+− (1 − Ai)Yi(0)
+1 − p0
+i
+ 
+AjYj(1)
+p0
+j
+− (1 − Aj)Yj(0)
+1 − p0
+j
+!
+= AiAjYi(1)Yj(1)
+p0
+i p0
+j
+− Ai(1 − Aj)Yi(1)Yj(0)
+p0
+i (1 − p0
+j) − (1 − Ai)AjYi(0)Yj(1)
+(1 − p0
+i )p0
+j
++ (1 − Ai)(1 − Aj)Yi(0)Yj(0)
+(1 − p0
+i )(1 − p0
+j) .
+10.6 TAKING EXPECTATIONS
+First Term: E
+h
+AiAj Yi(1)Yj(1)
+p0
+i p0
+j
+i
+Define ρij = Cov(Ai, Aj). We then have
+E[AiAj] = p0
+i p0
+j + ρij.
+Thus:
+E
+&quot;
+AiAjYi(1)Yj(1)
+p0
+i p0
+j
+#
+= (p0
+i p0
+j + ρij) · E[Yi(1)] · E[Yj(1)]
+p0
+i p0
+j
+.
+4693
+
+PDF PAGE 14
+Second Term: E
+h
+Ai(1−Aj)Yi(1)Yj(0)
+p0
+i (1−p0
+j)
+i
+E[Ai(1 − Aj)] = p0
+i (1 − p0
+j) − ρij.
+Thus:
+E
+&quot;
+Ai(1 − Aj)Yi(1)Yj(0)
+p0
+i (1 − p0
+j)
+#
+= (p0
+i (1 − p0
+j) − ρij) · E[Yi(1)] · E[Yj(0)]
+p0
+i (1 − p0
+j) .
+Third Term: E
+h
+(1−Ai)Aj Yi(0)Yj(1)
+(1−p0
+i )p0
+j
+i
+E[(1 − Ai)Aj] = (1 − p0
+i )p0
+j − ρij.
+Thus:
+E
+&quot;
+(1 − Ai)AjYi(0)Yj(1)
+(1 − p0
+i )p0
+j
+#
+= ((1 − p0
+i )p0
+j − ρij) · E[Yi(0)] · E[Yj(1)]
+(1 − p0
+i )p0
+j
+.
+Fourth Term: E
+h
+(1−Ai)(1−Aj)Yi(0)Yj(0)
+(1−p0
+i )(1−p0
+j)
+i
+E[(1 − Ai)(1 − Aj)] = (1 − p0
+i )(1 − p0
+j) + ρij.
+Thus:
+E
+&quot;
+(1 − Ai)(1 − Aj)Yi(0)Yj(0)
+(1 − p0
+i )(1 − p0
+j)
+#
+= ((1 − p0
+i )(1 − p0
+j) + ρij) · E[Yi(0)] · E[Yj(0)]
+(1 − p0
+i )(1 − p0
+j) .
+10.7 SUBTRACTING E[Xi]E[Xj]
+The product E[Xi]E[Xj] is:
+E[Xi]E[Xj] =
+ p0
+i · E[Yi(1)]
+p0
+i
+− (1 − p0
+i ) · E[Yi(0)]
+1 − p0
+i
+
+·
+ 
+p0
+j · E[Yj(1)]
+p0
+j
+− (1 − p0
+j) · E[Yj(0)]
+1 − p0
+j
+!
+.
+After subtracting from E[XiXj], we get
+10.8 FINAL COV ARIANCE EXPRESSION
+The covariance Cov(Xi, Xj) is:
+Cov(Xi, Xj) = ρij ·
+ 
+E[Yi(1)] · E[Yj(1)]
+p0
+i p0
+j
++ E[Yi(1)] · E[Yj(0)]
+p0
+i (1 − p0
+j)
++ E[Yi(0)] · E[Yj(1)]
+(1 − p0
+i )p0
+j
++ E[Yi(0)] · E[Yj(0)]
+(1 − p0
+i )(1 − p0
+j)
+!
+.
+where
+ρij = Cov(Ai, Aj) = E[AiAj] − p0
+i p0
+j
+We then have
+E[AiAj] =
+(
+0 if p0
+i + p0
+j ≤ 1,
+p0
+i + p0
+j − 1 if p0
+i + p0
+j &gt; 1.
+4694
+
+PDF PAGE 15
+so
+ρij =
+(
+−p0
+i p0
+j if p0
+i + p0
+j ≤ 1,
+−(1 − p0
+i )(1 − p0
+j) if p0
+i + p0
+j &gt; 1.
+10.9 V ARIANCE OF XT EXPRESSION
+V[XT ] = 1
+n2
+ NX
+i=1
+  E[Yi(1)2]
+p0
+i
++ E[Yi(0)2]
+1 − p0
+i
+
+− nE[Y (1) − Y (0)]2
++ 2
+X
+i,j∈S
+ρij ·
+ E[Yi(1)] · E[Yj(1)]
+p0
+i p0
+j
+− E[Yi(1)] · E[Yj(0)]
+p0
+i (1 − p0
+j)
+− E[Yi(0)] · E[Yj(1)]
+(1 − p0
+i )p0
+j
++ E[Yi(0)] · E[Yj(0)]
+(1 − p0
+i )(1 − p0
+j)
+
+10.10 ESTIMATED V ARIANCE (IPW)
+V[XT ] = 1
+n2
+ NX
+i=1
+  Ai(Yi)2
+(p0
+i )2 + (1 − Ai)(Yi)2
+(1 − p0
+i )2
+
+− nˆτ 2
++ 2
+X
+i,j∈S
+ρij ·
+ AiAjYiYj
+(p0
+i )2(p0
+j)2 + Ai(1 − Aj)YiYj
+(p0
+i )2(1 − p0
+j)2
++ (1 − Ai)AjYiYj
+(1 − p0
+i )2(p0
+j)2 + (1 − Ai)(1 − Aj)YiYj
+(1 − p0
+i )2(1 − p0
+j)2
+
+10.11 P IS A RV - FUNCTION OF COV ARIATES V
+10.11.1 Variance
+ρ(Vi) = P (A = 1|Vi)
+V[XT |V ] = 1
+n2
+ NX
+i=1
+  E[Yi(1)2|Vi]
+ρ(Vi) + E[Yi(0)2|Vi]
+1 − ρ(Vi)
+
+− nE[Y (1) − Y (0)|Vi]2
++ 2
+X
+i,j∈S
+ρij ·
+ E[Yi(1)|Vi] · E[Yj(1)]|Vj]
+ρ(Vi)ρ(Vj) + E[Yi(1)|Vi] · E[Yj(0)|Vj]]
+ρ(Vi)(1 − ρ(Vj))
++ E[Yi(0|Vi)] · E[Yj(1)|Vj]]
+(1 − ρ(Vi))ρ(Vj) + E[Yi(0|Vi)] · E[Yj(0)|Vj]
+(1 − ρ(Vi))(1 − ρ(Vj)
+
+10.11.2 Estimated Variance (IPW)
+V[XT | V ] = 1
+n2
+&quot; NX
+i=1
+ Ai (Yi)2
+ 
+ρ(Vi)
+2 +
+ 
+1 − Ai
+
+(Yi)2
+ 
+1 − ρ(Vi)
+2
+
+− n ˆτ(V )2
++ 2
+X
+i,j∈S
+ρij(Vi, Vj) ×
+ Ai Aj Yi Yj
+ 
+ρ(Vi)
+2 
+ρ(Vj)
+2 + Ai (1 − Aj) Yi Yj
+ 
+ρ(Vi)
+2 
+1 − ρ(Vj)
+2
++
+ 
+1 − Ai
+
+Aj Yi Yj
+ 
+1 − ρ(Vi)
+2 
+ρ(Vj)
+2 +
+ 
+1 − Ai
+ 
+1 − Aj
+
+Yi Yj
+ 
+1 − ρ(Vi)
+2 
+1 − ρ(Vj)
+2
+#
+.
+4695
+
+PDF PAGE 16
+11 ASYMPTOTIC NORMALITY OF ESTIMATOR
+Define
+xt = 1
+n
+nX
+i=1
+ 
+p(t)
+i
+p(0)
+i
+Yi(1) − 1 − p(t)
+i
+1 − p(0)
+i
+Yi(0)
+!
+,
+where x0 is the estimator using the initial fractional assignments and xT = τswap is the final binary estimator. Since
+E[ xt | xt−1 ] = xt−1, the sequence {xt}T
+t=0 forms a martingale. Let
+∆t = xt − xt−1.
+ASSUMPTIONS
+Assume that:
+• Super-Population Assumption: The units
+ 
+Yi(1), Y i(0), V i
+
+are i.i.d. draws from a large (hypothetically infinite)
+population.
+• Bounded Moments: Yi(1) and Yi(0) have uniformly bounded second moments by a constant M &lt; ∞.
+• Bounded Probabilities: There exists ε &gt; 0 such that
+ε ≤ p(0)
+i ≤ 1 − ε for all i.
+• Lower Bound on Quadratic Variation: There exists a constant c &gt; 0 such that for all sufficiently large n,
+
+x
+
+T = 1
+n
+TX
+t=1
+E
+
+∆2
+t | xt−1
+
+≥ c .
+QUADRATIC V ARIATION AND LINDEBERG CONDITION
+By a law of large numbers for martingale difference arrays under our boundedness assumptions, we have
+
+x
+
+T
+P
+− − →σ2 &gt; 0,
+with σ2 as specified in Equation (6) of the paper. Moreover, since each ∆t is bounded (because of bounded potential
+outcomes combined with bounded probabilities),
+1
+n
+TX
+t=1
+E
+
+∆2
+t 1{ |∆t|&gt;ε√n } | xt−1
+
+− → 0,
+so the Lindeberg condition holds.
+MARTINGALE CLT APPLICATION
+By the Martingale Central Limit Theorem,
+√n
+ 
+xT − x0
+ d
+− → N
+ 
+0, σ2
+.
+Since x0 is the estimator using the initial fractional assignments and xT = τswap, it follows that
+√n
+ 
+τswap − τ
+ d
+− → N
+ 
+0, σ2
+.
+4696
+
+PDF PAGE 17
+12 PROOF OF LINEAR ESTIMATOR UNBIASEDNESS AND V ARIANCE REDUCTION
+Proof. Since swap rounding is constructed so that the marginal probability of each treatment indicator is preserved, we have
+E[Ai] = pi for all i.
+Therefore, by linearity of expectation,
+E[ψswap] = E
+&quot; nX
+i=1
+aiAi + b
+#
+=
+nX
+i=1
+ai E[Ai] + b =
+nX
+i=1
+ai pi + b.
+Next, to analyze the variance of ψswap, note that since ψswap is a linear function of the Ai, its variance is given by
+V(ψswap) = V
+ nX
+i=1
+aiAi
+!
+=
+nX
+i=1
+a2
+i V(Ai) + 2
+X
+i&lt;j
+ai aj cov(Ai, Aj).
+The swap rounding procedure guarantees that for i ̸= j,
+cov(Ai, Aj) ≤ 0.
+Since we are now assuming that each ai is non-negative, it follows that each product ai aj is non-negative. Hence, the
+cross-covariance terms satisfy
+2
+X
+i&lt;j
+ai aj cov(Ai, Aj) ≤ 0.
+It immediately follows that
+V(ψswap) ≤
+nX
+i=1
+a2
+i V(Ai).
+This upper bound is exactly the variance one would obtain if the Ai were independent (since then all covariances vanish).
+Thus, the variance under swap rounding is no larger than that under independent assignment.
+4697
+
+PDF PAGE 18
+PROOF OF V ARIANCE REDUCTION VIA COV ARIATE-ORDERED PAIRING UNDER A
+BI-LIPSCHITZ ASSUMPTION
+For each unit i, define the effective weight
+Mi ≡ M(Vi) = f(Vi) + τ(Vi)
+p(Vi) + f(Vi)
+1 − p(Vi) ,
+and for any pair (i, j) let
+M ij = Mi + Mj
+2 .
+It is straightforward to verify that
+MiMj = M
+2
+ij −
+ Mi − Mj
+2
+2
+. (28)
+Thus, for a fixed pair-average M ij, the product MiMj is larger when the absolute difference |Mi − Mj| is smaller.
+To compare two pairing schemes, we impose the following assumptions:
+(A1) Bi-Lipschitz Condition on M(·): Assume that the mapping
+M : v 7→ f(v) + τ(v)
+p(v) + f(v)
+1 − p(v)
+is bi-Lipschitz on the support of the covariates. That is, there exist constantsℓM &gt; 0 and LM &gt; 0 such that for all v, v′,
+ℓM ∥v − v′∥ ≤ | M(v) − M(v′)| ≤ LM ∥v − v′∥. (29)
+(A2) Assumptions on Pairing Distances:
+(i) In an optimal (covariate-ordered) pairing Sopt, assume that every pair (i, j) satisfies
+∥Vi − Vj∥ ≤ δ, (30)
+for some small δ &gt; 0.
+(ii) In an arbitrary (random) pairing Srand, assume that the expected squared distance between paired covariates is
+bounded below:
+E(i,j)∼Srand
+h
+∥Vi − Vj∥2
+i
+≥ c2, (31)
+for some constant c &gt; 0 (with the natural requirement that c &gt; δ ).
+Our goal is to show that under these assumptions the differences|Mi − Mj| in the optimal pairing are uniformly smaller than
+those in an arbitrary pairing. Consequently, for a fixed pair-average, the productMiMj (and thus the negative covariance
+contributions in the variance of the estimator) is more favorable under optimal pairing.
+STEP 1: UPPER BOUND UNDER OPTIMAL PAIRING
+For any pair (i, j) ∈ Sopt, by the upper Lipschitz bound in (29) and (30) we have
+|Mi − Mj| ≤ LM ∥Vi − Vj∥ ≤ LM δ.
+Define
+∆opt ≡ LM δ.
+Thus, for every optimally paired (i, j) it holds that
+|Mi − Mj| ≤ ∆opt.
+4698
+
+PDF PAGE 19
+STEP 2: LOWER BOUND UNDER ARBITRARY PAIRING
+For any pair (i, j) drawn according to the arbitrary pairing Srand, the lower Lipschitz condition in (29) implies
+(Mi − Mj)2 ≥ ℓ2
+M ∥Vi − Vj∥2.
+Taking expectations over the random pairing, we obtain
+∆2
+rand ≡ E(i,j)∼Srand
+h
+(Mi − Mj)2
+i
+≥ ℓ2
+M E(i,j)∼Srand
+h
+∥Vi − Vj∥2
+i
+≥ ℓ2
+M c2.
+Define
+∆rand ≡
+q
+∆2
+rand ≥ ℓM c.
+STEP 3: COMPARISON OF ∆opt AND ∆rand
+If
+LM δ &lt; ℓ M c, (32)
+then it follows that
+∆opt &lt; ∆rand.
+In other words, the differences |Mi − Mj| in the optimal pairing are uniformly smaller than the expected differences under
+an arbitrary pairing.
+STEP 4: IMPLICATION FOR THE PRODUCT MiMj
+Recall the identity in (28):
+MiMj = M
+2
+ij −
+ Mi − Mj
+2
+2
+.
+For a fixed pair-average M ij, the product MiMj is maximized when |Mi − Mj| is minimized. Hence:
+• Under the optimal pairing, for every pair (i, j),
+MiMj ≥ M
+2
+ij − 1
+4∆2
+opt.
+• Under arbitrary pairing, the average product satisfies
+ESrand[MiMj] ≤ E
+h
+M
+2
+ij
+i
+− 1
+4∆2
+rand.
+Since ∆2
+rand &gt; ∆2
+opt by (32), the optimal pairing yields, on average, a higher value of MiMj.
+STEP 5: CONNECTION TO V ARIANCE REDUCTION
+In our setting, the covariance contribution to the variance of an inverse propensity weighted (IPW) estimator is proportional
+to
+Cov(Xi, Xj) = ρij Mi Mj,
+where ρij &lt; 0 is induced by the swap rounding procedure. A larger product MiMj (in absolute value) means that the
+negative covariance term is more strongly negative. In turn, this leads to a reduction in the overall variance of the estimator.
+4699
+
+PDF PAGE 20
+CONCLUSION
+Under the modified assumptions—namely, that the effective weight function M(·) is bi-Lipschitz (with constants ℓM and
+LM ) and that arbitrary pairings satisfy
+E
+h
+∥Vi − Vj∥2
+i
+≥ c2,
+while the optimal pairing enforces ∥Vi − Vj∥ ≤ δ—we obtain
+∆opt = LM δ &lt; ℓ M c ≤ ∆rand.
+Consequently, the product MiMj is higher on average under the optimal (covariate-ordered) pairing than under an arbitrary
+pairing. This implies that the negative covariance term ρij MiMj is more pronounced, leading directly to a lower overall
+variance of the IPW estimator.
+4700</pre></html>

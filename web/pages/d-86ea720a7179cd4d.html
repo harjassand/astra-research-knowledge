@@ -1,0 +1,3956 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Approximate Constrained Lumping of Chemical Reaction Networks</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>Approximate Constrained Lumping of Chemical Reaction Networks</h1><p>Source ID d-86ea720a7179cd4d; literature/sources/r01_discovery/cycle2/approx-lumping.html; 41844 o200k tokens; role primary_source_or_metadata; extraction html_text_discovery_only_math_may_be_lossy. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>Approximate Constrained Lumping of Chemical Reaction Networks
+
+      Report GitHub Issue
+      ×
+
+      Title:
+
+Content selection saved. Describe the issue below:
+
+      Description:
+
+      Submit without GitHub
+      Submit in GitHub
+
+    arXiv is now an independent nonprofit!
+    Learn more
+    ×
+
+      Back to arXiv
+
+    License: arXiv.org perpetual non-exclusive license
+
+arXiv:2411.14242v1 [cs.CE] 21 Nov 2024
+
+Approximate Constrained Lumping of 
+
+Chemical Reaction Networks
+
+Alexander Leguizamon-Robayo
+
+Affiliation: Aalborg University, Denmark
+
+  
+Antonio Jiménez-Pastor
+
+Affiliation: Universidad Politécnica de Madrid, Spain
+
+  
+Micro Tribastone
+Max Tschaikowski
+
+Affiliation: Aalborg University, Denmark
+
+Affiliation: IMT School for Advanced Studies Lucca, Italy
+
+  
+Andrea Vandin
+
+Affiliation: Sant’Anna School of Advanced Studies, Pisa, Italy
+
+Affiliation: DTU Technical University of Denmark
+
+Abstract
+
+Gaining insights from realistic dynamical models of biochemical systems can be challenging given their large number of state variables.
+Model reduction techniques can mitigate this by decreasing complexity by mapping the model onto a lower-dimensional state space. Exact constrained lumping identifies reductions as linear combinations of the original state variables in systems of nonlinear ordinary differential equations, preserving specific user-defined output variables without error.
+However, exact reductions can be too stringent in practice, as model parameters are often uncertain or imprecise—a particularly relevant problem for biochemical systems.
+
+We propose approximate constrained lumping. It allows for a relaxation of exactness within a given tolerance parameter 
+\varepsilon
+ε\varepsilon, while still working in polynomial time.
+We prove that the accuracy, i.e., the difference between the output variables in the original and reduced model, is in the order of 
+\varepsilon
+ε\varepsilon.
+Furthermore, we provide a heuristic algorithm to find the smallest 
+\varepsilon
+ε\varepsilon for a given maximum allowable size of the lumped system.
+Our method is applied to several models from the literature, resulting in coarser aggregations than exact lumping while still capturing
+the dynamics of the original system accurately.
+
+Keywords: Approximate reduction 
+\cdot
+⋅\cdot Dynamical systems 
+\cdot
+⋅\cdot Biological models 
+\cdot
+⋅\cdot Constrained lumping
+
+1 Introduction
+
+Biochemical models based on dynamical systems help discover mechanistic principles in living organisms and predict their behavior under unforeseen circumstances.
+Realistic and accurate models, however, often require considerable detail that inevitably leads to large state spaces.
+This hinders both human intelligibility and numerical/computational analysis.
+For example, even the relatively primary mechanism of protein phosphorylation may yield a state space that grows combinatorial with the number of phosphorylation sites [41].
+
+As a general way to cope with large state spaces, model reduction aims to provide a lower-dimensional representation of the system under study that retains some dynamic properties of interest to the modeler.
+In applications to computational systems biology, it is beneficial that the reduced state space keeps physical interpretability, mainly when the model is used to validate mechanistic hypotheses [42, 46, 2].
+There is a variety of approaches in this context, such as those exploiting time-scale separation properties [34, 58], quasi-steady-state approximation [43, 38], heuristic fitness functions [47], spatial regularity [53], sensitivity analysis [45], and conservation analysis, which detects linear combinations of variables that are constant at all times [55].
+
+By lumping one generally refers to a reduction method that provides a self-consistent system of dynamical equations comprised of a set of macro-variables, each given as a combination of the original ones [aokiOptimizationStochasticSystems1967, kemenyFiniteMarkovChains1960, 34, 45].
+In linear lumping, this reduction is expressed as a linear transformation of the original state variables.
+Since this can destroy physical intelligibility in general, constrained lumping allows restricting to only part of the state space by defining linear combinations of state variables that ought to be preserved in the reduction [31].
+Lumping techniques of Markov chains date back to the early nineties [25].
+These were later extended to stochastic process algebra [10, 59, 22, 49, 51], and have been expanded more recently to efficient algorithmic approaches for stochastic chemical reaction networks [11] and deterministic models of biological systems based on ordinary differential equations (ODEs) with polynomial right-hand sides [17, 15, 13].
+
+In these cases, the reduction is a specific kind of linear mapping induced by a partition (i.e., an equivalence relation) of state variables; in the aggregated system, each macro-variable represents the sum of the original variables of a partition block.
+For polynomial ODE systems, CLUE has been presented as an algorithm that computes constrained linear lumping efficiently, i.e., in polynomial time [35], by avoiding the symbolic computation of the eigenvalues of a non-constant matrix that would have required in prior approaches [29, 31].
+
+In particular, CLUE can compute the smallest linear dimensional reduction that preserves the dynamics of arbitrary linear combinations of original state variables given by the user.
+A complete step-by-step example of CLUE reduction on a synthetic 3-variables model is provided later (Exampe 1).
+To give a concrete example of the usefulness of CLUE applied to a real model,
+we consider a model of FceRI-like network of a cell-surface receptor [7].
+The observable or quantity of interest is the amount of Phosphorylation at site Y2 (S2P), which
+is the sum of 10 out of the 24 variables in the model.
+Figure 1(a), displays the original simulation in blue and the orange line, instead, shows the solution of such observable on a model containing 19 variables obtained by reducing the former by CLUE.
+This plot shows that one can study the evolution of S2P using either the original model or one reduced by constrained lumping with only 19 variables without introducing any error.
+
+(a)  Exactly reduced model by CLUE with 19 variables (orange).
+
+(b) Approximately reduced model with 14 (orange) and 8 (green) variables.
+
+Figure 1: Evolution of observable S2P in a FceRI-like network of a cell-surface receptor [7] using different models.
+The simulation using the original model with 24 variables is displayed in blue.
+
+All the aforementioned lumping approaches are exact, i.e., the reduced model does not incur any approximation error (but only loss of information because, in general, the aggregation map is not invertible).
+Approximate lumping is a natural extension that has been studied for a long time (e.g., [30]).
+Indeed, although exact reduction methods have been experimentally proved successful in a large variety of biological systems (e.g., [36]), approximate reductions can be more robust to parametric uncertainty—which notoriously affects systems biology models (e.g., [3, 5])—and offer a flexible trade-off between the aggressiveness of the reduction and its precision.
+This has been explored for partition-based lumping algorithms:
+In [16, cardelliFormalLumpingPolynomial2023], the authors present an algorithm for approximate aggregation parameterized by a tolerance 
+\varepsilon
+ε\varepsilon, which, informally, relaxes an underlying criterion of equality for two variables to be exactly lumped into the same partition block.
+These approaches present notions of approximate reduction extending the above-mentioned exact reduction techniques for chemical reaction networks and ODEs.
+Similarly, in this paper, we present an extension of CLUE [35] that performs approximate constrained linear lumping of ODE systems.
+It relaxes the conditions for (exact) CLUE by introducing a lumping tolerance parameter that roughly relates to how close a lumping matrix is to an exact lumping.
+We consider ODE systems with analytical derivatives.
+These include rational and polynomial derivatives thus covering kinetic models for biochemical systems with Hill [57], Michaelis-Menten [57] and mass-action kinetics (e.g., [57, 50]).
+
+To obtain an approximate reduction for a given analytical ODE system, we start by finding a finite representation of the dynamics, either symbolically or using automatic differentiation [24].
+Given a user-defined lumping tolerance, we can compute a reduced system that approximates the original one up to an error proportional to the lumping tolerance.
+For example, the orange line in Figure 1(b) shows that we can study the evolution of 
+S2P
+S​2​PS2P using an approximate reduction with 14 variables that yield the same steady-state value as in the original model. However, a too-permissive lumping tolerance may destroy the original dynamics, as shown by the approximate reduction with 8 variables (bottom green line).
+
+Our proposed approach works in polynomial time.
+To find the lumping tolerance, we propose a heuristic approach based on the expected size of the reduced model.
+Using a prototype implementation, we evaluate the aggregation power of our approach on five polynomial models and three rational models representative of the literature.
+We also evaluate the scalability of our approach on a multisite phosphorylation model [44].
+Overall, the numerical results show that our method can lead to substantially smaller reduced models while introducing limited errors in the dynamics.
+
+This paper extends the conference paper [27] by expanding the theory to include analytical drifts; including models with rational drifts; adding a scalability analysis; and proposing a new approach to find the lumping tolerance.
+A short tool demonstration paper discussing implementation details of our approach has been recently presented in [cmsb2024_clue].
+
+Further related work.
+We are complementary to classic works [30, 31] which do not address the efficient algorithmic computation of lumping. Moreover, we are more general than [23, 52, 16] which consider so-called “proper” lumping (i.e., [45]) where each state variable appears in exactly one aggregated variable. Likewise, we are complementary to rule-based reduction techniques [19] which are independent of kinetic parameters [12].
+As less closely related abstraction techniques, we mention (bisimulation) distance approaches for the approximate reduction of Markov chains [4, 18] and proper orthogonal projection [1], which, however, apply to linear systems. Abstraction of chemical reaction networks through learning [39, 9] and simulation [21] are complementary to lumping.
+
+Outline.
+Section 2 provides necessary preliminary notions.
+Section 3 introduces approximate constrained lumping, how to compute it, and how to choose the lumping tolerance value.
+Section 4 evaluates our proposal on models from the literature, while Section 5 concludes the paper.
+
+Notation.
+For a function 
+f
+ff, we denote its domain by 
+\mathcal{D}(f)
+𝒟⁡(f)\mathcal{D}(f).
+The derivative with respect to time of a function 
+x:[0,T]\to\mathbb{R}^{m}
+x:[0,T]→ℝmx:[0,T]\to\mathbb{R}^{m} is denoted by 
+\dot{x}
+x˙\dot{x}.
+We denote a dynamical system by 
+\dot{x}=f(x)
+x˙=f⁡(x)\dot{x}=f(x), and denote its initial condition by 
+x(0)=x^{0}
+x⁡(0)=x0x(0)=x^{0}.
+For 
+f:\mathbb{R}^{m}\to\mathbb{R}^{n}
+f:ℝm→ℝnf:\mathbb{R}^{m}\to\mathbb{R}^{n}, we denote the Jacobian of 
+f
+ff at 
+x
+xx by 
+J(x)
+J⁡(x)J(x).
+Given a matrix 
+L\in\mathbb{R}^{m\times n}
+L∈ℝm×nL\in\mathbb{R}^{m\times n}, the rowspace of 
+L
+LL or the vector space generated by the rows of 
+L
+LL is denoted by 
+\rsp(L)
+rowsp(L)\rsp(L).
+We denote by 
+\bar{L}\in\mathbb{R}^{n\times m}
+L¯∈ℝn×m\bar{L}\in\mathbb{R}^{n\times m} a pseudoinverse of 
+L
+LL (i.e. 
+L\bar{L}=I_{n}
+L​L¯=InL\bar{L}=I_{n} where 
+I_{n}\in\mathbb{R}^{n\times n}
+In∈ℝn×nI_{n}\in\mathbb{R}^{n\times n} is the identity matrix).
+We reserve the term rational for models with a non-trivial denominator on their right-hand side.
+
+2 Preliminaries
+
+In this paper, we study systems of ODEs of the form:
+
+\dot{x}=f(x),
+x˙=f⁡(x),\dot{x}=f(x),
+
+(1)
+
+where 
+f:\mathbb{R}^{m}\to\mathbb{R}^{m},x\mapsto(f_{1}(x),\dots,f_{m}(x))^{T}
+f:ℝm→ℝm,x↦(f1​(x),…,fm​(x))Tf:\mathbb{R}^{m}\to\mathbb{R}^{m},x\mapsto(f_{1}(x),\dots,f_{m}(x))^{T} and 
+f_{i}
+fif_{i} is an analytic function, for 
+i=1,\dots,m
+i=1,…,mi=1,\dots,m.
+
+We first recall the notion of (exact) lumping [48].
+Informally, it is defined as a mapping 
+L
+LL that leads to a self-consistent system of ODEs in the reduced state space.
+
+Definition 1
+
+Given a system of ODEs of the form given by Equation (1), and a full rank matrix 
+L\in\mathbb{R}^{l\times m}
+L∈ℝl×mL\in\mathbb{R}^{l\times m} with 
+l&lt;m
+l&lt;ml&lt;m,
+we say that 
+L
+LL is an exact lumping of dimension 
+l
+ll (or that the system is exactly lumpable by 
+L
+LL) if there exists a function 
+g:\mathbb{R}^{l}\to\mathbb{R}^{l}
+g:ℝl→ℝlg:\mathbb{R}^{l}\to\mathbb{R}^{l} with polynomial entries such that 
+Lf=g\circ L
+L​f=g∘LLf=g\circ L.
+
+Example 1
+
+Consider the following system
+
+\dot{x}_{1}=\frac{x_{2}^{2}+4x_{2}x_{3}+4x_{3}^{2}}{x_{1}^{2}+1},\qquad\dot{x}_{2}=\frac{2x_{1}-4x_{3}}{x_{2}+2x_{3}+1},\qquad\dot{x}_{3}=\frac{-x_{1}-x_{2}}{x_{2}+2x_{3}+1}.
+x˙1=x22+4​x2​x3+4​x32x12+1,x˙2=2​x1−4​x3x2+2​x3+1,x˙3=−x1−x2x2+2​x3+1.\dot{x}_{1}=\frac{x_{2}^{2}+4x_{2}x_{3}+4x_{3}^{2}}{x_{1}^{2}+1},\qquad\dot{x}_{2}=\frac{2x_{1}-4x_{3}}{x_{2}+2x_{3}+1},\qquad\dot{x}_{3}=\frac{-x_{1}-x_{2}}{x_{2}+2x_{3}+1}.
+
+(2)
+
+Then, the matrix
+
+L=\begin{pmatrix}1&amp;0&amp;0\\
+0&amp;1&amp;2\end{pmatrix}
+L=(100012)L=\begin{pmatrix}1&amp;0&amp;0\\
+0&amp;1&amp;2\end{pmatrix}
+
+is an exact lumping of dimension 2, since
+
+\begin{pmatrix}\dot{y}_{1}\\
+\dot{y}_{2}\end{pmatrix}=\begin{pmatrix}\dot{x}_{1}\\
+\dot{x}_{2}+2\dot{x}_{3}\end{pmatrix}=\begin{pmatrix}\frac{(x_{2}+2x_{3})^{2}}{x_{1}^{2}+1}\\
+\frac{-2x_{2}-4x_{3}}{x_{2}+2x_{3}}\end{pmatrix}=\begin{pmatrix}\frac{y_{2}^{2}}{y_{1}^{2}+1}\\
+\frac{-2y_{2}}{y_{2}+1}\end{pmatrix}=\begin{pmatrix}g_{1}(y_{1},y_{2})\\
+g_{2}(y_{1},y_{2})\end{pmatrix}.
+(y˙1y˙2)=(x˙1x˙2+2​x˙3)=((x2+2​x3)2x12+1−2​x2−4​x3x2+2​x3)=(y22y12+1−2​y2y2+1)=(g1​(y1,y2)g2​(y1,y2)).\begin{pmatrix}\dot{y}_{1}\\
+\dot{y}_{2}\end{pmatrix}=\begin{pmatrix}\dot{x}_{1}\\
+\dot{x}_{2}+2\dot{x}_{3}\end{pmatrix}=\begin{pmatrix}\frac{(x_{2}+2x_{3})^{2}}{x_{1}^{2}+1}\\
+\frac{-2x_{2}-4x_{3}}{x_{2}+2x_{3}}\end{pmatrix}=\begin{pmatrix}\frac{y_{2}^{2}}{y_{1}^{2}+1}\\
+\frac{-2y_{2}}{y_{2}+1}\end{pmatrix}=\begin{pmatrix}g_{1}(y_{1},y_{2})\\
+g_{2}(y_{1},y_{2})\end{pmatrix}.
+
+Definition 2
+
+Given a system of ODEs of the form given by Equation (1), and an exact lumping 
+L\in\mathbb{R}^{l\times m}
+L∈ℝl×mL\in\mathbb{R}^{l\times m}, we say that 
+y=Lx
+y=L​xy=Lx are the reduced (or lumped) variables, and their evolution is given by the reduced system 
+\dot{y}=g(y)
+y˙=g⁡(y)\dot{y}=g(y).
+
+Given an initial condition 
+x^{0}\in\mathbb{R}^{n}
+x0∈ℝnx^{0}\in\mathbb{R}^{n} and an exact lumping 
+L
+LL, there is a corresponding initial condition 
+y^{0}
+y0y^{0} in the lumped variables given by 
+y^{0}=Lx^{0}
+y0=L​x0y^{0}=Lx^{0}.
+Similarly, since 
+y=Lx
+y=L​xy=Lx and 
+g\circ L=Lf
+g∘L=L​fg\circ L=Lf, we have that
+
+L\dot{x}=Lf(x)=g(Lx)=g(y)=\dot{y}\ .
+L​x˙=L​f​(x)=g⁡(L​x)=g⁡(y)=y˙.L\dot{x}=Lf(x)=g(Lx)=g(y)=\dot{y}\ .
+
+This means that we can study the evolution of the lumped variables 
+y(t)
+y⁡(t)y(t) by solving the (smaller) reduced system rather than the (larger) original one.
+
+To answer whether it is possible to recover the evolution of some linear combination of state variables., we introduce the notion of constrained lumping.
+
+Definition 3
+
+Let 
+x_{obs}=Mx
+xo​b​s=M​xx_{obs}=Mx for some matrix 
+M\in\mathbb{R}^{p\times m}
+M∈ℝp×mM\in\mathbb{R}^{p\times m}, for 
+p&lt;m
+p&lt;mp&lt;m.
+We say that a lumping 
+L
+LL is a constrained lumping with observables 
+x_{obs}
+xo​b​sx_{obs} if 
+\rsp(M)\subseteq\rsp(L)
+rowsp(M)⊆rowsp(L)\rsp(M)\subseteq\rsp(L).
+This means that each entry of 
+x_{obs}
+xo​b​sx_{obs} is a linear combination of the reduced variables 
+y
+yy.
+
+Example 2
+
+Suppose we are interested in observing the quantity 
+2x_{1}+x_{2}+2x_{3}
+2​x1+x2+2​x32x_{1}+x_{2}+2x_{3} where the evolution is given by the system (2).
+In this case 
+x_{obs}=Mx
+xo​b​s=M​xx_{obs}=Mx with 
+M=(2\ 1\ 2)
+M=(2 1 2)M=(2\ 1\ 2).
+We can see that 
+L
+LL from Example 1 is a constrained lumping as we can recover the observable from the reduced system, i.e., 
+x_{obs}=2y_{1}+y_{2}
+xo​b​s=2​y1+y2x_{obs}=2y_{1}+y_{2}.
+Suppose now that we want to observe the quantity 
+x_{1}+x_{2}+x_{3}
+x1+x2+x3x_{1}+x_{2}+x_{3}.
+In this case 
+M=(1\ 1\ 1)
+M=(1 1 1)M=(1\ 1\ 1), thus matrix 
+L
+LL, is not a constrained lumping as it is not possible to obtain 
+x_{obs}
+xo​b​sx_{obs} as a linear combination of 
+y_{1}
+y1y_{1} and 
+y_{2}
+y2y_{2}.
+
+To understand how a constrained lumping can be computed, we first review the following known characterization of lumping.
+
+Theorem 2.1 (Characterization of Exact Lumping [48])
+
+Given a system of 
+m
+mm ODEs of the form given by Equation (1) and a matrix 
+L\in\mathbb{R}^{l\times m}
+L∈ℝl×mL\in\mathbb{R}^{l\times m} with rank 
+l
+ll, the following are equivalent.
+
+1. 
+
+The system is exactly lumpable by 
+L
+LL.
+
+2. 
+
+For any pseudoinverse 
+\bar{L}
+L¯\bar{L} of 
+L
+LL, 
+Lf=(Lf)\circ\bar{L}L
+L​f=(L​f)∘L¯​LLf=(Lf)\circ\bar{L}L.
+
+3. 
+
+\rsp(LJ(x))\subseteq\rsp(L)
+rowsp(L​J​(x))⊆rowsp(L)\rsp(LJ(x))\subseteq\rsp(L) for all 
+x\in\mathbb{R}^{m}
+x∈ℝmx\in\mathbb{R}^{m}; that is, the row space of 
+L
+LL is invariant under 
+J(x)
+J⁡(x)J(x) for all 
+x\in\mathbb{R}^{m}
+x∈ℝmx\in\mathbb{R}^{m}, where 
+J(x)
+J⁡(x)J(x) is the Jacobian of 
+f
+ff at 
+x
+xx.
+
+The characterization of exact lumping in Theorem 2.1 provides us with a way to compute a constrained lumping 
+L
+LL.
+This is because, thanks to point 3, the problem of computing a lumping is equivalent to the problem of finding a 
+J(x)
+J⁡(x)J(x)-invariant subspace of 
+\mathbb{R}^{m}
+ℝm\mathbb{R}^{m} for all 
+x\in\mathbb{R}^{m}
+x∈ℝmx\in\mathbb{R}^{m}.
+However, 
+J(x)
+J⁡(x)J(x) is a matrix whose entries are functions of 
+x
+xx.
+In other words, there is a different real-valued matrix for each 
+x\in\mathbb{R}^{m}
+x∈ℝmx\in\mathbb{R}^{m}.
+To circumvent this issue, we require the following result:
+
+Theorem 2.2 ([24, Lemma 1])
+
+Consider a system of ODEs of the form given by Equation (1) and let 
+J(x)
+J⁡(x)J(x) be the Jacobian matrix of 
+f
+ff.
+Let 
+\mathcal{B}
+ℬ\mathcal{B} be any set of real-valued matrices spanning the 
+\mathbb{R}-
+ℝ−\mathbb{R}-vector space
+
+\mathcal{V}_{J}:=\left&lt;J(x)|x\in\mathbb{R}^{m}\text{ and $J(x)$ is well-defined}\right&gt;.
+𝒱J:=⟨J(x)|x∈ℝm and J⁡(x) is well-defined⟩.\mathcal{V}_{J}:=\left&lt;J(x)|x\in\mathbb{R}^{m}\text{ and $J(x)$ is well-defined}\right&gt;.
+
+Then 
+L
+LL is a lumping of (1) if and only if 
+\rsp(L)
+rowsp(L)\rsp(L) is invariant to each 
+J_{i}\in\mathcal{B}
+Ji∈ℬJ_{i}\in\mathcal{B}.
+
+A set of matrices 
+\{J_{1},\dots,J_{N}\}
+{J1,…,JN}\{J_{1},\dots,J_{N}\} can be found analytically when 
+J(x)
+J⁡(x)J(x) can be represented as
+
+J(x)=\sum_{i=0}^{N}J_{i}\mu_{i}(x),
+J⁡(x)=∑i=0NJi​μi​(x),J(x)=\sum_{i=0}^{N}J_{i}\mu_{i}(x),
+
+(3)
+
+where 
+\left\{\mu_{i}(x)\mid 0\leq i\leq N\right\}
+{μi​(x)∣0≤i≤N}\left\{\mu_{i}(x)\mid 0\leq i\leq N\right\} is a set of analytic functions.
+When working with polynomial systems, each of the entries of 
+J(x)
+J⁡(x)J(x) is a polynomial and so each 
+\mu_{i}
+μi\mu_{i} corresponds to the monomials of 
+J(x)
+J⁡(x)J(x).
+
+For instance, for rational systems, 
+J(x)
+J⁡(x)J(x) can be obtained symbolically by differentiating 
+f(x)
+f⁡(x)f(x) and then multiplying by the minimum common denominator (mcd) of all entries of 
+J(x)
+J⁡(x)J(x).
+In practice, this approach is computationally unfeasible since this symbolic approach results in an explosion of the number of monomials in 
+J(x)
+J⁡(x)J(x).
+To avoid any explicit symbolic computation, a representation 
+\{J_{1},\dots,J_{N}\}
+{J1,…,JN}\{J_{1},\dots,J_{N}\} can be obtained by sampling 
+f(x)
+f⁡(x)f(x) at different points and using automatic differentiation [24, Section 3.4].
+The general idea of this sampling procedure is formalized by Algorithm 1.
+In [24], the authors argue that a uniform sampling of 
+J(x)
+J⁡(x)J(x) values finds almost surely 
+\mathcal{V}_{J}
+𝒱J\mathcal{V}_{J}.
+
+Algorithm 1  Computation of 
+\mathcal{V}_{J}
+𝒱J\mathcal{V}_{J} from Theorem 2.2.
+
+            0:
+            
+           
+f:\mathbb{R}^{m}\to\mathbb{R}^{m}
+f:ℝm→ℝmf:\mathbb{R}^{m}\to\mathbb{R}^{m}, and
+a compact set 
+\Omega\subseteq\mathbb{R}^{m}
+Ω⊆ℝm\Omega\subseteq\mathbb{R}^{m}
+
+            1:
+            
+           set 
+N=0
+N=0N=0
+
+            2:
+            
+           repeat
+
+            3:
+            
+            set 
+N=N+1
+N=N+1N=N+1
+
+            4:
+            
+            compute 
+x_{N}
+xNx_{N} sampling uniformly from 
+\Omega
+Ω\Omega 
+
+            5:
+            
+            compute 
+J_{N}=J(x_{N})
+JN=J⁡(xN)J_{N}=J(x_{N}) using automatic differentiation
+
+            6:
+            
+           until 
+J_{N}\in\left&lt;J_{i}|1\leq i\leq N-1\right&gt;
+JN∈⟨Ji|1≤i≤N−1⟩J_{N}\in\left&lt;J_{i}|1\leq i\leq N-1\right&gt;
+
+            7:
+            
+           return  
+\{J_{1},\dots,J_{N-1}\}
+{J1,…,JN−1}\{J_{1},\dots,J_{N-1}\}.
+
+Example 3
+
+Consider the system from Example 1.
+Before finding a basis for 
+\mathcal{V}_{J}
+𝒱J\mathcal{V}_{J} using the sample-based approach, we exemplify the symbolic approach to display its complexity.
+It starts by symbolically differentiating 
+f(x)
+f⁡(x)f(x) to obtain 
+J(x)
+J⁡(x)J(x):
+
+J(x)=\begin{pmatrix}\frac{-2x_{1}x_{2}^{2}-8x_{1}x_{2}x_{3}-8x_{1}x_{3}^{2}}{x_{1}^{4}+2x_{1}^{2}+1}&amp;\frac{2x_{2}+4x_{3}}{x_{1}^{2}+1}&amp;\frac{4x_{2}+8x_{3}}{x_{1}^{2}+1}\\
+\frac{2}{x_{2}+2x_{3}+1}&amp;\frac{-2x_{1}+4x_{3}}{x_{2}^{2}+4x_{2}x_{3}+4x_{3}^{2}+2x_{2}+4x_{3}+1}&amp;\frac{-4x_{1}-4x_{2}-4}{x_{2}^{2}+4x_{2}x_{3}+4x_{3}^{2}+2x_{2}+4x_{3}+1}\\
+\frac{-1}{x_{2}+2x_{3}+1}&amp;\frac{x_{1}-2x_{3}-1}{x_{2}^{2}+4x_{2}x_{3}+4x_{3}^{2}+2x_{2}+4x_{3}+1}&amp;\frac{2x_{1}+2x_{2}}{x_{2}^{2}+4x_{2}x_{3}+4x_{3}^{2}+2x_{2}+4x_{3}+1}\end{pmatrix}.
+J⁡(x)=(−2​x1​x22−8​x1​x2​x3−8​x1​x32x14+2​x12+12​x2+4​x3x12+14​x2+8​x3x12+12x2+2​x3+1−2​x1+4​x3x22+4​x2​x3+4​x32+2​x2+4​x3+1−4​x1−4​x2−4x22+4​x2​x3+4​x32+2​x2+4​x3+1−1x2+2​x3+1x1−2​x3−1x22+4​x2​x3+4​x32+2​x2+4​x3+12​x1+2​x2x22+4​x2​x3+4​x32+2​x2+4​x3+1).J(x)=\begin{pmatrix}\frac{-2x_{1}x_{2}^{2}-8x_{1}x_{2}x_{3}-8x_{1}x_{3}^{2}}{x_{1}^{4}+2x_{1}^{2}+1}&amp;\frac{2x_{2}+4x_{3}}{x_{1}^{2}+1}&amp;\frac{4x_{2}+8x_{3}}{x_{1}^{2}+1}\\
+\frac{2}{x_{2}+2x_{3}+1}&amp;\frac{-2x_{1}+4x_{3}}{x_{2}^{2}+4x_{2}x_{3}+4x_{3}^{2}+2x_{2}+4x_{3}+1}&amp;\frac{-4x_{1}-4x_{2}-4}{x_{2}^{2}+4x_{2}x_{3}+4x_{3}^{2}+2x_{2}+4x_{3}+1}\\
+\frac{-1}{x_{2}+2x_{3}+1}&amp;\frac{x_{1}-2x_{3}-1}{x_{2}^{2}+4x_{2}x_{3}+4x_{3}^{2}+2x_{2}+4x_{3}+1}&amp;\frac{2x_{1}+2x_{2}}{x_{2}^{2}+4x_{2}x_{3}+4x_{3}^{2}+2x_{2}+4x_{3}+1}\end{pmatrix}.
+
+We then find the mcd of all entries of 
+J(x)
+J⁡(x)J(x), which is
+
+q(x)=(x_{1}^{2}+1)^{2}(x_{2}+2x_{3}+1)^{2}
+q⁡(x)=(x12+1)2​(x2+2​x3+1)2q(x)=(x_{1}^{2}+1)^{2}(x_{2}+2x_{3}+1)^{2}.
+Since 
+J(x)
+J⁡(x)J(x) is rational in all its entries, it follows that 
+J(x)=B(x)/q(x)
+J⁡(x)=B⁡(x)/q⁡(x)J(x)=B(x)/q(x), where 
+B(x)=q(x)J(x)
+B⁡(x)=q⁡(x)​J​(x)B(x)=q(x)J(x) is a matrix with polynomial entries up to degree 5.
+Notice that to obtain a monomial representation of 
+B(x)
+B⁡(x)B(x), we need to expand all its terms.
+
+These complex symbolic computations can be avoided by using Algorithm 1.
+Following the efficient sampling method outlined in [24], we find that the dimension of 
+\mathcal{V}_{J}
+𝒱J\mathcal{V}_{J} is 5.
+The set 
+\{J_{1},\dots,J_{5}\}
+{J1,…,J5}\{J_{1},\dots,J_{5}\} can be obtained by evaluating 
+J(x)
+J⁡(x)J(x) at the following points: 
+x_{1}=(1,0,0),~x_{2}=(0,1,0),~x_{3}=(0,0,1),~x_{4}=(1,5,2),~x_{5}=(3,3,2).
+x1=(1,0,0),x2=(0,1,0),x3=(0,0,1),x4=(1,5,2),x5=(3,3,2).x_{1}=(1,0,0),~x_{2}=(0,1,0),~x_{3}=(0,0,1),~x_{4}=(1,5,2),~x_{5}=(3,3,2).
+These points lead to the matrices 
+J_{i}
+JiJ_{i}:
+
+\displaystyle J_{1}
+J1\displaystyle J_{1}
+
+\displaystyle=\begin{pmatrix}0&amp;0&amp;0\\
+2&amp;-2&amp;-8\\
+-1&amp;0&amp;2\end{pmatrix},
+=(0002−2−8−102),\displaystyle=\begin{pmatrix}0&amp;0&amp;0\\
+2&amp;-2&amp;-8\\
+-1&amp;0&amp;2\end{pmatrix},
+
+\displaystyle J_{2}
+J2\displaystyle J_{2}
+
+\displaystyle=\begin{pmatrix}0&amp;2&amp;4\\
+1&amp;0&amp;-2\\
+-0.5&amp;-0.25&amp;0.5\end{pmatrix},
+=(02410−2−0.5−0.250.5),\displaystyle=\begin{pmatrix}0&amp;2&amp;4\\
+1&amp;0&amp;-2\\
+-0.5&amp;-0.25&amp;0.5\end{pmatrix},
+
+\displaystyle J_{3}
+J3\displaystyle J_{3}
+
+\displaystyle=\begin{pmatrix}0&amp;4&amp;8\\
+0.667&amp;0.444&amp;-0.444\\
+-0.333&amp;-0.333&amp;0\end{pmatrix},
+=(0480.6670.444−0.444−0.333−0.3330),\displaystyle=\begin{pmatrix}0&amp;4&amp;8\\
+0.667&amp;0.444&amp;-0.444\\
+-0.333&amp;-0.333&amp;0\end{pmatrix},
+
+\displaystyle J_{4}
+J4\displaystyle J_{4}
+
+\displaystyle=\begin{pmatrix}-40.5&amp;9&amp;18\\
+0.200&amp;0.060&amp;-0.280\\
+-0.100&amp;-0.040&amp;0.120\end{pmatrix},
+=(−40.59180.2000.060−0.280−0.100−0.0400.120),\displaystyle=\begin{pmatrix}-40.5&amp;9&amp;18\\
+0.200&amp;0.060&amp;-0.280\\
+-0.100&amp;-0.040&amp;0.120\end{pmatrix},
+
+\displaystyle J_{5}
+J5\displaystyle J_{5}
+
+\displaystyle=\begin{pmatrix}-2.94&amp;1.4&amp;2.8\\
+0.25&amp;0.31&amp;-0.438\\
+-0.125&amp;-0.031&amp;0.188\end{pmatrix}.
+=(−2.941.42.80.250.31−0.438−0.125−0.0310.188).\displaystyle=\begin{pmatrix}-2.94&amp;1.4&amp;2.8\\
+0.25&amp;0.31&amp;-0.438\\
+-0.125&amp;-0.031&amp;0.188\end{pmatrix}.
+
+We see that Algorithm 1 outputs a set of matrices 
+\{J_{1},\dots,J_{N}\}
+{J1,…,JN}\{J_{1},\dots,J_{N}\}
+spanning 
+\mathcal{V}_{J}
+𝒱J\mathcal{V}_{J}.
+Given such a set, Theorem 2.2 provides an algorithmic way to find a constrained lumping 
+L
+LL by performing a finite number of checks over real-valued vectors.
+This is shown in Algorithm 2.
+The use of Algorithms 1 and 2 to obtain a constrained lumping 
+L
+LL is summarized in Algorithm 3.
+
+Algorithm 2  Computation of 
+L
+LL
+
+            0:
+            
+           a set of matrices 
+\left\{J_{1},\dots,J_{N}\right\}
+{J1,…,JN}\left\{J_{1},\dots,J_{N}\right\} spanning 
+\mathcal{V}_{J}
+𝒱J\mathcal{V}_{J} (Theorem 2.2);a 
+p\times m
+p×mp\times m matrix 
+M
+MM with row rank 
+p
+pp.
+
+            1:
+            
+           set 
+L:=M
+L:=ML:=M
+
+            2:
+            
+           repeat
+
+            3:
+            
+            for all 
+1\leq i\leq\kappa
+1≤i≤κ1\leq i\leq\kappa and rows 
+r
+rr of 
+L
+LL do
+
+            4:
+            
+             compute 
+rJ_{i}
+r​JirJ_{i} 
+
+            5:
+            
+             if 
+rJ_{i}\notin\rsp(L)
+r​Ji∉rowsp(L)rJ_{i}\notin\rsp(L) then
+
+            6:
+            
+              append row 
+rJ_{i}
+r​JirJ_{i} to 
+L
+LL
+
+            7:
+            
+             end if
+
+            8:
+            
+            end for
+
+            9:
+            
+           until no rows are appended to 
+L
+LL
+
+            10:
+            
+           return  Lumping matrix 
+L
+LL.
+
+Algorithm 3  Constrained lumping [35] 
+
+            0:
+            
+           ​​a​ system ​
+\dot{x}\!=\!\!f(x)\!
+x˙=f⁡(x)\dot{x}\!=\!\!f(x)\! of 
+\!m\!
+m\!m\! ​ ODEs;a 
+p\times m
+p×mp\times m matrix 
+M
+MM with row rank 
+p
+pp.
+
+            1:
+            
+           compute a set of matrices 
+\left\{J_{1},\dots,J_{N}\right\}
+{J1,…,JN}\left\{J_{1},\dots,J_{N}\right\} spanning 
+\mathcal{V}_{J}
+𝒱J\mathcal{V}_{J} (Algorithm 1)
+
+            2:
+            
+           compute 
+L
+LL (Algorithm 2) 
+
+            3:
+            
+           return  Constrained lumped ODE system 
+\dot{y}=Lf(\bar{L}y)
+y˙=L​f​(L¯​y)\dot{y}=Lf(\bar{L}y).
+
+The number of checks in Algorithm 2 is proportional to the number of elements in 
+\mathcal{V}_{J}
+𝒱J\mathcal{V}_{J}.
+Moreover, Algorithm 2 can be implemented in polynomial time [35, 24].
+
+3 Constrained Approximated Lumping
+
+This section introduces the formal theory underlying approximate constrained lumping, as well as its computational aspects.
+In Section 3.1 we present the definition of approximate constrained lumping.
+We introduce the deviation tolerance 
+\eta
+η\eta, which relaxes the conditions for lumping granting additional aggregation power.
+We prove how the error bound depends on the deviation tolerance.
+Next, we focus on how to compute an approximate constrained lumping.
+In Section 3.2 we introduce a numerical lumping tolerance 
+\varepsilon
+ε\varepsilon to compute a lumping matrix 
+L
+LL and show how it relates to the deviation tolerance.
+In Section 3.3, instead, we discuss how to pick an appropriate value for the lumping tolerance 
+\varepsilon
+ε\varepsilon in a way that leads to satisfactory results for both polynomial and rational systems.
+
+3.1 Definition and error estimation
+
+We begin by demonstrating why the condition for exact lumping can be too restrictive for finding reductions.
+Consider the following system of ODEs:
+
+\dot{x}_{1}=\frac{x_{2}^{2}+4.05x_{2}x_{3}+4x_{3}^{2}}{x_{1}^{2}+1},~\dot{x}_{2}=\frac{2x_{1}-4x_{3}}{x_{2}+2x_{3}+1},~\dot{x}_{3}=\frac{-x_{1}-x_{2}}{x_{2}+2x_{3}+1}.
+x˙1=x22+4.05​x2​x3+4​x32x12+1,x˙2=2​x1−4​x3x2+2​x3+1,x˙3=−x1−x2x2+2​x3+1.\dot{x}_{1}=\frac{x_{2}^{2}+4.05x_{2}x_{3}+4x_{3}^{2}}{x_{1}^{2}+1},~\dot{x}_{2}=\frac{2x_{1}-4x_{3}}{x_{2}+2x_{3}+1},~\dot{x}_{3}=\frac{-x_{1}-x_{2}}{x_{2}+2x_{3}+1}.
+
+(4)
+
+Notice that the system given by Equation (4) is similar to that of Equation (2), as we have just added a term 
+0.05x_{2}x_{3}
+0.05​x2​x30.05x_{2}x_{3} to the numerator of its first equation. While the initial system is lumpable by 
+L=(1\ 0\ 0,0\ 1\ 2)^{T}
+L=(1 0 0,0 1 2)TL=(1\ 0\ 0,0\ 1\ 2)^{T}, this new system is not exactly lumpable by 
+L
+LL.
+However, we would like to know if it is still possible to use the matrix 
+L
+LL to obtain a useful reduced system that approximates well the original one.
+To do so, we first want to evaluate how close the matrix 
+L
+LL is to (i.e., how much it deviates from) an exact lumping.
+
+By Theorem 2.1, Point 2, a full rank matrix 
+L
+LL is a lumping if and only if the equality 
+Lf(\bar{L}Lx)-Lf(x)=0
+L​f​(L¯​L​x)−L​f​(x)=0Lf(\bar{L}Lx)-Lf(x)=0 is satisfied for all 
+x\in\mathcal{D}(f)\subseteq\mathbb{R}^{m}
+x∈𝒟⁡(f)⊆ℝmx\in\mathcal{D}(f)\subseteq\mathbb{R}^{m}, where 
+\mathcal{D}(f)
+𝒟⁡(f)\mathcal{D}(f) denotes the domain of 
+f
+ff.
+In our proposal of approximate lumping, we relax this requirement by asking it to be satisfied up to a certain tolerance.
+
+Definition 4
+
+Consider the system of ODEs in Equation (1).
+Let 
+L\in\mathbb{R}^{l\times m}
+L∈ℝl×mL\in\mathbb{R}^{l\times m} be a full rank matrix with 
+l&lt;m
+l&lt;ml&lt;m
+and denote by 
+\bar{L}
+L¯\bar{L} the Moore-Penrose pseudoinverse of 
+L
+LL and
+by 
+P_{L}=\bar{L}L
+PL=L¯​LP_{L}=\bar{L}L the orthogonal projection operator onto 
+\rsp(L)
+rowsp(L)\rsp(L).
+We define the deviation of 
+L
+LL at 
+x\in\mathcal{D}(f)\cap\mathcal{D}(f\circ P_{L})
+x∈𝒟⁡(f)∩𝒟⁡(f∘PL)x\in\mathcal{D}(f)\cap\mathcal{D}(f\circ P_{L}) by
+
+\dev_{L}(f,x):=\lVert Lf(\bar{L}Lx)-Lf(x)\rVert_{2}.
+devL⁡(f,x):=∥L​f​(L¯​L​x)−L​f​(x)∥2.\dev_{L}(f,x):=\lVert Lf(\bar{L}Lx)-Lf(x)\rVert_{2}.
+
+(5)
+
+Figure 2: Points projected to 
+\rsp(L)
+rowsp(L)\rsp(L) [27].
+
+To understand the intuition behind Definition 4, consider the point 
+x
+xx in Figure 2.
+Then, the deviation computes the difference between the images under 
+Lf
+L​fLf of 
+x
+xx (purple) and 
+P_{L}x
+PL​xP_{L}x (green).
+The deviation is identically zero if and only if 
+L
+LL is a lumping.
+
+Example 4
+
+Consider the matrix 
+L
+LL given in Example 1.
+A pseudoinverse of 
+L
+LL is given by 
+\bar{L}=(1\ 0\ 0,0\ 0.2\ 0.4)^{T}
+L¯=(1 0 0,0 0.2 0.4)T\bar{L}=(1\ 0\ 0,0\ 0.2\ 0.4)^{T}.
+Writing 
+g
+gg for the corresponding vector field, we obtain that 
+dev_{L}(g,(1,1,1)^{T})=0
+d​e​vL​(g,(1,1,1)T)=0dev_{L}(g,(1,1,1)^{T})=0, as 
+L
+LL is an exact lumping.
+Now consider the system given by Equation (4) and use 
+h
+hh to denote the corresponding vector field.
+Then, we get that 
+\dev_{L}(h,(1,1,1)^{T})=0.007
+devL⁡(h,(1,1,1)T)=0.007\dev_{L}(h,(1,1,1)^{T})=0.007.
+Therefore, the matrix 
+L
+LL is not an exact lumping of Equation (4).
+
+From a modelling perspective, a reduced model is meaningful insofar as its predictions for a set of initial conditions of interest are close enough to those of the original model throughout a given finite time horizon.
+While the theory in [35, 24] guarantees that reduced models provide exact predictions, this might restrict the actual aggregation power of the technique.
+We aim to relax this theory by considering reductions that need not be exact or tight.
+Having this in mind, we introduce the following notion.
+
+Definition 5
+
+Consider the ODEs from Equation (1), a set of initial conditions 
+S
+SS, and a finite time horizon 
+T&gt;0
+T&gt;0T&gt;0 such that 
+x
+xx is well-defined on 
+[0,T]
+[0,T][0,T] for all initial conditions 
+x(0)\in S
+x⁡(0)∈Sx(0)\in S.
+Given a full rank matrix 
+L\in\mathbb{R}^{l\times m}
+L∈ℝl×mL\in\mathbb{R}^{l\times m} and 
+\eta&gt;0
+η&gt;0\eta&gt;0, we say that Equation (1) is approximately lumpable by 
+L
+LL with deviation tolerance 
+\eta
+η\eta if
+
+\dev_{L}(f,x(t))\leq\eta,
+devL⁡(f,x⁡(t))≤η,\dev_{L}(f,x(t))\leq\eta,
+
+(6)
+
+for all 
+t\in[0,T]
+t∈[0,T]t\in[0,T].
+We say that 
+L
+LL is an approximate lumping for the set 
+S
+SS, time horizon 
+T
+TT, and with deviation tolerance 
+\eta
+η\eta (or 
+(S,T,\eta)
+(S,T,η)(S,T,\eta)-lumping).
+We will omit 
+S
+SS, 
+T
+TT or 
+\eta
+η\eta whenever they can be inferred from the context.
+
+Remark 1
+
+The notion of approximate lumping generalizes that of exact lumping from Definition 1.
+To see this, suppose 
+L
+LL is an exact lumping.
+Then by Point 2 of Theorem 2.1, 
+\lVert Lf(\bar{L}Lx)-Lf(x)\rVert_{2}=\dev_{L}(f,x)=0
+∥L​f​(L¯​L​x)−L​f​(x)∥2=devL⁡(f,x)=0\lVert Lf(\bar{L}Lx)-Lf(x)\rVert_{2}=\dev_{L}(f,x)=0, for all 
+x\in\mathbb{R}^{m}
+x∈ℝmx\in\mathbb{R}^{m}.
+It follows that 
+L
+LL is a 
+(\mathbb{R}^{m},\infty,0)
+(ℝm,∞,0)(\mathbb{R}^{m},\infty,0)-lumping.
+
+In practice, modellers often use biological models to study the evolution of a system 
+\dot{x}=f(x)
+x˙=f⁡(x)\dot{x}=f(x) for a fixed set 
+S
+SS of initial conditions and a time horizon 
+T
+TT. The assumption is that the behaviour of interest to the modeler occurs within time 
+T
+TT.
+
+Figure 3: Example 5: evolution of 
+\dev_{L}(f(x(t)))
+devL⁡(f⁡(x⁡(t)))\dev_{L}(f(x(t))).
+
+Example 5
+
+Consider the system in Equation (4), the matrix 
+L
+LL of Example 1 and let 
+x(0)=(1,1,1)^{T}
+x⁡(0)=(1,1,1)Tx(0)=(1,1,1)^{T}.
+Then 
+L
+LL is an approximate lumping for 
+x(0)
+x⁡(0)x(0), time 
+T=1.75
+T=1.75T=1.75, and deviation tolerance 
+0.05
+0.050.05, i.e., 
+L
+LL is a 
+(\{x(0)\},1.75,0.05)
+({x⁡(0)},1.75,0.05)(\{x(0)\},1.75,0.05)-lumping.
+To see this, note that in Figure 3 the deviation of the dynamics is bounded by 
+0.05
+0.050.05.
+
+After having generalized the notion of lumping to approximate lumping, we next introduce approximate constrained lumping in an obvious manner.
+
+Definition 6
+
+Let 
+x_{obs}=Mx
+xo​b​s=M​xx_{obs}=Mx for some matrix 
+M\in\mathbb{R}^{p\times m}
+M∈ℝp×mM\in\mathbb{R}^{p\times m} with 
+p&lt;m
+p&lt;mp&lt;m.
+We say that an approximate lumping 
+L
+LL of Equation (1) is an approximate constrained lumping with observables 
+x_{obs}
+xo​b​sx_{obs} if 
+\rsp(M)\subseteq\rsp(L)
+rowsp(M)⊆rowsp(L)\rsp(M)\subseteq\rsp(L).
+
+Similarly to Definition 2, Definition 6 means that the observables 
+x_{obs}
+xo​b​sx_{obs} can be recovered as a linear combination of the reduced variables 
+y=Lx
+y=L​xy=Lx.
+
+Definition 7
+
+The reduced system induced by an approximate lumping 
+L
+LL is given by 
+\dot{y}=Lf(\bar{L}y)
+y˙=L​f​(L¯​y)\dot{y}=Lf(\bar{L}y), where 
+y\in\mathbb{R}^{l}
+y∈ℝly\in\mathbb{R}^{l}.
+
+Example 6
+
+Consider the system in Equation (4) and the matrix 
+L
+LL given in Example 1.
+We can compute the reduced system as follows
+
+\begin{pmatrix}\dot{y}_{1}\\
+\dot{y}_{2}\end{pmatrix}=Lf\left(\bar{L}\begin{pmatrix}y_{1}\\
+y_{2}\end{pmatrix}\right)=Lf\left(\begin{pmatrix}y_{1}&amp;0\\
+0&amp;0.2y_{2}\\
+0&amp;0.4y_{2}\end{pmatrix}\right)=\begin{pmatrix}\frac{1.004y_{2}^{2}}{y_{1}^{2}+1}\\
+\frac{-2y_{2}}{y_{2}+1}\end{pmatrix}.
+(y˙1y˙2)=L​f​(L¯​(y1y2))=L​f​((y1000.2​y200.4​y2))=(1.004​y22y12+1−2​y2y2+1).\begin{pmatrix}\dot{y}_{1}\\
+\dot{y}_{2}\end{pmatrix}=Lf\left(\bar{L}\begin{pmatrix}y_{1}\\
+y_{2}\end{pmatrix}\right)=Lf\left(\begin{pmatrix}y_{1}&amp;0\\
+0&amp;0.2y_{2}\\
+0&amp;0.4y_{2}\end{pmatrix}\right)=\begin{pmatrix}\frac{1.004y_{2}^{2}}{y_{1}^{2}+1}\\
+\frac{-2y_{2}}{y_{2}+1}\end{pmatrix}.
+
+Definition 8
+
+Given the system in Equation (1) and an approximate lumping 
+L
+LL, we define the error of the reduction by 
+e(t):=y(t)-Lx(t),
+e⁡(t):=y⁡(t)−L​x​(t),e(t):=y(t)-Lx(t), where 
+y
+yy is the solution of the reduced system given by Definition 7.
+The evolution of the approximation error is given by 
+\dot{e}=\dot{y}-L\dot{x}
+e˙=y˙−L​x˙\dot{e}=\dot{y}-L\dot{x}, with 
+e(0)=0
+e⁡(0)=0e(0)=0.
+
+Example 7
+
+Following Example 6, we compute the trajectories of the reduced and original systems.
+We also compute the 
+L_{2}
+L2L_{2}-error of the reduction.
+This is summarized in Figure 4.
+Note that, in this example, we obtained a reduction of a system that was not exactly lumpable.
+In Figure 4(a), we can appreciate that, for the given time horizon, the reduced and original values are close to each other.
+
+(a) Evolution of the reduced (orange) and original (blue).
+
+(b) Error evolution 
+\lVert e(t)\rVert_{2}
+∥e⁡(t)∥2\lVert e(t)\rVert_{2} 
+
+Figure 4: Reduced system and error computation for Example 6 using the matrix 
+L
+LL of Example 1 on Equation (4).
+
+We next show that it is possible to bound the error introduced by approximate constrained lumping.
+Even though our worst-case bound is often conservative in practice, the bound confirms the consistency of the approach: the error is of order 
+\mathcal{O}(\eta)
+𝒪⁡(η)\mathcal{O}(\eta) — that is, the actual error 
+e(t)
+e⁡(t)e(t) decreases linearly with the deviation 
+\eta
+η\eta.
+Moreover, as we will see in Section 4, our framework can find approximate lumpings with low errors for published biological models.
+
+Theorem 3.1 (Error Bounds)
+
+Fix a bounded set of initial conditions 
+S
+SS, a finite time horizon 
+T
+TT and assume that the respective reachable set of the 
+m
+mm-dimensional ODE system 
+\dot{x}=f(x)
+x˙=f⁡(x)\dot{x}=f(x) is bounded on 
+[0,T]
+[0,T][0,T].
+If there exists a compact set 
+\Omega
+Ω\Omega such that 
+x(t),\bar{L}Lx(t)\in\Omega
+x⁡(t),L¯​L​x​(t)∈Ωx(t),\bar{L}Lx(t)\in\Omega for all 
+t\in[0,T]
+t∈[0,T]t\in[0,T] and all 
+x(0)\in S
+x⁡(0)∈Sx(0)\in S and 
+f
+ff is analytic in 
+\Omega
+Ω\Omega, then for any 
+\eta&gt;0
+η&gt;0\eta&gt;0 for which 
+L
+LL is a 
+(S,T,\eta)-
+(S,T,η)−(S,T,\eta)- lumping, it holds that 
+\lVert e(t)\rVert_{2}\leq\eta\cdot K_{C,L,T}
+∥e⁡(t)∥2≤η⋅KC,L,T\lVert e(t)\rVert_{2}\leq\eta\cdot K_{C,L,T}, where
+
+K_{C,L,T}=\frac{1}{C\lVert L\rVert_{2}\lVert\bar{L}\rVert_{2}}\left(e^{C\lVert L\rVert_{2}\lVert\bar{L}\rVert_{2}T}-1\right).
+KC,L,T=1C​∥L∥2​∥L¯∥2​(eC​∥L∥2​∥L¯∥2​T−1).K_{C,L,T}=\frac{1}{C\lVert L\rVert_{2}\lVert\bar{L}\rVert_{2}}\left(e^{C\lVert L\rVert_{2}\lVert\bar{L}\rVert_{2}T}-1\right).
+
+Here, 
+C
+CC is the Lipschitz constant of 
+f
+ff over the set of initial conditions 
+S
+SS.
+
+3.2 Lumping Algorithm
+
+In this section we relax the condition in Line 5 of Algorithm 2, thus allowing us to find approximate reductions.
+Intuitively, we add a new row 
+rJ_{i}
+r​JirJ_{i} to the matrix 
+L
+LL only if it is far enough from 
+\rsp(L)
+rowsp(L)\rsp(L).
+We make this rigorous by fixing a lumping tolerance 
+\varepsilon
+ε\varepsilon and adding a row 
+rJ_{i}
+r​JirJ_{i} only if 
+\lVert rJ_{i}-\pi_{i}\rVert_{2}&gt;\varepsilon
+∥r​Ji−πi∥2&gt;ε\lVert rJ_{i}-\pi_{i}\rVert_{2}&gt;\varepsilon, where 
+\pi_{i}:=rJ_{i}P_{L}
+πi:=r​Ji​PL\pi_{i}:=rJ_{i}P_{L} is the orthogonal projection of 
+rJ_{i}
+r​JirJ_{i} onto 
+\rsp(L)
+rowsp(L)\rsp(L).
+Thus, we propose Algorithm 4.
+
+Algorithm 4  Approximate Constrained Lumping Algorithm
+
+              0:
+              
+             numerical threshold 
+\varepsilon\geq 0
+ε≥0\varepsilon\geq 0, and
+a set of matrices 
+\left\{J_{1},\dots,J_{N}\right\}
+{J1,…,JN}\left\{J_{1},\dots,J_{N}\right\} spanning 
+\mathcal{V}_{J}
+𝒱J\mathcal{V}_{J} (Theorem 2.2), and
+a 
+p\times m
+p×mp\times m matrix of observables 
+M
+MM with row rank 
+p
+pp
+
+              1:
+              
+             compute orthonormal rows spanning the row space of 
+M
+MM and store them as 
+M
+MM
+
+              2:
+              
+             set 
+L:=M
+L:=ML:=M
+
+              3:
+              
+             repeat
+
+              4:
+              
+              for all 
+1\leq i\leq N
+1≤i≤N1\leq i\leq N and rows 
+r
+rr of 
+L
+LL do
+
+              5:
+              
+               compute 
+\pi_{i}:=rJ_{i}L^{T}L
+πi:=r​Ji​LT​L\pi_{i}:=rJ_{i}L^{T}L 
+
+              6:
+              
+               if 
+\lVert rJ_{i}-\pi_{i}\rVert_{2}&gt;\varepsilon
+∥r​Ji−πi∥2&gt;ε\lVert rJ_{i}-\pi_{i}\rVert_{2}&gt;\varepsilon then
+
+              7:
+              
+                append row 
+(rJ_{i}-\pi_{i})/\lVert rJ_{i}-\pi_{i}\rVert_{2}
+(r​Ji−πi)/∥r​Ji−πi∥2(rJ_{i}-\pi_{i})/\lVert rJ_{i}-\pi_{i}\rVert_{2} to 
+L
+LL
+
+              8:
+              
+               end if
+
+              9:
+              
+              end for
+
+              10:
+              
+             until no rows have been appended to 
+L
+LL
+
+              11:
+              
+             return  lumping matrix 
+L
+LL.
+
+Figure 5: Decomposition of 
+rJ_{i}
+r​JirJ_{i} into 
+\rsp(L)
+rowsp(L)\rsp(L) and 
+\rsp(L)^{\perp}
+rowsp(L)⟂\rsp(L)^{\perp} [27].
+
+Remark 2
+
+In Line 7 of Algorithm 4 we do not append 
+rJ_{i}
+r​JirJ_{i}, given by the orange vector in Figure 5.
+Rather, we append the normalized component of 
+rJ_{i}
+r​JirJ_{i} in the orthogonal direction to 
+\rsp(L)
+rowsp(L)\rsp(L), which is 
+rJ_{i}-\pi_{i}
+r​Ji−πirJ_{i}-\pi_{i}, the green vector in Fig. 5.
+This ensures that the matrix 
+L
+LL is orthonormal.
+We can use the fact that the pseudoinverse of an orthonormal matrix is its transpose to obtain that 
+\bar{L}=L^{T}
+L¯=LT\bar{L}=L^{T}.
+
+We now provide a detailed example of Algorithm 4.
+
+Example 8
+
+Consider the system given by Equation (4) and let 
+\varepsilon=0.2
+ε=0.2\varepsilon=0.2.
+Set 
+M=(1,0,0)
+M=(1,0,0)M=(1,0,0) i.e., we are observing the component 
+x_{1}
+x1x_{1} from the original system.
+Using Algorithm 1 with the same points as in Example 3, we find that the dimension of 
+\mathcal{V}_{J}
+𝒱J\mathcal{V}_{J} is 6 with basis given by the matrices:
+
+\begin{split}J_{1}&amp;=\begin{pmatrix}0&amp;0&amp;0\\
+2&amp;-2&amp;-8\\
+-1&amp;0&amp;2\end{pmatrix},\\
+J_{3}&amp;=\begin{pmatrix}0&amp;4.05&amp;8\\
+0.667&amp;0.444&amp;-0.444\\
+-0.333&amp;-0.333&amp;0\end{pmatrix},\\
+J_{5}&amp;=\begin{pmatrix}-2.958&amp;1.41&amp;2.815\\
+0.25&amp;0.031&amp;-0.438\\
+-0.125&amp;-0.031&amp;0.188\end{pmatrix},\end{split}\hskip 28.45274pt\begin{split}J_{2}&amp;=\begin{pmatrix}0&amp;2&amp;4.05\\
+1&amp;0&amp;-2\\
+-0.5&amp;-0.25&amp;0.5\end{pmatrix},\\
+J_{4}&amp;=\begin{pmatrix}-40.75&amp;9.05&amp;18.125\\
+0.200&amp;0.060&amp;-0.280\\
+-0.100&amp;-0.040&amp;0.120\end{pmatrix},\\
+J_{6}&amp;=\begin{pmatrix}-0.951&amp;0.621&amp;1.235\\
+0.222&amp;0.025&amp;-0.395\\
+-0.111&amp;-0.025&amp;0.173\end{pmatrix}.\end{split}
+J1=(0002−2−8−102),J3=(04.0580.6670.444−0.444−0.333−0.3330),J5=(−2.9581.412.8150.250.031−0.438−0.125−0.0310.188),J2=(024.0510−2−0.5−0.250.5),J4=(−40.759.0518.1250.2000.060−0.280−0.100−0.0400.120),J6=(−0.9510.6211.2350.2220.025−0.395−0.111−0.0250.173).\begin{split}J_{1}&amp;=\begin{pmatrix}0&amp;0&amp;0\\
+2&amp;-2&amp;-8\\
+-1&amp;0&amp;2\end{pmatrix},\\
+J_{3}&amp;=\begin{pmatrix}0&amp;4.05&amp;8\\
+0.667&amp;0.444&amp;-0.444\\
+-0.333&amp;-0.333&amp;0\end{pmatrix},\\
+J_{5}&amp;=\begin{pmatrix}-2.958&amp;1.41&amp;2.815\\
+0.25&amp;0.031&amp;-0.438\\
+-0.125&amp;-0.031&amp;0.188\end{pmatrix},\end{split}\hskip 28.45274pt\begin{split}J_{2}&amp;=\begin{pmatrix}0&amp;2&amp;4.05\\
+1&amp;0&amp;-2\\
+-0.5&amp;-0.25&amp;0.5\end{pmatrix},\\
+J_{4}&amp;=\begin{pmatrix}-40.75&amp;9.05&amp;18.125\\
+0.200&amp;0.060&amp;-0.280\\
+-0.100&amp;-0.040&amp;0.120\end{pmatrix},\\
+J_{6}&amp;=\begin{pmatrix}-0.951&amp;0.621&amp;1.235\\
+0.222&amp;0.025&amp;-0.395\\
+-0.111&amp;-0.025&amp;0.173\end{pmatrix}.\end{split}
+
+We begin the computation in Line 2 by setting 
+L=M=(1,0,0)
+L=M=(1,0,0)L=M=(1,0,0) and begin the main loop in Line 4 with 
+r=(1,0,0)
+r=(1,0,0)r=(1,0,0).
+To carry out the computation of Line 5, we have that
+
+\begin{split}rJ_{1}&amp;=(0,0,0),\\
+rJ_{3}&amp;=(0,4.05,8),\\
+rJ_{5}&amp;=(0,1.41,2.815),\end{split}\hskip 28.45274pt\begin{split}rJ_{2}&amp;=(0,2,4.05),\\
+rJ_{4}&amp;=(0,9.05,18.125),\\
+rJ_{6}&amp;=(0,0.621,1.235).\end{split}
+r​J1=(0,0,0),r​J3=(0,4.05,8),r​J5=(0,1.41,2.815),r​J2=(0,2,4.05),r​J4=(0,9.05,18.125),r​J6=(0,0.621,1.235).\begin{split}rJ_{1}&amp;=(0,0,0),\\
+rJ_{3}&amp;=(0,4.05,8),\\
+rJ_{5}&amp;=(0,1.41,2.815),\end{split}\hskip 28.45274pt\begin{split}rJ_{2}&amp;=(0,2,4.05),\\
+rJ_{4}&amp;=(0,9.05,18.125),\\
+rJ_{6}&amp;=(0,0.621,1.235).\end{split}
+
+Let 
+d_{i}:=\lVert rJ_{i}-\pi_{i}\rVert_{2}
+di:=∥r​Ji−πi∥2d_{i}:=\lVert rJ_{i}-\pi_{i}\rVert_{2}.
+By the check of Line 6, we do not append any new row to 
+L
+LL as 
+d_{1}=0
+d1=0d_{1}=0 since 
+rJ_{1}=\pi_{1}=(0,0,0)
+r​J1=π1=(0,0,0)rJ_{1}=\pi_{1}=(0,0,0).
+Next, we compute 
+\pi_{2}
+π2\pi_{2} following Line 5.
+As 
+\pi_{2}=0
+π2=0\pi_{2}=0, it follows that 
+d_{2}=\lVert rJ_{2}\rVert_{2}=4.52&gt;0.2
+d2=∥r​J2∥2=4.52&gt;0.2d_{2}=\lVert rJ_{2}\rVert_{2}=4.52&gt;0.2, which, by Line 6, means that we need to append a new row to 
+L
+LL.
+By Line 7, we add normalized 
+rJ_{2}-\pi_{2}
+r​J2−π2rJ_{2}-\pi_{2} as a row of 
+L
+LL (Line 7), thus obtaining
+
+L=\begin{pmatrix}1&amp;0&amp;0\\
+0&amp;0.443&amp;0.897\end{pmatrix}.
+L=(10000.4430.897).L=\begin{pmatrix}1&amp;0&amp;0\\
+0&amp;0.443&amp;0.897\end{pmatrix}.
+
+(7)
+
+Going back to Line 5 with the updated matrix 
+L
+LL, we compute 
+\pi_{3}=(0,3.974,8.046)
+π3=(0,3.974,8.046)\pi_{3}=(0,3.974,8.046).
+Following Line 6, we do not add additional rows to 
+L
+LL since 
+d_{3}=0.089&lt;0.2
+d3=0.089&lt;0.2d_{3}=0.089&lt;0.2.
+We compute 
+\pi_{4}=(-40.75,8.978,18.18)
+π4=(−40.75,8.978,18.18)\pi_{4}=(-40.75,8.978,18.18) and 
+d_{4}=0.09&lt;0.2
+d4=0.09&lt;0.2d_{4}=0.09&lt;0.2, leaving 
+L
+LL unchanged.
+We go on with the computations for the remaining matrices 
+J_{i}
+JiJ_{i} to obtain 
+d_{5}=0.018,~d_{6}=0.01
+d5=0.018,d6=0.01d_{5}=0.018,~d_{6}=0.01.
+It follows that we need not add any new rows to 
+L
+LL.
+
+So far we have only checked the first row of 
+L
+LL.
+Following the main loop (Line 4), we set 
+r=(0,0.443,0.897)
+r=(0,0.443,0.897)r=(0,0.443,0.897).
+We compute
+
+\begin{split}rJ_{1}&amp;=(-0.011,-0.869,-1.760),\\
+rJ_{3}&amp;=(-0.004,-0.098,-0.199),\\
+rJ_{5}&amp;=(-0.001,-0.013,-0.026),\end{split}\hskip 28.45274pt\begin{split}rJ_{2}&amp;=(-0.006,-0.218,-0.441),\\
+rJ_{4}&amp;=(-0.001,-0.008,-0.017),\\
+rJ_{6}&amp;=(-0.001,-0.010,-0.021).\end{split}
+r​J1=(−0.011,−0.869,−1.760),r​J3=(−0.004,−0.098,−0.199),r​J5=(−0.001,−0.013,−0.026),r​J2=(−0.006,−0.218,−0.441),r​J4=(−0.001,−0.008,−0.017),r​J6=(−0.001,−0.010,−0.021).\begin{split}rJ_{1}&amp;=(-0.011,-0.869,-1.760),\\
+rJ_{3}&amp;=(-0.004,-0.098,-0.199),\\
+rJ_{5}&amp;=(-0.001,-0.013,-0.026),\end{split}\hskip 28.45274pt\begin{split}rJ_{2}&amp;=(-0.006,-0.218,-0.441),\\
+rJ_{4}&amp;=(-0.001,-0.008,-0.017),\\
+rJ_{6}&amp;=(-0.001,-0.010,-0.021).\end{split}
+
+We continue computing 
+d_{1}=0.02
+d1=0.02d_{1}=0.02, 
+d_{2}=0.007,~d_{3}=0.004
+d2=0.007,d3=0.004d_{2}=0.007,~d_{3}=0.004, while 
+d_{i}=0.001
+di=0.001d_{i}=0.001 for 
+i=4,5,6
+i=4,5,6i=4,5,6.
+It follows that the check of Line 6 is false for all 
+i=1,\dots,6
+i=1,…,6i=1,\dots,6; meaning that no more rows should be added to 
+L
+LL, thus terminating the algorithm.
+The output of Algorithm 4 is the matrix 
+L
+LL of Equation (7).
+
+The following result states that approximate constrained lumpings can be efficiently computed.
+
+Theorem 3.2 (Time Complexity of Algorithm 4)
+
+Approximate constrained lumping can be computed in polynomial time.
+Specifically, the complexity of Algorithm 3 when using Algorithms 1 and 4 as subroutines can be bounded by 
+\mathcal{O}((A+Np(p+2))m^{2})
+𝒪⁡((A+N​p​(p+2))​m2)\mathcal{O}((A+Np(p+2))m^{2}), where 
+A
+AA is the cost of computing an entry of 
+f(x)
+f⁡(x)f(x), 
+m
+mm is the dimension of 
+f
+ff, 
+N
+NN is the number of matrices spanning 
+\mathcal{V}_{J}
+𝒱J\mathcal{V}_{J}, and 
+p
+pp is the dimension of the reduced system.
+
+When the system is not approximately lumpable, it follows that the worst-case time complexity is 
+O(m^{4})
+O⁡(m4)O(m^{4}).
+The complexity bound of Theorem 3.2 can be further improved by using more efficient data structures [35].
+
+The next result relies on Theorem 2.2 and ensures that the approximate reductions found by Algorithm 4 admit a deviation tolerance of order 
+\mathcal{O}(\varepsilon)
+𝒪⁡(ε)\mathcal{O}(\varepsilon). In other words, the deviation tolerance 
+\eta
+η\eta is in the order of the lumping tolerance 
+\varepsilon
+ε\varepsilon.
+
+Theorem 3.3 (Correctness of Algorithm 4)
+
+Using the setting of Theorem 3.1, assume 
+J(x)
+J⁡(x)J(x) can be written in the form given by Equation (3).
+Let 
+L
+LL be the matrix computed via Algorithm 4 with lumping tolerance 
+\varepsilon
+ε\varepsilon over the sampled matrices 
+\{J(x_{1}),\ldots,J(x_{N})\}
+{J⁡(x1),…,J⁡(xN)}\{J(x_{1}),\ldots,J(x_{N})\} for 
+x_{1},\ldots,x_{N}\in\Omega
+x1,…,xN∈Ωx_{1},\ldots,x_{N}\in\Omega.
+Then, 
+L
+LL is a 
+(T,S,\sqrt{m}C^{\prime}CK\varepsilon)
+(T,S,m​C′​C​K​ε)(T,S,\sqrt{m}C^{\prime}CK\varepsilon)-lumping, where 
+C^{\prime}=\sup_{i,x\in\Omega}\left\lvert\mu_{i}(x)\right\lvert
+C′=supi,x∈Ω|μi(x)|C^{\prime}=\sup_{i,x\in\Omega}\left\lvert\mu_{i}(x)\right\lvert, 
+C
+CC is a constant depending on the representation of 
+J(x)
+J⁡(x)J(x) and 
+K
+KK is a constant depending on the trajectories 
+x(t)
+x⁡(t)x(t) and 
+\bar{L}Lx(t)
+L¯​L​x​(t)\bar{L}Lx(t).
+
+3.3 Heuristic search of lumping tolerance
+
+To apply Algorithm 4, it is important to choose an appropriate value for 
+\varepsilon
+ε\varepsilon.
+While Theorems 3.1 and 3.3 allow for an error estimation in terms of 
+\varepsilon
+ε\varepsilon, in practice, this bound is not tight enough.
+For this reason, we introduce a heuristic approach to appropriately choose 
+\varepsilon
+ε\varepsilon.
+
+Intuitively, by increasing 
+\varepsilon
+ε\varepsilon, it is possible to lump more variables together at the price of larger approximation errors.
+We would like to find the largest admissible 
+\varepsilon
+ε\varepsilon such that the approximation error is small enough.
+To this aim, we begin by noting that the minimum value that 
+\varepsilon
+ε\varepsilon can have is 
+0
+00, corresponding to an exact reduction.
+A naive idea would be to set 
+\varepsilon=0
+ε=0\varepsilon=0 and add small increments until the reduction is satisfying.
+However, this requires an appropriate choice of increment which in turn depends on the model.
+Instead, Lemma 1 gives us an upper bound for 
+\varepsilon
+ε\varepsilon which can be computed for each model.
+
+Lemma 1 (Upper bound on 
+\varepsilon
+ε\varepsilon)
+
+Consider a matrix of observables 
+L\in\mathbb{R}^{p\times m}
+L∈ℝp×mL\in\mathbb{R}^{p\times m} of rank 
+p
+pp with 
+j-
+j−j-th row denoted by 
+r_{j}
+rjr_{j} and a decomposition of the Jacobian 
+J(x)=\sum_{i=1}^{n}J_{i}\mu_{i}(x)
+J⁡(x)=∑i=1nJi​μi​(x)J(x)=\sum_{i=1}^{n}J_{i}\mu_{i}(x).
+Let 
+\varepsilon_{\max}
+εmax\varepsilon_{\max} be given by
+
+\varepsilon_{\max}=\max_{j,i}\lVert r_{j}J_{i}-r_{j}J_{i}P_{L}\rVert_{2},
+εmax=maxj,i⁡∥rj​Ji−rj​Ji​PL∥2,\varepsilon_{\max}=\max_{j,i}\lVert r_{j}J_{i}-r_{j}J_{i}P_{L}\rVert_{2},
+
+(8)
+
+for 
+i=1,\dots,n
+i=1,…,ni=1,\dots,n and each 
+j=1,\dots,l
+j=1,…,lj=1,\dots,l, where 
+P_{L}
+PLP_{L} is the projection onto 
+\rsp(L)
+rowsp(L)\rsp(L).
+Then 
+\varepsilon_{max}
+εm​a​x\varepsilon_{max} is the smallest 
+\varepsilon
+ε\varepsilon such for any 
+\varepsilon\geq\varepsilon_{\max}
+ε≥εmax\varepsilon\geq\varepsilon_{\max} the output of Algorithm 4 will be a matrix of orthonormal rows spanning the row space of 
+L
+LL.
+
+Lemma 1 states that any 
+\varepsilon\geq\varepsilon_{\max}
+ε≥εmax\varepsilon\geq\varepsilon_{\max} will collapse the dynamics of the system onto observable 
+M
+MM.
+In this way, for any given model, we have a range 
+[0;\varepsilon_{\max}]
+[0;εmax][0;\varepsilon_{\max}] from which to choose the right value for 
+\varepsilon
+ε\varepsilon.
+
+Remark 3
+
+The value of 
+\varepsilon_{\max}
+εmax\varepsilon_{\max} depends not only on the chosen model and observable but also on the set of matrices 
+\mathcal{V}_{J}
+𝒱J\mathcal{V}_{J} used to represent 
+J(x)
+J⁡(x)J(x). Compared to polynomial models, the values for the drift in rational models can be more sensitive to changes in 
+x
+xx, especially when the denominator of 
+f(x)
+f⁡(x)f(x) is close to 
+0
+00. This sensitivity can be explained by vanishing denominators in the Jacobian 
+J(x)
+J⁡(x)J(x) of a rational drift 
+f(x)
+f⁡(x)f(x). We therefore expect rational models to exhibit larger fluctuations of 
+\varepsilon_{\max}
+εmax\varepsilon_{\max}.
+
+For example, the evolution of the reductions for different values of 
+\varepsilon
+ε\varepsilon is demonstrated for a model from the literature in Figure 6. The model, named BIOMD103, has been downloaded from the online repository ODEbase [32] discussed in greater detail in Section 4 (it is model 2 from Table 1).
+
+Figure 6: Reduced size vs relative 
+\varepsilon
+ε\varepsilon for the model BIOMD103.
+
+We note that previous work [27] used the deviation as a proxy to estimate the error without having to simulate the original system. This approach relied on a Monte Carlo approximation of the 
+L_{1}
+L1L_{1} norm of 
+\dev_{L}
+devL\dev_{L} over 
+[0,\lVert x^{0}\rVert_{2}]^{m}
+[0,∥x0∥2]m[0,\lVert x^{0}\rVert_{2}]^{m}, where 
+x^{0}
+x0x^{0} is the center of the initial set.
+While being effective in finding meaningful reductions for polynomial systems, this deviation-based approach can be problematic for rational systems.
+This is because rational systems are more sensitive to the choice of compactum, since a small change in the denominator can have a large effect on the overall value of 
+f(x)
+f⁡(x)f(x), especially for values of 
+x
+xx where the denominator approaches 
+0
+00.
+
+We propose a novel approach which gives satisfactory results for both polynomial and rational systems (Section 4).
+Using the fact that the size of a reduced model decreases monotonically with 
+\varepsilon
+ε\varepsilon, we set up a target (a cutoff size, 
+m^{*}
+m∗m^{*}) for the reduced model given as a percentage of its original size.
+We then apply a binary search algorithm to find the largest 
+\varepsilon
+ε\varepsilon such that the reduced model’s size 
+m_{\varepsilon}
+mεm_{\varepsilon} satisfies 
+m_{\varepsilon}\leq m^{*}
+mε≤m∗m_{\varepsilon}\leq m^{*}.
+In terms of Figure 6, we want to obtain the smallest 
+\varepsilon
+ε\varepsilon whose induced size is below the cutoff size.
+This intuition is formalized by Algorithm 5.
+
+Algorithm 5  Finding the smallest acceptable 
+\varepsilon
+ε\varepsilon for Algorithm 4
+
+              0:
+              
+             set of matrices 
+J_{i},~i=1,\dots,N
+Ji,i=1,…,NJ_{i},~i=1,\dots,N spanning 
+\mathcal{V}_{J}
+𝒱J\mathcal{V}_{J}, and
+cutoff reduced size 
+m^{*}
+m∗m^{*}, and
+minimal difference 
+d_{\min}
+dmind_{\min}
+
+              1:
+              
+             set 
+\varepsilon_{\min}=0
+εmin=0\varepsilon_{\min}=0
+
+              2:
+              
+             compute 
+m_{\min}=nrows(L_{\varepsilon_{\min}})
+mmin=n​r​o​w​s​(Lεmin)m_{\min}=nrows(L_{\varepsilon_{\min}}),  
+\varepsilon_{\max}=\max_{j,i}\lVert r_{j}J_{i}\rVert_{2}
+εmax=maxj,i⁡∥rj​Ji∥2\varepsilon_{\max}=\max_{j,i}\lVert r_{j}J_{i}\rVert_{2}, 
+m_{\max}=nrows(L_{\varepsilon_{\max}})
+mmax=n​r​o​w​s​(Lεmax)m_{\max}=nrows(L_{\varepsilon_{\max}})
+
+              3:
+              
+             if 
+m^{*}&lt;m_{\min}
+m∗&lt;mminm^{*}&lt;m_{\min} then
+
+              4:
+              
+              return  
+\varepsilon_{\min}
+εmin\varepsilon_{\min}
+
+              5:
+              
+             else if 
+m^{*}&gt;m_{\max}
+m∗&gt;mmaxm^{*}&gt;m_{\max} then
+
+              6:
+              
+              return  
+\varepsilon_{\max}
+εmax\varepsilon_{\max}
+
+              7:
+              
+             end if
+
+              8:
+              
+             repeat
+
+              9:
+              
+              compute 
+\varepsilon=(\varepsilon_{\max}+\varepsilon_{\min})/{2}
+ε=(εmax+εmin)/2\varepsilon=(\varepsilon_{\max}+\varepsilon_{\min})/{2}
+
+              10:
+              
+              compute 
+L
+LL using Algorithm 4 with 
+\varepsilon
+ε\varepsilon 
+
+              11:
+              
+              if  
+nrows(L)&lt;m^{*}
+n​r​o​w​s​(L)&lt;m∗nrows(L)&lt;m^{*}  then
+
+              12:
+              
+               set 
+\varepsilon_{\max}=\varepsilon
+εmax=ε\varepsilon_{\max}=\varepsilon 
+
+              13:
+              
+              else
+
+              14:
+              
+               set 
+\varepsilon_{\min}=\varepsilon
+εmin=ε\varepsilon_{\min}=\varepsilon 
+
+              15:
+              
+              end if
+
+              16:
+              
+              compute 
+d=\varepsilon_{\max}-\varepsilon_{\min}
+d=εmax−εmind=\varepsilon_{\max}-\varepsilon_{\min}
+
+              17:
+              
+             until 
+d&lt;d_{\min}
+d&lt;dmind&lt;d_{\min}
+
+              18:
+              
+             return  
+\varepsilon_{\max}
+εmax\varepsilon_{\max}.
+
+Remark 4
+
+It is important to notice that the choice of minimal different 
+d_{min}
+dm​i​nd_{min} in Algorithm 5
+provides a trade-off between detecting reductions and the speed of the approach.
+A lower value for 
+d_{min}
+dm​i​nd_{min} can lead to finding more reductions at the cost of more iterations.
+
+Example 9
+
+Let us use again model BIOMD103 from Figure 6. It has an observable of interest, 
+C3
+C​3C3 [26], consisting of one variable representing the concentration ofActivated capsase3.
+We would like to find a reduction such that the reduced model size is at most 
+62.5\%
+62.5%62.5\% of the original size (
+17
+1717), i.e., 
+11
+1111 species.
+To do so, we use Algorithm 5.
+We first verify (Line 3) that the cutoff size is larger than the minimum size and smaller than the size of the exact reduction.
+As the cutoff size 
+11
+1111 is between 
+1
+11 and 
+17
+1717 we continue to Line 8.
+On the first iteration (Figure 7(a)) the middle point (green) gives a reduction of size 
+2
+22.
+As this size is smaller than the goal size 
+11
+1111, we set 
+\varepsilon_{\max}=\varepsilon
+εmax=ε\varepsilon_{\max}=\varepsilon.
+This gives a new interval to search for a reduction (black line on Figure 7(b)).
+We continue following the algorithm until it converges to a reduction of size 
+7
+77 (green line Figure 7(c)).
+This is a correct result as we can see that the closest step below the cutoff size is the one of size 
+7
+77 in Figure 7(a).
+
+(a) First iteration
+
+(b) Second iteration
+
+(c) Last iteration
+
+Figure 7: Algorithm 5 run
+on model 
+2
+22 to reduce it to size at most 
+11
+1111 (red line).
+
+4 Evaluation
+
+In this section, we evaluate our method.
+All experiments were performed using an extension of the tool for CLUE [35, 24, cmsb2024_clue], an open-source Python library.
+The experiments are available in the following repository.
+
+https://github.com/clue-developers/CLUE/releases/tag/v1.7.3
+
+In Section 4.1, we use a selection of models from the literature to show how our approach can lead to small reductions while not incurring a large error.
+In Section 4.2, we use a perturbed multisite protein phosphorylation model to show the scalability of our approach.
+
+4.1 Reduction power
+
+To evaluate the reduction power of our approach, we selected several models from the literature.
+These models are chemical reaction networks with 
+5
+55 or more species.
+We used two sources to select models. The first is a collection of polynomial models from the literature written in the input format of the tool BioNetGen [6].
+We selected two such models.
+The second is the so-called ODEbase project [32] which offers importing/exporting capabilities for polynomial and rational models from the BiomodelsDB repository [28].
+We selected six such models.
+Models with prefix BIOMD were taken from ODEbase, while the remaining models were taken directly from the supplementary material of their original paper.
+For each model, the observable was chosen according to the observables studied in the original paper describing the model.
+These typically consist of one variable or linear combinations of them.
+For models where more than one observable was studied in the original paper, we arbitrarily selected one of them.
+Models written in the BioNetGen format were first imported by ERODE [14], our tool that collects many techniques for the reduction of biological systems, and then exported in ERODE’s .ode format supported by CLUE.
+
+To import models from the ODEbase project [32], instead, we directly implemented in CLUE an importer to convert them in .ode format.
+
+When available, the set of initial conditions necessary for simulations was taken from the original paper or the model files in BiomodelsDB [28].
+The time horizon was either taken from the original reference or chosen experimentally by noticing when steady state was reached.
+All this additional information was manually added to the .ode files to the corresponding model.
+
+When choosing the models, we aimed for a selection that could equally display our approach for both rational and polynomial models.
+The final selection of models is displayed in Table 1.
+The column Type reports whether the model is polynomial (P) or rational (R).
+
+The source paper presenting the model is displayed in the Ref. column.
+The column Description contains a summary of the biological system studied in the model.
+In column Observable, we can see the species (or linear combinations of them) chosen as a constraint for the lumping.
+Finally, column Size displays the number of model variables added in the observable over the total number of variables in the system (e.g., in Model 5, S2P sums 10 out of the 24 variables of the model).
+
+Nr.
+Name
+Type
+Ref.
+
+Description
+
+Observable
+
+Size
+
+1
+BIOMD102
+P
+[26]
+
+Signaling pathways involved in the initiation of apoptosis (wild-type model)
+
+Activated capsase3 (C3)
+
+1/12
+
+2
+BIOMD103
+P
+[26]
+
+Signaling pathways involved in the initiation of apoptosis (competitive model)
+
+Activated capsase3 (C3)
+
+1/17
+
+3
+BIOMD447
+P
+[56]
+
+Thrombospondin-Dependent Activation of TGF-
+\beta
+β\beta1
+
+Transforming growth factor (TGF)-
+\beta
+β\beta1 (TGFb1)
+
+1/13
+
+4
+BioNetGen_CPP
+P
+[33]
+
+Central carbon pathway of E. coli
+
+1,3-diphosphoglycerate (D13PG)
+
+2/87
+
+5
+NIHMS80246_S6
+P
+[7]
+
+FceRI-like network of a cell-surface receptor
+
+Phosphorylation at Y2 (S2P)
+
+10/24
+
+6
+BIOMD437
+R
+[54]
+
+Circadian clock of the fungus Neurospora crassa
+
+Frequency of 
+mRNA
+m​R​N​AmRNA (frq_RNA)
+
+1/39
+
+7
+BIOMD448
+R
+[8]
+
+Insulin Signaling in Type 2 Diabetes
+
+Phosphorylation of site S6 (S6P)
+
+1/23
+
+8
+BIOMD488
+R
+[37]
+
+Effect of A
+\beta
+β\beta-immunization in Alzheimer’s disease
+
+Microtubular binding protein tau (Tau)
+
+1/68
+
+Table 1: 
+List of selected models used for evaluation.
+
+For each model, we used Algorithm 5 with 
+d_{min}=10^{-6}
+dm​i​n=10−6d_{min}=10^{-6} to find the largest lumping tolerance 
+\varepsilon
+ε\varepsilon such that the size of the reduced model is larger than a given bound.
+The bound was given as a ratio of the size of the original system. We used ratios from 
+12.5\%
+12.5%12.5\% to 
+87.5\%
+87.5%87.5\% using a step size of 
+12.5\%
+12.5%12.5\%.
+This means that, in the case of Model 2, the initial size was 17 and so the cutoff sizes were 
+[2.125,4.25,6.375,8.5,10.625,12.75,14.875]
+[2.125,4.25,6.375,8.5,10.625,12.75,14.875][2.125,4.25,6.375,8.5,10.625,12.75,14.875].
+Notably, different ratios can lead to the same reduction. Consider Model 5.
+Here, the exact reduction is 
+34.5\%
+34.5%34.5\% of the original size, so the output of Algorithm 5 is 
+0
+00 for all percentages above 
+34.5\%
+34.5%34.5\% as they recover the exact reduction.
+In such cases, only one result is shown.
+
+Table 2 presents the results for all models from Table 1.
+There is a row for each model with information constant across experiments on it, including the value for 
+\varepsilon_{\max}
+εmax\varepsilon_{\max}.
+The first column 
+|
+||Red.
+|
+|| shows the size of the reduced model obtained by Algorithm 4, while column Red. ratio shows the ratio between the size of the reduced model and that of the original model as a percentage.
+We display the absolute error and the relative error at the time horizon, respectively, in the columns 
+e(T)
+e⁡(T)e(T) and 
+e(T)_{Rel}
+e​(T)R​e​le(T)_{Rel}.
+Here, the relative error is given as the absolute error divided by the value of the observable of the exact reduction.
+Column 
+e_{max}
+em​a​xe_{max} shows the maximum value for 
+e(t)
+e⁡(t)e(t) within the time horizon.
+The obtained value of 
+\varepsilon
+ε\varepsilon and its ratio w.r.t. 
+\varepsilon_{\max}
+εmax\varepsilon_{\max} are shown in the columns 
+\varepsilon
+ε\varepsilon and 
+\varepsilon/\varepsilon_{\max}
+ε/εmax\varepsilon/\varepsilon_{\max}, respectively.
+The column 
+Iter.
+I​t​e​r.Iter. shows the number of iterations and the average computation time of Algorithm 5 over 5 runs.
+We used a 4.7 GHz Intel Core i7 computer with 32 GB of RAM to carry out all computations.
+For each model, we plot in Figure 8 the corresponding simulations of the observables for the considered values of 
+\varepsilon
+ε\varepsilon.
+We used Scipy with RK45 and LSODA solvers to simulate polynomial and rational models respectively.
+Table 2 and Figure 8 show the successful use of Algorithm 5 on both polynomial and rational models.
+
+|
+||Red.
+|
+||
+Red. ratio(%)
+
+e_{Rel}(T)
+eR​e​l​(T)e_{Rel}(T)
+
+e(T)
+e⁡(T)e(T)
+
+e_{max}
+em​a​xe_{max}
+
+\varepsilon
+ε\varepsilon
+
+\varepsilon/\varepsilon_{\max}
+ε/εmax\varepsilon/\varepsilon_{\max} (%)
+Iter.
+Time (s)
+
+1) Model: BIOMD102, size: 13, type: P, exact lumping: 13, 
+\varepsilon_{\max}:
+εmax:\varepsilon_{\max}: 3.52E-03
+
+11
+84.6
+1.16E+01
+1.44E+02
+1.44E+02
+4.24E-04
+1.21E+01
+13
+0.284
+
+8
+61.5
+4.86E+00
+6.04E+01
+6.78E+01
+9.95E-04
+2.83E+01
+13
+0.099
+
+6
+46.2
+1.26E+00
+1.56E+01
+7.39E+01
+1.73E-03
+4.91E+01
+13
+0.138
+
+2
+15.4
+1.50E+01
+1.86E+02
+1.86E+02
+1.97E-03
+5.60E+01
+13
+0.046
+
+1
+7.7
+1.50E+01
+1.86E+02
+1.86E+02
+3.52E-03
+1.00E+02
+13
+0.052
+
+2) Model: BIOMD103, size: 17, type: P, exact lumping: 17, 
+\varepsilon_{\max}:
+εmax:\varepsilon_{\max}: 3.52E-03
+
+14
+82.4
+1.02E-02
+1.72E+00
+1.72E+00
+9.89E-04
+2.81E+01
+13
+0.598
+
+12
+70.6
+9.25E-01
+1.55E+02
+1.57E+02
+1.60E-03
+4.56E+01
+13
+0.288
+
+7
+41.2
+8.52E-01
+1.43E+02
+1.44E+02
+1.64E-03
+4.67E+01
+13
+0.218
+
+2
+11.8
+1.82E-01
+3.06E+01
+3.06E+01
+2.00E-03
+5.67E+01
+13
+0.070
+
+3) Model: BIOMD447, size: 13, type: P, exact lumping: 13, 
+\varepsilon_{\max}:
+εmax:\varepsilon_{\max}: 2.45E+01
+
+11
+84.6
+1.33E-03
+2.02E-05
+2.02E-05
+4.95E-03
+2.02E-02
+26
+0.173
+
+9
+69.2
+1.35E-02
+2.04E-04
+2.04E-04
+3.41E-01
+1.39E+00
+26
+0.122
+
+7
+53.8
+8.46E-03
+1.28E-04
+1.29E-04
+3.75E-01
+1.53E+00
+26
+0.123
+
+6
+46.2
+6.99E-03
+1.06E-04
+7.02E-04
+1.40E+00
+5.71E+00
+26
+0.105
+
+3
+23.1
+1.22E-01
+1.86E-03
+7.31E-03
+1.98E+01
+8.10E+01
+26
+0.056
+
+4) Model: BioNetGen_CCP, size: 87, type: P, exact lumping: 30, 
+\varepsilon_{\max}:
+εmax:\varepsilon_{\max}: 2.83E+00
+
+30
+34.5
+5.86E-06
+6.11E-05
+5.22E-04
+6.74E-07
+2.38E-05
+23
+1.807
+
+10
+11.5
+3.14E-01
+3.27E+00
+3.27E+00
+2.67E-01
+9.44E+00
+23
+2.959
+
+5) Model: NIHMS80246_S6, size: 24, type: P, exact lumping: 19, 
+\varepsilon_{\max}:
+εmax:\varepsilon_{\max}: 3.13E-01
+
+19
+79.2
+3.16E-11
+3.16E-09
+2.14E-04
+5.97E-07
+1.91E-04
+20
+1.370
+
+17
+70.8
+8.09E-05
+8.09E-03
+4.86E+01
+2.23E-02
+7.13E+00
+20
+1.948
+
+14
+58.3
+8.09E-05
+8.09E-03
+4.89E+01
+2.34E-02
+7.49E+00
+20
+1.478
+
+9
+37.5
+1.00E+00
+1.00E+02
+1.00E+02
+3.00E-02
+9.58E+00
+20
+0.809
+
+8
+33.3
+1.00E+00
+1.00E+02
+1.00E+02
+1.29E-01
+4.10E+01
+20
+0.586
+
+1
+4.2
+1.00E+00
+1.00E+02
+1.00E+02
+3.13E-01
+1.00E+02
+20
+0.454
+
+6) Model: BIOMD437, size: 39, type: R, exact lumping: 21, 
+\varepsilon_{\max}:
+εmax:\varepsilon_{\max}: 7.11E+05
+
+21
+53.8
+0.00E+00
+0.00E+00
+0.00E+00
+0.00E+00
+0.00E+00
+1
+0.044
+
+12
+30.8
+1.58E-04
+2.00E-05
+6.66E-05
+6.47E-07
+9.09E-11
+41
+3.021
+
+5
+12.8
+1.58E-04
+2.00E-05
+6.66E-05
+1.07E+02
+1.50E-02
+41
+3.645
+
+4
+10.3
+3.31E-01
+4.19E-02
+4.29E-02
+3.33E+02
+4.69E-02
+41
+3.237
+
+7) Model: BIOMD448, size: 27, type: R, exact lumping: 23, 
+\varepsilon_{\max}:
+εmax:\varepsilon_{\max}: 1.00E+00
+
+23
+85.2
+0.00E+00
+0.00E+00
+0.00E+00
+0.00E+00
+0.00E+00
+1
+0.002
+
+19
+70.4
+7.45E-08
+6.79E-06
+2.90E-02
+1.60E-02
+1.60E+00
+21
+0.912
+
+1
+3.7
+9.21E-01
+8.39E+01
+8.39E+01
+1.00E+00
+1.00E+02
+21
+0.291
+
+8) Model: BIOMD488, size: 68, type: R, exact lumping: 64, 
+\varepsilon_{\max}:
+εmax:\varepsilon_{\max}: 7.50E+10
+
+59
+86.8
+2.88E-02
+1.05E-02
+2.85E-02
+1.50E+02
+2.00E-07
+58
+47.800
+
+50
+73.5
+1.97E-01
+7.20E-02
+7.20E-02
+7.50E+04
+1.00E-04
+58
+46.542
+
+9
+13.2
+9.06E+00
+3.30E+00
+3.61E+00
+1.50E+06
+2.00E-03
+58
+7.276
+
+8
+11.8
+9.06E+00
+3.30E+00
+3.61E+00
+6.00E+07
+8.00E-02
+58
+9.505
+
+Table 2: Approximate constrained lumping results for the models from Table 1.
+
+As expected, Algorithm 5 can recover exact reductions, as seen in Models 6 and 7.
+Similarly, having a small cutoff size (
+12.5\%
+12.5%12.5\% of the original model size or lower) results in aggressive reductions that collapse the dynamics as seen in the reduction to 8 species of Model 5 (Figure 8(e)). Taken together, these experiments display the following behaviours:
+
+1. 
+
+Models that do not admit exact reduction may admit approximate reduction.
+Models 1, 2, and 3 were not exactly lumpable but were approximately lumped.
+For models 1 and 2, the reductions that incurred acceptable errors were modest, at around 
+80\%
+80%80\% of the original model size.
+In the case of Model 3, all reductions incurred in low error, with the smallest having only 
+3
+33 species.
+
+2. 
+
+Models that admit limited exact reduction, may admit smaller approximate reductions.
+Models 5, 7, and 8 had modest exact reductions, while they could be further reduced using approximate lumping.
+In this case, most of the approximate reductions have a small error.
+The improvement compared to the exact case goes from modest, at around 
+90\%
+90%90\% of the size of the exact reduction, to as low as 
+47\%
+47%47\% of the exactly reduced size (Model 5).
+
+3. 
+
+Models that admit notable exact reduction, may admit even smaller approximate reductions.
+Models 4 and 6 had already significant exact reductions; nevertheless, they could be further reduced via approximate lumping.
+In this case, Model 4 shows a significant steady-state error for the approximate reduction with 
+10
+1010 species.
+For Model 6, it was possible to find a reduction with less than 
+15\%
+15%15\% of the original model size while still obtaining simulation results close to the original simulation.
+
+As expected, for all models the error starts at 
+0
+00 and then increases with 
+t
+tt.
+This increment is barely noticeable when 
+t
+tt is close to 
+0
+00 for most models.
+While the error increases monotonically in most cases, this does not hold for all reductions.
+e.g., in Figures 8(a) and 8(e), the reductions with 7 and 14 species get closer to the original simulations as time increases.
+
+Furthermore, we see that the steady-state error increases with 
+\varepsilon
+ε\varepsilon for most models.
+Nonetheless, Figures 8(b) and 8(c) show that it is possible for aggressive reductions to incur lower errors.
+This can be explained by the influence of sampling on the representation of 
+\mathcal{V}_{J}
+𝒱J\mathcal{V}_{J}, as the check in Line 6 depends on the norms of each 
+rJ_{i}
+r​JirJ_{i}.
+Overall, for given models, significant reductions without large errors were obtained by Algorithm 5 with a cutoff size of 
+80\%
+80%80\% of the original model size.
+In principle, smaller cutoff sizes may be used to find meaningful reductions; however, this requires a case-by-case analysis.
+
+We see that rational models tend to have larger values of 
+\varepsilon_{\max}
+εmax\varepsilon_{\max} compared to polynomial ones (see Remark 3). This leads to more iterations of Algorithm 5.
+The values of 
+\varepsilon/\varepsilon_{\max}
+ε/εmax\varepsilon/\varepsilon_{\max} that lead to low errors vary widely depending on the model.
+For polynomial models, most reductions happen under the 
+10\%
+10%10\% threshold.
+Instead, for rationals the values change significantly, having reductions for 
+\varepsilon
+ε\varepsilon lower than 
+0.01\%
+0.01%0.01\% of 
+\varepsilon_{\max}
+εmax\varepsilon_{\max}.
+Following Remark 4, choosing a larger value for 
+d
+dd in Model 8 would have led to fewer iterations and faster times at the cost of potentially missing some low-error reductions as these happened for low values of 
+\varepsilon
+ε\varepsilon.
+Finally, we note that assumptions of Theorem 3.1 were satisfied by the experiments since the obtained approximate lumpings 
+L
+LL led to positive 
+L^{T}Lx
+LT​L​xL^{T}Lx for all positive vectors 
+x
+xx, while the denominators of rational 
+f(x)
+f⁡(x)f(x) vanished only for negative values of 
+x
+xx.
+
+(a) Experiment on Model 1
+
+(b) Experiment on Model 2
+
+(c) Experiment on Model 3
+
+(d) Experiment on Model 4
+
+(e) Experiment on Model 5
+
+(f) Experiment on Model 6
+
+(g) Experiment on Model 7
+
+(h) Experiment on Model 8
+
+Figure 8: 
+Simulation of exact and approximately lumped models from Table 2, for varying cutoff sizes.
+The continuous blue line refers to exact constrained lumping.
+
+4.2 Scalability analysis
+
+We evaluate the scalability of our approach using a parametric model of multisite protein phosphorylation which can be made combinatorially larger by increasing its number of binding sites [41].
+This mechanism is key in the study of cellular processes [20].
+The model describes the phosphorylation and dephosphorylation of a substrate with 
+n
+nn different binding sites, each capable of being in 4 different states [44].
+The resulting model requires 
+4^{n}+2
+4n+24^{n}+2 variables to track the evolution of all protein configurations as well as the kinase and phosphatase concentrations.
+
+The exact constrained lumping of this model was studied in [35].
+We choose the concentration of free kinase as the observable of interest.
+For our setup, we added random noise to each reaction, taken from 
+-5\%
+−5%-5\% to 
++5\%
++5%+5\% of the parameter value appearing in each reaction (the same parameter could have different values for different reactions).
+This ensured that the perturbed model was not exactly reducible.
+Next, we ran Algorithm 5 with a maximum reduction size 
+m^{*}=10
+m∗=10m^{*}=10 and 
+d_{\min}=10^{-4}
+dmin=10−4d_{\min}=10^{-4} for models with 2 to 5 binding sites.
+To compute the error, the time horizon was set to 
+2
+22, and the initial conditions were taken from the original paper.
+All simulations were computed using the LSODA stiff solver.
+
+Sites
+Size
+Red. Size
+Iter.
+Time (min)
+Original (s)
+Red. (s)
+
+e(T)
+e⁡(T)e(T)
+
+e_{Rel}(T)
+eR​e​l​(T)e_{Rel}(T) (%)
+
+e_{\max}
+emaxe_{\max}
+
+2
+24
+5
+8
+0.003
+0.116
+0.022
+0.018
+2.60
+0.274
+
+3
+72
+4
+8
+0.214
+0.186
+0.020
+0.004
+1.00
+0.236
+
+4
+264
+4
+8
+8.024
+1.429
+0.032
+0.001
+0.30
+0.208
+
+5
+1032
+4
+8
+371.683
+13.303
+0.025
+0.001
+0.60
+0.199
+
+Table 3: Approximate lumpings on multisite phosphorylation.
+
+Table 3 presents the results for multisite phosphorylation models.
+Column Sites displays the number of binding sites in the model.
+The size of the original model and that of the reduced model are shown in the columns Size and Red. Size, respectively.
+The number of iterations and the total computation time of Algorithm 5 are displayed in the columns Iter. and Time, respectively.
+The columns Original and Red. contain the time used to compute the simulation using the non-reduced model and the reduced model, respectively.
+The absolute and relative error at steady-state are shown in the columns 
+e(T)
+e⁡(T)e(T) and 
+e_{Rel}(T)
+eR​e​l​(T)e_{Rel}(T).
+While the maximum absolute error is shown in 
+e_{\max}
+emaxe_{\max}.
+
+As seen in Table 3, our approach can find a reduction with only 4 species for a model without exact reductions.
+These reductions have low errors (less than 
+3\%
+3%3\% for all models).
+This is a promising result for the study of more robust reductions.
+The runtime depends on the size of the model.
+Larger models take considerably longer as there is a combinatorial increment in the number of monomials needed to represent the Jacobian.
+This, in turn, gets amplified by the number of iterations necessary to find a lumping with the given size restriction, which depends on the tolerance 
+d
+dd for Algorithm 5.
+
+5 Conclusion
+
+We have proposed approximate constrained lumping, a relaxation of the exact reduction technique constrained lumping. This allows for more aggressive reductions at the cost of introducing, in a controlled way, errors in the dynamics of the reduced model.
+The technique can be applied to dynamical systems with polynomial or rational derivatives, common in computational biology.
+For a given dynamical system, our algorithm utilizes a numerical tolerance to efficiently compute a reduced system that preserves the evolution of a linear combination of specific variables of interest up to a bounded error.
+We proved that the error bound is proportional to the numerical threshold.
+Additionally, we introduced a heuristic to obtain appropriate numerical tolerances based on the model size.
+We demonstrated effectiveness and scalability by obtaining low-error reductions for a collection of published biological models.
+Future work will explore robust reductions by considering models with uncertain kinetic parameters.
+
+References
+
+[1]
+
+A. Antoulas.
+
+Approximation of Large-Scale Dynamical Systems.
+
+Advances in Design and Control. SIAM, 2005.
+
+[2]
+
+Mochamad Apri, Maarten de Gee, and Jaap Molenaar.
+
+Complexity reduction preserving dynamical behavior of biochemical networks.
+
+Journal of Theoretical Biology, 304(0):16–26, 2012.
+
+[3]
+
+Ann Babtie and Michael Stumpf.
+
+How to deal with parameters for whole-cell modelling.
+
+J. of The Royal Society Interface, 14(133):20170237, 2017.
+
+[4]
+
+Giorgio Bacci, Giovanni Bacci, Kim G. Larsen, and Radu Mardare.
+
+On-the-fly exact computation of bisimilarity distances.
+
+In Nir Piterman and Scott A. Smolka, editors, TACAS, volume 7795 of Lecture Notes in Computer Science, pages 1–15, 2013.
+
+[5]
+
+Jiri Barnat, Nikola Benes, Lubos Brim, Martin Demko, Matej Hajnal, Samuel Pastva, and David Safránek.
+
+Detecting attractors in biological models with uncertain parameters.
+
+In Jérôme Feret and Heinz Koeppl, editors, CMSB, volume 10545 of Lecture Notes in Computer Science, pages 40–56. Springer, 2017.
+
+[6]
+
+M. L. Blinov, J. R. Faeder, B. Goldstein, and W. S. Hlavacek.
+
+BioNetGen: software for rule-based modeling of signal transduction based on the interactions of molecular domains.
+
+Bioinformatics, 20(17):3289–3291, 2004.
+
+[7]
+
+Nikolay M. Borisov, Alexander S. Chistopolsky, James R. Faeder, and Boris N. Kholodenko.
+
+Domain-Oriented Reduction of Rule-Based Network Models.
+
+IET systems biology, 2(5):342–351, September 2008.
+
+[8]
+
+Cecilia Brännmark, Elin Nyman, Siri Fagerholm, Linnéa Bergenholm, Eva-Maria Ekstrand, Gunnar Cedersund, and Peter Strålfors.
+
+Insulin signaling in type 2 diabetes: experimental and modeling analyses reveal mechanisms of insulin resistance in human adipocytes.
+
+The Journal of Biological Chemistry, 288(14):9867–9880, April 2013.
+
+[9]
+
+Francesca Cairoli, Ginevra Carbone, and Luca Bortolussi.
+
+Abstraction of markov population dynamics via generative adversarial nets.
+
+In Eugenio Cinquemani and Loïc Paulevé, editors, CMSB, volume 12881, pages 19–35, 2021.
+
+[10]
+
+Luca Cardelli.
+
+From processes to odes by chemistry.
+
+In Giorgio Ausiello, Juhani Karhumäki, Giancarlo Mauri, and Luke Ong, editors, Fifth Ifip International Conference On Theoretical Computer Science – Tcs 2008, 2008.
+
+[11]
+
+Luca Cardelli, Isabel Cristina Pérez-Verona, Mirco Tribastone, Max Tschaikowski, Andrea Vandin, and Tabea Waizmann.
+
+Exact maximal reduction of stochastic reaction networks by species lumping.
+
+Bioinform., 37(15):2175–2182, 2021.
+
+[12]
+
+Luca Cardelli, Mirco Tribastone, Max Tschaikowski, and Andrea Vandin.
+
+Forward and backward bisimulations for chemical reaction networks.
+
+In CONCUR, pages 226–239, 2015.
+
+[13]
+
+Luca Cardelli, Mirco Tribastone, Max Tschaikowski, and Andrea Vandin.
+
+Comparing chemical reaction networks: A categorical and algorithmic perspective.
+
+In Martin Grohe, Eric Koskinen, and Natarajan Shankar, editors, Proceedings of the 31st Annual ACM/IEEE Symposium on Logic in Computer Science, LICS ’16, New York, NY, USA, July 5-8, 2016, pages 485–494. ACM, 2016.
+
+[14]
+
+Luca Cardelli, Mirco Tribastone, Max Tschaikowski, and Andrea Vandin.
+
+ERODE: A Tool for the Evaluation and Reduction of Ordinary Differential Equations.
+
+In Axel Legay and Tiziana Margaria, editors, Tools and Algorithms for the Construction and Analysis of Systems, Lecture Notes in Computer Science, pages 310–328, Berlin, Heidelberg, 2017. Springer.
+
+[15]
+
+Luca Cardelli, Mirco Tribastone, Max Tschaikowski, and Andrea Vandin.
+
+Maximal aggregation of polynomial dynamical systems.
+
+PNAS, 114(38):10029–10034, 2017.
+
+[16]
+
+Luca Cardelli, Mirco Tribastone, Max Tschaikowski, and Andrea Vandin.
+
+Guaranteed error bounds on approximate model abstractions through reachability analysis.
+
+In Annabelle McIver and András Horváth, editors, Quantitative Evaluation of Systems - 15th International Conference, QEST 2018, Beijing, China, September 4-7, 2018, Proceedings, volume 11024 of Lecture Notes in Computer Science, pages 104–121. Springer, 2018.
+
+[17]
+
+Luca Cardelli, Mirco Tribastone, Max Tschaikowski, and Andrea Vandin.
+
+Symbolic computation of differential equivalences.
+
+Theoretical Computer Science, 777:132–154, 2019.
+
+[18]
+
+Przemyslaw Daca, Thomas A. Henzinger, Jan Kretínský, and Tatjana Petrov.
+
+Linear distances between markov chains.
+
+In Josée Desharnais and Radha Jagadeesan, editors, CONCUR, volume 59 of LIPIcs, pages 20:1–20:15, 2016.
+
+[19]
+
+Jérôme Feret, Vincent Danos, Jean Krivine, Russ Harmer, and Walter Fontana.
+
+Internal coarse-graining of molecular systems.
+
+PNAS, 106(16):6453–6458, 2009.
+
+[20]
+
+Jeremy Gunawardena.
+
+Multisite protein phosphorylation makes a good threshold but can be a poor switch.
+
+PNAS, 102(41):14617–14622, 2005.
+
+[21]
+
+Martin Helfrich, Milan Ceska, Jan Kretínský, and Stefan Marticek.
+
+Abstraction-based segmental simulation of chemical reaction networks.
+
+In Ion Petre and Andrei Paun, editors, CMSB, volume 13447, pages 41–60, 2022.
+
+[22]
+
+Jane Hillston, Mirco Tribastone, and Stephen Gilmore.
+
+Stochastic Process Algebras: From Individuals to Populations.
+
+The Computer Journal, 55(7):866–881, 2011.
+
+[23]
+
+Giulio Iacobelli and Mirco Tribastone.
+
+Lumpability of fluid models with heterogeneous agent types.
+
+In 2013 43rd Annual IEEE/IFIP International Conference on Dependable Systems and Networks (DSN), pages 1–11, June 2013.
+
+ISSN: 2158-3927.
+
+[24]
+
+Antonio Jiménez-Pastor, Joshua Paul Jacob, and Gleb Pogudin.
+
+Exact linear reduction for rational dynamical systems.
+
+In Computational Methods in Systems Biology, pages 198–216. Springer International Publishing, 2022.
+
+[25]
+
+Kim G. Larsen and Arne Skou.
+
+Bisimulation through probabilistic testing.
+
+Inf. Comput., 94(1):1–28, 1991.
+
+[26]
+
+Stefan Legewie, Nils Blüthgen, and Hanspeter Herzel.
+
+Mathematical modeling identifies inhibitors of apoptosis as mediators of positive feedback and bistability.
+
+PLoS computational biology, 2(9):e120, September 2006.
+
+[27]
+
+Alexander Leguizamon-Robayo, Antonio Jiménez-Pastor, Micro Tribastone, Max Tschaikowski, and Andrea Vandin.
+
+Approximate Constrained Lumping of Polynomial Differential Equations.
+
+In Jun Pang and Joachim Niehren, editors, Computational Methods in Systems Biology, Lecture Notes in Computer Science, pages 106–123, Cham, 2023. Springer Nature Switzerland.
+
+[28]
+
+Chen Li, Marco Donizelli, Nicolas Rodriguez, Harish Dharuri, Lukas Endler, Vijayalakshmi Chelliah, Lu Li, Enuo He, Arnaud Henry, Melanie Stefan, Jacky Snoep, Michael Hucka, Nicolas Le Novère, and Camille Laibe.
+
+BioModels Database: An enhanced, curated and annotated resource for published quantitative kinetic models.
+
+BMC Systems Biology, 4:92, 2010.
+
+[29]
+
+Genyuan Li and Herschel Rabitz.
+
+A general analysis of exact lumping in chemical kinetics.
+
+Chemical Engineering Science, 44(6):1413–1430, 1989.
+
+[30]
+
+Genyuan Li and Herschel Rabitz.
+
+A general analysis of approximate lumping in chemical kinetics.
+
+Chemical Engineering Science, 45(4):977–1002, 1990.
+
+[31]
+
+Genyuan Li and Herschel Rabitz.
+
+New approaches to determination of constrained lumping schemes for a reaction system in the whole composition space.
+
+Chemical Engineering Science, 46(1):95–111, 1991.
+
+[32]
+
+Christoph Lüders, Thomas Sturm, and Ovidiu Radulescu.
+
+ODEbase: A repository of ODE systems for systems biology.
+
+Bioinformatics Advances, 2(1), April 2022.
+
+vbac027.
+
+[33]
+
+Fangping Mu, Robert F. Williams, Clifford J. Unkefer, Pat J. Unkefer, James R. Faeder, and William S. Hlavacek.
+
+Carbon-fate maps for metabolic reactions.
+
+Bioinformatics (Oxford, England), 23(23):3193–3199, December 2007.
+
+[34]
+
+M. Okino and M. Mavrovouniotis.
+
+Simplification of mathematical models of chemical reaction systems.
+
+Chemical Reviews, 2(98):391–408, 1998.
+
+[35]
+
+Alexey Ovchinnikov, Isabel Pérez Verona, Gleb Pogudin, and Mirco Tribastone.
+
+CLUE: exact maximal reduction of kinetic models by constrained lumping of differential equations.
+
+Bioinformatics, 37(12):1732–1738, June 2021.
+
+[36]
+
+Isabel Cristina Pérez-Verona, Mirco Tribastone, and Andrea Vandin.
+
+A large-scale assessment of exact model reduction in the BioModels repository.
+
+In Computational Methods in Systems Biology, pages 248–265. Springer International Publishing, 2019.
+
+[37]
+
+Carole J. Proctor, Delphine Boche, Douglas A. Gray, and James A. R. Nicoll.
+
+Investigating interventions in Alzheimer’s disease with computer simulation models.
+
+PloS One, 8(9):e73631, 2013.
+
+[38]
+
+Ovidiu Radulescu, Alexander N Gorban, Andrei Zinovyev, and Vincent Noel.
+
+Reduction of dynamical biochemical reactions networks in computational biology.
+
+Frontiers in genetics, 3:131, 2012.
+
+[39]
+
+Denis Repin and Tatjana Petrov.
+
+Automated deep abstractions for stochastic chemical reaction networks.
+
+Inf. Comput., 281:104788, 2021.
+
+[40]
+
+Walter Rudin.
+
+Principles of Mathematical Analysis.
+
+McGraw-Hill, 1976.
+
+[41]
+
+Carlos Salazar and Thomas Höfer.
+
+Multisite protein phosphorylation — from molecular mechanisms to kinetic models.
+
+FEBS Journal, 276(12):3177–3198, 2009.
+
+[42]
+
+Henning Schmidt, Mads Madsen, Sune Danø, and Gunnar Cedersund.
+
+Complexity reduction of biochemical rate expressions.
+
+Bioinformatics, 24(6):848–854, 2008.
+
+[43]
+
+L.A. Segel and M. Slemrod.
+
+The quasi-steady-state assumption: A case study in perturbation.
+
+SIAM Review, 31(3):446–477, 1989.
+
+[44]
+
+Michael Sneddon, James Faeder, and Thierry Emonet.
+
+Efficient modeling, simulation and coarse-graining of biological complexity with NFsim.
+
+Nature methods, 8(2):177, 2011.
+
+[45]
+
+Thomas Snowden, Piet van der Graaf, and Marcus Tindall.
+
+Methods of model reduction for large-scale biological systems: A survey of current methods and trends.
+
+Bulletin of Mathematical Biology, 79(7):1449–1486, 2017.
+
+[46]
+
+Mikael Sunnaker, Gunnar Cedersund, and Mats Jirstrand.
+
+A method for zooming of nonlinear models of biochemical systems.
+
+BMC Systems Biology, 5(1):140, 2011.
+
+[47]
+
+Stefano Tognazzi, Mirco Tribastone, Max Tschaikowski, and Andrea Vandin.
+
+Egac: A genetic algorithm to compare chemical reaction networks.
+
+In GECCO, GECCO ’17, pages 833–840, 2017.
+
+[48]
+
+Alison S. Tomlin, Genyuan Li, Herschel Rabitz, and János Tóth.
+
+The Effect of Lumping and Expanding on Kinetic Differential Equations.
+
+SIAM Journal on Applied Mathematics, 57(6):1531–1556, December 1997.
+
+Publisher: Society for Industrial and Applied Mathematics.
+
+[49]
+
+Mirco Tribastone.
+
+Behavioral relations in a process algebra for variants.
+
+In Stefania Gnesi, Alessandro Fantechi, Patrick Heymans, Julia Rubin, Krzysztof Czarnecki, and Deepak Dhungana, editors, SPLC, pages 82–91. ACM, 2014.
+
+[50]
+
+Matej Troják, David Safránek, Samuel Pastva, and Lubos Brim.
+
+Rule-based modelling of biological systems using regulated rewriting.
+
+Biosyst., 225:104843, 2023.
+
+[51]
+
+Max Tschaikowski and Mirco Tribastone.
+
+Exact fluid lumpability in markovian process algebra.
+
+Theoretical Computer Science, 538:140–166, 2014.
+
+[52]
+
+Max Tschaikowski and Mirco Tribastone.
+
+Approximate reduction of heterogeneous nonlinear models with differential hulls.
+
+IEEE TAC, 2016.
+
+[53]
+
+Max Tschaikowski and Mirco Tribastone.
+
+Spatial fluid limits for stochastic mobile networks.
+
+Perform. Evaluation, 109:52–76, 2017.
+
+[54]
+
+Yu-Yao Tseng, Suzanne M. Hunt, Christian Heintzen, Susan K. Crosthwaite, and Jean-Marc Schwartz.
+
+Comprehensive modelling of the Neurospora circadian clock and its temperature compensation.
+
+PLoS computational biology, 8(3):e1002437, 2012.
+
+[55]
+
+Ravishankar Vallabhajosyula, Vijay Chickarmane, and Herbert Sauro.
+
+Conservation analysis of large biochemical networks.
+
+Bioinformatics, 22(3):346–353, 2005.
+
+[56]
+
+Lakshmi Venkatraman, Ser-Mien Chia, Balakrishnan Chakrapani Narmada, Jacob K. White, Sourav S. Bhowmick, C. Forbes Dewey, Peter T. So, Lisa Tucker-Kellogg, and Hanry Yu.
+
+Plasmin triggers a switch-like decrease in thrombospondin-dependent activation of TGF-
+\beta
+β\beta1.
+
+Biophysical Journal, 103(5):1060–1068, September 2012.
+
+[57]
+
+Eberhard O. Voit.
+
+Biochemical systems theory: A review.
+
+ISRN Biomathematics, 2013:53, 2013.
+
+[58]
+
+Max Whitby, Luca Cardelli, Marta Kwiatkowska, Luca Laurenti, Mirco Tribastone, and Max Tschaikowski.
+
+PID control of biochemical reaction networks.
+
+IEEE Trans. Autom. Control., 67(2):1023–1030, 2022.
+
+[59]
+
+Martin Wirsing, Matthias Hölzl, Lucia Acciai, Federico Banti, Allan Clark, Alessandro Fantechi, Stephen Gilmore, Stefania Gnesi, László Gönczy, Nora Koch, Alessandro Lapadula, Philip Mayer, Franco Mazzanti, Rosario Pugliese, Andreas Schroeder, Francesco Tiezzi, Mirco Tribastone, and Dániel Varró.
+
+Sensoria patterns: Augmenting service engineering with formal analysis, transformation and dynamicity.
+
+In Tiziana Margaria and Bernhard Steffen, editors, Leveraging Applications of Formal Methods, Verification and Validation, pages 170–190, 2008.
+
+Appendix: Proofs
+
+Proposition 1
+
+Let 
+\dot{x}=f(x)
+x˙=f⁡(x)\dot{x}=f(x) a system of ODEs such that 
+f
+ff is analytic on a compact set 
+\Omega\subseteq\mathbb{R}^{m}
+Ω⊆ℝm\Omega\subseteq\mathbb{R}^{m}.
+Given a 
+(S,T,\eta)-
+(S,T,η)−(S,T,\eta)-lumping 
+L
+LL, such that 
+x(t),\bar{L}Lx(t)\in\Omega
+x⁡(t),L¯​L​x​(t)∈Ωx(t),\bar{L}Lx(t)\in\Omega for all 
+t\in[0,T]
+t∈[0,T]t\in[0,T], the norm of the error 
+\lVert e(t)\rVert_{2}
+∥e⁡(t)∥2\lVert e(t)\rVert_{2} is bounded as follows
+
+\lVert\dot{e}(t)\rVert_{2}\leq\beta\lVert e(t)\rVert_{2}+\eta,~\forall t\in[0,T],~\forall x(0)\in S.
+∥e˙​(t)∥2≤β​∥e⁡(t)∥2+η,∀t∈[0,T],∀x⁡(0)∈S.\lVert\dot{e}(t)\rVert_{2}\leq\beta\lVert e(t)\rVert_{2}+\eta,~\forall t\in[0,T],~\forall x(0)\in S.
+
+Proof
+
+Note that for any initial condition 
+x(0)\in S
+x⁡(0)∈Sx(0)\in S, we can compute
+
+\displaystyle\lVert\dot{e}(t)\rVert_{2}
+∥e˙​(t)∥2\displaystyle\lVert\dot{e}(t)\rVert_{2}
+
+\displaystyle=\lVert\dot{y}(t)-L\dot{x}(t)\rVert_{2}
+=∥y˙​(t)−L​x˙​(t)∥2\displaystyle=\lVert\dot{y}(t)-L\dot{x}(t)\rVert_{2}
+
+\displaystyle=\lVert Lf(\bar{L}y)-Lf(x)\rVert_{2}
+=∥L​f​(L¯​y)−L​f​(x)∥2\displaystyle=\lVert Lf(\bar{L}y)-Lf(x)\rVert_{2}
+
+\displaystyle=\lVert Lf(\bar{L}y)-Lf(\bar{L}Lx)+Lf(\bar{L}Lx)-Lf(x)\rVert_{2}
+=∥L​f​(L¯​y)−L​f​(L¯​L​x)+L​f​(L¯​L​x)−L​f​(x)∥2\displaystyle=\lVert Lf(\bar{L}y)-Lf(\bar{L}Lx)+Lf(\bar{L}Lx)-Lf(x)\rVert_{2}
+
+\displaystyle\leq\lVert Lf(\bar{L}y)-Lf(\bar{L}Lx)\rVert_{2}+\lVert Lf(\bar{L}Lx)-Lf(x)\rVert_{2}
+≤∥L​f​(L¯​y)−L​f​(L¯​L​x)∥2+∥L​f​(L¯​L​x)−L​f​(x)∥2\displaystyle\leq\lVert Lf(\bar{L}y)-Lf(\bar{L}Lx)\rVert_{2}+\lVert Lf(\bar{L}Lx)-Lf(x)\rVert_{2}
+
+To bound the first term, recall that 
+f
+ff is analytic on 
+\Omega
+Ω\Omega.
+Therefore 
+f
+ff is locally Lipschitz in 
+\Omega
+Ω\Omega.
+Then there is a constant 
+C
+CC such that
+
+\lVert Lf(\bar{L}y)-Lf(\bar{L}Lx)\rVert_{2}\leq C\lVert L\rVert_{2}\lVert\bar{L}\rVert_{2}\lVert e(t)\rVert_{2},
+∥L​f​(L¯​y)−L​f​(L¯​L​x)∥2≤C​∥L∥2​∥L¯∥2​∥e⁡(t)∥2,\lVert Lf(\bar{L}y)-Lf(\bar{L}Lx)\rVert_{2}\leq C\lVert L\rVert_{2}\lVert\bar{L}\rVert_{2}\lVert e(t)\rVert_{2},
+
+for all 
+t\in[0,T]
+t∈[0,T]t\in[0,T] and all 
+x(0)\in S
+x⁡(0)∈Sx(0)\in S.
+
+Using the fact that 
+L
+LL is an 
+(S,T,\eta)-
+(S,T,η)−(S,T,\eta)-lumping, we get that
+
+\lVert\dot{e}(t)\rVert_{2}\leq C\lVert L\rVert_{2}\lVert\bar{L}\rVert_{2}\lVert e(t)\rVert_{2}+\eta,
+∥e˙​(t)∥2≤C​∥L∥2​∥L¯∥2​∥e⁡(t)∥2+η,\lVert\dot{e}(t)\rVert_{2}\leq C\lVert L\rVert_{2}\lVert\bar{L}\rVert_{2}\lVert e(t)\rVert_{2}+\eta,
+
+for all 
+t\in[0,T]
+t∈[0,T]t\in[0,T] and all 
+x(0)\in S
+x⁡(0)∈Sx(0)\in S. The result follows by setting 
+\beta=\lVert L\rVert_{2}\lVert\bar{L}\rVert_{2}
+β=∥L∥2​∥L¯∥2\beta=\lVert L\rVert_{2}\lVert\bar{L}\rVert_{2}.
+
+Lemma 2
+
+[23, Lemma 2].
+Let 
+f
+ff be a continuous scalar function on 
+[0,T]
+[0,T][0,T] which has a right derivative 
+D_{R}f(t)
+DR​f​(t)D_{R}f(t) such that
+
+D_{R}f(t)\leq\beta f(t)+\gamma,
+DR​f​(t)≤β​f​(t)+γ,D_{R}f(t)\leq\beta f(t)+\gamma,
+
+for all 
+t\in[0,T)
+t∈[0,T)t\in[0,T), where 
+\beta
+β\beta and 
+\gamma
+γ\gamma re constants and 
+f(0)=0
+f⁡(0)=0f(0)=0. Then
+
+f(t)\leq\frac{\gamma}{\beta}\left(e^{\beta t}-1\right),
+f⁡(t)≤γβ​(eβ​t−1),f(t)\leq\frac{\gamma}{\beta}\left(e^{\beta t}-1\right),
+
+for all 
+t\in[0,T]
+t∈[0,T]t\in[0,T].
+
+Proof (Theorem 3.1)
+
+By hypothesis, there exists a compact set 
+\Omega\subseteq\mathbb{R}^{m}
+Ω⊆ℝm\Omega\subseteq\mathbb{R}^{m} such that the 
+x(t),\bar{L}Lx\in\Omega
+x⁡(t),L¯​L​x∈Ωx(t),\bar{L}Lx\in\Omega for all 
+t\in[0,T]
+t∈[0,T]t\in[0,T] and for all 
+x(0)\in S
+x⁡(0)∈Sx(0)\in S.
+Given that 
+f(x)
+f⁡(x)f(x) is analytic in 
+\Omega
+Ω\Omega, it is possible to apply Lemma 2 and Proposition 1 to obtain the desired result.
+
+Proof (Theorem 3.2)
+
+We first prove the polynomial complexity of Algorithm 4.
+To this aim, we assume a naive implementation of the matrix operations.
+We begin by analyzing the complexity of the operations performed in the main loop (Line 4) of Algorithm 4.
+To find the complexity of computing 
+\pi_{i}=rJ_{i}L^{T}L
+πi=r​Ji​LT​L\pi_{i}=rJ_{i}L^{T}L, recall that 
+L
+LL is an 
+p\times m
+p×mp\times m matrix.
+This means that computing 
+L^{T}L
+LT​LL^{T}L can be done in 
+\mathcal{O}(pm^{2})
+𝒪⁡(p​m2)\mathcal{O}(pm^{2}), while 
+rJ_{i}
+r​JirJ_{i} can be computed in 
+\mathcal{O}(m^{2})
+𝒪⁡(m2)\mathcal{O}(m^{2}). Hence, 
+\pi_{i}
+πi\pi_{i} can be computed in 
+\mathcal{O}((p+2)m^{2})
+𝒪⁡((p+2)​m2)\mathcal{O}((p+2)m^{2}). Since 
+rJ_{i}
+r​JirJ_{i} and 
+\pi_{i}
+πi\pi_{i} are of dimensions 
+1\times m
+1×m1\times m, computing 
+d_{i}=rJ_{i}-\pi_{i}
+di=r​Ji−πid_{i}=rJ_{i}-\pi_{i} has complexity 
+\mathcal{O}(m)
+𝒪⁡(m)\mathcal{O}(m). Instead, computing 
+d_{i}/\lVert d_{i}\rVert_{2}
+di/∥di∥2d_{i}/\lVert d_{i}\rVert_{2} has complexity 
+\mathcal{O}(4m)
+𝒪⁡(4​m)\mathcal{O}(4m). Overall, we have that the complexity of the operations inside the main loop (Line 4) of Algorithm 4 is 
+\mathcal{O}((p+2)m^{2})
+𝒪⁡((p+2)​m2)\mathcal{O}((p+2)m^{2}). As this loop is computed 
+Np
+N​pNp times, we have that the total complexity of Algorithm 4 is 
+\mathcal{O}(Np(p+2)m^{2})
+𝒪⁡(N​p​(p+2)​m2)\mathcal{O}(Np(p+2)m^{2}). The result follows from the fact that Algorithm 1 can be implemented with a complexity of 
+\mathcal{O}(m^{2}A)
+𝒪⁡(m2​A)\mathcal{O}(m^{2}A), where 
+A
+AA is the arithmetic cost of computing an entry of 
+f(x)
+f⁡(x)f(x).
+
+Theorem 0..1
+
+[40, Theorem 9.19].
+Let 
+\Omega\in\mathbb{R}^{m}
+Ω∈ℝm\Omega\in\mathbb{R}^{m} open and convex and let 
+f\in C^{1}(\Omega,\mathbb{R}^{n})
+f∈C1​(Ω,ℝn)f\in C^{1}(\Omega,\mathbb{R}^{n}).
+If there is a constant 
+C&lt;\infty
+C&lt;∞C&lt;\infty such that
+
+\lVert Df(x)\rVert_{2}\leq C~\forall x\in\Omega
+∥D​f​(x)∥2≤C​∀x∈Ω\lVert Df(x)\rVert_{2}\leq C~\forall x\in\Omega
+
+then
+
+\lVert f(x_{1})-f(x_{0})\rVert_{2}\leq C\lVert x_{0}-x_{1}\rVert_{2}
+∥f⁡(x1)−f⁡(x0)∥2≤C​∥x0−x1∥2\lVert f(x_{1})-f(x_{0})\rVert_{2}\leq C\lVert x_{0}-x_{1}\rVert_{2}
+
+Proposition 2
+
+Let 
+L
+LL be the matrix computed via Algorithm 4 with tolerance 
+\varepsilon
+ε\varepsilon and let 
+\Omega\subset\mathbb{R}^{m}
+Ω⊂ℝm\Omega\subset\mathbb{R}^{m} be an open, bounded and convex set.
+If 
+x\in\Omega
+x∈Ωx\in\Omega and 
+\bar{L}Lx\in\Omega
+L¯​L​x∈Ω\bar{L}Lx\in\Omega, 
+f
+ff is analytic in 
+\bar{\Omega}
+Ω¯\bar{\Omega}, and 
+J(x)
+J⁡(x)J(x) can be written in the form given by Equation 3, then it follows that
+
+\lVert Lf(\bar{L}Lx)-Lf(x)\rVert_{2}\leq C\varepsilon\lVert\bar{L}Lx-x\rVert_{2},
+∥L​f​(L¯​L​x)−L​f​(x)∥2≤C​ε​∥L¯​L​x−x∥2,\lVert Lf(\bar{L}Lx)-Lf(x)\rVert_{2}\leq C\varepsilon\lVert\bar{L}Lx-x\rVert_{2},
+
+(9)
+
+where 
+C
+CC is a constant.
+
+Proof
+
+Fix 
+x\in\Omega
+x∈Ωx\in\Omega, by hypothesis 
+x^{R}:=\bar{L}Lx\in\Omega
+xR:=L¯​L​x∈Ωx^{R}:=\bar{L}Lx\in\Omega.
+Let 
+g:\ker L\to\mathbb{R}^{m},~v\mapsto f(v+x^{R})
+g:ker⁡L→ℝm,v↦f⁡(v+xR)g:\ker L\to\mathbb{R}^{m},~v\mapsto f(v+x^{R}).
+
+We claim that
+
+\lVert DLg(v)\rVert_{2}\leq C\varepsilon,~\forall v\in\pi(\Omega),
+∥D​L​g​(v)∥2≤C​ε,∀v∈π⁡(Ω),\lVert DLg(v)\rVert_{2}\leq C\varepsilon,~\forall v\in\pi(\Omega),
+
+(10)
+
+where 
+C
+CC is a constant, and 
+\pi
+π\pi is the projection onto 
+\ker L
+ker⁡L\ker L.
+
+Note that
+
+DLg(v)=LJ(v+x^{R}))\iota
+OPEND​L​g​(v)=L​J​(v+xR))​ιDLg(v)=LJ(v+x^{R}))\iota,
+where 
+J
+JJ is the Jacobian of 
+f
+ff and 
+\iota:\mathbb{R}^{l}\to\mathbb{R}^{m}
+ι:ℝl→ℝm\iota:\mathbb{R}^{l}\to\mathbb{R}^{m} is the inclusion given by 
+v\mapsto(v,0,\dots,0)
+v↦(v,0,…,0)v\mapsto(v,0,\dots,0).
+
+We compute
+
+\lVert DLg(v)\rVert_{2}=\lVert LJ(v+x^{R})\iota\rVert_{2}=\lVert LJ(v+x^{R})\rVert_{2}^{\ker L},
+∥D​L​g​(v)∥2=∥L​J​(v+xR)​ι∥2=∥L​J​(v+xR)∥2ker⁡L,\lVert DLg(v)\rVert_{2}=\lVert LJ(v+x^{R})\iota\rVert_{2}=\lVert LJ(v+x^{R})\rVert_{2}^{\ker L},
+
+(11)
+
+where 
+\lVert\cdot\rVert_{2}^{\ker L}
+∥⋅∥2ker⁡L\lVert\cdot\rVert_{2}^{\ker L} is the norm restricted to 
+\ker L
+ker⁡L\ker L.
+
+Following Equation (11), we have to estimate
+
+\lVert LJ(v+x^{R})u\rVert_{2},\forall v\in\pi(\Omega),u\in\ker L\text{ s.t. }\lVert u\rVert_{2}=1.
+∥L​J​(v+xR)​u∥2,∀v∈π⁡(Ω),u∈ker⁡L​ s.t. ​∥u∥2=1.\lVert LJ(v+x^{R})u\rVert_{2},\forall v\in\pi(\Omega),u\in\ker L\text{ s.t. }\lVert u\rVert_{2}=1.
+
+(12)
+
+To this aim, we will first estimate each entry of the vector 
+LJ(v+x^{R})u
+L​J​(v+xR)​uLJ(v+x^{R})u.
+Denote by 
+e_{i}\in\mathbb{R}^{m}
+ei∈ℝme_{i}\in\mathbb{R}^{m}, the vector of zeroes with one in the 
+i-
+i−i-th entry, and denote by 
+r_{i}
+rir_{i} the 
+i-
+i−i-th row of 
+L
+LL .
+Let 
+p=v+x^{R}
+p=v+xRp=v+x^{R}.
+Given that 
+u\in\ker L
+u∈ker⁡Lu\in\ker L, we have that
+
+\displaystyle\lVert e_{j}LJ(p)u\rVert_{2}
+∥ej​L​J​(p)​u∥2\displaystyle\lVert e_{j}LJ(p)u\rVert_{2}
+
+\displaystyle=\lVert r_{j}J(p)u\rVert_{2}=\lVert r_{j}\left(J(p)-J(p)\bar{L}L\right)u\rVert_{2}.
+=∥rj​J​(p)​u∥2=∥rj​(J⁡(p)−J⁡(p)​L¯​L)​u∥2.\displaystyle=\lVert r_{j}J(p)u\rVert_{2}=\lVert r_{j}\left(J(p)-J(p)\bar{L}L\right)u\rVert_{2}.
+
+Using the fact that 
+J(x)=\sum_{i=1}^{k}J_{i}\mu_{i}(x)
+J⁡(x)=∑i=1kJi​μi​(x)J(x)=\sum_{i=1}^{k}J_{i}\mu_{i}(x), we have
+
+\displaystyle\lVert e_{j}LJ(p)u\rVert_{2}
+∥ej​L​J​(p)​u∥2\displaystyle\lVert e_{j}LJ(p)u\rVert_{2}
+
+\displaystyle=\lVert r_{j}J(v+\bar{L}Lx)u\rVert_{2}
+=∥rj​J​(v+L¯​L​x)​u∥2\displaystyle=\lVert r_{j}J(v+\bar{L}Lx)u\rVert_{2}
+
+\displaystyle=\lVert r_{j}\left(\sum_{i=1}^{k}\left(J_{i}\mu_{i}(p)-J_{i}\mu_{i}(p)\bar{L}L\right)\right)u\rVert_{2}=\lVert\sum_{i=1}^{k}\mu_{i}(p)\left(r_{j}J_{i}-r_{j}J_{i}\bar{L}L\right)u\rVert_{2}.
+=∥rj​(∑i=1k(Ji​μi​(p)−Ji​μi​(p)​L¯​L))​u∥2=∥∑i=1kμi​(p)​(rj​Ji−rj​Ji​L¯​L)​u∥2.\displaystyle=\lVert r_{j}\left(\sum_{i=1}^{k}\left(J_{i}\mu_{i}(p)-J_{i}\mu_{i}(p)\bar{L}L\right)\right)u\rVert_{2}=\lVert\sum_{i=1}^{k}\mu_{i}(p)\left(r_{j}J_{i}-r_{j}J_{i}\bar{L}L\right)u\rVert_{2}.
+
+Using the triangle inequality, and the Cauchy-Schwartz inequality we have that
+
+\displaystyle\lVert e_{j}LJ(p)u\rVert_{2}
+∥ej​L​J​(p)​u∥2\displaystyle\lVert e_{j}LJ(p)u\rVert_{2}
+
+\displaystyle\leq\sum_{i=1}^{k}\lVert\mu_{i}(p)\left(r_{j}J_{i}-r_{j}J_{i}\bar{L}L\right)u\rVert_{2}\leq\sum_{i=1}^{k}\left|\mu_{i}(p)\right|\lVert\left(r_{j}J_{i}-r_{j}J_{i}\bar{L}L\right)\rVert_{2}\lVert u\rVert_{2}
+≤∑i=1k∥μi​(p)​(rj​Ji−rj​Ji​L¯​L)​u∥2≤∑i=1k|μi​(p)|​∥(rj​Ji−rj​Ji​L¯​L)∥2​∥u∥2\displaystyle\leq\sum_{i=1}^{k}\lVert\mu_{i}(p)\left(r_{j}J_{i}-r_{j}J_{i}\bar{L}L\right)u\rVert_{2}\leq\sum_{i=1}^{k}\left|\mu_{i}(p)\right|\lVert\left(r_{j}J_{i}-r_{j}J_{i}\bar{L}L\right)\rVert_{2}\lVert u\rVert_{2}
+
+\displaystyle\leq\sum_{i=1}^{k}\left|\mu_{i}(p)\right|\lVert\left(r_{j}J_{i}-r_{j}J_{i}\bar{L}L\right)\rVert_{2}\leq\sum_{i=1}^{k}\left|\mu_{i}(p)\right|\varepsilon,
+≤∑i=1k|μi​(p)|​∥(rj​Ji−rj​Ji​L¯​L)∥2≤∑i=1k|μi​(p)|​ε,\displaystyle\leq\sum_{i=1}^{k}\left|\mu_{i}(p)\right|\lVert\left(r_{j}J_{i}-r_{j}J_{i}\bar{L}L\right)\rVert_{2}\leq\sum_{i=1}^{k}\left|\mu_{i}(p)\right|\varepsilon,
+
+(13)
+
+where 
+\varepsilon
+ε\varepsilon is the tolerance used in the computation of Algorithm 4.
+
+Since 
+f
+ff is analytic in 
+\bar{\Omega}
+Ω¯\bar{\Omega}, we have that its derivative is bounded in 
+\Omega
+Ω\Omega.
+Therefore each 
+\mu_{i}
+μi\mu_{i} is bounded in 
+\Omega
+Ω\Omega and so, by the extreme value theorem,
+there exists a constant 
+C
+CC such that
+
+\sup_{i,v\in\pi(\Omega)}\left|\mu_{i}(v+x^{R})\right|=C.
+supi,v∈π⁡(Ω)|μi​(v+xR)|=C.\sup_{i,v\in\pi(\Omega)}\left|\mu_{i}(v+x^{R})\right|=C.
+
+(14)
+
+Combining Equation (14) with the previous reasoning we have that
+
+\lVert e_{j}LJ(p)u\rVert_{2}\leq C\varepsilon.
+∥ej​L​J​(p)​u∥2≤C​ε.\lVert e_{j}LJ(p)u\rVert_{2}\leq C\varepsilon.
+
+(15)
+
+Using Equations (11) and (15), we get that
+
+\lVert DLg(v)\rVert_{2}\leq\sqrt{m}C\varepsilon,\forall v\in\pi(\Omega).
+∥D​L​g​(v)∥2≤m​C​ε,∀v∈π⁡(Ω).\lVert DLg(v)\rVert_{2}\leq\sqrt{m}C\varepsilon,\forall v\in\pi(\Omega).
+
+(16)
+
+As 
+\pi
+π\pi is a linear map, the set 
+\pi(\Omega)
+π⁡(Ω)\pi(\Omega) is open and convex.
+Therefore, we can use Equation (16) and Theorem 0..1 to show that
+
+\lVert g(v_{0})-g(v_{1})\rVert_{2}\leq\sqrt{m}C\varepsilon\lVert v_{0}-v_{1}\rVert_{2},\forall v_{0},v_{1}\in\pi(\Omega).
+∥g⁡(v0)−g⁡(v1)∥2≤m​C​ε​∥v0−v1∥2,∀v0,v1∈π⁡(Ω).\lVert g(v_{0})-g(v_{1})\rVert_{2}\leq\sqrt{m}C\varepsilon\lVert v_{0}-v_{1}\rVert_{2},\forall v_{0},v_{1}\in\pi(\Omega).
+
+(17)
+
+Notice that 
+x^{R}=\bar{L}Lx
+xR=L¯​L​xx^{R}=\bar{L}Lx is the projection of 
+x
+xx onto the rowspace of 
+L
+LL.
+It follows that 
+\pi(\bar{L}Lx)=0
+π⁡(L¯​L​x)=0\pi(\bar{L}Lx)=0, and so 
+0\in\pi(\Omega)
+0∈π⁡(Ω)0\in\pi(\Omega).
+Moreover since 
+x\in\Omega
+x∈Ωx\in\Omega, it follows that 
+\pi(x)=x-\bar{L}Lx\in\pi(\Omega)
+π⁡(x)=x−L¯​L​x∈π⁡(Ω)\pi(x)=x-\bar{L}Lx\in\pi(\Omega).
+So we can set 
+v_{0}=0
+v0=0v_{0}=0 and 
+v_{1}=\pi(x)
+v1=π⁡(x)v_{1}=\pi(x) in Equation (17) to get that
+
+\displaystyle\lVert g(0)-g(\pi(x))\rVert_{2}
+∥g⁡(0)−g⁡(π⁡(x))∥2\displaystyle\lVert g(0)-g(\pi(x))\rVert_{2}
+
+\displaystyle\leq\sqrt{m}C\varepsilon\lVert 0-\pi(x)\rVert_{2}
+≤m​C​ε​∥0−π⁡(x)∥2\displaystyle\leq\sqrt{m}C\varepsilon\lVert 0-\pi(x)\rVert_{2}
+
+\displaystyle\lVert f(\bar{L}Lx)-f(x)\rVert_{2}
+∥f⁡(L¯​L​x)−f⁡(x)∥2\displaystyle\lVert f(\bar{L}Lx)-f(x)\rVert_{2}
+
+\displaystyle\leq\sqrt{m}C\varepsilon\lVert\bar{L}Lx-x\rVert_{2},
+≤m​C​ε​∥L¯​L​x−x∥2,\displaystyle\leq\sqrt{m}C\varepsilon\lVert\bar{L}Lx-x\rVert_{2},
+
+where there last result follows from the definition of 
+x^{R}
+xRx^{R} and the fact that 
+x=x^{R}+\pi(x)
+x=xR+π⁡(x)x=x^{R}+\pi(x), as we wanted to prove.
+
+Proposition 3
+
+Let 
+f:\mathbb{R}^{m}\rightarrow\mathbb{R}^{m}
+f:ℝm→ℝmf:\mathbb{R}^{m}\rightarrow\mathbb{R}^{m} be an analytic function on a compact set 
+\Omega\subset\mathbb{R}^{m}
+Ω⊂ℝm\Omega\subset\mathbb{R}^{m}.
+Assume we can write 
+J(x)
+J⁡(x)J(x) in the form given by Equation 3, where 
+J_{i}\in\mathbb{R}^{m\times m}
+Ji∈ℝm×mJ_{i}\in\mathbb{R}^{m\times m} and 
+\{\mu_{i}(x)\ :\ i=1,\ldots,N\}
+{μi(x):i=1,…,N}\{\mu_{i}(x)\ :\ i=1,\ldots,N\} are 
+\mathbb{R}
+ℝ\mathbb{R}-linearly independent and analytic on 
+\Omega
+Ω\Omega.
+Consider 
+x_{1},\ldots,x_{N}\in\Omega
+x1,…,xN∈Ωx_{1},\ldots,x_{N}\in\Omega such that 
+\{J(x_{1}),\ldots,J(x_{N})\}
+{J⁡(x1),…,J⁡(xN)}\{J(x_{1}),\ldots,J(x_{N})\} is a basis of the vector space 
+\mathcal{V}_{J}
+𝒱J\mathcal{V}_{J}.
+Given a matrix 
+L\in\mathbb{R}^{p\times m}
+L∈ℝp×mL\in\mathbb{R}^{p\times m} if there is an 
+\varepsilon&gt;0
+ε&gt;0\varepsilon&gt;0 such that for all 
+i=1,\ldots,N
+i=1,…,Ni=1,\ldots,N and all rows of 
+r
+rr of 
+LJ(x_{i})
+L​J​(xi)LJ(x_{i})
+
+||r-\bar{L}Lr||_{2}&lt;\varepsilon,
+‖r−L¯​L​r‖2&lt;ε,||r-\bar{L}Lr||_{2}&lt;\varepsilon,
+
+then there exists a constant 
+C&gt;0
+C&gt;0C&gt;0 such that
+for all 
+i=0,\ldots,N
+i=0,…,Ni=0,\ldots,N and all rows 
+s
+ss of 
+LJ_{i}
+L​JiLJ_{i} we have
+
+||s-\bar{L}Ls||_{2}&lt;C\varepsilon.
+‖s−L¯​L​s‖2&lt;C​ε.||s-\bar{L}Ls||_{2}&lt;C\varepsilon.
+
+Proof
+
+It is clear that the matrices 
+J_{i}
+JiJ_{i} generate the space 
+\mathcal{V}_{J}
+𝒱J\mathcal{V}_{J} and they belong to it.
+At the same time, we have by assumption that
+
+J(x_{i})
+J⁡(xi)J(x_{i}) is a basis of 
+\mathcal{V}
+𝒱\mathcal{V}.
+Hence:
+
+J_{i}=c_{i,1}J(x_{1})+\ldots+c_{i,N}J(x_{N}).
+Ji=ci,1​J​(x1)+…+ci,N​J​(xN).J_{i}=c_{i,1}J(x_{1})+\ldots+c_{i,N}J(x_{N}).
+
+Multiplying by 
+L
+LL to the left, we obtain:
+
+LJ_{i}=c_{i,1}LJ(x_{1})+\ldots+c_{i,N}LJ(x_{N})
+L​Ji=ci,1​L​J​(x1)+…+ci,N​L​J​(xN)LJ_{i}=c_{i,1}LJ(x_{1})+\ldots+c_{i,N}LJ(x_{N}).
+
+Therefore, all rows of 
+LJ_{i}
+L​JiLJ_{i} are linear combinations of rows of the matrices 
+LJ(x_{1}),\ldots,LJ(x_{N})
+L​J​(x1),…,L​J​(xN)LJ(x_{1}),\ldots,LJ(x_{N}).
+Let us denote by 
+s_{i,j}
+si,js_{i,j} and 
+r_{i,j}
+ri,jr_{i,j} the 
+j
+jj-th row of 
+LJ_{i}
+L​JiLJ_{i} and of 
+LJ(x_{i})
+L​J​(xi)LJ(x_{i}), resp. Then we have:
+
+s_{i,j}=c_{i,1}r_{1,j}+\ldots+c_{i,N}r_{N,j}
+si,j=ci,1​r1,j+…+ci,N​rN,js_{i,j}=c_{i,1}r_{1,j}+\ldots+c_{i,N}r_{N,j}, which means that:
+
+\displaystyle||s_{i,j}-s_{i,j}\bar{L}L||_{2}
+‖si,j−si,j​L¯​L‖2\displaystyle||s_{i,j}-s_{i,j}\bar{L}L||_{2}
+
+\displaystyle=\left|\left|c_{i,1}\left(r_{1,j}-r_{1,j}\bar{L}L\right)+\ldots+c_{i,N}\left(r_{N,j}-r_{N,j}\bar{L}L\right)\right|\right|_{2}
+=||ci,1​(r1,j−r1,j​L¯​L)+…+ci,N​(rN,j−rN,j​L¯​L)||2\displaystyle=\left|\left|c_{i,1}\left(r_{1,j}-r_{1,j}\bar{L}L\right)+\ldots+c_{i,N}\left(r_{N,j}-r_{N,j}\bar{L}L\right)\right|\right|_{2}
+
+\displaystyle\leq\left|\left|c_{i,1}\left(r_{1,j}-r_{1,j}\bar{L}L\right)\right|\right|_{2}+\ldots+\left|\left|c_{i,N}\left(r_{N,j}-r_{N,j}\bar{L}L\right)\right|\right|_{2}
+≤||ci,1​(r1,j−r1,j​L¯​L)||2+…+||ci,N​(rN,j−rN,j​L¯​L)||2\displaystyle\leq\left|\left|c_{i,1}\left(r_{1,j}-r_{1,j}\bar{L}L\right)\right|\right|_{2}+\ldots+\left|\left|c_{i,N}\left(r_{N,j}-r_{N,j}\bar{L}L\right)\right|\right|_{2}
+
+\displaystyle\leq N\max\{|c_{i,1}|,\ldots,|c_{i,N}|\}\varepsilon
+≤N​max⁡{|ci,1|,…,|ci,N|}​ε\displaystyle\leq N\max\{|c_{i,1}|,\ldots,|c_{i,N}|\}\varepsilon
+
+Thus, the statement is true by taking 
+C=N\max\{|c_{i,j}|\ :\ i,j=1,\ldots,N\}
+C=Nmax{|ci,j|:i,j=1,…,N}C=N\max\{|c_{i,j}|\ :\ i,j=1,\ldots,N\}.
+
+Lemma 3
+
+In the context of Proposition 2, if there is a set of 
+\mathbb{R}^{m\times m}
+ℝm×m\mathbb{R}^{m\times m} matrices 
+\{J_{1},\dots,J_{N}\}
+{J1,…,JN}\{J_{1},\dots,J_{N}\} s.t. they span 
+\mathcal{V}_{J}
+𝒱J\mathcal{V}_{J}, then
+
+\lVert f(\bar{L}Lx)-f(x)\rVert_{2}\leq\sqrt{m}C^{\prime}C\varepsilon\lVert\bar{L}Lx-x\rVert_{2},
+∥f⁡(L¯​L​x)−f⁡(x)∥2≤m​C′​C​ε​∥L¯​L​x−x∥2,\lVert f(\bar{L}Lx)-f(x)\rVert_{2}\leq\sqrt{m}C^{\prime}C\varepsilon\lVert\bar{L}Lx-x\rVert_{2},
+where 
+C
+CC is the constant given by Proposition 3 and 
+C^{\prime}=\sup_{i,x\in\Omega}\left\lvert\mu_{i}(x)\right\lvert
+C′=supi,x∈Ω|μi(x)|C^{\prime}=\sup_{i,x\in\Omega}\left\lvert\mu_{i}(x)\right\lvert
+
+Proof
+
+Recall, the extended Algorithm 4 checks that
+
+\lVert rJ(x_{i})-\bar{L}LrJ(x_{i})\rVert_{2}\leq\varepsilon,
+∥r​J​(xi)−L¯​L​r​J​(xi)∥2≤ε,\lVert rJ(x_{i})-\bar{L}LrJ(x_{i})\rVert_{2}\leq\varepsilon,
+for all rows 
+r
+rr of 
+L
+LL and all 
+i=1,\dots,N
+i=1,…,Ni=1,\dots,N, where 
+x_{1},\ldots,x_{N}\in\Omega
+x1,…,xN∈Ωx_{1},\ldots,x_{N}\in\Omega.
+By using Proposition 3, we get that there is a constant 
+C
+CC such that
+
+\lVert rJ{i}-\bar{L}LrJ_{i}\rVert_{2}\leq C\varepsilon
+∥r​J​i−L¯​L​r​Ji∥2≤C​ε\lVert rJ{i}-\bar{L}LrJ_{i}\rVert_{2}\leq C\varepsilon
+for all 
+i=1,\dots,N
+i=1,…,Ni=1,\dots,N, where, by hypothesis, we can write 
+J(x)=\sum_{i=0}^{N}J_{i}\mu_{i}(x)
+J⁡(x)=∑i=0NJi​μi​(x)J(x)=\sum_{i=0}^{N}J_{i}\mu_{i}(x) with 
+J_{i}\in\mathbb{R}^{n\times n}
+Ji∈ℝn×nJ_{i}\in\mathbb{R}^{n\times n} and 
+\{\mu_{i}(x)\ :\ i=1,\ldots,N\}
+{μi(x):i=1,…,N}\{\mu_{i}(x)\ :\ i=1,\ldots,N\} being 
+\mathbb{R}
+ℝ\mathbb{R}-linearly independent and analytic on 
+\Omega
+Ω\Omega. We follow the reasoning of the proof of Proposition 2, up to Equation 13.
+There by the fact that each 
+\mu_{i}(x)
+μi​(x)\mu_{i}(x) is bounded, we have that
+
+\lVert e_{j}LJ(p)u\rVert_{2}\leq\sum_{i=1}^{k}\left|\mu_{i}(p)\right|\lVert\left(r_{j}J_{i}-r_{j}J_{i}\bar{L}L\right)\rVert_{2}\leq C^{\prime}C\epsilon,
+∥ej​L​J​(p)​u∥2≤∑i=1k|μi​(p)|​∥(rj​Ji−rj​Ji​L¯​L)∥2≤C′​C​ϵ,\lVert e_{j}LJ(p)u\rVert_{2}\leq\sum_{i=1}^{k}\left|\mu_{i}(p)\right|\lVert\left(r_{j}J_{i}-r_{j}J_{i}\bar{L}L\right)\rVert_{2}\leq C^{\prime}C\epsilon,
+
+where 
+C^{\prime}=\sup_{i,v\in\pi(\Omega)}\left|\mu_{i}(v+x^{R})\right|
+C′=supi,v∈π⁡(Ω)|μi​(v+xR)|C^{\prime}=\sup_{i,v\in\pi(\Omega)}\left|\mu_{i}(v+x^{R})\right|.
+The result follows by continuing the aforementioned reasoning.
+
+Proof (Theorem 3.3)
+
+As 
+f
+ff is analytic in 
+\bar{\Omega}
+Ω¯\bar{\Omega}, we can use Lemma 3 for each 
+t\in[0,T]
+t∈[0,T]t\in[0,T] and each solution 
+x(t)
+x⁡(t)x(t) with initial conditions in 
+S
+SS to get
+
+\lVert Lf(\bar{L}Lx(t))-Lf(x)\rVert_{2}\leq\sqrt{m}C^{\prime}C\varepsilon\lVert\bar{L}Lx(t)-x(t)\rVert_{2},
+∥L​f​(L¯​L​x​(t))−L​f​(x)∥2≤m​C′​C​ε​∥L¯​L​x​(t)−x⁡(t)∥2,\lVert Lf(\bar{L}Lx(t))-Lf(x)\rVert_{2}\leq\sqrt{m}C^{\prime}C\varepsilon\lVert\bar{L}Lx(t)-x(t)\rVert_{2},
+
+(18)
+
+for all 
+t\in[0,T]
+t∈[0,T]t\in[0,T].
+
+Since 
+\Omega
+Ω\Omega is compact by hypothesis, it is closed and bounded.
+Therefore, there exists an open ball 
+B(K/2)
+B⁡(K/2)B(K/2) with center in 
+\Omega
+Ω\Omega such that 
+\Omega\in B(K/2)
+Ω∈B⁡(K/2)\Omega\in B(K/2).
+Consequently, we obtain the following bound
+
+\lVert\bar{L}Lx(t)-x(t)\rVert_{2}&lt;K.
+∥L¯​L​x​(t)−x⁡(t)∥2&lt;K.\lVert\bar{L}Lx(t)-x(t)\rVert_{2}&lt;K.
+
+(19)
+
+The result follows by combining Equations (18) and (19)
+
+Proof (Lemma 1)
+
+Consider a matrix of observables 
+M\in\mathbb{R}^{l\times m}
+M∈ℝl×mM\in\mathbb{R}^{l\times m} of rank 
+l
+ll with 
+j-
+j−j-th row denoted by 
+r_{j}
+rjr_{j} and a decomposition of the Jacobian 
+J(x)=\sum_{i=1}^{n}J_{i}\mu_{i}(x)
+J⁡(x)=∑i=1nJi​μi​(x)J(x)=\sum_{i=1}^{n}J_{i}\mu_{i}(x).
+Let 
+\varepsilon_{max}
+εm​a​x\varepsilon_{max} be given by Equation 8.
+It follows that
+
+\lVert r_{j}J_{i}-r_{i}J_{i}P_{L}\rVert_{2}\leq\varepsilon_{max},
+∥rj​Ji−ri​Ji​PL∥2≤εm​a​x,\lVert r_{j}J_{i}-r_{i}J_{i}P_{L}\rVert_{2}\leq\varepsilon_{max},
+for all 
+j=1,\dots,l
+j=1,…,lj=1,\dots,l and 
+i=1,\dots,n
+i=1,…,ni=1,\dots,n.
+Using 
+\varepsilon_{max}
+εm​a​x\varepsilon_{max} (or any 
+\varepsilon&gt;\varepsilon_{max}
+ε&gt;εm​a​x\varepsilon&gt;\varepsilon_{max} as input for Algorithm 4 implies that the condition in Line 6 will be false.
+Thus, exiting the loop and returning a matrix whose rows are orthonormal rows spanning 
+\rsp(M)
+rowsp(M)\rsp(M).
+
+To show that 
+\varepsilon_{max}
+εm​a​x\varepsilon_{max} is the lowest upper bound on 
+\varepsilon
+ε\varepsilon, assume 
+\varepsilon^{*}\leq\varepsilon_{max}
+ε∗≤εm​a​x\varepsilon^{*}\leq\varepsilon_{max} is such that
+Algorithm 4 outputs orthonormal rows spanning 
+\rsp(M)
+rowsp(M)\rsp(M).
+This implies that
+
+\max_{i,j}\lVert r_{j}J_{i}-r_{i}J_{i}P_{L}\rVert_{2}\leq\varepsilon^{*}
+maxi,j⁡∥rj​Ji−ri​Ji​PL∥2≤ε∗\max_{i,j}\lVert r_{j}J_{i}-r_{i}J_{i}P_{L}\rVert_{2}\leq\varepsilon^{*}.
+By the definition of 
+\varepsilon_{max}
+εm​a​x\varepsilon_{max}, it follows that 
+\varepsilon^{*}=\varepsilon_{max}
+ε∗=εm​a​x\varepsilon^{*}=\varepsilon_{max}, as we wanted to prove.
+
+    Experimental support, please
+    view the build logs
+    for errors. Generated by
+
+        L
+        A
+        T
+        E
+      
+      xml
+      
+    .
+
+Instructions for reporting errors
+
+We are continuing to improve HTML versions of papers, and your feedback helps enhance accessibility and mobile
+      support. To report errors in the HTML that will help us improve conversion and rendering, choose any of the
+      methods listed below:
+
+Click the &quot;Report Issue&quot; (
+            
+          ) button, located in the page header.
+
+Tip: You can select the relevant text first, to include it in your report.
+
+Our team has already identified the following issues. We appreciate your time reviewing and reporting rendering errors we
+      may not have found yet. Your efforts will help us improve the HTML versions for all readers, because disability
+      should not be a barrier to accessing research. Thank you for your continued support in championing open access for
+      all.
+
+Have a free development cycle? Help support accessibility at arXiv! Our collaborators at LaTeXML maintain a list of packages that need conversion, and welcome developer contributions.
+
+        We gratefully acknowledge support from
+        our major funders,
+        member institutions, ,
+        and all contributors.
+
+Major funding support from</pre></html>

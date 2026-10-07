@@ -1,0 +1,113 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>&quot;&quot;&quot;Training and freezing only: no heldout truth or detector noise is accessed.&quot;&quot;&quot;</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>&quot;&quot;&quot;Training and freezing only: no heldout truth or detector noise is accessed.&quot;&quot;&quot;</h1><p>Source ID d-031c611312b39999; literature/sources/r07_analysis/cycle2/freeze_designs_snapshot.py; 2012 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>&quot;&quot;&quot;Training and freezing only: no heldout truth or detector noise is accessed.&quot;&quot;&quot;
+import json,time,hashlib,itertools
+from pathlib import Path
+from fractions import Fraction as F
+import numpy as np
+from model import build,derivative,detector_frame,secant_certificate
+from frame_optimizer import optimize_frames
+
+ROOT=Path(__file__).resolve().parents[3]
+OUT=ROOT/&#x27;results/rank_pde/cycle2&#x27;
+OUT.mkdir(parents=True,exist_ok=True)
+
+def signfix(g):
+    g=np.asarray(g);g=g/np.linalg.norm(g)
+    return g if g[np.argmax(abs(g))]&gt;=0 else -g
+
+def unique(gs):
+    ans=[]
+    for g in gs:
+        g=signfix(g)
+        if not any(np.linalg.norm(g-h)&lt;1e-10 for h in ans):ans.append(g)
+    return ans
+
+def mass_fraction(n=4):
+    N=4*n;M=[[F(0) for _ in range(N)] for _ in range(N)]
+    for i in range(N):
+        j=(i+1)%N
+        M[i][i]+=F(2,6*n);M[j][j]+=F(2,6*n)
+        M[i][j]+=F(1,6*n);M[j][i]+=F(1,6*n)
+    return M
+
+def bilinear(M,x,y):return sum(x[i]*M[i][j]*y[j] for i in range(len(x)) for j in range(len(y)))
+
+def quantize_trace(x):
+    raw=[F(int(np.rint(v*2**32)),2**32) for v in x]
+    mean=sum(raw)/len(raw)
+    return [v-mean for v in raw]
+
+def fracstr(x):return str(x.numerator)+&#x27;/&#x27;+str(x.denominator)
+
+def finalize(model,design,label):
+    V=model[&#x27;boundary_values&#x27;];M=mass_fraction()
+    gs=[quantize_trace(V@g) for g,q in design]
+    qs=[[quantize_trace(V@row) for row in q] for g,q in design]
+    energy=sum(bilinear(M,g,g) for g in gs)
+    norms=[[bilinear(M,q,q) for q in rows] for rows in qs]
+    assert all(sum(g)==0 for g in gs)
+    assert all(sum(q)==0 for rows in qs for q in rows)
+    assert energy&gt;0 and all(n&gt;0 for rows in norms for n in rows)
+    return {&#x27;label&#x27;:label,&#x27;raw_currents&#x27;:[[fracstr(v) for v in g] for g in gs],
+            &#x27;raw_tests&#x27;:[[[fracstr(v) for v in q] for q in rows] for rows in qs],
+            &#x27;total_raw_energy&#x27;:fracstr(energy),&#x27;raw_test_norms&#x27;:[[fracstr(n) for n in row] for row in norms],
+            &#x27;normalization&#x27;:&#x27;g_raw/sqrt(total_raw_energy); each q_raw/sqrt(its raw_test_norm); same definition for certificate and data&#x27;,
+            &#x27;mode_design_diagnostic&#x27;:{&#x27;currents&#x27;:[g.tolist() for g,q in design],&#x27;tests&#x27;:[q.tolist() for g,q in design]},
+            &#x27;floating_secant_certificate_before_rounding&#x27;:secant_certificate(model,design,.05)}
+
+def main():
+    start=time.perf_counter();m=build();D=derivative(m,[0,0]);p=D.shape[1]
+    rng=np.random.default_rng(2026100642)
+    critical=[]
+    for A in [D[0],D[1],D[0]+D[1]]:
+        ev,U=np.linalg.eigh(A);critical.extend([U[:,0],U[:,-1]])
+    candidates=unique(list(np.eye(p))+list(rng.normal(size=(512,p)))+critical)
+    records=[]
+    for k,g in enumerate(candidates):
+        J=np.stack([A@g for A in D],axis=1)
+        if np.linalg.svd(J,compute_uv=False)[-1]&lt;=1e-12:
+            records.append({&#x27;id&#x27;:k,&#x27;status&#x27;:&#x27;UNKNOWN&#x27;,&#x27;score&#x27;:-1e100});continue
+        q=detector_frame(J,4);c=secant_certificate(m,[(g,q)],.05)
+        records.append({&#x27;id&#x27;:k,&#x27;status&#x27;:&#x27;positive&#x27; if c[&#x27;global_secant_lower&#x27;]&gt;0 else &#x27;UNKNOWN&#x27;,&#x27;score&#x27;:c[&#x27;global_secant_lower&#x27;],**c})
+    ranked=sorted(records,key=lambda z:z[&#x27;score&#x27;],reverse=True)
+    best=candidates[ranked[0][&#x27;id&#x27;]];single=[(best,detector_frame(np.stack([A@best for A in D],axis=1),4))]
+    pool=unique([candidates[z[&#x27;id&#x27;]] for z in ranked[:12]]+list(np.eye(p))+critical)
+    finalists=[];outer_iterations=0;outer_count=0
+    for i,j in itertools.combinations(range(len(pool)),2):
+        for w in [.125,.25,.375,.5,.625,.75,.875]:
+            gs=[np.sqrt(w)*pool[i],np.sqrt(1-w)*pool[j]]
+            Js=[np.stack([A@g for A in D],axis=1) for g in gs]
+            result=optimize_frames(Js,iterations=100)
+            outer_iterations+=result[&#x27;iterations&#x27;];outer_count+=1
+            design=list(zip(gs,result[&#x27;frames&#x27;]));c=secant_certificate(m,design,.05)
+            rec={&#x27;i&#x27;:i,&#x27;j&#x27;:j,&#x27;w&#x27;:w,&#x27;score&#x27;:c[&#x27;global_secant_lower&#x27;],&#x27;design&#x27;:design,&#x27;optimizer&#x27;:{k:v for k,v in result.items() if k!=&#x27;frames&#x27;},&#x27;certificate&#x27;:c}
+            finalists.append(rec);finalists=sorted(finalists,key=lambda z:z[&#x27;score&#x27;],reverse=True)[:10]
+    all_finalists=finalists.copy();refined_iterations=0
+    for f in finalists:
+        gs=[np.sqrt(f[&#x27;w&#x27;])*pool[f[&#x27;i&#x27;]],np.sqrt(1-f[&#x27;w&#x27;])*pool[f[&#x27;j&#x27;]]]
+        Js=[np.stack([A@g for A in D],axis=1) for g in gs]
+        result=optimize_frames(Js,iterations=10000);refined_iterations+=result[&#x27;iterations&#x27;]
+        design=list(zip(gs,result[&#x27;frames&#x27;]));c=secant_certificate(m,design,.05)
+        all_finalists.append({**f,&#x27;design&#x27;:design,&#x27;score&#x27;:c[&#x27;global_secant_lower&#x27;],&#x27;optimizer&#x27;:{k:v for k,v in result.items() if k!=&#x27;frames&#x27;},&#x27;certificate&#x27;:c,&#x27;refined&#x27;:True})
+    chosen=max(all_finalists,key=lambda z:z[&#x27;score&#x27;]);multi=chosen[&#x27;design&#x27;]
+    # Random stimulus and reference-based detector designs are frozen before truths/noise.
+    rng=np.random.default_rng(2026100644);random=[]
+    for i in range(128):
+        g=rng.normal(size=p);g/=np.linalg.norm(g);J=np.stack([A@g for A in D],axis=1)
+        try:q=detector_frame(J,4)
+        except ValueError:
+            U,_,_=np.linalg.svd(J,full_matrices=False);q=np.vstack([U.T,U.T])
+        random.append(finalize(m,[(g,q)],&#x27;random_&#x27;+str(i)))
+    plans={&#x27;optimized_single&#x27;:finalize(m,single,&#x27;optimized_single&#x27;),&#x27;optimized_multi&#x27;:finalize(m,multi,&#x27;optimized_multi&#x27;),&#x27;random&#x27;:random}
+    # secant_certificate deliberately recomputes reference derivatives. Charge
+    # those redundant solves in this implementation rather than pretending cache.
+    solves=1+sum(z[&#x27;status&#x27;]!=&#x27;deficient&#x27; and z[&#x27;score&#x27;]&gt;-1e90 for z in records)+outer_count+len(finalists)+130
+    costs={&#x27;single_candidates&#x27;:len(candidates),&#x27;multi_pool_size&#x27;:len(pool),&#x27;multi_outer_candidates&#x27;:outer_count,&#x27;outer_solver_iterations&#x27;:outer_iterations,&#x27;refined_solver_iterations&#x27;:refined_iterations,&#x27;random_reference_frame_designs&#x27;:128,&#x27;assembly_count&#x27;:1,&#x27;reference_forward_derivative_factorizations&#x27;:solves,&#x27;reference_RHS&#x27;:15*solves,&#x27;wall_seconds&#x27;:time.perf_counter()-start,&#x27;cost_note&#x27;:&#x27;Actual redundant derivative solves charged; no cache assumption. Assembly also solves32 local3x3 coefficient systems.&#x27;}
+    train={&#x27;candidate_records&#x27;:records,&#x27;selected_single_id&#x27;:ranked[0][&#x27;id&#x27;],&#x27;selected_multi&#x27;:{k:v for k,v in chosen.items() if k!=&#x27;design&#x27;},&#x27;costs&#x27;:costs,&#x27;finalist_records&#x27;:[{k:v for k,v in f.items() if k!=&#x27;design&#x27;} for f in all_finalists]}
+    (OUT/&#x27;frozen_designs.json&#x27;).write_text(json.dumps(plans,indent=2))
+    (OUT/&#x27;training.json&#x27;).write_text(json.dumps(train,indent=2))
+    hashes={str(path.relative_to(ROOT)):hashlib.sha256(path.read_bytes()).hexdigest() for path in [OUT/&#x27;frozen_designs.json&#x27;,OUT/&#x27;training.json&#x27;,ROOT/&#x27;notes/rank_pde/cycle2/preregistration.json&#x27;,Path(__file__),Path(__file__).with_name(&#x27;model.py&#x27;),Path(__file__).with_name(&#x27;frame_optimizer.py&#x27;)]}
+    (OUT/&#x27;freeze_hashes.json&#x27;).write_text(json.dumps(hashes,indent=2))
+    print(json.dumps({&#x27;single&#x27;:plans[&#x27;optimized_single&#x27;][&#x27;floating_secant_certificate_before_rounding&#x27;],&#x27;multi&#x27;:plans[&#x27;optimized_multi&#x27;][&#x27;floating_secant_certificate_before_rounding&#x27;],&#x27;selected_multi_gap&#x27;:chosen[&#x27;optimizer&#x27;],&#x27;costs&#x27;:costs,&#x27;frozen_sha256&#x27;:hashes[str((OUT/&#x27;frozen_designs.json&#x27;).relative_to(ROOT))]},indent=2))
+
+if __name__==&#x27;__main__&#x27;:main()
+</pre></html>

@@ -1,0 +1,3955 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>LieDiscover: Adaptive Symbolic Library Construction for Explicit Open-form Symmetry Discovery</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>LieDiscover: Adaptive Symbolic Library Construction for Explicit Open-form Symmetry Discovery</h1><p>Source ID d-e811ea4a770d6a5b; literature/sources/r16_proof_methods/lie-discover-v1.html; 53035 o200k tokens; role primary_source_or_metadata; extraction html_text_discovery_only_math_may_be_lossy. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>LieDiscover: Adaptive Symbolic Library Construction for Explicit Open-form Symmetry Discovery
+
+      Report GitHub Issue
+      ×
+
+      Title:
+
+Content selection saved. Describe the issue below:
+
+      Description:
+
+      Submit without GitHub
+      Submit in GitHub
+
+    arXiv is now an independent nonprofit!
+    Learn more
+    ×
+
+      Back to arXiv
+
+\Theta_{n}
+
+    License: arXiv.org perpetual non-exclusive license
+
+arXiv:2609.33663v1 [cs.SC] 27 Sep 2026
+
+LieDiscover: Adaptive Symbolic Library Construction for Explicit Open-form Symmetry Discovery
+
+Xinxin Li
+
+  
+Jianming Ma
+
+  
+Xingyu Cui
+
+  
+Da Li
+
+  
+Juan Zhang
+
+  
+Junping Yin
+
+Abstract
+
+Discovering underlying symmetries from data has emerged as a crucial challenge in scientific discovery. Existing data-driven methods for symmetry discovery fail to determine the exact number and mathematical form of unknown infinitesimal generators. Recent explicit methods represent generators using a predefined function library and identify them through algebraic optimization, but they often struggle to capture complex symmetries involving high-order polynomials or transcendental functions. To address this limitation, we formulate symmetry discovery as a joint optimization problem over the function library and coefficients. We propose a novel framework that leverages an encoder-decoder architecture to dynamically generate symbolic expressions and expand the library. This generation process is optimized via reinforcement learning, which accelerates the exploration of the symbolic search space through step-wise rewards. Experiments demonstrate that LieDiscover can successfully uncover open-form infinitesimal generators involving high-order polynomials or transcendental functions, which remain intractable for existing methods. The discovered symmetries also improve performance in downstream PDE solving and discovery tasks.
+
+1East China Normal University 2Shanghai Jiao Tong University 3Beihang University
+
+4 Institute of Applied Physics and Computational Mathematics 5Northeast Normal University
+
+Introduction
+
+Symmetry is fundamentally defined as invariance under a group of transformations (Weyl 2015). It is widely applied across fields ranging from fundamental physics (Gross 1996) to modern machine learning (Bronstein et al. 2021; Cohen and Welling 2016; Kondor and Trivedi 2018). Crucially, leveraging symmetries has been shown to reduce problem complexity (Udrescu and Tegmark 2020), improve model generalization (Benton et al. 2020), and provide powerful priors for scientific discovery (Yang et al. 2025; Chen et al. 2024). These benefits typically rely on prior knowledge of the underlying symmetries, which is often unavailable in practice. Consequently, discovering symmetries directly from data has become an increasingly important problem.
+
+Existing symmetry discovery methods have evolved from selecting symmetries within predefined transformation families to discovering infinitesimal generators directly from data. While methods such as LieGAN (Yang et al. 2023b) and LieSD (Hu et al. 2025c) have successfully automated the discovery of linear symmetries, their underlying mathematical modeling relies on matrix representations. This limitation makes their methods ineffective at capturing nonlinear symmetries in real-world systems. To improve the ability to model complex symmetries, recent methods have extended their capabilities to learn nonlinear symmetries. LaLiGAN (Yang et al. 2023a) overcomes this challenge by using an encoder-decoder architecture to map data into a latent space, where nonlinear symmetries can be modeled as linear transformations. Alternatively, Ko et al. (2024) parameterize the infinitesimal generators using multilayer perceptrons (MLPs) to extract symmetries directly from data.
+
+Despite these advancements in capturing nonlinear symmetries, existing methods still struggle to meet the demands of downstream physical applications. Specifically, approaches built upon black-box neural architectures suffer from a lack of interpretability, failing to output intuitive formulas for generators. Even when methods attempt to offer interpretability, such as Shaw et al. (2024) framing the problem as an interpretable equation-solving task, their approach is restricted to low-dimensional systems. More importantly, current methods generally fail to determine the exact number and mathematical form of unknown generators. The lack of mathematical representation hinders their direct application in tasks such as the discovery of partial differential equations (PDEs). LieNLSD (Hu et al. 2025a) formulates infinitesimal generators as linear combinations of a predefined function library, effectively reducing the complex symmetry discovery task to a linear-system solving problem. It explicitly determines the exact number and the mathematical forms of unknown generators for the first time. However, this method is constrained by the predefined library, rendering it incapable of capturing complex symmetries whose infinitesimal generators involve high-order polynomials or transcendental functions.
+
+To overcome this restriction, we propose LieDiscover, a novel framework that eliminates the reliance on the predefined function library. By jointly discovering the optimal function library with its corresponding coefficients, our method enables the automated discovery of open-form infinitesimal generators. Specifically, initialized with a basic library restricted to linear symmetries, our approach leverages an encoder-decoder architecture to dynamically generate and append symbolic trees to the library. Guided by immediate step-wise rewards, this entire generative process can be efficiently optimized using reinforcement learning. In summary, our contributions are as follows:
+
+• 
+
+We formulate open-form infinitesimal generator discovery as a joint optimization problem over the function library and its coefficients, enabling the automated discovery of explicit open-form generators.
+
+• 
+
+We establish a reinforcement learning framework for adaptive symbolic library construction, which utilizes immediate step-wise rewards to efficiently guide the search process.
+
+• 
+
+We successfully apply the discovered symmetries to PDE solving and PDE discovery tasks, substantially improving model accuracy.
+
+Related Work
+
+Symmetry Discovery. Symmetry
+discovery aims to identify symmetries in data. Early methods (Benton et al. 2020; Zhou et al. 2020; Romero and Lohit 2022; van der Ouderaa et al. 2023; Krippendorf and Syvaeri 2021) perform symmetry selection within a predefined transformation family. While these methods automatically identify transformations from the data, they cannot uncover symmetries that lie beyond their predefined group or parameterization.
+
+Recent methods learn symmetries via infinitesimal generators without relying on predefined groups. First, methods like L-conv (Dehmamy et al. 2021) jointly learn generators alongside network parameters. Second, post-hoc approaches extract symmetries from trained models. For instance, LieGG (Moskalev et al. 2022) finds invariances using a polarization matrix, while LieSD (Hu et al. 2025c) recovers Lie algebra bases via a null-space method. Third, SymmetryGAN (Desai et al. 2022) and LieGAN (Yang et al. 2023b) use adversarial training to find transformations that preserve data distributions. However, because all these methods represent generators as constant matrices, they are limited to linear symmetries.
+
+More recent studies have begun to explore nonlinear symmetry discovery. LaLiGAN (Yang et al. 2023a) learns a latent representation in which nonlinear symmetries become linear. Rather than relying on such a latent-space linearization, Ko et al. (2024) and Shaw et al. (2024) directly model nonlinear infinitesimal generators, using neural vector fields and manifold tangent vector fields, respectively. However, the recovered generators remain implicit. For explicit discovery, LieNLSD (Hu et al. 2025a) represents nonlinear infinitesimal generators using a predefined function library, thereby transforming symmetry discovery into the problem of solving a linear system. But its reliance on a predefined library restricts the learned generators to the span of the predefined functions. To overcome this restriction, we propose LieDiscover, an explicit framework for open-form symmetry discovery. Instead of restricting generators to a predefined library, LieDiscover automatically expands the search space by generating candidate functions from data.
+
+Applications of Symmetry.  Symmetries are widely applied in the design of equivariant networks (Cohen and Welling 2016; Fuchs et al. 2020), as well as the solving (Akhound-Sadegh et al. 2023; Alpar et al. 2024) and discovery (Yang et al. 2025; Chen et al. 2024) of PDEs. Our paper focuses on symmetry-guided PDE solving and discovery. More detailed content is provided in Appendix A.
+
+Figure 1: The overall pipeline of LieDiscover. On the left, symmetry discovery is formulated as an MDP, using solid arrows for information flow and dashed arrows for training network. On the right, the extracted symmetry generators are applied to downstream PDE tasks, such as data augmentation and equation discovery.
+
+Preliminary
+
+Continuous symmetries in dynamical systems are transformations that leave the system invariant. Since searching for these global transformations directly is challenging, modern methods instead search for their infinitesimal generators (Dehmamy et al. 2021; Hu et al. 2025a; Hu et al. 2025c).
+
+For a Lie group acting on the space 
+X\times U=\mathbb{R}^{p}\times\mathbb{R}^{q}
+X×U=ℝp×ℝqX\times U=\mathbb{R}^{p}\times\mathbb{R}^{q}, its infinitesimal generator 
+\mathbf{v}
+𝐯\mathbf{v} and its 
+n
+nn-th prolongation 
+\text{pr}^{(n)}\mathbf{v}
+pr(n)​𝐯\text{pr}^{(n)}\mathbf{v} can be represented as (Hu et al. 2025a):
+
+\mathbf{v}=W\Theta(x,u)\cdot\nabla,
+𝐯=WΘ(x,u)⋅∇,\mathbf{v}=W\Theta(x,u)\cdot\nabla,
+
+(1)
+
+\text{pr}^{(n)}\mathbf{v}=\Theta_{n}(x,u^{(n)})\operatorname{vec}(W)\cdot\nabla,
+pr(n)𝐯=Θn(x,u(n))vec(W)⋅∇,\text{pr}^{(n)}\mathbf{v}=\Theta_{n}(x,u^{(n)})\operatorname{vec}(W)\cdot\nabla,
+
+(2)
+
+where 
+W\in\mathbb{R}^{(p+q)\times r}
+W∈ℝ(p+q)×rW\in\mathbb{R}^{(p+q)\times r} is a coefficient matrix, 
+\Theta(x,u)\in\mathbb{R}^{r\times 1}
+Θ⁡(x,u)∈ℝr×1\Theta(x,u)\in\mathbb{R}^{r\times 1} is a predefined function library, and 
+\Theta_{n}
+Θn\Theta_{n} is the prolonged matrix determined by 
+\Theta
+Θ\Theta. Crucially, the prolongation maintains linearity with respect to 
+W
+WW. This linearity transforms the classical infinitesimal criterion into a straightforward linear algebraic problem (Hu et al. 2025a):
+
+Theorem 1.
+
+Let 
+\mathcal{S}:F(x,u^{(n)})=0
+𝒮:F⁡(x,u(n))=0\mathcal{S}:F(x,u^{(n)})=0 be a full-rank differential equation system with a solution manifold 
+\mathcal{M}
+ℳ\mathcal{M}. Under the parameterization of Equations (1) and (2), 
+\mathbf{v}
+𝐯\mathbf{v} is an infinitesimal symmetry of 
+\mathcal{S}
+𝒮\mathcal{S} if and only if
+
+J_{F}(x,u^{(n)})\Theta_{n}(x,u^{(n)})\operatorname{vec}(W)=0,\quad\forall(x,u^{(n)})\in\mathcal{M},
+JF​(x,u(n))​Θn​(x,u(n))​vec⁡(W)=0,∀(x,u(n))∈ℳ,J_{F}(x,u^{(n)})\Theta_{n}(x,u^{(n)})\operatorname{vec}(W)=0,\quad\forall(x,u^{(n)})\in\mathcal{M},
+
+(3)
+
+where 
+J_{F}
+JFJ_{F} denotes the Jacobian matrix of 
+F
+FF.
+
+On discrete empirical data sampled from 
+\mathcal{M}
+ℳ\mathcal{M}, Equation (3) reduces to a homogeneous linear system 
+C\operatorname{vec}(W)=0
+C​vec⁡(W)=0C\operatorname{vec}(W)=0. Singular Value Decomposition (SVD) of 
+C
+CC efficiently resolves this system: the zero singular values determine the number of independent generators, and their corresponding right singular vectors provide an orthonormal basis for 
+W
+WW, fully recovering the mathematical forms of the generators.
+
+However, Theorem 1 relies on a predefined library 
+\Theta
+Θ\Theta, restricting the search to a closed function space that cannot capture high-order polynomials or transcendental functions. To overcome this closed-set restriction, we propose LieDiscover, an open-form generator discovery framework. Instead of relying on a fixed library, this framework dynamically constructs mathematical expressions through the free composition of variables and operators, empowering the model to explore complex symmetries within an open symbolic space.
+
+Methodology
+
+LieDiscover formulates open-form symmetry discovery as the sequential construction of a symbolic library. Starting from a small initial library 
+\Theta_{0}
+Θ0\Theta_{0} that contains only linear terms, the model dynamically generates new symbolic expressions to update the library. Since navigating the discrete space of mathematical expressions is non-differentiable, we cast this process as a reinforcement learning problem. The reward signal encourages terms that expand the symmetry space. This avoids the difficult joint search over 
+\Theta
+Θ\Theta and 
+W
+WW while still utilizing the exact linear null-space criterion in Theorem 1. Figure 1 shows the pipeline of LieDiscover.
+
+MDP Definition
+
+We define the search process as a finite-horizon Markov Decision Process (MDP) 
+\langle\mathcal{S},\mathcal{A},\mathcal{T},\mathcal{R}\rangle
+⟨𝒮,𝒜,𝒯,ℛ⟩\langle\mathcal{S},\mathcal{A},\mathcal{T},\mathcal{R}\rangle. The MDP state records the current symbolic search history, the action proposes a new expression tree, the transition accepts or rejects the proposed expression according to the induced numerical system, and the reward measures the improvement in the recovered symmetry space.
+
+State Space.
+At step 
+t
+tt, the state is
+
+s_{t}=(\Theta_{t}^{\mathrm{acc}},\Theta_{t}^{\mathrm{rej}}),\ s_{t}\in\mathcal{S},
+st=(Θtacc,Θtrej),st∈𝒮,s_{t}=(\Theta_{t}^{\mathrm{acc}},\Theta_{t}^{\mathrm{rej}}),\ s_{t}\in\mathcal{S},
+
+(4)
+
+where 
+\Theta_{t}^{\mathrm{acc}}
+Θtacc\Theta_{t}^{\mathrm{acc}} is the accepted library used to construct generators and 
+\Theta_{t}^{\mathrm{rej}}
+Θtrej\Theta_{t}^{\mathrm{rej}} stores rejected candidates that cause numerical degeneracy or fail the admissibility test. This representation conditions the policy not only on discovered useful terms but also on explored invalid regions of the symbolic space.
+
+Action Space.
+At step 
+t
+tt, the action 
+a_{t}\in\mathcal{A}
+at∈𝒜a_{t}\in\mathcal{A}  is a token sequence generated in preorder from a vocabulary of variables, constants, and operators. The sequence is subsequently parsed into a symbolic expression tree 
+\tau_{t}
+τt\tau_{t}. We impose arity constraints during generation so that every action corresponds to a syntactically valid mathematical expression.
+
+Environment Evaluation. The environment evaluates candidates using the infinitesimal symmetry criterion. Given samples 
+(x,u^{(n)})
+(x,u(n))(x,u^{(n)}), we first train a surrogate 
+\widehat{f}_{\phi}
+f^ϕ\widehat{f}_{\phi} to approximate the temporal derivative from spatial features, implicitly defining the residual:
+
+\widehat{F}_{\phi}(x,u^{(n)})=\widehat{f}_{\phi}(x,D_{\boldsymbol{\beta}_{1}}u,D_{\boldsymbol{\beta}_{2}}u,\dots,D_{\boldsymbol{\beta}_{s}}u)-D_{\boldsymbol{\beta}_{0}}u=0,
+F^ϕ​(x,u(n))=f^ϕ​(x,D𝜷1​u,D𝜷2​u,…,D𝜷s​u)−D𝜷0​u=0,\widehat{F}_{\phi}(x,u^{(n)})=\widehat{f}_{\phi}(x,D_{\boldsymbol{\beta}_{1}}u,D_{\boldsymbol{\beta}_{2}}u,\dots,D_{\boldsymbol{\beta}_{s}}u)-D_{\boldsymbol{\beta}_{0}}u=0,
+
+where 
+x=(x^{1},\dots,x^{p})
+x=(x1,…,xp)x=(x^{1},\dots,x^{p}) denotes independent variables, 
+u=(u^{1},\dots,u^{q})
+u=(u1,…,uq)u=(u^{1},\dots,u^{q}) denotes dependent variables, and 
+u^{(n)}
+u(n)u^{(n)} collects derivatives up to order 
+n
+nn. Here, 
+D_{\boldsymbol{\beta}_{0}}
+D𝜷0D_{\boldsymbol{\beta}_{0}} typically denotes the temporal derivative, while 
+D_{\boldsymbol{\beta}_{i}}
+D𝜷iD_{\boldsymbol{\beta}_{i}} (
+i\geq 1
+i≥1i\geq 1) denotes a selected spatial derivative. After surrogate training, automatic differentiation computes
+
+J_{\widehat{F}}=[J_{\widehat{f}_{\phi}},-I]
+JF^=[Jf^ϕ,−I]J_{\widehat{F}}=[J_{\widehat{f}_{\phi}},-I] at the sampled points. These Jacobians are cached by the environment and reused to evaluate candidate bases through
+
+J_{\widehat{F}}\Theta_{n}\operatorname{vec}(W)=0
+JF^​Θn​vec⁡(W)=0J_{\widehat{F}}\Theta_{n}\operatorname{vec}(W)=0 during policy training. The Jacobian Computation step is detailed in Appendix D.1.
+
+For a proposed tree 
+\tau_{t}
+τt\tau_{t}, the temporary library is 
+\widehat{\Theta}_{t}=\Theta_{t}^{\mathrm{acc}}\cup\{\tau_{t}\}
+Θ^t=Θtacc∪{τt}\widehat{\Theta}_{t}=\Theta_{t}^{\mathrm{acc}}\cup\{\tau_{t}\}. Unlike methods that manually derive the prolonged library, LieDiscover automatically constructs the prolonged feature matrix 
+(\widehat{\Theta}_{t})_{n}
+(Θ^t)n(\widehat{\Theta}_{t})_{n} from 
+\widehat{\Theta}_{t}
+Θ^t\widehat{\Theta}_{t} (Appendix C.1, Algorithms 1 and 2). The environment then builds the data matrix 
+\widehat{C}=J_{\widehat{F}}(\widehat{\Theta}_{t})_{n}
+C^=JF^​(Θ^t)n\widehat{C}=J_{\widehat{F}}(\widehat{\Theta}_{t})_{n} and applies adaptive SVD (Appendix C.2, Algorithm 3) to obtain singular values 
+\{\sigma_{j}\}
+{σj}\{\sigma_{j}\},
+which allows for the automatic determination of the null-space threshold without manual specification. The null-space threshold is selected adaptively as
+
+\gamma=\sqrt{\sigma_{j^{\ast}}\sigma_{j^{\ast}+1}},\qquad j^{\ast}=\arg\max_{j\in\mathcal{I}}\left(\log_{10}\frac{\sigma_{j}}{\sigma_{j+1}}\right),
+γ=σj∗​σj∗+1,j∗=arg⁡maxj∈ℐ⁡(log10⁡σjσj+1),\gamma=\sqrt{\sigma_{j^{\ast}}\sigma_{j^{\ast}+1}},\qquad j^{\ast}=\arg\max_{j\in\mathcal{I}}\left(\log_{10}\frac{\sigma_{j}}{\sigma_{j+1}}\right),
+
+(5)
+
+where 
+\mathcal{I}=\{j:\gamma_{\min}\leq\sqrt{\sigma_{j}\sigma_{j+1}}\leq\gamma_{\max}\}
+ℐ={j:γmin≤σj​σj+1≤γmax}\mathcal{I}=\{j:\gamma_{\min}\leq\sqrt{\sigma_{j}\sigma_{j+1}}\leq\gamma_{\max}\}. The number of independent generators is the estimated null-space dimension 
+\widehat{d}_{t}=|\{j:\sigma_{j}&lt;\gamma\}|
+d^t=|{j:σj&lt;γ}|\widehat{d}_{t}=|\{j:\sigma_{j}&lt;\gamma\}|.
+
+State Transition.
+To avoid accepting expressions that only create ill-conditioned linear systems, the environment computes the condition number 
+\kappa
+κ\kappa of the non-null subspace. If 
+\kappa&gt;\kappa_{\max}
+κ&gt;κmax\kappa&gt;\kappa_{\max}, the candidate is rejected and the transition is
+
+\Theta_{t+1}^{\mathrm{acc}}=\Theta_{t}^{\mathrm{acc}}
+Θt+1acc=Θtacc\Theta_{t+1}^{\mathrm{acc}}=\Theta_{t}^{\mathrm{acc}},
+
+\Theta_{t+1}^{\mathrm{rej}}=\Theta_{t}^{\mathrm{rej}}\cup\{\tau_{t}\}
+Θt+1rej=Θtrej∪{τt}\Theta_{t+1}^{\mathrm{rej}}=\Theta_{t}^{\mathrm{rej}}\cup\{\tau_{t}\} and 
+d_{t+1}=d_{t}
+dt+1=dtd_{t+1}=d_{t}.
+Otherwise, the candidate is accepted and the transition is
+
+\Theta_{t+1}^{\mathrm{acc}}=\Theta_{t}^{\mathrm{acc}}\cup\{\tau_{t}\}
+Θt+1acc=Θtacc∪{τt}\Theta_{t+1}^{\mathrm{acc}}=\Theta_{t}^{\mathrm{acc}}\cup\{\tau_{t}\},
+
+\Theta_{t+1}^{\mathrm{rej}}=\Theta_{t}^{\mathrm{rej}}
+Θt+1rej=Θtrej\Theta_{t+1}^{\mathrm{rej}}=\Theta_{t}^{\mathrm{rej}} and 
+d_{t+1}=\widehat{d}_{t}
+dt+1=d^td_{t+1}=\widehat{d}_{t}.
+
+Reward Function.
+The reward encourages expressions that increase the dimension of the symmetry space while mildly preferring simple formulas. Rejected candidates receive 
+r_{t}=0
+rt=0r_{t}=0. For an accepted candidate, the reward 
+r_{t}\in\mathcal{R}
+rt∈ℛr_{t}\in\mathcal{R} is defined as:
+
+r_{t}=\begin{cases}\Delta d_{t}\eta^{t-t_{n}-1}+\alpha e^{-\lambda c(\tau_{t})},&amp;\text{if }\Delta d_{t}&gt;0,\\
+\alpha e^{-\lambda c(\tau_{t})},&amp;\text{if }\Delta d_{t}=0,\end{cases}
+rt={Δ​dt​ηt−tn−1+α​e−λ​c​(τt),if ​Δ​dt&gt;0,α​e−λ​c​(τt),if ​Δ​dt=0,r_{t}=\begin{cases}\Delta d_{t}\eta^{t-t_{n}-1}+\alpha e^{-\lambda c(\tau_{t})},&amp;\text{if }\Delta d_{t}&gt;0,\\
+\alpha e^{-\lambda c(\tau_{t})},&amp;\text{if }\Delta d_{t}=0,\end{cases}
+
+(6)
+
+where 
+\Delta d_{t}=d_{t+1}-d_{t}
+Δ​dt=dt+1−dt\Delta d_{t}=d_{t+1}-d_{t}, 
+t_{n}
+tnt_{n} is the most recent step before 
+t
+tt that increased the null-space dimension, 
+c(\tau_{t})
+c⁡(τt)c(\tau_{t}) is the expression complexity measured by sequence length, and 
+\eta,\alpha,\lambda
+η,α,λ\eta,\alpha,\lambda are positive hyperparameters.
+
+To ensure that a larger dimension increase (
+\Delta d_{A}&gt;\Delta d_{B}
+Δ​dA&gt;Δ​dB\Delta d_{A}&gt;\Delta d_{B}) consistently yields a higher reward (
+r_{A}&gt;r_{B}
+rA&gt;rBr_{A}&gt;r_{B}), independent of the elapsed steps, we establish the following theorem, which provides a sufficient condition for this property:
+
+Theorem 2.
+
+Let 
+A
+AA and 
+B
+BB be two transitions with dimensional increments such that 
+\bar{d}\geq\Delta d_{A}&gt;\Delta d_{B}\geq 1
+d¯≥Δ​dA&gt;Δ​dB≥1\bar{d}\geq\Delta d_{A}&gt;\Delta d_{B}\geq 1. Assume that their delays satisfy 
+0\leq h_{A},h_{B}\leq T_{\max}-1
+0≤hA,hB≤Tmax−10\leq h_{A},h_{B}\leq T_{\max}-1 and their expression complexities satisfy 
+c_{A},c_{B}\in[c_{\min},c_{\max}]
+cA,cB∈[cmin,cmax]c_{A},c_{B}\in[c_{\min},c_{\max}]. A sufficient condition for 
+r_{A}&gt;r_{B}
+rA&gt;rBr_{A}&gt;r_{B} to hold for every admissible pair is
+
+\bar{d}\eta^{T_{\max}-1}-(\bar{d}-1)&gt;\alpha\left(e^{-\lambda c_{\min}}-e^{-\lambda c_{\max}}\right),
+d¯​ηTmax−1−(d¯−1)&gt;α⁡(e−λ​cmin−e−λ​cmax),\bar{d}\eta^{T_{\max}-1}-(\bar{d}-1)&gt;\alpha\left(e^{-\lambda c_{\min}}-e^{-\lambda c_{\max}}\right),
+
+(7)
+
+where 
+\bar{d}
+d¯\bar{d} is the finite upper bound of one-step dimensional increments.
+
+Motivated by the Theorem 3 (with the complete proof provided in Appendix B), we use the practical approximation 
+\eta&gt;\sqrt[T_{\max}-1]{(\bar{d}-1)/\bar{d}}
+η&gt;(d¯−1)/d¯Tmax−1\eta&gt;\sqrt[T_{\max}-1]{(\bar{d}-1)/\bar{d}}, where 
+\bar{d}=p+q
+d¯=p+q\bar{d}=p+q bounds the one-step dimension increment. This approximation omits the correction induced by the simplicity bonus because its weight 
+\alpha
+α\alpha is chosen to be small in our experiments. It therefore keeps the dimension-increment reward dominant while using expression simplicity only as a secondary preference.
+
+Training Method
+
+The policy 
+\pi_{\theta}(a_{t}\mid s_{t})
+πθ​(at∣st)\pi_{\theta}(a_{t}\mid s_{t}) is trained to maximize the expected cumulative reward,
+
+\pi^{*}=\arg\max_{\pi_{\theta}}\mathbb{E}_{\pi_{\theta}}\left[\sum_{t=0}^{T_{\max}-1}r(s_{t},a_{t})\right].
+π∗=arg⁡maxπθ​𝔼πθ​[∑t=0Tmax−1r⁡(st,at)].\pi^{*}=\arg\max_{\pi_{\theta}}\mathbb{E}_{\pi_{\theta}}\left[\sum_{t=0}^{T_{\max}-1}r(s_{t},a_{t})\right].
+
+(8)
+
+We adopt an Actor-Critic algorithm in which the actor generates candidate symbolic trees and the critic estimates the long-term value of the current library state. Since successful symbolic expressions are sparse in the open-form search space, we use a risk-seeking policy gradient objective (Tamar et al. 2014; Rajeswaran et al. 2016), which is widely used in symbolic regression (Petersen et al. 2019) and PDE discovery (Du et al. 2022). In each iteration, we sample a batch of 
+B
+BB trajectories, compute their returns 
+R^{(i)}=\sum_{t=0}^{T_{\max}-1}r(s_{t}^{(i)},a_{t}^{(i)})
+R(i)=∑t=0Tmax−1r⁡(st(i),at(i))R^{(i)}=\sum_{t=0}^{T_{\max}-1}r(s_{t}^{(i)},a_{t}^{(i)}), and keep the top 
+\epsilon
+ϵ\epsilon fraction:
+
+\mathcal{E}_{\epsilon}=\{i:R^{(i)}\geq\tilde{R}_{\epsilon}\},
+ℰϵ={i:R(i)≥R~ϵ},\mathcal{E}_{\epsilon}=\{i:R^{(i)}\geq\tilde{R}_{\epsilon}\},
+
+(9)
+
+where 
+\tilde{R}_{\epsilon}
+R~ϵ\tilde{R}_{\epsilon} is the 
+(1-\epsilon)
+(1−ϵ)(1-\epsilon)-quantile return. The actor is updated only on the elite trajectories:
+
+\displaystyle\mathcal{L}_{\mathrm{actor}}=-\frac{1}{|\mathcal{E}_{\epsilon}|}\sum_{i\in\mathcal{E}_{\epsilon}}\sum_{t=0}^{T_{\max}-1}
+ℒactor=−1|ℰϵ|∑i∈ℰϵ∑t=0Tmax−1\displaystyle\mathcal{L}_{\mathrm{actor}}=-\frac{1}{|\mathcal{E}_{\epsilon}|}\sum_{i\in\mathcal{E}_{\epsilon}}\sum_{t=0}^{T_{\max}-1}
+
+\displaystyle\log\pi_{\theta}(a_{t}^{(i)}\mid s_{t}^{(i)})
+log⁡πθ​(at(i)∣st(i))\displaystyle\log\pi_{\theta}(a_{t}^{(i)}\mid s_{t}^{(i)})
+
+(10)
+
+\displaystyle\left(G_{t}^{(i)}-V_{\phi}(s_{t}^{(i)})\right).
+(Gt(i)−Vϕ​(st(i))).\displaystyle\left(G_{t}^{(i)}-V_{\phi}(s_{t}^{(i)})\right).
+
+where 
+G_{t}^{(i)}=\sum_{k=t}^{T_{\max}-1}r(s_{k}^{(i)},a_{k}^{(i)})
+Gt(i)=∑k=tTmax−1r⁡(sk(i),ak(i))G_{t}^{(i)}=\sum_{k=t}^{T_{\max}-1}r(s_{k}^{(i)},a_{k}^{(i)}) is the return-to-go, and 
+V_{\phi}(s_{t}^{(i)})
+Vϕ​(st(i))V_{\phi}(s_{t}^{(i)}) is the critic baseline. We train the critic to minimize the mean squared error over the same elite set:
+
+\mathcal{L}_{\mathrm{critic}}=\frac{1}{2|\mathcal{E}_{\epsilon}|}\sum_{i\in\mathcal{E}_{\epsilon}}\sum_{t=0}^{T_{\max}-1}\left(V_{\phi}(s_{t}^{(i)})-G_{t}^{(i)}\right)^{2}.
+ℒcritic=12​|ℰϵ|​∑i∈ℰϵ∑t=0Tmax−1(Vϕ​(st(i))−Gt(i))2.\mathcal{L}_{\mathrm{critic}}=\frac{1}{2|\mathcal{E}_{\epsilon}|}\sum_{i\in\mathcal{E}_{\epsilon}}\sum_{t=0}^{T_{\max}-1}\left(V_{\phi}(s_{t}^{(i)})-G_{t}^{(i)}\right)^{2}.
+
+(11)
+
+To prevent premature convergence and encourage exploration, we add an entropy regularization term 
+\mathcal{H}
+ℋ\mathcal{H}. The final joint loss is:
+
+\mathcal{L}=\mathcal{L}_{\mathrm{actor}}+\lambda_{v}\mathcal{L}_{\mathrm{critic}}-\lambda_{H}\mathbb{E}\left[\mathcal{H}(\pi_{\theta}(\cdot\mid s_{t}))\right].
+ℒ=ℒactor+λvℒcritic−λH𝔼[ℋ(πθ(⋅∣st))].\mathcal{L}=\mathcal{L}_{\mathrm{actor}}+\lambda_{v}\mathcal{L}_{\mathrm{critic}}-\lambda_{H}\mathbb{E}\left[\mathcal{H}(\pi_{\theta}(\cdot\mid s_{t}))\right].
+
+(12)
+
+Given the best library 
+\Theta^{\ast}
+Θ∗\Theta^{\ast} found during search, SVD yields a
+null-space basis 
+Q
+QQ, which is generally not sparse. To find an interpretable and sparse basis, we introduce an orthogonal rotation matrix 
+P
+PP:
+
+\min_{P,Z}\lVert Z\rVert_{1,1},\quad\text{s.t.}\quad P^{\top}P=I,\quad Z=QP.
+minP,Z⁡∥Z∥1,1,s.t.P⊤​P=I,Z=Q​P.\min_{P,Z}\lVert Z\rVert_{1,1},\quad\text{s.t.}\quad P^{\top}P=I,\quad Z=QP.
+
+(13)
+
+We use LADMAP (Lin et al. 2011) to solve this problem, driving entries in 
+QP
+Q​PQP toward zero to obtain clean generators. Here, 
+\Theta^{\ast}
+Θ∗\Theta^{\ast} denotes the best library found before pruning. Finally, we prune low-support terms from 
+\Theta^{\ast}
+Θ∗\Theta^{\ast} by removing candidates that leave the null-space dimension unchanged, yielding the final compact library 
+\Theta_{f}
+Θf\Theta_{f}. Algorithm 4 in Appendix C.3 provides the sparsification and pruning details. The complete training algorithm is detailed in Algorithm 5 of Appendix C.4.
+
+Network Architecture
+
+The policy and value functions share the same encoded representation of the symbolic state. The actor is an encoder-decoder model that maps the current accepted and rejected libraries to a valid expression tree, while the critic maps the same state representation to a scalar value.
+
+Actor.
+The actor parameterizes 
+\pi_{\theta}(a_{t}\mid s_{t})
+πθ​(at∣st)\pi_{\theta}(a_{t}\mid s_{t}) with an encoder-decoder architecture. The encoder first converts the variable-size state 
+s_{t}=(\Theta_{t}^{\mathrm{acc}},\Theta_{t}^{\mathrm{rej}})
+st=(Θtacc,Θtrej)s_{t}=(\Theta_{t}^{\mathrm{acc}},\Theta_{t}^{\mathrm{rej}}) into a fixed-dimensional context vector. Each symbolic tree is padded to maximum length 
+L
+LL, and the library is capped at maximum capacity 
+N
+NN to support batched tensor computation. Tokens are embedded into dense vectors and processed by a Bidirectional LSTM (Graves and Schmidhuber 2005). The forward pass captures the preorder tree skeleton, while the backward pass propagates information from leaves to parent operators. The token features of each tree are pooled and compressed by an MLP into a tree-level embedding 
+e_{i}
+eie_{i}. Since the ordering of terms inside a library has no physical meaning, we use a Deep Sets encoder (Zaheer et al. 2017) to aggregate accepted and rejected terms separately:
+
+\boldsymbol{z}_{t}^{\star}=\frac{1}{|\Theta^{\star}_{t}|}\sum_{\tau_{i}\in\Theta_{t}^{\star}}\mathrm{MLP}(e_{i}),\quad\star\in\{\mathrm{acc},\mathrm{rej}\}.
+𝒛t⋆=1|Θt⋆|∑τi∈Θt⋆MLP(ei),⋆∈{acc,rej}.\boldsymbol{z}_{t}^{\star}=\frac{1}{|\Theta^{\star}_{t}|}\sum_{\tau_{i}\in\Theta_{t}^{\star}}\mathrm{MLP}(e_{i}),\quad\star\in\{\mathrm{acc},\mathrm{rej}\}.
+
+(14)
+
+A linear layer maps 
+(\boldsymbol{z}_{t}^{\mathrm{acc}},\boldsymbol{z}_{t}^{\mathrm{rej}})
+(𝒛tacc,𝒛trej)(\boldsymbol{z}_{t}^{\mathrm{acc}},\boldsymbol{z}_{t}^{\mathrm{rej}}) to the context vector 
+h^{(t)}_{0}
+h0(t)h^{(t)}_{0}.
+
+Method
+Top
+Burg.
+Heat
+Damped
+Forced
+
+LieGAN
+
+(2.51\pm 0.41)\times 10^{-1}
+(2.51±0.41)×10−1(2.51\pm 0.41)\times 10^{-1}
+
+1.58\pm 0.05
+1.58±0.051.58\pm 0.05
+
+2.59\pm 0.04
+2.59±0.042.59\pm 0.04
+
+2.20\pm 0.01
+2.20±0.012.20\pm 0.01
+
+1.83\pm 0.09
+1.83±0.091.83\pm 0.09
+
+LieNLSD
+
+(1.24\pm 0.17)\times 10^{-1}
+(1.24±0.17)×10−1(1.24\pm 0.17)\times 10^{-1}
+
+(2.29\pm 0.56)\times 10^{-2}
+(2.29±0.56)×10−2(2.29\pm 0.56)\times 10^{-2}
+
+(8.90\pm 2.94)\times 10^{-4}
+(8.90±2.94)×10−4(8.90\pm 2.94)\times 10^{-4}
+
+1.57\pm 0.00
+1.57±0.001.57\pm 0.00
+
+(1.12\pm 0.75)\times 10^{-2}
+(1.12±0.75)×10−2(1.12\pm 0.75)\times 10^{-2}
+
+LieDiscover
+
+\mathbf{(8.52\pm 0.39)\times 10^{-2}}
+(8.52±0.39)×𝟏𝟎−𝟐\mathbf{(8.52\pm 0.39)\times 10^{-2}}
+
+\mathbf{(1.76\pm 0.07)\times 10^{-2}}
+(1.76±0.07)×𝟏𝟎−𝟐\mathbf{(1.76\pm 0.07)\times 10^{-2}}
+
+\mathbf{(5.04\pm 2.72)\times 10^{-4}}
+(5.04±2.72)×𝟏𝟎−𝟒\mathbf{(5.04\pm 2.72)\times 10^{-4}}
+
+\mathbf{(1.94\pm 0.81)\times 10^{-2}}
+(1.94±0.81)×𝟏𝟎−𝟐\mathbf{(1.94\pm 0.81)\times 10^{-2}}
+
+\mathbf{(9.67\pm 0.52)\times 10^{-3}}
+(9.67±0.52)×𝟏𝟎−𝟑\mathbf{(9.67\pm 0.52)\times 10^{-3}}
+
+Table 1: Grassmann distance between the discovered Lie algebra subspace and the ground-truth subspace. Results are reported as mean 
+\pm
+±\pm standard deviation over three random seeds. The best result in each column is highlighted in bold.
+
+The decoder initializes its LSTM hidden state with 
+h^{(t)}_{0}
+h0(t)h^{(t)}_{0} and autoregressively emits a preorder token sequence 
+a_{t}=[y_{1},\dots,y_{l}]
+at=[y1,…,yl]a_{t}=[y_{1},\dots,y_{l}] (Petersen et al. 2019). To guarantee valid symbolic trees, the decoder maintains an arity counter
+
+K_{l}=K_{l-1}-1+\operatorname{arity}(y_{l}),
+Kl=Kl−1−1+arity⁡(yl),K_{l}=K_{l-1}-1+\operatorname{arity}(y_{l}),
+
+(15)
+
+where 
+K_{0}=1
+K0=1K_{0}=1 and 
+\operatorname{arity}(y_{l})
+arity⁡(yl)\operatorname{arity}(y_{l}) is the arity of token 
+y_{l}
+yly_{l}. Generation terminates when 
+K_{l}=0
+Kl=0K_{l}=0. At each step, a dynamic mask 
+M_{l}\in\{0,1\}^{|\mathcal{V}|}
+Ml∈{0,1}|𝒱|M_{l}\in\{0,1\}^{|\mathcal{V}|} removes syntactically invalid tokens and forbidden-prior choices before the softmax operation.
+
+Critic.
+The critic estimates the value of the current symbolic state using the shared context vector 
+h^{(t)}_{0}
+h0(t)h^{(t)}_{0}. A lightweight MLP outputs
+
+V_{\phi}(s_{t})=\mathrm{MLP}_{\phi}(h_{0}^{(t)}),
+Vϕ​(st)=MLPϕ​(h0(t)),V_{\phi}(s_{t})=\mathrm{MLP}_{\phi}(h_{0}^{(t)}),
+
+(16)
+
+which approximates the expected return obtained by continuing the symbolic search from 
+s_{t}
+sts_{t} under the current policy. This value serves as the baseline in the actor update and reduces the variance of policy-gradient training.
+
+PDE Applications
+
+Symmetry has broad applications in scientific computing (Brandstetter et al. 2022; Hu et al. 2025b; Yang et al. 2025; Chen et al. 2024). It can not only guide data augmentation for PDE solvers to improve long-term prediction accuracy, but also serve as a physical prior in PDE discovery. In this subsection, we discuss the application of symmetries to PDE systems, as shown in the PDE Application part of Figure 1.
+
+PDE Solving. We use the symmetries discovered by LieDiscover for Lie Point Symmetry Data Augmentation (LPSDA) (Brandstetter et al. 2022). By training the Fourier Neural Operator (FNO) (Li et al. 2020) on these augmented datasets, we effectively improve its long-rollout prediction accuracy.
+
+PDE Discovery. Our proposed method discovers a set of infinitesimal generators 
+\mathcal{B}=\{\mathbf{v}_{k}\}_{k}
+ℬ={𝐯k}k\mathcal{B}=\{\mathbf{v}_{k}\}_{k}, where each generator follows Equation (1). We transform this symmetry information into function library constraints for SINDy (Rudy et al. 2017) and architectural priors for symbolic networks (EQL) (Sahoo et al. 2018). Besides the architectural priors, we also define a symmetry loss and integrate it directly into the training loss. The specific method for this section is detailed in Appendix D.2.
+
+Experiment
+
+Following LieNLSD, we evaluate LieDiscover on top quark tagging and six dynamical systems: the Burgers’, heat, KdV, wave, Schrödinger, and reaction-diffusion equations. To further test open-form symmetry discovery, we introduce two challenging benchmarks: the damped Burgers’ (Montecinos 2015) and forced transport (de Pillis 1998) equations. Further details on experimental settings, including computing infrastructure, hyperparameters, and metrics, are provided in Appendix F. Our evaluation addresses the three questions:
+
+• 
+
+RQ 1: Can LieDiscover accurately recover the symmetry subspace corresponding to the ground truth?
+
+• 
+
+RQ 2: Can LieDiscover explicitly identify both linear and nonlinear symmetries? Moreover, can it recover open-form infinitesimal generators without relying on a predefined library?
+
+• 
+
+RQ 3: Can the discovered symmetries improve the accuracy of downstream PDE discovery and solving tasks?
+
+RQ1: Symmetry Subspace Recovery
+
+We evaluate the gap between the discovered and ground-truth subspaces using the Grassmann distance, defined as:
+
+d_{G}(Q_{1},Q_{2})=\sqrt{\sum_{i=1}^{d}\theta_{i}^{2}},\quad\theta_{i}=\arccos(\sigma_{i}),
+dG​(Q1,Q2)=∑i=1dθi2,θi=arccos⁡(σi),d_{G}(Q_{1},Q_{2})=\sqrt{\sum_{i=1}^{d}\theta_{i}^{2}},\quad\theta_{i}=\arccos(\sigma_{i}),
+
+(17)
+
+where 
+Q_{1},Q_{2}\in\mathbb{R}^{n\times d}
+Q1,Q2∈ℝn×dQ_{1},Q_{2}\in\mathbb{R}^{n\times d} are orthonormal bases, 
+\sigma_{i}
+σi\sigma_{i} are the singular values of 
+Q_{1}^{\top}Q_{2}
+Q1⊤​Q2Q_{1}^{\top}Q_{2}. Table 4 reports the Grassmann distance of LieGAN, LieNLSD, and LieDiscover. LieDiscover consistently achieves the lowest distance, indicating that LieDiscover recovers subspaces that are closer to the ground truth under the experimental settings. This improvement is substantial on the Top and Damped Burgers datasets. Appendix E.1 presents the results on the remaining datasets.
+
+RQ2: Open-Form Symmetry Discovery
+
+Dataset
+
+Heat
+
+Damped
+
+Forced
+
+Wave
+
+Generators
+
+\begin{aligned} \mathbf{v}_{1}&amp;=(2t+x^{2})\partial_{u},\\
+\mathbf{v}_{2}&amp;=2t\partial_{t}+x\partial_{x},\\
+\mathbf{v}_{3}&amp;=2t\partial_{x}-xu\partial_{u},\\
+\mathbf{v}_{4}&amp;=x\partial_{u},\ \mathbf{v}_{5}=u\partial_{u},\\
+\mathbf{v}_{6}&amp;=\partial_{u},\ \mathbf{v}_{7}=\partial_{x},\\
+\mathbf{v}_{8}&amp;=\partial_{t},\\
+\mathbf{v_{9}}&amp;=(6tx+x^{3})\partial_{u}.\end{aligned}
+𝐯1=(2t+x2)∂u,𝐯2=2t∂t+x∂x,𝐯3=2t∂x−xu∂u,𝐯4=x∂u,𝐯5=u∂u,𝐯6=∂u,𝐯7=∂x,𝐯8=∂t,𝐯𝟗=(6tx+x3)∂u.\begin{aligned} \mathbf{v}_{1}&amp;=(2t+x^{2})\partial_{u},\\
+\mathbf{v}_{2}&amp;=2t\partial_{t}+x\partial_{x},\\
+\mathbf{v}_{3}&amp;=2t\partial_{x}-xu\partial_{u},\\
+\mathbf{v}_{4}&amp;=x\partial_{u},\ \mathbf{v}_{5}=u\partial_{u},\\
+\mathbf{v}_{6}&amp;=\partial_{u},\ \mathbf{v}_{7}=\partial_{x},\\
+\mathbf{v}_{8}&amp;=\partial_{t},\\
+\mathbf{v_{9}}&amp;=(6tx+x^{3})\partial_{u}.\end{aligned}
+
+\begin{aligned} \mathbf{v}_{1}&amp;=\partial_{t},\\
+\mathbf{v}_{2}&amp;=\partial_{x},\\
+\mathbf{v}_{3}&amp;=e^{-t}\partial_{x}\\
+&amp;\ -e^{-t}\partial_{u}.\end{aligned}
+𝐯1=∂t,𝐯2=∂x,𝐯3=e−t∂x−e−t∂u.\begin{aligned} \mathbf{v}_{1}&amp;=\partial_{t},\\
+\mathbf{v}_{2}&amp;=\partial_{x},\\
+\mathbf{v}_{3}&amp;=e^{-t}\partial_{x}\\
+&amp;\ -e^{-t}\partial_{u}.\end{aligned}
+
+\begin{aligned} \mathbf{v}_{1}&amp;=\partial_{t},\ \mathbf{v}_{2}=\partial_{u},\\
+\mathbf{v}_{3}&amp;=\partial_{x}+\sin(x)\partial_{u},\\
+\mathbf{v}_{4}&amp;=u\partial_{u}+\cos(x)\partial_{u},\\
+\mathbf{v}_{5}&amp;=(t-x)\partial_{u},\\
+\mathbf{v}_{6}&amp;=\sin(t-x)\partial_{u},\\
+\mathbf{v}_{7}&amp;=\cos(t-x)\partial_{u},\\
+\mathbf{v}_{8}&amp;=(t-x)\partial_{t},\\
+\mathbf{v}_{9}&amp;=\sin(t-x)\partial_{t},\\
+\mathbf{v}_{10}&amp;=\cos(t-x)\partial_{t}.\end{aligned}
+𝐯1=∂t,𝐯2=∂u,𝐯3=∂x+sin(x)∂u,𝐯4=u∂u+cos(x)∂u,𝐯5=(t−x)∂u,𝐯6=sin(t−x)∂u,𝐯7=cos(t−x)∂u,𝐯8=(t−x)∂t,𝐯9=sin(t−x)∂t,𝐯10=cos(t−x)∂t.\begin{aligned} \mathbf{v}_{1}&amp;=\partial_{t},\ \mathbf{v}_{2}=\partial_{u},\\
+\mathbf{v}_{3}&amp;=\partial_{x}+\sin(x)\partial_{u},\\
+\mathbf{v}_{4}&amp;=u\partial_{u}+\cos(x)\partial_{u},\\
+\mathbf{v}_{5}&amp;=(t-x)\partial_{u},\\
+\mathbf{v}_{6}&amp;=\sin(t-x)\partial_{u},\\
+\mathbf{v}_{7}&amp;=\cos(t-x)\partial_{u},\\
+\mathbf{v}_{8}&amp;=(t-x)\partial_{t},\\
+\mathbf{v}_{9}&amp;=\sin(t-x)\partial_{t},\\
+\mathbf{v}_{10}&amp;=\cos(t-x)\partial_{t}.\end{aligned}
+
+\begin{aligned} \mathbf{v}_{1}&amp;=2tx\partial_{t}+(t^{2}+x^{2}-y^{2})\partial_{x}+2xy\partial_{y}-xu\partial_{u},\\
+\mathbf{v}_{2}&amp;=2ty\partial_{t}+2xy\partial_{x}+(t^{2}-x^{2}+y^{2})\partial_{y}-yu\partial_{u},\\
+\mathbf{v}_{3}&amp;=x\partial_{t}+t\partial_{x},\ \mathbf{v}_{4}=y\partial_{t}+t\partial_{y},\\
+\mathbf{v}_{5}&amp;=t\partial_{t}+x\partial_{x}+y\partial_{y},\ \mathbf{v}_{6}=-y\partial_{x}+x\partial_{y},\\
+\mathbf{v}_{7}&amp;=u\partial_{u},\ \mathbf{v}_{8}=\partial_{t},\ \mathbf{v}_{9}=\partial_{x},\ \mathbf{v}_{10}=\partial_{y},\\
+\mathbf{v}_{11}&amp;=\partial_{u},\ \mathbf{v}_{12}=t\partial_{u},\ \mathbf{v}_{13}=x\partial_{u},\ \mathbf{v}_{14}=y\partial_{u},\\
+\mathbf{v}_{15}&amp;=tx\partial_{u},\ \mathbf{v}_{16}=ty\partial_{u},\ \mathbf{v}_{17}=xy\partial_{u},\ \mathbf{v}_{18}=txy\partial_{u},\\
+\mathbf{v}_{19}&amp;=(t^{2}+y^{2})\partial_{u},\ \mathbf{v}_{20}=(t^{2}+2x^{2}-y^{2})\partial_{u},\\
+\mathbf{v}_{21}&amp;=(t^{3}+3tx^{2})\partial_{u},\ \mathbf{v}_{22}=(t^{3}+3ty^{2})\partial_{u}.\end{aligned}
+𝐯1=2tx∂t+(t2+x2−y2)∂x+2xy∂y−xu∂u,𝐯2=2ty∂t+2xy∂x+(t2−x2+y2)∂y−yu∂u,𝐯3=x∂t+t∂x,𝐯4=y∂t+t∂y,𝐯5=t∂t+x∂x+y∂y,𝐯6=−y∂x+x∂y,𝐯7=u∂u,𝐯8=∂t,𝐯9=∂x,𝐯10=∂y,𝐯11=∂u,𝐯12=t∂u,𝐯13=x∂u,𝐯14=y∂u,𝐯15=tx∂u,𝐯16=ty∂u,𝐯17=xy∂u,𝐯18=txy∂u,𝐯19=(t2+y2)∂u,𝐯20=(t2+2x2−y2)∂u,𝐯21=(t3+3tx2)∂u,𝐯22=(t3+3ty2)∂u.\begin{aligned} \mathbf{v}_{1}&amp;=2tx\partial_{t}+(t^{2}+x^{2}-y^{2})\partial_{x}+2xy\partial_{y}-xu\partial_{u},\\
+\mathbf{v}_{2}&amp;=2ty\partial_{t}+2xy\partial_{x}+(t^{2}-x^{2}+y^{2})\partial_{y}-yu\partial_{u},\\
+\mathbf{v}_{3}&amp;=x\partial_{t}+t\partial_{x},\ \mathbf{v}_{4}=y\partial_{t}+t\partial_{y},\\
+\mathbf{v}_{5}&amp;=t\partial_{t}+x\partial_{x}+y\partial_{y},\ \mathbf{v}_{6}=-y\partial_{x}+x\partial_{y},\\
+\mathbf{v}_{7}&amp;=u\partial_{u},\ \mathbf{v}_{8}=\partial_{t},\ \mathbf{v}_{9}=\partial_{x},\ \mathbf{v}_{10}=\partial_{y},\\
+\mathbf{v}_{11}&amp;=\partial_{u},\ \mathbf{v}_{12}=t\partial_{u},\ \mathbf{v}_{13}=x\partial_{u},\ \mathbf{v}_{14}=y\partial_{u},\\
+\mathbf{v}_{15}&amp;=tx\partial_{u},\ \mathbf{v}_{16}=ty\partial_{u},\ \mathbf{v}_{17}=xy\partial_{u},\ \mathbf{v}_{18}=txy\partial_{u},\\
+\mathbf{v}_{19}&amp;=(t^{2}+y^{2})\partial_{u},\ \mathbf{v}_{20}=(t^{2}+2x^{2}-y^{2})\partial_{u},\\
+\mathbf{v}_{21}&amp;=(t^{3}+3tx^{2})\partial_{u},\ \mathbf{v}_{22}=(t^{3}+3ty^{2})\partial_{u}.\end{aligned}
+
+Table 2: Infinitesimal generators discovered by LieDiscover on selected PDEs. 
+
+Linear Symmetry Discovery
+
+Top quark tagging. 
+This task uses the four-momenta 
+p_{i}^{\mu}
+piμp_{i}^{\mu} of jet
+constituents to distinguish hadronic top-quark decays from
+background QCD jets. The data exhibit Lorentz and global
+scaling symmetries. We initialize the library as 
+\Theta_{0}=\{p_{0},p_{1},p_{2},p_{3}\}
+Θ0={p0,p1,p2,p3}\Theta_{0}=\{p_{0},p_{1},p_{2},p_{3}\} and set the maximum size of library to 
+8
+88. During the search, no newly generated terms receive positive rewards, showing that the initial library is already sufficient. Ultimately, we identify seven infinitesimal generators. Appendix E.2 provides their explicit mathematical expressions and visualization results.
+
+Nonlinear Symmetry Discovery
+
+In this subsection, we analyze the discovered symmetries of five representative PDEs. Appendix E.2 summarizes the results on the remaining datasets.
+
+Burgers’ Equation. 
+We consider the potential Burgers’ equation (Hopf 1950), 
+u_{t}=u_{xx}+u_{x}^{2}
+ut=ux​x+ux2u_{t}=u_{xx}+u_{x}^{2}, which models convection-diffusion phenomena. We initialize the library as 
+\Theta_{0}=\{1,t,x,u\}
+Θ0={1,t,x,u}\Theta_{0}=\{1,t,x,u\} and set the maximum size of library to 10. LieDiscover identifies the best library as 
+\Theta^{\ast}=\{1,t,x,u,tx,t^{2},x^{2},tx^{2},u^{2},t^{2}u\}
+Θ∗={1,t,x,u,t​x,t2,x2,t​x2,u2,t2​u}\Theta^{\ast}=\{1,t,x,u,tx,t^{2},x^{2},tx^{2},u^{2},t^{2}u\}, increasing the null-space dimension from 
+5
+55 to 
+6
+66. This increase indicates 6 infinitesimal generators. After pruning, the final compact library is 
+\Theta_{f}=\{1,t,x,u,tx,t^{2},x^{2}\}
+Θf={1,t,x,u,t​x,t2,x2}\Theta_{f}=\{1,t,x,u,tx,t^{2},x^{2}\}. Appendix E.2 provides their explicit mathematical expressions and visualization results. The six discovered generators correspond to the main Lie point symmetries: time translation, space translation, vertical translation in 
+u
+uu, Galilean transformation, scaling transformation, and a projective-type symmetry.
+
+Heat Equation. 
+We consider the one-dimensional heat equation (baron de Fourier 1822), 
+u_{t}=u_{xx}
+ut=ux​xu_{t}=u_{xx}, which models diffusion and possesses finite-dimensional Lie point symmetries as well as infinite-dimensional superposition symmetries. We initialize the library as 
+\Theta_{0}=\{1,t,x,u\}
+Θ0={1,t,x,u}\Theta_{0}=\{1,t,x,u\} and set the maximum size of library to 10. LieDiscover identifies the best library as 
+\Theta^{\ast}=\{1,t,x,u,x^{2},ux,tx,x^{3},u^{2}\}
+Θ∗={1,t,x,u,x2,u​x,t​x,x3,u2}\Theta^{\ast}=\{1,t,x,u,x^{2},ux,tx,x^{3},u^{2}\}, increasing the null-space dimension from 
+7
+77 to 
+9
+99. Pruning then yields the final compact library 
+\Theta_{f}=\{1,t,x,u,x^{2},ux,tx,x^{3}\}
+Θf={1,t,x,u,x2,u​x,t​x,x3}\Theta_{f}=\{1,t,x,u,x^{2},ux,tx,x^{3}\}. Table 2 lists the discovered nine generators, and Appendix E.2 provides the visualizations. Five discovered generators form the finite-dimensional geometric symmetries: 
+\mathbf{v}_{7}
+𝐯7\mathbf{v}_{7} and 
+\mathbf{v}_{8}
+𝐯8\mathbf{v}_{8} represent translations, 
+\mathbf{v}_{2}
+𝐯2\mathbf{v}_{2} represents scaling, 
+\mathbf{v}_{3}
+𝐯3\mathbf{v}_{3} represents Galilean transformations, and 
+\mathbf{v}_{5}
+𝐯5\mathbf{v}_{5} represents solution scaling. The remaining four generators (
+\mathbf{v}_{1},\mathbf{v}_{4},\mathbf{v}_{6},\mathbf{v}_{9}
+𝐯1,𝐯4,𝐯6,𝐯9\mathbf{v}_{1},\mathbf{v}_{4},\mathbf{v}_{6},\mathbf{v}_{9}) can be unified into 
+\mathbf{v}_{\psi}=\psi(t,x)\partial_{u}
+𝐯ψ=ψ(t,x)∂u\mathbf{v}_{\psi}=\psi(t,x)\partial_{u}, where 
+\psi_{t}=\psi_{xx}
+ψt=ψx​x\psi_{t}=\psi_{xx}. This form represents the linear superposition principle: if 
+u=f(t,x)
+u=f⁡(t,x)u=f(t,x) is a solution, then 
+f(t,x)+\varepsilon_{g}\psi(t,x)
+f⁡(t,x)+εg​ψ​(t,x)f(t,x)+\varepsilon_{g}\psi(t,x) is also a solution, where 
+\varepsilon_{g}
+εg\varepsilon_{g} is the group parameter. Notably, LieDiscover successfully identifies the higher-order polynomial generator 
+\mathbf{v}_{9}=(6tx+x^{3})\partial_{u}
+𝐯9=(6tx+x3)∂u\mathbf{v}_{9}=(6tx+x^{3})\partial_{u}, whereas LieNLSD discovers fewer generators despite using a larger library.
+
+Damped Burgers’ Equation. 
+The damped Burgers’ equation (Montecinos 2015) extends the standard Burgers’ equation by adding a linear damping term. In our experiments, we consider 
+u_{t}=-uu_{x}+u_{xx}-\mu u,\ \mu=1
+ut=−u​ux+ux​x−μ​u,μ=1u_{t}=-uu_{x}+u_{xx}-\mu u,\ \mu=1. We initialize the library as 
+\Theta_{0}=\{1,t,x,u\}
+Θ0={1,t,x,u}\Theta_{0}=\{1,t,x,u\} and set the maximum size of library to 10. LieDiscover identifies the best library as 
+\Theta^{\ast}=\{1,t,x,u,e^{t},e^{-t}\}
+Θ∗={1,t,x,u,et,e−t}\Theta^{\ast}=\{1,t,x,u,e^{t},e^{-t}\}, where the null-space dimension increases from 
+2
+22 to 
+3
+33, showing that the exponential terms are essential for representing the discovered symmetry. Pruning leaves the library unchanged, so 
+\Theta_{f}=\Theta^{\ast}
+Θf=Θ∗\Theta_{f}=\Theta^{\ast}. We present the three generators in Table 2 and show the visualization results in Appendix E.2.
+
+LieDiscover obtains 3 infinitesimal generators. Among them, 
+\mathbf{v}_{1}=\partial_{t}
+𝐯1=∂t\mathbf{v}_{1}=\partial_{t} and 
+\mathbf{v}_{2}=\partial_{x}
+𝐯2=∂x\mathbf{v}_{2}=\partial_{x} correspond to time and space translations, respectively. More importantly, the adaptive library identifies the exponential generator 
+\mathbf{v}_{3}=e^{-t}\partial_{x}-e^{-t}\partial_{u}
+𝐯3=e−t∂x−e−t∂u\mathbf{v}_{3}=e^{-t}\partial_{x}-e^{-t}\partial_{u}, which combines a time-decaying spatial shift with a compensating transformation in 
+u
+uu. This result suggests that LieDiscover can capture non-polynomial symmetry structures beyond the polynomial library used in LieNLSD.
+
+Forced Transport Equation. 
+We consider the forced transport equation, 
+u_{t}=-u_{x}+\sin(x)
+ut=−ux+sin⁡(x)u_{t}=-u_{x}+\sin(x) (de Pillis 1998), a first-order linear PDE with a spatial forcing term that tests LieDiscover’s ability to identify non-polynomial symmetries. We initialize the library as 
+\Theta_{0}=\{1,t,x,u\}
+Θ0={1,t,x,u}\Theta_{0}=\{1,t,x,u\} and set the maximum library capacity to 
+12
+1212. LieDiscover expands the candidate space using symbolic trees and identifies the best library as 
+\Theta^{\ast}=\{1,t,x,u,\cos(x),\sin(x),-\sin(t-x),\cos(t-x),\cos(t)\}
+Θ∗={1,t,x,u,cos⁡(x),sin⁡(x),−sin⁡(t−x),cos⁡(t−x),cos⁡(t)}\Theta^{\ast}=\{1,t,x,u,\cos(x),\sin(x),-\sin(t-x),\cos(t-x),\cos(t)\}, increasing the null-space dimension from 
+2
+22 to 
+10
+1010. Pruning then yields the final compact library 
+\Theta_{f}=\{1,t,x,u,\cos(x),\sin(x),-\sin(t-x),\cos(t-x)\}
+Θf={1,t,x,u,cos⁡(x),sin⁡(x),−sin⁡(t−x),cos⁡(t−x)}\Theta_{f}=\{1,t,x,u,\cos(x),\sin(x),-\sin(t-x),\cos(t-x)\}. Table 2 lists the ten discovered generators, and Appendix E.2 provides the visualizations.
+
+Dataset
+FNO + 
+\emptyset
+∅\emptyset
+FNO + Ko et al.
+FNO + LieNLSD
+FNO + LieDiscover
+FNO + GT
+
+Burg.
+
+(2.33\pm 1.07)\times 10^{-4}
+(2.33±1.07)×10−4(2.33\pm 1.07)\times 10^{-4}
+
+(1.93\pm 0.75)\times 10^{-4}
+(1.93±0.75)×10−4(1.93\pm 0.75)\times 10^{-4}
+
+(1.31\pm 0.12)\times 10^{-4}
+(1.31±0.12)×10−4(1.31\pm 0.12)\times 10^{-4}
+
+\mathbf{(1.24\pm 0.33)\times 10^{-4}}
+(1.24±0.33)×𝟏𝟎−𝟒\mathbf{(1.24\pm 0.33)\times 10^{-4}}
+
+(1.75\pm 0.37)\times 10^{-4}
+(1.75±0.37)×10−4(1.75\pm 0.37)\times 10^{-4}
+
+Heat
+
+(1.07\pm 0.10)\times 10^{-1}
+(1.07±0.10)×10−1(1.07\pm 0.10)\times 10^{-1}
+
+(7.33\pm 1.07)\times 10^{-2}
+(7.33±1.07)×10−2(7.33\pm 1.07)\times 10^{-2}
+
+(5.25\pm 0.31)\times 10^{-2}
+(5.25±0.31)×10−2(5.25\pm 0.31)\times 10^{-2}
+
+\mathbf{(5.02\pm 0.10)\times 10^{-2}}
+(5.02±0.10)×𝟏𝟎−𝟐\mathbf{(5.02\pm 0.10)\times 10^{-2}}
+
+(6.01\pm 0.20)\times 10^{-2}
+(6.01±0.20)×10−2(6.01\pm 0.20)\times 10^{-2}
+
+KdV
+
+(1.74\pm 0.10)\times 10^{-1}
+(1.74±0.10)×10−1(1.74\pm 0.10)\times 10^{-1}
+
+(1.51\pm 0.01)\times 10^{-1}
+(1.51±0.01)×10−1(1.51\pm 0.01)\times 10^{-1}
+
+(1.27\pm 0.12)\times 10^{-1}
+(1.27±0.12)×10−1(1.27\pm 0.12)\times 10^{-1}
+
+\mathbf{(1.26\pm 0.14)\times 10^{-1}}
+(1.26±0.14)×𝟏𝟎−𝟏\mathbf{(1.26\pm 0.14)\times 10^{-1}}
+
+(1.47\pm 0.02)\times 10^{-1}
+(1.47±0.02)×10−1(1.47\pm 0.02)\times 10^{-1}
+
+Damped
+
+(2.97\pm 0.52)\times 10^{-3}
+(2.97±0.52)×10−3(2.97\pm 0.52)\times 10^{-3}
+
+(2.91\pm 0.49)\times 10^{-3}
+(2.91±0.49)×10−3(2.91\pm 0.49)\times 10^{-3}
+
+(2.51\pm 0.00)\times 10^{-3}
+(2.51±0.00)×10−3(2.51\pm 0.00)\times 10^{-3}
+
+\mathbf{(1.78\pm 0.06)\times 10^{-3}}
+(1.78±0.06)×𝟏𝟎−𝟑\mathbf{(1.78\pm 0.06)\times 10^{-3}}
+
+(1.90\pm 0.08)\times 10^{-3}
+(1.90±0.08)×10−3(1.90\pm 0.08)\times 10^{-3}
+
+Forced
+
+(1.65\pm 0.07)\times 10^{-1}
+(1.65±0.07)×10−1(1.65\pm 0.07)\times 10^{-1}
+
+(1.68\pm 0.07)\times 10^{-1}
+(1.68±0.07)×10−1(1.68\pm 0.07)\times 10^{-1}
+
+(1.61\pm 0.01)\times 10^{-1}
+(1.61±0.01)×10−1(1.61\pm 0.01)\times 10^{-1}
+
+(1.59\pm 0.02)\times 10^{-1}
+(1.59±0.02)×10−1(1.59\pm 0.02)\times 10^{-1}
+
+\mathbf{(1.24\pm 0.02)\times 10^{-1}}
+(1.24±0.02)×𝟏𝟎−𝟏\mathbf{(1.24\pm 0.02)\times 10^{-1}}
+
+Table 3: Comparison of long-rollout test NMSE for FNO under
+under different data augmentations. The best result is highlighted.
+
+Figure 2: Performance of different PDE discovery methods. The three parts show TPR (
+\uparrow
+↑\uparrow), 
+E_{\infty}
+E∞E_{\infty} (
+\downarrow
+↓\downarrow), and 
+E_{2}
+E2E_{2} (
+\downarrow
+↓\downarrow), respectively.
+
+LieDiscover identifies 10 infinitesimal generators. Among them, 
+\mathbf{v}_{1}
+𝐯1\mathbf{v}_{1} and 
+\mathbf{v}_{2}
+𝐯2\mathbf{v}_{2} represent time and vertical translations. 
+\mathbf{v}_{3}
+𝐯3\mathbf{v}_{3} represents spatial translation with forcing compensation, and 
+\mathbf{v}_{4}
+𝐯4\mathbf{v}_{4} represents solution scaling with a forcing correction. Furthermore, 
+\mathbf{v}_{5},\mathbf{v}_{6},\mathbf{v}_{7}
+𝐯5,𝐯6,𝐯7\mathbf{v}_{5},\mathbf{v}_{6},\mathbf{v}_{7} can be unified into 
+\mathbf{v}_{\psi}=\psi(t-x)\partial_{u}
+𝐯ψ=ψ(t−x)∂u\mathbf{v}_{\psi}=\psi(t-x)\partial_{u}, describing vertical symmetries generated by an arbitrary solution of the homogeneous transport equation. 
+\mathbf{v}_{8},\mathbf{v}_{9},\mathbf{v}_{10}
+𝐯8,𝐯9,𝐯10\mathbf{v}_{8},\mathbf{v}_{9},\mathbf{v}_{10} unify into 
+\mathbf{v}_{\beta}=\beta(t-x)\partial_{t}
+𝐯β=β(t−x)∂t\mathbf{v}_{\beta}=\beta(t-x)\partial_{t}, corresponding to characteristic-dependent time transformations. This result demonstrates that LieDiscover successfully captures basic trigonometric symmetries, specifically 
+\mathbf{v}_{3}
+𝐯3\mathbf{v}_{3} and 
+\mathbf{v}_{4}
+𝐯4\mathbf{v}_{4}.
+
+Wave Equation. The wave equation is a classical second-order PDE that describes the propagation of waves in physical systems (Strauss 2007). We consider the two-dimensional form 
+u_{tt}=u_{xx}+u_{yy}
+ut​t=ux​x+uy​yu_{tt}=u_{xx}+u_{yy}. For this equation, we initialize the library as 
+\Theta_{0}=\{1,t,x,y,u\}
+Θ0={1,t,x,y,u}\Theta_{0}=\{1,t,x,y,u\} and set the maximum library capacity to 
+20
+2020. LieDiscover identifies the best library as 
+\Theta^{\ast}=\{1,t,x,y,u,y^{2},uy,tx^{2},t^{3},x^{2},t^{2},ty,ux,xy,tx,txy,t^{2}x,\\
+ty^{2},y^{6}\}
+Θ∗={1,t,x,y,u,y2,u​y,t​x2,t3,x2,t2,t​y,u​x,x​y,t​x,t​x​y,t2​x,t​y2,y6}\Theta^{\ast}=\{1,t,x,y,u,y^{2},uy,tx^{2},t^{3},x^{2},t^{2},ty,ux,xy,tx,txy,t^{2}x,\\
+ty^{2},y^{6}\}, increasing the null-space dimension from 11 to 22. Pruning then yields the final compact library 
+\Theta_{f}=\{1,t,x,y,u,y^{2},uy,tx^{2},t^{3},x^{2},t^{2},ty,ux,xy,tx,txy,ty^{2}\}
+Θf={1,t,x,y,u,y2,u​y,t​x2,t3,x2,t2,t​y,u​x,x​y,t​x,t​x​y,t​y2}\Theta_{f}=\{1,t,x,y,u,y^{2},uy,tx^{2},t^{3},x^{2},t^{2},ty,ux,xy,tx,txy,ty^{2}\}. Table 2 lists discovered generators, and Appendix E.2 provides the visualizations.
+
+LieDiscover identifies 22 infinitesimal generators. Among them, 
+\mathbf{v}_{3}
+𝐯3\mathbf{v}_{3} and 
+\mathbf{v}_{4}
+𝐯4\mathbf{v}_{4} represent Lorentz transformations; 
+\mathbf{v}_{8},\mathbf{v}_{9},\mathbf{v}_{10}
+𝐯8,𝐯9,𝐯10\mathbf{v}_{8},\mathbf{v}_{9},\mathbf{v}_{10} represent translations; 
+\mathbf{v}_{5}
+𝐯5\mathbf{v}_{5} represents scaling; 
+\mathbf{v}_{6}
+𝐯6\mathbf{v}_{6} represents spatial rotation; 
+\mathbf{v}_{1}
+𝐯1\mathbf{v}_{1} and 
+\mathbf{v}_{2}
+𝐯2\mathbf{v}_{2} represent special conformal transformations; and 
+\mathbf{v}_{7}
+𝐯7\mathbf{v}_{7} scales the solution variable. The remaining generators (
+\mathbf{v}_{11}
+𝐯11\mathbf{v}_{11} to 
+\mathbf{v}_{22}
+𝐯22\mathbf{v}_{22}) can be unified into 
+\mathbf{v}_{\psi}=\psi(t,x,y)\partial_{u}
+𝐯ψ=ψ(t,x,y)∂u\mathbf{v}_{\psi}=\psi(t,x,y)\partial_{u}, where 
+\psi_{tt}=\psi_{xx}+\psi_{yy}
+ψt​t=ψx​x+ψy​y\psi_{tt}=\psi_{xx}+\psi_{yy}. Notably, LieDiscover finds higher-order polynomial generators like 
+\mathbf{v}_{21}
+𝐯21\mathbf{v}_{21} and 
+\mathbf{v}_{22}
+𝐯22\mathbf{v}_{22}, demonstrating its capacity to discover rich polynomial structures through an adaptive library.
+
+Unlike LieNLSD, which relies on a fixed predefined library, LieDiscover adaptively expands its candidate space via symbolic tree generation to capture non-polynomial and higher-order polynomial generators. As shown in Table 2, LieDiscover successfully uncovers exponential generators for damped Burgers’, trigonometric generators for forced transport, and additional higher-order polynomials for heat and wave equations. Consequently, LieDiscover can explicitly recover open-form infinitesimal generators.
+
+RQ3: Applications to PDE Solving and Discovery
+
+PDE Solving.We compare FNO combined with LPSDA using symmetries obtained from three methods: the method of Ko et al. (2024), LieNLSD, and LieDiscover, as well as the ground-truth symmetries. Table 3 presents the long-rollout test NMSE on 1D PDE tasks. Symmetry-based augmentations consistently outperform vanilla FNO. Notably, LPSDA powered by LieDiscover achieves the lowest NMSE on the Burgers’, heat, KdV, and damped Burgers’ equations, while maintaining competitive performance on forced transport. These improvements demonstrate that the symmetries discovered by LieDiscover substantially enhance FNO’s long-term prediction accuracy. For instance, LieDiscover reduces the NMSE on the heat equation by 53.1% (from 
+1.07\times 10^{-1}
+1.07×10−11.07\times 10^{-1} to 
+5.02\times 10^{-2}
+5.02×10−25.02\times 10^{-2}) and on the damped Burgers’ equation by 40.1% (from 
+2.97\times 10^{-3}
+2.97×10−32.97\times 10^{-3} to 
+1.78\times 10^{-3}
+1.78×10−31.78\times 10^{-3}).
+
+PDE Discovery. 
+We integrate the symmetries discovered by LieDiscover as physical priors into SINDy and EQL, creating the symmetry-guided variants LieSINDy and LieEQL. Figure 2 illustrates the PDE discovery performance. Symmetry-guided methods consistently outperform their vanilla counterparts, yielding higher true positivity ratio (TPR) and lower coefficient errors. Specifically, LieEQL achieves perfect structural recovery across all equations and the best parameter estimation for the KdV and Schrödinger equations. Meanwhile, LieSINDy delivers the lowest coefficient errors on the Burgers’, forced transport, and reaction-diffusion equations. These results demonstrate that the discovered symmetries serve as highly effective physical priors that enhance structural and parameter recovery.
+
+Conclusion
+
+In this work, we propose LieDiscover, a reinforcement learning framework for discovering symmetries from data. Unlike existing methods that rely on a predefined library, LieDiscover can explicitly recover open-form generators, including high-order polynomials and transcendental functions. It uses an encoder-decoder network as an actor to build symbolic expressions, while the critic estimates state values to guide the process. This design allows the framework to explore an infinite symbolic space without fixed constraints. Experiments show that these discovered symmetries significantly improve PDE solving and discovery. Future work will extend LieDiscover to discrete symmetries and more complex dynamical systems.
+
+Appendix A Appendix A: Related Work
+
+Recent studies have shown that symmetries can significantly improve data-driven PDE modeling. In neural PDE solvers, symmetries have been incorporated into PINNs (Akhound-Sadegh et al. 2023; Arora et al. 2024) and used for symmetry-based data augmentation (Brandstetter et al. 2022; Ko et al. 2024), leading to improved predictive performance. In data-driven PDE discovery (Rudy et al. 2017; Long et al. 2019), symmetries are often used to reduce the search space of candidate equations. For example, Yang et al. (2025) construct candidate terms from differential invariants, while ICNet (Chen et al. 2024) imposes physical symmetry constraints such as Galilean invariance.
+
+Despite their success, these approaches depend on prior knowledge of physical symmetries. In contrast, LieDiscover learns symmetries directly from data and leverages the discovered generators to improve PDE solving and data-driven PDE discovery, leading to more accurate prediction and equation recovery.
+
+Appendix B Appendix B: Detailed Proof
+
+Theorem 3.
+
+Let 
+A
+AA and 
+B
+BB be two transitions with dimensional increments such that 
+\bar{d}\geq\Delta d_{A}&gt;\Delta d_{B}\geq 1
+d¯≥Δ​dA&gt;Δ​dB≥1\bar{d}\geq\Delta d_{A}&gt;\Delta d_{B}\geq 1. Assume that their delays satisfy 
+0\leq h_{A},h_{B}\leq T_{\max}-1
+0≤hA,hB≤Tmax−10\leq h_{A},h_{B}\leq T_{\max}-1 and their expression complexities satisfy 
+c_{A},c_{B}\in[c_{\min},c_{\max}]
+cA,cB∈[cmin,cmax]c_{A},c_{B}\in[c_{\min},c_{\max}]. A sufficient condition for 
+r_{A}&gt;r_{B}
+rA&gt;rBr_{A}&gt;r_{B} to hold for every admissible pair is
+
+\bar{d}\eta^{T_{\max}-1}-(\bar{d}-1)&gt;\alpha\left(e^{-\lambda c_{\min}}-e^{-\lambda c_{\max}}\right),
+d¯​ηTmax−1−(d¯−1)&gt;α⁡(e−λ​cmin−e−λ​cmax),\bar{d}\eta^{T_{\max}-1}-(\bar{d}-1)&gt;\alpha\left(e^{-\lambda c_{\min}}-e^{-\lambda c_{\max}}\right),
+
+(18)
+
+where 
+\bar{d}
+d¯\bar{d} is the finite upper bound of one-step dimensional increments.
+
+Proof.
+
+Define
+
+\delta_{c}=e^{-\lambda c_{\min}}-e^{-\lambda c_{\max}}.
+δc=e−λ​cmin−e−λ​cmax.\delta_{c}=e^{-\lambda c_{\min}}-e^{-\lambda c_{\max}}.
+
+Since 
+c_{\min}\leq c_{\max}
+cmin≤cmaxc_{\min}\leq c_{\max} and 
+\lambda&gt;0
+λ&gt;0\lambda&gt;0, we have 
+\delta_{c}\geq 0
+δc≥0\delta_{c}\geq 0.
+
+For brevity, write
+
+r_{A}=r(\Delta d_{A},h_{A},c_{A}),\qquad r_{B}=r(\Delta d_{B},h_{B},c_{B}).
+rA=r⁡(Δ​dA,hA,cA),rB=r⁡(Δ​dB,hB,cB).r_{A}=r(\Delta d_{A},h_{A},c_{A}),\qquad r_{B}=r(\Delta d_{B},h_{B},c_{B}).
+
+Their difference is
+
+r_{A}-r_{B}=\Delta d_{A}\eta^{h_{A}}-\Delta d_{B}\eta^{h_{B}}+\alpha\left(e^{-\lambda c_{A}}-e^{-\lambda c_{B}}\right).
+rA−rB=Δ​dA​ηhA−Δ​dB​ηhB+α⁡(e−λ​cA−e−λ​cB).r_{A}-r_{B}=\Delta d_{A}\eta^{h_{A}}-\Delta d_{B}\eta^{h_{B}}+\alpha\left(e^{-\lambda c_{A}}-e^{-\lambda c_{B}}\right).
+
+Let 
+H=T_{\max}-1
+H=Tmax−1H=T_{\max}-1. Because 
+0&lt;\eta\leq 1
+0&lt;η≤10&lt;\eta\leq 1 and 
+0\leq h_{A},h_{B}\leq H
+0≤hA,hB≤H0\leq h_{A},h_{B}\leq H,
+
+\eta^{h_{A}}\geq\eta^{H},\qquad\eta^{h_{B}}\leq 1.
+ηhA≥ηH,ηhB≤1.\eta^{h_{A}}\geq\eta^{H},\qquad\eta^{h_{B}}\leq 1.
+
+Moreover, since 
+c\mapsto e^{-\lambda c}
+c↦e−λ​cc\mapsto e^{-\lambda c} is decreasing,
+
+e^{-\lambda c_{A}}\geq e^{-\lambda c_{\max}},\qquad e^{-\lambda c_{B}}\leq e^{-\lambda c_{\min}}.
+e−λ​cA≥e−λ​cmax,e−λ​cB≤e−λ​cmin.e^{-\lambda c_{A}}\geq e^{-\lambda c_{\max}},\qquad e^{-\lambda c_{B}}\leq e^{-\lambda c_{\min}}.
+
+Consequently,
+
+r_{A}-r_{B}\geq\Delta d_{A}\eta^{H}-\Delta d_{B}-\alpha\delta_{c}.
+rA−rB≥Δ​dA​ηH−Δ​dB−α​δc.r_{A}-r_{B}\geq\Delta d_{A}\eta^{H}-\Delta d_{B}-\alpha\delta_{c}.
+
+(19)
+
+The dimension increments are integers and satisfy 
+\Delta d_{A}&gt;\Delta d_{B}
+Δ​dA&gt;Δ​dB\Delta d_{A}&gt;\Delta d_{B}. Hence,
+
+\Delta d_{A}\geq\Delta d_{B}+1.
+Δ​dA≥Δ​dB+1.\Delta d_{A}\geq\Delta d_{B}+1.
+
+Applying this inequality to Equation (19) gives
+
+\displaystyle r_{A}-r_{B}
+rA−rB\displaystyle r_{A}-r_{B}
+
+\displaystyle\geq(\Delta d_{B}+1)\eta^{H}-\Delta d_{B}-\alpha\delta_{c}
+≥(Δ​dB+1)​ηH−Δ​dB−α​δc\displaystyle\geq(\Delta d_{B}+1)\eta^{H}-\Delta d_{B}-\alpha\delta_{c}
+
+\displaystyle=\eta^{H}+\Delta d_{B}(\eta^{H}-1)-\alpha\delta_{c}.
+=ηH+Δ​dB​(ηH−1)−α​δc.\displaystyle=\eta^{H}+\Delta d_{B}(\eta^{H}-1)-\alpha\delta_{c}.
+
+Since 
+\eta^{H}-1\leq 0
+ηH−1≤0\eta^{H}-1\leq 0 and 
+\Delta d_{B}\leq\bar{d}-1
+Δ​dB≤d¯−1\Delta d_{B}\leq\bar{d}-1, it follows that
+
+\Delta d_{B}(\eta^{H}-1)\geq(\bar{d}-1)(\eta^{H}-1).
+Δ​dB​(ηH−1)≥(d¯−1)​(ηH−1).\Delta d_{B}(\eta^{H}-1)\geq(\bar{d}-1)(\eta^{H}-1).
+
+Therefore,
+
+\displaystyle r_{A}-r_{B}
+rA−rB\displaystyle r_{A}-r_{B}
+
+\displaystyle\geq\eta^{H}+(\bar{d}-1)(\eta^{H}-1)-\alpha\delta_{c}
+≥ηH+(d¯−1)​(ηH−1)−α​δc\displaystyle\geq\eta^{H}+(\bar{d}-1)(\eta^{H}-1)-\alpha\delta_{c}
+
+\displaystyle=\bar{d}\eta^{H}-(\bar{d}-1)-\alpha\delta_{c}.
+=d¯​ηH−(d¯−1)−α​δc.\displaystyle=\bar{d}\eta^{H}-(\bar{d}-1)-\alpha\delta_{c}.
+
+By Equation (18), the final expression is strictly positive. Thus,
+
+r_{A}-r_{B}&gt;0,
+rA−rB&gt;0,r_{A}-r_{B}&gt;0,
+
+and hence 
+r_{A}&gt;r_{B}
+rA&gt;rBr_{A}&gt;r_{B} for every admissible pair of transitions.
+∎
+
+In our experiments, we use the practical approximation 
+\eta&gt;\sqrt[T_{\max}-1]{(\bar{d}-1)/\bar{d}}
+η&gt;(d¯−1)/d¯Tmax−1\eta&gt;\sqrt[T_{\max}-1]{(\bar{d}-1)/\bar{d}}. This approximation omits the correction induced by the simplicity bonus because its weight 
+\alpha
+α\alpha is chosen to be small. It preserves the dominance of the dimension-increment reward while using expression simplicity only as a secondary preference; unlike Equation (18), it is not presented as a universal theoretical guarantee.
+
+Appendix C Appendix C: Detailed Algorithm
+
+C.1 The Construction of 
+\Theta_{n}
+Θn\Theta_{n}
+
+In LieNLSD (Hu et al. 2025a), the prolonged library 
+\Theta_{n}
+Θn\Theta_{n} is manually derived and fixed for a pre-defined candidate library 
+\Theta
+Θ\Theta. In contrast, LieDiscover adaptively expands 
+\Theta
+Θ\Theta during the search process, so the environment must automatically derive the corresponding 
+\Theta_{n}
+Θn\Theta_{n} for each updated library.
+
+Theorem 4.
+
+Let 
+G
+GG be a Lie group acting on 
+X\times U=\mathbb{R}^{p}\times\mathbb{R}^{q}
+X×U=ℝp×ℝqX\times U=\mathbb{R}^{p}\times\mathbb{R}^{q}, with its corresponding Lie algebra 
+\mathfrak{g}
+𝔤\mathfrak{g}. Assume that the infinitesimal group action of 
+\mathbf{v}\in\mathfrak{g}
+𝐯∈𝔤\mathbf{v}\in\mathfrak{g} takes the following form:
+
+\displaystyle\mathbf{v}
+𝐯\displaystyle\mathbf{v}
+
+\displaystyle=W\Theta(x,u)\cdot\nabla
+=WΘ(x,u)⋅∇\displaystyle=W\Theta(x,u)\cdot\nabla
+
+\displaystyle=[W_{1}\quad W_{2}\quad\cdots\quad W_{p+q}]^{\top}\Theta(x,u)\cdot\nabla
+=[W1W2⋯Wp+q]⊤Θ(x,u)⋅∇\displaystyle=[W_{1}\quad W_{2}\quad\cdots\quad W_{p+q}]^{\top}\Theta(x,u)\cdot\nabla
+
+\displaystyle=\sum_{i=1}^{p}\Theta(x,u)^{\top}W_{i}\frac{\partial}{\partial x^{i}}+\sum_{\alpha=1}^{q}\Theta(x,u)^{\top}W_{p+\alpha}\frac{\partial}{\partial u^{\alpha}},
+=∑i=1pΘ​(x,u)⊤​Wi​∂∂xi+∑α=1qΘ​(x,u)⊤​Wp+α​∂∂uα,\displaystyle=\sum_{i=1}^{p}\Theta(x,u)^{\top}W_{i}\frac{\partial}{\partial x^{i}}+\sum_{\alpha=1}^{q}\Theta(x,u)^{\top}W_{p+\alpha}\frac{\partial}{\partial u^{\alpha}},
+
+where 
+W\in\mathbb{R}^{(p+q)\times r}
+W∈ℝ(p+q)×rW\in\mathbb{R}^{(p+q)\times r} and 
+\Theta(x,u)\in\mathbb{R}^{r\times 1}
+Θ⁡(x,u)∈ℝr×1\Theta(x,u)\in\mathbb{R}^{r\times 1}. Then, the 
+n
+nn-th prolongation of 
+\mathbf{v}
+𝐯\mathbf{v} is:
+
+\text{pr}^{(n)}\mathbf{v}=\mathbf{v}+\sum_{\alpha=1}^{q}\sum_{J}\phi_{\alpha}^{J}(x,u^{(n)})\frac{\partial}{\partial u_{J}^{\alpha}},
+pr(n)​𝐯=𝐯+∑α=1q∑JϕαJ​(x,u(n))​∂∂uJα,\text{pr}^{(n)}\mathbf{v}=\mathbf{v}+\sum_{\alpha=1}^{q}\sum_{J}\phi_{\alpha}^{J}(x,u^{(n)})\frac{\partial}{\partial u_{J}^{\alpha}},
+
+(20)
+
+where 
+J=(j_{1},\dots,j_{k})
+J=(j1,…,jk)J=(j_{1},\dots,j_{k}), with 
+j_{i}\in\{1,\dots,p\}
+ji∈{1,…,p}j_{i}\in\{1,\dots,p\} and 
+k\in\{1,\dots,n\}
+k∈{1,…,n}k\in\{1,\dots,n\}. The coefficients 
+\phi_{\alpha}^{J}
+ϕαJ\phi_{\alpha}^{J} are given by:
+
+\phi_{\alpha}^{J}(x,u^{(n)})=-\sum_{i=1}^{p}\sum_{I\subset J}u_{J\setminus I,i}^{\alpha}D_{I}\Theta^{\top}W_{i}+D_{J}\Theta^{\top}W_{p+\alpha},
+ϕαJ(x,u(n))=−∑i=1p∑I⊂JuJ∖I,iαDIΘ⊤Wi+DJΘ⊤Wp+α,\phi_{\alpha}^{J}(x,u^{(n)})=-\sum_{i=1}^{p}\sum_{I\subset J}u_{J\setminus I,i}^{\alpha}D_{I}\Theta^{\top}W_{i}+D_{J}\Theta^{\top}W_{p+\alpha},
+
+(21)
+
+where 
+u_{J,i}^{\alpha}=\frac{\partial u_{J}^{\alpha}}{\partial x^{i}}=\frac{\partial^{k+1}u^{\alpha}}{\partial x^{i}\partial x^{j_{1}}\dots\partial x^{j_{k}}}
+uJ,iα=∂uJα∂xi=∂k+1uα∂xi​∂xj1​…​∂xjku_{J,i}^{\alpha}=\frac{\partial u_{J}^{\alpha}}{\partial x^{i}}=\frac{\partial^{k+1}u^{\alpha}}{\partial x^{i}\partial x^{j_{1}}\dots\partial x^{j_{k}}}, 
+J\setminus I
+J∖IJ\setminus I denotes the set difference, and 
+D_{J}
+DJD_{J} represents the total derivative.
+
+Based on Theorem 4, we design a recursive algorithm to automatically construct 
+\Theta_{n}
+Θn\Theta_{n} from a given library 
+\Theta
+Θ\Theta. Algorithm 1 builds 
+\Theta_{n}
+Θn\Theta_{n} by processing each target derivative term, and Algorithm 2 computes the corresponding coefficient blocks recursively according to its derivative order. These abstract blocks are then instantiated by the total derivatives of the current library 
+\Theta
+Θ\Theta. In this way, LieDiscover can update 
+\Theta_{n}
+Θn\Theta_{n} automatically whenever the library 
+\Theta
+Θ\Theta changes, enabling symmetry evaluation during adaptive library search.
+
+Algorithm 1  Recursive Construction of 
+\Theta_{n}
+Θn\Theta_{n} from 
+\Theta
+Θ\Theta
+
+              0:
+              
+             Candidate library 
+\Theta=[\theta_{1},\theta_{2},\dots,\theta_{r}]
+Θ=[θ1,θ2,…,θr]\Theta=[\theta_{1},\theta_{2},\dots,\theta_{r}], independent variables 
+\mathbf{x}
+𝐱\mathbf{x}, dependent variables 
+\mathbf{u}
+𝐮\mathbf{u}, target derivative set 
+\mathcal{Q}
+𝒬\mathcal{Q}
+
+              0:
+              
+             Expanded matrix 
+\Theta_{n}
+Θn\Theta_{n}
+
+              1:
+              
+             Initialize an empty matrix 
+\Theta_{n}
+Θn\Theta_{n}
+
+              2:
+              
+             for each target term 
+q\in\mathcal{Q}
+q∈𝒬q\in\mathcal{Q} do
+
+              3:
+              
+              Parse 
+q
+qq as 
+u^{\alpha}_{J}
+uJαu^{\alpha}_{J}, where 
+u^{\alpha}
+uαu^{\alpha} is the dependent variable and 
+J
+JJ is the derivative multi-index
+
+              4:
+              
+              Compute abstract coefficients 
+\{W_{x_{i}}\}
+{Wxi}\{W_{x_{i}}\} and 
+W_{u^{\alpha}}
+WuαW_{u^{\alpha}} recursively:
+
+(\{W_{x_{i}}\},W_{u^{\alpha}})\leftarrow\textsc{RecursiveCoeff}(u^{\alpha},J)
+({Wxi},Wuα)←RecursiveCoeff​(uα,J)(\{W_{x_{i}}\},W_{u^{\alpha}})\leftarrow\textsc{RecursiveCoeff}(u^{\alpha},J)
+
+              5:
+              
+              Initialize row blocks 
+\mathcal{B}=\emptyset
+ℬ=∅\mathcal{B}=\emptyset
+
+              6:
+              
+              for each independent variable 
+x_{i}\in\mathbf{x}
+xi∈𝐱x_{i}\in\mathbf{x} do
+
+              7:
+              
+               Replace each abstract term 
+D_{K}\Theta^{T}
+DK​ΘTD_{K}\Theta^{T} in 
+W_{x_{i}}
+WxiW_{x_{i}} with the concrete derivative 
+D_{K}\Theta
+DK​ΘD_{K}\Theta
+
+              8:
+              
+               Append the resulting block to 
+\mathcal{B}
+ℬ\mathcal{B}
+
+              9:
+              
+              end for
+
+              10:
+              
+              for each dependent variable 
+u^{\beta}\in\mathbf{u}
+uβ∈𝐮u^{\beta}\in\mathbf{u} do
+
+              11:
+              
+               if 
+u^{\beta}=u^{\alpha}
+uβ=uαu^{\beta}=u^{\alpha} then
+
+              12:
+              
+                Replace each 
+D_{K}\Theta^{T}
+DK​ΘTD_{K}\Theta^{T} in 
+W_{u^{\alpha}}
+WuαW_{u^{\alpha}} with 
+D_{K}\Theta
+DK​ΘD_{K}\Theta
+
+              13:
+              
+                Append the resulting block to 
+\mathcal{B}
+ℬ\mathcal{B}
+
+              14:
+              
+               else
+
+              15:
+              
+                Append a zero block to 
+\mathcal{B}
+ℬ\mathcal{B}
+
+              16:
+              
+               end if
+
+              17:
+              
+              end for
+
+              18:
+              
+              Concatenate all blocks in 
+\mathcal{B}
+ℬ\mathcal{B} to form one row of 
+\Theta_{n}
+Θn\Theta_{n}
+
+              19:
+              
+             end for
+
+              20:
+              
+             
+
+              21:
+              
+             return  
+\Theta_{n}
+Θn\Theta_{n}
+
+Algorithm 2  RecursiveCoeff
+(u^{\alpha},J)
+(uα,J)(u^{\alpha},J)
+
+              0:
+              
+             Dependent variable 
+u^{\alpha}
+uαu^{\alpha}, derivative multi-index 
+J
+JJ
+
+              0:
+              
+             Abstract coefficients 
+\{W_{x_{i}}\}
+{Wxi}\{W_{x_{i}}\} and 
+W_{u^{\alpha}}
+WuαW_{u^{\alpha}}
+
+              1:
+              
+             if 
+J=\emptyset
+J=∅J=\emptyset then
+
+              2:
+              
+              
+W_{x_{i}}\leftarrow 0
+Wxi←0W_{x_{i}}\leftarrow 0 for all 
+x_{i}
+xix_{i}
+
+              3:
+              
+              
+W_{u^{\alpha}}\leftarrow\Theta^{T}
+Wuα←ΘTW_{u^{\alpha}}\leftarrow\Theta^{T}
+
+              4:
+              
+              
+
+              5:
+              
+              return  
+\{W_{x_{i}}\},W_{u^{\alpha}}
+{Wxi},Wuα\{W_{x_{i}}\},W_{u^{\alpha}}
+
+              6:
+              
+             end if
+
+              7:
+              
+             Let 
+J=J^{\prime}k
+J=J′​kJ=J^{\prime}k, where 
+k
+kk is the last derivative direction
+
+              8:
+              
+             
+(\{\bar{W}_{x_{i}}\},\bar{W}_{u^{\alpha}})\leftarrow\textsc{RecursiveCoeff}(u^{\alpha},J^{\prime})
+({W¯xi},W¯uα)←RecursiveCoeff​(uα,J′)(\{\bar{W}_{x_{i}}\},\bar{W}_{u^{\alpha}})\leftarrow\textsc{RecursiveCoeff}(u^{\alpha},J^{\prime})
+
+              9:
+              
+             
+W_{u^{\alpha}}\leftarrow D_{k}\bar{W}_{u^{\alpha}}
+Wuα←Dk​W¯uαW_{u^{\alpha}}\leftarrow D_{k}\bar{W}_{u^{\alpha}}
+
+              10:
+              
+             for each independent variable 
+x_{i}
+xix_{i} do
+
+              11:
+              
+              
+W_{x_{i}}\leftarrow D_{k}\bar{W}_{x_{i}}-u^{\alpha}_{J^{\prime}i}D_{k}\Theta^{T}
+Wxi←Dk​W¯xi−uJ′​iα​Dk​ΘTW_{x_{i}}\leftarrow D_{k}\bar{W}_{x_{i}}-u^{\alpha}_{J^{\prime}i}D_{k}\Theta^{T}
+
+              12:
+              
+             end for
+
+              13:
+              
+             
+
+              14:
+              
+             return  
+\{W_{x_{i}}\},W_{u^{\alpha}}
+{Wxi},Wuα\{W_{x_{i}}\},W_{u^{\alpha}}
+
+C.2 Adaptive Singular Value Decomposition
+
+In Lie symmetry discovery, Singular Value Decomposition (SVD) is used to estimate the null space of the linear constraint matrix. A common practice is to manually set a fixed threshold and treat singular values below this threshold as zero. For example, LieNLSD(Hu et al. 2025a) requires a manually specified threshold to determine the null dimension. However, such a fixed threshold may be inappropriate in our setting, because the scale of the constraint matrix can vary significantly across different candidate libraries during the search process.
+
+To address this issue, we introduce an adaptive SVD strategy. Instead of using a manually fixed threshold, we determine the threshold from the singular-value spectrum itself. Specifically, we locate the largest spectral gap within a prescribed threshold range and set the threshold between the two adjacent singular values. This allows the null dimension to be selected according to the current candidate library. In addition, we impose a condition-number constraint to reject numerically unstable candidates. The full procedure is summarized in Algorithm 3.
+
+Algorithm 3  Adaptive SVD
+
+              0:
+              
+             Linear blocks 
+\{C_{i}\}_{i=1}^{M}
+{Ci}i=1M\{C_{i}\}_{i=1}^{M}, threshold bounds 
+[\gamma_{\min},\gamma_{\max}]
+[γmin,γmax][\gamma_{\min},\gamma_{\max}], condition bound 
+\kappa_{\max}
+κmax\kappa_{\max}, 
+\delta&gt;0
+δ&gt;0\delta&gt;0
+
+              0:
+              
+             Null dimension 
+d
+dd, null basis 
+Q
+QQ, threshold 
+\tau
+τ\tau
+
+              1:
+              
+             Compute the Gram matrix:
+
+G=C^{\top}C=\sum_{i=1}^{M}C_{i}^{\top}C_{i}.
+G=C⊤​C=∑i=1MCi⊤​Ci.G=C^{\top}C=\sum_{i=1}^{M}C_{i}^{\top}C_{i}.
+
+              2:
+              
+             Perform SVD:
+
+G=V\Sigma^{2}V^{\top},\qquad\sigma_{j}=\sqrt{\max(\Sigma_{j}^{2},0)}.
+G=V​Σ2​V⊤,σj=max⁡(Σj2,0).G=V\Sigma^{2}V^{\top},\qquad\sigma_{j}=\sqrt{\max(\Sigma_{j}^{2},0)}.
+
+              3:
+              
+             Sort 
+\{\sigma_{j}\}
+{σj}\{\sigma_{j}\} in descending order.
+
+              4:
+              
+             if a fixed threshold 
+\tau
+τ\tau is not given then
+
+              5:
+              
+              Compute spectral gaps:
+
+g_{j}=\log_{10}(\sigma_{j})-\log_{10}(\sigma_{j+1}).
+gj=log10⁡(σj)−log10⁡(σj+1).g_{j}=\log_{10}(\sigma_{j})-\log_{10}(\sigma_{j+1}).
+
+              6:
+              
+              Set candidate thresholds:
+
+\tau_{j}=\sqrt{\sigma_{j}\sigma_{j+1}}.
+τj=σj​σj+1.\tau_{j}=\sqrt{\sigma_{j}\sigma_{j+1}}.
+
+              7:
+              
+              Select the valid 
+\tau_{j}\in[\gamma_{\min},\gamma_{\max}]
+τj∈[γmin,γmax]\tau_{j}\in[\gamma_{\min},\gamma_{\max}] with the largest gap as 
+\tau
+τ\tau.
+
+              8:
+              
+             end if
+
+              9:
+              
+             Compute the null dimension:
+
+d=|\{j:\sigma_{j}&lt;\tau\}|.
+d=|{j:σj&lt;τ}|.d=|\{j:\sigma_{j}&lt;\tau\}|.
+
+              10:
+              
+             Compute the active condition number:
+
+\kappa=\frac{\max\{\sigma_{j}:\sigma_{j}\geq\max(\tau,\delta)\}}{\max\left(\min\{\sigma_{j}:\sigma_{j}\geq\max(\tau,\delta)\},\delta\right)}.
+κ=max⁡{σj:σj≥max⁡(τ,δ)}max⁡(min⁡{σj:σj≥max⁡(τ,δ)},δ).\kappa=\frac{\max\{\sigma_{j}:\sigma_{j}\geq\max(\tau,\delta)\}}{\max\left(\min\{\sigma_{j}:\sigma_{j}\geq\max(\tau,\delta)\},\delta\right)}.
+
+              11:
+              
+             if 
+\kappa&gt;\kappa_{\max}
+κ&gt;κmax\kappa&gt;\kappa_{\max} then
+
+              12:
+              
+              Reject the candidate.
+
+              13:
+              
+             else
+
+              14:
+              
+              Accept the candidate and select the null basis:
+
+Q=V_{[:,\,\sigma_{j}&lt;\tau]}.
+Q=V[:,σj&lt;τ].Q=V_{[:,\,\sigma_{j}&lt;\tau]}.
+
+              15:
+              
+             end if
+
+              16:
+              
+             return  
+d,Q,\tau,\kappa
+d,Q,τ,κd,Q,\tau,\kappa
+
+C.3 Basis Sparsification and Pruning
+
+After obtaining the null-space basis 
+Q
+QQ via SVD, the resulting infinitesimal generators are not necessarily sparse, since any rotation of the basis spans the same Lie algebra subspace. To obtain more interpretable generators, we use the Linearized Alternating Direction Method with Adaptive Penalty (LADMAP) (Lin et al. 2011) to find a sparse basis within the same subspace. This step preserves the span of 
+Q
+QQ while encouraging most entries of 
+QP
+Q​PQP to be zero.
+
+We then further prune the discovered library by removing low-support symbolic terms. Specifically, terms with small coefficient support are tested one by one, and a term is removed only if the null-space dimension is preserved and the numerical conditioning does not degrade significantly. This produces a compact library and sparse infinitesimal generators, as summarized in Algorithm 4.
+
+Algorithm 4  Basis Sparsification and Pruning
+
+              0:
+              
+             Basis matrix 
+Q
+QQ, best searched library 
+\Theta^{\ast}
+Θ∗\Theta^{\ast}, mandatory terms 
+\Theta_{0}
+Θ0\Theta_{0}, step sizes 
+\eta_{P},\eta_{Z}&gt;0
+ηP,ηZ&gt;0\eta_{P},\eta_{Z}&gt;0, conditioning tolerance 
+\gamma\geq 1
+γ≥1\gamma\geq 1
+
+              0:
+              
+             Final pruned library 
+\Theta_{f}
+Θf\Theta_{f}, sparse basis 
+Q_{\mathrm{final}}^{\ast}
+Qfinal∗Q_{\mathrm{final}}^{\ast}
+
+              1:
+              
+             Initialize 
+\epsilon_{1}&gt;0,\epsilon_{2}&gt;0,\beta_{\max}\gg\beta_{0}&gt;0,\rho_{0}\geq 1
+ϵ1&gt;0,ϵ2&gt;0,βmax≫β0&gt;0,ρ0≥1\epsilon_{1}&gt;0,\epsilon_{2}&gt;0,\beta_{\max}\gg\beta_{0}&gt;0,\rho_{0}\geq 1.
+
+              2:
+              
+             Set 
+P_{0}=I_{d}
+P0=IdP_{0}=I_{d}, 
+Z_{0}=QP_{0}
+Z0=Q​P0Z_{0}=QP_{0}, 
+\Lambda_{0}=0
+Λ0=0\Lambda_{0}=0, and 
+k\leftarrow 0
+k←0k\leftarrow 0.
+
+              3:
+              
+             repeat
+
+              4:
+              
+              Update 
+P_{k+1}=UV^{\top}
+Pk+1=U​V⊤P_{k+1}=UV^{\top}, where 
+U\Sigma V^{\top}
+U​Σ​V⊤U\Sigma V^{\top} is the SVD of
+
+P_{k}-\frac{Q^{\top}(\Lambda_{k}+\beta_{k}(QP_{k}-Z_{k}))}{\beta_{k}\eta_{P}}.
+Pk−Q⊤​(Λk+βk​(Q​Pk−Zk))βk​ηP.P_{k}-\frac{Q^{\top}(\Lambda_{k}+\beta_{k}(QP_{k}-Z_{k}))}{\beta_{k}\eta_{P}}.
+
+              5:
+              
+              Update
+
+Z_{k+1}=\mathcal{S}_{(\beta_{k}\eta_{Z})^{-1}}\left(Z_{k}+\frac{\Lambda_{k}+\beta_{k}(QP_{k+1}-Z_{k})}{\beta_{k}\eta_{Z}}\right),
+Zk+1=𝒮(βk​ηZ)−1​(Zk+Λk+βk​(Q​Pk+1−Zk)βk​ηZ),Z_{k+1}=\mathcal{S}_{(\beta_{k}\eta_{Z})^{-1}}\left(Z_{k}+\frac{\Lambda_{k}+\beta_{k}(QP_{k+1}-Z_{k})}{\beta_{k}\eta_{Z}}\right),
+
+where 
+\mathcal{S}_{\epsilon}(x)=\mathrm{sgn}(x)\max(|x|-\epsilon,0)
+𝒮ϵ​(x)=sgn⁡(x)​max⁡(|x|−ϵ,0)\mathcal{S}_{\epsilon}(x)=\mathrm{sgn}(x)\max(|x|-\epsilon,0).
+
+              6:
+              
+              Update 
+\Lambda_{k+1}=\Lambda_{k}+\beta_{k}(QP_{k+1}-Z_{k+1})
+Λk+1=Λk+βk​(Q​Pk+1−Zk+1)\Lambda_{k+1}=\Lambda_{k}+\beta_{k}(QP_{k+1}-Z_{k+1}).
+
+              7:
+              
+              Compute the convergence residual
+
+\chi_{k}=\beta_{k}\max\!\left(\sqrt{\eta_{P}}\lVert P_{k+1}-P_{k}\rVert_{\infty},\sqrt{\eta_{Z}}\lVert Z_{k+1}-Z_{k}\rVert_{\infty}\right).
+χk=βk​max⁡(ηP​∥Pk+1−Pk∥∞,ηZ​∥Zk+1−Zk∥∞).\chi_{k}=\beta_{k}\max\!\left(\sqrt{\eta_{P}}\lVert P_{k+1}-P_{k}\rVert_{\infty},\sqrt{\eta_{Z}}\lVert Z_{k+1}-Z_{k}\rVert_{\infty}\right).
+
+              8:
+              
+              Set 
+\rho_{k}\leftarrow\rho_{0}
+ρk←ρ0\rho_{k}\leftarrow\rho_{0} if 
+\chi_{k}&lt;\epsilon_{2}
+χk&lt;ϵ2\chi_{k}&lt;\epsilon_{2}; otherwise set 
+\rho_{k}\leftarrow 1
+ρk←1\rho_{k}\leftarrow 1.
+
+              9:
+              
+              Update 
+\beta_{k+1}=\min(\beta_{\max},\rho_{k}\beta_{k})
+βk+1=min⁡(βmax,ρk​βk)\beta_{k+1}=\min(\beta_{\max},\rho_{k}\beta_{k}).
+
+              10:
+              
+              
+k\leftarrow k+1
+k←k+1k\leftarrow k+1.
+
+              11:
+              
+             until 
+\lVert QP_{k}-Z_{k}\rVert_{\infty}&lt;\epsilon_{1}
+∥Q​Pk−Zk∥∞&lt;ϵ1\lVert QP_{k}-Z_{k}\rVert_{\infty}&lt;\epsilon_{1} and 
+\chi_{k-1}\leq\epsilon_{2}
+χk−1≤ϵ2\chi_{k-1}\leq\epsilon_{2}
+
+              12:
+              
+             
+Q^{\ast}\leftarrow QP_{k}
+Q∗←Q​PkQ^{\ast}\leftarrow QP_{k}.
+
+              13:
+              
+             Reshape 
+Q^{\ast}
+Q∗Q^{\ast} into coefficient tensors 
+\{W_{i}\}
+{Wi}\{W_{i}\}.
+
+              14:
+              
+             Compute support score for each term 
+\theta_{j}\in\Theta^{\ast}
+θj∈Θ∗\theta_{j}\in\Theta^{\ast}:
+
+s_{j}=\left(\sum_{i}\|W_{i}[:,j]\|_{2}^{2}\right)^{1/2}.
+sj=(∑i∥Wi[:,j]∥22)1/2.s_{j}=\left(\sum_{i}\|W_{i}[:,j]\|_{2}^{2}\right)^{1/2}.
+
+              15:
+              
+             Sort non-mandatory terms 
+\Theta^{\ast}\setminus\Theta_{0}
+Θ∗∖Θ0\Theta^{\ast}\setminus\Theta_{0} by ascending 
+s_{j}
+sjs_{j}.
+
+              16:
+              
+             Set 
+\Theta_{f}\leftarrow\Theta^{\ast}
+Θf←Θ∗\Theta_{f}\leftarrow\Theta^{\ast} and evaluate 
+(d_{\mathrm{ref}},\kappa_{\mathrm{ref}})
+(dref,κref)(d_{\mathrm{ref}},\kappa_{\mathrm{ref}}) on 
+\Theta_{f}
+Θf\Theta_{f}.
+
+              17:
+              
+             for each candidate term 
+\theta_{j}
+θj\theta_{j} in sorted order do
+
+              18:
+              
+              
+\Theta_{\mathrm{trial}}\leftarrow\Theta_{f}\setminus\{\theta_{j}\}
+Θtrial←Θf∖{θj}\Theta_{\mathrm{trial}}\leftarrow\Theta_{f}\setminus\{\theta_{j}\}.
+
+              19:
+              
+              Evaluate 
+(d_{\mathrm{trial}},\kappa_{\mathrm{trial}})
+(dtrial,κtrial)(d_{\mathrm{trial}},\kappa_{\mathrm{trial}}) on 
+\Theta_{\mathrm{trial}}
+Θtrial\Theta_{\mathrm{trial}} by final SVD.
+
+              20:
+              
+              if 
+d_{\mathrm{trial}}=d_{\mathrm{ref}}
+dtrial=drefd_{\mathrm{trial}}=d_{\mathrm{ref}} and 
+\kappa_{\mathrm{trial}}\leq\gamma\kappa_{\mathrm{ref}}
+κtrial≤γ​κref\kappa_{\mathrm{trial}}\leq\gamma\kappa_{\mathrm{ref}} then
+
+              21:
+              
+               
+\Theta_{f}\leftarrow\Theta_{\mathrm{trial}}
+Θf←Θtrial\Theta_{f}\leftarrow\Theta_{\mathrm{trial}}.
+
+              22:
+              
+              end if
+
+              23:
+              
+             end for
+
+              24:
+              
+             Recompute final SVD on 
+\Theta_{f}
+Θf\Theta_{f} and sparsify the resulting basis as 
+Q_{\mathrm{final}}^{\ast}
+Qfinal∗Q_{\mathrm{final}}^{\ast}.
+
+              25:
+              
+             return  
+\Theta_{f},Q_{\mathrm{final}}^{\ast}
+Θf,Qfinal∗\Theta_{f},Q_{\mathrm{final}}^{\ast}
+
+C.4 Overall Algorithm of LieDiscover
+
+Algorithm 5 outlines the complete LieDiscover framework.
+
+Algorithm 5  LieDiscover
+
+              0:
+              
+             Dataset 
+\mathcal{D}
+𝒟\mathcal{D}, initial library 
+\Theta_{0}
+Θ0\Theta_{0}, horizon 
+T_{\max}
+TmaxT_{\max}, batch size 
+B
+BB, elite fraction 
+\epsilon
+ϵ\epsilon, iterations 
+K
+KK
+
+              0:
+              
+             Final compact library 
+\Theta_{f}
+Θf\Theta_{f} and infinitesimal generators 
+\{W_{j}\}_{j=1}^{d^{\ast}}
+{Wj}j=1d∗\{W_{j}\}_{j=1}^{d^{\ast}}
+
+              1:
+              
+             Fit neural surrogate 
+\widehat{F}
+F^\widehat{F} on 
+\mathcal{D}
+𝒟\mathcal{D} and obtain Jacobian 
+J_{F}
+JFJ_{F} via automatic differentiation.
+
+              2:
+              
+             Initialize actor 
+\pi_{\theta}
+πθ\pi_{\theta}, critic 
+V_{\phi}
+VϕV_{\phi}, best return 
+R_{\mathrm{best}}\leftarrow-\infty
+Rbest←−∞R_{\mathrm{best}}\leftarrow-\infty, and 
+\Theta^{\ast}\leftarrow\Theta_{0}
+Θ∗←Θ0\Theta^{\ast}\leftarrow\Theta_{0}.
+
+              3:
+              
+             for iteration 
+k=1,\dots,K
+k=1,…,Kk=1,\dots,K do
+
+              4:
+              
+              for episode 
+i=1,\dots,B
+i=1,…,Bi=1,\dots,B do
+
+              5:
+              
+               
+s_{0}^{(i)}\leftarrow(\Theta_{0},\emptyset)
+s0(i)←(Θ0,∅)s_{0}^{(i)}\leftarrow(\Theta_{0},\emptyset)
+
+              6:
+              
+               for step 
+t=0,\dots,T_{\max}-1
+t=0,…,Tmax−1t=0,\dots,T_{\max}-1 do
+
+              7:
+              
+                Sample expression tree 
+\tau_{t}^{(i)}\sim\pi_{\theta}(\cdot\mid s_{t}^{(i)})
+τt(i)∼πθ(⋅∣st(i))\tau_{t}^{(i)}\sim\pi_{\theta}(\cdot\mid s_{t}^{(i)}).
+
+              8:
+              
+                
+(\widehat{d}_{t},\kappa_{t})\leftarrow\mathrm{AdaptiveSVD}(\Theta_{t}^{\mathrm{acc},(i)}\cup\{\tau_{t}^{(i)}\},J_{F})
+(d^t,κt)←AdaptiveSVD⁡(Θtacc,(i)∪{τt(i)},JF)(\widehat{d}_{t},\kappa_{t})\leftarrow\mathrm{AdaptiveSVD}(\Theta_{t}^{\mathrm{acc},(i)}\cup\{\tau_{t}^{(i)}\},J_{F}).
+
+              9:
+              
+                
+(s_{t+1}^{(i)},r_{t}^{(i)})\leftarrow\mathrm{EnvStep}(s_{t}^{(i)},\tau_{t}^{(i)},\widehat{d}_{t},\kappa_{t})
+(st+1(i),rt(i))←EnvStep⁡(st(i),τt(i),d^t,κt)(s_{t+1}^{(i)},r_{t}^{(i)})\leftarrow\mathrm{EnvStep}(s_{t}^{(i)},\tau_{t}^{(i)},\widehat{d}_{t},\kappa_{t}).
+
+              10:
+              
+               end for
+
+              11:
+              
+               
+R^{(i)}\leftarrow\sum_{t=0}^{T_{\max}-1}r_{t}^{(i)}
+R(i)←∑t=0Tmax−1rt(i)R^{(i)}\leftarrow\sum_{t=0}^{T_{\max}-1}r_{t}^{(i)}.
+
+              12:
+              
+               Update 
+\Theta^{\ast}
+Θ∗\Theta^{\ast} if 
+R^{(i)}&gt;R_{\mathrm{best}}
+R(i)&gt;RbestR^{(i)}&gt;R_{\mathrm{best}}.
+
+              13:
+              
+              end for
+
+              14:
+              
+              
+\mathcal{E}_{\epsilon}\leftarrow\{i\mid R^{(i)}\geq\mathrm{Quantile}_{1-\epsilon}(R)\}
+ℰϵ←{i∣R(i)≥Quantile1−ϵ​(R)}\mathcal{E}_{\epsilon}\leftarrow\{i\mid R^{(i)}\geq\mathrm{Quantile}_{1-\epsilon}(R)\}.
+
+              15:
+              
+              Update 
+\theta,\phi
+θ,ϕ\theta,\phi via risk-seeking actor-critic loss 
+\mathcal{L}
+ℒ\mathcal{L} on 
+\mathcal{E}_{\epsilon}
+ℰϵ\mathcal{E}_{\epsilon}.
+
+              16:
+              
+             end for
+
+              17:
+              
+             
+(d^{\ast},Q)\leftarrow\mathrm{AdaptiveSVD}(\Theta^{\ast},J_{F})
+(d∗,Q)←AdaptiveSVD⁡(Θ∗,JF)(d^{\ast},Q)\leftarrow\mathrm{AdaptiveSVD}(\Theta^{\ast},J_{F}).
+
+              18:
+              
+             
+(\Theta_{f},Q_{\mathrm{final}}^{\ast})\leftarrow\mathrm{SparsifyAndPrune}(Q,\Theta^{\ast},\Theta_{0})
+(Θf,Qfinal∗)←SparsifyAndPrune⁡(Q,Θ∗,Θ0)(\Theta_{f},Q_{\mathrm{final}}^{\ast})\leftarrow\mathrm{SparsifyAndPrune}(Q,\Theta^{\ast},\Theta_{0}).
+
+              19:
+              
+             return  
+\Theta_{f}
+Θf\Theta_{f} and 
+\{W_{j}\}_{j=1}^{d^{\ast}}\leftarrow\mathrm{Reshape}(Q_{\mathrm{final}}^{\ast})
+{Wj}j=1d∗←Reshape⁡(Qfinal∗)\{W_{j}\}_{j=1}^{d^{\ast}}\leftarrow\mathrm{Reshape}(Q_{\mathrm{final}}^{\ast}).
+
+Appendix D Appendix D: Detailed Methods
+
+Appendix D.1: Jacobian Computation
+
+Given discrete samples
+
+(x_{i},u_{i}^{(n)})
+(xi,ui(n))(x_{i},u_{i}^{(n)}), let 
+y_{i}=D_{\boldsymbol{\beta}_{0}}u_{i}
+yi=D𝜷0​uiy_{i}=D_{\boldsymbol{\beta}_{0}}u_{i} denote the distinguished temporal derivative, and let
+
+z_{i}=\left(D_{\boldsymbol{\beta}_{1}}u_{i},\ldots,D_{\boldsymbol{\beta}_{s}}u_{i}\right)
+zi=(D𝜷1​ui,…,D𝜷s​ui)z_{i}=\left(D_{\boldsymbol{\beta}_{1}}u_{i},\ldots,D_{\boldsymbol{\beta}_{s}}u_{i}\right)
+
+collect the spatial derivatives and other state variables selected as
+inputs to the surrogate model. Independent variables are included in
+
+z_{i}
+ziz_{i} when the governing equation depends on them explicitly.
+
+Before policy optimization, a fully connected neural network
+
+\widehat{f}_{\phi}
+f^ϕ\widehat{f}_{\phi} is trained offline by minimizing
+
+\mathcal{L}_{\mathrm{sur}}=\frac{1}{N}\sum_{i=1}^{N}\left\|\widehat{f}_{\phi}(z_{i})-y_{i}\right\|_{2}^{2}.
+ℒsur=1N​∑i=1N‖f^ϕ​(zi)−yi‖22.\mathcal{L}_{\mathrm{sur}}=\frac{1}{N}\sum_{i=1}^{N}\left\|\widehat{f}_{\phi}(z_{i})-y_{i}\right\|_{2}^{2}.
+
+(22)
+
+The learned governing residual is then represented as
+
+\widehat{F}_{\phi}(z_{i},y_{i})=\widehat{f}_{\phi}(z_{i})-y_{i}=0.
+F^ϕ​(zi,yi)=f^ϕ​(zi)−yi=0.\widehat{F}_{\phi}(z_{i},y_{i})=\widehat{f}_{\phi}(z_{i})-y_{i}=0.
+
+(23)
+
+Accordingly, automatic differentiation gives the sample-wise residual
+Jacobian
+
+J_{\widehat{F},i}=\left[J_{\widehat{f}_{\phi}}(z_{i}),-I\right].
+JF^,i=[Jf^ϕ​(zi),−I].J_{\widehat{F},i}=\left[J_{\widehat{f}_{\phi}}(z_{i}),-I\right].
+
+(24)
+
+Figure 3: Detailed Jacobian computation steps.
+
+The surrogate network remains frozen during policy training.
+The sample-wise Jacobians are computed when the environment state is
+initialized and are cached for reuse when evaluating different
+candidate extensions. When fixed-sample caching is enabled, the same
+initialized state can also be reused across episodes. The detailed
+Jacobian computation is illustrated in Figure 3.
+
+Appendix D.2: PDE Discovery
+
+In this subsection, we detail how to apply the discovered infinitesimal generators to downstream PDE discovery.
+
+For an unknown evolution equation of the form 
+u_{t}=f(x,u,D_{\boldsymbol{\beta}_{1}}u,\dots,D_{\boldsymbol{\beta}_{s}}u)
+ut=f⁡(x,u,D𝜷1​u,…,D𝜷s​u)u_{t}=f(x,u,D_{\boldsymbol{\beta}_{1}}u,\dots,D_{\boldsymbol{\beta}_{s}}u), it must satisfy the standard symmetry condition. That is, the prolonged vector field 
+\operatorname{pr}^{(n)}\mathbf{v}_{a}
+pr(n)⁡𝐯a\operatorname{pr}^{(n)}\mathbf{v}_{a} acting on the equation must vanish:
+
+\operatorname{pr}^{(n)}\mathbf{v}_{a}(u_{t}-f)=0,\qquad\forall\mathbf{v}_{a}\in\mathcal{B}.
+pr(n)⁡𝐯a​(ut−f)=0,∀𝐯a∈ℬ.\operatorname{pr}^{(n)}\mathbf{v}_{a}(u_{t}-f)=0,\qquad\forall\mathbf{v}_{a}\in\mathcal{B}.
+
+(25)
+
+Instead of directly searching for the complex nonlinear function 
+f
+ff from scratch, we use this symmetry constraint to adaptively estimate its polynomial degree beforehand. We perform an automated degree sweep starting from 
+d=1
+d=1d=1. At each step 
+d
+dd, we build a candidate term library 
+\mathcal{C}_{d}
+𝒞d\mathcal{C}_{d}. This library includes spatial derivatives, their polynomial products up to degree 
+d
+dd, and basic transcendental functions (such as 
+\sin,\cos,\exp
+sin,cos,exp\sin,\cos,\exp) if suggested by prior knowledge.
+
+By evaluating the prolonged actions 
+\operatorname{pr}^{(n)}\mathbf{v}_{a}
+pr(n)⁡𝐯a\operatorname{pr}^{(n)}\mathbf{v}_{a} on the dataset, we convert the symmetry condition into a simple linear system:
+
+\mathbf{A}_{u_{t}}\approx\mathbf{A}_{\mathcal{C}_{d}}\mathbf{c}.
+𝐀ut≈𝐀𝒞d​𝐜.\mathbf{A}_{u_{t}}\approx\mathbf{A}_{\mathcal{C}_{d}}\mathbf{c}.
+
+(26)
+
+Here, 
+\mathbf{A}_{u_{t}}
+𝐀ut\mathbf{A}_{u_{t}} and 
+\mathbf{A}_{\mathcal{C}_{d}}
+𝐀𝒞d\mathbf{A}_{\mathcal{C}_{d}} represent the evaluated results of the prolonged vector field acting on 
+u_{t}
+utu_{t} and the candidate terms in 
+\mathcal{C}_{d}
+𝒞d\mathcal{C}_{d}, respectively. We measure the fitting error using the relative residual:
+
+\epsilon(d)=\frac{\min_{\mathbf{c}}\left\|\mathbf{A}_{u_{t}}-\mathbf{A}_{\mathcal{C}_{d}}\mathbf{c}\right\|_{2}}{\left\|\mathbf{A}_{u_{t}}\right\|_{2}+\varepsilon}.
+ϵ⁡(d)=min𝐜⁡‖𝐀ut−𝐀𝒞d​𝐜‖2‖𝐀ut‖2+ε.\epsilon(d)=\frac{\min_{\mathbf{c}}\left\|\mathbf{A}_{u_{t}}-\mathbf{A}_{\mathcal{C}_{d}}\mathbf{c}\right\|_{2}}{\left\|\mathbf{A}_{u_{t}}\right\|_{2}+\varepsilon}.
+
+(27)
+
+We compare this residual against a predefined tolerance threshold 
+\tau
+τ\tau. If 
+\epsilon(d)\leq\tau
+ϵ⁡(d)≤τ\epsilon(d)\leq\tau, the search stops, and we set 
+d^{\ast}=d
+d∗=dd^{\ast}=d as the estimated nonlinear degree of the target PDE. If the residual is too large, we increment the degree to 
+d+1
+d+1d+1 and repeat the linear test. This iterative process ensures the target degree 
+d^{\ast}
+d∗d^{\ast} is automatically determined by the data, rather than given in advance.
+
+LieEQL
+
+This estimated degree 
+d^{\ast}
+d∗d^{\ast} directly determines the architecture of the symbolic network. Since each recursive product layer doubles the reachable polynomial degree, we define the minimum number of product layers 
+L
+LL as:
+
+L=\min\{L\geq 0:2^{L}\geq d^{\ast}\}.
+L=min⁡{L≥0:2L≥d∗}.L=\min\{L\geq 0:2^{L}\geq d^{\ast}\}.
+
+(28)
+
+For example, 
+d^{\ast}=1
+d∗=1d^{\ast}=1 uses a linear architecture without product layers, while higher degrees require additional product layers. Furthermore, we use the linear test results to determine non-polynomial operators. Let 
+\mathcal{C}^{\ast}=\mathcal{C}_{d^{\ast}}
+𝒞∗=𝒞d∗\mathcal{C}^{\ast}=\mathcal{C}_{d^{\ast}} be the selected library. We check if the transcendental candidate terms in 
+\mathcal{C}^{\ast}
+𝒞∗\mathcal{C}^{\ast} have non-zero coefficients. If so, we collect them into an operator set:
+
+\mathcal{F}_{\mathrm{trans}}=\{\rho\in\{\sin,\cos,\exp\}:\rho\text{ is required in }\mathcal{C}^{\ast}\}.
+ℱtrans={ρ∈{sin,cos,exp}:ρ​ is required in ​𝒞∗}.\mathcal{F}_{\mathrm{trans}}=\{\rho\in\{\sin,\cos,\exp\}:\rho\text{ is required in }\mathcal{C}^{\ast}\}.
+
+(29)
+
+If no such function is needed, then 
+\mathcal{F}_{\mathrm{trans}}=\emptyset
+ℱtrans=∅\mathcal{F}_{\mathrm{trans}}=\emptyset.
+Finally, the symbolic network is configured with the following operator sets across layers:
+
+\mathcal{O}^{\ell}=\begin{cases}\{\mathrm{id}\}\cup\mathcal{F}_{\mathrm{trans}},&amp;L=0,\\
+\{\mathrm{id},\times\}\cup\mathcal{F}_{\mathrm{trans}},&amp;\ell=1,\;L\geq 1,\\
+\{\mathrm{id},\times\},&amp;2\leq\ell\leq L.\end{cases}
+𝒪ℓ={{id}∪ℱtrans,L=0,{id,×}∪ℱtrans,ℓ=1,L≥1,{id,×},2≤ℓ≤L.\mathcal{O}^{\ell}=\begin{cases}\{\mathrm{id}\}\cup\mathcal{F}_{\mathrm{trans}},&amp;L=0,\\
+\{\mathrm{id},\times\}\cup\mathcal{F}_{\mathrm{trans}},&amp;\ell=1,\;L\geq 1,\\
+\{\mathrm{id},\times\},&amp;2\leq\ell\leq L.\end{cases}
+
+(30)
+
+In this way, the discovered explicit symmetries serve as a powerful architectural prior, significantly reducing the search space for PDE discovery.
+
+LieSINDy
+
+Once 
+d^{\ast}
+d∗d^{\ast} is determined, we simply configure the function library to include polynomials up to degree 
+d^{\ast}
+d∗d^{\ast} alongside the transcendental set 
+\mathcal{F}_{\mathrm{trans}}
+ℱtrans\mathcal{F}_{\mathrm{trans}}.
+Furthermore, the discovered symmetries can provide explicit priors for selecting specific functional terms in the candidate library, as noted in Yang et al. (2025).
+
+In addition to the symmetry-informed architectural priors and library constraints, we incorporate a symmetry loss into the objective functions of LieEQL and LieSINDy. Let 
+Q
+QQ denote the matrix whose columns are the normalized coefficient vectors of the discovered generators. We define
+the empirical symmetry loss as
+
+\mathcal{L}_{\mathrm{sym}}=\operatorname{MSE}\left(J_{F}\Theta_{n}^{*}Q,0\right),
+ℒsym=MSE⁡(JF​Θn∗​Q,0),\mathcal{L}_{\mathrm{sym}}=\operatorname{MSE}\left(J_{F}\Theta_{n}^{*}Q,0\right),
+
+(31)
+
+where the mean is taken over all sampled points, discovered
+generators, and equation components.
+
+Appendix E Appendix E: Detailed Results
+
+E.1 Grassmann distance
+
+Table 4 compares the Grassmann distance of different methods on the KdV, wave, and reaction-diffusion equations. As shown in the table, LieDiscover achieves the lowest Grassmann distance on three tasks. In particular, compared with LieGAN, LieDiscover significantly reduces the subspace error by several orders of magnitude. Compared with LieNLSD, LieDiscover achieves smaller distances, showing that it recovers Lie algebra subspaces closer to the ground truth.
+These results verify the effectiveness of LieDiscover in accurately identifying the symmetry subspace of different PDE systems.
+
+Table 4: Grassmann distance between the discovered Lie algebra subspace and the ground-truth subspace. The results are reported as mean 
+\pm
+±\pm standard deviation over three random seeds. Lower values are better.
+
+Method
+KdV
+Wave
+Reaction-diffusion
+Schrödinger
+
+LieGAN
+
+1.56\pm 0.0003
+1.56±0.00031.56\pm 0.0003
+
+2.36\pm 0.15
+2.36±0.152.36\pm 0.15
+
+1.11\pm 0.11
+1.11±0.111.11\pm 0.11
+
+2.22\pm 0.05
+2.22±0.052.22\pm 0.05
+
+LieNLSD
+
+(4.86\pm 1.68)\times 10^{-3}
+(4.86±1.68)×10−3(4.86\pm 1.68)\times 10^{-3}
+
+{(1.43\pm 0.03)\times 10^{-2}}
+(1.43±0.03)×10−2{(1.43\pm 0.03)\times 10^{-2}}
+
+(1.69\pm 0.19)\times 10^{-1}
+(1.69±0.19)×10−1(1.69\pm 0.19)\times 10^{-1}
+
+(1.14\pm 0.28)\times 10^{-1}
+(1.14±0.28)×10−1(1.14\pm 0.28)\times 10^{-1}
+
+LieDiscover
+
+\mathbf{(4.09\pm 2.63)\times 10^{-3}}
+(4.09±2.63)×𝟏𝟎−𝟑\mathbf{(4.09\pm 2.63)\times 10^{-3}}
+
+\mathbf{(1.43\pm 0.02)\times 10^{-2}}
+(1.43±0.02)×𝟏𝟎−𝟐\mathbf{(1.43\pm 0.02)\times 10^{-2}}
+
+\mathbf{(1.65\pm 0.29)\times 10^{-1}}
+(1.65±0.29)×𝟏𝟎−𝟏\mathbf{(1.65\pm 0.29)\times 10^{-1}}
+
+\mathbf{(9.76\pm 1.20)\times 10^{-2}}
+(9.76±1.20)×𝟏𝟎−𝟐\mathbf{(9.76\pm 1.20)\times 10^{-2}}
+
+E.2 Symmetry Discovery
+
+In this section, we present the implementation details and visualization results for all tasks.
+
+Top quark tagging
+
+Figure 4: Visualization result of symmetry discovery on top quark tagging by LieDiscover. The first subplot shows the last 8 singular values. The other seven subplots display the infinitesimal generators corresponding to the nearly-zero singular values after sparsification.
+
+For the top quark tagging task, we observe the four-momenta of the 20 jet constituents with the highest transverse momentum. Each constituent is represented by 
+p^{\mu}=(p^{0},p^{1},p^{2},p^{3})
+pμ=(p0,p1,p2,p3)p^{\mu}=(p^{0},p^{1},p^{2},p^{3}). Therefore, the input dimension of the classifier is 
+20\times 4=80
+20×4=8020\times 4=80, and the output dimension is one for binary classification.
+
+To estimate the Jacobian required for symmetry discovery, we train a neural classifier to approximate the top quark tagging function. The classifier is an MLP with three hidden layers, hidden dimension 200, ReLU activation, and a Sigmoid output. It is trained using the binary cross-entropy loss. After training, we compute the Jacobian of the classifier output with respect to the input four-momenta by automatic differentiation.
+
+We then apply LieDiscover to search for infinitesimal generators. Since top quark tagging is a static task, the prolongation order is set to 
+n=0
+n=0n=0. We initialize the candidate library as 
+\Theta_{0}=\{p^{0},p^{1},p^{2},p^{3}\}
+Θ0={p0,p1,p2,p3}\Theta_{0}=\{p^{0},p^{1},p^{2},p^{3}\}, set the maximum library size to 
+N=8
+N=8N=8, and use a maximum expansion horizon of 
+T_{\max}=4
+Tmax=4T_{\max}=4. During the search, no additional generated term leads to a positive increase in the null-space dimension. After pruning, the compact library remains 
+\Theta_{f}=\{p^{0},p^{1},p^{2},p^{3}\}
+Θf={p0,p1,p2,p3}\Theta_{f}=\{p^{0},p^{1},p^{2},p^{3}\}. This is consistent with the fact that the underlying symmetries in this task are linear transformations of the four-momentum.
+
+The ground-truth Lie algebra of this task contains seven infinitesimal generators, as shown in Equation (32).
+
+\displaystyle\mathbf{v}_{1}
+𝐯1\displaystyle\mathbf{v}_{1}
+
+\displaystyle=-p^{3}\partial_{p^{2}}+p^{2}\partial_{p^{3}},
+=−p3∂p2+p2∂p3,\displaystyle=-p^{3}\partial_{p^{2}}+p^{2}\partial_{p^{3}},
+
+(32)
+
+\displaystyle\mathbf{v}_{2}
+𝐯2\displaystyle\mathbf{v}_{2}
+
+\displaystyle=p^{1}\partial_{p^{0}}+p^{0}\partial_{p^{1}},
+=p1∂p0+p0∂p1,\displaystyle=p^{1}\partial_{p^{0}}+p^{0}\partial_{p^{1}},
+
+\displaystyle\mathbf{v}_{3}
+𝐯3\displaystyle\mathbf{v}_{3}
+
+\displaystyle=-p^{3}\partial_{p^{1}}+p^{1}\partial_{p^{3}},
+=−p3∂p1+p1∂p3,\displaystyle=-p^{3}\partial_{p^{1}}+p^{1}\partial_{p^{3}},
+
+\displaystyle\mathbf{v}_{4}
+𝐯4\displaystyle\mathbf{v}_{4}
+
+\displaystyle=p^{3}\partial_{p^{0}}+p^{0}\partial_{p^{3}},
+=p3∂p0+p0∂p3,\displaystyle=p^{3}\partial_{p^{0}}+p^{0}\partial_{p^{3}},
+
+\displaystyle\mathbf{v}_{5}
+𝐯5\displaystyle\mathbf{v}_{5}
+
+\displaystyle=-p^{2}\partial_{p^{1}}+p^{1}\partial_{p^{2}},
+=−p2∂p1+p1∂p2,\displaystyle=-p^{2}\partial_{p^{1}}+p^{1}\partial_{p^{2}},
+
+\displaystyle\mathbf{v}_{6}
+𝐯6\displaystyle\mathbf{v}_{6}
+
+\displaystyle=p^{2}\partial_{p^{0}}+p^{0}\partial_{p^{2}},
+=p2∂p0+p0∂p2,\displaystyle=p^{2}\partial_{p^{0}}+p^{0}\partial_{p^{2}},
+
+\displaystyle\mathbf{v}_{7}
+𝐯7\displaystyle\mathbf{v}_{7}
+
+\displaystyle=p^{0}\partial_{p^{0}}+p^{1}\partial_{p^{1}}+p^{2}\partial_{p^{2}}+p^{3}\partial_{p^{3}}.
+=p0∂p0+p1∂p1+p2∂p2+p3∂p3.\displaystyle=p^{0}\partial_{p^{0}}+p^{1}\partial_{p^{1}}+p^{2}\partial_{p^{2}}+p^{3}\partial_{p^{3}}.
+
+Among them, 
+\mathbf{v}_{1}
+𝐯1\mathbf{v}_{1}, 
+\mathbf{v}_{3}
+𝐯3\mathbf{v}_{3}, and 
+\mathbf{v}_{5}
+𝐯5\mathbf{v}_{5} correspond to spatial rotations in the 
+(p^{2},p^{3})
+(p2,p3)(p^{2},p^{3}), 
+(p^{1},p^{3})
+(p1,p3)(p^{1},p^{3}), and 
+(p^{1},p^{2})
+(p1,p2)(p^{1},p^{2}) planes, respectively. The generators 
+\mathbf{v}_{2}
+𝐯2\mathbf{v}_{2}, 
+\mathbf{v}_{4}
+𝐯4\mathbf{v}_{4}, and 
+\mathbf{v}_{6}
+𝐯6\mathbf{v}_{6} represent Lorentz boosts along the 
+p^{1}
+p1p^{1}, 
+p^{3}
+p3p^{3}, and 
+p^{2}
+p2p^{2} directions, respectively. Finally, 
+\mathbf{v}_{7}
+𝐯7\mathbf{v}_{7} corresponds to the global scaling of the four-momentum 
+p^{\mu}=(p^{0},p^{1},p^{2},p^{3})
+pμ=(p0,p1,p2,p3)p^{\mu}=(p^{0},p^{1},p^{2},p^{3}). Together, these generators characterize the Lorentz and scaling symmetries of the top quark tagging data.
+
+Figure 4 visualizes the singular values and the sparsified infinitesimal generators discovered by LieDiscover. The seven nearly-zero singular values indicate that LieDiscover correctly identifies a seven-dimensional Lie algebra subspace, and the recovered generators match the ground-truth rotation, boost, and scaling directions.
+
+Burgers’ Equation
+
+Figure 5: Visualization result of symmetry discovery on Burgers’ Equation by LieDiscover. The first subplot shows the last 7 singular values. The other six subplots display the infinitesimal generators corresponding to the nearly-zero singular values after sparsification.
+
+For Burgers’ equation, we consider the evolution equation 
+u_{t}=u_{xx}+u_{x}^{2}
+ut=ux​x+ux2u_{t}=u_{xx}+u_{x}^{2}. We use exactly the same dataset as LieNLSD (Hu et al. 2025a).
+
+For estimating the Jacobian matrix, we train an MLP surrogate with three hidden layers, hidden dimension 200, and Sigmoid activation to approximate the evolution map 
+(u,u_{x},u_{xx})\mapsto u_{t}
+(u,ux,ux​x)↦ut(u,u_{x},u_{xx})\mapsto u_{t}. The residual Jacobian is then constructed by automatic differentiation. In the search process, we initialize the candidate library as
+
+\Theta_{0}=\{1,t,x,u\}
+Θ0={1,t,x,u}\Theta_{0}=\{1,t,x,u\}, set the maximum library size to 
+N=10
+N=10N=10, and use a maximum expansion horizon of 
+T_{\max}=6
+Tmax=6T_{\max}=6. Starting from 
+d_{0}=5
+d0=5d_{0}=5, LieDiscover expands the library to 
+\Theta^{\ast}=\{1,t,x,u,tx,t^{2},x^{2},tx^{2},u^{2},t^{2}u\}
+Θ∗={1,t,x,u,t​x,t2,x2,t​x2,u2,t2​u}\Theta^{\ast}=\{1,t,x,u,tx,t^{2},x^{2},tx^{2},u^{2},t^{2}u\},
+where the null-space dimension increases to 
+d=6
+d=6d=6. After pruning, the compact library becomes 
+\Theta_{f}=\{1,t,x,u,tx,t^{2},x^{2}\}
+Θf={1,t,x,u,t​x,t2,x2}\Theta_{f}=\{1,t,x,u,tx,t^{2},x^{2}\}.
+
+The corresponding six infinitesimal generators are
+
+\displaystyle\mathbf{v}_{1}
+𝐯1\displaystyle\mathbf{v}_{1}
+
+\displaystyle=4t^{2}\partial_{t}+4tx\partial_{x}-(2t+x^{2})\partial_{u},
+=4t2∂t+4tx∂x−(2t+x2)∂u,\displaystyle=4t^{2}\partial_{t}+4tx\partial_{x}-(2t+x^{2})\partial_{u},
+
+(33)
+
+\displaystyle\mathbf{v}_{2}
+𝐯2\displaystyle\mathbf{v}_{2}
+
+\displaystyle=2t\partial_{t}+x\partial_{x},
+=2t∂t+x∂x,\displaystyle=2t\partial_{t}+x\partial_{x},
+
+\displaystyle\mathbf{v}_{3}
+𝐯3\displaystyle\mathbf{v}_{3}
+
+\displaystyle=2t\partial_{x}-x\partial_{u},
+=2t∂x−x∂u,\displaystyle=2t\partial_{x}-x\partial_{u},
+
+\displaystyle\mathbf{v}_{4}
+𝐯4\displaystyle\mathbf{v}_{4}
+
+\displaystyle=\partial_{u},\quad\mathbf{v}_{5}=\partial_{t},\quad\mathbf{v}_{6}=\partial_{x}.
+=∂u,𝐯5=∂t,𝐯6=∂x.\displaystyle=\partial_{u},\quad\mathbf{v}_{5}=\partial_{t},\quad\mathbf{v}_{6}=\partial_{x}.
+
+\mathbf{v}_{5}
+𝐯5\mathbf{v}_{5} and 
+\mathbf{v}_{6}
+𝐯6\mathbf{v}_{6} correspond to time and space translations, 
+\mathbf{v}_{4}
+𝐯4\mathbf{v}_{4} is a vertical translation in 
+u
+uu, 
+\mathbf{v}_{2}
+𝐯2\mathbf{v}_{2} is a scaling symmetry, while 
+\mathbf{v}_{1}
+𝐯1\mathbf{v}_{1} and 
+\mathbf{v}_{3}
+𝐯3\mathbf{v}_{3} correspond to projective and Galilean-type transformations. LieDiscover recovers these six generators from the pruned library, showing that the search successfully identifies the minimal polynomial terms required to represent the Burgers symmetry algebra.
+
+For Burgers’ equation, Figure 5 visualizes the singular values and the sparsified infinitesimal generators discovered by LieDiscover.
+
+Heat Equation
+
+Figure 6: Visualization result of symmetry discovery on Heat Equation by LieDiscover. The first subplot shows the last 10 singular values. The other nine subplots display the infinitesimal generators corresponding to the nearly-zero singular values after sparsification.
+
+For the heat equation, we consider 
+u_{t}=u_{xx}
+ut=ux​xu_{t}=u_{xx}. We use the same dataset as LieNLSD. The neural surrogate is the common MLP with three hidden layers, hidden dimension 200, Sigmoid activation, and one regression output. It is trained to approximate the evolution map 
+(u,u_{x},u_{xx})\mapsto u_{t}
+(u,ux,ux​x)↦ut(u,u_{x},u_{xx})\mapsto u_{t}, and the corresponding residual Jacobian is computed by automatic differentiation. We initialize 
+\Theta_{0}=\{1,t,x,u\}
+Θ0={1,t,x,u}\Theta_{0}=\{1,t,x,u\}, set 
+N=10
+N=10N=10, and use 
+T_{\max}=6
+Tmax=6T_{\max}=6. LieDiscover identifies the best searched library 
+\Theta^{\ast}=\{1,t,x,u,x^{2},ux,tx,x^{3},u^{2}\}.
+Θ∗={1,t,x,u,x2,u​x,t​x,x3,u2}.\Theta^{\ast}=\{1,t,x,u,x^{2},ux,tx,x^{3},u^{2}\}.
+After pruning, the compact library is 
+\Theta_{f}=\{1,t,x,u,x^{2},ux,tx,x^{3}\}.
+Θf={1,t,x,u,x2,u​x,t​x,x3}.\Theta_{f}=\{1,t,x,u,x^{2},ux,tx,x^{3}\}.
+
+The discovered generators include the finite dimensional geometric symmetries,
+
+\displaystyle\mathbf{v}_{2}
+𝐯2\displaystyle\mathbf{v}_{2}
+
+\displaystyle=2t\partial_{t}+x\partial_{x},
+=2t∂t+x∂x,\displaystyle=2t\partial_{t}+x\partial_{x},
+
+(34)
+
+\displaystyle\mathbf{v}_{3}
+𝐯3\displaystyle\mathbf{v}_{3}
+
+\displaystyle=2t\partial_{x}-xu\partial_{u},
+=2t∂x−xu∂u,\displaystyle=2t\partial_{x}-xu\partial_{u},
+
+\displaystyle\mathbf{v}_{5}
+𝐯5\displaystyle\mathbf{v}_{5}
+
+\displaystyle=u\partial_{u},
+=u∂u,\displaystyle=u\partial_{u},
+
+\displaystyle\mathbf{v}_{7}
+𝐯7\displaystyle\mathbf{v}_{7}
+
+\displaystyle=\partial_{x},\quad\mathbf{v}_{8}=\partial_{t},
+=∂x,𝐯8=∂t,\displaystyle=\partial_{x},\quad\mathbf{v}_{8}=\partial_{t},
+
+as well as polynomial representatives of the linear superposition symmetry,
+
+\displaystyle\mathbf{v}_{1}
+𝐯1\displaystyle\mathbf{v}_{1}
+
+\displaystyle=(2t+x^{2})\partial_{u},
+=(2t+x2)∂u,\displaystyle=(2t+x^{2})\partial_{u},
+
+(35)
+
+\displaystyle\mathbf{v}_{4}
+𝐯4\displaystyle\mathbf{v}_{4}
+
+\displaystyle=x\partial_{u},
+=x∂u,\displaystyle=x\partial_{u},
+
+\displaystyle\mathbf{v}_{6}
+𝐯6\displaystyle\mathbf{v}_{6}
+
+\displaystyle=\partial_{u},
+=∂u,\displaystyle=\partial_{u},
+
+\displaystyle\mathbf{v}_{9}
+𝐯9\displaystyle\mathbf{v}_{9}
+
+\displaystyle=(6tx+x^{3})\partial_{u}.
+=(6tx+x3)∂u.\displaystyle=(6tx+x^{3})\partial_{u}.
+
+More generally, this infinite-dimensional family has the form 
+\mathbf{v}_{\psi}=\psi(t,x)\partial_{u}
+𝐯ψ=ψ(t,x)∂u\mathbf{v}_{\psi}=\psi(t,x)\partial_{u}, where 
+\psi_{t}=\psi_{xx}
+ψt=ψx​x\psi_{t}=\psi_{xx}. The associated group action maps a solution 
+u=f(t,x)
+u=f⁡(t,x)u=f(t,x) to 
+f(t,x)+\varepsilon_{g}\psi(t,x)
+f⁡(t,x)+εg​ψ​(t,x)f(t,x)+\varepsilon_{g}\psi(t,x), where 
+\varepsilon_{g}
+εg\varepsilon_{g} denotes the group parameter. Thus, unlike nonlinear equations with a finite-dimensional symmetry algebra, the heat equation naturally yields additional solution generators. LieDiscover captures the geometric symmetries and finite polynomial representatives of this infinite-dimensional linear superposition symmetry.
+
+For Heat equation, Figure 6 visualizes the singular values and the sparsified infinitesimal generators discovered by LieDiscover.
+
+KdV Equation
+
+Figure 7: Visualization result of symmetry discovery on KdV Equation by LieDiscover. The first subplot shows the last 5 singular values. The other four subplots display the infinitesimal generators corresponding to the nearly-zero singular values after sparsification.
+
+The KdV equation is a classical nonlinear dispersive PDE that describes the propagation of shallow-water waves and other nonlinear wave phenomena. In our experiments, we consider the standard form 
+u_{t}+u_{xxx}+uu_{x}=0
+ut+ux​x​x+u​ux=0u_{t}+u_{xxx}+uu_{x}=0. We use the same dataset as LieNLSD.
+
+The neural surrogate is the common MLP with three hidden layers, hidden dimension 200, Sigmoid activation, and one regression output. It is trained to approximate the evolution map 
+(u,u_{x},u_{xx},u_{xxx})\mapsto u_{t}
+(u,ux,ux​x,ux​x​x)↦ut(u,u_{x},u_{xx},u_{xxx})\mapsto u_{t}, and the corresponding residual Jacobian is computed by automatic differentiation.
+
+We initialize the library as 
+\Theta_{0}=\{1,t,x,u\}
+Θ0={1,t,x,u}\Theta_{0}=\{1,t,x,u\} and set the maximum expansion horizon to 
+T_{\max}=10
+Tmax=10T_{\max}=10. LieDiscover explores an expanded candidate space and identifies the best library as 
+\Theta^{\ast}=\{1,t,x,u,u^{2},tu,x^{2},tx^{2},t^{6}\}
+Θ∗={1,t,x,u,u2,t​u,x2,t​x2,t6}\Theta^{\ast}=\{1,t,x,u,u^{2},tu,x^{2},tx^{2},t^{6}\}. However, the null-space dimension remains 
+d=4
+d=4d=4, indicating that the initial library already captures the discovered symmetry rank under the current configuration. After pruning, the final compact library returns to 
+\Theta_{f}=\{1,t,x,u\}
+Θf={1,t,x,u}\Theta_{f}=\{1,t,x,u\}.
+
+This library is sufficient to recover the four-dimensional symmetry algebra:
+
+\displaystyle\mathbf{v}_{1}
+𝐯1\displaystyle\mathbf{v}_{1}
+
+\displaystyle=-3t\partial_{t}-x\partial_{x}+2u\partial_{u},
+=−3t∂t−x∂x+2u∂u,\displaystyle=-3t\partial_{t}-x\partial_{x}+2u\partial_{u},
+
+(36)
+
+\displaystyle\mathbf{v}_{2}
+𝐯2\displaystyle\mathbf{v}_{2}
+
+\displaystyle=t\partial_{x}+\partial_{u},
+=t∂x+∂u,\displaystyle=t\partial_{x}+\partial_{u},
+
+\displaystyle\mathbf{v}_{3}
+𝐯3\displaystyle\mathbf{v}_{3}
+
+\displaystyle=\partial_{t},\quad\mathbf{v}_{4}=\partial_{x}.
+=∂t,𝐯4=∂x.\displaystyle=\partial_{t},\quad\mathbf{v}_{4}=\partial_{x}.
+
+\mathbf{v}_{3}
+𝐯3\mathbf{v}_{3} and 
+\mathbf{v}_{4}
+𝐯4\mathbf{v}_{4} are time and space translations, 
+\mathbf{v}_{1}
+𝐯1\mathbf{v}_{1} is a scaling symmetry, and 
+\mathbf{v}_{2}
+𝐯2\mathbf{v}_{2} is the Galilean-type symmetry of the KdV equation. The result shows that LieDiscover does not unnecessarily enlarge the library when the initial terms are already sufficient.
+
+Figure 7 visualizes the singular values and the sparsified infinitesimal generators discovered by LieDiscover. The four nearly-zero singular values indicate that LieDiscover correctly identifies a four-dimensional Lie algebra subspace.
+
+Damped Burgers’ Equation
+
+Figure 8: Visualization result of symmetry discovery on Damped Burgers’ Equation by LieDiscover. The first subplot shows the last 4 singular values. The other three subplots display the infinitesimal generators corresponding to the nearly-zero singular values after sparsification.
+
+For the damped Burgers’ equation, we consider
+
+u_{t}=u_{xx}-uu_{x}-\mu u
+ut=ux​x−u​ux−μ​uu_{t}=u_{xx}-uu_{x}-\mu u. The damping term changes the Galilean symmetry of the standard Burgers equation and introduces exponential factors in the infinitesimal generators. We generate a new dataset because this task is not included in the original benchmarks in LieNLSD. In our experiments, we set 
+\mu=1
+μ=1\mu=1. The data are generated on a periodic one-dimensional spatial domain from random Fourier initial conditions. We evolve the PDE forward in time using a finite-difference spatial discretization with periodic boundary conditions and an explicit time integrator. The resulting trajectories are used to compute the required jet variables, including 
+u,u_{x},u_{xx}
+u,ux,ux​xu,u_{x},u_{xx}, and 
+u_{t}
+utu_{t}.
+
+The neural surrogate is again an MLP with three hidden layers, hidden dimension 200, Sigmoid activation, and one regression output. It is trained to approximate the evolution map 
+(u,u_{x},u_{xx})\mapsto u_{t}
+(u,ux,ux​x)↦ut(u,u_{x},u_{xx})\mapsto u_{t}, and the corresponding residual Jacobian is computed by automatic differentiation. We initialize 
+\Theta_{0}=\{1,t,x,u\}
+Θ0={1,t,x,u}\Theta_{0}=\{1,t,x,u\}, set 
+N=10
+N=10N=10, and use 
+T_{\max}=6
+Tmax=6T_{\max}=6. The search yields 
+\Theta^{\ast}=\{1,t,x,u,e^{t},e^{-t}\}
+Θ∗={1,t,x,u,et,e−t}\Theta^{\ast}=\{1,t,x,u,e^{t},e^{-t}\}, and pruning leaves it unchanged, so 
+\Theta_{f}=\Theta^{\ast}
+Θf=Θ∗\Theta_{f}=\Theta^{\ast}.
+
+The recovered generators are
+
+\displaystyle\mathbf{v}_{1}
+𝐯1\displaystyle\mathbf{v}_{1}
+
+\displaystyle=\partial_{t},\quad\mathbf{v}_{2}=\partial_{x},
+=∂t,𝐯2=∂x,\displaystyle=\partial_{t},\quad\mathbf{v}_{2}=\partial_{x},
+
+(37)
+
+\displaystyle\mathbf{v}_{3}
+𝐯3\displaystyle\mathbf{v}_{3}
+
+\displaystyle=e^{-t}\partial_{x}-e^{-t}\partial_{u}.
+=e−t∂x−e−t∂u.\displaystyle=e^{-t}\partial_{x}-e^{-t}\partial_{u}.
+
+The first two generators correspond to time and space translations. The third generator is a damping-modified pseudo-Galilean symmetry: the spatial shift and the compensation in 
+u
+uu decay exponentially in time. This example demonstrates that LieDiscover can extend the library beyond polynomials and recover non-polynomial symmetry structures.
+
+Figure 8 visualizes the singular values and the sparsified infinitesimal generators discovered by LieDiscover.
+
+Forced Transport Equation
+
+Figure 9: Visualization result of symmetry discovery on Forced Transport Equation by LieDiscover. The first subplot shows the last 11 singular values. The other ten subplots display the infinitesimal generators corresponding to the nearly-zero singular values after sparsification.
+
+For the forced transport equation, we consider 
+u_{t}+cu_{x}=\sin(x)
+ut+c​ux=sin⁡(x)u_{t}+cu_{x}=\sin(x) with 
+c=1
+c=1c=1 on a periodic one-dimensional domain. We sample random Fourier initial conditions and use the exact characteristic solution to compute 
+u(t,x)
+u⁡(t,x)u(t,x), 
+u_{x}(t,x)
+ux​(t,x)u_{x}(t,x), 
+u_{xx}(t,x)
+ux​x​(t,x)u_{xx}(t,x), and 
+u_{t}(t,x)
+ut​(t,x)u_{t}(t,x), which form the training data.
+
+The surrogate model is the common MLP with three hidden layers, hidden dimension 200, Sigmoid activation, and one regression output. It is trained to approximate the evolution map 
+(x,u,u_{x},u_{xx})\mapsto u_{t}
+(x,u,ux,ux​x)↦ut(x,u,u_{x},u_{xx})\mapsto u_{t}, and the corresponding residual Jacobian is computed by automatic differentiation. In the search process, we initialize 
+\Theta_{0}=\{1,t,x,u\}
+Θ0={1,t,x,u}\Theta_{0}=\{1,t,x,u\}, set 
+N=12
+N=12N=12, and use 
+T_{\max}=8
+Tmax=8T_{\max}=8. The decoder primitive set is 
+\{\mathrm{mul},n2,\mathrm{sub},\sin,\cos\}
+{mul,n​2,sub,sin,cos}\{\mathrm{mul},n2,\mathrm{sub},\sin,\cos\}.
+Additional prior constraints are used to restrict the arguments of trigonometric functions and avoid pathological nested expressions such as 
+\sin(\cos(\cdot))
+sin⁡(cos⁡(⋅))\sin(\cos(\cdot))(Petersen et al. 2019). After pruning, the compact library is 
+\Theta_{f}=\{1,t,x,u,\cos x,\sin x,-\sin(t-x),\cos(t-x)\}
+Θf={1,t,x,u,cos⁡x,sin⁡x,−sin⁡(t−x),cos⁡(t−x)}\Theta_{f}=\{1,t,x,u,\cos x,\sin x,-\sin(t-x),\cos(t-x)\}.
+
+Since the equation is linear in 
+u
+uu, it admits solution-superposition symmetries. LieDiscover recovers generators including
+
+\displaystyle\mathbf{v}_{1}
+𝐯1\displaystyle\mathbf{v}_{1}
+
+\displaystyle=\partial_{t},\quad\mathbf{v}_{2}=\partial_{u},
+=∂t,𝐯2=∂u,\displaystyle=\partial_{t},\quad\mathbf{v}_{2}=\partial_{u},
+
+(38)
+
+\displaystyle\mathbf{v}_{3}
+𝐯3\displaystyle\mathbf{v}_{3}
+
+\displaystyle=\partial_{x}+\sin(x)\partial_{u},
+=∂x+sin(x)∂u,\displaystyle=\partial_{x}+\sin(x)\partial_{u},
+
+\displaystyle\mathbf{v}_{4}
+𝐯4\displaystyle\mathbf{v}_{4}
+
+\displaystyle=u\partial_{u}+\cos(x)\partial_{u},
+=u∂u+cos(x)∂u,\displaystyle=u\partial_{u}+\cos(x)\partial_{u},
+
+\displaystyle\mathbf{v}_{5}
+𝐯5\displaystyle\mathbf{v}_{5}
+
+\displaystyle=(t-x)\partial_{u},
+=(t−x)∂u,\displaystyle=(t-x)\partial_{u},
+
+\displaystyle\mathbf{v}_{6}
+𝐯6\displaystyle\mathbf{v}_{6}
+
+\displaystyle=\sin(t-x)\partial_{u},
+=sin(t−x)∂u,\displaystyle=\sin(t-x)\partial_{u},
+
+\displaystyle\mathbf{v}_{7}
+𝐯7\displaystyle\mathbf{v}_{7}
+
+\displaystyle=\cos(t-x)\partial_{u},
+=cos(t−x)∂u,\displaystyle=\cos(t-x)\partial_{u},
+
+\displaystyle\mathbf{v}_{8}
+𝐯8\displaystyle\mathbf{v}_{8}
+
+\displaystyle=(t-x)\partial_{t},
+=(t−x)∂t,\displaystyle=(t-x)\partial_{t},
+
+\displaystyle\mathbf{v}_{9}
+𝐯9\displaystyle\mathbf{v}_{9}
+
+\displaystyle=\sin(t-x)\partial_{t},
+=sin(t−x)∂t,\displaystyle=\sin(t-x)\partial_{t},
+
+\displaystyle\mathbf{v}_{10}
+𝐯10\displaystyle\mathbf{v}_{10}
+
+\displaystyle=\cos(t-x)\partial_{t}.
+=cos(t−x)∂t.\displaystyle=\cos(t-x)\partial_{t}.
+
+The solution-superposition family can be written as 
+\mathbf{v}_{\psi}=\psi(t-x)\partial_{u}
+𝐯ψ=ψ(t−x)∂u\mathbf{v}_{\psi}=\psi(t-x)\partial_{u}, where 
+\psi
+ψ\psi is arbitrary; equivalently, 
+\psi(t,x)
+ψ⁡(t,x)\psi(t,x) satisfies the homogeneous transport equation 
+\psi_{t}+\psi_{x}=0
+ψt+ψx=0\psi_{t}+\psi_{x}=0. These generators reflect the trigonometric forcing structure and the linear superposition property of the transport equation. The result shows that the decoder can adaptively introduce non-polynomial basis functions when required by the symmetry.
+
+Figure 9 visualizes the singular values and the sparsified infinitesimal generators discovered by LieDiscover.
+
+Wave Equation
+
+Figure 10: Visualization result of symmetry discovery on Wave Equation by LieDiscover. The first subplot shows the last 23 singular values. The other 22 subplots display the infinitesimal generators corresponding to the nearly-zero singular values after sparsification.
+
+For the two-dimensional wave equation, we consider 
+u_{tt}=u_{xx}+u_{yy}
+ut​t=ux​x+uy​yu_{tt}=u_{xx}+u_{yy}. We use the same dataset as LieNLSD. The surrogate is the common MLP with three hidden layers, hidden dimension 200, Sigmoid activation, and one regression output. It is trained to approximate the evolution map 
+(u,u_{x},u_{y},u_{xx},u_{yy},u_{xy})\mapsto u_{tt}
+(u,ux,uy,ux​x,uy​y,ux​y)↦ut​t(u,u_{x},u_{y},u_{xx},u_{yy},u_{xy})\mapsto u_{tt}, and the corresponding residual Jacobian is computed by automatic differentiation.
+
+We initialize 
+\Theta_{0}=\{1,t,x,y,u\}
+Θ0={1,t,x,y,u}\Theta_{0}=\{1,t,x,y,u\}, set 
+N=20
+N=20N=20, and use 
+T_{\max}=15
+Tmax=15T_{\max}=15. After search and pruning, the compact library is
+
+\Theta_{f}=\{1,t,x,y,u,y^{2},uy,tx^{2},t^{3},x^{2},t^{2},ty,ux,xy,tx,txy,ty^{2}\}.
+Θf={1,t,x,y,u,y2,u​y,t​x2,t3,x2,t2,t​y,u​x,x​y,t​x,t​x​y,t​y2}.\Theta_{f}=\{1,t,x,y,u,y^{2},uy,tx^{2},t^{3},x^{2},t^{2},ty,ux,xy,tx,txy,ty^{2}\}.
+
+The wave equation contains translations, rotations, scalings, conformal-type transformations, and a large family of solution-superposition symmetries. LieDiscover recovers a 22-dimensional finite symmetry subspace in the searched polynomial library. Representative generators include
+
+\displaystyle\mathbf{v}_{1}
+𝐯1\displaystyle\mathbf{v}_{1}
+
+\displaystyle=2tx\partial_{t}+(t^{2}+x^{2}-y^{2})\partial_{x}+2xy\partial_{y}-xu\partial_{u},
+=2tx∂t+(t2+x2−y2)∂x+2xy∂y−xu∂u,\displaystyle=2tx\partial_{t}+(t^{2}+x^{2}-y^{2})\partial_{x}+2xy\partial_{y}-xu\partial_{u},
+
+(39)
+
+\displaystyle\mathbf{v}_{2}
+𝐯2\displaystyle\mathbf{v}_{2}
+
+\displaystyle=2ty\partial_{t}+2xy\partial_{x}+(t^{2}-x^{2}+y^{2})\partial_{y}-yu\partial_{u},
+=2ty∂t+2xy∂x+(t2−x2+y2)∂y−yu∂u,\displaystyle=2ty\partial_{t}+2xy\partial_{x}+(t^{2}-x^{2}+y^{2})\partial_{y}-yu\partial_{u},
+
+\displaystyle\mathbf{v}_{3}
+𝐯3\displaystyle\mathbf{v}_{3}
+
+\displaystyle=x\partial_{t}+t\partial_{x},\quad\mathbf{v}_{4}=y\partial_{t}+t\partial_{y},
+=x∂t+t∂x,𝐯4=y∂t+t∂y,\displaystyle=x\partial_{t}+t\partial_{x},\quad\mathbf{v}_{4}=y\partial_{t}+t\partial_{y},
+
+\displaystyle\mathbf{v}_{5}
+𝐯5\displaystyle\mathbf{v}_{5}
+
+\displaystyle=t\partial_{t}+x\partial_{x}+y\partial_{y},\quad\mathbf{v}_{6}=-y\partial_{x}+x\partial_{y}.
+=t∂t+x∂x+y∂y,𝐯6=−y∂x+x∂y.\displaystyle=t\partial_{t}+x\partial_{x}+y\partial_{y},\quad\mathbf{v}_{6}=-y\partial_{x}+x\partial_{y}.
+
+In addition, LieDiscover recovers translations 
+\partial_{t},\partial_{x},\partial_{y}
+∂t,∂x,∂y\partial_{t},\partial_{x},\partial_{y}, scaling 
+u\partial_{u}
+u∂uu\partial_{u}, and multiple polynomial solution modes such as
+
+\partial_{u},t\partial_{u},x\partial_{u},y\partial_{u},tx\partial_{u},ty\partial_{u},xy\partial_{u}
+∂u,t∂u,x∂u,y∂u,tx∂u,ty∂u,xy∂u\partial_{u},t\partial_{u},x\partial_{u},y\partial_{u},tx\partial_{u},ty\partial_{u},xy\partial_{u}, and higher-order polynomial modes. These modes are finite-dimensional representatives of the family 
+\mathbf{v}_{\psi}=\psi(t,x,y)\partial_{u}
+𝐯ψ=ψ(t,x,y)∂u\mathbf{v}_{\psi}=\psi(t,x,y)\partial_{u}, where 
+\psi_{tt}=\psi_{xx}+\psi_{yy}
+ψt​t=ψx​x+ψy​y\psi_{tt}=\psi_{xx}+\psi_{yy}. This confirms that the method can handle PDEs with substantially larger symmetry spaces.
+
+Figure 10 visualizes the singular values and the sparsified infinitesimal generators discovered by LieDiscover.
+
+Schrödinger Equation
+
+Figure 11: Visualization result of symmetry discovery on Schrödinger Equation by LieDiscover. The first subplot shows the last 7 singular values. The other six subplots display the infinitesimal generators corresponding to the nearly-zero singular values after sparsification.
+
+The nonlinear Schrödinger equation is a fundamental dispersive PDE that models wave propagation in nonlinear media, including nonlinear optics and Bose–Einstein condensates. Here, the complex-valued wave field is written in terms of its real and imaginary components, 
+u
+uu and 
+v
+vv, which couple through nonlinear self-interaction and spatial dispersion.
+
+\displaystyle u_{t}
+ut\displaystyle u_{t}
+
+\displaystyle=-\frac{1}{2}(v_{xx}+v_{yy})+v(u^{2}+v^{2}),
+=−12​(vx​x+vy​y)+v⁡(u2+v2),\displaystyle=-\frac{1}{2}(v_{xx}+v_{yy})+v(u^{2}+v^{2}),
+
+\displaystyle v_{t}
+vt\displaystyle v_{t}
+
+\displaystyle=\frac{1}{2}(u_{xx}+u_{yy})-u(u^{2}+v^{2}),
+=12​(ux​x+uy​y)−u⁡(u2+v2),\displaystyle=\frac{1}{2}(u_{xx}+u_{yy})-u(u^{2}+v^{2}),
+
+we use the same dataset as LieNLSD.
+
+The surrogate model is the common three-hidden-layer MLP with hidden dimension 200, Sigmoid activation, and two regression outputs. It is trained to approximate the evolution map 
+(u,u_{x},u_{y},u_{xx},u_{yy},u_{xy},v,v_{x},v_{y},v_{xx},v_{yy},v_{xy})\mapsto(u_{t},v_{t})
+(u,ux,uy,ux​x,uy​y,ux​y,v,vx,vy,vx​x,vy​y,vx​y)↦(ut,vt)(u,u_{x},u_{y},u_{xx},u_{yy},u_{xy},v,v_{x},v_{y},v_{xx},v_{yy},v_{xy})\mapsto(u_{t},v_{t}), and the corresponding residual Jacobian is computed by automatic differentiation. In the search process, we initialize the library as 
+\Theta_{0}=\{1,t,x,y,u,v\}
+Θ0={1,t,x,y,u,v}\Theta_{0}=\{1,t,x,y,u,v\} and set the maximum expansion horizon to 
+T_{\max}=21
+Tmax=21T_{\max}=21. LieDiscover identifies the best library as 
+\Theta^{\ast}=\{1,t,x,y,u,v,t^{2},x^{2},tv,ty,t^{4}y,xy,y^{2}\}
+Θ∗={1,t,x,y,u,v,t2,x2,t​v,t​y,t4​y,x​y,y2}\Theta^{\ast}=\{1,t,x,y,u,v,t^{2},x^{2},tv,ty,t^{4}y,xy,y^{2}\}. Under the current configuration, the null-space dimension remains 
+d=6
+d=6d=6, indicating that the initial library already captures the principal symmetry rank, while the additional terms enrich the candidate space for generator refinement. After pruning, the final compact library is 
+\Theta_{f}=\{1,t,x,y,u,v,t^{2}\}
+Θf={1,t,x,y,u,v,t2}\Theta_{f}=\{1,t,x,y,u,v,t^{2}\}.
+
+The recovered generators are
+
+\displaystyle\mathbf{v}_{1}
+𝐯1\displaystyle\mathbf{v}_{1}
+
+\displaystyle=-2t\partial_{t}-x\partial_{x}-y\partial_{y}+u\partial_{u}+v\partial_{v},
+=−2t∂t−x∂x−y∂y+u∂u+v∂v,\displaystyle=-2t\partial_{t}-x\partial_{x}-y\partial_{y}+u\partial_{u}+v\partial_{v},
+
+(40)
+
+\displaystyle\mathbf{v}_{2}
+𝐯2\displaystyle\mathbf{v}_{2}
+
+\displaystyle=-v\partial_{u}+u\partial_{v},
+=−v∂u+u∂v,\displaystyle=-v\partial_{u}+u\partial_{v},
+
+\displaystyle\mathbf{v}_{3}
+𝐯3\displaystyle\mathbf{v}_{3}
+
+\displaystyle=-y\partial_{x}+x\partial_{y},
+=−y∂x+x∂y,\displaystyle=-y\partial_{x}+x\partial_{y},
+
+\displaystyle\mathbf{v}_{4}
+𝐯4\displaystyle\mathbf{v}_{4}
+
+\displaystyle=\partial_{t},\quad\mathbf{v}_{5}=\partial_{x},\quad\mathbf{v}_{6}=\partial_{y}.
+=∂t,𝐯5=∂x,𝐯6=∂y.\displaystyle=\partial_{t},\quad\mathbf{v}_{5}=\partial_{x},\quad\mathbf{v}_{6}=\partial_{y}.
+
+The first generator corresponds to scaling, the second to phase rotation, the third to spatial rotation, and the remaining three to translations in time and space. The discovered generators match the expected finite-dimensional symmetry structure of the Schrödinger system.
+
+Figure 11 visualizes the singular values and the sparsified infinitesimal generators discovered by LieDiscover.
+
+Reaction-diffusion Equation
+
+Figure 12: Visualization result of symmetry discovery on Reaction-diffusion Equation by LieDiscover. The first subplot shows the last 6 singular values. The other five subplots display the infinitesimal generators corresponding to the nearly-zero singular values after sparsification.
+
+For the Reaction-diffusion system, we consider the PDE
+
+\displaystyle u_{t}
+ut\displaystyle u_{t}
+
+\displaystyle=(1-u^{2}-v^{2})u+(u^{2}+v^{2})v+0.1(u_{xx}+u_{yy}),
+=(1−u2−v2)​u+(u2+v2)​v+0.1​(ux​x+uy​y),\displaystyle=(1-u^{2}-v^{2})u+(u^{2}+v^{2})v+0.1(u_{xx}+u_{yy}),
+
+\displaystyle v_{t}
+vt\displaystyle v_{t}
+
+\displaystyle=-(u^{2}+v^{2})u+(1-u^{2}-v^{2})v+0.1(v_{xx}+v_{yy}).
+=−(u2+v2)​u+(1−u2−v2)​v+0.1​(vx​x+vy​y).\displaystyle=-(u^{2}+v^{2})u+(1-u^{2}-v^{2})v+0.1(v_{xx}+v_{yy}).
+
+The reaction–diffusion system models the spatiotemporal evolution of two interacting components under nonlinear local reactions and diffusion. In this system, the terms involving 
+u^{2}+v^{2}
+u2+v2u^{2}+v^{2} describe nonlinear coupling between the two fields, while the Laplacian terms account for spatial diffusion.
+
+We use the same dataset as LieNLSD. The neural surrogate is the common PDE MLP with three hidden layers, hidden dimension 200, Sigmoid activation, and two regression outputs. It is trained to approximate the evolution map 
+(u,u_{x},u_{y},u_{xx},u_{yy},u_{xy},v,v_{x},v_{y},v_{xx},v_{yy},v_{xy})\mapsto(u_{t},v_{t})
+(u,ux,uy,ux​x,uy​y,ux​y,v,vx,vy,vx​x,vy​y,vx​y)↦(ut,vt)(u,u_{x},u_{y},u_{xx},u_{yy},u_{xy},v,v_{x},v_{y},v_{xx},v_{yy},v_{xy})\mapsto(u_{t},v_{t}), and the corresponding residual Jacobian is computed by automatic differentiation. For the reaction-diffusion equation, we initialize the library as 
+\Theta_{0}=\{1,t,x,y,u,v\}
+Θ0={1,t,x,y,u,v}\Theta_{0}=\{1,t,x,y,u,v\} and set the maximum expansion horizon to 
+T_{\max}=21
+Tmax=21T_{\max}=21. LieDiscover identifies the best library as 
+\Theta^{\ast}=\{1,t,x,y,u,v,t^{4},t^{2},t^{3},vy,tx,t^{2}y,tv^{2},tux\}
+Θ∗={1,t,x,y,u,v,t4,t2,t3,v​y,t​x,t2​y,t​v2,t​u​x}\Theta^{\ast}=\{1,t,x,y,u,v,t^{4},t^{2},t^{3},vy,tx,t^{2}y,tv^{2},tux\}, where the null-space dimension is 5. After pruning, the final compact library is 
+\Theta_{f}=\{1,t,x,y,u,v,t^{2},t^{3}\}
+Θf={1,t,x,y,u,v,t2,t3}\Theta_{f}=\{1,t,x,y,u,v,t^{2},t^{3}\}, which removes redundant high-order terms and retains the core structure used in the final visualization and downstream equation discovery.
+
+The recovered generators are
+
+\displaystyle\mathbf{v}_{1}
+𝐯1\displaystyle\mathbf{v}_{1}
+
+\displaystyle=-v\partial_{u}+u\partial_{v},
+=−v∂u+u∂v,\displaystyle=-v\partial_{u}+u\partial_{v},
+
+(41)
+
+\displaystyle\mathbf{v}_{2}
+𝐯2\displaystyle\mathbf{v}_{2}
+
+\displaystyle=-y\partial_{x}+x\partial_{y},
+=−y∂x+x∂y,\displaystyle=-y\partial_{x}+x\partial_{y},
+
+\displaystyle\mathbf{v}_{3}
+𝐯3\displaystyle\mathbf{v}_{3}
+
+\displaystyle=\partial_{t},\quad\mathbf{v}_{4}=\partial_{x},\quad\mathbf{v}_{5}=\partial_{y}.
+=∂t,𝐯4=∂x,𝐯5=∂y.\displaystyle=\partial_{t},\quad\mathbf{v}_{4}=\partial_{x},\quad\mathbf{v}_{5}=\partial_{y}.
+
+\mathbf{v}_{1}
+𝐯1\mathbf{v}_{1} is the internal phase rotation in the 
+(u,v)
+(u,v)(u,v) plane, 
+\mathbf{v}_{2}
+𝐯2\mathbf{v}_{2} is spatial rotation in the 
+(x,y)
+(x,y)(x,y) plane, and 
+\mathbf{v}_{3},\mathbf{v}_{4},\mathbf{v}_{5}
+𝐯3,𝐯4,𝐯5\mathbf{v}_{3},\mathbf{v}_{4},\mathbf{v}_{5} are translations. LieDiscover correctly identifies this five-dimensional symmetry algebra from the learned surrogate.
+
+Figure 12 visualizes the singular values and the sparsified infinitesimal generators discovered by LieDiscover.
+
+E.3 PDE Discovery
+
+Table 5 reports detailed PDE discovery results for different methods. LieEQL and LieSINDy denote EQL and SINDy augmented with symmetry guidance, respectively. Overall, symmetry guidance improves PDE discovery, especially structural recovery. Compared with EQL, LieEQL achieves a TPR of 
+1.00
+1.001.00 on Burgers’, KdV, forced transport, wave, Schrödinger, and reaction-diffusion equations. The gains are most evident on forced transport and Schrödinger equations, where the TPR increases from 
+1.16\times 10^{-1}
+1.16×10−11.16\times 10^{-1} and 
+5.19\times 10^{-2}
+5.19×10−25.19\times 10^{-2} to 
+1.00
+1.001.00, respectively. LieSINDy shows similar improvements, it recovers the full equation structure on these two systems, while SINDy achieves TPRs of only 
+2.50\times 10^{-1}
+2.50×10−12.50\times 10^{-1} and 
+3.99\times 10^{-3}
+3.99×10−33.99\times 10^{-3}.
+
+Symmetry guidance also improves coefficient estimation on challenging systems. On the forced transport equation, LieEQL reduces 
+E_{2}
+E2E_{2} from 
+2.01
+2.012.01 to 
+1.26\times 10^{-3}
+1.26×10−31.26\times 10^{-3} compared with EQL. LieSINDy reduces 
+E_{2}
+E2E_{2} from 
+9.33\times 10^{-1}
+9.33×10−19.33\times 10^{-1} to 
+1.12\times 10^{-3}
+1.12×10−31.12\times 10^{-3} compared with SINDy. These results show that the discovered symmetries provide useful priors for PDE discovery.
+
+Table 5: Quantitative comparison of PDE discovery methods on all datasets.
+
+Data
+Method
+TPR 
+\uparrow
+↑\uparrow
+
+E_{\infty}\downarrow
+E∞↓E_{\infty}\downarrow
+
+E_{2}\downarrow
+E2↓E_{2}\downarrow
+
+Burgers’
+EQL
+
+(3.17\pm 0.22)\times 10^{-1}
+(3.17±0.22)×10−1(3.17\pm 0.22)\times 10^{-1}
+
+\mathbf{(1.64\pm 0.05)\times 10^{-2}}
+(1.64±0.05)×𝟏𝟎−𝟐\mathbf{(1.64\pm 0.05)\times 10^{-2}}
+
+(6.43\pm 1.35)\times 10^{-1}
+(6.43±1.35)×10−1(6.43\pm 1.35)\times 10^{-1}
+
+LieEQL
+
+\mathbf{1.00\pm 0.00}
+1.00±0.00\mathbf{1.00\pm 0.00}
+
+(1.97\pm 0.00)\times 10^{-2}
+(1.97±0.00)×10−2(1.97\pm 0.00)\times 10^{-2}
+
+(1.91\pm 0.00)\times 10^{-2}
+(1.91±0.00)×10−2(1.91\pm 0.00)\times 10^{-2}
+
+SINDy
+
+1.00\pm 0.00
+1.00±0.001.00\pm 0.00
+
+(1.99\pm 0.12)\times 10^{-2}
+(1.99±0.12)×10−2(1.99\pm 0.12)\times 10^{-2}
+
+(1.94\pm 0.11)\times 10^{-2}
+(1.94±0.11)×10−2(1.94\pm 0.11)\times 10^{-2}
+
+LieSINDy
+
+1.00\pm 0.00
+1.00±0.001.00\pm 0.00
+
+(1.90\pm 0.11)\times 10^{-2}
+(1.90±0.11)×10−2(1.90\pm 0.11)\times 10^{-2}
+
+\mathbf{(1.80\pm 0.11)\times 10^{-2}}
+(1.80±0.11)×𝟏𝟎−𝟐\mathbf{(1.80\pm 0.11)\times 10^{-2}}
+
+Heat
+EQL
+
+\mathbf{1.00\pm 0.00}
+1.00±0.00\mathbf{1.00\pm 0.00}
+
+(2.01\pm 0.00)\times 10^{-2}
+(2.01±0.00)×10−2(2.01\pm 0.00)\times 10^{-2}
+
+(2.01\pm 0.00)\times 10^{-2}
+(2.01±0.00)×10−2(2.01\pm 0.00)\times 10^{-2}
+
+LieEQL
+
+1.00\pm 0.00
+1.00±0.001.00\pm 0.00
+
+(2.02\pm 0.02)\times 10^{-2}
+(2.02±0.02)×10−2(2.02\pm 0.02)\times 10^{-2}
+
+(2.02\pm 0.02)\times 10^{-2}
+(2.02±0.02)×10−2(2.02\pm 0.02)\times 10^{-2}
+
+SINDy
+
+1.00\pm 0.00
+1.00±0.001.00\pm 0.00
+
+(2.01\pm 0.00)\times 10^{-2}
+(2.01±0.00)×10−2(2.01\pm 0.00)\times 10^{-2}
+
+(2.01\pm 0.00)\times 10^{-2}
+(2.01±0.00)×10−2(2.01\pm 0.00)\times 10^{-2}
+
+LieSINDy
+
+1.00\pm 0.00
+1.00±0.001.00\pm 0.00
+
+\mathbf{(2.01\pm 0.00)\times 10^{-2}}
+(2.01±0.00)×𝟏𝟎−𝟐\mathbf{(2.01\pm 0.00)\times 10^{-2}}
+
+\mathbf{(2.01\pm 0.00)\times 10^{-2}}
+(2.01±0.00)×𝟏𝟎−𝟐\mathbf{(2.01\pm 0.00)\times 10^{-2}}
+
+KdV
+EQL
+
+(6.39\pm 3.07)\times 10^{-1}
+(6.39±3.07)×10−1(6.39\pm 3.07)\times 10^{-1}
+
+(3.63\pm 1.16)\times 10^{-2}
+(3.63±1.16)×10−2(3.63\pm 1.16)\times 10^{-2}
+
+1.16\pm 1.45
+1.16±1.451.16\pm 1.45
+
+LieEQL
+
+\mathbf{1.00\pm 0.00}
+1.00±0.00\mathbf{1.00\pm 0.00}
+
+\mathbf{(2.98\pm 0.00)\times 10^{-2}}
+(2.98±0.00)×𝟏𝟎−𝟐\mathbf{(2.98\pm 0.00)\times 10^{-2}}
+
+\mathbf{(2.11\pm 0.00)\times 10^{-2}}
+(2.11±0.00)×𝟏𝟎−𝟐\mathbf{(2.11\pm 0.00)\times 10^{-2}}
+
+SINDy
+
+1.00\pm 0.00
+1.00±0.001.00\pm 0.00
+
+(2.99\pm 0.00)\times 10^{-2}
+(2.99±0.00)×10−2(2.99\pm 0.00)\times 10^{-2}
+
+(2.22\pm 0.00)\times 10^{-2}
+(2.22±0.00)×10−2(2.22\pm 0.00)\times 10^{-2}
+
+LieSINDy
+
+1.00\pm 0.00
+1.00±0.001.00\pm 0.00
+
+(2.99\pm 0.00)\times 10^{-2}
+(2.99±0.00)×10−2(2.99\pm 0.00)\times 10^{-2}
+
+(2.22\pm 0.00)\times 10^{-2}
+(2.22±0.00)×10−2(2.22\pm 0.00)\times 10^{-2}
+
+Damped Burgers’
+EQL
+
+\mathbf{1.00\pm 0.00}
+1.00±0.00\mathbf{1.00\pm 0.00}
+
+(2.58\pm 1.79)\times 10^{-4}
+(2.58±1.79)×10−4(2.58\pm 1.79)\times 10^{-4}
+
+(1.73\pm 1.01)\times 10^{-4}
+(1.73±1.01)×10−4(1.73\pm 1.01)\times 10^{-4}
+
+LieEQL
+
+1.00\pm 0.00
+1.00±0.001.00\pm 0.00
+
+(4.11\pm 0.07)\times 10^{-4}
+(4.11±0.07)×10−4(4.11\pm 0.07)\times 10^{-4}
+
+(2.51\pm 0.07)\times 10^{-4}
+(2.51±0.07)×10−4(2.51\pm 0.07)\times 10^{-4}
+
+SINDy
+
+1.00\pm 0.00
+1.00±0.001.00\pm 0.00
+
+\mathbf{(1.58\pm 0.68)\times 10^{-4}}
+(1.58±0.68)×𝟏𝟎−𝟒\mathbf{(1.58\pm 0.68)\times 10^{-4}}
+
+\mathbf{(1.01\pm 0.33)\times 10^{-4}}
+(1.01±0.33)×𝟏𝟎−𝟒\mathbf{(1.01\pm 0.33)\times 10^{-4}}
+
+LieSINDy
+
+1.00\pm 0.00
+1.00±0.001.00\pm 0.00
+
+(2.75\pm 0.55)\times 10^{-4}
+(2.75±0.55)×10−4(2.75\pm 0.55)\times 10^{-4}
+
+(1.64\pm 0.33)\times 10^{-4}
+(1.64±0.33)×10−4(1.64\pm 0.33)\times 10^{-4}
+
+Forced transport
+EQL
+
+(1.16\pm 0.07)\times 10^{-1}
+(1.16±0.07)×10−1(1.16\pm 0.07)\times 10^{-1}
+
+1.00\pm 0.00
+1.00±0.001.00\pm 0.00
+
+2.01\pm 0.77
+2.01±0.772.01\pm 0.77
+
+LieEQL
+
+\mathbf{1.00\pm 0.00}
+1.00±0.00\mathbf{1.00\pm 0.00}
+
+(1.78\pm 0.97)\times 10^{-3}
+(1.78±0.97)×10−3(1.78\pm 0.97)\times 10^{-3}
+
+(1.26\pm 0.69)\times 10^{-3}
+(1.26±0.69)×10−3(1.26\pm 0.69)\times 10^{-3}
+
+SINDy
+
+(2.50\pm 0.00)\times 10^{-1}
+(2.50±0.00)×10−1(2.50\pm 0.00)\times 10^{-1}
+
+1.00\pm 0.00
+1.00±0.001.00\pm 0.00
+
+(9.33\pm 0.01)\times 10^{-1}
+(9.33±0.01)×10−1(9.33\pm 0.01)\times 10^{-1}
+
+LieSINDy
+
+1.00\pm 0.00
+1.00±0.001.00\pm 0.00
+
+\mathbf{(1.47\pm 1.04)\times 10^{-3}}
+(1.47±1.04)×𝟏𝟎−𝟑\mathbf{(1.47\pm 1.04)\times 10^{-3}}
+
+\mathbf{(1.12\pm 0.75)\times 10^{-3}}
+(1.12±0.75)×𝟏𝟎−𝟑\mathbf{(1.12\pm 0.75)\times 10^{-3}}
+
+Wave
+EQL
+
+(2.30\pm 0.56)\times 10^{-1}
+(2.30±0.56)×10−1(2.30\pm 0.56)\times 10^{-1}
+
+(5.22\pm 2.61)\times 10^{-1}
+(5.22±2.61)×10−1(5.22\pm 2.61)\times 10^{-1}
+
+(8.71\pm 2.23)\times 10^{-1}
+(8.71±2.23)×10−1(8.71\pm 2.23)\times 10^{-1}
+
+LieEQL
+
+\mathbf{1.00\pm 0.00}
+1.00±0.00\mathbf{1.00\pm 0.00}
+
+(2.05\pm 0.02)\times 10^{-2}
+(2.05±0.02)×10−2(2.05\pm 0.02)\times 10^{-2}
+
+(2.02\pm 0.01)\times 10^{-2}
+(2.02±0.01)×10−2(2.02\pm 0.01)\times 10^{-2}
+
+SINDy
+
+1.00\pm 0.00
+1.00±0.001.00\pm 0.00
+
+(2.01\pm 0.00)\times 10^{-2}
+(2.01±0.00)×10−2(2.01\pm 0.00)\times 10^{-2}
+
+(2.01\pm 0.00)\times 10^{-2}
+(2.01±0.00)×10−2(2.01\pm 0.00)\times 10^{-2}
+
+LieSINDy
+
+1.00\pm 0.00
+1.00±0.001.00\pm 0.00
+
+\mathbf{(2.01\pm 0.00)\times 10^{-2}}
+(2.01±0.00)×𝟏𝟎−𝟐\mathbf{(2.01\pm 0.00)\times 10^{-2}}
+
+\mathbf{(2.01\pm 0.00)\times 10^{-2}}
+(2.01±0.00)×𝟏𝟎−𝟐\mathbf{(2.01\pm 0.00)\times 10^{-2}}
+
+Schrödinger
+EQL
+
+(5.19\pm 1.18)\times 10^{-2}
+(5.19±1.18)×10−2(5.19\pm 1.18)\times 10^{-2}
+
+2.54\pm 0.93
+2.54±0.932.54\pm 0.93
+
+1.47\pm 0.12
+1.47±0.121.47\pm 0.12
+
+LieEQL
+
+\mathbf{1.00\pm 0.00}
+1.00±0.00\mathbf{1.00\pm 0.00}
+
+\mathbf{(2.10\pm 0.08)\times 10^{-2}}
+(2.10±0.08)×𝟏𝟎−𝟐\mathbf{(2.10\pm 0.08)\times 10^{-2}}
+
+\mathbf{(8.57\pm 0.04)\times 10^{-3}}
+(8.57±0.04)×𝟏𝟎−𝟑\mathbf{(8.57\pm 0.04)\times 10^{-3}}
+
+SINDy
+
+(3.99\pm 1.14)\times 10^{-3}
+(3.99±1.14)×10−3(3.99\pm 1.14)\times 10^{-3}
+
+2.24\pm 1.66
+2.24±1.662.24\pm 1.66
+
+(2.36\pm 2.21)\times 10^{1}
+(2.36±2.21)×101(2.36\pm 2.21)\times 10^{1}
+
+LieSINDy
+
+1.00\pm 0.00
+1.00±0.001.00\pm 0.00
+
+(2.21\pm 0.10)\times 10^{-2}
+(2.21±0.10)×10−2(2.21\pm 0.10)\times 10^{-2}
+
+(8.88\pm 0.06)\times 10^{-3}
+(8.88±0.06)×10−3(8.88\pm 0.06)\times 10^{-3}
+
+Reaction-diffusion
+EQL
+
+(1.44\pm 0.08)\times 10^{-1}
+(1.44±0.08)×10−1(1.44\pm 0.08)\times 10^{-1}
+
+1.00\pm 0.00
+1.00±0.001.00\pm 0.00
+
+(7.88\pm 0.31)\times 10^{-1}
+(7.88±0.31)×10−1(7.88\pm 0.31)\times 10^{-1}
+
+LieEQL
+
+\mathbf{1.00\pm 0.00}
+1.00±0.00\mathbf{1.00\pm 0.00}
+
+(7.69\pm 1.42)\times 10^{-2}
+(7.69±1.42)×10−2(7.69\pm 1.42)\times 10^{-2}
+
+(1.08\pm 0.06)\times 10^{-2}
+(1.08±0.06)×10−2(1.08\pm 0.06)\times 10^{-2}
+
+SINDy
+
+1.00\pm 0.00
+1.00±0.001.00\pm 0.00
+
+(7.02\pm 0.55)\times 10^{-2}
+(7.02±0.55)×10−2(7.02\pm 0.55)\times 10^{-2}
+
+(5.95\pm 1.21)\times 10^{-3}
+(5.95±1.21)×10−3(5.95\pm 1.21)\times 10^{-3}
+
+LieSINDy
+
+1.00\pm 0.00
+1.00±0.001.00\pm 0.00
+
+\mathbf{(2.83\pm 1.08)\times 10^{-2}}
+(2.83±1.08)×𝟏𝟎−𝟐\mathbf{(2.83\pm 1.08)\times 10^{-2}}
+
+\mathbf{(1.86\pm 0.68)\times 10^{-3}}
+(1.86±0.68)×𝟏𝟎−𝟑\mathbf{(1.86\pm 0.68)\times 10^{-3}}
+
+Appendix F Appendix F: Experimental Settings
+
+F.1 Computing Infrastructure
+
+All experiments were conducted on a server equipped with two Intel(R) Xeon(R) Gold 6330 CPUs @ 2.00GHz, 1.5 TB RAM, and two NVIDIA A100 GPUs with 80 GB memory each.
+
+Regarding computational cost, the generator discovery stage of LieDiscover is lightweight, requiring only approximately 600 MiB of GPU memory during training.
+
+F.2 Hyper-parameters
+
+All hyper-parameters used in our experiments are documented in the released source code. The implementation includes the corresponding configuration files and parameter settings for each experiment, facilitating reproducibility.
+
+F.3 Metrics in PDE Discovery
+
+To quantitatively evaluate the discovered equations, we report one structural accuracy metric and two coefficient error metrics.
+
+Following WSINDy (Messenger and Bortz 2021), we evaluate
+structural recovery using the true positivity ratio (TPR),
+defined as
+
+\operatorname{TPR}(\hat{\boldsymbol{w}})=\frac{\mathrm{TP}}{\mathrm{TP}+\mathrm{FN}+\mathrm{FP}},
+TPR⁡(𝒘^)=TPTP+FN+FP,\operatorname{TPR}(\hat{\boldsymbol{w}})=\frac{\mathrm{TP}}{\mathrm{TP}+\mathrm{FN}+\mathrm{FP}},
+
+(42)
+
+where TP, FN, and FP denote the numbers of correctly
+identified active terms, missing true terms, and falsely
+selected terms, respectively.
+
+For coefficient accuracy, we use the maximum relative error and the normalized root-mean-square error:
+
+E_{\infty}(\hat{\mathbf{w}})=\max_{j:\mathbf{w}_{j}^{\ast}\neq 0}\frac{|\hat{\mathbf{w}}_{j}-\mathbf{w}_{j}^{\ast}|}{|\mathbf{w}_{j}^{\ast}|},
+E∞(𝐰^)=maxj:𝐰j∗≠0|𝐰^j−𝐰j∗||𝐰j∗|,E_{\infty}(\hat{\mathbf{w}})=\max_{j:\mathbf{w}_{j}^{\ast}\neq 0}\frac{|\hat{\mathbf{w}}_{j}-\mathbf{w}_{j}^{\ast}|}{|\mathbf{w}_{j}^{\ast}|},
+
+(43)
+
+E_{2}(\hat{\mathbf{w}})=\frac{\|\hat{\mathbf{w}}-\mathbf{w}^{\ast}\|_{\mathrm{RMS}}}{\|\mathbf{w}^{\ast}\|_{\mathrm{RMS}}}.
+E2​(𝐰^)=‖𝐰^−𝐰∗‖RMS‖𝐰∗‖RMS.E_{2}(\hat{\mathbf{w}})=\frac{\|\hat{\mathbf{w}}-\mathbf{w}^{\ast}\|_{\mathrm{RMS}}}{\|\mathbf{w}^{\ast}\|_{\mathrm{RMS}}}.
+
+(44)
+
+\hat{\mathbf{w}}
+𝐰^\hat{\mathbf{w}} denotes the coefficient vector of the discovered equation, and 
+\mathbf{w}^{\ast}
+𝐰∗\mathbf{w}^{\ast} denotes the ground-truth coefficient vector. 
+E_{\infty}
+E∞E_{\infty} measures the worst-case relative error on the true nonzero coefficients, while 
+E_{2}
+E2E_{2} measures the overall coefficient error. A higher TPR and lower 
+E_{\infty}
+E∞E_{\infty} and 
+E_{2}
+E2E_{2} indicate better equation discovery performance.
+
+F.4 Baselines Settings
+
+Symmetry Discovery
+
+For the symmetry discovery task, the primary baselines are LieGAN and LieNLSD. Their experimental settings are as follows.
+
+LieGAN.
+LieGAN (Yang et al. 2023b) learns infinitesimal generators through adversarial training. It uses Lie algebra generators to transform data and trains a discriminator to distinguish the transformed distribution from the original one. For Top task, Burgers’ equation, Heat equation, KdV equation, Wave equation, Reaction-Diffusion equation, and Schrödinger equation, we follow the same data splits and hyperparameter settings used in the LieNLSD (Hu et al. 2025a) comparison. For the two newly introduced datasets, Damped Burgers’ equation and Forced transport equation, we train LieGAN on exactly the same generated training data as our method. We use the original LieGAN implementation with batch size 
+64
+6464, 
+100
+100100 training epochs, discriminator learning rate 
+2\times 10^{-4}
+2×10−42\times 10^{-4}, generator learning rate 
+10^{-3}
+10−310^{-3}, regularization weight 
+10^{-2}
+10−210^{-2}, and the same random seeds 
+\{0,1,2\}
+{0,1,2}\{0,1,2\} used in our experiments.
+
+LieNLSD.
+LieNLSD (Hu et al. 2025a) represents candidate symmetries using a predefined function library and uses SVD to identify the number and explicit forms of infinitesimal generators. For all datasets already included in LieNLSD, namely Top task, Burgers’ equation, Heat equation, KdV equation, Wave equation, Reaction-Diffusion equation, and Schrödinger equation, we keep the dataset, surrogate training, sampling strategy, and candidate library setting consistent with the original LieNLSD experiments. For the two newly introduced PDEs, we use the surrogate architecture, an MLP with three hidden layers, hidden dimension 
+200
+200200, Sigmoid activation, and 
+100
+100100 training epochs. The sample window used for symmetry discovery is fixed across methods by seed. Since LieNLSD requires a manually specified library, we use the Burgers-style polynomial library 
+\Theta=\{1,t,x,u,t^{2},x^{2},u^{2},tx,tu,xu\}
+Θ={1,t,x,u,t2,x2,u2,t​x,t​u,x​u}\Theta=\{1,t,x,u,t^{2},x^{2},u^{2},tx,tu,xu\} for Damped Burgers’ equation and Forced transport equation.
+
+PDE Solving.
+
+In this section, we mainly introduce the experimental settings of the baselines used in the PDE solving task. We evaluate the effect of the discovered symmetries for downstream PDE solving using the LPSDA (Brandstetter et al. 2022) pipeline. The compared solver variants are FNO without augmentation, FNO with LPSDA based on Ko et al. (2024), FNO with LPSDA based on LieNLSD(Hu et al. 2025a), FNO with LPSDA based on LieDiscover, and FNO with ground-truth symmetries. For Burgers’ equation, Heat equation, and KdV equation, we follow the LieNLSD setting.
+
+For Damped Burgers’ equation and Forced transport equation, we use the newly generated datasets described above. The FNO is trained with 
+10
+1010 training trajectories, batch size 
+16
+1616, learning rate 
+10^{-4}
+10−410^{-4}, 
+40
+4040 epochs, and step learning-rate decay factor 
+0.4
+0.40.4. The input history and prediction horizon are set to 
+20
+2020 time steps. For data augmentation, we use 
+16
+1616 transformed samples per trajectory and keep the probability of using the original untransformed data as 
+p_{\mathrm{orig}}=0.5
+porig=0.5p_{\mathrm{orig}}=0.5. The transform batch size is 
+32
+3232, and the test batch size is 
+1024
+10241024.
+
+PDE Discovery
+
+In this section, we mainly introduce the experimental settings of the baselines used in the PDE Discovery task.
+
+EQL.
+We use Equation Learner (EQL) (Martius and Lampert 2016) as a purely data-driven symbolic regression baseline. To make the comparison fair, EQL is trained on the same input-output data, with the same optimizer, learning rate schedule as LieEQL. Unlike LieEQL, EQL does not use any discovered infinitesimal generators, symmetry loss, or architecture hints.
+
+For 1d PDEs, we use a single-layer EQL network with two identity, two 
+\sin
+sin\sin, two 
+\cos
+cos\cos, and two multiplication operators. For 2d PDE systems, we use a two-layer EQL network with six units for each operator type. This operator set enables EQL to represent polynomial and trigonometric expressions.
+
+SINDy.
+We use SINDy (Rudy et al. 2017) as a sparse regression baseline for PDE discovery. To make the comparison fair, SINDy is trained on the same input-output data as LieSINDy, and both methods use the same random subset of 
+1000
+10001000 sampled points for each run. Unlike LieSINDy, SINDy does not use discovered infinitesimal generators, symmetry loss, or symmetry-guided library.
+
+For 1d PDEs, we construct a polynomial candidate library up to degree 
+3
+33. For 2d PDE systems, we use a polynomial candidate library up to degree 
+4
+44.
+
+References
+
+Akhound-Sadegh et al. (2023)
+T. Akhound-Sadegh, L. Perreault-Levasseur, J. Brandstetter, M. Welling, and S. Ravanbakhsh
+
+Lie point symmetry and physics-informed networks.
+
+Advances in Neural Information Processing Systems 36, pp. 42468–42481.
+
+Cited by: Appendix A,
+Related Work.
+
+Alpar et al. (2024)
+S. Alpar, R. Faizulin, F. Tokmukhamedova, and Y. Daineko
+
+Applications of symmetry-enhanced physics-informed neural networks in high-pressure gas flow simulations in pipelines.
+
+Symmetry 16 (5), pp. 538.
+
+Cited by: Related Work.
+
+Arora et al. (2024)
+S. Arora, A. Bihlo, and F. Valiquette
+
+Invariant physics-informed neural networks for ordinary differential equations.
+
+Journal of Machine Learning Research 25 (233), pp. 1–24.
+
+Cited by: Appendix A.
+
+baron de Fourier (1822)
+J. B. J. baron de Fourier
+
+Théorie analytique de la chaleur.
+
+ Firmin Didot.
+
+Cited by: Nonlinear Symmetry Discovery.
+
+Benton et al. (2020)
+G. Benton, M. Finzi, P. Izmailov, and A. G. Wilson
+
+Learning invariances in neural networks from training data.
+
+Advances in neural information processing systems 33, pp. 17605–17616.
+
+Cited by: Introduction,
+Related Work.
+
+Brandstetter et al. (2022)
+J. Brandstetter, M. Welling, and D. E. Worrall
+
+Lie point symmetry data augmentation for neural pde solvers.
+
+In International Conference on Machine Learning,
+
+pp. 2241–2256.
+
+Cited by: Appendix A,
+Appendix F,
+PDE Applications,
+PDE Applications.
+
+Bronstein et al. (2021)
+M. M. Bronstein, J. Bruna, T. Cohen, and P. Veličković
+
+Geometric deep learning: grids, groups, graphs, geodesics, and gauges.
+
+arXiv preprint arXiv:2104.13478.
+
+Cited by: Introduction.
+
+Chen et al. (2024)
+C. Chen, H. Li, and X. Jin
+
+An invariance constrained deep learning network for partial differential equation discovery.
+
+Physics of Fluids 36 (4).
+
+Cited by: Appendix A,
+Introduction,
+Related Work,
+PDE Applications.
+
+Cohen and Welling (2016)
+T. Cohen and M. Welling
+
+Group equivariant convolutional networks.
+
+In International conference on machine learning,
+
+pp. 2990–2999.
+
+Cited by: Introduction,
+Related Work.
+
+de Pillis (1998)
+L. G. de Pillis
+
+The multiple-scale transport equation in one space dimension.
+
+Annali di Matematica Pura ed Applicata 174 (1), pp. 121–133.
+
+Cited by: Nonlinear Symmetry Discovery,
+Experiment.
+
+Dehmamy et al. (2021)
+N. Dehmamy, R. Walters, Y. Liu, D. Wang, and R. Yu
+
+Automatic symmetry discovery with lie algebra convolutional network.
+
+Advances in Neural Information Processing Systems 34, pp. 2503–2515.
+
+Cited by: Related Work,
+Preliminary.
+
+Desai et al. (2022)
+K. Desai, B. Nachman, and J. Thaler
+
+Symmetry discovery with deep learning.
+
+Physical Review D 105 (9), pp. 096031.
+
+Cited by: Related Work.
+
+Du et al. (2022)
+M. Du, Y. Chen, and D. Zhang
+
+DISCOVER: deep identification of symbolically concise open-form pdes via enhanced reinforcement-learning.
+
+arXiv preprint arXiv:2210.02181.
+
+Cited by: Training Method.
+
+Fuchs et al. (2020)
+F. Fuchs, D. Worrall, V. Fischer, and M. Welling
+
+Se (3)-transformers: 3d roto-translation equivariant attention networks.
+
+Advances in neural information processing systems 33, pp. 1970–1981.
+
+Cited by: Related Work.
+
+Graves and Schmidhuber (2005)
+A. Graves and J. Schmidhuber
+
+Framewise phoneme classification with bidirectional lstm and other neural network architectures.
+
+Neural networks 18 (5-6), pp. 602–610.
+
+Cited by: Network Architecture.
+
+Gross (1996)
+D. J. Gross
+
+The role of symmetry in fundamental physics.
+
+Proceedings of the National Academy of Sciences 93 (25), pp. 14256–14259.
+
+Cited by: Introduction.
+
+Hopf (1950)
+E. Hopf
+
+The partial differential equation.
+
+Cited by: Nonlinear Symmetry Discovery.
+
+Hu et al. (2025a)
+L. Hu, Y. Li, and Z. Lin
+
+Explicit discovery of nonlinear symmetries from dynamic data.
+
+arXiv preprint arXiv:2510.01855.
+
+Cited by: Appendix C,
+Appendix C,
+Appendix E,
+Appendix F,
+Appendix F,
+Appendix F,
+Introduction,
+Related Work,
+Preliminary,
+Preliminary,
+Preliminary.
+
+Hu et al. (2025b)
+L. Hu, Y. Li, and Z. Lin
+
+Governing equation discovery from data based on differential invariants.
+
+arXiv preprint arXiv:2505.18798.
+
+Cited by: PDE Applications.
+
+Hu et al. (2025c)
+L. Hu, Y. Li, and Z. Lin
+
+Symmetry discovery for different data types.
+
+Neural Networks 188, pp. 107481.
+
+Cited by: Introduction,
+Related Work,
+Preliminary.
+
+Ko et al. (2024)
+G. Ko, H. Kim, and J. Lee
+
+Learning infinitesimal generators of continuous symmetries from data.
+
+Advances in Neural Information Processing Systems 37, pp. 85973–86003.
+
+Cited by: Appendix A,
+Appendix F,
+Introduction,
+Related Work,
+RQ3: Applications to PDE Solving and Discovery.
+
+Kondor and Trivedi (2018)
+R. Kondor and S. Trivedi
+
+On the generalization of equivariance and convolution in neural networks to the action of compact groups.
+
+In International conference on machine learning,
+
+pp. 2747–2755.
+
+Cited by: Introduction.
+
+Krippendorf and Syvaeri (2021)
+S. Krippendorf and M. Syvaeri
+
+Detecting symmetries with neural networks.
+
+Machine Learning: Science and Technology 2 (1), pp. 015010.
+
+Cited by: Related Work.
+
+Li et al. (2020)
+Z. Li, N. Kovachki, K. Azizzadenesheli, B. Liu, K. Bhattacharya, A. Stuart, and A. Anandkumar
+
+Fourier neural operator for parametric partial differential equations.
+
+arXiv preprint arXiv:2010.08895.
+
+Cited by: PDE Applications.
+
+Lin et al. (2011)
+Z. Lin, R. Liu, and Z. Su
+
+Linearized alternating direction method with adaptive penalty for low-rank representation.
+
+Advances in neural information processing systems 24.
+
+Cited by: Appendix C,
+Training Method.
+
+Long et al. (2019)
+Z. Long, Y. Lu, and B. Dong
+
+PDE-net 2.0: learning pdes from data with a numeric-symbolic hybrid deep network.
+
+Journal of Computational Physics 399, pp. 108925.
+
+Cited by: Appendix A.
+
+Martius and Lampert (2016)
+G. Martius and C. H. Lampert
+
+Extrapolation and learning equations.
+
+arXiv preprint arXiv:1610.02995.
+
+Cited by: Appendix F.
+
+Messenger and Bortz (2021)
+D. A. Messenger and D. M. Bortz
+
+Weak sindy for partial differential equations.
+
+Journal of Computational Physics 443, pp. 110525.
+
+Cited by: Appendix F.
+
+Montecinos (2015)
+G. I. Montecinos
+
+Analytic solutions for the burgers equation with source terms.
+
+arXiv preprint arXiv:1503.09079.
+
+Cited by: Nonlinear Symmetry Discovery,
+Experiment.
+
+Moskalev et al. (2022)
+A. Moskalev, A. Sepliarskaia, I. Sosnovik, and A. Smeulders
+
+Liegg: studying learned lie group generators.
+
+Advances in Neural Information Processing Systems 35, pp. 25212–25223.
+
+Cited by: Related Work.
+
+Petersen et al. (2019)
+B. K. Petersen, M. Landajuela, T. N. Mundhenk, C. P. Santiago, S. K. Kim, and J. T. Kim
+
+Deep symbolic regression: recovering mathematical expressions from data via risk-seeking policy gradients.
+
+arXiv preprint arXiv:1912.04871.
+
+Cited by: Appendix E,
+Training Method,
+Network Architecture.
+
+Rajeswaran et al. (2016)
+A. Rajeswaran, S. Ghotra, B. Ravindran, and S. Levine
+
+Epopt: learning robust neural network policies using model ensembles.
+
+arXiv preprint arXiv:1610.01283.
+
+Cited by: Training Method.
+
+Romero and Lohit (2022)
+D. W. Romero and S. Lohit
+
+Learning partial equivariances from data.
+
+Advances in Neural Information Processing Systems 35, pp. 36466–36478.
+
+Cited by: Related Work.
+
+Rudy et al. (2017)
+S. H. Rudy, S. L. Brunton, J. L. Proctor, and J. N. Kutz
+
+Data-driven discovery of partial differential equations.
+
+Science advances 3 (4), pp. e1602614.
+
+Cited by: Appendix A,
+Appendix F,
+PDE Applications.
+
+Sahoo et al. (2018)
+S. Sahoo, C. Lampert, and G. Martius
+
+Learning equations for extrapolation and control.
+
+In International conference on machine learning,
+
+pp. 4442–4450.
+
+Cited by: PDE Applications.
+
+Shaw et al. (2024)
+B. Shaw, A. Magner, and K. R. Moon
+
+Symmetry discovery beyond affine transformations.
+
+Advances in Neural Information Processing Systems 37, pp. 112889–112918.
+
+Cited by: Introduction,
+Related Work.
+
+Strauss (2007)
+W. A. Strauss
+
+Partial differential equations: an introduction.
+
+ John Wiley &amp; Sons.
+
+Cited by: Nonlinear Symmetry Discovery.
+
+Tamar et al. (2014)
+A. Tamar, Y. Glassner, and S. Mannor
+
+Policy gradients beyond expectations: conditional value-at-risk.
+
+arXiv preprint arXiv:1404.3862.
+
+Cited by: Training Method.
+
+Udrescu and Tegmark (2020)
+S. Udrescu and M. Tegmark
+
+AI feynman: a physics-inspired method for symbolic regression.
+
+Science advances 6 (16), pp. eaay2631.
+
+Cited by: Introduction.
+
+van der Ouderaa et al. (2023)
+T. van der Ouderaa, A. Immer, and M. van der Wilk
+
+Learning layer-wise equivariances automatically using gradients.
+
+Advances in Neural Information Processing Systems 36, pp. 28365–28377.
+
+Cited by: Related Work.
+
+Weyl (2015)
+H. Weyl
+
+Symmetry.
+
+Cited by: Introduction.
+
+Yang et al. (2025)
+J. Yang, M. Bhat, B. Hu, Y. Cao, N. Dehmamy, R. Walters, and R. Yu
+
+Discovering symbolic differential equations with symmetry invariants.
+
+arXiv preprint arXiv:2505.12083.
+
+Cited by: Appendix A,
+Appendix D,
+Introduction,
+Related Work,
+PDE Applications.
+
+Yang et al. (2023a)
+J. Yang, N. Dehmamy, R. Walters, and R. Yu
+
+Latent space symmetry discovery.
+
+arXiv preprint arXiv:2310.00105.
+
+Cited by: Introduction,
+Related Work.
+
+Yang et al. (2023b)
+J. Yang, R. Walters, N. Dehmamy, and R. Yu
+
+Generative adversarial symmetry discovery.
+
+In International conference on machine learning,
+
+pp. 39488–39508.
+
+Cited by: Appendix F,
+Introduction,
+Related Work.
+
+Zaheer et al. (2017)
+M. Zaheer, S. Kottur, S. Ravanbakhsh, B. Poczos, R. R. Salakhutdinov, and A. J. Smola
+
+Deep sets.
+
+Advances in neural information processing systems 30.
+
+Cited by: Network Architecture.
+
+Zhou et al. (2020)
+A. Zhou, T. Knowles, and C. Finn
+
+Meta-learning symmetries by reparameterization.
+
+arXiv preprint arXiv:2007.02933.
+
+Cited by: Related Work.
+
+    Experimental support, please
+    view the build logs
+    for errors. Generated by
+
+        L
+        A
+        T
+        E
+      
+      xml
+      
+    .
+
+Instructions for reporting errors
+
+We are continuing to improve HTML versions of papers, and your feedback helps enhance accessibility and mobile
+      support. To report errors in the HTML that will help us improve conversion and rendering, choose any of the
+      methods listed below:
+
+Click the &quot;Report Issue&quot; (
+            
+          ) button, located in the page header.
+
+Tip: You can select the relevant text first, to include it in your report.
+
+Our team has already identified the following issues. We appreciate your time reviewing and reporting rendering errors we
+      may not have found yet. Your efforts will help us improve the HTML versions for all readers, because disability
+      should not be a barrier to accessing research. Thank you for your continued support in championing open access for
+      all.
+
+Have a free development cycle? Help support accessibility at arXiv! Our collaborators at LaTeXML maintain a list of packages that need conversion, and welcome developer contributions.
+
+        We gratefully acknowledge support from
+        our major funders,
+        member institutions, ,
+        and all contributors.
+
+Major funding support from</pre></html>

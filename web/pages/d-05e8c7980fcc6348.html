@@ -1,0 +1,110 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>An exact partition-law compiler from release family 184</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>An exact partition-law compiler from release family 184</h1><p>Source ID d-05e8c7980fcc6348; literature/notes/frontier_combin3/cycle19/EXECUTABLE_CLIQUE_FREE_DECORRELATION.md; 2967 o200k tokens; role research_note; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre># An exact partition-law compiler from release family 184
+
+Status: **source-derived primitive independently reconstructed and implemented**. Its theorem is already in the release; our contribution in this cycle is an explicit compact-output/bit-cost deduction, exact code, and an optimizer obstruction. No historical novelty or full efficient coloring/independence algorithm is claimed.
+
+Source: [A logarithmic independence bound for clique-free graphs](https://github.com/openai/math/blob/adc7f1241b42e322a6451854ab7e4b4c146bf78a/preprints/A-Logarithmic-Independence-Bound-for-Clique-Free-Graphs-September-25-2026/paper.pdf), OpenAI, September 25, 2026. All six mathematical sections were read. Main result: Theorem 1.1, `alpha(G)&gt;=c_r n log(d)/d` for finite simple ordinary K_r-free graphs, r&gt;=4 and average degree d&gt;=2. Decisive primitive: Lemma 2.2 in `build/sections/optimizer.tex:91`; cross-mass Lemma 2.3 at line166. Source author/date verified in main.tex.
+
+The October 5 correspondence-coloring companion was read through its introduction, history and mechanism outline only. It claims a stronger DP-coloring bound using priced triangle compensation and controlled list participation. Its later technical proof has not been adopted here. The family184 Lean documentation covers the September independence theorem, not that October coloring companion. The challenge comparator&#x27;s `sorry` is a target placeholder; the solution Main imports the proof. The comparator has not been run here.
+
+## Input, output and promised primitive
+
+Input: a finite simple graph G on n vertices promised K_r-free; integer r&gt;=2; positive rational vertex weights w; rational 0&lt;epsilon&lt;=1/2. Let
+
+`s=sum_v w_v`, `M_G(w)=sum_{uv in E, unordered}w_u w_v`.
+
+Output: pairwise disjoint nonempty terminal blocks A_j partitioning the vertices, rational probabilities p_j&gt;0 with `sum_j p_j&lt;=1`, and one optional empty atom carrying the remaining probability. At atom j set
+
+`m_v=1/p_j` for v in A_j, and `m_v=0` elsewhere.
+
+The source&#x27;s mean-preserving decorrelation guarantee becomes
+
+`E m_v=1`, `0&lt;=m_v&lt;=B_r(epsilon)=2^(r(r-2))epsilon^(-(r-2))`,
+
+`E M_G(w*m)&lt;=epsilon s^2`.
+
+Our compact output has at most n+1 atoms and uses one vertex partition plus atom probabilities. No dense n by n support table is required. Coordinate means and expected edge mass can be checked exactly without sampling:
+
+`E m_v=p_j(1/p_j)=1`,
+
+`E M_G(w*m)=sum_j M_{G[A_j]}(w)/p_j`.
+
+This is a correlated diagonal law. Independent mean-one multipliers would give `E m_u m_v=1` for distinct vertices and preserve the original expected edge mass; correlation is the essential service.
+
+## Complete reconstruction of the recursive construction
+
+For r=2 the graph has no edges: return the whole vertex set with probability1 and every multiplier1. The empty input returns the empty atom.
+
+For r&gt;=3 set eta=epsilon/4. Start with all vertices remaining. Whenever a remaining vertex has open-neighborhood weight greater than eta*s in the remaining induced graph, remove that neighborhood as a block V_i. Continue until no such vertex remains; call the remainder R. The V_i are disjoint, each has weight s_i&gt;eta*s, and each excludes K_{r-1}: a clique in the neighborhood together with its chosen center would create K_r. R satisfies
+
+`M_R(w)&lt;=eta*s*w(R)/2&lt;=eta*s^2/2`.
+
+If no neighborhoods were removed, return the original whole-set atom. Its mass already meets the target, even with a factor1/8 to spare.
+
+Otherwise let `b=sum_i s_i` and `p_i=s_i/(2b)`. Choose R with probability1/2 and use multiplier2 on R. Choose V_i with probability p_i and apply the (r-1)-construction inside it at accuracy epsilon/4, multiplying its returned multipliers by1/p_i. All multipliers outside the chosen part are zero.
+
+Every vertex&#x27;s expectation is one. Edges between different selected parts disappear. The expected edge mass is bounded by
+
+`2M_R(w)+sum_i (epsilon/4)s_i^2/p_i`
+
+`&lt;=eta*s^2+(epsilon/2)b^2 &lt;=(3/4)epsilon*s^2`.
+
+No independence between vertices is invoked. For the magnitude, `p_i&gt;epsilon/8`, and therefore
+
+`max m_v &lt;= max{2,(8/epsilon)B_{r-1}(epsilon/4)} = B_r(epsilon)`.
+
+The equality follows by substituting the stated power of2 and epsilon exponent. This completes the induction.
+
+Flattening the recursive selection tree proves the compact-output claim. Its nonempty terminal sets partition the input vertices: each internal split partitions its own set into its removed neighborhoods and remainder. Along a root-to-leaf chain the multiplier is exactly the reciprocal of the leaf selection probability. Merge all empty outcomes into one zero-vector atom. There are at most n nonempty leaves and one empty atom.
+
+## Acquisition cost, without a global optimizer oracle
+
+`work/frontier_combin3/cycle19/sparse_partition_law.py` implements this construction with Python `Fraction`. It reads no release scripts. Weighted degrees are maintained while deleting neighborhoods. At one recursion level the vertex sets are disjoint, and each original edge is scanned only a bounded number of times for degree initialization/deletion. A simple linear search for the next center costs O(n^2) per level. The recursion depth is at most r-2. Thus construction uses O(r(n^2+|E|)) rational operations, apart from the optional clique-promise check.
+
+Let L be the total binary encoding of the rational weights and epsilon. Subset-weight sums have O(L+log n) bits; the nested accuracy parameters add O(r) bits. Each leaf probability is a product of at most r rational ratios of subset weights, with O(r(L+r+log n)) bit length. The optional empty probability is a sum/complement of at most n such probabilities, so it has polynomial bit length as well. Elementary exact rational arithmetic therefore gives polynomial bit cost in n,r,L for the promised-input constructor. The numeric B_r may be huge; its binary encoding and the output denominators are charged. There is no claim that its dependence on r or epsilon gives small practical constants for all inputs.
+
+The K_r-free promise can be checked by enumerating r-subsets in O(n^r r^2) graph operations. This is polynomial for fixed r, and costly if r grows. The constructor itself only detects violations that reach an invalid r=2 base; it is not a general clique-promise recognizer.
+
+The output does not itself give a large independent set or low-coloring assignment. Terminal remainders can retain edges, the target is absolute interaction mass epsilon*s^2, and a deterministic output may have larger total weight than s. Those facts are part of the exact interface.
+
+## Exact evidence and a meaningful control
+
+Evidence: `results/frontier_combin3/cycle19/sparse_partition_evidence.json`.
+
+* 14,214 exact arithmetic cases: every labelled graph on five vertices satisfying r=3,4,5 clique promises, two rational weight schedules, and epsilon=1/2,1/8,1/32. Each checks disjoint coverage, probability sum, coordinate means, multiplier bound, and expected interaction mass. This is scoped finite evidence only.
+* Three explicit partite families at n=60,80,100 stress nonuniform rational weights. Their clique promises follow from their supplied partitions.
+* An 80-vertex graph K_{30,30} plus ten disjoint edges has initial mass910 at unit weights. For r=3, epsilon=1/8, the construction has two nonempty atoms of probability1/2. One atom selects one bipartite side; the other selects the opposite side and the twenty sparse-remainder vertices. The expected edge mass is exactly20, while every realized multiplier is at most2. The allowed target is800. This demonstrates actual suppression with a nonzero retained interaction, not only an edgeless terminal example.
+* The equally informed independently sampled mean-one control has expected edge mass910 by the product expectation identity. It does not realize the correlated decorrelation service.
+* A K5 input at r=3, epsilon=1/32 is rejected in the recursive base. This one check is not promoted to universal invalid-input rejection.
+
+Concrete downstream use: a supplied rational weight vector over clique-free positive pair interactions can be decorrelated with an explicitly acquired finite law. It can serve variational perturbation arguments, correlated thinning, or weighted interaction tests without hiding a distribution-existence oracle. The exact law is suitable for an independent verifier because all expectations are finite rational sums.
+
+## An exact obstruction to replacing the source&#x27;s global optimizer
+
+The main independence proof uses
+
+`F_G(w)=sum_v w_v(1-log w_v)-M_G(w)`
+
+at a **global maximizer**. This choice is attributed by the source to the entropy-edge potential in Davies, *Random independent sets and local sparsity*, arXiv2609.04654v1 (submitted September4; manuscript dated September3), Theorem17 and Section3.3. That source assumes sparse neighborhoods for its own conclusions. No new variational objective is claimed here.
+
+The stationarity condition `log(1/w_v)=w(N(v))` is necessary for a maximizer, but it cannot replace the global comparison inequality in Lemma2.3. Here is a uniform counterexample to that substitution.
+
+Take G=K_{D,D} with integer D, and give every vertex weight `w=t/D`, where t is the positive solution `t e^t=D`. Every vertex has neighborhood weight t, and `log(1/w)=t`, so all stationarity equations hold exactly. For the two parts S,D&#x27; the set weights are both t and the directed cross mass is t^2. Choose `x=log t&gt;=1`. The alleged cross-mass conclusion at r=4, `C_4=16*4^2=256`, would require
+
+`t^2&lt;=256 t log t`, i.e. `t/log t&lt;=256`.
+
+That fails as integer D tends to infinity. A concrete exact side certificate uses D=2^4096: rational Taylor bounds certify `0.69&lt;log2&lt;0.70` and `exp8&gt;2868`; hence `2800&lt;t&lt;2868` and `log t&lt;8`. Therefore `t/log t&gt;350&gt;256`.
+
+This stationary point is not a maximizer. Its value is `t^2+2t`, whereas assigning weight1 to one part and0 to the other gives feasible value D. In the concrete certificate, `t^2+2t&lt;2^24&lt;D`. The Hessian along the difference of the two part-constant vectors has second derivative `2D^2(1-1/t)&gt;0`, making the stationary point a saddle whenever t&gt;1.
+
+Code/certificate: `work/frontier_combin3/cycle19/stationary_obstruction.py`, `results/frontier_combin3/cycle19/stationary_obstruction_certificate.json`. The graph is defined by its complete-bipartite formula; it was not expanded into2D vertices, and no optimization run on that graph is claimed. The proof, not a finite dense computation, supplies the family.
+
+The decisive acquisition obstacle for a useful independence algorithm is consequently the global variational service or a substitute certificate guaranteeing its needed comparison inequality. A fixed-point solver returning a stationary vector does not suffice. The source explicitly claims existence rather than an efficient algorithm, so this is a boundary on proposed reuse, not a contradiction of its theorem.
+
+## Full-read mechanism ledger and novelty status
+
+The source&#x27;s full proof proceeds from the exact primitive above to a cross-mass inequality at global maxima. That inequality survives vertex splitting when original directed edges are not duplicated (Lemma3.2). Weighted neighborhood walks then have average entropy O_C(log x) and a common step with small triangle-averaged row distance (Lemma4.1). Shared rejection sampling gives a joint coupling; a reversed-transition cutoff bounds each split neighborhood by exp(sqrt x), while triangle loss is O_C(log x/sqrt x) (Lemmas5.1-5.3). Iterating x-&gt;sqrt x incurs summable losses and produces triangle-to-edge control (Theorem3.1). Closed-neighborhood deletion at controlled average potential cost yields the independence bound (Proposition6.1), followed by deletion of high-degree vertices. I reconstructed the normalizations and preservation argument; no immediate mathematical gap was found in this reading. The global optimizer and large nonquantitative constants remain explicit services.
+
+Older primary prior art was followed: Ajtai–Erdos–Komlos–Szemeredi, *On Turan&#x27;s theorem for sparse graphs*, Combinatorica1(4),1981, pp313-317, received April24,1981. Its full five-page PDF was read; p314 Equation(3) states the logarithmic fixed-clique question, and pp315-316 Section3 supplies an unweighted sparse-subgraph/partition recursion. The release explicitly develops that recursion into the weighted mean-preserving multiplier lemma. Our polynomial compact-law extraction is a deduction from that construction; historical novelty is **unknown**, and a mathematical theorem already stated by the source is not counted as our discovery.
+
+Best next falsifiable allocation: independently reconstruct the partition/bit-cost certificate, then attempt an algorithm that obtains the required global comparison or avoids it using a different variational certificate. A useful concrete next experiment should compare acquired certificates and actual interaction/deletion gains on the same explicit graphs; rerunning small clique fixtures cannot resolve the global optimizer issue. Independently audit the correspondence companion&#x27;s priced triangle/list-participation service before inheriting its coloring claim.
+</pre></html>

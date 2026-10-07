@@ -1,0 +1,102 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>&quot;&quot;&quot;Rebuild every original generator and replay the isolated-star certificate.</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>&quot;&quot;&quot;Rebuild every original generator and replay the isolated-star certificate.</h1><p>Source ID d-ff8e6bbc1b74bc0e; literature/sources/metric_prior/cycle14/internal_snapshots/work__metric_use10__cycle14__check_isolated_star.py; 1366 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>&quot;&quot;&quot;Rebuild every original generator and replay the isolated-star certificate.
+
+No creator/checker/reduction imports. A coefficientwise QQ[t] remainder
+identity is sufficient; no field irreducibility or numerical root is assumed.
+&quot;&quot;&quot;
+import gzip
+import hashlib
+import itertools
+import json
+import time
+from fractions import Fraction
+from pathlib import Path
+
+import sympy as sy
+
+
+BASE=Path(__file__).resolve().parents[3]
+
+
+def main():
+    start=time.monotonic()
+    path=BASE/&#x27;results/metric_prior/cycle14/isolated_star_rational_D8_certificate.json.gz&#x27;
+    record=json.loads(gzip.decompress(path.read_bytes()))
+    t=sy.symbols(&#x27;t&#x27;);m=sy.symbols(&#x27;m0:3&#x27;);s=sy.symbols(&#x27;s0:3&#x27;)
+    variables=tuple(m+s)
+    assert record[&#x27;variables&#x27;]==[str(v) for v in variables]
+    assert record[&#x27;parameters&#x27;]==[&#x27;a=t&#x27;,&#x27;b=t&#x27;,&#x27;c=0&#x27;]
+    q=sy.Matrix([[1,t,t],[t,1,0],[t,0,1]])
+    own=[(1-2*m[i]*s[i])*(1-s[i]**2) for i in range(3)]
+    own += [(1-4*m[i]*s[i])*(q[i,j]-s[i]*s[j])-2*m[i]*s[j]*(1-s[i]**2)
+            for i,j in itertools.permutations(range(3),2)]
+    own += [3*sy.prod(s)-t*s[1]-t*s[2]]
+    assert len(own)==10
+    terms=[]
+    for expression in own:
+        source=[]
+        for mon,co in sy.Poly(expression,*variables,domain=sy.QQ.poly_ring(t)).terms():
+            source.append((mon,[(int(ex[0]),Fraction(str(value)))
+                               for ex,value in sy.Poly(co,t,domain=sy.QQ).terms()]))
+        terms.append(source)
+    total={};degree_max=0;bits=0
+    for stored in record[&#x27;terms&#x27;]:
+        gi=stored[&#x27;generator&#x27;];shift=tuple(stored[&#x27;auxiliary_monomial&#x27;])
+        assert type(gi) is int and 0&lt;=gi&lt;10
+        assert len(shift)==6 and all(type(v) is int and v&gt;=0 for v in shift)
+        assert sum(shift)%2==(1 if gi==9 else 0)
+        assert sum(shift)&lt;=(5 if gi==9 else 4)
+        values=[Fraction(v) for v in stored[&#x27;coefficient_ascending_t_basis&#x27;]]
+        assert len(values)==4 and any(values)
+        bits=max(bits,max(max(abs(v.numerator).bit_length(),v.denominator.bit_length()) for v in values))
+        for ex,coefficients in terms[gi]:
+            mon=tuple(ex[i]+shift[i] for i in range(6))
+            degree_max=max(degree_max,sum(mon))
+            row=total.setdefault(mon,[Fraction(0)]*5)
+            for i,value in enumerate(values):
+                for j,co in coefficients:
+                    assert i+j&lt;=4
+                    row[i+j]+=value*co
+    assert len(record[&#x27;terms&#x27;])==588 and degree_max&lt;=8
+    total.setdefault((0,)*6,[Fraction(0)]*5)[0]-=1
+    h=[Fraction(-528),Fraction(0),Fraction(1127),Fraction(0),Fraction(1302)]
+    assert [Fraction(x) for x in record[&#x27;report&#x27;][&#x27;minpoly_ascending&#x27;]]==h
+    nonzero_quotients=0
+    for mon,row in total.items():
+        coefficient=row[4]/h[4]
+        remainder=[row[i]-coefficient*h[i] for i in range(5)]
+        assert not any(remainder), f&#x27;raw QQ[t] coefficient remainder failed at {mon}&#x27;
+        nonzero_quotients+=bool(coefficient)
+    # Independent complete exception and PD-domain checks.
+    A,B=sy.symbols(&#x27;A B&#x27;)
+    p=1302*A*B-40*A+1167*B-528
+    assert sy.expand(p-p.xreplace({A:B,B:A})-1207*(B-A))==0
+    assert sy.expand(p.subs(B,A)-(1302*A*A+1127*A-528))==0
+    g=1302*A*A+1127*A-528
+    assert g.subs(A,0)==-528 and g.subs(A,sy.Rational(1,2))==361
+    assert sy.Poly(g,A).count_roots(0,sy.Rational(1,2))==1
+    assert sy.Poly(1302*t**4+1127*t*t-528,t).count_roots(0,1)==1
+    assert q.det()==1-2*t*t
+    record_out={
+        &#x27;status&#x27;:&#x27;PASS complete coefficientwise original-generator identity modulo h&#x27;,
+        &#x27;certificate_sha256&#x27;:hashlib.sha256(path.read_bytes()).hexdigest(),
+        &#x27;source_path&#x27;:str(path.relative_to(BASE)),
+        &#x27;ten_raw_generators_reconstructed&#x27;:True,&#x27;raw_terms&#x27;:588,
+        &#x27;complete_auxiliary_coefficient_keys&#x27;:len(total),
+        &#x27;maximum_auxiliary_product_degree&#x27;:degree_max,
+        &#x27;maximum_stored_rational_coefficient_bits&#x27;:bits,
+        &#x27;coefficient_reduction_ring&#x27;:&#x27;QQ[t]/(1302t4+1127t2-528)&#x27;,
+        &#x27;every_original_auxiliary_coefficient_remainder&#x27;:&#x27;zero&#x27;,
+        &#x27;nonzero_h_quotient_coefficients&#x27;:nonzero_quotients,
+        &#x27;exception_exhaustion&#x27;:&#x27;p(A,B)-p(B,A)=1207(B-A); A=B yields h(A)&#x27;,
+        &#x27;positive_root_PD&#x27;:&#x27;unique 0&lt;t2&lt;1/2, determinant1-2t2&gt;0&#x27;,
+        &#x27;scope&#x27;:&#x27;Together with previously gated two-chart real cover outside this isolated orbit and lower-edge identities, all real PD zero-edge triples have D8. Rational-hidden zero-edge acquisition was already complete. Dense positive-product exceptions remain open.&#x27;,
+        &#x27;seconds&#x27;:time.monotonic()-start}
+    output=BASE/&#x27;results/metric_use10/cycle14/isolated_star_gate.json&#x27;
+    output.write_text(json.dumps(record_out,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({&#x27;status&#x27;:record_out[&#x27;status&#x27;],&#x27;raw_terms&#x27;:588,
+                      &#x27;maximum_auxiliary_product_degree&#x27;:degree_max,
+                      &#x27;seconds&#x27;:record_out[&#x27;seconds&#x27;],&#x27;output&#x27;:str(output)}))
+
+
+if __name__==&#x27;__main__&#x27;:main()
+</pre></html>

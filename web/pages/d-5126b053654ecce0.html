@@ -1,0 +1,134 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>&quot;&quot;&quot;Acquire SOS face for hidden odd-cycle quartics, including degenerate spectra.</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>&quot;&quot;&quot;Acquire SOS face for hidden odd-cycle quartics, including degenerate spectra.</h1><p>Source ID d-5126b053654ecce0; literature/sources/r09_algebra/cycle5_sos/cycle_face_acquisition.py; 1894 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>&quot;&quot;&quot;Acquire SOS face for hidden odd-cycle quartics, including degenerate spectra.
+Input: expanded polynomial only. Uses exact rational matrix arithmetic.
+&quot;&quot;&quot;
+from pathlib import Path
+import sys,json,time,itertools,math,random
+sys.path.insert(0,str(Path(__file__).parent/&#x27;python_deps&#x27;))
+import sympy as s
+from hidden_coordinate_recovery import tensor_from_poly
+from isolated_zero_recovery import recover
+
+
+def cycle_fixture(n=5):
+    L=s.eye(n)+s.Matrix(range(1,n+1))*s.ones(1,n)
+    Q=s.eye(n)
+    for i in range(n):Q[i,(i+1)%n]=Q[(i+1)%n,i]=s.Rational(1,10)
+    x=s.symbols(&#x27;x:&#x27;+str(n));u=L*s.Matrix(x);q=s.Matrix([z*z-1 for z in u])
+    return s.expand((q.T*Q*q)[0]),x,L
+
+
+def split_axes(projectors,n):
+    assert all(P*R==R*P for P,R in itertools.combinations(projectors,2))
+    spaces=[s.eye(n)]
+    for P in projectors:
+        nxt=[]
+        for W in spaces:
+            for U in [P*W,(s.eye(n)-P)*W]:
+                cols=U.columnspace()
+                if cols:nxt.append(s.Matrix.hstack(*cols))
+        spaces=nxt
+    if len(spaces)!=n or any(U.cols!=1 for U in spaces):raise ValueError(&#x27;unresolved axes&#x27;)
+    return s.Matrix.hstack(*spaces)
+
+
+def pencil_edge_acquisition(B,Minv,rng,max_trials=30):
+    &quot;&quot;&quot;No det expansion: derivatives of logdet are computed by matrix inverses.&quot;&quot;&quot;
+    n=len(B);d=B[0].rows;trials=[]
+    for attempt in range(max_trials):
+        radius=2*n*n
+        z=[rng.randrange(-radius,radius+1) for _ in range(n)]
+        S0=sum((zi*Bi for zi,Bi in zip(z,B)),s.zeros(d))
+        if S0.det()==0:trials.append(&#x27;singular base&#x27;);continue
+        inv=S0.inv();A=[inv*Bi for Bi in B]
+        # Minus Hessian logdet. Positive definite for a split real determinant.
+        H2=s.Matrix(n,n,lambda i,j:s.trace(A[i]*A[j]))
+        if H2.det()==0 or not H2.is_positive_definite:
+            trials.append(&#x27;non split or degenerate Hessian&#x27;);continue
+        h=[rng.randrange(-radius,radius+1) for _ in range(n)]
+        Ah=sum((hi*Ai for hi,Ai in zip(h,A)),s.zeros(d))
+        H3=s.Matrix(n,n,lambda i,j:s.trace(Ah*A[i]*A[j]+A[i]*Ah*A[j])/2)
+        K=H2.inv()*H3
+        factors=s.factor_list(K.charpoly().as_expr())[1]
+        if len(factors)!=n or any(s.total_degree(f)!=1 or mult!=1 for f,mult in factors):
+            trials.append(&#x27;rational ratio collision or nonsplit&#x27;);continue
+        projectors=[];eigvals=[];edge_mats=[]
+        for f,_ in factors:
+            lam=s.solve(f,next(iter(f.free_symbols)))[0]
+            ns=(K-lam*s.eye(n)).nullspace()
+            if len(ns)!=1:break
+            edge=sum((ns[0][i]*B[i] for i in range(n)),s.zeros(d))
+            E=Minv*edge
+            if edge.rank()!=2 or s.trace(E)!=0:break
+            kappa=s.trace(E*E)/2
+            if kappa&lt;=0:break
+            P=E*E/kappa
+            if P*P!=P or P.rank()!=2:break
+            edge_mats.append(edge);projectors.append(P);eigvals.append(lam)
+        if len(projectors)!=n:
+            trials.append(&#x27;rank2 reconstruction failed&#x27;);continue
+        try:V=split_axes(projectors,d)
+        except (ValueError,AssertionError):trials.append(&#x27;commuting split failed&#x27;);continue
+        return V,{&#x27;attempts&#x27;:attempt+1,&#x27;prior_failures&#x27;:trials,&#x27;z0&#x27;:z,&#x27;h&#x27;:h,
+                  &#x27;ratio_eigenvalues&#x27;:[str(v) for v in eigvals],&#x27;edge_count&#x27;:n}
+    raise ValueError(&#x27;no pencil acquisition within budget&#x27;)
+
+
+def discover(p,x,edge_acquirer=pencil_edge_acquisition,any_multiplicity=False):
+    n=len(x);terms=s.Poly(p,*x).as_dict()
+    f2=sum(c*math.prod(xi**ei for xi,ei in zip(x,e)) for e,c in terms.items() if sum(e)==2)
+    M=-s.hessian(f2,x)/4;assert M.is_positive_definite;Minv=M.inv()
+    T=tensor_from_poly(p,x);ij=[(i,j) for i in range(n) for j in range(i,n)]
+    basis=[]
+    for i,j in ij:
+        E=s.zeros(n);E[i,j]=E[j,i]=1;basis.append(E)
+    C=s.zeros(len(ij))
+    for col,E in enumerate(basis):
+        R=Minv*E*Minv
+        CE=s.Matrix(n,n,lambda a,b:sum(T(a,b,c,d)*R[c,d] for c in range(n) for d in range(n)))
+        for row,(i,j) in enumerate(ij):C[row,col]=CE[i,j]
+    factors=s.factor_list(C.charpoly().as_expr())[1];rng=random.Random(20261006)
+    if any_multiplicity:
+        candidates=[]
+        for f,mult in factors:
+            if s.total_degree(f)==1:
+                lam=s.solve(f,next(iter(f.free_symbols)))[0]
+                if lam&gt;0:candidates.append((lam,f,mult))
+        factors=[(f,mult) for lam,f,mult in sorted(candidates,key=lambda t:t[0])[:1]]
+    attempted=[]
+    for f,mult in factors:
+        if s.total_degree(f)!=1 or (not any_multiplicity and mult!=n):continue
+        lam=s.solve(f,next(iter(f.free_symbols)))[0]
+        ns=(C-lam*s.eye(len(ij))).nullspace()
+        if len(ns)!=mult:continue
+        B=[sum((u[k]*E for k,E in enumerate(basis)),s.zeros(n)) for u in ns]
+        try:V,record=edge_acquirer(B,Minv,rng)
+        except ValueError as e:attempted.append({&#x27;eigenvalue&#x27;:str(lam),&#x27;failure&#x27;:str(e)});continue
+        y=s.symbols(&#x27;y:&#x27;+str(n));sub={x[i]:sum(V[i,j]*y[j] for j in range(n)) for i in range(n)}
+        transformed=s.Poly(s.expand(p.subs(sub,simultaneous=True)),*y).as_dict()
+        from fractions import Fraction
+        cert=recover({e:Fraction(int(c.p),int(c.q)) for e,c in transformed.items()},n)
+        Linv=V.inv();a=cert[&#x27;a&#x27;];Q=s.Matrix(cert[&#x27;Q&#x27;])
+        q=s.Matrix([(sum(Linv[i,j]*x[j] for j in range(n)))**2-s.Rational(a[i].numerator,a[i].denominator) for i in range(n)])
+        assert s.expand((q.T*Q*q)[0]-p)==0
+        record.update({&#x27;catalecticant_eigenvalue&#x27;:str(lam),&#x27;eigenspace_dimension&#x27;:int(mult),
+                       &#x27;earlier_eigenspace_failures&#x27;:attempted})
+        return V,cert,record
+    raise ValueError(&#x27;class acquisition failed&#x27;)
+
+
+def main():
+    p,x,L=cycle_fixture(5);t=time.perf_counter();V,cert,record=discover(p,x);dt=time.perf_counter()-t
+    LV=L*V;assert all(sum(LV[i,j]!=0 for i in range(len(x)))==1 for j in range(len(x)))
+    record.update({&#x27;status&#x27;:&#x27;exact face acquisition and SOS identity passed&#x27;,&#x27;n&#x27;:len(x),
+                   &#x27;input_coefficients&#x27;:len(s.Poly(p,*x).terms()),&#x27;zeros_enumerated&#x27;:0,
+                   &#x27;hidden_L_supplied_to_learner&#x27;:False,&#x27;seconds&#x27;:dt,
+                   &#x27;acquired_axis_matrix&#x27;:[[str(v) for v in row] for row in V.tolist()],
+                   &#x27;synthesis&#x27;:&#x27;Q,a recovered only after acquiring axes; exact polynomial identity checked&#x27;,
+                   &#x27;limitations&#x27;:&#x27;odd-cycle promised class; expected randomized polynomial rational work under standard factoring; novelty unverified; no general SOS claim&#x27;})
+    root=Path(__file__).resolve().parents[2]
+    (root/&#x27;results/r16_proof_methods/cycle_replay.json&#x27;).write_text(json.dumps(record,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps(record,indent=2))
+
+
+if __name__==&#x27;__main__&#x27;:main()
+</pre></html>

@@ -1,0 +1,86 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>!/usr/bin/env python3</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>!/usr/bin/env python3</h1><p>Source ID d-9b98ae4b5b037b52; literature/sources/pde_spectrum9/cycle12/reconstruct_multiwave_transport.py; 1641 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Independent exact coefficient checks for the characteristic transport gate.
+
+The analytic coarea, moving-domain and flow estimates are proved in the gate
+note. These checks only guard transcription of its local exact identities.
+&quot;&quot;&quot;
+import json
+from pathlib import Path
+import sympy as s
+
+checks = {}
+tau_max = s.Rational(1,100)
+sig_max = s.Rational(1,800)
+lo_grad2 = s.Rational(7,10)**2-(s.Rational(3,10)+tau_max+sig_max)**2
+checks[&#x27;dominant_shifted_band_gradient&#x27;] = lo_grad2&gt;s.Rational(3,5)**2
+checks[&#x27;translated_characteristic_coarea_speed&#x27;] = s.Rational(3,5)**2-s.Rational(4,5)*sig_max&gt;s.Rational(1,3)
+checks[&#x27;cell_gap_exceeds_16&#x27;] = (3*s.pi/(10*tau_max))**2&gt;16
+checks[&#x27;signed_source_barrier_exceeds_2&#x27;] = 3*(2*s.Rational(3,5)**2-2*tau_max**2)&gt;2
+checks[&#x27;two_currents_and_regular_integral_below_50tau&#x27;] = 48*s.exp(sig_max)&lt;50
+p,g2,tau = s.symbols(&#x27;P gradP_squared tau&#x27;,real=True)
+# Delta(P^2)=2|grad P|^2-2P^2 since Delta P=-P.
+H = 3*(tau**2-p**2)
+minus_L_H = 6*g2-6*p**2-H
+checks[&#x27;full_signed_barrier_identity&#x27;] = s.expand(minus_L_H-3*(2*g2-tau**2-p**2))==0
+
+r,a,K,n,mu,C,S,cp,cpp = s.symbols(&#x27;r a K n mu C S cp cpp&#x27;,real=True)
+radial_norm = 1-K**2/r**2
+lap_r = (n-1)/r+K**2/r**3
+# Product rule, before grouping: E c(R) cos(at).
+product = (a**2*radial_norm-a*lap_r)*C
+product += (cpp*radial_norm+cp*lap_r)*C-a**2*C
+product += -2*a*cp*radial_norm*C +2*a**2*mu*S-2*a*cp*mu*S
+claimed = -(K**2/r**2+lap_r/a)*C
+claimed += (cpp*radial_norm/a**2+cp*lap_r/a**2-2*cp*radial_norm/a)*C
+claimed += 2*mu*S-2*cp*mu*S/a
+checks[&#x27;exact_radial_shape_product_rule&#x27;] = s.simplify(product/a**2-claimed)==0
+v,c = s.symbols(&#x27;v c&#x27;,real=True,positive=True)
+theta = 2*s.atan(s.exp(-c*v))
+checks[&#x27;full_extrema_characteristic_equation&#x27;] = s.simplify(s.diff(theta,v)+c*s.sin(theta))==0
+checks[&#x27;characteristic_cosine_is_tanh&#x27;] = s.simplify(s.cos(theta)-s.tanh(c*v))==0
+checks[&#x27;characteristic_radial_fold&#x27;] = s.simplify(s.diff(s.log(s.sin(theta)),v)+c*s.cos(theta))==0
+
+rows = {}
+for m in (2,3):
+    e,D,Q,h,d = s.symbols(&#x27;eta delta_coefficient origin_coefficient h_sigma d&#x27;,real=True)
+    coeff = s.symbols(f&#x27;c0:{m}&#x27;,positive=True)
+    jet = s.symbols(f&#x27;b0:{m}&#x27;,real=True)
+    M = s.symbols(f&#x27;M0:{m}&#x27;,real=True)
+    T = s.symbols(f&#x27;T0:{m}&#x27;,real=True)
+    # These averages follow from the exact radial harmonic mean. The cross
+    # moments are zero by coordinate reflections. At the stated orders they
+    # directly give the following independently grouped coefficients.
+    ft = [-M[i]*sum(coeff)-coeff[i]*T[i]+h*coeff[i]*M[i] for i in range(m)]
+    lap = 2*sum(coeff[i]*M[i]*T[i] for i in range(m))
+    lap += -2*h*sum(coeff[i]*M[i]**2 for i in range(m))
+    lap += (2*h-d)*D*sum(coeff)-Q*sum(coeff)-2*D*sum(jet)
+    normalize = {coeff[-1]:1-sum(coeff[:-1]),jet[-1]:-sum(jet[:-1])}
+    expected_ft = [-coeff[i]*T[i]-(1-h*coeff[i])*M[i] for i in range(m)]
+    checks[f&#x27;{m}wave_first_crest_rows&#x27;] = all(s.simplify((ft[i]-expected_ft[i]).subs(normalize))==0 for i in range(m))
+    crest = {T[i]:-(1/coeff[i]-h)*M[i] for i in range(m)}
+    critical_lap = s.simplify(lap.subs(crest).subs(normalize))
+    checks[f&#x27;{m}wave_shape_sum_retained_then_canceled&#x27;] = s.simplify((-2*D*sum(jet)).subs(normalize))==0
+    checks[f&#x27;{m}wave_kernel_independent_crest_quadratic&#x27;] = s.simplify(critical_lap-(-2*sum(x**2 for x in M)+(2*h-d)*D-Q))==0
+    t0 = s.symbols(f&#x27;t0_0:{m}&#x27;,real=True)
+    neighboring = -2*a/r**2*sum((x+s.pi/(2*a))**2-(x-s.pi/(2*a))**2 for x in t0)
+    checks[f&#x27;{m}wave_neighboring_crest_difference&#x27;] = s.simplify(neighboring+4*s.pi*sum(t0)/r**2)==0
+    rows[f&#x27;{m}wave&#x27;]={&#x27;gradient_first_weight&#x27;:[str(s.simplify(x.subs(normalize))) for x in ft],
+                     &#x27;laplacian_second_weight_before_normalization&#x27;:str(lap),
+                     &#x27;laplacian_second_weight_at_crest&#x27;:str(critical_lap),
+                     &#x27;neighboring_crest_difference&#x27;:str(s.simplify(neighboring))}
+
+R,A = s.symbols(&#x27;R A&#x27;,positive=True)
+eta = 1/s.sqrt(A*R)
+L = s.sqrt(R/A)
+checks[&#x27;required_return_margin&#x27;] = s.simplify(A*eta**3-L/R**2)==0
+checks[&#x27;actual_C3_error_is_one_eta_smaller&#x27;] = s.simplify(A*eta**4/(L/R**2)-eta)==0
+checks[&#x27;soft_neck_remainder_is_one_eta_smaller&#x27;] = s.simplify((eta**2/R)/(L/R**2)-eta)==0
+checks[&#x27;nominal_neighbor_error_is_one_eta_smaller&#x27;] = s.simplify((A*eta**3/L)*(1/A)/(L/R**2)-eta)==0
+result = {&#x27;scope&#x27;:&#x27;Independent finite exact coefficient/transcription checks; analytic coarea, actual global repair and stable-return proof are in MULTIWAVE_CONDUCTIVITY_GATE.md. No PDE solver or global-cover classification.&#x27;,
+          &#x27;checks&#x27;:{k:bool(value) for k,value in checks.items()},&#x27;rows&#x27;:rows}
+result[&#x27;all_checks_pass&#x27;]=all(result[&#x27;checks&#x27;].values())
+out=Path(&#x27;results/pde_spectrum9/cycle12/multiwave_transport_reconstruction.json&#x27;)
+out.write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+print(json.dumps({&#x27;all_checks_pass&#x27;:result[&#x27;all_checks_pass&#x27;],&#x27;checks&#x27;:result[&#x27;checks&#x27;]},indent=2))
+raise SystemExit(0 if result[&#x27;all_checks_pass&#x27;] else 1)
+</pre></html>

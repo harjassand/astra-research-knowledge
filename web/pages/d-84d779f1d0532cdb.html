@@ -1,0 +1,3557 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Affine Normal Directions via Log-Determinant Geometry:Scalable Computation under Sparse Polynomial Structure</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>Affine Normal Directions via Log-Determinant Geometry:Scalable Computation under Sparse Polynomial Structure</h1><p>Source ID d-84d779f1d0532cdb; literature/sources/metric_prior/niu2026v1.html; 37984 o200k tokens; role primary_source_or_metadata; extraction html_text_discovery_only_math_may_be_lossy. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>Affine Normal Directions via Log-Determinant Geometry:Scalable Computation under Sparse Polynomial Structure
+
+      Report GitHub Issue
+      ×
+
+      Title:
+
+Content selection saved. Describe the issue below:
+
+      Description:
+
+      Submit without GitHub
+      Submit in GitHub
+
+    arXiv is now an independent nonprofit!
+    Learn more
+    ×
+
+      Back to arXiv
+
+q
+
+\lambda
+
+    License: arXiv.org perpetual non-exclusive license
+
+arXiv:2604.01163v1 [math.OC] 01 Apr 2026
+
+Affine Normal Directions via Log-Determinant Geometry:
+
+Scalable Computation under Sparse Polynomial Structure
+
+Yi-Shuai Niu1, Artan Sheshmani1,3, and Shing-Tung Yau1,2
+
+Date: August 24, 2026
+
+Abstract.
+
+Affine normal directions provide intrinsic affine-invariant descent directions derived from the geometry of level sets. Their practical use, however, has long been hindered by the need to evaluate third-order derivatives and invert tangent Hessians, which becomes computationally prohibitive in high dimensions. In this paper, we show that affine normal computation admits an exact reduction to second-order structure: the classical third-order contraction term is precisely the gradient of the log-determinant of the tangent Hessian. This identity replaces explicit third-order tensor contraction by a matrix-free formulation based on tangent linear solves, Hessian–vector products, and log-determinant gradient evaluation.
+Building on this reduction, we develop exact and stochastic matrix-free procedures for affine normal evaluation. For sparse polynomial objectives, the algebraic closure of derivatives further yields efficient sparse kernels for gradients, Hessian–vector products, and directional third-order contractions, leading to scalable implementations whose cost is governed by the sparsity structure of the polynomial representation. We establish end-to-end complexity bounds showing near-linear scaling with respect to the relevant sparsity scale under fixed stochastic and Krylov budgets.
+Numerical experiments confirm that the proposed MF-LogDet formulation reproduces the original autodifferentiation-based affine normal direction to near machine precision, delivers substantial runtime improvements in moderate and high dimensions, and exhibits empirical near-linear scaling in both dimension and sparsity. These results provide a practical computational route for affine normal evaluation and reveal a new connection between affine differential geometry, log-determinant curvature, and large-scale structured optimization.
+
+Key words and phrases: Affine normal, affine-invariant optimization, polynomial optimization,
+matrix-free methods, log-determinant, stochastic trace estimation,
+Hessian–vector products, high-dimensional optimization
+
+2020 Mathematics Subject Classification90C30,
+90C26,
+65F30,
+65Y20,
+53A15
+
+1. Introduction
+
+Affine invariance has long played an important role in optimization. Classical second-order methods, most notably Newton’s method, are invariant under affine changes of variables and therefore adapt naturally to local curvature. More recently, affine differential geometry has suggested a different route to affine-invariant optimization through the affine normal direction of level sets. Unlike the Euclidean normal, namely the gradient direction, the affine normal is covariant under volume-preserving affine transformations and reflects both intrinsic affine curvature and local volume distortion of level sets. This makes it a natural geometric object for constructing optimization methods that are not tied to a particular Euclidean coordinate system.
+
+In the work of Cheng–Cheng–Yau [3], the affine normal was introduced into unconstrained convex optimization as a descent direction derived from level-set geometry. That work established the geometric idea of descending along affine normal directions, but did not provide a complete algorithmic framework, a convergence theory, or a computational treatment suitable for high-dimensional settings. Moreover, outside locally elliptic regions, the affine normal suffers from orientation ambiguity, and its behavior in nonconvex problems was not systematically understood.
+
+To address these issues, our recent work [15] introduced Yau’s affine normal descent (YAND), a unified affine-invariant framework for smooth optimization in both convex and nonconvex regimes. In elliptic11
+            1
+
+          A point 
+z
+zz is called elliptic if the tangent–tangent Hessian at 
+z
+zz is positive definite; It is called hyperbolic if that block is indefinite, and parabolic (or degenerate) if it is singular. regions, YAND agrees with the classical affine normal, while in hyperbolic and parabolic regions it resolves the orientation ambiguity by enforcing consistency with the Euclidean gradient direction. That work established convergence guarantees under several structural assumptions, including global linear convergence under strong convexity and the Polyak–Łojasiewicz condition, as well as local superlinear convergence under affine second-order consistency. The present paper complements [15] by addressing the main computational bottleneck left open there: the efficient evaluation of affine normal directions in high-dimensional structured problems.
+
+The computational difficulty is already visible in the classical local formula. In coordinates aligned with the gradient, the affine normal admits the representation
+
+(1)
+
+d_{\mathrm{AN}}(z)\ \propto\ \begin{pmatrix}\displaystyle f^{ij}(z)\Big(f_{n+1,j}(z)-\frac{1}{n+2}\,\|\nabla f(z)\|\,f^{pq}(z)f_{pqj}(z)\Big)\\[4.0pt]
+-1\end{pmatrix},
+dAN​(z)∝(fi​j​(z)​(fn+1,j​(z)−1n+2​‖∇f​(z)‖​fp​q​(z)​fp​q​j​(z))−1),d_{\mathrm{AN}}(z)\ \propto\ \begin{pmatrix}\displaystyle f^{ij}(z)\Big(f_{n+1,j}(z)-\frac{1}{n+2}\,\|\nabla f(z)\|\,f^{pq}(z)f_{pqj}(z)\Big)\\[4.0pt]
+-1\end{pmatrix},
+
+where 
+H_{T}(z):=[f_{ij}(z)]_{i,j=1}^{n}
+HT​(z):=[fi​j​(z)]i,j=1nH_{T}(z):=[f_{ij}(z)]_{i,j=1}^{n} is the tangent Hessian block and 
+[f^{ij}(z)]=H_{T}(z)^{-1}
+[fi​j​(z)]=HT​(z)−1[f^{ij}(z)]=H_{T}(z)^{-1}. Formula (1) reveals two intrinsic computational bottlenecks: repeated tangent linear solves involving 
+H_{T}(z)
+HT​(z)H_{T}(z), and the evaluation of the third-order contraction
+
+a_{j}(z):=f^{pq}(z)f_{pqj}(z).
+aj​(z):=fp​q​(z)​fp​q​j​(z).a_{j}(z):=f^{pq}(z)f_{pqj}(z).
+
+In high dimensions, these operations are expensive, and for generic smooth objectives they offer little reusable structure from one iterate to the next. This computational burden has so far limited the practical scalability of affine-normal-based (cf. Yau-like or Yau-type [15]) optimization methods.
+
+The central observation of this paper is that the apparent third-order complexity of affine normal computation can be reduced to second-order structure. More precisely, we show that
+
+f^{pq}f_{pqi}=\partial_{i}\log\det(H_{T}),
+fp​qfp​q​i=∂ilogdet(HT),f^{pq}f_{pqi}=\partial_{i}\log\det(H_{T}),
+
+so that the critical affine-normal contraction can be identified with the gradient of the log-determinant of the tangent Hessian. Although this identity follows formally from Jacobi’s formula, it has substantial algorithmic consequences: it replaces explicit third-order tensor contraction by a formulation based on tangent Hessian operators, linear system solves, and log-determinant gradient evaluation. This yields a matrix-free route to affine normal computation.
+
+This reduction becomes especially powerful in polynomial optimization. For polynomial objectives, including high-degree polynomial minimization and optimization with polynomial surrogate models, all derivatives remain within the same sparse monomial family. This algebraic closure implies that Hessian–vector products can be computed efficiently by sparse monomial contractions, without explicitly forming the Hessian matrix. As a consequence, both the tangent operator 
+H_{T}v
+HT​vH_{T}v and the reduced affine-curvature term 
+\nabla_{t}\log\det(H_{T})
+∇t​log​det(HT)\nabla_{t}\log\det(H_{T}) can be evaluated in a matrix-free manner with cost comparable to Hessian–vector multiplication. Combined with stochastic trace estimation and Krylov linear solvers, this opens the door to scalable affine normal computation for high-dimensional sparse polynomial objectives.
+
+The main contributions of this paper are as follows.
+
+• 
+
+We identify the classical affine-normal contraction term with the gradient of the log-determinant of the tangent Hessian, thereby reducing affine normal computation from explicit third-order contraction to second-order structure.
+
+• 
+
+We derive exact and stochastic matrix-free (MF-LogDet) procedures for affine normal evaluation based on tangent linear solves, log-determinant gradient evaluation, stochastic trace estimation, and directional third-order kernels, without requiring explicit construction of the tangent Hessian inverse or any full third-order tensor.
+
+• 
+
+For sparse polynomial objectives, we develop structured sparse kernels for gradients, Hessian–vector products, and directional third-order contractions, yielding an efficient matrix-free implementation of the proposed reformulation.
+
+• 
+
+We establish end-to-end complexity bounds showing that, in the sparse polynomial regime, the cost of affine normal evaluation is governed by matrix-free second-order primitives together with the stochastic trace and Krylov budgets, and is near-linear in the relevant sparsity scale.
+
+• 
+
+We provide numerical evidence showing that the proposed MF-LogDet formulation reproduces the explicit autodifferentiation-based affine normal direction to near machine precision, yields substantial runtime improvements in moderate and high dimensions, and exhibits empirical near-linear scaling with respect to both dimension and sparsity.
+
+Conceptually, these results show that affine normal computation can be transformed from a seemingly high-order geometric task into a matrix-free second-order procedure. Algorithmically, they provide a practical route for deploying affine-normal-based methods in high-dimensional sparse polynomial optimization.
+
+While the resulting matrix-free formulation places affine-normal computation within the same complexity regime as Hessian–vector-based methods, it is important to clarify its relationship with classical Newton-type approaches. Compared with matrix-free Newton–CG, the proposed MF-LogDet affine-normal computation generally incurs an additional stochastic-trace overhead. Hence, from a purely per-iteration viewpoint, Newton–CG may remain cheaper. The significance of the present work is of a different nature: it shows that affine-normal directions, previously viewed as computationally
+prohibitive due to their implicit third-order structure, can in fact be evaluated using only matrix-free second-order primitives,
+up to stochastic and Krylov factors. Whether this additional geometric information translates into improved practical performance depends on the problem structure, conditioning, and outer-iteration behavior, and is therefore not the primary focus
+of the present work.
+
+The remainder of the paper is organized as follows.
+Section 2 reviews related work.
+Section 3 recalls the analytic affine normal formula and rewrites it in a form suitable for computation.
+Section 3.3 establishes the key log-determinant identity that eliminates explicit third-order contractions.
+Section 4 develops sparse polynomial derivative formulas and matrix-free operator kernels.
+Section 5 introduces stochastic trace estimation and Krylov-based linear solves for the log-determinant gradient subproblem.
+Section 6 presents the MF-LogDet computational framework.
+Section 7 provides the resulting complexity analysis.
+Section 8 reports numerical experiments.
+Finally, Section 9 concludes the paper.
+
+2. Related Work
+
+This work is related to affine-invariant optimization, second-order methods, stochastic numerical linear algebra, and structured computation for polynomial objectives.
+
+2.1. Affine-invariant methods
+
+Affine-invariant optimization has been studied from geometric perspectives, particularly within affine differential geometry, which provides intrinsic notions of curvature and normal directions invariant under volume-preserving affine transformations; see, for example, [17, 14]. The affine normal is one such object and encodes geometric information of level sets beyond the Euclidean setting.
+
+Cheng–Cheng–Yau [3] introduced affine normal directions into convex optimization from an affine differential-geometric viewpoint, but did not address theoretical analysis, scalable computation, or nonconvex settings. Our recent work [15] developed the YAND framework and established its convergence theory in both convex and nonconvex regimes. The present paper complements that work by addressing the computational question of how affine normal directions can be evaluated efficiently in high-dimensional settings.
+
+2.2. Second-order methods
+
+Classical second-order methods, most notably Newton’s method, achieve affine invariance through explicit use of the Hessian; see [16]. In high dimensions, however, explicit formation or inversion of the Hessian is often computationally prohibitive. This has motivated matrix-free variants, such as Newton-CG and truncated Newton methods, which rely on Hessian–vector products and Krylov subspace solvers; see [4, 16, 20].
+
+2.3. Natural gradient and information geometry
+
+Geometric invariance also plays a central role in information geometry, most notably through Amari’s natural gradient method [10, 11]. Natural gradient is based on an intrinsic metric on parameter space, typically induced by the Fisher information matrix. In contrast, the affine normal considered here is derived from the extrinsic geometry of level sets. The two viewpoints are therefore conceptually related, but mathematically distinct.
+
+2.4. Stochastic trace and log-determinant estimation
+
+Large-scale trace and log-determinant estimation has been extensively studied in numerical linear algebra and statistics; see, for example, [5, 9, 1, 2, 7, 22]. A standard approach is to combine randomized trace estimators with Krylov subspace methods in order to evaluate quantities involving inverse operators in a matrix-free manner.
+
+The present work uses these ideas in a different geometric setting. The key affine-normal contraction term is first rewritten as a log-determinant gradient and then evaluated through stochastic trace estimation and linear system solves. This provides a direct connection between affine differential geometry and modern randomized numerical linear algebra.
+
+2.5. Polynomial optimization and structured computation
+
+Polynomial optimization provides a natural setting for the present approach because derivatives of polynomial objectives retain the same algebraic structure; see, for example, [12, 19, 13]. In sparse polynomial problems, this structure can often be exploited to evaluate gradients, Hessian–vector products, and related directional derivative quantities efficiently [23].
+
+The present work shows that, in this setting, affine normal computation can be reduced to matrix-free primitives whose cost is governed by the sparsity structure of the polynomial representation. To the best of our knowledge, this is the first work to establish such a computational reduction for affine-normal-based optimization methods.
+
+3. Analytic Formula and Matrix-Free Reformulation
+
+In this section we recall the classical analytic expression
+of the affine normal direction, identify its computational bottlenecks,
+and reformulate it in a coordinate-free matrix-free form
+that is suitable for large-scale implementation.
+
+3.1. Coordinate conventions
+
+Throughout the paper, we distinguish between ambient coordinates
+and tangent coordinates.
+
+Let 
+f:\mathbb{R}^{n+1}\to\mathbb{R}
+f:ℝn+1→ℝf:\mathbb{R}^{n+1}\to\mathbb{R} be a 
+C^{3}
+C3C^{3} function and
+let 
+z\in\mathbb{R}^{n+1}
+z∈ℝn+1z\in\mathbb{R}^{n+1} satisfy 
+\nabla f(z)\neq 0
+∇f​(z)≠0\nabla f(z)\neq 0.
+We consider the level set
+
+M_{z}=\{x\in\mathbb{R}^{n+1}:f(x)=f(z)\}.
+Mz={x∈ℝn+1:f⁡(x)=f⁡(z)}.M_{z}=\{x\in\mathbb{R}^{n+1}:f(x)=f(z)\}.
+
+Its tangent space at 
+z
+zz is
+
+T_{z}M_{z}=\{v\in\mathbb{R}^{n+1}:\nabla f(z)^{\top}v=0\}.
+TzMz={v∈ℝn+1:∇f(z)⊤v=0}.T_{z}M_{z}=\{v\in\mathbb{R}^{n+1}:\nabla f(z)^{\top}v=0\}.
+
+We introduce a normal-aligned orthonormal basis
+
+Q=[T\ \ \nu]\in\mathbb{R}^{(n+1)\times(n+1)},
+Q=[Tν]∈ℝ(n+1)×(n+1),Q=[T\ \ \nu]\in\mathbb{R}^{(n+1)\times(n+1)},
+
+where 
+\nu=\nabla f(z)/\|\nabla f(z)\|
+ν=∇f​(z)/‖∇f​(z)‖\nu=\nabla f(z)/\|\nabla f(z)\| is the unit normal direction,
+and the columns of 
+T
+TT form an orthonormal basis of 
+T_{z}M_{z}
+Tz​MzT_{z}M_{z}.
+
+In this basis, any point 
+x
+xx in a neighborhood of 
+z
+zz is represented as
+
+y=Q^{\top}(x-z),
+y=Q⊤​(x−z),y=Q^{\top}(x-z),
+
+where the first 
+n
+nn coordinates correspond to tangent directions
+and the last coordinate corresponds to the normal direction.
+We refer to this coordinate system as normal-aligned coordinates.
+
+In these coordinates, we adopt the shorthand notation
+
+f_{i}=\partial_{i}f,\qquad f_{ij}=\partial_{i}\partial_{j}f,\qquad f_{pqi}=\partial_{p}\partial_{q}\partial_{i}f,
+fi=∂if,fi​j=∂i∂jf,fp​q​i=∂p∂q∂if,f_{i}=\partial_{i}f,\qquad f_{ij}=\partial_{i}\partial_{j}f,\qquad f_{pqi}=\partial_{p}\partial_{q}\partial_{i}f,
+
+where indices
+
+i,j,p,q\in\{1,\dots,n\}
+i,j,p,q∈{1,…,n}i,j,p,q\in\{1,\dots,n\}
+
+always refer to tangent coordinates, while the index 
+n+1
+n+1n+1 refers to the normal direction.
+Here 
+\partial_{i}
+∂i\partial_{i} denotes differentiation along the 
+i
+ii-th tangent coordinate direction.
+
+Accordingly:
+
+• 
+
+Indices 
+i,j,p,q\in\{1,\dots,n\}
+i,j,p,q∈{1,…,n}i,j,p,q\in\{1,\dots,n\} correspond to tangent directions, while the index 
+n+1
+n+1n+1 corresponds to the normal direction.
+
+• 
+
+Ambient quantities such as 
+\nabla f(z)
+∇f​(z)\nabla f(z) and 
+\nabla^{2}f(z)
+∇2f​(z)\nabla^{2}f(z) are defined in 
+\mathbb{R}^{n+1}
+ℝn+1\mathbb{R}^{n+1}. Their tangent counterparts are obtained via orthogonal projection onto the tangent space:
+
+\nabla_{t}f(z)=TT^{\top}\nabla f(z),\qquad H_{T}(z)=T^{\top}\nabla^{2}f(z)\,T.
+∇tf(z)=TT⊤∇f(z),HT(z)=T⊤∇2f(z)T.\nabla_{t}f(z)=TT^{\top}\nabla f(z),\qquad H_{T}(z)=T^{\top}\nabla^{2}f(z)\,T.
+
+These definitions separate ambient and intrinsic (tangent) geometry, which is essential for the affine-invariant formulation developed below.
+
+Under this convention, all tensor contractions appearing in the affine normal formula are taken over tangent indices.
+
+3.2. Analytic affine normal formula in normal-aligned coordinates
+
+Let
+
+H_{T}(z):=[f_{ij}(z)]_{i,j=1}^{n}
+HT​(z):=[fi​j​(z)]i,j=1nH_{T}(z):=[f_{ij}(z)]_{i,j=1}^{n}
+
+denote the tangent Hessian block,
+and let
+
+[f^{ij}(z)]=H_{T}(z)^{-1}.
+[fi​j​(z)]=HT​(z)−1.[f^{ij}(z)]=H_{T}(z)^{-1}.
+
+The classical analytic affine normal direction can be written,
+up to a nonzero scalar multiple, as
+
+(2)
+
+d_{\mathrm{AN}}(z)\ \propto\ \begin{pmatrix}\displaystyle f^{ij}(z)\Big(f_{n+1,j}(z)-\frac{1}{n+2}\,\|\nabla f(z)\|\,f^{pq}(z)f_{pqj}(z)\Big)\\[6.0pt]
+-1\end{pmatrix}.
+dAN​(z)∝(fi​j​(z)​(fn+1,j​(z)−1n+2​‖∇f​(z)‖​fp​q​(z)​fp​q​j​(z))−1).d_{\mathrm{AN}}(z)\ \propto\ \begin{pmatrix}\displaystyle f^{ij}(z)\Big(f_{n+1,j}(z)-\frac{1}{n+2}\,\|\nabla f(z)\|\,f^{pq}(z)f_{pqj}(z)\Big)\\[6.0pt]
+-1\end{pmatrix}.
+
+Throughout this paper we adopt the Einstein summation convention
+over repeated tangent indices. That is, whenever an index appears twice
+in a term, summation over that index from 
+1
+11 to 
+n
+nn is implied.
+For example,
+
+f^{ij}f_{jk}\;=\;\sum_{j=1}^{n}f^{ij}f_{jk},\qquad f^{pq}f_{pqj}\;=\;\sum_{p,q=1}^{n}f^{pq}f_{pqj}.
+fi​j​fj​k=∑j=1nfi​j​fj​k,fp​q​fp​q​j=∑p,q=1nfp​q​fp​q​j.f^{ij}f_{jk}\;=\;\sum_{j=1}^{n}f^{ij}f_{jk},\qquad f^{pq}f_{pqj}\;=\;\sum_{p,q=1}^{n}f^{pq}f_{pqj}.
+
+All such summations are taken over tangent indices unless otherwise specified.
+
+Formula (2) makes the computational structure explicit.
+The first 
+n
+nn components are obtained by solving a tangent linear system,
+while the right-hand side contains the third-order contraction
+
+f^{pq}(z)f_{pqj}(z),
+fp​q​(z)​fp​q​j​(z),f^{pq}(z)f_{pqj}(z),
+
+which couples the inverse tangent Hessian with third-order derivatives.
+This term is the main obstacle to scalable affine normal computation.
+
+3.3. A log-determinant identity for the third-order contraction
+
+We now show that the third-order contraction in
+(2) is in fact a second-order quantity.
+This is the key reduction underlying the computational framework of this paper.
+
+Lemma 3.1 (Log-determinant gradient identity).
+
+Assume that the tangent Hessian block 
+H_{T}(x)
+HT​(x)H_{T}(x) is invertible
+in a neighborhood of 
+z
+zz.
+Then for each tangent index 
+i\in\{1,\dots,n\}
+i∈{1,…,n}i\in\{1,\dots,n\},
+
+(3)
+
+\partial_{i}\log\det(H_{T})(z)=\sum_{p,q=1}^{n}f^{pq}(z)\,f_{pqi}(z)=\mathrm{tr}\!\left(H_{T}(z)^{-1}\,\partial_{i}H_{T}(z)\right).
+∂ilogdet(HT)(z)=∑p,q=1nfp​q(z)fp​q​i(z)=tr(HT(z)−1∂iHT(z)).\partial_{i}\log\det(H_{T})(z)=\sum_{p,q=1}^{n}f^{pq}(z)\,f_{pqi}(z)=\mathrm{tr}\!\left(H_{T}(z)^{-1}\,\partial_{i}H_{T}(z)\right).
+
+Proof.
+
+Consider the matrix-valued function
+
+A(x):=H_{T}(x)=[f_{pq}(x)]_{p,q=1}^{n}.
+A⁡(x):=HT​(x)=[fp​q​(x)]p,q=1n.A(x):=H_{T}(x)=[f_{pq}(x)]_{p,q=1}^{n}.
+
+Fix a tangent index 
+i\in\{1,\dots,n\}
+i∈{1,…,n}i\in\{1,\dots,n\} and consider the curve
+
+x(t)=z+te_{i},
+x⁡(t)=z+t​ei,x(t)=z+te_{i},
+
+where 
+e_{i}
+eie_{i} is the 
+i
+ii-th coordinate vector.
+Define the matrix-valued function of a scalar variable
+
+A(t):=A(x(t))=H_{T}(z+te_{i}).
+A⁡(t):=A⁡(x⁡(t))=HT​(z+t​ei).A(t):=A(x(t))=H_{T}(z+te_{i}).
+
+Then, by the chain rule,
+
+A^{\prime}(0)=\frac{d}{dt}A(t)\Big|_{t=0}=\partial_{i}H_{T}(z).
+A′​(0)=dd​t​A​(t)|t=0=∂iHT​(z).A^{\prime}(0)=\frac{d}{dt}A(t)\Big|_{t=0}=\partial_{i}H_{T}(z).
+
+Moreover, for each entry we have
+
+[A^{\prime}(0)]_{pq}=\frac{d}{dt}f_{pq}(z+te_{i})\Big|_{t=0}=\partial_{i}f_{pq}(z)=f_{pqi}(z).
+[A′​(0)]p​q=dd​t​fp​q​(z+t​ei)|t=0=∂ifp​q​(z)=fp​q​i​(z).[A^{\prime}(0)]_{pq}=\frac{d}{dt}f_{pq}(z+te_{i})\Big|_{t=0}=\partial_{i}f_{pq}(z)=f_{pqi}(z).
+
+Since 
+A(0)=H_{T}(z)
+A​(0)=HT​(z)A(0)=H_{T}(z) is invertible, Jacobi’s formula yields
+
+\frac{d}{dt}\log\det A(t)\Big|_{t=0}=\mathrm{tr}\!\left(A(0)^{-1}A^{\prime}(0)\right).
+dd​t​log​detA⁡(t)|t=0=tr⁡(A​(0)−1​A′​(0)).\frac{d}{dt}\log\det A(t)\Big|_{t=0}=\mathrm{tr}\!\left(A(0)^{-1}A^{\prime}(0)\right).
+
+Substituting 
+A(0)=H_{T}(z)
+A​(0)=HT​(z)A(0)=H_{T}(z) and 
+A^{\prime}(0)=\partial_{i}H_{T}(z)
+A′​(0)=∂iHT​(z)A^{\prime}(0)=\partial_{i}H_{T}(z) gives
+
+\partial_{i}\log\det(H_{T})(z)=\mathrm{tr}\!\left(H_{T}(z)^{-1}\,\partial_{i}H_{T}(z)\right)=\sum_{p,q=1}^{n}f^{pq}(z)\,f_{pqi}(z),
+∂ilogdet(HT)(z)=tr(HT(z)−1∂iHT(z))=∑p,q=1nfp​q(z)fp​q​i(z),\partial_{i}\log\det(H_{T})(z)=\mathrm{tr}\!\left(H_{T}(z)^{-1}\,\partial_{i}H_{T}(z)\right)=\sum_{p,q=1}^{n}f^{pq}(z)\,f_{pqi}(z),
+
+which is exactly (3).
+∎
+
+Remark 3.2.
+
+Lemma 3.1 is a direct consequence of the classical
+Jacobi formula from matrix calculus.
+Its significance here is not the identity itself,
+but the fact that it removes the need to explicitly construct
+the third-order tensor contraction appearing in
+the affine normal formula.
+In particular, it shows that the affine normal depends only on
+the gradient of the local log-volume distortion
+
+\log\det(H_{T})
+logdet(HT)\log\det(H_{T}),
+and hence is fundamentally governed by second-order affine curvature information.
+
+3.4. Equivalent linear-system form
+
+Using Lemma 3.1,
+we introduce the vectors
+
+h\in\mathbb{R}^{n},\qquad h_{i}:=f_{n+1,i}(z),
+h∈ℝn,hi:=fn+1,i​(z),h\in\mathbb{R}^{n},\qquad h_{i}:=f_{n+1,i}(z),
+
+and
+
+a\in\mathbb{R}^{n},\qquad a_{i}:=\partial_{i}\log\det(H_{T})(z).
+a∈ℝn,ai:=∂ilogdet(HT)(z).a\in\mathbb{R}^{n},\qquad a_{i}:=\partial_{i}\log\det(H_{T})(z).
+
+Then (2) can be rewritten as
+
+(4)
+
+d_{\mathrm{AN}}(z)\ \propto\ \begin{pmatrix}H_{T}(z)^{-1}\Big(h-\frac{\|\nabla f(z)\|}{n+2}\,a\Big)\\[4.0pt]
+-1\end{pmatrix}.
+dAN​(z)∝(HT​(z)−1​(h−‖∇f​(z)‖n+2​a)−1).d_{\mathrm{AN}}(z)\ \propto\ \begin{pmatrix}H_{T}(z)^{-1}\Big(h-\frac{\|\nabla f(z)\|}{n+2}\,a\Big)\\[4.0pt]
+-1\end{pmatrix}.
+
+Equivalently, if we define
+
+u:=H_{T}(z)^{-1}\Big(h-\frac{\|\nabla f(z)\|}{n+2}\,a\Big),
+u:=HT​(z)−1​(h−‖∇f​(z)‖n+2​a),u:=H_{T}(z)^{-1}\Big(h-\frac{\|\nabla f(z)\|}{n+2}\,a\Big),
+
+then 
+u
+uu is characterized by the tangent linear system
+
+(5)
+
+H_{T}(z)\,u=h-\frac{\|\nabla f(z)\|}{n+2}\,a.
+HT​(z)​u=h−‖∇f​(z)‖n+2​a.H_{T}(z)\,u=h-\frac{\|\nabla f(z)\|}{n+2}\,a.
+
+Thus, the analytic affine normal is obtained by solving
+a tangent linear system with a right-hand side
+built from a mixed second-order term 
+h
+hh
+and a log-determinant curvature term 
+a
+aa.
+
+3.5. Coordinate-free and implementation-friendly form
+
+For large-scale computation it is undesirable to explicitly rotate coordinates
+into a normal-aligned frame at every iterate.
+We therefore reformulate the affine normal direction in a coordinate-free way. Let
+
+g:=\nabla f(z)\in\mathbb{R}^{n+1},\qquad\nu:=\frac{g}{\|g\|}\in\mathbb{R}^{n+1}
+g:=∇f​(z)∈ℝn+1,ν:=g‖g‖∈ℝn+1g:=\nabla f(z)\in\mathbb{R}^{n+1},\qquad\nu:=\frac{g}{\|g\|}\in\mathbb{R}^{n+1}
+
+be the Euclidean gradient and the unit normal direction.
+Choose any orthogonal matrix
+
+Q=[T\ \ \nu]\in\mathbb{R}^{(n+1)\times(n+1)},
+Q=[Tν]∈ℝ(n+1)×(n+1),Q=[T\ \ \nu]\in\mathbb{R}^{(n+1)\times(n+1)},
+
+where
+
+T\in\mathbb{R}^{(n+1)\times n}
+T∈ℝ(n+1)×nT\in\mathbb{R}^{(n+1)\times n}
+
+has orthonormal columns spanning the tangent space 
+T_{z}M_{z}
+Tz​MzT_{z}M_{z}.
+Let
+
+H:=\nabla^{2}f(z).
+H:=∇2f​(z).H:=\nabla^{2}f(z).
+
+Then the tangent Hessian block and the mixed second-order term can be written as
+
+(6)
+
+H_{T}=T^{\top}HT,\qquad h=T^{\top}H\nu.
+HT=T⊤​H​T,h=T⊤​H​ν.H_{T}=T^{\top}HT,\qquad h=T^{\top}H\nu.
+
+The log-determinant gradient 
+a
+aa is understood as the gradient of
+
+\log\det(H_{T})
+logdet(HT)\log\det(H_{T}) in tangent coordinates. If we define
+
+(7)
+
+u:=H_{T}^{-1}\Big(h-\frac{\|g\|}{n+2}\,a\Big)\in\mathbb{R}^{n},
+u:=HT−1​(h−‖g‖n+2​a)∈ℝn,u:=H_{T}^{-1}\Big(h-\frac{\|g\|}{n+2}\,a\Big)\in\mathbb{R}^{n},
+
+then the affine normal direction in ambient coordinates is given by
+
+(8)
+
+d_{\mathrm{AN}}^{\mathrm{amb}}(z)\ \propto\ Tu-\nu.
+dANamb​(z)∝T​u−ν.d_{\mathrm{AN}}^{\mathrm{amb}}(z)\ \propto\ Tu-\nu.
+
+The next proposition shows that this coordinate-free expression
+is exactly equivalent to the normal-aligned formula
+(2).
+
+Proposition 3.3 (Equivalence of the aligned and ambient representations).
+
+Let 
+f:\mathbb{R}^{n+1}\to\mathbb{R}
+f:ℝn+1→ℝf:\mathbb{R}^{n+1}\to\mathbb{R} be 
+C^{3}
+C3C^{3} and let 
+z
+zz satisfy
+
+\nabla f(z)\neq 0
+∇f​(z)≠0\nabla f(z)\neq 0.
+Then the ambient direction (8),
+with 
+u
+uu defined by (7),
+coincides with the affine normal direction
+given by (2)
+up to a nonzero scalar factor.
+
+Proof.
+
+Since 
+Q=[T\ \ \nu]
+Q=[Tν]Q=[T\ \ \nu] is orthogonal, the coordinates
+
+y=Q^{\top}(x-z)
+y=Q⊤​(x−z)y=Q^{\top}(x-z)
+
+define a normal-aligned coordinate system. In these coordinates, the Hessian transforms as
+
+H_{y}=Q^{\top}HQ=\begin{pmatrix}T^{\top}HT&amp;T^{\top}H\nu\\
+\nu^{\top}HT&amp;\nu^{\top}H\nu\end{pmatrix}=\begin{pmatrix}H_{T}&amp;h\\
+h^{\top}&amp;\nu^{\top}H\nu\end{pmatrix}.
+Hy=Q⊤​H​Q=(T⊤​H​TT⊤​H​νν⊤​H​Tν⊤​H​ν)=(HThh⊤ν⊤​H​ν).H_{y}=Q^{\top}HQ=\begin{pmatrix}T^{\top}HT&amp;T^{\top}H\nu\\
+\nu^{\top}HT&amp;\nu^{\top}H\nu\end{pmatrix}=\begin{pmatrix}H_{T}&amp;h\\
+h^{\top}&amp;\nu^{\top}H\nu\end{pmatrix}.
+
+Hence the tangent block in the aligned formula is precisely 
+H_{T}
+HTH_{T},
+and the mixed term is exactly 
+h
+hh.
+By Lemma 3.1, the third-order contraction term in
+(2) is the tangent log-determinant gradient 
+a
+aa.
+Therefore the first 
+n
+nn components of the affine normal direction
+in aligned coordinates are precisely the vector 
+u
+uu
+defined by (7). Thus, in aligned coordinates, the affine normal direction is
+
+\binom{u}{-1}.
+(u−1).\binom{u}{-1}.
+
+Transforming this vector back to ambient coordinates gives
+
+Q\binom{u}{-1}=Tu-\nu,
+Q​(u−1)=T​u−ν,Q\binom{u}{-1}=Tu-\nu,
+
+which is exactly (8).
+∎
+
+3.6. Matrix-free viewpoint
+
+The coordinate-free formula immediately yields an implementation-friendly,
+matrix-free perspective.
+Indeed, affine normal computation does not require explicitly forming
+the inverse of 
+H_{T}
+HTH_{T}.
+It suffices to provide the tangent operator
+
+(9)
+
+\mathcal{H}_{T}(v):=T^{\top}\big(H(Tv)\big),\qquad v\in\mathbb{R}^{n},
+ℋT​(v):=T⊤​(H⁡(T​v)),v∈ℝn,\mathcal{H}_{T}(v):=T^{\top}\big(H(Tv)\big),\qquad v\in\mathbb{R}^{n},
+
+and solve the linear system
+
+\mathcal{H}_{T}(u)=b,\qquad b:=h-\frac{\|g\|}{n+2}\,a.
+ℋT​(u)=b,b:=h−‖g‖n+2​a.\mathcal{H}_{T}(u)=b,\qquad b:=h-\frac{\|g\|}{n+2}\,a.
+
+This reformulation is crucial for high-dimensional settings.
+Once a routine for Hessian–vector multiplication
+
+y\mapsto H\,y
+y↦H​yy\mapsto H\,y
+
+is available, the entire affine normal direction can be computed
+without explicitly constructing either 
+H_{T}
+HTH_{T} or 
+H_{T}^{-1}
+HT−1H_{T}^{-1}.
+This observation will serve as the basis for the stochastic
+and polynomially structured algorithms developed in the following sections.
+
+4. Polynomial Structure and Closed-Form Derivative Kernels
+
+In this section we exploit the algebraic structure of polynomial objectives
+to derive explicit formulas for derivatives of all orders
+and to develop scalable matrix-free computational kernels.
+These results form the computational backbone of our affine normal framework.
+
+4.1. Polynomial model and notation
+
+Let 
+d:=n+1
+d:=n+1d:=n+1.
+We consider polynomial objectives of the form
+
+(10)
+
+f(x)=\sum_{\ell=1}^{m}c_{\ell}\,x^{\alpha^{(\ell)}},\qquad x^{\alpha}:=\prod_{i=1}^{d}x_{i}^{\alpha_{i}},
+f⁡(x)=∑ℓ=1mcℓ​xα(ℓ),xα:=∏i=1dxiαi,f(x)=\sum_{\ell=1}^{m}c_{\ell}\,x^{\alpha^{(\ell)}},\qquad x^{\alpha}:=\prod_{i=1}^{d}x_{i}^{\alpha_{i}},
+
+where 
+m
+mm is the number of monomials, 
+c_{\ell}\in\mathbb{R}
+cℓ∈ℝc_{\ell}\in\mathbb{R}, and
+
+\alpha^{(\ell)}\in\mathbb{N}^{d}
+α(ℓ)∈ℕd\alpha^{(\ell)}\in\mathbb{N}^{d} are multi-indices.
+We denote the support of each monomial by
+
+\supp(\alpha):=\{i:\alpha_{i}&gt;0\}.
+supp⁡(α):={i:αi&gt;0}.\supp(\alpha):=\{i:\alpha_{i}&gt;0\}.
+
+We further define the average support size by
+
+s:=\frac{1}{m}\sum_{\ell=1}^{m}|\supp(\alpha^{(\ell)})|.
+s:=1m​∑ℓ=1m|supp⁡(α(ℓ))|.s:=\frac{1}{m}\sum_{\ell=1}^{m}|\supp(\alpha^{(\ell)})|.
+
+To describe derivatives compactly,
+we introduce the falling factorial notation
+
+(r)_{k}:=r(r-1)\cdots(r-k+1),\qquad(r)_{0}=1,
+(r)k:=r(r−1)⋯(r−k+1),(r)0=1,(r)_{k}:=r(r-1)\cdots(r-k+1),\qquad(r)_{0}=1,
+
+and for multi-indices 
+\beta\in\mathbb{N}^{d}
+β∈ℕd\beta\in\mathbb{N}^{d}, we define
+
+(\alpha)_{\beta}:=\prod_{i=1}^{d}(\alpha_{i})_{\beta_{i}},\qquad\partial^{\beta}:=\frac{\partial^{|\beta|}}{\partial x_{1}^{\beta_{1}}\cdots\partial x_{d}^{\beta_{d}}},\qquad|\beta|:=\sum_{i=1}^{d}\beta_{i}.
+(α)β:=∏i=1d(αi)βi,∂β:=∂|β|∂x1β1⋯∂xdβd,|β|:=∑i=1dβi.(\alpha)_{\beta}:=\prod_{i=1}^{d}(\alpha_{i})_{\beta_{i}},\qquad\partial^{\beta}:=\frac{\partial^{|\beta|}}{\partial x_{1}^{\beta_{1}}\cdots\partial x_{d}^{\beta_{d}}},\qquad|\beta|:=\sum_{i=1}^{d}\beta_{i}.
+
+Throughout this section, all derivatives are taken with respect to the ambient coordinates 
+x\in\mathbb{R}^{n+1}
+x∈ℝn+1x\in\mathbb{R}^{n+1}. In particular, 
+\partial_{i}
+∂i\partial_{i} and 
+\partial^{\beta}
+∂β\partial^{\beta} denote standard partial derivatives in the ambient space. The tangent quantities appearing in the affine normal construction are subsequently obtained via projection or restriction of these ambient derivatives onto the tangent space.
+
+4.2. Closure of polynomial derivatives
+
+A fundamental property of polynomial functions
+is that derivatives of any order remain within the same monomial family.
+
+Lemma 4.1 (Algebraic closure of polynomial derivatives).
+
+Let 
+\alpha,\beta\in\mathbb{N}^{d}
+α,β∈ℕd\alpha,\beta\in\mathbb{N}^{d}.
+Then
+
+\partial^{\beta}x^{\alpha}=\begin{cases}(\alpha)_{\beta}\,x^{\alpha-\beta},&amp;\beta\leq\alpha,\\
+0,&amp;\text{otherwise}.\end{cases}
+∂βxα={(α)β​xα−β,β≤α,0,otherwise.\partial^{\beta}x^{\alpha}=\begin{cases}(\alpha)_{\beta}\,x^{\alpha-\beta},&amp;\beta\leq\alpha,\\
+0,&amp;\text{otherwise}.\end{cases}
+
+Consequently, for any polynomial 
+f
+ff of the form (10),
+all derivatives 
+\partial^{\beta}f
+∂βf\partial^{\beta}f remain sparse linear combinations
+of monomials.
+
+Proof.
+
+For a multi-index 
+\beta\in\mathbb{N}^{d}
+β∈ℕd\beta\in\mathbb{N}^{d}, we have
+
+\partial^{\beta}x^{\alpha}=\prod_{i=1}^{d}\frac{\partial^{\beta_{i}}}{\partial x_{i}^{\beta_{i}}}x_{i}^{\alpha_{i}}.
+∂βxα=∏i=1d∂βi∂xiβi​xiαi.\partial^{\beta}x^{\alpha}=\prod_{i=1}^{d}\frac{\partial^{\beta_{i}}}{\partial x_{i}^{\beta_{i}}}x_{i}^{\alpha_{i}}.
+
+By the one-dimensional identity
+
+\frac{d^{k}}{dx^{k}}x^{r}=(r)_{k}x^{r-k},
+dkd​xk​xr=(r)k​xr−k,\frac{d^{k}}{dx^{k}}x^{r}=(r)_{k}x^{r-k},
+
+each factor evaluates to
+
+\frac{\partial^{\beta_{i}}}{\partial x_{i}^{\beta_{i}}}x_{i}^{\alpha_{i}}=\begin{cases}(\alpha_{i})_{\beta_{i}}\,x_{i}^{\alpha_{i}-\beta_{i}},&amp;\beta_{i}\leq\alpha_{i},\\
+0,&amp;\text{otherwise}.\end{cases}
+∂βi∂xiβi​xiαi={(αi)βi​xiαi−βi,βi≤αi,0,otherwise.\frac{\partial^{\beta_{i}}}{\partial x_{i}^{\beta_{i}}}x_{i}^{\alpha_{i}}=\begin{cases}(\alpha_{i})_{\beta_{i}}\,x_{i}^{\alpha_{i}-\beta_{i}},&amp;\beta_{i}\leq\alpha_{i},\\
+0,&amp;\text{otherwise}.\end{cases}
+
+Taking the product over 
+i=1,\dots,d
+i=1,…,di=1,\dots,d yields the result.
+∎
+
+Remark 4.2.
+
+Lemma 4.1 shows that polynomial derivatives are closed under differentiation and preserve sparsity at the level of monomial supports.
+As a consequence, all derivative operators involved in affine normal computation
+can be implemented via sparse monomial contractions,
+without introducing new functional structures.
+This property is the key reason why polynomial objectives
+admit scalable implementations.
+
+4.3. Gradient and Hessian formulas
+
+Let 
+t_{\ell}(x):=c_{\ell}x^{\alpha^{(\ell)}}
+tℓ​(x):=cℓ​xα(ℓ)t_{\ell}(x):=c_{\ell}x^{\alpha^{(\ell)}}.
+Using Lemma 4.1, we obtain explicit expressions.
+
+Gradient.
+
+For each coordinate 
+i
+ii,
+
+\partial_{i}t_{\ell}(x)=\begin{cases}c_{\ell}\,\alpha_{\ell i}\,x^{\alpha^{(\ell)}-e_{i}},&amp;\alpha_{\ell i}&gt;0,\\
+0,&amp;\text{otherwise}.\end{cases}
+∂itℓ​(x)={cℓ​αℓ​i​xα(ℓ)−ei,αℓ​i&gt;0,0,otherwise.\partial_{i}t_{\ell}(x)=\begin{cases}c_{\ell}\,\alpha_{\ell i}\,x^{\alpha^{(\ell)}-e_{i}},&amp;\alpha_{\ell i}&gt;0,\\
+0,&amp;\text{otherwise}.\end{cases}
+
+Hessian.
+
+For 
+i,j\in\{1,\dots,d\}
+i,j∈{1,…,d}i,j\in\{1,\dots,d\},
+
+\partial_{i}\partial_{j}t_{\ell}(x)=\begin{cases}c_{\ell}\,\alpha_{\ell i}(\alpha_{\ell i}-1)\,x^{\alpha^{(\ell)}-2e_{i}},&amp;i=j,\\
+c_{\ell}\,\alpha_{\ell i}\alpha_{\ell j}\,x^{\alpha^{(\ell)}-e_{i}-e_{j}},&amp;i\neq j,\end{cases}
+∂i∂jtℓ​(x)={cℓ​αℓ​i​(αℓ​i−1)​xα(ℓ)−2​ei,i=j,cℓ​αℓ​i​αℓ​j​xα(ℓ)−ei−ej,i≠j,\partial_{i}\partial_{j}t_{\ell}(x)=\begin{cases}c_{\ell}\,\alpha_{\ell i}(\alpha_{\ell i}-1)\,x^{\alpha^{(\ell)}-2e_{i}},&amp;i=j,\\
+c_{\ell}\,\alpha_{\ell i}\alpha_{\ell j}\,x^{\alpha^{(\ell)}-e_{i}-e_{j}},&amp;i\neq j,\end{cases}
+
+with the convention that terms with negative exponents are interpreted as zero.
+
+4.4. Efficient Hessian–vector product
+
+The key computational primitive in our framework
+is the Hessian–vector product
+
+w=\nabla^{2}f(x)\,v.
+w=∇2f​(x)​v.w=\nabla^{2}f(x)\,v.
+
+We now derive a form suitable for sparse implementation.
+
+For a single monomial 
+t(x)=cx^{\alpha}
+t⁡(x)=c​xαt(x)=cx^{\alpha},
+we first observe that its gradient admits the representation
+
+\nabla t(x)=t(x)\,\Big(\frac{\alpha_{1}}{x_{1}},\dots,\frac{\alpha_{d}}{x_{d}}\Big).
+∇t​(x)=t⁡(x)​(α1x1,…,αdxd).\nabla t(x)=t(x)\,\Big(\frac{\alpha_{1}}{x_{1}},\dots,\frac{\alpha_{d}}{x_{d}}\Big).
+
+Thus, for any direction 
+v\in\mathbb{R}^{d}
+v∈ℝdv\in\mathbb{R}^{d},
+
+\nabla t(x)^{\top}v=t(x)\sum_{j\in\supp(\alpha)}\alpha_{j}\frac{v_{j}}{x_{j}}.
+∇t(x)⊤v=t(x)∑j∈supp⁡(α)αjvjxj.\nabla t(x)^{\top}v=t(x)\sum_{j\in\supp(\alpha)}\alpha_{j}\frac{v_{j}}{x_{j}}.
+
+This motivates the definition
+
+\beta(x;v):=\sum_{j\in\supp(\alpha)}\alpha_{j}\,\frac{v_{j}}{x_{j}},
+β⁡(x,v):=∑j∈supp⁡(α)αj​vjxj,\beta(x;v):=\sum_{j\in\supp(\alpha)}\alpha_{j}\,\frac{v_{j}}{x_{j}},
+
+so that
+
+\nabla t(x)^{\top}v=t(x)\,\beta(x;v).
+∇t(x)⊤v=t(x)β(x;v).\nabla t(x)^{\top}v=t(x)\,\beta(x;v).
+
+Differentiating once more yields
+
+\nabla^{2}t(x)\,v=\nabla\big(t(x)\,\beta(x;v)\big).
+∇2t​(x)​v=∇(t⁡(x)​β​(x,v)).\nabla^{2}t(x)\,v=\nabla\big(t(x)\,\beta(x;v)\big).
+
+Applying the product rule, we obtain
+
+\nabla^{2}t(x)\,v=(\nabla t(x))\,\beta(x;v)+t(x)\,\nabla\beta(x;v).
+∇2t(x)v=(∇t(x))β(x;v)+t(x)∇β(x;v).\nabla^{2}t(x)\,v=(\nabla t(x))\,\beta(x;v)+t(x)\,\nabla\beta(x;v).
+
+A direct computation shows that
+
+\partial_{i}\beta(x;v)=-\alpha_{i}\,\frac{v_{i}}{x_{i}^{2}},\qquad i\in\supp(\alpha).
+∂iβ⁡(x,v)=−αi​vixi2,i∈supp⁡(α).\partial_{i}\beta(x;v)=-\alpha_{i}\,\frac{v_{i}}{x_{i}^{2}},\qquad i\in\supp(\alpha).
+
+Substituting the above expressions yields the component-wise formula
+
+(11)
+
+(\nabla^{2}t(x)\,v)_{i}=t(x)\Big(\frac{\alpha_{i}}{x_{i}}\Big)\beta(x;v)-t(x)\Big(\frac{\alpha_{i}}{x_{i}^{2}}\Big)v_{i},\qquad i\in\supp(\alpha).
+(∇2t​(x)​v)i=t⁡(x)​(αixi)​β​(x,v)−t⁡(x)​(αixi2)​vi,i∈supp⁡(α).(\nabla^{2}t(x)\,v)_{i}=t(x)\Big(\frac{\alpha_{i}}{x_{i}}\Big)\beta(x;v)-t(x)\Big(\frac{\alpha_{i}}{x_{i}^{2}}\Big)v_{i},\qquad i\in\supp(\alpha).
+
+Proposition 4.3 (Matrix-free Hessian–vector kernel).
+
+For a polynomial of the form (10),
+the Hessian–vector product 
+w=\nabla^{2}f(x)\,v
+w=∇2f​(x)​vw=\nabla^{2}f(x)\,v can be computed in
+
+O\!\Big(\sum_{\ell=1}^{m}|\supp(\alpha^{(\ell)})|\Big)
+O⁡(∑ℓ=1m|supp⁡(α(ℓ))|)O\!\Big(\sum_{\ell=1}^{m}|\supp(\alpha^{(\ell)})|\Big)
+
+operations using the update formula (11).
+
+Proof.
+
+By linearity, we have
+
+\nabla^{2}f(x)\,v=\sum_{\ell=1}^{m}\nabla^{2}t_{\ell}(x)\,v,\quad t_{\ell}(x)=c_{\ell}x^{\alpha^{(\ell)}}.
+∇2f​(x)​v=∑ℓ=1m∇2tℓ​(x)​v,tℓ​(x)=cℓ​xα(ℓ).\nabla^{2}f(x)\,v=\sum_{\ell=1}^{m}\nabla^{2}t_{\ell}(x)\,v,\quad t_{\ell}(x)=c_{\ell}x^{\alpha^{(\ell)}}.
+
+For each monomial 
+t_{\ell}
+tℓt_{\ell}, the quantities 
+t_{\ell}(x)
+tℓ​(x)t_{\ell}(x) and 
+\beta(x;v)
+β⁡(x,v)\beta(x;v)
+can be evaluated in 
+O(|\supp(\alpha^{(\ell)})|)
+O⁡(|supp⁡(α(ℓ))|)O(|\supp(\alpha^{(\ell)})|) operations.
+The update (11) affects only indices
+
+i\in\supp(\alpha^{(\ell)})
+i∈supp⁡(α(ℓ))i\in\supp(\alpha^{(\ell)}), and each update requires 
+O(1)
+O⁡(1)O(1) work.
+Therefore, the total cost per monomial is 
+O(|\supp(\alpha^{(\ell)})|)
+O⁡(|supp⁡(α(ℓ))|)O(|\supp(\alpha^{(\ell)})|).
+Summing over 
+\ell=1,\dots,m
+ℓ=1,…,m\ell=1,\dots,m yields the result.
+∎
+
+Remark 4.4.
+
+The computational cost depends only on the total sparsity
+
+\sum_{\ell=1}^{m}|\supp(\alpha^{(\ell)})|,
+∑ℓ=1m|supp⁡(α(ℓ))|,\sum_{\ell=1}^{m}|\supp(\alpha^{(\ell)})|,
+
+and is independent of the ambient dimension 
+d
+dd.
+In contrast, explicit dense Hessian methods require 
+O(d^{2})
+O⁡(d2)O(d^{2}) operations.
+
+4.5. Third-order contraction via directional derivatives
+
+Affine normal computation requires evaluating expressions of the form
+
+D^{3}f(x)[u,v,\cdot],
+D3f(x)[u,v,⋅],D^{3}f(x)[u,v,\cdot],
+
+where 
+D^{3}f(x)
+D3​f​(x)D^{3}f(x) denotes the third derivative of 
+f
+ff viewed as a symmetric trilinear form, and
+
+D^{3}f(x)[u,v,\cdot]\in\mathbb{R}^{d}
+D3f(x)[u,v,⋅]∈ℝdD^{3}f(x)[u,v,\cdot]\in\mathbb{R}^{d} denotes the vector obtained by contracting the first two slots with 
+u
+uu and 
+v
+vv.
+Equivalently, its 
+k
+kk-th component is
+
+\bigl(D^{3}f(x)[u,v,\cdot]\bigr)_{k}=\sum_{i,j=1}^{d}\partial_{ijk}f(x)\,u_{i}v_{j}.
+(D3f(x)[u,v,⋅])k=∑i,j=1d∂i​j​kf(x)uivj.\bigl(D^{3}f(x)[u,v,\cdot]\bigr)_{k}=\sum_{i,j=1}^{d}\partial_{ijk}f(x)\,u_{i}v_{j}.
+
+Here 
+\partial_{ijk}f(x)
+∂i​j​kf⁡(x)\partial_{ijk}f(x) denotes the ambient third-order partial derivative in the standard Euclidean coordinates of 
+\mathbb{R}^{d}
+ℝd\mathbb{R}^{d}, rather than the tangent-coordinate notation used in Section 3.
+Such quantities arise naturally in the stochastic trace formulation
+introduced in Section 5.
+Although the analytic affine-normal formula in Section 3
+involves only tangent-index third-order terms such as 
+f_{pqj}
+fp​q​jf_{pqj},
+it is computationally more convenient to work first with the ambient vector
+
+D^{3}f(x)[u,v,\cdot]
+D3f(x)[u,v,⋅]D^{3}f(x)[u,v,\cdot] and then project it onto the tangent space.
+Indeed, the quantity used in the affine-normal computation is
+
+T^{\top}D^{3}f(x)[Tu,Tv,\cdot],
+T⊤D3f(x)[Tu,Tv,⋅],T^{\top}D^{3}f(x)[Tu,Tv,\cdot],
+
+which is exactly the tangent component corresponding to the
+third-order contractions appearing in the normal-aligned formula.
+This ambient-to-tangent formulation is what makes the subsequent
+matrix-free polynomial kernels straightforward to derive and implement.
+
+Instead of explicitly forming third-order tensors,
+we use the identity
+
+D^{3}f(x)[u,v,\cdot]=\nabla\big(u^{\top}(\nabla^{2}f(x))v\big).
+D3f(x)[u,v,⋅]=∇(u⊤(∇2f(x))v).D^{3}f(x)[u,v,\cdot]=\nabla\big(u^{\top}(\nabla^{2}f(x))v\big).
+
+To obtain an explicit sparse kernel, we first pass from the full polynomial
+
+f
+ff to a single monomial. This is sufficient because
+
+D^{3}f(x)[u,v,\cdot]
+D3f(x)[u,v,⋅]D^{3}f(x)[u,v,\cdot] depends linearly on 
+f
+ff, so the polynomial case is
+recovered by summing the monomial contributions.
+We therefore first derive a matrix-free representation at the level of a single monomial.
+Let 
+t(x)=cx^{\alpha}
+t⁡(x)=c​xαt(x)=cx^{\alpha} and assume 
+x_{i}\neq 0
+xi≠0x_{i}\neq 0 for all 
+i\in\supp(\alpha)
+i∈supp⁡(α)i\in\supp(\alpha).
+Define
+
+A_{u}:=\sum_{i\in\supp(\alpha)}\alpha_{i}\,\frac{u_{i}}{x_{i}},\qquad A_{v}:=\sum_{i\in\supp(\alpha)}\alpha_{i}\,\frac{v_{i}}{x_{i}},\qquad C:=\sum_{i\in\supp(\alpha)}\alpha_{i}\,\frac{u_{i}v_{i}}{x_{i}^{2}}.
+Au:=∑i∈supp⁡(α)αi​uixi,Av:=∑i∈supp⁡(α)αi​vixi,C:=∑i∈supp⁡(α)αi​ui​vixi2.A_{u}:=\sum_{i\in\supp(\alpha)}\alpha_{i}\,\frac{u_{i}}{x_{i}},\qquad A_{v}:=\sum_{i\in\supp(\alpha)}\alpha_{i}\,\frac{v_{i}}{x_{i}},\qquad C:=\sum_{i\in\supp(\alpha)}\alpha_{i}\,\frac{u_{i}v_{i}}{x_{i}^{2}}.
+
+Using the Hessian–vector representation from the previous subsection, we first express the scalar contraction
+
+u^{\top}(\nabla^{2}t(x))v=t(x)\big(A_{u}A_{v}-C\big).
+u⊤​(∇2t​(x))​v=t⁡(x)​(Au​Av−C).u^{\top}(\nabla^{2}t(x))v=t(x)\big(A_{u}A_{v}-C\big).
+
+We then differentiate this scalar quantity with respect to 
+x_{k}
+xkx_{k} in order to recover the
+vector 
+D^{3}t(x)[u,v,\cdot]
+D3t(x)[u,v,⋅]D^{3}t(x)[u,v,\cdot]. Thus
+
+(12)
+
+(\nabla^{3}t(x)[u,v,\cdot])_{k}=t(x)\,\alpha_{k}\Big(\frac{A_{u}A_{v}-C}{x_{k}}-\frac{u_{k}A_{v}+v_{k}A_{u}}{x_{k}^{2}}+\frac{2u_{k}v_{k}}{x_{k}^{3}}\Big),\qquad k\in\supp(\alpha).
+(∇3t(x)[u,v,⋅])k=t(x)αk(Au​Av−Cxk−uk​Av+vk​Auxk2+2​uk​vkxk3),k∈supp(α).(\nabla^{3}t(x)[u,v,\cdot])_{k}=t(x)\,\alpha_{k}\Big(\frac{A_{u}A_{v}-C}{x_{k}}-\frac{u_{k}A_{v}+v_{k}A_{u}}{x_{k}^{2}}+\frac{2u_{k}v_{k}}{x_{k}^{3}}\Big),\qquad k\in\supp(\alpha).
+
+Proposition 4.5 (Matrix-free evaluation of third-order contractions).
+
+For a polynomial of the form (10),
+the vector 
+D^{3}f(x)[u,v,\cdot]
+D3f(x)[u,v,⋅]D^{3}f(x)[u,v,\cdot] can be evaluated in
+
+O\!\Big(\sum_{\ell=1}^{m}|\supp(\alpha^{(\ell)})|\Big)=O(ms)
+O⁡(∑ℓ=1m|supp⁡(α(ℓ))|)=O⁡(m​s)O\!\Big(\sum_{\ell=1}^{m}|\supp(\alpha^{(\ell)})|\Big)=O(ms)
+
+operations using the representation (12).
+
+Proof.
+
+By linearity, it suffices to estimate the cost of evaluating
+the contribution of a single monomial.
+Consider
+
+t_{\ell}(x)=c_{\ell}x^{\alpha^{(\ell)}},\qquad S_{\ell}:=\supp(\alpha^{(\ell)}).
+tℓ​(x)=cℓ​xα(ℓ),Sℓ:=supp⁡(α(ℓ)).t_{\ell}(x)=c_{\ell}x^{\alpha^{(\ell)}},\qquad S_{\ell}:=\supp(\alpha^{(\ell)}).
+
+The quantities
+
+A_{u}^{(\ell)}=\sum_{i\in S_{\ell}}\alpha_{i}^{(\ell)}\frac{u_{i}}{x_{i}},\qquad A_{v}^{(\ell)}=\sum_{i\in S_{\ell}}\alpha_{i}^{(\ell)}\frac{v_{i}}{x_{i}},\qquad C^{(\ell)}=\sum_{i\in S_{\ell}}\alpha_{i}^{(\ell)}\frac{u_{i}v_{i}}{x_{i}^{2}},
+Au(ℓ)=∑i∈Sℓαi(ℓ)​uixi,Av(ℓ)=∑i∈Sℓαi(ℓ)​vixi,C(ℓ)=∑i∈Sℓαi(ℓ)​ui​vixi2,A_{u}^{(\ell)}=\sum_{i\in S_{\ell}}\alpha_{i}^{(\ell)}\frac{u_{i}}{x_{i}},\qquad A_{v}^{(\ell)}=\sum_{i\in S_{\ell}}\alpha_{i}^{(\ell)}\frac{v_{i}}{x_{i}},\qquad C^{(\ell)}=\sum_{i\in S_{\ell}}\alpha_{i}^{(\ell)}\frac{u_{i}v_{i}}{x_{i}^{2}},
+
+as well as the monomial value 
+t_{\ell}(x)
+tℓ​(x)t_{\ell}(x),
+can each be evaluated in 
+O(|S_{\ell}|)
+O⁡(|Sℓ|)O(|S_{\ell}|) operations.
+The update (12) affects only indices 
+k\in S_{\ell}
+k∈Sℓk\in S_{\ell},
+and each update requires 
+O(1)
+O⁡(1)O(1) work.
+Hence the total cost per monomial is 
+O(|S_{\ell}|)
+O⁡(|Sℓ|)O(|S_{\ell}|).
+Summing over 
+\ell=1,\dots,m
+ℓ=1,…,m\ell=1,\dots,m yields
+
+O\!\Big(\sum_{\ell=1}^{m}|S_{\ell}|\Big)=O\!\Big(\sum_{\ell=1}^{m}|\supp(\alpha^{(\ell)})|\Big).
+O⁡(∑ℓ=1m|Sℓ|)=O⁡(∑ℓ=1m|supp⁡(α(ℓ))|).O\!\Big(\sum_{\ell=1}^{m}|S_{\ell}|\Big)=O\!\Big(\sum_{\ell=1}^{m}|\supp(\alpha^{(\ell)})|\Big).
+
+Recalling that
+
+s:=\frac{1}{m}\sum_{\ell=1}^{m}|\supp(\alpha^{(\ell)})|,
+s:=1m​∑ℓ=1m|supp⁡(α(ℓ))|,s:=\frac{1}{m}\sum_{\ell=1}^{m}|\supp(\alpha^{(\ell)})|,
+
+we have
+
+\sum_{\ell=1}^{m}|\supp(\alpha^{(\ell)})|=ms.
+∑ℓ=1m|supp⁡(α(ℓ))|=m​s.\sum_{\ell=1}^{m}|\supp(\alpha^{(\ell)})|=ms.
+
+Therefore the total cost is
+
+O(ms).
+O⁡(m​s).O(ms).
+
+∎
+
+Remark 4.6.
+
+This result shows that the directional third-order information required
+by affine normal computation can be evaluated at essentially the same
+computational cost as Hessian–vector products, up to constant factors.
+This constitutes a significant reduction: while naive third-order tensor
+operations scale as 
+O(d^{3})
+O⁡(d3)O(d^{3}), the structured polynomial representation
+admits a fully matrix-free implementation with linear complexity in the sparsity.
+Such a reduction critically relies on the multiplicative structure of monomials
+and does not extend to general smooth functions.
+
+The analysis above shows that the cost of estimating
+the log-determinant gradient is dominated by repeated
+Hessian–vector products and Krylov solves.
+For polynomial objectives, this yields a matrix-free implementation
+whose full end-to-end complexity is established in Section 7.
+
+5. Stochastic Trace Estimation and Krylov Solvers
+
+In this section we develop a scalable matrix-free strategy
+for computing the log-determinant gradient term
+
+a=\nabla_{t}\log\det(H_{T}),
+a=∇t​log​det(HT),a=\nabla_{t}\log\det(H_{T}),
+
+which is the only remaining nontrivial component
+in the affine normal direction. For related large-scale approaches to trace and log-determinant estimation, see, for example,
+[2, 7, 22].
+
+5.1. Trace formulation of the log-determinant gradient
+
+From Lemma 3.1,
+we have
+
+a_{i}=\partial_{i}\log\det(H_{T})=\mathrm{tr}\!\big(H_{T}^{-1}\,\partial_{i}H_{T}\big).
+ai=∂ilogdet(HT)=tr(HT−1∂iHT).a_{i}=\partial_{i}\log\det(H_{T})=\mathrm{tr}\!\big(H_{T}^{-1}\,\partial_{i}H_{T}\big).
+
+Define
+
+M_{i}:=H_{T}^{-1}\,\partial_{i}H_{T}.
+Mi:=HT−1​∂iHT.M_{i}:=H_{T}^{-1}\,\partial_{i}H_{T}.
+
+Then
+
+(13)
+
+a_{i}=\mathrm{tr}(M_{i}).
+ai=tr⁡(Mi).a_{i}=\mathrm{tr}(M_{i}).
+
+This representation eliminates explicit third-order tensor construction
+and reduces the problem to trace estimation of matrix products.
+
+5.2. Hutchinson stochastic trace estimator
+
+To estimate (13), we use the Hutchinson trace estimator [5, 9].
+Let 
+\xi\in\mathbb{R}^{n}
+ξ∈ℝn\xi\in\mathbb{R}^{n} be a random vector with independent
+Rademacher entries (
+\pm 1
+±1\pm 1 with equal probability).
+Then for any matrix 
+M
+MM,
+
+\mathbb{E}[\xi^{\top}M\xi]=\mathrm{tr}(M).
+𝔼⁡[ξ⊤​M​ξ]=tr⁡(M).\mathbb{E}[\xi^{\top}M\xi]=\mathrm{tr}(M).
+
+Using 
+q
+qq independent samples 
+\{\xi^{(\ell)}\}_{\ell=1}^{q}
+{ξ(ℓ)}ℓ=1q\{\xi^{(\ell)}\}_{\ell=1}^{q},
+we approximate
+
+(14)
+
+a_{i}\approx\frac{1}{q}\sum_{\ell=1}^{q}(\xi^{(\ell)})^{\top}M_{i}\xi^{(\ell)}.
+ai≈1q​∑ℓ=1q(ξ(ℓ))⊤​Mi​ξ(ℓ).a_{i}\approx\frac{1}{q}\sum_{\ell=1}^{q}(\xi^{(\ell)})^{\top}M_{i}\xi^{(\ell)}.
+
+The estimator is unbiased, and its variance is governed by the off-diagonal structure of 
+M_{i}
+MiM_{i}; see, for instance, [1].
+In practice, small-to-moderate values of 
+q
+qq (e.g., 
+5
+55–
+20
+2020) often provide a useful accuracy–cost tradeoff when only sufficiently accurate search directions are needed.
+
+5.3. Reduction to linear systems and third-order contractions
+
+Substituting 
+M_{i}=H_{T}^{-1}\partial_{i}H_{T}
+Mi=HT−1​∂iHTM_{i}=H_{T}^{-1}\partial_{i}H_{T} into (14),
+we obtain
+
+(\xi^{\top}M_{i}\xi)=\xi^{\top}H_{T}^{-1}(\partial_{i}H_{T})\xi.
+(ξ⊤​Mi​ξ)=ξ⊤​HT−1​(∂iHT)​ξ.(\xi^{\top}M_{i}\xi)=\xi^{\top}H_{T}^{-1}(\partial_{i}H_{T})\xi.
+
+Let
+
+y:=H_{T}^{-1}\xi,
+y:=HT−1​ξ,y:=H_{T}^{-1}\xi,
+
+which is obtained by solving the linear system
+
+H_{T}y=\xi.
+HT​y=ξ.H_{T}y=\xi.
+
+Then
+
+(15)
+
+\xi^{\top}M_{i}\xi=y^{\top}(\partial_{i}H_{T})\xi.
+ξ⊤​Mi​ξ=y⊤​(∂iHT)​ξ.\xi^{\top}M_{i}\xi=y^{\top}(\partial_{i}H_{T})\xi.
+
+Thus each stochastic probe requires:
+
+• 
+
+one linear system solve,
+
+• 
+
+one third-order directional contraction.
+
+Using the identity
+
+D^{3}f(x)[u,v,\cdot]=\nabla\big(u^{\top}(\nabla^{2}f(x))v\big),
+D3f(x)[u,v,⋅]=∇(u⊤(∇2f(x))v),D^{3}f(x)[u,v,\cdot]=\nabla\big(u^{\top}(\nabla^{2}f(x))v\big),
+
+the action of 
+\partial_{i}H_{T}
+∂iHT\partial_{i}H_{T} on 
+\xi
+ξ\xi is recovered from the
+ambient third-order directional derivative together with tangent projection.
+More precisely, for tangent vectors represented in ambient coordinates,
+the vector whose 
+i
+ii-th component is 
+y^{\top}(\partial_{i}H_{T})\xi
+y⊤​(∂iHT)​ξy^{\top}(\partial_{i}H_{T})\xi
+corresponds to
+
+T^{\top}D^{3}f(x)[Ty,T\xi,\cdot],
+T⊤D3f(x)[Ty,Tξ,⋅],T^{\top}D^{3}f(x)[Ty,T\xi,\cdot],
+
+which is exactly the type of third-order contraction treated in
+Section 4. Hence the required quantity can be evaluated
+via the matrix-free polynomial kernels developed there.
+
+5.4. Krylov methods for linear system solves
+
+The system
+
+H_{T}y=\xi
+HT​y=ξH_{T}y=\xi
+
+is not formed explicitly.
+Instead, it is solved by Krylov subspace methods [8, 18, 21, 20].
+
+Symmetric positive definite case.
+
+When 
+H_{T}\succ 0
+HT≻0H_{T}\succ 0 (the elliptic region), we use the conjugate gradient (CG) method [8].
+Let 
+y_{k}
+yky_{k} denote the 
+k
+kk-th CG iterate.
+Starting from an initial guess 
+y_{0}
+y0y_{0}, the residual and search direction are initialized by
+
+r_{0}=\xi-H_{T}y_{0},\qquad p_{0}=r_{0},
+r0=ξ−HT​y0,p0=r0,r_{0}=\xi-H_{T}y_{0},\qquad p_{0}=r_{0},
+
+and the iteration takes the form
+
+\alpha_{k}=\frac{r_{k}^{\top}r_{k}}{p_{k}^{\top}H_{T}p_{k}},\qquad y_{k+1}=y_{k}+\alpha_{k}p_{k},\qquad r_{k+1}=r_{k}-\alpha_{k}H_{T}p_{k},
+αk=rk⊤​rkpk⊤​HT​pk,yk+1=yk+αk​pk,rk+1=rk−αk​HT​pk,\alpha_{k}=\frac{r_{k}^{\top}r_{k}}{p_{k}^{\top}H_{T}p_{k}},\qquad y_{k+1}=y_{k}+\alpha_{k}p_{k},\qquad r_{k+1}=r_{k}-\alpha_{k}H_{T}p_{k},
+
+\beta_{k+1}=\frac{r_{k+1}^{\top}r_{k+1}}{r_{k}^{\top}r_{k}},\qquad p_{k+1}=r_{k+1}+\beta_{k+1}p_{k}.
+βk+1=rk+1⊤​rk+1rk⊤​rk,pk+1=rk+1+βk+1​pk.\beta_{k+1}=\frac{r_{k+1}^{\top}r_{k+1}}{r_{k}^{\top}r_{k}},\qquad p_{k+1}=r_{k+1}+\beta_{k+1}p_{k}.
+
+Then the error satisfies
+
+(16)
+
+\|y-y_{k}\|_{H_{T}}\leq 2\Big(\frac{\sqrt{\kappa}-1}{\sqrt{\kappa}+1}\Big)^{k}\|y\|_{H_{T}},
+‖y−yk‖HT≤2​(κ−1κ+1)k​‖y‖HT,\|y-y_{k}\|_{H_{T}}\leq 2\Big(\frac{\sqrt{\kappa}-1}{\sqrt{\kappa}+1}\Big)^{k}\|y\|_{H_{T}},
+
+where 
+\kappa
+κ\kappa is the condition number of 
+H_{T}
+HTH_{T}.
+
+Indefinite case.
+
+When 
+H_{T}
+HTH_{T} is indefinite, we use MINRES [18] or GMRES [21], or introduce a regularization
+
+H_{T}+\lambda I
+HT+λ​IH_{T}+\lambda I
+
+to ensure numerical stability.
+These methods generate iterates in the Krylov subspace
+
+\mathcal{K}_{k}(H_{T},r_{0}):=\mathrm{span}\{r_{0},H_{T}r_{0},\dots,H_{T}^{k-1}r_{0}\},
+𝒦k​(HT,r0):=span⁡{r0,HT​r0,…,HTk−1​r0},\mathcal{K}_{k}(H_{T},r_{0}):=\mathrm{span}\{r_{0},H_{T}r_{0},\dots,H_{T}^{k-1}r_{0}\},
+
+with 
+r_{0}=\xi-H_{T}y_{0}
+r0=ξ−HT​y0r_{0}=\xi-H_{T}y_{0}, and differ mainly in the residual minimization principle used within this subspace.
+
+Remark 5.1.
+
+The matrix-free formulation requires only Hessian–vector products, which can be implemented efficiently for polynomial objectives.
+At the Krylov level, no explicit assembly of the ambient Hessian or of any third-order tensor is required.
+
+5.5. Error decomposition
+
+The total error in estimating 
+a_{i}
+aia_{i} arises from two sources:
+
+(i) stochastic trace error.
+
+\mathrm{Var}\big(\widehat{a}_{i}\big)=O\!\left(\frac{\|M_{i}\|_{F}^{2}}{q}\right).
+Var⁡(a^i)=O⁡(‖Mi‖F2q).\mathrm{Var}\big(\widehat{a}_{i}\big)=O\!\left(\frac{\|M_{i}\|_{F}^{2}}{q}\right).
+
+(ii) linear solver error.
+
+Let 
+y_{k}
+yky_{k} be the approximate solution. In the symmetric positive definite
+or regularized case, combining (15) with the duality between
+the 
+H_{T}
+HTH_{T}- and 
+H_{T}^{-1}
+HT−1H_{T}^{-1}-norms gives
+
+|y^{\top}(\partial_{i}H_{T})\xi-y_{k}^{\top}(\partial_{i}H_{T})\xi|\leq\|y-y_{k}\|_{H_{T}}\,\|(\partial_{i}H_{T})\xi\|_{H_{T}^{-1}}.
+|y⊤​(∂iHT)​ξ−yk⊤​(∂iHT)​ξ|≤‖y−yk‖HT​‖(∂iHT)​ξ‖HT−1.|y^{\top}(\partial_{i}H_{T})\xi-y_{k}^{\top}(\partial_{i}H_{T})\xi|\leq\|y-y_{k}\|_{H_{T}}\,\|(\partial_{i}H_{T})\xi\|_{H_{T}^{-1}}.
+
+Together with (16), this shows that the linear-solver contribution
+decays at the Krylov rate. Hence the total error can be controlled by increasing
+the number of probes 
+q
+qq and tightening the Krylov solver tolerance.
+
+5.6. Overall computational complexity
+
+Combining Sections 3–4, each stochastic probe requires
+
+• 
+
+k
+kk Hessian–vector products (corresponding to Krylov iterations),
+
+• 
+
+one third-order directional kernel evaluation.
+
+Therefore, the total cost of estimating 
+a
+aa is
+
+O\bigl(qk\cdot\mathrm{cost}(Hv)\bigr).
+O⁡(q​k⋅cost⁡(H​v)).O\bigl(qk\cdot\mathrm{cost}(Hv)\bigr).
+
+For polynomial objectives,
+
+\mathrm{cost}(Hv)=O(ms),
+cost⁡(H​v)=O⁡(m​s),\mathrm{cost}(Hv)=O(ms),
+
+which yields
+
+\mathrm{cost}(a)=O(qk\,ms).
+cost⁡(a)=O⁡(q​k​m​s).\mathrm{cost}(a)=O(qk\,ms).
+
+The discussion above identifies the cost of the log-determinant gradient subroutine:
+for polynomial objectives, its dominant complexity is proportional to 
+qk\,ms
+q​k​m​sqk\,ms.
+This subroutine is the key scalable ingredient in MF-LogDet; the full framework is presented in Section 6.
+
+A full end-to-end complexity analysis of the complete affine normal computation,
+including the final tangent solve and structural scaling consequences,
+is deferred to Section 7.
+
+6. Algorithmic Framework and Implementation
+
+In this section we present a complete matrix-free algorithm
+for computing affine normal directions,
+together with practical implementation strategies.
+The formulation integrates the analytic reduction of Section 3,
+the polynomial kernels of Section 4,
+and the stochastic trace estimation of Section 5.
+
+6.1. Overview of the computational pipeline
+
+At a point 
+x\in\mathbb{R}^{d}
+x∈ℝdx\in\mathbb{R}^{d}, the affine normal direction is given by
+
+d_{\mathrm{AN}}^{\mathrm{amb}}\propto Tu-\nu,
+dANamb∝T​u−ν,d_{\mathrm{AN}}^{\mathrm{amb}}\propto Tu-\nu,
+
+where
+
+u=H_{T}^{-1}\Big(h-\frac{\|\nabla f(x)\|}{n+2}a\Big).
+u=HT−1​(h−‖∇f​(x)‖n+2​a).u=H_{T}^{-1}\Big(h-\frac{\|\nabla f(x)\|}{n+2}a\Big).
+
+Thus the computation consists of three main components:
+
+• 
+
+evaluation of 
+h=T^{\top}(\nabla^{2}f(x))\nu
+h=T⊤​(∇2f​(x))​νh=T^{\top}(\nabla^{2}f(x))\nu,
+
+• 
+
+estimation of 
+a=\nabla_{t}\log\det(H_{T})
+a=∇t​log​det(HT)a=\nabla_{t}\log\det(H_{T}),
+
+• 
+
+solution of the linear system 
+H_{T}u=b
+HT​u=bH_{T}u=b.
+
+Each of these steps admits a matrix-free implementation.
+
+6.2. Matrix-free operators
+
+Let 
+H=\nabla^{2}f(x)
+H=∇2f​(x)H=\nabla^{2}f(x).
+We define the tangent operator
+
+(17)
+
+\mathcal{H}_{T}(v):=T^{\top}\big(H(Tv)\big),\qquad v\in\mathbb{R}^{d-1}.
+ℋT​(v):=T⊤​(H⁡(T​v)),v∈ℝd−1.\mathcal{H}_{T}(v):=T^{\top}\big(H(Tv)\big),\qquad v\in\mathbb{R}^{d-1}.
+
+This operator can be applied using:
+
+• 
+
+one lifting 
+v\mapsto Tv
+v↦T​vv\mapsto Tv,
+
+• 
+
+one Hessian–vector product,
+
+• 
+
+one projection 
+T^{\top}(\cdot)
+T⊤​(⋅)T^{\top}(\cdot).
+
+Thus no explicit formation of 
+H_{T}
+HTH_{T} is required.
+
+6.3. Matrix-free log-determinant affine normal computation
+
+We now present the matrix-free log-determinant (MF-LogDet) procedure for affine normal computation.
+The method consists of a common outer structure together with two possible ways to evaluate the tangent log-determinant gradient
+
+a=\nabla_{t}\log\det(H_{T}),
+a=∇t​log​det(HT),a=\nabla_{t}\log\det(H_{T}),
+
+namely, an exact tangent-space evaluation and a stochastic Hutchinson approximation. Recall that the ambient dimension is 
+d=n+1
+d=n+1d=n+1, so that the coefficient 
+(n+2)^{-1}
+(n+2)−1(n+2)^{-1} in the classical formula becomes 
+(d+1)^{-1}
+(d+1)−1(d+1)^{-1} in the present notation.
+
+Algorithm 1 MF-LogDet affine normal computation
+
+Input: Point 
+x
+xx, polynomial representation of 
+f
+ff, routine for evaluating 
+a=\nabla_{t}\log\det(H_{T})
+a=∇t​log​det(HT)a=\nabla_{t}\log\det(H_{T}) (exact or stochastic), regularization parameter 
+\lambda
+λ\lambda
+
+Output: Affine normal direction 
+d_{\mathrm{AN}}(x)
+dAN​(x)d_{\mathrm{AN}}(x)
+
+Step 1: Gradient and normal direction;
+
+Compute
+
+g=\nabla f(x),\qquad\nu=\frac{g}{\|g\|}.
+g=∇f​(x),ν=g‖g‖.g=\nabla f(x),\qquad\nu=\frac{g}{\|g\|}.
+
+Step 2: Tangent basis;
+
+Construct an orthonormal basis
+
+T\in\mathbb{R}^{d\times(d-1)}
+T∈ℝd×(d−1)T\in\mathbb{R}^{d\times(d-1)}
+
+such that
+
+T^{\top}\nu=0.
+T⊤​ν=0.T^{\top}\nu=0.
+
+Step 3: Tangent Hessian quantities;
+
+Form the tangent Hessian operator
+
+H_{T}=T^{\top}\nabla^{2}f(x)\,T
+HT=T⊤​∇2f​(x)​TH_{T}=T^{\top}\nabla^{2}f(x)\,T
+
+and compute
+
+h=T^{\top}(\nabla^{2}f(x)\,\nu).
+h=T⊤​(∇2f​(x)​ν).h=T^{\top}(\nabla^{2}f(x)\,\nu).
+
+Step 4: Tangent log-determinant gradient;
+
+Compute
+
+a=\nabla_{t}\log\det(H_{T}),
+a=∇t​log​det(HT),a=\nabla_{t}\log\det(H_{T}),
+
+either by the exact tangent-space formula (Algorithm 2)
+or by the stochastic Hutchinson approximation (Algorithm 3).
+
+Step 5: Tangent linear system;
+
+Set
+
+b=h-\frac{\|g\|}{d+1}a,
+b=h−‖g‖d+1​a,b=h-\frac{\|g\|}{d+1}a,
+
+and solve
+
+(H_{T}+\lambda I)u=b.
+(HT+λ​I)​u=b.(H_{T}+\lambda I)u=b.
+
+Step 6: Affine normal assembly;
+
+Set
+
+d_{\mathrm{AN}}(x)=Tu-\nu.
+dAN​(x)=T​u−ν.d_{\mathrm{AN}}(x)=Tu-\nu.
+
+return 
+d_{\mathrm{AN}}(x)
+dAN​(x)d_{\mathrm{AN}}(x);
+
+Algorithm 2 Exact evaluation of 
+a=\nabla_{t}\log\det(H_{T})
+a=∇t​log​det(HT)a=\nabla_{t}\log\det(H_{T})
+
+Input: Point 
+x
+xx, tangent basis 
+T
+TT, tangent Hessian block 
+H_{T}
+HTH_{T}, regularization parameter 
+\lambda
+λ\lambda
+
+Output: Exact tangent log-determinant gradient 
+a
+aa
+
+Initialize
+
+a\leftarrow 0.
+a←0.a\leftarrow 0.
+
+for 
+j=1,\dots,d-1
+j=1,…,d−1j=1,\dots,d-1 do
+
+   Let 
+e_{j}
+eje_{j} denote the 
+j
+jj-th canonical basis vector in 
+\mathbb{R}^{d-1}
+ℝd−1\mathbb{R}^{d-1};
+
+   Solve
+
+(H_{T}+\lambda I)y^{(j)}=e_{j}.
+(HT+λ​I)​y(j)=ej.(H_{T}+\lambda I)y^{(j)}=e_{j}.
+
+   Lift
+
+u^{(j)}=Ty^{(j)},\qquad v^{(j)}=Te_{j}.
+u(j)=T​y(j),v(j)=T​ej.u^{(j)}=Ty^{(j)},\qquad v^{(j)}=Te_{j}.
+
+   Compute the directional third-derivative vector
+
+w^{(j)}=D^{3}f(x)[u^{(j)},v^{(j)},\cdot].
+w(j)=D3f(x)[u(j),v(j),⋅].w^{(j)}=D^{3}f(x)[u^{(j)},v^{(j)},\cdot].
+
+   Update
+
+a\leftarrow a+T^{\top}w^{(j)}.
+a←a+T⊤​w(j).a\leftarrow a+T^{\top}w^{(j)}.
+
+return 
+a
+aa;
+
+Algorithm 3 Stochastic evaluation of 
+a=\nabla_{t}\log\det(H_{T})
+a=∇t​log​det(HT)a=\nabla_{t}\log\det(H_{T})
+
+Input: Point 
+x
+xx, tangent basis 
+T
+TT, tangent Hessian operator 
+H_{T}
+HTH_{T}, probe count 
+q
+qq, regularization parameter 
+\lambda
+λ\lambda
+
+Output: Stochastic approximation of the tangent log-determinant gradient 
+a
+aa
+
+Initialize
+
+a\leftarrow 0.
+a←0.a\leftarrow 0.
+
+for 
+\ell=1,\dots,q
+ℓ=1,…,q\ell=1,\dots,q do
+
+   Sample a Rademacher probe
+
+\xi^{(\ell)}\in\mathbb{R}^{d-1}.
+ξ(ℓ)∈ℝd−1.\xi^{(\ell)}\in\mathbb{R}^{d-1}.
+
+   Solve
+
+(H_{T}+\lambda I)y^{(\ell)}=\xi^{(\ell)}
+(HT+λ​I)​y(ℓ)=ξ(ℓ)(H_{T}+\lambda I)y^{(\ell)}=\xi^{(\ell)}
+
+by CG/PCG.
+
+   Lift
+
+u^{(\ell)}=Ty^{(\ell)},\qquad v^{(\ell)}=T\xi^{(\ell)}.
+u(ℓ)=T​y(ℓ),v(ℓ)=T​ξ(ℓ).u^{(\ell)}=Ty^{(\ell)},\qquad v^{(\ell)}=T\xi^{(\ell)}.
+
+   Compute the directional third-derivative vector
+
+w^{(\ell)}=D^{3}f(x)[u^{(\ell)},v^{(\ell)},\cdot].
+w(ℓ)=D3f(x)[u(ℓ),v(ℓ),⋅].w^{(\ell)}=D^{3}f(x)[u^{(\ell)},v^{(\ell)},\cdot].
+
+   Update
+
+a\leftarrow a+T^{\top}w^{(\ell)}.
+a←a+T⊤​w(ℓ).a\leftarrow a+T^{\top}w^{(\ell)}.
+
+return 
+
+a/q.
+a/q.a/q.
+
+6.4. Computational structure
+
+The MF-LogDet formulation reduces affine normal computation to a small set of basic linear-algebraic primitives.
+At the implementation level, the dominant operations are:
+
+• 
+
+gradient evaluation,
+
+• 
+
+Hessian–vector products,
+
+• 
+
+evaluation of the tangent log-determinant gradient 
+a
+aa, either exactly or stochastically,
+
+• 
+
+inner products and tangent-space projections,
+
+• 
+
+and linear solves involving the tangent Hessian operator.
+
+The key point is that the geometric quantity
+
+a=\nabla_{t}\log\det(H_{T})
+a=∇t​log​det(HT)a=\nabla_{t}\log\det(H_{T})
+
+is never computed through explicit third-order tensor contraction.
+Instead, it is recovered either from an exact tangent-space trace formula or from a stochastic trace estimator. In these procedures, directional third-order contractions may appear as internal matrix-free primitives. Their efficient evaluation relies on the techniques of Section 4, especially the matrix-free kernel of Section 4.5, which yields 
+O(ms)
+O⁡(m​s)O(ms) complexity in the sparse polynomial regime. Nevertheless, the algorithm never forms or directly computes a full third-order tensor as a standalone object.
+
+Remark 6.1.
+
+The exact and stochastic variants of MF-LogDet differ in how the tangent log-determinant gradient is computed.
+
+In the exact variant, one explicitly forms the tangent Hessian block
+
+H_{T}=T^{\top}\nabla^{2}f(x)T
+HT=T⊤​∇2f​(x)​TH_{T}=T^{\top}\nabla^{2}f(x)T
+
+and evaluates the tangent log-determinant gradient by the exact basis-wise trace formula, implemented through solves against canonical basis vectors and the corresponding directional third-order contractions.
+This version is useful for formula-level verification and medium-scale benchmarking.
+
+In the stochastic variant, one avoids explicit trace computation and instead estimates
+
+\nabla_{t}\log\det(H_{T})
+∇t​log​det(HT)\nabla_{t}\log\det(H_{T})
+
+through repeated linear solves and directional third-derivative evaluations.
+This is the version relevant for scalability.
+In particular, it avoids forming any full third-order tensor and reduces the dominant cost to repeated operator applications.
+
+6.5. Parameter selection
+
+The stochastic MF-LogDet implementation involves three main numerical parameters: the number of Hutchinson probes 
+q
+qq, the Krylov iteration budget (or tolerance), and the regularization parameter 
+\lambda
+λ\lambda.
+
+Number of probes 
+q
+qq.
+
+The probe count 
+q
+qq controls the accuracy of the stochastic trace approximation.
+Larger values of 
+q
+qq reduce the variance of the estimated log-determinant gradient, but increase the computational cost almost proportionally.
+Our numerical experiments indicate that small-to-moderate values of 
+q
+qq already provide a useful accuracy–cost tradeoff, while very large probe counts yield diminishing returns.
+
+Krylov iterations.
+
+Each stochastic probe requires the solution of a linear system involving the regularized tangent Hessian.
+Hence the overall cost depends on the number of Krylov iterations needed for these inner solves.
+This number is governed primarily by the conditioning of the regularized tangent operator.
+In practice, one may either fix a modest iteration budget in large-scale settings or use a residual-based stopping criterion when higher accuracy is required.
+
+Regularization 
+\lambda
+λ\lambda.
+
+When the tangent Hessian is ill-conditioned or nearly singular, we solve
+
+(H_{T}+\lambda I)u=b
+(HT+λ​I)​u=b(H_{T}+\lambda I)u=b
+
+instead of the unregularized system.
+The parameter 
+\lambda&gt;0
+λ&gt;0\lambda&gt;0 stabilizes both the log-determinant gradient computation and the final tangent solve.
+In practice, 
+\lambda
+λ\lambda should be chosen small enough not to distort the geometry, yet large enough to prevent numerical instability.
+
+6.6. Preconditioning strategies
+
+Preconditioning is important for the efficiency of the stochastic MF-LogDet implementation, since the cost of the method is strongly influenced by the inner Krylov solves.
+Natural choices include:
+
+• 
+
+diagonal (Jacobi) preconditioners based on local curvature surrogates,
+
+• 
+
+block-diagonal approximations when the polynomial structure exhibits weakly coupled variable groups,
+
+• 
+
+structure-aware preconditioners derived from sparse polynomial interactions.
+
+The most effective choice depends on the algebraic structure of the polynomial model.
+In particular, when the monomial support graph is sparse, one may exploit this structure to build preconditioners that preserve the matrix-free character of the method while substantially reducing the number of inner iterations.
+
+6.7. Parallelization and implementation
+
+The MF-LogDet procedure is naturally parallelizable at several levels.
+First, polynomial, gradient, and Hessian–vector evaluations decompose over monomials and can therefore be parallelized directly.
+Second, the Hutchinson probes are independent and may be evaluated concurrently.
+Third, the underlying matrix-free kernels are well suited to modern accelerator architectures, since the dominant cost is concentrated in repeated sparse directional contractions rather than dense tensor assembly.
+
+This structure is particularly attractive on GPUs or multicore systems:
+the expensive part of the computation lies in repeated Hessian–vector and directional third-derivative kernels, both of which admit efficient batched implementations.
+
+6.8. Summary
+
+The MF-LogDet reformulation turns affine normal computation into a sequence of matrix-free operator evaluations and linear-algebraic primitives. Its exact variant is useful for validation and controlled comparison with the original explicit formula, while its stochastic variant provides the scalable implementation relevant to high-dimensional sparse polynomial problems. In both cases, the method avoids explicit third-order tensor assembly and shifts the dominant cost to structured operator applications that are substantially more amenable to large-scale computation. The next section quantifies this advantage through a detailed complexity analysis.
+
+7. Complexity Analysis and Structural Scalability
+
+In this section we provide a rigorous complexity analysis of the proposed
+matrix-free affine normal computation framework.
+Our goal is twofold:
+(i) to quantify the computational cost in terms of problem structure,
+and (ii) to explain why affine normal directions become scalable
+in the polynomial setting.
+
+Section 3–5 established
+a sequence of reductions that transform affine normal computation
+into matrix-free second-order primitives.
+In particular, all operations reduce to combinations of
+Hessian–vector products, linear system solves,
+and stochastic trace estimation.
+
+These reductions suggest that affine normal computation should admit
+a complexity comparable to matrix-free Newton-type methods.
+We now make this statement precise.
+
+7.1. Computational model
+
+We formalize the computational model and the structural parameters
+that govern the complexity of the algorithm.
+
+• 
+
+d=n+1
+d=n+1d=n+1: ambient dimension,
+
+• 
+
+m
+mm: number of monomials,
+
+• 
+
+s
+ss: average support size of monomials,
+
+• 
+
+q
+qq: number of stochastic probes,
+
+• 
+
+k
+kk: number of Krylov iterations.
+
+Assumption 7.1 (Polynomial oracle model).
+
+The objective function admits a sparse polynomial representation
+
+f(x)=\sum_{\ell=1}^{m}c_{\ell}x^{\alpha^{(\ell)}},
+f⁡(x)=∑ℓ=1mcℓ​xα(ℓ),f(x)=\sum_{\ell=1}^{m}c_{\ell}x^{\alpha^{(\ell)}},
+
+with average support size
+
+s:=\frac{1}{m}\sum_{\ell=1}^{m}|\supp(\alpha^{(\ell)})|.
+s:=1m​∑ℓ=1m|supp⁡(α(ℓ))|.s:=\frac{1}{m}\sum_{\ell=1}^{m}|\supp(\alpha^{(\ell)})|.
+
+Assumption 7.2 (Matrix-free oracle).
+
+We assume access to gradient evaluation and Hessian–vector products.
+Higher-order directional quantities are computed using matrix-free
+polynomial evaluations, without explicit formation of third-order tensors.
+
+These primitives, together with Krylov subspace methods
+and stochastic trace estimation, are sufficient to implement
+all steps of Algorithm 1 without explicitly forming
+matrices or tensors.
+
+7.2. Cost of basic primitives
+
+We first establish the cost of evaluating derivative operators.
+
+Lemma 7.3 (Cost of derivative primitives).
+
+Under Assumption 7.1, the following hold:
+
+\displaystyle\mathrm{cost}(\nabla f)
+cost⁡(∇f)\displaystyle\mathrm{cost}(\nabla f)
+
+\displaystyle=O(ms),
+=O⁡(m​s),\displaystyle=O(ms),
+
+\displaystyle\mathrm{cost}(Hv)
+cost⁡(H​v)\displaystyle\mathrm{cost}(Hv)
+
+\displaystyle=O(ms),
+=O⁡(m​s),\displaystyle=O(ms),
+
+\displaystyle\mathrm{cost}(D^{3}f[u,v,\cdot])
+cost(D3f[u,v,⋅])\displaystyle\mathrm{cost}(D^{3}f[u,v,\cdot])
+
+\displaystyle=O(ms).
+=O⁡(m​s).\displaystyle=O(ms).
+
+Proof.
+
+Each monomial contributes only on its support set.
+The gradient, Hessian–vector product, and third-order contraction
+can all be computed via sparse monomial contractions,
+with the contribution of the 
+\ell
+ℓ\ell-th monomial requiring
+
+O(|\supp(\alpha^{(\ell)})|)
+O⁡(|supp⁡(α(ℓ))|)O(|\supp(\alpha^{(\ell)})|) operations.
+Summing over 
+m
+mm monomials yields the result.
+∎
+
+Remark 7.4.
+
+Lemma 7.3 shows that all derivative computations
+scale linearly with the sparsity of the polynomial representation,
+rather than quadratically or cubically in the ambient dimension.
+
+7.3. Cost of stochastic log-determinant gradient
+
+We now analyze the cost of estimating
+
+a=\nabla_{t}\log\det(H_{T}).
+a=∇t​log​det(HT).a=\nabla_{t}\log\det(H_{T}).
+
+Proposition 7.5 (Cost per stochastic probe).
+
+Each Hutchinson probe for estimating 
+a
+aa
+requires:
+
+• 
+
+k
+kk Hessian–vector products (Krylov iterations),
+
+• 
+
+one third-order directional evaluation.
+
+Hence the cost per probe is
+
+O(k\,ms).
+O⁡(k​m​s).O(k\,ms).
+
+Proof.
+
+Each Krylov iteration requires one application of the operator
+
+v\mapsto H_{T}v
+v↦HT​vv\mapsto H_{T}v, which reduces to a Hessian–vector product.
+Thus 
+k
+kk iterations cost 
+O(k\,ms)
+O⁡(k​m​s)O(k\,ms) by Lemma 7.3.
+The third-order contraction also costs 
+O(ms)
+O⁡(m​s)O(ms).
+Combining these terms yields the total cost
+
+O(k\,ms)+O(ms)=O((k+1)ms)=O(kms).
+O⁡(k​m​s)+O⁡(m​s)=O⁡((k+1)​m​s)=O⁡(k​m​s).O(k\,ms)+O(ms)=O((k+1)ms)=O(kms).
+
+Here, we neglect the 
+O(d)
+O⁡(d)O(d) cost of lifting and projection,
+which is dominated by the polynomial Hessian–vector kernel
+in the regimes of interest.
+∎
+
+Proposition 7.6 (Cost of log-determinant gradient estimation).
+
+Using 
+q
+qq independent stochastic probes,
+the cost of estimating 
+a=\nabla_{t}\log\det(H_{T})
+a=∇t​log​det(HT)a=\nabla_{t}\log\det(H_{T}) is
+
+O(qk\,ms).
+O⁡(q​k​m​s).O(qk\,ms).
+
+Proof.
+
+This follows directly from Proposition 7.5
+by summing over 
+q
+qq probes.
+∎
+
+7.4. Cost of solving the tangent linear system
+
+The affine normal direction requires solving
+
+H_{T}u=b.
+HT​u=b.H_{T}u=b.
+
+Proposition 7.7 (Krylov complexity).
+
+Assume that 
+H_{T}
+HTH_{T} is symmetric positive definite
+with condition number 
+\kappa
+κ\kappa.
+Then the conjugate gradient method computes an 
+\varepsilon
+ε\varepsilon-accurate solution
+in
+
+k=O\big(\sqrt{\kappa}\log(1/\varepsilon)\big)
+k=O⁡(κ​log⁡(1/ε))k=O\big(\sqrt{\kappa}\log(1/\varepsilon)\big)
+
+iterations.
+
+Proof.
+
+The bound is the classical convergence estimate for the conjugate gradient method
+applied to a symmetric positive definite system; see, e.g.,
+[20, 6].
+∎
+
+Remark 7.8.
+
+Each iteration requires one application of the operator
+
+v\mapsto H_{T}v
+v↦HT​vv\mapsto H_{T}v, which is implemented via
+Hessian–vector products.
+
+Remark 7.9.
+
+In the indefinite case, one may use MINRES or solve
+
+(H_{T}+\lambda I)u=b
+(HT+λ​I)​u=b(H_{T}+\lambda I)u=b
+with 
+\lambda&gt;0
+λ&gt;0\lambda&gt;0 to ensure stability.
+The complexity bounds remain unchanged up to constants.
+
+7.5. End-to-end complexity
+
+We now combine all components to obtain the total complexity.
+
+Theorem 7.10 (End-to-end complexity of affine normal computation).
+
+Under Assumptions 7.1–7.2,
+the affine normal direction can be computed with computational cost
+
+O\big(q\,\sqrt{\kappa}\,\log(1/\varepsilon)\cdot ms\big),
+O⁡(q​κ​log⁡(1/ε)⋅m​s),O\big(q\,\sqrt{\kappa}\,\log(1/\varepsilon)\cdot ms\big),
+
+using a matrix-free implementation, where 
+\kappa
+κ\kappa denotes the condition number of the tangent linear system
+(and of its regularized counterpart when a shift 
+\lambda I
+λ​I\lambda I is used),
+and 
+\varepsilon
+ε\varepsilon is the prescribed Krylov solve tolerance.
+
+In particular, up to a stochastic factor 
+q
+qq,
+the computational complexity is of the same order as matrix-free Newton-CG-type methods.
+
+Proof.
+
+The computation consists of three steps:
+
+Step 1: Mixed Hessian term.
+
+Computing
+
+h=T^{\top}(\nabla^{2}f(x)\,\nu)
+h=T⊤​(∇2f​(x)​ν)h=T^{\top}(\nabla^{2}f(x)\,\nu)
+
+requires one Hessian–vector product, hence costs 
+O(ms)
+O⁡(m​s)O(ms).
+
+Step 2: Log-determinant gradient.
+
+By Proposition 7.6,
+estimating 
+a
+aa requires 
+O(qk\,ms)
+O⁡(q​k​m​s)O(qk\,ms) operations.
+
+Step 3: Linear system solve.
+
+Solving
+
+H_{T}u=b
+HT​u=bH_{T}u=b
+
+requires 
+k
+kk Krylov iterations,
+each costing 
+O(ms)
+O⁡(m​s)O(ms),
+thus totaling 
+O(k\,ms)
+O⁡(k​m​s)O(k\,ms).
+
+Total cost.
+
+Combining all terms yields
+
+O(qk\,ms).
+O⁡(q​k​m​s).O(qk\,ms).
+
+Substituting
+
+k=O(\sqrt{\kappa}\log(1/\varepsilon))
+k=O⁡(κ​log⁡(1/ε))k=O(\sqrt{\kappa}\log(1/\varepsilon))
+
+from Proposition 7.7
+gives the result.
+∎
+
+7.6. Error analysis
+
+We now quantify how approximation errors in the log-determinant gradient and inexact linear solves propagate to the final affine normal direction. Let
+
+A:=H_{T}+\lambda I,\qquad\beta:=\frac{\|g\|}{d+1},
+A:=HT+λ​I,β:=‖g‖d+1,A:=H_{T}+\lambda I,\qquad\beta:=\frac{\|g\|}{d+1},
+
+and consider the exact tangent coefficient vector
+
+u=A^{-1}(h-\beta a),
+u=A−1​(h−β​a),u=A^{-1}(h-\beta a),
+
+where
+
+a=\nabla_{t}\log\det(H_{T}).
+a=∇t​log​det(HT).a=\nabla_{t}\log\det(H_{T}).
+
+Suppose that 
+\hat{a}
+a^\hat{a} is an approximation of 
+a
+aa, and that 
+\hat{u}
+u^\hat{u} is obtained from an inexact linear solve with residual
+
+r_{\mathrm{Krylov}}:=A\hat{u}-(h-\beta\hat{a}).
+rKrylov:=A​u^−(h−β​a^).r_{\mathrm{Krylov}}:=A\hat{u}-(h-\beta\hat{a}).
+
+Proposition 7.11 (Error propagation to the tangent coefficient vector).
+
+Assume that 
+A=H_{T}+\lambda I
+A=HT+λ​IA=H_{T}+\lambda I is invertible. Then
+
+(18)
+
+\|\hat{u}-u\|\leq\|A^{-1}\|\Big(\beta\|\hat{a}-a\|+\|r_{\mathrm{Krylov}}\|\Big).
+‖u^−u‖≤|A−1|(β​‖a^−a‖+‖rKrylov‖).\|\hat{u}-u\|\leq\|A^{-1}\|\Big(\beta\|\hat{a}-a\|+\|r_{\mathrm{Krylov}}\|\Big).
+
+In particular, if 
+A
+AA is symmetric positive definite, then
+
+(19)
+
+\|\hat{u}-u\|\leq\frac{1}{\lambda_{\min}(A)}\Big(\beta\|\hat{a}-a\|+\|r_{\mathrm{Krylov}}\|\Big).
+‖u^−u‖≤1λmin​(A)​(β​‖a^−a‖+‖rKrylov‖).\|\hat{u}-u\|\leq\frac{1}{\lambda_{\min}(A)}\Big(\beta\|\hat{a}-a\|+\|r_{\mathrm{Krylov}}\|\Big).
+
+Proof.
+
+By definition of the exact and approximate systems,
+
+Au=h-\beta a,\qquad A\hat{u}=h-\beta\hat{a}+r_{\mathrm{Krylov}}.
+A​u=h−β​a,A​u^=h−β​a^+rKrylov.Au=h-\beta a,\qquad A\hat{u}=h-\beta\hat{a}+r_{\mathrm{Krylov}}.
+
+Subtracting the two identities gives
+
+A(\hat{u}-u)=-\beta(\hat{a}-a)+r_{\mathrm{Krylov}}.
+A⁡(u^−u)=−β⁡(a^−a)+rKrylov.A(\hat{u}-u)=-\beta(\hat{a}-a)+r_{\mathrm{Krylov}}.
+
+Since 
+A
+AA is invertible,
+
+\hat{u}-u=A^{-1}\bigl(-\beta(\hat{a}-a)+r_{\mathrm{Krylov}}\bigr).
+u^−u=A−1​(−β⁡(a^−a)+rKrylov).\hat{u}-u=A^{-1}\bigl(-\beta(\hat{a}-a)+r_{\mathrm{Krylov}}\bigr).
+
+Taking norms and using the triangle inequality,
+
+\|\hat{u}-u\|\leq\|A^{-1}\|\Big(\beta\|\hat{a}-a\|+\|r_{\mathrm{Krylov}}\|\Big),
+‖u^−u‖≤|A−1|(β​‖a^−a‖+‖rKrylov‖),\|\hat{u}-u\|\leq\|A^{-1}\|\Big(\beta\|\hat{a}-a\|+\|r_{\mathrm{Krylov}}\|\Big),
+
+which proves (18). If, in addition, 
+A
+AA is symmetric positive definite, then
+
+\|A^{-1}\|=\frac{1}{\lambda_{\min}(A)},
+‖A−1‖=1λmin​(A),\|A^{-1}\|=\frac{1}{\lambda_{\min}(A)},
+
+and (19) follows immediately.
+∎
+
+The affine normal direction in ambient coordinates is
+
+d_{\mathrm{AN}}=Tu-\nu,
+dAN=T​u−ν,d_{\mathrm{AN}}=Tu-\nu,
+
+where the columns of 
+T
+TT form an orthonormal basis of the tangent space and 
+\nu
+ν\nu is the unit Euclidean normal.
+Using the same 
+T
+TT and 
+\nu
+ν\nu, define the approximate direction
+
+\hat{d}_{\mathrm{AN}}=T\hat{u}-\nu.
+d^AN=T​u^−ν.\hat{d}_{\mathrm{AN}}=T\hat{u}-\nu.
+
+Corollary 7.12 (Error propagation to the affine normal direction).
+
+Under the assumptions of Proposition 7.11,
+
+(20)
+
+\|\hat{d}_{\mathrm{AN}}-d_{\mathrm{AN}}\|=\|T(\hat{u}-u)\|=\|\hat{u}-u\|\leq\|A^{-1}\|\Big(\beta\|\hat{a}-a\|+\|r_{\mathrm{Krylov}}\|\Big).
+‖d^AN−dAN‖=‖T⁡(u^−u)‖=|u^−u|≤|A−1|(β​‖a^−a‖+‖rKrylov‖).\|\hat{d}_{\mathrm{AN}}-d_{\mathrm{AN}}\|=\|T(\hat{u}-u)\|=\|\hat{u}-u\|\leq\|A^{-1}\|\Big(\beta\|\hat{a}-a\|+\|r_{\mathrm{Krylov}}\|\Big).
+
+If 
+A
+AA is symmetric positive definite, then
+
+(21)
+
+\|\hat{d}_{\mathrm{AN}}-d_{\mathrm{AN}}\|\leq\frac{1}{\lambda_{\min}(A)}\Big(\beta\|\hat{a}-a\|+\|r_{\mathrm{Krylov}}\|\Big).
+‖d^AN−dAN‖≤1λmin​(A)​(β​‖a^−a‖+‖rKrylov‖).\|\hat{d}_{\mathrm{AN}}-d_{\mathrm{AN}}\|\leq\frac{1}{\lambda_{\min}(A)}\Big(\beta\|\hat{a}-a\|+\|r_{\mathrm{Krylov}}\|\Big).
+
+Proof.
+
+Since
+
+\hat{d}_{\mathrm{AN}}-d_{\mathrm{AN}}=T(\hat{u}-u),
+d^AN−dAN=T⁡(u^−u),\hat{d}_{\mathrm{AN}}-d_{\mathrm{AN}}=T(\hat{u}-u),
+
+and the columns of 
+T
+TT are orthonormal, we have
+
+\|T(\hat{u}-u)\|=\|\hat{u}-u\|.
+‖T⁡(u^−u)‖=‖u^−u‖.\|T(\hat{u}-u)\|=\|\hat{u}-u\|.
+
+The estimate therefore follows directly from Proposition 7.11.
+∎
+
+In many numerical experiments, one compares normalized directions rather than the raw affine normal vectors.
+The next estimate provides the corresponding perturbation bound.
+
+Corollary 7.13 (Normalized direction error).
+
+Assume that 
+d_{\mathrm{AN}}\neq 0
+dAN≠0d_{\mathrm{AN}}\neq 0 and
+
+\|\hat{d}_{\mathrm{AN}}-d_{\mathrm{AN}}\|\leq\frac{1}{2}\|d_{\mathrm{AN}}\|.
+‖d^AN−dAN‖≤12​‖dAN‖.\|\hat{d}_{\mathrm{AN}}-d_{\mathrm{AN}}\|\leq\frac{1}{2}\|d_{\mathrm{AN}}\|.
+
+Then
+
+(22)
+
+\left\|\frac{\hat{d}_{\mathrm{AN}}}{\|\hat{d}_{\mathrm{AN}}\|}-\frac{d_{\mathrm{AN}}}{\|d_{\mathrm{AN}}\|}\right\|\leq\frac{2}{\|d_{\mathrm{AN}}\|}\|\hat{d}_{\mathrm{AN}}-d_{\mathrm{AN}}\|.
+‖d^AN‖d^AN‖−dAN‖dAN‖‖≤2‖dAN‖​‖d^AN−dAN‖.\left\|\frac{\hat{d}_{\mathrm{AN}}}{\|\hat{d}_{\mathrm{AN}}\|}-\frac{d_{\mathrm{AN}}}{\|d_{\mathrm{AN}}\|}\right\|\leq\frac{2}{\|d_{\mathrm{AN}}\|}\|\hat{d}_{\mathrm{AN}}-d_{\mathrm{AN}}\|.
+
+Consequently,
+
+(23)
+
+\left\|\frac{\hat{d}_{\mathrm{AN}}}{\|\hat{d}_{\mathrm{AN}}\|}-\frac{d_{\mathrm{AN}}}{\|d_{\mathrm{AN}}\|}\right\|\leq\frac{2\|A^{-1}\|}{\|d_{\mathrm{AN}}\|}\Big(\beta\|\hat{a}-a\|+\|r_{\mathrm{Krylov}}\|\Big).
+‖d^AN‖d^AN‖−dAN‖dAN‖‖≤2​‖A−1‖‖dAN‖​(β​‖a^−a‖+‖rKrylov‖).\left\|\frac{\hat{d}_{\mathrm{AN}}}{\|\hat{d}_{\mathrm{AN}}\|}-\frac{d_{\mathrm{AN}}}{\|d_{\mathrm{AN}}\|}\right\|\leq\frac{2\|A^{-1}\|}{\|d_{\mathrm{AN}}\|}\Big(\beta\|\hat{a}-a\|+\|r_{\mathrm{Krylov}}\|\Big).
+
+Proof.
+
+The estimate (22) is the standard perturbation bound for normalization of nonzero vectors. Applying Corollary 7.12 then yields (23).
+∎
+
+The preceding estimates make explicit the two sources of inexactness in affine normal computation: the approximation error in the log-determinant gradient and the residual of the Krylov linear solve. In particular, they show that, provided the regularized tangent operator remains well conditioned, both errors propagate in a stable and essentially linear manner to the tangent coefficient vector and hence to the final affine normal direction. This justifies the use of stochastic trace estimation and inexact linear solvers in the scalable implementation.
+
+7.7. Structural interpretation
+
+A key conceptual consequence of the analysis is that
+affine normal directions are fundamentally second-order objects. Importantly, no explicit third-order tensor is formed.
+All higher-order contributions appear only through
+directional contractions, whose cost matches that of
+Hessian–vector products in the polynomial setting.
+
+Theorem 7.14 (Second-order reduction of affine normal computation).
+
+Affine normal directions can be computed using only:
+
+• 
+
+Hessian–vector products,
+
+• 
+
+linear system solves,
+
+• 
+
+stochastic trace estimation.
+
+No explicit third-order tensor needs to be formed.
+
+Proof.
+
+By Lemma 3.1, the third-order contraction term
+in the analytic affine normal formula can be rewritten as
+
+f^{pq}f_{pqi}=\partial_{i}\log\det(H_{T}).
+fp​qfp​q​i=∂ilogdet(HT).f^{pq}f_{pqi}=\partial_{i}\log\det(H_{T}).
+
+Hence the affine normal depends on the tangent Hessian only through:
+(i) Hessian–vector products used to apply the matrix-free operator 
+H_{T}
+HTH_{T},
+(ii) linear system solves involving 
+H_{T}
+HTH_{T},
+and (iii) stochastic trace estimation of the log-determinant gradient.
+No explicit third-order tensor needs to be formed.
+∎
+
+Remark 7.15.
+
+Although the affine normal is classically defined through third-order differential geometry, the log-determinant identity shows that its computation can be organized around matrix-free second-order linear-algebraic primitives. In the polynomial setting, the remaining higher-order information enters only through structured directional contractions, which are computable at the same sparsity order as Hessian–vector products.
+
+Remark 7.16 (Interpretation).
+
+The affine normal direction can be viewed as a curvature-corrected
+Newton direction, where the correction term
+
+\nabla\log\det(H_{T})
+∇logdet(HT)\nabla\log\det(H_{T}) accounts for local volume distortion
+of level sets.
+
+7.8. Scalability with respect to dimension
+
+The complexity depends on 
+ms
+m​sms, not on 
+d^{2}
+d2d^{2} or 
+d^{3}
+d3d^{3}.
+
+• 
+
+If 
+f
+ff is sparse, 
+ms\ll d^{2}
+m​s≪d2ms\ll d^{2},
+
+• 
+
+If 
+f
+ff has bounded support size and the number of monomials grows linearly with dimension, then 
+ms=O(d)
+m​s=O⁡(d)ms=O(d).
+
+Thus affine normal computation scales linearly in dimension
+for structured polynomial objectives.
+
+Corollary 7.17.
+
+If the support size is uniformly bounded, i.e., 
+s=O(1)
+s=O⁡(1)s=O(1),
+the number of monomials satisfies 
+m=O(d)
+m=O⁡(d)m=O(d),
+and the parameters 
+q
+qq, 
+\kappa
+κ\kappa, and 
+\varepsilon
+ε\varepsilon are treated as constants,
+then affine normal computation has linear complexity 
+O(d)
+O⁡(d)O(d).
+
+Proof.
+
+If 
+s=O(1)
+s=O⁡(1)s=O(1) and the number of monomials scales linearly with dimension,
+i.e., 
+m=O(d)
+m=O⁡(d)m=O(d), then
+
+ms=O(d).
+m​s=O⁡(d).ms=O(d).
+
+Substituting into Theorem 7.10
+gives the result.
+∎
+
+The preceding corollary addresses the common regime in which sparsity remains controlled while the ambient dimension grows. It is also useful to state the complexity directly in terms of the algebraic sparsity of the polynomial representation itself.
+
+Proposition 7.18 (Complexity in terms of sparsity).
+
+The computational cost of MF-LogDet affine normal computation is linear in the total sparsity of the polynomial representation:
+
+\mathrm{cost}=O(qk\cdot\mathrm{nnz}),\qquad\mathrm{nnz}:=\sum_{\ell=1}^{m}|\supp(\alpha^{(\ell)})|.
+cost=O⁡(q​k⋅nnz),nnz:=∑ℓ=1m|supp⁡(α(ℓ))|.\mathrm{cost}=O(qk\cdot\mathrm{nnz}),\qquad\mathrm{nnz}:=\sum_{\ell=1}^{m}|\supp(\alpha^{(\ell)})|.
+
+Proof.
+
+By Proposition 7.5, the cost of one stochastic probe is proportional to the cost of a Hessian–vector product together with one directional third-order contraction. By Proposition 4.3 and Proposition 4.5, each of these primitives can be evaluated in
+
+O\!\Big(\sum_{\ell=1}^{m}|\supp(\alpha^{(\ell)})|\Big)=O(\mathrm{nnz})
+O⁡(∑ℓ=1m|supp⁡(α(ℓ))|)=O⁡(nnz)O\!\Big(\sum_{\ell=1}^{m}|\supp(\alpha^{(\ell)})|\Big)=O(\mathrm{nnz})
+
+operations. Summing over 
+q
+qq probes and 
+k
+kk Krylov steps yields
+
+\mathrm{cost}=O(qk\cdot\mathrm{nnz}),
+cost=O⁡(q​k⋅nnz),\mathrm{cost}=O(qk\cdot\mathrm{nnz}),
+
+as claimed.
+∎
+
+This shows that the computational complexity is governed by the algebraic sparsity
+of the objective, rather than the ambient dimension itself.
+
+7.9. Discussion
+
+We summarize the main conclusions:
+
+(i) 
+
+All third-order terms are eliminated through log-determinant reduction.
+
+(ii) 
+
+The algorithm is fully matrix-free.
+
+(iii) 
+
+Polynomial structure enables linear scaling.
+
+These results resolve the main computational barrier
+to applying affine-normal-based methods in high-dimensional polynomial optimization.
+
+8. Numerical Experiments
+
+In this section we evaluate the proposed matrix-free log-determinant formulation (MF-LogDet) for affine normal computation. Our goal is not to benchmark the full optimization performance of YAND, but rather to directly validate the main computational claims of this paper.
+
+More precisely, the experiments are organized around four questions:
+
+(i) 
+
+Does MF-LogDet reproduce the same affine normal direction as the original explicit autodifferentiation (AD)-based computation?
+
+(ii) 
+
+How does stochastic trace approximation affect the accuracy and cost of the computed affine normal direction?
+
+(iii) 
+
+Does the runtime of MF-LogDet scale nearly linearly with the ambient dimension in the sparse polynomial regime?
+
+(iv) 
+
+Does the runtime of MF-LogDet scale nearly linearly with the structural sparsity level of the polynomial representation?
+
+Accordingly, Section 8.1 validates the exactness of the log-determinant reformulation, Section 8.2 studies the stochastic accuracy–cost tradeoff, Section 8.3 examines scaling with respect to dimension, and Section 8.4 examines scaling with respect to sparsity.
+
+Unless otherwise stated, all experiments below measure the cost of computing a single affine normal direction, rather than the cost of the outer optimization loop. This isolates the computational effect of the proposed reformulation from outer-iteration effects such as line search or step acceptance.
+
+Throughout this section, we compare the following two implementations:
+
+• 
+
+AD: the original explicit autodifferentiation-based affine normal computation using the direct third-order formula (see [15]);
+
+• 
+
+MF-LogDet: the proposed matrix-free log-determinant reformulation developed in this paper.
+
+To compare directional accuracy, we use the normalized direction error
+
+\bigl\|\widehat{d}_{\mathrm{MF\mbox{-}LogDet}}-\widehat{d}_{\mathrm{AD}}\bigr\|,\qquad\widehat{d}:=\frac{d}{\|d\|},
+‖d^MF​-​LogDet−d^AD‖,d^:=d‖d‖,\bigl\|\widehat{d}_{\mathrm{MF\mbox{-}LogDet}}-\widehat{d}_{\mathrm{AD}}\bigr\|,\qquad\widehat{d}:=\frac{d}{\|d\|},
+
+together with the corresponding angular error.
+To compare computational efficiency, we report both the absolute runtime and the speedup ratio
+
+\mathrm{speedup}(d)=\frac{T_{\mathrm{AD}}(d)}{T_{\mathrm{MF\mbox{-}LogDet}}(d)}.
+speedup⁡(d)=TAD​(d)TMF​-​LogDet​(d).\mathrm{speedup}(d)=\frac{T_{\mathrm{AD}}(d)}{T_{\mathrm{MF\mbox{-}LogDet}}(d)}.
+
+Values larger than 
+1
+11 indicate that MF-LogDet is faster than AD.
+All reported runtimes are averages over repeated affine-normal evaluations.
+
+8.1. Accuracy and acceleration of affine normal computation
+
+We first compare AD and MF-LogDet on a structured sparse quartic polynomial family in dimensions
+
+d=3,4,\dots,20.
+d=3,4,…,20.d=3,4,\dots,20.
+
+The purpose of this experiment is to compare the two affine normal formulas as directly as possible,
+without stochastic trace approximation or iterative solver effects.
+
+For each dimension 
+d
+dd, we consider a deterministic sparse quartic polynomial of the form
+
+f(x)=\sum_{i=1}^{d}a_{i}x_{i}^{4}+\sum_{i=1}^{d-1}b_{i}x_{i}^{2}x_{i+1}^{2}+\sum_{i=1}^{d-2}c_{i}x_{i}^{3}x_{i+2}+\sum_{k=1}^{\lfloor d/3\rfloor}\gamma_{k}x_{3k-2}^{2}x_{3k-1}x_{3k},
+f⁡(x)=∑i=1dai​xi4+∑i=1d−1bi​xi2​xi+12+∑i=1d−2ci​xi3​xi+2+∑k=1⌊d/3⌋γk​x3​k−22​x3​k−1​x3​k,f(x)=\sum_{i=1}^{d}a_{i}x_{i}^{4}+\sum_{i=1}^{d-1}b_{i}x_{i}^{2}x_{i+1}^{2}+\sum_{i=1}^{d-2}c_{i}x_{i}^{3}x_{i+2}+\sum_{k=1}^{\lfloor d/3\rfloor}\gamma_{k}x_{3k-2}^{2}x_{3k-1}x_{3k},
+
+with fixed deterministic coefficients 
+\{a_{i},b_{i},c_{i},\gamma_{k}\}
+{ai,bi,ci,γk}\{a_{i},b_{i},c_{i},\gamma_{k}\}.
+This defines a structured sparse quartic test family in which both AD and MF-LogDet can be evaluated reliably across dimensions.
+Moreover, the sparsity pattern remains controlled, and the average monomial support size stays bounded.
+
+This construction yields a nontrivial but controlled test family in which both AD and MF-LogDet can be evaluated reliably across dimensions.
+For each dimension, affine normal directions are computed at several deterministic sample points generated from smooth sinusoidal patterns.
+In this experiment, MF-LogDet is run in an exact/direct mode, so that the comparison reflects only the difference between the explicit third-order formula and the proposed log-determinant reformulation itself.
+
+Accuracy.
+
+Figure 1 shows that MF-LogDet reproduces the affine normal direction computed by AD to near machine precision across the entire tested range.
+The normalized direction error remains around 
+10^{-9}
+10−910^{-9},
+and the angular error stays on the order of 
+10^{-6}
+10−610^{-6} degrees or below.
+This is a direct numerical validation of the central identity
+
+f^{pq}f_{pqi}=\partial_{i}\log\det(H_{T}),
+fp​qfp​q​i=∂ilogdet(HT),f^{pq}f_{pqi}=\partial_{i}\log\det(H_{T}),
+
+which underlies the proposed reformulation.
+Numerically, the experiment shows that replacing the explicit third-order contraction by the log-determinant gradient does not degrade the computed affine normal direction.
+
+Speedup and runtime crossover.
+
+Figure 2 reports the speedup ratio
+
+T_{\mathrm{AD}}/T_{\mathrm{MF\mbox{-}LogDet}}
+TAD/TMF​-​LogDetT_{\mathrm{AD}}/T_{\mathrm{MF\mbox{-}LogDet}} as the dimension increases.
+In very low dimensions, the explicit AD-based computation is competitive, and can even be faster, since the derivative tensors remain small and inexpensive to evaluate.
+However, as 
+d
+dd increases, the computational cost of AD grows rapidly, whereas MF-LogDet scales much more favorably.
+In our experiment, the crossover occurs around 
+d\approx 11
+d≈11d\approx 11, and by 
+d=20
+d=20d=20 the speedup reaches approximately 
+11.9\times
+11.9×11.9\times.
+
+Figure 3 complements this comparison by showing the absolute runtime per affine normal evaluation for both methods.
+This figure makes clear that the advantage of MF-LogDet is not merely a constant-factor artifact:
+the two methods exhibit genuinely different scaling trends as the dimension increases.
+
+Interpretation.
+
+Taken together, Figures 1–3
+support the first main computational claim of this paper:
+MF-LogDet does not merely provide a cheaper approximation of affine normal directions,
+but reproduces essentially the same direction while significantly reducing the computational burden once the dimension becomes moderately large.
+This reflects the structural transition from explicit tensor-based evaluation to matrix-free operator-based computation.
+
+Figure 1. Accuracy of MF-LogDet relative to the original AD-based affine normal computation.
+The normalized direction error remains around 
+10^{-9}
+10−910^{-9}, while the angular error stays near machine precision,
+showing that the proposed reformulation reproduces the same affine normal direction very accurately.
+
+Figure 2. Speedup of affine normal computation across dimensions, defined by
+
+T_{\mathrm{AD}}/T_{\mathrm{MF\mbox{-}LogDet}}
+TAD/TMF​-​LogDetT_{\mathrm{AD}}/T_{\mathrm{MF\mbox{-}LogDet}}.
+Values above 
+1
+11 indicate that MF-LogDet is faster than AD.
+The crossover occurs around 
+d\approx 11
+d≈11d\approx 11, and by 
+d=20
+d=20d=20 the speedup reaches about 
+11.9\times
+11.9×11.9\times.
+
+Figure 3. Average runtime per affine normal evaluation for AD and MF-LogDet as a function of the dimension 
+d
+dd.
+While AD is competitive in very low dimensions, its runtime grows much more rapidly.
+MF-LogDet becomes more efficient once the dimension is moderately large.
+
+8.2. Effect of stochastic trace approximation on affine normal accuracy
+
+The previous experiment validated the log-determinant reformulation itself by comparing MF-LogDet with AD in an exact/direct setting.
+We now examine a complementary question:
+when the tangent log-determinant gradient
+
+a=\nabla_{t}\log\det(H_{T})
+a=∇t​log​det(HT)a=\nabla_{t}\log\det(H_{T})
+
+is approximated by stochastic trace estimation, how accurately is the resulting affine normal direction preserved, and how does this approximation affect the computational cost?
+
+Experimental setup.
+
+We consider a structured sparse quartic polynomial family in dimensions
+
+d\in\{10,20,40\}.
+d∈{10,20,40}.d\in\{10,20,40\}.
+
+For each dimension, affine normal directions are evaluated at several deterministic sample points generated from smooth sinusoidal patterns.
+At each point, we first compute the exact tangent log-determinant gradient and the corresponding affine normal direction by direct linear algebra in the tangent space.
+We then replace the exact trace computation by the Hutchinson estimator with probe counts
+
+q\in\{2,5,10,20,50,100\},
+q∈{2,5,10,20,50,100},q\in\{2,5,10,20,50,100\},
+
+while keeping the remaining direction assembly exact.
+Thus this experiment isolates the effect of stochastic trace approximation alone: the only inexact component is the Hutchinson-based approximation of the tangent log-determinant gradient, while the remaining tangent-space linear algebra is performed deterministically.
+All runtimes are measured after a short warm-up phase and averaged over repeated evaluations in order to reduce timing noise.
+In other words, the reference direction in this experiment is the exact/direct MF-LogDet computation, not the original AD formula, so that the effect of stochastic trace approximation can be isolated cleanly.
+
+Measured quantities.
+
+We report:
+
+• 
+
+the relative error in the tangent log-determinant gradient,
+
+\frac{\|a_{q}-a_{\mathrm{exact}}\|}{\|a_{\mathrm{exact}}\|},
+‖aq−aexact‖‖aexact‖,\frac{\|a_{q}-a_{\mathrm{exact}}\|}{\|a_{\mathrm{exact}}\|},
+
+• 
+
+the normalized affine normal direction error,
+
+\bigl\|\widehat{d}_{q}-\widehat{d}_{\mathrm{exact}}\bigr\|,\qquad\widehat{d}=\frac{d}{\|d\|},
+‖d^q−d^exact‖,d^=d‖d‖,\bigl\|\widehat{d}_{q}-\widehat{d}_{\mathrm{exact}}\bigr\|,\qquad\widehat{d}=\frac{d}{\|d\|},
+
+• 
+
+the corresponding angular error,
+
+• 
+
+the runtime of the stochastic trace approximation,
+
+• 
+
+and the runtime ratio between stochastic and exact tangent log-determinant evaluation.
+
+Accuracy.
+
+Figure 4 shows that the affine normal direction becomes progressively more accurate as the number of Hutchinson probes increases.
+For instance, in dimension 
+d=10
+d=10d=10, the mean normalized direction error decreases from approximately 
+2.17\times 10^{-2}
+2.17×10−22.17\times 10^{-2} at 
+q=2
+q=2q=2 to about 
+6.70\times 10^{-3}
+6.70×10−36.70\times 10^{-3} at 
+q=50
+q=50q=50.
+In dimension 
+d=20
+d=20d=20, using 
+q=50
+q=50q=50 probes reduces the mean normalized direction error to approximately 
+3.12\times 10^{-3}
+3.12×10−33.12\times 10^{-3}, with a mean angular error of about 
+0.18^{\circ}
+0.18∘0.18^{\circ}.
+In dimension 
+d=40
+d=40d=40, using 
+q=100
+q=100q=100 probes yields a mean normalized direction error of approximately 
+1.42\times 10^{-3}
+1.42×10−31.42\times 10^{-3} and a mean angular error of about 
+0.08^{\circ}
+0.08∘0.08^{\circ}.
+Thus, although very small probe counts can introduce noticeable fluctuations, moderate probe counts already recover the affine normal direction with good accuracy.
+
+Runtime and comparison with exact trace evaluation.
+
+Figure 5 shows that the runtime of the stochastic approximation grows approximately linearly with 
+q
+qq, as expected from the trace-estimation model.
+For example, in dimension 
+d=10
+d=10d=10, the average runtime increases from about 
+1.47\times 10^{-4}
+1.47×10−41.47\times 10^{-4} seconds at 
+q=2
+q=2q=2 to about 
+5.99\times 10^{-3}
+5.99×10−35.99\times 10^{-3} seconds at 
+q=100
+q=100q=100.
+
+It is also important to compare this cost with the exact tangent log-determinant computation used in the first experiment.
+Figure 6 shows that the advantage of stochastic trace approximation depends on both the dimension and the probe count.
+At 
+d=10
+d=10d=10, the Hutchinson estimator is cheaper than the exact computation only for very small probe counts, and becomes more expensive once 
+q
+qq is moderately large.
+At 
+d=20
+d=20d=20, the crossover occurs around 
+q\approx 20
+q≈20q\approx 20.
+At 
+d=40
+d=40d=40, however, the stochastic approximation remains substantially cheaper than the exact baseline for small and moderate probe counts, and only becomes more expensive when 
+q
+qq is large.
+This confirms the intended role of stochastic trace estimation: it is most beneficial in larger-scale regimes where exact tangent log-determinant evaluation is itself costly.
+
+Representative tradeoff.
+
+Table 1 provides representative numerical values for the resulting accuracy–cost tradeoff.
+In all tested dimensions, increasing the probe count 
+q
+qq improves the affine normal direction accuracy, while the runtime grows approximately proportionally to 
+q
+qq.
+At the same time, the relative cost with respect to exact tangent log-determinant evaluation depends strongly on the dimension.
+For 
+d=10
+d=10d=10, the stochastic approximation is cheaper only for very small probe counts and becomes more expensive once 
+q
+qq is moderately large.
+For 
+d=20
+d=20d=20, the crossover occurs around 
+q\approx 20
+q≈20q\approx 20.
+For 
+d=40
+d=40d=40, the stochastic approximation remains cheaper than the exact baseline even at 
+q=20
+q=20q=20, and only becomes more expensive when 
+q
+qq is large.
+The table therefore complements Figures 4–6 by making the practical accuracy–cost tradeoff explicit.
+
+Interpretation.
+
+This experiment fills the gap between the exact/direct validation of MF-LogDet and the large-scale complexity experiments.
+It shows that the stochastic trace approximation is not merely asymptotically appealing, but can recover the affine normal direction to useful accuracy with moderate probe counts.
+In particular, the results support the practical claim that small-to-moderate values of 
+q
+qq already provide a reasonable balance between accuracy and efficiency, while the computational benefit of stochastic trace estimation becomes more pronounced as the dimension increases.
+
+Figure 4. Effect of the Hutchinson probe count 
+q
+qq on affine normal accuracy.
+The left panel shows the mean normalized direction error, and the right panel shows the maximum angular error.
+In all tested dimensions, increasing 
+q
+qq improves the accuracy of the recovered affine normal direction.
+
+Figure 5. Runtime of the stochastic trace approximation as a function of the number of Hutchinson probes 
+q
+qq.
+After warm-up and repeated averaging, the cost grows approximately linearly with 
+q
+qq, consistent with the theoretical complexity model.
+
+Figure 6. Runtime comparison between stochastic Hutchinson trace approximation and exact tangent log-determinant evaluation.
+The left panel shows absolute runtime, where dashed horizontal lines denote the exact baseline for each dimension.
+The right panel shows the runtime ratio between Hutchinson and exact evaluation.
+Small probe counts are substantially cheaper than exact evaluation, especially in higher dimensions, whereas large probe counts eventually remove this advantage.
+
+Table 1. Representative accuracy–cost tradeoff for stochastic trace approximation in MF-LogDet affine normal computation. The last column reports the runtime ratio between Hutchinson approximation and exact tangent log-determinant evaluation.
+
+d
+dd
+
+q
+qq
+Mean direction error
+Mean angle error (deg)
+Mean runtime (s)
+Hutch / exact
+
+10
+2
+
+2.17\times 10^{-2}
+2.17×10−22.17\times 10^{-2}
+
+1.24
+1.241.24
+
+1.47\times 10^{-4}
+1.47×10−41.47\times 10^{-4}
+
+0.24
+0.240.24
+
+10
+20
+
+1.10\times 10^{-2}
+1.10×10−21.10\times 10^{-2}
+
+0.63
+0.630.63
+
+1.24\times 10^{-3}
+1.24×10−31.24\times 10^{-3}
+
+2.05
+2.052.05
+
+10
+100
+
+8.06\times 10^{-3}
+8.06×10−38.06\times 10^{-3}
+
+0.46
+0.460.46
+
+5.99\times 10^{-3}
+5.99×10−35.99\times 10^{-3}
+
+9.93
+9.939.93
+
+20
+2
+
+1.14\times 10^{-2}
+1.14×10−21.14\times 10^{-2}
+
+0.65
+0.650.65
+
+2.61\times 10^{-4}
+2.61×10−42.61\times 10^{-4}
+
+0.11
+0.110.11
+
+20
+20
+
+5.60\times 10^{-3}
+5.60×10−35.60\times 10^{-3}
+
+0.32
+0.320.32
+
+2.53\times 10^{-3}
+2.53×10−32.53\times 10^{-3}
+
+1.05
+1.051.05
+
+20
+100
+
+2.97\times 10^{-3}
+2.97×10−32.97\times 10^{-3}
+
+0.17
+0.170.17
+
+1.26\times 10^{-2}
+1.26×10−21.26\times 10^{-2}
+
+5.22
+5.225.22
+
+40
+2
+
+2.84\times 10^{-2}
+2.84×10−22.84\times 10^{-2}
+
+1.63
+1.631.63
+
+5.44\times 10^{-4}
+5.44×10−45.44\times 10^{-4}
+
+0.05
+0.050.05
+
+40
+20
+
+7.13\times 10^{-3}
+7.13×10−37.13\times 10^{-3}
+
+0.41
+0.410.41
+
+5.26\times 10^{-3}
+5.26×10−35.26\times 10^{-3}
+
+0.47
+0.470.47
+
+40
+100
+
+1.42\times 10^{-3}
+1.42×10−31.42\times 10^{-3}
+
+0.08
+0.080.08
+
+2.66\times 10^{-2}
+2.66×10−22.66\times 10^{-2}
+
+2.38
+2.382.38
+
+8.3. Empirical near-linear complexity in dimension
+
+We next test the large-scale complexity prediction established in Section 7.
+The theory predicts that, in the sparse polynomial regime, the cost of MF-LogDet affine normal computation should scale essentially linearly with the ambient dimension,
+provided that the number of monomials grows linearly and the average support size remains bounded.
+
+To match this regime, we consider dimensions
+
+d\in\{50,100,200,400,800\},
+d∈{50,100,200,400,800},d\in\{50,100,200,400,800\},
+
+and generate sparse polynomial objectives of the form
+
+f(x)=\sum_{\ell=1}^{m}c_{\ell}x^{\alpha^{(\ell)}},\qquad x\in\mathbb{R}^{d},
+f⁡(x)=∑ℓ=1mcℓ​xα(ℓ),x∈ℝd,f(x)=\sum_{\ell=1}^{m}c_{\ell}x^{\alpha^{(\ell)}},\qquad x\in\mathbb{R}^{d},
+
+with the following structure:
+
+• 
+
+the number of monomials is set to 
+m=10d
+m=10​dm=10d;
+
+• 
+
+the average support size remains bounded (approximately 
+3.5
+3.53.5 in our experiment);
+
+• 
+
+a small quartic stabilization term is included to ensure numerical robustness.
+
+For MF-LogDet, we fix the Hutchinson probe count at 
+q=2
+q=2q=2, use PCG with a maximum of 
+k=5
+k=5k=5 iterations, and set the regularization parameter to 
+\lambda=10^{-6}
+λ=10−6\lambda=10^{-6}.
+Thus the experiment is designed to match the structural regime under which the theory predicts near-linear complexity.
+
+For each dimension, we measure the average runtime of one MF-LogDet affine normal evaluation and fit the empirical scaling law
+
+T(d)\approx Cd^{\beta}
+T⁡(d)≈C​dβT(d)\approx Cd^{\beta}
+
+by linear regression in log-log scale.
+
+Runtime scaling.
+
+Figure 7 shows the runtime behavior in both the original and log-log scales.
+The fitted exponent is
+
+\beta=1.0107,
+β=1.0107,\beta=1.0107,
+
+which is extremely close to the ideal linear value 
+\beta=1
+β=1\beta=1.
+This provides strong empirical support for the near-linear complexity predicted by the theory.
+
+Operator-level stability.
+
+Figure 8 and Table 2
+show that the internal operator counts remain essentially constant across dimensions:
+the number of Hessian–vector products per affine normal evaluation stays around 
+329
+329329–
+330
+330330,
+the number of third-directional evaluations is fixed at 
+2
+22,
+and the Krylov workload remains effectively constant at about 
+300
+300300 inner iterations.
+This is important because it shows that the observed runtime growth is driven mainly by the increase of problem size itself,
+rather than by deterioration of the inner numerical procedure.
+
+Interpretation.
+
+These results provide strong empirical support for the dimension-scaling prediction of Section 7: under bounded support size and linearly growing monomial count, the runtime of MF-LogDet affine normal computation grows essentially linearly with the ambient dimension. The experiment therefore validates not only the observed empirical law, but also the structural mechanism behind Theorem 7.10 and Corollary 7.17.
+
+(a) Average runtime per MF-LogDet affine normal evaluation as a function of the dimension 
+d
+dd.
+
+(b) Log-log plot of the same runtime data. The fitted slope is 
+\beta=1.0107
+β=1.0107\beta=1.0107.
+
+Figure 7. Empirical near-linear complexity of MF-LogDet affine normal computation in the sparse polynomial regime. The left panel shows the runtime trend in the original scale, while the right panel confirms near-linear behavior through a log-log fit.
+
+Figure 8. Operator counts per MF-LogDet affine normal evaluation across dimensions.
+The Hessian–vector count, directional third-derivative count, and Krylov workload remain essentially constant, indicating that the observed runtime growth in Figure 7 is driven primarily by problem size rather than by deterioration of the inner iterative procedures.
+
+Table 2. Empirical near-linear complexity of MF-LogDet affine normal computation in the sparse polynomial regime.
+The polynomial family satisfies 
+m=10d
+m=10​dm=10d with bounded average support size.
+The observed runtime follows a log-log slope of approximately 
+1.0107
+1.01071.0107, consistent with near-linear scaling.
+
+d
+dd
+
+m
+mm
+Avg. support
+Time / eval (s)
+Hv / eval
+Third / eval
+Krylov / eval
+Log-log fit
+
+50
+550
+3.6291
+0.4218
+329.33
+2
+300
+0.4148
+
+100
+1100
+3.4909
+0.8253
+329.33
+2
+300
+0.8359
+
+200
+2200
+3.5682
+1.6710
+329.75
+2
+300
+1.6843
+
+400
+4400
+3.5541
+3.3499
+329.33
+2
+300
+3.3936
+
+800
+8800
+3.5578
+6.9541
+330.00
+2
+300
+6.8379
+
+8.4. Complexity with respect to sparsity
+
+Finally, we test the dependence of the MF-LogDet runtime on the sparsity scale
+ms,
+m​s,ms,
+where 
+m
+mm is the number of monomials and 
+s
+ss is the average support size.
+We fix the ambient dimension at
+
+d=200
+d=200d=200
+and vary the number of monomials
+
+m\in\{200,400,800,1200,2000,3000,4000\},
+m∈{200,400,800,1200,2000,3000,4000},m\in\{200,400,800,1200,2000,3000,4000\},
+
+while keeping the quartic support structure bounded.
+In this way, the effective sparsity scale 
+ms
+m​sms varies substantially while the ambient dimension remains fixed.
+As in the previous complexity experiment, we use 
+q=2
+q=2q=2, PCG with maximum budget 
+k=5
+k=5k=5, and regularization parameter 
+\lambda=10^{-6}
+λ=10−6\lambda=10^{-6}.
+
+Results.
+
+Figure 9 shows the measured runtime as a function of 
+ms
+m​sms.
+As 
+m
+mm increases from 
+200
+200200 to 
+4000
+40004000, the effective sparsity scale 
+ms
+m​sms increases from 
+1000
+10001000 to 
+16200
+1620016200, while the runtime per direction evaluation grows from 
+0.2181
+0.21810.2181 seconds to 
+3.0217
+3.02173.0217 seconds.
+A log-log fit yields
+
+T\approx C(ms)^{\beta},\qquad\beta=0.9625.
+T≈C​(m​s)β,β=0.9625.T\approx C(ms)^{\beta},\qquad\beta=0.9625.
+
+Since the fitted exponent is very close to 
+1
+11, the experiment provides strong numerical evidence that the runtime of MF-LogDet grows approximately linearly with 
+ms
+m​sms in the sparse quartic regime.
+
+Interpretation.
+
+This experiment complements the previous dimension-scaling study. There, we observed near-linear growth with respect to 
+d
+dd under the regime 
+m=\Theta(d)
+m=Θ⁡(d)m=\Theta(d) and bounded support size. Here, by fixing 
+d
+dd and varying the sparsity level directly, we isolate the dependence on the structural quantity 
+ms
+m​sms itself. The resulting slope 
+\beta\approx 0.96
+β≈0.96\beta\approx 0.96 is fully consistent with the complexity model of Section 7, which predicts that the matrix-free polynomial implementation is governed primarily by the algebraic sparsity of the objective rather than by the ambient dimension alone.
+
+Figure 9. Runtime of one MF-LogDet affine normal evaluation versus the sparsity scale 
+ms
+m​sms for sparse quartic polynomials with fixed dimension 
+d=200
+d=200d=200 and varying monomial count 
+m
+mm.
+The log-log fitted slope is approximately 
+0.9625
+0.96250.9625, providing empirical support for near-linear scaling with respect to the structural sparsity scale.
+
+Table 3. Empirical sparsity scaling of MF-LogDet at fixed dimension 
+d=200
+d=200d=200. The runtime is measured for one affine normal direction evaluation.
+
+m
+mm
+Avg. support
+
+ms
+m​sms
+Time / eval (s)
+Log-log fit
+
+200
+2.5000
+1000
+0.2181
+0.2046
+
+400
+3.0000
+1800
+0.3440
+0.3602
+
+800
+3.4000
+3400
+0.6424
+0.6644
+
+1200
+3.5714
+5000
+0.9369
+0.9630
+
+2000
+3.7273
+8200
+1.5438
+1.5503
+
+3000
+3.8125
+12200
+2.3537
+2.2724
+
+4000
+3.8571
+16200
+3.0217
+2.9856
+
+8.5. Discussion
+
+The numerical experiments support the main computational claims of this work.
+
+(i) Exactness of the reformulation.
+
+In the exact/direct comparison with the original autodifferentiation-based computation, MF-LogDet reproduces the affine normal direction to near machine precision. This confirms that the log-determinant reformulation preserves the affine normal geometry while avoiding explicit third-order tensor contraction.
+
+(ii) Accuracy–cost tradeoff of stochastic trace estimation.
+
+When the tangent log-determinant gradient is computed by stochastic trace estimation, the resulting affine normal direction remains accurate for moderate probe counts, while the computational cost grows approximately linearly with the number of probes. The runtime comparison with exact tangent log-determinant evaluation further shows that the stochastic approximation becomes increasingly attractive as the problem size grows.
+
+(iii) Structural speedup and scalability.
+
+The observed acceleration is not merely a constant-factor improvement, but reflects a genuine transition from explicit tensor-based computation to matrix-free operator-based computation. In the sparse polynomial regime, the method exhibits near-linear scaling both with respect to the ambient dimension 
+d
+dd and with respect to the structural sparsity scale 
+ms
+m​sms, in strong agreement with the theoretical complexity analysis.
+
+8.6. Summary
+
+Taken together, these experiments show that the proposed log-determinant reformulation provides an accurate and scalable route to affine normal computation. The exact version reproduces the original affine normal direction with essentially no loss of accuracy, while the stochastic matrix-free implementation offers a practical accuracy–efficiency tradeoff and becomes increasingly favorable as the problem dimension and sparsity grow. This demonstrates that the main computational bottleneck of explicit affine normal evaluation can be effectively removed, making affine normal computation viable in moderately large and high-dimensional sparse polynomial settings.
+
+9. Conclusion
+
+In this paper, we developed a scalable computational framework for affine normal directions in high-dimensional optimization, with particular emphasis on sparse polynomial objectives. The central contribution is a structural reduction showing that the key affine-normal contraction can be rewritten as the gradient of the log-determinant of the tangent Hessian. At the mathematical level, this reveals a hidden log-determinant geometry behind the classical affine normal formula. At the computational level, it replaces explicit third-order tensor contraction by a matrix-free formulation based on tangent Hessian operators, linear system solves, and stochastic trace estimation.
+
+Building on this reformulation, we developed both exact and stochastic procedures for computing affine normal directions. In the polynomial setting, the algebraic closure of derivatives makes it possible to implement all required primitives through sparse monomial-based kernels. The resulting theory shows that the cost of affine normal computation is governed by matrix-free second-order primitives together with the stochastic and Krylov budgets, and is near-linear in the relevant sparsity scale. The numerical experiments confirm that the reformulation reproduces the affine normal direction computed by the explicit autodifferentiation-based formula to near machine precision, while delivering substantial runtime improvements in moderate and high dimensions and exhibiting near-linear empirical scaling in both dimension and sparsity.
+
+More broadly, this work suggests that affine normal directions may be understood not only as classical third-order geometric objects, but also as curvature-corrected second-order search directions that incorporate local volume distortion through 
+\log\det(H_{T})
+logdet(HT)\log\det(H_{T}). Several directions remain open for future study, including the design of effective preconditioners for tangent linear systems, multi-CPU and GPU implementations of the matrix-free kernels, and extensions beyond the polynomial setting to broader structured function classes such as trigonometric polynomials, symmetric polynomials, and low-rank structured models. An especially important next step is to integrate the present computational framework into large-scale implementations of Yau’s affine normal descent. These directions appear promising for further connecting affine differential geometry with modern large-scale optimization.
+
+Acknowledgements
+
+Y.-S. N. gratefully acknowledges support from the National Natural
+Science Foundation of China (Grant No. 42450242) and the Beijing Overseas
+High-Level Talent Program. A. S. would like to acknowledge support from the Beijing Natural Science
+Foundation (Grant No. BJNSF–IS24005) and the NSFC–RFIS Program
+(Grant No. W2432008).
+He also thanks the NSF AI Institute for Artificial Intelligence and Fundamental
+Interactions at the Massachusetts Institute of Technology (MIT), funded by the
+U.S. National Science Foundation under Cooperative Agreement PHY–2019786,
+as well as China’s National Program of Overseas High-Level Talent for generous
+support.
+All three authors gratefully acknowledge institutional support from the Beijing
+Institute of Mathematical Sciences and Applications (BIMSA).
+
+References
+
+[1]
+
+Haim Avron and Sivan Toledo.
+
+Randomized algorithms for estimating the trace of an implicit
+symmetric positive semi-definite matrix.
+
+Journal of the ACM, 58(2):8:1–8:34, 2011.
+
+[2]
+
+Zhaojun Bai, M. Fahey, and Gene H. Golub.
+
+Some large-scale matrix computation problems.
+
+Journal of Computational and Applied Mathematics,
+74(1-2):71–89, 1996.
+
+[3]
+
+Hsiao-Bing Cheng, Li-Tien Cheng, and Shing-Tung Yau.
+
+Minimization with the affine normal direction.
+
+Communications in Mathematical Sciences, 3(4):561 – 574, 2005.
+
+[4]
+
+Ron S. Dembo, Stanley C. Eisenstat, and Trond Steihaug.
+
+Inexact newton methods.
+
+SIAM Journal on Numerical Analysis, 19(2):400–408, 1982.
+
+[5]
+
+Didier A. Girard.
+
+A fast ‘monte-carlo cross-validation’ procedure for large least
+squares problems with noisy data.
+
+Numerische Mathematik, 56(1):1–23, 1989.
+
+[6]
+
+Anne Greenbaum.
+
+Iterative Methods for Solving Linear Systems.
+
+SIAM, Philadelphia, 1997.
+
+[7]
+
+Insu Han, Dmitry Malioutov, and Jinwoo Shin.
+
+Large-scale log-determinant computation through stochastic chebyshev
+expansions.
+
+In Proceedings of the 32nd International Conference on Machine
+Learning, volume 37, pages 908–917, 2015.
+
+[8]
+
+Magnus R. Hestenes and Eduard Stiefel.
+
+Methods of conjugate gradients for solving linear systems.
+
+Journal of Research of the National Bureau of Standards,
+49(6):409–436, 1952.
+
+[9]
+
+Michael F. Hutchinson.
+
+A stochastic estimator of the trace of the influence matrix for
+Laplacian smoothing splines.
+
+Communications in Statistics - Simulation and Computation,
+19(2):433–450, 1990.
+
+[10]
+
+Shun ichi Amari.
+
+Natural gradient works efficiently in learning.
+
+Neural Computation, 10(2):251–276, 1998.
+
+[11]
+
+Shun ichi Amari.
+
+Information Geometry and Its Applications.
+
+Springer, 2016.
+
+[12]
+
+Jean B. Lasserre.
+
+Global optimization with polynomials and the problem of moments.
+
+SIAM Journal on Optimization, 11(3):796–817, 2001.
+
+[13]
+
+Jean B. Lasserre.
+
+An Introduction to Polynomial and Semi-Algebraic Optimization.
+
+Cambridge University Press, 2015.
+
+[14]
+
+An-Min Li, Udo Simon, Guosong Zhao, and Zizhou Hu.
+
+Global Affine Differential Geometry of Hypersurfaces.
+
+Walter de Gruyter, 1993.
+
+[15]
+
+Yi-Shuai Niu, Artan Sheshmani, and Shing-Tung Yau.
+
+Yau’s Affine Normal Descent: Algorithmic Framework and Convergence
+Analysis.
+
+https://doi.org/10.48550/arXiv.2603.28448, March 2026.
+
+arXiv:2603.28448 [math.OC].
+
+[16]
+
+Jorge Nocedal and Stephen J. Wright.
+
+Numerical Optimization.
+
+Springer, 2 edition, 2006.
+
+[17]
+
+Katsumi Nomizu and Takeshi Sasaki.
+
+Affine Differential Geometry.
+
+Cambridge University Press, 1994.
+
+[18]
+
+Christopher C. Paige and Michael A. Saunders.
+
+Solution of sparse indefinite systems of linear equations.
+
+SIAM Journal on Numerical Analysis, 12(4):617–629, 1975.
+
+[19]
+
+Pablo A. Parrilo.
+
+Semidefinite programming relaxations for semialgebraic problems.
+
+Mathematical Programming, 96(2):293–320, 2003.
+
+[20]
+
+Yousef Saad.
+
+Iterative Methods for Sparse Linear Systems.
+
+SIAM, Philadelphia, 2 edition, 2003.
+
+[21]
+
+Yousef Saad and Martin H. Schultz.
+
+GMRES: A generalized minimal residual algorithm for solving
+nonsymmetric linear systems.
+
+SIAM Journal on Scientific and Statistical Computing,
+7(3):856–869, 1986.
+
+[22]
+
+Shashanka Ubaru, Jie Chen, and Yousef Saad.
+
+Fast estimation of 
+\mathrm{tr}(f(a))
+tr⁡(f⁡(a))\mathrm{tr}(f(a)) via stochastic lanczos
+quadrature.
+
+SIAM Journal on Matrix Analysis and Applications,
+38(4):1075–1099, 2017.
+
+[23]
+
+Hayato Waki, Sunyoung Kim, Masakazu Kojima, and Masakazu Muramatsu.
+
+Sums of squares and semidefinite program relaxations for polynomial
+optimization problems with structured sparsity.
+
+SIAM Journal on Optimization, 17(1):218–242, 2006.
+
+Author Information
+
+Yi-Shuai Niu1, Artan Sheshmani1,3, and Shing-Tung Yau1,2
+
+1 Beijing Institute of Mathematical Sciences and Applications (BIMSA), Beijing 101408, China
+
+2 Yau Mathematical Sciences Center, Tsinghua University, Beijing 100084, China
+
+3 IAIFI Institute, Massachusetts Institute of Technology, Cambridge, MA 02139, USA
+
+E-mail addresses:
+
+niuyishuai@bimsa.cn (Yi-Shuai Niu),
+
+artan@mit.edu (Artan Sheshmani),
+
+styau@tsinghua.edu.cn (Shing-Tung Yau)
+
+    Experimental support, please
+    view the build logs
+    for errors. Generated by
+
+        L
+        A
+        T
+        E
+      
+      xml
+      
+    .
+
+Instructions for reporting errors
+
+We are continuing to improve HTML versions of papers, and your feedback helps enhance accessibility and mobile
+      support. To report errors in the HTML that will help us improve conversion and rendering, choose any of the
+      methods listed below:
+
+Click the &quot;Report Issue&quot; (
+            
+          ) button, located in the page header.
+
+Tip: You can select the relevant text first, to include it in your report.
+
+Our team has already identified the following issues. We appreciate your time reviewing and reporting rendering errors we
+      may not have found yet. Your efforts will help us improve the HTML versions for all readers, because disability
+      should not be a barrier to accessing research. Thank you for your continued support in championing open access for
+      all.
+
+Have a free development cycle? Help support accessibility at arXiv! Our collaborators at LaTeXML maintain a list of packages that need conversion, and welcome developer contributions.
+
+        We gratefully acknowledge support from
+        our major funders,
+        member institutions, ,
+        and all contributors.
+
+Major funding support from</pre></html>

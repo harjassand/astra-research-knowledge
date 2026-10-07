@@ -1,0 +1,226 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>-*- coding: utf-8 -*-</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>-*- coding: utf-8 -*-</h1><p>Source ID d-c7c03b1b0e45f5c1; literature/sources/hessian_check12/cycle17/sky_inv_quiv_pinned/sky_inv_quiv/mainHN.py; 2779 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre># -*- coding: utf-8 -*-
+import numpy as np
+import scipy as scipy #type: ignore
+
+from time import time,sleep
+import copy
+from cfractions import Fraction
+from typing import List, Dict, Any, Optional
+from collections.abc import Callable
+epsilon=1e-10
+import warnings
+import traceback
+import matplotlib.pyplot as plt
+
+from sky_inv_quiv.auxHN import extract_basis, intersection, spanning_subrep,subrep,ceil_div,quotientrep
+import sky_inv_quiv.HNcshrunk as cshrunk
+from sky_inv_quiv.Field import Field,flatten_zero,is_all_zero_mat
+from sky_inv_quiv.Quiver import Quiver
+
+warnings.simplefilter(&quot;error&quot;)
+
+
+
+x_glob=(0,0)
+
+def computeHN_sub(V:Quiver,x,filtration=False,verbose=False)-&gt;List[np.ndarray]:    # assumes V=&lt;V_x&gt; 
+    d=1
+    field=V.field
+
+    maps_span= build_spanning_maps(V, x)
+    maps_span.pop(x)
+    maps_span_l= [ Aj for Aj in maps_span.values() if Aj.shape[0]*Aj.shape[1]!=0] 
+
+        # trivially semistable
+    if V.spaces[x] in [0,sum(list(V.spaces.values()))] :
+        return[]
+    
+    v_x=V.spaces[x]
+    v_notx=sum(list(V.spaces.values()))-v_x
+    #print(&quot;v_x=&quot;,v_x,&quot;v_notx=&quot;,v_notx,&quot;l&quot;,list(V.spaces.values()))
+    U0=None
+    for v_x_small in range(int(min(np.ceil(v_x/float(v_notx)),v_x)),30+2*max(2,v_x+1)):
+        U0=None
+        blocks_list= cshrunk.buildblock(maps_span_l,d,v_x_small)
+        try:  
+            for r in blocks_list:
+                blocks,blocks_size=r
+                size_X= sum([s[0] for s in blocks_size[:,0]]), sum([s[1] for s in blocks_size[0]])
+                M= np.block([[np.eye(min(blocks.shape)),np.zeros((min(blocks.shape), blocks.shape[1]-min(blocks.shape)))],
+                             [np.random.randint(1,25*max(size_X) +10, size=(blocks.shape[0]-min(blocks.shape), min(blocks.shape))),  np.zeros( (blocks.shape[0]-min(blocks.shape),  blocks.shape[1]-min(blocks.shape))) ]])
+                M=field.to_Field(np.array(M,dtype=&quot;i&quot;))
+                X= (M,maps_span_l, blocks) 
+                A=cshrunk.assemble_block(X)
+                if v_x_small&gt;10:
+                    print(blocks.shape,&quot;t&quot;,extract_basis(A,field).shape[1],extract_basis(A,field).shape[1] *5 / blocks.shape[0]  )          
+                try:
+                    t=time()
+                    U0_temp=cshrunk.wongblockpseudo(X,field=field)
+                    t1=time()
+                    &#x27;&#x27;&#x27;
+                    U0p=extract_basis(cshrunk.wongblock(X)[:v_x],field)
+                    print(U0_temp.shape,U0p.shape,&quot;e&quot;)
+                    t2=time()
+                    if t1-t&gt;100:
+                        print(&quot;new&quot;, np.round(t1-t,2),&quot; s, old&quot;,np.round(t2-t1,2),&quot; s&quot;)
+                    assert(intersection(U0_temp,U0p,field).shape[1]==max(U0_temp.shape[1],U0p.shape[1]))
+                    &#x27;&#x27;&#x27;
+                except ValueError as e: 
+                    #recompute in case we are unlucky with M
+                    if str(e) ==&quot;nc-rk A&lt;nc-rk B&quot;:
+                        M= np.block([[np.eye(min(blocks.shape)),np.zeros((min(blocks.shape), blocks.shape[1]-min(blocks.shape)))],
+                                    [np.random.randint(1,25*max(size_X) +10, size=(blocks.shape[0]-min(blocks.shape), min(blocks.shape))),  np.zeros( (blocks.shape[0]-min(blocks.shape),  blocks.shape[1]-min(blocks.shape))) ]])
+                        M=field.to_Field(np.array(M,dtype=&quot;i&quot;))
+                        X= (M,maps_span_l, blocks)
+                        Ap=cshrunk.assemble_block(X)
+                        U0_temp=cshrunk.wongblockpseudo(X,field=field)
+                    else: 
+                        raise 
+                if not( U0 is None or intersection(U0,U0_temp,field).shape[1]==max(U0.shape[1] ,U0_temp.shape[1]) ) :
+                    
+                    #c_plus
+                    span_rep0_temp= spanning_subrep(V, x, U0_temp)
+                    subrep0_temp= subrep(V,span_rep0_temp)
+                    dims_subrep0_temp=np.array(list(subrep0_temp.spaces.values()))
+                    c_plus= (v_notx+v_x)*subrep0_temp.spaces[x]- v_x*np.sum(dims_subrep0_temp)
+
+                    #disc_plus
+                    v_notx_s_plus= ceil_div(v_notx*v_x_small,v_x)
+                    #v_tot_s_min=  (v_notx*v_x_small)//v_x        +    v_x_small
+                    v_x_disc_plus = v_x*(    v_notx_s_plus*subrep0_temp.spaces[x]- v_x_small*(np.sum(dims_subrep0_temp) -subrep0_temp.spaces[x]))
+                    disc_plus = v_x_disc_plus/float(v_x_small) 
+
+                     #c_moins
+                    span_rep0= spanning_subrep(V, x, U0)
+                    subrep0= subrep(V,span_rep0)
+                    dims_subrep0=np.array(list(subrep0.spaces.values()))
+                    c_moins= (v_notx+v_x)*subrep0.spaces[x]- v_x*np.sum(dims_subrep0)
+                    v_notx_s_minus= (v_notx*v_x_small)//v_x
+                    v_x_disc_minus = v_x*(    v_notx_s_minus*subrep0.spaces[x]- v_x_small*(np.sum(dims_subrep0) -subrep0.spaces[x]))
+                    #compute list of possible ux, u_notx
+                    better_U_possible = False
+                    for ux in range(U0.shape[1]+1,U0_temp.shape[1]):
+                        u_notx_max_plus = (v_notx*ux-c_plus)//v_x 
+                        u_notx_max_minus = (v_notx*ux-c_moins)//v_x 
+                        u_notx_max = min(u_notx_max_minus,u_notx_max_plus)
+                        u_notx_min_plus = ceil_div((v_x-v_x_disc_plus+v_x*ux*(v_notx_s_plus)),v_x_small*v_x)
+                        assert( v_x_disc_plus//v_x&gt; 
+                                v_notx_s_plus*ux- v_x_small*u_notx_min_plus and 
+                                 v_x_disc_plus//v_x &lt;= 
+                                    v_notx_s_plus*ux- v_x_small*(u_notx_min_plus-1))
+                        u_notx_min_minus = ceil_div((-v_x_disc_minus+v_x*ux*(v_notx_s_minus)),v_x*v_x_small)
+                        u_notx_min =max( u_notx_min_minus,  u_notx_min_plus )
+
+                        #print(&quot;ux&quot;,ux,&quot;,&quot;,u_notx_min,u_notx_max,&quot;,&quot;,v_x_small)
+                        better_U_possible |=  u_notx_max &gt;= u_notx_min
+                    #raise error if bound disc&lt; floor(disc+) not good enough
+                    if better_U_possible:
+                        raise ValueError(&quot;weight approx incorrect&quot;)
+                    if c_plus&lt;c_moins:
+                        U_temp=U0
+                U0=U0_temp
+            break
+        except ValueError as e:
+            if str(e) ==&quot;weight approx incorrect&quot;:
+                if v_x&gt;2 and v_x_small&gt;0 and verbose:
+                    print(&quot;weigt err:&quot;,v_x_small,v_x)
+            elif str(e)== &quot;nc-rk A&lt;nc-rk B&quot;:
+                if field.descr!= &quot;F_2&quot; or v_x_small%5==4:
+                    print(&quot;needs larger blow-up: (p,p0)=&quot;,v_x_small,v_x)
+                if v_x_small&gt;v_x:
+                    pass
+            else: 
+                raise 
+
+    #print(intersection(Ublock,U,V.field).shape[1]==U.shape[1])
+
+    if not U0 is None:  
+        U0=flatten_zero(U0, field)
+    if v_x&gt;3 and v_x_small&gt;1:#verbose:
+        pass
+        #print(&quot;U0=&quot;)
+    if U0.shape[1]==V.spaces[x]:
+        return[]
+    span_rep= spanning_subrep(V, x, U0)
+    subrep_obj= subrep(V,span_rep)
+    dims_subrep=np.array(list(subrep_obj.spaces.values()))
+    if v_x&gt;6 and v_x_small&gt;3:
+        print(&quot;c=&quot;,(v_notx+v_x)*subrep_obj.spaces[x]- v_x*np.sum(dims_subrep))
+    l=[]
+    if verbose:
+        print(&quot;srep&quot;,np.sum(dims_subrep))
+    if not(subrep_obj.is_zero()):
+        l=computeHN_sub(subrep_obj,x,filtration,verbose)+[dims_subrep]
+        quotrep= quotientrep(V, span_rep)
+        if verbose:
+            print(&quot;qrep&quot;,sum(quotrep.spaces.values()))
+        if not(quotrep.is_zero()):
+            try:
+                l=l+ [dims_subrep+ dims_quot for dims_quot in computeHN_sub(quotrep,x,filtration,verbose)]
+            except ValueError as e:
+                print(&quot;e2&quot;,e)
+                #V.display_graph(&quot;V&quot;)
+                #subrep.display_graph(&quot;U&quot;)
+                #quotrep.display_graph(&quot;V/U&quot;)
+                print(&#x27;V&#x27;, V.spaces.values(),&#x27;subrep&#x27;, subrep_obj.spaces.values(), &#x27;quotrep&#x27;, quotrep.spaces.values())
+                raise
+    return l
+    
+def computeHN(V:Quiver,x_set:Optional[List]=None,filtration:bool=False,verbose:bool=False,
+comp_HN_sub : Callable[[Quiver, Any, bool, bool], List[np.ndarray]]=computeHN_sub)-&gt;Dict[Any,List[np.ndarray]]: 
+    &quot;&quot;&quot;
+    Compute the skyscraper invariant of V,
+    retricted to x_set (vertices of V by default)
+    using comp_HN_sub to compute HN(&lt;V_x&gt;) for each x in x_set.
+    &quot;&quot;&quot;
+    if not(x_set):
+        x_set=V.vertices
+    skyscraper={}
+    for x in x_set:
+        if V.spaces[x]==0:
+            skyscraper[x]= [np.zeros(len(V.vertices),dtype=&quot;i&quot;),np.array(list(V.spaces.values()))]
+        else:
+            span_maps= spanning_subrep(V, x,  V.field.to_Field(np.eye(V.spaces[x])))
+            span_subrep= subrep(V,span_maps)
+            try:
+                l=comp_HN_sub(span_subrep,x,filtration,verbose)
+            except ValueError as e:
+                #V.display_graph(&quot;V2&quot;)
+                #span_subrep.display_graph(&quot;U2&quot;)
+                print(&quot;e&quot;,e)
+                raise
+            #V.display_graph(&quot;V&quot;,verbose)
+            skyscraper[x]= [np.zeros(len(V.vertices),dtype=&quot;i&quot;)]+l+[np.array(list(span_subrep.spaces.values()))]
+            if sum(list(span_subrep.spaces.values()))&lt;sum(list(V.spaces.values())):
+                #span_subrep.display_graph(&quot;&lt;V_{&quot;+str(x)+&quot;}&gt;&quot;,verbose)
+                skyscraper[x]+= [np.array(list(V.spaces.values()))]
+    return skyscraper
+
+
+
+def build_spanning_maps(V,x)-&gt;Dict[Any,np.ndarray]:
+    field=V.field
+    maps_span={x: V.field.to_Field(np.eye(V.spaces[x]))}
+    file=[x]
+    while len(file)&gt;0:
+        for e in V.edges_out[file.pop()]:
+            if  V.edges[e][1]  in maps_span.keys():
+                #check commutativity
+                try:
+                    assert(is_all_zero_mat(maps_span[V.edges[e][1]]-np.dot( V.Ve[e], maps_span[V.edges[e][0]]), field))
+                except:
+                    #V.display_graph(&quot;V&quot;)
+                    print(x)
+                    print(&quot;r&quot;,V.edges[e],maps_span[V.edges[e][1]],np.dot( V.Ve[e], maps_span[V.edges[e][0]]), field)
+                    raise
+            else: 
+                file.append(V.edges[e][1])
+                try:
+                    maps_span[V.edges[e][1]]=np.dot( V.Ve[e], maps_span[V.edges[e][0]])
+                except:
+                    print(&quot;e&quot;,V.Ve[e], maps_span[V.edges[e][0]])
+                    raise ValueError(&quot;error in map &quot;+str(e)+&quot; from &quot;+str(V.edges[e][0])+&quot; to &quot;+str(V.edges[e][1]))
+    return maps_span
+
+
+</pre></html>

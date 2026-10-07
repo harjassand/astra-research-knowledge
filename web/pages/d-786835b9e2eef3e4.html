@@ -1,0 +1,182 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>&quot;&quot;&quot;Exact rational thermal-cluster cut sampler; PRNG replay of fair-bit algorithm.</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>&quot;&quot;&quot;Exact rational thermal-cluster cut sampler; PRNG replay of fair-bit algorithm.</h1><p>Source ID d-786835b9e2eef3e4; literature/sources/r11_logic/cycle6/cluster/r20_cluster_rational_input.py; 2759 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>&quot;&quot;&quot;Exact rational thermal-cluster cut sampler; PRNG replay of fair-bit algorithm.
+No eigensolver, small-coefficient clipping, or floating point in probabilities.
+Matrix fixtures separately use float64 and do not constitute a general proof.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from itertools import product
+from math import lcm,atanh,prod
+from pathlib import Path
+import random,json
+import numpy as np
+
+def choose(weights,rng):
+    assert all(w&gt;=0 for w in weights) and sum(weights)&gt;0
+    den=lcm(*(x.denominator for x in weights))
+    ns=[x.numerator*(den//x.denominator) for x in weights];total=sum(ns)
+    while True:
+        r=rng.getrandbits(total.bit_length())
+        if r&lt;total:break
+    for j,x in enumerate(ns):
+        if r&lt;x:return j
+        r-=x
+    raise AssertionError(&#x27;integer draw&#x27;)
+
+def tables(t,w):
+    m=2*w;d=2**m;gmin=((1-t)/2)**m;a=d*gmin
+    q=((1+t)/(1-t))**m;s=1-1/q
+    ge=[((1+t)/2)**(m-k.bit_count())*((1-t)/2)**k.bit_count() for k in range(d)]
+    lam=[1-gmin/g for g in ge];delta=[g-gmin for g in ge]
+    c0=1/a-1;coeff=[t**k.bit_count()/a for k in range(1,d)]
+    S=sum(coeff);z=S-c0
+    assert sum(ge)==1 and sum(delta)==1-a and max(lam)==s and min(lam)==0
+    B=max(0,q.numerator.bit_length()-q.denominator.bit_length()+1)
+    h=q*(1+B);closed=1+(h.numerator+h.denominator-1)//h.denominator
+    if q&gt;1000:L=closed
+    elif z&lt;=1:L=1
+    else:
+        lo,hi=0,closed-1
+        while lo&lt;hi:
+            mid=(lo+hi)//2
+            if z*s**mid&lt;=1:hi=mid
+            else:lo=mid+1
+        L=lo+1
+    if q&lt;=1000:assert z*s**(L-1)&lt;=1
+    return dict(t=t,w=w,m=m,d=d,gmin=gmin,a=a,q=q,s=s,ge=ge,lam=lam,
+                delta=delta,c0=c0,coeff=coeff,S=S,z=z,L=L,closed=closed)
+
+def axes_for_mask(k,w):
+    # Sites ordered left0,right0,left1,right1,... . E=product CZ(left_i,right_i).
+    # E X_left E=XZ, E X_right E=ZX, E X_left X_right E=YY, all signs+.
+    out=[]
+    for j in range(w):
+        pair=(k&gt;&gt;(2*j))&amp;3
+        out.extend([[&#x27;I&#x27;,&#x27;I&#x27;],[&#x27;X&#x27;,&#x27;Z&#x27;],[&#x27;Z&#x27;,&#x27;X&#x27;],[&#x27;Y&#x27;,&#x27;Y&#x27;]][pair])
+    return out
+
+def pauli_basis_draw(k,w,rng):
+    axes=axes_for_mask(k,w);signs=[1 if rng.getrandbits(1) else -1 for _ in axes]
+    active=[j for j,x in enumerate(axes) if x!=&#x27;I&#x27;]
+    if active:signs[active[-1]]=prod(signs[j] for j in active[:-1])
+    return [(&#x27;Z&#x27; if x==&#x27;I&#x27; else x,s) for x,s in zip(axes,signs)]
+
+def central_weights(T,r):
+    a=T[&#x27;a&#x27;];u=1-r*T[&#x27;z&#x27;]
+    weights=[a*u]+[a*r*c for c in T[&#x27;coeff&#x27;]]
+    assert min(weights)&gt;=0 and sum(weights)==a+r*(1-a)
+    return weights
+
+def sample(T,ell,rng):
+    assert ell&gt;=T[&#x27;L&#x27;];a=T[&#x27;a&#x27;];alpha=1-a
+    ws=[a+alpha**ell]+[a*alpha**b for b in range(1,ell)]
+    assert sum(ws)==1
+    b=choose(ws,rng);res=False;labels=[]
+    if b:
+        for j in range(ell):
+            labels.append(None if j==b else choose(T[&#x27;delta&#x27;] if j&lt;b else T[&#x27;ge&#x27;],rng))
+        central=pauli_basis_draw(0,T[&#x27;w&#x27;],rng);r=None;k=0
+    else:
+        res=bool(choose([a,alpha**ell],rng))
+        labels=[None]+[choose(T[&#x27;delta&#x27;] if res else T[&#x27;ge&#x27;],rng) for _ in range(ell-1)]
+        r=prod((T[&#x27;lam&#x27;][j] for j in labels[1:]),start=F(1))
+        k=choose(central_weights(T,r),rng);central=pauli_basis_draw(k,T[&#x27;w&#x27;],rng)
+    # All other sites are X eigenstates. At central b use product Pauli states.
+    # Apply the supplied CZ circuit with the w gates at this midpoint deleted.
+    return dict(cut=b,residual_branch=res,labels=labels,central=central,pauli_mask=k,r=r)
+
+def sample_strip(T,n,rng):
+    &quot;&quot;&quot;Full supplied-graph sampler, n even columns, output product labels + deleted cuts.
+    The retained CZ graph is implicit: rectangular nearest-neighbour edges except
+    all horizontal row edges at the returned column boundaries.
+    &quot;&quot;&quot;
+    assert n%2==0 and n&gt;=2
+    w=T[&#x27;w&#x27;];M=n//2;L=T[&#x27;L&#x27;];inputs=[[None]*w for _ in range(n)];cuts=[]
+    if M&lt;L:
+        for col in range(n):
+            for row in range(w):
+                bit=choose([1+T[&#x27;t&#x27;],1-T[&#x27;t&#x27;]],rng)
+                inputs[col][row]=(&#x27;X&#x27;,1 if bit==0 else -1)
+    else:
+        groups=M//L;remainder=M%L;lengths=[L+remainder]+[L]*(groups-1);start=0
+        for ell in lengths:
+            x=sample(T,ell,rng);b=x[&#x27;cut&#x27;];cuts.append(2*(start+b)+1)
+            for j,label in enumerate(x[&#x27;labels&#x27;]):
+                axes=x[&#x27;central&#x27;] if j==b else [(&#x27;X&#x27;,-1 if label&amp;(1&lt;&lt;k) else 1) for k in range(2*w)]
+                for row in range(w):
+                    inputs[2*(start+j)][row]=axes[2*row]
+                    inputs[2*(start+j)+1][row]=axes[2*row+1]
+            start+=ell
+        assert start==M
+    ends=[0]+cuts+[n];max_sites=w*max(y-x for x,y in zip(ends,ends[1:]))
+    assert max_sites&lt;=8*w*L
+    return dict(inputs=inputs,deleted_column_boundaries=cuts,max_block_sites=max_sites)
+
+def exact_tuple_gate(T,ell):
+    a=T[&#x27;a&#x27;];alpha=1-a;total=F(0);minimum=F(1);maxbits=0
+    for ts in product(range(T[&#x27;d&#x27;]),repeat=ell-1):
+        r=prod((T[&#x27;lam&#x27;][j] for j in ts),start=F(1))
+        e=prod((T[&#x27;ge&#x27;][j] for j in ts),start=F(1))
+        lhs=(a+r*alpha)*e
+        rhs=a*e+alpha*prod((T[&#x27;delta&#x27;][j] for j in ts),start=F(1))
+        assert lhs==rhs
+        cw=central_weights(T,r);total+=lhs;minimum=min(minimum,1-r*T[&#x27;z&#x27;])
+        maxbits=max(maxbits,r.denominator.bit_length())
+    assert total==a+alpha**ell
+    return dict(tuple_count=T[&#x27;d&#x27;]**(ell-1),exact_weight_identity=True,
+                exact_total_mass=str(total),minimum_identity_coefficient=str(minimum),
+                largest_r_denominator_bits=maxbits)
+
+def float_matrix_gate(T,ell):
+    I=np.eye(2,dtype=complex);X=np.array([[0,1],[1,0]],complex)
+    Y=np.array([[0,-1j],[1j,0]],complex);Z=np.diag([1,-1]);paulis=dict(I=I,X=X,Y=Y,Z=Z)
+    def tensor(xs):
+        v=np.ones((1,1),complex)
+        for x in xs:v=np.kron(v,x)
+        return v
+    G=tensor([(I+float(T[&#x27;t&#x27;])*X)/2]*T[&#x27;m&#x27;]);Gp=float(T[&#x27;gmin&#x27;])*np.eye(T[&#x27;d&#x27;]);D=G-Gp
+    if T[&#x27;w&#x27;]!=1:raise ValueError(&#x27;dense gate currently w1&#x27;)
+    E=np.diag([1,1,1,-1]);r=float(T[&#x27;s&#x27;]**(ell-1))
+    cs=central_weights(T,T[&#x27;s&#x27;]**(ell-1));central=float(cs[0])/T[&#x27;d&#x27;]*np.eye(T[&#x27;d&#x27;],dtype=complex)
+    for k,c in enumerate(cs[1:],start=1):
+        P=tensor([paulis[x] for x in axes_for_mask(k,1)])
+        central+=float(c)/T[&#x27;d&#x27;]*(np.eye(T[&#x27;d&#x27;])+P)
+    err=float(np.linalg.norm(central-(Gp+r*E@D@E)))
+    if ell&lt;=4:
+        Q0=tensor([Gp]+[G]*(ell-1))+tensor([D]*ell)
+        Qs=[Q0]+[tensor([D]*b+[Gp]+[G]*(ell-b-1)) for b in range(1,ell)]
+        telescoping=float(np.linalg.norm(sum(Qs)-tensor([G]*ell)))
+    else:telescoping=None
+    assert err&lt;1e-12
+    return dict(central_pauli_matrix_error=err,dense_telescoping_error=telescoping)
+
+def main():
+    rng=random.Random(28092026);T=tables(F(1,2),1);ell=T[&#x27;L&#x27;]
+    gates=exact_tuple_gate(T,ell);gate=float_matrix_gate(T,ell)
+    cuts=[0]*ell;branches=0;maskcounts=[0]*T[&#x27;d&#x27;];sampled=[]
+    for _ in range(4000):
+        x=sample(T,ell,rng);cuts[x[&#x27;cut&#x27;]]+=1;branches+=x[&#x27;residual_branch&#x27;];maskcounts[x[&#x27;pauli_mask&#x27;]]+=1
+        if len(sampled)&lt;3:sampled.append({k:(str(v) if isinstance(v,F) else v) for k,v in x.items()})
+    a=T[&#x27;a&#x27;];alpha=1-a;expected=[a+alpha**ell]+[a*alpha**b for b in range(1,ell)]
+    rows=[]
+    for w,t in [(1,F(1,2)),(1,F(4,5)),(1,F(99,100)),(2,F(1,2)),(3,F(1,2))]:
+        z=tables(t,w);rows.append(dict(w=w,t=str(t),beta_J=atanh(float(t)),
+            kappa=str(z[&#x27;q&#x27;]),a=str(z[&#x27;a&#x27;]),sufficient_L=z[&#x27;L&#x27;],
+            minimal_for_this_pauli_certificate=z[&#x27;q&#x27;]&lt;=1000,
+            closed_L=z[&#x27;closed&#x27;],max_physical_block_sites=8*w*z[&#x27;L&#x27;],
+            central_table_size=z[&#x27;d&#x27;]))
+    small=tables(F(1,20),1);smallgate=float_matrix_gate(small,4)
+    strips=[sample_strip(T,140,rng) for _ in range(100)]
+    short=sample_strip(T,10,rng)
+    result=dict(bounds=rows,exact_entangled_tuple_gate=gates,entangled_matrix_gate=gate,
+                small_full_matrix_gate=smallgate,exact_sampler=dict(samples=4000,
+                    cuts=cuts,cut_probabilities=[str(x) for x in expected],
+                    max_cut_frequency_deviation=max(abs(c/4000-float(p)) for c,p in zip(cuts,expected)),
+                    absorbed_residual_draws=branches,central_masks=maskcounts,examples=sampled),
+                full_strip_sampler=dict(columns=140,samples=100,largest_sampled_block=max(x[&#x27;max_block_sites&#x27;] for x in strips),
+                    proved_block_bound=8*T[&#x27;w&#x27;]*T[&#x27;L&#x27;],deleted_boundaries_example=strips[0][&#x27;deleted_column_boundaries&#x27;],
+                    short_strip_columns=10,short_strip_fallback_block=short[&#x27;max_block_sites&#x27;]),
+                scope=&#x27;Probabilities and scalar positivity/identities exact Fraction. PRNG fixture replays fair-bit algorithm. Dense matrix checks float64; universal proof separate.&#x27;)
+    Path(&#x27;results/r20_scientific_computation/cycle6/cluster_rational.json&#x27;).write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps(result,indent=2))
+
+if __name__==&#x27;__main__&#x27;:main()
+</pre></html>

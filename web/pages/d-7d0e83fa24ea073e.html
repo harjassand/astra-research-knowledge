@@ -1,0 +1,116 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Finite covariance design: complete algorithm, costs, rank bounds and obstruction</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>Finite covariance design: complete algorithm, costs, rank bounds and obstruction</h1><p>Source ID d-7d0e83fa24ea073e; literature/notes/r06_combinatorics/cycle2/finite_covariance_design.md; 3049 o200k tokens; role research_note; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre># Finite covariance design: complete algorithm, costs, rank bounds and obstruction
+
+2026-10-06. Scope: real current space R^n; one fixed detector matrix P shared across experiments; independent equal-variance noise if interpreting squared output norms as statistical information. No acquired secant dictionary, detector discretization or PDE error bound is supplied by this note.
+
+## 1. Exact finite game and certificate
+
+Given an explicit list of K matrices `A_j=T_j^T P^T P T_j&gt;=0`, define
+
+`v=max_{C&gt;=0,trC=1} min_j tr(A_j C)`.
+
+Here T_j must be normalized genuine response secants or tangents if claiming inverse-problem coverage; the finite algebraic algorithm also works for arbitrary supplied PSD matrices, but that is a different input contract. A bound `0&lt;=A_j&lt;=beta I` must be known or computed. Total energy E multiplies v by E; write C for the trace-one design until implementation.
+
+Since the covariance set and probability simplex are compact convex and the payoff is bilinear, finite-dimensional minimax gives
+
+`v=min_{p in Delta_K} lambda_max(sum_j p_j A_j)`.
+
+For every feasible C,p, `L=min_j tr(A_j C)&lt;=v&lt;=U=lambda_max(sum p_j A_j)`. Thus a primal-dual pair with U-L&lt;=epsilon is an additive certificate. An upper eigenvalue enclosure, rather than a floating-point eigenvalue alone, is needed for a numerically rigorous certificate.
+
+No difficult SDP duality assumption is hidden here: `min_j a_j=min_p sum p_j a_j`, minimax interchanges the compact sets, and `max_{C&gt;=0,tr1}tr(MC)=lambda_max(M)` follows by diagonalizing M. Complementary slackness also implies the range of an optimal C lies in the top eigenspace of its optimal dual mixture.
+
+## 2. Explicit polynomial additive approximation by scalar Hedge
+
+Scale B_j=A_j/beta, so losses lie in [0,1]. In round t use probabilities `p_{t,j} proportional exp(-eta sum_{s&lt;t} g_s^T B_j g_s)`. Choose a unit top eigenvector g_t of `M_t=sum p_{t,j}B_j`. Return `C_N=(1/N)sum g_tg_t^T` and the best dual mixture among rounds.
+
+Here is the complete regret step. Let `W_t=sum_j exp(-eta cumulative_loss_j)`. Hoeffding&#x27;s lemma for a [0,1] random variable gives
+
+`log(W_{t+1}/W_t)&lt;=-eta p_t dot a_t+eta^2/8`.
+
+Also `log(W_{N+1}/W_1)&gt;=-eta min_j sum_t a_{t,j}-log K`. Combining,
+
+`sum_t p_t dot a_t &lt;= min_j sum_t a_{t,j}+logK/eta+eta N/8`.
+
+But `p_t dot a_t=lambda_max(M_t)`. Therefore, for `L=min_j tr(A_j C_N)` and `U=min_t beta lambda_max(M_t)`,
+
+`0&lt;=U-L&lt;=beta(logK/(eta N)+eta/8)`.
+
+With `eta=sqrt(8logK/N)`, the right side is `beta sqrt(logK/(2N))`. Hence `N&gt;=beta^2 logK/(2epsilon^2)` suffices. For K=1 a single top eigenvector solves the problem.
+
+An approximate eigenvector whose Rayleigh value is within delta of the true top eigenvalue adds at most beta delta to the gap. Matrix-entry/evaluation errors also need explicit allowances. The proof requires no rank-one optimization oracle: only a symmetric top-eigenvector computation and evaluation of K quadratic forms.
+
+Dense arithmetic per round: O(K n^2) to form the mixture and evaluate losses, O(n^3) for a full eigensolve; memory O(K n^2+n^2+K). Count N top-eigensolves and K N quadratic evaluations. Formation of each T_j, P and A_j, and all forward/derivative evaluations, are additional charged work. This is polynomial in the explicit charged list size and 1/epsilon. For rational bounded explicit inputs, ordinary SDP/ellipsoid methods also provide weak polynomial bit-complexity approximation in log(1/epsilon); exact rational optimum or exact rank-one optimization is not asserted.
+
+## 3. Rank and support
+
+An exact optimal extreme point exists. If it has covariance rank r and k_a active target constraints, then
+
+`r(r+1)/2&lt;=k_a&lt;=K`.
+
+Reconstruction: inside the r-dimensional PSD face, a symmetric perturbation Y and objective perturbation s have `r(r+1)/2+1` degrees of freedom. Trace gives one equation; each active constraint gives `tr(A_j Y)-s=0`. If there are more variables than `k_a+1` equations, a nonzero perturbation exists. It has Y nonzero because there is at least one active constraint. Small positive and negative perturbations preserve PSD, inactive inequalities and trace, contradicting extremality. An extreme optimal point is also extreme feasible: a convex decomposition cannot use objective values above v, and averaging to v forces both objectives to equal v. This is a standard Pataki bound, not a new result.
+
+Spectral decomposition `C=sum_{l=1}^r lambda_l u_lu_l^T` implements the covariance exactly as r currents `g_l=sqrt(E lambda_l)u_l`, with `sum ||g_l||^2=E`. It costs r experiments and r m scalar detector readouts if P has m output rows. Covariance optimization does not make these readings free. A known p-part partition reduces input construction only if its basis/model is actually supplied; no sparse support or partition acquisition occurs here.
+
+Hedge initially uses N rank-one atoms; its resulting covariance can immediately be spectrally compressed to at most n currents with identical performance. A fully corrective LP over its atom columns has an optimal solution with at most K nonzero weights, by the corresponding LP extreme-point argument. Preserving all K payoffs and trace during PSD face rank reduction gives the slightly looser constructive bound `r(r+1)/2&lt;=K+1`; achieving the sharper active-set bound requires optimality/active-set handling.
+
+## 4. Rows, columns and oracle charges
+
+For a fixed finite K-list, exact row generation solves the restricted SDP and tests all K rows. Its restricted optimum is an upper bound; the full minimum at its candidate C is a lower bound. Add a violating row and repeat. At most K distinct additions are possible. Approximate solves must retain their gap/eigenvalue error in the stopping test.
+
+For column generation, atoms are `gg^T`, ||g||=1. The dual pricing oracle is precisely a top eigenvector of `sum p_j A_j`. A greedy fully corrective column-generation implementation has no automatic polynomial iteration bound; the Hedge construction above supplies a proven polynomial approximate column count. Do not silently replace a global secant minimization oracle by a cheap scan over an uncharged dictionary.
+
+For a continuum secant family, a separation query asks for a global minimizer of `tr(T^T P^T P T C)` over normalized secants, including the diagonal/tangent limit. Its cost may be nonconvex global optimization and is not controlled by n or K. A sampled pair minimum is an upper bound on the true minimum, never a lower certificate.
+
+## 5. Real rank-one rounding, with a full elementary bound
+
+Let C be feasible and `v_C=min_j tr(A_j C)&gt;0`. Draw `xi~N(0,C)` and set `g=xi/||xi||`. For one j, Q_j=xi^T A_j xi is a weighted chi-square sum, with expectation mu_j&gt;=v_C. If its normalized eigenvalue weights are w_i&gt;=0,sum w_i=1, then
+
+`E exp(-t Q_j/mu_j)=prod_i(1+2t w_i)^(-1/2)&lt;=(1+2t)^(-1/2)`.
+
+The product inequality holds by expanding the product: it contains the constant 1 and linear term 2t, with all higher terms nonnegative. Markov with `t=1/(2a)` gives `P(Q_j&lt;a mu_j)&lt;=sqrt(e a)`. Also `E||xi||^2=1`, so `P(||xi||^2&gt;4)&lt;=1/4`. Set `a=1/(16e K^2)`. Union bounding K lower tails costs at most 1/4. With probability at least 1/2, all constraints and the norm bound hold, giving
+
+`min_j g^T A_j g &gt;= v_C/(64e K^2)`.
+
+Repeat logarithmically many independent draws for high confidence and check every quadratic form. This normalized design has a hard energy budget; it is not an assertion that a hard-normalized Gaussian retains covariance C. The O(K^-2) real order is established beamforming prior art (Chang–Luo–Chi 2008, Appendix II, Theorem 2 gives a stronger constant 80K^2 in their broader fractional formulation). There is no dimension-only constant rank-one approximation.
+
+## 6. A genuinely realizable passive-network obstruction
+
+Take two grounded nodes. Parameter x=(x1,x2) lies in a rectangle with `x2&gt;0`, `alpha&gt;x2`, `alpha+x1&gt;x2`. Define the symmetric positive response
+
+`F(x)=[[alpha+x1,x2],[x2,alpha]]`,
+
+with determinant D&gt;0. It is exactly the inverse grounded network stiffness with edge conductance `c12=x2/D` and ground shunts `c1=(alpha-x2)/D`, `c2=(alpha+x1-x2)/D`, all strictly positive. This is a valid passive network; it is not claimed to be a continuum conductivity realization. Conductances depend nonlinearly on x, and the nonlinear parameterization is explicitly supplied.
+
+Use the single fixed voltage detector `P=(1,0)`. For actual normalized parameter secants,
+
+`P(F(x)-F(y))/||x-y||=((x1-y1),(x2-y2))/||x-y||`.
+
+For the finite model Theta_m consisting of vertices of a regular m-gon lying inside the rectangle, m&gt;=3, **all** pair secants give precisely m equally spaced projective directions. To see this, writing vertex angles 2pi i/m, a chord direction is the tangent at the midpoint angle: `theta_ij=pi(i+j)/m+pi/2 mod pi`. Every residue i+j modulo m is attained with i!=j for m&gt;=3. Thus the distinct constraints are `A_j=v_jv_j^T`, with directions spaced pi/m.
+
+Their average is I/2, so every covariance has minimum payoff&lt;=1/2; C=I/2 attains equality. A fixed unit current at angle phi has minimum squared projection `min_j cos^2(phi-theta_j)`. The nearest orthogonal line is within pi/(2m); midpoints between successive orthogonal lines attain that distance. Hence
+
+`v_PSD=1/2`, `v_rank1=sin^2(pi/(2m))`, and their ratio is `1/(2sin^2(pi/(2m)))~2m^2/pi^2`.
+
+This proves the worst-case K^-2 rounding order is sharp for K=m distinct constraints, with an actual response/secant model. Acquisition cost is different: the raw all-pair list has `m(m-1)/2` pairs. Deduplicating to m directions uses the supplied polygon structure and/or charged preprocessing. Do not describe the gap as quadratic in the raw pair-list size.
+
+On the full parameter rectangle, actual secants include all unit directions. Every single current has an exactly orthogonal invisible direction, so `v_rank1=0`, while `v_PSD=1/2`. Finite positive margins therefore fail to certify one-current continuum identification. The gap is a deterministic uniform-design statement; it is not a Bayes or pre-randomization minimax risk theorem.
+
+Equal retained readings can be compared by two currents of energy 1/2 each versus two repeated readings with the same current direction and energy 1/2 each. Both use two scalar detector readings and total energy one. The latter covariance is still rank one. Allowing arbitrary two independent directions is precisely the covariance comparator and achieves the optimum. With per-current detector changes P_l, a single covariance C no longer captures the experiment.
+
+## 7. What a certified continuum net would buy
+
+Suppose genuine normalized secants admit a supplied operator-norm eta-net with centers in the admitted family, `||P||&lt;=1`. For every trace-one C,
+
+`| ||P T C^(1/2)||_F-||P T_j C^(1/2)||_F |&lt;=eta`.
+
+Therefore a certified finite-list lower bound z gives the continuum lower bound
+
+`kappa(C)&gt;=max(sqrt(z)-eta,0)`.
+
+For energy E, the correction is eta sqrt(E). This is a consequence of the triangle inequality and `||C^(1/2)||_F=1`, not a sampling theorem. Constructing the normalized-secant net, including close-pair tangent control, and certifying Galerkin/PDE/current/output errors remain the load-bearing effective work. Polynomial complexity in an explicitly charged net size says nothing about whether that net is polynomial in parameter dimension or cheap to acquire.
+
+## Replay and status
+
+`work/r06_combinatorics/cycle2/covariance_design.py` implements Hedge, all-pair passive-network construction, positive conductance replay and analytic rank-one attaining angles. `results/r06_combinatorics/cycle2/covariance_design_replay.json` records a random 17-constraint, 6-input game (2,000 eigensolves, 34,000 quadratic evaluations), observed gap 0.00331 versus theoretical exact-arithmetic bound 0.02661, and six polygon cases m=3..32. These are floating-point diagnostics, explicitly not roundoff-certified outputs. Proofs above supply the mathematical statements.
+
+Novelty: robust covariance design, minimax, Hedge, Pataki rank bounds and rank-one real rounding are established. The network example is an explicit reconstructed discriminator; priority not investigated exhaustively. A credible programme advance must supply effective PDE-specific global coverage and fair measurement/cost comparisons, not claim a new SDP framework.
+</pre></html>

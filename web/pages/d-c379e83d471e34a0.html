@@ -1,0 +1,182 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>&quot;&quot;&quot;Independent exact final stage from a frozen observed-only space proposal.</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>&quot;&quot;&quot;Independent exact final stage from a frozen observed-only space proposal.</h1><p>Source ID d-c379e83d471e34a0; literature/sources/metric_use10/cycle17/dependencies/metric_acquisition_check_sos_terminal_frame.py; 2187 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>&quot;&quot;&quot;Independent exact final stage from a frozen observed-only space proposal.
+
+Uses the observed quartic, frozen metric certificate and proposed rational
+quadratic space. Does not generate from the producer&#x27;s reported frame, hidden
+truth or producer code. Exact terminal equality/PD is the acceptance criterion.
+&quot;&quot;&quot;
+from pathlib import Path
+from functools import reduce
+from math import gcd
+import hashlib
+import json
+import time
+import sympy as s
+
+ROOT=Path(__file__).resolve().parents[3]
+PEER=ROOT/&#x27;results/metric_use10/cycle17&#x27;
+OUT=ROOT/&#x27;results/metric_acquisition/cycle17/sos_terminal_frame_checks.json&#x27;
+start=time.perf_counter()
+def digest(p):
+    return hashlib.sha256(p.read_bytes()).hexdigest()
+def mat(rows):
+    return s.Matrix([[s.Rational(v) for v in row] for row in rows])
+def ldlt(A):
+    assert A==A.T
+    L=s.eye(A.rows)
+    pivots=[]
+    for j in range(A.rows):
+        d=A[j,j]-sum(L[j,k]**2*pivots[k] for k in range(j))
+        assert d&gt;0
+        pivots.append(d)
+        for i in range(j+1,A.rows):
+            L[i,j]=(A[i,j]-sum(L[i,k]*L[j,k]*pivots[k] for k in range(j)))/d
+    assert L*s.diag(*pivots)*L.T==A
+    return L,pivots
+def primitive(v):
+    scale=s.ilcm(*[a.q for a in v])
+    entries=[int(a*scale) for a in v]
+    divisor=reduce(gcd,[abs(a) for a in entries])
+    entries=[a//divisor for a in entries]
+    if next(a for a in entries if a)!=abs(next(a for a in entries if a)):
+        entries=[-a for a in entries]
+    return s.Matrix(entries)
+def serialized(A):
+    return [[str(v) for v in row] for row in A.tolist()]
+
+input_path=PEER/&#x27;SOS_OBSERVED_INPUT.json&#x27;
+output_path=PEER/&#x27;SOS_LEARNER_OUTPUT.json&#x27;
+space_path=PEER/&#x27;SOS_QUADRATIC_SPACE_CANDIDATE.json&#x27;
+freeze=json.loads((PEER/&#x27;SOS_LEARNER_FREEZE.json&#x27;).read_text())
+input_hash=digest(input_path)
+output_hash=digest(output_path)
+space_hash=digest(space_path)
+assert input_hash==freeze[&#x27;sha256&#x27;][input_path.name]
+assert output_hash==freeze[&#x27;sha256&#x27;][output_path.name]
+data=json.loads(input_path.read_text())
+certificate=json.loads(output_path.read_text())[&#x27;certificate&#x27;]
+proposal=json.loads(space_path.read_text())
+assert proposal[&#x27;input_hash&#x27;]==input_hash and proposal[&#x27;learner_output_hash&#x27;]==output_hash
+n=data[&#x27;n&#x27;]
+pairs=[(i,i) for i in range(n)]+[(i,j) for i in range(n) for j in range(i+1,n)]
+N=len(pairs)
+features=[]
+basis=[]
+for i,j in pairs:
+    e=[0]*n
+    e[i]+=1
+    e[j]+=1
+    features.append(tuple(e))
+    B=s.zeros(n)
+    if i==j:
+        B[i,i]=1
+    else:
+        B[i,j]=B[j,i]=s.Rational(1,2)
+    basis.append(B)
+space=mat(proposal[&#x27;candidate_space&#x27;])
+assert space.shape==(N,n) and space.rank()==n
+quadratics=[sum((space[i,j]*basis[i] for i in range(N)),s.zeros(n)) for j in range(n)]
+Mc=mat(certificate[&#x27;M&#x27;])
+mc=s.Matrix([Mc[i,j] if i==j else 2*Mc[i,j] for i,j in pairs])
+# Acquire an SPD member by exact projection in the rational Mc inner product;
+# no reported H or latent metric is supplied here. This projection has the
+# separately proved guarantee after exact D_L recovery and small confidence.
+Minv=Mc.inv()
+W=s.Matrix(N,N,lambda i,j:s.trace(Minv*basis[i]*Minv*basis[j]))
+ldlt(W)
+a=s.Rational(certificate[&#x27;a_outward&#x27;])
+zeta=a/(1-a)
+assert n*zeta*zeta&lt;(1-a)**2
+projected=space*(space.T*W*space).inv()*space.T*W*mc
+H=sum((projected[i]*basis[i] for i in range(N)),s.zeros(n))
+_,H_pivots=ldlt(H)
+
+trials=[]
+chosen=None
+bad_parameter_bound=(n-1)*n*(n-1)//2
+for t in range(bad_parameter_bound+1):
+    A=sum((s.Integer(t)**j*quadratics[j] for j in range(n)),s.zeros(n))
+    operator=H.inv()*A
+    characteristic=operator.charpoly().as_poly()
+    unit,factors=s.factor_list(characteristic)
+    success=len(factors)==n and all(p.degree()==1 and multiplicity==1 for p,multiplicity in factors)
+    trials.append({&#x27;t&#x27;:t,&#x27;distinct_rational_eigenvalues&#x27;:success})
+    if success:
+        eigenvalues=sorted([-p.all_coeffs()[1]/p.all_coeffs()[0] for p,multiplicity in factors])
+        columns=[]
+        for value in eigenvalues:
+            kernel=(operator-value*s.eye(n)).nullspace()
+            assert len(kernel)==1
+            columns.append(primitive(kernel[0]))
+        V=s.Matrix.hstack(*columns)
+        assert V.det()!=0
+        chosen=t
+        break
+assert chosen is not None
+for B in quadratics:
+    transformed=V.T*B*V
+    assert transformed==s.diag(*[transformed[i,i] for i in range(n)])
+assert (V.T*H*V).is_diagonal()
+frame_inverse=V.inv()
+
+x=s.symbols(&#x27;x:&#x27;+str(n))
+z=s.symbols(&#x27;z:&#x27;+str(n))
+f=sum(s.Rational(term[&#x27;coefficient&#x27;])*s.prod(x[i]**term[&#x27;exponent&#x27;][i] for i in range(n)) for term in data[&#x27;terms&#x27;])
+substitution={x[i]:sum(V[i,j]*z[j] for j in range(n)) for i in range(n)}
+aligned=s.Poly(s.expand(f.subs(substitution,simultaneous=True)),*z)
+Q=s.zeros(n)
+for exponent,coefficient in aligned.terms():
+    support=[i for i,v in enumerate(exponent) if v]
+    if len(support)==1 and exponent[support[0]]==4:
+        Q[support[0],support[0]]=coefficient
+    elif len(support)==2 and all(exponent[i]==2 for i in support):
+        i,j=support
+        Q[i,j]=Q[j,i]=coefficient/2
+    else:
+        raise AssertionError(&#x27;terminal quartic contains a non-even mass term&#x27;)
+Lq,weights=ldlt(Q)
+mass=s.Matrix([v*v for v in z])
+assert s.expand(aligned.as_expr()-(mass.T*Q*mass)[0])==0
+
+# Independently export a rational positive-square identity in observed x.
+ell=[sum(frame_inverse[i,j]*x[j] for j in range(n)) for i in range(n)]
+square_coefficients=s.zeros(N,n)
+for j in range(n):
+    quadratic=s.Poly(s.expand(sum(Lq[i,j]*ell[i]**2 for i in range(n))),*x)
+    for i,exponent in enumerate(features):
+        square_coefficients[i,j]=quadratic.coeff_monomial(exponent)
+terminal_Gram=square_coefficients*s.diag(*weights)*square_coefficients.T
+observed={tuple(t[&#x27;exponent&#x27;]):s.Rational(t[&#x27;coefficient&#x27;]) for t in data[&#x27;terms&#x27;]}
+recovered={}
+for i,e in enumerate(features):
+    for j,d in enumerate(features):
+        exponent=tuple(a+b for a,b in zip(e,d))
+        recovered[exponent]=recovered.get(exponent,0)+terminal_Gram[i,j]
+recovered={e:v for e,v in recovered.items() if v!=0}
+assert recovered==observed
+
+result={
+ &#x27;status&#x27;:&#x27;PASS independent coefficient-only proposed-space final-stage acquisition and terminal positive-square identity&#x27;,
+ &#x27;elapsed_seconds&#x27;:time.perf_counter()-start,&#x27;producer_imports&#x27;:False,
+ &#x27;hidden_truth_read&#x27;:False,&#x27;producer_frame_used_to_generate&#x27;:False,
+ &#x27;optimizer_rerun&#x27;:False,
+ &#x27;read_inputs&#x27;:[&#x27;SOS_LEARNER_FREEZE.json&#x27;,&#x27;SOS_OBSERVED_INPUT.json&#x27;,&#x27;SOS_LEARNER_OUTPUT.json&#x27;,&#x27;SOS_QUADRATIC_SPACE_CANDIDATE.json&#x27;],
+ &#x27;hashes&#x27;:{&#x27;observed_input&#x27;:input_hash,&#x27;learner_output&#x27;:output_hash,&#x27;space_proposal_before_derivation&#x27;:space_hash},
+ &#x27;n&#x27;:n,&#x27;quadratic_feature_dimension&#x27;:N,
+ &#x27;space_rank&#x27;:n,&#x27;SPD_member_acquisition&#x27;:&#x27;exact projection of acquired Mc into proposed rational space in rational Mc-whitened quadratic inner product; independent PD LDL&#x27;,
+ &#x27;SPD_posterior_smallness_test&#x27;:&#x27;PASS n*zeta²&lt;(1-a)²&#x27;,
+ &#x27;SPD_H&#x27;:serialized(H),&#x27;SPD_H_pivots&#x27;:[str(v) for v in H_pivots],
+ &#x27;moment_curve_trials&#x27;:trials,&#x27;separating_t&#x27;:chosen,&#x27;bad_parameter_bound_if_exact_D_L&#x27;:bad_parameter_bound,
+ &#x27;distinct_rational_eigenvalues&#x27;:[str(v) for v in eigenvalues],
+ &#x27;derived_primal_axis_frame_V&#x27;:serialized(V),&#x27;derived_inverse_frame_L&#x27;:serialized(frame_inverse),
+ &#x27;det_V&#x27;:str(V.det()),&#x27;Q_prime&#x27;:serialized(Q),&#x27;Q_LDL_positive_weights&#x27;:[str(v) for v in weights],
+ &#x27;candidate_space_diagonalization&#x27;:&#x27;PASS; all n proposed quadratics diagonal in independent frame, so space exactly equals its squared-axis span&#x27;,
+ &#x27;terminal_even_QPD_identity&#x27;:&#x27;PASS direct full quartic substitution and PD LDL&#x27;,
+ &#x27;terminal_positive_square_identity&#x27;:&#x27;PASS independently aggregated observed coefficients&#x27;,
+ &#x27;positive_square_coefficient_columns&#x27;:serialized(square_coefficients),
+ &#x27;scope&#x27;:&#x27;One frozen author n5 instance with proposed rational quadratic space; candidate rounding itself not reconstructed here, no universal precision/iteration/conditioning bound&#x27;,
+ &#x27;universal_exact_small_SDP_claim&#x27;:False,
+ &#x27;practical_or_control_superiority_claim&#x27;:False
+}
+OUT.write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+print(json.dumps({&#x27;status&#x27;:result[&#x27;status&#x27;],&#x27;seconds&#x27;:result[&#x27;elapsed_seconds&#x27;],&#x27;t&#x27;:chosen,&#x27;det_V&#x27;:str(V.det())}))
+</pre></html>

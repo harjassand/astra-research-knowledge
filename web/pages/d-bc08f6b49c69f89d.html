@@ -1,0 +1,214 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>&quot;&quot;&quot;Independent coefficient-only replay of the frozen n5 SOS certificate.</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>&quot;&quot;&quot;Independent coefficient-only replay of the frozen n5 SOS certificate.</h1><p>Source ID d-bc08f6b49c69f89d; literature/sources/metric_use10/cycle17/dependencies/metric_acquisition_check_sos_certificate_and_range.py; 2467 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>&quot;&quot;&quot;Independent coefficient-only replay of the frozen n5 SOS certificate.
+
+Reads the observed quartic, budget, freeze and learner output, never hidden
+truth or producer code. Derives A, its adjoint and quadratic metric directly.
+No optimizer rerun, no eigenvector fitting and no universal precision claim.
+&quot;&quot;&quot;
+from pathlib import Path
+from itertools import product
+from math import isqrt, factorial
+import hashlib
+import json
+import time
+import sympy as s
+
+ROOT=Path(__file__).resolve().parents[3]
+PEER=ROOT/&#x27;results/metric_use10/cycle17&#x27;
+OUT=ROOT/&#x27;results/metric_acquisition/cycle17/sos_certificate_and_range_checks.json&#x27;
+start=time.perf_counter()
+
+def digest(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+def mat(rows):
+    return s.Matrix([[s.Rational(value) for value in row] for row in rows])
+def ldlt(A, positive=False):
+    assert A == A.T
+    n=A.rows
+    L=s.eye(n)
+    D=[]
+    for j in range(n):
+        pivot=A[j,j]-sum(L[j,k]*L[j,k]*D[k] for k in range(j))
+        assert pivot != 0
+        if positive:
+            assert pivot &gt; 0
+        D.append(pivot)
+        for i in range(j+1,n):
+            L[i,j]=(A[i,j]-sum(L[i,k]*L[j,k]*D[k] for k in range(j)))/pivot
+    assert L*s.diag(*D)*L.T == A
+    return D
+def sqrt_upper(q, denominator=10**12):
+    q=s.Rational(q)
+    assert q &gt;= 0
+    numerator=int(q.p)*denominator*denominator
+    div=int(q.q)
+    k=isqrt(numerator//div)
+    if k*k*div &lt; numerator:
+        k+=1
+    upper=s.Rational(k,denominator)
+    assert upper*upper &gt;= q
+    return upper
+
+input_path=PEER/&#x27;SOS_OBSERVED_INPUT.json&#x27;
+output_path=PEER/&#x27;SOS_LEARNER_OUTPUT.json&#x27;
+admission_path=PEER/&#x27;SOS_ADMISSION.json&#x27;
+freeze=json.loads((PEER/&#x27;SOS_INPUT_FREEZE.json&#x27;).read_text())
+data=json.loads(input_path.read_text())
+learner=json.loads(output_path.read_text())
+certificate=learner[&#x27;certificate&#x27;]
+input_hash=digest(input_path)
+output_hash=digest(output_path)  # pinned before any optional post-truth action
+assert input_hash==learner[&#x27;input_sha256&#x27;]==freeze[&#x27;files&#x27;][input_path.name]
+assert digest(admission_path)==learner[&#x27;admission_sha256&#x27;]==freeze[&#x27;files&#x27;][admission_path.name]
+n=data[&#x27;n&#x27;]
+N=n*(n+1)//2
+assert n==5 and N==15
+pairs=[(i,i) for i in range(n)]+[(i,j) for i in range(n) for j in range(i+1,n)]
+features=[]
+basis=[]
+for i,j in pairs:
+    e=[0]*n
+    e[i]+=1
+    e[j]+=1
+    features.append(tuple(e))
+    A=s.zeros(n)
+    if i==j:
+        A[i,i]=1
+    else:
+        A[i,j]=A[j,i]=s.Rational(1,2)
+    basis.append(A)
+
+M=mat(certificate[&#x27;M&#x27;])
+G=mat(certificate[&#x27;G&#x27;])
+assert M.shape==(n,n) and G.shape==(N,N)
+assert M==M.T and G==G.T
+metric_coeff=s.Matrix([M[i,i] if i==j else 2*M[i,j] for i,j in pairs])
+S=G-metric_coeff*metric_coeff.T
+assert S==mat(certificate[&#x27;residual_Gram&#x27;])
+mp=ldlt(M,True)
+sp=ldlt(S,True)
+
+observed={tuple(t[&#x27;exponent&#x27;]):s.Rational(t[&#x27;coefficient&#x27;]) for t in data[&#x27;terms&#x27;]}
+gram_polynomial={}
+for i,e in enumerate(features):
+    for j,d in enumerate(features):
+        exp=tuple(a+b for a,b in zip(e,d))
+        gram_polynomial[exp]=gram_polynomial.get(exp,0)+G[i,j]
+gram_polynomial={e:v for e,v in gram_polynomial.items() if v!=0}
+assert gram_polynomial==observed
+
+dual={tuple(t[&#x27;exponent&#x27;]):s.Rational(t[&#x27;value&#x27;]) for t in certificate[&#x27;lambda&#x27;]}
+K=s.Matrix(N,N,lambda i,j:dual.get(tuple(a+b for a,b in zip(features[i],features[j])),0))
+assert K==mat(certificate[&#x27;K&#x27;])
+kp=ldlt(K,True)
+Minv=M.inv()
+w=s.Matrix([Minv[i,j]/2 for i,j in pairs])
+assert w==mat(certificate[&#x27;w&#x27;])
+alpha=(w.T*K.inv()*w)[0]
+assert alpha==s.Rational(certificate[&#x27;alpha&#x27;])
+lambda_f=sum(dual.get(e,0)*coefficient for e,coefficient in observed.items())
+c=lambda_f+alpha
+delta=c-n
+a=s.Rational(certificate[&#x27;a_outward&#x27;])
+zeta=a/(1-a)
+assert c==s.Rational(certificate[&#x27;c&#x27;])
+assert delta==s.Rational(certificate[&#x27;delta_upper&#x27;])
+assert zeta==s.Rational(certificate[&#x27;zeta&#x27;])
+assert delta&gt;=0 and 0&lt;a&lt;s.Rational(1,2) and 2*delta&lt;=a*a
+
+# Observable quadratic coefficient inner product in Mc whitening. All
+# entries are rational; no matrix square root or hidden metric is evaluated.
+W=s.Matrix(N,N,lambda i,j:s.trace(Minv*basis[i]*Minv*basis[j]))
+ldlt(W,True)
+Tc=s.trace(S*W)
+assert Tc&gt;0
+Tbound=Tc/(1-a)**2
+leak=n*delta
+h=sqrt_upper(2*Tbound*leak+leak*leak)
+b=sqrt_upper(2*delta/(1-a))
+r=b*(2*sqrt_upper(n)+b)
+error_true=sqrt_upper(3*(r+h)**2+h*h)
+error_candidate=error_true/(1-a)**2
+Winv=W.inv()
+inertia_checks=[]
+chosen=None
+for gamma in [s.Rational(1,2),s.Rational(1,4),s.Rational(1,8),
+              s.Rational(1,16),s.Rational(1,32),s.Rational(1,64)]:
+    try:
+        pivots=ldlt(S-gamma*Winv)
+    except AssertionError:
+        inertia_checks.append({&#x27;gamma&#x27;:str(gamma),&#x27;status&#x27;:&#x27;zero-pivot UNKNOWN&#x27;})
+        continue
+    positive=sum(int(bool(p&gt;0)) for p in pivots)
+    negative=sum(int(bool(p&lt;0)) for p in pivots)
+    assert positive+negative==N
+    entry={&#x27;gamma&#x27;:str(gamma),&#x27;positive&#x27;:positive,&#x27;negative&#x27;:negative,
+           &#x27;dimension_matches_residual&#x27;:positive==n-1,
+           &#x27;gamma_above_Gram_error&#x27;:bool(gamma&gt;error_candidate)}
+    inertia_checks.append(entry)
+    if positive==n-1 and gamma&gt;error_candidate:
+        chosen=gamma
+        break
+
+# Canonical contact moment is an algebraic identity, not fixture contacts
+# supplied to this checker or an algorithm for discovering them.
+moment=s.zeros(N)
+for signs in product([-1,1],repeat=n):
+    v=s.Matrix([s.Rational(1,n) if i==j else s.sqrt(2)*signs[i]*signs[j]/n for i,j in pairs])
+    moment+=v*v.T/(2**n)
+expected=s.zeros(N)
+expected[:n,:n]=s.ones(n)/(n*n)
+for i in range(n,N):
+    expected[i,i]=s.Rational(2,n*n)
+assert moment==expected and moment.rank()==N-(n-1)
+
+# Derive diagonal Gram/tensor norm by polynomial multinomial coefficients.
+R=s.Matrix(3,3,lambda i,j:s.Symbol(&#x27;r&#x27;+str(min(i,j))+str(max(i,j))))
+tensor_norm=0
+for i in range(3):
+    tensor_norm+=R[i,i]**2
+for i in range(3):
+    for j in range(i+1,3):
+        coefficient=2*R[i,j]
+        multiplicity=factorial(4)//(factorial(2)*factorial(2))
+        tensor_norm+=coefficient*coefficient/multiplicity
+expected_tensor=sum(R[i,i]**2 for i in range(3))+s.Rational(2,3)*sum(R[i,j]**2 for i in range(3) for j in range(i+1,3))
+assert s.expand(tensor_norm-expected_tensor)==0
+frobenius=sum(v*v for v in R)
+assert s.expand(tensor_norm-frobenius/3-s.Rational(2,3)*sum(R[i,i]**2 for i in range(3)))==0
+
+result={
+ &#x27;status&#x27;:&#x27;PASS independent frozen observed n5 certificate replay&#x27;,
+ &#x27;elapsed_seconds&#x27;:time.perf_counter()-start,
+ &#x27;producer_imports&#x27;:False,&#x27;hidden_truth_read&#x27;:False,&#x27;optimizer_rerun&#x27;:False,
+ &#x27;reads&#x27;:[&#x27;SOS_INPUT_FREEZE.json&#x27;,&#x27;SOS_OBSERVED_INPUT.json&#x27;,&#x27;SOS_ADMISSION.json&#x27;,&#x27;SOS_LEARNER_OUTPUT.json&#x27;],
+ &#x27;input_sha256&#x27;:input_hash,&#x27;learner_output_sha256_before_checks&#x27;:output_hash,
+ &#x27;n&#x27;:n,&#x27;quadratic_feature_dimension&#x27;:N,&#x27;PSD_block_order&#x27;:N+1,
+ &#x27;primal_polynomial_identity&#x27;:&#x27;PASS direct coefficient aggregation&#x27;,
+ &#x27;primal_M_residual_PD&#x27;:&#x27;PASS independent exact LDL&#x27;,
+ &#x27;dual_Hankel_adjunction&#x27;:&#x27;PASS direct monomial coefficient adjoint&#x27;,
+ &#x27;dual_PSD&#x27;:&#x27;PASS independent K PD and exact zero Schur complement&#x27;,
+ &#x27;dual_gap&#x27;:str(delta),&#x27;dual_gap_float&#x27;:float(delta),&#x27;a&#x27;:str(a),&#x27;zeta_float&#x27;:float(zeta),
+ &#x27;metric_confidence&#x27;:&#x27;PASS rational 2delta&lt;=a²&#x27;,
+ &#x27;canonical_contact_moment&#x27;:&#x27;PASS exact 32-sign sum; proof identity only&#x27;,
+ &#x27;diagonal_Gram_tensor_injectivity&#x27;:&#x27;PASS free-symbol polynomial coefficient replay&#x27;,
+ &#x27;posterior_range&#x27;:{
+   &#x27;Tc_rational&#x27;:str(Tc),&#x27;Tc_float&#x27;:float(Tc),
+   &#x27;true_whitened_leakage_upper&#x27;:str(leak),&#x27;leakage_float&#x27;:float(leak),
+   &#x27;true_whitened_offspace_Frobenius_upper&#x27;:str(h),&#x27;offspace_float&#x27;:float(h),
+   &#x27;true_whitened_Gram_distance_upper&#x27;:str(error_true),&#x27;Gram_error_float&#x27;:float(error_true),
+   &#x27;candidate_whitened_Gram_distance_upper&#x27;:str(error_candidate),&#x27;candidate_Gram_error_float&#x27;:float(error_candidate),
+   &#x27;inertia_checks&#x27;:inertia_checks,&#x27;certified_gamma&#x27;:None if chosen is None else str(chosen),
+   &#x27;sinTheta_upper&#x27;:None if chosen is None else str(error_candidate/chosen),
+   &#x27;sinTheta_float&#x27;:None if chosen is None else float(error_candidate/chosen),
+   &#x27;status&#x27;:&#x27;INFORMATIVE POSTERIOR RANGE BOUND&#x27; if chosen is not None else &#x27;Gram bound PASS; informative range gap UNKNOWN&#x27;
+ },
+ &#x27;exact_rational_D_L_acquisition&#x27;:&#x27;OPEN; this checker acquires no axes/subspace&#x27;,
+ &#x27;universal_SDP_precision_or_runtime&#x27;:&#x27;OPEN&#x27;,
+ &#x27;scope&#x27;:&#x27;One frozen author n5 law; no performance/physical/noisy/general runtime claim&#x27;
+}
+OUT.write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+print(json.dumps({&#x27;status&#x27;:result[&#x27;status&#x27;],&#x27;seconds&#x27;:result[&#x27;elapsed_seconds&#x27;],
+                 &#x27;delta&#x27;:float(delta),&#x27;candidate_Gram_error&#x27;:float(error_candidate),
+                 &#x27;gamma&#x27;:None if chosen is None else str(chosen),
+                 &#x27;sinTheta&#x27;:None if chosen is None else float(error_candidate/chosen)}))
+</pre></html>

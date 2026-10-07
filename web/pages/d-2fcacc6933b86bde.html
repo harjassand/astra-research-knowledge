@@ -1,0 +1,3801 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Operator Score Matching for Learning Quantum Hamiltonians</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>Operator Score Matching for Learning Quantum Hamiltonians</h1><p>Source ID d-2fcacc6933b86bde; literature/sources/r03_quantum/2609.25246-html.html; 54154 o200k tokens; role primary_source_or_metadata; extraction html_text_discovery_only_math_may_be_lossy. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>Operator Score Matching for Learning Quantum Hamiltonians
+
+      Report GitHub Issue
+      ×
+
+      Title:
+
+Content selection saved. Describe the issue below:
+
+      Description:
+
+      Submit without GitHub
+      Submit in GitHub
+
+    arXiv is now an independent nonprofit!
+    Learn more
+    ×
+
+      Back to arXiv
+
+\{F_{k}\}
+
+\phi^{4}
+
+\{F_{k}\}
+
+    License: CC BY 4.0
+
+arXiv:2609.25246v1 [quant-ph] 21 Sep 2026
+
+Operator Score Matching for Learning Quantum Hamiltonians
+
+Preprint: LA-UR-26-23901
+
+Shreya Shukla
+
+Email: sshukla@lanl.gov
+
+Affiliation: Theoretical Division, Los Alamos National Laboratory, Los Alamos, New Mexico 87545, USA
+
+Affiliation: Center for Quantum Computing, Los Alamos National Laboratory, Los Alamos, New Mexico 87545, USA
+
+  
+Abhijith Jayakumar
+
+Email: abhijithj@lanl.gov
+
+Affiliation: Theoretical Division, Los Alamos National Laboratory, Los Alamos, New Mexico 87545, USA
+
+Affiliation: Center for Quantum Computing, Los Alamos National Laboratory, Los Alamos, New Mexico 87545, USA
+
+  
+Andrey Y. Lokhov
+
+Email: lokhov@lanl.gov
+
+Affiliation: Theoretical Division, Los Alamos National Laboratory, Los Alamos, New Mexico 87545, USA
+
+Affiliation: Center for Quantum Computing, Los Alamos National Laboratory, Los Alamos, New Mexico 87545, USA
+
+Abstract
+
+Learning quantum Hamiltonians from low-temperature thermal state measurements is a fundamental problem in quantum physics. The scalability of existing methods is limited by the complexity of semidefinite optimization problems or partition function computation. Here, we develop a quantum analog of classical score matching that exploits generalized notions of derivatives and integration by parts in operator algebras. We introduce a new Operator Score Matching loss function that recovers Hamiltonian parameters using simple gradient descent without the need to compute intractable normalization constants.
+Numerical experiments on the Gibbs states of the transverse-field Ising model, XXZ spin chain,
+Fermi-Hubbard model, and lattice 
+\phi^{4}
+ϕ4\phi^{4} theory demonstrate efficient parameter recovery using
+finite-depth truncations of nested commutator expansions.
+Our results establish Operator Score Matching as a practical, partition-function-free framework for quantum Hamiltonian learning.
+
+I INTRODUCTION
+
+Determining the microscopic Hamiltonian governing a quantum system from experimental observations is among the most fundamental inverse problems in physics. While forward simulation (predicting observables given a Hamiltonian) has seen dramatic advances through tensor networks [31, 12], quantum Monte Carlo [17], and neural network quantum states [10, 42, 11], the inverse problem of learning the Hamiltonian remains substantially more challenging. This challenge is central to quantum computing, where validating engineered Hamiltonians against target models is essential [13, 9], and to condensed matter physics, where extracting effective low-energy descriptions from spectroscopic or scattering data could reveal emergent phenomena [25].
+
+The specific setting we consider, learning the parameters of a local Hamiltonian from copies of its Gibbs state 
+\rho\propto\mathrm{e}^{-H}
+ρ∝e−H\rho\propto\mathrm{e}^{-H} (where we absorb the inverse temperature 
+\beta
+β\beta into 
+H
+HH), has a rich recent history [14, 15, 4]. Anshu et al. [3] first established polynomial sample-complexity bounds for this task, but their algorithm has a worst-case runtime exponential in the system size, requiring a computation equivalent in difficulty to evaluating the partition function, which is intractable even classically [29]. Haah et al. [18] gave an efficient algorithm for the high-temperature regime and proved that this scaling is optimal up to constants in the exponent. The low-temperature regime (precisely where quantum phenomena such as topological order and superconductivity are most prominent [2]), however, remained open until Bakshi et al. [6] (BLMT) gave a polynomial-time algorithm valid at any constant temperature. Their approach introduces a flat polynomial approximation to the exponential, formulates learning as a polynomial constraint system, and solves it via the Sum-of-Squares (SoS) hierarchy [7, 16].
+
+Although theoretically efficient for fixed inverse temperature, the method of Bakshi et al. relies on a high-degree sum-of-squares relaxation. The practical scalability of such relaxations is often limited by the size and computational cost of the resulting semidefinite programs, particularly as the number of variables and polynomial degree increase [1, 28]. Since the degree required by the algorithm grows rapidly with inverse temperature and the target accuracy, the resulting optimization becomes computationally demanding for larger systems, especially in the low-temperature regime. This motivates learning methods that retain the advantage of avoiding the partition function while employing a simpler optimization procedure.
+
+A natural source of inspiration for circumventing the partition function bottleneck comes from classical statistics. Score matching [20] avoids the computation of intractable normalization factors by matching the gradient of the log-probability, or the score function, rather than the probability itself, yielding consistent estimators that never require computing the partition function. The idea has found wide application in machine learning [40, 41], energy-based models [26], and statistical physics, where it enables learning of renormalization group flows from Monte Carlo data [36, 34]. Very recently, rigorous finite-sample bounds have been established for learning classical Gibbs distributions with continuous variables using score matching [39].
+
+Extending these ideas to quantum systems, however, encounters a fundamental obstacle: the intrinsic non-commutativity of quantum mechanics. Consequently, the classical score 
+\nabla_{x}\log p(x)
+∇xlogp(x)\nabla_{x}\log p(x) lacks a unique quantum analog, as different operator orderings and notions of differentiation yield inequivalent generalizations. Furthermore, naive quantum generalizations of classical loss functions fail to satisfy two essential criteria: consistency (possessing a global minimum exactly at the true model parameters) and estimability (being directly computable from copies of the target density matrix without prior knowledge of the true parameters).
+
+In this work, we develop an algorithm building on the philosophy of classical score matching while introducing genuinely quantum ingredients. We define an operator score based on conjugation by the density matrix, which eliminates the dependence of the loss on the partition function. Using this operator score, we define a loss that can be estimated using independent copies of the unknown density matrix by measuring expectation values of local operators. Moreover, we can show that this loss has a unique global minimum that corresponds to the unknown Hamiltonian. The method also applies to any system with a finite-dimensional Hilbert space, including systems beyond qubits.
+Interestingly, while the classical score 
+\nabla\log p(x)=-\nabla H(x)
+∇log⁡p​(x)=−∇H​(x)\nabla\log p(x)=-\nabla H(x) is a sum of local terms (since differentiation commutes with the Hamiltonian), the quantum score operator generates non-local contributions through nested commutators, as depicted schematically in Fig. 1.
+
+For this new operator-score loss, we establish a local Polyak–Łojasiewicz (PL) inequality [32, 24] that guarantees exponential convergence of gradient descent near the true parameters. The PL constant 
+\mu
+μ\mu is controlled by the minimum eigenvalue of a Gram matrix 
+G(\theta)
+G⁡(θ)G(\theta) that governs the convergence rate and inverse temperature 
+\beta
+β\beta.
+
+We validate the framework numerically on four models spanning different physical settings: the transverse-field Ising model, the XXZ spin chain, the Fermi–Hubbard model, and lattice 
+\phi^{4}
+ϕ4\phi^{4} theory. The fermionic example uses Majorana fermion direction operators and works directly in Fock space, confirming that the method requires no mapping to qubits and is agnostic to particle statistics. The framework extends naturally to lattice field theories, where score matching has already proven valuable in the classical setting [36], opening possibilities for data-driven approaches to strongly correlated quantum systems.
+
+II LEARNING PROBLEM AND OPERATOR SCORE MATCHING
+
+II.1 Problem formulation
+
+We consider the parametrized Hamiltonian
+
+H_{\theta}=\sum_{i=1}^{m}\theta_{i}h_{i},\qquad\theta\in\mathbb{R}^{m},
+Hθ=∑i=1mθi​hi,θ∈ℝm,H_{\theta}=\sum_{i=1}^{m}\theta_{i}h_{i},\qquad\theta\in\mathbb{R}^{m},
+
+(1)
+
+with fixed Hermitian operators 
+\{h_{i}\}
+{hi}\{h_{i}\} and a data state 
+\rho\propto\mathrm{e}^{-H^{\prime}}
+ρ∝e−H′\rho\propto\mathrm{e}^{-H^{\prime}}. At the true parameters 
+\theta^{*}
+θ∗\theta^{*}, 
+H_{\theta^{\ast}}=H^{\prime}
+Hθ∗=H′H_{\theta^{\ast}}=H^{\prime}. We work in the standard setting [3, 6] where the operator basis 
+\{h_{i}\}
+{hi}\{h_{i}\} for representing these Hamiltonians is known, but the associated parameters are not. The goal is to recover 
+\theta^{*}
+θ∗\theta^{*} such that 
+H_{\theta^{*}}=H^{\prime}
+Hθ∗=H′H_{\theta^{*}}=H^{\prime} from expectations measured in the state 
+\rho
+ρ\rho.
+
+II.2 Operator Score Matching
+
+The key insight for attacking the problem is that quantum systems lend themselves to derivations that serve as analogs of derivative operators in classical theories. We can circumvent the fundamental bottleneck of computing the partition function using these derivations and then match these generalized gradients between the parametrized and data Hamiltonians to solve the learning problem.
+
+Classical score matching. Let us recall the classical setting that motivates our approach. For a probability
+density 
+p_{\theta}(x)\propto\mathrm{e}^{-E_{\theta}(x)}
+pθ​(x)∝e−Eθ​(x)p_{\theta}(x)\propto\mathrm{e}^{-E_{\theta}(x)} (we set 
+\beta=1
+β=1\beta=1, unless otherwise specified), the score is the gradient of the log-density,
+
+s_{\theta}(x):=\nabla_{x}\log p_{\theta}(x)=-\nabla_{x}E_{\theta}(x)
+sθ(x):=∇xlogpθ(x)=−∇xEθ(x)s_{\theta}(x):=\nabla_{x}\log p_{\theta}(x)=-\nabla_{x}E_{\theta}(x), which is
+manifestly independent of the partition function 
+Z(\theta)
+Z⁡(θ)Z(\theta). The idea behind score matching is therefore to
+estimate the parameters 
+\theta
+θ\theta by minimizing the following loss
+
+\displaystyle\mathcal{L}(\theta)
+ℒ⁡(θ)\displaystyle\mathcal{L}(\theta)
+
+\displaystyle=\mathbb{E}_{p}\,\|s_{\theta}-s_{\mathrm{data}}\|^{2}\;.
+=𝔼p​‖sθ−sdata‖2.\displaystyle=\mathbb{E}_{p}\,\|s_{\theta}-s_{\mathrm{data}}\|^{2}\;.
+
+(2)
+
+Minimizing this loss over the parameters 
+\theta
+θ\theta, in principle, allows us to learn the unknown distribution 
+p
+pp as this loss vanishes only when 
+p_{\theta}=p
+pθ=pp_{\theta}=p.
+However, as written, this loss depends on the unknown data score 
+s_{\mathrm{data}}
+sdatas_{\mathrm{data}}. This issue can be avoided by using an integration-by-parts identity that allows us to express the loss in a form that can be optimized using only samples of the distribution [20]. In the classical setting, this framework can be extended to write down more general estimators [37].
+
+Defining the quantum score and the loss. To define a consistent and estimable quantum analog that works with density matrices, we first replace the classical gradient 
+\nabla_{x}
+∇x\nabla_{x}
+by a derivative operator built from commutators, so that the resulting
+score is again independent of 
+Z(\theta)
+Z⁡(θ)Z(\theta) and the dependence on the unknown
+target is removed by an analogous trace integration-by-parts identity (see Eq. (7)).
+
+To construct the operator score loss, we define the generalized derivative of an operator 
+A
+AA along the direction 
+F_{k}
+FkF_{k} as
+
+\displaystyle\mathscr{D}_{k}A
+𝒟k​A\displaystyle\mathscr{D}_{k}A
+
+\displaystyle:=[F_{k},e^{-A}]e^{A}.
+:=[Fk,e−A]​eA.\displaystyle:=[F_{k},e^{-A}]e^{A}.
+
+(3)
+
+From this, we can compute the quantum score of the model density
+
+p_{\theta}=e^{-H_{\theta}}/Z(\theta)
+pθ=e−Hθ/Z⁡(θ)p_{\theta}=e^{-H_{\theta}}/Z(\theta) (along the direction 
+F_{k}
+FkF_{k}) as
+
+\displaystyle\mathscr{D}_{k}(-\log p_{\theta})
+𝒟k​(−log⁡pθ)\displaystyle\mathscr{D}_{k}(-\log p_{\theta})
+
+\displaystyle:=[F_{k},e^{\log p_{\theta}}]e^{-\log p_{\theta}},
+:=[Fk,elog⁡pθ]​e−log⁡pθ,\displaystyle:=[F_{k},e^{\log p_{\theta}}]e^{-\log p_{\theta}},
+
+\displaystyle=[F_{k},e^{-H_{\theta}}Z(\theta)^{-1}]e^{H_{\theta}}Z(\theta),
+=[Fk,e−Hθ​Z​(θ)−1]​eHθ​Z​(θ),\displaystyle=[F_{k},e^{-H_{\theta}}Z(\theta)^{-1}]e^{H_{\theta}}Z(\theta),
+
+\displaystyle=[F_{k},e^{-H_{\theta}}]e^{H_{\theta}},
+=[Fk,e−Hθ]​eHθ,\displaystyle=[F_{k},e^{-H_{\theta}}]e^{H_{\theta}},
+
+(4)
+
+Using this notion, we can formally define the operator score-matching loss:
+
+\displaystyle\mathcal{L}_{\rm osm}(\theta)=\sum_{k}\left\langle|\mathscr{D}_{k}H_{\theta}-\mathscr{D}_{k}H^{\prime}|^{2}\right\rangle_{\rho}.
+ℒosm​(θ)=∑k⟨|𝒟k​Hθ−𝒟k​H′|2⟩ρ.\displaystyle\mathcal{L}_{\rm osm}(\theta)=\sum_{k}\left\langle|\mathscr{D}_{k}H_{\theta}-\mathscr{D}_{k}H^{\prime}|^{2}\right\rangle_{\rho}.
+
+(5)
+
+It is clear that 
+\mathcal{L}(\theta^{*})=0
+ℒ⁡(θ∗)=0\mathcal{L}(\theta^{*})=0; hence the true Hamiltonian is a global minimizer of the loss. However, this does not imply that it is unique. We can show that by choosing an appropriate set of 
+{F_{k}}
+Fk{F_{k}} operators, we can always write down a loss function with a unique global minimum at the true Hamiltonian parameters.
+
+Since 
+\rho
+ρ\rho is a full-rank positive matrix, the condition 
+\mathcal{L}(\theta)=0
+ℒ⁡(θ)=0\mathcal{L}(\theta)=0 implies that 
+\mathscr{D}_{k}H_{\theta}=\mathscr{D}_{k}H^{\prime}
+𝒟k​Hθ=𝒟k​H′\mathscr{D}_{k}H_{\theta}=\mathscr{D}_{k}H^{\prime} for all directions 
+k
+kk. Expanding the derivative and rearranging gives
+
+\displaystyle\mathrm{e}^{-H_{\theta}}F_{k}\,\mathrm{e}^{H_{\theta}}
+e−Hθ​Fk​eHθ\displaystyle\mathrm{e}^{-H_{\theta}}F_{k}\,\mathrm{e}^{H_{\theta}}
+
+\displaystyle=\mathrm{e}^{-H^{\prime}}F_{k}\,\mathrm{e}^{H^{\prime}}\quad\forall k
+=e−H′FkeH′∀k\displaystyle=\mathrm{e}^{-H^{\prime}}F_{k}\,\mathrm{e}^{H^{\prime}}\quad\forall k
+
+\displaystyle\implies[\mathrm{e}^{H^{\prime}}\mathrm{e}^{-H_{\theta}},F_{k}]
+⟹[eH′​e−Hθ,Fk]\displaystyle\implies[\mathrm{e}^{H^{\prime}}\mathrm{e}^{-H_{\theta}},F_{k}]
+
+\displaystyle=0\quad\forall k\;.
+=0∀k.\displaystyle=0\quad\forall k\;.
+
+(6)
+
+Thus, a vanishing loss implies that 
+Y:=\mathrm{e}^{H^{\prime}}\mathrm{e}^{-H_{\theta}}
+Y:=eH′​e−HθY:=\mathrm{e}^{H^{\prime}}\mathrm{e}^{-H_{\theta}} commutes with all direction operators. Clearly, this also implies that 
+Y
+YY commutes with any linear combination of 
+F_{k}
+FkF_{k} operators. Moreover, since 
+[Y,F_{k}F_{k^{\prime}}]=[Y,F_{k}]F_{k^{\prime}}+~F_{k}[Y,F_{k^{\prime}}],
+[Y,Fk​Fk′]=[Y,Fk]​Fk′+Fk​[Y,Fk′],[Y,F_{k}F_{k^{\prime}}]=[Y,F_{k}]F_{k^{\prime}}+~F_{k}[Y,F_{k^{\prime}}], this also implies that the commutator vanishes for the entire matrix algebra generated by the 
+F_{k}
+FkF_{k} operators.
+
+Thus, choosing the direction operators 
+F_{k}
+FkF_{k} to generate the full algebra forces 
+Y=c\cdot\mathds{1}
+Y=c⋅𝟙Y=c\cdot\mathds{1}, which implies 
+H^{\prime}=H_{\theta}+\log c\mathds{1}
+H′=Hθ+log⁡c​𝟙H^{\prime}=H_{\theta}+\log c\mathds{1}, i.e., the Hamiltonian is uniquely fixed by 
+\mathcal{L}(\theta)=0
+ℒ⁡(θ)=0\mathcal{L}(\theta)=0, up to an unobservable energy shift.
+
+This also shows that the number of 
+F_{k}
+FkF_{k} operators we need to choose is much smaller than the dimension of the Hilbert space. For instance, the full algebra of an 
+n
+nn-qubit system can be generated using only single-qubit (Pauli) 
+X\equiv\sigma^{x}
+X≡σxX\equiv\sigma^{x} and 
+Z\equiv\sigma^{z}
+Z≡σzZ\equiv\sigma^{z} operators. The choice of 
+F_{k}
+FkF_{k} operators also affects the computability of the loss function. We will discuss in Section II.3 how this choice can be made in any finite-dimensional local Hilbert space, including fermionic systems.
+
+Estimability of 
+\mathcal{L}(\theta)
+ℒ⁡(θ)\mathcal{L}(\theta): Even after the directions are fixed, the loss still depends on the unknown 
+H^{\prime}
+H′H^{\prime}. This is remedied by an integration-by-parts identity that follows from the cyclicity of the trace [Eq. (50) in Appendix A]:
+
+\displaystyle\langle O\,\mathscr{D}_{k}H^{\prime}\rangle_{\rho}=-\langle[F_{k},O]\rangle_{\rho}\;.
+⟨O​𝒟k​H′⟩ρ=−⟨[Fk,O]⟩ρ.\displaystyle\langle O\,\mathscr{D}_{k}H^{\prime}\rangle_{\rho}=-\langle[F_{k},O]\rangle_{\rho}\;.
+
+(7)
+
+This identity replaces terms involving the
+unknown target score 
+\mathscr{D}_{k}H^{\prime}
+𝒟k​H′\mathscr{D}_{k}H^{\prime} with expectation values of known
+commutators. Consequently, up to a 
+\theta
+θ\theta-independent constant,
+
+\displaystyle\mathcal{L}_{\rm std}(\theta)=\sum_{k}\left\langle|\mathscr{D}_{k}H_{\theta}|^{2}\right\rangle_{\rho}-2\real\sum_{k}\langle[F_{k}^{\dagger},\mathscr{D}_{k}H_{\theta}]\rangle_{\rho}.
+ℒstd(θ)=∑k⟨|𝒟kHθ|2⟩ρ−2Re∑k⟨[Fk†,𝒟kHθ]⟩ρ.\displaystyle\mathcal{L}_{\rm std}(\theta)=\sum_{k}\left\langle|\mathscr{D}_{k}H_{\theta}|^{2}\right\rangle_{\rho}-2\real\sum_{k}\langle[F_{k}^{\dagger},\mathscr{D}_{k}H_{\theta}]\rangle_{\rho}.
+
+(8)
+
+See Appendix A for a detailed derivation.
+
+Approximation and Truncation of 
+\mathscr{D}_{k}H_{\theta}
+𝒟k​Hθ\mathscr{D}_{k}H_{\theta}:
+A major practical hurdle in evaluating the loss function is computing the nonlinear quantity 
+\mathscr{D}_{k}H_{\theta}=[F_{k},\mathrm{e}^{-H_{\theta}}]\mathrm{e}^{H_{\theta}}
+𝒟k​Hθ=[Fk,e−Hθ]​eHθ\mathscr{D}_{k}H_{\theta}=[F_{k},\mathrm{e}^{-H_{\theta}}]\mathrm{e}^{H_{\theta}} and the associated expectations.
+Using the BCH identity, we have
+
+\displaystyle\mathrm{e}^{-H}F\,\mathrm{e}^{H}=\sum_{\ell=0}^{\infty}\frac{(-1)^{\ell}}{\ell!}[H,F]_{\ell}\;,
+e−H​F​eH=∑ℓ=0∞(−1)ℓℓ!​[H,F]ℓ,\displaystyle\mathrm{e}^{-H}F\,\mathrm{e}^{H}=\sum_{\ell=0}^{\infty}\frac{(-1)^{\ell}}{\ell!}[H,F]_{\ell}\;,
+
+(9)
+
+and we can obtain the nested-commutator expansion for 
+\mathscr{D}_{k}H_{\theta}
+𝒟k​Hθ\mathscr{D}_{k}H_{\theta} as
+
+\displaystyle\mathscr{D}_{k}H_{\theta}
+𝒟k​Hθ\displaystyle\mathscr{D}_{k}H_{\theta}
+
+\displaystyle=F_{k}-\mathrm{e}^{-H_{\theta}}F_{k}\mathrm{e}^{H_{\theta}}=\sum_{\ell=1}^{\infty}\frac{(-1)^{\ell+1}}{\ell!}\,[H_{\theta},F_{k}]_{\ell}\;,
+=Fk−e−Hθ​Fk​eHθ=∑ℓ=1∞(−1)ℓ+1ℓ!​[Hθ,Fk]ℓ,\displaystyle=F_{k}-\mathrm{e}^{-H_{\theta}}F_{k}\mathrm{e}^{H_{\theta}}=\sum_{\ell=1}^{\infty}\frac{(-1)^{\ell+1}}{\ell!}\,[H_{\theta},F_{k}]_{\ell}\;,
+
+(10)
+
+where 
+[H,F]_{\ell}:=[H,[H,\cdots[H,F]\cdots]]
+[H,F]ℓ:=[H,[H,⋯[H,F]⋯]][H,F]_{\ell}:=[H,[H,\cdots[H,F]\cdots]] denotes the 
+\ell^{\rm th}
+ℓth\ell^{\rm th} nested commutator of 
+H
+HH with 
+F
+FF.
+Truncating (10) at depth 
+d
+dd yields a polynomial in 
+\theta
+θ\theta whose degree grows with 
+d
+dd and the commutator structure of the chosen operator family.
+
+In principle, one may replace the exponential by a polynomial approximation with improved uniform control.
+Namely, if 
+q_{d}(x)
+qd​(x)q_{d}(x) is a degree-
+d
+dd polynomial approximating 
+\mathrm{e}^{-x}
+e−x\mathrm{e}^{-x} on the relevant spectral interval, then one may define
+
+\displaystyle\mathscr{D}^{(d)}_{k,\mathrm{poly}}H_{\theta}:=F_{k}-q_{d}(\operatorname{ad}_{H_{\theta}})F_{k}\;,
+𝒟k,poly(d)​Hθ:=Fk−qd​(adHθ)​Fk,\displaystyle\mathscr{D}^{(d)}_{k,\mathrm{poly}}H_{\theta}:=F_{k}-q_{d}(\operatorname{ad}_{H_{\theta}})F_{k}\;,
+
+(11)
+
+where 
+\operatorname{ad}_{H_{\theta}}(F):=[H_{\theta},F]
+adHθ⁡(F):=[Hθ,F]\operatorname{ad}_{H_{\theta}}(F):=[H_{\theta},F].
+The flat-exponential approximation of Ref. [6] provides stronger approximation guarantees than the naive Taylor truncation. However, our numerical experiments show that the naive Taylor truncation suffices.
+
+For practical purposes, we use a simple Taylor series truncation of degree 
+d
+dd:
+
+\displaystyle\mathscr{D}^{(d)}_{k}H_{\theta}:=\sum_{\ell=1}^{d}\frac{(-1)^{\ell+1}}{\ell!}\,[H_{\theta},F_{k}]_{\ell}\;.
+𝒟k(d)​Hθ:=∑ℓ=1d(−1)ℓ+1ℓ!​[Hθ,Fk]ℓ.\displaystyle\mathscr{D}^{(d)}_{k}H_{\theta}:=\sum_{\ell=1}^{d}\frac{(-1)^{\ell+1}}{\ell!}\,[H_{\theta},F_{k}]_{\ell}\;.
+
+(12)
+
+This is the simplest approximation; in our experiments with exact density matrices it achieves rapid error decay until numerical precision saturates around degree 
+d\sim 20
+d∼20d\sim 20. Empirically, we find that the depth required to reach a relative precision of 
+\epsilon
+ϵ\epsilon depends only on the local degree and interaction strength, and not on the system size. For example, numerical evidence is presented in Fig. 3(b), where we plot the depth 
+d^{*}
+d∗d^{*} versus chain length for the TFIM and find that it depends on the inverse temperature 
+\beta
+β\beta or the coupling strength, and is independent of 
+L
+LL once the chain contains the full support of the light cone of nested commutators. This also holds for the other models studied.
+
+Overall, our scheme reduces learning to evaluating expectations of a finite set of operator monomials under 
+\rho\propto\mathrm{e}^{-H^{\prime}}
+ρ∝e−H′\rho\propto\mathrm{e}^{-H^{\prime}}. The dominant cost is the number of distinct commutator monomials generated by 
+[H_{\theta},F_{k}]_{\ell}
+[Hθ,Fk]ℓ[H_{\theta},F_{k}]_{\ell}, which depends on locality and the algebra of the chosen operator basis.
+
+Figure 1: 
+Schematic of quantum score matching through local probes 
+F_{k}
+FkF_{k}.
+Left: A local kick generated by an operator 
+F_{k}
+FkF_{k} perturbs the Gibbs state 
+\rho
+ρ\rho, producing a score response 
+\mathscr{D}_{k}H^{\prime}
+𝒟k​H′\mathscr{D}_{k}H^{\prime} that spreads around the lattice site with truncation depth 
+d
+dd.
+Middle: Learning is performed by comparing the response fingerprints of the target Hamiltonian 
+H^{\prime}
+H′H^{\prime} and the model Hamiltonian 
+H_{\theta}
+HθH_{\theta} under the same probes 
+F_{k}
+FkF_{k} and minimizing the discrepancy.
+Right: Identifiability is controlled by probe coverage: when the set 
+\{F_{k}\}
+{Fk}\{F_{k}\} probes all nontrivial directions in the model class 
+\mathrm{span}\{h_{i}\}
+span​{hi}\mathrm{span}\{h_{i}\}, no hidden Hamiltonian direction remains invisible, and matching all responses determines 
+H_{\theta}
+HθH_{\theta} up to an additive constant.
+
+II.3 Choosing Directions 
+\{F_{k}\}
+{Fk}\{F_{k}\}
+
+The choice of directions 
+\{F_{k}\}
+{Fk}\{F_{k}\} controls two competing
+objectives:
+
+(i) 
+
+Completeness.
+If the direction operators 
+\{F_{k}\}
+{Fk}\{F_{k}\} satisfy
+
+\displaystyle\mathrm{Comm}(\{F_{k}\})\cap\text{Alg}\{h_{i}\}\subseteq\mathrm{span}\{\mathds{1}\},
+Comm⁡({Fk})∩Alg​{hi}⊆span⁡{𝟙},\displaystyle\mathrm{Comm}(\{F_{k}\})\cap\text{Alg}\{h_{i}\}\subseteq\mathrm{span}\{\mathds{1}\},
+
+(13)
+
+where 
+\text{Alg}\{h_{i}\}
+Alg​{hi}\text{Alg}\{h_{i}\} is the associative algebra generated by the operators 
+\{h_{i}\}
+{hi}\{h_{i}\} and 
+\mathrm{Comm}(\{F_{k}\})
+Comm⁡({Fk})\mathrm{Comm}(\{F_{k}\}) is the set of operators commuting with 
+F_{k}
+FkF_{k} for all 
+k
+kk, then 
+\mathscr{D}_{k}H_{\theta}=\mathscr{D}_{k}H^{\prime}
+𝒟k​Hθ=𝒟k​H′\mathscr{D}_{k}H_{\theta}=\mathscr{D}_{k}H^{\prime} for all 
+k
+kk implies 
+H_{\theta}-H^{\prime}=c\cdot\mathds{1}
+Hθ−H′=c⋅𝟙H_{\theta}-H^{\prime}=c\cdot\mathds{1} for some constant 
+c
+cc. This completeness condition states that multiples of the identity must be the only operators in the algebra generated by the Hamiltonian terms that also commute with all the direction operators. The full proof is given in Theorem 1 of Appendix B.1. This condition can obviously be satisfied by choosing the 
+F_{k}
+FkF_{k} operators to generate the entire matrix algebra.
+
+(ii) 
+
+Computability. Computation of the loss involves nested commutators of the form 
+[H_{\theta},F_{k}]_{\ell}
+[Hθ,Fk]ℓ[H_{\theta},F_{k}]_{\ell}. Hence, for the given operator basis 
+{h_{k}}
+hk{h_{k}}, the 
+F_{k}
+FkF_{k} operators must be chosen so that these nested commutators are actually computable. For local Hamiltonians, these nested commutators spread over a region of radius 
+\sim\ell
+∼ℓ\sim\ell around 
+\mathrm{supp}(F_{k})
+supp⁡(Fk)\mathrm{supp}(F_{k}). Hence, it would be preferable to choose local 
+F_{k}
+FkF_{k} operators in that case.
+
+We show that for any 
+n
+nn-body system, a polynomial number of single-site direction operators
+suffices to satisfy both conditions simultaneously.
+We give the recipe in two cases set by particle statistics: distinguishable sites (spins, qubits, and bosons), where operators on different sites commute and each site is a tensor factor, and fermionic modes, where they anticommute. This completes the prescription for our approach, schematically depicted in Fig. 1.
+
+Qudit and spin systems: For an 
+L
+LL-qubit system, we can choose single-qubit 
+Z\equiv\sigma^{z}
+Z≡σzZ\equiv\sigma^{z} and 
+X\equiv\sigma^{x}
+X≡σxX\equiv\sigma^{x} operators,
+
+F_{k}\in\{Z_{1},X_{1},\ldots,Z_{L},X_{L}\}
+Fk∈{Z1,X1,…,ZL,XL}F_{k}\in\{Z_{1},X_{1},\ldots,Z_{L},X_{L}\}, which generate the full 
+4^{L}
+4L4^{L}-dimensional
+matrix algebra.
+
+For a general 
+L
+LL-site lattice with local Hilbert-space dimension 
+n
+nn, the relevant object is the full single-site matrix algebra 
+M_{n}(\mathbb{C})
+Mn​(ℂ)M_{n}(\mathbb{C}). For finite 
+n
+nn, we therefore
+use the generalized Pauli (clock–shift) operators 
+\hat{C},\hat{S}
+C^,S^\hat{C},\hat{S} [33, 22, 38], which satisfy
+
+\displaystyle\hat{S}\hat{C}=\mathrm{e}^{-2\pi\mathrm{i}/n}\,\hat{C}\hat{S}\;,\qquad\hat{S}^{n}=\hat{C}^{n}=\mathds{1}\;.
+S^C^=e−2πi/nC^S^,S^n=C^n=𝟙.\displaystyle\hat{S}\hat{C}=\mathrm{e}^{-2\pi\mathrm{i}/n}\,\hat{C}\hat{S}\;,\qquad\hat{S}^{n}=\hat{C}^{n}=\mathds{1}\;.
+
+(14)
+
+These operators generate 
+M_{n}(\mathbb{C})
+Mn​(ℂ)M_{n}(\mathbb{C}) and reduce to Pauli matrices 
+Z,X
+Z,XZ,X for a local Hilbert space of dimension 
+n=2
+n=2n=2, as shown in Appendix B.2.
+
+Another choice for these operators can be made by writing 
+\hat{C}=\mathrm{e}^{\mathrm{i}a\,\hat{p}}
+C^=ei​a​p^\hat{C}=\mathrm{e}^{\mathrm{i}a\,\hat{p}}, 
+\hat{S}=\mathrm{e}^{-\mathrm{i}b\,\hat{q}}
+S^=e−i​b​q^\hat{S}=\mathrm{e}^{-\mathrm{i}b\,\hat{q}} with real 
+a,b
+a,ba,b
+satisfying 
+ab=2\pi/n
+a​b=2​π/nab=2\pi/n, which yields finite-dimensional surrogates of the position and momentum operators 
+\hat{p},\hat{q}
+p^,q^\hat{p},\hat{q}
+that satisfy the canonical commutation relation in the limit of infinite local dimension,
+
+\displaystyle\lim_{n\to\infty}[\hat{p}_{n,i},\hat{q}_{n,j}]=\mathrm{i}\,\delta_{ij}\;.
+limn→∞[p^n,i,q^n,j]=i​δi​j.\displaystyle\lim_{n\to\infty}[\hat{p}_{n,i},\hat{q}_{n,j}]=\mathrm{i}\,\delta_{ij}\;.
+
+(15)
+
+The direction operators are then chosen as
+
+\displaystyle F_{k}\in\{\hat{C}_{1},\hat{S}_{1},\ldots,\hat{C}_{L},\hat{S}_{L}\}\;,
+Fk∈{C^1,S^1,…,C^L,S^L},\displaystyle F_{k}\in\{\hat{C}_{1},\hat{S}_{1},\ldots,\hat{C}_{L},\hat{S}_{L}\}\;,
+
+(16)
+
+(or the
+
+\{\hat{p}_{i},\hat{q}_{i}\}
+{p^i,q^i}\{\hat{p}_{i},\hat{q}_{i}\} surrogates), giving 
+2L
+2​L2L directions with
+
+\mathrm{Comm}\{F_{k}\}=\mathbb{C}\mathds{1}
+Comm​{Fk}=ℂ​𝟙\mathrm{Comm}\{F_{k}\}=\mathbb{C}\mathds{1}. Defining the commutant of a matrix 
+A
+AA as
+
+\displaystyle\mathrm{Comm}(A)=\{X\in\mathbb{M}_{n}(\mathbb{C}):[A,X]=0\}\;,
+Comm⁡(A)={X∈𝕄n​(ℂ):[A,X]=0},\displaystyle\mathrm{Comm}(A)=\{X\in\mathbb{M}_{n}(\mathbb{C}):[A,X]=0\}\;,
+
+(17)
+
+we find that the operators 
+F_{k}
+FkF_{k} in Eq. (16) satisfy 
+\mathrm{Comm}\{F_{k}\}_{k}=\mathds{1}
+Comm​{Fk}k=𝟙\mathrm{Comm}\{F_{k}\}_{k}=\mathds{1}, thus trivially satisfying the relation in Eq. (13). However, one can choose the set of directions 
+\{F_{k}\}
+{Fk}\{F_{k}\} more judiciously and still satisfy the condition. Consider the example of the classical 1D Ising model,
+
+\displaystyle H
+H\displaystyle H
+
+\displaystyle=\sum_{i}J_{i,i+1}\sigma^{z}_{i}\sigma^{z}_{i+1}+\sum_{i}B_{i}\sigma^{z}_{i}\;,
+=∑iJi,i+1​σiz​σi+1z+∑iBi​σiz,\displaystyle=\sum_{i}J_{i,i+1}\sigma^{z}_{i}\sigma^{z}_{i+1}+\sum_{i}B_{i}\sigma^{z}_{i}\;,
+
+(18)
+
+for which 
+{\rm Alg}\{h_{i}\}
+Alg​{hi}{\rm Alg}\{h_{i}\} lies entirely within the 
+\sigma^{z}
+σz\sigma^{z} subspace. Thus, in this case, one can choose the 
+F_{k}
+FkF_{k} operators to be either 
+\sigma^{x}_{j}
+σjx\sigma^{x}_{j} or 
+\sigma^{y}_{j}
+σjy\sigma^{y}_{j} at each site; thus we need one operator per site rather than two. In this sense, the choice in Eq. (16) can be too stringent in some cases, and one can make choices that are even more economical, based on the operator basis 
+\{h_{i}\}
+{hi}\{h_{i}\}.
+
+Fermionic systems: The same single-site philosophy extends to fermionic systems. By the Jordan–Wigner correspondence, the 
+2L_{s}
+2​Ls2L_{s}-mode Canonical Anticommuting Algebra is the
+full matrix algebra 
+M_{2^{2L_{s}}}(\mathbb{C})
+M22​Ls​(ℂ)M_{2^{2L_{s}}}(\mathbb{C}), so one can always map a
+fermionic problem to qubits and reuse the clock–shift (Pauli) directions above;
+indeed, doing so recovers the Hamiltonian in our numerical tests. However, one can remain in the native fermionic formulation of the Hamiltonian and instead use the single-mode
+Majorana operators
+
+\displaystyle\gamma_{k,1}
+γk,1\displaystyle\gamma_{k,1}
+
+\displaystyle=c_{k}^{\dagger}+c_{k}\;,\qquad k=1,\dots,2L_{s}\ 
+=ck†+ck,k=1,…,2Ls\displaystyle=c_{k}^{\dagger}+c_{k}\;,\qquad k=1,\dots,2L_{s}\ 
+
+\displaystyle\gamma_{k,2}
+γk,2\displaystyle\gamma_{k,2}
+
+\displaystyle=\mathrm{i}(c_{k}^{\dagger}-c_{k})\;,
+=i⁡(ck†−ck),\displaystyle=\mathrm{i}(c_{k}^{\dagger}-c_{k})\;,
+
+(19)
+
+where 
+c,c^{\dagger}
+c,c†c,c^{\dagger} are the local annihilation and creation operators, respectively, and the Majorana operators are Hermitian and obey the Clifford relation
+
+\{\gamma_{k,\alpha},\gamma_{l,\beta}\}=2\delta_{kl}\delta_{\alpha\beta}
+{γk,α,γl,β}=2​δk​l​δα​β\{\gamma_{k,\alpha},\gamma_{l,\beta}\}=2\delta_{kl}\delta_{\alpha\beta}, the
+anticommuting analog of the Weyl relation satisfied by 
+\hat{C},\hat{S}
+C^,S^\hat{C},\hat{S}. The
+
+4L_{s}
+4​Ls4L_{s} Majoranas generate the full Clifford algebra
+
+\mathrm{Cl}_{4L_{s}}(\mathbb{C})\cong M_{2^{2L_{s}}}(\mathbb{C})
+Cl4​Ls​(ℂ)≅M22​Ls​(ℂ)\mathrm{Cl}_{4L_{s}}(\mathbb{C})\cong M_{2^{2L_{s}}}(\mathbb{C}), so
+
+\mathrm{Comm}\{\gamma_{k,\alpha}\}=\mathbb{C}\mathds{1}
+Comm​{γk,α}=ℂ​𝟙\mathrm{Comm}\{\gamma_{k,\alpha}\}=\mathbb{C}\mathds{1} and the completeness
+condition (13) holds with no further assumptions, as shown in Appendix B.3. Each 
+\gamma_{k,\alpha}
+γk,α\gamma_{k,\alpha} is supported on a single fermionic mode,
+where support is understood in the algebra generated by the local
+creation and annihilation operators.
+
+To establish bounded support
+growth, we additionally assume that
+
+H_{\theta}=\sum_{X}h_{X}(\theta)
+Hθ=∑XhX​(θ)H_{\theta}=\sum_{X}h_{X}(\theta) has finite interaction range 
+R
+RR and
+that every local term has even fermion parity. An even fermionic
+operator commutes with every operator on disjoint support,
+including odd operators such as the Majorana
+directions [30]. Consequently, each
+nested commutator receives contributions only from Hamiltonian
+terms overlapping the current support. It follows that
+
+[H_{\theta},\gamma_{k,\alpha}]_{\ell}
+[Hθ,γk,α]ℓ[H_{\theta},\gamma_{k,\alpha}]_{\ell} is supported within distance
+
+\ell R
+ℓ​R\ell R of mode 
+k
+kk, as in the spin case.
+
+These assumptions hold for the Fermi–Hubbard model considered
+below, whose hopping, density, and interaction terms are all
+even. Further details are given in
+Appendix B.3.
+
+II.4 Local PL inequality
+
+The loss 
+\mathcal{L}_{\rm std}(\theta)=\sum_{k}\mathbb{E}|\mathscr{D}_{k}H_{\theta}-\mathscr{D}_{k}H^{\prime}|^{2}
+ℒstd​(θ)=∑k𝔼​|𝒟k​Hθ−𝒟k​H′|2\mathcal{L}_{\rm std}(\theta)=\sum_{k}\mathbb{E}|\mathscr{D}_{k}H_{\theta}-\mathscr{D}_{k}H^{\prime}|^{2}, despite having a single global minimum, is generally nonconvex in 
+\theta
+θ\theta. In fact, by carefully tuning model parameters and the set of directions 
+\{F_{k}\}
+{Fk}\{F_{k}\}, it is possible to construct explicit problem instances where the loss develops a local minimum. We provide the simplest example of this kind in Appendix C. At the same time, with typical or random parameter initializations, we found that the loss often has a single minimum and is numerically easy to optimize.
+
+Near the global minimum, we show that a weaker condition, called the Polyak–Łojasiewicz (PL) inequality, holds for the loss function in a neighborhood of 
+\theta^{*}
+θ∗\theta^{*}:
+
+\displaystyle\frac{1}{2}\|\nabla\mathcal{L}(\theta)\|^{2}\geq\mu\,(\mathcal{L}(\theta)-\mathcal{L}(\theta^{*}))\;,
+12​‖∇ℒ​(θ)‖2≥μ⁡(ℒ⁡(θ)−ℒ⁡(θ∗)),\displaystyle\frac{1}{2}\|\nabla\mathcal{L}(\theta)\|^{2}\geq\mu\,(\mathcal{L}(\theta)-\mathcal{L}(\theta^{*}))\;,
+
+(20)
+
+for some 
+\mu&gt;0
+μ&gt;0\mu&gt;0.
+A detailed proof of the local PL inequality near 
+\theta^{*}
+θ∗\theta^{*}, including the Gram matrix lower bound and the local range condition, is given in Appendix D.
+For gradient descent with step size 
+\eta\leq 1/L
+η≤1/L\eta\leq 1/L, where 
+L
+LL is the Lipschitz constant of 
+\nabla\mathcal{L}
+∇ℒ\nabla\mathcal{L}, the PL inequality implies linear convergence [32]:
+
+\displaystyle\mathcal{L}(\theta_{k})-\mathcal{L}(\theta^{*})\leq(1-\eta\mu)^{k}\left(\mathcal{L}(\theta_{0})-\mathcal{L}(\theta^{*})\right).
+ℒ⁡(θk)−ℒ⁡(θ∗)≤(1−η​μ)k​(ℒ⁡(θ0)−ℒ⁡(θ∗)).\displaystyle\mathcal{L}(\theta_{k})-\mathcal{L}(\theta^{*})\leq(1-\eta\mu)^{k}\left(\mathcal{L}(\theta_{0})-\mathcal{L}(\theta^{*})\right).
+
+(21)
+
+The number of iterations to reach 
+\epsilon
+ϵ\epsilon-accuracy is 
+O(\mu^{-1}\log(1/\epsilon))
+O⁡(μ−1​log⁡(1/ϵ))O(\mu^{-1}\log(1/\epsilon)) [24].
+While our proof applies only in a local region around the minimum 
+\theta^{*}
+θ∗\theta^{*}, in numerical experiments with typical model instances, we find that the PL inequality holds for large radii around the minimum.
+
+II.5 Classical limits of the new loss
+
+Application to discrete classical models: For spin/qubit systems, with the direction operators chosen to be single-site Pauli operators, the loss function can also be written as
+
+\displaystyle\mathcal{L}_{\rm std}(\theta)
+ℒstd​(θ)\displaystyle\mathcal{L}_{\rm std}(\theta)
+
+\displaystyle=\sum_{k}\langle|F_{k}\mathrm{e}^{-H_{\theta}}F_{k}\mathrm{e}^{H_{\theta}}-F_{k}\mathrm{e}^{-H^{\prime}}F_{k}\mathrm{e}^{H^{\prime}}|^{2}\rangle_{\rho}
+=∑k⟨|Fk​e−Hθ​Fk​eHθ−Fk​e−H′​Fk​eH′|2⟩ρ\displaystyle=\sum_{k}\langle|F_{k}\mathrm{e}^{-H_{\theta}}F_{k}\mathrm{e}^{H_{\theta}}-F_{k}\mathrm{e}^{-H^{\prime}}F_{k}\mathrm{e}^{H^{\prime}}|^{2}\rangle_{\rho}
+
+\displaystyle\xrightarrow{\rm classical}\sum_{k}\left\langle\left|\frac{\mathrm{e}^{-F_{k}H_{\theta}F_{k}}}{\mathrm{e}^{-H_{\theta}}}-\frac{\mathrm{e}^{-F_{k}H^{\prime}F_{k}}}{\mathrm{e}^{-H^{\prime}}}\right|^{2}\right\rangle
+→classical∑k⟨|e−Fk​Hθ​Fke−Hθ−e−Fk​H′​Fke−H′|2⟩\displaystyle\xrightarrow{\rm classical}\sum_{k}\left\langle\left|\frac{\mathrm{e}^{-F_{k}H_{\theta}F_{k}}}{\mathrm{e}^{-H_{\theta}}}-\frac{\mathrm{e}^{-F_{k}H^{\prime}F_{k}}}{\mathrm{e}^{-H^{\prime}}}\right|^{2}\right\rangle
+
+(22)
+
+which has the interpretation of matching the ratios of spin-flipped Hamiltonians due to the action of 
+F_{k}
+FkF_{k} with the original Hamiltonian, in line with the philosophy of ratio-matching [21]. In Appendix A, Eq. (57), we show that this loss can be rewritten in the convenient form
+
+\displaystyle\mathcal{L}_{\rm std}(\theta)
+ℒstd​(θ)\displaystyle\mathcal{L}_{\rm std}(\theta)
+
+\displaystyle=\sum_{k}\left\langle\mathrm{e}^{H_{\theta}}\mathrm{e}^{-2F_{k}H_{\theta}F_{k}}\mathrm{e}^{H_{\theta}}\right\rangle_{\rho}
+=∑k⟨eHθ​e−2​Fk​Hθ​Fk​eHθ⟩ρ\displaystyle=\sum_{k}\left\langle\mathrm{e}^{H_{\theta}}\mathrm{e}^{-2F_{k}H_{\theta}F_{k}}\mathrm{e}^{H_{\theta}}\right\rangle_{\rho}
+
+\displaystyle\qquad\qquad\quad-2\real\sum_{k}\left\langle\mathrm{e}^{F_{k}H_{\theta}F_{k}}\mathrm{e}^{-H_{\theta}}\right\rangle_{\rho}.
+−2Re∑k⟨eFk​Hθ​Fke−Hθ⟩ρ.\displaystyle\qquad\qquad\quad-2\real\sum_{k}\left\langle\mathrm{e}^{F_{k}H_{\theta}F_{k}}\mathrm{e}^{-H_{\theta}}\right\rangle_{\rho}.
+
+(23)
+
+In particular, for the classical Ising model with nearest-neighbor couplings
+
+\displaystyle H_{\theta}
+Hθ\displaystyle H_{\theta}
+
+\displaystyle=-\sum_{u,v}J_{u,v}\sigma^{z}_{u}\sigma^{z}_{v}-\sum_{u}B_{u}\sigma^{z}_{u}\;,
+=−∑u,vJu,vσzuσzv−∑uBuσzu,\displaystyle=-\sum_{u,v}J_{u,v}\sigma^{z}_{u}\sigma^{z}_{v}-\sum_{u}B_{u}\sigma^{z}_{u}\;,
+
+(24)
+
+all operators
+are diagonal in the 
+\sigma^{z}
+σz\sigma^{z} basis and commute, so the exponentials can be factored separately. Moreover, since the algebra generated by the Hamiltonian basis operators is diagonal, we can choose the direction operators to be just single-site 
+\sigma^{x}
+σx\sigma^{x} operators. Defining the local energy change under the spin flip at site 
+m
+mm (
+F_{m}=\sigma^{x}_{m}
+Fm=σmxF_{m}=\sigma^{x}_{m})
+
+\displaystyle\Delta_{m}H_{\theta}
+Δm​Hθ\displaystyle\Delta_{m}H_{\theta}
+
+\displaystyle:=F_{m}H_{\theta}F_{m}-H_{\theta}
+:=Fm​Hθ​Fm−Hθ\displaystyle:=F_{m}H_{\theta}F_{m}-H_{\theta}
+
+\displaystyle=2\sigma^{z}_{m}\!\ (B_{m}+\sum_{v\neq m}J_{m,v}\sigma^{z}_{v}),
+=2​σmz​(Bm+∑v≠mJm,v​σvz),\displaystyle=2\sigma^{z}_{m}\!\ (B_{m}+\sum_{v\neq m}J_{m,v}\sigma^{z}_{v}),
+
+(25)
+
+the loss (23) collapses to the compact local form
+
+\displaystyle\mathcal{L}(\theta)
+ℒ⁡(θ)\displaystyle\mathcal{L}(\theta)
+
+\displaystyle=\sum_{m}\langle\mathrm{e}^{-2\Delta_{m}H_{\theta}}\rangle_{\rho}-2\langle\mathrm{e}^{\Delta_{m}H_{\theta}}\rangle_{\rho},
+=∑m⟨e−2​Δm​Hθ⟩ρ−2​⟨eΔm​Hθ⟩ρ,\displaystyle=\sum_{m}\langle\mathrm{e}^{-2\Delta_{m}H_{\theta}}\rangle_{\rho}-2\langle\mathrm{e}^{\Delta_{m}H_{\theta}}\rangle_{\rho},
+
+(26)
+
+where 
+\Delta_{m}H_{\theta}
+Δm​Hθ\Delta_{m}H_{\theta} depends only on couplings involving sites connected to site 
+m
+mm. If the underlying graph is known to be a lattice, the loss can be expressed in terms of local, few-body expectation values using a standard expansion of binary functions [36, 23]. Each 
+\Delta_{m}H_{\theta}
+Δm​Hθ\Delta_{m}H_{\theta} is linear in the parameters 
+\theta=(J,B)
+θ=(J,B)\theta=(J,B), making the gradient straightforward to compute.
+
+There are two interesting observations regarding (26). First, this loss function is new and different from previously known estimators for classical Ising models, including pseudolikelihood [8] and interaction screening [44, 27]. Second, although the Ising model is discrete, this estimator is surprisingly derived using a method based on score matching, which normally only applies to distributions with continuous variables, by lifting the problem to the space of quantum models.
+
+Application to continuous classical models: The above loss function works for classical Hamiltonians as well. For example, in the classical continuous case, where 
+H(\mathbf{x})=\sum_{i}\theta_{i}h_{i}(\mathbf{x})
+H⁡(𝐱)=∑iθi​hi​(𝐱)H(\mathbf{x})=\sum_{i}\theta_{i}h_{i}(\mathbf{x}) acts on configurations 
+\mathbf{x}=(x_{1},x_{2}\cdots x_{n})
+𝐱=(x1,x2⋯xn)\mathbf{x}=(x_{1},x_{2}\cdots x_{n}), the quantum score reduces to the classical score in score matching. In particular, the action 
+F_{k}\circ\cdot=[F_{k},\cdot]
+Fk∘⋅=[Fk,⋅]F_{k}\circ\cdot=[F_{k},\cdot] may be understood as the derivative operator 
+\partial_{{x}_{k}}\circ\cdot
+∂xk∘⋅\partial_{{x}_{k}}\circ\cdot. This can be made manifest in the case of the quantum 
+\hat{\phi}^{4}
+ϕ^4\hat{\phi}^{4} theory by taking 
+F_{k}=\hat{\pi}_{k}
+Fk=π^kF_{k}=\hat{\pi}_{k}, the conjugate momentum operator. We have
+
+\displaystyle[\hat{\pi}_{k},\hat{\phi}_{i}^{n}]=\sum_{s=0}^{n-1}\hat{\phi}_{i}^{s}[\hat{\pi}_{k},\hat{\phi}_{i}]\hat{\phi}_{i}^{n-s-1}=-\mathrm{i}n\hat{\phi}^{n-1}\delta_{ik}
+[π^k,ϕ^in]=∑s=0n−1ϕ^is​[π^k,ϕ^i]​ϕ^in−s−1=−i​n​ϕ^n−1​δi​k\displaystyle[\hat{\pi}_{k},\hat{\phi}_{i}^{n}]=\sum_{s=0}^{n-1}\hat{\phi}_{i}^{s}[\hat{\pi}_{k},\hat{\phi}_{i}]\hat{\phi}_{i}^{n-s-1}=-\mathrm{i}n\hat{\phi}^{n-1}\delta_{ik}
+
+(27)
+
+which is exactly analogous to the simple classical identity 
+\partial_{\phi}\phi^{n}=n\phi^{n-1}
+∂ϕϕn=n​ϕn−1\partial_{\phi}\phi^{n}=n\phi^{n-1}. In particular, we have
+
+\displaystyle\mathscr{D}_{k}(-\log(p_\theta))=[F_{k},\mathrm{e}^{\log(p_\theta)}]\mathrm{e}^{-\log(p_\theta)}=[F_{k},\mathrm{e}^{-H}]\mathrm{e}^{H}
+𝒟k​(−log⁡(pθ))=[Fk,elog⁡(pθ)]​e−log⁡(pθ)=[Fk,e−H]​eH\displaystyle\mathscr{D}_{k}(-\log(p_\theta))=[F_{k},\mathrm{e}^{\log(p_\theta)}]\mathrm{e}^{-\log(p_\theta)}=[F_{k},\mathrm{e}^{-H}]\mathrm{e}^{H}
+
+\displaystyle[F_{k},\mathrm{e}^{-H}]\mathrm{e}^{H}\mapsto\frac{\partial\mathrm{e}^{-H}}{\partial{x}_{k}}\mathrm{e}^{H}=-\frac{\partial H(\mathbf{x})}{\partial{x}_{k}}=\partial_{k}\log p(\mathbf{x})\;,
+[Fk,e−H]​eH↦∂e−H∂xk​eH=−∂H⁡(𝐱)∂xk=∂klog⁡p⁡(𝐱),\displaystyle[F_{k},\mathrm{e}^{-H}]\mathrm{e}^{H}\mapsto\frac{\partial\mathrm{e}^{-H}}{\partial{x}_{k}}\mathrm{e}^{H}=-\frac{\partial H(\mathbf{x})}{\partial{x}_{k}}=\partial_{k}\log p(\mathbf{x})\;,
+
+(28)
+
+which makes explicit that 
+\mathscr{D}_{k}(-\log(p_\theta))=\mathscr{D}_{k}H_{\theta}
+𝒟k​(−log⁡(pθ))=𝒟k​Hθ\mathscr{D}_{k}(-\log(p_\theta))=\mathscr{D}_{k}H_{\theta} [Eq. (4)] is the quantum analog of the classical score 
+\nabla_{k}\log(p_\theta)
+∇klog⁡(pθ)\nabla_{k}\log(p_\theta). Finally, the loss in the classical limit is
+
+\displaystyle\mathcal{L}_{\rm std}(\theta)
+ℒstd​(θ)\displaystyle\mathcal{L}_{\rm std}(\theta)
+
+\displaystyle=\sum_{k}\Tr(\rho|\mathscr{D}_kH_\theta- \mathscr{D}_kH&#x27;|^2)
+=∑kTr⁡(ρ​|𝒟k​Hθ−𝒟k​H′|2)\displaystyle=\sum_{k}\Tr(\rho|\mathscr{D}_kH_\theta- \mathscr{D}_kH&#x27;|^2)
+
+\displaystyle\xmapsto{\rm classical}\sum_{k}\int p(x)|\partial_{k}H_{\theta}-\partial_{k}H^{\prime}|^{2}dx\;,
+↦classical∑k∫p⁡(x)​|∂kHθ−∂kH′|2​𝑑x,\displaystyle\xmapsto{\rm classical}\sum_{k}\int p(x)|\partial_{k}H_{\theta}-\partial_{k}H^{\prime}|^{2}dx\;,
+
+(29)
+
+and thus reduces exactly to the classical score matching objective, which is convex for classical models due to commutativity.
+
+III RESULTS
+
+III.1 Single-Qubit Case
+
+Figure 2: Loss landscape for a single qubit with 
+H=a\,\sigma^{z}+b\,\sigma^{x}
+H=a​σz+b​σxH=a\,\sigma^{z}+b\,\sigma^{x}. Top: Contour plot of the loss 
+\mathcal{L}(a,b)
+ℒ⁡(a,b)\mathcal{L}(a,b). Bottom: Contour plot of the norm squared of the gradient, 
+|\nabla\mathcal{L}(a,b)|^{2}
+|∇ℒ​(a,b)|2|\nabla\mathcal{L}(a,b)|^{2}. As is evident, this loss has a unique minimum at the true couplings 
+(a^{*},b^{*})=(1.0,0.5)
+(a∗,b∗)=(1.0,0.5)(a^{*},b^{*})=(1.0,0.5).
+
+It is instructive to demonstrate our method analytically in the simplest possible case of a single qubit with the 1d Hamiltonian
+
+\displaystyle H_{\theta}=a\sigma^{z}+b\sigma^{x}\;.
+Hθ=a​σz+b​σx.\displaystyle H_{\theta}=a\sigma^{z}+b\sigma^{x}\;.
+
+(30)
+
+In this case, choosing 
+F=\{\sigma^{x},\sigma^{z}\}
+F={σx,σz}F=\{\sigma^{x},\sigma^{z}\} will give
+the loss (using Eq. (23))
+
+\displaystyle\mathcal{L}(a,b)
+ℒ⁡(a,b)\displaystyle\mathcal{L}(a,b)
+
+\displaystyle=\mathbb{E}_{\rho}(\mathrm{e}^{4H_{\theta}})-2\real(\mathbb{E}_{\rho}(\mathrm{e}^{-2H_{\theta}}))
+=𝔼ρ(e4​Hθ)−2Re(𝔼ρ(e−2​Hθ))\displaystyle=\mathbb{E}_{\rho}(\mathrm{e}^{4H_{\theta}})-2\real(\mathbb{E}_{\rho}(\mathrm{e}^{-2H_{\theta}}))
+
+\displaystyle=(\cosh{4r}-2\cosh{2r})
+=(cosh⁡(4​r)−2​cosh⁡(2​r))\displaystyle=(\cosh{4r}-2\cosh{2r})
+
+\displaystyle\qquad\qquad-\tau(\sinh{4r}+2\sinh{2r})
+−τ⁡(sinh⁡(4​r)+2​sinh⁡(2​r))\displaystyle\qquad\qquad-\tau(\sinh{4r}+2\sinh{2r})
+
+(31)
+
+where we define
+
+\displaystyle r
+r\displaystyle r
+
+\displaystyle=\sqrt{a^{2}+b^{2}}
+=a2+b2\displaystyle=\sqrt{a^{2}+b^{2}}
+
+\displaystyle\tau
+τ\displaystyle\tau
+
+\displaystyle=\tanh{r^*}\frac{aa^{*}+bb^{*}}{rr^{*}}\;,
+=tanh⁡(r∗)​a​a∗+b​b∗r​r∗,\displaystyle=\tanh{r^*}\frac{aa^{*}+bb^{*}}{rr^{*}}\;,
+
+(32)
+
+where the asterisk 
+*
+∗* denotes the true parameters. Working in polar coordinates 
+a=r\cos{\varphi},b=r\sin{\varphi}
+a=r​cos⁡(φ),b=r​sin⁡(φ)a=r\cos{\varphi},b=r\sin{\varphi} and taking derivatives of the loss, we can see that
+
+\displaystyle\partial_{r}\mathcal{L}(a,b)
+∂rℒ⁡(a,b)\displaystyle\partial_{r}\mathcal{L}(a,b)
+
+\displaystyle=8\cosh{3r}(\sinh{r}-\tau\cosh{r})
+=8​cosh⁡(3​r)​(sinh⁡(r)−τ​cosh⁡(r))\displaystyle=8\cosh{3r}(\sinh{r}-\tau\cosh{r})
+
+\displaystyle\partial_{\varphi}\mathcal{L}(a,b)
+∂φℒ⁡(a,b)\displaystyle\partial_{\varphi}\mathcal{L}(a,b)
+
+\displaystyle=8\tanh{r^*}\sin(\varphi-\varphi^*)\sinh{r}\cosh^{3}{r}\;.
+=8​tanh⁡(r∗)​sin⁡(φ−φ∗)​sinh⁡(r)​cosh3​r.\displaystyle=8\tanh{r^*}\sin(\varphi-\varphi^*)\sinh{r}\cosh^{3}{r}\;.
+
+(33)
+
+This loss has a unique minimum at 
+a=a^{*}
+a=a∗a=a^{*}, 
+b=b^{*}
+b=b∗b=b^{*} (Fig. 2). It is seen here that the loss has only one minimum and that gradient descent has no trouble reaching this minimum.
+
+III.2 1D TFIM
+
+(a) Relative errors for the 
+50
+5050-qubit 1D non-uniform TFIM versus
+METTS sample size for various truncation depths 
+d
+dd. As the depth
+increases, the sample size at which the error saturates increases.
+
+(b) Minimal truncation depth 
+d^{*}
+d∗d^{*} for 
+10\%
+10%10\% parameter recovery
+of the TFIM versus chain length 
+L
+LL, for several inverse temperatures
+
+\beta
+β\beta. For each 
+\beta
+β\beta, the asymptotic behavior of 
+d^{*}
+d∗d^{*} does not depend on 
+L
+LL.
+
+Figure 3: Truncation behavior of operator score matching for the 1D TFIM.
+
+As a first multi-qubit example, we illustrate the method on the non-uniform 1D TFIM:
+
+\displaystyle H=-\sum_{i}J_{i,i+1}\sigma^{z}_{i}\sigma^{z}_{i+1}-\sum_{i}B_{i}\sigma^{z}_{i}-\sum_{i}\Gamma_{i}\sigma^{x}_{i}\;.
+H=−∑iJi,i+1σziσzi+1−∑iBiσzi−∑iΓiσxi.\displaystyle H=-\sum_{i}J_{i,i+1}\sigma^{z}_{i}\sigma^{z}_{i+1}-\sum_{i}B_{i}\sigma^{z}_{i}-\sum_{i}\Gamma_{i}\sigma^{x}_{i}\;.
+
+(34)
+
+Here, 
+\sigma^{z,x}_{i}
+σiz,x\sigma^{z,x}_{i} are the Pauli matrices at site 
+i
+ii and the couplings are site-dependent: 
+J_{i,i+1}
+Ji,i+1J_{i,i+1} is the nearest-neighbor coupling, 
+h_{i}
+hih_{i} the longitudinal field, and 
+\Gamma_{i}
+Γi\Gamma_{i} the transverse field.
+Choosing the derivative operator 
+F_{k}=\sigma^{x}_{m},\sigma^{z}_{m}
+Fk=σmx,σmzF_{k}=\sigma^{x}_{m},\sigma^{z}_{m} in the 
+x
+xx and 
+z
+zz directions at site 
+m
+mm yields
+
+\displaystyle\mathscr{D}_{x,z}^{(d|m)}H
+𝒟x,z(d|m)​H\displaystyle\mathscr{D}_{x,z}^{(d|m)}H
+
+\displaystyle=[\sigma^{x,z}_{m},\mathrm{e}^{-H}]\mathrm{e}^{H}
+=[σmx,z,e−H]​eH\displaystyle=[\sigma^{x,z}_{m},\mathrm{e}^{-H}]\mathrm{e}^{H}
+
+\displaystyle\approx\sum_{k=1}^{d}\frac{(-1)^{k+1}}{k!}[H,\sigma^{x,z}_{m}]_{k}\;,
+≈∑k=1d(−1)k+1k!​[H,σmx,z]k,\displaystyle\approx\sum_{k=1}^{d}\frac{(-1)^{k+1}}{k!}[H,\sigma^{x,z}_{m}]_{k}\;,
+
+(35)
+
+where, in the second line, we replace the full series by a degree-
+d
+dd Taylor truncation. Each nested commutator 
+[H,\sigma^{x,z}_{m}]_{\ell}
+[H,σmx,z]ℓ[H,\sigma^{x,z}_{m}]_{\ell} generates operators supported on a region of radius 
+\sim\ell
+∼ℓ\sim\ell around site 
+m
+mm, reflecting the light-cone structure of information propagation. Since the 
+\sigma^{x},\sigma^{z}
+σx,σz\sigma^{x},\sigma^{z} operators at each site are sufficient to span the complete matrix algebra, we see that all parameters of the model are effectively recovered by minimizing the loss function.
+
+Implementation:
+
+For a chain of length 
+L=50
+L=50L=50, we work with a non-uniform TFIM model, with site-dependent couplings. Substituting into Eq. (8) and summing over all sites 
+m
+mm gives a degree-
+2d
+2​d2d loss function. We estimate the thermal expectation values entering the loss
+in Eq. (8) using minimally entangled typical thermal
+states (METTS) [45, 43] and minimize the resulting loss to recover the Hamiltonian parameters.
+
+In Fig. 3(a), we show the total error in determining the site-dependent parameters 
+J_{ij},B_{i},\Gamma_{i}
+Ji​j,Bi,ΓiJ_{ij},B_{i},\Gamma_{i} for various sample sizes and truncation depths of the BCH expansion. At small truncation depths, the error remains nearly flat even as the sample size increases, indicating that the dominant source of error is not statistical but systematic: the truncated loss is still a poor approximation to the true loss. As the depth is increased, this truncation error is reduced, and the behavior crosses over to the expected statistical regime, where the error decreases approximately as 
+1/\sqrt{N}
+1/N1/\sqrt{N} with the number of samples 
+N
+NN before flattening out. This flattening is now due to noise: for large depths 
+d
+dd, the statistical error from samples overwhelms any advantage due to increasing depth.
+
+We thus find that for sufficiently large sample sizes and a sufficiently large truncation degree 
+d
+dd, (i) the loss function recovers the correct parameters and (ii) small truncation degrees are sufficient to recover parameters in the physical parameter ranges studied.
+
+In Fig. 3(b), we plot, for a fixed relative parameter
+error 
+\epsilon=0.1
+ϵ=0.1\epsilon=0.1, the truncation degree 
+d^{*}
+d∗d^{*} needed to recover
+
+\theta
+θ\theta as a function of chain length 
+L
+LL for several inverse temperatures
+
+\beta
+β\beta. The apparent growth of 
+d^{*}
+d∗d^{*} with 
+L
+LL at small sizes is a
+finite-size artifact: the score operator is built from nested commutators
+
+\mathrm{ad}_{H}^{l}F
+adHl​F\mathrm{ad}_{H}^{l}F, whose support grows with the degree 
+l
+ll, so on short
+chains the support of these commutators reaches the boundary, and enlarging 
+L
+LL still enlarges
+their effective support. Once 
+L
+LL exceeds the operator light cone at 
+\beta
+β\beta, the commutators fit entirely within the
+chain, adding sites no longer changes the error, and 
+d^{*}
+d∗d^{*} saturates.
+Thus, 
+d^{*}
+d∗d^{*} is independent of 
+L
+LL and is fixed solely by the
+strength and locality of the interaction (which we demonstrate by increasing 
+\beta
+β\beta), confirming that the required truncation depth is a property of the local model rather than the total size of the system. We find that this qualitative behavior remains true for all models that follow.
+
+Figure 4: Mean relative errors versus depth 
+d
+dd for various values of
+
+\beta
+β\beta for the XXZ model with 
+L=4
+L=4L=4 sites, with an inset plot of the depth
+
+d^{*}
+d∗d^{*} required to reach a relative error of 
+1\%
+1%1\%. We find that the
+required depth 
+d_{1\%}\propto\beta
+d1%∝βd_{1\%}\propto\beta.
+
+Figure 5: Absolute errors in the parameters of the 1D Fermi–Hubbard model with 
+L=2
+L=2L=2 sites
+as a function of truncation degree 
+d
+dd for two choices of exact
+parameters differing by a factor of 
+10
+1010.
+
+Top:
+
+(t,U,\mu)=(1.0,\,2.0,\,1.5)
+(t,U,μ)=(1.0, 2.0, 1.5)(t,U,\mu)=(1.0,\,2.0,\,1.5)
+
+Bottom:
+
+(t,U,\mu)=(0.1,\,0.2,\,0.15)
+(t,U,μ)=(0.1, 0.2, 0.15)(t,U,\mu)=(0.1,\,0.2,\,0.15).
+
+III.3 1D XXZ Model
+
+We demonstrate the method on the 1D XXZ spin chain:
+
+\displaystyle H
+H\displaystyle H
+
+\displaystyle=-J_{xy}\sum_{i}(\sigma^{x}_{i}\sigma^{x}_{i+1}+\sigma^{y}_{i}\sigma^{y}_{i+1})
+=−Jx​y∑i(σixσi+1x+σiyσi+1y)\displaystyle=-J_{xy}\sum_{i}(\sigma^{x}_{i}\sigma^{x}_{i+1}+\sigma^{y}_{i}\sigma^{y}_{i+1})
+
+\displaystyle\qquad-J_{z}\sum_{i}\sigma^{z}_{i}\sigma^{z}_{i+1}-B\sum_{i}\sigma^{z}_{i}\;.
+−Jz∑iσziσzi+1−B∑iσzi.\displaystyle\qquad-J_{z}\sum_{i}\sigma^{z}_{i}\sigma^{z}_{i+1}-B\sum_{i}\sigma^{z}_{i}\;.
+
+(36)
+
+The XXZ model interpolates between the isotropic Heisenberg model (
+J_{xy}=J_{z}
+Jx​y=JzJ_{xy}=J_{z}) and the Ising model (
+J_{xy}=0
+Jx​y=0J_{xy}=0), making it an ideal testbed for validating parameter recovery across different physical regimes. Here, 
+J_{xy},J_{z}
+Jx​y,JzJ_{xy},J_{z} are nearest-neighbor couplings, and 
+B
+BB is the magnetic field. We choose single-site Pauli operators as the directions 
+F
+FF. 
+
+Implementation:
+
+To generate synthetic training data with known true parameters 
+\theta^{*}=(J_{xy}^{*},J_{z}^{*},B^{*})
+θ∗=(Jx​y∗,Jz∗,B∗)\theta^{*}=(J_{xy}^{*},J_{z}^{*},B^{*}), we prepare the finite-temperature Gibbs state 
+\rho(\theta^{*})\propto\mathrm{e}^{-H(\theta^{*})}
+ρ⁡(θ∗)∝e−H⁡(θ∗)\rho(\theta^{*})\propto\mathrm{e}^{-H(\theta^{*})} for 
+L=4
+L=4L=4 sites. For fixed parameters 
+(J_{xy},J_{z},B)=(0.8,0.3,0.2)
+(Jx​y,Jz,B)=(0.8,0.3,0.2)(J_{xy},J_{z},B)=(0.8,0.3,0.2), we vary 
+\beta
+β\beta from 
+0.2
+0.20.2 to 
+1.8
+1.81.8 and measure the relative errors at each depth. We also record the minimum depth 
+d
+dd for each 
+\beta
+β\beta that results in a relative error of 
+1\%
+1%1\%, as shown in Fig. 5. We find that the required depth 
+d_{1\%}\propto\beta
+d1%∝βd_{1\%}\propto\beta, confirming that larger values of 
+\beta
+β\beta require greater depth to reach the required precision.
+
+III.4 1D Fermi–Hubbard Model
+
+To demonstrate the framework for fermionic systems, consider the Fermi–Hubbard model
+
+\displaystyle H
+H\displaystyle H
+
+\displaystyle=-t\sum_{\langle ij\rangle\sigma}(c_{i\sigma}^{\dagger}c_{j\sigma}+h.c.)+U\sum_{i}n_{i\uparrow}n_{i\downarrow}-\mu\sum_{i\sigma}n_{i\sigma}
+=−t∑⟨i​j⟩​σ(ci​σ†cj​σ+h.c.)+U∑ini↑ni↓−μ∑i​σni​σ\displaystyle=-t\sum_{\langle ij\rangle\sigma}(c_{i\sigma}^{\dagger}c_{j\sigma}+h.c.)+U\sum_{i}n_{i\uparrow}n_{i\downarrow}-\mu\sum_{i\sigma}n_{i\sigma}
+
+(37)
+
+with parameters 
+\theta=(t,U,\mu)
+θ=(t,U,μ)\theta=(t,U,\mu). Here, 
+c_{i\sigma}^{\dagger}
+ci​σ†c_{i\sigma}^{\dagger} and 
+c_{i\sigma}
+ci​σc_{i\sigma} are fermionic creation and annihilation operators satisfying 
+\{c_{i\sigma},c_{j\sigma^{\prime}}^{\dagger}\}=\delta_{ij}\delta_{\sigma\sigma^{\prime}}
+{ci​σ,cj​σ′†}=δi​j​δσ​σ′\{c_{i\sigma},c_{j\sigma^{\prime}}^{\dagger}\}=\delta_{ij}\delta_{\sigma\sigma^{\prime}}, 
+t
+tt is the nearest-neighbor hopping amplitude, 
+U
+UU is the on-site Coulomb repulsion, 
+\mu
+μ\mu is the chemical potential, and 
+n_{i\sigma}=c_{i\sigma}^{\dagger}c_{i\sigma}
+ni​σ=ci​σ†​ci​σn_{i\sigma}=c_{i\sigma}^{\dagger}c_{i\sigma} is the number operator. The Hamiltonian is linear in the parameters: 
+H_{\theta}=t\,h_{\text{hop}}+U\,h_{\text{int}}-\mu\,h_{\mu}
+Hθ=t​hhop+U​hint−μ​hμH_{\theta}=t\,h_{\text{hop}}+U\,h_{\text{int}}-\mu\,h_{\mu}, where 
+h_{\text{hop}}
+hhoph_{\text{hop}}, 
+h_{\text{int}}
+hinth_{\text{int}}, and 
+h_{\mu}
+hμh_{\mu} are fixed Hermitian operators.
+
+For 
+L_{s}
+LsL_{s} sites with two spin species, the Fock space has dimension 
+2^{2L_{s}}
+22​Ls2^{2L_{s}}, and all operators act as matrices on this space. For this model, we choose the direction operators 
+F_{k}
+FkF_{k} to be the Majorana fermions
+
+\displaystyle\gamma_{k,1}=c_{k}^{\dagger}+c_{k}\;,\qquad\gamma_{k,2}=i(c_{k}^{\dagger}-c_{k})\;,
+γk,1=ck†+ck,γk,2=i⁡(ck†−ck),\displaystyle\gamma_{k,1}=c_{k}^{\dagger}+c_{k}\;,\qquad\gamma_{k,2}=i(c_{k}^{\dagger}-c_{k})\;,
+
+(38)
+
+where 
+k
+kk ranges over all 
+2L_{s}
+2​Ls2L_{s} fermionic modes (sites 
+\times
+×\times spins). These are Hermitian and satisfy 
+\{\gamma_{k,\alpha},\gamma_{l,\beta}\}=2\delta_{kl}\delta_{\alpha\beta}
+{γk,α,γl,β}=2​δk​l​δα​β\{\gamma_{k,\alpha},\gamma_{l,\beta}\}=2\delta_{kl}\delta_{\alpha\beta}. The Majorana directions are the natural choice for fermionic systems: the commutator 
+[\gamma_{k,1},H]
+[γk,1,H][\gamma_{k,1},H] probes how the Hamiltonian couples to single-particle excitations at mode 
+k
+kk, analogous to how 
+[\sigma^{y}_{m},H]
+[σmy,H][\sigma^{y}_{m},H] probes spin fluctuations in the TFIM. For 
+2L_{s}
+2​Ls2L_{s} modes, the 
+4L_{s}
+4​Ls4L_{s} Majorana operators generate the full Clifford algebra 
+\mathrm{Cl}(4L_{s},\mathbb{R})\cong M_{2^{2L_{s}}}(\mathbb{C})
+Cl⁡(4​Ls,ℝ)≅M22​Ls​(ℂ)\mathrm{Cl}(4L_{s},\mathbb{R})\cong M_{2^{2L_{s}}}(\mathbb{C}), so the identifiability condition is automatically satisfied: only multiples of the identity commute with all the operators 
+F_{k}
+FkF_{k}.
+
+Implementation.
+
+For 
+L_{s}=2
+Ls=2L_{s}=2 (four fermionic modes), we have three parameters and eight Majorana direction operators. We construct the exact thermal state 
+\rho\propto\mathrm{e}^{-H(\theta^{*})}
+ρ∝e−H⁡(θ∗)\rho\propto\mathrm{e}^{-H(\theta^{*})} with true parameters 
+(t^{*},U^{*},\mu^{*})=(1.0,2.0,1.5)
+(t∗,U∗,μ∗)=(1.0,2.0,1.5)(t^{*},U^{*},\mu^{*})=(1.0,2.0,1.5) and 
+(0.1,0.2,0.15)
+(0.1,0.2,0.15)(0.1,0.2,0.15) and minimize the truncated loss over 
+\theta
+θ\theta. Figure 5 shows the parameter recovery errors as a function of truncation depth 
+d
+dd. All three parameters exhibit factorial error decay and reach errors of 
+\sim 10^{-6}
+∼10−6\sim 10^{-6} even when the parameters are 
+O(1)
+O⁡(1)O(1), despite the more complex operator algebra.
+
+III.5 1D Lattice 
+\phi^{4}
+ϕ4\phi^{4} Theory
+
+To demonstrate applicability beyond spin systems, we consider lattice scalar field theory:
+
+\displaystyle H=\sum_{i\in\Lambda}\left(\frac{1}{2}\pi_{i}^{2}+\frac{m^{2}}{2}\phi_{i}^{2}+\frac{\lambda}{4!}\phi_{i}^{4}\right)+\kappa\sum_{\langle ij\rangle}(\phi_{i}-\phi_{j})^{2}\;,
+H=∑i∈Λ(12​πi2+m22​ϕi2+λ4!​ϕi4)+κ​∑⟨i​j⟩(ϕi−ϕj)2,\displaystyle H=\sum_{i\in\Lambda}\left(\frac{1}{2}\pi_{i}^{2}+\frac{m^{2}}{2}\phi_{i}^{2}+\frac{\lambda}{4!}\phi_{i}^{4}\right)+\kappa\sum_{\langle ij\rangle}(\phi_{i}-\phi_{j})^{2}\;,
+
+(39)
+
+where 
+\phi_{i}
+ϕi\phi_{i} and 
+\pi_{i}
+πi\pi_{i} are conjugate field and momentum operators satisfying 
+[\phi_{i},\pi_{j}]=i\delta_{ij}
+[ϕi,πj]=i​δi​j[\phi_{i},\pi_{j}]=i\delta_{ij}. The parameters 
+\theta=(\kappa,m^{2},\lambda)
+θ=(κ,m2,λ)\theta=(\kappa,m^{2},\lambda) control the spatial correlation term, mass, and quartic self-interactions.
+
+In the continuum limit, 
+\phi_{i}
+ϕi\phi_{i} and 
+\pi_{i}
+πi\pi_{i} act on infinite-dimensional Hilbert spaces and are not trace-class, invalidating the trace identities used in Sec. II.2. We therefore employ a Fock-space truncation: at each site, we represent the field operators in a harmonic oscillator basis
+
+\displaystyle\phi_{i}=\frac{1}{\sqrt{2\omega}}(a_{i}+a_{i}^{\dagger})\;,\qquad\pi_{i}=i\sqrt{\frac{\omega}{2}}(a_{i}^{\dagger}-a_{i})\;,
+ϕi=12​ω​(ai+ai†),πi=i​ω2​(ai†−ai),\displaystyle\phi_{i}=\frac{1}{\sqrt{2\omega}}(a_{i}+a_{i}^{\dagger})\;,\qquad\pi_{i}=i\sqrt{\frac{\omega}{2}}(a_{i}^{\dagger}-a_{i})\;,
+
+(40)
+
+with 
+a_{i}
+aia_{i} truncated to a 
+d_{\rm loc}\times d_{\rm loc}
+dloc×dlocd_{\rm loc}\times d_{\rm loc} matrix (keeping at most 
+d_{\rm loc}-1
+dloc−1d_{\rm loc}-1 excitations per site). The frequency 
+\omega
+ω\omega is a variational parameter that can be optimized to minimize truncation effects.
+
+Figure 6: Lattice 
+\phi^{4}
+ϕ4\phi^{4} theory convergence: errors in the parameters 
+m,\kappa,\lambda
+m,κ,λm,\kappa,\lambda
+for the 1D 
+\phi^{4}
+ϕ4\phi^{4} model with 
+L=5
+L=5L=5 sites versus the number of METTS samples. Inset: relative
+error in the parameters versus truncation depth 
+d
+dd. In both cases, as the
+number of samples or the depth increases, the error decreases.
+
+We choose the directions 
+F_{k}=\phi_{k},\pi_{k}
+Fk=ϕk,πkF_{k}=\phi_{k},\pi_{k} (the field and momentum operators at each site). The score operator associated with 
+\phi_{k}
+ϕk\phi_{k} is
+
+\displaystyle\mathscr{D}_{\phi_{k}}H=[\phi_{k},e^{-H}]e^{H}\;.
+𝒟ϕk​H=[ϕk,e−H]​eH.\displaystyle\mathscr{D}_{\phi_{k}}H=[\phi_{k},e^{-H}]e^{H}\;.
+
+(41)
+
+The commutator structure reflects the locality of the Hamiltonian: 
+[\phi_{k},\pi_{j}^{2}]\propto\delta_{kj}
+[ϕk,πj2]∝δk​j[\phi_{k},\pi_{j}^{2}]\propto\delta_{kj} and 
+[\phi_{k},\phi_{j}^{n}]=0
+[ϕk,ϕjn]=0[\phi_{k},\phi_{j}^{n}]=0, so the score operator couples only to the momentum term at the same site and to gradient terms involving neighboring sites.
+
+Implementation.
+
+We work on 
+L=5
+L=5L=5 sites with periodic boundaries and true parameters
+
+(m^{2*},\lambda^{*},\kappa^{*},)=(0.4,0.5,0.3)
+(m2∗,λ∗,κ∗,)=(0.4,0.5,0.3)(m^{2*},\lambda^{*},\kappa^{*},)=(0.4,0.5,0.3), representing the field
+operators in a harmonic-oscillator basis. The harmonic-oscillator basis operators (
+a,a^{\dagger}
+a,a†a,a^{\dagger}) are infinite-dimensional, so we truncate them to matrices of dimension 
+n_{\rm loc}=8
+nloc=8n_{\rm loc}=8. Using the directions
+
+F_{k}\in\{\phi_{i},\pi_{i}\}
+Fk∈{ϕi,πi}F_{k}\in\{\phi_{i},\pi_{i}\}, we expand each score operator to depth 
+d
+dd
+[Eq. (10)] and assemble the loss [Eq. (8)]. The
+main panel of Fig. 6 uses METTS [45, 43] samples of
+
+\rho\propto\mathrm{e}^{-H(\theta^{*})}
+ρ∝e−H⁡(θ∗)\rho\propto\mathrm{e}^{-H(\theta^{*})} for the full loss; the error follows the expected
+
+1/\sqrt{N_{\rm samp}}
+1/Nsamp1/\sqrt{N_{\rm samp}} scaling. The
+inset uses the exact 
+\rho
+ρ\rho and sweeps the truncation depth 
+d
+dd, isolating the
+systematic error.
+
+We note that the local truncation dimension 
+n_{\rm loc}
+nlocn_{\rm loc} must be relatively large here: at small 
+n_{\rm loc}
+nlocn_{\rm loc}, the
+operators 
+\phi^{2}
+ϕ2\phi^{2} and 
+\phi^{4}
+ϕ4\phi^{4} are nearly collinear, making 
+m^{2}
+m2m^{2} and 
+\lambda
+λ\lambda harder to probe.
+
+IV DISCUSSION
+
+We have introduced a quantum (operator) score-matching framework for Hamiltonian learning
+that avoids partition function computation by exploiting non-commutative
+integration-by-parts identities. The global minimum of the novel loss recovers Hamiltonian parameters under mild algebraic conditions on the direction operators. We have provided specific prescriptions for choosing directions that satisfy these conditions and illustrated that the particular choice influences the loss landscape. Our approach complements existing methods based on Bayesian inference [46], local reduced density matrices [5], and time evolution [3], with the
+distinction that it operates directly on thermal states without requiring
+coherent dynamics.
+
+The truncated score 
+{\mathscr{D}}^{(d)}_{k}H_{\theta}
+𝒟k(d)​Hθ{\mathscr{D}}^{(d)}_{k}H_{\theta} is a polynomial of
+degree 
+d
+dd in 
+\theta
+θ\theta, making the loss a degree-
+2d
+2​d2d polynomial, which makes evaluation of the loss gradient tractable and scalable. We empirically observed that the depth 
+d
+dd required to reach a relative precision depends only on the local degree and interaction strength, and not on the system size. This polynomial structure connects naturally to the sum-of-squares hierarchy [7, 16] exploited by BLMT [6], who solve a convex SoS relaxation with provable worst-case guarantees. Our approach instead uses gradient descent on the nonconvex loss, which is cheaper per iteration and numerically effective.
+Across the numerical experiments reported in this paper, we observed that the loss often has a single minimum and is numerically easy to optimize.
+
+We proved that the loss function has nice local convexity properties near the global minimum. A complete non-asymptotic error analysis of our method remains an open problem. Such an analysis would need to address the generally nonconvex loss and propagate both the BCH truncation error and the statistical error from finite samples to obtain end-to-end parameter-recovery and sample-complexity guarantees. We leave this analysis to future work.
+
+The Fermi–Hubbard example confirms that the framework is agnostic to particle statistics: no Jordan–Wigner or other qubit mapping is required, and the same error scaling applies to spins, bosons, and fermions. Depending on the setting, the expectation values entering the loss can be estimated via tensor network methods, classical shadow tomography [19], or direct quantum measurements.
+
+Several extensions and applications of our approach would be interesting to consider: continuum quantum field theories (where
+trace identities require regularization), learning from dynamical
+measurements, and applications to lattice gauge theories. We leave further analysis of these extended settings to future work.
+
+DATA AND CODE AVAILABILITY
+
+All data and code used to generate the numerical results and figures presented in this paper are publicly available in the project’s GitHub repository [35].
+
+ACKNOWLEDGMENTS
+
+We thank our colleagues Scott Lawrence, Yukari Yamauchi, Sidhant Misra, and Marc Vuffray at Los Alamos National Laboratory for helpful discussions. We acknowledge support from the U.S. Department of Energy/Office of Science Advanced Scientific Computing Research Program. Los Alamos National Laboratory is operated by Triad National Security, LLC, for the National Nuclear Security Administration of U.S. Department of Energy, under Contract No. 89233218CNA000001.
+
+References
+
+[1]
+A. A. Ahmadi and A. Majumdar (2019)
+
+DSOS and SDSOS optimization: more tractable alternatives to sum of squares and semidefinite optimization.
+
+SIAM Journal on Applied Algebra and Geometry 3 (2), pp. 193–230.
+
+External Links: Document
+
+Cited by: §I.
+
+[2]
+L. Amico, R. Fazio, A. Osterloh, and V. Vedral (2008)
+
+Entanglement in many-body systems.
+
+Rev. Mod. Phys. 80, pp. 517.
+
+Cited by: §I.
+
+[3]
+A. Anshu, S. Arunachalam, T. Kuwahara, and M. Soleimanifar (2021)
+
+Sample-efficient learning of interacting quantum systems.
+
+Nature Physics 17, pp. 931–935.
+
+Cited by: §I,
+§II.1,
+§IV.
+
+[4]
+A. Anshu and S. Arunachalam (2023)
+
+A survey on the complexity of learning quantum states.
+
+External Links: 2305.20069,
+Link
+
+Cited by: §I.
+
+[5]
+E. Bairey, I. Arad, and N. H. Lindner (2019)
+
+Learning a local hamiltonian from local measurements.
+
+Physical Review Letters 122 (2), pp. 020504.
+
+Cited by: §IV.
+
+[6]
+A. Bakshi, A. Liu, A. Moitra, and E. Tang (2023)
+
+Learning quantum hamiltonians at any temperature in polynomial time.
+
+External Links: 2310.02243,
+Link
+
+Cited by: §I,
+§II.1,
+§II.2,
+§IV.
+
+[7]
+B. Barak
+
+Proofs, beliefs, and algorithms through the lens of sum-of-squares.
+
+Note: Lecture notes
+
+Cited by: §I,
+§IV.
+
+[8]
+J. Besag (1975)
+
+Statistical analysis of non-lattice data.
+
+Journal of the Royal Statistical Society: Series D (The Statistician) 24 (3), pp. 179–195.
+
+Cited by: §II.5.
+
+[9]
+I. Bloch, J. Dalibard, and S. Nascimbène (2012)
+
+Quantum simulations with ultracold quantum gases.
+
+Nature Physics 8, pp. 267–276.
+
+Cited by: §I.
+
+[10]
+G. Carleo and M. Troyer (2017)
+
+Solving the quantum many-body problem with artificial neural networks.
+
+Science 355 (6325), pp. 602–606.
+
+Cited by: §I.
+
+[11]
+K. Choo, A. Mezzacapo, and G. Carleo (2020)
+
+Fermionic neural-network states for ab-initio electronic structure.
+
+Nature Communications 11, pp. 2368.
+
+Cited by: §I.
+
+[12]
+J. I. Cirac, D. Pérez-Garc\́mathrm{i}a, N. Schuch, and F. Verstraete (2021)
+
+Matrix product states and projected entangled pair states.
+
+Rev. Mod. Phys. 93, pp. 045003.
+
+Cited by: §I.
+
+[13]
+J. I. Cirac and P. Zoller (2012)
+
+Goals and opportunities in quantum simulation.
+
+Nature Physics 8, pp. 264–266.
+
+Cited by: §I.
+
+[14]
+M. Cramer et al. (2010)
+
+Efficient quantum state tomography.
+
+Nature Commun. 1, pp. 149.
+
+Cited by: §I.
+
+[15]
+M. P. da Silva, O. Landon-Cardinal, and D. Poulin (2011)
+
+Practical characterization of quantum devices without tomography.
+
+Phys. Rev. Lett. 107, pp. 210404.
+
+Cited by: §I.
+
+[16]
+N. Fleming, P. Kothari, and T. Pitassi (2019)
+
+Semialgebraic proofs and efficient algorithm design.
+
+ NOW.
+
+Cited by: §I,
+§IV.
+
+[17]
+W. M. C. Foulkes, L. Mitas, R. J. Needs, and G. Rajagopal (2001)
+
+Quantum Monte Carlo simulations of solids.
+
+Rev. Mod. Phys. 73, pp. 33.
+
+Cited by: §I.
+
+[18]
+J. Haah, R. Kothari, and E. Tang (2022)
+
+Optimal learning of quantum Hamiltonians from high-temperature Gibbs states.
+
+Proc. FOCS.
+
+Cited by: §I.
+
+[19]
+H. Huang, R. Kueng, and J. Preskill (2020)
+
+Predicting many properties of a quantum system from very few measurements.
+
+Nature Physics 16 (10), pp. 1050–1057.
+
+External Links: ISSN 1745-2481,
+Link,
+Document
+
+Cited by: §IV.
+
+[20]
+A. Hyvärinen (2005)
+
+Estimation of non-normalized statistical models by score matching.
+
+Journal of Machine Learning Research 6, pp. 695–709.
+
+Cited by: §I,
+§II.2.
+
+[21]
+A. Hyvärinen (2007)
+
+Some extensions of score matching.
+
+Comput. Stat. Data Analysis 51, pp. 2499–2512.
+
+Cited by: §A.1,
+§II.5.
+
+[22]
+R. Jagannathan, T. S. Santhanam, and R. Vasudevan (1981)
+
+Finite-dimensional quantum mechanics of a particle.
+
+International Journal of Theoretical Physics 20 (10), pp. 755–773.
+
+External Links: Document
+
+Cited by: §II.3.
+
+[23]
+A. Jayakumar, S. Shukla, M. Vuffray, A. Y. Lokhov, and S. Misra (2026)
+
+Computationally sufficient statistics for ising models.
+
+arXiv preprint arXiv:2602.12449.
+
+Cited by: §II.5.
+
+[24]
+H. Karimi, J. Nutini, and M. Schmidt (2016)
+
+Linear convergence of gradient and proximal-gradient methods under the Polyak-Łojasiewicz condition.
+
+Machine Learning and Knowledge Discovery in Databases: European Conference, ECML PKDD 2016, pp. 795–811.
+
+Cited by: §D.6.3,
+§I,
+§II.4.
+
+[25]
+B. Keimer and J. E. Moore (2017)
+
+The physics of quantum materials.
+
+Nature Physics 13, pp. 1045–1055.
+
+Cited by: §I.
+
+[26]
+Y. LeCun, S. Chopra, R. Hadsell, M. Ranzato, and F. J. Huang (2006)
+
+A tutorial on energy-based learning.
+
+Cited by: §I.
+
+[27]
+A. Y. Lokhov, M. Vuffray, S. Misra, and M. Chertkov (2018)
+
+Optimal structure and parameter learning of ising models.
+
+Science advances 4 (3), pp. e1700791.
+
+Cited by: §II.5.
+
+[28]
+A. Majumdar, G. Hall, and A. A. Ahmadi (2020)
+
+Recent scalability improvements for semidefinite programming with applications in machine learning, control, and robotics.
+
+Annual Review of Control, Robotics, and Autonomous Systems 3, pp. 331–360.
+
+External Links: Document
+
+Cited by: §I.
+
+[29]
+A. Montanari (2015)
+
+Computational implications of reducing data to sufficient statistics.
+
+External Links: 1409.3821,
+Link
+
+Cited by: §I.
+
+[30]
+B. Nachtergaele, R. Sims, and A. Young (2018)
+
+Lieb–Robinson bounds, the spectral flow, and stability of the spectral gap for lattice fermion systems.
+
+In Mathematical Results in Quantum Physics,
+
+Contemporary Mathematics, Vol. 717, pp. 93–115.
+
+External Links: 1705.08553
+
+Cited by: §B.3,
+§II.3.
+
+[31]
+R. Orús (2014)
+
+A practical introduction to tensor networks.
+
+Annals of Physics 349, pp. 117–158.
+
+Cited by: §I.
+
+[32]
+B. T. Polyak (1963)
+
+Gradient methods for minimizing functionals.
+
+Zhurnal Vychislitel’noi Matematiki i Matematicheskoi Fiziki 3 (4), pp. 643–653.
+
+Cited by: §I,
+§II.4.
+
+[33]
+T. S. Santhanam and A. R. Tekumalla (1976)
+
+Quantum mechanics in finite dimensions.
+
+Foundations of Physics 6 (5), pp. 583–587.
+
+External Links: Document
+
+Cited by: §II.3.
+
+[34]
+P. E. Shanahan, A. Trewartha, and W. Detmold (2018)
+
+Machine learning action parameters in lattice quantum chromodynamics.
+
+Phys. Rev. D 97 (9), pp. 094506.
+
+External Links: 1801.05784,
+Document
+
+Cited by: §I.
+
+[35]
+S. Shukla, A. Jayakumar, and A. Y. Lokhov (2026)
+
+Operator Score Matching: code and data.
+
+Note: GitHub repository,
+https://github.com/shreyaalkuhs/Learning-of-Quantum-Hamiltonians-via-Operator-Score-Matching
+
+Cited by: DATA AND CODE AVAILABILITY.
+
+[36]
+S. Shukla, A. Jayakumar, and A. Y. Lokhov (2025)
+
+Learning of statistical field theories.
+
+arXiv preprint arXiv:2511.09859.
+
+Cited by: §I,
+§I,
+§II.5.
+
+[37]
+S. Shukla, Y. Yamauchi, A. Y. Lokhov, S. Lawrence, and A. Jayakumar (2026)
+
+Efficient learning of lattice gauge theories with fermions.
+
+Physical Review D 114 (1), pp. 014514.
+
+Cited by: §II.2.
+
+[38]
+A. Singh and S. M. Carroll (2020)
+
+Modeling position and momentum in finite-dimensional hilbert spaces via generalized pauli operators.
+
+External Links: 1806.10134,
+Link
+
+Cited by: §II.3.
+
+[39]
+D. Smedira, A. Jayakumar, S. Misra, M. Vuffray, and A. Y. Lokhov (2026)
+
+Finite sample bounds for learning with score matching.
+
+In Proceedings of Thirty Ninth Conference on Learning Theory,
+
+Vol. 336, pp. 5928–5949.
+
+External Links: Link
+
+Cited by: §I.
+
+[40]
+Y. Song and S. Ermon (2019)
+
+Generative modeling by estimating gradients of the data distribution.
+
+NeurIPS.
+
+Cited by: §I.
+
+[41]
+Y. Song, J. Sohl-Dickstein, D. P. Kingma, A. Kumar, S. Ermon, and B. Poole (2021)
+
+Score-based generative modeling through stochastic differential equations.
+
+ICLR.
+
+Cited by: §I.
+
+[42]
+J. Stokes, J. Izaac, N. Killoran, and G. Carleo (2020)
+
+Quantum natural gradient.
+
+Quantum 4, pp. 269.
+
+Cited by: §I.
+
+[43]
+E. M. Stoudenmire and S. R. White (2010)
+
+Minimally entangled typical thermal state algorithms.
+
+New Journal of Physics 12, pp. 055026.
+
+External Links: Document
+
+Cited by: §III.2,
+§III.5.
+
+[44]
+M. Vuffray, S. Misra, A. Lokhov, and M. Chertkov (2016)
+
+Interaction screening: efficient and sample-optimal learning of ising models.
+
+Advances in neural information processing systems 29.
+
+Cited by: §II.5.
+
+[45]
+S. R. White (2009)
+
+Minimally entangled typical quantum states at finite temperature.
+
+Physical Review Letters 102, pp. 190601.
+
+External Links: Document
+
+Cited by: §III.2,
+§III.5.
+
+[46]
+N. Wiebe, C. Granade, C. Ferrie, and D. G. Cory (2014)
+
+Hamiltonian learning and certification using quantum resources.
+
+Physical Review Letters 112 (19), pp. 190501.
+
+Cited by: §IV.
+
+Appendix A Standard-metric objective and trace integration by parts
+
+This appendix derives the standard-metric score-matching loss used in the main text and shows how to rewrite it in a form that depends only on expectations under the data state, without explicit dependence on the partition function.
+
+A.1 Setup and score map
+
+Let 
+\rho:=\mathrm{e}^{-H^{\prime}}/Z^{\prime}
+ρ:=e−H′/Z′\rho:=\mathrm{e}^{-H^{\prime}}/Z^{\prime} with 
+Z^{\prime}=\Tr(\e{-H&#x27;})
+Z′=Tr⁡(e−H′)Z^{\prime}=\Tr(\e{-H&#x27;}). Define the (noncommutative) score map for a direction operator 
+F_{k}
+FkF_{k} by
+
+\displaystyle\mathscr{D}_{k}H\;:=\;[F_{k},\mathrm{e}^{-H}]\,\mathrm{e}^{H}\;=\;F_{k}-\mathrm{e}^{-H}F_{k}\mathrm{e}^{H}.
+𝒟k​H:=[Fk,e−H]​eH=Fk−e−H​Fk​eH.\displaystyle\mathscr{D}_{k}H\;:=\;[F_{k},\mathrm{e}^{-H}]\,\mathrm{e}^{H}\;=\;F_{k}-\mathrm{e}^{-H}F_{k}\mathrm{e}^{H}.
+
+(42)
+
+Let 
+H_{\theta}=\sum_{i=1}^{m}\theta_{i}h_{i}
+Hθ=∑i=1mθi​hiH_{\theta}=\sum_{i=1}^{m}\theta_{i}h_{i} be the model Hamiltonian and define the residual
+
+\displaystyle\Delta_{k}(\theta):=\mathscr{D}_{k}H_{\theta}-\mathscr{D}_{k}H^{\prime}.
+Δk​(θ):=𝒟k​Hθ−𝒟k​H′.\displaystyle\Delta_{k}(\theta):=\mathscr{D}_{k}H_{\theta}-\mathscr{D}_{k}H^{\prime}.
+
+(43)
+
+We use the 
+\rho
+ρ\rho-weighted Hilbert–Schmidt norm
+
+\displaystyle\mathbb{E}_{\rho}(X):=\Tr(\rho\,X),\qquad\|A\|_{\mathrm{HS}}^{2}:=\Tr(A^\dagger A),
+𝔼ρ​(X):=Tr⁡(ρ​X),‖A‖HS2:=Tr⁡(A†​A),\displaystyle\mathbb{E}_{\rho}(X):=\Tr(\rho\,X),\qquad\|A\|_{\mathrm{HS}}^{2}:=\Tr(A^\dagger A),
+
+(44)
+
+and define the standard-metric objective
+
+\displaystyle\mathcal{L}_{\mathrm{std}}(\theta):=\sum_{k=1}^{n}\mathbb{E}_{\rho}\!\left(\Delta_{k}(\theta)^{\dagger}\Delta_{k}(\theta)\right).
+ℒstd​(θ):=∑k=1n𝔼ρ​(Δk​(θ)†​Δk​(θ)).\displaystyle\mathcal{L}_{\mathrm{std}}(\theta):=\sum_{k=1}^{n}\mathbb{E}_{\rho}\!\left(\Delta_{k}(\theta)^{\dagger}\Delta_{k}(\theta)\right).
+
+(45)
+
+Special case
+
+Note that when 
+F_{k}
+FkF_{k} is a Pauli matrix, 
+\norm{\Delta_k}^{2}=\norm{F_k \Delta_k}^{2}
+‖Δk‖2=‖Fk​Δk‖2\norm{\Delta_k}^{2}=\norm{F_k \Delta_k}^{2}, and the loss can be written as
+
+\displaystyle\mathcal{L}_{\rm ratio}(\theta)
+ℒratio​(θ)\displaystyle\mathcal{L}_{\rm ratio}(\theta)
+
+\displaystyle=\Tr(\rho\|\underbrace{F_k\e{-H_\theta}F_k\e{H_\theta}}_{= \mathcal{D}_kH_\theta}-F_k\e{-H&#x27;} F_k\e{H&#x27;}\|^2)
+=Tr⁡(ρ​‖Fk​e−Hθ​Fk​eHθ⏟=𝒟k​Hθ−Fk​e−H′​Fk​eH′‖2)\displaystyle=\Tr(\rho\|\underbrace{F_k\e{-H_\theta}F_k\e{H_\theta}}_{= \mathcal{D}_kH_\theta}-F_k\e{-H&#x27;} F_k\e{H&#x27;}\|^2)
+
+(46)
+
+where we call this form of the loss function the ratio-matching loss, following its classical counterpart [21]. We also define the new “derivative” as
+
+\displaystyle\mathcal{D}_{k}H
+𝒟k​H\displaystyle\mathcal{D}_{k}H
+
+\displaystyle=F_{k}\mathrm{e}^{-H}F_{k}\mathrm{e}^{H}=F_{k}(F_{k}-\mathscr{D}_{k}H)=\mathds{1}-F_{k}\mathscr{D}_{k}H\;.
+=Fk​e−H​Fk​eH=Fk​(Fk−𝒟k​H)=𝟙−Fk​𝒟k​H.\displaystyle=F_{k}\mathrm{e}^{-H}F_{k}\mathrm{e}^{H}=F_{k}(F_{k}-\mathscr{D}_{k}H)=\mathds{1}-F_{k}\mathscr{D}_{k}H\;.
+
+(47)
+
+A.2 Trace integration-by-parts identity
+
+For trace-class operators 
+A,B
+A,BA,B, one has 
+\Tr([A,B])=0
+Tr⁡([A,B])=0\Tr([A,B])=0. In particular, for any trace-class 
+O
+OO,
+
+\displaystyle 0
+0\displaystyle 0
+
+\displaystyle=\Tr\!\left([F_{k},O\,\mathrm{e}^{-H^{\prime}}]\right)=\Tr\!\left([F_{k},O]\,\mathrm{e}^{-H^{\prime}}\right)+\Tr\!\left(O\,[F_{k},\mathrm{e}^{-H^{\prime}}]\right).
+=Tr⁡([Fk,O​e−H′])=Tr⁡([Fk,O]​e−H′)+Tr⁡(O⁡[Fk,e−H′]).\displaystyle=\Tr\!\left([F_{k},O\,\mathrm{e}^{-H^{\prime}}]\right)=\Tr\!\left([F_{k},O]\,\mathrm{e}^{-H^{\prime}}\right)+\Tr\!\left(O\,[F_{k},\mathrm{e}^{-H^{\prime}}]\right).
+
+(48)
+
+Divide by 
+Z^{\prime}
+Z′Z^{\prime} to write this as a 
+\rho_{\mathrm{data}}
+ρdata\rho_{\mathrm{data}}-expectation:
+
+\displaystyle\Tr\!\left(O\,[F_{k},\mathrm{e}^{-H^{\prime}}]\right)
+Tr⁡(O⁡[Fk,e−H′])\displaystyle\Tr\!\left(O\,[F_{k},\mathrm{e}^{-H^{\prime}}]\right)
+
+\displaystyle=-\Tr\!\left([F_{k},O]\mathrm{e}^{-H^{\prime}}\right)
+=−Tr⁡([Fk,O]​e−H′)\displaystyle=-\Tr\!\left([F_{k},O]\mathrm{e}^{-H^{\prime}}\right)
+
+\displaystyle\implies\Tr\!\left(O\,[F_{k},\mathrm{e}^{-H^{\prime}}]\mathrm{e}^{H^{\prime}}\frac{\mathrm{e}^{-H^{\prime}}}{Z^{\prime}}\right)
+⟹Tr⁡(O⁡[Fk,e−H′]​eH′​e−H′Z′)\displaystyle\implies\Tr\!\left(O\,[F_{k},\mathrm{e}^{-H^{\prime}}]\mathrm{e}^{H^{\prime}}\frac{\mathrm{e}^{-H^{\prime}}}{Z^{\prime}}\right)
+
+\displaystyle=-\Tr\!\left([F_{k},O]\frac{\mathrm{e}^{-H^{\prime}}}{Z^{\prime}}\right)
+=−Tr⁡([Fk,O]​e−H′Z′)\displaystyle=-\Tr\!\left([F_{k},O]\frac{\mathrm{e}^{-H^{\prime}}}{Z^{\prime}}\right)
+
+(49)
+
+Using 
+\mathscr{D}_{k}H^{\prime}=[F_{k},\mathrm{e}^{-H^{\prime}}]\mathrm{e}^{H^{\prime}}
+𝒟k​H′=[Fk,e−H′]​eH′\mathscr{D}_{k}H^{\prime}=[F_{k},\mathrm{e}^{-H^{\prime}}]\mathrm{e}^{H^{\prime}} and 
+\mathrm{e}^{-H^{\prime}}=Z^{\prime}\rho
+e−H′=Z′​ρ\mathrm{e}^{-H^{\prime}}=Z^{\prime}\rho gives the useful form
+
+\displaystyle\Tr\!\left(O\,\mathscr{D}_{k}H^{\prime}\rho\right)
+Tr⁡(O​𝒟k​H′​ρ)\displaystyle\Tr\!\left(O\,\mathscr{D}_{k}H^{\prime}\rho\right)
+
+\displaystyle=-\Tr\!\left([F_{k},O]\rho\right)
+=−Tr⁡([Fk,O]​ρ)\displaystyle=-\Tr\!\left([F_{k},O]\rho\right)
+
+\displaystyle\implies\mathbb{E}_{\rho}\!\left(O\,\mathscr{D}_{k}H^{\prime}\right)
+⟹𝔼ρ​(O​𝒟k​H′)\displaystyle\implies\mathbb{E}_{\rho}\!\left(O\,\mathscr{D}_{k}H^{\prime}\right)
+
+\displaystyle=-\mathbb{E}_{\rho}\!\left([F_{k},O]\right)\;.
+=−𝔼ρ​([Fk,O]).\displaystyle=-\mathbb{E}_{\rho}\!\left([F_{k},O]\right)\;.
+
+(50)
+
+A.2.1 Special case
+
+One can also generalize this IBP identity to 
+\mathcal{D}_{k}H_{\theta}
+𝒟k​Hθ\mathcal{D}_{k}H_{\theta}. We can use Eq. (47) to write for any trace-class operator 
+O
+OO
+
+\displaystyle\mathbb{E}_{\rho}(O\mathcal{D}_{k}H^{\prime})
+𝔼ρ​(O​𝒟k​H′)\displaystyle\mathbb{E}_{\rho}(O\mathcal{D}_{k}H^{\prime})
+
+\displaystyle=\mathbb{E}_{\rho}(O)-\mathbb{E}_{\rho}(OF_{k}\mathscr{D}_{k}H^{\prime})\;.
+=𝔼ρ​(O)−𝔼ρ​(O​Fk​𝒟k​H′).\displaystyle=\mathbb{E}_{\rho}(O)-\mathbb{E}_{\rho}(OF_{k}\mathscr{D}_{k}H^{\prime})\;.
+
+(51)
+
+Now apply IBP from Eq. (50) to 
+O\rightarrow OF_{k}
+O→O​FkO\rightarrow OF_{k}
+
+\displaystyle\mathbb{E}_{\rho}(O\mathcal{D}_{k}H^{\prime})
+𝔼ρ​(O​𝒟k​H′)\displaystyle\mathbb{E}_{\rho}(O\mathcal{D}_{k}H^{\prime})
+
+\displaystyle=\mathbb{E}_{\rho}(O)+\mathbb{E}_{\rho}([F_{k},OF_{k}])
+=𝔼ρ​(O)+𝔼ρ​([Fk,O​Fk])\displaystyle=\mathbb{E}_{\rho}(O)+\mathbb{E}_{\rho}([F_{k},OF_{k}])
+
+\displaystyle\mathbb{E}_{\rho}(O\mathcal{D}_{k}H^{\prime})
+𝔼ρ​(O​𝒟k​H′)\displaystyle\mathbb{E}_{\rho}(O\mathcal{D}_{k}H^{\prime})
+
+\displaystyle=\mathbb{E}_{\rho}(F_{k}OF_{k})\;.
+=𝔼ρ​(Fk​O​Fk).\displaystyle=\mathbb{E}_{\rho}(F_{k}OF_{k})\;.
+
+(52)
+
+A.3 Loss rewrite in terms of model score only
+
+Expand (45):
+
+\displaystyle\mathcal{L}_{\mathrm{std}}(\theta)
+ℒstd​(θ)\displaystyle\mathcal{L}_{\mathrm{std}}(\theta)
+
+\displaystyle=\sum_{k}\mathbb{E}_{\rho}\!\left((\mathscr{D}_{k}H_{\theta})^{\dagger}(\mathscr{D}_{k}H_{\theta})\right)-2\,\real\,\sum_{k}\mathbb{E}_{\rho}\!\left((\mathscr{D}_{k}H_{\theta})^{\dagger}\,\mathscr{D}_{k}H^{\prime}\right)+C,
+=∑k𝔼ρ((𝒟kHθ)†(𝒟kHθ))−2Re∑k𝔼ρ((𝒟kHθ)†𝒟kH′)+C,\displaystyle=\sum_{k}\mathbb{E}_{\rho}\!\left((\mathscr{D}_{k}H_{\theta})^{\dagger}(\mathscr{D}_{k}H_{\theta})\right)-2\,\real\,\sum_{k}\mathbb{E}_{\rho}\!\left((\mathscr{D}_{k}H_{\theta})^{\dagger}\,\mathscr{D}_{k}H^{\prime}\right)+C,
+
+(53)
+
+where 
+C:=\sum_{k}\mathbb{E}_{\rho}((\mathscr{D}_{k}H^{\prime})^{\dagger}\mathscr{D}_{k}H^{\prime})
+C:=∑k𝔼ρ​((𝒟k​H′)†​𝒟k​H′)C:=\sum_{k}\mathbb{E}_{\rho}((\mathscr{D}_{k}H^{\prime})^{\dagger}\mathscr{D}_{k}H^{\prime}) is independent of 
+\theta
+θ\theta. Apply (50) with 
+O=(\mathscr{D}_{k}H_{\theta})^{\dagger}
+O=(𝒟k​Hθ)†O=(\mathscr{D}_{k}H_{\theta})^{\dagger}:
+
+\displaystyle\mathbb{E}_{\rho}\!\left((\mathscr{D}_{k}H_{\theta})^{\dagger}\,\mathscr{D}_{k}H^{\prime}\right)=-\mathbb{E}_{\rho}\!\left([F_{k},(\mathscr{D}_{k}H_{\theta})^{\dagger}]\right).
+𝔼ρ​((𝒟k​Hθ)†​𝒟k​H′)=−𝔼ρ​([Fk,(𝒟k​Hθ)†]).\displaystyle\mathbb{E}_{\rho}\!\left((\mathscr{D}_{k}H_{\theta})^{\dagger}\,\mathscr{D}_{k}H^{\prime}\right)=-\mathbb{E}_{\rho}\!\left([F_{k},(\mathscr{D}_{k}H_{\theta})^{\dagger}]\right).
+
+(54)
+
+Using 
+\real\langle X\rangle=\real\langle X^{\dagger}\rangle
+Re⟨X⟩=Re⟨X†⟩\real\langle X\rangle=\real\langle X^{\dagger}\rangle and 
+[F_{k},(\mathscr{D}_{k}H_{\theta})^{\dagger}]^{\dagger}=-[F_{k}^{\dagger},\mathscr{D}_{k}H_{\theta}]
+[Fk,(𝒟k​Hθ)†]†=−[Fk†,𝒟k​Hθ][F_{k},(\mathscr{D}_{k}H_{\theta})^{\dagger}]^{\dagger}=-[F_{k}^{\dagger},\mathscr{D}_{k}H_{\theta}] yields
+
+\displaystyle\mathcal{L}_{\mathrm{std}}(\theta)
+ℒstd​(θ)\displaystyle\mathcal{L}_{\mathrm{std}}(\theta)
+
+\displaystyle=\sum_{k}\mathbb{E}_{\rho}\!\left((\mathscr{D}_{k}H_{\theta})^{\dagger}(\mathscr{D}_{k}H_{\theta})\right)-2\,\real\,\sum_{k}\mathbb{E}_{\rho}\!\left([F_{k}^{\dagger},\mathscr{D}_{k}H_{\theta}]\right)\;,
+=∑k𝔼ρ((𝒟kHθ)†(𝒟kHθ))−2Re∑k𝔼ρ([Fk†,𝒟kHθ]),\displaystyle=\sum_{k}\mathbb{E}_{\rho}\!\left((\mathscr{D}_{k}H_{\theta})^{\dagger}(\mathscr{D}_{k}H_{\theta})\right)-2\,\real\,\sum_{k}\mathbb{E}_{\rho}\!\left([F_{k}^{\dagger},\mathscr{D}_{k}H_{\theta}]\right)\;,
+
+(55)
+
+where we have dropped the 
+\theta
+θ\theta-independent term. Equation (55) is the main computational form: it depends on 
+\rho
+ρ\rho only through expectations and depends on the model only through 
+\mathscr{D}_{k}H_{\theta}
+𝒟k​Hθ\mathscr{D}_{k}H_{\theta}.
+
+A.3.1 Special Case of Pauli Strings
+
+Again, we expand the loss in the special case where the 
+F_{k}
+FkF_{k} are Pauli strings, and we call this the ratio loss:
+
+\displaystyle\mathcal{L}_{\rm ratio}(\theta)
+ℒratio​(θ)\displaystyle\mathcal{L}_{\rm ratio}(\theta)
+
+\displaystyle=\mathbb{E}_{\rho}(\norm{\mathcal{D}_kH_\theta- \mathcal{D}_k H&#x27;}^{2})
+=𝔼ρ​(‖𝒟k​Hθ−𝒟k​H′‖2)\displaystyle=\mathbb{E}_{\rho}(\norm{\mathcal{D}_kH_\theta- \mathcal{D}_k H&#x27;}^{2})
+
+\displaystyle=\mathbb{E}_{\rho}(\norm{\mathcal{D}_kH_\theta}^{2})-2\real(\mathbb{E}_{\rho}((\mathcal{D}_{k}H_{\theta})^{\dagger}(\mathcal{D}_{k}H^{\prime})))+C^{\prime}
+=𝔼ρ(‖𝒟k​Hθ‖2)−2Re(𝔼ρ((𝒟kHθ)†(𝒟kH′)))+C′\displaystyle=\mathbb{E}_{\rho}(\norm{\mathcal{D}_kH_\theta}^{2})-2\real(\mathbb{E}_{\rho}((\mathcal{D}_{k}H_{\theta})^{\dagger}(\mathcal{D}_{k}H^{\prime})))+C^{\prime}
+
+(56)
+
+where now 
+C^{\prime}=\mathbb{E}_{\rho}(\norm{\mathcal{D}_kH&#x27;}^{2})
+C′=𝔼ρ​(‖𝒟k​H′‖2)C^{\prime}=\mathbb{E}_{\rho}(\norm{\mathcal{D}_kH&#x27;}^{2}) is a 
+\theta
+θ\theta-independent term. Using the special-case IBP identity in Eq. (52) for 
+O=(\mathcal{D}_{k}H_{\theta})^{\dagger}
+O=(𝒟k​Hθ)†O=(\mathcal{D}_{k}H_{\theta})^{\dagger}, we get
+
+\displaystyle\mathcal{L}_{\rm ratio}(\theta)
+ℒratio​(θ)\displaystyle\mathcal{L}_{\rm ratio}(\theta)
+
+\displaystyle=\mathbb{E}_{\rho}(\norm{\mathcal{D}_kH_\theta}^{2})-2\real(\mathbb{E}_{\rho}(F_{k}(\mathcal{D}_{k}H_{\theta})^{\dagger}F_{k}))
+=𝔼ρ(‖𝒟k​Hθ‖2)−2Re(𝔼ρ(Fk(𝒟kHθ)†Fk))\displaystyle=\mathbb{E}_{\rho}(\norm{\mathcal{D}_kH_\theta}^{2})-2\real(\mathbb{E}_{\rho}(F_{k}(\mathcal{D}_{k}H_{\theta})^{\dagger}F_{k}))
+
+\displaystyle=\mathbb{E}_{\rho}(\mathrm{e}^{H_{\theta}}F_{k}\mathrm{e}^{-H_{\theta}}F_{k}^{2}\mathrm{e}^{-H_{\theta}}F_{k}\mathrm{e}^{H_{\theta}})-2\real(\mathbb{E}_{\rho}(F_{k}\mathrm{e}^{H_{\theta}}F_{k}\mathrm{e}^{-H_{\theta}}F_{k}^{2}))
+=𝔼ρ(eHθFke−HθFk2e−HθFkeHθ)−2Re(𝔼ρ(FkeHθFke−HθFk2))\displaystyle=\mathbb{E}_{\rho}(\mathrm{e}^{H_{\theta}}F_{k}\mathrm{e}^{-H_{\theta}}F_{k}^{2}\mathrm{e}^{-H_{\theta}}F_{k}\mathrm{e}^{H_{\theta}})-2\real(\mathbb{E}_{\rho}(F_{k}\mathrm{e}^{H_{\theta}}F_{k}\mathrm{e}^{-H_{\theta}}F_{k}^{2}))
+
+\displaystyle=\mathbb{E}_{\rho}(\mathrm{e}^{H_{\theta}}F_{k}\mathrm{e}^{-2H_{\theta}}F_{k}\mathrm{e}^{H_{\theta}})-2\real(\mathbb{E}_{\rho}(F_{k}\mathrm{e}^{H_{\theta}}F_{k}\mathrm{e}^{-H_{\theta}}))
+=𝔼ρ(eHθFke−2​HθFkeHθ)−2Re(𝔼ρ(FkeHθFke−Hθ))\displaystyle=\mathbb{E}_{\rho}(\mathrm{e}^{H_{\theta}}F_{k}\mathrm{e}^{-2H_{\theta}}F_{k}\mathrm{e}^{H_{\theta}})-2\real(\mathbb{E}_{\rho}(F_{k}\mathrm{e}^{H_{\theta}}F_{k}\mathrm{e}^{-H_{\theta}}))
+
+\displaystyle=\mathbb{E}_{\rho}(\mathrm{e}^{H_{\theta}}\mathrm{e}^{-2F_{k}H_{\theta}F_{k}}\mathrm{e}^{H_{\theta}})-2\real(\mathbb{E}_{\rho}(\mathrm{e}^{F_{k}H_{\theta}F_{k}}\mathrm{e}^{-H_{\theta}}))\;.
+=𝔼ρ(eHθe−2​Fk​Hθ​FkeHθ)−2Re(𝔼ρ(eFk​Hθ​Fke−Hθ)).\displaystyle=\mathbb{E}_{\rho}(\mathrm{e}^{H_{\theta}}\mathrm{e}^{-2F_{k}H_{\theta}F_{k}}\mathrm{e}^{H_{\theta}})-2\real(\mathbb{E}_{\rho}(\mathrm{e}^{F_{k}H_{\theta}F_{k}}\mathrm{e}^{-H_{\theta}}))\;.
+
+(57)
+
+For a Hermitian unitary operator 
+F_{k}
+FkF_{k} (
+F_{k}^{\dagger}=F_{k}
+Fk†=FkF_{k}^{\dagger}=F_{k}, 
+F_{k}^{2}=\mathds{1}
+Fk2=𝟙F_{k}^{2}=\mathds{1}),
+(47) gives 
+\mathcal{D}_{k}H=\mathds{1}-F_{k}\mathscr{D}_{k}H
+𝒟k​H=𝟙−Fk​𝒟k​H\mathcal{D}_{k}H=\mathds{1}-F_{k}\mathscr{D}_{k}H,
+so that
+
+\displaystyle\mathcal{D}_{k}H_{\theta}-\mathcal{D}_{k}H^{\prime}=-F_{k}\big(\mathscr{D}_{k}H_{\theta}-\mathscr{D}_{k}H^{\prime}\big)\;.
+𝒟k​Hθ−𝒟k​H′=−Fk​(𝒟k​Hθ−𝒟k​H′).\displaystyle\mathcal{D}_{k}H_{\theta}-\mathcal{D}_{k}H^{\prime}=-F_{k}\big(\mathscr{D}_{k}H_{\theta}-\mathscr{D}_{k}H^{\prime}\big)\;.
+
+(58)
+
+Since 
+\|F_{k}X\|_{\rm HS}^{2}=\Tr(X^\dagger F_k^\dagger F_k X)=\|X\|_{\rm HS}^{2}
+‖Fk​X‖HS2=Tr⁡(X†​Fk†​Fk​X)=‖X‖HS2\|F_{k}X\|_{\rm HS}^{2}=\Tr(X^\dagger F_k^\dagger F_k X)=\|X\|_{\rm HS}^{2},
+the 
+\rho
+ρ\rho-weighted Hilbert–Schmidt norms of the two residuals are identical
+and therefore 
+\mathcal{L}_{\rm std}(\theta)=\mathcal{L}_{\rm ratio}(\theta)
+ℒstd​(θ)=ℒratio​(θ)\mathcal{L}_{\rm std}(\theta)=\mathcal{L}_{\rm ratio}(\theta).
+The expressions (55) and (23) are
+two computational forms of the same loss, obtained by applying IBP to two
+different forms of the same underlying conjugated direction
+
+\mathrm{e}^{-H}F_{k}\mathrm{e}^{H}
+e−H​Fk​eH\mathrm{e}^{-H}F_{k}\mathrm{e}^{H}.
+
+A.4 Nested-commutator series and truncation
+
+Using
+
+\displaystyle\mathrm{e}^{-H}F\,\mathrm{e}^{H}=\sum_{\ell=0}^{\infty}\frac{(-1)^{\ell}}{\ell!}[H,F]_{\ell},
+e−H​F​eH=∑ℓ=0∞(−1)ℓℓ!​[H,F]ℓ,\displaystyle\mathrm{e}^{-H}F\,\mathrm{e}^{H}=\sum_{\ell=0}^{\infty}\frac{(-1)^{\ell}}{\ell!}[H,F]_{\ell},
+
+(59)
+
+we obtain
+
+\displaystyle\mathscr{D}_{k}H=F_{k}-\mathrm{e}^{-H}F_{k}\mathrm{e}^{H}=\sum_{\ell=1}^{\infty}\frac{(-1)^{\ell+1}}{\ell!}\,[H,F_{k}]_{\ell}.
+𝒟k​H=Fk−e−H​Fk​eH=∑ℓ=1∞(−1)ℓ+1ℓ!​[H,Fk]ℓ.\displaystyle\mathscr{D}_{k}H=F_{k}-\mathrm{e}^{-H}F_{k}\mathrm{e}^{H}=\sum_{\ell=1}^{\infty}\frac{(-1)^{\ell+1}}{\ell!}\,[H,F_{k}]_{\ell}.
+
+(60)
+
+A depth-
+d
+dd Taylor surrogate is
+
+\displaystyle\mathscr{D}_{k}^{(d)}H:=\sum_{\ell=1}^{d}\frac{(-1)^{\ell+1}}{\ell!}\,[H,F_{k}]_{\ell}.
+𝒟k(d)​H:=∑ℓ=1d(−1)ℓ+1ℓ!​[H,Fk]ℓ.\displaystyle\mathscr{D}_{k}^{(d)}H:=\sum_{\ell=1}^{d}\frac{(-1)^{\ell+1}}{\ell!}\,[H,F_{k}]_{\ell}.
+
+(61)
+
+Substituting 
+\mathscr{D}_{k}^{(d)}H_{\theta}
+𝒟k(d)​Hθ\mathscr{D}_{k}^{(d)}H_{\theta} into (55) yields an approximation to the loss that is polynomial in 
+\theta
+θ\theta, with a degree that grows with 
+d
+dd and the operator algebra.
+
+Appendix B Choice of the directions 
+\{F_{k}\}
+{Fk}\{F_{k}\} in the loss
+
+B.1 Identifiability
+
+In this section, we study the minimal requirements on the set of directions
+
+\{F_{k}\}
+{Fk}\{F_{k}\} needed to ensure identifiability. In Sec. D.4, we adopted the strong assumption (S3) that the directions generate the full matrix algebra. Although sufficient, this assumption is not necessary. We show that identifiability can be guaranteed by a smaller subset of directions 
+\{F_{k}\}
+{Fk}\{F_{k}\} indexed by a set 
+\mathcal{K}\ni k
+𝒦∋k\mathcal{K}\ni k, and we derive a sufficient condition for such minimal direction sets.
+We begin with some definitions and identities.
+
+Definition 1 (Commutant).
+
+Let 
+\mathcal{A}\subseteq\mathcal{B}(\mathcal{H})
+𝒜⊆ℬ⁡(ℋ)\mathcal{A}\subseteq\mathcal{B}(\mathcal{H}) be a set of operators on a Hilbert space 
+\mathcal{H}
+ℋ\mathcal{H}. The commutant of 
+\mathcal{A}
+𝒜\mathcal{A}, denoted 
+\mathrm{Comm}(\mathcal{A})
+Comm⁡(𝒜)\mathrm{Comm}(\mathcal{A}), is
+
+\displaystyle\mathrm{Comm}(\mathcal{A}):=\{X\in\mathcal{B}(\mathcal{H}):[X,A]=0\;\;\forall A\in\mathcal{A}\}.
+Comm⁡(𝒜):={X∈ℬ⁡(ℋ):[X,A]=0​∀A∈𝒜}.\displaystyle\mathrm{Comm}(\mathcal{A}):=\{X\in\mathcal{B}(\mathcal{H}):[X,A]=0\;\;\forall A\in\mathcal{A}\}.
+
+(62)
+
+Definition 2 (Hamiltonian subspace and generated algebra).
+
+Given a parametrized Hamiltonian 
+H_{\theta}=\sum_{i=1}^{m}\theta_{i}h_{i}
+Hθ=∑i=1mθi​hiH_{\theta}=\sum_{i=1}^{m}\theta_{i}h_{i} with
+linearly independent operators 
+\{h_{i}\}_{i=1}^{m}
+{hi}i=1m\{h_{i}\}_{i=1}^{m}, define the Hamiltonian
+subspace 
+\mathcal{S}
+𝒮\mathcal{S} and the unital associative algebra
+
+\mathrm{Alg}(\mathcal{S})
+Alg⁡(𝒮)\mathrm{Alg}(\mathcal{S}) it generates,
+
+\displaystyle\mathcal{S}
+𝒮\displaystyle\mathcal{S}
+
+\displaystyle:=\mathrm{span}_{\mathbb{R}}\{h_{i}\}_{i=1}^{m}\subset\mathcal{B}(\mathcal{H}),
+:=spanℝ​{hi}i=1m⊂ℬ⁡(ℋ),\displaystyle:=\mathrm{span}_{\mathbb{R}}\{h_{i}\}_{i=1}^{m}\subset\mathcal{B}(\mathcal{H}),
+
+\displaystyle\mathrm{Alg}(\{h_{i}\})\equiv\mathrm{Alg}(\mathcal{S})
+Alg⁡({hi})≡Alg⁡(𝒮)\displaystyle\mathrm{Alg}(\{h_{i}\})\equiv\mathrm{Alg}(\mathcal{S})
+
+\displaystyle:=\mathrm{span}_{\mathbb{C}}\big\{\,h_{i_{1}}h_{i_{2}}\cdots h_{i_{p}}\;:\;p\geq 0,\ i_{j}\in\{1,\dots,m\}\,\big\},
+:=spanℂ{hi1hi2⋯hip:p≥0,ij∈{1,…,m}},\displaystyle:=\mathrm{span}_{\mathbb{C}}\big\{\,h_{i_{1}}h_{i_{2}}\cdots h_{i_{p}}\;:\;p\geq 0,\ i_{j}\in\{1,\dots,m\}\,\big\},
+
+(63)
+
+where the products are taken under ordinary operator multiplication and the
+empty product (
+p=0
+p=0p=0) is the identity 
+\mathds{1}
+𝟙\mathds{1}. Thus 
+\mathrm{Alg}(\mathcal{S})
+Alg⁡(𝒮)\mathrm{Alg}(\mathcal{S})
+is closed under multiplication and contains 
+\mathds{1}
+𝟙\mathds{1}.
+
+Theorem 1 (Identifiability under minimal direction sets).
+
+Let 
+H_{\theta}=\sum_{i=1}^{m}\theta_{i}h_{i}
+Hθ=∑i=1mθi​hiH_{\theta}=\sum_{i=1}^{m}\theta_{i}h_{i} and 
+H^{\prime}=\sum_{i=1}^{m}\theta_{i}^{*}h_{i}
+H′=∑i=1mθi∗​hiH^{\prime}=\sum_{i=1}^{m}\theta_{i}^{*}h_{i} be Hamiltonians in the subspace 
+\mathcal{S}=\mathrm{span}\{h_{i}\}
+𝒮=span​{hi}\mathcal{S}=\mathrm{span}\{h_{i}\}. Suppose the direction operators 
+\{F_{k}\}_{k\in\mathcal{K}}
+{Fk}k∈𝒦\{F_{k}\}_{k\in\mathcal{K}} satisfy
+
+\displaystyle\mathrm{Comm}(\{F_{k}\}_{k\in\mathcal{K}})\cap{\rm Alg}(\mathcal{S})\subseteq\mathrm{span}\{\mathds{1}\}.
+Comm⁡({Fk}k∈𝒦)∩Alg⁡(𝒮)⊆span⁡{𝟙}.\displaystyle\mathrm{Comm}(\{F_{k}\}_{k\in\mathcal{K}})\cap{\rm Alg}(\mathcal{S})\subseteq\mathrm{span}\{\mathds{1}\}.
+
+(64)
+
+If 
+\mathscr{D}_{k}H_{\theta}=\mathscr{D}_{k}H^{\prime}
+𝒟k​Hθ=𝒟k​H′\mathscr{D}_{k}H_{\theta}=\mathscr{D}_{k}H^{\prime} for all 
+k\in\mathcal{K}
+k∈𝒦k\in\mathcal{K}, then 
+H_{\theta}-H^{\prime}\in\mathrm{span}\{\mathds{1}\}
+Hθ−H′∈span⁡{𝟙}H_{\theta}-H^{\prime}\in\mathrm{span}\{\mathds{1}\}.
+
+Proof.
+
+Suppose 
+\mathscr{D}_{k}H_{\theta}=\mathscr{D}_{k}H^{\prime}
+𝒟k​Hθ=𝒟k​H′\mathscr{D}_{k}H_{\theta}=\mathscr{D}_{k}H^{\prime} for all 
+k
+kk. Expanding the score map:
+
+\displaystyle F_{k}-\mathrm{e}^{-H_{\theta}}F_{k}\mathrm{e}^{H_{\theta}}
+Fk−e−Hθ​Fk​eHθ\displaystyle F_{k}-\mathrm{e}^{-H_{\theta}}F_{k}\mathrm{e}^{H_{\theta}}
+
+\displaystyle=F_{k}-\mathrm{e}^{-H^{\prime}}F_{k}\mathrm{e}^{H^{\prime}}
+=Fk−e−H′​Fk​eH′\displaystyle=F_{k}-\mathrm{e}^{-H^{\prime}}F_{k}\mathrm{e}^{H^{\prime}}
+
+(65)
+
+\displaystyle\implies\mathrm{e}^{-H_{\theta}}F_{k}\mathrm{e}^{H_{\theta}}
+⟹e−Hθ​Fk​eHθ\displaystyle\implies\mathrm{e}^{-H_{\theta}}F_{k}\mathrm{e}^{H_{\theta}}
+
+\displaystyle=\mathrm{e}^{-H^{\prime}}F_{k}\mathrm{e}^{H^{\prime}}
+=e−H′​Fk​eH′\displaystyle=\mathrm{e}^{-H^{\prime}}F_{k}\mathrm{e}^{H^{\prime}}
+
+(66)
+
+\displaystyle\implies\mathrm{e}^{H^{\prime}}\mathrm{e}^{-H_{\theta}}F_{k}
+⟹eH′​e−Hθ​Fk\displaystyle\implies\mathrm{e}^{H^{\prime}}\mathrm{e}^{-H_{\theta}}F_{k}
+
+\displaystyle=F_{k}\,\mathrm{e}^{H^{\prime}}\mathrm{e}^{-H_{\theta}}.
+=Fk​eH′​e−Hθ.\displaystyle=F_{k}\,\mathrm{e}^{H^{\prime}}\mathrm{e}^{-H_{\theta}}.
+
+(67)
+
+Define 
+Y:=\mathrm{e}^{H^{\prime}}\mathrm{e}^{-H_{\theta}}
+Y:=eH′​e−HθY:=\mathrm{e}^{H^{\prime}}\mathrm{e}^{-H_{\theta}}. Then 
+Y\in\mathrm{Comm}(\{F_{k}\}_{k\in\mathcal{K}})
+Y∈Comm⁡({Fk}k∈𝒦)Y\in\mathrm{Comm}(\{F_{k}\}_{k\in\mathcal{K}}) and 
+Y\in\text{Alg}(\mathcal{S})
+Y∈Alg​(𝒮)Y\in\text{Alg}(\mathcal{S}). Therefore:
+
+\displaystyle Y\in\mathrm{Comm}(\{F_{k}\}_{k\in\mathcal{K}})\cap\mathrm{Alg}(\mathcal{S})\subseteq\mathrm{span}\{\mathds{1}\}.
+Y∈Comm⁡({Fk}k∈𝒦)∩Alg⁡(𝒮)⊆span⁡{𝟙}.\displaystyle Y\in\mathrm{Comm}(\{F_{k}\}_{k\in\mathcal{K}})\cap\mathrm{Alg}(\mathcal{S})\subseteq\mathrm{span}\{\mathds{1}\}.
+
+(68)
+
+Thus 
+H_{\theta}-H^{\prime}=c\cdot\mathds{1}
+Hθ−H′=c⋅𝟙H_{\theta}-H^{\prime}=c\cdot\mathds{1} for some 
+c\in\mathbb{R}
+c∈ℝc\in\mathbb{R}.
+∎
+
+First, note that if the operators 
+\{F_{k}\}
+{Fk}\{F_{k}\} generate the full algebra, we have 
+\text{Comm}\{F_{k}\}=\text{span}(\mathds{1})
+Comm​{Fk}=span​(𝟙)\text{Comm}\{F_{k}\}=\text{span}(\mathds{1}) and the condition in Eq. 64 is always satisfied. Second, the ambiguity 
+H_{\theta}-H^{\prime}=c\cdot\mathds{1}
+Hθ−H′=c⋅𝟙H_{\theta}-H^{\prime}=c\cdot\mathds{1} is physically inconsequential: constant shifts to the Hamiltonian do not affect the thermal state. Indeed,
+
+\displaystyle\rho=\frac{\mathrm{e}^{-H^{\prime}}}{\Tr(\e{-H&#x27;})}=\frac{\mathrm{e}^{-H_{\theta}+c\mathds{1}}}{\Tr(\e{-H_\theta+ c\mathds{1}})}=\frac{\mathrm{e}^{c}\cdot\mathrm{e}^{-H_{\theta}}}{\mathrm{e}^{c}\cdot\Tr(\e{-H_\theta})}=\rho_{\theta}\;,
+ρ=e−H′Tr⁡(e−H′)=e−Hθ+c​𝟙Tr⁡(e−Hθ+c​𝟙)=ec⋅e−Hθec⋅Tr⁡(e−Hθ)=ρθ,\displaystyle\rho=\frac{\mathrm{e}^{-H^{\prime}}}{\Tr(\e{-H&#x27;})}=\frac{\mathrm{e}^{-H_{\theta}+c\mathds{1}}}{\Tr(\e{-H_\theta+ c\mathds{1}})}=\frac{\mathrm{e}^{c}\cdot\mathrm{e}^{-H_{\theta}}}{\mathrm{e}^{c}\cdot\Tr(\e{-H_\theta})}=\rho_{\theta}\;,
+
+(69)
+
+and 
+H_{\theta}
+HθH_{\theta} and 
+H^{\prime}
+H′H^{\prime} define the same density matrix.
+
+B.2 Generalized Pauli (clock and shift) operators
+
+In this appendix, we collect the basic properties of the clock and shift operators
+used to construct single-site direction operators 
+F_{k}
+FkF_{k} for qubit and lattice
+systems (Sec. II.3). On a single site with finite local Hilbert-space
+dimension 
+n
+nn and computational basis 
+\{|0\rangle,\dots,|n-1\rangle\}
+{|0⟩,…,|n−1⟩}\{|0\rangle,\dots,|n-1\rangle\}, define
+the clock operator 
+\hat{C}
+C^\hat{C} and shift operator 
+\hat{S}
+S^\hat{S} by
+
+\displaystyle\hat{C}\,|k\rangle=\omega^{k}\,|k\rangle\;,\qquad\hat{S}\,|k\rangle=|k+1\!\!\mod n\rangle\;,\qquad\omega:=\mathrm{e}^{2\pi\mathrm{i}/n}\;.
+C^​|k⟩=ωk​|k⟩,S^​|k⟩=|k+modn⟩,ω:=e2​π​i/n.\displaystyle\hat{C}\,|k\rangle=\omega^{k}\,|k\rangle\;,\qquad\hat{S}\,|k\rangle=|k+1\!\!\mod n\rangle\;,\qquad\omega:=\mathrm{e}^{2\pi\mathrm{i}/n}\;.
+
+(70)
+
+Equivalently, 
+\hat{C}=\mathrm{diag}(1,\omega,\dots,\omega^{n-1})
+C^=diag⁡(1,ω,…,ωn−1)\hat{C}=\mathrm{diag}(1,\omega,\dots,\omega^{n-1}) and 
+\hat{S}
+S^\hat{S}
+is the cyclic permutation matrix. Both are unitary and obey
+
+\displaystyle\hat{S}^{n}=\hat{C}^{n}=\mathds{1}\;,\qquad\hat{S}\hat{C}=\omega^{-1}\,\hat{C}\hat{S}\;.
+S^n=C^n=𝟙,S^​C^=ω−1​C^​S^.\displaystyle\hat{S}^{n}=\hat{C}^{n}=\mathds{1}\;,\qquad\hat{S}\hat{C}=\omega^{-1}\,\hat{C}\hat{S}\;.
+
+(71)
+
+The 
+n^{2}
+n2n^{2} operators 
+\{\hat{C}^{a}\hat{S}^{b}\}_{a,b=0}^{n-1}
+{C^a​S^b}a,b=0n−1\{\hat{C}^{a}\hat{S}^{b}\}_{a,b=0}^{n-1} form the
+Heisenberg–Weyl basis of 
+M_{n}(\mathbb{C})
+Mn​(ℂ)M_{n}(\mathbb{C}): they are linearly independent and
+span the full single-site matrix algebra. Consequently, 
+\hat{C}
+C^\hat{C} and 
+\hat{S}
+S^\hat{S}
+generate 
+M_{n}(\mathbb{C})
+Mn​(ℂ)M_{n}(\mathbb{C}) irreducibly, and the only operators commuting with
+both are multiples of the identity,
+
+\displaystyle\mathrm{Comm}\{\hat{C},\hat{S}\}=\mathbb{C}\,\mathds{1}\;,
+Comm​{C^,S^}=ℂ​ 1,\displaystyle\mathrm{Comm}\{\hat{C},\hat{S}\}=\mathbb{C}\,\mathds{1}\;,
+
+(72)
+
+which is precisely the completeness property required for identifiability.
+
+Qubit case (
+n=2
+n=2n=2).
+Here 
+\omega=\mathrm{e}^{\mathrm{i}\pi}=-1
+ω=ei​π=−1\omega=\mathrm{e}^{\mathrm{i}\pi}=-1, and the clock and shift operators reduce to the
+familiar Pauli matrices,
+
+\displaystyle\hat{C}=\begin{pmatrix}1&amp;0\\
+0&amp;-1\end{pmatrix}=\sigma^{z}\;,\qquad\hat{S}=\begin{pmatrix}0&amp;1\\
+1&amp;0\end{pmatrix}=\sigma^{x}\;.
+C^=(100−1)=σz,S^=(0110)=σx.\displaystyle\hat{C}=\begin{pmatrix}1&amp;0\\
+0&amp;-1\end{pmatrix}=\sigma^{z}\;,\qquad\hat{S}=\begin{pmatrix}0&amp;1\\
+1&amp;0\end{pmatrix}=\sigma^{x}\;.
+
+(73)
+
+The relation (71) becomes the anticommutation relation
+
+\hat{S}\hat{C}=-\hat{C}\hat{S}
+S^​C^=−C^​S^\hat{S}\hat{C}=-\hat{C}\hat{S}, i.e. 
+\sigma^{x}\sigma^{z}=-\sigma^{z}\sigma^{x}
+σx​σz=−σz​σx\sigma^{x}\sigma^{z}=-\sigma^{z}\sigma^{x}, and
+the third Pauli operator is the product 
+\sigma^{y}=\mathrm{i}\,\sigma^{x}\sigma^{z}=\mathrm{i}\,\hat{S}\hat{C}
+σy=i​σx​σz=i​S^​C^\sigma^{y}=\mathrm{i}\,\sigma^{x}\sigma^{z}=\mathrm{i}\,\hat{S}\hat{C}
+rather than an independent generator. Thus the single-site Pauli directions
+
+\{\sigma^{z},\sigma^{x}\}
+{σz,σx}\{\sigma^{z},\sigma^{x}\} used in the qubit examples
+(Secs. III.5 ff.) are exactly the 
+n=2
+n=2n=2 instance of the clock–shift
+construction, and the 
+n^{2}=4
+n2=4n^{2}=4 Heisenberg–Weyl elements
+
+\{\mathds{1},\sigma^{x},\sigma^{z},\sigma^{x}\sigma^{z}\}
+{𝟙,σx,σz,σx​σz}\{\mathds{1},\sigma^{x},\sigma^{z},\sigma^{x}\sigma^{z}\} are the qubit analog of the
+general qudit basis 
+\{\hat{C}^{a}\hat{S}^{b}\}
+{C^a​S^b}\{\hat{C}^{a}\hat{S}^{b}\}.
+
+Continuum limit.
+Writing 
+\hat{C}=\mathrm{e}^{\mathrm{i}a\,\hat{p}}
+C^=ei​a​p^\hat{C}=\mathrm{e}^{\mathrm{i}a\,\hat{p}} and 
+\hat{S}=\mathrm{e}^{-\mathrm{i}b\,\hat{q}}
+S^=e−i​b​q^\hat{S}=\mathrm{e}^{-\mathrm{i}b\,\hat{q}} with real
+
+a,b
+a,ba,b satisfying 
+ab=2\pi/n
+a​b=2​π/nab=2\pi/n, the Weyl relation (71) is the
+finite-dimensional analog of the canonical commutator 
+[\hat{p},\hat{q}]=\mathrm{i}
+[p^,q^]=i[\hat{p},\hat{q}]=\mathrm{i}.
+As 
+n\to\infty
+n→∞n\to\infty with the lattice spacing scaled appropriately, 
+\hat{p}
+p^\hat{p} and
+
+\hat{q}
+q^\hat{q} converge to conjugate position and momentum operators and
+
+\displaystyle\lim_{n\to\infty}[\hat{p}_{n,i},\hat{q}_{n,j}]=\mathrm{i}\,\delta_{ij}\;,
+limn→∞[p^n,i,q^n,j]=i​δi​j,\displaystyle\lim_{n\to\infty}[\hat{p}_{n,i},\hat{q}_{n,j}]=\mathrm{i}\,\delta_{ij}\;,
+
+(74)
+
+recovering the continuum directions 
+F_{k}\in\{\hat{\phi}_{i},\hat{\pi}_{i}\}
+Fk∈{ϕ^i,π^i}F_{k}\in\{\hat{\phi}_{i},\hat{\pi}_{i}\} used for
+the lattice 
+\phi^{4}
+ϕ4\phi^{4} theory in Sec. III.5.
+
+B.3 Fermionic systems
+
+For fermions, the single-site clock–shift construction is replaced by the
+single-mode Majorana operators, which play the same role for the
+anticommuting (Clifford) algebra that 
+\hat{C},\hat{S}
+C^,S^\hat{C},\hat{S} play for the
+commuting (Weyl) algebra of a distinguishable site. For 
+N
+NN fermionic
+modes with annihilation and creation operators 
+c_{k},c_{k}^{\dagger}
+ck,ck†c_{k},c_{k}^{\dagger} obeying the
+canonical anticommutation relations
+
+\{c_{k},c_{l}^{\dagger}\}=\delta_{kl}
+{ck,cl†}=δk​l\{c_{k},c_{l}^{\dagger}\}=\delta_{kl}, 
+\{c_{k},c_{l}\}=0
+{ck,cl}=0\{c_{k},c_{l}\}=0, define the 
+2N
+2​N2N Majoranas
+
+\displaystyle\gamma_{k,1}=c_{k}^{\dagger}+c_{k}\;,\qquad\gamma_{k,2}=\mathrm{i}(c_{k}^{\dagger}-c_{k})\;,\qquad k=1,\dots,N\;.
+γk,1=ck†+ck,γk,2=i(ck†−ck),k=1,…,N.\displaystyle\gamma_{k,1}=c_{k}^{\dagger}+c_{k}\;,\qquad\gamma_{k,2}=\mathrm{i}(c_{k}^{\dagger}-c_{k})\;,\qquad k=1,\dots,N\;.
+
+(75)
+
+After relabeling by a single index 
+a=1,\dots,2N
+a=1,…,2​Na=1,\dots,2N, these operators are Hermitian and obey
+the Clifford relation
+
+\displaystyle\{\gamma_{a},\gamma_{b}\}=2\,\delta_{ab}\,\mathds{1}\;,
+{γa,γb}=2​δa​b​ 1,\displaystyle\{\gamma_{a},\gamma_{b}\}=2\,\delta_{ab}\,\mathds{1}\;,
+
+(76)
+
+the anticommuting analog of the Weyl relation (71). The Fock
+space has dimension 
+2^{N}
+2N2^{N}.
+
+We claim that, exactly as for the clock–shift operators, the Majoranas generate
+the full matrix algebra and have a trivial commutant,
+
+\displaystyle\mathrm{Comm}\{\gamma_{a}\}_{a=1}^{2N}=\mathbb{C}\,\mathds{1}\;,
+Comm​{γa}a=12​N=ℂ​ 1,\displaystyle\mathrm{Comm}\{\gamma_{a}\}_{a=1}^{2N}=\mathbb{C}\,\mathds{1}\;,
+
+(77)
+
+so that the completeness condition required for identifiability
+[Eq. (13)] holds with no further assumptions. The argument is
+the Clifford analog of the Heisenberg–Weyl basis statement above.
+
+For an ordered index set 
+S=\{a_{1}&lt;a_{2}&lt;\dots&lt;a_{r}\}\subseteq\{1,\dots,2N\}
+S={a1&lt;a2&lt;⋯&lt;ar}⊆{1,…,2N}S=\{a_{1}&lt;a_{2}&lt;\dots&lt;a_{r}\}\subseteq\{1,\dots,2N\}, define
+the Majorana monomial
+
+\displaystyle\Gamma_{S}:=\gamma_{a_{1}}\gamma_{a_{2}}\cdots\gamma_{a_{r}}\;,\qquad\Gamma_{\emptyset}:=\mathds{1}\;,
+ΓS:=γa1γa2⋯γar,Γ∅:=𝟙,\displaystyle\Gamma_{S}:=\gamma_{a_{1}}\gamma_{a_{2}}\cdots\gamma_{a_{r}}\;,\qquad\Gamma_{\emptyset}:=\mathds{1}\;,
+
+(78)
+
+which gives 
+2^{2N}
+22​N2^{2N} operators in total (one for each subset 
+S
+SS). From
+(76) we have 
+\gamma_{a}^{2}=\mathds{1}
+γa2=𝟙\gamma_{a}^{2}=\mathds{1}, and distinct
+Majoranas anticommute. Thus, any product 
+\Gamma_{S}
+ΓS\Gamma_{S} with
+
+S\neq\emptyset
+S≠∅S\neq\emptyset is traceless: 
+\mathrm{Tr}\,\Gamma_{S}=0
+Tr​ΓS=0\mathrm{Tr}\,\Gamma_{S}=0. Second, the product
+
+\Gamma_{S}^{\dagger}\Gamma_{S^{\prime}}
+ΓS†​ΓS′\Gamma_{S}^{\dagger}\Gamma_{S^{\prime}} is again a Majorana monomial (up to a sign), and it
+equals 
+\mathds{1}
+𝟙\mathds{1} exactly when 
+S=S^{\prime}
+S=S′S=S^{\prime} and is traceless otherwise. Taking the
+trace therefore gives
+
+\displaystyle\mathrm{Tr}\!\left(\Gamma_{S}^{\dagger}\,\Gamma_{S^{\prime}}\right)=2^{N}\,\delta_{S,S^{\prime}}\;,
+Tr⁡(ΓS†​ΓS′)=2N​δS,S′,\displaystyle\mathrm{Tr}\!\left(\Gamma_{S}^{\dagger}\,\Gamma_{S^{\prime}}\right)=2^{N}\,\delta_{S,S^{\prime}}\;,
+
+(79)
+
+so the monomials are orthogonal. Thus the 
+2^{2N}
+22​N2^{2N} monomials 
+\{\Gamma_{S}\}
+{ΓS}\{\Gamma_{S}\} are linearly independent. As
+
+\dim M_{2^{N}}(\mathbb{C})=(2^{N})^{2}=2^{2N}
+dimM2N​(ℂ)=(2N)2=22​N\dim M_{2^{N}}(\mathbb{C})=(2^{N})^{2}=2^{2N}, they form a basis of the
+full matrix algebra on Fock space, in exact parallel with the 
+n^{2}
+n2n^{2}
+Heisenberg–Weyl elements 
+\{\hat{C}^{a}\hat{S}^{b}\}
+{C^a​S^b}\{\hat{C}^{a}\hat{S}^{b}\} spanning 
+M_{n}(\mathbb{C})
+Mn​(ℂ)M_{n}(\mathbb{C}).
+Consequently, the Majoranas generate 
+M_{2^{N}}(\mathbb{C})
+M2N​(ℂ)M_{2^{N}}(\mathbb{C}) irreducibly.
+
+To obtain (77), suppose 
+X
+XX commutes with every 
+\gamma_{a}
+γa\gamma_{a}.
+Using
+
+[X,\gamma_{a}\gamma_{b}]=[X,\gamma_{a}]\gamma_{b}+\gamma_{a}[X,\gamma_{b}]
+[X,γa​γb]=[X,γa]​γb+γa​[X,γb][X,\gamma_{a}\gamma_{b}]=[X,\gamma_{a}]\gamma_{b}+\gamma_{a}[X,\gamma_{b}], we find that 
+X
+XX
+commutes with every monomial 
+\Gamma_{S}
+ΓS\Gamma_{S}, hence with all of
+
+M_{2^{N}}(\mathbb{C})
+M2N​(ℂ)M_{2^{N}}(\mathbb{C}) by the basis property. An operator commuting with the
+entire matrix algebra is a scalar (Schur’s lemma), so 
+X=c\,\mathds{1}
+X=c​ 1X=c\,\mathds{1}. This
+establishes (77).
+
+In particular, the 
+4L_{s}
+4​Ls4L_{s} Majoranas of the 
+L_{s}
+LsL_{s}-site Fermi–Hubbard model
+(
+N=2L_{s}
+N=2​LsN=2L_{s} modes from sites 
+\times
+×\times spins) generate
+
+\mathrm{Cl}(4L_{s},\mathbb{R})\cong M_{2^{2L_{s}}}(\mathbb{C})
+Cl⁡(4​Ls,ℝ)≅M22​Ls​(ℂ)\mathrm{Cl}(4L_{s},\mathbb{R})\cong M_{2^{2L_{s}}}(\mathbb{C}) and satisfy
+
+\mathrm{Comm}\{\gamma_{k,\alpha}\}=\mathbb{C}\mathds{1}
+Comm​{γk,α}=ℂ​𝟙\mathrm{Comm}\{\gamma_{k,\alpha}\}=\mathbb{C}\mathds{1}, which is the
+completeness statement used in Sec. II.3.
+
+The construction requires no Jordan–Wigner mapping.
+To establish locality, however, we must also specify the parity
+of the Hamiltonian terms.
+
+Locality of the nested commutators.
+
+For fermions, the support of an operator refers to the modes
+whose creation and annihilation operators are needed to
+express it. In particular, 
+\gamma_{k,\alpha}
+γk,α\gamma_{k,\alpha} is supported
+on mode 
+k
+kk.
+
+We assume that every term 
+h_{i}
+hih_{i} in
+
+H_{\theta}=\sum_{i}\theta_{i}h_{i}
+Hθ=∑iθi​hiH_{\theta}=\sum_{i}\theta_{i}h_{i} has even fermion parity:
+each 
+h_{i}
+hih_{i} is a sum of products containing an even number
+of creation and annihilation operators. Although individual
+fermion operators on distinct modes anticommute, moving an
+operator past an even number of such factors cancels the
+minus signs. Consequently, an even Hamiltonian term commutes
+with every operator on disjoint support:
+
+\displaystyle[h_{i},A]=0\qquad\text{if}\qquad\mathrm{supp}(h_{i})\cap\mathrm{supp}(A)=\varnothing.
+[hi,A]=0ifsupp⁡(hi)∩supp⁡(A)=∅.\displaystyle[h_{i},A]=0\qquad\text{if}\qquad\mathrm{supp}(h_{i})\cap\mathrm{supp}(A)=\varnothing.
+
+(80)
+
+This also holds when 
+A
+AA is odd, as for our Majorana
+directions [30].
+
+Thus, the first commutator is
+
+\displaystyle[H_{\theta},\gamma_{k,\alpha}]=\sum_{i:\,k\in\mathrm{supp}(h_{i})}\theta_{i}[h_{i},\gamma_{k,\alpha}],
+[Hθ,γk,α]=∑i:k∈supp⁡(hi)θi[hi,γk,α],\displaystyle[H_{\theta},\gamma_{k,\alpha}]=\sum_{i:\,k\in\mathrm{supp}(h_{i})}\theta_{i}[h_{i},\gamma_{k,\alpha}],
+
+(81)
+
+so only Hamiltonian terms involving mode 
+k
+kk contribute.
+Each resulting term is supported on the modes appearing
+in that Hamiltonian term. At the next commutator, only
+Hamiltonian terms overlapping this new support can
+contribute. The same argument applies at every subsequent
+order.
+
+If the interaction range is 
+R
+RR, meaning that no two sites
+in the support of a local Hamiltonian term are separated
+by more than 
+R
+RR, each commutator can extend the support
+by at most this distance. Therefore,
+
+\displaystyle\mathrm{supp}\bigl([H_{\theta},\gamma_{k,\alpha}]_{\ell}\bigr)\subseteq\{j:\mathrm{dist}(j,k)\leq\ell R\}.
+supp⁡([Hθ,γk,α]ℓ)⊆{j:dist⁡(j,k)≤ℓ​R}.\displaystyle\mathrm{supp}\bigl([H_{\theta},\gamma_{k,\alpha}]_{\ell}\bigr)\subseteq\{j:\mathrm{dist}(j,k)\leq\ell R\}.
+
+(82)
+
+Here, distance is measured between the sites carrying the
+modes; modes on the same site have zero spatial separation.
+This gives the same bounded support growth as in the spin case.
+The hopping, density, and interaction terms of the
+Fermi–Hubbard model all satisfy the even-parity assumption.
+
+If odd Hamiltonian terms are allowed, this argument can fail.
+For example, take 
+H=\lambda\gamma_{j,1}
+H=λ​γj,1H=\lambda\gamma_{j,1} with real
+
+\lambda\neq 0
+λ≠0\lambda\neq 0. For any distinct mode 
+k
+kk,
+
+\displaystyle[H,\gamma_{k,1}]=2\lambda\gamma_{j,1}\gamma_{k,1}\neq 0,
+[H,γk,1]=2​λ​γj,1​γk,1≠0,\displaystyle[H,\gamma_{k,1}]=2\lambda\gamma_{j,1}\gamma_{k,1}\neq 0,
+
+(83)
+
+regardless of the distance between 
+j
+jj and 
+k
+kk.
+Thus, bounded spatial support growth follows from the
+locality and even parity of the Hamiltonian terms;
+working directly in Fock space alone is insufficient.
+
+Appendix C Explicit example of nonconvexity of the loss
+
+The completeness condition on the direction operators ensures that the true Hamiltonian is the unique global minimizer, up to an additive constant. However, does this also imply that the loss is easy to minimize from any initial point? We show with a two-qubit example that the answer is no: even when the direction operators generate the full matrix algebra, the loss can have a local minimum at which the Hamiltonian parameters differ from their true values.
+
+Consider the parametrized Hamiltonian
+
+\displaystyle H_{\theta}
+Hθ\displaystyle H_{\theta}
+
+\displaystyle=\theta_{1}h_{1}+\theta_{2}h_{2},
+=θ1​h1+θ2​h2,\displaystyle=\theta_{1}h_{1}+\theta_{2}h_{2},
+
+(84)
+
+\displaystyle h_{1}
+h1\displaystyle h_{1}
+
+\displaystyle=0.19\,I\otimes Z-0.81\,X\otimes Z,
+=0.19​I⊗Z−0.81​X⊗Z,\displaystyle=0.19\,I\otimes Z-0.81\,X\otimes Z,
+
+(85)
+
+\displaystyle h_{2}
+h2\displaystyle h_{2}
+
+\displaystyle=0.73\,I\otimes Z+0.17\,X\otimes Z-0.21\,Y\otimes I,
+=0.73​I⊗Z+0.17​X⊗Z−0.21​Y⊗I,\displaystyle=0.73\,I\otimes Z+0.17\,X\otimes Z-0.21\,Y\otimes I,
+
+(86)
+
+where 
+X,Y,Z
+X,Y,ZX,Y,Z are the Pauli matrices and 
+I
+II is the single-qubit identity. We choose the target parameters to be
+
+\displaystyle\theta^{*}=(-4,-3.5),\qquad\rho=\frac{e^{-H_{\theta^{*}}}}{\Tr(e^{-H_{\theta^*}})},
+θ∗=(−4,−3.5),ρ=e−Hθ∗Tr⁡(e−Hθ∗),\displaystyle\theta^{*}=(-4,-3.5),\qquad\rho=\frac{e^{-H_{\theta^{*}}}}{\Tr(e^{-H_{\theta^*}})},
+
+(87)
+
+with the inverse temperature absorbed into the Hamiltonian, as in the main text. For the direction operators, we take
+
+\displaystyle\{F_{k}\}_{k=1}^{4}=\{X\otimes I,Z\otimes I,I\otimes X,I\otimes Z\}.
+{Fk}k=14={X⊗I,Z⊗I,I⊗X,I⊗Z}.\displaystyle\{F_{k}\}_{k=1}^{4}=\{X\otimes I,Z\otimes I,I\otimes X,I\otimes Z\}.
+
+(88)
+
+These operators generate 
+M_{4}(\mathbb{C})
+M4​(ℂ)M_{4}(\mathbb{C}), and their common commutant therefore contains only multiples of the identity. Moreover, 
+h_{1}
+h1h_{1} and 
+h_{2}
+h2h_{2} are linearly independent and traceless, so there is no additive-constant ambiguity within this parametrization. Thus, the loss vanishes only at 
+\theta=\theta^{*}
+θ=θ∗\theta=\theta^{*}.
+
+To examine the loss away from this point, we evaluate the matrix exponentials directly, without truncating the nested-commutator expansion. Writing
+
+\displaystyle R_{k}(\theta)
+Rk​(θ)\displaystyle R_{k}(\theta)
+
+\displaystyle:=e^{-H_{\theta}}F_{k}e^{H_{\theta}},
+:=e−Hθ​Fk​eHθ,\displaystyle:=e^{-H_{\theta}}F_{k}e^{H_{\theta}},
+
+(89)
+
+\displaystyle\Delta_{k}(\theta)
+Δk​(θ)\displaystyle\Delta_{k}(\theta)
+
+\displaystyle:=R_{k}(\theta)-R_{k}(\theta^{*}),
+:=Rk​(θ)−Rk​(θ∗),\displaystyle:=R_{k}(\theta)-R_{k}(\theta^{*}),
+
+(90)
+
+the loss in Eq. (5) becomes
+
+\displaystyle\mathcal{L}_{\rm osm}(\theta)=\sum_{k=1}^{4}\Tr\!\left(\rho\,\Delta_{k}(\theta)^{\dagger}\Delta_{k}(\theta)\right).
+ℒosm​(θ)=∑k=14Tr⁡(ρ​Δk​(θ)†​Δk​(θ)).\displaystyle\mathcal{L}_{\rm osm}(\theta)=\sum_{k=1}^{4}\Tr\!\left(\rho\,\Delta_{k}(\theta)^{\dagger}\Delta_{k}(\theta)\right).
+
+(91)
+
+The sign difference between 
+\Delta_{k}
+Δk\Delta_{k} and the score residual does not affect this expression, since 
+\mathscr{D}_{k}H_{\theta}=F_{k}-R_{k}(\theta)
+𝒟k​Hθ=Fk−Rk​(θ)\mathscr{D}_{k}H_{\theta}=F_{k}-R_{k}(\theta).
+
+Solving the stationarity equations numerically gives a second minimum at
+
+\displaystyle\theta_{\rm m}
+θm\displaystyle\theta_{\rm m}
+
+\displaystyle\simeq(-1.44731998,-5.28849816),
+≃(−1.44731998,−5.28849816),\displaystyle\simeq(-1.44731998,-5.28849816),
+
+(92)
+
+\displaystyle\mathcal{L}_{\rm osm}(\theta_{\rm m})
+ℒosm​(θm)\displaystyle\mathcal{L}_{\rm osm}(\theta_{\rm m})
+
+\displaystyle\simeq 1.598554732\times 10^{5}.
+≃1.598554732×105.\displaystyle\simeq 1.598554732\times 10^{5}.
+
+(93)
+
+At the unrounded numerical solution, the gradient norm is below 
+10^{-8}
+10−810^{-8}. The Hessian eigenvalues are
+
+\displaystyle\lambda\!\left(\nabla^{2}\mathcal{L}_{\rm osm}(\theta_{\rm m})\right)\simeq\{2.17745\times 10^{4},\,3.51735\times 10^{5}\}.
+λ⁡(∇2ℒosm​(θm))≃{2.17745×104, 3.51735×105}.\displaystyle\lambda\!\left(\nabla^{2}\mathcal{L}_{\rm osm}(\theta_{\rm m})\right)\simeq\{2.17745\times 10^{4},\,3.51735\times 10^{5}\}.
+
+(94)
+
+Both eigenvalues are positive, providing numerical evidence for a strict local minimum. Since the loss is positive here, while 
+\mathcal{L}_{\rm osm}(\theta^{*})=0
+ℒosm​(θ∗)=0\mathcal{L}_{\rm osm}(\theta^{*})=0, this minimum is spurious. The same example also has a saddle point at
+
+\displaystyle\theta_{\rm s}
+θs\displaystyle\theta_{\rm s}
+
+\displaystyle\simeq(-1.58465053,-4.93358407),
+≃(−1.58465053,−4.93358407),\displaystyle\simeq(-1.58465053,-4.93358407),
+
+(95)
+
+\displaystyle\mathcal{L}_{\rm osm}(\theta_{\rm s})
+ℒosm​(θs)\displaystyle\mathcal{L}_{\rm osm}(\theta_{\rm s})
+
+\displaystyle\simeq 1.603146581\times 10^{5},
+≃1.603146581×105,\displaystyle\simeq 1.603146581\times 10^{5},
+
+(96)
+
+with Hessian eigenvalues approximately 
+-1.56466\times 10^{4}
+−1.56466×104-1.56466\times 10^{4} and 
+1.29538\times 10^{5}
+1.29538×1051.29538\times 10^{5}. We computed the gradients using Fréchet derivatives of the matrix exponential and checked the Hessian eigenvalues by central differences of these gradients with step sizes from 
+10^{-4}
+10−410^{-4} to 
+10^{-6}
+10−610^{-6}.
+
+This example separates two properties of the learning problem. Completeness ensures that matching all the operator scores determines the true Hamiltonian, but it does not rule out stationary points with nonzero score residuals. In particular, a positive-loss stationary point is incompatible with a global PL inequality with a strictly positive constant. This does not contradict the local PL inequality established in Appendix D, which applies in a neighborhood of the true parameters. The obstruction in this example is already present in the exact population loss, and therefore does not arise from finite-sample errors or truncation of the score expansion.
+
+Appendix D Local PL inequality for the standard-metric loss
+
+This appendix provides a self-contained proof that 
+\mathcal{L}_{\mathrm{std}}
+ℒstd\mathcal{L}_{\mathrm{std}} satisfies a
+local Polyak–Łojasiewicz (PL) inequality near a realizable minimizer under natural
+algebraic assumptions. We assume that the Hamiltonian is linear in the parameters
+
+\displaystyle H_{\theta}
+Hθ\displaystyle H_{\theta}
+
+\displaystyle=\sum_{i=1}^{m}\theta_{i}h_{i}.
+=∑i=1mθi​hi.\displaystyle=\sum_{i=1}^{m}\theta_{i}h_{i}.
+
+(97)
+
+D.1 Real Hilbert structure and residual map
+
+Let 
+\mathcal{H}:=\mathbb{C}^{d\times d}
+ℋ:=ℂd×d\mathcal{H}:=\mathbb{C}^{d\times d} and regard it as a real Hilbert space equipped with the
+
+\rho
+ρ\rho-weighted inner product
+
+\displaystyle(A,B)_{\rho}:=\real\,\Tr(\rho\,A^\dagger B),\qquad\|A\|_{\rho}:=\sqrt{(A,A)_{\rho}},
+(A,B)ρ:=ReTr⁡(ρ​A†​B),‖A‖ρ:=(A,A)ρ,\displaystyle(A,B)_{\rho}:=\real\,\Tr(\rho\,A^\dagger B),\qquad\|A\|_{\rho}:=\sqrt{(A,A)_{\rho}},
+
+(98)
+
+where 
+\rho=\mathrm{e}^{-H^{\prime}}/Z^{\prime}
+ρ=e−H′/Z′\rho=\mathrm{e}^{-H^{\prime}}/Z^{\prime} is the data state and is full rank.
+For 
+n
+nn directions, define the product space 
+\mathcal{H}^{n}
+ℋn\mathcal{H}^{n} with
+
+\displaystyle(r,s)_{\rho,n}:=\sum_{k=1}^{n}(r_{k},s_{k})_{\rho},\qquad\|r\|_{\rho,n}^{2}=(r,r)_{\rho,n}.
+(r,s)ρ,n:=∑k=1n(rk,sk)ρ,‖r‖ρ,n2=(r,r)ρ,n.\displaystyle(r,s)_{\rho,n}:=\sum_{k=1}^{n}(r_{k},s_{k})_{\rho},\qquad\|r\|_{\rho,n}^{2}=(r,r)_{\rho,n}.
+
+(99)
+
+Fix a realizable target 
+H^{\prime}:=H_{\theta^{\ast}}
+H′:=Hθ∗H^{\prime}:=H_{\theta^{\ast}} and define the residual
+
+\displaystyle r(\theta):=(\Delta_{1}(\theta),\dots,\Delta_{n}(\theta))\in\mathcal{H}^{n},\qquad\mathcal{L}_{\mathrm{std}}(\theta):=\|r(\theta)\|_{\rho,n}^{2}.
+r⁡(θ):=(Δ1​(θ),…,Δn​(θ))∈ℋn,ℒstd​(θ):=‖r⁡(θ)‖ρ,n2.\displaystyle r(\theta):=(\Delta_{1}(\theta),\dots,\Delta_{n}(\theta))\in\mathcal{H}^{n},\qquad\mathcal{L}_{\mathrm{std}}(\theta):=\|r(\theta)\|_{\rho,n}^{2}.
+
+(100)
+
+Then 
+\mathcal{L}_{\mathrm{std}}(\theta^{\ast})=0
+ℒstd​(θ∗)=0\mathcal{L}_{\mathrm{std}}(\theta^{\ast})=0.
+
+D.2 Jacobian, adjoint, and gradient formula
+
+Assume 
+r
+rr is Fréchet differentiable. Define the Jacobian
+
+J(\theta):\mathbb{R}^{m}\to\mathcal{H}^{n}
+J⁡(θ):ℝm→ℋnJ(\theta):\mathbb{R}^{m}\to\mathcal{H}^{n} by
+
+\displaystyle(J(\theta)u)_{k}
+(J⁡(θ)​u)k\displaystyle(J(\theta)u)_{k}
+
+\displaystyle:=\sum_{i=1}^{m}u_{i}\,\partial_{\theta_{i}}\Delta_{k}(\theta),
+:=∑i=1mui​∂θiΔk​(θ),\displaystyle:=\sum_{i=1}^{m}u_{i}\,\partial_{\theta_{i}}\Delta_{k}(\theta),
+
+\displaystyle J(\theta)u
+J⁡(θ)​u\displaystyle J(\theta)u
+
+\displaystyle:=Dr(\theta)[u].
+:=D​r​(θ)​[u].\displaystyle:=Dr(\theta)[u].
+
+(101)
+
+Let 
+J(\theta)^{\top}:\mathcal{H}^{n}\to\mathbb{R}^{m}
+J​(θ)⊤:ℋn→ℝmJ(\theta)^{\top}:\mathcal{H}^{n}\to\mathbb{R}^{m} denote the real adjoint with respect to the
+inner product 
+(\cdot,\cdot)_{\rho,n}
+(⋅,⋅)ρ,n(\cdot,\cdot)_{\rho,n}, i.e.
+
+\displaystyle(J(\theta)u,y)_{\rho,n}=(u,J(\theta)^{\top}y)_{\mathbb{R}^{m}}.
+(J⁡(θ)​u,y)ρ,n=(u,J​(θ)⊤​y)ℝm.\displaystyle(J(\theta)u,y)_{\rho,n}=(u,J(\theta)^{\top}y)_{\mathbb{R}^{m}}.
+
+(102)
+
+The directional derivative of 
+\mathcal{L}_{\mathrm{std}}
+ℒstd\mathcal{L}_{\mathrm{std}} along 
+u\in\mathbb{R}^{m}
+u∈ℝmu\in\mathbb{R}^{m} is
+
+\displaystyle\frac{d}{dt}\bigg|_{t=0}\mathcal{L}_{\mathrm{std}}(\theta+tu)
+dd​t|t=0​ℒstd​(θ+t​u)\displaystyle\frac{d}{dt}\bigg|_{t=0}\mathcal{L}_{\mathrm{std}}(\theta+tu)
+
+\displaystyle=2\left(r(\theta),\,\frac{d}{dt}\bigg|_{t=0}r(\theta+tu)\right)_{\rho,n}
+=2​(r⁡(θ),dd​t|t=0​r​(θ+t​u))ρ,n\displaystyle=2\left(r(\theta),\,\frac{d}{dt}\bigg|_{t=0}r(\theta+tu)\right)_{\rho,n}
+
+\displaystyle=2(J(\theta)u,r(\theta))_{\rho,n}
+=2​(J⁡(θ)​u,r⁡(θ))ρ,n\displaystyle=2(J(\theta)u,r(\theta))_{\rho,n}
+
+\displaystyle=2(J(\theta)^{\top}r(\theta),u)_{\mathbb{R}^{m}}.
+=2​(J​(θ)⊤​r​(θ),u)ℝm.\displaystyle=2(J(\theta)^{\top}r(\theta),u)_{\mathbb{R}^{m}}.
+
+(103)
+
+Therefore,
+
+\displaystyle\nabla\mathcal{L}_{\mathrm{std}}(\theta)=2\,J(\theta)^{\top}r(\theta).
+∇ℒstd​(θ)=2​J​(θ)⊤​r​(θ).\displaystyle\nabla\mathcal{L}_{\mathrm{std}}(\theta)=2\,J(\theta)^{\top}r(\theta).
+
+(104)
+
+D.3 Derivative of the score map
+
+We use the Fréchet derivative identity for the matrix exponential:
+
+\displaystyle\frac{d}{dx}\mathrm{e}^{C(x)}=\int_{0}^{1}\mathrm{e}^{(1-s)C(x)}\,C^{\prime}(x)\,\mathrm{e}^{sC(x)}\,ds.
+dd​x​eC⁡(x)=∫01e(1−s)​C​(x)​C′​(x)​es​C​(x)​𝑑s.\displaystyle\frac{d}{dx}\mathrm{e}^{C(x)}=\int_{0}^{1}\mathrm{e}^{(1-s)C(x)}\,C^{\prime}(x)\,\mathrm{e}^{sC(x)}\,ds.
+
+(105)
+
+Define the time-averaged conjugation of 
+h_{i}
+hih_{i} by 
+H_{\theta}
+HθH_{\theta}:
+
+\displaystyle v_{i}(\theta):=\int_{0}^{1}\mathrm{e}^{sH_{\theta}}\,h_{i}\,\mathrm{e}^{-sH_{\theta}}\,ds.
+vi​(θ):=∫01es​Hθ​hi​e−s​Hθ​𝑑s.\displaystyle v_{i}(\theta):=\int_{0}^{1}\mathrm{e}^{sH_{\theta}}\,h_{i}\,\mathrm{e}^{-sH_{\theta}}\,ds.
+
+(106)
+
+Then we have
+
+\displaystyle\partial_{\theta_{i}}\Delta_{k}(\theta)
+∂θiΔk​(θ)\displaystyle\partial_{\theta_{i}}\Delta_{k}(\theta)
+
+\displaystyle=\partial_{\theta_{i}}(\mathscr{D}_{k}H_{\theta})=\partial_{\theta_{i}}([F_{k},\mathrm{e}^{-H_{\theta}}]\mathrm{e}^{H_{\theta}})
+=∂θi(𝒟k​Hθ)=∂θi([Fk,e−Hθ]​eHθ)\displaystyle=\partial_{\theta_{i}}(\mathscr{D}_{k}H_{\theta})=\partial_{\theta_{i}}([F_{k},\mathrm{e}^{-H_{\theta}}]\mathrm{e}^{H_{\theta}})
+
+\displaystyle=-\partial_{\theta_{i}}(\mathrm{e}^{-H_{\theta}}F_{k}\,\mathrm{e}^{H_{\theta}})
+=−∂θi(e−HθFkeHθ)\displaystyle=-\partial_{\theta_{i}}(\mathrm{e}^{-H_{\theta}}F_{k}\,\mathrm{e}^{H_{\theta}})
+
+\displaystyle=-\partial_{\theta_{i}}(\mathrm{e}^{-H_{\theta}})F_{k}\,\mathrm{e}^{H_{\theta}}-\mathrm{e}^{-H_{\theta}}F_{k}\,\partial_{\theta_{i}}(\mathrm{e}^{H_{\theta}})\;.
+=−∂θi(e−Hθ)FkeHθ−e−HθFk∂θi(eHθ).\displaystyle=-\partial_{\theta_{i}}(\mathrm{e}^{-H_{\theta}})F_{k}\,\mathrm{e}^{H_{\theta}}-\mathrm{e}^{-H_{\theta}}F_{k}\,\partial_{\theta_{i}}(\mathrm{e}^{H_{\theta}})\;.
+
+(107)
+
+We now use
+
+\displaystyle\partial_{\theta_{i}}(\mathrm{e}^{-H_{\theta}})
+∂θi(e−Hθ)\displaystyle\partial_{\theta_{i}}(\mathrm{e}^{-H_{\theta}})
+
+\displaystyle=-\int_{0}^{1}\mathrm{e}^{-(1-s)H_{\theta}}(\partial_{\theta_{i}}H_{\theta})\mathrm{e}^{-sH_{\theta}}\,ds
+=−∫01e−(1−s)​Hθ(∂θiHθ)e−s​Hθds\displaystyle=-\int_{0}^{1}\mathrm{e}^{-(1-s)H_{\theta}}(\partial_{\theta_{i}}H_{\theta})\mathrm{e}^{-sH_{\theta}}\,ds
+
+\displaystyle=-\int_{0}^{1}\mathrm{e}^{-(1-s)H_{\theta}}h_{i}\mathrm{e}^{-sH_{\theta}}\,ds
+=−∫01e−(1−s)​Hθhie−s​Hθds\displaystyle=-\int_{0}^{1}\mathrm{e}^{-(1-s)H_{\theta}}h_{i}\mathrm{e}^{-sH_{\theta}}\,ds
+
+\displaystyle=-\mathrm{e}^{-H_{\theta}}v_{i}(\theta)\;.
+=−e−Hθ​vi​(θ).\displaystyle=-\mathrm{e}^{-H_{\theta}}v_{i}(\theta)\;.
+
+(108)
+
+Similarly, using 
+\partial_{\theta_{i}}(\mathrm{e}^{H_{\theta}}\mathrm{e}^{-H_{\theta}})=0
+∂θi(eHθ​e−Hθ)=0\partial_{\theta_{i}}(\mathrm{e}^{H_{\theta}}\mathrm{e}^{-H_{\theta}})=0, it is easy to show that
+
+\displaystyle\partial_{\theta_{i}}(\mathrm{e}^{H_{\theta}})
+∂θi(eHθ)\displaystyle\partial_{\theta_{i}}(\mathrm{e}^{H_{\theta}})
+
+\displaystyle=v_{i}(\theta)\mathrm{e}^{H_{\theta}}\;.
+=vi​(θ)​eHθ.\displaystyle=v_{i}(\theta)\mathrm{e}^{H_{\theta}}\;.
+
+(109)
+
+Substituting these relations into Eq. (107), we get
+
+\displaystyle\partial_{\theta_{i}}\Delta_{k}(\theta)=\mathrm{e}^{-H_{\theta}}\,[v_{i}(\theta),F_{k}]\,\mathrm{e}^{H_{\theta}}.
+∂θiΔk​(θ)=e−Hθ​[vi​(θ),Fk]​eHθ.\displaystyle\partial_{\theta_{i}}\Delta_{k}(\theta)=\mathrm{e}^{-H_{\theta}}\,[v_{i}(\theta),F_{k}]\,\mathrm{e}^{H_{\theta}}.
+
+(110)
+
+D.4 Gram matrix and uniform positive definiteness
+
+Define the Gram matrix 
+G(\theta)\in\mathbb{R}^{m\times m}
+G⁡(θ)∈ℝm×mG(\theta)\in\mathbb{R}^{m\times m} by
+
+\displaystyle G_{ij}(\theta)
+Gi​j​(θ)\displaystyle G_{ij}(\theta)
+
+\displaystyle:=(\partial_{\theta_{i}}r(\theta),\partial_{\theta_{j}}r(\theta))_{\rho,n}
+:=(∂θir⁡(θ),∂θjr⁡(θ))ρ,n\displaystyle:=(\partial_{\theta_{i}}r(\theta),\partial_{\theta_{j}}r(\theta))_{\rho,n}
+
+\displaystyle=\sum_{k=1}^{n}\real\,\Tr\!\left(\rho\,(\partial_{\theta_{i}}\Delta_{k}(\theta))^{\dagger}\partial_{\theta_{j}}\Delta_{k}(\theta)\right).
+=∑k=1nReTr⁡(ρ​(∂θiΔk​(θ))†​∂θjΔk​(θ)).\displaystyle=\sum_{k=1}^{n}\real\,\Tr\!\left(\rho\,(\partial_{\theta_{i}}\Delta_{k}(\theta))^{\dagger}\partial_{\theta_{j}}\Delta_{k}(\theta)\right).
+
+(111)
+
+Then for all 
+u\in\mathbb{R}^{m}
+u∈ℝmu\in\mathbb{R}^{m},
+
+\displaystyle\|J(\theta)u\|_{\rho,n}^{2}=u^{\top}G(\theta)u,\qquad\sigma_{\min}(J(\theta))^{2}=\lambda_{\min}(G(\theta)).
+‖J⁡(θ)​u‖ρ,n2=u⊤​G​(θ)​u,σmin​(J⁡(θ))2=λmin​(G⁡(θ)).\displaystyle\|J(\theta)u\|_{\rho,n}^{2}=u^{\top}G(\theta)u,\qquad\sigma_{\min}(J(\theta))^{2}=\lambda_{\min}(G(\theta)).
+
+(112)
+
+Assume:
+
+(S1) 
+
+The operators 
+\{h_{i}\}_{i=1}^{m}
+{hi}i=1m\{h_{i}\}_{i=1}^{m} are linearly independent over 
+\mathbb{R}
+ℝ\mathbb{R}.
+
+(S2) 
+
+The operators 
+\{h_{i}\}_{i=1}^{m}
+{hi}i=1m\{h_{i}\}_{i=1}^{m} are traceless.
+
+(S3) 
+
+The operators 
+\{F_{k}\}
+{Fk}\{F_{k}\} generate the full matrix algebra, so that
+
+[X,F_{k}]=0\ \forall k\Rightarrow X=c\,\mathds{1}
+[X,Fk]=0​∀k⇒X=c​ 1[X,F_{k}]=0\ \forall k\Rightarrow X=c\,\mathds{1}.
+
+(S4) 
+
+\Omega\subset\mathbb{R}^{m}
+Ω⊂ℝm\Omega\subset\mathbb{R}^{m} is compact and contains 
+\theta^{\ast}
+θ∗\theta^{\ast}.
+
+Uniform Gram bound.
+
+Under items S1, S2, S3 and S4 and 
+\rho\succ 0
+ρ≻0\rho\succ 0, one has 
+G(\theta)\succ 0
+G⁡(θ)≻0G(\theta)\succ 0 for all 
+\theta\in\Omega
+θ∈Ω\theta\in\Omega and
+
+\displaystyle\mathfrak{a}^{2}:=\inf_{\theta\in\Omega}\lambda_{\min}(G(\theta))&gt;0.
+𝔞2:=infθ∈Ωλmin​(G⁡(θ))&gt;0.\displaystyle\mathfrak{a}^{2}:=\inf_{\theta\in\Omega}\lambda_{\min}(G(\theta))&gt;0.
+
+(113)
+
+Proof.
+
+Fix 
+\theta\in\Omega
+θ∈Ω\theta\in\Omega and suppose 
+u^{\top}G(\theta)u=0
+u⊤​G​(θ)​u=0u^{\top}G(\theta)u=0.
+Then 
+\|J(\theta)u\|_{\rho,n}=0
+‖J⁡(θ)​u‖ρ,n=0\|J(\theta)u\|_{\rho,n}=0, hence each component
+
+\sum_{i}u_{i}\,\partial_{\theta_{i}}\Delta_{k}(\theta)
+∑iui​∂θiΔk​(θ)\sum_{i}u_{i}\,\partial_{\theta_{i}}\Delta_{k}(\theta) vanishes as an operator because
+
+\rho\succ 0
+ρ≻0\rho\succ 0.
+Using (110) and the invertibility of conjugation by 
+\mathrm{e}^{\pm H_{\theta}}
+e±Hθ\mathrm{e}^{\pm H_{\theta}} gives
+
+\displaystyle\left[\sum_{i=1}^{m}u_{i}v_{i}(\theta),\,F_{k}\right]=0\qquad\forall k.
+[∑i=1mui​vi​(θ),Fk]=0∀k.\displaystyle\left[\sum_{i=1}^{m}u_{i}v_{i}(\theta),\,F_{k}\right]=0\qquad\forall k.
+
+(114)
+
+By item S3, 
+\sum_{i}u_{i}v_{i}(\theta)=c\,\mathds{1}
+∑iui​vi​(θ)=c​ 1\sum_{i}u_{i}v_{i}(\theta)=c\,\mathds{1} for some 
+c\in\mathbb{R}
+c∈ℝc\in\mathbb{R}.
+Let 
+X_{u}:=\sum_{i}u_{i}h_{i}
+Xu:=∑iui​hiX_{u}:=\sum_{i}u_{i}h_{i}. Then
+
+\displaystyle\sum_{i}u_{i}v_{i}(\theta)=\int_{0}^{1}\mathrm{e}^{sH_{\theta}}X_{u}\mathrm{e}^{-sH_{\theta}}\,ds=c\cdot\mathds{1}.
+∑iui​vi​(θ)=∫01es​Hθ​Xu​e−s​Hθ​𝑑s=c⋅𝟙.\displaystyle\sum_{i}u_{i}v_{i}(\theta)=\int_{0}^{1}\mathrm{e}^{sH_{\theta}}X_{u}\mathrm{e}^{-sH_{\theta}}\,ds=c\cdot\mathds{1}.
+
+(115)
+
+Since the operators 
+h_{i}
+hih_{i} are traceless, 
+X_{u}
+XuX_{u} is also traceless. Moreover, 
+\text{Tr}[\int_{0}^{1}\mathrm{e}^{sH_{\theta}}X_{u}\mathrm{e}^{-sH_{\theta}}\,ds]=\int_{0}^{1}\text{Tr}[\mathrm{e}^{sH_{\theta}}X_{u}\mathrm{e}^{-sH_{\theta}}\,]~ds=0
+Tr​[∫01es​Hθ​Xu​e−s​Hθ​𝑑s]=∫01Tr​[es​Hθ​Xu​e−s​Hθ]​𝑑s=0\text{Tr}[\int_{0}^{1}\mathrm{e}^{sH_{\theta}}X_{u}\mathrm{e}^{-sH_{\theta}}\,ds]=\int_{0}^{1}\text{Tr}[\mathrm{e}^{sH_{\theta}}X_{u}\mathrm{e}^{-sH_{\theta}}\,]~ds=0. Thus 
+c=0
+c=0c=0 and 
+\int_{0}^{1}\mathrm{e}^{sH_{\theta}}X_{u}\mathrm{e}^{-sH_{\theta}}\,ds=0
+∫01es​Hθ​Xu​e−s​Hθ​𝑑s=0\int_{0}^{1}\mathrm{e}^{sH_{\theta}}X_{u}\mathrm{e}^{-sH_{\theta}}\,ds=0.
+Now (for fixed 
+\theta
+θ\theta) consider this quantity in an eigenbasis of 
+H_{\theta}
+HθH_{\theta}, 
+H_{\theta}|m\rangle=E_{m}|m\rangle
+Hθ​|m⟩=Em​|m⟩H_{\theta}|m\rangle=E_{m}|m\rangle:
+
+\displaystyle\left(\int_{0}^{1}\mathrm{e}^{sH_{\theta}}X_{u}\mathrm{e}^{-sH_{\theta}}\,ds\right)_{mn}
+(∫01es​Hθ​Xu​e−s​Hθ​𝑑s)m​n\displaystyle\left(\int_{0}^{1}\mathrm{e}^{sH_{\theta}}X_{u}\mathrm{e}^{-sH_{\theta}}\,ds\right)_{mn}
+
+\displaystyle=(X_{u})_{mn}\int_{0}^{1}\mathrm{e}^{s(E_{m}-E_{n})}\,ds
+=(Xu)m​n​∫01es⁡(Em−En)​𝑑s\displaystyle=(X_{u})_{mn}\int_{0}^{1}\mathrm{e}^{s(E_{m}-E_{n})}\,ds
+
+\displaystyle=(X_{u})_{mn}\cdot g(E_{m}-E_{n})\;,
+=(Xu)m​n⋅g⁡(Em−En),\displaystyle=(X_{u})_{mn}\cdot g(E_{m}-E_{n})\;,
+
+(116)
+
+where we define
+
+\displaystyle g(x):=\frac{\mathrm{e}^{x}-1}{x}\;.
+g⁡(x):=ex−1x.\displaystyle g(x):=\frac{\mathrm{e}^{x}-1}{x}\;.
+
+(117)
+
+Note that 
+g(x)\neq 0
+g⁡(x)≠0g(x)\neq 0 for all finite 
+x
+xx. Hence, every matrix element of 
+X_{u}
+XuX_{u} in this basis vanishes, implying that 
+X_{u}=0
+Xu=0X_{u}=0. Since we assumed the linear independence of the operators 
+h_{i}
+hih_{i}, this in turn implies that 
+u=0
+u=0u=0.
+
+This shows that 
+u^{\top}G(\theta)u=0\ \implies\ u=0
+u⊤​G​(θ)​u=0⟹u=0u^{\top}G(\theta)u=0\ \implies\ u=0. We know from the definition of 
+G
+GG that 
+u^{\top}G(\theta)u
+u⊤​G​(θ)​uu^{\top}G(\theta)u is non-negative and therefore 
+u\neq 0\implies uGu^{\top}&gt;0
+u≠0⟹u​G​u⊤&gt;0u\neq 0\implies uGu^{\top}&gt;0.
+
+Thus 
+G(\theta)\succ 0
+G⁡(θ)≻0G(\theta)\succ 0 for all 
+\theta
+θ\theta.
+Continuity of 
+G
+GG and the compactness assumption item S4 imply a uniform lower bound.
+
+∎
+
+D.5 Projection–singular value inequality
+
+Fix 
+\theta
+θ\theta and abbreviate 
+J:=J(\theta)
+J:=J⁡(θ)J:=J(\theta).
+We view
+
+\displaystyle J:\mathbb{R}^{m}\longrightarrow\mathcal{H}^{n}
+J:ℝm⟶ℋn\displaystyle J:\mathbb{R}^{m}\longrightarrow\mathcal{H}^{n}
+
+(118)
+
+as a bounded linear operator between Hilbert spaces
+
+\displaystyle(\mathbb{R}^{m},\langle\cdot,\cdot\rangle)\quad\text{and}\quad(\mathcal{H}^{n},(\cdot,\cdot)_{\rho,n}),
+(ℝm,⟨⋅,⋅⟩)and(ℋn,(⋅,⋅)ρ,n),\displaystyle(\mathbb{R}^{m},\langle\cdot,\cdot\rangle)\quad\text{and}\quad(\mathcal{H}^{n},(\cdot,\cdot)_{\rho,n}),
+
+(119)
+
+where 
+\langle\cdot,\cdot\rangle
+⟨⋅,⋅⟩\langle\cdot,\cdot\rangle is the Euclidean inner product.
+Let
+
+\displaystyle J^{\top}:\mathcal{H}^{n}\longrightarrow\mathbb{R}^{m}
+J⊤:ℋn⟶ℝm\displaystyle J^{\top}:\mathcal{H}^{n}\longrightarrow\mathbb{R}^{m}
+
+(120)
+
+denote the real Hilbert adjoint defined by
+
+\displaystyle(Ju,y)_{\rho,n}=\langle u,J^{\top}y\rangle,\qquad\forall\,u\in\mathbb{R}^{m},\ y\in\mathcal{H}^{n}.
+(J​u,y)ρ,n=⟨u,J⊤​y⟩,∀u∈ℝm,y∈ℋn.\displaystyle(Ju,y)_{\rho,n}=\langle u,J^{\top}y\rangle,\qquad\forall\,u\in\mathbb{R}^{m},\ y\in\mathcal{H}^{n}.
+
+(121)
+
+Let
+
+\displaystyle\Pi:=\Pi_{\mathrm{Range}(J)}
+Π:=ΠRange⁡(J)\displaystyle\Pi:=\Pi_{\mathrm{Range}(J)}
+
+(122)
+
+denote the projection onto 
+\mathrm{Range}(J)
+Range⁡(J)\mathrm{Range}(J) in
+
+(\mathcal{H}^{n},(\cdot,\cdot)_{\rho,n})
+(ℋn,(⋅,⋅)ρ,n)(\mathcal{H}^{n},(\cdot,\cdot)_{\rho,n}).
+
+Define
+
+\displaystyle\sigma_{\min}(J)
+σmin​(J)\displaystyle\sigma_{\min}(J)
+
+\displaystyle:=\inf_{\lVert u\rVert=1}\lVert Ju\rVert_{\rho,n}:=\mathfrak{a}
+:=inf∥u∥=1∥J​u∥ρ,n:=𝔞\displaystyle:=\inf_{\lVert u\rVert=1}\lVert Ju\rVert_{\rho,n}:=\mathfrak{a}
+
+(123)
+
+\displaystyle\sigma_{\max}(J)
+σmax​(J)\displaystyle\sigma_{\max}(J)
+
+\displaystyle:=\sup_{\lVert u\rVert=1}\lVert Ju\rVert_{\rho,n}:=\mathfrak{b}.
+:=sup∥u∥=1∥J​u∥ρ,n:=𝔟.\displaystyle:=\sup_{\lVert u\rVert=1}\lVert Ju\rVert_{\rho,n}:=\mathfrak{b}.
+
+(124)
+
+Equivalently,
+
+\displaystyle\sigma_{\min}(J)^{2}=\lambda_{\min}(J^{\top}J)=\mathfrak{a}^{2},
+σmin​(J)2=λmin​(J⊤​J)=𝔞2,\displaystyle\sigma_{\min}(J)^{2}=\lambda_{\min}(J^{\top}J)=\mathfrak{a}^{2},
+
+(125)
+
+where 
+J^{\top}J:\mathbb{R}^{m}\to\mathbb{R}^{m}
+J⊤​J:ℝm→ℝmJ^{\top}J:\mathbb{R}^{m}\to\mathbb{R}^{m} is self-adjoint and positive semidefinite.
+
+Lemma 1 (Projection–singular value inequality).
+
+For every 
+y\in\mathcal{H}^{n}
+y∈ℋny\in\mathcal{H}^{n},
+
+\displaystyle\lVert J^{\top}y\rVert\;\geq\;\sigma_{\min}(J)\,\lVert\Pi y\rVert_{\rho,n}.
+∥J⊤​y∥≥σmin​(J)​∥Π​y∥ρ,n.\displaystyle\lVert J^{\top}y\rVert\;\geq\;\sigma_{\min}(J)\,\lVert\Pi y\rVert_{\rho,n}.
+
+(126)
+
+Proof.
+
+Decompose 
+y=y_{\perp}+y_{\parallel}
+y=y⟂+y∥y=y_{\perp}+y_{\parallel}, where the perpendicular and parallel components are with respect to 
+J
+JJ. Now note that
+
+\displaystyle J^{\top}y
+J⊤​y\displaystyle J^{\top}y
+
+\displaystyle=J^{\top}(y_{\perp}+y_{\parallel})
+=J⊤​(y⟂+y∥)\displaystyle=J^{\top}(y_{\perp}+y_{\parallel})
+
+\displaystyle=(J,y_{\perp})_{\rho,n}+(J,y_{\parallel})_{\rho,n}
+=(J,y⟂)ρ,n+(J,y∥)ρ,n\displaystyle=(J,y_{\perp})_{\rho,n}+(J,y_{\parallel})_{\rho,n}
+
+\displaystyle=(J,y_{\parallel})_{\rho,n}\;.
+=(J,y∥)ρ,n.\displaystyle=(J,y_{\parallel})_{\rho,n}\;.
+
+(127)
+
+Since 
+y_{\parallel}\in\text{Range}(J)
+y∥∈Range​(J)y_{\parallel}\in\text{Range}(J) by definition, 
+\|J^{T}y\|=\|J^{T}y_{\parallel}\|\geq\sigma_{min}(J)\|\Pi y\|_{\rho,n}
+‖JT​y‖=‖JT​y∥‖≥σm​i​n​(J)​‖Π​y‖ρ,n\|J^{T}y\|=\|J^{T}y_{\parallel}\|\geq\sigma_{min}(J)\|\Pi y\|_{\rho,n}.
+
+∎
+
+D.6 Polyak-Łojasiewicz Inequality
+
+We establish a local PL inequality for the score-matching loss, which guarantees convergence of gradient descent to the global minimum.
+
+D.6.1 Fundamental constants
+
+The following constants characterize the geometry of the optimization landscape:
+
+Definition 3 (Gram matrix bounds).
+
+For a compact parameter domain 
+\Omega\ni\theta^{*}
+Ω∋θ∗\Omega\ni\theta^{*}, define:
+
+\displaystyle\mathfrak{a}
+𝔞\displaystyle\mathfrak{a}
+
+\displaystyle:=\inf_{\theta\in\Omega}\sigma_{\min}(J(\theta))&gt;0
+:=infθ∈Ωσmin​(J⁡(θ))&gt;0\displaystyle:=\inf_{\theta\in\Omega}\sigma_{\min}(J(\theta))&gt;0
+
+(128)
+
+\displaystyle\mathfrak{b}
+𝔟\displaystyle\mathfrak{b}
+
+\displaystyle:=\sup_{\theta\in\Omega}\sigma_{\max}(J(\theta))&lt;\infty
+:=supθ∈Ωσmax​(J⁡(θ))&lt;∞\displaystyle:=\sup_{\theta\in\Omega}\sigma_{\max}(J(\theta))&lt;\infty
+
+(129)
+
+where 
+\sigma_{\min}
+σmin\sigma_{\min} and 
+\sigma_{\max}
+σmax\sigma_{\max} denote the minimum and maximum singular values. Equivalently, 
+\mathfrak{a}^{2}=\inf_{\theta}\lambda_{\min}(G(\theta))
+𝔞2=infθλmin​(G⁡(θ))\mathfrak{a}^{2}=\inf_{\theta}\lambda_{\min}(G(\theta)) and 
+\mathfrak{b}^{2}=\sup_{\theta}\lambda_{\max}(G(\theta))
+𝔟2=supθλmax​(G⁡(θ))\mathfrak{b}^{2}=\sup_{\theta}\lambda_{\max}(G(\theta)), where 
+G(\theta)=J(\theta)^{\top}J(\theta)
+G⁡(θ)=J​(θ)⊤​J​(θ)G(\theta)=J(\theta)^{\top}J(\theta) is the Gram matrix.
+
+The bounds 
+\mathfrak{a}
+𝔞\mathfrak{a} and 
+\mathfrak{b}
+𝔟\mathfrak{b} quantify identifiability: 
+\mathfrak{a}&gt;0
+𝔞&gt;0\mathfrak{a}&gt;0 ensures that distinct parameters produce distinct scores (the inverse problem is well-posed), while 
+\mathfrak{b}&lt;\infty
+𝔟&lt;∞\mathfrak{b}&lt;\infty ensures stability.
+
+Definition 4 (Lipschitz constant).
+
+The residual 
+r(\theta)
+r⁡(θ)r(\theta) is Lipschitz continuous with constant 
+L
+LL if
+
+\displaystyle\|r(\theta_{1})-r(\theta_{2})\|_{\rho,n}\leq L\|\theta_{1}-\theta_{2}\|
+‖r⁡(θ1)−r⁡(θ2)‖ρ,n≤L​‖θ1−θ2‖\displaystyle\|r(\theta_{1})-r(\theta_{2})\|_{\rho,n}\leq L\|\theta_{1}-\theta_{2}\|
+
+(130)
+
+for all 
+\theta_{1},\theta_{2}\in\Omega
+θ1,θ2∈Ω\theta_{1},\theta_{2}\in\Omega. Equivalently, 
+\|J(\theta)\|_{\mathrm{op}}\leq L
+‖J⁡(θ)‖op≤L\|J(\theta)\|_{\mathrm{op}}\leq L for all 
+\theta
+θ\theta.
+
+Definition 5 (Jacobian Lipschitz constant).
+
+The Jacobian 
+J(\theta)
+J⁡(θ)J(\theta) is Lipschitz continuous with constant 
+L_{J}
+LJL_{J} if
+
+\displaystyle\|J(\theta_{1})-J(\theta_{2})\|_{\mathrm{op}}\leq L_{J}\|\theta_{1}-\theta_{2}\|
+‖J⁡(θ1)−J⁡(θ2)‖op≤LJ​‖θ1−θ2‖\displaystyle\|J(\theta_{1})-J(\theta_{2})\|_{\mathrm{op}}\leq L_{J}\|\theta_{1}-\theta_{2}\|
+
+(131)
+
+for all 
+\theta_{1},\theta_{2}\in\Omega
+θ1,θ2∈Ω\theta_{1},\theta_{2}\in\Omega.
+
+D.6.2 Local range condition
+
+The key technical result is that near the true parameters, the residual 
+r(\theta)
+r⁡(θ)r(\theta) remains well-aligned with the range of the Jacobian 
+J(\theta)
+J⁡(θ)J(\theta).
+
+Theorem 2 (Local range condition).
+
+Let 
+\Pi_{\theta}:=\Pi_{\mathrm{Range}(J(\theta))}
+Πθ:=ΠRange⁡(J⁡(θ))\Pi_{\theta}:=\Pi_{\mathrm{Range}(J(\theta))} denote the orthogonal projection onto the range of 
+J(\theta)
+J⁡(θ)J(\theta). For
+
+\displaystyle\delta:=\frac{\mathfrak{a}}{3L_{J}}
+δ:=𝔞3​LJ\displaystyle\delta:=\frac{\mathfrak{a}}{3L_{J}}
+
+(132)
+
+and all 
+\theta\in B(\theta^{*},\delta)
+θ∈B⁡(θ∗,δ)\theta\in B(\theta^{*},\delta), the residual satisfies
+
+\displaystyle\|\Pi_{\theta}\,r(\theta)\|_{\rho,n}\geq\gamma\|r(\theta)\|_{\rho,n}
+‖Πθ​r​(θ)‖ρ,n≥γ​‖r⁡(θ)‖ρ,n\displaystyle\|\Pi_{\theta}\,r(\theta)\|_{\rho,n}\geq\gamma\|r(\theta)\|_{\rho,n}
+
+(133)
+
+with
+
+\displaystyle\gamma:=\frac{\mathfrak{a}}{2\mathfrak{b}+\mathfrak{a}}.
+γ:=𝔞2​𝔟+𝔞.\displaystyle\gamma:=\frac{\mathfrak{a}}{2\mathfrak{b}+\mathfrak{a}}.
+
+(134)
+
+Proof.
+
+Let 
+u=\theta-\theta^{*}
+u=θ−θ∗u=\theta-\theta^{*}. Since 
+r(\theta^{*})=0
+r⁡(θ∗)=0r(\theta^{*})=0, Taylor expansion gives
+
+\displaystyle r(\theta)=J(\theta^{*})u+R(\theta,\theta^{*})
+r⁡(θ)=J⁡(θ∗)​u+R⁡(θ,θ∗)\displaystyle r(\theta)=J(\theta^{*})u+R(\theta,\theta^{*})
+
+(135)
+
+where the remainder satisfies 
+\|R(\theta,\theta^{*})\|_{\rho,n}\leq\frac{L_{J}}{2}\|u\|^{2}
+‖R⁡(θ,θ∗)‖ρ,n≤LJ2​‖u‖2\|R(\theta,\theta^{*})\|_{\rho,n}\leq\frac{L_{J}}{2}\|u\|^{2} by the Lipschitz continuity of 
+J
+JJ.
+
+Rewriting in terms of 
+J(\theta)
+J⁡(θ)J(\theta) gives
+
+\displaystyle r(\theta)
+r⁡(θ)\displaystyle r(\theta)
+
+\displaystyle=J(\theta)u+\underbrace{(J(\theta^{*})-J(\theta))u+R(\theta,\theta^{*})}_{=:\tilde{R}(\theta,\theta^{*})}.
+=J(θ)u+(J⁡(θ∗)−J⁡(θ))​u+R⁡(θ,θ∗)⏟=:R~​(θ,θ∗).\displaystyle=J(\theta)u+\underbrace{(J(\theta^{*})-J(\theta))u+R(\theta,\theta^{*})}_{=:\tilde{R}(\theta,\theta^{*})}.
+
+(136)
+
+The modified remainder satisfies
+
+\displaystyle\|\tilde{R}(\theta,\theta^{*})\|_{\rho,n}
+‖R~​(θ,θ∗)‖ρ,n\displaystyle\|\tilde{R}(\theta,\theta^{*})\|_{\rho,n}
+
+\displaystyle\leq\|J(\theta^{*})-J(\theta)\|_{\mathrm{op}}\|u\|+\frac{L_{J}}{2}\|u\|^{2}
+≤‖J⁡(θ∗)−J⁡(θ)‖op​‖u‖+LJ2​‖u‖2\displaystyle\leq\|J(\theta^{*})-J(\theta)\|_{\mathrm{op}}\|u\|+\frac{L_{J}}{2}\|u\|^{2}
+
+\displaystyle\leq L_{J}\|u\|^{2}+\frac{L_{J}}{2}\|u\|^{2}=\frac{3L_{J}}{2}\|u\|^{2}.
+≤LJ​‖u‖2+LJ2​‖u‖2=3​LJ2​‖u‖2.\displaystyle\leq L_{J}\|u\|^{2}+\frac{L_{J}}{2}\|u\|^{2}=\frac{3L_{J}}{2}\|u\|^{2}.
+
+(137)
+
+Projecting onto 
+\mathrm{Range}(J(\theta))
+Range⁡(J⁡(θ))\mathrm{Range}(J(\theta)) and using 
+\Pi_{\theta}J(\theta)=J(\theta)
+Πθ​J​(θ)=J⁡(θ)\Pi_{\theta}J(\theta)=J(\theta) gives
+
+\displaystyle\Pi_{\theta}\,r(\theta)=J(\theta)u+\Pi_{\theta}\tilde{R}(\theta,\theta^{*}).
+Πθ​r​(θ)=J⁡(θ)​u+Πθ​R~​(θ,θ∗).\displaystyle\Pi_{\theta}\,r(\theta)=J(\theta)u+\Pi_{\theta}\tilde{R}(\theta,\theta^{*}).
+
+(138)
+
+By the triangle inequality and 
+\sigma_{\min}(J(\theta))\geq\alpha
+σmin​(J⁡(θ))≥α\sigma_{\min}(J(\theta))\geq\alpha, we obtain
+
+\displaystyle\|\Pi_{\theta}\,r(\theta)\|_{\rho,n}
+‖Πθ​r​(θ)‖ρ,n\displaystyle\|\Pi_{\theta}\,r(\theta)\|_{\rho,n}
+
+\displaystyle\geq\|J(\theta)u\|_{\rho,n}-\|\tilde{R}(\theta,\theta^{*})\|_{\rho,n}
+≥‖J⁡(θ)​u‖ρ,n−‖R~​(θ,θ∗)‖ρ,n\displaystyle\geq\|J(\theta)u\|_{\rho,n}-\|\tilde{R}(\theta,\theta^{*})\|_{\rho,n}
+
+\displaystyle\geq\mathfrak{a}\|u\|-\frac{3L_{J}}{2}\|u\|^{2}.
+≥𝔞​‖u‖−3​LJ2​‖u‖2.\displaystyle\geq\mathfrak{a}\|u\|-\frac{3L_{J}}{2}\|u\|^{2}.
+
+(139)
+
+For 
+\|u\|\leq\delta=\mathfrak{a}/3L_{J}
+‖u‖≤δ=𝔞/3​LJ\|u\|\leq\delta=\mathfrak{a}/3L_{J}, we have
+
+\displaystyle\|\Pi_{\theta}\,r(\theta)\|_{\rho,n}\geq\frac{\mathfrak{a}}{2}\|u\|.
+‖Πθ​r​(θ)‖ρ,n≥𝔞2​‖u‖.\displaystyle\|\Pi_{\theta}\,r(\theta)\|_{\rho,n}\geq\frac{\mathfrak{a}}{2}\|u\|.
+
+(140)
+
+For the upper bound on 
+\|r(\theta)\|_{\rho,n}
+‖r⁡(θ)‖ρ,n\|r(\theta)\|_{\rho,n}, we have
+
+\displaystyle\|r(\theta)\|_{\rho,n}
+‖r⁡(θ)‖ρ,n\displaystyle\|r(\theta)\|_{\rho,n}
+
+\displaystyle\leq\|J(\theta)u\|_{\rho,n}+\|\tilde{R}(\theta,\theta^{*})\|_{\rho,n}
+≤‖J⁡(θ)​u‖ρ,n+‖R~​(θ,θ∗)‖ρ,n\displaystyle\leq\|J(\theta)u\|_{\rho,n}+\|\tilde{R}(\theta,\theta^{*})\|_{\rho,n}
+
+\displaystyle\leq\mathfrak{b}\|u\|+\frac{3L_{J}}{2}\|u\|^{2}
+≤𝔟​‖u‖+3​LJ2​‖u‖2\displaystyle\leq\mathfrak{b}\|u\|+\frac{3L_{J}}{2}\|u\|^{2}
+
+\displaystyle\leq\left(\mathfrak{b}+\frac{\mathfrak{a}}{2}\right)\|u\|
+≤(𝔟+𝔞2)​‖u‖\displaystyle\leq\left(\mathfrak{b}+\frac{\mathfrak{a}}{2}\right)\|u\|
+
+(141)
+
+where the last inequality uses 
+\|u\|\leq\frac{\mathfrak{a}}{3L_{J}}
+‖u‖≤𝔞3​LJ\|u\|\leq\frac{\mathfrak{a}}{3L_{J}}.
+
+Combining (140) and (141) gives
+
+\displaystyle\|\Pi_{\theta}\,r(\theta)\|_{\rho,n}\geq\frac{\mathfrak{a}/2}{\mathfrak{b}+\mathfrak{a}/2}\|r(\theta)\|_{\rho,n}=\gamma\|r(\theta)\|_{\rho,n}.
+‖Πθ​r​(θ)‖ρ,n≥𝔞/2𝔟+𝔞/2​‖r⁡(θ)‖ρ,n=γ​‖r⁡(θ)‖ρ,n.\displaystyle\|\Pi_{\theta}\,r(\theta)\|_{\rho,n}\geq\frac{\mathfrak{a}/2}{\mathfrak{b}+\mathfrak{a}/2}\|r(\theta)\|_{\rho,n}=\gamma\|r(\theta)\|_{\rho,n}.
+
+(142)
+
+∎
+
+D.6.3 PL inequality
+
+Theorem 3 (Local Polyak-Łojasiewicz inequality).
+
+For 
+\theta\in B(\theta^{*},\delta)
+θ∈B⁡(θ∗,δ)\theta\in B(\theta^{*},\delta) with 
+\delta=\mathfrak{a}/3L_{J}
+δ=𝔞/3​LJ\delta=\mathfrak{a}/3L_{J}, the score-matching loss satisfies
+
+\displaystyle\|\nabla\mathcal{L}(\theta)\|^{2}\geq\mu\cdot\mathcal{L}(\theta)
+‖∇ℒ​(θ)‖2≥μ⋅ℒ⁡(θ)\displaystyle\|\nabla\mathcal{L}(\theta)\|^{2}\geq\mu\cdot\mathcal{L}(\theta)
+
+(143)
+
+with PL constant
+
+\displaystyle\mu=4\mathfrak{a}^{2}\gamma^{2}=\frac{\mathfrak{a}^{4}}{(\mathfrak{b}+\mathfrak{a}/2)^{2}}\;.
+μ=4​𝔞2​γ2=𝔞4(𝔟+𝔞/2)2.\displaystyle\mu=4\mathfrak{a}^{2}\gamma^{2}=\frac{\mathfrak{a}^{4}}{(\mathfrak{b}+\mathfrak{a}/2)^{2}}\;.
+
+(144)
+
+Proof.
+
+The gradient of the loss is
+
+\displaystyle\nabla\mathcal{L}(\theta)=2J(\theta)^{\top}r(\theta).
+∇ℒ​(θ)=2​J​(θ)⊤​r​(θ).\displaystyle\nabla\mathcal{L}(\theta)=2J(\theta)^{\top}r(\theta).
+
+(145)
+
+For any matrix 
+A
+AA and vector 
+v
+vv, we have 
+\|A^{\top}v\|\geq\sigma_{\min}(A)\|\Pi_{\mathrm{Range}(A)}v\|
+‖A⊤​v‖≥σmin​(A)​‖ΠRange⁡(A)​v‖\|A^{\top}v\|\geq\sigma_{\min}(A)\|\Pi_{\mathrm{Range}(A)}v\|. Applying this with 
+A=J(\theta)
+A=J⁡(θ)A=J(\theta) and 
+v=r(\theta)
+v=r⁡(θ)v=r(\theta) gives
+
+\displaystyle\|\nabla\mathcal{L}(\theta)\|
+‖∇ℒ​(θ)‖\displaystyle\|\nabla\mathcal{L}(\theta)\|
+
+\displaystyle=2\|J(\theta)^{\top}r(\theta)\|
+=2​‖J​(θ)⊤​r​(θ)‖\displaystyle=2\|J(\theta)^{\top}r(\theta)\|
+
+\displaystyle\geq 2\sigma_{\min}(J(\theta))\|P_{\theta}\,r(\theta)\|_{\rho,n}
+≥2​σmin​(J⁡(θ))​‖Pθ​r​(θ)‖ρ,n\displaystyle\geq 2\sigma_{\min}(J(\theta))\|P_{\theta}\,r(\theta)\|_{\rho,n}
+
+\displaystyle\geq 2\mathfrak{a}\cdot\gamma\|r(\theta)\|_{\rho,n}
+≥2​𝔞⋅γ​‖r⁡(θ)‖ρ,n\displaystyle\geq 2\mathfrak{a}\cdot\gamma\|r(\theta)\|_{\rho,n}
+
+(146)
+
+where we used 
+\sigma_{\min}(J(\theta))\geq\mathfrak{a}
+σmin​(J⁡(θ))≥𝔞\sigma_{\min}(J(\theta))\geq\mathfrak{a} and the local range condition (133).
+
+Squaring both sides and using 
+\mathcal{L}(\theta)=\|r(\theta)\|_{\rho,n}^{2}
+ℒ⁡(θ)=‖r⁡(θ)‖ρ,n2\mathcal{L}(\theta)=\|r(\theta)\|_{\rho,n}^{2} gives
+
+\displaystyle\|\nabla\mathcal{L}(\theta)\|^{2}\geq 4\mathfrak{a}^{2}\gamma^{2}\mathcal{L}(\theta)=\mu\cdot\mathcal{L}(\theta).
+‖∇ℒ​(θ)‖2≥4​𝔞2​γ2​ℒ​(θ)=μ⋅ℒ⁡(θ).\displaystyle\|\nabla\mathcal{L}(\theta)\|^{2}\geq 4\mathfrak{a}^{2}\gamma^{2}\mathcal{L}(\theta)=\mu\cdot\mathcal{L}(\theta).
+
+(147)
+
+∎
+
+Convergence guarantee.
+
+For gradient descent with step size 
+\eta=\Theta(1/L)
+η=Θ⁡(1/L)\eta=\Theta(1/L), where 
+L
+LL is the Lipschitz constant of 
+\nabla\mathcal{L}
+∇ℒ\nabla\mathcal{L}, the PL inequality implies linear convergence:
+
+\displaystyle\mathcal{L}(\theta_{k})-\mathcal{L}(\theta^{*})\leq(1-\eta\mu)^{k}\left(\mathcal{L}(\theta_{0})-\mathcal{L}(\theta^{*})\right).
+ℒ⁡(θk)−ℒ⁡(θ∗)≤(1−η​μ)k​(ℒ⁡(θ0)−ℒ⁡(θ∗)).\displaystyle\mathcal{L}(\theta_{k})-\mathcal{L}(\theta^{*})\leq(1-\eta\mu)^{k}\left(\mathcal{L}(\theta_{0})-\mathcal{L}(\theta^{*})\right).
+
+(148)
+
+The number of iterations to reach 
+\epsilon
+ϵ\epsilon-accuracy is 
+O(\mu^{-1}\log(1/\epsilon))
+O⁡(μ−1​log⁡(1/ϵ))O(\mu^{-1}\log(1/\epsilon)) [24].
+
+    Experimental support, please
+    view the build logs
+    for errors. Generated by
+
+        L
+        A
+        T
+        E
+      
+      xml
+      
+    .
+
+Instructions for reporting errors
+
+We are continuing to improve HTML versions of papers, and your feedback helps enhance accessibility and mobile
+      support. To report errors in the HTML that will help us improve conversion and rendering, choose any of the
+      methods listed below:
+
+Click the &quot;Report Issue&quot; (
+            
+          ) button, located in the page header.
+
+Tip: You can select the relevant text first, to include it in your report.
+
+Our team has already identified the following issues. We appreciate your time reviewing and reporting rendering errors we
+      may not have found yet. Your efforts will help us improve the HTML versions for all readers, because disability
+      should not be a barrier to accessing research. Thank you for your continued support in championing open access for
+      all.
+
+Have a free development cycle? Help support accessibility at arXiv! Our collaborators at LaTeXML maintain a list of packages that need conversion, and welcome developer contributions.
+
+        We gratefully acknowledge support from
+        our major funders,
+        member institutions, ,
+        and all contributors.
+
+Major funding support from</pre></html>

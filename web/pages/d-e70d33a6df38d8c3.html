@@ -1,0 +1,119 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>&quot;&quot;&quot;Exact symbolic reconstruction of the fixed-smoothed response curl.</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>&quot;&quot;&quot;Exact symbolic reconstruction of the fixed-smoothed response curl.</h1><p>Source ID d-e70d33a6df38d8c3; literature/sources/pde_spectrum9/cycle11/smoothed_response_curl.py; 1953 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>&quot;&quot;&quot;Exact symbolic reconstruction of the fixed-smoothed response curl.
+
+Checks cell ODEs, moving trace derivatives, both regular and full defect
+rows, and the fixed-tau chain rule. It is not a PDE solver or interval
+certificate. No raw quotient substitutes for the repaired response.
+&quot;&quot;&quot;
+import json
+from pathlib import Path
+import sympy as sp
+
+u,d,h,z,v=sp.symbols(&#x27;u d h z v&#x27;,positive=True)
+s,c=sp.sin(d),sp.cos(d)
+k=(c-d/s)/2
+ru=(h*sp.cos(h)-d*sp.cot(d)*sp.sin(h))/2
+rv=(h**2-d**2)*sp.cos(z)/2
+ru1=-k*sp.cos(z)/(u*c)
+rv1=-d*sp.sin(h)/(2*u*c*s)\
+    -d*sp.sinh(sp.sqrt(3)*h)*sp.cos(2*z)/(2*u*c*sp.sinh(sp.sqrt(3)*d))
+HH=s*(c-k)/(u**2*c**3)
+ru2=HH*sp.sin(h)/(2*s)\
+    +HH*sp.sinh(sp.sqrt(3)*h)*sp.cos(2*z)/(2*sp.sinh(sp.sqrt(3)*d))
+L0=lambda f:sp.diff(f,h,2)+sp.diff(f,z,2)+f
+simp=lambda f:sp.simplify(sp.trigsimp(sp.expand_trig(f)))
+assert simp(L0(ru)+sp.sin(h))==0
+assert simp(L0(rv)-sp.cos(z))==0
+for f in [ru1,rv1,ru2]:assert simp(L0(f))==0
+hv=sp.cos(z)/(u*c)
+for sign in [-1,1]:
+    wall=sign*d
+    hvv=sign*s*sp.cos(z)**2/(u**2*c**3)
+    assert simp(ru.subs(h,wall))==0
+    assert simp(rv.subs(h,wall))==0
+    assert simp((ru1+sp.diff(ru,h)*hv).subs(h,wall))==0
+    assert simp((rv1+sp.diff(rv,h)*hv).subs(h,wall))==0
+    assert simp((ru2+2*sp.diff(ru1,h)*hv\
+        +sp.diff(ru,h,2)*hv**2+sp.diff(ru,h)*hvv).subs(h,wall))==0
+
+mean_z=lambda f:simp(sp.integrate(sp.expand_trig(sp.expand(f)),(z,0,2*sp.pi))/(2*sp.pi))
+B=2*(u**2-2*u*v*sp.sin(h)*sp.cos(z)+v**2)\
+    /(-u*sp.sin(h)+v*sp.cos(z))**3
+B0=simp(B.subs(v,0))
+B1=simp(sp.diff(B,v).subs(v,0))
+B2=simp(sp.diff(B,v,2).subs(v,0))
+assert simp(B0+2/(u*sp.sin(h)**3))==0
+assert simp(B1-sp.cos(z)/u**2*(4/sp.sin(h)**2-6/sp.sin(h)**4))==0
+assert simp(mean_z((-sp.sin(h))*B2)-(12/sp.sin(h)**4-8/sp.sin(h)**2)/u**3)==0
+
+I2=4*sp.cot(d)
+I4=4*(sp.cot(d)+sp.cot(d)**3/3)
+# Verify the elementary antiderivatives used for all regular bulk terms.
+assert simp(sp.diff(-sp.cot(h),h)-1/sp.sin(h)**2)==0
+assert simp(sp.diff(-sp.cot(h)-sp.cot(h)**3/3,h)-1/sp.sin(h)**4)==0
+
+reg_u0=-(2/u)*I2/(2*sp.pi)
+reg_v1_bulk=-(4*I2-6*I4)/(4*sp.pi*u**2)
+reg_v1_moving=mean_z((sp.cos(z)*B0).subs(h,d)*hv\
+                            -(sp.cos(z)*B0).subs(h,-d)*hv)/sp.pi
+reg_v1=simp(reg_v1_bulk+reg_v1_moving)
+Fu0=-sp.sin(h)*B0
+Fu1=-sp.sin(h)*B1
+reg_u2_bulk=-(12*I4-8*I2)/(2*sp.pi*u**3)
+reg_u2_moving=mean_z(\
+    2*(Fu1.subs(h,d)-Fu1.subs(h,-d))*hv\
+    +(sp.diff(Fu0,h).subs(h,d)-sp.diff(Fu0,h).subs(h,-d))*hv**2\
+    +Fu0.subs(h,d)*s*sp.cos(z)**2/(u**2*c**3)\
+    +Fu0.subs(h,-d)*s*sp.cos(z)**2/(u**2*c**3))/sp.pi
+reg_u2=simp(reg_u2_bulk+reg_u2_moving)
+
+Bu0=-2/(u*s**3)
+Bl0=2/(u*s**3)
+Bw1=4*sp.cos(z)/(u**2*s**2)
+Bu2=4*sp.cos(2*z)/(u**3*s**3)
+Bl2=-Bu2
+flux_u={}
+flux_v={}
+for sign in [-1,1]:
+    wall=sign*d
+    hvv=sign*s*sp.cos(z)**2/(u**2*c**3)
+    flux_u[sign]=[
+      sp.diff(ru,h).subs(h,wall),
+      (sp.diff(ru1,h)+sp.diff(ru,h,2)*hv).subs(h,wall),
+      (sp.diff(ru2,h)+2*sp.diff(ru1,h,2)*hv\
+       +sp.diff(ru,h,3)*hv**2+sp.diff(ru,h,2)*hvv\
+       +2*sp.diff(ru,h)*sp.diff(hv,z)**2).subs(h,wall)]
+    flux_v[sign]=[
+      sp.diff(rv,h).subs(h,wall),
+      (sp.diff(rv1,h)+sp.diff(rv,h,2)*hv).subs(h,wall)]
+def_u0=mean_z(-flux_u[1][0]*Bu0+flux_u[-1][0]*Bl0)/sp.pi
+def_u2=mean_z(-flux_u[1][2]*Bu0-2*flux_u[1][1]*Bw1-flux_u[1][0]*Bu2\
+              +flux_u[-1][2]*Bl0+2*flux_u[-1][1]*Bw1+flux_u[-1][0]*Bl2)/sp.pi
+def_v1=mean_z(-flux_v[1][1]*Bu0-flux_v[1][0]*Bw1\
+              +flux_v[-1][1]*Bl0+flux_v[-1][0]*Bw1)/sp.pi
+assert simp(reg_u0+4*sp.cot(d)/(sp.pi*u))==0
+assert simp(def_u0-4*k/(sp.pi*u*s**3))==0
+assert simp(reg_u2-2/(sp.pi*u**3*c**3*s))==0
+assert simp(def_u2-(8/c-2/c**3)/(sp.pi*u**3*s))==0
+assert simp(reg_v1+2/(sp.pi*u**2*c*s))==0
+assert simp(def_v1-(-2*d/s**4+2/(c*s**3)-4*d/s**2)/(sp.pi*u**2))==0
+Cu2=simp(reg_u2+def_u2)
+Cv1=simp(reg_v1+def_v1)
+assert simp(Cu2-8/(sp.pi*u**3*c*s))==0
+assert simp(Cv1-2/(sp.pi*u**2)*(c/s**3-d/s**4-2*d/s**2))==0
+DaCv1=sp.diff(Cv1,u)-sp.tan(d)/u*sp.diff(Cv1,d)
+curl=simp(Cu2-DaCv1)
+expected=2*(2*d-sp.sin(2*d))/(sp.pi*u**3*sp.sin(d)**4)
+assert simp(curl-expected)==0
+numeric=[]
+for angle in [0.02,0.05,0.1]:
+    numeric.append({&#x27;u&#x27;:0.99,&#x27;delta&#x27;:angle,
+                    &#x27;curl_coefficient_per_v&#x27;:float(expected.subs({u:0.99,d:angle}))})
+assert all(row[&#x27;curl_coefficient_per_v&#x27;]&gt;0 for row in numeric)
+out={&#x27;status&#x27;:&#x27;exact symbolic checks PASS&#x27;,
+     &#x27;scope&#x27;:&#x27;cell shape and full regular/defect coefficient algebra; no global spectral proof&#x27;,
+     &#x27;Cu_vv&#x27;:str(Cu2),&#x27;Cv_v&#x27;:str(Cv1),
+     &#x27;curl_per_v&#x27;:str(expected),&#x27;numeric_diagnostics&#x27;:numeric}
+root=Path(__file__).resolve().parents[3]
+(root/&#x27;results/pde_spectrum9/cycle11/smoothed_response_curl.json&#x27;).write_text(json.dumps(out,indent=2)+&#x27;\n&#x27;)
+print(json.dumps(out,indent=2))
+</pre></html>

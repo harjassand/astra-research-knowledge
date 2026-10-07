@@ -1,0 +1,107 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>!/usr/bin/env python3</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>!/usr/bin/env python3</h1><p>Source ID d-963b9c7483897458; literature/sources/pde_gate9/cycle10/check_iid_obstruction_author_2026-10-07.py; 1216 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact recurrence and parameter evidence for the iid retry obstruction.&quot;&quot;&quot;
+from fractions import Fraction as F
+from pathlib import Path
+import json
+
+BASE = Path(__file__).resolve().parents[2]
+
+
+def add(a, b):
+    out = [F(0)] * max(len(a), len(b))
+    for i, v in enumerate(a):
+        out[i] += v
+    for i, v in enumerate(b):
+        out[i] += v
+    return out
+
+
+def scale(p, c):
+    return [v * c for v in p]
+
+
+def mul(a, b):
+    out = [F(0)] * (len(a) + len(b) - 1)
+    for i, u in enumerate(a):
+        for j, v in enumerate(b):
+            out[i + j] += u * v
+    return out
+
+
+def integrate(p):
+    # normalized uniform [-1,1], as for a sphere&#x27;s axial coordinate
+    return sum((v / (i + 1) for i, v in enumerate(p) if i % 2 == 0), F(0))
+
+
+def legendre_to(n):
+    ps = [[F(1)], [F(0), F(1)]]
+    for l in range(1, n):
+        ps.append(
+            scale(
+                add(scale([F(0)] + ps[l], 2 * l + 1), scale(ps[l - 1], -l)),
+                F(1, l + 1),
+            )
+        )
+    return ps[: n + 1]
+
+
+def main():
+    ps = legendre_to(20)
+    orthogonality = 0
+    for l, p in enumerate(ps):
+        for j, other in enumerate(ps):
+            value = integrate(mul(p, other))
+            assert value == (F(1, 2 * l + 1) if l == j else 0)
+            orthogonality += 1
+    recurrence = []
+    for l in range(20):
+        mixed = integrate([F(0)] + mul(ps[l], ps[l + 1]))
+        expected = F(l + 1, (2 * l + 1) * (2 * l + 3))
+        assert mixed == expected
+        a_sq = F((l + 1) ** 2, (2 * l + 1) * (2 * l + 3))
+        assert a_sq - F(1, 4) == F(1, 4 * (2 * l + 1) * (2 * l + 3))
+        recurrence.append({&quot;l&quot;: l, &quot;a_l_squared&quot;: str(a_sq), &quot;gt_one_quarter&quot;: True})
+    cases = []
+    for T in [8, 9, 16, 31, 64, 256, 512, 1024]:
+        n = (T - 1) // 2
+        q = n + 2
+        s = 1 - F(16, q**2)
+        area = (1 - s) / 2
+        double_area = 1 - s**2
+        beta = F(1, 2048 * (T + 1) ** 5)
+        mu_lower = F(8, q**2)
+        checks = {
+            &quot;test_polynomial_degree_at_most_T&quot;: 2 * n + 1 &lt;= T,
+            &quot;cap_radius_below_pi_over_2&quot;: 0 &lt; s &lt; 1,
+            &quot;cap_area_exact&quot;: area == F(8, q**2),
+            &quot;double_cap_area_upper&quot;: double_area &lt;= F(32, q**2),
+            &quot;packing_count_at_least_T_squared_over_128&quot;: F(1) / double_area &gt;= F(T**2, 128),
+            &quot;mean_margin_even_at_two_beta&quot;: mu_lower &gt; 4 * (n + 1) * beta,
+            &quot;q_at_least_T_over_two&quot;: q &gt;= F(T, 2),
+            &quot;poisson_exponent_constant&quot;: F(16 * T**2, q**2) &lt;= 64,
+            &quot;rational_rounding_slack&quot;: F(1, 8192 * (T + 1) ** 5) == beta / 4,
+        }
+        assert all(checks.values()), (T, checks)
+        cases.append({&quot;T&quot;: T, &quot;n&quot;: n, &quot;q&quot;: q, &quot;s&quot;: str(s), &quot;cap_area&quot;: str(area), &quot;checks&quot;: checks})
+    poisson = []
+    for N in [1, 2, 3, 16, 256]:
+        probability_lower = F(N**2, 4 * N**2 + 2 * N)
+        assert probability_lower &gt;= F(1, 6)
+        poisson.append({&quot;N&quot;: N, &quot;paley_zygmund_lower&quot;: str(probability_lower)})
+    data = {
+        &quot;status&quot;: &quot;PASS exact transcription checks; independent universal gate pending&quot;,
+        &quot;scope&quot;: &quot;no Monte Carlo timing or finite simulation is used as a universal probability proof&quot;,
+        &quot;orthogonality_pairs&quot;: orthogonality,
+        &quot;recurrence_checks&quot;: recurrence,
+        &quot;coverage_cases&quot;: cases,
+        &quot;poisson_cases&quot;: poisson,
+        &quot;universal_acceptance_bound&quot;: &quot;6 exp[-T^2 exp(-64C)/128] for N&lt;=C T^2 and T&gt;=8&quot;,
+    }
+    path = BASE / &quot;results/charges_design9/iid_obstruction_checks.json&quot;
+    path.write_text(json.dumps(data, indent=2) + &quot;\n&quot;)
+    print(json.dumps({&quot;status&quot;: data[&quot;status&quot;], &quot;orthogonality_pairs&quot;: orthogonality, &quot;coverage_cases&quot;: len(cases), &quot;output&quot;: str(path)}))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre></html>

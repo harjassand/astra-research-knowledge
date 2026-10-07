@@ -1,0 +1,234 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>&quot;&quot;&quot;Hirai2608.13972v1 §3.2, exact coordinates and field arithmetic.</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>&quot;&quot;&quot;Hirai2608.13972v1 §3.2, exact coordinates and field arithmetic.</h1><p>Source ID d-10d97f557f9e393f; literature/sources/metric_geometry10/cycle17/control_frozen_hirai_exact.py; 3217 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>&quot;&quot;&quot;Hirai2608.13972v1 §3.2, exact coordinates and field arithmetic.
+
+This is the published incremental iteration, not an LP solver. The field
+apartment oracle follows Lemma 2.3. Column gauge reduction preserves every
+flag prefix; it makes no intrinsic rational-height guarantee.
+&quot;&quot;&quot;
+from fractions import Fraction
+from math import ceil, isqrt, lcm
+import time
+
+
+class ExactField:
+    def __init__(self, modulus=None):
+        self.modulus = modulus
+        self.operations = {&quot;add&quot;: 0, &quot;sub&quot;: 0, &quot;mul&quot;: 0, &quot;inv&quot;: 0}
+        self.max_operand_bits = 0
+        self.max_result_bits = 0
+        self.conversion_calls = 0
+        self.modular_conversion_inverses = 0
+        self.modular_conversion_multiplications = 0
+        self.max_conversion_num_den_bits = 0
+
+    def value(self, x):
+        self.conversion_calls += 1
+        x = Fraction(x)
+        self.max_conversion_num_den_bits = max(self.max_conversion_num_den_bits, abs(x.numerator).bit_length(), x.denominator.bit_length())
+        if self.modulus is None:
+            return x
+        self.modular_conversion_inverses += 1
+        self.modular_conversion_multiplications += 1
+        return x.numerator * pow(x.denominator, -1, self.modulus) % self.modulus
+
+    def bits(self, x):
+        if self.modulus is None:
+            return max(abs(x.numerator).bit_length(), x.denominator.bit_length())
+        return abs(x).bit_length()
+
+    def operation(self, name, *xs):
+        self.operations[name] += 1
+        for x in xs:
+            self.max_operand_bits = max(self.max_operand_bits, self.bits(x))
+        p = self.modulus
+        if name == &quot;add&quot;:
+            y = xs[0] + xs[1]
+        elif name == &quot;sub&quot;:
+            y = xs[0] - xs[1]
+        elif name == &quot;mul&quot;:
+            y = xs[0] * xs[1]
+        elif name == &quot;inv&quot;:
+            if xs[0] == 0:
+                raise ZeroDivisionError(&quot;zero field inverse&quot;)
+            y = 1 / xs[0] if p is None else pow(xs[0], -1, p)
+        else:
+            raise ValueError(name)
+        if p is not None:
+            y %= p
+        self.max_result_bits = max(self.max_result_bits, self.bits(y))
+        return y
+
+    def add(self, x, y): return self.operation(&quot;add&quot;, x, y)
+    def sub(self, x, y): return self.operation(&quot;sub&quot;, x, y)
+    def mul(self, x, y): return self.operation(&quot;mul&quot;, x, y)
+    def inv(self, x): return self.operation(&quot;inv&quot;, x)
+
+
+def identity(n, field):
+    return [[field.value(int(i == j)) for j in range(n)] for i in range(n)]
+
+
+def matrix_product(a, b, field):
+    n, inner, width = len(a), len(b), len(b[0])
+    answer = [[field.value(0) for _ in range(width)] for _ in range(n)]
+    for i in range(n):
+        for k in range(inner):
+            if a[i][k] != 0:
+                for j in range(width):
+                    if b[k][j] != 0:
+                        answer[i][j] = field.add(answer[i][j], field.mul(a[i][k], b[k][j]))
+    return answer
+
+
+def inverse(a, field):
+    n = len(a)
+    one = identity(n, field)
+    rows = [list(a[i]) + one[i] for i in range(n)]
+    for j in range(n):
+        pivot = next((i for i in range(j, n) if rows[i][j] != 0), None)
+        if pivot is None:
+            raise ValueError(&quot;singular basis or invalid modulus&quot;)
+        rows[j], rows[pivot] = rows[pivot], rows[j]
+        scale = field.inv(rows[j][j])
+        rows[j] = [field.mul(x, scale) for x in rows[j]]
+        for i in range(n):
+            if i != j and rows[i][j] != 0:
+                scale = rows[i][j]
+                rows[i] = [field.sub(x, field.mul(scale, y)) for x, y in zip(rows[i], rows[j])]
+    return [row[n:] for row in rows]
+
+
+def flag_gauge(v, field):
+    &quot;&quot;&quot;Canonical column representatives, preserving each ordered prefix span.&quot;&quot;&quot;
+    n = len(v)
+    columns, pivots = [], []
+    for j in range(n):
+        column = [v[i][j] for i in range(n)]
+        for old, pivot in zip(columns, pivots):
+            coefficient = column[pivot]
+            if coefficient != 0:
+                column = [field.sub(x, field.mul(coefficient, y)) for x, y in zip(column, old)]
+        pivot = next((i for i in reversed(range(n)) if column[i] != 0), None)
+        if pivot is None:
+            raise ValueError(&quot;dependent flag basis&quot;)
+        scale = field.inv(column[pivot])
+        column = [field.mul(x, scale) for x in column]
+        columns.append(column)
+        pivots.append(pivot)
+    return [[columns[j][i] for j in range(n)] for i in range(n)]
+
+
+def align_flag(v, s, field):
+    &quot;&quot;&quot;Lemma 2.3: reverse-row reduced column echelon of V^{-1} S.&quot;&quot;&quot;
+    n, d = len(v), len(s[0])
+    coordinates = matrix_product(inverse(v, field), s, field)
+    columns = [[coordinates[i][j] for i in range(n)] for j in range(d)]
+    finished, pivots = 0, []
+    for row in reversed(range(n)):
+        pivot = next((j for j in range(finished, d) if columns[j][row] != 0), None)
+        if pivot is None:
+            continue
+        columns[finished], columns[pivot] = columns[pivot], columns[finished]
+        scale = field.inv(columns[finished][row])
+        columns[finished] = [field.mul(x, scale) for x in columns[finished]]
+        for j in range(d):
+            if j != finished and columns[j][row] != 0:
+                scale = columns[j][row]
+                columns[j] = [field.sub(x, field.mul(scale, y)) for x, y in zip(columns[j], columns[finished])]
+        pivots.append(row)
+        finished += 1
+        if finished == d:
+            break
+    if finished != d:
+        raise ValueError(&quot;input subspace lost rank or invalid modulus&quot;)
+    e = identity(n, field)
+    for column, pivot in zip(columns, pivots):
+        for i in range(n):
+            e[i][pivot] = column[i]
+    apartment = matrix_product(v, e, field)
+    return apartment, sorted(pivots)
+
+
+def common_coordinate_denominator(caps, m, sweeps):
+    &quot;&quot;&quot;All source weight coordinates are multiples of 1/D at this horizon.&quot;&quot;&quot;
+    cap_denominator = lcm(*(u.denominator for u in caps))
+    kmax = isqrt(sweeps)
+    if kmax * kmax &lt; sweeps:
+        kmax += 1
+    step_denominator = lcm(*range(1, kmax + 1))
+    return (m + 1) * cap_denominator * step_denominator
+
+
+def snapshot(v, ticks, denominator):
+    return {&quot;basis&quot;: [[str(x) for x in row] for row in v],
+            &quot;weights&quot;: [str(Fraction(x, denominator)) for x in ticks]}
+
+
+def full_objective(v, ticks, denominator, subspaces, costs, caps, field):
+    value = Fraction(sum(ticks), denominator)
+    hinges, jumps = [], []
+    for s, c, u in zip(subspaces, costs, caps):
+        _, indices = align_flag(v, s, field)
+        hinge = max(0, c * denominator - sum(ticks[j] for j in indices))
+        value += u * Fraction(hinge, denominator)
+        hinges.append(str(Fraction(hinge, denominator)))
+        jumps.append(indices)
+    return value, hinges, jumps
+
+
+def run_source_iteration(instance, modulus=None):
+    call_start = time.perf_counter()
+    n, costs, sweeps = instance[&quot;n&quot;], instance[&quot;costs&quot;], instance[&quot;sweeps&quot;]
+    caps = [Fraction(x) for x in instance[&quot;caps&quot;]]
+    m, cmax = len(costs), max(costs)
+    if len(caps) != m or cmax &lt;= 0 or any(not 0 &lt;= u &lt;= 1 for u in caps):
+        raise ValueError(&quot;outside source interface&quot;)
+    field = ExactField(modulus)
+    subspaces = [[[field.value(x) for x in row] for row in s] for s in instance[&quot;subspaces&quot;]]
+    denominator = common_coordinate_denominator(caps, m, sweeps)
+    ticks, v = [0] * n, identity(n, field)
+    trace = {&quot;algorithm&quot;: &quot;Hirai2608.13972v1 §3.2 steps0–3; canonical prefix-preserving gauge&quot;, &quot;modulus&quot;: str(modulus) if modulus else None, &quot;instance&quot;: instance, &quot;coordinate_denominator&quot;: str(denominator), &quot;initial&quot;: snapshot(v, ticks, denominator), &quot;steps&quot;: [], &quot;full_sweeps&quot;: []}
+    best_value, _, _ = full_objective(v, ticks, denominator, subspaces, costs, caps, field)
+    best_sweep, best_point = 0, snapshot(v, ticks, denominator)
+    start = time.perf_counter()
+    for sweep in range(sweeps):
+        kstep = isqrt(sweep + 1)
+        if kstep * kstep &lt; sweep + 1:
+            kstep += 1
+        t = Fraction(cmax, (m + 1) * kstep)
+        before = snapshot(v, ticks, denominator)
+        delta = t * denominator
+        assert delta.denominator == 1
+        ticks = [max(0, x - delta.numerator) for x in ticks]
+        trace[&quot;steps&quot;].append({&quot;sweep&quot;: sweep + 1, &quot;k&quot;: 0, &quot;step_size&quot;: str(t), &quot;before&quot;: before, &quot;after&quot;: snapshot(v, ticks, denominator)})
+        for k, (s, c, u) in enumerate(zip(subspaces, costs, caps), 1):
+            before = snapshot(v, ticks, denominator)
+            apartment, indices = align_flag(v, s, field)
+            raw_hinge = c * denominator - sum(ticks[j] for j in indices)
+            active = raw_hinge &gt; 0
+            if active:
+                shift = t * u * denominator
+                assert shift.denominator == 1
+                for j in indices:
+                    ticks[j] = min(cmax * denominator, ticks[j] + shift.numerator)
+                order = sorted(range(n), key=lambda j: -ticks[j])
+                ticks = [ticks[j] for j in order]
+                apartment = [[row[j] for j in order] for row in apartment]
+            v = flag_gauge(apartment, field)
+            trace[&quot;steps&quot;].append({&quot;sweep&quot;: sweep + 1, &quot;k&quot;: k, &quot;step_size&quot;: str(t), &quot;indices&quot;: indices, &quot;raw_hinge&quot;: str(Fraction(raw_hinge, denominator)), &quot;active&quot;: active, &quot;before&quot;: before, &quot;after&quot;: snapshot(v, ticks, denominator)})
+        value, hinges, jumps = full_objective(v, ticks, denominator, subspaces, costs, caps, field)
+        trace[&quot;full_sweeps&quot;].append({&quot;sweep&quot;: sweep + 1, &quot;value&quot;: str(value), &quot;hinges&quot;: hinges, &quot;indices&quot;: jumps})
+        if value &lt; best_value:
+            best_value, best_sweep, best_point = value, sweep + 1, snapshot(v, ticks, denominator)
+    elapsed = time.perf_counter() - start
+    # Benchmark truth never participates in an update or selection. It is
+    # optional so the general source API can execute without a known optimum.
+    control = instance.get(&quot;known_optimum_mod7&quot;) if modulus == 7 else None
+    if control is None:
+        control = instance.get(&quot;known_optimum&quot;)
+    lower = Fraction(control) if control is not None else None
+    gap = best_value - lower if lower is not None else None
+    summary = {&quot;instance&quot;: instance[&quot;name&quot;], &quot;field&quot;: &quot;Q&quot; if modulus is None else &quot;Fp&quot;, &quot;modulus&quot;: str(modulus) if modulus else None, &quot;sweeps_completed&quot;: sweeps, &quot;best_sweep&quot;: best_sweep, &quot;best_value&quot;: str(best_value), &quot;known_certificate_value&quot;: str(lower) if lower is not None else None, &quot;known_certificate_status&quot;: &quot;Independent fixture truth; not source algorithm output&quot; if lower is not None else &quot;NO_PRIMAL_VALUE_CERTIFICATE_SUPPLIED&quot;, &quot;certified_fixture_gap&quot;: str(gap) if gap is not None else None, &quot;requested_accuracy&quot;: instance[&quot;epsilon&quot;], &quot;accuracy_met&quot;: 0 &lt;= gap &lt;= Fraction(instance[&quot;epsilon&quot;]) if gap is not None else None, &quot;core_seconds&quot;: elapsed, &quot;pre_core_setup_seconds&quot;: start - call_start, &quot;field_operations&quot;: field.operations, &quot;field_operation_count_scope&quot;: &quot;Declared add/sub/mul/inv primitive calls including scratch objective alignment; excludes conversion arithmetic counted separately and rational coordinate/objective arithmetic&quot;, &quot;field_conversion_calls&quot;: field.conversion_calls, &quot;modular_conversion_inverses&quot;: field.modular_conversion_inverses, &quot;modular_conversion_multiplications&quot;: field.modular_conversion_multiplications, &quot;max_conversion_num_den_bits&quot;: field.max_conversion_num_den_bits, &quot;max_field_operand_bits&quot;: field.max_operand_bits, &quot;max_field_result_bits&quot;: field.max_result_bits, &quot;coordinate_denominator_bits&quot;: denominator.bit_length(), &quot;coordinate_numerator_bits_bound&quot;: (cmax * denominator).bit_length(), &quot;best_point&quot;: best_point, &quot;theoretical_source_sweeps_sufficient&quot;: int((Fraction(9 * (m + 1) * cmax * n) / Fraction(instance[&quot;epsilon&quot;])) ** 2), &quot;source_error_bound_squared&quot;: str(Fraction((9 * (m + 1) * cmax * n) ** 2, sweeps + 2)), &quot;universal_requested_accuracy_certified_by_horizon&quot;: Fraction((9 * (m + 1) * cmax * n) ** 2, sweeps + 2) &lt;= Fraction(instance[&quot;epsilon&quot;]) ** 2, &quot;timing_scope&quot;: &quot;core_seconds includes sweep updates, every full objective and microstep trace construction; excludes setup/initial objective, import/startup and trace-file/final-summary writes&quot;}
+    trace[&quot;summary&quot;] = summary
+    summary[&quot;theoretical_source_sweeps_sufficient&quot;] = ceil((Fraction(9 * (m + 1) * cmax * n) / Fraction(instance[&quot;epsilon&quot;])) ** 2)
+    return summary, trace
+</pre></html>

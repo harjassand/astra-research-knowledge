@@ -1,0 +1,51 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Independent final gate: full slower trace sampler</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>Independent final gate: full slower trace sampler</h1><p>Source ID d-1d98dc43decfa553; literature/notes/c_gaussian/cycle3/whole_sampler_gate.md; 1846 o200k tokens; role research_note; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre># Independent final gate: full slower trace sampler
+
+Audited `notes/team_c_multiscale/cycle3/whole_sampler_transfer.md` on 2026-10-06, after it was written. Verdict: **PASS the exact-real full-chain theorem**, including warm start, stationarity, mixing, score cap, local correction and rejected-call cost. This does not certify the failed Picard/cloud transfer or a finite-bit implementation. The gradient-error extension is supportable only with the explicit adjustments below.
+
+## Reconstructed warm bound and kernel
+
+Translate a gradient-acquired reference to zero, so b=grad U(0)=grad V(xref), ||b||&lt;=sqrt(q). Hessian promises survive the affine change. For G0=N(0,q^-1 I), heat integration gives E[U(G0)-U(0)]&lt;=tau h/(2q), and convexity gives log E exp[-(U(G0)-U(0))]&lt;=||b||²/(2q). Thus KL(G0||pi)&lt;=(1+tau h/q)/2. The KL direction is correct for applying pi&#x27;s T2 inequality: W2²(G0,pi)&lt;=2 KL(G0||pi)/q. The parent elects a weaker self-contained bound instead.
+
+That weaker bound also holds: synchronously couple stationary OU Z with target Langevin X, initially X=Z. For D=X-Z, monotonicity gives d||D||/dt&lt;=-q||D||+||grad U(Z)||. Co-coercivity/Stein gives E||grad U(Z)||²&lt;=2q+2tau h²/q. Integrating and using Minkowski yields W2²(G0,pi)&lt;=A²=2(1+tau(h/q)²)/q as the Langevin marginal converges. This is uniform under full-span or rotating curvature; no subspace is needed.
+
+The proximal chain is a Gibbs sampler of the joint density pi(x)N(y;x,eta I), hence stationary. Coupled posterior Langevin gives W2(R_eta,y,R_eta,y&#x27;)&lt;=||y-y&#x27;||/(1+q eta). The Gaussian forward step and common posterior kernel give TV(mu K,nu K)&lt;=W2(mu,nu)/sqrt(2pi eta). In particular TV(Law X_N,pi)&lt;=A(1+q eta)^-(N-1)/sqrt(2pi eta). This uses Gaussian smoothing on the LAST step, not an invalid W2-to-TV conversion without smoothing.
+
+For r=h/q, L=log(e+(tau+1)(1+r)/epsilon), eta=min(q^-1,c/[h(tau+L)]) and N=ceil(C[1+r(tau+L)]L), log(A/sqrt(eta))=O(L). Sufficient universal constants therefore give the claimed mixing allocation. Small r is covered; h=0 is sampled directly after one gradient reveals the affine residual.
+
+## Reconstructed score cap and its transfer
+
+Ideal-chain W2(X_n,G0)&lt;=2A. Complete the square and put z_n=k(X_n+sqrt(eta)G), k=(1+q eta)^-1. Couple X_n to G0 and use the same additional Gaussian. The comparison center has covariance [q(1+q eta)]^-1 I, and the displacement L2 norm is &lt;=2kA. Therefore
+
+E||grad U(z_n)||² &lt;=4q+4tau h²/q+8h² A² = M².
+
+The score cap R²=C N M²/epsilon has ideal union probability &lt;=epsilon/10. There is no ambient Euclidean cap in this exact, globally promised oracle interface. With gamma=eta/(1+q eta),
+
+gamma M² &lt;= C(1+r)^4(tau+1).
+
+Since log N=O(L), the log of sqrt(gamma)R sqrt(p)/(cB) is O(L), with p=C log(20N/epsilon)=O(L). Local gradient-descent contraction gamma h/(1+gamma h), bounded away from 1 by the step restriction, gives O(L) gradient queries per center. This includes the initial score check and the final cached gradient up to universal constants.
+
+The exact-to-implemented comparison must stop at the first local mismatch or cap. Until then, both chains have the same state and same forward Gaussian, so a cap event is charged to the IDEAL path. On valid centers the direct FORS local TV guarantee is uniform. Sequential maximal coupling gives total discrepancy &lt;=N delta+P(ideal cap). The written parent argument does exactly this and never asserts a moment bound after mismatch.
+
+This distinction is necessary: an approximate kernel (1-delta)K+delta delta_R has local TV error at most delta but second moment &gt;=delta R², arbitrarily large. The approximate chain cannot inherit the ideal M² bound merely from local TV control. The first-mismatch argument handles this obstruction.
+
+The center computation is charged once per local RGO, and the additional expected gradients are &lt;=4B exp(2B), including every rejected proposal. Total expected work is therefore C[1+r(tau+L)]L²+C_ref. The reference acquisition term depends on the initial gradient norm and is retained. Vector arithmetic, precision and gradient-oracle evaluation costs are extra, as stated in the parent theorem. Gaussian randomness is supplied. Optional attempt/Poisson caps are not needed for almost-sure termination or the expected bound.
+
+## Conditional gradient-error robustness
+
+The exact theorem does not require this extension. Suppose every queried gradient has uniform Euclidean error &lt;=rho, with no claim that this mathematical promise is acquired. For each local center, let zeta_star=cB/sqrt(p) be the desired dimensionless true proximal residual tolerance.
+
+If reference acquisition also uses this approximate oracle, additionally require rho&lt;=c sqrt(q) and stop the observed reference gradient at sqrt(q)/2. The same inexact-gradient contraction, with rate h/(q+h), and its residual floor must be charged there. Alternatively keep reference acquisition exact. A local center tolerance does not by itself state this global reference premise.
+
+1. Use an observed stopping tolerance zeta_star/(2sqrt(gamma)) and require sqrt(gamma)rho&lt;=zeta_star/8. An observed residual below that tolerance bounds the true residual by 5zeta_star/(8sqrt(gamma)). Inexact GD obeys ||e_{j+1}||&lt;=rho_mode||e_j||+rho, rho_mode=gamma h/(1+gamma h); its residual floor is rho/(1-rho_mode). The chosen step keeps rho_mode universally small, so O(L) steps still suffice.
+2. If the initial score is capped using the observed gradient, cap violation implies true score &gt;R-rho. Require R&gt;=2rho and enlarge the Markov threshold constant accordingly. On accepted centers the true initial score is &lt;=R+rho.
+3. In the full likelihood estimator, the cached grad U(c) cancels algebraically against the computed residual e. Thus pointwise estimator error is &lt;=sqrt(gamma)rho(||G||+||G&#x27;||) (a harmless universal multiplier covers equivalent implementations). Under proposal and true target, E||G||&lt;=C sqrt(d), by the residual tilt bound. Its Lp norm is &lt;=C sqrt(gamma)rho(sqrt(d)+sqrt(p)).
+4. Taking rho&lt;=c delta/[sqrt(gamma)sqrt(d)] yields mean likelihood bias O(delta) under both laws and added Lp error O(delta[1+sqrt(p/d)]), sufficiently small relative to B after constants are chosen. The biased clipping lemma then gives an extra O(delta) local allocation. This assumes fresh Gaussian draws are exact and the algebraic operations are exact; Gaussian discretization and arithmetic error need separate certified bounds.
+
+These adjustments justify a conditional gradient-oracle extension; they do not produce a finite-bit implementation from a C² gradient promise. In particular precision cost now carries an explicit dimension dependence even though the exact gradient QUERY theorem does not. The parent should avoid presenting this as an unconditional practical dimension-free sampler.
+
+## Independent finite evidence and limits
+
+`work/c_gaussian/cycle3/whole_sampler_checks.py` uses an exact full-rank quadratic residual, with a nonzero affine term, to calculate warm KL, Gaussian W2, every chain covariance/mean, and the cap-score moment. It also records the rare-contamination obstruction above. All formulas obey the reconstructed bounds. These finite checks test constants/directions and the intended kernel; they do not prove the nonlinear theorem or validate TV of a float implementation.
+
+Prior art is the source&#x27;s proximal/FORS sampler, Gaussian completion, co-coercivity, Stein, synchronous Langevin, and Gaussian smoothing. No novelty claim is certified. The valid slower result is a complete supplied-trace exact-oracle sampler, with a competent known-quadratic comparator and acquisition/cost caveats. The fast hidden residual-RGO and mean forest remain separate unresolved implications.
+</pre></html>

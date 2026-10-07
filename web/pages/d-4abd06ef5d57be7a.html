@@ -1,0 +1,1273 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>=== PDF PAGE 1 ===</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>=== PDF PAGE 1 ===</h1><p>Source ID d-4abd06ef5d57be7a; literature/sources/rounding_prior/cycle13/LW_ITCS2026.txt; 20962 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>
+=== PDF PAGE 1 ===
+Identity Testing for Circuits with Exponentiation
+Gates
+Jiatu Li /envel⌢pe
+Massachusetts Institute of Technology, Cambridge, MA, USA
+Mengdi Wu /envel⌢pe
+Carnegie Mellon University, Pittsburgh, PA, USA
+Abstract
+Motivated by practical applications in the design of optimization compilers for neural networks, we
+initiated the study of identity testing problems for arithmetic circuits augmented withexponentiation
+gates that compute the real function x↦→ex. These circuits compute real functions of form
+P (⃗ x)/P′(⃗ x), where bothP (⃗ x) and P ′(⃗ x) are exponential polynomials
+k∑
+i=1
+fi(⃗ x)·exp
+(
+gi(⃗ x)
+hi(⃗ x)
+)
+,
+for polynomials fi(⃗ x), gi(⃗ x), and hi(⃗ x).
+We formalize a black-box query model over finite fields for this class of circuits, which is
+mathematical simple and reflects constraints faced by real-world neural network compilers. We
+proved that a simple and efficient randomized identity testing algorithm achieves perfect completeness
+and non-trivial soundness. Concurrent with our work, the algorithm has been implemented in
+the optimization compiler Mirage by Wu et al. (OSDI 2025), demonstrating promising empirical
+performance in both efficiency and soundness error. Finally, we propose a number-theoretic conjecture
+under which our algorithm is sound with high probability.
+2012 ACM Subject ClassificationTheory of computation→Circuit complexity
+Keywords and phrasesPolynomial Identity Testing, Exponential Polynomials
+Digital Object Identifier10.4230/LIPIcs.ITCS.2026.95
+Related Version Full Version: https://arxiv.org/abs/2506.04529
+Funding Jiatu Li: received support from the National Science Foundation under Grant CCF-2127597.
+Mengdi Wu: received support from NSF awards CNS-2147909, CNS-2211882, and CNS-2239351 and
+research awards from Amazon, Cisco, Google, Meta, NVIDIA, Oracle, Qualcomm, and Samsung.
+Acknowledgements We are grateful to Seyoon Ragavan for mentioning the connection of our results
+to [11] and related works. We also thank Ryan O’Donnell and Ryan Williams for discussions about
+the identity testing algorithm and its analysis, and Zhihao Jia and Oded Padon for discussions about
+modeling the real-world problem.
+1 Introduction
+Polynomial Identity Testing (PIT) is a central problem of theoretical computer science. Given
+a multi-variate polynomialf : Fn→F with certain properties, the goal of the problem is to
+verify whetherf is identically zero.
+Early results on identity testing of polynomials date back to DeMillo and Lipton [8],
+Zippel [26], and Schwartz [19] (see also [14] for a special case on finite fields). It is proved
+that a black-box probabilistic testing, namely checking whetherf(⃗ x) = 0 for a random
+element⃗ x∈Fn, works well for low-degree polynomials. This simple algorithm serves as a
+key step in many randomized algorithms (see, e.g., [22, 12, 1]) as well as probabilistic proof
+© Jiatu Li and Mengdi Wu;
+licensed under Creative Commons License CC-BY 4.0
+17th Innovations in Theoretical Computer Science Conference (ITCS 2026).
+Editor: Shubhangi Saraf; Article No.95; pp.95:1–95:22
+Leibniz International Proceedings in Informatics
+Schloss Dagstuhl – Leibniz-Zentrum für Informatik, Dagstuhl Publishing, Germany
+
+=== PDF PAGE 2 ===
+95:2 Identity Testing for Circuits with Exponentiation Gates
+systems, including the celebrated interactive proof system forPSPACE [20] and the PCP
+theorem [3]. Subsequently, there has been a rich literature on identity testing of various
+types of polynomials, including sparse polynomials and polynomials computed by depth-3
+algebraic circuits (see, e.g., [17, 18] and the references therein).
+Perhaps surprisingly, the probabilistic identity testing algorithm for low-degree polyno-
+mials has recently been found useful in developing optimization compilers for deep neural
+networks. Loosely speaking, deep neural networks are represented as a high-level programming
+language, and the optimization compiler is designed to automatically identify redundancy
+in programs to improve the efficiency of the neural network. In a recent optimization com-
+piler PET [24], Wang et al. observed that redundancy detection in partial neural network
+computation without non-linear activation can be naturally modeled as black-box identity
+testing of low-degree polynomials. By applying the classical probabilistic testing algorithm
+[8, 26, 19], PET achieves a significant speed-up over its benchmark.
+▶ Remark 1 (black-box model).In the black-box setting, the algorithm is given oracle access to
+the polynomial rather than its description. For the optimization compilers of neural networks
+(e.g., [24]), the neural networks are gigantic and are usually loaded into optimization devices
+such as GPUs or TPUs. Black-box identity testing algorithms are favorable, asevaluation
+on (partial) neural networks exploits the optimization devices and is therefore efficient in
+practice. In contrast, algorithms analyzing the circuit in white-box, even when they have
+lower computational complexity in theory, may still be less efficient if they cannot make full
+use of optimization devices.1
+A natural question is, therefore, whether this approach can be extended to neural networks
+with non-linear activation. In a subsequent work, Wu et al. [25] introduced a framework,
+Mirage, that could benefit from extending the redundancy detection algorithm in PET [24]
+to neural network components withexponentiation operators. This enables the modeling of
+non-linear activation functions such assoftmax(·). In the language of circuit complexity, the
+program representation in Mirage can be modeled as integer-coefficient arithmetic circuits
+with “exponentiation gates”, where there is at most one exponentiation gate in each path
+from output gates to input gates (see Section 3.1). The goal of Mirage is to “efficiently”
+check whether a circuitC : Rn→R of such form is identical to0 on R in a black-box query
+model that is practically satisfactory.
+Compared to polynomials and standard arithmetic circuits computing polynomials,
+the behavior of circuits with exponentiation gates is not well studied. Integer-coefficient
+polynomials can be naturally evaluated overFp with modular arithmetic. However, it is not
+a-prior clear what it the correct way to define the evaluation of circuits with exponentiation
+gates over finite fields, as there is no standard analogy of the exponentiation function in finite
+fields. This makes it hard to even define a suitable “black-box query model” for the identity
+testing problem that is easy to analyze and captures the real-world constraints. Moreover, it
+is unclear whether the standard randomized algorithm [8, 19, 26] works after we define the
+evaluation of such circuits.
+Our Contribution. Motivated by the practical applications, we initiate a theoretical analysis
+of the identity testing ofcircuit with exponentiation gates.
+We introduce a natural circuit model that formalizes circuits with exponentiation gates
+x↦→exp(x), which suffices to captures components of modern neural networks such as
+Attention [23] with certain non-linear activation functions. The circuit model generalizes
+the standard algebraic circuit model by allowing exponentiation gates.
+1 Moreover, black-box algorithms are much easier to implement, as one can reuse the existing software
+infrastructure for evaluating neural networks, making them more reliable while reducing human efforts.
+
+=== PDF PAGE 3 ===
+J. Li and M. Wu 95:3
+We prove that in theidealized modelwhere the algorithm could query the circuit on any
+real number, a simple probabilistic testing is correct with high probability.
+We introduce analgebraic query modelthat captures the real-world constraints in opti-
+mization compilers for deep neural networks such as Mirage [25], and design a simple
+randomized algorithm that is perfectly complete andnon-trivially sound. Concurrent
+with our work, this algorithm is implemented in Mirage as one of its two redundancy
+detection algorithms. We also introduce a conjecture about sparse polynomials in finite
+field, under which our randomized algorithm in algebraic query model is soundwith high
+probability.
+1.1 Main Results: A Simplified Setting
+Before formally describing our circuit and query models in Section 3, we try to describe
+a simplified version of the main mathematical problem. Letk∈N, fi,gi,hi be n-variate
+degree-d polynomials with integer coefficients in[−w,w ], andP : Rn→R∪{⊥}be a partial
+real function defined as
+P (⃗ x) ≜
+k∑
+i=1
+fi(⃗ x) exp
+(gi(⃗ x)
+hi(⃗ x)
+)
+,
+where exp(x) ≜ ex. This function is similar to theexponential polynomialsthat are used
+in, e.g., transcendental number theory [4, Chapter 12]. For simplicity, we will callP(⃗ x) a
+degree-d exponential polynomial. The number of termsk in P (⃗ x) is said to be thewidth of
+P (⃗ x). We call{fi(⃗ x)}i∈[k] the coefficient polynomials ofP(⃗ x), and{gi(⃗ x)/hi(⃗ x)}i∈[k] the
+exponent fractions of it.
+The algorithmic problem we are interested in is to check whetherP (⃗ x) is identically zero
+on Rn with queries of one of the following two forms:
+(Real): Given ⃗ x∈Qn, the oracle outputs{0, 1,⊥}indicating thatP (⃗ x) = 0, P (⃗ x)∈
+R\{0}, andP (⃗ x) =⊥(i.e. undefined due to division-by-zero), respectively.
+(Algebraic): Let p,q be prime numbers such thatq|p−1, G =⟨g⟩be the unique
+multiplicative subgroup ofF∗
+p of orderq. Given⃗ u∈Fn
+p,⃗ v∈Fn
+q, anda∈G, the oracle
+outputs
+Pa(⃗ u,⃗ v) ≜
+( k∑
+i=1
+fi(⃗ u)·agi(⃗ v)·(hi(⃗ v))−1 modq
+)
+modp,
+where (·)−1 on the exponent denotes the multiplicative inverse inFq. The oracle returns
+⊥if hi(⃗ v) modq = 0 for anyi∈[k].
+Before introducing our results, we make a few short remarks on our modeling of the identity
+testing problem and its connection to real world engineering practice.
+▶ Remark 2 (numerical stability issues). Testing whetherP (⃗ x) (modeling a program) is
+identically zero onRn is motivated by the following compilation task – compilers may replace
+a (sub)program by another optimized one provided that they compute the same function over
+real numbers. As real numbers are only an idealized model for, say, floating point numbers,
+this optimization strategy may cause numerical stability issues. Nevertheless, most modern
+classical and neural network compilers offer the option for users to enable such optimizations
+as it may significantly improve performance, e.g., the-Ofast option of GCC [21, Chapter
+3] and the FlashAttention [7] implementation in PyTorch [15, 16]; see also [10, 24, 25].
+ITCS 2026
+
+=== PDF PAGE 4 ===
+95:4 Identity Testing for Circuits with Exponentiation Gates
+▶ Remark 3 (query models).The former type of query is an idealized model. In practical
+applications (e.g. [24, 25]), there is no efficient algorithm to implement the oracle that
+checks whetherP(⃗ x) = 0 precisely given⃗ x, and the approximation of real numbers using
+floating-point numbers is also unsatisfactory in practice. The latter type of query is more
+realistic; indeed, it is implemented in the optimization compiler Mirage [25] where the explicit
+representation ofP (⃗ x) is a (partial) neural network.2 See Section 1.2 and 3 for more detailed
+discussions.
+Identity Testing Algorithms in the Simplified Setting.Now we describe our identity testing
+algorithms in the simplified setting. First, we show that a simple randomized algorithm with
+one query works in the real query model. The algorithm is to randomly sample⃗ x∈[B]n
+for B = 20·d·k2 and accepts ifP (⃗ x)∈{0,⊥}. It is clear that the algorithm is perfectly
+complete, and the soundness is given by the following theorem:
+▶ Theorem 4 (Theorem 22, simplified). Let P (⃗ x) be an n-variate degree-d exponential
+polynomial of widthk that is not identically zero on its domain, andS⊆Q be any finite
+non-empty set. For⃗ x∈Sn sampled uniformly at random,Pr[P (⃗ x)∈{0,⊥}]≤8dk2/|S|.
+As the second result, we analyze the following simple randomized identity testing algorithm
+in the algebraic query model: Letp,q,G be defined as above, the algorithm randomly samples
+⃗ u∈Fn
+p,⃗ v∈Fn
+q, anda∈G, and accepts ifPa(⃗ u,⃗ v)∈{0,⊥}. The following theorem formalizes
+the completeness and soundness of the algorithm:
+▶ Theorem 5(Theorem 7, simplified). LetP (⃗ x) be ann-variate degree-d exponential poly-
+nomial of widthk. Letp,q be prime numbers,q|p−1, andG =⟨g⟩be the unique order-q
+multiplicative subgroup ofF∗
+p. Suppose that all integer coefficients inP (⃗ x) are within[−w,w ],
+q &gt;2w, then:
+(Completeness). IfP (⃗ x) is identically zero on its domain as a partial real function, for
+any a∈G, ⃗ u∈Fn
+p, and⃗ v∈Fn
+q, Pa(⃗ u,⃗ v)∈{0,⊥}.
+(Soundness). If P (⃗ x) is not identically zero on its domain as a partial real function,
+p,q≥2kw, then for uniformly randoma∈G, ⃗ u∈Fn
+p, and⃗ v∈Fn
+q, the probability that
+Pa(⃗ u,⃗ v)∈{0,⊥}is at mostq−1
+k−1 +O(dk2/q).
+Note that for sufficiently largek,q ∈N such thatlnq≤k−1, we have
+1−2 lnq
+k−1≤q−1
+k−1≤1− lnq
+2(k−1).
+Thus in a typical setting thatdk3≤q≤kO(1), the soundness error is1−Θ( logk/(k−1)).3
+By parallel repetition of the randomized algorithm forO(k logk/ logq) times, we can boost
+the error probability to 1/kO(1). This leads to an efficient randomized identity testing
+algorithm whenk is relatively small and the evaluation is much more efficient than obtaining
+the description ofP (⃗ x), which, in particular, captures the real-world constraints for the
+optimization compilers such as Mirage [25].
+2 The special case of the algebraic query model without exponentiation functions is implemented in [24].
+3 The error probability is constant ifq is exponential ink. However, this setting is not meaningful: The
+width k is usually comparable to the input length, and thus the arithmetic operations overq would be
+extremely inefficient.
+
+=== PDF PAGE 5 ===
+J. Li and M. Wu 95:5
+1.2 Connection to the Circuit Models
+We stress that the abstraction in previous subsection is mathematically clean but omits
+crucial details in modeling the real-world problem. Specifically:
+It is not immediately clear how the identity testing results for exponential polynomials
+apply to our motivating real-world application, namely identity testing of neural networks
+formalized by “circuits with exponentiation gates” [24, 25].
+It is also not clear how the functionPa(⃗ u,⃗ v) in Theorem 7 relates to the circuits, and
+why it can be computed efficiently whenP (⃗ x) is explicitly given by a “circuit with
+exponentiation gates”. This is important as in real-world applications, see [25], the
+function Pa(⃗ u,⃗ v) is implemented on specialized devices such as GPU or TPU, which are
+optimized for specific computation patterns. Moreover, it is unclear where the restrictions
+in the algebraic query model (e.g.,a must be inG) come from.
+Circuit Model. We briefly explain our circuit model (calledAExp1 circuits) and refer
+readers to Sections 3 and 4 for more details. We work with (arithmetic) circuits with integer
+coefficients, unbounded fan-in addition and multiplication gates, fan-in two division gates,
+and fan-in one exponentiation gates. In addition, we impose the restriction that on each
+path from input variables to output gates, there is at mostone exponentiation gates – the
+circuit cannot compute double exponentialx↦→eex
+by composing exponentiation gates.
+The evaluation of circuits over real numbers is defined by a standard gate-by-gate
+evaluation algorithm, where the exponentiation gate is interpreted as the functionx↦→ex.
+However, it is unclear how to define the evaluation of such circuits over finite fields, as there
+is no standard interpretation of the exponential function.
+Let p be a prime number. To define the evaluation of anAExp1 circuit C over Fp, a
+natural idea is to replace the exponential function byx↦→ax for some elementa∈Fp. This
+is not ideal as such an interpretation isinconsistent with the evaluation overR: It could be
+the case that
+ax1+x2 modp̸≡ax1ax2 (mod p)
+for x1,x 2∈Fp, whileex1+x2 =ex1ex2 for anyx1,x 2∈R. As a result, this definition cannot
+be used for the identity testing ofAExp1 circuits.
+To address the issue, we exploit the algebraic structure of finite fields by using different
+moduli over and under the exponents. Letp,q be prime numbers such thatq|p−1, G⊆F∗
+p
+be the unique order-q multiplicative subgroup, anda∈G. It follows that
+ax1+x2 modq≡ax1·ax2 (mod p)
+for anyx1,x 2∈Fq. If we useq as the modulus “over the exponent” andp as the modulus
+“under the exponent”, the functionx↦→ax will be consistent with the arithmetic law
+ex1+x2 = ex1·ex2. Following the intuition, we define the evaluation ofC with respect to
+(p,q,a ) using a gate-by-gate evaluation algorithm such that:
+Each input variable or wire carries a pair(u,v )∈(Fp∪{⊥})×(Fq∪{⊥}).
+Addition, multiplication, and division gates are implemented coordinate-wisely.
+The exponentiation gate is implemented by(u,v )↦→(av modp,⊥).
+This evaluation algorithm can be implemented efficiently given the description of the circuit
+C. We refer readers to Section 3 for more details.
+ITCS 2026
+
+=== PDF PAGE 6 ===
+95:6 Identity Testing for Circuits with Exponentiation Gates
+A Structural Lemma. Let ⃗ u= (u1,...,un)∈Fn
+p,⃗ v= (v1,...,vn)∈Fn
+q, we useCa(⃗ u,⃗ v)
+to denote the output of the evaluation algorithm where thei-th input variable is assigned
+to (ui,vi). Similar to the standard results that algebraic circuits compute polynomials [2,
+Section 16], we can then prove thatAExp1 circuits can be converted to an equivalentfraction
+of exponential polynomials:
+▶ Lemma 6(Lemma 20, informal). For everyn-input AExp1 circuitC, there aren-variate
+integer-coefficient exponential polynomialsP (⃗ x) and P′(⃗ x) such that the following holds:
+For each⃗ u∈⃗R, C(⃗ u) =P(⃗ u)/P′(⃗ u).
+Letp,q be prime numbers such thatq|p−1, Gp,q be the multiplicative subgroup ofF∗
+p of
+orderq, anda∈Gp,q. Then for every(⃗ u,⃗ v)∈⃗Fp×⃗Fq, Ca(⃗ u,⃗ v)≡Pa(⃗ u,⃗ v)·(P′
+a(⃗ u,⃗ v))−1
+(mod p), where (a)−1 denotes the multiplicative inverse ofa modulop.
+We stress that the structural lemmadoes not provide a polynomial upper bound on
+the degree, width, or integer weight of the integer-coefficient exponential polynomialsP,P′.
+Nevertheless, it can be verified that the exponential polynomialsP,P′for AExp1 circuits
+from real-world neural network applications, such assoftmax(·) and Attention with softmax
+activations [23], tend to have relatively small degree, width, and weight; interested readers
+are referred to Section 4.5 for more discussion, and [25] for experimental results.
+The Main Theorem. Let domR(C) be the domain of the circuitC, i.e., the set of⃗ x∈Rn
+such thatC(⃗ x)̸=⊥. An AExp1 circuit C is said to have degreed, widthk, and weightw if
+there are integer-coefficient degree-d width-k exponential polynomialsP (⃗ x) and P′(⃗ x) with
+all integer coefficients within[−w,w ] that satisfy Lemma 6.
+By generalizing Theorems 4 and 5 to fractions of exponential polynomials and combining
+them with Lemma 6, we can obtain the final result:
+▶ Theorem 7.LetC : Rn→R be an AExp1 circuit of widthk, degreed and weightw, p and
+q be prime numbers such thatq|p−1 and q &gt;2(kw)2. LetGp,q be the unique multiplicative
+subgroup of F∗
+p of orderq. The following hold:
+(Completeness). IfC is identically zero ondomR(C), then for everya∈Gp,q, Ca(⃗ u,⃗ v)∈
+{0,⊥}for every (⃗ u,⃗ v)∈Fn
+p×Fn
+q.
+(Soundness). If C is not identically zero on domR(C), then for uniformly random
+⃗ u←Fn
+p,⃗ v←Fn
+q,a←Gp,q, Pr[Ca(⃗ u,⃗ v) /∈{0,⊥}]≥1−8dk4·q−1−q−1/(k2−1).
+1.3 Technical Overview
+We briefly explain the proof of our simplified technical results Theorem 4 and Theorem 5
+in the simplified setting, as well as the main theorem (see Theorem 7) that generalizes the
+results to the circuit setting.
+Real Queries. The idea behind Theorem 4 is very simple: We manage to combine the
+Schwartz-Zippel lemma and Lindemann-Weierstrass theorem, i.e.,e is transcendental (see
+Theorem 13).
+To avoid technical subtlety, we assume thatP (⃗ x) is a degree-d exponential polynomial
+where the exponent fractionsgi(⃗ x)/hi(⃗ x) are pairwisely distinct; that is, for every pair of
+indicesi,j ∈[k],i̸=j,gi(⃗ x)hj(⃗ x)−gj(⃗ x)hi(⃗ x) is not a zero polynomial. Such an exponential
+polynomial is said to becondensed, and the general case can be reduced to the condensed
+case by considering another exponential polynomialˆP that “groups” coefficients based on
+the exponent fraction; see Section 4.3. Moreover, we assume without loss of generality that
+fi̸= 0 and hi̸= 0 for eachi∈[k].
+
+=== PDF PAGE 7 ===
+J. Li and M. Wu 95:7
+Let S⊆Q be a non-empty finite set, we know by the Schwartz-Zippel lemma that for
+anyi∈[k], j∈[k], i̸=j, each of the following non-zero polynomials of degree at least2d
+fi(⃗ x), h i(⃗ x), g i(⃗ x)hj(⃗ x)−gj(⃗ x)hi(⃗ x)
+evaluates to zero with probability at most2d/|S|for a uniformly random⃗ x∈Sn. By the
+union bound, we can further prove that with probability at least1−3dk2/|S|, none of the
+polynomials evaluate to0. For each of such⃗ x, we can see that for the rational numbers
+αi ≜gi(⃗ x)/hi(⃗ x) and βi ≜fi(⃗ x), we have
+P(⃗ x) =β1eα1 +β2eα2 +···+βkeαk,
+which must be non-zero ase is transcendental.
+Connection to Algebraic Queries. Unwinding the proof of Theorem 4, we could actually
+give a necessary and sufficient condition for an exponential polynomial with integer weights
+to be identically zero over real evaluations. LetP (⃗ x) be a condensed degree-d exponential
+polynomial
+P (⃗ x) =
+k∑
+i=1
+fi(⃗ x) exp
+(gi(⃗ x)
+hi(⃗ x)
+)
+with integer coefficients, thenP (⃗ x) is identically zero on its domain (over real evaluation)
+if and only if for everyi∈[k], fi = 0. Subsequently, ifp,q are chosen to be larger than
+the integer coefficients, the identity testing of a condensed exponential functionP (⃗ x) is
+equivalent to testing whetherfi = 0 (mod p) for everyi∈[k].
+With the characterization above, the completeness of Theorem 5 is relatively simple, so
+we will focus on the soundness property.
+We try to mimic the strategy in the proof of Theorem 4. Suppose thatP (⃗ x) is not
+identically zero on real evaluations, we know by the discussion above that whenp are
+sufficiently large, there is at least onefi̸= 0 ( mod p) for anyi∈[k]. Moreover, if q is
+sufficiently large, we know that for anyi̸=j, gihj−gjhi̸= 0 ( mod q). Assume without loss
+of generality thatfi̸= 0 for alli∈[k]. For⃗ u∈Fn
+p and⃗ v∈Fn
+q sampled uniformly at random,
+we still know by the Schwartz-Zippel lemma and the union bound that with probability at
+least 1−3dk2/q, none of
+fi(⃗ x) modp, h i(⃗ x) modq, g i(⃗ x)hj(⃗ x)−gj(⃗ x)hi(⃗ x) modq
+evaluates to zero fori,j ∈[k], i̸= j. We can then defineαi ≜ gi(⃗ x)/hi(⃗ x) modq and
+βi ≜fi(⃗ x) modp for i∈[k] such that
+Pa(⃗ u,⃗ v) =β1aα1 +...βkaαk modp,
+where β1,...,βk are non-zero andα1,...,αk are pairwisely distinct.
+A Weak Descartes’ Rule in Finite Fields.It then suffices to prove that for any non-zero
+β1,...,βk∈Fp and distinctα1,...,αk∈Fq,k≥1, if we samplea∈G uniformly at random,
+the probability thatβ1aα1 +...βkaαk modp = 0 is at mostq−1/(k−1). We note that this
+can be viewed as a generalization of theDescartes’ Rule(see also [11]), which asserts that
+any univariate polynomial withk monomials has at most2k roots.
+ITCS 2026
+
+=== PDF PAGE 8 ===
+95:8 Identity Testing for Circuits with Exponentiation Gates
+We provide an elementary proof of a weaker result: The probability that β1aα1 +
+...βkaαk modp = 0 is at most1−1/k. Theorem 5 is proved using a lemma from [11], which
+employs a similar but slightly more complicated argument.
+Recall that the order-q multiplicative subgroupG⊆F∗
+p is a cyclic group. For any fixed
+i∈Fq, a random elementa∈G can be viewed as generated from randomly samplingg∈G
+and outputtinggi. Our idea is to choose a goodi∈Fq such that at least a1/k fraction ofg
+satisfies thatβ1gi·α1 +...βkgi·αk modp̸= 0.
+We say that an indexi∈Fq is good for α∈Fq if i·αmodq≤(1−1/k)·q, and is said
+to begood if for everyj∈[k], i is good forαi. It turns out that if there is a goodi∈Fq,
+β1gi·α1 +···+βkgi·αk
+can be viewed as a polynomial inFp[g] of degree at most(1−1/k)·q; in that case, there are
+at most (1−1/k)·q roots in Fp (and also inG).
+Therefore, it remains to prove the existence of a goodi. Sincei↦→i·αis a bijection in
+Fq, we know that for any fixedα, the probability that a randomi∈Fq is good forαis at
+least 1−1/k. By the union bound, we know that a randomi∈Fq is good forα1,...,αk
+with non-zero probability. This implies that there must be a goodi∈Fq, which completes
+the proof.
+▶ Remark 8 (related results). The analogy of Descartes’ Rule over finite fields has been
+studied prior to our work. Motivated by understanding the security of the Diffie-Hellman
+cryptosystem, Canettie et al. [5] proved an upper bound on the number of roots of sparse
+univariate polynomials. This upper bound was later improved by Kelley [11]. We use the
+techniques from [5, 11] and obtain similar upper bounds. Note that [5, 11] considers the
+number of roots inFp, while we consider the number of roots in a multiplicative subgroup
+G⊆F∗
+P; as a result, our upper bound is cleaner and easier to prove.
+Generalization to the Circuit Setting. There are a few technical issues to obtain the main
+theorem (see Theorem 7).
+First, the proof overview above assumes that the exponential polynomial iscondensed,
+i.e., its exponent fractions are pairwisely distinct. For exponential polynomials that are
+not condensed, we need to firstcondense the polynomial by merging terms with equivalent
+exponent fractions. For instance, the following exponential polynomialP(⃗ x) = exp
+(
+x2−3x
+x−3
+)
++
+exp
+(
+x2−2x
+x−2
+)
+may be condensed to ˆP (⃗ x) = 2 exp
+(
+x2−3x
+x−3
+)
+. In general, such condensation
+procedure results into another exponential polynomialˆP that has larger domain and agree
+with P on the domain ofP (see Proposition 19). We need to bridge the gap betweenP and
+ˆP with standard probability analysis.
+Second, as shown in Section 1.2, AExp1 circuits are converted to fractionsP/P′of
+exponential polynomials rather than exponential polynomials. This requires a careful (but
+straightforward) adaption of the techniques above. In particular, in the soundness analysis,
+we use the observation thatP/P′is identically zero on its domain (overR) if and only if
+the exponential polynomialP·P′is identically zero on its domain (overR). This leads to a
+quadratic overhead (ink) in the soundness error of Theorem 7 compared to Theorem 5, as
+P·P′may have width up tok2 when bothP and P′are of widthk.
+Organization of the Paper. We review basic definitions and classical results that we will
+need in Section 2. In Section 3, we formally describe our circuit model as well as the query
+models we considered in our paper – the idealized real query model and the algebraic query
+
+=== PDF PAGE 9 ===
+J. Li and M. Wu 95:9
+model; we also briefly explain why the algebraic query model is a better abstraction in the
+application of optimization compilers for neural networks. In Section 4, we define exponential
+polynomials, discuss its basic properties, and prove the structural lemma that converts
+circuits to fractions of exponential polynomials. In Section 5, we prove the correctness of our
+probabilistic testing algorithm in the real and algebraic query models.
+1.4 Discussion and Open Problems
+The most interesting open problem is to improve the soundness error of Theorem 5 and
+Theorem 7. We conjecture that the actual soundness error is1−Ω(1). In particular, we
+propose the following number-theoretic conjecture under which the soundness error is indeed
+1−Ω(1):
+▶ Conjecture 9(Strong Descartes’ Rule Conjecture over Finite Fields). There are constants
+ε,δ &lt;1 such that the following holds. Letp, q be sufficiently large prime numbers such that
+q|p−1, g∈Fq be an element of orderg, andG ≜⟨g⟩be the unique multiplicative subgroup
+of F∗
+p of orderq. For anyk≤qδ, distinctα1,...,αk∈Fq, andβ1,...,βk∈Fp\{0}, the
+non-zero univariate polynomial
+f(z) ≜β1zα1 +β2zα2 +···+βkzαk
+has at mostε·q roots inG.
+This conjecture can be interpreted as a property of the isomorphism mapping
+I : [f]↦→(f(1),f (g),...,f (gq−1))
+from Fp[x]/(xq−1) onto Fq
+p. It states that there is no non-zero polynomial[f]∈Fp[x]/(xq−1)
+such that bothf andI([f]) are very sparse. This seems to be an analogy of the “uncertainty
+principle” in Fourier analysis (see, e.g., [13, Exercise 3.15]). We also note that numerical
+experiments (see, e.g., [11, 6]) suggest that it is hard to construct sparse polynomials over
+Fp with many roots for primep.
+Complexity-theoretic Perspectives. It is also interesting to consider whether we can design
+better identity testing algorithms for some restricted classes ofAExp1 circuits (e.g. of small
+constant depth). This would potentially lead to real-world applications, as the structure of
+circuits from neural networks is relatively simple. To start with, one may consider adapting
+existing techniques for identity testing of algebraic circuits (see, e.g., [17, 18]) to AExp1
+circuits.
+On the other hand, it is interesting to consider whether there are conditional or uncondi-
+tional lower boundsfor identity testing ofAExp1 circuits in black-box models, such as the
+algebraic query models that we introduced in Section 1.2.
+Other Modeling of the Problem. We note the the algebraic query model in Section 1.2
+is not necessarily the only reasonable formalization of the real world problem. Recall that
+in optimization compilers for neural networks [24, 25], the neural network (modeled by an
+AExp1 circuit) is loaded into specialized devices (such as GPU or TPU) that are optimized
+for specific computation patterns and have high communication overhead with the CPU.
+Algorithms in other black-box models are potentially useful for real-world applications if:
+1. the queries can be efficiently implemented on those specialized devices; and
+2. the communication overhead is small.
+ITCS 2026
+
+=== PDF PAGE 10 ===
+95:10 Identity Testing for Circuits with Exponentiation Gates
+We are not aware of other natural models that satisfies these constraints for identity testing
+of AExp1 circuits, and it remains an interesting open problem that may require joint efforts
+of system and theory communities. Note that it may make it possible to design better
+identity testing algorithms if we work with another black-box query model that has better
+mathematical properties.
+2 Preliminaries
+2.1 Abstract Algebra
+We assume basic familiarity to elementary ring and field theory (see, e.g., [9]). We will
+use the standard notation:R[x1,...,xm] denotes the ring ofm-variate polynomials with
+coefficients inR; for any idealI inR,R/I denotes the quotient ring ofR modulo I; Quot(R)
+denotes the quotient field (i.e. the field of fraction) extending an integral domainR. For any
+prime p and u∈Fp\{0}, we useInvp(u) to denote the multiplicative inverse ofu modulo p.
+Recall that anintegral domainis a non-zero commutative ring where the multiplication
+of two non-zero elements is non-zero. We will need the following result for polynomials.
+▶ Lemma 10 ([9, Proposition 1 of Section 9.1]). For any integral domainR, the ring of
+R-coefficient multi-variate polynomialsR[x1,...,xm] is also an integral domain.
+2.2 Schwartz-Zippel Lemma
+▶ Lemma 11([8, 26, 19]). LetR be an integral domain andS⊆R be a finite subset ofR.
+For anym,d∈N and any non-zerom-variate polynomialf :Rm→R of total degreed
+Pr
+⃗ x∈Sm
+[f(⃗ x) = 0]≤d
+|S|,
+where⃗ x= (x1,...,xm) is uniformly sampled fromSm.
+2.3 Transcendental Number Theory
+▶ Definition 12. A complex numberα∈C is called algebraic if it is the root of a non-zero
+integer-coefficient polynomial of finite degree, and calledtranscendental if it is not algebraic.
+Algebraic numbers, denoted byQ, is a sub-field ofC. In particular, any rational number
+α=p/q is algebraic as it is the root of the degree-1 integer-coefficient polynomialqx−p.
+▶ Theorem 13(Lindemann–Weierstrass Theorem [4, Theorem 1.4]). If α1,...,αn∈Q are
+distinct algebraic numbers,eα1,...,eαn ∈C are linearly independent over the fieldQ of
+algebraic numbers. In particular,e is transcendental.
+3 Circuit and Query Models
+3.1 Definition of the Circuit Model
+The circuit model we introduce next extends the standardarithmetic circuit model by
+exponentiation gatesthat is intended to model the exponential functionexp(x) ≜ex over
+real numbers. Formally, anAExp1 circuit is a DAG consisting of vertices that are either an
+input variable or a gate of the following types (all gates are of fan-out1):
+
+=== PDF PAGE 11 ===
+J. Li and M. Wu 95:11
+1. constant gates Ca of fan-in 0 intended to model a fixed integera;
+2. addition gatesΣ(x1,...,xm) of unbounded fan-in that are intended to model the addition
+of real numbers, i.e.,x1 +···+xm;
+3. multiplication gatesΠ(x1,...,xm) of unbounded fan-in that are intended to model the
+multiplication of real numbers, i.e.,x1x2...xn.
+4. division gates Frac(x,y ) of fan-in 2 intended to model the division of real numbers, i.e.,
+x/y;
+5. exponentiation gates Exp(x) of fan-in 1 intended to model the exponential function, i.e.,
+ex.
+In addition, we do not allow compositions of exponentiation gates inAExp1 circuits; that
+is, for anyAExp1 circuit, there is at mostone exponentiation gate along any path from an
+input variable to an output gate.4 We assume by default that anAExp1 circuit has only one
+output gate, though the definitions and our results can be easily generalized to multi-output
+circuits.
+Evaluation of AExp1 Circuits over Real Numbers. The evaluation ofAExp1 circuits over
+real numbers should be clear through the definition. LetC be anyn-input AExp1 circuit
+and⃗ x∈Rn, the evaluation ofC(⃗ x) is defined as the output of the output gate, where the
+output values of gates are defined by gate-by-gate evaluation following a topological order.
+In particular, if the divisor of a division gate is zero,C(⃗ x) is undefined. Therefore, an
+AExp1 circuit may compute a partial functionC : Rn→R. We define thedomain of aC(⃗ x)
+circuit on R, denoted bydomR(C), as the set of⃗ x∈Rn such thatC(⃗ x) is defined. For any
+⃗ x /∈domR(C), we may also sayC(⃗ x) =⊥.
+Practical Motivation: Modeling Components in Neural Networks.Our circuit model is a
+straightforward formalization of the program representation in Mirage [25]. Intuitively, the
+motivation to introduceAExp1 circuit is to model components that are widely used in model
+artificial neural networks that consist of non-linear activation functions.
+3.2 Query Model over Reals, and Why it is not Satisfactory
+Since AExp1 circuits compute functions overR, a natural idealized model for the identity
+testing problem is that the algorithm can evaluate the circuit over any real input. Formally,
+a identity testing algorithm forAExp1 circuits C in real query modelis allowed to query the
+following oracle:
+(Evaluation). Given an input⃗ x∈Qn, the evaluation oracle reports whetherC(⃗ x) is
+undefined,C(⃗ x) = 0, orC(⃗ x)∈R\{0}.
+The main problem of the real query model is that computers cannot deal with real numbers.
+For real-world applications, real numbers are usually approximated byfloating-point numbers,
+which does not satisfy arithmetic laws such as the commutativity and associativity of addition.
+This leadstwo-sided errorsin the implementation of a testing algorithm in real query model:
+(Completeness). Even ifC is identically zero overR, it may evaluate to a non-zero value
+on some inputs when the evaluation queries are implemented in float-point numbers.
+4 Similarly, one can defineAExpk circuits where there are at mostk exponential gates along any such
+path. In this work, we focus onAExp1 circuits as it is natural and is more relevant to the practical
+motivation of this work.
+ITCS 2026
+
+=== PDF PAGE 12 ===
+95:12 Identity Testing for Circuits with Exponentiation Gates
+(Soundness). Even ifC is not identically zero, it may evaluate to0 on any input when
+evaluation queries are implemented in float-point numbers, either because of the precision
+issue or because of the failure of arithmetic laws.
+The occurrences of errors on both sides reduce the consistency and reliability of the testing
+algorithms. Take the example of optimization compilers PET [24] or Mirage [25] that aim to
+detect redundancy in neural networks modeled asAExp1 circuits. Two sided error will make
+the algorithms less predictable and reliable to users; indeed, it could be possible that the
+oracle will hardly ever reportC(⃗ x)∈R\{0}even ifC(⃗ x) is defined and non-zero for most
+or all⃗ xdue to the floating-point issue. In that case, the optimization compiler will barely
+find any redundancy. It is worth noting that the error ison top ofthe completeness and
+soundness error of the identity testing algorithm, so it cannot be resolved by a better (e.g.,
+deterministic) testing algorithm.
+3.3 Query Model over Finite Fields
+Next, we introduce a natural query model for the identity testing problem ofAExp1 circuits
+over finite fields that can be implemented in real-world applicationswithout the precision
+issue.
+Evaluation over Finite Fields. Let p,q be two primes such thatq|p−1, andGp,q be the
+(unique) multiplicative subgroup ofF∗
+p of orderq. Equivalently,Gp,q contains the roots of
+the univariate polynomialzq−1 over Fp. Loosely speaking, we will define the evaluation of
+C on the input(⃗ u,⃗ v)∈Fn
+p×Fn
+q and a∈Gp,q (modulo (p,q )) by
+interpreting the exponentiation gate by the functionx↦→ax modp,
+implementing all computation “on the exponent” inFq,
+implementing all computation “under the exponent” inFp,
+and evaluating the circuit gate by gate.
+We useCa(⃗ u,⃗ v) to denote the evaluation above; see the full version for its formal definition.
+Similar to the evaluation ofAExp1 circuits on R, Ca(⃗ u,⃗ v) may be undefined, denoted by
+Ca(⃗ u,⃗ v) =⊥, due to division-by-zero. For eacha∈Gp,q, we define the domain ofC with
+respect toa modulo (p,q ), denoted bydomp,q,a(C), as{(⃗ u,⃗ v)∈Fn
+p×Fn
+q|Ca(⃗ u,⃗ v)̸=⊥}.
+Algebraic Query Model. Subsequently, we define the identity testing problem for anAExp1
+circuit C over the algebraic query model as follows. Letp,q,G p,q be specified above. The
+algorithm for identity testing is allowed to query the following oracle:
+(Evaluation). Given (⃗ u,⃗ v)∈Fn
+p×Fn
+q anda∈Gp,q, the oracle reportsCa(⃗ u,⃗ v)∈Fp∪{⊥}.
+This query model is efficient both theoretically and practically. It can be observed, for
+instance, that the oracle in the algebraic query model can be implemented by algorithms in
+O(s·(logp + logq)) space and polynomial time. In practice, the simplicity of the evaluation
+model makes it possible to implement it in the neural network compiler scenario (see [24, 25]
+for more details).
+4 Exponential Polynomials
+To understand the functions computed byAExp1 circuits, we will defineexponential poly-
+nomials that, intuitively, generalize (multi-variate) polynomials by allowing terms of form
+exp(·). Formally:
+
+=== PDF PAGE 13 ===
+J. Li and M. Wu 95:13
+▶ Definition 14(exponential polynomial). LetR be an integral domain andd,m be integers,
+d≥0, m≥1. An m-variate R-coefficient exponential polynomialP(⃗ x) of degreed is
+defined as
+P (⃗ x) ≜f1(⃗ x) exp
+(g1(⃗ x)
+h1(⃗ x)
+)
++f2(⃗ x) exp
+(g2(⃗ x)
+h2(⃗ x)
+)
++···+fk(⃗ x) exp
+(gk(⃗ x)
+hk(⃗ x)
+)
+,
+where⃗ x= (x1,...,xm) denotes the indeterminates,fi, gi and hi arem-variate polynomials
+of degreed with coefficients fromR.
+The number of termsk is said to be thewidth of P(⃗ x),{fi(⃗ x)}i∈[k] are said to be the
+coefficient polynomialsof P(⃗ x), and{gi(⃗ x)/hi(⃗ x)}i∈[k] are said to be theexponent fractions
+of P (⃗ x).
+In this paper, we only use the special case whereR = Z, i.e., integer-coefficient expo-
+nential polynomials. Nevertheless, we will develop the elementary arithmetic of exponential
+polynomials with respect to an arbitrary integral domainR for coefficients.
+4.1 Basic Arithmetic Properties
+We stress that an exponential polynomial should be considered as an abstract expression
+rather than a function. In particular,exp(·) should be considered as a symbol instead of the
+exponential function overR. For simplicity, we will also use the summation symbol∑to
+define an exponential polynomial, i.e.,
+P (⃗ x) ≜
+k∑
+i=1
+fi(⃗ x) exp
+(gi(⃗ x)
+hi(⃗ x)
+)
+,
+where the summation symbol is a shorthand of thek-term summation in Definition 14.
+We first define the addition and multiplication of exponential polynomials. LetR be a
+ring andP (⃗ x),P′(⃗ x) be R-coefficient exponential polynomials defined as
+P(⃗ x) ≜
+k∑
+i=1
+fi(⃗ x) exp
+(gi(⃗ x)
+hi(⃗ x)
+)
+, P ′(⃗ x) ≜
+k′
+∑
+i=1
+f′
+i(⃗ x) exp
+(g′
+i(⃗ x)
+h′
+i(⃗ x)
+)
+. (1)
+We can naturally define the addition and multiplication ofP(⃗ x) and P′(⃗ x) as:
+P (⃗ x) +P′(⃗ x) ≜
+k∑
+i=1
+fi(⃗ x) exp
+(gi(⃗ x)
+hi(⃗ x)
+)
++
+k′
+∑
+i=1
+f′
+i(⃗ x) exp
+(g′
+i(⃗ x)
+h′
+i(⃗ x)
+)
+. (2)
+P (⃗ x)·P′(⃗ x) ≜
+k∑
+i=1
+k′
+∑
+j=1
+fi(⃗ x)f′
+j(⃗ x) exp
+(
+gi(⃗ x)h′
+j(⃗ x) +g′
+j(⃗ x)hi(⃗ x)
+hi(⃗ x)h′
+j(⃗ x)
+)
+. (3)
+Next, we consider the arithmetic laws for exponential polynomials. As hinted at in the
+definitions of addition and multiplication, both operations arecommutative and associative,
+and multiplication isdistributive over addition. Moreover, it is implicit in the definition of
+multiplication that exponentiation symbol satisfies
+exp
+(g(⃗ x)
+h(⃗ x)
+)
+·exp
+(g′(⃗ x)
+h′(⃗ x)
+)
+= exp
+(g(⃗ x)h′(⃗ x) +g′(⃗ x)h(⃗ x)
+h(⃗ x)h′(⃗ x)
+)
+. (4)
+Furthermore, we impose the following axiom that allows merging terms with the same
+exponent fraction:
+f(⃗ x) exp
+(g(⃗ x)
+h(⃗ x)
+)
++f′(⃗ x) exp
+(g(⃗ x)
+h(⃗ x)
+)
+= (f(⃗ x) +f′(⃗ x)) exp
+(g(⃗ x)
+h(⃗ x)
+)
+. (5)
+ITCS 2026
+
+=== PDF PAGE 14 ===
+95:14 Identity Testing for Circuits with Exponentiation Gates
+Wesaythat P (⃗ x)andP′(⃗ x)areidentical, denotedbyP (⃗ x) =P′(⃗ x), iftheycanbetransformed
+to each other using the arithmetic laws above.
+We note that the following two exponential polynomials
+P1(⃗ x) = exp (x) ; P2(⃗ x) = exp
+(x2−2x
+x−2
+)
+are not identical as the division law isnot allowed in the exponentiation symbol. This is
+intentional as in the evaluation ofAExp1 circuits, we will only evaluate the circuit gate by
+gate without trying to simplify the circuit using the division law.
+4.2 Evaluation of Exponential Polynomials
+Similar to standard multivariate polynomials, we can define the evaluation of exponential
+polynomials that explains how to view such abstract expressions as functions. In particular,
+we will introduce two definitions corresponding to thereal evaluation modeland algebraic
+evaluation modelof AExp1 circuits.
+Let P(⃗ x) be ann-variate integer-coefficient exponential polynomial defined by the coeffi-
+cient polynomials{fi}i∈[k] and exponent fractions{gi/hi}i∈[k].
+Evaluation of Exponential Polynomials on Real Numbers.We can viewP (⃗ x) as a function
+P(·) : Rn→R as follows. Given an input⃗ u∈Rn, the evaluation ofP (⃗ x) on the input⃗ uis
+defined as
+P(⃗ u) ≜
+k∑
+i=1
+fi(⃗ u)·exp
+(gi(⃗ u)
+hi(⃗ u)
+)
+where all the operators (i.e., additions, divisions, multiplications, and exponentiations) are
+interpreted as corresponding functions inR. If for somei∈[k], hi(⃗ u) = 0, the exponential
+polynomial is said to be undefined on⃗ u. The domain ofP(⃗ x) over R, denoted bydomR(P ),
+is defined asdomR(P ) ≜{⃗ u∈Rn|hi(⃗ u)̸= 0∀i∈[k]}.
+Evaluation of Exponential Polynomials on Finite Fields.Similar to the algebraic query
+model for AExp1 circuits, we require two finite fields for the computation under and over
+exponents to define the evaluation ofP over finite fields. Let p,q be two primes such
+that q|p−1, and Gp,q be the multiplicative subgroup ofF∗
+p of order q. Given inputs
+⃗ u∈Fn
+p,⃗ v∈Fn
+q, and a∈Gp,q, the evaluation ofP on ⃗ uand ⃗ u, denoted byPa(⃗ u,⃗ v), is
+defined as:
+Pa(⃗ u,⃗ v) ≜
+( k∑
+i=1
+fi(⃗ u)·agi(⃗ v)·(hi(⃗ v))−1 modq
+)
+modp.
+Note thatPa(⃗ u,⃗ v) is undefined, denoted byPa(⃗ u,⃗ v) =⊥, ifhi(⃗ v) modq = 0 for somei∈[k].
+The domain ofP (⃗ x) over (p,q,a ) is defined as
+domp,q,a(P (⃗ x)) ≜{(⃗ u,⃗ v)∈Fn
+p×Fn
+q|hi(⃗ u)̸= 0 modq∀i∈[k]}.
+▶Proposition 15.LetP (⃗ x) andP′(⃗ x) be identical integer-coefficient exponential polynomials,
+p,q be two primes such thatq|p−1. For anya in the multiplicative subgroup ofF∗
+p of order
+q, we have thatdomp,q,a(P ) = domp,q,a(P′) and Pa(⃗ u,⃗ v) =P′
+a(⃗ u,⃗ v) for any⃗ u∈Fn
+p,⃗ v∈Fn
+q.
+
+=== PDF PAGE 15 ===
+J. Li and M. Wu 95:15
+4.3 Condensation of Exponential Polynomials
+Recall that two exponential polynomials are said to be identical if they can be transformed
+to each other by arithmetic laws. As there is no division law for the exponent fractions, the
+exponential polynomials
+P1(x) ≜ exp (x) ; P2(x) ≜ exp
+(x2−2x
+x−2
+)
+are not considered to be the same polynomial. In particular, we can notice thatdomR(P1)̸=
+domR(P2). Nevertheless, these two exponential polynomials as functions are essentially the
+same over all but the inputx = 2.
+We now introduce thecondensation of integer-coefficient exponential polynomials that
+simplifies an exponential polynomial by merging terms with “essentially the same” exponent
+fractions together, which will be useful in proving our main results.
+Equivalent Exponential Fractions. Let P (⃗ x) be a multi-variate integer-coefficient exponen-
+tial polynomial of widthk,{gi(⃗ x)/hi(⃗ x)}i∈[k] be the exponent fractions ofP (⃗ x). Suppose
+that for eachi∈[k], hi is not a zero polynomial. We define∼P to be the relation over[k]
+such that
+i∼P j iff gi(⃗ x)hj(⃗ x)−gj(⃗ x)hi(⃗ x) = 0.
+Note thatgi(⃗ x)hj(⃗ x)−gj(⃗ x)hi(⃗ x) = 0 means that it is a zero integer-coefficient polynomial,
+or equivalently,gi(⃗ u)hj(⃗ u)−gj(⃗ u)hi(⃗ u) = 0 for any⃗ x∈⃗R.
+▶ Lemma 16. Suppose thathi(⃗ x) is not a zero polynomial for anyi∈[k], then∼P is an
+equivalence relation over[k].
+Condensation of Exponential Polynomials. Subsequently, we define a condensationˆP of
+an exponential polynomialP as obtained by grouping the coefficient polynomials according
+to the relation∼P. Formally:
+▶ Definition 17(Condensation of exponential polynomials). LetP (⃗ x) be an integer-coefficient
+exponential polynomial of degreed and widthk,{fi(⃗ x)}i∈[k] be the coefficient polynomials of
+P (⃗ x),{gi(⃗ x)/hi(⃗ x)}be the exponent fractions ofP (⃗ x) such thathi(⃗ x) is not a zero polynomial
+for eachi∈[k]. Let π={[i1]π, [i2]π,..., [it]π}be the partition of[k] induced by∼P, and
+i1,...,it be arbitrary representation elements. We say thatˆP (⃗ x) is a condensation ofP (⃗ x)
+if it is of form
+˜P(⃗ x) ≜F1(⃗ x)·exp
+(gi1(⃗ x)
+hi1(⃗ x)
+)
++···+Ft(⃗ x)·exp
+(git(⃗ x)
+hit(⃗ x)
+)
+whereFj(⃗ x) ≜ ∑
+i∈[ij ]πfi(⃗ x) is an integer-coefficient polynomial of degree at mostˆd.
+▶ Definition 18(Condensed exponential polynomials). LetP (⃗ x) be an exponential polynomial
+with exponent fractions{gi(⃗ x)/hi(⃗ x)}i∈[k]. P (⃗ x) is a condensed exponential polynomial if
+hi’s are not zero polynomials andgi(⃗ x)hj(⃗ x)̸=hi(⃗ x)gj(⃗ x) for i,j ∈[k] and i̸=j.
+We stress that the condensation of an exponential polynomial is not unique as we can
+choose the representative elementsi1,...,it arbitrarily from their equivalent classes. The
+following proposition shows thatˆP may have a larger domain compared toP, but they agree
+on the domain ofˆP.
+ITCS 2026
+
+=== PDF PAGE 16 ===
+95:16 Identity Testing for Circuits with Exponentiation Gates
+▶Proposition 19.Let ˆP be a condensation of an integer-coefficient exponential polynomialP.
+Then:
+domR(P )⊆domR( ˆP ), andP, ˆP agree on domR(P ).
+Letp,q be prime numbers such thatq|p−1, Gp,q be the multiplicative subgroup ofF∗
+p of
+orderq, anda∈Gp,q. Then domp,q,a(P )⊆domp,q,a( ˆP ), andP, ˆP agree on domp,q,a(P ).
+4.4 Structural Lemma for AExp1 Circuits
+Now we are ready to prove a structural lemma showing thatAExp1 circuits can be seen as
+fractions of exponential polynomials.
+For simplicity, we introduce the following notation. LetP,P′be n-variate exponential
+polynomials, we define domR(P/P′) be the set{⃗ u∈domR(P )∩domR(P′)|P′(⃗ u)̸= 0},
+i.e., the domain of the fractionP (⃗ x)/P′(⃗ x). Similarly, letp,q be prime numbers such that
+q|p−1, Gp,q be the multiplicative subgroup ofF∗
+p of orderq, anda∈Gp,q, we define
+domp,q,a(P/P′) as the set{⃗ u∈domp,q,a(P )∩domp,q,a(P′)|P′(⃗ u)̸= 0}.
+▶ Lemma 20. For everyn-input AExp1 circuit C, there aren-variate integer-coefficient
+exponential polynomialsP (⃗ x) and P′(⃗ x) such that the following holds:
+domR(C) = domR(P/P′), and for each⃗ u∈domR(C), C(⃗ u) =P (⃗ u)/P′(⃗ u).
+Letp,q be prime numbers such thatq|p−1, Gp,q be the multiplicative subgroup ofF∗
+p
+of orderq, anda∈Gp,q. Then domp,q,a(C) = domp,q,a(P/P′) and for every (⃗ u,⃗ v)∈
+domp,q,a(C), Ca(⃗ u,⃗ v)≡Pa(⃗ u,⃗ v)·Invp(P′
+a(⃗ u,⃗ v)) (mod p).
+In particular, ifC does not contain exponentiation gates, bothP and P′do not contain the
+exponentiation symbol, i.e.,P and P′are integer-coefficient polynomials.
+The proof is left to the full version of the paper.
+4.5 Width, Degree, and Weight of Concrete Neural Network
+Components
+It is proved in Lemma 20 that anyAExp1 circuit can be transformed to an equivalent fraction
+of exponential polynomials. We can therefore define thewidth, degree, and weight of an
+AExp1 circuit.
+▶ Definition 21(width, degree, and weight ofAExp1 circuits). An AExp1 circuitC is said
+to have widthk, degreed, and weight w if there are integer-coefficient degree-d width-k
+exponential polynomialsP (⃗ x) and P′(⃗ x) that satisfy both conditions in Lemma 20.
+We note that the transformation in Lemma 20 may not be efficient – the width, degree,
+and the bit-length of the integer coefficients may grow exponentially with respect to the size
+of the circuit. Nevertheless, it can be verified that many neural network components can be
+simulated by fractions of exponential polynomials with relatively small width, degree, and
+coefficients. We refer readers to the full version for more discussions.
+5 Algorithms for Identity Testing
+Now we are ready to describe our identity testing algorithms in real and algebraic query
+models. Indeed, our algorithms are essentially the same one: Randomly sample an inputx
+(in corresponding models) and check whether the circuit evaluates to zero or⊥on the input
+⃗ x. We will first prove the correctness of the algorithm in real query model (see Section 5.1),
+and generalize the proof to the algebraic query models in subsequent subsections.
+
+=== PDF PAGE 17 ===
+J. Li and M. Wu 95:17
+5.1 Identity Testing in Real Query Model
+Formally, the identity testing algorithm in real query model works as follows: Suppose that
+C : Rn→R is an AExp1 circuit of widthk and degreed, letB = 20dk2 be sufficiently large
+and S ={1, 2,...,B}, the algorithm uniformly samplex1,x 2,...,xn∈S, and accept if
+C(x1,...,xn)̸= 0.
+It is clear that the algorithm is perfectly complete, and the soundness can be formalized
+as the following theorem.
+▶ Theorem 22. Let C : Rn→R be an AExp1 circuit of widthk and degreed that is not
+identically zero on domR(C). Then for any non-empty finite subsetS⊆Q, if⃗ x∈Sn is
+sampled uniformly at random,Pr[C(⃗ x)∈{0,⊥}]≤8dk2/|S|.
+The key step for proving Theorem 22 is a necessary and sufficient condition for an
+exponential polynomial P to be identically zero. Intuitively, if the exponent fractions
+g1/h1,...,gk/hk of P are pairwisely distinct, thenP is identically zero onRn if and only if
+all coefficient polynomialsf1,...,fk are all identically zero. Formally:
+▶ Lemma 23. LetP : Rn→R be a condensed exponential polynomial of form
+P(⃗ x) =
+k∑
+i=1
+fi(⃗ x)·exp
+(gi(⃗ x)
+hi(⃗ x)
+)
+,
+wherefi,gi,hi are integer-coefficient polynomials of total degreed and hi(⃗ x) is not identically
+zero on Rn for everyi∈[k]. Then the following statements are equivalent:
+1. P is identically zero ondomR(P);
+2. Pr[P (⃗ x)∈{0,⊥}]&gt; 3dk2/|S|for⃗ x∈Sn sampled uniformly at random for any non-empty
+finite subsetS⊆Q.
+3. For everyi∈[k], fi is identically zero onRn.
+The proof is omitted; see the full version of the paper.
+We are now ready to prove Theorem 22.
+Proof of Theorem 22.Let C : Rn→R be an AExp1 circuit of widthk and degreed that
+is not identically zero ondomR(C). Let S⊆Q be a non-empty finite set. Then by the
+definition of degree and width ofC, there are exponential polynomialsP,P′defined by
+P(⃗ x) ≜
+∑
+i∈[k]
+fi(⃗ x)·exp
+(gi(⃗ x)
+hi(⃗ x)
+)
+, P ′(⃗ x) ≜
+∑
+j∈[k]
+f′
+j(⃗ x)·exp
+(
+g′
+j(⃗ x)
+h′
+j(⃗ x)
+)
+.
+such thatC(⃗ x) =P (⃗ x)/P′(⃗ x) for every⃗ x∈Rn, and for eachi∈[k],j ∈[k],fi,gi,hi,f′
+j,g′
+j,h′
+j
+are integer-coefficientn-variate polynomials of total degree at mostd.
+Note that for eachi∈[k],j ∈[k], we have thathi(⃗ x),h′
+j(⃗ x) are not identically zero onRn.
+This is because otherwise at least one ofP (⃗ x),P′(⃗ x) is undefined on every⃗ x∈Rn, which
+implies that domR(C) = ∅. Moreover, we know thatP and P′are not identically zero on
+their domains, respectively, as otherwiseC must be identically zero on its domain.
+Let ˆP(⃗ x) be a condensation ofP (⃗ x). AsP is not identically zero on its domain, we know
+by Proposition 19 that ˆP (⃗ x) is not identically zero on its domain. Consider the random
+variable⃗ x∈Sn sampled uniformly at random. We calculate the probability of the following
+events:
+LetE ˆP be the event thatˆP (⃗ x) /∈{0,⊥}, i.e., ˆP (⃗ x) is defined andˆP (⃗ x)̸= 0. By Lemma 23,
+we can see thatPr[E ˆP ]≥1−3dk2/|S|.
+ITCS 2026
+
+=== PDF PAGE 18 ===
+95:18 Identity Testing for Circuits with Exponentiation Gates
+LetE⊥be the event thatP (⃗ x) is defined, i.e.,hi(⃗ x)̸= 0 for everyi∈[k]. Note that
+Pr[hi(⃗ x) = 0]≤d/|S|for every fixedi∈[k] by Lemma 11. By the union bound, we know
+that Pr[E⊥] = 1−Pr[¬E⊥]≥1−dk/|S|.
+LetEP be the event thatP (⃗ x) /∈{0,⊥}. Notice that
+Pr[E ˆP ] = Pr[E ˆP∧E⊥] + Pr[E ˆP∧¬E⊥]≥1−3dk2/|S|,
+where Pr[E ˆP∧E⊥] = Pr[EP ] by Proposition 19 andPr[E ˆP∧¬E⊥]≤Pr[¬E⊥]≤dk/|S|.
+Therefore, Pr[EP ]≥1−3dk2/|S|−dk/|S|≥1−4dk2/|S|.
+Following the same argument, we can prove thatPr[P′(⃗ x) /∈{0,⊥}]≥1−4dk2/|S|over
+uniformly random⃗ x∈Sn. It follows that
+Pr[C(⃗ x)∈{0,⊥}] = Pr[P (⃗ x)∈{0,⊥}∨P′(⃗ x)∈{0,⊥}]
+≤Pr[P (⃗ x)∈{0,⊥}] + Pr[P′(⃗ x)∈{0,⊥}]≤8dk2/|S|.
+This completes the proof. ◀
+5.2 A Weak Descartes’ Rule over Finite Fields
+▶ Theorem 24. Let p, q be prime numbers such thatq|p−1, g∈Fp be an element of
+order q, and G ≜⟨g⟩be the unique multiplicative subgroup ofF∗
+p of orderq. Let k≤q,
+α1,...,αk∈Fq be distinct, andβ1,...,βk∈Fp. Then the univariate polynomial
+f(z) ≜β1zα1 +β2zα2 +···+βkzαk
+has at mostq1−1/(k−1) roots inG.
+The key idea of the proof (which follows from [5, 11]) is to find a low-degree polynomial
+that has as many roots asf(z) in G. Let p,q be prime numbers such thatq|p−1, and
+G =⟨g⟩be the unique multiplicative subgroup ofF∗
+p of orderq. Formally:
+▶ Proposition 25. Letc∈{1, 2,...,q−1}and fc(z) be the polynomial
+fc(z) ≜β1zcα1 modq +β2zcα2 modq +···+βkzcαk modq.
+Then the polynomials{fc(z)}c∈[q−1] have the same number of roots inG.
+▶ Lemma 26 (Lemma 4.1 of [11]). Forα1,...,αt,N ∈N and n≤N/ gcd(α1,...,αt,N ),
+there is ac∈[n−1] such that
+max
+i∈[t]
+{αi·c modN}≤N
+n1/t.
+Proof of Theorem 24.Fixp,q∈N,g∈Fp,k, elementsα1,...,αk∈Fq andβ1,...,βk∈Fp.
+Let fc(z)∈Fp[z] be the univariate polynomial
+fc(z) ≜β1zcα1 modq +β2zcα2 modq +···+βkzcαk modq
+and f(z) =f1(z). Assume thatα1≤α2≤···≤αk. We may further assume without loss of
+generality thatα1 = 0, as otherwise we can consider the polynomialf(z)/zα1 that has the
+same number of roots inG.
+LetN ≜q andn =q, wehavegcd(α2,...,αk,N ) = 1andthus n≤N/ gcd(α2,...,αk,N ).
+By Lemma 26, there exists somec∈{1, 2,...,q−1}such that for everyi∈{2, 3,...,k},
+αi·c modq≤q1−1/(k−1),
+which further implies that the polynomialfc(z) is of degree at mostq1−1/(k−1). Subsequently,
+fc(z) has at mostq1−1/(k−1) roots inG. This completes the proof asf(z) and fc(z) have
+the same number of roots inG by Proposition 25. ◀
+
+=== PDF PAGE 19 ===
+J. Li and M. Wu 95:19
+5.3 Identity Testing in Algebraic Query Model
+▶ Theorem 7.LetC : Rn→R be an AExp1 circuit of widthk, degreed and weightw, p and
+q be prime numbers such thatq|p−1 and q &gt;2(kw)2. LetGp,q be the unique multiplicative
+subgroup of F∗
+p of orderq. The following hold:
+(Completeness). IfC is identically zero ondomR(C), then for everya∈Gp,q, Ca(⃗ u,⃗ v)∈
+{0,⊥}for every (⃗ u,⃗ v)∈Fn
+p×Fn
+q.
+(Soundness). If C is not identically zero on domR(C), then for uniformly random
+⃗ u←Fn
+p,⃗ v←Fn
+q,a←Gp,q, Pr[Ca(⃗ u,⃗ v) /∈{0,⊥}]≥1−8dk4·q−1−q−1/(k2−1).
+We first prove two lemmas: Lemma 27 is used to prove the completeness property, and
+Lemma 28 is used to prove the soundness property.
+▶ Lemma 27. Let ˆP be a condensation of an integer-coefficient exponential polynomialP. If
+P is identically zero ondomR(P ) and domR(P )̸= ∅, then ˆP is identically zero ondomR( ˆP ).
+The proof is omitted; see the full version of the paper.
+▶ Lemma 28. Letp,q be prime numbers such thatq|p−1, Gp,q be the unique multiplicative
+subgroup of F∗
+p of orderq. LetP be a condensed integer-coefficient exponential polynomial
+P(⃗ x) =
+∑
+i∈[k]
+fi(⃗ x)·exp
+(gi(⃗ x)
+hi(⃗ x)
+)
+of degreed and widthk. Suppose that for everyi∈[k], fi(⃗ x) is not identically zero onFp and
+hi(⃗ x) is not identically zero onFq, then for(⃗ u,⃗ v,a) uniformly sampled fromFn
+p×Fn
+q×Gp,q,
+Pr[Pa(⃗ u,⃗ v)∈{0,⊥}]≤3dk2·q−1 +q−1/(k−1).
+The proof is similar to that of Lemma 23; see the full version of the paper.
+Proof of Theorem 7.By the definition of width, degree ofAExp circuits, there are exponen-
+tial polynomials
+P (⃗ x) =
+∑
+i∈[k]
+fi(⃗ x)·exp
+(gi(⃗ x)
+hi(⃗ x)
+)
+,P′(⃗ x) =
+∑
+i∈[k]
+f′
+i(⃗ x)·exp
+(g′
+i(⃗ x)
+h′
+i(⃗ x)
+)
+such that the following hold:
+fi,gi,hi,f′
+i,g′
+i,h′
+i are d-degree polynomials with coefficients in[−w,w ]∩Z,
+domR(C) = domR(P/P′), andC(⃗ u) =P (⃗ u)/P′(⃗ u) for⃗ u∈domR(C),
+domp,q,a(C) = domp,q,a(P/P′), andCa(⃗ u,⃗ v) = P(⃗ u,⃗ v)·Invp(P′(⃗ u,⃗ v)) for anya∈Gp,q
+and (⃗ u,⃗ v)∈domp,q,a(C).
+Proof of Completeness. Let C be an AExp1 circuit that is identically zero ondomR(C).
+We first prove that eitherP (⃗ x) is identically zero ondomR(P), orP′(⃗ x) is identically zero
+on domR(P′).
+Towards a contradiction, we assume thatP is not identically zero ondomR(P) and P′
+is not identically zero ondomR(P′). LetS⊆Z be a set of size30dk2. By Theorem 22, we
+know that for⃗ x∈Sn sampled uniformly at random,
+Pr[P (⃗ x)∈{0,⊥}], Pr[P′(⃗ x)∈{0,⊥}]&lt; 1
+3.
+ITCS 2026
+
+=== PDF PAGE 20 ===
+95:20 Identity Testing for Circuits with Exponentiation Gates
+By the union bound, we know that for⃗ x∈Sn sampled uniformly at random, with probability
+at least 1/3, P (⃗ x),P′(⃗ x) /∈{0,⊥}. For any such⃗ x∈Sm, we have that⃗ x∈domR(C) and
+C(⃗ x) =P (⃗ x)/P′(⃗ x)̸= 0, which is impossible asC is identically zero on its domain.
+Suppose that P (⃗ x) is identically zero on domR(P ), we know by Lemma 27 that the
+condensation ˆP (⃗ x) ofP(⃗ x) is also identically zero ondomR( ˆP ). Letk′be the width ofˆP and
+ˆP (⃗ x) =
+∑
+i∈[k′]
+ˆfi(⃗ x)·exp
+(
+ˆgi(⃗ x)
+ˆhi(⃗ x)
+)
+.
+By Lemma 23, we know that for everyi∈[k′], ˆfi(⃗ x) is identically zero onRn, or equivalently,
+ˆfi(⃗ x) is a zero polynomial. In that case, we must haveˆfi(⃗ x)≡0 ( mod p) for everyp. This
+implies that
+ˆPa(⃗ u,⃗ v) =
+∑
+i∈[k′]
+ˆfi(⃗ u)·exp
+(
+ˆgi(⃗ v)
+ˆhi(⃗ v)
+)
+∈{0,⊥}.
+Subsequently,Pa(⃗ u,⃗ v)∈{0,⊥}as ˆP andP agree ondomp,q,a(P ) (see Proposition 19), which
+further implies thatCa(⃗ u,⃗ v)∈{0,⊥}.
+Similarly, ifP′(⃗ x) is identically zero ondomR(P′), thenP′
+a(⃗ u,⃗ v)∈{0,⊥}, which implies
+that Ca(⃗ u,⃗ v) =⊥. This concludes the completeness of the algorithm.
+Proof of Soundness. Let R(⃗ x) =P (⃗ x)·P′(⃗ x). It can be verified that it is an exponential
+polynomial with widthk2, degree 2d and weightw2. It follows that:
+For any⃗ x∈Rn, C(⃗ x) =P (⃗ x)/P′(⃗ x)∈{0,⊥}if and only ifR(⃗ x)∈{0,⊥}.
+For any⃗ x∈Fn
+p×Fn
+q,⃗ a∈Gp,q, Ca(⃗ x) = Pa(⃗ x)/P′
+a(⃗ x)∈{0,⊥}if and only ifRa(⃗ x)∈
+{0,⊥}.
+Since C is not identically zero ondomR(C), i.e.,C(x) /∈{0,⊥}for some⃗ x∈Rn, R is not
+identically zero ondomR(R). Let ˆR be a condensation ofR. By Proposition 19, ˆR is not
+identically zero ondomR( ˆR).
+Let{f′′
+i}i∈[k2] be the coefficient polynomials ofˆR, and{g′′
+i/h′′
+i}i∈[k2] be the exponent
+fractions of ˆR. Note thath′′
+i is non-zero for everyi∈[k2], as otherwisedomR(R) = ∅. By
+Lemma 23, we know thatf′′
+i is non-zero for somei∈[k2] and, without loss of generality, we
+may assume thatf′′
+i is non-zero for everyi∈[k2].
+It can be verified that the integer weights inh′′
+i are within [−w2,w 2]. Moreover, the
+integer weights inf′′
+i are within [−(kw)2, (kw)2], as eachf′′
+i is a summation of at mostk2
+polynomials that have integer weights within[−w2,w 2]. Asp&gt;q &gt; 2(kw)2, we know that
+for everyi∈[k2], f′′
+i is not identically zero onFn
+p and h′′
+i is not identically zero onFn
+q.
+Let⃗ x= (⃗ u,⃗ v)∈Fn
+p×Fn
+q anda∈Gp,q be random variables sampled uniformly at random.
+We calculate the probability of the following events:
+LetE ˆR be the event thatˆR(⃗ x) /∈{0,⊥}. By Lemma 28,Pr[E ˆR]≥1−6dk4/q−q−1/(k2−1).
+LetE⊥betheeventthat h′′
+i (⃗ v)̸= 0forevery i∈[k2]. Foreveryfixed i∈[k2], byLemma11,
+Pr[h′′
+i (⃗ v) = 0]≤2d/q. Then by the union bound,Pr[E⊥] = 1−Pr[¬E⊥]≥1−2dk2/q.
+LetER be the event thatR(⃗ x) /∈{0,⊥}. Notice that
+Pr[E ˆR] = Pr[E ˆR∧E⊥] + Pr[E ˆR∧¬E⊥]≥1−6dk4/q−q−1/(k2−1),
+where Pr[E ˆR∧E⊥] = Pr[ER] and Pr[E ˆR∧¬E⊥]≤2dk2/q. Therefore,
+Pr[ER]≥1−6dk4/q−q−1/(k2−1)−2dk2/q≥1−8dk4/q−q−1/(k2−1).
+This completes the proof, asCa(⃗ x)∈{0,⊥}if and only ifRa(⃗ x)∈{0,⊥}. ◀
+
+=== PDF PAGE 21 ===
+J. Li and M. Wu 95:21
+References
+1 Manindra Agrawal and Somenath Biswas. Primality and identity testing via chinese remain-
+dering. J. ACM, 50(4):429–443, 2003.doi:10.1145/792538.792540.
+2 Sanjeev Arora and Boaz Barak.Computational Complexity - A Modern Approach . Cambridge
+University Press, 2009. URL:http://www.cambridge.org/catalogue/catalogue.asp?isbn=
+9780521424264.
+3 Sanjeev Arora and Shmuel Safra. Probabilistic checking of proofs: A new characterization of
+NP. J. ACM, 45(1):70–122, 1998.doi:10.1145/273865.273901.
+4 Alan Baker. Transcendental Number Theory. Cambridge Mathematical Library. Cambridge
+University Press, 2022.
+5 Ran Canetti, John Friedlander, Sergei Konyagin, Michael Larsen, Daniel Lieman, and Igor
+Shparlinski. On the statistical properties of diffie-hellman distributions.Israel Journal of
+Mathematics, 120:23–46, 2000.
+6 Qi Cheng, Shuhong Gao, J. Maurice Rojas, and Daqing Wan. Sparse univariate polynomials
+with many roots over finite fields.Finite Fields Their Appl. , 46:235–246, 2017.doi:10.1016/
+J.FFA.2017.03.006.
+7 Tri Dao. FlashAttention-2: Faster attention with better parallelism and work partitioning. In
+International Conference on Learning Representations (ICLR) , 2024.
+8 Richard A. DeMillo and Richard J. Lipton. A probabilistic remark on algebraic program
+testing. Inf. Process. Lett., 7(4):193–195, 1978.doi:10.1016/0020-0190(78)90067-4.
+9 David Steven Dummit and Richard M Foote.Abstract algebra, volume 3. Wiley Hoboken,
+2004.
+10 Zhihao Jia, Oded Padon, James Thomas, Todd Warszawski, Matei Zaharia, and Alex Aiken.
+Taso: optimizing deep learning computation with automatic generation of graph substitutions.
+In Proceedings of the 27th ACM Symposium on Operating Systems Principles , SOSP ’19, pages
+47–62, New York, NY, USA, 2019. Association for Computing Machinery.doi:10.1145/
+3341301.3359630.
+11 Zander Kelley. Roots of sparse polynomials over a finite field.LMS Journal of Computation
+and Mathematics, 19(A):196–204, 2016.doi:10.1112/S1461157016000334.
+12 László Lovász. On determinants, matchings, and random algorithms. In Lothar Budach,
+editor, Fundamentals of Computation Theory, FCT 1979, Proceedings of the Conference on
+Algebraic, Arthmetic, and Categorial Methods in Computation Theory, Berlin/Wendisch-Rietz,
+Germany, September 17-21, 1979 , pages 565–574. Akademie-Verlag, Berlin, 1979.
+13 Ryan O’Donnell. Analysis of Boolean Functions . Cambridge Univer-
+sity Press, 2014. URL: http://www.cambridge.org/de/academic/subjects/
+computer-science/algorithmics-complexity-computer-algebra-and-computational-g/
+analysis-boolean-functions.
+14 Øystein Ore. Über höhere kongruenzen. Grøndahl, 1921.
+15 Adam Paszke, Sam Gross, Francisco Massa, Adam Lerer, James Bradbury, Gregory Chanan,
+Trevor Killeen, Zeming Lin, Naresh Gimelshein, Luca Antiga, Alban Desmaison, Andreas Kopf,
+Edward Liang, Mengli Liu, Ignasi Mattei, Suriya Singh, Jonathan Smith, Nikolaus Sygnowski,
+Agata Wu, Yongfei Yao, Zachary Bell, Gregory Devito, Jie Yuan, Brian Zhu, Michael Zick,
+Luke Jia, Tero Maggioni, Soumith Chintala, and Gavin Stevens. Pytorch: An imperative
+style, high-performance deep learning library. InAdvances in Neural Information Processing
+Systems, volume 32, 2019.
+16 PyTorch. PyTorch Documentation, entry: torch.nn.functional.scaled_dot_product_attention.
+https://docs.pytorch.org/docs/2.2/generated/torch.nn.functional.scaled_dot_
+product_attention.html, 2025. Accessed: 2025-11-27.
+17 Nitin Saxena. Progress on polynomial identity testing.Bull. EATCS, 99:49–79, 2009.
+18 Nitin Saxena. Progress on polynomial identity testing-II. InPerspectives in Computational
+Complexity: The Somenath Biswas Anniversary Volume , pages 131–146. Springer, 2014.
+ITCS 2026
+
+=== PDF PAGE 22 ===
+95:22 Identity Testing for Circuits with Exponentiation Gates
+19 Jacob T. Schwartz. Fast probabilistic algorithms for verification of polynomial identities.J.
+ACM, 27(4):701–717, 1980.doi:10.1145/322217.322225.
+20 Adi Shamir. IP = PSPACE.J. ACM, 39(4):869–877, 1992.doi:10.1145/146585.146609.
+21 Richard M. Stallman and the GCC Developer Community.Using the GNU Compiler Collection .
+GNU Press, Boston, MA, USA, 2025. For GCC version 15.2.0. URL:https://gcc.gnu.org/
+onlinedocs/gcc-15.2.0/gcc.pdf.
+22 William T Tutte. The factorization of linear graphs.Journal of the London Mathematical
+Society, 1(2):107–111, 1947.
+23 Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N
+Gomez, Ł ukasz Kaiser, and Illia Polosukhin. Attention is all you need. In I. Guyon,
+U. Von Luxburg, S. Bengio, H. Wallach, R. Fergus, S. Vishwanathan, and R. Garnett,
+editors, Advances in Neural Information Processing Systems , volume 30. Curran Asso-
+ciates, Inc., 2017. URL:https://proceedings.neurips.cc/paper_files/paper/2017/file/
+3f5ee243547dee91fbd053c1c4a845aa-Paper.pdf.
+24 Haojie Wang, Jidong Zhai, Mingyu Gao, Zixuan Ma, Shizhi Tang, Liyan Zheng, Yuanzhi Li,
+Kaiyuan Rong, Yuanyong Chen, and Zhihao Jia. PET: Optimizing tensor programs with par-
+tially equivalent transformations and automated corrections. In15th USENIX Symposium on
+Operating Systems Design and Implementation (OSDI 21) , pages 37–54. USENIX Association,
+July 2021. URL: https://www.usenix.org/conference/osdi21/presentation/wang.
+25 Mengdi Wu, Xinhao Cheng, Shengyu Liu, Chunan Shi, Jianan Ji, Kit Ao, Praveen Velliengiri,
+Xupeng Miao, Oded Padon, and Zhihao Jia. Mirage: A multi-level superoptimizer for tensor
+programs. In 19th USENIX Symposium on Operating Systems Design and Implementation
+(OSDI 25), Boston, MA, July 2025. USENIX Association. URL:https://www.usenix.org/
+conference/osdi25/presentation/wu-mengdi.
+26 Richard Zippel. Probabilistic algorithms for sparse polynomials. In Edward W. Ng, editor,
+Symbolic and Algebraic Computation, EUROSAM ’79, An International Symposiumon Symbolic
+and Algebraic Computation, Marseille, France, June 1979, Proceedings , volume 72 ofLecture
+Notes in Computer Science , pages 216–226. Springer, 1979.doi:10.1007/3-540-09519-5_73.</pre></html>

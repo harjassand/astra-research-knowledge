@@ -1,0 +1,1144 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Complexity of Non-Log-Concave Sampling in Fisher Information</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>Complexity of Non-Log-Concave Sampling in Fisher Information</h1><p>Source ID d-a18339f8c7e92abd; literature/sources/r10_probability/2605.15859v1.html.txt; 38771 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>Complexity of Non-Log-Concave Sampling in Fisher Information
+Report GitHub Issue
+×
+Title:
+Content selection saved. Describe the issue below:
+Description:
+Submit without GitHub
+Submit in GitHub
+arXiv is now an independent nonprofit!
+Learn more
+×
+Back to arXiv
+Why HTML?
+Report Issue
+Back to Abstract
+Download PDF
+Abstract
+1 Introduction
+1.1 Motivation and background
+1.2 Contributions
+1.3 An analogy with optimization
+1.4 Additional related work
+2 A review of the proximal sampler
+2.1 Description of proximal sampler at the level of distributions
+3 Guarantees for the ideal proximal sampler
+3.1 Guarantees for one step of the proximal sampler
+3.2 Convergence guarantee for the ideal proximal sampler
+3.3 Rejection sampling implementation of the RGO
+4 Guarantees for the proximal sampler with an approximate RGO implementation
+4.1 Main result
+4.2 Converse reduction
+4.3 Proof outline of Theorem
+4.3.1 Key lemma: Guarantee for the proximal sampler with approximate RGO
+4.3.2 Applying the key lemma
+5 Conclusion
+A Notation and definitions
+A.1 Divergences between probability distributions
+A.1.1 Basic properties of divergences
+A.1.2 Channel and data processing inequality
+A.2 Properties of probability distributions
+B Helper results
+B.1 Sub-Gaussian score lemma
+B.2 Rényi divergence along the heat flow
+C Proofs for the ideal proximal sampler
+C.1 Proof of Lemma
+C.2 Proof of Theorem
+D Proofs for the proximal sampler with an approximate RGO implementation
+D.1 Proof of Lemma
+D.2 Proof of Lemma
+D.3 Proof of Lemma
+Summary.
+D.4 Chi-squared divergence along the iterates
+D.5 Lemma on Fisher information bound from chi-square for approximate RGO
+D.6 Proof of Corollary
+D.7 Proof of Theorem
+D.8 Proof of Theorem
+References
+License: arXiv.org perpetual non-exclusive license
+arXiv:2605.15859v1 [cs.DS] 15 May 2026
+Complexity of Non-Log-Concave Sampling in Fisher Information
+Sinho Chewi
+††thanks: Yale University, Department of Statistics and Data Science. Email: sinho.chewi@yale.edu.
+Andre Wibisono
+††thanks: Yale University, Department of Computer Science. Email: andre.wibisono@yale.edu. This work was supported by NSF awards CCF–2403391 and CAREER CCF–2443097.
+August 24, 2026
+Abstract
+We study the query complexity of obtaining a relative Fisher information guarantee for sampling from a log-smooth non-log-concave distribution; this is a sampling analog of finding an approximate stationary point in optimization.
+Our algorithm is based on the proximal sampler, which is an implicit discretization of the Langevin diffusion, and requires an implementation of the backward step known as the restricted Gaussian oracle (RGO).
+We show that by leveraging the recent results for log-concave sampling with high-accuracy guarantees in Rényi divergence, we can obtain an approximate RGO implementation that—when used with the proximal sampler—yields a complexity guarantee in relative Fisher information that inherits the same dimension dependence as log-concave sampling, and improves upon prior work for non-log-concave sampling.
+We also show a converse reduction that any improvement in the dimension dependence in relative Fisher information for non-log-concave sampling will yield an improved dimension dependence for high-accuracy log-concave sampling.
+1 Introduction
+1.1 Motivation and background
+What is the complexity of sampling from a smooth distribution  $\pi\propto\exp(-f)$  over  $\mathbb{R}^{d}$ ?
+When  $\pi$  is log-concave or satisfies an isoperimetric inequality, then this question is well-studied, with many results providing iteration complexity guarantees which scale polynomially in the dimension and the isoperimetric constants; see [13] for an introduction to some of these developments.
+In this work, we are interested in the opposite scenario, in which  $\pi$  is allowed to be highly non-log-concave, with the only assumption being that  $f$  is  $L$ -smooth, in the sense that  $-LI\preceq\nabla^{2}f\preceq LI$ .
+In this case, simple worst-case examples demonstrate that generating a sample close in total variation distance to  $\pi$  can require exponentially many queries to  $f$  (e.g., with respect to the ambient dimension  $d$ ; see [18].).
+One way to overcome this difficulty is to impose additional problem structure, such as assuming that  $\pi$  is a mixture of strongly log-concave distributions [21] or to assume that an annealing path has small “action” [15], which requires designing tailor-made algorithms for each problem class under consideration.
+Another approach is to weaken the notion of progress by seeking an approximately “stationary” solution.
+The latter idea has been especially fruitful in the sister field of optimization [24], namely to minimize (or find a stationary point of) an objective function  $f\colon\mathbb{R}^{d}\to\mathbb{R}$ , in which the corresponding question becomes: How many queries to  $\nabla f$  are necessary to reach a point  $x$  with  $\lVert\nabla f(x)\rVert\leq\varepsilon$ ?
+In the case where  $f$  is  $L$ -smooth but potentially non-convex, gradient descent finds such an approximate stationary point in  $O(1/\varepsilon^{2})$  iterations, and this rate is optimal in high dimension [5].
+The optimal complexity in low dimension is still open, and it turns out that the results of this paper take on an interesting interpretation in light of this story; see Section 1.3 below.
+Although finding a stationary point is still a far cry from finding a global optimum, it is often the starting point for deeper investigations, such as the development of algorithms which escape “undesirable” stationary points (e.g., strict saddles).
+More broadly, this theory has the advantage of having great generality, as it is one of the few frameworks available to quantitatively study general non-convex optimization problems.
+Developing an analogous theory for the task of sampling is more subtle, as one must first decide on a suitable definition of an “approximate stationary point”.
+Such a definition was proposed in [3], and it is based on the celebrated JKO theorem [20] which interprets the Langevin diffusion as a gradient flow, as explained next.
+The Langevin diffusion is the stochastic process for  $X_{t}\in\mathbb{R}^{d}$  governed by the stochastic differential equation (SDE)
+$\displaystyle\mathrm{d}X_{t}=-\nabla f(X_{t})\,\mathrm{d}t+\sqrt{2}\,\mathrm{d}B_{t}\,,$
+(1)
+where  $B_{t}$  is the standard Brownian motion in  $\mathbb{R}^{d}$ .
+Langevin diffusion is the basis of some of the most popular sampling algorithms, such as the unadjusted Langevin algorithm (ULA) and the Metropolis-adjusted Langevin algorithm (MALA), as well as the proximal sampler studied in this paper, all of which can be viewed as time discretization of the Langevin diffusion.
+If  $\rho_{t}$  denotes the law of  $X_{t}$  evolving along Langevin diffusion as in (1), then [20] interprets the curve of probability measures  $(\rho_{t})_{t\geq 0}$  as a gradient flow of the relative entropy or KL divergence functional  $\mathsf{KL}(\cdot\,\|\,\pi)$  over the space of probability measures equipped with the Wasserstein  $W_{2}$  metric.
+See [30] for further discussion on this perspective.
+The gradient flow perspective also brings with it a set of calculation rules, usually termed “Otto calculus”, such as the following identity for the dissipation of the KL divergence along Langevin diffusion (1), classically known as de Bruijn’s identity:
+$\displaystyle\frac{\mathrm{d}}{\mathrm{d}t}\,\mathsf{KL}(\rho_{t}\,\|\,\pi)=-\mathsf{FI}(\rho_{t}\,\|\,\pi)\,,$
+(2)
+where  $\mathsf{FI}(\rho_{t}\,\|\,\pi)$  is the relative Fisher information of  $\rho_{t}$  relative to  $\pi$ :
+$\displaystyle\mathsf{FI}(\rho_{t}\,\|\,\pi)\coloneqq\int\Bigl\|\nabla\log\frac{\mathrm{d}\rho_{t}}{\mathrm{d}\pi}\Bigr\|^{2}\,\mathrm{d}\rho_{t}\,.$
+In the context of Otto calculus, the relative Fisher information takes on a new interpretation: it is the squared norm of the Wasserstein gradient of  $\mathsf{KL}(\cdot\,\|\,\pi)$  at  $\rho_{t}$ .
+This motivated [3] to define an  $\varepsilon$ -stationary point for sampling to be a probability measure  $\rho$  for which  $\sqrt{\mathsf{FI}(\rho\,\|\,\pi)}\leq\varepsilon$ , and the complexity question for non-log-concave sampling becomes:
+What is the complexity of outputting a sample from a probability measure  $\rho$  such that  $\sqrt{\mathsf{FI}(\rho\,\|\,\pi)}\leq\varepsilon$ ?
+In that same paper, [3] showed that the unadjusted Langevin algorithm, i.e., the Euler–Maruyama discretization of (1), can achieve this goal in  $O(1/\varepsilon^{4})$  steps.11
+1
+Here, the big-O hides dependence on the dimension  $d$ , the initial KL divergence, and the smoothness  $L$ .
+Subsequently, the work of [11] established a query lower bound of  $\Omega(1/\varepsilon^{2-o(1)})$  in high dimension, and [32] developed an improved algorithm using parallel computation which runs for  $\widetilde{O}(1/\varepsilon^{2})$  parallel rounds and makes  $\widetilde{O}(1/\varepsilon^{6})$  total queries.
+Approximate stationarity in sampling admits a compelling interpretation as measuring closeness to metastability. Indeed, it is well-established that in the presence of free energy barriers, e.g., produced by well-separated modes of the target distribution  $\pi$ , local Markov chains often get stuck at certain distributions which persist for exponential stretches of time, called metastable states.
+Although the concept of a metastable state is only loosely defined, in light of (2), we can view the relative Fisher information as a quantitative measure of metastability, since it implies that a measure  $\rho$  with small relative Fisher information will experience slow decrease of the KL divergence under the Langevin diffusion.
+However, we also note that even when  $\pi$  is non-log-concave and has multiple modes, the KL divergence  $\rho\mapsto\mathsf{KL}(\rho\,\|\,\pi)$  does not have spurious local minima; the only stationary point is the global minimizer  $\rho=\pi$ .
+These interpretations have been further developed in the setting where  $\pi$  is a mixture,  $\pi=\sum_{k=1}^{K}w_{k}\pi_{k}$  for some weights  $w_{1},\dots,w_{K}&gt;0$  with  $\sum_{k=1}^{K}w_{k}=1$ , and some component distributions  $\pi_{1},\dots,\pi_{K}$ .
+For example, when  $\pi$  is a mixture of Gaussians, [8] showed that a FI guarantee  $\mathsf{FI}(\rho\,\|\,\pi)\leq\varepsilon^{2}$  implies mixing for each of the components which have non-trivial mass under  $\rho$ .
+More recently, [25] showed that if each  $\pi_{k}$  satisfies a functional inequality (e.g., log-Sobolev), then  $\mathsf{FI}(\rho\,\|\,\pi)\leq\varepsilon^{2}$  implies that  $\rho$  is close in KL divergence to a reweighted mixture  $\sum_{k=1}^{K}w_{k}^{\prime}\pi_{k}$  for some (explicit) weights  $w_{1}^{\prime},\dots,w_{K}^{\prime}$ .
+Generally, these results indicate that the complexity of stationarity in sampling captures the complexity of local mixing, which is a useful complement to worst-case global mixing results for non-log-concave sampling.
+There remains, however, a gap between the upper and lower bounds in the sequential setting, leading to the question of determining an optimal algorithm for local mixing.
+In particular, analogously to the picture for optimization, is an optimal algorithm given by some discretization of the Langevin diffusion—the sampling equivalent of the gradient flow—and if so, which one?
+In this work, we close this gap and answer this question affirmatively.
+We develop an algorithm, based on the proximal sampler [22, 7], which achieves the optimal complexity of  $O(1/\varepsilon^{2})$  up to logarithmic factors.
+Moreover, as we discuss below, the dimension dependence of our result is the best possible without further advances in the complexity of log-concave sampling.
+1.2 Contributions
+Our results are based on the proximal sampler algorithm, which is reviewed in Section 2.
+Briefly, the proximal sampler first augments the target distribution  $\pi^{X}(x)\propto\exp(-f(x))$  into a joint density over two variables,  $\pi^{XY}(x,y)\propto\exp(-f(x)-\frac{1}{2h}\,\|y-x\|^{2})$ , and then applies Gibbs sampling. Concretely, this consists of alternating between the following two steps: given  $X$ , sample  $Y\sim\pi^{Y\mid X}=\mathcal{N}(X,hI_{d})$ ; given  $Y$ , sample  $X\sim\pi^{X\mid Y}$ , where  $\pi^{X\mid Y}$  is known as the restricted Gaussian oracle (RGO).
+When  $\pi^{X}$  is log-smooth and satisfies an isoperimetric inequality, such as a log-Sobolev inequality, [7] shows a high-accuracy guarantee for the proximal sampler in Rényi divergence.
+When  $\pi^{X}$  is log-smooth and strongly log-concave, [31] shows a high-accuracy guarantee for the proximal sampler in relative Fisher information.
+In this paper, we work only under the assumption that  $\pi^{X}$  is log-smooth, without assuming log-concavity or isoperimetry.
+Our first contribution is to show that under log-smoothness alone, the relative Fisher information decays in an average sense along the proximal sampler.
+Namely, we establish that
+$\displaystyle\mathsf{FI}(\bar{\rho}_{K}^{X}\,\|\,\pi^{X})\leq\frac{1}{K}\sum_{k=1}^{K}\mathsf{FI}(\rho_{k}^{X}\,\|\,\pi^{X})\leq\frac{\mathsf{KL}_{0}}{h\,(1-\frac{Lh}{2})\,K}\,,$
+(3)
+where  $\rho_{k}^{X}$  denotes the law of the  $k$ -th iterate of the proximal sampler algorithm,  $\bar{\rho}_{K}^{X}\coloneqq\frac{1}{K}\sum_{k=1}^{K}\rho_{k}^{X}$  is the averaged measure, and  $\mathsf{KL}_{0}\coloneqq\mathsf{KL}(\rho_{0}^{X}\,\|\,\pi^{X})$ ; see Theorem 1 below.
+We note such a result is expected in light of the de Bruijn identity (2), which implies that along the Langevin diffusion,
+$\displaystyle\frac{1}{T}\int_{0}^{T}\mathsf{FI}(\rho_{t}\,\|\,\pi^{X})\,\mathrm{d}t\leq\frac{\mathsf{KL}_{0}}{T}\,.$
+Establishing the corresponding guarantee (3) for the proximal sampler is more involved since it requires tracking the relative Fisher information along simultaneous evolution of both arguments along the heat flow and its time reversal, and here we leverage the recent results of [31].
+However, (3) is not yet an algorithmic result, as it assumes that we can implement the RGO exactly.
+Our next contributions address this point.
+First, by choosing  $h\asymp 1/(dL)$  and by implementing the RGO exactly via rejection sampling following [7], the result (3) implies an  $O(\frac{Ld\,\mathsf{KL}_{0}}{\varepsilon^{2}})$  query complexity guarantee for the proximal sampler to achieve  $\mathsf{FI}(\bar{\rho}_{K}^{X}\,\|\,\pi^{X})\leq\varepsilon^{2}$ ; see Corollary 1.
+We note this already improves upon the  $O(\frac{L^{2}d\,\mathsf{KL}_{0}}{\varepsilon^{4}})$  complexity obtained in [3] via ULA.
+Our next results leverage the recent approximate RGO implementations [14, 1, 6] to further improve the dimension dependence.
+By choosing  $h=1/(2L)$ , one can see that the RGO  $\pi^{X\mid Y=y}$  is  $L$ -strongly log-concave and  $3L$ -log-smooth, which means that it is a log-concave distribution with condition number at most  $3$ .
+Thus, it is natural to use existing log-concave samplers to implement the RGO.
+There are two main obstacles to this approach:
+1.
+Even if we have a log-concave sampler which implements the RGO accurately in the sense of relative Fisher information, i.e., the sampler yields an approximate RGO  $\hat{\pi}^{X\mid Y=y}$  such that  $\mathsf{FI}(\hat{\pi}^{X\mid Y=y}\,\|\,\pi^{X\mid Y=y})\leq\delta^{2}$ , it is non-trivial to track the propagation of this error along the proximal sampler, as the relative Fisher information lacks natural properties such as a data-processing inequality.
+See Section 4.3 for discussion.
+2.
+Prior works on log-concave sampling usually do not yield relative Fisher information guarantees in the first place.
+We address these issues by showing that, given a high-accuracy log-concave sampler with Rényi divergence guarantees—namely, an algorithm which yields a sample from any  $O(1)$ -conditioned log-concave density up to error  $\varepsilon^{2}$  in  $\mathcal{R}_{3}(\cdot\,\|\,\pi^{X})$  (Rényi divergence of order  $3$ ) in  $\widetilde{O}(d^{p}\polylog(1/\varepsilon))$  iterations—perturbing the output of the sampler by a Gaussian with a small but well-chosen variance yields an RGO implementation whose error is well-controlled along the proximal sampler.
+This leads to an algorithm which obtains  $\mathsf{FI}(\cdot\,\|\,\pi^{X})\leq\varepsilon^{2}$  using
+$\displaystyle\frac{L\,\mathsf{KL}_{0}}{\varepsilon^{2}}\times d^{p}\times\polylog\bigl(\Delta_{0},L/\varepsilon^{2},d\bigr)\qquad\text{iterations}\,,$
+(4)
+where  $\Delta_{0}\coloneqq\mathcal{R}_{2}(\rho_{0}^{X}\,\|\,\pi^{X})$  arises as an artifact of our analysis; see Theorem 2.
+In particular, although the optimal exponent  $p$  is still unknown, current state-of-the-art log-concave samplers achieve this high-accuracy guarantee with exponent  $p=\frac{1}{2}$  [14, 1, 6], which we can easily plug into the result above.
+Note that, up to logarithmic factors, the dependence on  $L/\varepsilon^{2}$  is optimal in high dimension, in light of the lower bound of [11].
+If we compare against the analogous problem of finding approximate stationary points in non-convex optimization, there the optimal complexity in high dimension is  $L\Omega_{0}/\varepsilon^{2}$ , where  $\Omega_{0}\coloneqq f(x_{0})-\inf f$  is the initial objective gap [5].
+Thus, our complexity bound is entirely similar to the one in optimization, except that we incur an extra dimensional factor  $d^{p}$ , which is the complexity of high-accuracy log-concave sampling.
+Thanks to our general reduction, any improvement to the complexity of the latter task would yield an improved Fisher information complexity result for non-log-concave sampling.
+However, one could still ask whether there is a different approach which avoids the reduction to log-concave sampling altogether and could therefore potentially lead to improved dimension dependence.
+Our final result says, in essence, that the answer is no.
+More precisely, we show that any Fisher information complexity bound of the form (4) implies the existence of a log-concave sampler with complexity  $\widetilde{O}(d^{p}\polylog(1/\varepsilon))$ , see Theorem 3.
+This closes the loop and shows that the optimal dimension dependence for the Fisher information complexity of non-log-concave sampling, and for high-accuracy log-concave sampling, coincide.
+1.3 An analogy with optimization
+There is an interesting analogy between our work on Fisher information guarantees for sampling and the study of finding approximate stationary points in optimization.
+As noted in Section 1.1, it is well-established that gradient descent finds an  $\varepsilon$ -stationary point in  $O(1/\varepsilon^{2})$  iterations, and the lower bound of [5] shows that this is the best possible, at least in high dimension.
+Recent investigations, however, have focused on the complexity in low dimension, where the picture is more nuanced.
+To motivate this study, consider first the problem of convex, non-smooth minimization, which is a separate problem altogether but shares some similar features with the stationary point problem.
+In particular, gradient descent finds an  $\varepsilon$ -minimizer in  $O(1/\varepsilon^{2})$  steps, and lower bounds show that this is optimal in high dimension.
+In low dimension, however, there is a better algorithm: cutting plane methods can find an  $\varepsilon$ -minimizer in  $O(d\log(1/\varepsilon))$  steps.
+At the level of lower bounds, this manifests in the following way: the lower bound construction in [5] showing that  $O(1/\varepsilon^{2})$  is tight is embedded in dimension  $d\gg 1/\varepsilon^{2}$ .
+The existence of the cutting plane method means that no such constructions exist when  $d\log(1/\varepsilon)\ll 1/\varepsilon^{2}$ , i.e., in dimension  $d\ll 1/(\varepsilon^{2}\log(1/\varepsilon))$ .
+Returning to the stationary point question, the interesting departure from the paragraph above is that thus far, we have not discovered an analogue of cutting plane methods for non-convex optimization.
+Indeed, the best complexities in low dimension scale as  $O(1/\varepsilon^{2-O(1/d)})$  [4].
+If this is fundamental, then there should be lower bound constructions witnessing the  $\Omega(1/\varepsilon^{2})$  rate which can be embedded in much smaller dimension: say,  $d\asymp\log(1/\varepsilon)$  or so.
+However, the lower bound construction of [5] requires a much larger dimension:  $d\gg 1/\varepsilon^{2}$  for deterministic methods, and  $d\gg\widetilde{\Omega}(1/\varepsilon^{4})$  for randomized methods.
+Thus, at present, it is unclear whether or not there could exist a cutting plane method for finding stationary points.
+More recently, [9] showed that in dimension one, when we restrict to deterministic algorithms which only use evaluations of  $\nabla f$  (and not to evaluations of  $f$ ), then the  $O(1/\varepsilon^{2})$  complexity is already tight; moreover, in dimension two, [19] showed that for deterministic algorithms with access to both  $f$  and  $\nabla f$ , the optimal complexity is  $\Theta(1/\varepsilon)$ .
+For general algorithms (randomized, with access to both  $f$  and  $\nabla f$ ), the optimal complexity is  $\Theta(\log(1/\varepsilon))$  in dimension one [9],  $\Theta(1/\varepsilon^{2})$  in large dimension  $\gg\widetilde{\Omega}(1/\varepsilon^{4})$  (as discussed above), and remains open in between.
+As for the connection with our work: although the low-dimensional complexity of finding stationary points remains elusive in optimization, our work resolves the analogous question in the sampling setting.
+Indeed, the lower bound  $\Omega(1/\varepsilon^{2-o(1)})$  in [11] already holds in dimension  $\gg\sqrt{\log(1/\varepsilon)/\log\log(1/\varepsilon)}$ , and the present work shows that  $\widetilde{O}(1/\varepsilon^{2})$  can be achieved via the proximal sampler in any dimension  $d\geq 1$ .
+Although this does not have direct implications for the optimization question, which remains open, we believe that this further strengthens the rich connections between the two fields.
+1.4 Additional related work
+First-order stationarity guarantees have also been investigated for the Stein variational gradient descent (SVGD) algorithm, with initial works focusing on the kernelized Stein discrepancy (KSD), a kernelized analogue of the relative Fisher information [23, 26, 27, 28, 2].
+More recently, relative Fisher information guarantees were obtained for a regularized variant of SVGD [17, 16].
+As discussed above, [11] established a lower bound on finding approximate stationary points for sampling which scales as  $\Omega((L/\varepsilon^{2})^{1-o(1)})$  in high dimension. In addition, that paper established a second lower bound which shows that the complexity of obtaining a moderate bound of the form  $\mathsf{FI}(\cdot\,\|\,\pi)\lesssim Ld$  can be precisely related to the complexity of finding approximate stationary points in non-convex optimization. In particular, it implies that the Fisher information guarantee for averaged LMC in [3] is already optimal in a certain regime. However, this regime does not cover guarantees  $\mathsf{FI}(\cdot\,\|\,\pi)\leq\varepsilon^{2}$  for small  $\varepsilon\ll 1$ , which is the regime of interest in this work. Moreover, their reduction is distinct from the ones we present in Theorem 2 and 3, which relate the complexity of obtaining small Fisher information to the complexity of high-accuracy log-concave sampling.
+2 A review of the proximal sampler
+Throughout, we are working with standard notations and definitions, which we review in Appendix A.
+We review the proximal sampler algorithm, originally proposed in [22].
+Our goal is to draw a sample from the target distribution  $\pi^{X}\propto\exp(-f)$  supported on  $\mathbb{R}^{d}$ .
+Let  $h&gt;0$  be an arbitrary “step size”.
+We define the joint probability distribution  $\pi$  on  $\mathbb{R}^{2d}$  with density function:
+$\pi^{XY}(x,y)\propto\exp\left(-f(x)-\frac{1}{2h}\|x-y\|^{2}\right).$
+Observe that the  $x$ -marginal of  $\pi$  is precisely the original target distribution:  $\pi^{X}(x)=\int_{\mathbb{R}^{d}}\pi^{XY}(x,\mathrm{d}y)$ .
+Therefore, to sample from  $\pi^{X}$ , it suffices to sample  $(X,Y)\sim\pi^{XY}$  and only return the  $X$  component.
+To sample from  $\pi^{XY}$ , [22] proposed to run Gibbs sampling with an alternating update.
+This results in the ideal proximal sampler algorithm, where in each iteration  $k\geq 0$ , from the current iterate  $x_{k}\in\mathbb{R}^{d}$ , we perform the following two steps:
+1.
+Forward step: Draw  $y_{k}\mid x_{k}\sim\pi^{Y\mid X}(\cdot\mid x_{k})=\mathcal{N}(x_{k},hI)$ .
+2.
+Backward step: Draw  $x_{k+1}\mid y_{k}\sim\pi^{X\mid Y}(\cdot\mid y_{k})$ .
+By the general theory of Gibbs sampling, the Markov chain update from  $(x_{k},y_{k})$  to  $(x_{k+1},y_{k+1})$  is reversible with respect to the joint distribution  $\pi^{XY}$ .
+We call the above the ideal proximal sampler since we assume we can implement both the forward and backward steps exactly.
+The forward step is easy to implement, since it only requires drawing a Gaussian distribution around the current iterate.
+The backward step is called the restricted Gaussian oracle (RGO) in [22], and it is non-trivial since it requires sampling from the following probability distribution over  $x\in\mathbb{R}^{d}$ , for any fixed  $y\in\mathbb{R}^{d}$ :
+$\displaystyle\pi^{X\mid Y}(x\mid y)\propto_{x}\exp\left(-f(x)-\frac{1}{2h}\|x-y\|^{2}\right).$
+(5)
+Note the proportionality is only over  $x\in\mathbb{R}^{d}$  (with fixed  $y\in\mathbb{R}^{d}$ ), which we denote with  $\propto_{x}$ .
+2.1 Description of proximal sampler at the level of distributions
+For  $h&gt;0$ , let  $\mathsf{Q}^{h}=(\mathsf{Q}^{h}_{y})_{y\in\mathbb{R}^{d}}$  denote the Gaussian channel with variance  $h$ , which acts on a probability distribution  $\rho$  by:
+$\rho\mathsf{Q}^{h}\coloneqq\rho\ast\mathcal{N}(0,hI).$
+Thus,  $\mathsf{Q}^{h}_{y}=\mathcal{N}(y,hI)$  for each  $y\in\mathbb{R}^{d}$ .
+Let  $\mathsf{R}^{h}=(\mathsf{R}^{h}_{y})_{y\in\mathbb{R}^{d}}$  denote the RGO channel with step size  $h&gt;0$  formed by  $\pi^{X}\propto\exp(-f)$ , so:
+$\mathsf{R}^{h}_{y}=\pi^{X\mid Y}(\cdot\mid y)$
+where  $\pi^{X\mid Y}(\cdot\mid y)$  is the conditional distribution given in (5).
+In our subsequent discussion below, when the step size  $h&gt;0$  is fixed, we write  $\mathsf{R}\equiv\mathsf{R}^{h}$  for brevity.
+We can describe the ideal proximal sampler as follows.
+In each iteration  $k\geq 0$ , from the current iterate  $x_{k}\sim\rho_{k}^{X}$ , we perform the forward step to draw  $y_{k}\sim\rho_{k}^{Y}$  given by:
+$\rho_{k}^{Y}=\rho_{k}^{X}\mathsf{Q}^{h}\,,$
+and then we perform the backward step to draw  $x_{k+1}\sim\rho_{k+1}^{X}$  given by:
+$\rho_{k+1}^{X}=\rho_{k}^{Y}\mathsf{R}^{h}\,.$
+Thus, one step of the ideal proximal sampler is a composition of the Gaussian channel with the RGO channel:
+$\rho_{k+1}^{X}=\rho_{k}^{X}\mathsf{Q}^{h}\mathsf{R}^{h}\,.$
+From the target distribution  $\pi^{X}$ , we define
+$\pi^{Y}\coloneqq\pi^{X}\mathsf{Q}^{h}=\pi^{X}\ast\mathcal{N}(0,hI)\,.$
+Then, since  $\pi^{X}$  is invariant under one step of the proximal sampler, we have:
+$\pi^{X}=\pi^{X}\mathsf{Q}^{h}\mathsf{R}^{h}=\pi^{Y}\mathsf{R}^{h}\,.$
+In Section 3 we study the guarantee of the proximal sampler with an exact implementation of the RGO.
+In Section 4 we study the guarantee of the proximal sampler when we use an approximate RGO implementation  $\widehat{\mathsf{R}}^{h}$  in place of the exact RGO  $\mathsf{R}^{h}$ , with the benefit of obtaining an improved dimension dependence.
+3 Guarantees for the ideal proximal sampler
+In this section, we provide guarantees for the ideal proximal sampler algorithm, which means we assume an exact implementation of the RGO.
+3.1 Guarantees for one step of the proximal sampler
+We have the following guarantee on one step of the proximal sampler.
+We provide the proof of Lemma 1 in Appendix C.1.
+Lemma 1.
+Assume  $\pi^{X}\propto\exp(-f)$  is  $L$ -log-smooth for some  $L\in(0,\infty)$ .
+Let  $h\in(0,\frac{1}{L})$ .
+Then we have the following.
+1.
+Forward step:
+For any probability distribution  $\rho^{X}$ , let  $\rho^{Y}=\rho^{X}\mathsf{Q}^{h}$ .
+Then:
+$\displaystyle\frac{h\,(1-hL)}{2}\,\mathsf{FI}(\rho^{Y}\,\|\,\pi^{Y})$
+$\displaystyle\leq\mathsf{KL}(\rho^{X}\,\|\,\pi^{X})-\mathsf{KL}(\rho^{Y}\,\|\,\pi^{Y}).$
+(6)
+2.
+Backward step:
+For any probability distribution  $\rho^{Y}$ , let  $\rho^{X}_{+}=\rho^{Y}\mathsf{R}^{h}$ .
+Then:
+$\displaystyle\mathsf{FI}(\rho^{X}_{+}\,\|\,\pi^{X})$
+$\displaystyle\leq\min\Bigl\{\mathsf{FI}(\rho^{Y}\,\|\,\pi^{Y})\,,\;\frac{2}{h}\left(\mathsf{KL}(\rho^{Y}\,\|\,\pi^{Y})-\mathsf{KL}(\rho^{X}_{+}\,\|\,\pi^{X})\right)\Bigr\}\,.$
+(7)
+3.2 Convergence guarantee for the ideal proximal sampler
+By iterating Lemma 1, we show the following convergence guarantee for the ideal proximal sampler, assuming an exact implementation of the RGO.
+We provide the proof of Theorem 1 in Appendix C.2.
+Theorem 1.
+Assume that  $\pi^{X}\propto\exp(-f)$  on  $\mathbb{R}^{d}$  is  $L$ -log-smooth for some  $L\in(0,\infty)$ .
+Let  $h\in(0,\frac{1}{L})$ .
+Suppose we run the ideal proximal sampler algorithm (with an exact RGO implementation) from any  $X_{0}\sim\rho_{0}^{X}$  to get iterates  $X_{k}\sim\rho_{k}^{X}$  for  $k\geq 1$ .
+Then for all  $K\in\mathbb{N}$ , we have:
+$\displaystyle\sum_{k=1}^{K}\mathsf{FI}(\rho_{k}^{X}\,\|\,\pi^{X})\leq\frac{\mathsf{KL}(\rho_{0}^{X}\,\|\,\pi^{X})}{h\,\bigl(1-\frac{Lh}{2}\bigr)}\,.$
+(8)
+In particular, the average iterate  $\bar{\rho}_{K}^{X}\coloneqq\frac{1}{K}\sum_{k=1}^{K}\rho_{k}^{X}$  satisfies:
+$\displaystyle\mathsf{FI}(\bar{\rho}_{K}^{X}\,\|\,\pi^{X})\leq\frac{\mathsf{KL}(\rho_{0}^{X}\,\|\,\pi^{X})}{h\,(1-\frac{Lh}{2})\,K}\,.$
+(9)
+3.3 Rejection sampling implementation of the RGO
+For  $h\asymp 1/(Ld)$ , [7, Section 4.2] showed that the RGO can be implemented exactly via rejection sampling using one evaluation of  $\prox_{hf}$  and  $O(1)$  density evaluations in expectation. This immediately leads to the following result.
+Corollary 1.
+Assume that  $\pi^{X}\propto\exp(-f)$  on  $\mathbb{R}^{d}$  is  $L$ -log-smooth for some  $L\in(0,\infty)$ .
+Choose  $h\asymp\frac{1}{Ld}$ .
+Then, the proximal sampler with an exact rejection sampling implementation of the RGO yields a sample from a distribution  $\bar{\rho}$  satisfying  $\mathsf{FI}(\bar{\rho}\,\|\,\pi^{X})\leq\varepsilon^{2}$  using
+$\displaystyle O\Bigl(\frac{Ld\,\mathsf{KL}(\rho_{0}^{X}\,\|\,\pi^{X})}{\varepsilon^{2}}\Bigr)\qquad\text{queries to}~\prox_{hf}~\text{and}~f~\text{in expectation}\,.$
+Denoting  $\mathsf{KL}_{0}\coloneqq\mathsf{KL}(\rho_{0}^{X}\,\|\,\pi^{X})$ , this already substantially improves upon the  $O(L^{2}d\,\mathsf{KL}_{0}/\varepsilon^{4})$  iteration complexity obtained in [3]. However, there is further room for improvement: several subsequent works have developed improved RGO implementations with better iteration complexities [14, 1, 6]. Following these trends, in the next section, we develop improved bounds based on approximate RGO implementation.
+4 Guarantees for the proximal sampler with an approximate RGO implementation
+4.1 Main result
+The bound in Theorem 1 assumes that in each iteration, we can implement the RGO in the backward process exactly.
+Although this can be accomplished via rejection sampling, it does not yield the best dimension dependence.
+Here, we show that implementation of the RGO can be reduced to the complexity of high-accuracy log-concave sampling.
+Assumption 1.
+There exists a sampling algorithm  $\mathtt{Alg}$  with the following property: for any  $1$ -strongly log-concave and  $3$ -log-smooth target distribution  $\pi$  with mode at the origin, and tolerance parameter  $\delta&gt;0$ ,  $\mathtt{Alg}$  returns a sample with distribution  $\widehat{\pi}$  such that  $\mathcal{R}_{3}(\widehat{\pi}\,\|\,\pi)\leq\delta^{2}$ .
+The key point is that with step size  $h=1/(2L)$ , the RGO distribution  $\mathsf{R}_{y}$  is  $L$ -strongly log-concave,  $3L$ -log-smooth, with mode at  $\prox_{f/(2L)}(y)$ .
+By translating and rescaling, it follows that  $\mathsf{R}_{y}$  can be implemented up to  $\mathcal{R}_{3}$  error  $\delta^{2}$  using one call to  $\prox_{f/(2L)}(y)$  and one call to  $\mathtt{Alg}$  with tolerance parameter  $\delta$ .
+We remark that the assumption that we can evaluate  $\prox_{f/(2L)}$  is not restrictive: with our choices of parameters, the computation of  $\prox_{f/(2L)}$  is a strongly convex and smooth optimization problem and can be solved to high accuracy via standard convex optimization algorithms.
+Our main reduction is stated below.
+By the “proximal sampler with smoothed RGO implementation”, we mean that the proximal sampler is run where the RGO is implemented by taking the output of  $\mathtt{Alg}$  on the RGO and adding a Gaussian of appropriate variance to the output; finally, output one of the proximal sampler iterates chosen uniformly at random. See Algorithm 1 for a precise description.
+Algorithm 1  Proximal Sampler with Smoothed RGO Implementation
+1:
+Target  $\pi^{X}\propto\exp(-f)$  on  $\mathbb{R}^{d}$ , smoothness  $L$ , initial point  $X_{0}\sim\rho_{0}^{X}$ , number of steps  $K$ , RGO accuracy  $\delta$ , smoothing variance  $t&gt;0$ .
+2:
+for  $k=0,1,\dots,K-1$  do
+3:
+Sample  $Y_{k}\sim\mathcal{N}(X_{k},\frac{1}{2L}\,I_{d})$ .
+4:
+Compute the RGO mode  $m_{k}\leftarrow\operatorname{prox}_{f/(2L)}(Y_{k})$ .
+5:
+Define the rescaled RGO target on  $\mathbb{R}^{d}$
+$\nu_{k}(u)\propto\exp\Bigl(-f\bigl(m_{k}+\frac{u}{\sqrt{L}}\bigr)-L\,\Bigl\|m_{k}+\frac{u}{\sqrt{L}}-Y_{k}\Bigr\|^{2}\Bigr)\,.$
+6:
+Run  $\mathtt{Alg}$  with accuracy  $\delta$  on  $\nu_{k}$  to obtain  $U_{k}\sim\widehat{\nu}_{k}$ .
+7:
+Set the approximate RGO sample  $\widetilde{X}_{k+1}\leftarrow m_{k}+U_{k}/\sqrt{L}$ .
+8:
+Sample  $X_{k+1}\sim\mathcal{N}(\widetilde{X}_{k+1},tI_{d})$ .
+9:
+end for
+10:
+Sample  $J\sim\operatorname{Unif}\{1,\dots,K\}$
+11:
+return  $X_{J}$
+Theorem 2.
+Assume that the target distribution  $\pi^{X}\propto\exp(-f)$  on  $\mathbb{R}^{d}$  is  $L$ -smooth.
+Let  $\rho_{0}^{X}$  be an initial distribution with  $\mathsf{KL}_{0}\coloneqq\mathsf{KL}(\rho_{0}^{X}\,\|\,\pi^{X})$  and  $\Delta_{0}\coloneqq\mathcal{R}_{2}(\rho_{0}^{X}\,\|\,\pi^{X})$ .
+Then, under Assumption 1, Algorithm 1 returns a sample from  $\widehat{\pi}^{X}$  with  $\mathsf{FI}(\widehat{\pi}^{X}\,\|\,\pi^{X})\leq\varepsilon^{2}$  using  $O(L\,\mathsf{KL}_{0}/\varepsilon^{2})$  queries to  $\prox_{f/(2L)}$  and calls to  $\mathtt{Alg}$  with accuracy parameter  $\delta=\poly(1/\Delta_{0},\varepsilon^{2}/L,1/d)$  and smoothing variance  $t\asymp(\delta^{2}+d\sqrt{\delta})^{1/4}/L$ .
+We provide a proof sketch of Theorem 2 in Section 4.3, and the full proof in Appendix D.7.
+Current state-of-the-art samplers (e.g., [14, 1, 6]) satisfy Assumption 1, where each run of  $\mathtt{Alg}$  uses  $\widetilde{O}(\sqrt{d}\polylog(1/\delta))$  queries to  $\nabla f$  in expectation.
+We therefore conclude:
+Corollary 2.
+Assume that the target distribution  $\pi^{X}\propto\exp(-f)$  on  $\mathbb{R}^{d}$  is  $L$ -smooth.
+Let  $\rho_{0}^{X}$  be an initial distribution with  $\mathsf{KL}_{0}\coloneqq\mathsf{KL}(\rho_{0}^{X}\,\|\,\pi^{X})$  and  $\Delta_{0}\coloneqq\mathcal{R}_{2}(\rho_{0}^{X}\,\|\,\pi^{X})$ .
+Then, Algorithm 1 with  $\mathtt{Alg}$  given by [6] returns a sample from  $\widehat{\pi}^{X}$  with  $\mathsf{FI}(\widehat{\pi}^{X}\,\|\,\pi^{X})\leq\varepsilon^{2}$  using
+$\displaystyle O\biggl(\frac{L\sqrt{d}\,\mathsf{KL}_{0}}{\varepsilon^{2}}\polylog(\Delta_{0},L/\varepsilon^{2},d)\biggr)\qquad\text{queries to}~\prox_{f/(2L)}~\text{and}~\nabla f~\text{in expectation}\,.$
+Recall that [11] gave a lower bound construction with  $\mathsf{KL}_{0}\leq 1$  for which the complexity of obtaining  $\sqrt{\mathsf{FI}}\leq\varepsilon$  is  $\widetilde{\Omega}((L/\varepsilon^{2})^{1-o(1)})$  for all  $d\geq\widetilde{\Omega}(\sqrt{\log(1/\varepsilon)})$ . Interestingly, our reduction in Theorem 2 implies that if this lower bound can be strengthened to exhibit polynomial dependence on  $d$ , then it would imply a lower bound on the complexity of high-accuracy log-concave sampling which also exhibits polynomial dependence on  $d$ . This would be quite significant as the current best lower bound in that setting only exhibits a dimension dependence of  $\Omega(\log d)$  [10]. Thus, our reduction suggests an alternative approach for this problem which could be easier, e.g., via enabling the use of non-convex bump function constructions.
+4.2 Converse reduction
+Here, we argue that the reduction to high-accuracy log-concave sampling in Theorem 2 is the right one, by presenting a reduction in the converse direction via a simple restart strategy.
+We provide the proof of Theorem 3 in Appendix D.8.
+Theorem 3.
+Assume that there is an algorithm  $\mathtt{Alg}$  with the following property: for any  $L$ -log-smooth target distribution  $\pi$  and an initialization  $\rho_{0}$  satisfying  $\mathsf{KL}(\rho_{0}\,\|\,\pi)\leq\mathsf{KL}_{0}$ ,  $\mathcal{R}_{2}(\rho_{0}\,\|\,\pi)\leq\Delta_{0}$ ,  $\mathtt{Alg}$  outputs a sample from a distribution  $\widehat{\pi}$  with  $\mathcal{R}_{2}(\widehat{\pi}\,\|\,\pi)\leq\Delta_{0}$  and  $\mathsf{FI}(\widehat{\pi}\,\|\,\pi)\leq\varepsilon^{2}$  using  $\frac{L\,\mathsf{KL}_{0}}{\varepsilon^{2}}\,\phi(d)\polylog(\Delta_{0},L/\varepsilon^{2})$  queries to an oracle for  $\pi$ .
+Then, there is another algorithm  $\mathtt{Alg}^{\prime}$  with the following property: for any  $\alpha$ -strongly log-concave and  $L$ -log-smooth distribution  $\pi$  with mode at the origin,  $\mathtt{Alg}^{\prime}$  outputs a sample from a distribution  $\widehat{\pi}$  with  $\mathsf{KL}(\widehat{\pi}\,\|\,\pi)\leq\varepsilon^{2}$  using  $O(\kappa\,\phi(d)\polylog(d,\kappa,\frac{1}{\varepsilon}))$  queries to the same oracle for  $\pi$ , where  $\kappa\coloneqq\frac{L}{\alpha}$  is the condition number.
+Note that, aside from the technical condition that  $\mathtt{Alg}$  satisfies  $\mathcal{R}_{2}(\widehat{\pi}\,\|\,\pi)\leq\Delta_{0}$ , the conclusion of Theorem 2 satisfies the requirement of  $\mathtt{Alg}$  with  $\phi(d)=\widetilde{O}(\sqrt{d})$ , which by Theorem 3 leads to a high-accuracy log-concave sampler with complexity  $\widetilde{O}(\kappa\sqrt{d})$ . Morally, the conclusion is that the dimension dependence in Theorem 2 cannot be improved without also improving the dimension dependence of high-accuracy log-concave sampling.
+However, we note that there is a slight gap: Theorem 2 assumes the existence of a  $\mathcal{R}_{3}$  sampler, whereas the output of Theorem 3 is only a  $\mathsf{KL}$  sampler. We do not view this issue as fundamental, as there seems to not be any reason to expect the complexity of sampling in  $\mathsf{KL}$  vs.  $\mathcal{R}_{q}$  to be substantially different: indeed, guarantees which are initially proven in  $\mathsf{KL}$  are often later improved to hold in  $\mathcal{R}_{q}$ . Moreover, a  $\mathsf{KL}$  guarantee can usually be boosted to a  $\mathcal{R}_{3}$  guarantee, provided that we have a warm start in a slightly stronger Rényi divergence such as  $\mathcal{R}_{4}$ ; see the argument of [1, Lemma 5.2]. Therefore, Theorem 3 should also imply the existence of a  $\mathcal{R}_{3}$  sampler with complexity  $\widetilde{O}(\kappa\phi(d))$  from a suitable warm start.
+4.3 Proof outline of Theorem 2
+Recall that for each  $y\in\mathbb{R}^{d}$  and step size  $h&gt;0$ , the backward conditional distribution is
+$\pi^{X\mid Y}(x\mid y)\propto\exp\Bigl(-f(x)-\frac{1}{2h}\,\|x-y\|^{2}\Bigr)\,.$
+Recall the RGO channel  $\mathsf{R}$  is the map via this backward conditional distribution:
+For any  $\rho^{Y}$ , the distribution  $\rho^{Y}\mathsf{R}$  is given by
+$(\rho^{Y}\mathsf{R})(x)=\int_{\mathbb{R}^{d}}\pi^{X\mid Y}(x\mid y)\,\rho^{Y}(\mathrm{d}y)\,.$
+4.3.1 Key lemma: Guarantee for the proximal sampler with approximate RGO
+The following key lemma proves a bound on the relative Fisher information along one step of the proximal sampler with an inexact implementation of the RGO.
+We provide the proof of Lemma 2 in Appendix D.1.
+Lemma 2.
+Assume  $\pi^{X}\propto\exp(-f)$  on  $\mathbb{R}^{d}$  is  $L$ -log-smooth for some  $L\in(0,\infty)$ .
+Let  $\mathsf{R}\equiv\mathsf{R}^{h}$  be the RGO channel with step size  $h\in(0,\frac{1}{L})$ , and let  $\widehat{\mathsf{R}}\equiv\widehat{\mathsf{R}}^{h}$  be an approximate RGO implementation.
+Consider one step of the proximal sampler algorithm with the approximate RGO.
+Namely, from any input distribution  $\rho^{X}$ , define  $\rho^{Y}\coloneqq\rho^{X}\mathsf{Q}^{h}=\rho^{X}\ast\mathcal{N}(0,hI)$ , and define  $\rho^{X}_{+}\coloneqq\rho^{Y}\widehat{\mathsf{R}}$ .
+If  $\widehat{\mathsf{R}}$  satisfies the following error guarantees for some  $\bar{\varepsilon}_{\mathsf{KL}},\bar{\varepsilon}_{\mathsf{FI}}\geq 0$ ,
+$\displaystyle\mathsf{KL}(\rho^{Y}\widehat{\mathsf{R}}\,\|\,\pi^{X})$
+$\displaystyle\leq\mathsf{KL}(\rho^{Y}\mathsf{R}\,\|\,\pi^{X})+\bar{\varepsilon}_{\mathsf{KL}}^{2}\,,$
+(10)
+$\displaystyle\mathsf{FI}(\rho^{Y}\widehat{\mathsf{R}}\,\|\,\pi^{X})$
+$\displaystyle\leq 2\,\mathsf{FI}(\rho^{Y}\mathsf{R}\,\|\,\pi^{X})+\bar{\varepsilon}_{\mathsf{FI}}^{2}\,,$
+(11)
+then we have
+$\displaystyle\frac{h}{2}\,\left(1-\frac{Lh}{2}\right)\,\mathsf{FI}(\rho_{+}^{X}\,\|\,\pi^{X})$
+$\displaystyle\leq\mathsf{KL}(\rho^{X}\,\|\,\pi^{X})-\mathsf{KL}(\rho_{+}^{X}\,\|\,\pi^{X})+\bar{\varepsilon}_{\mathsf{KL}}^{2}+\frac{h}{2}\,\left(1-\frac{Lh}{2}\right)\,\bar{\varepsilon}_{\mathsf{FI}}^{2}\,.$
+4.3.2 Applying the key lemma
+In order to use Lemma 2, we must control the quantities  $\bar{\varepsilon}_{\mathsf{KL}}$  and  $\bar{\varepsilon}_{\mathsf{FI}}$ .
+Since the KL divergence does not satisfy a triangle inequality, we cannot simply bound  $\bar{\varepsilon}_{\mathsf{KL}}^{2}$  by  $\mathsf{KL}(\rho^{Y}\widehat{\mathsf{R}}\,\|\,\rho^{Y}\mathsf{R})$ ; however, we can establish the following substitute.
+We provide the proof of Lemma 3 in Appendix D.2.
+Lemma 3.
+For any probability distributions  $\mu$ ,  $\nu$ , and  $\pi$  with  $\mu\ll\nu\ll\pi$ :
+$\displaystyle\mathsf{KL}(\mu\,\|\,\pi)-\mathsf{KL}(\nu\,\|\,\pi)\leq\mathsf{KL}(\mu\,\|\,\nu)+(2+\mathcal{R}_{2}(\nu\,\|\,\pi))\sqrt{\chi^{2}(\mu\,\|\,\nu)}\,.$
+This lemma implies we can choose the quantity  $\bar{\varepsilon}_{\mathsf{KL}}^{2}$  in (10) to be
+$\displaystyle\bar{\varepsilon}_{\mathsf{KL}}^{2}$
+$\displaystyle\stackrel{{\scriptstyle(i)}}{{\leq}}\mathsf{KL}(\rho^{Y}\widehat{\mathsf{R}}\,\|\,\rho^{Y}\mathsf{R})+(2+\mathcal{R}_{2}(\rho^{Y}\mathsf{R}\,\|\,\pi^{X}))\sqrt{\chi^{2}(\rho^{Y}\widehat{\mathsf{R}}\,\|\,\rho^{Y}\mathsf{R})}$
+$\displaystyle\stackrel{{\scriptstyle(ii)}}{{\leq}}\sup_{y\in\mathbb{R}^{d}}\mathsf{KL}(\widehat{\mathsf{R}}_{y}\,\|\,\mathsf{R}_{y})+(2+\mathcal{R}_{2}(\rho^{Y}\,\|\,\pi^{Y}))\sup_{y\in\mathbb{R}^{d}}\sqrt{\chi^{2}(\widehat{\mathsf{R}}_{y}\,\|\,\mathsf{R}_{y})}$
+$\displaystyle\stackrel{{\scriptstyle(iii)}}{{\leq}}\varepsilon_{\chi^{2}}^{2}+(2+\mathcal{R}_{2}(\rho^{Y}\,\|\,\pi^{Y}))\,\varepsilon_{\chi^{2}}\,,$
+(12)
+with  $\varepsilon_{\chi^{2}}^{2}\coloneqq\sup_{y\in\mathbb{R}^{d}}\chi^{2}(\widehat{\mathsf{R}}_{y}\,\|\,\mathsf{R}_{y})$ .
+In the above, the first inequality  $(i)$  is by applying Lemma 3; the second inequality  $(ii)$  follows by the joint convexity of KL divergence, which implies  $\mathsf{KL}(\rho^{Y}\widehat{\mathsf{R}}\,\|\,\rho^{Y}\mathsf{R})\leq\mathbb{E}_{y\sim\rho^{Y}}[\mathsf{KL}(\widehat{\mathsf{R}}_{y}\,\|\,\mathsf{R}_{y})]\leq\sup_{y\in\mathbb{R}^{d}}\mathsf{KL}(\widehat{\mathsf{R}}_{y}\,\|\,\mathsf{R}_{y})$ , and similarly for chi-square divergence; and the third inequality  $(iii)$  follows from the bound  $\mathsf{KL}(\widehat{\mathsf{R}}_{y}\,\|\,\mathsf{R}_{y})\leq\chi^{2}(\widehat{\mathsf{R}}_{y}\,\|\,\mathsf{R}_{y})$ .
+For the quantity  $\bar{\varepsilon}_{\mathsf{FI}}$  in (11), again the triangle inequality fails to hold, and moreover there is an additional difficulty because it is not trivial to bound  $\mathsf{FI}(\rho^{Y}\widehat{\mathsf{R}}\,\|\,\rho^{Y}\mathsf{R})$  in terms of  $\sup_{y\in\mathbb{R}^{d}}\mathsf{FI}(\widehat{\mathsf{R}}_{y}\,\|\,\mathsf{R}_{y})$ .
+Here, we are able to show the following lemma.
+We provide the proof of Lemma 4 in Appendix D.3.
+Lemma 4.
+Assume  $\pi^{X}\propto\exp(-f)$  is  $L$ -log-smooth for some  $L\in(0,\infty)$ .
+Let  $\mathsf{R}\equiv\mathsf{R}^{h}$  be the RGO channel with step size  $h&gt;0$ , and let  $\widehat{\mathsf{R}}\equiv\widehat{\mathsf{R}}^{h}$  be an approximate RGO channel with accuracies  $\varepsilon_{\mathsf{FI}}$  and  $\varepsilon_{\mathsf{KL}}\ll 1$  in relative Fisher information and KL divergence, respectively:
+$\displaystyle\sup_{y\in\mathbb{R}^{d}}\mathsf{FI}(\widehat{\mathsf{R}}_{y}\,\|\,\mathsf{R}_{y})$
+$\displaystyle\leq\varepsilon_{\mathsf{FI}}^{2}\,,$
+$\displaystyle\sup_{y\in\mathbb{R}^{d}}\mathsf{KL}(\widehat{\mathsf{R}}_{y}\,\|\,\mathsf{R}_{y})$
+$\displaystyle\leq\varepsilon_{\mathsf{KL}}^{2}\ll 1\,.$
+Then for any probability distribution  $\rho^{Y}$  on  $\mathbb{R}^{d}$ , it holds that:
+$\displaystyle\mathsf{FI}(\rho^{Y}\widehat{\mathsf{R}}\,\|\,\pi^{X})-2\,\mathsf{FI}(\rho^{Y}\mathsf{R}\,\|\,\pi^{X})\lesssim\left(L+\frac{1}{h}\right)\left(d+\log\frac{1}{\varepsilon_{\mathsf{KL}}}+\mathcal{R}_{2}(\rho^{Y}\,\|\,\pi^{Y})\right)\,\varepsilon_{\mathsf{KL}}+\varepsilon_{\mathsf{FI}}^{2}\,.$
+To summarize, in order to apply Lemma 2, we must control (1) the Rényi- $2$  divergence (equivalently, the chi-squared divergence) along the iterates of the proximal sampler, and (2) the accuracies  $\varepsilon_{\mathsf{KL}}$ ,  $\varepsilon_{\chi^{2}}$ ,  $\varepsilon_{\mathsf{FI}}$  in implementing the RGO.
+We handle (1) in Lemma 7 in Appendix D.4.
+For (2), the main difficulty is that we wish to implement the RGO using high-accuracy samplers (e.g., MALA), but standard guarantees for such samplers are stated in terms of  $\mathsf{KL}$  or  $\chi^{2}$ , rather than  $\mathsf{FI}$ .
+Rather than establishing separate  $\mathsf{FI}$  guarantees for each high-accuracy sampler, we show via a generic smoothing argument that it suffices to implement the RGO in  $\mathcal{R}_{3}$ .
+We provide the proof of Corollary 3 in Appendix D.6.
+Corollary 3.
+Assume  $\pi^{X}\propto\exp(-f)$  is  $L$ -log-smooth for some  $L\in(0,\infty)$ .
+Let  $\mathsf{R}\equiv\mathsf{R}^{h}$  be the RGO channel with step size  $h=\frac{1}{2L}$ .
+Suppose that there is an approximate RGO implementation  $\widetilde{\mathsf{R}}$  with the guarantee that
+$\displaystyle\sup_{y\in\mathbb{R}^{d}}\chi^{2}(\widetilde{\mathsf{R}}_{y}\,\|\,\mathsf{R}_{y})\leq\varepsilon_{\chi^{2}}^{2}\ll 1/d^{4}\,.$
+Then there is an approximate implementation  $\widehat{\mathsf{R}}$  which satisfies for all probability distributions  $\rho^{Y}$ :
+$\displaystyle\mathsf{FI}(\rho^{Y}\widehat{\mathsf{R}}\,\|\,\pi^{X})-2\,\mathsf{FI}(\rho^{Y}\mathsf{R}\,\|\,\pi^{X})\lesssim L\left(d+\log(1/\varepsilon_{\chi^{2}})+\mathcal{R}_{2}(\rho^{Y}\,\|\,\pi^{Y})\right)\,\left\{d(d+\log(1/\varepsilon_{\chi^{2}}))\,\varepsilon_{\chi^{2}}\right\}^{1/4}\,.$
+Furthermore, if the approximate implementation  $\widetilde{\mathsf{R}}$  satisfies
+$\displaystyle\sup_{y\in\mathbb{R}^{d}}\mathcal{R}_{3}(\widetilde{\mathsf{R}}_{y}\,\|\,\mathsf{R}_{y})\leq\varepsilon_{\mathcal{R}_{3}}^{2}\ll 1\,,$
+then we can also ensure that  $\widehat{\mathsf{R}}$  satisfies
+$\displaystyle\sup_{y\in\mathbb{R}^{d}}\chi^{2}(\widehat{\mathsf{R}}_{y}\,\|\,\mathsf{R}_{y})\lesssim\varepsilon_{\mathcal{R}_{3}}^{2}+d\sqrt{\varepsilon_{\chi^{2}}\,\left(1+\frac{\log(1/\varepsilon_{\chi^{2}})}{d}\right)}\,.$
+In fact, the new approximate RGO  $\widehat{\mathsf{R}}$  is easy to implement; given an approximate implementation  $\widetilde{\mathsf{R}}_{y}$  (which we obtain from Assumption 1), the new approximate RGO  $\widehat{\mathsf{R}}$  is given by  $\widehat{\mathsf{R}}_{y}=\widetilde{\mathsf{R}}_{y}\mathsf{Q}^{t}=\widetilde{\mathsf{R}}_{y}\ast\mathcal{N}(0,tI)$  with an appropriately chosen smoothing parameter  $t&gt;0$ ;
+practically, given a sample  $X\sim\widetilde{\mathsf{R}}_{y}$ , a sample from  $\widehat{\mathsf{R}}_{y}$  is given by  $X+\sqrt{t}Z$  for an independent  $Z\sim\mathcal{N}(0,I)$ .
+Combining together all of these ingredients and performing some bookkeeping yields Theorem 2.
+We provide the full proof in Appendix D.7.
+5 Conclusion
+In this work, we obtained a new complexity bound for sampling from a measure with small relative Fisher information to the target, which can be interpreted as an approximate first-order stationary measure for sampling. Our bound, which is based on the proximal sampler, is near-optimal in its dependence on the precision  $\varepsilon$ . Moreover, the dimension dependence of our bound matches the dimension dependence of high-accuracy log-concave sampling, and the former cannot be improved without also improving the latter. This provides a relatively complete picture of the Fisher information complexity of sampling.
+Going forward, one interesting open problem is to improve the Fisher information lower bound of [11] to exhibit polynomial dependence on the dimension since, by our results, it would imply a corresponding lower bound with polynomial dimension dependence for high-accuracy log-concave sampling.
+Another open problem is to determine the optimal Fisher information complexity in dimension one (see [11]).
+Appendix A Notation and definitions
+We are working in the Euclidean space  $\mathbb{R}^{d}$  of dimension  $d\geq 1$ .
+We denote the  $\ell_{2}$ -inner product by  $\langle u,v\rangle$  and the  $\ell_{2}$ -norm by  $\|u\|\coloneqq\sqrt{\langle u,u\rangle}$  for  $u,v\in\mathbb{R}^{d}$ .
+For  $x\in\mathbb{R}$ , let  $\{x\}_{+}=\max\{x,0\}$  and  $\{x\}_{-}=-\min\{x,0\}$ .
+We use the notation  $a\lesssim b$  (resp.  $a\gtrsim b$ ) to mean that  $a\leq Cb$  (resp.  $a\geq Cb$ ) for a universal constant  $C&gt;0$ , and  $a\asymp b$  to mean  $a\lesssim b$  and  $a\gtrsim b$ .
+If a statement holds provided that  $a\geq Cb$  for a sufficiently large universal constant, then we abbreviate this by writing “if  $a\gg b$ , then …”.
+For a symmetric matrix  $A\in\mathbb{R}^{d\times d}$ , we denote its operator norm by  $\|A\|_{\mathsf{op}}$ , which is the largest absolute value of the eigenvalues of  $A$ .
+We denote the Hilbert-Schmidt (or Frobenius) norm of  $A\in\mathbb{R}^{d\times d}$  by  $\|A\|_{\mathsf{HS}}=\sqrt{\mathsf{Tr}(A^{\top}A)}$ .
+For a symmetric matrix  $A\in\mathbb{R}^{d\times d}$ , we say  $A\succeq 0$  is positive semidefinite if  $u^{\top}Au\geq 0$  for any  $u\in\mathbb{R}^{d}$ .
+For symmetric matrices  $A,B\in\mathbb{R}^{d\times d}$ ,  $A\succeq B$  if  $A-B\succeq 0$ .
+Throughout,  $I_{d}\in\mathbb{R}^{d\times d}$  denotes the identity matrix.
+For a function  $f\colon\mathbb{R}^{d}\to\mathbb{R}$ , we say  $f$  is  $L$ -smooth if  $f$  is twice-differentiable and  $\|\nabla^{2}f(x)\|_{\mathsf{op}}\leq L$  for all  $x\in\mathbb{R}^{d}$ .
+We recall the prox operator of  $f$  is the function  $\prox_{f}\colon\mathbb{R}^{d}\to\mathbb{R}^{d}$  given by, for any  $y\in\mathbb{R}^{d}$ :
+$\prox_{f}(y)=\arg\min_{x\in\mathbb{R}^{d}}\left\{f(x)+\frac{1}{2}\,\|x-y\|^{2}\right\}$
+assuming the inner objective function on the right-hand side above has a minimizer ( $\prox_{f}$  can return any minimizer, if not unique).
+Note that for any  $h&gt;0$ , we can write  $\prox_{hf}$  as:
+$\prox_{hf}(y)=\arg\min_{x\in\mathbb{R}^{d}}\left\{f(x)+\frac{1}{2h}\,\|x-y\|^{2}\right\}.$
+If  $f$  is  $L$ -smooth and  $h&lt;\frac{1}{L}$ , then the inner objective above is a strictly convex function and has a unique minimizer, so  $\prox_{hf}$  is well-defined.
+For two measures  $\mu,\nu$  on  $\mathbb{R}^{d}$ , we say  $\mu$  is absolutely continuous with respect to  $\nu$ , denoted  $\mu\ll\nu$ , if  $\nu(A)=0$  implies  $\mu(A)=0$  for any measurable subset  $A\subset\mathbb{R}^{d}$ .
+If a probability measure  $\mu$  is absolutely continuous with respect to the Lebesgue measure  $\mathrm{d}x$  on  $\mathbb{R}^{d}$ , then we can represent  $\mu$  in terms of its probability density function, which we also denote by  $\mu\colon\mathbb{R}^{d}\to[0,\infty)$  such that  $\int_{\mathbb{R}^{d}}\mu(x)\,\mathrm{d}x=1$ .
+For brevity, we hide the domain of integration and write  $\int$  to denote  $\int_{\mathbb{R}^{d}}$ , unless otherwise specified.
+We also write  $\mu(x)\,\mathrm{d}x$  and  $\mu(\mathrm{d}x)$  interchangeably.
+A.1 Divergences between probability distributions
+Let  $\rho,\pi$  be two probability distributions on  $\mathbb{R}^{d}$  with  $\rho\ll\pi\ll\mathrm{d}x$ .
+We recall the relative entropy or KL (Kullback-Leibler) divergence between them is:
+$\mathsf{KL}(\rho\,\|\,\pi)=\mathbb{E}_{\rho}\left[\log\frac{\rho}{\pi}\right]=\int_{\mathbb{R}^{d}}\rho(x)\log\frac{\rho(x)}{\pi(x)}\,\mathrm{d}x.$
+If  $\rho$  and  $\pi$  both have differentiable density functions, then we recall the relative Fisher information between  $\rho$  and  $\pi$  is:
+$\mathsf{FI}(\rho\,\|\,\pi)=\mathbb{E}_{\rho}\left[\left\|\nabla\log\frac{\rho}{\pi}\right\|^{2}\right]=\int_{\mathbb{R}^{d}}\rho(x)\left\|\nabla\log\frac{\rho(x)}{\pi(x)}\right\|^{2}\,\mathrm{d}x.$
+We recall the total variation (TV) distance between  $\rho$  and  $\pi$  is:
+$\TV(\rho,\pi)=\sup_{A\subseteq\mathbb{R}^{d}}|\rho(A)-\pi(A)|=\frac{1}{2}\int_{\mathbb{R}^{d}}|\rho(x)-\pi(x)|\,\mathrm{d}x.$
+We recall the chi-square divergence between  $\rho$  and  $\pi$  is:
+$\chi^{2}(\rho\,\|\,\pi)=\mathsf{Var}_{\pi}\left(\frac{\rho}{\pi}\right)=\int_{\mathbb{R}^{d}}\left(\frac{\rho(x)}{\pi(x)}-1\right)^{2}\pi(x)\,\mathrm{d}x=\int_{\mathbb{R}^{d}}\frac{\rho(x)^{2}}{\pi(x)}\,\mathrm{d}x-1.$
+We recall the Rényi divergence of order  $q&gt;0,q\neq 1$  between  $\rho$  and  $\pi$  is:
+$\mathcal{R}_{q}(\rho\,\|\,\pi)=\frac{1}{q-1}\log\mathbb{E}_{\pi}\left[\left(\frac{\rho}{\pi}\right)^{q}\right]=\frac{1}{q-1}\log\int_{\mathbb{R}^{d}}\frac{\rho(x)^{q}}{\pi(x)^{q-1}}\,\mathrm{d}x.$
+We recall that  $\mathsf{KL}(\rho\,\|\,\pi)=\lim_{q\to 1}\mathcal{R}_{q}(\rho\,\|\,\pi)$ .
+Furthermore, we note that  $\mathcal{R}_{2}(\rho\,\|\,\pi)=\log(1+\chi^{2}(\rho\,\|\,\pi))$ , or equivalently,  $\chi^{2}(\rho\,\|\,\pi)=\exp(\mathcal{R}_{2}(\rho\,\|\,\pi))-1$ .
+We recall the following relations for any  $\rho\ll\pi$ , that
+$2\TV(\rho,\pi)^{2}\leq\mathsf{KL}(\rho\,\|\,\pi)\leq\chi^{2}(\rho\,\|\,\pi)$ ; the first inequality between KL divergence and TV distance is Pinsker’s inequality.
+Furthermore, Rényi divergence is increasing in the index, so for any  $1&lt;q\leq q^{\prime}$ ,  $\mathsf{KL}(\rho\,\|\,\pi)\leq\mathcal{R}_{q}(\rho\,\|\,\pi)\leq\mathcal{R}_{q^{\prime}}(\rho\,\|\,\pi)$ .
+A.1.1 Basic properties of divergences
+All the divergences above (KL, chi-square, and Rényi) are not symmetric, and they do not satisfy the triangle inequality.
+However, the Rényi divergence satisfies a generalized triangle inequality.
+For any probability distributions  $\mu,\rho,\pi$  with  $\mu\ll\rho\ll\pi$ , and for any  $q&gt;1$  and  $\lambda\in(0,1)$ , we have:
+$\mathcal{R}_{q}(\mu\,\|\,\pi)\leq\frac{q-\lambda}{q-1}\,\mathcal{R}_{q/\lambda}(\mu\,\|\,\rho)+\mathcal{R}_{(q-\lambda)/(1-\lambda)}(\rho\,\|\,\pi)\,.$
+We apply this in the proof of Lemma 8 with  $q=2$  and  $\lambda=\frac{2}{3}$ .
+We recall that relative Fisher information is convex (with respect to the usual linear structure of probability distributions) in the first argument.
+For any probability distributions  $\mu,\rho,\pi$  and any  $\lambda\in[0,1]$ , we have:
+$\mathsf{FI}(\lambda\mu+(1-\lambda)\rho\,\|\,\pi)\leq\lambda\mathsf{FI}(\mu\,\|\,\pi)+(1-\lambda)\mathsf{FI}(\rho\,\|\,\pi)\,.$
+We recall the chain rule for KL divergence.
+For any joint probability distributions  $\rho^{XY}$  and  $\pi^{XY}$ , with  $X$ -marginals  $\rho^{X}$  and  $\pi^{X}$ , and conditional distributions  $\rho^{Y\mid X}$  and  $\pi^{Y\mid X}$ , respectively, we have:
+$\mathsf{KL}(\rho^{XY}\,\|\,\pi^{XY})=\mathsf{KL}(\rho^{X}\,\|\,\pi^{X})+\mathbb{E}_{x\sim\rho^{X}}\left[\mathsf{KL}(\rho^{Y\mid X=x}\,\|\,\pi^{Y\mid X=x})\right].$
+We also recall the Donsker–Varadhan variational formula for KL divergence:
+For any probability distributions  $\rho,\pi$ , and any function  $g\colon\mathbb{R}^{d}\to\mathbb{R}$ , we have:
+$\mathsf{KL}(\rho\,\|\,\pi)\geq\mathbb{E}_{\rho}[g]-\log\mathbb{E}_{\pi}[\exp(g)]\,.$
+A.1.2 Channel and data processing inequality
+In this paper, we use the term channel from information theory to describe a process that adds randomness.
+Formally, a channel  $P$  from  $\mathbb{R}^{d}$  to  $\mathbb{R}^{d}$  is a collection of probability distributions,  $P=(P_{y})_{y\in\mathbb{R}^{d}}$ , where  $P_{y}$  is the output distribution of the channel when the input is a point mass at  $y\in\mathbb{R}^{d}$ .
+Given an input probability distribution  $\rho$  over  $\mathbb{R}^{d}$ , we denote the output of the channel by  $\rho P$ , given by:
+$\rho P=\int_{\mathbb{R}^{d}}\rho(y)\,P_{y}\,\mathrm{d}y.$
+A fundamental property in information theory is the data processing inequality (DPI), which states that statistical divergences cannot increase along a channel.
+Namely, given any channel  $P$ , any input distributions  $\rho,\pi$ , and statistical divergence  $D$  (including the TV distance, KL divergence, chi-square divergence, and Rényi divergence), we have:
+$D(\rho P\,\|\,\pi P)\leq D(\rho\,\|\,\pi).$
+Notably, the data processing inequality does not hold for the relative Fisher information; see [31, Example 3] for a counterexample even for the Gaussian channel.
+A.2 Properties of probability distributions
+We say a probability distribution  $\pi\propto\exp(-f)$  on  $\mathbb{R}^{d}$  is  $L$ -log-smooth for some  $L\in(0,\infty)$  if  $f\colon\mathbb{R}^{d}\to\mathbb{R}$  is twice-differentiable and  $\|\nabla^{2}f(x)\|_{\mathsf{op}}\leq L$  for all  $x\in\mathbb{R}^{d}$ .
+We say  $\pi\propto\exp(-f)$  is  $\alpha$ -strongly log concave (SLC) for some  $\alpha&gt;0$  if  $f\colon\mathbb{R}^{d}\to\mathbb{R}$  is an  $\alpha$ -strongly convex function.
+If  $\alpha=0$ , then we say  $\pi$  is log-concave.
+We say  $\pi$  satisfies a log-Sobolev inequality (LSI) with constant  $C_{\mathsf{LSI}}\in(0,\infty)$  if for any probability distribution  $\rho\ll\pi$ , we have
+$\mathsf{FI}(\rho\,\|\,\pi)\geq\frac{2}{C_{\mathsf{LSI}}}\mathsf{KL}(\rho\,\|\,\pi).$
+We recall that if  $\pi$  is  $\alpha$ -SLC, then  $\pi$  satisfies a LSI with constant  $C_{\mathsf{LSI}}=1/\alpha$ .
+We say that a probability distribution  $\pi$  on  $\mathbb{R}^{d}$  is  $\beta$ -sub-Gaussian for some  $\beta\in(0,\infty)$  if for any  $v\in\mathbb{R}^{d}$ ,
+$\mathbb{E}_{X\sim\pi}[\exp(\langle v,X-\mathbb{E}_{\pi}[X]\rangle)]\leq\exp\left(\frac{1}{2}\beta^{2}\|v\|^{2}\right).$
+For a function  $G\colon\mathbb{R}^{d}\to\mathbb{R}^{m}$  for  $m\geq 1$ , we say “ $G$  is  $\beta$ -sub-Gaussian under  $\pi$ ” to mean that the law of  $G(X)$  is  $\beta$ -sub-Gaussian when  $X\sim\pi$ .
+We recall that if  $\pi$  is  $L$ -log-smooth, so  $\nabla\log\pi$  is  $L$ -Lipschitz, then  $\nabla\log\pi$  is  $\sqrt{L}$ -sub-Gaussian under  $\pi$ ; see [12, Lemma 6].
+Appendix B Helper results
+B.1 Sub-Gaussian score lemma
+Lemma 5.
+Assume that  $\pi^{X}\propto\exp(-f)$  is  $L$ -log-smooth for some  $L\in(0,\infty)$ .
+1.
+For each  $y\in\mathbb{R}^{d}$ ,  $\nabla\log\mathsf{R}_{y}$  is  $\sqrt{L+1/h}$ -sub-Gaussian under  $\mathsf{R}_{y}$ .
+2.
+$\|\nabla\log(\rho^{Y}\mathsf{R}/\pi^{X})\|$  is  $\sigma$ -sub-Gaussian with respect to  $\rho^{Y}\mathsf{R}$ , where
+$\displaystyle\sigma^{2}\lesssim\left(L+\frac{1}{h}\right)\,d+L\log(1+\chi^{2}(\rho^{Y}\,\|\,\pi^{Y}))\,.$
+Proof.
+The first statement follows from [12, Lemma 4].
+For the second statement, by the triangle inequality for the sub-Gaussian norm, it suffices to consider  $\nabla\log\rho^{Y}\mathsf{R}$  and  $\nabla\log\pi^{X}=\nabla f$  separately.
+For the first term, by [12, Lemma 6],  $\nabla\log\rho^{Y}\mathsf{R}$  is sub-Gaussian under  $\rho^{Y}\mathsf{R}$  if each  $\nabla\log\mathsf{R}_{y}$  is sub-Gaussian under  $\mathsf{R}_{y}$ .
+Hence, using the first statement,  $\nabla\log\rho^{Y}\mathsf{R}$  is  $\sqrt{L+1/h}$ -sub-Gaussian under  $\rho^{Y}\mathsf{R}$ , and by a standard covering argument,  $\|\nabla\log\rho^{Y}\mathsf{R}\|$  is  $O(\sqrt{(L+1/h)\,d})$ -sub-Gaussian under  $\rho^{Y}\mathsf{R}$ .
+For the second term, the same lemmas show that  $\nabla f$  is  $\sqrt{L}$ -sub-Gaussian under  $\pi^{X}$ , so there is a universal constant  $c&gt;0$  such that for any unit vector  $v\in\mathbb{R}^{d}$ ,
+$\displaystyle\int\exp\Bigl(\frac{c\,\langle v,\nabla f\rangle^{2}}{L}\Bigr)\,\mathrm{d}\pi^{X}\leq 2\,.$
+If we know that  $\bar{\chi}^{2}\coloneqq\chi^{2}(\rho^{Y}\mathsf{R}\,\|\,\pi^{X})\leq\chi^{2}(\rho^{Y}\,\|\,\pi^{Y})&lt;\infty$ , then by change of measure,
+$\displaystyle\int\exp\Bigl(\frac{(c/2)\,\langle v,\nabla f\rangle^{2}}{L}\Bigr)\,\mathrm{d}\rho^{Y}\mathsf{R}$
+$\displaystyle\leq 2+\sqrt{2\chi^{2}(\rho^{Y}\mathsf{R}\,\|\,\pi^{X})}=2+\sqrt{2\bar{\chi}^{2}}$
+and this leads to the following tail bound: with probability at least  $1-\delta$  under  $\rho^{Y}\mathsf{R}$ ,  $|\langle v,\nabla f\rangle|\lesssim\sqrt{L\,(\log(1+\bar{\chi}^{2})+\log(1/\delta))}$ .
+By taking a union bound over a covering of the unit sphere, it implies that  $\|\nabla f\|$  is  $O(\sqrt{L\,(d+\log(1+\bar{\chi}^{2}))})$ -sub-Gaussian under  $\rho^{Y}\mathsf{R}$ .
+∎
+B.2 Rényi divergence along the heat flow
+Lemma 6.
+Let  $\rho\propto\exp(-V)$  be a log-concave and  $L$ -log-smooth probability distribution on  $\mathbb{R}^{d}$ .
+For  $t\geq 0$ , let  $\mathsf{Q}^{t}$  denote the Gaussian channel with variance  $t$ , so  $\rho\mathsf{Q}^{t}=\rho\ast\mathcal{N}(0,tI)$ .
+Let  $q\geq 2$  be an integer.
+Then, for all  $0\leq t&lt;1/(Lq)$ ,
+$\displaystyle\mathcal{R}_{q}(\rho\mathsf{Q}^{t}\,\|\,\rho)\leq\frac{d}{2\,(q-1)}\log\frac{1}{1-Lqt}\,.$
+Proof.
+Note that we can write the density of  $\rho\mathsf{Q}^{t}$  as  $\rho\mathsf{Q}^{t}(x)=\mathbb{E}[\rho(x+\xi)]$  where  $\xi\sim\mathcal{N}(0,tI)$ .
+If  $\xi_{1},\dotsc,\xi_{q}\sim\mathcal{N}(0,tI)$  are i.i.d., then by the convexity of  $V$  and sub-Gaussianity of the score,
+$\displaystyle\int\left(\frac{\mathrm{d}(\rho\mathsf{Q}^{t})}{\mathrm{d}\rho}\right)^{q}\,\mathrm{d}\rho$
+$\displaystyle=\int\mathbb{E}\left[\exp\left(-\sum_{i=1}^{q}V(x+\xi_{i})+qV(x)\right)\right]\,\rho(\mathrm{d}x)$
+$\displaystyle\leq\int\mathbb{E}\left[\exp\left(-\sum_{i=1}^{q}\langle\nabla V(x),\xi_{i}\rangle\right)\right]\,\rho(\mathrm{d}x)$
+$\displaystyle\leq\mathbb{E}\left[\exp\left(\frac{L}{2}\,\left\|\sum_{i=1}^{q}\xi_{i}\right\|^{2}\right)\right]$
+$\displaystyle=(1-Lqt)^{-d/2}\qquad\text{for}~Lqt&lt;1\,.$
+Hence,
+$\displaystyle\mathcal{R}_{q}(\rho\mathsf{Q}^{t}\,\|\,\rho)=\frac{1}{q-1}\log\int\left(\frac{\mathrm{d}(\rho\mathsf{Q}^{t})}{\mathrm{d}\rho}\right)^{q}\,\mathrm{d}\rho$
+$\displaystyle\leq\frac{d}{2\,(q-1)}\log\frac{1}{1-Lqt}\,.\qed$
+Appendix C Proofs for the ideal proximal sampler
+C.1 Proof of Lemma 1
+Proof of Lemma 1.
+We prove the estimate along the forward step, then the backward step.
+1.
+Forward step:
+We interpolate from  $\rho^{X}$  to  $\rho^{Y}$  and from  $\pi^{X}$  to  $\pi^{Y}$  via the heat equation.
+Concretely, we define  $(\rho_{t})_{0\leq t\leq h}$  and  $(\pi_{t})_{0\leq t\leq h}$  by  $\rho_{t}\coloneqq\rho^{X}\ast\mathcal{N}(0,tI)$  and  $\pi_{t}\coloneqq\pi^{X}\ast\mathcal{N}(0,tI)$ , so  $\rho_{0}=\rho^{X}$ ,  $\pi_{0}=\pi^{X}$ ,  $\rho_{h}=\rho^{Y}$ ,  $\pi_{h}=\pi^{Y}$ , and  $\rho_{t}$ ,  $\pi_{t}$  evolve following the heat equation:
+$\displaystyle\partial_{t}\rho_{t}=\frac{1}{2}\,\Delta\rho_{t}\,,\qquad\qquad\partial_{t}\pi_{t}=\frac{1}{2}\,\Delta\pi_{t}\,.$
+Then, by a standard calculation (see, e.g., [7, Lemma 12]), we have:
+$\displaystyle\frac{\mathrm{d}}{\mathrm{d}t}\,\mathsf{KL}(\rho_{t}\,\|\,\pi_{t})=-\frac{1}{2}\,\mathsf{FI}(\rho_{t}\,\|\,\pi_{t})$
+so that, by integrating over  $0\leq t\leq h$ ,
+$\displaystyle\mathsf{KL}(\rho_{k}^{X}\,\|\,\pi^{X})-\mathsf{KL}(\rho_{k}^{Y}\,\|\,\pi^{Y})=\frac{1}{2}\int_{0}^{h}\mathsf{FI}(\rho_{t}\,\|\,\pi_{t})\,\mathrm{d}t\,.$
+(13)
+Along the simultaneous heat flow, by [31, Lemma 2], we also have:
+$\displaystyle\frac{\mathrm{d}}{\mathrm{d}t}\,\mathsf{FI}(\rho_{t}\,\|\,\pi_{t})$
+$\displaystyle=-\mathbb{E}_{\rho_{t}}\left[\left\|\nabla^{2}\log\frac{\rho_{t}}{\pi_{t}}\right\|^{2}_{\mathsf{HS}}\right]-2\mathbb{E}_{\rho_{t}}\left[\left\|\nabla\log\frac{\rho_{t}}{\pi_{t}}\right\|^{2}_{-\nabla^{2}\log\pi_{t}}\right]$
+$\displaystyle\leq-2\mathbb{E}_{\rho_{t}}\left[\left\|\nabla\log\frac{\rho_{t}}{\pi_{t}}\right\|^{2}_{-\nabla^{2}\log\pi_{t}}\right].$
+Recall (see, e.g., [29, Lemma 14]) that since  $\pi_{0}=\pi^{X}$  is  $L$ -log-smooth by assumption, for  $0\leq t&lt;\frac{1}{L}$ ,  $\pi_{t}=\pi_{0}\ast\mathcal{N}(0,tI)$  satisfies for all  $x\in\mathbb{R}^{d}$ :
+$-\nabla^{2}\log\pi_{t}(x)\succeq-\frac{L}{1-tL}\,I\,.$
+Plugging this in to the above, we get:
+$\displaystyle\frac{\mathrm{d}}{\mathrm{d}t}\,\mathsf{FI}(\rho_{t}\,\|\,\pi_{t})$
+$\displaystyle\leq\frac{2L}{1-tL}\,\mathbb{E}_{\rho_{t}}\left[\left\|\nabla\log\frac{\rho_{t}}{\pi_{t}}\right\|^{2}\right]=\frac{2L}{1-tL}\,\mathsf{FI}(\rho_{t}\,\|\,\pi_{t})\,,$
+or equivalently:
+$\displaystyle\frac{\mathrm{d}}{\mathrm{d}t}\log\mathsf{FI}(\rho_{t}\,\|\,\pi_{t})\leq\frac{2L}{1-tL}=-2\,\frac{\mathrm{d}}{\mathrm{d}t}\log(1-tL)\,.$
+For each  $0\leq t\leq h$ , by integrating the differential inequality above from  $t$  to  $h$ , we get:
+$\displaystyle\log\mathsf{FI}(\rho_{h}\,\|\,\pi_{h})\leq\log\mathsf{FI}(\rho_{t}\,\|\,\pi_{t})+2\log\frac{(1-tL)}{(1-hL)}\,,$
+or equivalently:
+$\displaystyle\mathsf{FI}(\rho_{t}\,\|\,\pi_{t})\geq\mathsf{FI}(\rho_{h}\,\|\,\pi_{h})\,\frac{(1-hL)^{2}}{(1-tL)^{2}}\,.$
+Integrating this over  $0\leq t\leq h$ , we get:
+$\displaystyle\int_{0}^{h}\mathsf{FI}(\rho_{t}\,\|\,\pi_{t})\,\mathrm{d}t$
+$\displaystyle\geq\mathsf{FI}(\rho_{h}\,\|\,\pi_{h})\,(1-hL)^{2}\,\int_{0}^{h}\frac{1}{(1-tL)^{2}}\,\mathrm{d}t$
+$\displaystyle=\mathsf{FI}(\rho_{h}\,\|\,\pi_{h})\,(1-hL)^{2}\left(\frac{1}{L\,(1-tL)}\right)\Bigg|_{t=0}^{t=h}$
+$\displaystyle=\mathsf{FI}(\rho_{h}\,\|\,\pi_{h})\,(1-hL)^{2}\left(\frac{h}{1-hL}\right)$
+$\displaystyle=\mathsf{FI}(\rho^{Y}\,\|\,\pi^{Y})\,h\,(1-hL)\,.$
+Plugging this in to our estimate (13), we get the claim in (6):
+$\displaystyle\mathsf{KL}(\rho^{X}\,\|\,\pi^{X})-\mathsf{KL}(\rho^{Y}\,\|\,\pi^{Y})\geq\frac{h\,(1-hL)}{2}\,\mathsf{FI}(\rho_{k}^{Y}\,\|\,\pi^{Y})\,.$
+2.
+Backward step:
+In the backward step, we view  $\rho_{+}^{X}$  is the output of the reverse Gaussian channel from  $\rho^{Y}$ , and similarly,  $\pi^{X}$  is the output of the reverse Gaussian channel from  $\pi^{Y}$ .
+Concretely, as before, define  $\pi_{t}=\pi_{0}\ast\mathcal{N}(0,tI)$  for  $0\leq t\leq h$ , and define  $\mu_{t}\coloneqq\pi_{h-t}$ , so  $\mu_{0}=\pi^{Y}$ ,  $\mu_{h}=\pi^{X}$ , and  $\mu_{t}$  evolves following the backward heat equation:
+$\partial_{t}\mu_{t}=-\frac{1}{2}\,\Delta\mu_{t}=-\nabla\cdot(\mu_{t}\nabla\log\mu_{t})+\frac{1}{2}\,\Delta\mu_{t}\,.$
+Define the reverse Gaussian channel:
+$\mathrm{d}X_{t}=\nabla\log\mu_{t}(X_{t})\,\mathrm{d}t+\mathrm{d}B_{t}$
+where  $(B_{t})_{t\geq 0}$  is the standard Brownian motion on  $\mathbb{R}^{d}$ .
+If  $X_{t}\sim\bar{\rho_{t}}$  evolves along this channel, then its distribution  $\bar{\rho_{t}}$  evolves following the Fokker–Planck equation:
+$\partial_{t}\bar{\rho_{t}}=-\nabla\cdot(\bar{\rho_{t}}\nabla\log\mu_{t})+\frac{1}{2}\,\Delta\bar{\rho_{t}}\,.$
+As shown in [7, Appendix A.1.2], if we start the reverse Gaussian channel from a deterministic point  $X_{0}=y$ , then the output is precisely the RGO:  $X_{h}\sim\mathsf{R}_{y}=\pi^{X\mid Y}(\cdot\mid y)$ .
+Therefore, if we start the reverse Gaussian channel from  $X_{0}\sim\bar{\rho_{0}}=\rho^{Y}$ , then the output is  $\bar{\rho_{h}}=\rho^{Y}\mathsf{R}=\rho^{X}_{+}$ .
+By a standard calculation (see, e.g., [7, Lemma 15]), for  $\bar{\rho_{t}},\mu_{t}$  which evolve following the Fokker–Planck equation for the reverse Gaussian channel, we have:
+$\displaystyle\frac{\mathrm{d}}{\mathrm{d}t}\,\mathsf{KL}(\bar{\rho_{t}}\,\|\,\mu_{t})=-\frac{1}{2}\,\mathsf{FI}(\bar{\rho_{t}}\,\|\,\mu_{t})$
+so that, by integrating over  $0\leq t\leq h$ ,
+$\displaystyle\mathsf{KL}(\rho^{Y}\,\|\,\pi^{Y})-\mathsf{KL}(\rho_{+}^{X}\,\|\,\pi^{X})=\frac{1}{2}\int_{0}^{h}\mathsf{FI}(\bar{\rho_{t}}\,\|\,\mu_{t})\,\mathrm{d}t\,.$
+(14)
+By [31, Lemma 2], along the reverse Gaussian channel, we also have the formula:
+$\frac{\mathrm{d}}{\mathrm{d}t}\,\mathsf{FI}(\bar{\rho_{t}}\,\|\,\mu_{t})=-\mathbb{E}_{\bar{\rho_{t}}}\left[\left\|\nabla^{2}\log\frac{\bar{\rho_{t}}}{\mu_{t}}\right\|^{2}_{\mathsf{HS}}\right]\leq 0\,.$
+Therefore, for any  $0\leq t\leq h$ ,
+$\displaystyle\mathsf{FI}(\bar{\rho_{t}}\,\|\,\mu_{t})\geq\mathsf{FI}(\bar{\rho_{h}}\,\|\,\mu_{h})\,.$
+(15)
+In particular, when  $t=0$ ,
+$\mathsf{FI}(\rho^{Y}\,\|\,\pi^{Y})=\mathsf{FI}(\bar{\rho_{0}}\,\|\,\mu_{0})\geq\mathsf{FI}(\bar{\rho_{h}}\,\|\,\mu_{h})=\mathsf{FI}(\rho_{+}^{X}\,\|\,\pi^{X})\,,$
+as claimed in the first case of (7).
+Plugging in (15) to (14), we also get the second case in the claim (7):
+$\displaystyle\mathsf{KL}(\rho^{Y}\,\|\,\pi^{Y})-\mathsf{KL}(\rho_{+}^{X}\,\|\,\pi^{X})=\frac{1}{2}\int_{0}^{h}\mathsf{FI}(\bar{\rho_{t}}\,\|\,\mu_{t})\,\mathrm{d}t\geq\frac{h}{2}\,\mathsf{FI}(\bar{\rho}_{h}\,\|\,\mu_{h})=\frac{h}{2}\,\mathsf{FI}(\rho_{+}^{X}\,\|\,\pi^{X})\,.$
+∎
+C.2 Proof of Theorem 1
+Proof of Theorem 1.
+The implication (9) follows from the bound (8) by the convexity of relative Fisher information in the first argument,
+so it suffices to prove the bound (8).
+We analyze each iteration of the proximal sampler and invoke the bounds from Lemma 1:
+1.
+In the forward step, let  $\rho_{k}^{Y}=\rho_{k}^{X}\mathsf{Q}^{h}=\rho_{k}^{X}\ast\mathcal{N}(0,hI)$  and recall  $\pi^{Y}=\pi^{X}\mathsf{Q}^{h}=\pi^{X}\ast\mathcal{N}(0,hI)$ .
+By the bound (6) and the first case of the bound (7) from Lemma 1, we have:
+$\displaystyle\mathsf{KL}(\rho_{k}^{X}\,\|\,\pi^{X})-\mathsf{KL}(\rho_{k}^{Y}\,\|\,\pi^{Y})\geq\frac{h\,(1-hL)}{2}\,\mathsf{FI}(\rho_{k}^{Y}\,\|\,\pi^{Y})\geq\frac{h\,(1-hL)}{2}\,\mathsf{FI}(\rho_{k+1}^{X}\,\|\,\pi^{X})\,.$
+2.
+In the backward step, by the second case of the bound (7) from Lemma 1, we have
+$\displaystyle\mathsf{KL}(\rho_{k}^{Y}\,\|\,\pi^{Y})-\mathsf{KL}(\rho_{k+1}^{X}\,\|\,\pi^{X})\geq\frac{h}{2}\,\mathsf{FI}(\rho_{k+1}^{X}\,\|\,\pi^{X})\,.$
+Combining the forward and backward steps, we obtain:
+$\displaystyle\mathsf{KL}(\rho_{k}^{X}\,\|\,\pi^{X})-\mathsf{KL}(\rho_{k+1}^{X}\,\|\,\pi^{X})$
+$\displaystyle=\mathsf{KL}(\rho_{k}^{X}\,\|\,\pi^{X})-\mathsf{KL}(\rho_{k}^{Y}\,\|\,\pi^{Y})+\mathsf{KL}(\rho_{k}^{Y}\,\|\,\pi^{Y})-\mathsf{KL}(\rho_{k+1}^{X}\,\|\,\pi^{X})$
+$\displaystyle\geq\frac{h\,(1-hL)}{2}\,\mathsf{FI}(\rho_{k+1}^{X}\,\|\,\pi^{X})+\frac{h}{2}\,\mathsf{FI}(\rho_{k+1}^{X}\,\|\,\pi^{X})$
+$\displaystyle=h\,\Bigl(1-\frac{hL}{2}\Bigr)\,\mathsf{FI}(\rho_{k+1}^{X}\,\|\,\pi^{X})\,.$
+Summing the bound above for  $0\leq k\leq K-1$ , and dropping the last term  $\mathsf{KL}(\rho_{K}^{X}\,\|\,\pi^{X})$ , we obtain the claimed bound (8).
+∎
+Appendix D Proofs for the proximal sampler with an approximate RGO implementation
+D.1 Proof of Lemma 2
+Proof of Lemma 2.
+Let  $\widetilde{\rho}_{+}^{X}=\rho^{Y}\mathsf{R}$
+denote the application of the exact RGO channel to  $\rho^{Y}=\rho^{X}\mathsf{Q}^{h}$ .
+First, we observe the following sequence of inequalities:
+$\displaystyle\frac{h\,(1-Lh)}{4}\,\mathsf{FI}(\rho_{+}^{X}\,\|\,\pi^{X})$
+$\displaystyle\stackrel{{\scriptstyle(i)}}{{\leq}}\frac{h\,(1-Lh)}{2}\,\mathsf{FI}(\widetilde{\rho}_{+}^{X}\,\|\,\pi^{X})+\frac{h\,(1-Lh)}{4}\,\bar{\varepsilon}_{\mathsf{FI}}^{2}$
+$\displaystyle\stackrel{{\scriptstyle(ii)}}{{\leq}}\frac{h\,(1-Lh)}{2}\,\mathsf{FI}(\rho^{Y}\,\|\,\pi^{Y})+\frac{h\,(1-Lh)}{4}\,\bar{\varepsilon}_{\mathsf{FI}}^{2}$
+$\displaystyle\stackrel{{\scriptstyle(iii)}}{{\leq}}\mathsf{KL}(\rho^{X}\,\|\,\pi^{X})-\mathsf{KL}(\rho^{Y}\,\|\,\pi^{Y})+\frac{h\,(1-Lh)}{4}\,\bar{\varepsilon}_{\mathsf{FI}}^{2}\,.$
+(16)
+In the above, the first step  $(i)$  is from the error guarantee (11) in relative Fisher information for the approximate RGO;
+the second step  $(ii)$  is from the first case in the bound (7) in Lemma 1, which states that relative Fisher information is decreasing along the exact RGO channel; and the third step  $(iii)$  is
+from the bound (6) in Lemma 1 along the forward step of the proximal sampler.
+Next, we also observe the following sequence of inequalities:
+$\displaystyle\frac{h}{4}\,\mathsf{FI}(\rho_{+}^{X}\,\|\,\pi^{X})$
+$\displaystyle\stackrel{{\scriptstyle(i)}}{{\leq}}\frac{h}{2}\,\mathsf{FI}(\widetilde{\rho}_{+}^{X}\,\|\,\pi^{X})+\frac{h}{4}\,\bar{\varepsilon}_{\mathsf{FI}}^{2}$
+$\displaystyle\stackrel{{\scriptstyle(ii)}}{{\leq}}\mathsf{KL}(\rho^{Y}\,\|\,\pi^{Y})-\mathsf{KL}(\widetilde{\rho}_{+}^{X}\,\|\,\pi^{X})+\frac{h}{4}\,\bar{\varepsilon}_{\mathsf{FI}}^{2}$
+$\displaystyle\stackrel{{\scriptstyle(iii)}}{{\leq}}\mathsf{KL}(\rho^{Y}\,\|\,\pi^{Y})-\mathsf{KL}(\rho_{+}^{X}\,\|\,\pi^{X})+\bar{\varepsilon}_{\mathsf{KL}}^{2}+\frac{h}{4}\,\bar{\varepsilon}_{\mathsf{FI}}^{2}\,.$
+(17)
+In the above, the first step  $(i)$  is again from the error guarantee (11) in relative Fisher information for the approximate RGO;
+the second step  $(ii)$  is from the second case in the bound (7) in Lemma 1, which bounds relative Fisher information in terms of the change in KL divergence along the exact RGO channel;
+and the third step  $(iii)$  is from the error guarantee (10) in KL divergence for the approximate RGO.
+Adding the two estimates (16) and (17) above yields the desired bound.
+∎
+D.2 Proof of Lemma 3
+Proof of Lemma 3.
+We write the following decomposition:
+$\displaystyle\mathsf{KL}(\mu\,\|\,\pi)$
+$\displaystyle=\int\log\frac{\mathrm{d}\mu}{\mathrm{d}\pi}\,\mathrm{d}\mu$
+$\displaystyle=\int\log\frac{\mathrm{d}\mu}{\mathrm{d}\nu}\,\mathrm{d}\mu+\int\log\frac{\mathrm{d}\nu}{\mathrm{d}\pi}\,\mathrm{d}\nu+\int\log\frac{\mathrm{d}\nu}{\mathrm{d}\pi}\,\mathrm{d}(\mu-\nu)$
+$\displaystyle=\mathsf{KL}(\mu\,\|\,\nu)+\mathsf{KL}(\nu\,\|\,\pi)+\int\left(\log\frac{\mathrm{d}\nu}{\mathrm{d}\pi}\right)\cdot\left(\frac{\mathrm{d}\mu}{\mathrm{d}\nu}-1\right)\,\mathrm{d}\nu$
+$\displaystyle\leq\mathsf{KL}(\mu\,\|\,\nu)+\mathsf{KL}(\nu\,\|\,\pi)+\sqrt{\mathbb{E}_{\nu}\left[\left(\log\frac{\mathrm{d}\nu}{\mathrm{d}\pi}\right)^{2}\right]\,\chi^{2}(\mu\,\|\,\nu)}\,,$
+(18)
+where in the last step above, we have applied Cauchy–Schwarz inequality.
+Let  $\ell\coloneqq\log\frac{\mathrm{d}\nu}{\mathrm{d}\pi}$  and  $R\coloneqq\mathcal{R}_{2}(\nu\,\|\,\pi)$ .
+Then, we know that  $\mathbb{E}_{\nu}[\exp(\ell)]=1+\chi^{2}(\nu\,\|\,\pi)=\exp(R)$ , and hence Markov’s inequality yields
+$\nu(\ell\geq t)=\nu(\exp(\ell)\geq\exp(t))\leq\exp(R-t)$
+for  $t\geq 0$ .
+We also have  $\mathbb{E}_{\nu}[\exp(-\ell)]\leq 1$  (with equality when  $\pi\ll\nu$ ), which yields
+$\nu(\ell\leq-t)=\nu(\exp(-\ell)\geq\exp(t))\leq\exp(-t)$
+for  $t\geq 0$ .
+Integrating these tail bounds yields the following, for  $\ell_{+}=\max\{\ell,0\}$  and  $\ell_{-}=-\min\{\ell,0\}$ :
+$\displaystyle\mathbb{E}_{\nu}\left[(\ell_{+})^{2}\right]$
+$\displaystyle=2\int_{0}^{\infty}t\,\nu(\ell\geq t)\,\mathrm{d}t\leq 2\int_{0}^{R}t\,\mathrm{d}t+2\int_{R}^{\infty}t\exp(R-t)\,\mathrm{d}t=R^{2}+2R+2\,,$
+$\displaystyle\mathbb{E}_{\nu}\left[(\ell_{-})^{2}\right]$
+$\displaystyle=2\int_{0}^{\infty}t\,\nu(\ell\leq-t)\,\mathrm{d}t\leq 2\int_{0}^{\infty}t\exp(-t)\,\mathrm{d}t=2\,.$
+In the above, we have used the standard calculation (via integration by parts)  $\int_{0}^{\infty}t\exp(-t)\,\mathrm{d}t=1$ , and
+$\int_{R}^{\infty}t\exp(R-t)\,\mathrm{d}t=R\int_{R}^{\infty}\exp(R-t)\,\mathrm{d}t+\int_{R}^{\infty}(t-R)\exp(R-t)\,\mathrm{d}t=R+1.$
+Hence, since  $\ell^{2}=(\ell_{+})^{2}+(\ell_{-})^{2}$ , we have
+$\mathbb{E}_{\nu}\left[\ell^{2}\right]=\mathbb{E}_{\nu}\left[(\ell_{+})^{2}\right]+\mathbb{E}_{\nu}\left[(\ell_{-})^{2}\right]\leq R^{2}+2R+4\leq(R+2)^{2}\,.$
+Plugging in this bound to the earlier calculation (18) completes the proof.
+∎
+D.3 Proof of Lemma 4
+Proof of Lemma 4.
+Let  $\widehat{X}\sim\rho^{Y}\widehat{\mathsf{R}}$  and  $X\sim\rho^{Y}\mathsf{R}$ .
+Then,
+$\displaystyle\mathsf{FI}(\rho^{Y}\widehat{\mathsf{R}}\,\|\,\pi^{X})$
+$\displaystyle-2\,\mathsf{FI}(\rho^{Y}\mathsf{R}\,\|\,\pi^{X})$
+$\displaystyle=\left\|\nabla\log\frac{\rho^{Y}\widehat{\mathsf{R}}}{\pi^{X}}(\widehat{X})\right\|_{L^{2}}^{2}-2\,\left\|\nabla\log\frac{\rho^{Y}\mathsf{R}}{\pi^{X}}(X)\right\|_{L^{2}}^{2}$
+$\displaystyle\leq 2\,\underbrace{\left\|\nabla\log\frac{\rho^{Y}\widehat{\mathsf{R}}}{\rho^{Y}\mathsf{R}}(\widehat{X})\right\|_{L^{2}}^{2}}_{\eqqcolon(\mathsf{I})}+2\,\underbrace{\left(\left\|\nabla\log\frac{\rho^{Y}\mathsf{R}}{\pi^{X}}(\widehat{X})\right\|_{L^{2}}^{2}-\left\|\nabla\log\frac{\rho^{Y}\mathsf{R}}{\pi^{X}}(X)\right\|_{L^{2}}^{2}\right)}_{\eqqcolon(\mathsf{II})}\,.$
+We analyze the terms above.
+1.
+Last two terms.
+Starting with the last two terms, we consider
+$\displaystyle(\mathsf{II})=\mathbb{E}\Bigg[\underbrace{\left\|\nabla\log\frac{\rho^{Y}\mathsf{R}}{\pi^{X}}(\widehat{X})\right\|^{2}-\mathbb{E}\left[\left\|\nabla\log\frac{\rho^{Y}\mathsf{R}}{\pi^{X}}(X)\right\|^{2}\right]}_{\eqqcolon\zeta(\widehat{X})}\Bigg]=\mathbb{E}\left[\zeta(\widehat{X})\right]\,.$
+By Donsker–Varadhan, for any  $\lambda&gt;0$ ,
+$\displaystyle\mathbb{E}\left[\zeta(\widehat{X})\right]$
+$\displaystyle\leq\frac{1}{\lambda}\,\bigl\{\mathsf{KL}(\rho^{Y}\widehat{\mathsf{R}}\,\|\,\rho^{Y}\mathsf{R})+\log\mathbb{E}\left[\exp(\lambda\zeta(X))\right]\bigr\}\,.$
+By Lemma 5,
+$\|\nabla\log(\rho^{Y}\mathsf{R}/\pi^{X})\|$  is  $\sigma$ -sub-Gaussian with respect to  $\rho^{Y}\mathsf{R}$ , where  $\sigma\lesssim\left(L+\frac{1}{h}\right)\,d+L\log(1+\chi^{2}(\rho^{Y}\,\|\,\pi^{Y}))\,.$
+Since  $\zeta(X)$  is centered, standard results on sub-Gaussianity show that
+$\displaystyle\log\mathbb{E}\left[\exp(\lambda\zeta(X))\right]$
+$\displaystyle\lesssim\lambda^{2}\sigma^{4}\qquad\text{for all}~0\leq\lambda\lesssim\frac{1}{\sigma^{2}}\,.$
+Plugging this in above and choosing the optimal  $\lambda=\sigma^{-2}\sqrt{\mathsf{KL}(\rho^{Y}\widehat{\mathsf{R}}\,\|\,\rho^{Y}\mathsf{R})}$  (which is a valid choice  $\lambda\lesssim\sigma^{-2}$  provided that  $\varepsilon_{\mathsf{KL}}\ll 1$ ) yields:
+$\displaystyle\mathbb{E}\left[\zeta(\widehat{X})\right]$
+$\displaystyle\lesssim\frac{\mathsf{KL}(\rho^{Y}\widehat{\mathsf{R}}\,\|\,\rho^{Y}\mathsf{R})}{\lambda}+\lambda\sigma^{4}\asymp\sigma^{2}\sqrt{\mathsf{KL}(\rho^{Y}\widehat{\mathsf{R}}\,\|\,\rho^{Y}\mathsf{R})}\leq\sigma^{2}\varepsilon_{\mathsf{KL}}\,.$
+2.
+First term.
+The first term above is  $(\mathsf{I})=\mathsf{FI}(\rho^{Y}\widehat{\mathsf{R}}\,\|\,\rho^{Y}\mathsf{R})$ .
+Note that since
+$\displaystyle\rho^{Y}\mathsf{R}(x)$
+$\displaystyle=\int\mathsf{R}_{y}(x)\,\rho^{Y}(\mathrm{d}y)\,,$
+we have
+$\displaystyle\nabla\log\rho^{Y}\mathsf{R}(x)$
+$\displaystyle=\int\nabla\log\mathsf{R}_{y}(x)\,\frac{\mathsf{R}_{y}(x)\,\rho^{Y}(y)}{\int\mathsf{R}_{y^{\prime}}(x)\,\rho^{Y}(\mathrm{d}y^{\prime})}\,\mathrm{d}y\,,$
+and similarly for  $\nabla\log\rho^{Y}\widehat{\mathsf{R}}(x)$ .
+Therefore,
+$\displaystyle\left\|\nabla\log\frac{\rho^{Y}\widehat{\mathsf{R}}}{\rho^{Y}\mathsf{R}}\right\|_{L^{2}(\rho^{Y}\widehat{\mathsf{R}})}^{2}\leq 2\iint\left\|\nabla\log\frac{\widehat{\mathsf{R}}_{y}}{\mathsf{R}_{y}}(x)\right\|^{2}\,\frac{\widehat{\mathsf{R}}_{y}(x)\,\rho^{Y}(y)}{\int\widehat{\mathsf{R}}_{y^{\prime}}(x)\,\rho^{Y}(\mathrm{d}y^{\prime})}\,\mathrm{d}y\,\rho^{Y}\widehat{\mathsf{R}}(\mathrm{d}x)$
+$\displaystyle\qquad{}+2\int\left\|\int\nabla\log\mathsf{R}_{y}(x)\,\left(\frac{\widehat{\mathsf{R}}_{y}(x)\,\rho^{Y}(y)}{\int\widehat{\mathsf{R}}_{y^{\prime}}(x)\,\rho^{Y}(\mathrm{d}y^{\prime})}-\frac{\mathsf{R}_{y}(x)\,\rho^{Y}(y)}{\int\mathsf{R}_{y^{\prime}}(x)\,\rho^{Y}(\mathrm{d}y^{\prime})}\right)\,\mathrm{d}y\right\|^{2}\,\rho^{Y}\widehat{\mathsf{R}}(\mathrm{d}x)\,.$
+The first sub-term above is
+$\displaystyle 2\iint\left\|\nabla\log\frac{\widehat{\mathsf{R}}_{y}}{\mathsf{R}_{y}}(x)\right\|^{2}\,\widehat{\mathsf{R}}_{y}(\mathrm{d}x)\,\rho^{Y}(\mathrm{d}y)=2\int\mathsf{FI}(\widehat{\mathsf{R}}_{y}\,\|\,\mathsf{R}_{y})\,\rho^{Y}(\mathrm{d}y)$
+so it is controlled provided our implementation satisfies  $\sup_{y\in\mathbb{R}^{d}}\mathsf{FI}(\widehat{\mathsf{R}}_{y}\,\|\,\mathsf{R}_{y})\leq\varepsilon_{\mathsf{FI}}^{2}$ .
+The second sub-term above is
+$\displaystyle\int\left\|\int\nabla\log\mathsf{R}_{y}(x)\,\left(\frac{\widehat{\mathsf{R}}_{y}(x)\,\rho^{Y}(y)}{\int\widehat{\mathsf{R}}_{y^{\prime}}(x)\,\rho^{Y}(\mathrm{d}y^{\prime})}-\frac{\mathsf{R}_{y}(x)\,\rho^{Y}(y)}{\int\mathsf{R}_{y^{\prime}}(x)\,\rho^{Y}(\mathrm{d}y^{\prime})}\right)\,\mathrm{d}y\right\|^{2}\,\rho^{Y}\widehat{\mathsf{R}}(\mathrm{d}x)\,.$
+Let  $\widehat{\rho}^{Y\mid X=x}$ ,  $\rho^{Y\mid X=x}$  be the two probability measures appearing in the inner integral above.
+Also, we decompose the score as
+$\displaystyle S_{1}(x,y)=\nabla\log\mathsf{R}_{y}(x)\mathbbm{1}_{\|\nabla\log\mathsf{R}_{y}(x)\|\leq B}\,,\qquad S_{2}(x,y)=\nabla\log\mathsf{R}_{y}(x)\mathbbm{1}_{\|\nabla\log\mathsf{R}_{y}(x)\|&gt;B}$
+for some threshold  $B$  that we will choose below.
+We handle these two parts separately.
+(a)
+First, for  $S_{1}$ :
+$\displaystyle\int\left\|\int S_{1}(x,y)\,\widehat{\rho}^{Y\mid X=x}(\mathrm{d}y)-\int S_{1}(x,y)\,\rho^{Y\mid X=x}(\mathrm{d}y)\right\|^{2}\,\rho^{Y}\widehat{\mathsf{R}}(\mathrm{d}x)$
+$\displaystyle\qquad\lesssim B^{2}\int\TV(\widehat{\rho}^{Y\mid X=x},\rho^{Y\mid X=x})^{2}\,\rho^{Y}\widehat{\mathsf{R}}(\mathrm{d}x)$
+$\displaystyle\qquad\lesssim B^{2}\int\mathsf{KL}(\widehat{\rho}^{Y\mid X=x}\,\|\,\rho^{Y\mid X=x})\,\rho^{Y}\widehat{\mathsf{R}}(\mathrm{d}x)$
+$\displaystyle\qquad\leq B^{2}\varepsilon_{\mathsf{KL}}^{2}\,,$
+by Pinsker’s inequality and the KL chain rule.
+(b)
+Now for the unbounded part  $S_{2}$ : by Donsker–Varadhan, for any  $\lambda&gt;0$ ,
+$\displaystyle\int\left\|\int\left(S_{2}(x,y)-\int S_{2}(x,y^{\prime})\,\rho^{Y\mid X=x}(\mathrm{d}y^{\prime})\right)\,\widehat{\rho}^{Y\mid X=x}(\mathrm{d}y)\right\|^{2}\,\rho^{Y}\widehat{\mathsf{R}}(\mathrm{d}x)$
+$\displaystyle\qquad\leq\iint\left\|S_{2}(x,y)-\int S_{2}(x,y^{\prime})\,\rho^{Y\mid X=x}(\mathrm{d}y^{\prime})\right\|^{2}\,\widehat{\rho}^{Y\mid X=x}(\mathrm{d}y)\,\rho^{Y}\widehat{\mathsf{R}}(\mathrm{d}x)$
+$\displaystyle\qquad\leq\frac{1}{\lambda}\,\mathsf{KL}(\widehat{\rho}^{X,Y}\,\|\,\rho^{X,Y})+\frac{1}{\lambda}\log\mathbb{E}_{\rho^{X,Y}}\left[\exp(\lambda\,\|S_{2}(X,Y)-\mathbb{E}[S_{2}(X,Y)\mid X]\|^{2})\right]\,.$
+Here,  $\rho^{X,Y}$  is the joint distribution with  $Y$ -marginal  $\rho^{Y}$  and conditional  $\mathsf{R}$ ; and similarly  $\widehat{\rho}^{X,Y}$  is the joint distribution with  $Y$ -marginal  $\rho^{Y}$  and conditional  $\widehat{\mathsf{R}}$ .
+By the KL chain rule, one sees that  $\mathsf{KL}(\widehat{\rho}^{X,Y}\,\|\,\rho^{X,Y})\leq\varepsilon_{\mathsf{KL}}^{2}$ .
+We want to check that  $S_{2}(X,Y)$  is sub-Gaussian.
+By Jensen’s inequality, if  $Y^{\prime}\sim\rho^{Y\mid X}$  is conditionally independent of  $Y$  given  $X$ ,
+$\displaystyle\mathbb{E}\left[\exp(\lambda\,\|S_{2}(X,Y)-\mathbb{E}[S_{2}(X,Y)\mid X]\|^{2})\right]$
+$\displaystyle\leq\mathbb{E}\left[\exp(\lambda\,\|S_{2}(X,Y)-S_{2}(X,Y^{\prime})\|^{2})\right]$
+$\displaystyle\leq\mathbb{E}\left[\exp(2\lambda\,(\|S_{2}(X,Y)\|^{2}+\|S_{2}(X,Y^{\prime})\|^{2}))\right]$
+$\displaystyle\leq\mathbb{E}\left[\exp(4\lambda\,\|S_{2}(X,Y)\|^{2})\right]\,,$
+where the last line is by Cauchy–Schwarz.
+Note that
+$\displaystyle\mathbb{E}\left[\exp(4\lambda\,\|S_{2}(X,Y)\|^{2})\right]$
+$\displaystyle\leq 1+\mathbb{E}\left[\exp(4\lambda\,\|\nabla\log\mathsf{R}_{Y}(X)\|^{2})\,\mathbbm{1}_{\|\nabla\log\mathsf{R}_{Y}(X)\|\geq B}\right]$
+$\displaystyle\leq 1+\sqrt{\mathbb{E}\left[\exp(8\lambda\,\|\nabla\log\mathsf{R}_{Y}(X)\|^{2})\,\mathbb{P}(\|\nabla\log\mathsf{R}_{Y}(X)\|\geq B)\right]}\,.$
+On the other hand, by Lemma 5, the expectation of the exponential is a constant provided  $\lambda^{-1}\gg(L+1/h)\,d$ .
+If we choose  $B\asymp\sqrt{(L+1/h)\,(d+\log(1/\delta))}$ , then the probability term is  $O(\delta)$ .
+Hence, our overall bound for  $(\mathsf{I})$  is
+$\displaystyle\varepsilon_{\mathsf{FI}}^{2}+(L+1/h)\,(d+\log(1/\delta))\,\varepsilon_{\mathsf{KL}}^{2}+(L+1/h)\,d\,(\varepsilon_{\mathsf{KL}}^{2}+\sqrt{\delta})$
+up to a universal constant.
+Summary.
+Putting together our bounds, we have shown that for any  $\delta&gt;0$ ,
+$\displaystyle\mathsf{FI}(\rho^{Y}\widehat{\mathsf{R}}\,\|\,\pi^{X})-2\,\mathsf{FI}(\rho^{Y}\mathsf{R}\,\|\,\pi^{X})$
+$\displaystyle\qquad\lesssim(L+1/h)\,(d+\log(1+\bar{\chi}^{2}))\,\varepsilon_{\mathsf{KL}}+\varepsilon_{\mathsf{FI}}^{2}$
+$\displaystyle\qquad\qquad{}+(L+1/h)\,(d+\log(1/\delta))\,\varepsilon_{\mathsf{KL}}^{2}+(L+1/h)\,d\sqrt{\delta}\,.$
+Choosing  $\delta=\varepsilon_{\mathsf{KL}}^{4}$  leads to the final result.
+∎
+D.4 Chi-squared divergence along the iterates
+We also need the following lemma, which controls the chi-squared divergence along the iterates.
+Lemma 7.
+Assume we have an approximate RGO implementation  $\widehat{\mathsf{R}}$  which satisfies
+$\displaystyle\sup_{y\in\mathbb{R}^{d}}\chi^{2}(\widehat{\mathsf{R}}_{y}\,\|\,\mathsf{R}_{y})\leq\varepsilon_{\chi^{2}}^{2}\,.$
+Consider the proximal sampler algorithm with approximate RGO implementation  $\widehat{\mathsf{R}}$ .
+Namely, from  $\rho_{0}^{X}$ , define for all  $k\geq 0$ :  $\rho_{k}^{Y}=\rho_{k}^{X}\mathsf{Q}^{h}$  and  $\rho_{k+1}^{X}=\rho_{k}^{Y}\widehat{\mathsf{R}}$ .
+Then for all  $k\geq 0$ ,
+$\displaystyle\max\{\mathcal{R}_{2}(\rho_{k}^{X}\,\|\,\pi^{X}),\,\mathcal{R}_{2}(\rho_{k}^{Y}\,\|\,\pi^{Y})\}\leq\mathcal{R}_{2}(\rho_{0}^{X}\,\|\,\pi^{X})+k\log(1+\varepsilon_{\chi^{2}}^{2})\,.$
+Equivalently,
+$\displaystyle\max\{\chi^{2}(\rho_{k}^{X}\,\|\,\pi^{X}),\,\chi^{2}(\rho_{k}^{Y}\,\|\,\pi^{Y})\}\leq(1+\varepsilon_{\chi^{2}}^{2})^{k}\,\chi^{2}(\rho_{0}^{X}\,\|\,\pi^{X})+(1+\varepsilon_{\chi^{2}}^{2})^{k}-1\,.$
+Proof.
+We follow the error analysis in the proof of [1, Theorem 5.4].
+First, along the forward step of the proximal sampler, by the data processing inequality,
+$\displaystyle\mathcal{R}_{2}(\rho_{k}^{Y}\,\|\,\pi^{Y})=\mathcal{R}_{2}(\rho_{k}^{X}\mathsf{Q}^{h}\,\|\,\pi^{X}\mathsf{Q}^{h})$
+$\displaystyle\leq\mathcal{R}_{2}(\rho_{k}^{X}\,\|\,\pi^{X})\,.$
+Then, along the backward step with the approximate RGO, the error analysis of the proximal sampler from [1, Theorem 5.4] yields
+$\displaystyle\mathcal{R}_{2}(\rho_{k+1}^{X}\,\|\,\pi^{X})=\mathcal{R}_{2}(\rho_{k}^{Y}\widehat{\mathsf{R}}\,\|\,\pi^{Y}\mathsf{R})$
+$\displaystyle\leq\mathcal{R}_{2}(\rho_{k}^{Y}\,\|\,\pi^{Y})+\log(1+\varepsilon_{\chi^{2}}^{2})\,.$
+Iterating these inequalities yields the result.
+∎
+D.5 Lemma on Fisher information bound from chi-square for approximate RGO
+To prove Corollary 3, we establish the following lemma.
+Lemma 8.
+Assume  $\pi^{X}\propto\exp(-f)$  is  $L$ -log-smooth for some  $L\in(0,\infty)$ .
+Assume  $h\in(0,\frac{1}{2L}]$ ,
+and let  $\mathsf{R}\equiv\mathsf{R}^{h}$  denote the RGO channel with step size  $h$ .
+Suppose there is an approximate RGO implementation  $\widetilde{\mathsf{R}}$  with the guarantees that
+$\displaystyle\sup_{y\in\mathbb{R}^{d}}\chi^{2}(\widetilde{\mathsf{R}}_{y}\,\|\,\mathsf{R}_{y})\leq\varepsilon_{\chi^{2}}^{2}\leq 1\,.$
+Then there is an approximate implementation  $\widehat{\mathsf{R}}$  which satisfies
+$\displaystyle\frac{1}{h}\sup_{y\in\mathbb{R}^{d}}\mathsf{KL}(\widehat{\mathsf{R}}_{y}\,\|\,\mathsf{R}_{y})\leq\sup_{y\in\mathbb{R}^{d}}\mathsf{FI}(\widehat{\mathsf{R}}_{y}\,\|\,\mathsf{R}_{y})$
+$\displaystyle\lesssim\frac{d}{h}\sqrt{\varepsilon_{\chi^{2}}\,\left(1+\frac{\log(1/\varepsilon_{\chi^{2}})}{d}\right)}\,.$
+Furthermore, if the approximate implementation  $\widetilde{\mathsf{R}}$  satisfies
+$\displaystyle\sup_{y\in\mathbb{R}^{d}}\mathcal{R}_{3}(\widetilde{\mathsf{R}}_{y}\,\|\,\mathsf{R}_{y})\leq\varepsilon_{\mathcal{R}_{3}}^{2}\lesssim 1\qquad\text{and}\qquad\varepsilon_{\chi^{2}}\ll 1/d^{2}\,,$
+then we can also ensure that  $\widehat{\mathsf{R}}$  satisfies
+$\displaystyle\sup_{y\in\mathbb{R}^{d}}\chi^{2}(\widehat{\mathsf{R}}_{y}\,\|\,\mathsf{R}_{y})\lesssim\varepsilon_{\mathcal{R}_{3}}^{2}+d\sqrt{\varepsilon_{\chi^{2}}\,\left(1+\frac{\log(1/\varepsilon_{\chi^{2}})}{d}\right)}\,.$
+Proof.
+Recall  $\mathsf{Q}^{t}$  denotes the Gaussian channel with variance  $t\geq 0$ , so  $\rho\mathsf{Q}^{t}=\rho\ast\mathcal{N}(0,tI)$ .
+By our assumption on  $h$ , we know that  $\mathsf{R}_{y}$  is  $3/(2h)$ -log-smooth.
+By [11, Lemma 12], if we take  $\widehat{\mathsf{R}}_{y}=\widetilde{\mathsf{R}}_{y}\mathsf{Q}^{t}$  for some  $t\ll h$ , then
+$\displaystyle\mathsf{FI}(\widehat{\mathsf{R}}_{y}\,\|\,\mathsf{R}_{y})\lesssim\frac{\varepsilon_{\chi^{2}}\,(d+\log(1/\varepsilon_{\chi^{2}}))}{t}+\frac{dt}{h^{2}}\,.$
+We choose  $t\asymp h\sqrt{\varepsilon_{\chi^{2}}\,(1+\frac{1}{d}\log(1/\varepsilon_{\chi^{2}}))}$  to minimize this bound, resulting in the claimed bound in Fisher information.
+Furthermore, by the assumption on  $h$ , we also know that  $\mathsf{R}_{y}$  is  $1/(2h)$ -strongly log-concave, so it satisfies the log-Sobolev inequality with constant  $2h$ , which implies  $\frac{1}{h}\mathsf{KL}(\widehat{\mathsf{R}}_{y}\,\|\,\mathsf{R}_{y})\leq\mathsf{FI}(\widehat{\mathsf{R}}_{y}\,\|\,\mathsf{R}_{y})$ .
+Therefore, the claimed KL bound follows from the Fisher information bound above.
+For the final inequality, since  $h\leq\frac{1}{2L}$  and  $\mathsf{R}_{y}$  is  $3/(2h)$ -log-smooth, by Lemma 6, for  $t&lt;\frac{1}{4L}$  (which is satisfied by our choice  $t\asymp h\sqrt{\varepsilon_{\chi^{2}}\,(1+\frac{1}{d}\log(1/\varepsilon_{\chi^{2}}))}$ ),
+$\displaystyle\mathcal{R}_{4}(\mathsf{R}_{y}\mathsf{Q}^{t}\,\|\,\mathsf{R}_{y})\,\leq\,\frac{d}{6}\log\frac{1}{1-\frac{2t}{h}}\,\lesssim\,\frac{dt}{h}\,\lesssim\,d\sqrt{\varepsilon_{\chi^{2}}\,\left(1+\frac{\log(1/\varepsilon_{\chi^{2}})}{d}\right)}\,.$
+Furthermore, by the data processing inequality,
+$\displaystyle\mathcal{R}_{3}(\widehat{\mathsf{R}}_{y}\,\|\,\mathsf{R}_{y}\mathsf{Q}^{t})=\mathcal{R}_{3}(\widetilde{\mathsf{R}}_{y}\mathsf{Q}^{t}\,\|\,\mathsf{R}_{y}\mathsf{Q}^{t})\leq\mathcal{R}_{3}(\widetilde{\mathsf{R}}_{y}\,\|\,\mathsf{R}_{y})\leq\varepsilon_{\mathcal{R}_{3}}^{2}\,.$
+Then, by the Rényi triangle inequality:
+$\displaystyle\mathcal{R}_{2}(\widehat{\mathsf{R}}_{y}\,\|\,\mathsf{R}_{y})$
+$\displaystyle\leq\frac{4}{3}\,\mathcal{R}_{3}(\widehat{\mathsf{R}}_{y}\,\|\,\mathsf{R}_{y}\mathsf{Q}^{t})+\mathcal{R}_{4}(\mathsf{R}_{y}\mathsf{Q}^{t}\,\|\,\mathsf{R}_{y})$
+$\displaystyle\lesssim\varepsilon_{\mathcal{R}_{3}}^{2}+d\sqrt{\varepsilon_{\chi^{2}}\,\left(1+\frac{\log(1/\varepsilon_{\chi^{2}})}{d}\right)}\,.$
+Since we assume  $\varepsilon_{\chi^{2}}\ll 1/d^{2}$ , the bound above implies  $\mathcal{R}_{2}(\widehat{\mathsf{R}}_{y}\,\|\,\mathsf{R}_{y})\lesssim 1$ , and thus we have  $\chi^{2}(\widehat{\mathsf{R}}_{y}\,\|\,\mathsf{R}_{y})=\exp(\mathcal{R}_{2}(\widehat{\mathsf{R}}_{y}\,\|\,\mathsf{R}_{y}))-1\lesssim\mathcal{R}_{2}(\widehat{\mathsf{R}}_{y}\,\|\,\mathsf{R}_{y})$ .
+This finishes the proof.
+∎
+D.6 Proof of Corollary 3
+Corollary 3 follows by combining Lemma 4 and Lemma 8.
+Proof of Corollary 3.
+We use the same construction of  $\widehat{\mathsf{R}}$  as in Lemma 8, which gives the claim for  $\chi^{2}(\widehat{\mathsf{R}}_{y}\,\|\,\mathsf{R}_{y})$ .
+Since we assume  $\varepsilon_{\chi^{2}}\ll 1/d^{2}$ , Lemma 8 gives the following guarantees for the approximate RGO channel  $\widehat{\mathsf{R}}$ :
+$\displaystyle\varepsilon_{\mathsf{KL}}^{2}$
+$\displaystyle=\sqrt{d\varepsilon_{\chi^{2}}\,\left(d+\log(1/\varepsilon_{\chi^{2}})\right)}\ll 1\,,$
+$\displaystyle\varepsilon_{\mathsf{FI}}^{2}$
+$\displaystyle\lesssim L\sqrt{d\varepsilon_{\chi^{2}}\,\left(d+\log(1/\varepsilon_{\chi^{2}})\right)}\,.$
+In particular, note that  $\log(1/\varepsilon_{\mathsf{KL}})\lesssim\log(1/\varepsilon_{\chi^{2}})$ .
+Plugging in to the conclusion of Lemma 4, we obtain for any probability distribution  $\rho^{Y}$ :
+$\displaystyle\mathsf{FI}$
+$\displaystyle(\rho^{Y}\widehat{\mathsf{R}}\,\|\,\pi^{X})-2\,\mathsf{FI}(\rho^{Y}\mathsf{R}\,\|\,\pi^{X})$
+$\displaystyle\lesssim\left(L+\frac{1}{h}\right)\left(d+\log(1/\varepsilon_{\mathsf{KL}})+\mathcal{R}_{2}(\rho^{Y}\,\|\,\pi^{Y})\right)\,\varepsilon_{\mathsf{KL}}+\varepsilon_{\mathsf{FI}}^{2}$
+$\displaystyle\lesssim L\left(d+\log(1/\varepsilon_{\chi^{2}})+\mathcal{R}_{2}(\rho^{Y}\,\|\,\pi^{Y})\right)\,\left\{d(d+\log(1/\varepsilon_{\chi^{2}}))\,\varepsilon_{\chi^{2}}\right\}^{1/4}+L\sqrt{d\varepsilon_{\chi^{2}}\,\left(d+\log(1/\varepsilon_{\chi^{2}})\right)}$
+$\displaystyle\lesssim L\left(d+\log(1/\varepsilon_{\chi^{2}})+\mathcal{R}_{2}(\rho^{Y}\,\|\,\pi^{Y})\right)\,\left\{d(d+\log(1/\varepsilon_{\chi^{2}}))\,\varepsilon_{\chi^{2}}\right\}^{1/4}\,,$
+as desired.
+∎
+D.7 Proof of Theorem 2
+Proof of Theorem 2.
+Set  $h=\frac{1}{2L}$ , and let  $\mathsf{R}\equiv\mathsf{R}^{h}$  be the exact RGO channel.
+Suppose we have an approximate RGO implementation  $\widehat{\mathsf{R}}\equiv\widehat{\mathsf{R}}^{h}$ , that we will construct below.
+From  $\rho_{0}^{X}$ , we define  $\rho_{k}^{Y}=\rho_{k}^{X}\mathsf{Q}^{h}$  and  $\rho_{k+1}^{X}=\rho_{k}^{Y}\widehat{\mathsf{R}}^{h}$ , for  $0\leq k\leq K$  for some  $K$  that we will choose below.
+Suppose that  $\widehat{\mathsf{R}}$  has accuracies
+$\displaystyle\varepsilon_{\chi^{2}}^{2}$
+$\displaystyle\coloneqq\sup_{y\in\mathbb{R}^{d}}\chi^{2}(\widehat{\mathsf{R}}_{y}\,\|\,\mathsf{R}_{y})\,,$
+(19a)
+$\displaystyle\bar{\varepsilon}_{\mathsf{KL}}^{2}$
+$\displaystyle\coloneqq\max_{0\leq k\leq K}\bigl\{\mathsf{KL}(\rho^{Y}\widehat{\mathsf{R}}\,\|\,\pi^{X})-\mathsf{KL}(\rho^{Y}\mathsf{R}\,\|\,\pi^{X})\bigr\}_{+}\,,$
+(19b)
+$\displaystyle\bar{\varepsilon}_{\mathsf{FI}}^{2}$
+$\displaystyle\coloneqq\max_{0\leq k\leq K}\bigl\{\mathsf{FI}(\rho_{k}^{Y}\widehat{\mathsf{R}}\,\|\,\pi^{X})-2\,\mathsf{FI}(\rho_{k}^{Y}\mathsf{R}\,\|\,\pi^{X})\bigr\}_{+}\,.$
+(19c)
+By the bound from Lemma 2, with  $h=\frac{1}{2L}$ ,  $\rho^{X}\leftarrow\rho_{k}^{X}$ , and  $\rho_{+}^{X}\leftarrow\rho_{k+1}^{X}$ , we have for  $0\leq k\leq K-1$ :
+$\displaystyle\frac{3}{16L}\,\mathsf{FI}(\rho_{k+1}^{X}\,\|\,\pi^{X})\leq\mathsf{KL}(\rho_{k}^{X}\,\|\,\pi^{X})-\mathsf{KL}(\rho_{k+1}^{X}\,\|\,\pi^{X})+\bar{\varepsilon}_{\mathsf{KL}}^{2}+\frac{3}{8L}\,\bar{\varepsilon}_{\mathsf{FI}}^{2}\,.$
+Let  $\bar{\rho}_{K}^{X}\coloneqq\frac{1}{K}\sum_{k=1}^{K}\rho_{k}^{X}$ .
+Summing the above over  $0\leq k\leq K-1$  and using the convexity of the Fisher information,
+$\displaystyle\mathsf{FI}(\bar{\rho}_{K}^{X}\,\|\,\pi^{X})$
+$\displaystyle\leq\frac{1}{K}\sum_{k=1}^{K}\mathsf{FI}(\rho_{k}^{X}\,\|\,\pi^{X})\lesssim\frac{L\,\mathsf{KL}(\rho_{0}^{X}\,\|\,\pi^{X})}{K}+L\bar{\varepsilon}_{\mathsf{KL}}^{2}+\bar{\varepsilon}_{\mathsf{FI}}^{2}\,.$
+(20)
+Denote by  $\Delta_{0}\coloneqq\mathcal{R}_{2}(\rho_{0}^{X}\,\|\,\pi^{X})=\log(1+\chi^{2}(\rho_{0}^{X}\,\|\,\pi^{X}))$  and  $\mathsf{KL}_{0}\coloneqq\mathsf{KL}(\rho_{0}^{X}\,\|\,\pi^{X})\leq\Delta_{0}$ .
+First, we choose  $K\asymp L\,\mathsf{KL}_{0}/\varepsilon^{2}$  to make the first term in (20) at most  $\varepsilon^{2}$ .
+From Lemma 7,
+$\displaystyle\max_{0\leq k\leq K}\mathcal{R}_{2}(\rho_{k}^{Y}\,\|\,\pi^{Y})$
+$\displaystyle\leq\Delta_{0}+K\log(1+\varepsilon_{\chi^{2}}^{2})\leq\Delta_{0}\,\left(1+\frac{L\log(1+\varepsilon_{\chi^{2}}^{2})}{\varepsilon^{2}}\right)\,.$
+(21)
+By Lemma 3 (see (12)),
+$\displaystyle\bar{\varepsilon}_{\mathsf{KL}}^{2}$
+$\displaystyle\leq\varepsilon_{\chi^{2}}^{2}+\left(2+\max_{0\leq k\leq K}\mathcal{R}_{2}(\rho_{k}^{Y}\,\|\,\pi^{Y})\right)\,\varepsilon_{\chi^{2}}\,.$
+Now, suppose we start with an RGO implementation  $\widetilde{\mathsf{R}}$  (from Assumption 1) with the guarantee
+$\displaystyle\sup_{y\in\mathbb{R}^{d}}\mathcal{R}_{3}(\widetilde{\mathsf{R}}_{y}\,\|\,\mathsf{R}_{y})\leq\delta^{2}\ll 1\,.$
+This implies  $\sup_{y\in\mathbb{R}^{d}}\mathcal{R}_{2}(\widetilde{\mathsf{R}}_{y}\,\|\,\mathsf{R}_{y})\leq\delta^{2}\ll 1$ , so
+$\sup_{y\in\mathbb{R}^{d}}\chi^{2}(\widetilde{\mathsf{R}}_{y}\,\|\,\mathsf{R}_{y})\leq\exp(\delta^{2})-1\lesssim\delta^{2}$ .
+We apply Corollary 3 to obtain an RGO implementation  $\widehat{\mathsf{R}}$  with guarantees (as defined in (19))
+$\displaystyle\varepsilon_{\chi^{2}}^{2}$
+$\displaystyle\lesssim\delta^{2}+d\sqrt{\delta\,\left(1+\frac{\log(1/\delta)}{d}\right)}\,,$
+$\displaystyle\bar{\varepsilon}_{\mathsf{FI}}^{2}$
+$\displaystyle\lesssim L\,\left(d+\log(1/\delta)+\max_{0\leq k\leq K}\mathcal{R}_{2}(\rho_{k}^{Y}\,\|\,\pi^{Y})\right)\,\{d(d+\log(1/\delta))\,\delta\}^{1/4}\,.$
+We simplify these expressions as follows.
+First, since  $\delta\ll 1$ ,
+$\displaystyle\varepsilon^{2}_{\chi^{2}}\lesssim d\sqrt{\delta\log(1/\delta)}\lesssim d\,.$
+Thus, by (21),
+$\displaystyle\max_{0\leq k\leq K}\mathcal{R}_{2}(\rho_{k}^{Y}\,\|\,\pi^{Y})$
+$\displaystyle\lesssim\Delta_{0}\,\left(1+\frac{L\log d}{\varepsilon^{2}}\right)\,.$
+Substituting this into (20),
+$\displaystyle\mathsf{FI}(\bar{\rho}_{K}^{X}\,\|\,\pi^{X})$
+$\displaystyle\lesssim\varepsilon^{2}+L\,\left(d\sqrt{\delta\log(1/\delta)}+\left(1+\Delta_{0}\,\left(1+\frac{L\log d}{\varepsilon^{2}}\right)\right)\,\sqrt{d\sqrt{\delta\log(1/\delta)}}\right)$
+$\displaystyle\qquad{}+L\,\left(d+\log(1/\delta)+\Delta_{0}\,\left(1+\frac{L\log d}{\varepsilon^{2}}\right)\right)\,\{(d+\log(1/\delta))\,\delta\}^{1/4}\,.$
+Finally, we can choose  $\delta^{-1}=\poly(\Delta_{0},L/\varepsilon^{2},d)$  to make the error terms at most  $\varepsilon^{2}$ .
+From the proof of Lemma 8, we see the smoothing variance  $t$  that we need to use to construct the RGO implementation  $\widehat{\mathsf{R}}$  is  $t\asymp h\sqrt{\varepsilon_{\chi^{2}}}\asymp(\delta^{2}+d\sqrt{\delta})^{1/4}/L$ .
+∎
+D.8 Proof of Theorem 3
+Proof of Theorem 3.
+The new algorithm  $\mathtt{Alg}^{\prime}$  uses the initialization  $\rho_{0}=\mathcal{N}(0,L^{-1}I)$ , which is known to satisfy  $\mathsf{KL}(\rho_{0}\,\|\,\pi)\leq\mathsf{KL}_{0}\coloneqq\frac{d}{2}\log\kappa$  and  $\mathcal{R}_{2}(\rho_{0}\,\|\,\pi)\leq\Delta_{0}\coloneqq\frac{d}{2}\log\kappa$ .
+Then, for  $k=0,1,2,\dotsc$ ,  $\mathtt{Alg}^{\prime}$  generates  $\rho_{k+1}$  by running  $\mathtt{Alg}$  from  $\rho_{k}$  with accuracy parameter  $\varepsilon_{k}^{2}=\alpha\mathsf{KL}_{0}/2^{k}$ .
+We prove via induction that  $\mathsf{KL}(\rho_{k}\,\|\,\pi)\leq\mathsf{KL}_{0}/2^{k}$ , where the base case follows from the preceding discussion.
+Then, by the log-Sobolev inequality,
+$\displaystyle\mathsf{KL}(\rho_{k+1}\,\|\,\pi)$
+$\displaystyle\leq\frac{1}{2\alpha}\,\mathsf{FI}(\rho_{k+1}\,\|\,\pi)\leq\frac{\varepsilon_{k}^{2}}{2\alpha}\leq\frac{\mathsf{KL}_{0}}{2^{k+1}}\,,$
+which completes the inductive step.
+We conclude the proof by noting that the  $k$ -th iteration uses
+$\displaystyle\frac{L\,\mathsf{KL}_{0}/2^{k}}{\varepsilon_{k}^{2}}\,\phi(d)\polylog\Bigl(\Delta_{0},\frac{L}{\varepsilon_{k}^{2}}\Bigr)$
+$\displaystyle=\kappa\,\phi(d)\polylog\Bigl(\Delta_{0},\,\frac{\kappa\,2^{k}}{\mathsf{KL}_{0}}\Bigr)=\kappa\,\phi(d)\polylog(d,\kappa)\poly(k)$
+queries, and we need at most  $K=O(\log\frac{\mathsf{KL}_{0}}{\varepsilon^{2}})$  rounds.
+Thus, the total number of queries is at most
+$\displaystyle\sum_{k=0}^{K-1}\kappa\,\phi(d)\polylog(d,\kappa)\poly(k)$
+$\displaystyle=\kappa\,\phi(d)\polylog(d,\kappa)\poly(K)=\kappa\,\phi(d)\polylog\Bigl(d,\kappa,\frac{1}{\varepsilon}\Bigr)\,.$
+This concludes the proof.
+∎
+References
+[AC24]
+J. M. Altschuler and S. Chewi (2024)
+Faster high-accuracy log-concave sampling via algorithmic warm starts.
+J. ACM 71 (3), pp. Art. 24, 55.
+Cited by: §D.4,
+§D.4,
+§1.2,
+§1.2,
+§3.3,
+§4.1,
+§4.2.
+[BBG25]
+K. Balasubramanian, S. Banerjee, and P. Ghosal (2025)
+Improved finite-particle convergence rates for Stein variational gradient descent.
+In The Thirteenth International Conference on Learning Representations,
+Cited by: §1.4.
+[BCE+22]
+K. Balasubramanian, S. Chewi, M. A. Erdogdu, A. Salim, and M. S. Zhang (2022)
+Towards a theory of non-log-concave sampling: first-order stationarity guarantees for Langevin Monte Carlo.
+In Proceedings of Thirty Fifth Conference on Learning Theory,  P. Loh and M. Raginsky (Eds.),
+Proceedings of Machine Learning Research, Vol. 178, pp. 2896–2923.
+Cited by: §1.1,
+§1.1,
+§1.1,
+§1.2,
+§1.4,
+§3.3.
+[BM20]
+S. Bubeck and D. Mikulincer (2020)
+How to trap a gradient flow.
+In Proceedings of Thirty Third Conference on Learning Theory,  J. Abernethy and S. Agarwal (Eds.),
+Proceedings of Machine Learning Research, Vol. 125, pp. 940–960.
+Cited by: §1.3.
+[CDH+20]
+Y. Carmon, J. C. Duchi, O. Hinder, and A. Sidford (2020)
+Lower bounds for finding stationary points I.
+Math. Program. 184 (1-2, Ser. A), pp. 71–120.
+Cited by: §1.1,
+§1.2,
+§1.3,
+§1.3,
+§1.3.
+[CCD+26]
+F. Chen, S. Chewi, C. Daskalakis, and A. Rakhlin (2026)
+High-accuracy sampling for diffusion models and log-concave distributions.
+arXiv preprint 2602.01338.
+Cited by: §1.2,
+§1.2,
+§3.3,
+§4.1,
+Corollary 2.
+[CCS+22]
+Y. Chen, S. Chewi, A. Salim, and A. Wibisono (2022)
+Improved analysis for a proximal algorithm for sampling.
+In Conference on Learning Theory,
+Vol. 178, pp. 2984–3014.
+Cited by: item 1,
+item 2,
+item 2,
+§1.1,
+§1.2,
+§1.2,
+§3.3.
+[CWZ+23]
+X. Cheng, B. Wang, J. Zhang, and Y. Zhu (2023)
+Fast conditional mixing of MCMC algorithms for non-log-concave distributions.
+In Advances in Neural Information Processing Systems,  A. Oh, T. Naumann, A. Globerson, K. Saenko, M. Hardt, and S. Levine (Eds.),
+Vol. 36, pp. 13374–13394.
+Cited by: §1.1.
+[CBS23a]
+S. Chewi, S. Bubeck, and A. Salim (2023)
+On the complexity of finding stationary points of smooth functions in one dimension.
+In Proceedings of the 34th International Conference on Algorithmic Learning Theory,  S. Agrawal and F. Orabona (Eds.),
+Proceedings of Machine Learning Research, Vol. 201, pp. 358–374.
+Cited by: §1.3.
+[CdL+24]
+S. Chewi, J. de Dios Pont, J. Li, C. Lu, and S. Narayanan (2024)
+Query lower bounds for log-concave sampling.
+J. ACM 71 (4), pp. Art. 29, 42.
+Cited by: §4.1.
+[CGL+23b]
+S. Chewi, P. R. Gerber, H. Lee, and C. Lu (2023)
+Fisher information lower bounds for sampling.
+In Proceedings of the 34th International Conference on Algorithmic Learning Theory,  S. Agrawal and F. Orabona (Eds.),
+Proceedings of Machine Learning Research, Vol. 201, pp. 375–410.
+Cited by: §D.5,
+§1.1,
+§1.2,
+§1.3,
+§1.4,
+§4.1,
+§5.
+[CKM+25]
+S. Chewi, A. Kalavasis, A. Mehrotra, and O. Montasser (2025)
+DDPM score matching and distribution learning.
+arXiv preprint 2504.05161.
+Cited by: §A.2,
+§B.1,
+§B.1.
+[CHE26]
+S. Chewi (2026)
+Log-concave sampling.
+Forthcoming.
+Note: Available online at https://chewisinho.github.io/
+Cited by: §1.1.
+[FYC23]
+J. Fan, B. Yuan, and Y. Chen (2023)
+Improved dimension dependence of a proximal algorithm for sampling.
+In Proceedings of Thirty Sixth Conference on Learning Theory,  G. Neu and L. Rosasco (Eds.),
+Proceedings of Machine Learning Research, Vol. 195, pp. 1473–1521.
+Cited by: §1.2,
+§1.2,
+§3.3,
+§4.1.
+[GTC25]
+W. Guo, M. Tao, and Y. Chen (2025)
+Provable benefit of annealed Langevin Monte Carlo for non-log-concave sampling.
+In International Conference on Learning Representations,  Y. Yue, A. Garg, N. Peng, F. Sha, and R. Yu (Eds.),
+Vol. 2025, pp. 78814–78836.
+Cited by: §1.1.
+[HBB+26]
+Y. He, K. Balasubramanian, S. Banerjee, and P. Ghosal (2026)
+Finite-particle rates for regularized Stein variational gradient descent.
+arXiv preprint 2602.05172.
+Cited by: §1.4.
+[HBS+25]
+Y. He, K. Balasubramanian, B. K. Sriperumbudur, and J. Lu (2025)
+Regularized Stein variational gradient flow.
+Found. Comput. Math. 25 (4), pp. 1199–1257.
+Cited by: §1.4.
+[HZ25]
+Y. He and C. Zhang (2025)
+On the query complexity of sampling from non-log-concave distributions (extended abstract).
+In Proceedings of Thirty Eighth Conference on Learning Theory,  N. Haghtalab and A. Moitra (Eds.),
+Proceedings of Machine Learning Research, Vol. 291, pp. 2786–2787.
+Cited by: §1.1.
+[HZ23]
+A. Hollender and M. Zampetakis (2023)
+The computational complexity of finding stationary points in non-convex optimization.
+In Proceedings of Thirty Sixth Conference on Learning Theory,  G. Neu and L. Rosasco (Eds.),
+Proceedings of Machine Learning Research, Vol. 195, pp. 5571–5572.
+Cited by: §1.3.
+[JKO98]
+R. Jordan, D. Kinderlehrer, and F. Otto (1998)
+The variational formulation of the Fokker–Planck equation.
+SIAM J. Math. Anal. 29 (1), pp. 1–17.
+Cited by: §1.1,
+§1.1.
+[LRG18]
+H. Lee, A. Risteski, and R. Ge (2018)
+Beyond log-concavity: provable guarantees for sampling multi-modal distributions using simulated tempering Langevin Monte Carlo.
+In Advances in Neural Information Processing Systems,  S. Bengio, H. Wallach, H. Larochelle, K. Grauman, N. Cesa-Bianchi, and R. Garnett (Eds.),
+Vol. 31, pp. .
+Cited by: §1.1.
+[LST21]
+Y. T. Lee, R. Shen, and K. Tian (2021)
+Structured logconcave sampling with a restricted Gaussian oracle.
+In Conference on Learning Theory,
+Vol. 134, pp. 2993–3050.
+Cited by: §1.1,
+§2,
+§2,
+§2.
+[LIU17]
+Q. Liu (2017)
+Stein variational gradient descent as gradient flow.
+In Advances in Neural Information Processing Systems,  I. Guyon, U. V. Luxburg, S. Bengio, H. Wallach, R. Fergus, S. Vishwanathan, and R. Garnett (Eds.),
+Vol. 30, pp. .
+Cited by: §1.4.
+[NES12]
+Y. Nesterov (2012)
+How to make the gradients small.
+Optima. Mathematical Optimization Society Newsletter (88), pp. 10–11.
+Cited by: §1.1.
+[NIL26]
+J. Niles-Weed (2026)
+Reweighted information inequalities.
+arXiv preprint 2603.13135.
+Cited by: §1.1.
+[SSR22]
+A. Salim, L. Sun, and P. Richtarik (2022)
+A convergence theory for SVGD in the population limit under Talagrand’s inequality T1.
+In Proceedings of the 39th International Conference on Machine Learning,  K. Chaudhuri, S. Jegelka, L. Song, C. Szepesvari, G. Niu, and S. Sabato (Eds.),
+Proceedings of Machine Learning Research, Vol. 162, pp. 19139–19152.
+Cited by: §1.4.
+[SM23]
+J. Shi and L. Mackey (2023)
+A finite-particle convergence rate for Stein variational gradient descent.
+In Advances in Neural Information Processing Systems,  A. Oh, T. Naumann, A. Globerson, K. Saenko, M. Hardt, and S. Levine (Eds.),
+Vol. 36, pp. 26831–26844.
+Cited by: §1.4.
+[SKR23]
+L. Sun, A. Karagulyan, and P. Richtarik (2023)
+Convergence of Stein variational gradient descent under a weaker smoothness condition.
+In Proceedings of The 26th International Conference on Artificial Intelligence and Statistics,  F. Ruiz, J. Dy, and J. van de Meent (Eds.),
+Proceedings of Machine Learning Research, Vol. 206, pp. 3693–3717.
+Cited by: §1.4.
+[WWY24]
+A. Wibisono, Y. Wu, and K. Y. Yang (2024)
+Optimal score estimation via empirical Bayes smoothing.
+In Proceedings of the Conference on Learning Theory,
+Proceedings of Machine Learning Research.
+Cited by: item 1.
+[WIB18]
+A. Wibisono (2018)
+Sampling as optimization in the space of measures: the Langevin dynamics as a composite optimization problem.
+In Proceedings of the 31st Conference on Learning Theory,  S. Bubeck, V. Perchet, and P. Rigollet (Eds.),
+Proceedings of Machine Learning Research, Vol. 75, , pp. 2093–3027.
+Cited by: §1.1.
+[WIB26]
+A. Wibisono (2026)
+Mixing time of the proximal sampler in relative Fisher information via strong data processing inequality.
+IEEE Transactions on Information Theory 72 (5), pp. 2667–2688.
+Cited by: §A.1.2,
+item 1,
+item 2,
+§1.2,
+§1.2.
+[ZS25]
+H. Zhou and M. Sugiyama (2025)
+The adaptive complexity of minimizing relative Fisher information.
+In Advances in Neural Information Processing Systems,  D. Belgrave, C. Zhang, H. Lin, R. Pascanu, P. Koniusz, M. Ghassemi, and N. Chen (Eds.),
+Vol. 38, pp. 76789–76812.
+Cited by: §1.1.
+Experimental support, please
+view the build logs
+for errors. Generated by
+L
+A
+T
+E
+xml
+.
+Instructions for reporting errors
+We are continuing to improve HTML versions of papers, and your feedback helps enhance accessibility and mobile
+support. To report errors in the HTML that will help us improve conversion and rendering, choose any of the
+methods listed below:
+Click the &quot;Report Issue&quot; (
+) button, located in the page header.
+Tip: You can select the relevant text first, to include it in your report.
+Our team has already identified the following issues. We appreciate your time reviewing and reporting rendering errors we
+may not have found yet. Your efforts will help us improve the HTML versions for all readers, because disability
+should not be a barrier to accessing research. Thank you for your continued support in championing open access for
+all.
+Have a free development cycle? Help support accessibility at arXiv! Our collaborators at LaTeXML maintain a list of packages that need conversion, and welcome developer contributions.
+We gratefully acknowledge support from
+our major funders,
+member institutions, ,
+and all contributors.
+About
+·
+Help
+·
+Contact
+·
+Subscribe
+·
+Copyright
+·
+Privacy
+·
+Accessibility
+·
+Operational Status (opens in new tab)
+Major funding support from</pre></html>

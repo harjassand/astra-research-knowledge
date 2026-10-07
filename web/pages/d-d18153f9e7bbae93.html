@@ -1,0 +1,84 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Independent sharper Gaussian-rotation gate</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>Independent sharper Gaussian-rotation gate</h1><p>Source ID d-d18153f9e7bbae93; literature/notes/c_gaussian/cycle3/rotation_gate.md; 2114 o200k tokens; role research_note; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre># Independent sharper Gaussian-rotation gate
+
+2026-10-06. **PASS** `notes/team_c_multiscale/cycle3/rotation_refinement.md`: the actual gradient estimator, proposal-only clipping argument, and full-chain cost substitution independently reconstruct correctly. The older trace-leading theorem remains valid. No novelty or finite-bit certification is inferred.
+
+## Source and exact target identity
+
+Read the recovered arXiv:2602.01338v2 primary HTML, Section 3.2 equations (9)–(11), Assumption 3.2 and Theorem 3.3. The page identifies v2 as 27 April 2026; title is *High-accuracy sampling for diffusion models and log-concave distributions*, authors Fan Chen, Sinho Chewi, Constantinos Daskalakis and Alexander Rakhlin. This predecessor already uses the gradient-centered Gaussian proposal and sine/cosine path. Its generic theorem is not itself a supplied-trace result. We independently derive the refinement rather than attribute our trace assumption or proof to its authors.
+
+For R^U_{a,v}, choose a finite explicit center c, cache g_c=grad U(c), set e=g_c+(c-v)/a, zeta=sqrt(a)||e||&lt;=1, and mu=v-a g_c=c-ae. Draw G standard and propose X=mu+sqrt(a)G. Let F(x)=g_c·x-U(x). Completing squares gives the exact target tilt exp(F(x)) relative to this proposal.
+
+For independent G&#x27; standard and T uniform [0,1], theta=pi T/2, use
+
+Gamma=mu+sqrt(a)[sin(theta)G+cos(theta)G&#x27;],
+dotGamma=(pi/2)sqrt(a)[cos(theta)G-sin(theta)G&#x27;],
+W=dotGamma·[g_c-grad U(Gamma)].
+
+The endpoints are the independent reference X&#x27;=mu+sqrt(a)G&#x27; and proposal X. Integration over T gives F(X)-F(X&#x27;) exactly. Hence E[W|X]=F(X)-E_QF, and E_QW=0. The centered tilt normalizer is Z=E_Q exp(E[W|X])&gt;=1 by Jensen. Approximate c is accounted for by the shifted proposal mean; no residual likelihood bias is omitted. One fresh gradient implements W, using the cached g_c.
+
+## Independently reconstructed centered MGF
+
+For every fixed T, the rotation of (G,G&#x27;) is orthogonal. Thus Gamma=mu+sqrt(a)Z and dotGamma=(pi/2)sqrt(a)H, with independent standard Z,H. Their joint law does not depend on T; mixing over T preserves independence. It is important to center both Gaussian vectors at mu before rotating: rotating the nonzero physical means directly would not yield this identity.
+
+Set R(Z)=sqrt(a)||grad U(mu+sqrt(a)Z)-g_c||. Conditional on Z, W is centered Gaussian with variance pi²R(Z)²/4. Convex co-coercivity and Stein, at center mu, yield
+
+E a||grad U(mu+sqrt(a)Z)-grad U(mu)||²&lt;=a²tau h².
+
+Since ||mu-c||=sqrt(a)zeta and grad U is h-Lipschitz,
+
+ER²&lt;=2(ah)²(tau+zeta²)&lt;=2(ah)²(tau+1).
+
+R is ah-Lipschitz. Gaussian norm concentration and the auxiliary-scalar-Gaussian identity give
+
+E exp(k R²) &lt;= (1-2k(ah)²)^-1/2 exp[k(ER)²/(1-2k(ah)²)].
+
+Substituting k=pi²lambda²/8 proves
+
+E exp(lambda W)&lt;=exp[C lambda²(ah)²tau], |lambda|ah&lt;=c,
+||W||p&lt;=C ah[sqrt(tau p)+p], p&gt;=2.
+
+Both signs of lambda are controlled. tau&gt;=1 absorbs the norm-MGF prefactor. No third-derivative bound or realized Hessian action is required. The leading tau term in the older independent-time secant estimator disappears because the rotated velocity is independent of the position gradient and has conditional mean zero.
+
+## Independently reconstructed clipping without target moments
+
+Write w=E[W|X], wbar=E[clip_B(W)|X], D=|W|1{|W|&gt;B}, B&lt;=1. Conditional Jensen and Cauchy–Schwarz give
+
+||w-wbar||2&lt;=||D||2,
+E exp(2w)&lt;=E exp(2W),
+TV(Q_exp(w),Q_exp(wbar))
+ &lt;= ||D||2[(E exp(2W))^(1/2)+exp(B)],
+
+where the normalized-density comparison uses Z&gt;=1. If ||W||p&lt;=B/4, then ED²&lt;=B²4^-p. The MGF gives E exp(2W)&lt;=C whenever the displayed local step condition holds. Thus TV&lt;=CB2^-p. This genuinely avoids a true-target-moment bound: an estimate exp(ah tau/2) would lose the desired rate and is unnecessary.
+
+Choose p=C log(2/delta), ah[sqrt(tau p)+p]&lt;=cB and zeta&lt;=1. The source FORS algorithm then returns a local draw within delta TV. All rejected proposals/estimators are included: expected proposals&lt;=exp(2B), expected likelihood estimators and **fresh gradients &lt;=2B exp(2B)**. Center acquisition is charged separately.
+
+## Full-chain substitution
+
+Retain the reference acquisition, translation, initialization, OU/Langevin A² bound, exact proximal kernel, final Gaussian smoothing and first-mismatch cap coupling independently passed in `whole_sampler_gate.md`. Let r=h/q and L=log(e+(tau+1)(1+r)/epsilon). Fix p=C_p L and choose
+
+eta=min(q^-1,c/[h(sqrt(tau p)+p)]),
+N=ceil(C_N[1+r(sqrt(tau L)+L)]L),
+delta=epsilon/(10N), a=eta/(1+q eta).
+
+Here **sqrt(tau L) means sqrt(tau times L)**. The logarithm of N/epsilon is O(L), so sufficiently large universal C_p covers the local clipping requirement. The constants can be chosen jointly: C_N grows only polynomially with C_p, whereas the needed log N contribution grows logarithmically. The final exact-chain smoothing bound still has log(A/sqrt(eta))=O(L), giving the same mixing allocation.
+
+The initial gradient cap is unchanged in form, with its revised N: R_cap²=C N M²/epsilon. The ideal moment bound M² still follows from coupling the completed-square residual center to N(0,[q(1+q eta)]^-1 I). Since aM²&lt;=M²/q&lt;=C(1+r)^4(tau+1), the log of sqrt(a)R_cap is O(L). Gradient descent on U+||x-v||²/(2a), rate ah/(1+ah), therefore reaches sqrt(a)||e||&lt;=1 in O(L) center queries. The weaker stopping tolerance further helps but is not silently treated as an exact prox.
+
+Uniform local TV at valid centers, coupled until first replacement mismatch or score cap, bounds path error by N delta plus the cap probability under the IDEAL chain. No moment transport through approximate chains is asserted. The complete expected gradient bound is
+
+C_ref+C[1+(h/q)(sqrt(tau L)+L)]L².
+
+At h=0, one gradient gives the affine term and the exact Gaussian target is generated directly. The known q is integrated analytically and is never charged to tau. This is a sharper direct proximal/FORS baseline, not a repair of the original hidden Picard forest.
+
+## Precision boundary
+
+The certified result assumes exact gradients/arithmetic and supplied Gaussian randomness. The earlier conditional gradient-error extension must be updated rather than assuming the shifted mean is unchanged. If cached g_c has certified error &lt;=rho, take the actual proposal mean mu_hat=v-a ghat_c. Its exact target tilt is Fhat(x)=ghat_c·x-U(x); hence the cache error changes the proposal but creates no uncorrected target bias when analyzed with Fhat. Enforce true zeta&lt;=1 through an observed tolerance &lt;=1/2 and sqrt(a)rho&lt;=1/8. Then the true rotation MGF gains only the norm-energy term C a rho². The new query error perturbs W by at most (pi/2)sqrt(a)rho||H||.
+
+With rho&lt;=c delta/[sqrt(a)sqrt(d)], this error has L2 norm O(delta) under the proposal, and Lp norm O(delta[1+sqrt(p/d)]). Comparing true W with clip(implemented W), then applying the same proposal-only clipping proof, yields an additional O(delta) local allocation. Reference acquisition, inexact-GD residual floors, observed cap thresholds, Gaussian discretization and arithmetic still need the separate conditions in `whole_sampler_gate.md`. This is conditional oracle robustness, not a finite-bit algorithm acquired from a mathematical C² promise. Its precision cost can depend on d.
+
+## Independent evidence and status
+
+`work/c_gaussian/cycle3/rotation_gate_checks.py` reconstructs the rotation without the parent&#x27;s checker. It verifies a spectral quadratic moment with a finite center, a full-span log-cosh path-integral identity (error below 1e-16), norm energy/MGF bounds, and an 8000-output FORS ledger: 13075 proposals, 12861 likelihood estimates, exactly 12861 fresh gradients including rejected attempts. These are finite implementation checks and not a TV certificate. No clipped estimates in this finite fixture does not prove an absent clipping tail.
+
+The rotation and full proximal/FORS framework are prior art in the April source. The supplied-trace energy and complete cost consequence are deductions; novelty remains unreviewed. The minimum of equally informed generic, known-subspace and supplied-trace baselines remains the appropriate comparator. The original hidden-RGO quadratic-noise counterexample and mean radial-shell obstruction remain valid.
+</pre></html>

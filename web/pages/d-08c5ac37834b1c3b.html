@@ -1,0 +1,668 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>!/usr/bin/env python3</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>!/usr/bin/env python3</h1><p>Source ID d-08c5ac37834b1c3b; literature/sources/pde_gate9/cycle11/acquire_verified_20261007.py; 8294 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Finite acquired spherical moments, with independently replayable rationals.
+
+Frozen cases: (T,q)=(2,3),(3,4), minimum 3 and maximum 5 corrections.
+Outside q=600(T+1). A floating LP is only a proposal. Original equalities,
+box constraints, unit identities, resets, mean and Gram are checked exactly.
+The finite backend is not a polynomial worst-case LP implementation.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import argparse
+from dataclasses import dataclass
+from importlib.metadata import version
+import json
+import math
+from pathlib import Path
+import signal
+import sys
+import time
+
+import numpy as np
+from scipy.linalg import qr
+from scipy.optimize import linprog
+import sympy as sp
+from flint import fmpq as Q, fmpq_mat as QM
+
+sys.set_int_max_str_digits(0)
+ROOT=Path(__file__).resolve().parents[3]
+OUT=ROOT/&#x27;results/pde_gate9/cycle11&#x27;
+ONE=Q(1)
+
+
+def qs(x):
+    return str(x)
+
+
+def qfloat(x):
+    # python-flint 0.8.0 has no fmpq.__float__; Python long true division
+    # converts the ratio without converting either giant integer separately.
+    return int(x.numerator)/int(x.denominator)
+
+
+def vector_json(v):
+    return [qs(x) for x in v]
+
+
+def matrix_json(m):
+    return [vector_json(row) for row in m]
+
+
+def dot(a,b):
+    return sum((x*y for x,y in zip(a,b)),Q(0))
+
+
+def qfloor(a):
+    return int(a.numerator)//int(a.denominator)
+
+
+def bits(a):
+    return max(abs(int(a.numerator)).bit_length(),int(a.denominator).bit_length())
+
+
+def sqrt_bounds(a,precision):
+    assert a&gt;=0
+    den=1&lt;&lt;precision
+    integer=math.isqrt((int(a.numerator)&lt;&lt;(2*precision))//int(a.denominator))
+    lo,hi=Q(integer,den),Q(integer+1,den)
+    assert lo*lo&lt;=a&lt;=hi*hi
+    return lo,hi
+
+
+@dataclass
+class IV:
+    lo: Q
+    hi: Q
+
+    @staticmethod
+    def point(a):
+        return IV(Q(a),Q(a))
+
+    def __add__(self,other):
+        if not isinstance(other,IV): other=IV.point(other)
+        return IV(self.lo+other.lo,self.hi+other.hi)
+
+    __radd__=__add__
+
+    def __neg__(self):
+        return IV(-self.hi,-self.lo)
+
+    def __sub__(self,other):
+        return self+-other if isinstance(other,IV) else self+(-Q(other))
+
+    def __mul__(self,other):
+        if not isinstance(other,IV): other=IV.point(other)
+        products=[x*y for x in (self.lo,self.hi) for y in (other.lo,other.hi)]
+        return IV(min(products),max(products))
+
+    __rmul__=__mul__
+
+    def __truediv__(self,other):
+        if not isinstance(other,IV): other=IV.point(other)
+        assert not other.lo&lt;=0&lt;=other.hi
+        inverse=IV(min(1/other.lo,1/other.hi),max(1/other.lo,1/other.hi))
+        return self*inverse
+
+    def square(self):
+        upper=max(self.lo*self.lo,self.hi*self.hi)
+        lower=Q(0) if self.lo&lt;=0&lt;=self.hi else min(self.lo*self.lo,self.hi*self.hi)
+        return IV(lower,upper)
+
+    def sqrt(self,precision):
+        assert self.lo&gt;=0
+        return IV(sqrt_bounds(self.lo,precision)[0],sqrt_bounds(self.hi,precision)[1])
+
+    def quantize(self,precision):
+        den=1&lt;&lt;precision
+        return IV(Q(qfloor(self.lo*den),den),Q(-qfloor(-self.hi*den),den))
+
+    def json(self):
+        return [qs(self.lo),qs(self.hi)]
+
+
+def atan_interval(den,precision):
+    x=Q(1,den)
+    total=Q(0)
+    j=0
+    term=x
+    while True:
+        total+=term/(2*j+1)
+        j+=1
+        term*=-x*x
+        tail=abs(term)/(2*j+1)
+        if tail&lt;Q(1,1&lt;&lt;(precision+8)):
+            return IV(total-tail,total+tail),j
+
+
+def pi_interval(precision):
+    a,ka=atan_interval(5,precision)
+    b,kb=atan_interval(239,precision)
+    interval=(16*a-4*b).quantize(precision+4)
+    assert Q(3)&lt;interval.lo&lt;interval.hi&lt;Q(22,7)
+    return interval,{&#x27;atan5_terms&#x27;:ka,&#x27;atan239_terms&#x27;:kb}
+
+
+def trig_interval(arg,kind,precision):
+    arg=arg.quantize(precision+4)
+    midpoint=(arg.lo+arg.hi)/2
+    uncertainty=(arg.hi-arg.lo)/2
+    k=precision//2+12
+    exponent=1 if kind==&#x27;sin&#x27; else 0
+    term=midpoint if exponent else Q(1)
+    total=term
+    for j in range(1,k):
+        term*=-midpoint*midpoint/Q((2*j+exponent-1)*(2*j+exponent))
+        total+=term
+    # Taylor&#x27;s derivative bound is 1 for every real argument.
+    remainder=abs(midpoint)**(2*k+exponent)/Q(math.factorial(2*k+exponent))
+    radius=remainder+uncertainty
+    return IV(total-radius,total+radius).quantize(precision+4)
+
+
+def sphere_map(s,t,sign):
+    den=1+s*s+t*t
+    return [2*s/den,2*t/den,sign*(1-s*s-t*t)/den]
+
+
+def reset(parameters,delta):
+    count=len(parameters)
+    lam=delta/(16*count)
+    seen=set()
+    points=[]
+    choices=[]
+    for s,t,sign in parameters:
+        sr=lam*qfloor(s/lam+Q(1,2))
+        tr=lam*qfloor(t/lam+Q(1,2))
+        for shift in range(count+1):
+            ss=sr+shift*lam
+            candidate=sphere_map(ss,tr,sign)
+            key=tuple(qs(x) for x in candidate)
+            if key not in seen:
+                seen.add(key)
+                points.append(candidate)
+                choices.append({&#x27;sign&#x27;:sign,&#x27;input&#x27;:[qs(s),qs(t)],&#x27;rounded&#x27;:[qs(sr),qs(tr)],
+                                &#x27;shift&#x27;:shift,&#x27;selected&#x27;:[qs(ss),qs(tr)]})
+                break
+        else:
+            raise RuntimeError(&#x27;distinct reset failed&#x27;)
+        assert dot(candidate,candidate)==1
+        # d_sphere &lt;= 2 |p-p&#x27;|. Avoid evaluating an angle or square root.
+        assert 4*((ss-s)**2+(tr-t)**2)&lt;=delta*delta
+    return points,{&#x27;lambda&#x27;:qs(lam),&#x27;choices&#x27;:choices}
+
+
+def reset_points(points,delta):
+    parameters=[]
+    for x,y,z in points:
+        sign=1 if z&gt;=0 else -1
+        parameters.append((x/(1+sign*z),y/(1+sign*z),sign))
+    return reset(parameters,delta)
+
+
+def centroid_initializer(q,delta):
+    tau=delta/(2**20*q**3)
+    precision=(int(tau.denominator).bit_length()-int(tau.numerator).bit_length())+24
+    series_length=precision+8
+    pi,pi_guard=pi_interval(precision)
+    sqrt2=IV(*sqrt_bounds(Q(2),precision+4))
+    parameters=[]
+    cells=[]
+    for sign in (1,-1):
+        for j in range(1,q+1):
+            m=2*j-1
+            r0,r1=Q(j-1,q),Q(j,q)
+            mz=1-(r0*r0+r1*r1)/2
+            coeff=Q(1)
+            integral=Q(0)
+            for k in range(series_length):
+                if k:
+                    coeff*=Q(2*k-3,4*k)
+                integral+=coeff*(r1**(2*k+3)-r0**(2*k+3))/(2*k+3)
+            # |binomial(1/2,k)|&lt;=1 and r^2/2&lt;=1/2.
+            # Integral tail is &lt;=2^(2-L)/q since r&lt;=1 and sqrt2&lt;2.
+            tail=Q(1,q*(1&lt;&lt;(series_length-2)))
+            area=(sqrt2*integral+IV(-tail,tail))*(Q(2*q*q,m))
+            angle=pi/m
+            sinc=IV.point(0) if m==1 else trig_interval(angle,&#x27;sin&#x27;,precision)/angle
+            for k in range(m):
+                if m==1:
+                    mx,my=IV.point(0),IV.point(0)
+                else:
+                    phi=pi*Q(2*k+1,m)
+                    mx=area*sinc*trig_interval(phi,&#x27;cos&#x27;,precision)
+                    my=area*sinc*trig_interval(phi,&#x27;sin&#x27;,precision)
+                norm=(mx.square()+my.square()+IV.point(mz*mz)).sqrt(precision+4)
+                schart=(mx/(norm+mz)).quantize(precision)
+                tchart=(my/(norm+mz)).quantize(precision)
+                s=(schart.lo+schart.hi)/2
+                t=(tchart.lo+tchart.hi)/2
+                assert (schart.hi-schart.lo)**2+(tchart.hi-tchart.lo)**2 &lt;= (delta/32)**2
+                parameters.append((s,t,sign))
+                cells.append({&#x27;hemisphere&#x27;:sign,&#x27;ring&#x27;:j,&#x27;wedge&#x27;:k,&#x27;wedges&#x27;:m,
+                              &#x27;r_bounds&#x27;:[qs(r0),qs(r1)],&#x27;mz&#x27;:qs(mz),
+                              &#x27;area_interval&#x27;:area.json(),&#x27;mx_interval&#x27;:mx.json(),&#x27;my_interval&#x27;:my.json(),
+                              &#x27;norm_interval&#x27;:norm.json(),&#x27;chart_intervals&#x27;:[schart.json(),tchart.json()],
+                              &#x27;chart_midpoints&#x27;:[qs(s),qs(t)]})
+    points,reset_record=reset(parameters,delta)
+    return points,{&#x27;q&#x27;:q,&#x27;N&#x27;:2*q*q,&#x27;tau&#x27;:qs(tau),&#x27;precision_bits&#x27;:precision,
+                   &#x27;binomial_terms&#x27;:series_length,&#x27;pi_interval&#x27;:pi.json(),&#x27;pi_guard&#x27;:pi_guard,
+                   &#x27;cells&#x27;:cells,&#x27;reset&#x27;:reset_record}
+
+
+def harmonic_basis(T):
+    x,y,z=sp.symbols(&#x27;x y z&#x27;,real=True)
+    basis=[]
+    for ell in range(1,T+1):
+        for m in range(ell+1):
+            H=(x+sp.I*y)**m*sum(
+                sp.Rational((-1)**j*math.factorial(2*ell-2*j),
+                            2**ell*math.factorial(j)*math.factorial(ell-j)*math.factorial(ell-m-2*j))
+                *z**(ell-m-2*j)*(x*x+y*y+z*z)**j for j in range((ell-m)//2+1))
+            nu=Q(1,2*ell+1) if m==0 else Q(math.factorial(ell+m),2*(2*ell+1)*math.factorial(ell-m))
+            for part in ([&#x27;real&#x27;] if m==0 else [&#x27;real&#x27;,&#x27;imag&#x27;]):
+                f=sp.expand(sp.re(H) if part==&#x27;real&#x27; else sp.im(H))
+                terms=[(tuple(power),Q(str(coef))) for power,coef in sp.Poly(f,x,y,z).terms()]
+                deriv=[]
+                for a in range(3):
+                    item=[]
+                    for power,coef in terms:
+                        if power[a]:
+                            p=list(power);p[a]-=1
+                            item.append((tuple(p),coef*power[a]))
+                    deriv.append(item)
+                basis.append({&#x27;ell&#x27;:ell,&#x27;m&#x27;:m,&#x27;part&#x27;:part,&#x27;nu&#x27;:nu,&#x27;terms&#x27;:terms,&#x27;derivatives&#x27;:deriv})
+    assert len(basis)==T*(T+2)
+    return basis
+
+
+def polynomial_value(terms,powers):
+    return sum((c*powers[0][p[0]]*powers[1][p[1]]*powers[2][p[2]] for p,c in terms),Q(0))
+
+
+def evaluate(points,basis):
+    T=max(item[&#x27;ell&#x27;] for item in basis)
+    values=[[] for _ in basis]
+    gradients=[[] for _ in basis]
+    for point in points:
+        powers=[[Q(1)] for _ in range(3)]
+        for a in range(3):
+            for k in range(T): powers[a].append(powers[a][-1]*point[a])
+        for row,item in enumerate(basis):
+            values[row].append(polynomial_value(item[&#x27;terms&#x27;],powers))
+            ambient=[polynomial_value(term,powers) for term in item[&#x27;derivatives&#x27;]]
+            normal=dot(ambient,point)
+            gradients[row].extend([v-normal*x for v,x in zip(ambient,point)])
+    return values,gradients
+
+
+def mean_squared(values,basis):
+    N=len(values[0])
+    return sum(((sum(row,Q(0))/N)**2/item[&#x27;nu&#x27;] for row,item in zip(values,basis)),Q(0))
+
+
+def basis_json(basis):
+    return [{k:item[k] for k in (&#x27;ell&#x27;,&#x27;m&#x27;,&#x27;part&#x27;)}|
+            {&#x27;nu&#x27;:qs(item[&#x27;nu&#x27;]),&#x27;terms&#x27;:[{&#x27;powers&#x27;:list(p),&#x27;coefficient&#x27;:qs(c)} for p,c in item[&#x27;terms&#x27;]]}
+            for item in basis]
+
+
+def matvec(rows,vector):
+    return [dot(row,vector) for row in rows]
+
+
+def exact_active_candidate(J,b,free,signs):
+    n=len(J[0]); M=len(J)
+    active=[j for j in range(n) if j not in free]
+    B=[[row[j] for j in free]+[sum((signs[j]*row[j] for j in active),Q(0))] for row in J]
+    matrix=QM(B)
+    solved=matrix.solve(QM([[v] for v in b]))
+    d=solved[M-1,0]
+    w=[signs[j]*d for j in range(n)]
+    for k,j in enumerate(free): w[j]=solved[k,0]
+    primal_residual=[v-t for v,t in zip(matvec(J,w),b)]
+    margins=[d-abs(v) for v in w]
+    primal=all(v==0 for v in primal_residual) and 0&lt;=d&lt;=1 and min(margins)&gt;=0
+    dual_rhs=[[Q(0)] for _ in range(M)]; dual_rhs[-1]=[Q(-1)]
+    dual_solution=matrix.transpose().solve(QM(dual_rhs))
+    multiplier=[dual_solution[j,0] for j in range(M)]
+    mu=[-signs[j]*sum((J[k][j]*multiplier[k] for k in range(M)),Q(0)) if j in active else Q(0) for j in range(n)]
+    stationarity=[sum((J[k][j]*multiplier[k] for k in range(M)),Q(0))+signs[j]*mu[j] for j in range(n)]
+    dual=all(v==0 for v in stationarity) and min(mu)&gt;=0 and sum(mu,Q(0))==1 and -dot(multiplier,b)==d
+    return w,d,{&#x27;kind&#x27;:&#x27;exact_active_LP_vertex&#x27;,&#x27;free_columns&#x27;:free,&#x27;active_columns&#x27;:active,
+                &#x27;active_signs&#x27;:signs,&#x27;residuals&#x27;:vector_json(primal_residual),&#x27;box_margins&#x27;:vector_json(margins),
+                &#x27;primal_accepted&#x27;:primal,&#x27;dual_accepted&#x27;:dual,&#x27;lambda&#x27;:vector_json(multiplier),&#x27;mu&#x27;:vector_json(mu),
+                &#x27;stationarity&#x27;:vector_json(stationarity),&#x27;dual_objective&#x27;:qs(-dot(multiplier,b))}
+
+
+def independent_active_free(J_float,u,t):
+    M,n=J_float.shape
+    rowspace=np.column_stack((J_float,np.zeros(M)))
+    orthogonal,_=np.linalg.qr(rowspace.T)
+    vectors=[orthogonal[:,j] for j in range(M)]
+    order=sorted(range(n),key=lambda j:abs(abs(u[j])-t))
+    active=[]
+    for j in order:
+        row=np.zeros(n+1); row[j]=1 if u[j]&gt;=0 else -1; row[n]=-1
+        rem=row.copy()
+        for v in vectors: rem-=np.dot(rem,v)*v
+        # Reorthogonalize: selection is only a numerical proposal.
+        for v in vectors: rem-=np.dot(rem,v)*v
+        norm=np.linalg.norm(rem)
+        if norm&gt;1e-8:
+            vectors.append(rem/norm); active.append(j)
+            if len(active)==n+1-M: break
+    if len(active)!=n+1-M:
+        raise RuntimeError(&#x27;numeric active rank selection incomplete&#x27;)
+    return [j for j in range(n) if j not in active]
+
+
+def exact_feasible_repair(J,b,proposal,J_float):
+    M,n=len(J),len(J[0])
+    _,_,pivot=qr(J_float,mode=&#x27;economic&#x27;,pivoting=True)
+    selected=[int(j) for j in pivot[:M]]
+    den=1&lt;&lt;80
+    w=[Q(round(float(a)*den),den) for a in proposal]
+    residual=[target-value for target,value in zip(b,matvec(J,w))]
+    block=QM([[row[j] for j in selected] for row in J])
+    solved=block.solve(QM([[a] for a in residual]))
+    for k,j in enumerate(selected): w[j]+=solved[k,0]
+    d=max(abs(a) for a in w)
+    errors=[v-t for v,t in zip(matvec(J,w),b)]
+    assert all(a==0 for a in errors) and 0&lt;=d&lt;=1
+    return w,d,{&#x27;kind&#x27;:&#x27;exact_feasible_repair_variant&#x27;,&#x27;repair_columns&#x27;:selected,
+                &#x27;rounded_denominator&#x27;:str(den),&#x27;rounded_proposal&#x27;:vector_json([Q(round(float(a)*den),den) for a in proposal]),
+                &#x27;original_residual&#x27;:vector_json(residual),&#x27;repair_values&#x27;:vector_json([solved[k,0] for k in range(M)]),
+                &#x27;residuals&#x27;:vector_json(errors),&#x27;box_margins&#x27;:vector_json([d-abs(v) for v in w]),
+                &#x27;primal_accepted&#x27;:True,&#x27;dual_accepted&#x27;:False,&#x27;optimality&#x27;:&#x27;NOT CERTIFIED&#x27;}
+
+
+def correction(points,basis):
+    stage_start=time.monotonic()
+    values,J=evaluate(points,basis)
+    M,n=len(J),len(J[0]); N=len(points)
+    b=[-sum(row,Q(0)) for row in values]
+    scales=np.array([math.sqrt(qfloat(item[&#x27;nu&#x27;])) for item in basis])
+    J_float=np.asarray([[qfloat(v) for v in row] for row in J])/scales[:,None]
+    b_float=np.asarray([qfloat(v) for v in b])/scales
+    scale=max(float(np.max(np.abs(b_float)))/N,1e-300)
+    c=np.zeros(n+1);c[-1]=1
+    A_ub=np.zeros((2*n,n+1))
+    for j in range(n):
+        A_ub[2*j,j]=1; A_ub[2*j,n]=-1
+        A_ub[2*j+1,j]=-1; A_ub[2*j+1,n]=-1
+    A_eq=np.column_stack((J_float,np.zeros(M)))
+    proposal_start=time.monotonic()
+    raw=linprog(c,A_ub=A_ub,b_ub=np.zeros(2*n),A_eq=A_eq,b_eq=b_float/scale,
+                bounds=[(None,None)]*n+[(0,1/scale)],method=&#x27;highs-ds&#x27;,
+                options={&#x27;time_limit&#x27;:15.0,&#x27;maxiter&#x27;:10000,&#x27;primal_feasibility_tolerance&#x27;:1e-9,
+                         &#x27;dual_feasibility_tolerance&#x27;:1e-9})
+    proposal_seconds=time.monotonic()-proposal_start
+    proposal_record={&#x27;status&#x27;:int(raw.status),&#x27;message&#x27;:str(raw.message),&#x27;success&#x27;:bool(raw.success),
+                     &#x27;iterations&#x27;:int(raw.nit),&#x27;scale_hex&#x27;:scale.hex(),&#x27;seconds&#x27;:proposal_seconds}
+    candidates=[]
+    accepted=None
+    if raw.x is not None:
+        proposal_record[&#x27;scaled_vector_hex&#x27;]=[float(a).hex() for a in raw.x]
+        proposed=[float(a)*scale for a in raw.x]
+        proposal_record[&#x27;unscaled_vector_hex&#x27;]=[a.hex() for a in proposed]
+        binary=[Q(*a.as_integer_ratio()) for a in proposed]
+        proposal_record[&#x27;exact_binary_residuals&#x27;]=vector_json([v-t for v,t in zip(matvec(J,binary[:-1]),b)])
+        proposal_record[&#x27;exact_binary_box_margins&#x27;]=vector_json([binary[-1]-abs(v) for v in binary[:-1]])
+        proposal_record[&#x27;exact_binary_primal_accepted&#x27;]=all(v==t for v,t in zip(matvec(J,binary[:-1]),b)) and 0&lt;=binary[-1]&lt;=1 and all(abs(v)&lt;=binary[-1] for v in binary[:-1])
+        u=np.asarray(raw.x[:-1]);t=float(raw.x[-1])
+        signs=[1 if a&gt;=0 else -1 for a in u]
+        free1=sorted(range(n),key=lambda j:abs(abs(u[j])-t),reverse=True)[:M-1]
+        free_sets=[sorted(free1)]
+        try:
+            free2=independent_active_free(J_float,u,t)
+            if free2 not in free_sets:free_sets.append(free2)
+        except Exception as exc:
+            candidates.append({&#x27;kind&#x27;:&#x27;active_selection_failure&#x27;,&#x27;type&#x27;:type(exc).__name__,&#x27;message&#x27;:str(exc)})
+        for free in free_sets[:2]:
+            attempt_start=time.monotonic()
+            try:
+                w,d,record=exact_active_candidate(J,b,free,signs)
+                record[&#x27;w&#x27;]=vector_json(w);record[&#x27;d&#x27;]=qs(d)
+                record[&#x27;seconds&#x27;]=time.monotonic()-attempt_start
+                candidates.append(record)
+                if record[&#x27;primal_accepted&#x27;] and record[&#x27;dual_accepted&#x27;]:
+                    accepted=(w,d,record);break
+            except Exception as exc:
+                candidates.append({&#x27;kind&#x27;:&#x27;active_reconstruction_failure&#x27;,&#x27;free_columns&#x27;:free,&#x27;type&#x27;:type(exc).__name__,
+                                   &#x27;message&#x27;:str(exc),&#x27;seconds&#x27;:time.monotonic()-attempt_start})
+    else:
+        proposed=np.linalg.lstsq(J_float,b_float,rcond=None)[0].tolist()+[0.0]
+    if accepted is None:
+        repair_start=time.monotonic()
+        w,d,record=exact_feasible_repair(J,b,proposed[:-1],J_float)
+        record[&#x27;w&#x27;]=vector_json(w);record[&#x27;d&#x27;]=qs(d);record[&#x27;seconds&#x27;]=time.monotonic()-repair_start
+        candidates.append(record);accepted=(w,d,record)
+    w,d,selected=accepted
+    assert matvec(J,w)==b and 0&lt;=d&lt;=1 and all(abs(a)&lt;=d for a in w)
+    tangent=[];cayley=[]
+    radii=[]
+    for i,point in enumerate(points):
+        wi=w[3*i:3*i+3]
+        normal=dot(wi,point)
+        v=[a-normal*x for a,x in zip(wi,point)]
+        r2=dot(v,v)
+        assert dot(v,point)==0 and r2&lt;=3*d*d
+        y=[((1-r2/4)*x+a)/(1+r2/4) for x,a in zip(point,v)]
+        assert dot(y,y)==1
+        tangent.append(v);cayley.append(y);radii.append(r2)
+    assert matvec(J,[a for row in tangent for a in row])==b
+    original={&#x27;Aeq&#x27;:[vector_json(row+[Q(0)]) for row in J],&#x27;beq&#x27;:vector_json(b),
+              &#x27;Aub&#x27;:A_ub.astype(int).tolist(),&#x27;bub&#x27;:[0]*(2*n),&#x27;bounds&#x27;:[[None,None]]*n+[[0,1]],
+              &#x27;objective&#x27;:[0]*n+[1],&#x27;equation_scaling&#x27;:&#x27;unnormalized sum; average-equivalent&#x27;}
+    return cayley,{&#x27;original_LP&#x27;:original,&#x27;numeric_proposal&#x27;:proposal_record,&#x27;exact_candidates&#x27;:candidates,
+                   &#x27;accepted_kind&#x27;:selected[&#x27;kind&#x27;],&#x27;accepted_w&#x27;:vector_json(w),&#x27;accepted_d&#x27;:qs(d),
+                   &#x27;exact_optimality_certified&#x27;:selected[&#x27;dual_accepted&#x27;],&#x27;tangent_vectors&#x27;:matrix_json(tangent),
+                   &#x27;cayley_points&#x27;:matrix_json(cayley),&#x27;tangent_radius_squared&#x27;:vector_json(radii),
+                   &#x27;input_mean_squared&#x27;:qs(mean_squared(values,basis)),
+                   &#x27;seconds_before_reset&#x27;:time.monotonic()-stage_start}
+
+
+def euclidean_correction(points,basis):
+    &quot;&quot;&quot;Same information/control: exact unique minimum-Euclidean tangent action.&quot;&quot;&quot;
+    started=time.monotonic()
+    values,J=evaluate(points,basis)
+    b=[-sum(row,Q(0)) for row in values]
+    M,n=len(J),len(J[0])
+    normal=[[dot(J[j],J[k]) for k in range(M)] for j in range(M)]
+    solved=QM(normal).solve(QM([[a] for a in b]))
+    multiplier=[solved[j,0] for j in range(M)]
+    w=[sum((J[j][k]*multiplier[j] for j in range(M)),Q(0)) for k in range(n)]
+    errors=[a-target for a,target in zip(matvec(J,w),b)]
+    assert all(a==0 for a in errors)
+    d=max(abs(a) for a in w)
+    assert d&lt;=1
+    primal_squared=dot(w,w)
+    assert primal_squared==dot(multiplier,b)
+    tangent=[];cayley=[];radii=[]
+    for i,point in enumerate(points):
+        v=w[3*i:3*i+3]
+        assert dot(v,point)==0
+        r2=dot(v,v)
+        y=[((1-r2/4)*x+a)/(1+r2/4) for x,a in zip(point,v)]
+        assert dot(y,y)==1
+        tangent.append(v);cayley.append(y);radii.append(r2)
+    return cayley,{&#x27;control&#x27;:&#x27;exact minimum Euclidean tangent correction J^t(JJ^t)^-1 b&#x27;,
+                   &#x27;original_derivative_Aeq&#x27;:matrix_json(J),&#x27;original_derivative_beq&#x27;:vector_json(b),
+                   &#x27;euclidean_stationarity_multiplier&#x27;:vector_json(multiplier),
+                   &#x27;normal_matrix&#x27;:matrix_json(normal),&#x27;exact_equality_residual&#x27;:vector_json(errors),
+                   &#x27;euclidean_squared_norm&#x27;:qs(primal_squared),&#x27;euclidean_dual_objective&#x27;:qs(primal_squared/2),
+                   &#x27;euclidean_optimality_certified&#x27;:True,&#x27;accepted_kind&#x27;:&#x27;exact_Euclidean_minimum&#x27;,
+                   &#x27;accepted_w&#x27;:vector_json(w),&#x27;accepted_d&#x27;:qs(d),&#x27;exact_optimality_certified&#x27;:False,
+                   &#x27;box_objective_status&#x27;:&#x27;feasible bound only; minimum box norm NOT claimed&#x27;,
+                   &#x27;tangent_vectors&#x27;:matrix_json(tangent),&#x27;cayley_points&#x27;:matrix_json(cayley),
+                   &#x27;tangent_radius_squared&#x27;:vector_json(radii),&#x27;input_mean_squared&#x27;:qs(mean_squared(values,basis)),
+                   &#x27;seconds_before_reset&#x27;:time.monotonic()-started}
+
+
+def gram_matrix(values):
+    M=len(values);N=len(values[0])
+    return [[dot(values[j],values[k])/N for k in range(M)] for j in range(M)]
+
+
+def ldl_certificate(matrix):
+    n=len(matrix)
+    lower=[[Q(0)]*n for _ in range(n)]
+    diagonal=[]
+    for i in range(n):
+        lower[i][i]=Q(1)
+        d=matrix[i][i]-sum((lower[i][k]**2*diagonal[k] for k in range(i)),Q(0))
+        diagonal.append(d)
+        if d&lt;=0:
+            return {&#x27;positive_definite&#x27;:False,&#x27;failure_index&#x27;:i,&#x27;diagonal&#x27;:vector_json(diagonal)}
+        for j in range(i+1,n):
+            lower[j][i]=(matrix[j][i]-sum((lower[j][k]*lower[i][k]*diagonal[k] for k in range(i)),Q(0)))/d
+    return {&#x27;positive_definite&#x27;:True,&#x27;diagonal&#x27;:vector_json(diagonal),&#x27;lower&#x27;:matrix_json(lower)}
+
+
+def final_certificate(points,basis,T):
+    start=time.monotonic()
+    values,J=evaluate(points,basis)
+    mean2=mean_squared(values,basis)
+    beta=Q(1,2048*(T+1)**5)
+    gram=gram_matrix(values)
+    shifted=[[a-(basis[j][&#x27;nu&#x27;]/2 if j==k else 0) for k,a in enumerate(row)] for j,row in enumerate(gram)]
+    ldl=ldl_certificate(shifted)
+    certificate={&#x27;beta&#x27;:qs(beta),&#x27;mean_squared&#x27;:qs(mean2),&#x27;mean_pass&#x27;:mean2&lt;=beta*beta,
+                 &#x27;mean_margin_squared&#x27;:qs(beta*beta-mean2),&#x27;gram&#x27;:matrix_json(gram),
+                 &#x27;gram_shifted&#x27;:matrix_json(shifted),&#x27;gram_LDL&#x27;:ldl,
+                 &#x27;gram_pass&#x27;:ldl[&#x27;positive_definite&#x27;],&#x27;unit_exact&#x27;:all(dot(p,p)==1 for p in points),
+                 &#x27;distinct_exact&#x27;:len({tuple(qs(a) for a in p) for p in points})==len(points),
+                 &#x27;coordinate_bits&#x27;:max(bits(a) for p in points for a in p),
+                 &#x27;seconds&#x27;:time.monotonic()-start}
+    return certificate,(values,J,gram)
+
+
+def right_inverse_certificate(points,basis,T,values,J,gram):
+    start=time.monotonic();M=len(basis);N=len(points)
+    normalized=np.asarray([[qfloat(a) for a in row] for row in J])
+    normalized/=np.asarray([math.sqrt(qfloat(item[&#x27;nu&#x27;])) for item in basis])[:,None]
+    _,_,pivot=qr(normalized,mode=&#x27;economic&#x27;,pivoting=True)
+    selected=[int(j) for j in pivot[:M]]
+    block=QM([[row[j]/N for j in selected] for row in J]).inv()
+    ambient=[[Q(0)]*M for _ in range(3*N)]
+    for k,index in enumerate(selected):
+        ambient[index]=[block[k,j] for j in range(M)]
+    R=[]
+    for i,point in enumerate(points):
+        rows=ambient[3*i:3*i+3]
+        tangent_rows=[[rows[a][j]-point[a]*sum((point[k]*rows[k][j] for k in range(3)),Q(0))
+                       for j in range(M)] for a in range(3)]
+        R.extend(tangent_rows)
+    # Tangent projection preserves the derivative action.
+    residual=[[sum((J[j][k]*R[k][ell] for k in range(3*N)),Q(0))/N-(1 if j==ell else 0)
+               for ell in range(M)] for j in range(M)]
+    assert all(a==0 for row in residual for a in row)
+    C2=max(sum((R[3*i+a][j]**2*basis[j][&#x27;nu&#x27;] for a in range(3) for j in range(M)),Q(0)) for i in range(N))
+    C=sqrt_bounds(C2,24)[1]
+    mean2=mean_squared(values,basis)
+    mean_upper=sqrt_bounds(mean2,80)[1]
+    rho=4*mean_upper
+    A2=Q(sum(ell*(ell+1)*(2*ell+1) for ell in range(1,T+1)),2)
+    B2=Q(sum(ell*(ell+1)*(3*ell*(ell+1)-2)*(2*ell+1) for ell in range(1,T+1)),8)
+    A=sqrt_bounds(A2,24)[1];B=sqrt_bounds(B2,24)[1]
+    r=C*rho
+    K=B+(r/2)*A
+    lambda0=Q(513,1024)
+    gram_shift=[[a-(lambda0*basis[j][&#x27;nu&#x27;] if j==k else 0) for k,a in enumerate(row)] for j,row in enumerate(gram)]
+    gram_slack=ldl_certificate(gram_shift)
+    sqrtM=sqrt_bounds(Q(M),24)[1]
+    checks={&#x27;right_inverse_exact&#x27;:True,&#x27;mean_basin&#x27;:mean2&lt;=rho*rho/16,&#x27;r_le_one&#x27;:r&lt;=1,
+            &#x27;contraction&#x27;:K*C*C*rho&lt;=Q(1,2),&#x27;gram_slack&#x27;:gram_slack[&#x27;positive_definite&#x27;],
+            &#x27;gram_travel_margin&#x27;:lambda0-Q(1,2)&gt;2*sqrtM*A*r}
+    return {&#x27;kind&#x27;:&#x27;sparse exact projected column-block right inverse&#x27;,&#x27;selected_columns&#x27;:selected,
+            &#x27;R&#x27;:matrix_json(R),&#x27;right_inverse_residual&#x27;:matrix_json(residual),&#x27;C_squared&#x27;:qs(C2),
+            &#x27;C_upper&#x27;:qs(C),&#x27;mean_upper&#x27;:qs(mean_upper),&#x27;rho&#x27;:qs(rho),&#x27;A_squared&#x27;:qs(A2),&#x27;B_squared&#x27;:qs(B2),
+            &#x27;A_upper&#x27;:qs(A),&#x27;B_upper&#x27;:qs(B),&#x27;radius_bound&#x27;:qs(r),&#x27;K_upper&#x27;:qs(K),
+            &#x27;lambda0&#x27;:qs(lambda0),&#x27;gram_slack_LDL&#x27;:gram_slack,&#x27;checks&#x27;:checks,
+            &#x27;finite_certificate_pass&#x27;:all(checks.values()),&#x27;seconds&#x27;:time.monotonic()-start,
+            &#x27;mathematical_source&#x27;:&#x27;charges_design9 cycle11 a-posteriori certificate; independently gate formulas&#x27;}
+
+
+def checkpoint(case,path):
+    path.write_text(json.dumps(case,indent=2)+&#x27;\n&#x27;)
+
+
+def timeout_handler(signum,frame):
+    raise TimeoutError(&#x27;180-second per-case execution bound&#x27;)
+
+
+def run_case(T,q,solver=&#x27;lp&#x27;):
+    tag=&#x27;&#x27; if solver==&#x27;lp&#x27; else &#x27;L2_&#x27;
+    path=OUT/f&#x27;acquisition_{tag}T{T}_q{q}.json&#x27;
+    delta=Q(1,2**24*(T+1)**8)
+    started=time.monotonic()
+    case={&#x27;T&#x27;:T,&#x27;q&#x27;:q,&#x27;N&#x27;:2*q*q,&#x27;delta&#x27;:qs(delta),&#x27;minimum_corrections&#x27;:3,&#x27;maximum_corrections&#x27;:5,
+          &#x27;inside_universal_cardinality_regime&#x27;:q&gt;=600*(T+1),&#x27;status&#x27;:&#x27;RUNNING&#x27;,&#x27;steps&#x27;:[],
+          &#x27;versions&#x27;:{name:version(name) for name in (&#x27;scipy&#x27;,&#x27;numpy&#x27;,&#x27;sympy&#x27;,&#x27;mpmath&#x27;,&#x27;python-flint&#x27;)},
+          &#x27;python&#x27;:sys.version,&#x27;solver&#x27;:solver,
+          &#x27;solver_policy&#x27;:(&#x27;at most two exact active reconstructions plus one feasible repair per step&#x27; if solver==&#x27;lp&#x27;
+                           else &#x27;one exact JJ^t solve per step; same initializer, data, Cayley and resets&#x27;),
+          &#x27;stopping_rule&#x27;:&#x27;after &gt;=3 steps stop if exact mean &lt;= beta/8 and exact Gram &gt; I/2; otherwise max5&#x27;}
+    checkpoint(case,path)
+    try:
+        init_start=time.monotonic()
+        basis=harmonic_basis(T)
+        points,initializer=centroid_initializer(q,delta)
+        case[&#x27;basis&#x27;]=basis_json(basis);case[&#x27;initializer&#x27;]=initializer
+        case[&#x27;initial_points&#x27;]=matrix_json(points);case[&#x27;initializer_seconds&#x27;]=time.monotonic()-init_start
+        values,_=evaluate(points,basis)
+        case[&#x27;initial_mean_squared&#x27;]=qs(mean_squared(values,basis))
+        checkpoint(case,path)
+        print(json.dumps({&#x27;T&#x27;:T,&#x27;N&#x27;:len(points),&#x27;stage&#x27;:&#x27;initialized&#x27;,&#x27;mean&#x27;:math.sqrt(qfloat(mean_squared(values,basis))),
+                          &#x27;seconds&#x27;:case[&#x27;initializer_seconds&#x27;]}),flush=True)
+        for step in range(5):
+            step_start=time.monotonic()
+            input_points=points
+            cayley,record=(correction(input_points,basis) if solver==&#x27;lp&#x27; else euclidean_correction(input_points,basis))
+            points,reset_record=reset_points(cayley,delta)
+            record[&#x27;input_points&#x27;]=matrix_json(input_points);record[&#x27;reset&#x27;]=reset_record
+            record[&#x27;output_points&#x27;]=matrix_json(points);record[&#x27;step&#x27;]=step
+            values,_=evaluate(points,basis)
+            after=mean_squared(values,basis)
+            record[&#x27;output_mean_squared&#x27;]=qs(after);record[&#x27;seconds_total&#x27;]=time.monotonic()-step_start
+            case[&#x27;steps&#x27;].append(record);checkpoint(case,path)
+            print(json.dumps({&#x27;T&#x27;:T,&#x27;step&#x27;:step,&#x27;mean&#x27;:math.sqrt(qfloat(after)),
+                              &#x27;d&#x27;:qfloat(Q(record[&#x27;accepted_d&#x27;])),&#x27;optimality&#x27;:record[&#x27;exact_optimality_certified&#x27;],
+                              &#x27;seconds&#x27;:record[&#x27;seconds_total&#x27;]}),flush=True)
+            beta=Q(1,2048*(T+1)**5)
+            if step&gt;=2 and after&lt;=(beta/8)**2:
+                cert,_=final_certificate(points,basis,T)
+                if cert[&#x27;gram_pass&#x27;]:break
+        final,data=final_certificate(points,basis,T)
+        case[&#x27;final_points&#x27;]=matrix_json(points);case[&#x27;final_certificate&#x27;]=final
+        checkpoint(case,path)
+        case[&#x27;a_posteriori&#x27;]=right_inverse_certificate(points,basis,T,*data)
+        case[&#x27;status&#x27;]=&#x27;FINITE_ACQUISITION_CERTIFIED&#x27; if all(final[k] for k in (&#x27;mean_pass&#x27;,&#x27;gram_pass&#x27;,&#x27;unit_exact&#x27;,&#x27;distinct_exact&#x27;)) else &#x27;FINITE_ACQUISITION_FAILED&#x27;
+    except Exception as exc:
+        case[&#x27;status&#x27;]=&#x27;FAILED&#x27;;case[&#x27;failure&#x27;]={&#x27;type&#x27;:type(exc).__name__,&#x27;message&#x27;:str(exc)}
+    case[&#x27;seconds_total&#x27;]=time.monotonic()-started
+    checkpoint(case,path)
+    print(json.dumps({&#x27;T&#x27;:T,&#x27;status&#x27;:case[&#x27;status&#x27;],&#x27;corrections&#x27;:len(case[&#x27;steps&#x27;]),
+                      &#x27;seconds&#x27;:case[&#x27;seconds_total&#x27;],&#x27;failure&#x27;:case.get(&#x27;failure&#x27;)}),flush=True)
+    return case
+
+
+def main():
+    parser=argparse.ArgumentParser();parser.add_argument(&#x27;--case&#x27;,choices=[&#x27;T2&#x27;,&#x27;T3&#x27;,&#x27;both&#x27;],default=&#x27;both&#x27;)
+    parser.add_argument(&#x27;--solver&#x27;,choices=[&#x27;lp&#x27;,&#x27;l2&#x27;],default=&#x27;lp&#x27;)
+    args=parser.parse_args()
+    OUT.mkdir(parents=True,exist_ok=True)
+    signal.signal(signal.SIGALRM,timeout_handler)
+    summaries=[]
+    for T,q in ((2,3),(3,4)):
+        if args.case!=&#x27;both&#x27; and args.case!=f&#x27;T{T}&#x27;:continue
+        signal.alarm(180)
+        try:case=run_case(T,q,args.solver)
+        finally:signal.alarm(0)
+        summaries.append({k:case.get(k) for k in (&#x27;T&#x27;,&#x27;q&#x27;,&#x27;N&#x27;,&#x27;status&#x27;,&#x27;seconds_total&#x27;,&#x27;failure&#x27;)})
+    (OUT/f&#x27;execution_summary_{args.solver}.json&#x27;).write_text(json.dumps(summaries,indent=2)+&#x27;\n&#x27;)
+
+
+if __name__==&#x27;__main__&#x27;:
+    main()
+</pre></html>

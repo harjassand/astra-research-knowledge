@@ -1,0 +1,73 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>&quot;&quot;&quot;Carried-state Gillespie endpoint sensor, with separate simulation cost audit.</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>&quot;&quot;&quot;Carried-state Gillespie endpoint sensor, with separate simulation cost audit.</h1><p>Source ID d-0eea73dd8f66d65f; literature/sources/r08_information/cycle6/r17_sensor_snapshot.py; 857 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>&quot;&quot;&quot;Carried-state Gillespie endpoint sensor, with separate simulation cost audit.
+
+Only the (read, initial_label) pair should be supplied to an estimator. Full
+jump counts belong to the caller&#x27;s audit; they are unavailable through read.
+This is a floating-point exact-jump simulation algorithm, not exact arithmetic
+or a theorem on simulation numerical error. No free resets after initialization.
+&quot;&quot;&quot;
+from dataclasses import dataclass
+import math
+import numpy as np
+
+@dataclass(frozen=True)
+class CostAudit:
+    endpoint_reads: int
+    elapsed_time: float
+    physical_jumps: int
+    random_draws: int
+
+class EndpointSensor:
+    def __init__(self, generator, initial_state, rng, charge_initial_label=True):
+        q=np.array(generator,dtype=float,copy=True)
+        if q.ndim!=2 or q.shape[0]!=q.shape[1] or not np.all(np.isfinite(q)):
+            raise ValueError(&#x27;finite square generator required&#x27;)
+        off=q.copy();np.fill_diagonal(off,0.)
+        if np.any(off&lt;0) or not np.allclose(q.sum(axis=1),0.,rtol=0.,atol=1e-12):
+            raise ValueError(&#x27;generator must have nonnegative off diagonals and zero row sums&#x27;)
+        if not 0&lt;=initial_state&lt;len(q):raise ValueError(&#x27;invalid initial state&#x27;)
+        self.__rates=off;self.__escape=off.sum(axis=1)
+        self.__state=int(initial_state);self.__rng=rng
+        self.__reads=int(charge_initial_label);self.__time=0.;self.__jumps=0;self.__draws=0
+
+    def endpoint_interface(self):
+        &quot;&quot;&quot;Return only endpoint observations; initial label is charged by default.&quot;&quot;&quot;
+        return self.read,self.__state
+
+    def read(self,lag):
+        lag=float(lag)
+        if not math.isfinite(lag) or lag&lt;=0:raise ValueError(&#x27;finite positive calibrated lag required&#x27;)
+        remaining=lag
+        while remaining&gt;0:
+            escape=self.__escape[self.__state]
+            if escape==0:break
+            holding=float(self.__rng.exponential(1./escape));self.__draws+=1
+            if holding&gt;=remaining:break
+            remaining-=holding
+            uniform=float(self.__rng.random())*escape;self.__draws+=1
+            cumulative=np.cumsum(self.__rates[self.__state])
+            target=int(np.searchsorted(cumulative,uniform,side=&#x27;right&#x27;))
+            # Floating rounding at the upper endpoint is clamped to the last positive rate.
+            if target==len(cumulative):target=int(np.flatnonzero(self.__rates[self.__state])[-1])
+            self.__state=target;self.__jumps+=1
+        self.__time+=lag;self.__reads+=1
+        return self.__state
+
+    def audit(self):
+        &quot;&quot;&quot;Caller-only full cost audit. Do not pass this capability to estimator.&quot;&quot;&quot;
+        return CostAudit(self.__reads,self.__time,self.__jumps,self.__draws)
+
+if __name__==&#x27;__main__&#x27;:
+    # Distribution check uses independently initialized fixtures, not an estimator reset.
+    rng=np.random.default_rng(91237)
+    q=[[-1,1],[2,-2]];t=.7;n=20000
+    endpoint_ones=sum(EndpointSensor(q,0,rng).read(t) for _ in range(n))
+    expected=(1-math.exp(-3*t))/3
+    assert abs(endpoint_ones/n-expected)&lt;6*math.sqrt(expected*(1-expected)/n)
+    sensor=EndpointSensor([[-1.1,1,.1],[1,-2,1],[1,1,-2]],0,rng)
+    read,label=sensor.endpoint_interface()
+    for k in range(1000):label=read(.01 if label==0 else .02)
+    cost=sensor.audit()
+    assert cost.endpoint_reads==1001 and cost.physical_jumps&gt;0
+    print({&#x27;distribution_fixture&#x27;:{&#x27;observed&#x27;:endpoint_ones/n,&#x27;expected&#x27;:expected},
+           &#x27;carried_state_fixture&#x27;:cost.__dict__})
+</pre></html>

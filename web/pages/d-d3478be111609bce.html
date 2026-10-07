@@ -1,0 +1,566 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>PDF page 1</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>PDF page 1</h1><p>Source ID d-d3478be111609bce; literature/sources/metric_use10/cycle18/jiang2026v1.txt; 7557 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>PDF page 1
+High-performance linear-scaling electronic structure method via chromatic
+superposition states
+Zhikang Jiang,1, 2,∗ Zhizhi Xiao, 1,∗ Mingfa Tang,1 Weiyu Li,1 Zhaoru Sun, 1 Ke Xia, 2,† and Youqi Ke 1,‡
+1State Key Laboratory of Quantum Functional Materials,
+School of Physical Science and Technology, ShanghaiTech University, Shanghai, 201210, China
+2Key Laboratory of Quantum Materials and Devices of Ministry of Education,
+School of Physics, Southeast University, Nanjing 211189, China
+(Dated: May 21, 2026)
+We introduce a high-performance linear-scaling electronic structure method that employs chro-
+matic superposition states (CSS) as a low-dimensional, high-fidelity representation, which can be
+orders of magnitude smaller than the full Hilbert space. Grounded in the system’s finite correlation
+length, the CSS representation aggregates the uncorrelated orbitals into a single basis via a graph-
+coloring scheme, and is independent of the system size yet accurately preserves all sparse operators
+in solving the Kohn-Sham equations. The projection onto CSSs is efficiently computed by employ-
+ing the block-Lanczos Krylov method which features high hardware efficiency and linear-scaling
+cost, enabling fast calculation of large-scale Kohn-Sham density matrix. We show that this method
+already outperforms previous linear-scaling density matrix purification method by more than one
+order of magnitude in computational speed at even small scale, while preserving high accuracy. The
+practical utility of the CSS method is demonstrated through molecular dynamics simulation of a
+10000H 2O, and self-consistent calculation of a 1-millionH 2Owith modest resources.
+The growing application of quantum mechanical calcula-
+tions across materials science, chemistry and biology has
+intensified the demand for high-accuracy electronic struc-
+ture (ES) modeling of large-scale systems. 1,2 However,
+the steep scaling of conventional density functional the-
+ory (DFT), which typically increases as the cube of the
+number of electrons (O(N 3
+e ))3,4, severely limits its appli-
+cations to systems beyond a few hundred atoms, for ex-
+ample large biomolecules, nanostructured materials, in-
+terfaces and extended defects. To break this scaling bar-
+rier, linear-scaling (LS) DFT methods5,6 have emerged as
+a critical area of research, and are becoming indispens-
+able for simulating large-scale systems.
+LS-DFT methods exploit the inherent locality of elec-
+tronic structure, as encapsulated in the “nearsight-
+edness” principle. 7 These methods encompass diverse
+strategies, such as the divide-and-conquer technique8, lo-
+calized orbital formulations, 9 and density matrix-based
+minimization and polynomial expansion algorithms, 10–13
+etc. While significant progress has enabled simulations
+of systems comprising tens of thousands to millions
+of atoms, 14–18 practical implementations of LS meth-
+ods remain hampered by large computational prefac-
+tors, system-size-dependent overheads, and hardware-
+level inefficiencies. For instance, density-matrix-based
+LS methods rely on iterative sparse-sparse matrix
+multiplications,12,13 which is difficult to execute effi-
+ciently on modern CPU and GPU architectures. 19,20 A
+central limitation of conventional LS approaches is that
+all sparse operators are fundamentally represented within
+the full Hilbert space, resulting in the irregular sparse
+data structures.
+In this work, we explore the intrinsic compressibility of
+the full Hilbert space to achieve a high-fidelity, dense rep-
+resentation of all sparse operators for solving Kohn-Sham
+equations. The foundation is the chromatic superposi-
+tion state (CSS), which originated from the estimation
+of sparse Jacobi matrix using graph-coloring technique
+in Ref.21. It was later used for estimating the diagonals
+of sparse operators, 22,23 showing promise for developing
+LS Kohn-Sham solver. 24 Grounded in the finite correla-
+tion length of the sparse operators in Kohn-Sham sys-
+tem, the CSSs aggregates the spatially distant and un-
+correlated atomic orbitals into a single basis, and can
+provide a low-dimensional representation independent of
+system size for ES calculations. Here, we combine the
+CSSs with a block-Lanczos projection method 25–29 for
+efficiently computing the inverse square root of the over-
+lap matrixS − 1
+2 , orthogonally transformed Hamiltonian
+H′ =S− 1
+2HS− 1
+2 and density matrix ˆρ, thereby realizing
+a high-performace LS ES method.
+To begin, we consider the non-interacting systems that
+features sparse density matrix ˆρ(the Fermi-Dirac oper-
+ator for insulators and finite temperature metals), 30 ex-
+pressed by the Green’s function (GF) as,
+ˆρ=−1
+π Im[
+Z
+f(z)G(z +)dz],(1)
+where the retarded GFG(z +) = (z +S−H) −1(z+ =
+z+iη)(ηis positive infinitesimal), andSandHare
+the sparse overlap and Hamiltonian matrices defined in a
+set of complete localized bases, the Fermi–Dirac function
+f(z) = 1/[exp(β(z−µ)) + 1] (β= 1/k BT,µis chemical
+potential).
+By revealing the sparsity of ˆρ, we introduce a set of or-
+thogonal CSSsr c ={|r i⟩,i= 1,N ρ
+c},22,23 to provide a
+compressed representation of ˆρwith high fidelity, so that
+˜ρ= ˆρ
+Nρ
+cX
+i=1
+|ri⟩⟨ri|= ˆρ|r⟩⟨r|.(2)
+arXiv:2605.20918v1  [cond-mat.mtrl-sci]  20 May 2026
+
+PDF page 2
+FIG. 1. Schematic illustration of CSS method: (a) projection
+of sparse operators to CSS and extraction (blue for correct
+nonzero elements; red for contamination induced by CSSs);
+(b) graph-coloring method for the exponentially decaying den-
+sity matrix, illustrated for a 1D atomic chain. (c) CSSs for
+the colored 1D chain in (b), with ˜1 =±1.
+To select the CSS to give correct non-zero elements of ˆρ
+as shown in Fig.1(a), we here apply a greedy multicol-
+oring algrithm 31 that assigns different colors (with total
+Nρ
+c colors) for the spatial distanced mn of orbital indices
+m,n smaller than the cutoff distanced ρ
+cut,beyond which
+ˆρmn is negligible, as shown in Fig.1(b). After coloring
+the system, for each colori(i≤N ρ
+c ), we construct a vec-
+tor|r i⟩by assigning±1 to indeces colorediwhile others
+are set to 0, as shown in Fig.1(c). By setting appropri-
+ated ρ
+cut, the accurate density matrix ˆρcan be extracted
+from the projection of Eq.2, namely ˜ρ.d ρ
+cut reveals the
+finite correlation length in ˆρand determines the number
+of CSSsN ρ
+c which is thus independent of system size.
+The randomness in±1 can be introduced to reduce the
+system error by stochastic cancellation. It is worth to
+mention that, different from CSS method exploiting the
+sparsity of density operators, the random-state methods
+ultilize the Monte-Carlo sampling and do the stochastic
+average.32–34 We then rewrite ˜ρ=|X⟩⟨r|with the|X i⟩
+given by
+|Xi⟩=− 1
+π Im
+Z
+f(z)|Ri(z)⟩dz,(3)
+and|R i(z)⟩=G(z)|r i⟩= (zS−H) −1|ri⟩which is rewrit-
+ten as, as important result of using GF in Eq.1,
+(z−H ′)| ˜Ri(z)⟩=|˜ri⟩,(i≤N ρ
+c ),(4)
+whereH ′ =S − 1
+2HS− 1
+2 , and|R i(z)⟩=S − 1
+2| ˜Ri(z)⟩,
+|˜ri⟩=S − 1
+2|ri⟩. Eq.4 forms a set of shifted linear sys-
+tems, and shares a common Krylov subspace for differ-
+entz. For multiple right handside of|˜r i⟩(i≤N ρ
+c ),
+we can construct the block-Krylov subspace of dimen-
+sionvasK v(H′, ˜r) =span{ ˜r,H′˜r,H′2˜r,...,H ′v−1˜r}via
+the block-Lanczos process to form an orthonormal space
+Kv ={|Φ K
+m⟩,m= 1,...,v}. 25 Then, projection toK v
+leads to the effective HamiltonianH K
+m,n =⟨ΦK
+m|H
+′
+|ΦK
+n⟩,
+with which we can write
+| ˜R(z)⟩=|Φ K⟩(z−H K)−1⟨ΦK|˜r⟩,(5)
+where (z−H K)−1 is the GF in Krylov subspace. The
+density matrix in Eq.2 can be thus rewritten as
+˜ρ=S− 1
+2|ΦK⟩ρK⟨ΦK|˜ r⟩⟨r|,(6)
+where
+ρK =− 1
+πIm[
+Z
+f(z)
+ 
+z−H K−1
+dz].(7)
+Due to the small size ofK v,ρ K can be efficiently com-
+puted by the exact diagonalization ofH K. The sparse
+density matrix ˆρcan thus be extracted from ˜ρwith high
+accuracy and efficiency. Compared to the approximate
+Chebyshev expansion of Fermi-Dirac functions,22 present
+method treats it accurately in Eq.7.
+As an important step for computing ˆρ, we obtain
+S− 1
+2 ,which is a sparse matrix, 6 by projecting it onto
+NS
+c colored probing states|o⟩={|o i⟩,i= 1,N S
+c}sam-
+pled with appropriated S
+cut, namely by computing ˜S− 1
+2 =
+S− 1
+2|o⟩⟨o|=|Y⟩⟨o|. With the relation
+S− 1
+2 =− 1
+πIm[
+Z
+z− 1
+2GS(z+)dz],(8)
+where the GFG S(z+) = (z +−S)−1, for solving|Y⟩,
+we can again construct a new Krylov subspace of dimen-
+sionv s asK vs
+S (S,o) =span{o,So,S 2o,...,S vs−1o}via
+the block-Lanczos process to form an orthonormal space
+Kvs
+S ={|ΨK
+S,m⟩,m= 1,...,v s}. Then,
+|Y⟩=|Ψ K
+S⟩SK,− 1
+2⟨ΨK
+S|o⟩,(9)
+and
+SK,− 1
+2 =− 1
+πIm[
+Z
+z− 1
+2
+ 
+z+−SK−1
+dz] (10)
+whereSK
+m,n =⟨ΨK
+S,m|S|ΨK
+S,n⟩, and the integration is cal-
+culated by the exact diagonalization within Krylov sub-
+space. Then, we obtain the sparseH ′ by extracting from
+S− 1
+2H ˜S− 1
+2 =S − 1
+2H|Y⟩⟨o|. It is clear that, in all our
+computations includingS− 1
+2 ,H′ and ˆρ, only sparse-dense
+matrix multiplications (SPMM) are involved, which is ef-
+ficient in modern CPU and GPU architechtures.
+To demonstrate the high accuracy and efficiency of
+the present block-Lanczos projected CSS method, we
+presently integrate it with density functional tight-
+binding method (DFTB) 35–39 (within the open-source
+DFTB+ package 40) to self-consistently compute the
+ES, total energy and interatomic force, and bench-
+mark against the exact diagonalization method (ED) and
+the second-order spectral projection (SP2) method (em-
+ploying the NTpoly package 41). DFTB employes the
+nonorthogonal and localized atomic basis set to provide
+
+PDF page 3
+good accuracy and transferability. In the present imple-
+mentation, all the invovled sparse-dense matrix multi-
+plications are performed parallely by using CRP-SPMM
+library.42 We simulate the large disorderedH 2Osuper-
+cells with periodic boundary condition atT= 0 with
+6 atomic orbitals for each H2O. The behavior of water
+is governed by the delicate balance of complex interac-
+tions, e.g.covalent bond, hydrogen bond, weak dispersion
+interaction and the dipole interaction, and thus requires
+accurate calculation of density matrix, presenting a gold-
+standard system for testing linear-scaling methods. We
+use the DFTB-2 parameters ofH 2Osystem from the
+Refs.43 and 44. For the CSS-DFTB calculation ofH 2O
+molecules,d ρ
+cut = 14 Bohr is used to sample the CSSs
+|r⟩with totalN ρ
+c ≈310 for ˆρ, andd S
+cut = 22 Bohr to
+sample|o⟩withN S
+c ≈560 for bothS − 1
+2 andH ′, with
+minor variations ofN ρ
+c andN S
+c (within±20) expected
+for different systems, to ensure the high accuracy in self-
+consistent calculation of density matrix.
+FIG. 2. CPU time per SCF iteration versus number ofH 2O
+for different methods of CSS, SP2 (NTpoly) and ED. In-
+set(a): Deviation ofE orbit versus the Krylov subspacevfor
+(H2O)5000. Inset(b): CPU time versus number ofH 2Ofor
+computingS −1/2 for the SP2 and CSS methods. All the cal-
+culations are performed with 16 CPU cores of a single node.
+In Fig.2 and the insets, we demonstrate the high com-
+putational efficiency of CSS method by comparing with
+the SP2 and ED methods. All calculations with differ-
+ent methods implement a truncation threshold of 2∗10−5
+for maintaining matrix sparsity through selective element
+discarding, and are performed using 16-core paralleliza-
+tion on Intel Xeon Gold 6226 processors (2.70 GHz). As
+an important step before the self-consistent loops, both
+the CSS and SP2 methods computeS − 1
+2 once for each
+atomic structure. Within the CSS method,S − 1
+2 is ob-
+tained via block-Lanczos projection to CSSs, while, for
+the SP2, the NTpoly employs a Newton-Schultz iterative
+approach. Fig.2 Inset(b) compares the computational
+time ofS− 1
+2 for the CSS and SP2 method.It is clear that
+the present CSS method (with a smallv s = 10 sufficient
+for converging the Krylov subspace) achieves a several-
+fold speedup compared to the Newton-Schultz algorithm
+in SP2. For example, for the (H 2O)8000 and (H2O)16000,
+the CSS calculation takes the respective 3.4 and 6.8 sec-
+onds forS− 1
+2 , while the Newton-Schultz in SP2 takes the
+respective 39 and 94 seconds. Then, in Fig.2 Inset(a),
+we investigate the convergence behavior of total orbital
+energyE orbit =Trace(Hˆρ) versus the Krylov subspace
+dimensionvfor a supercell (H 2O)5000 atT= 0K. Re-
+markably,Eorbit converges to within 18 meV accuracy at
+a modestv= 19. This compact block-Krylov subspace
+guarantees the high computational efficiency essential for
+large-scale ES. Based on this convergence test, we em-
+ployv= 22 throughout subsequent CSS calculations of
+(H2O)N.
+FIG. 3. Deviation of Mulliken charge (∆q R in a,b) and force
+(∆FR,x/y/z in c,d) from the ED results for (H 2O)2000: (a)
+and (c) are for the CSS method, (b) and (d) are for the SP2
+method, total energy deviation, root-mean-square (RMS) er-
+rors of forces and charge deviation are also included.
+In Fig.2, we compare the computational time (per self-
+consistent iteration) of diffferent methods for supercell
+(H2O)N with sizes ranging fromN= 64 to 30,000. As
+shown, both the SP2 and CSS methods exhibit superior
+computational efficiency compared to the ED method
+which scales cubically (N 3). It is observed that the
+SP2 algorithm’s scaling slightly deviates from linearity
+as system sizeNincreases, due to the fact that the it-
+eration count in SP2 grows with system size asln(N). 12
+In contrast, the CSS method maintains the linear scal-
+ing very well. It is important that the CSS method
+presents a significantly lower prefactor than SP2 in the
+computational time. For example, the CSS method takes
+2.6 and 5.2 seconds per SCF iteration for the respec-
+tive (H2O)8000 and (H 2O)16000, more than one order of
+magnitude faster than the corresponding SP2 timings
+of 39 and 101 seconds. The computational superiority
+of the block-Lanczos projected CSS method originates
+from the small number of sparse-dense matrix multiplica-
+tion for constructing the Krylov subspace for key quan-
+tities ˆρ,S− 1
+2 andH ′, while SP2 method relies on the
+sparse-sparse matrix multiplications which suffers from
+
+PDF page 4
+the hardware inefficiency and challenges on modern CPU
+and GPU architectures.
+FIG. 4. (a) Radial distribution functionsg αβ(r) for O-O, O-
+H, and H-H pairs for MD simulations of bulk (H 2O)10000 at
+298K with the CSS method in DFTB, compared to the exper-
+imental measurements.48(b) Total energy convergence versus
+SCF iterations for 10 6 H2Osystem (shifted by the converged
+value of -111180290.941eV). The inset shows the MD total
+energy perH 2Omolecule (shifted by -111.106eV) versus MD
+simulation time. All the calculations are performed with 16
+CPU cores of a single node
+In the next, we compare the accuracy of CSS method
+for the self-consistent ES calculations with the ED and
+SP2 results. The energy-weighted density matrix re-
+quired for force calculations in DFTB, defined as ˆρ E =PN
+i=1f(ϵi)ϵi|ψi⟩⟨ψi|whereψ i andϵ i are the respective
+eigenstate and eigenvalue, is efficiently extracted by com-
+puting ˜ρE =S −1H˜ρin the CSS method. Furthermore,
+for efficient evaluation of the Coulomb potential and
+forces with the Mulliken charge, we employed the par-
+ticle mesh Ewald (PME) method,45,46 as implemented in
+helPME program,47 in place of the standard Ewald sum-
+mation. Fig.3 presents the deviations of Mulliken charge
+∆qR (in (a,b)) and force components ∆FR,x/y/z (in (c,d))
+from the ED results for both the CSS (a,c) and SP2 (b,d)
+calculations of (H 2O)2000. As shown in Fig.3, for both
+the deviations of Mulliken charge and force, the CSS re-
+sults present the accuracy comparable to the SP2 calcula-
+tions. Both SP2 and CSS methods present the maximum
+charge deviations|∆q R|max≤5∗10 −5e, and remarkably
+small root-mean-square errors (RMS) of 3∗10−7efor the
+∆qR. Moreover, the force components computed by both
+methods exhibit the maximum deviations below 0.002
+eV/˚A, with RMS errors of 0.000124eV/ ˚A, demonstrat-
+ing the reliability for large-scale molecular dynamics sim-
+ulations. In addition, as shown in Fig.3, the CSS method
+predicts the total energy deviation ∆Etot = 2meV(from
+the ED calculation) for (H 2O)2000, while the SP2 yields
+the ∆Etot = 22.5meV. For the high accuracy in the CSS
+calculations, besides the important choice ofd ρ/S
+cut , the
+stochasticity in the random±1 elements in the CSS con-
+struction (see Fig.1) brings the self-cancellation effect for
+the errors in the charge, forces and total energy.
+To demonstrate the practical utility and robustness of
+the CSS method for large-scale systems, we performed
+the molecular dynamics (MD) simulation of a water sys-
+tem. Specifically, a 10-ps NVT simulation was con-
+ducted for (H2O)10000 at room temperature (298 K) with
+the timestep of 0.5 fs. The radial distribution func-
+tions (RDFs) for O-O,H-O and H-H pairs were com-
+puted from the last 1 ps of the production trajectory,
+and compared with the experimental measurements, as
+shown in Fig.4(a). All calculated RDFs agree well with
+experimental neutron diffraction data 48 for the charac-
+teristic peak positions and coordination numbers of liq-
+uid water. For example, the CSS based DFTB repro-
+duces the RDF peaks for O-O pair atr O−O = 2.8,4.6 ˚A,
+for O-H pair atr H−O = 1.85,3.3 ˚Aand for H-H pair
+atr H−H = 2.5,3.9 ˚A, illustrating the method’s practical
+stability. To further demonstrate the scalability of the
+CSS method for large-scale systems, we conducted self-
+consistent ES calculations of a 10 6 H2Osupercell (using
+16 cores of a single node). Fig.4(b) presents the total en-
+ergy versus the self-consistent iterations. It is clear that
+the convergence can be rapidly reached after 6 iterations
+without the size-dependence, with the error magnitude
+reduced from 10 5eV to 0.1 meV. The energy per water
+molecule (-111.180 eV) also shows remarkable agreement
+with small-scale benchmarks. Notably, each iteration re-
+quires only 644 seconds to construct the density matrix
+ˆρ(The deviation from ideal scaling arises from memory
+bandwidth limits of a single node). For comparison, a
+previous simulation of 1-millionH 2Ousing the divide-
+and-conquer method required 128000 CPU cores. 49 Here
+for 10 6 H2O, theN ρ
+c andN S
+c are both more than 4 or-
+ders of magnitude smaller than the full Hilbert space of
+dimension 6×10 6. These results demonstrate the CSS
+method as an effective quantum mechanical approach for
+ultra-large scale materials simulations.
+In summary, we have developed a highly efficient and
+accurate LS block-Lanczos projected CSS method for
+simulating large-scale electronic structure. This method
+projects the sparse operators/matrix function onto a
+small set of orthogonal CSSs generated by a graph-
+coloring technique with high fidelity. Combining with
+the block-Lanczos projection, the CSS method enables
+the efficient computation ofS− 1
+2 , the transformed Hamil-
+tonianH ′ =S − 1
+2HS− 1
+2 and the Fermi-Dirac opera-
+tor. By integrating with DFTB, we demonstrate that
+the CSS method achieves remarkable computational effi-
+ciency and accuracy for large scale ES calculation, com-
+pared to the ED and SP2 calculations. The practical util-
+ity and robustness of the method are further illustrated
+by MD simulation of 10000H 2Oand self-consistent
+calculation of 10 6 H2Owith modest computational re-
+
+PDF page 5
+sources. The CSS method offers an effective and scalable
+approach for quantum mechanical simulations of large
+scale materials.
+Y.Ke acknowledges financial support from NSFC
+(grant No.12227901), and K.Xia thanks the support
+from the National Key Research and Development
+Program of China(GrantNos.2023YFA1406600),Z.Sun
+Thanks the support from Shanghai Rising-star Program
+(23QA1406800). The authors thank the HPC platform
+of ShanghaiTech University for providing the computa-
+tional facility.
+∗ These authors contributed equally to this work.
+† kexia@seu.edu.cn
+‡ keyq@shanghaitech.edu.cn
+1 L. E. Ratcliffet al., WIREs Comput. Mol. Sci.7, e1290
+(2017).
+2 W. Dawson, A. Degomme, M. Stella, T. Nakajima, L. E.
+Ratcliff, and L. Genovese, WIREs Computational Molec-
+ular Science12, e1574 (2022).
+3 P. Hohenberg and W. Kohn,Phys. Rev. 136, B864(1964).
+4 W. Kohn, and L. J. Sham,Phys. Rev. 140, A1133(1965).
+5 S. Goedecker, Rev. Mod. Phys. 71, 1085 (1999).
+6 D. R. Bowler and T. Miyazaki,Reports on Progress in
+Physics. 75, 036503 (2012).
+7 W. Kohn,Phys. Rev. Lett.76, 3168 (1996).
+8 W. Yang,Phys. Rev. Lett. 66, 1438 (1991).
+9 J-L Fattebert,J. Phys.: Condens. Matter20, 294210
+(2008).
+10 X.P. Li, R. W. Nunes, and D. Vanderbilt,Phys. Rev. B.
+47, 10891 (1993).
+11 R. W. Nunes and D. Vanderbilt,Phys. Rev. B. 50, 17 611
+(1994).
+12 A. M. N. Niklasson.Phys. Rev. B. 66, 155115(2002).
+13 S. Goedecker, M. Teter,Phys. Rev. B. 51, 9455(1995)
+14 J. Feng, L. Wan, J. Li, S. Jiao, X. Cui, W. Hu, and J. Yang,
+Computer Physics Communications299, 109135 (2024).
+15 Q. Jiang, Z. Cao, J. Chen, X. Qin, W. Hu, H. An, and
+J. Yang,IEEE Transactions on Parallel and Distributed
+Systems36(7), 1495-1508 (2025).
+16 D. R. Bowler and T. Miyazaki,J. Phys.: Condens. Matter
+22, 074207 (2010).
+17 R. Stocks, J. L. G. Vallejo, F. C. Y. Yu, C. Snowdon, E.
+Palethorpe, J. Kurzak, D. Bykov, and G. M. J. Barca,
+inProc. SC’24: International Conference for High Per-
+formance Computing, Networking, Storage and Analysis
+(IEEE, 2024), pp. 1-12.
+18 N. Vetsch, A. Maeder, V. Maillou, A. Winka, J. Cao, G.
+Kwasniewski, L. Deuschle, T. Hoefler, A. N. Ziogas, and
+M. Luisier,Proceedings of the International Conference for
+High Performance Computing, Networking, Storage and
+Analysis (SC’25)(ACM, 2025), pp. 1-13.
+19 P. Suryanarayana,Chem. Phys. Lett.555, 291 (2013).
+20 A. G. Artemov and E. H. Rubensson,J. Comput. Phys.
+438, 110354 (2021).
+21 T. F. Coleman and J. J. Mor´ e,SIAM J. Numer. Anal.20,
+187–209 (1983).
+22 C. Bekas, E. Kokiopoulou, Y. Saad,Appl. Numer. Math
+57, 1214 (2007).
+23 J.M. Tang, Y. Saad,Numer. Linear Algebra Appl19, 485
+(2012).
+24 Z. Wang, G.-W. Chern, C. D. Batista, and K. Barros,J.
+Chem. Phys.148, 094107 (2018).
+25 G. H. Golub and R. Underwood,Mathematical Software,
+III (Proc. Sympos., Math. Res. Center, Univ. Wisconsin,
+Madison, Wis., 1977). pp. 361–377 (1977).
+26 P. Tich´ y, G. Meurant, and D.ˇSimonov´ a,Numerical Algo-
+rithms(2025).
+27 Taisuke Ozaki,Phys. Rev. B74, 245101 (2006).
+28 T. Sogabe,Krylov Subspace Methods for Linear Sys-
+tems.(Springer Nature Singapore Pte Ltd, Singapore,
+2022).
+29 T. Hoshi and S. Yamamoto and T. Fujiwara and T. Sogabe,
+and S-L. Zhang,Journal of Physics: Condensed Matter.
+24, 165502 (2012).
+30 G. D. Mahan,Many-Particle Physics(Springer Science
+Business Media, New York, 2013).
+31 D. J. A. Welsh and M. B. Powell,The Computer Journal.
+10, 85-86 (1967).
+32 M. Tang, C. Liu, A. Zhang, Q. Zhang, J. Zhai, S. Yuan,
+and Y. Ke,Chin. Phys. Lett.41, 053102 (2024).
+33 R. Baer, D. Neuhauser, and E. Rabani,Phys. Rev. Lett.
+111, 106402 (2013).
+34 W. Zhou and S. Yuan,Chin. Phys. Lett.40, 027101 (2023).
+35 D. Porezag, T. Frauenheim, T. Kohler, G. Seifert,and R.
+Kaschner,Phys. Rev. B. 51, 12 947 (1995).
+36 G. Seifert, D. Porezag, and T. Frauenheim,International
+Journal of Quantum Chemistry. 58, 185 (1996).
+37 M. Elstner, D. Porezag, G. Jungnickel, J. Elsner, M.
+Haugk, T. Frauenheim, S. Suhai and G. Seifert,Phys. Rev.
+B. 58, 7260 (1998).
+38 P. Koskinen and V. Makinen,Computational Materials
+Science. 47, 237(2009).
+39 M. Elstner and G. Seifert,Philosophical Transactions of
+the Royal Society A: Mathematical, Physical and Engineer-
+ing Sciences. 372, 20120483 (2014).
+40 B. Hourahine, et.al.,J.Chem.Phys152, 124101(2020).
+41 William Dawson, Takahito Nakajima,Comp Phys Com-
+mun225, 154–165,(2018).
+42 H. Huang and E. Chow,IEEE Transactions on Parallel
+and Distributed Systems35, 1977–1988 (2024)
+43 Jolla Kullgren, Matthew J Wolf, Kersti Hermansson,
+Christof K¨ ohler, B´ alint Aradi, Thomas Frauenheim, Pe-
+ter Broqvist,J Phys Chem C121, 4593–4607,(2017).
+44 M. P. Louren¸ co, E. C. dos Santos, L. G. M. Pettersson,
+and H. A. Duarte,Journal of Chemical Theory and Com-
+putation16, 1768–1778 (2020).
+45 T. Darden, D. York, and L. Pedersen,The Journal of
+Chemical Physics98, 10089–10092 (1993).
+46 U. Essmann, L. Perera, M. L. Berkowitz, T. Darden, H.
+Lee, and L. G. Pedersen,The Journal of Chemical Physics
+103, 8577–8593 (1995).
+47 A. C. Simmonett et al.,helPME. GitHub (2024).https:
+//github.com/andysim/helpme.
+48 K. T. Wikfeldt, M. Leetmaa, M. P. Ljungberg, A. Nilsson,
+and L. G. M. Pettersson,The Journal of Physical Chem-
+istry B113, 6246–6255 (2009).
+49 Y. Nishimura and H. Nakai,Journal of Computational
+
+PDF page 6
+Chemistry. 39, 105–116 (2018).</pre></html>

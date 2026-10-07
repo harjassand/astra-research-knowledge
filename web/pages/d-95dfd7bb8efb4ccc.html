@@ -1,0 +1,167 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>!/usr/bin/env python3</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>!/usr/bin/env python3</h1><p>Source ID d-95dfd7bb8efb4ccc; literature/sources/d_example/cycle3/program_before_threshold_ledger_fix.py; 2554 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Controlled target program: original private coins and observations, no sampler bits.
+
+Controller/report functions receive ONLY a target observation oracle and
+their own independent coin source, never the candidate label.
+&quot;&quot;&quot;
+from pathlib import Path
+from fractions import Fraction as F
+import importlib.util,json,time,hashlib,csv
+ROOT=Path(__file__).resolve().parents[4];OUT=ROOT/&#x27;results/d_example/cycle3/program&#x27;
+spec=importlib.util.spec_from_file_location(&#x27;asymmetric_primitives&#x27;,ROOT/&#x27;work/d_example/cycle3/asymmetric/converter.py&#x27;)
+m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m);s=m.s
+MENU=[m.G,[m.G[(i+1)%3] for i in range(3)]]
+
+def report_from_record(record):
+    parity=False;residue=0
+    for coin,a,y in record:
+        parity^=bool(y==2 and (coin^a)==1);residue=(residue+y)%3
+    return bool(parity^(residue==1)^(record[0][2]==record[-1][2]))
+
+def execute_target(observation_oracle,private_coin,n):
+    record=[];previous=0
+    for t in range(n):
+        coin=private_coin();a=1 if previous==2 else coin if t%2 else 0
+        y=observation_oracle(a);record.append((coin,a,y));previous=y
+    return tuple(record),report_from_record(record)
+
+def propose_record(k,n,rng):
+    def observation_oracle(a):
+        # Internal channel-sampler integer is NEVER retained in the record.
+        u=rng.randrange(10)
+        for y,prob in enumerate(MENU[a][k]):
+            w=int(10*prob)
+            if u&lt;w:return y
+            u-=w
+    return execute_target(observation_oracle,lambda:rng.randrange(2),n)
+
+def likelihood_counts(record):
+    counts=[[0]*3 for a in range(2)]
+    previous=0
+    for t,(coin,a,y) in enumerate(record):
+        assert a==(1 if previous==2 else coin if t%2 else 0)
+        counts[a][y]+=1;previous=y
+    return counts
+
+def ratios(record,k):
+    counts=likelihood_counts(record);h=[F(1)]*3
+    for i in range(3):
+        for a in range(2):
+            for y in range(3):h[i]*=(MENU[a][i][y]/MENU[a][k][y])**counts[a][y]
+    return h
+
+def thresholds(h,eta):
+    out=[];n_upper=sum(x.bit_length() for v in h for x in [v.numerator,v.denominator])+10
+    for k in range(3):
+        target=max(F(1),*(h[k]/h[j] for j in range(3) if j!=k))/eta
+        lo=-1;hi=n_upper
+        while hi-lo&gt;1:
+            mid=(hi+lo)//2
+            if 9**mid*target.denominator&gt;=target.numerator:hi=mid
+            else:lo=mid
+        out.append(hi)
+    return out
+
+def relative_T(record,k,p):
+    h=ratios(record,k);barriers=thresholds(h,p[&#x27;eta&#x27;]);out=[]
+    for i in range(3):
+        q=p[&#x27;thinning&#x27;]*sum(((1-2*p[&#x27;b0&#x27;] if i==j else p[&#x27;b0&#x27;])*h[j]*s.verifier_pass(barriers[j],p[&#x27;L&#x27;],i==j) for j in range(3)),F(0))
+        out.append(h[i]-q)
+        assert p[&#x27;eta&#x27;]*h[i]&lt;=out[-1]&lt;=6*p[&#x27;eta&#x27;]*h[i]
+    return out
+
+def accept(record,k,p):
+    t=relative_T(record,k,p);w=(t[k]-p[&#x27;bR&#x27;]*sum(t))/(1-3*p[&#x27;bR&#x27;])
+    assert 0&lt;=w&lt;=7*p[&#x27;eta&#x27;]
+    return w/(7*p[&#x27;eta&#x27;])
+
+def repair(p,observe,rng,ledger):
+    while True:
+        k=s.classify(p[&#x27;rR&#x27;],observe,rng);ledger[&#x27;repair_attempts&#x27;]+=1
+        record,report=propose_record(k,p[&#x27;n&#x27;],rng);probability=accept(record,k,p)
+        ledger[&#x27;maximum_coin_bits&#x27;]=max(ledger[&#x27;maximum_coin_bits&#x27;],probability.denominator.bit_length())
+        if s.coin(probability,rng):return record,report
+
+def convert(p,observe,rng,ledger):
+    k=s.classify(p[&#x27;r0&#x27;],observe,rng);record,report=propose_record(k,p[&#x27;n&#x27;],rng)
+    B=thresholds(ratios(record,k),p[&#x27;eta&#x27;])[k];score=0
+    while -p[&#x27;L&#x27;]&lt;score&lt;B:score+=1 if observe(k)==0 else -1
+    if score==B and s.coin(p[&#x27;thinning&#x27;],rng):return record,report
+    ledger[&#x27;repair_flags&#x27;]+=1;return repair(p,observe,rng,ledger)
+
+def enumerate_joint(n):
+    out=[]
+    def visit(record,h,previous):
+        t=len(record)
+        if t==n:out.append((tuple(record),h,report_from_record(record)));return
+        for coin in [0,1]:
+            a=1 if previous==2 else coin if t%2 else 0
+            for y in range(3):visit(record+[(coin,a,y)],[h[i]*MENU[a][i][y]/2 for i in range(3)],y)
+    visit([],[F(1)]*3,0)
+    assert all(sum(h[i] for record,h,report in out)==1 for i in range(3))
+    return out
+
+def exact_audit(n,p):
+    atoms=enumerate_joint(n);delta=[F(0)]*3;target_boolean=[F(0)]*3;final_boolean=[F(0)]*3;checks=0
+    Q=[];T=[]
+    for record,h,report in atoms:
+        expected_ratios=[h[i]/h[0] for i in range(3)];assert ratios(record,0)==expected_ratios
+        t=[x*h[0] for x in relative_T(record,0,p)];q=[h[i]-t[i] for i in range(3)]
+        T.append(t);Q.append(q)
+        for i in range(3):delta[i]+=t[i];target_boolean[i]+=h[i]*int(report)
+    for a,(record,h,report) in enumerate(atoms):
+        for i in range(3):
+            accepted_trial=sum((1-2*p[&#x27;bR&#x27;] if i==k else p[&#x27;bR&#x27;])*h[k]*accept(record,k,p) for k in range(3))
+            assert accepted_trial==T[a][i]/(7*p[&#x27;eta&#x27;])
+            final=Q[a][i]+delta[i]*(accepted_trial/(delta[i]/(7*p[&#x27;eta&#x27;])))
+            assert final==h[i];final_boolean[i]+=final*int(report);checks+=1
+    assert final_boolean==target_boolean and all(0&lt;x&lt;1 for x in target_boolean)
+    return {&#x27;horizon&#x27;:n,&#x27;joint_records&#x27;:len(atoms),&#x27;state_record_equalities&#x27;:checks,
+        &#x27;target_terminal_boolean_probability&#x27;:target_boolean,&#x27;converted_terminal_boolean_probability&#x27;:final_boolean,
+        &#x27;statewise_delta&#x27;:delta,&#x27;full_joint_law_and_boolean_projection&#x27;:&#x27;PASS&#x27;,
+        &#x27;retained_private_bits&#x27;:&#x27;Controller coin outcomes only, never channel-sampler integers or PRNG seeds.&#x27;}
+
+def main():
+    OUT.mkdir(parents=True,exist_ok=True);configuration={&#x27;small_joint_horizon&#x27;:3,&#x27;runtime_horizon&#x27;:1024,
+        &#x27;regular_trials_per_state&#x27;:12,&#x27;forced_repairs_per_state&#x27;:2,&#x27;seed&#x27;:224601,
+        &#x27;target_menu&#x27;:MENU,&#x27;target_program&#x27;:&#x27;coin; if previous observation==2 choose action1, else odd steps use coin and even steps action0; sample; parity/count-mod3/first-last report&#x27;,
+        &#x27;private_record&#x27;:&#x27;Only original controller coin outcomes and target action/observation history; no channel-sampler bits&#x27;,
+        &#x27;source_sha256&#x27;:hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+        &#x27;declared_scope&#x27;:&#x27;New controlled target program after iid fixtures, not their original held-out dataset.&#x27;}
+    (OUT/&#x27;configuration.json&#x27;).write_text(json.dumps(s.encode(configuration),indent=2)+&#x27;\n&#x27;)
+    audit=exact_audit(3,m.compile_program(3))
+    (OUT/&#x27;exact_joint_audit.json&#x27;).write_text(json.dumps(s.encode(audit),indent=2)+&#x27;\n&#x27;)
+    p=m.compile_program(1024);p[&#x27;finite_bound_scope&#x27;]=&#x27;All target actions satisfy same conditional KL/variance envelope; martingale differences replace iid count differences.&#x27;
+    (OUT/&#x27;finite_budget_certificate.json&#x27;).write_text(json.dumps(s.encode(p),indent=2)+&#x27;\n&#x27;)
+    runs=[];stress=[];started=time.perf_counter()
+    with (OUT/&#x27;runtime_trials.csv&#x27;).open(&#x27;w&#x27;,newline=&#x27;&#x27;) as f:
+        writer=csv.writer(f);writer.writerow([&#x27;truth&#x27;,&#x27;trial&#x27;,&#x27;boolean_report&#x27;,&#x27;source_samples&#x27;,&#x27;action0_target_count&#x27;,&#x27;action1_target_count&#x27;])
+        for truth in range(3):
+            rng=s.CountingRandom(configuration[&#x27;seed&#x27;]+truth);source_samples=[0];env_bits=[0]
+            def observe(a):
+                source_samples[0]+=1;before=rng.generated_bits
+                y=int(rng.randrange(10)&lt;(1 if a==truth else 9));env_bits[0]+=rng.generated_bits-before;return y
+            ledger={&#x27;repair_flags&#x27;:0,&#x27;repair_attempts&#x27;:0,&#x27;maximum_coin_bits&#x27;:0};costs=[];reports=[];target_actions=[0,0]
+            for trial in range(configuration[&#x27;regular_trials_per_state&#x27;]):
+                before=source_samples[0];record,report=convert(p,observe,rng,ledger)
+                counts=likelihood_counts(record);assert len(record)==1024 and report==report_from_record(record)
+                ac=[sum(row) for row in counts];target_actions=[target_actions[a]+ac[a] for a in range(2)]
+                costs.append(source_samples[0]-before);reports.append(report);writer.writerow([truth,trial,int(report),costs[-1],*ac])
+            runs.append({&#x27;truth&#x27;:truth,&#x27;trials&#x27;:len(costs),&#x27;empirical_mean_source_samples&#x27;:sum(costs)/len(costs),
+                &#x27;paid_source_samples&#x27;:sum(costs),&#x27;terminal_boolean_true_count&#x27;:sum(reports),&#x27;target_action_counts&#x27;:target_actions,
+                &#x27;randomizer_auxiliary_bits&#x27;:rng.generated_bits-env_bits[0],&#x27;source_environment_bits&#x27;:env_bits[0],**ledger})
+            before=source_samples[0];before_bits=rng.generated_bits;before_env=env_bits[0]
+            forced={&#x27;repair_flags&#x27;:0,&#x27;repair_attempts&#x27;:0,&#x27;maximum_coin_bits&#x27;:0}
+            for _ in range(configuration[&#x27;forced_repairs_per_state&#x27;]):
+                record,report=repair(p,observe,rng,forced);assert len(record)==1024
+            stress.append({&#x27;truth&#x27;:truth,&#x27;forced_repair_outputs&#x27;:configuration[&#x27;forced_repairs_per_state&#x27;],
+                &#x27;paid_source_samples&#x27;:source_samples[0]-before,&#x27;randomizer_auxiliary_bits&#x27;:rng.generated_bits-before_bits-(env_bits[0]-before_env),**forced})
+    (OUT/&#x27;runtime_summary.json&#x27;).write_text(json.dumps({&#x27;runs&#x27;:runs,&#x27;stress&#x27;:stress,
+        &#x27;paid_regular_samples&#x27;:sum(x[&#x27;paid_source_samples&#x27;] for x in runs),
+        &#x27;paid_forced_repair_samples&#x27;:sum(x[&#x27;paid_source_samples&#x27;] for x in stress),
+        &#x27;wall_seconds&#x27;:time.perf_counter()-started,
+        &#x27;scope&#x27;:&#x27;Small exhaustive joint-law audit is exact arithmetic. Large runtime diagnoses code only; ideal randomness is the mathematical interface.&#x27;},indent=2)+&#x27;\n&#x27;)
+    print(json.dumps(s.encode({&#x27;small_joint_audit&#x27;:audit,&#x27;n1024_source_upper&#x27;:p[&#x27;finite_expected_source_cost_upper&#x27;],&#x27;runtime_regular_trials&#x27;:36}),indent=2))
+
+if __name__==&#x27;__main__&#x27;:main()
+</pre></html>

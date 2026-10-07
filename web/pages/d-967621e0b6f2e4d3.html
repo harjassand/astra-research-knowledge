@@ -1,0 +1,141 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>&quot;&quot;&quot;Original-factor derivation of the remaining factor2 chart intersection.</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>&quot;&quot;&quot;Original-factor derivation of the remaining factor2 chart intersection.</h1><p>Source ID d-967621e0b6f2e4d3; literature/sources/metric_prior/cycle16/internal_snapshots/work__metric_use10__cycle16__derive_p2_intersection.py; 1882 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>&quot;&quot;&quot;Original-factor derivation of the remaining factor2 chart intersection.
+
+No producer/checker imports.  This is a prospective algebra derivation, not a
+raw D8 certificate or a claim that every resulting locus is admissible.
+&quot;&quot;&quot;
+import json
+import hashlib
+import itertools
+import time
+from pathlib import Path
+import sympy as s
+from sympy.polys.domains import QQ
+from sympy.polys.rings import ring
+
+BASE=Path(__file__).resolve().parents[3]
+a,b,c,r,u,A,E=s.symbols(&#x27;a b c r u A E&#x27;)
+source=BASE/&#x27;sources/metric_use10/cycle16/generic_d8_divisor_factors.json&#x27;
+if not source.is_file():source=BASE/&#x27;results/metric_prior/cycle13/generic_d8_divisor_factors.json&#x27;
+factors=[s.sympify(v,locals={&#x27;a&#x27;:a,&#x27;b&#x27;:b,&#x27;c&#x27;:c}) for v in json.loads(source.read_text())[&#x27;factors&#x27;]]
+
+def square_convert(v):
+    ans=0
+    for (i,j),co in s.Poly(v,r,u).terms():
+        assert i%2==j%2==0,(i,j)
+        ans+=co*A**(i//2)*E**(j//2)
+    return s.expand(ans)
+
+def main():
+    start=time.monotonic();d=7/(2*r*r+5)
+    plargest=s.cancel(factors[6].subs({a:u,b:r*d/u,c:r},simultaneous=True)/r)
+    vmiddle=s.cancel(factors[8].subs({a:r*d/u,b:u,c:r},simultaneous=True)/(r*r))
+    raw=[]
+    for name,val in [(&#x27;P&#x27;,plargest),(&#x27;V&#x27;,vmiddle)]:
+        num,den=s.fraction(val)
+        content,p=s.Poly(num,r,u).primitive()
+        raw.append(square_convert(p.as_expr()))
+        print(name,raw[-1],flush=True)
+        print(name+&#x27; denominator&#x27;,s.factor(den),&#x27;content&#x27;,content,flush=True)
+    p,v=raw
+    resultant=s.resultant(p,v,E)
+    const,fs=s.factor_list(resultant,A)
+    print(&#x27;resultant factors&#x27;,[(str(f),m) for f,m in fs],flush=True)
+    out={&#x27;status&#x27;:&#x27;PASS independent original-factor final intersection and tie branch&#x27;, &#x27;P&#x27;:str(p),&#x27;V&#x27;:str(v),
+         &#x27;resultant_constant&#x27;:str(const),&#x27;resultant_factors&#x27;:[(str(f),m) for f,m in fs],
+         &#x27;subresultant_degrees&#x27;:[int(s.degree(q,E)) for q in s.subresultants(p,v,E)],
+         &#x27;source_sha256&#x27;:hashlib.sha256(source.read_bytes()).hexdigest(),
+         &#x27;scope&#x27;:&#x27;Final chart-intersection and separate tie only; full rawD8 additionally needs M-curve and safe/domain gates.&#x27;,
+         &#x27;seconds&#x27;:time.monotonic()-start}
+    high=[q for q,m in fs if s.degree(q,A)&gt;1]
+    assert len(high)==1
+    Rexpr=high[0];assert s.Poly(Rexpr,A).is_irreducible
+    for q,m in fs:
+        if q==Rexpr:continue
+        assert s.degree(q,A)==1
+        root=s.solve(q,A)[0];assert root&lt;=0 or root&gt;=1
+    subs=s.subresultants(p,v,E);linear=s.Poly(subs[-2],E)
+    assert linear.degree()==1
+    K,x=ring(&#x27;A&#x27;,QQ);mod=K.from_expr(Rexpr)
+    red=lambda q:q.rem(mod)
+    def inv(q):
+        v,w,g=q.gcdex(mod);assert g.is_ground and g
+        ans=red(v/g[(0,)]);assert red(q*ans)==K.one
+        return ans
+    lead=red(K.from_expr(linear.coeff_monomial(E)));constant=red(K.from_expr(linear.coeff_monomial(1)))
+    ev=red(-constant*inv(lead));dv=red(7*inv(2*x+5));einv=inv(ev)
+    def evalparam(expr):
+        ans=K.zero
+        for (i,j),co in s.Poly(expr,A,E).terms():ans+=QQ.from_sympy(co)*red(x**i*ev**j)
+        return red(ans)
+    assert evalparam(p)==evalparam(v)==K.zero
+    sq=[red(x),ev]
+    def add(v,w):
+        ans=dict(v)
+        for ch,co in w.items():
+            val=red(ans.get(ch,K.zero)+co)
+            if val:ans[ch]=val
+            else:ans.pop(ch,None)
+        return ans
+    def mul(v,w):
+        ans={}
+        for ch,co in v.items():
+            for hc,bc in w.items():
+                val=red(co*bc)
+                for j in range(2):
+                    if ch[j] and hc[j]:val=red(val*sq[j])
+                dst=tuple((ch[j]+hc[j])%2 for j in range(2))
+                ans=add(ans,{dst:val})
+        return ans
+    def power(v,n):
+        ans={(0,0):K.one}
+        for _ in range(n):ans=mul(ans,v)
+        return ans
+    # Alternate chart(c,a,b)=(u,r,rd/u).
+    charts=[{(0,1):K.one},{(1,0):K.one},{(1,1):red(dv*einv)}]
+    norms=[]
+    for index,factor in enumerate(factors):
+        value={}
+        for mon,co in s.Poly(factor,a,b,c).terms():
+            term={(0,0):K(QQ.from_sympy(co))}
+            for j,n in enumerate(mon):term=mul(term,power(charts[j],n))
+            value=add(value,term)
+        norm={(0,0):K.one}
+        for sr,su in itertools.product((-1,1),repeat=2):
+            norm=mul(norm,{ch:co*sr**ch[0]*su**ch[1] for ch,co in value.items()})
+        assert set(norm)=={(0,0)}
+        nv=norm[(0,0)]
+        assert nv and nv.gcd(mod).is_ground,(index,str(nv))
+        norms.append({&#x27;index&#x27;:index,&#x27;norm&#x27;:[[mon[0],str(co)] for mon,co in sorted(nv.items())],&#x27;gcd_R&#x27;:&#x27;1&#x27;})
+    out.update({&#x27;R_irreducible&#x27;:True,&#x27;R&#x27;:str(Rexpr),
+                &#x27;E_coefficients&#x27;:[[mon[0],str(co)] for mon,co in sorted(ev.items())],
+                &#x27;third_chart&#x27;:&#x27;(c,a,b)&#x27;,&#x27;all28_factor_norms&#x27;:norms})
+    # Tie E=F must be considered separately, not cancelled in the chart switch.
+    tie=s.cancel(factors[6].subs({a:u,b:u,c:r},simultaneous=True))
+    num,den=s.fraction(tie)
+    rem=s.rem(s.Poly(num,u),s.Poly(u*u-r*d,u)).as_expr()
+    tie=s.factor(s.cancel(rem/den))
+    print(&#x27;tie p7&#x27;,tie,flush=True)
+    out[&#x27;tie_p7&#x27;]=str(tie)
+    rt=s.Rational(7,11);T=7*rt/(2*rt*rt+5)
+    assert T==s.Rational(539,703)
+    determinant=s.cancel(1-rt*rt-2*T+2*rt*T)
+    assert determinant&gt;0 and 0&lt;rt&lt;1 and 0&lt;T&lt;1
+    tied=[]
+    modulus=s.Poly(u*u-T,u)
+    for index,factor in enumerate(factors):
+        val=s.Poly(factor.subs({a:u,b:rt,c:u},simultaneous=True),u).rem(modulus)
+        norm=s.Poly(val.as_expr()*val.as_expr().subs(u,-u),u).rem(modulus)
+        assert norm.degree()==0 and norm.as_expr()!=0,(index,norm)
+        tied.append({&#x27;index&#x27;:index,&#x27;norm&#x27;:str(norm.as_expr())})
+    dv=7/(2*rt*rt+5)
+    M=s.cancel(2*T*(1+dv)-(dv-3)**2)
+    assert M!=0
+    out[&#x27;tie&#x27;]={&#x27;r&#x27;:str(rt),&#x27;strong_square&#x27;:str(T),&#x27;determinant&#x27;:str(determinant),
+                &#x27;M_nonzero&#x27;:str(M),&#x27;chart&#x27;:&#x27;(t,7/11,t)&#x27;,&#x27;all28_norms&#x27;:tied}
+    out[&#x27;seconds&#x27;]=time.monotonic()-start
+    path=BASE/&#x27;results/metric_use10/cycle16/p2_intersection_derivation.json&#x27;
+    path.write_text(json.dumps(out,indent=2)+&#x27;\n&#x27;)
+    print(str(path),&#x27;PASS all28 final intersection chart norms&#x27;,flush=True)
+
+if __name__==&#x27;__main__&#x27;:main()
+</pre></html>

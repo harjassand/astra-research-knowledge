@@ -1,0 +1,996 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Towards a Theory of Non-Log-Concave Sampling: First-Order Stationarity Guarantees for Langevin Monte Carlo</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>Towards a Theory of Non-Log-Concave Sampling: First-Order Stationarity Guarantees for Langevin Monte Carlo</h1><p>Source ID d-8b6810ef03bf890c; literature/sources/r10_probability/2202.05214v1.html.txt; 30269 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>Towards a Theory of Non-Log-Concave Sampling: First-Order Stationarity Guarantees for Langevin Monte Carlo
+Report GitHub Issue
+×
+Title:
+Content selection saved. Describe the issue below:
+Description:
+Submit without GitHub
+Submit in GitHub
+arXiv is now an independent nonprofit!
+Learn more
+×
+Back to arXiv
+Why HTML?
+Report Issue
+Back to Abstract
+Download PDF
+Abstract
+1 Introduction
+1.1 Paper organization and contributions
+2 Interpretation of approximate first-order stationarity in sampling
+3 Preliminaries
+4 Main result
+5 Applications
+5.1 Asymptotic convergence of averaged LMC with vanishing step size
+5.2 New sampling guarantees under a Poincaré inequality
+5.3 Hessian smoothness
+6 Extension to stochastic gradients
+6.1 General result
+6.2 Extension to non-smooth potentials via Gaussian smoothing
+6.3 Finite sum setting
+7 Conclusion and open questions
+Acknowledgments.
+References
+A Proof for the illustrative example
+B Proof of the main theorem
+C Proofs for the extensions and applications
+C.1 Asymptotic convergence of averaged LMC
+C.2 Hessian smoothness
+C.3 Stochastic gradient setting
+C.4 Gaussian smoothing
+C.5 Finite sum setting
+License: CC BY 4.0
+arXiv:2202.05214v1 [math.ST] 10 Feb 2022
+Towards a Theory of Non-Log-Concave Sampling:
+First-Order Stationarity Guarantees for Langevin Monte CarloThanks:
+Microsoft Research, salim@berkeley.edu
+Thanks:
+Department of Computer Science at
+University of Toronto, and Vector Institute, matthew.zhang@mail.utoronto.ca
+​​​​​
+Krishnakumar Balasubramanian
+Sinho Chewi
+Murat A. Erdogdu
+††thanks:
+Department of Statistics at University of California, Davis, kbala@ucdavis.edu
+††thanks:
+Department of Mathematics at
+Massachusetts Institute of Technology, schewi@mit.edu
+††thanks:
+Department of Computer Science at
+University of Toronto, and Vector Institute, erdogdu@cs.toronto.edu
+Affiliation: Adil Salim
+Matthew Zhang
+Abstract
+For the task of sampling from a density  $\pi\propto\exp(-V)$  on  $\mathbb{R}^{d}$ , where  $V$  is possibly non-convex but  $L$ -gradient Lipschitz, we prove that averaged Langevin Monte Carlo outputs a sample with  $\varepsilon$ -relative Fisher information after  $O(L^{2}d^{2}/\varepsilon^{2})$  iterations. This is the sampling analogue of complexity bounds for finding an  $\varepsilon$ -approximate first-order stationary points in non-convex optimization and therefore constitutes a first step towards the general theory of non-log-concave sampling. We discuss numerous extensions and applications of our result; in particular, it yields a new state-of-the-art guarantee for sampling from distributions which satisfy a Poincaré inequality.
+1 Introduction
+Consider the canonical task of sampling from a density  $\pi\propto\exp(-V)$  on  $\mathbb{R}^{d}$ , given query access to the gradients of  $V$ . In the case where  $V$  is strongly convex and smooth, this task is well-studied, with a number of works giving precise and non-asymptotic complexity bounds which scale polynomially in the problem parameters. In contrast, there are comparatively few works which study the case when  $V$  is non-convex. In this work, we take a first step towards developing a general theory of non-log-concave sampling by formulating the sampling analogue of stationary point analysis, which has been highly successful in the non-convex optimization [N+18].
+Classically, the Langevin diffusion, the solution to the stochastic differential equation
+$\displaystyle\mathrm{d}z_{t}$
+$\displaystyle=-\nabla V(z_{t})\,\mathrm{d}t+\sqrt{2}\,\mathrm{d}B_{t}\,,$
+(1.1)
+has  $\pi$  as its unique stationary distribution and converges to it as  $t\to\infty$  under mild conditions. Here,  ${(B_{t})}_{t\geq 0}$  is a standard  $d$ -dimensional Brownian motion. Discretizing this stochastic process with step size  $h&gt;0$  yields the standard Langevin Monte Carlo (LMC) algorithm
+$\displaystyle x_{(k+1)h}$
+$\displaystyle:=x_{kh}-h\,\nabla V(x_{kh})+\sqrt{2}\,(B_{(k+1)h}-B_{kh})\,.$
+(LMC)
+Several extensions of LMC have been considered in the literature. For instance, a stochastic gradient can be used as an estimate of the “full” gradient  $\nabla V(x_{kh})$  at each iteration.
+Although LMC and its extensions are ostensibly sampling algorithms, they find applications in optimization. Indeed, LMC and its extensions can be viewed as a variant of (stochastic) gradient descent in which Gaussian noise is explicitly injected in the (stochastic) gradient in each iteration. As explored, for example, in [RRT17] and [JNG+21], the presence of noise allows the iteration to escape local minima and allows for establishing global non-asymptotic convergence guarantees on well-behaved yet non-convex objectives.
+Perhaps surprisingly, the connection between optimization and sampling also goes in the other direction: the theory of optimization can be used to understand the performance of sampling algorithms. On a superficial level, this is anticipated because the Langevin diffusion (1.1) is simply a standard gradient flow to which a Brownian noise has been added. However, there is a much deeper connection, due to [JKO98], which interprets the Langevin diffusion as an exact gradient flow in the space of probability measures equipped with the geometry of optimal transport, where the objective functional is the Kullback–Leibler (KL) divergence  $\KL(\cdot\mathbin{\|}\pi)$ . This perspective has spurred researchers to provide novel optimization-inspired analyses of sampling [Ber18, Wib18, DMM19].
+For example, the Wasserstein gradient of  $\KL(\cdot\mathbin{\|}\pi)$  at  $\mu$  is  $\nabla\ln(\mu/\pi)$ , and the calculation rules for gradient flows imply that if  $\pi_{t}$  denotes the law of the Langevin diffusion (1.1) at time  $t$ , then  $\partial_{t}\KL(\pi_{t}\mathbin{\|}\pi)=-\E_{\pi_{t}}[\lVert\nabla\ln(\pi_{t}/\pi)\rVert^{2}]$  [AGS08, Vil09, San15]. As this quantity is important in what follows, we explicitly write  $\FI(\mu\mathbin{\|}\pi):=\E_{\mu}[\lVert\nabla\ln(\mu/\pi)\rVert^{2}]$  for the (relative) Fisher information of  $\mu$  w.r.t.  $\pi$ . If  $V$  is convex (resp. strongly convex), then it turns out that the objective functional  $\KL(\cdot\mathbin{\|}\pi)$  is convex (resp. strongly convex) in the Wasserstein geometry, which in turn implies that  $\KL(\pi_{t}\mathbin{\|}\pi)$  decays to zero at the rate  $O(1/t)$  (resp. exponentially fast).
+In the case when  $V$  is non-convex, however, less is known. Of course, just like non-convex optimization, it is in general impossible to obtain polynomial sampling guarantees for non-log-concave distributions. Recently, [VW19, CEL+21, MCC+21] study tractable cases of non-log-concave sampling in which the target  $\pi$  satisfies a functional inequality, such as the log-Sobolev inequality (LSI). Indeed, if LSI holds, then  $\FI(\mu\mathbin{\|}\pi)\gtrsim\KL(\mu\mathbin{\|}\pi)$  for all  $\mu$ . In light of the Wasserstein calculus described above, this is the analogue of the gradient domination condition (or Polyak–Łojasiewicz inequality) in non-convex optimization:  $\|\nabla V(x)\|^{2}\gtrsim V(x)-\min V$  [Loj63, Pol63, KNS16]. Furthermore, [DM17, CCAY+18, LWME19, MMS20, EH21, HBE22] study tractable classes of non-log-concave sampling based on certain tail-growth conditions. However, the assumptions made in all the above works are very far from capturing the breadth of non-log-concave sampling.
+Instead, in general non-convex optimization, the standard approach is to prove convergence to a stationary point of the objective function, or from a more quantitative perspective, to determine the complexity of obtaining a point  $x$  satisfying  $\lVert\nabla V(x)\rVert^{2}\leq\varepsilon$ . This complexity is typically  $O(1/\varepsilon)$  [N+18]. Following this paradigm, we propose to use the Fisher information as the sampling analogue of the squared norm of the gradient. Our main result (Theorem 2) establishes that under the sole assumption that  $\nabla V$
+is  $L$ -gradient Lipschitz, an averaged version of the LMC algorithm (LMC) outputs a sample whose law  $\mu$  satisfies  $\FI(\mu\mathbin{\|}\pi)\leq\varepsilon$  after  $O(L^{2}d^{2}/\varepsilon^{2})$  iterations. Intuitively, the Fisher information captures the rapid local mixing of the Langevin diffusion near modes of the distribution  $\pi$ , while ignoring the metastability effects which occur between the modes [BEGK02, BEGK04, BGK05]. We give an illustrative example in Section 2 which expands upon this intuition.
+1.1 Paper organization and contributions
+The rest of the paper is organized as follows. In Section 2, we provide intuitions on Fisher information guarantees in sampling. In Section 3, we formally define the Fisher information, and in Section 4, we state our main result in Theorem 2. In Section 5, we consider applications of our main result:
+•
+We show the weak convergence of averaged LMC with decaying step size (Section 5.1).
+•
+We provide new sampling guarantees in total variation distance under Poincaré inequality (Section 5.2). These guarantees are competitive with very recent results by [CEL+21] (in fact, our dimension dependence is substantially better).
+•
+We show an accelerated convergence result for LMC when the Hessian of the potential is also Lipschitz and when the potential satisfies a polynomial tail growth condition (Section 5.3).
+In Section 6, we consider extensions of LMC involving stochastic gradients.
+•
+First, we consider the general case where the stochastic gradients admit a bounded bias and a bounded variance (Section 6.1).
+•
+As a corollary of this general result, we obtain convergence guarantees for LMC in the case where  $V$  is only weakly smooth, i.e.,  $\nabla V$  is Hölder continuous (Section 6.2). We employ the Gaussian smoothing technique to obtain this corollary. It implies new sampling guarantees in total variation distance under a Poincaré inequality and weak smoothness.
+•
+We obtain convergence guarantees for LMC in the case where  $V$  is a finite sum and the stochastic gradients are defined from mini-batches. In this case, the stochastic gradients have zero bias but unbounded variance. We employ the variance reduction technique (Section 6.3).
+Finally, we conclude with open directions in Section 7.
+2 Interpretation of approximate first-order stationarity in sampling
+Intriguingly, unlike the situation in non-convex optimization, in sampling there are no “spurious stationary points”: if  $\mu$  and  $\pi$  have positive and smooth densities and  $\FI(\mu\mathbin{\|}\pi)=0$ , then  $\mu=\pi$ . However, for  $\varepsilon&gt;0$ , it may be unclear what the guarantee  $\FI(\mu\mathbin{\|}\pi)\leq\varepsilon$  entails.
+In this section, we give an example illustrating what conclusions may be drawn from a bound on the Fisher information, which helps to better interpret our result in the next sections.
+Consider a mixture of two Gaussians in one dimension as the target distribution:
+$\displaystyle\pi$
+$\displaystyle={\frac{1}{2}\,\underbrace{\normal(-m,1)}_{\pi_{-}}}+{\frac{1}{2}\,\underbrace{\normal(+m,1)}_{\pi_{+}}}\,,$
+where  $m\gg 0$ . Also, consider a mixture of two Gaussians with different weights:
+$\displaystyle\mu$
+$\displaystyle:=\frac{3}{4}\,\pi_{-}+\frac{1}{4}\,\pi_{+}\,.$
+An illustrative plot of  $\pi$  and  $\mu$  is provided for the sake of easier visualization. In the appendix, we will prove the following.
+Proposition 1.
+Let  $\pi$  and  $\mu$  be as defined above. For all  $m\geq 1/80$ , it holds that
+$\displaystyle\lVert\mu-\pi\rVert_{\rm TV}\geq\frac{1}{800}&gt;0\,.$
+On the other hand,
+$\displaystyle\FI(\mu\mathbin{\|}\pi)$
+$\displaystyle\leq 4m^{2}\exp\bigl(-\frac{m^{2}}{2}\bigr)\to 0\qquad\text{as}~m\to\infty\,.$
+In the next section, we will show that averaged LMC can drive the Fisher information to zero at a polynomial rate. For large  $m$ , the measure  $\mu$  has small Fisher information with respect to  $\pi$ , so  $\mu$  serves as a model for the kind of distribution that averaged LMC can reach. We can draw a few conclusions:
+1.
+Although the Fisher information  $\FI(\mu\mathbin{\|}\pi)$  is very small, the total variation distance remains bounded away from zero. This shows that a Fisher information guarantee does not ensure fast convergence of averaged LMC in other metrics without further assumptions (anyway, polynomial guarantees for non-log-concave sampling in other metrics are impossible in general).
+2.
+Here,  $\mu$  locally captures the correct shape of  $\pi$  at the two modes. On the other hand,  $\mu$  has different mixing weights than  $\pi$ , which means that  $\mu$  is globally different from  $\pi$ . Since  $\FI(\mu\mathbin{\|}\pi)$  is small for this example, it shows that the Fisher information is not sensitive to the latter effect. Hence, our Fisher information guarantee for averaged LMC captures the fact that the algorithm rapidly gets the local structure of  $\pi$  correct.
+3.
+After a few steps of LMC started at the distribution  $\frac{3}{4}\,\delta_{-m}+\frac{1}{4}\,\delta_{+m}$ , the algorithm arrives at a measure which closely resembles  $\mu$ , rather than the true stationary measure  $\pi$ . Indeed, the iterates of LMC do not need to jump from one mode to another to approximate  $\mu$ . This jumping takes an exponentially long time and is the main barrier to the mixing of LMC, but it is necessary for LMC to learn the global mixing weights—this is known as the metastability phenomenon [BEGK02, BEGK04, BGK05]. Our analysis provides a convenient way to quantify this effect.
+Remark.
+In the context of Bayesian inference, the choice of relative Fisher information metric between the prior and the exact posterior distribution has been proposed by [Wal16, HW17, SJDT19], as a measure of robustness of the overall inferential procedure. In this regard, our results provide a computational angle to this paradigm: in practice we rarely have access to the exact posterior distribution. Our results algorithmically quantify the distance (in relative Fisher information) between the posterior distribution obtained after a certain number of iterations of LMC and the exact posterior.
+3 Preliminaries
+Throughout the paper, we assume that the potential  $V:\mathbb{R}^{d}\to\mathbb{R}$  is a smooth (i.e., twice continuously differentiable) function such that  $\int\exp(-V)&lt;\infty$ . The target distribution  $\pi\propto\exp(-V)$  is therefore well-defined.
+For a probability measure  $\mu$  with a smooth density, we can define the Fisher information of  $\mu$  relative to  $\pi$  via  $\FI(\mu\mathbin{\|}\pi):=\E_{\mu}[\lVert\nabla\ln(\mu/\pi)\rVert^{2}]$ . To extend this definition to other probability measures, we recall from Markov semigroup theory [BGL14] that we associate with the Langevin diffusion (1.1) a Dirichlet energy  $f\mapsto\mathscr{E}(f)$  which maps a subspace  $\mathop{\mathrm{}}{dom}\mathscr{E}\subseteq L^{2}(\pi)$  to  $\mathbb{R}_{+}$ . If  $f$  is smooth and compactly supported, then  $f\in\mathop{\mathrm{}}{dom}\mathscr{E}$  and the Dirichlet energy has the explicit expression  $\mathscr{E}(f)=\E_{\pi}[\lVert\nabla f\rVert^{2}]$ .
+The Fisher information is defined from the Dirichlet energy as follows. For an arbitrary probability measure  $\mu$ , set
+$\displaystyle\FI(\mu\mathbin{\|}\pi)$
+$\displaystyle:=\begin{cases}4\,\mathscr{E}(\sqrt{f})\,,&amp;\text{if}~f:=\frac{\mathrm{d}\mu}{\mathrm{d}\pi}~\text{exists and}~\sqrt{f}\in\mathop{\mathrm{}}{dom}\mathscr{E}\,,\\
++\infty\,,&amp;\text{otherwise}\,.\end{cases}$
+In particular, if  $f=\frac{\mathrm{d}\mu}{\mathrm{d}\pi}$  is positive and smooth, one can check that
+$\FI(\mu\mathbin{\|}\pi)=\int\lVert\nabla\ln(f)\rVert^{2}\,\mathrm{d}\mu\,,\qquad\text{or}\qquad\FI(\mu\mathbin{\|}\pi)=\int\frac{\lVert\nabla f\rVert^{2}}{f}\,\mathrm{d}\pi\,.$
+Using the convexity of  $(a,b)\mapsto\lVert a\rVert^{2}/b$  on  $\mathbb{R}^{d}\times\mathbb{R}_{+}$ , the latter formula implies that the Fisher information  $\mu\mapsto\FI(\mu\mathbin{\|}\pi)$  is convex in the classical sense on the space of probability measures. Besides, the Fisher information is also lower semicontinuous in its first argument with respect to the weak topology of measures [Wu00, Appendix B].
+4 Main result
+Recall that the LMC algorithm is given by
+$x_{(k+1)h}:=x_{kh}-h\,\nabla V(x_{kh})+\sqrt{2}\,(B_{(k+1)h}-B_{kh})\,.$
+Our main result is stated for the following continuous interpolation of LMC:
+$\displaystyle x_{t}$
+$\displaystyle:=x_{kh}-(t-kh)\,\nabla V(x_{kh})+\sqrt{2}\,(B_{t}-B_{kh})\qquad\text{for}~t\in[kh,(k+1)h]\,.$
+(4.1)
+We write  $\mu_{t}$  for the law of  $x_{t}$ .
+Assumption 1.
+The gradient of  $V$  is  $L$ -Lipschitz continuous:  $\lVert\nabla V(x_{1})-\nabla V(x_{2})\rVert\leq L\,\lVert x_{1}-x_{2}\rVert$ , for all  $x_{1},x_{2}\in\mathbb{R}^{d}$  and for some  $L&gt;0$ .
+Theorem 2.
+Let  ${(\mu_{t})}_{t\geq 0}$  denote the law of the interpolation (4.1) of LMC, and let the potential  $V$  satisfy Assumption 1.
+Then, for any step size  $h\in(0,\frac{1}{6L})$ , it holds that
+$\displaystyle\frac{1}{Nh}\int_{0}^{Nh}\FI(\mu_{t}\mathbin{\|}\pi)\,\mathrm{d}t$
+$\displaystyle\leq\frac{2\KL(\mu_{0}\mathbin{\|}\pi)}{Nh}+8L^{2}dh\,.$
+In particular, if  $\KL(\mu_{0}\mathbin{\|}\pi)\leq K_{0}$  and we choose  $h=\sqrt{K}_{0}/(2L\sqrt{dN})$ , then for  $N\geq 9K_{0}/d$ ,
+$\displaystyle\frac{1}{Nh}\int_{0}^{Nh}\FI(\mu_{t}\mathbin{\|}\pi)\,\mathrm{d}t$
+$\displaystyle\leq\frac{8L\sqrt{dK_{0}}}{\sqrt{N}}\,.$
+By the convexity of the Fisher information, it follows that the averaged distribution  $\bar{\mu}_{Nh}:={(Nh)}^{-1}\int\mu_{t}\,\mathrm{d}t$  satisfies  $\FI(\bar{\mu}_{Nh}\mathbin{\|}\pi)\leq 8L\sqrt{dK_{0}/N}$  as well. Also, it is possible to output a sample from  $\bar{\mu}_{Nh}$ , as follows:
+1.
+Pick a time  $t\in[0,Nh]$  uniformly at random.
+2.
+Let  $k$  be the largest integer such that  $kh\leq t$ , and let  $x_{kh}$  be the iterate of LMC at time  $kh$ . Then, perform a partial LMC update for time  $t-kh$ , i.e. set
+$\displaystyle x_{t}$
+$\displaystyle:=x_{kh}-(t-kh)\,\nabla V(x_{kh})+\sqrt{2}\,(B_{t}-B_{kh})\,.$
+Then,  $x_{t}$  is a sample from  $\bar{\mu}_{Nh}$ . Note that it is possible to sample the Brownian increments exactly as long as one can draw standard Gaussian vectors.
+Remark.
+Since we can usually take  $K_{0}$  to be of order  $d$ , see e.g. [VW19, Lemma 1] or [CEL+21, Appendix A], in order for averaged LMC to reach  $\varepsilon$  accuracy in terms of the Fisher information w.r.t. the target, the iteration complexity is  $O(L^{2}d^{2}/\varepsilon^{2})$ .
+5 Applications
+5.1 Asymptotic convergence of averaged LMC with vanishing step size
+Our main result immediately implies asymptotic convergence of averaged LMC with decreasing step size under very general conditions.
+Let  ${(h_{k})}_{k=1}^{\infty}$  be a sequence of positive step sizes such that
+$\displaystyle\sum_{k=1}^{\infty}h_{k}=\infty~~~\text{and}~~~\sum_{k=1}^{\infty}h_{k}^{2}&lt;\infty\,.$
+(5.1)
+Write  $\tau_{n}:=\sum_{k=1}^{n}h_{k}$ , and denote by  $\bar{\mu}_{\tau_{n}}:=\tau_{n}^{-1}\int_{0}^{\tau_{n}}\mu_{t}\,\mathrm{d}t$ , where  $\mu_{t}$  is the law of  $x_{t}$  defined by
+$\displaystyle x_{t}$
+$\displaystyle=x_{\tau_{n-1}}-(t-\tau_{n-1})\,\nabla V(x_{\tau_{n-1}})+\sqrt{2}\,(B_{t}-B_{\tau_{n-1}})\,,\qquad t\in[\tau_{n-1},\tau_{n}]\,.$
+Then, we have the following convergence result.
+Theorem 3.
+Let  ${(\mu_{t})}_{t\geq 0}$  denote the law of the interpolation (4.1) of LMC, and let the potential  $V$  satisfy Assumption 1. Suppose that LMC is initialized at a measure  $\mu_{0}$  with  $\KL(\mu_{0}\mathbin{\|}\pi)&lt;\infty$  and that the step size sequence  ${(h_{k})}_{k=1}^{\infty}$  satisfy  $h_{k}\in(0,\frac{1}{6L})$  for every  $k$ , as well as the conditions in (5.1).
+Then,  $\bar{\mu}_{\tau_{n}}\to\pi$  weakly.
+While it might be possible to prove the weak convergence of LMC using other techniques, for example, the ordinary differential equation method from the stochastic approximation literature [KY03] or general results on the analysis of Markov chains [BGL14, DMPS18], we emphasize that Theorem 3 follows immediately from our main result in Theorem 2 and the property that  $\FI(\mu\mathbin{\|}\pi)=0$  implies  $\mu=\pi$ . To the best of our knowledge, explicit results available in the literature on the weak convergence of LMC [LP02, PP12] require Lyapunov-type conditions. In comparison, Theorem 3 holds just under the Lipschitz gradient assumption on the potential  $V$ .
+5.2 New sampling guarantees under a Poincaré inequality
+In this section, we show that if we additionally assume that  $\pi$  satisfies a Poincaré inequality, then we obtain sampling guarantees in total variation distance as a corollary of our main theorem. Surprisingly, the rates we obtain in this manner are competitive with (and arguably better than) the state-of-the-art results for LMC, for these classes of target distributions. To present our result, we recall the following transportation inequality.
+Lemma 4 ([GLWY09, Theorem 3.1]).
+Suppose that  $\pi$  satisfies a Poincaré inequality: for all smooth compactly supported functions  $f:\mathbb{R}^{d}\to\mathbb{R}$ ,
+$\displaystyle\var_{\pi}f$
+$\displaystyle\leq C_{\mathsf{PI}}\E_{\pi}[\lVert\nabla f\rVert^{2}]\,.$
+(PI)
+Then, for all probability measures  $\mu$ ,
+$\displaystyle\lVert\mu-\pi\rVert_{\rm TV}^{2}$
+$\displaystyle\leq 4C_{\mathsf{PI}}\FI(\mu\mathbin{\|}\pi)\,.$
+When combined with Theorem 2, we immediately obtain the following corollary.
+Corollary 5.
+Let  ${(\mu_{t})}_{t\geq 0}$  denote the law of the interpolation (4.1) of LMC, and let the potential  $V$  satisfy Assumption 1.
+If  $\KL(\mu_{0}\mathbin{\|}\pi)\leq K_{0}$  and we choose  $h=\sqrt{K}_{0}/(2L\sqrt{dN})$ , then for  $N\geq 9K_{0}/d$  and  $\bar{\mu}_{Nh}:={(Nh)}^{-1}\int_{0}^{Nh}\mu_{t}\,\mathrm{d}t$ ,
+$\displaystyle\lVert\bar{\mu}_{Nh}-\pi\rVert_{\rm TV}^{2}$
+$\displaystyle\leq\frac{32C_{\mathsf{PI}}L\sqrt{dK_{0}}}{\sqrt{N}}\,.$
+Remark.
+If  $K_{0}=O(d)$ , it implies an iteration complexity of  $O(C_{\mathsf{PI}}^{2}L^{2}d^{2}/\varepsilon^{2})$  to output a sample whose squared total variation distance to  $\pi$  is at most  $\varepsilon$ . We are aware of only one other work which provides sampling guarantees for smooth potentials satisfying a Poincaré inequality: the recent result of [CEL+21, Theorem 7] yields an iteration complexity of  $\widetilde{O}(C_{\mathsf{PI}}^{2}L^{2}d^{3}/\varepsilon)$  for LMC (without averaging). Our result has worse dependence on the inverse accuracy, but better dependence on the dimension.
+Using Gaussian smoothing we can extend Corollary 5 to the case when  $\nabla V$  is only Hölder continuous rather than Lipschitz continuous. This requires extending the Theorem 2 to accommodate stochastic gradients, and hence it is deferred to Section 6.2.
+5.3 Hessian smoothness
+While our main results were obtained under Lipschitz smoothness of the gradient of the potential, prior analyses of Langevin algorithms [DK19, MFWB19] suggest that convergence rates are accelerated under a smoothness assumption on the Hessian.
+Assumption 2.
+The Hessian of  $V$  is  $M$ -Lipschitz:  $\lVert\nabla^{2}V(x_{1})-\nabla^{2}V(x_{2})\rVert_{\rm op}\leq M\,\lVert x_{1}-x_{2}\rVert$ , for all  $x_{1},x_{2}\in\mathbb{R}^{d}$  and for some  $M&gt;0$ .
+Additionally, we require an upper bound on the order of growth of the function.
+Assumption 3.
+There exist parameters  $\gamma\in[0,2]$ ,  $0\leq\xi\leq\gamma/2$ , and constants  $a,b,m&gt;0$  such that for all  $x\in\mathbb{R}^{d}$ ,
+$\displaystyle\langle x,\nabla V(x)\rangle\geq a\,\|x\|^{\gamma}-b\ \ \text{ and }\ \ \|\nabla V(x)\|\leq m\,(1+\|x\|^{\xi})\,.$
+(5.2)
+Note that assuming  $\gamma&gt;2$  would contradict Lipschitz smoothness of the gradient.
+The final condition allows for any polynomial tail for the potential, thus covers a significantly more general setting than the dissipativity assumption appearing in [RRT17, EMS18] ( $\gamma=2$ ) and the growth considered in [CEL+21, EH21] ( $\gamma\geq 1$ ). In the special case where  $\xi=\gamma=0$ , it is equivalent to the gradient  $\lVert\nabla V\rVert$  being uniformly bounded, i.e.  $V$  itself is Lipschitz.
+The growth condition is used to establish new moment bounds for the iterates of LMC (Proposition 14), which are key for discretization analysis.
+In the following theorem, we assume for simplicity that  $a=1$  (which can be achieved by rescaling the potential).
+Theorem 6.
+Let  ${(\mu_{t})}_{t\geq 0}$  denote the law of the interpolation (4.1) of LMC, and let the potential  $V$  satisfy Assumptions 1, 2, and 3. Assume  $a=1$  and that the initialization is chosen with
+$\E[\lVert x_{0}\rVert^{4}]\leq\sigma^{2}d^{2}$  for some  $\sigma\geq 3$ . Define the parameter  $\kappa:=1\vee L\vee M^{2/3}\vee(M^{1/3}m^{2/3})$ . If the step size is chosen to satisfy  $0&lt;h\lesssim\frac{1}{L}\wedge\frac{1}{m^{2}}\wedge 1$ , then
+$\displaystyle\frac{1}{Nh}\int_{0}^{Nh}\FI(\mu_{t}\mathbin{\|}\pi)\,\mathrm{d}t$
+$\displaystyle\lesssim\frac{\KL(\mu_{0}\mathbin{\|}\pi)}{Nh}+\kappa^{3}d^{2}h^{2}+\kappa^{6}\,{(b+\sigma d)}^{3}\,Nh^{5}\,.$
+If  $\mathsf{KL}(\mu_{0}\mathbin{\|}\pi)\leq K_{0}$ , and  $h\asymp\frac{K_{0}^{1/3}}{\kappa\,{(b+\sigma d)}^{2/3}\,N^{1/3}}$  while  $N\gtrsim\frac{K_{0}\,(L^{3}\vee m^{6})}{{\kappa^{3}(b+\sigma d)}^{2}}$ , the following bound holds:
+$\displaystyle\frac{1}{Nh}\int_{0}^{Nh}\FI(\mu_{t}\mathbin{\|}\pi)\,\mathrm{d}t$
+$\displaystyle\lesssim\Bigl({(b+\sigma d)}^{2/3}K_{0}^{2/3}+\frac{K_{0}^{5/3}}{{(b+\sigma d)}^{1/3}}\Bigr)\,\frac{\kappa}{N^{2/3}}\,.$
+Note that the bound is independent of the growth exponents  $\gamma,\xi$  found in Assumption 3.
+Remark.
+When  $b,K_{0}=O(d)$ , the iteration complexity implied by this result is  $O(d^{2}/\varepsilon^{3/2})$ , which should be compared to the complexity of  $O(d^{2}/\varepsilon^{2})$  in Theorem 2.
+As in Corollary 5, we can combine this result with Lemma 4 to obtain the complexity  $O(d^{2}/\varepsilon^{3/2})$  in squared total variation distance under the additional assumption of a Poincaré inequality on the target.
+6 Extension to stochastic gradients
+6.1 General result
+We proceed to prove a more general result in which the gradient term in (LMC) is replaced by a stochastic gradient. More precisely, we use a stochastic estimate  $G(x_{kh},\zeta_{k})$  of the gradient  $\nabla V(x_{kh})$ , where the random variables  ${(\zeta_{k})}_{k\in\mathbb{N}}$  representing the external randomness are i.i.d. and independent of all other random variables. Thus, we obtain stochastic gradient Langevin Monte Carlo (SG-LMC):
+$\displaystyle x_{(k+1)h}$
+$\displaystyle:=x_{kh}-h\,G(x_{kh},\zeta_{k})+\sqrt{2}\,(B_{(k+1)h}-B_{kh})\,.$
+(SG-LMC)
+Assumption 4 (Regularity of the stochastic gradient).
+Let  $\E_{\zeta}G(y,\zeta)=\nabla\hat{V}(y)$  for some function  $\hat{V}:\mathbb{R}^{d}\to\mathbb{R}$ . The stochastic gradient  $G(x,\zeta)\in\mathbb{R}^{d}$  satisfies:
+•
+Smoothness of the expected stochastic gradient:  $\nabla\hat{V}$  is  $\hat{L}$ -Lipschitz.
+•
+Bias bound:  $\|\nabla\hat{V}(x)-\nabla V(x)\|^{2}\leq\mathsf{bias}^{2}$  for all  $x\in\mathbb{R}^{d}$ .
+•
+Variance bound:  $\E_{\zeta}[\|G(x,\zeta)-\nabla\hat{V}(x)\|^{2}]\leq\mathsf{var}$  for all  $x\in\mathbb{R}^{d}$ .
+We present the following theorem regarding the convergence:
+Theorem 7.
+Let  ${(\mu_{t})}_{t\geq 0}$  denote the law of the interpolation of (SG-LMC). Assume that the stochastic oracle satisfies Assumption 4. Then, for all  $h\in(0,\frac{1}{14\hat{L}})$ , we have
+$\displaystyle\frac{1}{Nh}\int_{0}^{Nh}\FI(\mu_{t}\mathbin{\|}\pi)\,\mathrm{d}t$
+$\displaystyle\leq\frac{2\,\mathsf{KL}(\mu_{0}\mathbin{\|}\pi)}{Nh}+16\hat{L}^{2}dh+8\,(\mathsf{bias}^{2}+\mathsf{var})\,.$
+In particular, if  $\KL(\mu_{0}\mathbin{\|}\pi)\leq K_{0}$  and we choose  $h=\sqrt{K}_{0}/(\hat{L}\sqrt{8dN})$ , then for  $N\geq 25K_{0}/d$ ,
+$\displaystyle\frac{1}{Nh}\int_{0}^{Nh}\FI(\mu_{t}\mathbin{\|}\pi)\,\mathrm{d}t$
+$\displaystyle\leq\frac{16\hat{L}\sqrt{2dK_{0}}}{\sqrt{N}}+8\,(\mathsf{bias}^{2}+\mathsf{var})\,.$
+This generic result allows us to use biased stochastic gradients. In particular, it can be applied to LMC with Gaussian smoothing.
+6.2 Extension to non-smooth potentials via Gaussian smoothing
+In this section, we extend our main theorem (Theorem 2) to the case when  $\nabla V$  is assumed to be Hölder continuous.
+Assumption 5.
+The gradient of  $V$  is Hölder continuous of exponent  $s\in(0,1]$ :
+$\displaystyle\lVert\nabla V(x_{1})-\nabla V(x_{2})\rVert\leq L\,\lVert x_{1}-x_{2}\rVert^{s}$
+for all  $x_{1},x_{2}\in\mathbb{R}^{d}$  and for some  $L&gt;0$ .
+We consider the Gaussian smoothing LMC algorithm analyzed in [CDJB20]:
+$\displaystyle x_{(k+1)h}$
+$\displaystyle=x_{kh}-h\,\nabla V(x_{kh}+\eta\zeta_{k})+\sqrt{2}\,(B_{(k+1)h}-B_{kh})\,,$
+(6.1)
+where  $\eta&gt;0$  is a smoothing parameter and  ${(\zeta_{k})}_{k\in\mathbb{N}}$  are i.i.d. standard Gaussian random variables on  $\mathbb{R}^{d}$  independent from  $x_{0}$  and  ${(B_{t})}_{t\geq 0}$ . We see that this iteration is a special case of (SG-LMC) with stochastic gradient given by  $G(x_{kh},\zeta_{k})=\nabla V(x_{kh}+\eta\zeta_{k})$ . The expected stochastic gradient is  $\E G(x,\zeta)=\nabla\hat{V}(x)$ , where  $\hat{V}(x)=\E V(x+\eta\zeta)$  and  $\zeta\sim\normal(0,I_{d})$ .
+From [CDJB20, Lemma 2.2 and Lemma 3.1],  $\nabla\hat{V}$  satisfies the first and third conditions of Assumption 4 with
+$\displaystyle\hat{L}\leq\frac{Ld^{(1-s)/2}}{\eta^{1-s}}\,,\qquad\mathsf{var}\leq 4L^{2}d^{s}\eta^{2s}\,.$
+To control the bias, we extend the result of [NS17].
+Lemma 8.
+The Gaussian smoothed potential  $\hat{V}$  with smoothing parameter  $\mu$  satisfies the second condition of Assumption 4 with
+$\displaystyle\mathsf{bias}^{2}$
+$\displaystyle\lesssim L^{2}d^{2+s}\eta^{2s}\,.$
+From the lemma, we see that the bias dominates:  $\mathsf{bias}^{2}\gtrsim\mathsf{var}$ .
+We obtain the following corollary.
+Corollary 9.
+Let  ${(\mu_{t})}_{t\geq 0}$  denote the law of the interpolation (4.1) of Gaussian smoothed LMC (6.1), and let the potential  $V$  satisfy Assumption 5. If  $\KL(\mu_{0}\mathbin{\|}\pi)\leq K_{0}$ , we choose the smoothing to be  $\eta\asymp\varepsilon^{1/(2s)}/(L^{1/s}d^{(2+s)/(2s)})$  (where the  $\asymp$  hides an absolute constant), and we choose the step size  $h$  as in Theorem 7, then the averaged law  $\bar{\mu}_{Nh}\leq{(Nh)}^{-1}\int_{0}^{Nh}\mu_{t}\,\mathrm{d}t$  satisfies  $\FI(\bar{\mu}_{Nh}\mathbin{\|}\pi)\leq\varepsilon$ , provided that the number of iterations is
+$\displaystyle N$
+$\displaystyle\gtrsim\frac{K_{0}L^{2/s}d^{(2+s-2s^{2})/s}}{\varepsilon^{(1+s)/s}}\,.$
+Proof.
+Apply Theorem 7.
+∎
+When  $K_{0}=O(d)$ , the iteration complexity is  $O(L^{2/s}d^{2\,(1+s-s^{2})/s}/\varepsilon^{(1+s)/s})$ .
+As in Section 5.2, this result can be combined with a Poincaré inequality to yield a convergence result in total variation distance. However, there is a better approach in this case. It turns out that to reduce the variance of the stochastic gradients in Gaussian smoothing, it is advantageous to consider mini-batching: for  $B\in\mathbb{N}^{+}$ , we consider
+$\displaystyle x_{(k+1)h}$
+$\displaystyle=x_{kh}-\frac{h}{B}\sum_{\ell=1}^{B}\nabla V(x_{kh}+\eta\zeta_{k,\ell})+\sqrt{2}\,(B_{(k+1)h}-B_{kh})\,,$
+(6.2)
+where  ${(\zeta_{k,\ell})}_{k,\ell\in\mathbb{N}}$  is a family of i.i.d. standard Gaussians on  $\mathbb{R}^{d}$  independent of  $x_{0}$  and  ${(B_{t})}_{t\geq 0}$ .
+Corollary 10.
+Let  ${(\mu_{t})}_{t\geq 0}$  denote the law of the interpolation of the Gaussian smoothed LMC with mini-batching (6.2), and let the potential  $V$  satisfy Assumption 5. Assume moreover that  $\pi$  satisfies the Poincaré inequality (PI) with constant  $C_{\mathsf{PI}}$ .
+If  $\KL(\mu_{0}\mathbin{\|}\pi)\leq K_{0}$ , we choose the smoothing  $\eta$  appropriately (see (C.4)), and we choose the step size  $h$  as in Theorem 7, then the averaged law  $\bar{\mu}_{Nh}\leq{(Nh)}^{-1}\int_{0}^{Nh}\mu_{t}\,\mathrm{d}t$  satisfies  $\lVert\bar{\mu}_{Nh}-\pi\rVert_{\rm TV}^{2}\leq\varepsilon$  (for  $0&lt;\varepsilon\leq 1$ ), with total gradient complexity at most
+$\displaystyle B\times N$
+$\displaystyle\lesssim\begin{cases}\frac{C_{\mathsf{PI}}^{(1+s)/s}K_{0}L^{2/s}d^{3-2s}}{\varepsilon^{(1+s)/s}}\,,&amp;\text{if}~s\geq\frac{1}{2}~\text{with}~B=1\,,\\[2.5pt]
+\frac{C_{\mathsf{PI}}^{3}K_{0}L^{6/(1+s)}d^{3-2s}}{\varepsilon^{(5-s)/(1+s)}}\,,&amp;\text{if}~s\leq\frac{1}{2}~\text{with}~B\asymp\frac{C_{\mathsf{PI}}L^{2/(1+s)}}{\varepsilon^{(1-s)/(1+s)}}\,.\end{cases}$
+Compared with [CEL+21, Theorem 7] which has iteration complexity  $\widetilde{O}(C_{\mathsf{PI}}^{(1+s)/s}L^{2/s}d^{(1+2s)/s}/\varepsilon^{1/s})$ , we see that our dependence on every problem parameter is better except for the dependence on the inverse accuracy, for which we obtain a better rate only for  $s\leq 2-\sqrt{3}\approx 0.27$ . In particular, our complexity does not blow up as  $s\searrow 0$ , so we can set  $s=0$  and get an iteration complexity of  $O(C_{\mathsf{PI}}^{2}L^{6}d^{4}/\varepsilon^{5})$  for sampling from Lipschitz potentials satisfying a Poincaré inequality. To the best of our knowledge, this is the first guarantee for this setting.
+6.3 Finite sum setting
+Finally, we consider the case  $V=\frac{1}{n}\sum_{i=1}^{n}f_{i}$  is a finite sum involving a large number  $n$  of terms, as it is often the case in machine learning. In the big data regime, mini-batch stochastic gradient-based LMC is preferred to vanilla LMC due to reduced per-iteration costs [BDM18, CFM+18]. However, stochastic gradients obtained by randomly selecting a mini-batch of data do not have a bounded variance in general. Therefore, the generic Theorem 7 is not applicable to mini-batching in general.
+We consider LMC with a variance-reduced stochastic gradient given by the PAGE estimator [LBZR21]. Indeed, in non-convex optimization, the PAGE estimator has been used to reduce the variance in SGD and led to a simple and optimal stochastic non-convex optimization algorithm. We consider a Variance Reduced LMC algorithm:
+$\displaystyle x_{(k+1)h}$
+$\displaystyle:=x_{kh}-h\,g_{kh}+\sqrt{2}\,(B_{(k+1)h}-B_{kh})\,,$
+(VR-LMC)
+where  $g_{kh}$  is defined by
+$g_{(k+1)h}:=\begin{cases}\nabla V(x_{(k+1)h})\,,&amp;\mbox{with probability }p\,,\\
+g_{kh}+\nabla f_{i}(x_{(k+1)h})-\nabla f_{i}(x_{kh})\,,&amp;\mbox{with probability }1-p\,,\end{cases}$
+(6.3)
+where  $i\sim\mathsf{uniform}([1,\ldots,n])$  and  $p\in(0,1]$ . Let us describe how  $g_{(k+1)h}$  is obtained from  $g_{kh}$ . Denote  $\mathcal{F}_{k}=\sigma(g_{0},\ldots,g_{kh},x_{0},\ldots,x_{(k+1)h})$ . To obtain  $g_{(k+1)h}$ , one first samples  $B\sim\mathsf{Bernoulli}(p)$ , independent of  $\mathcal{F}_{k}$ . If  $B=1$ , then  $g_{(k+1)h}=\nabla V(x_{(k+1)h})$  and if  $B=0$  then one samples a uniform random variable  $i$ , independent of  $\mathcal{F}_{k}$  and independent of  $B$ , and one sets  $g_{(k+1)h}=g_{kh}+\nabla f_{i}(x_{(k+1)h})-\nabla f_{i}(x_{kh})$ .
+Assuming that  $g_{0}$  is an unbiased estimate of  $\nabla V(x_{0})$ , then  $\E(g_{(k+1)h})=\E(\nabla V(x_{(k+1)h}))$  by induction. Therefore the PAGE estimator has zero bias. However, its variance is not uniformly bounded in general and Theorem 7 is not applicable to (VR-LMC). Nevertheless, we obtain a result under the following assumption.
+Assumption 6.
+The potential  $V$  is a finite sum  $V=n^{-1}\sum_{i=1}^{n}f_{i}$  and the gradient of  $f_{i}$  is  $L$ -Lipschitz continuous for every  $i\in[n]$ .
+Theorem 11.
+Let  ${(\mu_{t})}_{t\geq 0}$  denote the law of the interpolation of (VR-LMC) and let the potential  $V$  satisfy Assumption 6. Then, for all  $h\in(0,\frac{\sqrt{p}}{5L})$ , we have
+$\displaystyle\frac{1}{Nh}\int_{0}^{Nh}\FI(\mu_{t}\mathbin{\|}\pi)\,\mathrm{d}t\leq\frac{2C}{Nh}+\frac{18L^{2}dh}{p}\,,$
+where
+$\displaystyle C:=\mathsf{KL}(\mu_{0}\mathbin{\|}\pi)+\frac{3h}{p}\E[\lVert g_{0}-\nabla V(x_{0})\rVert^{2}]\,.$
+In particular, if  $h=\frac{\sqrt{pC}}{3L\sqrt{Nd}}$  and  $N\geq\frac{2C}{d}$ , then
+$\displaystyle\frac{1}{Nh}\int_{0}^{Nh}\FI(\mu_{t}\mathbin{\|}\pi)\,\mathrm{d}t\leq 12L\sqrt{\frac{Cd}{Np}}\,.$
+Remark.
+We now elaborate on the total number of individual gradient evaluations based on Theorem 11. Since  $\mathsf{KL}(\mu_{0}\mathbin{\|}\pi)=O(d)$ , if we assume that a full gradient is computed at the first step, then  $N\asymp{L^{2}d^{2}}/(p\varepsilon^{2})$
+iterations suffice to achieve  $\varepsilon$  accuracy:  $\frac{1}{Nh}\int_{0}^{Nh}\FI(\mu_{t}\mathbin{\|}\pi)\,\mathrm{d}t\leq\varepsilon$ . At each iteration, the algorithm computes  $pn+1-p=O(pn)$  new gradients in average.
+Therefore,  $\varepsilon$  accuracy is achieved after
+$O(pnN)=O\Bigl(\frac{L^{2}d^{2}n}{\varepsilon^{2}}\Bigr)$
+(6.4)
+gradient computations. A direct application of Theorem 2 would also give a similar order of gradient computations. However, the per-iteration complexity of (VR-LMC) is better than that of (1.1), making it easier to apply to problems with large  $n$  in practice. For instance, taking  $p=1/(n-1)$ , the amortized number of gradient computations per iteration is constant (independent of  $n$ ) equal to 2, which allows for using mini-batch versions of LMC without making the variance boundedness assumption required by Theorem 7.
+7 Conclusion and open questions
+In this work, we have initiated the study of non-log-concave sampling by proving that, under the sole assumption that the potential has a Lipschitz gradient, averaged LMC drives the Fisher information w.r.t. the target to zero after polynomially many iterations. We have argued that this is the natural sampling analogue of finding approximate first-order stationary points in non-convex optimization.
+Although our focus was to work under the minimal assumption of smoothness, surprisingly our analysis yielded new results for sampling from targets satisfying a Poincaré inequality, and moreover our results attain state-of-the-art dimension dependence for these settings for LMC.
+We believe there are many intriguing directions for future work, and we list a few to conclude.
+1.
+(lower bounds) We ask whether one can prove lower bounds on the complexity of outputting a sample whose Fisher information w.r.t. the target is  $\varepsilon$ . Since the setting of this work is fully non-convex, it may be easier to produce lower bound constructions than the strongly log-concave case, in which the theory of lower bounds is nascent [CGL+21].
+2.
+(improved results and further extensions) Although we have provided results under Hessian smoothness and via variance reduction, our investigation is still preliminary and we believe that these results can be strengthened. Additionally, there are other important extensions to consider; for instance, is there an analogue of second-order stationarity in sampling?
+3.
+(Poincaré case) The iteration complexity we obtained for smooth potentials which satisfy a Poincaré inequality (focusing only on dimension and accuracy) is  $O(d^{2}/\varepsilon^{2})$ , whereas [CEL+21] obtained  $\widetilde{O}(d^{3}/\varepsilon)$ . Is it possible to achieve  $\widetilde{O}(d^{2}/\varepsilon)$  with a variant of LMC? If so, is averaging necessary?
+Acknowledgments.
+We would like to thank Mufan (Bill) Li and Ruoqi Shen for helpful conversations. KB was supported by a seed grant from Center for Data Science and Artificial Intelligence Research, UC Davis and NSF Grant DMS-2053918. SC was supported by the Department of Defense (DoD) through the National Defense Science &amp; Engineering Graduate Fellowship (NDSEG) Program. MAE was supported by NSERC Grant [2019-06167], Connaught New Researcher Award,
+CIFAR AI Chairs program, and CIFAR AI Catalyst grant. AS was supported by a Simons–Berkeley Research Fellowship. This work was done while several of the authors were visiting the Simons Institute for the Theory of Computing.
+References
+[AGS08]
+Luigi Ambrosio, Nicola Gigli, and Giuseppe Savaré.
+Gradient flows in metric spaces and in the space of probability
+measures.
+Lectures in Mathematics ETH Zürich. Birkhäuser Verlag, Basel,
+second edition, 2008.
+[BDM18]
+Nicolas Brosse, Alain Durmus, and Eric Moulines.
+The promises and pitfalls of stochastic gradient Langevin dynamics.
+Advances in Neural Information Processing Systems, 31, 2018.
+[BEGK02]
+Anton Bovier, Michael Eckhoff, Véronique Gayrard, and Markus Klein.
+Metastability and low lying spectra in reversible Markov chains.
+Communications in Mathematical Physics, 228(2):219–255, 2002.
+[BEGK04]
+Anton Bovier, Michael Eckhoff, Véronique Gayrard, and Markus Klein.
+Metastability in reversible diffusion processes I: Sharp
+asymptotics for capacities and exit times.
+Journal of the European Mathematical Society, 6(4):399–424,
+2004.
+[Ber18]
+Espen Bernton.
+Langevin Monte Carlo and JKO splitting.
+In Conference on Learning Theory (COLT), pages 1777–1798,
+2018.
+[BGK05]
+Anton Bovier, Véronique Gayrard, and Markus Klein.
+Metastability in reversible diffusion processes II: Precise
+asymptotics for small eigenvalues.
+Journal of the European Mathematical Society, 7(1):69–99,
+2005.
+[BGL14]
+Dominique Bakry, Ivan Gentil, and Michel Ledoux.
+Analysis and geometry of Markov diffusion operators, volume
+348 of Grundlehren der Mathematischen Wissenschaften [Fundamental
+Principles of Mathematical Sciences].
+Springer, Cham, 2014.
+[CCAY+18]
+Xiang Cheng, Niladri S Chatterji, Yasin Abbasi-Yadkori, Peter L Bartlett, and
+Michael I Jordan.
+Sharp convergence rates for Langevin dynamics in the nonconvex
+setting.
+arXiv preprint arXiv:1805.01648, 2018.
+[CDJB20]
+Niladri Chatterji, Jelena Diakonikolas, Michael I Jordan, and Peter Bartlett.
+Langevin Monte Carlo without smoothness.
+In International Conference on Artificial Intelligence and
+Statistics, pages 1716–1726. PMLR, 2020.
+[CEL+21]
+Sinho Chewi, Murat A. Erdogdu, Mufan B. Li, Ruoqi Shen, and Matthew Zhang.
+Analysis of Langevin Monte Carlo from Poincaré to
+log-Sobolev.
+arXiv e-prints, 2021.
+[CFM+18]
+Niladri Chatterji, Nicolas Flammarion, Yian Ma, Peter Bartlett, and Michael
+Jordan.
+On the theory of variance reduction for stochastic gradient Monte
+Carlo.
+In International Conference on Machine Learning, pages
+764–773. PMLR, 2018.
+[CGL+21]
+Sinho Chewi, Patrik Gerber, Chen Lu, Thibaut Le Gouic, and Philippe Rigollet.
+The query complexity of sampling from strongly log-concave
+distributions in one dimension.
+arXiv e-prints, 2021.
+[DK19]
+Arnak S Dalalyan and Avetik Karagulyan.
+User-friendly guarantees for the Langevin Monte Carlo with
+inaccurate gradient.
+Stochastic Processes and their Applications,
+129(12):5278–5311, 2019.
+[DM17]
+Alain Durmus and Eric Moulines.
+Nonasymptotic convergence analysis for the unadjusted Langevin
+algorithm.
+The Annals of Applied Probability, 27(3):1551–1587, 2017.
+[DMM19]
+Alain Durmus, Szymon Majewski, and Błażej Miasojedow.
+Analysis of Langevin Monte Carlo via convex optimization.
+The Journal of Machine Learning Research, 20(1):2666–2711,
+2019.
+[DMPS18]
+Randal Douc, Eric Moulines, Pierre Priouret, and Philippe Soulier.
+Markov chains.
+Springer, 2018.
+[DMR20]
+Luc Devroye, Abbas Mehrabian, and Tommy Reddad.
+The total variation distance between high-dimensional Gaussians.
+arXiv e-prints, 2020.
+[EH21]
+Murat A Erdogdu and Rasa Hosseinzadeh.
+On the convergence of Langevin Monte Carlo: the interplay between
+tail growth and smoothness.
+In Conference on Learning Theory, pages 1776–1822. PMLR, 2021.
+[EMS18]
+Murat A Erdogdu, Lester Mackey, and Ohad Shamir.
+Global non-convex optimization with discretized diffusions.
+Advances in Neural Information Processing Systems, 31, 2018.
+[GLWY09]
+Arnaud Guillin, Christian Léonard, Liming Wu, and Nian Yao.
+Transportation-information inequalities for Markov processes.
+Probab. Theory Related Fields, 144(3-4):669–695, 2009.
+[HBE22]
+Ye He, Krishnakumar Balasubramanian, and Murat A. Erdogdu.
+Heavy-tailed sampling via transformed unadjusted Langevin
+algorithm.
+arXiv preprint arXiv:2201.08349, 2022.
+[HW17]
+Chris C. Holmes and Stephen G. Walker.
+Assigning a value to a power likelihood in a general Bayesian
+model.
+Biometrika, 104(2):497–503, 2017.
+[JKO98]
+Richard Jordan, David Kinderlehrer, and Felix Otto.
+The variational formulation of the Fokker-Planck equation.
+SIAM J. Math. Anal., 29(1):1–17, 1998.
+[JNG+21]
+Chi Jin, Praneeth Netrapalli, Rong Ge, Sham M Kakade, and Michael I Jordan.
+On nonconvex optimization for machine learning: Gradients,
+stochasticity, and saddle points.
+Journal of the ACM (JACM), 68(2):1–29, 2021.
+[KNS16]
+Hamed Karimi, Julie Nutini, and Mark Schmidt.
+Linear convergence of gradient and proximal-gradient methods under
+the Polyak-Lojasiewicz condition.
+In European Conference on Machine Learning and Knowledge
+Discovery in Databases, page 795–811, 2016.
+[KY03]
+Harold. J. Kushner and George G. Yin.
+Stochastic approximation and recursive algorithms and
+applications, volume 35.
+Springer-Verlag, New York, second edition, 2003.
+[LBZR21]
+Zhize Li, Hongyan Bao, Xiangliang Zhang, and Peter Richtárik.
+PAGE: A simple and optimal probabilistic gradient estimator for
+nonconvex optimization.
+In International Conference on Machine Learning, pages
+6286–6295. PMLR, 2021.
+[Loj63]
+Stanislaw Lojasiewicz.
+A topological property of real analytic subsets.
+Coll. du CNRS, Les équations aux dérivées
+partielles, 117(87-89):2, 1963.
+[LP02]
+Damien Lamberton and Gilles Pages.
+Recursive computation of the invariant distribution of a diffusion.
+Bernoulli, pages 367–405, 2002.
+[LWME19]
+Xuechen Li, Yi Wu, Lester Mackey, and Murat A. Erdogdu.
+Stochastic Runge-Kutta accelerates Langevin Monte Carlo and
+beyond.
+Advances in Neural Information Processing Systems, 32, 2019.
+[MCC+21]
+Yi-An Ma, Niladri S Chatterji, Xiang Cheng, Nicolas Flammarion, Peter L
+Bartlett, and Michael I Jordan.
+Is there an analog of Nesterov acceleration for gradient-based
+MCMC?
+Bernoulli, 27(3):1942–1992, 2021.
+[MFWB19]
+Wenlong Mou, Nicolas Flammarion, Martin J Wainwright, and Peter L Bartlett.
+Improved bounds for discretization of Langevin diffusions:
+Near-optimal rates without convexity.
+arXiv preprint arXiv:1907.11331, 2019.
+[MMS20]
+Mateusz B Majka, Aleksandar Mijatović, and Łukasz Szpruch.
+Nonasymptotic bounds for sampling algorithms without log-concavity.
+The Annals of Applied Probability, 30(4):1534–1581, 2020.
+[N+18]
+Yurii Nesterov et al.
+Lectures on convex optimization, volume 137.
+Springer, 2018.
+[NS17]
+Yurii Nesterov and Vladimir Spokoiny.
+Random gradient-free minimization of convex functions.
+Foundations of Computational Mathematics, 17(2):527–566, 2017.
+[Pol63]
+Boris Polyak.
+Gradient methods for minimizing functionals.
+Zhurnal Vychislitel’noi Matematiki i Matematicheskoi Fiziki,
+3(4):643–653, 1963.
+[PP12]
+Gilles Pagès and Fabien Panloup.
+Ergodic approximation of the distribution of a stationary diffusion:
+rate of convergence.
+The Annals of Applied Probability, 22(3):1059–1100, 2012.
+[RRT17]
+Maxim Raginsky, Alexander Rakhlin, and Matus Telgarsky.
+Non-convex learning via stochastic gradient Langevin dynamics: a
+nonasymptotic analysis.
+In Proceedings of the Conference on Learning Theory, volume 65
+of PMLR, pages 1674–1703, 2017.
+[San15]
+Filippo Santambrogio.
+Optimal transport for applied mathematicians, volume 87 of Progress in Nonlinear Differential Equations and their Applications.
+Birkhäuser/Springer, Cham, 2015.
+Calculus of variations, PDEs, and modeling.
+[SJDT19]
+Stephane Shao, Pierre E Jacob, Jie Ding, and Vahid Tarokh.
+Bayesian model comparison with the Hyvärinen score: Computation
+and consistency.
+Journal of the American Statistical Association, 2019.
+[Vil09]
+Cédric Villani.
+Optimal transport, volume 338 of Grundlehren der
+Mathematischen Wissenschaften [Fundamental Principles of Mathematical
+Sciences].
+Springer-Verlag, Berlin, 2009.
+Old and new.
+[VW19]
+Santosh Vempala and Andre Wibisono.
+Rapid convergence of the unadjusted Langevin algorithm:
+Isoperimetry suffices.
+In Advances in Neural Information Processing Systems 32, pages
+8094–8106. 2019.
+[Wal16]
+Stephen G Walker.
+Bayesian information in an experiment and the Fisher information
+distance.
+Statistics &amp; Probability Letters, 112:5–9, 2016.
+[Wib18]
+Andre Wibisono.
+Sampling as optimization in the space of measures: The Langevin
+dynamics as a composite optimization problem.
+In Conference on Learning Theory, pages 2093–3027. PMLR, 2018.
+[Wu00]
+Liming Wu.
+Uniformly integrable operators and large deviations for Markov
+processes.
+J. Funct. Anal., 172(2):301–376, 2000.
+Appendix A Proof for the illustrative example
+Proof. [Proof of Proposition 1]
+The total variation distance is
+$\displaystyle\lVert\mu-\pi\rVert_{\rm TV}$
+$\displaystyle=\frac{1}{2}\int\lvert\mu-\pi\rvert=\frac{1}{8}\int\lvert\pi_{+}-\pi_{-}\rvert=\frac{1}{4}\,\lVert\pi_{+}-\pi_{-}\rVert_{\rm TV}\,.$
+Since  $\pi_{-}=\normal(-m,1)$  and  $\pi_{+}=\normal(m,1)$ , the lower bound on  $\lVert\mu-\pi\rVert_{\rm TV}$  follows from [DMR20, Theorem 1.3].
+Next, we have
+$\displaystyle\nabla\ln\frac{\mu}{\pi}$
+$\displaystyle=\frac{1}{\mu}\,\bigl(\frac{3}{4}\,\nabla\pi_{-}+\frac{1}{4}\,\nabla\pi_{+}\bigr)-\frac{1}{\pi}\,\bigl(\frac{1}{2}\,\nabla\pi_{-}+\frac{1}{2}\,\nabla\pi_{+}\bigr)$
+$\displaystyle=\frac{1}{\mu\pi}\,\bigl[\pi\,\bigl(\frac{3}{4}\,\nabla\pi_{-}+\frac{1}{4}\,\nabla\pi_{+}\bigr)+\mu\,\bigl(\frac{1}{2}\,\nabla\pi_{-}+\frac{1}{2}\,\nabla\pi_{+}\bigr)\bigr]\,.$
+Writing  $s_{\mp}:=\nabla\ln\pi_{\mp}$ , some algebra reveals that
+$\displaystyle\nabla\ln\frac{\mu}{\pi}$
+$\displaystyle=\frac{1}{4\mu\pi}\,(\pi_{+}\,\nabla\pi_{-}-\pi_{-}\,\nabla\pi_{+})=\frac{\pi_{-}\pi_{+}}{4\mu\pi}\,(s_{-}-s_{+})=-\frac{\pi_{-}\pi_{+}}{2\mu\pi}\,m\,.$
+Therefore,
+$\displaystyle\FI(\mu\mathbin{\|}\pi)$
+$\displaystyle=\frac{m^{2}}{4}\int\frac{\pi_{-}^{2}\pi_{+}^{2}}{\mu^{2}\pi^{2}}\,\mathrm{d}\mu=\frac{m^{2}}{4}\int\frac{\pi_{-}^{2}\pi_{+}^{2}}{\mu\pi^{2}}=\frac{m^{2}}{4}\int\frac{\pi_{-}^{2}\pi_{+}^{2}}{(\frac{3}{4}\,\pi_{-}+\frac{1}{4}\,\pi_{+})\,{(\frac{1}{2}\,\pi_{-}+\frac{1}{2}\,\pi_{+})}^{2}}$
+$\displaystyle\leq 4m^{2}\int\frac{\pi_{-}^{2}\pi_{+}^{2}}{{(\pi_{-}+\pi_{+})}^{3}}\leq 4m^{2}\,\Bigl[\int_{\mathbb{R}_{-}}\frac{\pi_{+}^{2}}{\pi_{-}}+\int_{\mathbb{R}_{+}}\frac{\pi_{-}^{2}}{\pi_{+}}\Bigr]\,.$
+Writing  $Z:={(2\uppi)}^{d/2}$  for the normalizing constant,
+$\displaystyle\int_{\mathbb{R}_{+}}\frac{\pi_{-}^{2}}{\pi_{+}}$
+$\displaystyle=\frac{1}{Z}\int_{0}^{\infty}\exp\bigl(-\lvert x+m\rvert^{2}+\frac{1}{2}\,\lvert x-m\rvert^{2}\bigr)\,\mathrm{d}x=\frac{\exp(4m^{2})}{Z}\int_{0}^{\infty}\exp\bigl(-\frac{1}{2}\,\lvert x+3m\rvert^{2}\bigr)\,\mathrm{d}x$
+$\displaystyle=\exp(4m^{2})\,\mathbb{P}\{\xi\geq 3m\}$
+where  $\xi$  is a standard Gaussian random variable. Using a standard Gaussian tail bound,
+$\displaystyle\mathbb{P}\{\xi\geq 3m\}$
+$\displaystyle\leq\frac{1}{2}\exp\bigl(-\frac{9m^{2}}{2}\bigr)\,.$
+A symmetric argument holds for the other integral, and hence
+$\displaystyle\FI(\mu\mathbin{\|}\pi)$
+$\displaystyle\leq 4m^{2}\exp\bigl(-\frac{m^{2}}{2}\bigr)$
+which completes the proof.
+∎
+Appendix B Proof of the main theorem
+Our proof follows the interpolation argument of [VW19] which proceeds by obtaining a differential inequality for the KL divergence along an interpolation of the algorithm. With an eye towards extensions of the main result, we prove a more general version of the inequality.
+Lemma 12.
+Consider the stochastic process defined by
+$\displaystyle x_{t}$
+$\displaystyle:=x_{0}-hg_{0}+\sqrt{2}\,B_{t}\,,\qquad\text{for}~t\geq 0\,,$
+where  ${(B_{t})}_{t\geq 0}$  is a standard Brownian motion in  $\mathbb{R}^{d}$  which is independent of  $(x_{0},g_{0})$ . Then, writing  $\mu_{t}$  for the law of  $x_{t}$ ,
+$\displaystyle\partial_{t}\KL(\mu_{t}\mathbin{\|}\pi)$
+$\displaystyle\leq-\frac{3}{4}\FI(\mu_{t}\mathbin{\|}\pi)+\E\bigl[\lVert\nabla V(x_{t})-\E[g_{0}\mid x_{t}]\rVert^{2}\bigr]$
+$\displaystyle\leq-\frac{3}{4}\FI(\mu_{t}\mathbin{\|}\pi)+\E[\lVert\nabla V(x_{t})-g_{0}\rVert^{2}]\,.$
+Proof.
+Let  $\mathcal{F}_{0}$  denote the  $\sigma$ -algebra generated by  $(x_{0},g_{0})$ , and let  $\mu_{t\mid\mathcal{F}_{0}}$  denote the conditional law of  $x_{t}$  given  $\mathcal{F}_{0}$ . Then,  $t\mapsto\mu_{t\mid\mathcal{F}_{0}}$  evolves according to the Fokker-Planck equation
+$\displaystyle\partial_{t}\mu_{t\mid\mathcal{F}_{0}}(x)$
+$\displaystyle=\Delta\mu_{t\mid\mathcal{F}_{0}}(x)+\divergence_{x}\bigl(\mu_{t\mid\mathcal{F}_{0}}(x)\,g_{0}\bigr)\,.$
+If  $\mathbb{P}_{0}$  denotes the restriction of the probability measure  $\mathbb{P}$  on the underlying probability space, then taking the expectation w.r.t.  $\mathbb{P}_{0}$  yields
+$\displaystyle\partial_{t}\mu_{t}(x)$
+$\displaystyle=\Delta\mu_{t}(x)+\divergence_{x}\E[\mu_{t\mid\mathcal{F}_{0}}(x)\,g_{0}]\,.$
+The second term is
+$\displaystyle\E[\mu_{t\mid\mathcal{F}_{0}}(x)g_{0}]$
+$\displaystyle=\int\mu_{t\mid\mathcal{F}_{0}}(x\mid\omega)\,g_{0}(\omega)\,\mathbb{P}_{0}(\mathrm{d}\omega)=\mu_{t}(x)\int g_{0}(\omega)\,\mu_{\mathcal{F}_{0}\mid t}(\mathrm{d}\omega\mid x)$
+$\displaystyle=\mu_{t}(x)\E[g_{0}\mid x_{t}=x]\,.$
+From this, the time derivative of the KL divergence is
+$\displaystyle\partial_{t}\KL(\mu_{t}\mathbin{\|}\pi)$
+$\displaystyle=\int\bigl(\ln\frac{\mu_{t}}{\pi}\bigr)\divergence\bigl(\mu_{t}\,(\nabla\ln\mu_{t}+\E[g_{0}\mid x_{t}=\cdot])\bigr)$
+$\displaystyle=-\int\bigl\langle\nabla\ln\frac{\mu_{t}}{\pi},\nabla\ln\mu_{t}+\E[g_{0}\mid x_{t}=\cdot]\bigr\rangle\,\mathrm{d}\mu_{t}$
+$\displaystyle=-\FI(\mu_{t}\mathbin{\|}\pi)+\int\bigl\langle\nabla\ln\frac{\mu_{t}}{\pi},\nabla V-\E[g_{0}\mid x_{t}=\cdot]\bigr\rangle\,\mathrm{d}\mu_{t}\,.$
+Applying Young’s inequality,
+$\displaystyle\int\bigl\langle\nabla\ln\frac{\mu_{t}}{\pi},\nabla V-\E[g_{0}\mid x_{t}=\cdot]\bigr\rangle\,\mathrm{d}\mu_{t}$
+$\displaystyle\leq\frac{1}{4}\FI(\mu_{t}\mathbin{\|}\pi)+\E\bigl[\lVert\nabla V(x_{t})-\E[g_{0}\mid x_{t}]\rVert^{2}\bigr]$
+which completes the proof.
+∎
+We also use the following lemma, which is taken from [CEL+21]. For the reader’s convenience, the proof is reproduced here.
+Lemma 13 ([CEL+21, Lemma 16]).
+Assume that  $\nabla V$  is  $L$ -Lipschitz.
+For any probability measure  $\mu$ , it holds that
+$\displaystyle\E_{\mu}[\lVert\nabla V\rVert^{2}]$
+$\displaystyle\leq\FI(\mu\mathbin{\|}\pi)+2dL\,.$
+Proof.
+Let  $\mathscr{L}$  denote the infinitesimal generator of the Langevin diffusion (1.1), i.e.
+$\displaystyle\mathscr{L}f$
+$\displaystyle:=\langle\nabla V,\nabla f\rangle-\Delta f\,.$
+Observe that  $\mathscr{L}V=\lVert\nabla V\rVert^{2}-\Delta V$ .
+Applying integration by parts,
+$\displaystyle\E_{\mu}[\lVert\nabla V\rVert^{2}]$
+$\displaystyle=\E_{\mu}\mathscr{L}V+\E_{\mu}\Delta V\leq\int\mathscr{L}V\,\frac{\mathrm{d}\mu}{\mathrm{d}\pi}\,\mathrm{d}\pi+dL=\int\bigl\langle\nabla V,\nabla\frac{\mathrm{d}\mu}{\mathrm{d}\pi}\bigr\rangle\,\mathrm{d}\pi+dL$
+$\displaystyle=2\int\bigl\langle\sqrt{\frac{\mathrm{d}\mu}{\mathrm{d}\pi}}\,\nabla V,\nabla\sqrt{\frac{\mathrm{d}\mu}{\mathrm{d}\pi}}\bigr\rangle\,\mathrm{d}\pi+dL\leq\frac{1}{2}\E_{\mu}[\lVert\nabla V\rVert^{2}]+2\E_{\pi}\bigl[\bigl\lVert\nabla\sqrt{\frac{\mathrm{d}\mu}{\mathrm{d}\pi}}\bigr\rVert^{2}\bigr]+dL\,.$
+Rearrange this inequality to obtain the desired result.
+∎
+We now prove our main result.
+Proof. [Proof of Theorem 2]
+Let  ${(x_{t})}_{t\geq 0}$  denote the interpolation of LMC (defined in (4.1)).
+For  $t\in[kh,(k+1)h]$ , Lemma 12 yields
+$\displaystyle\partial_{t}\KL(\mu_{t}\mathbin{\|}\pi)$
+$\displaystyle\leq-\frac{3}{4}\FI(\mu_{t}\mathbin{\|}\pi)+\E[\lVert\nabla V(x_{t})-\nabla V(x_{kh})\rVert^{2}]$
+and the error term is
+$\displaystyle\E[\lVert\nabla V(x_{t})-\nabla V(x_{kh})\rVert^{2}]$
+$\displaystyle\leq L^{2}\E[\lVert x_{t}-x_{kh}\rVert^{2}]$
+$\displaystyle\leq 2L^{2}\,{(t-kh)}^{2}\E[\lVert\nabla V(x_{kh})\rVert^{2}]+4L^{2}\E[\lVert B_{t}-B_{kh}\rVert^{2}]\,.$
+Next, since  $\nabla V$  is Lipschitz,
+$\displaystyle\lVert\nabla V(x_{kh})\rVert$
+$\displaystyle\leq\lVert\nabla V(x_{t})\rVert+L\,\lVert x_{t}-x_{kh}\rVert$
+$\displaystyle\leq\lVert\nabla V(x_{t})\rVert+Lh\,\lVert\nabla V(x_{kh})\rVert+\sqrt{2}L\,\lVert B_{t}-B_{kh}\rVert\,.$
+and for  $h\leq 1/(3L)$  we can rearrange this to yield
+$\displaystyle\lVert\nabla V(x_{kh})\rVert$
+$\displaystyle\leq\frac{3}{2}\,\lVert\nabla V(x_{t})\rVert+\frac{3L}{\sqrt{2}}\,\lVert B_{t}-B_{kh}\rVert\,.$
+Plugging this in,
+$\displaystyle\lVert\nabla V(x_{t})-\nabla V(x_{kh})\rVert^{2}$
+$\displaystyle\leq 9L^{2}\,{(t-kh)}^{2}\,\lVert\nabla V(x_{t})\rVert^{2}+6L^{2}\,\lVert B_{t}-B_{kh}\rVert^{2}\,.$
+(B.1)
+For the expectation of the first term, we can use Lemma 13 to bound
+$\displaystyle\E_{\mu_{t}}[\lVert\nabla V\rVert^{2}]$
+$\displaystyle\leq\FI(\mu_{t}\mathbin{\|}\pi)+2Ld\,.$
+Hence, for  $h\leq 1/(6L)$ ,
+$\displaystyle\partial_{t}\KL(\mu_{t}\mathbin{\|}\pi)$
+$\displaystyle\leq-\bigl(\frac{3}{4}-9L^{2}h^{2}\bigr)\FI(\mu_{t}\mathbin{\|}\pi)+18L^{3}d\,{(t-kh)}^{2}+6L^{2}d\,(t-kh)$
+$\displaystyle\leq-\frac{1}{2}\FI(\mu_{t}\mathbin{\|}\pi)+18L^{3}d\,{(t-kh)}^{2}+6L^{2}d\,(t-kh)\,.$
+(B.2)
+Integrating, we obtain
+$\displaystyle\KL(\mu_{(k+1)h}\mathbin{\|}\pi)-\mathsf{KL}(\mu_{kh}\mathbin{\|}\pi)$
+$\displaystyle\leq-\frac{1}{2}\int_{kh}^{(k+1)h}\FI(\mu_{t}\mathbin{\|}\pi)\,\mathrm{d}t+6L^{3}dh^{3}+3L^{2}dh^{2}$
+$\displaystyle\leq-\frac{1}{2}\int_{kh}^{(k+1)h}\FI(\mu_{t}\mathbin{\|}\pi)\,\mathrm{d}t+4L^{2}dh^{2}\,.$
+(B.3)
+Now by summing, we have
+$\displaystyle\frac{1}{Nh}\int_{0}^{Nh}\FI(\mu_{t}\mathbin{\|}\pi)\,\mathrm{d}t$
+$\displaystyle\leq\frac{2\,\mathsf{KL}(\mu_{0}\mathbin{\|}\pi)}{Nh}+8L^{2}dh\,.$
+This concludes the proof.
+∎
+Appendix C Proofs for the extensions and applications
+C.1 Asymptotic convergence of averaged LMC
+Proof. [Proof of Theorem 3]
+The one-step recursion (B.3) in the proof of Theorem 2 yields
+$\displaystyle\KL(\mu_{\tau_{n}}\mathbin{\|}\pi)-\KL(\mu_{\tau_{n-1}}\mathbin{\|}\pi)$
+$\displaystyle\leq-\frac{1}{2}\int_{\tau_{n-1}}^{\tau_{n}}\FI(\mu_{t}\mathbin{\|}\pi)\,\mathrm{d}t+4L^{2}dh_{n}^{2}\,.$
+Iterating the above bound, we obtain
+$\displaystyle\mathsf{KL}(\mu_{\tau_{n}}\mathbin{\|}\pi)\leq\mathsf{KL}(\mu_{0}\mathbin{\|}\pi)-\frac{1}{2}\int_{0}^{\tau_{n}}\FI(\mu_{t}\mathbin{\|}\pi)\,\mathrm{d}t+4L^{2}d\sum_{k=1}^{n}h_{k}^{2}\,.$
+Rearranging the terms, dividing by  $\tau_{n}$ , and using the convexity of the Fisher information,
+$\displaystyle\FI(\bar{\mu}_{\tau_{n}}\mathbin{\|}\pi)$
+$\displaystyle\leq\frac{1}{\tau_{n}}\int_{0}^{\tau_{n}}\FI(\mu_{t}\mathbin{\|}\pi)\,\mathrm{d}t\leq\frac{2\KL(\mu_{0}\mathbin{\|}\pi)}{\tau_{n}}+\frac{8L^{2}d}{\tau_{n}}\,S\,,$
+(C.1)
+where  $S\coloneqq\sum_{k=1}^{\infty}h_{k}^{2}&lt;\infty$ .
+On the other hand, if  $t\in[\tau_{n},\tau_{n+1}]$ , integrating (B.2) between  $\tau_{n}$  and  $t$  shows that
+$\displaystyle\KL(\mu_{t}\mathbin{\|}\pi)$
+$\displaystyle\leq\KL(\mu_{\tau_{n}}\mathbin{\|}\pi)+4L^{2}d\,{(t-\tau_{n})}^{2}\leq\KL(\mu_{0}\mathbin{\|}\pi)+8L^{2}dS&lt;\infty\,,$
+so that  $\{\KL(\mu_{t}\mathbin{\|}\pi)\mid t\geq 0\}$  is bounded. By convexity of the KL divergence, it also implies that  $\{\KL(\bar{\mu}_{\tau_{n}}\mathbin{\|}\pi)\mid n\in\mathbb{N}\}$  is uniformly bounded. Recalling that the sublevel sets of  $\KL(\cdot\mathbin{\|}\pi)$  are weakly compact we obtain that  ${(\bar{\mu}_{\tau_{n}})}_{n\in\mathbb{N}}$  is tight. To show that  $\bar{\mu}_{\tau_{n}}\to\pi$  weakly, it suffices to show that every cluster point of  ${(\bar{\mu}_{\tau_{n}})}_{n\in\mathbb{N}}$  is equal to  $\pi$ . Consider a subsequence of  ${(\bar{\mu}_{\tau_{n}})}_{n\in\mathbb{N}}$  converging to some cluster point  $\bar{\mu}$ .
+Taking  $n\to\infty$  in (C.1) and noting that  $\tau_{n}\to\infty$  by our assumptions, we have  $\FI(\bar{\mu}_{\tau_{n}}\mathbin{\|}\pi)\to 0$ , therefore this is still true along the subsequence. Using the weak lower semicontinuity of the Fisher information along the subsequence,  $\FI(\bar{\mu}\mathbin{\|}\pi)=0$ .
+This means that for  $f:=\frac{\mathrm{d}\bar{\mu}}{\mathrm{d}\pi}$ , we have  $\sqrt{f}\in\mathop{\mathrm{}}{dom}\mathscr{E}$  and  $\mathscr{E}(\sqrt{f})=0$ .
+Since  $\nabla V$  is Lipschitz, then  $\pi$  has a continuous and strictly positive density on  $\mathbb{R}^{d}$ , so  $\mathscr{E}(\sqrt{f})=0$  implies that  $f$  is a constant  $\pi$ -a.e., and hence  $\bar{\mu}=\pi$ .
+∎
+C.2 Hessian smoothness
+We first control the moments of LMC under Assumption 3.
+Proposition 14.
+Assume that the growth conditions in (5.2) are satisfied for  $\gamma&gt;0$ ,  $0&lt;\xi\leq\gamma/2$ , and  $h\leq\frac{a}{4m^{2}}\wedge 1$ .
+Then, for the LMC iterates  ${(x_{kh})}_{k\in\mathbb{N}}$ , we have
+$\displaystyle\E[\lVert x_{kh}\rVert^{2}]$
+$\displaystyle\leq\E[\lVert x_{0}\rVert^{2}]+3\,(a+b+d)\,kh\,,$
+(C.2)
+$\displaystyle\E[\lVert x_{kh}\rVert^{4}]$
+$\displaystyle\leq\E[\lVert x_{0}\rVert^{4}]+6\,\Bigl(\frac{3\,(a+b+d)}{1\wedge a}\Bigr)^{\frac{2+\gamma}{\gamma}\vee 2}\,kh\,.$
+(C.3)
+Proof.
+As before, we denote the interpolation diffusion with  ${\{x_{t}\}}_{t\geq 0}$  and the corresponding filtration with  ${\{\mathcal{F}_{t}\}}_{t\geq 0}$ . Using Itô’s formula conditioned on  $\mathcal{F}_{kh}$ , we obtain
+$\displaystyle\partial_{t}\E[\lVert x_{t}\rVert^{2}\mid\mathcal{F}_{kh}]$
+$\displaystyle=-2\E[\langle x_{t},\nabla V(x_{kh})\rangle\mid\mathcal{F}_{kh}]+2d$
+$\displaystyle=-2\,\langle x_{kh},\nabla V(x_{kh})\rangle+2\,(t-kh)\,\lVert\nabla V(x_{kh})\rVert^{2}+2d$
+$\displaystyle\leq-2a\,(1+\|x_{kh}\|^{\gamma})+2\,(a+b+d)+4\,(t-kh)\,m^{2}\,(1+\lVert x_{kh}\rVert^{2\xi})$
+$\displaystyle\leq 3a+2b+2d$
+where we used  $h\leq a/(4m^{2})$ . Integrating this from  $kh$  to  $(k+1)h$  and iterating yields the second moment bound in (14).
+Similarly for the fourth moment, we write
+$\displaystyle\partial_{t}\E[\lVert x_{t}\rVert^{4}\mid\mathcal{F}_{kh}]$
+$\displaystyle=-4\E[\lVert x_{t}\rVert^{2}\,\langle\nabla V(x_{kh}),x_{t}\rangle\mid\mathcal{F}_{kh}]+(4d+2)\E[\lVert x_{t}\rVert^{2}\mid\mathcal{F}_{kh}]$
+$\displaystyle=4\E[\lVert x_{t}\rVert^{2}\mid\mathcal{F}_{kh}]\,\{-\langle\nabla V(x_{kh}),x_{kh}\rangle+(t-kh)\,\lVert\nabla V(x_{kh})\rVert^{2}+d+1/2\}$
+$\displaystyle\qquad\ \ \ \,-16\,(t-kh)\,\langle x_{kh}-(t-kh)\,\nabla V(x_{kh}),\nabla V(x_{kh})\rangle$
+where in the last step, we use Gaussian integration by parts
+$\displaystyle-4\E[\lVert x_{t}\rVert^{2}\,\langle\nabla V(x_{kh}),\sqrt{2}\,(B_{t}-B_{kh})\rangle\mid\mathcal{F}_{kh}]$
+$\displaystyle\qquad=-16\,(t-kh)\,\langle x_{kh}-(t-kh)\,\nabla V(x_{kh}),\nabla V(x_{kh})\rangle\,.$
+Therefore, we can use the growth condition and write
+$\displaystyle\partial_{t}\E[\lVert x_{t}\rVert^{4}\mid\mathcal{F}_{kh}]$
+$\displaystyle\leq 4\,\{\E[\lVert x_{t}\rVert^{2}\mid\mathcal{F}_{kh}]+4\,(t-kh)\}$
+$\displaystyle\qquad{}\times\{-\langle\nabla V(x_{kh}),x_{kh}\rangle+(t-kh)\,\lVert\nabla V(x_{kh})\rVert^{2}+d+1/2\}$
+$\displaystyle\leq 4\,\{\E[\lVert x_{t}\rVert^{2}\mid\mathcal{F}_{kh}]+4\,(t-kh)\}$
+$\displaystyle\qquad{}\times\{-a\,\lVert x_{kh}\rVert^{\gamma}+b+2\,(t-kh)\,m^{2}\,(1+\lVert x_{kh}\rVert^{2\xi})+d+1/2\}\,.$
+Next, recalling that  $h\leq\min\{1,a/(4m^{2})\}$  and using Assumption 3,
+$\displaystyle\partial_{t}\E[\lVert x_{t}\rVert^{4}\mid\mathcal{F}_{kh}]$
+$\displaystyle\leq 4\,\{\E[\lVert x_{t}\rVert^{2}\mid\mathcal{F}_{kh}]+4\,(t-kh)\}\times\bigl\{-\frac{a}{2}\,\lVert x_{kh}\rVert^{\gamma}+\frac{a}{2}+b+d+\frac{1}{2}\bigr\}\,.$
+Define  $C:=a+b+d$ . We split into two cases.
+If  $\lVert x_{kh}\rVert\geq{((a+2b+2d+1)/a)}^{1/\gamma}$ , then the time derivative is negative.
+Otherwise, if  $\lVert x_{kh}\rVert\leq{((a+2b+2d+1)/a)}^{1/\gamma}\leq{(3C/a)}^{1/\gamma}$ , then recalling our second moment bound,
+$\displaystyle\E[\lVert x_{t}\rVert^{2}\mid\mathcal{F}_{kh}]+4\,(t-kh)$
+$\displaystyle\leq\lVert x_{kh}\rVert^{2}+(t-kh)\,(3a+2b+2d+4)\leq\lVert x_{kh}\rVert^{2}+6C$
+and therefore
+$\displaystyle\partial_{t}\E[\lVert x_{t}\rVert^{4}\mid\mathcal{F}_{kh}]$
+$\displaystyle\leq 3\,\Bigl(\bigl(\frac{3C}{a}\bigr)^{2/\gamma}+6C\Bigr)\,C\leq 6\,\bigl(\frac{3C}{1\wedge a}\bigr)^{\frac{2+\gamma}{\gamma}\vee 2}\,.$
+This concludes the proof.
+∎
+Proof. [Proof of Theorem 6]
+Under Hessian smoothness, we can achieve tighter control on the discretization error via the fourth moment. To do this, we introduce the following lemma, which is derived from an intermediate result in the work of [MFWB19].
+Lemma 15.
+Under Assumption 2, the following bound holds for the discretization error.
+$\displaystyle\E\bigl[\lVert\nabla V(x_{t})-\E[\nabla V(x_{kh})\mid x_{t}]\rVert^{2}\bigr]$
+$\displaystyle\qquad\leq 4L^{2}\,(t-kh)^{2}\E[\lVert\nabla\ln\mu_{kh}(x_{kh})\rVert^{2}]+12L^{4}\,(t-kh)^{3}\,d+4L^{2}h^{2}\E[\lVert\nabla V(x_{kh})\rVert^{2}]$
+$\displaystyle\qquad\qquad+4\,(t-kh)^{4}\,M^{2}\E[\lVert\nabla V(x_{kh})\rVert^{4}]+48\,(t-kh)^{2}\,M^{2}d^{2}\,.$
+Proof.
+This result follows from [MFWB19], by combining the proof of their Lemma 3 (before substitution of  $\lVert\nabla V(x_{kh})\rVert^{4}$ ), their Lemma 4, and the result for the term  $I_{2}$  in their Lemma 5 with the bound on  $I_{3}$  in the proof of their Lemma 5 before substituting for  $\lVert\nabla V(x_{kh})\rVert^{2}$ .
+∎
+We invoke the following Lemma, also from [MFWB19].
+Lemma 16 ([MFWB19, Lemma 7]).
+For  $h\leq\frac{1}{2L}$  and all  $t\in[kh,(k+1)h]$ ,
+$\displaystyle\E[\lVert\nabla\ln\mu_{kh}(x_{kh})\rVert^{2}]$
+$\displaystyle\leq 8\E[\lVert\nabla\ln\mu_{t}(x_{t})\rVert^{2}]+32M^{2}d^{2}h^{2}\,.$
+Consequently, we first analyze the first term in Lemma 15 for  $t\in[kh,(k+1)h]$ :
+$\displaystyle\E[\lVert\nabla\ln\mu_{kh}(x_{kh})\rVert^{2}]$
+$\displaystyle\lesssim\E[\lVert\nabla\ln\mu_{t}(x_{t})\rVert^{2}]+M^{2}d^{2}h^{2}$
+$\displaystyle=\E\bigl[\bigl\lVert\nabla\ln\frac{\mu_{t}}{\pi}(x_{t})+\nabla V(x_{t})\bigr\rVert^{2}\bigr]+M^{2}d^{2}h^{2}$
+$\displaystyle\lesssim\E\bigl[\bigl\lVert\nabla\ln\frac{\mu_{t}}{\pi}(x_{t})\bigr\rVert^{2}\bigr]+\E[\lVert\nabla V(x_{t})\rVert^{2}]+M^{2}d^{2}h^{2}$
+$\displaystyle\lesssim\FI(\mu_{t}\mathbin{\|}\pi)+Ld+M^{2}d^{2}h^{2}\,,$
+where we applied Lemma 13.
+Similarly, we bound the term
+$\displaystyle\E[\lVert\nabla V(x_{kh})\rVert^{2}]$
+$\displaystyle\lesssim\E[\lVert\nabla V(x_{t})\rVert^{2}]+\E[\lVert\nabla V(x_{kh})-\nabla V(x_{t})\rVert^{2}]$
+$\displaystyle\lesssim(1+L^{2}\,{(t-kh)}^{2})\,\E[\lVert\nabla V(x_{t})\rVert^{2}]+L^{2}\,(t-kh)\,d$
+$\displaystyle\leq\FI(\mu_{t}\mathbin{\|}\pi)+Ld\,,$
+where we used (B.1),  $h\lesssim 1/L$ , and Lemma 13.
+The primary term of concern is the expected fourth power of the gradient,  $\E[\lVert\nabla V(x_{kh})\rVert^{4}]$ . For large orders of growth  $\xi&gt;1/2$ , we can directly use the fourth moment bound found in Proposition 14, which has a worst case order of  $d^{3}$ . However, when  $\xi\leq 1/2$ , the term  $\E[\lVert\nabla V(x_{kh})\rVert^{4}]$  will only grow as the second moment  $\E[\lVert x_{kh}\rVert^{2}]$ , and consequently the order of this term is  $d$ . In both cases, this term is no longer dominant.
+Case  $\xi&gt;1/2$ : Using our growth assumption, we get using Assumption 3 for  $\xi&gt;1/2$
+$\displaystyle\E[\lVert\nabla V(x_{kh})\rVert^{4}]$
+$\displaystyle\lesssim m^{4}\,(1+\lVert x_{kh}\rVert^{4})$
+$\displaystyle\lesssim m^{4}\,\biggl(1+\E[\lVert x_{0}\rVert^{4}]+\Bigl(\frac{3\,(a+b+d)}{1\wedge a}\Bigr)^{\frac{2+\gamma}{\gamma}\vee 2}\,kh\biggr)$
+$\displaystyle\lesssim m^{4}\,\bigl(1+\E[\lVert x_{0}\rVert^{4}]+(b+d)^{3}\,kh\bigr)\,,$
+where the last line follows as  $\xi&gt;1/2$  implies  $\gamma&gt;1$ .
+Case  $\xi\leq 1/2$ : In this case, when we use Assumption 3 for  $\xi\leq 1/2$
+$\displaystyle\E[\lVert\nabla V(x_{kh})\rVert^{4}]$
+$\displaystyle\lesssim m^{4}\,(1+\lVert x_{kh}\rVert^{2})$
+$\displaystyle\lesssim m^{4}\ \bigl(1+\E[\lVert x_{0}\rVert^{2}]+(b+d)\,kh\bigr)\,.$
+As we shall see, it will suffice for simplicity in both cases to use the worst case bound for all  $k\leq N$ ,
+$\displaystyle\E[\lVert\nabla V(x_{kh})\rVert^{4}]\lesssim m^{4}\,(b+\sigma d)^{3}\,Nh\,.$
+Substituting all of these terms into Lemma 15, we get for  $t\in[kh,(k+1)h]$  and  $h\lesssim\frac{1}{L}$
+$\displaystyle\E\bigl[\lVert\nabla V(x_{t})-\E[\nabla V(x_{kh})\mid x_{t}]\rVert^{2}\bigr]$
+$\displaystyle\lesssim L^{2}h^{2}\FI(\mu_{t}\mathbin{\|}\pi)+L^{3}d^{2}h^{2}+L^{2}M^{2}d^{2}h^{4}$
+$\displaystyle\ \qquad+M^{2}m^{4}\,(b+\sigma d)^{3}\,Nh^{5}+M^{2}d^{2}h^{2}\,.$
+Finally, from the differential inequality of Lemma 12, we get
+$\displaystyle\partial_{t}\KL(\mu_{t}\mathbin{\|}\pi)$
+$\displaystyle\leq-\frac{3}{4}\FI(\mu_{t}\mathbin{\|}\pi)+\E\bigl[\lVert\nabla V(x_{t})-\E[\nabla V(x_{kh})\mid x_{t}]\rVert^{2}\bigr]$
+and so for  $h\lesssim\frac{1}{L}$ ,
+$\displaystyle\FI(\mu_{t}\mathbin{\|}\pi)$
+$\displaystyle\lesssim-\partial_{t}\KL(\mu_{t}\mathbin{\|}\pi)+(1\vee L^{3}\vee M^{2})\,d^{2}h^{2}+M^{2}m^{4}\,(b+\sigma d)^{3}\,Nh^{5}\,.$
+Finally, we integrate and average over the time horizon to get
+$\displaystyle\frac{1}{Nh}\int_{0}^{Nh}\FI(\mu_{t}\mathbin{\|}\pi)\,\mathrm{d}t$
+$\displaystyle\lesssim\frac{\KL(\mu_{0}\mathbin{\|}\pi)}{Nh}+(1\vee L^{3}\vee M^{2})\,d^{2}h^{2}+M^{2}m^{4}\,(b+\sigma d)^{3}\,Nh^{5}\,.$
+Consequently, if we define  $\kappa=1\vee L\vee M^{2/3}\vee(M^{1/3}m^{2/3})$ , then if  $h\asymp\frac{K_{0}^{1/3}}{\kappa\,{(b+\sigma d)}^{2/3}\,N^{1/3}}$ , we get
+$\displaystyle\frac{1}{Nh}\int_{0}^{Nh}\FI(\mu_{t}\mathbin{\|}\pi)\,\mathrm{d}t$
+$\displaystyle\lesssim\Bigl({(b+\sigma d)}^{2/3}K_{0}^{2/3}+\frac{K_{0}^{5/3}}{{(b+\sigma d)}^{1/3}}\Bigr)\,\frac{\kappa}{N^{2/3}}\,.$
+This completes the proof.
+∎
+C.3 Stochastic gradient setting
+Proof. [Proof of Theorem 7]
+Using Lemma 12, we have
+$\displaystyle\partial_{t}\KL(\mu_{t}\mathbin{\|}\pi)$
+$\displaystyle\leq-\frac{3}{4}\FI(\mu_{t}\mathbin{\|}\pi)+\E[\lVert\nabla V(x_{t})-G(x_{kh},\zeta_{k})\rVert^{2}]\,.$
+The error term can be bounded via
+$\displaystyle\E[\lVert\nabla V(x_{t})-G(x_{kh},\zeta_{k})\rVert^{2}]$
+$\displaystyle\leq 3\E[\lVert\nabla V(x_{t})-\nabla\hat{V}(x_{t})\rVert^{2}]+3\E[\lVert\nabla\hat{V}(x_{t})-\nabla\hat{V}(x_{kh})\rVert^{2}]$
+$\displaystyle\qquad{}+3\E[\lVert\nabla\hat{V}(x_{kh})-G(x_{kh},\zeta_{k})\rVert^{2}]$
+$\displaystyle\leq 3\,\mathsf{bias}^{2}+3\,\mathsf{var}+3\hat{L}^{2}\E[\lVert x_{t}-x_{kh}\rVert^{2}]\,.$
+Next, we have
+$\displaystyle\E[\lVert x_{t}-x_{kh}\rVert^{2}]$
+$\displaystyle={(t-kh)}^{2}\E[\lVert G(x_{kh},\zeta_{k})\rVert^{2}]+2\E[\lVert B_{t}-B_{kh}\rVert^{2}]$
+$\displaystyle\leq 2\,\mathsf{var}\,{(t-kh)}^{2}+2\,{(t-kh)}^{2}\E[\lVert\nabla\hat{V}(x_{kh})\rVert^{2}]+2d\,(t-kh)\,.$
+Using smoothness of  $\hat{V}$ ,
+$\displaystyle\E[\lVert\nabla\hat{V}(x_{kh})\rVert^{2}]$
+$\displaystyle\leq 2\E[\lVert\nabla\hat{V}(x_{t})\rVert^{2}]+2\hat{L}^{2}\E[\lVert x_{t}-x_{kh}\rVert^{2}]\,.$
+Substitute this into the previous inequality.
+If  $h\leq 1/(\sqrt{8}\hat{L})$ , we can rearrange to obtain
+$\displaystyle\E[\lVert x_{t}-x_{kh}\rVert^{2}]$
+$\displaystyle\leq 4\,\mathsf{var}\,{(t-kh)}^{2}+8\,{(t-kh)}^{2}\E[\lVert\nabla\hat{V}(x_{t})\rVert^{2}]+4d\,(t-kh)\,.$
+Next, to bound  $\E[\lVert\nabla\hat{V}(x_{t})\rVert^{2}]$ , we generalize the proof of Lemma 13.
+Introduce the generator  $\mathcal{L}$  of the Langevin diffusion. Since  $\mathcal{L}\hat{V}=-\Delta\hat{V}+\langle\nabla V,\nabla\hat{V}\rangle$ , we can write
+$\displaystyle\E_{\mu_{t}}[\lVert\nabla\hat{V}\rVert^{2}]$
+$\displaystyle=\E_{\mu_{t}}[\mathcal{L}\hat{V}+\Delta\hat{V}+\langle\nabla\hat{V},\nabla\hat{V}-\nabla V\rangle]$
+$\displaystyle\leq\E_{\mu_{t}}\mathcal{L}\hat{V}+\hat{L}d+\sqrt{\E_{\mu_{t}}[\lVert\nabla\hat{V}\rVert^{2}]\E_{\mu_{t}}[\lVert\nabla\hat{V}-\nabla V\rVert^{2}]}$
+$\displaystyle\leq\E_{\mu_{t}}\mathcal{L}\hat{V}+\hat{L}d+\sqrt{\mathsf{bias}^{2}\E_{\mu_{t}}[\lVert\nabla\hat{V}\rVert^{2}]}\,.$
+For the first term, we can use an integration by parts argument as in the proof of Lemma 13:
+$\displaystyle\E_{\mu_{t}}\mathcal{L}\hat{V}$
+$\displaystyle=\E_{\mu_{t}}\bigl\langle\nabla\hat{V},\nabla\ln\frac{\mu_{t}}{\pi}\bigr\rangle\leq\sqrt{\E_{\mu_{t}}[\lVert\nabla\hat{V}\rVert^{2}]\FI(\mu_{t}\mathbin{\|}\pi)}\,.$
+Applying Young’s inequality,
+$\displaystyle\E_{\mu_{t}}[\lVert\nabla\hat{V}\rVert^{2}]$
+$\displaystyle\leq\frac{1}{4}\E_{\mu_{t}}[\lVert\nabla\hat{V}\rVert^{2}]+\FI(\mu_{t}\mathbin{\|}\pi)+\hat{L}d+\frac{1}{4}\E_{\mu_{t}}[\lVert\nabla\hat{V}\rVert^{2}]+\mathsf{bias}^{2}$
+which is rearranged to yield
+$\displaystyle\E_{\mu_{t}}[\lVert\nabla\hat{V}\rVert^{2}]$
+$\displaystyle\leq 2\FI(\mu_{t}\mathbin{\|}\pi)+2\hat{L}d+2\,\mathsf{bias}^{2}\,.$
+Therefore,
+$\displaystyle\E[\lVert\nabla V(x_{t})-G(x_{kh},\zeta_{k})\rVert^{2}]$
+$\displaystyle\leq 3\,\mathsf{bias}^{2}+3\,\mathsf{var}+12\hat{L}^{2}\,\mathsf{var}\,{(t-kh)}^{2}$
+$\displaystyle\qquad{}+48\hat{L}^{2}\,\{\FI(\mu_{t}\mathbin{\|}\pi)+\hat{L}d+\mathsf{bias}^{2}\}\,{(t-kh)}^{2}+12\hat{L}^{2}d\,(t-kh)$
+and for  $h\leq 1/(\sqrt{192}\hat{L})$  we can absorb the Fisher information term into the differential inequality for the KL divergence:
+$\displaystyle\partial_{t}\KL(\mu_{t}\mathbin{\|}\pi)$
+$\displaystyle\leq-\frac{1}{2}\FI(\mu_{t}\mathbin{\|}\pi)+3\,\mathsf{bias}^{2}+3\,\mathsf{var}+12\hat{L}^{2}\,\mathsf{var}\,{(t-kh)}^{2}$
+$\displaystyle\qquad{}+48\hat{L}^{2}\,(\hat{L}d+\mathsf{bias}^{2})\,{(t-kh)}^{2}+12\hat{L}^{2}d\,(t-kh)\,.$
+Integrating,
+$\displaystyle\KL(\mu_{(k+1)h}\mathbin{\|}\pi)-\KL(\mu_{kh}\mathbin{\|}\pi)$
+$\displaystyle\leq-\frac{1}{2}\int_{kh}^{(k+1)h}\FI(\mu_{t}\mathbin{\|}\pi)\,\mathrm{d}t+3h\,\mathsf{bias}^{2}+3h\,\mathsf{var}+4\hat{L}^{2}h^{3}\,\mathsf{var}$
+$\displaystyle\qquad{}+16\hat{L}^{2}h^{3}\,(\hat{L}d+\mathsf{bias}^{2})+6\hat{L}^{2}dh^{2}$
+$\displaystyle\leq-\frac{1}{2}\int_{kh}^{(k+1)h}\FI(\mu_{t}\mathbin{\|}\pi)\,\mathrm{d}t+4h\,\mathsf{bias}^{2}+4h\,\mathsf{var}+8\hat{L}^{2}dh^{2}\,.$
+The proof is concluded in the same way as Theorem 2.
+∎
+C.4 Gaussian smoothing
+Proof. [Proof of Lemma 8]
+From a Gaussian integration by parts argument [NS17], writing  $\gamma$  for the standard Gaussian measure on  $\mathbb{R}^{d}$ ,
+$\displaystyle\lVert\nabla\hat{V}(x)-\nabla V(x)\rVert$
+$\displaystyle=\Bigl\lVert\int\Bigl(\frac{V(x+\eta\zeta)-V(x)}{\eta}-\langle\nabla V(x),\zeta\rangle\Bigr)\,\zeta\,\gamma(\mathrm{d}\zeta)\Bigr\rVert$
+$\displaystyle\leq\frac{1}{\eta}\int\lvert V(x+\eta\zeta)-V(x)-\eta\,\langle\nabla V(x),\zeta\rangle\rvert\,\lVert\zeta\rVert\,\gamma(\mathrm{d}\zeta)$
+$\displaystyle=\int\Bigl\lvert\Bigl\langle\int_{0}^{1}\{\nabla V(x+t\eta\zeta)-\nabla V(x)\}\,\mathrm{d}t,\zeta\Bigr\rangle\Bigr\rvert\,\lVert\zeta\rVert\,\gamma(\mathrm{d}\zeta)$
+$\displaystyle\leq\int\Bigl(\int_{0}^{1}\lVert\nabla V(x+t\eta\zeta)-\nabla V(x)\rVert\,\mathrm{d}t\Bigr)\,\lVert\zeta\rVert^{2}\,\gamma(\mathrm{d}\zeta)$
+$\displaystyle\leq L\eta^{s}\int\lVert\zeta\rVert^{2+s}\,\gamma(\mathrm{d}\zeta)\asymp Ld^{(2+s)/2}\eta^{s}\,.$
+The last inequality follows from standard bounds on the Gaussian moments.
+∎
+Proof. [Proof of Corollary 10]
+We proceed via the following steps.
+1. Control of the bias. Let  $\hat{\pi}\propto\exp(-\hat{V})$  and assume that the potential  $V$  is normalized so that  $\int\exp(-V)=1$ . From [CDJB20, Lemma 2.2], we know that  $\sup{\lvert\hat{V}-V\rvert}\leq Ld^{(1+s)/2}\eta^{1+s}$ .
+Then,
+$\displaystyle\frac{\hat{\pi}}{\pi}$
+$\displaystyle=\frac{\exp(V-\hat{V})}{\int\exp(-\hat{V})}\leq\frac{\exp(V-\hat{V})}{\exp(-\sup{\lvert V-\hat{V}\rvert})\int\exp(-V)}\leq\exp\bigl(2\sup{\lvert V-\hat{V}\rvert}\bigr)\,.$
+For  $\eta$  small, we deduce from Pinsker’s inequality that
+$\displaystyle\lVert\hat{\pi}-\pi\rVert_{\rm TV}^{2}$
+$\displaystyle\lesssim\KL(\hat{\pi}\mathbin{\|}\pi)\leq\ln\sup\frac{\hat{\pi}}{\pi}\leq 2\sup{\lvert V-\hat{V}\rvert}\lesssim Ld^{(1+s)/2}\eta^{1+s}\,.$
+Hence, provided  $\eta\lesssim\varepsilon^{1/(1+s)}/(L^{1/(1+s)}d^{1/2})$ , we can ensure that  $\lVert\hat{\pi}-\pi\rVert_{\rm TV}^{2}\leq\frac{\varepsilon}{4}$ .
+2. Convergence to the smoothed potential. We next apply Theorem 7 with the target distribution  $\hat{\pi}$ . Due to the mini-batching of the stochastic gradients,
+$\displaystyle\hat{L}\lesssim\frac{Ld^{(1-s)/2}}{\eta^{1-s}}\,,\qquad\mathsf{var}\lesssim\frac{L^{2}d^{s}\eta^{2s}}{B}\,.$
+Since we are viewing the smoothed potential  $\hat{\pi}$  as the target, then  $\mathsf{bias}^{2}=0$ . Therefore, Theorem 7 implies that  $\FI(\bar{\mu}_{Nh}\mathbin{\|}\hat{\pi})\leq\delta$  after  $N$  iterations, provided that  $\eta\lesssim B^{1/(2s)}\delta^{1/(2s)}/(L^{1/s}d^{1/2})$  and
+$\displaystyle N\gtrsim\frac{K_{0}L^{2}d^{2-s}}{\delta^{2}\eta^{2\,(1-s)}}\,.$
+3. The smoothed potential satisfies a Poincaré inequality. From the first step, our choice of  $\eta$  entails that  $\hat{\pi}$  is a bounded perturbation of  $\pi$ , and hence  $\hat{\pi}$  satisfies a Poincaré inequality with constant  $\lesssim C_{\mathsf{PI}}$  [BGL14, Proposition 4.2.7].
+Applying Lemma 4, we obtain
+$\displaystyle\lVert\bar{\mu}_{Nh}-\hat{\pi}\rVert_{\rm TV}^{2}$
+$\displaystyle\lesssim C_{\mathsf{PI}}\FI(\bar{\mu}_{Nh}\mathbin{\|}\hat{\pi})\,.$
+Setting  $\delta\asymp\varepsilon/C_{\mathsf{PI}}$ , we see that provided  $\eta\lesssim B^{1/(2s)}\varepsilon^{1/(2s)}/(C_{\mathsf{PI}}^{1/(2s)}L^{1/s}d^{1/2})$  and
+$\displaystyle N\gtrsim\frac{C_{\mathsf{PI}}^{2}K_{0}L^{2}d^{2-s}}{\varepsilon^{2}\eta^{2\,(1-s)}}\,,$
+we obtain  $\lVert\bar{\mu}_{Nh}-\hat{\pi}\rVert_{\rm TV}^{2}\leq\frac{\varepsilon}{4}$ .
+4. Conclusion of the proof. Putting the steps together,
+$\displaystyle\lVert\bar{\mu}_{Nh}-\pi\rVert_{\rm TV}^{2}$
+$\displaystyle\leq 2\,\lVert\bar{\mu}_{Nh}-\hat{\pi}\rVert_{\rm TV}^{2}+2\,\lVert\hat{\pi}-\pi\rVert_{\rm TV}^{2}\leq\varepsilon\,.$
+To fulfill the conditions on  $\eta$ , we take
+$\displaystyle\eta\asymp\frac{1}{d^{1/2}}\min\Bigl\{\frac{\varepsilon^{1/(1+s)}}{L^{1/(1+s)}},\frac{B^{1/(2s)}\varepsilon^{1/(2s)}}{C_{\mathsf{PI}}^{1/(2s)}L^{1/s}}\Bigr\}\,.$
+(C.4)
+The gradient complexity is
+$\displaystyle BN$
+$\displaystyle\asymp\frac{C_{\mathsf{PI}}^{2}K_{0}L^{2}d^{3-2s}}{\varepsilon^{2}}\times B\times\max\Bigl\{\frac{L^{1/(1+s)}}{\varepsilon^{1/(1+s)}},\frac{C_{\mathsf{PI}}^{1/(2s)}L^{1/s}}{B^{1/(2s)}\varepsilon^{1/(2s)}}\Bigr\}^{2\,(1-s)}\,.$
+Now we optimize over  $B$ .
+If  $s\geq 1/2$ , then we set  $B=1$ , with complexity
+$\displaystyle BN$
+$\displaystyle\asymp\frac{C_{\mathsf{PI}}^{(1+s)/s}K_{0}L^{2/s}d^{3-2s}}{\varepsilon^{(1+s)/s}}\,.$
+Otherwise, if  $s\leq 1/2$ , we set  $B\asymp C_{\mathsf{PI}}L^{2/(1+s)}/\varepsilon^{(1-s)/(1+s)}$ , with complexity
+$\displaystyle BN$
+$\displaystyle\asymp\frac{C_{\mathsf{PI}}^{3}K_{0}L^{6/(1+s)}d^{3-2s}}{\varepsilon^{(5-s)/(1+s)}}\,.$
+This completes the proof.
+∎
+C.5 Finite sum setting
+Proof. [Proof of Theorem 11] Let  ${(x_{t})}_{t\geq 0}$  denote the interpolation of (VR-LMC). Using Lemma 12, for  $t\in[kh,(k+1)h]$ , we have
+$\displaystyle\partial_{t}\mathsf{KL}(\mu_{t}\mathbin{\|}\pi)$
+$\displaystyle\leq-\frac{3}{4}\FI(\mu_{t}\mathbin{\|}\pi)+\E[\lVert\nabla V(x_{t})-g_{k}\rVert^{2}]$
+$\displaystyle\leq-\frac{3}{4}\FI(\mu_{t}\mathbin{\|}\pi)+2\E[\lVert\nabla V(x_{t})-\nabla V(x_{kh})\rVert^{2}]+2\E[\lVert\nabla V(x_{kh})-g_{k}\rVert^{2}]\,.$
+(C.5)
+The second term in (C.5) can be further bounded as
+$\displaystyle\E[\lVert\nabla V(x_{t})-\nabla V(x_{kh})\rVert^{2}]$
+$\displaystyle\leq L^{2}\E[\lVert x_{t}-x_{kh}\rVert^{2}]=L^{2}\,{(t-kh)}^{2}\E[\lVert g_{k}\rVert^{2}]+2L^{2}d\,(t-kh)$
+$\displaystyle\leq L^{2}h^{2}\E[\lVert g_{k}\rVert^{2}]+2L^{2}dh=L^{2}\E[\lVert x_{(k+1)h}-x_{kh}\rVert^{2}]\,.$
+(C.6)
+Furthermore, write  $\sigma_{k}^{2}=\E[\lVert g_{k}-\nabla V(x_{kh})\rVert^{2}]$  for the variance term. The third term in (C.5) can be bounded as
+$\displaystyle\sigma_{k+1}^{2}$
+$\displaystyle=(1-p)\E[\lVert g_{k}-\nabla V(x_{(k+1)h})+\nabla f_{i}(x_{(k+1)h})-\nabla f_{i}(x_{kh})\rVert^{2}]$
+$\displaystyle=(1-p)\E[\lVert g_{k}-\nabla V(x_{kh})+\underbrace{(\nabla f_{i}(x_{(k+1)h})-\nabla f_{i}(x_{kh}))}_{:=a_{i}}$
+$\displaystyle\qquad\qquad\qquad\qquad\qquad\qquad\qquad{}-\underbrace{(\nabla V(x_{(k+1)h})-\nabla V(x_{kh}))}_{:=\bar{a}=\frac{1}{n}\sum_{\ell=1}^{n}a_{\ell}}\rVert^{2}]$
+$\displaystyle=(1-p)\E[\lVert g_{k}-\nabla V(x_{kh})\rVert^{2}]+(1-p)\,\frac{1}{n}\sum_{\ell=1}^{n}\E[\lVert a_{\ell}-\bar{a}\rVert^{2}]$
+$\displaystyle\leq(1-p)\E[\lVert g_{k}-\nabla V(x_{kh})\rVert^{2}]+(1-p)\,\frac{1}{n}\sum_{\ell=1}^{n}\E[\lVert a_{\ell}\rVert^{2}]$
+$\displaystyle\leq(1-p)\,\sigma_{k}^{2}+(1-p)\,L^{2}\E[\lVert x_{(k+1)h}-x_{kh}\rVert^{2}]\,.$
+In the third equality, we conditioned w.r.t.  $\mathcal{F}_{k}$  and used that  $i$  is independent of  $\mathcal{F}_{k}$ .
+Therefore, we obtain the inequality
+$\sigma_{k}^{2}\leq\frac{1-p}{p}\,L^{2}\E[\lVert x_{(k+1)h}-x_{kh}\rVert^{2}]-\frac{1}{p}\,(\sigma_{k+1}^{2}-\sigma_{k}^{2})\,.$
+(C.7)
+Plugging (C.7) and (C.6) into (C.5) we obtain
+$\displaystyle\partial_{t}\mathsf{KL}(\mu_{t}\mathbin{\|}\pi)\leq$
+$\displaystyle-\frac{3}{4}\FI(\mu_{t}\mathbin{\|}\pi)+\frac{2L^{2}}{p}\E[\lVert x_{(k+1)h}-x_{kh}\rVert^{2}]-\frac{2}{p}\,(\sigma_{k}^{2}-\sigma_{k+1}^{2})\,.$
+(C.8)
+Now, we bound the term  $\mathbb{E}[\lVert x_{(k+1)h}-x_{kh}\rVert^{2}]$  appearing in (C.8) as
+$\displaystyle\E[\lVert x_{(k+1)h}-x_{kh}\rVert^{2}]$
+$\displaystyle=h^{2}\E[\lVert g_{k}\rVert^{2}]+2hd$
+$\displaystyle\leq h^{2}\E[\lVert\nabla V(x_{kh})\rVert^{2}]+h^{2}\sigma_{k}^{2}+2hd$
+$\displaystyle\leq 2h^{2}\E[\lVert\nabla V(x_{t})\rVert^{2}]+2h^{2}\E[\lVert\nabla V(x_{t})-\nabla V(x_{kh})\rVert^{2}]+h^{2}\sigma_{k}^{2}+2hd$
+$\displaystyle\leq 2h^{2}\E[\lVert\nabla V(x_{t})\rVert^{2}]+2L^{2}h^{2}\E[\lVert x_{(k+1)h}-x_{kh}\rVert^{2}]+h^{2}\sigma_{k}^{2}+2hd\,,$
+where we used (C.6). Further using (C.7), we obtain
+$\displaystyle\E[\lVert x_{(k+1)h}-x_{kh}\rVert^{2}]$
+$\displaystyle\leq 2h^{2}\E[\lVert\nabla V(x_{t})\rVert^{2}]-\frac{h^{2}}{p}\,(\sigma_{k+1}^{2}-\sigma_{k}^{2})$
+$\displaystyle\qquad{}+h^{2}L^{2}\,\frac{1+p}{p}\E[\lVert x_{(k+1)h}-x_{kh}\rVert^{2}]+2hd\,.$
+Assuming  ${h^{2}L^{2}}\leq p/24$ , we have
+$\displaystyle\frac{11}{12}\E[\lVert x_{(k+1)h}-x_{kh}\rVert^{2}]$
+$\displaystyle\leq 2h^{2}\E[\lVert\nabla V(x_{t})\rVert^{2}]-\frac{h^{2}}{p}\,(\sigma_{k+1}^{2}-\sigma_{k}^{2})+2hd\,.$
+Using Lemma 13, we obtain
+$\displaystyle 2\E[\lVert x_{(k+1)h}-x_{kh}\rVert^{2}]$
+$\displaystyle\leq 6h^{2}\FI(\mu_{t}\mathbin{\|}\pi)-\frac{3h^{2}}{p}\,(\sigma_{k+1}^{2}-\sigma_{k}^{2})+6hd+12Lh^{2}d$
+$\displaystyle\leq 6h^{2}\FI(\mu_{t}\mathbin{\|}\pi)-\frac{3h^{2}}{p}\,(\sigma_{k+1}^{2}-\sigma_{k}^{2})+9hd\,.$
+(C.9)
+Plugging (C.9) into (C.8), we obtain
+$\displaystyle\partial_{t}\mathsf{KL}(\mu_{t}\mathbin{\|}\pi)$
+$\displaystyle\leq\bigl(-\frac{3}{4}+\frac{6L^{2}h^{2}}{p}\bigr)\FI(\mu_{t}\mathbin{\|}\pi)+\frac{9L^{2}hd}{p}-\frac{2}{p}\,\bigl(1+\frac{3L^{2}h^{2}}{2p}\bigr)\,(\sigma_{k+1}^{2}-\sigma_{k}^{2})$
+$\displaystyle\leq-\frac{1}{2}\FI(\mu_{t}\mathbin{\|}\pi)+\frac{9L^{2}hd}{p}-\frac{2}{p}\,\bigl(1+\frac{3L^{2}h^{2}}{2p}\bigr)\,(\sigma_{k+1}^{2}-\sigma_{k}^{2})\,,$
+(C.10)
+where we used  $L^{2}h^{2}\leq p/24$ . Integrating between  $kh$  and  $(k+1)h$ ,
+$\displaystyle\mathscr{L}_{k+1}-\mathscr{L}_{k}\leq-\frac{1}{2}\int_{kh}^{(k+1)h}\FI(\mu_{t}\mathbin{\|}\pi)\,\mathrm{d}t+\frac{9L^{2}hd}{p}\,,$
+where  $\mathscr{L}_{k}:=\mathsf{KL}(\mu_{kh}\mathbin{\|}\pi)+\frac{2h}{p}\,(1+\frac{3L^{2}h^{2}}{2p})\,\sigma_{k}^{2}\geq 0$ .
+Iterating, and using  $\mathscr{L}_{k}\geq 0$ ,
+$\displaystyle\frac{1}{Nh}\int_{0}^{Nh}\FI(\mu_{t}\mathbin{\|}\pi)\,\mathrm{d}t\leq\frac{2\mathscr{L}_{0}}{Nh}+\frac{18L^{2}hd}{p}\,.$
+Since  $h^{2}L^{2}&lt;p/24$ , we have
+$\displaystyle\mathscr{L}_{0}=\mathsf{KL}(\mu_{0}\mathbin{\|}\pi)+\frac{2h}{p}\,\bigl(1+\frac{3L^{2}h^{2}}{2p}\bigr)\,\sigma_{0}^{2}\leq\mathsf{KL}(\mu_{0}\mathbin{\|}\pi)+\frac{3h}{p}\,\sigma_{0}^{2}=C\,,$
+thereby completing the first claim. By setting  $h=\frac{\sqrt{pC}}{3L\sqrt{Nd}}$ , we obtain the second.
+∎
+Experimental support, please
+view the build logs
+for errors. Generated by
+L
+A
+T
+E
+xml
+.
+Instructions for reporting errors
+We are continuing to improve HTML versions of papers, and your feedback helps enhance accessibility and mobile
+support. To report errors in the HTML that will help us improve conversion and rendering, choose any of the
+methods listed below:
+Click the &quot;Report Issue&quot; (
+) button, located in the page header.
+Tip: You can select the relevant text first, to include it in your report.
+Our team has already identified the following issues. We appreciate your time reviewing and reporting rendering errors we
+may not have found yet. Your efforts will help us improve the HTML versions for all readers, because disability
+should not be a barrier to accessing research. Thank you for your continued support in championing open access for
+all.
+Have a free development cycle? Help support accessibility at arXiv! Our collaborators at LaTeXML maintain a list of packages that need conversion, and welcome developer contributions.
+We gratefully acknowledge support from
+our major funders,
+member institutions, ,
+and all contributors.
+About
+·
+Help
+·
+Contact
+·
+Subscribe
+·
+Copyright
+·
+Privacy
+·
+Accessibility
+·
+Operational Status (opens in new tab)
+Major funding support from</pre></html>

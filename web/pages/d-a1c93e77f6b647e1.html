@@ -1,0 +1,3130 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Adaptively Incorporating Directional Hintsinto Zeroth-Order Optimization</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>Adaptively Incorporating Directional Hintsinto Zeroth-Order Optimization</h1><p>Source ID d-a1c93e77f6b647e1; literature/sources/metric_geometry10/cycle15/2609.08277v1_html.html; 59324 o200k tokens; role primary_source_or_metadata; extraction html_text_discovery_only_math_may_be_lossy. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>Adaptively Incorporating Directional Hintsinto Zeroth-Order Optimization
+
+      Report GitHub Issue
+      ×
+
+      Title:
+
+Content selection saved. Describe the issue below:
+
+      Description:
+
+      Submit without GitHub
+      Submit in GitHub
+
+    arXiv is now an independent nonprofit!
+    Learn more
+    ×
+
+      Back to arXiv
+
+Q_{T}
+
+    License: CC BY 4.0
+
+arXiv:2609.08277v1 [cs.LG] 08 Sep 2026
+
+Adaptively Incorporating Directional Hints
+
+into Zeroth-Order Optimization
+
+Alexander Ryabchenko
+
+University of Toronto and Vector Institute
+
+alex.rbch.research@gmail.com
+
+  
+
+Jian Qian
+
+University of Hong Kong
+
+jianqian@hku.hk
+
+  
+
+Wenlong Mou
+
+University of Toronto and Vector Institute
+
+wenlong.mou@utoronto.ca
+
+Abstract
+
+We study zeroth-order optimization of non-convex functions with the aid of directional hints, which are cheap but potentially inaccurate approximations of the true gradient direction, given by linear subspaces at each iteration. To leverage these hints adaptively while maintaining robustness to their quality, we introduce Control-Variate Zeroth-Order Descent (CV-ZOD), a new framework that refines the classical zeroth-order gradient estimator with a control variate that can be set based on the directional hints. We first show that the oracle algorithm that optimally sets the reference vector and step size at each iteration achieves a convergence rate that interpolates between the first-order 
+O(1/T)
+O⁡(1/T)O(1/T) rate and the zeroth-order 
+O(d/T)
+O⁡(d/T)O(d/T) rate, depending on the quality of the hints along the trajectory. We then develop a practical variant of CV-ZOD that achieves the same oracle guarantee up to logarithmic factors, without any prior knowledge of the hint quality. We validate the method empirically on simulation-based scientific optimization tasks, demonstrating sustained progress on nonconvex landscapes where zeroth-order descent is slower and existing guided methods stall as guidance deteriorates.
+
+1 Introduction
+
+Many real-world optimization problems involve non-convex objectives whose gradients are unavailable or prohibitively expensive to compute. In scientific applications, the objective may be defined by a simulator or experimental pipeline that cannot be differentiated end-to-end [16]. In machine learning, the model itself may be accessible only through an API, as in black-box adversarial attacks on deployed classifiers [5, 14], prompt optimization for API-gated language models [24], or memory-efficient fine-tuning of large models, where backpropagation is replaced by forward-pass-only updates [19]. Zeroth-order methods, which rely only on function evaluations, are a natural tool in these settings. However, their convergence rates typically scale with the dimension 
+d
+dd, making them impractical in high-dimensional problems.
+
+At the same time, auxiliary information about the objective is often available. A pretrained surrogate, a smaller related model, or a low-rank approximation may suggest promising descent directions. For example, the gradient of a distilled model can provide a cheap proxy for the gradient of a large target model in prompt optimization, while a differentiable foundation model can guide black-box optimization in scientific experiments. Using such information effectively, however, is delicate. Blindly following the suggested directions can lead to rapid early progress when they are well aligned with the true gradient, but the resulting bias may ultimately limit convergence. Conversely, ignoring this information altogether reverts to the standard dimension-dependent cost of zeroth-order optimization. Ideally, we would like to use directional hints when they are informative and adaptively fall back to unbiased zeroth-order descent when they are not, without any prior knowledge of their quality along the trajectory.
+
+The idea of incorporating prior directional information into zeroth-order optimization has been explored in several works [18, 6]. These methods bias the search distribution toward the suggested directions, which can accelerate convergence when the guidance is well aligned with the true gradient. However, this modification also biases the resulting gradient estimators: they no longer target the gradient of the original objective, but rather a reweighted version of it. Consequently, the optimization dynamics are distorted by the guidance, which can limit progress. Moreover, existing convergence analyses for these approaches are restricted to convex objectives. This motivates the central question: Can we incorporate directional hints into non-convex zeroth-order optimization in a way that adapts to their quality along the trajectory without altering the underlying optimization dynamics?
+
+In this paper, we answer this question affirmatively. We study a general interaction model in which the hints are revealed as low-dimensional linear subspaces at each iteration, allowing different sources of directional information to be treated within a common framework. Our contributions are as follows:
+
+1. 
+
+Control-Variate Zeroth-Order Descent (CV-ZOD) framework (Section 3).
+We introduce a new zeroth-order descent scheme, CV-ZOD, built on a control-variate gradient estimator [1, 21, 9] that uses a reference vector to reduce variance while remaining unbiased for the smoothed gradient. The variance of the estimator is governed by the accuracy of the reference vector relative to the true gradient. By instantiating the reference vector through projection of the true gradient onto the hint subspace and choosing the optimal stepsize, the resulting oracle algorithm interpolates between the first-order 
+O(1/T)
+O⁡(1/T)O(1/T) rate when the hints are well-aligned and the zeroth-order 
+O(d/T)
+O⁡(d/T)O(d/T) rate when they are uninformative.
+
+2. 
+
+A fully zeroth-order adaptive instantiation (Section 4).
+In practice, the oracle information of projected gradient and optimal stepsize is unavailable. We develop a practical variant of CV-ZOD that estimates these quantities using only function evaluations, and show that it achieves the same adaptive convergence guarantee, up to logarithmic factors, with 
+O(k+\log T)
+O⁡(k+log⁡T)O(k+\log T) queries per iteration. As a result, the adaptive version of CV-ZOD can achieve the interpolating convergence rates without any prior knowledge of the hint quality along the trajectory.
+
+3. 
+
+Simulation-based scientific optimization tasks (Section 5).
+We validate the framework on scientific optimization tasks arising from fluid dynamics and computational chemistry, using cheap surrogate models to generate directional hints. We show that CV-ZOD achieves significant speedup over existing zeroth-order methods, and much lower final error than existing guided methods that rely on biased gradient estimation.
+
+Related work.
+
+Prior theoretical work has explored incorporating surrogate gradient information into zeroth-order optimization, but the existing analyses have so far been limited to convex objectives and relied on biased gradient estimators that reshape the optimization dynamics around the surrogate; the resulting algorithms do not follow the gradient flow of 
+f
+ff, but one shaped by the surrogate. Specifically, [18] introduce Guided Evolutionary Strategies (GES), which bias the search distribution along the guiding subspace and analyze the bias-variance tradeoff of the resulting estimator, but provide no convergence guarantees. [6] analyze the Prior-Guided Random Gradient-Free (PRGF) method, which uses a similar biased gradient estimator, and obtain convergence rates that improve with the cosine similarity between the prior and the true gradient; however, their analysis relies essentially on convexity and a bounded level set assumption, precluding a direct extension to non-convex objectives. See Appendix A for a more detailed discussion.
+
+A complementary approach in scientific optimization is Bayesian optimization, which selects experiments through a probabilistic model of objective values. Applications include reaction optimization [22] and the discovery of improved photocatalyst formulations [4]. CV-ZOD instead uses directional hints to reduce the variance of a zeroth-order gradient estimator while retaining its smoothed-gradient expectation. The black-box machine-learning applications discussed above provide further settings in which cheap surrogate gradients may supply such hints.
+
+2 Problem Setting
+
+This paper considers the unconstrained minimization problem
+
+\displaystyle f^{*}:=\min_{x\in\mathbb{R}^{d}}f(x),
+f∗:=minx∈ℝd⁡f⁡(x),\displaystyle f^{*}:=\min_{x\in\mathbb{R}^{d}}f(x),
+
+where 
+d\in\mathbb{N}
+d∈ℕd\in\mathbb{N} is the dimension and 
+f\colon\mathbb{R}^{d}\to\mathbb{R}
+f:ℝd→ℝf\colon\mathbb{R}^{d}\to\mathbb{R} is the differentiable objective. Throughout, 
+f
+ff is taken to be 
+B
+BB-Lipschitz, i.e., 
+\|\nabla f(x)\|\leq B
+‖∇f​(x)‖≤B\|\nabla f(x)\|\leq B for all 
+x\in\mathbb{R}^{d}
+x∈ℝdx\in\mathbb{R}^{d},
+and 
+L
+LL-smooth, i.e.,
+
+\displaystyle\bigl|f(y)-f(x)-\langle{\nabla f(x),\,y-x}\rangle\bigr|\leq\tfrac{L}{2}\lVert y-x\rVert^{2}\qquad\text{for all }x,y\in\mathbb{R}^{d}.
+|f⁡(y)−f⁡(x)−⟨∇f​(x),y−x⟩|≤L2​∥y−x∥2for all ​x,y∈ℝd.\displaystyle\bigl|f(y)-f(x)-\langle{\nabla f(x),\,y-x}\rangle\bigr|\leq\tfrac{L}{2}\lVert y-x\rVert^{2}\qquad\text{for all }x,y\in\mathbb{R}^{d}.
+
+We study iterative algorithms that access 
+f
+ff only through a zeroth-order oracle, which returns the scalar value 
+f(x)
+f⁡(x)f(x) for any query 
+x\in\mathbb{R}^{d}
+x∈ℝdx\in\mathbb{R}^{d}, and that, at each iteration, are provided with a directional hint in the form of a low-dimensional linear subspace of 
+\mathbb{R}^{d}
+ℝd\mathbb{R}^{d}. Figure 1 depicts the resulting interaction.
+
+Formally, the algorithm is initialized at an arbitrary point 
+x_{1}\in\mathbb{R}^{d}
+x1∈ℝdx_{1}\in\mathbb{R}^{d} and runs for 
+T\in\mathbb{N}
+T∈ℕT\in\mathbb{N} iterations. At iteration 
+t\in[T]
+t∈[T]t\in[T], the environment reveals a hint subspace 
+\mathcal{S}_{t}\in\mathrm{Gr}_{k}(\mathbb{R}^{d})
+𝒮t∈Grk​(ℝd)\mathcal{S}_{t}\in\mathrm{Gr}_{k}(\mathbb{R}^{d}), where 
+\mathrm{Gr}_{k}(\mathbb{R}^{d})
+Grk​(ℝd)\mathrm{Gr}_{k}(\mathbb{R}^{d}) denotes the set of 
+k
+kk-dimensional linear subspaces of 
+\mathbb{R}^{d}
+ℝd\mathbb{R}^{d}. The algorithm then issues a batch of zeroth-order queries and selects the next iterate 
+x_{t+1}
+xt+1x_{t+1}. After 
+T
+TT iterations, it returns an output point 
+\bar{x}\in\mathbb{R}^{d}
+x¯∈ℝd\bar{x}\in\mathbb{R}^{d} based on the information collected during the interaction.
+For the descent schemes considered below, every step size 
+\alpha_{t}
+αt\alpha_{t} is strictly positive.
+
+Zeroth-Order Optimization with Directional Hints
+Parameters: horizon 
+T
+TT, hint subspace dimension 
+k\in[d]
+k∈[d]k\in[d].
+Input: initial point 
+x_{1}\in\mathbb{R}^{d}
+x1∈ℝdx_{1}\in\mathbb{R}^{d}.
+For each iteration 
+t=1,2,\ldots,T
+t=1,2,…,Tt=1,2,\ldots,T:
+
+1. 
+
+The environment reveals a hint subspace 
+\mathcal{S}_{t}\in\mathrm{Gr}_{k}(\mathbb{R}^{d})
+𝒮t∈Grk​(ℝd)\mathcal{S}_{t}\in\mathrm{Gr}_{k}(\mathbb{R}^{d}).
+
+2. 
+
+The algorithm makes queries to the zeroth-order oracle and selects the next iterate 
+x_{t+1}
+xt+1x_{t+1}.
+
+Output: point 
+\bar{x}\in\mathbb{R}^{d}
+x¯∈ℝd\bar{x}\in\mathbb{R}^{d} selected using the information collected over the 
+T
+TT iterations.
+
+Figure 1: Zeroth-order optimization with directional hints.
+
+Performance is measured by the stationarity of the output: specifically, we seek to control 
+\E[\lVert\nabla f(\bar{x})\rVert^{2}]
+𝔼⁡[∥∇f​(x¯)∥2]\E[\lVert\nabla f(\bar{x})\rVert^{2}]. Here, the expectation is with respect to all randomness that can affect the output point 
+\bar{x}
+x¯\bar{x}: the algorithm’s internal randomization and the hint-generation process that generates hints 
+(\mathcal{S}_{t})_{t=1}^{T}
+(𝒮t)t=1T(\mathcal{S}_{t})_{t=1}^{T}, as specified in the next paragraph.
+
+Hint generation model.
+
+We impose no distributional or structural assumptions on the mechanism that produces hint subspaces. The sequence 
+(\mathcal{S}_{t})_{t=1}^{T}
+(𝒮t)t=1T(\mathcal{S}_{t})_{t=1}^{T} may be deterministic or random, and may be chosen adaptively, subject only to a non-anticipation condition. Formally, let 
+(\mathcal{F}_{t})_{t=1}^{T}
+(ℱt)t=1T(\mathcal{F}_{t})_{t=1}^{T} be a filtration such that 
+\mathcal{F}_{t}
+ℱt\mathcal{F}_{t} captures all randomness available before iteration 
+t
+tt, including the iterate 
+x_{t}
+xtx_{t}. We require only that 
+\mathcal{S}_{t}
+𝒮t\mathcal{S}_{t} be 
+\mathcal{F}_{t}
+ℱt\mathcal{F}_{t}-measurable. Equivalently, the hint revealed at iteration 
+t
+tt may depend on the current iterate and all past information, but not on the algorithm’s internal randomness within the same iteration. For example, given access to differentiable surrogates 
+f^{\prime}_{1},\ldots,f^{\prime}_{k}
+f1′,…,fk′f^{\prime}_{1},\ldots,f^{\prime}_{k}, our framework accommodates the natural hint choice 
+\mathcal{S}_{t}=\mathrm{span}\{\nabla f^{\prime}_{1}(x_{t}),\ldots,\nabla f^{\prime}_{k}(x_{t})\}
+𝒮t=span⁡{∇f1′​(xt),…,∇fk′​(xt)}\mathcal{S}_{t}=\mathrm{span}\{\nabla f^{\prime}_{1}(x_{t}),\ldots,\nabla f^{\prime}_{k}(x_{t})\}.
+
+We quantify the quality of the hint 
+\mathcal{S}_{t}
+𝒮t\mathcal{S}_{t} via the principal angle between 
+\mathcal{S}_{t}
+𝒮t\mathcal{S}_{t} and the current gradient, defined as
+
+\displaystyle\theta_{t}:=\angle(\nabla f(x_{t}),\mathcal{S}_{t})=\arccos\left(\tfrac{\lVert P_{\mathcal{S}_{t}}\nabla f(x_{t})\rVert}{\lVert\nabla f(x_{t})\rVert}\right),
+θt:=∠⁡(∇f​(xt),𝒮t)=arccos⁡(∥P𝒮t∇f(xt)∥∥∇f​(xt)∥),\displaystyle\theta_{t}:=\angle(\nabla f(x_{t}),\mathcal{S}_{t})=\arccos\left(\tfrac{\lVert P_{\mathcal{S}_{t}}\nabla f(x_{t})\rVert}{\lVert\nabla f(x_{t})\rVert}\right),
+
+with the convention 
+\theta_{t}:=0
+θt:=0\theta_{t}:=0 when 
+\nabla f(x_{t})=0
+∇f​(xt)=0\nabla f(x_{t})=0. The angle 
+\theta_{t}
+θt\theta_{t} measures how much of the current gradient is captured by 
+\mathcal{S}_{t}
+𝒮t\mathcal{S}_{t}. The sequence 
+(\theta_{t})_{t=1}^{T}
+(θt)t=1T(\theta_{t})_{t=1}^{T} is itself a stochastic process adapted to 
+(\mathcal{F}_{t})_{t=1}^{T}
+(ℱt)t=1T(\mathcal{F}_{t})_{t=1}^{T}, and our convergence guarantees are stated in terms of its realized distribution along the trajectory rather than any worst-case bound.
+
+Additional notation.
+
+We write 
+[n]:=\{1,\ldots,n\}
+[n]:={1,…,n}[n]:=\{1,\ldots,n\} for 
+n\in\mathbb{N}
+n∈ℕn\in\mathbb{N}. For a subspace 
+\mathcal{S}\subseteq\mathbb{R}^{d}
+𝒮⊆ℝd\mathcal{S}\subseteq\mathbb{R}^{d}, we denote by 
+P_{\mathcal{S}}
+P𝒮P_{\mathcal{S}} the orthogonal projector onto 
+\mathcal{S}
+𝒮\mathcal{S} and by 
+\mathcal{S}^{\perp}
+𝒮⟂\mathcal{S}^{\perp} its orthogonal complement, with the shorthand 
+P_{\mathcal{S}}^{\perp}:=P_{\mathcal{S}^{\perp}}
+P𝒮⟂:=P𝒮⟂P_{\mathcal{S}}^{\perp}:=P_{\mathcal{S}^{\perp}}. For vectors 
+v_{1},\ldots,v_{m}\in\mathbb{R}^{d}
+v1,…,vm∈ℝdv_{1},\ldots,v_{m}\in\mathbb{R}^{d}, we write 
+\mathrm{span}\{v_{1},\ldots,v_{m}\}
+span⁡{v1,…,vm}\mathrm{span}\{v_{1},\ldots,v_{m}\} for their linear span. For 
+k\in\{0,\ldots,d\}
+k∈{0,…,d}k\in\{0,\ldots,d\}, we denote by 
+\mathrm{Gr}_{k}(\mathbb{R}^{d})
+Grk​(ℝd)\mathrm{Gr}_{k}(\mathbb{R}^{d}) the Grassmannian of 
+k
+kk-dimensional linear subspaces of 
+\mathbb{R}^{d}
+ℝd\mathbb{R}^{d}, with 
+\mathrm{Gr}_{0}(\mathbb{R}^{d})
+Gr0​(ℝd)\mathrm{Gr}_{0}(\mathbb{R}^{d}) consisting of the trivial subspace 
+\{0\}
+{0}\{0\} alone.
+
+3 Control-Variate Framework for Zeroth-Order Descent
+
+This section introduces the Control-Variate Zeroth-Order Descent (CV-ZOD) framework. Section 3.1 constructs a gradient estimator (2) that, given an arbitrary reference vector, refines it into an unbiased estimate of the smoothed gradient with variance controlled by how close the reference vector is to the true gradient. Section 3.2 embeds this estimator into an iterative descent scheme in which a fresh reference vector and step size are chosen at each iteration, and establishes a convergence guarantee (Theorem 3.4) governed by the interplay between the two along the trajectory. The framework is agnostic to how reference vectors and step sizes are chosen; Section 3.3 specializes it to directional hints and identifies the oracle choices that serve as a benchmark for Section 4, where we match this benchmark using only function evaluations.
+
+3.1 Gradient Estimation with Control Variates
+
+We recall standard zeroth-order tools [8, 20, 2] before introducing our control-variate estimator.
+
+Preliminaries: Gaussian smoothing and the classical gradient estimator.
+
+For a smoothing parameter 
+\tau&gt;0
+τ&gt;0\tau&gt;0, we define the 
+\tau
+τ\tau-smoothed objective by
+
+\displaystyle f^{\tau}(x):=\E_{u\sim\mathcal{N}(0,I_{d})}\left[f(x+\tau u)\right]\qquad\text{for all }x\in\mathbb{R}^{d}.
+fτ​(x):=𝔼u∼𝒩⁡(0,Id)⁡[f⁡(x+τ​u)]for all ​x∈ℝd.\displaystyle f^{\tau}(x):=\E_{u\sim\mathcal{N}(0,I_{d})}\left[f(x+\tau u)\right]\qquad\text{for all }x\in\mathbb{R}^{d}.
+
+The following lemma records the basic approximation properties of this Gaussian smoothing.
+
+Lemma 3.1 (Theorems 1-3 in [20])
+
+The function 
+f^{\tau}
+fτf^{\tau} is differentiable, 
+L
+LL-smooth, and, for all 
+x\in\mathbb{R}^{d}
+x∈ℝdx\in\mathbb{R}^{d}, satisfies
+
+\displaystyle|f^{\tau}(x)-f(x)|
+|fτ​(x)−f​(x)|\displaystyle|f^{\tau}(x)-f(x)|
+
+\displaystyle\leq\frac{\tau^{2}}{2}Ld\qquad\text{and}\qquad\lVert\nabla f^{\tau}(x)-\nabla f(x)\rVert\leq\frac{\tau}{2}L(d+3)^{3/2}.
+≤τ22Ldand∥∇fτ(x)−∇f(x)∥≤τ2L(d+3)3/2.\displaystyle\leq\frac{\tau^{2}}{2}Ld\qquad\text{and}\qquad\lVert\nabla f^{\tau}(x)-\nabla f(x)\rVert\leq\frac{\tau}{2}L(d+3)^{3/2}.
+
+Moreover, for all 
+x\in\mathbb{R}^{d}
+x∈ℝdx\in\mathbb{R}^{d}, 
+\nabla f^{\tau}(x)=\E_{u\sim\mathcal{N}(0,I_{d})}\big[\tfrac{f(x+\tau u)}{\tau}\,u\big].
+∇fτ​(x)=𝔼u∼𝒩⁡(0,Id)⁡[f⁡(x+τ​u)τ​u].\nabla f^{\tau}(x)=\E_{u\sim\mathcal{N}(0,I_{d})}\big[\tfrac{f(x+\tau u)}{\tau}\,u\big].
+
+By taking 
+\tau
+τ\tau sufficiently small, the smoothed objective 
+f^{\tau}
+fτf^{\tau} and its gradient 
+\nabla f^{\tau}
+∇fτ\nabla f^{\tau} can be made arbitrarily close to 
+f
+ff and 
+\nabla f
+∇f\nabla f, respectively. The final identity expresses 
+\nabla f^{\tau}(x)
+∇fτ​(x)\nabla f^{\tau}(x) through function evaluations alone and motivates the classical (two-point) zeroth-order gradient estimator:
+
+\displaystyle G(x;u):=\frac{f(x+\tau u)-f(x)}{\tau}\,u,\qquad\text{where }u\sim\mathcal{N}(0,I_{d}),
+G⁡(x,u):=f⁡(x+τ​u)−f⁡(x)τ​u,where ​u∼𝒩⁡(0,Id),\displaystyle G(x;u):=\frac{f(x+\tau u)-f(x)}{\tau}\,u,\qquad\text{where }u\sim\mathcal{N}(0,I_{d}),
+
+(1)
+
+whose properties are summarized below.
+
+Lemma 3.2 (Theorem 3.1 in [8])
+
+For all 
+x\in\mathbb{R}^{d}
+x∈ℝdx\in\mathbb{R}^{d},
+
+\E_{u\sim\mathcal{N}(0,I_{d})}[G(x;u)]=\nabla f^{\tau}(x)
+𝔼u∼𝒩⁡(0,Id)⁡[G⁡(x,u)]=∇fτ​(x)\E_{u\sim\mathcal{N}(0,I_{d})}[G(x;u)]=\nabla f^{\tau}(x) and
+
+\displaystyle\E_{u\sim\mathcal{N}(0,I_{d})}\left[\lVert G(x;u)-\nabla f(x)\rVert^{2}\right]\leq 4(d+5)\lVert\nabla f(x)\rVert^{2}+\tau^{2}L^{2}(d+6)^{3}.
+𝔼u∼𝒩⁡(0,Id)⁡[∥G⁡(x,u)−∇f​(x)∥2]≤4​(d+5)​∥∇f​(x)∥2+τ2​L2​(d+6)3.\displaystyle\E_{u\sim\mathcal{N}(0,I_{d})}\left[\lVert G(x;u)-\nabla f(x)\rVert^{2}\right]\leq 4(d+5)\lVert\nabla f(x)\rVert^{2}+\tau^{2}L^{2}(d+6)^{3}.
+
+The 
+d
+dd-factor in the first term of the mean-squared error bound reflects the cost of isotropic exploration: (1) probes all directions equally, without any mechanism to prioritize the gradient direction.
+
+The control-variate gradient estimator.
+
+For every 
+x\in\mathbb{R}^{d}
+x∈ℝdx\in\mathbb{R}^{d}, define the control-variate gradient estimator parameterized by a reference vector 
+m\in\mathbb{R}^{d}
+m∈ℝdm\in\mathbb{R}^{d} as
+
+\displaystyle G(x,m;u):=m+\frac{f(x+\tau u)-f(x)-\langle{m,\tau u}\rangle}{\tau}\,u,\qquad\text{where }u\sim\mathcal{N}(0,I_{d}).
+G⁡(x,m,u):=m+f⁡(x+τ​u)−f⁡(x)−⟨m,τ​u⟩τ​u,where ​u∼𝒩⁡(0,Id).\displaystyle G(x,m;u):=m+\frac{f(x+\tau u)-f(x)-\langle{m,\tau u}\rangle}{\tau}\,u,\qquad\text{where }u\sim\mathcal{N}(0,I_{d}).
+
+(2)
+
+The construction applies the classical zeroth-order estimator to 
+f(\cdot)-\langle{m,\cdot}\rangle
+f⁡(⋅)−⟨m,⋅⟩f(\cdot)-\langle{m,\cdot}\rangle, estimating the residual 
+\nabla f(x)-m
+∇f​(x)−m\nabla f(x)-m and adding 
+m
+mm back. Equivalently, rearranging gives 
+G(x,m;u)=G(x;u)+(I_{d}-uu^{\top})m
+G⁡(x,m,u)=G⁡(x,u)+(Id−u​u⊤)​mG(x,m;u)=G(x;u)+(I_{d}-uu^{\top})m. The term 
+(I_{d}-uu^{\top})m
+(Id−u​u⊤)​m(I_{d}-uu^{\top})m is a zero-mean control variate: it leaves the bias unchanged while reducing variance when 
+m
+mm approximates 
+\nabla f(x)
+∇f​(x)\nabla f(x). The next lemma makes this precise.
+
+Lemma 3.3
+
+For all 
+x,m\in\mathbb{R}^{d}
+x,m∈ℝdx,m\in\mathbb{R}^{d}, it holds that 
+\E_{u\sim\mathcal{N}(0,I_{d})}\left[G(x,m;u)\right]=\nabla f^{\tau}(x)
+𝔼u∼𝒩⁡(0,Id)⁡[G⁡(x,m,u)]=∇fτ​(x)\E_{u\sim\mathcal{N}(0,I_{d})}\left[G(x,m;u)\right]=\nabla f^{\tau}(x).
+Moreover,
+
+\displaystyle\E_{u\sim\mathcal{N}(0,I_{d})}\left[\lVert G(x,m;u)-\nabla f(x)\rVert^{2}\right]\leq 2(d+1)\,\lVert m-\nabla f(x)\rVert^{2}+8\tau^{2}L^{2}d^{3}
+𝔼u∼𝒩⁡(0,Id)⁡[∥G⁡(x,m,u)−∇f​(x)∥2]≤2​(d+1)​∥m−∇f​(x)∥2+8​τ2​L2​d3\displaystyle\E_{u\sim\mathcal{N}(0,I_{d})}\left[\lVert G(x,m;u)-\nabla f(x)\rVert^{2}\right]\leq 2(d+1)\,\lVert m-\nabla f(x)\rVert^{2}+8\tau^{2}L^{2}d^{3}
+
+When 
+m
+mm closely approximates 
+\nabla f(x)
+∇f​(x)\nabla f(x), the leading term 
+d\|m-\nabla f(x)\|^{2}
+d​‖m−∇f​(x)‖2d\|m-\nabla f(x)\|^{2} becomes small, substantially improving over Lemma 3.2 in which the corresponding term scales as 
+d\,\|\nabla f(x)\|^{2}
+d​‖∇f​(x)‖2d\,\|\nabla f(x)\|^{2}.
+
+3.2 Descent Scheme and General Convergence Guarantee
+
+We now embed the control-variate estimator into an iterative descent scheme (Algorithm 1). At each iteration 
+t
+tt, the algorithm selects a reference vector 
+m_{t}
+mtm_{t} and a step size 
+\alpha_{t}
+αt\alpha_{t}, draws a fresh exploration direction 
+u_{t}\sim\mathcal{N}(0,I_{d})
+ut∼𝒩⁡(0,Id)u_{t}\sim\mathcal{N}(0,I_{d}), and takes a gradient step using the control-variate estimator 
+G(x_{t},m_{t};u_{t})
+G⁡(xt,mt,ut)G(x_{t},m_{t};u_{t}). The final output is sampled from the iterates with probabilities proportional to the step sizes taken.
+
+Algorithm 1 Control-Variate Zeroth-Order Descent (CV-ZOD)
+
+Input :  Initial point 
+x_{1}\in\mathbb{R}^{d}
+x1∈ℝdx_{1}\in\mathbb{R}^{d}.
+
+For each iteration 
+t=1,2,\ldots,T
+t=1,2,…,Tt=1,2,\ldots,T:
+
+[before=
+
+,noitemsep,after=
+
+, leftmargin=0.75cm]
+
+1. 
+
+Select the reference vector 
+m_{t}
+mtm_{t} and step-size 
+\alpha_{t}&gt;0
+αt&gt;0\alpha_{t}&gt;0.
+
+2. 
+
+Update 
+x_{t+1}=x_{t}-\alpha_{t}G(x_{t},m_{t};u_{t})
+xt+1=xt−αt​G​(xt,mt,ut)x_{t+1}=x_{t}-\alpha_{t}G(x_{t},m_{t};u_{t}) for independently sampled 
+u_{t}\sim\mathcal{N}(0,I_{d})
+ut∼𝒩⁡(0,Id)u_{t}\sim\mathcal{N}(0,I_{d}).
+
+Output : 
+\bar{x}=x_{R}
+x¯=xR\bar{x}=x_{R}, where 
+R\in[T]
+R∈[T]R\in[T] is sampled conditionally on the realized run with probabilities 
+\alpha_{t}/\sum_{s=1}^{T}\alpha_{s}
+αt/∑s=1Tαs\alpha_{t}/\sum_{s=1}^{T}\alpha_{s}.
+
+The exploration direction 
+u_{t}
+utu_{t} is sampled from 
+\mathcal{N}(0,I_{d})
+𝒩⁡(0,Id)\mathcal{N}(0,I_{d}) independently of all information available when it is drawn, including 
+(x_{t},m_{t},\alpha_{t})
+(xt,mt,αt)(x_{t},m_{t},\alpha_{t}). The reference vector and step size may depend arbitrarily on the history, including the current iterate and any external available information.
+
+The convergence of Algorithm 1 is governed by the interplay between the step sizes 
+\alpha_{t}
+αt\alpha_{t} and the quality of the reference vectors 
+m_{t}
+mtm_{t}. By Lemma 3.3, taking a step of size 
+\alpha_{t}
+αt\alpha_{t} incurs estimation variance proportional to 
+\alpha_{t}^{2}d\,\|m_{t}-\nabla f(x_{t})\|^{2}
+αt2​d​‖mt−∇f​(xt)‖2\alpha_{t}^{2}d\,\|m_{t}-\nabla f(x_{t})\|^{2} up to smoothing. Larger step sizes amplify this variance, while more accurate reference vectors reduce it. To quantify whether the step sizes are justified by the reference quality along the trajectory, we introduce the variance-descent balance
+
+\displaystyle\mathcal{B}_{T}^{\gamma}:=\textstyle\sum_{t=1}^{T}\left(\alpha_{t}^{2}d\,\lVert m_{t}-\nabla f(x_{t})\rVert^{2}-\tfrac{\alpha_{t}}{\gamma L}\lVert\nabla f(x_{t})\rVert^{2}\right),
+ℬTγ:=∑t=1T(αt2​d​∥mt−∇f​(xt)∥2−αtγ​L​∥∇f​(xt)∥2),\displaystyle\mathcal{B}_{T}^{\gamma}:=\textstyle\sum_{t=1}^{T}\left(\alpha_{t}^{2}d\,\lVert m_{t}-\nabla f(x_{t})\rVert^{2}-\tfrac{\alpha_{t}}{\gamma L}\lVert\nabla f(x_{t})\rVert^{2}\right),
+
+(3)
+
+which accumulates, over iterations, the variance cost of each step minus a descent credit, with the scale parameter 
+\gamma\geq 1
+γ≥1\gamma\geq 1 controlling the relative weight between the two. We fix 
+\gamma=C_{0}\log(2T^{2})
+γ=C0​log⁡(2​T2)\gamma=C_{0}\log(2T^{2}) for most of our applications, where 
+C_{0}
+C0C_{0} is the absolute constant from the following theorem. This theorem shows that, for a 
+B
+BB-Lipschitz and 
+L
+LL-smooth objective 
+f
+ff, the sign and magnitude of 
+\mathcal{B}_{T}^{\gamma}
+ℬTγ\mathcal{B}_{T}^{\gamma} govern the convergence rate of Algorithm 1.
+
+3.4Convergence of CV-ZOD
+
+Suppose Algorithm 1 uses a fresh standard Gaussian direction 
+u_{t}
+utu_{t}, conditionally on all information available before its draw, for every 
+t\in[T]
+t∈[T]t\in[T], and that 
+\max_{t\in[T]}\lVert m_{t}\rVert\leq 2B
+maxt∈[T]⁡∥mt∥≤2​B\max_{t\in[T]}\lVert m_{t}\rVert\leq 2B almost surely. Then there exist absolute constants 
+C_{0},C&gt;0
+C0,C&gt;0C_{0},C&gt;0 such that the following holds. For any 
+\delta\in(0,1)
+δ∈(0,1)\delta\in(0,1), set 
+\iota:=\log(2T/\delta)
+ι:=log⁡(2​T/δ)\iota:=\log(2T/\delta), and suppose 
+d\geq\iota
+d≥ιd\geq\iota and 
+0&lt;\alpha_{t}\leq\tfrac{1}{C_{0}\,L\,\iota}
+0&lt;αt≤1C0​L​ι0&lt;\alpha_{t}\leq\tfrac{1}{C_{0}\,L\,\iota} for all 
+t\in[T]
+t∈[T]t\in[T]. Then, for 
+\gamma=C_{0}\iota
+γ=C0​ι\gamma=C_{0}\iota, with probability at least 
+1-\delta
+1−δ1-\delta,
+
+\displaystyle\tfrac{1}{L}\textstyle\sum_{t=1}^{T}\alpha_{t}\lVert\nabla f(x_{t})\rVert^{2}\;\leq\;C\,\left(D_{f}^{2}+\tfrac{B^{2}}{L^{2}}+\tau^{2}\,T\,d^{3}+\mathcal{B}_{T}^{\gamma}\,\iota\right),
+1L​∑t=1Tαt​∥∇f​(xt)∥2≤C⁡(Df2+B2L2+τ2​T​d3+ℬTγ​ι),\displaystyle\tfrac{1}{L}\textstyle\sum_{t=1}^{T}\alpha_{t}\lVert\nabla f(x_{t})\rVert^{2}\;\leq\;C\,\left(D_{f}^{2}+\tfrac{B^{2}}{L^{2}}+\tau^{2}\,T\,d^{3}+\mathcal{B}_{T}^{\gamma}\,\iota\right),
+
+where 
+D_{f}^{2}:=\tfrac{2}{L}\left(f(x_{1})-f^{*}\right)
+Df2:=2L​(f⁡(x1)−f∗)D_{f}^{2}:=\tfrac{2}{L}\left(f(x_{1})-f^{*}\right). Moreover, if 
+d\geq\log(2T^{2})
+d≥log⁡(2​T2)d\geq\log(2T^{2}), 
+\gamma=C_{0}\log(2T^{2})
+γ=C0​log⁡(2​T2)\gamma=C_{0}\log(2T^{2}), 
+0&lt;\alpha_{t}\leq 1/(\gamma L)
+0&lt;αt≤1/(γ​L)0&lt;\alpha_{t}\leq 1/(\gamma L) for all 
+t\in[T]
+t∈[T]t\in[T], and 
+\tau\leq\tfrac{B/L}{\sqrt{Td^{3}}}
+τ≤B/LT​d3\tau\leq\tfrac{B/L}{\sqrt{Td^{3}}}, then 
+\overline{x}
+x¯\overline{x} satisfies
+
+\displaystyle\tfrac{1}{L}\,\E\!\left[\lVert\nabla f(\overline{x})\rVert^{2}\right]\;\leq\;C\,\E\!\left[\tfrac{D_{f}^{2}+B^{2}/L^{2}+\mathcal{B}^{\gamma}_{T}\log(2T^{2})}{\mathcal{A}_{T}}\right],
+1L​𝔼⁡[∥∇f​(x¯)∥2]≤C​𝔼⁡[Df2+B2/L2+ℬTγ​log⁡(2​T2)𝒜T],\displaystyle\tfrac{1}{L}\,\E\!\left[\lVert\nabla f(\overline{x})\rVert^{2}\right]\;\leq\;C\,\E\!\left[\tfrac{D_{f}^{2}+B^{2}/L^{2}+\mathcal{B}^{\gamma}_{T}\log(2T^{2})}{\mathcal{A}_{T}}\right],
+
+where 
+\mathcal{A}_{T}:=\textstyle\sum_{t=1}^{T}\alpha_{t}
+𝒜T:=∑t=1Tαt\mathcal{A}_{T}:=\textstyle\sum_{t=1}^{T}\alpha_{t} denotes the cumulative step size.
+
+The proof, which appears in Appendix C, is based on careful control of self-normalized martingales arising from the interaction between the step sizes and the control-variate estimation error. The condition 
+d\geq\iota=\log(2T/\delta)
+d≥ι=log⁡(2​T/δ)d\geq\iota=\log(2T/\delta) is mild in the high-dimensional regime we consider; when it fails, one may replace 
+d
+dd by 
+d+\iota
+d+ιd+\iota in all bounds. The bound interpolates between two familiar regimes. When the reference vectors are uninformative (
+m_{t}=0
+mt=0m_{t}=0 for all 
+t
+tt), taking 
+\alpha_{t}=1/(\gamma Ld)
+αt=1/(γ​L​d)\alpha_{t}=1/(\gamma Ld) ensures 
+\mathcal{B}_{T}^{\gamma}\leq 0
+ℬTγ≤0\mathcal{B}_{T}^{\gamma}\leq 0 and recovers the standard zeroth-order rate 
+O(d/T)
+O⁡(d/T)O(d/T) up to the factor 
+\gamma
+γ\gamma, which is logarithmic for our choice 
+\gamma=C_{0}\log(2T^{2})
+γ=C0​log⁡(2​T2)\gamma=C_{0}\log(2T^{2}). When the reference vectors match the gradient (
+m_{t}=\nabla f(x_{t})
+mt=∇f​(xt)m_{t}=\nabla f(x_{t}) for all 
+t
+tt), taking 
+\alpha_{t}=1/(\gamma L)
+αt=1/(γ​L)\alpha_{t}=1/(\gamma L) again gives 
+\mathcal{B}_{T}^{\gamma}\leq 0
+ℬTγ≤0\mathcal{B}_{T}^{\gamma}\leq 0 and recovers the first-order rate 
+O(1/T)
+O⁡(1/T)O(1/T) up to the same logarithmic factor. In general, the quality of the reference vectors determines how large the step sizes can be while keeping 
+\mathcal{B}_{T}^{\gamma}
+ℬTγ\mathcal{B}_{T}^{\gamma} controlled, and thus the degree of acceleration beyond the zeroth-order baseline.
+
+Remark 3.5 (The 
+B^{2}/L^{2}
+B2/L2B^{2}/L^{2} term)
+
+The quantities 
+D_{f}^{2}=\tfrac{2}{L}(f(x_{1})-f^{*})
+Df2=2L​(f⁡(x1)−f∗)D_{f}^{2}=\tfrac{2}{L}(f(x_{1})-f^{*}) and 
+B^{2}/L^{2}
+B2/L2B^{2}/L^{2} are not generally comparable. The former is the standard initial suboptimality and satisfies 
+D_{f}^{2}\geq\lVert\nabla f(x_{1})\rVert^{2}/L^{2}
+Df2≥∥∇f​(x1)∥2/L2D_{f}^{2}\geq\lVert\nabla f(x_{1})\rVert^{2}/L^{2}. The latter arises from the high-probability martingale concentration used in the proof.
+
+3.3 Locally optimal choices from directional hints
+
+Theorem 3.4 holds for arbitrary reference vectors and step sizes. To understand the best achievable rate given the hint subspaces 
+(\mathcal{S}_{t})_{t=1}^{T}
+(𝒮t)t=1T(\mathcal{S}_{t})_{t=1}^{T}, consider the idealized choice 
+m_{t}=P_{\mathcal{S}_{t}}\nabla f(x_{t})
+mt=P𝒮t∇f(xt)m_{t}=P_{\mathcal{S}_{t}}\nabla f(x_{t}), which minimizes 
+\|m-\nabla f(x_{t})\|^{2}
+‖m−∇f​(xt)‖2\|m-\nabla f(x_{t})\|^{2} over 
+m\in\mathcal{S}_{t}
+m∈𝒮tm\in\mathcal{S}_{t}. Under this choice, the residual satisfies 
+\|m_{t}-\nabla f(x_{t})\|^{2}=\sin^{2}\theta_{t}\,\|\nabla f(x_{t})\|^{2}
+‖mt−∇f​(xt)‖2=sin2⁡θt​‖∇f​(xt)‖2\|m_{t}-\nabla f(x_{t})\|^{2}=\sin^{2}\theta_{t}\,\|\nabla f(x_{t})\|^{2}, and each summand of 
+\mathcal{B}^{\gamma}_{T}
+ℬTγ\mathcal{B}^{\gamma}_{T} is non-positive whenever 
+\alpha_{t}\leq\tfrac{1}{\gamma Ld\,\sin^{2}\theta_{t}}
+αt≤1γ​L​d​sin2⁡θt\alpha_{t}\leq\tfrac{1}{\gamma Ld\,\sin^{2}\theta_{t}}.
+
+This motivates defining, for any realization of the trajectory, the oracle reference vector and step size:
+
+\displaystyle m_{t}^{*}:=P_{\mathcal{S}_{t}}\nabla f(x_{t}),\qquad\alpha_{t}^{*}:=\tfrac{1}{L}\,\min\!\left\{1,\,\tfrac{1}{d\,\sin^{2}\theta_{t}}\right\}\in\left[\tfrac{1}{Ld},\,\tfrac{1}{L}\right].
+mt∗:=P𝒮t∇f(xt),αt∗:=1Lmin{1,1d​sin2⁡θt}∈[1L​d,1L].\displaystyle m_{t}^{*}:=P_{\mathcal{S}_{t}}\nabla f(x_{t}),\qquad\alpha_{t}^{*}:=\tfrac{1}{L}\,\min\!\left\{1,\,\tfrac{1}{d\,\sin^{2}\theta_{t}}\right\}\in\left[\tfrac{1}{Ld},\,\tfrac{1}{L}\right].
+
+(4)
+
+They serve as a natural benchmark: 
+\alpha_{t}^{*}/\gamma
+αt∗/γ\alpha_{t}^{*}/\gamma is the largest step size for which the 
+t
+tt-th summand of 
+\mathcal{B}^{\gamma}_{T}
+ℬTγ\mathcal{B}^{\gamma}_{T} remains non-positive under the best reference vector from 
+\mathcal{S}_{t}
+𝒮t\mathcal{S}_{t}. An algorithm using 
+(m_{t}^{*},\alpha_{t}^{*}/\gamma)
+(mt∗,αt∗/γ)(m_{t}^{*},\alpha_{t}^{*}/\gamma) at each iteration would ensure 
+\mathcal{B}^{\gamma}_{T}\leq 0
+ℬTγ≤0\mathcal{B}^{\gamma}_{T}\leq 0, and Theorem 3.4 would yield
+
+\displaystyle\tfrac{1}{L}\,\E\!\left[\lVert\nabla f(\overline{x})\rVert^{2}\right]\leq C\,\E\left[\tfrac{\gamma\,(D_{f}^{2}+B^{2}/L^{2})}{\mathcal{A}^{*}_{T}}\right],
+1L​𝔼⁡[∥∇f​(x¯)∥2]≤C​𝔼⁡[γ⁡(Df2+B2/L2)𝒜T∗],\displaystyle\tfrac{1}{L}\,\E\!\left[\lVert\nabla f(\overline{x})\rVert^{2}\right]\leq C\,\E\left[\tfrac{\gamma\,(D_{f}^{2}+B^{2}/L^{2})}{\mathcal{A}^{*}_{T}}\right],
+
+(5)
+
+where 
+\mathcal{A}_{T}^{*}:=\sum_{t=1}^{T}\alpha_{t}^{*}
+𝒜T∗:=∑t=1Tαt∗\mathcal{A}_{T}^{*}:=\sum_{t=1}^{T}\alpha_{t}^{*}. This rate interpolates with the hint quality: when 
+\theta_{t}=0
+θt=0\theta_{t}=0 for all 
+t
+tt, we have 
+\alpha_{t}^{*}=1/L
+αt∗=1/L\alpha_{t}^{*}=1/L and recover 
+{O}(1/T)
+O⁡(1/T){O}(1/T); when 
+\theta_{t}=\pi/2
+θt=π/2\theta_{t}=\pi/2, we have 
+\alpha_{t}^{*}=1/(Ld)
+αt∗=1/(L​d)\alpha_{t}^{*}=1/(Ld) and recover 
+{O}(d/T)
+O⁡(d/T){O}(d/T).
+
+The quantities 
+m_{t}^{*}
+mt∗m_{t}^{*} and 
+\alpha_{t}^{*}
+αt∗\alpha_{t}^{*} can be viewed as locally optimal in the sense that they minimize the variance-descent balance at each iteration given only the current pair 
+(x_{t},\mathcal{S}_{t})
+(xt,𝒮t)(x_{t},\mathcal{S}_{t}), without knowledge of the future trajectory. While they depend on the unknown gradient and cannot be computed directly, approximating them from function evaluations is a natural goal. The following section shows that this can be done.
+
+4 Main Results: Adaptive Convergence from Directional Hints
+
+This section constructs a fully zeroth-order instantiation of CV-ZOD. Section 4.1 estimates the projected gradient and the squared norms of the full gradient and its component orthogonal to the hint subspace. Section 4.2 uses these estimates to choose the reference vector and an adaptive step size. Theorem 4.4 establishes a convergence bound governed by the cumulative oracle step size 
+\mathcal{A}_{T}^{*}
+𝒜T∗\mathcal{A}_{T}^{*} evaluated along the algorithm’s realized trajectory. Proofs appear in Appendix D.
+
+4.1 Zeroth-Order Estimation Primitives
+
+Estimating the in-subspace gradient component.
+
+To construct the reference vector, we estimate the projected gradient 
+P_{\mathcal{S}}\nabla f(x)
+P𝒮∇f(x)P_{\mathcal{S}}\nabla f(x) by probing the function once along each vector in an orthonormal basis of 
+\mathcal{S}
+𝒮\mathcal{S}. Algorithm 2 therefore uses 
+k+1
+k+1k+1 oracle queries, and its approximation guarantee is deterministic under 
+L
+LL-smoothness.
+
+Algorithm 2 
+P^{\tau}_{f}(x,\mathcal{S})
+Pfτ​(x,𝒮)P^{\tau}_{f}(x,\mathcal{S})
+
+Input :  Point 
+x\in\mathbb{R}^{d}
+x∈ℝdx\in\mathbb{R}^{d}, subspace 
+\mathcal{S}
+𝒮\mathcal{S} of dimension 
+k\in[d]
+k∈[d]k\in[d].
+
+1. 
+
+Construct 
+B=[b_{1},\ldots,b_{k}]\in\mathbb{R}^{d\times k}
+B=[b1,…,bk]∈ℝd×kB=[b_{1},\ldots,b_{k}]\in\mathbb{R}^{d\times k} with orthonormal columns spanning 
+\mathcal{S}
+𝒮\mathcal{S}.
+
+2. 
+
+For 
+j\in[k]
+j∈[k]j\in[k], compute 
+\widehat{y}_{j}=\frac{f(x+\tau b_{j})-f(x)}{\tau}
+y^j=f⁡(x+τ​bj)−f⁡(x)τ\widehat{y}_{j}=\frac{f(x+\tau b_{j})-f(x)}{\tau}.
+
+3. 
+
+Output 
+B\widehat{y}
+B​y^B\widehat{y}, where 
+\widehat{y}=(\widehat{y}_{1},\ldots,\widehat{y}_{k})^{\top}
+y^=(y^1,…,y^k)⊤\widehat{y}=(\widehat{y}_{1},\ldots,\widehat{y}_{k})^{\top}.
+
+Lemma 4.1 (Deterministic projection estimation)
+
+For every 
+x\in\mathbb{R}^{d}
+x∈ℝdx\in\mathbb{R}^{d} and 
+\mathcal{S}\in\mathrm{Gr}_{k}(\mathbb{R}^{d})
+𝒮∈Grk​(ℝd)\mathcal{S}\in\mathrm{Gr}_{k}(\mathbb{R}^{d}), Algorithm 2 satisfies
+
+\displaystyle\|P^{\tau}_{f}(x,\mathcal{S})-P_{\mathcal{S}}\nabla f(x)\|^{2}\leq\frac{kL^{2}\tau^{2}}{4}.
+∥Pfτ(x,𝒮)−P𝒮∇f(x)∥2≤k​L2​τ24.\displaystyle\|P^{\tau}_{f}(x,\mathcal{S})-P_{\mathcal{S}}\nabla f(x)\|^{2}\leq\frac{kL^{2}\tau^{2}}{4}.
+
+The bound follows directly by applying the smoothness remainder to each basis direction; in particular, no concentration argument or logarithmic oversampling is needed.
+
+Estimating gradient norms.
+
+To set the step size adaptively, we estimate 
+\|\nabla f(x_{t})\|^{2}
+‖∇f​(xt)‖2\|\nabla f(x_{t})\|^{2} and 
+\|P_{\mathcal{S}_{t}^{\perp}}\nabla f(x_{t})\|^{2}
+∥P𝒮t⟂∇f(xt)∥2\|P_{\mathcal{S}_{t}^{\perp}}\nabla f(x_{t})\|^{2}. Both quantities are squared norms of gradient projections, which can be approximated via a common primitive: Algorithm 3 computes a constant-factor approximation by averaging estimates from 
+N
+NN Gaussian probes.
+
+Algorithm 3 
+N^{\tau}_{f}(x,\mathcal{S},N)
+Nfτ​(x,𝒮,N)N^{\tau}_{f}(x,\mathcal{S},N)
+
+Input :  Point 
+x\in\mathbb{R}^{d}
+x∈ℝdx\in\mathbb{R}^{d}, linear subspace 
+\mathcal{S}
+𝒮\mathcal{S} of 
+\mathbb{R}^{d}
+ℝd\mathbb{R}^{d}, number of sampled directions 
+N
+NN.
+
+1. 
+
+For 
+i\in[N]
+i∈[N]i\in[N], sample 
+u_{i}\overset{\mathrm{iid}}{\sim}\mathcal{N}(0,I_{d})
+ui​∼iid​𝒩​(0,Id)u_{i}\overset{\mathrm{iid}}{\sim}\mathcal{N}(0,I_{d}) and compute 
+\widehat{y}_{i}=\frac{f(x+\tau P_{\mathcal{S}}u_{i})-f(x)}{\tau}
+y^i=f⁡(x+τ​P𝒮​ui)−f⁡(x)τ\widehat{y}_{i}=\frac{f(x+\tau P_{\mathcal{S}}u_{i})-f(x)}{\tau}.
+
+2. 
+
+Output 
+\tfrac{1}{N}\sum_{i=1}^{N}\widehat{y}_{i}^{2}
+1N​∑i=1Ny^i2\tfrac{1}{N}\sum_{i=1}^{N}\widehat{y}_{i}^{2}.
+
+Lemma 4.2 (Norm estimation)
+
+There exist absolute constants 
+C,c&gt;0
+C,c&gt;0C,c&gt;0 such that for every 
+x\in\mathbb{R}^{d}
+x∈ℝdx\in\mathbb{R}^{d}, linear subspace 
+\mathcal{S}
+𝒮\mathcal{S} of 
+\mathbb{R}^{d}
+ℝd\mathbb{R}^{d}, 
+\tau&gt;0
+τ&gt;0\tau&gt;0, 
+\delta\in(0,1)
+δ∈(0,1)\delta\in(0,1), and 
+N\geq C\log(2/\delta)
+N≥C​log⁡(2/δ)N\geq C\log(2/\delta), it holds with probability at least 
+1-\delta
+1−δ1-\delta that
+
+\displaystyle N^{\tau}_{f}(x,\mathcal{S},N)\in\left[\tfrac{1}{2}\|P_{\mathcal{S}}\nabla f(x)\|^{2}-c\varepsilon,\,\tfrac{3}{2}\|P_{\mathcal{S}}\nabla f(x)\|^{2}+c\varepsilon\right],
+Nfτ(x,𝒮,N)∈[12∥P𝒮∇f(x)∥2−cε,32∥P𝒮∇f(x)∥2+cε],\displaystyle N^{\tau}_{f}(x,\mathcal{S},N)\in\left[\tfrac{1}{2}\|P_{\mathcal{S}}\nabla f(x)\|^{2}-c\varepsilon,\,\tfrac{3}{2}\|P_{\mathcal{S}}\nabla f(x)\|^{2}+c\varepsilon\right],
+
+where 
+\varepsilon=\tau^{2}L^{2}(d^{2}+\log^{2}(2N/\delta))
+ε=τ2​L2​(d2+log2⁡(2​N/δ))\varepsilon=\tau^{2}L^{2}(d^{2}+\log^{2}(2N/\delta)).
+
+The constant-factor accuracy suffices: the adaptive rule below uses these estimates only to identify the correct scale of 
+\alpha_{t}^{*}
+αt∗\alpha_{t}^{*} up to a constant factor.
+
+4.2 Adaptive guarantees
+
+We now combine the two estimation primitives. The reference vector 
+m_{t}
+mtm_{t} is set using Algorithm 2. The next lemma defines the adaptive step size 
+\alpha_{t}
+αt\alpha_{t} via the norm estimates from Algorithm 3 and establishes two properties: it tracks the oracle step size 
+\alpha_{t}^{*}
+αt∗\alpha_{t}^{*} up to a constant factor, and it keeps the descent balance controlled.
+
+Lemma 4.3
+
+There exist absolute constants 
+C,c_{0},c_{1}&gt;0
+C,c0,c1&gt;0C,c_{0},c_{1}&gt;0 such that the following holds. For any 
+\delta\in(0,1)
+δ∈(0,1)\delta\in(0,1) and 
+N\geq C\log(2T/\delta)
+N≥C​log⁡(2​T/δ)N\geq C\log(2T/\delta), set 
+\varepsilon:=\tau^{2}L^{2}(d^{2}+\log^{2}(2NT/\delta))
+ε:=τ2​L2​(d2+log2⁡(2​N​T/δ))\varepsilon:=\tau^{2}L^{2}(d^{2}+\log^{2}(2NT/\delta)) and define
+
+\displaystyle\alpha_{t}:=\tfrac{1}{\gamma\,L}\,\min\left\{1,\,\tfrac{N^{\tau}_{f}(x_{t},\mathbb{R}^{d},N)+c_{1}\varepsilon}{16d\,\max\{0,\,N^{\tau}_{f}(x_{t},\mathcal{S}_{t}^{\perp},N)-c_{1}\varepsilon\}}\right\},
+αt:=1γ​L​min⁡{1,Nfτ​(xt,ℝd,N)+c1​ε16​d​max⁡{0,Nfτ​(xt,𝒮t⟂,N)−c1​ε}},\displaystyle\alpha_{t}:=\tfrac{1}{\gamma\,L}\,\min\left\{1,\,\tfrac{N^{\tau}_{f}(x_{t},\mathbb{R}^{d},N)+c_{1}\varepsilon}{16d\,\max\{0,\,N^{\tau}_{f}(x_{t},\mathcal{S}_{t}^{\perp},N)-c_{1}\varepsilon\}}\right\},
+
+(6)
+
+If the denominator is zero, define 
+\alpha_{t}:=1/(\gamma L)
+αt:=1/(γ​L)\alpha_{t}:=1/(\gamma L).
+Then with probability at least 
+1-\delta
+1−δ1-\delta, for all 
+t\in[T]
+t∈[T]t\in[T] simultaneously:
+
+1. 
+
+(Local Optimality) 
+\quad\alpha_{t}\geq\tfrac{\alpha_{t}^{*}}{c_{0}\gamma}
+αt≥αt∗c0​γ\quad\alpha_{t}\geq\tfrac{\alpha_{t}^{*}}{c_{0}\gamma};
+
+2. 
+
+(Balance Control) 
+\quad\alpha_{t}^{2}d\lVert P_{\mathcal{S}_{t}}^{\perp}\nabla f(x_{t})\rVert^{2}\leq\tfrac{\alpha_{t}}{2\gamma L}\lVert\nabla f(x_{t})\rVert^{2}+c_{0}\,\tau^{2}(d^{3}+d\log^{2}(2NT/\delta))
+αt2d∥P𝒮t⟂∇f(xt)∥2≤αt2​γ​L∥∇f(xt)∥2+c0τ2(d3+dlog2(2NT/δ))\quad\alpha_{t}^{2}d\lVert P_{\mathcal{S}_{t}}^{\perp}\nabla f(x_{t})\rVert^{2}\leq\tfrac{\alpha_{t}}{2\gamma L}\lVert\nabla f(x_{t})\rVert^{2}+c_{0}\,\tau^{2}(d^{3}+d\log^{2}(2NT/\delta)).
+
+Local optimality ensures that the realized step sizes are within a constant factor of the locally optimal ones (oracle 
+\alpha_{t}^{*}
+αt∗\alpha_{t}^{*}); balance control ensures that 
+\mathcal{B}^{\gamma}_{T}
+ℬTγ\mathcal{B}^{\gamma}_{T} is dominated by smoothing terms. Substituting both 
+m_{t}
+mtm_{t} and 
+\alpha_{t}
+αt\alpha_{t} into Theorem 3.4 yields our main convergence result.
+
+4.4
+
+There exist absolute constants 
+C,c&gt;0
+C,c&gt;0C,c&gt;0 such that, if 
+d\geq\log(2T^{2})
+d≥log⁡(2​T2)d\geq\log(2T^{2}), Algorithm 1 is run with 
+m_{t}=P_{f}^{\tau}(x_{t},\mathcal{S}_{t})
+mt=Pfτ​(xt,𝒮t)m_{t}=P_{f}^{\tau}(x_{t},\mathcal{S}_{t}) and step sizes 
+\alpha_{t}
+αt\alpha_{t} from (6) with 
+\gamma=C_{0}\log(2T^{2})
+γ=C0​log⁡(2​T2)\gamma=C_{0}\log(2T^{2}) and 
+N=\lceil C\log(2T)\rceil
+N=⌈C​log⁡(2​T)⌉N=\lceil C\log(2T)\rceil, and the smoothing radius satisfies 
+\tau\leq\frac{B/L}{\sqrt{T(d^{3}+dk)\log(2T^{2})}}
+τ≤B/LT⁡(d3+d​k)​log⁡(2​T2)\tau\leq\frac{B/L}{\sqrt{T(d^{3}+dk)\log(2T^{2})}}, then
+
+\displaystyle\tfrac{1}{L}\,\E\!\left[\lVert\nabla f(\overline{x})\rVert^{2}\right]\;\leq\;c\,\E\!\left[\tfrac{(D_{f}^{2}+B^{2}/L^{2})\log(2T)}{\mathcal{A}^{*}_{T}}\right],
+1L​𝔼⁡[∥∇f​(x¯)∥2]≤c​𝔼⁡[(Df2+B2/L2)​log⁡(2​T)𝒜T∗],\displaystyle\tfrac{1}{L}\,\E\!\left[\lVert\nabla f(\overline{x})\rVert^{2}\right]\;\leq\;c\,\E\!\left[\tfrac{(D_{f}^{2}+B^{2}/L^{2})\log(2T)}{\mathcal{A}^{*}_{T}}\right],
+
+where 
+\mathcal{A}^{*}_{T}=\textstyle\sum_{t=1}^{T}\alpha^{*}_{t}
+𝒜T∗=∑t=1Tαt∗\mathcal{A}^{*}_{T}=\textstyle\sum_{t=1}^{T}\alpha^{*}_{t} for 
+\alpha_{t}^{*}
+αt∗\alpha_{t}^{*} in (4).
+
+Thus, the algorithm matches the locally optimal rate up to logarithmic factors. The cumulative oracle step size 
+\mathcal{A}_{T}^{*}
+𝒜T∗\mathcal{A}_{T}^{*} governs the rate: the bound interpolates between 
+O(1/T)
+O⁡(1/T)O(1/T) and 
+O(d/T)
+O⁡(d/T)O(d/T) depending on how well the hint subspaces align with the gradient along the trajectory. Algorithm 2 uses 
+k+1
+k+1k+1 queries, while the norm estimates in Algorithm 3 use 
+O(\log T)
+O⁡(log⁡T)O(\log T) queries. Hence the total per-iteration query cost beyond the single control-variate gradient query is 
+O(k+\log T)
+O⁡(k+log⁡T)O(k+\log T) — modest when the hint dimension 
+k
+kk is small relative to 
+d
+dd.
+
+Remark 4.5 (Variance reduction by batching)
+
+Our analysis uses a single perturbation 
+u_{t}
+utu_{t} per iteration for the control-variate gradient step, with the remaining queries allocated to the estimation primitives. The framework extends directly to a batch of 
+b
+bb independent directions 
+u_{t}^{1},\ldots,u_{t}^{b}\overset{\mathrm{iid}}{\sim}\mathcal{N}(0,I_{d})
+ut1,…,utb​∼iid​𝒩​(0,Id)u_{t}^{1},\ldots,u_{t}^{b}\overset{\mathrm{iid}}{\sim}\mathcal{N}(0,I_{d}). From Lemmas 3.1 and 3.3,
+
+\displaystyle\E\!\left[\left.\left\|\tfrac{1}{b}\textstyle\sum_{i=1}^{b}G(x_{t},m_{t};u_{t}^{i})-\nabla f(x_{t})\right\|^{2}\,\right|\,x_{t},m_{t}\right]\leq\tfrac{4d}{b}\|m_{t}-\nabla f(x_{t})\|^{2}+24\tau^{2}L^{2}d^{3}.
+𝔼[‖1b∑i=1bG(xt,mt;uti)−∇f(xt)‖2|xt,mt]≤4​db∥mt−∇f(xt)∥2+24τ2L2d3.\displaystyle\E\!\left[\left.\left\|\tfrac{1}{b}\textstyle\sum_{i=1}^{b}G(x_{t},m_{t};u_{t}^{i})-\nabla f(x_{t})\right\|^{2}\,\right|\,x_{t},m_{t}\right]\leq\tfrac{4d}{b}\|m_{t}-\nabla f(x_{t})\|^{2}+24\tau^{2}L^{2}d^{3}.
+
+Thus batching reduces estimator’s variance by a factor of 
+b
+bb, up to Gaussian-smoothing bias. The convergence analysis can be modified accordingly with a proportional improvement in the convergence bound.
+
+5 Simulations
+
+We evaluate CV-ZOD on two simulation-based optimization tasks where a cheap surrogate provides directional hints of varying quality: a fluid inverse problem (Section 5.1) and molecular geometry optimization (Section 5.2). In both, the optimization updates access the expensive objective 
+f
+ff through function evaluations, while the differentiable surrogate 
+f^{\prime}
+f′f^{\prime} supplies rank-one hint subspaces 
+\mathcal{S}_{t}=\mathrm{span}\{\nabla f^{\prime}(x_{t})\}
+𝒮t=span⁡{∇f′​(xt)}\mathcal{S}_{t}=\mathrm{span}\{\nabla f^{\prime}(x_{t})\}. We compare against classical zeroth-order descent (ZOD) [8], which uses no hints, and Guided Evolutionary Strategies (GES) [18], which incorporates the hint subspace through a biased estimator. All these methods share the same per-iteration query budget. For reference, we also include surrogate gradient descent (SurGD), which takes gradient steps along 
+\nabla f^{\prime}(x_{t})
+∇f′​(xt)\nabla f^{\prime}(x_{t}), effectively optimizing the surrogate rather than 
+f
+ff.
+
+Remark 5.1 (Implementation of the adaptive step size)
+
+In practice, we found it more stable and query-efficient to smooth the norm estimates over time using exponential discounting. Let
+
+a_{t}:=N_{f}^{\tau}(x_{t},\mathbb{R}^{d},N_{\mathrm{full}})
+at:=Nfτ​(xt,ℝd,Nfull)a_{t}:=N_{f}^{\tau}(x_{t},\mathbb{R}^{d},N_{\mathrm{full}}) and
+
+b_{t}:=N_{f}^{\tau}(x_{t},\mathcal{S}_{t}^{\perp},N_{\perp})
+bt:=Nfτ​(xt,𝒮t⟂,N⟂)b_{t}:=N_{f}^{\tau}(x_{t},\mathcal{S}_{t}^{\perp},N_{\perp}), where
+
+N_{\mathrm{full}}
+NfullN_{\mathrm{full}} and 
+N_{\perp}
+N⟂N_{\perp} are the numbers of probes allocated to
+the two norm estimates, and fix a discount factor
+
+\gamma_{\mathrm{disc}}\in[0,1)
+γdisc∈[0,1)\gamma_{\mathrm{disc}}\in[0,1). Starting from 
+A_{0}=B_{0}=0
+A0=B0=0A_{0}=B_{0}=0, we update
+
+\displaystyle A_{t}=\gamma_{\mathrm{disc}}A_{t-1}+a_{t},\qquad B_{t}=\gamma_{\mathrm{disc}}B_{t-1}+b_{t},\qquad\alpha_{t}^{\mathrm{exp}}=\frac{A_{t}}{B_{t}}.
+At=γdisc​At−1+at,Bt=γdisc​Bt−1+bt,αtexp=AtBt.\displaystyle A_{t}=\gamma_{\mathrm{disc}}A_{t-1}+a_{t},\qquad B_{t}=\gamma_{\mathrm{disc}}B_{t-1}+b_{t},\qquad\alpha_{t}^{\mathrm{exp}}=\frac{A_{t}}{B_{t}}.
+
+In our simulations, we use this smoothed, recency-biased approximation to the adaptive rule. We support this implementation choice with an ablation experiment in Appendix B.
+
+5.1 Fluid Inverse Problem
+
+Fluid dynamics model.
+Recovering initial conditions from terminal observations in fluid systems is a classical PDE-constrained inverse problem with applications in geophysics and weather forecasting [11]. We study a concrete instance: a passive dye is released into a two-dimensional incompressible fluid governed by the Navier–Stokes equations, discretized on an 
+n\times n
+n×nn\times n spatial grid via the semi-Lagrangian advection–projection scheme of [23]. The dye density 
+\rho_{s}\in\mathbb{R}^{n\times n}
+ρs∈ℝn×n\rho_{s}\in\mathbb{R}^{n\times n} evolves jointly with a velocity field 
+v_{s}\in\mathbb{R}^{n\times n\times 2}
+vs∈ℝn×n×2v_{s}\in\mathbb{R}^{n\times n\times 2} over 
+s=0,\ldots,T_{\mathrm{sim}}
+s=0,…,Tsims=0,\ldots,T_{\mathrm{sim}} time steps. Given a fixed initial density 
+\rho_{0}
+ρ0\rho_{0} and a prescribed target 
+\rho^{\star}\in\mathbb{R}^{n\times n}
+ρ⋆∈ℝn×n\rho^{\star}\in\mathbb{R}^{n\times n}, the goal is to find an initial velocity field 
+v_{0}\in\mathbb{R}^{n\times n\times 2}
+v0∈ℝn×n×2v_{0}\in\mathbb{R}^{n\times n\times 2} that minimizes 
+f(v_{0}):=\lVert\rho_{T_{\mathrm{sim}}}(v_{0})-\rho^{\star}\rVert_{\mathrm{F}}^{2}
+f⁡(v0):=∥ρTsim​(v0)−ρ⋆∥F2f(v_{0}):=\lVert\rho_{T_{\mathrm{sim}}}(v_{0})-\rho^{\star}\rVert_{\mathrm{F}}^{2},
+where 
+\rho_{T_{\mathrm{sim}}}(v_{0})
+ρTsim​(v0)\rho_{T_{\mathrm{sim}}}(v_{0}) is the terminal density obtained by evolving the dynamics from 
+(\rho_{0},v_{0})
+(ρ0,v0)(\rho_{0},v_{0}). We identify the decision variable 
+v_{0}
+v0v_{0} with a vector 
+x\in\mathbb{R}^{d}
+x∈ℝdx\in\mathbb{R}^{d} for 
+d=2n^{2}
+d=2​n2d=2n^{2} and view 
+f\colon\mathbb{R}^{d}\to\mathbb{R}
+f:ℝd→ℝf\colon\mathbb{R}^{d}\to\mathbb{R} accordingly.
+
+Oracle and surrogate.
+To simulate the dynamics, we use the differentiable fluid solver provided by NVIDIA Warp [17]. The solver supports reverse-mode automatic differentiation, but backpropagating through the full 
+T_{\mathrm{sim}}
+TsimT_{\mathrm{sim}}-step rollout naively requires storing all intermediate density and velocity fields, at 
+O(T_{\mathrm{sim}}\cdot n^{2})
+O⁡(Tsim⋅n2)O(T_{\mathrm{sim}}\cdot n^{2}) memory cost. Gradient checkpointing [10] can reduce this to 
+O(\sqrt{T_{\mathrm{sim}}}\cdot n^{2})
+O⁡(Tsim⋅n2)O(\sqrt{T_{\mathrm{sim}}}\cdot n^{2}) at the cost of additional forward recomputation, but the memory overhead remains substantial for long time horizons. Forward passes, used by our algorithm as zeroth-order oracle calls, require no intermediate storage.
+To construct the directional hints, we use a coarse surrogate 
+f^{\prime}\colon\mathbb{R}^{d}\to\mathbb{R}
+f′:ℝd→ℝf^{\prime}\colon\mathbb{R}^{d}\to\mathbb{R} defined by the same solver over a shorter time horizon 
+T_{\mathrm{sur}}\ll T_{\mathrm{sim}}
+Tsur≪TsimT_{\mathrm{sur}}\ll T_{\mathrm{sim}}. Since 
+T_{\mathrm{sur}}
+TsurT_{\mathrm{sur}} is small, backpropagation through 
+f^{\prime}
+f′f^{\prime} is cheap.
+
+Experimental setup.
+We set the grid size to 
+n=64
+n=64n=64 (
+d=2n^{2}=8192
+d=2​n2=8192d=2n^{2}=8192), the simulation horizon to 
+T_{\mathrm{sim}}=64
+Tsim=64T_{\mathrm{sim}}=64 steps, and the surrogate horizon to 
+T_{\mathrm{sur}}=16
+Tsur=16T_{\mathrm{sur}}=16 steps. Each zeroth-order method receives a per-iteration budget of 
+16
+1616 function evaluations. ZOD and GES use all 
+16
+1616 queries for batching, while CV-ZOD allocates 
+12
+1212 to the batched control-variate gradient step, 
+2
+22 to the gradient projection (Algorithm 2), and 
+2
+22 to the norm estimates used by the adaptive step-size rule (Remark 5.1). Appendix B reports ablations over the discount factor and query allocation for this fluid problem; we present the best-performing configuration here.
+
+We use 
+15
+1515 paired seeds and run each trajectory for 
+100
+100100 optimization steps. All runs start from a low-variance Gaussian perturbation of zero initial velocity to avoid the nondifferentiable stationary point. The initial density 
+\rho_{0}
+ρ0\rho_{0} and target 
+\rho^{\star}
+ρ⋆\rho^{\star} are a vertical and horizontal rectangle, respectively, centered on the grid (Figure 2, right).
+
+Figure 2: Fluid inverse problem. Left: objective averaged over 
+15
+1515 runs (top) and cosine
+similarity between the surrogate and true gradients averaged over the
+same runs (bottom). Right: sample terminal density fields produced by
+each method, alongside the initial density and target.
+
+Results. Figure 2 (left) shows the objective value averaged over 
+15
+1515 paired runs, alongside 
+\cos(\theta_{t})
+cos⁡(θt)\cos(\theta_{t}) for CV-ZOD and GES. Figure 2 (right) shows terminal density fields from a common seed. Early in optimization, when the surrogate gradient is well-aligned with the true gradient, CV-ZOD descends at a rate comparable to GES and surrogate descent. As the alignment deteriorates, GES plateaus and SurGD loses much of its early improvement. CV-ZOD, by contrast, transitions smoothly to zeroth-order exploration and reaches the lowest final objective.
+
+5.2 Molecular Geometry Optimization
+
+Conformation problem and energy surrogates.
+Finding low-energy molecular conformations is a central task in computational chemistry [13]. Given a molecule with 
+N
+NN atoms, the goal is to find atomic positions 
+x\in\mathbb{R}^{3N}
+x∈ℝ3​Nx\in\mathbb{R}^{3N} minimizing the potential energy. In practice, the true energy surface is accessed through expensive quantum-mechanical calculations. For our experiments, we substitute the MACE-OFF23 machine-learned interatomic potential [15] as a realistic proxy, setting 
+f(x):=E_{\mathrm{MACE}}(x)
+f​(x):=EMACE​(x)f(x):=E_{\mathrm{MACE}}(x) and treating it as a zeroth-order oracle. As surrogate, we use the MMFF94 classical force field [12],
+an analytic potential with closed-form gradients. Since MACE-OFF23 is itself a differentiable PyTorch model, its gradients are available as a diagnostic, allowing us to compute the true principal angle 
+\angle(\nabla f(x_{t}),\mathcal{S}_{t})
+∠⁡(∇f​(xt),𝒮t)\angle(\nabla f(x_{t}),\mathcal{S}_{t}) along each trajectory for post-hoc analysis.
+
+Experimental setup.
+We select three molecules spanning a range of dimensions (
+d=3N
+d=3​Nd=3N): efavirenz (
+N=30
+N=30N=30), adenosine (
+N=32
+N=32N=32), and benzylpenicillin (
+N=41
+N=41N=41). Starting geometries are taken from Wiggle150, a benchmark of highly strained molecular conformations [3], with ten conformations per molecule. Each trajectory runs for 
+100
+100100 optimization steps, with starting coordinates and seeds shared across the algorithms and the SurGD reference. We test the same algorithms with the same query allocations as in the fluid experiments (Section 5.1).
+
+Results. Figure 3 shows energy changes and running cosine similarities for each molecule, averaged over 
+10
+1010 paired runs. In this setting, the surrogate gradient retains useful alignment with the true gradient throughout optimization, and both CV-ZOD and GES outperform unguided ZOD. The SurGD reference steadily reduces the true energy, illustrating the quality of the surrogate. CV-ZOD achieves a similar energy reduction and outperforms GES.
+
+Figure 3: Molecular geometry optimization. MACE energy change from
+initialization (top; lower is better) and cosine similarity between surrogate and true gradients along
+CV-ZOD and GES trajectories (bottom) for efavirenz (
+d=90
+d=90d=90), adenosine (
+d=96
+d=96d=96), and benzylpenicillin (
+d=123
+d=123d=123).
+Curves average ten paired runs, with shared vertical scales
+across molecules. CV-ZOD remains close to the surrogate-only
+reference (SurGD, dotted).
+
+6 Discussion and Future Work
+
+We introduced CV-ZOD, a framework for incorporating directional hints into zeroth-order optimization through control-variate gradient estimation. The key property of the framework is that hints affect only the variance of the gradient estimator, not its bias, so the optimization trajectory tracks the true objective regardless of hint quality. The adaptive step-size rule matches the oracle rate up to logarithmic factors without requiring any prior knowledge of the alignment between the hints and the gradient along the trajectory, at a per-iteration query cost of only 
+O(k+\log T)
+O⁡(k+log⁡T)O(k+\log T).
+
+Several directions remain open. First, the current framework processes a single low-dimensional hint subspace per iteration. In practice, one may have access to multiple surrogates whose gradients accumulate over iterations; naively taking their span as the hint subspace causes the dimension 
+k
+kk to grow, eroding low-dimensionality and increasing the required number of queries. A natural question is whether one can adaptively aggregate a fixed number of surrogate gradients in an optimal way—for instance, through an online learning scheme over the surrogates. Second, the most compelling test of the framework’s scalability would be in large-scale settings such as memory-efficient fine-tuning or prompt optimization of language models, where zeroth-order methods are already in use and surrogate gradients from smaller or distilled models arise naturally. Validating CV-ZOD in these high-dimensional regimes is an important direction for future work.
+
+References
+
+[1]
+S. Arisaka and Q. Li (2024)
+
+Accelerating legacy numerical solvers by non-intrusive gradient-based meta-solving.
+
+In Proceedings of the 41st International Conference on Machine Learning,
+
+Proceedings of Machine Learning Research, Vol. 235, pp. 1689–1708.
+
+Cited by: item 1.
+
+[2]
+K. Balasubramanian and S. Ghadimi (2019)
+
+Zeroth-order nonconvex stochastic optimization: handling constraints, high-dimensionality and saddle-points.
+
+External Links: 1809.06474
+
+Cited by: §3.1.
+
+[3]
+R. R. Brew, I. A. Nelson, M. Binayeva, A. S. Nayak, W. J. Simmons, J. J. Gair, and C. C. Wagen (2025)
+
+Wiggle150: benchmarking density functionals and neural network potentials on highly strained conformers.
+
+Journal of Chemical Theory and Computation 21 (8), pp. 3922–3929.
+
+Note: https://doi.org/10.1021/acs.jctc.5c00015
+
+External Links: Document
+
+Cited by: §5.2.
+
+[4]
+B. Burger, P. M. Maffettone, V. V. Gusev, C. M. Aitchison, Y. Bai, X. Wang, X. Li, B. M. Alston, B. Li, R. Clowes, N. Rankin, B. Harris, R. S. Sprick, and A. I. Cooper (2020)
+
+A mobile robotic chemist.
+
+Nature 583 (7815), pp. 237–241.
+
+External Links: Document
+
+Cited by: §1.
+
+[5]
+P. Chen, H. Zhang, Y. Sharma, J. Yi, and C. Hsieh (2017)
+
+ZOO: zeroth order optimization based black-box attacks to deep neural networks without training substitute models.
+
+In Proceedings of the 10th ACM Workshop on Artificial Intelligence and Security (AISec),
+
+pp. 15–26.
+
+Cited by: §1.
+
+[6]
+S. Cheng, G. Wu, and J. Zhu (2021)
+
+On the convergence of prior-guided zeroth-order optimization algorithms.
+
+In Advances in Neural Information Processing Systems (NeurIPS),
+
+Vol. 34, pp. 14620–14631.
+
+Cited by: Appendix A,
+Appendix A,
+§1,
+§1.
+
+[7]
+X. Fan, I. Grama, and Q. Liu (2015)
+
+Exponential inequalities for martingales with applications.
+
+Electronic Journal of Probability 20 (1), pp. 1–22.
+
+External Links: Document,
+1311.6273
+
+Cited by: Appendix C,
+Proof.
+
+[8]
+S. Ghadimi and G. Lan (2013)
+
+Stochastic first- and zeroth-order methods for nonconvex stochastic programming.
+
+SIAM Journal on Optimization 23 (4), pp. 2341–2368.
+
+External Links: Document
+
+Cited by: §3.1,
+Lemma 3.2,
+§5.
+
+[9]
+E. Greensmith, P. L. Bartlett, and J. Baxter (2004)
+
+Variance reduction techniques for gradient estimates in reinforcement learning.
+
+Journal of Machine Learning Research 5, pp. 1471–1530.
+
+Cited by: item 1.
+
+[10]
+A. Griewank and A. Walther (2000)
+
+Algorithm 799: revolve: an implementation of checkpointing for the reverse or adjoint mode of computational differentiation.
+
+ACM Transactions on Mathematical Software 26 (1), pp. 19–45.
+
+Cited by: §5.1.
+
+[11]
+M. D. Gunzburger (2003)
+
+Perspectives in flow control and optimization.
+
+Advances in Design and Control, Vol. 5,  SIAM, Philadelphia.
+
+Cited by: §5.1.
+
+[12]
+T. A. Halgren (1996)
+
+Merck molecular force field. I. Basis, form, scope, parameterization, and performance of MMFF94.
+
+Journal of Computational Chemistry 17 (5–6), pp. 490–519.
+
+Cited by: §5.2.
+
+[13]
+P. C. Hawkins (2017)
+
+Conformation generation: the state of the art.
+
+Journal of Chemical Information and Modeling 57 (8), pp. 1747–1756.
+
+Cited by: §5.2.
+
+[14]
+A. Ilyas, L. Engstrom, A. Athalye, and J. Lin (2018)
+
+Black-box adversarial attacks with limited queries and information.
+
+In Proceedings of the 35th International Conference on Machine Learning (ICML),
+
+Proceedings of Machine Learning Research, Vol. 80, pp. 2137–2146.
+
+Cited by: §1.
+
+[15]
+D. P. Kovács, J. H. Moore, N. J. Browning, I. Batatia, J. T. Horton, Y. Pu, V. Kapil, W. C. Witt, I. Magdău, D. J. Cole, and G. Csányi (2025)
+
+MACE-OFF: short-range transferable machine learning force fields for organic molecules.
+
+Journal of the American Chemical Society 147 (21), pp. 17598–17611.
+
+Cited by: §5.2.
+
+[16]
+J. Larson, M. Menickelly, and S. M. Wild (2019)
+
+Derivative-free optimization methods.
+
+Acta Numerica 28, pp. 287–404.
+
+External Links: Document
+
+Cited by: §1.
+
+[17]
+M. Macklin (2022)
+
+Warp: a high-performance Python framework for GPU simulation and graphics.
+
+Note: NVIDIA GPU Technology Conference (GTC)https://github.com/nvidia/warp
+
+Cited by: §5.1.
+
+[18]
+N. Maheswaranathan, L. Metz, G. Tucker, D. Choi, and J. Sohl-Dickstein (2019)
+
+Guided evolutionary strategies: augmenting random search with surrogate gradients.
+
+In Proceedings of the 36th International Conference on Machine Learning (ICML),
+
+Vol. 97, pp. 4264–4273.
+
+Cited by: Appendix A,
+Appendix A,
+§1,
+§1,
+§5.
+
+[19]
+S. Malladi, T. Gao, E. Nichani, A. Damian, J. D. Lee, D. Chen, and S. Arora (2023)
+
+Fine-tuning language models with just forward passes.
+
+In Advances in Neural Information Processing Systems (NeurIPS),
+
+Cited by: §1.
+
+[20]
+Y. Nesterov and V. Spokoiny (2017)
+
+Random gradient-free minimization of convex functions.
+
+Foundations of Computational Mathematics 17 (2), pp. 527–566.
+
+External Links: Document
+
+Cited by: §3.1,
+Lemma 3.1.
+
+[21]
+A. B. Owen (2013)
+
+Monte Carlo theory, methods and examples.
+
+Cited by: item 1.
+
+[22]
+B. J. Shields, J. Stevens, J. Li, M. Parasram, F. Damani, J. I. Martinez Alvarado, J. M. Janey, R. P. Adams, and A. G. Doyle (2021)
+
+Bayesian reaction optimization as a tool for chemical synthesis.
+
+Nature 590 (7844), pp. 89–96.
+
+External Links: Document
+
+Cited by: §1.
+
+[23]
+J. Stam (1999)
+
+Stable fluids.
+
+In Proceedings of the 26th Annual Conference on Computer Graphics and Interactive Techniques (SIGGRAPH),
+
+pp. 121–128.
+
+Cited by: §5.1.
+
+[24]
+H. Zhan, C. Chen, T. Ding, Z. Li, and R. Sun (2024)
+
+Unlocking black-box prompt tuning efficiency via zeroth-order optimization.
+
+In Findings of the Association for Computational Linguistics: EMNLP 2024,
+
+pp. 14825–14838.
+
+Cited by: §1.
+
+Appendix A Prior Work on Zeroth-Order Optimization with Directional Hints
+
+This section analyzes the gradient-estimation techniques used by the two prior approaches for incorporating directional guidance into zeroth-order optimization: Guided Evolutionary Strategies (GES) [18] and Prior-Guided Random Gradient-Free (PRGF) methods [6]. Both reduce exploration variance along a guided subspace by modifying the search distribution, but in doing so introduce bias into the gradient estimator. We show that this bias creates a fundamental step-size dilemma that the control-variate construction in CV-ZOD avoids.
+
+Guided Evolutionary Strategies.
+
+The approach of [18] replaces isotropic perturbations with anisotropic ones whose covariance allocates more variance to directions in the hint subspace 
+\mathcal{S}\in\mathrm{Gr}_{k}(\mathbb{R}^{d})
+𝒮∈Grk​(ℝd)\mathcal{S}\in\mathrm{Gr}_{k}(\mathbb{R}^{d}). Concretely, one uses the same estimator 
+G(x;u)
+G⁡(x,u)G(x;u), but samples perturbations according to
+
+\displaystyle u\sim\mathcal{N}(0,\Sigma),\qquad\text{where }\,\,\Sigma:=\gamma\,I_{d}+(1-\gamma)\,\tfrac{d}{k}P_{\mathcal{S}},
+u∼𝒩⁡(0,Σ),where ​Σ:=γ​Id+(1−γ)​dk​P𝒮,\displaystyle u\sim\mathcal{N}(0,\Sigma),\qquad\text{where }\,\,\Sigma:=\gamma\,I_{d}+(1-\gamma)\,\tfrac{d}{k}P_{\mathcal{S}},
+
+with 
+\gamma\in[0,1]
+γ∈[0,1]\gamma\in[0,1] interpolating between isotropic exploration 
+(\gamma=1)
+(γ=1)(\gamma=1) and exploration supported entirely on 
+\mathcal{S}
+𝒮\mathcal{S} 
+(\gamma=0)
+(γ=0)(\gamma=0), while preserving the total variance 
+\tr(\Sigma)=d
+tr⁡(Σ)=d\tr(\Sigma)=d.
+
+The main drawback is that this introduces an anisotropic bias. Defining 
+f^{\tau}_{\Sigma}(x):=\E_{u\sim\mathcal{N}(0,\Sigma)}[f(x+\tau u)]
+fΣτ​(x):=𝔼u∼𝒩⁡(0,Σ)⁡[f⁡(x+τ​u)]f^{\tau}_{\Sigma}(x):=\E_{u\sim\mathcal{N}(0,\Sigma)}[f(x+\tau u)], a direct calculation shows that
+
+\displaystyle\E_{u\sim\mathcal{N}(0,\Sigma)}[G(x;u)]=\Sigma\,\nabla f^{\tau}_{\Sigma}(x)\,\,\xrightarrow{\tau\to 0}\,\,\Sigma\nabla f(x)=\gamma\,\nabla f(x)+(1-\gamma)\,\tfrac{d}{k}P_{\mathcal{S}}\nabla f(x).
+𝔼u∼𝒩⁡(0,Σ)[G(x;u)]=Σ∇fΣτ(x)→τ→0Σ∇f(x)=γ∇f(x)+(1−γ)dkP𝒮∇f(x).\displaystyle\E_{u\sim\mathcal{N}(0,\Sigma)}[G(x;u)]=\Sigma\,\nabla f^{\tau}_{\Sigma}(x)\,\,\xrightarrow{\tau\to 0}\,\,\Sigma\nabla f(x)=\gamma\,\nabla f(x)+(1-\gamma)\,\tfrac{d}{k}P_{\mathcal{S}}\nabla f(x).
+
+Thus the estimator no longer targets 
+\nabla f(x)
+∇f​(x)\nabla f(x) itself, but applies different gains to its 
+\mathcal{S}
+𝒮\mathcal{S} and 
+\mathcal{S}^{\perp}
+𝒮⟂\mathcal{S}^{\perp} components, amplifying the former by a factor of order 
+d/k
+d/kd/k. This creates a fundamental step-size dilemma: a step size chosen to remain stable along 
+\mathcal{S}
+𝒮\mathcal{S} is overly conservative on 
+\mathcal{S}^{\perp}
+𝒮⟂\mathcal{S}^{\perp}, while one tuned for 
+\mathcal{S}^{\perp}
+𝒮⟂\mathcal{S}^{\perp} is too aggressive along 
+\mathcal{S}
+𝒮\mathcal{S}. Anisotropic exploration does not simply reduce variance; it changes the optimization geometry itself, making it ill-suited as a robust mechanism for incorporating directional hints whose alignment with the gradient may vary across iterations.
+
+Prior-Guided Random Gradient-Free methods.
+
+[6] propose a related approach in a more restrictive setting. Their guidance takes the form of a single vector 
+p\in\mathbb{R}^{d}
+p∈ℝdp\in\mathbb{R}^{d}, or equivalently the one-dimensional subspace 
+\mathcal{S}=\mathrm{span}\{p\}
+𝒮=span​{p}\mathcal{S}=\mathrm{span}\{p\}, and they assume access to directional derivatives 
+\langle{\nabla f(x),u}\rangle
+⟨∇f​(x),u⟩\langle{\nabla f(x),u}\rangle rather than zeroth-order feedback 
+f(x)
+f⁡(x)f(x). Their estimator with batch size 
+q\in\mathbb{N}
+q∈ℕq\in\mathbb{N} can be written as
+
+\displaystyle G_{\mathrm{PRGF}}(x,\mathcal{S};\{u_{i}\}_{i=1}^{q})=P_{\mathcal{S}}\nabla f(x)+\sum_{i=1}^{q}\langle{\nabla f(x),u_{i}}\rangle u_{i},
+GPRGF(x,𝒮;{ui}i=1q)=P𝒮∇f(x)+∑i=1q⟨∇f(x),ui⟩ui,\displaystyle G_{\mathrm{PRGF}}(x,\mathcal{S};\{u_{i}\}_{i=1}^{q})=P_{\mathcal{S}}\nabla f(x)+\sum_{i=1}^{q}\langle{\nabla f(x),u_{i}}\rangle u_{i},
+
+where 
+u_{1},\ldots,u_{q}
+u1,…,uqu_{1},\ldots,u_{q} follow a Haar-uniform orthonormal 
+q
+qq-frame in 
+\mathcal{S}^{\perp}
+𝒮⟂\mathcal{S}^{\perp}.
+This estimator is generally biased:
+
+\displaystyle\E_{U}\left[G_{\mathrm{PRGF}}(x,\mathcal{S};U)\right]
+𝔼U⁡[GPRGF​(x,𝒮,U)]\displaystyle\E_{U}\left[G_{\mathrm{PRGF}}(x,\mathcal{S};U)\right]
+
+\displaystyle=P_{\mathcal{S}}\nabla f(x)+\tfrac{q}{d-1}P^{\perp}_{\mathcal{S}}\nabla f(x)=\tfrac{q}{d-1}\,\nabla f(x)+\left(1-\tfrac{q}{d-1}\right)P_{\mathcal{S}}\nabla f(x).
+=P𝒮∇f(x)+qd−1P𝒮⟂∇f(x)=qd−1∇f(x)+(1−qd−1)P𝒮∇f(x).\displaystyle=P_{\mathcal{S}}\nabla f(x)+\tfrac{q}{d-1}P^{\perp}_{\mathcal{S}}\nabla f(x)=\tfrac{q}{d-1}\,\nabla f(x)+\left(1-\tfrac{q}{d-1}\right)P_{\mathcal{S}}\nabla f(x).
+
+As with GES, the estimator applies different effective gains to the 
+\mathcal{S}
+𝒮\mathcal{S} and 
+\mathcal{S}^{\perp}
+𝒮⟂\mathcal{S}^{\perp} gradient components.
+
+Summary.
+
+Both GES and PRGF incorporate directional guidance by modifying the search distribution, which unavoidably biases the gradient estimator. The bias introduces two coupled scales in the update — one along 
+\mathcal{S}
+𝒮\mathcal{S} and one along 
+\mathcal{S}^{\perp}
+𝒮⟂\mathcal{S}^{\perp} — that cannot be simultaneously controlled by a single step size. By contrast, the control-variate estimator in CV-ZOD remains unbiased for all reference vectors, so the step size controls a single scale (the residual variance), enabling the adaptive tuning developed in Section 4.
+
+Appendix B Ablations of the Discount Factor and Query Allocation
+
+Using the same fluid setup as in Section 5.1, we vary
+
+\gamma_{\mathrm{disc}}\in\{0,0.6,0.7,0.8,0.9\}
+γdisc∈{0,0.6,0.7,0.8,0.9}\gamma_{\mathrm{disc}}\in\{0,0.6,0.7,0.8,0.9\} and compare query
+partitions 
+12/2/2
+12/2/212/2/2, 
+7/7/2
+7/7/27/7/2, and 
+2/12/2
+2/12/22/12/2.
+
+Table 1: Final fluid objective: mean 
+\pm
+±\pm sample standard deviation
+over 
+15
+1515 paired seeds. Columns give query allocations
+(update / norm / projection). Lower is better.
+
+CV-ZOD
+ZOD
+
+\gamma_{\mathrm{disc}}
+γdisc\gamma_{\mathrm{disc}}
+
+12/2/2
+12/2/212/2/2
+
+7/7/2
+7/7/27/7/2
+
+2/12/2
+2/12/22/12/2
+
+16/0/0
+16/0/016/0/0
+
+0
+00
+
+0.0764\pm 0.0219
+0.0764±0.02190.0764\pm 0.0219
+
+0.0686\pm 0.0274
+0.0686±0.02740.0686\pm 0.0274
+
+0.0846\pm 0.0003
+0.0846±0.00030.0846\pm 0.0003
+
+0.0258\pm 0.0040
+0.0258±0.00400.0258\pm 0.0040
+
+0.6
+0.60.6
+
+0.0149\pm 0.0029
+0.0149±0.00290.0149\pm 0.0029
+
+0.0169\pm 0.0041
+0.0169±0.00410.0169\pm 0.0041
+
+0.0797\pm 0.0149
+0.0797±0.01490.0797\pm 0.0149
+
+0.0258\pm 0.0040
+0.0258±0.00400.0258\pm 0.0040
+
+0.7
+0.70.7
+
+\mathbf{0.0136}\pm 0.0025
+0.0136±0.0025\mathbf{0.0136}\pm 0.0025
+
+0.0153\pm 0.0028
+0.0153±0.00280.0153\pm 0.0028
+
+0.0796\pm 0.0137
+0.0796±0.01370.0796\pm 0.0137
+
+0.0258\pm 0.0040
+0.0258±0.00400.0258\pm 0.0040
+
+0.8
+0.80.8
+
+0.0153\pm 0.0037
+0.0153±0.00370.0153\pm 0.0037
+
+0.0149\pm 0.0030
+0.0149±0.00300.0149\pm 0.0030
+
+0.0749\pm 0.0197
+0.0749±0.01970.0749\pm 0.0197
+
+0.0258\pm 0.0040
+0.0258±0.00400.0258\pm 0.0040
+
+0.9
+0.90.9
+
+0.0176\pm 0.0063
+0.0176±0.00630.0176\pm 0.0063
+
+0.0150\pm 0.0022
+0.0150±0.00220.0150\pm 0.0022
+
+0.0759\pm 0.0175
+0.0759±0.01750.0759\pm 0.0175
+
+0.0258\pm 0.0040
+0.0258±0.00400.0258\pm 0.0040
+
+Table 1 shows that temporal smoothing has its
+largest benefit when enough queries remain for the control-variate
+update. With the 
+12/2/2
+12/2/212/2/2 allocation, setting
+
+\gamma_{\mathrm{disc}}=0.7
+γdisc=0.7\gamma_{\mathrm{disc}}=0.7 reduces the mean final objective from
+
+0.07635
+0.076350.07635 to 
+0.01363
+0.013630.01363; all 
+15
+1515 runs finish below 
+0.020
+0.0200.020.
+For both 
+12/2/2
+12/2/212/2/2 and 
+7/7/2
+7/7/27/7/2, every displayed positive discount factor
+gives a lower mean final objective than ZOD. Increasing the norm-estimation
+allocation to 
+12
+1212 leaves only two update directions and gives much poorer
+results throughout the sweep. Among the displayed configurations, the
+
+12/2/2
+12/2/212/2/2 allocation with 
+\gamma_{\mathrm{disc}}=0.7
+γdisc=0.7\gamma_{\mathrm{disc}}=0.7 has both the lowest
+mean final objective and the earliest mean crossing of 
+0.020
+0.0200.020, at update
+
+61
+6161. We use this setting for the fluid comparison in
+Figure 2; selection and evaluation use the same 
+15
+1515 seeds.
+
+Appendix C Proofs for Section 3: CV-ZOD Framework
+
+This section contains the proofs of Lemma 3.3 and Theorem 3.4. The proof of Theorem 3.4 relies on two concentration results for self-normalized martingales (Theorem C.1 and Corollary C.2), which adapt the exponential inequalities of [7] to our setting via a peeling argument; these are stated and proved after the main argument.
+
+C.1 Proof of Lemma 3.3
+
+Lemma C.1 (Restated)
+
+For all 
+x,m\in\mathbb{R}^{d}
+x,m∈ℝdx,m\in\mathbb{R}^{d}, it holds that 
+\E_{u\sim\mathcal{N}(0,I_{d})}\left[G(x,m;u)\right]=\nabla f^{\tau}(x)
+𝔼u∼𝒩⁡(0,Id)⁡[G⁡(x,m,u)]=∇fτ​(x)\E_{u\sim\mathcal{N}(0,I_{d})}\left[G(x,m;u)\right]=\nabla f^{\tau}(x).
+Moreover,
+
+\displaystyle\E_{u\sim\mathcal{N}(0,I_{d})}\left[\lVert G(x,m;u)-\nabla f(x)\rVert^{2}\right]\leq 2(d+1)\,\lVert m-\nabla f(x)\rVert^{2}+8\tau^{2}L^{2}d^{3}
+𝔼u∼𝒩⁡(0,Id)⁡[∥G⁡(x,m,u)−∇f​(x)∥2]≤2​(d+1)​∥m−∇f​(x)∥2+8​τ2​L2​d3\displaystyle\E_{u\sim\mathcal{N}(0,I_{d})}\left[\lVert G(x,m;u)-\nabla f(x)\rVert^{2}\right]\leq 2(d+1)\,\lVert m-\nabla f(x)\rVert^{2}+8\tau^{2}L^{2}d^{3}
+
+Proof
+
+Fix 
+x,m\in\mathbb{R}^{d}
+x,m∈ℝdx,m\in\mathbb{R}^{d}. The unbiasedness follows immediately from Lemma 3.2 and Fact E.1:
+
+\displaystyle\E_{u}\left[G(x,m;u)\right]=\E_{u}\left[G(x;u)\right]+\E_{u}\!\left[(I_{d}-uu^{\top})m\right]=\nabla f^{\tau}(x)+0.
+𝔼u⁡[G⁡(x,m,u)]=𝔼u⁡[G⁡(x,u)]+𝔼u⁡[(Id−uu⊤)​m]=∇fτ​(x)+0.\displaystyle\E_{u}\left[G(x,m;u)\right]=\E_{u}\left[G(x;u)\right]+\E_{u}\!\left[(I_{d}-uu^{\top})m\right]=\nabla f^{\tau}(x)+0.
+
+To bound the mean-squared estimation error, we write
+
+\displaystyle G(x,m;u)-\nabla f(x)
+G​(x,m,u)−∇f​(x)\displaystyle G(x,m;u)-\nabla f(x)
+
+\displaystyle=\left(I_{d}-uu^{\top}\right)\left(m-\nabla f(x)\right)+\frac{f(x+\tau u)-f(x)-\langle{\nabla f(x),\tau u}\rangle}{\tau}\,u.
+=(Id−u​u⊤)​(m−∇f​(x))+f⁡(x+τ​u)−f⁡(x)−⟨∇f​(x),τ​u⟩τ​u.\displaystyle=\left(I_{d}-uu^{\top}\right)\left(m-\nabla f(x)\right)+\frac{f(x+\tau u)-f(x)-\langle{\nabla f(x),\tau u}\rangle}{\tau}\,u.
+
+Consequently, we have
+
+\displaystyle\E_{u}\!\left[\lVert G(x,m;u)-\nabla f(x)\rVert^{2}\right]
+𝔼u⁡[∥G⁡(x,m,u)−∇f​(x)∥2]\displaystyle\E_{u}\!\left[\lVert G(x,m;u)-\nabla f(x)\rVert^{2}\right]
+
+\displaystyle\leq 2(m-\nabla f(x))^{\top}\E_{u}\!\left[(I_{d}-uu^{\top})^{2}\right](m-\nabla f(x))
+≤2​(m−∇f​(x))⊤​𝔼u​[(Id−uu⊤)2]​(m−∇f​(x))\displaystyle\leq 2(m-\nabla f(x))^{\top}\E_{u}\!\left[(I_{d}-uu^{\top})^{2}\right](m-\nabla f(x))
+
+\displaystyle+2\E_{u}\!\left[\left(\tfrac{f(x+\tau u)-f(x)-\langle{\nabla f(x),\tau u}\rangle}{\tau}\right)^{2}\lVert u\rVert^{2}\right]
++2​𝔼u​[(f⁡(x+τ​u)−f⁡(x)−⟨∇f​(x),τ​u⟩τ)2​∥u∥2]\displaystyle+2\E_{u}\!\left[\left(\tfrac{f(x+\tau u)-f(x)-\langle{\nabla f(x),\tau u}\rangle}{\tau}\right)^{2}\lVert u\rVert^{2}\right]
+
+\displaystyle\stackrel{{\scriptstyle\text{(a)}}}{{\leq}}2(d+1)\lVert m-\nabla f(x)\rVert^{2}+\tfrac{1}{2}\tau^{2}L^{2}\,\E[\lVert u\rVert^{6}]
+≤(a)2​(d+1)​∥m−∇f​(x)∥2+12​τ2​L2​𝔼⁡[∥u∥6]\displaystyle\stackrel{{\scriptstyle\text{(a)}}}{{\leq}}2(d+1)\lVert m-\nabla f(x)\rVert^{2}+\tfrac{1}{2}\tau^{2}L^{2}\,\E[\lVert u\rVert^{6}]
+
+\displaystyle\stackrel{{\scriptstyle\text{(b)}}}{{\leq}}2(d+1)\,\lVert m-\nabla f(x)\rVert^{2}+8\tau^{2}L^{2}d^{3},
+≤(b)2​(d+1)​∥m−∇f​(x)∥2+8​τ2​L2​d3,\displaystyle\stackrel{{\scriptstyle\text{(b)}}}{{\leq}}2(d+1)\,\lVert m-\nabla f(x)\rVert^{2}+8\tau^{2}L^{2}d^{3},
+
+where (a) follows from 
+L
+LL-smoothness and Fact E.1 and (b) from Fact E.2.
+
+C.2 Proof of Theorem 3.4
+
+3.4Restated
+
+Suppose Algorithm 1 uses a fresh standard Gaussian direction 
+u_{t}
+utu_{t}, conditionally on all information available before its draw, for every 
+t\in[T]
+t∈[T]t\in[T], and that 
+\max_{t\in[T]}\lVert m_{t}\rVert\leq 2B
+maxt∈[T]⁡∥mt∥≤2​B\max_{t\in[T]}\lVert m_{t}\rVert\leq 2B almost surely. Then there exist absolute constants 
+C_{0},C&gt;0
+C0,C&gt;0C_{0},C&gt;0 such that the following holds. For any 
+\delta\in(0,1)
+δ∈(0,1)\delta\in(0,1), set 
+\iota:=\log(2T/\delta)
+ι:=log⁡(2​T/δ)\iota:=\log(2T/\delta), and suppose 
+d\geq\iota
+d≥ιd\geq\iota and 
+0&lt;\alpha_{t}\leq\tfrac{1}{C_{0}\,L\,\iota}
+0&lt;αt≤1C0​L​ι0&lt;\alpha_{t}\leq\tfrac{1}{C_{0}\,L\,\iota} for all 
+t\in[T]
+t∈[T]t\in[T]. Then, for 
+\gamma=C_{0}\iota
+γ=C0​ι\gamma=C_{0}\iota, with probability at least 
+1-\delta
+1−δ1-\delta,
+
+\displaystyle\tfrac{1}{L}\textstyle\sum_{t=1}^{T}\alpha_{t}\lVert\nabla f(x_{t})\rVert^{2}\;\leq\;C\,\left(D_{f}^{2}+\tfrac{B^{2}}{L^{2}}+\tau^{2}\,T\,d^{3}+\mathcal{B}_{T}^{\gamma}\,\iota\right),
+1L​∑t=1Tαt​∥∇f​(xt)∥2≤C⁡(Df2+B2L2+τ2​T​d3+ℬTγ​ι),\displaystyle\tfrac{1}{L}\textstyle\sum_{t=1}^{T}\alpha_{t}\lVert\nabla f(x_{t})\rVert^{2}\;\leq\;C\,\left(D_{f}^{2}+\tfrac{B^{2}}{L^{2}}+\tau^{2}\,T\,d^{3}+\mathcal{B}_{T}^{\gamma}\,\iota\right),
+
+where 
+D_{f}^{2}:=\tfrac{2}{L}\left(f(x_{1})-f^{*}\right)
+Df2:=2L​(f⁡(x1)−f∗)D_{f}^{2}:=\tfrac{2}{L}\left(f(x_{1})-f^{*}\right). Moreover, if 
+d\geq\log(2T^{2})
+d≥log⁡(2​T2)d\geq\log(2T^{2}), 
+\gamma=C_{0}\log(2T^{2})
+γ=C0​log⁡(2​T2)\gamma=C_{0}\log(2T^{2}), 
+0&lt;\alpha_{t}\leq 1/(\gamma L)
+0&lt;αt≤1/(γ​L)0&lt;\alpha_{t}\leq 1/(\gamma L) for all 
+t\in[T]
+t∈[T]t\in[T], and 
+\tau\leq\tfrac{B/L}{\sqrt{Td^{3}}}
+τ≤B/LT​d3\tau\leq\tfrac{B/L}{\sqrt{Td^{3}}}, then 
+\overline{x}
+x¯\overline{x} satisfies
+
+\displaystyle\tfrac{1}{L}\,\E\!\left[\lVert\nabla f(\overline{x})\rVert^{2}\right]\;\leq\;C\,\E\!\left[\tfrac{D_{f}^{2}+B^{2}/L^{2}+\mathcal{B}^{\gamma}_{T}\log(2T^{2})}{\mathcal{A}_{T}}\right],
+1L​𝔼⁡[∥∇f​(x¯)∥2]≤C​𝔼⁡[Df2+B2/L2+ℬTγ​log⁡(2​T2)𝒜T],\displaystyle\tfrac{1}{L}\,\E\!\left[\lVert\nabla f(\overline{x})\rVert^{2}\right]\;\leq\;C\,\E\!\left[\tfrac{D_{f}^{2}+B^{2}/L^{2}+\mathcal{B}^{\gamma}_{T}\log(2T^{2})}{\mathcal{A}_{T}}\right],
+
+where 
+\mathcal{A}_{T}:=\textstyle\sum_{t=1}^{T}\alpha_{t}
+𝒜T:=∑t=1Tαt\mathcal{A}_{T}:=\textstyle\sum_{t=1}^{T}\alpha_{t} denotes the cumulative step size.
+
+Proof
+
+For each 
+t\in[T]
+t∈[T]t\in[T], let 
+\mathcal{F}_{t}
+ℱt\mathcal{F}_{t} contain all information available before iteration 
+t
+tt, including the current iterate and hint, and let 
+\mathcal{F}_{T+1}
+ℱT+1\mathcal{F}_{T+1} contain all information after the final iteration. Let 
+\mathcal{G}_{t}
+𝒢t\mathcal{G}_{t} additionally contain all information available when 
+\alpha_{t}
+αt\alpha_{t} and 
+m_{t}
+mtm_{t} have been chosen, just before drawing 
+u_{t}
+utu_{t}. These sigma-algebras are nested as 
+\mathcal{F}_{t}\subseteq\mathcal{G}_{t}\subseteq\mathcal{F}_{t+1}
+ℱt⊆𝒢t⊆ℱt+1\mathcal{F}_{t}\subseteq\mathcal{G}_{t}\subseteq\mathcal{F}_{t+1}.
+Throughout, set 
+g_{t}:=\nabla f^{\tau}(x_{t})
+gt:=∇fτ​(xt)g_{t}:=\nabla f^{\tau}(x_{t}), 
+w_{t}:=m_{t}-\nabla f(x_{t})
+wt:=mt−∇f​(xt)w_{t}:=m_{t}-\nabla f(x_{t}), 
+\beta_{t}:=\alpha_{t}-L\alpha_{t}^{2}
+βt:=αt−L​αt2\beta_{t}:=\alpha_{t}-L\alpha_{t}^{2}, 
+G_{t}:=G(x_{t},m_{t};u_{t})
+Gt:=G⁡(xt,mt,ut)G_{t}:=G(x_{t},m_{t};u_{t}), and 
+\Delta_{t}:=G_{t}-g_{t}
+Δt:=Gt−gt\Delta_{t}:=G_{t}-g_{t}. Thus 
+x_{t}
+xtx_{t}, 
+\alpha_{t}
+αt\alpha_{t}, and 
+m_{t}
+mtm_{t} are 
+\mathcal{G}_{t}
+𝒢t\mathcal{G}_{t}-measurable, while 
+u_{t}
+utu_{t} is conditionally standard Gaussian given 
+\mathcal{G}_{t}
+𝒢t\mathcal{G}_{t}. Hence Lemma 3.3 gives 
+\E[\Delta_{t}\mid\mathcal{G}_{t}]=0
+𝔼⁡[Δt∣𝒢t]=0\E[\Delta_{t}\mid\mathcal{G}_{t}]=0. Since 
+\iota\geq\log 2
+ι≥log⁡2\iota\geq\log 2 and we take 
+C_{0}\geq 4
+C0≥4C_{0}\geq 4, the cap 
+\alpha_{t}\leq\tfrac{1}{C_{0}L\iota}\leq\tfrac{1}{2L}
+αt≤1C0​L​ι≤12​L\alpha_{t}\leq\tfrac{1}{C_{0}L\iota}\leq\tfrac{1}{2L} implies 
+\beta_{t}\in[\tfrac{1}{2}\alpha_{t},\alpha_{t}]
+βt∈[12​αt,αt]\beta_{t}\in[\tfrac{1}{2}\alpha_{t},\alpha_{t}]. We also write
+
+\displaystyle S_{T}:=\textstyle\sum_{t=1}^{T}\alpha_{t}\lVert\nabla f(x_{t})\rVert^{2},\qquad V_{T}:=d\textstyle\sum_{t=1}^{T}\alpha_{t}^{2}\lVert w_{t}\rVert^{2},\qquad H:=D_{f}^{2}+B^{2}/L^{2}.
+ST:=∑t=1Tαt​∥∇f​(xt)∥2,VT:=d​∑t=1Tαt2​∥wt∥2,H:=Df2+B2/L2.\displaystyle S_{T}:=\textstyle\sum_{t=1}^{T}\alpha_{t}\lVert\nabla f(x_{t})\rVert^{2},\qquad V_{T}:=d\textstyle\sum_{t=1}^{T}\alpha_{t}^{2}\lVert w_{t}\rVert^{2},\qquad H:=D_{f}^{2}+B^{2}/L^{2}.
+
+We record two approximation bounds from Lemma 3.1 used repeatedly:
+
+\displaystyle\sup_{x\in\mathbb{R}^{d}}\lVert\nabla f^{\tau}(x)-\nabla f(x)\rVert
+supx∈ℝd∥∇fτ​(x)−∇f​(x)∥\displaystyle\sup_{x\in\mathbb{R}^{d}}\lVert\nabla f^{\tau}(x)-\nabla f(x)\rVert
+
+\displaystyle\leq c_{0}\,\tau Ld^{3/2},
+≤c0​τ​L​d3/2,\displaystyle\leq c_{0}\,\tau Ld^{3/2},
+
+(7)
+
+\displaystyle f^{\tau}(x_{1})-f^{*}
+fτ​(x1)−f∗\displaystyle f^{\tau}(x_{1})-f^{*}
+
+\displaystyle\leq\tfrac{L}{2}D_{f}^{2}+\tfrac{\tau^{2}Ld}{2}.
+≤L2​Df2+τ2​L​d2.\displaystyle\leq\tfrac{L}{2}D_{f}^{2}+\tfrac{\tau^{2}Ld}{2}.
+
+(8)
+
+Step 1: Descent inequality.
+
+By 
+L
+LL-smoothness of 
+f^{\tau}
+fτf^{\tau} and 
+G_{t}=g_{t}+\Delta_{t}
+Gt=gt+ΔtG_{t}=g_{t}+\Delta_{t},
+
+\displaystyle f^{\tau}(x_{t+1})
+fτ​(xt+1)\displaystyle f^{\tau}(x_{t+1})
+
+\displaystyle\leq f^{\tau}(x_{t})-\alpha_{t}\langle{g_{t},G_{t}}\rangle+\tfrac{L\alpha_{t}^{2}}{2}\lVert G_{t}\rVert^{2}
+≤fτ​(xt)−αt​⟨gt,Gt⟩+L​αt22​∥Gt∥2\displaystyle\leq f^{\tau}(x_{t})-\alpha_{t}\langle{g_{t},G_{t}}\rangle+\tfrac{L\alpha_{t}^{2}}{2}\lVert G_{t}\rVert^{2}
+
+\displaystyle=f^{\tau}(x_{t})-\underbrace{(\alpha_{t}-\tfrac{L\alpha_{t}^{2}}{2})}_{\geq\,\alpha_{t}/2}\,\lVert g_{t}\rVert^{2}-\underbrace{(\alpha_{t}-L\alpha_{t}^{2})}_{=\,\beta_{t}}\,\langle{g_{t},\Delta_{t}}\rangle+\tfrac{L\alpha_{t}^{2}}{2}\lVert\Delta_{t}\rVert^{2}.
+=fτ​(xt)−(αt−L​αt22)⏟≥αt/2​∥gt∥2−(αt−L​αt2)⏟=βt​⟨gt,Δt⟩+L​αt22​∥Δt∥2.\displaystyle=f^{\tau}(x_{t})-\underbrace{(\alpha_{t}-\tfrac{L\alpha_{t}^{2}}{2})}_{\geq\,\alpha_{t}/2}\,\lVert g_{t}\rVert^{2}-\underbrace{(\alpha_{t}-L\alpha_{t}^{2})}_{=\,\beta_{t}}\,\langle{g_{t},\Delta_{t}}\rangle+\tfrac{L\alpha_{t}^{2}}{2}\lVert\Delta_{t}\rVert^{2}.
+
+Telescoping over 
+t=1,\ldots,T
+t=1,…,Tt=1,\ldots,T and using 
+f^{\tau}(x_{T+1})\geq f^{*}
+fτ​(xT+1)≥f∗f^{\tau}(x_{T+1})\geq f^{*} with (8),
+
+\displaystyle\tfrac{1}{2}\textstyle\sum_{t=1}^{T}\alpha_{t}\lVert g_{t}\rVert^{2}\leq\tfrac{L}{2}D_{f}^{2}+\tfrac{\tau^{2}Ld}{2}-M_{T}+\tfrac{L}{2}\,Q_{T},
+12​∑t=1Tαt​∥gt∥2≤L2​Df2+τ2​L​d2−MT+L2​QT,\displaystyle\tfrac{1}{2}\textstyle\sum_{t=1}^{T}\alpha_{t}\lVert g_{t}\rVert^{2}\leq\tfrac{L}{2}D_{f}^{2}+\tfrac{\tau^{2}Ld}{2}-M_{T}+\tfrac{L}{2}\,Q_{T},
+
+(9)
+
+where 
+M_{T}:=\sum_{t=1}^{T}\beta_{t}\langle{g_{t},\Delta_{t}}\rangle
+MT:=∑t=1Tβt​⟨gt,Δt⟩M_{T}:=\sum_{t=1}^{T}\beta_{t}\langle{g_{t},\Delta_{t}}\rangle and 
+Q_{T}:=\sum_{t=1}^{T}\alpha_{t}^{2}\lVert\Delta_{t}\rVert^{2}
+QT:=∑t=1Tαt2​∥Δt∥2Q_{T}:=\sum_{t=1}^{T}\alpha_{t}^{2}\lVert\Delta_{t}\rVert^{2}.
+
+Step 2: Pathwise bound on 
+Q_{T}
+QTQ_{T}.
+
+The proof of Lemma 3.3 gives
+
+\displaystyle G_{t}-\nabla f(x_{t})=(I_{d}-u_{t}u_{t}^{\top})\,w_{t}+\epsilon_{t}\,u_{t},\qquad|\epsilon_{t}|\leq\tfrac{L\tau}{2}\lVert u_{t}\rVert^{2}.
+Gt−∇f​(xt)=(Id−ut​ut⊤)​wt+ϵt​ut,|ϵt|≤L​τ2​∥ut∥2.\displaystyle G_{t}-\nabla f(x_{t})=(I_{d}-u_{t}u_{t}^{\top})\,w_{t}+\epsilon_{t}\,u_{t},\qquad|\epsilon_{t}|\leq\tfrac{L\tau}{2}\lVert u_{t}\rVert^{2}.
+
+Since 
+\Delta_{t}=(G_{t}-\nabla f(x_{t}))+(\nabla f(x_{t})-g_{t})
+Δt=(Gt−∇f​(xt))+(∇f​(xt)−gt)\Delta_{t}=(G_{t}-\nabla f(x_{t}))+(\nabla f(x_{t})-g_{t}), we have
+
+\displaystyle\lVert\Delta_{t}\rVert^{2}\leq 2\lVert(I_{d}-u_{t}u_{t}^{\top})w_{t}+\epsilon_{t}u_{t}\rVert^{2}+2c_{0}^{2}\,\tau^{2}L^{2}d^{3}.
+∥Δt∥2≤2​∥(Id−ut​ut⊤)​wt+ϵt​ut∥2+2​c02​τ2​L2​d3.\displaystyle\lVert\Delta_{t}\rVert^{2}\leq 2\lVert(I_{d}-u_{t}u_{t}^{\top})w_{t}+\epsilon_{t}u_{t}\rVert^{2}+2c_{0}^{2}\,\tau^{2}L^{2}d^{3}.
+
+(10)
+
+We establish pathwise control on 
+u_{t}
+utu_{t}. Since 
+\lVert u_{t}\rVert^{2}\sim\chi_{d}^{2}
+∥ut∥2∼χd2\lVert u_{t}\rVert^{2}\sim\chi_{d}^{2} conditioned on 
+\mathcal{G}_{t}
+𝒢t\mathcal{G}_{t}, the Laurent–Massart inequality (Lemma E.3) gives 
+\Pr(\lVert u_{t}\rVert^{2}&gt;d+2\sqrt{d\ell^{\prime}}+2\ell^{\prime})\leq e^{-\ell^{\prime}}
+Pr⁡(∥ut∥2&gt;d+2​d​ℓ′+2​ℓ′)≤e−ℓ′\Pr(\lVert u_{t}\rVert^{2}&gt;d+2\sqrt{d\ell^{\prime}}+2\ell^{\prime})\leq e^{-\ell^{\prime}} for all 
+\ell^{\prime}&gt;0
+ℓ′&gt;0\ell^{\prime}&gt;0. Similarly, 
+\langle{w_{t},u_{t}}\rangle\mid\mathcal{G}_{t}\sim\mathcal{N}(0,\lVert w_{t}\rVert^{2})
+⟨wt,ut⟩|𝒢t∼𝒩⁡(0,∥wt∥2)\langle{w_{t},u_{t}}\rangle\mid\mathcal{G}_{t}\sim\mathcal{N}(0,\lVert w_{t}\rVert^{2}), so the standard Gaussian tail yields 
+\Pr(|\langle{w_{t},u_{t}}\rangle|&gt;\lVert w_{t}\rVert\sqrt{2\ell^{\prime}})\leq 2e^{-\ell^{\prime}}
+Pr⁡(|⟨wt,ut⟩|&gt;∥wt∥​2​ℓ′)≤2​e−ℓ′\Pr(|\langle{w_{t},u_{t}}\rangle|&gt;\lVert w_{t}\rVert\sqrt{2\ell^{\prime}})\leq 2e^{-\ell^{\prime}}. Set 
+\ell:=\log(12T/\delta)\leq 4\iota
+ℓ:=log⁡(12​T/δ)≤4​ι\ell:=\log(12T/\delta)\leq 4\iota. A union bound over 
+t\in[T]
+t∈[T]t\in[T] gives total failure probability at most 
+3Te^{-\ell}=\delta/4
+3​T​e−ℓ=δ/43Te^{-\ell}=\delta/4. Thus the following event 
+\mathcal{E}
+ℰ\mathcal{E} holds with probability at least 
+1-\delta/4
+1−δ/41-\delta/4: for all 
+t\in[T]
+t∈[T]t\in[T] simultaneously,
+
+\displaystyle\lVert u_{t}\rVert^{2}\leq 4(d+\ell)\qquad\text{and}\qquad\langle{w_{t},u_{t}}\rangle^{2}\leq 2\lVert w_{t}\rVert^{2}\,\ell.
+∥ut∥2≤4​(d+ℓ)and⟨wt,ut⟩2≤2​∥wt∥2​ℓ.\displaystyle\lVert u_{t}\rVert^{2}\leq 4(d+\ell)\qquad\text{and}\qquad\langle{w_{t},u_{t}}\rangle^{2}\leq 2\lVert w_{t}\rVert^{2}\,\ell.
+
+(11)
+
+We work on 
+\mathcal{E}
+ℰ\mathcal{E} for the remainder of the step.
+
+Bounding the two components. Expanding and applying (11):
+
+\displaystyle\lVert(I_{d}-u_{t}u_{t}^{\top})w_{t}\rVert^{2}
+∥(Id−ut​ut⊤)​wt∥2\displaystyle\lVert(I_{d}-u_{t}u_{t}^{\top})w_{t}\rVert^{2}
+
+\displaystyle=\lVert w_{t}\rVert^{2}-2\langle{w_{t},u_{t}}\rangle^{2}+\langle{w_{t},u_{t}}\rangle^{2}\lVert u_{t}\rVert^{2}
+=∥wt∥2−2​⟨wt,ut⟩2+⟨wt,ut⟩2​∥ut∥2\displaystyle=\lVert w_{t}\rVert^{2}-2\langle{w_{t},u_{t}}\rangle^{2}+\langle{w_{t},u_{t}}\rangle^{2}\lVert u_{t}\rVert^{2}
+
+\displaystyle\leq\lVert w_{t}\rVert^{2}+8\,\lVert w_{t}\rVert^{2}\,\ell\,(d+\ell)
+≤∥wt∥2+8​∥wt∥2​ℓ​(d+ℓ)\displaystyle\leq\lVert w_{t}\rVert^{2}+8\,\lVert w_{t}\rVert^{2}\,\ell\,(d+\ell)
+
+\displaystyle\leq c\,\lVert w_{t}\rVert^{2}\,d\,\iota,
+≤c​∥wt∥2​d​ι,\displaystyle\leq c\,\lVert w_{t}\rVert^{2}\,d\,\iota,
+
+and
+
+\displaystyle\epsilon_{t}^{2}\lVert u_{t}\rVert^{2}\leq\tfrac{L^{2}\tau^{2}}{4}\lVert u_{t}\rVert^{6}\leq c\,L^{2}\tau^{2}d^{3}.
+ϵt2​∥ut∥2≤L2​τ24​∥ut∥6≤c​L2​τ2​d3.\displaystyle\epsilon_{t}^{2}\lVert u_{t}\rVert^{2}\leq\tfrac{L^{2}\tau^{2}}{4}\lVert u_{t}\rVert^{6}\leq c\,L^{2}\tau^{2}d^{3}.
+
+Substituting into (10),
+
+\displaystyle\lVert\Delta_{t}\rVert^{2}\leq c\,d\,\iota\,\lVert w_{t}\rVert^{2}+c\,\tau^{2}L^{2}d^{3}.
+∥Δt∥2≤c​d​ι​∥wt∥2+c​τ2​L2​d3.\displaystyle\lVert\Delta_{t}\rVert^{2}\leq c\,d\,\iota\,\lVert w_{t}\rVert^{2}+c\,\tau^{2}L^{2}d^{3}.
+
+(12)
+
+Multiplying by 
+\alpha_{t}^{2}
+αt2\alpha_{t}^{2} and summing:
+
+\displaystyle Q_{T}\leq c\,d\,\iota\textstyle\sum_{t=1}^{T}\alpha_{t}^{2}\lVert w_{t}\rVert^{2}+c\,\tau^{2}L^{2}d^{3}\textstyle\sum_{t=1}^{T}\alpha_{t}^{2}.
+QT≤c​d​ι​∑t=1Tαt2​∥wt∥2+c​τ2​L2​d3​∑t=1Tαt2.\displaystyle Q_{T}\leq c\,d\,\iota\textstyle\sum_{t=1}^{T}\alpha_{t}^{2}\lVert w_{t}\rVert^{2}+c\,\tau^{2}L^{2}d^{3}\textstyle\sum_{t=1}^{T}\alpha_{t}^{2}.
+
+Since 
+\sum_{t}\alpha_{t}^{2}\leq T/L^{2}
+∑tαt2≤T/L2\sum_{t}\alpha_{t}^{2}\leq T/L^{2}, this gives
+
+\displaystyle Q_{T}\leq c\,\iota V_{T}+c\,\tau^{2}Td^{3}.
+QT≤c​ι​VT+c​τ2​T​d3.\displaystyle Q_{T}\leq c\,\iota V_{T}+c\,\tau^{2}Td^{3}.
+
+(13)
+
+We retain the nonnegative quantity 
+V_{T}
+VTV_{T} until the final step, where we use the identity 
+\iota\mathcal{B}_{T}^{\gamma}=\iota V_{T}-S_{T}/(C_{0}L)
+ι​ℬTγ=ι​VT−ST/(C0​L)\iota\mathcal{B}_{T}^{\gamma}=\iota V_{T}-S_{T}/(C_{0}L).
+
+Step 3: Martingale concentration.
+
+Dominant martingale. Define
+
+\displaystyle\xi_{t}:=\beta_{t}\left(\langle{\nabla f(x_{t}),w_{t}}\rangle-\langle{\nabla f(x_{t}),u_{t}}\rangle\langle{w_{t},u_{t}}\rangle\right).
+ξt:=βt​(⟨∇f​(xt),wt⟩−⟨∇f​(xt),ut⟩​⟨wt,ut⟩).\displaystyle\xi_{t}:=\beta_{t}\left(\langle{\nabla f(x_{t}),w_{t}}\rangle-\langle{\nabla f(x_{t}),u_{t}}\rangle\langle{w_{t},u_{t}}\rangle\right).
+
+Since 
+\beta_{t},\nabla f(x_{t}),w_{t}
+βt,∇f​(xt),wt\beta_{t},\nabla f(x_{t}),w_{t} are 
+\mathcal{G}_{t}
+𝒢t\mathcal{G}_{t}-measurable and 
+\E[\langle{\nabla f(x_{t}),u_{t}}\rangle\langle{w_{t},u_{t}}\rangle\mid\mathcal{G}_{t}]=\langle{\nabla f(x_{t}),w_{t}}\rangle
+𝔼⁡[⟨∇f​(xt),ut⟩​⟨wt,ut⟩∣𝒢t]=⟨∇f​(xt),wt⟩\E[\langle{\nabla f(x_{t}),u_{t}}\rangle\langle{w_{t},u_{t}}\rangle\mid\mathcal{G}_{t}]=\langle{\nabla f(x_{t}),w_{t}}\rangle, each 
+\xi_{t}
+ξt\xi_{t} is conditionally mean zero. It is measurable with respect to 
+\mathcal{F}_{t+1}
+ℱt+1\mathcal{F}_{t+1}, so the partial sums of 
+\widetilde{M}_{T}:=\sum_{t=1}^{T}\xi_{t}
+M~T:=∑t=1Tξt\widetilde{M}_{T}:=\sum_{t=1}^{T}\xi_{t} form a martingale with respect to the post-draw filtration 
+(\mathcal{G}_{t+1})_{t=0}^{T}
+(𝒢t+1)t=0T(\mathcal{G}_{t+1})_{t=0}^{T}, where 
+\mathcal{G}_{T+1}:=\mathcal{F}_{T+1}
+𝒢T+1:=ℱT+1\mathcal{G}_{T+1}:=\mathcal{F}_{T+1}. By Lemma E.4 with 
+a=\nabla f(x_{t})
+a=∇f​(xt)a=\nabla f(x_{t}) and 
+\Sigma=w_{t}w_{t}^{\top}
+Σ=wt​wt⊤\Sigma=w_{t}w_{t}^{\top},
+
+\displaystyle\E[\xi_{t}^{2}\mid\mathcal{G}_{t}]=\beta_{t}^{2}\bigl(\lVert\nabla f(x_{t})\rVert^{2}\lVert w_{t}\rVert^{2}+\langle{\nabla f(x_{t}),w_{t}}\rangle^{2}\bigr)&lt;\infty.
+𝔼⁡[ξt2∣𝒢t]=βt2​(∥∇f​(xt)∥2​∥wt∥2+⟨∇f​(xt),wt⟩2)&lt;∞.\displaystyle\E[\xi_{t}^{2}\mid\mathcal{G}_{t}]=\beta_{t}^{2}\bigl(\lVert\nabla f(x_{t})\rVert^{2}\lVert w_{t}\rVert^{2}+\langle{\nabla f(x_{t}),w_{t}}\rangle^{2}\bigr)&lt;\infty.
+
+MGF condition. Conditioned on 
+\mathcal{G}_{t}
+𝒢t\mathcal{G}_{t}, 
+\xi_{t}
+ξt\xi_{t} is a centered degree-two polynomial in 
+u_{t}\sim\mathcal{N}(0,I_{d})
+ut∼𝒩⁡(0,Id)u_{t}\sim\mathcal{N}(0,I_{d}). By the Hanson–Wright inequality, there exists an absolute constant 
+c_{1}&gt;0
+c1&gt;0c_{1}&gt;0 such that
+
+\displaystyle\log\E\!\left[e^{\lambda\xi_{t}}\mid\mathcal{G}_{t}\right]\leq c_{1}^{2}\lambda^{2}\beta_{t}^{2}\lVert\nabla f(x_{t})\rVert^{2}\lVert w_{t}\rVert^{2}\qquad\text{for }|\lambda|\leq\tfrac{1}{c_{1}\beta_{t}\lVert\nabla f(x_{t})\rVert\lVert w_{t}\rVert}.
+log⁡𝔼⁡[eλ​ξt∣𝒢t]≤c12​λ2​βt2​∥∇f​(xt)∥2​∥wt∥2for |λ|≤1c1​βt​∥∇f​(xt)∥​∥wt∥.\displaystyle\log\E\!\left[e^{\lambda\xi_{t}}\mid\mathcal{G}_{t}\right]\leq c_{1}^{2}\lambda^{2}\beta_{t}^{2}\lVert\nabla f(x_{t})\rVert^{2}\lVert w_{t}\rVert^{2}\qquad\text{for }|\lambda|\leq\tfrac{1}{c_{1}\beta_{t}\lVert\nabla f(x_{t})\rVert\lVert w_{t}\rVert}.
+
+Since 
+e^{x}\leq 1+2x
+ex≤1+2​xe^{x}\leq 1+2x for 
+x\in[0,1]
+x∈[0,1]x\in[0,1] and 
+\E[\xi_{t}^{2}\mid\mathcal{G}_{t}]\geq\beta_{t}^{2}\lVert\nabla f(x_{t})\rVert^{2}\lVert w_{t}\rVert^{2}
+𝔼⁡[ξt2∣𝒢t]≥βt2​∥∇f​(xt)∥2​∥wt∥2\E[\xi_{t}^{2}\mid\mathcal{G}_{t}]\geq\beta_{t}^{2}\lVert\nabla f(x_{t})\rVert^{2}\lVert w_{t}\rVert^{2} by Lemma E.4,
+
+\displaystyle\E\!\left[e^{\lambda\xi_{t}}\mid\mathcal{G}_{t}\right]\leq 1+2c_{1}^{2}\lambda^{2}\,\E[\xi_{t}^{2}\mid\mathcal{G}_{t}]\qquad\text{for }|\lambda|\leq\tfrac{1}{c_{1}\beta_{t}\lVert\nabla f(x_{t})\rVert\lVert w_{t}\rVert}.
+𝔼⁡[eλ​ξt∣𝒢t]≤1+2​c12​λ2​𝔼⁡[ξt2∣𝒢t]for |λ|≤1c1​βt​∥∇f​(xt)∥​∥wt∥.\displaystyle\E\!\left[e^{\lambda\xi_{t}}\mid\mathcal{G}_{t}\right]\leq 1+2c_{1}^{2}\lambda^{2}\,\E[\xi_{t}^{2}\mid\mathcal{G}_{t}]\qquad\text{for }|\lambda|\leq\tfrac{1}{c_{1}\beta_{t}\lVert\nabla f(x_{t})\rVert\lVert w_{t}\rVert}.
+
+If 
+\beta_{t}\lVert\nabla f(x_{t})\rVert\lVert w_{t}\rVert=0
+βt​∥∇f​(xt)∥​∥wt∥=0\beta_{t}\lVert\nabla f(x_{t})\rVert\lVert w_{t}\rVert=0, then 
+\xi_{t}=0
+ξt=0\xi_{t}=0 and the MGF bound holds for every 
+\lambda
+λ\lambda. Otherwise the displayed range applies. The boundedness assumptions give 
+\lVert w_{t}\rVert\leq 3B
+∥wt∥≤3​B\lVert w_{t}\rVert\leq 3B and hence 
+c_{1}\beta_{t}\lVert\nabla f(x_{t})\rVert\lVert w_{t}\rVert\leq 3c_{1}B^{2}/(C_{0}L\iota)
+c1​βt​∥∇f​(xt)∥​∥wt∥≤3​c1​B2/(C0​L​ι)c_{1}\beta_{t}\lVert\nabla f(x_{t})\rVert\lVert w_{t}\rVert\leq 3c_{1}B^{2}/(C_{0}L\iota). Set
+
+\displaystyle\varepsilon:=\frac{\max\{3c_{1},18\}\,B^{2}}{C_{0}L\iota}.
+ε:=max⁡{3​c1,18}​B2C0​L​ι.\displaystyle\varepsilon:=\frac{\max\{3c_{1},18\}\,B^{2}}{C_{0}L\iota}.
+
+The hypothesis of Theorem C.1 then holds with this 
+\varepsilon
+ε\varepsilon and its constant 
+c_{0}=4c_{1}^{2}
+c0=4​c12c_{0}=4c_{1}^{2}.
+
+Bounding 
+\widetilde{M}_{T}
+M~T\widetilde{M}_{T}. Using 
+\beta_{t}\leq\alpha_{t}
+βt≤αt\beta_{t}\leq\alpha_{t}, 
+\lVert w_{t}\rVert\leq 3B
+∥wt∥≤3​B\lVert w_{t}\rVert\leq 3B, and 
+\alpha_{t}\leq 1/(C_{0}L\iota)
+αt≤1/(C0​L​ι)\alpha_{t}\leq 1/(C_{0}L\iota):
+
+\displaystyle\E[\xi_{t}^{2}\mid\mathcal{G}_{t}]\leq 18\alpha_{t}^{2}\lVert\nabla f(x_{t})\rVert^{2}B^{2}\leq\tfrac{18B^{2}}{C_{0}L\iota}\cdot\alpha_{t}\lVert\nabla f(x_{t})\rVert^{2}\leq\varepsilon\cdot\alpha_{t}\lVert\nabla f(x_{t})\rVert^{2}.
+𝔼⁡[ξt2∣𝒢t]≤18​αt2​∥∇f​(xt)∥2​B2≤18​B2C0​L​ι⋅αt​∥∇f​(xt)∥2≤ε⋅αt​∥∇f​(xt)∥2.\displaystyle\E[\xi_{t}^{2}\mid\mathcal{G}_{t}]\leq 18\alpha_{t}^{2}\lVert\nabla f(x_{t})\rVert^{2}B^{2}\leq\tfrac{18B^{2}}{C_{0}L\iota}\cdot\alpha_{t}\lVert\nabla f(x_{t})\rVert^{2}\leq\varepsilon\cdot\alpha_{t}\lVert\nabla f(x_{t})\rVert^{2}.
+
+Setting 
+r_{t}:=\alpha_{t}\lVert\nabla f(x_{t})\rVert^{2}
+rt:=αt​∥∇f​(xt)∥2r_{t}:=\alpha_{t}\lVert\nabla f(x_{t})\rVert^{2}, Corollary C.2 gives, with probability at least 
+1-\delta/2
+1−δ/21-\delta/2,
+
+\displaystyle|\widetilde{M}_{T}|\leq\tfrac{1}{8}\textstyle\sum_{t=1}^{T}\alpha_{t}\lVert\nabla f(x_{t})\rVert^{2}+\tfrac{c\,B^{2}}{L},
+|M~T|≤18​∑t=1Tαt​∥∇f​(xt)∥2+c​B2L,\displaystyle|\widetilde{M}_{T}|\leq\tfrac{1}{8}\textstyle\sum_{t=1}^{T}\alpha_{t}\lVert\nabla f(x_{t})\rVert^{2}+\tfrac{c\,B^{2}}{L},
+
+(14)
+
+where we used 
+\varepsilon\log(2e/\delta)\leq cB^{2}/L
+ε​log⁡(2​e/δ)≤c​B2/L\varepsilon\log(2e/\delta)\leq cB^{2}/L, since 
+\log(2e/\delta)\leq c\iota
+log⁡(2​e/δ)≤c​ι\log(2e/\delta)\leq c\iota.
+
+Smoothing residual. Since 
+\Delta_{t}=(I_{d}-u_{t}u_{t}^{\top})w_{t}+\epsilon_{t}u_{t}+(\nabla f(x_{t})-g_{t})
+Δt=(Id−ut​ut⊤)​wt+ϵt​ut+(∇f​(xt)−gt)\Delta_{t}=(I_{d}-u_{t}u_{t}^{\top})w_{t}+\epsilon_{t}u_{t}+(\nabla f(x_{t})-g_{t}),
+
+\displaystyle\beta_{t}\langle{g_{t},\Delta_{t}}\rangle-\xi_{t}=\beta_{t}\langle{g_{t}-\nabla f(x_{t}),\,\Delta_{t}}\rangle+\beta_{t}\langle{\nabla f(x_{t}),\,(\nabla f(x_{t})-g_{t})+\epsilon_{t}u_{t}}\rangle.
+βt​⟨gt,Δt⟩−ξt=βt​⟨gt−∇f​(xt),Δt⟩+βt​⟨∇f​(xt),(∇f​(xt)−gt)+ϵt​ut⟩.\displaystyle\beta_{t}\langle{g_{t},\Delta_{t}}\rangle-\xi_{t}=\beta_{t}\langle{g_{t}-\nabla f(x_{t}),\,\Delta_{t}}\rangle+\beta_{t}\langle{\nabla f(x_{t}),\,(\nabla f(x_{t})-g_{t})+\epsilon_{t}u_{t}}\rangle.
+
+On 
+\mathcal{E}
+ℰ\mathcal{E}, using (7), (12), 
+|\epsilon_{t}|\leq cL\tau(d+\iota)
+|ϵt|≤c​L​τ​(d+ι)|\epsilon_{t}|\leq cL\tau(d+\iota), 
+\lVert u_{t}\rVert\leq c\sqrt{d+\iota}
+∥ut∥≤c​d+ι\lVert u_{t}\rVert\leq c\sqrt{d+\iota}, and 
+\beta_{t}\leq\alpha_{t}\leq 1/(C_{0}L\iota)
+βt≤αt≤1/(C0​L​ι)\beta_{t}\leq\alpha_{t}\leq 1/(C_{0}L\iota):
+
+\displaystyle|\beta_{t}\langle{g_{t},\Delta_{t}}\rangle-\xi_{t}|\leq c\,\alpha_{t}\tau Ld^{3/2}\lVert\Delta_{t}\rVert+c\,\alpha_{t}\lVert\nabla f(x_{t})\rVert\tau L(d+\iota)^{3/2}.
+|βt​⟨gt,Δt⟩−ξt|≤c​αt​τ​L​d3/2​∥Δt∥+c​αt​∥∇f​(xt)∥​τ​L​(d+ι)3/2.\displaystyle|\beta_{t}\langle{g_{t},\Delta_{t}}\rangle-\xi_{t}|\leq c\,\alpha_{t}\tau Ld^{3/2}\lVert\Delta_{t}\rVert+c\,\alpha_{t}\lVert\nabla f(x_{t})\rVert\tau L(d+\iota)^{3/2}.
+
+Applying Young’s inequality to the first term with quadratic contribution 
+L\alpha_{t}^{2}\lVert\Delta_{t}\rVert^{2}/2
+L​αt2​∥Δt∥2/2L\alpha_{t}^{2}\lVert\Delta_{t}\rVert^{2}/2 and to the second with contribution 
+\alpha_{t}\lVert\nabla f(x_{t})\rVert^{2}/32
+αt​∥∇f​(xt)∥2/32\alpha_{t}\lVert\nabla f(x_{t})\rVert^{2}/32, then summing and using 
+\sum_{t}\alpha_{t}\leq T/L
+∑tαt≤T/L\sum_{t}\alpha_{t}\leq T/L, gives
+
+\displaystyle|M_{T}-\widetilde{M}_{T}|\leq\tfrac{L}{2}\,Q_{T}+\tfrac{1}{32}S_{T}+c\,\tau^{2}Td^{3}L.
+|MT−M~T|≤L2​QT+132​ST+c​τ2​T​d3​L.\displaystyle|M_{T}-\widetilde{M}_{T}|\leq\tfrac{L}{2}\,Q_{T}+\tfrac{1}{32}S_{T}+c\,\tau^{2}Td^{3}L.
+
+(15)
+
+Combining (14) and (15):
+
+\displaystyle|M_{T}|\leq\tfrac{5}{32}S_{T}+\tfrac{c\,B^{2}}{L}+\tfrac{L}{2}\,Q_{T}+c\,\tau^{2}Td^{3}L.
+|MT|≤532​ST+c​B2L+L2​QT+c​τ2​T​d3​L.\displaystyle|M_{T}|\leq\tfrac{5}{32}S_{T}+\tfrac{c\,B^{2}}{L}+\tfrac{L}{2}\,Q_{T}+c\,\tau^{2}Td^{3}L.
+
+(16)
+
+Step 4: Combining.
+
+Intersecting 
+\mathcal{E}
+ℰ\mathcal{E} with the martingale event gives an event 
+\mathcal{H}
+ℋ\mathcal{H} with probability at least 
+1-3\delta/4\geq 1-\delta
+1−3​δ/4≥1−δ1-3\delta/4\geq 1-\delta. On 
+\mathcal{H}
+ℋ\mathcal{H}, substituting (16) into (9) and using 
+-M_{T}\leq|M_{T}|
+−MT≤|MT|-M_{T}\leq|M_{T}| gives
+
+\displaystyle\tfrac{1}{2}\textstyle\sum_{t=1}^{T}\alpha_{t}\lVert g_{t}\rVert^{2}\leq\tfrac{L}{2}D_{f}^{2}+\tfrac{c\,B^{2}}{L}+\tfrac{5}{32}S_{T}+L\,Q_{T}+c\,\tau^{2}Td^{3}L.
+12​∑t=1Tαt​∥gt∥2≤L2​Df2+c​B2L+532​ST+L​QT+c​τ2​T​d3​L.\displaystyle\tfrac{1}{2}\textstyle\sum_{t=1}^{T}\alpha_{t}\lVert g_{t}\rVert^{2}\leq\tfrac{L}{2}D_{f}^{2}+\tfrac{c\,B^{2}}{L}+\tfrac{5}{32}S_{T}+L\,Q_{T}+c\,\tau^{2}Td^{3}L.
+
+The gradient approximation (7) and 
+\sum_{t}\alpha_{t}\leq T/L
+∑tαt≤T/L\sum_{t}\alpha_{t}\leq T/L imply
+
+\displaystyle\tfrac{1}{2}\textstyle\sum_{t=1}^{T}\alpha_{t}\lVert g_{t}\rVert^{2}\geq\tfrac{1}{4}S_{T}-c\,\tau^{2}Td^{3}L.
+12​∑t=1Tαt​∥gt∥2≥14​ST−c​τ2​T​d3​L.\displaystyle\tfrac{1}{2}\textstyle\sum_{t=1}^{T}\alpha_{t}\lVert g_{t}\rVert^{2}\geq\tfrac{1}{4}S_{T}-c\,\tau^{2}Td^{3}L.
+
+Consequently,
+
+\displaystyle\tfrac{3}{32}S_{T}\leq\tfrac{L}{2}D_{f}^{2}+\tfrac{cB^{2}}{L}+LQ_{T}+c\,\tau^{2}Td^{3}L.
+332​ST≤L2​Df2+c​B2L+L​QT+c​τ2​T​d3​L.\displaystyle\tfrac{3}{32}S_{T}\leq\tfrac{L}{2}D_{f}^{2}+\tfrac{cB^{2}}{L}+LQ_{T}+c\,\tau^{2}Td^{3}L.
+
+Applying (13) and dividing by 
+L
+LL therefore gives an absolute constant 
+K\geq 1
+K≥1K\geq 1, independent of 
+C_{0}
+C0C_{0} once 
+C_{0}\geq 4
+C0≥4C_{0}\geq 4, such that
+
+\displaystyle\tfrac{S_{T}}{L}\leq K\left(H+\tau^{2}Td^{3}+\iota V_{T}\right).
+STL≤K⁡(H+τ2​T​d3+ι​VT).\displaystyle\tfrac{S_{T}}{L}\leq K\left(H+\tau^{2}Td^{3}+\iota V_{T}\right).
+
+(17)
+
+Set 
+K_{2}:=2K+1
+K2:=2​K+1K_{2}:=2K+1, and choose 
+C_{0}\geq\max\{4,2K_{2}\}
+C0≥max⁡{4,2​K2}C_{0}\geq\max\{4,2K_{2}\} and 
+C:=2K_{2}
+C:=2​K2C:=2K_{2}. The balance identity and (17) give, on 
+\mathcal{H}
+ℋ\mathcal{H},
+
+\displaystyle H+\tau^{2}Td^{3}+\iota\mathcal{B}_{T}^{\gamma}
+H+τ2​T​d3+ι​ℬTγ\displaystyle H+\tau^{2}Td^{3}+\iota\mathcal{B}_{T}^{\gamma}
+
+\displaystyle=H+\tau^{2}Td^{3}+\iota V_{T}-\tfrac{S_{T}}{C_{0}L}
+=H+τ2​T​d3+ι​VT−STC0​L\displaystyle=H+\tau^{2}Td^{3}+\iota V_{T}-\tfrac{S_{T}}{C_{0}L}
+
+\displaystyle\geq(1-K/C_{0})\left(H+\tau^{2}Td^{3}+\iota V_{T}\right)
+≥(1−K/C0)​(H+τ2​T​d3+ι​VT)\displaystyle\geq(1-K/C_{0})\left(H+\tau^{2}Td^{3}+\iota V_{T}\right)
+
+\displaystyle\geq\tfrac{1}{2}\left(H+\tau^{2}Td^{3}+\iota V_{T}\right).
+≥12​(H+τ2​T​d3+ι​VT).\displaystyle\geq\tfrac{1}{2}\left(H+\tau^{2}Td^{3}+\iota V_{T}\right).
+
+Combining this inequality with (17) proves the high-probability conclusion with the chosen 
+C
+CC.
+
+For the expected conclusion, first suppose 
+T\geq 2
+T≥2T\geq 2 and apply the preceding argument with 
+\delta=1/T
+δ=1/T\delta=1/T, so 
+\iota=\log(2T^{2})
+ι=log⁡(2​T2)\iota=\log(2T^{2}). Since the step sizes are positive, 
+\mathcal{A}_{T}&gt;0
+𝒜T&gt;0\mathcal{A}_{T}&gt;0. Define
+
+\displaystyle Y:=\frac{S_{T}}{L\mathcal{A}_{T}},\qquad X:=\frac{H+\iota V_{T}}{\mathcal{A}_{T}},\qquad W:=\frac{H+\iota\mathcal{B}_{T}^{\gamma}}{\mathcal{A}_{T}}=X-\frac{Y}{C_{0}}.
+Y:=STL​𝒜T,X:=H+ι​VT𝒜T,W:=H+ι​ℬTγ𝒜T=X−YC0.\displaystyle Y:=\frac{S_{T}}{L\mathcal{A}_{T}},\qquad X:=\frac{H+\iota V_{T}}{\mathcal{A}_{T}},\qquad W:=\frac{H+\iota\mathcal{B}_{T}^{\gamma}}{\mathcal{A}_{T}}=X-\frac{Y}{C_{0}}.
+
+The output rule gives 
+\E Y=L^{-1}\E\lVert\nabla f(\overline{x})\rVert^{2}
+𝔼⁡Y=L−1​𝔼⁡∥∇f​(x¯)∥2\E Y=L^{-1}\E\lVert\nabla f(\overline{x})\rVert^{2}. The smoothing condition implies 
+\tau^{2}Td^{3}\leq B^{2}/L^{2}
+τ2​T​d3≤B2/L2\tau^{2}Td^{3}\leq B^{2}/L^{2}, so (17) gives 
+Y\leq 2KX
+Y≤2​K​XY\leq 2KX on 
+\mathcal{H}
+ℋ\mathcal{H}. Moreover, 
+X\geq 0
+X≥0X\geq 0 and 
+0\leq Y\leq B^{2}/L
+0≤Y≤B2/L0\leq Y\leq B^{2}/L everywhere. Taking expectations while retaining the nonnegative 
+X
+XX, we obtain
+
+\displaystyle\E Y
+𝔼⁡Y\displaystyle\E Y
+
+\displaystyle\leq 2K\E X+\frac{B^{2}}{LT}\leq K_{2}\E X.
+≤2​K​𝔼⁡X+B2LT≤K2​𝔼⁡X.\displaystyle\leq 2K\E X+\frac{B^{2}}{LT}\leq K_{2}\E X.
+
+The last inequality uses 
+\mathcal{A}_{T}\leq T/(C_{0}\iota L)
+𝒜T≤T/(C0​ι​L)\mathcal{A}_{T}\leq T/(C_{0}\iota L), which implies 
+X\geq B^{2}/(L^{2}\mathcal{A}_{T})\geq B^{2}/(LT)
+X≥B2/(L2​𝒜T)≥B2/(L​T)X\geq B^{2}/(L^{2}\mathcal{A}_{T})\geq B^{2}/(LT). If 
+\E X&lt;\infty
+𝔼⁡X&lt;∞\E X&lt;\infty, then
+
+\displaystyle\E W=\E X-\frac{\E Y}{C_{0}}\geq(1-K_{2}/C_{0})\E X\geq\tfrac{1}{2}\E X.
+𝔼⁡W=𝔼⁡X−𝔼⁡YC0≥(1−K2/C0)​𝔼⁡X≥12​𝔼⁡X.\displaystyle\E W=\E X-\frac{\E Y}{C_{0}}\geq(1-K_{2}/C_{0})\E X\geq\tfrac{1}{2}\E X.
+
+Thus 
+\E Y\leq C\E W
+𝔼⁡Y≤C​𝔼⁡W\E Y\leq C\E W, as claimed. If 
+\E X=\infty
+𝔼⁡X=∞\E X=\infty, the same conclusion holds in the extended sense because 
+Y
+YY is bounded and 
+W\geq-B^{2}/(C_{0}L)
+W≥−B2/(C0L)W\geq-B^{2}/(C_{0}L).
+
+Finally, when 
+T=1
+T=1T=1, the output is 
+x_{1}
+x1x_{1}. With 
+\iota=\log 2
+ι=log⁡2\iota=\log 2 and the same definitions of 
+Y,X,W
+Y,X,WY,X,W, positivity and the step-size cap give
+
+\displaystyle W\geq\frac{B^{2}}{L^{2}\alpha_{1}}-\frac{Y}{C_{0}}\geq\left(C_{0}\log 2-\frac{1}{C_{0}}\right)\frac{B^{2}}{L}\geq Y.
+W≥B2L2​α1−YC0≥(C0​log⁡2−1C0)​B2L≥Y.\displaystyle W\geq\frac{B^{2}}{L^{2}\alpha_{1}}-\frac{Y}{C_{0}}\geq\left(C_{0}\log 2-\frac{1}{C_{0}}\right)\frac{B^{2}}{L}\geq Y.
+
+This proves the expected conclusion for every 
+T\in\mathbb{N}
+T∈ℕT\in\mathbb{N} and completes the proof.
+
+C.1
+
+Let 
+(S_{k},\mathcal{F}_{k})_{k=0,\ldots,n}
+(Sk,ℱk)k=0,…,n(S_{k},\mathcal{F}_{k})_{k=0,\ldots,n} be a martingale with 
+S_{0}=0
+S0=0S_{0}=0 and differences 
+\xi_{i}=S_{i}-S_{i-1}
+ξi=Si−Si−1\xi_{i}=S_{i}-S_{i-1}. Let 
+c_{0}&gt;0
+c0&gt;0c_{0}&gt;0. Suppose there exists 
+\varepsilon&gt;0
+ε&gt;0\varepsilon&gt;0 such that for all 
+i\in[n]
+i∈[n]i\in[n] and all 
+|\lambda|\leq 1/\varepsilon
+|λ|≤1/ε|\lambda|\leq 1/\varepsilon,
+
+\displaystyle\E\!\left[e^{\lambda\xi_{i}}\mid\mathcal{F}_{i-1}\right]\leq 1+\tfrac{c_{0}\lambda^{2}}{2}\,\E\!\left[\xi_{i}^{2}\mid\mathcal{F}_{i-1}\right].
+𝔼⁡[eλ​ξi∣ℱi−1]≤1+c0​λ22​𝔼⁡[ξi2∣ℱi−1].\displaystyle\E\!\left[e^{\lambda\xi_{i}}\mid\mathcal{F}_{i-1}\right]\leq 1+\tfrac{c_{0}\lambda^{2}}{2}\,\E\!\left[\xi_{i}^{2}\mid\mathcal{F}_{i-1}\right].
+
+Then for all 
+x,w&gt;0
+x,w&gt;0x,w&gt;0,
+
+\displaystyle\Pr\!\left(S_{n}\geq x\text{ and }\langle S\rangle_{n}\leq w\right)\leq\exp\!\left(-\tfrac{x^{2}}{2(c_{0}w+\varepsilon x)}\right),
+Pr⁡(Sn≥x​ and ​⟨S⟩n≤w)≤exp⁡(−x22​(c0​w+ε​x)),\displaystyle\Pr\!\left(S_{n}\geq x\text{ and }\langle S\rangle_{n}\leq w\right)\leq\exp\!\left(-\tfrac{x^{2}}{2(c_{0}w+\varepsilon x)}\right),
+
+where 
+\langle S\rangle_{n}=\sum_{i=1}^{n}\E[\xi_{i}^{2}\mid\mathcal{F}_{i-1}]
+⟨S⟩n=∑i=1n𝔼⁡[ξi2∣ℱi−1]\langle S\rangle_{n}=\sum_{i=1}^{n}\E[\xi_{i}^{2}\mid\mathcal{F}_{i-1}].
+
+Proof
+
+We apply Theorem 2.1 of [7] with 
+g(\lambda)=0
+g⁡(λ)=0g(\lambda)=0, 
+f(\lambda)=\tfrac{c_{0}\lambda^{2}}{2}
+f⁡(λ)=c0​λ22f(\lambda)=\tfrac{c_{0}\lambda^{2}}{2}, 
+V_{i-1}=\E[\xi_{i}^{2}\mid\mathcal{F}_{i-1}]
+Vi−1=𝔼⁡[ξi2∣ℱi−1]V_{i-1}=\E[\xi_{i}^{2}\mid\mathcal{F}_{i-1}], and 
+v\to\infty
+v→∞v\to\infty. Their bound (2.3) gives, for any 
+\lambda\in(0,1/\varepsilon)
+λ∈(0,1/ε)\lambda\in(0,1/\varepsilon),
+
+\displaystyle\Pr\!\left(S_{n}\geq x\text{ and }\langle S\rangle_{n}\leq w\right)\leq\exp\!\left(-\lambda x+\tfrac{c_{0}\lambda^{2}}{2}w\right).
+Pr⁡(Sn≥x​ and ​⟨S⟩n≤w)≤exp⁡(−λ​x+c0​λ22​w).\displaystyle\Pr\!\left(S_{n}\geq x\text{ and }\langle S\rangle_{n}\leq w\right)\leq\exp\!\left(-\lambda x+\tfrac{c_{0}\lambda^{2}}{2}w\right).
+
+Substituting 
+\lambda=\frac{x}{c_{0}w+\varepsilon x}\in(0,1/\varepsilon)
+λ=xc0​w+ε​x∈(0,1/ε)\lambda=\frac{x}{c_{0}w+\varepsilon x}\in(0,1/\varepsilon):
+
+\displaystyle-\lambda x+\frac{c_{0}\lambda^{2}}{2}w
+−λ​x+c0​λ22​w\displaystyle-\lambda x+\frac{c_{0}\lambda^{2}}{2}w
+
+\displaystyle=-\frac{x^{2}}{c_{0}w+\varepsilon x}+\frac{x^{2}}{(c_{0}w+\varepsilon x)^{2}}\cdot\frac{c_{0}w}{2}
+=−x2c0​w+ε​x+x2(c0​w+ε​x)2⋅c0​w2\displaystyle=-\frac{x^{2}}{c_{0}w+\varepsilon x}+\frac{x^{2}}{(c_{0}w+\varepsilon x)^{2}}\cdot\frac{c_{0}w}{2}
+
+\displaystyle\leq-\frac{x^{2}}{c_{0}w+\varepsilon x}+\frac{x^{2}}{2(c_{0}w+\varepsilon x)}=-\frac{x^{2}}{2(c_{0}w+\varepsilon x)},
+≤−x2c0​w+ε​x+x22​(c0​w+ε​x)=−x22​(c0​w+ε​x),\displaystyle\leq-\frac{x^{2}}{c_{0}w+\varepsilon x}+\frac{x^{2}}{2(c_{0}w+\varepsilon x)}=-\frac{x^{2}}{2(c_{0}w+\varepsilon x)},
+
+which yields the result.
+
+Corollary C.2
+
+Under the conditions of Theorem C.1, suppose further that there exist non-negative 
+\mathcal{F}_{i-1}
+ℱi−1\mathcal{F}_{i-1}-measurable random variables 
+r_{1},\ldots,r_{n}
+r1,…,rnr_{1},\ldots,r_{n} such that
+
+\displaystyle\E\!\left[\xi_{i}^{2}\mid\mathcal{F}_{i-1}\right]\leq\varepsilon\,r_{i}\qquad\text{for all }i\in[n]\text{ almost surely}.
+𝔼⁡[ξi2∣ℱi−1]≤ε​rifor all ​i∈[n]​ almost surely.\displaystyle\E\!\left[\xi_{i}^{2}\mid\mathcal{F}_{i-1}\right]\leq\varepsilon\,r_{i}\qquad\text{for all }i\in[n]\text{ almost surely}.
+
+Let 
+R=\sum_{i=1}^{n}r_{i}
+R=∑i=1nriR=\sum_{i=1}^{n}r_{i}. Then for any 
+\delta\in(0,1)
+δ∈(0,1)\delta\in(0,1), with probability at least
+
+1-\delta
+1−δ1-\delta,
+
+\displaystyle|S_{n}|\leq\frac{R}{8}+c\varepsilon\log(e/\delta),
+|Sn|≤R8+c​ε​log⁡(e/δ),\displaystyle|S_{n}|\leq\frac{R}{8}+c\varepsilon\log(e/\delta),
+
+where 
+c&gt;0
+c&gt;0c&gt;0 depends only on 
+c_{0}
+c0c_{0}.
+
+Proof
+
+It suffices to prove the upper-tail bound, since the lower-tail bound follows by
+applying the same argument to 
+-S_{n}
+−Sn-S_{n}. For 
+j\geq 1
+j≥1j\geq 1, define
+
+\displaystyle E_{j}=\{2^{j-1}\varepsilon&lt;R\leq 2^{j}\varepsilon\},\qquad x_{j}=\frac{2^{j-1}\varepsilon}{8}+r,\qquad w_{j}=\varepsilon^{2}2^{j},
+Ej={2j−1ε&lt;R≤2jε},xj=2j−1​ε8+r,wj=ε22j,\displaystyle E_{j}=\{2^{j-1}\varepsilon&lt;R\leq 2^{j}\varepsilon\},\qquad x_{j}=\frac{2^{j-1}\varepsilon}{8}+r,\qquad w_{j}=\varepsilon^{2}2^{j},
+
+and also set 
+E_{0}=\{R\leq\varepsilon\}
+E0={R≤ε}E_{0}=\{R\leq\varepsilon\}, 
+x_{0}=r
+x0=rx_{0}=r, and 
+w_{0}=\varepsilon^{2}
+w0=ε2w_{0}=\varepsilon^{2}.
+On 
+E_{j}
+EjE_{j}, we have 
+\langle S\rangle_{n}\leq\varepsilon R\leq w_{j}
+⟨S⟩n≤ε​R≤wj\langle S\rangle_{n}\leq\varepsilon R\leq w_{j} and
+
+R/8+r\geq x_{j}
+R/8+r≥xjR/8+r\geq x_{j}. Therefore, by Theorem C.1,
+
+\displaystyle\Pr\!\left(S_{n}\geq R/8+r\right)\leq\sum_{j\geq 0}\exp\!\left(-\frac{x_{j}^{2}}{2(c_{0}w_{j}+\varepsilon x_{j})}\right).
+Pr⁡(Sn≥R/8+r)≤∑j≥0exp⁡(−xj22​(c0​wj+ε​xj)).\displaystyle\Pr\!\left(S_{n}\geq R/8+r\right)\leq\sum_{j\geq 0}\exp\!\left(-\frac{x_{j}^{2}}{2(c_{0}w_{j}+\varepsilon x_{j})}\right).
+
+We now bound the summands. For 
+j\geq 1
+j≥1j\geq 1, since
+
+x_{j}\geq 2^{j}\varepsilon/16
+xj≥2j​ε/16x_{j}\geq 2^{j}\varepsilon/16, we have
+
+\displaystyle c_{0}w_{j}=c_{0}\varepsilon^{2}2^{j}\leq 16c_{0}\varepsilon x_{j}.
+c0​wj=c0​ε2​2j≤16​c0​ε​xj.\displaystyle c_{0}w_{j}=c_{0}\varepsilon^{2}2^{j}\leq 16c_{0}\varepsilon x_{j}.
+
+Hence, for a constant 
+C&gt;0
+C&gt;0C&gt;0 depending only on 
+c_{0}
+c0c_{0},
+
+\displaystyle\frac{x_{j}^{2}}{2(c_{0}w_{j}+\varepsilon x_{j})}\geq\frac{x_{j}}{C\varepsilon}\geq\frac{2^{j-1}}{C}+\frac{r}{C\varepsilon}.
+xj22​(c0​wj+ε​xj)≥xjC​ε≥2j−1C+rC​ε.\displaystyle\frac{x_{j}^{2}}{2(c_{0}w_{j}+\varepsilon x_{j})}\geq\frac{x_{j}}{C\varepsilon}\geq\frac{2^{j-1}}{C}+\frac{r}{C\varepsilon}.
+
+For the term 
+j=0
+j=0j=0, after increasing 
+C
+CC if necessary, the same bound gives
+
+\displaystyle\frac{x_{0}^{2}}{2(c_{0}w_{0}+\varepsilon x_{0})}=\frac{r^{2}}{2(c_{0}\varepsilon^{2}+\varepsilon r)}\geq\frac{r}{C\varepsilon},
+x022​(c0​w0+ε​x0)=r22​(c0​ε2+ε​r)≥rC​ε,\displaystyle\frac{x_{0}^{2}}{2(c_{0}w_{0}+\varepsilon x_{0})}=\frac{r^{2}}{2(c_{0}\varepsilon^{2}+\varepsilon r)}\geq\frac{r}{C\varepsilon},
+
+provided 
+r\geq c_{0}\varepsilon
+r≥c0​εr\geq c_{0}\varepsilon, which will be true for the choice of 
+r
+rr below.
+Thus
+
+\displaystyle\Pr\!\left(S_{n}\geq R/8+r\right)
+Pr⁡(Sn≥R/8+r)\displaystyle\Pr\!\left(S_{n}\geq R/8+r\right)
+
+\displaystyle\leq\exp\!\left(-\tfrac{r}{C\varepsilon}\right)\left(1+\textstyle\sum_{j\geq 1}\exp(-\tfrac{2^{j-1}}{C})\right)
+≤exp⁡(−rC​ε)​(1+∑j≥1exp⁡(−2j−1C))\displaystyle\leq\exp\!\left(-\tfrac{r}{C\varepsilon}\right)\left(1+\textstyle\sum_{j\geq 1}\exp(-\tfrac{2^{j-1}}{C})\right)
+
+\displaystyle\leq C^{\prime}\exp\!\left(-\tfrac{r}{C\varepsilon}\right),
+≤C′​exp⁡(−rC​ε),\displaystyle\leq C^{\prime}\exp\!\left(-\tfrac{r}{C\varepsilon}\right),
+
+where 
+C^{\prime}&gt;0
+C′&gt;0C^{\prime}&gt;0 depends only on 
+c_{0}
+c0c_{0}. Taking
+
+\displaystyle r=C\varepsilon\log(2C^{\prime}/\delta)
+r=C​ε​log⁡(2​C′/δ)\displaystyle r=C\varepsilon\log(2C^{\prime}/\delta)
+
+gives
+
+\displaystyle\Pr\!\left(S_{n}\geq R/8+r\right)\leq\delta/2.
+Pr⁡(Sn≥R/8+r)≤δ/2.\displaystyle\Pr\!\left(S_{n}\geq R/8+r\right)\leq\delta/2.
+
+The same argument applied to 
+-S_{n}
+−Sn-S_{n} gives the lower tail, and a union bound yields
+
+\displaystyle\Pr\!\left(|S_{n}|\geq R/8+r\right)\leq\delta.
+Pr⁡(|Sn|≥R/8+r)≤δ.\displaystyle\Pr\!\left(|S_{n}|\geq R/8+r\right)\leq\delta.
+
+Finally, increasing the constant once more,
+
+r\leq c\varepsilon\log(e/\delta)
+r≤c​ε​log⁡(e/δ)r\leq c\varepsilon\log(e/\delta).
+
+Appendix D Proof of Theorem 4.4
+
+This section proves the adaptive convergence results of Section 4. We first prove Theorem 4.4 using Theorem 3.4 and the estimation primitives, then prove the supporting Lemmas 4.1, 4.2, and 4.3.
+
+4.4Restated
+
+There exist absolute constants 
+C,c&gt;0
+C,c&gt;0C,c&gt;0 such that, if 
+d\geq\log(2T^{2})
+d≥log⁡(2​T2)d\geq\log(2T^{2}), Algorithm 1 is run with 
+m_{t}=P_{f}^{\tau}(x_{t},\mathcal{S}_{t})
+mt=Pfτ​(xt,𝒮t)m_{t}=P_{f}^{\tau}(x_{t},\mathcal{S}_{t}) and step sizes 
+\alpha_{t}
+αt\alpha_{t} from (6) with confidence parameter 
+\delta=1/(2T)
+δ=1/(2​T)\delta=1/(2T), 
+\gamma=C_{0}\log(2T^{2})
+γ=C0​log⁡(2​T2)\gamma=C_{0}\log(2T^{2}), and 
+N=\lceil C\log(2T)\rceil
+N=⌈C​log⁡(2​T)⌉N=\lceil C\log(2T)\rceil, and the smoothing radius satisfies 
+\tau\leq\frac{B/L}{\sqrt{T(d^{3}+dk)\log(2T^{2})}}
+τ≤B/LT⁡(d3+d​k)​log⁡(2​T2)\tau\leq\frac{B/L}{\sqrt{T(d^{3}+dk)\log(2T^{2})}}, then
+
+\displaystyle\tfrac{1}{L}\,\E\!\left[\lVert\nabla f(\overline{x})\rVert^{2}\right]\;\leq\;c\,\E\!\left[\tfrac{(D_{f}^{2}+B^{2}/L^{2})\log(2T)}{\mathcal{A}^{*}_{T}}\right],
+1L​𝔼⁡[∥∇f​(x¯)∥2]≤c​𝔼⁡[(Df2+B2/L2)​log⁡(2​T)𝒜T∗],\displaystyle\tfrac{1}{L}\,\E\!\left[\lVert\nabla f(\overline{x})\rVert^{2}\right]\;\leq\;c\,\E\!\left[\tfrac{(D_{f}^{2}+B^{2}/L^{2})\log(2T)}{\mathcal{A}^{*}_{T}}\right],
+
+where 
+\mathcal{A}^{*}_{T}=\textstyle\sum_{t=1}^{T}\alpha^{*}_{t}
+𝒜T∗=∑t=1Tαt∗\mathcal{A}^{*}_{T}=\textstyle\sum_{t=1}^{T}\alpha^{*}_{t} for 
+\alpha_{t}^{*}
+αt∗\alpha_{t}^{*} in (4).
+
+Proof
+
+When 
+T=1
+T=1T=1, the output is 
+x_{1}
+x1x_{1} and the conclusion follows directly from 
+\lVert\nabla f(x_{1})\rVert^{2}\leq B^{2}
+∥∇f​(x1)∥2≤B2\lVert\nabla f(x_{1})\rVert^{2}\leq B^{2}, 
+\mathcal{A}_{1}^{*}\leq 1/L
+𝒜1∗≤1/L\mathcal{A}_{1}^{*}\leq 1/L, and 
+c\geq 1/\log 2
+c≥1/log⁡2c\geq 1/\log 2. We therefore assume 
+T\geq 2
+T≥2T\geq 2.
+Set 
+\delta:=1/T
+δ:=1/T\delta:=1/T and 
+\iota:=\log(2T/\delta)=\log(2T^{2})
+ι:=log⁡(2​T/δ)=log⁡(2​T2)\iota:=\log(2T/\delta)=\log(2T^{2}), so that
+
+\gamma=C_{0}\iota
+γ=C0​ι\gamma=C_{0}\iota.
+
+Step 0: High-probability events.
+Choose the sample constant 
+C
+CC at least twice the corresponding constant in Lemma 4.3; then 
+N=\lceil C\log(2T)\rceil
+N=⌈C​log⁡(2​T)⌉N=\lceil C\log(2T)\rceil meets its sample requirement at failure probability 
+1/(2T)
+1/(2​T)1/(2T), since 
+\log(4T^{2})=2\log(2T)
+log⁡(4​T2)=2​log⁡(2​T)\log(4T^{2})=2\log(2T).
+Let 
+\mathcal{E}_{1}
+ℰ1\mathcal{E}_{1} be the event from Lemma 4.3 applied with
+failure probability 
+\delta/2=1/(2T)
+δ/2=1/(2​T)\delta/2=1/(2T), on which local optimality and balance control
+hold simultaneously for all 
+t\in[T]
+t∈[T]t\in[T]. By Lemma 4.1,
+deterministically,
+
+\displaystyle\|m_{t}-P_{\mathcal{S}_{t}}\nabla f(x_{t})\|^{2}\leq\frac{kL^{2}\tau^{2}}{4}\qquad\text{for all }t\in[T].
+∥mt−P𝒮t∇f(xt)∥2≤k​L2​τ24for all t∈[T].\displaystyle\|m_{t}-P_{\mathcal{S}_{t}}\nabla f(x_{t})\|^{2}\leq\frac{kL^{2}\tau^{2}}{4}\qquad\text{for all }t\in[T].
+
+The assumed upper bound on 
+\tau
+τ\tau also ensures
+
+\displaystyle\|m_{t}\|\leq\|P_{\mathcal{S}_{t}}\nabla f(x_{t})\|+\frac{L\tau\sqrt{k}}{2}\leq 2B,
+∥mt∥≤∥P𝒮t∇f(xt)∥+L​τ​k2≤2B,\displaystyle\|m_{t}\|\leq\|P_{\mathcal{S}_{t}}\nabla f(x_{t})\|+\frac{L\tau\sqrt{k}}{2}\leq 2B,
+
+so the reference-vector condition in Theorem 3.4 holds.
+Let 
+\mathcal{E}_{2}
+ℰ2\mathcal{E}_{2} be the event from that theorem applied with failure probability
+
+\delta
+δ\delta; its logarithmic parameter is precisely 
+\iota
+ι\iota. Thus, for
+
+\mathcal{E}:=\mathcal{E}_{1}\cap\mathcal{E}_{2}
+ℰ:=ℰ1∩ℰ2\mathcal{E}:=\mathcal{E}_{1}\cap\mathcal{E}_{2}, we have 
+\Pr(\mathcal{E})\geq 1-3\delta/2
+Pr⁡(ℰ)≥1−3​δ/2\Pr(\mathcal{E})\geq 1-3\delta/2.
+
+Step 1: Controlling 
+\mathcal{B}_{T}^{\gamma}
+ℬTγ\mathcal{B}_{T}^{\gamma} on 
+\mathcal{E}_{1}
+ℰ1\mathcal{E}_{1}.
+Because 
+m_{t}-P_{\mathcal{S}_{t}}\nabla f(x_{t})\in\mathcal{S}_{t}
+mt−P𝒮t∇f(xt)∈𝒮tm_{t}-P_{\mathcal{S}_{t}}\nabla f(x_{t})\in\mathcal{S}_{t} and
+
+P_{\mathcal{S}_{t}}^{\perp}\nabla f(x_{t})\in\mathcal{S}_{t}^{\perp}
+P𝒮t⟂∇f(xt)∈𝒮t⟂P_{\mathcal{S}_{t}}^{\perp}\nabla f(x_{t})\in\mathcal{S}_{t}^{\perp}, for each 
+t\in[T]
+t∈[T]t\in[T],
+
+\displaystyle\|m_{t}-\nabla f(x_{t})\|^{2}
+‖mt−∇f​(xt)‖2\displaystyle\|m_{t}-\nabla f(x_{t})\|^{2}
+
+\displaystyle=\|m_{t}-P_{\mathcal{S}_{t}}\nabla f(x_{t})\|^{2}+\|P_{\mathcal{S}_{t}}^{\perp}\nabla f(x_{t})\|^{2}
+=∥mt−P𝒮t∇f(xt)∥2+∥P𝒮t⟂∇f(xt)∥2\displaystyle=\|m_{t}-P_{\mathcal{S}_{t}}\nabla f(x_{t})\|^{2}+\|P_{\mathcal{S}_{t}}^{\perp}\nabla f(x_{t})\|^{2}
+
+\displaystyle\leq\frac{kL^{2}\tau^{2}}{4}+\|P_{\mathcal{S}_{t}}^{\perp}\nabla f(x_{t})\|^{2}.
+≤k​L2​τ24+∥P𝒮t⟂∇f(xt)∥2.\displaystyle\leq\frac{kL^{2}\tau^{2}}{4}+\|P_{\mathcal{S}_{t}}^{\perp}\nabla f(x_{t})\|^{2}.
+
+On 
+\mathcal{E}_{1}
+ℰ1\mathcal{E}_{1}, substituting this bound and applying the balance control from
+Lemma 4.3 with failure probability 
+\delta/2
+δ/2\delta/2 gives
+
+\displaystyle\alpha_{t}^{2}d\,\|m_{t}-\nabla f(x_{t})\|^{2}
+αt2​d​‖mt−∇f​(xt)‖2\displaystyle\alpha_{t}^{2}d\,\|m_{t}-\nabla f(x_{t})\|^{2}
+
+\displaystyle\leq\alpha_{t}^{2}d\,\|P_{\mathcal{S}_{t}}^{\perp}\nabla f(x_{t})\|^{2}+\frac{\alpha_{t}^{2}dkL^{2}\tau^{2}}{4}
+≤αt2d∥P𝒮t⟂∇f(xt)∥2+αt2​d​k​L2​τ24\displaystyle\leq\alpha_{t}^{2}d\,\|P_{\mathcal{S}_{t}}^{\perp}\nabla f(x_{t})\|^{2}+\frac{\alpha_{t}^{2}dkL^{2}\tau^{2}}{4}
+
+\displaystyle\leq\frac{\alpha_{t}}{2\gamma L}\|\nabla f(x_{t})\|^{2}+c\,\tau^{2}\!\left(d^{3}+d\log^{2}(4NT/\delta)+dk\right).
+≤αt2​γ​L​‖∇f​(xt)‖2+c​τ2​(d3+d​log2⁡(4​N​T/δ)+d​k).\displaystyle\leq\frac{\alpha_{t}}{2\gamma L}\|\nabla f(x_{t})\|^{2}+c\,\tau^{2}\!\left(d^{3}+d\log^{2}(4NT/\delta)+dk\right).
+
+Here we also used 
+\alpha_{t}\leq 1/(\gamma L)
+αt≤1/(γ​L)\alpha_{t}\leq 1/(\gamma L). Since
+
+N=O(\log T)
+N=O⁡(log⁡T)N=O(\log T) and 
+d\geq\iota
+d≥ιd\geq\iota, we have
+
+\log(4NT/\delta)\leq cd
+log⁡(4​N​T/δ)≤c​d\log(4NT/\delta)\leq cd. Dropping the remaining negative descent credit
+from each summand and summing over 
+t
+tt therefore yields
+
+\displaystyle\mathcal{B}_{T}^{\gamma}
+ℬTγ\displaystyle\mathcal{B}_{T}^{\gamma}
+
+\displaystyle\leq c\,\tau^{2}T(d^{3}+dk).
+≤c​τ2​T​(d3+d​k).\displaystyle\leq c\,\tau^{2}T(d^{3}+dk).
+
+(18)
+
+Step 2: Applying Theorem 3.4 on 
+\mathcal{E}
+ℰ\mathcal{E}.
+Deterministically, the step sizes satisfy
+
+\alpha_{t}\leq 1/(\gamma L)=1/(C_{0}\iota L)
+αt≤1/(γ​L)=1/(C0​ι​L)\alpha_{t}\leq 1/(\gamma L)=1/(C_{0}\iota L), which is precisely the
+hypothesis of Theorem 3.4. On 
+\mathcal{E}_{2}
+ℰ2\mathcal{E}_{2}, the
+high-probability bound gives
+
+\displaystyle\tfrac{1}{L}\textstyle\sum_{t=1}^{T}\alpha_{t}\|\nabla f(x_{t})\|^{2}\leq C\left(D_{f}^{2}+\tfrac{B^{2}}{L^{2}}+\tau^{2}Td^{3}+\mathcal{B}_{T}^{\gamma}\,\iota\right).
+1L​∑t=1Tαt​‖∇f​(xt)‖2≤C⁡(Df2+B2L2+τ2​T​d3+ℬTγ​ι).\displaystyle\tfrac{1}{L}\textstyle\sum_{t=1}^{T}\alpha_{t}\|\nabla f(x_{t})\|^{2}\leq C\left(D_{f}^{2}+\tfrac{B^{2}}{L^{2}}+\tau^{2}Td^{3}+\mathcal{B}_{T}^{\gamma}\,\iota\right).
+
+Substituting (18) and using 
+\iota=\log(2T^{2})
+ι=log⁡(2​T2)\iota=\log(2T^{2}),
+
+\displaystyle\tfrac{1}{L}\textstyle\sum_{t=1}^{T}\alpha_{t}\|\nabla f(x_{t})\|^{2}
+1L​∑t=1Tαt​‖∇f​(xt)‖2\displaystyle\tfrac{1}{L}\textstyle\sum_{t=1}^{T}\alpha_{t}\|\nabla f(x_{t})\|^{2}
+
+\displaystyle\leq c\left(D_{f}^{2}+\tfrac{B^{2}}{L^{2}}+\tau^{2}T(d^{3}+dk)\log(2T^{2})\right).
+≤c⁡(Df2+B2L2+τ2​T​(d3+d​k)​log⁡(2​T2)).\displaystyle\leq c\left(D_{f}^{2}+\tfrac{B^{2}}{L^{2}}+\tau^{2}T(d^{3}+dk)\log(2T^{2})\right).
+
+(19)
+
+Step 3: Taking expectations.
+On 
+\mathcal{E}
+ℰ\mathcal{E} (probability 
+\geq 1-3/(2T)
+≥1−3/(2​T)\geq 1-3/(2T)), local optimality gives
+
+\alpha_{t}\geq\alpha_{t}^{*}/(c_{0}\gamma)
+αt≥αt∗/(c0​γ)\alpha_{t}\geq\alpha_{t}^{*}/(c_{0}\gamma) for all 
+t
+tt, so
+
+\mathcal{A}_{T}\geq\mathcal{A}_{T}^{*}/(\gamma c_{0})
+𝒜T≥𝒜T∗/(γ​c0)\mathcal{A}_{T}\geq\mathcal{A}_{T}^{*}/(\gamma c_{0}). Dividing (19) by 
+\mathcal{A}_{T}
+𝒜T\mathcal{A}_{T}
+and using the output rule,
+
+\displaystyle\mathbb{I}_{\mathcal{E}}\cdot\E_{R}\!\left[\|\nabla f(\overline{x})\|^{2}\right]\leq\tfrac{c\gamma L}{\mathcal{A}_{T}^{*}}\left(D_{f}^{2}+\tfrac{B^{2}}{L^{2}}+\tau^{2}T(d^{3}+dk)\log(2T^{2})\right).
+𝕀ℰ⋅𝔼R⁡[‖∇f​(x¯)‖2]≤c​γ​L𝒜T∗​(Df2+B2L2+τ2​T​(d3+dk)​log⁡(2​T2)).\displaystyle\mathbb{I}_{\mathcal{E}}\cdot\E_{R}\!\left[\|\nabla f(\overline{x})\|^{2}\right]\leq\tfrac{c\gamma L}{\mathcal{A}_{T}^{*}}\left(D_{f}^{2}+\tfrac{B^{2}}{L^{2}}+\tau^{2}T(d^{3}+dk)\log(2T^{2})\right).
+
+On 
+\mathcal{E}^{c}
+ℰc\mathcal{E}^{c} (probability 
+\leq 3/(2T)
+≤3/(2​T)\leq 3/(2T)), we bound
+
+\|\nabla f(\overline{x})\|^{2}\leq B^{2}
+‖∇f​(x¯)‖2≤B2\|\nabla f(\overline{x})\|^{2}\leq B^{2}. Taking full expectations,
+
+\displaystyle\tfrac{1}{L}\,\E\!\left[\|\nabla f(\overline{x})\|^{2}\right]
+1L​𝔼⁡[‖∇f​(x¯)‖2]\displaystyle\tfrac{1}{L}\,\E\!\left[\|\nabla f(\overline{x})\|^{2}\right]
+
+\displaystyle\leq c\,\gamma\,\E\!\left[\tfrac{D_{f}^{2}+\tfrac{B^{2}}{L^{2}}+\tau^{2}T(d^{3}+dk)\log(2T^{2})}{\mathcal{A}_{T}^{*}}\right]+\tfrac{3B^{2}}{2LT}.
+≤c​γ​𝔼⁡[Df2+B2L2+τ2​T​(d3+dk)​log⁡(2​T2)𝒜T∗]+3​B22​L​T.\displaystyle\leq c\,\gamma\,\E\!\left[\tfrac{D_{f}^{2}+\tfrac{B^{2}}{L^{2}}+\tau^{2}T(d^{3}+dk)\log(2T^{2})}{\mathcal{A}_{T}^{*}}\right]+\tfrac{3B^{2}}{2LT}.
+
+The assumed bound on 
+\tau
+τ\tau makes the smoothing term at most 
+B^{2}/L^{2}
+B2/L2B^{2}/L^{2}.
+Finally, 
+\gamma=O(\log(2T))
+γ=O⁡(log⁡(2​T))\gamma=O(\log(2T)) and 
+\mathcal{A}_{T}^{*}\leq T/L
+𝒜T∗≤T/L\mathcal{A}_{T}^{*}\leq T/L, so the failure-event
+term is absorbed into the first term, proving the claim.
+
+D.1 Proof of Lemma 4.1
+
+Lemma D.1 (Restated)
+
+For every 
+x\in\mathbb{R}^{d}
+x∈ℝdx\in\mathbb{R}^{d} and 
+\mathcal{S}\in\mathrm{Gr}_{k}(\mathbb{R}^{d})
+𝒮∈Grk​(ℝd)\mathcal{S}\in\mathrm{Gr}_{k}(\mathbb{R}^{d}), Algorithm 2 satisfies
+
+\displaystyle\|P^{\tau}_{f}(x,\mathcal{S})-P_{\mathcal{S}}\nabla f(x)\|^{2}\leq\frac{kL^{2}\tau^{2}}{4}.
+∥Pfτ(x,𝒮)−P𝒮∇f(x)∥2≤k​L2​τ24.\displaystyle\|P^{\tau}_{f}(x,\mathcal{S})-P_{\mathcal{S}}\nabla f(x)\|^{2}\leq\frac{kL^{2}\tau^{2}}{4}.
+
+Proof
+
+Let 
+B=[b_{1},\ldots,b_{k}]
+B=[b1,…,bk]B=[b_{1},\ldots,b_{k}] be the orthonormal basis matrix used by
+Algorithm 2, and let 
+y:=B^{\top}\nabla f(x)
+y:=B⊤∇f(x)y:=B^{\top}\nabla f(x). For each
+
+j\in[k]
+j∈[k]j\in[k], 
+L
+LL-smoothness gives
+
+\displaystyle\left|\widehat{y}_{j}-\langle{\nabla f(x),b_{j}}\rangle\right|
+|y^j−⟨∇f​(x),bj⟩|\displaystyle\left|\widehat{y}_{j}-\langle{\nabla f(x),b_{j}}\rangle\right|
+
+\displaystyle=\frac{1}{\tau}\left|f(x+\tau b_{j})-f(x)-\tau\langle{\nabla f(x),b_{j}}\rangle\right|\leq\frac{L\tau}{2},
+=1τ​|f⁡(x+τ​bj)−f⁡(x)−τ⁡⟨∇f​(x),bj⟩|≤L​τ2,\displaystyle=\frac{1}{\tau}\left|f(x+\tau b_{j})-f(x)-\tau\langle{\nabla f(x),b_{j}}\rangle\right|\leq\frac{L\tau}{2},
+
+where we used 
+\|b_{j}\|=1
+‖bj‖=1\|b_{j}\|=1. Since 
+P_{\mathcal{S}}=BB^{\top}
+P𝒮=B​B⊤P_{\mathcal{S}}=BB^{\top} and 
+B^{\top}B=I_{k}
+B⊤​B=IkB^{\top}B=I_{k},
+
+\displaystyle\|P_{f}^{\tau}(x,\mathcal{S})-P_{\mathcal{S}}\nabla f(x)\|^{2}
+∥Pfτ(x,𝒮)−P𝒮∇f(x)∥2\displaystyle\|P_{f}^{\tau}(x,\mathcal{S})-P_{\mathcal{S}}\nabla f(x)\|^{2}
+
+\displaystyle=\|B(\widehat{y}-y)\|^{2}=\sum_{j=1}^{k}\left|\widehat{y}_{j}-\langle{\nabla f(x),b_{j}}\rangle\right|^{2}\leq\frac{kL^{2}\tau^{2}}{4}.
+=‖B⁡(y^−y)‖2=∑j=1k|y^j−⟨∇f​(x),bj⟩|2≤k​L2​τ24.\displaystyle=\|B(\widehat{y}-y)\|^{2}=\sum_{j=1}^{k}\left|\widehat{y}_{j}-\langle{\nabla f(x),b_{j}}\rangle\right|^{2}\leq\frac{kL^{2}\tau^{2}}{4}.
+
+D.2 Proofs of Lemmas 4.2 and 4.3
+
+We first establish the norm estimation guarantee (Lemma 4.2), then use it to prove Lemma 4.3.
+
+Lemma D.1 (Restated)
+
+There exist absolute constants 
+C,c&gt;0
+C,c&gt;0C,c&gt;0 such that for every 
+x\in\mathbb{R}^{d}
+x∈ℝdx\in\mathbb{R}^{d}, linear subspace 
+\mathcal{S}
+𝒮\mathcal{S} of 
+\mathbb{R}^{d}
+ℝd\mathbb{R}^{d}, 
+\tau&gt;0
+τ&gt;0\tau&gt;0, 
+\delta\in(0,1)
+δ∈(0,1)\delta\in(0,1), and 
+N\geq C\log(2/\delta)
+N≥C​log⁡(2/δ)N\geq C\log(2/\delta), it holds with probability at least 
+1-\delta
+1−δ1-\delta that
+
+\displaystyle N^{\tau}_{f}(x,\mathcal{S},N)\in\left[\tfrac{1}{2}\|P_{\mathcal{S}}\nabla f(x)\|^{2}-c\varepsilon,\,\tfrac{3}{2}\|P_{\mathcal{S}}\nabla f(x)\|^{2}+c\varepsilon\right],
+Nfτ(x,𝒮,N)∈[12∥P𝒮∇f(x)∥2−cε,32∥P𝒮∇f(x)∥2+cε],\displaystyle N^{\tau}_{f}(x,\mathcal{S},N)\in\left[\tfrac{1}{2}\|P_{\mathcal{S}}\nabla f(x)\|^{2}-c\varepsilon,\,\tfrac{3}{2}\|P_{\mathcal{S}}\nabla f(x)\|^{2}+c\varepsilon\right],
+
+where 
+\varepsilon=\tau^{2}L^{2}(d^{2}+\log^{2}(2N/\delta))
+ε=τ2​L2​(d2+log2⁡(2​N/δ))\varepsilon=\tau^{2}L^{2}(d^{2}+\log^{2}(2N/\delta)).
+
+Proof
+
+Let 
+v=P_{\mathcal{S}}\nabla f(x)
+v=P𝒮∇f(x)v=P_{\mathcal{S}}\nabla f(x). By 
+L
+LL-smoothness of 
+f
+ff,
+
+\widehat{y}_{i}=\langle{\nabla f(x),P_{\mathcal{S}}u_{i}}\rangle+\tau\epsilon_{i}=\langle{v,u_{i}}\rangle+\tau\epsilon_{i},
+y^i=⟨∇f​(x),P𝒮​ui⟩+τ​ϵi=⟨v,ui⟩+τ​ϵi,\widehat{y}_{i}=\langle{\nabla f(x),P_{\mathcal{S}}u_{i}}\rangle+\tau\epsilon_{i}=\langle{v,u_{i}}\rangle+\tau\epsilon_{i},
+
+with 
+|\epsilon_{i}|\leq\tfrac{L}{2}\|P_{\mathcal{S}}u_{i}\|^{2}\leq\tfrac{L}{2}\|u_{i}\|^{2}
+|ϵi|≤L2​‖P𝒮​ui‖2≤L2​‖ui‖2|\epsilon_{i}|\leq\tfrac{L}{2}\|P_{\mathcal{S}}u_{i}\|^{2}\leq\tfrac{L}{2}\|u_{i}\|^{2}. Decompose the estimator as follows
+
+\displaystyle\frac{1}{N}\sum_{i=1}^{N}\widehat{y}_{i}^{2}
+1N​∑i=1Ny^i2\displaystyle\frac{1}{N}\sum_{i=1}^{N}\widehat{y}_{i}^{2}
+
+\displaystyle\;=\;\frac{1}{N}\sum_{i=1}^{N}\langle{v,u_{i}}\rangle^{2}\;+\;\frac{2\tau}{N}\sum_{i=1}^{N}\langle{v,u_{i}}\rangle\,\epsilon_{i}\;+\;\frac{\tau^{2}}{N}\sum_{i=1}^{N}\epsilon_{i}^{2}.
+=1N​∑i=1N⟨v,ui⟩2+2​τN​∑i=1N⟨v,ui⟩​ϵi+τ2N​∑i=1Nϵi2.\displaystyle\;=\;\frac{1}{N}\sum_{i=1}^{N}\langle{v,u_{i}}\rangle^{2}\;+\;\frac{2\tau}{N}\sum_{i=1}^{N}\langle{v,u_{i}}\rangle\,\epsilon_{i}\;+\;\frac{\tau^{2}}{N}\sum_{i=1}^{N}\epsilon_{i}^{2}.
+
+Let 
+S_{1}=\frac{1}{N}\sum_{i=1}^{N}\langle{v,u_{i}}\rangle^{2}
+S1=1N​∑i=1N⟨v,ui⟩2S_{1}=\frac{1}{N}\sum_{i=1}^{N}\langle{v,u_{i}}\rangle^{2} and 
+S_{2}=\frac{1}{N}\sum_{i=1}^{N}\lVert u_{i}\rVert^{4}
+S2=1N​∑i=1N∥ui∥4S_{2}=\frac{1}{N}\sum_{i=1}^{N}\lVert u_{i}\rVert^{4}. Using the fact that 
+\epsilon_{i}^{2}\leq\frac{L^{2}}{4}\lVert u_{i}\rVert^{4}
+ϵi2≤L24​∥ui∥4\epsilon_{i}^{2}\leq\frac{L^{2}}{4}\lVert u_{i}\rVert^{4},
+
+\displaystyle\left|\frac{1}{N}\sum_{i=1}^{N}\widehat{y}_{i}^{2}-S_{1}\right|\leq\frac{S_{1}}{4}+\frac{5\tau^{2}}{N}\sum_{i=1}^{N}\epsilon_{i}^{2}\leq\frac{S_{1}}{4}+\frac{5\tau^{2}L^{2}S_{2}}{4}.
+|1N​∑i=1Ny^i2−S1|≤S14+5​τ2N​∑i=1Nϵi2≤S14+5​τ2​L2​S24.\displaystyle\left|\frac{1}{N}\sum_{i=1}^{N}\widehat{y}_{i}^{2}-S_{1}\right|\leq\frac{S_{1}}{4}+\frac{5\tau^{2}}{N}\sum_{i=1}^{N}\epsilon_{i}^{2}\leq\frac{S_{1}}{4}+\frac{5\tau^{2}L^{2}S_{2}}{4}.
+
+(20)
+
+Step 1: Concentrating 
+S_{1}
+S1S_{1} around 
+\|v\|^{2}
+‖v‖2\|v\|^{2}. When 
+v=0
+v=0v=0, 
+S_{1}=0
+S1=0S_{1}=0 holds almost surely. When 
+v\neq 0
+v≠0v\neq 0, 
+\langle{v,u_{i}}\rangle^{2}/\|v\|^{2}\overset{\mathrm{iid}}{\sim}\chi^{2}_{1}
+⟨v,ui⟩2/‖v‖2​∼iid​χ12\langle{v,u_{i}}\rangle^{2}/\|v\|^{2}\overset{\mathrm{iid}}{\sim}\chi^{2}_{1}. By Laurent-Massart (Lemma E.3), for 
+N\geq 256\log(4/\delta)
+N≥256​log⁡(4/δ)N\geq 256\log(4/\delta),
+
+\mathbb{P}\left(|S_{1}-\|v\|^{2}|\leq\tfrac{1}{5}\|v\|^{2}\right)\geq 1-\delta/2.
+ℙ⁡(|S1−‖v‖2|≤15​‖v‖2)≥1−δ/2.\mathbb{P}\left(|S_{1}-\|v\|^{2}|\leq\tfrac{1}{5}\|v\|^{2}\right)\geq 1-\delta/2.
+
+Step 2: Bounding 
+S_{2}
+S2S_{2}. Since 
+\lVert u_{i}\rVert^{2}\overset{\mathrm{iid}}{\sim}\chi_{d}^{2}
+∥ui∥2​∼iid​χd2\lVert u_{i}\rVert^{2}\overset{\mathrm{iid}}{\sim}\chi_{d}^{2}, by the union bound of Laurent-Massart (Lemma E.3),
+
+\displaystyle\Pr\left(\max_{i\in[N]}|\lVert u_{i}\rVert^{2}-d|\leq 2\sqrt{d\log(4N/\delta)}+2\log(4N/\delta)\right)\geq 1-\delta/2.
+Pr⁡(maxi∈[N]⁡|∥ui∥2−d|≤2​d​log⁡(4​N/δ)+2​log⁡(4​N/δ))≥1−δ/2.\displaystyle\Pr\left(\max_{i\in[N]}|\lVert u_{i}\rVert^{2}-d|\leq 2\sqrt{d\log(4N/\delta)}+2\log(4N/\delta)\right)\geq 1-\delta/2.
+
+Consequently, as 
+S_{2}\leq\max_{i\in[N]}\lVert u_{i}\rVert^{4}=(\max_{i\in[N]}\lVert u_{i}\rVert^{2})^{2}
+S2≤maxi∈[N]⁡∥ui∥4=(maxi∈[N]⁡∥ui∥2)2S_{2}\leq\max_{i\in[N]}\lVert u_{i}\rVert^{4}=(\max_{i\in[N]}\lVert u_{i}\rVert^{2})^{2}, we have
+
+\displaystyle\Pr\left(S_{2}\leq 18(d^{2}+\log^{2}(4N/\delta))\right)\geq 1-\delta/2.
+Pr⁡(S2≤18​(d2+log2⁡(4​N/δ)))≥1−δ/2.\displaystyle\Pr\left(S_{2}\leq 18(d^{2}+\log^{2}(4N/\delta))\right)\geq 1-\delta/2.
+
+Conclusion. Combining (20) with a union-bound over events in Steps 1 and 2, we have that with probability at least 
+1-\delta
+1−δ1-\delta,
+
+\displaystyle\frac{1}{N}\sum_{i=1}^{N}\widehat{y}_{i}^{2}
+1N​∑i=1Ny^i2\displaystyle\frac{1}{N}\sum_{i=1}^{N}\widehat{y}_{i}^{2}
+
+\displaystyle\in\left[\frac{3S_{1}}{4}-\frac{5\tau^{2}L^{2}S_{2}}{4},\frac{5S_{1}}{4}+\frac{5\tau^{2}L^{2}S_{2}}{4}\right]
+∈[3​S14−5​τ2​L2​S24,5​S14+5​τ2​L2​S24]\displaystyle\in\left[\frac{3S_{1}}{4}-\frac{5\tau^{2}L^{2}S_{2}}{4},\frac{5S_{1}}{4}+\frac{5\tau^{2}L^{2}S_{2}}{4}\right]
+
+\displaystyle\subset\left[\frac{\lVert v\rVert^{2}}{2}-25\tau^{2}L^{2}(d^{2}+\log^{2}(4N/\delta)),\frac{3\lVert v\rVert^{2}}{2}+25\tau^{2}L^{2}(d^{2}+\log^{2}(4N/\delta))\right].
+⊂[∥v∥22−25​τ2​L2​(d2+log2⁡(4​N/δ)),3​∥v∥22+25​τ2​L2​(d2+log2⁡(4​N/δ))].\displaystyle\subset\left[\frac{\lVert v\rVert^{2}}{2}-25\tau^{2}L^{2}(d^{2}+\log^{2}(4N/\delta)),\frac{3\lVert v\rVert^{2}}{2}+25\tau^{2}L^{2}(d^{2}+\log^{2}(4N/\delta))\right].
+
+Here 
+(3/4)(4/5)=3/5\geq 1/2
+(3/4)​(4/5)=3/5≥1/2(3/4)(4/5)=3/5\geq 1/2, 
+(5/4)(6/5)=3/2
+(5/4)​(6/5)=3/2(5/4)(6/5)=3/2, and 
+(5/4)\cdot 18\leq 25
+(5/4)⋅18≤25(5/4)\cdot 18\leq 25. Since 
+\log(4/\delta)\leq 2\log(2/\delta)
+log⁡(4/δ)≤2​log⁡(2/δ)\log(4/\delta)\leq 2\log(2/\delta) and 
+\log(4N/\delta)\leq 2\log(2N/\delta)
+log⁡(4​N/δ)≤2​log⁡(2​N/δ)\log(4N/\delta)\leq 2\log(2N/\delta), the stated constants may be taken as 
+C=512
+C=512C=512 and 
+c=100
+c=100c=100. This proves the lemma.
+
+Lemma D.1 (Restated)
+
+There exist absolute constants 
+C,c_{0},c_{1}&gt;0
+C,c0,c1&gt;0C,c_{0},c_{1}&gt;0 such that the following holds. For any 
+\delta\in(0,1)
+δ∈(0,1)\delta\in(0,1) and 
+N\geq C\log(2T/\delta)
+N≥C​log⁡(2​T/δ)N\geq C\log(2T/\delta), set 
+\varepsilon:=\tau^{2}L^{2}(d^{2}+\log^{2}(2NT/\delta))
+ε:=τ2​L2​(d2+log2⁡(2​N​T/δ))\varepsilon:=\tau^{2}L^{2}(d^{2}+\log^{2}(2NT/\delta)) and define
+
+\displaystyle\alpha_{t}:=\tfrac{1}{\gamma\,L}\,\min\left\{1,\,\tfrac{N^{\tau}_{f}(x_{t},\mathbb{R}^{d},N)+c_{1}\varepsilon}{16d\,\max\{0,\,N^{\tau}_{f}(x_{t},\mathcal{S}_{t}^{\perp},N)-c_{1}\varepsilon\}}\right\},
+αt:=1γ​L​min⁡{1,Nfτ​(xt,ℝd,N)+c1​ε16​d​max⁡{0,Nfτ​(xt,𝒮t⟂,N)−c1​ε}},\displaystyle\alpha_{t}:=\tfrac{1}{\gamma\,L}\,\min\left\{1,\,\tfrac{N^{\tau}_{f}(x_{t},\mathbb{R}^{d},N)+c_{1}\varepsilon}{16d\,\max\{0,\,N^{\tau}_{f}(x_{t},\mathcal{S}_{t}^{\perp},N)-c_{1}\varepsilon\}}\right\},
+
+If the denominator is zero, define 
+\alpha_{t}:=1/(\gamma L)
+αt:=1/(γ​L)\alpha_{t}:=1/(\gamma L).
+Then with probability at least 
+1-\delta
+1−δ1-\delta, for all 
+t\in[T]
+t∈[T]t\in[T] simultaneously:
+
+1. 
+
+(Local Optimality) 
+\quad\alpha_{t}\geq\tfrac{\alpha_{t}^{*}}{c_{0}\gamma}
+αt≥αt∗c0​γ\quad\alpha_{t}\geq\tfrac{\alpha_{t}^{*}}{c_{0}\gamma};
+
+2. 
+
+(Balance Control) 
+\quad\alpha_{t}^{2}d\lVert P_{\mathcal{S}_{t}}^{\perp}\nabla f(x_{t})\rVert^{2}\leq\tfrac{\alpha_{t}}{2\gamma L}\lVert\nabla f(x_{t})\rVert^{2}+c_{0}\,\tau^{2}(d^{3}+d\log^{2}(2NT/\delta))
+αt2d∥P𝒮t⟂∇f(xt)∥2≤αt2​γ​L∥∇f(xt)∥2+c0τ2(d3+dlog2(2NT/δ))\quad\alpha_{t}^{2}d\lVert P_{\mathcal{S}_{t}}^{\perp}\nabla f(x_{t})\rVert^{2}\leq\tfrac{\alpha_{t}}{2\gamma L}\lVert\nabla f(x_{t})\rVert^{2}+c_{0}\,\tau^{2}(d^{3}+d\log^{2}(2NT/\delta)).
+
+Proof
+
+Let 
+c_{\mathrm{NE}}
+cNEc_{\mathrm{NE}} be the error constant in Lemma 4.2, take 
+c_{1}=4c_{\mathrm{NE}}
+c1=4​cNEc_{1}=4c_{\mathrm{NE}}, and abbreviate 
+c:=c_{1}
+c:=c1c:=c_{1} within this proof.
+Write 
+a_{t}:=N^{\tau}_{f}(x_{t},\mathbb{R}^{d},N)
+at:=Nfτ​(xt,ℝd,N)a_{t}:=N^{\tau}_{f}(x_{t},\mathbb{R}^{d},N) and 
+b_{t}:=N^{\tau}_{f}(x_{t},\mathcal{S}_{t}^{\perp},N)
+bt:=Nfτ​(xt,𝒮t⟂,N)b_{t}:=N^{\tau}_{f}(x_{t},\mathcal{S}_{t}^{\perp},N), which target 
+\lVert\nabla f(x_{t})\rVert^{2}
+∥∇f​(xt)∥2\lVert\nabla f(x_{t})\rVert^{2} and 
+\lVert P^{\perp}_{\mathcal{S}_{t}}\nabla f(x_{t})\rVert^{2}
+∥P𝒮t⟂∇f(xt)∥2\lVert P^{\perp}_{\mathcal{S}_{t}}\nabla f(x_{t})\rVert^{2}, respectively. Apply Lemma 4.2 conditionally on the information available before each call, with failure probability 
+\delta/(2T)
+δ/(2​T)\delta/(2T). Its error radius is at most 
+4\varepsilon
+4​ε4\varepsilon, since 
+\log(4NT/\delta)\leq 2\log(2NT/\delta)
+log⁡(4​N​T/δ)≤2​log⁡(2​N​T/δ)\log(4NT/\delta)\leq 2\log(2NT/\delta). A union bound over the 
+2T
+2​T2T calls therefore gives, for 
+N\geq C\log(2T/\delta)
+N≥C​log⁡(2​T/δ)N\geq C\log(2T/\delta) with 
+C
+CC sufficiently large, with probability at least 
+1-\delta
+1−δ1-\delta,
+
+\displaystyle a_{t}\in\left[\tfrac{1}{2}\lVert\nabla f(x_{t})\rVert^{2}-c\varepsilon,\,\tfrac{3}{2}\lVert\nabla f(x_{t})\rVert^{2}+c\varepsilon\right]
+at∈[12​∥∇f​(xt)∥2−c​ε,32​∥∇f​(xt)∥2+c​ε]\displaystyle a_{t}\in\left[\tfrac{1}{2}\lVert\nabla f(x_{t})\rVert^{2}-c\varepsilon,\,\tfrac{3}{2}\lVert\nabla f(x_{t})\rVert^{2}+c\varepsilon\right]
+
+and similarly for 
+b_{t}
+btb_{t} targeting 
+\lVert P^{\perp}_{\mathcal{S}_{t}}\nabla f(x_{t})\rVert^{2}
+∥P𝒮t⟂∇f(xt)∥2\lVert P^{\perp}_{\mathcal{S}_{t}}\nabla f(x_{t})\rVert^{2}, simultaneously for all 
+t\in[T]
+t∈[T]t\in[T]. We work on this event throughout the rest of the proof.
+
+Local optimality. The bounds 
+a_{t}+c\varepsilon\geq\tfrac{1}{2}\lVert\nabla f(x_{t})\rVert^{2}
+at+c​ε≥12​∥∇f​(xt)∥2a_{t}+c\varepsilon\geq\tfrac{1}{2}\lVert\nabla f(x_{t})\rVert^{2} and 
+\max\{0,b_{t}-c\varepsilon\}\leq\tfrac{3}{2}\lVert P^{\perp}_{\mathcal{S}_{t}}\nabla f(x_{t})\rVert^{2}
+max{0,bt−cε}≤32∥P𝒮t⟂∇f(xt)∥2\max\{0,b_{t}-c\varepsilon\}\leq\tfrac{3}{2}\lVert P^{\perp}_{\mathcal{S}_{t}}\nabla f(x_{t})\rVert^{2} yield
+
+\displaystyle\alpha_{t}\geq\tfrac{1}{\gamma L}\,\min\left\{1,\,\tfrac{\lVert\nabla f(x_{t})\rVert^{2}}{64d\,\lVert P^{\perp}_{\mathcal{S}_{t}}\nabla f(x_{t})\rVert^{2}}\right\}\geq\tfrac{\alpha_{t}^{*}}{64\gamma}.
+αt≥1γ​L​min⁡{1,∥∇f​(xt)∥264d∥P⟂𝒮t∇f(xt)∥2}≥αt∗64​γ.\displaystyle\alpha_{t}\geq\tfrac{1}{\gamma L}\,\min\left\{1,\,\tfrac{\lVert\nabla f(x_{t})\rVert^{2}}{64d\,\lVert P^{\perp}_{\mathcal{S}_{t}}\nabla f(x_{t})\rVert^{2}}\right\}\geq\tfrac{\alpha_{t}^{*}}{64\gamma}.
+
+(When 
+b_{t}-c\varepsilon\leq 0
+bt−c​ε≤0b_{t}-c\varepsilon\leq 0 or 
+\nabla f(x_{t})=0
+∇f​(xt)=0\nabla f(x_{t})=0, 
+\alpha_{t}=1/(\gamma L)\geq\alpha_{t}^{*}/\gamma
+αt=1/(γ​L)≥αt∗/γ\alpha_{t}=1/(\gamma L)\geq\alpha_{t}^{*}/\gamma directly.)
+
+Balance Control. We bound 
+\alpha_{t}^{2}d\,\lVert P^{\perp}_{\mathcal{S}_{t}}\nabla f(x_{t})\rVert^{2}
+αt2d∥P𝒮t⟂∇f(xt)∥2\alpha_{t}^{2}d\,\lVert P^{\perp}_{\mathcal{S}_{t}}\nabla f(x_{t})\rVert^{2} in two cases.
+
+Case 1: 
+c\varepsilon\leq\tfrac{1}{8}\lVert P^{\perp}_{\mathcal{S}_{t}}\nabla f(x_{t})\rVert^{2}
+cε≤18∥P𝒮t⟂∇f(xt)∥2c\varepsilon\leq\tfrac{1}{8}\lVert P^{\perp}_{\mathcal{S}_{t}}\nabla f(x_{t})\rVert^{2}. Then 
+b_{t}-c\varepsilon\geq\tfrac{1}{4}\lVert P^{\perp}_{\mathcal{S}_{t}}\nabla f(x_{t})\rVert^{2}
+bt−cε≥14∥P𝒮t⟂∇f(xt)∥2b_{t}-c\varepsilon\geq\tfrac{1}{4}\lVert P^{\perp}_{\mathcal{S}_{t}}\nabla f(x_{t})\rVert^{2} and 
+a_{t}+c\varepsilon\leq\tfrac{3}{2}\lVert\nabla f(x_{t})\rVert^{2}+2c\varepsilon
+at+c​ε≤32​∥∇f​(xt)∥2+2​c​εa_{t}+c\varepsilon\leq\tfrac{3}{2}\lVert\nabla f(x_{t})\rVert^{2}+2c\varepsilon, which guarantees
+
+\displaystyle\alpha_{t}\leq\tfrac{1}{\gamma L}\,\min\left\{1,\,\tfrac{\lVert\nabla f(x_{t})\rVert^{2}}{2d\,\lVert P^{\perp}_{\mathcal{S}_{t}}\nabla f(x_{t})\rVert^{2}}\right\}+\tfrac{c\varepsilon}{2\gamma Ld\,\lVert P^{\perp}_{\mathcal{S}_{t}}\nabla f(x_{t})\rVert^{2}}.
+αt≤1γ​L​min⁡{1,∥∇f​(xt)∥22d∥P⟂𝒮t∇f(xt)∥2}+c​ε2γLd∥P⟂𝒮t∇f(xt)∥2.\displaystyle\alpha_{t}\leq\tfrac{1}{\gamma L}\,\min\left\{1,\,\tfrac{\lVert\nabla f(x_{t})\rVert^{2}}{2d\,\lVert P^{\perp}_{\mathcal{S}_{t}}\nabla f(x_{t})\rVert^{2}}\right\}+\tfrac{c\varepsilon}{2\gamma Ld\,\lVert P^{\perp}_{\mathcal{S}_{t}}\nabla f(x_{t})\rVert^{2}}.
+
+Multiplying by 
+\alpha_{t}d\,\lVert P^{\perp}_{\mathcal{S}_{t}}\nabla f(x_{t})\rVert^{2}
+αtd∥P𝒮t⟂∇f(xt)∥2\alpha_{t}d\,\lVert P^{\perp}_{\mathcal{S}_{t}}\nabla f(x_{t})\rVert^{2} and using 
+\alpha_{t}\leq 1/(\gamma L)
+αt≤1/(γ​L)\alpha_{t}\leq 1/(\gamma L),
+
+\displaystyle\alpha_{t}^{2}d\,\lVert P^{\perp}_{\mathcal{S}_{t}}\nabla f(x_{t})\rVert^{2}\leq\tfrac{\alpha_{t}}{2\gamma L}\lVert\nabla f(x_{t})\rVert^{2}+\tfrac{c\varepsilon}{2L^{2}}\leq\tfrac{\alpha_{t}}{2\gamma L}\lVert\nabla f(x_{t})\rVert^{2}+c\,\tau^{2}(d^{2}+\log^{2}(2NT/\delta)).
+αt2d∥P𝒮t⟂∇f(xt)∥2≤αt2​γ​L∥∇f(xt)∥2+c​ε2​L2≤αt2​γ​L∥∇f(xt)∥2+cτ2(d2+log2(2NT/δ)).\displaystyle\alpha_{t}^{2}d\,\lVert P^{\perp}_{\mathcal{S}_{t}}\nabla f(x_{t})\rVert^{2}\leq\tfrac{\alpha_{t}}{2\gamma L}\lVert\nabla f(x_{t})\rVert^{2}+\tfrac{c\varepsilon}{2L^{2}}\leq\tfrac{\alpha_{t}}{2\gamma L}\lVert\nabla f(x_{t})\rVert^{2}+c\,\tau^{2}(d^{2}+\log^{2}(2NT/\delta)).
+
+Case 2: 
+c\varepsilon&gt;\tfrac{1}{8}\lVert P^{\perp}_{\mathcal{S}_{t}}\nabla f(x_{t})\rVert^{2}
+cε&gt;18∥P𝒮t⟂∇f(xt)∥2c\varepsilon&gt;\tfrac{1}{8}\lVert P^{\perp}_{\mathcal{S}_{t}}\nabla f(x_{t})\rVert^{2}. Then 
+\lVert P^{\perp}_{\mathcal{S}_{t}}\nabla f(x_{t})\rVert^{2}&lt;8c\varepsilon
+∥P𝒮t⟂∇f(xt)∥2&lt;8cε\lVert P^{\perp}_{\mathcal{S}_{t}}\nabla f(x_{t})\rVert^{2}&lt;8c\varepsilon and, using 
+\alpha_{t}\leq 1/(\gamma L)\leq 1/L
+αt≤1/(γ​L)≤1/L\alpha_{t}\leq 1/(\gamma L)\leq 1/L,
+
+\displaystyle\alpha_{t}^{2}d\,\lVert P^{\perp}_{\mathcal{S}_{t}}\nabla f(x_{t})\rVert^{2}\leq\tfrac{1}{\gamma^{2}L^{2}}\cdot d\cdot 8c\varepsilon\leq 8c\,\tau^{2}(d^{3}+d\log^{2}(2NT/\delta)).
+αt2d∥P𝒮t⟂∇f(xt)∥2≤1γ2​L2⋅d⋅8cε≤8cτ2(d3+dlog2(2NT/δ)).\displaystyle\alpha_{t}^{2}d\,\lVert P^{\perp}_{\mathcal{S}_{t}}\nabla f(x_{t})\rVert^{2}\leq\tfrac{1}{\gamma^{2}L^{2}}\cdot d\cdot 8c\varepsilon\leq 8c\,\tau^{2}(d^{3}+d\log^{2}(2NT/\delta)).
+
+Combining both cases and taking 
+c_{0}=\max\{64,8c\}
+c0=max⁡{64,8​c}c_{0}=\max\{64,8c\} proves both claims of the lemma.
+
+Appendix E Technical Preliminaries
+
+Fact E.1
+
+Let 
+u\sim\mathcal{N}(0,I_{d})
+u∼𝒩⁡(0,Id)u\sim\mathcal{N}(0,I_{d}). For 
+k\in\mathbb{N}
+k∈ℕk\in\mathbb{N}, it holds that
+
+\displaystyle\E\!\left[(uu^{\top})^{k}\right]=\prod_{j=1}^{k-1}(d+2j)\,I_{d}.
+𝔼⁡[(uu⊤)k]=∏j=1k−1(d+2​j)​Id.\displaystyle\E\!\left[(uu^{\top})^{k}\right]=\prod_{j=1}^{k-1}(d+2j)\,I_{d}.
+
+Fact E.2
+
+Let 
+u\sim\mathcal{N}(0,I_{d})
+u∼𝒩⁡(0,Id)u\sim\mathcal{N}(0,I_{d}). For 
+k&gt;-d
+k&gt;−dk&gt;-d, it holds that
+
+\displaystyle\E\!\left[\lVert u\rVert^{k}\right]\leq 2^{k/2}\,\frac{\Gamma(\frac{d+k}{2})}{\Gamma(\frac{d}{2})}\leq(d+k)^{k/2}.
+𝔼⁡[∥u∥k]≤2k/2​Γ⁡(d+k2)Γ⁡(d2)≤(d+k)k/2.\displaystyle\E\!\left[\lVert u\rVert^{k}\right]\leq 2^{k/2}\,\frac{\Gamma(\frac{d+k}{2})}{\Gamma(\frac{d}{2})}\leq(d+k)^{k/2}.
+
+In particular, for 
+m\in\mathbb{N}
+m∈ℕm\in\mathbb{N}, 
+\E\!\left[\lVert u\rVert^{2m}\right]=d(d+2)\ldots(d+2m-2)
+𝔼⁡[∥u∥2​m]=d⁡(d+2)​…​(d+2​m−2)\E\!\left[\lVert u\rVert^{2m}\right]=d(d+2)\ldots(d+2m-2).
+
+Lemma E.3 (Laurent–Massart)
+
+Let 
+X_{1},\ldots,X_{N}\overset{\mathrm{iid}}{\sim}\chi^{2}_{d}
+X1,…,XN​∼iid​χd2X_{1},\ldots,X_{N}\overset{\mathrm{iid}}{\sim}\chi^{2}_{d} and 
+\bar{X}=\frac{1}{N}\sum_{i=1}^{N}X_{i}
+X¯=1N​∑i=1NXi\bar{X}=\frac{1}{N}\sum_{i=1}^{N}X_{i}. For every 
+\delta\in(0,1)
+δ∈(0,1)\delta\in(0,1),
+
+\displaystyle\mathbb{P}\!\left(\left|\bar{X}-d\right|\leq 2\sqrt{\frac{d\log(2/\delta)}{N}}+\frac{2\log(2/\delta)}{N}\right)\geq 1-\delta.
+ℙ⁡(|X¯−d|≤2​d​log⁡(2/δ)N+2​log⁡(2/δ)N)≥1−δ.\displaystyle\mathbb{P}\!\left(\left|\bar{X}-d\right|\leq 2\sqrt{\frac{d\log(2/\delta)}{N}}+\frac{2\log(2/\delta)}{N}\right)\geq 1-\delta.
+
+Lemma E.4 (Isserlis)
+
+For fixed 
+a\in\mathbb{R}^{d}
+a∈ℝda\in\mathbb{R}^{d} and 
+\Sigma\in\mathbb{R}^{d\times d}
+Σ∈ℝd×d\Sigma\in\mathbb{R}^{d\times d},
+
+\displaystyle\E_{z\sim\mathcal{N}(0,I_{d})}\bigl[(a^{\top}z)^{2}(z^{\top}\Sigma z)\bigr]=\|a\|^{2}\,\tr(\Sigma)+2\,a^{\top}\Sigma\,a.
+𝔼z∼𝒩⁡(0,Id)⁡[(a⊤​z)2​(z⊤​Σ​z)]=‖a‖2​tr⁡(Σ)+2​a⊤​Σ​a.\displaystyle\E_{z\sim\mathcal{N}(0,I_{d})}\bigl[(a^{\top}z)^{2}(z^{\top}\Sigma z)\bigr]=\|a\|^{2}\,\tr(\Sigma)+2\,a^{\top}\Sigma\,a.
+
+Proof
+
+Write 
+(a^{\top}z)^{2}(z^{\top}\Sigma z)=\sum_{i,j,k,l}a_{i}a_{j}\Sigma_{kl}\,z_{i}z_{j}z_{k}z_{l}
+(a⊤​z)2​(z⊤​Σ​z)=∑i,j,k,lai​aj​Σk​l​zi​zj​zk​zl(a^{\top}z)^{2}(z^{\top}\Sigma z)=\sum_{i,j,k,l}a_{i}a_{j}\Sigma_{kl}\,z_{i}z_{j}z_{k}z_{l}.
+Since 
+z\sim\mathcal{N}(0,I_{d})
+z∼𝒩⁡(0,Id)z\sim\mathcal{N}(0,I_{d}), Isserlis’ theorem gives
+
+\E[z_{i}z_{j}z_{k}z_{l}]=\delta_{ij}\delta_{kl}+\delta_{ik}\delta_{jl}+\delta_{il}\delta_{jk}
+𝔼⁡[zi​zj​zk​zl]=δij​δkl+δik​δjl+δil​δjk\E[z_{i}z_{j}z_{k}z_{l}]=\delta_{ij}\delta_{kl}+\delta_{ik}\delta_{jl}+\delta_{il}\delta_{jk}.
+Substituting and summing over each pairing:
+
+\displaystyle\sum_{i,j,k,l}a_{i}a_{j}\Sigma_{kl}\,\delta_{ij}\delta_{kl}
+∑i,j,k,lai​aj​Σk​l​δi​j​δk​l\displaystyle\sum_{i,j,k,l}a_{i}a_{j}\Sigma_{kl}\,\delta_{ij}\delta_{kl}
+
+\displaystyle=\Bigl(\sum_{i}a_{i}^{2}\Bigr)\Bigl(\sum_{k}\Sigma_{kk}\Bigr)=\|a\|^{2}\,\tr(\Sigma),
+=(∑iai2)​(∑kΣk​k)=‖a‖2​tr⁡(Σ),\displaystyle=\Bigl(\sum_{i}a_{i}^{2}\Bigr)\Bigl(\sum_{k}\Sigma_{kk}\Bigr)=\|a\|^{2}\,\tr(\Sigma),
+
+\displaystyle\sum_{i,j,k,l}a_{i}a_{j}\Sigma_{kl}\,\delta_{ik}\delta_{jl}
+∑i,j,k,lai​aj​Σk​l​δi​k​δj​l\displaystyle\sum_{i,j,k,l}a_{i}a_{j}\Sigma_{kl}\,\delta_{ik}\delta_{jl}
+
+\displaystyle=\sum_{i,j}a_{i}a_{j}\Sigma_{ij}=a^{\top}\Sigma\,a,
+=∑i,jai​aj​Σi​j=a⊤​Σ​a,\displaystyle=\sum_{i,j}a_{i}a_{j}\Sigma_{ij}=a^{\top}\Sigma\,a,
+
+\displaystyle\sum_{i,j,k,l}a_{i}a_{j}\Sigma_{kl}\,\delta_{il}\delta_{jk}
+∑i,j,k,lai​aj​Σk​l​δi​l​δj​k\displaystyle\sum_{i,j,k,l}a_{i}a_{j}\Sigma_{kl}\,\delta_{il}\delta_{jk}
+
+\displaystyle=\sum_{i,j}a_{i}a_{j}\Sigma_{ji}=a^{\top}\Sigma\,a,
+=∑i,jai​aj​Σj​i=a⊤​Σ​a,\displaystyle=\sum_{i,j}a_{i}a_{j}\Sigma_{ji}=a^{\top}\Sigma\,a,
+
+where the last equality uses symmetry of 
+\Sigma
+Σ\Sigma. Summing the three terms yields the result.
+
+    Experimental support, please
+    view the build logs
+    for errors. Generated by
+
+        L
+        A
+        T
+        E
+      
+      xml
+      
+    .
+
+Instructions for reporting errors
+
+We are continuing to improve HTML versions of papers, and your feedback helps enhance accessibility and mobile
+      support. To report errors in the HTML that will help us improve conversion and rendering, choose any of the
+      methods listed below:
+
+Click the &quot;Report Issue&quot; (
+            
+          ) button, located in the page header.
+
+Tip: You can select the relevant text first, to include it in your report.
+
+Our team has already identified the following issues. We appreciate your time reviewing and reporting rendering errors we
+      may not have found yet. Your efforts will help us improve the HTML versions for all readers, because disability
+      should not be a barrier to accessing research. Thank you for your continued support in championing open access for
+      all.
+
+Have a free development cycle? Help support accessibility at arXiv! Our collaborators at LaTeXML maintain a list of packages that need conversion, and welcome developer contributions.
+
+        We gratefully acknowledge support from
+        our major funders,
+        member institutions, ,
+        and all contributors.
+
+Major funding support from</pre></html>

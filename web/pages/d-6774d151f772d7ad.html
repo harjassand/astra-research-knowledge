@@ -1,0 +1,89 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Cycle3: finite same-budget exact histogram/full-trace conversion</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>Cycle3: finite same-budget exact histogram/full-trace conversion</h1><p>Source ID d-6774d151f772d7ad; literature/notes/d_math/cycle3/finite_histogram_converter_proof.md; 2254 o200k tokens; role research_note; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre># Cycle3: finite same-budget exact histogram/full-trace conversion
+
+Independent proof and exact integer/rational budget checks, 2026-10-06. Source observations alone are the budget. Models are supplied, preprocessing and auxiliary randomness are separate costs, and exact rational arithmetic is assumed. This result does not infer simulator exactness from simulation and does not claim unknown-model acquisition.
+
+## Experiments and exact classifier
+
+Three states i=0,1,2. Source action a has X~Bernoulli(1/10) if a=i and X~Bernoulli(9/10) otherwise, cost one per observed X. Target n iid observations have ternary probabilities 4/5 at the true-state label and 1/10 at the other two labels.
+
+A balanced classifier takes r observations from each source action, then selects an action with the smallest count of X=1, uniformly over ties. In state i, its own count has Bin(r,1/10) law and the other two counts are independent Bin(r,9/10). By permutation symmetry its confusion matrix is A(r)=(1-3b(r))I+b(r)J, where b(r) is each off-diagonal error probability. Its total error is 2b(r).
+
+Exact formula: let lo_k=C(r,k)9^(r-k), hi_k=C(r,k)9^k, greater_k=sum_{s&gt;k}hi_s, den=3*10^(3r). Then its diagonal numerator is
+sum_k lo_k[3 greater_k^2+3 hi_k greater_k+hi_k^2].
+The terms correspond respectively to no tied rival, one tied rival (correct tie probability1/2), and two tied rivals (correct tie probability1/3). Thus b=(den-diag)/(2den), exactly rational.
+
+Pairwise Chernoff bound: if a rival count X_j&lt;=X_i, then 9^(X_i-X_j)&gt;=1. Independent binomial mgfs give E_i9^(X_i-X_j)=(9/25)^r. Union over two rivals yields 2b(r)&lt;=2(9/25)^r, hence b(r)&lt;=(9/25)^r. This is sharper than the available Hoeffding classifier bound.
+
+Fix eta=1/(30n). Choose r0 minimally so exact classifier error 2b(r0)&lt;=eta, and L minimally so 9^L&gt;=1/eta. Initial classification costs3r0.
+
+## Histogram proposal, verifier, and pointwise residual
+
+For a target histogram c=(c0,c1,c2), sum c=n, let H_i(c)=multinomial(n;c)*8^(ci)/10^n. All histograms have positive probability and H_i/H_j=8^(ci-cj). After initial classification k, draw a proposal c from H_k using auxiliary randomization.
+
+Choose integer B_k(c) minimally with
+9^B &gt;= 8^[max_{j!=k}(ck-cj)]_+ / eta.
+Repeatedly query source action k, giving a walk increment+1 on X=0 and-1 on X=1. Stop on hit+B (accept c) or-L (reject), with source sample count V. Under state k, p(+1)=.9 and mean increment .8; under every rival state p(+1)=.1 and mean increment-.8.
+
+This finite-interval walk has finite expected stopping time. Wald gives own E_kV&lt;=B/.8 because E_k walk_terminal&lt;=B; for a rival i, E_iV&lt;=L/.8 because -E_i walk_terminal&lt;=L. There is no overshoot: B,L are integers and increments are+/-1.
+
+Exact acceptance probabilities are
+s(B)=(9^(B+L)-9^B)/(9^(B+L)-1) under the candidate,
+t(B)=(9^L-1)/(9^(B+L)-1)=9^-B s(B) under a rival.
+Own rejection&lt;=9^-L&lt;=eta. Since 9^B&gt;=8^positive_max/eta, t(B_k)&lt;=eta H_i(c)/H_k(c) for every i!=k.
+
+Let A0=A(r0). Thin successful proposals independently by a=(1-eta)/(1+2eta), yielding
+Q_i(c)=a sum_k A0(i,k)H_k(c)p_i(k,c).
+Own contribution lower bound is (1-eta)^2 H_i; every cross contribution is &lt;=eta H_i. Consequently
+Q_i&lt;=(1-eta)H_i,
+Q_i&gt;=a(1-eta)^2 H_i.
+For the missing submass T_i=H_i-Q_i, therefore eta H_i&lt;=T_i&lt;=6eta H_i. In fact the lower Q bound gives the stronger upper5eta H_i, but6eta suffices. The proof is pointwise, not only a total variation statement.
+
+Permutation equivariance of the balanced classifier, target proposal law, B_k(c), walk and common thinning constant implies equal total flag probability in all three states:
+delta=sum_c T_i(c), independent of i.
+This symmetry is indispensable for the simplified residual repair below. It is a mathematical property of this fixture, not an approximation inferred from Monte Carlo. eta&lt;=delta&lt;=6eta.
+
+## Exact implicit residual repair without computing delta
+
+Choose rR so bR=b(rR)&lt;=1/(18*8^n). A conservative integer certificate is
+18*8^n*9^rR&lt;=25^rR,
+since bR&lt;=(9/25)^rR. The balanced repair classifier costs3rR, with AR=(1-3bR)I+bR J and lambda=1-3bR. Its inverse is (I-bR J)/lambda. Put
+W=AR^-1 T, so W_i(c)=[T_i(c)-bR sum_j T_j(c)]/lambda.
+
+Because H_j(c)/H_i(c)&lt;=8^n, sum_jT_j(c)&lt;=18eta 8^n H_i(c). Hence bR sum_jT_j&lt;=eta H_i&lt;=T_i, proving W&gt;=0. Also lambda&gt;=1/2, so W_i&lt;=T_i/lambda&lt;=12eta H_i. The row mass of W is delta, since all T rows have mass delta and AR^-1 preserves the all-ones vector.
+
+On the flag, take the fresh balanced repair classifier and call its output k. Draw independent proposals c~H_k, accepting each with exact probability W_k(c)/(12eta H_k(c)). This ratio lies in[0,1]. No computation of delta is required. A proposal is accepted with probability delta/(12eta)&gt;=1/12; expected auxiliary proposals&lt;=12, and the eventual accepted law is W_k/delta. Applying the classifier gives repaired law
+AR(W/delta)=T/delta.
+Thus unconditional final histogram law is Q_i+delta*(T_i/delta)=H_i, exactly.
+
+Evaluating Q_i/H_k and W_i/H_k only requires histogram likelihood ratios8^(ci-ck), exact classifier probabilities, and the exact walk acceptance probabilities above. The common multinomial coefficient cancels, so enumerating all (n+1)(n+2)/2 histograms is unnecessary. This establishes the law and acceptance envelope; bit complexity and preprocessing cost are distinct from the source sample budget.
+
+## Exact reconstruction of the full target trace
+
+After accepting a histogram c, draw uniformly from all ordered ternary strings with those counts. Every such string has conditional probability1/multinomial(n;c), independent of the state. Hence each output string z has final probability
+H_i(c(z))/multinomial(n;c(z))=8^ci(z)/10^n,
+which is exactly its iid target probability. The converter therefore reproduces the full n-symbol terminal experiment, including ordering, not merely histograms or pairwise information. Uniform multiset permutation uses auxiliary randomness and no further source observations.
+
+## Finite expected source cost bound
+
+Under H_i, each difference Ci-Cj has mean .7n and variance .41n: a target trial contributes+1 with probability.8,-1 with probability.1,and0 with probability.1. Write Z_j=(Ci-Cj)-.7n. Then
+max_j[Ci-Cj]_+ &lt;= .7n+sqrt(Z_1^2+Z_2^2),
+so Jensen gives E maxpositive &lt;= .7n+sqrt(.82n). No independence between the two differences is assumed.
+
+Let nu=log8/log9. Since8^20&lt;9^19, nu&lt;19/20 exactly. Minimal B satisfies B&lt;=L+1+nu*maxpositive. Initial correct classification costs at most E_Hi B/.8; wrong classification probability&lt;=eta costs at most eta L/.8. Repair is run with probability delta&lt;=6eta and costs3rR source samples. Therefore, simultaneously in every state,
+E_i N &lt;=3r0 + ( [19/20][.7n+ceil sqrt(.82n)]+L+1 )/(4/5)
+             + eta L/(4/5) +18eta rR.
+
+Every inequality in the implemented certificate is integer or rational. The same-budget claim is independent of floating log/roundoff estimates.
+
+Executed certificate:
+- n=512: r0=9,L=5,rR=1045,ceil sqrt(.82n)=21; bound29875969/61440=486.262516276...&lt;512.
+- n=1024: r0=9,L=5,rR=2088,ceil sqrt(.82n)=29; bound113216857/122880=921.361140950...&lt;1024.
+- n=2048: bound1791.059887695...&lt;2048.
+The conservative certificate fails at n=64,128,256; these rows are retained. Failure of this upper bound does not prove impossibility of a better converter.
+
+Reproduce with `python3 work/d_math/cycle3/finite_budget_certificate.py`; results in `results/d_math/cycle3/finite_budget_certificate.json`. Runtime implementation is independently owned by d_example. This proof establishes exactness for the stated algorithm, not conformity of code that has not yet been inspected.
+
+## Scope and open cost issues
+
+The strict finite expected SOURCE observation saving is real in this supplied-model fixture. Auxiliary target proposals, trace generation, exact classifier compilation and arithmetic are not free computationally; they are excluded only from the observation budget and must remain in a separate ledger. The rare repair classifier uses thousands of source samples on flagged paths even though its expected contribution is about1.224 at n1024. There is no hard sample cap or worst-path same-budget statement. Expected auxiliary proposals&lt;=12 is not a bound on all auxiliary bit draws or exact arithmetic operations.
+</pre></html>

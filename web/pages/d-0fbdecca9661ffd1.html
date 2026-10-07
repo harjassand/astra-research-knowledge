@@ -1,0 +1,1141 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>A New Sparse Polynomial GCD by Separating Terms</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>A New Sparse Polynomial GCD by Separating Terms</h1><p>Source ID d-0fbdecca9661ffd1; literature/sources/r14_computation/cycle6/HuangMonagan2024.txt; 32627 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>A New Sparse Polynomial GCD by Separating Terms
+Qiao-Long Huang
+School of Mathematics, Shandong University
+Jinan, China
+huangqiaolong@sdu.edu.cn
+Michael Monagan∗
+Department of Mathematics, Simon Fraser University
+Burnaby, British Columbia, Canada
+mmonagan@sfu.ca
+ABSTRACT
+We propose a new sparse GCD algorithm for multivariate polynomi-
+als over finite fields. Our algorithm uses a new type of substitution
+to recover the terms of the GCD in batches. We present a detailed
+complexity analysis and experimental results which show that our
+algorithm is faster than Zippel’s GCD algorithm and competitive
+with the Monagan-Hu GCD algorithm.
+CCS CONCEPTS
+•Computing methodologies → Symbolic and algebraic manipu-
+lation; •Theory of Computation → Analysis of Algorithms and
+Problem Complexity.
+KEYWORDS
+Polynomial GCD, Sparse Polynomial, Kronecker Substitution
+ACM Reference Format:
+Qiao-Long Huang and Michael Monagan. 2024. A New Sparse Polynomial
+GCD by Separating Terms. In International Symposium on Symbolic and
+Algebraic Computation (ISSAC ’24), July 16–19, 2024, Raleigh, NC, USA. ACM,
+New York, NY, USA, 9 pages. https://doi.org/10.1145/3666000.3669684
+1 INTRODUCTION
+Let 𝐴 and 𝐵 be polynomials in Z[𝑥1, . . . , 𝑥𝑛] and let 𝐺 = gcd(𝐴, 𝐵)
+be their greatest common divisor (GCD). Computing 𝐺 is a key
+operation in a Computer Algebra System. One application is to
+simplify the fraction 𝐴/𝐵. GCD computation is interesting because
+all modifications of the Euclidean algorithm [3, 5] to compute 𝐺
+result in an expression swell where the size of the intermediate
+polynomials grows exponentially in 𝑛 the number of variables.
+In 1971, Brown [ 2] solved the intermediate expression swell
+problem by interpolating 𝑥2, 𝑥3, . . . , 𝑥𝑛 in 𝐺 from many univariate
+images of 𝐺 in 𝑥1. For polynomials of degree 𝑑 Brown’s algorithm
+uses 𝑂 (𝑑𝑛−1) univariate images which is effective for dense poly-
+nomials but not sparse polynomials.
+Early sparse GCD algorithms include Zippel’s algorithm [24]
+from 1979 and Wang’s EEZ-GCD algorithm [23] from 1980. Zippel’s
+algorithm is currently the main GCD algorithm in Fermat, Magma,
+Maple and Mathematica. The literature for the polynomial GCD
+∗Corresponding author
+Permission to make digital or hard copies of all or part of this work for personal or
+classroom use is granted without fee provided that copies are not made or distributed
+for profit or commercial advantage and that copies bear this notice and the full citation
+on the first page. Copyrights for components of this work owned by others than the
+author(s) must be honored. Abstracting with credit is permitted. To copy otherwise, or
+republish, to post on servers or to redistribute to lists, requires prior specific permission
+and/or a fee. Request permissions from permissions@acm.org.
+ISSAC ’24, July 16–19, 2024, Raleigh, NC, USA
+© 2024 Copyright held by the owner/author(s). Publication rights licensed to ACM.
+ACM ISBN 979-8-4007-0696-7/24/07
+https://doi.org/10.1145/3666000.3669684
+problem is large. Many ideas have been tried. We cite the works
+[4, 6, 8, 11–17, 19–21]. See also Ch. 7 of [7].
+Let F𝑞 be a finite field with 𝑞 elements and let #𝐺 denote the
+number of terms of the polynomial 𝐺. In this work we present a
+new sparse GCD algorithm for F𝑞 [𝑥1, . . . , 𝑥𝑛]. The main result of
+the paper is given below.
+Theorem 1.1. Let 𝐴, 𝐵 be polynomials in F𝑞 [𝑥1, . . . , 𝑥𝑛] with
+𝑑 = max𝑛
+𝑖=1 max(deg(𝐴, 𝑥𝑖 ), deg(𝐵, 𝑥𝑖 )). Then there exists a random-
+ized algorithm that takes as inputs 𝐴, 𝐵 and returns 𝐺 = gcd(𝐴, 𝐵)
+with probability ≥ 11/12, using expected 𝑂∼ (𝑛𝑇in𝑑 log 𝑞 log3 𝑇o +
+𝑛2𝑑2𝑇o log 𝑞) bit operations where 𝑇in = #𝐴 + #𝐵 and 𝑇o = #𝐺.
+We’ve implemented our algorithm in Maple with parts of it
+implemented in C for increased efficiency. We use our algorithm to
+compute a GCD in Z[𝑥1, . . . , 𝑥𝑛] by computing it modulo primes
+and using the Chinese remainder theorem to recover the integer
+coefficients of 𝐺. Our benchmarks in Section 7 show that it is
+faster than the implementations of Zippel’s algorithm in Maple and
+Magma and compares well with the Monagan-Hu algorithm [8, 15].
+1.1 Overview of the Algorithm
+Let 𝐴, 𝐵 be in F𝑞 [𝑥1, . . . , 𝑥𝑛] and 𝐺 = gcd(𝐴, 𝐵). Our new algorithm
+uses substitutions of the form
+𝑥𝑖 = (𝛾𝑖𝑧 − 𝛼𝑖 )𝑦𝑠𝑖 for 1 ≤ 𝑖 ≤ 𝑛
+where 𝛾𝑖, 𝛼𝑖 are chosen from F𝑞 and 𝑠𝑖 are non-negative integers.
+The substitution converts a GCD problem in 𝑛 variables into a
+bivariate GCD problem in F𝑞 [𝑦, 𝑧]. The purpose of the 𝛾𝑖 is to
+prevent a degree loss in 𝑧. For now assume 𝛾𝑖 = 1 works.
+Our algorithm chooses 𝛼𝑖 from F𝑞 at random and distinct. It
+then chooses 𝑠𝑖 from [0, 𝑇) at random where𝑇 is a parameter of the
+algorithm that takes on the values 2, 4, 8, 16, . . . until the algorithm
+succeeds. Suppose 𝑞 is a large prime and
+𝐺 = 𝑥2
+1 + 3𝑥1𝑥2 + 2𝑥3
+2 − 𝑥2.
+Suppose we choose 𝛼 = [2, 5] and s = [2, 3]. Let 𝜙 (𝑓 ) = 𝑓 ((𝑧 −
+2)𝑦2, (𝑧 − 5)𝑦3) be our substitution. We have
+𝜙 (𝐺) = (𝑧 −2)2𝑦4 + 3(𝑧 −2) (𝑧 −5)𝑦5 + 2(𝑧 −5)3𝑦9 − (𝑧 −5)𝑦3.
+Notice that each monomial in𝐺 mapped to a unique monomial in𝑦.
+We says separated the terms of𝐺. Since 𝑧 −2 and 𝑧 −5 are relatively
+prime, we can recover all terms in 𝐺 from 𝜙 (𝐺) by dividing the
+coefficients of 𝜙 (𝐺) by 𝑧 − 2 and 𝑧 − 5. If a coefficient factors as
+𝑐 (𝑧 − 2)𝑑1 (𝑧 − 5)𝑑2 for a constant 𝑐, we recover the term 𝑐𝑥 𝑑1
+1 𝑥𝑑2
+2 .
+If 𝐺 has 𝑡 terms, we need 𝑇 ∼ 𝑡2 for 𝜙 (𝐺) to be separated with
+reasonable probability. If 𝐷 = max(deg 𝐴, deg 𝐵), this would create
+a bivariate gcd problem of degree 𝑂 (𝐷𝑡 2) in 𝑦 and 𝐷 in 𝑧 which
+will be expensive to compute for large 𝑡. Instead, we use a much
+ISSAC ’24, July 16–19, 2024, Raleigh, NC, USA Huang and Monagan
+smaller 𝑇 and several choices for s. Suppose we choose s = [1, 1].
+Let 𝜙1 (𝑓 ) = 𝑓 ((𝑧 − 2)𝑦1, (𝑧 − 5)𝑦1). Then
+𝜙1 (𝐺) = 2(𝑧 − 5)3𝑦3 + (𝑧 − 2) (4𝑧 − 17)𝑦2 − (𝑧 − 5)𝑦.
+Since GCDs are unique up to a scalar, the GCD algorithm will
+normalize 𝜙1 (𝐺). Suppose it makes 𝜙1 (𝐺) monic in lexicographical
+order with 𝑦 &gt; 𝑧. Here LC(𝜙1 (𝐺)) = 2 so we obtain
+𝐺1 := 1
+2𝜙1 (𝐺) = (𝑧 − 5)3𝑦3 + 1
+2 (𝑧 − 2) (4𝑧 − 17)𝑦2 − 1
+2 (𝑧 − 5)𝑦.
+The factor 4𝑧 − 17 is divisible by neither 𝑧 − 2 nor 𝑧 − 5 thus at
+least two monomials collided in the term (𝑧 − 2) (4𝑧 − 17)𝑦2. If a
+coefficient of 𝐺1 factors as 𝑐 (𝑧 − 𝛼1)𝑑1 (𝑧 − 𝛼2)𝑑2, it is unlikely it
+comes from a collision because we chose the 𝛼𝑖 randomly from
+[0, 𝑞). Thus 𝑥3
+2 and 𝑥2 are monomials in 𝐺 with high probability.
+We extract the good terms of 𝐺 found in 𝐺1 as 𝐺 ∗ := 𝑥3
+2 − 1
+2 𝑥2.
+Our algorithm now tries a new s and 𝛼, say s = [2, 1] and 𝛼 =
+[2, 5]. Let 𝜙2 (𝑓 ) = 𝑓 ((𝑧 − 2)𝑦2, (𝑧 − 5)𝑦1). We have
+𝐺2 := 𝜙2 (𝐺) = (𝑧 − 2)2𝑦4 + (𝑧 − 5) (2𝑧2 − 17𝑧 + 44)𝑦3 − (𝑧 − 5)𝑦.
+This time 𝑥1𝑥2 and 𝑥3
+2 collided under 𝜙2. We could recover one new
+monomial 𝑥2
+1 in 𝐺 but we can do much better. We use𝐺 ∗ to recover
+more new monomials from 𝐺2.
+Notice that the monomial 𝑥2 is recovered from both 𝐺1 and 𝐺2
+but the coefficient is − 1
+2 and −1 respectively. As long as 𝐺1 and 𝐺2
+share at least one monomial 𝑀, we can scale 𝐺 ∗ (or 𝐺2) so that 𝐺 ∗
+and 𝐺2 have the same coefficient for𝑀. In our example we multiply
+𝐺 ∗ by 2 so that 2𝐺 ∗ = 2𝑥3
+2 − 𝑥2. Now we compute
+𝐻2 := 𝐺2 − 𝜙2 (2𝐺 ∗) = (𝑧 − 2)2𝑦4 + 3(𝑧 − 2) (𝑧 − 5)𝑦3.
+The terms of 𝐻2 yield two new monomials 𝑥2
+1 and 𝑥1𝑥2. We obtain
+the new terms 𝐺 ∗∗ := 𝑥2
+1 + 3𝑥1𝑥2 of 𝐺. We set
+𝐺 ∗ := 2𝐺 ∗ + 𝐺 ∗∗ = 𝑥2
+1 + 3𝑥1𝑥2 + 2𝑥3
+2 − 𝑥2.
+Since there were no collisions detected in 𝐻2 our algorithm stops
+and outputs 𝐺 ∗. Otherwise it would try another s.
+Our algorithm tries 𝑇 = 2, 4, 8, 16, . . . until log2 𝑇 choices for s
+are enough to recover all the terms of 𝐺. For example, on one of
+our benchmarks where 𝐺 has 𝑛 = 9 variables, #𝐺 = 996 terms, and
+deg(𝐺) = 30, using 𝑇 = 64, it recovered 279 good terms from 𝐺1
+then 309, 226, 118, 56, 8 new terms from 𝐺2, 𝐺3, 𝐺4, 𝐺5, 𝐺6.
+Consider 𝐺 = 𝑥2
+1 − 𝑥2
+2 + 1. Suppose 𝛾𝑖 = 1 so that 𝑥𝑖 = (𝑧 − 𝛼𝑖 )𝑦𝑠𝑖 .
+If 𝑠1 = 𝑠2, which happens with probability1/𝑇 , then deg(𝜙 (𝐺), 𝑧) &lt;
+deg(𝐺) which means we cannot recover𝑥2
+1 and 𝑥2
+2. To avoid this we
+choose 𝛾𝑖 from F𝑞 at random. Randomized Kronecker substitutions
+𝑥𝑖 = 𝑦𝑠𝑖 were previously studied in [1, 9, 10].
+2 DEFINITIONS
+Fix the lexicographical monomial order with 𝑥1 &gt; · · ·&gt; 𝑥𝑛. For
+a polynomial 𝐴 ∈ F𝑞 [𝑥1, . . . , 𝑥𝑛], denote LC(𝐴) as the leading
+coefficient of 𝐴. For a polynomial 𝐹 ∈ F𝑞 [𝑥1, . . . , 𝑥𝑛, 𝑦], denote
+LC(𝐹, 𝑦) as the leading coefficient of 𝐹 w.r.t. the main variable𝑦.
+Definition 2.1. Let 𝐴, 𝐵 ∈ F𝑞 [𝑥1, . . . , 𝑥𝑛]. Then 𝐺 is called the
+greatest common divisor (GCD) of 𝐴, 𝐵 if
+(1) 𝐺 divides 𝐴 and 𝐵,
+(2) every common divisor of 𝐴 and 𝐵 divides 𝐺, and
+(3) LC (𝐺) = 1.
+We say that𝐴 is similar to 𝐵, 𝐴 ∼𝑦 𝐵, if 𝐴 = 𝑎 ·𝑦𝑘 ·𝐵, where 𝑎 ∈ F∗𝑞
+and 𝑘 ∈ Z. In particular, if 𝑘 = 0, we use the notation 𝐴 ∼ 𝐵.
+Definition 2.2. Let 𝑓 ∈ F𝑞 [𝑥1, . . . , 𝑥𝑛]. For 𝛾𝑖, 𝛼𝑖 ∈ F𝑞, 𝑠𝑖 ∈ N and
+new variables 𝑦, 𝑧 we define
+𝜙 (𝑓 ) = 𝑓 (𝑥𝑖 = (𝛾𝑖𝑧 − 𝛼𝑖 )𝑦𝑠𝑖 for 1 ≤ 𝑖 ≤ 𝑛).
+Definition 2.3. For s = (𝑠1, . . . , 𝑠𝑛) ∈ N𝑛 define
+𝑓s = 𝑓 (𝑥𝑖 = 𝑥𝑖𝑦𝑠𝑖 for 1 ≤ 𝑖 ≤ 𝑛) = 𝑔1𝑦𝑑1 + · · · +𝑔𝑘𝑦𝑑𝑘 ,
+where 𝑔𝑖 ∈ F𝑞 [𝑥1, . . . , 𝑥𝑛] and 𝑑1 &gt; · · ·&gt; 𝑑𝑘. If 𝑔𝑖 has only one
+term 𝑐𝑚, where 𝑐 ∈ F∗𝑞 and 𝑚 is a monomial, then we call it a
+non-colliding term in 𝑓s. Collect all non-colliding terms in 𝑓s and
+generate the following set
+NC(𝑓 , s) = { 𝑐𝑚 | 𝑐𝑚 is a non-colliding term in 𝑓s}.
+Define the other terms in 𝑓s as the colliding terms by
+C(𝑓 , s) = { 𝑐𝑚 | 𝑐𝑚 is a colliding term in 𝑓s}.
+Definition 2.4. Let 𝑓 = Í𝑡
+𝑖=1 𝑎𝑖 𝑀𝑖 (𝑥1, . . . , 𝑥𝑛) be a polynomial
+with coefficients 𝑎𝑖 and monomials 𝑀𝑖. Define the monomial con-
+tent MoCont(𝑓 ) = gcd(𝑀1, 𝑀2, . . . , 𝑀𝑡 ) = Î𝑛
+𝑖=1 𝑥𝑑𝑖
+𝑖 for some
+𝑑𝑖 ∈ N. We say 𝑓 is monomial primitive if MoCont(𝑓 ) = 1.
+3 PRELIMINARY RESULTS
+Lemma 3.1. [22, Lemma 6.44] (the Schwartz-Zippel Lemma). Let
+R be an integral domain and 𝐴 ∈ R [ 𝑥1, . . . , 𝑥𝑛] be non-zero and
+with total degree 𝐷 and let 𝑆 ⊂ R be a finite set. If a = (𝑎1, . . . , 𝑎𝑛)
+is chosen at random from 𝑆𝑛 then Prob[𝐴(a) = 0] ≤ 𝐷
+|𝑆 | .
+Lemma 3.2. [8, Lemma 4] Let 𝐹1, 𝐹2 ∈ F𝑞 [𝑥1, . . . , 𝑥𝑛, 𝑦] with 𝑑 =
+deg(𝐹1, 𝑦) &gt; 0 and ℓ = deg(𝐹2, 𝑦) &gt; 0. Let 𝑎𝑑 = LC(𝐹1, 𝑦), 𝑏ℓ =
+LC(𝐹2, 𝑦) and the resultant 𝑅 = res𝑦 (𝐹1, 𝐹2) ∈ F𝑞 [𝑥1, . . . , 𝑥𝑛]. For
+𝛼 ∈ F𝑛𝑞 , if 𝑎𝑑 (𝛼) ≠ 0 and 𝑏ℓ (𝛼) ≠ 0 then
+(i) deg𝑦 gcd(𝐹1 (𝛼, 𝑦), 𝐹2 (𝛼, 𝑦)) &gt; 0 ⇐ ⇒𝑅(𝛼) = 0 and
+(ii) res 𝑦 (𝐹1 (𝛼, 𝑦), 𝐹2 (𝛼, 𝑦)) = 𝑅(𝛼).
+Lemma 3.3. Let 𝐴, 𝐵 ∈ F𝑞 [𝑥1, . . . , 𝑥𝑛], 𝐺 = gcd(𝐴, 𝐵). If 𝛾𝑖, 𝛼𝑖
+for 1 ≤ 𝑖 ≤ 𝑛 are regarded as variables and 𝜙 (𝐴), 𝜙(𝐵), 𝜙(𝐺) ∈
+F𝑞 [𝑧, 𝑦, 𝛾1, . . . , 𝛾𝑛, 𝛼1, . . . , 𝛼𝑛]. Then 𝜙 (𝐺) ∼ 𝑦 gcd(𝜙 (𝐴), 𝜙(𝐵)) .
+Proof. For 𝑓 ∈ F𝑞 [𝑧, 𝑦, 𝛾1, . . . , 𝛾𝑛, 𝛼1, . . . , 𝛼𝑛], define 𝜓 (𝑓 ) =
+𝑓 (𝛼𝑖 = 𝛾𝑖𝑧 − 𝑥𝑖𝑦−𝑠𝑖 for 1 ≤ 𝑖 ≤ 𝑛). Directly checking the composite
+maps 𝜓 ◦ 𝜙 and 𝜙 ◦ 𝜓, it can be seen that 𝜓 = 𝜙 −1.
+Now, as 𝐺 |𝐴 and 𝐺 |𝐵, we have 𝜙 (𝐺)|𝜙 (𝐴) and 𝜙 (𝐺)|𝜙 (𝐵). So
+𝜙 (𝐺)| gcd(𝜙 (𝐴), 𝜙(𝐵)). For the opposite direction suppose 𝑃 =
+gcd(𝜙 (𝐴), 𝜙(𝐵)) and 𝐻 = 𝜙 (𝐴)/𝑃. Then 𝜓 (𝑃) ·𝜓 (𝐻 ) = 𝜓 (𝜙 (𝐴)) =
+𝐴. Here 𝜓 (𝑃) = 𝑃 (𝑧, 𝑦, 𝛾1, . . . , 𝛾𝑛, 𝛾1𝑧 − 𝑥1𝑦−𝑠1, . . . , 𝛾𝑛𝑧 − 𝑥𝑛𝑦−𝑠𝑛 ),
+which may be a rational function as it may has negative degree in𝑦.
+Let 𝑘 = deg(𝜓 (𝑃), 𝑦). Then 𝜓 (𝑃)/𝑦𝑘 and 𝜓 (𝐻 )𝑦𝑘 are polynomials
+of degree zero in𝑦 as 𝐴 doesn’t have𝑦. Thus𝜓 (𝑃)/𝑦𝑘 divides 𝐴. For
+the same reason, 𝜓 (𝑃)/𝑦𝑘 divides 𝐵. Thus 𝜓 (𝑃)/𝑦𝑘 | gcd(𝐴, 𝐵) =
+𝐺 . By mapping 𝜙, we have 𝜙 (𝜓 (𝑃)) · 𝑦−𝑘 |𝜙 (𝐺), which is 𝑃 ·
+𝑦−𝑘 |𝜙 (𝐺). □
+4 OUR NEW GCD ALGORITHM
+Let 𝐴, 𝐵 ∈ F𝑞 [𝑥1, . . . , 𝑥𝑛] and 𝐺 = gcd(𝐴, 𝐵). This section presents
+and analyses three algorithms. (1) Algorithm 1: for any vector
+s ∈ N𝑛, this algorithm computes the non colliding set NC(𝐺, s). (2)
+A New Sparse Polynomial GCD by Separating Terms ISSAC ’24, July 16–19, 2024, Raleigh, NC, USA
+Algorithm 2: for an approximation𝐺 ∗ of 𝐺, this algorithm computes
+half of the terms in 𝐺 − 𝐺 ∗ using Algorithm 1. (3) Algorithm 3: this
+is the main algorithm for computing the 𝐺 = gcd(𝐴, 𝐵). It calls
+Algorithm 2 in a loop.
+4.1 Computing the non-colliding set
+We hope to recover the polynomial 𝐺 from the bivariate images
+𝜙 (𝐺) = 𝐺 ((𝛾1𝑧 − 𝛼1)𝑦𝑠1, . . . , (𝛾𝑛𝑧 − 𝛼𝑛)𝑦𝑠𝑛 ). The variable 𝑦 is used
+to separate the terms, and the variable 𝑧 is used to compute the
+exponents of terms.
+Let 𝐺 = 𝑐1𝑚1 + · · · +𝑐𝑡𝑚𝑡 ∈ F𝑞 [𝑥1, . . . , 𝑥𝑛]. For s = (𝑠1, . . . , 𝑠𝑛) ∈
+N𝑛, assuming 𝐺 (𝑥𝑖 = 𝑥𝑖𝑦𝑠𝑖 for 1 ≤ 𝑖 ≤ 𝑛) = 𝑔1𝑦𝑑1 + · · · +𝑔𝑡𝑦𝑑𝑡 ,
+where 𝑔𝑖 ∈ F𝑞 [𝑥1, . . . , 𝑥𝑛] and 𝑑𝑖’s are different degrees. Then
+𝜙 (𝐺) = Í𝑡
+𝑖=1 𝑔𝑖 (𝛾1𝑧 − 𝛼1, . . . , 𝛾𝑛𝑧 − 𝛼𝑛)𝑦𝑑𝑖 .
+If #𝑔𝑖 = 1 and 𝑔𝑖 = 𝑐𝑥 𝑒1
+1 · · ·𝑥𝑒𝑛
+𝑛 , then 𝑔𝑖 (𝛾1𝑧 − 𝛼1, . . . , 𝛾𝑛𝑧 − 𝛼𝑛) =
+𝑐 (𝛾1𝑧 − 𝛼1)𝑒1 · · · (𝛾𝑛𝑧 − 𝛼𝑛)𝑒𝑛 . If the 𝛼𝑖 /𝛾𝑖’s are different, then
+𝑐 (𝛾1𝑧 − 𝛼1)𝑒1 · · · (𝛾𝑛𝑧 − 𝛼𝑛)𝑒𝑛 is one-to-one corresponding to
+𝑐𝑥 𝑒1
+1 · · ·𝑥𝑒𝑛
+𝑛 by unique factorization. However, for some 𝑔𝑖 even
+with #𝑔𝑖 &gt; 1, 𝑔𝑖 (𝛾1𝑧 − 𝛼1, . . . , 𝛾𝑛𝑧 − 𝛼𝑛) may still have the form
+𝑐 (𝛾1𝑧 − 𝛼1)𝑒1 · · · (𝛾𝑛𝑧 − 𝛼𝑛)𝑒𝑛 . The intuitive way to avoid this is
+to randomly select 𝛼𝑖, 𝛾𝑖 from a larger set. The following theorem
+indicates the success probability. We first assume NC(𝐺, s) ≠ ∅.
+Theorem 4.1. Let 𝐺 ∈ F𝑞 [𝑥1, . . . , 𝑥𝑛], s = (𝑠1, . . . , 𝑠𝑛) ∈
+N𝑛 and MoCont(𝐺) = 1. Assuming NC(𝐺, s) ≠ ∅ and
+𝐺 (𝑥1𝑦𝑠1, . . . , 𝑥𝑛𝑦𝑠𝑛 ) = 𝑔1𝑦𝑑1 +· · ·+𝑔𝑘𝑦𝑑𝑘 where 𝑑𝑖 ’s are different and
+𝑔𝑖 ≠ 0 ∈ F𝑞 [𝑥1, . . . , 𝑥𝑛]. If (𝛼1, . . . , 𝛼𝑛, 𝛾1, . . . , 𝛾𝑛) is randomly cho-
+sen from F2𝑛𝑞 , then with a probability of ≥ 1 − (3𝑛+1) ∥s ∥∞𝐷2+3𝑛𝐷 +𝑛2
+𝑞 ,
+the following hold.
+(1) Cont (𝜙 (𝐺), 𝑦) = 1.
+(2) If #𝑔𝑖 = 1, then 𝑔𝑖 (𝛾1𝑧 −𝛼1, . . . , 𝛾𝑛𝑧 −𝛼𝑛) has the form 𝑐 (𝛾1𝑧 −
+𝛼1)𝑒1 · · · (𝛾𝑛𝑧 − 𝛼𝑛)𝑒𝑛 for some 𝑒𝑖 ∈ N.
+(3) If #𝑔𝑖 &gt; 1, then 𝑔𝑖 (𝛾1𝑧 − 𝛼1, . . . , 𝛾𝑛𝑧 − 𝛼𝑛) does not have a
+form 𝑐 (𝛾1𝑧 − 𝛼1)𝑒1 · · · (𝛾𝑛𝑧 − 𝛼𝑛)𝑒𝑛 for some 𝑒𝑖 ∈ N.
+Proof. Suppose that 𝜙 (𝐺) = ℎ1𝑦𝑑1 + · · · +ℎ𝑘𝑦𝑑𝑘 , where ℎ𝑖 (𝑧) =
+𝑔𝑖 (𝛾1𝑧 − 𝛼1, . . . , 𝛾𝑛𝑧 − 𝛼𝑛). Thus Cont(𝜙 (𝐺), 𝑦) = gcd(ℎ1, . . . , ℎ𝑘 ).
+Since NC(𝐺, s) ≠ ∅, there exists a ℎ𝑖 corresponding to a term
+in NC(𝐺, s). Therefore Cont(𝜙 (𝐺), 𝑦) = (𝑧 − 𝛼1/𝛾1)𝑤1 · · · (𝑧 −
+𝛼𝑛/𝛾𝑛)𝑤𝑛 for some 𝑤𝑖 ∈ N. To prove Cont(𝜙 (𝐺), 𝑦) = 1, it suf-
+fices to show that (𝑧 − 𝛼𝑖 /𝛾𝑖 ) ∤ Cont(𝜙 (𝐺), 𝑦) for 𝑖 = 1, . . . , 𝑛. Due
+to MoCont(𝐺) = gcd(𝑔1, . . . , 𝑔𝑘 ) = 1, for each 𝑥𝑖, there is a 𝑔𝑗𝑖 in
+{𝑔1, . . . , 𝑔𝑘 } such that 𝑥𝑖 ∤ 𝑔𝑗𝑖 . Substitute 𝑥𝑖 = 𝛾𝑖𝑧 − 𝛼𝑖 into 𝑔𝑗𝑖 , then
+ℎ 𝑗𝑖 (𝑧) = 𝑔𝑗𝑖 (𝑥𝑖 = 𝛾𝑖𝑧 −𝛼𝑖 for 1 ≤ 𝑖 ≤ 𝑛). Let𝜅0 := Î𝑛
+𝑖=1 𝛾 𝐷
+𝑖 ·ℎ 𝑗𝑖 ( 𝛼𝑖
+𝛾𝑖 ).
+Claim: if 𝜅0 ≠ 0, then Cont(𝜙 (𝐺), 𝑦) = 1. This is because that if
+𝜅0 ≠ 0, then ℎ 𝑗𝑖 (𝛼𝑖 /𝛾𝑖 ) ≠ 0 for 𝑖 = 1, . . . , 𝑛, which implies that
+(𝑧 − 𝛼𝑖 /𝛾𝑖 ) ∤ ℎ 𝑗𝑖 (𝑧), thus (𝑧 − 𝛼𝑖 /𝛾𝑖 ) ∤ Cont(𝜙 (𝐺), 𝑦). There-
+fore ℓ𝑖 = 0 and Cont(𝜙 (𝐺), 𝑦) = 1. If 𝛼𝑖, 𝛾𝑖 are regarded as vari-
+ables then 𝜅0 ∈ F𝑞 [𝛼1, . . . , 𝛼𝑛, 𝛾1, . . . , 𝛾𝑛]. Claim: 𝜅0 is a non-zero
+polynomial with degree ≤ 3𝑛𝐷. Proof of the claim: we prove
+the case 𝑖 = 1 that 𝛾 𝐷
+1 · ℎ 𝑗1 ( 𝛼1
+𝛾1 ) is a non-zero polynomial. Let
+𝑔𝑗1 = 𝑥1𝜃 + 𝜂, where 𝜃 ∈ F𝑞 [𝑥1, . . . , 𝑥𝑛], 𝜂 ∈ F𝑞 [𝑥2, . . . , 𝑥𝑛] and
+𝜂 ≠ 0. Then ℎ 𝑗1 (𝛼1/𝛾1) = 𝜂 (𝑥ℓ = 𝛾ℓ (𝛼1/𝛾1) − 𝛼ℓ for 2 ≤ ℓ ≤
+𝑛) = 𝜂 (𝑥ℓ = (𝛾ℓ𝛼1 − 𝛼ℓ𝛾1)/𝛾1 for 2 ≤ ℓ ≤ 𝑛). As deg 𝜂 ≤ 𝐷, then
+𝛾 𝐷
+1 ·ℎ 𝑗1 ( 𝛼1
+𝛾1 ) is a non-zero polynomial and the degree of𝛾 𝐷
+1 ·ℎ 𝑗1 ( 𝛼1
+𝛾1 )
+is ≤ 𝐷 + 2 deg 𝑔𝑗1 ≤ 3𝐷. Other cases for𝑖 = 2, . . . , 𝑛 can be similarly
+proven. Thus 𝜅0 is a non-zero polynomial with degree ≤ 3𝑛𝐷.
+Case (2) is always correct. Consider case (3). Without loss of
+generality assume #𝑔1 &gt; 1. Let 𝑔1 = 𝑐𝑚 ·𝑄, where 𝑥𝑖 ∤ 𝑄 for 1 ≤
+𝑖 ≤ 𝑛. Assuming 𝛽 (𝑧) := 𝑄 (𝑥𝑖 = 𝛾𝑖𝑧 − 𝛼𝑖 for 1 ≤ 𝑖 ≤ 𝑛) = 𝑟1𝑧𝑢1 +
+· · · +𝑟𝑡 𝑧𝑢𝑡 where 𝑢1 &gt; · · ·&gt; 𝑢𝑡 and 𝑟𝑖 ∈ F𝑞. Here 𝑟𝑖 depends on
+the choice of 𝛼1, . . . , 𝛼𝑛, 𝛾1, . . . , 𝛾𝑛. Let 𝜅1 := 𝑟1 ·Î𝑛
+𝑖=1 𝛾 𝐷
+𝑖 ·𝛽 (𝛼𝑖 /𝛾𝑖 ).
+Claim: if 𝜅1 ≠ 0, then 𝑔1 (𝛾1𝑧 − 𝛼1, . . . , 𝛾𝑛𝑧 − 𝛼𝑛) does not have the
+form like 𝑐 (𝛾1𝑧 − 𝛼1)𝑒1 · · · (𝛾𝑛𝑧 − 𝛼𝑛)𝑒𝑛 . Proof of claim: it suffices
+to show that (i) (𝑧 − 𝛼𝑖 /𝛾𝑖 ) ∤ 𝑄 (𝛾1𝑧 − 𝛼1, . . . , 𝛾𝑛𝑧 − 𝛼𝑛), 𝑖 = 1, . . . , 𝑛
+and (ii) 𝑄 (𝛾1𝑧 − 𝛼1, . . . , 𝛾𝑛𝑧 − 𝛼𝑛) ∉ F𝑞 . 𝜅1 ≠ 0 implies that 𝑟1 ≠ 0
+and 𝛽 (𝛼𝑖 /𝛾𝑖 ) ≠ 0 for 1 ≤ 𝑖 ≤ 𝑛. First, 𝑟1 ≠ 0 is enough to prove
+𝑄 (𝛾1𝑧 − 𝛼1, . . . , 𝛾𝑛𝑧 − 𝛼𝑛) ∉ F𝑞. Second, 𝛽 (𝛼𝑖 /𝛾𝑖 ) ≠ 0 implies that
+(𝑧 − 𝛼𝑖 /𝛾𝑖 ) ∤ 𝛽 (𝑧) = 𝑄 (𝛾1𝑧 − 𝛼1, . . . , 𝛾𝑛𝑧 − 𝛼𝑛). The claim is proved.
+If 𝛼𝑖, 𝛾𝑖 are regarded as variables then𝜅1 ∈ F𝑞 [𝛼1, . . . , 𝛼𝑛, 𝛾1, . . . ,
+𝛾𝑛]. Claim: 𝜅1 is a non-zero polynomial with degree ≤ 3𝑛𝐷 + 𝐷.
+As #𝑔1 &gt; 1, then 𝑢1 &gt; 0 and 𝑟1 is a non-zero polynomial with
+degree ≤ 𝐷. As 𝑥𝑖 ∤ 𝑄, for the same reason for 𝜅0, 𝛾 𝐷
+𝑖 · 𝛽 (𝛼𝑖 /𝛾𝑖 ) is
+a non-zero polynomial with degree ≤ 3𝐷. The claim is proved.
+Assuming 𝑔𝑖1, . . . , 𝑔𝑖ℓ are all in 𝐺s with more than one term, for
+the same reason, there are corresponding nonzero polynomials𝜅𝑖 ∈
+F𝑞 [𝛼1, . . . , 𝛼𝑛, 𝛾1, . . . , 𝛾𝑛], 𝑖 = 1, . . . , ℓ . Then 𝜅1 · · ·𝜅ℓ ≠ 0 implies
+that case (3) is correct. Let
+Γ =
+𝑛Ö
+𝑖=1
+𝛾𝑖 ·
+Ö
+1≤𝑖&lt; 𝑗 ≤𝑛
+(𝛼𝑖𝛾 𝑗 − 𝛼 𝑗𝛾𝑖 ) ·
+ℓÖ
+𝑖=0
+𝜅𝑖 ∈ F𝑞 [𝛼1, . . . , 𝛼𝑛, 𝛾1, . . . , 𝛾𝑛 ].
+Therefore, if Γ ≠ 0, then 𝛾𝑖𝑧 − 𝛼𝑖 are different irreducible poly-
+nomials and Cases (1), (2) and (3) are all met. As deg 𝜅0 ≤ 3𝑛𝐷
+and deg 𝜅𝑖 ≤ 3𝑛𝐷 + 𝐷, 𝑖 = 1, . . . , ℓ and ℓ ≤ deg(𝐺s, 𝑦) ≤
+∥s∥∞𝐷, we have deg Γ ≤ ( 3𝑛 + 1) ∥s∥∞𝐷2 + 3𝑛𝐷 + 𝑛2. By
+Lemma 3.1, if (𝛼1, . . . , 𝛼𝑛, 𝛾1, . . . , 𝛾𝑛) are randomly chosen from
+F2𝑛𝑞 , the probability that Γ(𝛼1, . . . , 𝛼𝑛, 𝛾1, . . . , 𝛾𝑛) ≠ 0 is ≥ 1 −
+(3𝑛+1) ∥s ∥∞𝐷2+3𝑛𝐷 +𝑛2
+𝑞 . □
+The condition NC(𝐺, s) ≠ ∅is necessary for Theorem 4.1. The
+following shows a counter-example.
+Example 4.2. Suppose 𝐺 = 𝑥2
+1𝑥2 + 𝑥2𝑥2
+3 + 𝑥2
+1 + 𝑥2
+3 and s = (1, 1, 1).
+Then 𝐺 (𝑥1𝑦, 𝑥2𝑦, 𝑥3𝑦) = (𝑥2
+1𝑥2 +𝑥2𝑥2
+3 )𝑦3 + (𝑥2
+1 +𝑥2
+3 )𝑦2 = 𝑔1𝑦3 +𝑔2𝑦2
+and gcd(𝑔1, 𝑔2) = 𝑥2
+1 +𝑥2
+3. Now consider𝜙 (𝑥2
+1 +𝑥2
+3 ) = ((𝛾2
+1 +𝛾2
+3 )𝑧2 −
+2(𝛼1𝛾1 + 𝛼3𝛾3)𝑧 + 𝛼2
+1 + 𝛼2
+3)𝑦2. Since Prob[𝛾2
+1 + 𝛾2
+3 = 0] ≤ 2/𝑞 by
+Lemma 3.1, Cont(𝜙 (𝐺), 𝑦) ≠ 1 with high probability.
+4.2 Solving the case NC(𝐺, s) = ∅
+Let 𝐺 = gcd(𝐴, 𝐵), then 𝐺s ∼𝑦 gcd(𝐴s, 𝐵s) (see Def. 2.3). We can
+quickly detect situations similar to Example 4.2 based on 𝐴s and
+𝐵s. Suppose that 𝐴 and 𝐵 are monomial primitive and
+𝐴(𝑥𝑖 = 𝑥𝑖𝑦𝑠𝑖 for 1 ≤ 𝑖 ≤ 𝑛) = 𝐴1𝑦𝑣1 + · · · +𝐴𝑘𝑦𝑣𝑘 , (1)
+𝐵(𝑥𝑖 = 𝑥𝑖𝑦𝑠𝑖 for 1 ≤ 𝑖 ≤ 𝑛) = 𝐵1𝑦𝑢1 + · · · +𝐵ℓ𝑦𝑢ℓ . (2)
+The main idea comes from the following two facts:
+(1) If gcd(𝐴1, . . . , 𝐴𝑘, 𝐵1, . . . , 𝐵ℓ ) ≠ 1, then NC(𝐺, s) = ∅;
+(2) If gcd(𝐴1, . . . , 𝐴𝑘, 𝐵1, . . . , 𝐵ℓ ) = 1, then Cont(𝜙 (𝐺), 𝑦) = 1
+with high probability if 𝛼𝑖, 𝛾𝑖 are randomly selected in F𝑞.
+Lemma 4.3. Let 𝐴, 𝐵 ∈ F𝑞 [𝑥1, . . . , 𝑥𝑛] and 𝐴 and 𝐵 be monomial
+primitive. If gcd(𝐴1, . . . , 𝐴𝑘, 𝐵1, . . . , 𝐵ℓ ) ≠ 1, then NC(𝐺, s) = ∅.
+ISSAC ’24, July 16–19, 2024, Raleigh, NC, USA Huang and Monagan
+Proof. Denote 𝐻 := gcd(𝐴1, . . . , 𝐴𝑘, 𝐵1, . . . , 𝐵ℓ ). Then 𝐻 |𝐴 and
+𝐻 |𝐵. Thus 𝐻 | gcd(𝐴, 𝐵) = 𝐺. Therefore𝐻s|𝐺s. We prove𝐻s = 𝐻 ·𝑦𝑑
+for some 𝑑 ∈ N. Assume to a contradiction𝐻s = 𝐻1𝑦𝑑1 + · · · +𝐻𝑡𝑦𝑑𝑡
+where 𝑑1 &gt; · · ·&gt; 𝑑𝑡 . Since 𝐻 |𝐴1, let 𝐴1 = 𝐻 · 𝐻. Then (𝐴1)s =
+𝐴1𝑦𝑣1 = 𝐻s ·𝐻 s = (𝐻1𝑦𝑑1 + · · · +𝐻𝑡𝑦𝑑𝑡 ) · 𝐻 s. Then the number of
+terms w.r.t𝑦 in 𝐴1𝑦𝑣1 is at least two, a contradiction.
+Thus 𝐻 ·𝑦𝑑 |𝐺s. So 𝐻 divides all the coefficients of 𝐺s w.r.t 𝑦.
+Since 𝐴 and 𝐵 are monomial primitive and 𝐻 ≠ 1, 𝐻 has at least
+two terms, which implies that each coefficient of 𝐺s w.r.t𝑦 has at
+least two terms. Thus there is no non-colliding term in 𝐺s. □
+Lemma 4.4. Let 𝐺 = gcd(𝐴, 𝐵) and let 𝐷 = max(deg 𝐴, deg 𝐵).
+Then there exists a non-zero polynomial Γ with degree ≤ 2𝐷2 +
+2𝐷, such that if Γ(𝛼1, . . . , 𝛼𝑛, 𝛾1, . . . , 𝛾𝑛) ≠ 0 for 𝛼𝑖, 𝛾𝑖 ∈ F𝑞, then
+𝐺 (𝛾1𝑧 − 𝛼1, . . . , 𝛾𝑛𝑧 − 𝛼𝑛) ∼
+gcd(𝐴(𝛾1𝑧 − 𝛼1, . . . , 𝛾𝑛𝑧 − 𝛼𝑛), 𝐵(𝛾1𝑧 − 𝛼1, . . . , 𝛾𝑛𝑧 − 𝛼𝑛)) .
+Proof. If 𝛼𝑖, 𝛾𝑖’s are regarded as variables, then by Lemma 3.3,
+𝜙 (𝐺) ∼ 𝑦 gcd(𝜙 (𝐴), 𝜙(𝐵)) for s = (0, . . . ,0). As both sides have
+degree 0 in 𝑦, 𝜙 (𝐺) ∼ gcd(𝜙 (𝐴), 𝜙(𝐵)). Let Γ := LC(𝜙 (𝐴), 𝑧) ·
+LC(𝜙 (𝐵), 𝑧) · res𝑧 (𝜙 (𝐴)/𝜙 (𝐺), 𝜙(𝐵)/𝜙 (𝐺)). As the degrees of the
+coefficients of 𝜙 (𝐴) and 𝜙 (𝐵) in 𝑧 are at most 𝐷, deg(Γ) ≤ 𝐷 + 𝐷 +
+2𝐷2. For 𝛼𝑖, 𝛾𝑖 ∈ F𝑞, by Lemma 3.2, if Γ(𝛼1, . . . , 𝛼𝑛, 𝛾1, . . . , 𝛾𝑛) ≠ 0,
+then 𝜙 (𝐺), 𝜙(𝐴), 𝜙(𝐵) ∈ F𝑞 [𝑧] and 𝜙 (𝐺) ∼ gcd(𝜙 (𝐴), 𝜙(𝐵)). □
+Corollary 4.5. Suppose gcd(𝐴1, . . . , 𝐴𝑘, 𝐵1, . . . , 𝐵ℓ ) = 1. Let 𝐷 =
+max(deg 𝐴, deg 𝐵). If 𝛼𝑖, 𝛾𝑖 ’s are randomly chosen fromF𝑞, then with
+probability ≥ 1 − (2𝐷2+2𝐷) (2 ∥s ∥∞𝐷+1)
+𝑞 , gcd(𝐴𝑖 (𝛾1𝑧 − 𝛼1, . . . , 𝛾𝑛𝑧 −
+𝛼𝑛), 𝐵𝑗 (𝛾1𝑧 − 𝛼1, . . . , 𝛾𝑛𝑧 − 𝛼𝑛), 𝑖 = 1, . . . , 𝑘, 𝑗 = 1, . . . , ℓ) = 1.
+Proof. As gcd(𝐴1, . . . , 𝐴𝑘 ) = gcd(𝐴1, gcd(· · ·gcd(𝐴𝑘−1, 𝐴𝑘 )))
+and gcd(𝐵1, . . . , 𝐵ℓ ) = gcd(𝐵1, gcd(· · ·gcd(𝐵ℓ−1, 𝐵ℓ ))) , we need to
+compute 𝑘 + ℓ − 1 GCDs. For each GCD, there exists a non-zero
+polynomial Γ𝑖 (𝛼1, . . . , 𝛼𝑛, 𝛾1, . . . , 𝛾𝑛), so that if 𝛼𝑖, 𝛾𝑖’s are chosen
+from F𝑞 and Γ𝑖 (𝛼1, . . . , 𝛼𝑛, 𝛾1, . . . , 𝛾𝑛) ≠ 0, then the GCD is still
+correct when replacing 𝑥𝑖 = 𝛾𝑖𝑧 − 𝛼𝑖. Multiply all polynomials Γ𝑖
+together, the degree of the product is ≤ ( 2𝐷2 + 2𝐷) (𝑘 + ℓ − 1) ≤
+(2𝐷2 + 2𝐷) (2∥s∥∞𝐷 + 1). By Lemma 3.1, we proved it. □
+4.3 Reduce Multivariate GCD to Univariate GCD
+To compute𝜙 (𝐺) = gcd(𝜙 (𝐴), 𝜙(𝐵)) in F𝑞 [𝑦, 𝑧] we interpolate 𝑧 in
+𝜙 (𝐺) from gcd(𝜙 (𝐴) (𝑧 = 𝑏𝑘, 𝑦), 𝜙(𝐵) (𝑧 = 𝑏𝑘, 𝑦)) for some 𝑏𝑘 ∈ F𝑞.
+Condition (2) in Lemma 4.6 identifies which 𝑏𝑘 can be used.
+Lemma 4.6. Let 𝐴, 𝐵 ∈ F𝑞 [𝑥1, . . . , 𝑥𝑛] and 𝐺 = gcd(𝐴, 𝐵). Let
+s = (𝑠1, . . . , 𝑠𝑛) ∈ N𝑛. If the 𝛼𝑖, 𝛾𝑖 ’s are randomly chosen fromF𝑞 and
+𝑏𝑘 for 0 ≤ 𝑘 ≤ 𝐷 are randomly chosen from F𝑞, then with probability
+≥ 1 − (4 ∥s ∥∞𝐷2+5𝐷) (𝐷+1)+𝑛2
+𝑞 , we have
+(1) the 𝛼𝑖 /𝛾𝑖 are distinct and the 𝑏𝑘 are distinct;
+(2) 𝜙 (𝐺) (𝑧 = 𝑏𝑘, 𝑦) ∼ 𝑦 gcd(𝜙 (𝐴) (𝑧 = 𝑏𝑘, 𝑦), 𝜙(𝐵) (𝑧 = 𝑏𝑘, 𝑦)) .
+Proof. Regard 𝛼𝑖, 𝛾𝑖’s as variables. By Lemma 3.3, we have
+𝜙 (𝐺) ∼ 𝑦 gcd(𝜙 (𝐴), 𝜙(𝐵)). Suppose 𝑦ℓ ·𝜙 (𝐺) ∼ gcd(𝜙 (𝐴), 𝜙(𝐵))
+for some ℓ ∈ N. Let 𝑅 := res𝑦 (𝜙 (𝐴)/( 𝜙 (𝐺) ·𝑦ℓ ), 𝜙(𝐵)/( 𝜙 (𝐺) ·𝑦ℓ ))
+and Γ := 𝑅·LC(𝜙 (𝐴), 𝑦)·LC(𝜙 (𝐵), 𝑦) ∈ F𝑞 [𝛼1, . . . , 𝛼𝑛, 𝛾1, . . . , 𝛾𝑛, 𝑧].
+By [7, p288, Sylvester’s Criterion],𝑅 ≠ 0, so Γ ≠ 0. By the definition
+of resultant, we havedeg 𝑅 ≤ 4∥s∥∞𝐷2. So deg Γ ≤ 4∥s∥∞𝐷2 + 4𝐷.
+For each 𝑘, let Γ𝑘 := Γ(𝛼1, . . . , 𝛼𝑛, 𝛾1, . . . , 𝛾𝑛, 𝑧 = 𝑏𝑘 ). Let
+Ω =
+𝐷Ö
+𝑘=0
+Γ𝑘 ·
+Ö
+0≤𝑖&lt; 𝑗 ≤𝐷
+(𝑏𝑖 − 𝑏 𝑗 ) ·
+Ö
+1≤𝑖&lt; 𝑗 ≤𝑛
+(𝛼𝑖𝛾 𝑗 − 𝛼 𝑗𝛾𝑖 ) ·
+𝑛Ö
+𝑖=1
+𝛾𝑖 .
+Claim: if 𝛼𝑖, 𝛾𝑖, 𝑏𝑘 are chosen from F𝑞 and Ω ≠ 0, then conditions
+(1) and (2) are satisfied. Proof of claim: Ω ≠ 0 implies Γ𝑘 ≠ 0
+and Î
+0≤𝑖&lt; 𝑗 ≤𝐷 (𝑏𝑖 − 𝑏 𝑗 ) ≠ 0 and Î
+1≤𝑖&lt; 𝑗 ≤𝑛 (𝛼𝑖𝛾 𝑗 − 𝛼 𝑗𝛾𝑖 ) ≠ 0 and
+𝛾𝑖 ≠ 0. The last three inequalities imply that 𝛼𝑖 /𝛾𝑖’s are distinct
+and 𝑏𝑘’s are distinct. By (i) of Lemma 3.2, Γ𝑘 ≠ 0 implies that
+gcd(𝜙 (𝐴) (𝑧 = 𝑏𝑘, 𝑦), 𝜙(𝐵) (𝑧 = 𝑏𝑘, 𝑦)) ∼ 𝜙 (𝐺) (𝑧 = 𝑏𝑘, 𝑦) · 𝑦ℓ. We
+proved it. As deg Ω ≤ ( 4∥s∥∞𝐷2 + 4𝐷) (𝐷 + 1) + ( 𝐷 + 1)𝐷/2 + 𝑛2,
+by Lemma 3.1, if 𝛼𝑖, 𝛾𝑖’s and𝑏𝑘 are randomly chosen from F𝑞, the
+probability that Ω ≠ 0 is ≥ 1 − (4 ∥s ∥∞𝐷2+5𝐷) (𝐷+1)+𝑛2
+𝑞 . □
+4.4 An Algorithm for Computing 𝑁 (𝐺, s)
+Let 𝐺 ∗ be an approximation polynomial containing some terms of𝐺
+and let Terms(𝐺 ∗) denote those terms. For ans ∈ N𝑛, the following
+algorithm computes the set(NC(𝐺, s)\Terms(𝐺 ∗)) Ð NC(𝐺−𝐺 ∗, s)
+which is a set that contains all the terms in NC(𝐺, s) and NC(𝐺 −
+𝐺 ∗, s) but not in Terms(𝐺 ∗).
+Algorithm 1 Computing the Non-colliding Set
+Require: Monomial primitive polynomials 𝐴, 𝐵 ∈ F𝑞 [𝑥1, . . . , 𝑥𝑛];
+an approximation polynomial 𝐺 ∗ containing some terms of 𝐺;
+a vector s = (𝑠1, . . . , 𝑠𝑛) ∈ N𝑛; a tolerance 𝜀 ∈ ( 0, 1).
+Ensure: If NC(𝐺, s) Ñ Terms(𝐺 ∗) ≠ ∅or 𝐺 ∗ = 0, return the set
+(NC(𝐺, s) \ Terms(𝐺 ∗)) Ð NC(𝐺 − 𝐺 ∗, s) with a probability of
+≥ 1 − 𝜀; or “Failure”.
+1: Let 𝐷 := max(deg 𝐴, deg 𝐵) and let 𝜀 := min(𝜀, 1/𝐷).
+2: Find ℓ such that 𝑞ℓ &gt; 8 ∥s ∥∞ (𝐷+1)3+6𝑛 ∥s ∥∞ (𝐷+1)2+3𝑛2
+𝜀 .
+3: Extend F𝑞 to F𝑞ℓ if ℓ &gt; 1. We still denote F𝑞ℓ as F𝑞.
+4: Let 𝐷𝑚𝑖𝑛 := min(deg 𝐴, deg 𝐵).
+5: Compute 𝐴s = 𝐴(𝑥1𝑦𝑠1, . . . , 𝑥𝑛𝑦𝑠𝑛 ) and 𝐵s = 𝐵(𝑥1𝑦𝑠1, . . . ,
+𝑥𝑛𝑦𝑠𝑛 ). Assume 𝐴s = 𝐴1𝑦𝑣1 + · · · +𝐴𝑟𝑦𝑣𝑟 where 𝑣1 &gt; · · ·&gt; 𝑣𝑟
+and 𝐵s = 𝐵1𝑦𝑢1 + · · · +𝐵ℓ𝑦𝑢ℓ with 𝑢1 &gt; · · ·&gt; 𝑢ℓ.
+6: Randomly pick 𝛼1, . . . , 𝛼𝑛, 𝛾1, . . . , 𝛾𝑛, 𝑏0, 𝑏1, . . . , 𝑏𝐷𝑚𝑖𝑛 from F𝑞
+until 𝛼𝑖 /𝛾𝑖’s and𝑏𝑖’s are distinct anddeg𝑧 𝐴1 (𝛾1𝑧−𝛼1, . . . , 𝛾𝑛𝑧−
+𝛼𝑛) = deg 𝐴1 and 𝐴1 (𝛾1𝑏𝑖 −𝛼1, . . . , 𝛾𝑛𝑏𝑖 −𝛼𝑛) ≠ 0 and 𝐵1 (𝛾1𝑏𝑖 −
+𝛼1, . . . , 𝛾𝑛𝑏𝑖 − 𝛼𝑛) ≠ 0 for all 𝑖 = 0, . . . , 𝐷𝑚𝑖𝑛.
+Stage 1: Test if NC(𝐺, s) = ∅. See section 4.2.
+7: if gcd(𝐴𝑖 (𝛾1𝑧 −𝛼1, . . . , 𝛾𝑛𝑧 −𝛼𝑛), 𝐵𝑗 (𝛾1𝑧 −𝛼1, . . . , 𝛾𝑛𝑧 −𝛼𝑛), 𝑖 =
+1, . . . , 𝑟, 𝑗 = 1, . . . , ℓ) ≠ 1 then
+8: return “Failure”. {* This means NC(𝐺, s) = ∅(Lemma 4.3). *}
+9: end if
+Stage 2: Interpolate the bivariate GCD 𝜙 (𝐺) (upto 𝑦𝑚) from
+𝐷𝑚𝑖𝑛 + 1 monic univariate GCDs ¯𝑔𝑘 ∈ F𝑞 [𝑦].
+10: if deg 𝐴 &lt; deg 𝐵 then Γ := 𝐴1 else Γ := 𝐵1 end if
+11: for 𝑘 = 0, 1, 2, . . . , 𝐷𝑚𝑖𝑛 do
+12: Compute 𝑔𝑘 := gcd(𝐴((𝛾1𝑏𝑘 − 𝛼1)𝑦𝑠1, . . . , (𝛾𝑛𝑏𝑘 − 𝛼𝑛)𝑦𝑠𝑛 ),
+𝐵((𝛾1𝑏𝑘 − 𝛼1)𝑦𝑠1, . . . , (𝛾𝑛𝑏𝑘 − 𝛼𝑛)𝑦𝑠𝑛 )).
+13: Set 𝑔𝑘 := Γ(𝛾1𝑏𝑘 − 𝛼1, . . . , 𝛾𝑛𝑏𝑘 − 𝛼𝑛) · 𝑔𝑘 and assume 𝑔𝑘 =
+𝑐𝑘,1𝑦𝑑1 + · · · +𝑐𝑘,𝑡𝑦𝑑𝑡 .
+14: end for
+A New Sparse Polynomial GCD by Separating Terms ISSAC ’24, July 16–19, 2024, Raleigh, NC, USA
+15: for 𝑖 = 1, 2, . . . , 𝑡 do
+16: Interpolate 𝐶𝑖 (𝑧) from (𝑏𝑘, 𝑐𝑘,𝑖 ) so that 𝐶𝑖 (𝑏𝑘 ) = 𝑐𝑘,𝑖 for
+0 ≤ 𝑘 ≤ 𝐷𝑚𝑖𝑛.
+17: end for
+18: Compute 𝐶 (𝑧) = gcd(𝐶1 (𝑧), . . . ,𝐶𝑡 (𝑧)) then for 𝑖 = 1, . . . , 𝑡
+𝐶𝑖 (𝑧) := 𝐶𝑖 (𝑧)/𝐶 (𝑧). {* 𝜙 (𝐺) ∼ 𝑦 𝐶1 (𝑧)𝑦𝑑1 + · · · +𝐶𝑡 (𝑧)𝑦𝑑𝑡 . *}
+Stage 3: compute the non-colliding set NC(𝐺, s).
+19: NC := ∅.
+20: for 𝑖 = 1, . . . , 𝑡 do
+21: if 𝐶𝑖 (𝑧) factors as 𝑐𝑖
+Î𝑛
+𝑗=1 (𝛾 𝑗 𝑧 − 𝛼 𝑗 )𝑒𝑖,𝑗 then
+22: NC := NC Ð{𝑐𝑖 ·𝑥𝑒𝑖,1
+1 · · ·𝑥𝑒𝑖,𝑛
+𝑛 }.
+23: end if
+24: end for
+25: if 𝐺 ∗ = 0 then return NC end if
+Stage 4: Adjust the coefficients of 𝜙 (𝐺) and 𝜙 (𝐺 ∗) using a
+common term to make them consistent to get 𝜙 (𝐺 − 𝐺 ∗).
+26: Let ℎ1 := 𝐶1 (𝑧)𝑦𝑑1 + · · · +𝐶𝑡 (𝑧)𝑦𝑑𝑡 . {* ℎ1 ∼𝑦 𝜙 (𝐺). *}
+27: Compute ℎ2 := 𝐺 ∗ ((𝛾1𝑧−𝛼1)𝑦𝑠1, . . . , (𝛾𝑛𝑧−𝛼𝑛)𝑦𝑠𝑛 ) and assume
+ℎ2 = 𝐸1 (𝑧)𝑦𝑤1 + · · · +𝐸𝛾 (𝑧)𝑦𝑤𝛾 . {* ℎ2 = 𝜙 (𝐺 ∗). *}
+28: if the monomials of NC and 𝐺 ∗ do not have a common one
+then return “Failure”end if
+29: Assume one of the same monomials corresponds to terms
+𝐶𝜌 (𝑧)𝑦𝑑𝜌 and 𝐸𝛿 (𝑧)𝑦𝑤𝛿 in ℎ1 and ℎ2.
+30: Let ℎ3 := ℎ1 ·𝑦max(𝑑𝜌 ,𝑤𝛿 )−𝑑𝜌 · LC(𝐸𝛿 (𝑧))
+LC(𝐶𝜌 (𝑧)) −ℎ2 ·𝑦max(𝑑𝜌 ,𝑤𝛿 )−𝑤𝛿 .
+Assume ℎ3 = 𝐹1 (𝑧)𝑦𝜂1 + · · · +𝐹𝜏 (𝑧)𝑦𝜂𝜏 . {* ℎ3 = 𝜙 (𝐺 − 𝐺 ∗). *}
+31: if ℎ3 = 0 return ∅end if
+32: Multiply each term in NC by the scalar LC(𝐸𝛿 (𝑧))
+LC(𝐶𝜌 (𝑧)) in F𝑞.
+Stage 5: Compute the non-colliding terms of NC(𝐺 − 𝐺 ∗, s).
+33: Set NCG∗ := ∅. {* Store the elements of NC(𝐺 − 𝐺 ∗, s). *}
+34: for 𝑘 = 1, . . . , 𝜏 do
+35: if 𝐹𝑘 (𝑧) factors as 𝑐𝑘
+Î𝑛
+𝑖=1 (𝛾𝑖𝑧 − 𝛼𝑖 )𝑒𝑘,𝑖 then
+36: NCG∗ := NCG∗ Ð{𝑐𝑘 ·𝑥𝑒𝑘,1
+1 · · ·𝑥𝑒𝑘,𝑛
+𝑛 }.
+37: end if
+38: end for
+39: if NCG∗ = ∅then return “Failure”end if
+40: return (NC \ Terms(𝐺 ∗)) Ð NCG∗.
+In Stage 2 of Algorithm 1 we interpolate 𝑧 in 𝜙 (𝐺) a bivariate
+polynomial in F𝑞 [𝑦, 𝑧]. The following Lemma shows that 𝐷𝑚𝑖𝑛 + 1
+values for 𝑧 are sufficient where 𝐷𝑚𝑖𝑛 = min(deg 𝐴, deg 𝐵).
+Lemma 4.7. Let 𝑏0, 𝑏1, . . . , 𝑏𝑁 be distinct points in F𝑞. Let 𝑎 =
+𝜙 (𝐴), 𝑏 = 𝜙 (𝐵), and 𝑔 = gcd(𝑎, 𝑏) in F𝑞 [𝑦, 𝑧]. Let ℎ𝑘 =
+gcd(𝑎(𝑦, 𝑏𝑘 ), 𝑏(𝑦, 𝑏𝑘 )) for 0 ≤ 𝑘 ≤ 𝑁 . If (1) Cont(𝑔, 𝑦) = 1 and
+(2) ℎ𝑘 ∼ 𝑔(𝑦, 𝑏𝑘 ) in F𝑞 [𝑦] for 0 ≤ 𝑘 ≤ 𝑁 then 𝑔 can be interpolated
+from the ℎ𝑘 for 𝑁 = 𝐷𝑚𝑖𝑛 .
+Proof. WLOG assume deg 𝐴 ≤ deg 𝐵. Let Γ(𝑧) = LC(𝑎, 𝑦) and
+𝑐 = 𝑎/𝑔. Then Γ(𝑧) = LC(𝑔, 𝑦) LC(𝑐, 𝑦). Let
+𝑔𝑘 (𝑦) = Γ(𝑏𝑘 ) monic(ℎ𝑘 (𝑦))
+= LC(𝑐, 𝑦) (𝑏𝑘 ) LC(𝑔, 𝑦) (𝑏𝑘 ) monic(ℎ𝑘 (𝑦))
+= LC(𝑐, 𝑦) (𝑏𝑘 ) 𝑔(𝑦, 𝑏𝑘 ).
+Interpolating the (𝑏𝑘, 𝑔𝑘 (𝑦)) gives us ℎ = LC(𝑐, 𝑦) 𝑔 not 𝑔. To
+compute 𝑔 we compute Cont(ℎ, 𝑦) = LC(𝑐, 𝑦) and remove it from
+ℎ. So we need sufficient values for 𝑧 to interpolate 𝑧 in ℎ. We have
+deg(ℎ, 𝑧) = deg(LC(𝑐, 𝑦), 𝑧) + deg(𝑔, 𝑧) ≤ deg(𝑐, 𝑧) + deg(𝑔, 𝑧) =
+deg(𝑎, 𝑧) thus deg(𝑎, 𝑧) +1 values are sufficient. The Lemma follows
+since deg(𝑎, 𝑧) ≤ deg 𝐴 = 𝐷𝑚𝑖𝑛. □
+Theorem 4.8. Algorithm 1 works correctly as specified.
+Proof. Consider two cases.
+Case 1: If 𝑄 := gcd(𝐴1, . . . , 𝐴𝑟 , 𝐵1, . . . , 𝐵ℓ ) ≠ 1, then by Lemma 4.3,
+NC(𝐺, s) = ∅. In Step 6, asdeg𝑧 𝐴1 (𝛾1𝑧 −𝛼1, . . . , 𝛾𝑛𝑧 −𝛼𝑛) = deg 𝐴1,
+then deg𝑧 𝑄 (𝛾1𝑧 − 𝛼1, . . . , 𝛾𝑛𝑧 − 𝛼𝑛) = deg 𝑄 ≥ 1. Thus this case
+can be detected in Step 7. We analyse the success rate. In Step 6,
+the leading coefficient of𝐴1 (𝛾1𝑧 − 𝛼1, . . . , 𝛾𝑛𝑧 − 𝛼𝑛) is a polynomial
+in 𝛾𝑖’s with degree≤ 𝐷. To make 𝛼𝑖 /𝛾𝑖 distinct, we should makeÎ
+1≤𝑖&lt; 𝑗 ≤𝑛 (𝛼𝑖𝛾 𝑗 − 𝛼 𝑗𝛾𝑖 ) · Î𝑛
+𝑖=1 𝛾𝑖 ≠ 0. This polynomial has degree
+≤ 𝑛2. As 𝛼1, . . . , 𝛼𝑛, 𝛾1, . . . , 𝛾𝑛 are randomly chosen from F𝑞, the
+output of Step 8 is correct with probability ≥ 1 − 𝐷+𝑛2
+𝑞 ≥ 1 − 𝜀.
+Case 2: If gcd(𝐴1, . . . , 𝐴𝑟 , 𝐵1, . . . , 𝐵ℓ ) = 1, Step 22 computes the
+correct NC(𝐺, s) if the following three conditions are met.
+(1) The gcd in Step 7 is 1.
+(2) In Step 12, 𝑔𝑘 ∼𝑦 𝜙 (𝐺) (𝑧 = 𝑏𝑘, 𝑦)) for all 𝑘.
+(3) In Step 21, 𝐶𝑖 corresponds to a non-colliding term in 𝐺s iff
+𝐶𝑖 has the form 𝑐𝑖 (𝛾1𝑧 − 𝛼1)𝑒𝑖,1 · · · (𝛾𝑛𝑧 − 𝛼𝑛)𝑒𝑖,𝑛 .
+By Corollary 4.5, Pr[(1) occurs] ≥ 1 − (2𝐷2+2𝐷) (2 ∥s ∥∞𝐷+1)
+𝑞 .
+By Lemma 4.6, Pr[(2) occurs] ≥ 1 − (4 ∥s ∥∞𝐷2+5𝐷) (𝐷+1)+𝑛2
+𝑞 .
+By Theorem 4.1, Pr[(3) occurs] ≥ 1 − (3𝑛+1) ∥s ∥∞𝐷2+3𝑛𝐷 +𝑛2
+𝑞 .
+Step 36 computes the correct NC(𝐺 − 𝐺 ∗, s) if the following
+condition in Step 35 is met.
+(4) 𝐹𝑘 corresponds to a non-colliding term in (𝐺 − 𝐺 ∗)s iff 𝐹𝑘
+has the form 𝑐𝑘 (𝛾1𝑧 − 𝛼1)𝑒𝑘,1 · · · (𝛾𝑛𝑧 − 𝛼𝑛)𝑒𝑘,𝑛 .
+By Theorem 4.1, Pr[(4) occurs] ≥ 1 − (3𝑛+1) ∥s ∥∞𝐷2+3𝑛𝐷 +𝑛2
+𝑞 .
+Thus our algorithm returns the correct set with probability (1)
+times (2) times (3) times(4) which simplifies to ≥ 1 − 𝑄/𝑞 where
+𝑄 = 8∥s∥∞ (𝐷 + 1)3 + 6𝑛∥s∥∞ (𝐷 + 1)2 + 3𝑛2. Since Step 2 imposes
+𝑞 &gt; 𝑄/𝜀, the probability is ≥ 1 − 𝜀. □
+Theorem 4.9. The expected bit complexity of Algorithm 1 is
+𝑂∼ (𝑛𝑇in (log 𝑑 +log ∥s∥∞) +log2 1
+𝜀 +log 1
+𝜀 log 𝑞 + (𝑇in𝐷 + ∥s∥∞𝐷2 +
+𝑇o𝐷2 + 𝑛∥s∥∞𝐷) · (log 𝑞 + log(𝑛∥s∥∞𝐷/𝜀))) where 𝑇in = #𝐴 + #𝐵
+and 𝑇o = #𝐺, 𝑑 = max𝑛
+𝑖=1 max(deg(𝐴, 𝑥𝑖 ), deg(𝐵, 𝑥𝑖 )) and 𝐷 =
+max(deg 𝐴, deg 𝐵).
+Proof. In Step 2, as ℓ = 𝑂 (log ∥s∥∞ + log 𝐷 + log 𝑛 + log 1
+𝜀 ),
+the complexity of extension is 𝑂 (ℓ2 + ℓ log 𝑞) bit operations [18],
+which is 𝑂 (log2 ∥s∥∞ + log2 𝐷 + log2 𝑛 + log2 1
+𝜀 + log ∥s∥∞ log 𝑞 +
+log 𝐷 log 𝑞 + log 𝑛 log 𝑞 + log 1
+𝜀 log 𝑞). Step 5 costs 𝑂∼ (𝑛𝑇in (log 𝑑 +
+log ∥s∥∞) +𝑇in log 𝑞) bit operations. In Step 6, the cost of randomly
+choosing 𝛼1, . . . , 𝛼𝑛, 𝛾1, . . . , 𝛾𝑛, 𝑏0, . . . , 𝑏𝐷min is 𝑂 ((𝑛 + 𝐷) log 𝑞) bit
+operations. As analyzed in Theorem 4.8, the probability of all con-
+ditions being satisfied is ≥ 1 − 5𝐷 (𝐷+1)+𝑛2
+𝑞 . Due to 𝑞 &gt; 8∥s∥∞ (𝐷 +
+1)3 + 6𝑛∥s∥∞ (𝐷 + 1)2 + 3𝑛2, the probability ≥ 3
+8 . Thus the expected
+cost of Step 6 can be absorbed by the complexities of Step 7 and
+Step 12. In Step 7, first, compute 𝐴𝑖 (𝛾1𝑧 − 𝛼1, . . . , 𝛾𝑛𝑧 − 𝛼𝑛) and
+ISSAC ’24, July 16–19, 2024, Raleigh, NC, USA Huang and Monagan
+𝐵𝑖 (𝛾1𝑧 − 𝛼1, . . . , 𝛾𝑛𝑧 − 𝛼𝑛), which costs up to 𝑂∼ (𝑇in𝐷 log 𝑞) bit
+operations. Then compute 𝑟 + ℓ − 1 polynomial GCDs with degree
+𝐷, resulting in a complexity of 𝑂∼ ((𝑟 + ℓ)𝐷 log 𝑞) bit operations.
+As 𝑟 + ℓ is 𝑂 (∥ s∥∞𝐷), the complexity is𝑂∼ (∥ s∥∞𝐷2 log 𝑞) bit oper-
+ations. In Step 12, compute all 𝜙 (𝐴) (𝑧 = 𝑏𝑘, 𝑦) and 𝜙 (𝐵) (𝑧 = 𝑏𝑘, 𝑦),
+which costs 𝑂∼ (𝑇in𝐷 log 𝑞) bit operations. Then, we totally com-
+pute 𝑂 (𝐷) univariate GCDs of degree𝑂 (∥ s∥∞𝐷), the complexity is
+𝑂∼ (∥ s∥∞𝐷2 log 𝑞) bit operations. In Step 16, we interpolate 𝑡 poly-
+nomials with degrees 𝑂 (𝐷). As 𝑡 ∈ 𝑂 (∥ s∥∞𝐷), the complexity is
+𝑂∼ (∥ s∥∞𝐷2 log 𝑞) bit operations. In Step 18, we compute𝑡 −1 poly-
+nomial GCDs of degree 𝑂 (𝐷). As 𝑡 ∈ 𝑂 (∥ s∥∞𝐷), the complexity is
+𝑂∼ (∥ s∥∞𝐷2 log 𝑞) bit operations. Step 21 costs 𝑂 (𝑡𝐷 2 log 𝑞) bit op-
+erations to factor all𝐶𝑖 (𝑧) by continuously dividing them by𝛾 𝑗 𝑧−𝛼 𝑗
+in F𝑞 [𝑧]. If 𝑡 &gt; 𝑇o, then we computed the wrong result, as stated in
+Theorem 4.8, the probability of this case happening is ≤ 𝜀. In this
+case, 𝑡 ≤ ∥ s∥∞𝐷, therefore the complexity is 𝑂 (∥ s∥∞𝐷3 log 𝑞) bit
+operations. If 𝑡 ≤ 𝑇o, 𝑂 (𝑡𝐷 2 log 𝑞) is 𝑂 (𝑇o𝐷2 log 𝑞). In Step 1, we let
+𝜀 ≤ 1
+𝐷 . The expected complexity is𝑂 (𝜀 · ∥s∥∞𝐷3 log 𝑞 +𝑇o𝐷2 log 𝑞),
+which is 𝑂∼ (∥ s∥∞𝐷2 log 𝑞 +𝑇o𝐷2 log 𝑞) bit operations. Step 27 does
+𝑂∼ (𝑇o𝐷 log 𝑞) bit operations as #𝐺 ∗ ≤ #𝐺 . In Step 30, the com-
+plexity is 𝑂∼ ((𝑡 + 𝑇o) log 𝑞 + (𝑡 + 𝑇o) log ∥s∥∞ + (𝑡 + 𝑇o) log 𝐷) bit
+operations, as 𝑡 ≤ ∥ s∥∞𝐷, the cost is 𝑂∼ (∥ s∥∞𝐷 log 𝑞 + 𝑇o log 𝑞 +
+𝑇o log ∥s∥∞ +𝑇o log 𝐷) bit operations. Steps 34-36 have the same the
+complexity as Steps 20-22, which is𝑂∼ (∥ s∥∞𝐷2 log 𝑞 +𝑇o𝐷2 log 𝑞 +
+𝑛∥s∥∞𝐷 log 𝑞) bit operations. After Step 4, F𝑞 is actually F𝑞ℓ , so in
+the complexity analysis, log 𝑞ℓ ∈ max(𝑂 (log 𝑞, log( 𝑛 ∥s ∥∞𝐷
+𝜀 ))) . To
+simplify it, we replace it with 𝑂 (log 𝑞 + log( 𝑛 ∥s ∥∞𝐷
+𝜀 )). □
+4.5 Good Kronecker Substitutions
+When s = (𝑠1, 𝑠2, . . . , 𝑠𝑛) is chosen randomly, the substitution 𝑥𝑖 =
+𝑥𝑖𝑦𝑠𝑖 , 𝑖 = 1, 2, . . . , 𝑛 is called a randomized Kronecker substitution .
+We call a vectors that causes #NC(𝐺, s) ≥ 1
+2 #𝐺 a “good” Kronecker
+substitution for 𝐺. The following key lemma shows that there is an
+upper bound on the number of “bad” vectorss.
+Lemma 4.10. Let 𝐺 ∈ F𝑞 [𝑥1, . . . , 𝑥𝑛] and 𝑡 = #𝐺. If there exist
+𝐾 different integer vectors s ∈ [ 0, 𝑁 )𝑛, such that #C(𝐺, s) ≥ ℓ then
+𝐾 ≤ 𝑡 (𝑡 − 1)𝑁 𝑛−1/ℓ .
+Proof. Assume 𝐺 = 𝑐1𝑚1 +· · ·+𝑐𝑡𝑚𝑡 and 𝑚𝑖 = 𝑥𝑒𝑖,1
+1 · · ·𝑥𝑒𝑖,𝑛
+𝑛 . Let
+ℎ𝑖,𝑗 (𝑠1, . . . , 𝑠𝑛) = Í𝑛
+𝑘=1 (𝑒𝑖,𝑘 − 𝑒 𝑗,𝑘 )𝑠𝑘 for 1 ≤ 𝑖 &lt; 𝑗 ≤ 𝑡. Denote 𝑅𝑖,𝑗
+as the number of integer roots in[0, 𝑁 )𝑛 and let 𝑅 = Í
+1≤𝑖&lt; 𝑗 ≤𝑡 𝑅𝑖,𝑗 .
+For each ℎ𝑖,𝑗 , there are up to𝑁 𝑛−1 different integer roots in [0, 𝑁 )𝑛.
+Therefore 𝑅𝑖,𝑗 ≤ 𝑁 𝑛−1 and 𝑅 ≤ 𝑡 (𝑡 −1)
+2 𝑁 𝑛−1. Assuming s is a
+vector such that #C(𝐺, s) ≥ ℓ. Without loss of generality, assume
+𝑐1𝑚1, . . . , 𝑐ℓ𝑚ℓ are colliding terms, then at least ⌈ ℓ
+2 ⌉ pairs of terms
+in C(𝐺, s) collide together. Therefore, s is the root of at least ⌈ ℓ
+2 ⌉
+different ℎ𝑖,𝑗 . There are 𝐾 such roots, so for all ℎ𝑖,𝑗 ’s, there are at
+least ⌈ ℓ
+2 ⌉ · 𝐾 roots. So we have ℓ
+2 ·𝐾 ≤ ⌈ ℓ
+2 ⌉ · 𝐾 ≤ 𝑅 ≤ 𝑡 (𝑡 −1)
+2 𝑁 𝑛−1,
+therefore ℓ ·𝐾 ≤ 𝑡 (𝑡 − 1)𝑁 𝑛−1. □
+Theorem 4.11 provides a method to find a vector s so that, with
+high probability, 𝐺s has at least 𝛽 ·#𝐺 non-colliding terms.
+Theorem 4.11. Let 𝐺 (𝑥1, . . . , 𝑥𝑛) ∈ F𝑞 [𝑥1, . . . , 𝑥𝑛], 𝑇 ≥ #𝐺 = 𝑡.
+Let 𝛽 ∈ ( 0, 1) and 𝜇 ∈ ( 0, 1). Let 𝑁 = ⌈ 𝑇 −1
+𝜇 (1−𝛽) ⌉. If we choose s ∈
+[0, 𝑁 )𝑛 at random, then Pr[#NC(𝐺, s) &gt; 𝛽 ·#𝐺] ≥ 1 − 𝜇.
+Proof. Observe that Pr[#NC(𝐺, s) &gt; 𝛽 · #𝐺] = 1 −
+Pr[#NC(𝐺, s) ≤ 𝛽 · #𝐺] = 1 − Pr[#C(𝐺, s) ≥ ( 1 − 𝛽) · #𝐺]. The
+second equality follows from #NC(𝐺, s) + #C(𝐺, s) = #𝐺. Thus it
+suffices to show that Pr[#C(𝐺, s) ≥ ( 1 − 𝛽) ·#𝐺] ≤ 𝜇. According to
+Lemma 4.10, the number of integer vectors s in [0, 𝑁 )𝑛 such that
+#C(𝐺, s) ≥ ( 1 − 𝛽)#𝐺 is ≤ 𝑡 (𝑡 −1)𝑁 𝑛−1
+(1−𝛽)#𝐺 . Since there are 𝑁 𝑛 integer
+vectors in [0, 𝑁 )𝑛, we have Pr[#C(𝐺, s) ≥ ( 1 − 𝛽) · #𝐺] ≤ (( 𝑡 −
+1)𝑁 𝑛−1/(1 − 𝛽))/ 𝑁 𝑛 = ((𝑡 −1)/( 1 − 𝛽))/ 𝑁 ≤ 𝜇 (𝑡 −1)/(𝑇 −1) ≤ 𝜇.
+So Pr[#NC(𝐺, s) &gt; 𝛽 ·#𝐺] ≥ 1 − 𝜇. □
+If we choose 𝛽 = 1
+2 , 𝜇 = 1
+4 ⌈log2 𝑇 ⌉−1, we have :
+Corollary 4.12. Let 𝐺 ∈ F𝑞 [𝑥1, . . . , 𝑥𝑛], 𝑇 ≥ #𝐺 and 𝑁 =
+8(𝑇 − 1) ⌈log2 𝑇 ⌉. If we choose s ∈ [ 0, 𝑁 )𝑛 at random then
+Pr[#NC(𝐺, s) &gt; 1
+2 ·#𝐺] ≥ 1 − 1
+4 ⌈log2 𝑇 ⌉−1.
+Actually, if we choose𝛽 = 𝜇 = 1
+2 , then Pr[#NC(𝐺, s) &gt; 1
+2 ·#𝐺] ≥
+1
+2 , the probability that at least half of the terms in 𝐺s do not collide,
+is ≥ 1
+2 . This is a very satisfactory result and𝑁 = 4(𝑇 − 1). However,
+because we only recover𝑇 /2 terms each time, in order to find all the
+terms, we need to loop⌈log2 𝑇 ⌉ times, which reduces the probability
+of success to 2− ⌈log2 𝑇 ⌉ ≤ 1
+𝑇 , which is too low. Therefore, in the
+Corollary 4.12, we increase 𝑁 a little to increase the probability of
+success from 1
+2 to 1 − 1
+4 ⌈log2 𝑇 ⌉−1, so the probability of computing
+all terms is (1 − 1
+4 ⌈log2 𝑇 ⌉−1) ⌈log2 𝑇 ⌉ ≥ 3
+4 .
+4.5.1 Structure of Our GCD Algorithm. Stage 1: First, randomly
+choose a vector s ∈ [ 0, 𝑁 )𝑛 where 𝑁 = 8(𝑇 − 1) ⌈log2 𝑇 ⌉. Then
+by Corollary 4.12, with high probability, #NC(𝐺, s) &gt; 1
+2 ·#𝐺. By
+Algorithm 1, we can computeNC(𝐺, s). Denote 𝐺 ∗ as the sum of all
+terms in NC(𝐺, s). Then 𝐺 ∗ is an approximation polynomial of 𝐺
+and satisfies #𝐺 ∗ ≥ 1
+2 #𝐺 (or #(𝐺 − 𝐺 ∗) ≤ 1
+2 #𝐺). Generally 𝐺 ≠ 𝐺 ∗,
+so we choose other vectors s′ to find the remaining terms in𝐺 −𝐺 ∗.
+Stage 2: Let Terms(𝐺 ∗) denote the set of all terms in 𝐺 ∗. We want
+to choose a new vector s′ ∈ N𝑛 that satisfies
+(1) #NC(𝐺 − 𝐺 ∗, s′) &gt; 1
+2 #(𝐺 − 𝐺 ∗);
+(2) NC (𝐺, s′) Ñ Terms(𝐺 ∗) ≠ ∅.
+Condition (1) ensuresNC(𝐺 −𝐺 ∗, s′) contains at least half the terms
+in 𝐺 − 𝐺 ∗. Let 𝐺 ∗∗ be the sum of the terms in NC(𝐺 − 𝐺 ∗). Then
+we have #(𝐺 − 𝐺 ∗ − 𝐺 ∗∗) &lt; 1
+2 (𝐺 − 𝐺 ∗) &lt; 1
+4 #𝐺. By performing the
+same steps for 𝐺 − 𝐺 ∗ − 𝐺 ∗∗, we can find a polynomial 𝐺 ∗∗∗ such
+that #(𝐺 − 𝐺 ∗ − 𝐺 ∗∗ − 𝐺 ∗∗∗) &lt; 1
+23 #𝐺. Repeating this ⌈log2 𝑇 ⌉ times
+we obtain all the terms of 𝐺.
+Condition (2) is used to match the terms in NC(𝐺, s′) and the
+previous approximation polynomial 𝐺 ∗. This is because NC(𝐺, s′)
+is computed based on the factorization of the coefficients of 𝑦 in
+𝐺s′ (𝑥𝑖 = 𝛾𝑖𝑧 − 𝛼𝑖 for 1 ≤ 𝑖 ≤ 𝑛). To compute 𝐺s′ (𝑥𝑖 = 𝛾𝑖𝑧 − 𝛼𝑖 ), we
+compute the GCD of 𝐴s′ (𝑥𝑖 = 𝛾𝑖𝑧 − 𝛼𝑖 ) and 𝐵s′ (𝑥𝑖 = 𝛾𝑖𝑧 − 𝛼𝑖 ). We
+will get a polynomial𝜅𝑦𝑚 ·𝐺s′ (𝑥𝑖 = 𝛾𝑖𝑧−𝛼𝑖 ), where𝜅 ≠ 1 and 𝑚 ≠ 0
+are likely. We need to identify𝜅 and 𝑚 for our algorithm to work. Let
+𝐻 := 𝐺 −𝐺 ∗. NC(𝐺 −𝐺 ∗, s′) is computed based on the factorization
+of the coefficients of 𝑦 in 𝐻s′ (𝑥𝑖 = 𝛾𝑖𝑧 − 𝛼𝑖 ). Here 𝐻s′ (𝑥𝑖 = 𝛾𝑖𝑧 −
+𝛼𝑖 ) = 𝐺s′ (𝑥𝑖 = 𝛾𝑖𝑧 − 𝛼𝑖 ) − 𝐺 ∗
+s′ (𝑥𝑖 = 𝛾𝑖𝑧 − 𝛼𝑖 ). 𝐺 ∗ is known, so
+𝐺 ∗
+s′ (𝑥𝑖 = 𝛾𝑖𝑧 − 𝛼𝑖 ) is known. But the 𝜅 and 𝑦𝑚 are unknown to
+us, which means 𝐺s′ (𝑥𝑖 = 𝛾𝑖𝑧 − 𝛼𝑖 ) is also unknown. Condition (2)
+means that 𝐺 ∗ and NC(𝐺, s′) have a common monomial, so we can
+A New Sparse Polynomial GCD by Separating Terms ISSAC ’24, July 16–19, 2024, Raleigh, NC, USA
+remove the factor 𝜅𝑦𝑚 in 𝜅𝑦𝑚 ·𝐺s′ (𝑥𝑖 = 𝛾𝑖𝑧 − 𝛼𝑖 ) by comparing
+its coefficients with the coefficients of 𝐺 ∗, as they have at least one
+common term. Therefore we can compute 𝐻s′ (𝑥𝑖 = 𝛾𝑖𝑧 − 𝛼𝑖 ) and
+ultimately find NC(𝐺 − 𝐺 ∗, s′).
+The following theorem gives the probability of successfully
+choosing a vector s that satisfies the two conditions.
+Theorem 4.13. Let 𝐺 ∈ F𝑞 [𝑥1, . . . , 𝑥𝑛], 𝑇 ≥ #𝐺. Let 𝐺 ∗ be a
+polynomial containing some terms of 𝐺, and #𝐺 ∗ ≥ 1
+2 #𝐺. Let 𝑁 =
+8(𝑇 −1) ⌈log2 𝑇 ⌉. If we choose s ∈ [ 0, 𝑁 )𝑛 at random then Pr[#NC(𝐺 −
+𝐺 ∗, s) ≥ 1
+2 #(𝐺 − 𝐺 ∗) and NC(𝐺, s) Ñ Terms(𝐺 ∗) ≠ ∅] ≥ 1 − 1
+4⌈log2 𝑇 ⌉ .
+Proof. Denote 𝐻 := 𝐺 − 𝐺 ∗. Assuming there are 𝐾1 integer
+vectors in [0, 𝑁 )𝑛, such that #NC(𝐻, s) &lt; 1
+2 #(𝐻 ) and there are 𝐾2
+integer vectors in [0, 𝑁 )𝑛 such that NC(𝐺, s) Ñ Terms(𝐺 ∗) = ∅.
+Below we give an upper bound for 𝐾1 + 𝐾2. Let 𝑡𝐻 := #𝐻. Then
+𝑡𝐻 ≤ 𝑇
+2 . #NC(𝐻, s) &lt; 1
+2 #(𝐻 ) is equivalent to #C(𝐻, s) &gt; 1
+2𝑡𝐻 , by
+Lemma 4.10, 𝐾1 ≤ ( 𝑡𝐻 (𝑡𝐻 − 1)𝑁 𝑛−1)/( 1
+2𝑡𝐻 ) = 2(𝑡𝐻 − 1)𝑁 𝑛−1 ≤
+(𝑇 − 2)𝑁 𝑛−1. Now consider 𝐾2. Assume 𝐺 = Í𝑡
+𝑖=1 𝑐𝑖𝑚𝑖 and
+𝑚𝑖 = 𝑥𝑒𝑖,1
+1 · · ·𝑥𝑒𝑖,𝑛
+𝑛 . W.l.o.g., assume 𝑐1𝑚1 ∈ Terms(𝐺 ∗). As
+NC(𝐺, s) Ñ Terms(𝐺 ∗) = ∅, 𝑐1𝑚1 ∉ NC(𝐺, s), which means𝑐1𝑚1 ∈
+C(𝐺, s). Setℎ(𝑠1, . . . , 𝑠𝑛) = Î𝑡
+𝑗=2 [(𝑒 𝑗,1 −𝑒1,1)𝑠1 + (𝑒 𝑗,2 −𝑒1,2)𝑠2 +· · ·+
+(𝑒 𝑗,𝑛 −𝑒1,𝑛)𝑠𝑛]. Then 𝑐1𝑚1 ∈ C(𝐺, s) means ℎ(𝑠1, . . . , 𝑠𝑛) = 0. Since
+deg ℎ(𝑠1, . . . , 𝑠𝑛) ≤ 𝑇 − 1, by Lemma 3.1, there exist at most (𝑇 −
+1)𝑁 𝑛−1 points s ∈ [ 0, 𝑁 )𝑛 such that ℎ(𝑠1, . . . , 𝑠𝑛) = 0. So 𝐾2 ≤ ( 𝑇 −
+1)𝑁 𝑛−1. Therefore we have𝐾1 +𝐾2 ≤ 2(𝑇 −1)𝑁 𝑛−1. So the probabil-
+ity Pr[#NC(𝐺 −𝐺 ∗, s) ≥ 1
+2 #(𝐺 −𝐺 ∗) and NC(𝐺, s) Ñ Terms(𝐺 ∗) ≠
+∅] ≥ 1 − 𝐾1+𝐾2
+𝑁 𝑛 ≥ 1 − 2(𝑇 −1)
+𝑁 = 1 − 1
+4 ⌈log2 𝑇 ⌉−1. □
+Because we may only recover 𝑇 /2 terms each time, in order to
+find all the terms, we need to loop⌈log2 𝑇 ⌉ times, so the probability
+of computing all terms becomes (1 − 1
+4 ⌈log2 𝑇 ⌉−1) ⌈log2 𝑇 ⌉ ≥ 3
+4 .
+4.5.2 Algorithms.
+Algorithm 2 Generating a Newly Added Polynomial 𝐺 ∗∗
+Require: Monomial primitive polynomials 𝐴, 𝐵 ∈ F𝑞 [𝑥1, . . . , 𝑥𝑛];
+an approximation polynomial 𝐺 ∗ of 𝐺, satisfying #(𝐺 − 𝐺 ∗) ≤
+1
+2 #𝐺 or 𝐺 ∗ = 0; an upper bound 𝑇 ≥ #𝐺.
+Ensure: A polynomial𝐺 ∗∗ such that#(𝐺 −𝐺 ∗−𝐺 ∗∗) ≤ 1
+2 #(𝐺 −𝐺 ∗)
+with probability ≥ 1 − 1
+3 ⌈log2 𝑇 ⌉ or “Failure”.
+1: Let 𝑁 = 8(𝑇 − 1) ⌈log2 𝑇 ⌉. Randomly choose s ∈ [ 0, 𝑁 )𝑛.
+2: Compute 𝐶 := (NC(𝐺, s) \ Terms(𝐺 ∗)) Ð NC(𝐺 − 𝐺 ∗, s) by
+Algorithm 1 with input 𝐴, 𝐵, 𝐺 ∗, s and 𝜀 = 1
+12 ⌈log2 𝑇 ⌉ .
+3: if 𝐶 is “Failure”then return “Failure”end if
+4: Let 𝐺 ∗∗ be the sum of the terms in 𝐶.
+5: return 𝐺 ∗∗.
+Theorem 4.14. Algorithm 2 works correctly as specified.
+Proof. We consider two cases. (1) 𝐺 ∗ = 0. In Step 1, as we
+choose s ∈ [ 0, 𝑁 )𝑛, by Corollary 4.12, we have Pr[#NC(𝐺, s) &gt;
+1
+2 · #𝐺] ≥ 1 − 1
+4 ⌈log2 𝑇 ⌉−1. In Step 2, we compute (NC(𝐺, s) \
+Algorithm 3 GCD algorithm
+Require: 𝐴, 𝐵 ∈ F𝑞 [𝑥1, . . . , 𝑥𝑛]; an upper bound 𝑇 ≥ #𝐺.
+Ensure: 𝐺 ∗ = gcd(𝐴, 𝐵) up to a constant with probability ≥ 2
+3 ; or
+“Failure”.
+1: Compute monomial contents MoCont(𝐴) and MoCont(𝐵) and
+set MoCont(𝐺) := gcd(MoCont(𝐴),MoCont(𝐵)). (see 2.4)
+2: 𝐴 := 𝐴/MoCont(𝐴). 𝐵 := 𝐵/MoCont(𝐵).
+3: 𝐺 ∗ := 0;
+4: for 𝑖 = 1, 2, . . . , ⌈log2 𝑇 ⌉ do
+5: Let 𝐺 ∗∗ be the output of Algorithm 2 with inputs 𝐴, 𝐵, 𝐺 ∗
+and 𝑇 .
+6: if 𝐺 ∗∗ = “Failure”then return “Failure”end if
+7: if 𝐺 ∗∗ = 0 then return 𝐺 ∗ ·MoCont(𝐺) end if
+8: 𝐺 ∗ := 𝐺 ∗ + 𝐺 ∗∗.
+9: end for
+10: return “Failure”.
+Terms(𝐺 ∗)) Ð NC(𝐺 −𝐺 ∗, s) = NC(𝐺, s) by Algorithm 1 with prob-
+ability ≥ 1 − 1
+12 ⌈log2 𝑇 ⌉ . So in Step 5, we have #(𝐺 − 𝐺 ∗∗) ≤ 1
+2 #𝐺
+with probability ≥ ( 1 − 1
+4 ⌈log2 𝑇 ⌉ ) (1 − 1
+12 ⌈log2 𝑇 ⌉ ) ≥ 1 − 1
+3 ⌈log2 𝑇 ⌉ .
+(2) #(𝐺 − 𝐺 ∗) ≤ 1
+2 #𝐺. In Step 1, as we choose s ∈ [ 0, 𝑁 )𝑛, by
+Theorem 4.13, we have
+Pr[#NC(𝐺 −𝐺 ∗, s) ≥ 1
+2 #(𝐺 −𝐺 ∗) and NC(𝐺, s) Ñ Terms(𝐺 ∗) ≠ ∅] ≥ 1 −
+1
+4⌈log2 𝑇 ⌉ . In Step 2, we compute (NC(𝐺, s) \ Terms(𝐺 ∗)) Ð NC(𝐺 −
+𝐺 ∗, s) by Algorithm 1 with probability ≥ 1 − 1
+12 ⌈log2 𝑇 ⌉ . So in Step
+5, we have #(𝐺 − 𝐺 ∗ − 𝐺 ∗∗) ≤ 1
+2 #(𝐺 − 𝐺 ∗) with probability ≥
+(1 − 1
+4 ⌈log2 𝑇 ⌉ ) (1 − 1
+12 ⌈log2 𝑇 ⌉ ) ≥ 1 − 1
+3 ⌈log2 𝑇 ⌉ . □
+Now we analyse the complexity of Algorithm 2. We assume
+𝑇 ∈ 𝑂 (𝑇o), that is, 𝑇 is not a bad bound.
+Theorem 4.15. The expected complexity of Algorithm 2 is𝑂∼ (𝑛𝑇in
+(log 𝑑 + log𝑇o) + 𝐷 (𝑇in + 𝑛𝑇o + 𝑇o𝐷) (log 𝑞 + log(𝑛𝑇o))) bit
+operations, where 𝑇in := #𝐴 + #𝐵, 𝑇o := #𝐺, 𝑑 :=
+max𝑛
+𝑖=1 max(deg(𝐴, 𝑥𝑖 ), deg(𝐵, 𝑥𝑖 )) and 𝐷 := max(deg 𝐴, deg 𝐵).
+Proof. In Step 2, we call Algorithm 1. As ∥s∥∞ is 𝑂∼ (𝑇o) and
+𝜀 = 1
+12 ⌈log2 𝑇 ⌉ , the expected complexity is 𝑂∼ (𝑛𝑇in (log 𝑑 + log𝑇o) +
+𝐷 (𝑇in + 𝑛𝑇o + 𝑇o𝐷) (log 𝑞 + log(𝑛𝑇o))) bit operations, by Theorem
+4.9. □
+Theorem 4.16. Algorithm 3 works correctly as specified.
+Proof. Steps 5-8 compute the new approximation𝐺 ∗ +𝐺 ∗∗ from
+𝐺 ∗ using Algorithm 2. As #(𝐺 − 𝐺 ∗ − 𝐺 ∗∗) ≤ 1
+2 #(𝐺 − 𝐺 ∗), ⌈log2 𝑇 ⌉
+loops are enough. If 𝐺 ∗∗ = 0, then all terms have been discovered,
+so 𝐺 ∗ is the monomial primitive part of the GCD 𝐺. Therefore we
+output 𝐺 ∗ ·MoCont(𝐺) in Step 7.
+If when Algorithm 2 called in Step 5 it always returns the correct
+newly added polynomial 𝐺 ∗∗, Algorithm 3 returns the correct GCD
+in Step 7. Since Algorithm 2 is correct with probability ≥ 1 −
+1
+3 ⌈log2 𝑇 ⌉ , the probability is≥ ( 1− 1
+3 ⌈log2 𝑇 ⌉ ) ⌈log2 𝑇 ⌉ ≥ 1− 1
+3 = 2
+3 . □
+We analyze the complexity of Algorithm 3. Again we assume
+𝑇 ∈ 𝑂 (𝑇o), that is, 𝑇 is not a bad bound.
+ISSAC ’24, July 16–19, 2024, Raleigh, NC, USA Huang and Monagan
+Theorem 4.17. The expected complexity of Algorithm 3 is𝑂∼ (𝑛𝑇in
+(log 𝑑 log𝑇o +log2 𝑇o) +𝐷 log𝑇o (𝑇in +𝑛𝑇o +𝑇o𝐷) (log 𝑞 +log(𝑛𝑇o)))
+bit operations where𝑇in := #𝐴+#𝐵, 𝑇o := #𝐺, 𝐷 = max(deg 𝐴, deg 𝐵)
+and 𝑑 = max𝑛
+𝑖=1 max(deg(𝐴, 𝑥𝑖 ), deg(𝐵, 𝑥𝑖 )).
+Proof. The cost of computing the monomial contents in Step
+1 and the monomial primitive parts in Step 2 is 𝑂∼ (𝑛𝑇in log 𝑑)
+which negligible. As we call Algorithm 2 at most⌈log2 𝑇o⌉ times, by
+Theorem 4.15, the complexity is 𝑂∼ (𝑛𝑇in (log 𝑑 log𝑇o + log2 𝑇o) +
+𝐷 (𝑇in+𝑛𝑇o+𝑇o𝐷) (log 𝑞 log𝑇o+log(𝑛𝑇o) log𝑇o)) bit operations. □
+Remark 4.1. If Algorithm 3 outputs a polynomial, with probability
+≥ 11
+12 , this polynomial is the GCD of 𝐴 and 𝐵, up to a constant. This
+probability is greater than 2/3 because we have excluded the case
+where the output is “Failure”. We analyze the rate. In Step 2 of Algo-
+rithm 2, Algorithm 1 is called. If Algorithm 1 returns a correct set, then
+Algorithm 2 also returns a correct newly added polynomial𝐺 ∗∗. There-
+fore, in Algorithm 3, we get a truly better approximation 𝐺 ∗ + 𝐺 ∗∗.
+Due to a maximum of ⌈log2 𝑇 ⌉ calls to Algorithm 1, and the selection
+of 𝜀 = 1
+12 ⌈log2 𝑇 ⌉ , the probability is ≥ ( 1 − 1
+12 ⌈log2 𝑇 ⌉ ) ⌈log2 𝑇 ⌉ ≥ 11
+12 .
+Remark 4.2. In addition, from the above analysis, it can be seen
+that even if 𝑇 is not the upper bound of 𝐺, if Algorithm 3 returns a
+polynomial, then with probability ≥ 11
+12 , it is still the correct GCD of
+𝐴 and 𝐵 up to a constant. This is because the correctness of Algorithm
+1 ensures the output of Algorithm 3 is always correct.
+5 DROPPING THE TERM BOUND
+Algorithm 3 requires a term bound𝑇 for #𝐺 as input. In this section
+we remove this requirement. Remark 4.2 means we can simply call
+Algorithm 3 with 𝑇 = 2, 22, 23, 24, . . . . Once a polynomial is output
+instead of “Failure”, it is the GCD with probability≥ 11
+12 .
+Algorithm 4 GCD algorithm for F𝑞 [𝑥1, . . . , 𝑥𝑛].
+Require: Two polynomials 𝐴, 𝐵 ∈ F𝑞 [𝑥1, . . . , 𝑥𝑛].
+Ensure: 𝐻 = gcd(𝐴, 𝐵) up to a constant with probability ≥ 11
+12 .
+1: 𝑇𝑚 := Î𝑛
+𝑖=1 (1 + min(deg(𝐴, 𝑥𝑖 ), deg(𝐵, 𝑥𝑖 ))) . {* 𝑇𝑚 ≥ #𝐺 *}
+2: 𝑇 := 2.
+3: repeat
+4: Call Algorithm 3 to compute the GCD of 𝐴, 𝐵 using 𝑇 as a
+guess for #𝐺. Let 𝐻 be the output of Algorithm 3.
+5: if 𝐻 ≠ “Failure”then return 𝐻 end if
+6: if 𝑇 &lt; 𝑇𝑚 then 𝑇 := 2𝑇 end if
+7: end repeat
+Theorem 5.1. Algorithm 4 works correctly as specified.
+Proof. We let𝑇 = 2, 4, 8, . . . , once 𝑇 ≥ 𝑇o, then with probability
+≥ 2
+3 , Algorithm 3 returns 𝐺 = gcd(𝐴, 𝐵) up to a constant. As
+mentioned in Remark 4.2, once Algorithm 3 returns a polynomial,
+with probability ≥ 11
+12 , it is the GCD of𝐴 and 𝐵 up to a constant. □
+The following theorem gives the complexity of Algorithm 4.
+Theorem 5.2. Let 𝐴, 𝐵 ∈ F𝑞 [𝑥1, . . . , 𝑥𝑛]. Algorithm 4
+computes the correct GCD 𝐺 = gcd(𝐴, 𝐵) using expected
+𝑂∼ (𝑛𝑇in𝑑 log 𝑞 log3 𝑇o + 𝑛2𝑑2𝑇o log 𝑞) bit operations where 𝑇in :=
+#𝐴 + #𝐵 and 𝑇o := #𝐺 and 𝑑 := max𝑛
+𝑖=1 max(deg(𝐴, 𝑥𝑖 ), deg(𝐵, 𝑥𝑖 )).
+Proof. When 𝑇 is fixed. In Step 4, the bit complexity is 𝐶𝑇 :=
+𝑂∼ (𝑛𝑇in𝑑 log2 𝑇 log 𝑞 + 𝑛2𝑑2𝑇 log 𝑞) as Algorithm 3 calling at most
+⌈log2 𝑇 ⌉ times Algorithm 1 and 𝐷 ∈ 𝑂 (𝑛𝑑). We obtain the com-
+plexity due to Theorem 4.17. Now𝑇 = 2, 22, . . . ,2𝜅−1, 2𝜅, 2𝜅, 2𝜅, . . . ,
+where 𝜅 = ⌈log2 (𝑇𝑚 )⌉. We keep calling Algorithm 3 until it outputs
+a polynomial. When𝑇 ≥ #𝐺, Algorithm 3 returns𝐺 with probability
+≥ 2
+3 . Let 𝐿 := ⌈log2 𝑇o⌉. Then 2𝐿 ≥ 𝑇o. Set the event Eℓ := { when
+Algorithm 4 calls Algorithm 3 ℓ-th times, it returns a polynomial}.
+Denote Comℓ := Íℓ
+𝑖=1 𝐶2𝑖 ∈ 𝑂∼ (𝑛𝑇in𝑑 log 𝑞ℓ 3 +𝑛2𝑑22ℓ log 𝑞) as the
+bit complexity of Algorithm 4 when event Eℓ occurs. For ℓ ≤ 𝑇 , we
+have Comℓ ≤ Í𝐿
+𝑖=1 𝐶2𝑖 ∈ 𝑂∼ (𝑛𝑇in𝑑 log 𝑞 log3 𝑇o+𝑛2𝑑2𝑇o log 𝑞). For
+ℓ &gt; 𝐿, when eventEℓ occurs, it means that in the𝐿, 𝐿 +1, . . . , (ℓ −1)-
+th calling of Algorithm 3, it does not return a polynomial. So
+the probability 𝑃 (Eℓ ) ≤ ( 1
+3 )ℓ−𝐿. So the expected complexity is
+≤ Com𝐿 + Í∞
+ℓ=𝐿+1 𝑃 (Eℓ )Comℓ. As Í∞
+ℓ=𝐿+1 ℓ3 ( 1
+3 )ℓ−𝐿 ∈ 𝑂 (𝐿3) andÍ∞
+ℓ=𝐿+1 2ℓ ( 1
+3 )ℓ−𝐿 ∈ 𝑂 (2𝐿), we have Í∞
+ℓ=𝐿+1 𝑃 (Eℓ )Comℓ + Com𝐿 ∈
+𝑂∼ (𝑛𝑇in𝑑 log 𝑞 log3 𝑇o + 𝑛2𝑑2𝑇o log 𝑞) bit operations. □
+6 IMPLEMENTATION NOTES
+We have implemented our new GCD algorithm in Maple and Stage
+2 of Algorithm 1 coded in C for prime fields F𝑝 for 𝑝 &lt; 263 using
+signed 64 bit integer arithmetic. We use Algorithm 4 to compute
+𝐺 = gcd(𝐴, 𝐵) of polynomials in Z[𝑥1, . . . , 𝑥𝑛] by computing 𝐺
+modulo a sequence of primes and using Chinese remaindering. We
+wait until the result of Chinese remaindering does not change then
+use trial division over Z to prove correctness.
+Algorithm 4 tries 𝑇 = 2, 4, 8, . . . until it succeeds. The total num-
+ber of calls to Algorithm 1, equivalently, the total number of bi-
+variate gcds in F𝑞 [𝑦, 𝑧] done, is then Ílog2 𝑇
+𝑖=1 𝑖 ∈ 𝑂 (log2
+2 𝑇 ). We can
+reduce this for the second and subsequent primes to 𝑂 (log2 𝑇 ) by,
+if Algorithm 4 used 𝑇 = 𝑡, then for the next prime we initialize
+𝑇 := max(2, 𝑡
+2 ) in Step 2 of Algorithm 4.
+In Algorithm 1 𝑡 is the number of terms in 𝑦 of our the bivariate
+gcd. If |𝐺 ∗| ≪ 𝑡, this value for 𝑇 is unlikely to succeed. So we
+require 2|𝐺 ∗| ≥ 𝑡 to try to recover more terms in 𝐺. This reduces
+the total number of calls to Algorithm 1 to 𝑂 (log2 𝑇 ).
+Let 𝐴, 𝐵 ∈ F𝑝 [𝑥1, . . . , 𝑥𝑛], 𝐺 = gcd(𝐴, 𝐵), 𝐶 = 𝐴/𝐺 and 𝐷 = 𝐵/𝐺.
+Another key improvement is to reconstruct the smaller of 𝐺, 𝐶 and
+𝐷. If #𝐶 ≪ #𝐺 then reconstructing 𝐶 instead of 𝐺 will require a
+smaller value of 𝑇 . Maple’s gcd algorithm does not do this and it is
+very evident in our Benchmarks.
+Let 𝑇in = #𝐴 + #𝐵 and 𝑇o = min(#𝐺, #𝐶, #𝐷). For sparse inputs
+𝑇in ≫ 𝑇o. This means the dominating cost of our algorithm will
+usually be evaluating the inputs at 𝑥𝑖 = (𝛾𝑖𝑧 − 𝛼𝑖 )𝑦𝑠𝑖 at 𝑧 = 𝑏𝑘 in
+Step 12 of Algorithm 1. In Step 12, Algorithm 1 computes
+¯𝑔𝑘 = gcd(𝐴(𝑥𝑖 = (𝛾𝑖𝑏𝑘 − 𝛼𝑖 )𝑦𝑠𝑖 ), 𝐵(𝑥𝑖 = (𝛾𝑖𝑏𝑘 − 𝛼𝑖 )𝑦𝑠𝑖 ))
+for each 𝑏𝑘 in a loop. Because we evaluate 𝑧 and not 𝑦, if we store
+the evaluations of the monomials of 𝐴 and 𝐵 at 𝑥𝑖 = (𝛾𝑖𝑏𝑘 − 𝛼𝑖 ),
+for each 𝑏𝑘, we can reuse them for all choices of s. Similarly, if we
+also store the evaluations of the monomials of 𝐴 and 𝐵 at 𝑥𝑖 = 𝑦𝑠𝑖 ,
+we can reuse them for each 𝑏𝑘.
+7 EXPERIMENTAL RESULTS
+Our benchmarks were run on an Intel Gold 6342 server using one
+core. Maple 2022 and Magma V2.26-12 were used.
+A New Sparse Polynomial GCD by Separating Terms ISSAC ’24, July 16–19, 2024, Raleigh, NC, USA
+Our first benchmark is for GCD problems with 𝑛 = 9 variables.
+We create 𝑡 terms for 𝐺 and 𝑠 terms for 𝐶 and 𝐷 where each mono-
+mial is chosen randomly from the set of monomials of total degree
+at most 30 and each integer coefficient is chosen randomly from
+[−99, 99]. The values of𝑠 and 𝑡 mean the input polynomials𝐴 = 𝐶𝐺
+and 𝐵 = 𝐺𝐷 have about 106 terms. The different choices of 𝑠 and 𝑡
+include cases where #𝐺 ≪ #𝐶, #𝐺 = #𝐶 and #𝐺 ≫ #𝐶.
+The timings in Table 1 in column MGCD are for our new algo-
+rithm. It used two primes𝑝1 = 262 −57 and 𝑝2 = 262 −87 to compute
+gcd(𝐴, 𝐵). Column eval is the time spent evaluating the input poly-
+nomials 𝐴 and 𝐵. Column 𝑇 is the value of the 𝑇 parameter in our
+algorithm. Notice 𝑇 is much smaller than min(𝑠, 𝑡).
+The timings in columns Maple and Magma are for their main gcd
+algorithm. Maple and Magma both use Zippel’s algorithm [24]. The
+Maple implementation is described in [6]. The timings in column
+MonHu are for the Monagan-Hu gcd algorithm from [8, 15].
+𝑠 𝑡 MGCD 𝑇 eval Maple Magma MonHu
+105 101 11.69 4 10.22 78.92 39.90 0.661
+104 102 13.55 8 10.24 197.6 9.98 1.488
+103 103 29.65 64 10.27 1054.9 37.49 6.868
+102 104 13.43 16 10.24 14568. 27.68 1.087
+101 105 10.67 4 9.47 NA 144.8 0.696
+Table 1: Benchmark 1: Timings in CPU seconds for 𝑛=9
+One reason why the Monagan-Hu algorithm is faster than ours
+on Benchmark 1 is that its evaluation points form a geometric se-
+quence which reduces the number of multiplications needed by
+a factor of 𝑛 for each evaluation. Monagan-Hu does a Kronecker
+substitution to map the coefficients of 𝐴 and 𝐵 from F𝑝 [𝑥2, . . . , 𝑥𝑛]
+into F𝑝 [𝑦]. If the inputs have more variables or have higher de-
+gree, the prime 𝑝 needed may overflow machine precision and then
+Monagan-Hu will use multi-precision integer arithmetic. This hap-
+pens for Benchmark 1 when 𝑛 ≥ 12. Benchmark 2 below is the
+same as Benchmark 1 but with 𝑛 = 18 variables instead of 𝑛 = 9.
+For Benchmark 2 our new algorithm is the fastest. %begingroup
+𝑠 𝑡 MGCD 𝑇 eval Maple Magma MonHu
+105 101 38.17 4 22.67 494.9 166.5 310.2
+104 102 48.76 16 24.62 1473.2 79.50 450.8
+103 103 92.60 128 24.68 14287. 447.8 4358.
+102 104 50.54 16 24.64 NA 76.73 605.7
+101 105 39.61 4 22.59 NA 188.1 150.6
+Table 2: Benchmark 2 timings in CPU seconds for 𝑛=18
+8 CONCLUSION
+In this paper, we proposed a new method for computing the GCD of
+sparse multivariate polynomials over finite fields. GCD computation
+is an important operation of a Computer Algebra System. We gave
+the explicit bit complexity for the algorithm, which is polynomial in
+the sparse representation of the input and output and their degrees.
+Our initial experimental results are very good. The core of our
+algorithm, Steps 11 to 14 of Algorithm 1, is easily parallelized.
+ACKNOWLEDGMENTS
+This first author was supported by the National Key R &amp;D Pro-
+gram of China (Grant No.2021YFB3100200). The second author was
+supported by Maplesoft and NSERC of Canada.
+REFERENCES
+[1] A. Arnold and D. S. Roche. Multivariate sparse interpolation using randomized
+kronecker substitutions. In Proceedings of the 39th International Symposium on
+Symbolic and Algebraic Computation , pages 35–42, 2014.
+[2] W. S. Brown. On Euclid’s algorithm and the computation of polynomial greatest
+common divisors. Journal of the ACM (JACM) , 18(4):478–504, 1971.
+[3] W. S. Brown and J. F. Traub. On Euclid’s algorithm and the theory of subresultants.
+J. ACM, 18(4):505–514, 1971.
+[4] B. W. Char, K. O. Geddes, and G. H. Gonnet. GCDHEU: heuristic polynomial
+GCD algorithm based on integer GCD computation. J. Symb. Comput., 7(1):31–48,
+1989.
+[5] G. E. Collins. Subresultants and reduced polynomial remainder sequences. J.
+ACM, 14(1):128–142, 1967.
+[6] J. de Kleine, M. B. Monagan, and A. D. Wittkopf. Algorithms for the non-monic
+case of the sparse modular GCD algorithm. In Proceedings of ISSAC 2005 , pages
+124–131. ACM, 2005.
+[7] K. O. Geddes, S. R. Czapor, and G. Labahn. Algorithms for Computer Algebra .
+Kluwer Academic, 1992.
+[8] J. Hu and M. Monagan. A fast parallel sparse polynomial GCD algorithm.Journal
+of Symbolic Computation, 105:28–63, 2021.
+[9] Q.-L. Huang and X.-S. Gao. Revisit sparse polynomial interpolation based on
+randomized kronecker substitution. In Computer Algebra in Scientific Computing:
+21st International Workshop, CASC 2019, Moscow, Russia, August 26–30, 2019,
+Proceedings 21, pages 215–235. Springer, 2019.
+[10] Q.-L. Huang and X.-S. Gao. New sparse multivariate polynomial factorization
+algorithms over integers. In Proceedings of the 2023 International Symposium on
+Symbolic and Algebraic Computation , pages 315–324, 2023.
+[11] E. Kaltofen. Sparse hensel lifting. In Proceedings of EUROCAL ’85, volume 204 of
+LNCS, pages 4–17, 1985.
+[12] E. Kaltofen. Greatest common divisors of polynomials given by straight-line
+programs. Journal of the ACM (JACM) , 35(1):231–264, 1988.
+[13] E. Kaltofen and B. M. Trager. Computing with polynomials given by black boxes
+for their evaluations: Greatest common divisors, factorization, separation of
+numerators and denominators. J. Symb. Comput., 9(3):301–320, 1990.
+[14] H.-C. Liao and R. J. Fateman. Evaluation of the heuristic polynomial gcd. In
+Proceedings of the 1995 international symposium on Symbolic and algebraic com-
+putation, pages 240–247, 1995.
+[15] M. Monagan. Speeding up polynomial gcd, a crucial operation in maple. Maple
+Transactions, 2(1), 2022.
+[16] J. Moses and D. Y. Y. Yun. The EZ GCD algorithm. In I. E. Perlin and T. J. M. Jr.,
+editors, Proceedings of the ACM annual conference, Atlanta, Georgia, USA, August
+27-29, 1973, pages 159–166. ACM, 1973.
+[17] T. Sasaki and M. Suzuki. Three new algorithms for multivariate polynomial GCD.
+J. Symb. Comput., 13(4):395–412, 1992.
+[18] V. Shoup. Fast construction of irreducible polynomials over finite fields. J. Symb.
+Comput., 17(5):371–391, 1994.
+[19] M. Tang, B. Li, and Z. Zeng. Computing sparse GCD of multivariate polyno-
+mials via polynomial interpolation. Journal of Systems Science and Complexity ,
+31(2):552–568, 2018.
+[20] K. Tsuji. An improved EZ-GCD algorithm for multivariate polynomials. J. Symb.
+Comput., 44(1):99–110, 2009.
+[21] J. van der Hoeven and G. Lecerf. On sparse interpolation of rational functions
+and gcds. Communications in Computer Algebra , 55(1):1–12, 2021.
+[22] J. von zur Gathen and J. Gerhard. Modern Computer Algebra (3rd ed.) . Cambridge
+University Press, 2013.
+[23] P. S. Wang. The EEZ-GCD algorithm. SIGSAM Bull., 14(2):50–60, 1980.
+[24] R. Zippel. Probabilistic algorithms for sparse polynomials. In E. W. Ng, editor,
+Proceedings of EUROSAM ’79, volume 72 of LNCS, pages 216–226. Springer, 1979.</pre></html>

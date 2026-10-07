@@ -1,0 +1,100 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>!/usr/bin/env python3</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>!/usr/bin/env python3</h1><p>Source ID d-856fb805c281b767; literature/sources/r11_logic/cycle7/r10_check_composition_input.py; 1531 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact selected-tail and schedule diagnostics, not a coverage experiment.&quot;&quot;&quot;
+from fractions import Fraction as F
+from math import factorial,isqrt
+from pathlib import Path
+import hashlib,json
+
+OUT=Path(&#x27;results/r10_probability/cycle7&#x27;);OUT.mkdir(parents=True,exist_ok=True)
+
+def ceilf(x):return (x.numerator+x.denominator-1)//x.denominator
+def ceil_sqrt(x):
+    k=isqrt(x.numerator//x.denominator)
+    return k if F(k*k)==x else k+1
+def exp_upper(x,J=40):
+    s=sum(x**j/F(factorial(j)) for j in range(J+1))
+    nxt=x**(J+1)/F(factorial(J+1))
+    return s+nxt/(1-x/F(J+2))
+
+delta=F(1,10);delta_acq=delta/4;a=delta_acq/8
+tail_checks=[]
+for kstar in [0,1,5,20,100]:
+    reach=F(1)
+    for j in range(1,15):
+        reach*=a/F((kstar+j)**2)
+        universal=a**j/F(factorial(j)**2)
+        assert reach&lt;=universal
+    for r in [1,2]:
+        c=a*2**r
+        S=sum(c**j/F(factorial(j)**2) for j in range(41))
+        nxt=c**41/F(factorial(41)**2)
+        tail=nxt/(1-c/F(42**2))
+        assert S+tail&lt;=exp_upper(c)
+        tail_checks.append({&#x27;kstar&#x27;:kstar,&#x27;r&#x27;:r,&#x27;moment_multiplier_upper&#x27;:float(S+tail),
+                            &#x27;exp_multiplier_upper&#x27;:float(exp_upper(c)),
+                            &#x27;tail_term_upper&#x27;:float(tail)})
+
+# Full displayed conservative constructor for a three-state bidirectional path.
+# These counts are not executed. They expose constant size and finite bit work.
+n=3;L=2;Dg=2;lam=F(18,5);kap=F(1,64);kap_eff=kap/2
+Kappa=kap_eff**(-(L-1));Htrue=4*Kappa
+elam=F(81)  # e&lt;3, lambda&lt;4 =&gt; exp(lambda)&lt;3^4.
+def cp_for(H):
+    vals=[lam,F(1)]
+    for d in range(1,Dg+1):
+        short=sum((n*max(H,lam))**k/F(factorial(k)) for k in range(1,d))
+        vals.append(short+elam*lam**d/F(factorial(d)))
+    return max(vals)
+Cptrue=cp_for(Htrue)
+C1=F(ceilf(Cptrue)+ceil_sqrt(2*Cptrue*Kappa)+ceilf(Kappa/3)+1)
+Hglobal=F(8,7)*(2*C1+F(8,3)*Kappa) # exp(lambda t0)&lt;=exp(1/8)&lt;=8/7.
+Cp=cp_for(Hglobal)
+Cr=max([F(4,3)]+[sum((n*Cp)**j for j in range(1,d))+
+                           F(4,3)*(2*lam)**d for d in range(1,Dg+1)])
+V=4*n*(n-1)*Cp*Cr**4;M=4*Cr**2;G=F((2*(n-1))**2)*(4*lam+F(8,9))
+epsilon=F(1,4);Bstar=F(1)+2*n*(n-1)/(delta/4)+4 # log40&lt;4.
+schedule=[]
+for k in [0,1,5,10,20,40]:
+    beta=F(1,2**(k+1));t=kap/F(2**ceilf(F(k+1,L-1)))
+    assert kap_eff**(L-1)*beta&lt;=t**(L-1)&lt;=kap**(L-1)*beta
+    expr=Bstar*(32*V*t**(L-2)/(epsilon**2*beta**2)+
+                 (F(8,3)*M+16*G+1)/(epsilon*beta*t)+16*G)
+    m=ceilf(expr)
+    kbudget=Bstar/m
+    assert kbudget&lt;=beta*t and kbudget&lt;=t and kbudget&lt;=1/(16*G)
+    # Exact count-term implications for the claimed radius (no square root needed).
+    assert 2*V*t**(L-2)*kbudget &lt;= (epsilon*beta/4)**2
+    assert (M/(3*t)+2*G)*kbudget&lt;=epsilon*beta/8
+    schedule.append({&#x27;stage&#x27;:k,&#x27;beta&#x27;:str(beta),&#x27;lag&#x27;:str(t),
+                     &#x27;m_each_pilot_and_confirmation_row&#x27;:str(m),
+                     &#x27;count_decimal_digits&#x27;:len(str(m)),
+                     &#x27;count_binary_bits&#x27;:m.bit_length(),
+                     &#x27;m_beta_squared_float&#x27;:float(m*beta**2),
+                     &#x27;t_m_beta_float&#x27;:float(t*m*beta),
+                     &#x27;scope&#x27;:&#x27;sufficient conservative count arithmetic only; no samples executed&#x27;})
+
+inputs=[&#x27;notes/root_cycle5/ACQUIRED_RATES_AND_SCALE.md&#x27;,
+        &#x27;notes/r08_information/cycle5/combined_acquisition_gate.md&#x27;,
+        &#x27;notes/r10_probability/cycle6/minimum_lag_joint_generator.md&#x27;,
+        &#x27;notes/r10_probability/cycle6_validity_followup/predictive_confidence_and_cost.md&#x27;,
+        &#x27;notes/r10_probability/cycle6_validity_followup/global_class_export.md&#x27;,
+        &#x27;notes/r11_logic/cycle6_validity_followup/SPLIT_PREDICTIVE_GATE.md&#x27;]
+manifest=[]
+for item in inputs:
+    pth=Path(item)
+    if pth.exists():manifest.append({&#x27;path&#x27;:item,&#x27;sha256&#x27;:hashlib.sha256(pth.read_bytes()).hexdigest(),
+                                     &#x27;read_depth&#x27;:&#x27;full proof or relevant gate&#x27;,
+                                     &#x27;hash_is_integrity_not_scientific_validation&#x27;:True})
+Path(&#x27;sources/r10_probability/cycle7/input_manifest.json&#x27;).write_text(json.dumps(manifest,indent=2)+&#x27;\n&#x27;)
+result={&#x27;date&#x27;:&#x27;2026-10-07&#x27;,&#x27;exact_tail_checks&#x27;:tail_checks,
+        &#x27;conservative_n3_constants&#x27;:{&#x27;lambda&#x27;:str(lam),&#x27;kappa_c&#x27;:str(kap),
+         &#x27;Cp_true&#x27;:str(Cptrue),&#x27;C1&#x27;:str(C1),&#x27;Hglobal&#x27;:str(Hglobal),
+         &#x27;Cp_global&#x27;:str(Cp),&#x27;Cr_global&#x27;:str(Cr),&#x27;V_float&#x27;:float(V),&#x27;Bstar&#x27;:str(Bstar)},
+        &#x27;exact_schedule_checks&#x27;:schedule,
+        &#x27;note&#x27;:&#x27;No CTMC data or statistical coverage experiment is executed. Polynomial certificate evaluation does not make these sufficient read counts practical.&#x27;}
+(OUT/&#x27;composition_checks.json&#x27;).write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+print(json.dumps({&#x27;tail_multiplier_r2_upper&#x27;:tail_checks[1][&#x27;moment_multiplier_upper&#x27;],
+                 &#x27;V_n3_float&#x27;:float(V),&#x27;first_count_digits&#x27;:schedule[0][&#x27;count_decimal_digits&#x27;],
+                 &#x27;first_count&#x27;:schedule[0][&#x27;m_each_pilot_and_confirmation_row&#x27;],
+                 &#x27;tail_cases&#x27;:len(tail_checks),&#x27;schedule_cases&#x27;:len(schedule)},indent=2))
+</pre></html>

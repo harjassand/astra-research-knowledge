@@ -1,0 +1,128 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>&quot;&quot;&quot;Rational certified EP and inverse arithmetic; no stochastic acquisition.</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>&quot;&quot;&quot;Rational certified EP and inverse arithmetic; no stochastic acquisition.</h1><p>Source ID d-0dcc65762723357b; literature/sources/r11_logic/cycle6/r17_nonequilibrium__ep_arithmetic_replay.py; 1744 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>&quot;&quot;&quot;Rational certified EP and inverse arithmetic; no stochastic acquisition.
+
+Fixture frequencies are deterministic perturbed exact-probability enclosures.
+They test arithmetic branches, not coverage of random endpoint observations.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from pathlib import Path
+import json
+import sympy as sp
+
+ROOT=Path(__file__).resolve().parents[2]
+
+def scale_interval(c, interval):
+    lo,hi=interval
+    return (c*lo,c*hi) if c&gt;=0 else (c*hi,c*lo)
+
+def log_interval(y,m):
+    assert y&gt;0
+    x=y;k=0
+    while x&gt;=2:x/=2;k+=1
+    while x&lt;1:x*=2;k-=1
+    def unit(z):
+        total=F(0);power=z
+        for j in range(m):
+            total+=2*power/F(2*j+1);power*=z*z
+        tail=2*power/(F(2*m+1)*(1-z*z))
+        return total,total+tail
+    lx=unit((x-1)/(x+1));l2=scale_interval(F(k),unit(F(1,3)))
+    return lx[0]+l2[0],lx[1]+l2[1]
+
+Q0=[[F(-1),F(1),F(0)],[F(1),F(-2),F(1)],[F(1),F(1),F(-2)]]
+rho=F(4)
+
+def endpoint_interval(b,t,tolerance):
+    x=rho*t
+    assert 0&lt;x&lt;1
+    q=[row[:] for row in Q0];q[0][2]+=b;q[0][0]-=b
+    transition=[[F(i==j)+q[i][j]/rho for j in range(3)] for i in range(3)]
+    assert all(v&gt;=0 for row in transition for v in row)
+    # Alternating exponential remainder, and positive uniformization tail.
+    total=F(1);term=F(1)
+    for j in range(10000):
+        nxt=term*x/F(j+1)
+        elo,ehi=(total-nxt,total) if j%2==0 else (total,total+nxt)
+        if ehi-elo&lt;=tolerance/8:break
+        total+=(-1 if (j+1)%2 else 1)*nxt;term=nxt
+    else:raise RuntimeError(&#x27;exponential fixture cap&#x27;)
+    row=[F(1),F(0),F(0)];weight=F(1);partial=F(0)
+    for j in range(10000):
+        partial+=weight*row[2]
+        tail=2*weight*x/F(j+1) # remaining exponential series &lt;= e^x next term &lt;2 next term.
+        lo,hi=elo*partial,ehi*partial+tail
+        if hi-lo&lt;=tolerance:return lo,hi
+        row=[sum(row[i]*transition[i][k] for i in range(3)) for k in range(3)]
+        weight*=x/F(j+1)
+    raise RuntimeError(&#x27;propagator fixture cap&#x27;)
+
+def invert_frequency(beta,t,z,e):
+    low,high=beta,min(4*beta,F(1));tau=e*beta*t/F(32);w=e*beta/F(4)
+    evaluations=0
+    while high-low&gt;w:
+        mid=(low+high)/2
+        lo,hi=endpoint_interval(mid,t,2*tau);evaluations+=1
+        if lo&lt;=z&lt;=hi:return mid,evaluations,&#x27;probability_tolerance&#x27;
+        if z&lt;lo:high=mid
+        else:low=mid
+    return (low+high)/2,evaluations,&#x27;parameter_width&#x27;
+
+q=sp.Matrix([[int(z) for z in row] for row in Q0]);b=sp.symbols(&#x27;b&#x27;)
+q[0,2]+=b;q[0,0]-=b
+cofactors=[(-q).minor_submatrix(i,i).det() for i in range(3)]
+
+def as_fraction(x):
+    p,d=sp.fraction(x);return F(int(p),int(d))
+
+def ep_interval(rate,tolerance):
+    weights=[as_fraction(z.subs(b,sp.Rational(rate.numerator,rate.denominator))) for z in cofactors]
+    pi=[w/sum(weights) for w in weights]
+    # Ordinary edge ratios equal1 here; only pair 0&lt;-&gt;2 remains.
+    current=pi[2]-rate*pi[0]
+    for m in range(1,10000):
+        enclosure=scale_interval(current,log_interval(1/rate,m))
+        if enclosure[1]-enclosure[0]&lt;=tolerance:return enclosure,m
+    raise RuntimeError(&#x27;log fixture cap&#x27;)
+
+records=[]
+e=F(1,10)
+for k in [2,8,14]:
+    true_b=F(1,2**k);beta=true_b/2;t=beta/F(16384)
+    truth=endpoint_interval(true_b,t,e*beta*t/F(1000));center=sum(truth)/2
+    for sign in [-1,0,1]:
+        z=center+sign*e*beta*t/F(8)
+        estimate,evals,branch=invert_frequency(beta,t,z,e)
+        assert abs(estimate-true_b)&lt;=5*e*beta/F(8)
+        interval,m=ep_interval(estimate,F(1,10**12))
+        exact=sp.N((sp.Rational(interval[0].numerator,interval[0].denominator)+sp.Rational(interval[1].numerator,interval[1].denominator))/2,60)
+        records.append({&#x27;b&#x27;:str(true_b),&#x27;fixture_frequency_offset&#x27;:sign,&#x27;estimate&#x27;:str(estimate),
+                        &#x27;error_over_eps_beta&#x27;:float(abs(estimate-true_b)/(e*beta)),
+                        &#x27;bisection_evaluations&#x27;:evals,&#x27;branch&#x27;:branch,
+                        &#x27;EP_interval_width&#x27;:float(interval[1]-interval[0]),&#x27;log_terms&#x27;:m,
+                        &#x27;EP_interval_midpoint_decimal&#x27;:str(exact)})
+branch_records=[]
+beta=F(1,64);t=beta/F(16384);true_mid=5*beta/2
+mid_interval=endpoint_interval(true_mid,t,e*beta*t/F(1000))
+estimate,evals,branch=invert_frequency(beta,t,sum(mid_interval)/2,e)
+assert branch==&#x27;probability_tolerance&#x27; and estimate==true_mid
+branch_records.append({&#x27;fixture&#x27;:&#x27;probability-tolerance branch&#x27;,&#x27;branch&#x27;:branch,&#x27;evaluations&#x27;:evals})
+for z in [F(0),F(1)]:
+    estimate,evals,branch=invert_frequency(beta,t,z,e)
+    assert beta&lt;=estimate&lt;=4*beta and evals&lt;=8
+    branch_records.append({&#x27;fixture&#x27;:&#x27;outside-image failure frequency&#x27;,&#x27;frequency&#x27;:str(z),
+                           &#x27;branch&#x27;:branch,&#x27;evaluations&#x27;:evals,&#x27;terminates&#x27;:True})
+log_records=[]
+for y in [F(1,10**1000),F(10**1000),F(1,3),F(2),F(1)]:
+    interval=log_interval(y,40)
+    # Compare using arbitrary precision rationals, not float under/overflow.
+    exact=sp.log(sp.Rational(y.numerator,y.denominator)).evalf(100)
+    lo=sp.Rational(interval[0].numerator,interval[0].denominator).evalf(100)
+    hi=sp.Rational(interval[1].numerator,interval[1].denominator).evalf(100)
+    assert lo&lt;=exact&lt;=hi
+    log_records.append({&#x27;input_decimal_digit_lengths&#x27;:[len(str(y.numerator)),len(str(y.denominator))],
+                        &#x27;interval_width&#x27;:float(interval[1]-interval[0]),&#x27;terms&#x27;:40})
+result={&#x27;scope&#x27;:&#x27;Exact rational arithmetic construction on a supplied rational 3-state fixture. Deterministic frequency perturbations test inverse arithmetic; no physical observations or sampling coverage experiment.&#x27;,
+        &#x27;inverse_records&#x27;:records,&#x27;termination_branch_records&#x27;:branch_records,
+        &#x27;log_range_reduction_records&#x27;:log_records}
+(ROOT/&#x27;results/r17_nonequilibrium/ep_arithmetic.json&#x27;).write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+print(json.dumps(result,indent=2))
+</pre></html>

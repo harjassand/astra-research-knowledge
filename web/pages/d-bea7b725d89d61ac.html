@@ -1,0 +1,4130 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Renormalization-guided inverse blocking for lattice field generation: construction and validation</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>Renormalization-guided inverse blocking for lattice field generation: construction and validation</h1><p>Source ID d-bea7b725d89d61ac; literature/sources/team_c_multiscale/2608.28580v1.html; 36317 o200k tokens; role primary_source_or_metadata; extraction html_text_discovery_only_math_may_be_lossy. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>Renormalization-guided inverse blocking for lattice field generation: construction and validation
+
+      Report GitHub Issue
+      ×
+
+      Title:
+
+Content selection saved. Describe the issue below:
+
+      Description:
+
+      Submit without GitHub
+      Submit in GitHub
+
+    arXiv is now an independent nonprofit!
+    Learn more
+    ×
+
+      Back to arXiv
+
+    License: arXiv.org perpetual non-exclusive license
+
+arXiv:2608.28580v1 [hep-lat] 28 Aug 2026
+
+Renormalization-guided inverse blocking for lattice field generation: 
+
+construction and validation
+
+Anna Hasenfratz 
+
+Corresponding author: anna.hasenfratz@colorado.edu
+
+Affiliation: Department of Physics, University of Colorado Boulder,
+Boulder, Colorado 80309, USA
+
+  
+Ethan T. Neil 
+
+Corresponding author: ethan.neil@colorado.edu
+
+Affiliation: Department of Physics, University of Colorado Boulder,
+Boulder, Colorado 80309, USA
+
+  
+Letizia Parato 
+
+Email: letizia.parato@colorado.edu
+
+Affiliation: Department of Physics, University of Colorado Boulder,
+Boulder, Colorado 80309, USA
+
+  
+Noah Schwartz
+
+Email: noah.schwartz-2@colorado.edu
+
+Affiliation: Department of Physics, University of Colorado Boulder,
+Boulder, Colorado 80309, USA
+
+August 28, 2026
+
+Abstract
+
+We propose an algorithm for generating lattice field configurations based on
+the approximate inversion of a renormalization-group blocking transformation.
+We optimize the blocking transformation using a “perfect blocking” condition
+so that the blocked lattice distribution is well approximated by a simple
+coarse action. The blocking is separated into an invertible smoothing
+transformation followed by decimation. Machine learning, in the form of a
+conditional normalizing flow, is used to reconstruct the short-distance degrees
+of freedom removed by the decimation. A short fine-action rethermalization then
+removes the residual mismatch. Because the coarse ensemble supplies the
+long-distance modes, the same blocking transformation and conditional flow can
+be reused recursively on larger lattices, producing a cascade of configurations
+from an initial small-volume ensemble. We test the method in two-dimensional
+
+\phi^{4}
+ϕ4\phi^{4} theory with 
+\lambda=1
+λ=1\lambda=1 at criticality and demonstrate stable cascade
+upscaling from 
+16^{2}
+16216^{2} to 
+2048^{2}
+204822048^{2} lattices on local computational resources.
+Controlled rethermalization tests show that short-distance mismatches relax
+rapidly, whereas a deliberately introduced mismatch in the relevant thermal
+direction relaxes much more slowly. The construction uses ingredients that
+admit natural extensions to higher-dimensional systems and, ultimately, to
+gauge and fermionic degrees of freedom.
+
+I Introduction
+
+Markov-chain generation of lattice field configurations becomes increasingly expensive near a critical point, a phenomenon known as critical slowing down [1, 2, 3]. While there are many interesting examples of theories with quantum critical points, one of the most important for high-energy physics is the Gaussian fixed point approached in the continuum limit of asymptotically free gauge theories such as QCD. Simulations increasingly close to this limit suffer from the slow evolution of long-distance modes, most dramatically in the freezing of topological charge.
+
+The origin of critical slowing down can be understood in terms of scale. Most commonly used Monte Carlo algorithms evolve long-distance degrees of freedom much more slowly than short-distance fluctuations. As the correlation length 
+\xi
+ξ\xi grows, increasingly large physical scales must be sampled, and the autocorrelation time rises rapidly. Cluster algorithms such as the Wolff update [4] can alleviate this problem in spin systems, but no analogous general construction is known for gauge fields or fermions.
+
+Normalizing-flow samplers offer a different approach by learning a probability density 
+q_{\theta}(\phi)
+qθ​(ϕ)q_{\theta}(\phi) that approximates the target Boltzmann distribution 
+p(\phi)\propto e^{-S(\phi)}
+p⁡(ϕ)∝e−S⁡(ϕ)p(\phi)\propto e^{-S(\phi)}. Because a flow provides both samples and their proposal probabilities, residual bias can be removed by reweighting or by a Metropolis correction step [5, 6]. Normalizing-flow constructions have also been extended to gauge and
+fermionic systems [7, 8, 9, 10].
+
+A perfectly trained flow would generate statistically independent samples directly from the target distribution. In practice, however, whole-volume flows also encounter severe volume scaling [11, 12]. A flow trained from an unstructured base distribution must learn long-distance critical fluctuations and short-distance structure simultaneously. In addition, at approximately fixed accuracy per degree of freedom, residual errors accumulate extensively with the volume, causing the acceptance of global independence proposals to deteriorate rapidly, requiring increasingly accurate and costly training.
+
+We instead approach the problem by reversing a renormalization-group (RG) blocking transformation. Consider a target fine-lattice action 
+S_{f}
+SfS_{f}. Blocking produces a coarse field distributed according to the blocked action
+
+S_{b}=B[S_{f}].
+Sb=B⁡[Sf].S_{b}=B[S_{f}].
+
+(1)
+
+The blocked ensemble retains the long-distance physics of the fine theory while short-distance degrees of freedom have been removed. If this coarse distribution can be sampled efficiently, the difficult infrared part of the field-generation problem is already solved: reconstructing the fine ensemble requires adding back only the information discarded by blocking.
+We refer to this coarse-to-fine construction as upscaling. Related ideas appear in multiscale equilibration and prolongation methods
+[13], as well as in inverse-blocking and super-resolution
+approaches in statistical systems and lattice field theory
+[14, 15, 16, 17, 18].
+
+The central obstacle is that 
+S_{b}
+SbS_{b} is generally unknown. RG blocking generates additional couplings, so even a simple fine action can map into a complicated action in an effectively infinite-dimensional coupling space. The closely related perfect-action program addresses this difficulty by constructing actions on or near the renormalized trajectory of a given block transformation, for which cutoff effects and RG evolution are particularly simple [19, 20, 21, 22, 23]. Here we take the complementary approach of optimizing the RG transformation itself so that the blocked distribution is well approximated by a simple coarse action 
+S_{c}
+ScS_{c},
+
+e^{-S_{c}}\simeq e^{-B[S_{f}]}.
+e−Sc≃e−B⁡[Sf].e^{-S_{c}}\simeq e^{-B[S_{f}]}.
+
+(2)
+
+We refer to this construction as perfect blocking. The freedom to optimize the RG transformation itself has been explored previously in Refs. [24, 25, 26]. When the matching is successful, configurations generated directly with 
+S_{c}
+ScS_{c} can replace explicitly blocked fine configurations and supply the infrared input for the inverse transformation. In general the matched coarse and fine actions have different couplings; they coincide only at an RG fixed point.
+
+The resulting construction combines approximate perfect blocking with conditional reconstruction of the degrees of freedom removed by blocking. The upscaled configurations carry the correct long-distance structure. We repair any short-distance mismatch by rethermalization using a local Monte Carlo algorithm such as hybrid Monte Carlo (HMC) [27].
+Here we develop the construction and its diagnostics in detail, with particular emphasis on the origin and control of rethermalization errors. Controlled tests show a pronounced separation of scales: even large microscopic mismatches can be corrected rapidly when the inherited infrared distribution is correct, whereas deliberately mistuning the relevant (thermal) coupling produces relaxation of long-distance observables over a much longer Monte Carlo time scale. This distinction provides a direct test of the central premise of the method—that the inverse-RG construction should supply the slow infrared degrees of freedom before fine-lattice evolution is applied.
+
+We demonstrate the method in the two-dimensional one-component scalar 
+\phi^{4}
+ϕ4\phi^{4} theory,
+
+S[\phi]=-2\kappa\sum_{x,\mu}\phi_{x}\phi_{x+\hat{\mu}}+\sum_{x}\left[\phi_{x}^{2}+\lambda(\phi_{x}^{2}-1)^{2}\right].
+S[ϕ]=−2κ∑x,μϕxϕx+μ^+∑x[ϕx2+λ(ϕx2−1)2].S[\phi]=-2\kappa\sum_{x,\mu}\phi_{x}\phi_{x+\hat{\mu}}+\sum_{x}\left[\phi_{x}^{2}+\lambda(\phi_{x}^{2}-1)^{2}\right].
+
+(3)
+
+For the main numerical study we set 
+\lambda=1
+λ=1\lambda=1 and work at the critical point,
+
+\kappa\simeq\kappa_{\rm cr}=0.340301
+κ≃κcr=0.340301\kappa\simeq\kappa_{\rm cr}=0.340301 [28, 29]. The blocking transformation and conditional model are determined using only small-volume ensembles. Working at criticality, the perfect blocking gives 
+S_{f}(\kappa_{c})\approx S_{c}(\kappa_{c})
+Sf​(κc)≈Sc​(κc)S_{f}(\kappa_{c})\approx S_{c}(\kappa_{c}), allowing us to train once and then apply the upscaling repeatedly to generate configurations up to very large volumes; we demonstrate the method up to 
+L=2048
+L=2048L=2048. Detailed comparisons with directly generated (“native”) Monte Carlo ensembles, RG-invariant observables, finite-size scaling, and controlled rethermalization studies are used below to test both the physical fidelity of the generated ensembles and the assumptions underlying the algorithm.
+
+II Overview of the method
+
+\{\phi_{f}\}\sim e^{-S_{f}(\kappa)}
+{ϕf}∼e−Sf​(κ)\{\phi_{f}\}\sim e^{-S_{f}(\kappa)}
+ 
+
+\big|\,L^{d}
+|Ld\big|\,L^{d}
+Fine field
+\psi=K\phi_{f}
+ψ=K​ϕf\psi=K\phi_{f}
+ 
+
+\big|\,L^{d}
+|Ld\big|\,L^{d}
+Smoothed field
+\phi_{b}=D_{2}\psi
+ϕb=D2​ψ\phi_{b}=D_{2}\psi
+ 
+
+\big|\,\left(L/2\right)^{d}
+|(L/2)d\big|\,\left(L/2\right)^{d}
+Blocked field
+\{\phi_{b}\}\approx\{\phi_{c}\}\sim e^{-S_{c}}
+{ϕb}≈{ϕc}∼e−Sc\{\phi_{b}\}\approx\{\phi_{c}\}\sim e^{-S_{c}}
+
+ 
+
+\big|\,\left(L/2\right)^{d}
+|(L/2)d\big|\,\left(L/2\right)^{d}
+Matched coarse field
+K
+KK
+D_{2}
+D2D_{2}
+\phi\to\phi_{c}
+ϕ→ϕc\phi\to\phi_{c}
+ 
+
+\big|\,L\to 2L
+|L→2L\big|\,L\to 2L
+Fine becomes coarse
+\phi_{\rm prop}\to\phi\sim e^{-S_{f}(\kappa)}
+ϕprop→ϕ∼e−Sf​(κ)\phi_{\rm prop}\to\phi\sim e^{-S_{f}(\kappa)}
+
+ 
+
+\big|\,L^{d}
+|Ld\big|\,L^{d}
+Rethermalize(HMC or cluster)
+\phi_{\rm prop}=K^{-1}\psi_{\rm prop}
+ϕprop=K−1​ψprop\phi_{\rm prop}=K^{-1}\psi_{\rm prop}
+
+ 
+
+\big|\,L^{d}
+|Ld\big|\,L^{d}
+Proposed fine field
+\psi_{\rm prop}=(\phi_{c},d)
+ψprop=(ϕc,d)\psi_{\rm prop}=(\phi_{c},d)
+
+ 
+
+\big|\,L^{d}
+|Ld\big|\,L^{d}
+
+\{d\}\sim q_{\theta}(\cdot\mid\phi_{c})
+{d}∼qθ(⋅∣ϕc)\{d\}\sim q_{\theta}(\cdot\mid\phi_{c})
+K^{-1}
+K−1K^{-1}
+K
+KK trained such that
+
+\{\phi_{b}\}\approx\{\phi_{c}\}
+{ϕb}≈{ϕc}\{\phi_{b}\}\approx\{\phi_{c}\}
+Conditional flow trained on 
+\{\psi\}
+{ψ}\{\psi\}
+Cascade sequence:
+
+L\to 2L\to 4L\to 8L\to\cdots
+L→2​L→4​L→8​L→⋯L\to 2L\to 4L\to 8L\to\cdots
+
+Figure 1: 
+Schematic overview of the renormalization-guided flow construction.
+The forward RG map of the top row defines the matched coarse distribution. The inverse construction in the middle row generates detail fields conditionally on the coarse field and reconstructs the fine field with 
+K^{-1}
+K−1K^{-1}. The last row shows the fine-action rethermalization used to remove residual mismatch, followed by the recursive cascade to increasingly large volumes.
+
+Our algorithm separates the infrared and ultraviolet parts of the field-generation problem. The overall construction is summarized in Fig. 1.
+
+Let 
+S_{f}(\kappa_{f})
+Sf​(κf)S_{f}(\kappa_{f}) denote the target fine-lattice action.
+A scale-
+s
+ss real-space RG blocking transformation 
+B
+BB maps this action to a blocked action
+
+S_{b}=B[S_{f}(\kappa_{f})].
+Sb=B⁡[Sf​(κf)].S_{b}=B[S_{f}(\kappa_{f})].
+
+(4)
+
+In general 
+S_{b}
+SbS_{b} is not known explicitly. We therefore introduce a tractable coarse action
+
+S_{c}(\kappa_{c})
+Sc​(κc)S_{c}(\kappa_{c}) whose ensemble approximates the blocked distribution,
+
+S_{b}\simeq S_{c}(\kappa_{c}).
+Sb≃Sc​(κc).S_{b}\simeq S_{c}(\kappa_{c}).
+
+(5)
+
+The coarse and fine couplings are matched so that the long-distance physics agrees under the RG transformation.
+In particular, the correlation lengths satisfy
+
+\xi_{c}(\kappa_{c})\simeq\frac{\xi_{f}(\kappa_{f})}{s}.
+ξc​(κc)≃ξf​(κf)s.\xi_{c}(\kappa_{c})\simeq\frac{\xi_{f}(\kappa_{f})}{s}.
+
+(6)
+
+At an RG fixed point the matched couplings coincide,
+
+\kappa_{c}=\kappa_{f}=\kappa_{\star},
+κc=κf=κ⋆,\kappa_{c}=\kappa_{f}=\kappa_{\star},
+
+(7)
+
+which is the special case used in our critical-point numerical study.
+
+We implement 
+B
+BB in two steps. First we apply an invertible smoothing transformation (a linear convolution)
+
+\psi=K\phi,
+ψ=K​ϕ,\psi=K\phi,
+
+(8)
+
+followed by a decimation 
+D_{s}
+DsD_{s} that retains one residue class,
+
+\phi_{b}=D_{s}\psi=D_{s}K\phi.
+ϕb=Ds​ψ=Ds​K​ϕ.\phi_{b}=D_{s}\psi=D_{s}K\phi.
+
+(9)
+
+For 
+s=2
+s=2s=2 in two dimensions, the retained variables are the even-even sites of 
+\psi
+ψ\psi.
+The remaining residue classes are denoted by
+
+d_{01},\ d_{10},\ d_{11},
+d01,d10,d11,d_{01},\ d_{10},\ d_{11},
+
+(10)
+
+so that
+
+\psi=(\phi_{b},d_{01},d_{10},d_{11}).
+ψ=(ϕb,d01,d10,d11).\psi=(\phi_{b},d_{01},d_{10},d_{11}).
+
+(11)
+
+The full blocking map 
+D_{s}K
+Ds​KD_{s}K is non-invertible because of the decimation, but the change of variables
+
+\phi\leftrightarrow\psi
+ϕ↔ψ\phi\leftrightarrow\psi is chosen to be invertible.
+
+If 
+\phi_{c}
+ϕc\phi_{c} is drawn from a coarse distribution matched to 
+S_{b}
+SbS_{b}, it can be used in place of the blocked field 
+\phi_{b}
+ϕb\phi_{b}.
+The remaining task is then to reconstruct the missing detail fields conditioned on 
+\phi_{c}
+ϕc\phi_{c}.
+We use a conditional normalizing flow to model
+
+\displaystyle d_{01}
+d01\displaystyle d_{01}
+
+\displaystyle\sim q_{\theta,01}(d_{01}\mid\phi_{c}),
+∼qθ,01​(d01∣ϕc),\displaystyle\sim q_{\theta,01}(d_{01}\mid\phi_{c}),
+
+(12)
+
+\displaystyle d_{10}
+d10\displaystyle d_{10}
+
+\displaystyle\sim q_{\theta,10}(d_{10}\mid\phi_{c},d_{01}),
+∼qθ,10​(d10∣ϕc,d01),\displaystyle\sim q_{\theta,10}(d_{10}\mid\phi_{c},d_{01}),
+
+(13)
+
+\displaystyle d_{11}
+d11\displaystyle d_{11}
+
+\displaystyle\sim q_{\theta,11}(d_{11}\mid\phi_{c},d_{01},d_{10}),
+∼qθ,11​(d11∣ϕc,d01,d10),\displaystyle\sim q_{\theta,11}(d_{11}\mid\phi_{c},d_{01},d_{10}),
+
+(14)
+
+after which the proposed fine field is reconstructed as
+
+\phi_{\rm prop}=K^{-1}(\phi_{c},d_{01},d_{10},d_{11}).
+ϕprop=K−1​(ϕc,d01,d10,d11).\phi_{\rm prop}=K^{-1}(\phi_{c},d_{01},d_{10},d_{11}).
+
+(15)
+
+The normalizing flow is not used as a standalone exact sampler. Instead, it provides an RG-informed initialization in which the long-distance modes are supplied by the matched coarse ensemble, while the conditional model reconstructs the missing short-distance degrees of freedom.
+
+The conditional flow need not reproduce the exact fine distribution.
+Instead, the proposed configuration is evolved with a Markov update whose stationary distribution is
+
+e^{-S_{f}}
+e−Sfe^{-S_{f}}; we refer to this finite fine-action evolution as rethermalization.
+If the matched coarse ensemble has supplied the correct infrared distribution, the remaining mismatch is dominated by short-distance structure and can be removed with comparatively few fine-action updates.
+Any residual finite-rethermalization bias can be tested by varying the number of update steps.
+
+After rethermalization, the resulting fine configuration can itself be used as the coarse input for another inverse-blocking step.
+Repeating the construction gives the cascade
+
+L\rightarrow sL\rightarrow s^{2}L\rightarrow\cdots.
+L→s​L→s2​L→⋯.L\rightarrow sL\rightarrow s^{2}L\rightarrow\cdots.
+
+(16)
+
+Independent root configurations generate independent cascades, while configurations at different volumes within a single cascade remain strongly correlated because they share the same inherited infrared structure.
+
+The construction therefore has three essential components, which we describe in turn below: the approximate perfect-blocking kernel 
+K
+KK, the conditional upscaling flow, and the fine-action rethermalization.
+
+III Perfect blocking
+
+The central requirement of inverse blocking is that the coarse ensemble reproduce the probability distribution obtained by RG blocking the fine target ensemble, 
+S_{c}\simeq S_{b}
+Sc≃SbS_{c}\simeq S_{b}. If this matching fails, the coarse field carries incorrect infrared information that cannot be repaired efficiently by a conditional model designed to reconstruct only the missing detail variables.
+
+III.1 Path-integral picture
+
+Formally, the path integral makes the perfect-blocking construction precise.
+We begin with the partition function of the fine theory,
+
+Z_{f}=\int D\phi\,e^{-S_{f}[\phi]}.
+Zf=∫D​ϕ​e−Sf​[ϕ].Z_{f}=\int D\phi\,e^{-S_{f}[\phi]}.
+
+(17)
+
+Under the invertible linear transformation 
+\psi=K\phi
+ψ=K​ϕ\psi=K\phi,
+
+D\phi=|\det K|^{-1}D\psi,
+D​ϕ=|detK|−1​D​ψ,D\phi=|\det K|^{-1}D\psi,
+
+(18)
+
+and hence
+
+Z_{f}=|\det K|^{-1}\int D\psi\,e^{-\widetilde{S}[\psi]},\qquad\widetilde{S}[\psi]\equiv S_{f}[K^{-1}\psi].
+Zf=|detK|−1​∫D​ψ​e−S~​[ψ],S~​[ψ]≡Sf​[K−1​ψ].Z_{f}=|\det K|^{-1}\int D\psi\,e^{-\widetilde{S}[\psi]},\qquad\widetilde{S}[\psi]\equiv S_{f}[K^{-1}\psi].
+
+(19)
+
+We then partition the smoothed field into the retained blocked field
+
+\phi_{b}
+ϕb\phi_{b} and the three detail fields, collectively denoted by 
+d
+dd,
+and integrate over the latter:
+
+\displaystyle Z_{f}
+Zf\displaystyle Z_{f}
+
+\displaystyle=|\det K|^{-1}\int D\phi_{b}\,Dd\,e^{-\widetilde{S}[\phi_{b},d]}
+=|detK|−1​∫D​ϕb​D​d​e−S~​[ϕb,d]\displaystyle=|\det K|^{-1}\int D\phi_{b}\,Dd\,e^{-\widetilde{S}[\phi_{b},d]}
+
+\displaystyle=\mathcal{N}\int D\phi_{b}\,e^{-S_{b}[\phi_{b}]}.
+=𝒩​∫D​ϕb​e−Sb​[ϕb].\displaystyle=\mathcal{N}\int D\phi_{b}\,e^{-S_{b}[\phi_{b}]}.
+
+(20)
+
+Equation (20) defines the blocked action 
+S_{b}[\phi_{b}]
+Sb​[ϕb]S_{b}[\phi_{b}],
+up to an additive constant. Although the transformed action
+
+\widetilde{S}
+S~\widetilde{S} is determined by 
+S_{f}
+SfS_{f} and 
+K
+KK, integrating out the detail
+fields generally generates many additional interactions; thus, 
+S_{b}
+SbS_{b} is a
+complicated functional of 
+\phi_{b}
+ϕb\phi_{b} and may contain an effectively infinite
+set of couplings.
+
+If the exact blocked action 
+S_{b}
+SbS_{b} could be sampled, configurations drawn
+from 
+e^{-S_{b}}
+e−Sbe^{-S_{b}} would have exactly the same probability distribution as the
+blocked fields obtained from the fine target ensemble. They would therefore
+provide the correct infrared input for the inverse transformation, leaving
+only the conditional reconstruction of the discarded detail variables.
+
+In practice, the exact blocked action is not available in a tractable form, and we do not require
+that blocking generates no additional operators. Rather, we choose a simple
+family of coarse actions
+
+S_{c}[\phi]=S_{\rm lat}[\phi;\kappa_{c},\lambda_{c}]
+Sc​[ϕ]=Slat​[ϕ;κc,λc]S_{c}[\phi]=S_{\rm lat}[\phi;\kappa_{c},\lambda_{c}]
+
+(21)
+
+and optimize the blocking transformation so that the probability distribution
+generated by 
+S_{c}
+ScS_{c} approximates the exact blocked distribution as closely as
+possible,
+
+e^{-S_{c}}\simeq e^{-B[S_{f}]}.
+e−Sc≃e−B⁡[Sf].e^{-S_{c}}\simeq e^{-B[S_{f}]}.
+
+(22)
+
+The coarse action 
+S_{c}
+ScS_{c} then serves as a practical sampler for the blocked
+distribution. We refer to a transformation satisfying this condition with good
+accuracy as an approximate perfect blocking.
+
+For the numerical study below, we fix 
+\lambda_{c}=\lambda_{f}=1
+λc=λf=1\lambda_{c}=\lambda_{f}=1. At the
+critical point, the matched relevant couplings coincide,
+
+\kappa_{c}=\kappa_{f}=\kappa_{\rm cr}
+κc=κf=κcr\kappa_{c}=\kappa_{f}=\kappa_{\rm cr}, so the practical matching condition becomes
+
+e^{-B[S_{f}(\kappa_{\rm cr})](\phi)}\simeq e^{-S_{c}(\kappa_{\rm cr})(\phi)},
+e−B⁡[Sf​(κcr)]​(ϕ)≃e−Sc​(κcr)​(ϕ),e^{-B[S_{f}(\kappa_{\rm cr})](\phi)}\simeq e^{-S_{c}(\kappa_{\rm cr})(\phi)},
+
+(23)
+
+as tested through expectation values and distributional overlap of blocked and
+directly generated coarse observables. When this condition is satisfied, a
+configuration drawn from 
+S_{c}
+ScS_{c} is distributed approximately as an RG-blocked
+configuration of the fine theory. It therefore supplies the correct
+long-distance input to the conditional flow, which need only reconstruct the
+discarded ultraviolet details.
+
+The condition in Eq. (23) is practical rather than exact. We require sufficient overlap between the directly generated coarse ensemble and the ensemble obtained by blocking fine configurations so that the residual mismatch after upscaling can be removed with a short fine-action evolution. The quality of this matching is therefore crucial: residual short-distance mismatch can relax rapidly, whereas a mismatch in the relevant thermal direction changes the inherited infrared distribution and leads to much slower equilibration of long-distance observables. We test this separation of scales explicitly in Sec. V.3.
+
+III.2 Approximate perfect blocking kernel
+
+The smoothing kernel 
+K
+KK is taken to be linear and translationally invariant and is optimized so that the retained field
+
+\psi_{\mathrm{ee}}\equiv D_{\mathrm{ee}}K\phi,
+ψee≡Dee​K​ϕ,\psi_{\mathrm{ee}}\equiv D_{\mathrm{ee}}K\phi,
+
+(24)
+
+obtained by retaining the even-even sites from smoothed fine configurations 
+\psi
+ψ\psi, matches the distribution of directly generated coarse configurations as closely as possible. Smoothing acts as a convolution on the field, i.e.
+
+\psi(\vec{x})=(K\phi)(\vec{x})=\sum_{\vec{r}}K(\vec{r})\,\phi(\vec{x}+\vec{r})
+ψ⁡(x→)=(K​ϕ)​(x→)=∑r→K⁡(r→)​ϕ​(x→+r→)\psi(\vec{x})=(K\phi)(\vec{x})=\sum_{\vec{r}}K(\vec{r})\,\phi(\vec{x}+\vec{r})
+
+(25)
+
+with periodic boundary conditions on the field in all directions. The symmetry 
+K(-\vec{r})=K(\vec{r})
+K⁡(−r→)=K⁡(r→)K(-\vec{r})=K(\vec{r}) has been used to rewrite a standard convolution in a form that more closely resembles a weighted average of field values.
+
+We use a 
+D_{4}
+D4D_{4}-symmetric 
+7\times 7
+7×77\times 7 blocking kernel with ten orbit
+coefficients, corresponding to nine independent fit parameters once the
+overall normalization is fixed. The production kernel was optimized by
+comparing directly generated 
+L=16
+L=16L=16 configurations with 
+L=32
+L=32L=32
+configurations blocked to 
+L=16
+L=16L=16, at 
+\lambda=1
+λ=1\lambda=1 and
+
+\kappa=0.340301
+κ=0.340301\kappa=0.340301. Its normalization was fixed to
+
+\sum_{r}K(r)=2^{\eta/2},\qquad\eta=0.25,
+∑rK⁡(r)=2η/2,η=0.25,\sum_{r}K(r)=2^{\eta/2},\qquad\eta=0.25,
+
+(26)
+
+and this normalization factor is already included in the coefficients
+quoted below. 11
+              1
+
+            The normalization can alternatively be included among the
+parameters determined by the perfect-blocking optimization. Allowing it
+to float gives a value corresponding to
+
+\eta_{\rm pred}\simeq 0.251(1)
+ηpred≃0.251​(1)\eta_{\rm pred}\simeq 0.251(1), consistent with the exact Ising value
+
+\eta=1/4
+η=1/4\eta=1/4. The parenthetical uncertainty denotes the spread among
+optimizer starts rather than a statistical confidence interval.
+
+The fitting objective minimizes a covariance-weighted mismatch over a set of
+local and long-distance observables. Schematically,
+
+\chi^{2}_{K}=\sum_{a,b}\left(\langle O_{a}\rangle_{BS_{\rm f}}-\langle O_{a}\rangle_{S_{\rm c}}\right)C^{-1}_{ab}\left(\langle O_{b}\rangle_{BS_{\rm f}}-\langle O_{b}\rangle_{S_{\rm c}}\right),
+χK2=∑a,b(⟨Oa⟩B​Sf−⟨Oa⟩Sc)​Ca​b−1​(⟨Ob⟩B​Sf−⟨Ob⟩Sc),\chi^{2}_{K}=\sum_{a,b}\left(\langle O_{a}\rangle_{BS_{\rm f}}-\langle O_{a}\rangle_{S_{\rm c}}\right)C^{-1}_{ab}\left(\langle O_{b}\rangle_{BS_{\rm f}}-\langle O_{b}\rangle_{S_{\rm c}}\right),
+
+(27)
+
+We have also experimented with adding a locality penalty term to the cost function, of the form 
+\Delta\chi_{K}^{2}=\mu\ f(K^{-1})
+Δ​χK2=μ​f​(K−1)\Delta\chi_{K}^{2}=\mu\ f(K^{-1}), where 
+\mu
+μ\mu is an adjustable hyperparameter and 
+f(K^{-1})
+f⁡(K−1)f(K^{-1}) measures the fraction of the total weight of the inverse kernel 
+K^{-1}
+K−1K^{-1} which lies outside of an 
+5\times 5
+5×55\times 5 box. In some cases the optimal kernel was found to be at 
+\mu&gt;0
+μ&gt;0\mu&gt;0, but for the final kernel tuning described here the optimum is at 
+\mu=0
+μ=0\mu=0 and the locality penalty need not be imposed.
+
+The observables used to optimize and validate the blocking transformation,
+and later to diagnose the conditional flow and rethermalization, are
+defined in appendix A.
+
+The fitted operator set is
+
+\displaystyle{\cal O}_{\rm fit}=\left\{\begin{aligned} &amp;\phi^{2},\phi^{4},\phi^{6},\mathrm{NN},2\mathrm{NN},\mathrm{diag},m^{2},\\
+&amp;G_{21},G_{22},G_{30},G_{31}\end{aligned}\right\}\,,
+𝒪fit={ϕ2,ϕ4,ϕ6,NN,2​N​N,diag,m2,G21,G22,G30,G31},\displaystyle{\cal O}_{\rm fit}=\left\{\begin{aligned} &amp;\phi^{2},\phi^{4},\phi^{6},\mathrm{NN},2\mathrm{NN},\mathrm{diag},m^{2},\\
+&amp;G_{21},G_{22},G_{30},G_{31}\end{aligned}\right\}\,,
+
+where 
+G_{ab}
+Ga​bG_{ab} denotes the two-point function at the corresponding
+lattice separation.
+
+The operators 
+m^{4}
+m4m^{4}, the local kurtosis
+
+\langle\phi^{4}\rangle/\langle\phi^{2}\rangle^{2}
+⟨ϕ4⟩/⟨ϕ2⟩2\langle\phi^{4}\rangle/\langle\phi^{2}\rangle^{2}, the action density, and
+
+G(p_{\min})
+G⁡(pmin)G(p_{\min}) are reserved for validation rather than included in the fit.
+We validate the kernel using held-out blocked-versus-direct distributions,
+comparing means, widths, and two-sample Kolmogorov–Smirnov statistics, and
+we test transfer from 
+L=32\to 16
+L=32→16L=32\to 16 to 
+L=64\to 32
+L=64→32L=64\to 32.
+Fourier-space bounds on 
+K(p)
+K⁡(p)K(p) and 
+K^{-1}(p)
+K−1​(p)K^{-1}(p) are imposed separately as
+invertibility and conditioning checks.
+
+We found several smoothing kernels with comparable performance.
+The numerical results presented below use the 
+7\times 7
+7×77\times 7 kernel listed in
+Table 1. A more compact 
+5\times 5
+5×55\times 5 kernel also
+gives similar matching quality, while increasing the spatial footprint beyond
+
+7\times 7
+7×77\times 7 did not produce sufficient improvement to justify the additional
+complexity.
+
+Table 1: 
+Optimized 
+7\times 7
+7×77\times 7 
+\phi^{4}
+ϕ4\phi^{4} blocking kernel, represented by
+
+D_{4}
+D4D_{4} symmetry orbits about the central site. The tabulated coefficients
+already include the anomalous-dimension normalization factor
+
+2^{\eta/2}
+2η/22^{\eta/2}.
+
+Offset orbit 
+(|\Delta x|,|\Delta y|)
+(|Δ​x|,|Δ​y|)(|\Delta x|,|\Delta y|)
+Multiplicity
+
+K(\Delta x,\Delta y)
+K⁡(Δ​x,Δ​y)K(\Delta x,\Delta y)
+
+(0,0)
+(0,0)(0,0)
+1
+
+0.888641822
+0.8886418220.888641822
+
+(1,0)
+(1,0)(1,0)
+4
+
+0.010508374
+0.0105083740.010508374
+
+(1,1)
+(1,1)(1,1)
+4
+
+-0.066254410
+−0.066254410-0.066254410
+
+(2,0)
+(2,0)(2,0)
+4
+
+0.037116968
+0.0371169680.037116968
+
+(2,1)
+(2,1)(2,1)
+8
+
+0.022657096
+0.0226570960.022657096
+
+(2,2)
+(2,2)(2,2)
+4
+
+-0.001649881
+−0.001649881-0.001649881
+
+(3,0)
+(3,0)(3,0)
+4
+
+0.020222068
+0.0202220680.020222068
+
+(3,1)
+(3,1)(3,1)
+8
+
+0.007299892
+0.0072998920.007299892
+
+(3,2)
+(3,2)(3,2)
+8
+
+-0.003848342
+−0.003848342-0.003848342
+
+(3,3)
+(3,3)(3,3)
+4
+
+-0.001693935
+−0.001693935-0.001693935
+
+Figure 2: Approximate perfect blocking test for 
+L32\to L16
+L​32→L​16L32\to L16 blocking. Direct coarse configurations and blocked fine configurations should have overlapping distributions. From left to right, the panels compare the action densities, 
+\langle\phi^{2}\rangle
+⟨ϕ2⟩\langle\phi^{2}\rangle and 
+\langle\phi^{4}\rangle
+⟨ϕ4⟩\langle\phi^{4}\rangle distributions, and the long distance quantities 
+m^{2}
+m2m^{2} and 
+m^{4}
+m4m^{4} and 
+G(p_{\mathrm{min}})
+G⁡(pmin)G(p_{\mathrm{min}}). 
+
+The conditioning factor of the kernel is defined in Fourier space
+
+\kappa_{K}=\frac{\max_{\mathbf{p}}|K(\mathbf{p})|}{\min_{\mathbf{p}}|K(\mathbf{p})|}.
+κK=max𝐩⁡|K⁡(𝐩)|min𝐩⁡|K⁡(𝐩)|.\kappa_{K}=\frac{\max_{\mathbf{p}}|K(\mathbf{p})|}{\min_{\mathbf{p}}|K(\mathbf{p})|}.
+
+(28)
+
+For the selected kernel,
+
+\min_{\mathbf{p}}K(\mathbf{p})=0.54372,\qquad\max_{\mathbf{p}}K(\mathbf{p})=1.24390,
+min𝐩⁡K⁡(𝐩)=0.54372,max𝐩⁡K⁡(𝐩)=1.24390,\min_{\mathbf{p}}K(\mathbf{p})=0.54372,\qquad\max_{\mathbf{p}}K(\mathbf{p})=1.24390,
+
+(29)
+
+so
+
+\kappa_{K}=2.2878,\qquad\max_{\mathbf{p}}|K(\mathbf{p})^{-1}|=1.8391.
+κK=2.2878,max𝐩⁡|K​(𝐩)−1|=1.8391.\kappa_{K}=2.2878,\qquad\max_{\mathbf{p}}|K(\mathbf{p})^{-1}|=1.8391.
+
+(30)
+
+The nonzero minimum is the key invertibility check; the modest condition number means inversion does not strongly amplify modes.
+
+Table 2: 
+Perfect-blocking comparison on the 
+L=16
+L=16L=16 coarse lattice using the
+
+7\times 7
+7×77\times 7 kernel of Table 1.
+Direct native 
+L=16
+L=16L=16 configurations are compared with native 
+L=32
+L=32L=32
+configurations blocked to 
+L=16
+L=16L=16. The KS column gives the two-sample
+Kolmogorov–Smirnov statistic defined in section A.7; the final column is the ratio of blocked
+to direct standard deviations.
+
+Operator
+Direct 
+L=16
+L=16L=16
+Blocked 
+32\to 16
+32→1632\to 16
+KS
+Std. ratio
+
+S/V
+S/VS/V
+
+-0.5641(13)
+−0.5641​(13)-0.5641(13)
+
+-0.56414(79)
+−0.56414​(79)-0.56414(79)
+
+0.0386
+0.03860.0386
+
+0.877
+0.8770.877
+
+\phi^{2}
+ϕ2\phi^{2}
+
+0.83613(86)
+0.83613​(86)0.83613(86)
+
+0.83538(68)
+0.83538​(68)0.83538(68)
+
+0.0401
+0.04010.0401
+
+1.119
+1.1191.119
+
+\phi^{4}
+ϕ4\phi^{4}
+
+1.0641(17)
+1.0641​(17)1.0641(17)
+
+1.0627(14)
+1.0627​(14)1.0627(14)
+
+0.0482
+0.04820.0482
+
+1.171
+1.1711.171
+
+\langle\phi^{4}\rangle/\langle\phi^{2}\rangle^{2}
+⟨ϕ4⟩/⟨ϕ2⟩2\langle\phi^{4}\rangle/\langle\phi^{2}\rangle^{2}
+
+1.5220(10)
+1.5220​(10)1.5220(10)
+
+1.52103(65)
+1.52103​(65)1.52103(65)
+
+0.0194
+0.01940.0194
+
+0.953
+0.9530.953
+
+\mathrm{NN}
+NN\mathrm{NN}
+
+1.1639(27)
+1.1639​(27)1.1639(27)
+
+1.16295(19)
+1.16295​(19)1.16295(19)
+
+0.0160
+0.01600.0160
+
+1.028
+1.0281.028
+
+2\mathrm{nn}
+2​nn2\mathrm{nn}
+
+0.9945(35)
+0.9945​(35)0.9945(35)
+
+0.99413(25)
+0.99413​(25)0.99413(25)
+
+0.0099
+0.00990.0099
+
+0.995
+0.9950.995
+
+\mathrm{diag}
+diag\mathrm{diag}
+
+0.5267(16)
+0.5267​(16)0.5267(16)
+
+0.52544(11)
+0.52544​(11)0.52544(11)
+
+0.0165
+0.01650.0165
+
+1.001
+1.0011.001
+
+m^{2}
+m2m^{2}
+
+0.4269(26)
+0.4269​(26)0.4269(26)
+
+0.4269(18)
+0.4269​(18)0.4269(18)
+
+0.0112
+0.01120.0112
+
+0.994
+0.9940.994
+
+m^{4}
+m4m^{4}
+
+0.2159(20)
+0.2159​(20)0.2159(20)
+
+0.2155(14)
+0.2155​(14)0.2155(14)
+
+0.0112
+0.01120.0112
+
+0.998
+0.9980.998
+
+G(p_{\min})
+G⁡(pmin)G(p_{\min})
+
+3.478(61)
+3.478​(61)3.478(61)
+
+3.495(44)
+3.495​(44)3.495(44)
+
+0.0109
+0.01090.0109
+
+1.025
+1.0251.025
+
+An essential diagnostic of the blocking transformation is the overlap between
+blocked fine ensembles and directly generated (or “native” for short) coarse ensembles.
+Figures 2 and
+D1 show representative distributional comparisons at
+
+32\to 16
+32→1632\to 16 and 
+128\to 64
+128→64128\to 64, while Tables 2, D1, and D2 quantify the
+matching over all three successive volume pairs. They list expectation values, two-sample
+Kolmogorov–Smirnov distances as defined in section A.7, and the width ratio
+
+R_{\sigma}=\frac{\sigma_{\rm blocked}}{\sigma_{\rm direct}}.
+Rσ=σblockedσdirect.R_{\sigma}=\frac{\sigma_{\rm blocked}}{\sigma_{\rm direct}}.
+
+(31)
+
+Agreement is particularly strong for the long-distance observables
+
+m^{2}
+m2m^{2}, 
+m^{4}
+m4m^{4}, and 
+G(p_{\min})
+G⁡(pmin)G(p_{\min}), while the local distributions show somewhat
+larger but still controlled differences. The KS distances are typically at
+the few-percent level and the width ratios remain close to unity. Most
+importantly, the agreement persists from 
+32\to 16
+32→1632\to 16 through 
+128\to 64
+128→64128\to 64,
+although the kernel was optimized only on 
+32\to 16
+32→1632\to 16, providing a direct test
+of the volume transfer required for recursive cascade upscaling.
+
+III.3 MCRG test of the blocking transformation
+
+As an independent test of the approximate perfect-blocking transformation, we apply the Monte Carlo renormalization-group (MCRG) method of Swendsen [30]. The method determines the linearized RG transformation matrix from correlations among operators measured before and after blocking, without requiring an explicit parameterization or simulation of the blocked action.
+
+For a scale-
+s
+ss transformation, the eigenvalues of the linearized RG transformation matrix at the fixed point are
+
+\lambda_{i}=s^{y_{i}},
+λi=syi,\lambda_{i}=s^{y_{i}},
+
+(32)
+
+where 
+y_{i}
+yiy_{i} are the RG scaling exponents. In the even sector of the two-dimensional Ising critical point, there is a single relevant exponent, 
+y_{t}=1/\nu
+yt=1/νy_{t}=1/\nu, while the remaining even eigenoperators are irrelevant, with 
+y_{i}&lt;0
+yi&lt;0y_{i}&lt;0. Away from the fixed point, estimates obtained from successive blocking levels generally drift, with additional systematic effects from finite volume and truncation of the operator basis. Details of the MCRG analysis are summarized in App. B.
+
+We determine the leading even eigenvalue 
+\lambda_{t}
+λt\lambda_{t} using a five-operator basis containing the 
+\mathbb{Z}_{2}
+ℤ2\mathbb{Z}_{2}-even local quadratic and quartic interactions, together with short-range bilinear operators. The anomalous dimension 
+\eta=1/4
+η=1/4\eta=1/4 is not determined in this analysis; it enters through the normalization 
+2^{\eta/2}
+2η/22^{\eta/2} of the blocked field used in constructing the approximate perfect kernel.
+
+Table 3 compares the resulting estimates of 
+\nu
+ν\nu for the optimized 
+7\times 7
+7×77\times 7 kernel with those obtained from a simple 
+2\times 2
+2×22\times 2 block average using the same overall field normalization. Each row starts from an independently generated native critical ensemble, and moving to the right corresponds to additional RG blocking steps.
+
+Table 3: 
+Thermal exponent 
+\nu
+ν\nu obtained from the leading even eigenvalue of the linearized RG transformation matrix [30]. The exact value for the two-dimensional Ising universality class is 
+\nu=1
+ν=1\nu=1. Dashes denote blocking levels not available for the indicated starting volume. The final 
+16\to 8
+16→816\to 8 step is retained as a finite-volume diagnostic. The rapid stabilization of the 
+7\times 7
+7×77\times 7 results near 
+\nu=1
+ν=1\nu=1 contrasts with the slower drift observed for the simple block average.
+
+Starting 
+L
+LL
+
+128\to 64
+128→64128\to 64
+
+64\to 32
+64→3264\to 32
+
+32\to 16
+32→1632\to 16
+
+16\to 8
+16→816\to 8
+
+2\times 2
+2×22\times 2 averaging kernel
+
+32
+3232
+–
+–
+
+0.7209(68)
+0.7209​(68)0.7209(68)
+
+0.7893(52)
+0.7893​(52)0.7893(52)
+
+64
+6464
+–
+
+0.7325(110)
+0.7325​(110)0.7325(110)
+
+0.7856(72)
+0.7856​(72)0.7856(72)
+
+0.8411(77)
+0.8411​(77)0.8411(77)
+
+128
+128128
+
+0.7203(96)
+0.7203​(96)0.7203(96)
+
+0.7817(63)
+0.7817​(63)0.7817(63)
+
+0.8414(70)
+0.8414​(70)0.8414(70)
+
+0.9253(126)
+0.9253​(126)0.9253(126)
+
+7\times 7
+7×77\times 7 approximate perfect kernel
+
+32
+3232
+–
+–
+
+0.9416(67)
+0.9416​(67)0.9416(67)
+
+1.0014(97)
+1.0014​(97)1.0014(97)
+
+64
+6464
+–
+
+0.9392(85)
+0.9392​(85)0.9392(85)
+
+0.9760(107)
+0.9760​(107)0.9760(107)
+
+1.0060(133)
+1.0060​(133)1.0060(133)
+
+128
+128128
+
+0.9444(82)
+0.9444​(82)0.9444(82)
+
+0.9867(90)
+0.9867​(90)0.9867(90)
+
+0.9945(106)
+0.9945​(106)0.9945(106)
+
+1.0121(139)
+1.0121​(139)1.0121(139)
+
+The difference between the two transformations is substantial. For the simple 
+2\times 2
+2×22\times 2 averaging, the estimated 
+\nu
+ν\nu drifts strongly under successive blocking and approaches 
+\nu=1
+ν=1\nu=1 only slowly. In contrast, the 
+7\times 7
+7×77\times 7 transformation gives 
+\nu\simeq 0.94
+ν≃0.94\nu\simeq 0.94 already on the first blocking step, essentially independent of whether the starting lattice has 
+L=32
+L=32L=32, 64, or 128, and after one additional blocking step the estimate is within 
+1
+11–
+2\%
+2%2\% of the exact Ising value.
+
+Thus, within the operator basis used here, the leading thermal eigenvalue of the 
+7\times 7
+7×77\times 7 transformation is already close to its fixed-point value before any prior blocking and rapidly stabilizes under further RG steps. This indicates that the fixed point of the 
+7\times 7
+7×77\times 7 transformation lies close to the nearest-neighbor critical action used in our simulations. The simple block average, by comparison, requires several RG iterations to approach the same regime. Because the blocking kernel was optimized solely through blocked-versus-direct distribution matching and not using this MCRG criterion, the rapid approach of the thermal eigenvalue to its universal value provides an independent validation of the construction.
+
+IV Upscaling
+
+Once the smoothing kernel has been fixed, the smoothed field
+
+\psi=K\phi
+ψ=K​ϕ\psi=K\phi is represented in coarse/detail coordinates,
+
+\psi=(\phi_{b},d_{01},d_{10},d_{11}),
+ψ=(ϕb,d01,d10,d11),\psi=(\phi_{b},d_{01},d_{10},d_{11}),
+
+(33)
+
+with 
+\phi_{b}=\psi_{\mathrm{ee}}
+ϕb=ψee\phi_{b}=\psi_{\mathrm{ee}} the retained even-even residue class and the
+remaining three residue classes as the detail variables. The corresponding
+fine field is reconstructed by
+
+\phi=K^{-1}\psi.
+ϕ=K−1​ψ.\phi=K^{-1}\psi.
+
+(34)
+
+This representation separates the two possible sources of error in the
+inverse construction. A mismatch between the blocked distribution
+
+\phi_{b}
+ϕb\phi_{b} and the directly generated coarse distribution 
+\phi_{c}
+ϕc\phi_{c} reflects
+imperfect coarse–fine matching, whereas a mismatch in the conditional
+distribution of the detail fields at fixed coarse field reflects the
+conditional-flow approximation. The two effects can therefore be diagnosed
+separately.
+
+IV.1 Conditional upscaling flow
+
+Figure 3: Initial conditional-flow proposal for 
+L=16\to 32
+L=16→32L=16\to 32.
+The proposal already reproduces the long-distance distributions well, while
+visible residual mismatch remains in local observables. This mismatch is
+removed efficiently by fine-action HMC rethermalization, but the raw
+proposal is not accurate enough for an efficient global independence
+Metropolis correction. From left to right, the panels compare the action
+density, 
+\langle\phi^{2}\rangle
+⟨ϕ2⟩\langle\phi^{2}\rangle, 
+\langle\phi^{4}\rangle
+⟨ϕ4⟩\langle\phi^{4}\rangle, and the long-distance
+quantities 
+m^{2}
+m2m^{2}, 
+m^{4}
+m4m^{4} and 
+G(p_{\mathrm{min}})
+G⁡(pmin)G(p_{\mathrm{min}}).
+
+The conditional upscaling proposal starts from a coarse configuration
+
+\phi_{c}\sim p_{c}(\phi_{c})\propto e^{-S_{c}(\phi_{c})}.
+ϕc∼pc​(ϕc)∝e−Sc​(ϕc).\phi_{c}\sim p_{c}(\phi_{c})\propto e^{-S_{c}(\phi_{c})}.
+
+(35)
+
+Conditioned on 
+\phi_{c}
+ϕc\phi_{c}, the three detail sectors are then generated
+sequentially with a conditional normalizing flow [31, 18],
+
+\displaystyle d_{01}
+d01\displaystyle d_{01}
+
+\displaystyle\sim q_{\theta,01}(d_{01}\mid\phi_{c}),
+∼qθ,01​(d01∣ϕc),\displaystyle\sim q_{\theta,01}(d_{01}\mid\phi_{c}),
+
+(36)
+
+\displaystyle d_{10}
+d10\displaystyle d_{10}
+
+\displaystyle\sim q_{\theta,10}(d_{10}\mid\phi_{c},d_{01}),
+∼qθ,10​(d10∣ϕc,d01),\displaystyle\sim q_{\theta,10}(d_{10}\mid\phi_{c},d_{01}),
+
+(37)
+
+\displaystyle d_{11}
+d11\displaystyle d_{11}
+
+\displaystyle\sim q_{\theta,11}(d_{11}\mid\phi_{c},d_{01},d_{10}).
+∼qθ,11​(d11∣ϕc,d01,d10).\displaystyle\sim q_{\theta,11}(d_{11}\mid\phi_{c},d_{01},d_{10}).
+
+(38)
+
+The resulting smoothed field is mapped back to the fine variables with
+
+K^{-1}
+K−1K^{-1},
+
+\phi_{\rm prop}=K^{-1}F_{\theta}(\phi_{c},z),\qquad z\sim p_{0}(z),
+ϕprop=K−1​Fθ​(ϕc,z),z∼p0​(z),\phi_{\rm prop}=K^{-1}F_{\theta}(\phi_{c},z),\qquad z\sim p_{0}(z),
+
+(39)
+
+where 
+F_{\theta}
+FθF_{\theta} denotes the conditional flow generating the complete
+
+\psi
+ψ\psi field while keeping its even-even component fixed to 
+\phi_{c}
+ϕc\phi_{c}.
+
+For training, each fine configuration is transformed to coarse/detail
+coordinates using the invertible smoothing map,
+
+\psi=K\phi_{f},\;\phi_{b}=\psi_{ee},\;d=(d_{01},d_{10},d_{11})=(\psi_{eo},\psi_{oe},\psi_{oo}),
+ψ=K​ϕf,ϕb=ψe​e,d=(d01,d10,d11)=(ψe​o,ψo​e,ψo​o),\psi=K\phi_{f},\;\phi_{b}=\psi_{ee},\;d=(d_{01},d_{10},d_{11})=(\psi_{eo},\psi_{oe},\psi_{oo}),
+
+(40)
+
+so that the training data consist of matched pairs 
+(\phi_{b},d)
+(ϕb,d)(\phi_{b},d).
+The conditional density is factorized over the three detail sectors,
+
+\displaystyle q_{\theta}(d\mid\phi_{b})=
+qθ​(d∣ϕb)=\displaystyle q_{\theta}(d\mid\phi_{b})=
+
+\displaystyle q_{\theta,01}(d_{01}\mid\phi_{b})\,\cdot q_{\theta,10}(d_{10}\mid\phi_{b},d_{01})
+qθ,01​(d01∣ϕb)⋅qθ,10​(d10∣ϕb,d01)\displaystyle q_{\theta,01}(d_{01}\mid\phi_{b})\,\cdot q_{\theta,10}(d_{10}\mid\phi_{b},d_{01})
+
+\displaystyle\cdot q_{\theta,11}(d_{11}\mid\phi_{b},d_{01},d_{10}).
+⋅qθ,11​(d11∣ϕb,d01,d10).\displaystyle\cdot q_{\theta,11}(d_{11}\mid\phi_{b},d_{01},d_{10}).
+
+(41)
+
+The two edge sectors are generated first, followed by the body-centered
+sector. Each conditional factor is represented by rational-quadratic spline
+(RQS) transformations with convolutional conditioners, preserving translation
+equivariance while allowing each sector to depend on the coarse field and on
+the previously generated detail sectors. Alternatively, we have tried a second conditional flow setup with slight variations: the three sectors are trained simultaneously, and alternating affine and RQS layers are used, with 
+\mathbb{Z}_{2}
+ℤ2\mathbb{Z}_{2} equivariance imposed by making the coupling layers odd in 
+\phi
+ϕ\phi. This second setup is used on the largest-volume upscaling shown below.
+
+The first conditional model, 
+q_{\theta,01}
+qθ,01q_{\theta,01}, is initialized independently.
+The 
+q_{\theta,10}
+qθ,10q_{\theta,10} and 
+q_{\theta,11}
+qθ,11q_{\theta,11} models are initialized from the
+best-validation-NLL checkpoint of the preceding stage, and each stage is then
+optimized with a fresh optimizer. The production flow is trained exclusively
+by conditional maximum likelihood,
+
+\mathcal{L}_{\rm NLL}(\theta)=-\left\langle\log q_{\theta}(d\mid\phi_{b})\right\rangle_{\rm train}.
+ℒNLL​(θ)=−⟨log⁡qθ​(d∣ϕb)⟩train.\mathcal{L}_{\rm NLL}(\theta)=-\left\langle\log q_{\theta}(d\mid\phi_{b})\right\rangle_{\rm train}.
+
+(42)
+
+Model selection is based on validation NLL. Observable distributions,
+including local moments, action density, and kurtosis-sensitive quantities,
+are used only as held-out diagnostics and in subsequent proposal and
+rethermalization tests; they do not enter the training objective.
+
+Figure 3 compares the raw conditional-flow
+proposal with a native ensemble before any fine-action rethermalization. The
+main feature is a clear separation between local and infrared observables.
+Local distributions, especially the action density and 
+\langle\phi^{4}\rangle
+⟨ϕ4⟩\langle\phi^{4}\rangle,
+show visible shifts relative to the native target, while the long-distance
+magnetization moments remain much better reproduced.
+
+The same flow is applied without retraining at larger volumes. Additional
+raw-upscaling histograms for 
+L=32\to 64
+L=32→64L=32\to 64 and 
+L=64\to 128
+L=64→128L=64\to 128 are shown in
+Appendix D, Figs. D2
+and D3. The local mismatch increases as
+the flow is applied farther from its training volume. Although the detail
+fields represent predominantly short-distance degrees of freedom, the trained
+conditional model is still a finite-volume approximation to their exact
+conditional distribution. In particular, the convolutional conditioners are
+trained with periodic boundary conditions on the training lattice, so applying
+the same network on a larger periodic volume need not reproduce the exact
+larger-volume conditional distribution.
+The resulting raw proposal is therefore not accurate enough for an efficient
+global independence Metropolis correction, whose acceptance is sensitive to
+extensive action differences.
+
+By contrast, the infrared observables are much less affected. The
+magnetization moments 
+m^{2}
+m2m^{2} and 
+m^{4}
+m4m^{4} remain close to the native distributions
+even when the local action-density distribution is significantly displaced.
+This is the desired behavior: the matched coarse field supplies the infrared
+structure, while the conditional flow fills in the missing ultraviolet detail
+variables with sufficient accuracy so that the remaining mismatch can be removed
+by a short fine-action rethermalization.
+
+Retraining or adapting the conditional flow at each larger volume would likely
+reduce the visible local discrepancies in the raw proposal. We do not pursue
+this here because the residual mismatch produced by the volume-transferred flow
+is removed efficiently by the fine-action rethermalization described in
+Sec. V. The conditional flow is therefore used as an
+RG-guided initializer rather than as a standalone exact sampler.
+
+V Rethermalization
+
+V.1 Rethermalization strategy
+
+Figure 4:  Controlled 
+L=32\to 64
+L=32→64L=32\to 64 HMC rethermalization tests to the same critical
+fine action, 
+(\lambda_{f},\kappa_{f})=(1,0.340301)
+(λf,κf)=(1,0.340301)(\lambda_{f},\kappa_{f})=(1,0.340301).
+HMC I uses matched critical coarse and fine actions,
+
+(\lambda_{c},\kappa_{c})=(1,0.340301)
+(λc,κc)=(1,0.340301)(\lambda_{c},\kappa_{c})=(1,0.340301);
+HMC II starts from a thermally mistuned coarse ensemble,
+
+(\lambda_{c},\kappa_{c})=(1,0.340100)
+(λc,κc)=(1,0.340100)(\lambda_{c},\kappa_{c})=(1,0.340100);
+HMC III starts from a different microscopic critical action,
+
+(\lambda_{c},\kappa_{c})=(0.9,0.342410)
+(λc,κc)=(0.9,0.342410)(\lambda_{c},\kappa_{c})=(0.9,0.342410).
+The left panel shows the local action density 
+S/V
+S/VS/V, while the middle and
+right panels show the long-distance observables 
+U_{4}
+U4U_{4} and 
+\xi/L
+ξ/L\xi/L.
+All three cases rapidly approach the target value in the local observable,
+whereas the long-distance observables show slow relaxation only for the
+thermally mistuned HMC II case.
+
+The conditional upscaling flow described in
+Sec. IV generates fine-lattice configurations whose
+long-distance modes are inherited from the matched coarse ensemble. As seen
+in the raw-proposal tests, the dominant residual discrepancies occur in local
+quantities such as the action density, field moments, and short-distance
+correlations, while infrared observables are already much more accurately
+reproduced. The final stage of the construction is therefore a fine-action
+rethermalization that removes this residual mismatch.
+
+In principle, the residual mismatch could instead be corrected by a global
+Metropolis–Hastings accept/reject step, as in standard flow-based sampling
+[5]. For an independence proposal, however, the acceptance
+depends on the log probability ratio between the proposal and target
+distributions. Even small local errors accumulate over the lattice volume,
+so fluctuations of this ratio grow with 
+V
+VV and global acceptance deteriorates
+rapidly unless the proposal becomes increasingly accurate. This is precisely
+the unfavorable volume scaling that the present construction is intended to
+avoid.
+
+We therefore use the conditional flow as an initializer rather than as a
+standalone exact sampler. After upscaling, the proposed fine configuration
+
+\phi_{\rm prop}
+ϕprop\phi_{\rm prop} is evolved with a Markov update whose stationary
+distribution is the target fine action 
+S_{f}
+SfS_{f}. We study both Hybrid Monte
+Carlo (HMC) and Wolff-cluster evolution [4, 32].
+Given sufficient evolution, either algorithm converges to the correct target
+distribution; the practical question is how rapidly the different components
+of the residual mismatch relax 22
+              2
+
+            Rethermalization following RG-matched prolongation has been studied in gauge and gauge–fermion systems in Refs. [33, 34]. In those studies the prolongated configurations retained residual overlap with both short-distance and slowly relaxing long-distance modes, with the rethermalization rate sensitive to the quality of the coarse–fine matching..
+To distinguish residual short-distance mismatch from mismatch along the
+relevant thermal direction, we perform the three controlled
+
+L=32\to 64
+L=32→64L=32\to 64 tests shown in Fig. 4.
+HMC I is the matched critical case used in the standard cascade.
+HMC II deliberately mistunes the coarse thermal coupling,
+
+\kappa_{c}=0.340100
+κc=0.340100\kappa_{c}=0.340100, while evolving toward the critical fine target
+
+\kappa_{f}=0.340301
+κf=0.340301\kappa_{f}=0.340301.
+HMC III instead changes the microscopic critical action, using
+
+(\lambda_{c},\kappa_{c})=(0.9,0.342410)
+(λc,κc)=(0.9,0.342410)(\lambda_{c},\kappa_{c})=(0.9,0.342410), still on the critical surface  [28], while keeping the fine target at
+
+(\lambda_{f},\kappa_{f})=(1,0.340301)
+(λf,κf)=(1,0.340301)(\lambda_{f},\kappa_{f})=(1,0.340301).
+The latter changes the short-distance action substantially while preserving
+critical long-distance physics.
+
+The contrast among the three cases is clear. The action density in the left
+panel relaxes rapidly in all three tests, including HMC III where the initial
+microscopic mismatch is large. The long-distance observables behave
+differently. In the matched case HMC I and in the distinct-critical-action
+case HMC III, 
+U_{4}
+U4U_{4} and 
+\xi/L
+ξ/L\xi/L show no comparable long relaxation.
+By contrast, the deliberately mistuned HMC II ensemble approaches the target
+only over a much longer HMC time scale.
+
+These results support the RG interpretation of the rethermalization stage.
+A large mismatch in the microscopic action does not necessarily entail slow relaxation,
+provided that the inherited infrared distribution is correct. In contrast, a mismatch along
+the relevant thermal direction modifies the IR distribution
+and therefore couples to a slowly relaxing critical mode. Precise matching
+is thus what allows the standard cascade to achieve rethermalization within a short time scale.
+
+We also performed the reverse thermal-mistuning test, in which a critical
+coarse ensemble is evolved with the slightly off-critical fine action
+
+\kappa_{f}=0.340100
+κf=0.340100\kappa_{f}=0.340100. This case, denoted HMC IV in
+Tables C1 Appendix C and
+C2, shows the same qualitative separation:
+local observables relax rapidly, while 
+U_{4}
+U4U_{4}, 
+\xi/L
+ξ/L\xi/L, and the susceptibility
+evolve on a much longer time scale. Thus the slow relaxation associated with
+thermal mistuning is observed in both directions.
+
+As a complementary test, we also rethermalize selected ensembles with Wolff
+cluster updates. Tables C1 and
+C2 in Appendix C compare
+Wolff and HMC evolution for both the matched critical case and a deliberately
+mistuned thermal coupling. Both algorithms restore local observables rapidly.
+For the thermally mistuned ensemble, however, the long-distance observables
+relax much more quickly under Wolff evolution than under HMC. This shows that
+the long HMC transient in the mistuned case reflects slow dynamics along the
+critical thermal direction rather than a failure of the upscaled proposal to
+have support in the target ensemble.
+
+The same tables also include the distinct-critical-action test discussed above,
+for which HMC rapidly repairs the large microscopic mismatch without inducing
+a comparably slow drift in infrared observables. Taken together, these
+comparisons support the RG interpretation that residual short-distance and
+irrelevant-direction errors are inexpensive to remove, while a mismatch along
+the relevant thermal direction can be much more persistent for a local
+fine-action evolution.
+
+For the remaining tests in this section we focus on HMC-based
+rethermalization. HMC is the more generally applicable update scheme and is
+closer to the algorithms required for eventual extensions to gauge theories
+and fermionic systems, where cluster updates of the type used here are not
+available.
+
+V.2 HMC implementation and recursive cascade
+
+Figure 5: Recursive inverse-blocking cascades in the two-dimensional 
+\phi^{4}
+ϕ4\phi^{4} model.
+Starting from equilibrated 
+L=16
+L=16L=16 configurations at 
+\kappa_{\rm{cr}}
+κcr\kappa_{\rm{cr}}, each scale-two upscaling
+step is followed by HMC rethermalization targeting the fine action.
+Two independent cascades are shown, together with native small-volume
+configurations for visual reference. The figure demonstrates the volume
+reach of the method; quantitative validation is provided by the
+rethermalization histories and expectation-value comparisons.
+
+We have used two HMC implementations for fine-action rethermalization:
+conventional full-volume HMC and domain-decomposed HMC (DD-HMC)
+[35]. Both have the target fine action as their stationary
+distribution and give consistent rethermalization behavior.
+
+For full-volume HMC, the parameters are tuned using standard procedures.
+In the full-volume HMC runs we use trajectories of length 
+\tau=2
+τ=2\tau=2 and choose
+the integration step size to maintain a Metropolis acceptance rate of
+approximately 
+85\%
+85%85\%. At fixed trajectory length, this requires decreasing
+the step size with increasing volume, giving the familiar HMC cost scaling of
+approximately 
+V^{5/4}
+V5/4V^{5/4}. A trajectory length 
+\tau=2
+τ=2\tau=2 produces substantial
+local evolution while maintaining a stable acceptance rate over the lattice
+volumes studied.
+
+For the largest-volume cascades we also use DD-HMC with a fixed domain size
+of 
+8^{2}
+828^{2}. The domains are arranged in a red–black checkerboard so that
+nonoverlapping domains can be evolved in parallel. Domain decomposition
+provides a local and parallel implementation of the rethermalization step and
+is particularly natural here because the residual mismatch produced by the
+upscaling step is predominantly short-distance. We find no qualitative
+difference between full-volume and domain-decomposed HMC in the
+rethermalization behavior relevant to the cascade.
+
+The construction is applied recursively along the sequence
+
+L=16\to 32\to 64\to\cdots\to 2048.
+L=16→32→64→⋯→2048.L=16\to 32\to 64\to\cdots\to 2048.
+
+(43)
+
+At every cascade level we use the same smoothing kernel, optimized from
+
+L=32\to 16
+L=32→16L=32\to 16 blocking, and the same conditional upscaling flow, trained on
+the corresponding 
+L=16\to 32
+L=16→32L=16\to 32 inverse transformation. The blocking kernel retains good matching quality on larger volumes, with particularly stable long-distance observables.
+The raw conditional-flow proposal develops increasing short-distance mismatch
+away from its training volume, but this remains sufficiently local that
+retraining at each volume is unnecessary once rethermalization is included.
+
+At each lattice level, the upscaled configuration is evolved for a fixed
+number of HMC rethermalization sweeps before it is either used as the coarse
+input to the next cascade step or retained for measurement. The required
+rethermalization length and its dependence on volume are tested explicitly
+below.
+
+The recursive construction introduces strong correlations between volumes
+within a given cascade because all descendants inherit the infrared structure
+of a common root configuration. Measurements at different volumes in the same
+cascade therefore cannot be treated as statistically independent, and
+multivolume analyses resample entire cascades as described in
+Appendix A.7. At a fixed target volume, configurations
+generated from independent root configurations remain independent.
+
+This correlation is intrinsic to the construction: the expensive infrared
+sampling is performed on the small root lattice, where decorrelation is cheap,
+and the resulting long-distance structure is transported recursively to larger
+volumes. Consequently, extending a cascade to larger 
+L
+LL tests the stability
+and volume transfer of the method but does not by itself provide additional
+independent infrared statistics.
+
+Figure 5 shows two representative cascades.
+Starting from equilibrated 
+L=16
+L=16L=16 configurations at 
+\kappa_{\rm cr}
+κcr\kappa_{\rm cr}, we
+repeatedly apply scale-two upscaling followed by HMC rethermalization.
+The construction remains stable over many blocking scales, reaching
+
+L=2048
+L=2048L=2048 while preserving the long-distance structure inherited from the root
+configuration. Native small-volume configurations are shown only for visual
+reference; quantitative validation is given below.
+
+Figure 6 compares the computational scaling of direct HMC
+generation with that of the cascade. For direct critical HMC, the
+autocorrelation time of long-distance observables grows approximately as
+
+\tau_{\rm int}\sim L^{z}
+τint∼Lz\tau_{\rm int}\sim L^{z}, with 
+z\simeq 2.17
+z≃2.17z\simeq 2.17 for local dynamics at the
+two-dimensional Ising critical point [36]. The cost
+of generating a new statistically independent infrared configuration therefore
+grows much faster than the lattice volume alone.
+
+In the cascade, the infrared configuration is sampled at the root volume and
+transported to larger lattices; the additional work at each level consists of
+conditional upscaling and finite rethermalization. Since the required number
+of rethermalization sweeps varies only weakly with 
+L
+LL, the marginal cost of
+extending an existing cascade is dominated by the volume scaling of the local
+computation. On the laptop-scale resources used here, extending a cascade to
+
+L=2048
+L=2048L=2048 requires only tens of seconds, whereas extrapolating direct HMC
+decorrelation to the same volume gives a time scale of order 
+10^{2}
+10210^{2} days.
+
+Figure 6: Cost scaling of cascade upscaling vs. HMC. Solid symbols use measured autocorrelation times and generation costs; open symbols for HMC use measured generation costs per configuration, extrapolated using the autocorrelation times measured on smaller volumes. Cascade results show the estimated number of sweeps and cost required for minimal rethermalization; our production runs shown here conservatively set 240 sweeps at all volumes, with correspondingly higher cost per configuration.
+
+V.3 Rethermalization tests
+
+Figure 7: 
+Rethermalization histories after conditional-flow initialization at several
+cascade volumes. We show the local action density 
+S/V
+S/VS/V and kurtosis 
+\langle\phi^{4}\rangle/\langle\phi^{2}\rangle^{2}
+⟨ϕ4⟩/⟨ϕ2⟩2\langle\phi^{4}\rangle/\langle\phi^{2}\rangle^{2}, as well as the
+long-distance quantity 
+\xi/L
+ξ/L\xi/L. Where native reference ensembles are
+available, their expectation values are indicated; at larger volumes the
+late-sweep behavior provides a stationarity reference. Visible transients
+disappear well before the production choice of 
+n^{\star}=240
+n⋆=240n^{\star}=240 HMC sweeps.
+
+Figure 8: 
+Distributional rethermalization test for the 
+L=32\to 64
+L=32→64L=32\to 64 upscaling step.
+The sweep-zero proposal shows the local mismatch discussed in
+Fig. D2; the same ensemble is shown after
+25 and 50 HMC sweeps. Local distributions rapidly approach the native
+reference, while the long-distance 
+m^{2}
+m2m^{2} and 
+m^{4}
+m4m^{4} distributions remain
+stable.
+
+The purpose of these tests is to determine how much fine-action evolution is
+required after each upscaling step and, whether that rethermalization time grows
+with lattice volume. This is not thermalization from a generic hot or cold
+start: the upscaled configurations already inherit their long-distance
+structure from the matched coarse ensemble, while the dominant residual
+mismatch is short-distance.
+
+We monitor both local and long-distance observables as functions of the number
+of HMC sweeps. Local quantities such as the action density and field moments
+are particularly sensitive to imperfections in the detail-field proposal,
+whereas 
+U_{4}
+U4U_{4}, 
+\xi/L
+ξ/L\xi/L, 
+G(p_{\min})
+G⁡(pmin)G(p_{\min}), and the susceptibility test whether
+the inherited infrared distribution remains stable during rethermalization.
+
+Figure 7 shows representative rethermalization
+histories over several cascade volumes. Where native ensembles are available,
+the histories are compared directly with native expectation values. At larger
+volumes, where independent native ensembles are unavailable, the late-sweep
+values provide a practical stationarity reference. In all cases the visible
+transients disappear well before the production rethermalization length.
+
+Figure 8 illustrates the same relaxation
+distribution for the 
+L=32\to 64
+L=32→64L=32\to 64 step. The substantial sweep-zero mismatch
+in local observables is largely removed by 25–50 sweeps, while the
+long-distance distributions remain stable. A corresponding
+
+L=64\to 128
+L=64→128L=64\to 128 comparison is shown in
+Fig. D4 of
+Appendix D.
+
+Table 4 gives a quantitative summary for the
+
+L=64\to 128
+L=64→128L=64\to 128 step at sweeps 0, 25, and 50. It complements the histograms by
+showing that the large initial discrepancies in 
+S/V
+S/VS/V and 
+\phi^{4}
+ϕ4\phi^{4} are removed
+rapidly, while the long-distance quantities remain statistically compatible
+with the native ensemble throughout the rethermalization interval.
+
+Across the volumes studied, the dominant local transient is largely removed
+within approximately 20–50 HMC sweeps, and we resolve no significant growth
+of this relaxation scale with 
+L
+LL. For production we nevertheless use the
+conservative choice 
+n^{\star}=240
+n⋆=240n^{\star}=240
+HMC sweeps after each upscaling step. This choice lies well beyond the
+observed transient region and provides substantial margin against residual
+finite-rethermalization effects.
+
+Table 4: 
+Rethermalization of the L64
+\to
+→\toL128 upscaled ensemble.
+Errors are bootstrap standard errors. The susceptibility is connected,
+
+\chi=V(\langle m^{2}\rangle-\langle m\rangle^{2})
+χ=V⁡(⟨m2⟩−⟨m⟩2)\chi=V(\langle m^{2}\rangle-\langle m\rangle^{2}), and 
+\xi/L
+ξ/L\xi/L is the
+second-moment correlation length.
+
+Observable
+Native
+Sweep 0
+Sweep 25
+Sweep 50
+
+S/V
+S/VS/V
+
+-0.54791(20)
+−0.54791​(20)-0.54791(20)
+
+-0.52474(42)
+−0.52474​(42)-0.52474(42)
+
+-0.54751(36)
+−0.54751​(36)-0.54751(36)
+
+-0.54791(36)
+−0.54791​(36)-0.54791(36)
+
+\phi^{2}
+ϕ2\phi^{2}
+
+0.82699(13)
+0.82699​(13)0.82699(13)
+
+0.82912(22)
+0.82912​(22)0.82912(22)
+
+0.82679(22)
+0.82679​(22)0.82679(22)
+
+0.82709(24)
+0.82709​(24)0.82709(24)
+
+\phi^{4}
+ϕ4\phi^{4}
+
+1.04760(25)
+1.04760​(25)1.04760(25)
+
+1.07655(42)
+1.07655​(42)1.07655(42)
+
+1.04715(43)
+1.04715​(43)1.04715(43)
+
+1.04793(46)
+1.04793​(46)1.04793(46)
+
+G(p_{\min})
+G⁡(pmin)G(p_{\min})
+
+128.5(2.4)
+128.5​(2.4)128.5(2.4)
+
+126.1(4.3)
+126.1​(4.3)126.1(4.3)
+
+124.7(4.3)
+124.7​(4.3)124.7(4.3)
+
+125.5(4.3)
+125.5​(4.3)125.5(4.3)
+
+\chi
+χ\chi
+
+4127(25)
+4127​(25)4127(25)
+
+4207(44)
+4207​(44)4207(44)
+
+4159(44)
+4159​(44)4159(44)
+
+4167(43)
+4167​(43)4167(43)
+
+U_{4}
+U4U_{4}
+
+0.6082(15)
+0.6082​(15)0.6082(15)
+
+0.6113(27)
+0.6113​(27)0.6113(27)
+
+0.6111(27)
+0.6111​(27)0.6111(27)
+
+0.6111(27)
+0.6111​(27)0.6111(27)
+
+\xi/L
+ξ/L\xi/L
+
+0.888(11)
+0.888​(11)0.888(11)
+
+0.906(20)
+0.906​(20)0.906(20)
+
+0.905(20)
+0.905​(20)0.905(20)
+
+0.903(20)
+0.903​(20)0.903(20)
+
+VI Physics Results
+
+As a final validation of the cascaded upscaling algorithm, we extract physical
+quantities associated with the two-dimensional Ising critical point from the
+generated ensembles. Many exact or high-precision results are known for this
+universality class, providing stringent benchmarks for the long-distance
+physics. Definitions of the observables used below are collected in
+appendix A.
+
+A simple qualitative test of finite-size scaling is curve collapse. At a
+scale-invariant point, two-point correlation functions measured on different
+volumes become universal functions of the dimensionless separation 
+x/L
+x/Lx/L, up
+to an overall normalization and subleading corrections to scaling. In
+Fig. 9 we show the zero spatial-momentum two-point function 
+G(t)
+G⁡(t)G(t),
+normalized to its value at 
+t=L/8
+t=L/8t=L/8 on each ensemble. Apart from small
+finite-size deviations on the smallest lattices, the cascade results collapse
+onto a common curve. The native 
+L=64
+L=64L=64 ensemble is consistent with the same
+scaling function within the precision shown.
+
+We next consider two long-distance RG-invariant observables, the Binder
+cumulant 
+U_{4}
+U4U_{4} and the normalized correlation length 
+\xi/L
+ξ/L\xi/L. Their
+infinite-volume critical values are known with high precision
+[37],
+
+U_{4}^{\star}=0.6106924(16),\qquad(\xi/L)^{\star}=0.9050488292(4).
+U4⋆=0.6106924​(16),(ξ/L)⋆=0.9050488292​(4).U_{4}^{\star}=0.6106924(16),\qquad(\xi/L)^{\star}=0.9050488292(4).
+
+(44)
+
+Figure 10 compares these values with measurements on the
+cascade ensembles and on native HMC ensembles (
+L=16,32
+L=16,32L=16,32) and native cluster ensembles (
+L=64,128
+L=64,128L=64,128) at the smaller volumes. Both
+observables remain stable across the cascade and agree with the expected Ising
+critical values within uncertainties.
+Because the different cascade volumes inherit the same long-distance
+structure from common root configurations, these points are strongly
+correlated. Both observables are consistent with the CFT predictions, showing a deviation of approximately 
+1\sigma
+1​σ1\sigma.
+
+Critical exponents provide a more demanding test of finite-size scaling. At
+criticality, neglecting subleading corrections,
+
+\displaystyle\chi
+χ\displaystyle\chi
+
+\displaystyle\propto L^{\gamma/\nu},
+∝Lγ/ν,\displaystyle\propto L^{\gamma/\nu},
+
+(45)
+
+\displaystyle\langle|m|\rangle
+⟨|m|⟩\displaystyle\langle|m|\rangle
+
+\displaystyle\propto L^{-\beta/\nu},
+∝L−β/ν,\displaystyle\propto L^{-\beta/\nu},
+
+(46)
+
+\displaystyle\frac{d}{d\kappa}\log\langle m^{2}\rangle
+dd​κ​log⁡⟨m2⟩\displaystyle\frac{d}{d\kappa}\log\langle m^{2}\rangle
+
+\displaystyle\propto L^{1/\nu}.
+∝L1/ν.\displaystyle\propto L^{1/\nu}.
+
+(47)
+
+We use these relations to extract 
+\gamma/\nu
+γ/ν\gamma/\nu, 
+\beta/\nu
+β/ν\beta/\nu, and 
+\nu
+ν\nu from
+the cascade ensembles, accounting for correlations among volumes in the fits
+[38, 39].
+
+The resulting exponent estimates are shown in Fig. 11. The
+fits reproduce the expected Ising scaling behavior overall, with
+
+\nu
+ν\nu consistent with the exact value 
+\nu=1
+ν=1\nu=1. The other exponents 
+\gamma/\nu
+γ/ν\gamma/\nu and 
+\beta/\nu
+β/ν\beta/\nu are reproduced reasonably close to their exact values of 
+7/4
+7/47/4 and 
+1/8
+1/81/8 respectively, with a deviation at our quoted statistical precision of approximately 
+2\sigma
+2​σ2\sigma in both quantities. We regard the exponent
+analysis as a consistency check on the finite-size scaling of the cascade. It is
+not competitive with other published determinations that use much higher statistics than our exploratory runs.
+
+Figure 9: Finite-size scaling collapse of the two-point correlation function 
+G(x)
+G⁡(x)G(x)
+along the cascade. Each curve is normalized to its value at 
+x=L/8
+x=L/8x=L/8 and
+plotted as a function of 
+x/L
+x/Lx/L. Apart from small finite-size effects on the
+smallest lattices, the cascade ensembles follow a common scaling function;
+the native 
+L=64
+L=64L=64 result is shown for comparison.
+
+Figure 10: Binder cumulant 
+U_{4}
+U4U_{4} and normalized correlation length 
+\xi/L
+ξ/L\xi/L measured on
+the cascade and native HMC (
+L=16,32
+L=16,32L=16,32) and cascade (
+L=64,128
+L=64,128L=64,128) ensembles. The exact two-dimensional Ising
+critical values from Ref. [37] are shown for comparison.
+Cascade points at different volumes are strongly correlated because they
+inherit common infrared structure from the root ensembles. Extended rethermalization results using the cluster algorithm (green triangles) are consistent with the HMC cascade.
+
+Figure 11: Critical exponents extracted from finite-size scaling of the cascade
+ensembles. Fits account for correlations among volumes within the cascade. Our determinations are all within 
+\sim 2\sigma
+∼2​σ\sim 2\sigma of the exact exponents.
+
+VII Conclusions
+
+We have developed a renormalization-guided upscaling algorithm for lattice
+field generation that separates the difficult infrared sampling problem from
+the reconstruction of short-distance degrees of freedom. An approximate
+perfect-blocking transformation is optimized so that the RG-blocked fine
+distribution is well represented by a simple coarse action. Configurations
+drawn from this matched coarse ensemble therefore supply the long-distance
+structure, while a conditional normalizing flow reconstructs the detail fields
+removed by blocking. The resulting fine configuration is then evolved for a
+short time with an update algorithm targeting the fine action in order to
+remove the residual mismatch.
+
+The two-dimensional 
+\phi^{4}
+ϕ4\phi^{4} theory at the Wilson-Fisher critical point provides a
+stringent test of this construction. The optimized blocking transformation
+gives good agreement between directly generated coarse ensembles and blocked
+fine ensembles over several successive volume pairs, and an independent MCRG
+analysis shows that its leading thermal eigenvalue approaches the Wilson-Fisher
+fixed-point value rapidly under blocking. The conditional flow, trained only
+on the 
+L=16\to 32
+L=16→32L=16\to 32 inverse transformation, can be reused recursively on much
+larger lattices. Although the raw proposal develops increasing
+short-distance mismatch away from its training volume, the inherited
+long-distance observables remain much more stable.
+
+The rethermalization studies clarify why this construction is effective.
+Residual local mismatch is removed rapidly, even when the microscopic source
+action differs substantially from the target action, provided that the
+inherited infrared distribution is correct. By contrast, deliberately
+mistuning the relevant thermal coupling produces much slower relaxation of
+long-distance observables under HMC. This separation provides direct evidence
+that the cascade succeeds by transporting already-equilibrated infrared modes
+from the coarse ensemble, leaving the fine-action evolution primarily to repair
+short-distance structure.
+
+Using the same blocking kernel and conditional flow throughout the cascade, we
+have generated ensembles recursively from 
+L=16
+L=16L=16 to 
+L=2048
+L=2048L=2048. The very large
+volumes should be viewed primarily as a demonstration of the stability and
+scale transfer of the construction: volumes within a given cascade remain
+strongly correlated because they inherit the same infrared structure from a
+common root configuration. The computational advantage is therefore not that
+each cascade level supplies new independent infrared information, but that
+infrared configurations generated inexpensively on small lattices can be
+transported to much larger volumes at modest additional cost.
+
+The present study uses a scalar model for which efficient cluster algorithms
+are available, but the rethermalization stage was deliberately implemented
+with HMC and domain-decomposed HMC because these methods have much closer
+analogs in gauge and fermion simulations. The construction itself requires
+three ingredients - a suitable blocking transformation, a conditional model for
+the discarded degrees of freedom, and a fine-action evolution step - and none
+is specific to scalar fields. Extending these ingredients to compact spin
+systems and gauge theories is therefore a natural next step toward applying
+renormalization-guided upscaling in settings where critical slowing down is a
+more serious computational obstacle.
+
+Acknowledgements.
+We thank Dan Hackett, Jake Sitison, and Roman Marcarelli for useful discussions. This research was partially supported by DOE grant DE-SC0010005. Code development was performed with substantial assistance from OpenAI’s ChatGPT and Codex and Anthropic’s Claude Opus 5 and Fable 5. A.H. and E.T.N. directed the development and carried out the debugging, validation, and testing of the final implementation. AH acknowledges the stimulating environment at ECT* Trento during the June 2023 workshop “Machine Learning for Lattice Field Theory and Beyond&quot;, which inspired her work on inverse RG and normalizing flows.
+
+Appendix A Operators and estimators
+
+This appendix compiles the definitions of the operators measured in this
+study, together with the estimators employed for each and the corresponding
+statistical analysis applied to them. These operators and measurements are used throughout the paper, in particular for fitting and validating the blocking kernel, diagnosing the upscaling flow, monitoring rethermalization, and extracting physics results from the cascade-upscaled ensembles.
+
+A.1 Conventions
+
+We work with 
+d=2
+d=2d=2-dimensional square lattices with linear extent 
+L
+LL and periodic boundary conditions; each lattice has 
+V=L^{d}
+V=LdV=L^{d} sites, with a single real scalar field 
+\phi_{x}
+ϕx\phi_{x} at each site. The action is given in eq. 3.
+
+Unless stated otherwise, quantities defined in terms of lattice fields are defined on a single field configuration. Operator expectation values over an ensemble are denoted with angled brackets 
+\langle...\rangle
+⟨…⟩\langle...\rangle.
+
+A.2 Local operators
+
+The ultralocal moments are the site-averaged even powers of the field,
+
+\phi^{2n}\equiv\frac{1}{V}\sum_{x}\phi_{x}^{2n},\qquad n=1,2,3,
+ϕ2​n≡1V∑xϕx2​n,n=1,2,3,\phi^{2n}\equiv\frac{1}{V}\sum_{x}\phi_{x}^{2n},\qquad n=1,2,3,
+
+(48)
+
+The bilinear operators
+at fixed separation 
+r
+rr are
+
+G(r)\equiv\frac{1}{\mathcal{N}_{r}}\sum_{r^{\prime}\in\mathcal{O}_{r}}\frac{1}{V}\sum_{x}\phi_{x}\,\phi_{x+r^{\prime}},
+G⁡(r)≡1𝒩r​∑r′∈𝒪r1V​∑xϕx​ϕx+r′,G(r)\equiv\frac{1}{\mathcal{N}_{r}}\sum_{r^{\prime}\in\mathcal{O}_{r}}\frac{1}{V}\sum_{x}\phi_{x}\,\phi_{x+r^{\prime}},
+
+(49)
+
+where 
+\mathcal{N}_{r}
+𝒩r\mathcal{N}_{r} is the symmetry factor of the operator with respect to the rotational 
+D_{4}
+D4D_{4} symmetry-group orbit 
+\mathcal{O}_{r}
+𝒪r\mathcal{O}_{r}. With periodic boundary conditions, the site-averaged correlator is identical for 
+r
+rr and 
+-r
+−r-r configuration by configuration, so only one representative of each pair is included in the orbit average. In two dimensions, specific instances of 
+G(r)
+G⁡(r)G(r) can be written instead as 
+G_{ij}
+Gi​jG_{ij} where 
+i\geq j
+i≥ji\geq j are the components of the vector 
+r
+rr defining the orbit; for example, 
+G_{10}
+G10G_{10} is the nearest-neighbor bilinear which appears in the action.
+The three shortest separations carry the names used in the tables,
+
+\mathrm{NN}=d\,\times G_{10},\qquad\mathrm{2NN}=d\,\times G_{20},\qquad\mathrm{diag}=G_{11},
+NN=d×G10,2​N​N=d×G20,diag=G11,\mathrm{NN}=d\,\times G_{10},\qquad\mathrm{2NN}=d\,\times G_{20},\qquad\mathrm{diag}=G_{11},
+
+(50)
+
+where the factor of 
+d
+dd means that 
+\mathrm{NN}
+NN\mathrm{NN} is the operator multiplying 
+-2\kappa
+−2​κ-2\kappa in Eq. (3).
+
+The action density is defined as
+
+S/V\equiv\frac{1}{V}\,S[\phi]-\lambda,
+S/V≡1V​S​[ϕ]−λ,S/V\equiv\frac{1}{V}\,S[\phi]-\lambda,
+
+(51)
+
+where 
+S[\phi]
+S⁡[ϕ]S[\phi] is evaluated using the action of Eq. (3) at the value of the coupling at which the ensemble was generated. The
+subtracted 
+\lambda
+λ\lambda corresponds to the constant term in 
+\lambda(\phi^{2}-1)^{2}
+λ​(ϕ2−1)2\lambda(\phi^{2}-1)^{2}, which is
+independent of the field and therefore omitted from the reported values; it induces a uniform shift in all 
+S/V
+S/VS/V entries
+and hence cancels in any comparison.
+
+A.3 Magnetization sector
+
+The order parameter is the volume-averaged field,
+
+m\equiv\frac{1}{V}\sum_{x}\phi_{x},
+m≡1V​∑xϕx,m\equiv\frac{1}{V}\sum_{x}\phi_{x},
+
+(52)
+
+and the moments reported are 
+m^{2}
+m2m^{2}, 
+m^{4}
+m4m^{4} and 
+|m|
+|m||m|. No ensemble mean is subtracted; all moments are defined directly from
+Eq. (52).
+
+A.4 The 2-point correlation function
+
+The large-distance properties of the two-point function defined in
+Eq. (49) characterize the infrared dynamics of the system.
+We use the zero-momentum projected correlation function
+
+\widetilde{G}(t)=\sum_{x_{1}}G(t,x_{1}),
+G~​(t)=∑x1G⁡(t,x1),\widetilde{G}(t)=\sum_{x_{1}}G(t,x_{1}),
+
+(53)
+
+as well as the momentum-space correlation function
+
+G(p)=\frac{1}{V}\left|\sum_{x}e^{ip\cdot x}\phi_{x}\right|^{2},
+G⁡(p)=1V​|∑xei​p⋅x​ϕx|2,G(p)=\frac{1}{V}\left|\sum_{x}e^{ip\cdot x}\phi_{x}\right|^{2},
+
+(54)
+
+where the lattice momentum is 
+p=2\pi n/L
+p=2​π​n/Lp=2\pi n/L. 
+G(p)
+G⁡(p)G(p) in Eq.(54) is defined without subtraction of the disconnected piece, which vanishes identically at
+
+p\neq 0
+p≠0p\neq 0 by translation invariance.
+The infrared diagnostic quoted in the tables is
+the average over the two minimal momenta,
+
+G_{p}=\frac{1}{2}\left[G(2\pi/L,0)+G(0,2\pi/L)\right]\,.
+Gp=12​[G⁡(2​π/L,0)+G⁡(0,2​π/L)].G_{p}=\frac{1}{2}\left[G(2\pi/L,0)+G(0,2\pi/L)\right]\,.
+
+(55)
+
+The two are also
+recorded separately since their difference
+
+\mathcal{A}=\frac{G(2\pi/L,0)-G(0,2\pi/L)}{G_{p}}
+𝒜=G⁡(2​π/L,0)−G⁡(0,2​π/L)Gp\mathcal{A}=\frac{G(2\pi/L,0)-G(0,2\pi/L)}{G_{p}}
+
+(56)
+
+is the rotational-isotropy check on an ensemble.
+
+A.5 Derived quantities
+
+The following observables are ratios or nonlinear functions of ensemble
+averages of the operators defined above. The susceptibility and Binder
+cumulant are
+
+\chi=V\left(\langle m^{2}\rangle-\langle m\rangle^{2}\right),\qquad U_{4}=1-\frac{\langle m^{4}\rangle}{3\,\langle m^{2}\rangle^{2}},
+χ=V⁡(⟨m2⟩−⟨m⟩2),U4=1−⟨m4⟩3​⟨m2⟩2,\chi=V\left(\langle m^{2}\rangle-\langle m\rangle^{2}\right),\qquad U_{4}=1-\frac{\langle m^{4}\rangle}{3\,\langle m^{2}\rangle^{2}},
+
+(57)
+
+where 
+\langle m\rangle=0
+⟨m⟩=0\langle m\rangle=0 by the 
+\mathbb{Z}_{2}
+ℤ2\mathbb{Z}_{2} symmetry of the finite-volume
+ensemble. The local kurtosis ratio is
+
+\frac{\langle\phi^{4}\rangle}{\langle\phi^{2}\rangle^{2}}.
+⟨ϕ4⟩⟨ϕ2⟩2.\frac{\langle\phi^{4}\rangle}{\langle\phi^{2}\rangle^{2}}.
+
+(58)
+
+We use the second-moment correlation length,
+
+\xi=\frac{1}{2\sin(\pi/L)}\sqrt{\frac{\chi}{G_{p}}-1},
+ξ=12​sin⁡(π/L)​χGp−1,\xi=\frac{1}{2\sin(\pi/L)}\sqrt{\frac{\chi}{G_{p}}-1},
+
+(59)
+
+where 
+G_{p}
+GpG_{p} is the correlation function at the smallest nonzero momentum
+defined in Eq. (55). We frequently quote the dimensionless
+ratio 
+\xi/L
+ξ/L\xi/L.
+
+For the finite-size scaling analysis we determine the exponent ratios 
+\gamma/\nu
+γ/ν\gamma/\nu and 
+\beta/\nu
+β/ν\beta/\nu from the
+volume dependence
+
+\chi\propto L^{\gamma/\nu},\qquad\langle|m|\rangle\propto L^{-\beta/\nu}.
+χ∝Lγ/ν,⟨|m|⟩∝L−β/ν.\chi\propto L^{\gamma/\nu},\qquad\langle|m|\rangle\propto L^{-\beta/\nu}.
+
+(60)
+
+The absolute value is used because the finite-volume ensemble preserves the
+
+\mathbb{Z}_{2}
+ℤ2\mathbb{Z}_{2} symmetry and hence 
+\langle m\rangle=0
+⟨m⟩=0\langle m\rangle=0.
+
+The thermal exponent is obtained from derivatives with respect to 
+\kappa
+κ\kappa.
+For any observable 
+\mathcal{O}
+𝒪\mathcal{O},
+
+\frac{\partial\langle\mathcal{O}\rangle}{\partial\kappa}=2V\left(\langle\mathcal{O}\,\mathrm{NN}\rangle-\langle\mathcal{O}\rangle\langle\mathrm{NN}\rangle\right),
+∂⟨𝒪⟩∂κ=2​V​(⟨𝒪​NN⟩−⟨𝒪⟩​⟨NN⟩),\frac{\partial\langle\mathcal{O}\rangle}{\partial\kappa}=2V\left(\langle\mathcal{O}\,\mathrm{NN}\rangle-\langle\mathcal{O}\rangle\langle\mathrm{NN}\rangle\right),
+
+(61)
+
+since 
+-\partial S/\partial\kappa=2V\,\mathrm{NN}
+−∂S/∂κ=2VNN-\partial S/\partial\kappa=2V\,\mathrm{NN} with the
+axis-summed normalization of Eq. (50). We use
+
+\frac{\partial}{\partial\kappa}\log\langle|m|\rangle,\qquad\frac{\partial}{\partial\kappa}\log\langle m^{2}\rangle,\qquad\frac{\partial U_{4}}{\partial\kappa},
+∂∂κ​log⁡⟨|m|⟩,∂∂κ​log⁡⟨m2⟩,∂U4∂κ,\frac{\partial}{\partial\kappa}\log\langle|m|\rangle,\qquad\frac{\partial}{\partial\kappa}\log\langle m^{2}\rangle,\qquad\frac{\partial U_{4}}{\partial\kappa},
+
+(62)
+
+each of which scales as 
+L^{1/\nu}
+L1/νL^{1/\nu} at criticality, up to corrections to scaling. We use these as independent estimators of 
+1/\nu
+1/ν1/\nu.
+
+A.6 Operator sets used in each role
+
+The 
+7\times 7
+7×77\times 7 blocking kernel of Sec. III.2 is fitted using
+
+\left\{\begin{aligned} &amp;\phi^{2},\phi^{4},\phi^{6},\mathrm{NN},\mathrm{2NN},\mathrm{diag},m^{2},\\
+&amp;G_{21},G_{22},G_{30},G_{31}\end{aligned}\right\}.
+{ϕ2,ϕ4,ϕ6,NN,2​N​N,diag,m2,G21,G22,G30,G31}.\left\{\begin{aligned} &amp;\phi^{2},\phi^{4},\phi^{6},\mathrm{NN},\mathrm{2NN},\mathrm{diag},m^{2},\\
+&amp;G_{21},G_{22},G_{30},G_{31}\end{aligned}\right\}.
+
+(63)
+
+The observables 
+m^{4}
+m4m^{4}, the local kurtosis
+
+\langle\phi^{4}\rangle/\langle\phi^{2}\rangle^{2}
+⟨ϕ4⟩/⟨ϕ2⟩2\langle\phi^{4}\rangle/\langle\phi^{2}\rangle^{2}, the action density, and
+
+G(p_{\min})
+G⁡(pmin)G(p_{\min}) are reserved for validation and are not included in the fit.
+
+The conditional upscaling flow is trained by conditional maximum likelihood;
+none of these observables enter its training loss.
+
+Rethermalization is monitored using 
+S/V
+S/VS/V, 
+\phi^{2}
+ϕ2\phi^{2}, 
+\phi^{4}
+ϕ4\phi^{4},
+
+\mathrm{NN}
+NN\mathrm{NN}, 
+\mathrm{2NN}
+2​N​N\mathrm{2NN}, 
+\mathrm{diag}
+diag\mathrm{diag}, 
+m^{2}
+m2m^{2}, and 
+G(p_{\min})
+G⁡(pmin)G(p_{\min}),
+together with the moments required to construct 
+\chi
+χ\chi, 
+U_{4}
+U4U_{4}, and 
+\xi/L
+ξ/L\xi/L.
+
+A.7 Statistical treatment
+
+Linear observables are quoted as sample means with binned statistical errors.
+Binning is used whenever measurements arise from a Markov chain, so that
+autocorrelations are included in the uncertainty estimate.
+
+Derived quantities are estimated by binned jackknife. The estimator is
+evaluated on the full sample and on each leave-one-bin-out subsample, and the
+jackknife samples are propagated through the complete analysis. When several
+observables or fitted quantities enter a derived result, the same jackknife
+deletions are used throughout so that correlations are preserved.
+
+For cascade analyses, the statistically independent unit is the root
+configuration, not an individual volume. All descendants of a given root,
+for example 
+L=32,64,\ldots,2048
+L=32,64,…,2048L=32,64,\ldots,2048, are resampled together. This preserves the
+cross-volume covariance generated by the recursive construction without
+requiring an explicit model for it. These correlations are substantial and
+are included in all multivolume fits and derived quantities.
+
+Distributional comparisons use the two-sample Kolmogorov–Smirnov (KS)
+distance,
+
+D_{\rm KS}=\sup_{x}\left|F_{\rm direct}(x)-F_{\rm comparison}(x)\right|.
+DKS=supx|Fdirect​(x)−Fcomparison​(x)|.D_{\rm KS}=\sup_{x}\left|F_{\rm direct}(x)-F_{\rm comparison}(x)\right|.
+
+(64)
+
+Smaller values indicate greater overlap of the empirical cumulative
+distributions. In addition, we consider the width ratio
+
+R_{\sigma}=\frac{\sigma_{\mathrm{blocked}}}{\sigma_{\mathrm{direct}}}.
+Rσ=σblockedσdirect.R_{\sigma}=\frac{\sigma_{\mathrm{blocked}}}{\sigma_{\mathrm{direct}}}.
+
+(65)
+
+For independent ensembles, expectation values are compared using pulls with
+uncertainties combined in quadrature. These distributional statistics are used as diagnostics rather than as the
+sole figure of merit. Marginal distributions can miss correlated or
+collective discrepancies, which are probed separately by coupling-derivative
+observables and finite-size-scaling tests.
+
+Appendix B Monte Carlo renormalization-group analysis
+
+We briefly summarize the MCRG construction used in Sec. III.3, following Swendsen [30]. Writing the blocked action after 
+n
+nn RG blocking steps as
+
+S^{(n)}=\sum_{\alpha}K_{\alpha}^{(n)}S_{\alpha}^{(n)},
+S(n)=∑αKα(n)​Sα(n),S^{(n)}=\sum_{\alpha}K_{\alpha}^{(n)}S_{\alpha}^{(n)},
+
+(66)
+
+the linearized RG transformation matrix is
+
+T_{\alpha\beta}^{(n)}=\frac{\partial K_{\alpha}^{(n+1)}}{\partial K_{\beta}^{(n)}}.
+Tα​β(n)=∂Kα(n+1)∂Kβ(n).T_{\alpha\beta}^{(n)}=\frac{\partial K_{\alpha}^{(n+1)}}{\partial K_{\beta}^{(n)}}.
+
+(67)
+
+The matrix 
+T^{(n)}
+T(n)T^{(n)} is obtained directly from connected operator
+correlations.
+Defining
+
+\displaystyle A_{\gamma\alpha}^{(n+1)}
+Aγ​α(n+1)\displaystyle A_{\gamma\alpha}^{(n+1)}
+
+\displaystyle=\left\langle S_{\gamma}^{(n+1)}S_{\alpha}^{(n+1)}\right\rangle_{c},
+=⟨Sγ(n+1)​Sα(n+1)⟩c,\displaystyle=\left\langle S_{\gamma}^{(n+1)}S_{\alpha}^{(n+1)}\right\rangle_{c},
+
+(68)
+
+\displaystyle B_{\gamma\beta}^{(n+1,n)}
+Bγ​β(n+1,n)\displaystyle B_{\gamma\beta}^{(n+1,n)}
+
+\displaystyle=\left\langle S_{\gamma}^{(n+1)}S_{\beta}^{(n)}\right\rangle_{c}
+=⟨Sγ(n+1)​Sβ(n)⟩c\displaystyle=\left\langle S_{\gamma}^{(n+1)}S_{\beta}^{(n)}\right\rangle_{c}
+
+(69)
+
+the chain rule gives
+
+B^{(n+1,n)}=A^{(n+1)}T^{(n)}.
+B(n+1,n)=A(n+1)​T(n).B^{(n+1,n)}=A^{(n+1)}T^{(n)}.
+
+(70)
+
+Thus the linearized RG matrix can be determined without constructing the blocked action explicitly. We use the even operator basis
+
+\displaystyle S_{1}
+S1\displaystyle S_{1}
+
+\displaystyle=\sum_{x}\phi_{x}^{2},
+=∑xϕx2,\displaystyle=\sum_{x}\phi_{x}^{2},
+
+\displaystyle S_{2}
+S2\displaystyle S_{2}
+
+\displaystyle=\sum_{x}\phi_{x}^{4},
+=∑xϕx4,\displaystyle=\sum_{x}\phi_{x}^{4},
+
+(71)
+
+\displaystyle S_{3}
+S3\displaystyle S_{3}
+
+\displaystyle=\sum_{x,\mu}\phi_{x}\phi_{x+\hat{\mu}},
+=∑x,μϕx​ϕx+μ^,\displaystyle=\sum_{x,\mu}\phi_{x}\phi_{x+\hat{\mu}},
+
+\displaystyle S_{4}
+S4\displaystyle S_{4}
+
+\displaystyle=\sum_{x}\phi_{x}\phi_{x+\hat{x}+\hat{y}},
+=∑xϕx​ϕx+x^+y^,\displaystyle=\sum_{x}\phi_{x}\phi_{x+\hat{x}+\hat{y}},
+
+(72)
+
+\displaystyle S_{5}
+S5\displaystyle S_{5}
+
+\displaystyle=\sum_{x,\mu}\phi_{x}\phi_{x+2\hat{\mu}},
+=∑x,μϕx​ϕx+2​μ^,\displaystyle=\sum_{x,\mu}\phi_{x}\phi_{x+2\hat{\mu}},
+
+(73)
+
+with periodic boundary conditions.
+We solve Eq. (70) using an SVD rather than explicitly forming 
+A^{-1}
+A−1A^{-1}, and statistical uncertainties are determined by bootstrap resampling of the original configurations, with the full blocking hierarchy recomputed within each bootstrap sample.
+Near the fixed point, the eigenvalues of 
+T
+TT are related to the RG scaling
+exponents by
+
+\lambda_{i}=s^{y_{i}},
+λi=syi,\lambda_{i}=s^{y_{i}},
+
+(74)
+
+for a scale-
+s
+ss RG blocking transformation. For 
+s=2
+s=2s=2, the leading even
+eigenvalue satisfies
+
+\lambda_{t}=2^{1/\nu},\qquad\nu=\frac{\log 2}{\log\lambda_{t}}.
+λt=21/ν,ν=log⁡2log⁡λt.\lambda_{t}=2^{1/\nu},\qquad\nu=\frac{\log 2}{\log\lambda_{t}}.
+
+(75)
+
+Appendix C Additional rethermalization tests
+
+Tables C1 and C2 compare rethermalization both with Wolff and HMC algorithms, and the deliberately mismatched critical-action test. For the correctly matched critical source, Wolff and HMC updates show comparable rapid relaxation of the local observables. The same behavior is seen for the source ensemble generated at criticality at 
+\lambda_{c}=0.9
+λc=0.9\lambda_{c}=0.9, 
+\kappa_{c}=0.342410
+κc=0.342410\kappa_{c}=0.342410: despite a substantial sweep-zero mismatch in quantities such as the action density and 
+\langle\phi^{4}\rangle
+⟨ϕ4⟩\langle\phi^{4}\rangle, HMC restores the short-distance observables on essentially the same time scale as in the standard case. By contrast, when the source coupling is deliberately mistuned away from criticality, the local observables again relax rapidly, but residual discrepancies persist much longer in infrared quantities such as 
+U_{4}
+U4U_{4} and 
+\xi/L
+ξ/L\xi/L. This supports the RG interpretation that rethermalization efficiently removes short-distance and irrelevant-direction errors, while a mismatch with a component along the relevant thermal direction is much more difficult to repair.
+
+Table C1: L32 
+\to
+→\to L64 rethermalization. Wolff I/II and HMC I/II use 
+\lambda_{c}=1
+λc=1\lambda_{c}=1 source couplings 
+\kappa_{c}=0.340301
+κc=0.340301\kappa_{c}=0.340301 and 
+0.340100
+0.3401000.340100; HMC III uses 
+\lambda_{c}=0.9
+λc=0.9\lambda_{c}=0.9, 
+\kappa_{c}=0.342410
+κc=0.342410\kappa_{c}=0.342410. HMC I–III target 
+\lambda_{f}=1
+λf=1\lambda_{f}=1, 
+\kappa_{f}=0.340301
+κf=0.340301\kappa_{f}=0.340301, whereas HMC IV deliberately targets 
+\kappa_{f}=0.340100
+κf=0.340100\kappa_{f}=0.340100. HMC II and III combine five independent replicas at every displayed sweep (
+N=10000
+N=10000N=10000). The two direct-native columns match their respective fine targets and are shown only at sweep zero. Errors are configuration-bootstrap standard deviations.
+
+Observable
+Native 
+\kappa=.340301
+κ=.340301\kappa=.340301
+Sweep
+Wolff I
+Wolff II
+HMC I
+HMC II
+HMC III
+Native 
+\kappa=.340100
+κ=.340100\kappa=.340100
+HMC IV
+
+S/V
+S/VS/V
+-0.55001(23)
+0
+-0.52684(42)
+-0.52544(56)
+-0.52699(30)
+-0.52603(31)
+-0.52107(30)
+-0.54743(38)
+-0.52617(76)
+
+10
+-0.55026(38)
+-0.54973(47)
+-0.54868(27)
+-0.54762(26)
+-0.54779(26)
+
+-0.54681(68)
+
+20
+-0.55007(37)
+-0.55051(48)
+-0.54972(26)
+-0.54896(27)
+-0.54910(27)
+
+-0.54808(66)
+
+50
+-0.54997(38)
+-0.55007(48)
+-0.54984(26)
+-0.54956(27)
+-0.54951(27)
+
+-0.54757(69)
+
+100
+-0.54983(36)
+-0.55152(49)
+-0.55000(26)
+-0.54934(26)
+-0.54971(26)
+
+-0.54776(65)
+
+250
+
+-0.54980(27)
+-0.54960(27)
+-0.54969(27)
+
+-0.54837(70)
+
+500
+
+-0.55011(27)
+-0.54969(27)
+-0.55051(26)
+
+-0.54783(70)
+
+750
+
+-0.54976(27)
+-0.55029(26)
+-0.55007(27)
+
+-0.54769(67)
+
+1000
+
+-0.55029(27)
+-0.54988(26)
+-0.54967(26)
+
+-0.54772(68)
+
+1250
+
+-0.55013(26)
+-0.54977(27)
+-0.55005(27)
+
+-0.54719(67)
+
+1500
+
+-0.54992(27)
+-0.54973(26)
+-0.54958(27)
+
+-0.54756(70)
+
+\langle\phi^{2}\rangle
+⟨ϕ2⟩\langle\phi^{2}\rangle
+0.82832(15)
+0
+0.82988(23)
+0.82902(30)
+0.83002(16)
+0.82924(16)
+0.83122(17)
+0.82675(24)
+0.82981(43)
+
+10
+0.82856(24)
+0.82797(30)
+0.82767(17)
+0.82717(17)
+0.82730(17)
+
+0.82721(45)
+
+20
+0.82843(24)
+0.82840(31)
+0.82801(17)
+0.82777(17)
+0.82780(17)
+
+0.82732(43)
+
+50
+0.82847(24)
+0.82848(31)
+0.82810(17)
+0.82809(17)
+0.82795(17)
+
+0.82762(44)
+
+100
+0.82820(24)
+0.82907(32)
+0.82838(17)
+0.82810(17)
+0.82799(17)
+
+0.82718(43)
+
+250
+
+0.82806(17)
+0.82805(17)
+0.82798(17)
+
+0.82808(44)
+
+500
+
+0.82819(17)
+0.82816(17)
+0.82862(17)
+
+0.82726(45)
+
+750
+
+0.82817(17)
+0.82838(17)
+0.82841(17)
+
+0.82716(43)
+
+1000
+
+0.82851(17)
+0.82832(17)
+0.82825(17)
+
+0.82673(43)
+
+1250
+
+0.82838(17)
+0.82797(17)
+0.82838(17)
+
+0.82697(44)
+
+1500
+
+0.82822(17)
+0.82831(17)
+0.82821(17)
+
+0.82705(43)
+
+\langle\phi^{4}\rangle
+⟨ϕ4⟩\langle\phi^{4}\rangle
+1.05001(30)
+0
+1.07759(43)
+1.07640(57)
+1.07791(31)
+1.07655(31)
+1.08579(32)
+1.04718(47)
+1.07743(81)
+
+10
+1.05067(46)
+1.04944(59)
+1.04907(33)
+1.04834(32)
+1.04845(33)
+
+1.04857(87)
+
+20
+1.05045(46)
+1.05003(60)
+1.04945(33)
+1.04901(33)
+1.04907(33)
+
+1.04822(84)
+
+50
+1.05059(46)
+1.05053(60)
+1.04962(33)
+1.04969(33)
+1.04947(33)
+
+1.04923(86)
+
+100
+1.04992(46)
+1.05132(62)
+1.05017(34)
+1.04978(32)
+1.04938(33)
+
+1.04810(84)
+
+250
+
+1.04958(33)
+1.04962(34)
+1.04941(33)
+
+1.04951(86)
+
+500
+
+1.04979(33)
+1.04978(33)
+1.05064(33)
+
+1.04811(86)
+
+750
+
+1.04981(33)
+1.05019(34)
+1.05022(34)
+
+1.04806(84)
+
+1000
+
+1.05045(33)
+1.05024(33)
+1.05014(32)
+
+1.04706(84)
+
+1250
+
+1.05013(33)
+1.04939(33)
+1.05018(33)
+
+1.04769(85)
+
+1500
+
+1.05000(33)
+1.05026(33)
+1.05010(33)
+
+1.04761(84)
+
+\mathrm{NN}
+NN\mathrm{NN}
+1.13386(50)
+0
+1.13805(79)
+1.1355(10)
+1.13851(56)
+1.13626(57)
+1.13964(58)
+1.12887(79)
+1.1376(15)
+
+10
+1.13483(79)
+1.13312(100)
+1.13148(56)
+1.12957(55)
+1.12981(55)
+
+1.1293(15)
+
+20
+1.13442(78)
+1.1345(10)
+1.13306(55)
+1.13165(56)
+1.13190(57)
+
+1.1305(14)
+
+50
+1.13443(79)
+1.1345(10)
+1.13335(55)
+1.13306(56)
+1.13287(56)
+
+1.1308(15)
+
+100
+1.13364(77)
+1.1369(10)
+1.13399(56)
+1.13284(55)
+1.13297(56)
+
+1.1301(14)
+
+250
+
+1.13328(56)
+1.13307(57)
+1.13299(56)
+
+1.1317(15)
+
+500
+
+1.13385(56)
+1.13328(57)
+1.13505(55)
+
+1.1301(15)
+
+750
+
+1.13340(57)
+1.13444(56)
+1.13411(57)
+
+1.1299(14)
+
+1000
+
+1.13462(57)
+1.13400(56)
+1.13364(55)
+
+1.1292(14)
+
+1250
+
+1.13411(55)
+1.13310(56)
+1.13407(56)
+
+1.1289(14)
+
+1500
+
+1.13384(56)
+1.13381(55)
+1.13353(56)
+
+1.1293(15)
+
+2\mathrm{NN}
+2​NN2\mathrm{NN}
+0.94918(68)
+0
+0.9569(11)
+0.9526(15)
+0.95701(78)
+0.95358(80)
+0.95823(80)
+0.9423(11)
+0.9566(20)
+
+10
+0.9508(11)
+0.9484(14)
+0.94619(77)
+0.94358(77)
+0.94380(76)
+
+0.9433(20)
+
+20
+0.9497(11)
+0.9502(14)
+0.94852(76)
+0.94610(78)
+0.94670(79)
+
+0.9452(19)
+
+50
+0.9502(11)
+0.9505(14)
+0.94880(76)
+0.94823(78)
+0.94798(77)
+
+0.9452(20)
+
+100
+0.9494(11)
+0.9538(14)
+0.94951(78)
+0.94800(77)
+0.94811(77)
+
+0.9446(19)
+
+250
+
+0.94884(77)
+0.94828(78)
+0.94839(78)
+
+0.9464(20)
+
+500
+
+0.94969(78)
+0.94853(78)
+0.95088(75)
+
+0.9452(20)
+
+750
+
+0.94879(78)
+0.95029(77)
+0.94966(78)
+
+0.9439(20)
+
+1000
+
+0.95039(78)
+0.94978(77)
+0.94917(76)
+
+0.9432(20)
+
+1250
+
+0.94967(77)
+0.94851(78)
+0.94986(77)
+
+0.9428(19)
+
+1500
+
+0.94928(77)
+0.94934(76)
+0.94898(78)
+
+0.9430(20)
+
+\mathrm{diag}
+diag\mathrm{diag}
+0.50786(30)
+0
+0.51314(48)
+0.51135(64)
+0.51331(34)
+0.51185(35)
+0.51369(35)
+0.50472(48)
+0.51294(88)
+
+10
+0.50854(48)
+0.50748(60)
+0.50651(34)
+0.50527(34)
+0.50540(33)
+
+0.50517(87)
+
+20
+0.50810(47)
+0.50823(61)
+0.50755(33)
+0.50643(34)
+0.50658(35)
+
+0.50596(86)
+
+50
+0.50813(48)
+0.50834(62)
+0.50766(33)
+0.50742(34)
+0.50729(34)
+
+0.50602(87)
+
+100
+0.50786(46)
+0.50967(63)
+0.50786(34)
+0.50733(34)
+0.50742(34)
+
+0.50591(83)
+
+250
+
+0.50763(34)
+0.50745(34)
+0.50750(34)
+
+0.50639(88)
+
+500
+
+0.50795(34)
+0.50748(34)
+0.50859(33)
+
+0.50597(87)
+
+750
+
+0.50767(34)
+0.50831(34)
+0.50785(34)
+
+0.50568(85)
+
+1000
+
+0.50829(34)
+0.50798(34)
+0.50779(33)
+
+0.50531(86)
+
+1250
+
+0.50794(33)
+0.50746(34)
+0.50806(34)
+
+0.50510(85)
+
+1500
+
+0.50792(34)
+0.50798(33)
+0.50769(34)
+
+0.50505(88)
+
+Table C2: L32 
+\to
+→\to L64 rethermalization. Wolff I/II and HMC I/II use 
+\lambda_{c}=1
+λc=1\lambda_{c}=1 source couplings 
+\kappa_{c}=0.340301
+κc=0.340301\kappa_{c}=0.340301 and 
+0.340100
+0.3401000.340100; HMC III uses 
+\lambda_{c}=0.9
+λc=0.9\lambda_{c}=0.9, 
+\kappa_{c}=0.342410
+κc=0.342410\kappa_{c}=0.342410. HMC I–III target 
+\lambda_{f}=1
+λf=1\lambda_{f}=1, 
+\kappa_{f}=0.340301
+κf=0.340301\kappa_{f}=0.340301, whereas HMC IV deliberately targets 
+\kappa_{f}=0.340100
+κf=0.340100\kappa_{f}=0.340100. HMC II and III combine five independent replicas at every displayed sweep (
+N=10000
+N=10000N=10000). The two direct-native columns match their respective fine targets and are shown only at sweep zero. Errors are configuration-bootstrap standard deviations.
+
+Observable
+Native 
+\kappa=.340301
+κ=.340301\kappa=.340301
+Sweep
+Wolff I
+Wolff II
+HMC I
+HMC II
+HMC III
+Native 
+\kappa=.340100
+κ=.340100\kappa=.340100
+HMC IV
+
+\chi
+χ\chi
+1223.1(46)
+0
+1244.0(72)
+1211.4(97)
+1242.5(51)
+1223.7(52)
+1244.3(51)
+1189.9(74)
+1248(13)
+
+10
+1238.9(71)
+1234.6(91)
+1224.4(51)
+1208.3(51)
+1217.9(49)
+
+1225(13)
+
+20
+1228.7(71)
+1238.2(93)
+1226.6(50)
+1213.2(51)
+1223.9(52)
+
+1227(13)
+
+50
+1232.8(72)
+1233.6(92)
+1226.4(51)
+1218.1(52)
+1226.0(50)
+
+1237(13)
+
+100
+1231.9(71)
+1259.4(93)
+1228.1(51)
+1218.7(50)
+1227.5(51)
+
+1233(13)
+
+250
+
+1232.1(51)
+1223.5(52)
+1230.3(52)
+
+1236(13)
+
+500
+
+1236.0(51)
+1223.9(51)
+1233.9(51)
+
+1226(13)
+
+750
+
+1230.8(51)
+1233.8(51)
+1230.3(52)
+
+1209(13)
+
+1000
+
+1234.4(51)
+1234.6(52)
+1230.3(50)
+
+1207(13)
+
+1250
+
+1233.7(51)
+1230.3(50)
+1233.4(51)
+
+1192(13)
+
+1500
+
+1234.4(51)
+1229.3(50)
+1234.3(51)
+
+1192(14)
+
+U_{4}
+U4U_{4}
+0.60820(97)
+0
+0.6100(15)
+0.6033(21)
+0.6087(11)
+0.6067(11)
+0.6101(11)
+0.6024(17)
+0.6135(25)
+
+10
+0.6121(14)
+0.6116(19)
+0.6090(11)
+0.6072(11)
+0.6103(11)
+
+0.6138(25)
+
+20
+0.6095(15)
+0.6105(20)
+0.6091(11)
+0.6074(11)
+0.6107(11)
+
+0.6144(25)
+
+50
+0.6101(15)
+0.6101(19)
+0.6094(11)
+0.6078(11)
+0.6106(11)
+
+0.6142(25)
+
+100
+0.6106(15)
+0.6136(18)
+0.6084(11)
+0.6081(11)
+0.6099(11)
+
+0.6155(25)
+
+250
+
+0.6103(11)
+0.6080(11)
+0.6101(11)
+
+0.6140(25)
+
+500
+
+0.6106(10)
+0.6081(11)
+0.6099(11)
+
+0.6106(27)
+
+750
+
+0.6105(11)
+0.6097(11)
+0.6087(11)
+
+0.6103(28)
+
+1000
+
+0.6102(10)
+0.6102(11)
+0.6093(11)
+
+0.6086(27)
+
+1250
+
+0.6095(11)
+0.6102(11)
+0.6102(11)
+
+0.6064(28)
+
+1500
+
+0.6099(11)
+0.6101(11)
+0.6092(11)
+
+0.6037(30)
+
+\xi/L
+ξ/L\xi/L
+0.8842(68)
+0
+0.898(11)
+0.868(14)
+0.8953(78)
+0.8821(76)
+0.9021(79)
+0.846(10)
+0.924(20)
+
+10
+0.905(11)
+0.903(14)
+0.8948(78)
+0.8830(76)
+0.8977(77)
+
+0.927(20)
+
+20
+0.892(11)
+0.896(15)
+0.8908(75)
+0.8841(77)
+0.9015(79)
+
+0.924(21)
+
+50
+0.895(11)
+0.896(14)
+0.8922(78)
+0.8842(78)
+0.9006(78)
+
+0.941(21)
+
+100
+0.900(11)
+0.932(15)
+0.8908(78)
+0.8848(76)
+0.8970(78)
+
+0.935(21)
+
+250
+
+0.9012(77)
+0.8874(79)
+0.8983(78)
+
+0.935(21)
+
+500
+
+0.9087(79)
+0.8878(77)
+0.8934(78)
+
+0.915(20)
+
+750
+
+0.9007(79)
+0.8987(78)
+0.8961(78)
+
+0.895(20)
+
+1000
+
+0.8994(78)
+0.9072(80)
+0.8962(77)
+
+0.880(20)
+
+1250
+
+0.9016(79)
+0.9042(78)
+0.9043(78)
+
+0.855(19)
+
+1500
+
+0.9045(79)
+0.8975(77)
+0.9071(78)
+
+0.861(20)
+
+Appendix D Additional plots and tables
+
+Table D1: 
+Perfect-blocking comparison on the 
+L=32
+L=32L=32 coarse lattice:
+direct 
+L=32
+L=32L=32 configurations versus 
+L=64
+L=64L=64 configurations blocked to
+
+L=32
+L=32L=32. The final columns give the two-sample KS distance and the ratio 
+\sigma_{\rm blocked}/\sigma_{\rm direct}
+σblocked/σdirect\sigma_{\rm blocked}/\sigma_{\rm direct}.
+
+Operator
+Direct 
+L=32
+L=32L=32
+Blocked 
+64\to 32
+64→3264\to 32
+KS
+Std. ratio
+
+S/V
+S/VS/V
+
+-0.55454(49)
+−0.55454​(49)-0.55454(49)
+
+-0.55517(60)
+−0.55517​(60)-0.55517(60)
+
+0.0439
+0.04390.0439
+
+0.867
+0.8670.867
+
+\phi^{2}
+ϕ2\phi^{2}
+
+0.83090(32)
+0.83090​(32)0.83090(32)
+
+0.82903(51)
+0.82903​(51)0.82903(51)
+
+0.0471
+0.04710.0471
+
+1.121
+1.1211.121
+
+\phi^{4}
+ϕ4\phi^{4}
+
+1.05487(64)
+1.05487​(64)1.05487(64)
+
+1.0501(11)
+1.0501​(11)1.0501(11)
+
+0.0592
+0.05920.0592
+
+1.165
+1.1651.165
+
+\langle\phi^{4}\rangle/\langle\phi^{2}\rangle^{2}
+⟨ϕ4⟩/⟨ϕ2⟩2\langle\phi^{4}\rangle/\langle\phi^{2}\rangle^{2}
+
+1.52791(36)
+1.52791​(36)1.52791(36)
+
+1.52746(49)
+1.52746​(49)1.52746(49)
+
+0.0211
+0.02110.0211
+
+0.954
+0.9540.954
+
+\mathrm{NN}
+NN\mathrm{NN}
+
+1.1439(10)
+1.1439​(10)1.1439(10)
+
+1.1406(15)
+1.1406​(15)1.1406(15)
+
+0.0197
+0.01970.0197
+
+1.018
+1.0181.018
+
+2\mathrm{nn}
+2​nn2\mathrm{nn}
+
+0.9646(14)
+0.9646​(14)0.9646(14)
+
+0.9615(20)
+0.9615​(20)0.9615(20)
+
+0.0188
+0.01880.0188
+
+0.985
+0.9850.985
+
+\mathrm{diag}
+diag\mathrm{diag}
+
+0.51417(63)
+0.51417​(63)0.51417(63)
+
+0.51218(87)
+0.51218​(87)0.51218(87)
+
+0.0249
+0.02490.0249
+
+0.986
+0.9860.986
+
+m^{2}
+m2m^{2}
+
+0.3582(15)
+0.3582​(15)0.3582(15)
+
+0.3540(21)
+0.3540​(21)0.3540(21)
+
+0.0204
+0.02040.0204
+
+1.000
+1.0001.000
+
+m^{4}
+m4m^{4}
+
+0.15089(97)
+0.15089​(97)0.15089(97)
+
+0.1478(14)
+0.1478​(14)0.1478(14)
+
+0.0204
+0.02040.0204
+
+0.989
+0.9890.989
+
+G(p_{\min})
+G⁡(pmin)G(p_{\min})
+
+11.36(15)
+11.36​(15)11.36(15)
+
+11.67(22)
+11.67​(22)11.67(22)
+
+0.0180
+0.01800.0180
+
+1.011
+1.0111.011
+
+Table D2: 
+Perfect-blocking comparison on the 
+L=64
+L=64L=64 coarse lattice:
+direct 
+L=64
+L=64L=64 configurations versus 
+L=128
+L=128L=128 configurations blocked to
+
+L=64
+L=64L=64. The final columns give the two-sample KS distance and the ratio 
+\sigma_{\rm blocked}/\sigma_{\rm direct}
+σblocked/σdirect\sigma_{\rm blocked}/\sigma_{\rm direct}.
+
+Operator
+Direct 
+L=64
+L=64L=64
+Blocked 
+128\to 64
+128→64128\to 64
+KS
+Std. ratio
+
+S/V
+S/VS/V
+
+-0.54991(38)
+−0.54991​(38)-0.54991(38)
+
+-0.55206(32)
+−0.55206​(32)-0.55206(32)
+
+0.0718
+0.07180.0718
+
+0.850
+0.8500.850
+
+\phi^{2}
+ϕ2\phi^{2}
+
+0.82835(24)
+0.82835​(24)0.82835(24)
+
+0.82600(27)
+0.82600​(27)0.82600(27)
+
+0.0658
+0.06580.0658
+
+1.122
+1.1221.122
+
+\phi^{4}
+ϕ4\phi^{4}
+
+1.05010(47)
+1.05010​(47)1.05010(47)
+
+1.04432(55)
+1.04432​(55)1.04432(55)
+
+0.0854
+0.08540.0854
+
+1.176
+1.1761.176
+
+\langle\phi^{4}\rangle/\langle\phi^{2}\rangle^{2}
+⟨ϕ4⟩/⟨ϕ2⟩2\langle\phi^{4}\rangle/\langle\phi^{2}\rangle^{2}
+
+1.53041(27)
+1.53041​(27)1.53041(27)
+
+1.53052(26)
+1.53052​(26)1.53052(26)
+
+0.0210
+0.02100.0210
+
+0.953
+0.9530.953
+
+\mathrm{NN}
+NN\mathrm{NN}
+
+1.1338(8)
+1.1338​(8)1.1338(8)
+
+1.1319(8)
+1.1319​(8)1.1319(8)
+
+0.0166
+0.01660.0166
+
+1.010
+1.0101.010
+
+2\mathrm{nn}
+2​nn2\mathrm{nn}
+
+0.9489(11)
+0.9489​(11)0.9489(11)
+
+0.9489(11)
+0.9489​(11)0.9489(11)
+
+0.0098
+0.00980.0098
+
+0.984
+0.9840.984
+
+\mathrm{diag}
+diag\mathrm{diag}
+
+0.50773(48)
+0.50773​(48)0.50773(48)
+
+0.50714(47)
+0.50714​(47)0.50714(47)
+
+0.0118
+0.01180.0118
+
+0.986
+0.9860.986
+
+m^{2}
+m2m^{2}
+
+0.2980(18)
+0.2980​(18)0.2980(18)
+
+0.2994(18)
+0.2994​(18)0.2994(18)
+
+0.0230
+0.02300.0230
+
+1.000
+1.0001.000
+
+m^{4}
+m4m^{4}
+
+0.10458(95)
+0.10458​(95)0.10458(95)
+
+0.10540(94)
+0.10540​(94)0.10540(94)
+
+0.0230
+0.02300.0230
+
+0.996
+0.9960.996
+
+G(p_{\min})
+G⁡(pmin)G(p_{\min})
+
+38.61(72)
+38.61​(72)38.61(72)
+
+38.37(72)
+38.37​(72)38.37(72)
+
+0.0142
+0.01420.0142
+
+0.992
+0.9920.992
+
+Figure D1: Perfect-blocking test for 
+L=128\to 64
+L=128→64L=128\to 64, using the same kernel optimized
+from 
+L=32\to 16
+L=32→16L=32\to 16 blocking. The panels show the same observables as
+Fig. 2.
+
+Figure D2: Raw conditional-flow proposal for 
+L=32\to 64
+L=32→64L=32\to 64, using the flow trained on 
+L=16\to 32
+L=16→32L=16\to 32 without retraining. The panels show the same observables as Fig. 3. Local discrepancies increase, while the long-distance distributions remain comparatively stable.
+
+Figure D3: Raw conditional-flow proposal for 
+L=64\to 128
+L=64→128L=64\to 128, using the flow trained on 
+L=16\to 32
+L=16→32L=16\to 32 without retraining. The panels show the same observables as Fig. 3. The increasing local mismatch illustrates the finite-volume transfer error of the raw flow proposal.
+
+Figure D4: Rethermalization of the 
+L=64\to 128
+L=64→128L=64\to 128 upscaled ensemble. The panels show
+the same observables as Fig. 8.
+
+References
+
+[1]
+A. Sokal, Monte Carlo Methods in
+Statistical Mechanics: Foundations and New Algorithms, NATO Sci. Ser. B 361, 131 (1997). 
+
+[2]
+S. Schaefer, R. Sommer, and F. Virotta (ALPHA), Critical
+slowing down and error analysis in lattice QCD simulations, Nucl. Phys. B 845, 93 (2011), arXiv:1009.5228 [hep-lat] . 
+
+[3]
+J. Finkenrath, Future trends in
+lattice QCD simulations, PoS EuroPLEx2023, 009 (2024). 
+
+[4]
+U. Wolff, Collective monte carlo
+updating for spin systems, Physical Review Letters 62, 361 (1989). 
+
+[5]
+M. S. Albergo, G. Kanwar, and P. E. Shanahan, Flow-based generative models for
+markov chain monte carlo in lattice field theory, Phys. Rev. D 100, 034515 (2019), arXiv:1904.12072 [hep-lat] . 
+
+[6]
+M. S. Albergo, D. Boyda,
+D. C. Hackett, G. Kanwar, K. Cranmer, S. Racanière, D. J. Rezende, and P. E. Shanahan, Introduction to normalizing flows for lattice field theory,   (2021a), arXiv:2101.08176 [hep-lat] . 
+
+[7]
+D. Boyda, G. Kanwar,
+S. Racanière, D. J. Rezende, M. S. Albergo, K. Cranmer, D. C. Hackett, and P. E. Shanahan, Sampling using 
+SU(N)
+S​U​(N)SU(N) gauge equivariant flows, Phys. Rev. D 103, 074504 (2021), arXiv:2008.05456 [hep-lat] . 
+
+[8]
+M. S. Albergo, G. Kanwar,
+S. Racanière, D. J. Rezende, J. M. Urban, D. Boyda, K. Cranmer, D. C. Hackett, and P. E. Shanahan, Flow-based
+sampling for fermionic lattice field theories, Phys. Rev. D 104, 114507 (2021b), arXiv:2106.05934 [hep-lat] . 
+
+[9]
+R. Abbott et al., Gauge-equivariant flow models for sampling in lattice field theories with
+pseudofermions, Phys. Rev. D 106, 074506 (2022), arXiv:2207.08945 [hep-lat]
+. 
+
+[10]
+R. Abbott et al., Aspects of
+scaling and scalability for flow-based sampling of lattice QCD, Eur. Phys. J. A 59, 257 (2023), arXiv:2211.07541 [hep-lat] . 
+
+[11]
+L. Del Debbio, J. M. Rossney, and M. Wilson, Efficient modeling of
+trivializing maps for lattice 
+\phi
+ϕ\phi4 theory using normalizing
+flows: A first look at scalability, Phys. Rev. D 104, 094507 (2021), arXiv:2105.12481 [hep-lat] . 
+
+[12]
+J. Komijani and M. K. Marinkovic, Generative models for
+scalar field theories: how to deal with poor scaling?, PoS LATTICE2022, 019 (2023), arXiv:2301.01504 [hep-lat] . 
+
+[13]
+M. G. Endres, R. C. Brower,
+W. Detmold, K. Orginos, and A. V. Pochinsky, Multiscale monte carlo equilibration: Pure yang-mills
+theory, Phys. Rev. D 92, 114516 (2015), arXiv:1510.04675 [hep-lat] . 
+
+[14]
+D. Ron, R. H. Swendsen, and A. Brandt, Inverse monte carlo renormalization
+group transformations for critical phenomena, Phys. Rev. Lett. 89, 275701 (2002). 
+
+[15]
+D. Bachtis, G. Aarts,
+F. Di Renzo, and B. Lucini, Inverse Renormalization Group in Quantum Field
+Theory, Phys. Rev. Lett. 128, 081603 (2022), arXiv:2107.00466 [hep-lat]
+. 
+
+[16]
+T. Marchand, M. Ozawa,
+G. Biroli, and S. Mallat, Multiscale Data-Driven Energy Estimation and
+Generation, Phys. Rev. X 13, 041038 (2023), arXiv:2207.04941 [cond-mat.stat-mech]
+. 
+
+[17]
+M. Bauer, R. Kapust,
+J. M. Pawlowski, and F. L. Temmen, Super-resolving normalising flows for lattice
+field theories, SciPost Phys. 19, 077 (2025), arXiv:2412.12842 [hep-lat]
+. 
+
+[18]
+A. Singha, J. Kauffmann,
+E. Cellini, K. Jansen, and S. Nakajima, Scalable Generative Sampling and Multilevel Estimation for Lattice
+Field Theories Near Criticality,   (2026), arXiv:2604.10209
+[hep-lat] . 
+
+[19]
+P. Hasenfratz and F. Niedermayer, Perfect lattice
+action for asymptotically free theories, Nucl. Phys. B 414, 785 (1994), arXiv:hep-lat/9308004 . 
+
+[20]
+T. A. DeGrand, A. Hasenfratz,
+P. Hasenfratz, and F. Niedermayer, The Classically perfect fixed point
+action for SU(3) gauge theory, Nucl. Phys. B 454, 587 (1995a), arXiv:hep-lat/9506030 . 
+
+[21]
+T. A. DeGrand, A. Hasenfratz,
+P. Hasenfratz, and F. Niedermayer, Nonperturbative tests of the fixed
+point action for SU(3) gauge theory, Nucl. Phys. B 454, 615 (1995b), arXiv:hep-lat/9506031 . 
+
+[22]
+K. Holland, A. Ipp,
+D. I. Müller, and U. Wenger, Machine learning a fixed point action for SU(3)
+gauge theory with a gauge equivariant convolutional neural network, Phys. Rev. D 110, 074502 (2024), arXiv:2401.06481 [hep-lat] . 
+
+[23]
+K. Holland, A. Ipp,
+D. I. Müller, and U. Wenger, Machine-Learned Renormalization-Group-Improved
+Gauge Actions and Classically Perfect Gradient Flows, Phys. Rev. Lett. 136, 031901 (2026), arXiv:2504.15870 [hep-lat] . 
+
+[24]
+R. H. Swendsen, OPTIMIZATION OF REAL
+SPACE RENORMALIZATION GROUP TRANSFORMATIONS, Phys. Rev. Lett. 52, 2321 (1984). 
+
+[25]
+A. Hasenfratz, P. Hasenfratz, U. M. Heller, and F. Karsch, IMPROVED MONTE CARLO
+RENORMALIZATION GROUP METHODS, Phys. Lett. B 140, 76 (1984). 
+
+[26]
+J. Tu and R. Mawhinney, A Numerical Study of Renormalization
+Group Transformations on Multiscale Lattices, EPJ Web Conf. 175, 02006 (2018). 
+
+[27]
+S. Duane, A. D. Kennedy,
+B. J. Pendleton, and D. Roweth, Hybrid Monte Carlo, Phys. Lett. B 195, 216 (1987). 
+
+[28]
+P. Bosetti, B. De Palma, and M. Guagnelli, Monte Carlo determination of the
+critical coupling in 
+\phi^{4}_{2}
+ϕ24\phi^{4}_{2} theory, Phys. Rev. D 92, 034509 (2015), arXiv:1506.08587 [hep-lat] . 
+
+[29]
+J. Kaupužs and R. V. N. Melnik, Corrections
+to scaling in the 2d 
+\phi^{4}
+ϕ4\phi^{4} model: Monte carlo results and some related
+problems, Communications in Theoretical Physics 77, 065601 (2025), arXiv:2407.09856 [cond-mat.stat-mech] . 
+
+[30]
+R. H. Swendsen, Monte Carlo
+Renormalization Group, Phys. Rev. Lett. 42, 859 (1979). 
+
+[31]
+G. Papamakarios, E. Nalisnick, D. J. Rezende, S. Mohamed, and B. Lakshminarayanan, Normalizing flows for probabilistic
+modeling and inference, Journal of Machine Learning Research 22, 1 (2021), arXiv:1912.02762 [stat.ML] . 
+
+[32]
+M. Luscher, Lattice QCD and the
+Schwarz alternating procedure, JHEP 05, 052, arXiv:hep-lat/0304007 . 
+
+[33]
+W. Detmold and M. G. Endres, Multiscale Monte Carlo
+equilibration: Two-color QCD with two fermion flavors, Phys. Rev. D 94, 114502 (2016), arXiv:1605.09650 [hep-lat] . 
+
+[34]
+W. Detmold and M. G. Endres, Scaling properties of
+multiscale equilibration, Phys. Rev. D 97, 074507 (2018), arXiv:1801.06132 [hep-lat] . 
+
+[35]
+M. Luscher, Schwarz-preconditioned
+HMC algorithm for two-flavour lattice QCD, Comput. Phys. Commun. 165, 199 (2005), arXiv:hep-lat/0409106 . 
+
+[36]
+M. Nightingale and H. Blöte, Dynamic exponent of the
+two-dimensional ising model and monte carlo computation of the subdominant
+eigenvalue of the stochastic matrix, Physical review letters 76, 4548 (1996). 
+
+[37]
+J. Salas and A. D. Sokal, Universal amplitude ratios
+in the critical two-dimensional Ising model on a torus, J. Statist. Phys. 98, 551 (2000), arXiv:cond-mat/9904038
+. 
+
+[38]
+A. M. Ferrenberg and D. Landau, Critical behavior of the
+three-dimensional ising model: A high-resolution monte carlo study, Physical Review
+B 44, 5081 (1991). 
+
+[39]
+A. M. Ferrenberg, J. Xu, and D. P. Landau, Pushing the limits of Monte Carlo
+simulations for the three-dimensional Ising model, Phys. Rev. E 97, 043301 (2018), arXiv:1806.03558 [physics.comp-ph]
+. 
+
+    Experimental support, please
+    view the build logs
+    for errors. Generated by
+
+        L
+        A
+        T
+        E
+      
+      xml
+      
+    .
+
+Instructions for reporting errors
+
+We are continuing to improve HTML versions of papers, and your feedback helps enhance accessibility and mobile
+      support. To report errors in the HTML that will help us improve conversion and rendering, choose any of the
+      methods listed below:
+
+Click the &quot;Report Issue&quot; (
+            
+          ) button, located in the page header.
+
+Tip: You can select the relevant text first, to include it in your report.
+
+Our team has already identified the following issues. We appreciate your time reviewing and reporting rendering errors we
+      may not have found yet. Your efforts will help us improve the HTML versions for all readers, because disability
+      should not be a barrier to accessing research. Thank you for your continued support in championing open access for
+      all.
+
+Have a free development cycle? Help support accessibility at arXiv! Our collaborators at LaTeXML maintain a list of packages that need conversion, and welcome developer contributions.
+
+        We gratefully acknowledge support from
+        our major funders,
+        member institutions, ,
+        and all contributors.
+
+Major funding support from</pre></html>

@@ -1,0 +1,2836 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>High-accuracy log-concave sampling with stochastic queries</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>High-accuracy log-concave sampling with stochastic queries</h1><p>Source ID d-4c0cd6cd2679e903; literature/sources/r10_probability/2602.14342v1.html; 55828 o200k tokens; role primary_source_or_metadata; extraction html_text_discovery_only_math_may_be_lossy. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>High-accuracy log-concave sampling with stochastic queries
+
+      Report GitHub Issue
+      ×
+
+      Title:
+
+Content selection saved. Describe the issue below:
+
+      Description:
+
+      Submit without GitHub
+      Submit in GitHub
+
+    arXiv is now an independent nonprofit!
+    Learn more
+    ×
+
+      Back to arXiv
+
+    License: arXiv.org perpetual non-exclusive license
+
+arXiv:2602.14342v1 [math.ST] 15 Feb 2026
+
+High-accuracy log-concave sampling with stochastic queries
+
+Fan Chen
+
+Affiliation: MIT
+
+Email: fanchen@mit.edu
+
+  
+Sinho Chewi
+
+Affiliation: Yale University
+
+Email: sinho.chewi@yale.edu
+
+  
+Constantinos Daskalakis
+
+Affiliation: MIT
+
+Email: costis@csail.mit.edu
+
+  
+Alexander Rakhlin
+
+Affiliation: MIT
+
+Email: rakhlin@mit.edu
+
+Abstract
+
+We show that high-accuracy guarantees for log-concave sampling—that is, iteration and query complexities which scale as 
+\mathrm{poly}\log(1/\delta)
+poly​log⁡(1/δ)\mathrm{poly}\log(1/\delta), where 
+\delta
+δ\delta is the desired target accuracy—are achievable using stochastic gradients with subexponential tails.
+Notably, this exhibits a separation with the problem of convex optimization, where stochasticity (even additive Gaussian noise) in the gradient oracle incurs 
+\mathrm{poly}(1/\delta)
+poly⁡(1/δ)\mathrm{poly}(1/\delta) queries.
+We also give an information-theoretic argument that light-tailed stochastic gradients are necessary for high accuracy: for example, in the bounded variance case, we show that the minimax-optimal query complexity scales as 
+\Theta(1/\delta)
+Θ⁡(1/δ)\Theta(1/\delta).
+Our framework also provides similar high accuracy guarantees under stochastic zeroth order (value) queries.
+
+1 Introduction
+
+We study the problem of sampling from a log-concave density 
+\mu\propto e^{-f}
+μ∝e−f\mu\propto e^{-f} given access to a stochastic gradient oracle for 
+f
+ff.
+Our main result shows that if the stochastic gradients are unbiased and have light tails (e.g., subexponential), then it is possible to generate a 
+\delta
+δ\delta-accurate sample in total variation distance in 
+\mathrm{polylog}(1/\delta)
+polylog⁡(1/δ)\mathrm{polylog}(1/\delta) queries and time.
+We refer to such a guarantee as a high-accuracy guarantee.
+
+Recent works take inspiration from the close connections between log-concave sampling and the better-understood field of convex optimization. From that standpoint, the phenomenon we highlight here could be surprising.
+Indeed, it is well-known that optimization in the presence of noisy gradients—even additive Gaussian noise—does not admit high-accuracy guarantees.
+Information-theoretic lower bounds (Agarwal et al., 2012; Raginsky and Rakhlin, 2011) establish that the optimal bounds are 
+1/\delta
+1/δ1/\delta in the strongly convex case, and 
+1/\delta^{2}
+1/δ21/\delta^{2} in the weakly convex case.
+
+On the other hand, in the literature on Markov chain Monte Carlo (MCMC), there are remarkable examples of “exact MCMC” methods in which various components of the algorithm are replaced by unbiased estimates, yet the resulting Markov chain remains geometrically ergodic toward the original stationary distribution.
+For example, suppose that 
+\mu
+μ\mu is the marginal distribution over a parameter 
+\theta
+θ\theta, but there is an additional latent variable 
+z
+zz.
+In this case, the exact density can be difficult to compute, but unbiased estimators can be produced via importance sampling. Incorporating these estimators into Metropolis–Hastings algorithms leads to the class of pseudo-marginal MCMC methods (Andrieu and Roberts, 2009), some of which are exact.
+
+When 
+f
+ff is a finite sum of functions (e.g., negative log-likelihoods in a statistical context), there is a great need to develop samplers which make use of batched stochastic gradients, echoing the stochastic gradient revolution in machine learning.
+This led to the widespread use of stochastic gradient Langevin dynamics (SGLD) (Welling and Teh, 2011); see Nemeth and Fearnhead (2021) for a survey of recent developments.
+These methods are based on discretizations of diffusions and are therefore not exact, i.e., they do not admit high-accuracy guarantees.
+Other works propose minibatch variants of Metropolis–Hastings methods (Seita et al., 2018; Zhang et al., 2020; Wu et al., 2022b), leading to tailored algorithms but often without quantitative convergence guarantees.
+A notable recent advance is the work of Lee et al. (2021), which developed a high-accuracy sampler for the finite sum setting.
+
+Our interest lies in generalizing the above observations to the black-box setting, in which no particular structure for 
+\mu
+μ\mu is assumed except log-concavity, the starting point of most non-asymptotic analyses (Chewi, 2026), as well as generic properties of the stochastic gradient oracle.
+In doing so, we aim to provide precise, non-asymptotic guarantees that incorporate recent state-of-the-art advances in sampling theory so that these guarantees are as sharp as possible.
+
+1.1 Contributions
+
+Our main contribution is the development of high-accuracy samplers in the presence of stochastic gradient noise, provided that the stochastic gradients have light tails (e.g., subexponential or sub-Gaussian).
+As a preview of our results, suppose that the target distribution is 
+\alpha
+α\alpha-strongly log-concave and 
+\beta
+β\beta-log-smooth.
+Then, state-of-the-art guarantees for high-accuracy sampling (Chewi et al., 2021; Wu et al., 2022a; Fan et al., 2023; Altschuler and Chewi, 2024; Chen et al., 2026) have established that it is possible to draw a 
+\delta
+δ\delta-accurate sample in total variation distance from 
+\mu\propto e^{-f}
+μ∝e−f\mu\propto e^{-f} using
+
+\displaystyle\widetilde{O}\big(\kappa d^{1/2}\,\mathrm{polylog}(1/\delta)\big)\qquad\text{queries to exact oracles for}~f,~\nabla f\,,
+O~​(κ​d1/2​polylog​(1/δ))queries to exact oracles for​f,∇f,\displaystyle\widetilde{O}\big(\kappa d^{1/2}\,\mathrm{polylog}(1/\delta)\big)\qquad\text{queries to exact oracles for}~f,~\nabla f\,,
+
+where 
+\kappa\coloneqq\beta/\alpha
+κ≔β/α\kappa\coloneqq\beta/\alpha is the condition number of 
+\mu
+μ\mu.
+
+A consequence of our results is that it is in fact possible to draw a sample in
+
+\displaystyle\widetilde{O}\big((\kappa d^{1/2}+\sigma^{2}/\alpha)\,\mathrm{polylog}(1/\delta)\big)\qquad\text{queries to a \emph{stochastic} oracle for}~\nabla f\,,
+O~((κd1/2+σ2/α)polylog(1/δ))queries to a stochastic oracle for∇f,\displaystyle\widetilde{O}\big((\kappa d^{1/2}+\sigma^{2}/\alpha)\,\mathrm{polylog}(1/\delta)\big)\qquad\text{queries to a \emph{stochastic} oracle for}~\nabla f\,,
+
+provided that the unbiased stochastic estimates 
+g(x)
+g⁡(x)g(x) of the gradient 
+\nabla f(x)
+∇f​(x)\nabla f(x) satisfy the subexponential tail bound 
+\En\exp(\|g(x)-\nabla f(x)\|/\sigma)\leq 2
+𝔼⁡exp⁡(‖g⁡(x)−∇f​(x)‖/σ)≤2\En\exp(\|g(x)-\nabla f(x)\|/\sigma)\leq 2.
+We note that our main results are considerably more general, allowing for both log-concavity and log-smoothness to be relaxed, and covering noisy zeroth-order queries as well; see Section 3.3 for details.
+
+This demonstrates a surprising robustness to gradient noise for sampling, in that the parameter 
+\sigma
+σ\sigma appears additively in the final bound and does not significantly deteriorate the dependence on the target accuracy 
+\delta
+δ\delta.
+As discussed above, this is a stark departure from the corresponding results in optimization, in which stochasticity quickly degrades the rates to 
+\mathrm{poly}(1/\delta)
+poly⁡(1/δ)\mathrm{poly}(1/\delta) regardless of the tail behavior.
+
+We further remark that the work of Chatterji et al. (2022) established a lower bound of 
+\Omega(\sigma^{2}/\delta^{2})
+Ω⁡(σ2/δ2)\Omega(\sigma^{2}/\delta^{2}) in a certain regime, even under Gaussian additive noise.
+In Section 4.2, we explain why this does not contradict our results: their lower bound example requires the strong log-concavity parameter 
+\alpha
+α\alpha to tend to zero with 
+\delta
+δ\delta; in fact, 
+\alpha\lesssim\delta^{2}
+α≲δ2\alpha\lesssim\delta^{2}.
+Hence, our results imply that the 
+\Omega(\delta^{-2})
+Ω⁡(δ−2)\Omega(\delta^{-2})-scaling is in fact a consequence of the target distribution being ill-conditioned.
+However, this raises the question of whether one can prove a lower bound which captures the dependence on 
+\delta
+δ\delta, even when 
+\alpha
+α\alpha remains bounded away from zero.
+
+We resolve this question via a new lower bound that captures how the tail behavior of the stochastic gradients affects the complexity of sampling to high precision.
+In particular, when we only assume that the stochastic gradients have bounded variance, our lower bound reads 
+\Omega(1/\delta)
+Ω⁡(1/δ)\Omega(1/\delta).
+This is actually attained by our upper bound algorithm in this setting, establishing that the optimal rate is 
+\Theta(1/\delta)
+Θ⁡(1/δ)\Theta(1/\delta) under a bounded variance constraint.
+More generally, if we only assume that finitely many moments of the stochastic gradient are bounded, our lower bound shows that 
+\Omega(1/\delta^{c})
+Ω⁡(1/δc)\Omega(1/\delta^{c}) queries are necessary for some exponent 
+c&gt;0
+c&gt;0c&gt;0.
+
+Taken together, our results show that light-tailed stochastic gradients are both necessary and sufficient for high-accuracy sampling.
+
+2 Preliminaries
+
+We first define the stochastic gradient/value oracle and its tail behavior.
+
+Assumption 1 (Stochastic gradient oracle).
+
+For any 
+x\in\mathbb{R}^{d}
+x∈ℝdx\in\mathbb{R}^{d}, we can draw i.i.d. samples from a distribution 
+\mathsf{O}_{\mathsf{grad}}(x)
+𝖮𝗀𝗋𝖺𝖽​(x)\mathsf{O}_{\mathsf{grad}}(x) such that under 
+g\sim\mathsf{O}_{\mathsf{grad}}(x)
+g∼𝖮𝗀𝗋𝖺𝖽​(x)g\sim\mathsf{O}_{\mathsf{grad}}(x), it holds that 
+\En[g]=\nabla f(x)
+𝔼⁡[g]=∇f​(x)\En[g]=\nabla f(x).
+
+We assume that there is a parameter 
+\mathfrak{m}_{1}&gt;0
+𝔪1&gt;0\mathfrak{m}_{1}&gt;0 such that 
+\En_{g\sim\mathsf{O}_{\mathsf{grad}}(x)}\|g-\nabla f(x)\|\leq\mathfrak{m}_{1}
+𝔼g∼𝖮𝗀𝗋𝖺𝖽​(x)⁡‖g−∇f​(x)‖≤𝔪1\En_{g\sim\mathsf{O}_{\mathsf{grad}}(x)}\|g-\nabla f(x)\|\leq\mathfrak{m}_{1} for any 
+x\in\mathbb{R}^{d}
+x∈ℝdx\in\mathbb{R}^{d}.
+
+Assumption 2 (Stochastic value oracle).
+
+For any 
+x\in\mathbb{R}^{d}
+x∈ℝdx\in\mathbb{R}^{d}, we can draw i.i.d. samples from a distribution 
+\mathsf{O}_{\mathsf{eval}}(x)
+𝖮𝖾𝗏𝖺𝗅​(x)\mathsf{O}_{\mathsf{eval}}(x) such that under 
+v\sim\mathsf{O}_{\mathsf{eval}}(x)
+v∼𝖮𝖾𝗏𝖺𝗅​(x)v\sim\mathsf{O}_{\mathsf{eval}}(x), it holds that 
+\En[v]=f(x)
+𝔼⁡[v]=f⁡(x)\En[v]=f(x).
+
+For any stochastic oracle 
+O
+OO and integer 
+n\geq 1
+n≥1n\geq 1, we define 
+O^{(n)}
+O(n)O^{(n)} to be the batch oracle that, given input 
+x\in\mathbb{R}^{d}
+x∈ℝdx\in\mathbb{R}^{d}, returns 
+y=\frac{1}{n}\sum_{i=1}^{n}y^{i}
+y=1n​∑i=1nyiy=\frac{1}{n}\sum_{i=1}^{n}y^{i} by generating i.i.d. samples 
+y^{1},\dotsc,y^{n}\sim O(x)
+y1,…,yn∼O⁡(x)y^{1},\dotsc,y^{n}\sim O(x).
+
+Definition 1 (Oracle with 
+\epsilon
+ϵ\epsilon-tail).
+
+Suppose that 
+\epsilon=(\epsilon_{n})_{n\geq 1}
+ϵ=(ϵn)n≥1\epsilon=(\epsilon_{n})_{n\geq 1} is a sequence of decreasing functions. We say an oracle 
+O
+OO is of 
+\epsilon
+ϵ\epsilon-tail if for any 
+x\in\mathbb{R}^{d}
+x∈ℝdx\in\mathbb{R}^{d}, 
+M\geq 0
+M≥0M\geq 0, 
+n\geq 1
+n≥1n\geq 1, it holds that under 
+g\sim O^{(n)}(x)
+g∼O(n)​(x)g\sim O^{(n)}(x),
+
+\displaystyle\frac{1}{M}\En\big[\|g-\En[g]\|\,\mathbb{I}\{\|g-\En[g]\|&gt;M\}\big]\leq\epsilon_{n}(M)\,.
+1M𝔼[∥g−𝔼[g]∥𝕀{∥g−𝔼[g]∥&gt;M}]≤ϵn(M).\displaystyle\frac{1}{M}\En\big[\|g-\En[g]\|\,\mathbb{I}\{\|g-\En[g]\|&gt;M\}\big]\leq\epsilon_{n}(M)\,.
+
+Some cases of interest are as follows.
+
+Example 1 (Sub-polynomial tail).
+
+Suppose that for some parameter 
+\zeta&gt;0
+ζ&gt;0\zeta&gt;0 and 
+\sigma_{\sf g}&gt;0
+σ𝗀&gt;0\sigma_{\sf g}&gt;0, for any 
+x
+xx, under 
+g\sim O(x)
+g∼O⁡(x)g\sim O(x), 
+\En\exp\big(\frac{\|g-\En[g]\|^{\zeta}}{\sigma_{\sf g}^{\zeta}}\big)\leq 2
+𝔼⁡exp⁡(‖g−𝔼⁡[g]‖ζσ𝗀ζ)≤2\En\exp\big(\frac{\|g-\En[g]\|^{\zeta}}{\sigma_{\sf g}^{\zeta}}\big)\leq 2.
+
+Then, we can choose 
+\epsilon_{1}(M)\leq C_{\zeta}\exp(-c_{\zeta}(M/\sigma_{\sf g})^{\zeta})
+ϵ1​(M)≤Cζ​exp⁡(−cζ​(M/σ𝗀)ζ)\epsilon_{1}(M)\leq C_{\zeta}\exp(-c_{\zeta}(M/\sigma_{\sf g})^{\zeta}) for 
+M\geq\sigma_{\sf g}
+M≥σ𝗀M\geq\sigma_{\sf g}.
+For 
+\zeta=2
+ζ=2\zeta=2 (sub-Gaussian tail), we can choose 
+\epsilon_{n}(M)\leq C_{2}\exp(-c_{2}n(M/\sigma_{\sf g})^{2})
+ϵn​(M)≤C2​exp⁡(−c2​n​(M/σ𝗀)2)\epsilon_{n}(M)\leq C_{2}\exp(-c_{2}n(M/\sigma_{\sf g})^{2}).
+
+Example 2 (Polynomial tail).
+
+Suppose that for some 
+k\geq 1
+k≥1k\geq 1 and any 
+x
+xx, 
+\En\|g-\En[g]\|^{2k}\leq\sigma_{2k}^{2k}
+𝔼⁡‖g−𝔼⁡[g]‖2​k≤σ2​k2​k\En\|g-\En[g]\|^{2k}\leq\sigma_{2k}^{2k}. Then we can choose 
+\epsilon_{n}(M)\leq\frac{(2k)!\sigma_{2k}^{2k}}{n^{k}M^{2k}}
+ϵn​(M)≤(2​k)!​σ2​k2​knk​M2​k\epsilon_{n}(M)\leq\frac{(2k)!\sigma_{2k}^{2k}}{n^{k}M^{2k}}.
+
+We carry out our analysis under the following Hölder continuity assumption for 
+\nabla f
+∇f\nabla f.
+It interpolates between the Lipschitz case (
+s=0
+s=0s=0) and the smooth case (
+s=1
+s=1s=1).
+
+Assumption 3 (Hölder continuous gradient).
+
+There exists 
+s\in[0,1]
+s∈[0,1]s\in[0,1] and 
+\beta_{s}\geq 0
+βs≥0\beta_{s}\geq 0 such that 
+\left\lVert\nabla f(x)-\nabla f(y)\right\rVert\leq\beta_{s}\left\lVert x-y\right\rVert^{s}
+‖∇f​(x)−∇f​(y)‖≤βs​‖x−y‖s\left\lVert\nabla f(x)-\nabla f(y)\right\rVert\leq\beta_{s}\left\lVert x-y\right\rVert^{s} for all 
+x,y\in\mathbb{R}^{d}
+x,y∈ℝdx,y\in\mathbb{R}^{d}.
+
+For technical convenience, we also state our results using an approximate proximal oracle.
+
+Assumption 4 (Approximate proximal oracle).
+
+Given input 
+x_{0}
+x0x_{0}, the oracle 
+\mathsf{O}_{\mathsf{prox},\eta}(x_{0})
+𝖮𝗉𝗋𝗈𝗑,η​(x0)\mathsf{O}_{\mathsf{prox},\eta}(x_{0}) returns 
+\widehat{x}
+x^\widehat{x} such that
+
+\|\widehat{x}+\eta\nabla f(\widehat{x})-x_{0}\|\leq\eta\varepsilon_{\mathsf{prox}}
+∥x^+η∇f(x^)−x0∥≤ηε𝗉𝗋𝗈𝗑\|\widehat{x}+\eta\nabla f(\widehat{x})-x_{0}\|\leq\eta\varepsilon_{\mathsf{prox}}.
+
+Alternatively, if we assume that the guarantee in the assumption holds with high probability, then our results remain unchanged up to another error term in total variation distance.
+The following lemma shows that the approximate proximal oracle can be implemented using the stochastic gradient oracle.
+
+Lemma 2.1.
+
+Suppose that Assumption 3 holds with 
+s\in[0,1]
+s∈[0,1]s\in[0,1] and denote 
+m_{s}=\beta_{s}^{1/(1+s)}
+ms=βs1/(1+s)m_{s}=\beta_{s}^{1/(1+s)}.
+
+Suppose that 
+\eta\leq\frac{1}{2m_{s}}
+η≤12​ms\eta\leq\frac{1}{2m_{s}} and we are given access to a stochastic gradient oracle with 
+\epsilon
+ϵ\epsilon-tail, and that 
+\|\nabla f(x_{0})\|\leq G
+‖∇f​(x0)‖≤G\|\nabla f(x_{0})\|\leq G.
+Then, the approximate proximal oracle with 
+\varepsilon_{\mathsf{prox}}=10(m_{s}+M)
+ε𝗉𝗋𝗈𝗑=10​(ms+M)\varepsilon_{\mathsf{prox}}=10(m_{s}+M) can be implemented with probability at least 
+1-\epsilon_{n}(M)
+1−ϵn​(M)1-\epsilon_{n}(M) using 
+O(n\log(G/(m_{s}+M)))
+O⁡(n​log⁡(G/(ms+M)))O(n\log(G/(m_{s}+M))) queries to the stochastic gradient oracle.
+
+Notation
+
+For 
+B&gt;0
+B&gt;0B&gt;0, we write 
+\mathsf{Clip}_{B}(\cdot)\coloneqq\max\{-B,\min\{B,\cdot\}\}
+𝖢𝗅𝗂𝗉B​(⋅)≔max⁡{−B,min⁡{B,⋅}}\mathsf{Clip}_{B}(\cdot)\coloneqq\max\{-B,\min\{B,\cdot\}\}. We use 
+\lesssim
+≲\lesssim and 
+O(\cdot)
+O⁡(⋅)O(\cdot) to hide absolute constants, i.e., 
+f\lesssim g
+f≲gf\lesssim g (and 
+f=O(g)
+f=O⁡(g)f=O(g)) if there is an absolute constant such that 
+f\leq Cg
+f≤C​gf\leq Cg.
+The notation 
+\widetilde{O}(\cdot)
+O~​(⋅)\widetilde{O}(\cdot) hides logarithmic factors.
+
+3 High-accuracy sampling with stochastic queries
+
+We build up to our results in three steps.
+Our methods build upon first-order rejection sampling (FORS), a meta-algorithm recently developed in Chen et al. (2026) which simulates rejection sampling given unbiased estimators of the log-density ratio between the proposal and target.
+Therefore, we first review the FORS framework in Section 3.1.
+Then, in Section 3.2, we instantiate FORS for the problem of sampling from a Gaussian tilt distribution, thereby showing that the results of Chen et al. (2026) are robust to stochastic gradient noise.
+Finally, in Section 3.3, we combine the results of Section 3.2 with the proximal sampler algorithm (Lee et al., 2021; Chen et al., 2022) to establish our main results for log-concave sampling.
+
+3.1 Background on first-order rejection sampling (FORS)
+
+To motivate the FORS algorithm, we replicate the motivating example of Chen et al. (2026) here. Consider the simple problem of sampling from a density 
+p\propto e^{-f}
+p∝e−fp\propto e^{-f}, where 
+f:[0,1]\to\mathbb{R}
+f:[0,1]→ℝf:[0,1]\to\mathbb{R}, 
+f(0)=0
+f⁡(0)=0f(0)=0, and 
+-1\leq f^{\prime}\leq 1
+−1≤f′≤1-1\leq f^{\prime}\leq 1.
+In order to perform rejection sampling with the base measure 
+\mathsf{Unif}([0,1])
+𝖴𝗇𝗂𝖿⁡([0,1])\mathsf{Unif}([0,1]), we must generate randomness 
+b\sim\mathsf{Ber}(ce^{-f(x)})
+b∼𝖡𝖾𝗋⁡(c​e−f⁡(x))b\sim\mathsf{Ber}(ce^{-f(x)}) for any given 
+x\in[0,1]
+x∈[0,1]x\in[0,1].
+To do so, one typically assumes access to evaluations of 
+f
+ff itself.
+The novelty of FORS lies in recognizing that this is unnecessary—it suffices to produce unbiased estimators of 
+f
+ff.
+
+A more general version of this idea is known as the “Bernoulli factory” problem (Keane and O’Brien, 1994; Nacu and Peres, 2005), and variants of this idea can be found in multiple domains (Wagner, 1988; Papaspiliopoulos, 2011, e.g.,).
+It can be stated as the following abstract task:
+
+Task: Given i.i.d. random variables 
+W_{1},W_{2},W_{3},\dotsc
+W1,W2,W3,…W_{1},W_{2},W_{3},\dotsc in 
+[-1,1]
+[−1,1][-1,1], generate a sample 
+b\sim\mathsf{Ber}(ce^{\En W_{1}})
+b∼𝖡𝖾𝗋⁡(c​e𝔼⁡W1)b\sim\mathsf{Ber}(ce^{\En W_{1}}).
+
+To solve this, write the Taylor series as
+
+\displaystyle e^{\En W_{1}}=e^{-1}\cdot e^{\En[1+W_{1}]}=\sum_{j\geq 0}\frac{e^{-1}}{j!}\,\bigl(\En[1+W_{1}]\bigr)^{j}\,.
+e𝔼⁡W1=e−1⋅e𝔼⁡[1+W1]=∑j≥0e−1j!​(𝔼⁡[1+W1])j.\displaystyle e^{\En W_{1}}=e^{-1}\cdot e^{\En[1+W_{1}]}=\sum_{j\geq 0}\frac{e^{-1}}{j!}\,\bigl(\En[1+W_{1}]\bigr)^{j}\,.
+
+Suppose that 
+J\sim\mathsf{Poisson}(2)
+J∼𝖯𝗈𝗂𝗌𝗌𝗈𝗇⁡(2)J\sim\mathsf{Poisson}(2) is independent of the i.i.d. sequence 
+W_{1},W_{2},W_{3},\dotsc
+W1,W2,W3,…W_{1},W_{2},W_{3},\dotsc. Then we notice that
+
+\displaystyle e^{\En W_{1}}=e\En\Big[\prod_{j=1}^{J}\bigl(\frac{1+W_{j}}{2}\bigr)\Big]\,,
+e𝔼⁡W1=e​𝔼⁡[∏j=1J(1+Wj2)],\displaystyle e^{\En W_{1}}=e\En\Big[\prod_{j=1}^{J}\bigl(\frac{1+W_{j}}{2}\bigr)\Big]\,,
+
+so we can set 
+b\sim\mathsf{Ber}\big(\prod_{j=1}^{J}\bigl(\frac{1+W_{j}}{2}\bigr)\big)
+b∼𝖡𝖾𝗋⁡(∏j=1J(1+Wj2))b\sim\mathsf{Ber}\big(\prod_{j=1}^{J}\bigl(\frac{1+W_{j}}{2}\bigr)\big).
+Indeed, 
+\mathbb{P}(b=1)=\mathbb{E}\prod_{j=1}^{J}\bigl(\frac{1+W_{j}}{2}\bigr)=e^{-1+\En W_{1}}
+ℙ⁡(b=1)=𝔼​∏j=1J(1+Wj2)=e−1+𝔼⁡W1\mathbb{P}(b=1)=\mathbb{E}\prod_{j=1}^{J}\bigl(\frac{1+W_{j}}{2}\bigr)=e^{-1+\En W_{1}}.
+
+In summary, to generate a sample 
+b\sim\mathsf{Ber}(ce^{-f(x)})
+b∼𝖡𝖾𝗋⁡(c​e−f⁡(x))b\sim\mathsf{Ber}(ce^{-f(x)}), it suffices to have access to (a random number of) unbiased estimates of 
+f(x)
+f⁡(x)f(x). In Chen et al. (2026), this was leveraged to produce high-accuracy samplers which only use queries to the derivative 
+f^{\prime}
+f′f^{\prime}, via the representation 
+f(x)=\En_{y\sim\mathsf{Unif}([0,x])}[xf^{\prime}(y)]
+f⁡(x)=𝔼y∼𝖴𝗇𝗂𝖿⁡([0,x])⁡[xf′​(y)]f(x)=\En_{y\sim\mathsf{Unif}([0,x])}[xf^{\prime}(y)].
+In our work, our goal is to leverage this phenomenon in order to produce high-accuracy samplers that tolerate stochasticity in the gradient oracle.
+
+We are now ready to state the general FORS meta-algorithm. Given a proposal distribution 
+q
+qq, a tilt function 
+w
+ww, and a tuneable parameter 
+B=\Theta(1)
+B=Θ⁡(1)B=\Theta(1), the goal of Algorithm 1 is to produce a sample from 
+\widehat{p}(x)\propto q(x)\,e^{w(x)}
+p^​(x)∝q⁡(x)​ew⁡(x)\widehat{p}(x)\propto q(x)\,e^{w(x)} without having access to the value 
+w(x)
+w⁡(x)w(x). Instead, for each 
+x\in\mathbb{R}^{d}
+x∈ℝdx\in\mathbb{R}^{d}, we can generate i.i.d. samples 
+W_{1},W_{2},W_{3}\dotsc
+W1,W2,W3​…W_{1},W_{2},W_{3}\dotsc such that 
+\En[W_{1}\mid x]=w(x)
+𝔼⁡[W1∣x]=w⁡(x)\En[W_{1}\mid x]=w(x).
+Let 
+\mathcal{W}_{x}
+𝒲x\mathcal{W}_{x} denote the conditional distribution of 
+W_{1}
+W1W_{1} given 
+x
+xx.
+
+Algorithm 1  First-order rejection sampling (FORS)
+
+             Input: Parameter 
+B&gt;0
+B&gt;0B&gt;0, proposal distribution 
+q
+qq over 
+\mathbb{R}^{d}
+ℝd\mathbb{R}^{d}, estimator distributions 
+(\mathcal{W}_{x})_{x\in\mathbb{R}^{d}}
+(𝒲x)x∈ℝd(\mathcal{W}_{x})_{x\in\mathbb{R}^{d}} supported on 
+[-B,B]
+[−B,B][-B,B]
+
+             for 
+i=1,2,3,\dotsc
+i=1,2,3,…i=1,2,3,\dotsc do
+
+              Sample 
+x\sim q
+x∼qx\sim q.
+
+              Sample 
+J\sim\mathsf{Poisson}(2B)
+J∼𝖯𝗈𝗂𝗌𝗌𝗈𝗇⁡(2​B)J\sim\mathsf{Poisson}(2B).
+
+              Sample i.i.d. 
+W_{1},\dotsc,W_{J}\sim\mathcal{W}_{x}
+W1,…,WJ∼𝒲xW_{1},\dotsc,W_{J}\sim\mathcal{W}_{x}.
+
+              Output 
+x
+xx with probability 
+\prod_{j=1}^{J}\frac{B+W_{j}}{2B}
+∏j=1JB+Wj2​B\prod_{j=1}^{J}\frac{B+W_{j}}{2B}.
+
+             end for
+
+Theorem 3.1 (FORS guarantee, Chen et al. (2026, Theorem 3.1)).
+
+Algorithm 1 outputs a random point with density 
+\widehat{p}(x)\propto q(x)\,e^{\En[W_{1}\mid x]}
+p^​(x)∝q⁡(x)​e𝔼⁡[W1∣x]\widehat{p}(x)\propto q(x)\,e^{\En[W_{1}\mid x]}.
+The number of sampled 
+W_{j}
+WjW_{j}’s is bounded, with probability at least 
+1-\delta
+1−δ1-\delta, by 
+3Be^{2B}\log(2/\delta)
+3​B​e2​B​log⁡(2/δ)3Be^{2B}\log(2/\delta).
+
+Moreover, if Algorithm 1 is called 
+T
+TT times, then with probability at least 
+1-\delta
+1−δ1-\delta, the total number of sampled 
+W_{j}
+WjW_{j}’s is 
+O(Be^{2B}\,(T+\log(1/\delta)))
+O⁡(B​e2​B​(T+log⁡(1/δ)))O(Be^{2B}\,(T+\log(1/\delta))).
+
+3.2 Sampling from Gaussian tilts with stochastic queries
+
+The goal of this section is to sample from the following Gaussian tilt distribution:
+
+\displaystyle\nu(x)\propto\exp\Big(-f(x)-\frac{1}{2\eta}\,\|x-x_{0}\|^{2}\Big)\,.
+ν⁡(x)∝exp⁡(−f⁡(x)−12​η​‖x−x0‖2).\displaystyle\nu(x)\propto\exp\Big(-f(x)-\frac{1}{2\eta}\,\|x-x_{0}\|^{2}\Big)\,.
+
+(1)
+
+In Section 3.3, this will be used as a subroutine for the proximal sampler algorithm (Lee et al., 2021; Chen et al., 2023), leading to new guarantees for log-concave sampling.
+
+Remark 1 (Diffusion models).
+
+Leveraging the fact that the backward transition kernels along a diffusion model are also Gaussian tilts of the form (1), Chen et al. (2026) used FORS to provide the first high-accuracy sampling guarantees for diffusion models under minimal data assumptions.
+Similarly, the results we present below could also be applied to that setting to show that diffusion sampling can be made robust to stochastic errors in the score evaluations.
+For brevity, we do not pursue this application here.
+
+We now consider instantiating FORS for the Gaussian tilt distribution (1).
+Let 
+\gamma_{z,r}(x)\vcentcolon=\gamma(x;z,r)
+γz,r​(x):=γ⁡(x,z,r)\gamma_{z,r}(x)\vcentcolon=\gamma(x;z,r) be any path function such that 
+\gamma_{z,1}(x)=x
+γz,1​(x)=x\gamma_{z,1}(x)=x and 
+\gamma_{z,0}(x)=\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}(z)
+γz,0​(x)=\macc@depth​Δ​\macc@set@skewchar​\macc@nested@a​111​(z)\gamma_{z,0}(x)=\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}(z) is independent of 
+x
+xx; here, 
+z\sim P
+z∼Pz\sim P is an external source of randomness.
+Then, by the fundamental theorem of calculus,
+
+\displaystyle f(x)-\mathbb{E}_{z\sim P}f(\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}(z))=\mathbb{E}_{r\sim\mathsf{Unif}([0,1]),\,z\sim P}\langle\dot{\gamma}_{z,r}(x),\nabla f(\gamma_{z,r}(x))\rangle\,.
+f⁡(x)−𝔼z∼P​f​(\macc@depth​Δ​\macc@set@skewchar​\macc@nested@a​111​(z))=𝔼r∼𝖴𝗇𝗂𝖿⁡([0,1]),z∼P​⟨γ˙z,r​(x),∇f​(γz,r​(x))⟩.\displaystyle f(x)-\mathbb{E}_{z\sim P}f(\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}(z))=\mathbb{E}_{r\sim\mathsf{Unif}([0,1]),\,z\sim P}\langle\dot{\gamma}_{z,r}(x),\nabla f(\gamma_{z,r}(x))\rangle\,.
+
+If we choose the proposal 
+q=\mathsf{N}\left(\widehat{x},\eta I\right)
+q=𝖭⁡(x^,η​I)q=\mathsf{N}\left(\widehat{x},\eta I\right), where 
+\widehat{x}
+x^\widehat{x} is a fixed base point, then
+
+\displaystyle q(x)\propto\exp\Bigl(-\frac{1}{2\eta}\left\lVert x-\widehat{x}\right\rVert^{2}\Bigr)\,.
+q⁡(x)∝exp⁡(−12​η​‖x−x^‖2).\displaystyle q(x)\propto\exp\Bigl(-\frac{1}{2\eta}\left\lVert x-\widehat{x}\right\rVert^{2}\Bigr)\,.
+
+Thus, we can express
+
+\displaystyle\log\nu(x)-\log q(x)-\mathrm{const}
+log⁡ν⁡(x)−log⁡q⁡(x)−const\displaystyle\log\nu(x)-\log q(x)-\mathrm{const}
+
+\displaystyle=\frac{1}{\eta}\En_{z\sim P}\langle x-\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}(z),\widehat{x}-x_{0}\rangle-f(x)+\mathbb{E}_{z\sim P}f(\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}(z))
+=1η​𝔼z∼P​⟨x−\macc@depth​Δ​\macc@set@skewchar​\macc@nested@a​111​(z),x^−x0⟩−f⁡(x)+𝔼z∼P​f​(\macc@depth​Δ​\macc@set@skewchar​\macc@nested@a​111​(z))\displaystyle=\frac{1}{\eta}\En_{z\sim P}\langle x-\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}(z),\widehat{x}-x_{0}\rangle-f(x)+\mathbb{E}_{z\sim P}f(\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}(z))
+
+\displaystyle=\mathbb{E}_{r\sim\mathsf{Unif}([0,1]),\,z\sim P}\Bigl\langle\dot{\gamma}_{z,r}(x),\,\frac{\widehat{x}-x_{0}}{\eta}-\nabla f(\gamma_{z,r}(x))\Bigr\rangle\,.
+=𝔼r∼𝖴𝗇𝗂𝖿⁡([0,1]),z∼P​⟨γ˙z,r​(x),x^−x0η−∇f​(γz,r​(x))⟩.\displaystyle=\mathbb{E}_{r\sim\mathsf{Unif}([0,1]),\,z\sim P}\Bigl\langle\dot{\gamma}_{z,r}(x),\,\frac{\widehat{x}-x_{0}}{\eta}-\nabla f(\gamma_{z,r}(x))\Bigr\rangle\,.
+
+By the guarantee of Theorem 3.1, it suggests that we use the unbiased estimator 
+W_{r,z,x}\coloneqq\langle\dot{\gamma}_{z,r}(x),u-\nabla f(\gamma_{z,r}(x))\rangle
+Wr,z,x≔⟨γ˙z,r​(x),u−∇f​(γz,r​(x))⟩W_{r,z,x}\coloneqq\langle\dot{\gamma}_{z,r}(x),u-\nabla f(\gamma_{z,r}(x))\rangle, with 
+u\coloneqq(\widehat{x}-x_{0})/\eta
+u≔(x^−x0)/ηu\coloneqq(\widehat{x}-x_{0})/\eta.
+Actually, since the 
+W
+WW’s in Algorithm 1 must lie in 
+[-B,B]
+[−B,B][-B,B], we truncate the estimator to lie in this range.
+Further, we replace the exact gradients by stochastic gradients, leading to
+
+\displaystyle\widehat{W}_{r,z,x}\coloneqq\mathsf{Clip}_{B}(\langle\dot{\gamma}_{z,r}(x),u-g(\gamma_{z,r}(x))\rangle)\,.
+W^r,z,x≔𝖢𝗅𝗂𝗉B​(⟨γ˙z,r​(x),u−g⁡(γz,r​(x))⟩).\displaystyle\widehat{W}_{r,z,x}\coloneqq\mathsf{Clip}_{B}(\langle\dot{\gamma}_{z,r}(x),u-g(\gamma_{z,r}(x))\rangle)\,.
+
+Below, we choose the base point of the proposal 
+\widehat{x}
+x^\widehat{x}, the path function 
+\gamma_{z,r}
+γz,r\gamma_{z,r}, and the noise distribution 
+P
+PP in order to optimize the dimension dependence of our result.
+
+Theorem 3.2 (Sampling from Gaussian tilts).
+
+Suppose that Assumption 3 holds, and that 
+\mathsf{O}_{\mathsf{grad}}(\cdot)
+𝖮𝗀𝗋𝖺𝖽​(⋅)\mathsf{O}_{\mathsf{grad}}(\cdot) has 
+\epsilon
+ϵ\epsilon-tail. Let 
+M\geq\mathfrak{m}_{1}
+M≥𝔪1M\geq\mathfrak{m}_{1}, 
+n\geq 1
+n≥1n\geq 1, and 
+B=\Theta(1)
+B=Θ⁡(1)B=\Theta(1).
+
+Instantiate Algorithm 1 as follows:
+
+• 
+
+q=\mathsf{N}\left(\widehat{x},\eta I\right)
+q=𝖭⁡(x^,η​I)q=\mathsf{N}\left(\widehat{x},\eta I\right), where 
+\widehat{x}
+x^\widehat{x} is drawn from 
+\mathsf{O}_{\mathsf{prox},\eta}(x_{0})
+𝖮𝗉𝗋𝗈𝗑,η​(x0)\mathsf{O}_{\mathsf{prox},\eta}(x_{0}). We write 
+u\coloneqq\frac{x_{0}-\widehat{x}}{\eta}
+u≔x0−x^ηu\coloneqq\frac{x_{0}-\widehat{x}}{\eta}.
+
+• 
+
+\mathcal{W}_{x}
+𝒲x\mathcal{W}_{x} is the law of 
+\mathsf{Clip}_{B}(W_{r,z,g,x})
+𝖢𝗅𝗂𝗉B​(Wr,z,g,x)\mathsf{Clip}_{B}(W_{r,z,g,x}), where
+
+\displaystyle W_{r,z,g,x}=\langle\dot{\gamma}_{z,r}(x),u-g\rangle\,,\qquad r\sim\mathsf{Unif}([0,1])\,,\;z\sim\mathsf{N}\left(0,\eta I\right)\,,\;g\sim\mathsf{O}_{\mathsf{grad}}^{(n)}(\gamma_{z,r}(x))\,,
+Wr,z,g,x=⟨γ˙z,r​(x),u−g⟩,r∼𝖴𝗇𝗂𝖿⁡([0,1]),z∼𝖭⁡(0,η​I),g∼𝖮𝗀𝗋𝖺𝖽(n)​(γz,r​(x)),\displaystyle W_{r,z,g,x}=\langle\dot{\gamma}_{z,r}(x),u-g\rangle\,,\qquad r\sim\mathsf{Unif}([0,1])\,,\;z\sim\mathsf{N}\left(0,\eta I\right)\,,\;g\sim\mathsf{O}_{\mathsf{grad}}^{(n)}(\gamma_{z,r}(x))\,,
+
+(2)
+
+and
+
+\displaystyle\gamma_{z,r,x_{0}}(x)=a_{r}x+(1-a_{r})\widehat{x}+b_{r}z\,,\qquad a_{r}=\sin(\pi r/2)\,,~~b_{r}=\cos(\pi r/2)\,,
+γz,r,x0​(x)=ar​x+(1−ar)​x^+br​z,ar=sin⁡(π​r/2),br=cos⁡(π​r/2),\displaystyle\gamma_{z,r,x_{0}}(x)=a_{r}x+(1-a_{r})\widehat{x}+b_{r}z\,,\qquad a_{r}=\sin(\pi r/2)\,,~~b_{r}=\cos(\pi r/2)\,,
+
+(3)
+
+so that 
+\dot{\gamma}_{z,r,x_{0}}(x)=a_{r}^{\prime}(x-x_{0})+b_{r}^{\prime}z
+γ˙z,r,x0​(x)=ar′​(x−x0)+br′​z\dot{\gamma}_{z,r,x_{0}}(x)=a_{r}^{\prime}(x-x_{0})+b_{r}^{\prime}z.
+
+Then, conditioned on 
+\|u-\nabla f(\widehat{x})\|^{2}\leq\varepsilon_{\mathsf{prox}}^{2}
+‖u−∇f​(x^)‖2≤ε𝗉𝗋𝗈𝗑2\|u-\nabla f(\widehat{x})\|^{2}\leq\varepsilon_{\mathsf{prox}}^{2}, the law 
+\widehat{\nu}
+ν^\widehat{\nu} of Algorithm 1 satisfies 
+D_{\mathsf{TV}}\left(\nu,\widehat{\nu}\right)\leq\delta+4\epsilon_{n}(M)
+D𝖳𝖵​(ν,ν^)≤δ+4​ϵn​(M)D_{\mathsf{TV}}\left(\nu,\widehat{\nu}\right)\leq\delta+4\epsilon_{n}(M), provided that
+
+\displaystyle\eta^{-1}\gg\Big(\beta_{s}^{2}d^{s}\log(1/\delta)+\frac{s\beta_{s}^{2}}{d^{1-s}}\log^{2}(1/\delta)\Big)^{1/(1+s)}+(M^{2}+\varepsilon_{\mathsf{prox}}^{2})\log(1/\delta)\,.
+η−1≫(βs2​ds​log⁡(1/δ)+s​βs2d1−s​log2⁡(1/δ))1/(1+s)+(M2+ε𝗉𝗋𝗈𝗑2)​log⁡(1/δ).\displaystyle\eta^{-1}\gg\Big(\beta_{s}^{2}d^{s}\log(1/\delta)+\frac{s\beta_{s}^{2}}{d^{1-s}}\log^{2}(1/\delta)\Big)^{1/(1+s)}+(M^{2}+\varepsilon_{\mathsf{prox}}^{2})\log(1/\delta)\,.
+
+In our application to log-concave sampling, 
+\eta
+η\eta will be interpreted as a step size, and hence the overall complexity of sampling will scale with 
+\eta^{-1}
+η−1\eta^{-1}, multiplied by the batch size 
+n
+nn and other distribution-specific pre-factors.
+We pause to give several remarks to elucidate the dependencies in this result.
+
+Remark 2 (Dimension dependence).
+
+The first term requires taking an inverse step size 
+\eta^{-1}\gg\beta_{0}^{2}
+η−1≫β02\eta^{-1}\gg\beta_{0}^{2} in the Lipschitz case (
+s=0
+s=0s=0), and 
+\eta^{-1}\gg\beta_{1}d^{1/2}
+η−1≫β1​d1/2\eta^{-1}\gg\beta_{1}d^{1/2} in the smooth case (
+s=1
+s=1s=1).
+This matches state-of-the-art results for high-accuracy sampling (Fan et al., 2023; Altschuler and Chewi, 2024; Chen et al., 2026), except that we allow for stochastic gradient queries.
+
+Remark 3 (Proximal tolerance).
+
+Since the theorem already requires taking 
+\eta^{-1}\gg\beta_{0}^{2}+M^{2}
+η−1≫β02+M2\eta^{-1}\gg\beta_{0}^{2}+M^{2} in the Lipschitz case, and 
+\eta^{-1}\gg M^{2}
+η−1≫M2\eta^{-1}\gg M^{2} in the smooth case, then Lemma 2.1 (with 
+n=1
+n=1n=1) implies that implementing the approximate proximal oracle with the stochastic gradient oracle only incurs a logarithmic overhead.
+
+Remark 4 (Accuracy dependence).
+
+To reach a final error of 
+\delta
+δ\delta, we need to take 
+\eta^{-1}
+η−1\eta^{-1} at least of order 
+M^{2}=\epsilon_{n}^{-1}(\delta)^{2}
+M2=ϵn−1​(δ)2M^{2}=\epsilon_{n}^{-1}(\delta)^{2}.
+We elucidate this in two cases of particular interest.
+
+• 
+
+(Sub-Gaussian tails) Suppose that the stochastic gradients have sub-Gaussian tails, which corresponds to 
+\zeta=2
+ζ=2\zeta=2 in the discussion following Definition 1.
+Then, we can take 
+n=1
+n=1n=1 and 
+M^{2}\asymp\sigma_{\sf g}^{2}\log(1/\delta)
+M2≍σ𝗀2​log⁡(1/δ)M^{2}\asymp\sigma_{\sf g}^{2}\log(1/\delta), thus the final term requires 
+\eta^{-1}\gg\sigma_{\sf g}^{2}\log^{2}(1/\delta)
+η−1≫σ𝗀2​log2⁡(1/δ)\eta^{-1}\gg\sigma_{\sf g}^{2}\log^{2}(1/\delta).
+Hence, this leads to a high-accuracy guarantee.
+
+• 
+
+(Bounded variance) Suppose now that the stochastic gradients merely have variance bounded by 
+\sigma^{2}
+σ2\sigma^{2}.
+Since 
+\epsilon_{1}(M)\lesssim\sigma^{2}/M^{2}
+ϵ1​(M)≲σ2/M2\epsilon_{1}(M)\lesssim\sigma^{2}/M^{2}, we can choose 
+M^{2}\asymp\sigma^{2}/\delta
+M2≍σ2/δM^{2}\asymp\sigma^{2}/\delta.
+Thus, the dependence on 
+\delta
+δ\delta becomes 
+\eta^{-1}\gg\delta^{-1}\log(1/\delta)
+η−1≫δ−1​log⁡(1/δ)\eta^{-1}\gg\delta^{-1}\log(1/\delta).
+Although it suffices to take 
+n=1
+n=1n=1 here, to avoid error accumulation in the next section we will eventually have to apply batching (
+n&gt;1
+n&gt;1n&gt;1). After doing so, the iteration complexity remains 
+1/\delta
+1/δ1/\delta (up to logarithmic factors).
+
+In Section 4, we will show that the 
+1/\delta
+1/δ1/\delta rate is in fact optimal under the bounded variance assumption (Proposition 4.1). Thus, high-accuracy sampling requires light-tailed stochastic gradients.
+
+Parallel to Theorem 3.2, we show that it is also possible to sample from the Gaussian tilt distribution with only stochastic value queries, provided that the error of the stochastic value oracle is sufficiently small.
+
+Theorem 3.3.
+
+Suppose that Assumption 3 holds, and 
+\mathsf{O}_{\mathsf{eval}}(\cdot)
+𝖮𝖾𝗏𝖺𝗅​(⋅)\mathsf{O}_{\mathsf{eval}}(\cdot) has 
+\epsilon
+ϵ\epsilon-tail. Suppose that 
+n\geq 1
+n≥1n\geq 1, 
+B=\Theta(1)
+B=Θ⁡(1)B=\Theta(1) and 
+\epsilon_{n}(B/3)\leq 1
+ϵn​(B/3)≤1\epsilon_{n}(B/3)\leq 1.
+
+Instantiate Algorithm 1 as follows:
+
+• 
+
+q=\mathsf{N}\left(\widehat{x},\eta I\right)
+q=𝖭⁡(x^,η​I)q=\mathsf{N}\left(\widehat{x},\eta I\right), where 
+\widehat{x}
+x^\widehat{x} is drawn from 
+\mathsf{O}_{\mathsf{prox},\eta}(x_{0})
+𝖮𝗉𝗋𝗈𝗑,η​(x0)\mathsf{O}_{\mathsf{prox},\eta}(x_{0}). We write 
+u=\frac{x_{0}-\widehat{x}}{\eta}
+u=x0−x^ηu=\frac{x_{0}-\widehat{x}}{\eta}.
+
+• 
+
+\mathcal{W}_{x}
+𝒲x\mathcal{W}_{x} is the law of 
+\mathsf{Clip}_{B}(W_{z,v,v^{\prime},x})
+𝖢𝗅𝗂𝗉B​(Wz,v,v′,x)\mathsf{Clip}_{B}(W_{z,v,v^{\prime},x}), where
+
+\displaystyle W_{z,v,v^{\prime},x}=v^{\prime}-v-\langle u,x-z\rangle\,,\qquad z\sim q\,,\;v\sim\mathsf{O}_{\mathsf{eval}}^{(n)}(x)\,,\;v^{\prime}\sim\mathsf{O}_{\mathsf{eval}}^{(n)}(z)\,.
+Wz,v,v′,x=v′−v−⟨u,x−z⟩,z∼q,v∼𝖮𝖾𝗏𝖺𝗅(n)​(x),v′∼𝖮𝖾𝗏𝖺𝗅(n)​(z).\displaystyle W_{z,v,v^{\prime},x}=v^{\prime}-v-\langle u,x-z\rangle\,,\qquad z\sim q\,,\;v\sim\mathsf{O}_{\mathsf{eval}}^{(n)}(x)\,,\;v^{\prime}\sim\mathsf{O}_{\mathsf{eval}}^{(n)}(z)\,.
+
+(4)
+
+Then, condition on 
+\|u-\nabla f(\widehat{x})\|\leq\varepsilon_{\mathsf{prox}}
+‖u−∇f​(x^)‖≤ε𝗉𝗋𝗈𝗑\|u-\nabla f(\widehat{x})\|\leq\varepsilon_{\mathsf{prox}}, the law 
+\widehat{\nu}
+ν^\widehat{\nu} of Algorithm 1 satisfies 
+D_{\mathsf{TV}}\left(\nu,\widehat{\nu}\right)\leq\delta+10\epsilon_{n}(B/3)
+D𝖳𝖵​(ν,ν^)≤δ+10​ϵn​(B/3)D_{\mathsf{TV}}\left(\nu,\widehat{\nu}\right)\leq\delta+10\epsilon_{n}(B/3), provided that
+
+\displaystyle\eta^{-1}\gg\Big(\beta_{s}^{2}d^{s}\log(1/\delta)+\frac{s\beta_{s}^{2}}{d^{1-s}}\log^{2}(1/\delta)\Big)^{1/(1+s)}+\varepsilon_{\mathsf{prox}}^{2}\log(1/\delta).
+η−1≫(βs2​ds​log⁡(1/δ)+s​βs2d1−s​log2⁡(1/δ))1/(1+s)+ε𝗉𝗋𝗈𝗑2​log⁡(1/δ).\displaystyle\eta^{-1}\gg\Big(\beta_{s}^{2}d^{s}\log(1/\delta)+\frac{s\beta_{s}^{2}}{d^{1-s}}\log^{2}(1/\delta)\Big)^{1/(1+s)}+\varepsilon_{\mathsf{prox}}^{2}\log(1/\delta).
+
+We note that in general, implementing the proximal oracle with only noisy queries will incur additional computational cost. However, with the choice of 
+\widehat{x}=x_{0}
+x^=x0\widehat{x}=x_{0}, it is trivially guaranteed that 
+\varepsilon_{\mathsf{prox}}=\|\nabla f(x_{0})\|
+ε𝗉𝗋𝗈𝗑=‖∇f​(x0)‖\varepsilon_{\mathsf{prox}}=\|\nabla f(x_{0})\|.
+In this case, as we will see in Theorem 3.5 below, the term 
+\varepsilon_{\mathsf{prox}}^{2}
+ε𝗉𝗋𝗈𝗑2\varepsilon_{\mathsf{prox}}^{2} in fact dominates the complexity.
+
+3.3 Log-concave sampling
+
+To apply our results to log-concave sampling (and beyond), we apply the results of the previous section to the proximal sampler algorithm (Lee et al., 2021; Chen et al., 2022).
+Given a target distribution 
+\mu\propto e^{-f}
+μ∝e−f\mu\propto e^{-f}, the proximal sampler aims to sample from the augmented distribution
+
+\displaystyle\bar{\pi}(x,y)\propto\exp\Big(-f(x)-\frac{1}{2\eta}\,\|y-x\|^{2}\Big)\,.
+π¯​(x,y)∝exp⁡(−f⁡(x)−12​η​‖y−x‖2).\displaystyle\bar{\pi}(x,y)\propto\exp\Big(-f(x)-\frac{1}{2\eta}\,\|y-x\|^{2}\Big)\,.
+
+It does so by applying Gibbs sampling to 
+\bar{\pi}
+π¯\bar{\pi}.
+Concretely, for 
+n=0,1,2,\dotsc
+n=0,1,2,…n=0,1,2,\dotsc and an initial point 
+X_{0}\sim\mu_{0}
+X0∼μ0X_{0}\sim\mu_{0}, repeat:
+
+1. 
+
+Sample 
+Y_{n}\sim\bar{\pi}^{Y|X=X_{n}}=\mathsf{N}\left(X_{n},\eta I\right)
+Yn∼π¯Y|X=Xn=𝖭⁡(Xn,η​I)Y_{n}\sim\bar{\pi}^{Y|X=X_{n}}=\mathsf{N}\left(X_{n},\eta I\right).
+
+2. 
+
+Sample 
+X_{n+1}\sim\bar{\pi}^{X|Y=Y_{n}}
+Xn+1∼π¯X|Y=YnX_{n+1}\sim\bar{\pi}^{X|Y=Y_{n}}.
+
+The distribution 
+\bar{\pi}^{X|Y=y}
+π¯X|Y=y\bar{\pi}^{X|Y=y} is known as the restricted Gaussian oracle (RGO), and it is exactly the Gaussian tilt distribution (1) with 
+x_{0}=y
+x0=yx_{0}=y.
+We therefore combine our result in Theorem 3.2 for implementing the RGO, together with existing results on the convergence of the proximal sampler itself, to deduce the following sampling corollaries.
+We begin by recalling the definitions of functional inequalities.
+
+Definition 2 (Poincaré).
+
+A distribution 
+\pi
+π\pi satisfies a Poincaré inequality (PI) with constant 
+C
+CC if for all compactly supported and smooth test functions 
+h:\mathbb{R}^{d}\to\mathbb{R}
+h:ℝd→ℝh:\mathbb{R}^{d}\to\mathbb{R},
+
+\displaystyle\mathrm{Var}_{X\sim\pi}(h(X))\leq C\En_{X\sim\pi}[h(X)^{2}]\,.
+VarX∼π​(h⁡(X))≤C​𝔼X∼π​[h​(X)2].\displaystyle\mathrm{Var}_{X\sim\pi}(h(X))\leq C\En_{X\sim\pi}[h(X)^{2}]\,.
+
+We let 
+C_{\mathsf{PI}}(\pi)
+C𝖯𝖨​(π)C_{\mathsf{PI}}(\pi) to be the smallest constant 
+C
+CC such that 
+\pi
+π\pi satisfies PI with constant 
+C
+CC.
+
+Definition 3 (Log-Sobolev).
+
+A distribution 
+\pi
+π\pi satisfies a log-Sobolev inequality (LSI) with constant 
+C
+CC if for all compactly supported and smooth test functions 
+h:\mathbb{R}^{d}\to\mathbb{R}
+h:ℝd→ℝh:\mathbb{R}^{d}\to\mathbb{R},
+
+\displaystyle\mathrm{Ent}_{X\sim\pi}(h^{2}(X))\coloneqq\mathbb{E}_{X\sim\pi}\Big[h^{2}(X)\log\frac{h^{2}(X)}{\mathbb{E}_{X\sim\pi}[h^{2}(X)]}\Big]\leq 2C\En_{X\sim\pi}[h(X)^{2}]\,.
+EntX∼π​(h2​(X))≔𝔼X∼π​[h2​(X)​log⁡h2​(X)𝔼X∼π​[h2​(X)]]≤2​C​𝔼X∼π​[h​(X)2].\displaystyle\mathrm{Ent}_{X\sim\pi}(h^{2}(X))\coloneqq\mathbb{E}_{X\sim\pi}\Big[h^{2}(X)\log\frac{h^{2}(X)}{\mathbb{E}_{X\sim\pi}[h^{2}(X)]}\Big]\leq 2C\En_{X\sim\pi}[h(X)^{2}]\,.
+
+We let 
+C_{\mathsf{LSI}}(\pi)
+C𝖫𝖲𝖨​(π)C_{\mathsf{LSI}}(\pi) to be the smallest constant 
+C
+CC such that 
+\pi
+π\pi satisfies LSI with constant 
+C
+CC.
+
+It is well-known (Bakry et al., 2014, e.g.,) that if 
+\pi
+π\pi is 
+\alpha
+α\alpha-strongly log-concave (SLC), i.e., 
+-\log\pi
+−log⁡π-\log\pi is 
+\alpha
+α\alpha-strongly convex, then it satisfies LSI with constant 
+1/\alpha
+1/α1/\alpha, and if 
+\pi
+π\pi satisfies LSI with constant 
+1/\alpha
+1/α1/\alpha, then it satisfies PI with constant 
+1/\alpha
+1/α1/\alpha.
+These represent meaningful enlargements of the class of SLC measures which still allow for tractable sampling. For example, unlike SLC, LSI is robust to bounded perturbations of the log-density; and unlike LSI, PI allows for capturing measures without sub-Gaussian tails (e.g., the two-sided exponential).
+See Chewi (2026) for further background in the context of sampling.
+
+We now present a suite of results by combining Theorem 3.2 (Theorem 3.3) with the guarantees of the proximal sampler (Chen et al., 2022).
+Let 
+\phi_{M}(\delta)\coloneqq\inf\{n\geq 1:\epsilon_{n}(M)\leq\delta/10\}
+ϕM​(δ)≔inf{n≥1:ϵn​(M)≤δ/10}\phi_{M}(\delta)\coloneqq\inf\{n\geq 1:\epsilon_{n}(M)\leq\delta/10\}.
+
+Theorem 3.4.
+
+Suppose that Assumption 3 holds with 
+s=1
+s=1s=1, and that 
+\mathsf{O}_{\mathsf{grad}}(\cdot)
+𝖮𝗀𝗋𝖺𝖽​(⋅)\mathsf{O}_{\mathsf{grad}}(\cdot) has 
+\epsilon
+ϵ\epsilon-tail. Suppose that we are given an initial distribution 
+\mu_{0}
+μ0\mu_{0} such that 
+\log(1+D_{\chi^{2}}\left(\mu_{0}\;\|\;{}\mu\right))\leq\Delta
+log(1+Dχ2(μ0∥μ))≤Δ\log(1+D_{\chi^{2}}\left(\mu_{0}\;\|\;{}\mu\right))\leq\Delta.
+
+Choose
+
+\displaystyle\frac{1}{C\eta}=\big(\beta_{s}^{2}d^{s}\log(N/\delta)+\beta_{s}^{2}\log^{2}(N/\delta)\big)^{1/(1+s)}+M^{2}\log(N/\delta)
+1C​η=(βs2​ds​log⁡(N/δ)+βs2​log2⁡(N/δ))1/(1+s)+M2​log⁡(N/δ)\displaystyle\frac{1}{C\eta}=\big(\beta_{s}^{2}d^{s}\log(N/\delta)+\beta_{s}^{2}\log^{2}(N/\delta)\big)^{1/(1+s)}+M^{2}\log(N/\delta)
+
+(5)
+
+for a sufficiently large universal constant 
+C&gt;0
+C&gt;0C&gt;0.
+Let 
+\widehat{\mu}
+μ^\widehat{\mu} denote the law of the output of the proximal sampler initialized at 
+\mu_{0}
+μ0\mu_{0}, where in each step the RGO is implemented by Theorem 3.2.
+Then, the proximal sampler ensures 
+D_{\mathsf{TV}}\left(\widehat{\mu},\mu\right)\leq\delta
+D𝖳𝖵​(μ^,μ)≤δD_{\mathsf{TV}}\left(\widehat{\mu},\mu\right)\leq\delta using at most 
+N\phi_{M}(\delta/N)\log A
+N​ϕM​(δ/N)​log⁡AN\phi_{M}(\delta/N)\log A queries to 
+\mathsf{O}_{\mathsf{grad}}(\cdot)
+𝖮𝗀𝗋𝖺𝖽​(⋅)\mathsf{O}_{\mathsf{grad}}(\cdot) in the following situations.
+
+1. 
+
+Suppose that 
+\mu
+μ\mu satisfies a log-Sobolev inequality with constant 
+C_{\mathsf{LSI}}(\mu)&lt;\infty
+C𝖫𝖲𝖨​(μ)&lt;∞C_{\mathsf{LSI}}(\mu)&lt;\infty and 
+s=1
+s=1s=1 (i.e., 
+f
+ff is smooth).
+Then,
+
+\displaystyle N\lesssim C_{\mathsf{LSI}}(\mu)\,\big(\beta_{1}d^{1/2}\log^{3/2}A+(\beta_{1}+M^{2})\log^{2}A\big)\,,
+N≲C𝖫𝖲𝖨​(μ)​(β1​d1/2​log3/2​A+(β1+M2)​log2​A),\displaystyle N\lesssim C_{\mathsf{LSI}}(\mu)\,\big(\beta_{1}d^{1/2}\log^{3/2}A+(\beta_{1}+M^{2})\log^{2}A\big)\,,
+
+where 
+A\coloneqq d+\Delta+\delta^{-1}+C_{\mathsf{LSI}}(\mu)\,(\beta_{1}+M^{2})
+A≔d+Δ+δ−1+C𝖫𝖲𝖨​(μ)​(β1+M2)A\coloneqq d+\Delta+\delta^{-1}+C_{\mathsf{LSI}}(\mu)\,(\beta_{1}+M^{2}).
+
+2. 
+
+Suppose that 
+\mu
+μ\mu satisfies a Poincaré inequality with constant 
+C_{\mathsf{PI}}(\mu)&lt;\infty
+C𝖯𝖨​(μ)&lt;∞C_{\mathsf{PI}}(\mu)&lt;\infty.
+Then,
+
+\displaystyle N\lesssim C_{\mathsf{PI}}(\mu)\,\big((\beta_{s}^{2}d^{s}\log A+\beta_{s}^{2}\log^{2}A)^{1/(1+s)}+M^{2}\log A\big)\,(\Delta+\log(1/\delta))\,,
+N≲C𝖯𝖨​(μ)​((βs2​ds​log⁡A+βs2​log2​A)1/(1+s)+M2​log⁡A)​(Δ+log⁡(1/δ)),\displaystyle N\lesssim C_{\mathsf{PI}}(\mu)\,\big((\beta_{s}^{2}d^{s}\log A+\beta_{s}^{2}\log^{2}A)^{1/(1+s)}+M^{2}\log A\big)\,(\Delta+\log(1/\delta))\,,
+
+where 
+A\coloneqq d+\Delta+\delta^{-1}+C_{\mathsf{PI}}(\mu)\,(\beta_{s}^{2/(1+s)}+M^{2})
+A≔d+Δ+δ−1+C𝖯𝖨​(μ)​(βs2/(1+s)+M2)A\coloneqq d+\Delta+\delta^{-1}+C_{\mathsf{PI}}(\mu)\,(\beta_{s}^{2/(1+s)}+M^{2}).
+
+3. 
+
+Suppose that 
+\mu
+μ\mu is log-concave.
+Then,
+
+\displaystyle N\lesssim\big(\big(\beta_{s}^{2}d^{s}\log A+\beta_{s}^{2}\log^{2}A\big)^{1/(1+s)}+M^{2}\log A\big)\cdot\frac{W_{2}^{2}(\mu_{0},\mu)}{\delta^{2}}\,,
+N≲((βs2​ds​log⁡A+βs2​log2​A)1/(1+s)+M2​log⁡A)⋅W22​(μ0,μ)δ2,\displaystyle N\lesssim\big(\big(\beta_{s}^{2}d^{s}\log A+\beta_{s}^{2}\log^{2}A\big)^{1/(1+s)}+M^{2}\log A\big)\cdot\frac{W_{2}^{2}(\mu_{0},\mu)}{\delta^{2}}\,,
+
+where 
+A\coloneqq d+\Delta+\delta^{-1}+(\beta_{s}^{2/(1+s)}+M^{2})\,W_{2}^{2}(\mu_{0},\mu)
+A≔d+Δ+δ−1+(βs2/(1+s)+M2)​W22​(μ0,μ)A\coloneqq d+\Delta+\delta^{-1}+(\beta_{s}^{2/(1+s)}+M^{2})\,W_{2}^{2}(\mu_{0},\mu).
+
+Remark 5 (Dependence on 
+\delta
+δ\delta).
+
+As demonstration, we describe the implied query complexity in the following special cases.
+
+• 
+
+If the stochastic gradients have subexponential tails (Example 1 with 
+\zeta=1
+ζ=1\zeta=1), then for 
+M\geq\sigma_{\sf g}
+M≥σ𝗀M\geq\sigma_{\sf g}, we can take 
+\phi_{M}(\delta)\lesssim(\sigma_{\sf g}/M)\log(1/\delta)
+ϕM​(δ)≲(σ𝗀/M)​log⁡(1/δ)\phi_{M}(\delta)\lesssim(\sigma_{\sf g}/M)\log(1/\delta).
+Therefore, we can take 
+M\asymp\sigma_{\sf g}
+M≍σ𝗀M\asymp\sigma_{\sf g} in all of the results above, and the iteration complexity equals 
+\widetilde{O}(N)
+O~​(N)\widetilde{O}(N).
+For example, in the smooth LSI case, the query complexity reads 
+\widetilde{O}(C_{\mathsf{LSI}}(\beta_{1}d^{1/2}+\sigma_{\sf g}^{2}))
+O~​(C𝖫𝖲𝖨​(β1​d1/2+σ𝗀2))\widetilde{O}(C_{\mathsf{LSI}}(\beta_{1}d^{1/2}+\sigma_{\sf g}^{2})).
+
+• 
+
+On the other hand, in the bounded variance case (Example 2 with 
+k=1
+k=1k=1), we can take 
+\phi_{M}(\delta)\lesssim\sigma_{2}^{2}/(\delta M^{2})
+ϕM​(δ)≲σ22/(δ​M2)\phi_{M}(\delta)\lesssim\sigma_{2}^{2}/(\delta M^{2}), and the total query complexity becomes 
+(N\vee N^{2}\sigma_{2}^{2}/(\delta M^{2}))\log A
+(N∨N2​σ22/(δ​M2))​log⁡A(N\vee N^{2}\sigma_{2}^{2}/(\delta M^{2}))\log A.
+We then choose 
+M
+MM to balance the terms. For example, in the smooth LSI case, the query complexity reads
+
+\displaystyle N\log A+C_{\mathsf{LSI}}\big[(\beta_{1}^{2}d/M^{2})\log^{3}A+M^{2}\log^{4}A\big]\,(\sigma_{2}^{2}\log A)/\delta\,,
+N​log⁡A+C𝖫𝖲𝖨​[(β12​d/M2)​log3​A+M2​log4​A]​(σ22​log⁡A)/δ,\displaystyle N\log A+C_{\mathsf{LSI}}\big[(\beta_{1}^{2}d/M^{2})\log^{3}A+M^{2}\log^{4}A\big]\,(\sigma_{2}^{2}\log A)/\delta\,,
+
+This leads to a total query complexity of 
+\widetilde{O}(\kappa d^{1/2}\,(1+C_{\mathsf{LSI}}\sigma_{2}^{2}/\delta))
+O~​(κ​d1/2​(1+C𝖫𝖲𝖨​σ22/δ))\widetilde{O}(\kappa d^{1/2}\,(1+C_{\mathsf{LSI}}\sigma_{2}^{2}/\delta)), where 
+\kappa=C_{\mathsf{LSI}}\beta_{1}
+κ=C𝖫𝖲𝖨​β1\kappa=C_{\mathsf{LSI}}\beta_{1} is the condition number.
+
+We emphasize that while sampling guarantees with stochastic gradients are well-studied (Dalalyan, 2017; Dalalyan and Karagulyan, 2019; Durmus et al., 2019; Balasubramanian et al., 2022; Lu et al., 2025, e.g.,), our contribution is to provide high-accuracy guarantees, provided that the stochastic gradients have light tails.
+
+In the next section, we show that the assumption on the tails of the stochastic gradient is necessary.
+
+We also provide a corresponding result for stochastic value queries.
+
+Theorem 3.5.
+
+Suppose that Assumption 3 holds and that 
+\mathsf{O}_{\mathsf{eval}}(\cdot)
+𝖮𝖾𝗏𝖺𝗅​(⋅)\mathsf{O}_{\mathsf{eval}}(\cdot) has 
+\epsilon
+ϵ\epsilon-tail. Suppose that we are given an initial distribution 
+\mu_{0}
+μ0\mu_{0} such that 
+\log(1+D_{\chi^{2}}\left(\mu_{0}\;\|\;{}\mu\right))\leq\Delta
+log(1+Dχ2(μ0∥μ))≤Δ\log(1+D_{\chi^{2}}\left(\mu_{0}\;\|\;{}\mu\right))\leq\Delta.
+
+Choose
+
+\displaystyle\frac{1}{C\eta}=(\beta_{s}d^{s})^{2/(1+s)}\,\Big(1+\frac{\Delta+\log(N/\delta)}{d}\Big)\log(N/\delta)
+1C​η=(βs​ds)2/(1+s)​(1+Δ+log⁡(N/δ)d)​log⁡(N/δ)\displaystyle\frac{1}{C\eta}=(\beta_{s}d^{s})^{2/(1+s)}\,\Big(1+\frac{\Delta+\log(N/\delta)}{d}\Big)\log(N/\delta)
+
+(6)
+
+for a sufficiently large universal constant 
+C&gt;0
+C&gt;0C&gt;0.
+Let 
+\widehat{\mu}
+μ^\widehat{\mu} denote the law of the output of the proximal sampler initialized at 
+\mu_{0}
+μ0\mu_{0}, where in each step the RGO is implemented by Theorem 3.2.
+Then, the proximal sampler ensures 
+D_{\mathsf{TV}}\left(\widehat{\mu},\mu\right)\leq\delta
+D𝖳𝖵​(μ^,μ)≤δD_{\mathsf{TV}}\left(\widehat{\mu},\mu\right)\leq\delta using at most 
+N\phi_{1}(\delta/(4N))
+N​ϕ1​(δ/(4​N))N\phi_{1}(\delta/(4N)) queries to 
+\mathsf{O}_{\mathsf{eval}}(\cdot)
+𝖮𝖾𝗏𝖺𝗅​(⋅)\mathsf{O}_{\mathsf{eval}}(\cdot) in the following situations.
+
+1. 
+
+Suppose that 
+\mu
+μ\mu satisfies a log-Sobolev inequality with constant 
+C_{\mathsf{LSI}}(\mu)&lt;\infty
+C𝖫𝖲𝖨​(μ)&lt;∞C_{\mathsf{LSI}}(\mu)&lt;\infty and 
+s=1
+s=1s=1 (i.e., 
+f
+ff is smooth).
+Then,
+
+\displaystyle N\lesssim C_{\mathsf{LSI}}(\mu)\,\beta_{1}\,(d+\Delta+\log A)\log^{2}A\,,
+N≲C𝖫𝖲𝖨​(μ)​β1​(d+Δ+log⁡A)​log2​A,\displaystyle N\lesssim C_{\mathsf{LSI}}(\mu)\,\beta_{1}\,(d+\Delta+\log A)\log^{2}A\,,
+
+where 
+A\coloneqq d+\Delta+\delta^{-1}+C_{\mathsf{LSI}}(\mu)\,\beta_{1}
+A≔d+Δ+δ−1+C𝖫𝖲𝖨​(μ)​β1A\coloneqq d+\Delta+\delta^{-1}+C_{\mathsf{LSI}}(\mu)\,\beta_{1}.
+
+2. 
+
+Suppose that 
+\mu
+μ\mu satisfies a Poincaré inequality with constant 
+C_{\mathsf{PI}}(\mu)&lt;\infty
+C𝖯𝖨​(μ)&lt;∞C_{\mathsf{PI}}(\mu)&lt;\infty.
+Then,
+
+\displaystyle N\lesssim C_{\mathsf{PI}}(\mu)\,(\beta_{s}d^{s})^{2/(1+s)}\,\Big(1+\frac{\Delta+\log A}{d}\Big)\,(\Delta+\log(1/\delta))\log A\,,
+N≲C𝖯𝖨​(μ)​(βs​ds)2/(1+s)​(1+Δ+log⁡Ad)​(Δ+log⁡(1/δ))​log⁡A,\displaystyle N\lesssim C_{\mathsf{PI}}(\mu)\,(\beta_{s}d^{s})^{2/(1+s)}\,\Big(1+\frac{\Delta+\log A}{d}\Big)\,(\Delta+\log(1/\delta))\log A\,,
+
+where 
+A\coloneqq d+\Delta+\delta^{-1}+C_{\mathsf{PI}}(\mu)\,\beta_{s}^{2/(1+s)}
+A≔d+Δ+δ−1+C𝖯𝖨​(μ)​βs2/(1+s)A\coloneqq d+\Delta+\delta^{-1}+C_{\mathsf{PI}}(\mu)\,\beta_{s}^{2/(1+s)}.
+
+3. 
+
+Suppose that 
+\mu
+μ\mu is log-concave.
+Then,
+
+\displaystyle N\lesssim(\beta_{s}d^{s})^{2/(1+s)}\,\Big(1+\frac{\Delta+\log A}{d}\Big)\log A\cdot\frac{W_{2}^{2}(\mu_{0},\mu)}{\delta^{2}}\,,
+N≲(βs​ds)2/(1+s)​(1+Δ+log⁡Ad)​log⁡A⋅W22​(μ0,μ)δ2,\displaystyle N\lesssim(\beta_{s}d^{s})^{2/(1+s)}\,\Big(1+\frac{\Delta+\log A}{d}\Big)\log A\cdot\frac{W_{2}^{2}(\mu_{0},\mu)}{\delta^{2}}\,,
+
+where 
+A\coloneqq d+\Delta+\delta^{-1}+\beta_{s}^{2/(1+s)}W_{2}^{2}(\mu_{0},\mu)
+A≔d+Δ+δ−1+βs2/(1+s)​W22​(μ0,μ)A\coloneqq d+\Delta+\delta^{-1}+\beta_{s}^{2/(1+s)}W_{2}^{2}(\mu_{0},\mu).
+
+Note that under noisy value queries of sub-Gaussian tail (Example 1), it holds that 
+\epsilon_{n}(1)\leq e^{-n/\sigma_{\sf g}^{2}}
+ϵn(1)≤e−n/σ𝗀2\epsilon_{n}(1)\leq e^{-n/\sigma_{\sf g}^{2}} for 
+n\gg\sigma_{\sf g}^{2}
+n≫σ𝗀2n\gg\sigma_{\sf g}^{2}, and hence 
+\phi_{1}(\delta)=O(\sigma_{\sf g}^{2}\log(1/\delta))
+ϕ1​(δ)=O⁡(σ𝗀2​log⁡(1/δ))\phi_{1}(\delta)=O(\sigma_{\sf g}^{2}\log(1/\delta)).
+Thus, assuming that 
+f
+ff is 
+\alpha
+α\alpha-strongly-convex and 
+\beta
+β\beta-smooth, the query complexity (roughly) scales as 
+\widetilde{O}(\kappa d\cdot\sigma_{\sf g}^{2})
+O~​(κ​d⋅σ𝗀2)\widetilde{O}(\kappa d\cdot\sigma_{\sf g}^{2}), where 
+\kappa=\beta/\alpha
+κ=β/α\kappa=\beta/\alpha is the condition number.
+By reduction to zeroth-order optimization, it is expected that in this setting, sublinear dependence on 
+d
+dd cannot be achieved.
+
+4 Lower bound: light tails are necessary for high accuracy sampling
+
+4.1 A simple lower bound
+
+We establish lower bounds for sampling with stochastic gradient queries under oracles with bounded 
+\psi
+ψ\psi-moment.
+
+Definition 4.
+
+Let 
+\psi:[0,+\infty)\to[0,+\infty)
+ψ:[0,+∞)→[0,+∞)\psi:[0,+\infty)\to[0,+\infty) be an increasing function such that 
+\psi(0)=0
+ψ⁡(0)=0\psi(0)=0. An oracle 
+\mathsf{O}_{\mathsf{grad}}(\cdot)
+𝖮𝗀𝗋𝖺𝖽​(⋅)\mathsf{O}_{\mathsf{grad}}(\cdot) is a 
+\psi
+ψ\psi-oracle for 
+f
+ff if for any 
+x\in\mathbb{R}^{d}
+x∈ℝdx\in\mathbb{R}^{d}, under 
+g\sim\mathsf{O}_{\mathsf{grad}}(x)
+g∼𝖮𝗀𝗋𝖺𝖽​(x)g\sim\mathsf{O}_{\mathsf{grad}}(x), it holds that 
+\En[g]=\nabla f(x)
+𝔼⁡[g]=∇f​(x)\En[g]=\nabla f(x) and 
+\En\psi(\|g-\nabla f(x)\|)\leq 1
+𝔼⁡ψ⁡(‖g−∇f​(x)‖)≤1\En\psi(\|g-\nabla f(x)\|)\leq 1.
+
+In the following, we present a simple information-theoretic argument based on the goal of sampling from a one-dimensional Gaussian with unit variance: 
+f_{\theta}(x)=\frac{1}{2}(x-\theta)^{2}
+fθ​(x)=12​(x−θ)2f_{\theta}(x)=\frac{1}{2}(x-\theta)^{2} and 
+\nabla f_{\theta}(x)=x-\theta
+∇fθ​(x)=x−θ\nabla f_{\theta}(x)=x-\theta.
+
+Proposition 4.1 (Lower bound).
+
+Fix any 
+\delta\in(0,1)
+δ∈(0,1)\delta\in(0,1) and increasing function 
+\psi:[0,+\infty)\to[0,+\infty)
+ψ:[0,+∞)→[0,+∞)\psi:[0,+\infty)\to[0,+\infty) such that 
+\psi(0)=0
+ψ⁡(0)=0\psi(0)=0. Suppose that 
+T\geq 1
+T≥1T\geq 1, and there is an algorithm Alg such that for any 
+\theta\in\{0,\delta\}
+θ∈{0,δ}\theta\in\{0,\delta\}, given any 
+\psi
+ψ\psi-oracle 
+O
+OO for 
+f_{\theta}
+fθf_{\theta}, return a sample 
+x\sim\texttt{Alg}(O)
+x∼Alg​(O)x\sim\texttt{Alg}(O) using 
+T
+TT queries to 
+O
+OO and 
+D_{\mathsf{TV}}\left(p_{\theta},\texttt{Alg}(O)\right)\leq\frac{\delta}{10}
+D𝖳𝖵​(pθ,Alg​(O))≤δ10D_{\mathsf{TV}}\left(p_{\theta},\texttt{Alg}(O)\right)\leq\frac{\delta}{10}. Then, it holds that
+
+\displaystyle T\geq\frac{1}{10}F_{\psi}(\delta)\,,\qquad F_{\psi}(\delta)\coloneqq\sup\{u\geq\delta:\delta\cdot\psi(u)\leq(1-\psi(\delta))\cdot u\}\,.
+T≥110​Fψ​(δ),Fψ​(δ)≔sup{u≥δ:δ⋅ψ⁡(u)≤(1−ψ⁡(δ))⋅u}.\displaystyle T\geq\frac{1}{10}F_{\psi}(\delta)\,,\qquad F_{\psi}(\delta)\coloneqq\sup\{u\geq\delta:\delta\cdot\psi(u)\leq(1-\psi(\delta))\cdot u\}\,.
+
+Now, consider the case where the only assumption on 
+\mathsf{O}_{\mathsf{grad}}(\cdot)
+𝖮𝗀𝗋𝖺𝖽​(⋅)\mathsf{O}_{\mathsf{grad}}(\cdot) is that the variance is bounded by 1. Then we can take 
+\psi(m)=m^{2}
+ψ⁡(m)=m2\psi(m)=m^{2} and 
+F_{\psi}(\delta)=\frac{1}{\delta}-\delta
+Fψ​(δ)=1δ−δF_{\psi}(\delta)=\frac{1}{\delta}-\delta, i.e., 
+\Omega(1/\delta)
+Ω⁡(1/δ)\Omega(1/\delta) queries are necessary for stochastic gradients with only bounded second moment.
+Thus, in this case, our upper bounds are optimal (Remark 5), at least with respect to the dependence on 
+\delta
+δ\delta.
+
+More generally, for 
+\psi(m)=m^{s}
+ψ⁡(m)=ms\psi(m)=m^{s} with 
+s&gt;1
+s&gt;1s&gt;1, we have 
+F_{\psi}(\delta)\asymp\frac{1}{\delta^{1/(s-1)}}
+Fψ​(δ)≍1δ1/(s−1)F_{\psi}(\delta)\asymp\frac{1}{\delta^{1/(s-1)}}. For 
+\psi(m)=e^{m^{s}}-1
+ψ⁡(m)=ems−1\psi(m)=e^{m^{s}}-1 with 
+s&gt;0
+s&gt;0s&gt;0, we have 
+F_{\psi}(\delta)\geq\Omega(\log^{1/s}(1/\delta))
+Fψ​(δ)≥Ω⁡(log1/s⁡(1/δ))F_{\psi}(\delta)\geq\Omega(\log^{1/s}(1/\delta)).
+
+4.2 Revisiting the lower bound of Chatterji et al. (2022)
+
+Here, we discuss the lower bound of Chatterji et al. (2022), which also applies to sampling with stochastic gradients, in order to avoid potential misunderstandings.
+
+Their main lower bound shows that there is a strongly log-concave and log-smooth distribution, with condition number 
+\kappa=O(1)
+κ=O⁡(1)\kappa=O(1), such that it requires 
+\Omega(\sigma^{2}/\delta^{2})
+Ω⁡(σ2/δ2)\Omega(\sigma^{2}/\delta^{2}) queries to reach 
+\delta
+δ\delta error in TV distance.
+Here, 
+\sigma^{2}
+σ2\sigma^{2} is the variance of the stochastic gradients.11
+              1
+
+            A variance bound of 
+\sigma^{2}
+σ2\sigma^{2} in our convention corresponds to a variance bound of 
+\sigma^{2}d
+σ2​d\sigma^{2}d in theirs.
+This appears to contradict our upper bound, which only requires 
+O(1/\delta)
+O⁡(1/δ)O(1/\delta) queries in the bounded variance case.
+Moreover, inspection of their lower bound reveals that it holds when the stochastic gradient oracle is produced by adding Gaussian noise; in particular, the stochastic gradients have sub-Gaussian tails.
+In such a setting, we have produced algorithms whose complexity scales as 
+O(\mathrm{polylog}(1/\delta))
+O⁡(polylog⁡(1/δ))O(\mathrm{polylog}(1/\delta)).
+
+To resolve this apparent contradiction, we remark that Chatterji et al. (2022, Theorem 4.1) therein requires taking the strong log-concavity parameter 
+\alpha\lesssim\delta^{2}
+α≲δ2\alpha\lesssim\delta^{2}.
+Our upper bounds, which generally incur a dependence of 
+\sigma^{2}/\alpha
+σ2/α\sigma^{2}/\alpha, therefore match their 
+\Omega(\sigma^{2}/\delta^{2})
+Ω⁡(σ2/δ2)\Omega(\sigma^{2}/\delta^{2}) lower bound for their hard examples up to logarithmic terms.
+However, their lower bounds do not address the question of what the best dependence on 
+\delta
+δ\delta is, provided that 
+\alpha
+α\alpha is bounded away from zero.
+This is the reason why we proved Proposition 4.1.
+
+We leave it as an open question to prove a more general lower bound which captures the dependence, not just on 
+\delta
+δ\delta, but on other problem parameters such as 
+\kappa
+κ\kappa and 
+d
+dd.
+In the case of exact oracle access, proving lower bounds for sampling remains notoriously challenging, with existing results providing sharp characterizations only for Gaussians or in low dimension (Chewi et al., 2022; Chewi et al., 2023).
+
+5 Conclusion
+
+In this work, we have shown that high-accuracy guarantees—
+\mathrm{polylog}(1/\delta)
+polylog⁡(1/δ)\mathrm{polylog}(1/\delta) rates—are achievable for sampling, provided that the stochastic gradients have light tails.
+Moreover, via an information-theoretic argument, we have shown that light tails are necessary for such a result.
+In fact, as a by-product of our analysis, we identified that the optimal dependence is 
+\Theta(1/\delta)
+Θ⁡(1/δ)\Theta(1/\delta) if the stochastic gradients are only assumed to have a bounded variance.
+
+Several open questions remain, of which we list two: (1) Can the lower bound be extended to capture dependence on other problem parameters, such as the dimension 
+d
+dd? (2) Can our results yield improved results in the finite-sum setting?
+
+Acknowledgments
+
+We thank Sam Power for bringing to our attention useful references.
+We acknowledge support from ARO through award W911NF-21-1-0328, Simons Foundation, and the NSF through awards DMS-2031883 and PHY-2019786, the DARPA AIQ program, and AFOSR FA9550-25-1-0375. CD is supported by a Simons Investigator Award, a Simons Collaboration on Algorithmic Fairness, ONR MURI grant N00014-25-1-2116, and ONR grant N00014-25-1-2296.
+
+References
+
+Agarwal et al. (2012)
+A. Agarwal, P. L. Bartlett, P. Ravikumar, and M. J. Wainwright
+
+Information-theoretic lower bounds on the oracle complexity of stochastic convex optimization.
+
+IEEE Trans. Inform. Theory 58 (5), pp. 3235–3249.
+
+Cited by: §1.
+
+Altschuler and Chewi (2024)
+J. M. Altschuler and S. Chewi
+
+Faster high-accuracy log-concave sampling via algorithmic warm starts.
+
+J. ACM 71 (3).
+
+Cited by: §1.1,
+Remark 2.
+
+Andrieu and Roberts (2009)
+C. Andrieu and G. O. Roberts
+
+The pseudo-marginal approach for efficient Monte Carlo computations.
+
+Ann. Statist. 37 (2), pp. 697–725.
+
+Cited by: §1.
+
+Bakry et al. (2014)
+D. Bakry, I. Gentil, and M. Ledoux
+
+Analysis and geometry of Markov diffusion operators.
+
+Grundlehren der Mathematischen Wissenschaften [Fundamental
+Principles of Mathematical Sciences], Vol. 348,  Springer, Cham.
+
+Cited by: §3.3.
+
+Balasubramanian et al. (2022)
+K. Balasubramanian, S. Chewi, M. A. Erdogdu, A. Salim, and M. S. Zhang
+
+Towards a theory of non-log-concave sampling: first-order stationarity guarantees for Langevin Monte Carlo.
+
+In Proceedings of Thirty Fifth Conference on Learning Theory,  P. Loh and M. Raginsky (Eds.),
+
+Proceedings of Machine Learning Research, Vol. 178, pp. 2896–2923.
+
+Cited by: §3.3.
+
+Chatterji et al. (2022)
+N. S. Chatterji, P. L. Bartlett, and P. M. Long
+
+Oracle lower bounds for stochastic gradient sampling algorithms.
+
+Bernoulli 28 (2), pp. 1074–1092.
+
+Cited by: §1.1,
+§4.2,
+§4.2,
+§4.2.
+
+Chen et al. (2026)
+F. Chen, S. Chewi, C. Daskalakis, and A. Rakhlin
+
+High-accuracy sampling for diffusion models and log-concave distributions.
+
+arXiv preprint arXiv:2602.01338.
+
+Cited by: Appendix B,
+§1.1,
+§3.1,
+§3.1,
+Theorem 3.1,
+§3,
+Remark 1,
+Remark 2.
+
+Chen et al. (2023)
+H. Chen, H. Lee, and J. Lu
+
+Improved analysis of score-based generative modeling: user-friendly bounds under minimal smoothness assumptions.
+
+In International Conference on Machine Learning,
+
+pp. 4735–4763.
+
+Cited by: §3.2.
+
+Chen et al. (2022)
+Y. Chen, S. Chewi, A. Salim, and A. Wibisono
+
+Improved analysis for a proximal algorithm for sampling.
+
+In Proceedings of Thirty Fifth Conference on Learning Theory,  P. Loh and M. Raginsky (Eds.),
+
+Proceedings of Machine Learning Research, Vol. 178, pp. 2984–3014.
+
+Cited by: §C.3,
+§3.3,
+§3.3,
+§3.
+
+Chewi et al. (2023)
+S. Chewi, J. De Dios Pont, J. Li, C. Lu, and S. Narayanan
+
+Query lower bounds for log-concave sampling.
+
+In 2023 IEEE 64th Annual Symposium on Foundations of Computer Science (FOCS),
+
+Vol. , pp. 2139–2148.
+
+Cited by: §4.2.
+
+Chewi et al. (2022)
+S. Chewi, P. R. Gerber, C. Lu, T. L. Gouic, and P. Rigollet
+
+The query complexity of sampling from strongly log-concave distributions in one dimension.
+
+In Proceedings of Thirty Fifth Conference on Learning Theory,  P. Loh and M. Raginsky (Eds.),
+
+Proceedings of Machine Learning Research, Vol. 178, pp. 2041–2059.
+
+Cited by: §4.2.
+
+Chewi et al. (2021)
+S. Chewi, C. Lu, K. Ahn, X. Cheng, T. L. Gouic, and P. Rigollet
+
+Optimal dimension dependence of the Metropolis-adjusted Langevin algorithm.
+
+In Proceedings of Thirty Fourth Conference on Learning Theory,  M. Belkin and S. Kpotufe (Eds.),
+
+Proceedings of Machine Learning Research, Vol. 134, pp. 1260–1300.
+
+Cited by: §1.1.
+
+Chewi (2026)
+S. Chewi
+
+Log-concave sampling.
+
+ Forthcoming.
+
+Note: Available online at https://chewisinho.github.io/
+
+Cited by: §C.3,
+§1,
+§3.3.
+
+Dalalyan and Karagulyan (2019)
+A. S. Dalalyan and A. Karagulyan
+
+User-friendly guarantees for the Langevin Monte Carlo with inaccurate gradient.
+
+Stochastic Process. Appl. 129 (12), pp. 5278–5311.
+
+Cited by: §3.3.
+
+Dalalyan (2017)
+A. S. Dalalyan
+
+Further and stronger analogy between sampling and optimization: Langevin Monte Carlo and gradient descent.
+
+In Proceedings of the 2017 Conference on Learning Theory,  S. Kale and O. Shamir (Eds.),
+
+Proceedings of Machine Learning Research, Vol. 65, pp. 678–689.
+
+Cited by: §3.3.
+
+Durmus et al. (2019)
+A. Durmus, S. Majewski, and B. Miasojedow
+
+Analysis of Langevin Monte Carlo via convex optimization.
+
+J. Mach. Learn. Res. 20, pp. Paper No. 73, 46.
+
+Cited by: §3.3.
+
+Fan et al. (2023)
+J. Fan, B. Yuan, and Y. Chen
+
+Improved dimension dependence of a proximal algorithm for sampling.
+
+In Proceedings of Thirty Sixth Conference on Learning Theory,  G. Neu and L. Rosasco (Eds.),
+
+Proceedings of Machine Learning Research, Vol. 195, pp. 1473–1521.
+
+Cited by: §1.1,
+Remark 2.
+
+Keane and O’Brien (1994)
+M. Keane and G. L. O’Brien
+
+A Bernoulli factory.
+
+ACM Transactions on Modeling and Computer Simulation (TOMACS) 4 (2), pp. 213–219.
+
+Cited by: §3.1.
+
+Lee et al. (2021)
+Y. T. Lee, R. Shen, and K. Tian
+
+Structured logconcave sampling with a restricted Gaussian oracle.
+
+In Proceedings of Thirty Fourth Conference on Learning Theory,  M. Belkin and S. Kpotufe (Eds.),
+
+Proceedings of Machine Learning Research, Vol. 134, pp. 2993–3050.
+
+Cited by: §1,
+§3.2,
+§3.3,
+§3.
+
+Lu et al. (2025)
+J. Lu, X. Ye, and Z. Zhou
+
+Mean square error analysis of stochastic gradient and variance-reduced sampling algorithms.
+
+arXiv preprint 2511.04413.
+
+Cited by: §3.3.
+
+Nacu and Peres (2005)
+Ş. Nacu and Y. Peres
+
+Fast simulation of new coins from old.
+
+Cited by: §3.1.
+
+Nemeth and Fearnhead (2021)
+C. Nemeth and P. Fearnhead
+
+Stochastic gradient Markov chain Monte Carlo.
+
+J. Amer. Statist. Assoc. 116 (533), pp. 433–450.
+
+Cited by: §1.
+
+Papaspiliopoulos (2011)
+O. Papaspiliopoulos
+
+Monte Carlo probabilistic inference for diffusion processes: a methodological framework.
+
+In Bayesian time series models,
+
+pp. 82–103.
+
+Cited by: §3.1.
+
+Raginsky and Rakhlin (2011)
+M. Raginsky and A. Rakhlin
+
+Information-based complexity, feedback and dynamics in convex programming.
+
+IEEE Transactions on Information Theory 57 (10), pp. 7036–7056.
+
+Cited by: §1.
+
+Seita et al. (2018)
+D. Seita, X. Pan, H. Chen, and J. Canny
+
+An efficient minibatch acceptance test for Metropolis–Hastings.
+
+In Proceedings of the Twenty-Seventh International Joint Conference on
+Artificial Intelligence, IJCAI-18,
+
+pp. 5359–5363.
+
+Cited by: §1.
+
+Wagner (1988)
+W. Wagner
+
+Monte Carlo evaluation of functionals of solutions of stochastic differential equations. Variance reduction and numerical examples.
+
+Stochastic Anal. Appl. 6 (4), pp. 447–468.
+
+Cited by: §3.1.
+
+Welling and Teh (2011)
+M. Welling and Y. Teh
+
+Bayesian learning via stochastic gradient Langevin dynamics.
+
+In Proceedings of the 28th International Conference on Machine Learning,
+
+ICML’11, Madison, WI, USA, pp. 681––688.
+
+Cited by: §1.
+
+Wu et al. (2022a)
+K. Wu, S. Schmidler, and Y. Chen
+
+Minimax mixing time of the Metropolis-adjusted Langevin algorithm for log-concave sampling.
+
+Journal of Machine Learning Research 23 (270), pp. 1–63.
+
+Cited by: §1.1.
+
+Wu et al. (2022b)
+T. Wu, Y. X. R. Wang, and W. H. Wong
+
+Mini-batch Metropolis–Hastings with reversible SGLD proposal.
+
+J. Amer. Statist. Assoc. 117 (537), pp. 386–394.
+
+Cited by: §1.
+
+Zhang et al. (2020)
+R. Zhang, A. F. Cooper, and C. M. De Sa
+
+Asymptotically optimal exact minibatch Metropolis–Hastings.
+
+In Advances in Neural Information Processing Systems,  H. Larochelle, M. Ranzato, R. Hadsell, M.F. Balcan, and H. Lin (Eds.),
+
+Vol. 33, pp. 19500–19510.
+
+Cited by: §1.
+
+Appendix A Implementation of the approximate proximal oracle
+
+In this section, we show how to implement the approximate proximal oracle (Assumption 4) using a stochastic gradient oracle.
+
+Proof of Lemma 2.1. 
+Our goal is to approximately compute
+
+\displaystyle\widehat{x}\approx\arg\min_{x\in\mathbb{R}^{d}}\big(f(x)+\frac{1}{2\eta}\|x-x_{0}\|^{2}\big)\,.
+x^≈arg⁡minx∈ℝd⁡(f⁡(x)+12​η​‖x−x0‖2).\displaystyle\widehat{x}\approx\arg\min_{x\in\mathbb{R}^{d}}\big(f(x)+\frac{1}{2\eta}\|x-x_{0}\|^{2}\big)\,.
+
+Let 
+x^{\star}
+x⋆x^{\star} be an optimal solution to the minimization problem. We denote 
+m_{s}=\beta_{s}^{1/(1+s)}
+ms=βs1/(1+s)m_{s}=\beta_{s}^{1/(1+s)} assume that 
+\eta\leq\frac{1}{2m_{s}}
+η≤12​ms\eta\leq\frac{1}{2m_{s}}.
+
+We consider the following linearized update rule: Let 
+X_{0}=x_{0}
+X0=x0X_{0}=x_{0}, and
+
+\displaystyle X_{k+1}=\frac{X_{k}-\eta g_{k}+x_{0}}{2}\,,\quad g_{k}\sim\mathsf{O}_{\mathsf{grad}}^{(n)}(X_{k})\,,\qquad\forall k\geq 0\,.
+Xk+1=Xk−η​gk+x02,gk∼𝖮𝗀𝗋𝖺𝖽(n)​(Xk),∀k≥0.\displaystyle X_{k+1}=\frac{X_{k}-\eta g_{k}+x_{0}}{2}\,,\quad g_{k}\sim\mathsf{O}_{\mathsf{grad}}^{(n)}(X_{k})\,,\qquad\forall k\geq 0\,.
+
+Note that 
+x^{\star}+\eta\nabla f(x^{\star})=x_{0}
+x⋆+η∇f(x⋆)=x0x^{\star}+\eta\nabla f(x^{\star})=x_{0}. Therefore,
+
+\displaystyle 2\|X_{k+1}-x^{\star}\|=
+2​‖Xk+1−x⋆‖=\displaystyle 2\|X_{k+1}-x^{\star}\|=
+
+\displaystyle~\|X_{k}-\eta g_{k}-x^{\star}+\eta\nabla f(x^{\star})\|
+∥Xk−ηgk−x⋆+η∇f(x⋆)∥\displaystyle~\|X_{k}-\eta g_{k}-x^{\star}+\eta\nabla f(x^{\star})\|
+
+\displaystyle\leq
+≤\displaystyle\leq
+
+\displaystyle~\|X_{k}-x^{\star}-\eta(\nabla f(X_{k})-\nabla f(x^{\star}))\|+\eta\|g_{k}-\nabla f(X_{k})\|\,.
+‖Xk−x⋆−η⁡(∇f​(Xk)−∇f​(x⋆))‖+η​‖gk−∇f​(Xk)‖.\displaystyle~\|X_{k}-x^{\star}-\eta(\nabla f(X_{k})-\nabla f(x^{\star}))\|+\eta\|g_{k}-\nabla f(X_{k})\|\,.
+
+In the following we denote
+
+\displaystyle\Delta_{k}\coloneqq\|X_{k}-x^{\star}\|\,,\qquad E_{k}\coloneqq\|g_{k}-\nabla f(X_{k})\|\,.
+Δk≔‖Xk−x⋆‖,Ek≔‖gk−∇f​(Xk)‖.\displaystyle\Delta_{k}\coloneqq\|X_{k}-x^{\star}\|\,,\qquad E_{k}\coloneqq\|g_{k}-\nabla f(X_{k})\|\,.
+
+Note that by
+Assumption 3,
+
+\displaystyle\|X_{k}-x^{\star}-\eta(\nabla f(X_{k})-\nabla f(x^{\star}))\|\leq
+‖Xk−x⋆−η⁡(∇f​(Xk)−∇f​(x⋆))‖≤\displaystyle\|X_{k}-x^{\star}-\eta(\nabla f(X_{k})-\nabla f(x^{\star}))\|\leq
+
+\displaystyle~\|X_{k}-x^{\star}\|+\eta\|\nabla f(X_{k})-\nabla f(x^{\star})\|
+‖Xk−x⋆‖+η​‖∇f​(Xk)−∇f​(x⋆)‖\displaystyle~\|X_{k}-x^{\star}\|+\eta\|\nabla f(X_{k})-\nabla f(x^{\star})\|
+
+\displaystyle\leq
+≤\displaystyle\leq
+
+\displaystyle~\Delta_{k}+\eta\beta_{s}\Delta_{k}^{s}\,.
+Δk+η​βs​Δks.\displaystyle~\Delta_{k}+\eta\beta_{s}\Delta_{k}^{s}\,.
+
+When 
+s\in(0,1)
+s∈(0,1)s\in(0,1), we can use AM–GM inequality to derive 
+\eta\beta_{s}\Delta^{s}\leq\frac{1}{2}\Delta+\eta m_{s}
+η​βs​Δs≤12​Δ+η​ms\eta\beta_{s}\Delta^{s}\leq\frac{1}{2}\Delta+\eta m_{s}. It is also straightforward to verify this inequality holds for 
+s\in\{0,1\}
+s∈{0,1}s\in\{0,1\}.
+
+Then, it holds that
+
+\displaystyle\Delta_{k+1}\leq\frac{\frac{3}{2}\Delta_{k}+\eta(m_{s}+E_{k})}{2}\,,\qquad\forall k\geq 0\,.
+Δk+1≤32​Δk+η⁡(ms+Ek)2,∀k≥0.\displaystyle\Delta_{k+1}\leq\frac{\frac{3}{2}\Delta_{k}+\eta(m_{s}+E_{k})}{2}\,,\qquad\forall k\geq 0\,.
+
+Applying this inequality recursively, we get
+
+\displaystyle\Delta_{k}\leq\Big(\frac{3}{4}\Big)^{k}\Delta_{0}+2\eta m_{s}+\frac{\eta}{2}\sum_{i=1}^{k}\Big(\frac{3}{4}\Big)^{i-1}E_{k-i}\,.
+Δk≤(34)k​Δ0+2​η​ms+η2​∑i=1k(34)i−1​Ek−i.\displaystyle\Delta_{k}\leq\Big(\frac{3}{4}\Big)^{k}\Delta_{0}+2\eta m_{s}+\frac{\eta}{2}\sum_{i=1}^{k}\Big(\frac{3}{4}\Big)^{i-1}E_{k-i}\,.
+
+Note that 
+\mathbb{P}(Y\geq 2y)\leq\frac{1}{y}\En(Y-y)_{+}
+ℙ⁡(Y≥2​y)≤1y​𝔼⁡(Y−y)+\mathbb{P}(Y\geq 2y)\leq\frac{1}{y}\En(Y-y)_{+} for 
+y&gt;0
+y&gt;0y&gt;0, and hence
+
+\displaystyle\mathbb{P}\Big(\Delta_{k}\geq 2\Big(\frac{3}{4}\Big)^{k}\Delta_{0}+4\eta(m_{s}+M)\Big)\leq
+ℙ⁡(Δk≥2​(34)k​Δ0+4​η​(ms+M))≤\displaystyle\mathbb{P}\Big(\Delta_{k}\geq 2\Big(\frac{3}{4}\Big)^{k}\Delta_{0}+4\eta(m_{s}+M)\Big)\leq
+
+\displaystyle~\frac{1}{8M}\sum_{i=1}^{k}\Big(\frac{3}{4}\Big)^{i-1}\En(E_{k-i}-M)_{+}
+18​M​∑i=1k(34)i−1​𝔼⁡(Ek−i−M)+\displaystyle~\frac{1}{8M}\sum_{i=1}^{k}\Big(\frac{3}{4}\Big)^{i-1}\En(E_{k-i}-M)_{+}
+
+\displaystyle\leq
+≤\displaystyle\leq
+
+\displaystyle~\frac{1}{2}\epsilon_{n}(M)\,.
+12​ϵn​(M).\displaystyle~\frac{1}{2}\epsilon_{n}(M)\,.
+
+Note that
+
+\displaystyle\Delta_{0}=
+Δ0=\displaystyle\Delta_{0}=
+
+\displaystyle~\|x_{0}-x^{\star}\|=\eta\|\nabla f(x^{\star})\|\leq\eta\|\nabla f(x_{0})\|+\eta\|\nabla f(x_{0})-\nabla f(x^{\star})\|
+‖x0−x⋆‖=η​‖∇f​(x⋆)‖≤η​‖∇f​(x0)‖+η​‖∇f​(x0)−∇f​(x⋆)‖\displaystyle~\|x_{0}-x^{\star}\|=\eta\|\nabla f(x^{\star})\|\leq\eta\|\nabla f(x_{0})\|+\eta\|\nabla f(x_{0})-\nabla f(x^{\star})\|
+
+\displaystyle\leq
+≤\displaystyle\leq
+
+\displaystyle~\eta G+\eta\beta_{s}\|x_{0}-x^{\star}\|^{s}\leq\eta G+\eta m_{s}+\frac{1}{2}\Delta_{0},
+η​G+η​βs​‖x0−x⋆‖s≤η​G+η​ms+12​Δ0,\displaystyle~\eta G+\eta\beta_{s}\|x_{0}-x^{\star}\|^{s}\leq\eta G+\eta m_{s}+\frac{1}{2}\Delta_{0},
+
+and hence 
+\Delta_{0}\leq 2\eta G+2\eta m_{s}
+Δ0≤2​η​G+2​η​ms\Delta_{0}\leq 2\eta G+2\eta m_{s}.
+In particular, when 
+k\geq 10\log(4G/(M+m_{s}))
+k≥10​log⁡(4​G/(M+ms))k\geq 10\log(4G/(M+m_{s})), we know
+
+\displaystyle\mathbb{P}\left(\Delta_{k}\geq 5\eta(m_{s}+M)\right)\leq\epsilon_{n}(M)\,.
+ℙ⁡(Δk≥5​η​(ms+M))≤ϵn​(M).\displaystyle\mathbb{P}\left(\Delta_{k}\geq 5\eta(m_{s}+M)\right)\leq\epsilon_{n}(M)\,.
+
+Finally, note that
+
+\displaystyle\|X_{k}+\eta\nabla f(X_{k})-x_{0}\|\leq
+∥Xk+η∇f(Xk)−x0∥≤\displaystyle\|X_{k}+\eta\nabla f(X_{k})-x_{0}\|\leq
+
+\displaystyle~\|X_{k}-x^{\star}\|+\eta\|\nabla f(X_{k})-\nabla f(x^{\star})\|
+‖Xk−x⋆‖+η​‖∇f​(Xk)−∇f​(x⋆)‖\displaystyle~\|X_{k}-x^{\star}\|+\eta\|\nabla f(X_{k})-\nabla f(x^{\star})\|
+
+\displaystyle\leq
+≤\displaystyle\leq
+
+\displaystyle~\Delta_{k}+\eta\beta_{s}\Delta_{k}^{s}\leq\frac{3}{2}\Delta_{k}+\eta m_{s},
+Δk+η​βs​Δks≤32​Δk+η​ms,\displaystyle~\Delta_{k}+\eta\beta_{s}\Delta_{k}^{s}\leq\frac{3}{2}\Delta_{k}+\eta m_{s},
+
+and hence we know
+
+\displaystyle\mathbb{P}\left(\|X_{k}+\eta\nabla f(X_{k})-x_{0}\|\geq 10\eta(m_{s}+M)\right)\leq\epsilon_{n}(M)\,.
+ℙ(∥Xk+η∇f(Xk)−x0∥≥10η(ms+M))≤ϵn(M).\displaystyle\mathbb{P}\left(\|X_{k}+\eta\nabla f(X_{k})-x_{0}\|\geq 10\eta(m_{s}+M)\right)\leq\epsilon_{n}(M)\,.
+
+∎
+
+Appendix B Technical tools
+
+Lemma B.1.
+
+Let 
+\lambda&gt;0
+λ&gt;0\lambda&gt;0, 
+B&gt;0
+B&gt;0B&gt;0. Then
+
+\displaystyle\En_{Z\sim\mathsf{N}\left(0,\sigma^{2}I\right)}[e^{\lambda(\lvert Z\rvert-B)_{+}}-1]\leq 2e^{\frac{1}{2}\lambda^{2}\sigma^{2}}\,.
+𝔼Z∼𝖭⁡(0,σ2​I)⁡[eλ​(|Z|−B)+−1]≤2​e12​λ2​σ2.\displaystyle\En_{Z\sim\mathsf{N}\left(0,\sigma^{2}I\right)}[e^{\lambda(\lvert Z\rvert-B)_{+}}-1]\leq 2e^{\frac{1}{2}\lambda^{2}\sigma^{2}}\,.
+
+Further, when 
+B\geq 2\max\{\lambda\sigma^{2},\sigma\}
+B≥2​max⁡{λ​σ2,σ}B\geq 2\max\{\lambda\sigma^{2},\sigma\}, we can bound
+
+\displaystyle\En_{Z\sim\mathsf{N}\left(0,\sigma^{2}I\right)}[e^{\lambda(\lvert Z\rvert-B)_{+}}-1]\leq e^{-\frac{B^{2}}{8\sigma^{2}}}.
+𝔼Z∼𝖭⁡(0,σ2​I)⁡[eλ​(|Z|−B)+−1]≤e−B28​σ2.\displaystyle\En_{Z\sim\mathsf{N}\left(0,\sigma^{2}I\right)}[e^{\lambda(\lvert Z\rvert-B)_{+}}-1]\leq e^{-\frac{B^{2}}{8\sigma^{2}}}.
+
+Proof. By rescaling, we may assume 
+\sigma=1
+σ=1\sigma=1. Then, we can upper bound
+
+\displaystyle\En_{Z\sim\mathsf{N}\left(0,\sigma^{2}I\right)}[e^{\lambda(\lvert Z\rvert-B)_{+}}-1]\leq
+𝔼Z∼𝖭⁡(0,σ2​I)⁡[eλ​(|Z|−B)+−1]≤\displaystyle\En_{Z\sim\mathsf{N}\left(0,\sigma^{2}I\right)}[e^{\lambda(\lvert Z\rvert-B)_{+}}-1]\leq
+
+\displaystyle~\sqrt{\frac{2}{\pi}}\int_{B}^{\infty}e^{\lambda(z-B)-\frac{1}{2}z^{2}}\,dz
+2π​∫B∞eλ⁡(z−B)−12​z2​𝑑z\displaystyle~\sqrt{\frac{2}{\pi}}\int_{B}^{\infty}e^{\lambda(z-B)-\frac{1}{2}z^{2}}\,dz
+
+\displaystyle=
+=\displaystyle=
+
+\displaystyle~\sqrt{\frac{2}{\pi}}\int_{B}^{\infty}e^{\frac{1}{2}\lambda^{2}-\lambda B-\frac{1}{2}(z-\lambda)^{2}}\,dz=2e^{\frac{1}{2}\lambda^{2}-\lambda B}\Phi(B-\lambda)\,,
+2π​∫B∞e12​λ2−λ​B−12​(z−λ)2​𝑑z=2​e12​λ2−λ​B​Φ​(B−λ),\displaystyle~\sqrt{\frac{2}{\pi}}\int_{B}^{\infty}e^{\frac{1}{2}\lambda^{2}-\lambda B-\frac{1}{2}(z-\lambda)^{2}}\,dz=2e^{\frac{1}{2}\lambda^{2}-\lambda B}\Phi(B-\lambda)\,,
+
+where 
+\Phi(w)=\frac{1}{\sqrt{2\pi}}\int_{w}^{\infty}e^{-\frac{1}{2}z^{2}}\,dz
+Φ⁡(w)=12​π​∫w∞e−12​z2​𝑑z\Phi(w)=\frac{1}{\sqrt{2\pi}}\int_{w}^{\infty}e^{-\frac{1}{2}z^{2}}\,dz. The first inequality then follows from 
+\Phi(B-\lambda)\leq 1
+Φ⁡(B−λ)≤1\Phi(B-\lambda)\leq 1. Further, using the inequality 
+\Psi(w)\leq\frac{1}{\sqrt{2\pi}w}e^{-\frac{1}{2}w^{2}}
+Ψ⁡(w)≤12​π​w​e−12​w2\Psi(w)\leq\frac{1}{\sqrt{2\pi}w}e^{-\frac{1}{2}w^{2}} for 
+w&gt;0
+w&gt;0w&gt;0, we can bound
+
+\displaystyle\En_{Z\sim\mathsf{N}\left(0,\sigma^{2}I\right)}[e^{\lambda(\lvert Z\rvert-B)_{+}}-1]\leq
+𝔼Z∼𝖭⁡(0,σ2​I)⁡[eλ​(|Z|−B)+−1]≤\displaystyle\En_{Z\sim\mathsf{N}\left(0,\sigma^{2}I\right)}[e^{\lambda(\lvert Z\rvert-B)_{+}}-1]\leq
+
+\displaystyle~2e^{\frac{1}{2}\lambda^{2}-\lambda B}\Phi(B-\lambda)
+2​e12​λ2−λ​B​Φ​(B−λ)\displaystyle~2e^{\frac{1}{2}\lambda^{2}-\lambda B}\Phi(B-\lambda)
+
+\displaystyle\leq
+≤\displaystyle\leq
+
+\displaystyle~e^{\frac{1}{2}\lambda^{2}-\lambda B-\frac{1}{8}B^{2}}\leq e^{-\frac{1}{8}B^{2}}\,.
+e12​λ2−λ​B−18​B2≤e−18​B2.\displaystyle~e^{\frac{1}{2}\lambda^{2}-\lambda B-\frac{1}{8}B^{2}}\leq e^{-\frac{1}{8}B^{2}}\,.
+
+∎
+
+The following lemma is standard (Chen et al., 2026).
+
+Lemma B.2.
+
+Suppose that 
+\eta&gt;0
+η&gt;0\eta&gt;0 and 
+0\leq\lambda\leq\frac{d^{1-s}}{4s\eta^{s}}
+0≤λ≤d1−s4​s​ηs0\leq\lambda\leq\frac{d^{1-s}}{4s\eta^{s}}. Then, it holds that
+
+\displaystyle\En_{W\sim\mathsf{N}\left(0,\eta I\right)}\exp\left(\lambda\|W\|^{2s}\right)\leq\exp\left(2(\eta d)^{s}\lambda\right)\,.
+𝔼W∼𝖭⁡(0,η​I)⁡exp⁡(λ​‖W‖2​s)≤exp⁡(2​(η​d)s​λ).\displaystyle\En_{W\sim\mathsf{N}\left(0,\eta I\right)}\exp\left(\lambda\|W\|^{2s}\right)\leq\exp\left(2(\eta d)^{s}\lambda\right)\,.
+
+For two probability measures 
+\mu
+μ\mu, 
+\nu
+ν\nu, and 
+\ell&gt;1
+ℓ&gt;1\ell&gt;1, we write 
+D_{\ell}\left(\mu\,\|\,\nu\right)\coloneqq\En_{\mu}(\frac{\mu}{\nu})^{\ell-1}-1
+Dℓ(μ∥ν)≔𝔼μ(μν)ℓ−1−1D_{\ell}\left(\mu\,\|\,\nu\right)\coloneqq\En_{\mu}(\frac{\mu}{\nu})^{\ell-1}-1.
+
+Lemma B.3.
+
+For any 
+\ell&gt;1
+ℓ&gt;1\ell&gt;1, it holds that
+
+\displaystyle\max\{D_{\ell}\left(\mu_{f}\,\|\,\mu_{g}\right),D_{\ell}\left(\mu_{g}\,\|\,\mu_{f}\right)\}\leq\En_{x\sim\mu_{f}}[e^{2\ell\,\lvert f(x)-g(x)\rvert}-1]\,.
+max{Dℓ(μf∥μg),Dℓ(μg∥μf)}≤𝔼x∼μf[e2​ℓ​|f⁡(x)−g⁡(x)|−1].\displaystyle\max\{D_{\ell}\left(\mu_{f}\,\|\,\mu_{g}\right),D_{\ell}\left(\mu_{g}\,\|\,\mu_{f}\right)\}\leq\En_{x\sim\mu_{f}}[e^{2\ell\,\lvert f(x)-g(x)\rvert}-1]\,.
+
+(7)
+
+Furthermore, it holds that
+
+\displaystyle D_{\mathsf{TV}}\left(\mu_{f},\mu_{g}\right)\leq\En_{x\sim\mu_{f}}[e^{2\,\lvert f(x)-g(x)\rvert}-1]\,.
+D𝖳𝖵​(μf,μg)≤𝔼x∼μf⁡[e2​|f⁡(x)−g⁡(x)|−1].\displaystyle D_{\mathsf{TV}}\left(\mu_{f},\mu_{g}\right)\leq\En_{x\sim\mu_{f}}[e^{2\,\lvert f(x)-g(x)\rvert}-1]\,.
+
+(8)
+
+Proof. By definition, we can write
+
+\displaystyle\frac{\mu_{f}(x)}{\mu_{g}(x)}=e^{g(x)-f(x)}\En_{\mu_{f}}[e^{f-g}]\,.
+μf​(x)μg​(x)=eg⁡(x)−f⁡(x)​𝔼μf​[ef−g].\displaystyle\frac{\mu_{f}(x)}{\mu_{g}(x)}=e^{g(x)-f(x)}\En_{\mu_{f}}[e^{f-g}]\,.
+
+Therefore, we have
+
+\displaystyle 1+D_{\ell}\left(\mu_{f}\,\|\,\mu_{g}\right)=
+1+Dℓ(μf∥μg)=\displaystyle 1+D_{\ell}\left(\mu_{f}\,\|\,\mu_{g}\right)=
+
+\displaystyle~\En_{\mu_{f}}\big(\frac{\mu_{f}}{\mu_{g}}\big)^{\ell-1}=\left(\En_{\mu_{f}}[e^{f-g}]\right)^{\ell-1}\cdot\En_{\mu_{f}}[e^{(\ell-1)(g-f)}]
+𝔼μf⁡(μfμg)ℓ−1=(𝔼μf⁡[ef−g])ℓ−1⋅𝔼μf⁡[e(ℓ−1)​(g−f)]\displaystyle~\En_{\mu_{f}}\big(\frac{\mu_{f}}{\mu_{g}}\big)^{\ell-1}=\left(\En_{\mu_{f}}[e^{f-g}]\right)^{\ell-1}\cdot\En_{\mu_{f}}[e^{(\ell-1)(g-f)}]
+
+\displaystyle\leq
+≤\displaystyle\leq
+
+\displaystyle~\big(\En_{\mu_{f}}e^{(\ell-1)\lvert f-g\rvert}\big)^{2}\leq\En_{\mu_{f}}[e^{2\ell\lvert f-g\rvert}]\,.
+(𝔼μf⁡e(ℓ−1)​|f−g|)2≤𝔼μf⁡[e2​ℓ​|f−g|].\displaystyle~\big(\En_{\mu_{f}}e^{(\ell-1)\lvert f-g\rvert}\big)^{2}\leq\En_{\mu_{f}}[e^{2\ell\lvert f-g\rvert}]\,.
+
+Similarly,
+
+\displaystyle 1+D_{\ell}\left(\mu_{g}\,\|\,\mu_{f}\right)=
+1+Dℓ(μg∥μf)=\displaystyle 1+D_{\ell}\left(\mu_{g}\,\|\,\mu_{f}\right)=
+
+\displaystyle~\En_{\mu_{f}}\big(\frac{\mu_{g}}{\mu_{f}}\big)^{\ell}=\left(\En_{\mu_{f}}[e^{f-g}]\right)^{-\ell}\cdot\En_{\mu_{f}}[e^{\ell(f-g)}]\leq\En_{\mu_{f}}[e^{-\ell(f-g)}]\cdot\En_{\mu_{f}}[e^{\ell(f-g)}]
+𝔼μf⁡(μgμf)ℓ=(𝔼μf⁡[ef−g])−ℓ⋅𝔼μf⁡[eℓ⁡(f−g)]≤𝔼μf⁡[e−ℓ⁡(f−g)]⋅𝔼μf⁡[eℓ⁡(f−g)]\displaystyle~\En_{\mu_{f}}\big(\frac{\mu_{g}}{\mu_{f}}\big)^{\ell}=\left(\En_{\mu_{f}}[e^{f-g}]\right)^{-\ell}\cdot\En_{\mu_{f}}[e^{\ell(f-g)}]\leq\En_{\mu_{f}}[e^{-\ell(f-g)}]\cdot\En_{\mu_{f}}[e^{\ell(f-g)}]
+
+\displaystyle\leq
+≤\displaystyle\leq
+
+\displaystyle~\big(\En_{\mu_{f}}e^{\ell\lvert f-g\rvert}\big)^{2}\leq\En_{\mu_{f}}[e^{2\ell\lvert f-g\rvert}]\,.
+(𝔼μf⁡eℓ​|f−g|)2≤𝔼μf⁡[e2​ℓ​|f−g|].\displaystyle~\big(\En_{\mu_{f}}e^{\ell\lvert f-g\rvert}\big)^{2}\leq\En_{\mu_{f}}[e^{2\ell\lvert f-g\rvert}]\,.
+
+Combining both inequalities completes the proof of the first inequality.
+
+To prove the second inequality, we note that
+
+\displaystyle 2D_{\mathsf{TV}}\left(\mu_{f},\mu_{g}\right)=
+2​D𝖳𝖵​(μf,μg)=\displaystyle 2D_{\mathsf{TV}}\left(\mu_{f},\mu_{g}\right)=
+
+\displaystyle~\En_{\mu_{f}}\Big\lvert\frac{\mu_{f}}{\mu_{g}}-1\Big\rvert=\En_{x\sim\mu_{f}}\Big\lvert\frac{e^{f(x)-g(x)}}{\En_{\mu_{f}}[e^{f-g}]}-1\Big\rvert
+𝔼μf⁡|μfμg−1|=𝔼x∼μf⁡|ef⁡(x)−g⁡(x)𝔼μf⁡[ef−g]−1|\displaystyle~\En_{\mu_{f}}\Big\lvert\frac{\mu_{f}}{\mu_{g}}-1\Big\rvert=\En_{x\sim\mu_{f}}\Big\lvert\frac{e^{f(x)-g(x)}}{\En_{\mu_{f}}[e^{f-g}]}-1\Big\rvert
+
+\displaystyle\leq
+≤\displaystyle\leq
+
+\displaystyle~\frac{1}{\En_{\mu_{f}}[e^{f-g}]}\,\big(\En_{\mu_{f}}\lvert e^{f-g}-1\rvert+\lvert\En_{\mu_{f}}[e^{f-g}]-1\rvert\big)
+1𝔼μf⁡[ef−g]​(𝔼μf⁡|ef−g−1|+|𝔼μf⁡[ef−g]−1|)\displaystyle~\frac{1}{\En_{\mu_{f}}[e^{f-g}]}\,\big(\En_{\mu_{f}}\lvert e^{f-g}-1\rvert+\lvert\En_{\mu_{f}}[e^{f-g}]-1\rvert\big)
+
+\displaystyle\leq
+≤\displaystyle\leq
+
+\displaystyle~\frac{2}{\En_{\mu_{f}}[e^{f-g}]}\En_{\mu_{f}}\lvert e^{f-g}-1\rvert\,.
+2𝔼μf⁡[ef−g]​𝔼μf​|ef−g−1|.\displaystyle~\frac{2}{\En_{\mu_{f}}[e^{f-g}]}\En_{\mu_{f}}\lvert e^{f-g}-1\rvert\,.
+
+Note that 
+\lvert e^{w}-1\rvert\leq e^{\lvert w\rvert}-1
+|ew−1|≤e|w|−1\lvert e^{w}-1\rvert\leq e^{\lvert w\rvert}-1 and 
+\frac{1}{\En_{\mu_{f}}[e^{f-g}]}\leq\En_{\mu_{f}}[e^{g-f}]\leq\En_{\mu_{f}}[e^{\lvert f-g\rvert}]
+1𝔼μf⁡[ef−g]≤𝔼μf⁡[eg−f]≤𝔼μf⁡[e|f−g|]\frac{1}{\En_{\mu_{f}}[e^{f-g}]}\leq\En_{\mu_{f}}[e^{g-f}]\leq\En_{\mu_{f}}[e^{\lvert f-g\rvert}], so we can deduce
+
+\displaystyle D_{\mathsf{TV}}\left(\mu_{f},\mu_{g}\right)\leq\En_{\mu_{f}}[e^{\lvert f-g\rvert}]\,\big(\En_{\mu_{f}}[e^{\lvert f-g\rvert}]-1\big)\leq\En_{\mu_{f}}[e^{2\lvert f-g\rvert}-1]\,.
+D𝖳𝖵​(μf,μg)≤𝔼μf⁡[e|f−g|]​(𝔼μf⁡[e|f−g|]−1)≤𝔼μf⁡[e2​|f−g|−1].\displaystyle D_{\mathsf{TV}}\left(\mu_{f},\mu_{g}\right)\leq\En_{\mu_{f}}[e^{\lvert f-g\rvert}]\,\big(\En_{\mu_{f}}[e^{\lvert f-g\rvert}]-1\big)\leq\En_{\mu_{f}}[e^{2\lvert f-g\rvert}-1]\,.
+
+∎
+
+Lemma B.4 (Sub-additivity for TV distance).
+
+Suppose that 
+X_{1}\to\cdots\to X_{T}
+X1→⋯→XTX_{1}\to\cdots\to X_{T} is a Markov chain. Given a family of transition kernels 
+\rho=(\rho_{t}:\mathcal{X}\to\Delta(\mathcal{X}))_{t\in[T]}
+ρ=(ρt:𝒳→Δ(𝒳))t∈[T]\rho=(\rho_{t}:\mathcal{X}\to\Delta(\mathcal{X}))_{t\in[T]}, we let 
+\mathbb{P}_{\rho}
+ℙρ\mathbb{P}_{\rho} be the law of 
+X_{1},\ldots,X_{T}
+X1,…,XTX_{1},\ldots,X_{T} under 
+X_{1}\sim\rho_{1}
+X1∼ρ1X_{1}\sim\rho_{1}, 
+X_{t}\sim\rho_{t}(\cdot\mid X_{t-1})
+Xt∼ρt(⋅∣Xt−1)X_{t}\sim\rho_{t}(\cdot\mid X_{t-1}). Then, for any families of transition kernels 
+\rho,\rho^{\prime}
+ρ,ρ′\rho,\rho^{\prime}, it holds that
+
+\displaystyle D_{\mathsf{TV}}\left(\mathbb{P}_{\rho},\mathbb{P}_{\rho^{\prime}}\right)\leq\sum_{t=1}^{T}\En_{X_{t-1}\sim\mathbb{P}_{\rho}}\left[D_{\mathsf{TV}}\left(\rho_{t}(\cdot\mid X_{t-1}),\rho^{\prime}_{t}(\cdot\mid X_{t-1})\right)\right]\,,
+D𝖳𝖵(ℙρ,ℙρ′)≤∑t=1T𝔼Xt−1∼ℙρ[D𝖳𝖵(ρt(⋅∣Xt−1),ρt′(⋅∣Xt−1))],\displaystyle D_{\mathsf{TV}}\left(\mathbb{P}_{\rho},\mathbb{P}_{\rho^{\prime}}\right)\leq\sum_{t=1}^{T}\En_{X_{t-1}\sim\mathbb{P}_{\rho}}\left[D_{\mathsf{TV}}\left(\rho_{t}(\cdot\mid X_{t-1}),\rho^{\prime}_{t}(\cdot\mid X_{t-1})\right)\right]\,,
+
+where we regard 
+X_{0}={\perp}
+X0=⟂X_{0}={\perp} and 
+\rho_{1}(\cdot\mid\perp)=\rho_{1}
+ρ1(⋅∣⟂)=ρ1\rho_{1}(\cdot\mid\perp)=\rho_{1}.
+
+Appendix C Proofs from Section 3
+
+C.1 Proof of Theorem 3.2
+
+Without loss of generality we only consider the case 
+n=1
+n=1n=1.
+We denote by 
+P_{x}
+PxP_{x} the joint distribution of 
+(r,z,g)
+(r,z,g)(r,z,g) under (2).
+
+By Theorem 3.1, the output of Algorithm 1 with the specified choices samples from 
+\widehat{\nu}
+ν^\widehat{\nu}, such that
+
+\displaystyle\log\widehat{\nu}(x)-\log q(x)=\mathrm{const}+\En_{(r,z,g)\sim P_{x}}\mathsf{Clip}_{B}(W_{r,z,g,x})\,.
+log⁡ν^​(x)−log⁡q⁡(x)=const+𝔼(r,z,g)∼Px⁡𝖢𝗅𝗂𝗉B​(Wr,z,g,x).\displaystyle\log\widehat{\nu}(x)-\log q(x)=\mathrm{const}+\En_{(r,z,g)\sim P_{x}}\mathsf{Clip}_{B}(W_{r,z,g,x})\,.
+
+On the other hand, we know
+
+\displaystyle\En_{(r,z,g)\sim P_{x}}[W_{r,z,g,x}]=\En_{r,z}\langle\dot{\gamma}_{z,r}(x),u-\nabla f(\gamma_{z,r}(x))\rangle=
+𝔼(r,z,g)∼Px⁡[Wr,z,g,x]=𝔼r,z⁡⟨γ˙z,r​(x),u−∇f​(γz,r​(x))⟩=\displaystyle\En_{(r,z,g)\sim P_{x}}[W_{r,z,g,x}]=\En_{r,z}\langle\dot{\gamma}_{z,r}(x),u-\nabla f(\gamma_{z,r}(x))\rangle=
+
+\displaystyle~-f(x)+\langle u,x\rangle+\mathrm{const}
+−f⁡(x)+⟨u,x⟩+const\displaystyle~-f(x)+\langle u,x\rangle+\mathrm{const}
+
+\displaystyle=
+=\displaystyle=
+
+\displaystyle~\log\nu(x)-\log q(x)+\mathrm{const}\,.
+log⁡ν⁡(x)−log⁡q⁡(x)+const.\displaystyle~\log\nu(x)-\log q(x)+\mathrm{const}\,.
+
+Then, 
+\lvert\log\nu(x)-\log\widehat{\nu}(x)-\mathrm{const}\rvert\leq V(x)
+|log⁡ν⁡(x)−log⁡ν^​(x)−const|≤V⁡(x)\lvert\log\nu(x)-\log\widehat{\nu}(x)-\mathrm{const}\rvert\leq V(x), where
+
+\displaystyle V(x)=\En_{(r,z,g)\sim P_{x}}\tau_{B}(W_{r,z,g,x})\,.
+V⁡(x)=𝔼(r,z,g)∼Px⁡τB​(Wr,z,g,x).\displaystyle V(x)=\En_{(r,z,g)\sim P_{x}}\tau_{B}(W_{r,z,g,x})\,.
+
+Then, using Lemma B.3,
+
+\displaystyle\begin{aligned} D_{\mathsf{TV}}\left(\nu,\widehat{\nu}\right)\leq&amp;~\En_{x\sim\widehat{\nu}}[e^{2V(x)}-1]\leq e^{2B}\En_{x\sim q}[e^{2V(x)}-1]\\
+\leq&amp;~e^{2B}\En_{x\sim q,\,r\sim\mathsf{Unif}([0,1]),\,z\sim\mathsf{N}\left(0,\eta I\right)}\big[\exp\big(2\En_{g\sim\mathsf{O}_{\mathsf{grad}}(\gamma_{z,r}(x))}\tau_{B}(W_{r,z,g,x})\big)-1\big]\,,\end{aligned}
+D𝖳𝖵​(ν,ν^)≤𝔼x∼ν^⁡[e2​V​(x)−1]≤e2​B​𝔼x∼q​[e2​V​(x)−1]≤e2​B​𝔼x∼q,r∼𝖴𝗇𝗂𝖿⁡([0,1]),z∼𝖭⁡(0,η​I)​[exp⁡(2​𝔼g∼𝖮𝗀𝗋𝖺𝖽​(γz,r​(x))​τB​(Wr,z,g,x))−1],\displaystyle\begin{aligned} D_{\mathsf{TV}}\left(\nu,\widehat{\nu}\right)\leq&amp;~\En_{x\sim\widehat{\nu}}[e^{2V(x)}-1]\leq e^{2B}\En_{x\sim q}[e^{2V(x)}-1]\\
+\leq&amp;~e^{2B}\En_{x\sim q,\,r\sim\mathsf{Unif}([0,1]),\,z\sim\mathsf{N}\left(0,\eta I\right)}\big[\exp\big(2\En_{g\sim\mathsf{O}_{\mathsf{grad}}(\gamma_{z,r}(x))}\tau_{B}(W_{r,z,g,x})\big)-1\big]\,,\end{aligned}
+
+(9)
+
+where we use 
+\frac{d\widehat{\nu}}{dq}(x)\leq e^{2B}
+d​ν^d​q​(x)≤e2​B\frac{d\widehat{\nu}}{dq}(x)\leq e^{2B} for 
+x\in\mathbb{R}^{d}
+x∈ℝdx\in\mathbb{R}^{d} and the convexity of 
+w\mapsto e^{w}
+w↦eww\mapsto e^{w}.
+
+Now, note that for any fixed 
+r\in[0,1]
+r∈[0,1]r\in[0,1] under 
+x\sim q=\mathsf{N}\left(\widehat{x},\eta I\right)
+x∼q=𝖭⁡(x^,η​I)x\sim q=\mathsf{N}\left(\widehat{x},\eta I\right) and 
+z\sim P=\mathsf{N}\left(0,\eta I\right)
+z∼P=𝖭⁡(0,η​I)z\sim P=\mathsf{N}\left(0,\eta I\right), 
+[\gamma_{z,r}(x);\dot{\gamma}_{z,r}(x)]
+[γz,r​(x);γ˙z,r​(x)][\gamma_{z,r}(x);\dot{\gamma}_{z,r}(x)] are jointly distributed as
+
+\displaystyle[\gamma_{z,r}(x);\dot{\gamma}_{z,r}(x)]\sim\mathsf{N}\left(\begin{bmatrix}\widehat{x}\\
+0\end{bmatrix},\;\begin{bmatrix}\eta I&amp;\\
+&amp;(\pi/2)^{2}\eta I\end{bmatrix}\right)\,.
+[γz,r​(x);γ˙z,r​(x)]∼𝖭⁡([x^0],[η​I(π/2)2​η​I]).\displaystyle[\gamma_{z,r}(x);\dot{\gamma}_{z,r}(x)]\sim\mathsf{N}\left(\begin{bmatrix}\widehat{x}\\
+0\end{bmatrix},\;\begin{bmatrix}\eta I&amp;\\
+&amp;(\pi/2)^{2}\eta I\end{bmatrix}\right)\,.
+
+This implies that
+
+\displaystyle E_{\lambda}\coloneqq
+Eλ≔\displaystyle E_{\lambda}\coloneqq
+
+\displaystyle~\En_{x\sim q,\,r\sim\mathsf{Unif}([0,1]),\,z\sim\mathsf{N}\left(0,\eta I\right)}\exp\big(\lambda\En_{g\sim\mathsf{O}_{\mathsf{grad}}(\gamma_{z,r}(x))}\tau_{B}(W_{r,z,g,x})\big)-1
+𝔼x∼q,r∼𝖴𝗇𝗂𝖿⁡([0,1]),z∼𝖭⁡(0,η​I)⁡exp⁡(λ​𝔼g∼𝖮𝗀𝗋𝖺𝖽​(γz,r​(x))​τB​(Wr,z,g,x))−1\displaystyle~\En_{x\sim q,\,r\sim\mathsf{Unif}([0,1]),\,z\sim\mathsf{N}\left(0,\eta I\right)}\exp\big(\lambda\En_{g\sim\mathsf{O}_{\mathsf{grad}}(\gamma_{z,r}(x))}\tau_{B}(W_{r,z,g,x})\big)-1
+
+\displaystyle=
+=\displaystyle=
+
+\displaystyle~\En_{Z_{0}\sim\mathsf{N}\left(0,\eta I\right),\,Z_{1}\sim\mathsf{N}\left(0,(\pi/2)^{2}\eta I\right)}\exp\big(\lambda\En_{g\sim\mathsf{O}_{\mathsf{grad}}(\widehat{x}+Z_{0})}\tau_{B}(\lvert\langle Z_{1},g-u\rangle\rvert)\big)-1\,.
+𝔼Z0∼𝖭⁡(0,η​I),Z1∼𝖭⁡(0,(π/2)2​η​I)⁡exp⁡(λ​𝔼g∼𝖮𝗀𝗋𝖺𝖽​(x^+Z0)​τB​(|⟨Z1,g−u⟩|))−1.\displaystyle~\En_{Z_{0}\sim\mathsf{N}\left(0,\eta I\right),\,Z_{1}\sim\mathsf{N}\left(0,(\pi/2)^{2}\eta I\right)}\exp\big(\lambda\En_{g\sim\mathsf{O}_{\mathsf{grad}}(\widehat{x}+Z_{0})}\tau_{B}(\lvert\langle Z_{1},g-u\rangle\rvert)\big)-1\,.
+
+Recall that Lemma B.3 implies that 
+D_{\mathsf{TV}}\left(\nu,\widehat{\nu}\right)\leq E_{2}
+D𝖳𝖵​(ν,ν^)≤E2D_{\mathsf{TV}}\left(\nu,\widehat{\nu}\right)\leq E_{2}.
+In the following, it remains to upper bound 
+E_{\lambda}
+EλE_{\lambda}. We define 
+Y=\widehat{x}+Z_{0}
+Y=x^+Z0Y=\widehat{x}+Z_{0}, and abbreviate 
+\En[\cdot]=\En_{Z_{0}\sim\mathsf{N}\left(0,\eta I\right),\,Z_{1}\sim\mathsf{N}\left(0,(\pi/2)^{2}\eta I\right)}
+𝔼⁡[⋅]=𝔼Z0∼𝖭⁡(0,η​I),Z1∼𝖭⁡(0,(π/2)2​η​I)\En[\cdot]=\En_{Z_{0}\sim\mathsf{N}\left(0,\eta I\right),\,Z_{1}\sim\mathsf{N}\left(0,(\pi/2)^{2}\eta I\right)}. Note that by triangle inequality, it holds that
+
+\displaystyle\lvert\langle Z_{1},g-u\rangle\rvert\leq\lvert\langle Z_{1},g-\nabla f(Y)\rangle\rvert+\lvert\langle Z_{1},\nabla f(Y)-u\rangle\rvert\,,
+|⟨Z1,g−u⟩|≤|⟨Z1,g−∇f​(Y)⟩|+|⟨Z1,∇f​(Y)−u⟩|,\displaystyle\lvert\langle Z_{1},g-u\rangle\rvert\leq\lvert\langle Z_{1},g-\nabla f(Y)\rangle\rvert+\lvert\langle Z_{1},\nabla f(Y)-u\rangle\rvert\,,
+
+and hence
+
+\displaystyle\tau_{B}(\lvert\langle Z_{1},g-u\rangle\rvert)\leq\tau_{B/2}(\lvert\langle Z_{1},g-\nabla f(Y)\rangle\rvert)+\tau_{B/2}(\lvert\langle Z_{1},\nabla f(Y)-u\rangle\rvert)\,.
+τB​(|⟨Z1,g−u⟩|)≤τB/2​(|⟨Z1,g−∇f​(Y)⟩|)+τB/2​(|⟨Z1,∇f​(Y)−u⟩|).\displaystyle\tau_{B}(\lvert\langle Z_{1},g-u\rangle\rvert)\leq\tau_{B/2}(\lvert\langle Z_{1},g-\nabla f(Y)\rangle\rvert)+\tau_{B/2}(\lvert\langle Z_{1},\nabla f(Y)-u\rangle\rvert)\,.
+
+Using 
+2e^{u+v}\leq e^{2u}+e^{2v}
+2​eu+v≤e2​u+e2​v2e^{u+v}\leq e^{2u}+e^{2v}, we can upper bound
+
+\displaystyle 2E_{\lambda}\leq
+2​Eλ≤\displaystyle 2E_{\lambda}\leq
+
+\displaystyle~\En\exp\big(2\lambda\En_{g\sim\mathsf{O}_{\mathsf{grad}}(Y)}\tau_{B/2}(\lvert\langle Z_{1},g-\nabla f(Y)\rangle\rvert)\big)-1
+𝔼⁡exp⁡(2​λ​𝔼g∼𝖮𝗀𝗋𝖺𝖽​(Y)​τB/2​(|⟨Z1,g−∇f​(Y)⟩|))−1\displaystyle~\En\exp\big(2\lambda\En_{g\sim\mathsf{O}_{\mathsf{grad}}(Y)}\tau_{B/2}(\lvert\langle Z_{1},g-\nabla f(Y)\rangle\rvert)\big)-1
+
+\displaystyle~+\En\exp\left(2\lambda\tau_{B/2}(\lvert\langle Z_{1},\nabla f(Y)-u\rangle\rvert)\right)-1\,.
++𝔼⁡exp⁡(2​λ​τB/2​(|⟨Z1,∇f​(Y)−u⟩|))−1.\displaystyle~+\En\exp\left(2\lambda\tau_{B/2}(\lvert\langle Z_{1},\nabla f(Y)-u\rangle\rvert)\right)-1\,.
+
+Therefore, by Lemma C.1, there is a constant 
+c_{1}
+c1c_{1} such that as long as 
+\frac{1}{\eta}\geq c_{1}M^{2}(\log(1/\delta)+\lambda)
+1η≥c1​M2​(log⁡(1/δ)+λ)\frac{1}{\eta}\geq c_{1}M^{2}(\log(1/\delta)+\lambda), it holds that
+
+\displaystyle\En\exp\big(2\lambda\En_{g\sim\mathsf{O}_{\mathsf{grad}}(Y)}\tau_{B/2}(\lvert\langle Z_{1},g-\nabla f(Y)\rangle\rvert)\big)-1\leq\delta+8\epsilon(M)\,.
+𝔼⁡exp⁡(2​λ​𝔼g∼𝖮𝗀𝗋𝖺𝖽​(Y)​τB/2​(|⟨Z1,g−∇f​(Y)⟩|))−1≤δ+8​ϵ​(M).\displaystyle\En\exp\big(2\lambda\En_{g\sim\mathsf{O}_{\mathsf{grad}}(Y)}\tau_{B/2}(\lvert\langle Z_{1},g-\nabla f(Y)\rangle\rvert)\big)-1\leq\delta+8\epsilon(M)\,.
+
+By Lemma C.2, there is a constant 
+c_{2}
+c2c_{2} such that as long as
+
+\displaystyle\frac{1}{\eta^{1+s}}\geq c_{2}\beta_{s}^{2}\,\Big(d^{s}(\log(1/\delta)+\lambda)+\frac{s}{d^{1-s}}(\log^{2}(1/\delta)+\lambda^{2})\Big)+c_{2}\,\big(\varepsilon_{\mathsf{prox}}^{2}(\log(1/\delta)+\lambda)\big)^{1+s}\,,
+1η1+s≥c2​βs2​(ds​(log⁡(1/δ)+λ)+sd1−s​(log2⁡(1/δ)+λ2))+c2​(ε𝗉𝗋𝗈𝗑2​(log⁡(1/δ)+λ))1+s,\displaystyle\frac{1}{\eta^{1+s}}\geq c_{2}\beta_{s}^{2}\,\Big(d^{s}(\log(1/\delta)+\lambda)+\frac{s}{d^{1-s}}(\log^{2}(1/\delta)+\lambda^{2})\Big)+c_{2}\,\big(\varepsilon_{\mathsf{prox}}^{2}(\log(1/\delta)+\lambda)\big)^{1+s}\,,
+
+it holds that 
+\En\exp\left(2\lambda\tau_{B/2}(\lvert\langle Z_{1},\nabla f(Y)-u\rangle\rvert)\right)-1\leq\delta
+𝔼⁡exp⁡(2​λ​τB/2​(|⟨Z1,∇f​(Y)−u⟩|))−1≤δ\En\exp\left(2\lambda\tau_{B/2}(\lvert\langle Z_{1},\nabla f(Y)-u\rangle\rvert)\right)-1\leq\delta.
+Combining the inequalities above completes the proof.
+∎
+
+Lemma C.1.
+
+Suppose that 
+Q
+QQ is a distribution over 
+\mathbb{R}^{d}
+ℝd\mathbb{R}^{d} such that 
+\En_{g\sim Q}\|g\|=\mathfrak{m}&lt;+\infty
+𝔼g∼Q⁡‖g‖=𝔪&lt;+∞\En_{g\sim Q}\|g\|=\mathfrak{m}&lt;+\infty. Then, for any 
+\mathfrak{m}\leq M\leq\frac{1}{2}\min\left\{\frac{B}{\sigma},\sqrt{\frac{B}{\lambda\sigma^{2}}}\right\}
+𝔪≤M≤12​min⁡{Bσ,Bλ​σ2}\mathfrak{m}\leq M\leq\frac{1}{2}\min\left\{\frac{B}{\sigma},\sqrt{\frac{B}{\lambda\sigma^{2}}}\right\}, it holds that
+
+\displaystyle\En_{Z\sim\mathsf{N}\left(0,\sigma^{2}I\right)}\exp\left(\lambda\En_{g\sim Q}\tau_{B}(\lvert\langle Z,g\rangle\rvert)\right)-1\leq e^{-\frac{B^{2}}{8\sigma^{2}M^{2}}}+\frac{8}{M}\En_{g\sim Q}\left[\|g\|\mathbb{I}\left\{\|g\|\geq M\right\}\right].
+𝔼Z∼𝖭⁡(0,σ2​I)exp(λ𝔼g∼QτB(|⟨Z,g⟩|))−1≤e−B28​σ2​M2+8M𝔼g∼Q[∥g∥𝕀{∥g∥≥M}].\displaystyle\En_{Z\sim\mathsf{N}\left(0,\sigma^{2}I\right)}\exp\left(\lambda\En_{g\sim Q}\tau_{B}(\lvert\langle Z,g\rangle\rvert)\right)-1\leq e^{-\frac{B^{2}}{8\sigma^{2}M^{2}}}+\frac{8}{M}\En_{g\sim Q}\left[\|g\|\mathbb{I}\left\{\|g\|\geq M\right\}\right].
+
+Proof. We denote 
+P=\mathsf{N}\left(0,\sigma^{2}I\right)
+P=𝖭⁡(0,σ2​I)P=\mathsf{N}\left(0,\sigma^{2}I\right). Without loss of generality, we assume the support of 
+Q
+QQ does not contain 
+0
+00.
+
+Define 
+\alpha(g)=\frac{\mathfrak{m}+M}{\|g\|+M}
+α⁡(g)=𝔪+M‖g‖+M\alpha(g)=\frac{\mathfrak{m}+M}{\|g\|+M}. Then we know 
+\En_{g\sim Q}[1/\alpha(g)]=1
+𝔼g∼Q⁡[1/α⁡(g)]=1\En_{g\sim Q}[1/\alpha(g)]=1, and hence we can consider the distribution 
+\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{Q}
+\macc@depth​Δ​\macc@set@skewchar​\macc@nested@a​111​Q\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{Q} over 
+\mathbb{R}^{d}
+ℝd\mathbb{R}^{d} such that 
+\frac{dQ}{d\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{Q}}(g)=\alpha(g)
+d​Qd​\macc@depth​Δ​\macc@set@skewchar​\macc@nested@a​111​Q​(g)=α⁡(g)\frac{dQ}{d\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{Q}}(g)=\alpha(g). We can rewrite
+
+\displaystyle I\coloneqq
+I≔\displaystyle I\coloneqq
+
+\displaystyle~\En_{Z\sim P}\exp\big(\lambda\En_{g\sim Q}\tau_{B}(\lvert\langle Z,g\rangle\rvert)\big)-1
+𝔼Z∼P⁡exp⁡(λ​𝔼g∼Q​τB​(|⟨Z,g⟩|))−1\displaystyle~\En_{Z\sim P}\exp\big(\lambda\En_{g\sim Q}\tau_{B}(\lvert\langle Z,g\rangle\rvert)\big)-1
+
+\displaystyle=
+=\displaystyle=
+
+\displaystyle~\En_{Z\sim P}\exp\big(\lambda\En_{g\sim\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{Q}}[\alpha(g)\tau_{B}(\lvert\langle Z,g\rangle\rvert)]\big)-1
+𝔼Z∼P⁡exp⁡(λ​𝔼g∼\macc@depth​Δ​\macc@set@skewchar​\macc@nested@a​111​Q​[α⁡(g)​τB​(|⟨Z,g⟩|)])−1\displaystyle~\En_{Z\sim P}\exp\big(\lambda\En_{g\sim\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{Q}}[\alpha(g)\tau_{B}(\lvert\langle Z,g\rangle\rvert)]\big)-1
+
+\displaystyle\leq
+≤\displaystyle\leq
+
+\displaystyle~\En_{Z\sim P,g\sim\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{Q}}\exp\big(\lambda\alpha(g)\tau_{B}(\lvert\langle Z,g\rangle\rvert)\big)-1\,.
+𝔼Z∼P,g∼\macc@depth​Δ​\macc@set@skewchar​\macc@nested@a​111​Q⁡exp⁡(λ​α​(g)​τB​(|⟨Z,g⟩|))−1.\displaystyle~\En_{Z\sim P,g\sim\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{Q}}\exp\big(\lambda\alpha(g)\tau_{B}(\lvert\langle Z,g\rangle\rvert)\big)-1\,.
+
+Then, using Lemma B.1, we can obtain the following upper bounds:
+
+(1) When 
+B\geq 2\max\{\|g\|\sigma,\lambda\alpha(g)\|g\|^{2}\sigma^{2}\}
+B≥2​max⁡{‖g‖​σ,λ​α​(g)​‖g‖2​σ2}B\geq 2\max\{\|g\|\sigma,\lambda\alpha(g)\|g\|^{2}\sigma^{2}\}, i.e., when 
+\|g\|\leq\min\left\{\frac{B}{2\sigma},\frac{B}{4\lambda M\sigma^{2}}\right\}
+‖g‖≤min⁡{B2​σ,B4​λ​M​σ2}\|g\|\leq\min\left\{\frac{B}{2\sigma},\frac{B}{4\lambda M\sigma^{2}}\right\}, it holds that
+
+\displaystyle\En_{Z\sim P}\exp\left(\lambda\alpha(g)\tau_{B}(\lvert\langle Z,g\rangle\rvert)\right)-1\leq e^{-\frac{B^{2}}{8\sigma^{2}\|g\|^{2}}}\,.
+𝔼Z∼P⁡exp⁡(λ​α​(g)​τB​(|⟨Z,g⟩|))−1≤e−B28​σ2​‖g‖2.\displaystyle\En_{Z\sim P}\exp\left(\lambda\alpha(g)\tau_{B}(\lvert\langle Z,g\rangle\rvert)\right)-1\leq e^{-\frac{B^{2}}{8\sigma^{2}\|g\|^{2}}}\,.
+
+(2) For any 
+g\neq 0
+g≠0g\neq 0, it holds that
+
+\displaystyle\En_{Z\sim P}\exp\left(\lambda\alpha(g)\tau_{B}(\lvert\langle Z,g\rangle\rvert)\right)-1\leq 2e^{\frac{1}{2}\lambda^{2}\alpha(g)^{2}\|g\|^{2}\sigma^{2}}\leq 4\,,
+𝔼Z∼P⁡exp⁡(λ​α​(g)​τB​(|⟨Z,g⟩|))−1≤2​e12​λ2​α​(g)2​‖g‖2​σ2≤4,\displaystyle\En_{Z\sim P}\exp\left(\lambda\alpha(g)\tau_{B}(\lvert\langle Z,g\rangle\rvert)\right)-1\leq 2e^{\frac{1}{2}\lambda^{2}\alpha(g)^{2}\|g\|^{2}\sigma^{2}}\leq 4\,,
+
+where we use the condition 
+\lambda\leq\frac{1}{2M\sigma}
+λ≤12​M​σ\lambda\leq\frac{1}{2M\sigma}.
+
+Therefore, for any 
+M\geq\mathfrak{m}
+M≥𝔪M\geq\mathfrak{m}, as long as 
+M\leq\frac{1}{2}\min\left\{\frac{B}{\sigma},\sqrt{\frac{B}{\lambda\sigma^{2}}}\right\}
+M≤12​min⁡{Bσ,Bλ​σ2}M\leq\frac{1}{2}\min\left\{\frac{B}{\sigma},\sqrt{\frac{B}{\lambda\sigma^{2}}}\right\}, we can upper bound
+
+\displaystyle I\leq
+I≤\displaystyle I\leq
+
+\displaystyle~\En_{g\sim\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{Q}}\left[\mathbb{I}\{\|g\|\leq M\}\left(\En_{Z\sim P}\exp\left(\lambda\alpha(g)\tau_{B}(\lvert\langle Z,g\rangle\rvert)\right)-1\right)\right]
+𝔼g∼\macc@depth​Δ​\macc@set@skewchar​\macc@nested@a​111​Q[𝕀{∥g∥≤M}(𝔼Z∼Pexp(λα(g)τB(|⟨Z,g⟩|))−1)]\displaystyle~\En_{g\sim\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{Q}}\left[\mathbb{I}\{\|g\|\leq M\}\left(\En_{Z\sim P}\exp\left(\lambda\alpha(g)\tau_{B}(\lvert\langle Z,g\rangle\rvert)\right)-1\right)\right]
+
+\displaystyle~+\En_{g\sim\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{Q}}\left[\mathbb{I}\{\|g\|&gt;M\}\left(\En_{Z\sim P}\exp\left(\lambda\alpha(g)\tau_{B}(\lvert\langle Z,g\rangle\rvert)\right)-1\right)\right]
++𝔼g∼\macc@depth​Δ​\macc@set@skewchar​\macc@nested@a​111​Q[𝕀{∥g∥&gt;M}(𝔼Z∼Pexp(λα(g)τB(|⟨Z,g⟩|))−1)]\displaystyle~+\En_{g\sim\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{Q}}\left[\mathbb{I}\{\|g\|&gt;M\}\left(\En_{Z\sim P}\exp\left(\lambda\alpha(g)\tau_{B}(\lvert\langle Z,g\rangle\rvert)\right)-1\right)\right]
+
+\displaystyle\leq
+≤\displaystyle\leq
+
+\displaystyle~e^{-\frac{B^{2}}{8\sigma^{2}M^{2}}}+4\mathbb{P}_{g\sim\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{Q}}\left(\|g\|\geq M\right)\,.
+e−B28​σ2​M2+4​ℙg∼\macc@depth​Δ​\macc@set@skewchar​\macc@nested@a​111​Q​(‖g‖≥M).\displaystyle~e^{-\frac{B^{2}}{8\sigma^{2}M^{2}}}+4\mathbb{P}_{g\sim\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{Q}}\left(\|g\|\geq M\right)\,.
+
+Finally, using 
+\frac{d\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{Q}}{dQ}(g)=\frac{\|g\|+M}{\mathfrak{m}+M}
+d​\macc@depth​Δ​\macc@set@skewchar​\macc@nested@a​111​Qd​Q​(g)=‖g‖+M𝔪+M\frac{d\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{Q}}{dQ}(g)=\frac{\|g\|+M}{\mathfrak{m}+M}, we have
+
+\displaystyle\mathbb{P}_{g\sim\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{Q}}\left(\|g\|\geq M\right)\leq\frac{2}{M}\En_{g\sim Q}\left[\|g\|\mathbb{I}\left\{\|g\|\geq M\right\}\right]\,.
+ℙg∼\macc@depth​Δ​\macc@set@skewchar​\macc@nested@a​111​Q(∥g∥≥M)≤2M𝔼g∼Q[∥g∥𝕀{∥g∥≥M}].\displaystyle\mathbb{P}_{g\sim\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{Q}}\left(\|g\|\geq M\right)\leq\frac{2}{M}\En_{g\sim Q}\left[\|g\|\mathbb{I}\left\{\|g\|\geq M\right\}\right]\,.
+
+∎
+
+Lemma C.2.
+
+Suppose that 
+Z_{0}\sim\mathsf{N}\left(0,\eta I\right)
+Z0∼𝖭⁡(0,η​I)Z_{0}\sim\mathsf{N}\left(0,\eta I\right), 
+Z_{1}\sim\mathsf{N}\left(0,\sigma^{2}I\right)
+Z1∼𝖭⁡(0,σ2​I)Z_{1}\sim\mathsf{N}\left(0,\sigma^{2}I\right), and 
+Y=\widehat{x}+Z_{0}
+Y=x^+Z0Y=\widehat{x}+Z_{0}. Suppose Assumption 3 holds and 
+\|\nabla f(\widehat{x})-u\|\leq\varepsilon_{\mathsf{prox}}
+‖∇f​(x^)−u‖≤ε𝗉𝗋𝗈𝗑\|\nabla f(\widehat{x})-u\|\leq\varepsilon_{\mathsf{prox}}. Then it holds that
+
+\displaystyle\En\exp\left(\lambda\tau_{B}(\lvert\langle Z_{1},\nabla f(Y)-u\rangle\rvert)\right)-1\leq 2\exp\Big(-\frac{B}{12}\min\Big\{\sqrt{\frac{d^{1-s}}{s\eta^{s}\sigma^{2}\beta_{s}^{2}}},\,\frac{B}{\sigma^{2}\varepsilon_{\mathsf{prox}}^{2}+\sigma^{2}\beta_{s}^{2}(\eta d)^{s}}\Big\}\Big)\,,
+𝔼⁡exp⁡(λ​τB​(|⟨Z1,∇f​(Y)−u⟩|))−1≤2​exp⁡(−B12​min⁡{d1−ss​ηs​σ2​βs2,Bσ2​ε𝗉𝗋𝗈𝗑2+σ2​βs2​(η​d)s}),\displaystyle\En\exp\left(\lambda\tau_{B}(\lvert\langle Z_{1},\nabla f(Y)-u\rangle\rvert)\right)-1\leq 2\exp\Big(-\frac{B}{12}\min\Big\{\sqrt{\frac{d^{1-s}}{s\eta^{s}\sigma^{2}\beta_{s}^{2}}},\,\frac{B}{\sigma^{2}\varepsilon_{\mathsf{prox}}^{2}+\sigma^{2}\beta_{s}^{2}(\eta d)^{s}}\Big\}\Big)\,,
+
+\displaystyle\text{for}~0\leq\lambda\leq\frac{1}{6}\min\Big\{\sqrt{\frac{d^{1-s}}{s\eta^{s}\sigma^{2}\beta_{s}^{2}}},\,\frac{B}{\sigma^{2}\varepsilon_{\mathsf{prox}}^{2}+\sigma^{2}\beta_{s}^{2}(\eta d)^{s}}\Big\}\,.
+for​0≤λ≤16​min⁡{d1−ss​ηs​σ2​βs2,Bσ2​ε𝗉𝗋𝗈𝗑2+σ2​βs2​(η​d)s}.\displaystyle\text{for}~0\leq\lambda\leq\frac{1}{6}\min\Big\{\sqrt{\frac{d^{1-s}}{s\eta^{s}\sigma^{2}\beta_{s}^{2}}},\,\frac{B}{\sigma^{2}\varepsilon_{\mathsf{prox}}^{2}+\sigma^{2}\beta_{s}^{2}(\eta d)^{s}}\Big\}\,.
+
+Proof. We write
+
+\displaystyle M_{\lambda}\vcentcolon=
+Mλ:=\displaystyle M_{\lambda}\vcentcolon=
+
+\displaystyle~\En\exp\left(\lambda\tau_{B}(\lvert\langle Z_{1},\nabla f(Y)-u\rangle\rvert)\right)-1
+𝔼⁡exp⁡(λ​τB​(|⟨Z1,∇f​(Y)−u⟩|))−1\displaystyle~\En\exp\left(\lambda\tau_{B}(\lvert\langle Z_{1},\nabla f(Y)-u\rangle\rvert)\right)-1
+
+\displaystyle\leq
+≤\displaystyle\leq
+
+\displaystyle~\En\exp\left(\lambda(\lvert\langle Z_{1},\nabla f(Y)-u\rangle\rvert-B)\right)
+𝔼⁡exp⁡(λ⁡(|⟨Z1,∇f​(Y)−u⟩|−B))\displaystyle~\En\exp\left(\lambda(\lvert\langle Z_{1},\nabla f(Y)-u\rangle\rvert-B)\right)
+
+\displaystyle\leq
+≤\displaystyle\leq
+
+\displaystyle~2e^{-\lambda B}\En\exp\Big(\frac{1}{2}\lambda^{2}\sigma^{2}\|\nabla f(Y)-u\|^{2}\Big)
+2​e−λ​B​𝔼⁡exp⁡(12​λ2​σ2​‖∇f​(Y)−u‖2)\displaystyle~2e^{-\lambda B}\En\exp\Big(\frac{1}{2}\lambda^{2}\sigma^{2}\|\nabla f(Y)-u\|^{2}\Big)
+
+\displaystyle\leq
+≤\displaystyle\leq
+
+\displaystyle~2e^{-\lambda B+\lambda^{2}\sigma^{2}\|\nabla f(\widehat{x})-u\|^{2}}\En\exp\left(\lambda^{2}\sigma^{2}\|\nabla f(Y)-f(\widehat{x})\|^{2}\right)\,.
+2​e−λ​B+λ2​σ2​‖∇f​(x^)−u‖2​𝔼⁡exp⁡(λ2​σ2​‖∇f​(Y)−f⁡(x^)‖2).\displaystyle~2e^{-\lambda B+\lambda^{2}\sigma^{2}\|\nabla f(\widehat{x})-u\|^{2}}\En\exp\left(\lambda^{2}\sigma^{2}\|\nabla f(Y)-f(\widehat{x})\|^{2}\right)\,.
+
+Using Assumption 3 and Lemma B.2, it holds that as long as 
+\lambda^{2}\sigma^{2}\beta_{s}^{2}\leq\frac{d^{1-s}}{4s\eta^{s}}
+λ2​σ2​βs2≤d1−s4​s​ηs\lambda^{2}\sigma^{2}\beta_{s}^{2}\leq\frac{d^{1-s}}{4s\eta^{s}},
+
+\displaystyle\En\exp\left(\lambda^{2}\sigma^{2}\|\nabla f(Y)-\nabla f(\widehat{x})\|^{2}\right)\leq
+𝔼⁡exp⁡(λ2​σ2​‖∇f​(Y)−∇f​(x^)‖2)≤\displaystyle\En\exp\left(\lambda^{2}\sigma^{2}\|\nabla f(Y)-\nabla f(\widehat{x})\|^{2}\right)\leq
+
+\displaystyle~\En\exp\left(\lambda^{2}\sigma^{2}\beta_{s}^{2}\|Y-\widehat{x}\|^{2s}\right)\leq\exp\left(2\lambda^{2}\sigma^{2}\beta_{s}^{2}(\eta d)^{s}\right)\,.
+𝔼⁡exp⁡(λ2​σ2​βs2​‖Y−x^‖2​s)≤exp⁡(2​λ2​σ2​βs2​(η​d)s).\displaystyle~\En\exp\left(\lambda^{2}\sigma^{2}\beta_{s}^{2}\|Y-\widehat{x}\|^{2s}\right)\leq\exp\left(2\lambda^{2}\sigma^{2}\beta_{s}^{2}(\eta d)^{s}\right)\,.
+
+Therefore, we have shown
+
+\displaystyle M_{\lambda}\leq 2\exp\left(\lambda^{2}\sigma^{2}\varepsilon_{\mathsf{prox}}^{2}+2\lambda^{2}\sigma^{2}\beta_{s}^{2}(\eta d)^{s}-\lambda B\right)\,,\qquad\text{for}~\lambda\leq\sqrt{\frac{d^{1-s}}{4s\eta^{s}\sigma^{2}\beta_{s}^{2}}}\,.
+Mλ≤2​exp⁡(λ2​σ2​ε𝗉𝗋𝗈𝗑2+2​λ2​σ2​βs2​(η​d)s−λ​B),for​λ≤d1−s4​s​ηs​σ2​βs2.\displaystyle M_{\lambda}\leq 2\exp\left(\lambda^{2}\sigma^{2}\varepsilon_{\mathsf{prox}}^{2}+2\lambda^{2}\sigma^{2}\beta_{s}^{2}(\eta d)^{s}-\lambda B\right)\,,\qquad\text{for}~\lambda\leq\sqrt{\frac{d^{1-s}}{4s\eta^{s}\sigma^{2}\beta_{s}^{2}}}\,.
+
+Note that 
+\lambda\mapsto M_{\lambda}
+λ↦Mλ\lambda\mapsto M_{\lambda} is an increasing function, and hence we can choose
+
+\displaystyle\lambda_{\star}=\min\Big\{\sqrt{\frac{d^{1-s}}{4s\eta^{s}\sigma^{2}\beta_{s}^{2}}},\,\frac{B}{2\sigma^{2}\varepsilon_{\mathsf{prox}}^{2}+4\sigma^{2}\beta_{s}^{2}(\eta d)^{s}}\Big\}\,,
+λ⋆=min⁡{d1−s4​s​ηs​σ2​βs2,B2​σ2​ε𝗉𝗋𝗈𝗑2+4​σ2​βs2​(η​d)s},\displaystyle\lambda_{\star}=\min\Big\{\sqrt{\frac{d^{1-s}}{4s\eta^{s}\sigma^{2}\beta_{s}^{2}}},\,\frac{B}{2\sigma^{2}\varepsilon_{\mathsf{prox}}^{2}+4\sigma^{2}\beta_{s}^{2}(\eta d)^{s}}\Big\}\,,
+
+so that for any 
+\lambda\leq\lambda_{\star}
+λ≤λ⋆\lambda\leq\lambda_{\star}, it holds that
+
+\displaystyle M_{\lambda}\leq M_{\lambda_{\star}}
+Mλ≤Mλ⋆\displaystyle M_{\lambda}\leq M_{\lambda_{\star}}
+
+\displaystyle\leq 2\exp\Big(-\frac{B}{12}\min\Big\{\sqrt{\frac{d^{1-s}}{s\eta^{s}\sigma^{2}\beta_{s}^{2}}},\,\frac{B}{\sigma^{2}\varepsilon_{\mathsf{prox}}^{2}+\sigma^{2}\beta_{s}^{2}(\eta d)^{s}}\Big\}\Big)\,.
+≤2​exp⁡(−B12​min⁡{d1−ss​ηs​σ2​βs2,Bσ2​ε𝗉𝗋𝗈𝗑2+σ2​βs2​(η​d)s}).\displaystyle\leq 2\exp\Big(-\frac{B}{12}\min\Big\{\sqrt{\frac{d^{1-s}}{s\eta^{s}\sigma^{2}\beta_{s}^{2}}},\,\frac{B}{\sigma^{2}\varepsilon_{\mathsf{prox}}^{2}+\sigma^{2}\beta_{s}^{2}(\eta d)^{s}}\Big\}\Big)\,.
+
+∎
+
+C.2 Proof of Theorem 3.3
+
+Without loss of generality we only consider the case 
+n=1
+n=1n=1.
+We denote 
+P_{x}
+PxP_{x} be the joint distribution of 
+(z,v,v^{\prime})
+(z,v,v′)(z,v,v^{\prime}) under (2).
+
+By Theorem 3.1, the output of Algorithm 1 with the specified choices samples from 
+\widehat{\nu}
+ν^\widehat{\nu}, such that
+
+\displaystyle\log\widehat{\nu}(x)-\log q(x)=\mathrm{const}+\En_{(z,v,v^{\prime})\sim P_{x}}\mathsf{Clip}_{B}(W_{z,v,v^{\prime},x})\,.
+log⁡ν^​(x)−log⁡q⁡(x)=const+𝔼(z,v,v′)∼Px⁡𝖢𝗅𝗂𝗉B​(Wz,v,v′,x).\displaystyle\log\widehat{\nu}(x)-\log q(x)=\mathrm{const}+\En_{(z,v,v^{\prime})\sim P_{x}}\mathsf{Clip}_{B}(W_{z,v,v^{\prime},x})\,.
+
+On the other hand, we know
+
+\displaystyle\En_{(z,v,v^{\prime})\sim P_{x}}[W_{z,v,v^{\prime},x}]=
+𝔼(z,v,v′)∼Px⁡[Wz,v,v′,x]=\displaystyle\En_{(z,v,v^{\prime})\sim P_{x}}[W_{z,v,v^{\prime},x}]=
+
+\displaystyle~-f(x)+\langle u,x\rangle+\mathrm{const}
+−f⁡(x)+⟨u,x⟩+const\displaystyle~-f(x)+\langle u,x\rangle+\mathrm{const}
+
+\displaystyle=
+=\displaystyle=
+
+\displaystyle~\log\nu(x)-\log q(x)+\mathrm{const}\,.
+log⁡ν⁡(x)−log⁡q⁡(x)+const.\displaystyle~\log\nu(x)-\log q(x)+\mathrm{const}\,.
+
+Then, 
+\lvert\log\nu(x)-\log\widehat{\nu}(x)-\mathrm{const}\rvert\leq V(x)
+|log⁡ν⁡(x)−log⁡ν^​(x)−const|≤V⁡(x)\lvert\log\nu(x)-\log\widehat{\nu}(x)-\mathrm{const}\rvert\leq V(x), where
+
+\displaystyle V(x)\coloneqq
+V⁡(x)≔\displaystyle V(x)\coloneqq
+
+\displaystyle~\En_{(z,v,v^{\prime})\sim P_{x}}\tau_{B}(W_{z,v,v^{\prime},x})
+𝔼(z,v,v′)∼Px⁡τB​(Wz,v,v′,x)\displaystyle~\En_{(z,v,v^{\prime})\sim P_{x}}\tau_{B}(W_{z,v,v^{\prime},x})
+
+\displaystyle\leq
+≤\displaystyle\leq
+
+\displaystyle~\En_{v\sim\mathsf{O}_{\mathsf{eval}}(x)}\tau_{B/3}(v-f(x))+\En_{z\sim q,\,v^{\prime}\sim\mathsf{O}_{\mathsf{eval}}(z)}\tau_{B/3}(v^{\prime}-f(z))
+𝔼v∼𝖮𝖾𝗏𝖺𝗅​(x)⁡τB/3​(v−f⁡(x))+𝔼z∼q,v′∼𝖮𝖾𝗏𝖺𝗅​(z)⁡τB/3​(v′−f⁡(z))\displaystyle~\En_{v\sim\mathsf{O}_{\mathsf{eval}}(x)}\tau_{B/3}(v-f(x))+\En_{z\sim q,\,v^{\prime}\sim\mathsf{O}_{\mathsf{eval}}(z)}\tau_{B/3}(v^{\prime}-f(z))
+
+\displaystyle~+\En_{z\sim q}\tau_{B/3}(f(z)-f(x)-\langle u,z-x\rangle)\,.
++𝔼z∼q⁡τB/3​(f⁡(z)−f⁡(x)−⟨u,z−x⟩).\displaystyle~+\En_{z\sim q}\tau_{B/3}(f(z)-f(x)-\langle u,z-x\rangle)\,.
+
+In the following, we denote 
+\Delta_{x,z}\vcentcolon=f(x)-f(z)-\langle u,x-z\rangle
+Δx,z:=f⁡(x)−f⁡(z)−⟨u,x−z⟩\Delta_{x,z}\vcentcolon=f(x)-f(z)-\langle u,x-z\rangle.
+Then, using Lemma B.3,
+
+\displaystyle\begin{aligned} D_{\mathsf{TV}}\left(\nu,\widehat{\nu}\right)\leq&amp;~\En_{x\sim\widehat{\nu}}\left[\exp\left(2\En_{z\sim q}\tau_{B/3}(\Delta_{x,z})+4\epsilon(B/3)\right)-1\right]\\
+\leq&amp;~e^{2B}\En_{x,z\sim q}\left[\exp\left(2\tau_{B/3}(\Delta_{x,z})+4\epsilon(B/3)\right)-1\right]\end{aligned}
+D𝖳𝖵​(ν,ν^)≤𝔼x∼ν^⁡[exp⁡(2​𝔼z∼q​τB/3​(Δx,z)+4​ϵ​(B/3))−1]≤e2​B​𝔼x,z∼q​[exp⁡(2​τB/3​(Δx,z)+4​ϵ​(B/3))−1]\displaystyle\begin{aligned} D_{\mathsf{TV}}\left(\nu,\widehat{\nu}\right)\leq&amp;~\En_{x\sim\widehat{\nu}}\left[\exp\left(2\En_{z\sim q}\tau_{B/3}(\Delta_{x,z})+4\epsilon(B/3)\right)-1\right]\\
+\leq&amp;~e^{2B}\En_{x,z\sim q}\left[\exp\left(2\tau_{B/3}(\Delta_{x,z})+4\epsilon(B/3)\right)-1\right]\end{aligned}
+
+(10)
+
+where we use 
+\frac{d\widehat{\nu}}{dq}(x)\leq e^{2B}
+d​ν^d​q​(x)≤e2​B\frac{d\widehat{\nu}}{dq}(x)\leq e^{2B} for 
+x\in\mathbb{R}^{d}
+x∈ℝdx\in\mathbb{R}^{d} and the convexity of 
+w\mapsto e^{w}
+w↦eww\mapsto e^{w}.
+In the following, it remains to prove the following lemma.
+
+Lemma C.3.
+
+Let 
+\Delta_{x,z}\vcentcolon=f(x)-f(z)-\langle u,x-z\rangle
+Δx,z:=f⁡(x)−f⁡(z)−⟨u,x−z⟩\Delta_{x,z}\vcentcolon=f(x)-f(z)-\langle u,x-z\rangle and 
+q=\mathsf{N}\left(\widehat{x},\eta I\right)
+q=𝖭⁡(x^,η​I)q=\mathsf{N}\left(\widehat{x},\eta I\right).
+Suppose Assumption 3 holds and 
+\|\nabla f(\widehat{x})-u\|\leq\varepsilon_{\mathsf{prox}}
+‖∇f​(x^)−u‖≤ε𝗉𝗋𝗈𝗑\|\nabla f(\widehat{x})-u\|\leq\varepsilon_{\mathsf{prox}}. Then it holds that
+
+\displaystyle\En_{x,z\sim q}e^{\lambda\tau_{B}(\Delta_{x,z})}-1\leq 2\exp\Big(-\frac{B}{32}\min\Big\{\sqrt{\frac{d^{1-s}}{s\eta^{s}\eta\beta_{s}^{2}}},\,\frac{B}{\eta\varepsilon_{\mathsf{prox}}^{2}+\eta\beta_{s}^{2}(\eta d)^{s}}\Big\}\Big)\,,
+𝔼x,z∼q⁡eλ​τB​(Δx,z)−1≤2​exp⁡(−B32​min⁡{d1−ss​ηs​η​βs2,Bη​ε𝗉𝗋𝗈𝗑2+η​βs2​(η​d)s}),\displaystyle\En_{x,z\sim q}e^{\lambda\tau_{B}(\Delta_{x,z})}-1\leq 2\exp\Big(-\frac{B}{32}\min\Big\{\sqrt{\frac{d^{1-s}}{s\eta^{s}\eta\beta_{s}^{2}}},\,\frac{B}{\eta\varepsilon_{\mathsf{prox}}^{2}+\eta\beta_{s}^{2}(\eta d)^{s}}\Big\}\Big)\,,
+
+\displaystyle\text{for}~0\leq\lambda\leq\frac{1}{16}\min\Big\{\sqrt{\frac{d^{1-s}}{s\eta^{s}\eta\beta_{s}^{2}}},\,\frac{B}{\eta\varepsilon_{\mathsf{prox}}^{2}+\eta\beta_{s}^{2}(\eta d)^{s}}\Big\}\,.
+for​0≤λ≤116​min⁡{d1−ss​ηs​η​βs2,Bη​ε𝗉𝗋𝗈𝗑2+η​βs2​(η​d)s}.\displaystyle\text{for}~0\leq\lambda\leq\frac{1}{16}\min\Big\{\sqrt{\frac{d^{1-s}}{s\eta^{s}\eta\beta_{s}^{2}}},\,\frac{B}{\eta\varepsilon_{\mathsf{prox}}^{2}+\eta\beta_{s}^{2}(\eta d)^{s}}\Big\}\,.
+
+Proof. We can express
+
+\displaystyle\Delta_{x,z}=f(x)-f(z)-\langle u,x-z\rangle=\int_{0}^{1}\langle\dot{\gamma}_{z,r}(x),\nabla f(\gamma_{z,r}(x))-u\rangle\,dr,
+Δx,z=f⁡(x)−f⁡(z)−⟨u,x−z⟩=∫01⟨γ˙z,r​(x),∇f​(γz,r​(x))−u⟩​𝑑r,\displaystyle\Delta_{x,z}=f(x)-f(z)-\langle u,x-z\rangle=\int_{0}^{1}\langle\dot{\gamma}_{z,r}(x),\nabla f(\gamma_{z,r}(x))-u\rangle\,dr,
+
+where 
+\gamma_{z,r}(x)
+γz,r​(x)\gamma_{z,r}(x) and 
+\dot{\gamma}_{z,r}(x)
+γ˙z,r​(x)\dot{\gamma}_{z,r}(x) are defined in Eq. 3. Then, using the convexity of 
+w\to\tau_{B}(w)
+w→τB​(w)w\to\tau_{B}(w), we can upper bound
+
+\displaystyle\En_{x,z\sim q}e^{\lambda\tau_{B}(\Delta_{x,z})}\leq\En_{r\sim\mathsf{Unif}([0,1])}\En_{x,z\sim q}e^{\lambda\tau_{B}(\langle\dot{\gamma}_{z,r}(x),\nabla f(\gamma_{z,r}(x))-u\rangle)}.
+𝔼x,z∼q⁡eλ​τB​(Δx,z)≤𝔼r∼𝖴𝗇𝗂𝖿⁡([0,1])⁡𝔼x,z∼q​eλ​τB​(⟨γ˙z,r​(x),∇f​(γz,r​(x))−u⟩).\displaystyle\En_{x,z\sim q}e^{\lambda\tau_{B}(\Delta_{x,z})}\leq\En_{r\sim\mathsf{Unif}([0,1])}\En_{x,z\sim q}e^{\lambda\tau_{B}(\langle\dot{\gamma}_{z,r}(x),\nabla f(\gamma_{z,r}(x))-u\rangle)}.
+
+Now, following the proof of Theorem 3.2, we know that for any fixed 
+r\in[0,1]
+r∈[0,1]r\in[0,1], under 
+x,z\sim q
+x,z∼qx,z\sim q, the vector 
+\gamma_{z,r}(x),\dot{\gamma}_{z,r}(x)
+γz,r​(x),γ˙z,r​(x)\gamma_{z,r}(x),\dot{\gamma}_{z,r}(x) are jointly distributed as
+
+\displaystyle[\gamma_{z,r}(x);\dot{\gamma}_{z,r}(x)]\sim\mathsf{N}\left(\begin{bmatrix}\widehat{x}\\
+0\end{bmatrix},\begin{bmatrix}\eta I&amp;\\
+&amp;(\pi/2)^{2}\eta I\end{bmatrix}\right)\,.
+[γz,r​(x);γ˙z,r​(x)]∼𝖭⁡([x^0],[η​I(π/2)2​η​I]).\displaystyle[\gamma_{z,r}(x);\dot{\gamma}_{z,r}(x)]\sim\mathsf{N}\left(\begin{bmatrix}\widehat{x}\\
+0\end{bmatrix},\begin{bmatrix}\eta I&amp;\\
+&amp;(\pi/2)^{2}\eta I\end{bmatrix}\right)\,.
+
+Therefore, we have shown that
+
+\displaystyle\En_{x,z\sim q}e^{\lambda\tau_{B}(\Delta_{x,z})}\leq\En_{Z_{0}\sim\mathsf{N}\left(0,\eta I\right),Z_{1}\sim\mathsf{N}\left(0,(\pi/2)^{2}\eta I\right)}\exp\left(\lambda\tau_{B}(\lvert\langle Z_{1},\nabla f(\widehat{x}+Z_{0})-u\rangle\rvert)\right).
+𝔼x,z∼q⁡eλ​τB​(Δx,z)≤𝔼Z0∼𝖭⁡(0,η​I),Z1∼𝖭⁡(0,(π/2)2​η​I)⁡exp⁡(λ​τB​(|⟨Z1,∇f​(x^+Z0)−u⟩|)).\displaystyle\En_{x,z\sim q}e^{\lambda\tau_{B}(\Delta_{x,z})}\leq\En_{Z_{0}\sim\mathsf{N}\left(0,\eta I\right),Z_{1}\sim\mathsf{N}\left(0,(\pi/2)^{2}\eta I\right)}\exp\left(\lambda\tau_{B}(\lvert\langle Z_{1},\nabla f(\widehat{x}+Z_{0})-u\rangle\rvert)\right).
+
+Applying Lemma C.2 completes the proof.
+∎
+
+C.3 Proof of Theorem 3.4
+
+Let 
+\rho
+ρ\rho be the transition kernel on 
+\mathbb{R}^{d}
+ℝd\mathbb{R}^{d} induced by the proximal sampler, i.e., 
+X^{\prime}\sim\rho(\cdot\mid{}X)
+X′∼ρ(⋅∣X)X^{\prime}\sim\rho(\cdot\mid{}X) is generated by 
+Y^{\prime}\sim\mathsf{N}\left(X,\eta I\right)
+Y′∼𝖭⁡(X,η​I)Y^{\prime}\sim\mathsf{N}\left(X,\eta I\right) and 
+X^{\prime}\sim\pi^{X|Y=Y^{\prime}}
+X′∼πX|Y=Y′X^{\prime}\sim\pi^{X|Y=Y^{\prime}}. Then, 
+\rho
+ρ\rho induces a Markov chain 
+X_{0},X_{1},\cdots
+X0,X1,⋯X_{0},X_{1},\cdots by 
+X_{0}\sim\mu_{0},X_{n+1}\sim\rho(\cdot\mid{}X_{n})
+X0∼μ0,Xn+1∼ρ(⋅∣Xn)X_{0}\sim\mu_{0},X_{n+1}\sim\rho(\cdot\mid{}X_{n}) for 
+n\geq 0
+n≥0n\geq 0. For 
+n\geq 0
+n≥0n\geq 0, let 
+\mu_{n}
+μn\mu_{n} be the law of 
+X_{n}
+XnX_{n}.
+
+Similarly, we let 
+\widehat{\rho}
+ρ^\widehat{\rho} be the transition with 
+\pi^{X|Y=Y^{\prime}}
+πX|Y=Y′\pi^{X|Y=Y^{\prime}} implemented via Theorem 3.2, and the induced Markov chain 
+X_{0},X_{1},\cdots
+X0,X1,⋯X_{0},X_{1},\cdots is given by 
+X_{0}\sim\mu_{0},X_{n+1}\sim\widehat{\rho}(\cdot\mid{}X_{n})
+X0∼μ0,Xn+1∼ρ^(⋅∣Xn)X_{0}\sim\mu_{0},X_{n+1}\sim\widehat{\rho}(\cdot\mid{}X_{n}) for 
+n\geq 0
+n≥0n\geq 0. For 
+n\geq 0
+n≥0n\geq 0, let 
+\widehat{\mu}_{n}
+μ^n\widehat{\mu}_{n} be the law of 
+X_{n}
+XnX_{n}.
+
+Then, by Lemma B.4 and data-processing inequality, it holds that
+
+\displaystyle D_{\mathsf{TV}}\left(\widehat{\mu}_{N},\mu_{N}\right)\leq D_{\mathsf{TV}}\left(\mathbb{P}_{\widehat{\rho}},\mathbb{P}_{\rho}\right)\leq\sum_{n=0}^{N-1}\En_{X_{n}\sim\mu_{n}}D_{\mathsf{TV}}\left(\widehat{\rho}(\cdot\mid{}X_{n}),\rho(\cdot\mid{}X_{n})\right).
+D𝖳𝖵(μ^N,μN)≤D𝖳𝖵(ℙρ^,ℙρ)≤∑n=0N−1𝔼Xn∼μnD𝖳𝖵(ρ^(⋅∣Xn),ρ(⋅∣Xn)).\displaystyle D_{\mathsf{TV}}\left(\widehat{\mu}_{N},\mu_{N}\right)\leq D_{\mathsf{TV}}\left(\mathbb{P}_{\widehat{\rho}},\mathbb{P}_{\rho}\right)\leq\sum_{n=0}^{N-1}\En_{X_{n}\sim\mu_{n}}D_{\mathsf{TV}}\left(\widehat{\rho}(\cdot\mid{}X_{n}),\rho(\cdot\mid{}X_{n})\right).
+
+(11)
+
+In all cases, we use the following error analysis. By Lemma C.4 and the fact that 
+D_{\chi^{2}}\left(\mu_{n}\;\|\;{}\mu\right)\leq D_{\chi^{2}}\left(\mu_{0}\;\|\;{}\mu\right)
+Dχ2(μn∥μ)≤Dχ2(μ0∥μ)D_{\chi^{2}}\left(\mu_{n}\;\|\;{}\mu\right)\leq D_{\chi^{2}}\left(\mu_{0}\;\|\;{}\mu\right), it holds that with 
+G=O(\beta_{s}^{1/(1+s)}(d+\Delta+\log(N/\delta)))
+G=O⁡(βs1/(1+s)​(d+Δ+log⁡(N/δ)))G=O(\beta_{s}^{1/(1+s)}(d+\Delta+\log(N/\delta))),
+
+\displaystyle\max_{n\in[N]}\mathbb{P}_{X\sim\mu_{n}}(\|\nabla f(X_{n})\|\geq G_{\delta})\leq\frac{\delta}{10N}\,.
+maxn∈[N]⁡ℙX∼μn​(‖∇f​(Xn)‖≥Gδ)≤δ10​N.\displaystyle\max_{n\in[N]}\mathbb{P}_{X\sim\mu_{n}}(\|\nabla f(X_{n})\|\geq G_{\delta})\leq\frac{\delta}{10N}\,.
+
+Note that as long as 
+\|\nabla f(X_{n})\|\leq G
+‖∇f​(Xn)‖≤G\|\nabla f(X_{n})\|\leq G, we can implement the proximal oracle at 
+X_{n}
+XnX_{n} with 
+\varepsilon_{\mathsf{prox}}=10(\beta_{s}^{1/(1+s)}+M))
+OPENε𝗉𝗋𝗈𝗑=10​(βs1/(1+s)+M))\varepsilon_{\mathsf{prox}}=10(\beta_{s}^{1/(1+s)}+M)) and success probability at least 
+1-\epsilon_{n}(M)
+1−ϵn​(M)1-\epsilon_{n}(M) by Lemma 2.1, using 
+O(n\log(G/\beta_{s}^{1/(1+s)})=O(n\log A)
+O⁡(n​log⁡(G/βs1/(1+s))=O⁡(n​log⁡A)CLOSEO(n\log(G/\beta_{s}^{1/(1+s)})=O(n\log A) queries to 
+\mathsf{O}_{\mathsf{grad}}(\cdot)
+𝖮𝗀𝗋𝖺𝖽​(⋅)\mathsf{O}_{\mathsf{grad}}(\cdot).
+
+Therefore, by the choice of 
+\eta
+η\eta (5), we can implement the RGO via Theorem 3.2 so that 
+D_{\mathsf{TV}}\left(\widehat{\rho}(\cdot\mid{}X_{n}),\rho(\cdot\mid{}X_{n})\right)\leq\frac{\delta}{10N}+5\epsilon_{n}(M)
+D𝖳𝖵(ρ^(⋅∣Xn),ρ(⋅∣Xn))≤δ10​N+5ϵn(M)D_{\mathsf{TV}}\left(\widehat{\rho}(\cdot\mid{}X_{n}),\rho(\cdot\mid{}X_{n})\right)\leq\frac{\delta}{10N}+5\epsilon_{n}(M) as long as 
+\|\nabla f(X_{n})\|\leq G
+‖∇f​(Xn)‖≤G\|\nabla f(X_{n})\|\leq G, using 
+O(n\log A)
+O⁡(n​log⁡A)O(n\log A) queries.
+Then, by a conditioning argument, we see that
+
+\displaystyle\En_{X_{n}\sim\mu_{n}}D_{\mathsf{TV}}\left(\widehat{\rho}(\cdot\mid{}X_{n}),\rho(\cdot\mid{}X_{n})\right)\leq\mathbb{P}_{\mu_{n}}(\|f(X_{n})\|\geq G)+\frac{\delta}{10N}+5\epsilon_{n}(M)\leq\frac{\delta}{5N}+5\epsilon_{n}(M)\,.
+𝔼Xn∼μnD𝖳𝖵(ρ^(⋅∣Xn),ρ(⋅∣Xn))≤ℙμn(∥f(Xn)∥≥G)+δ10​N+5ϵn(M)≤δ5​N+5ϵn(M).\displaystyle\En_{X_{n}\sim\mu_{n}}D_{\mathsf{TV}}\left(\widehat{\rho}(\cdot\mid{}X_{n}),\rho(\cdot\mid{}X_{n})\right)\leq\mathbb{P}_{\mu_{n}}(\|f(X_{n})\|\geq G)+\frac{\delta}{10N}+5\epsilon_{n}(M)\leq\frac{\delta}{5N}+5\epsilon_{n}(M)\,.
+
+Therefore, taking summation over 
+k=0,1,\cdots,N-1
+k=0,1,⋯,N−1k=0,1,\cdots,N-1 gives
+
+\displaystyle D_{\mathsf{TV}}\left(\widehat{\mu}_{N},\mu_{N}\right)\leq\frac{\delta}{5}+5N\epsilon_{n}(M).
+D𝖳𝖵​(μ^N,μN)≤δ5+5​N​ϵn​(M).\displaystyle D_{\mathsf{TV}}\left(\widehat{\mu}_{N},\mu_{N}\right)\leq\frac{\delta}{5}+5N\epsilon_{n}(M).
+
+(12)
+
+Finally, we can set 
+n=\phi_{M}(\frac{\delta}{10N})
+n=ϕM​(δ10​N)n=\phi_{M}(\frac{\delta}{10N}) so that 
+\epsilon_{n}(M)\leq\frac{1}{10N}
+ϵn​(M)≤110​N\epsilon_{n}(M)\leq\frac{1}{10N}. Note that this implies
+
+\displaystyle D_{\mathsf{TV}}\left(\widehat{\mu}_{N},\mu\right)\leq\frac{3}{4}\delta+D_{\mathsf{TV}}\left(\mu_{N},\mu\right).
+D𝖳𝖵​(μ^N,μ)≤34​δ+D𝖳𝖵​(μN,μ).\displaystyle D_{\mathsf{TV}}\left(\widehat{\mu}_{N},\mu\right)\leq\frac{3}{4}\delta+D_{\mathsf{TV}}\left(\mu_{N},\mu\right).
+
+Now, we apply results from Chen et al. (2022) to bound 
+N
+NN such that 
+D_{\mathsf{TV}}\left(\mu_{N},\mu\right)\leq\frac{\delta}{4}
+D𝖳𝖵​(μN,μ)≤δ4D_{\mathsf{TV}}\left(\mu_{N},\mu\right)\leq\frac{\delta}{4}:
+
+• 
+
+LSI case. Here, 
+N\asymp\frac{1}{\alpha\eta}\log\frac{D_{\mathsf{KL}}\left(\mu_{0}\,\|\,\pi\right)}{\delta^{2}}
+N≍1α​η​log⁡D𝖪𝖫(μ0∥π)δ2N\asymp\frac{1}{\alpha\eta}\log\frac{D_{\mathsf{KL}}\left(\mu_{0}\,\|\,\pi\right)}{\delta^{2}}.
+
+• 
+
+PI case. Here, 
+N\asymp\frac{1}{\alpha\eta}\log\frac{D_{\chi^{2}}\left(\mu_{0}\;\|\;{}\pi\right)}{\delta^{2}}
+N≍1α​η​log⁡Dχ2(μ0∥π)δ2N\asymp\frac{1}{\alpha\eta}\log\frac{D_{\chi^{2}}\left(\mu_{0}\;\|\;{}\pi\right)}{\delta^{2}}.
+
+• 
+
+LC case. Here, 
+N\asymp\frac{W_{2}^{2}(\mu_{0},\pi)}{\eta\delta^{2}}
+N≍W22​(μ0,π)η​δ2N\asymp\frac{W_{2}^{2}(\mu_{0},\pi)}{\eta\delta^{2}}.
+
+Plugging in the choice of 
+\eta
+η\eta in (5) gives the desired results.
+∎
+
+Lemma C.4.
+
+Suppose that Assumption 3 holds and 
+\nu
+ν\nu is a distribution such that 
+\log(1+D_{\chi^{2}}\left(\nu\;\|\;{}\mu_{f}\right))\leq\Delta
+log(1+Dχ2(ν∥μf))≤Δ\log(1+D_{\chi^{2}}\left(\nu\;\|\;{}\mu_{f}\right))\leq\Delta. Then it holds that for 
+\delta\in(0,1)
+δ∈(0,1)\delta\in(0,1),
+
+\displaystyle\mathbb{P}_{X\sim\nu}\Big(\|\nabla f(X)\|^{2}\geq\frac{64\beta_{s}^{2/(1+s)}}{d^{(1-s)/(1+s)}}\,\left(\Delta+d+\log(1/\delta)\right)\Big)\leq\delta.
+ℙX∼ν​(‖∇f​(X)‖2≥64​βs2/(1+s)d(1−s)/(1+s)​(Δ+d+log⁡(1/δ)))≤δ.\displaystyle\mathbb{P}_{X\sim\nu}\Big(\|\nabla f(X)\|^{2}\geq\frac{64\beta_{s}^{2/(1+s)}}{d^{(1-s)/(1+s)}}\,\left(\Delta+d+\log(1/\delta)\right)\Big)\leq\delta.
+
+Proof. We follow the proof of  Chewi (2026, Lemma 6.2.7). For any vector 
+v\in\mathbb{R}^{d}
+v∈ℝdv\in\mathbb{R}^{d}, we bound
+
+\displaystyle f(x+v)-f(x)-\langle v,\nabla f(x)\rangle=\int_{0}^{1}\langle v,\nabla f(x+rv)-\nabla f(x)\rangle\,dr\leq\beta_{s}\,\|v\|^{1+s}\,,\qquad\forall x\in\mathbb{R}^{d}\,.
+f⁡(x+v)−f⁡(x)−⟨v,∇f​(x)⟩=∫01⟨v,∇f​(x+r​v)−∇f​(x)⟩​𝑑r≤βs​‖v‖1+s,∀x∈ℝd.\displaystyle f(x+v)-f(x)-\langle v,\nabla f(x)\rangle=\int_{0}^{1}\langle v,\nabla f(x+rv)-\nabla f(x)\rangle\,dr\leq\beta_{s}\,\|v\|^{1+s}\,,\qquad\forall x\in\mathbb{R}^{d}\,.
+
+Then, we can bound
+
+\displaystyle\int_{\mathbb{R}^{d}}e^{-f(x+v)}\,dx\geq\int_{\mathbb{R}^{d}}e^{-f(x)-\langle v,\nabla f(x)\rangle-\beta_{s}\|v\|^{1+s}}\,dx\,.
+∫ℝde−f⁡(x+v)​𝑑x≥∫ℝde−f⁡(x)−⟨v,∇f​(x)⟩−βs​‖v‖1+s​𝑑x.\displaystyle\int_{\mathbb{R}^{d}}e^{-f(x+v)}\,dx\geq\int_{\mathbb{R}^{d}}e^{-f(x)-\langle v,\nabla f(x)\rangle-\beta_{s}\|v\|^{1+s}}\,dx\,.
+
+Re-organizing gives
+
+\displaystyle\En_{X\sim\mu_{f}}[e^{\langle v,\nabla f(X)\rangle}]\leq e^{\beta_{s}\|v\|^{1+s}}\,,\qquad\forall v\in\mathbb{R}^{d}\,.
+𝔼X∼μf⁡[e⟨v,∇f​(X)⟩]≤eβs​‖v‖1+s,∀v∈ℝd.\displaystyle\En_{X\sim\mu_{f}}[e^{\langle v,\nabla f(X)\rangle}]\leq e^{\beta_{s}\|v\|^{1+s}}\,,\qquad\forall v\in\mathbb{R}^{d}\,.
+
+For any 
+m\geq 0
+m≥0m\geq 0 such that 
+\beta_{s}\leq\frac{d^{(1-s)/2}}{2(1+s)m^{(1+s)/2}}
+βs≤d(1−s)/22​(1+s)​m(1+s)/2\beta_{s}\leq\frac{d^{(1-s)/2}}{2(1+s)m^{(1+s)/2}}, we can take expectation over 
+v\sim\mathsf{N}\left(0,mI\right)
+v∼𝖭⁡(0,m​I)v\sim\mathsf{N}\left(0,mI\right), and then Lemma B.2 gives
+
+\displaystyle\En_{X\sim\mu_{f}}\exp\Big(\frac{m}{2}\|\nabla f(X)\|^{2}\Big)\leq\exp\big(2\beta_{s}(md)^{(1+s)/2}\big)\,.
+𝔼X∼μf⁡exp⁡(m2​‖∇f​(X)‖2)≤exp⁡(2​βs​(md)(1+s)/2).\displaystyle\En_{X\sim\mu_{f}}\exp\Big(\frac{m}{2}\|\nabla f(X)\|^{2}\Big)\leq\exp\big(2\beta_{s}(md)^{(1+s)/2}\big)\,.
+
+Therefore, we choose 
+m&gt;0
+m&gt;0m&gt;0 such that 
+m^{1+s}=\frac{d^{1-s}}{16\beta_{s}^{2}}
+m1+s=d1−s16​βs2m^{1+s}=\frac{d^{1-s}}{16\beta_{s}^{2}}, and then
+
+\displaystyle\En_{X\sim\nu}\exp\left(\frac{m}{4}\|\nabla f(X)\|^{2}\right)\leq
+𝔼X∼ν⁡exp⁡(m4​‖∇f​(X)‖2)≤\displaystyle\En_{X\sim\nu}\exp\left(\frac{m}{4}\|\nabla f(X)\|^{2}\right)\leq
+
+\displaystyle~\sqrt{(1+D_{\chi^{2}}\left(\nu\;\|\;{}\mu_{f}\right))\En_{X\sim\mu_{f}}\exp\left(\frac{m}{2}\|\nabla f(X)\|^{2}\right)}
+(1+Dχ2(ν∥μf))𝔼X∼μfexp(m2∥∇f(X)∥2)\displaystyle~\sqrt{(1+D_{\chi^{2}}\left(\nu\;\|\;{}\mu_{f}\right))\En_{X\sim\mu_{f}}\exp\left(\frac{m}{2}\|\nabla f(X)\|^{2}\right)}
+
+\displaystyle\leq
+≤\displaystyle\leq
+
+\displaystyle~\exp\Big(\frac{1}{2}\Delta+\beta_{s}(md)^{(1+s)/2}\Big)\leq\exp\Big(\frac{1}{2}(\Delta+d)\Big)\,.
+exp⁡(12​Δ+βs​(m​d)(1+s)/2)≤exp⁡(12​(Δ+d)).\displaystyle~\exp\Big(\frac{1}{2}\Delta+\beta_{s}(md)^{(1+s)/2}\Big)\leq\exp\Big(\frac{1}{2}(\Delta+d)\Big)\,.
+
+Applying Markov’s inequality gives
+
+\displaystyle\mathbb{P}_{X\sim\nu}(\|\nabla f(X)\|\geq G)\leq e^{-mG^{2}/4}\En_{X\sim\nu}\exp\left(\frac{m}{4}\|\nabla f(X)\|^{2}\right)\leq\delta\,,
+ℙX∼ν(∥∇f(X)∥≥G)≤e−mG2/4𝔼X∼νexp(m4∥∇f(X)∥2)≤δ,\displaystyle\mathbb{P}_{X\sim\nu}(\|\nabla f(X)\|\geq G)\leq e^{-mG^{2}/4}\En_{X\sim\nu}\exp\left(\frac{m}{4}\|\nabla f(X)\|^{2}\right)\leq\delta\,,
+
+as long as 
+G^{2}\geq\frac{4}{m}\left(\Delta+d+\log(1/\delta)\right)
+G2≥4m​(Δ+d+log⁡(1/δ))G^{2}\geq\frac{4}{m}\left(\Delta+d+\log(1/\delta)\right). This the desired result.
+∎
+
+C.4 Proof of Theorem 3.5
+
+The proof is very similar to the proof of Theorem 3.4.
+
+By Lemma C.4 and the fact that 
+D_{\chi^{2}}\left(\mu_{n}\;\|\;{}\mu\right)\leq D_{\chi^{2}}\left(\mu_{0}\;\|\;{}\mu\right)
+Dχ2(μn∥μ)≤Dχ2(μ0∥μ)D_{\chi^{2}}\left(\mu_{n}\;\|\;{}\mu\right)\leq D_{\chi^{2}}\left(\mu_{0}\;\|\;{}\mu\right), it holds that with 
+G&gt;0
+G&gt;0G&gt;0 chosen as
+
+\displaystyle G^{2}=\frac{64\beta_{s}^{2/(1+s)}}{d^{(1-s)/(1+s)}}\left(\Delta+d+\log(10N/\delta)\right),
+G2=64​βs2/(1+s)d(1−s)/(1+s)​(Δ+d+log⁡(10​N/δ)),\displaystyle G^{2}=\frac{64\beta_{s}^{2/(1+s)}}{d^{(1-s)/(1+s)}}\left(\Delta+d+\log(10N/\delta)\right),
+
+it holds that
+
+\displaystyle\max_{n\in[N]}\mathbb{P}_{X\sim\mu_{n}}(\|\nabla f(X_{n})\|\geq G_{\delta})\leq\frac{\delta}{10N}\,.
+maxn∈[N]⁡ℙX∼μn​(‖∇f​(Xn)‖≥Gδ)≤δ10​N.\displaystyle\max_{n\in[N]}\mathbb{P}_{X\sim\mu_{n}}(\|\nabla f(X_{n})\|\geq G_{\delta})\leq\frac{\delta}{10N}\,.
+
+Note that as long as 
+\|\nabla f(X_{n})\|\leq G
+‖∇f​(Xn)‖≤G\|\nabla f(X_{n})\|\leq G, we can implement the proximal oracle at 
+X_{n}
+XnX_{n} with 
+\varepsilon_{\mathsf{prox}}=G
+ε𝗉𝗋𝗈𝗑=G\varepsilon_{\mathsf{prox}}=G by trivially returning 
+x=X_{n}
+x=Xnx=X_{n}.
+Therefore, by the choice of 
+\eta
+η\eta (6), we can implement the RGO via Theorem 3.3 so that 
+D_{\mathsf{TV}}\left(\widehat{\rho}(\cdot\mid{}X_{n}),\rho(\cdot\mid{}X_{n})\right)\leq\frac{\delta}{10N}+10\epsilon_{n}(M)
+D𝖳𝖵(ρ^(⋅∣Xn),ρ(⋅∣Xn))≤δ10​N+10ϵn(M)D_{\mathsf{TV}}\left(\widehat{\rho}(\cdot\mid{}X_{n}),\rho(\cdot\mid{}X_{n})\right)\leq\frac{\delta}{10N}+10\epsilon_{n}(M) as long as 
+\|\nabla f(X_{n})\|\leq G
+‖∇f​(Xn)‖≤G\|\nabla f(X_{n})\|\leq G, using 
+O(1)
+O⁡(1)O(1) queries. The rest of the proof is concluded as before.
+∎
+
+Appendix D Proofs from Section 4
+
+D.1 Proof of Proposition 4.1
+
+Fix any 
+p\in[0,1]
+p∈[0,1]p\in[0,1] such that 
+p\psi(\delta/p)+\psi(\delta)\leq 1
+p​ψ​(δ/p)+ψ⁡(δ)≤1p\psi(\delta/p)+\psi(\delta)\leq 1. We denote 
+M=\frac{\delta}{p}
+M=δpM=\frac{\delta}{p}.
+
+Consider 
+\psi
+ψ\psi-oracle 
+O_{0}
+O0O_{0} and 
+O_{\delta}
+OδO_{\delta}: for any 
+x\in\mathbb{R}
+x∈ℝx\in\mathbb{R}, 
+O_{0}(x)
+O0​(x)O_{0}(x) returns 
+x
+xx with probability 1, and 
+O_{\delta}(x)
+Oδ​(x)O_{\delta}(x) returns 
+x-M
+x−Mx-M with probability 
+p
+pp and returns 
+x
+xx otherwise. Then, 
+O_{0}
+O0O_{0} is a 
+\psi
+ψ\psi-oracle for 
+f_{0}
+f0f_{0}, and 
+O_{\delta}
+OδO_{\delta} is a 
+\psi
+ψ\psi-oracle for 
+f_{\delta}
+fδf_{\delta}, because
+
+\displaystyle\En_{g\sim O_{\delta}(x)}\psi(\lvert g-\nabla f_{\delta}(x)\rvert)=p\psi(M-\delta)+(1-p)\psi(\delta)\leq 1\,.
+𝔼g∼Oδ​(x)⁡ψ⁡(|g−∇fδ​(x)|)=p​ψ​(M−δ)+(1−p)​ψ​(δ)≤1.\displaystyle\En_{g\sim O_{\delta}(x)}\psi(\lvert g-\nabla f_{\delta}(x)\rvert)=p\psi(M-\delta)+(1-p)\psi(\delta)\leq 1\,.
+
+Note that
+
+\displaystyle D_{\mathsf{TV}}\left(O_{0}(x),O_{\delta}(x)\right)=p\,,
+D𝖳𝖵​(O0​(x),Oδ​(x))=p,\displaystyle D_{\mathsf{TV}}\left(O_{0}(x),O_{\delta}(x)\right)=p\,,
+
+and hence by the sub-additivity of the TV distance, we have
+
+\displaystyle D_{\mathsf{TV}}\left(\texttt{Alg}(O_{0}),\texttt{Alg}(O_{\delta})\right)\leq Tp\,.
+D𝖳𝖵​(Alg​(O0),Alg​(Oδ))≤T​p.\displaystyle D_{\mathsf{TV}}\left(\texttt{Alg}(O_{0}),\texttt{Alg}(O_{\delta})\right)\leq Tp\,.
+
+On the other hand, by our assumption, it holds that
+
+\displaystyle D_{\mathsf{TV}}\left(p_{0},\texttt{Alg}(O_{0})\right)\leq\frac{\delta}{10}\,,\qquad D_{\mathsf{TV}}\left(p_{\delta},\texttt{Alg}(O_{\delta})\right)\leq\frac{\delta}{10}\,.
+D𝖳𝖵​(p0,Alg​(O0))≤δ10,D𝖳𝖵​(pδ,Alg​(Oδ))≤δ10.\displaystyle D_{\mathsf{TV}}\left(p_{0},\texttt{Alg}(O_{0})\right)\leq\frac{\delta}{10}\,,\qquad D_{\mathsf{TV}}\left(p_{\delta},\texttt{Alg}(O_{\delta})\right)\leq\frac{\delta}{10}\,.
+
+An elementary calculation also yields
+
+\displaystyle D_{\mathsf{TV}}\left(p_{0},p_{\delta}\right)=D_{\mathsf{TV}}\left(\mathsf{N}\left(0,1\right),\mathsf{N}\left(\delta,1\right)\right)\geq\frac{\delta}{3}\,.
+D𝖳𝖵​(p0,pδ)=D𝖳𝖵​(𝖭⁡(0,1),𝖭⁡(δ,1))≥δ3.\displaystyle D_{\mathsf{TV}}\left(p_{0},p_{\delta}\right)=D_{\mathsf{TV}}\left(\mathsf{N}\left(0,1\right),\mathsf{N}\left(\delta,1\right)\right)\geq\frac{\delta}{3}\,.
+
+Therefore, by triangle inequality,
+
+\displaystyle\frac{\delta}{3}\leq D_{\mathsf{TV}}\left(p_{0},p_{\delta}\right)
+δ3≤D𝖳𝖵​(p0,pδ)\displaystyle\frac{\delta}{3}\leq D_{\mathsf{TV}}\left(p_{0},p_{\delta}\right)
+
+\displaystyle\leq D_{\mathsf{TV}}\left(p_{0},\texttt{Alg}(O_{0})\right)+D_{\mathsf{TV}}\left(\texttt{Alg}(O_{0}),\texttt{Alg}(O_{\delta})\right)+D_{\mathsf{TV}}\left(p_{\delta},\texttt{Alg}(O_{\delta})\right)
+≤D𝖳𝖵​(p0,Alg​(O0))+D𝖳𝖵​(Alg​(O0),Alg​(Oδ))+D𝖳𝖵​(pδ,Alg​(Oδ))\displaystyle\leq D_{\mathsf{TV}}\left(p_{0},\texttt{Alg}(O_{0})\right)+D_{\mathsf{TV}}\left(\texttt{Alg}(O_{0}),\texttt{Alg}(O_{\delta})\right)+D_{\mathsf{TV}}\left(p_{\delta},\texttt{Alg}(O_{\delta})\right)
+
+\displaystyle\leq\frac{\delta}{5}+Tp\,,
+≤δ5+T​p,\displaystyle\leq\frac{\delta}{5}+Tp\,,
+
+and this implies 
+T\geq\frac{\delta}{10p}
+T≥δ10​pT\geq\frac{\delta}{10p}. Taking supremum over 
+p\in(0,1]
+p∈(0,1]p\in(0,1] such that 
+p\psi(\delta/p)\leq 1
+p​ψ​(δ/p)≤1p\psi(\delta/p)\leq 1 completes the proof.
+∎
+
+    Experimental support, please
+    view the build logs
+    for errors. Generated by
+
+        L
+        A
+        T
+        E
+      
+      xml
+      
+    .
+
+Instructions for reporting errors
+
+We are continuing to improve HTML versions of papers, and your feedback helps enhance accessibility and mobile
+      support. To report errors in the HTML that will help us improve conversion and rendering, choose any of the
+      methods listed below:
+
+Click the &quot;Report Issue&quot; (
+            
+          ) button, located in the page header.
+
+Tip: You can select the relevant text first, to include it in your report.
+
+Our team has already identified the following issues. We appreciate your time reviewing and reporting rendering errors we
+      may not have found yet. Your efforts will help us improve the HTML versions for all readers, because disability
+      should not be a barrier to accessing research. Thank you for your continued support in championing open access for
+      all.
+
+Have a free development cycle? Help support accessibility at arXiv! Our collaborators at LaTeXML maintain a list of packages that need conversion, and welcome developer contributions.
+
+        We gratefully acknowledge support from
+        our major funders,
+        member institutions, ,
+        and all contributors.
+
+Major funding support from</pre></html>

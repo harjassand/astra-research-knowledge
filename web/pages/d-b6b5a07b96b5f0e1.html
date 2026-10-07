@@ -1,0 +1,160 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>&quot;&quot;&quot;Certified lexicographic squaring-quiver support and output-height interface.</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>&quot;&quot;&quot;Certified lexicographic squaring-quiver support and output-height interface.</h1><p>Source ID d-b6b5a07b96b5f0e1; literature/sources/metric_geometry10/cycle18/peer_lex_quiver_family.py; 2336 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>&quot;&quot;&quot;Certified lexicographic squaring-quiver support and output-height interface.
+
+This recognizes one declared quiver family. It is not a general optimizer.
+Original binary weights are never expanded into numeric copies. Q output may
+remain a certified programme/circuit when explicit coordinate height exceeds
+the declared budget. Fp requires a caller-certified prime.
+&quot;&quot;&quot;
+from fractions import Fraction
+from hashlib import sha256
+from pathlib import Path
+import argparse,json,sys,time
+from exact_linear import Field,span,intersection,sum_field,ambient
+
+
+CONSTANTS=[
+    (&#x27;H&#x27;,[(1,0,0)]),(&#x27;V&#x27;,[(0,1,0)]),(&#x27;U&#x27;,[(1,0,1)]),
+    (&#x27;X&#x27;,[(0,0,1),(1,0,0)]),(&#x27;Y&#x27;,[(0,0,1),(0,1,0)]),
+    (&#x27;Z&#x27;,[(0,0,1),(1,1,0)]),(&#x27;I&#x27;,[(1,0,0),(0,1,0)]),
+    (&#x27;A0&#x27;,[(2,0,1)]),
+]
+
+
+class BudgetUnknown(Exception):
+    def __init__(self,details):self.details=details
+
+
+def preflight(k,max_vertices=2000,max_weight_bits=1000000):
+    if type(k) is not int or k&lt;0:raise ValueError(&#x27;nonnegative integer rounds required&#x27;)
+    if type(max_vertices) is not int or max_vertices&lt;1 or type(max_weight_bits) is not int or max_weight_bits&lt;1:
+        raise ValueError(&#x27;positive integer budgets required&#x27;)
+    n=9+12*k
+    # No identity arrays, weights, vertex lists or huge output exponents yet.
+    if n&gt;max_vertices or n*n&gt;max_weight_bits:
+        raise BudgetUnknown({&#x27;status&#x27;:&#x27;BUDGET_UNKNOWN&#x27;,&#x27;phase&#x27;:&#x27;pre_construction&#x27;,
+                             &#x27;rounds&#x27;:k,&#x27;vertex_count&#x27;:n,&#x27;absolute_weight_binary_bits&#x27;:n*n})
+    return n
+
+
+def compile_instance(k,max_vertices=2000,max_weight_bits=1000000):
+    n=preflight(k,max_vertices,max_weight_bits);nodes=[{&#x27;name&#x27;:&#x27;frame&#x27;,&#x27;op&#x27;:&#x27;frame&#x27;}];arrows=[];index={}
+    for name,rows in CONSTANTS:
+        i=len(nodes);index[name]=i
+        matrix=[[rows[j][r] if j&lt;len(rows) else 0 for j in range(3)] for r in range(3)]
+        nodes.append({&#x27;name&#x27;:name,&#x27;op&#x27;:&#x27;constant&#x27;,&#x27;matrix&#x27;:matrix,&#x27;expected_dimension&#x27;:len(rows)})
+        arrows.append({&#x27;tail&#x27;:0,&#x27;head&#x27;:i,&#x27;matrix&#x27;:matrix})
+    def operation(name,kind,p,q):
+        i=len(nodes);nodes.append({&#x27;name&#x27;:name,&#x27;op&#x27;:kind,&#x27;parents&#x27;:[p,q],
+                                  &#x27;expected_dimension&#x27;:2 if kind==&#x27;join&#x27; else 1})
+        for parent in (p,q):
+            arrows.append({&#x27;tail&#x27;:parent if kind==&#x27;join&#x27; else i,
+                           &#x27;head&#x27;:i if kind==&#x27;join&#x27; else parent,
+                           &#x27;matrix&#x27;:[[int(r==c) for c in range(3)] for r in range(3)]})
+        return i
+    point=index[&#x27;A0&#x27;]
+    for step in range(k):
+        j=operation(f&#x27;{step}:A+V&#x27;,&#x27;join&#x27;,point,index[&#x27;V&#x27;]);b=operation(f&#x27;{step}:B&#x27;,&#x27;meet&#x27;,j,index[&#x27;Z&#x27;])
+        j=operation(f&#x27;{step}:B+H&#x27;,&#x27;join&#x27;,b,index[&#x27;H&#x27;]);c=operation(f&#x27;{step}:C&#x27;,&#x27;meet&#x27;,j,index[&#x27;Y&#x27;])
+        j=operation(f&#x27;{step}:U+C&#x27;,&#x27;join&#x27;,index[&#x27;U&#x27;],c);direction=operation(f&#x27;{step}:J&#x27;,&#x27;meet&#x27;,j,index[&#x27;I&#x27;])
+        j=operation(f&#x27;{step}:A+J&#x27;,&#x27;join&#x27;,point,direction);d=operation(f&#x27;{step}:D&#x27;,&#x27;meet&#x27;,j,index[&#x27;Y&#x27;])
+        j=operation(f&#x27;{step}:D+H&#x27;,&#x27;join&#x27;,d,index[&#x27;H&#x27;]);e=operation(f&#x27;{step}:E&#x27;,&#x27;meet&#x27;,j,index[&#x27;Z&#x27;])
+        j=operation(f&#x27;{step}:E+V&#x27;,&#x27;join&#x27;,e,index[&#x27;V&#x27;]);point=operation(f&#x27;{step}:Anew&#x27;,&#x27;meet&#x27;,j,index[&#x27;X&#x27;])
+    assert len(nodes)==n
+    signs=[1 if node[&#x27;op&#x27;] in (&#x27;frame&#x27;,&#x27;meet&#x27;) else -1 for node in nodes]
+    weights=[sign*4**(n-1-i) for i,sign in enumerate(signs)]
+    return {&#x27;dimensions&#x27;:[3]*n,&#x27;weight&#x27;:weights,&#x27;arrows&#x27;:arrows,
+            &#x27;certificate&#x27;:{&#x27;family&#x27;:&#x27;lex_squaring_v1&#x27;,&#x27;rounds&#x27;:k,&#x27;base&#x27;:4,
+                           &#x27;nodes&#x27;:nodes,&#x27;output_vertex&#x27;:point}}
+
+
+def declared_profile(nodes):
+    return [3 if node[&#x27;op&#x27;]==&#x27;frame&#x27; else node[&#x27;expected_dimension&#x27;] for node in nodes]
+
+
+def recognize(data,max_vertices=2000,max_weight_bits=1000000):
+    certificate=data.get(&#x27;certificate&#x27;,{})
+    if certificate.get(&#x27;family&#x27;)!=&#x27;lex_squaring_v1&#x27;:return None
+    k=certificate.get(&#x27;rounds&#x27;);expected=compile_instance(k,max_vertices,max_weight_bits)
+    if (any(type(x) is not int for x in data.get(&#x27;dimensions&#x27;,[]))
+        or any(type(x) is not int for x in data.get(&#x27;weight&#x27;,[]))
+        or any(type(x) is not int for a in data.get(&#x27;arrows&#x27;,[]) for row in a.get(&#x27;matrix&#x27;,[]) for x in row)):
+        return None
+    if any(data.get(key)!=expected[key] for key in (&#x27;dimensions&#x27;,&#x27;weight&#x27;,&#x27;arrows&#x27;,&#x27;certificate&#x27;)):return None
+    return expected
+
+
+def evaluate(nodes,field):
+    bases=[]
+    for i,node in enumerate(nodes):
+        if node[&#x27;op&#x27;]==&#x27;frame&#x27;:u=ambient(3,field)
+        elif node[&#x27;op&#x27;]==&#x27;constant&#x27;:
+            m=node[&#x27;matrix&#x27;];u=span([tuple(m[r][j] for r in range(3)) for j in range(3)],3,field)
+        else:
+            p,q=node[&#x27;parents&#x27;]
+            if p&gt;=i or q&gt;=i:raise ValueError(&#x27;chronological parents required&#x27;)
+            u=span(bases[p]+bases[q],3,field) if node[&#x27;op&#x27;]==&#x27;join&#x27; else intersection(bases[p],bases[q],3,field)
+        bases.append(u)
+    return bases
+
+
+def check_closure(data,bases,field):
+    for arrow in data[&#x27;arrows&#x27;]:
+        t,h=arrow[&#x27;tail&#x27;],arrow[&#x27;head&#x27;];matrix=arrow[&#x27;matrix&#x27;]
+        im=span([tuple(sum_field((field.mul(field.elt(matrix[r][j]),v[j]) for j in range(3)),field)
+                       for r in range(3)) for v in bases[t]],3,field)
+        if span(bases[h]+im,3,field)!=bases[h]:return False
+    return True
+
+
+def acquire(data,p=None,max_q_coordinate_bits=4096,max_vertices=2000,max_weight_bits=1000000):
+    started=time.perf_counter()
+    if type(max_q_coordinate_bits) is not int or max_q_coordinate_bits&lt;0:raise ValueError(&#x27;nonnegative Q coordinate budget required&#x27;)
+    try:spec=recognize(data,max_vertices,max_weight_bits)
+    except BudgetUnknown as e:return {**e.details,&#x27;body_seconds&#x27;:time.perf_counter()-started}
+    if spec is None:return {&#x27;status&#x27;:&#x27;NOT_ADMITTED&#x27;,&#x27;reason&#x27;:&#x27;Exact declared compiled quiver/weights/certificate do not match.&#x27;,&#x27;body_seconds&#x27;:time.perf_counter()-started}
+    nodes=spec[&#x27;certificate&#x27;][&#x27;nodes&#x27;];k=spec[&#x27;certificate&#x27;][&#x27;rounds&#x27;];profile=declared_profile(nodes)
+    score=sum(w*dim for w,dim in zip(spec[&#x27;weight&#x27;],profile));required_bits=(1&lt;&lt;k)+1
+    core={&#x27;field&#x27;:&#x27;Q&#x27; if p is None else &#x27;Fp&#x27;,&#x27;p&#x27;:p,&#x27;support&#x27;:str(score),&#x27;optimizer_dimensions&#x27;:profile,
+          &#x27;largest_optimizer&#x27;:True,&#x27;unique_optimizer&#x27;:True,&#x27;rounds&#x27;:k,&#x27;vertex_count&#x27;:len(nodes),
+          &#x27;total_active_dimension&#x27;:3*len(nodes),&#x27;arrow_count&#x27;:len(spec[&#x27;arrows&#x27;]),
+          &#x27;absolute_weight_binary_bits&#x27;:sum(abs(w).bit_length() for w in spec[&#x27;weight&#x27;]),
+          &#x27;numeric_weight_copies_built&#x27;:0,&#x27;final_Q_identity_chart_scalar_bits&#x27;:required_bits,
+          &#x27;output_vertex&#x27;:spec[&#x27;certificate&#x27;][&#x27;output_vertex&#x27;],
+          &#x27;support_certificate&#x27;:&#x27;Recognized compiler, chronological lex dominance, and all-field nondegenerate rank profile (L1–L2).&#x27;,
+          &#x27;selected_objective_scope&#x27;:&#x27;Same unique profile and saturated canonical reduction at every prime for this family; no whole-polytope certificate.&#x27;,
+          &#x27;general_quiver_optimizer&#x27;:False,&#x27;prime_obligation&#x27;:&#x27;caller-certified prime&#x27; if p is not None else None,
+          &#x27;circuit&#x27;:{&#x27;initial_ratio&#x27;:2,&#x27;squaring_rounds&#x27;:k,&#x27;final_line&#x27;:&#x27;span(a,0,1)&#x27;,
+                     &#x27;a&#x27;:&#x27;iterate(a -&gt; a*a, initial=2, rounds=k)&#x27;},
+          &#x27;input_core_sha256&#x27;:sha256(json.dumps(spec,sort_keys=True,separators=(&#x27;,&#x27;,&#x27;:&#x27;)).encode()).hexdigest()}
+    if p is None and required_bits&gt;max_q_coordinate_bits:
+        core.update(status=&#x27;CERTIFIED_SUCCINCT_OPTIMIZER&#x27;,explicit_basis=False,
+                    reason=&#x27;The proved final explicit-coordinate height exceeds the declared Q-output budget.&#x27;,
+                    field_cost=None,body_seconds=time.perf_counter()-started)
+        return core
+    field=Field(p);bases=evaluate(nodes,field)
+    if [len(u) for u in bases]!=profile:raise ArithmeticError(&#x27;Uniform profile gate failed&#x27;)
+    if not check_closure(spec,bases,field):raise ArithmeticError(&#x27;Literal original-arrow closure failed&#x27;)
+    point=bases[core[&#x27;output_vertex&#x27;]][0]
+    ratio=field.div(point[0],point[2])
+    expected=2
+    if p is not None:expected%=p
+    for _ in range(k):expected=expected*expected if p is None else expected*expected%p
+    if ratio!=expected:raise ArithmeticError(&#x27;Final squaring ratio failed&#x27;)
+    core.update(status=&#x27;CERTIFIED_EXPLICIT_OPTIMIZER&#x27;,explicit_basis=True,
+                optimizer_bases=[[[str(x) for x in v] for v in u] for u in bases],
+                final_ratio=str(ratio),field_cost=field.report(),
+                body_seconds=time.perf_counter()-started)
+    return core
+
+
+def main():
+    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument(&#x27;input&#x27;,nargs=&#x27;?&#x27;,default=&#x27;-&#x27;)
+    parser.add_argument(&#x27;--p&#x27;,type=int);parser.add_argument(&#x27;--max-q-coordinate-bits&#x27;,type=int,default=4096)
+    parser.add_argument(&#x27;--max-vertices&#x27;,type=int,default=2000);parser.add_argument(&#x27;--max-weight-bits&#x27;,type=int,default=1000000)
+    args=parser.parse_args();data=json.load(sys.stdin if args.input==&#x27;-&#x27; else open(args.input))
+    result=acquire(data,args.p,args.max_q_coordinate_bits,args.max_vertices,args.max_weight_bits)
+    print(json.dumps(result,indent=2))
+
+
+if __name__==&#x27;__main__&#x27;:main()
+</pre></html>

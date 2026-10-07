@@ -1,0 +1,216 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>&quot;&quot;&quot;Exact weighted-partial-flag oracle over Q or a caller-certified prime field.</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>&quot;&quot;&quot;Exact weighted-partial-flag oracle over Q or a caller-certified prime field.</h1><p>Source ID d-0f7023a89ccacad6; literature/sources/stat_exec15/cycle17/AUDITED_INPUTS/hessian_code/partial_flag_oracle.py; 2641 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>&quot;&quot;&quot;Exact weighted-partial-flag oracle over Q or a caller-certified prime field.
+
+Independent implementation of F_new(h)=F(h)+(S intersect F(h-alpha)).
+It is an oracle and trace auditor, not the Hirai optimization iteration.
+No external optimizer, unverified prime sampler, or rational flag lift is used.
+Matrices for subspaces consist of ROW vectors spanning the subspace.
+&quot;&quot;&quot;
+from fractions import Fraction
+from dataclasses import dataclass
+from collections import Counter
+import argparse, json, sys, time
+
+
+class Field:
+    def __init__(self, p=None):
+        if p is not None and (not isinstance(p,int) or p&lt;2):
+            raise ValueError(&quot;p must be a prime integer; primality is a caller obligation&quot;)
+        self.p=p; self.ops=Counter(); self.max_bits=0
+    def track(self,a):
+        if self.p is None:
+            self.max_bits=max(self.max_bits,abs(a.numerator).bit_length(),a.denominator.bit_length())
+        else: self.max_bits=max(self.max_bits,a.bit_length())
+        return a
+    def elt(self,a):
+        self.ops[&#x27;convert&#x27;]+=1
+        value=Fraction(a)
+        if self.p is None: return self.track(value)
+        if value.denominator % self.p==0: raise ValueError(&quot;rational denominator is zero in supplied field&quot;)
+        self.ops[&#x27;conversion_mod&#x27;]+=1
+        if value.denominator==1: return self.track(value.numerator%self.p)
+        self.ops[&#x27;conversion_inverse&#x27;]+=1; self.ops[&#x27;conversion_mul&#x27;]+=1
+        return self.track(value.numerator*pow(value.denominator,-1,self.p)%self.p)
+    def add(self,a,b):
+        self.ops[&#x27;add&#x27;]+=1; return self.track(a+b if self.p is None else (a+b)%self.p)
+    def sub(self,a,b):
+        self.ops[&#x27;sub&#x27;]+=1; return self.track(a-b if self.p is None else (a-b)%self.p)
+    def mul(self,a,b):
+        self.ops[&#x27;mul&#x27;]+=1; return self.track(a*b if self.p is None else a*b%self.p)
+    def div(self,a,b):
+        self.ops[&#x27;div&#x27;]+=1
+        if not b: raise ZeroDivisionError(&quot;zero pivot&quot;)
+        return self.track(a/b if self.p is None else a*pow(b,-1,self.p)%self.p)
+    def report(self):
+        return {&#x27;field&#x27;:&#x27;Q&#x27; if self.p is None else &#x27;Fp&#x27;,&#x27;p&#x27;:self.p,
+                &#x27;declared_primitive_calls&#x27;:dict(self.ops),&#x27;max_scalar_bits&#x27;:self.max_bits,
+                &#x27;p_bits&#x27;:self.p.bit_length() if self.p else None,
+                &#x27;count_scope&#x27;:&#x27;declared field/conversion calls; excludes Fraction weight operations, internals, serialization and I/O&#x27;,
+                &#x27;prime_obligation&#x27;:&#x27;caller supplies prime; this oracle does not certify primality&#x27; if self.p else None}
+
+
+def rref(rows,n,field):
+    a=[[field.elt(x) for x in row] for row in rows]
+    if any(len(row)!=n for row in a): raise ValueError(&quot;row length mismatch&quot;)
+    pivots=[]; k=0
+    for j in range(n):
+        pivot=next((i for i in range(k,len(a)) if a[i][j]),None)
+        if pivot is None: continue
+        a[k],a[pivot]=a[pivot],a[k]; factor=a[k][j]
+        a[k]=[field.div(x,factor) for x in a[k]]
+        for i in range(len(a)):
+            if i!=k and a[i][j]:
+                c=a[i][j]; a[i]=[field.sub(x,field.mul(c,y)) for x,y in zip(a[i],a[k])]
+        pivots.append(j); k+=1
+        if k==len(a): break
+    return tuple(tuple(row) for row in a[:k]),tuple(pivots)
+
+
+def span(rows,n,field): return rref(rows,n,field)[0]
+
+
+def nullspace(rows,n,field):
+    reduced,piv=rref(rows,n,field); free=[j for j in range(n) if j not in piv]
+    out=[]
+    for j in free:
+        v=[field.elt(0) for _ in range(n)]; v[j]=field.elt(1)
+        for i,k in enumerate(piv): v[k]=field.sub(field.elt(0),reduced[i][j])
+        out.append(tuple(v))
+    return tuple(out)
+
+
+def intersection(u,v,n,field):
+    if not u or not v: return ()
+    # Kernel coefficients satisfy a U - b V = 0 in the ambient space.
+    rows=[[*(row[j] for row in u),*(field.sub(field.elt(0),row[j]) for row in v)] for j in range(n)]
+    ker=nullspace(rows,len(u)+len(v),field); out=[]
+    for coeff in ker:
+        out.append(tuple(sum_field((field.mul(coeff[i],u[i][j]) for i in range(len(u))),field) for j in range(n)))
+    return span(out,n,field)
+
+
+def sum_field(values,field):
+    total=field.elt(0)
+    for x in values: total=field.add(total,x)
+    return total
+
+
+def ambient(n,field): return tuple(tuple(field.elt(int(i==j)) for j in range(n)) for i in range(n))
+
+
+@dataclass(frozen=True)
+class PartialFlag:
+    n: int
+    levels: tuple
+    spaces: tuple
+    def at(self,h,field):
+        h=Fraction(h)
+        if h&lt;=0: return ambient(self.n,field)
+        out=()
+        for w,s in zip(self.levels,self.spaces):
+            if w&lt;h: break
+            out=s
+        return out
+    def verify(self,field,cap=None):
+        if len(self.levels)!=len(self.spaces): raise ValueError(&quot;level/space count mismatch&quot;)
+        previous=()
+        for i,(w,s) in enumerate(zip(self.levels,self.spaces)):
+            if w&lt;=0 or (cap is not None and w&gt;cap): raise ValueError(&quot;levels outside positive cap&quot;)
+            if i and self.levels[i-1]&lt;=w: raise ValueError(&quot;levels not strictly descending&quot;)
+            if s!=span(s,self.n,field): raise ValueError(&quot;space is not canonical RREF&quot;)
+            if len(s)&lt;=len(previous) or span(previous+s,self.n,field)!=s: raise ValueError(&quot;spaces not strictly nested&quot;)
+            previous=s
+        return True
+    def dump(self):
+        return {&#x27;n&#x27;:self.n,&#x27;levels&#x27;:[str(v) for v in self.levels],
+                &#x27;spaces&#x27;:[[[str(x) for x in row] for row in s] for s in self.spaces]}
+
+
+def make_flag(n,levels,spaces,field):
+    result=PartialFlag(n,tuple(Fraction(w) for w in levels),tuple(span(s,n,field) for s in spaces))
+    result.verify(field); return result
+
+
+def from_basis(v,p,field):
+    n=len(v)
+    if any(len(row)!=n for row in v) or len(p)!=n: raise ValueError(&quot;basis/weight shape mismatch&quot;)
+    cols=tuple(tuple(field.elt(v[i][j]) for i in range(n)) for j in range(n))
+    if len(span(cols,n,field))!=n: raise ValueError(&quot;basis is singular&quot;)
+    weights=tuple(Fraction(w) for w in p)
+    if any(w&lt;0 for w in weights): raise ValueError(&quot;weights must be nonnegative&quot;)
+    order=sorted(range(n),key=lambda i:(-weights[i],i))
+    levels=sorted(set(w for w in weights if w&gt;0),reverse=True)
+    spaces=[span(tuple(cols[i] for i in order if weights[i]&gt;=w),n,field) for w in levels]
+    return PartialFlag(n,tuple(levels),tuple(spaces))
+
+
+def support(flag,s,field):
+    s=span(s,flag.n,field); out=Fraction(0)
+    for i,(w,a) in enumerate(zip(flag.levels,flag.spaces)):
+        nextw=flag.levels[i+1] if i+1&lt;len(flag.levels) else Fraction(0)
+        out+=(w-nextw)*len(intersection(s,a,flag.n,field))
+    return out
+
+
+def positive_step(flag,s,alpha,cap,field):
+    alpha=Fraction(alpha); cap=Fraction(cap); flag.verify(field,cap)
+    if alpha&lt;0 or cap&lt;0: raise ValueError(&quot;alpha and cap must be nonnegative&quot;)
+    s=span(s,flag.n,field)
+    if not alpha or not s: return flag
+    # 0-level coordinates of S can acquire positive weight.
+    candidates={min(cap,w) for w in flag.levels}
+    candidates.update(min(cap,w+alpha) for w in (*flag.levels,Fraction(0)))
+    outlevels=[]; outspaces=[]; last=()
+    for h in sorted((h for h in candidates if h&gt;0),reverse=True):
+        a=flag.at(h,field); b=intersection(s,flag.at(h-alpha,field),flag.n,field)
+        w=span(a+b,flag.n,field)
+        if w and w!=last:
+            outlevels.append(h); outspaces.append(w); last=w
+    result=PartialFlag(flag.n,tuple(outlevels),tuple(outspaces)); result.verify(field,cap); return result
+
+
+def negative_step(flag,t,field):
+    t=Fraction(t)
+    if t&lt;0: raise ValueError(&quot;t must be nonnegative&quot;)
+    return PartialFlag(flag.n,tuple(w-t for w in flag.levels if w&gt;t),tuple(s for w,s in zip(flag.levels,flag.spaces) if w&gt;t))
+
+
+def objective(flag,subspaces,c,u,field):
+    if not (len(subspaces)==len(c)==len(u)): raise ValueError(&quot;objective length mismatch&quot;)
+    total=sum((flag.levels[i]-(flag.levels[i+1] if i+1&lt;len(flag.levels) else 0))*len(a) for i,a in enumerate(flag.spaces))
+    return total+sum(Fraction(uk)*max(Fraction(0),Fraction(ck)-support(flag,s,field)) for s,ck,uk in zip(subspaces,c,u))
+
+
+def squared_distance(first,second,field):
+    &quot;&quot;&quot;Exact building metric using only intersection dimensions of partial flags.&quot;&quot;&quot;
+    if first.n!=second.n: raise ValueError(&quot;ambient dimension mismatch&quot;)
+    def norm2(flag):
+        lastdim=0; answer=Fraction(0)
+        for w,s in zip(flag.levels,flag.spaces):
+            answer+=w*w*(len(s)-lastdim); lastdim=len(s)
+        return answer
+    dot=Fraction(0)
+    for i,(w,a) in enumerate(zip(first.levels,first.spaces)):
+        dw=w-(first.levels[i+1] if i+1&lt;len(first.levels) else 0)
+        for j,(z,b) in enumerate(zip(second.levels,second.spaces)):
+            dz=z-(second.levels[j+1] if j+1&lt;len(second.levels) else 0)
+            dot+=dw*dz*len(intersection(a,b,first.n,field))
+    answer=norm2(first)+norm2(second)-2*dot
+    if answer&lt;0: raise ArithmeticError(&quot;negative metric square&quot;)
+    return answer
+
+
+def main():
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(&#x27;input&#x27;,nargs=&#x27;?&#x27;,default=&#x27;-&#x27;)
+    args=parser.parse_args(); data=json.load(sys.stdin if args.input==&#x27;-&#x27; else open(args.input))
+    fp=data.get(&#x27;field&#x27;,{}); field=Field(fp.get(&#x27;p&#x27;) if fp.get(&#x27;type&#x27;)==&#x27;Fp&#x27; else None)
+    start=time.perf_counter(); flag=make_flag(data[&#x27;n&#x27;],data[&#x27;levels&#x27;],data[&#x27;spaces&#x27;],field)
+    result=positive_step(flag,data[&#x27;subspace&#x27;],data[&#x27;alpha&#x27;],data[&#x27;cap&#x27;],field)
+    print(json.dumps({&#x27;updated&#x27;:result.dump(),&#x27;support_before&#x27;:str(support(flag,data[&#x27;subspace&#x27;],field)),
+                      &#x27;support_after&#x27;:str(support(result,data[&#x27;subspace&#x27;],field)),
+                      &#x27;squared_distance&#x27;:str(squared_distance(flag,result,field)),
+                      &#x27;cost&#x27;:field.report(),&#x27;seconds&#x27;:time.perf_counter()-start},indent=2))
+
+
+if __name__==&#x27;__main__&#x27;: main()
+</pre></html>

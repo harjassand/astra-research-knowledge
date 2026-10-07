@@ -1,0 +1,145 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Certified Perron powering by bounded-bit normalized squaring</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>Certified Perron powering by bounded-bit normalized squaring</h1><p>Source ID d-e59e36a237e9dac3; literature/notes/rounding_spectral/cycle11/ROUNDED_PERRON_POWER.md; 1546 o200k tokens; role research_note; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre># Certified Perron powering by bounded-bit normalized squaring
+
+7 October 2026, `rounding_spectral`. Derived numerical implementation
+lemma for the previously proved spectral oracle. It has no independent
+novelty or measured-runtime claim. No high-L trajectory was executed here.
+
+## Input and need
+
+Let A be symmetric rational, positive semidefinite, entrywise nonnegative,
+with positive diagonal, top eigenvalue at most 10, and top gap at least
+2eta. These premises hold for the clipped nonnegative Gram approximation
+plus exact large diagonal and eta11^T in the D oracle. Assume dimension
+N&gt;=2 and `0&lt;zeta&lt;=1/64`. Dimension one is immediate.
+
+The original proof obtains a rational eigenline by applying an integer
+matrix T times to ones, where
+
+`T=ceil[64 ceil(log2(16N/zeta))/eta]`.
+
+That construction is formally polynomial but generates O(T) denominator
+degree and uses O(T) sequential vector powers if implemented directly.
+The lemma below uses only O(log T) matrix squarings, fixed dyadic grids,
+and exact rational final projector/Rayleigh computations.
+
+## Exact reference and normalized squaring
+
+Set `X0=A/max_j A_jj`. Define
+
+`F(X)=X^2/max_j(X^2)_jj`, `X_(j+1)=F(X_j)`.
+
+Every X_j is PSD and nonnegative, has maximal diagonal exactly one,
+and operator norm at most N. Also
+
+`X_j=A^(2^j)/max_l(A^(2^j))_ll`.
+
+The scalar denominators telescope without changing the eigenvectors or
+spectral ratios. For any PSD X with maximal diagonal one,
+`maxdiag(X^2)&gt;=1`, because at an index where X_ii=1,
+`(X^2)_ii=sum_l X_il^2&gt;=1`. This gives a denominator lower bound
+independent of eta, eigenvector coordinates, and face geometry.
+
+For two such matrices with norms at most N,
+
+`||X^2-Y^2||&lt;=2N||X-Y||`,
+
+and the maximum diagonal is 1-Lipschitz in operator norm. Consequently
+
+`||F(X)-F(Y)||&lt;=2N(1+N^2)||X-Y||&lt;=4N^3||X-Y||`.     (1)
+
+Let J be the smallest integer with 2^J&gt;=T. The exact reference q_ref
+=X_J ones has norm at least one: its top eigenvalue is at least one
+and its overlap with the positive unit Perron eigenvector is at least
+one. Its other/top component ratio is at most
+
+`sqrt(N) (lambda2/lambda1)^(2^J)`
+
+` &lt;=sqrt(N) exp(-eta T/5)`.
+
+The displayed oversized T makes this below zeta/4; this follows from
+lambda1&lt;=10, gap&gt;=2eta, e&gt;2, and the integer logarithm bound. Hence
+the projector of q_ref approximates the top eigenprojector within
+zeta/4 in operator norm.
+
+## Rounded PSD/nonnegative implementation
+
+Put C=4N^3. Choose a fixed dyadic mesh delta&lt;=1 with
+
+`delta&lt;=zeta/(64N^3 C^J)`.
+
+Starting from exact X0, iterate
+
+`Y=F(Xhat_j)`,
+
+`Xhat_(j+1)=[Round_delta(Y)+Ndelta I]/(1+Ndelta)`.
+
+Round each symmetric entry to nearest delta, with a fixed tie rule.
+Since Y is PSD with diagonal at most one, every entry is in [0,1].
+The dyadic grid contains one, so the maximal diagonal of its rounded
+matrix is exactly one. Its rounding operator error is at most Ndelta/2.
+Adding Ndelta I restores positive semidefiniteness, preserves
+nonnegativity, and dividing by 1+Ndelta restores maximal diagonal one.
+Thus every Xhat_j stays in the domain of (1), with norm at most N.
+
+One rounding/repair/rescaling perturbs Y by at most 2N^2delta. In fact,
+its difference from Y is
+
+`[Round_delta(Y)-Y+Ndelta(I-Y)]/(1+Ndelta)`,
+
+whose norm is at most `(N/2+N^2)delta&lt;=2N^2delta`.
+Writing E_j=||Xhat_j-X_j||, (1) gives
+
+`E_(j+1)&lt;=C E_j+2N^2delta`, `E0=0`,
+
+so `E_J&lt;=2N^2delta C^J&lt;=zeta/(32N)`.
+
+Set the rational vector q=Xhat_J ones and compute
+
+`P_hat=q q^T/(q^T q)`, `ell=q^T A q/(q^T q)`.
+
+Then `||q-q_ref||&lt;=sqrt(N)E_J&lt;=zeta/(32sqrt(N))`.
+Since q_ref has norm at least one, q is nonzero and its eigenline
+projector differs by less than zeta/8. Combining with the exact reference
+power bound gives
+
+`||P_hat-P_top(A)||&lt;zeta`.
+
+The Rayleigh deficit is at most `10zeta^2&lt;zeta`, because the
+projector distance is the sine of its angle to the top eigenvector.
+All statements are certified by rational grid/error arithmetic and the
+stated spectral premises; no approximate matrix eigenvalue test is used.
+
+## Encodings and integration into the Hessian oracle
+
+Each persistent Xhat_j has entries equal to dyadic-grid integers divided
+by the fixed rational 1+Ndelta. Their magnitudes are at most one, so
+their bit length is O(log(delta^-1)+log N). Temporary squaring,
+normalization and rounding use one fixed-degree rational expansion,
+then discard that denominator. They do not retain degree 2^J.
+
+The grid satisfies
+
+`log2(delta^-1)=O(J log N+log(zeta^-1)+log N)`,
+
+with `J=O(log(eta^-1)+log log(N/zeta))`. For the rounding theorem&#x27;s
+inverse-polynomial eta and tolerance, this is O(log^2(nK)), in addition
+to the rational input encodings used once at X0. J dense products are
+charged; no empirical speed comparison is claimed.
+
+Apply this lemma to A=M_hat from the original spectral approximation,
+whose clipped weights preserve PSD/nonnegativity and whose exact eta
+regularizer supplies the gap. Its matrix error to M is the earlier
+delta_M&lt;=zeta/256. Perturbation of the eigenprojector is at most
+delta_M/eta; the resulting total projector error remains below the
+earlier allowance 3zeta/eta. Rayleigh error remains below 2zeta. Thus
+the original rational reduced-resolvent, gradient, Hessian and motion-Gram
+telescopes continue to apply with unchanged conservative allowances.
+
+Together with `ROUNDED_LEGAL_FILTER.md`, this removes two avoidable
+persistent denominator-growth mechanisms in the local numerical oracle.
+It preserves the exact legal direction interface and the charged
+quartic progress proof. Exact geometry, all-row products, matrix inverses,
+conditional moments, and the same-information screening/kT comparators
+still require their full costs. A reachable high-L execution remains
+the next discriminating implementation step.
+</pre></html>

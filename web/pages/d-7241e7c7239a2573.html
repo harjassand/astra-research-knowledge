@@ -1,0 +1,1026 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Learning Weighted Automata</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>Learning Weighted Automata</h1><p>Source ID d-7241e7c7239a2573; literature/sources/metric_prior/cycle19/prior/BalleMohri2015.txt; 17692 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>Learning Weighted Automata
+Borja Balle1 and Mehryar Mohri2,3
+1 School of Computer Science, McGill University, Montr´eal, Canada
+2 Courant Institute of Mathematical Sciences, New York, NY
+3 Google Research, New York, NY
+1 Introduction
+Weighted ﬁnite automata (WFA) are ﬁnite automata whose transitions and states are
+augmented with some weights, elements of a semiring. A WFA induces a function over
+strings. The value it assigns to an input string is the semiring sum of the weights of
+all paths labeled with that string, where the weight of a path is obtained by taking the
+semiring product of the weights of its constituent transitions, as well as those of its
+origin and destination states.
+The mathematical theory behind WFAs, that of rational power series , has been
+extensively studied in the past [26,52,40,16] and has been more recently the topic
+of a dedicated handbook [23]. WFAs are widely used in modern applications, per-
+haps most prominently in image processing and speech recognition where the termi-
+nology of weighted automata seems to have been ﬁrst introduced and made popular
+[34,43,49,41,44], in several other speech processing applications such as speech syn-
+thesis [55,1], in phonological and morphological rule compilation [35,36,47], in parsing
+[45], bioinformatics [25,2], sequence modeling and prediction [22], formal veriﬁcation
+[3], in optical character recognition [18], and in many other areas.
+These applications, as well as a number of theoretical questions, have strongly mo-
+tivated the problem of learning WFAs, that is that of ﬁnding a WFA closely estimating
+a semiring-valued target function, using for training a ﬁnite sample of strings labeled
+with their target values. This problem has a rich history since its simpler instances date
+back to the origins of computer science. We will therefore discuss only brieﬂy some of
+the key results of the literature.
+A special instance of this problem is that of learning (unweighted) ﬁnite automata,
+which coincide with WFAs deﬁned over the Boolean semiring. A series of negative re-
+sults are known for this problem when the target itself is a ﬁnite automaton and when the
+complexity criterion used is the size of the automaton learned. In particular, the prob-
+lem of ﬁnding a consistent deterministic ﬁnite automaton (DFA) of minimum size was
+shown to be NP-hard by Gold [29]. This result was later extended by Angluin [4]. Pitt
+and Warmuth [50] further strengthened these results by showing that even an approx-
+imation within a polynomial function of the size of the smallest consistent automaton
+is NP-hard. Their hardness results apply also to the case where prediction is made us-
+ing non-deterministic ﬁnite automata (NFA) (see also [21]). Kearns and Valiant [37]
+presented for the same problem hardness results of a different nature relying on crypto-
+graphic assumptions. Their results imply that no polynomial-time algorithm can learn
+
+consistent NFAs polynomial in the size of the smallest DFA from a ﬁnite sample of ac-
+cepted and rejected strings if any of the generally accepted cryptographic assumptions
+holds, for example if RSA public key cryptosystem is secure.
+These results imply the computational intractability of the general problem of pas-
+sively learning ﬁnite automata for several learning models, including the mistake bound
+model of Haussler et al. [31] or the PAC-learning model of Valiant [56]. In contrast, an
+active model of learning automata was introduced by Angluin [4,5], where the learner
+can make membership and equivalence queries. For this model, it was shown that ﬁnite
+automata can be learned in time polynomial in the size of the minimal automaton and
+that of the longest counter-example [4] (see also [38] and [46]).
+Fewer results have been reported in the literature for the general case of learning
+WFAs over a non-Boolean semiring. Bergadano et al. [15] extended the positive result
+of [4] in the scenario where membership and equivalence queries can be made, to the
+problem of learning WFAs deﬁned over any ﬁeld. Using the relationship between the
+size of a minimal weighted automaton over a ﬁeld and the rank of the corresponding
+Hankel matrix, the learnability of many other concepts classes such as disjoint DNF
+can be shown [13]. In the passive setting, the problem of learning a probabilistic WFA
+using a ﬁnite sample drawn according to the same distribution has been the subject of
+a series of publications in recent years using a spectral method, starting with the work
+of Hsu et al. [32] for learning hidden Markov models (HMMs). The main technique
+used in these publications consists of a singular value decomposition (SVD) of a Han-
+kel matrix. Balle and Mohri [11] further showed that spectral methods combined with a
+constrained matrix completion algorithm can be used to learn arbitrary WFAs (not nec-
+essarily probabilistic) from ﬁnite samples drawn according to a distribution unrelated
+to the target WFA.
+This paper surveys a number of key theoretical results and algorithms for learning
+WFAs. In Section 2, we introduce the main deﬁnitions and notation used throughout
+the paper. The notion of Hankel matrix turns out to play a key role in the deﬁnition
+of several learning algorithms for WFAs. In Section 3, we discuss several important
+properties of Hankel matrices and their use in the reconstruction of WFAs. In Section 4,
+we use these results to describe three algorithms for learning WFAs, as well as their
+theoretical guarantees.
+2 Deﬁnitions and Properties
+In this section, we brieﬂy introduce some basic notions and notation related to semirings
+and weighted automata needed for the discussion in the following sections.
+2.1 Semirings
+A weighted ﬁnite automaton (WFA)A is a ﬁnite automaton whose transitions and states
+carry some weights. For various operations to be well deﬁned, the weights must belong
+to a semiring, that is a ring that may lack negation. More formally, (S,⊕,⊗, 0, 1) is a
+semiring if (S,⊕, 0) is a commutative monoid with identity element 0, (S,⊗, 1) is a
+
+monoid with identity element 1,⊗ distributes over⊕, and 0 is an annihilator for⊗, that
+isa⊗ 0 = 0⊗a = 0 for alla∈ S.
+As an example, (R+∪{+∞}, +,×, 0, 1) is a semiring called theprobability semir-
+ing. The semiring isomorphic to the probability semiring via the negativelog is the sys-
+tem (R∪{−∞, +∞},⊕log, +, +∞, 0), where⊕log is deﬁned byx⊕logy =− log(e−x+
+e−y); it is called the log semiring. The semiring derived from the log semiring via the
+Viterbi approximation is the system (R∪{−∞, +∞}, min, +, +∞, 0) and is called
+the tropical semiring. It is the familiar semiring of shortest-paths algorithms.
+A semiring is said to be commutative when the multiplicative operation⊗ is com-
+mutative. It is said to be idempotent ifx⊕x =x for allx∈ S. The Boolean semiring
+and the tropical semiring are idempotent.
+2.2 Weighted Automata
+Given an alphabetΣ, we will denote by|x| the length of a string x∈Σ∗ and byϵ the
+empty string for which|ϵ| = 0.
+The second operation of a semiring is used to compute the weight of a path by
+taking the⊗-product of the weights of its constituent transitions. The ﬁrst operation is
+used to compute the weight of any string x, by taking the⊕-sum of the weights of all
+paths labeled withx.
+For a WFA A deﬁned over a semiring (S,⊕,⊗, 0, 1), we denote byQA its ﬁnite set
+of states and byEA its ﬁnite set of transitions, which are elements ofQA×Σ×S×QA.4
+We will also denote by αA∈ SQA the vector of initial weights, by βA∈ SQA the
+vector of ﬁnal weights, and by wA[e]∈ S the weight of a transition e∈ EA. More
+generally, we denote bywA[π] the weight of a pathπ =e1··· en of A which is deﬁned
+by the⊗-product of the transitions weights:wA[π] =wA[e1]⊗···⊗ wA[en]. For any
+pathπ, we also denote by orig[π] its origin state and by dest[π] its destination state.
+It is sometimes convenient to deﬁne the set ofinitial statesIA ={q∈QA : αA[q]⁄=
+0} and similarly the set of ﬁnal statesFA ={q∈QA : βA[q]⁄= 0}. A path fromIA to
+FA is then said to be an accepting path.
+A WFA A over an alphabetΣ deﬁnes a function mapping the set of stringsΣ∗ to S
+that is abusively also denoted by A and deﬁned as follows:
+∀x∈Σ∗, A(x) =
+⨁
+π∈PA(x)
+(
+αA[orig[π]]⊗wA[π]⊗ βA[dest[π]]
+)
+,
+where PA(x) denotes the (ﬁnite) set of paths in A labeled with x. By convention,
+A(x) = 0 whenP (x) =∅.
+For any a∈ Σ, let Aa∈ SQA×QA be the matrix [Aa]pq =⊕e∈PA(p,a,q)wA[e],
+wherePA(p,a,q ) is the set of transitions labeled witha fromp toq. Then, (2.2) can be
+equivalently written as follows in terms of matrices with entries in S:
+∀x =x1··· xk∈Σ∗, A(x) = α⊤
+AAx1··· Axk βA.
+4 All of our results can be straightforwardly extended to the case whereEA is a multiset, thereby
+allowing multiple transitions between the same two states with the same labels and weights.
+
+����� �����
+���
+�����
+���
+��� ���
+��� ���
+αA =
+
+
+1
+3
+4
+
+ Aa =
+
+
+0 0 3
+0 0 3
+1 0 0
+
+
+βA =
+
+
+2
+1
+1
+
+ Ab =
+
+
+0 1 0
+2 0 0
+0 0 4
+
+
+(a) (b)
+Fig. 1. (a) Example of WFA A. Within each circle, the ﬁrst number indicates the state number,
+the second after the slash separator the initial weight and the third the ﬁnal weight. In particular,
+A(ab) = 1× 3× 4× 1 + 3× 3× 4× 1 + 4× 1× 1× 1. (b) Corresponding initial vector αA,
+ﬁnal vector βA, and transition matrices Aa and Ab.
+This is similar to the linear representation of recognizable formal power series [52,40,16].
+Figure 1 illustrates these deﬁnitions with a speciﬁc example of WFA. Thesize of a WFA
+is denoted by |A| and deﬁned as the sum of the number of states and the number of
+transitions of A:|A| =|QA| +|EA|. In the absence of any ambiguity, we will drop all
+A-subscripts in the deﬁnitions just presented.
+3 Hankel Matrices and WFA Reconstruction Algorithms
+A key algebraic tool used in the design of the learning algorithms we will present is
+the notion of Hankel matrix. Thus, in this section, we present an extensive analysis of
+Hankel matrices and their properties. We will show how sufﬁciently informative ﬁnite
+sub-blocks of the Hankel matrix of a WFA can be used to reconstruct a WFA.
+From here on, we will assume that the semiringS is in fact aﬁeld. This enables us to
+deﬁne the rank of a matrix with entries in S and devise effective algorithms for solving
+linear systems with unknowns and coefﬁcients in S. We note, however, that some of the
+results stated in this section can be extended to rings.
+3.1 Deﬁnitions
+Let H∈ SΣ∗×Σ∗
+be an inﬁnite matrix with rows and columns indexed by strings in
+Σ∗. We denote by H(u,v ) its entry with row indexu∈Σ∗ and column indexv∈Σ∗.
+The following deﬁnitions are essential for the rest of the paper.
+Deﬁnition 1 (Hankel matrix). We will say that H is a Hankel matrix if H(u,v ) =
+H(u′,v′) for allu,u,v,v ′∈Σ∗ such thatuv =u′v′ and will denote by rank(H) the
+rank of H.
+Deﬁnition 2 (Hankel matrix of a function). The Hankel matrix Hf of a function
+f : Σ∗ → S (or formal series over S) is the matrix deﬁned by Hf(u,v ) = f(uv),
+for allu,v ∈Σ∗. Conversely, any Hankel matrix H deﬁnes a functionf : Σ∗→ S by
+settingf(u) = H(u,ϵ ) for allu∈Σ∗ and thus H = Hf .
+
+3.2 Hankel Matrices of Rational Functions
+A functionf : Σ∗→ S is said to be rational when it can be represented by a WFA A,
+that is whenf(x) = A(x) for allx∈Σ∗ [52,40,16]. The following theorem of Fliess
+[28] (see also [20]) provides an important characterization of rational functions in terms
+of the ﬁniteness of rank(Hf).
+Theorem 1 (Fliess [28]). Let S be a ﬁeld. Then, the rank of the Hankel matrix Hf
+associated to a function f : Σ∗→ S is ﬁnite if and only if f is rational. In that case,
+there exists a WFAA representingf with rank(Hf) states and no WFA representingf
+admits fewer states.
+Thus, when rank(Hf) &lt; +∞, a WFA representingf with rank(Hf) states (|QA| =
+rank(HA)) is minimal. Note that this minimality is deﬁned only in terms of the number
+of states, unlike the notion of minimal deterministic WFA [41,42]. In fact, such minimal
+WFAs often have a large number of transitions.
+Proof. Suppose ﬁrst that there exists a WFAA representingf. Then, for anyu,v∈Σ∗,
+we can write
+f(uv) = A(uv) = (α⊤
+AAu)(AvβA) . (1)
+Observe that α⊤
+AAu is a row vector in S1×QA and AvβA a column vector in SQA×1.
+Let P be the matrix in SΣ∗×QA deﬁned by PA(u,·) = α⊤
+AAu for all u∈ Σ∗ and
+SA∈ SΣ∗×QA the matrix deﬁned by SA(v,·) = ( AvβA)⊤ for all v∈ Σ∗. Then, in
+view of (1), for allu,v∈Σ∗,
+f(uv) = (α⊤
+AAu)(AvβA) = (PAS⊤
+A)(u,v ) .
+This proves that Hf = PAS⊤
+A. Since PA and SA are in SΣ∗×QA, the rank of Hf is
+upper bounded by|QA|, the number of states of A, and is therefore ﬁnite.
+Assume now that rank(Hf) = n &lt;+∞. For anyv∈Σ∗, we denote by Hf(·,v )
+the column of Hf indexed by v. Let (Hf(·,v 1),..., Hf(·,vn)) be a basis for all
+columns. Then, there exist β1,...,β n∈ S such that the column Hf(·,ϵ ) can be ex-
+pressed as Hf(·,ϵ ) = ∑n
+i=1βiHf(·,vi). Since for all w∈ Σ∗,f(w) = H(ϵ,w ) =
+H(w,ϵ ) = ∑n
+i=1βiHf(w,vi), this implies that f =∑n
+i=1βiHf(·,vi). Now, for all
+i∈ [1,n ] and a∈ Σ, the column Hf(·,avi) can also be expressed in terms of the
+basis: there exist (γa
+ji) such that Hf(·,avi) = ∑n
+j=1γa
+jiHf(·,vj). Let Aa be the
+matrix deﬁned by (Aa)ji = (γa
+ji). Then, we can show by induction on the length
+of w that for all w = a1··· ak ∈ Σ∗, Hf(·,wvi) = ∑n
+j=1(Aw)jiHf(·,vj), where
+Aw = Aa1··· Aak. Indeed, if the equality holds for w1 andw2, then for w = w1w2
+and for allu∈Σ∗ we have Hf(u,wvi) = Hf(uw1,w 2vi) and:
+Hf(uw1,w 2vi) =
+n∑
+j=1
+(Aw2)jiHf(uw1,vj) =
+n∑
+j=1
+(Aw2)jiHf(u,w 1vj)
+=
+n∑
+j=1
+(Aw2)ji
+n∑
+k=1
+(Aw1)kj Hf(u,vk) =
+n∑
+k=1
+(Aw1 Aw2)kiHf(u,vk) .
+
+�����
+�����
+���
+��������
+�����
+���
+�����
+���
+���
+���
+����
+���
+���
+�����
+��������
+���
+�����
+���
+����
+�����
+���
+���
+���
+����
+(a) (b)
+Fig. 2. Illustration of standardization. (a) WFA A deﬁned over the ﬁeld (R, +,×, 0, 1). (b) WFA
+B obtained by standardization of A. In this instance, the ﬁrst stage of standardization leaves the
+WFA unchanged. In the second stage, state 3 is eliminated since it is a linear combination of
+states 1 and 2 in the following sense: let f3 be the function deﬁned by setting state 3 to be the
+only initial state with initial weight 1, and similarly with states 2 and 3, then, f3 = f1− f2.
+Thus, for anyw =a1··· ak∈Σ∗,
+f(w) =
+n∑
+i=1
+βiHf(ϵ,wvi) =
+n∑
+i=1
+βi
+n∑
+j=1
+(Aw)jiHf(ϵ,vj) = α⊤Aa1··· Aak β ,
+where αj = Hf(ϵ,vj) and βj = βj for all j ∈ [1,n ]. This proves that f can be
+represented by a WFA withn = rank(Hf) states. ⊓ ⊔
+3.3 Standardization of WFAs
+Theorem 1 proves the existence of a minimal WFA for the representation of a rational
+functionf. In this section, we brieﬂy describe an algorithm for computing a minimal
+WFA B from an input WFA A representingf. The ﬁrst algorithm for this problem is
+due to Sch ¨utzenberger [54] (see also [53]) and is known as a standardization of the
+representation of the linear representation of a rational power series. A more efﬁcient
+version of this algorithm was later given by Cardon and Crochemore [19]. Here, we
+give a brief description of that algorithm.
+The algorithm consists of ﬁrst ﬁnding a basis(v1,..., vm) of row vectors inS1×QA
+for the vector space generated by {α⊤
+AAw : w ∈ Σ∗} such that for any j ∈ [1,m ]
+and a∈ Σ, vjAa is in span(v1,..., vm). The basis can be constructed incremen-
+tally by starting with v1 = α⊤
+A and by augmenting the current sequence of vectors
+(v1,..., vt) as follows. For any j ∈ [1,t ] and a ∈ Σ, the vector w is chosen in
+span(v1,..., vm, vjAa) such that if vjAa is linearly dependent of (v1,..., vt), then
+w = 0 ; otherwise, such that (v1,..., vt, w) is triangular modulo the order of com-
+ponents and vt+1 is set to w. Additionally, the components of vjAa are computed
+with respect to (v1,..., vt, w) when w⁄= 0, with respect to (v1,..., vt) otherwise.
+Testing the dependency of vjAa with respect to (v1,..., vt) and determining w such
+that (v1,..., vt, w) be triangular in the independent case can be done as in Gaussian
+elimination. This helps deﬁne a WFA B′ equivalent to A and whose number of states
+is dim(span({α⊤
+AAw : w∈ Σ∗})) = dim(span({α⊤
+B′B′
+w : w∈ Σ∗})). The compo-
+nents of vjAa computed by the algorithm help deﬁne the transitions of B′. The time
+
+complexity of the algorithm is inO(|Σ||QA|3) semiring operations since at each itera-
+tion, the complexity of determining w is inO(|Σ||QA|2).
+The second stage of the algorithm is symmetric. It consists of starting with B′ and
+constructing a WFA B whose number of states is dim(span({B′
+wβB′ : w∈ Σ∗})) =
+dim(span({BwβB : w∈ Σ∗})). The second stage therefore coincides with the ﬁrst
+stage if we ﬁrst reverse the WFA B′ and permute αB′ and βB′. Since|QAB′|≤| QA|,
+the overall time complexity of the algorithm is inO(|Σ||QA|3).
+The two consecutive stages guarantee that the resulting WFA B is minimal.
+3.4 Hankel Masks and Bases
+A Hankel basis for an inﬁnite Hankel matrix with ﬁnite rank essentially identiﬁes a
+ﬁnite sub-block of that matrix which contains as much information as the inﬁnite matrix
+itself. The existence of such bases is paramount for the design of learning algorithms
+for WFAs. Here, we will prove the existence of Hankel bases, provide bounds on their
+sizes, and brieﬂy discuss the problem of ﬁnding one in practice. We start by giving
+several deﬁnitions.
+Deﬁnition 3 (Hankel Mask). LetP,S⊆ Σ∗ be two subsets of the set of all strings.
+Then, the pairB = (P,S) is called a Hankel mask. The elements ofP are called the
+preﬁxes and those ofS the sufﬁxes of the mask.
+Deﬁnition 4 (Hankel sub-block). Let H∈ SΣ∗×Σ∗
+be a Hankel matrix. Given a Han-
+kel maskB = (P,S), we write HB∈ SP×S to denote the Hankel sub-block of H with
+rows indexed by elements ofP and sufﬁxes indexed by those ofS. Thus, for all u∈P
+andv∈S we have HB(u,v ) = H(u,v ).
+Observe that HB inherits from H the Hankel property. Furthermore, sinceHB is a sub-
+block of H, we always haverank(HB)≤ rank(H). This motivates our next deﬁnition.
+Deﬁnition 5 (Hankel basis). We say that the Hankel mask B = (P,S) is a Hankel
+basis for H if rank(HB) = rank(H).
+Since the rank of a matrix is upper bounded by its dimensions, all Hankel masks sat-
+isfy rank(HB)≤ min{|P|,|S|}. The next result is an immediate consequence of the
+deﬁnition of the rank of a Hankel matrix indicating that this bound is attainable.
+Proposition 1. Let H be a Hankel matrix with rank(H) = n. Then there exists a
+Hankel basisB = (P,S) for H with|P| =|S| =n.
+Deﬁnition 6 (Preﬁx-closed and sufﬁx-closed sets). A subsetW⊆ Σ∗ is preﬁx-closed
+ifw = uv∈W impliesu∈W . Similarly,W⊆ Σ∗ is sufﬁx-closed ifw = uv∈W
+implies v ∈ W. Note that if W is either preﬁx-closed or sufﬁx-closed, then it must
+containϵ.
+The standardization procedure for WFA described in Section 3.3 provides further
+information about the structure of minimal Hankel bases.
+
+Proposition 2. Let H be a Hankel matrix with rank(H) = n. Then, there exists a
+Hankel basisB = (P,S) for H with|P| =|S| =n, whereP is preﬁx-closed andS is
+sufﬁx-closed.
+Note that, given a stringx∈Σ∗, there are exactly|x| + 1 decompositionsx =uv
+withu,v ∈ Σ∗. A direct consequence of this fact is that if W⊆ Σ∗ is preﬁx-closed
+and has|W| = n, then|w| &lt; nfor every w∈W . The same holds for sufﬁx-closed
+sets. When combined with the previous proposition, this observation yields a bound on
+how far inΣ∗ one needs to look in order to ﬁnd a Hankel basis for a Hankel matrix H
+with rankn.
+Corollary 1. Let H be Hankel with rank(H) =n. ThenB = (Σ&lt;n,Σ&lt;n) is a Hankel
+basis for H.
+3.5 WFA Reconstruction from Complete Minimal Masks
+In this section, we describe the class of complete minimal Hankel masks, which can
+be used to specify the information needed to solve a WFA reconstruction problem via
+the Gaussian elimination algorithm in an arbitrary ﬁeld. We describe the reconstruction
+algorithm and show that if the given mask is a Hankel basis for some Hankel matrix
+Hf , then the algorithm will reconstruct a minimal WFA computingf.
+Deﬁnition 7 (Hankel sub-blocks Ha and HΣ). LetB = (P,S) be a Hankel mask
+in Σ∗. For every symbol a∈ Σ, we deﬁne the Hankel mask Ba = (Pa,S), where
+Pa = {ua: u ∈ P}. Given a Hankel matrix H, we will use the shorthand Ha =
+HBa∈ SP×S . Note the entries ofHa satisfy Ha(u,v ) = H(ua,v ) for everyu∈P and
+v∈S . We denote by HΣ the block-matrix obtained by stacking together the matrices
+Ha for alla∈Σ, that is H⊤
+Σ = [H⊤
+a1··· H⊤
+ar] ifΣ ={a1,...,a r}.
+Deﬁnition 8 (Complete and minimal Hankel masks). A Hankel maskB = (P,S) is
+said to be complete for a Hankel matrix H if ϵ∈P∩S and rank([H⊤
+B | H⊤
+Σ]) =
+rank(H⊤
+B ). A complete Hankel maskB is minimal if rank(HB) =|P|. Note this last
+condition implies|P|≤|S| .
+We now proceed to describe a WFA reconstruction algorithm that takes as input a
+complete minimal Hankel maskB = (P,S) for a Hankel matrix H and the correspond-
+ing Hankel sub-blocks HB and HΣ, and returns a WFA A withk =|P| states. Let us
+writeP ={u1,...,u k} andS ={v1,...,v k′} withu1 = v1 = ϵ. First, let α⊤
+A =
+[1, 0,..., 0]∈ Sk and β⊤
+A = [HB(u1,ϵ ),..., HB(uk,ϵ )] = (HB(·,ϵ ))⊤. Second, note
+that sinceB is complete and minimal we have rank([H⊤
+B | H⊤
+a ]) = rank( H⊤
+B ) = k
+for everya∈Σ. Thus, by the Rouch´e–Capelli theorem, for everya∈Σ there exists a
+unique Aa∈ Sk×k such that AaHB = Ha. Using the Gaussian elimination algorithm,
+each of these systems of equations can be solved in O(k2(k′ +k)) arithmetic opera-
+tions in S. Thus, the arithmetic complexity of reconstructing a WFA A with|P| states
+from a complete minimal basisB = (P,S) is inO(|Σ||P| 2|S|) [30]. If, in addition to
+being complete and minimal, the maskB is a Hankel basis for Hf , the above procedure
+recovers a minimal WFA computingf.
+
+Theorem 2. IfB is a complete minimal Hankel basis for Hf , then the reconstructed
+WFA A computesf and is minimal.
+Proof. Let A′ be a minimal WFA computing f. Recall that A′ induces a rank factor-
+ization Hf = PA′S⊤
+A′, which, when restricted to the Hankel basisB yields a rank fac-
+torization HB = P′S′⊤ and associated factorizations Ha = P′A′
+aS′⊤ for alla∈ Σ.
+From these, using the fact that the transition weights of A satisfy AaHB = Ha we
+get AaP′S′⊤ = P′A′
+aS′⊤. Since P′ is invertible and S′ has full column rank, this
+last equation implies Aa = P′A′
+aP′−1. A similar argument with the initial and ﬁnal
+weights shows that α = P′−1α and β = P′β. Therefore, we see that A and A′ com-
+pute the same function, and in particular A computes f. Minimality is immediate by
+observing that A has|QA| = rank(HB) = rank(Hf) states. ⊓ ⊔
+If the Hankel maskB = (P,S) is complete and minimal but not necessarily a Han-
+kel basis, then the function computed byA will not agree withf everywhere. However,
+the next result shows that ifP is preﬁx-free andS is sufﬁx-free, then A will agree with
+f on all strings inP({ϵ}∪ Σ)S.
+Theorem 3. LetB = (P,S) be a complete minimal Hankel mask forHf . Suppose that
+P is preﬁx-closed andS is sufﬁx-closed. Then, the WFA A reconstructed from HB and
+HΣ satisﬁes f(uv) = A(uv) and f(uav) = A(uav) for every u∈P , v∈S , and
+a∈Σ.
+Proof. Letk = rank(HB) =|P| andP ={u1,...,u k} withu1 =ϵ and|ui|≤| ui+1|
+for alli. Let HA = PAS⊤
+A be the factorization induced by A. Let us write PP∈ SP×k
+for the sub-block of PA containing the rows indexed by preﬁxes in P. We claim that
+PP = I is the identity matrix. To see this, we will show that for 1≤ i≤ k we have
+PP(ui,·) = e⊤
+i , where ei is theith indicator vector.
+By construction of A, the case i = 1 holds since PP(ui,·) = PA(ϵ,·) = α⊤ =
+e⊤
+1 . Now, suppose the claim is true for all 1≤ j ≤ i. Since|ui+1| ≥ |uj| for all
+1 ≤ j ≤ i andP is preﬁx-closed, we must have ui+1 = uja for some a ∈ Σ
+and 1≤ j ≤ i. Therefore, we have PP(ui+1,·) = PA(uja,·) = PA(uj,·)Aa =
+e⊤
+j Aa = Aa(j,·). Finally, we observe that because AaHB = Ha and Ha(uj,·) =
+HB(uja,·) = HB(ui+1,·), when solving the system of equations for Aa we will ob-
+tain Aa(j,·) = e⊤
+i+1.
+Now, let SS∈ SS×k denote the sub-block of SA corresponding to the sufﬁxes in
+S. By the previous claim, to show that A(uv) = f(uv) for all u∈P and all v∈S
+it sufﬁces to show that S⊤
+S = HB. Letk′ =|S| and assume without loss of generality
+thatS ={v1,...,v k′} with v1 = ϵ and|vi+1| ≥|vi| for all i. Then for i = 1 we
+immediately have SS(v1,·) = SA(ϵ,·) = β⊤ = HB(·,ϵ )⊤ = HB(·,v 1)⊤ by the way
+β is constructed. Now, suppose we have SS(vj,·) = HB(·,vj)⊤ for all 1≤ j≤ i.
+Note we must have vi+1 = avj for some a∈ Σ and some 1≤ j≤ i. Thus, we see
+that SS(vi+1,·) = SA(avj,·) = SA(vj,·)A⊤
+a = HB(·,vj)⊤A⊤
+a = Ha(·,vj)⊤ =
+HB(·,avj)⊤ = HB(·,vi+1)⊤.
+To complete the proof it just remains to show that A(uav) = f(uav) = Ha(u,v )
+for allu∈P ,v∈S , anda∈Σ. This follows from the previous claims by noting that
+A(uiav) = PP(ui,·)AaSS(v,·)⊤ = e⊤
+i AaHB(·,v ) = e⊤
+i Ha(·,v ) = Ha(ui,v ). ⊓ ⊔
+
+3.6 WFA Reconstruction via Rank Factorizations
+In this section, we show how a rank factorization of HB for a non-minimal complete
+Hankel maskB can be used to reconstruct a WFA. The main difference with the proce-
+dure presented in the previous sections is that here the number of states of the resulting
+WFA is not tied to the number of preﬁxes|P| in the mask, but to the rank ofHB, which
+can be small, even if|P| is large.
+LetB = (P,S) be a Hankel mask in Σ∗ withϵ∈P∩S . Given a Hankel matrix
+H, in addition to the matrices Ha = HBa ∈ SPa×S for a ∈ Σ introduced in the
+previous section, we deﬁne vectors hP ∈ SP and hS ∈ SS with entries given by
+hP(u) = H(u,ϵ ) and hS(v) = H(ϵ,v ). Note that the conditionϵ∈P∩S implies that
+hP (resp. h⊤
+S ) can be found as a column (resp. a row) in HB.
+SupposeB is a complete Hankel mask and letk be the rank of HB, rank(HB) =k.
+Then, HB admits a rank factorization HB = PBS⊤
+B with PB∈ SP×k and SB∈ SS×k.
+Such a rank factorization can be obtained using a Gaussian elimination algorithm [30].
+Next, we show how to use this rank factorization in order to reconstruct a WFAA with
+k =|QA| states.
+The algorithm proceeds by solving a series of systems of linear equations. For the
+initial and ﬁnal weights we ﬁnd the unique solutions toSBαA = hP and PBβA = hS.
+Note that αA exists and is unique since SB contains a basis of linearly independent
+vectors for the column-span of HB and hP is a column of HB. A similar argument
+holds for βA. For the transition weights associated with a symbol a∈ Σ, we use the
+unique solution to the system of linear equations Ha = PBAaS⊤
+B .
+One way to solve this last system of equations — and to see that indeed it admits
+a unique solution — is to recall that the equation for Aa is equivalent to vec(Ha) =
+(SB⊗K PB) vec(Aa), where⊗K denotes the Kronecker product between matrices,
+and vec(M) the result of stacking the columns of M into a single vector. Observe that
+the new system of equations admitsk2 unknowns. Its coefﬁcients satisfy rank(SB⊗K
+PB) = rank( SB) rank(PB) = k2 by a basic property of Kronecker products, and
+rank([SB⊗K PB| vec(Ha)]) = rank( SB⊗K PB) since the columns of Ha are lin-
+ear combinations of the columns of PB because the maskB is complete. Thus, by the
+Rouch´e–Capelli theorem, there exists a unique solution for Aa. Furthermore, the solu-
+tion can be found using Gaussian elimination inO(|P||S|k2) arithmetic operations.
+Overall, the cost of reconstructing the WFA A starting from a complete Hankel
+mask takes O(|Σ||P||S|k2) arithmetic operations. As in the previous section, if, in
+addition to being complete, the maskB is a Hankel basis for some Hankel matrix Hf ,
+then the WFA recovered is a minimal automaton forf. The proof of this result is almost
+identical to that of Theorem 2 and is omitted.
+Theorem 4. IfB is a complete Hankel basis for Hf , then the reconstructed WFA A
+computesf and is minimal.
+3.7 WFA Reconstruction from Noisy Hankel Matrices
+In the two WFA reconstruction algorithms described in the previous sections, we as-
+sumed that the Hankel sub-blocks used in the reconstruction procedure are known ex-
+
+actly. However, that assumption is not realistic in practice, especially when we are con-
+cerned with learning problems. We now describe a variation of the WFA reconstruction
+algorithm from rank factorizations that works in situations where the only available
+information are approximations to the Hankel sub-blocks speciﬁed by a Hankel mask.
+This procedure relies in a crucial manner on the computation of a singular value
+decomposition (SVD), which is only possible for the real case S = R, the complex
+case S = C, and, in general, in the case where S is a ﬁeld obtained as the intersection
+of real closed ﬁelds [48]. Since S = R is the case which occurs more frequently in
+applications, and is also a case for which efﬁcient SVD algorithms are widely avail-
+able, we will present the algorithm in this section only for this case. The ideas can be
+straightforwardly generalized to other ﬁelds admitting an SVD.
+As before, we will assume that the algorithm is given as input an arbitrary Hankel
+maskB = (P,S). The difference is that here, instead of the exact versions of the
+matrices and vectors HB, Ha, hP, and hS that represent sub-blocks of some Hankel
+matrix H, the algorithm will only have access to approximate versions of these objects.
+For example, we are given a matrix ˆHB∈ RP×S such that ˆHB = HB + EB, where
+EB∈ RP×S is a noise matrix. Likewise, where are given ˆHa = Ha + Ea for every
+a∈Σ,ˆhP = hP + eP, andˆhS = hS + eS.
+The important point to note here is that even ifHB has small rank, sayrank(HB) =
+k≤ rank(H) = n, its approximation ˆHB may have a much larger rank, and thus, in
+this case, the straightforward rank factorization approach will yield a large WFA which
+does not necessarily resemble the one we would recover had we had access to the exact
+versions of HB and the other matrices. For example, if the error matrixEB is in generic
+position, or random, then HB will have full rank.
+Thus, the question is now how to use these matrices to reconstruct a WFA with less
+states than rank(ˆHB), and that ideally resembles the one we would obtain in the exact
+case if the amount of noise is small. The key to the solution consists of using an SVD
+and replace the rank factorization in the previous WFA reconstruction algorithm by a
+low rank approximation of ˆHB.
+Now we proceed to describe the ﬁrst steps of the algorithm. As input it receives
+the Hankel maskB, the number of states k′ that the output WFA must have, and the
+approximated Hankel sub-blocks described above. We start by computing the SVD of
+ˆHB and using it to obtain the best rank k′ approximation ˆHB≈ ˆUˆDˆV⊤, where ˆD =
+diag(ˆs1,..., ˆsk′) is a diagonal matrix containing the topk′ singular values of ˆHB, and
+ˆU ∈ RP×k′
+and ˆV ∈ RS×k′
+contain the associated left and right singular vectors
+respectively. With this notation, one can see that nowˆPB = ˆUˆD andˆSB = ˆV provide
+a rank factorizationˆPBˆSB of the best rankk′ approximation to ˆHB.
+The next natural step in the algorithms would be to solve the following systems of
+linear equations in order to reconstruct a WFA:ˆSBˆα =ˆhP,ˆPBˆβ =ˆhS, and (ˆSB⊗K
+ˆPB) vec(ˆAa) = vec( ˆHa) for every a∈ Σ. There is, however, an obstruction to the
+direct application of this strategy in this case: these equations are no longer guaranteed
+to admit a unique solution. Due to the errors in the Hankel sub-blocks introduced by
+the approximation, these equations might now be unsatisﬁable or not admit a unique
+solution. Thus, we will follow a least-squares approach and look for a solution to these
+equations that minimizes the norm of the residual. A way to express these solutions
+
+in closed-form is via the Moore–Penrose pseudo-inverse M+ ∈ Rd2×d1 of a matrix
+M∈ Rd1×d2. In particular, given a linear system of equations Mx = b the pseudo-
+inverse yields a solutionx = M+b that satisﬁes the equation if it is satisﬁable, and that
+minimizes the error‖Mx− b‖ otherwise.
+Now we proceed to describe the rest of the algorithm, which essentially applies this
+strategy to solve the linear systems given above. For the initial and ﬁnal weights this
+yieldsˆα =ˆS+
+BˆhP andˆβ = ˆP+
+BˆhS. In our case, these are easy to compute because by
+properties of the pseudo-inverse it can be shown that ˆP+
+B = (ˆUˆD)+ = ˆD−1ˆU⊤ and
+ˆS+
+B = ˆV+ = ˆV⊤. For the transition weights, a short algebraic calculation shows that
+(ˆSB⊗K ˆPB)+ = (ˆS+
+B⊗K ˆP+
+B) = (ˆV⊤⊗K ˆD−1ˆU⊤). Substituting into vec(ˆAa) =
+(ˆSB⊗K ˆPB)+ vec(ˆHa) and applying the equivalence between vectorized and unvec-
+torized systems of linear equations, we obtain the expression ˆAa = ˆD−1ˆU⊤ˆHaˆV.
+Overall, the complexity of this process is dominated by the low-rank SVD computa-
+tion, which takesO(|P||S|k′) arithmetic operations. Hence, the arithmetic complexity
+of computing the WFA ˆA with k′ states given by ˆα, ˆβ, and ˆAa for a ∈ Σ, is in
+O(|Σ||P||S|k′).
+The main result of this section is a bound on the sensitivity of this algorithm to
+the magnitude of the noise. To make this more precise, we need two ingredients. The
+ﬁrst is a precise way to quantify the error in the approximations. Different choices
+lead to slightly different results, but in order to illustrate the point we will simply use
+the Euclidean norm for vectors and the Frobenius norm for matrices. Thus, we will
+deﬁne εB =‖EB‖F ,εa =‖Ea‖F for everya∈ Σ,εP =‖eP‖2, and εS =‖eS‖2.
+For convenience we will also write ε = max{εB,εa1,...,ε ar,εP,εS}. The second
+ingredient is to determine what would the output of the algorithm be if the input had
+no noise. For that purpose, let us assume that k′ = rank(HB) = k andε = 0. In that
+case, we have ˆHB = HB and the SVD of rank k yields an exact rank factorization
+HB = PS⊤ = ( UD)(V)⊤. Thus, the algorithm returns a WFA with k states given
+by α = V⊤hP, β = D−1U⊤hS, and Aa = D−1U⊤HaV, where we dropped
+the hat notation to indicate that we are in the case ε = 0. For this automaton, a direct
+application of Theorem 4 yields the following result, which shows that this is essentially
+a generalization of the WFA reconstruction algorithm based on rank factorizations.
+Corollary 2. Suppose k′ = rank( HB) and ε = 0 . IfB is a complete basis for Hf ,
+then the reconstructed WFAA computesf and is minimal.
+The most important result about the WFA reconstructions algorithm based on SVD
+is the following, which bounds the error between the noisy and the noiseless cases.
+Theorem 5. Suppose k′ = rank( HB). Let A denote the WFA obtained in the case
+ε = 0 and ˆA the WFA obtained in the noisy case. Then, the following approximation
+guarantee holds asε→ 0:
+∆ = max{‖α−ˆα‖2,‖β−ˆβ‖2,‖Aa1−ˆAa1‖F,..., ‖Aar−ˆAar‖F} =O(ε).
+The proof of this results is technical and goes beyond the scope of the present survey.
+Essentially, it involves a detailed analysis using perturbation theory for singular values
+and vectors (see [9, Chapter 5] for details).
+
+4 Algorithms for Learning WFAs
+In this section, we show how the reconstruction techniques described in the previous
+section can be used in the design of algorithms for learning WFAs. We describe three
+WFA learning algorithms, each designed for a different learning scenario. The scenarios
+mainly differ by the way the data about the target function f : Σ∗→ S is gathered:
+exact learning from membership and equivalence queries (Section 4.1), PAC learning
+(Probably approximately correct learning) of a probability distribution represented by
+a WFA from i.i.d. samples (Section 4.2), and statistical learning of WFA from general
+string–label pairs (Section 4.3).
+We also present learning guarantees in each case, thereby showcasing an important
+trade-off between degree of ﬁdelity of the information collected versus quality of the
+learned WFA with respect to a target automaton or distribution. Of the three scenarios,
+only the ﬁrst one can learn WFA over an arbitrary ﬁeldS; in the other two scenarios we
+restrict ourselves only to the case S = R.
+4.1 Learning WFAs From Queries
+In this section, we describe an algorithm for learning WFAs deﬁned over an arbitrary
+ﬁeld S. The algorithm was ﬁrst presented in [14] for the special case S = Q and later
+generalized to arbitrary ﬁelds in [15]. It can be interpreted as a direct generalization
+of Angluin’s classical algorithm for learning DFAs from membership and equivalence
+queries [5] and can be further applied to other learning problems (see [12,13]).
+The learning scenario for this algorithm coincides with the active learning scenario
+deﬁned and adopted by Angluin [5] for learning (unweighted) automata. In this sce-
+nario, given a target rational function f : Σ∗→ S the learner can make the following
+two types of queries to which an oracle responds:
+– membership queries MQf : the learner requests the target value f(w) of a string
+w∈Σ∗ and receives that value;
+– equivalence queries EQf : the learner conjectures a WFA A; he receives the re-
+sponse yes iff can be computed by A, a counter-example w∈ Σ∗ withf(w)⁄=
+A(w) otherwise.
+The objective of the learner is to determine exactly a WFA A representingf. We will
+denote byn the unknown rank of the Hankel matrix off,n = rank(Hf).
+The main idea behind the algorithm is to build a complete minimal Hankel basisB
+for Hf , ﬁll the associated Hankel sub-blocks HB and HΣ by making a series of calls
+to MQf , and then reconstruct the corresponding WFA using the Gaussian elimination
+algorithm described in Section 3.5. In order to ﬁnd such a basisB several intermediate
+complete minimal Hankel masks are considered. For each, the corresponding WFA is
+reconstructed using information collected from membership queries, and the counter-
+examples supplied by the equivalence queries used to extend the current Hankel mask.
+Given two basesB = (P,S) andB′ = (P′,S′), we will write in shortB⊆B ′ for
+P⊆P ′ andS⊆S ′. The algorithm constructs a sequence of complete minimal Hankel
+masksB0⊆B 1⊆···⊆B d, where the last maskBd is a Hankel basis for Hf . At each
+
+step, the inequality rank(HBi+1) &gt; rank(HBi) holds, which guarantees that the total
+number of iterations is at most d≤ n. The starting mask isB0 = ({ϵ},{ϵ}), which is
+clearly a complete and minimal mask.
+The main inductive step is given by the following procedure. First, given Bi =
+(Pi,Si) withi≥ 0, the algorithm reconstructs a WFA Ai by ﬁlling the corresponding
+Hankel sub-blocks using calls to MQf and then applying the reconstruction algorithm
+of Section 3.5. Second, it makes an equivalence query EQf(Ai). If the answer is yes,
+the algorithm terminates. Otherwise, it receives a counter-example w∈ Σ∗ such that
+Ai(w)⁄= f(w). This is used to build the new Hankel mask Bi+1 = (Pi+1,Si+1) as
+follows:
+1. ﬁnd a decomposition w =uav whereu is the longest preﬁx ofw inPi;
+2. letSi+1 =Si∪ suﬀs(v), where suﬀs(v) is the set of all sufﬁxes ofv;
+3. starting from Pi+1 =Pi, and while rank([H⊤
+Bi+1| H⊤
+Σ])&gt; srank(HBi+1), keep
+adding to Pi+1 preﬁxes ua ∈ Pi+1Σ such that rank([H⊤
+Bi+1 | Ha(u, :)⊤]) =
+rank(HBi+1) + 1.
+Note the resulting mask Bi+1 is complete by construction and minimal because only
+preﬁxes that increase the rank of HBi+1 are added to Pi+1. Also note that the algo-
+rithm maintains the property thatPi is preﬁx-closed andSi sufﬁx-closed. It is clear that
+if the algorithm terminates, it returns the correct answer. To prove that the algorithm
+terminates it sufﬁces to show that at each iteration the inequality |Pi+1| &gt;|Pi| holds
+since this will guarantee that at each iteration the rank ofHBi increases. Since this rank
+can be at most n = rank( Hf), and since whenever rank(HBi) = rank( Hf)Bi is a
+complete minimal Hankel basis, Theorem 2 then shows that the WFA Ai computesf.
+The termination of the algorithm is guaranteed by the following result.
+Lemma 1. LetB′
+i = (Pi,Si+1), whereSi+1 is the set of sufﬁxes obtained after pro-
+cessing the counter-example w received from the (i + 1)th call to EQf . Then, the fol-
+lowing inequality holds: rank([H⊤
+B′
+i
+| H⊤
+Σ])&gt; rank(H⊤
+B′
+i
+).
+Proof. Suppose that rank([H⊤
+B′
+i
+| H⊤
+Σ]) = rank( H⊤
+B′
+i
+) and let A′
+i be the WFA re-
+constructed fromB′
+i by the algorithm in Section 3.5. Since Bi andB′
+i share the same
+preﬁxes, both are minimal and complete, and Si⊆S i+1, then Ai and A′
+i must com-
+pute the same function. Thus, we have f(w)⁄= Ai(w) = A′
+i(w). On the other hand,
+w =uav withu∈P i andv∈S i+1. Thus, in the matrix Ha used to reconstruct A′
+i we
+have Ha(u,v ) = f(w), and by Theorem 3 it holds that A′
+i(w) = f(w). We conclude
+by contradiction that rank([H⊤
+B′
+i
+|H⊤
+Σ])&gt; rank(H⊤
+B′
+i
+). ⊓ ⊔
+We can now bound the number of queries made by the algorithm. First observe
+that the number of calls to EQf is O(n) since one such call is made for each of the
+d + 1 Hankel masks. To bound the number of calls to MQf , note that since we have
+Bi⊆B i+1 for eachi, at each stage most of the queries needed to ﬁllHBi+1 have already
+been asked in previous iterations. Thus, it sufﬁces to count the number of MQf queries
+needed to ﬁll the matrices corresponding to the last Hankel mask Bd = (Pd,Sd). This
+number is clearly (|Σ| + 1)|Pd||Sd|.
+
+LetL denote the length of the longest counter-example returned by the successive
+calls to EQf , we have|Sd|≤ 1+dL. This, combined with|Pd| =n, shows that the total
+number of calls to MQf is inO(|Σ|n2L). Note that this complexity is not optimal: [17]
+give an improved technique for processing counter-examples that yields an algorithm
+making onlyO(|Σ|n2 log(L)) calls to MQf .
+4.2 Learning Stochastic WFAs from I.I.D. Samples
+A stochastic WFA is a WFA computing a probability distribution. In this section, we
+consider the problem of learning a stochastic WFA and therefore assume that S =
+R. The learning scenario commonly adopted for stochastic WFAs is one where the
+learner receives a ﬁnite set of strings sampled i.i.d. from the target stochastic WFA.
+The objective of the learner is to use this training sample to learn a WFA computing a
+function close the target distribution with respect to some measure of accuracy.
+In this section, we present an algorithm for this problem which consists of ﬁrst using
+the training sample to estimate a sub-block of the Hankel matrix of the target WFA,
+and next of using the algorithm described in Section 3.7 to reconstruct a WFA based
+on those estimates. Several variants of this algorithm can be found in the literature,
+including [33,7] for the ﬁrst such algorithms based on SVD, [10] for variants using
+preﬁx and substring statistics, and [6,9] for detailed analyses and further references.
+A stochastic WFA overΣ is one that computes a probability distribution over Σ∗,
+that is, a WFA A with A(w)≥ 0 for all w ∈ Σ∗ and∑
+w∈Σ∗ A(w) = 1 . Proba-
+bilistic automata with stopping probabilities or absorbing states are typical examples of
+stochastic WFAs in this class (see [57,58,24] for a discussion of the relations between
+different ﬁnite-state machines computing probability distributions).
+Let A be a ﬁxed unknown target stochastic WFA A. We assume that the learning
+algorithm receives a sample S = (w1,...,w m)∈ (Σ∗)m ofm strings sampled i.i.d.
+from the distribution computed byA. In addition toS, the algorithm receives the alpha-
+betΣ, a number of statesn that the output automaton should have, and a ﬁnite Hankel
+maskB = (P,S) withn≤ min{|P|,|S|}.
+The ﬁrst step of the algorithm is to compute empirical estimates of the matrices
+and vectors required by the SVD-based WFA reconstruction algorithm of Section 3.7:
+ˆHB, ˆHa for a ∈ Σ, ˆhP, and ˆhS. This is done by assigning to each entry in these
+matrices and vectors the relative frequency of the corresponding string in the sample
+S = (w1,...,w m). For example, foru∈P andv∈S the algorithm sets
+ˆHB(u,v ) = 1
+m
+m∑
+i=1
+I[wi =uv] .
+The same is done forˆHa,ˆhP, andˆhS. These approximations are then used by the WFA
+reconstruction algorithm to obtain an automaton ˆA withn states.
+The empirical probabilities used in the estimations of the Hankel sub-blocks con-
+verge to the true probabilities as m → ∞. One can also expect that the difference
+between the unknown probability distribution f and the function computed by ˆA de-
+creases as m increases. The next theorem gives a stronger guarantee which holds for
+
+ﬁnite samples, as opposed to a result holding in the limit. It is aprobably approximately
+correct (PAC) learning guarantee: for a sample size m polynomial in the size of the
+1/ϵ whereϵ is the precision sought, log(1/δ) whereδ is the conﬁdence parameter and
+several other parameters including 1/sn(HB) where sn(HB) is the singular value of
+HB and the string length L, the WFA ˆA returned by the algorithm is ϵ-close to f for
+the norm-1 over the set of strings of length at mostL.
+Theorem 6. Letε&gt; 0. Then, for anyδ∈ (0, 1), with probability at least1−δ over the
+draw of a sample S of size m≥ p(|Σ|,n,|P|,|S|, 1/sn(HB),L, 1/ε, log(1/δ)) from
+the (target) probability distribution f, where p is a polynomial, the WFA ˆA returned
+by the algorithm after receiving S, a complete Hankel basis B = (P,S) for Hf and
+n = rank(Hf) veriﬁes the following inequality:
+∑
+w∈Σ≤L
+|f(w)− ˆA(w)|≤ ε .
+The proof of this result admits three components: Theorem 5, a concentration bound
+for the estimates ˆHB, and a bound relating accuracy in transition weights between A
+and ˆA to accuracy in the function they compute (see [33,6,9] for detailed proofs).
+4.3 Learning WFAs from String–Value Pairs
+In this section, we present an algorithm for learning WFAs in a more general scenario
+than the previous ones. This scenario was ﬁrst introduced in [11]. The learning algo-
+rithm for WFAs described here is also due to [11].
+Here, as in the standard supervised learning, the learner receives a labeled sam-
+ple S = ((w1,y 1),..., (wm,ym)) ∈ (Σ∗× S)m containing m string–value pairs
+(wi,yi)∈Σ∗× S, drawn i.i.d. according to some unknown distributionD. The learn-
+ing problem consists of ﬁnding a WFA A with small expected loss, that is with small
+E(w,y)∼D[𝓁(A(w),y )], where 𝓁 is a loss function deﬁned over semiring pairs. We will
+consider again here the case S = R. The problem is then an instance of a regression
+learning problem. The loss function 𝓁: R× R→ R+ is used to measure the closeness
+of the labels. Some common choices for𝓁 are the quadratic loss deﬁned for ally,y′∈ R
+by𝓁2(y,y′) = (y−y′)2 and the absolute loss deﬁned by𝓁1(y,y′) =|y−y′|.
+Note that in this formulation we did not assume that the labelsy in pairs(x,y ) drawn
+fromD are computed by some WFA. Thus, in learning-theoretic terms, we consider an
+agnostic setting.
+Note also that one could ﬁnd a WFA A consistent with the labeled sample, that is
+such that A(wi) = yi for all i∈ [1,m ]. But, such a WFA could be large and might
+not beneﬁt from a favorable expected loss. Furthermore, it was recently shown in [39]
+that the problem of ﬁnding the smallest WFA A consistent with the labeled sample is
+computationally hard.
+A WFA minimizing the empirical loss 1
+m
+∑m
+i=1𝓁(A(wi),yi) could overﬁt the train-
+ing sample and typically would not beneﬁt from favorable learning guarantees unless it
+is selected out of a less complex sub-family of WFAs. The algorithm we describe here
+
+avoids overﬁtting by constraining the choice of a WFA in two ways: by restricting the
+number of states, and by controlling the norm of a certain Hankel matrix.
+The algorithm works in two stages. In the ﬁrst stage, the sample S is used to ﬁnd a
+sub-block of a Hankel matrix on a given mask. The second stage uses this Hankel block
+to reconstruct a WFA with a given number of states using the SVD-based method from
+Section 3.7. The algorithm receives as input the sample S, the alphabet Σ, a Hankel
+maskB = (P,S) withϵ∈P∩S , a number of statesk≤ min{|P|,|S|}, a convex loss
+function𝓁 : R× R→ R+, and a regularization parameterλ&gt; 0.
+The ﬁrst stage builds a basis B′ = (P′,S) withP′ =P∪P Σ and a modiﬁed
+sampleS′ containing only those (wi,yi)∈S such thatwi∈P′S. Then, the algorithm
+solves the convex optimization problem
+ˆHB′∈ argmin
+H∈HB′
+1
+|S′|
+∑
+(w,y)∈S′
+𝓁(H(w),y ) +λ‖H‖∗ ,
+where HB′ denotes the set of all Hankel matrices H∈ RP′×S, H(w) denotes H(u,v )
+for some arbitrary decomposition w = uv withu∈P andv∈S , and where‖H‖∗
+denotes the nuclear norm of H deﬁned as the sum of the singular values of H.
+The second stage of the algorithm starts by extracting from ˆHB′ the Hankel sub-
+blocks associated with the Hankel maskB: ˆHB, ˆHa fora∈ Σ, hP, and hS. Then, it
+uses the SVD-based WFA reconstruction algorithm of Section 3.7 to obtain a WFA ˆA
+withk states.
+The design of the algorithm, and in particular the choice of the nuclear norm as a
+regularization term for ﬁnding the Hankel matrix ˆHB′ is supported by several proper-
+ties. First, the nuclear norm is a convex surrogate for the rank function commonly used
+in machine learning algorithms [27]. By Theorem 1, low-rank Hankel matrices cor-
+respond to WFAs with small numbers of states, thus it favors the selection of smaller
+WFAs by the algorithm. A second justiﬁcation is given by the following theorem, which
+provides a guarantee for learning with WFAs in terms of the nuclear norm of the asso-
+ciated Hankel matrix.
+LetM &gt;0 and deﬁneτM : R→ R as the function deﬁned by τM(y) = sign(y)M
+if|y| &gt; M,τM(y) = y otherwise. LetS = ((w1,y 1),..., (wm,ym))∈ (Σ∗× R)m.
+Given a decompositionwi =uivi, for any 1≤i≤m, we deﬁneUS = maxu∈Σ∗|{i :
+ui = u}| andVS = maxv∈Σ∗ |{i : vi = v}|. A measure of the complexity of S that
+will appear in the next theorem is WS = min max{US,VS}, where the minimum is
+taken over all possible decompositions of the strings wi inS. For any R &gt;0, letFR
+denote the following class of functions
+FR ={f(w) =τM(A(w)) : A WFA,‖Hf‖∗≤R} .
+The following gives a learning bound for the algorithm just discussed.
+Theorem 7. Let 𝓁1 denote the absolute loss. Assume that there exists M &gt; 0 such
+that P(w,y)∼D[|y|≤ M] = 1 . Then, for any δ &gt; 0, with probability at least 1−δ
+over the draw of an i.i.d. sample S of size m fromD, the following inequality holds
+
+simultaneously for allf∈F R:
+E
+(w,y)∼D
+[𝓁1(f(w),y )]≤ 1
+m
+m∑
+i=1
+𝓁1(f(wi),yi) + 3M
+√
+log( 2
+δ )
+2m
++O
+(R
+(
+log(m + 1) +
+√
+WS log(m + 1)
+)
+m
+)
+.
+A similar result was ﬁrst proven in [11] using a Frobenius norm regularizer instead of a
+nuclear norm. The analysis in [11] was based on a stability argument, and it is not clear
+how to extend it to the nuclear norm case, which is known to perform better than the
+Frobenius norm in some applications [51]. Theorem 7 is proven using a Rademacher
+complexity analysis of WFAs recently given by [8].
+5 Conclusion
+We presented a detailed survey of modern algorithms for learning WFAs. We high-
+lighted the key role played by the notion of Hankel matrix and its properties in the
+design of these learning algorithms which are designed for different scenarios. These
+properties and the algorithms we described could inspire other variants of these algo-
+rithms as well as other algorithms.
+Acknowledgments
+This work was partly funded by the NSF award IIS-1117591 and NSERC.
+References
+1. Allauzen, C., Mohri, M., Riley, M.: Statistical modeling for unit selection in speech synthe-
+sis. In: Proceedings of ACL (2004)
+2. Allauzen, C., Mohri, M., Talwalkar, A.: Sequence kernels for predicting protein essentiality.
+In: Proceedings of ICML (2008)
+3. Aminof, B., Kupferman, O., Lampert, R.: Formal analysis of online algorithms. In: Proceed-
+ings of ATV A (2011)
+4. Angluin, D.: On the complexity of minimum inference of regular sets. Information and Con-
+trol 3(39) (1978)
+5. Angluin, D.: Learning regular sets from queries and counterexamples. Information and com-
+putation 75(2) (1987)
+6. Bailly, R.: M ´ethodes spectrales pour l’inf ´erence grammaticale probabiliste de langages
+stochastiques rationnels. Ph.D. thesis, Aix-Marseille Universit´e (2011)
+7. Bailly, R., Denis, F., Ralaivola, L.: Grammatical inference as a principal component analysis
+problem. In: Proceedings of ICML (2009)
+8. Balle, B., Mohri, M.: On the Rademacher complexity of weighted automata. In: Proceedings
+of ALT (2015)
+9. Balle, B.: Learning Finite-State Machines: Statistical and Algorithmic Aspects. Ph.D. thesis,
+Universitat Politecnica de Catalunya (2013)
+
+10. Balle, B., Carreras, X., Luque, F.M., Quattoni, A.: Spectral learning of weighted automata.
+Machine learning 96(1-2) (2014)
+11. Balle, B., Mohri, M.: Spectral learning of general weighted automata via constrained matrix
+completion. In: Proceedings of NIPS (2012)
+12. Beimel, A., Bergadano, F., Bshouty, N.H., Kushilevitz, E., Varricchio, S.: On the applications
+of multiplicity automata in learning. In: Proceeding FOCS (1996)
+13. Beimel, A., Bergadano, F., Bshouty, N.H., Kushilevitz, E., Varricchio, S.: Learning functions
+represented as multiplicity automata. Journal of the ACM 47(3) (2000)
+14. Bergadano, F., Varricchio, S.: Learning behaviors of automata from multiplicity and equiva-
+lence queries. In: Proceedings of CIAC, vol. 778. Springer (1994)
+15. Bergadano, F., Varricchio, S.: Learning behaviors of automata from multiplicity and equiva-
+lence queries. SIAM Journal on Computing 25(6) (1996)
+16. Berstel, J., Reutenauer, C.: Rational Series and Their Languages. Springer (1988)
+17. Bisht, L., Bshouty, N.H., Mazzawi, H.: On optimal learning algorithms for multiplicity au-
+tomata. In: Proceedings of COLT (2006)
+18. Breuel, T.M.: The OCRopus open source OCR system. In: Proceedings of IS&amp;T/SPIE (2008)
+19. Cardon, A., Crochemore, M.: D ´etermination de la repr´esentation standard d’une s´erie recon-
+naissable. ITA 14(4), 371–379 (1980)
+20. Carlyle, J.W., Paz, A.: Realizations by stochastic ﬁnite automata. J. Comput. Syst. Sci. 5(1)
+(1971)
+21. Chalermsook, P., Laekhanukit, B., Nanongkai, D.: Pre-reduction graph products: Hardnesses
+of properly learning dfas and approximating edp on dags. In: Proceedings of FOCS (2014)
+22. Cortes, C., Haffner, P., Mohri, M.: Rational kernels: Theory and algorithms. Journal of Ma-
+chine Learning Research 5 (2004)
+23. Droste, M., Kuich, W., V ogler, H. (eds.): Handbook of weighted automata. EATCS Mono-
+graphs on Theoretical Computer Science, Springer (2009)
+24. Dupont, P., Denis, F., Esposito, Y .: Links between probabilistic automata and hidden markov
+models: probability distributions, learning models and induction algorithms. Pattern Recog-
+nition (2005)
+25. Durbin, R., Eddy, S.R., Krogh, A., Mitchison, G.J.: Biological Sequence Analysis: Proba-
+bilistic Models of Proteins and Nucleic Acids. Cambridge University Press (1998)
+26. Eilenberg, S.: Automata, Languages and Machines. Academic Press (1974)
+27. Fazel, M.: Matrix rank minimization with applications. Ph.D. thesis, Stanford University
+(2002)
+28. Fliess, M.: Matrices de Hankel. Journal de Math ´ematiques Pures et Appliqu´ees 53 (1974)
+29. Gold, E.M.: Complexity of automaton identiﬁcation from given data. Information and Con-
+trol 3(37) (1978)
+30. Golub, G., Loan, C.V .: Matrix Computations. Johns Hopkins University Press (1983)
+31. Haussler, D., Littlestone, N., Warmuth, M.K.: Predicting {0, 1}-Functions on Randomly
+Drawn Points. In: Proceedings of COLT (1988)
+32. Hsu, D., Kakade, S.M., Zhang, T.: A spectral algorithm for learning hidden markov models.
+In: Proceedings of COLT (2009)
+33. Hsu, D., Kakade, S.M., Zhang, T.: A spectral algorithm for learning hidden markov models.
+Journal of Computer and System Sciences 78(5) (2012)
+34. II, K.C., Kari, J.: Image compression using weighted ﬁnite automata. Computers &amp; Graphics
+17(3) (1993)
+35. Kaplan, R.M., Kay, M.: Regular models of phonological rule systems. Computational Lin-
+guistics 20(3) (1994)
+36. Karttunen, L.: The replace operator. In: Proceedings of ACL (1995)
+37. Kearns, M.J., Valiant, L.G.: Cryptographic limitations on learning boolean formulae and
+ﬁnite automata. Journal of ACM 41(1) (1994)
+
+38. Kearns, M.J., Vazirani, U.V .: An Introduction to Computational Learning Theory. MIT Press
+(1994)
+39. Kiefer, S., Marusic, I., Worrell, J.: Minimisation of multiplicity tree automata. In: Proceed-
+ings of FOSSACS (2015)
+40. Kuich, W., Salomaa, A.: Semirings, Automata, Languages. Springer (1986)
+41. Mohri, M.: Finite-state transducers in language and speech processing. Computational Lin-
+guistics 23(2) (1997)
+42. Mohri, M.: Weighted automata algorithms. In: Handbook of Weighted Automata. Springer
+(2009)
+43. Mohri, M., Pereira, F., Riley, M.: Weighted automata in text and speech processing. In: Pro-
+ceedings of ECAI-96 Workshop on Extended ﬁnite state models of language (1996)
+44. Mohri, M., Pereira, F., Riley, M.: Speech recognition with weighted ﬁnite-state transducers.
+In: Handbook on Speech Processing and Speech Comm. Springer (2008)
+45. Mohri, M., Pereira, F.C.N.: Dynamic compilation of weighted context-free grammars. In:
+Proceedings of COLING-ACL (1998)
+46. Mohri, M., Rostamizadeh, A., Talwalkar, A.: Foundations of Machine Learning. MIT Press
+(2012)
+47. Mohri, M., Sproat, R.: An efﬁcient compiler for weighted rewrite rules. In: Proceedings of
+ACL (1996)
+48. Mornhinweg, D., Shapiro, D.B., Valente, K.: The principal axis theorem over arbitrary ﬁelds.
+American Mathematical Monthly (1993)
+49. Pereira, F., Riley, M.: Speech recognition by composition of weighted ﬁnite automata. In:
+Finite-State Language Processing. MIT Press (1997)
+50. Pitt, L., Warmuth, M.K.: The minimum consistent DFA problem cannot be approximated
+within any polynomial. J. ACM 40(1) (1993)
+51. Quattoni, A., Balle, B., Carreras, X., Globerson, A.: Spectral regularization for max-margin
+sequence tagging. In: Proceedings of ICML (2014)
+52. Salomaa, A., Soittola, M.: Automata-Theoretic Aspects of Formal Power Series. Springer
+(1978)
+53. Sch ¨utzenberger, M.P.: On a special class of recurrent events. The Annals of Mathematical
+Statistics 32(4) (1961)
+54. Sch ¨utzenberger, M.P.: On the deﬁnition of a family of automata. Information and Control 4
+(1961)
+55. Sproat, R.: A ﬁnite-state architecture for tokenization and grapheme-to-phoneme conversion
+in multilingual text analysis. In: Proceedings of the ACL SIGDAT Workshop. ACL (1995)
+56. Valiant, L.G.: A theory of the learnable. Commun. ACM 27(11) (1984)
+57. Vidal, E., Thollard, F., de la Higuera, C., Casacuberta, F., Carrasco, R.C.: Probabilistic ﬁnite-
+state machines – part I. PAMI (2005)
+58. Vidal, E., Thollard, F., de la Higuera, C., Casacuberta, F., Carrasco, R.C.: Probabilistic ﬁnite-
+state machines – part II. PAMI (2005)</pre></html>

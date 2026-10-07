@@ -1,0 +1,2195 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Factoringsparsepolynomialsfast∗†</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>Factoringsparsepolynomialsfast∗†</h1><p>Source ID d-97f5d810a5b712a1; literature/sources/r14_computation/cycle6/2312.17380v2_layout.txt; 45062 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>             Factoringsparsepolynomialsfast∗†
+
+
+                                       ALEXANDERDEMIN
+                   NationalResearchUniversityHigherSchoolofEconomics
+                                     20MyasnitskayaUlitsa
+                                     101000Moscow,Russia
+                                Email:asdemin_2@edu.hse.ru
+
+
+                                   JORISVANDERHOEVEN
+                CNRS,Écolepolytechnique,InstitutPolytechniquedeParis
+           Laboratoired&#x27;informatiquedel&#x27;Écolepolytechnique(LIX,UMR7161)
+                              BâtimentAlanTuring,CS35003
+                              1,rueHonoréd&#x27;Estienned&#x27;Orves
+                                   91120Palaiseau,France
+                        Email:vdhoeven@lix.polytechnique.fr
+
+                                       February23,2025
+
+
+
+
+         Considerasparsepolynomialinseveralvariablesgivenexplicitlyasasumofnon-zero
+         termswithcoeﬃcientsinaneﬀectiveﬁeld.Inthispaper,wepresentseveralalgorithms
+         forfactoringsuchpolynomialsandrelatedtasks(suchasgcdcomputation,square-
+         freefactorization,content-freefactorization,androotextraction).Ourmethodsare
+         allbasedonsparseinterpolation,butfollowtwomainlinesofattack:iterationonthe
+         numberofvariablesandmoredirectreductionstotheunivariateorbivariatecase.We
+         presentdetailedprobabilisticcomplexityboundsintermsofthecomplexityofsparse
+         interpolationandevaluation.
+
+
+                                   1.INTRODUCTION
+1.1.Motivationandmaingoals
+Let𝕂beaneﬀectiveﬁeld.ConsiderasparsepolynomialF∈𝕂[x1,...,xn],representedas
+                               F=F1x𝛾1+⋅⋅⋅+Fsx𝛾s,   (1.1)
+whereF1,...,Fs∈𝕂≠≔𝕂∖{0},𝛾1,...,𝛾s∈ℕn,andxe≔x1e1⋅⋅⋅xnenforanye=(e1,...,en)∈ℕn.
+WecallsF≔sthesizeofFandsuppF≔{𝛾1,...,𝛾s}itssupport.Theaimofthispaperisto
+factorFintoaproductofirreduciblesparsepolynomials.
+   Allalgorithmsthatwewillpresentarebasedontheapproachofsparseevaluationand
+interpolation.Insteadofdirectlyworkingwithsparserepresentations(1.1),theideaisto
+evaluateinputpolynomialsatasequenceofwell-chosenpoints,dotheactualworkon
+theseevaluations,andthenrecovertheoutputpolynomialsusingsparseinterpolation.
+Theevaluation-interpolationapproachleadstoveryeﬃcientalgorithmsformanytasks,
+suchasmultiplication[48,46],division,gcdcomputations[51],etc.Inthispaper,we
+investigatethecomplexityoffactorizationunderthislight.
+
+   ∗.ThisworkhaspartlybeensupportedbytheFrenchANR-22-CE48-0016NODEproject.
+   †.ThisarticlehasbeenwrittenusingGNUTEXMACS[47].
+
+
+                                                1
+2      FACTORINGSPARSEPOLYNOMIALSFAST
+
+
+   Oneparticularlygoodwaytochoosetheevaluationpointsistotaketheminageo-
+metricprogression:foraﬁxed𝛼=(𝛼1,...,𝛼n)∈(𝕂≠)n,weevaluateat𝛼,𝛼2,𝛼3,...,where
+𝛼k≔(𝛼1k,...,𝛼nk).ThisideagoesbacktoProny[91]andwasrediscovered,extended,and
+popularizedbyBenOrandTiwari[5].Wereferto[92]foranicesurvey.If𝕂isaﬁnite
+ﬁeld,thenafurtherreﬁnementistousesuitablerootsofunity,inwhichcasebothsparse
+evaluationandinterpolationessentiallyreducetodiscreteFouriertransforms[52,46].
+   Inthispaper,wedonotspecifytheprecisealgorithmsthatshouldbeusedforsparse
+evaluationandinterpolation,butwewillalwaysassumethattheevaluationpointsform
+geometricprogressions.ThenthecostS(s)ofsparseevaluationorinterpolationatssuch
+pointsisquasi-linearins.WerefertoSections2.1,2.3,and2.4formoredetailsonthis
+costfunctionS(s)andthealgebraiccomplexitymodelthatweassume.
+   Oneimportantconsequenceofrelyingongeometricprogressionsisthatthiscon-
+straintsthetypeoffactorizationalgorithmsthatwillbeeﬃcient.Forinstance,several
+existingmethodsstartwiththeapplicationofrandomshiftsxi⟼xi+𝜎iforoneormore
+variablesxi.Sincesuchshiftsdonotpreservegeometricprogressions,thisisatechnique
+thatwemustavoid.Ontheotherhand,monomialtransformationslikexi⟼y1wi,1⋅⋅⋅ynwi,n
+dopreservegeometricprogressionsandwewillseehowtomakeuseofthisfact.
+   Themaingoalofthispaperistodevelopfastalgorithmsforfactoringsparsepoly-
+nomialsundertheseconstraints.Besidesthetop-levelproblemoffactorizationintoirre-
+ducibles,wealsoconsiderseveralinterestingsubtasks,suchasgcdcomputations,Hensel
+lifting,content-freeandsquare-freefactorization,andtheextractionofmultipleroots.
+Whilerelyingonknowntechniques,weshallshowhowtoconciliatethemwiththeabove
+constraints.
+   Ourcomplexityboundsareexpressedintermsofthemaximalsizeandtotaldegree
+oftheinputandoutputpolynomials.Inpracticalapplications,totaldegreesoftenremain
+reasonablysmall,sowetypicallyallowforapolynomialdependenceonthetotaldegree
+timestherequirednumberofevaluation/interpolationpoints.Inthisparticularasymp-
+toticregime,ourcomplexityboundsareverysharpandtheyimproveonthebounds
+fromtheexistingliterature.
+   Concerningthetop-levelproblemofdecomposingsparsepolynomialsintoirreducible
+factors,wedeveloptwomainapproaches:arecursiveoneonthedimensionandamore
+directonebasedonsimultaneousliftingwithrespecttoallbutonevariables.Wewill
+presentprecisecomplexityboundsandexamplesofparticularlydiﬃcultcases.
+
+1.2.Overviewofunivariateandbivariatefactorizationmethods
+Thefactorizationofpolynomialsisafundamentalproblemincomputeralgebra.Since
+wearerelyingonsparseinterpolationtechniques,itisalsonaturaltofocusexclusively
+onrandomizedalgorithmsofMonteCarlotype.Forsomedeterministicalgorithms,we
+referto[61,101,72].
+   Beforeconsideringmultivariatepolynomials,weneedanalgorithmforfactoringuni-
+variatepolynomials.Throughoutthispaper,weassumethatwehaveanalgorithmfor
+thistask(itcanbeshownthatthemereassumptionof𝕂beingeﬀectiveisnotsuﬃ-
+cient[27,28]).
+   Inpractice,wetypicallyhave𝕂=Fp𝜅,𝕂=ℚ,𝕂⊆ℚp,or𝕂⊆ℂforsomeprimep
+and𝜅⩾1.Mostbasicisthecasewhen𝕂isaﬁniteﬁeld,andvariouseﬃcientprob-
+abilisticmethodshavebeenproposedforthiscase.Anearlysuchmethodisdueto
+Berlekamp[6,7].Averyeﬃcientalgorithmthatisalsoconvenienttoimplementisdue
+ALEXANDERDEMIN,JORISVANDERHOEVEN,      3
+
+
+toCantorandZassenhaus[16].Asymptoticallymoreeﬃcientmethodshavebeendevel-
+opedsince[67,70]aswellasspecificimprovementsforthecasewhen𝜅iscomposite[53].
+Seealso[31,Chapter14]and[65].
+   Rationalnumberscaneitherberegardedasasubﬁeldofℂorℚp.Forasymptotically
+eﬃcientalgorithmsfortheapproximatefactorizationsofunivariatepolynomialsover
+ℂ,wereferto[98,87,83].Whenreducingapolynomialinℚmodulopforasuﬃciently
+largerandomprime,factorizationoverℚpreducestofactorizationover𝔽pviaHensel
+lifting[97,42,107].Formoregeneralfactorizationmethodsoverℚp,wereferto[26,20,
+82,39,3].
+   NowletF∈ℚ[x]andassumethatwehaveanirreduciblefactorizationF=P1⋅⋅⋅Pℓ
+withP1,...,Pℓ∈𝕂[x]for𝕂⊆ℂor𝕂⊆Qp.(Inpractice,werequirethatP1,...,Pℓareknown
+withsuﬃcientprecision.)Inordertoturnthisintoafactorizationoverℚ,weneedaway
+torecombinethefactors,i.e.,toﬁndthesubsetsI⊆{1,...,ℓ}forwhich∏i∈IPi∈ℚ[x].
+Indeed,ifFisirreducibleinℚ[x]andd≔degF⩾2,thenFisneverirreducibleinℂ[x]and
+irreduciblewithprobability≈1/din𝔽p[x]foralargerandomprimep.Theﬁrstrecom-
+binationmethodthatrunsinpolynomialtimeisduetoLenstra-Lenstra-Lovasz[77].
+Subsequently,manyimprovementsandvariantsofthisLLL-algorithmhavebeendevel-
+oped[44,4,85,86,94].
+   TheproblemoffactoringabivariatepolynomialF∈𝕂[x,y]over𝕂issimilarinmany
+regardstofactoringpolynomialswithrationalcoeﬃcients.Indeed,forasuitablerandom
+primep,wehaveseenabovethatthelatterproblemreducestounivariatefactorization
+over𝔽p,Hensellifting,andfactorcombination.Inasimilarway,afterfactoringF(x,𝜏)
+forasuﬃcientlyrandom𝜏(possiblyinanextensionﬁeldof𝕂,whenever𝕂isasmall
+ﬁniteﬁeld),wemayuseHenselliftingtoobtainafactorizationin𝕂[[y−𝜏]][x],and
+finallyrecombinethefactors.Theprecisealgorithmsforfactorrecombinationareslightly
+diﬀerentinthiscontext[29,71,4,74](seealso[93,95]forearlierrelatedwork),although
+theyrelyonsimilarideas.
+
+1.3.Overviewofmultivariatefactorizationmethods
+Henselliftingnaturallygeneralizestopolynomialsinthreeormorevariablesx1,...,xn.
+Manyalgorithmsformultivariatepolynomialfactorizationrelyonit[84,104,103,109,
+60,32,33,62,61,8,72,80,81,17],aswellasmanyimplementationsincomputeralgebra
+systems.OneimportantpropertyofhigherdimensionalHenselliftingisthatfactor
+recombinationcangenerallybeavoidedwithhighprobability,contrarytowhatwesaw
+forp-adicandbivariateHensellifting.ThisisduetoHilbertandBertini&#x27;sirreducibility
+theorems[43,10]:
+
+THEOREM1.1.AssumethatF∈𝕂[x1,...,xn]∖𝕂isirreducibleandoftotaldegreed.LetUbe
+thesetofpoints(𝛼1,...,𝛼n,𝛽1,...,𝛽n,𝛾1,...,𝛾n)∈𝕂3nforwhich
+
+                       F(𝛼1t+𝛽1u+𝛾1,...,𝛼nt+𝛽nu+𝛾n)  (1.2)
+
+isirreduciblein𝕂[t,u].ThenUisaZariskiopensubsetof𝕂3n,whichisdenseoverthealgebraic
+closureof𝕂.
+
+   Effectiveversionsofthesetheoremscanbeusedtodirectlyreducethefactoriza-
+tionproblemindimensionntoabivariateproblem(andeventoaunivariateproblem
+if𝕂=ℚ,usingsimilarideas).Wereferto[74]and[75,Chapître6]forarecentpre-
+sentationofhowtodothisandto[100,Section6.1]forthemathematicalbackground.
+4      FACTORINGSPARSEPOLYNOMIALSFAST
+
+
+   Inordertoanalyzethecomputationalcomplexityoffactorization,weﬁrstneedto
+specifytheprecisewaywerepresentourpolynomials.Whenusingadenserepresenta-
+tion(e.g.storingallmonomialsoftotaldegree⩽dwiththeir(possiblyzero)coefficients),
+Theorem1.1allowsustodirectlyreducetothebivariatecase(if𝕂isverysmall,then
+onemayneedtoreplace𝕂byasuitablealgebraicextension).Theﬁrstpolynomialtime
+reductionofthiskindwasproposedbyKaltofen[60].Morerecentboundsthatexploit
+fastdensepolynomialarithmeticcanbefoundin[72].
+   Anotherpopularrepresentationisthe“blackboxrepresentation”,inwhichcasewe
+areonlygivenanalgorithmfortheevaluationofourpolynomialF.Oftenthisalgorithm
+isactuallyastraightlineprogram(SLP)[14],whichcorrespondstothe“SLPrepresen-
+tation”.Inthesecases,therelevantcomplexitymeasureisthelengthoftheSLPorthe
+maximalnumberofstepsthatareneededtocomputeoneblackboxevaluation.Conse-
+quently,aﬃnechangesofvariables(1.2)onlymarginallyincreasetheprogramsize.This
+hasbeenexploitedinordertoderivepolynomialtimecomplexityboundsforfactoring
+inthismodel[63,68];seealso[30,17,18].Herewestressthattheoutputfactorsarealso
+giveninblackboxorSLPrepresentation.
+   Plausiblythemostcommonrepresentationformultivariatepolynomialsincomputer
+algebraisthesparseone(1.1).AnysparsepolynomialnaturallygivesrisetoanSLP
+ofroughlythesamesize.Sparseinterpolationalsoprovidesawaytoconvertinthe
+oppositedirection.However,foranSLPFslpoflengthL,ittakesΘ(Ls)timetorecoverits
+sparserepresentationF,wheres≔sF.Apriori,thebackandforthconversionF↦Fslp↦F
+thereforetakesquadratictimeΘ(s2).Whileitistheoreticallypossibletofactorsparse
+polynomialsusingtheaboveblackboxmethods,thisissuboptimalfromacomplexity
+perspective.
+   Unfortunately,generalaﬃnetransformations(1.2)destroysparsity,soadditional
+ideasareneededforthedesignofefficientfactorizationmethodsbasedonHilbert-Bertini-
+likeirreducibilitytheorems.Dedicatedalgorithmsforthesparsemodelhavebeendevel-
+opedin[32,8,79,81].Therearetwowaystocounterthelossofsparsityunderaﬃne
+transformations,bothofwhichwillbeconsideredinthepresentpaper.Onepossibility
+istosuccessivelyuseHenselliftingwithrespecttox3,...,xn.Anotherapproachisto
+useamoreparticulartypeofchangesofvariables,likeF(t,𝛼2u,...,𝛼nu).However,both
+approachesrequireFtobeofasuitableformtoallowforHensellifting.Somerefer-
+enceforHenselliftinginthecontextofsparsepolynomialsare[62,8,78,80,81,17].
+   Formostapplicationsincomputeralgebra,thetotaldegreeoflargesparsepoly-
+nomialsistypicallymuchsmallerthanthenumberofterms.Theworksintheabove
+referencesmainlytargetthisasymptoticregime.Thefactorizationof“supersparse”
+polynomialshasalsobeenconsideredin[40,37].Thesurveytalk[96]discussesthe
+complexityofpolynomialfactorizationsforyetotherpolynomialrepresentations.
+   Thetheoryofpolynomialfactorizationinvolvesseveralotherbasicalgorithmictasks
+thatareinterestingfortheirownsake.WealreadymentionedtheimportanceofHensel
+lifting.Otherfundamentaloperationsaregcdcomputations,multiplerootextractions,
+square-freefactorizations,anddeterminingthecontentofapolynomial.Wereferto[31]
+forclassicalunivariatealgorithms.Astosparsemultivariatepolynomials,thereexist
+manyapproachesforgcdcomputations[21,108,68,66,59,22,56,76,51,58].
+   Wheneverconvenient,wewillassumethatthecharacteristicof𝕂iseitherzeroor
+suﬃcientlylarge.Thiswillallowustoavoidtechnicalnon-separabilityissues;werefer
+to[34,102,73]foralgorithmstodealwithsuchissues.Asurveyofmultivariatepolyno-
+mialfactorizationoverﬁniteﬁelds(includingsmallcharacteristic)canbefoundin[65].
+ALEXANDERDEMIN,JORISVANDERHOEVEN,      5
+
+
+Throughoutthispaper,factorizationswillbedoneoverthegroundﬁeld𝕂.Somealgo-
+rithmsfor“absolutefactorization”overthealgebraicclosure𝕂algof𝕂canbefound
+in[64,19,23];alternatively,onemaymimiccomputationsin𝕂algusingdynamicevalu-
+ation[24,49].
+
+1.4.Outlineofourcontributions
+
+Thegoalofthispaperistoredevelopthetheoryofsparsepolynomialfactorization,
+bytakingadvantageasfullyaspossibleofevaluation-interpolationtechniquesatgeo-
+metricsequences.ThebasicbackgroundmaterialisrecalledinSection2.Werecallthat
+almostallalgorithmsinthepaperarerandomized,ofMonteCarlotype.Wealsonote
+thatthecorrectnessofafactorizationcaneasilybeveriﬁed,eitherdirectlyorwithhigh
+probability,byevaluatingthepolynomialandtheproductofthepotentialfactorsat
+arandompoint.(Ontheotherhand,thisapproachdoesnotyieldaprobabilisticirre-
+ducibilitytest.)
+   Asanappetizer,westartinSection3withtheproblemofmultivariategcdcompu-
+tation.Thisprovidesaniceintroductionforthemaintwoapproachesusedlaterinthe
+paper:inductionondimensionanddirectreductiontotheunivariate(orbivariateorlow
+dimensional)case.Italsoillustratesthekindofcomplexityboundsthatweareaiming
+for.ConsiderthecomputationofthegcdGoftwosparsepolynomialsP,Q∈𝕂[x1,...,xn].
+Ideallyspeaking,settings≔sG,s¯≔max(sP,sQ,sG),d≔max(dP,dQ),weareaimingfor
+acomplexityboundoftheform
+                                   O˜(s¯+d𝜗s),   (1.3)
+
+where𝜗isaconstant.Sincesistypicallymuchsmallerthans¯,wecanaﬀordourselves
+thenon-trivialoverheadwithrespecttodinthetermd𝜗s.Theinductiveapproachonthe
+dimensionnachievesthecomplexity(1.3)with𝜗=1,butitsworstcasecomplexityis
+O˜(n(s¯+ds)).Thisalgorithmseemstobenew.Thesecondapproachusesadirectreduc-
+tiontounivariategcdcomputationsviaso-called“regularizingweights”andachieves
+thecomplexity(1.3)with𝜗⩽2,andeven𝜗=1forsomepracticalexamples(e.g.,when
+thegcdismonicinoneofthevariables).Thisalgorithmisasharpenedversionofthe
+algorithmfrom[51,Section4.3].
+   Mostexistingalgorithmsformultivariatepolynomialfactorizationreducetotheuni-
+variateorbivariatecase.Directreductiontotheunivariatecaseisonlypossibleforcertain
+typesofcoeﬃcients,suchasintegers,rationalnumbers,oralgebraicnumbers.Reduction
+tothebivariatecaseworksingeneral,thankstoTheorem1.1,andthisiseveninteresting
+when𝕂=ℚ:ﬁrstreducemoduloasuitableprimep,thenfactorover𝔽p,andﬁnally
+Hensellifttoobtainafactorizationoverℚ.Inthispaper,wewillsystematicallyoptfor
+thebivariatereductionstrategy.Forthisreason,wehaveincludedaseparateSection4
+onbivariatefactorizationandrelatedproblems.Thismaterialisclassical,butrecalled
+forself-containednessandconvenienceofthereader.
+   If𝕂isaﬁniteﬁeld,thenwealreadynotedthatmultivariatefactorizationdoesnot
+directlyreducetotheunivariatecase.Nevertheless,suchdirectreductionsarepossible
+forsomespecialcasesofinterest:content-freefactorization,extractionofmultipleroots,
+andsquare-freefactorization.InSection5,wepresenteﬃcientalgorithmsforthesetasks,
+followingthe“regularizingweights”approachthatwasintroducedinSection3.2forgcd
+computations.Allcomplexityboundsareoftheform(1.3)fortherelevantnotionsof
+outputsizes,input-outputsizes¯,andtotaldegreed.
+6      FACTORINGSPARSEPOLYNOMIALSFAST
+
+
+   InSection6,weturntothefactorizationofamultivariatepolynomialF∈𝕂[x1,...,xn]
+usinginductiononthedimensionn.Startingwithacoprimefactorizationofabivariate
+projectionF(x1,x2,c3,...,cn)∈𝕂[x1,x2]ofFforrandomc3,...,cn,wesuccessivelyHensel
+liftthisfactorizationwithrespecttox3,...,xn.Usingasuitableevaluation-interpolation
+strategy,theactualHenselliftingcanbedoneonbivariatepolynomials.Thisleadsto
+complexityboundsoftheformO˜(n(s¯+d𝜗s))with𝜗=2.Infact,weseparatelyconsider
+factorizationsintotwoormorefactors.Inthecaseoftwofactors,itispossibletoﬁrst
+determinethesmallestfactorandthenperformanexactdivisiontoobtaintheotherone.
+Inthecomplexitybound,thismeansthatsshouldreallybeunderstoodasthenumber
+ofevaluation-interpolationpoints,i.e.theminimumofthesizesofthetwofactors.It
+dependsonthesituationwhetheritisfastertoliftafullcoprimefactorizationorone
+factoratatime,althoughweexpecttheﬁrstapproachtobefastestinmostcases.
+   DuetothefactthatprojectionssuchasF(x1,x2,c3,...,cn)areonlyveryspecialtypes
+ofaﬃnetransformations,Theorem1.1doesnotapply.Therefore,thedirectinductive
+approachfromSection6doesnotsystematicallyleadtoafullirreduciblefactorization
+ofF.InRemarks6.14and6.15,wegiveanexamplewhereourapproachfails,together
+withtwodiﬀerentheuristicremedies(whichbothleadtosimilarcomplexitybounds,but
+with𝜃=3orhigher).
+   InthelastSection7,wepresentanotherapproach,whichavoidsinductiononthe
+dimensionnandthecorrespondingoverheadinthecomplexitybound.Theideaisto
+exploitpropertiesoftheNewtonpolytopeofFand“facefactorizations”(e.g.factoriza-
+tionsofrestrictionsofFtofacesofitsNewtonpolytope).Inthemostfavorablecase,
+thereexistsacoprimeedgefactorization,whichcanbeHenselliftedintoafullfactor-
+ization,andweobtainacomplexityboundoftheform(1.3).Inlessfavorablecases,
+diﬀerentfacefactorizationsneedtobecombined.Althoughthisyieldsasimilarcom-
+plexitybound,thedetailsaremoretechnical.Wereferto[1,105]forafewexistingways
+toexploitNewtonpolytopesforpolynomialfactorization.
+   Inveryunfavorablecases(seeSection7.6),thefactorizationofFcannotberecov-
+eredfromitsfacefactorizationsatall.InSection7.7,weconcludewithafullygeneral
+algorithmforirreduciblefactorization.Thisalgorithmisnotaspractical,butaddresses
+pathologicallydiﬃcultcasesthroughtheintroductionofafewextravariables.Itscostis
+O˜(d3s¯+d10)plusthecostofoneunivariatefactorizationofdegreeO(d2).
+
+1.5.Notation
+Inthispaper,wewillmeasurethecomplexityofalgorithmsusingthealgebraiccom-
+plexitymodel[14].Inaddition,weassumethatitispossibletosamplearandomelement
+fromK(orasubsetofK)inconstanttime.WewilluseO˜(g(n))asashorthandfor
+g(n)(logg(n))O(1).
+   Weletℕ≔{0,1,2,...}andℕ&gt;≔{1,2,3,...}.WealsodeﬁneR≠≔{x∈R:x≠0},forany
+ringR.GivenamultivariatepolynomialF∈𝕂[x1,...,xn]andi∈{1,...,n},wewrite𝛿i≔
+degxiF(resp.valxiF)forthedegree(resp.valuation)ofFinxi.WealsowritedF≔degF
+(resp.valF)forthetotaldegree(resp.valuationofF),andweset𝛿F≔maxidegxiF.
+RecallthatsFstandsforthenumberoftermsofFinitssparserepresentation(1.1).
+
+Acknowledgment.WewishtothankGrégoireLecerfforusefuldiscussionsduringthe
+preparationofthispaperandthefirstanonymousrefereeforhelpfulcommentsand
+suggestions.
+ALEXANDERDEMIN,JORISVANDERHOEVEN,      7
+
+                               2.PRELIMINARIES
+
+
+2.1.Basiccomplexities
+
+Let M(n)(or   M𝕂(n))bethecosttomultiplytwodenseunivariatepolynomialsof
+degree⩽nin𝕂[x].Throughoutthepaper,wemaketheassumptionthat              M(n)/nisanon-
+decreasingfunction.Inthealgebraiccomplexitymodel[14],whencountingthenumber
+ofoperationsin𝕂,wemaytakeM(n)=O(nlognloglogn)[15].If𝕂isaﬁniteﬁeld𝔽q,
+thenonehasM𝔽q(n)=O(nlogn),undersuitablenumbertheoreticassumption[41].In
+thiscase,thecorrespondingbitcomplexity(whencountingthenumberofoperations
+onaTuringmachine[88])isO(nlogqlog(nlogq)).
+   Forpolynomialsf,g∈K[x]≠ofdegree⩽nitispossibletoﬁndtheuniqueq,r∈K[x],
+suchthatf=qg+rwithdegr&lt;n.Thisistheproblemofunivariatedivisionwithremainder,
+whichcanbesolvedintimeO(M(n))byapplyingNewtoniteration[31,Section9.1].
+Arelatedtaskisunivariaterootextraction:givenf∈K[x]andℓ∈ℕ&gt;,checkwhetherfis
+oftheformf=cgℓforsomec∈K≠andmonicg∈K[x],anddeterminecandgifso.For
+aﬁxedℓ,thiscanbechecked,andtheuniquegcanbefoundinO(M(n))arithmeticoper-
+ationsinKbyapplyingNewtoniteration[31,polynomialanalogueofTheorem9.28].
+   ConsidertheVandermondematrix
+                                     ( 1𝛼1⋅⋅⋅𝛼1n−1    )
+                                     (                )
+                                     ((               ))
+                                     (                )
+                                     (                )
+                                     (                )
+                                     (                )
+                                     (                )
+                                     (                )
+                                     (                )
+                                     (  ⋅⋅⋅⋅⋅⋅        )
+                                V=   (                ),
+                                     ((               ))
+                                     (                )
+                                     (                )
+                                     (                )
+                                     (                )
+                                     (                )
+                                     (                )
+                                     (                )
+                                     (                )
+                                     ((               ))
+                                     (                )
+                                     (                )
+                                     (                )
+                                     (                )
+                                     ((1𝛼n⋅⋅⋅𝛼nn−1    ))
+
+where𝛼1,...,𝛼n∈𝕂arepairwisedistinct.GivenacolumnvectorCwithentriesc0,...,cn−1,
+itiswellknown[11,69,12,9,45]thattheproductsVC,V−1C,V⊤C,and(V−1)⊤Ccan
+allbecomputedintimeO(M(n)logn).Thesearerespectivelytheproblemsofmulti-
+pointevaluation,(univariate)interpolation,transposedmulti-pointevaluation,andtransposed
+interpolation.Forfixed𝛼1,...,𝛼n,thesecomplexitiescanoftenbefurtherreducedto
+O(M(n)logn/loglogn)usingtechniquesfrom[45].
+   Forourfactorizationalgorithms,wewillsometimesneedtoassumetheexistenceof
+analgorithmtofactorunivariatepolynomialsin𝕂[x]intoirreduciblefactors.Wewill
+denotebyF(d)thecostofsuchafactorizationasafunctionofdegreed.Wewillalways
+assumethatF(d)/disnon-decreasing.InparticularF(d1)+F(d2)⩽F(d1+d2)foralld1
+andd2.
+   IfKistheﬁniteﬁeldFqwithq=p𝜅elementsforsomeoddq,thenthebestunivariate
+factorizationmethodsarerandomizedofLasVegastype.Whenallowingforsuchalgo-
+rithms,wemaytakeF(d)=O(dM(d)log(qd)),byusingCantorandZassenhaus&#x27;method
+from[16].Withtheuseoffastmodularcomposition[70],wemaytake
+
+                       F(d)=d1.5+o(1)log1+o(1)q+O˜(dlog2q),
+
+butthisalgorithmisonlyrelevantintheory,forthemoment[50].Iftheextensiondegree𝜅
+iscomposite,thenthiscanbeexploitedtolowerthepracticalcomplexityoffactoriza-
+tion[53].
+8      FACTORINGSPARSEPOLYNOMIALSFAST
+
+2.2.TheSchwarz–Zippellemma
+Inallprobabilisticalgorithmsinthispaper,Nwillstandforasuﬃcientlylargeinteger
+suchthat“randomelementsin𝕂≠”arechoseninsomeﬁxedsubsetof𝕂≠ofsizeat
+leastN.InthecasewhenNislargerthanthecardinality|𝕂≠|of𝕂≠,thismeansthat𝕂
+needstobereplacedbyanalgebraicextensionofdegree&gt;logN/log|𝕂|,whichinduces
+alogarithmicO˜(logN)overheadforthecostofﬁeldoperationsin𝕂.Wewillfrequently
+usethefollowingwell-knownlemma:
+LEMMA2.1.(SCHWARZ[99]–ZIPPEL[108])LetP∈𝕂[x1,...,xn]beapolynomialoftotal
+degreed.LetS⊆𝕂beﬁniteandlet𝛼1,...,𝛼n∈Sbechosenindependentlyanduniformly.Then
+theprobabilitythatP(𝛼1,...,𝛼n)=0isatmostd/|S|. □
+COROLLARY2.2.Lets∈ℕ&gt;.TheprobabilitythatP(𝛼1k,...,𝛼nk)=0forsomek∈{1,...,s}isat
+mostd s2 /|S|.
+Proof.WeapplythelemmatoP(x1,...,xn)P(x12,...,xn2)⋅⋅⋅P(x1s,...,xns).□
+COROLLARY2.3.Lets∈ℕ&gt;.Let𝛼1,...,𝛼n∈𝕂≠andlet𝛽1,...,𝛽n∈𝕂≠bechosenindependently
+atrandom.ThentheprobabilitythatP 𝛼1k𝛽1,...,𝛼nk𝛽n =0forsomek∈{1,...,s}isatmostds/|S|.
+Proof.WeapplythelemmatoP(𝛼1x1,...,𝛼nxn)P(𝛼12x1,...,𝛼n2xn)⋅⋅⋅P(𝛼1sx1,...,𝛼nsxn).□
+2.3.Sparsepolynomialinterpolation
+ConsiderapolynomialF∈𝕂[x1,...,xn]thatispresentedasablackboxfunction.The
+taskofsparseinterpolationistorecoverthesparserepresentation(1.1)fromasuﬃcient
+numberofblackboxevaluationsofF.Onemaydistinguishbetweenthecaseswhenthe
+exponents𝛾1,...,𝛾sofFarealreadyknownornot.(Here“knownexponents”maybe
+takenliberallytomeanasupersetofreasonablesizeofthesetofactualexponents.)
+   OnepopularapproachforsparseinterpolationisbasedonProny&#x27;sgeometricsequence
+technique[91,5].Thisapproachrequiresanadmissibleratio𝛼=(𝛼1,...,𝛼n)∈(𝕂≠)n,such
+thatforanyk1,...,kn∈ℕ,thereisanalgorithmtorecoverk1,...,knfrom𝛼1k1⋅⋅⋅𝛼nkn.If
+char𝕂=0,thenwemaytake𝛼itobethei-thprimenumber,anduseprimefactoriza-
+tioninordertorecoverk1,...,kn.If𝕂=𝔽pisaﬁniteﬁeld,wherepisasmoothprime
+(i.e.p−1hasmanysmallprimedivisors),thenonemayrecoverexponentsusingthe
+tangentGraeﬀemethod[38].
+   Givenanadmissibleratio𝛼,Prony&#x27;smethodallowsforthesparseinterpolationofF
+using2sevaluationsofFat𝛼i≔(𝛼1i,...,𝛼ni)fori=0,...,2s−1,aswellasO(M(s)logs)
+operationsin𝕂fordetermining𝛼𝛾1,...,𝛼𝛾s,andssubsequentexponentrecoveries.If
+K=Fq,thentheexponentscanberecoveredifq&gt;max(2s,d),whichcanbeensured
+byworkingoveraﬁeldextensionFq𝜅ofFwith𝜅=O(logs+logd).Iftheexponents
+𝛾1,...,𝛾sarealreadyknown,thenthecoeﬃcientscanbeobtainedfromsevaluationsofF
+at𝛼0,...,𝛼s−1usingonetransposedunivariateinterpolationofcostO(M(s)logs).
+   If𝕂isaﬁniteﬁeld,thenitcanbemoreeﬃcienttoconsideranFFTratio𝛼forwhich
+𝛼1,...,𝛼narerootsofunity.Whenchoosingtheserootsofunitywithcare,possiblyinan
+extensionﬁeldofK,sparseinterpolationcanoftenbedoneintimeO(M(s))fromO(s)
+valuesofF,usingdiscreteFouriertransforms;see[52,46]fordetails.
+   Inwhatfollows,wewilldenotebyS(s)thecostofsparseinterpolationofsizes,
+givenO(s)valuesofFatasuitablegeometricsequence.WhenusingProny&#x27;sapproach,
+wemaythustake    S(s)=O(M(s)logs),wheneverthecosttorecovertheexponentsk1,...,kn
+from𝛼1k1⋅⋅⋅𝛼nknisnegligible.IfthediscreteFourierapproachisapplicable,thenwemay
+eventakeS(s)=O(M(s)).
+ALEXANDERDEMIN,JORISVANDERHOEVEN,      9
+
+
+Remark2.4.ItwouldbemoreaccuratetowriteS(s,n,d)forthecostofsparseinterpo-
+lation,sincethiscostmayalsodependonthedimensionnandthetotaldegreed.In
+particular,manipulationsoftheexponentvectorstypicallyaddΩ(snlogd)tothebit
+complexity.Nonetheless,inouralgebraiccomplexitymodel,thiscostcanoftenbedis-
+carded:ifchar𝕂=0,thenthesparseinterpolationoftheexponentsonlygivesriseto
+aconstantoverheadusingthederivativetrickfrom[57].Inpractice,thisremainstrue
+aslongastheexponentvectorscanbepackedintosmallintegers,suchas64bitmachine
+integers.Inordertoenhancethereadabilityofourcomplexityanalyses,wetherefore
+assumethatweareinaregimewherethecostS(s)ofsparseinterpolationcanbemod-
+eledintermsofthesoleparameters.Forrecenttheoreticalworkonsparseinterpolation
+whennand/ordareallowedtobecomelarge,wereferto[36,54].
+
+Remark2.5.Ifwehaveabounds⩾sFforthenumberoftermsofF,thenweassumethat
+oursparseinterpolationmethodisdeterministicandthatitinterpolatesFintimeS(s).If
+wedonotknowthenumberoftermsofF,thenwemayruntheinterpolationmethodfor
+aguessednumberofsterms.Wemaycheckthecorrectnessofourguessedinterpolation
+F˜byverifyingthattheevaluationsofFandF˜coincideatarandomlychosenpoint.By
+theSchwartz-Zippellemma,thisstrategysucceedswithprobabilityatleast1−d/N.
+
+Remark2.6.Theaboveinterpolationmethodsreadilygeneralizetothecasewhenwe
+useageometricprogressionoftheform𝛽,𝛽𝛼,𝛽𝛼2,...with𝛽∈(𝕂≠)nastheevaluation
+points,byconsideringthefunctiong(x1,...,xn)=f(𝛽1x1,...,𝛽nxn)insteadoff.Taking
+arandom𝛽avoidscertainproblemsduetodegeneracies;thisissometimescalled“diver-
+siﬁcation”[35].If𝛼isitselfchosenatrandom,thenitoftensuﬃcestosimplytake𝛽=𝛼.
+Wewilloccasionallydosowithoutfurthermention.
+
+Remark2.7.Formanyprobabilisticproofsinthesequelofthispaper,wewillrely
+onCorollary2.2.However,thisrequirestheratios𝛼ofgeometricprogressionstobe
+pickedatrandom,whichexcludesFFTratios.Alternatively,wecouldhaverelied
+onCorollary2.3anddiversificationofallinputandoutputpolynomialsforafixed
+randomscalingfactor𝛽∈(𝕂≠)n(seetheaboveremark).
+   AssumeforinstancethatwewishtofactorF∈𝕂[x1,...,xn].Thenthefactors
+A∈𝕂[x1,...,xn]ofFareinone-to-onecorrespondencewiththefactorsA(𝛽1x1,...,𝛽nxn)
+ofF(𝛽1x1,...,𝛽nxn).IfwerelyonCorollary2.3insteadof2.2inourcomplexitybounds
+forfactoringF(liketheboundsinTheorems6.11or7.2below),thenthecostofdiver-
+siﬁcationaddsanextratermO(s¯d),whered≔degFands¯isthetotalsizeofFandthe
+computedfactors.Onthepositiveside,inthecorrespondingboundsfortheprobability
+offailure,thequadraticdependence s2 onthenumbersofevaluationpointsreduces
+toalinearone.Similaradjustmentsapplyforotheroperationssuchasgcdcomputations.
+
+2.4.Sparseevaluationatgeometricprogressions
+Oppositetosparseinterpolation,onemayalsoconsidertheevaluationofFatspoints
+𝛼0,...,𝛼s−1inageometricprogression.Ingeneral,thiscanbedoneintimeO(M(s)logs),
+usingonetransposedmulti-pointevaluationofsizes.If𝛼isasuitableFFTratio,thenthis
+complexitydropstoO(M(s)),usingadiscreteFouriertransformofsizeO(s).Inwhat
+follows,wewillassumethatthisoperationcanalwaysbedoneintimeS(s).
+
+Remark2.8.Strictlyspeaking,thecostofmultipointevaluationonageometricsequence
+mayalsodependonnandd,sosimilarobservationsasinRemark2.4apply.
+10      FACTORINGSPARSEPOLYNOMIALSFAST
+
+
+   Moregenerally,wemayconsidertheevaluationofFattpoints𝛼0,...,𝛼t−1inageo-
+metricprogression.Ift&gt;s,wemaydothisintimeS(s)t/s+O(t),byreducingtotheeval-
+uationofFat⌈t/s⌉progressionsofsizes.ToobtaintheevaluationsofFat𝛼i,...,𝛼i+s−1
+fori&gt;0,wecanevaluateF∘(𝛼ix)at𝛼0,𝛼1,...,𝛼s−1.Ifs&gt;t,thenwemaycutFinto
+⌈s/t⌉polynomialsofsize⩽t,anddotheevaluationintimeS(t)s/t+O(s).
+
+Remark2.9.If𝛼isanFFT-ratio,thentheboundforthecasewhens&gt;tfurtherreducesto
+O(s+S(t))plusO(ds)bitoperationsonexponents,sincethecyclicprojectionsfrom[46,
+52]reduceFinlineartimetocyclicpolynomialswithO(t)termsbeforeapplyingthe
+FFTs.Wedidnotexploitthisoptimizationforthecomplexityboundsinthispaper,since
+wepreferredtostatetheseboundsforgeneralratios𝛼,butitshouldbestraightforward
+toadaptthemtothespeciﬁcFFTcase.
+
+   Inthispaper,wewillfrequentlyneedtoevaluateFatallbutoneortwovariables.
+Assumeforinstancethat
+         F(x1,...,xn)=F0(x2,...,xn)+F1(x2,...,xn)x1+⋅⋅⋅+F𝛿(x2,...,xn)x1𝛿,
+whereFkhassktermsfork=0,...,𝛿ands≔s0+⋅⋅⋅+s𝛿.Thenusingtheabovemethod,
+wecancomputeF(x1,𝛼2i,...,𝛼ni)fori=0,...,t−1usingS(t)(⌈s0/t⌉+⋅⋅⋅+⌈s𝛿/t⌉)+O(s)⩽
+S(t)(s/t+𝛿+1)+O(s)operations.
+   Onetraditionalapplicationofthecombinationofsparseevaluationandinterpolation
+areprobabilisticalgorithmsformultiplicationandexactdivisionofsparsemultivariate
+polynomials.ForthegivenA,B∈𝕂[x1,...,xn],wecancomputetheproductC=ABby
+evaluatingA,B,andCatageometricprogression𝛼0,...,𝛼m−1withm=O(sC)andrecov-
+eringofCinthesparserepresentation(1.1)viasparseinterpolation.Thetotalcostofthis
+methodisboundedbyO(S(s¯))operationsinK,wheres¯≔max(sA,sB,sC).IfCandAare
+known,thentheexactquotientB=C/Acanbecomputedinasimilarfashionandwith
+thesamecomplexity.Ifs≔sB≪s¯,thenthequotientBcanactuallybecomputedintime
+O(s¯M(s)/s).Divisionsbyzeroareavoidedthroughdiversiﬁcation,withoverheadO(ns¯)
+andprobabilityatleast1−dA sB2 /N,byCorollary2.2.
+
+2.5.Newtonpolytopes
+ConsideramultivariatepolynomialP∈𝕂[x1,...,xn].WedeﬁnehullP⊆ℝntobethe
+convexhullofsuppPandwecallittheNewtonpolytopeofP.Givenanotherpolynomial
+Q∈𝕂[x1,...,xn],itiswellknownthat
+                              hullPQ=hullP+hullQ,
+wheretheMinkowskisumoftwosubsetsS,T⊆ℝnisS+T≔{s+t:s∈S,t∈T}.
+   Letw=(w1,...,wn)∈(ℤn)≠beanon-zeroweightvector.Wedeﬁnethew-degree,
+w-valuation,andw-ecartofanon-zeropolynomialP∈𝕂[x1,...,xn]by
+                      degwP≔max(e1,...,en)∈suppF(w1e1+⋅⋅⋅+wnen)
+
+                       valwP≔min(e1,...,en)∈suppF(w1e1+⋅⋅⋅+wnen)
+
+                        ecwP≔degwP−valwP.
+NotethatvalwP≔−deg−wPandecwP=ec−wP,whereweexploitthefactthatweallow
+fornegativeweights.WesaythatPisw-homogeneousifdegwP=valwP.AnyPcan
+uniquelybewrittenasasum
+                             P=PdegwP;w+⋅⋅⋅+PvalwP;w,
+ALEXANDERDEMIN,JORISVANDERHOEVEN,     11
+
+
+ofitsw-homogeneousparts
+                           Pi;w≔                         Pexe.
+                                   e∈suppP,w1e1+⋅⋅⋅+wnen=i
+WecalllpwP≔PdegwP;wandtpwP≔PvalwP;wthew-leadingandw-trailingpartsofP.We
+saythatPisw-regulariflpwPconsistsofasingletermcxi.Inthatcase,wedenotelcwP≔c
+andwesaythatPisw-monicifc=1.Givenanothernon-zeropolynomialQ∈𝕂[x1,...,xn],
+wehave
+                               lpwPQ=(lpwP)(lpwQ)
+                               tpwPQ=(tpwP)(tpwQ)
+Settingℋ𝜆;w≔{e∈ℝn:e1w1+⋅⋅⋅+enwn=𝜆},wealsohave
+                             hulllpwP=hullP∩ℋdegwP;w
+                             hulltpwP=hullP∩ℋvalwP;w.
+TheNewtonpolytopeshulllpwPandhulltpwParefacetsofhullP.Inparticular,theyare
+containedintheboundary∂hullP.
+2.6.Laurentpolynomials
+Considertheringsℙ≔ℙn≔𝕂[x1,...,xn]and𝕃≔𝕃n≔𝕂[x1,x1−1,...,xn,xn−1]=ℙnx1ℤ⋅⋅⋅xnℤ
+ofordinarypolynomialsandLaurentpolynomials.Bothringsareuniquefactorization
+domains,butthegroupofunitsofℙis𝕂≠,whereasthegroupofunitsof𝕃is𝕂≠x1ℤ⋅⋅⋅xnℤ.
+Factoringinℙisthereforeessentiallythesameasfactoringin𝕃uptomultiplications
+withmonomialsinx1ℤ⋅⋅⋅xnℤ.Forinstance,thefactorization5⋅x1⋅x1⋅x2⋅(x1−x2)⋅(7x1+
+x22−x33)inℙgivesrisetothefactorization(5x12x2)⋅(x1−x2)⋅(7x1+x22−x33)in𝕃.Con-
+versely,thefactorization(5x1x22)⋅(x1x2−1−1)⋅(7x12+x1x22−x1x33)in𝕃givesrisetothe
+factorization5⋅x1⋅x1⋅x2⋅(x1−x2)⋅(7x1+x22−x33)inℙ.Similarly,computinggcdsinℙ
+isessentiallythesameproblemascomputinggcdsin𝕃.
+   Givenanym×nmatrixM∈ℤm×n,wedeﬁnethemonomialmap𝜑M:𝕃n→𝕃mby
+                𝜑M(P(x1,...,xn))=P x1M1,1⋅⋅⋅xmMm,1,...,x1M1,n⋅⋅⋅xmMm,n .
+
+Thisisclearlyahomomorphism,whichisinjective(orsurjective)ifthelinearmap
+ℤn→ℤm;a↦Maisinjective(orsurjective).Notealsothat𝜑MN=𝜑M∘𝜑Nforanymatrices
+M∈ℤm×nandN=ℤn×r.Inparticular,ifM∈ℤn×nisunimodular,then𝜑Misanauto-
+morphismof𝕃nwith𝜑M−1=𝜑M−1.
+   Laurentpolynomialsareonlyslightlymoregeneralthanordinarypolynomialsand
+wealreadynotedabovethatfactoringinℙnisessentiallythesameproblemasfactoring
+in𝕃n(andsimilarlyforgcdcomputations).Itisalsostraightforwardtoadaptthedef-
+initionsfromSection2.5andmostalgorithmsforsparseinterpolationtothisslightly
+moregeneralsetting.ThemainadvantageofLaurentpolynomialsisthattheyareclosed
+undermonomialmaps,whichallowsustochangethegeometryofthesupportofapoly-
+nomialwithoutchangingitspropertieswithrespecttofactorization.
+2.7.Tagging
+Letw∈(ℤn)≠beanon-zeroweightvectorandlet𝕃n♯≔𝕂[x1,x1−1,...,xn,xn−1,t,t−1].We
+deﬁnethew-taggingmapby
+                                𝜏w:𝕃n⟶𝕃n#
+                          P(x1,...,xn)⟼P(x1tw1,...,xntwn).
+12      FACTORINGSPARSEPOLYNOMIALSFAST
+
+
+Thismapisaninjectivemonomialmap.ForanyP∈𝕂[x1,...,xn],wehavedegt𝜏w(P)=
+degwP,valt𝜏w(P)=valwP,s𝜏w(P)=sP,andect𝜏w(P)≔degt𝜏w(P)−valt𝜏w(P)=ecwP.
+Divisibilityandgcdsarepreservedasfollows:
+
+LEMMA2.10.LetP,Q,G∈ℙnwithvalxiP=valxiQ=valxiG=0fori=1,...,n.Then
+a)PdividesQinℙnifandonlyif𝜏w(P)divides𝜏w(Q)in𝕃n#.
+b)G=gcd(P,Q)inℙnifandonlyif𝜏w(G)=gcd(𝜏w(P),𝜏w(Q))in𝕃n#.
+
+Proof.WeclaimthatPdividesQinℙnifandonlyifPdividesQin𝕃n.Onedirectionis
+clear.AssumethatPdividesQin𝕃n,sothatQ=APwithA∈𝕃n.Wemayuniquelywrite
+A=xeA′withe∈ℤnandA′∈ℙnsuchthatvalxiA′=0fori=1,...,n.Since0=valxiQ=
+valxiA+valxiP=valxi=ei+valxiA′=eifori=1,...,n,itfollowsthate=0.HencePdividesQ
+inℙn.OurclaimimpliesthatPdividesQinℙnifandonlyifPdividesQin𝕃n#.Now
+wemayfurtherextend𝜏wtoamonomialautomorphismof𝕃n#bysendingttoitself.
+Thisyields(a).Thesecondpropertyisaneasyconsequence. □
+
+COROLLARY2.11.LetP,Q∈ℙnandG=gcd(P,Q).LetGˆ=gcd(Pˆ,Qˆ),wherePˆ≔𝜏w(P)
+andQˆ≔𝜏w(Q).Let𝜈∈Znbesuchthat𝜈i≔min(valxiP,valxiQ)−valxiGˆfori=1,...,n.Then
+                        G(x1,...,xn)=x𝜈Gˆ(x1,...,xn,1). □
+
+   Givenaw-regularpolynomialF∈𝕂[x1,...,xn],wenotethatanydivisorP|Fmust
+againbew-regular.Hence,modulomultiplicationwithasuitableconstantin𝕂,wemay
+alwaysnormalizesuchadivisortobecomew-monic.InthesettingofLaurentpolyno-
+mials,wemayfurthermultiplyPbyamonomialinx1ℤ⋅⋅⋅znℤsuchthatlpwP=1.Similarly,
+whenapplying𝜏w,wecanalwaysnormalize𝜏w(P)tobemonicasaLaurentpolynomial
+intbyconsidering(lpwP)−1𝜏w(P).
+   Bothforgcdcomputationsandfactorization,thisraisesthequestionofhowtoﬁnd
+weightswforwhichagivennon-zeropolynomialF∈𝕂[x1,...,xn]isw-regular.In[51,Sec-
+tion4.3],awaywasdescribedtocomputesucharegularizingweightw:leti=(i1,...,in)∈
+suppFbesuchthati12+⋅⋅⋅+in2ismaximal.Inthatcase,itsuﬃcestotakew≔i,and
+wenotethatecwF⩽d2,wheredisthetotaldegreeofF.ForourapplicationsinSec-
+tions3.2and5itisoftenimportanttoﬁndawforwhichecwFissmall.Bytryinga
+fewrandomweightswithsmall(possiblynegative)entries,itisoftenpossibletoﬁnd
+aregularizingweightwwithecwP=O(1)orecwP=O(d).
+
+Example2.12.ConsiderF=2x2y+3xy2+xy+3y+2z+4∈Q[x,y,z].Then,Fisnot
+w1-regularforthenaturalweightw1≔(1,1,1).Ifwetakew2≔(2,1,0)instead,thenFis
+w2-regularwithecw2F=5,andwearriveat
+               𝜏w2(F)=(2x2y)t5+(3xy2)t4+(xy)t3+(3y)t+2z+4.
+Furthermore,𝜏w2(F)canbenormalizedtobemonicasaLaurentpolynomialintbycon-
+sidering𝜏w2(F)/(2x2y).Notethatw3≔(0,0,1)isalsoaregularizingweightforFwith
+ecw3F=1.
+
+                 3.MULTIVARIATEGCDCOMPUTATIONS
+
+Beforestudyingthefactorizationproblemformultivariatepolynomials,itisinteresting
+toconsidertheeasierproblemofgcdcomputations.Inthissectionweintroducetwo
+approachesforgcdcomputationsthatwillalsobeusefullaterforfactoringpolynomials.
+ALEXANDERDEMIN,JORISVANDERHOEVEN,     13
+
+
+   Theﬁrstapproachisiterativeonthenumberofvariables.Itwillbeadaptedtothe
+factorizationprobleminSection6.Thesecondapproachismoredirect,butrequires
+aregularizingweight(seeSection2.7).Square-freefactorizationcanbeaccomplished
+usingasimilartechnique,asweshallseeinSection5.ThealgorithmsfromSection7
+alsodrawsomeoftheirinspirationfromthistechnique,butalsorelyonNewtonpoly-
+gonsinsteadofregularizingweights.
+
+3.1.Iterativecomputationofgcds
+Letc1,...,cnberandomelementsof𝕂≠.ForanyA∈𝕂[x1,...,xn]andk=1,...,n,wedeﬁne
+                        A[k](x1,...,xk)≔A(x1,...,xk,ck+1,...,cn).
+
+LetP,Q∈𝕂[x1,...,xk]≠andG≔gcd(P,Q).Aswewillseebelow,G[k]=gcd(P[k],Q[k])for
+k=1,...,nwithhighprobability.Wemayeasilycomputetheunivariategreatestcommon
+divisorG[1]≔gcd(P[1],Q[1]).Inthissubsection,weshalldescribeaniterativealgorithm
+tocomputeG[k+1]fromG[k]fork=1,...,n−1.Eventually,thisyieldsG=G[n].
+   Let𝛼=(𝛼1,...,𝛼k)beanadmissibleratiooranFFTratio.ForanyA∈𝕂[x1,...,xn]and
+anyi∈ℕ,let
+
+                            A⟨k+1,i⟩(u)≔A[k+1](𝛼1i,...,𝛼ki,u)
+                                  A[k,i]≔A[k](𝛼1i,...,𝛼ki).
+
+Foranyi∈ℕ,wehaveG⟨k+1,i⟩=gcd(P⟨k+1,i⟩,Q⟨k+1,i⟩)withhighprobability.Nowthese
+greatestcommondivisorsareonlydeﬁneduptonon-zeroscalarmultiplesin𝕂≠.Never-
+theless,thereexistsauniquegreatestcommondivisorG[k+1]ofP[k+1]andG[k+1]whose
+evaluationatxk+1≔ck+1coincideswithG[k].
+   IfG[k]isknown,thenG[k,i],P⟨k+1,i⟩,andQ⟨k+1,i⟩canbecomputedforsuccessivei∈N
+usingfastevaluationatgeometricprogressions.Foranyi∈ℕ,wemaythencompute
+theunivariategcdG⟨k+1,i⟩ofP⟨k+1,i⟩andQ⟨k+1,i⟩,underthenormalizationconstraintthat
+G⟨k+1,i⟩(ck+1)=G[k,i].ItfinallysufficestointerpolateG[k+1]fromsufficientlymanyG⟨k+1,i⟩.
+Thisyieldsthefollowingalgorithm:
+
+Algorithm3.1
+Input:P,Q∈𝕂[x1,...,xn]≠
+Output:G∈𝕂[x1,...,xn],suchthatG=gcd(P,Q)
+   Ifn⩽1,thencomputegcd(P,Q)usingaunivariatealgorithmandreturnit
+   ComputeG[n−1]byrecursivelyapplyingthealgorithmtoP[n−1]andQ[n−1]
+   Letm≔sG[n−1]
+   ComputeG[n−1,i],P⟨n,i⟩,Q⟨n,i⟩fori=1,...,musingsparseevaluation
+   ComputeG⟨n,i⟩=gcd(P⟨n,i⟩,Q⟨n,i⟩)withG⟨n,i⟩(cn)=G[n−1,i]fori=1,...,m
+   RecoverGfromG⟨n,1⟩,...,G⟨n,m⟩usingsparseinterpolation
+   ReturnG
+
+   Beforeweanalyzethisalgorithm,wewillneedafewprobabilisticlemmas.Assume
+thatc1,...,cnand𝛼1,...,𝛼nareindependentlychosenatrandomfromasubsetof𝕂≠of
+sizeatleastN(if𝕂isasmallﬁniteﬁeld,thisforcesustomovetoaﬁeldextension).
+
+LEMMA3.1.LetA,B∈𝕂[x1,...,xn]besuchthatA[k+1]andB[k+1]arecoprime.Thenthe
+probabilitythatA[k]andB[k]arenotcoprimeisboundedby2kdAdB/N.
+14      FACTORINGSPARSEPOLYNOMIALSFAST
+
+
+Proof.Letxiwithi⩽kbeavariablethatoccursbothinA[k+1]andinB[k+1].Then
+                           Ri≔Resxi(A[k+1],B[k+1])≠0.
+
+Ifxioccursingcd(A[k],B[k]),thenRi(x1,...,xk,ck+1)=0,whichcanhappenforatmost
+degRi⩽degxiA[k+1]degB[k+1]+degA[k+1]degxiB[k+1]⩽2dAdBvaluesofck+1.□
+
+LEMMA3.2.LetP,Q∈𝕂[x1,...,xn]andG=gcd(P,Q).ThentheprobabilitythatG[k]≠
+gcd(P[k],Q[k])forsomek∈{1,...,n}isboundedbyn2dPdQ/N.
+
+Proof.LetuswriteP=AGandQ=BG,whereAandBarecoprime.Thenwehave
+G[k]≠gcd(P[k],Q[k])ifandonlyifA[k]andB[k]arenotcoprime.Theresultnowfollows
+byapplyingthepreviouslemmafork=n−1,...,1. □
+
+THEOREM3.3.Lets≔sG,s¯≔sP+sQ+sG,d≔max(dP,dQ),and𝛿≔max(𝛿P,𝛿Q).Then
+Algorithm3.1iscorrectwithprobabilityatleast1− n2d2+n s2 𝛿 /Nanditrunsintime
+
+                         O(n((s¯/s+𝛿)S(s)+sM(𝛿)log𝛿)).
+
+Remark.TheprobabilityboundimplicitlyassumesthatN&gt;n2d2+n s2 𝛿,sincethe
+statementbecomesvoidforsmallerN.Inparticular,werecallthatthismeansthatthe
+cardinalityof𝕂shouldbeatleastn2d2+n s2 𝛿.
+
+Proof.AssumingthatG[k]=gcd(P[k],Q[k])andG[k,i]≠0fork=1,...,n−1andi=1,...,s,
+letusprovethatAlgorithm3.1returnsthecorrectanswer.Indeed,theseassumptions
+implythatΓ≔gcd(P⟨n,i⟩,Q⟨n,i⟩)canbenormalizedsuchthatΓ(cn)=G[n−1,i]andthat
+theuniquesuchΓmustcoincidewithG⟨n,i⟩.NowG[k]=gcd(P[k],Q[k])failsforsomek
+withprobabilityatmostn2d2/N,byLemma3.2.Since𝛿G⩽𝛿,theconditionG[k,i]≠0fails
+withprobabilityatmostn s2 𝛿/Nforsomekandi,byCorollary2.2.Thiscompletesthe
+probabilisticcorrectnessproof.
+   Astothecomplexity,letusﬁrstignorethecostoftherecursivecall.Thenthesparse
+evaluationsofG[n−1,i],P⟨n,i⟩,andQ⟨n,i⟩canbedoneintimeO((s¯/s+𝛿)S(s)):seeSec-
+tion2.4.TheunivariategcdcomputationstakeO(sM(𝛿)log𝛿)operations.Finally,the
+recoveryofGusingsparseinterpolationcanbedoneintimeO(𝛿S(s)).Altogether,the
+complexitywithouttherecursivecallsisboundedbyO((s¯/s+𝛿)S(s)+sM(𝛿)log𝛿).We
+concludebyobservingthatthedegreesandnumbersoftermsofP,Q,andGcanonly
+decreaseduringrecursivecalls.Sincetherecursivedepthisn,thecomplexitybound
+follows.    □
+
+Remark3.4.WhenrecoveringGfromG⟨n,1⟩,...,G⟨n,m⟩usingsparseinterpolation,one
+mayexploitthefactthattheexponentsofx1,...,xn−1inGarealreadyknown.
+
+Example3.5.LetA,B,C∈𝕂[x1,...,xn]berandompolynomialsoftotaldegreedand
+considerP≔AB,Q≔AC.Withhighprobability,G≔gcd(P,Q)=A.Letusmeasurethe
+overheadofrecursivecallsinAlgorithm3.1withrespecttothenumberofvariablesn.
+Withhighprobability,wehave
+
+               sG= n+dn ,sG[n−1]= n−1+dn−1 =n+dn               sG[n−1]
+and
+ALEXANDERDEMIN,JORISVANDERHOEVEN,     15
+
+
+
+
+        sP=sQ= n+2dn ,sP=n+2dn                  sP[n−1],sQ=n+2dn        sQ[n−1].
+
+
+Assumingthatd⩾n,itfollowsthat
+
+                  2sG[n−1]⩽sG,3sP[n−1]⩽sP,3sQ[n−1]⩽sQ.
+
+ThisshowsthatthesizesofthesupportsoftheinputandoutputpolynomialsinAlgo-
+rithm3.1becomeatleasttwiceassmallateveryrecursivecall.Consequently,theoverall
+costisatmosttwicethecostofthetop-levelcall,roughlyspeaking.
+
+
+3.2.Gcdcomputationsthroughregularizingweights
+
+Algorithm3.1hasthedisadvantagethatthecomplexityboundinTheorem3.3involves
+afactorn.Letusnowpresentanalternativealgorithmthatavoidsthispitfall,butwhich
+mayrequireanon-trivialmonomialchangeofvariables.Ourmethodisavariantofthe
+algorithmfrom[51,Section4.3].
+   GivenP,Q∈𝕂[x1,...,xn],weﬁrstcomputearegularizingweightwforPorQ,for
+whiche≔max(ecwP,ecwQ)isassmallaspossible.Fromapracticalpointofview,as
+explainedinSection2.7,weﬁrsttryafewrandomsmallweightsw.Ifnoregularizing
+weightisfoundinthisway,thenwemayalwaysreverttothefollowingchoice:
+
+
+LEMMA3.6.Forvectors𝜈∈ℝn,let|𝜈|≔𝜈12+⋅⋅⋅+𝜈n2           .Leti=(i1,...,in)∈suppPbesuch
+that|i|⩽dPismaximal.Letj=(j1,...,jn)∈suppQbesuchthat|j|⩽dQismaximal.Letw≔i
+if|i|⩽|j|andw≔jotherwise.Thene≔max(ecwP,ecwQ)⩽dPdQ.
+
+
+Proof.Assumethatw=i.Thenw⋅k=i⋅k⩽|i||k|⩽|i||j|⩽dPdQforanyk∈ℕnwithQk≠0.
+Thecasewhenw=jishandledsimilarly.  □
+
+
+   NowconsiderPˆ≔𝜏w(P),Qˆ≔𝜏w(Q),andGˆ=gcd(Pˆ,Qˆ)in𝕂[x1,x1−1,...,xn,xn−1,t,t−1].
+WenormalizeGˆinsuchawaythatvaltGˆ=0andsuchthatGˆismonicasapolynomial
+int;thisisalwayspossiblesinceGˆisw-regular.Let𝛼=(𝛼1,...,𝛼n)∈𝕂nbeanadmissible
+ratiooranFFTratio.Foranyi∈ℕ,weevaluateatxk≔𝛼kiandt≔t,whichleadsusto
+deﬁnetheunivariatepolynomials
+
+                                 Pˆ[i]≔Pˆ(𝛼1i,...,𝛼ni,t)
+                                Qˆ[i]≔Qˆ(𝛼1i,...,𝛼ni,t)
+                                Gˆ[i]≔Gˆ(𝛼1i,...,𝛼ni,t).
+
+Withhighprobability,ectGˆ[i]=ectGˆ,andGˆ[i]isthemonicgcdofPˆ[i]t−kandQˆ[i]t−ℓ,
+wherek≔valtPˆ[i]andℓ≔valtQˆ[i].Forsuﬃcientlylargem(withm=O(s)),wemay
+thusrecoverGˆfromGˆ[1],...,Gˆ[m]usingsparseinterpolation.Finally,fort≔1,weobtain
+G=x1𝜈1⋅⋅⋅xn𝜈nGˆ(x1,...,xn,1),where𝜈k=min(valxkP,valxkQ)−valxkGˆfork=1,...,n.This
+leadstothefollowingalgorithm:
+16      FACTORINGSPARSEPOLYNOMIALSFAST
+
+
+Algorithm3.2
+Input:P,Q∈𝕂[x1,...,xn]≠
+Output:G∈𝕂[x1,...,xn],suchthatG=gcd(P,Q)
+   FindaregularizingweightwforPorQ
+   Form=1,2,4,8,...do
+      ComputePˆ[i],Qˆ[i]fori=⌊/m2⌋+1,...,m
+      ComputeGˆ[i]=gcd(Pˆ[i],Qˆ[i])withGˆ[i]monicandvaltGˆ[i]=0fori=⌊/m2⌋+1,...,m
+      IfGˆ[1],...,Gˆ[m]yieldGˆthroughsparseinterpolation,then
+          Let𝜈k≔min(valxkP,valxkQ)−valxkGˆfork=1,...,n
+          Returnx𝜈Gˆ(x1,...,xn,1)
+
+Remark3.7.IfGˆisnormalizedin𝕂[x1,x1−1,...,xn,xn−1,t,t−1]tobemonicasapolynomial
+int,thenwemayneedtointerpolatemultivariatepolynomialswithnegativeexponents
+inordertorecoverGˆfromGˆ[1],...,Gˆ[m].Inpractice,manyinterpolationalgorithmsbased
+ongeometricsequences,likeProny&#x27;smethod,canbeadaptedtodothis.
+
+   Asintheprevioussubsection,assumethat𝛼1,...,𝛼nareindependentlychosenat
+randomfromasubsetof𝕂≠ofsizeatleastN.Weletd≔max(dP,dQ),s≔sG,ands¯≔
+sP+sQ+sG.
+
+LEMMA3.8.AssumethatPorQisw-regular.LetGˆ=gcd(Pˆ,Qˆ)withvaltGˆ=0bemonicasa
+polynomialint.TakePˆ[i]≔Pˆ(𝛼1i,...,𝛼ni,t),Qˆ[i]≔Qˆ(𝛼1i,...,𝛼ni,t),andGˆ[i]≔Gˆ(𝛼1i,...,𝛼ni,t).
+TheprobabilitythatGˆ[i]=gcd(Pˆ[i],Qˆ[i])foralli=1,...,sisatleast1−2d2 s2 /N.
+
+
+Proof.WehaveGˆ[i]=gcd(Pˆ[i],Qˆ[i])ifandonlyifR≔Rest(Pˆ/Gˆ,Qˆ/Gˆ)doesnotvanish
+at𝛼i.NowthedegreeofRisatmost2d2,sotheprobabilitythatR(𝛼i)≠0forarandomly
+chosen𝛼∈𝕂≠andalli∈{1,...,s}isatleast1−2d2 s2 /N,byCorollary2.2.□
+
+
+COROLLARY3.9.TheprobabilitythatonecanrecoverGˆfromGˆ[1],...,Gˆ[m]withm=O(s)using
+sparseinterpolationisatleast1−O(d2s2/N).  □
+
+THEOREM3.10.Lets≔sG,s¯≔sP+sQ+sG,d≔max(dP,dQ),ande≔max(ecwP,ecwQ)⩽d2.
+Algorithm3.2iscorrectwithprobabilityatleast1−O(d2s2/N)anditrunsintime
+
+                         O((s¯/s+e)S(s)+sM(e)loge).  (3.1)
+
+Proof.ThecorrectnesswiththeannouncedprobabilityfollowsfromCorollaries2.11
+and3.9,whilealsousingRemark2.5.ThecomputationofPˆ[i]andQˆ[i]throughsparse
+evaluationatgeometricprogressionsrequiresO((s¯/s+e)           S(s))operations(seeSec-
+tion2.4).TheunivariategcdcomputationstakeO(sM(e)loge)furtheroperations.The
+ﬁnalinterpolationofGˆfromGˆ[1],...,Gˆ[m]canbedoneintimeO(S(s)).□
+
+Example3.11.LetP,Q∈K[x1,...,xn]≠.ConsidertheparticularcasewhenPismonicas
+apolynomialinK[x2,...,xn][x1].Then,w=(1,0,...,0)isaregularizingweightforP,and
+thereforealsoforG≔gcd(P,Q).Thissituationcanbereadilydetectedand,inthiscase,
+wehavee⩽max(degx1P,degx1Q)inthecomplexitybound(3.1).
+ALEXANDERDEMIN,JORISVANDERHOEVEN,     17
+
+
+Remark3.12.WemayneedfewerevaluationpointstointerpolatethegcdGˆinAlgo-
+rithm3.2incasethetermsofGˆaredistributedoverthepowersoft.Forinstance,ifthe
+termsaredistributedevenly,thenwehaves≔sG/einthecomplexitybound(3.1).
+
+                        4.BIVARIATEFACTORIZATION
+
+Lemma3.2allowsustoprojectthegeneralproblemofmultivariategcdcomputations
+downtotheunivariatecase.Forthepolynomialfactorizationproblem,nosuchreduc-
+tionexists:givenarandomunivariatepolynomialofdegreed⩾2overaﬁniteﬁeld,there
+isanon-zeroprobabilitythatthispolynomialisnotirreducible.Forthisreason,itis
+customarytoprojectdowntobivariateinsteadoftheunivariatepolynomials(when
+applicable,analternativeistoprojectdowntounivariatepolynomialswithintegercoef-
+ﬁcients;see[79],forinstance).
+   Thisexplainswhyitisinterestingtostudythefactorizationofbivariatepolynomials
+inmoredetail.Throughoutthissection,Fisabivariatepolynomialin𝕂[x,y]≠ofdegree
+dxinxandofdegreedyiny.AsinSections2.2and3,randomnumberswillbedrawn
+fromasubsetof𝕂≠ofsizeatleastN.Wewillrecallsomeclassicalresultsconcerningthe
+complexityofbivariatefactorization,importanttechniques,andspecialcases:content-
+freefactorization,rootextraction,Hensellifting,andsquare-freefactorization.
+
+4.1.Content-freefactorization
+RecallthatthecontentofF=F0+⋅⋅⋅+Fdxxdx∈𝕂[x,y]≠inxisdeﬁnedby
+
+                          contxF≔gcd(F0,...,Fdx)∈𝕂[y].
+
+WesaythatFiscontent-free(orprimitive)inxifcontxF=1.Giventworandomshifts
+𝜎,𝜏∈𝕂≠,wehavecontxF=gcd(F(𝜎,y),F(𝜏,y))withhighprobability.Moreprecisely:
+
+PROPOSITION4.1.ThecontentcontxFcanbecomputedintimeO(dxdy+M(dy)logdy)with
+aprobabilityofsuccessofatleast1−2dx2/N.
+
+Proof.Withoutlossofgenerality,wemayassumethat|𝕂|&gt;N&gt;2dx2.Letusﬁrstconsider
+thecasewhencontxF=1.Thenweclaimthatgcd(F(𝜎,y):𝜎∈𝕂≠)=1.Indeed,fordx+1
+pairwisedistinct𝜎0,...,𝜎dx∈𝕂≠,theVandermondematrix 𝜎ij 0⩽i,j⩽dxisinvertible,so
+gcd(F(𝜎0,y),...,F(𝜎dx,y))=gcd(F0,...,Fdx)=1.ItfollowsthatResy(F(u,y),F(v,y))≠0,
+regardedasanelementof𝕂[u,v],isnon-zero,anditstotaldegreeisboundedby2dx2.By
+Lemma2.1,itfollowsthatResy(F(𝜎,y),F(𝜏,y))≠0withprobabilityatleast1−2dx2/N.
+Inthatcase,gcd(F(𝜎,y),F(𝜏,y))=1.
+   Wehaveprovedourprobabilisticcorrectnessclaimintheparticularcasewhen
+contxF=1.Ingeneral,wefactorF=F˜contxF.Withprobabilityatleast1−2dx2/N,we
+havegcd(F(𝜎,y),F(𝜏,y))=gcd(F˜(𝜎,y),F˜(𝜏,y))contxF=1.
+   Astothecomplexitybound,theevaluationsF(𝜎,y)andF(𝜏,y)requireO(dxdy)oper-
+ationsandtheunivariategcdcomputationcanbedoneintimeM(dy)logdy.□
+
+4.2.Rootextraction
+LetF∈K[x,y]≠andℓ⩾2.AssumethatF=cRℓforsomec∈𝕂≠andR∈𝕂[x,y].Assume
+that|𝕂|&gt;N&gt; dy2 +2.ThenRcanbecomputedeﬃcientlyasfollows.
+18      FACTORINGSPARSEPOLYNOMIALSFAST
+
+
+   Afterdividingoutasuitablepowerofxℓ,wemayassumewithoutlossofgenerality
+thatvalxF=0.Forarandomshift𝜎,wenextreplaceF(x,y)withF(x,y+𝜎).Withhigh
+probability,thisensuresthatF(0,0)≠0.ModulodivisionofF(x,y)byF(0,0),wemay
+thenassumewithoutlossofgeneralitythatF(0,0)=1,andwewillshowhowtocompute
+theuniqueR∈𝕂[x,y]withR(0,0)=1andRℓ=F.SinceF(0,y)∈𝕂[y]isaunivariate
+polynomial,wemayeﬃcientlycomputeR(0,y)usingunivariaterootextraction.
+   Let𝛼∈𝕂≠beanadmissibleratiooranFFTratio.Foranyi∈ℕ,wedeﬁnetheuni-
+variatepolynomialF[i]≔F(x,𝛼i).Withhighprobability,wehaveF[i](0)≠0.LetR[i]be
+theuniqueunivariatepolynomialsuchthat(R[i])ℓ=F[i]andR[i](0)=R(0,𝛼i).SuchR[i]
+canbefoundeﬃcientlyusingunivariaterootextraction.Form=dy,wemayrecoverR
+fromR[0],...,R[m]usinginterpolation.
+
+PROPOSITION4.2.Withtheabovenotationsandassumptions,wemaycomputecandRintime
+O(M(dxdy)),withaprobabilityofsuccessofatleast1−  dy2 +2dy /N.
+
+Proof.TherandomshiftF(x,y)↦F(x,y+𝜎)andthecorrespondingbackshiftR(x,y)↦
+R(x,y−𝜎)canbecomputedintimeO(dx             M(dy))usingtheso-calledconvolution
+method[2,Theorem5].ThecomputationofR(0,y)fori=0,...,dycanbedoneintime
+O(M(dy))usingfastrootextraction.WemaycomputeR(0,𝛼i)andF[i]fori=0,...,dy
+intimeO(dxM(dy))usingfastmultipointevaluationatgeometricsequences[2,13].The
+sameholdsfortheinterpolationofRfromtheR[i].Finally,theℓ-throotsR[i]ofthe
+univariatepolynomialsF[i]canbecomputedintimeO(dyM(dx)).Thealgorithmiscor-
+rectaslongasF(0,0)≠0andF(0,𝛼i)≠0fori=0,...,dy.TheprobabilitythatF(0,0)≠0
+andF(0,1)≠0forarandomchoiceof𝜎isatleast1−2dy/N,byLemma2.1.Inthat
+case,Φ≔F(0,y)≠0andtheprobabilitythatΦ(𝛼i)≠0fori=1,...,dyisatleast1− dy2 /N,
+byCorollary2.2.   □
+
+4.3.Hensellifting
+LetF∈𝕂[x,y]becontent-freeinxandassumethatFhasanon-trivialfactorizationF=PQ,
+andcontxF=1.AssumethatdegF(x,0)=dxandthatP(x,0)andQ(x,0)areknownand
+coprime(inparticularPandQarecoprime).UsingarandomshiftF(x,y)↦F(x,y+𝜎),
+theseassumptionscanbeenforcedwithhighprobability,providedthatPandQare
+coprime.Withoutlossofgeneralitywemayalsoassumethatwenormalizedthefactor-
+izationofF(x,0)suchthatP(x,0)ismonic.Undertheseassumptions,wemaycompute
+PandQasfollows:
+•WefirstuseHenselliftingtoobtainafactorizationF=PˆQˆwithPˆ(x,y),Qˆ(x,y)∈
+   𝕂[[y]][x]andPˆ(x,0)=P(x,0),Qˆ(x,0)=Q(x,0),andsuchthatPˆismonicinx.We
+   computePˆandQˆmoduloy𝜈for𝜈=2dy+1.
+•Forarandomshift𝜎∈𝕂≠,weapplyrationalfunctionreconstruction[31,Section5.7]
+   toPˆ(𝜎,y)toobtainA,B∈𝕂[y]withPˆ(𝜎,y)=A/B+O(y𝜈)andgcd(A,B)=1andB
+   ofthesmallestpossibledegreewiththeseproperties.Withhighprobability,wethen
+   haveP=BPˆ.WemaycomputeQinasimilarway.
+
+PROPOSITION4.3.GivenFandF(x,0)=P(x,0)Q(x,0)satisfyingtheaboveassumptions,let
+dx=degxF,dy=degyF,and𝛿≔max(dx,dy).WemayliftthefactorizationofF(x,0)into
+afactorizationF=PQintime
+                              O(M(dxdy)+M(𝛿)log𝛿),
+
+withaprobabilityofsuccessofatleast1−2dxdy/N.
+ALEXANDERDEMIN,JORISVANDERHOEVEN,     19
+
+
+Proof.WeﬁrstobservethatthereisauniquefactorizationF=PQthatliftsthefactoriza-
+tionofF(x,0),thankstoourhypothesisthatcontxF=1.Sincethishypothesisalsoimplies
+thatcontxP=contxQ=1,thedenominatorBofPˆasanelementof𝕂(y)[x]coincideswith
+theleadingcoefficientofPasapolynomialinx.Consequently,thedenominatorofPˆ(𝜎,y)
+equalsBifandonlyifResy(B(y),P(𝜎,y))≠0.SincethedegreeofResy(B(y),P(u,y))∈𝕂[u]
+isboundedbydxdy,thishappenswithprobabilityatleast1−dxdy/N.Sincethedegrees
+ofthenumeratorAanddenominatorBofPˆ(𝜎,y)∈𝕂(y)donotexceeddy,itsuﬃces
+tocomputePˆmoduloO y2dy+1 inordertorecoverAandB.Thiscompletestheprob-
+abilisticcorrectnessproof.
+   Astothecomplexitybound,theHenselliftingrequiresO(M(dxdy)+M(dx)logdx)
+operationsin𝕂,whenusingafastNewtoniteration[31,Theorem15.18,twofactors].
+ThecomputationofPˆ(𝜎,y)requiresO(dxdy)furtheroperationsandtherationalfunction
+reconstructioncanbedoneintimeO(M(dy)logdy)usingthetechniqueofhalfgcds[31,
+Chapter11].   □
+
+   ThepropositiongeneralizesinastraightforwardwaytothecasewhenFhasℓpair-
+wisecoprimefactorsP1,...,Pℓ.Inthatcase,onemayusefastmultifactorHensellifting[31,
+Theorem15.18],toobtainthefollowing:
+
+PROPOSITION4.4.LetF∈𝕂[x,y]besuchthatcontxF=1anddegF(x,0)=dx.AssumethatF
+canbefactoredasF=P1⋅⋅⋅Pℓ,whereP1(x,0),...,Pℓ(x,0)arepairwisecoprimeandknown.
+AssumealsothatP1(x,0),...,Pℓ−1(x,0)aremonic.ThenwemayliftthefactorizationF(x,0)=
+P1(x,0)⋅⋅⋅Pℓ(x,0)intoafactorizationF=P1⋅⋅⋅Pℓintime
+                           O(M(dxdy)logℓ+ℓM(𝛿)log𝛿),
+
+withaprobabilityofsuccessofatleast1−ℓdxdy/N. □
+
+Example4.5.Consider
+                F≔x3y2−x3+x2y3+x2+xy2+3xy−2x+2y2−2y
+with
+                      F(x,0)=−x3+x2−2x=(−x2+x−2)x.
+ThisfactorizationliftstothefollowingfactorizationofFinQ[[y]][x]:
+
+           F=PˆQˆ,Pˆ=x2+xy−1           +2y+1,Qˆ=(y2−1)x+y3−y.
+
+Taking𝜎=1,weobtainthefollowingrationalreconstructionofPˆ(𝜎,y)uptothe
+orderO(y7):
+                      Pˆ(1,y)=1+1y−1     +2y+1   =y2+3y−2y2−1 .
+
+Consequently,P=(y2−1)PˆisthesoughtfactorofFinQ[x,y].Inasimilarway,weﬁnd
+thatQ=(y2−1)−1Qˆ.
+
+4.4.Square-freefactorization
+AssumethatF∈𝕂[x,y]iscontent-freeinyandoftotaldegreed.Assumealsothat
+char𝕂&gt;d.Recallthatthesquare-freefactorizationofFisoftheform
+
+                                  F=P11P22⋅⋅⋅Pdd,
+20      FACTORINGSPARSEPOLYNOMIALSFAST
+
+
+whereeachPiistheproductofallirreduciblefactorsofFthatoccurwithmultiplicityi.
+NotethatsomeofthePiareallowedtobeunitsin𝕂andthatthePiareuniqueuptomul-
+tiplicationbysuchunits.ThepolynomialsP1,...,Pdarepairwisecoprime.Sincechar𝕂&gt;d,
+theymustalsobeseparableinbothxandy(i.e.gcd(Pi,∂Pi/∂x)=gcd(Pi,∂Pi/∂y)=1).
+Thesquare-freefactorizationofF=𝕂[x,y]canbecomputedeﬃcientlyasfollows:
+ •Forarandomshift𝜎,replaceFbyF(x,y+𝜎).
+ •Computethesquare-freefactorizationofF(x,0).
+ •Henselliftthisintothesquare-freefactorizationofFusingProposition4.4.
+ •Applytheshiftintheoppositedirection.
+
+PROPOSITION4.6.AssumethatF∈𝕂[x,y]iscontent-freeinyandthatchar𝕂&gt;d.Wecan
+computethesquare-freefactorizationofFintime
+
+                    O(M(dxdy)logℓ+M(dy)ℓlogdy+M(dx)logdx),
+
+withaprobabilityofsuccessofatleast1−3ℓdxdy/N,whereℓ≔|{1⩽i⩽d:Pi∉𝕂}|.
+
+Proof.Giveni∈{1,...,d},considerPiandP¯i≔(∂Pi/∂x)F/Pi.ThepolynomialsPi(x,𝜎)and
+P¯i(x,𝜎)arecoprimeifandonlyifResx(Pi(x,u),P¯i(x,u))∈𝕂[u]doesnotvanishatu≔𝜎.
+Sincethisresultanthasdegreeatmost2dxdy,thishappenswithprobability1−2dxdy/N.
+Therefore,theprobabilitythatallPi(x,𝜎)arepairwisecoprimeandallPi(x,𝜎)aresep-
+arableisatleast1−2ℓdxdy/N.Inthatcase,F(x,𝜎)=P1(x,𝜎)P2(x,𝜎)2⋅⋅⋅Pd(x,𝜎)disthe
+square-freedecompositionofF(x,𝜎).Modulonormalization,wearethusintheposition
+toapplyProposition4.4.Thisprovestheprobabilisticcorrectnessofthealgorithm.
+   ThecomputationoftheshiftF(x,y)↦F(x,y+𝜎)canbedoneintimeO(dxM(dy))using
+thealgorithmfrom[2,Theorem5]andthesameholdsfortheshiftsintheoppositedirec-
+tioninthelaststep.Thesquare-freefactorizationoftheunivariatepolynomialF(x,0)
+canbedoneintimeO(M(dx)logdx):see[106]and[31,Theorem14.23].Weconclude
+withProposition4.4.   □
+
+4.5.Generalbivariatefactorization
+
+GeneralbivariatefactorizationofF∈K[x,y]canoftenbereducedtoHenselliftingas
+inSection4.3usingarandomshifty↦y+𝜎anddiversiﬁcationx↦𝜁1x,y↦𝜁2y.Let
+dx=degxF,dy=degyF.Thebestcurrentlyknowncomplexityboundisthefollowing:
+
+THEOREM4.7.[74,Proposition8]LetF∈𝕂[x,y]besquare-freeandcontent-freeinbothx
+andy.Assumethatchar𝕂=0orchar𝕂&gt;dy(2dx−1).Thenwecancomputetheirreducible
+factorizationofFintime
+                                 O˜(dx2dy+dx𝜔)+F(dx)
+
+andwithaprobabilityofsuccessofatleast1−dx/N. □
+
+   Theactualpropositionin[74]alsocontainsasimilarresultforﬁniteﬁeldsofsmall
+characteristic.For𝕂asinTheorem4.7,square-freenessandcontent-freenesscanbe
+achievedwithhighprobabilityandnegligiblecostusingthealgorithmsfromSections4.1
+and4.4.
+ALEXANDERDEMIN,JORISVANDERHOEVEN,     21
+
+                           5.EFFICIENTREDUCTIONS
+
+Inthebivariatesettingoftheprevioussection,wehavepresentedseveraleﬃcientalgo-
+rithmsforthecomputationofpartialfactorizations.Inthissection,wewillgeneralize
+threeofthemtothemultivariatesetting:removalofcontent,rootextraction,andsquare-
+freefactorizations.Thecommonfeatureofthesegeneralizationsisthattheyrecover
+theanswerdirectlyfromthecorrespondingunivariatespecializationsoftheproblem,
+inasimilarfashionasthegcdalgorithmfromSection3.2.
+
+5.1.Content-freefactorization
+
+ConsiderapolynomialF∈𝕂[x1,...,xn]∖𝕂andavariablexi.If,foreverynon-trivial
+factorizationF=PQwithP,Q∈𝕂[x1,...,xn]∖𝕂,bothPandQdependonxi,thenwe
+saythatFiscontent-free(orprimitive)inxi.NotethatthisisalwaysthecaseifdegxiF⩽1.
+IfFiscontent-freeinxiforalli=1,...,n,thenwesaythatFiscontent-free.
+   Foragivenvariablexi,sayx1,wecanefficientlytestwhetherFiscontent-free
+withrespecttoxi:forrandom𝛼2,...,𝛼n∈𝕂≠,weformthebivariatepolynomial
+B≔F(x1,𝛼2t,...,𝛼nt)andcomputecontx1B∈𝕂[t]usingthemethodfromSection4.1.
+Withhighprobability,Fiscontent-freewithrespecttox1ifandonlyifcontx1B=1.Per-
+formingthistestforeachofthevariablesx1,...,xnyields:
+
+PROPOSITION5.1.WemaycheckwhetherFiscontent-free(and,ifnot,determineallvariablesxi
+withrespecttowhichFisnotcontent-free)intimeO(nsF+nM(dF)logdF)andwithaproba-
+bilityofsuccessofatleast1−2ndF2/N.
+
+Proof.TheproofissimilartotheoneofProposition4.1.Thistime,fortheprobability
+bound,weconsidertheresultantRest(F(u,c2t,...,cnt),F(v,c2t,...,cnt))asapolynomial
+in𝕂[u,v,c2,...,cn],oftotaldegreeatmost2dF2.Ifcontx1F=1,thenthisresultantdoesnot
+vanishwithprobabilityatleast1−2dF2/Nforrandomu≔𝜎,v≔𝜏,c2≔𝛼2,...,cn≔𝛼n.
+   Astothecomplexitybound,fori=1,...,n,let𝜎iand𝜏iberandomandconsider
+Bi≔F(𝛼1t,...,𝛼i−1t,𝜎i,𝛼i+1t,...,𝛼nt)andCi≔F(𝛼1t,...,𝛼i−1t,𝜏i,𝛼i+1t,...,𝛼nt).Wecompute
+theBisimultaneouslyfori=1,...,nintimeO(n(sF+dF))andsimilarlyfortheCi.Finally,
+thecomputationofgcd(Bi,Ci)fori=1,...,ntakesO(nM(dF)logdF)operations.□
+
+   AssumenowthatFisnotcontent-free,saywithrespecttox1.Withhighprobability,
+thecontentofFwithrespecttox1thenequalsthegcdofF(𝜎,x2,...,xn)andF(𝜏,x2,...,xn),
+fortworandomshifts𝜎,𝜏∈𝕂.Thisleadstoanon-trivialfactorizationofFforthecost
+ofonegcdcomputationandoneexactdivision.
+
+5.2.Rootextraction
+
+GivenF∈𝕂[x1,...,xn]≠andℓ⩾2,multivariateℓ-throotextractionistheproblemof
+determiningc∈𝕂≠andR∈𝕂[x1,...,xn],suchthatF=cRℓ,wheneversuchcandRexist.
+Wedeviseanalgorithminthesameveinasthealgorithmforgcdcomputationsfrom
+Section3.2.
+   WeﬁrstcomputearegularizingweightwforFsuchthatecwFissmall.Recallthatthe
+regularityofwensuresthatlpwF=𝛼x𝜈forsome𝛼∈𝕂≠and𝜈∈ℤn.Wetakec≔𝛼and
+notethatwethenmusthavelpwF=c(lpwR)ℓ.
+22      FACTORINGSPARSEPOLYNOMIALSFAST
+
+
+   NowletFˆ=(lpwF)−1t−𝜇𝜏w(F)∈𝕂[x1,x1−1,...,xn,xn−1,t,t−1]with𝜇≔valt𝜏w(F),sothat
+valtFˆ=0andFˆismonicasapolynomialint.Let𝛼=(𝛼1,...,𝛼n)∈𝕂nbeanadmissibleratio
+oranFFTratio.Foranyi∈ℕ,wedeﬁnetheunivariatepolynomialFˆ[i]≔Fˆ(𝛼1i,...,𝛼ni,t).
+LetRˆ[i]betheuniquemonicpolynomialwith(Rˆ[i])ℓ=Fˆ[i].Forsuﬃcientlylargem(with
+m=O(sR)),wemayrecoverRˆfromRˆ[1],...,Rˆ[m]usingsparseinterpolation.Finally,we
+haveR=x𝜈Rˆ(x1,...,xn,1),where𝜈i∈ℤissuchthat𝜈iℓ=valxiFfori=1,...,n.
+
+PROPOSITION5.2.AssumethatFisw-regularwithe≔ecwF⩽dF2.Thenwemaycomputec∈𝕂≠
+andR∈𝕂[x1,...,xn]withF=cRℓ,wheneversuchcandRexist,intime
+                              O((sF/sR+e)S(sR)+sRM(e)).
+
+Proof.TheevaluationsFˆ[i]≔Fˆ(𝛼1i,...,𝛼ni,t)takeO((sF/sR+e)S(sR))operations,whereas
+thesparseinterpolationofRˆfromtheRˆ[i]canbedoneintimeO(S(sR)).Thecostofthe
+univariateℓ-throotextractionsRˆ[i]≔Fˆ[i]ℓ    isboundedbyO(sRM(e)).□
+
+5.3.Square-freefactorization
+ConsiderF∈𝕂[x1,...,xn]oftotaldegreed.AssumethatFiscontent-freeandthat
+char𝕂=0orchar𝕂&gt;d2.Thefactorizationof
+
+                                     F=cP1P22⋅⋅⋅Pdd
+
+intosquare-freepartscanbedoneusingasimilartechniqueasforgcdcomputations
+inSection3.2.WestartwiththecomputationofaregularizingweightwforF.Setting
+e≔ecwF,werecallthate⩽d2,whencechar𝕂&gt;e.Let
+
+                     Fˆ=𝜏w(F)∈𝕃≔𝕂[x1,x1−1,...,xn,xn−1,t,t−1]
+andconsiderthenormalizedsquare-freefactorization
+
+                                  Fˆ=cx𝜈t𝜇Pˆ1Pˆ22⋅⋅⋅Pˆdd,
+
+wherec∈𝕂≠,𝜈∈ℤn,𝜇∈ℤ,andwherePˆ1,...,Pˆd∈𝕃aremonicandofvaluationzeroint.
+Let𝛼=(𝛼1,...,𝛼n)∈𝕂nbeanadmissibleratiooranFFTratio.Foranyi∈ℕ,wedeﬁne
+theunivariatepolynomials
+
+                          Fˆ[i]≔Fˆ(𝛼1i,...,𝛼ni,t)
+                          Pˆk[i]≔Pˆk(𝛼1i,...,𝛼ni,t),k=1,...,d.
+
+Thenormalizedsquare-freefactorizationofFˆ[i]t−𝜇isoftheform
+                            Fˆ[i]t−𝜇=c[i]Pˆ1[i] Pˆ2[i] 2⋅⋅⋅ Pˆd[i] d,
+
+wherec[i]∈𝕂≠,andPˆ1[i],...,Pˆd[i]aremonicpolynomialsin𝕂[t].WerecoverPˆ1,...,Pˆdusing
+sparseinterpolationandthenP1,...,Pdbysettingt≔1andmultiplyingbyappropriate
+monomialsinx1ℤ⋅⋅⋅xnℤ.Moreprecisely,Pi=x𝜆Pˆi(x1,...,xn,1),where𝜆j=1ifvalxjF=i
+and𝜆j=0otherwise.
+
+PROPOSITION5.3.AssumethatFisw-regularwithe≔ecwF⩽dF2.Lets≔max(sP1,...,sPd)and
+ℓ≔|{1⩽i⩽d:Pi∉K}|.Thenwemaycomputeasquare-freefactorizationofintime
+
+                            O(ℓ(sF/s+e)S(s)+sM(e)loge),
+ALEXANDERDEMIN,JORISVANDERHOEVEN,     23
+
+
+withaprobabilityofsuccessofatleast1−3ℓd2s2/N.
+
+Proof.Theprobabilisticcorrectnessisprovedinasimilarwayasinthebivariatecase
+(seeProposition4.6),whilealsousingCorollary2.2.Thesparseevaluationandinter-
+polationatageometricsequencerequireO((sF/sP1+e)S(sP1)+⋅⋅⋅+(sF/sPd+e)S(sPd))=
+O(ℓ(sF/s+e)S(s))operations.Theunivariatesquare-freefactorizationscanbedonein
+timeO(sM(e)loge),using[106]and[31,Theorem14.23]. □
+
+5.4.Apathologicalexample
+Itiswellknownthatadivisorofasparsepolynomialcanhavefarmoretermsthanthe
+polynomialitself,becauseoftheidentity
+
+                        xk−1=(x−1)(xk−1+⋅⋅⋅+1),  (5.1)
+andthepossibilitytoreplacexbyanyothersparsepolynomial.Forthisreason,many
+problemsonsparsepolynomialsturnouttobeNP-hard[89,90].Inawaythathasbeen
+madeprecisein[25],thisfundamentalexampleisactuallythemaincauseforsuchhard-
+nessresults.
+   Theexample(5.1)islessdramaticifweconsidersparsepolynomialsforwhichthe
+totaldegreeismuchsmallerthanthetotalnumberofterms,whichisoftenthecasein
+practice.Buteventhen,itstillhassomeunpleasantconsequences.Recallfrom[25]that
+
+           gcd(xpq−1,xp+q−xp−xq+1)=xp+q−1+⋅⋅⋅+xp−xq−1−⋅⋅⋅−1
+forcoprimep,qwithp&gt;q⩾4.Thisgcdcontainsexactly2qterms.Suchgcdscanalso
+occurduringcontent-freefactorizations.Forinstance,thecontentof
+                       Fp,q(x,y)=xpq−1+(xp+q−xp−xq+1)y
+
+inyisxp+q−1+⋅⋅⋅+xp+xq−1+⋅⋅⋅+1.Nowconsider
+                              F≔Fp,q(x1,y)⋅⋅⋅Pp,q(xn,y).
+
+ThendegF=npqandsF⩽6n.Thesizeofeachindividualfactorinanyirreduciblefactor-
+izationofFisboundedbypq,whichissharpwithrespecttodegF.However,thecontent
+CofFinyhassizesC=(2q)n.Thismeansthatcontent-freefactorizationasapreparation
+step(beforelaunchinga“moreexpensive”factorizationmethod)isabadideaonthis
+particularexample.
+
+            6.FACTORINGUSINGITERATEDHENSELLIFTING
+
+LetF∈𝕂[x1,...,xk]∖𝕂beacontent-freepolynomialandrecallthatanyfactorofFisagain
+content-free.Letc1,...,cnberandomnon-zeroelementsof𝕂.ForanyA∈𝕂[x1,...,xn]
+andk=0,...,n,wedeﬁne
+                       A[k](x1,...,xk)≔A(x1,...,xk,ck+1,...,cn).
+Inthissection,wedescribeseveralalgorithmsforthefactorizationofF,followingasim-
+ilarrecursiveapproachasforthecomputationsofgcdsinSection3.1.Thistime,westart
+withthecomputationofanon-trivialfactorizationofthebivariatepolynomialF[2].From
+this,wewillrecursivelyobtainnon-trivialfactorizationsofF[3],F[4],...,F[n].Thiswillin
+particularyieldanon-trivialfactorizationofF=F[n].Wewillseparatelystudythecases
+whenFhasafactorizationintotwoormorecoprimefactors.
+24      FACTORINGSPARSEPOLYNOMIALSFAST
+
+6.1.Faithfulprojections
+InordertoreconstructfactorizationsofFfromfactorizationsofF[2],itisimportantthat
+theprojectionA↦A[2]besuﬃcientlygeneric.Fork=0,...,n,letusdenoteby𝜋c,kthe
+projectionA↦A[k].Wesaythat𝜋c,kisfaithfulforA∈𝕂[x1,...,xn]ifsuppA[l]={(e1,...,el):
+e∈suppA}forl=k,...,n−1.
+   Asusual,weassumethatc1,...,cnareindependentlychosenatrandomfromasubset
+of𝕂≠ofsizeatleastN.
+
+LEMMA6.1.GivenA∈𝕂[x1,...,xn],theprobabilitythat𝜋c,n−1isfaithfulforAisatleast
+1−sAdegxnA/N.
+
+Proof.Givene∈suppA,letΦ(xn)=∑i=0degxnAAe1,...,en−1,ix1e1⋅⋅⋅xn−1en−1xni.Then(e1,...,en−1)∉
+suppA[n−1]ifandonlyifΦ(cn)=0,whichhappenswithprobabilityatmostdegxnA/N.□
+
+   NowconsiderafactorizationF=P1⋅⋅⋅PℓsuchthatP1,...,Pℓarepairwisecoprime.We
+saythat𝜋c,kisfaithfulforthisfactorizationif𝜋c,kisfaithfulforP1,...,Pℓand𝜋c,k(P1),...,
+𝜋c,k(Pℓ)arepairwisecoprime.
+
+LEMMA6.2.GivenafactorizationF=P1⋅⋅⋅Pℓandk∈{2,...,n−1},theprobabilitythat𝜋c,kis
+faithfulforthisfactorizationisatleast1−(n𝛿F(sP1+⋅⋅⋅+sPℓ)+n2dF2)/N.
+
+Proof.ThisdirectlyfollowsfromLemma3.2(whileusingthat∑i&lt;jdPidPj&lt;dF2)andthe
+previouslemma(usinginductiononn).  □
+
+   Whilefaithfulmappingspreservecoprimefactorizationsinapredictableway,itmay
+stillhappenthatanirreduciblepolynomialisprojectedtoareducibleone.Infactthis
+mayevenhappenwithprobability/12forarandomchoiceofc1,...,cn.
+
+Example6.3.Letn≔3and𝕂≔𝔽pforanoddprimep.Consider
+
+                                   F≔Φ(x1,x2)2−x3
+                                  Φ≔x1+x2
+
+ThenFisirreducible,butF[2]=(Φ+𝛽)(Φ−𝛽)wheneverc3=𝛽2isasquarein𝕂.Ifc3isa
+randomelementof𝕂≠,thenthishappenswithprobability/12.(Notethatwemayreplace
+Φbyanyotherirreduciblepolynomialthatinvolvesbothx1andx2.)
+
+   ThisphenomenonisnotsomuchofaproblemifwewanttorecursivelyHensellift
+acoprimefactorizationF[2]=ABforwhichweknowthatthereexistP,Q∈𝕂[x1,...,xn]with
+A=P[2]andB=Q[2](seeAlgorithms6.1and6.2below).However,anyalgorithmfor
+HenselliftingwillfailifFisirreducibleor,moregenerally,ifnosuchPandQexist(Algo-
+rithm6.3belowfortheirreduciblefactorizationofFmaythereforefailonExample6.3).
+
+6.2.Liftingacoprimedecompositionintotwofactors
+Consideranon-trivialfactorizationF=PQ,whereP,Q∈𝕂[x1,...,xn]∖𝕂arecoprime.
+Assumethat𝜋c,2isfaithfulforthisfactorization.LetusshowhowtorecoverP[k+1]
+andQ[k+1]fromP[k]andQ[k],fork=2,...,n−1.
+ALEXANDERDEMIN,JORISVANDERHOEVEN,     25
+
+
+   Let𝛼=(𝛼1,...,𝛼k)beanadmissibleratiooranFFTratio.ForanyA∈𝕂[x1,...,xn]and
+anyi∈ℕ,let
+
+                           A⟨k+1,i⟩(t,u)≔A[k+1](𝛼1it,...,𝛼kit,u)
+
+and
+                     A[k,i](t)≔A⟨k+1,i⟩(t,ck+1)=A[k](𝛼1it,...,𝛼kit).
+
+Withhighprobability,wehavedegtF⟨k+1,i⟩=degF[k],degP[k,i]=degP[k],degQ[k,i]=
+degQ[k],andthepolynomialsP[k,i]andQ[k,i]areagaincoprime.Itfollowsthateach
+factorization
+
+                                    F[k,i]=P[k,i]Q[k,i]
+
+canbeHensel-lifted(seeSection4.3)intoafactorization
+
+                                 F⟨k+1,i⟩=P⟨k+1,i⟩Q⟨k+1,i⟩.
+
+WenowrecoverP[k+1]andQ[k+1]fromP⟨k+1,1⟩,...,P k+1,sP[k] andQ⟨k+1,1⟩,...,Q k+1,sQ[k] ,
+respectively,usingsparseinterpolation.Infact,ifsP[k]⩽sQ[k],thenwemayinterpolate
+P[k+1]andrecoverQ[k+1]usingoneexactdivision.
+   Moreover,wemayexploittheassumptionthatthesupportsofP[k+1]andQ[k+1]with
+respecttox1,...,xkcoincidewiththesupportsofP[k]andQ[k].Inthealgorithmbelow,
+thisexplainswhymevaluationpointsindeedsuﬃce:
+
+Algorithm6.1
+Input:F∈𝕂[x1,...,xn]∖𝕂andcoprimeA,B∈𝕂[x1,x2]∖𝕂withF[2]=AB
+Output:P,Q∈𝕂[x1,...,xn]∖𝕂withP[2]=A,Q[2]=B,andF=PQ,wheneversuchafac-
+         torizationexists(weraiseanerrorifthisisnotthecase)and𝜋c,2isfaithfulfor
+         thisfactorization
+   Ifn=2,thenreturn(A,B)
+   ComputeP[n−1],Q[n−1]byrecursivelyapplyingthealgorithmtoF[n−1],A,B
+   PermuteP[n−1]andQ[n−1]ifnecessarytoensurethatm≔sP[n−1]⩽sQ[n−1]
+   ComputeF⟨n,i⟩,F[n−1,i],andP[n−1,i]fori=1,...,m,usingsparseevaluation
+   DeduceQ[n−1,i]≔F[n−1,i]/P[n−1]fori=1,...,m
+   Fori=1,...,m
+       ComputeP⟨n,i⟩,Q⟨n,i⟩withF⟨n,i⟩=P⟨n,i⟩Q⟨n,i⟩usingHensellifting(Section4.3)
+       Raiseanerrorifthisfails
+   RecoverPfromP⟨n,1⟩,...,P⟨n,m⟩usingsparseinterpolation
+   LetQ≔F/Pandreturn(P,Q)
+
+Remark6.4.ThefaithfulnessassumptionimpliesthatsuppP⊆suppP[n−1]×ℕ.Ifdis
+small,thenthissupportboundisreasonablytight.Consequently,wemayusesparse
+interpolationwithknownsupportsinordertorecoverP.
+
+THEOREM6.5.Lets≔min(sP,sQ),s′≔max(sP,sQ)s¯≔max(s′,sF),d≔degF,and𝛿≔
+max(degx1F,...,degxnF).ThenAlgorithm6.1runsintime
+
+                   O(n((s¯/s)S(s′)+𝛿dS(s)+sM(𝛿d)+sM(d)logd))
+26      FACTORINGSPARSEPOLYNOMIALSFAST
+
+
+andreturnsthecorrectresultwithprobabilityatleast
+                                            ((ns2d2))
+                                            (       )
+                                      1−O(          ).
+                                            (       )
+                                            ((      ))
+                                            (       )
+                                            (       )
+                                            (       )
+                                            (( N    ))
+
+Proof.AssumethatwecorrectlyrecoveredP[n−1]andQ[n−1]andletusinvestigatethe
+probabilitythattheresultsPandQarecorrect.
+   LetusﬁrstexaminetheprobabilitythattheHenselliftingmethodfromSection4.3
+workscorrectly.Thisisthecasewheneverthefollowingthreeconditionsaresatisﬁed
+fori=1,...,m:
+ 1.P[n−1,i]andQ[n−1,i]arecoprime;
+ 2.WehaveconttF⟨n,i⟩=1;
+ 3.WehavedegtF⟨n,i⟩=degtF[n−1,i].
+Consider
+                      ((P[n−1](x1t,...,xn−1t)                         ))
+                      (                                               )
+            R≔Rest(                           ,Q[n−1](x1t,...,xn−1t))                  (6.1)
+                      (                                               )
+                      (                                               )
+                      (                                               )
+                      (                                               )
+                      ((                                              ))
+                      (                                               )
+                      (                                               )
+                      (                                               )
+                      (        tvalP[n−1]             tvalQ[n−1]      )
+
+withdegR⩽d2.WehaveR≠0sinceP[n−1]andQ[n−1]arecoprime.Theﬁrstcondition
+failsforagiveniifandonlyifRvanishesunderthesubstitutionsx1≔𝛼1i,...,xn−1≔𝛼n−1i.
+Thishappenswithprobabilityatmostd2 s2 /Nforsomei,byCorollary2.2.Letusnext
+consider
+                  R′≔Resu(F(x1t,...,xn−1t,u),F(x1t′,...,xn−1t′,u)),
+wherex1,...,xn−1,t,t′,uareformalindeterminates.SinceFiscontent-free,wehaveR′≠0.
+NowconttF⟨n,i⟩=1wheneverR′doesnotvanishunderthesubstitutionsx1≔𝛼1i,...,
+xn−1≔𝛼n−1i.Thesecondconditionthereforefailsforsomeiwithprobabilityatmost
+4d2 s2 /N,byCorollary2.2andusingthefactthatdegR′⩽4d2.Finally,withprobability
+atleast1−d s2 /N,wehave
+                  degtF⟨n,i⟩=degtF[n−1,i]=degtF(x1t,...,xn−1t,xn)
+
+fori=1,...,m,byCorollary2.2.
+   Letusnowreturntothecorrectnessoftheoverallalgorithm.Concerningthetop-
+levelcall,wehavethefollowing:
+ •ObtainingQ[n−1,i]fromtheevaluationsF[n−1,i],P[n−1,i]fori=1,...,mbyexactuni-
+   variatepolynomialdivisionispossibleaslongasdegF[n−1,i]=degF[n−1].Thiscondi-
+   tionfailswithprobabilityatmosts2d/NbyCorollary2.2.
+ •WehaveshownabovethattheHenselliftingstrategyfromSection4.3canbeapplied
+   withprobabilityatleast1−O(d2s2/N).ByadaptingtheproofofProposition4.3such
+   thatwecanapplyCorollary2.2,theHenselliftingitselfalsosucceedswithproba-
+   bilityatleast1−O(d2s2/N),fori=1,...,m.
+Altogether,wecorrectlydeterminePandQwithprobabilityatleast1−O(s2d2/N).Since
+thereareO(n)recursivelevelsandsincethesizesofthesupportsofF[k],P[k],andQ[k]
+areallsmallerthanthoseofF,P,andQ,theprobabilisticcorrectnessclaimfollows.
+   Astothecomplexitybound,letusnowstudythecostwhennotcountingtherecur-
+sivecalls:
+ •ThecomputationoftheF⟨n,i⟩,F[n−1,i],andP[n−1,i],usingsparseevaluationatgeometric
+   sequencesrequiresO((s¯/s+ddegxnF)S(s))=O(S(s¯)+𝛿dS(s))operationsinK.
+ALEXANDERDEMIN,JORISVANDERHOEVEN,     27
+
+
+ •TheevaluationsofQ[k−1]areobtainedbyexactunivariatepolynomialdivisionand
+   requireO(sM(d))operationsintotal.
+ •LiftingthefactorizationforalloftheevaluationsrequiresO(s(M(𝛿d)+M(d)logd))
+   furtheroperations,byProposition4.3.
+ •WeobtainP=P0+⋅⋅⋅+P𝛿xn𝛿fromP⟨n,1⟩,...,P⟨n,m⟩usingsparseinterpolationofthe
+   coeﬃcientsP0,...,P𝛿intimeO(S(sP0)+⋅⋅⋅+S(sP𝛿))=O(S(s)+s𝛿)=O(𝛿S(s)).
+ •TherecoveryofQthroughsparsepolynomialdivisiontakesO((s¯/s′)S(s′))further
+   operations,asexplainedinSection2.4.
+WeconcludethatthecostisO((s¯/s′)S(s′)+𝛿dS(s)+sM(𝛿d)+sM(d)logd),whennot
+countingtherecursivecalls.SincethereareO(n)recursivelevelsandsincethesizesof
+thesupportsofF[k],P[k],andQ[k]areallsmallerthanthoseofF,P,andQ,thecomplexity
+boundfollows.   □
+
+Example6.6.LetF=PQ,whereP,Q∈𝕂[x1,...,xn]arecoprime.Nowconsiderthepoly-
+nomialF˜(x1,...,x2n)=F(x1xn+1,x2xn+2,...,xnx2n).WhenfactoringFusingAlgorithm6.1,
+thelastnliftingstepswithrespecttoxn+1,...,x2nalloperateonaprojectionF[k]ofsizesF.
+Thisisanexamplewhentheoverheadninthecomplexityboundissharp.However,the
+supportofFisveryspecial,sinceitiscontainedinanaﬃnesubspaceofdimension⩽n.
+Itiseasytodetectthissituationanddirectlyobtaintheexponentsinthelastnvariables
+asaﬃnecombinationsoftheknownexponentsintheﬁrstnvariables.
+   Moregenerally,itmayhappenthattheﬁbersofthesupportundertheprojectionwith
+respecttothelastkvariablesareallsmall.Itwouldbeinterestingtodevelopspeciﬁc
+optimizationsforthissituation,e.g.directlyapplysparseinterpolationontheﬁbers.
+
+6.3.Simultaneousliftingofmultiplefactors
+
+TheliftingalgorithmgeneralizesinastraightforwardwaytothecasewhenFisaproduct
+ofmorethantwofactors.Thistime,wewishtorecoverafactorizationF=𝜆P1𝜈1⋅⋅⋅Pℓ𝜈n
+fromA1≔P1[2],...,Aℓ≔Pℓ[2],assumingthatA1,...,Aℓ(henceP1,...,Pℓ)arepairwisecoprime.
+
+Algorithm6.2
+Input:F∈𝕂[x1,...,xn]∖𝕂,irreducibleandpairwisecoprimeA1,...,Aℓ∈𝕂[x1,x2]∖𝕂,
+         ℓ⩾2,𝜆∈𝕂≠,and𝜈1,...,𝜈ℓ∈ℕ,suchthatF[2]=𝜆A1𝜈1⋅⋅⋅Aℓ𝜈ℓ
+Output:irreducibleandpairwisecoprimeP1,...,Pℓ∈𝕂[x1,...,xn]∖𝕂withF=𝜆P1𝜈1⋅⋅⋅Pℓ𝜈ℓ
+         andP1[2]=A1,...,Pℓ[2]=Aℓ,wheneversuchafactorizationexists(weraisean
+         errorifthisisnotthecase)and𝜋c,2isfaithfulforthisfactorization
+   Ifn=2,thenreturn(A1,...,Aℓ)
+   RecursivelyapplythealgorithmtoF[n−1],A1,...,AℓtocomputeP1[n−1],...,Pℓ[n−1]
+   Letm≔max sP1[n−1],...,sPℓ[n−1] 
+   ComputeF⟨n,i⟩,P1[n−1,i],...,Pℓ[n−1,i]fori=1,...,m,usingsparseevaluation
+   Deduce P1[n−1,i] 𝜈1,..., Pℓ[n−1,i] 𝜈ℓfori=1,...,m
+   Fori=1,...,m
+       ComputeP1⟨n,i⟩,...,Pℓ⟨n,i⟩withF⟨n,i⟩=𝜆 P1⟨n,i⟩ 𝜈1⋅⋅⋅ Pℓ⟨n,i⟩ 𝜈ℓusingHensellifting
+       Raiseanerrorifthisfails
+   RecoverPjfromthePj⟨n,i⟩usingsparseinterpolation,forj=1,...,ℓ
+   Return(P1,...,Pℓ)
+28      FACTORINGSPARSEPOLYNOMIALSFAST
+
+
+Remark6.7.Moreprecisely,wecompute Pj[n−1,i] 𝜈jusingbinarypoweringandPj[n,i]
+from Pj[n,i] 𝜈jusingdensebivariate𝜈j-throotextraction,forj=1,...,ℓ.Asanoptimiza-
+tion,wemayﬁrstsortthefactorsofF[n−1]suchthatsP1[n−1]⩽sP2[n−1]⩽⋅⋅⋅⩽sPℓ[n−1]andthen
+compute Pℓ[n−1,i] 𝜈ℓ≔F[n−1,i]/  P1[n−1,i] 𝜈1⋅⋅⋅ Pℓ−1[n−1,i] 𝜈ℓ−1 usingexactdivision.
+
+
+THEOREM6.8.Lets≔max(sP1,...,sPℓ),s¯≔max(s,sF),𝛿≔max(degx1F,...,degxnF),and
+d≔degF.ThenAlgorithm6.2runsintime
+
+                    O(n((s¯/s+𝛿d)S(s)+sM(𝛿d)logℓ+sM(d)logd))
+
+andreturnsthecorrectresultwithprobabilityatleast
+                                           ( nℓs2d2)
+                                           (         )
+                                      1−O(           ).
+                                           (         )
+                                           ((        ))
+                                           (         )
+                                           (         )
+                                           (         )
+                                           (         )
+                                           ((   N    ))
+
+
+Proof.TheproofissimilartothatofAlgorithm6.1.Assumenowthatwecorrectlyrecov-
+eredP1[n−1],...,Pℓ[n−1]andletusinvestigatetheprobabilitythattheresultsP1,...,Pℓare
+correct.ToapplytheHenselliftingmethodfromSection4.3,thefollowingthreecondi-
+tionsmustbesatisﬁedfori=1,...,m:
+ 1.P1[n−1,i],...,Pℓ[n−1,i]arepairwisecoprime;
+
+ 2.WehaveconttF⟨n,i⟩=1;
+ 3.WehavedegtF⟨n,i⟩=degtF[n−1,i].
+TheanalysisissimilarasintheproofofTheorem6.5,exceptthat(6.1)nowbecomes
+                               ((Pi[n−1](x1t,...,xn−1t)                        ))
+                               (                                               )
+                               (                                               )
+                               (                                               )
+                               (                                               )
+            R≔             Rest(                       ,Pj[n−1](x1t,...,xn−1t) )
+                               (                                               )
+                               ((                                              ))
+                               (                                               )
+                               (                                               )
+                               (                                               )
+                               (                                               )
+                               (                                               )
+                               (                                               )
+                               (                                               )
+                   1⩽i&lt;j⩽ℓ     ((       tvalPi[n−1]            tvalPj[n−1]     ))
+
+andtheprobabilitythatRvanishesforoneofthemsubstitutionsisnowboundedby
+O(ℓs2d2/N),sincedegR⩽2d2ℓ.Usingthefactthereare⩽nrecursivelevels,thiscom-
+pletestheprobabilisticcorrectnessproof.
+   Forthecostanalysis,weagainstartbyanalyzingthecostofthealgorithmwithout
+therecursivecalls:
+ •TheevaluationofthefactorsP1[n−1],...,Pℓ[n−1]onthegeometricsequencecanbedone
+   intimeO((m/sP1+𝛿)S(sP1)+⋅⋅⋅+(m/sPℓ+𝛿)S(sPℓ))=O(𝛿ℓS(s))=O(𝛿dS(s)).
+
+ •ThecomputationoftheF⟨n,i⟩andF[n−1,i]takesO((sF/s+𝛿d)S(s))operations.
+ •Thepowers P1[n−1,i] 𝜈1,..., Pℓ[n−1,i] 𝜈ℓcanbeobtainedintimeO(s(M(𝜈1dP1)+⋅⋅⋅+
+   M(𝜈ℓdPℓ)))=O(sM(d)),usingbinarypowering.
+ •TheHenselliftingisdoneusingProposition4.4insteadofProposition4.3,whichcon-
+   tributesO(s(M(d𝛿)logℓ+ℓM(𝛿)log𝛿))tothecost.
+ •ThebivariaterootextractionstakeO(s(M(𝛿𝜈1dP1)+⋅⋅⋅+M(𝛿𝜈ℓdPℓ)))=O(sM(𝛿d))
+   operations,byProposition4.2.
+ALEXANDERDEMIN,JORISVANDERHOEVEN,     29
+
+
+ •TherecoveryofthePjfromthePj⟨n,i⟩usingsparseinterpolationrequiresO(S(sP1)+⋅⋅⋅+
+   S(sPℓ))=O(dS(s))operations.
+
+SummingthesecostsandmultiplyingwiththerecursivedepthsO(n)yieldsthedesired
+complexitybound.   □
+
+
+Example6.9.TherearecaseswhentherecursiveapplicationofAlgorithm6.1maylead
+tointermediateexpressionswell.Forinstance,fori=1,2andk∈ℕ,considerthepolyno-
+mials
+
+                              Pi≔(xi+yi)k−(ui+vi)k
+                                 =(xi+yi−ui−vi)Qi
+                              Qi≔         (xi+yi+ui+vi)j
+                                    0⩽j&lt;k
+
+andnotethatQihasΘ(k3)terms,whereasPihasonlyO(k)terms.Nowconsider
+
+                                       F=P1P2.
+
+ThenadirectfactorizationofFintoirreduciblescanbedoneintimeO˜(k3),whereas
+recursivelyfactoringout(x1+y1−u1−v1)andthen(x2+y2−u2−v2)mayleadusto
+considerintermediateexpressionslikeQ1Q2ofsizeΘ(k6).
+
+
+Remark6.10.TheideasbehindAlgorithm6.2canreadilybeadaptedtop-adiclifting,
+inordertofactorapolynomialF∈ℚ[x1,...,xn]withrationalcoeﬃcients.Inthatcase,
+westartwithafactorizationF¯=c¯P¯1𝜈1⋅⋅⋅P¯ℓ𝜈ℓofF¯≔Fmodp∈𝔽p[x1,...,xn]forsomesuf-
+ﬁcientlylargeprimep.ThegoalistoliftthisintoafactorizationofFmodp𝜅forsomesuf-
+ﬁcientlylarge𝜅andthentorecoverafactorizationofFusingrationalnumberreconstruc-
+tion[31,Section5.10].TherelevantanaloguesofA⟨n,i⟩(t,u)andA[n−1,i](t)areA⟨i⟩(t)≔
+P(𝛼1it,...,𝛼nit)andA[i](t)≔A⟨i⟩(t)modp,wheretheprimenumberpplaysasimilar
+roleastheformalindeterminateu.ThebivariateHenselliftinginK[[u]][t]isreplaced
+bytraditionalunivariateHenselliftinginℤp[t].
+
+
+6.4.Irreduciblefactorization
+Inluckycases,givenanirreduciblefactorizationF=𝜆P1𝜈1⋅⋅⋅Pℓ𝜈ℓ,randomchoicesofc1,...,cℓ
+giverisewithhighprobabilitytoanirreduciblefactorizationF[2]=𝜆 P1[2] 𝜈1⋅⋅⋅ Pℓ[2] 𝜈ℓ.
+ForsuchF,wemayusethefollowingalgorithmtocomputeitsirreduciblefactorization:
+
+Algorithm6.3
+Input:acontent-freepolynomialF∈𝕂[x1,...,xn]∖𝕂
+Output:anirreduciblefactorizationF=𝜆P1𝜈1⋅⋅⋅Pℓ𝜈ℓoranerror
+
+   Ifn⩽1,thenreturntheresultofaunivariateirreduciblefactorization
+   Letc1,...,cnberandomelementsof𝕂≠
+   ComputeanirreduciblefactorizationF[2]=𝜆A1𝜈1⋅⋅⋅Aℓ𝜈ℓofF[2]
+   ApplyAlgorithm6.2toFandthisfactorization
+30      FACTORINGSPARSEPOLYNOMIALSFAST
+
+
+THEOREM6.11.Lets≔max(sP1,...,sPℓ),s¯≔max(s,sF),𝛿≔max(degx1F,...,degxnF),and
+d≔degF.ThenAlgorithm6.3runsintime
+
+           O(n((s¯/s+𝛿d)S(s)+sM(𝛿d)logℓ+sM(d)logd))+O˜(𝛿3)+F(𝛿)
+
+andreturnsthecorrectresult(whennoerrorisraised)withprobabilityatleast
+                                       ((nℓs(s+n)d2))
+                                       (             )
+                                 1−O(                ).
+                                       (             )
+                                       (             )
+                                       (             )
+                                       (             )
+                                       ((            ))
+                                       (             )
+                                       (      N      )
+
+Proof.ThisfollowsfromTheorems6.8,4.7,andLemma6.2. □
+
+Remark6.12.WehaveseeninSection5.4thatthesizeofthecontentofamultivariate
+polynomialcanbemuchlargerthanthesizeofthepolynomialitself,inpathological
+cases.Insuchcases,wemaywishtoavoidcontent-freefactorizationasaﬁrststepof
+ageneralalgorithmforirreduciblefactorization.ThiscanbeachievedbyadaptingAlgo-
+rithm6.2soastofactoroutthecontentCinxnatthetop-levelandperformingthe
+recursivecallandbivariateliftingtoF/CinsteadofF.Incorporatingthecontent-free
+factorizationdirectlyintothemainalgorithminthiswayyieldsasimilarcomplexity
+boundasinTheorem6.11,butwithF(d)insteadofF(𝛿).
+
+Remark6.13.Analternativeapproachforreducingtothecontent-freecase,whichalso
+worksforthealgorithmsfromSection7below,istotagFaccordingtoaregularizing
+weightw.Thishastheadvantageof“exposing”theentirefactorizationofFwithrespect
+tothetaggingvariablet.Ofcourse,thisrequirestoreplacethedegreed=dFinthecom-
+plexityboundbye=ecwF⩽d2.
+
+Remark6.14.TheproblemfromRemark6.3canbepartiallyremediedbyamendingthe
+bivariateliftingstep:insteadofraisinganerrorwhenF⟨n,i⟩≠𝜆 P1⟨n,i⟩ 𝜈1⋅⋅⋅ Pℓ⟨n,i⟩ 𝜈ℓ,we
+maycontinuetheHenselliftingtoahigherprecision(thePj⟨n,i⟩arenowpowerseriesin
+𝕂[t][[u]])anddeterminewhichfactorsneedtobecombinedinordertoobtainafac-
+torizationofF⟨n,i⟩(usingthetechniquesfrom[74]).Doingthisforallileadstoaﬁnest
+partitionJ1⨿⋅⋅⋅⨿Jℓ′of{1,...,ℓ}suchthatΠk⟨n,i⟩≔∏j∈JkPj⟨n,i⟩isapolynomialfactorofF⟨n,i⟩
+fori=1,...,mandk=1,...,ℓ′.Wenextapplythesparseinterpolationtothepolyno-
+mialsΠk⟨n,i⟩insteadoftheseriesPj⟨n,i⟩.Thismayrequiremorethanminterpolationpoints,
+sowealsodoublemuntiltheinterpolationstepsucceeds.CombinedwithRemark6.12,
+thisyieldstoanalgorithmofcomplexity
+
+                        O(n((s¯/s+𝛿d)S(s)+sO˜(d𝛿2)))+F(d),
+
+wheresisthemaximalsizeofanirreduciblefactorofF[k]fork∈{1,...,n}.
+   Unfortunately,wehavenotyetbeenabletoperformacleanprobabilisticanalysisfor
+thismethod.Indeed,westillneedtoprovethatthealgorithmterminatesinreasonable
+expectedtimeforirreduciblepolynomials.Nowconsidertheexample
+
+                                F=x12+x22−x32,   (6.2)
+forwhichweobtain
+                             F⟨3,i⟩(t,u)=(𝛼12i+𝛼22i)t2−u2.
+ALEXANDERDEMIN,JORISVANDERHOEVEN,     31
+
+
+Whenever𝕂=𝔽pwithp⩾3and𝛼12i+𝛼22iisasquarein𝕂,theprojectedpolynomialF⟨3,i⟩
+isnotirreducible.Inprinciple,thisonlyhappenswithprobability/12,sothisisunlikely
+tohappenforallmvaluesofi=1,...,m.However,wewereunablesofartoproveagen-
+eralbound.Wealsonotethatthisprobabilisticargumentisdiﬀerentfromtraditional
+Hilbert–Bertinistylearguments[100,Section6.1];seealso[74]and[75,Chapître6].
+
+Remark6.15.AnotherwaytoturnAlgorithm6.3intoamethodthatalwayssucceeds
+withhighprobabilitywouldbetoapplyrandommonomialtransformationtoF.For
+instance,afterthechangeofvariablesx1=y1y2y3,x2=y2y3,x3=y3,wehave
+
+                                 F=(y12y22+y22−1)y32,
+
+forthepolynomialFfromexample(6.2).Withhighprobability,Algorithm6.3returns
+thecorrectirreduciblefactorizationofFafterthisrewriting.
+
+
+          7.FACTORINGUSINGPROJECTIVEHENSELLIFTING
+
+TheiterativeapproachfromSections3.1and6hasthedisadvantageofintroducing
+adependenceonthedimensionninthecomplexitybounds.Inthecaseofgcdcomputa-
+tions,theideaofregularizingweightsallowedforthemoredirectapproachinSection3.2.
+   Unfortunately,directadaptationsofthisapproachtofactorizationonlyworkinvery
+specialcases,becauseitisunclearhowtorecombinethefactorsfoundatdiﬀerenteval-
+uationpoints.OnenotableexceptioniswhenF∈𝕂[x1,...,xn]∖𝕂factors,say,intotwo
+irreduciblefactorsofdegreesoneandtwoinoneofthevariables;inthatcase,wecan
+recombinebasedondegreeinformation.
+   Inthissection,wewilldevelopanother“direct”approachforthefactorizationof
+F∈𝕂[x1,...,xn]∖𝕂thatavoidsiterationonthedimensionn.Exceptforprecompu-
+tationsinthealgorithmfromSection7.7,thealgorithmsinthissectiondonotrelyon
+regularizingweights,butexploitsmoresubtlepropertiesoftheNewtonpolytopeofF.
+WewillpresentthreeversionsofourapproachinordertodealwithNewtonpolytopes
+ofincreasingcomplexity.Forsimplicity,weonlypresenttheminthecasewhenFisthe
+productoftwofactors.AsweshallseeinSection7.6,eventhelastandmostelaborate
+versionofourapproachisnotfullygeneral.Wewillconcludewithatheoreticalvariant
+thatislesseﬃcientinpractice,butwhichhastheadvantageofprovidingafullalgorithm
+forthecomputationofirreduciblefactorizations.
+
+7.1.Afavorablespecialcase
+
+AssumethattheuniquefactorizationofFcontainsexactlytwofactors
+
+                   F(x1,...,xn)=P(x1,...,xn)Q(x1,...,xn),  (7.1)
+
+whereP,Q∈𝕂[x1,...,xn]areirreducibleanddistinctandbothdependonthe“main”
+variable,say,x1.Inparticular,thisimpliesthatFiscontent-freeandsquare-free.Assume
+alsothatthefollowingconditionshold:
+H1.degx1F(x1,0,...,0)=degx1F.
+32      FACTORINGSPARSEPOLYNOMIALSFAST
+
+
+H2.P(x1,0,...,0)andQ(x1,0,...,0)arecoprime.
+NotethatH1allowsustonormalizethefactorization
+
+                       F(x1,0,...,0)=P(x1,0,...,0)Q(x1,0,...,0)
+
+byrequiringthatP(x1,0,...,0)ismonic.Fromnowonwewillalwaysassumethatwe
+havedonethis.
+   Undertheseassumptions,weclaimthatPandQcanbecomputedfromP(x1,0,...,0)
+andQ(x1,0,...,0)usingHenselliftingandsparseinterpolation.Inordertoseethis,let
+𝛼=(1,𝛼2,...,𝛼n)∈(𝕂≠)nbeanadmissibleratiooranFFTratio.Foreachi∈ℕ,wedeﬁne
+bivariatepolynomialsF[i],P[i],Q[i]∈𝕂[x1,t]by
+
+                                F[i]≔F(x1,𝛼2it,...,𝛼nit)
+                                P[i]≔P(x1,𝛼2it,...,𝛼nit)
+                                Q[i]≔Q(x1,𝛼2it,...,𝛼nit).
+
+ThenP[i](x1,0)=P(x1,0,...,0)andQ[i](x1,0)=Q(x1,0,...,0)arecoprimeandwehave
+F[i]=P[i]Q[i].ThisallowsustocomputeP[i]andQ[i]fromF[i],P[i](x1,0),andQ[i](x1,0)
+usingHensellifting.Forsuﬃcientlylargem,withm=O(min(sP,sQ)),wemaythenuse
+sparseinterpolationtorecoverPfromP[1],...,P[m]orQfromQ[1],...,Q[m].Thisleads
+tothefollowingalgorithm:
+
+Algorithm7.1
+Input:F∈𝕂[x1,...,xn]suchthatthereexistsafactorization(7.1)thatsatisfiesH1
+         andH2;weassumethatP(x1,0,...,0)andQ(x1,0,...,0)aregiven
+Output:P,Q∈𝕂[x1,...,xn]
+   Form=1,2,4,8,...do
+       ComputeF[i]fori=⌊/m2⌋+1,...,m
+       ComputeP[i],Q[i]fori=⌊/m2⌋+1,...,m,
+          usingbivariateHenselliftingforF[i],P[1](x1,0),Q[1](x1,0)
+       IfP[1],...,P[m]yieldPthroughsparseinterpolation,thenreturn(P,F/P)
+       IfQ[1],...,Q[m]yieldQthroughsparseinterpolation,thenreturn(F/Q,Q)
+
+THEOREM7.1.Lets≔min(sP,sQ),s′≔max(sP,sQ),s¯≔max(s′,sF),𝛿≔degx1F,andd≔degF.
+ThenAlgorithm7.1iscorrectwithprobabilityatleast1−d s′2 /Nandrunsintime
+
+                    O((s¯/s′)S(s′)+𝛿dS(s)+sM(𝛿d)+sM(d)logd).
+
+
+Proof.Thecorrectnessisclear.Letusanalyzethecostofthemainstepsofthealgorithm:
+ •ThecomputationoftheF[i]takesO((sF/s+𝛿d)S(s))operations.
+ •TheHenselliftinghasatotalcostofO(s(M(𝛿d)+M(d)logd)).
+ •ThesparseinterpolationofP(orQ)takesO(𝛿dS(s))operations.
+ •ThesparsepolynomialdivisiontorecoverQ(orP)requiresO((s¯/s′)S(s′))operations.
+Addingupthesecosts,thecomplexityboundfollows.Thealgorithmiscorrectaslong
+astheﬁnaldivisionsucceeds,whichisthecasewithprobabilityatleast1−d s′2 /N.□
+ALEXANDERDEMIN,JORISVANDERHOEVEN,     33
+
+7.2.SingleslopebivariateHensellifting
+
+TheassumptionsH1andH2arefairlystrong:theyareneversatisﬁedbothifFisahomo-
+geneouspolynomial.NowtheassumptionsH1andH2essentiallyallowustoperform
+thebivariateHenselliftingusingthemethodfromSection4.3.Theproblemthatweface
+inordertoextendtheapproachfromAlgorithm7.1isthatrandomshiftsy↦𝜎+yare
+notallowedforthebivariateHenselliftingfromSection4.3:weonlyhaveaneﬃcient
+algorithmtocomputeP(x,0)andQ(x,0)aregiven,notP(x,𝜎)andQ(x,𝜎).
+   Instead,weneedawaytogeneralizethealgorithmfromSection4.3tothecasewhen
+theNewtonpolygonofFisnon-trivial.Inthissubsection,westartwiththesimplest
+“singleslope”case.SincethismaterialisasupplementtoSection4.3,weadoptthenota-
+tionfromthere.
+   AssumethatF∈𝕂[x,y]hasanontrivialfactorizationF=PQwithP,Q∈𝕂[x,y]∖𝕂.
+WedeﬁnetheNewtonpolygonofFtobethe“lowerborder”ofitsNewtonpolytope:
+
+              𝒩≔npolP≔∂lowhullP≔hullP∖(hullP+{0}×ℝ&gt;).
+
+ItistheunionofaﬁnitenumberofedgesE1,...,Eℓbetween(i0,j0),...,(iℓ,jℓ)∈suppPwith
+i0=valxP,iℓ=degxP,andi0&lt;⋅⋅⋅&lt;iℓ.ForeachedgeEk,thereisacorrespondingweight
+wk≔((ik−1−ik)/(jk−jk−1),1)suchthatEk=hulllpwkP.
+   Assumethat𝒩hasasingleedge,letw≔w1,andletp∈ℤandq∈ℕ&gt;becoprimesuch
+thatp/q=(i0−i1)/(j1−j0).Nowconsider
+
+                              F˜(x,t)≔F(xtp,tq)t−qvalwF
+                              P˜(x,t)≔P(xtp,tq)t−qvalwP
+                             Q˜(x,t)≔Q(xtp,tq)t−qvalwQ.
+
+ThenF˜,P˜,Q˜∈𝕂[x,t]andF˜=P˜Q˜.Moreover,F˜(x,0)=(tpwF)(xtp,tq)t−qvalwF,andwe
+havesimilarexpressionsforP˜(x,0)andQ˜(x,0).IftpwPandtpwQareknownandiftheir
+transformsP˜(x,0)andQ˜(x,0)arecoprime,thenthisenablesustocomputePandQby
+applyingtheHenselliftingmethodfromSection4.3toF˜,P˜(x,0),andQ˜(x,0).
+
+7.3.Singleslopefactorization
+
+LetusnowreturntothefactorizationproblemfromSection7.1andletusshowhowto
+generalizeAlgorithm7.1usingthematerialfromtheprevioussubsection.
+   LetS≔{(e1,e2+⋅⋅⋅+en):e∈suppF}andlet𝒩bethelowerboundaryofitsconvexhull.
+Withhighprobability,wehavesuppF[i]=SandnpolF[i]=𝒩,foranygiveni.Thelast
+edgeof𝒩joinsthepoints(a′,a)and(b′,b)fora,b,a′,b′∈ℕwitha′&lt;b′=degx1F.Let
+w=(w1,...,wn)withw1=p/q=(a−b)/(b′−a′)andw2=⋅⋅⋅=wn=1,wherep∈ℤ,q∈
+ℕ&gt;,andgcd(p,q)=1.Nowconsidertheassumptions
+H1&#x27;.degx1tpwF=degx1F.
+H2&#x27;.tpwPandtpwQarecoprime.
+ThehypothesesH1andH2correspondtothespecialcasewhena=b=0.IftpwPand
+tpwQareknown(e.g.throughtherecursivefactorizationoftpwFifFisnotw-homo-
+geneous),thenthealgorithmfromSection7.2allowsustoHenselliftthefactorization
+tpwF=(tpwP)(tpwQ)intoafactorizationF=PQ.Thisleadstothefollowinggeneraliza-
+tionofAlgorithm7.1:
+34      FACTORINGSPARSEPOLYNOMIALSFAST
+
+
+Algorithm7.2
+Input:F∈𝕂[x1,...,xn]suchthatthereexistsafactorization(7.1)thatsatisﬁesH1&#x27;
+         andH2&#x27;,togetherwithtpwPandtpwQsuchthattpwF=(tpwP)(tpwQ)
+Output:P,Q∈𝕂[x1,...,xn]
+   Form=1,2,4,8,...do
+      ComputeF[i],(tpwP)[i],(tpwQ)[i]fori=⌊/m2⌋+1,...,m
+      ComputeP[i],Q[i]fori=⌊/m2⌋+1,...,m,
+          usingbivariateHenselliftingfromSection7.2forF[i],(tpwP)[i],(tpwQ)[i]
+      IfP[1],...,P[m]yieldPthroughsparseinterpolation,thenreturn(P,F/P)
+      IfQ[1],...,Q[m]yieldQthroughsparseinterpolation,thenreturn(F/Q,Q)
+
+THEOREM7.2.Lets≔min(sP,sQ),s′≔max(sP,sQ),s¯≔max(s′,sF),𝛿≔degx1F,andd≔degF.
+ThenAlgorithm7.2iscorrectwithprobabilityatleast1−d s′2 /Nandrunsintime
+
+                    O((s¯/s′)S(s′)+𝛿dS(s)+sM(𝛿d)+sM(d)logd).
+
+
+Proof.TheproofissimilartotheproofofTheorem7.1.Themainchangeisthatthegen-
+eralizedalgorithmalsorequirestheevaluationsoftpwPandtpwQonoursequence.This
+takesO((sP/s+𝛿d)S(s)+(sQ/s+𝛿d)S(s))=O((s¯/s+𝛿d)S(s))additionaloperations,
+whichisabsorbedbythecomplexitybound.  □
+
+   NotethattheassumptionsH1&#x27;andH2&#x27;areactuallyslightlymoreliberalthanthe
+statementthattheNewtonpolygonshouldhaveasingleedge.Forthisreason,Algo-
+rithm7.2isverylikelytoapplyassoonasthereexistsavariablexiforwhichdegxiFis
+small(ofcourse,wemaythenassumei=1moduloapermutationofvariables).This
+inparticularthecasewhendegxiF=2,unlesstpwFisnotsquare-free(onemayneedto
+replacexi↦xi−1andmultiplyFwithxi2).Notethatasingle“good”variablexisuﬃces.
+
+Remark7.3.BothAlgorithms6.2and7.2involverecursivefactorizationsofpolynomials
+inlessvariables.However,thesupportsoftherecursivecallsareobtainedthroughpro-
+jectionforAlgorithm6.2andthroughrestrictionforAlgorithm7.2.Thesecondcaseis
+oftenmorefavorableinthesensethattherecursivesupportsdecreasefasterinsize.
+
+Remark7.4.ConsiderthecasewhenP=1+x1x2andQ=1+2x1x2.ThentpwFcoincides
+withF,sotherequestedfactorizationoftpwFisnotsimplerthanthedesiredfactorization
+ofF.ThisisduetothefactthattheexponentsofFalllieinalinearsubspaceofℤn.
+Inparticular,thedegreeinx1ofanytermofFcanbedeterminedasafunctionofthe
+degreesoftheothervariables.Inparticular,wemayrecoverafactorizationofFfrom
+afactorizationofF(1,x2,...,xn).Usingastraightforwardinductiononn,thisallowsus
+toensurethattpwFhasstrictlylesstermsthanF.
+
+7.4.MultipleslopebivariateHensellifting
+
+Assoonasdegx1F⩾4,itcanhappenthateveryfactorofFhasaNewtonpolygonwithat
+leasttwoedges.Inordertodealwiththissituation,thealgorithmfromSection7.2may
+befurthergeneralizedtoaccommodateNewtonpolygonswithmultipleslopes.Inorder
+toexplainhow,weagainadoptthenotationfromSections4.3and7.2.
+ALEXANDERDEMIN,JORISVANDERHOEVEN,     35
+
+
+   SoassumethatP(x,0)≠0andP(0,y)≠0,that𝒩hasanarbitrarynumberofedges,
+andthattpwkPandtpwkQareknownforeachedgeEk.Assumealsothat𝜉(tpwkP)and
+𝜉(tpwkQ)arecoprimefork=1,...,ℓ,where𝜉:𝕂[x,y]∖𝕂→𝕂[x,y]∖𝕂isthenormaliza-
+tionmappingwith𝜉(P)≔P/ xvalxPyvalyP .Wewillsaythat(tpwkP)(tpwkQ)isacoprime
+edgefactorizationoftpwkF.Theaimofthissubsectionistoliftthesefactorizationseﬃ-
+cientlyintotheglobalfactorizationF=PQ.
+   ItiswellknownthatavariantoftheNewtonpolygonmethodcanbeusedinorder
+tofactorFoverthering𝕂((y))ofLaurentseries.Aneﬃcientalgorithmforthistaskwas
+describedin[55].Oneimportantsubtaskisdistinctslopefactorization:eachedgeEkgives
+risetoauniquemonicfactorAk∈𝕂((y))[x]ofFsuchthattpwkF=cxaybtpwkAkforc∈𝕂≠,
+a,b∈ℕ,andthenaturalgeneralizationofthenotationtpwkto𝕂((y))[x].Themethods
+from[55]allowfortheeﬃcientcomputationoftheAk:ittakestimeO(M(dxdy)logdx)
+tocomputeAky−valyAk∈𝕂[[y]][x]atorderdyfork=1,...,ℓ.
+   Nowforeachk∈{1,...,ℓ},theknownfactortpwkPoftpwkFinducesafactoroftpwkAk
+thatcanbeHenselliftedintothefactorBk≔gcd(P,Ak)ofAk,byadaptingthetechniques
+fromSection4.3toLaurentseriescoeﬃcients.ForsomeC∈𝕂((y)),wethenhaveP=
+CB1⋅⋅⋅Bℓ.WemaydetermineCinasimilarwayasinSection4.3.Theotherfactor
+Q≔F/Pcanbeobtainedusingonebivariatedivision.Thetotalcostofthismethodto
+computePandQisboundedbyO(M(dxdy)logdx+M(dy)logdy).
+
+
+7.5.Multipleslopefactorization
+
+WearenowinapositiontogeneralizeAlgorithm7.2tothecasewhenthebivariate
+Henselliftingisdoneusingthemultipleslopemethodfromtheprevioussubsection.
+Thegeneralalgorithmisfairlytechnical,sowefounditmoreinstructivetoillustrate
+themainideasonanexample.Let
+
+                              F=PQ
+                              P=y+z+x+(y+z)x2
+                             Q=2x+z+x+(y+2z)x2.
+
+Forgeneric𝛼2,𝛼3∈𝕂≠,considerP˜=P(x,𝛼2t,𝛼3t),Q˜=Q(x,𝛼2t,𝛼3t),andF˜=P˜Q˜.Then
+
+                    suppP˜={(0,1),(1,0),(2,1)}
+                   suppQ˜={(0,1),(1,0),(2,1)}
+                    suppF˜={(0,2),(1,1),(2,0),(2,2),(3,1),(4,2)},
+
+whencehullF˜istheclosedtrianglewithvertices(0,2),(2,0),and(4,2).Itslower
+boundaryconsistsoftheedgefrom(0,2)to(2,0)andtheedgefrom(2,0)to(4,2),which
+correspondtotheweightsw=(1,1,1)andw′=(−1,1,1)respectively.Thegeneralized
+algorithmstartswiththerecursivefactorizationsoftpwFandtpw′F,whichyields
+
+              tpwF=(tpwP)(tpwQ)                 tpw′F=(tpw′P)(tpw′Q)
+              tpwP=y+z+x                        tpw′P=x+(y+z)x2
+             tpwQ=2y+z+x                       tpw′Q=x+(y+2z)x2.
+36      FACTORINGSPARSEPOLYNOMIALSFAST
+
+
+However,thesefactorizationsdonottellusfromwhichfactorsofFtheyoriginate:the
+factorizationofFcouldhavebeenoftheformF=P′Q′,withtpwP′=tpwPandtpw′P′=
+tpw′Q.Inordertoobtainthecorrectmatches,thenextideaistoconsiderthebivariate
+factorizationofF˜forsomesuﬃcientlygenericvaluesof𝛼2and𝛼3.Forinstance,for𝛼2=2
+and𝛼3=3,weobtain
+
+            P˜=5t+x+5tx2            tpwP  =5t+x         tpw′P  =x+5tx2
+            Q˜=7t+x+8tx2           tpwQ   =7t+x         tpw′Q  =x+8tx2.
+
+Fromthesecomputations,wededucethatthefactory+z+xoftpwFcomesfromthe
+samefactorofFasthefactorx+(y+z)x2oftpw′F.Wesaythatwehavemanaged
+tomatchthefactorsy+z+xandx+(y+z)x2ofthediﬀerentslopes.Inotherwords,
+ifAisanon-trivialfactorofF,then,uptoconstantscaling,wenowknowthateither
+(tpwA,tpw′A)=(tpwP,tpw′P)or(tpwA,tpw′A)=(tpwQ,tpw′Q).
+   Foranyi∈ℕandA∈𝕂[x,y,z],letA[i](x,t)=A(x,𝛼2it,𝛼3it).Havingcompletedthe
+abovematching,wemaynowusetheliftingalgorithmfromSection7.4todeduceP[i]
+andQ[i]fromF[i],(tpwP)[i],(tpw′P)[i],(tpwQ)[i],and(tpw′Q)[i].Doingthisforsuﬃ-
+cientlymanyi,wemayﬁnallyrecoverPandQusingsparseinterpolation.
+
+7.6.Atortureexample
+TheapproachfromSection7.5isfairlygeneral.However,aswewillshownow,itis
+possibletoconstructpathologicalexamplesthatcanstillnotbetreatedwiththismethod.
+
+Example7.5.ConsiderapolynomialP∈𝕂[x1,...,xn]andamonomialM=x1e1⋅⋅⋅xnensuch
+that(e1,...,en)liesintheinterioroftheNewtonpolytopehullP.Forinstance,wemaytake
+
+                  P≔x1x2+x1x3+x2x3+x12x22x3+x12x2x32+x1x22x32
+                  M≔x1x2x3.
+
+Nowconsider
+                            F=(P+𝛼1M)⋅⋅⋅(P+𝛼ℓM),
+
+forpairwisedistinct𝛼1,...,𝛼ℓ∈𝕂.Thispolynomialcannotbefactoredusingthetech-
+niquesfromthissection,sofar.
+
+7.7.Factormatchingthroughhomotopies
+
+Infact,itisnotsomuchthefactorizationofthebivariateF[i]polynomialsthatisaproblem:
+insteadofHensellifting,wemayverywellrelyonTheorem4.7(thisonlyincreasesthe
+exponentindinTheorems7.1and7.2,whichissubdominantanywayifs≪s¯).Thetrue
+problemismatchingcorrespondingfactorsofF[i]fordiﬀerenti,especiallyinthemost
+diﬃcultcaseslikeExample7.5.Weconcludethissectionwithanapproachthatcom-
+pletelysolvesthisproblem,moduloapolynomialoverheadind.
+   Let𝛼1,...,𝛼n,𝛽1,...,𝛽n,𝛾1,...,𝛾nberandomelementsof𝕂≠andlett,u,𝜆benew
+indeterminates.Wedeﬁne
+
+          Fˆ(x1,...,xn,t,u,𝜆)≔F(((1−𝜆)+𝛼1𝜆)(t+𝛽1u+𝛾1)x1,...,
+                                  ((1−𝜆)+𝛼n𝜆)(t+𝛽nu+𝛾n)xn). (7.2)
+ALEXANDERDEMIN,JORISVANDERHOEVEN,     37
+
+
+Fori=1,2,...,wealsodeﬁne
+
+                             F⟨i⟩(t,u,𝜆)≔Fˆ(𝛼1i,...,𝛼ni,t,u,𝜆).
+
+IfFisirreducible,thenF⟨i⟩isirreduciblewithhighprobability,byTheorem1.1,andso
+areF⟨i⟩(t,u,0)andF⟨i⟩(t,u,1).ForgeneralF,thisalsomeansthatthefactorsofF⟨i⟩(t,
+u,𝜆),F⟨i⟩(t,u,0),andF⟨i⟩(t,u,1)areineﬀectiveonetoonecorrespondence,withhigh
+probability.Moreover,byconstruction,
+
+                                F⟨i+1⟩(t,u,0)=F⟨i⟩(t,u,1).
+
+Usingthisrelation,wemaythereforematchcorrespondingfactorsofF⟨i⟩andF⟨i+1⟩with
+highprobability.
+   Havingsolvedthematchingproblem,westillneedtoensurethatthefactorizationsof
+theF⟨i⟩arenormalizedinasuitablewaysuchthatwecanrecoverthefactorsofFusing
+sparseinterpolation.Forthis,letwbearegularizingweightforFwithe≔ecwF⩽d2.Let𝜉
+beyetanotherindeterminateandconsider
+
+           F˜(x1,...,xn,t,u,𝜆,𝜉)≔F(((1−𝜆)+𝛼1𝜆)(t+𝛽1u+𝛾1)x1𝜉w1,...,
+                                       ((1−𝜆)+𝛼n𝜆)(t+𝛽nu+𝛾n)xn𝜉wn)
+                   F˜⟨1⟩(t,u,𝜆,𝜉)≔F˜(𝛼1,...,𝛼n,t,u,𝜆).
+
+Byconstruction,anyfactorΦofF˜⟨1⟩hasleadingcoeﬃcientcM⟨1⟩t𝜏u𝜐𝜆𝜎withrespect
+to𝜉,forsome𝜏,𝜐,𝜎∈N,c∈K≠,andsomemonomialM∈x1ℕ⋅⋅⋅xnℕ.Thus,anysuch
+factorΦcanbenormalizedbydividingouttheconstantcM⟨1⟩in𝕂≠.Nowconsiderthe
+uniquefactorizationofF˜⟨1⟩intoaproductofnormalizedfactorstimesanon-zeroscalar
+in𝕂≠.ThisyieldsafactorizationofF⟨1⟩bysetting𝜉=1.
+   ThefactorizationofF⟨1⟩canbeliftedtothefactorizationofF⟨2⟩,whichis,inturn,lifted
+tothefactorizationofF⟨3⟩,andsoon.AnirreduciblefactorizationofFˆisrecoveredvia
+interpolationfromthefactorizationsofF⟨1⟩,...,F⟨m⟩forsuﬃcientlylargem.Finally,to
+obtainafactorizationofFfromafactorizationofFˆ,wecansett≔u≔𝜆≔0,andapply
+themapxi↦(𝛾i)−1xi.
+   Thisleadstothefollowingalgorithm:
+
+Algorithm7.3
+Input:F∈𝕂[x1,...,xn]∖𝕂
+Output:anirreduciblefactorizationF=cP1𝜈1⋅⋅⋅Pℓ𝜈ℓofF
+
+   ComputeFˆ
+   LetwbearegularizingweightforF
+   ComputeanirreduciblefactorizationF⟨1⟩=c P1⟨1⟩ 𝜈1⋅⋅⋅ Pℓ⟨1⟩ 𝜈ℓ,normalizedasabove
+   Form=1,2,4,8,...do
+       ComputeF⟨i⟩fori=⌊/m2⌋+1,...,m
+       Fori=⌊/m2⌋+1,...,mdo
+          HenselliftF⟨i−1⟩(t,u,1)=c P1⟨i−1⟩(t,u,1) 𝜈1⋅⋅⋅ Pℓ⟨i−1⟩(t,u,1) 𝜈ℓ
+              intoanirreduciblefactorizationF⟨i⟩=c P1⟨i⟩ 𝜈1⋅⋅⋅ Pℓ⟨i⟩ 𝜈ℓ
+          DeduceP1⟨i⟩,...,Pℓ⟨i⟩from P1⟨i⟩ 𝜈1,..., Pℓ⟨i⟩ 𝜈ℓviarootextraction
+       TrytodetermineP1,...,PℓfromP1⟨i⟩,...,Pℓ⟨i⟩(i=1,...,m)usingsparseinterpolation
+          Ifsuccessful,thensett≔u≔𝜆≔0,xi≔(𝛾i)−1xiandreturncP1𝜈1⋅⋅⋅Pℓ𝜈ℓ
+38      FACTORINGSPARSEPOLYNOMIALSFAST
+
+
+THEOREM7.6.Lets≔max(sP1,...,sPℓ),s¯≔max(s,sF),d≔degF,ande≔ecwF⩽d2.Assume
+thatchar𝕂=0orchar𝕂&gt;2d2.ThenAlgorithm7.3runsintime
+
+                       O(S(d3s¯)+M(d3)slogd)+O˜(e5)+F(e+3d)
+
+andsucceedswithprobabilityatleast1− 360d2 s2 +2sd3+3(e+3d)2+d /N.
+
+Proof.WefactorF˜⟨1⟩asadensepolynomialinfourvariablesofdegree⩽e+3d(afterdivi-
+sionbyasuitablepowerof𝜉)usingthealgorithmfrom[72,Proposition5].Thisrequires
+O˜(e5)+F(e+3d)operationsin𝕂andtheprobabilityofsuccessisatleast1−3(e+3d)2/N.
+   Letc˜P˜1𝜈1⋅⋅⋅P˜ℓ𝜈ℓbeanirreduciblefactorizationofF.Byourassumptiononthechar-
+acteristic,thefactorsP˜1,...,P˜ℓareallseparable.Wewillapply[75,Théorème6.9]for
+eachofthepointsinourgeometricprogression.ByusingCorollary2.2insteadofthe
+Schwartz-Zippellemmaintheproofof[75,Théorème6.9],wededucethatthespecial-
+izationsP˜j⟨i⟩(t,u,0),P˜j⟨i⟩(t,u,1),andthusP˜j⟨i⟩areirreduciblefori=1,...,mandj=1,...,ℓ,
+withprobabilityatleast1−10(3d)2 m2 /N⩾1−360d2 s2 /N.Underthisassumption,
+andmoduloreorderingthefactors,thecomputedPj⟨i⟩areoftheformPj⟨i⟩=cjP˜j⟨i⟩for
+suitablescalingfactorsc1,...,cℓ∈𝕂≠thatdonotdependoni.Thecheckwhetherthecom-
+putedfactorizationofFiscorrectreportsafalsepositivewithprobabilityatmostd/N,
+byRemark2.5ortheSchwarz-Zippellemma.
+   Letusnowanalyzethecomplexity.WeﬁrstobservethatsFˆ⩽O(d3sF),sincesFˆ=
+O(d3)whenFˆconsistsofasinglemonomialoftotaldegree⩽d.Using[2,Theorem5]in
+arecursivemanner,wemaycomputeFˆfromFintimeO(M(d3)sF)=O(S(d3sF)).Wesaw
+abovethatthefactorizationofF⟨1⟩requiresatmostO˜(e5)+F(e+3d)operationsin𝕂.The
+computationofthespecializationsF⟨i⟩fori=1,...,mrequiresO(S(s)d3m/s)=O(S(d3s¯))
+furtheroperations.TheHenselliftingofthePj⟨i−1⟩canbedoneintimeO(M(d3)slogd)
+usingProposition4.4andevaluation-interpolationintheremainingvariable.Them−1
+Henselliftssucceedwithprobabilityatleast1−2sd3/N.Addingup,weobtainthe
+desiredcomplexitybound,aswellastheclaimedboundfortheprobabilityofsuccess.□
+
+Remark7.7.DuetotheO(d3)overhead,Algorithm7.3ismainlyoftheoreticalinterest.
+Itisplausiblethat(7.2)canbereplacedbyaless,butstillsuﬃciently,genericformula.
+Thiswouldreducetheoverheadind.Inpractice,onemayuseAlgorithm7.3asalast
+resort,intheunlikelycasethatallotherstrategiesfromSections6and7fail.
+
+                                    BIBLIOGRAPHY
+
+[1]F.AbuSalem,S.Gao,andA.G.B.Lauder.Factoringpolynomialsviapolytopes.InProc.ISSAC&#x27;04,
+     pages4–11.NewYork,NY,USA,2004.ACM.
+[2]A.V.Aho,K.Steiglitz,andJ.D.Ullman.Evaluatingpolynomialsonaﬁxedsetofpoints.SIAMJourn.
+     ofComp.,4:533–539,1975.
+[3]M.Alberich-Carramiñana,J.Guàrdia,E.Nart,A.Poteaux,J.Roé,andM.Weimann.Polynomial
+     factorizationoverhenselianﬁelds.TechnicalReport,arXiv,2022.https://doi.org/10.48550/
+     arXiv.2207.02139.
+[4]K.Belabas,M.vanHoeij,J.Klüners,andA.Steel.Factoringpolynomialsoverglobalﬁelds.J.Théor.
+     NombresBordeaux,21(1):15–39,2009.
+[5]M.Ben-OrandP.Tiwari.Adeterministicalgorithmforsparsemultivariatepolynomialinterpolation.
+     InProc.ACMSTOC&#x27;88,pages301–309.NewYork,NY,USA,1988.
+[6]E.R.Berlekamp.Factoringpolynomialsoverﬁniteﬁelds.BellSystemTech.J.,46:1853–1859,1967.
+ALEXANDERDEMIN,JORISVANDERHOEVEN,     39
+
+
+[7]E.R.Berlekamp.Factoringpolynomialsoverlargeﬁniteﬁelds.Math.Comp.,24:713–735,1970.
+[8]L.Bernardin.Factorizationofmultivariatepolynomialsoverﬁniteﬁelds.PhDthesis,ETH,Zürich,1999.
+[9]D.J.Bernstein.Scaledremaindertrees.Availablefromhttps://cr.yp.to/arith/scaledmod-
+      20040820.pdf,2004.
+[10]E.Bertini.Introduzioneallageometriaproiettivadegliiperspaziconappendicesullecurvealgebricheeloro
+      singolarità.GiuseppePrincipato,1923.
+[11]A.BorodinandR.T.Moenck.Fastmodulartransforms.JournalofComputerandSystemSciences,
+      8:366–386,1974.
+[12]A.Bostan,G.Lecerf,andÉ.Schost.Tellegen&#x27;sprincipleintopractice.InProc.ISSAC&#x27;03,pages37–44.
+      Philadelphia,USA,August2003.
+[13]A.BostanandÉ.Schost.Polynomialevaluationandinterpolationonspecialsetsofpoints.J.ofCom-
+      plexity,21(4):420–446,August2005.Festschriftforthe70thBirthdayofArnoldSchönhage.
+[14]P.Bürgisser,M.Clausen,andM.A.Shokrollahi.Algebraiccomplexitytheory.Springer-Verlag,Berlin,
+      1997.
+[15]D.G.CantorandE.Kaltofen.Onfastmultiplicationofpolynomialsoverarbitraryalgebras.Acta
+      Informatica,28:693–701,1991.
+[16]D.G.CantorandH.Zassenhaus.Anewalgorithmforfactoringpolynomialsoverﬁniteﬁelds.Math.
+      Comp.,36(154):587–592,1981.
+[17]T.ChenandM.Monagan.Thecomplexityandparallelimplementationoftwosparsemultivariate
+      Henselliftingalgorithmsforpolynomialfactorization.InProc.CASC2020,pages150–169.Springer-
+      Verlag,2020.
+[18]T.ChenandM.Monagan.Factoringmultivariatepolynomialsrepresentedbyblackboxes:amaple
+      +Cimplementation.JSC,16,2022.
+[19]G.ChèzeandG.Lecerf.Liftingandrecombinationtechniquesforabsolutefactorization.J.ofCom-
+      plexity,23(3):380–420,2007.
+[20]A.L.Chistov.Eﬃcientfactoringpolynomialsoverlocalﬁeldsanditsapplications.InProceedingsof
+      theInternationalCongressofMathematicians,Kyoto,Japan,1990,volume1,pages1509–1519.Springer-
+      Verlag,1991.
+[21]G.E.Collins.Subresultantsandreducedpolynomialremaindersequences.JACM,14(1):128–142,
+      1967.
+[22]A.CuytandW.-S.Lee.Sparseinterpolationofmultivariaterationalfunctions.TCS,412:1445–1456,
+      2011.
+[23]W.Decker,G.Lecerf,andG.Pﬁster.Absolutefactorizationforcharacteristic0.Singularlibraryabs-
+      fact.lib,2005.
+[24]J.DellaDora,C.Dicrescenzo,andD.Duval.Anewmethodforcomputinginalgebraicnumberﬁelds.
+      InEurocal&#x27;85(2),volume174ofLect.NotesinComp.Science,pages321–326.Springer,1985.
+[25]M.Filaseta,A.Granville,andA.Schinzel.Irreducibilityandgreatestcommondivisoralgorithmsfor
+      sparsepolynomials.LondonMath.Soc.Lect.NoteSeries,352:155–176,2008.
+[26]D.Ford.OnthecomputationofthemaximalorderinaDedekinddomain.PhDthesis,OhioStateUniver-
+      sity,1978.
+[27]A.FröhlichandJ.C.Shepherdson.Onthefactorisationofpolynomialsinaﬁnitenumberofsteps.
+      Math.Z.,62:331–334,1955.
+[28]A.FröhlichandJ.C.Shepherdson.Eﬀectiveproceduresinﬁeldtheory.Philos.Trans.Soc.London.
+      Ser.A.,248:407–432,1956.
+[29]S.Gao.Factoringmultivariatepolynomialsviapartialdifferentialequations.Math.Comp.,
+      72(242):801–822,2003.
+[30]J.vonzurGathen.Irreducibilityofmultivariatepolynomials.J.Comp.SystemSci.,31:225–264,1985.
+[31]J.vonzurGathenandJ.Gerhard.ModernComputerAlgebra.CambridgeUniversityPress,NewYork,
+      NY,USA,3rdedition,2013.
+[32]J.vonzurGathenandE.Kaltofen.Factoringsparsemultivariatepolynomials.J.Comput.SystemSci.,
+      31(2):265–287,1983.Proc.FOCS.
+[33]J.vonzurGathenandE.Kaltofen.Factorizationofmultivariatepolynomialsoverﬁniteﬁelds.Math.
+      Comp.,45(171):251–261,1985.
+[34]P.GianniandB.Trager.Square-freealgorithmsinpositivecharacteristic.AAECC,7(1):1–14,1996.
+[35]M.GiesbrechtandD.S.Roche.Diversiﬁcationimprovesinterpolation.InProc.ISSAC&#x27;11,pages
+      123–130.NewYork,NY,USA,2011.ACM.
+[36]P.Giorgi,B.Grenet,A.PerretDuCray,andD.S.Roche.Sparsepolynomialinterpolationanddivision
+      insoft-lineartime.InProc.ISSAC&#x27;22,pages459–468.Lille,France,2022.ACMPress.
+40      FACTORINGSPARSEPOLYNOMIALSFAST
+
+
+[37]B.Grenet.Bounded-degreefactorsoflacunarymultivariatepolynomials.JCS,75:171–192,2016.
+[38]B.Grenet,J.vanderHoeven,andG.Lecerf.Randomizedrootﬁndingoverﬁniteﬁeldsusingtangent
+      Graeﬀetransforms.InProc.ISSAC&#x27;15,pages197–204.NewYork,NY,USA,2015.ACM.
+[39]J.Guàrdia,J.Montes,andE.Nart.Newtonpolygonsofhigherorderinalgebraicnumbertheory.
+      Trans.Amer.Math.Soc.,364(1):361–416,2012.
+[40]Jr.H.W.Lenstra.Findingsmalldegreefactorsoflacunarypolynomials.InInNumbertheoryinpro-
+      gress,volume1,pages267–276.DeGruyter,Zakopane-Kościelisko,1999.
+[41]D.HarveyandJ.vanderHoeven.PolynomialmultiplicationoverﬁniteﬁeldsintimeO(nlogn).
+      TechnicalReport,HAL,2019.http://hal.archives-ouvertes.fr/hal-02070816.
+[42]K.Hensel.NeueGrundlagenderArithmetik.J.ReineAngew.Math.,127:51–84,1904.
+[43]D.Hilbert.ÜberdieIrreducibilitätganzerrationalerFunctionenmitganzzahligenCoeﬃcienten.J.
+      reineangew.Math.,110:104–129,1892.
+[44]M.vanHoeij.Factoringpolynomialsandtheknapsackproblem.JournalofNumbertheory,
+      95(2):167–189,2002.
+[45]J.vanderHoeven.FasterChineseremaindering.TechnicalReport,HAL,2016.                           https://
+      hal.archives-ouvertes.fr/hal-01403810.
+[46]J.vanderHoeven.Probablyfastermultiplicationofsparsepolynomials.TechnicalReport,HAL,
+      2020.https://hal.archives-ouvertes.fr/hal-02473830.
+[47]J.vanderHoeven.TheJollyWriter.YourGuidetoGNUTeXmacs.Scypress,2020.
+[48]J.vanderHoevenandG.Lecerf.Onthebit-complexityofsparsepolynomialmultiplication.JSC,
+      50:227–254,2013.
+[49]J.vanderHoevenandG.Lecerf.Directedevaluation.J.ofComplexity,60,2020.ArticleID101498.
+[50]J.vanderHoevenandG.Lecerf.Fastmultivariatemulti-pointevaluationrevisited.J.ofComplexity,
+      56,2020.ArticleID101405,38pages.
+[51]J.vanderHoevenandG.Lecerf.Onsparseinterpolationofrationalfunctionsandgcds.ACMSIGSAM
+      Commun.Comput.Algebra,55(1):1–12,2021.
+[52]J.vanderHoevenandG.Lecerf.Sparsepolynomialinterpolation:fasterstrategiesoverﬁniteﬁelds.
+      AAECC,2024.https://doi.org/10.1007/s00200-024-00655-5.
+[53]J.vanderHoevenandG.Lecerf.Univariatepolynomialfactorizationoverlargeﬁniteﬁelds.AAECC,
+      35:121–149,2024.
+[54]J.vanderHoevenandG.Lecerf.Fastinterpolationofmultivariatepolynomialswithsparseexpo-
+      nents.J.ofComplexity,87,2025.ArticleID101922.
+[55]J.vanderHoevenandG.Lecerf.Planecurvegermsandcontactfactorization.AAECC,36:5–106,2025.
+[56]J.HuandM.B.Monagan.AfastparallelsparsepolynomialGCDalgorithm.InS.A.Abramov,
+      E.V.Zima,andX.-S.Gao,editors,Proc.ISSAC&#x27;16,pages271–278.ACM,2016.
+[57]Q.-L.Huang.Sparsepolynomialinterpolationoverﬁeldswithlargeorzerocharacteristic.InProc.
+      ISSAC&#x27;19,pages219–226.ACM,2019.
+[58]Q.-L.HuangandX.-S.Gao.Bitcomplexityofpolynomialgcdonsparserepresentation.Preprint
+      availablefromhttps://arxiv.org/abs/2207.13874,2022.
+[59]M.JavadiandM.Monagan.Asparsemodulargcdalgorithmforpolynomialgcdcomputationover
+      algebraicfunctionﬁelds.InProc.ISSAC&#x27;07,pages187–194.2007.
+[60]E.Kaltofen.Apolynomialreductionfrommultivariatetobivariateintegralpolynomialfactorization.
+      InProc.STOC&#x27;82,pages261–266.ACM,1982.
+[61]E.Kaltofen.Polynomial-timereductionsfrommultivariatetobi-andunivariateintegralpolynomial
+      factorization.SIAMJ.Comput.,14(2):469–489,1985.
+[62]E.Kaltofen.SparseHensellifting.InProc.EUROCAL&#x27;85,pages4–17.Berlin,Heidelberg,1985.
+      Springer.
+[63]E.Kaltofen.Factorizationofpolynomialsgivenbystraight-lineprograms.InS.Micali,editor,Ran-
+      domnessandComputation,volume5ofAdvancesinComputingResearch,pages375–412.JAIPressInc.,
+      Greenwhich,Connecticut,1989.
+[64]E.Kaltofen.Eﬀectivenoetherirreducibilityformsandapplications.J.ComputerandSystemSciences,
+      50(2):274–295,1995.
+[65]E.KaltofenandG.Lecerf.Handbookofﬁniteﬁelds,chapterFactorizationofmultivariatepolynomials,
+      pages383–392.DiscreteMathematicsanditsApplications.ChapmanandHall/CRC,2013.
+[66]E.KaltofenandM.B.Monagan.Onthegenericityofthemodularpolynomialgcdalgorithm.InProc.
+      ISSAC&#x27;99,pages59–66.1999.
+[67]E.KaltofenandV.Shoup.Subquadratic-timefactoringofpolynomialsoverﬁniteﬁelds.Math.Comp.,
+      67(223):1179–1197,1998.
+ALEXANDERDEMIN,JORISVANDERHOEVEN,     41
+
+
+[68]E.KaltofenandB.M.Trager.Computingwithpolynomialsgivenbyblackboxesfortheirevalu-
+      ations:greatestcommondivisors,factorization,separationofnumeratorsanddenominators.JSC,
+      9(3):301–320,1990.
+[69]E.KaltofenandL.Yagati.Improvedsparsemultivariatepolynomialinterpolationalgorithms.In
+      ISSAC&#x27;88:ProceedingsoftheInternationalSymposiumonSymbolicandAlgebraicComputation,pages
+      467–474.SpringerVerlag,1988.
+[70]K.S.KedlayaandC.Umans.Fastpolynomialfactorizationandmodularcomposition.SIAMJ.
+      Comput.,40(6):1767–1802,2011.
+[71]G.Lecerf.SharpprecisioninHenselliftingforbivariatepolynomialfactorization.MathematicsofCom-
+      putation,75:921–933,2006.
+[72]G.Lecerf.Improveddensemultivariatepolynomialfactorizationalgorithms.JSC,42(4):477–494,
+      2007.
+[73]G.Lecerf.Fastseparablefactorizationandapplications.ApplicableAlgebrainEngineering,Communi-
+      cationandComputing,19(2),2008.
+[74]G.Lecerf.NewrecombinationalgorithmsforbivariatepolynomialfactorizationbasedonHensel
+      lifting.AAECC,21(2):151–176,2010.
+[75]G.Lecerf.JournéesNationalesdeCalculFormel(2013),volume3ofLescoursduCIRM,chapterFac-
+      torisationdespolynômesàplusieursvariables.CEDRAM,2013.Exp.No.2,85pages,https://
+      ccirm.centre-mersenne.org/articles/10.5802/ccirm.18.
+[76]G.Lecerf.OnthecomplexityoftheLickteig–Roysubresultantalgorithm.JSC,92:243–268,2019.
+[77]A.K.Lenstra,H.W.Lenstra,andL.Lovász.Factoringpolynomialswithrationalcoeﬃcients.Math.
+      Ann.,261:515–534,1982.
+[78]M.MonaganandB.Tuncer.UsingsparseinterpolationinHensellifting.InProceedingsofCASC2016,
+      volume9890ofLNCS,pages381–400.Springer,2016.
+[79]M.MonaganandB.Tuncer.Factoringmultivariatepolynomialswithmanyfactorsandhugecoeﬃ-
+      cients.InComputerAlgebrainScientiﬁcComputing,pages319–334.Cham,2018.SpringerInternational
+      Publishing.
+[80]M.MonaganandB.Tuncer.SparsemultivariateHensellifting:ahigh-performancedesignandimple-
+      mentation.InProc.ICMS2018,volume10931ofLNCS,pages359–368.Springer,2018.
+[81]M.MonaganandB.Tuncer.ThecomplexityofsparseHenselliftingandsparsepolynomialfactoriza-
+      tion.JournalofSymbolicComputation,99:189–230,2020.
+[82]J.Montes.PolígonosdeNewtondeordensuperioryaplicacionesaritméticas.PhDthesis,Universitatde
+      Barcelona,Spain,1999.
+[83]G.Moroz.Newdatastructureforunivariatepolynomialapproximationandapplicationstorootiso-
+      lation,numericalmultipointevaluation,andotherproblems.InProc.IEEEFOCS&#x27;21.Denver,United
+      States,2022.
+[84]D.R.Musser.Multivariatepolynomialfactorization.JACM,22(2):291–308,1975.
+[85]A.Novocin.FactoringUnivariatePolynomialsovertheRationals.PhDthesis,FloridaStateUniversityat
+      Tallahassee,2008.
+[86]A.Novocin,D.Stehlé,andG.Villard.AnLLL-Reductionalgorithmwithquasi-lineartimecom-
+      plexity:extendedabstract.InProc.ACMSTOC&#x27;11,pages403–412.NewYork,NY,USA,2011.
+[87]V.Y.Pan.Univariatepolynomials:nearlyoptimalalgorithmsfornumericalfactorizationandroot-
+      ﬁnding.JSC,33(5):701–733,2002.
+[88]C.H.Papadimitriou.ComputationalComplexity.Addison-Wesley,1994.
+[89]D.A.Plaisted.Sparsecomplexpolynomialsandpolynomialreducibility.J.ofComputerandSystem
+      Sciences,14(2):210–221,1977.
+[90]D.A.Plaisted.NewNP-hardandNP-completepolynomialandintegerdivisibilityproblems.TCS,
+      31(1-2):125–138,1984.
+[91]R.Prony.Essaiexpérimentaletanalytiquesurlesloisdeladilatabilitédesﬂuidesélastiquesetsur
+      cellesdelaforceexpansivedelavapeurdel&#x27;eauetdelavapeurdel&#x27;alkool,àdiﬀérentestempéra-
+      tures.J.del&#x27;ÉcolePolytechniqueFloréaletPlairial,anIII,1:24–76,1795.Cahier22.
+[92]D.S.Roche.Whatcan(andcan&#x27;t)wedowithsparsepolynomials?InProc.ISSAC&#x27;18,pages25–30.
+      NewYork,NY,USA,2018.ACM.
+[93]W.M.Ruppert.Reduzibilitätebenerkurven.J.ReineAngew.Math.,396:167–191,1986.
+[94]K.RyanandN.Heninger.Fastpracticallatticereductionthroughiteratedcompression.InAdvances
+      inCryptology–CRYPTO2023,pages3–36.2023.
+[95]T.SasakiandM.Sasaki.Auniﬁedmethodformultivariatepolynomialfactorizations.JapanJ.Indust.
+      Appl.Math.,10(1):21–39,1993.
+42      FACTORINGSPARSEPOLYNOMIALSFAST
+
+
+[96]N.Saxena.Closureofalgebraicclassesunderfactoring.https://www.cse.iitk.ac.in/users/
+      nitin/talks/Sep2023-paris.pdf,2023.TalkatRecentTrendsinComputerAlgebra,Institut
+      HenriPoincar´e,Paris.
+[97]Th.Schönemann.VondenjenigenModuln,welchePotenzenvonPrimzahlensind.J.ReineAngew.
+      Math.,32:93–105,1846.See§59.
+[98]A.Schönhage.Asymptoticallyfastalgorithmsforthenumericalmultiplicationanddivisionofpoly-
+      nomialswithcomplexcoeﬃcients.InJ.Calmet,editor,EUROCAM&#x27;82:EuropeanComputerAlgebra
+      Conference,volume144ofLect.NotesComp.Sci.,pages3–15.Marseille,France,April1982.Springer.
+[99]J.T.Schwartz.Fastprobabilisticalgorithmsforverificationofpolynomialidentities.JACM,
+      27(4):701–717,1980.
+[100]I.R.Shafarevich.BasicAlgebraicGeometry1.Springer,3rdedition,2013.
+[101]V.Shoup.Onthedeterministiccomplexityoffactoringpolynomialsoverﬁniteﬁelds.Information
+      ProcessingLetters,pages261–267,1990.
+[102]A.Steel.Conqueringinseparability:primarydecompositionandmultivariatefactorizationoveralge-
+      braicfunctionﬁeldsofpositivecharacteristic.JSC,40(3):1053–1075,2005.
+[103]P.S.Wang.Animprovedmultivariatepolynomialfactoringalgorithm.Math.Comp.,
+      32(144):1215–1231,1978.
+[104]P.S.WangandL.P.Rothschild.Factoringmultivariatepolynomialsovertheintegers.Math.Comp.,
+      29:935–950,1975.
+[105]W.Wu,J.Chen,andY.Feng.Sparsebivariatepolynomialfactorization.ScienceChinaMathematics,
+      57:2123–2142,2014.
+[106]D.Y.Y.Yun.Onsquare-freedecompositionalgorithms.InProc.SYMSAC&#x27;76,pages26–35.New
+      York,NY,USA,1976.ACM.
+[107]H.Zassenhaus.OnHenselfactorization,I.JournalofNumberTheory,1(3):291–311,1969.
+[108]R.Zippel.Probabilisticalgorithmsforsparsepolynomials.InProc.EUROSAM&#x27;79,pages216–226.
+      Springer,1979.
+[109]R.Zippel.Newton&#x27;siterationandthesparseHenselalgorithm(extendedabstract).InProc.
+      SYMSAC&#x27;81,pages68–72.NewYork,NY,USA,1981.ACM.</pre></html>

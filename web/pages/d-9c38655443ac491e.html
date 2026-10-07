@@ -1,0 +1,100 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>&quot;&quot;&quot;Acquire hidden axes from an edge matrix space by its Jordan multipliers.</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>&quot;&quot;&quot;Acquire hidden axes from an edge matrix space by its Jordan multipliers.</h1><p>Source ID d-9c38655443ac491e; literature/sources/r09_algebra/cycle5_sos/jordan_face_acquisition.py; 1498 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>&quot;&quot;&quot;Acquire hidden axes from an edge matrix space by its Jordan multipliers.
+No hidden graph or coordinate frame is supplied to the acquisition function.
+&quot;&quot;&quot;
+from pathlib import Path
+import sys,random,json,time,itertools
+sys.path.insert(0,str(Path(__file__).parent/&#x27;python_deps&#x27;))
+import sympy as s
+from cycle_face_acquisition import cycle_fixture,discover
+
+
+def acquire(U,M,seed=20261006,max_trials=30,p=None,x=None):
+    n=M.rows;Mi=M.inv();A=[Mi*S for S in U]
+    ij=[(i,j) for i in range(n) for j in range(i,n)]
+    Hb=[]
+    for i,j in ij:
+        H=s.zeros(n);H[i,j]=H[j,i]=1;Hb.append(H)
+    Xb=[Mi*H for H in Hb]
+    Avec=s.Matrix.hstack(*[s.Matrix(n*n,1,list(a)) for a in A])
+    # Every annihilator of U must annihilate each Jordan product.
+    ann=Avec.T.nullspace();constraints=[]
+    for a in A:
+        J=s.Matrix.hstack(*[s.Matrix(n*n,1,list(X*a+a*X)) for X in Xb])
+        for f in ann:constraints.append((f.T*J).tolist()[0])
+    K=s.Matrix(constraints)
+    ns=K.nullspace();X=[sum((v[i]*Xb[i] for i in range(len(Xb))),s.zeros(n)) for v in ns]
+    # Center of the multiplier Jordan algebra: its primitive spaces are false-twin blocks.
+    comm=[]
+    for a in X:
+        comm.append(s.Matrix.hstack(*[s.Matrix(n*n,1,list(b*a-a*b)) for b in X]))
+    centers=s.Matrix.vstack(*comm).nullspace()
+    Z=[sum((v[i]*X[i] for i in range(len(X))),s.zeros(n)) for v in centers]
+    rng=random.Random(seed)
+    for trial in range(max_trials):
+        w=[rng.randrange(-2*n*n,2*n*n+1) for _ in Z]
+        H=sum((c*a for c,a in zip(w,Z)),s.zeros(n))
+        fac=s.factor_list(H.charpoly().as_expr())[1]
+        if len(fac)!=len(Z) or any(s.total_degree(f)!=1 for f,mult in fac):continue
+        eig=H.eigenvects()
+        if len(eig)!=len(Z) or any(not lam.is_Rational or len(v)!=mult for lam,mult,v in eig):continue
+        blocks=[s.Matrix.hstack(*v) for _,_,v in eig]
+        axes=[];block_trials=[]
+        for W in blocks:
+            k=W.cols
+            if k==1:axes.append(W);block_trials.append(0);continue
+            if p is None or x is None:raise ValueError(&#x27;nontrivial false-twin blocks require quartic coefficients&#x27;)
+            y=s.symbols(&#x27;z:&#x27;+str(k));sub={x[i]:sum(W[i,j]*y[j] for j in range(k)) for i in range(n)}
+            restricted=s.Poly(s.expand(p.subs(sub,simultaneous=True)),*y)
+            f4=sum(c*__import__(&#x27;math&#x27;).prod(yj**ej for yj,ej in zip(y,e)) for e,c in restricted.as_dict().items() if sum(e)==4)
+            metric=W.T*M*W
+            for bt in range(max_trials):
+                h=[rng.randrange(-2*k*k,2*k*k+1) for _ in range(k)]
+                A=metric.inv()*s.hessian(f4,y).subs(dict(zip(y,h)))/12
+                fs=s.factor_list(A.charpoly().as_expr())[1]
+                if len(fs)!=k or any(s.total_degree(f)!=1 or mult!=1 for f,mult in fs):continue
+                ev=A.eigenvects();U=s.Matrix.hstack(*[vs[0] for _,_,vs in ev])
+                axes.append(W*U);block_trials.append(bt+1);break
+            else:raise ValueError(&#x27;UNKNOWN: unresolved pure-power block within budget&#x27;)
+        V=s.Matrix.hstack(*axes);assert V.det()!=0
+        return V,{&#x27;multiplier_dimension&#x27;:len(X),&#x27;center_dimension&#x27;:len(Z),
+                  &#x27;block_dimensions&#x27;:[W.cols for W in blocks],&#x27;block_trials&#x27;:block_trials,
+                  &#x27;constraint_matrix_shape&#x27;:list(K.shape),
+                  &#x27;trial&#x27;:trial+1,&#x27;random_weights&#x27;:w,&#x27;axes_acquired&#x27;:n,&#x27;supplied_hidden_graph&#x27;:False}
+    raise ValueError(&#x27;UNKNOWN: no split center multiplier within trial budget&#x27;)
+
+
+def discover_jordan(p,x):
+    def callback(U,Minv,rng):
+        return acquire(U,Minv.inv(),seed=rng.randrange(2**32),p=p,x=x)
+    return discover(p,x,edge_acquirer=callback,any_multiplicity=True)
+
+
+def coefficient_replay():
+    records=[]
+    for n in [4,5,6,7,9]:
+        p,x,L=cycle_fixture(n);t=time.perf_counter();V,cert,r=discover_jordan(p,x);dt=time.perf_counter()-t
+        LV=L*V;assert all(sum(LV[i,j]!=0 for i in range(n))==1 for j in range(n))
+        r.update({&#x27;n&#x27;:n,&#x27;seconds&#x27;:dt,&#x27;input_coefficients&#x27;:len(s.Poly(p,*x).terms()),
+                  &#x27;hidden_edge_space_supplied&#x27;:False,&#x27;hidden_L_supplied&#x27;:False,
+                  &#x27;zeros_enumerated&#x27;:0,&#x27;exact_identity_passed&#x27;:True})
+        records.append(r);print(json.dumps(r),flush=True)
+    root=Path(__file__).resolve().parents[2]
+    (root/&#x27;results/r16_proof_methods/jordan_coefficient_replay.json&#x27;).write_text(json.dumps(records,indent=2)+&#x27;\n&#x27;)
+
+
+def main():
+    records=[]
+    for n in [5,6,7]:
+        # Hidden edge space supplied here only to test the acquisition lemma.
+        # Complete coefficient-only integration is a separate wrapper.
+        p,x,L=cycle_fixture(n);b=s.Rational(6,5);M=b*L.T*L;U=[]
+        for i in range(n):
+            E=s.zeros(n);E[i,(i+1)%n]=E[(i+1)%n,i]=1;U.append(L.T*E*L)
+        t=time.perf_counter();V,r=acquire(U,M);dt=time.perf_counter()-t
+        LV=L*V;assert all(sum(LV[i,j]!=0 for i in range(n))==1 for j in range(n))
+        r.update({&#x27;n&#x27;:n,&#x27;seconds&#x27;:dt,&#x27;hidden_space_supplied_for_lemma_test&#x27;:True,&#x27;exact_axis_comparison&#x27;:True})
+        records.append(r);print(json.dumps(r))
+    root=Path(__file__).resolve().parents[2]
+    (root/&#x27;results/r16_proof_methods/jordan_lemma_replay.json&#x27;).write_text(json.dumps(records,indent=2)+&#x27;\n&#x27;)
+if __name__==&#x27;__main__&#x27;:coefficient_replay()
+</pre></html>

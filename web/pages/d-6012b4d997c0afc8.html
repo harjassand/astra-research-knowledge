@@ -1,0 +1,98 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>&quot;&quot;&quot;Charged bounded-candidate MR sampler, coupled to exact first-prime sampling.</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>&quot;&quot;&quot;Charged bounded-candidate MR sampler, coupled to exact first-prime sampling.</h1><p>Source ID d-6012b4d997c0afc8; literature/sources/stat_exec15/cycle17/AUDITED_INPUTS/main_code/prime_sampler.py; 1154 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>&quot;&quot;&quot;Charged bounded-candidate MR sampler, coupled to exact first-prime sampling.
+
+Uniform base rejection uses expected random-bit time and logs actual entropy
+draw counts. No claim that a probable-prime output is exactly uniformly prime.
+&quot;&quot;&quot;
+from fractions import Fraction
+import secrets
+import time
+
+
+def ceil_log2(n):
+    return (n - 1).bit_length()
+
+
+def bad_prime_bound(n, m, height):
+    nvars, degree = n * n, 2 * n
+    h = n * (height + ceil_log2(2 * n) + 2)
+    logs = ceil_log2(m + 1) + 3 * n
+    certificate = 4 * nvars * (nvars + 1) * degree ** nvars * (h + logs + (nvars + 7) * degree * (nvars + 1 + degree))
+    charts = 2 ** n * (n + 1) ** m
+    return 2 * charts * certificate + 2 * m * h
+
+
+def bounded_parameters(bound, delta):
+    delta = Fraction(delta)
+    q = (3 * delta.denominator + delta.numerator - 1) // delta.numerator
+    bits = 4 * (bound.bit_length() + q.bit_length() + 20)
+    trials = 2 * bits * q.bit_length()
+    rounds = 0
+    while 4 ** rounds &lt; trials * q:
+        rounds += 1
+    return {&quot;bad_prime_count_bound&quot;: str(bound), &quot;delta&quot;: str(delta), &quot;q&quot;: q, &quot;bits&quot;: bits, &quot;max_candidates&quot;: trials, &quot;mr_rounds&quot;: rounds, &quot;bad_prime_probability_bound&quot;: str(Fraction(4 * bound * bits, 2 ** (bits - 1))), &quot;timeout_probability_upper_bound&quot;: str(Fraction(1, q)), &quot;composite_acceptance_upper_bound&quot;: str(Fraction(trials, 4 ** rounds)), &quot;random_bit_cost&quot;: &quot;Expected polynomial; exact uniform base rejection is not capped.&quot;}
+
+
+def strong_round(n, base, statistics=None):
+    odd, exponent = n - 1, 0
+    while odd % 2 == 0:
+        odd //= 2
+        exponent += 1
+    if statistics is not None:
+        statistics[&quot;modular_exponentiations&quot;] += 1
+    value = pow(base, odd, n)
+    if value in (1, n - 1):
+        return True
+    for _ in range(exponent - 1):
+        if statistics is not None:
+            statistics[&quot;modular_squarings&quot;] += 1
+        value = value * value % n
+        if value == n - 1:
+            return True
+        if value == 1:
+            return False
+    return False
+
+
+def uniform_below(bound, entropy):
+    bits = bound.bit_length()
+    while True:
+        value = secrets.randbits(bits)
+        entropy[&quot;draws&quot;] += 1
+        entropy[&quot;bits&quot;] += bits
+        if value &lt; bound:
+            return value
+        entropy[&quot;rejections&quot;] += 1
+
+
+def sample_probable_prime(bound, delta):
+    parameters = bounded_parameters(bound, delta)
+    bits, trials, rounds = parameters[&quot;bits&quot;], parameters[&quot;max_candidates&quot;], parameters[&quot;mr_rounds&quot;]
+    transcript, entropy = [], {&quot;draws&quot;: 0, &quot;bits&quot;: 0, &quot;rejections&quot;: 0}
+    arithmetic = {&quot;small_trial_divisions&quot;: 0, &quot;modular_exponentiations&quot;: 0, &quot;modular_squarings&quot;: 0}
+    small = (3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37)
+    start = time.perf_counter()
+    answer = None
+    for i in range(trials):
+        offset = secrets.randbits(bits - 2)
+        entropy[&quot;draws&quot;] += 1
+        entropy[&quot;bits&quot;] += bits - 2
+        n = 2 ** (bits - 1) + 2 * offset + 1
+        divisor = next((p for p in small if n % p == 0), None)
+        arithmetic[&quot;small_trial_divisions&quot;] += small.index(divisor) + 1 if divisor else len(small)
+        row = {&quot;candidate&quot;: str(n), &quot;bases&quot;: [], &quot;small_divisor&quot;: divisor}
+        if divisor is None:
+            for _ in range(rounds):
+                base = 2 + uniform_below(n - 3, entropy)
+                passed = strong_round(n, base, arithmetic)
+                row[&quot;bases&quot;].append({&quot;base&quot;: str(base), &quot;passed&quot;: passed})
+                if not passed:
+                    break
+            else:
+                answer = n
+        row[&quot;accepted&quot;] = answer is not None
+        transcript.append(row)
+        if answer is not None:
+            break
+    elapsed = time.perf_counter() - start
+    return {&quot;parameters&quot;: parameters, &quot;outcome&quot;: &quot;PROBABLE_PRIME&quot; if answer else &quot;UNKNOWN_TIMEOUT&quot;, &quot;candidate&quot;: str(answer) if answer else None, &quot;candidates_used&quot;: len(transcript), &quot;core_seconds&quot;: elapsed, &quot;entropy&quot;: entropy, &quot;arithmetic_calls&quot;: arithmetic, &quot;transcript&quot;: transcript, &quot;primality_status&quot;: &quot;Miller–Rabin error charged; no deterministic certificate&quot;, &quot;distribution_status&quot;: &quot;Coupled to exact uniform first-prime output on no-composite-acceptance event; probable-prime output not asserted uniform.&quot;}
+</pre></html>

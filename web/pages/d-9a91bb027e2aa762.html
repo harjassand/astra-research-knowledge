@@ -1,0 +1,124 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>&quot;&quot;&quot;Symbolic degree-eight auxiliary certificate on q=I+r(J-I).</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>&quot;&quot;&quot;Symbolic degree-eight auxiliary certificate on q=I+r(J-I).</h1><p>Source ID d-9a91bb027e2aa762; literature/sources/metric_geometry10/cycle12/exchangeable_symbolic_certificate.py; 1532 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>&quot;&quot;&quot;Symbolic degree-eight auxiliary certificate on q=I+r(J-I).
+
+Permutation averaging reduces the six-variable exact Macaulay problem. A saved
+cleared rational-function identity proves only the nonzero-denominator locus;
+its exceptional PD parameters must be handled separately before universal use.
+&quot;&quot;&quot;
+import argparse
+import functools
+import itertools
+import json
+import time
+from pathlib import Path
+
+import sympy as s
+from sympy.polys.matrices import DomainMatrix
+
+
+def monomials(n,d):
+    if n==1:
+        yield (d,);return
+    for k in range(d+1):
+        for rest in monomials(n-1,d-k):yield (k,)+rest
+
+
+PERMS=list(itertools.permutations(range(3)))
+
+
+def permute(mon,p):
+    out=[0]*6
+    for i in range(3):
+        out[p[i]]=mon[i];out[p[i]+3]=mon[i+3]
+    return tuple(out)
+
+
+@functools.lru_cache(None)
+def canonical(mon):return min(permute(mon,p) for p in PERMS)
+
+
+def shifted(poly,mon):return {tuple(a+b for a,b in zip(k,mon)):v for k,v in poly.items()}
+
+
+def combine(polys):
+    result={}
+    for poly in polys:
+        for mon,c in poly.items():result[mon]=result.get(mon,0)+c
+    return {k:s.expand(v) for k,v in result.items() if v!=0}
+
+
+def matrix(r,degree=8):
+    m=s.symbols(&#x27;m0:3&#x27;);ss=s.symbols(&#x27;s0:3&#x27;);var=m+ss
+    expr={f&#x27;A{i}&#x27;:(1-2*m[i]*ss[i])*(1-ss[i]**2) for i in range(3)}
+    for i in range(3):
+        for j in range(3):
+            if i!=j:expr[f&#x27;H{i}{j}&#x27;]=r*(1-4*m[i]*ss[i])+ss[j]*(-ss[i]-2*m[i]+6*m[i]*ss[i]**2)
+    expr[&#x27;B&#x27;]=3*s.prod(ss)-r*sum(ss)
+    polydict={key:dict(s.Poly(s.expand(value),*var).terms()) for key,value in expr.items()}
+    even=list(itertools.chain.from_iterable(monomials(6,d) for d in range(0,degree-3,2)))
+    odd=list(itertools.chain.from_iterable(monomials(6,d) for d in range(1,degree-2,2)))
+    sources=[]
+    swap=(0,2,1)
+    sources.extend((&#x27;A&#x27;,mon) for mon in even if mon&lt;=permute(mon,swap))
+    sources.extend((&#x27;H&#x27;,mon) for mon in even)
+    sources.extend((&#x27;B&#x27;,mon) for mon in odd if mon==canonical(mon))
+    rows=[]
+    for typ,mon in sources:
+        summands=[]
+        for p in PERMS:
+            key=f&#x27;A{p[0]}&#x27; if typ==&#x27;A&#x27; else f&#x27;H{p[0]}{p[1]}&#x27; if typ==&#x27;H&#x27; else &#x27;B&#x27;
+            summands.append(shifted(polydict[key],permute(mon,p)))
+        full=combine(summands)
+        # S3 invariance makes each orbit&#x27;s coefficients equal. Check rather
+        # than averaging away a potentially nonsymmetric equation.
+        orbitrow={}
+        for a,c in full.items():
+            can=canonical(a)
+            if can in orbitrow:assert orbitrow[can]==c
+            else:orbitrow[can]=c
+        rows.append(orbitrow)
+    basis=sorted(set().union(*(set(a) for a in rows)),key=lambda a:(sum(a),a))
+    index={a:i for i,a in enumerate(basis)}
+    target=[s.Integer(a==(0,)*6) for a in basis]
+    sparse={(index[mon],j):c for j,row in enumerate(rows) for mon,c in row.items() if c!=0}
+    M=s.SparseMatrix(len(basis),len(rows),sparse)
+    return M,s.Matrix(target),sources,basis,rows,expr,var
+
+
+def main():
+    ap=argparse.ArgumentParser();ap.add_argument(&#x27;--parameter&#x27;,default=&#x27;symbolic&#x27;)
+    ap.add_argument(&#x27;--stats-only&#x27;,action=&#x27;store_true&#x27;);args=ap.parse_args()
+    r=(s.symbols(&#x27;r&#x27;) if args.parameter==&#x27;symbolic&#x27; else
+       1-s.sqrt(2)/2 if args.parameter==&#x27;quadratic_exception&#x27; else s.Rational(args.parameter))
+    start=time.monotonic()
+    M,target,sources,basis,rows,expr,var=matrix(r)
+    print(json.dumps({&#x27;constraints&#x27;:M.rows,&#x27;unknowns&#x27;:M.cols,&#x27;nonzeros&#x27;:len(M.todok()),&#x27;parameter&#x27;:str(r),&#x27;matrix_seconds&#x27;:time.monotonic()-start}),flush=True)
+    if args.stats_only:return
+    domain_options={&#x27;extension&#x27;:True} if args.parameter==&#x27;quadratic_exception&#x27; else {}
+    dm=DomainMatrix.from_Matrix(M.row_join(target),**domain_options)
+    rref,denominator,pivots=dm.rref_den(method=&#x27;FF&#x27;)
+    # Normalize the common denominator explicitly; no unspecified field solve.
+    rf=rref.to_Matrix();den=s.sympify(rref.domain.to_sympy(denominator))
+    if M.cols in pivots:raise AssertionError(&#x27;unit not in this invariant degree8 span&#x27;)
+    nums=[s.Integer(0)]*M.cols
+    for row,pivot in enumerate(pivots):nums[pivot]=s.expand(rf[row,M.cols])
+    identity=M*s.Matrix(nums)-den*target
+    assert all(s.expand(a)==0 for a in identity)
+    den_factor=s.factor(den)
+    result={&#x27;parameter&#x27;:str(r),&#x27;constraints&#x27;:M.rows,&#x27;unknowns&#x27;:M.cols,&#x27;rank&#x27;:len(pivots),
+            &#x27;product_degree&#x27;:8,&#x27;denominator&#x27;:str(den),&#x27;factored_denominator&#x27;:str(den_factor),
+            &#x27;sources&#x27;:[{&#x27;type&#x27;:typ,&#x27;monomial_exponents&#x27;:mon} for typ,mon in sources],
+            &#x27;coefficient_numerators&#x27;:[str(a) for a in nums],
+            &#x27;generator_expressions&#x27;:{key:str(value) for key,value in expr.items()},
+            &#x27;variables&#x27;:[str(a) for a in var],&#x27;seconds&#x27;:time.monotonic()-start,
+            &#x27;identity&#x27;:&#x27;sum(source numerator * sum over S3 of monomial*permuted generator)=denominator&#x27;,
+            &#x27;status&#x27;:&#x27;PASS cleared exact degree8 identity&#x27;,
+            &#x27;scope&#x27;:&#x27;q diagonal1/offdiagonal r. Only denominator-nonzero parameter locus; exceptional parameters and PD interval remain separately charged. Not all-QPD.&#x27;}
+    name=(&#x27;symbolic&#x27; if args.parameter==&#x27;symbolic&#x27; else &#x27;quadratic_exception&#x27;
+          if args.parameter==&#x27;quadratic_exception&#x27; else str(r).replace(&#x27;/&#x27;,&#x27;_&#x27;))
+    path=Path(f&#x27;results/metric_prior/cycle12/exchangeable_degree8_{name}.json&#x27;)
+    path.write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({key:result[key] for key in [&#x27;status&#x27;,&#x27;rank&#x27;,&#x27;factored_denominator&#x27;,&#x27;seconds&#x27;]}),flush=True)
+
+
+if __name__==&#x27;__main__&#x27;:main()
+</pre></html>

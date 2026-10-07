@@ -1,0 +1,111 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Sharper direct trace sampler via the existing Gaussian rotation path</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>Sharper direct trace sampler via the existing Gaussian rotation path</h1><p>Source ID d-ee9b342abf7ae440; literature/notes/r10_probability/cycle3/rotation_trace_refinement.md; 2323 o200k tokens; role research_note; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre># Sharper direct trace sampler via the existing Gaussian rotation path
+
+6 October 2026. This refines the certified independent-time fallback in full_trace_sampler.md. The underlying path and proposal-only clipping method already appear in Chen–Chewi–Daskalakis–Rakhlin, arXiv:2602.01338v2, **27 April 2026 16:01:17 UTC**, §3.2 equations (9)–(11), Theorem3.3, AppendixC.2 LemmaC.1 and AppendixD Claim1. They are prior art. The deductions here replace the ambient Gaussian gradient energy by a supplied convex residual trace bound, and retain the complete center/init/cap costs. Publication novelty is unverified.
+
+## Exact local interface and center
+
+The residual target is R^U_{a,v}(dx) proportional to exp[-U(x)-||x-v||²/(2a)]. U is convex C², with 0&lt;=H_U&lt;=hI and tr H_U&lt;=tau h, tau&gt;=1. Only exact gradients are queried. For any explicit finite approximate center c compute
+
+    e=gradient U(c)+(c-v)/a, zeta=sqrt(a)||e||,
+    mu=v-a gradient U(c)=c-ae.
+
+Use proposal Q=N(mu,aI). It is important to shift the proposal by the known residual, rather than discard it. Gradient descent as in the earlier note obtains zeta&lt;=1 from a retained gradient cap, with O(L) queries. Stored gradient U(c) is then reused.
+
+For each proposed X=mu+sqrt(a)G, draw G&#x27; standard Gaussian and t uniform[0,1]. Let theta=pi t/2 and
+
+    gamma=mu+sqrt(a)[sin(theta)G+cos(theta)G&#x27;],
+    gamma_dot=(pi/2)sqrt(a)[cos(theta)G-sin(theta)G&#x27;],
+    W=gamma_dot . [gradient U(c)-gradient U(gamma)].
+
+Each estimator requests ONE fresh gradient. Integrating t along the path gives
+
+    E[W|X]=E_{X&#x27;~Q}[U(X&#x27;)-gradient U(c).X&#x27;]
+             -[U(X)-gradient U(c).X].
+
+Since log(target/Q)=constant-U(X)+gradient U(c).X, this is exactly the correct log tilt. Neither potentials, a true mode, Hessians, a residual projector, nor an estimated unknown expectation are queried.
+
+## Proposal exponential moments
+
+For every fixed t, under joint proposal G,G&#x27;, the path point gamma=mu+sqrt(a)Z and velocity=(pi/2)sqrt(a)H have independent standard Gaussian Z,H. This is the source&#x27;s rotation identity, using sin²+cos²=1 and zero cross-covariance. Conditional on Z, W is centered Gaussian with variance (pi/2)² R(Z)², where
+
+    R(Z)=sqrt(a)||gradient U(mu+sqrt(a)Z)-gradient U(c)||.
+
+Let b=a h. Co-coercivity and Stein give
+
+    E||gradient U(mu+sqrt(a)Z)-gradient U(mu)||²&lt;=tau h² a.
+
+Also ||gradient U(mu)-gradient U(c)||&lt;=h a||e||=h sqrt(a)zeta. Consequently
+
+    E R²&lt;=2b²(tau+zeta²), Lip(R)&lt;=b.
+
+Gaussian concentration of the scalar norm R, followed by an auxiliary scalar Gaussian, gives for 2u b²&lt;1
+
+    E exp(u R²)&lt;=(1-2u b²)^-1/2
+                       exp[u(ER)²/(1-2u b²)].
+
+For completeness, write exp(uR²)=E_H exp(sqrt(2u)HR), apply the Lipschitz Gaussian MGF bound E exp(sR)&lt;=exp(sER+s²b²/2) at each signed s, and integrate H exactly. This argument requires no third derivatives or oddness.
+
+Integrating the independent velocity H first, with u=pi²lambda²/8, proves
+
+    E exp(lambda W)&lt;=exp[C lambda² b²(tau+1)]
+          whenever |lambda|b&lt;=c and zeta&lt;=1.
+
+Thus E exp(lambda|W|)&lt;=2exp[C lambda²b²(tau+1)] for positive lambda in the same range, uniformly in t. Unlike the independent-time estimator, there is no linear tau b term. The quadratic fixture also has no tau² variance term for this rotation estimator.
+
+## Clipping and the full tilt: no missing target moment assumption
+
+Clip W to [-B,B], with a fixed 0&lt;B&lt;=1, and let w(X)=E[W|X], w_B(X)=E[Clip_B(W)|X]. Exact P is Q tilted by w, and the actual FORS output P_B is Q tilted by w_B. Put T(X)=E[(|W|-B)_+|X]. Then |w-w_B|&lt;=T and dP_B/dQ&lt;=exp(2B).
+
+The normalized-exponential identity proves, for ell&gt;1, that BOTH power divergences are at most
+
+    E_{P_B}[exp(2ell |w-w_B|)-1]
+      &lt;=exp(2B) E_{Q,aux}[exp(2ell (|W|-B)_+)-1].
+
+One can reconstruct the first inequality directly: each density ratio is exp(±(w-w_B)) times its normalizer; Cauchy–Schwarz and Jensen bound the products by the displayed exponential moment. This is precisely the source LemmaB.14/LemmaC.1 argument, applied with the bounded clipped tilt as the reference. It does not assume that the true target density is bounded relative to Q, and so avoids the exp(a tau h) normalizer loss of a crude target moment transfer.
+
+For lambda&gt;=2ell, the rightmost integrand is bounded by exp(-lambda B)exp(lambda|W|). Choose
+
+    lambda=min{c/b, B/[4C b²(tau+1)]}.
+
+For sufficiently small b this is &gt;=2ell; the preceding MGF gives a clipping divergence bound
+
+    C exp[-c min{B²/[b²(tau+1)], B/b}].
+
+At ell=2 these are chi-square bounds in both directions, and Pinsker/Cauchy–Schwarz bounds TV by half their square root. Therefore
+
+    a h[sqrt(tau p)+p]&lt;=cB, p=C log(2/delta),
+    zeta&lt;=1
+
+suffice for local TV&lt;=delta. Every rejected proposal is charged: the bounded rule has acceptance&gt;=exp(-2B), expected proposals&lt;=exp(2B), expected likelihood estimators&lt;=2B exp(2B), and at most **2B exp(2B) fresh gradients** after acquiring c and caching its gradient. There are no RGO recursion calls.
+
+There is also a simpler self-contained TV proof, independently supplied by team_c_multiscale. Since E_Q W=0, the exact normalizer Z=E_Q exp(w)&gt;=1. Let D=|W|1{|W|&gt;B}. Then ||w-w_B||_L2(Q)&lt;=||D||_2, and the elementary inequality |exp(u)-exp(v)|&lt;=|u-v|[exp(u)+exp(v)] gives
+
+    TV(P,P_B)&lt;=E_Q|exp(w)-exp(w_B)|/Z
+       &lt;=||D||_2[(E_Q exp(2w))^{1/2}+exp(B)]
+       &lt;=||D||_2[(E exp(2W))^{1/2}+exp(B)].
+
+The MGF gives Eexp(2W)&lt;=C at the chosen step. If ||W||_p&lt;=B/4, then ED²&lt;=B²4^-p. Integrating the same Bernstein tail gives ||W||_p&lt;=Cb[sqrt(tau p)+p], so the displayed TV is &lt;=CB2^-p. This independently closes the exact-to-clipped comparison without a target-moment assumption or invoking the original paper&#x27;s divergence lemma.
+
+## Complete whole-sampler consequence
+
+Apply the init/ideal-history gradient cap/proximal contraction/last-step TV argument proved in full_trace_sampler.md, stronger refinement (T*), unchanged except for the local step size. For V=q||x||²/2+U, q&gt;0, r=h/q, kappa=1+r, set
+
+    L=log(e+(tau+1)kappa/epsilon), p=ceil(C L),
+    eta=min{1/q, c/[h(sqrt(tau p)+p)]},
+    N=ceil(C[1+r(sqrt(tau L)+L)]L),
+    delta=epsilon/(20N).
+
+Again log(N/epsilon)&lt;=CL, so choosing p from L is noncircular. Known quadratic completion gives a=eta/(1+q eta), v=y/(1+q eta). The ideal-history gradient moment/cap bound S²=4q+4tau h²/q+8h²A² is unchanged because eta&lt;=1/q; A²=2[1+tau r²]/q is unchanged. Gradient descent starting at v, capped at R_grad²=CNS²/epsilon, contracts by a h/(1+a h), obtains zeta&lt;=1 in at most O(L) queries, and then the shifted rotation proposal is used.
+
+All ideal cap, local clipping and mixing TV allocations therefore close exactly as before. Starting from a supplied reference with ||gradient V(xref)||&lt;=sqrt(q), the expected gradient-query bound is
+
+    C[1+(h/q)(sqrt(tau L)+L)] L².                  (R)
+
+An arbitrary reference x0 adds C kappa[1+log_+(||gradient V(x0)||/sqrt(q))] acquisition queries. The bound has no ambient dimension even in its logarithms. It still requires d-dimensional Gaussian/vector arithmetic, exact gradient queries and real arithmetic. A discrete finite-bit output cannot satisfy continuous-target TV accuracy without specifying dequantization or a quantized target; no bit-complexity theorem is claimed.
+
+This closes a stronger direct/proximal fallback, not the source&#x27;s native Gaussian-cloud forest. The existing tilde-O(kappa d^(1/5)) sampler remains an equally informed retaining baseline. The meaningful guaranteed comparison takes the minimum, with both reference acquisition and oracle/vector costs charged. Fixed known residual subspaces can be reduced before sampling and deserve that stronger comparator.
+
+## Status and next test
+
+The calculation is an adaptation of existing rotation/FORS machinery, and is not a claim that the path itself or proposal-only divergence trick is new. Source v2&#x27;s Frobenius diffusion guarantees also materially narrow any novelty claim. Independent audit should specifically gate the approximate-center shifted path identity, the Gaussian energy estimate, and both-divergence clipping comparison. A finite rotated convex fixture checks implementation independently by one-dimensional quadrature, but is not an empirical TV certificate. The next unresolved scientific question remains whether the source&#x27;s fast cloud mean and hidden residual-RGO likelihood can retain enough smoothing powers to outperform this direct baseline.
+</pre></html>

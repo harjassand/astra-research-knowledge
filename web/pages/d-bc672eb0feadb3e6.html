@@ -1,0 +1,184 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>!/usr/bin/env python3</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>!/usr/bin/env python3</h1><p>Source ID d-bc672eb0feadb3e6; literature/sources/r11_logic/cycle6_validity_followup/r10_check_predictive_split_input.py; 2204 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Finite diagnostics; proofs are in the note. No frozen benchmark edits.&quot;&quot;&quot;
+from fractions import Fraction as F
+from math import comb, factorial, log, exp
+from pathlib import Path
+import json
+import numpy as np
+
+OUT=Path(&#x27;results/r10_probability/cycle6_validity_followup&#x27;)
+OUT.mkdir(parents=True,exist_ok=True)
+
+def binrisk(p,m):
+    n=len(p)
+    reciprocals=[]
+    for py in p:
+        direct=sum(F(comb(m,c))*py**c*(1-py)**(m-c)/F(c+1)
+                   for c in range(m+1))
+        closed=(1-(1-py)**(m+1))/((m+1)*py)
+        assert direct==closed
+        reciprocals.append(direct)
+    risk=(m+n)*sum(py*py*rec for py,rec in zip(p,reciprocals))-1
+    assert risk&lt;=F(n-1,m+1)
+    return float(risk/F(n-1,m+1))
+
+risk_ratios=[]
+for p in [(F(1,2),F(1,2)),(F(1,10000),F(9999,10000)),
+          (F(1,3),)*3,(F(1,10000),F(2,10000),F(9997,10000))]:
+    for m in [1,2,5,12,40]:
+        risk_ratios.append(binrisk(p,m))
+
+def exact_adaptive(Q,horizon):
+    &quot;&quot;&quot;Rational toy endpoint kernels, adaptive two-lag selection and masking.&quot;&quot;&quot;
+    # Branch = full state history, its true probability, ratio wealth,
+    #           predictor counts keyed by(start,lag), threshold crossed.
+    branches=[((0,),F(1),F(1),{},False)]
+    expectations=[]
+    threshold=F(10,3)
+    for i in range(horizon):
+        new=[]
+        for history,prob,z,counts,crossed in branches:
+            x=history[-1]
+            lag=(sum(history)+i)%2  # chosen before next endpoint
+            mask=(x==0 or i%3==0)   # includes omitted reads in filtration
+            cell=(x,lag)
+            old=counts.get(cell,(0,0))
+            q=[F(old[y]+1,sum(old)+2) for y in range(2)]
+            for y in range(2):
+                py=Q[lag][x][y]
+                zy=z*q[y]/py if mask else z
+                nc=counts.copy()
+                if mask:
+                    row=list(old);row[y]+=1;nc[cell]=tuple(row)
+                new.append((history+(y,),prob*py,zy,nc,crossed or zy&gt;=threshold))
+        branches=new
+        ez=sum(prob*z for _,prob,z,_,_ in branches)
+        assert ez==1
+        expectations.append(str(ez))
+    crossing=sum(prob for _,prob,_,_,crossed in branches if crossed)
+    assert crossing&lt;=F(3,10)
+    return {&#x27;expected_ratio_each_step&#x27;:expectations,
+            &#x27;exact_crossing_probability&#x27;:str(crossing),
+            &#x27;crossing_probability_float&#x27;:float(crossing),
+            &#x27;ville_bound&#x27;:.3,&#x27;scope&#x27;:&#x27;rational toy conditional kernels, not a CTMC fixture&#x27;}
+
+Qtoy=[[[F(4,5),F(1,5)],[F(2,5),F(3,5)]],
+      [[F(3,5),F(2,5)],[F(1,5),F(4,5)]]]
+martingale=exact_adaptive(Qtoy,10)
+
+def saturated_regret(counts):
+    n=counts.shape[1]
+    ans=0.
+    for row in counts:
+        N=int(sum(row))
+        if not N:continue
+        log_sat=sum(c*log(c/N) for c in row if c)
+        # lgamma is sufficient for a diagnostic; no certification claimed.
+        from math import lgamma
+        log_m=lgamma(n)+sum(lgamma(int(c)+1) for c in row)-lgamma(N+n)
+        ans+=log_sat-log_m
+    return ans
+
+def logseries(P,K=80):
+    A=P-np.eye(len(P));term=A.copy();out=np.zeros_like(P)
+    for j in range(1,K+1):
+        out+=((-1)**(j+1)/j)*term
+        term=term@A
+    return out
+
+def semigroup(Q,t):
+    lam=float(max(-np.diag(Q)));M=np.eye(len(Q))+Q/lam
+    term=np.eye(len(Q));P=exp(-lam*t)*term
+    weight=exp(-lam*t)
+    for j in range(1,80):
+        term=term@M;weight*=lam*t/j;P+=weight*term
+    P/=P.sum(axis=1)[:,None]
+    return P
+
+Q=np.array([[-1.08,1.,.08],[1.,-2.,1.],[0.,1.,-1.]])
+t=.04;P=semigroup(Q,t);n=3
+rng=np.random.default_rng(7102026)
+split_means=[]
+for m in [16,128,1024,8192]:
+    vals=[];sat=[]
+    for rep in range(1000):
+        pilot=np.array([rng.multinomial(m,row) for row in P])
+        confirm=np.array([rng.multinomial(m,row) for row in P])
+        q=(pilot+1)/(m+n)
+        r=confirm/m
+        D=sum(c*log(c/(m*qxy)) for row,qrow in zip(confirm,q)
+              for c,qxy in zip(row,qrow) if c)
+        vals.append(D);sat.append(saturated_regret(confirm))
+    split_means.append({&#x27;m_pilot&#x27;:m,&#x27;m_confirm&#x27;:m,&#x27;repetitions&#x27;:1000,
+                        &#x27;mean_split_D&#x27;:float(np.mean(vals)),
+                        &#x27;max_split_D&#x27;:float(max(vals)),
+                        &#x27;proved_expected_D_upper&#x27;:2*n*(n-1),
+                        &#x27;mean_dirichlet_prequential_regret&#x27;:float(np.mean(sat)),
+                        &#x27;scope&#x27;:&#x27;multinomial law diagnostic, no physical no-reset cost&#x27;})
+
+# One actual carried sampled-chain fixture; all omitted reads counted.
+def collect(state,m,P,rng):
+    counts=np.zeros_like(P,dtype=int);reads=0
+    for x in range(len(P)):
+        while state!=x:
+            state=int(rng.choice(len(P),p=P[state]));reads+=1
+        for j in range(m):
+            # Current state is x; selection is predictable before y.
+            y=int(rng.choice(len(P),p=P[x]));reads+=1
+            counts[x,y]+=1;state=y
+            while state!=x:
+                state=int(rng.choice(len(P),p=P[state]));reads+=1
+    return state,counts,reads
+
+m=1000
+state,pilot,rp=collect(0,m,P,rng)
+state,confirm,rc=collect(state,m,P,rng)
+q=(pilot+1)/(m+n);r=confirm/m
+D=sum(c*log(c/(m*qxy)) for row,qrow in zip(confirm,q)
+      for c,qxy in zip(row,qrow) if c)
+near_norm=float(np.max(np.sum(abs(r-np.eye(n)),axis=1)))
+braw=float(logseries(r)[0,2]/t)
+trajectory={&#x27;m_pilot_per_row&#x27;:m,&#x27;m_confirm_per_row&#x27;:m,
+            &#x27;pilot_counts&#x27;:pilot.tolist(),&#x27;confirmation_counts&#x27;:confirm.tolist(),
+            &#x27;pilot_reads&#x27;:rp,&#x27;confirmation_reads&#x27;:rc,&#x27;initial_reads&#x27;:1,
+            &#x27;total_reads&#x27;:1+rp+rc,&#x27;physical_time&#x27;:t*(rp+rc),
+            &#x27;retained_endpoints&#x27;:2*n*m,&#x27;lag&#x27;:t,&#x27;true_b&#x27;:.08,
+            &#x27;D_observed&#x27;:D,&#x27;braw_float_diagnostic&#x27;:braw,
+            &#x27;empirical_norm&#x27;:near_norm,
+            &#x27;scope&#x27;:&#x27;one floating-point semigroup sampled-chain fixture, not theorem counts or confidence coverage&#x27;}
+
+# Exact arithmetic for the observed empirical log statistic.
+RF=[[F(int(c),m) for c in row] for row in confirm]
+Id=[[F(int(i==j)) for j in range(n)] for i in range(n)]
+AF=[[RF[i][j]-Id[i][j] for j in range(n)] for i in range(n)]
+def mm(A,B):
+    return [[sum(A[i][k]*B[k][j] for k in range(n))
+             for j in range(n)] for i in range(n)]
+nf=max(sum(abs(v) for v in row) for row in AF)
+assert nf&lt;F(1,2)
+K=25;term=AF;L=[[F(0) for j in range(n)] for i in range(n)]
+for j in range(1,K+1):
+    for i in range(n):
+        for k in range(n):L[i][k]+=F((-1)**(j+1),j)*term[i][k]
+    term=mm(term,AF)
+tail=nf**(K+1)/((K+1)*(1-nf))
+btail=tail/F(1,25)
+arith={&#x27;terms&#x27;:K,&#x27;empirical_norm_exact&#x27;:str(nf),
+       &#x27;braw_rational&#x27;:str(L[0][2]/F(1,25)),
+       &#x27;certified_rate_tail_rational&#x27;:str(btail),
+       &#x27;certified_rate_tail_float&#x27;:float(btail),
+       &#x27;scope&#x27;:&#x27;deterministic observed statistic arithmetic, not a statistical radius&#x27;}
+
+result={&#x27;exact_binomial_identity_cases&#x27;:len(risk_ratios),
+        &#x27;risk_bound_ratio_max&#x27;:max(risk_ratios),
+        &#x27;exact_adaptive_martingale&#x27;:martingale,
+        &#x27;split_penalty_diagnostics&#x27;:split_means,
+        &#x27;carried_trajectory&#x27;:trajectory,
+        &#x27;exact_log_arithmetic&#x27;:arith,
+        &#x27;finite_checks_are_not_universal_proofs&#x27;:True}
+(OUT/&#x27;split_checks.json&#x27;).write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+print(json.dumps({k:v for k,v in result.items()
+                  if k not in [&#x27;carried_trajectory&#x27;,&#x27;exact_log_arithmetic&#x27;]},indent=2))
+print(json.dumps({&#x27;trajectory_total_reads&#x27;:trajectory[&#x27;total_reads&#x27;],
+                  &#x27;trajectory_D&#x27;:D,&#x27;certified_arithmetic_tail&#x27;:float(btail)},indent=2))
+</pre></html>

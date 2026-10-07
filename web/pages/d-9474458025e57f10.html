@@ -1,0 +1,316 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>**Each section corresponds to a scale $j$ such that $2^{J-j}$ = #section. The conditional energy $\bar E(\bar x_{j+1} \vert x_{j+1}) $ is learned. We provide both SGD and direct estimate learning, and two different types</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>**Each section corresponds to a scale $j$ such that $2^{J-j}$ = #section. The conditional energy $\bar E(\bar x_{j+1} \vert x_{j+1}) $ is learned. We provide both SGD and direct estimate learning, and two different types</h1><p>Source ID d-9474458025e57f10; literature/sources/check_wcrg/upstream/Learning_Models_cells.py; 3499 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre> **Each section corresponds to a scale $j$ such that $2^{J-j}$ = #section. The conditional energy $\bar E(\bar x_{j+1} \vert x_{j+1}) $ is learned. We provide both SGD and direct estimate learning, and two different types of scalar potentials for the low frequency $x_J$. The application to other scales and $\bar x_j$ is straightforward.**
+# Import Packages
+from google.colab import drive
+drive.mount(&#x27;/content/drive&#x27;)
+import numpy as np
+import matplotlib.pyplot as plt
+import torch
+import os
+import sys
+import pickle
+#Importing the package
+path = &#x27;/content/drive/MyDrive/Colab Notebooks/&#x27;
+sys.path.append(os.path.abspath(path+&#x27;WCRG&#x27;))
+sys.path.append(os.path.abspath(path+&#x27;WCRG/WCRG&#x27;))
+sys.path.append(os.path.abspath(path+&#x27;WCRG/Wavelet_Packets&#x27;))
+sys.path.append(os.path.abspath(path+&#x27;WCRG/WCRG/Models&#x27;))
+#Wavelets
+from Wavelet_Packets import *
+#Ansatz
+from WCRG import *
+
+# Import Data and Define wavelet
+#directories for models and synthesis
+dir_synth = &#x27;content/drive/MyDrive/Colab Notebooks/WCRG/Notebooks Examples/Synths/&#x27;
+dir_mod = &#x27;/content/drive/MyDrive/Colab Notebooks/WCRG/Notebooks Examples/Models/&#x27;
+#This key will be add to file name for synthesis and loading
+KEY = &#x27;128_phi4_0.68&#x27;
+#Import data
+device=&#x27;cuda&#x27; #could be &#x27;cpu&#x27; as well
+Data = torch.tensor(np.load(&#x27;/content/drive/MyDrive/Colab Notebooks/Phi4/phi4_L128_Beta0.68.npy&#x27;)).to(device).to(torch.float32)
+print(Data.mean(),Data.std())
+#Normalising Data
+Data= (Data - Data.mean())/Data.std()
+print(Data.shape)
+#Computing the number of scales
+J=int(np.log2(Data.shape[-1])) #Images of size 2**J
+print(&#x27;J = &#x27;+str(J))
+#Wavelet
+m=4
+W=Db_wavelets(m,device=&#x27;cuda&#x27;,mode=&#x27;Periodic&#x27;) #Debauchies 4
+plt.imshow(Data[0].cpu())
+plt.show()
+print(Data[1].mean())
+# 1 (With Direct Estimate)
+We train the ansatz $E(x_J)$, using a direct matrix inversion, and quantility spaced potentials.
+L=1
+depth = J-int(np.log2(L))
+phi_s = load_data(W,Data,depth,J)
+#Scalar Potentials Positioning
+num_potentials = 10
+centers,sigma = quantile_centers(phi_s,num_potentials,quantile_min=0.001,quantile_max=0.999,extent =0.65*0.5,device=&#x27;cuda&#x27;)
+#Visualize
+Plot_Sigmoid(centers,sigma)
+#Shifts
+shifts = ()
+#Ansatz
+ansatz = ANSATZ_NoCondi(L,centers,sigma,shifts,shifts_sym = False)
+#Train Ansatz with direct matrix inversion
+dataloader = torch.utils.data.DataLoader(phi_s, batch_size=1000)
+direct_estimate(dataloader,ansatz,mean_mode=False)
+ansatz.L = L
+#Visualize Potential
+Show_Sigmoid(ansatz,add_Trace=True,Free=False,index_scalar=0,index_quad=1)
+#save
+#save_ansatz(ansatz,L,KEY,dir_mod)
+# 1 (With SGD)
+We train the ansatz $E(x_J)$, using SGD, and linespaced potentials.
+#Loading Data x_J
+L=1
+depth = J-int(np.log2(L))
+phi_s = load_data(W,Data,depth,J)
+#Scalar Potentials Positioning
+window_min,window_max = phi_s.min(),phi_s.max() #The window to consider for scalar potentials
+num_potentials = 30
+# For linspaced potentials
+centers,sigma = linspace_centers(window_min,window_max,num_potentials,extent =0.8,device=&#x27;cuda&#x27;)
+#Visualize
+Plot_Sigmoid(centers,sigma)
+#Shifts
+shifts = ()
+#Ansatz
+ansatz = ANSATZ_NoCondi(L,centers,sigma,shifts,shifts_sym = False)
+#Train Ansatz
+dataloader = torch.utils.data.DataLoader(phi_s, batch_size=1000)
+#Normalise Hessian in order to improve conditionning
+Diagonal_Renormalisation(dataloader,ansatz,mean_mode=False)
+#Optimisation
+optim(ansatz,dataloader,num_epochs=10,lr=1e-2,momentum=0,weight_decay=0)
+#Visualize Potential
+Show_Sigmoid(ansatz,add_Trace=True,Free=False,index_scalar=0,index_quad=1)
+#save
+save_ansatz(ansatz,L,KEY,dir_mod)
+# 2 
+We train the ansatz $\bar E(\bar x_{j+1}\vert x_{j+1})$, using SGD, and linespaced potentials.
+#Loading Data x_j
+L=2
+depth = J-int(np.log2(L))
+print(&#x27;depth = &#x27;+str(depth))
+phi_s = load_data(W,Data,depth,J)
+#Scalar Potentials Positioning
+window_min,window_max = phi_s.min(),phi_s.max()
+num_potentials = 30
+centers,sigma = linspace_centers(window_min,window_max,num_potentials,extent =1,device=&#x27;cuda&#x27;)
+#Visualize
+Plot_Sigmoid(centers,sigma)
+#Shifts
+shifts = ()
+mode = &#x27;All&#x27;
+#Ansatz
+ansatz =ANSATZ_Wavelet(W,L,centers,sigma,mode,shifts)
+#Train Ansatz
+dataloader = torch.utils.data.DataLoader(phi_s, batch_size=1000)
+#Normalise Hessian in order to improve conditionning
+Diagonal_Renormalisation(dataloader,ansatz,mean_mode=False)
+optim(ansatz,dataloader,num_epochs=10,lr=1e-2,momentum=0,weight_decay=0)
+optim(ansatz,dataloader,num_epochs=10,lr=1e-3,momentum=0,weight_decay=0)
+#Visualize Potential
+Show_Sigmoid(ansatz)
+#save
+save_ansatz(ansatz,L,KEY,dir_mod)
+# 4
+L=4
+depth = J-int(np.log2(L))
+print(&#x27;depth = &#x27;+str(depth))
+phi_s = load_data(W,Data,depth,J)
+#Scalar Potentials Positioning
+window_min,window_max = phi_s.min(),phi_s.max()#phi_s.min(),phi_s.max()
+num_potentials = 20
+centers,sigma = linspace_centers(window_min,window_max,num_potentials,extent =1,device=&#x27;cuda&#x27;)
+#centers,sigma = quantile_centers(phi_s,num_potentials,quantile_min=0.001,quantile_max=0.999,extent =0.65*0.5,device=&#x27;cuda&#x27;)
+#Visualize
+Plot_Sigmoid(centers,sigma)
+#Shifts
+shifts = ((1,0),(0,1),(1,1))
+mode = &#x27;All&#x27;
+#Ansatz
+ansatz =ANSATZ_Wavelet(W,L,centers,sigma,mode,shifts,shifts_sym=True)
+#Train Ansatz
+dataloader = torch.utils.data.DataLoader(phi_s[::10], batch_size=100)
+#Normalise Hessian in order to improve conditionning
+Diagonal_Renormalisation(dataloader,ansatz,mean_mode=False)
+optim(ansatz,dataloader,num_epochs=10,lr=1e-2,momentum=0,weight_decay=0)
+optim(ansatz,dataloader,num_epochs=10,lr=1e-3,momentum=0,weight_decay=0)
+#Visualize Potential
+Show_Sigmoid(ansatz)
+#save
+save_ansatz(ansatz,L,KEY,dir_mod)
+# 8
+L=8
+depth = J-int(np.log2(L))
+print(&#x27;depth = &#x27;+str(depth))
+phi_s = load_data(W,Data,depth,J,show_hist=False)
+#Scalar Potentials Positioning
+window_min,window_max = phi_s.min(),phi_s.max()
+num_potentials = 40
+centers,sigma = linspace_centers(window_min,window_max,num_potentials,extent =1,device=&#x27;cuda&#x27;)
+#Visualize
+Plot_Sigmoid(centers,sigma)
+#Shifts
+shifts = shifts_quad(2,2)
+mode = &#x27;All&#x27;
+#Ansatz
+ansatz =ANSATZ_Wavelet(W,L,centers,sigma,mode,shifts)
+#Train Ansatz
+dataloader = torch.utils.data.DataLoader(phi_s[::10], batch_size=100)
+#direct_estimate(dataloader,ansatz,mean_mode=False)
+Diagonal_Renormalisation(dataloader,ansatz,mean_mode=False)
+optim(ansatz,dataloader,num_epochs=50,lr=1e-2,momentum=0,weight_decay=0)
+optim(ansatz,dataloader,num_epochs=50,lr=1e-3,momentum=0,weight_decay=0)
+#Visualize Potential
+Show_Sigmoid(ansatz)
+#save
+save_ansatz(ansatz,L,KEY,dir_mod)
+# 16
+L=16
+depth = J-int(np.log2(L))
+print(&#x27;depth = &#x27;+str(depth))
+phi_s = load_data(W,Data,depth,J,show_hist=False)
+#Scalar Potentials Positioning
+window_min,window_max = phi_s.min(),phi_s.max()
+num_potentials = 40
+centers,sigma = linspace_centers(window_min,window_max,num_potentials,extent =1,device=&#x27;cuda&#x27;)
+#Visualize
+Plot_Sigmoid(centers,sigma)
+#Shifts
+shifts = shifts_quad(4,4)
+mode = &#x27;All&#x27;
+#Ansatz
+ansatz =ANSATZ_Wavelet(W,L,centers,sigma,mode,shifts)
+#Train Ansatz
+dataloader = torch.utils.data.DataLoader(phi_s[::10], batch_size=100)
+#direct_estimate(dataloader,ansatz,mean_mode=False)
+Diagonal_Renormalisation(dataloader,ansatz,mean_mode=False)
+optim(ansatz,dataloader,num_epochs=10,lr=1e-2,momentum=0,weight_decay=0)
+optim(ansatz,dataloader,num_epochs=10,lr=1e-3,momentum=0,weight_decay=0)
+#Visualize Potential
+Show_Sigmoid(ansatz)
+#save
+save_ansatz(ansatz,L,KEY,dir_mod)
+# 32
+L=32
+depth = J-int(np.log2(L))
+print(&#x27;depth = &#x27;+str(depth))
+phi_s = load_data(W,Data,depth,J,show_hist=False)
+#Scalar Potentials Positioning
+window_min,window_max = phi_s.min(),phi_s.max()
+num_potentials = 30
+centers,sigma = linspace_centers(window_min,window_max,num_potentials,extent =1,device=&#x27;cuda&#x27;)
+#Visualize
+Plot_Sigmoid(centers,sigma)
+#Shifts
+shifts = shifts_quad(8,8)
+mode = &#x27;All&#x27;
+#Ansatz
+ansatz =ANSATZ_Wavelet(W,L,centers,sigma,mode,shifts)
+#Train Ansatz
+dataloader = torch.utils.data.DataLoader(phi_s[::50], batch_size=50)
+#direct_estimate(dataloader,ansatz,mean_mode=False)
+Diagonal_Renormalisation(dataloader,ansatz,mean_mode=True)
+optim(ansatz,dataloader,num_epochs=50,lr=1e-3,momentum=0,weight_decay=0)
+#Visualize Potential
+Show_Sigmoid(ansatz)
+#save
+save_ansatz(ansatz,L,KEY,dir_mod)
+# 64
+L=64
+depth = J-int(np.log2(L))
+print(&#x27;depth = &#x27;+str(depth))
+phi_s = load_data(W,Data,depth,J,show_hist=False)
+#Scalar Potentials Positioning
+window_min,window_max = phi_s.min(),phi_s.max()
+num_potentials = 30
+centers,sigma = linspace_centers(window_min,window_max,num_potentials,extent =1,device=&#x27;cuda&#x27;)
+#Visualize
+Plot_Sigmoid(centers,sigma)
+#Shifts
+shifts = shifts_quad(4,4)
+mode = &#x27;All&#x27;
+#Ansatz
+ansatz =ANSATZ_Wavelet(W,L,centers,sigma,mode,shifts)
+#Train Ansatz
+dataloader = torch.utils.data.DataLoader(phi_s[::20], batch_size=50)
+#direct_estimate(dataloader,ansatz,mean_mode=False)
+Diagonal_Renormalisation(dataloader,ansatz,mean_mode=True)
+optim(ansatz,dataloader,num_epochs=2,lr=1e-2,momentum=0,weight_decay=0)
+optim(ansatz,dataloader,num_epochs=2,lr=1e-3,momentum=0,weight_decay=0)
+#Visualize Potential
+Show_Sigmoid(ansatz)
+#save
+save_ansatz(ansatz,L,KEY,dir_mod)
+# 128
+L=128
+depth = J-int(np.log2(L))
+print(&#x27;depth = &#x27;+str(depth))
+phi_s = load_data(W,Data,depth,J,show_hist=False)
+#Scalar Potentials Positioning
+window_min,window_max = phi_s.min(),phi_s.max()
+num_potentials = 30
+centers,sigma = linspace_centers(window_min,window_max,num_potentials,extent =0.5*0.5,device=&#x27;cuda&#x27;)
+#Visualize
+Plot_Sigmoid(centers,sigma)
+#Shifts
+shifts = shifts_quad(6,6)
+mode = &#x27;All&#x27;
+#Ansatz
+ansatz =ANSATZ_Wavelet(W,L,centers,sigma,mode,shifts)
+#Train Ansatz
+dataloader = torch.utils.data.DataLoader(phi_s[::10], batch_size=20)
+direct_estimate(dataloader,ansatz,mean_mode=True)
+#Visualize Potential
+Show_Sigmoid(ansatz)
+#save
+save_ansatz(ansatz,L,KEY,dir_mod)
+# Show Potentials
+Visualising the learned potentials $\bar V_j(x_{j-1})$
+STD = []
+for j in range(1,8):
+  L=2**j
+  depth = J-int(np.log2(L))
+  print(&#x27;depth = &#x27;+str(depth))
+  phi_s = load_data(W,Data,depth,J,show_hist=False)
+  STD.append(phi_s.std())
+ANSATZ =[]
+for j in range(1,8):
+  L=2**j
+  ANSATZ.append(load_ansatz(L,KEY,dir_mod))
+index_scalar=0
+index_quad=1
+for j in range(1,8):
+  Sc = ANSATZ[j-1].ansatze[index_scalar] 
+  window_min =Sc.centers[0]
+  window_max =Sc.centers[-1]
+  #POTENTIAL
+  X=torch.linspace(window_min,window_max,1000).cuda()
+  U=torch.sigmoid(-(X[None, :] - Sc.centers[:, None]) / (Sc.sigma[:,None] )) # (M, D) to (M,)
+  
+  #Num_potentials
+  n_pot = 0
+  for i in range(0,index_scalar):
+    n_pot+=ansatz_union.ansatze[i].num_potentials
+  n_scalar = ANSATZ[j-1].ansatze[index_scalar].num_potentials
+  #theta learned
+  theta =ANSATZ[j-1].theta()[n_pot:n_pot+n_scalar]
+  
+  #Compute Trace
+
+  Sq = Square_laplacian(ANSATZ[j-1],Free=False,index_quad=index_quad)
+  U=(theta@U+(Sq/2)*X**2).cpu().detach()
+  U= U-(U[100:]).min()
+  
+  plt.plot(X.cpu().detach()/STD[j-1].cpu(),U.cpu(),label=&#x27;j = &#x27;+str(J-j+1))
+plt.legend()
+plt.xlim(-2,2)
+plt.ylim(-0.1,7)
+plt.title(&#x27;Potentials&#x27;)
+plt.show()</pre></html>

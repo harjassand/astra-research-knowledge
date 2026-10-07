@@ -1,0 +1,2619 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>--- PDF PAGE 1 ---</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>--- PDF PAGE 1 ---</h1><p>Source ID d-327169c5defabc69; literature/sources/metric_prior/cycle17/liu_nguyen_yang2507.02433v1.txt; 41896 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>
+--- PDF PAGE 1 ---
+arXiv:2507.02433v1  [cs.DS]  3 Jul 2025
+Numerical Linear Algebra in Linear Space
+Yiping Liu ∗
+Tsinghua University
+Hoai-An Nguyen †
+Carnegie Mellon University
+Junzhao Yang‡
+Carnegie Mellon University
+Abstract
+We present a randomized linear-space solver for general linear systems Ax = b with A∈
+Zn×n and b ∈ Zn, without any assumption on the condition number of A. For matrices
+whose entries are bounded by poly( n), the solver returns a (1 + ϵ)-multiplicative entry-wise
+approximation to vector x∈ Qn using eO(n2· nnz(A)) bit operations and O(n logn) bits of
+working space (i.e., linear in the size of a vector), where nnz denotes the number of nonzero
+entries. Our solver works for right-hand vector b with entries up to nO(n). To our knowledge,
+this is the first linear-space linear system solver over the rationals that runs in eO(n2· nnz(A))
+time.
+We also present several applications of our solver to numerical linear algebra problems, for
+which we provide algorithms with efficient polynomial running time and near-linear space. In
+particular, we present results for linear regression, linear programming, eigenvalues and eigen-
+vectors, and singular value decomposition.
+∗(liu-yp23@mails.tsinghua.edu.cn) Tsinghua University.
+†(hnnguyen@andrew.cmu.edu) Computer Science Department, Carnegie Mellon University. Supported in part by
+an NSF GRFP fellowship grant number DGE2140739 and NSF CAREER Award CCF-2330255.
+‡(junzhaoy@andrew.cmu.edu) Computer Science Department, Carnegie Mellon University.
+1
+
+--- PDF PAGE 2 ---
+1 Introduction
+The memory usage of numerical linear algebra is of fundamental importance to both theory and
+practice. In practical settings, one of the primary goals of linear algebra packages is to accelerate
+computation by exploiting the sparse structure of real-world matrices, while keeping memory usage
+well below quadratic [Geo73, DEG +99, Liu92, DRSL16]. Theoretically, the space complexity has
+been widely studied in various models. Csanky [Csa76] and Berkowitz [Ber84] showed that det∈
+NC2, yielding a linear system solver requiring only O(log2n) space but using superpolynomial
+time—e.g., nO(logn). Recently, Raz [Raz19] proved a lower bound for the streaming setting: even
+for learning parity (i.e., solving a linear system over F2), any one-pass learner must either use
+at least Ω(n2) bits of memory or use exponentially many samples. Sharan, Sidford and Valiant
+[SSV19] extend this memory-sample tradeoff to the continuous domain, proving a lower bound for
+linear regression in the streaming setting.
+In this paper, we study fast space-efficient algorithms for numerical linear algebra problems. We
+measure space complexity in terms of working space1—excluding the input and output space. We
+first focus on the problem of solving linear systems, Ax = b. Typical textbook approaches include
+Gaussian elimination and iterative methods. The primary advantage of iterative methods is their
+substantially lower working space compared to direct approaches such as Gaussian elimination;
+however, their running time scales at least proportional to the square root of the condition number,
+which can itself be polynomial or even exponential. This begs the question: can we solve linear
+systems using small working space without any running time dependence on the condition number?
+There is a setting in which this has been shown to be possible. Over finite fields, Wiede-
+mann [Wie86] designed a linear system solver that is both efficient in time and space. The input
+consists of a matrix A∈ Fn×n
+p with nnz nonzero entries, and a vector b∈ Fn
+p, where Fp denotes
+the finite field of integers{0, 1,...,p − 1} for a prime p. Wiedemann’s algorithm outputs x∈ Fn
+p to
+the system Ax≡ b (mod p) in O(n· nnz) field operations and stores O(n) field elements [Wie86].
+In the more general setting, however, the answer is more unclear. Here, the input consists of
+matrix A and vector b, both of which have integer entries, and the task is to approximate the
+solution vector A−1b whose entries are rational. There is a long line of work on optimizing the
+running time of solving linear systems over the rationals [Dix82, Sto05, EGG +06, BLS19, PV24].
+However, all of these algorithms require Ω(n1.5) space— [EGG+06] requires Ω(n1.5) and the others
+require Ω(n2) space. Although not explicitly stated in the literature, it is possible to achieve
+linear working space by invoking [Wie86] with the Chinese Remainder Theorem (as discussed in
+Section 2.2). However, this approach incurs a running time ofO(n3·nnz). Given these limitations—
+and the fundamental importance of solving linear systems—it is natural to study the following
+question:
+How fast can linear systems over the rationals be solved using only linear working space?
+In response to this question, we present a randomized solver for general linear systems over
+the rationals, using O(n logn) bits of working space—or equivalently, O(n) words2 which is linear
+in the representation size of a vector—and only running in eO(n2· nnz) bit operations. In partic-
+ular, for sparse matrices, the running time is eO(n3). To the best of our knowledge, no previous
+algorithm achieves this time complexity under comparable space constraints. We further observe
+that significantly improving upon the eO(n2· nnz) time bound appears challenging. Even for sparse
+matrices with a polynomial condition number bound, achieving a solver that runs in eO(n2) time
+1In this model, algorithms cannot modify the inputs in place or reread the outputs.
+2We assume each input entry is bounded by poly( n) and is stored in one word.
+2
+
+--- PDF PAGE 3 ---
+is a major open problem. This suggests that matching the efficiency of Wiedemann’s finite field
+solver which runs in eO(n· nnz) time may be out of reach in the rational setting. Furthermore,
+approaches that rely on fast matrix multiplication typically require storing dense matrix objects,
+making subquadratic space usage particularly challenging.
+Our solver provides strong guarantees: it makes no assumptions on the condition number of
+A, and outputs an entry-wise approximation of the solution A−1b. This removes the standard
+assumption of a polynomially-bounded condition number and provides a stronger guarantee than
+the commonly used norm-wise approximation. We remark that we do not pursue sublinear space
+due to the following barrier: obtaining a polynomial-time linear system solver in O(n0.99) space
+with multiplicative guarantees would imply an algorithm for directed connectivity that runs in both
+polynomial-time and O(n0.99) space, which remains open.
+In addition to presenting our solver, we demonstrate its utility by applying it to several other
+core problems in numerical linear algebra. For each, we develop algorithms that use near-linear
+working space. We outline these applications below.
+1.1 Our Contributions
+Here we formally describe the results of our paper. In the following, we take special care to track
+the space complexity in the number of bits, and time complexity in the number of bit operations. In
+our computational model, we measure only the working space, which may be smaller than the size
+of the input or output. The algorithm cannot modify the inputs in place or re-read the outputs.
+To serve both the community and our own needs, we give a self-contained presentation of
+Wiedemann’s algorithm [Wie86] for linear systems solving over finite fields and its applications.
+In particular, we present the algorithm and analysis while tracking the space and time complexity
+carefully. We also reformulate the algorithm so that we can adapt it for our application of computing
+determinants, following the approaches of [KS91] and [CEK +02]. Formal statements are presented
+in Section 4, with proofs deferred to Appendix B. We use finite-field solvers for linear systems and
+determinants as subroutines of our main algorithm.
+We now present our main result, the linear-space linear system solver.
+Theorem 1 (Linear systems solving, Theorem 9, Informal) . There exists a randomized algorithm
+that, given ε∈ (0, 1), an invertible matrix A∈ Zn×n with entries in [−U,U ], and a vector b∈ Zn
+with entries in [−Un,U n], with high probability outputs a (1 +ε)-multiplicative entry-wise approxi-
+mation of A−1b in eO(n2 log(1/ε)· nnz(A))3 bit operations using O(n log(nU)) bits of space.
+We highlight some properties of our solver. First, our solver gives multiplicative and entry-
+wise approximations. This is stronger than the usual notion of norm-wise approximations. In the
+extremely low error regime ε = 2−Θ(n log(nU)), our solver produces exact solutions in O(n log(nU))
+bits of working space. Second, we represent the output using O(log(nU/ε))-bit floating-point
+numbers, a format that is more space-efficient for large numbers—e.g., entries of A−1b can be as
+large as 2 Θ(n). We note that the working space we achieve is smaller than the output size, which
+requires O(n log(nU/ε)) bits. Third, we require no bound on the condition number of A—we
+therefore say our solver works for general linear systems. Moreover, our solver can accommodate
+right-hand vectors b whose entries are as large as Un.
+We then apply our linear-space solver to other numerical linear algebra primitives, including
+linear regression, linear programming, eigenvalues/eigenvectors, and singular value decomposition.
+We obtain eO(n)-space polynomial-time algorithms for all of these problems.
+3We use nnz to denote the number of nonzero entries in A. eO hides logarithmic factors, log O(1)(nU log(1/ε)).
+3
+
+--- PDF PAGE 4 ---
+Corollary 2 (Linear regression, Corollary 12, Informal). There exists a randomized algorithm that,
+given ε &gt;0, n≥ d, a full-rank matrix A∈ Zn×d and a vector b∈ Zd both with integer entries
+in [−U,U ], with high probability computes an (1 +ε)-multiplicative entry-wise approximation of
+arg minx∈Rd∥Ax−b∥2, and runs in eO(d3 log(1/ε)·nnz(A))3 bit operations using O(d log(nU)) bits
+of space.
+By applying our solver to the Interior Point Method (IPM), we obtain the following near-linear
+space algorithm. Our results build on the analysis of an inverse free path following IPM by Ghadiri,
+Peng and Vempala [GPV23].
+Theorem 3 (Linear programming, Theorem 13, Informal) . There exists a randomized algorithm
+that, given ε∈ (0, 1), full-rank and poly(n)-conditioned A∈ Zn×d, b∈ Zd, and c∈ Zn all with
+entries in [−U,U ], with high probability outputs bx∈ Rn such that
+c⊤bx≤ min
+A⊤x=b,x≥0
+c⊤x +ε, and ∥A⊤bx− b∥2≤ε,
+in eO(d3n0.5· nnz(A)) bit operations using O(n log(nUR
+εr ))4 bits of space.
+We apply our solver to eigenvalue and eigenvector computations, as well as singular value
+decomposition (SVD), obtaining linear-space algorithms for each task in the regime where ε &gt;
+1/poly(n,U ). Our algorithms build on spectrum perturbation and divide-and-conquer strategies,
+which we believe are of independent interest, and we provide a full finite-precision error analysis.
+Theorem 4 (Theorem 16, Theorem 17, and Corollary 18, Informal) . There exist randomized
+algorithms that, given a matrix A∈ Zn×n with integer entries in [−U,U ], in eO(n3· nnz(A))5 bit
+operations using O(n log(nU/ε)) bits of space, with high probability solve the following tasks:
+• For symmetric A, compute all eigenvalues up to ε additive error. (Theorem 16)
+• For symmetric A, compute ε-approximate corresponding eigenvectors. (Theorem 17)
+• For general A, compute ε-approximate SVD, UΣV⊤. (Corollary 18)
+1.2 Related Work
+We now give an overview of other related works.
+Linear system solvers. We outline the relevant previous work on solving linear systems—
+namely, approximately computing A−1b for an integer matrix A. For simplicity, we omit log-
+arithmic factors for both space and time bounds. Dixon [Dix82] proposed an algorithm that
+uses O(nω +n· nnz) time but O(n2) space where ω is the matrix multiplication exponent. A
+combination of [Dix82] with [Wie86] gives an O(n2· nnz) time algorithm but again O(n2) space.
+Storjohann [Sto05] and Birmpilis, Labahn, and Storjohann [BLS19] give algorithms with O(nω)
+time and O(n2) space. Peng and Vempala [PV24] presented an algorithm for sparse polynomially-
+conditioned matrices in time asymptotically faster than matrix multiplication for any ω &gt;2; based
+on the value ofω at the time, they achievedO(n2.331645) time butO(n2) space. Eberly, Giesbrecht,
+Giorgi, Storjohann, and Villard [EGG +06] developed an O(n2.5) time and O(n1.5) space algorithm
+for polynomially-conditioned, sparse matrices.
+4r and R denote the inner radius and outer radius of the linear program, respectively, defined in Definition 6.1.
+5Here, eO hides logarithm factors, log O(1)(nU/ε). We focus on ε ≥ 1/poly(n, U) for these eigenproblems.
+4
+
+--- PDF PAGE 5 ---
+There are also ways of achieving O(n) space and O(n4) time (for sparse matrices), although
+they have not been formally written down. For example, one could combine [Dix82] with [Wie86]
+to obtain an algorithm with time increased to O(n3· nnz) but with O(n) space. One could also
+computeO(n) determinants by [Wie86] and leverage Cramer’s rule to again achieve a running time
+of O(n4) for sparse matrices.
+Bit complexity. Recall that our input matrix A has integer entries from [−U,U ]. Unlike much of
+the literature, we do not make the assumption of an upper bound on U. Instead we carefully track
+the bit complexity and bits of space used by our algorithms. Bit complexity has been the focus in
+numerous topics in the literature including diagonalization of a matrix [Sri23, DKRS23, BGKS23]
+and continuous optimization [GPV23].
+Specialized linear system solvers. There has been a large body of work on solvers for special
+classes of matrices including circulant matrices [Gra05], Hankel and Toeplitz matrices [KKM79,
+XXG12, XXCB14], d-sparse matrices [Spi10], symmetric diagonally dominant matrices [ST14,
+CKM+14, AKP19], and Laplacians [Vis12]. There has also been work on low-rank linear systems
+[CLW18, CGL+20] and on quantum and quantum-inspired algorithms for solving linear systems
+[WZP18, CGL+20, CLW18, HHL09, KP20].
+Linear regression. There has been work in the streaming model for linear regression. Clarkson
+and Woodruff [CW09] give a linear sketch for finding x such that
+∥Ax− b∥2≤ (1 +ε) min
+x′∈Rd
+∥Ax′− b∥2
+where A is ann×d matrix with integer entries that are specified byO(log(nd)) bits. The sketch uses
+O(d2ε−1 log(1/δ) log(nd)) bits of space where δ is the probability of failure and directly translates
+to a one-pass turnstile streaming algorithm. In the turnstile streaming model, insertions and
+deletions to the matrix A are given one-by-one in a stream, and an algorithm cannot store all
+the updates. Instead, it must process the updates in low space and output an answer at the end
+of the stream. They also provide a lower bound for one-pass turnstile streaming algorithms for
+n≥d and sufficiently large d of Ω(d2ε−1 log(nd)). Dagan, Kur, and Shamir [DKS19] give a similar
+lower bound for streaming algorithms where the updates are instead rows of A. We note that in
+these settings the assumption is that n is much larger than d, and it is desirable to avoid large
+dependencies on n in the space.
+We note that our upper bound of eO(d) space for linear regression does not contradict this lower
+bound. This is because the lower bound applies to one-pass streaming algorithms. In particular,
+the streaming algorithm can only access each update one time (unless it stores the update), whereas
+we assume read access to the input and can use additional queries to reduce our space. There has
+also been work, primarily through sketching, to reduce the dimension of A to speed up the time of
+linear regression (see [Woo14] for more).
+There are gradient based methods that achieve eO(d) space but using O(poly(κ)) iterations
+(which translates to eO(poly(κ)·n2) time) such as that of Musco, Musco, and Sidford [MMS18].
+Given that we do not assume a bound on κ, we offer a significant advantage when we do not have
+κ = poly(n) (and even for κ = poly(n) when the exponent is large).
+Learning lower bounds. There is a long line of work [Raz19, Raz17, MM17, BGY18, MM18,
+KRT17, GRT18, SSV19] on memory-sample trade-off lower bounds for learning problems. Raz [Raz19]
+first proved a memory-sample lower bound for learning parity in the one-pass setting. Learning
+parity is just solving linear system Ax = b over the field F = F2 with a random A∈ Fm×n and
+5
+
+--- PDF PAGE 6 ---
+b∈ Fn where m≥ n. The learner is given the rows of [ A; b] sequentially, with each row as a
+sample. They showed that if the learner has 0 .01n2 bits of memory and reads the input with only
+one pass, then it must see 2 Ω(n) samples to solve for x with probability at least 2−O(n).
+Garg, Raz and Tal [GRT19] extended this result to two-passes, giving an Ω(n1.5) memory versus
+2Ω(√n) samples trade-off lower bound. [LTWY23] improved this result and showed a tight memory-
+sample lower bound for constant-pass learning, strengthening the result of [Raz19]. They also
+showed an algorithm using O(n2/k) memory and O(2k) passes for a parameter k to complement
+the lower bound.
+This upper bound can be improved to O(n) memory and O(n) passes using Wiedemann’s
+algorithm [Wie86]. In this paper, we can apply our solver to the learning problem over Q. As a
+corollary (by Corollary 10), our algorithm gives a learner with O(n log(nU)) bits of memory and
+O(n2 log(1/ε)) passes to learn an entry-wise ε-multiplicative approximation for the solution A−1b.
+1.3 Paper Organization
+The organization of the paper goes as follows. In Section 2 we provide a technical overview of
+our contributions. In Section 3 we give our preliminaries. In Section 4 we present the finite field
+algorithms. In Section 5 we present an algorithm for computing the determinant and then give our
+main linear systems solver. In Section 6, we give our applications for linear regression and linear
+programming. In Section 7, we discuss our applications for computing eigenvalues, eigenvectors
+and SVD.
+2 Technical Overview
+We provide an overview of our techniques for all of our contributions. We assume that all matrices
+and vectors have maximum dimensionn, and that the entries are bounded byU. An algorithm with
+space usage O(n log(nU)) bits we say uses linear-space since under the standard assumption that
+U = poly(n), the space is linear to that of a vector in Rn with entries bounded by poly(n,U ) from
+an information-theoretic perspective. This is also the space requirement for storing a determinant
+of an n×n 01-matrix.
+2.1 Determinant in Linear Space
+Our linear-space linear systems solver requires computing the determinant. Therefore, computing
+the determinant must also only use linear space. [Wie86] and [KS91] showed that determinant over
+finite fields can be obtained from the minimal polynomial with some preconditioning. We present
+the algorithm, DeterminantZp, that computes the determinant by Wiedemann’s algorithm with
+a simplified preconditioning from [CEK +02] in Appendix B.3. The algorithm runs in O(n· nnz)
+time.
+For integer matrices, the determinant can be exponentially large and requires Ω(n log(nU)) bits
+to store. We can still compute the determinant exactly in linear space using Chinese Remainder
+Theorem (CRT). Specifically, we samplen primes,p1,...,p n, and compute det(A) modpi for each
+using DeterminantZp (Theorem 8). We then reconstruct the integer determinant via CRT. The
+correctness follows from Hadamard’s bound, ensuring that the determinant’s magnitude is below
+the product of the primes, allowing exact recovery. The algorithm runs in eO(n2·nnz) bit operations
+and requires only O(n log(nU)) bits of space.
+6
+
+--- PDF PAGE 7 ---
+2.2 Linear-Space General Linear Systems Solver
+We detail our solver for general linear systems over the rationals which proves Theorem 9. Given
+an input matrix A∈ Zn×n and a vector b∈ Zn with integer entries bounded by U, our goal is to
+efficiently compute an eε-multiplicative entry-wise approximate solution. Just in this overview, for
+simplicity, we assume that U≤ poly(n) and ε≥ 1/poly(n).
+Our algorithm is designed to meet several objectives. First, it operates without assumptions
+on the condition number of A, other than that it is finite (which follows from A being invertible).
+Second, it ensures a good entry-wise approximation of the solution vector x. Most critically, it uses
+only O(n logn) bits of space and achieves bit complexity eO(n2· nnz), where nnz is the number of
+nonzero entries in A.
+The main challenge is optimizing the time while being constrained to O(n logn) space. Our
+algorithm builds on finite field methods. However, finite field methods recover A−1b∈ Qn from
+(A−1b modP ) for some big prime P , whose entries can be exponential in n. Therefore storing
+this vector would require Ω( n2) space. We must therefore make careful modifications to achieve
+our desired guarantees. We now outline our initial attempts at solving the problem, in the hopes
+of improving the clarity of the final solution.
+The first attempt: directly invoking Wiedemann’s algorithm. Wiedemann’s algorithm
+solves linear systems over finite fields in linear space and O(n· nnz) field operations [Wie86]. We
+can solveO(n) linear systems (over finite fields) with respect toO(n) distinct primes, and integrate
+the O(n) solutions with rational reconstruction via CRT to recover the exact rational solution.
+However, there is a bottleneck that prevents us from achieving the correct space complexity—
+storing the O(n) solution vectors. A simple fix is to solve for the entire solution vector but only
+store one entry at a time. We repeat this procedure n times to recover all n entries of the final
+solution vector. This gives an algorithm using eO(n3· nnz) bit operations and O(n logn) bits of
+space. The same time and space complexity could be achieved by using p-adic lifting from [Dix82]
+instead of CRT.
+The second attempt: p-adic lifting and the determinant. We can see that the previous
+approach requires too much time due to computing the entire solution vector n times. To avoid
+this, we make the following crucial observation and then apply Dixon’s p-adic lifting from [Dix82].
+By Cramer’s rule, the entries of the solution can be turned into integers if we know the determinant.
+Specifically, since the denominator of each entry in the rational solution A−1b is a factor of det(A),
+we compute det(A) using Determinant (Theorem 11) and multiply the system by det( A),
+Ay = b det(A),
+so that y∈ Zn is an integer-valued vector.
+We then apply the technique of p-adic lifting. The original technique proposed by [Dix82]
+employs T = O(n) iterations to gradually extract the p-adic digits when the solution vector y is
+expressed in p-adic form for some prime p = poly(n):
+y≡
+T−1X
+i=0
+y(i)·pi (mod pT )
+where y(i) consists only of entries in [0 ,p ). Then, b(0) = b· det(A) is initialized. The following
+would then be iteratively computed:
+y(i)≡ A−1b(i) (mod p), (1)
+7
+
+--- PDF PAGE 8 ---
+b(i+1) = b(i)− Ay(i)
+p . (2)
+All the vectors b(i) are computed over the integers, and the congruence relation ensures that the
+numerator is a multiple ofp so b(i) has integer entries. Dixon precomputes the inverse (A−1 modp)
+to optimize the running time, but here we can replace it with Wiedemann’s solver from [Wie86].
+Now, we obtain y(0), y(1),..., y(T−1) sequentially, but we cannot afford to store them all since
+each vector takes O(n) space. Observe that the j-th entry of A−1b is det( A)−1·PT−1
+i=0 y(i)
+j pi
+(WLOG we assume nonnegative entries), so we can keep track of a multiplicative approximation
+ofPt
+i=0 y(i)
+j pi with an O(log(n/ε))-bit floating point for iteration t. This fits in O(n logn) space,
+approximatingn entries simultaneously, which resolves the issue of having to compute the solution
+vectorn times.
+However, there is still an issue – storing even a single entry of b(i) requires Ω(n) bits. This
+approach would again require Ω(n2) space.
+Our approach: a variant of p-adic lifting. To reduce the space usage, we propose a variant
+of p-adic lifting that does not act directly on the vector b(i). We observe that we do not need the
+exact vector b(i) in thei-th iteration of p-adic lifting – it suffices to obtain (b(i) modp) to compute
+y(i)≡ A−1b(i) (mod p). But it is still not clear how to obtain ( b(i+1) modp) from ( b(i) modp)
+since the information of higher bits is lost.
+We therefore design a low space representation for (b(i) modp). In particular, when we expand
+Eq (2) we get
+b(i) = b det(A)·p−i−
+i−1X
+j=0
+Ay(j)·pj−i. (3)
+Here we can see that the vector b(i) consists of two terms: one from b· det(A) and the other from
+y(0),..., y(i−1). Since we know all the entries of b(i) in Eq (3) are integers, the fractional parts of
+the two terms cancel each other out. Therefore, ( b(i) modp) can be obtained as long as we know
+the integral part
+
+i−1X
+j=0
+Ay(i)·pj−i
+. (4)
+However, again due to our space constraints, we cannot store y(0),..., y(i−1) from the previous
+iterations to compute Eq (4). Instead, it is possible to compute Eq (4) iteratively. It can be shown
+that the maximum entry of this vector is bounded by poly(n), so storing it uses O(n logn) bits and
+thus fits within our memory. Therefore, we can implement p-adic lifting with this modification in
+linear space.
+Handling large b. As an additional advantage, our algorithm also applies when each entry of b
+is bounded by Un. In Eq (3), we compute b(i) entry-wise: for the j-th entry, evaluate
+⌊bj· det(A)·p−i⌋− (Eq (4) term).
+Since bj and det(A) both have a linear number of bits, computing one entry at a time requires
+only linear space as well. This resembles the bounds in [Sto05], but their approach uses fast matrix
+multiplication and therefore, by nature, requires quadratic space.
+8
+
+--- PDF PAGE 9 ---
+Reducing the space toO(n log(nU)) bits. Whenε is small, our algorithm works withO(log(nU/ε))-
+bit floating point numbers, requiring a total of O(n log(nU/ε)) bits of space. Surprisingly, we can
+get rid of the dependency on ε completely, no matter how small ε is.
+To reduce the space usage, we carefully track the space usage and observe that only y(i) re-
+quires O(log(nU/ε)) bits per entry—the other vectors require only O(log(nU)) bits per entry. We
+therefore partition the coordinates into Θ(min {n, log(1/ε)}) blocks. Storing and computing one
+block of coordinates fits in O(n log(nU)) space. However, the trade-off is an O(log(1/ε)) blow-up
+in asymptotic running time.
+2.3 Applications to Numerical Problems Using Linear Space
+For input matrix A, we denote U as a bound on the maximum magnitude of the entries, and n as
+the maximum dimension. We apply our linear-space linear system solver to several numerical prob-
+lems, including linear regression, linear programming, eigenvalues/eigenvectors, and singular value
+decomposition. Some of the applications are direct (e.g., linear regression and linear programming),
+whereas others require more careful work.
+Linear regression. We give a linear-space algorithm for solving linear regression by leveraging
+our linear systems solver. Given a full-rank matrix A∈ Zn×d and a vector b∈ Zn both with integer
+entries in [−U,U ], the least-squares solution to min x∈Rd∥Ax−b∥2 is given by the normal equation
+(A⊤A)−1A⊤b. A direct approach would require explicitly forming A⊤A which has O(d2) entries.
+Instead, we avoid storing A⊤A by providing access to its matrix vector product A⊤Av for some
+vector v. Passing this matrix vector product access as well as A⊤A and A⊤b into our linear system
+solver gives an entry-wise multiplicative error approximation while using only O(d log(nU)) bits of
+space and bit complexity eO(d3 log(1/ε)· nnz). The space is near-linear in the smaller dimension d
+since logn can be asymptotically larger than log d.
+Linear programming. We plug our linear-space linear system solver into the Interior Point
+Method (IPM). Given A∈ Zn×d, b∈ Zd, c∈ Zn with n≥ d, we consider the linear program
+minA⊤x=b,x≥0 c⊤x. For linear programs with condition number bounded by poly( n), we obtain
+an algorithm with near-linear space, where the extra logarithmic factors depend on the inner and
+outer radius, r and R respectively, of the linear program. Specifically, we pass the matrix-vector
+access for A⊤WA for some diagonal matrix W into our solver. We obtain a running time of
+eO(d3· nnz·n0.5) bit operations, and space of O
+ 
+n log(nUR
+εr )
+
+bits.
+Inverse power method. We employ our linear-space linear system solver to give a slightly
+stronger version of inverse power method, InvPower, for real symmetric matrices without condi-
+tion number bounds and spectral gap assumptions. Our algorithm can detect the existence of an
+eigenvalue very close to 0 using the entry-wise multiplicative approximation guarantee ofLinSolve
+and floating-point representations. Specifically, let |λmin| denote the minimum magnitude of the
+eigenvalues. With high probability, we either certify that|λmin|≤ 1/poly(n), or outputeλ such that
+eλ−|λmin|
+≤ε|λmin|.
+Even though the convergence analysis of inverse power method is standard, we put more effort to
+incorporate the bit complexity and error analysis into it.
+For the running time, the algorithm runs in eO(n2· nnz·ε−1) in general, and runs in eO(n2· nnz·
+log(1/ε)) if there is a spectral gap between the smallest and the second smallest eigenvalue. This
+algorithm requiresO(n log(nU/ε)) bits of space. This space requirement is slightly higher than that
+of our linear system solver as we must also store the output of the solver as intermediate vectors.
+9
+
+--- PDF PAGE 10 ---
+Computing eigenvalues, eigenvectors, and SVD. We emphasize that the eigenpair or SVD
+problem produces Θ(n) vectors, and therefore has output size at least Ω(n2). Therefore, we require
+our algorithm to use less working space. The algorithm needs to output the desired eigenpairs (or
+SVD matrices) in some order, and never reads its own output. It may access that output only by
+memorizing it, and any such memorization counts toward the space usage. In-place modifications
+to the input matrices are not allowed.
+We first perturb the input matrix A by a random diagonal matrix based on Minami bound
+such that the eigenvalues are perturbed by at most ε/2, with the property that all eigenvalues
+are bounded away from each other by some γ &lt; εwith γ≥ poly(1/n,ε ). We can then test the
+existence of an eigenvalue in an interval by applying the inverse power method to shifted matrices.
+We finally recursively extract the eigenvalues using a divide-and-conquer strategy. This gives an
+algorithm with running time of eO(n3· nnz) bit operations and space of O(n log(nU/ε)) bits.
+An associated eigenvector can be computed given a high-accuracy approximation of the eigen-
+value. As a corollary, we can compute the singular value decomposition (SVD) for any real matrix
+A since A⊤A is real symmetric. Because a matrix–vector product access to A⊤A takes only
+O(nnz) time, our SVD solver has exactly the same asymptotic time and space complexity as full
+eigenvalue decomposition.
+3 Preliminaries
+3.1 Notations
+Unless the base is explicitly stated, we use base e for log. We use Z to denote the integers, Q
+to denote the rationals, R to denote the reals, and Fp to denote the finite field of the integers
+{0, 1,...,p − 1} for a prime p. For the definition of fl L, see Definition 3.8.
+Sets and sampling. For any integer n≥ 1, we use [ n] to denote the set {1, 2,...,n }. For a
+finite set S, we use x∼ S to denote that random variable x is uniformly sampled from S. When
+considering multiple variables, we write x1,...,x n∼ S to indicate that each xi is independently
+and uniformly sampled.
+Modular arithmetic, floor and ceiling. Forn∈ Z and p &gt;0, we use ( n modp) to denote
+the remainder r, such that r∈ [0,p ) and n−r is a multiple of p. We use the notation p| n for
+n modp = 0.
+Forα∈ R, the floor function⌊α⌋ returns the largest integer at most α, and the ceiling function
+⌈α⌉ returns the smallest integer at least α. We also extend the notations ( · modp) and ⌊·⌋ to
+vectors and matrices, meaning that the operation is applied element-wise to each entry.
+Vectors and matrices. Generally, we use bold uppercase symbols (e.g., A, D) to denote ma-
+trices, bold lowercase symbols (e.g., x, y) to denote vectors, and regular symbols (e.g., c, ∆) for
+scalars. We use O to denote the zero matrix, and 0 to denote the zero vector.
+Multiplicative approximations. Forx,y ∈ R, we use x≈ε y to denote the eε-multiplicative
+approximation relation
+sgn(x) = sgn(y), e −ε|y|≤| x|≤ eε|y|
+where sgn(·)∈{− 1, 0, 1} denotes the sign function. Note that when ε is small, we have
+|x−y|≤ O(ε)|x|.
+10
+
+--- PDF PAGE 11 ---
+Fact 3.1. If ε&lt; 0.7 and|x−y|≤ ε|x|, then x≈2εy.
+We extend this notation to vectors and matrices for entrywise relations. Specifically, for vectors
+u, v∈ Rn, u≈ε v if ui≈ε vi for all i∈ [n].
+Fact 3.2. Forε,λ 1,λ 2,x 1,x 2,y 1,y 2∈ R≥0, if x1≈εy1 and x2≈εy2, we have
+λ1x1 +λ2x2≈ελ1y1 +λ2y2.
+Fact 3.3. Forε1,ε 2∈ R≥0, and x1,x 2,y 1,y 2∈ R, if x1≈ε1 y1 and x2≈ε2 y2, we have
+x1·x2≈ε1+ε2 y1·y2.
+Fact 3.4. Forε∈ R≥0, and x,y∈ R, if x≈εy, we have
+x−1≈εy−1.
+Fact 3.5. Forε1,ε 2∈ R≥0, and x,y,z ∈ R, if x≈ε1 y and y≈ε2 z, we have
+x≈ε1+ε2 z.
+Finite fields and polynomial rings. For a prime p, we use Fp to denote the finite field of the
+integers{0, 1,...,p − 1} with operations of addition and multiplication modulo p. For a field F ,
+we write F [X] to denote the polynomial ring with coefficients in F and indeterminate X.
+3.2 Computational Models
+In this paper, we work with the RAM model with a read-only input. The time complexity is
+measured in the number of bit operations, and the space complexity is measured in the number of
+bits in the working space, not including the read-only input space.
+Space complexity. In the problems that we study, ann×n matrix with integer entries in [−U,U ]
+is given in the input. For our main result, we will show that our algorithm has space complexity
+of O(n log(nU)) bits. That is, it uses an additional space of O(n log(nU)) bits in addition to the
+input matrix, which is read-only and remains unmodified during the computation.
+Time complexity. We bound the number of bit operations used by our algorithms, without
+tracking the number of logarithmic factors in the input/output size. In particular, when the input
+has O(n2) integers in [−U,U ] and we aim for a target accuracy ε, the input size is O(n2 logU)
+and the output size is O(n log(1/ε)). Therefore, we ignore factors of poly log( n log(U/ε)), and use
+eO(Tn,U,ε) to denote
+O(Tn,U,ε· logO(1)(n log(U/ε))).
+Matrix-vector access. In our algorithms, we cannot afford to store an n×n matrix explicitly.
+For a matrix A, we only access it in a black-box way, assuming that we can compute the matrix-
+vector product Av for any query vector v. Over a finite field F , we use T MatVec(A) to denote the
+number of field operations required to compute the matrix-vector access. If A∈ Fn×n has nnz
+nonzero entries, we have T MatVec(A) =O(nnz), assuming that nnz≥n.
+3.3 Fixed Points and Floating Points
+In our model, real numbers cannot be stored without errors. We store representations of real
+numbers, approximating them by rational numbers. Specifically, for x∈ R, we denote xrep∈ Q as
+the representation of x.
+11
+
+--- PDF PAGE 12 ---
+Integers. We can accurately represent any integerz∈ [−2L, 2L] byL bits together with the sign.
+Under integer arithmetic, there is no error and no overflow, i.e., we always use a sufficient number
+of bits to represent the integers.
+Fact 3.6. ForU≥ 2 and all integers a,b∈ [−U,U ], we can compute
+a +b, a−b, a·b, ⌊a/b⌋, ⌊loga⌋
+(which we assume to be defined) in
+O(logU logO(1) logU) = eO(logU)
+bit operations, using O(logU) bits of space.
+Fixed points. Fixed-point representation extends the integer representation to approximate real
+numbers by interpreting a 2 L-bit integer x as the real number x/2L. We obtain additive error
+guarantee for fixed points.
+Fact 3.7. For any L &gt; 0 and any real number x∈ [−2L, 2L], there exists an L-bit fixed-point
+representationxrep such that|x−xrep|≤ 2−L.
+Floating points. We employ floating points to achieve multiplicative approximation guarantees.
+We formalize the definition as follows.
+Definition 3.8 (L-bit floating point) . ForL &gt;0 and integers a,b∈ [−2L, 2L], an L-bit floating-
+point representation for x∈ R is defined to be xrep := (a,b ) such that x =a· 2b.
+ForL&gt; 0, we define
+flL := [−22L
+,−2−2L
+]∪{ 0}∪ [2−2L
+, 22L
+] (5)
+to be the set of real numbers that can be well approximated by L-bit floating points.
+Fact 3.9. For any L&gt; 0 and x∈ flL, there exists an L-bit floating-point representation xrep such
+that x≈2−L xrep.
+We useE(x) to denote an upper bound on the multiplicative error of x, such that x≈E(x)xrep.
+When there is no cancellation, i.e., adding two numbers with different signs, the multiplicative
+error under floating-point arithmetic remains small by Fact 3.2.
+Lemma 3.10 (Addition of same-sign floating points) . For any L &gt; 0 and x,y ∈ flL given in
+L-bit floating points, if z := x +y ∈ flL and x·y ≥ 0, then we can compute z withE(z) ≤
+max{E(x),E(y)} + 2−L in O(L logO(1)L) bit operations, using O(L) bits of space.
+Lemma 3.11 (Multiplication of floating points) . For any L &gt; 0 and x,y ∈ flL given in L-bit
+floating points, if z := x·y ∈ flL, then we can compute z withE(z)≤ E(x) +E(y) + 2−L in
+O(L logO(1)L) bit operations, using O(L) bits of space.
+Lemma 3.12 (Reciprocal of floating points) . For any L &gt;0 and x∈ flL given in L-bit floating
+points, ifz :=x−1 andE(x)&lt; 1/2, then we can computez withE(z)≤E (x)+2−L inO(L logO(1)L)
+bit operations, using O(L) bits of space.
+12
+
+--- PDF PAGE 13 ---
+3.4 Chinese Remainder Theorem (CRT)
+We state the well-known Chinese Remainder Theorem here. In this paper, we sample primes and
+compute the determinant modulo the primes separately. By CRT, we can integrate the results from
+each independent system and recover the exact determinant.
+Lemma 3.13 (Chinese Remainder Theorem, Theorem 10.25 of [vzGG13]) . Given distinct primes
+p1,p 2,...,p ℓ, and integers r1,...,r ℓ whereri∈ [0,pi− 1] for i∈ [ℓ], let P denote the product of the
+primes. For the following system
+
+
+
+x≡r1 (mod p1)
+x≡r2 (mod p2)
+...
+x≡rℓ (mod pℓ)
+there exists at least one solution ¯x∈ Z, and any two solutions are congruent modulo P . The
+remainder R := (¯x modP ) can be computed in eO(ℓ logU) bit operations and space of O(ℓ logU)
+bits, where U := maxℓ
+i=1pi. Here, eO hides factors logO(1)(ℓ logU).
+3.5 Prime Sampling
+We employ the following prime sampling subroutine in our algorithm. For completeness, we include
+the proof in Appendix A.
+Theorem 5. For any constant c &gt; 0, there exists an algorithm SamplePrime that, given an
+integern≥ 16 and an integer k∈ [1,n ], satisfies the following properties:
+• The algorithm outputs k integers, with failure probability≤ 1/nc.
+• Conditioned on the success of the algorithm, the output distribution follows the uniform dis-
+tribution of k distinct primes in the range [n,n 2].
+• The algorithm runs in O(k logO(1)n) bit operations, and space of O(k logn) bits.
+When reducing linear system solving to finite fields, it is possible that a matrix M over Q is
+invertible, but (M modp) becomes singular over the field Fp for a prime p. The following lemma
+shows that this issue can be avoided with high probability.
+Fact 3.14. Given integer n&gt; 1, we have
+π(n2)−π(n)≥ n2−n
+2 log2n
+whereπ(n) denotes the number of primes that are at most n.
+Proof. One can verify the inequality for n≤ 55. For n&gt; 55, it follows from the fact
+n
+logn + 2 &lt;π (n)&lt; n
+logn− 4.
+13
+
+--- PDF PAGE 14 ---
+Lemma 3.15. For integersn,m&gt; 1, if p is a prime uniformly sampled from [n,n 2], the probability
+that p is a factor of m
+Pr
+p
+[p|m]≤ 2 log2m
+n .
+Proof. It follows from Fact 3.14 that we have,
+π(n2)−π(n)≥ n2−n
+2 log2n≥n/2. (6)
+Then, the lemma follows from the fact that m has at most log 2m distinct prime factors.
+Finally, we will use the following upper bound for the determinant.
+Fact 3.16 (Hadamard’s inequality). For an n×n matrix M, if |Mij|≤ B for all i,j ∈ [n], we
+have
+| det(M)|≤ Bn·nn/2.
+4 Finite Field Linear Algebra in Linear Space
+Here for the use of the community and in our algorithms we present the results from [Wie86]
+for solving linear systems over finite fields. In-depth discussions and the proofs are deferred to
+Appendix B.
+Linear System Solving. Our algorithm builds on the Wiedemann algorithm, a linear system
+solver over finite fields in O(n) space, first introduced by [Wie86]. To solve Ax = b over the field
+Fp for some prime p, the algorithm computes the minimal linear recurrence of the scalar array
+[x⊤y, x⊤Ay, x⊤A2y,..., x⊤A2ny] (7)
+for independent uniform random vectors x, y∼ Fn
+p. It can then be used to compute the minimal
+polynomial of A, and solve the linear system.
+Theorem 6. For prime p &gt; 1, let F = Zp. There exists a randomized algorithm Wiedemann
+that, given matrix-vector access for a matrix A∈Fn×n, outputs the minimal polynomial of A using
+O(TMatVec(A)·n) field operations, O(n) space of elements in F , and achieves success probability at
+least 1
+36⌈logp(n)⌉.
+In addition, Wiedemann always outputs a factor of the minimal polynomial. When p&gt;n , the
+success probability is constant, and can be boosted to 1−δ by running the algorithm O(log(1/δ))
+times and choosing the polynomial with the largest degree.
+Note that T MatVec(A) denotes the time to compute a matrix-vector product using the matrix-
+vector access of A. If A has nnz≥n nonzero entries, Wiedemann runs in O(n· nnz) operations
+in F .
+We state the guarantees for linear system solving over finite fields via Wiedemann as follows.
+Theorem 7. There exists a randomized algorithm LinSolveZp such that, given matrix-vector
+access for an invertible matrix A∈ Fn×n
+p , a vector b∈ Fn
+p, δ∈ (0, 1/2) and a prime p, it outputs
+the solution x∈ Fn
+p to the system
+Ax≡ b (mod p)
+with probability at least 1−δ. Furthermore, the algorithm runs in O(TMatVec(A)·n log(1/δ)) field
+operations over Fp, and O(n) space of field elements in Fp.
+14
+
+--- PDF PAGE 15 ---
+Computing Determinants. Our algorithm also relies on computing the determinant of a matrix
+over finite fields. The techniques are originally discussed in [Wie86] and [KS91]. We reformulate
+Wiedemann’s algorithm for this application and employ the improved preconditioner in [CEK +02].
+The results are reproduced and formalized with an aim to bound the space complexity.
+Theorem 8. Forδ∈ (0, 1/2), there exists a randomized algorithm DeterminantZp that, given
+matrix-vector access for an invertible matrix A∈Fn×n whereF = Fp for prime p≥ 6n2, outputs
+(det(A) modp) with probability at least 1−δ using O(TMatVec(A)·n log(1/δ)) field operations over
+F and O(n) space of field elements in F .
+5 Linear System Solving over Q
+In this section, we prove our main results on solving linear systems over Q in linear space. The
+input matrix A and vector b have integer entries, but the output is over the rationals. We note
+that A and b can be given with entries over the rationals in fixed point precision, and it is without
+loss of generality that they can instead be represented with integral entries by scaling the entries.
+Theorem 9. For any constant c &gt;0, there exists a randomized algorithm LinSolve that, given
+ε∈ (0, 1), a matrix A∈ Zn×n with integer entries in [−U,U ] and a vector b∈ Zn with integer
+entries in [−Un,U n], outputs either SINGULAR or an entry-wise eε-multiplicative approximationbx,
+such that the following holds:
+• If A is singular, with probability at least 1−n−c, it outputs SINGULAR.
+• If A is invertible, with probability at least 1−n−c, it outputs bx with each entry represented
+by an O(log(nU/ε))-bit floating point, such that bx≈ε A−1b.
+• The algorithm uses O(n log(nU)) bits of space and runs in eO(n2 log(1/ε)·nnz) bit operations,
+where nnz≥n denotes the number of nonzero entries of A, and eO hides logarithmic factors
+logO(1)(nU log(1/ε)).
+We note that our algorithm uses the input matrix as a black box. We present the guarantees
+achieved when the algorithm is given oracle access to the matrix-vector product in the following
+corollary.
+Corollary 10 (Theorem 9 as a black-box algorithm) . For any constant c &gt; 0, there exists a
+randomized algorithm LinSolve that, given ε∈ (0, 1), a vector b∈ Zn with integer entries in
+[−Un,U n], and oracle access to the following function
+fA(v) = A· v
+for any vector v∈ Zn with entries bounded by n6U 2, outputs either SINGULAR or an entry-wise
+eε-multiplicative approximationbx, such that the following properties hold:
+• If A is singular, with probability at least 1−n−c, it outputs SINGULAR.
+• If A is invertible, with probability at least 1−n−c, it outputs bx with each entry represented
+by an O(log(nU/ε))-bit floating point, such that bx≈ε A−1b.
+• The algorithm queries the oracle O(n2 log(1/ε)) times, uses O(n log(nU)) bits of space, and
+runs in eO(n3 log(1/ε)) bit operations where eO hides logarithmic factors logO(1)(nU log(1/ε)).
+15
+
+--- PDF PAGE 16 ---
+Algorithm 1: Determinant
+Input : A matrix A∈ Zn×n with integer entries in [−U,U ]
+Output: The determinant det(A)
+1 T←n
+2 Let p1,p 2,...,p T← SamplePrime(T, max{16,n 2U}).
+3 for i = 1 to T do
+4 ri← DeterminantZp(A modpi)
+5 (P,R )← CRT((p1,r 1),..., (pT,rT )) // P is the product of the primes.
+6 return R if R&lt;P/ 2, otherwise return R−P
+5.1 Computing the Determinant
+First, we show that the determinant of an integer matrix can be computed exactly in linear space.
+We present the algorithm Determinant based on CRT 6 and the finite field algorithm Deter-
+minantZp. The space requirement is O(n log(nU)) bits, corresponding to the bit length of the
+largest possible determinant of an n×n matrix with entries bounded by U.
+Theorem 11. For any constant c &gt;0, there exists a randomized algorithm Determinant that,
+given a matrix A∈ Zn×n with integer entries in [−U,U ] and nnz nonzero entries, outputs det(A),
+the determinant of A, with probability at least 1−n−c, and runs in eO(n2(nnz +n)) bit operations
+and space of O(n log(nU)) bits. Here, eO hides logarithmic factors logO(1)(nU).
+Proof. We first prove correctness. In particular, we prove that CRT recovers the determinant,
+det(A), exactly. By Fact 3.16, since we have that the entries of A are bounded by U, we have
+| det(A)|≤ Un·nn/2 and thus P =QT
+i=1pi&gt; (n2U)n&gt; 2| det(A)|.
+By the correctness of CRT (Section 3.4), if ri = det(A) modpi, we have R = det(A) modP .
+If det(A) &lt; 0, we return R−P because R &gt; P/2, and otherwise we return R. Therefore, the
+algorithm will return the exact det( A).
+To ensure the overall failure probability is at most n−c, we bound the failure probability of
+SamplePrime (Theorem 5) and each call of DeterminantZp (Theorem 8) by n−c−2. Then, a
+union bound over T + 1≤n2 calls gives the desired bound.
+Now we prove the space and running time bounds.
+• By Theorem 5, SamplePrime runs in O(T logO(1)(n2U)) = eO(n) bit operations, and using
+space of T log(n2U) =O(n log(nU)) bits.
+• By Theorem 8, each call of DeterminantZp with δ set to n−c runs in
+O(n(TMatVec(A modp) +n) logn)·O(logpi· logO(1) logpi) = eO(n(nnz +n))
+bit operations (since each field operation in Fpi takesO(logpi· logO(1) logpi) bit operations),
+and requires space of O(n logpi) =O(n log(nU)) bits.
+• By Lemma 3.13, the CRT step runs ineO(T log(n2U)) = eO(n logn) bit operations, and requires
+space of O(T log(n2U)) =O(n log(nU)) bits.
+6See Section 3.4.
+16
+
+--- PDF PAGE 17 ---
+Algorithm 2: LinSolve
+Input : A matrix A∈ Zn×n with entries in [−U,U ], a vector b∈ Qn with entries in
+[−Un,U n], the target multiplicative accuracy ε∈ (0, 1).
+Output: Either SINGULAR, or bx∈ Qn with each entry represented by an O(log(nU/ε))-bit
+floating point such that the entry-wise eε-multiplicative approximation condition
+bx≈ε x holds.
+1 T←n
+2 ∆← Determinant(A)
+3 if ∆ = 0 then
+4 return SINGULAR
+5 p← SamplePrime (1, max{16,n 3U}) // Sample one prime ≥n3U .
+6 Initialize integer vectorer(0)← 0∈ Zn
+7 Initialize y+, y−← 0∈ Qn, with each entry represented by an L-bit floating point, where
+L := 2 log2(nU/ε).
+8 for i = 0 to T− 1 do
+9 entry-wise compute eb(i)←⌊ (b· ∆)/pi⌋ modp
+10 ey(i)← LinSolveZp(A, (eb(i)−er(i)) modp) // each entry is in [0,p )
+11 Under L-bit floating arithmetic: y+← y+ +ey(i)·pi
+12 Under L-bit floating arithmetic: y−← y− + (p− 1−ey(i))·pi
+13 Under integer arithmetic: er(i+1)←⌊ (er(i) + Aey(i))/p⌋
+14 For eachi∈ [n], let y[i]←
+(
+y+[i] y+[i]&gt; y−[i]
+−y−[i]− 1 Otherwise
+15 return y/∆
+To conclude, for the running time, the dominant step is T calls of DeterminantZp, giving us
+T· eO(n(nnz +n)) = eO(n2(nnz +n))
+bit operations. For the space complexity, the primary cost is storing r1,...,r T , which requires
+O(n log(nU)) bits.
+Remarks. We need the primes to be at least Ω( n2) to satisfy the requirement of large fields in
+DeterminantZp. We also note that DeterminantZp does not need the assumption that A is
+invertible, so the algorithm works correctly even when pi is a factor of det( A).
+5.2 Linear System Solving
+In this section, we present our algorithm LinSolve and prove our main result, Theorem 9. Our al-
+gorithm first computes the determinant using finite field methods with the algorithm in Section 5.1.
+Then it recovers the integer solution vector det( A)· A−1b via p-adic lifting.
+Correctness of LinSolve. In the following we assume that all the subroutines do not fail, and
+we will address their failure probability at the end. The guarantee for the singular case is easy. By
+the correctness of Determinant(A) (Theorem 11), we have ∆ = det(A) exactly and the algorithm
+outputs SINGULAR if ∆ = 0. Now we prove the case where A is invertible.
+17
+
+--- PDF PAGE 18 ---
+Let x := A−1b. By Cramer’s rule,
+xi· det(A) = det
+ 
+replace(A,i, b)
+
+det(A) · det(A) = det(replace(A,i, b))
+where replace( A,i, b) is the matrix obtained by replacing the i-th column of A by b. Hence,
+xi·det(A) is an integer for alli∈ [n]. Moreover, by Fact 3.16,|xi·det(A)| is bounded byUn·nn/2.
+We define y∈ Zn as the following:
+y≡ x· det(A) (mod pT )
+Then, we can recover x· det(A) from y exactly since
+pT≥ (n3U)n≥ (nU)n&gt; 2 max
+i
+|(x· det(A))i|. (8)
+We decompose y with its p-adic expansion,
+y≡
+T−1X
+i=0
+y(i)·pi (mod pT ) (9)
+where y(i) has entries in [0,p ). For i∈ [0,T ], define r(i)∈ Qn such that
+r(i) ≜
+i−1X
+j=0
+Ay(j)
+pi−j .
+Note that r0 = 0. We will show that er(i) =⌊r(i)⌋ later. We prove the following guarantees, given
+that every subroutine executes successfully.
+Lemma 5.1. In Line 4, it holds that
+Pr
+p
+[(A modp) is invertible]≥ 1− 1
+3n.
+Proof. By Lemma 3.15 and Fact 3.16,
+Pr
+p
+[(A modp) is singular] = Pr
+p
+[p| det(A)]≤ 2 log2(det(A))/(n3U)
+≤ 4n log(nU)/(n3U)≤ 1/3n.
+Lemma 5.2. If A modp is invertible, then er(i) =⌊r(i)⌋ and ey(i) = y(i) for all i∈ [0,T − 1], and
+therefore
+y≡
+T−1X
+i=0
+ey(i)pi (mod pT ).
+Proof. We prove by induction on k∈ [0,T ] that
+• Fori∈ [0,k ], it holds that er(i) =⌊r(i)⌋.
+18
+
+--- PDF PAGE 19 ---
+• Fori∈ [0,k− 1], it holds that ey(i) = y(i).
+For the base case k = 0, we trivially have that r(0) = 0 =⌊r(0)⌋ =er(0).
+Now assume that the induction hypothesis holds for k, and we want to prove for k + 1. It
+suffices to show ey(k) = y(k) ander(k+1) =⌊r(k+1)⌋.
+We express y(k) in terms of y(0),..., y(k−1),
+y(k)≡
+ 
+y−Pk−1
+j=0 y(j)·pj
+pk
+!
+(mod p).
+where the term in the parenthesis must be an integer. Left multiplying by A to both sides we have
+Ay(k)≡ A
+ 
+y−Pk−1
+j=0 y(j)·pj
+pk
+!
+(mod p)
+≡
+
+Ay
+pk −
+k−1X
+j=0
+Ay(j)
+pk−j
+
+ (mod p)
+≡
+det(A)· b
+pk − r(k)
+
+(mod p). (by definition of ¯y and r(k))
+Therefore, we must have
+Ay(k)≡
+det(A)· b
+pk
+
+−⌊ r(k)⌋ (mod p).
+since the term in the parenthesis is an integer. By the guarantee of LinSolveZp in Line 9, we have
+Aey(k)≡eb(k)−er(k)≡
+det(A)· b
+pk
+
+−⌊ r(k)⌋ (mod p)
+by the definition of eb(k) and the induction hypothesis, so we conclude ey(k) = y(k) since (A modp)
+is invertible and both have entries in range [0 ,p− 1].
+For the second part, by Line 13,
+er(k+1) =⌊(er(k) + Aey(k))/p⌋
+=⌊(⌊r(k)⌋ + Ay(k))/p⌋
+=
+1
+p
+
+
+
+k−1X
+j=0
+Ay(j)
+pk−j
+ + Ay(k)
+
+
+
+=
+1
+p
+
+k−1X
+j=0
+Ay(j)
+pk−j + Ay(k)
+
+
+=
+1
+p
+
+
+k−1X
+j=0
+Ay(j)
+pk−j + Ay(k)
+
+
+ =⌊r(k+1)⌋,
+so we conclude the induction proof.
+19
+
+--- PDF PAGE 20 ---
+The two above lemmas Lemma 5.1 and Lemma 5.2 show that, with high probability, we can
+completely recover y. The solution A−1b can be obtained exactly from dividing y by ∆. However,
+we are not given enough space to store the full precision. It remains to be shown that an eε-
+multiplicative approximation of the solution is maintained by y+, y− with floating-point numbers
+throughout the iteration, so that only ey(i) is stored in iteration i and all the previous vectors are
+discarded.
+Lemma 5.3. When LinSolve reaches the end of the loop, the following properties hold.
+• If xi· det(A)&gt; 0, then y+[i]≈ε xi· det(A).
+• If xi· det(A)≤ 0, then y−[i]≈ε−xi· det(A)− 1.
+Furthermore, in Line 14, we have y≈ε x· det(A).
+Proof. Fix an i∈ [n]. Recall that by (8), pT &gt; 2xi· det(A). By the definition of y, we have
+yi≡ xi· det(A) (mod pT ). Therefore,
+yi =
+(
+xi· det(A) xi· det(A)&gt; 0,
+pT + xi· det(A) xi· det(A)≤ 0. (10)
+It follows from Lemma 5.2 that,
+T−1X
+j=0
+ey(j)pj = y.
+If det(A)· ¯xi&gt; 0, then we have
+y+[i]≈ε
+
+
+T−1X
+j=0
+ey(j)pj
+
+
+i
+= yi = det(A)· xi,
+and otherwise
+y−[i]≈ε
+
+
+T−1X
+j=0
+(p− 1−ey(j))pj
+
+
+i
+=pT− 1− yi =− det(A)xi− 1,
+where the guarantees of eε-multiplicative approximation for y+ and y− follow from Lemma 3.10
+and Lemma 3.11, because we use L-bit floating-point arithmetic. Recall that L := 2 log2(nU/ε).
+Finally, it follows from Line 14 that y≈ε det(A)xi directly.
+So far, the correctness is almost done – we have proven that the algorithm outputs y/∆, eε-
+multiplicatively approximating x = A−1b by the above lemma Lemma 5.3. It remains to bound
+the success probability of the subroutines.
+Success probability of LinSolve. We note that it suffices to lower bound the success probability
+by 1− 1/n. All the success probabilities for the subroutines below and the lemmas above can be
+boosted to 1 −n−c for any constant c &gt;0 while only increasing by a constant factor in the time
+and space.
+The algorithm calls the following subroutines:
+20
+
+--- PDF PAGE 21 ---
+• Determinant: Fails with probability at most n−2 (with choice c = 2 in Theorem 11).
+• SamplePrime: Fails with probability at most n−2 (with choice c = 2 in Theorem 5).
+• LinSolveZp: Runs for T times, each with failure probability at most n−3 (with choice of
+δ =n−3 in Theorem 7).
+A union bound gives failure probability at most 1 /n. We conclude the correctness of LinSolve,
+finishing the proof of the first two properties in Theorem 9.
+Time and space complexity of LinSolve. Below we first show that LinSolve has space
+complexity of O(n log(nU/ε)) bits. Then, a small modification to the algorithm reduces the space
+to O(n log(nU)) bits by running O(log(1/ε)) instances and computing a smaller set of entries of
+the solution vector.
+We measure time in the number of bit operations, and space in the number of bits of storage.
+Let P := max{16,n 3U}2 be an upper bound of p. The algorithm involves the following variables:
+• T,p,i : variables requiring an insignificant amount of space, i.e., o(n) bits.
+• ∆ : an integer for the determinant, requiring O(n log(nU)) bits by Fact 3.16.
+• y+, y−: nonnegative n-dimensional floating-point vectors, with each entry represented by L
+bits. They require a total of O(n log(nU/ε)) bits.
+• eb(i),er(i) : n-dimensional integer vectors. The copies of them in previous iterations are dis-
+carded. We will bound the entries by U·P , so they require a total of O(n log(nU)) bits.
+Note that by definition, the entries of eb(i) are bounded by p≤P for alli. It remains to bound er(i).
+Lemma 5.4. It holds that ∥er(i)∥∞≤U·P for all i∈ [0,T ].
+Proof. For allk∈ [n], by Lemma 5.2,
+er(i)
+k =⌊r(i)
+k ⌋≤
+i−1X
+j=0
+(Ay(j))k
+pi−j ≤
+i−1X
+j=0
+nUp
+pi−j ≤nU·
+X
+j≥0
+p−j≤ 2nU.
+The algorithm involves the following subroutines, where the last one is dominating:
+• Determinant: By Theorem 11, the time is eO(n2(nnz +n)) bit operations, and the space is
+O(n log(nU)) bits.
+• SamplePrime: By Theorem 5, the time is O(logO(1)n) bit operations, and the space is
+O(log(nU)) bits.
+• LinSolveZp: By Theorem 7, setting δ = n−3, each call runs in O(n(TMatVec(A modp) +
+n) logn) field operations, and O(n) space of field elements in Fp, where each field element
+is O(logP ) = O(log(nU)) bits. Since T MatVec(A modp) =O(nnz +n), the total time (over T
+runs) is thus
+eO(T·n(nnz +n) logP ) = eO(n2(nnz +n)) (11)
+bit operations. The space is O(n log(nU)) bits.
+21
+
+--- PDF PAGE 22 ---
+For the other steps inLinSolve, it is easy to verify they can all be done efficiently in time and space.
+Specifically, the dominating step is Line 9, where computing an entry of b· ∆ uses O(n log(nU))
+bits of space with time complexity eO(n2). Over T iterations, this step runs in eO(n3 log(1/ε)) bit
+operations.
+Reducing the space complexity toO(n log(nU)). Observe that in LinSolve, only the vectors
+y+, y− require O(n log(nU/ε)) bits to store. The other vectors in the loop, ey,eb,er, are computed
+without y+, y− as inputs, and therefore require only O(n log(nU)) bits.
+To reduce the space usage, we use the following two facts:
+1. log(1/ε) need not exceedO(n log(nU)), since any higher precision would effectively give exact
+values of y+ and y− and therefore give the exact solution.
+2. Line 11, Line 12, and Line 14 only involve entry-wise computation, so the coordinates of
+y+, y−, and y are updated independently of each other.
+We run LinSolve
+K := min{n, max{1, Θ(log(1/ε))}}
+times, each time storing only⌈n/K⌉ entries of y+, y−, and computing the corresponding entries of
+y and the solution vector y/∆. Therefore, the modified algorithm uses space
+O (n log(nU) +⌈n/K⌉ log(nU/ε)) =O (n log(nU) +⌈n/K⌉ log(nU) +⌈n/K⌉ log(1/ε))
+=O (n log(nU) +n log(nU) + max{n,n log(nU)}).
+=O(n log(nU)).
+Now we analyze the time and space complexity of the modified algorithm. The loop in Line 8 is
+repeated K times. Thus, the dominant subroutine LinSolveZp and the dominant step Line 9 are
+also repeated K times. For computing y+, y−, each entry requires eO(T· log(1/ε)) = eO(n log(1/ε))
+bit operations, so it requires a total of eO(n2 log(1/ε)) bit operations, dominated by the other steps.
+We conclude the final bit complexity
+eO(n2(nnz +n) +n3)·K = eO(n2 log(1/ε)· nnz),
+and the space complexity of O(n log(nU)) bits, completing the proof of the third property of
+Theorem 9.
+Proof of Corollary 10, black-box access for A. A is used as a black box in Determinant
+and LinSolveZp. Every time we access A we query the matrix-vector product A· v. In Line 9,
+the matrix-vector product is under the finite field Zp, so the entries of right-hand vector v are
+bounded by p. In Line 13, the entries of ey(i) are also bounded by p. Therefore, it suffices to query
+the function fA(v) = A· v for v with entries bounded by p≤n6U 2.
+There are O(n2) queries in Determinant, and O(n) queries in each LinSolveZp with a total
+of T log(1/ε) calls. We conclude that in total there are O(n2 log(1/ε)) queries, and the time and
+space complexity of the remaining part of our algorithm follow from the analysis above. Note that
+the computation of matrix-vector product does not count toward our running time here. The time
+complexity of the remaining part is dominated by Line 9, requiring eO(n3) bit operations.
+Remarks. Assuming that log(1 /ε) ≤ O(n log(nU)), our linear system solver LinSolve has
+a near-linear time-space trade-off between the space bounds O(n log(nU)) and O(n log(nU/ε)).
+Specifically, for any working-space budget S ∈ [O(n log(nU),O (n log(nU/ε))], the running time
+scales as T = eO(n3 log(1/ε)· nnz/S), where logO(1)(nU log(1/ε)) factors are suppressed.
+22
+
+--- PDF PAGE 23 ---
+6 Applications
+6.1 Linear Regression
+As a direct application to our linear system solver, we show that we can solve linear regression
+min
+x∈Rd
+∥Ax− b∥2
+for A∈ Zn×d and b∈ Zn in near-linear space in d. We plug in our solver to compute an entry-wise
+multiplicative approximation of
+arg min
+x∈Rd
+∥Ax− b∥2 = (A⊤A)−1A⊤b. (the normal equation)
+We first compute and store v := A⊤b in eO(d) space. Then, we call our linear-space linear system
+solver LinSolve(A⊤A, v) without computing the matrix multiplication A⊤A. Instead, we employ
+matrix-vector access for A⊤A – given any x ∈ Zd, we can compute A⊤Ax in space eO(d) by
+enumeratingi∈ [d],j ∈ [n],k∈ [d] and summing over ( A⊤)ijAjkxk.
+Corollary 12. For any constant c &gt;0 and n≥ d, there exists an algorithm that, given ε &gt;0, a
+full-rank matrix A∈ Zn×d and a vector b∈ Zd both with integer entries in [−U,U ], with probability
+at least 1−d−c, computes ex given in O(log(nU/ε))-bit floating points such that
+ex≈ε arg min
+x∈Rd
+∥Ax− b∥2,
+and runs in eO(d3 log(1/ε)· nnz) bit operations using O(d log(nU)) bits of space, where eO hides
+logO(1)(nU log(1/ε)).
+Proof. The desired algorithm simply invokes LinSolve(A⊤A, A⊤b,ε ). The matrix A⊤A and the
+vector A⊤b have maximal dimension d and entries bounded by n·U 2.
+The correctness follows from Corollary 10 sinceA⊤A is invertible and thus the returned solution
+is an entry-wise eε-multiplicative approximation of
+(A⊤A)−1(A⊤b) = arg min
+x∈Rd
+∥Ax− b∥2.
+By Corollary 10, the algorithm uses O(d2 log(1/ε)) calls of the oracle
+fA⊤A(v,p ) = (A⊤A· v) modp
+for any primep≤ poly(d,n,U ) and any vectorv∈ Fd
+p. The oracle can be implemented by evaluating
+the i-th entry for i∈ [d],
+(fA⊤A(v,p ))i≡
+nX
+j=1
+dX
+k=1
+(A⊤)ijAjkvk (mod p).
+It suffices to enumerate ( j,k ) over{(j,k ) : Ajk̸= 0}, so each entry can be computed in eO(nnz)
+bit operations, and the entire vector can be computed in eO(nnz·d) bit operations. It requires
+O(d log(nU)) bits of space to store the d-dimensional vector and the iterators.
+We conclude the corollary by plugging in the time and space complexity in Corollary 10, i.e.,
+eO(d3 log(1/ε)) +O(d2 log(1/ε))· eO(nnz·d) = eO(d3 log(1/ε)· nnz)
+bit operations and O(d log(nU)) bits of space.
+23
+
+--- PDF PAGE 24 ---
+Remarks. An alternative way to compute the matrix-vector product A⊤Ax is to first compute
+y := Ax and then A⊤y. This reduces the time complexity for one matrix-vector product from
+eO(nnz·d) to eO(nnz). However, this method needs to store Ax, which would require Ω(n) space.
+For linear regression, we typically haved&lt;&lt;n , so in Corollary 12 we present the version that uses
+eO(d) space.
+6.2 Linear Programming
+In this section, we apply our linear-space linear system solver to linear programming. Ghadiri,
+Peng and Vempala analyzed the bit complexity of the interior point method (IPM) in [GPV23].
+We replace the linear system solver in the inverse free path following IPM with our linear-space
+solver.
+Definition 6.1 (Definition 2 in [GPV23]). Let A∈ Rn×d, b∈ Rd, c∈ Rn withn≥d. For a linear
+program of the form minA⊤x=b,x≥0 c⊤x, we define the following quantities:
+• Inner radius r: There exists an x such that A⊤x = b and xi≥r≥ 0 for all i∈ [n].
+• Outer radius R: For all x≥ 0 with A⊤x = b, it holds that ∥x∥2≤R.
+Theorem 13 (Variant of Theorem 1.2 and Theorem 1.3 in [GPV23], plugged in LinSolve). Given
+A∈ Zn×d with full column-rank, b∈ Zd, c∈ Zn all with entries in [−U,U ], and an error parameter
+0&lt;ε&lt; 1, suppose A has nnz nonzero entries and A⊤A has condition number bounded by κ, and
+the inner radius and outer radius of the linear program minA⊤x=b,x≥0 c⊤x are r and R, respectively.
+Then there is an algorithm (adapted from Algorithm 6, [GPV23]) that finds bx∈ Rn such that
+c⊤bx≤ min
+A⊤x=b,x≥0
+c⊤x +ε, and ∥A⊤bx− b∥2≤ε,
+in O(d3nnz·n0.5· logO(1)(nκUR
+ε·r )) bit operations and in space of O(n log(nκUR
+εr )) bits.
+Theorem 1.3 in [GPV23] plugs in the exact solver from [Sto05], so they do not assume any
+condition number bound. Each entry is stored with Ω( n) bits, which requires at least Ω(n2) space
+in total. For our purposes, we study the robust IPM setting with the assumption that the condition
+number is bounded by κ, so we can achieve near-linear space when κ≤ poly(n). This is also the
+setting of Theorem 1.2 in [GPV23], but they used a projection maintenance data structure to
+optimize the time, which can be replaced by our solver.
+We justify our theorem by the following facts. Let L :=O(log(nκUR
+εr )) denote the bit length.
+• Since the matrix has condition number bound κ, to maintain the invariant of IPM,
+∥x◦ s− 1∥2&lt; 0.1,
+it suffices to round everything to L bits. Therefore, the algorithm stores O(1) vectors with
+each entry represented by L-bit fixed points.
+• The dominant step of IPM is the following:
+δs← A(A⊤X(S)−1A)−1A⊤Sδµ
+where X = diag( x), S = diag( s) for some vector x and s. Similarly to Corollary 12, we
+implement matrix-vector access to the matrix A⊤X(S)−1A. Since the diagonal matrix only
+reweights the products of the entries, the analysis of time and space complexity of the matrix-
+vector access is identical to the proof of Corollary 12. We obtain eO(nnz·d) time and O(dL)
+space for each matrix-vector access.
+24
+
+--- PDF PAGE 25 ---
+• IPM runs in eO(n0.5· log( R
+ε·r)) iterations. We conclude the desired time and space bounds.
+7 Eigenvalues, Eigenvectors, and SVD in Linear Space
+In this section, we study how to apply our linear-space linear system solver to compute eigenvalues
+and eigenvectors. All the algorithms in this section use O(n log(nU/ε)) bits of space. We focus on
+the parameter regime ε&gt; 1/poly(n); accordingly, logO(1)(1/ε) factors are suppressed in the stated
+running-time bounds.
+We first prove a slightly stronger version of the Inverse Power Method in Section 7.1 using
+our linear-space linear system solver. Then, in Section 7.2, we show that if we perturb by a
+random diagonal matrix, the eigenvalues are still good approximations, with the property that
+all eigenvalues are bounded away from each other. In Section 7.3, by applying the inverse power
+method to shifted matrices, we can recursively extract the eigenvalues using a divide-and-conquer
+strategy. As a corollary, we can compute eigenvectors and SVDs as discussed in Section 7.4.
+7.1 Inverse Power Method
+In this section, we state the guarantees of the inverse power method applied to real symmetric
+matrices. It is well-known that the power method has convergence rate depending linearly on the
+spectral gap, but if we only want the eigenvalues for real symmetric matrices, we can achieve better
+convergence independent of the spectral gap.
+We give a slightly stronger inverse power method without assuming any condition number
+bound. Our algorithm can detect the existence of an eigenvalue very close to 0, due to the floating-
+point representation of LinSolve.
+In inverse power method, in each iteration we apply A−1 to some vector v. When the matrix
+has a small eigenvalue, the inverse can have a large eigenvalue that can be exponential in n. We
+cannot afford to storeA−1v in fixed-point representation. Instead, we store the vector using floating
+points, which is returned by LinSolve.
+Theorem 14 (Inverse Power Method). For a real symmetric matrix A, let λA
+1,λA
+2,...,λ A
+n be the
+eigenvalues and e1, e2,..., en be a corresponding orthonormal eigenbasis of A with|λA
+1|≤| λA
+2|≤
+···≤| λA
+n|. For any constant c &gt;0, there exists a randomized algorithm InvPower that, given
+ε∈ (0, 1), δ≥ n−c, and a real symmetric matrix A with nnz nonzero integer entries in [−U,U ],
+with success probability≥ 1−n−c, computes eλ≥ 0 such that
+eλ≈ε max{δ,|λA
+1|},
+and runs in eO(n2(nnz +n)/ε) bit operations using space of O(n log(nU/ε)) bits, where eO hides
+logarithmic factors logO(1)(nU/ε).
+Although folklore regards the inverse power method as numerically stable, we still provide a
+detailed analysis in Appendix C.1 that accounts for rounding errors and details the time and space
+complexity of our variant, InvPower.
+Inverse power method with a spectral gap. The next corollary states the guarantees when
+there is a constant spectral gap between the smallest and the second smallest eigenvalue. In this
+variant, the time complexity does not depend on 1 /ε. We also output an ε-approximation of the
+corresponding eigenvector. The proof of the next corollary is in Appendix C.2.
+Corollary 15 (Inverse Power Method with a spectral gap). For any constant c&gt; 0, there exists a
+randomized algorithm InvPowerGap that, given inputsε,δ, A as in Theorem 14 with an additional
+25
+
+--- PDF PAGE 26 ---
+Algorithm 3: InvPower
+Input : A symmetric matrix A∈ Zn×n with entries in [−U,U ],
+the approximation parameters ε,δ
+Output:eλ≥ 0 such that eλ≈ε max{δ, mini|λi(A)|}.
+1 if LinSolve(A, 0) = SINGULAR then
+2 return 0.
+3 T←⌈ 28 log(4n/εS)
+ε ⌉.
+4 Sample u(0)∼N (0, I) with each entry represented by L-bit fixed-point where
+L :=O(log(nU/ε)).
+5 for i = 1 to T do
+6 v(i)← u(i−1)/∥u(i−1)∥2 in floating-point arithmetic, and converts to L-bit fixed points.
+7 u(i)← LinSolve(A, v(i),εL) with each entry represented by L-bit floating-point, and
+εL≥ poly(1/n,δ ) to be chosen later.
+8 if ∥u(i)∥2
+2≥ 2/δ2 then
+9 return δ
+10 return∥v(T )∥2/∥u(T )∥2.
+property of the spectral gap:δ≤|λA
+1| and 1.1|λA
+1|≤| λA
+2|, with success probability≥ 1−n−c computes
+eλ≥ 0 such that eλ≈ε|λA
+1|. The algorithm runs in eO(n2(nnz +n)) bit operations and uses space of
+O(n log(nU/ε)) bits, where eO hides logarithmic factors logO(1)(nU/ε). Furthermore, the vector in
+the last iteration v(T ) is an approximation of e1, such that
+|⟨v(T ), e1⟩|∈ [1−ε, 1 +ε], ⟨v(T ), v(T )⟩∈ [1−ε, 1 +ε].
+7.2 Perturbing Spectrum
+Our methods precondition the matrix based on Minami bound in [Min96], such that the eigenvalues
+are bounded away from each other byγ≥ (ε/nU)O(1). We use the following version from [APS+17].
+Lemma 7.1 (Equation 1.11 in [APS +17]). For any real symmetric matrix A∈ Rn×n, any proba-
+bility distribution ρ on R with bounded maximum density ∥ρ∥∞, any interval I with length |I|, if
+Vdiag is a diagonal matrix with each diagonal entry independently sampled from ρ, it holds that
+Pr
+Vdiag
+[(A + Vdiag) has ≥ 2 eigenvalues in I]≤O(∥p∥∞|I|n)2.
+By this lemma, we can add a random diagonal matrix to perturb the eigenvalues. We will
+show that the entries in the diagonal matrix can be sampled from some uniform distribution over
+O(log(nU/ε))-bit fixed points.
+Lemma 7.2 (Spectrum Perturbation). There exists a randomized algorithm PerturbSpectrum
+that, given ε∈ (0, 1) and a matrix A∈ Zn×n with entries in [−U,U ], with probability≥ 1−O(n−2),
+returns a matrix B∈ Qn×n, such that the following properties hold. We define γ :=ε2/(n4U).
+• B = A+D for some diagonal matrix D whose entries areO(log(1/γ))-bit fixed points bounded
+by ε/2.
+• For all i∈ [n], we have |λi(A)−λi(B)|≤ ε.
+26
+
+--- PDF PAGE 27 ---
+• The eigenvalues of B are bounded away by γ from each other. That is, for all i∈ [n− 1], we
+have λi(B) +γ &lt;λi+1(B).
+The algorithm runs in eO(n log(U/ε)) bit operations, using space of O(n log(nU/ε)) bits.
+Proof. Let ρ be the uniform distribution on [0 ,ε/ 2], we have density ∥ρ∥∞ = 2/ε. Let Vdiag be
+the diagonal matrix with each diagonal entry independently sampled from ρ. The eigenvalues of
+A + Vdiag are in the range [−U,U +ε/2]⊆ [−2U, 2U].
+Let K &gt; 0 be a parameter to be chosen later. For any i∈ [0,K − 2], let Ii be the interval
+[−2U +i· 4U/K,−2U + (i + 2)· 4U/K]. This family of intervals has the property that, for any
+x,y ∈ [−2U, 2U] such that|x−y|&lt; 4U/K, there must exist an interval that contains both x and
+y. By Lemma 7.1, for all i∈ [0,K− 2],
+Pr
+Vdiag
+[(A + Vdiag) has ≥ 2 eigenvalues in Ii]≤O(∥p∥∞|I|n)2.
+By a union bound over the events that each interval does not contain two eigenvalues, we have the
+probability that (A + Vdiag) has eigenvalues bounded away from each other by 4 U/K, is bounded
+by
+K·O(∥p∥∞|I|n)2≤O(K(2/ε)2(8U/K)2n2)≤O(ε−2U 2n2/K).
+We setK =n4U 2ε−2, so the gap between the eigenvalues is at least 4 U/K = 4ε2/(n4U)≥ 4γ.
+To construct PerturbSpectrum, we sample the rounded version of Vdiag up to additive error
+γ. This can be done by sampling uniform distributions on fixed points withO(log(1/γ)) bits. Then,
+B = A +Vdiag + ∆ is a perturbed matrix for some diagonal matrix ∆ with entries in [−γ,γ ]. Since
+the matrices are real symmetric (and thus Hermitian), and the spectral radius of ∆ is at most γ,
+by Weyl’s inequality,
+|λi(B)−λi(A + Vdiag)|≤ γ,
+and therefore the eigenvalues of B are bounded away from each other by 2 γ. Again by Weyl’s
+inequality,
+|λi(B)−λi(A)|≤∥ Vdiag + ∆∥2≤ε/2 +γ &lt;ε,
+concluding the lemma.
+7.3 Computing Spectrum
+We present the algorithm Spectrum that computes the entire spectrum up to additive error via
+ShiftInvert. We use the divide-and-conquer strategy to recursively narrow the search ranges and
+pinpoint the eigenvalues.
+Theorem 16. For any constant c&gt; 0, there exists a randomized algorithm Spectrum that, given
+ε&gt; 0, a symmetric matrix A∈ Zn×n with integer entries in [−U,U ] and nnz nonzero entries, with
+probability at least 1−n−c, outputs eλ1,..., eλn such that
+|λi(A)−eλi|≤ ε.
+The algorithm runs in eO(n3(nnz +n)) bit operations and space of O(n log(nU/ε)) bits. Here, eO
+hides logarithmic factors logO(1)(nUε−1).
+27
+
+--- PDF PAGE 28 ---
+Algorithm 4: Spectrum
+Input : A symmetric matrix A∈ Zn×n with entries in [−U,U ],
+the target accuracy ε∈ (0, 1).
+Output: eλ1,..., eλn∈ Qn each represented by an O(log(U/ε))-bit fixed point. For all
+i∈ [n], we have|λi−eλi|≤ ε.
+1 γ←ε2/(n4U)
+2 B← PerturbSpectrum(A,ε/ 2)
+3 Λ← ComputeSpectrum(B,−2U, 2U)
+4 return Sorted list of{λ∈ Λ :∀λ′∈ Λ, λ′ /∈ (λ−γ/2,λ )}
+5
+6 Function ComputeSpectrum(B, ℓ, r):
+7 if ShiftInvert(B,ℓ,r ) = YES then
+8 if r−ℓ&lt;γ/ 8 then
+9 return{ℓ}
+10 else
+11 return ComputeSpectrum(B,ℓ, (ℓ +r)/2)∪ ComputeSpectrum(B, (ℓ +r)/2,r )
+12 else
+13 return∅
+14
+15 Function ShiftInvert(B, ℓ, r):
+16 m← (ℓ +r)/2
+17 λ← InvPower(B−mI, 0.1, (r−ℓ)/2)
+18 return YES if λ&lt; 1.2(r−ℓ)/2, otherwise return NO
+ℓ, r are stored by O(log(nU/ε))-bit fixed points, so no error is incurred when divided by 2
+Proof of Theorem 16. LetI denote the set of intervals [ ℓ,r ] where ComputeSpectrum(ℓ,r )
+is invoked. The intervals form a tree structure, such that each internal node u = (ℓ,r ) has two
+children (ℓ, (ℓ +r)/2) and ((ℓ +r)/2,r ). A node u = (ℓ,r ) is a leaf if and only if either of the two
+following cases holds, so the leaf intervals can be categorized into two types:
+• Type 1: ShiftInvert(B,ℓ,r ) returns NO. In this case, the node returns ∅.
+• Type 2: ShiftInvert(B,ℓ,r ) returns YES, and r−ℓ&lt;γ/ 8. In this case, the node returns
+{ℓ}.
+LetL denote the set of leaf intervals in the second case. Then, by Line 3, Λ is the set of left
+endpoints of the intervals in L, since each internal node returns the union set returned by its two
+children.
+Correctness of Theorem 16. We assume that all calls of PerturbSpectrum and InvPower
+are executed successfully, such that the guarantees in Lemma 7.2 and Theorem 14 are satisfied,
+which holds with high probability since we will show there are a total of O(n log(nU/ε)) calls in
+(13).
+By Lemma 7.2, γ = ε2/(n4U) is the gap of the spectrum of B, such that every eigenvalue is
+bounded away by γ from each other.
+28
+
+--- PDF PAGE 29 ---
+We denote the eigenvalues of A and B as
+λ1≤λ2≤···≤ λn and κ1≤κ2≤···≤ κn,
+respectively. We show the guarantees of ShiftInvert in the next lemma. Since ShiftInvert
+always returns when r−ℓ&lt;γ/ 8, so we always have r−ℓ≥γ/16.
+Lemma 7.3. In ShiftInvert, if r−ℓ≥γ/16, either one of the following holds.
+• It returns NO and B has no eigenvalues in the range [ℓ,r ].
+• It returns YES and B has at least one eigenvalue in the range [ℓ− (r−ℓ)/4,r + (r−ℓ)/4].
+Proof. By Theorem 14, λ in Line 17 satisfies
+λ≈0.1 max{(r−ℓ)/2, min
+i
+|λi(B−mI)|} = max{(r−ℓ)/2, min
+i
+|λi(B)−m|}.
+If the function returns YES, we have
+min
+i
+|λi(B)−m|≤ 1.1λ≤ 1.32· (r−ℓ)/2,
+and thus there exists an eigenvalue in ℓ+r
+2 ± 1.32r−ℓ
+2 ∈ [ℓ− (r−ℓ)/4,r + (r−ℓ)/4]. On the other
+hand, if the function returns NO, we have
+max{(r−ℓ)/2, min
+i
+|λi(B)−m|}≥ 0.9λ≥ 0.9· 1.2(r−ℓ)/2&gt; (r−ℓ)/2,
+and thus mini|λi(B)−m|&gt; (r−ℓ)/2, so we conclude that no eigenvalue is in [ ℓ,r ].
+We prove the following claims.
+Claim 7.4. For all i∈ [n], there exists an interval [ℓ,r ]∈L such that κi∈ [ℓ,r ].
+Proof. Note that the leaf nodes of I partition the interval on the root [ −2U, 2U], and we have
+κi∈ [−2U, 2U]. Therefore, there exists an interval [ ℓ,r ] that contains the point κi. It remains to
+show that the leaf is of the second type.
+By Lemma 7.3, ShiftInvert(B,ℓ,r ) must return YES because κi is in the range [ℓ,r ].
+Claim 7.5. For all [ℓ,r ]∈L , there exists i∈ [n] such that|ℓ−κi|&lt;γ/ 5.
+Proof. Since ShiftInvert(B,ℓ,r ) returns YES by the definition ofL, we must have
+κi∈ [ℓ− (r−ℓ)/4,r + (r−ℓ)/4].
+We haver−ℓ &lt; γ/8 by the property of the leaf interval, and thus |ℓ−κi|≤ γ/8 +γ/8/4&lt; γ/5.
+By Line 4 and the two above claims, Λ can be partitioned into n subsets with the i-th group
+in the range [ κi−γ/5,κi +γ/5]. By Lemma 7.2, the eigenvalues of B are bounded away from
+each other by γ, and|λi−γi|≤ ε/2 for all i∈ [n]. Therefore, the sorted list in Line 4 contains n
+elementseλ1≤···≤ eλn, such that
+|eλi−λi|≤| eλi−κi| +|κi−λi|≤ γ/5 +ε/2&lt;ε.
+29
+
+--- PDF PAGE 30 ---
+Performance of Theorem 16. Since the algorithm runs the subroutine ShiftInvert for|I|
+times. We first bound the number of intervals in I. We partition I into levels, such that level
+d≥ 0, denoted as Id, contains the set of intervals with length 4 U/2d. Note that level 0 contains
+the only interval [−2U, 2U] at the root.
+Claim 7.6. For all d&gt; log2(32U/γ), it holds that Id =∅.
+Proof. An internal node associated with an interval (ℓ,r ) goes to the branch Line 11, so the length
+r−ℓ is at least γ/8. When d&gt; log2(32U/γ), any interval at level d− 1 has length &lt; 4U/2d =γ/8,
+so it can only be a leaf. Therefore, there are no intervals at level d.
+LetIint be the set of intervals associating to the internal nodes, we have 2|Iint| + 1 =|I|, which
+is a property that holds for any binary tree. To bound the size of Iint∩Id, we use double counting
+X
+(ℓ,r)∈Iint∩Id
+1≤
+X
+(ℓ,r)∈Iint∩Id
+X
+i∈[n]
+1 [κi∈ [ℓ− (r−ℓ)/4,r + (r−ℓ)/4]]
+=
+X
+i∈[n]
+X
+(ℓ,r)∈Iint∩Id
+1 [κi∈ [ℓ− (r−ℓ)/4,r + (r−ℓ)/4]]
+≤
+X
+i∈[n]
+2 = 2n, (12)
+where the first inequality follows from the property of an internal node, and the second inequality
+follows from the fact that the intervals at leveld have the same length and do not overlap. Together
+with Claim 7.6, we have
+|I| = 2|Iint| + 1≤ 2· 2n(1 + log2(32U/γ)) + 1 =O(n log(nU/ε)). (13)
+Now we bound the time and space complexity. Note that ℓ,r in ComputeSpectrum is stored
+exactly inO(log(nU/ε))-bit fixed points, due to the bound of the recursion tree depth in Claim 7.6,
+and the fact that ℓ,r multiplied by 2d is an integer at level d. Therefore, when we call InvPower
+in Line 17, all its inputs are O(log(nU/ε))-bit fixed points, so the entries are bounded by U′ :=
+U· 2O(log(nU/ε))≤ poly(n,U,ε−1) in Theorem 14 when we scale up the matrix to become an integer
+matrix.
+Our algorithm calls InvPower for |I| times, with each call in eO(n2(nnz + n)) time and
+O(n log(nU)) space. We conclude the running time
+O(n log(nU/ε))· eO(n2(nnz +n))≤ eO(n3(nnz +n)).
+For the space, by Lemma 7.2, the representation of B has O(n log(nU/ε)) bits. We conclude the
+space complexity O(n log(nU/ε)) bits.
+7.4 Eigenvector and Singular Value Decomposition
+In this section, we compute the approximation of the eigenvectors for a real symmetric matrix using
+Spectrum and InvPower. We first perturb the matrix to make the eigenvalues bounded away
+from each other by γ = Θ(ε/poly(n)), and then compute the approximations of the eigenvalues up
+to additive error γ/10. By shifting the matrix with respect to the approximation of the eigenvalue,
+the spectral gap is large enough (relative to the shifted eigenvalue) to apply the inverse power
+method which admits a good approximation of the corresponding eigenvector.
+30
+
+--- PDF PAGE 31 ---
+Theorem 17. For any constant c &gt; 0, there exists a randomized algorithm Eigendecompose
+that, given ε &gt;0, a symmetric matrix A∈ Zn×n with integer entries in [−U,U ] and nnz nonzero
+entries, with probability at least 1−n−c, outputs eλ1,..., eλn and vectors v1,..., vn with fixed point
+representations such that the following holds:
+• For all i∈ [n], let ei denote the eigenvector associated with λi(A) of unit length,
+|λi(A)−eλi|≤ ε, ∥vi∥2
+2∈ [1−ε, 1 +ε], ∥Avi−eλivi∥2≤ε.
+• For all i,j ∈ [n] and i̸=j, it holds that |⟨vi, vj⟩|≤ ε.
+• The algorithm runs in eO(n3(nnz +n)) bit operations and space of O(n log(nU/ε)) bits. Here,
+eO hides logarithmic factors logO(1)(nUε−1).
+Proof. We invoke PerturbSpectrum(A,ε/ 2) to perturb the spectrum. By Lemma 7.2, we obtain
+an access to matrix B such that
+|λi(A)−λi(B)|≤ ε/2, ∀i∈ [n]
+and
+|λi(B)−λi+1(B)|≥ γ, ∀i∈ [n− 1]
+where γ := ε2/(4n4U). We also have ∥A− B∥2 ≤ ε/2. Then, we obtain approximations of
+eigenvalues of B with γ/10 accuracy by invoking
+eλB
+1,eλB
+2,..., eλB
+n← Spectrum(B,γ/ 10).
+By Theorem 16, we have|eλB
+i −λi(B)|≤ γ/10 for all i∈ [n].
+To approximate the eigenvector associated with λi(B), we invoke InvPowerGap with the
+matrix B− (eλB
+i +γ/5)I and the parameters δ := γ/10 and a sufficiently small ε0 to be specified
+later. For this matrix, we have
+min
+j
+λj(B− (eλB
+i +γ/5)I)
+ =
+λi(B)− (eλB
+i +γ/5)
+∈ [0.1γ, 0.3γ].
+For anyj̸=i, the eigenvalue satisfies
+λj(B− (eλB
+i +γ/5)I)
+ =
+λj(B)− (eλB
+i +γ/5)
+≥|λj(B)−eλB
+i|−| γ/5|
+≥|λj(B)−λi(B)|−| λi(B)−eλB
+i|−| γ/5|≥ γ−γ/10−γ/5 = 0.7γ.
+Therefore, the spectral gap conditions in Corollary 15 are satisfied. We obtained a vector vi such
+that
+|⟨vi, ei⟩|∈ [1−ε0, 1 +ε0], ⟨vi, vi⟩∈ [1−ε0, 1 +ε0] (14)
+where ei is a unit eigenvector of B corresponding to λi(B). We decompose vi := ui + wi such that
+ui =⟨vi, ei⟩ei and⟨wi, ei⟩ = 0, then
+∥wi∥2
+2 =∥vi∥2
+2−∥ ui∥2
+2≤ (1 +ε0)2− (1−ε0)2 = 4ε0
+31
+
+--- PDF PAGE 32 ---
+and thus∥wi∥2≤ 2√ε0. We can bound by triangle inequality,
+∥Avi−eλB
+i vi∥2≤∥ Avi− Bvi∥2 +∥Bvi− Bui∥2 +∥Bui−eλB
+i ui∥2 +∥eλB
+i ui−eλB
+i vi∥2
+≤∥ A− B∥2∥vi∥2 +∥B∥2∥wi∥2 +∥λi(B)ui−eλB
+i ui∥2 +eλB
+i∥wi∥2
+≤ (1 +ε0)ε/2 + 2nU· 2√ε0 + (1 + 5ε0)γ/10 + (2nU +γ/10)· 2√ε0
+≤ 0.6ε + 0.1ε + 0.1ε + 0.1ε&lt;ε
+by setting ε0 = (ε/(60nU))2. For the orthogonality condition, for any i̸=j, we have
+|⟨vi, vj⟩| =|⟨ui + wi, uj + wj⟩|≤|⟨ ui, uj⟩| +|⟨ui, wj⟩| +|⟨wi, uj⟩| +|⟨wi, wj⟩|
+≤ 0 +∥wj∥2 +∥wi∥2 +∥wi∥2∥wj∥2≤ 8√ε0≤ε. (15)
+For the time complexity, the dominant step isSpectrum(B,γ/ 10) andn calls of InvPowerGap,
+requiring a total time of
+eO(n3(nnz +n)) +n· eO(n2(nnz +n)) = eO(n3(nnz +n)).
+Corollary 18. For any constant c &gt; 0, there exists a randomized algorithm SVD that, given
+ε &gt;0, n≥ m, a matrix A∈ Zn×m with integer entries in [−U,U ] and nnz nonzero entries, with
+probability at least n−c, outputs matrices U∈ Rn×n, V∈ Rm×m and a rectangular diagonal matrix
+Σ∈ Rn×m such that
+∥U⊤U− I∥2≤ε, ∥V⊤V− I∥2≤ε, ∥AV− UΣ∥2≤ε, ∥A⊤U− VΣ⊤∥2≤ε,
+in eO(n3(nnz + n)) bit operations and working space of O(n log(nU/ε)) bits. Here, eO hides the
+logarithmic factors logO(1)(nUε−1).
+Proof. Matrix-vector access to AA⊤ +diag(·) can be implemented inO(nnz+n) time for the query
+of a right multiplication of a vector. Let ε0 be specified later. We invoke
+Eigendecompose(AA⊤ +ε0I,ε 0/10)
+and let U be the matrix with columns u1,..., un set to the approximate eigenvectors ofAA⊤+ε0I.
+Let Σ be the rectangular diagonal matrix with diagonal entriesσ1,...,σ m set to the square roots of
+the corresponding approximate eigenvalues. Let V be the m bym matrix with columns v1,..., vm
+such that
+vi =σ−1
+i A⊤ui.
+By the guarantees of Eigendecompose, each σi is nonzero since the eigenvalues ≥ ε0 and
+the error is ε0/10, so vi is well-defined. All entries of U⊤U− I are bounded by ε0 and thus
+∥U⊤U− I∥2≤nε0. For distinct i,j ∈ [m], we have
+v⊤
+i vj =σ−2
+i u⊤
+i AA⊤uj = u⊤
+i (uj + ∆)≤ u⊤
+i uj +∥ui∥2∥∆∥2
+for some vector ∆ with ∥∆∥2≤ ε0, so∥V⊤V− I∥2≤ 3mε0. The last two properties follow from
+Avi = σ−1
+i AA⊤ui≈ σiui, and A⊤ui≈ σivi. By choosing ε0 = ε/poly(n) sufficiently small, all
+the inequalities have error bounded by ε as desired.
+This algorithm has the same time and space complexity as Theorem 17. Specifically, the working
+space is low since vi depends only on ui and σi.
+32
+
+--- PDF PAGE 33 ---
+8 Conclusion and Discussion
+In this paper, we presented a linear-space solver for general linear systems that runs in eO(n2· nnz)
+time. We then show many other numerical linear algebra primitives can be solved in near-linear
+space and polynomial time.
+Our algorithm approximates entries up to multiplicative factors, implying that the support of the
+solution A−1b is obtained from the approximation, since 0 is the only multiplicative approximation
+of itself. However, one could compute the support of A−1b in eO(n·nnz) time by solving the system
+modulo a large random prime. This uses the fact that zero modulo any prime is still zero, and a
+nonzero integer remains nonzero modulo a random prime with high probability.
+For the space usage, our algorithm storesO(n log(nU)) bits, which is linear with the assumption
+U = poly(n). However, for U =O(1), each column of the matrix can be stored in O(n) bits, but
+we use O(n logn) bits to compute A−1b.
+It is an open question whether there exists a polynomial-time algorithm using truly linear space,
+i.e., O(n logU) bits or even O(n) bits. It seems challenging to achieve truly linear space, since
+storing a determinant of a 01-matrix would still require Ω(n logn) bits. More fundamentally, finite
+field methods appear incapable of achieving truly linear space—one cannot even perform rational
+reconstruction for one entry of the solution vector. O(n log(nU)) bits of space is the minimal
+requirement for rational reconstruction.
+Another interesting direction is to optimize theO(n2·nnz) running time for a linear-space linear
+system solver. It may be easier to deal with the polynomially-conditioned matrices and norm-wise
+approximations.
+Acknowledgments
+We thank Richard Peng for many useful discussions and useful reference pointers, Yang P. Liu for
+reviewing our paper and giving helpful comments, and Sepehr Assadi for helpful discussions.
+References
+[AKP19] Alexandr Andoni, Robert Krauthgamer, and Yosef Pogrow. On Solving Linear Systems
+in Sublinear Time. In Avrim Blum, editor, 10th Innovations in Theoretical Computer
+Science Conference, ITCS, pages 3:1–3:19, 2019. 5
+[APS+17] Michael Aizenman, Ron Peled, Jeffrey Schenker, Mira Shamis, and Sasha Sodin.
+Matrix Regularizing Effects of Gaussian Perturbations. Commun. Contemp. Math. ,
+19(3):1750028, 22, 2017. 26
+[Ber68] Elwyn R. Berlekamp. Nonbinary BCH Decoding (abstr.). IEEE Trans. Inf. Theory ,
+14(2):242, 1968. 39
+[Ber84] Stuart J. Berkowitz. On Computing the Determinant in Small Parallel Time using a
+Small Number of Processors. Inf. Process. Lett., 18(3):147–150, 1984. 2
+[Ber15] Elwyn R. Berlekamp. Algebraic Coding Theory - Revised Edition. WorldScientific, 2015.
+39
+[BGKS23] Jess Banks, Jorge Garza-Vargas, Archit Kulkarni, and Nikhil Srivastava. Pseudospectral
+Shattering, the Sign Function, and Diagonalization in Nearly Matrix Multiplication
+Time. Found. Comput. Math., 23(6):1959–2047, 2023. 5
+33
+
+--- PDF PAGE 34 ---
+[BGY18] Paul Beame, Shayan Oveis Gharan, and Xin Yang. Time-Space Tradeoffs for Learning
+Finite Functions from Random Evaluations, with Applications to Polynomials. In
+Conference On Learning Theory, COLT, pages 843–856, 2018. 5
+[BLS19] Stavros Birmpilis, George Labahn, and Arne Storjohann. Deterministic Reduction of
+Integer Nonsingular Linear System Solving to Matrix Multiplication. In Proceedings of
+the 2019 on International Symposium on Symbolic and Algebraic Computation, ISSAC ,
+pages 58–65, 2019. 2, 4
+[CEK+02] Li Chen, Wayne Eberly, Erich Kaltofen, B. David Saunders, William J. Turner, and
+Gilles Villard. Efficient Matrix Preconditioners for Black Box Linear Algebra. volume
+343/344, pages 119–146. 2002. Special issue on structured and infinite systems of linear
+equations. 3, 6, 15, 44, 45
+[CGL+20] Nai-Hui Chia, Andr´ as Gily´ en, Han-Hsuan Lin, Seth Lloyd, Ewin Tang, and Chunhao
+Wang. Quantum-Inspired Algorithms for Solving Low-Rank Linear Equation Systems
+with Logarithmic Dependence on the Dimension. In 31st International Symposium on
+Algorithms and Computation, ISAAC , pages 47:1–47:17, 2020. 5
+[CKM+14] Michael B. Cohen, Rasmus Kyng, Gary L. Miller, Jakub W. Pachocki, Richard Peng,
+Anup B. Rao, and Shen Chen Xu. Solving SDD Linear Systems in Nearly mlog1/2n
+Time. In David B. Shmoys, editor, Symposium on Theory of Computing, STOC , pages
+343–352, 2014. 5
+[CLW18] Nai-Hui Chia, Han-Hsuan Lin, and Chunhao Wang. Quantum-Inspired Sublinear Clas-
+sical Algorithms for Solving Low-Rank Linear Systems. CoRR, abs/1811.04852, 2018.
+5
+[Con11] Keith Conrad. The Miller–Rabin Test. Encyclopedia of Cryptography and Security ,
+2011. 37
+[Csa76] L. Csanky. Fast Parallel Matrix Inversion Algorithms. SIAM J. Comput., 5(4):618–623,
+1976. 2
+[CW09] Kenneth L. Clarkson and David P. Woodruff. Numerical Linear Algebra in the Stream-
+ing Model. In Proceedings of the 41st Annual ACM Symposium on Theory of Computing,
+STOC, pages 205–214, 2009. 5
+[DEG+99] James W Demmel, Stanley C Eisenstat, John R Gilbert, Xiaoye S Li, and Joseph WH
+Liu. A Supernodal Approach to Sparse Partial Pivoting. SIAM Journal on Matrix
+Analysis and Applications, 20(3):720–755, 1999. 2
+[Dix82] John D. Dixon. Exact Solution of Linear Equations using P -adic Expansions. Numer.
+Math., 40(1):137–141, 1982. 2, 4, 5, 7
+[DKRS23] Papri Dey, Ravi Kannan, Nick Ryder, and Nikhil Srivastava. Bit Complexity of Jordan
+Normal Form and Polynomial Spectral Factorization. In14th Innovations in Theoretical
+Computer Science Conference, ITCS , pages 42:1–42:18, 2023. 5
+[DKS19] Yuval Dagan, Gil Kur, and Ohad Shamir. Space Lower Bounds for Linear Prediction
+in the Streaming Model. In Conference on Learning Theory, COLT , pages 929–954.
+PMLR, 2019. 5
+34
+
+--- PDF PAGE 35 ---
+[DRSL16] Timothy A. Davis, Sivasankaran Rajamanickam, and Wissam M. Sid-Lakhdar. A Sur-
+vey of Direct Methods for Sparse Linear Systems. Acta Numer. , 25:383–566, 2016.
+2
+[EGG+06] Wayne Eberly, Mark Giesbrecht, Pascal Giorgi, Arne Storjohann, and Gilles Villard.
+Solving Sparse Rational Linear Systems. In Symbolic and Algebraic Computation, In-
+ternational Symposium, ISSAC , pages 63–70, 2006. 2, 4
+[Geo73] Alan George. Nested Dissection of a Regular Finite Element Mesh. SIAM journal on
+numerical analysis, 10(2):345–363, 1973. 2
+[GPV23] Mehrdad Ghadiri, Richard Peng, and Santosh S. Vempala. The Bit Complexity of
+Efficient Continuous Optimization. In 64th IEEE Annual Symposium on Foundations
+of Computer Science, FOCS , pages 2059–2070, 2023. 4, 5, 24
+[Gra05] Robert M. Gray. Toeplitz and Circulant Matrices: A Review. Found. Trends Commun.
+Inf. Theory, 2(3), 2005. 5
+[GRT18] Sumegha Garg, Ran Raz, and Avishay Tal. Extractor-Based Time-Space Lower Bounds
+for Learning. In Proceedings of the 50th Annual ACM SIGACT Symposium on Theory
+of Computing, STOC , pages 990–1002, 2018. 5
+[GRT19] Sumegha Garg, Ran Raz, and Avishay Tal. Time-Space Lower Bounds for Two-Pass
+Learning. In 34th Computational Complexity Conference, CCC, pages 22:1–22:39, 2019.
+6
+[HHL09] Aram W. Harrow, Avinatan Hassidim, and Seth Lloyd. Quantum Algorithm for Linear
+Systems of Equations. Physical Review Letters, 103(15), 2009. 5
+[KKM79] Thomas Kailath, Sun Yuan Kung, and Martin Morf. Displacement Ranks of Matrices
+and Linear Equations. J. Math. Anal. Appl. , 68(2):395–407, 1979. 5
+[KP20] Iordanis Kerenidis and Anupam Prakash. Quantum Gradient Descent for Linear Sys-
+tems and Least Squares. Phys. Rev. A , 101(2):022316, 18, 2020. 5
+[KRT17] Gillat Kol, Ran Raz, and Avishay Tal. Time-Space Hardness of Learning Sparse Pari-
+ties. In Proceedings of the 49th Annual ACM SIGACT Symposium on Theory of Com-
+puting, STOC, pages 1067–1080, 2017. 5
+[KS91] Erich L. Kaltofen and B. David Saunders. On Wiedemann’s Method of Solving Sparse
+Linear Systems. In Applied Algebra, Algebraic Algorithms and Error-Correcting Codes,
+9th International Symposium, AAECC-9 , pages 29–38, 1991. 3, 6, 15, 44
+[Lic05] Daniel Lichtblau. Half-GCD and Fast Rational Recovery. In Symbolic and Algebraic
+Computation, International Symposium ISSAC , pages 231–236, 2005. 40
+[Liu92] Joseph WH Liu. The Multifrontal Method for Sparse Matrix Solution: Theory and
+Practice. SIAM review, 34(1):82–109, 1992. 2
+[LTWY23] Xin Lyu, Avishay Tal, Hongxun Wu, and Junzhao Yang. Tight Time-Space Lower
+Bounds for Constant-Pass Learning. In 64th IEEE Annual Symposium on Foundations
+of Computer Science, FOCS , pages 1195–1202, 2023. 6
+35
+
+--- PDF PAGE 36 ---
+[Mas69] James L. Massey. Shift-Register Synthesis and BCH Decoding. IEEE Trans. Inf.
+Theory, 15(1):122–127, 1969. 39
+[Min96] Nariyuki Minami. Local Fluctuation of the Spectrum of a Multidimensional Anderson
+Tight Binding Model. Comm. Math. Phys. , 177(3):709–725, 1996. 26
+[MM17] Dana Moshkovitz and Michal Moshkovitz. Mixing Implies Lower Bounds for Space
+Bounded Learning. In Proceedings of the 30th Conference on Learning Theory, COLT,
+pages 1516–1566, 2017. 5
+[MM18] Dana Moshkovitz and Michal Moshkovitz. Entropy Samplers and Strong Generic Lower
+Bounds for Space Bounded Learning. In 9th Innovations in Theoretical Computer
+Science Conference, ITCS, pages 28:1–28:20, 2018. 5
+[MMS18] Cameron Musco, Christopher Musco, and Aaron Sidford. Stability of the Lanczos
+Method for Matrix Function Approximation. In Proceedings of the Twenty-Ninth An-
+nual ACM-SIAM Symposium on Discrete Algorithms, SODA , pages 1605–1624, 2018.
+5
+[PV24] Richard Peng and Santosh S. Vempala. Solving Sparse Linear Systems Faster than
+Matrix Multiplication. Commun. ACM, 67(7):79–86, 2024. 2, 4
+[Rab80] Michael O. Rabin. Probabilistic Algorithm for Testing Primality. J. Number Theory ,
+12(1):128–138, 1980. 37
+[Raz17] Ran Raz. A time-Space Lower Bound for a Large Class of Learning Problems. In 58th
+IEEE Annual Symposium on Foundations of Computer Science, FOCS , pages 732–742.
+IEEE Computer Society, 2017. 5
+[Raz19] Ran Raz. Fast Learning Requires Good Memory: A Time-Space Lower Bound for
+Parity Learning. J. ACM, 66(1):3:1–3:18, 2019. 2, 5, 6
+[Spi10] Daniel A. Spielman. Algorithms, Graph Theory, and Linear Equations in Laplacian
+Matrices. In Proceedings of the International Congress of Mathematicians. Volume IV ,
+pages 2698–2722. Hindustan Book Agency, New Delhi, 2010. 5
+[Sri23] Nikhil Srivastava. The Complexity of Diagonalization. In Proceedings of the 2023
+International Symposium on Symbolic and Algebraic Computation, ISSAC , pages 1–6,
+2023. 5
+[SSV19] Vatsal Sharan, Aaron Sidford, and Gregory Valiant. Memory-Sample Tradeoffs for
+Linear Regression with Small Error. In STOC’19—Proceedings of the 51st Annual
+ACM SIGACT Symposium on Theory of Computing , pages 890–901. ACM, New York,
+2019. 2, 5
+[ST14] Daniel A. Spielman and Shang-Hua Teng. Nearly Linear Time Algorithms for Pre-
+conditioning and Solving Symmetric, Diagonally Dominant Linear Systems. SIAM J.
+Matrix Anal. Appl. , 35(3):835–885, 2014. 5
+[Sto05] Arne Storjohann. The Shifted Number System for Fast Linear Algebra on Integer
+Matrices. J. Complex., 21(4):609–650, 2005. 2, 4, 8, 24
+36
+
+--- PDF PAGE 37 ---
+[Vis12] Nisheeth K. Vishnoi. Lx = b Laplacian Solvers and their Algorithmic Applications.
+Found. Trends Theor. Comput. Sci. , 8(1-2):front matter, 1–141 (2013), 2012. 5
+[vzGG13] Joachim von zur Gathen and J¨ urgen Gerhard. Modern Computer Algebra (3. ed.) .
+Cambridge University Press, 2013. 13, 40
+[Wie86] Douglas H. Wiedemann. Solving Sparse Linear Equations over Finite Fields. IEEE
+Trans. Inf. Theory, 32(1):54–62, 1986. 2, 3, 4, 5, 6, 7, 8, 14, 15, 38, 41, 44
+[Woo14] David P. Woodruff. Sketching as a Tool for Numerical Linear Algebra. Found. Trends
+Theor. Comput. Sci. , 10(1-2):1–157, 2014. 5
+[WZP18] Leonard Wossnig, Zhikuan Zhao, and Anupam Prakash. Quantum linear system algo-
+rithm for dense matrices. Phys. Rev. Lett., 120(5):050502, 5, 2018. 5
+[XXCB14] Yuanzhe Xi, Jianlin Xia, Stephen Cauley, and Venkataramanan Balakrishnan. Superfast
+and Stable Structured Solvers for Toeplitz Least Squares via Randomized Sampling.
+SIAM J. Matrix Anal. Appl. , 35(1):44–72, 2014. 5
+[XXG12] Jianlin Xia, Yuanzhe Xi, and Ming Gu. A Superfast Structured Solver for Toeplitz
+Linear Systems via Randomized Sampling. SIAM J. Matrix Anal. Appl. , 33(3):837–
+858, 2012. 5
+A Prime Sampling
+Here we present the missing proofs from Section 3.5. To sample a prime from an interval uniformly,
+we can use rejection sampling since the density of primes is asymptotically 1/ ln(n). First, we show
+that the primality of a given number can be tested with high probability using the Miller-Rabin
+test [Rab80].
+Lemma A.1 ([Con11]). There exists a randomized algorithm TestPrime that, given a integer
+0&lt;x ≤U, outputs either PRIME or COMPOSITE, and runs in O(log2U logO(1) logU) bit operations
+and O(logU) space of bits, such that the following properties hold:
+• If x is prime, it outputs PRIME with probability 1.
+• If x is composite, it outputs COMPOSITE with probability at least 3/4.
+We restate and prove Theorem 5 on the guarantees of uniformly sampling n distinct primes.
+Theorem 5. For any constant c &gt; 0, there exists an algorithm SamplePrime that, given an
+integern≥ 16 and an integer k∈ [1,n ], satisfies the following properties:
+• The algorithm outputs k integers, with failure probability≤ 1/nc.
+• Conditioned on the success of the algorithm, the output distribution follows the uniform dis-
+tribution of k distinct primes in the range [n,n 2].
+• The algorithm runs in O(k logO(1)n) bit operations, and space of O(k logn) bits.
+37
+
+--- PDF PAGE 38 ---
+Proof. We sample the primes sequentially. For the i-th prime, we apply rejection sampling: we
+repeatedly draw a uniform number from [n,n 2] until it is a prime and distinct from the previously
+sampled primes.
+By Fact 3.14, there are at least ( n2−n)/(2 log2n) primes in the range. A uniform random
+integer in the range has probability at least
+(n2−n)/(2 log2n)− (n− 1)
+n2 ≥ (n2−n)/(2 log2n)− (n− 1)·n/(4 log2n)
+n2 ≥ 1
+8 log2n
+to be a new prime, where we used the fact n≥ 4 log2n for n≥ 16. Therefore, for each prime
+we want to draw, we can sample O(log2n) times so that the failure probability (the probability of
+never picking a new prime) is at most 1 /nc+2.
+As shown above, when drawing the i-th prime, we are sampling O(log2n) times. For each of
+theO(log2n) samples, we must determine whether the drawn integer is a new prime. We store the
+previously sampled primes in a BBST (balanced binary search tree), such that each insertion and
+query takes O(log2n) bit operations. By Lemma A.1, we can run TestPrime O(logn) times to
+boost the success probability of one primality test to 1 − 1/nc+2. A union bound gives that the
+total failure probability is at most 1 /nc.
+Therefore, by Lemma A.1, the algorithm runs in
+O(k log2n)·O(logn)·O(log2n logO(1) logn) =O(k log5n logO(1) logn)
+bit operations, and in space of O(k logn) bits. We remark that this is only a crude analysis – we
+do not optimize the number of logarithm factors.
+B Wiedemann’s Algorithm: Linear Systems and Determinants
+over Finite Fields
+In this section, we present Wiedemann’s algorithm [Wie86] and its application. We reformulate
+the algorithm so that we can adapt it for our application of computing determinants. We track
+the space complexity carefully, and we measure it in bits or in number of finite field elements. We
+discuss the following problems.
+Problem 1 (Computing Minimal Polynomials, MinPoly). For primep, given a matrix A∈ Fn×n
+p ,
+find the minimal polynomial µ(A).
+Problem 2 (Linear System Solving, LinSolve1). For prime p, given an invertible matrix A∈
+Fn×n
+p and a vector b∈ Fn
+p, find x∈ Fn
+p such that
+Ax≡ b (mod p).
+Problem 3 (Finding Nontrivial Kernel Vectors, LinSolve0). For primep, given a singular matrix
+A∈ Fn×n
+p , find a vector v such that Av = 0 and v is not the zero vector.
+Problem 4 (Computing Determinants, Det). For prime p, given a matrix A∈ Fn×n
+p , compute
+det(A) modp.
+The original presentation in Wiedemann’s paper [Wie86] addresses only LinSolve1, while
+the discussion for Det is insufficient for our purposes. The solution to MinPoly appears in a
+subroutine and is not clearly stated. We will reformulate Wiedemann’s algorithm for MinPoly,
+38
+
+--- PDF PAGE 39 ---
+as all the other problems can be reduced to this one. The space and time complexity for each
+algorithm/reduction will be carefully presented.
+First note that we can reduce LinSolve1 to LinSolve0.
+Fact B.1. For an invertible matrix A and a vector b, let by be a nontrivial kernel vector such that
+A −b
+O 0
+
+by = 0.
+Let ˆy = [y v]⊤, then y/v is a solution to Ax = b.
+Proof. Note that Ay−vb = 0. If v = 0, we must have y = 0 since A invertible, butby is nonzero,
+a contradiction. Therefore, v̸= 0, and A−1b = y/v.
+We will discuss in detail how to solve LinSolve0 and Det using MinPoly in the subsequent
+sections.
+B.1 Finding Minimal Linear Recurrences
+The core of Wiedemann’s algorithm is finding minimal linear recurrences. We interpret linear
+recurrences in the language of polynomials.
+Definition B.2 (Linear recurrence of an array) . For an array [a0,...,a m] with elements over a
+field F , for d∈ [0,m ], a degree-d polynomialg(X) =Pd
+i=0ciXi is a linear recurrence of the array
+if for all j∈ [0,m−d], we have
+dX
+i=0
+ciai+j = 0.
+Furthermore,g is called a minimal linear recurrence if it is a linear recurrence with the least degree.
+We also refer to the minimal linear recurrence as theminimal polynomial. We have the following
+fact.
+Fact B.3. Up to scaling, an array has a unique minimal polynomial.
+It is well-known that the Berlekamp-Massey algorithm [Ber68, Mas69, Ber15] finds the minimal
+linear recurrence in O(m2) time.
+Theorem 19 (Berlekamp-Massey). There exists an algorithm LinearRecurrence such that,
+given an array [a0,a 1,...,a 2m] over F = Fp for prime p &gt;1 with a minimal polynomial g(X)∈
+F [X] of degree at most m, the following holds:
+• The algorithm outputs a scalar multiple of g(X) deterministically.
+• The algorithm runs in O(m2) operations in F and has a space requirement of O(m) field
+elements, i.e., O(m logp) bits.
+For the purposes of this paper, this original version suffices since we use it with Wiedemann’s
+algorithm and the other components already require O(m2) time. Nevertheless, for the reader’s
+convenience, we give the guarantees for the optimized version. The Berlekamp-Massey algorithm
+can be optimized to O(m log2(mp)) time using Half-GCD and polyonomial multiplications based
+on Fast Fourier Transforms.
+39
+
+--- PDF PAGE 40 ---
+Theorem 20 (Optimized Berlekamp-Massey [Lic05, vzGG13]) . There exists an algorithm such
+that, given an array [a0,a 1,...,a 2m] over F = Fp for prime p with a minimal polynomial g(X)∈
+F [X] of degree at most m, the following properties hold:
+• The algorithm outputs a scalar multiple of g(X) deterministically.
+• The algorithm runs in eO(m logp) bit operations and has a space requirement of O(m) field
+elements, i.e., O(m log(mp)) bits. Here, eO hides logO(1)(m logp) factors.
+B.2 Wiedemann’s Algorithm for Minimal Polynomials
+In this section, we present Wiedemann’s algorithm for MinPoly. Recall that we defined the
+minimal polynomial for an array of scalars in the previous section. We first extend this notion to
+an array of vectors and an array of matrices.
+Definition B.4 (Minimal polynomial of an array of vectors). Let [v0,..., vm] be an array of vectors
+over a field F , meaning that for each i∈ [0,m ] we have vi∈Fn. The minimal polynomial of the
+array is a polynomial µ(X) =Pd
+i=0ci·Xi with the least degree such that for all j∈ [0,m−d], it
+holds that
+dX
+i=0
+civi+j = 0.
+Definition B.5 (Minimal polynomial of an array of matrices) . Let [M0,..., Mm] be an array
+of matrices over a field F , meaning that for each i∈ [m] we have Mi ∈ Fn×n. The minimal
+polynomial of the array is a polynomial µ(X) =Pd
+i=0ci·Xi with the least degree such that for all
+j∈ [0,m−d], it holds that
+dX
+i=0
+ciMi+j = O.
+Note that a minimal polynomial of a matrix A by definition, denoted as µA(X), is the minimal
+polynomial of the following array
+[I, A, A2,..., Am]
+for any m≥ n. Wiedemann’s algorithm can be summarized as follows: with decent probability,
+the minimal polynomial µA(X) is the same as the minimal polynomial of the scalar array
+[x⊤y, x⊤Ay, x⊤A2y,..., x⊤Amy]
+where x, y∼Fn are vectors that are independent and drawn uniformly at random. Therefore, it
+is possible to use A as a black-box with accesses to the matrix-vector product to find the minimal
+polynomial in O(n) space. We formally present this in Wiedemann.
+Theorem 6. For prime p &gt; 1, let F = Zp. There exists a randomized algorithm Wiedemann
+that, given matrix-vector access for a matrix A∈Fn×n, outputs the minimal polynomial of A using
+O(TMatVec(A)·n) field operations, O(n) space of elements in F , and achieves success probability at
+least 1
+36⌈logp(n)⌉.
+In addition, Wiedemann always outputs a factor of the minimal polynomial. When p&gt;n , the
+success probability is constant, and can be boosted to 1−δ by running the algorithm O(log(1/δ))
+times and choosing the polynomial with the largest degree.
+40
+
+--- PDF PAGE 41 ---
+Algorithm 5: Wiedemann
+Input : Matrix-vector access for a matrix A∈Fn×n, where F = Fp for prime p&gt;n
+Output: A polynomial g(X)∈F [X], such that g|µA(X)
+1 x, y← independent and uniformly random vector from Fn
+// Compute bi = x⊤(Aiy) for i = 0... 2n
+2 for i = 0 to 2n do
+3 bi← x⊤y
+4 y← Ay
+5 return g(X)← LinearRecurrence(b0,...,b 2n)
+Correctness of Wiedemann. We present the correctness proof for Wiedemann. Most of the
+following proofs are adapted from [Wie86].
+The returned polynomial of Wiedemann is the minimal polynomial for the array
+{bi}2n
+i=0 ={x⊤Aiy}2n
+i=0,
+and we show that it coincides with the minimal polynomial ofA with decent probability for random
+x and y. Let µx,y(X) denote the minimal polynomial for {bi}2n
+i=0. For the array of column vectors
+{Aiy}2n
+i=0,
+we letµy(X) denote its minimal polynomial. For the matrix A, its minimal polynomial is denoted
+as µA(X).
+Before we go into the proofs, we first establish a bijection between the Krylov subspace K ≜
+KA(y) = span( y, Ay, A2y,... ) and a quotient polynomial ring R ≜ F [X]/(µy(X)). Note that
+R is a vector space, since it is closed under addition and scalar multiplication. For a polynomial
+f∈F [X], we use (f modµy(X)) to denote the residue polynomial in R.
+Letd denote dim(K), then K = span(y, Ay,..., Ad−1y) and deg(µy(X)) =d. Define ψ :K→
+R as a linear operation satisfying
+ψ(Aiy) =Xi, ∀i∈ [0,d− 1].
+Fact B.6. ψ is a bijection between K and R.
+Proof. Note that{Aiy}d−1
+i=0 is a basis for K and{Xi}d−1
+i=0 is a basis for R. So ψ is a bijection.
+Note that ψ(Av) =Xψ(v), so we can generalize for all i≥ 0,
+ψ(Aiy) =Xi.
+Therefore, for any polynomial p∈F [X], we have ψ(p(A)y) =p.
+Now we introduce a lemma on polynomial sampling in R, which is useful later.
+Lemma B.7. The probability that a uniformly random polynomial in R shares no common factors
+with µy is bounded by
+Pr
+g∼R
+[gcd(g,µ y) = 1]≥ 1
+6⌈log|F|(d)⌉.
+41
+
+--- PDF PAGE 42 ---
+Proof. Let q denote|F|, the size of the field F . Let h1,...,h k be the pairwise distinct irreducible
+factors of µy. Let di be the degree of hi. By CRT we know that
+Pr
+g∼R
+[gcd(g,µ y) = 1] = Pr
+g∼R
+&quot; k_
+i=1
+gcd(g,hi) = 1
+#
+=
+kY
+i=1
+
+1− 1
+qdi
+
+.
+It is known that every irreducible polynomial with degreej divide
+
+Xqj
+−X
+
+, which means the
+sum of their degrees is at most qj. Let sj =j· (number of hi’s with degree j). Then 0 ≤sj≤qj,
+and
+X
+i≥1
+si≤d≤
+ℓX
+i=1
+qi.
+where ℓ =⌈log|F|(d)⌉. From this, it follows that
+X
+i≥1
+si
+qii≤
+ℓX
+i=1
+1
+i≤ log 3ℓ.
+Since the coefficients of si on the left-hand side are decreasing, by taking si = qi for i≤ ℓ and
+si = 0 for i&gt;ℓ , we can achieve the maximum value of the sum. Therefore,
+log Pr
+g∼R
+[gcd(g,µ y) = 1] =
+X
+i≥1
+log
+
+1− 1
+qi
+
+· si
+i
+≥−
+X
+i≥1
+ 1
+qi + 1
+q2i
+si
+i
+≥−
+X
+i≥1
+si
+qii−
+X
+i≥1
+1
+qii
+≥− log 3ℓ− log 2≥− log 6ℓ.
+Taking exponential on both sides completes the proof.
+Lemma B.8. For any fixed y, it holds that µx,y(X) divides µy(X), and
+Pr
+x
+[µx,y(X) =µy(X)]≥ 1/⌈6 log|F|n⌉.
+Proof. Define the inner product operator ξu :K→F specified by a vector u∈Fn as
+ξu(v) = u⊤v.
+Since ξu is a linear functional on K, ξu◦ψ−1 is a linear functional on R, which is defined as
+(ξu◦ψ−1)(f) =ξu(ψ−1(f)).
+Forg∈R, define ηg :R→F as
+ηg(f) = [Xd−1]
+ 
+g·f modµy
+
+.
+42
+
+--- PDF PAGE 43 ---
+It’s easy to see ηg is linear and thus ηg∈R∗, where R∗ ={µ :R→F is a linear functional} is the
+dual space for R. Consider any linear functional µ∈R∗, pick
+g =
+d−1X
+i=0
+µ(Xi)Xd−1−i∈R.
+It’s easy to verify that for all 0 ≤ i &lt; d, ηg(Xi) = µ(Xi), therefore ηg = µ. Thus the mapping
+η :R→R∗ defined by η(g(X)) = ηg is an injection, so it’s also a bijection. There uniquely exists
+gu∈R such that ηgu =ξu◦ψ−1. Therefore,
+{x⊤Aiy}2n
+i=0 =
+ 
+ξx◦ψ−1
+(Xi)
+	2n
+i=0
+=
+
+ηgx(Xi)
+	2n
+i=0
+=
+n
+[Xd−1]
+
+gx(X)·Xi modµy(X)
+o2n
+i=0
+.
+Recall that µx,y is the minimal polynomial of {x⊤Aiy}2n
+i=0. Let ℓ be its degree, then for every
+j∈ [0, 2n−ℓ],
+0 =
+ℓX
+i=0
+[Xi]µx,y· x⊤Aj+iy
+=
+ℓX
+i=0
+[Xi]µx,y· [Xd−1]
+
+gx·Xj+i modµy
+
+= [Xd−1]
+  lX
+i=0
+[Xi]µx,yXi
+!
+·gxXj modµy
+!
+= [Xd−1]
+ 
+µx,ygxXj modµy
+
+.
+This implies that
+µx,ygx modµy = 0.
+The polynomial satisfying this with minimal degree is given by
+µx,y = µy
+gcd
+ 
+µy,g x
+.
+From this, we can see that µx,y divides µy.
+It’s easy to verify that the map γ :Fn→R defined by
+γ(u) =η−1(ξu·ψ−1)
+is a linear injection. Thus, picking x uniformly at random from Fn is equivalent to picking g
+uniformly at random from R. Therefore,
+Pr[µx,y =µy] = Pr [gcd(gx,µ y) = 1]≥ 1
+⌈6 log|F|n⌉
+by Lemma B.7.
+43
+
+--- PDF PAGE 44 ---
+Lemma B.9. It holds that µy(X) divides µA(X), and
+Pr
+y
+[µy(X) =µA(X)]≥ 1/⌈6 log|F|n⌉.
+Proof. Let f⊤
+A , f⊤
+y and f⊤
+x,y be the corresponding µA,µy and µx,y specified by A⊤. Formally,
+f⊤
+A , f⊤
+y and f⊤
+x,y are the minimal polynomials of {(A⊤)i}2n
+i=0,{(A⊤)iy}2n
+i=0 and{x⊤(A⊤)iy}2n
+i=0,
+respectively.
+Using the rational canonical form of A, we could find v∈Fn such thatf⊤
+A =f⊤
+v . For y uniform
+randomly sample in Fn,
+Pr[fv,y =µA] = Pr[f⊤
+y,v =f⊤
+A] = Pr[f⊤
+y,v =f⊤
+v ]≥ 1
+⌈6 log|F|n⌉.
+where the last step is followed from Lemma B.8.
+Also by Lemma B.8, fv,y divides µy. Moreover, µy divides µA since µA is the least common
+multiple of all µy’s. Thus fv,y =µA implies µy =µA. From this, Pr[µy =µA]≥ Pr[fv,y =µA]≥
+1/⌈6 log|F|n⌉.
+Performance of Wiedemann. We first focus on the time complexity measured in terms of the
+number of field operations in Fp. Sampling uniform random y and x takesO(n) time. The loop in
+Line 2 computes the inner product x⊤y and calls the matrix-vector access A· y for n times. This
+part takes O(n· TMatVec(A)) time. In the end it returns the minimal linear recurrence by calling
+LinearRecurrence, which takes eO(n2) bit operations due to Theorem 19.
+For space complexity, the algorithm only stores the variablesy, x,{bi}2n
+i=0. This requires storing
+O(n) field elements, that is, O(n logp) bits.
+Proof for Theorem 6. By Lemma B.8 and Lemma B.9, µx,y(X) is always a factor of µA(X),
+and the algorithm correctly outputs the minimal polynomial with probability at least
+Pr
+y
+[µy(X) =µA(X)]· Pr
+x
+[µx,y(X) =µy(X)|y]≥ 1
+36⌈logp(n)⌉2
+since x and y are independent. Combining with the performance analysis above, we conclude the
+proof.
+B.3 Computing Determinant
+In this section, we demonstrate a linear-space algorithm for Det, computing the determinant of
+a matrix A∈ Fn×n over a large finite field Fp for p &gt; poly(n), based on preconditioning the
+Wiedemann’s algorithm for minimal polynomials.
+In [Wie86] and [KS91], they showed that, with high probability, the characteristic polynomial
+and the minimal polynomial of UAVD coincide up to scaling, where U, V are random Toeplitz
+matrices and D is a random diagonal matrix. [CEK +02] provided a new analysis and simplified
+the preconditioner to a single diagonal matrix.
+Lemma B.10 (Lemma 4.2 of [CEK +02]). For a finite field F , let S ⊆ F , A ∈ Fn×n, and
+D = diag(d1,...,d n) be a diagonal matrix whered1,...,d n are independently and uniformly random
+sampled fromS. Then, with probability at least 1−n(n−1)/(2|S|), there existst≥ 0,c∈F such that
+cXt·µ(DA) =χ(DA), where µ(·) and χ(·) denote the minimal polynomial and the characteristic
+polynomial (in indeterminate X) respectively.
+44
+
+--- PDF PAGE 45 ---
+Algorithm 6: DeterminantZp
+Input : A matrix-vector access for a matrix A∈Fn×n with F = Fp for prime p&gt;n 2/δ.
+Output: The determinant (det(A) modp), with success probability≥ 2/3.
+1 D← a random diagonal matrix diag(d1,...,d n) where d1,...,d n∼ (F\{ 0})
+2 f(X)← Wiedemann(DA) be monic, with success probability ≥ 5/6
+3 return f(0)/Qn
+i=1di if deg(f) =n, otherwise return 0.
+We remark that the original lemma in [CEK +02] states that DA is cyclic up to nilpotent
+blocks, which means that the invariant factors f1|f2|···| fs have the property that f1,...,f s−1
+are monomials. This is equivalent to the condition cXt·µ(DA) =χ(DA) for t≥ 0 and c∈F .
+We present Determinant by combining the diagonal preconditioner with Wiedemann. We
+restate and prove Theorem 8.
+Theorem 8. Forδ∈ (0, 1/2), there exists a randomized algorithm DeterminantZp that, given
+matrix-vector access for an invertible matrix A∈Fn×n whereF = Fp for prime p≥ 6n2, outputs
+(det(A) modp) with probability at least 1−δ using O(TMatVec(A)·n log(1/δ)) field operations over
+F and O(n) space of field elements in F .
+Proof. Correctness. Note that det(DA) = det(A)Qn
+i=1di anddi’s have inverse in F, so we have
+det(A) = det(DA)Qn
+i=1di
+= χ(DA)(0)Qn
+i=1di
+. (16)
+By Lemma B.10, with probability 1−n(n−1)/(2(|F|−1))≥ 1−1/6, we havecXt·µ(DA) =χ(DA).
+We assume that µ(·) and χ(·) are both monic, and since deg( χ(DA)) =n, the condition becomes
+Xn−deg(µ(DA))·µ(DA) =χ(DA). (17)
+By Theorem 6, with probability 1 −δ/2, f(X) = µ(DA). Both of the above hold simultaneously
+with probability 2/3 by a union bound, and by (16) and (17),
+χ(DA) =
+( f(0)Qn
+i=1di
+if deg(f) =n,
+0 otherwise,
+which concludes the correctness. The success probability can be boosted to 1 −δ by running the
+algorithm for log(1/δ) times and taking the majority vote.
+Performance. Note that D is implicitly stored by d1,...,d n, and we can implement the
+matrix-vector access for DA so that each call takes O(TMatVec(A)) field operations. One can verify
+that Step 1 and Step 3 can be done in O(n) field operations and incur O(1) extra space.
+For Step 2, by Theorem 6, since p≥n, Wiedemann can achieve success probabiilty≥ 5/6 by
+repeating for O(1) times. This step makes O(n) calls to DA, and thus runs in
+O(n· TMatVec(A))
+field operations. When the success probability is boosted to 1 −δ, the algorithm is repeated for
+log(1/δ) times, and it follows the desired time complexity.
+The space requirement is O(n) field elements, since D and f(X) can be stored with O(n) field
+elements.
+45
+
+--- PDF PAGE 46 ---
+Algorithm 7: FindKernel
+Input : Matrix-vector access to a singular matrix A∈ Fn×n
+p for prime p
+Output: A vector in the kernel of A
+// Computing the minimal polynomial
+1 µ(X)← Wiedemann(A) with success probability≥ 1−δ/2
+2 ¯µ(X)←µ(X)/Xc such that ¯µ(0)̸= 0
+// Finding a nontrivial kernel vector
+3 z← uniformly random vector from Fn
+4 Repeat logp(2/δ) times
+5 y← ¯µ(A)z
+6 Find t≥ 0 to be the smallest integer that Aty = 0
+7 if t&gt; 0 then
+8 return At−1y
+B.4 Linear System Solving over Finite Fields
+In this section, we use Wiedemann for MinPoly to solve LinSolve0, finding a nontrivial kernel
+vector of a singular matrix, which would give a solution toLinSolve1 by the reduction in Fact B.1.
+We present the algorithm FindKernel.
+Analysis of FindKernel. Note that A is a singular matrix over the finite field F = Fp for a
+prime p. Assume the minimal polynomial
+µA(X) =
+dX
+i=0
+aiXi (18)
+is given, we aim to find a kernel vectorx such thatAx = 0 and x̸= 0. We have ¯µA(X) =µA(X)/Xc
+for some unique integer c such that the constant term is nonzero, ¯µA(0)̸= 0.
+Let z be a uniformly random vector from Fn and y = ¯µ(A)z. The integer t≥ 0 is the smallest
+integer such that Aty = 0. We know t≤c≤n since
+Acy = Ac¯µ(A)z =µ(A)z = 0 (19)
+If t&gt; 0, we can find the nontrivial kernel vector At−1y. We show this holds with high probability
+so that the algorithm terminates fast.
+Lemma B.11. It holds that
+Pr[t = 0] = Pr[y = 0]≤ 1
+|F| (20)
+where the randomness is over z∼Fn.
+Proof. Let V = Fn denote the vector space. Let K denote the kernel space of A, which is a
+subspace of V . Let K⊥ denote the orthogonal complement of K. We can decompose V into the
+direct sum V = K⊕K⊥, and now every vector v∈ V can be uniquely written as v = u + u⊥
+where u∈K and u⊥∈K⊥.
+46
+
+--- PDF PAGE 47 ---
+We can write y in the form
+y = ¯µ(A)z =
+deg(¯µ)X
+i=0
+¯aiAiz = ¯a0z + B(Az)
+for matrix B :=Pdeg(¯µ)
+i=1 ¯aiAi−1. Note that by definition ¯a0 = ¯µ(0)̸= 0, so we have
+Pr
+z∼F n
+[y = 0] = Pr
+u∼K,u⊥∼K⊥
+[y = 0| z = u + u⊥]
+= Pr
+u∼K,u⊥∼K⊥
+[¯a0(u + u⊥) + B(A(u + u⊥)) = 0]
+= Pr
+u∼K,u⊥∼K⊥
+[¯a0u + ¯a0u⊥ + BAu⊥ = 0]
+= Pr
+u⊥∼K⊥
+
+Pr
+u∼K
+[¯a0u =−¯a0u⊥− BAu⊥]
+
+= Pr
+u⊥∼K⊥
+ 1
+|K|· 1[−¯a0u⊥− BAu⊥∈K]
+
+≤ 1
+|K|≤ 1
+|F|
+where the last inequality holds since A is singular and has nullity &gt; 0.
+The guarantees for linear system solving are based on FindKernel and the reduction Fact B.1.
+We restate and prove Theorem 7.
+Theorem 7. There exists a randomized algorithm LinSolveZp such that, given matrix-vector
+access for an invertible matrix A∈ Fn×n
+p , a vector b∈ Fn
+p, δ∈ (0, 1/2) and a prime p, it outputs
+the solution x∈ Fn
+p to the system
+Ax≡ b (mod p)
+with probability at least 1−δ. Furthermore, the algorithm runs in O(TMatVec(A)·n log(1/δ)) field
+operations over Fp, and O(n) space of field elements in Fp.
+Proof. We call FindKernel to find a nontrivial kernel vector,
+A b
+O 0
+ y
+v
+
+= 0,
+then−y/v is the solution A−1b, since A is invertible and thus v must be nonzero.
+By Lemma B.11, assuming the minimal polynomial is given, one inner loop can correctly com-
+pute a nontrivial kernel vector with probability ≥ 1− 1/p. By repeating ⌈logp(2/δ)⌉ times, the
+success probability is boosted to ≥ 1−δ/2. By Theorem 6, Wiedemann correctly computes
+the minimal polynomial with probability ≥ 1−δ/2, so a union bound concludes that the failure
+probability is at most δ.
+For the performance analysis, the algorithm requires one call to Wiedemann and eO(n) calls to
+the matrix-vector access, so the time complexity follows from Theorem 6. The space requirement is
+O(n) field elements, since all the steps can be computed withO(1) many vectors. All the polynomial
+evaluations of a matrix, for example the ¯µ(A) in Line 5, should be computed by Horner’s method
+so that the space is low.
+47
+
+--- PDF PAGE 48 ---
+C Proofs of the Inverse Power Method
+C.1 Proof of Theorem 14
+Correctness of InvPower. It suffices to prove the algorithm succeeds with probability ≥ 1−
+O(1/n), since running it for constant number of times can boost the success probability to 1−n−c.
+We assume all calls of LinSolve output successfully, satisfying the guarantees in Theorem 9, since
+this holds with high probability (for example ≥ 1−n−c−1).
+When A is singular, by Theorem 9, LinSolve can detect the singularity and we return 0. Now
+we assume that A is non-singular.
+Let λ1,...,λ n be the eigenvalues of A−1 such that |λ1| ≥ |λ2| ≥ ··· ≥ |λn|, so we have
+λi = (λA
+i )−1 for all i∈ [n]. Note that e1,..., en form an orthonormal eigenbasis of A. They are
+also eigenvectors of A−1 with corresponding eigenvalues λ1,λ 2,...,λ n.
+Let S :={i :|λi|≥ (1−εS)|λ1|} where εS := ε/4. Note that max i|λi(A)|≤ nU, so we have
+|λ1|≥ 1/(nU). Define potential function
+Φ(x) :=
+P
+k/∈S⟨x, ek⟩2
+⟨x, e1⟩2
+for all x∈ Rn. Intuitively, if there were no error, the potential function would simplify to
+Φ(v(i+1)) = Φ(A−1v(i)/∥A−1v(i)∥2) = Φ(A−1v(i)) =
+P
+k∈Sλ2
+k⟨v(i), ek⟩2
+λ2
+1⟨v(i), e1⟩2 ≤ (1−εS)2Φ(v(i)),
+so the potential would be small enough after O( log(n/ε)
+ε ) iterations and we are done. However, we
+need more effort to incorporate the analysis of the rounding errors. Specifically, for any x∈ Rn,
+we define another potential function
+Ψ(x) :=
+P
+k∈[n]⟨x, ek⟩2
+⟨x, e1⟩2 = ∥x∥2
+2
+⟨x, e1⟩2.
+We want Ψ(v(i)) to be polynomially bounded, since otherwise the denominator of Φ( v(i)) would be
+too small after normalization and would incur large errors.
+We first prove the following two lemmas concerning the initial conditions.
+Lemma C.1. With probability at least 1− 2/n, it holds that ∥u(0)∥≤ n,|⟨u(0), e1⟩|≥ n−2/2 and
+Φ(u(0))≤ Ψ(u(0))≤ 4n6.
+Proof. In Line 4 we sampleu∗∼N (0, I) and take its fixed-point approximationu(0). For alli∈ [n],
+denote ci :=⟨u∗, ei⟩, and note that ci∼N (0, 1) independently, we have
+Pr
+
+|ci|&lt;n−2
+=
+p
+2/π
+Z 1/n2
+0
+e−x2/2dx≤ 1/n2,
+Pr [|ci|&gt; 2 logn] =
+p
+2/π
+Z +∞
+2 logn
+e−x2/2dx≤
+Z +∞
+2 logn
+e−xdx≤ 1/n2.
+Note that⟨u(0), ei⟩∈⟨ u∗, ei⟩±∥u(0)−v∗∥2, and by the guarantee ofL-bit fixed-point representation
+that∥u(0)− u∗∥2≤ 2−L·n, we have
+Pr
+u(0)
+h
+|⟨u(0), ei⟩|∈ [n−2/2, 4 logn]
+i
+≥ 1− 2/n2.
+48
+
+--- PDF PAGE 49 ---
+By a union bound, we have ∥u(0)∥2≤ O(
+p
+n log2n)≤ O(n) and Ψ( u(0))≤∥ u(0)∥2
+2/⟨u(0), e1⟩2≤
+4n6. We conclude the lemma by noting that Φ( x)≤ Ψ(x) for any x.
+Lemma C.2. With probability≥ 1− 2/n, it holds that:
+• If the algorithm reaches Line 9, then |λ1|≥ 1/δ and the output satisfies the desired property.
+• If|λ1|&gt; 16n3/δ, then the algorithm reaches Line 9.
+Proof. By L-bit fixed-point and floating-point arithmetic, we have
+
+
+v(1)− u(0)/∥u(0)∥2
+
+
+2≤ ε/n4
+and thus∥v(1)∥2≤ 1 +ε/n4. Note that
+∥u(1)∥2
+2≤ (1 +εL)2∥A−1v(1)∥2
+2≤ (1 +εL)2λ2
+1∥v(1)∥2
+2≤ 2λ2
+1.
+When the algorithm goes to Line 9, we must have
+2λ2
+1≥∥ u(0)∥2
+2≥ 2/δ2⇒|λ1|≥ 1/δ.
+Since the algorithm returns δ and max{δ,|1/λ1|} =δ, the output satisfies the desired property.
+For the second claim, if the algorithm does not go to Line 9, it holds that ∥u(1)∥2
+2≤ 4/δ2. We
+have
+∥u(1)∥2
+2≥ (1−εL)2∥A−1v(1)∥2
+2≥ (1−εL)2⟨A−1v(1), e1⟩2 = (1−εL)2λ2
+1⟨v(1), e1⟩2.
+By Lemma C.1, with probability ≥ 1− 2/n, we have|⟨u(0), e1⟩|≥ n−2/2. Then,
+|⟨v(1), e1⟩|≥|⟨ u(0)/∥u(0)∥2, e1⟩|−
+
+
+
+v(1)− u(0)/∥u(0)∥2
+
+
+
+2
+·∥ e1∥2≥n−3/2−ε/n4≥n−3/4.
+where we used the fact
+⟨u(0)/∥u(0)∥2, e1⟩2 = Ψ(u(0))−1≥n−6/4.
+Therefore,
+4/δ2≥∥ u(1)∥2
+2≥ (1−εL)2λ2
+1⟨v(1), e1⟩2
+2≥λ2
+1n−6/32⇒|λ1|≤ 16n3/δ.
+By Lemma C.2, the case |λ1|&gt; 16n3/δ is handled by Line 9, so we can assume |λ1|≤ 16n3/δ.
+By Lemma C.1, we have ∥u0∥2≤ n. Now, we know that all u(i), v(i) have polynomially bounded
+entries. Specifically, since v(i) is a normalized vector of u(i−1), we have
+∥v(i)∥2∈ [1−ε/3, 1 +ε/3]. (21)
+Since|λi(A−1)|∈ [1/(nU), 16n3/δ], we have
+∥u(i)∥2∈ [1/
+√
+M,M ]
+for any M≥ n2U 2 + 16n3/δ. We will pick a sufficiently large M = poly(n,U,ε−1) later, and set
+ε0 := ε/(100M 2) such that the following approximation guarantees hold. The guarantees follow
+from L-bit fixed-point arithmetic (note that we used floating-point arithmetic but the guarantees
+are only stronger).
+49
+
+--- PDF PAGE 50 ---
+• In Line 6, it holds that
+
+
+
+v(i)− u(i−1)/∥u(i−1)∥2
+
+
+
+2
+≤ 2−L· poly(n,U )≤ε0. (22)
+• By Theorem 9, in Line 6, it holds that
+∥u(i)− A−1v(i)∥2≤εL· poly(n,U )≤ε0 (23)
+by choosing a small enough εL.
+Next, we show that if a vector x approximates y under small additive error with bounded ℓ2
+norm and potential Ψ, then Φ( x) and Ψ(x) approximate Φ(y) and Ψ(y), respectively.
+Claim C.3. Forζ∈ [0, 0.1],M &gt; 1, any vector x and y with∥x∥2∈ [1/
+√
+M,M ] and Ψ(x)≤M,
+if∥x− y∥2≤ζ/M 2, it holds that
+Φ(x)≈8ζ Φ(y), Ψ(x)≈8ζ Ψ(y).
+Proof. We have⟨x, e1⟩2≥∥ x∥2
+2/Ψ(x)≥ 1/M2 and thus|⟨x, e1⟩|≥ 1/M. Define ∆ := y− x. For
+anyk∈ [n], we have
+|⟨x, ek⟩−⟨ y, ek⟩|≤|⟨ ∆, ek⟩|≤∥ ∆∥2·∥ ek∥2 =∥∆∥2≤ζ/M 2≤ζ|⟨x, e1⟩|.
+We also have
+|⟨x, ek⟩|≤∥ x∥2·∥ ek∥2≤M,
+|⟨y, ek⟩|≤|⟨ x, ek⟩| +|⟨y− x, ek⟩|≤ M +ζ/M 2≤ 1.1M,
+Therefore,
+|⟨x, ek⟩2−⟨ y, ek⟩2|≤|⟨ x, ek⟩2−⟨ x, ek⟩⟨y, ek⟩| +|⟨x, ek⟩⟨y, ek⟩−⟨ y, ek⟩2|
+≤|⟨ x, ek⟩|·|⟨ x, ek⟩−⟨ y, ek⟩| +|⟨x, ek⟩−⟨ y, ek⟩|·|⟨ y, ek⟩|
+≤ 2(ζ/M 2)· 1.1M≤ 2.2ζ/M≤ 2.2ζ|⟨x, e1⟩|.
+Then,
+Φ(y) =
+P
+k/∈S⟨y, ek⟩2
+⟨y, e1⟩2 =
+P
+k/∈S⟨y, ek⟩2/⟨x, e1⟩2
+⟨y, e1⟩2/⟨x, e1⟩2 = Φ(x)· 1± 2.2ζ
+1± 2.2ζ∈ Φ(x)· (1± 4ζ).
+Therefore, we have Φ(x)≈8ζ Φ(y). Similarly, we have
+Ψ(y) =
+P
+k∈[n]⟨y, ek⟩2
+⟨y, e1⟩2 =
+P
+k∈[n]⟨y, ek⟩2/⟨x, e1⟩2
+⟨y, e1⟩2/⟨x, e1⟩2 = Ψ(x)· 1± 2.2ζ
+1± 2.2ζ∈ Ψ(x)· (1± 4ζ).
+and thus Ψ(x)≈8ζ Ψ(y).
+The next lemma shows that the potential Φ is decreasing over iterations, and the potential Ψ
+is not growing too fast.
+Lemma C.4. For any i∈ [1,T ] and M &gt;0, if Ψ(u(i))≤M and ε0≤ε/(100M 2), we have
+50
+
+--- PDF PAGE 51 ---
+• Φ(v(i))≤ exp(ε/8)Φ(u(i−1)) and Φ(u(i))≤ exp(−εS)Φ(u(i−1)).
+• Ψ(v(i))≤ exp(ε/8)Ψ(u(i−1)) and Ψ(u(i))≤ exp(εS)Ψ(u(i−1)).
+Proof. Definebu(i−1) := u(i−1)/∥u(i−1)∥2. By (22) and Claim C.3, we have
+Φ(v(i))≈ε/8 Φ(bu(i−1)) = Φ(u(i−1)), Ψ(v(i))≈ε/8 Ψ(bu(i−1)) = Ψ(u(i−1)). (24)
+Since⟨A−1x, ek⟩2 =λ2
+k⟨x, ek⟩2 for any vector x and k∈ [n], we have
+Φ(A−1v(i)) =
+P
+k/∈S⟨A−1v(i), ek⟩2
+⟨A−1v(i), e1⟩2 =
+P
+k/∈Sλ2
+k⟨v(i), ek⟩2
+λ2
+1⟨v(i), e1⟩2 ≤ (1−εS)2Φ(v(i)) (25)
+by the definition of S. Similarly, we have Ψ( A−1v(i))≤ Ψ(v(i)) without using the property of S.
+Now Ψ(A−1v(i)) is bounded by exp(ε/8)M, so it follows from (23) and Claim C.3 that
+Φ(u(i))≈ε/8 Φ(A−1v(i)), Ψ(u(i))≈ε/8 Ψ(A−1v(i)). (26)
+Combining all the above inequalities, we have
+Φ(u(i))≤ exp(ε/8)2(1−εS)2Φ(u(i−1))≤ exp(ε/4− 2εS)Φ(u(i−1))≤ exp(−εS)Φ(u(i−1))
+where we used the factεS =ε/4. Similarly, Ψ(u(i))≤ exp(ε/8)2Ψ(u(i−1))≤ exp(εS)Ψ(u(i−1)).
+Now we prove the correctness by combining all the above lemmas. We first set the parameterM
+by bounding the largest potential Ψ. Recall that T =⌈ 28 log(4n/εS)
+ε ⌉ =⌈ 7 log(n/εS)
+εS
+⌉. By Lemma C.1
+and Lemma C.4 assuming ε0 is small enough to satisfy the conditions, we have
+max
+i
+Ψ(u(i))≤ Ψ(u(T ))≤ exp(εS)T Ψ(u(0))≤ (n/εS)7· 4n6.
+Therefore, it suffices to set
+M =n2U 2 + 16n3/δ + (n/εS)7· 4n6 and ε0 =ε/(100M 2)
+to satisfy all the conditions of Lemma C.4 and the desired property for the approximation guaran-
+tees. Then, we bound the potential
+Φ(u(T ))≤ exp(−εS)T Φ(u(0))≤n−7εS· 4n6≤εS/2
+by Lemma C.1 and Lemma C.4. Thus we have Φ( v(T ))≤ exp(ε/8)εS/2≤εS.
+Note that mini|λi(A)| = 1/λ1. We want to show eλ≈ε 1/λ1. It holds that
+ 
+
+A−1v(T )
+
+2
+∥v(T )∥2
+!2
+=
+Pn
+i=1λ2
+i⟨v(T ), ei⟩2
+Pn
+i=1⟨v(T ), ei⟩2 ≤λ2
+1,
+and
+ 
+
+A−1v(T )
+
+2
+∥v(T )∥2
+!2
+≥
+P
+i∈Sλ2
+i⟨v(T ), ei⟩2
+⟨v(T ), e1⟩2 ≥ (1−εS)2λ2
+1(1− Φ(v(T )))≥ exp(−6εS)λ2
+1.
+Thus we have
+
+
+A−1v(T )
+
+2≈3εS λ1∥v(T )∥2. Since∥u(T )− A−1v(T )∥≤ ε0, we have
+∥u(T )∥2/∥v(T )∥2≈3εS+2ε0 λ1
+and thus
+eλ≈ε0∥v(T )∥2/∥u(T )∥2≈3εS+2ε0 1/λ1
+We conclude thateλ≈ε 1/λ1 since 3ε0 + 3εS≤ε.
+51
+
+--- PDF PAGE 52 ---
+Time and space complexity of Theorem 14. We haveT = O(log(n/ε)/ε) and log(1/ε0) =
+O(log(nU/ε)). The dominant step of the algorithm the subroutine LinSolve. Note that we scale
+up the entries of A and v(i) by 2L to make the input of LinSolve become integers. Since the
+entries are still bounded by U· 2L =U· 2O(log(nU/ε))≤ poly(n,U,ε−1), and the algorithm invokes
+the subroutine for T times, the time complexity is
+O(T·n2(nnz +n + log(1/εL))) = eO(n2(nnz +n)/ε).
+It has the same space guarantees as LinSolve, concluding the proof of Theorem 14.
+C.2 Proof of Corollary 15
+The corollary assumes the property of spectral gap: δ≤|λA
+1| and 1.1|λA
+1|≤| λA
+2|. Thus we have
+|λ1|≥ 1/δ, |λ1|≥ 1.1|λ2|.
+The first property assures that an eigenvector v(T ) will be produced. For the second property, it
+allows us to use a larger εS := 0.1, and the set S by definition
+S ={i :|λi|≥ (1−εS)|λ1|} = [n]\{ 1}.
+We still have Φ(u(i+1))≤ exp(−εS)Φ(u(i)), so we can use a smallerT for InvPowerGap to achieve
+ε error, specifically,
+T :=O(log(n/ε)).
+This gives a shorter running time than InvPower without the dependency 1/ε.
+We prove the “Furthermore” part of Corollary 15. By (21), we have∥v(T )∥2∈ [1−ε/3, 1 +ε/3]
+and thus
+⟨v(T ), v(T )⟩ =∥v(T )∥2
+2∈ [1−ε, 1 +ε].
+Since|λA
+2|&gt; (1 +ε)|λA
+1|, it holds that
+|λ2|&lt; (1−ε/2)|λ1|&lt; (1−εS)|λ1|,
+which means that S = [n]\{ 1}. We have already concluded that Φ( v(T ))≤εS, so
+∥v(T )∥2
+2 =
+nX
+i=1
+⟨v(T ), ei⟩2 = (Φ(v(T )) + 1)⟨v(T ), e1⟩2≤ (εS + 1)⟨v(T ), e1⟩2.
+Thus,
+⟨v(T ), e1⟩
+≥ 1√εS + 1∥v(T )∥2≥ 1−ε/3p
+1 +ε/3
+≥ 1−ε.
+On the other hand,
+⟨v(T ), e1⟩
+≤∥ v(T )∥2≤ 1+ε. Now we conclude that
+⟨v(T ), e1⟩
+∈ [1−ε, 1+ε].
+52</pre></html>

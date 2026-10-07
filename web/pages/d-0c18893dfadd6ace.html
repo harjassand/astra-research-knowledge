@@ -1,0 +1,174 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>!/usr/bin/env python3</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>!/usr/bin/env python3</h1><p>Source ID d-0c18893dfadd6ace; literature/sources/metric_geometry10/cycle14/internal_snapshots/retention_precision_producer.py; 2330 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;One exact rational, retained-node completion and a matched section control.
+
+The structural probe and parent mathematical proof are prerequisites.  Final
+acceptance is conditional author evidence until independently rebuilt by root.
+Every iterate and original joint residual is retained.  No numerical backend,
+new seed search or universal cardinality run occurs.
+&quot;&quot;&quot;
+from __future__ import annotations
+import argparse, hashlib, json, math, sys, time
+from pathlib import Path
+import probe_retention_section as algebra
+from probe_retention_section import Q, matrix, rows, basis_decode, p_evaluate
+from probe_retention_section import norm2, round_dyadic, orbit_points, floor_sqrt_dyadic
+
+
+def ceil_log2_rational(v):
+    n,d=int(v.numerator),int(v.denominator)
+    if n&lt;=d:return 0
+    k=n.bit_length()-d.bit_length()
+    if (1&lt;&lt;k)*d&lt;n:k+=1
+    return k
+
+
+def cayley(x,u):
+    assert not sum(x[a]*u[a] for a in range(3))
+    s=sum(v*v for v in u)/4
+    y=tuple(((1-s)*x[a]+u[a])/(1+s) for a in range(3))
+    assert sum(v*v for v in y)==1
+    return y
+
+
+def means(polys,points):
+    return [sum((p_evaluate(p,x) for x in points),Q(0))/len(points) for p in polys]
+
+
+def chart_reset(point,bits):
+    x,y,z=point; side=1 if z&gt;=0 else -1
+    a=x/(1+side*z); b=y/(1+side*z)
+    aa,bb=round_dyadic(a,bits),round_dyadic(b,bits)
+    s=aa*aa+bb*bb
+    result=(2*aa/(1+s),2*bb/(1+s),side*(1-s)/(1+s))
+    assert sum(v*v for v in result)==1
+    return result,dict(side=side,input_parameters=[str(a),str(b)],
+                       output_parameters=[str(aa),str(bb)],mesh_bits=bits)
+
+
+def run(data,B,mode,budget):
+    started=time.perf_counter()
+    c={k:Q(v) for k,v in data[&#x27;constants&#x27;].items()}
+    anchors=[tuple(Q(v) for v in x) for x in data[&#x27;anchors&#x27;]]
+    polys=basis_decode(data[&#x27;basis&#x27;]); nu=[Q(v) for v in data[&#x27;norms&#x27;]]
+    R=matrix(data[&#x27;R_hat&#x27;]); k=matrix(data[&#x27;k_hat&#x27;])
+    b=[Q(v) for v in data[&#x27;mean&#x27;]]
+    tau=c[&#x27;tau&#x27;] if mode==&#x27;kernel&#x27; else Q(0)
+    K0,C,a,Abar=c[&#x27;K0&#x27;],c[&#x27;Cbar&#x27;],c[&#x27;a&#x27;],c[&#x27;Abar&#x27;]
+    rho=4*c[&#x27;bbar&#x27;]+2*tau*c[&#x27;e&#x27;]+K0*tau*tau
+    r=tau+C*rho; contraction=a+K0*C*r
+    assert 0&lt;contraction&lt;Q(1,4) and r&lt;1
+    gap=c[&#x27;gap&#x27;] if mode==&#x27;kernel&#x27; else c[&#x27;d0&#x27;]-2*r
+    if mode==&#x27;kernel&#x27;:assert gap&gt;0
+    epsilon=min(Q(1,1&lt;&lt;B),rho)
+    w2=sum((1/v for v in nu),Q(0))
+    W=math.isqrt((int(w2.numerator)+int(w2.denominator)-1)//int(w2.denominator))+1
+    gamma_bits=ceil_log2_rational(16*W/epsilon)
+    gamma=Q(1,1&lt;&lt;gamma_bits)
+    assert gamma*W&lt;=epsilon/16
+    I=0; decay=rho
+    while decay&gt;epsilon/8:
+        decay*=contraction; I+=1
+    delta=min(epsilon/(4*Abar),gap/8)
+    chart_bits=ceil_log2_rational(4/delta)
+    z=matrix([[Q(0)] for _ in polys]); trace=[]
+    for j in range(I):
+        if time.perf_counter()-started&gt;budget:
+            return dict(status=&#x27;UNKNOWN_TIME_LIMIT&#x27;,mode=mode,B=B,trace=trace,
+                        seconds=time.perf_counter()-started,preregistered_seconds=budget)
+        u=tau*k+R*z
+        pts=[cayley(x,[u[3*i+a,0] for a in range(3)]) for i,x in enumerate(anchors)]
+        new_mean=means(polys,pts)
+        F=[v+w for v,w in zip(new_mean,b)]
+        zz=[round_dyadic(z[i,0]-F[i],gamma_bits) for i in range(len(polys))]
+        rounding=[zz[i]-(z[i,0]-F[i]) for i in range(len(polys))]
+        assert norm2(rounding,nu)&lt;=gamma*gamma*W*W/4
+        assert norm2(zz,nu)&lt;=rho*rho
+        trace.append(dict(step=j,z_before=rows(z),u=rows(u),
+                          new_mean=[str(v) for v in new_mean],
+                          original_joint_residual=[str(v) for v in F],
+                          residual_norm_squared=str(norm2(F,nu)),
+                          z_after=[[str(v)] for v in zz],
+                          rounding_error_squared=str(norm2(rounding,nu))))
+        z=matrix([[v] for v in zz])
+    u=tau*k+R*z
+    pre=[cayley(x,[u[3*i+a,0] for a in range(3)]) for i,x in enumerate(anchors)]
+    seeds=[]; resets=[]
+    for x in pre:
+        y,record=chart_reset(x,chart_bits); seeds.append(y); resets.append(record)
+    # Original frozen nodes are expanded without any arithmetic modification.
+    old=orbit_points(anchors); new=orbit_points(seeds)
+    allpoints=old+new
+    same_count=(len(old)==240 and len(new)==240 and len(allpoints)==480)
+    unique=len(set(allpoints))==len(allpoints)
+    final_new_mean=means(polys,seeds)
+    final_mean=[(v+w)/2 for v,w in zip(b,final_new_mean)]
+    mean2=norm2(final_mean,nu)
+    gram_operator_bound2=81*mean2
+    # All ordered-pair positivity is checked on actual rational points.
+    pair_started=time.perf_counter()
+    sep2=min(sum((x[a]-y[a])**2 for a in range(3))
+             for i,x in enumerate(allpoints) for y in allpoints[:i])
+    pair_seconds=time.perf_counter()-pair_started
+    # Independent of numerical display, also certifies distinctness of the
+    # real section zero underlying a successful ordinary no-offset control.
+    error_to_zero=decay+gamma*W/(2*(1-contraction))
+    sep_lower=floor_sqrt_dyadic(sep2,B+20)
+    zero_collision_margin=sep_lower-2*(C*error_to_zero+delta)
+    checks=dict(exact_old_retention=old==allpoints[:240],
+                original_joint_target=True,equal_positive_weights=True,
+                exact_unit_points=all(sum(v*v for v in x)==1 for x in allpoints),
+                counts=same_count,all_distinct=unique and sep2&gt;0,
+                exact_mean_at_most_target=mean2&lt;=Q(1,1&lt;&lt;(2*B)),
+                full_Gram_through8_at_least_three_quarters=gram_operator_bound2&lt;Q(1,16),
+                real_section_zero_distinct=zero_collision_margin&gt;0)
+    out=dict(status=&#x27;AUTHOR_ACCEPTED_PENDING_INDEPENDENT_GATE&#x27; if all(checks.values()) else &#x27;REJECTED&#x27;,
+             mode=mode,B=B,N_old=240,N_new=240,N_total=480,degree=16,checks=checks,
+             tau=str(tau),rho=str(rho),contraction=str(contraction),
+             epsilon=str(epsilon),W=W,gamma_bits=gamma_bits,gamma=str(gamma),
+             I=I,delta=str(delta),chart_bits=chart_bits,trace=trace,z_final=rows(z),
+             pre_reset_seeds=[[str(v) for v in x] for x in pre],chart_resets=resets,
+             new_seeds=[[str(v) for v in x] for x in seeds],
+             old_points=[[str(v) for v in x] for x in old],
+             new_points=[[str(v) for v in x] for x in new],weight=&#x27;1/480&#x27;,
+             old_mean=[str(v) for v in b],new_mean=[str(v) for v in final_new_mean],
+             joint_mean=[str(v) for v in final_mean],normalized_joint_mean_squared=str(mean2),
+             full_Gram_operator_error_bound_squared=str(gram_operator_bound2),
+             minimum_actual_separation_squared=str(sep2),
+             iteration_error_to_zero_upper=str(error_to_zero),
+             section_zero_collision_margin=str(zero_collision_margin),
+             new_direction_height=max(max(abs(int(v.numerator)).bit_length(),int(v.denominator).bit_length())
+                                      for x in new for v in x),
+             minimum_separation_display=math.sqrt(algebra.number(sep2)),
+             mean_display=math.sqrt(algebra.number(mean2)),
+             exact_pair_comparison_seconds=pair_seconds,
+             seconds_before_serialization=time.perf_counter()-started,
+             preregistered_seconds=budget,
+             scope=&#x27;Fixed degree16 retained-node completion; no degree18 or growing-degree QMC inference&#x27;)
+    return out
+
+
+def main():
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(&#x27;--input&#x27;,type=Path,required=True)
+    parser.add_argument(&#x27;--output&#x27;,type=Path,required=True)
+    parser.add_argument(&#x27;--bits&#x27;,type=int,default=80)
+    parser.add_argument(&#x27;--mode&#x27;,choices=[&#x27;kernel&#x27;,&#x27;plain&#x27;],required=True)
+    parser.add_argument(&#x27;--seconds&#x27;,type=float,default=30)
+    args=parser.parse_args()
+    raw=args.input.read_bytes(); data=json.loads(raw)
+    assert data[&#x27;author_admitted_retention_section&#x27;]
+    out=run(data,args.bits,args.mode,args.seconds)
+    out[&#x27;input_sha256&#x27;]=hashlib.sha256(raw).hexdigest()
+    out[&#x27;producer_sha256&#x27;]=hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
+    out[&#x27;algebra_sha256&#x27;]=hashlib.sha256(Path(algebra.__file__).read_bytes()).hexdigest()
+    out[&#x27;python&#x27;]=sys.version
+    args.output.parent.mkdir(parents=True,exist_ok=True)
+    serialized=time.perf_counter()
+    args.output.write_text(json.dumps(out,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({k:out[k] for k in [&#x27;status&#x27;,&#x27;mode&#x27;,&#x27;B&#x27;,&#x27;I&#x27;,&#x27;mean_display&#x27;,
+                  &#x27;new_direction_height&#x27;,&#x27;minimum_separation_display&#x27;,&#x27;seconds_before_serialization&#x27;]
+                  if k in out}|dict(serialization_seconds=time.perf_counter()-serialized)))
+
+
+if __name__==&#x27;__main__&#x27;:main()
+</pre></html>

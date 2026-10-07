@@ -1,0 +1,131 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>!/usr/bin/env python3</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>!/usr/bin/env python3</h1><p>Source ID d-501c48f720b2f788; literature/sources/metric_prior/cycle17/internal_snapshots/check_modular_projector.py; 1877 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Rebuild original binary polars, modular recurrence and exact projector.
+
+No producer imports or hidden frame reads. Fixed Mersenne primes test the
+finite certified execution, not uniform prime sampling. Tiny coefficient
+templates are rebuilt independently from the quartic tensor.
+&quot;&quot;&quot;
+from pathlib import Path
+from math import gcd, isqrt
+import itertools, json, time, random, hashlib
+import sympy as sp
+
+ROOT=Path(__file__).resolve().parents[3]
+SRC=ROOT/&#x27;results/metric_prior/cycle17/modular_binary_projector.json&#x27;
+CG=ROOT/&#x27;results/metric_prior/cycle17/matrix_free_binary.json&#x27;
+OUT=ROOT/&#x27;results/metric_use10/cycle17/modular_projector_independent_checks.json&#x27;
+
+def recurrence(sequence, prime):
+    # Standard discrepancy recurrence: polynomial coefficients have ascending
+    # lags until the final reversal to ascending powers of the operator.
+    current=[1]; previous=[1]; length=0; last_discrepancy=1; distance=1
+    for k,value in enumerate(sequence):
+        discrepancy=(value+sum(current[j]*sequence[k-j] for j in range(1,length+1)))%prime
+        if discrepancy==0:
+            distance+=1
+            continue
+        old=current[:]
+        multiplier=discrepancy*pow(last_discrepancy,-1,prime)%prime
+        while len(current)&lt;len(previous)+distance: current.append(0)
+        for j,v in enumerate(previous): current[j+distance]=(current[j+distance]-multiplier*v)%prime
+        if 2*length&lt;=k:
+            length=k+1-length; previous=old; last_discrepancy=discrepancy; distance=1
+        else: distance+=1
+    return list(reversed(current[:length+1]))
+
+def normalize(v,den):
+    common=abs(den)
+    for x in v: common=gcd(common,abs(x))
+    if den&lt;0: common=-common
+    return [x//common for x in v],den//common
+
+start=time.perf_counter()
+data=json.loads(SRC.read_text()); old=json.loads(CG.read_text())
+fixtures={f[&#x27;name&#x27;]:f for f in old[&#x27;fixtures&#x27;]}
+x,y,u,v=sp.symbols(&#x27;x y u v&#x27;); xx=(x,y); vv=(u,v)
+primes={}; output=[]
+for record in data[&#x27;records&#x27;]:
+    fixture=fixtures[record[&#x27;fixture&#x27;]]; D=record[&#x27;D&#x27;]; C=D+1; shifts=D-8
+    f=sum(sp.Integer(c)*x**(4-j)*y**j for j,c in enumerate(fixture[&#x27;coefficients&#x27;]))
+    F=f.subs({x:u,y:v}); first=sum(sp.diff(F,vv[j])*xx[j] for j in range(2))/4
+    t13=0; t22=0
+    for idx in itertools.product(range(2),repeat=4):
+        tensor=sp.diff(f,*[xx[j] for j in idx])/24
+        t13+=tensor*vv[idx[0]]*xx[idx[1]]*xx[idx[2]]*xx[idx[3]]
+        t22+=tensor*vv[idx[0]]*vv[idx[1]]*xx[idx[2]]*xx[idx[3]]
+    polar=sp.Poly(sp.expand(64*(F*F*t13-3*F*first*t22+2*first**3)),x,y)
+    templates=[]
+    for j in range(4):
+        pp=sp.Poly(polar.coeff_monomial(x**(3-j)*y**j),u,v)
+        templates.append([(k,int(pp.coeff_monomial(u**(9-k)*v**k))) for k in range(10)
+                          if pp.coeff_monomial(u**(9-k)*v**k)])
+    R=4*shifts
+    def transpose(vec,mod=None):
+        ans=[sum(c*vec[j+s] for j,c in p) for p in templates for s in range(shifts)]
+        return ans if mod is None else [z%mod for z in ans]
+    def gram(vec,mod=None):
+        sources=transpose(vec,mod); ans=[0]*C
+        for pidx,p in enumerate(templates):
+            for s in range(shifts):
+                value=sources[pidx*shifts+s]
+                for j,c in p:
+                    ans[j+s]+=c*value
+                    if mod is not None: ans[j+s]%=mod
+        return ans
+    assert C==record[&#x27;m&#x27;] and R==record[&#x27;R&#x27;]
+    cert=fixture[&#x27;degree&#x27;+str(D)][&#x27;annihilator_certificates&#x27;][0]; a=list(map(int,cert[&#x27;probe&#x27;]))
+    b=gram(a); assert any(b)
+    source_bound=max(abs(c) for p in templates for _,c in p)
+    A=max(2,R*source_bound**2); H=(1+C*A)**C
+    assert source_bound==int(record[&#x27;source_entry_bound&#x27;]) and A==int(record[&#x27;gram_entry_bound&#x27;])
+    e=record[&#x27;prime_certificate&#x27;][&#x27;exponent&#x27;]
+    if e not in primes:
+        assert all(e%d for d in range(2,isqrt(e)+1))
+        prime=2**e-1; residue=4
+        for _ in range(e-2): residue=(residue*residue-2)%prime
+        assert residue==0
+        primes[e]=prime
+    prime=primes[e]; assert prime&gt;2*H
+    rng=random.Random(317+D); probe=[rng.randrange(prime) for _ in range(C)]
+    seq=[]; state=[z%prime for z in b]
+    for k in range(2*C):
+        seq.append(sum(s*t for s,t in zip(probe,state))%prime)
+        if k+1&lt;2*C: state=gram(state,prime)
+    qp=recurrence(seq,prime)
+    q=[c if c&lt;=prime//2 else c-prime for c in qp]
+    assert q==list(map(int,record[&#x27;q_ascending_coefficients&#x27;]))
+    assert q[0]!=0 and q[-1]==1 and len(q)&lt;=C+1 and max(map(abs,q))&lt;=H
+    def horner(vector):
+        state=[0]*C; peak=0
+        for j,c in enumerate(reversed(q)):
+            if j: state=gram(state)
+            state=[z+c*w for z,w in zip(state,vector)]
+            peak=max(peak,max(abs(z).bit_length() for z in state))
+        return state,peak
+    qb,peak_b=horner(b); qa,peak_a=horner(a)
+    assert not any(qb)
+    zn,zd=normalize(qa,q[0]); assert not any(transpose(zn))
+    assert zn==list(map(int,record[&#x27;z_numerators&#x27;])) and zd==int(record[&#x27;z_denominator&#x27;])
+    assert zn==list(map(int,cert[&#x27;z_numerators&#x27;])) and zd==int(cert[&#x27;z_denominator&#x27;])
+    # a-z is orthogonal to the independently rebuilt computational cokernel.
+    M=sp.zeros(C,R)
+    for pidx,p in enumerate(templates):
+        for s in range(shifts):
+            for j,c in p: M[j+s,pidx*shifts+s]=c
+    removed=sp.Matrix([sp.Rational(t)-sp.Rational(z,zd) for t,z in zip(a,zn)])
+    for w in M.T.nullspace(): assert (w.T*removed)[0]==0
+    peak=max(peak_a,peak_b); assert peak==record[&#x27;max_exact_horner_bits&#x27;]
+    output.append({&#x27;fixture&#x27;:record[&#x27;fixture&#x27;],&#x27;D&#x27;:D,&#x27;m&#x27;:C,&#x27;R&#x27;:R,&#x27;recurrence_degree&#x27;:len(q)-1,
+                   &#x27;prime_bits&#x27;:prime.bit_length(),&#x27;Lucas_Lehmer_independently_replayed&#x27;:True,
+                   &#x27;original_tensor_64P_reconstruction&#x27;:True,&#x27;modular_recurrence_independently_replayed&#x27;:True,
+                   &#x27;q_G_Ga_zero&#x27;:True,&#x27;original_MT_z_zero&#x27;:True,&#x27;unique_coker_projection&#x27;:True,
+                   &#x27;identical_to_old_CG&#x27;:True,&#x27;exact_horner_vector_peak_bits&#x27;:peak,
+                   &#x27;checker_dense_entries_for_last_orthogonality_test&#x27;:C*R})
+result={&#x27;status&#x27;:&#x27;PASS&#x27;,&#x27;records&#x27;:output,&#x27;producer_imports&#x27;:False,&#x27;hidden_frame_reads&#x27;:False,
+        &#x27;runtime_seconds&#x27;:time.perf_counter()-start,
+        &#x27;scope&#x27;:&#x27;four fixed-prime binary projections; not uniform-prime runtime execution or full learner rerun&#x27;,
+        &#x27;source_sha256&#x27;:hashlib.sha256(SRC.read_bytes()).hexdigest(),
+        &#x27;CG_source_sha256&#x27;:hashlib.sha256(CG.read_bytes()).hexdigest()}
+OUT.write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+print(json.dumps({&#x27;status&#x27;:&#x27;PASS&#x27;,&#x27;records&#x27;:len(output),&#x27;seconds&#x27;:result[&#x27;runtime_seconds&#x27;]}))
+</pre></html>

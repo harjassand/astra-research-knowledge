@@ -1,0 +1,157 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>A bounded-bit implementation of the exact legal soft projector</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>A bounded-bit implementation of the exact legal soft projector</h1><p>Source ID d-8c4760625780ba0f; literature/notes/rounding_spectral/cycle11/ROUNDED_LEGAL_FILTER.md; 1676 o200k tokens; role research_note; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre># A bounded-bit implementation of the exact legal soft projector
+
+7 October 2026, `rounding_spectral`. This is an elementary numerical
+construction derived from Li&#x27;s proved Newton--Schulz filter, composed with
+the exact legal projector. It is a theorem-level algorithm and error proof;
+no high-L trajectory, practical benchmark, or novelty claim is supplied.
+
+## Why a further implementation construction is useful
+
+Exact Newton--Schulz rational iterates have denominator degree up to 3^J.
+For J=O(log(nK)) this is formally polynomial, yet its magnitude can defeat
+a local implementation long before the update count matters. The entire
+trajectory theorem must still charge that bit cost. The construction below
+instead stores every iterate on a fixed dyadic grid, while restoring exact
+legality, PSD contraction, and soft-projector leakage at the end. Rounding
+does not need to preserve commutation with the Hessian at each iteration.
+
+## Input and exact reference filter
+
+Use the symmetric rational S and exact rational orthogonal projector P
+from `LEGAL_FLAT_PROJECTOR_GATE.md`. They commute; S is positive on
+J-perp and has at least r strongly negative eigenvalues in J. Let
+`||S||&lt;=M`, with known rational M, eta&gt;0 and 1&lt;=r&lt;=N. Define
+
+`theta=eta r/(16N)`,
+
+`A_f=S+5eta I/4`, `D_f=A_f^2+theta^2 I`,
+
+`Y0=I/(M+2eta)`.
+
+The exact reference iteration is
+
+`Y_(j+1)=Y_j(3I-D_f Y_j^2)/2`.
+
+Choose J by Li&#x27;s rational lower-bound/squaring procedure so that the exact
+filter `Q=(I-A_f Y_J)/2` has norm error to the ideal scalar filter at
+most half of
+
+`eps_NS=eta r/[2^16 N(M+2eta)]`.
+
+The source proof gives 0&lt;=Q&lt;=I, Q eigenvalue&gt;7/8 on the r strongly
+negative directions, and the sharper explicit leakage
+
+`Q(S+eta I)Q &lt;=3eta r/(2^17 N) I`.                  (1)
+
+The coefficient is the sum of ideal leakage 1/2^17 and numerical-filter
+error 1/2^16; we retain this slack rather than replacing it immediately
+by the looser 1/4096 soft-projector allowance. All exact Y_j have norm
+at most 1/theta.
+
+## Rounded iteration and complete error recurrence
+
+Set
+
+`eps_Q=eta r/[2^20 N(M+2eta)]`,
+
+`eps_Y=eps_Q/(M+2eta)`,
+
+`A=2+6(M+2eta)^2/theta^2`.
+
+Choose a fixed dyadic mesh
+
+`0&lt;delta&lt;=eps_Y/(N A^J)`.
+
+Starting with the exact rational Y0, compute
+
+`Yhat_(j+1)=Round_delta(Sym[Yhat_j(3I-D_f Yhat_j^2)/2])`,
+
+rounding each symmetric entry to nearest delta, with a fixed tie rule.
+Sym means (X+X^T)/2. One rounding changes operator norm by at most
+Ndelta/2. The exact iterates are symmetric, so symmetrization changes
+no reference value.
+
+If both inputs have norm at most 2/theta, the cubic iteration map is
+A-Lipschitz in operator norm: telescope YD_fY^2 as three factors to
+bound its difference by `3||D_f||(2/theta)^2` times input error, then
+include its factor 1/2 and the linear factor 3/2. The displayed A is
+larger than `3/2+6(M+2eta)^2/theta^2`. Symmetrization is a contraction.
+Consequently, for E_j=||Yhat_j-Y_j||,
+
+`E_(j+1)&lt;=A E_j+Ndelta/2`, `E0=0`.
+
+Induction gives `E_j&lt;=Ndelta A^j&lt;=eps_Y` for all j&lt;=J. The norm
+premise closes because eps_Y&lt;=1/theta and ||Y_j||&lt;=1/theta.
+No machine floating-point or empirical convergence claim enters this
+error certificate. A smaller dyadic mesh only improves the proof.
+
+## Exact legality and soft-projector repair
+
+Form the rational symmetric raw filter
+
+`Qraw=I/2-(A_f Yhat_J+Yhat_J A_f)/4`.
+
+Then `||Qraw-Q||&lt;=eps_Q/2`. Let Q_J=PQP and define
+
+`Qhat=[P Qraw P+eps_Q P]/(1+2eps_Q)`.
+
+Qhat is exactly symmetric, maps into J, and commutes exactly with P.
+On J, P Qraw P is between Q_J-eps_Q P/2 and
+Q_J+eps_Q P/2. Since 0&lt;=Q_J&lt;=P, addition and division give
+
+`0&lt;=Qhat&lt;=P&lt;=I`.
+
+The repair perturbs Q_J by less than 4eps_Q in norm. Exact commutation
+with S is no longer needed: the output soft-projector conditions follow
+by the certified norm comparison.
+
+On the r-dimensional strongly negative spectral subspace, Q_J has
+quadratic form at least 7/8. Min--max gives at least r eigenvalues of
+Qhat greater than `7/8-4eps_Q&gt;=111/128`; the final inequality follows
+from eps_Q&lt;=2^-21. Thus
+
+`tr(Qhat^2)&gt;r(111/128)^2&gt;3r/4`.
+
+Compress (1) by P and telescope the two quadratic products using both
+contractions. The additional leakage is at most
+
+`2(M+eta)||Qhat-Q_J||&lt;=8(M+eta)eps_Q&lt;=eta r/(2^17 N)`.
+
+Total leakage is therefore at most `4eta r/(2^17 N)`, strictly below
+the required `eta r/(4096N)`. Qhat is an exactly legal soft projector.
+The rational conditional-moment/normalization proof applies without any
+constraint residual, with the same flatness and curvature margins.
+
+## Persistent and temporary encodings
+
+Here M, theta^-1 and eta^-1 are bounded by polynomials in the rounding
+parameters. Thus log A=O(log(nK)) and J=O(log(nK)). The dyadic mesh
+requires
+
+`log2(delta^-1)=O(J log A+log(eps_Y^-1)+log N)`
+
+`=O(log^2(nK))`,
+
+in addition to bits of the original rational data defining S, eta and P.
+Every persistent rounded Yhat entry has this grid and norm at most
+2/theta. A temporary iteration has one fixed-degree rational expansion
+in D_f and that bounded Yhat, then is compressed again. The denominator
+does not iterate by degree 3^J. The final projector multiplications add
+only a fixed number of original-input bounded rational operations.
+Conditional moments have degree O(log(nK)), so the final legal direction
+still has polynomial bits and the global face reset can regenerate them.
+
+This can replace the exact polynomial filter in the charged-quartic
+construction without changing any direction, local progress, epoch, reset,
+or output guarantees. It improves the explicit bit implementation of a
+local primitive, while all dense matrix, exact geometry, row acquisition
+and conditional-moment costs remain charged. It supplies neither Li&#x27;s
+sleeping-row complexity nor practical general-polytope runtime. Exact legal
+filter rounding is standard numerical error propagation plus projector
+compression; no independent priority claim is made.
+
+The next falsifiable implementation step is to execute this rounded filter
+and verify its rational rounding/error/legality certificates on a genuine
+charged high-L state and accepted endpoint/reset. A synthetic search matrix
+would be labelled as such and would test only this local primitive.
+</pre></html>

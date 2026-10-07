@@ -1,0 +1,111 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>&quot;&quot;&quot;Exact rational certificate for a three-sensor finite report converter.</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>&quot;&quot;&quot;Exact rational certificate for a three-sensor finite report converter.</h1><p>Source ID d-d334fe947c0dcf99; literature/sources/d_example/cycle2/check_selection_exact_finite_converter.py; 1296 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>&quot;&quot;&quot;Exact rational certificate for a three-sensor finite report converter.
+
+Baseline: two independent readings per action, minimum count classifier,
+uniform ties. Verifier: proposed state&#x27;s action, random-walk likelihood
+thresholds +-2 log 9. eta=1/10 makes both kinds of proposed output have
+success threshold ceil(log_9(10 H_k/H_j))=2. All probabilities below are
+Fractions, including gambler-ruin, thinning and residual inverse kernels.
+This finite certificate does not prove the universal controlled theorem.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from itertools import product
+from math import comb
+from pathlib import Path
+import json
+
+
+def baseline_matrix(n=2):
+    rows=[]
+    for i in range(3):
+        row=[F(0)]*3
+        for ks in product(range(n+1),repeat=3):
+            prob=F(1)
+            for a,k in enumerate(ks):
+                p=F(1,10) if i==a else F(9,10)
+                prob*=comb(n,k)*p**k*(1-p)**(n-k)
+            winners=[a for a,k in enumerate(ks) if k==min(ks)]
+            for a in winners:
+                row[a]+=prob/F(len(winners))
+        rows.append(row)
+    return rows
+
+
+def inverse(a):
+    n=len(a)
+    aug=[row[:]+[F(i==j) for j in range(n)] for i,row in enumerate(a)]
+    for k in range(n):
+        pivot=next(i for i in range(k,n) if aug[i][k])
+        aug[k],aug[pivot]=aug[pivot],aug[k]
+        divisor=aug[k][k]
+        aug[k]=[x/divisor for x in aug[k]]
+        for i in range(n):
+            if i!=k:
+                ratio=aug[i][k]
+                aug[i]=[x-ratio*y for x,y in zip(aug[i],aug[k])]
+    return [row[n:] for row in aug]
+
+
+def matmul(a,b):
+    return [[sum(x*y for x,y in zip(row,col)) for col in zip(*b)] for row in a]
+
+
+eta=F(1,10)
+H=[[F(4,5) if i==y else F(1,10) for y in range(3)] for i in range(3)]
+A=baseline_matrix()
+assert all(1-A[i][i]&lt;=eta for i in range(3))
+assert A[0][0]==F(594,625)
+thinning=(1-eta)/(1+2*eta)
+# Probability of hitting +2 before -2 from zero, derived by the
+# exact harmonic gambler-ruin solution h(s)=(1-r^(s+2))/(1-r^4).
+def pass_probability(p_up, state=0):
+    ratio=(1-p_up)/p_up
+    return (1-ratio**(state+2))/(1-ratio**4)
+
+for p_up in [F(9,10),F(1,10)]:
+    assert pass_probability(p_up,-2)==0
+    assert pass_probability(p_up,2)==1
+    for s in [-1,0,1]:
+        assert pass_probability(p_up,s)==p_up*pass_probability(p_up,s+1)+(1-p_up)*pass_probability(p_up,s-1)
+
+correct_pass=pass_probability(F(9,10))
+wrong_pass=pass_probability(F(1,10))
+assert correct_pass==F(81,82) and wrong_pass==F(1,82)
+assert correct_pass&gt;=1-2*eta
+Q=[[thinning*sum(A[i][k]*H[k][y]*(correct_pass if i==k else wrong_pass)
+                          for k in range(3))
+    for y in range(3)] for i in range(3)]
+assert all(Q[i][y]&lt;=(1-eta)*H[i][y] for i in range(3) for y in range(3))
+delta=[1-sum(row) for row in Q]
+assert all(eta&lt;=di&lt;=6*eta for di in delta)
+R=[[(H[i][y]-Q[i][y])/delta[i] for y in range(3)] for i in range(3)]
+K=matmul(inverse(A),R)
+assert all(x&gt;=0 for row in K for x in row)
+assert all(sum(row)==1 for row in K)
+repaired=matmul(A,K)
+assert repaired==R
+final=[[Q[i][y]+delta[i]*repaired[i][y] for y in range(3)] for i in range(3)]
+assert final==H
+expected_verifier=2*(2*correct_pass-1)/(2*F(9,10)-1)
+assert expected_verifier==2*(2*wrong_pass-1)/(2*F(1,10)-1)==F(100,41)
+expected_cost=[6+expected_verifier+di*6 for di in delta]
+
+
+def encode(obj):
+    if isinstance(obj,F):return {&quot;fraction&quot;:str(obj),&quot;decimal&quot;:float(obj)}
+    if isinstance(obj,list):return [encode(x) for x in obj]
+    if isinstance(obj,dict):return {k:encode(v) for k,v in obj.items()}
+    return obj
+
+
+out=encode({&quot;baseline_confusion&quot;:A,&quot;thinning&quot;:thinning,
+            &quot;verification_pass_correct&quot;:correct_pass,&quot;verification_pass_wrong&quot;:wrong_pass,
+            &quot;accepted_mass&quot;:Q,&quot;failure_probabilities&quot;:delta,
+            &quot;residual_experiment&quot;:R,&quot;repair_markov_kernel&quot;:K,
+            &quot;exact_final_output&quot;:final,&quot;expected_total_cost&quot;:expected_cost,
+            &quot;all_checks&quot;:&quot;PASS with exact Fraction arithmetic&quot;,
+            &quot;scope&quot;:&quot;Single finite target report; universal theorem remains analytically proved separately&quot;})
+dest=Path(__file__).resolve().parents[2]/&quot;results/check_selection/exact_finite_converter.json&quot;
+dest.write_text(json.dumps(out,indent=2)+&quot;\n&quot;)
+print(json.dumps({&quot;checks&quot;:out[&quot;all_checks&quot;],&quot;expected_cost&quot;:out[&quot;expected_total_cost&quot;],
+                  &quot;smallest_repair_probability&quot;:float(min(x for row in K for x in row))},indent=2))
+</pre></html>

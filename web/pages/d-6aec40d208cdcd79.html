@@ -1,0 +1,318 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>!/usr/bin/env python3</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>!/usr/bin/env python3</h1><p>Source ID d-6aec40d208cdcd79; literature/sources/metric_geometry10/cycle14/internal_snapshots/retention_structural_producer.py; 3711 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact structural probe at the frozen cycle13 orbit design.
+
+Rebuilds the supplied rational polynomials, sphere norms, sampled tangent
+operator and old orbit geometry. No numerical acquisition or new-node
+continuation is performed. Consequential author claims require root&#x27;s separate
+independent gate. No producer modules are imported.
+&quot;&quot;&quot;
+from __future__ import annotations
+import argparse, hashlib, itertools, json, math, sys, time
+from functools import lru_cache
+from pathlib import Path
+from flint import fmpq as Q, fmpq_mat as Mat
+
+sys.set_int_max_str_digits(0)
+
+
+def matrix(rows):
+    return Mat([[Q(v) for v in row] for row in rows])
+
+
+def eye(n):
+    return matrix([[int(i == j) for j in range(n)] for i in range(n)])
+
+
+def rows(m):
+    return [[str(m[i,j]) for j in range(m.ncols())] for i in range(m.nrows())]
+
+
+def number(q):
+    return int(q.numerator) / int(q.denominator)
+
+
+def p_add(a,b):
+    c=dict(a)
+    for e,x in b.items():
+        c[e]=c.get(e,Q(0))+x
+        if not c[e]: del c[e]
+    return c
+
+
+def p_scale(a,x):
+    return {e:v*x for e,v in a.items() if v*x}
+
+
+def p_mul(a,b):
+    c={}
+    for e,v in a.items():
+        for f,w in b.items():
+            g=tuple(e[k]+f[k] for k in range(3))
+            c[g]=c.get(g,Q(0))+v*w
+    return {e:v for e,v in c.items() if v}
+
+
+def p_pow(a,n):
+    c={(0,0,0):Q(1)}
+    for _ in range(n): c=p_mul(c,a)
+    return c
+
+
+def p_derivative(a,k):
+    c={}
+    for e,v in a.items():
+        if e[k]:
+            f=list(e); f[k]-=1
+            c[tuple(f)]=v*e[k]
+    return c
+
+
+def laplacian(a):
+    c={}
+    for k in range(3): c=p_add(c,p_derivative(p_derivative(a,k),k))
+    return c
+
+
+def harmonic_projection(p,degree):
+    rr={(2,0,0):Q(1),(0,2,0):Q(1),(0,0,2):Q(1)}
+    delta=dict(p); power={(0,0,0):Q(1)}; a=Q(1); result={}
+    for j in range(degree//2+1):
+        if j: a=-a/Q(2*j*(2*degree-2*j+1))
+        result=p_add(result,p_scale(p_mul(power,delta),a))
+        delta=laplacian(delta); power=p_mul(power,rr)
+    assert not laplacian(result)
+    return result
+
+
+def p_evaluate(p,x):
+    degree=max((sum(e) for e in p),default=0)
+    powers=[[Q(1)] for _ in range(3)]
+    for k in range(3):
+        for j in range(degree): powers[k].append(powers[k][-1]*x[k])
+    return sum((v*powers[0][e[0]]*powers[1][e[1]]*powers[2][e[2]]
+                for e,v in p.items()),Q(0))
+
+
+@lru_cache(None)
+def sphere_monomial(e):
+    if any(x%2 for x in e): return Q(0)
+    numerator=1
+    for x in e:
+        for j in range(1,x,2): numerator*=j
+    denominator=1
+    for j in range(1,sum(e)+2,2): denominator*=j
+    return Q(numerator,denominator)
+
+
+def inner(a,b):
+    return sum((v*w*sphere_monomial(tuple(e[k]+f[k] for k in range(3)))
+               for e,v in a.items() for f,w in b.items()),Q(0))
+
+
+def basis_decode(data):
+    return [{tuple(t[&#x27;powers&#x27;]):Q(t[&#x27;coefficient&#x27;]) for t in q[&#x27;terms&#x27;]}
+            for q in data]
+
+
+def basis_encode(polys):
+    return [dict(degree=max(sum(e) for e in p),norm_squared=str(inner(p,p)),
+                 terms=[dict(powers=list(e),coefficient=str(v))
+                        for e,v in sorted(p.items())]) for p in polys]
+
+
+def verify_basis(polys,norms):
+    for i,p in enumerate(polys):
+        assert not laplacian(p)
+        assert not inner(p,{(0,0,0):Q(1)})
+        assert inner(p,p)==norms[i]&gt;0
+        for perm in itertools.permutations(range(3)):
+            assert {tuple(e[a] for a in perm):v for e,v in p.items()}==p
+        assert all(all(a%2==0 for a in e) for e in p)
+        for j in range(i): assert not inner(p,polys[j])
+
+
+def tangent_projection(anchors):
+    S=len(anchors); pp=[[Q(0) for _ in range(3*S)] for _ in range(3*S)]
+    for i,x in enumerate(anchors):
+        assert sum(a*a for a in x)==1
+        for a in range(3):
+            for b in range(3): pp[3*i+a][3*i+b]=Q(int(a==b))-x[a]*x[b]
+    return matrix(pp)
+
+
+def operator(polys,anchors):
+    S=len(anchors); mean=[]; jac=[]
+    for p in polys:
+        mean.append(sum((p_evaluate(p,x) for x in anchors),Q(0))/S)
+        row=[]
+        derivatives=[p_derivative(p,a) for a in range(3)]
+        for x in anchors:
+            grad=[p_evaluate(d,x) for d in derivatives]
+            radial=sum(x[a]*grad[a] for a in range(3))
+            row.extend((grad[a]-x[a]*radial)/S for a in range(3))
+        jac.append(row)
+    return matrix(jac),mean
+
+
+def norm2(z,nu):
+    return sum((v*v/n for v,n in zip(z,nu)),Q(0))
+
+
+def round_dyadic(q,bits):
+    scale=1&lt;&lt;bits
+    n=int(q.numerator)*scale; d=int(q.denominator)
+    return Q((2*n+d)//(2*d),scale)
+
+
+def floor_sqrt_dyadic(q,bits):
+    assert q&gt;=0
+    n=int(q.numerator)*(1&lt;&lt;(2*bits))//int(q.denominator)
+    return Q(math.isqrt(n),1&lt;&lt;bits)
+
+
+def null_vector(a):
+    rr=[[a[i,j] for j in range(a.ncols())] for i in range(a.nrows())]
+    piv=[]; row=0
+    for col in range(a.ncols()):
+        at=next((i for i in range(row,len(rr)) if rr[i][col]),None)
+        if at is None: continue
+        rr[row],rr[at]=rr[at],rr[row]
+        z=rr[row][col]; rr[row]=[v/z for v in rr[row]]
+        for i in range(len(rr)):
+            if i!=row and rr[i][col]:
+                z=rr[i][col]; rr[i]=[x-z*y for x,y in zip(rr[i],rr[row])]
+        piv.append(col); row+=1
+        if row==len(rr): break
+    free=[c for c in range(a.ncols()) if c not in piv]
+    if not free: return row,None
+    v=[Q(0)]*a.ncols(); v[free[0]]=Q(1)
+    for i,c in enumerate(piv): v[c]=-rr[i][free[0]]
+    assert all(not sum(a[i,j]*v[j] for j in range(a.ncols()))
+               for i in range(a.nrows()))
+    return row,v
+
+
+def orbit_points(anchors):
+    out=[]
+    for x in anchors:
+        for perm in itertools.permutations(range(3)):
+            for signs in itertools.product([-1,1],repeat=3):
+                out.append(tuple(signs[a]*x[perm[a]] for a in range(3)))
+    assert len(set(out))==len(out)
+    return out
+
+
+def main():
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(&#x27;--input&#x27;,type=Path,required=True)
+    parser.add_argument(&#x27;--output&#x27;,type=Path,required=True)
+    args=parser.parse_args(); started=time.perf_counter()
+    raw=args.input.read_bytes(); data=json.loads(raw)
+    anchors=[tuple(Q(a) for a in x) for x in data[&#x27;anchors&#x27;]]
+    polys=basis_decode(data[&#x27;basis&#x27;]); nu=[Q(q[&#x27;norm_squared&#x27;]) for q in data[&#x27;basis&#x27;]]
+    verify_basis(polys,nu)
+    J,b=operator(polys,anchors)
+    assert J==matrix(data[&#x27;J&#x27;]) and b==[Q(v) for v in data[&#x27;mean&#x27;]]
+    R=matrix(data[&#x27;right_inverse&#x27;]); PP=tangent_projection(anchors)
+    assert J*R==eye(len(polys)) and PP*R==R
+    Pi=PP-R*J
+    assert Pi==Pi.transpose() and Pi*Pi==Pi and PP*Pi==Pi
+    assert all(not (J*Pi)[i,j] for i in range(J.nrows()) for j in range(Pi.ncols()))
+    assert sum(Pi[i,i] for i in range(Pi.nrows()))==1
+    column=max(range(Pi.ncols()),key=lambda j:Pi[j,j])
+    k=matrix([[Pi[i,column]] for i in range(Pi.nrows())])
+    blocks=[sum(k[3*i+a,0]**2 for a in range(3)) for i in range(len(anchors))]
+    assert min(blocks)&gt;0
+    bits=64
+    Rh=PP*matrix([[round_dyadic(R[i,j],bits) for j in range(R.ncols())]
+                  for i in range(R.nrows())])
+    kh=PP*matrix([[round_dyadic(k[i,0],bits)] for i in range(k.nrows())])
+    defect=eye(len(polys))-J*Rh
+    defect2=sum(defect[j,l]**2*nu[l]/nu[j]
+                for j in range(len(polys)) for l in range(len(polys)))
+    C2=max(sum(Rh[3*i+a,j]**2*nu[j] for a in range(3) for j in range(len(polys)))
+           for i in range(len(anchors)))
+    kblocks=[sum(kh[3*i+a,0]**2 for a in range(3)) for i in range(len(anchors))]
+    kdef=[(J*kh)[j,0] for j in range(len(polys))]
+    kdef2=norm2(kdef,nu)
+    eta=floor_sqrt_dyadic(min(kblocks),32)
+    a=Q(1,1&lt;&lt;32); e=Q(1,1&lt;&lt;48); bbar=Q(1,1&lt;&lt;36)
+    Cbar=Q(2); Abar=Q(289,2); Bbar=Q(1728); K0=Bbar+Abar/2
+    assert defect2&lt;=a*a and C2&lt;=Cbar*Cbar
+    assert kdef2&lt;=e*e and norm2(b,nu)&lt;=bbar*bbar
+    assert max(kblocks)&lt;=1 and 0&lt;eta&lt;=Q(1,2)
+    tau=eta/(8*K0)
+    rho=4*bbar+2*tau*e+K0*tau*tau
+    node_radius=tau+Cbar*rho
+    contraction=a+K0*Cbar*node_radius
+    same_anchor_lower=Q(4,5)*(tau*eta-Cbar*rho)
+    d0=Q(1,1024)
+    old=orbit_points(anchors)
+    old_sep2=min(sum((x[a]-y[a])**2 for a in range(3))
+                 for i,x in enumerate(old) for y in old[:i])
+    assert old_sep2==Q(data[&#x27;minimum_full_orbit_separation_squared&#x27;])
+    assert old_sep2&gt;d0*d0
+    gap=min(same_anchor_lower,d0-2*node_radius)
+    author_admitted=(node_radius&lt;=1 and contraction&lt;Q(1,4) and gap&gt;0)
+    # Structural higher-degree clone obstruction at the same frozen anchors.
+    E2={(2,2,0):Q(1),(2,0,2):Q(1),(0,2,2):Q(1)}
+    E3={(2,2,2):Q(1)}
+    q18a=harmonic_projection(p_pow(E3,3),18)
+    q18b=harmonic_projection(p_mul(p_pow(E2,3),E3),18)
+    q18b=p_add(q18b,p_scale(q18a,-inner(q18b,q18a)/inner(q18a,q18a)))
+    allpolys=polys+[q18a,q18b]; allnu=nu+[inner(q18a,q18a),inner(q18b,q18b)]
+    verify_basis(allpolys,allnu)
+    J18,b18=operator(allpolys,anchors)
+    rank,c=null_vector(J18.transpose())
+    assert rank&lt;=10 and c is not None
+    pcrit={}
+    for v,p in zip(c,allpolys): pcrit=p_add(pcrit,p_scale(p,v))
+    mu=sum(v*x for v,x in zip(c,b18)); pn2=inner(pcrit,pcrit)
+    mu2=mu*mu/pn2
+    lower=floor_sqrt_dyadic(mu2,32)
+    degree=18
+    B18sq=Q(degree*(degree+1)**2*(degree+2)*(degree*(degree+2)-1),8)
+    B18=Q(math.isqrt(int(B18sq))+1)
+    # If ||moment||&lt;=lower/2, one equal new clone per old point must move at
+    # least sqrt(2*lower/B18) geodesically. This is a displacement obstruction,
+    # not impossibility of a different acquired initializer.
+    clone_move_lower2=2*lower/B18
+    out=dict(scope=&#x27;Author structural data; root independent gate required&#x27;,
+             author_admitted_retention_section=author_admitted,
+             source_path=str(args.input.resolve()),source_sha256=hashlib.sha256(raw).hexdigest(),
+             anchors=[[str(v) for v in x] for x in anchors],basis=data[&#x27;basis&#x27;],
+             J=rows(J),mean=[str(v) for v in b],norms=[str(v) for v in nu],
+             exact_kernel_column=column,exact_kernel=rows(k),
+             exact_kernel_block_norm2=[str(v) for v in blocks],
+             rounding_bits=bits,R_hat=rows(Rh),k_hat=rows(kh),
+             rounded_kernel_block_norm2=[str(v) for v in kblocks],
+             preconditioner_defect_squared=str(defect2),C_squared=str(C2),
+             kernel_derivative_defect_squared=str(kdef2),mean_squared=str(norm2(b,nu)),
+             constants={name:str(value) for name,value in dict(a=a,e=e,bbar=bbar,Cbar=Cbar,
+                Abar=Abar,Bbar=Bbar,K0=K0,eta=eta,tau=tau,rho=rho,
+                node_radius=node_radius,contraction=contraction,d0=d0,
+                same_anchor_lower=same_anchor_lower,gap=gap).items()},
+             old_orbit_separation_squared=str(old_sep2),
+             degree18_obstruction=dict(basis=basis_encode(allpolys),J=rows(J18),
+                old_mean=[str(v) for v in b18],rank=rank,null_coefficients=[str(v) for v in c],
+                critical_polynomial=basis_encode([pcrit])[0],critical_mean=str(mu),
+                normalized_critical_mean_squared=str(mu2),normalized_mean_lower=str(lower),
+                global_hessian_squared=str(B18sq),global_hessian_upper=str(B18),
+                equal_clone_displacement_lower_squared=str(clone_move_lower2)),
+             display=dict(kernel_block_lengths=[math.sqrt(number(v)) for v in blocks],
+                eta=number(eta),defect=math.sqrt(number(defect2)),C_squared=number(C2),
+                kernel_defect=math.sqrt(number(kdef2)),tau=number(tau),rho=number(rho),
+                contraction=number(contraction),gap=number(gap),
+                degree18_critical_mean=math.sqrt(number(mu2)),
+                degree18_clone_displacement_lower=math.sqrt(number(clone_move_lower2))),
+             total_seconds_before_serialization=time.perf_counter()-started,
+             python=sys.version,no_new_nodes_acquired=True)
+    out[&#x27;code_sha256&#x27;]=hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
+    args.output.parent.mkdir(parents=True,exist_ok=True)
+    args.output.write_text(json.dumps(out,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps(dict(author_admitted=author_admitted,**out[&#x27;display&#x27;],
+                          seconds=out[&#x27;total_seconds_before_serialization&#x27;])))
+
+
+if __name__==&#x27;__main__&#x27;: main()
+</pre></html>

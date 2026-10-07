@@ -1,0 +1,195 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Cycle 3: complete slower trace-dependent sampler</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>Cycle 3: complete slower trace-dependent sampler</h1><p>Source ID d-8967d1403bafc050; literature/notes/r10_probability/cycle3/full_trace_sampler.md; 3867 o200k tokens; role research_note; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre># Cycle 3: complete slower trace-dependent sampler
+
+**Current refinement:** rotation_trace_refinement.md sharpens the direct fallback to C_ref+C[1+(h/q)(sqrt(tau L)+L)]L² using the existing FORS Gaussian rotation path. The proof below is retained as the independently checked trace-leading intermediate theorem.
+
+Worker r10_probability, 6 October 2026. This is a reconstructed conditional theorem in the exact-real gradient-query model. It avoids the Gaussian-cloud recursion. It combines the source proximal framework with the independently reconstructed direct-FORS trace primitive discussed with c_gaussian and team_c_multiscale. It is not a new whole-cloud complexity result; exact novelty of this consequence is unverified.
+
+## Theorem and supplied interface
+
+Let V(x)=q||x||²/2+U(x) on R^d, where q&gt;0 is known, U is convex C², and known h&gt;0 and tau≥1 satisfy uniformly
+
+    0≤Hessian U≤h I, tr(Hessian U)≤tau h.
+
+The only function oracle is exact gradient V. Therefore gradient U(x)=gradient V(x)-qx is available with one query. Standard Gaussian/Poisson/uniform generation and exact real arithmetic are supplied; potential values, Hessians, proximal points, a residual projector, and a warm-start distribution are not supplied. A finite reference x_ref is supplied; one gradient query measures M0=||gradient V(x_ref)||. Set
+
+    D0=d+M0²/q+1, kappa=1+h/q,
+    L=log(e+D0(tau+1)kappa/epsilon), 0&lt;epsilon≤1/4.
+
+There are universal constants such that the algorithm below returns epsilon TV accuracy with expected gradient-query cost
+
+    C [1+(h/q)(tau+L)] L².                         (T)
+
+This has ambient dimension only in L. Gaussian generation/arithmetic/storage still scale with d. The q=0 case is outside this theorem. If h=0, U is affine and one gradient query identifies the exact Gaussian target, so the displayed construction is unnecessary.
+
+Choose p=ceil(Cp L), and
+
+    eta=min{1/q, c/[h(tau+p)]},
+    N=ceil(CN [1+h(tau+p)/q] L),
+    delta_loc=epsilon/(20N).
+
+Constants Cp,CN are sufficiently large; c is sufficiently small. The occurrence of N in local accuracy creates no circular choice because log(N/epsilon)≤C L. The structural trace promise is supplied and not inferred from finite observations.
+
+## Direct RGO primitive, including approximate mode
+
+For an explicit center y, define lambda=q+1/eta, sigma=lambda^{-1/2}. The target R_eta,y has potential V(x)+||x-y||²/(2eta). Its smoothness and strong convexity are lambda+h and lambda.
+
+Use gradient descent with step 1/(lambda+h), starting at y, until a computable point a satisfies
+
+    zeta:=sigma ||gradient V(a)+(a-y)/eta||≤c0/sqrt(p).
+
+This is a gradient residual certificate, not an assertion that the exact proximal point is known. Let e=gradient V(a)+(a-y)/eta. A standard Gaussian proposal x=a+sigma G has exact log tilt -H(G), where
+
+    H(G)=U(a+sigma G)-U(a)-sigma gradient U(a)·G
+          +sigma e·G.
+
+No potential value is evaluated. For independent G&#x27; standard and s,t uniform[0,1], set
+
+    R_t(G)=sigma G·[gradient U(a+t sigma G)-gradient U(a)],
+    W=R_s(G&#x27;)-R_t(G)+sigma e·(G&#x27;-G).
+
+Using stored gradient U(a), each estimator costs two further gradient queries. Conditional expectation is E H(G&#x27;)-H(G), so tilting the proposal by exp(E[W|G]) gives the exact requested RGO, including the approximate-center linear residual. There is **no mode-approximation TV error** to allocate.
+
+Clip W at B=1 and run the source Poisson/FORS rule. Expected attempts≤e² and expected likelihood-estimator calls≤2e²; thus the additional expected gradient cost after the center calculation is universally bounded. The algorithm evaluates no potential and does not estimate any unknown mean.
+
+## Dimension-free moment proof for this lawful estimator
+
+Convex h-smooth gradients are cocoercive:
+
+    ||gradient U(a+z)-gradient U(a)||²
+       ≤h z·[gradient U(a+z)-gradient U(a)].
+
+For z=t sigma G, Gaussian integration by parts gives
+
+    E||gradient U(a+t sigma G)-gradient U(a)||²
+       ≤tau h² t² sigma².
+
+The vector field S_t(G)=sigma[gradient U(a+t sigma G)-gradient U(a)] consequently has E||S_t(G)||²≤tau (t sigma² h)². Its direction derivative has operator≤t sigma²h, Frobenius≤sqrt(tau)t sigma²h, and nuclear≤tau t sigma²h. Oddness is not needed here: its role in the earlier generic lemma was to obtain the energy bound, which cocoercivity plus Stein supplies directly.
+
+The finite-dimensional Gaussian density transformation G→G-uS_t(G), for |u|t sigma²h≤c, gives
+
+    E exp(u G·S_t(G))
+      ≤exp(|u|tau t sigma²h+C u²tau t²sigma^4h²).
+
+The determinant estimate uses |tr DS|≤tau a and |tr(DS)^k|≤tau a^k, a=t sigma²h. The norm-square exponential moment follows from the preceding energy bound and Gaussian concentration of ||S_t(G)||. Thus
+
+    ||R_t(G)||_Lp≤C sigma²h[tau+sqrt(tau p)+p].
+
+The paired estimator&#x27;s proposal moment is bounded by
+
+    e_p=C{sigma²h[tau+sqrt(tau p)+p]+zeta sqrt(p)}.
+
+Under the true tilt, let B_U(G) be the nonnegative Bregman part of H. Stein also gives E B_U≤sigma²tau h/2, so its Gaussian normalizer A=E exp(-H)≥exp(-sigma²tau h/2). Moreover exp(-2H)≤exp(-2sigma e·G), whose expectation is exp(2zeta²). Cauchy–Schwarz therefore transfers the 2p proposal moment to the p true-tilt moment with only a universal factor. Auxiliary G&#x27;,s,t remain proposal draws. This proves the required moment under both laws, rather than merely at the Gaussian proposal.
+
+The selected eta and residual tolerance give e_p≤c1, with c1 chosen small. Source clipping comparison, reconstructed in the earlier note, yields TV error≤C(e_p)^p≤delta_loc after increasing Cp. This provides uniform accuracy for every explicit y at which the residual certificate has been reached.
+
+An equivalent optional construction absorbs the known linear residual exactly into the Gaussian proposal mean a-sigma²e. It then uses the nonpositive estimator of the residual Bregman log tilt, and needs only zeta≤O(1). We retain the centered construction above to align with the independently checked c_gaussian primitive; the headline query cost is the same.
+
+## Mixing proof without a warm start
+
+Define the exact proximal kernel K:
+
+    Y=X+sqrt(eta)G; X&#x27; drawn from R_eta,Y.
+
+Its invariant law is pi proportional to exp(-V): this follows from the joint density pi(x) exp(-||y-x||²/(2eta)). For two explicit RGO centers y,y&#x27;, synchronous Langevin coupling for their strongly convex posteriors yields
+
+    W2(R_eta,y,R_eta,y&#x27;)≤||y-y&#x27;||/(1+q eta).
+
+Coupling the first Gaussian with a shared G therefore gives
+
+    W2(mu K,nu K)≤(1+q eta)^{-1} W2(mu,nu).
+
+Let x_star minimize V. Strong convexity gives ||x_ref-x_star||≤M0/q. Integration by parts and monotonicity give E_pi||X-x_star||²≤d/q. Thus starting from delta_x_ref,
+
+    W2(mu0,pi)≤M0/q+sqrt(d/q)≤sqrt(2D0/q).
+
+For TV conversion, the first half of K is Gaussian convolution. Pinsker&#x27;s inequality for shifted Gaussians and the common second-half RGO kernel imply
+
+    TV(mu K,nu K)≤W2(mu,nu)/(2sqrt(eta)).
+
+Consequently
+
+    TV(mu0 K^N,pi)
+      ≤(1+q eta)^{-(N-1)} sqrt(2D0/q)/(2sqrt(eta))
+      ≤epsilon/4.
+
+Since q eta≤1 and [q eta]^{-1}≤C[1+h(tau+p)/q], the prescribed N suffices. Neither a supplied warm start nor potential-value access is used. Dimension enters logarithmically through the initial Wasserstein distance.
+
+## Center acquisition, caps and query count
+
+Along the exact chain the contraction above implies uniformly E||X_n-x_star||²≤C D0/q. Since eta≤1/q, also E||Y_n-x_ref||²≤C D0/q. Fix the known deterministic radius
+
+    R²=C N D0/(q epsilon).
+
+Stop and return x_ref if an X or explicit Y leaves B(x_ref,R). Markov and a union bound over all N steps bound the exact ideal stopping probability by epsilon/4. Caps are charged against the ideal chain; no unproved moment estimate of the approximate chain is substituted.
+
+On the caps, the initial posterior gradient at y is bounded by M0+(q+h)R. Gradient descent contracts its norm by
+
+    alpha=h/(lambda+h)≤eta h≤c/(tau+p)&lt;1/2.
+
+Choose the fixed iteration count
+
+    M=ceil{log_+[(M0+(q+h)R) sigma sqrt(p)/c0]
+                 /log(1/alpha)}+1.
+
+If alpha=0 the target is quadratic. Otherwise M≤C L: the cap radius, kappa, N, D0 and p have logarithms O(L). The same fixed M is valid at every retained y, yielding the displayed residual certificate. Center computation costs M gradients, then FORS costs O(1) more in expectation. Over at most N steps this proves (T). Capped stopping only reduces executed work.
+
+## Complete TV and precision ledger
+
+In exact arithmetic, allocate epsilon/4 to mixing, epsilon/4 to ideal caps, and N delta_loc≤epsilon/20 to clipped RGO replacements. The source adaptive-kernel telescoping lemma applies at equal ideal histories; accumulated replacement and stopping errors fit epsilon with room for constants. Approximate centers have zero distributional bias because their residual e is retained in the likelihood.
+
+No bit-complexity theorem is claimed. A purely discrete finite-bit output has TV distance one from the continuous target; a numerical extension must first specify continuous dequantization or accuracy relative to a discretized target. Conditional on a compatible output protocol, the remaining budget can charge Gaussian-proposal-law error≤epsilon/(40N) per step and uniformly certified absolute gradient errors≤epsilon/[C N sigma sqrt(d+p)]. The latter make the integrated estimator perturbation O(epsilon/N) under proposal and target; center calculations must still certify the residual bound with a margin. An estimator-bias comparison and the same adaptive TV ledger then charge these errors. Achieving those oracle tolerances and the output protocol for arbitrary C² potentials is a separate computation issue, not established by the query bound. Ordinary discrete rounding is not asserted to satisfy the proposal TV condition.
+
+## Equally informed source baseline and status
+
+After rescaling coordinates by sqrt(beta), beta=q+h, the ordinary source theorem applies with condition number kappa=beta/q and query bound O(kappa[d+log(kappa d/epsilon)]^{1/5} log^{13/2}(kappa d/epsilon)), when its supplied reference-point requirement holds. The source baseline receives the same gradient oracle and any structural promise; it can retain that generic guarantee. Its reference condition in the original coordinates is ||gradient V(x_ref)||&lt;=q sqrt(d/beta). If the reference is initially inadequate, gradient descent can acquire one with additional O(kappa[1+log_+(M0 sqrt(beta)/(q sqrt(d)))]) queries. The trace theorem above accepts the measured reference norm directly, through L.
+
+The meaningful comparison is the minimum of this tau-linear conditional bound and the retained generic source bound. We do not claim that the source authors&#x27; algorithm cannot exploit the supplied structure, nor that this construction dominates existing equally informed specialized algorithms. Gaussian divergence/change-of-variables and the proximal chain are established prior machinery. This is a complete conditional construction under a stronger structural interface, and a checkpoint against claiming a faster native-cloud theorem that has not been proved.
+
+## Stronger refinement: no ambient dimension in the gradient-query bound
+
+The preceding theorem can be strengthened by acquiring a more accurate reference and capping gradients rather than positions. This section is independently derived; it does not substitute tau for d in the source forest. Define
+
+    L_* = log(e+(tau+1)kappa/epsilon).
+
+From the original reference, gradient descent for V with step 1/(q+h) reduces its gradient norm by factor h/(q+h) per update. In at most
+
+    C kappa[1+log_+(M0/sqrt(q))]
+
+gradient queries, obtain x_ref with ||gradient V(x_ref)||&lt;=sqrt(q). Translate x_ref to the origin. The translated decomposition is still q||x||²/2+U_tilde(x), with the same Hessian promises, and m=||gradient U_tilde(0)||&lt;=sqrt(q). The algorithm can compute translated gradients with one original gradient query; the translation is not an extra oracle. Start X0~G0=N(0,q^-1 I).
+
+Here is a direct initial W2 bound, avoiding an imported transport-entropy theorem. Let Z_t be the stationary Ornstein–Uhlenbeck process dZ=-qZ dt+sqrt(2)dB, and run dX=-[qX+gradient U_tilde(X)]dt+sqrt(2)dB with X0=Z0 and the same Brownian path. Convexity implies, for r(t)=(E||X_t-Z_t||²)^{1/2},
+
+    r&#x27;(t)&lt;=-q r(t)+K,
+    K²=E||gradient U_tilde(Z)||²&lt;=2m²+2tau h²/q.
+
+The second inequality follows from cocoercivity and Gaussian Stein for gradient U_tilde(Z)-gradient U_tilde(0). Thus r(t)&lt;=K/q. The q-strongly-convex Langevin law converges in W2 to pi (synchronous coupling gives the q contraction, while pi is invariant), so taking a limit of these couplings gives
+
+    W2(G0,pi)²&lt;=A²:=2[1+tau(h/q)²]/q.
+
+All processes have finite second moments because their drifts are globally Lipschitz and dissipative. This argument only establishes a comparison coupling; simulating Langevin is not part of the algorithm. The tighter entropy estimate KL(G0||pi)&lt;=(1+tau h/q)/2 is also available from the Gaussian heat formula and the strong-convexity partition bound, but is unnecessary for the query theorem.
+
+Use p=ceil(Cp L_*), eta and N as before with L replaced by L_*. The exact proximal chain satisfies W2(X_n,pi)&lt;=A and hence W2(X_n,G0)&lt;=2A. Last-step Gaussian smoothing then proves epsilon/4 TV mixing with N&lt;=C[1+(h/q)(tau+L_*)]L_*.
+
+For acquisition of each RGO center, remove the known q curvature before taking gradient steps. Write
+
+    k=(1+q eta)^-1, a=k eta, v=k y,
+    R^V_eta,y = R^U_tilde_a,v.
+
+The Gaussian proposal variance is a, and the posterior gradient at the starting point v is gradient U_tilde(v), rather than gradient V(y). Couple X_n to Z0~G0 within W2 distance 2A and use the same outer Gaussian draw. Then v couples to Z=k[Z0+sqrt(eta)G], whose covariance is [q(1+q eta)]^-1 I, with E||v-Z||²&lt;=4A². Cocoercivity plus Stein at Z and h-Lipschitzness give the uniform ideal-history bound
+
+    E||gradient U_tilde(v)||²
+      &lt;=S²:=4q+4tau h²/q+8h²A².
+
+Set R_grad²=C N S²/epsilon. At every ideal center, the probability that ||gradient U_tilde(v)||&gt;R_grad is at most S²/R_grad²; the union of all N checks costs at most epsilon/4. The actual algorithm queries the gradient, checks this cap, and stops if it fails. Gradient norm now contracts by alpha=a h/(1+a h)&lt;1/2. Choose the fixed mode iteration budget
+
+    M=ceil{log_+(sqrt(a)R_grad sqrt(p)/c0)/log(1/alpha)}+1.
+
+This gives sqrt(a)||e||&lt;=c0/sqrt(p). Since S²/q is an explicit polynomial in h/q and tau, log_+(sqrt(a)R_grad sqrt(p))&lt;=C L_*; hence M&lt;=C L_*. The same centered likelihood W corrects this approximate mode exactly. Ideal-history adaptive replacement plus stopping remains valid, even though approximate histories need not satisfy the ideal gradient moment bound.
+
+The resulting total expected gradient cost is therefore
+
+    C kappa[1+log_+(M0/sqrt(q))]
+      + C [1+(h/q)(tau+L_*)] L_*².                (T*)
+
+If a sufficiently accurate reference is supplied, the first term is omitted. There is no ambient d in (T*) in the exact-real gradient-query interface. Generating and manipulating d-dimensional Gaussians and gradients still requires dimension-dependent arithmetic, memory and precision. This is a slower, trace-leading fallback, not a claimed cloud exponent improvement or a bit-complexity result.
+</pre></html>

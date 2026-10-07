@@ -1,0 +1,380 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>**Conditionial Sampling of $\bar x_{j+1}$ knowing $x_{j+1}$ with $2^{J-j} =$ #section.</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>**Conditionial Sampling of $\bar x_{j+1}$ knowing $x_{j+1}$ with $2^{J-j} =$ #section.</h1><p>Source ID d-bab0255b480a42d5; literature/sources/check_wcrg/upstream/Synthetizing_cells.py; 4447 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>**Conditionial Sampling of $\bar x_{j+1}$ knowing $x_{j+1}$ with $2^{J-j} =$ #section. 
+Sampling is achieved with MALA. Step size should be adjusted in order to have an acceptance rate $\simeq 0.57$.**
+# Import Packages
+from google.colab import drive
+drive.mount(&#x27;/content/drive&#x27;)
+import numpy as np
+import matplotlib.pyplot as plt
+import torch
+import os
+import sys
+import pickle
+#Importing the package
+path = &#x27;/content/drive/MyDrive/Colab Notebooks/&#x27;
+sys.path.append(os.path.abspath(path+&#x27;WCRG&#x27;))
+sys.path.append(os.path.abspath(path+&#x27;WCRG/WCRG&#x27;))
+sys.path.append(os.path.abspath(path+&#x27;WCRG/Wavelet_Packets&#x27;))
+sys.path.append(os.path.abspath(path+&#x27;WCRG/WCRG/Models&#x27;))
+#Wavelets
+from Wavelet_Packets import *
+#Ansatz
+from WCRG import *
+
+# Import Data
+#directories for models and synthesis
+dir_synth = &#x27;content/drive/MyDrive/Colab Notebooks/WCRG/Notebooks Examples/Synths/&#x27;
+dir_mod = &#x27;/content/drive/MyDrive/Colab Notebooks/WCRG/Notebooks Examples/Models/&#x27;
+#This key will be add to file name for synthesis and loading
+KEY = &#x27;128_phi4_0.68&#x27;
+#Import data
+device=&#x27;cuda&#x27; #could be &#x27;cpu&#x27; as well
+Data = torch.tensor(np.load(&#x27;/content/drive/MyDrive/Colab Notebooks/Phi4/phi4_L128_Beta0.68.npy&#x27;)).to(device).to(torch.float32)
+print(Data.mean(),Data.std())
+#Normalising Data
+Data= (Data - Data.mean())/Data.std()
+print(Data.shape)
+#Computing the number of scales
+J=int(np.log2(Data.shape[-1])) #Images of size 2**J
+print(&#x27;J = &#x27;+str(J))
+You must define the same wavelet used for energy learning, in order to compare the generated $x_j$ and the real $x_j$. If it&#x27;s not the same wavelet, when you try to compare, the statistics won&#x27;t match. However, if you want to generate without comparing, you do not need to define this wavelet. 
+#Wavelet
+m=4
+W=Db_wavelets(m,device=&#x27;cuda&#x27;,mode=&#x27;Periodic&#x27;) #Debauchies 4
+#1
+We sample $x_J$ using a learned energy $E(x_J)$.
+#Define Scale, maps of size 1*1 = L*L
+L=1
+depth = J-int(np.log2(L))
+#print(depth)
+#Load Real data x_J, for comparison only
+phi_s = load_data(W,Data,depth,J,show_hist=False)
+#Load The model we will sample from
+ansatz = load_ansatz(L,KEY,dir_mod)
+#Sampling
+window_min,window_max = ansatz.ansatze[0].centers[0],ansatz.ansatze[0].centers[-1]
+n_repeat = 1
+n_batch = 10000
+n_steps = 500 
+step_size = 3e2
+n_repeat = 1
+x_reco = LANGEVINMALA(ansatz,
+             torch.zeros_like(phi_s),
+             window_min,
+             window_max,
+             n_steps,
+             step_size,
+             n_batch,
+             n_repeat)
+compare_hist(x_reco,phi_s)
+#save the generated x_J
+save(x_reco,L,KEY,dir_synth)
+# 2
+We sample $x_{j+1} $ using a learned energy $\bar E(\bar x_{j+1}\vert x_{j+1})$ for $j = 6$ 
+#Define Scale, maps of size 2^{J-j}*2^{J-j} = L*L
+L=2
+depth = J-int(np.log2(L))
+print(&#x27;depth = &#x27;+str(depth))
+#Load Real data x_j, for comparison only
+phi_s = load_data(W,Data,depth,J)
+#Load The model we will sample from
+ansatz = load_ansatz(L,KEY,dir_mod)
+#We generate \bar x_{j+1} conditionaly to previously sampled x_{j+1}
+x_reco = load(L//2,KEY,W,dir_synth)
+
+window_min,window_max = ansatz.ansatze[0].centers[0],ansatz.ansatze[0].centers[-1]
+n_repeat = 1
+n_batch = len(x_reco)
+n_steps = 100 
+step_size = 25
+n_repeat = 1
+x_reco = LANGEVINMALA(ansatz,
+             x_reco,
+             window_min,
+             window_max,
+             n_steps,
+             step_size,
+             n_batch,
+             n_repeat)
+Compare histograms of the field $x_{j}$
+compare_hist(x_reco,phi_s)
+Compare histograms of the $\bar x_{j+1}$ fields.
+x_high_reco = ansatz.decompose(x_reco.cuda())[1]
+x_high = ansatz.decompose(phi_s)[1]
+compare_hist(x_high_reco[:,0],x_high[:,0],bins=100)
+compare_hist(x_high_reco[:,1],x_high[:,1],bins=100)
+compare_hist(x_high_reco[:,2],x_high[:,2],bins=100)
+save(x_reco,L,KEY,dir_synth)
+# 4
+We sample $x_{j+1} $ using a learned energy $\bar E(\bar x_{j+1}\vert x_{j+1})$ for $j = 5$ 
+#Define Scale, maps of size 2^{J-j}*2^{J-j} = L*L
+L=4
+depth = J-int(np.log2(L))
+print(&#x27;depth = &#x27;+str(depth))
+#Load Real data x_j, for comparison only
+phi_s = load_data(W,Data,depth,J)
+#Load The model we will sample from
+ansatz = load_ansatz(L,KEY,dir_mod)
+x_reco = load(L//2,KEY,W,dir_synth)
+
+window_min,window_max = ansatz.ansatze[0].centers[0],ansatz.ansatze[0].centers[-1]
+n_repeat = 1
+n_batch = len(x_reco)
+n_steps = 40
+step_size = 10
+n_repeat = 1
+x_reco = LANGEVINMALA(ansatz,
+             x_reco,
+             window_min,
+             window_max,
+             n_steps,
+             step_size,
+             n_batch,
+             n_repeat)
+Compare histograms of the field $x_{j}$
+compare_hist(x_reco,phi_s,)
+Compare histograms of the $\bar x_{j+1}$ fields.
+x_high_reco = ansatz.decompose(x_reco.cuda())[1]
+x_high = ansatz.decompose(phi_s)[1]
+compare_hist(x_high_reco[:,0],x_high[:,0],bins=100)
+compare_hist(x_high_reco[:,1],x_high[:,1],bins=100)
+compare_hist(x_high_reco[:,2],x_high[:,2],bins=100)
+save(x_reco,L,KEY,dir_synth)
+# 8 
+We sample $x_{j+1} $ using a learned energy $\bar E(\bar x_{j+1}\vert x_{j+1})$ for $j = 4$ 
+#Define Scale, maps of size 2^{J-j}*2^{J-j} = L*L
+L=8
+depth = J-int(np.log2(L))
+print(&#x27;depth = &#x27;+str(depth))
+#Load Real data x_j, for comparison only
+phi_s = load_data(W,Data,depth,J,show_hist=False)
+#Load The model we will sample from
+ansatz = load_ansatz(L,KEY,dir_mod)
+#We generate \bar x_{j+1} conditionaly to previously sampled x_{j+1}
+x_reco = load(L//2,KEY,W,dir_synth)
+
+window_min,window_max = ansatz.ansatze[0].centers[0],ansatz.ansatze[0].centers[-1]
+n_repeat = 1
+n_batch = len(x_reco)
+n_steps = 100 
+step_size = 2
+n_repeat = 1
+x_reco = LANGEVINMALA(ansatz,
+             x_reco,
+             window_min,
+             window_max,
+             n_steps,
+             step_size,
+             n_batch,
+             n_repeat)
+Compare histogram and power spectrum of the field $x_{j}$
+#Compare Synthesis and originals
+Show_langevin(phi_s,x_reco,log=True)
+Compare histograms of the $\bar x_{j+1}$ fields.
+x_high_reco = ansatz.decompose(x_reco.cuda())[1]
+x_high = ansatz.decompose(phi_s)[1][:len(x_reco)]
+compare_hist(x_high_reco[:,0],x_high[:,0],bins=100)
+compare_hist(x_high_reco[:,1],x_high[:,1],bins=100)
+compare_hist(x_high_reco[:,2],x_high[:,2],bins=100)
+save(x_reco,L,KEY,dir_synth)
+# 16
+We sample $x_{j+1} $ using a learned energy $\bar E(\bar x_{j+1}\vert x_{j+1})$ for $j = 3$ 
+#Define Scale, maps of size 2^{J-j}*2^{J-j} = L*L
+L=16
+depth = J-int(np.log2(L))
+print(&#x27;depth = &#x27;+str(depth))
+#Load Real data x_j, for comparison only
+phi_s = load_data(W,Data,depth,J,show_hist=False)
+#Load The model we will sample from
+ansatz = load_ansatz(L,KEY,dir_mod)
+#We generate \bar x_{j+1} conditionaly to previously sampled x_{j+1}
+x_reco = load(L//2,KEY,W,dir_synth)
+
+window_min,window_max = ansatz.ansatze[0].centers[0],ansatz.ansatze[0].centers[-1]
+n_repeat = 1
+n_batch = len(phi_s)//5
+n_steps = 200 
+step_size = 5e-1
+n_repeat = 1
+x_reco = LANGEVINMALA(ansatz,
+             x_reco,
+             window_min,
+             window_max,
+             n_steps,
+             step_size,
+             n_batch,
+             n_repeat)
+Compare histogram and power spectrum of the field $x_{j}$
+#Compare Synthesis and originals
+Show_langevin(phi_s[::10],x_reco,log=True)
+Compare histograms of the $\bar x_{j+1}$ fields.
+x_high_reco = ansatz.decompose(x_reco.cuda())[1]
+x_high = ansatz.decompose(phi_s)[1][:len(x_reco)]
+compare_hist(x_high_reco[:,0],x_high[:,0],bins=100)
+compare_hist(x_high_reco[:,1],x_high[:,1],bins=100)
+compare_hist(x_high_reco[:,2],x_high[:,2],bins=100)
+save(x_reco,L,KEY,dir_synth)
+# 32 
+We sample $x_{j+1} $ using a learned energy $\bar E(\bar x_{j+1}\vert x_{j+1})$ for $j = 2$
+#Define Scale, maps of size 2^{J-j}*2^{J-j} = L*L
+L=32
+depth = J-int(np.log2(L))
+print(&#x27;depth = &#x27;+str(depth))
+#Load Real data x_j, for comparison only
+phi_s = load_data(W,Data,depth,J,show_hist=False)
+#Load The model we will sample from
+ansatz = load_ansatz(L,KEY,dir_mod)
+#We generate \bar x_{j+1} conditionaly to previously sampled x_{j+1}
+x_reco = load(L//2,KEY,W,dir_synth)
+
+window_min,window_max = ansatz.ansatze[0].centers[0],ansatz.ansatze[0].centers[-1]
+n_repeat = 1
+n_batch = 500
+n_steps = 500 
+step_size = 1e-1
+n_repeat = 1
+x_reco = LANGEVINMALA(ansatz,
+             x_reco,
+             window_min,
+             window_max,
+             n_steps,
+             step_size,
+             n_batch,
+             n_repeat)
+Compare histogram and power spectrum of the field $x_{j}$
+#Compare Synthesis and originals
+Show_langevin(phi_s[::50],x_reco,log=True)
+Compare histograms of the $\bar x_{j+1}$ fields.
+x_high_reco = ansatz.decompose(x_reco.cuda())[1]
+x_high = ansatz.decompose(phi_s)[1][:len(x_reco)]
+compare_hist(x_high_reco[:,0],x_high[:,0],bins=100)
+compare_hist(x_high_reco[:,1],x_high[:,1],bins=100)
+compare_hist(x_high_reco[:,2],x_high[:,2],bins=100)
+save(x_reco,L,KEY,dir_synth)
+# 64 
+We sample $x_{j+1} $ using a learned energy $\bar E(\bar x_{j+1}\vert x_{j+1})$ for $j = 1$
+#Define Scale, maps of size 2^{J-j}*2^{J-j} = L*L
+L=64
+depth = J-int(np.log2(L))
+print(&#x27;depth = &#x27;+str(depth))
+#Load Real data x_j, for comparison only
+phi_s = load_data(W,Data,depth,J,show_hist=False)
+#Load The model we will sample from
+ansatz = load_ansatz(L,KEY,dir_mod)
+#We generate \bar x_{j+1} conditionaly to previously sampled x_{j+1}
+x_reco = load(L//2,KEY,W,dir_synth)[::5]
+
+window_min,window_max = ansatz.ansatze[0].centers[0],ansatz.ansatze[0].centers[-1]
+n_repeat = 1
+n_batch = 200
+n_steps = 250 
+step_size = 1.5e-2
+n_repeat = 1
+x_reco = LANGEVINMALA(ansatz,
+             x_reco,
+             window_min,
+             window_max,
+             n_steps,
+             step_size,
+             n_batch,
+             n_repeat)
+Compare histogram and power spectrum of the field $x_{j}$
+#Compare Synthesis and originals
+Show_langevin(phi_s[::50],x_reco,log=True)
+Compare histograms of the $\bar x_{j+1}$ fields.
+x_high_reco = ansatz.decompose(x_reco.cuda())[1]
+x_high = ansatz.decompose(phi_s)[1][:len(x_reco)]
+compare_hist(x_high_reco[:,0],x_high[:,0],bins=100)
+compare_hist(x_high_reco[:,1],x_high[:,1],bins=100)
+compare_hist(x_high_reco[:,2],x_high[:,2],bins=100)
+save(x_reco,L,KEY,dir_synth)
+# 128
+We sample $x_{j+1} $ using a learned energy $\bar E(\bar x_{j+1}\vert x_{j+1})$ for $j = 0$
+#Define Scale, maps of size 2^{J-j}*2^{J-j} = L*L
+L=128
+depth = J-int(np.log2(L))
+print(&#x27;depth = &#x27;+str(depth))
+#Load Real data x_j, for comparison only
+phi_s = load_data(W,Data,depth,J,show_hist=False)
+#Load The model we will sample from
+ansatz = load_ansatz(L,KEY,dir_mod)
+#We generate \bar x_{j+1} conditionaly to previously sampled x_{j+1}
+x_reco = load(L//2,KEY,W,dir_synth)[::4]
+
+window_min,window_max = ansatz.ansatze[0].centers[0],ansatz.ansatze[0].centers[-1]
+n_repeat = 1
+n_batch = 50
+n_steps = 500 
+step_size = 2e-3
+n_repeat = 1
+x_reco = LANGEVINMALA(ansatz,
+             x_reco,
+             window_min,
+             window_max,
+             n_steps,
+             step_size,
+             n_batch,
+             n_repeat)
+Compare histogram and power spectrum of the field $x_{j}$
+#Compare Synthesis and originals
+Show_langevin(phi_s[::50],torch.cat([x_reco,-x_reco]),log=True)
+Compare histograms of the $\bar x_{j+1}$ fields.
+compare_hist(torch.cat([x_reco,-x_reco]),phi_s[::50])
+x_high_reco = ansatz.decompose(torch.cat([x_reco,-x_reco]).cuda())[1]
+x_high = ansatz.decompose(phi_s)[1][:len(x_reco)]
+compare_hist(x_high_reco[:,0],x_high[:,0],bins=100)
+compare_hist(x_high_reco[:,1],x_high[:,1],bins=100)
+compare_hist(x_high_reco[:,2],x_high[:,2],bins=100)
+save(torch.cat([x_reco,-x_reco]),L,KEY,dir_synth)
+# Analysing Synthesis
+#Comparing spectrum of original and synthetised data
+Compare_Spectrum(torch.cat([phi_s[::500],-phi_s[::500]]),torch.cat([x_reco,-x_reco]),log=True)
+#Comparing histogram of original and synthetised data
+compare_hist(torch.cat([x_reco,-x_reco]),torch.cat([phi_s[::500],-phi_s[::500]]))
+#Comparing samples of original and synthetised data
+fig, (ax1,ax2) = plt.subplots(figsize=(10,7),nrows=1, ncols=2)
+vmin = torch.quantile(phi_s[0], 0.005).cpu()
+vmax = torch.quantile(phi_s[0], 0.995).cpu()
+
+
+im = ax1.imshow(phi_s[0].cpu(),vmin=vmin,vmax=vmax) ; ax1.set_title(&#x27;Original&#x27;,fontsize=20)
+ax1.axis(&#x27;off&#x27;)
+
+ax2.imshow(x_reco[0].cpu(),vmin=vmin,vmax=vmax) ; ax2.set_title(&#x27;Synthesis&#x27;,fontsize=20)
+ax2.axis(&#x27;off&#x27;)
+cbar_ax = fig.add_axes([0.92, 0.25, 0.02, 0.505])
+fig.colorbar(im, cax=cbar_ax)
+
+
+plt.show()
+#Comparing samples of original and synthetised data
+fig, (ax1,ax2) = plt.subplots(figsize=(10,7),nrows=1, ncols=2)
+vmin = torch.quantile(phi_s[0], 0.005).cpu()
+vmax = torch.quantile(phi_s[0], 0.995).cpu()
+
+
+im = ax1.imshow(phi_s[1].cpu(),vmin=vmin,vmax=vmax,cmap=&#x27;Spectral&#x27;) ; ax1.set_title(&#x27;Original&#x27;,fontsize=20)
+ax1.axis(&#x27;off&#x27;)
+
+ax2.imshow(x_reco[3].cpu(),vmin=vmin,vmax=vmax,cmap=&#x27;Spectral&#x27;) ; ax2.set_title(&#x27;Synthesis&#x27;,fontsize=20)
+ax2.axis(&#x27;off&#x27;)
+cbar_ax = fig.add_axes([0.92, 0.25, 0.02, 0.505])
+fig.colorbar(im, cax=cbar_ax)
+
+
+plt.show()
+#Comparing samples of original and synthetised data
+fig, (ax1,ax2) = plt.subplots(figsize=(10,7),nrows=1, ncols=2)
+vmin = phi_s.min()
+vmax = phi_s.max()
+
+
+im = ax1.imshow(phi_s[1].cpu(),vmin=vmin,vmax=vmax) ; ax1.set_title(&#x27;Original&#x27;,fontsize=20)
+ax1.axis(&#x27;off&#x27;)
+
+ax2.imshow(x_reco[3].cpu(),vmin=vmin,vmax=vmax) ; ax2.set_title(&#x27;Synthesis&#x27;,fontsize=20)
+ax2.axis(&#x27;off&#x27;)
+cbar_ax = fig.add_axes([0.92, 0.25, 0.02, 0.505])
+fig.colorbar(im, cax=cbar_ax)
+
+
+plt.show()</pre></html>

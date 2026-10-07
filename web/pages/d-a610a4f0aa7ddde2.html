@@ -1,0 +1,2176 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>PAGE1</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>PAGE1</h1><p>Source ID d-a610a4f0aa7ddde2; literature/sources/r06_combinatorics/cycle6/2312.17380v2.txt; 44928 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>PAGE1
+Factoring sparse polynomials fast∗†
+ALEXANDER DEMIN
+National Research University Higher School of Economics
+20 Myasnitskaya Ulitsa
+101000 Moscow, Russia
+Email: asdemin_2@edu.hse.ru
+JORIS VAN DER HOEVEN
+CNRS, École polytechnique, Institut Polytechnique de Paris
+Laboratoire d&#x27;informatique de l&#x27;École polytechnique (LIX, UMR 7161)
+Bâtiment Alan Turing, CS35003
+1, rue Honoré d&#x27;Estienne d&#x27;Orves
+91120 Palaiseau, France
+Email: vdhoeven@lix.polytechnique.fr
+February 23, 2025
+Consider a sparse polynomial in several variables given explicitly as a sum of non-zero
+terms with coeﬃcients in an eﬀective ﬁeld. In this paper, we present several algorithms
+for factoring such polynomials and related tasks (such as gcd computation, square-
+free factorization, content-free factorization, and root extraction). Our methods are
+all based on sparse interpolation, but follow two main lines of attack: iteration on the
+number of variables and more direct reductions to the univariate or bivariate case. We
+present detailed probabilistic complexity bounds in terms of the complexity of sparse
+interpolation and evaluation.
+1. INTRODUCTION
+1.1. Motivationandmaingoals
+Let 𝕂be an eﬀective ﬁeld. Consider a sparse polynomial F ∈𝕂[x1,...,xn], represented as
+F = F1x𝛾1+⋅⋅⋅+Fs x𝛾s, (1.1)
+where F1,...,Fs ∈𝕂≠≔𝕂∖{0}, 𝛾1,...,𝛾s ∈ℕn, and xe ≔x1
+e1⋅⋅⋅xn
+en for any e =(e1,...,en)∈ℕn.
+We call sF ≔s the size of F and suppF ≔{𝛾1,...,𝛾s}its support. The aim of this paper is to
+factor F into a product of irreducible sparse polynomials.
+All algorithms that we will present are based on the approach of sparse evaluation and
+interpolation. Instead of directly working with sparse representations (1.1), the idea is to
+evaluate input polynomials at a sequence of well-chosen points, do the actual work on
+these evaluations, and then recover the output polynomials using sparse interpolation.
+The evaluation-interpolation approach leads to very eﬃcient algorithms for many tasks,
+such as multiplication [48, 46], division, gcd computations [51], etc. In this paper, we
+investigate the complexity of factorization under this light.
+∗. This work has partly been supported by the French ANR-22-CE48-0016 NODE project.
+†. This article has been written using GNU TEXMACS [47].
+1
+PAGE2
+One particularly good way to choose the evaluation points is to take them in a geo-
+metric progression: for a ﬁxed 𝛼=(𝛼1,...,𝛼n)∈(𝕂≠)n, we evaluate at 𝛼,𝛼2,𝛼3,..., where
+𝛼k ≔(𝛼1
+k,...,𝛼n
+k ). This idea goes back to Prony [91] and was rediscovered, extended, and
+popularized by Ben Or and Tiwari [5]. We refer to [92] for a nice survey. If 𝕂is a ﬁnite
+ﬁeld, then a further reﬁnement is to use suitable roots of unity, in which case both sparse
+evaluation and interpolation essentially reduce to discrete Fourier transforms [52, 46].
+In this paper, we do not specify the precise algorithms that should be used for sparse
+evaluation and interpolation, but we will always assume that the evaluation points form
+geometric progressions. Then the cost S(s)of sparse evaluation or interpolation at s such
+points is quasi-linear in s. We refer to Sections 2.1, 2.3, and 2.4 for more details on this
+cost function S(s) and the algebraic complexity model that we assume.
+One important consequence of relying on geometric progressions is that this con-
+straints the type of factorization algorithms that will be eﬃcient. For instance, several
+existing methods start with the application of random shifts xi ⟼xi +𝜎i for one or more
+variables xi. Since such shifts do not preserve geometric progressions, this is a technique
+that we must avoid. On the other hand, monomial transformations like xi ⟼y1
+wi,1 ⋅⋅⋅yn
+wi,n
+do preserve geometric progressions and we will see how to make use of this fact.
+The main goal of this paper is to develop fast algorithms for factoring sparse poly-
+nomials under these constraints. Besides the top-level problem of factorization into irre-
+ducibles, we also consider several interesting subtasks, such as gcd computations, Hensel
+lifting, content-free and square-free factorization, and the extraction of multiple roots.
+While relying on known techniques, we shall show how to conciliate them with the above
+constraints.
+Our complexity bounds are expressed in terms of the maximal size and total degree
+of the input and output polynomials. In practical applications, total degrees often remain
+reasonably small, so we typically allow for a polynomial dependence on the total degree
+times the required number of evaluation/interpolation points. In this particular asymp-
+totic regime, our complexity bounds are very sharp and they improve on the bounds
+from the existing literature.
+Concerning the top-level problem of decomposing sparse polynomials into irreducible
+factors, we develop two main approaches: a recursive one on the dimension and a more
+direct one based on simultaneous lifting with respect to all but one variables. We will
+present precise complexity bounds and examples of particularly diﬃcult cases.
+1.2. Overviewofunivariateandbivariatefactorizationmethods
+The factorization of polynomials is a fundamental problem in computer algebra. Since
+we are relying on sparse interpolation techniques, it is also natural to focus exclusively
+on randomized algorithms of Monte Carlo type. For some deterministic algorithms, we
+refer to [61, 101, 72].
+Before considering multivariate polynomials, we need an algorithm for factoring uni-
+variate polynomials. Throughout this paper, we assume that we have an algorithm for
+this task (it can be shown that the mere assumption of 𝕂 being eﬀective is not suﬃ-
+cient [27, 28]).
+In practice, we typically have 𝕂=Fp𝜅, 𝕂=ℚ, 𝕂⊆ℚp, or 𝕂⊆ℂ for some prime p
+and 𝜅⩾1. Most basic is the case when 𝕂 is a ﬁnite ﬁeld, and various eﬃcient prob-
+abilistic methods have been proposed for this case. An early such method is due to
+Berlekamp [6, 7]. A very eﬃcient algorithm that is also convenient to implement is due
+2 FACTORING SPARSE POLYNOMIALS FAST
+PAGE3
+to Cantor and Zassenhaus [16]. Asymptotically more eﬃcient methods have been devel-
+oped since [67, 70] as well as specific improvements for the case when 𝜅is composite [53].
+See also [31, Chapter 14] and [65].
+Rational numbers can either be regarded as a subﬁeld of ℂor ℚp. For asymptotically
+eﬃcient algorithms for the approximate factorizations of univariate polynomials over
+ℂ, we refer to [98, 87, 83]. When reducing a polynomial in ℚmodulo p for a suﬃciently
+large random prime, factorization over ℚp reduces to factorization over 𝔽p via Hensel
+lifting [97, 42, 107]. For more general factorization methods over ℚp, we refer to [26, 20,
+82, 39, 3].
+Now let F ∈ℚ[x] and assume that we have an irreducible factorization F =P1 ⋅⋅⋅Pℓ
+with P1,...,Pℓ ∈𝕂[x]for 𝕂⊆ℂor 𝕂⊆Qp. (In practice, we require that P1,...,Pℓ are known
+with suﬃcient precision.) In order to turn this into a factorization over ℚ, we need a way
+to recombine the factors, i.e., to ﬁnd the subsets I ⊆{1,...,ℓ} for which ∏i∈I Pi ∈ℚ[x].
+Indeed, if F is irreducible in ℚ[x]and d≔degF⩾2, then F is never irreducible in ℂ[x]and
+irreducible with probability ≈1/d in 𝔽p[x] for a large random prime p. The ﬁrst recom-
+bination method that runs in polynomial time is due to Lenstra-Lenstra-Lovasz [77].
+Subsequently, many improvements and variants of this LLL-algorithm have been devel-
+oped [44, 4, 85, 86, 94].
+The problem of factoring a bivariate polynomial F ∈𝕂[x,y]over 𝕂is similar in many
+regards to factoring polynomials with rational coeﬃcients. Indeed, for a suitable random
+prime p, we have seen above that the latter problem reduces to univariate factorization
+over 𝔽p, Hensel lifting, and factor combination. In a similar way, after factoring F(x,𝜏)
+for a suﬃciently random 𝜏 (possibly in an extension ﬁeld of 𝕂, whenever 𝕂 is a small
+ﬁnite ﬁeld), we may use Hensel lifting to obtain a factorization in 𝕂[[y − 𝜏]][x], and
+finally recombine the factors. The precise algorithms for factor recombination are slightly
+diﬀerent in this context [29, 71, 4, 74] (see also [93, 95] for earlier related work), although
+they rely on similar ideas.
+1.3. Overviewofmultivariatefactorizationmethods
+Hensel lifting naturally generalizes to polynomials in three or more variables x1,...,xn.
+Many algorithms for multivariate polynomial factorization rely on it [84, 104, 103, 109,
+60, 32, 33, 62, 61, 8, 72, 80, 81, 17], as well as many implementations in computer algebra
+systems. One important property of higher dimensional Hensel lifting is that factor
+recombination can generally be avoided with high probability, contrary to what we saw
+for p-adic and bivariate Hensel lifting. This is due to Hilbert and Bertini&#x27;s irreducibility
+theorems [43, 10]:
+THEOREM 1.1. Assume that F ∈𝕂[x1,...,xn]∖𝕂is irreducible and of total degree d. Let U be
+the set of points (𝛼1,...,𝛼n,𝛽1,...,𝛽n,𝛾1,...,𝛾n)∈𝕂3n for which
+F(𝛼1t +𝛽1u +𝛾1,...,𝛼n t +𝛽n u +𝛾n) (1.2)
+is irreducible in 𝕂[t,u]. Then U is a Zariski open subset of 𝕂3n, which is dense over the algebraic
+closure of 𝕂.
+Effective versions of these theorems can be used to directly reduce the factoriza-
+tion problem in dimension n to a bivariate problem (and even to a univariate problem
+if 𝕂=ℚ, using similar ideas). We refer to [74] and [75, Chapître 6] for a recent pre-
+sentation of how to do this and to [100, Section 6.1] for the mathematical background.
+ALEXANDER DEMIN, JORIS VAN DER HOEVEN, 3
+PAGE4
+In order to analyze the computational complexity of factorization, we ﬁrst need to
+specify the precise way we represent our polynomials. When using a dense representa-
+tion (e.g. storing all monomials of total degree ⩽d with their (possibly zero) coefficients),
+Theorem 1.1 allows us to directly reduce to the bivariate case (if 𝕂 is very small, then
+one may need to replace 𝕂by a suitable algebraic extension). The ﬁrst polynomial time
+reduction of this kind was proposed by Kaltofen [60]. More recent bounds that exploit
+fast dense polynomial arithmetic can be found in [72].
+Another popular representation is the “black box representation”, in which case we
+are only given an algorithm for the evaluation of our polynomial F. Often this algorithm
+is actually a straight line program (SLP) [14], which corresponds to the “SLP represen-
+tation”. In these cases, the relevant complexity measure is the length of the SLP or the
+maximal number of steps that are needed to compute one black box evaluation. Conse-
+quently, aﬃne changes of variables (1.2) only marginally increase the program size. This
+has been exploited in order to derive polynomial time complexity bounds for factoring
+in this model [63, 68]; see also [30, 17, 18]. Here we stress that the output factors are also
+given in black box or SLP representation.
+Plausibly the most common representation for multivariate polynomials in computer
+algebra is the sparse one (1.1). Any sparse polynomial naturally gives rise to an SLP
+of roughly the same size. Sparse interpolation also provides a way to convert in the
+opposite direction. However, for an SLP Fslp of length L, it takes Θ(Ls)time to recover its
+sparse representation F, where s ≔sF. A priori, the back and forth conversion F ↦Fslp↦F
+therefore takes quadratic time Θ(s2). While it is theoretically possible to factor sparse
+polynomials using the above black box methods, this is suboptimal from a complexity
+perspective.
+Unfortunately, general aﬃne transformations (1.2) destroy sparsity, so additional
+ideas are needed for the design of efficient factorization methods based on Hilbert-Bertini-
+like irreducibility theorems. Dedicated algorithms for the sparse model have been devel-
+oped in [32, 8, 79, 81]. There are two ways to counter the loss of sparsity under aﬃne
+transformations, both of which will be considered in the present paper. One possibility
+is to successively use Hensel lifting with respect to x3,...,xn. Another approach is to
+use a more particular type of changes of variables, like F(t,𝛼2u,...,𝛼n u). However, both
+approaches require F to be of a suitable form to allow for Hensel lifting. Some refer-
+ence for Hensel lifting in the context of sparse polynomials are [62, 8, 78, 80, 81, 17].
+For most applications in computer algebra, the total degree of large sparse poly-
+nomials is typically much smaller than the number of terms. The works in the above
+references mainly target this asymptotic regime. The factorization of “supersparse”
+polynomials has also been considered in [40, 37]. The survey talk [96] discusses the
+complexity of polynomial factorizations for yet other polynomial representations.
+The theory of polynomial factorization involves several other basic algorithmic tasks
+that are interesting for their own sake. We already mentioned the importance of Hensel
+lifting. Other fundamental operations are gcd computations, multiple root extractions,
+square-free factorizations, and determining the content of a polynomial. We refer to [31]
+for classical univariate algorithms. As to sparse multivariate polynomials, there exist
+many approaches for gcd computations [21, 108, 68, 66, 59, 22, 56, 76, 51, 58].
+Whenever convenient, we will assume that the characteristic of 𝕂 is either zero or
+suﬃciently large. This will allow us to avoid technical non-separability issues; we refer
+to [34, 102, 73] for algorithms to deal with such issues. A survey of multivariate polyno-
+mial factorization over ﬁnite ﬁelds (including small characteristic) can be found in [65].
+4 FACTORING SPARSE POLYNOMIALS FAST
+PAGE5
+Throughout this paper, factorizations will be done over the ground ﬁeld 𝕂. Some algo-
+rithms for “absolute factorization” over the algebraic closure 𝕂alg of 𝕂 can be found
+in [64, 19, 23]; alternatively, one may mimic computations in 𝕂alg using dynamic evalu-
+ation [24, 49].
+1.4. Outlineofourcontributions
+The goal of this paper is to redevelop the theory of sparse polynomial factorization,
+by taking advantage as fully as possible of evaluation-interpolation techniques at geo-
+metric sequences. The basic background material is recalled in Section 2. We recall that
+almost all algorithms in the paper are randomized, of Monte Carlo type. We also note
+that the correctness of a factorization can easily be veriﬁed, either directly or with high
+probability, by evaluating the polynomial and the product of the potential factors at
+a random point. (On the other hand, this approach does not yield a probabilistic irre-
+ducibility test.)
+As an appetizer, we start in Section 3 with the problem of multivariate gcd compu-
+tation. This provides a nice introduction for the main two approaches used later in the
+paper: induction on dimension and direct reduction to the univariate (or bivariate or low
+dimensional) case. It also illustrates the kind of complexity bounds that we are aiming
+for. Consider the computation of the gcd G of two sparse polynomials P,Q ∈𝕂[x1,...,xn].
+Ideally speaking, setting s ≔sG, s¯≔max(sP,sQ,sG), d ≔max(dP,dQ), we are aiming for
+a complexity bound of the form
+O˜ (s¯+d𝜗s), (1.3)
+where 𝜗 is a constant. Since s is typically much smaller than s¯, we can aﬀord ourselves
+the non-trivial overhead with respect to d in the term d𝜗s. The inductive approach on the
+dimension n achieves the complexity (1.3) with 𝜗=1, but its worst case complexity is
+O˜ (n (s¯+d s)). This algorithm seems to be new. The second approach uses a direct reduc-
+tion to univariate gcd computations via so-called “regularizing weights” and achieves
+the complexity (1.3) with 𝜗⩽2, and even 𝜗=1 for some practical examples (e.g., when
+the gcd is monic in one of the variables). This algorithm is a sharpened version of the
+algorithm from [51, Section 4.3].
+Most existing algorithms for multivariate polynomial factorization reduce to the uni-
+variate or bivariate case. Direct reduction to the univariate case is only possible for certain
+types of coeﬃcients, such as integers, rational numbers, or algebraic numbers. Reduction
+to the bivariate case works in general, thanks to Theorem 1.1, and this is even interesting
+when 𝕂=ℚ: ﬁrst reduce modulo a suitable prime p, then factor over 𝔽p, and ﬁnally
+Hensel lift to obtain a factorization over ℚ. In this paper, we will systematically opt for
+the bivariate reduction strategy. For this reason, we have included a separate Section 4
+on bivariate factorization and related problems. This material is classical, but recalled
+for self-containedness and convenience of the reader.
+If 𝕂 is a ﬁnite ﬁeld, then we already noted that multivariate factorization does not
+directly reduce to the univariate case. Nevertheless, such direct reductions are possible
+for some special cases of interest: content-free factorization, extraction of multiple roots,
+and square-free factorization. In Section 5, we present eﬃcient algorithms for these tasks,
+following the “regularizing weights” approach that was introduced in Section 3.2 for gcd
+computations. All complexity bounds are of the form (1.3) for the relevant notions of
+output size s, input-output size s¯, and total degree d.
+ALEXANDER DEMIN, JORIS VAN DER HOEVEN, 5
+PAGE6
+In Section 6, we turn to the factorization of a multivariate polynomial F ∈𝕂[x1,...,xn]
+using induction on the dimension n. Starting with a coprime factorization of a bivariate
+projection F(x1,x2,c3,...,cn)∈𝕂[x1,x2]of F for random c3,...,cn, we successively Hensel
+lift this factorization with respect to x3,...,xn. Using a suitable evaluation-interpolation
+strategy, the actual Hensel lifting can be done on bivariate polynomials. This leads to
+complexity bounds of the form O˜ (n (s¯+d𝜗s)) with 𝜗=2. In fact, we separately consider
+factorizations into two or more factors. In the case of two factors, it is possible to ﬁrst
+determine the smallest factor and then perform an exact division to obtain the other one.
+In the complexity bound, this means that s should really be understood as the number
+of evaluation-interpolation points, i.e. the minimum of the sizes of the two factors. It
+depends on the situation whether it is faster to lift a full coprime factorization or one
+factor at a time, although we expect the ﬁrst approach to be fastest in most cases.
+Due to the fact that projections such as F(x1,x2,c3,...,cn) are only very special types
+of aﬃne transformations, Theorem 1.1 does not apply. Therefore, the direct inductive
+approach from Section 6 does not systematically lead to a full irreducible factorization
+of F. In Remarks 6.14 and 6.15, we give an example where our approach fails, together
+with two diﬀerent heuristic remedies (which both lead to similar complexity bounds, but
+with 𝜃=3 or higher).
+In the last Section 7, we present another approach, which avoids induction on the
+dimension n and the corresponding overhead in the complexity bound. The idea is to
+exploit properties of the Newton polytope of F and “face factorizations” (e.g. factoriza-
+tions of restrictions of F to faces of its Newton polytope). In the most favorable case,
+there exists a coprime edge factorization, which can be Hensel lifted into a full factor-
+ization, and we obtain a complexity bound of the form (1.3). In less favorable cases,
+diﬀerent face factorizations need to be combined. Although this yields a similar com-
+plexity bound, the details are more technical. We refer to [1, 105] for a few existing ways
+to exploit Newton polytopes for polynomial factorization.
+In very unfavorable cases (see Section 7.6), the factorization of F cannot be recov-
+ered from its face factorizations at all. In Section 7.7, we conclude with a fully general
+algorithm for irreducible factorization. This algorithm is not as practical, but addresses
+pathologically diﬃcult cases through the introduction of a few extra variables. Its cost is
+O˜ (d3s¯+d10) plus the cost of one univariate factorization of degree O(d2).
+1.5. Notation
+In this paper, we will measure the complexity of algorithms using the algebraic com-
+plexity model [14]. In addition, we assume that it is possible to sample a random element
+from K (or a subset of K) in constant time. We will use O˜ (g(n)) as a shorthand for
+g(n)(logg(n))O(1).
+We let ℕ≔{0,1,2,...}and ℕ&gt;≔{1,2,3,...}. We also deﬁne R≠≔{x ∈R :x ≠0}, for any
+ring R. Given a multivariate polynomial F ∈𝕂[x1,...,xn] and i ∈{1,...,n}, we write 𝛿i ≔
+degxi F (resp. valxi F) for the degree (resp. valuation) of F in xi. We also write dF ≔degF
+(resp. valF) for the total degree (resp. valuation of F), and we set 𝛿F ≔maxi degxi F.
+Recall that sF stands for the number of terms of F in its sparse representation (1.1).
+Acknowledgment. We wish to thank Grégoire Lecerf for useful discussions during the
+preparation of this paper and the first anonymous referee for helpful comments and
+suggestions.
+6 FACTORING SPARSE POLYNOMIALS FAST
+PAGE7
+2. PRELIMINARIES
+2.1. Basiccomplexities
+Let M(n) (or M𝕂(n)) be the cost to multiply two dense univariate polynomials of
+degree ⩽n in 𝕂[x]. Throughout the paper, we make the assumption that M(n)/n is a non-
+decreasing function. In the algebraic complexity model [14], when counting the number
+of operations in 𝕂, we may take M(n)=O(n logn loglogn) [15]. If 𝕂is a ﬁnite ﬁeld 𝔽q,
+then one has M𝔽q(n)=O(n logn), under suitable number theoretic assumption [41]. In
+this case, the corresponding bit complexity (when counting the number of operations
+on a Turing machine [88]) is O(n logq log(n logq)).
+For polynomials f ,g ∈K[x]≠ of degree ⩽n it is possible to ﬁnd the unique q,r ∈K[x],
+such that f =qg +r with degr &lt;n. This is the problem of univariate division with remainder,
+which can be solved in time O(M(n)) by applying Newton iteration [31, Section 9.1].
+A related task is univariate root extraction: given f ∈K[x] and ℓ ∈ℕ&gt;, check whether f is
+of the form f =c gℓ for some c ∈K≠ and monic g ∈K[x], and determine c and g if so. For
+a ﬁxed ℓ, this can be checked, and the unique g can be found in O(M(n))arithmetic oper-
+ations in K by applying Newton iteration [31, polynomial analogue of Theorem 9.28].
+Consider the Vandermonde matrix
+V =
+(
+(
+(
+(
+(
+(
+(
+(
+(
+(
+(
+(
+(
+(
+(
+((((((((((((((
+(
+( 1 𝛼1 ⋅⋅⋅ 𝛼1
+n−1
+⋅⋅⋅ ⋅⋅⋅
+1 𝛼n ⋅⋅⋅ 𝛼n
+n−1
+)
+)
+)
+)
+)
+)
+)
+)
+)
+)
+)
+)
+)
+)
+)
+)
+)
+)
+)
+))))))))))
+)
+)
+,
+where 𝛼1,...,𝛼n ∈𝕂are pairwise distinct. Given a column vector C with entries c0,...,cn−1,
+it is well known [11, 69, 12, 9, 45] that the products V C, V −1C, V ⊤C, and (V −1)⊤C can
+all be computed in time O(M(n)logn). These are respectively the problems of multi-
+point evaluation, (univariate) interpolation, transposed multi-point evaluation, and transposed
+interpolation. For fixed 𝛼1,...,𝛼n, these complexities can often be further reduced to
+O(M(n)logn/loglogn) using techniques from [45].
+For our factorization algorithms, we will sometimes need to assume the existence of
+an algorithm to factor univariate polynomials in 𝕂[x] into irreducible factors. We will
+denote by F(d) the cost of such a factorization as a function of degree d. We will always
+assume that F(d)/d is non-decreasing. In particular F(d1)+F(d2)⩽F(d1+d2) for all d1
+and d2.
+If K is the ﬁnite ﬁeld Fq with q =p𝜅 elements for some odd q, then the best univariate
+factorization methods are randomized of Las Vegas type. When allowing for such algo-
+rithms, we may take F(d)=O(d M(d)log(qd)), by using Cantor and Zassenhaus&#x27; method
+from [16]. With the use of fast modular composition [70], we may take
+F(d) = d1.5+o(1)log1+o(1) q +O˜ (d log2 q),
+but this algorithm is only relevant in theory, for the moment [50]. If the extension degree 𝜅
+is composite, then this can be exploited to lower the practical complexity of factoriza-
+tion [53].
+ALEXANDER DEMIN, JORIS VAN DER HOEVEN, 7
+PAGE8
+2.2. TheSchwarz–Zippellemma
+In all probabilistic algorithms in this paper, N will stand for a suﬃciently large integer
+such that “random elements in 𝕂≠” are chosen in some ﬁxed subset of 𝕂≠ of size at
+least N. In the case when N is larger than the cardinality |𝕂≠| of 𝕂≠, this means that 𝕂
+needs to be replaced by an algebraic extension of degree &gt;logN /log|𝕂|, which induces
+a logarithmic O˜ (logN)overhead for the cost of ﬁeld operations in 𝕂. We will frequently
+use the following well-known lemma:
+LEMMA 2.1. (SCHWARZ [99]–ZIPPEL [108]) Let P ∈𝕂[x1,...,xn] be a polynomial of total
+degree d. Let S ⊆𝕂be ﬁnite and let 𝛼1,...,𝛼n ∈S be chosen independently and uniformly. Then
+the probability that P(𝛼1,...,𝛼n)=0 is at most d/|S|. □
+COROLLARY 2.2. Let s ∈ℕ&gt;. The probability that P(𝛼1
+k,...,𝛼n
+k)=0 for some k ∈{1,...,s} is at
+most d  s
+2 /|S|.
+Proof. We apply the lemma to P(x1,...,xn)P(x1
+2,...,xn2)⋅⋅⋅P(x1
+s,...,xn
+s ). □
+COROLLARY 2.3. Let s ∈ℕ&gt;. Let 𝛼1,...,𝛼n ∈𝕂≠ and let 𝛽1,...,𝛽n ∈𝕂≠ be chosen independently
+at random. Then the probability that P 𝛼1
+k 𝛽1,...,𝛼n
+k 𝛽n =0 for some k ∈{1,...,s}is at most d s/|S|.
+Proof. We apply the lemma to P(𝛼1x1,...,𝛼n xn)P(𝛼1
+2x1,...,𝛼n2xn)⋅⋅⋅P(𝛼1
+s x1,...,𝛼n
+s xn). □
+2.3. Sparsepolynomialinterpolation
+Consider a polynomial F ∈𝕂[x1,...,xn] that is presented as a blackbox function. The
+task of sparse interpolation is to recover the sparse representation (1.1) from a suﬃcient
+number of blackbox evaluations of F. One may distinguish between the cases when the
+exponents 𝛾1,...,𝛾s of F are already known or not. (Here “known exponents” may be
+taken liberally to mean a superset of reasonable size of the set of actual exponents.)
+One popular approach for sparse interpolation is based on Prony&#x27;s geometric sequence
+technique [91, 5]. This approach requires an admissible ratio 𝛼=(𝛼1,...,𝛼n)∈(𝕂≠)n, such
+that for any k1,...,kn ∈ℕ, there is an algorithm to recover k1,...,kn from 𝛼1
+k1 ⋅⋅⋅𝛼n
+kn. If
+char𝕂=0, then we may take 𝛼i to be the i-th prime number, and use prime factoriza-
+tion in order to recover k1,...,kn. If 𝕂=𝔽p is a ﬁnite ﬁeld, where p is a smooth prime
+(i.e. p − 1 has many small prime divisors), then one may recover exponents using the
+tangent Graeﬀe method [38].
+Given an admissible ratio 𝛼, Prony&#x27;s method allows for the sparse interpolation of F
+using 2s evaluations of F at 𝛼i ≔(𝛼1
+i ,...,𝛼n
+i ) for i =0,...,2s − 1, as well as O(M(s)logs)
+operations in 𝕂 for determining 𝛼𝛾1,...,𝛼𝛾s, and s subsequent exponent recoveries. If
+K =Fq, then the exponents can be recovered if q &gt;max(2s,d), which can be ensured
+by working over a ﬁeld extension Fq𝜅 of F with 𝜅=O(logs +logd). If the exponents
+𝛾1,...,𝛾s are already known, then the coeﬃcients can be obtained from s evaluations of F
+at 𝛼0,...,𝛼s−1 using one transposed univariate interpolation of cost O(M(s)logs).
+If 𝕂 is a ﬁnite ﬁeld, then it can be more eﬃcient to consider an FFT ratio 𝛼 for which
+𝛼1,...,𝛼n are roots of unity. When choosing these roots of unity with care, possibly in an
+extension ﬁeld of K, sparse interpolation can often be done in time O(M(s)) from O(s)
+values of F, using discrete Fourier transforms; see [52, 46] for details.
+In what follows, we will denote by S(s) the cost of sparse interpolation of size s,
+given O(s) values of F at a suitable geometric sequence. When using Prony&#x27;s approach,
+we may thus take S(s)=O(M(s)logs), whenever the cost to recover the exponents k1,...,kn
+from 𝛼1
+k1 ⋅⋅⋅𝛼n
+kn is negligible. If the discrete Fourier approach is applicable, then we may
+even take S(s)=O(M(s)).
+8 FACTORING SPARSE POLYNOMIALS FAST
+PAGE9
+Remark 2.4. It would be more accurate to write S(s,n,d) for the cost of sparse interpo-
+lation, since this cost may also depend on the dimension n and the total degree d. In
+particular, manipulations of the exponent vectors typically add Ω(s n logd) to the bit
+complexity. Nonetheless, in our algebraic complexity model, this cost can often be dis-
+carded: if char𝕂=0, then the sparse interpolation of the exponents only gives rise to
+a constant overhead using the derivative trick from [57]. In practice, this remains true
+as long as the exponent vectors can be packed into small integers, such as 64 bit machine
+integers. In order to enhance the readability of our complexity analyses, we therefore
+assume that we are in a regime where the cost S(s) of sparse interpolation can be mod-
+eled in terms of the sole parameter s. For recent theoretical work on sparse interpolation
+when n and/or d are allowed to become large, we refer to [36, 54].
+Remark2.5. If we have a bound s ⩾sF for the number of terms of F, then we assume that
+our sparse interpolation method is deterministic and that it interpolates F in time S(s). If
+we do not know the number of terms of F, then we may run the interpolation method for
+a guessed number of s terms. We may check the correctness of our guessed interpolation
+F˜ by verifying that the evaluations of F and F˜ coincide at a randomly chosen point. By
+the Schwartz-Zippel lemma, this strategy succeeds with probability at least 1− d/N.
+Remark 2.6. The above interpolation methods readily generalize to the case when we
+use a geometric progression of the form 𝛽,𝛽𝛼,𝛽𝛼2,... with 𝛽∈(𝕂≠)n as the evaluation
+points, by considering the function g(x1,...,xn)= f (𝛽1x1,...,𝛽n xn) instead of f . Taking
+a random 𝛽avoids certain problems due to degeneracies; this is sometimes called “diver-
+siﬁcation” [35]. If 𝛼is itself chosen at random, then it often suﬃces to simply take 𝛽=𝛼.
+We will occasionally do so without further mention.
+Remark 2.7. For many probabilistic proofs in the sequel of this paper, we will rely
+on Corollary 2.2. However, this requires the ratios 𝛼 of geometric progressions to be
+picked at random, which excludes FFT ratios. Alternatively, we could have relied
+on Corollary 2.3 and diversification of all input and output polynomials for a fixed
+random scaling factor 𝛽∈(𝕂≠)n (see the above remark).
+Assume for instance that we wish to factor F ∈𝕂[x1,...,xn]. Then the factors
+A ∈𝕂[x1,...,xn]of F are in one-to-one correspondence with the factors A(𝛽1x1,...,𝛽n xn)
+of F(𝛽1x1,...,𝛽n xn). If we rely on Corollary 2.3 instead of 2.2 in our complexity bounds
+for factoring F (like the bounds in Theorems 6.11 or 7.2 below), then the cost of diver-
+siﬁcation adds an extra term O(s¯d), where d ≔degF and s¯ is the total size of F and the
+computed factors. On the positive side, in the corresponding bounds for the probability
+of failure, the quadratic dependence  s
+2  on the number s of evaluation points reduces
+to a linear one. Similar adjustments apply for other operations such as gcd computations.
+2.4. Sparseevaluationatgeometricprogressions
+Opposite to sparse interpolation, one may also consider the evaluation of F at s points
+𝛼0,...,𝛼s−1 in a geometric progression. In general, this can be done in time O(M(s)logs),
+using one transposed multi-point evaluation of size s. If 𝛼is a suitable FFT ratio, then this
+complexity drops to O(M(s)), using a discrete Fourier transform of size O(s). In what
+follows, we will assume that this operation can always be done in time S(s).
+Remark2.8. Strictly speaking, the cost of multipoint evaluation on a geometric sequence
+may also depend on n and d, so similar observations as in Remark 2.4 apply.
+ALEXANDER DEMIN, JORIS VAN DER HOEVEN, 9
+PAGE10
+More generally, we may consider the evaluation of F at t points 𝛼0,...,𝛼t−1 in a geo-
+metric progression. If t&gt;s, we may do this in time S(s)t/s +O(t), by reducing to the eval-
+uation of F at ⌈t/s⌉ progressions of size s. To obtain the evaluations of F at 𝛼i,...,𝛼i+s−1
+for i &gt;0, we can evaluate F ∘(𝛼i x) at 𝛼0,𝛼1,...,𝛼s−1. If s &gt;t, then we may cut F into
+⌈s/t⌉ polynomials of size ⩽t, and do the evaluation in time S(t)s/t +O(s).
+Remark2.9. If 𝛼is an FFT-ratio, then the bound for the case when s &gt;t further reduces to
+O(s +S(t))plus O(d s)bit operations on exponents, since the cyclic projections from [46,
+52] reduce F in linear time to cyclic polynomials with O(t) terms before applying the
+FFTs. We did not exploit this optimization for the complexity bounds in this paper, since
+we preferred to state these bounds for general ratios 𝛼, but it should be straightforward
+to adapt them to the speciﬁc FFT case.
+In this paper, we will frequently need to evaluate F at all but one or two variables.
+Assume for instance that
+F(x1,...,xn) = F0(x2,...,xn)+F1(x2,...,xn)x1+⋅⋅⋅+F𝛿(x2,...,xn)x1
+𝛿,
+where Fk has sk terms for k =0,...,𝛿 and s ≔s0+⋅⋅⋅+s𝛿. Then using the above method,
+we can compute F(x1,𝛼2
+i ,...,𝛼n
+i )for i =0,...,t − 1using S(t)(⌈s0/t⌉+⋅⋅⋅+⌈s𝛿/t⌉)+O(s)⩽
+S(t)(s/t +𝛿+1)+O(s) operations.
+One traditional application of the combination of sparse evaluation and interpolation
+are probabilistic algorithms for multiplication and exact division of sparse multivariate
+polynomials. For the given A,B ∈𝕂[x1,...,xn], we can compute the product C =A B by
+evaluating A,B, and C at a geometric progression 𝛼0,...,𝛼m−1 with m =O(sC)and recov-
+ering of C in the sparse representation (1.1) via sparse interpolation. The total cost of this
+method is bounded by O(S(s¯))operations in K, where s¯≔max(sA,sB,sC). If C and A are
+known, then the exact quotient B =C/A can be computed in a similar fashion and with
+the same complexity. If s ≔sB ≪s¯, then the quotient B can actually be computed in time
+O(s¯M(s)/s). Divisions by zero are avoided through diversiﬁcation, with overhead O(ns¯)
+and probability at least 1− dA  sB
+2 /N, by Corollary 2.2.
+2.5. Newtonpolytopes
+Consider a multivariate polynomial P ∈𝕂[x1,...,xn]. We deﬁne hullP ⊆ℝn to be the
+convex hull of suppP and we call it the Newton polytope of P. Given another polynomial
+Q ∈𝕂[x1,...,xn], it is well known that
+hullP Q = hullP +hullQ,
+where the Minkowski sum of two subsets S,T ⊆ℝn is S +T ≔{s +t :s ∈S,t ∈T}.
+Let w =(w1,...,wn)∈(ℤn)≠ be a non-zero weight vector. We deﬁne the w-degree,
+w-valuation, and w-ecart of a non-zero polynomial P ∈𝕂[x1,...,xn] by
+degw P ≔ max(e1,...,en)∈suppF
+(w1e1+⋅⋅⋅+wn en)
+valw P ≔ min(e1,...,en)∈suppF
+(w1e1+⋅⋅⋅+wn en)
+ecw P ≔ degw P − valw P.
+Note that valw P ≔−deg−w P and ecw P =ec−w P, where we exploit the fact that we allow
+for negative weights. We say that P is w-homogeneous if degw P =valw P. Any P can
+uniquely be written as a sum
+P = Pdegw P;w +⋅⋅⋅+Pvalw P;w,
+10 FACTORING SPARSE POLYNOMIALS FAST
+PAGE11
+of its w-homogeneous parts
+Pi;w ≔  
+e∈suppP,w1e1+⋅⋅⋅+wnen=i
+Pe xe.
+We call lpw P ≔Pdegw P;w and tpw P ≔Pvalw P;w the w-leading and w-trailing parts of P. We
+say that P is w-regular if lpw P consists of a single term cxi. In that case, we denote lcw P≔c
+and we say that P is w-monic if c =1. Given another non-zero polynomial Q∈𝕂[x1,...,xn],
+we have
+lpw P Q = (lpw P)(lpw Q)
+tpw P Q = (tpw P)(tpw Q)
+Setting ℋ𝜆;w ≔{e ∈ℝn :e1w1+⋅⋅⋅+en wn =𝜆}, we also have
+hulllpw P = hullP ∩ℋdegw P;w
+hulltpw P = hullP ∩ℋvalw P;w.
+The Newton polytopes hulllpw P and hulltpw P are facets of hullP. In particular, they are
+contained in the boundary ∂hullP.
+2.6. Laurentpolynomials
+Consider the rings ℙ≔ℙn ≔𝕂[x1,...,xn]and 𝕃≔𝕃n ≔𝕂[x1,x1
+−1,...,xn,xn−1]=ℙn x1
+ℤ⋅⋅⋅xnℤ
+of ordinary polynomials and Laurent polynomials. Both rings are unique factorization
+domains, but the group of units of ℙis 𝕂≠, whereas the group of units of 𝕃is 𝕂≠x1
+ℤ⋅⋅⋅xnℤ.
+Factoring in ℙ is therefore essentially the same as factoring in 𝕃 up to multiplications
+with monomials in x1
+ℤ ⋅⋅⋅xnℤ. For instance, the factorization 5⋅x1⋅x1⋅x2⋅(x1− x2)⋅(7x1+
+x2
+2− x3
+3) in ℙ gives rise to the factorization (5x1
+2x2)⋅(x1− x2)⋅(7x1+x2
+2− x3
+3) in 𝕃. Con-
+versely, the factorization (5x1x2
+2)⋅(x1x2
+−1− 1)⋅(7x1
+2+x1x2
+2− x1x3
+3) in 𝕃 gives rise to the
+factorization 5⋅x1⋅x1⋅x2⋅(x1− x2)⋅(7x1+x2
+2− x3
+3) in ℙ. Similarly, computing gcds in ℙ
+is essentially the same problem as computing gcds in 𝕃.
+Given any m ×n matrix M ∈ℤm×n, we deﬁne the monomial map 𝜑M:𝕃n →𝕃m by
+𝜑M(P(x1,...,xn)) = P x1
+M1,1 ⋅⋅⋅xm
+Mm,1,...,x1
+M1,n ⋅⋅⋅xm
+Mm,n .
+This is clearly a homomorphism, which is injective (or surjective) if the linear map
+ℤn →ℤm;a ↦M a is injective (or surjective). Note also that 𝜑MN =𝜑M ∘𝜑N for any matrices
+M ∈ℤm×n and N =ℤn×r. In particular, if M ∈ℤn×n is unimodular, then 𝜑M is an auto-
+morphism of 𝕃n with 𝜑M
+−1=𝜑M−1.
+Laurent polynomials are only slightly more general than ordinary polynomials and
+we already noted above that factoring in ℙn is essentially the same problem as factoring
+in 𝕃n (and similarly for gcd computations). It is also straightforward to adapt the def-
+initions from Section 2.5 and most algorithms for sparse interpolation to this slightly
+more general setting. The main advantage of Laurent polynomials is that they are closed
+under monomial maps, which allows us to change the geometry of the support of a poly-
+nomial without changing its properties with respect to factorization.
+2.7. Tagging
+Let w ∈(ℤn)≠ be a non-zero weight vector and let 𝕃n
+♯ ≔𝕂[x1,x1
+−1,...,xn,xn−1,t,t−1]. We
+deﬁne the w-tagging map by
+𝜏w:𝕃n ⟶ 𝕃n#
+P(x1,...,xn) ⟼ P(x1tw1,...,xn twn).
+ALEXANDER DEMIN, JORIS VAN DER HOEVEN, 11
+PAGE12
+This map is an injective monomial map. For any P ∈𝕂[x1,...,xn], we have degt 𝜏w(P)=
+degw P, valt 𝜏w(P)=valw P, s𝜏w(P)=sP, and ect 𝜏w(P)≔degt 𝜏w(P)− valt 𝜏w(P)=ecw P.
+Divisibility and gcds are preserved as follows:
+LEMMA 2.10. Let P,Q,G ∈ℙn with valxi P =valxi Q =valxi G =0 for i =1,...,n. Then
+a) P divides Q in ℙn if and only if 𝜏w(P) divides 𝜏w(Q) in 𝕃n#.
+b) G =gcd(P,Q) in ℙn if and only if 𝜏w(G)=gcd(𝜏w(P),𝜏w(Q)) in 𝕃n#.
+Proof. We claim that P divides Q in ℙn if and only if P divides Q in 𝕃n. One direction is
+clear. Assume that P divides Q in 𝕃n, so that Q =A P with A ∈𝕃n. We may uniquely write
+A =xe A′ with e ∈ℤn and A′∈ℙn such that valxi A′=0 for i =1,...,n. Since 0=valxi Q =
+valxi A+valxi P=valxi =ei +valxi A′=ei for i=1,...,n, it follows that e=0. Hence P divides Q
+in ℙn. Our claim implies that P divides Q in ℙn if and only if P divides Q in 𝕃n#. Now
+we may further extend 𝜏w to a monomial automorphism of 𝕃n# by sending t to itself.
+This yields (a). The second property is an easy consequence. □
+COROLLARY 2.11. Let P,Q ∈ℙn and G =gcd(P,Q). Let Gˆ =gcd(Pˆ,Qˆ ), where Pˆ ≔𝜏w(P)
+and Qˆ ≔𝜏w(Q). Let 𝜈∈Zn be such that 𝜈i ≔min(valxi P,valxi Q)− valxi Gˆ for i=1,...,n. Then
+G(x1,...,xn) = x𝜈Gˆ (x1,...,xn,1). □
+Given a w-regular polynomial F ∈𝕂[x1,...,xn], we note that any divisor P |F must
+again be w-regular. Hence, modulo multiplication with a suitable constant in 𝕂, we may
+always normalize such a divisor to become w-monic. In the setting of Laurent polyno-
+mials, we may further multiply P by a monomial in x1
+ℤ⋅⋅⋅znℤ such that lpw P =1. Similarly,
+when applying 𝜏w, we can always normalize 𝜏w(P)to be monic as a Laurent polynomial
+in t by considering (lpw P)−1𝜏w(P).
+Both for gcd computations and factorization, this raises the question of how to ﬁnd
+weights w for which a given non-zero polynomial F∈𝕂[x1,...,xn]is w-regular. In [51, Sec-
+tion 4.3], a way was described to compute such a regularizing weight w: let i =(i1,...,in)∈
+suppF be such that i1
+2+ ⋅⋅⋅ +in2 is maximal. In that case, it suﬃces to take w ≔i, and
+we note that ecw F ⩽d2, where d is the total degree of F. For our applications in Sec-
+tions 3.2 and 5 it is often important to ﬁnd a w for which ecw F is small. By trying a
+few random weights with small (possibly negative) entries, it is often possible to ﬁnd
+a regularizing weight w with ecw P =O(1) or ecw P =O(d).
+Example 2.12. Consider F =2x2y +3x y2+x y +3y +2z +4∈Q[x,y,z]. Then, F is not
+w1-regular for the natural weight w1≔(1,1,1). If we take w2≔(2,1,0) instead, then F is
+w2-regular with ecw2 F =5, and we arrive at
+𝜏w2(F) = (2x2y)t5+(3x y2)t4+(x y)t3+(3y)t +2z +4.
+Furthermore, 𝜏w2(F)can be normalized to be monic as a Laurent polynomial in t by con-
+sidering 𝜏w2(F)/(2x2y). Note that w3≔(0,0,1) is also a regularizing weight for F with
+ecw3 F =1.
+3. MULTIVARIATE GCD COMPUTATIONS
+Before studying the factorization problem for multivariate polynomials, it is interesting
+to consider the easier problem of gcd computations. In this section we introduce two
+approaches for gcd computations that will also be useful later for factoring polynomials.
+12 FACTORING SPARSE POLYNOMIALS FAST
+PAGE13
+The ﬁrst approach is iterative on the number of variables. It will be adapted to the
+factorization problem in Section 6. The second approach is more direct, but requires
+a regularizing weight (see Section 2.7). Square-free factorization can be accomplished
+using a similar technique, as we shall see in Section 5. The algorithms from Section 7
+also draw some of their inspiration from this technique, but also rely on Newton poly-
+gons instead of regularizing weights.
+3.1. Iterativecomputationofgcds
+Let c1,...,cn be random elements of 𝕂≠. For any A ∈𝕂[x1,...,xn]and k =1,...,n, we deﬁne
+A[k](x1,...,xk) ≔ A(x1,...,xk,ck+1,...,cn).
+Let P,Q ∈𝕂[x1,...,xk]≠and G ≔gcd(P,Q). As we will see below, G[k]=gcd(P[k],Q[k])for
+k =1,...,n with high probability. We may easily compute the univariate greatest common
+divisor G[1]≔gcd(P[1],Q[1]). In this subsection, we shall describe an iterative algorithm
+to compute G[k+1] from G[k] for k =1,...,n − 1. Eventually, this yields G =G[n].
+Let 𝛼=(𝛼1,...,𝛼k)be an admissible ratio or an FFT ratio. For any A ∈𝕂[x1,...,xn]and
+any i ∈ℕ, let
+A⟨k+1,i⟩(u) ≔ A[k+1](𝛼1
+i ,...,𝛼k
+i ,u)
+A[k,i] ≔ A[k](𝛼1
+i ,...,𝛼k
+i ).
+For any i ∈ℕ, we have G⟨k+1,i⟩=gcd(P⟨k+1,i⟩,Q⟨k+1,i⟩) with high probability. Now these
+greatest common divisors are only deﬁned up to non-zero scalar multiples in 𝕂≠. Never-
+theless, there exists a unique greatest common divisor G[k+1] of P[k+1] and G[k+1] whose
+evaluation at xk+1≔ck+1 coincides with G[k].
+If G[k] is known, then G[k,i], P⟨k+1,i⟩, and Q⟨k+1,i⟩ can be computed for successive i ∈N
+using fast evaluation at geometric progressions. For any i ∈ℕ, we may then compute
+the univariate gcd G⟨k+1,i⟩ of P⟨k+1,i⟩ and Q⟨k+1,i⟩, under the normalization constraint that
+G⟨k+1,i⟩(ck+1)=G[k,i]. It finally suffices to interpolate G[k+1] from sufficiently many G⟨k+1,i⟩.
+This yields the following algorithm:
+Algorithm 3.1
+Input: P,Q ∈𝕂[x1,...,xn]≠
+Output: G ∈𝕂[x1,...,xn], such that G =gcd(P,Q)
+If n ⩽1, then compute gcd(P,Q) using a univariate algorithm and return it
+Compute G[n−1] by recursively applying the algorithm to P[n−1] and Q[n−1]
+Let m ≔sG[n−1]
+Compute G[n−1,i], P⟨n,i⟩, Q⟨n,i⟩ for i =1,...,m using sparse evaluation
+Compute G⟨n,i⟩=gcd(P⟨n,i⟩,Q⟨n,i⟩) with G⟨n,i⟩(cn)=G[n−1,i] for i =1,...,m
+Recover G from G⟨n,1⟩,...,G⟨n,m⟩ using sparse interpolation
+Return G
+Before we analyze this algorithm, we will need a few probabilistic lemmas. Assume
+that c1,...,cn and 𝛼1,...,𝛼n are independently chosen at random from a subset of 𝕂≠ of
+size at least N (if 𝕂is a small ﬁnite ﬁeld, this forces us to move to a ﬁeld extension).
+LEMMA 3.1. Let A,B ∈𝕂[x1,...,xn] be such that A[k+1] and B[k+1] are coprime. Then the
+probability that A[k] and B[k] are not coprime is bounded by 2k dA dB/N.
+ALEXANDER DEMIN, JORIS VAN DER HOEVEN, 13
+PAGE14
+Proof. Let xi with i ⩽k be a variable that occurs both in A[k+1] and in B[k+1]. Then
+Ri ≔ Resxi(A[k+1],B[k+1]) ≠ 0.
+If xi occurs in gcd(A[k],B[k]), then Ri(x1,...,xk,ck+1)=0, which can happen for at most
+degRi ⩽degxi A[k+1] degB[k+1]+degA[k+1] degxi B[k+1]⩽2dA dB values of ck+1. □
+LEMMA 3.2. Let P,Q ∈𝕂[x1,...,xn] and G =gcd(P,Q). Then the probability that G[k]≠
+gcd(P[k],Q[k]) for some k ∈{1,...,n} is bounded by n2dP dQ/N.
+Proof. Let us write P =A G and Q =B G, where A and B are coprime. Then we have
+G[k]≠gcd(P[k],Q[k]) if and only if A[k] and B[k] are not coprime. The result now follows
+by applying the previous lemma for k =n − 1,...,1. □
+THEOREM 3.3. Let s ≔sG, s¯≔sP +sQ +sG, d ≔max(dP,dQ), and 𝛿≔max(𝛿P,𝛿Q). Then
+Algorithm 3.1 is correct with probability at least 1−  n2d2+n  s
+2 𝛿 /N and it runs in time
+O(n ((s¯/s +𝛿)S(s)+s M(𝛿)log𝛿)).
+Remark. The probability bound implicitly assumes that N &gt;n2 d2 +n  s
+2  𝛿, since the
+statement becomes void for smaller N. In particular, we recall that this means that the
+cardinality of 𝕂should be at least n2d2+n  s
+2 𝛿.
+Proof. Assuming that G[k]=gcd(P[k],Q[k])and G[k,i]≠0for k =1,...,n − 1and i =1,...,s,
+let us prove that Algorithm 3.1 returns the correct answer. Indeed, these assumptions
+imply that Γ≔gcd(P⟨n,i⟩,Q⟨n,i⟩) can be normalized such that Γ(cn)=G[n−1,i] and that
+the unique such Γ must coincide with G⟨n,i⟩. Now G[k]=gcd(P[k],Q[k]) fails for some k
+with probability at most n2d2/N, by Lemma 3.2. Since 𝛿G ⩽𝛿, the condition G[k,i]≠0fails
+with probability at most n  s
+2 𝛿/N for some k and i, by Corollary 2.2. This completes the
+probabilistic correctness proof.
+As to the complexity, let us ﬁrst ignore the cost of the recursive call. Then the sparse
+evaluations of G[n−1,i], P⟨n,i⟩, and Q⟨n,i⟩ can be done in time O((s¯/s +𝛿)S(s)): see Sec-
+tion 2.4. The univariate gcd computations take O(s M(𝛿)log𝛿) operations. Finally, the
+recovery of G using sparse interpolation can be done in time O(𝛿S(s)). Altogether, the
+complexity without the recursive calls is bounded by O((s¯/s +𝛿)S(s)+s M(𝛿)log𝛿). We
+conclude by observing that the degrees and numbers of terms of P, Q, and G can only
+decrease during recursive calls. Since the recursive depth is n, the complexity bound
+follows. □
+Remark 3.4. When recovering G from G⟨n,1⟩,...,G⟨n,m⟩ using sparse interpolation, one
+may exploit the fact that the exponents of x1,...,xn−1 in G are already known.
+Example 3.5. Let A,B,C ∈𝕂[x1,...,xn] be random polynomials of total degree d and
+consider P ≔A B, Q ≔A C. With high probability, G ≔gcd(P,Q)=A. Let us measure the
+overhead of recursive calls in Algorithm 3.1 with respect to the number of variables n.
+With high probability, we have
+sG =  n +d
+n  , sG[n−1] =  n − 1+d
+n − 1   = n +d
+n sG[n−1]
+and
+14 FACTORING SPARSE POLYNOMIALS FAST
+PAGE15
+sP = sQ =  n +2d
+n  , sP = n +2d
+n sP[n−1], sQ = n +2d
+n sQ[n−1].
+Assuming that d ⩾n, it follows that
+2sG[n−1] ⩽ sG, 3sP[n−1] ⩽ sP, 3sQ[n−1] ⩽ sQ.
+This shows that the sizes of the supports of the input and output polynomials in Algo-
+rithm 3.1 become at least twice as small at every recursive call. Consequently, the overall
+cost is at most twice the cost of the top-level call, roughly speaking.
+3.2. Gcdcomputationsthroughregularizingweights
+Algorithm 3.1 has the disadvantage that the complexity bound in Theorem 3.3 involves
+a factor n. Let us now present an alternative algorithm that avoids this pitfall, but which
+may require a non-trivial monomial change of variables. Our method is a variant of the
+algorithm from [51, Section 4.3].
+Given P,Q ∈𝕂[x1,...,xn], we ﬁrst compute a regularizing weight w for P or Q, for
+which e ≔max(ecw P,ecw Q) is as small as possible. From a practical point of view, as
+explained in Section 2.7, we ﬁrst try a few random small weights w. If no regularizing
+weight is found in this way, then we may always revert to the following choice:
+LEMMA 3.6. For vectors 𝜈∈ℝn, let |𝜈|≔ 𝜈1
+2+⋅⋅⋅+𝜈n2  . Let i =(i1,...,in)∈suppP be such
+that |i|⩽dP is maximal. Let j =(j1,...,jn)∈suppQ be such that |j|⩽dQ is maximal. Let w ≔i
+if |i|⩽|j| and w ≔j otherwise. Then e ≔max(ecw P,ecw Q)⩽dP dQ.
+Proof. Assume that w =i. Then w ⋅k =i ⋅k ⩽|i||k|⩽|i||j|⩽dP dQ for any k ∈ℕn with Qk ≠0.
+The case when w =j is handled similarly. □
+Now consider Pˆ ≔𝜏w(P), Qˆ ≔𝜏w(Q), and Gˆ =gcd(Pˆ,Qˆ )in 𝕂[x1,x1
+−1,...,xn,xn−1,t,t−1].
+We normalize Gˆ in such a way that valt Gˆ =0 and such that Gˆ is monic as a polynomial
+in t; this is always possible since Gˆ is w-regular. Let 𝛼=(𝛼1,...,𝛼n)∈𝕂n be an admissible
+ratio or an FFT ratio. For any i ∈ℕ, we evaluate at xk ≔𝛼k
+i and t ≔t, which leads us to
+deﬁne the univariate polynomials
+Pˆ [i] ≔ Pˆ(𝛼1
+i ,...,𝛼n
+i ,t)
+Qˆ [i] ≔ Qˆ (𝛼1
+i ,...,𝛼n
+i ,t)
+Gˆ [i] ≔ Gˆ (𝛼1
+i ,...,𝛼n
+i ,t).
+With high probability, ect Gˆ [i]=ect Gˆ , and Gˆ [i] is the monic gcd of Pˆ [i]t−k and Qˆ [i]t−ℓ,
+where k ≔valt Pˆ [i] and ℓ ≔valt Qˆ [i]. For suﬃciently large m (with m =O(s)), we may
+thus recover Gˆ from Gˆ [1],...,Gˆ [m] using sparse interpolation. Finally, for t ≔1, we obtain
+G =x1
+𝜈1 ⋅⋅⋅xn
+𝜈n Gˆ (x1,...,xn,1), where 𝜈k =min(valxk P,valxk Q)− valxk Gˆ for k =1,...,n. This
+leads to the following algorithm:
+ALEXANDER DEMIN, JORIS VAN DER HOEVEN, 15
+PAGE16
+Algorithm 3.2
+Input: P,Q ∈𝕂[x1,...,xn]≠
+Output: G ∈𝕂[x1,...,xn], such that G =gcd(P,Q)
+Find a regularizing weight w for P or Q
+For m =1,2,4,8,... do
+Compute Pˆ [i], Qˆ [i] for i =⌊ /m 2⌋+1,...,m
+Compute Gˆ [i]=gcd(Pˆ [i],Qˆ [i])with Gˆ [i] monic and valt Gˆ [i]=0for i=⌊ /m 2⌋+1,...,m
+If Gˆ [1],...,Gˆ [m] yield Gˆ through sparse interpolation, then
+Let 𝜈k ≔min(valxk P,valxk Q)− valxk Gˆ for k =1,...,n
+Return x𝜈Gˆ (x1,...,xn,1)
+Remark3.7. If Gˆ is normalized in 𝕂[x1,x1
+−1,...,xn,xn−1,t,t−1]to be monic as a polynomial
+in t, then we may need to interpolate multivariate polynomials with negative exponents
+in order to recover Gˆ from Gˆ [1],...,Gˆ [m]. In practice, many interpolation algorithms based
+on geometric sequences, like Prony&#x27;s method, can be adapted to do this.
+As in the previous subsection, assume that 𝛼1,...,𝛼n are independently chosen at
+random from a subset of 𝕂≠ of size at least N. We let d ≔max(dP,dQ), s ≔sG, and s¯≔
+sP +sQ +sG.
+LEMMA 3.8. Assume that P or Q is w-regular. Let Gˆ =gcd(Pˆ,Qˆ )with valt Gˆ =0be monic as a
+polynomial in t. Take Pˆ [i]≔Pˆ(𝛼1
+i ,...,𝛼n
+i ,t), Qˆ [i]≔Qˆ (𝛼1
+i ,...,𝛼n
+i ,t), and Gˆ [i]≔Gˆ (𝛼1
+i ,...,𝛼n
+i ,t).
+The probability that Gˆ [i]=gcd(Pˆ [i],Qˆ [i]) for all i =1,...,s is at least 1− 2d2 s
+2 /N.
+Proof. We have Gˆ [i]=gcd(Pˆ [i],Qˆ [i]) if and only if R ≔Rest(Pˆ /Gˆ ,Qˆ /Gˆ ) does not vanish
+at 𝛼i. Now the degree of R is at most 2d2, so the probability that R(𝛼i)≠0for a randomly
+chosen 𝛼∈𝕂≠ and all i ∈{1,...,s} is at least 1− 2d2 s
+2 /N, by Corollary 2.2. □
+COROLLARY 3.9. The probability that one can recover Gˆ from Gˆ [1],...,Gˆ [m] with m =O(s)using
+sparse interpolation is at least 1− O(d2s2/N). □
+THEOREM 3.10. Let s ≔sG, s¯≔sP +sQ +sG, d ≔max(dP,dQ), and e ≔max(ecw P,ecw Q)⩽d2.
+Algorithm 3.2 is correct with probability at least 1− O(d2s2/N) and it runs in time
+O((s¯/s +e)S(s)+s M(e)loge). (3.1)
+Proof. The correctness with the announced probability follows from Corollaries 2.11
+and 3.9, while also using Remark 2.5. The computation of Pˆ [i] and Qˆ [i] through sparse
+evaluation at geometric progressions requires O((s¯/s +e)S(s)) operations (see Sec-
+tion 2.4). The univariate gcd computations take O(s M(e)loge) further operations. The
+ﬁnal interpolation of Gˆ from Gˆ [1],...,Gˆ [m] can be done in time O(S(s)). □
+Example 3.11. Let P,Q ∈K[x1,...,xn]≠. Consider the particular case when P is monic as
+a polynomial in K[x2,...,xn][x1]. Then, w =(1,0,...,0)is a regularizing weight for P, and
+therefore also for G ≔gcd(P,Q). This situation can be readily detected and, in this case,
+we have e ⩽max(degx1 P,degx1 Q) in the complexity bound (3.1).
+16 FACTORING SPARSE POLYNOMIALS FAST
+PAGE17
+Remark 3.12. We may need fewer evaluation points to interpolate the gcd Gˆ in Algo-
+rithm 3.2 in case the terms of Gˆ are distributed over the powers of t. For instance, if the
+terms are distributed evenly, then we have s ≔sG/e in the complexity bound (3.1).
+4. BIVARIATE FACTORIZATION
+Lemma 3.2 allows us to project the general problem of multivariate gcd computations
+down to the univariate case. For the polynomial factorization problem, no such reduc-
+tion exists: given a random univariate polynomial of degree d ⩾2over a ﬁnite ﬁeld, there
+is a non-zero probability that this polynomial is not irreducible. For this reason, it is
+customary to project down to bivariate instead of the univariate polynomials (when
+applicable, an alternative is to project down to univariate polynomials with integer coef-
+ﬁcients; see [79], for instance).
+This explains why it is interesting to study the factorization of bivariate polynomials
+in more detail. Throughout this section, F is a bivariate polynomial in 𝕂[x,y]≠ of degree
+dx in x and of degree dy in y. As in Sections 2.2 and 3, random numbers will be drawn
+from a subset of 𝕂≠ of size at least N. We will recall some classical results concerning the
+complexity of bivariate factorization, important techniques, and special cases: content-
+free factorization, root extraction, Hensel lifting, and square-free factorization.
+4.1. Content-freefactorization
+Recall that the content of F =F0+⋅⋅⋅+Fdx xdx ∈𝕂[x,y]≠ in x is deﬁned by
+contx F ≔ gcd(F0,...,Fdx) ∈ 𝕂[y].
+We say that F is content-free (or primitive) in x if contx F =1. Given two random shifts
+𝜎,𝜏∈𝕂≠, we have contx F =gcd(F(𝜎,y),F(𝜏,y)) with high probability. More precisely:
+PROPOSITION 4.1. The content contx F can be computed in time O(dx dy +M(dy)logdy) with
+a probability of success of at least 1− 2dx2/N.
+Proof. Without loss of generality, we may assume that |𝕂|&gt;N &gt;2dx2. Let us ﬁrst consider
+the case when contx F =1. Then we claim that gcd(F(𝜎,y):𝜎∈𝕂≠)=1. Indeed, for dx +1
+pairwise distinct 𝜎0,...,𝜎dx ∈𝕂≠, the Vandermonde matrix  𝜎i
+j 0⩽i,j⩽dx is invertible, so
+gcd(F(𝜎0,y),...,F(𝜎dx,y))=gcd(F0,...,Fdx)=1. It follows that Resy(F(u,y),F(v,y))≠0,
+regarded as an element of 𝕂[u,v], is non-zero, and its total degree is bounded by 2dx2. By
+Lemma 2.1, it follows that Resy(F(𝜎,y),F(𝜏,y))≠0 with probability at least 1− 2dx2/N.
+In that case, gcd(F(𝜎,y),F(𝜏,y))=1.
+We have proved our probabilistic correctness claim in the particular case when
+contx F =1. In general, we factor F =F˜ contx F. With probability at least 1− 2dx2/N, we
+have gcd(F(𝜎,y),F(𝜏,y))=gcd(F˜(𝜎,y),F˜(𝜏,y))contx F =1.
+As to the complexity bound, the evaluations F(𝜎,y)and F(𝜏,y)require O(dx dy)oper-
+ations and the univariate gcd computation can be done in time M(dy)logdy. □
+4.2. Rootextraction
+Let F ∈K[x,y]≠ and ℓ ⩾2. Assume that F =c Rℓ for some c ∈𝕂≠ and R ∈𝕂[x,y]. Assume
+that |𝕂|&gt;N &gt; dy
+2 +2. Then R can be computed eﬃciently as follows.
+ALEXANDER DEMIN, JORIS VAN DER HOEVEN, 17
+PAGE18
+After dividing out a suitable power of xℓ, we may assume without loss of generality
+that valx F =0. For a random shift 𝜎, we next replace F(x,y) with F(x,y +𝜎). With high
+probability, this ensures that F(0,0)≠0. Modulo division of F(x,y) by F(0,0), we may
+then assume without loss of generality that F(0,0)=1, and we will show how to compute
+the unique R ∈𝕂[x,y] with R(0,0)=1 and Rℓ =F. Since F(0,y)∈𝕂[y] is a univariate
+polynomial, we may eﬃciently compute R(0,y) using univariate root extraction.
+Let 𝛼∈𝕂≠ be an admissible ratio or an FFT ratio. For any i ∈ℕ, we deﬁne the uni-
+variate polynomial F[i]≔F(x,𝛼i). With high probability, we have F[i](0)≠0. Let R[i] be
+the unique univariate polynomial such that (R[i])ℓ =F[i] and R[i](0)=R(0,𝛼i). Such R[i]
+can be found eﬃciently using univariate root extraction. For m =dy, we may recover R
+from R[0],...,R[m] using interpolation.
+PROPOSITION 4.2. With the above notations and assumptions, we may compute c and R in time
+O(M(dx dy)), with a probability of success of at least 1−   dy
+2 +2dy /N.
+Proof. The random shift F(x,y)↦F(x,y +𝜎) and the corresponding backshift R(x,y)↦
+R(x,y − 𝜎) can be computed in time O(dx M(dy)) using the so-called convolution
+method [2, Theorem 5]. The computation of R(0,y) for i =0,...,dy can be done in time
+O(M(dy)) using fast root extraction. We may compute R(0,𝛼i) and F[i] for i =0,...,dy
+in time O(dx M(dy))using fast multipoint evaluation at geometric sequences [2, 13]. The
+same holds for the interpolation of R from the R[i]. Finally, the ℓ-th roots R[i] of the
+univariate polynomials F[i] can be computed in time O(dy M(dx)). The algorithm is cor-
+rect as long as F(0,0)≠0 and F(0,𝛼i)≠0 for i =0,...,dy. The probability that F(0,0)≠0
+and F(0,1)≠0 for a random choice of 𝜎 is at least 1− 2dy /N, by Lemma 2.1. In that
+case, Φ≔F(0,y)≠0and the probability that Φ(𝛼i)≠0for i =1,...,dy is at least 1−  dy
+2 /N,
+by Corollary 2.2. □
+4.3. Hensellifting
+Let F∈𝕂[x,y]be content-free in x and assume that F has a non-trivial factorization F=PQ,
+and contx F =1. Assume that degF(x,0)=dx and that P(x,0)and Q(x,0)are known and
+coprime (in particular P and Q are coprime). Using a random shift F(x,y)↦F(x,y +𝜎),
+these assumptions can be enforced with high probability, provided that P and Q are
+coprime. Without loss of generality we may also assume that we normalized the factor-
+ization of F(x,0) such that P(x,0) is monic. Under these assumptions, we may compute
+P and Q as follows:
+• We first use Hensel lifting to obtain a factorization F =Pˆ Qˆ with Pˆ(x,y),Qˆ (x,y)∈
+𝕂[[y]][x] and Pˆ(x,0)=P(x,0), Qˆ (x,0)=Q(x,0), and such that Pˆ is monic in x. We
+compute Pˆ and Qˆ modulo y𝜈 for 𝜈=2dy +1.
+• For a random shift 𝜎∈𝕂≠, we apply rational function reconstruction [31, Section 5.7]
+to Pˆ(𝜎,y) to obtain A,B ∈𝕂[y] with Pˆ(𝜎,y)=A/B +O(y𝜈) and gcd(A,B)=1 and B
+of the smallest possible degree with these properties. With high probability, we then
+have P =B Pˆ. We may compute Q in a similar way.
+PROPOSITION 4.3. Given F and F(x,0)=P(x,0)Q(x,0) satisfying the above assumptions, let
+dx =degx F, dy =degy F, and 𝛿≔max(dx,dy). We may lift the factorization of F(x,0) into
+a factorization F =P Q in time
+O(M(dx dy)+M(𝛿)log𝛿),
+with a probability of success of at least 1− 2dx dy /N.
+18 FACTORING SPARSE POLYNOMIALS FAST
+PAGE19
+Proof. We ﬁrst observe that there is a unique factorization F =P Q that lifts the factoriza-
+tion of F(x,0), thanks to our hypothesis that contx F=1. Since this hypothesis also implies
+that contx P=contx Q=1, the denominator B of Pˆ as an element of 𝕂(y)[x]coincides with
+the leading coefficient of P as a polynomial in x. Consequently, the denominator of Pˆ(𝜎,y)
+equals B if and only if Resy(B(y),P(𝜎,y))≠0. Since the degree of Resy(B(y),P(u,y))∈𝕂[u]
+is bounded by dx dy, this happens with probability at least 1− dx dy /N. Since the degrees
+of the numerator A and denominator B of Pˆ(𝜎,y)∈𝕂(y) do not exceed dy, it suﬃces
+to compute Pˆ modulo O y2dy+1  in order to recover A and B. This completes the prob-
+abilistic correctness proof.
+As to the complexity bound, the Hensel lifting requires O(M(dx dy)+M(dx)logdx)
+operations in 𝕂, when using a fast Newton iteration [31, Theorem 15.18, two factors].
+The computation of Pˆ(𝜎,y)requires O(dx dy)further operations and the rational function
+reconstruction can be done in time O(M(dy)logdy) using the technique of half gcds [31,
+Chapter 11]. □
+The proposition generalizes in a straightforward way to the case when F has ℓ pair-
+wise coprime factors P1,...,Pℓ. In that case, one may use fast multifactor Hensel lifting [31,
+Theorem 15.18], to obtain the following:
+PROPOSITION 4.4. Let F ∈𝕂[x,y]be such that contx F =1and degF(x,0)=dx. Assume that F
+can be factored as F =P1 ⋅⋅⋅ Pℓ, where P1(x,0),...,Pℓ(x,0) are pairwise coprime and known.
+Assume also that P1(x,0),...,Pℓ−1(x,0) are monic. Then we may lift the factorization F(x,0)=
+P1(x,0)⋅⋅⋅Pℓ(x,0) into a factorization F =P1⋅⋅⋅Pℓ in time
+O(M(dx dy)logℓ +ℓ M(𝛿)log𝛿),
+with a probability of success of at least 1− ℓ dx dy /N. □
+Example 4.5. Consider
+F ≔ x3y2− x3+x2y3+x2+x y2+3x y − 2x +2y2− 2y
+with
+F(x,0) = −x3+x2− 2x = (−x2+x − 2)x.
+This factorization lifts to the following factorization of F in Q[[y]][x]:
+F = Pˆ Qˆ , Pˆ = x2+ x
+y − 1+ 2
+y +1, Qˆ = (y2− 1)x +y3− y.
+Taking 𝜎 =1, we obtain the following rational reconstruction of Pˆ(𝜎,y) up to the
+order O(y7):
+Pˆ(1,y) = 1+ 1
+y − 1+ 2
+y +1 = y2+3y − 2
+y2− 1 .
+Consequently, P =(y2− 1)Pˆ is the sought factor of F in Q[x,y]. In a similar way, we ﬁnd
+that Q =(y2− 1)−1Qˆ .
+4.4. Square-freefactorization
+Assume that F ∈𝕂[x,y] is content-free in y and of total degree d. Assume also that
+char𝕂&gt;d. Recall that the square-free factorization of F is of the form
+F = P1
+1P2
+2⋅⋅⋅Pd
+d,
+ALEXANDER DEMIN, JORIS VAN DER HOEVEN, 19
+PAGE20
+where each Pi is the product of all irreducible factors of F that occur with multiplicity i.
+Note that some of the Pi are allowed to be units in 𝕂and that the Pi are unique up to mul-
+tiplication by such units. The polynomials P1,...,Pd are pairwise coprime. Since char𝕂&gt;d,
+they must also be separable in both x and y (i.e. gcd(Pi,∂Pi /∂x)=gcd(Pi,∂Pi /∂y)=1).
+The square-free factorization of F =𝕂[x,y] can be computed eﬃciently as follows:
+• For a random shift 𝜎, replace F by F(x,y +𝜎).
+• Compute the square-free factorization of F(x,0).
+• Hensel lift this into the square-free factorization of F using Proposition 4.4.
+• Apply the shift in the opposite direction.
+PROPOSITION 4.6. Assume that F ∈𝕂[x,y] is content-free in y and that char𝕂&gt;d. We can
+compute the square-free factorization of F in time
+O(M(dx dy)logℓ +M(dy)ℓ logdy +M(dx)logdx),
+with a probability of success of at least 1− 3ℓ dx dy /N, where ℓ ≔|{1⩽i ⩽d :Pi ∉𝕂}|.
+Proof. Given i∈{1,...,d}, consider Pi and P¯i ≔(∂Pi/∂x)F/Pi. The polynomials Pi(x,𝜎)and
+P¯i(x,𝜎) are coprime if and only if Resx(Pi(x,u),P¯i(x,u))∈𝕂[u] does not vanish at u ≔𝜎.
+Since this resultant has degree at most 2dx dy, this happens with probability 1− 2dx dy /N.
+Therefore, the probability that all Pi(x,𝜎) are pairwise coprime and all Pi(x,𝜎) are sep-
+arable is at least 1− 2ℓ dx dy /N. In that case, F(x,𝜎)=P1(x,𝜎)P2(x,𝜎)2 ⋅⋅⋅Pd(x,𝜎)d is the
+square-free decomposition of F(x,𝜎). Modulo normalization, we are thus in the position
+to apply Proposition 4.4. This proves the probabilistic correctness of the algorithm.
+The computation of the shift F(x,y)↦F(x,y+𝜎)can be done in time O(dx M(dy))using
+the algorithm from [2, Theorem 5] and the same holds for the shifts in the opposite direc-
+tion in the last step. The square-free factorization of the univariate polynomial F(x,0)
+can be done in time O(M(dx)logdx): see [106] and [31, Theorem 14.23]. We conclude
+with Proposition 4.4. □
+4.5. Generalbivariatefactorization
+General bivariate factorization of F ∈K[x,y] can often be reduced to Hensel lifting as
+in Section 4.3 using a random shift y ↦y +𝜎 and diversiﬁcation x ↦𝜁1x, y ↦𝜁2y. Let
+dx =degx F, dy =degy F. The best currently known complexity bound is the following:
+THEOREM 4.7. [74, Proposition 8] Let F ∈𝕂[x,y] be square-free and content-free in both x
+and y. Assume that char𝕂=0 or char𝕂&gt;dy (2dx − 1). Then we can compute the irreducible
+factorization of F in time
+O˜ (dx2dy +dx
+𝜔)+F(dx)
+and with a probability of success of at least 1− dx/N. □
+The actual proposition in [74] also contains a similar result for ﬁnite ﬁelds of small
+characteristic. For 𝕂 as in Theorem 4.7, square-freeness and content-freeness can be
+achieved with high probability and negligible cost using the algorithms from Sections 4.1
+and 4.4.
+20 FACTORING SPARSE POLYNOMIALS FAST
+PAGE21
+5. EFFICIENT REDUCTIONS
+In the bivariate setting of the previous section, we have presented several eﬃcient algo-
+rithms for the computation of partial factorizations. In this section, we will generalize
+three of them to the multivariate setting: removal of content, root extraction, and square-
+free factorizations. The common feature of these generalizations is that they recover
+the answer directly from the corresponding univariate specializations of the problem,
+in a similar fashion as the gcd algorithm from Section 3.2.
+5.1. Content-freefactorization
+Consider a polynomial F ∈𝕂[x1,...,xn]∖𝕂 and a variable xi. If, for every non-trivial
+factorization F =P Q with P,Q ∈𝕂[x1,...,xn]∖𝕂, both P and Q depend on xi, then we
+say that F is content-free (or primitive) in xi. Note that this is always the case if degxi F ⩽1.
+If F is content-free in xi for all i =1,...,n, then we say that F is content-free.
+For a given variable xi, say x1, we can efficiently test whether F is content-free
+with respect to xi: for random 𝛼2,...,𝛼n ∈𝕂≠, we form the bivariate polynomial
+B ≔F(x1,𝛼2t,...,𝛼n t) and compute contx1 B ∈𝕂[t] using the method from Section 4.1.
+With high probability, F is content-free with respect to x1 if and only if contx1 B =1. Per-
+forming this test for each of the variables x1,...,xn yields:
+PROPOSITION 5.1. We may check whether F is content-free (and, if not, determine all variables xi
+with respect to which F is not content-free) in time O(n sF +n M(dF)logdF) and with a proba-
+bility of success of at least 1− 2n dF
+2/N.
+Proof. The proof is similar to the one of Proposition 4.1. This time, for the probability
+bound, we consider the resultant Rest(F(u,c2t,...,cn t),F(v,c2t,...,cn t)) as a polynomial
+in 𝕂[u,v,c2,...,cn], of total degree at most 2dF
+2. If contx1 F =1, then this resultant does not
+vanish with probability at least 1− 2dF
+2/N for random u ≔𝜎, v ≔𝜏, c2≔𝛼2,...,cn ≔𝛼n.
+As to the complexity bound, for i =1,...,n, let 𝜎i and 𝜏i be random and consider
+Bi ≔F(𝛼1t,...,𝛼i−1t,𝜎i,𝛼i+1t,...,𝛼n t)and Ci ≔F(𝛼1t,...,𝛼i−1t,𝜏i,𝛼i+1t,...,𝛼n t). We compute
+the Bi simultaneously for i =1,...,n in time O(n (sF +dF))and similarly for the Ci. Finally,
+the computation of gcd(Bi,Ci) for i =1,...,n takes O(n M(dF)logdF) operations. □
+Assume now that F is not content-free, say with respect to x1. With high probability,
+the content of F with respect to x1 then equals the gcd of F(𝜎,x2,...,xn)and F(𝜏,x2,...,xn),
+for two random shifts 𝜎,𝜏∈𝕂. This leads to a non-trivial factorization of F for the cost
+of one gcd computation and one exact division.
+5.2. Rootextraction
+Given F ∈𝕂[x1,...,xn]≠ and ℓ ⩾2, multivariate ℓ-th root extraction is the problem of
+determining c ∈𝕂≠ and R ∈𝕂[x1,...,xn], such that F =c Rℓ, whenever such c and R exist.
+We devise an algorithm in the same vein as the algorithm for gcd computations from
+Section 3.2.
+We ﬁrst compute a regularizing weight w for F such that ecw F is small. Recall that the
+regularity of w ensures that lpw F =𝛼x𝜈 for some 𝛼∈𝕂≠ and 𝜈∈ℤn. We take c ≔𝛼 and
+note that we then must have lpw F =c (lpw R)ℓ.
+ALEXANDER DEMIN, JORIS VAN DER HOEVEN, 21
+PAGE22
+Now let Fˆ =(lpw F)−1t−𝜇𝜏w(F)∈𝕂[x1,x1
+−1,...,xn,xn−1,t,t−1]with 𝜇≔valt 𝜏w(F), so that
+valt Fˆ =0and Fˆ is monic as a polynomial in t. Let 𝛼=(𝛼1,...,𝛼n)∈𝕂n be an admissible ratio
+or an FFT ratio. For any i ∈ℕ, we deﬁne the univariate polynomial Fˆ[i]≔Fˆ(𝛼1
+i ,...,𝛼n
+i ,t).
+Let Rˆ [i] be the unique monic polynomial with (Rˆ [i])ℓ =Fˆ[i]. For suﬃciently large m (with
+m =O(sR)), we may recover Rˆ from Rˆ [1],...,Rˆ [m] using sparse interpolation. Finally, we
+have R =x𝜈Rˆ (x1,...,xn,1), where 𝜈i ∈ℤis such that 𝜈i
+ℓ =valxi F for i =1,...,n.
+PROPOSITION 5.2. Assume that F is w-regular with e≔ecw F⩽dF
+2. Then we may compute c∈𝕂≠
+and R ∈𝕂[x1,...,xn] with F =c Rℓ, whenever such c and R exist, in time
+O((sF/sR +e)S(sR)+sR M(e)).
+Proof. The evaluations Fˆ[i]≔Fˆ(𝛼1
+i ,...,𝛼n
+i ,t)take O((sF/sR +e)S(sR))operations, whereas
+the sparse interpolation of Rˆ from the Rˆ [i] can be done in time O(S(sR)). The cost of the
+univariate ℓ-th root extractions Rˆ [i]≔ Fˆ[i]ℓ  is bounded by O(sR M(e)). □
+5.3. Square-freefactorization
+Consider F ∈𝕂[x1,...,xn] of total degree d. Assume that F is content-free and that
+char𝕂=0 or char𝕂&gt;d2. The factorization of
+F = c P1P2
+2⋅⋅⋅Pd
+d
+into square-free parts can be done using a similar technique as for gcd computations
+in Section 3.2. We start with the computation of a regularizing weight w for F. Setting
+e ≔ecw F, we recall that e ⩽d2, whence char𝕂&gt;e. Let
+Fˆ = 𝜏w(F) ∈ 𝕃 ≔ 𝕂[x1,x1
+−1,...,xn,xn−1,t,t−1]
+and consider the normalized square-free factorization
+Fˆ = c x𝜈t𝜇Pˆ1Pˆ2
+2⋅⋅⋅Pˆd
+d,
+where c ∈𝕂≠, 𝜈∈ℤn, 𝜇∈ℤ, and where Pˆ1,...,Pˆd ∈𝕃are monic and of valuation zero in t.
+Let 𝛼=(𝛼1,...,𝛼n)∈𝕂n be an admissible ratio or an FFT ratio. For any i ∈ℕ, we deﬁne
+the univariate polynomials
+Fˆ[i] ≔ Fˆ(𝛼1
+i ,...,𝛼n
+i ,t)
+Pˆk
+[i] ≔ Pˆk(𝛼1
+i ,...,𝛼n
+i ,t), k =1,...,d.
+The normalized square-free factorization of Fˆ[i]t−𝜇 is of the form
+Fˆ[i]t−𝜇 = c[i]Pˆ1
+[i] Pˆ2
+[i] 2⋅⋅⋅ Pˆd
+[i] d,
+where c[i]∈𝕂≠, and Pˆ1
+[i],...,Pˆd
+[i] are monic polynomials in 𝕂[t]. We recover Pˆ1,...,Pˆd using
+sparse interpolation and then P1,...,Pd by setting t ≔1 and multiplying by appropriate
+monomials in x1
+ℤ ⋅⋅⋅xnℤ. More precisely, Pi =x𝜆Pˆi(x1,...,xn,1), where 𝜆j =1 if valxj F =i
+and 𝜆j =0 otherwise.
+PROPOSITION 5.3. Assume that F is w-regular with e ≔ecw F ⩽dF
+2. Let s ≔max(sP1,...,sPd)and
+ℓ ≔|{1⩽i ⩽d :Pi ∉K}|. Then we may compute a square-free factorization of in time
+O(ℓ (sF/s +e)S(s)+s M(e)loge),
+22 FACTORING SPARSE POLYNOMIALS FAST
+PAGE23
+with a probability of success of at least 1− 3ℓ d2s2/N.
+Proof. The probabilistic correctness is proved in a similar way as in the bivariate case
+(see Proposition 4.6), while also using Corollary 2.2. The sparse evaluation and inter-
+polation at a geometric sequence require O((sF/sP1+e)S(sP1)+⋅⋅⋅+(sF/sPd +e)S(sPd))=
+O(ℓ (sF /s +e)S(s)) operations. The univariate square-free factorizations can be done in
+time O(s M(e)loge), using [106] and [31, Theorem 14.23]. □
+5.4. Apathologicalexample
+It is well known that a divisor of a sparse polynomial can have far more terms than the
+polynomial itself, because of the identity
+xk − 1 = (x − 1)(xk−1+⋅⋅⋅+1), (5.1)
+and the possibility to replace x by any other sparse polynomial. For this reason, many
+problems on sparse polynomials turn out to be NP-hard [89, 90]. In a way that has been
+made precise in [25], this fundamental example is actually the main cause for such hard-
+ness results.
+The example (5.1) is less dramatic if we consider sparse polynomials for which the
+total degree is much smaller than the total number of terms, which is often the case in
+practice. But even then, it still has some unpleasant consequences. Recall from [25] that
+gcd(xpq − 1,xp+q − xp − xq +1) = xp+q−1+⋅⋅⋅+xp − xq−1− ⋅⋅⋅− 1
+for coprime p, q with p &gt;q ⩾4. This gcd contains exactly 2q terms. Such gcds can also
+occur during content-free factorizations. For instance, the content of
+Fp,q(x,y) = xpq − 1+(xp+q − xp − xq +1)y
+in y is xp+q−1+⋅⋅⋅+xp +xq−1+⋅⋅⋅+1. Now consider
+F ≔ Fp,q(x1,y)⋅⋅⋅Pp,q(xn,y).
+Then degF =n p q and sF ⩽6n. The size of each individual factor in any irreducible factor-
+ization of F is bounded by p q, which is sharp with respect to degF. However, the content
+C of F in y has size sC =(2q)n. This means that content-free factorization as a preparation
+step (before launching a “more expensive” factorization method) is a bad idea on this
+particular example.
+6. FACTORING USING ITERATED HENSEL LIFTING
+Let F∈𝕂[x1,...,xk]∖𝕂be a content-free polynomial and recall that any factor of F is again
+content-free. Let c1,...,cn be random non-zero elements of 𝕂. For any A ∈𝕂[x1,...,xn]
+and k =0,...,n, we deﬁne
+A[k](x1,...,xk) ≔ A(x1,...,xk,ck+1,...,cn).
+In this section, we describe several algorithms for the factorization of F, following a sim-
+ilar recursive approach as for the computations of gcds in Section 3.1. This time, we start
+with the computation of a non-trivial factorization of the bivariate polynomial F[2]. From
+this, we will recursively obtain non-trivial factorizations of F[3],F[4],...,F[n]. This will in
+particular yield a non-trivial factorization of F =F[n]. We will separately study the cases
+when F has a factorization into two or more coprime factors.
+ALEXANDER DEMIN, JORIS VAN DER HOEVEN, 23
+PAGE24
+6.1. Faithfulprojections
+In order to reconstruct factorizations of F from factorizations of F[2], it is important that
+the projection A ↦A[2] be suﬃciently generic. For k =0,...,n, let us denote by 𝜋c,k the
+projection A↦A[k]. We say that 𝜋c,k is faithful for A ∈𝕂[x1,...,xn]if suppA[l]={(e1,...,el):
+e ∈suppA} for l =k,...,n − 1.
+As usual, we assume that c1,...,cn are independently chosen at random from a subset
+of 𝕂≠ of size at least N.
+LEMMA 6.1. Given A ∈𝕂[x1,...,xn], the probability that 𝜋c,n−1 is faithful for A is at least
+1− sA degxn A/N.
+Proof. Given e ∈suppA, let Φ(xn)=∑i=0
+degxn A Ae1,...,en−1,i x1
+e1 ⋅⋅⋅xn−1
+en−1xn
+i . Then (e1,...,en−1)∉
+suppA[n−1] if and only if Φ(cn)=0, which happens with probability at most degxn A/N. □
+Now consider a factorization F =P1⋅⋅⋅Pℓ such that P1,...,Pℓ are pairwise coprime. We
+say that 𝜋c,k is faithful for this factorization if 𝜋c,k is faithful for P1,...,Pℓ and 𝜋c,k(P1),...,
+𝜋c,k(Pℓ) are pairwise coprime.
+LEMMA 6.2. Given a factorization F =P1⋅⋅⋅Pℓ and k ∈{2,...,n − 1}, the probability that 𝜋c,k is
+faithful for this factorization is at least 1− (n 𝛿F (sP1+⋅⋅⋅+sPℓ)+n2dF
+2)/N.
+Proof. This directly follows from Lemma 3.2 (while using that ∑i&lt;j dPi dPj &lt;dF
+2) and the
+previous lemma (using induction on n). □
+While faithful mappings preserve coprime factorizations in a predictable way, it may
+still happen that an irreducible polynomial is projected to a reducible one. In fact this
+may even happen with probability /1 2 for a random choice of c1,...,cn.
+Example 6.3. Let n ≔3 and 𝕂≔𝔽p for an odd prime p. Consider
+F ≔ Φ(x1,x2)2− x3
+Φ ≔ x1+x2
+Then F is irreducible, but F[2]=(Φ+𝛽)(Φ− 𝛽)whenever c3=𝛽2 is a square in 𝕂. If c3 is a
+random element of 𝕂≠, then this happens with probability /1 2. (Note that we may replace
+Φ by any other irreducible polynomial that involves both x1 and x2.)
+This phenomenon is not so much of a problem if we want to recursively Hensel lift
+a coprime factorization F[2]=AB for which we know that there exist P,Q∈𝕂[x1,...,xn]with
+A =P[2] and B =Q[2] (see Algorithms 6.1 and 6.2 below). However, any algorithm for
+Hensel lifting will fail if F is irreducible or, more generally, if no such P and Q exist (Algo-
+rithm 6.3 below for the irreducible factorization of F may therefore fail on Example 6.3).
+6.2. Liftingacoprimedecompositionintotwofactors
+Consider a non-trivial factorization F =P Q, where P,Q ∈𝕂[x1,...,xn]∖𝕂 are coprime.
+Assume that 𝜋c,2 is faithful for this factorization. Let us show how to recover P[k+1]
+and Q[k+1] from P[k] and Q[k], for k =2,...,n − 1.
+24 FACTORING SPARSE POLYNOMIALS FAST
+PAGE25
+Let 𝛼=(𝛼1,...,𝛼k)be an admissible ratio or an FFT ratio. For any A ∈𝕂[x1,...,xn]and
+any i ∈ℕ, let
+A⟨k+1,i⟩(t,u) ≔ A[k+1](𝛼1
+i t,...,𝛼k
+i t,u)
+and
+A[k,i](t) ≔ A⟨k+1,i⟩(t,ck+1) = A[k](𝛼1
+i t,...,𝛼k
+i t).
+With high probability, we have degt F⟨k+1,i⟩=degF[k], degP[k,i]=degP[k], degQ[k,i]=
+degQ[k], and the polynomials P[k,i] and Q[k,i] are again coprime. It follows that each
+factorization
+F[k,i] = P[k,i]Q[k,i]
+can be Hensel-lifted (see Section 4.3) into a factorization
+F⟨k+1,i⟩ = P⟨k+1,i⟩Q⟨k+1,i⟩.
+We now recover P[k+1] and Q[k+1] from P⟨k+1,1⟩,...,P k+1,sP[k]  and Q⟨k+1,1⟩,...,Q k+1,sQ[k] 
+,
+respectively, using sparse interpolation. In fact, if sP[k] ⩽sQ[k], then we may interpolate
+P[k+1] and recover Q[k+1] using one exact division.
+Moreover, we may exploit the assumption that the supports of P[k+1] and Q[k+1] with
+respect to x1,...,xk coincide with the supports of P[k] and Q[k]. In the algorithm below,
+this explains why m evaluation points indeed suﬃce:
+Algorithm 6.1
+Input: F ∈𝕂[x1,...,xn]∖𝕂and coprime A,B ∈𝕂[x1,x2]∖𝕂with F[2]=A B
+Output: P,Q ∈𝕂[x1,...,xn]∖𝕂with P[2]=A, Q[2]=B, and F =P Q, whenever such a fac-
+torization exists (we raise an error if this is not the case) and 𝜋c,2 is faithful for
+this factorization
+If n =2, then return (A,B)
+Compute P[n−1],Q[n−1] by recursively applying the algorithm to F[n−1],A,B
+Permute P[n−1] and Q[n−1] if necessary to ensure that m ≔sP[n−1]⩽sQ[n−1]
+Compute F⟨n,i⟩, F[n−1,i], and P[n−1,i] for i =1,...,m, using sparse evaluation
+Deduce Q[n−1,i]≔F[n−1,i]/P[n−1] for i =1,...,m
+For i =1,...,m
+Compute P⟨n,i⟩,Q⟨n,i⟩ with F⟨n,i⟩=P⟨n,i⟩Q⟨n,i⟩ using Hensel lifting (Section 4.3)
+Raise an error if this fails
+Recover P from P⟨n,1⟩,...,P⟨n,m⟩ using sparse interpolation
+Let Q ≔F/P and return (P,Q)
+Remark 6.4. The faithfulness assumption implies that suppP ⊆suppP[n−1]×ℕ. If d is
+small, then this support bound is reasonably tight. Consequently, we may use sparse
+interpolation with known supports in order to recover P.
+THEOREM 6.5. Let s ≔min(sP,sQ), s′≔max(sP,sQ) s¯≔max(s′,sF), d ≔degF, and 𝛿≔
+max(degx1 F,...,degxn F). Then Algorithm 6.1 runs in time
+O(n ((s¯/s)S(s′)+𝛿d S(s)+s M(𝛿d)+s M(d)logd))
+ALEXANDER DEMIN, JORIS VAN DER HOEVEN, 25
+PAGE26
+and returns the correct result with probability at least
+1− O((((((((((((ns2d2
+N )))))))))))).
+Proof. Assume that we correctly recovered P[n−1] and Q[n−1] and let us investigate the
+probability that the results P and Q are correct.
+Let us ﬁrst examine the probability that the Hensel lifting method from Section 4.3
+works correctly. This is the case whenever the following three conditions are satisﬁed
+for i =1,...,m:
+1. P[n−1,i] and Q[n−1,i] are coprime;
+2. We have contt F⟨n,i⟩=1;
+3. We have degt F⟨n,i⟩=degt F[n−1,i].
+Consider
+R ≔ Rest
+(
+(
+((((((((((
+(
+(P[n−1](x1t,...,xn−1t)
+tvalP[n−1] ,Q[n−1](x1t,...,xn−1t)
+tvalQ[n−1]
+)
+)
+)
+)
+)
+)))))))
+)
+) (6.1)
+with degR ⩽d2. We have R ≠0 since P[n−1] and Q[n−1] are coprime. The ﬁrst condition
+fails for a given i if and only if R vanishes under the substitutions x1≔𝛼1
+i ,...,xn−1≔𝛼n−1
+i .
+This happens with probability at most d2 s
+2 /N for some i, by Corollary 2.2. Let us next
+consider
+R′ ≔ Resu(F(x1t,...,xn−1t,u),F(x1t′,...,xn−1t′,u)),
+where x1,...,xn−1,t,t′,u are formal indeterminates. Since F is content-free, we have R′≠0.
+Now contt F⟨n,i⟩ =1 whenever R′ does not vanish under the substitutions x1 ≔𝛼1
+i ,...,
+xn−1 ≔𝛼n−1
+i . The second condition therefore fails for some i with probability at most
+4d2 s
+2 /N, by Corollary 2.2 and using the fact that degR′⩽4d2. Finally, with probability
+at least 1− d  s
+2 /N, we have
+degt F⟨n,i⟩ = degt F[n−1,i] = degt F(x1t,...,xn−1t,xn)
+for i =1,...,m, by Corollary 2.2.
+Let us now return to the correctness of the overall algorithm. Concerning the top-
+level call, we have the following:
+• Obtaining Q[n−1,i] from the evaluations F[n−1,i], P[n−1,i] for i =1,...,m by exact uni-
+variate polynomial division is possible as long as degF[n−1,i]=degF[n−1]. This condi-
+tion fails with probability at most s2d/N by Corollary 2.2.
+• We have shown above that the Hensel lifting strategy from Section 4.3 can be applied
+with probability at least 1− O(d2s2/N). By adapting the proof of Proposition 4.3 such
+that we can apply Corollary 2.2, the Hensel lifting itself also succeeds with proba-
+bility at least 1− O(d2s2/N), for i =1,...,m.
+Altogether, we correctly determine P and Q with probability at least 1−O(s2d2/N). Since
+there are O(n) recursive levels and since the sizes of the supports of F[k], P[k], and Q[k]
+are all smaller than those of F, P, and Q, the probabilistic correctness claim follows.
+As to the complexity bound, let us now study the cost when not counting the recur-
+sive calls:
+• The computation of the F⟨n,i⟩, F[n−1,i], and P[n−1,i], using sparse evaluation at geometric
+sequences requires O((s¯/s +d degxn F)S(s))=O(S(s¯)+𝛿d S(s)) operations in K.
+26 FACTORING SPARSE POLYNOMIALS FAST
+PAGE27
+• The evaluations of Q[k−1] are obtained by exact univariate polynomial division and
+require O(s M(d)) operations in total.
+• Lifting the factorization for all of the evaluations requires O(s (M(𝛿d)+M(d)logd))
+further operations, by Proposition 4.3.
+• We obtain P =P0+⋅⋅⋅+P𝛿xn
+𝛿 from P⟨n,1⟩,...,P⟨n,m⟩ using sparse interpolation of the
+coeﬃcients P0,...,P𝛿 in time O(S(sP0)+⋅⋅⋅+S(sP𝛿))=O(S(s)+s 𝛿)=O(𝛿S(s)).
+• The recovery of Q through sparse polynomial division takes O((s¯/s′)S(s′)) further
+operations, as explained in Section 2.4.
+We conclude that the cost is O((s¯/s′)S(s′)+𝛿d S(s)+s M(𝛿d)+s M(d)logd), when not
+counting the recursive calls. Since there are O(n) recursive levels and since the sizes of
+the supports of F[k], P[k], and Q[k] are all smaller than those of F, P, and Q, the complexity
+bound follows. □
+Example6.6. Let F =P Q, where P,Q ∈𝕂[x1,...,xn]are coprime. Now consider the poly-
+nomial F˜(x1,...,x2n)=F(x1xn+1,x2xn+2,...,xn x2n). When factoring F using Algorithm 6.1,
+the last n lifting steps with respect to xn+1,...,x2n all operate on a projection F[k] of size sF.
+This is an example when the overhead n in the complexity bound is sharp. However, the
+support of F is very special, since it is contained in an aﬃne subspace of dimension ⩽n.
+It is easy to detect this situation and directly obtain the exponents in the last n variables
+as aﬃne combinations of the known exponents in the ﬁrst n variables.
+More generally, it may happen that the ﬁbers of the support under the projection with
+respect to the last k variables are all small. It would be interesting to develop speciﬁc
+optimizations for this situation, e.g. directly apply sparse interpolation on the ﬁbers.
+6.3. Simultaneousliftingofmultiplefactors
+The lifting algorithm generalizes in a straightforward way to the case when F is a product
+of more than two factors. This time, we wish to recover a factorization F =𝜆P1
+𝜈1 ⋅⋅⋅Pℓ
+𝜈n
+from A1≔P1
+[2],...,Aℓ ≔Pℓ
+[2], assuming that A1,...,Aℓ (hence P1,...,Pℓ) are pairwise coprime.
+Algorithm 6.2
+Input: F ∈𝕂[x1,...,xn]∖𝕂, irreducible and pairwise coprime A1,...,Aℓ ∈𝕂[x1,x2]∖𝕂,
+ℓ ⩾2, 𝜆∈𝕂≠, and 𝜈1,...,𝜈ℓ ∈ℕ, such that F[2]=𝜆A1
+𝜈1 ⋅⋅⋅Aℓ
+𝜈ℓ
+Output: irreducible and pairwise coprime P1,...,Pℓ ∈𝕂[x1,...,xn]∖𝕂with F =𝜆P1
+𝜈1⋅⋅⋅Pℓ
+𝜈ℓ
+and P1
+[2]=A1,...,Pℓ
+[2]=Aℓ, whenever such a factorization exists (we raise an
+error if this is not the case) and 𝜋c,2 is faithful for this factorization
+If n =2, then return (A1,...,Aℓ)
+Recursively apply the algorithm to F[n−1],A1,...,Aℓ to compute P1
+[n−1],...,Pℓ
+[n−1]
+Let m ≔max sP1
+[n−1],...,sPℓ
+[n−1] 
+Compute F⟨n,i⟩, P1
+[n−1,i],...,Pℓ
+[n−1,i] for i =1,...,m, using sparse evaluation
+Deduce  P1
+[n−1,i] 𝜈1,..., Pℓ
+[n−1,i] 𝜈ℓ for i =1,...,m
+For i =1,...,m
+Compute P1
+⟨n,i⟩,...,Pℓ
+⟨n,i⟩ with F⟨n,i⟩=𝜆 P1
+⟨n,i⟩ 𝜈1 ⋅⋅⋅ Pℓ
+⟨n,i⟩ 𝜈ℓ using Hensel lifting
+Raise an error if this fails
+Recover Pj from the Pj
+⟨n,i⟩ using sparse interpolation, for j =1,...,ℓ
+Return (P1,...,Pℓ)
+ALEXANDER DEMIN, JORIS VAN DER HOEVEN, 27
+PAGE28
+Remark 6.7. More precisely, we compute  Pj
+[n−1,i] 𝜈j using binary powering and Pj
+[n,i]
+from  Pj
+[n,i] 𝜈j using dense bivariate 𝜈j-th root extraction, for j =1,...,ℓ. As an optimiza-
+tion, we may ﬁrst sort the factors of F[n−1] such that sP1
+[n−1]⩽sP2
+[n−1]⩽⋅⋅⋅⩽sPℓ
+[n−1] and then
+compute  Pℓ
+[n−1,i] 𝜈ℓ ≔F[n−1,i]/  P1
+[n−1,i] 𝜈1 ⋅⋅⋅ Pℓ−1
+[n−1,i] 𝜈ℓ−1  using exact division.
+THEOREM 6.8. Let s ≔max(sP1,...,sPℓ), s¯≔max(s,sF), 𝛿≔max(degx1 F,...,degxn F), and
+d ≔degF. Then Algorithm 6.2 runs in time
+O(n ((s¯/s +𝛿d)S(s)+s M(𝛿d)logℓ +s M(d)logd))
+and returns the correct result with probability at least
+1− O((((((((((((nℓs2d2
+N )))))))))))).
+Proof. The proof is similar to that of Algorithm 6.1. Assume now that we correctly recov-
+ered P1
+[n−1],...,Pℓ
+[n−1] and let us investigate the probability that the results P1,...,Pℓ are
+correct. To apply the Hensel lifting method from Section 4.3, the following three condi-
+tions must be satisﬁed for i =1,...,m:
+1. P1
+[n−1,i],...,Pℓ
+[n−1,i] are pairwise coprime;
+2. We have contt F⟨n,i⟩=1;
+3. We have degt F⟨n,i⟩=degt F[n−1,i].
+The analysis is similar as in the proof of Theorem 6.5, except that (6.1) now becomes
+R ≔  
+1⩽i&lt;j⩽ℓ
+Rest
+(
+(
+(
+(
+(
+(
+(
+((((((((((
+(
+(Pi
+[n−1](x1t,...,xn−1t)
+tvalPi
+[n−1] ,Pj
+[n−1](x1t,...,xn−1t)
+tvalPj
+[n−1]
+)
+)
+)
+)
+)
+)
+)
+)
+)
+))))))))
+)
+)
+and the probability that R vanishes for one of the m substitutions is now bounded by
+O(ℓ s2d2/N), since degR ⩽2d2ℓ. Using the fact there are ⩽n recursive levels, this com-
+pletes the probabilistic correctness proof.
+For the cost analysis, we again start by analyzing the cost of the algorithm without
+the recursive calls:
+• The evaluation of the factors P1
+[n−1],...,Pℓ
+[n−1] on the geometric sequence can be done
+in time O((m/sP1+𝛿)S(sP1)+⋅⋅⋅+(m/sPℓ +𝛿)S(sPℓ))=O(𝛿ℓ S(s))=O(𝛿d S(s)).
+• The computation of the F⟨n,i⟩ and F[n−1,i] takes O((sF/s +𝛿d)S(s)) operations.
+• The powers  P1
+[n−1,i] 𝜈1,..., Pℓ
+[n−1,i] 𝜈ℓ can be obtained in time O(s (M(𝜈1dP1)+⋅⋅⋅+
+M(𝜈ℓ dPℓ)))=O(s M(d)), using binary powering.
+• The Hensel lifting is done using Proposition 4.4 instead of Proposition 4.3, which con-
+tributes O(s (M(d 𝛿)logℓ +ℓ M(𝛿)log𝛿)) to the cost.
+• The bivariate root extractions take O(s (M(𝛿𝜈1dP1)+⋅⋅⋅+M(𝛿𝜈ℓ dPℓ)))=O(s M(𝛿d))
+operations, by Proposition 4.2.
+28 FACTORING SPARSE POLYNOMIALS FAST
+PAGE29
+• The recovery of the Pj from the Pj
+⟨n,i⟩ using sparse interpolation requires O(S(sP1)+⋅⋅⋅+
+S(sPℓ))=O(d S(s)) operations.
+Summing these costs and multiplying with the recursive depths O(n)yields the desired
+complexity bound. □
+Example 6.9. There are cases when the recursive application of Algorithm 6.1 may lead
+to intermediate expression swell. For instance, for i =1,2and k ∈ℕ, consider the polyno-
+mials
+Pi ≔ (xi +yi)k − (ui +vi)k
+= (xi +yi − ui − vi)Qi
+Qi ≔  
+0⩽j&lt;k
+(xi +yi +ui +vi)j
+and note that Qi has Θ(k3) terms, whereas Pi has only O(k) terms. Now consider
+F = P1P2.
+Then a direct factorization of F into irreducibles can be done in time O˜ (k3), whereas
+recursively factoring out (x1+y1− u1− v1) and then (x2+y2− u2− v2) may lead us to
+consider intermediate expressions like Q1Q2 of size Θ(k6).
+Remark 6.10. The ideas behind Algorithm 6.2 can readily be adapted to p-adic lifting,
+in order to factor a polynomial F ∈ℚ[x1,...,xn] with rational coeﬃcients. In that case,
+we start with a factorization F¯=c¯P¯1
+𝜈1 ⋅⋅⋅P¯ℓ
+𝜈ℓ of F¯≔F modp ∈𝔽p[x1,...,xn] for some suf-
+ﬁciently large prime p. The goal is to lift this into a factorization of F modp𝜅 for some suf-
+ﬁciently large 𝜅and then to recover a factorization of F using rational number reconstruc-
+tion [31, Section 5.10]. The relevant analogues of A⟨n,i⟩(t,u) and A[n−1,i](t) are A⟨i⟩(t)≔
+P(𝛼1
+i t,...,𝛼n
+i t) and A[i](t)≔A⟨i⟩(t) modp, where the prime number p plays a similar
+role as the formal indeterminate u. The bivariate Hensel lifting in K[[u]][t] is replaced
+by traditional univariate Hensel lifting in ℤp[t].
+6.4. Irreduciblefactorization
+In lucky cases, given an irreducible factorization F=𝜆P1
+𝜈1⋅⋅⋅Pℓ
+𝜈ℓ, random choices of c1,...,cℓ
+give rise with high probability to an irreducible factorization F[2]=𝜆 P1
+[2] 𝜈1 ⋅⋅⋅ Pℓ
+[2] 𝜈ℓ.
+For such F, we may use the following algorithm to compute its irreducible factorization:
+Algorithm 6.3
+Input: a content-free polynomial F ∈𝕂[x1,...,xn]∖𝕂
+Output: an irreducible factorization F =𝜆P1
+𝜈1 ⋅⋅⋅Pℓ
+𝜈ℓ or an error
+If n ⩽1, then return the result of a univariate irreducible factorization
+Let c1,...,cn be random elements of 𝕂≠
+Compute an irreducible factorization F[2]=𝜆A1
+𝜈1 ⋅⋅⋅Aℓ
+𝜈ℓ of F[2]
+Apply Algorithm 6.2 to F and this factorization
+ALEXANDER DEMIN, JORIS VAN DER HOEVEN, 29
+PAGE30
+THEOREM 6.11. Let s ≔max(sP1,...,sPℓ), s¯≔max(s,sF), 𝛿≔max(degx1 F,...,degxn F), and
+d ≔degF. Then Algorithm 6.3 runs in time
+O(n ((s¯/s +𝛿d)S(s)+s M(𝛿d)logℓ +s M(d)logd))+O˜ (𝛿3)+F(𝛿)
+and returns the correct result (when no error is raised) with probability at least
+1− O((((((((((((nℓs(s +n)d2
+N )))))))))))).
+Proof. This follows from Theorems 6.8, 4.7, and Lemma 6.2. □
+Remark 6.12. We have seen in Section 5.4 that the size of the content of a multivariate
+polynomial can be much larger than the size of the polynomial itself, in pathological
+cases. In such cases, we may wish to avoid content-free factorization as a ﬁrst step of
+a general algorithm for irreducible factorization. This can be achieved by adapting Algo-
+rithm 6.2 so as to factor out the content C in xn at the top-level and performing the
+recursive call and bivariate lifting to F/C instead of F. Incorporating the content-free
+factorization directly into the main algorithm in this way yields a similar complexity
+bound as in Theorem 6.11, but with F(d) instead of F(𝛿).
+Remark 6.13. An alternative approach for reducing to the content-free case, which also
+works for the algorithms from Section 7 below, is to tag F according to a regularizing
+weight w. This has the advantage of “exposing” the entire factorization of F with respect
+to the tagging variable t. Of course, this requires to replace the degree d =dF in the com-
+plexity bound by e =ecw F ⩽d2.
+Remark6.14. The problem from Remark 6.3 can be partially remedied by amending the
+bivariate lifting step: instead of raising an error when F⟨n,i⟩≠𝜆 P1
+⟨n,i⟩ 𝜈1 ⋅⋅⋅ Pℓ
+⟨n,i⟩ 𝜈ℓ, we
+may continue the Hensel lifting to a higher precision (the Pj
+⟨n,i⟩ are now power series in
+𝕂[t][[u]]) and determine which factors need to be combined in order to obtain a fac-
+torization of F⟨n,i⟩ (using the techniques from [74]). Doing this for all i leads to a ﬁnest
+partition J1⨿⋅⋅⋅⨿Jℓ′ of {1,...,ℓ}such that Πk
+⟨n,i⟩≔∏j∈Jk
+Pj
+⟨n,i⟩ is a polynomial factor of F⟨n,i⟩
+for i =1,...,m and k =1,...,ℓ′. We next apply the sparse interpolation to the polyno-
+mials Πk
+⟨n,i⟩ instead of the series Pj
+⟨n,i⟩. This may require more than m interpolation points,
+so we also double m until the interpolation step succeeds. Combined with Remark 6.12,
+this yields to an algorithm of complexity
+O(n ((s¯/s +𝛿d)S(s)+s O˜ (d 𝛿2)))+F(d),
+where s is the maximal size of an irreducible factor of F[k] for k ∈{1,...,n}.
+Unfortunately, we have not yet been able to perform a clean probabilistic analysis for
+this method. Indeed, we still need to prove that the algorithm terminates in reasonable
+expected time for irreducible polynomials. Now consider the example
+F = x1
+2+x2
+2− x3
+2, (6.2)
+for which we obtain
+F⟨3,i⟩(t,u) = (𝛼1
+2i +𝛼2
+2i)t2− u2.
+30 FACTORING SPARSE POLYNOMIALS FAST
+PAGE31
+Whenever 𝕂=𝔽p with p ⩾3and 𝛼1
+2i +𝛼2
+2i is a square in 𝕂, the projected polynomial F⟨3,i⟩
+is not irreducible. In principle, this only happens with probability /1 2, so this is unlikely
+to happen for all m values of i =1,...,m. However, we were unable so far to prove a gen-
+eral bound. We also note that this probabilistic argument is diﬀerent from traditional
+Hilbert–Bertini style arguments [100, Section 6.1]; see also [74] and [75, Chapître 6].
+Remark 6.15. Another way to turn Algorithm 6.3 into a method that always succeeds
+with high probability would be to apply random monomial transformation to F. For
+instance, after the change of variables x1=y1y2y3, x2=y2y3, x3=y3, we have
+F = (y1
+2y2
+2+y2
+2− 1)y3
+2,
+for the polynomial F from example (6.2). With high probability, Algorithm 6.3 returns
+the correct irreducible factorization of F after this rewriting.
+7. FACTORING USING PROJECTIVE HENSEL LIFTING
+The iterative approach from Sections 3.1 and 6 has the disadvantage of introducing
+a dependence on the dimension n in the complexity bounds. In the case of gcd computa-
+tions, the idea of regularizing weights allowed for the more direct approach in Section 3.2.
+Unfortunately, direct adaptations of this approach to factorization only work in very
+special cases, because it is unclear how to recombine the factors found at diﬀerent eval-
+uation points. One notable exception is when F ∈𝕂[x1,...,xn]∖𝕂factors, say, into two
+irreducible factors of degrees one and two in one of the variables; in that case, we can
+recombine based on degree information.
+In this section, we will develop another “direct” approach for the factorization of
+F ∈𝕂[x1,...,xn]∖𝕂 that avoids iteration on the dimension n. Except for precompu-
+tations in the algorithm from Section 7.7, the algorithms in this section do not rely on
+regularizing weights, but exploits more subtle properties of the Newton polytope of F.
+We will present three versions of our approach in order to deal with Newton polytopes
+of increasing complexity. For simplicity, we only present them in the case when F is the
+product of two factors. As we shall see in Section 7.6, even the last and most elaborate
+version of our approach is not fully general. We will conclude with a theoretical variant
+that is less eﬃcient in practice, but which has the advantage of providing a full algorithm
+for the computation of irreducible factorizations.
+7.1. Afavorablespecialcase
+Assume that the unique factorization of F contains exactly two factors
+F(x1,...,xn) = P(x1,...,xn)Q(x1,...,xn), (7.1)
+where P,Q ∈𝕂[x1,...,xn] are irreducible and distinct and both depend on the “main”
+variable, say, x1. In particular, this implies that F is content-free and square-free. Assume
+also that the following conditions hold:
+H1. degx1 F(x1,0,...,0)=degx1 F.
+ALEXANDER DEMIN, JORIS VAN DER HOEVEN, 31
+PAGE32
+H2. P(x1,0,...,0) and Q(x1,0,...,0) are coprime.
+Note that H1 allows us to normalize the factorization
+F(x1,0,...,0) = P(x1,0,...,0)Q(x1,0,...,0)
+by requiring that P(x1,0,...,0) is monic. From now on we will always assume that we
+have done this.
+Under these assumptions, we claim that P and Q can be computed from P(x1,0,...,0)
+and Q(x1,0,...,0) using Hensel lifting and sparse interpolation. In order to see this, let
+𝛼=(1,𝛼2,...,𝛼n)∈(𝕂≠)n be an admissible ratio or an FFT ratio. For each i ∈ℕ, we deﬁne
+bivariate polynomials F[i],P[i],Q[i]∈𝕂[x1,t] by
+F[i] ≔ F(x1,𝛼2
+i t,...,𝛼n
+i t)
+P[i] ≔ P(x1,𝛼2
+i t,...,𝛼n
+i t)
+Q[i] ≔ Q(x1,𝛼2
+i t,...,𝛼n
+i t).
+Then P[i](x1,0)=P(x1,0,...,0) and Q[i](x1,0)=Q(x1,0,...,0) are coprime and we have
+F[i]=P[i]Q[i]. This allows us to compute P[i] and Q[i] from F[i], P[i](x1,0), and Q[i](x1,0)
+using Hensel lifting. For suﬃciently large m, with m =O(min(sP,sQ)), we may then use
+sparse interpolation to recover P from P[1],...,P[m] or Q from Q[1],...,Q[m]. This leads
+to the following algorithm:
+Algorithm 7.1
+Input: F ∈𝕂[x1,...,xn] such that there exists a factorization (7.1) that satisfies H1
+and H2; we assume that P(x1,0,...,0) and Q(x1,0,...,0) are given
+Output: P,Q ∈𝕂[x1,...,xn]
+For m =1,2,4,8,... do
+Compute F[i] for i =⌊ /m 2⌋+1,...,m
+Compute P[i],Q[i] for i =⌊ /m 2⌋+1,...,m,
+using bivariate Hensel lifting for F[i], P[1](x1,0), Q[1](x1,0)
+If P[1],...,P[m] yield P through sparse interpolation, then return (P,F/P)
+If Q[1],...,Q[m] yield Q through sparse interpolation, then return (F/Q,Q)
+THEOREM 7.1. Let s≔min(sP,sQ), s′≔max(sP,sQ), s¯≔max(s′,sF), 𝛿≔degx1 F, and d≔degF.
+Then Algorithm 7.1 is correct with probability at least 1− d  s′
+2 /N and runs in time
+O((s¯/s′)S(s′)+𝛿d S(s)+s M(𝛿d)+s M(d)logd).
+Proof. The correctness is clear. Let us analyze the cost of the main steps of the algorithm:
+• The computation of the F[i] takes O((sF/s +𝛿d)S(s)) operations.
+• The Hensel lifting has a total cost of O(s (M(𝛿d)+M(d)logd)).
+• The sparse interpolation of P (or Q) takes O(𝛿d S(s)) operations.
+• The sparse polynomial division to recover Q (or P) requires O((s¯/s′)S(s′))operations.
+Adding up these costs, the complexity bound follows. The algorithm is correct as long
+as the ﬁnal division succeeds, which is the case with probability at least 1− d  s′
+2 /N. □
+32 FACTORING SPARSE POLYNOMIALS FAST
+PAGE33
+7.2. SingleslopebivariateHensellifting
+The assumptions H1and H2are fairly strong: they are never satisﬁed both if F is a homo-
+geneous polynomial. Now the assumptions H1 and H2 essentially allow us to perform
+the bivariate Hensel lifting using the method from Section 4.3. The problem that we face
+in order to extend the approach from Algorithm 7.1 is that random shifts y ↦𝜎+y are
+not allowed for the bivariate Hensel lifting from Section 4.3: we only have an eﬃcient
+algorithm to compute P(x,0) and Q(x,0) are given, not P(x,𝜎) and Q(x,𝜎).
+Instead, we need a way to generalize the algorithm from Section 4.3 to the case when
+the Newton polygon of F is non-trivial. In this subsection, we start with the simplest
+“single slope” case. Since this material is a supplement to Section 4.3, we adopt the nota-
+tion from there.
+Assume that F ∈𝕂[x,y]has a non trivial factorization F =P Q with P,Q ∈𝕂[x,y]∖𝕂.
+We deﬁne the Newton polygon of F to be the “lower border” of its Newton polytope:
+𝒩 ≔ npolP ≔ ∂low hullP ≔ hullP ∖(hullP +{0}×ℝ&gt;).
+It is the union of a ﬁnite number of edges E1,...,Eℓ between (i0,j0),...,(iℓ,jℓ)∈suppP with
+i0=valx P, iℓ =degx P, and i0&lt;⋅⋅⋅&lt;iℓ. For each edge Ek, there is a corresponding weight
+wk ≔((ik−1− ik)/(jk − jk−1),1) such that Ek =hulllpwk P.
+Assume that 𝒩 has a single edge, let w ≔w1, and let p ∈ℤand q∈ℕ&gt; be coprime such
+that p/q =(i0− i1)/(j1− j0). Now consider
+F˜(x,t) ≔ F(x tp,tq)t−qvalw F
+P˜(x,t) ≔ P(x tp,tq)t−qvalw P
+Q˜ (x,t) ≔ Q(x tp,tq)t−qvalw Q.
+Then F˜,P˜,Q˜ ∈𝕂[x,t] and F˜ =P˜ Q˜ . Moreover, F˜(x,0)=(tpw F)(x tp,tq)t−qvalw F, and we
+have similar expressions for P˜(x,0)and Q˜ (x,0). If tpw P and tpw Q are known and if their
+transforms P˜(x,0) and Q˜ (x,0) are coprime, then this enables us to compute P and Q by
+applying the Hensel lifting method from Section 4.3 to F˜, P˜(x,0), and Q˜ (x,0).
+7.3. Singleslopefactorization
+Let us now return to the factorization problem from Section 7.1 and let us show how to
+generalize Algorithm 7.1 using the material from the previous subsection.
+Let S≔{(e1,e2+⋅⋅⋅+en):e∈suppF}and let 𝒩 be the lower boundary of its convex hull.
+With high probability, we have suppF[i]=S and npolF[i]=𝒩, for any given i. The last
+edge of 𝒩 joins the points (a′,a) and (b′,b) for a,b,a′,b′∈ℕ with a′&lt;b′=degx1 F. Let
+w =(w1,...,wn) with w1=p/q =(a − b)/(b′− a′) and w2=⋅⋅⋅=wn =1, where p ∈ℤ, q ∈
+ℕ&gt;, and gcd(p,q)=1. Now consider the assumptions
+H1&#x27;. degx1 tpw F =degx1 F.
+H2&#x27;. tpw P and tpw Q are coprime.
+The hypotheses H1 and H2 correspond to the special case when a =b =0. If tpw P and
+tpw Q are known (e.g. through the recursive factorization of tpw F if F is not w-homo-
+geneous), then the algorithm from Section 7.2 allows us to Hensel lift the factorization
+tpw F =(tpw P)(tpw Q)into a factorization F =P Q. This leads to the following generaliza-
+tion of Algorithm 7.1:
+ALEXANDER DEMIN, JORIS VAN DER HOEVEN, 33
+PAGE34
+Algorithm 7.2
+Input: F ∈𝕂[x1,...,xn] such that there exists a factorization (7.1) that satisﬁes H1&#x27;
+and H2&#x27;, together with tpw P and tpw Q such that tpw F =(tpw P)(tpw Q)
+Output: P,Q ∈𝕂[x1,...,xn]
+For m =1,2,4,8,... do
+Compute F[i], (tpw P)[i], (tpw Q)[i] for i =⌊ /m 2⌋+1,...,m
+Compute P[i], Q[i] for i =⌊ /m 2⌋+1,...,m,
+using bivariate Hensel lifting from Section 7.2 for F[i], (tpw P)[i], (tpw Q)[i]
+If P[1],...,P[m] yield P through sparse interpolation, then return (P,F/P)
+If Q[1],...,Q[m] yield Q through sparse interpolation, then return (F/Q,Q)
+THEOREM 7.2. Let s≔min(sP,sQ), s′≔max(sP,sQ), s¯≔max(s′,sF), 𝛿≔degx1 F, and d≔degF.
+Then Algorithm 7.2 is correct with probability at least 1− d  s′
+2 /N and runs in time
+O((s¯/s′)S(s′)+𝛿d S(s)+s M(𝛿d)+s M(d)logd).
+Proof. The proof is similar to the proof of Theorem 7.1. The main change is that the gen-
+eralized algorithm also requires the evaluations of tpw P and tpw Q on our sequence. This
+takes O((sP /s +𝛿d)S(s)+(sQ /s +𝛿d)S(s))=O((s¯/s +𝛿d)S(s)) additional operations,
+which is absorbed by the complexity bound. □
+Note that the assumptions H1&#x27; and H2&#x27; are actually slightly more liberal than the
+statement that the Newton polygon should have a single edge. For this reason, Algo-
+rithm 7.2 is very likely to apply as soon as there exists a variable xi for which degxi F is
+small (of course, we may then assume i =1 modulo a permutation of variables). This
+in particular the case when degxi F =2, unless tpw F is not square-free (one may need to
+replace xi ↦xi
+−1 and multiply F with xi
+2). Note that a single “good” variable xi suﬃces.
+Remark7.3. Both Algorithms 6.2 and 7.2 involve recursive factorizations of polynomials
+in less variables. However, the supports of the recursive calls are obtained through pro-
+jection for Algorithm 6.2 and through restriction for Algorithm 7.2. The second case is
+often more favorable in the sense that the recursive supports decrease faster in size.
+Remark7.4. Consider the case when P =1+x1x2 and Q =1+2x1x2. Then tpw F coincides
+with F, so the requested factorization of tpw F is not simpler than the desired factorization
+of F. This is due to the fact that the exponents of F all lie in a linear subspace of ℤn.
+In particular, the degree in x1 of any term of F can be determined as a function of the
+degrees of the other variables. In particular, we may recover a factorization of F from
+a factorization of F(1,x2,...,xn). Using a straightforward induction on n, this allows us
+to ensure that tpw F has strictly less terms than F.
+7.4. MultipleslopebivariateHensellifting
+As soon as degx1 F ⩾4, it can happen that every factor of F has a Newton polygon with at
+least two edges. In order to deal with this situation, the algorithm from Section 7.2 may
+be further generalized to accommodate Newton polygons with multiple slopes. In order
+to explain how, we again adopt the notation from Sections 4.3 and 7.2.
+34 FACTORING SPARSE POLYNOMIALS FAST
+PAGE35
+So assume that P(x,0)≠0 and P(0,y)≠0, that 𝒩 has an arbitrary number of edges,
+and that tpwk P and tpwk Q are known for each edge Ek. Assume also that 𝜉(tpwk P) and
+𝜉(tpwk Q)are coprime for k =1,...,ℓ, where 𝜉:𝕂[x,y]∖𝕂→𝕂[x,y]∖𝕂is the normaliza-
+tion mapping with 𝜉(P)≔P/ xvalx P yvaly P . We will say that (tpwk P)(tpwk Q)is a coprime
+edge factorization of tpwk F. The aim of this subsection is to lift these factorizations eﬃ-
+ciently into the global factorization F =P Q.
+It is well known that a variant of the Newton polygon method can be used in order
+to factor F over the ring 𝕂((y))of Laurent series. An eﬃcient algorithm for this task was
+described in [55]. One important subtask is distinct slope factorization: each edge Ek gives
+rise to a unique monic factor Ak ∈𝕂((y))[x]of F such that tpwk F=cxa yb tpwk Ak for c∈𝕂≠,
+a,b ∈ℕ, and the natural generalization of the notation tpwk to 𝕂((y))[x]. The methods
+from [55] allow for the eﬃcient computation of the Ak: it takes time O(M(dx dy)logdx)
+to compute Ak y−valy Ak ∈𝕂[[y]][x] at order dy for k =1,...,ℓ.
+Now for each k ∈{1,...,ℓ}, the known factor tpwk P of tpwk F induces a factor of tpwk Ak
+that can be Hensel lifted into the factor Bk ≔gcd(P,Ak)of Ak, by adapting the techniques
+from Section 4.3 to Laurent series coeﬃcients. For some C ∈𝕂((y)), we then have P =
+C B1 ⋅⋅⋅ Bℓ. We may determine C in a similar way as in Section 4.3. The other factor
+Q ≔F/P can be obtained using one bivariate division. The total cost of this method to
+compute P and Q is bounded by O(M(dx dy)logdx +M(dy)logdy).
+7.5. Multipleslopefactorization
+We are now in a position to generalize Algorithm 7.2 to the case when the bivariate
+Hensel lifting is done using the multiple slope method from the previous subsection.
+The general algorithm is fairly technical, so we found it more instructive to illustrate
+the main ideas on an example. Let
+F = P Q
+P = y +z +x +(y +z)x2
+Q = 2x +z +x +(y +2z)x2.
+For generic 𝛼2,𝛼3∈𝕂≠, consider P˜ =P(x,𝛼2t,𝛼3t), Q˜ =Q(x,𝛼2t,𝛼3t), and F˜ =P˜ Q˜ . Then
+suppP˜ = {(0,1),(1,0),(2,1)}
+suppQ˜ = {(0,1),(1,0),(2,1)}
+suppF˜ = {(0,2),(1,1),(2,0),(2,2),(3,1),(4,2)},
+whence hull F˜ is the closed triangle with vertices (0,2), (2,0), and (4,2). Its lower
+boundary consists of the edge from (0,2)to (2,0)and the edge from (2,0)to (4,2), which
+correspond to the weights w =(1,1,1) and w′=(−1,1,1) respectively. The generalized
+algorithm starts with the recursive factorizations of tpw F and tpw′ F, which yields
+tpw F = (tpw P)(tpw Q)
+tpw P = y +z +x
+tpw Q = 2y +z +x
+tpw′ F = (tpw′ P)(tpw′ Q)
+tpw′ P = x +(y +z)x2
+tpw′ Q = x +(y +2z)x2.
+ALEXANDER DEMIN, JORIS VAN DER HOEVEN, 35
+PAGE36
+However, these factorizations do not tell us from which factors of F they originate: the
+factorization of F could have been of the form F =P′Q′, with tpw P′=tpw P and tpw′ P′=
+tpw′ Q. In order to obtain the correct matches, the next idea is to consider the bivariate
+factorization of F˜ for some suﬃciently generic values of 𝛼2 and 𝛼3. For instance, for 𝛼2=2
+and 𝛼3=3, we obtain
+P˜ = 5t +x +5t x2
+Q˜ = 7t +x +8t x2
+tpw P = 5t +x
+tpw Q = 7t +x
+tpw′ P = x +5t x2
+tpw′ Q = x +8t x2.
+From these computations, we deduce that the factor y +z +x of tpw F comes from the
+same factor of F as the factor x +(y +z)x2 of tpw′ F. We say that we have managed
+to match the factors y +z +x and x +(y +z)x2 of the diﬀerent slopes. In other words,
+if A is a non-trivial factor of F, then, up to constant scaling, we now know that either
+(tpw A,tpw′ A)=(tpw P,tpw′ P) or (tpw A,tpw′ A)=(tpw Q,tpw′ Q).
+For any i ∈ℕ and A ∈𝕂[x,y,z], let A[i](x,t)=A(x,𝛼2
+i t,𝛼3
+i t). Having completed the
+above matching, we may now use the lifting algorithm from Section 7.4 to deduce P[i]
+and Q[i] from F[i], (tpw P)[i], (tpw′ P)[i], (tpw Q)[i], and (tpw′ Q)[i]. Doing this for suﬃ-
+ciently many i, we may ﬁnally recover P and Q using sparse interpolation.
+7.6. Atortureexample
+The approach from Section 7.5 is fairly general. However, as we will show now, it is
+possible to construct pathological examples that can still not be treated with this method.
+Example7.5. Consider a polynomial P ∈𝕂[x1,...,xn]and a monomial M =x1
+e1 ⋅⋅⋅xn
+en such
+that (e1,...,en)lies in the interior of the Newton polytope hullP. For instance, we may take
+P ≔ x1x2+x1x3+x2x3+x1
+2x2
+2x3+x1
+2x2x3
+2+x1x2
+2x3
+2
+M ≔ x1x2x3.
+Now consider
+F = (P +𝛼1M)⋅⋅⋅(P +𝛼ℓ M),
+for pairwise distinct 𝛼1,...,𝛼ℓ ∈𝕂. This polynomial cannot be factored using the tech-
+niques from this section, so far.
+7.7. Factormatchingthroughhomotopies
+In fact, it is not so much the factorization of the bivariate F[i] polynomials that is a problem:
+instead of Hensel lifting, we may very well rely on Theorem 4.7 (this only increases the
+exponent in d in Theorems 7.1 and 7.2, which is subdominant anyway if s ≪s¯). The true
+problem is matching corresponding factors of F[i] for diﬀerent i, especially in the most
+diﬃcult cases like Example 7.5. We conclude this section with an approach that com-
+pletely solves this problem, modulo a polynomial overhead in d.
+Let 𝛼1,...,𝛼n, 𝛽1,...,𝛽n, 𝛾1,...,𝛾n be random elements of 𝕂≠ and let t,u,𝜆 be new
+indeterminates. We deﬁne
+Fˆ(x1,...,xn,t,u,𝜆) ≔ F(((1− 𝜆)+𝛼1𝜆)(t +𝛽1u +𝛾1)x1,...,
+((1− 𝜆)+𝛼n 𝜆)(t +𝛽n u +𝛾n)xn). (7.2)
+36 FACTORING SPARSE POLYNOMIALS FAST
+PAGE37
+For i =1,2,..., we also deﬁne
+F⟨i⟩(t,u,𝜆) ≔ Fˆ(𝛼1
+i ,...,𝛼n
+i ,t,u,𝜆).
+If F is irreducible, then F⟨i⟩ is irreducible with high probability, by Theorem 1.1, and so
+are F⟨i⟩(t,u,0) and F⟨i⟩(t,u,1). For general F, this also means that the factors of F⟨i⟩(t,
+u,𝜆), F⟨i⟩(t,u,0), and F⟨i⟩(t,u,1) are in eﬀective one to one correspondence, with high
+probability. Moreover, by construction,
+F⟨i+1⟩(t,u,0) = F⟨i⟩(t,u,1).
+Using this relation, we may therefore match corresponding factors of F⟨i⟩ and F⟨i+1⟩ with
+high probability.
+Having solved the matching problem, we still need to ensure that the factorizations of
+the F⟨i⟩ are normalized in a suitable way such that we can recover the factors of F using
+sparse interpolation. For this, let w be a regularizing weight for F with e≔ecw F⩽d2. Let 𝜉
+be yet another indeterminate and consider
+F˜(x1,...,xn,t,u,𝜆,𝜉) ≔ F(((1− 𝜆)+𝛼1𝜆)(t +𝛽1u +𝛾1)x1𝜉w1,...,
+((1− 𝜆)+𝛼n 𝜆)(t +𝛽n u +𝛾n)xn 𝜉wn)
+F˜⟨1⟩(t,u,𝜆,𝜉) ≔ F˜(𝛼1,...,𝛼n,t,u,𝜆).
+By construction, any factor Φ of F˜⟨1⟩ has leading coeﬃcient c M⟨1⟩t𝜏u𝜐 𝜆𝜎 with respect
+to 𝜉, for some 𝜏,𝜐,𝜎 ∈N, c ∈K≠, and some monomial M ∈x1
+ℕ ⋅⋅⋅ xn
+ℕ. Thus, any such
+factor Φcan be normalized by dividing out the constant c M⟨1⟩ in 𝕂≠. Now consider the
+unique factorization of F˜⟨1⟩ into a product of normalized factors times a non-zero scalar
+in 𝕂≠. This yields a factorization of F⟨1⟩ by setting 𝜉=1.
+The factorization of F⟨1⟩ can be lifted to the factorization of F⟨2⟩, which is, in turn, lifted
+to the factorization of F⟨3⟩, and so on. An irreducible factorization of Fˆ is recovered via
+interpolation from the factorizations of F⟨1⟩,...,F⟨m⟩ for suﬃciently large m. Finally, to
+obtain a factorization of F from a factorization of Fˆ, we can set t ≔u ≔𝜆≔0, and apply
+the map xi ↦(𝛾i)−1xi.
+This leads to the following algorithm:
+Algorithm 7.3
+Input: F ∈𝕂[x1,...,xn]∖𝕂
+Output: an irreducible factorization F =c P1
+𝜈1 ⋅⋅⋅Pℓ
+𝜈ℓ of F
+Compute Fˆ
+Let w be a regularizing weight for F
+Compute an irreducible factorization F⟨1⟩=c  P1
+⟨1⟩ 𝜈1 ⋅⋅⋅ Pℓ
+⟨1⟩ 𝜈ℓ, normalized as above
+For m =1,2,4,8,... do
+Compute F⟨i⟩ for i =⌊ /m 2⌋+1,...,m
+For i =⌊ /m 2⌋+1,...,m do
+Hensel lift F⟨i−1⟩(t,u,1)=c  P1
+⟨i−1⟩(t,u,1) 𝜈1 ⋅⋅⋅ Pℓ
+⟨i−1⟩(t,u,1) 𝜈ℓ
+into an irreducible factorization F⟨i⟩=c  P1
+⟨i⟩ 𝜈1 ⋅⋅⋅ Pℓ
+⟨i⟩ 𝜈ℓ
+Deduce P1
+⟨i⟩,...,Pℓ
+⟨i⟩ from  P1
+⟨i⟩ 𝜈1,..., Pℓ
+⟨i⟩ 𝜈ℓ via root extraction
+Try to determine P1,...,Pℓ from P1
+⟨i⟩,...,Pℓ
+⟨i⟩ (i =1,...,m) using sparse interpolation
+If successful, then set t ≔u ≔𝜆≔0, xi ≔(𝛾i)−1xi and return c P1
+𝜈1 ⋅⋅⋅Pℓ
+𝜈ℓ
+ALEXANDER DEMIN, JORIS VAN DER HOEVEN, 37
+PAGE38
+THEOREM 7.6. Let s ≔max(sP1,...,sPℓ), s¯≔max(s,sF), d ≔degF, and e ≔ecw F ⩽d2. Assume
+that char𝕂=0 or char𝕂&gt;2d2. Then Algorithm 7.3 runs in time
+O(S(d3s¯)+M(d3)s logd)+O˜ (e5)+F(e +3d)
+and succeeds with probability at least 1−  360d2 s
+2 +2s d3+3(e +3d)2+d /N.
+Proof. We factor F˜⟨1⟩ as a dense polynomial in four variables of degree ⩽e+3d (after divi-
+sion by a suitable power of 𝜉) using the algorithm from [72, Proposition 5]. This requires
+O˜ (e5)+F(e+3d)operations in 𝕂and the probability of success is at least 1−3(e+3d)2/N.
+Let c˜ P˜1
+𝜈1 ⋅⋅⋅P˜ℓ
+𝜈ℓ be an irreducible factorization of F. By our assumption on the char-
+acteristic, the factors P˜1,...,P˜ℓ are all separable. We will apply [75, Théorème 6.9] for
+each of the points in our geometric progression. By using Corollary 2.2 instead of the
+Schwartz-Zippel lemma in the proof of [75, Théorème 6.9], we deduce that the special-
+izations P˜j
+⟨i⟩(t,u,0), P˜j
+⟨i⟩(t,u,1), and thus P˜j
+⟨i⟩ are irreducible for i =1,...,m and j =1,...,ℓ,
+with probability at least 1− 10(3d)2 m
+2 /N ⩾1− 360d2 s
+2 /N. Under this assumption,
+and modulo reordering the factors, the computed Pj
+⟨i⟩ are of the form Pj
+⟨i⟩ =cj P˜j
+⟨i⟩ for
+suitable scaling factors c1,...,cℓ ∈𝕂≠ that do not depend on i. The check whether the com-
+puted factorization of F is correct reports a false positive with probability at most d/N,
+by Remark 2.5 or the Schwarz-Zippel lemma.
+Let us now analyze the complexity. We ﬁrst observe that sFˆ ⩽O(d3 sF), since sFˆ =
+O(d3) when Fˆ consists of a single monomial of total degree ⩽d. Using [2, Theorem 5] in
+a recursive manner, we may compute Fˆ from F in time O(M(d3)sF)=O(S(d3sF)). We saw
+above that the factorization of F⟨1⟩ requires at most O˜ (e5)+F(e +3d)operations in 𝕂. The
+computation of the specializations F⟨i⟩ for i =1,...,m requires O(S(s)d3m/s)=O(S(d3s¯))
+further operations. The Hensel lifting of the Pj
+⟨i−1⟩ can be done in time O(M(d3)s logd)
+using Proposition 4.4 and evaluation-interpolation in the remaining variable. The m − 1
+Hensel lifts succeed with probability at least 1− 2s d3/N. Adding up, we obtain the
+desired complexity bound, as well as the claimed bound for the probability of success. □
+Remark 7.7. Due to the O(d3) overhead, Algorithm 7.3 is mainly of theoretical interest.
+It is plausible that (7.2) can be replaced by a less, but still suﬃciently, generic formula.
+This would reduce the overhead in d. In practice, one may use Algorithm 7.3 as a last
+resort, in the unlikely case that all other strategies from Sections 6 and 7 fail.
+BIBLIOGRAPHY
+[1] F. Abu Salem, S. Gao, and A. G. B. Lauder. Factoring polynomials via polytopes. In Proc. ISSAC &#x27;04,
+pages 4–11. New York, NY, USA, 2004. ACM.
+[2] A. V. Aho, K. Steiglitz, and J. D. Ullman. Evaluating polynomials on a ﬁxed set of points. SIAM Journ.
+of Comp., 4:533–539, 1975.
+[3] M. Alberich-Carramiñana, J. Guàrdia, E. Nart, A. Poteaux, J. Roé, and M. Weimann. Polynomial
+factorization over henselian ﬁelds. Technical Report, arXiv, 2022. https://doi.org/10.48550/
+arXiv.2207.02139.
+[4] K. Belabas, M. van Hoeij, J. Klüners, and A. Steel. Factoring polynomials over global ﬁelds. J. Théor.
+Nombres Bordeaux, 21(1):15–39, 2009.
+[5] M. Ben-Or and P. Tiwari. A deterministic algorithm for sparse multivariate polynomial interpolation.
+In Proc. ACM STOC &#x27;88, pages 301–309. New York, NY, USA, 1988.
+[6] E. R. Berlekamp. Factoring polynomials over ﬁnite ﬁelds. Bell System Tech. J., 46:1853–1859, 1967.
+38 FACTORING SPARSE POLYNOMIALS FAST
+PAGE39
+[7] E. R. Berlekamp. Factoring polynomials over large ﬁnite ﬁelds. Math. Comp., 24:713–735, 1970.
+[8] L. Bernardin. Factorization of multivariate polynomials over ﬁnite ﬁelds. PhD thesis, ETH, Zürich, 1999.
+[9] D. J. Bernstein. Scaled remainder trees. Available from https://cr.yp.to/arith/scaledmod-
+20040820.pdf, 2004.
+[10] E. Bertini. Introduzione alla geometria proiettiva degli iperspazi con appendice sulle curve algebriche e loro
+singolarità. Giuseppe Principato, 1923.
+[11] A. Borodin and R. T. Moenck. Fast modular transforms. Journal of Computer and System Sciences,
+8:366–386, 1974.
+[12] A. Bostan, G. Lecerf, and É. Schost. Tellegen&#x27;s principle into practice. In Proc. ISSAC &#x27;03, pages 37–44.
+Philadelphia, USA, August 2003.
+[13] A. Bostan and É. Schost. Polynomial evaluation and interpolation on special sets of points. J. of Com-
+plexity, 21(4):420–446, August 2005. Festschrift for the 70th Birthday of Arnold Schönhage.
+[14] P. Bürgisser, M. Clausen, and M. A. Shokrollahi. Algebraic complexity theory. Springer-Verlag, Berlin,
+1997.
+[15] D. G. Cantor and E. Kaltofen. On fast multiplication of polynomials over arbitrary algebras. Acta
+Informatica, 28:693–701, 1991.
+[16] D. G. Cantor and H. Zassenhaus. A new algorithm for factoring polynomials over ﬁnite ﬁelds. Math.
+Comp., 36(154):587–592, 1981.
+[17] T. Chen and M. Monagan. The complexity and parallel implementation of two sparse multivariate
+Hensel lifting algorithms for polynomial factorization. In Proc. CASC 2020, pages 150–169. Springer-
+Verlag, 2020.
+[18] T. Chen and M. Monagan. Factoring multivariate polynomials represented by black boxes: a maple
++ C implementation. JSC, 16, 2022.
+[19] G. Chèze and G. Lecerf. Lifting and recombination techniques for absolute factorization. J. of Com-
+plexity, 23(3):380–420, 2007.
+[20] A. L. Chistov. Eﬃcient factoring polynomials over local ﬁelds and its applications. In Proceedings of
+the International Congress of Mathematicians, Kyoto, Japan, 1990, volume 1, pages 1509–1519. Springer-
+Verlag, 1991.
+[21] G. E. Collins. Subresultants and reduced polynomial remainder sequences. JACM, 14(1):128–142,
+1967.
+[22] A. Cuyt and W.-S. Lee. Sparse interpolation of multivariate rational functions. TCS, 412:1445–1456,
+2011.
+[23] W. Decker, G. Lecerf, and G. Pﬁster. Absolute factorization for characteristic 0. Singular library abs-
+fact.lib, 2005.
+[24] J. Della Dora, C. Dicrescenzo, and D. Duval. A new method for computing in algebraic number ﬁelds.
+In Eurocal&#x27;85 (2), volume 174 of Lect. Notes in Comp. Science, pages 321–326. Springer, 1985.
+[25] M. Filaseta, A. Granville, and A. Schinzel. Irreducibility and greatest common divisor algorithms for
+sparse polynomials. London Math. Soc. Lect. Note Series, 352:155–176, 2008.
+[26] D. Ford. On the computation of the maximal order in a Dedekind domain. PhD thesis, Ohio State Univer-
+sity, 1978.
+[27] A. Fröhlich and J. C. Shepherdson. On the factorisation of polynomials in a ﬁnite number of steps.
+Math. Z., 62:331–334, 1955.
+[28] A. Fröhlich and J. C. Shepherdson. Eﬀective procedures in ﬁeld theory. Philos. Trans. Soc. London.
+Ser. A., 248:407–432, 1956.
+[29] S. Gao. Factoring multivariate polynomials via partial differential equations. Math. Comp.,
+72(242):801–822, 2003.
+[30] J. von zur Gathen. Irreducibility of multivariate polynomials. J. Comp. System Sci., 31:225–264, 1985.
+[31] J. von zur Gathen and J. Gerhard. Modern Computer Algebra. Cambridge University Press, New York,
+NY, USA, 3rd edition, 2013.
+[32] J. von zur Gathen and E. Kaltofen. Factoring sparse multivariate polynomials. J. Comput. System Sci.,
+31(2):265–287, 1983. Proc. FOCS.
+[33] J. von zur Gathen and E. Kaltofen. Factorization of multivariate polynomials over ﬁnite ﬁelds. Math.
+Comp., 45(171):251–261, 1985.
+[34] P. Gianni and B. Trager. Square-free algorithms in positive characteristic. AAECC, 7(1):1–14, 1996.
+[35] M. Giesbrecht and D. S. Roche. Diversiﬁcation improves interpolation. In Proc. ISSAC &#x27;11, pages
+123–130. New York, NY, USA, 2011. ACM.
+[36] P. Giorgi, B. Grenet, A. Perret Du Cray, and D. S. Roche. Sparse polynomial interpolation and division
+in soft-linear time. In Proc. ISSAC&#x27;22, pages 459–468. Lille, France, 2022. ACM Press.
+ALEXANDER DEMIN, JORIS VAN DER HOEVEN, 39
+PAGE40
+[37] B. Grenet. Bounded-degree factors of lacunary multivariate polynomials. JCS, 75:171–192, 2016.
+[38] B. Grenet, J. van der Hoeven, and G. Lecerf. Randomized root ﬁnding over ﬁnite ﬁelds using tangent
+Graeﬀe transforms. In Proc. ISSAC &#x27;15, pages 197–204. New York, NY, USA, 2015. ACM.
+[39] J. Guàrdia, J. Montes, and E. Nart. Newton polygons of higher order in algebraic number theory.
+Trans. Amer. Math. Soc., 364(1):361–416, 2012.
+[40] Jr. H. W. Lenstra. Finding small degree factors of lacunary polynomials. In In Number theory in pro-
+gress, volume 1, pages 267–276. De Gruyter, Zakopane-Kościelisko, 1999.
+[41] D. Harvey and J. van der Hoeven. Polynomial multiplication over ﬁnite ﬁelds in time O(n log n).
+Technical Report, HAL, 2019. http://hal.archives-ouvertes.fr/hal-02070816.
+[42] K. Hensel. Neue Grundlagen der Arithmetik. J. Reine Angew. Math., 127:51–84, 1904.
+[43] D. Hilbert. Über die Irreducibilität ganzer rationaler Functionen mit ganzzahligen Coeﬃcienten. J.
+reine angew. Math., 110:104–129, 1892.
+[44] M. van Hoeij. Factoring polynomials and the knapsack problem. Journal of Number theory,
+95(2):167–189, 2002.
+[45] J. van der Hoeven. Faster Chinese remaindering. Technical Report, HAL, 2016. https://
+hal.archives-ouvertes.fr/hal-01403810.
+[46] J. van der Hoeven. Probably faster multiplication of sparse polynomials. Technical Report, HAL,
+2020. https://hal.archives-ouvertes.fr/hal-02473830.
+[47] J. van der Hoeven. The Jolly Writer. Your Guide to GNU TeXmacs. Scypress, 2020.
+[48] J. van der Hoeven and G. Lecerf. On the bit-complexity of sparse polynomial multiplication. JSC,
+50:227–254, 2013.
+[49] J. van der Hoeven and G. Lecerf. Directed evaluation. J. of Complexity, 60, 2020. Article ID 101498.
+[50] J. van der Hoeven and G. Lecerf. Fast multivariate multi-point evaluation revisited. J. of Complexity,
+56, 2020. Article ID 101405, 38 pages.
+[51] J. van der Hoeven and G. Lecerf. On sparse interpolation of rational functions and gcds. ACM SIGSAM
+Commun. Comput. Algebra, 55(1):1–12, 2021.
+[52] J. van der Hoeven and G. Lecerf. Sparse polynomial interpolation: faster strategies over ﬁnite ﬁelds.
+AAECC, 2024. https://doi.org/10.1007/s00200-024-00655-5.
+[53] J. van der Hoeven and G. Lecerf. Univariate polynomial factorization over large ﬁnite ﬁelds. AAECC,
+35:121–149, 2024.
+[54] J. van der Hoeven and G. Lecerf. Fast interpolation of multivariate polynomials with sparse expo-
+nents. J. of Complexity, 87, 2025. Article ID 101922.
+[55] J. van der Hoeven and G. Lecerf. Plane curve germs and contact factorization. AAECC, 36:5–106, 2025.
+[56] J. Hu and M. B. Monagan. A fast parallel sparse polynomial GCD algorithm. In S. A. Abramov,
+E. V. Zima, and X.-S. Gao, editors, Proc. ISSAC &#x27;16, pages 271–278. ACM, 2016.
+[57] Q.-L. Huang. Sparse polynomial interpolation over ﬁelds with large or zero characteristic. In Proc.
+ISSAC &#x27;19, pages 219–226. ACM, 2019.
+[58] Q.-L. Huang and X.-S. Gao. Bit complexity of polynomial gcd on sparse representation. Preprint
+available from https://arxiv.org/abs/2207.13874, 2022.
+[59] M. Javadi and M. Monagan. A sparse modular gcd algorithm for polynomial gcd computation over
+algebraic function ﬁelds. In Proc. ISSAC &#x27;07, pages 187–194. 2007.
+[60] E. Kaltofen. A polynomial reduction from multivariate to bivariate integral polynomial factorization.
+In Proc. STOC &#x27;82, pages 261–266. ACM, 1982.
+[61] E. Kaltofen. Polynomial-time reductions from multivariate to bi- and univariate integral polynomial
+factorization. SIAM J. Comput., 14(2):469–489, 1985.
+[62] E. Kaltofen. Sparse Hensel lifting. In Proc. EUROCAL &#x27;85, pages 4–17. Berlin, Heidelberg, 1985.
+Springer.
+[63] E. Kaltofen. Factorization of polynomials given by straight-line programs. In S. Micali, editor, Ran-
+domness and Computation, volume 5 of Advances in Computing Research, pages 375–412. JAI Press Inc.,
+Greenwhich, Connecticut, 1989.
+[64] E. Kaltofen. Eﬀective noether irreducibility forms and applications. J. Computer and System Sciences,
+50(2):274–295, 1995.
+[65] E. Kaltofen and G. Lecerf. Handbook of ﬁnite ﬁelds, chapter Factorization of multivariate polynomials,
+pages 383–392. Discrete Mathematics and its Applications. Chapman and Hall/CRC, 2013.
+[66] E. Kaltofen and M. B. Monagan. On the genericity of the modular polynomial gcd algorithm. In Proc.
+ISSAC &#x27;99, pages 59–66. 1999.
+[67] E. Kaltofen and V. Shoup. Subquadratic-time factoring of polynomials over ﬁnite ﬁelds. Math. Comp.,
+67(223):1179–1197, 1998.
+40 FACTORING SPARSE POLYNOMIALS FAST
+PAGE41
+[68] E. Kaltofen and B. M. Trager. Computing with polynomials given by black boxes for their evalu-
+ations: greatest common divisors, factorization, separation of numerators and denominators. JSC,
+9(3):301–320, 1990.
+[69] E. Kaltofen and L. Yagati. Improved sparse multivariate polynomial interpolation algorithms. In
+ISSAC &#x27;88: Proceedings of the International Symposium on Symbolic and Algebraic Computation, pages
+467–474. Springer Verlag, 1988.
+[70] K. S. Kedlaya and C. Umans. Fast polynomial factorization and modular composition. SIAM J.
+Comput., 40(6):1767–1802, 2011.
+[71] G. Lecerf. Sharp precision in Hensel lifting for bivariate polynomial factorization. Mathematics of Com-
+putation, 75:921–933, 2006.
+[72] G. Lecerf. Improved dense multivariate polynomial factorization algorithms. JSC, 42(4):477–494,
+2007.
+[73] G. Lecerf. Fast separable factorization and applications. Applicable Algebra in Engineering, Communi-
+cation and Computing, 19(2), 2008.
+[74] G. Lecerf. New recombination algorithms for bivariate polynomial factorization based on Hensel
+lifting. AAECC, 21(2):151–176, 2010.
+[75] G. Lecerf. Journées Nationales de Calcul Formel (2013), volume 3 of Les cours du CIRM, chapter Fac-
+torisation des polynômes à plusieurs variables. CEDRAM, 2013. Exp. No. 2, 85 pages, https://
+ccirm.centre-mersenne.org/articles/10.5802/ccirm.18.
+[76] G. Lecerf. On the complexity of the Lickteig–Roy subresultant algorithm. JSC, 92:243–268, 2019.
+[77] A. K. Lenstra, H. W. Lenstra, and L. Lovász. Factoring polynomials with rational coeﬃcients. Math.
+Ann., 261:515–534, 1982.
+[78] M. Monagan and B. Tuncer. Using sparse interpolation in Hensel lifting. In Proceedings of CASC 2016,
+volume 9890 of LNCS, pages 381–400. Springer, 2016.
+[79] M. Monagan and B. Tuncer. Factoring multivariate polynomials with many factors and huge coeﬃ-
+cients. In Computer Algebra in Scientiﬁc Computing, pages 319–334. Cham, 2018. Springer International
+Publishing.
+[80] M. Monagan and B. Tuncer. Sparse multivariate Hensel lifting: a high-performance design and imple-
+mentation. In Proc. ICMS 2018, volume 10931 of LNCS, pages 359–368. Springer, 2018.
+[81] M. Monagan and B. Tuncer. The complexity of sparse Hensel lifting and sparse polynomial factoriza-
+tion. Journal of Symbolic Computation, 99:189–230, 2020.
+[82] J. Montes. Polígonos de Newton de orden superior y aplicaciones aritméticas. PhD thesis, Universitat de
+Barcelona, Spain, 1999.
+[83] G. Moroz. New data structure for univariate polynomial approximation and applications to root iso-
+lation, numerical multipoint evaluation, and other problems. In Proc. IEEE FOCS &#x27;21. Denver, United
+States, 2022.
+[84] D. R. Musser. Multivariate polynomial factorization. JACM, 22(2):291–308, 1975.
+[85] A. Novocin. Factoring Univariate Polynomials over the Rationals. PhD thesis, Florida State University at
+Tallahassee, 2008.
+[86] A. Novocin, D. Stehlé, and G. Villard. An LLL-Reduction algorithm with quasi-linear time com-
+plexity: extended abstract. In Proc. ACM STOC &#x27;11, pages 403–412. New York, NY, USA, 2011.
+[87] V. Y. Pan. Univariate polynomials: nearly optimal algorithms for numerical factorization and root-
+ﬁnding. JSC, 33(5):701–733, 2002.
+[88] C. H. Papadimitriou. Computational Complexity. Addison-Wesley, 1994.
+[89] D. A. Plaisted. Sparse complex polynomials and polynomial reducibility. J. of Computer and System
+Sciences, 14(2):210–221, 1977.
+[90] D. A. Plaisted. New NP-hard and NP-complete polynomial and integer divisibility problems. TCS,
+31(1-2):125–138, 1984.
+[91] R. Prony. Essai expérimental et analytique sur les lois de la dilatabilité des ﬂuides élastiques et sur
+celles de la force expansive de la vapeur de l&#x27;eau et de la vapeur de l&#x27;alkool, à diﬀérentes tempéra-
+tures. J. de l&#x27;École Polytechnique Floréal et Plairial, an III, 1:24–76, 1795. Cahier 22.
+[92] D. S. Roche. What can (and can&#x27;t) we do with sparse polynomials? In Proc. ISSAC &#x27;18, pages 25–30.
+New York, NY, USA, 2018. ACM.
+[93] W. M. Ruppert. Reduzibilität ebener kurven. J. Reine Angew. Math., 396:167–191, 1986.
+[94] K. Ryan and N. Heninger. Fast practical lattice reduction through iterated compression. In Advances
+in Cryptology – CRYPTO 2023, pages 3–36. 2023.
+[95] T. Sasaki and M. Sasaki. A uniﬁed method for multivariate polynomial factorizations. Japan J. Indust.
+Appl. Math., 10(1):21–39, 1993.
+ALEXANDER DEMIN, JORIS VAN DER HOEVEN, 41
+PAGE42
+[96] N. Saxena. Closure of algebraic classes under factoring. https://www.cse.iitk.ac.in/users/
+nitin/talks/Sep2023-paris.pdf, 2023. Talk at Recent Trends in Computer Algebra, Institut
+Henri Poincar´e, Paris.
+[97] Th. Schönemann. Von denjenigen Moduln, welche Potenzen von Primzahlen sind. J. Reine Angew.
+Math., 32:93–105, 1846. See §59.
+[98] A. Schönhage. Asymptotically fast algorithms for the numerical multiplication and division of poly-
+nomials with complex coeﬃcients. In J. Calmet, editor, EUROCAM &#x27;82: European Computer Algebra
+Conference, volume 144 of Lect. Notes Comp. Sci., pages 3–15. Marseille, France, April 1982. Springer.
+[99] J. T. Schwartz. Fast probabilistic algorithms for verification of polynomial identities. JACM,
+27(4):701–717, 1980.
+[100] I. R. Shafarevich. Basic Algebraic Geometry 1. Springer, 3rd edition, 2013.
+[101] V. Shoup. On the deterministic complexity of factoring polynomials over ﬁnite ﬁelds. Information
+Processing Letters, pages 261–267, 1990.
+[102] A. Steel. Conquering inseparability: primary decomposition and multivariate factorization over alge-
+braic function ﬁelds of positive characteristic. JSC, 40(3):1053–1075, 2005.
+[103] P. S. Wang. An improved multivariate polynomial factoring algorithm. Math. Comp.,
+32(144):1215–1231, 1978.
+[104] P. S. Wang and L. P. Rothschild. Factoring multivariate polynomials over the integers. Math. Comp.,
+29:935–950, 1975.
+[105] W. Wu, J. Chen, and Y. Feng. Sparse bivariate polynomial factorization. Science China Mathematics,
+57:2123–2142, 2014.
+[106] D. Y. Y. Yun. On square-free decomposition algorithms. In Proc. SYMSAC &#x27;76, pages 26–35. New
+York, NY, USA, 1976. ACM.
+[107] H. Zassenhaus. On Hensel factorization, I. Journal of Number Theory, 1(3):291–311, 1969.
+[108] R. Zippel. Probabilistic algorithms for sparse polynomials. In Proc. EUROSAM &#x27;79, pages 216–226.
+Springer, 1979.
+[109] R. Zippel. Newton&#x27;s iteration and the sparse Hensel algorithm (extended abstract). In Proc.
+SYMSAC &#x27;81, pages 68–72. New York, NY, USA, 1981. ACM.
+42 FACTORING SPARSE POLYNOMIALS FAST</pre></html>

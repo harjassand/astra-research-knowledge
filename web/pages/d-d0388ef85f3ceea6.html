@@ -1,0 +1,189 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>&quot;&quot;&quot;Independent original-generator degree8 and denominator-root cover replay.</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>&quot;&quot;&quot;Independent original-generator degree8 and denominator-root cover replay.</h1><p>Source ID d-d0388ef85f3ceea6; literature/sources/metric_prior/cycle16/internal_snapshots/work__metric_use10__cycle16__check_p2_raw_cover.py; 2556 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>&quot;&quot;&quot;Independent original-generator degree8 and denominator-root cover replay.
+
+Rebuilds all10generators/1646multiples/1137constantpivots/506histories and
+every node/divisor in3curveDAGs. No producer/checker imports or rank inference.
+The standalone code adapts our own sealedcycle15 direct replay pattern.
+&quot;&quot;&quot;
+import ast
+import gzip
+import hashlib
+import itertools
+import json
+import time
+from pathlib import Path
+
+import sympy as sy
+from sympy.polys.domains import QQ
+from sympy.polys.rings import ring
+
+BASE=Path(__file__).resolve().parents[3]
+P,ap,bp,cp=ring(&#x27;a,b,c&#x27;,QQ)
+U,r=ring(&#x27;r&#x27;,QQ)
+N=(3*r*r+4)**2;D=(2*r*r+5)*(r*r+6);L=7*r*(r*r+6)
+
+
+def zero(v):assert sy.cancel(v)==0,str(v)
+
+
+def decode(v):
+    if isinstance(v,dict) and set(v)=={&#x27;poly&#x27;}:
+        return P.from_dict({tuple(mon):QQ(co) for mon,co in v[&#x27;poly&#x27;]})
+    if isinstance(v,list):return [decode(x) for x in v]
+    if isinstance(v,dict):
+        return {(int(k) if k.isdecimal() else ast.literal_eval(k) if k.startswith(&#x27;(&#x27;) else k):decode(x)
+                for k,x in v.items()}
+    return v
+
+
+def upoly(v):return U.from_dict({(int(i),):QQ(co) for i,co in v})
+
+
+def compositions(n,k):
+    if k==1:
+        yield (n,);return
+    for i in range(n+1):
+        for tail in compositions(n-i,k-1):yield (i,)+tail
+
+
+def subtract(row,weight,other):
+    for col,value in other.items():
+        new=row.get(col,P.zero)-weight*value
+        if new:row[col]=new
+        else:row.pop(col,None)
+
+
+def original_raw_replay():
+    own=BASE/&#x27;sources/metric_use10/cycle16&#x27;
+    def retained(name,relative):
+        p=own/name
+        return p if p.is_file() else BASE/relative
+    basepath=retained(&#x27;constant_schur_reduction.json.gz&#x27;,&#x27;results/metric_prior/cycle13/constant_schur_reduction.json.gz&#x27;)
+    curvepath=retained(&#x27;factor2_M_curve_scalar_reduction.json.gz&#x27;,&#x27;results/metric_prior/cycle16/factor2_M_curve_scalar_reduction.json.gz&#x27;)
+    base=decode(json.loads(gzip.decompress(basepath.read_bytes())))
+    curve=json.loads(gzip.decompress(curvepath.read_bytes()))
+    R,a,b,c,m0,m1,m2,s0,s1,s2=ring(&#x27;a,b,c,m0,m1,m2,s0,s1,s2&#x27;,QQ)
+    mm=[m0,m1,m2];ss=[s0,s1,s2];q=[[R.one,a,b],[a,R.one,c],[b,c,R.one]]
+    gs=[(1-2*mi*si)*(1-si*si) for mi,si in zip(mm,ss)]
+    gs.extend((1-4*mm[i]*ss[i])*(q[i][j]-ss[i]*ss[j])-2*mm[i]*ss[j]*(1-ss[i]**2)
+              for i,j in itertools.permutations(range(3),2))
+    gs.append(3*s0*s1*s2-c*s0-b*s1-a*s2)
+    tables=[]
+    for g in gs:
+        table={}
+        for mon,co in g.items():table.setdefault(mon[3:],{})[mon[:3]]=co
+        tables.append({mon:P.from_dict(co) for mon,co in table.items()})
+    assert tables==base[&#x27;generators&#x27;]
+    expected={(i,mon) for i in range(10) for deg in ((0,2,4) if i&lt;9 else (1,3,5))
+              for mon in compositions(deg,6)}
+    assert {(i,tuple(mon)) for i,mon in base[&#x27;sources&#x27;]}==expected and len(expected)==1646
+    basis={tuple(mon):i for i,mon in enumerate(base[&#x27;basis&#x27;])}
+    assert set(basis)=={mon for deg in (0,2,4,6,8) for mon in compositions(deg,6)} and len(basis)==1897
+    unitcol=basis[(0,)*6];fresh=[];maxaux=0
+    for gi,shift in base[&#x27;sources&#x27;]:
+        row={}
+        for mon,co in tables[gi].items():
+            product=tuple(x+y for x,y in zip(mon,shift));maxaux=max(maxaux,sum(product))
+            row[basis[product]]=co
+        fresh.append(row)
+    assert fresh==base[&#x27;rows&#x27;] and maxaux==8
+    pivots={}
+    for col,(source,divisor,history) in base[&#x27;dag&#x27;].items():
+        row=dict(fresh[source])
+        for old,weight in history:subtract(row,weight,pivots[old])
+        assert divisor and divisor.is_ground and row[col]==divisor
+        row={j:v/divisor[(0,0,0)] for j,v in row.items()}
+        assert row==base[&#x27;pivots&#x27;][col]
+        pivots[col]=row
+    pending={}
+    for source,stored,history in base[&#x27;pending&#x27;]:
+        row=dict(fresh[source])
+        for col,weight in history:subtract(row,weight,pivots[col])
+        assert row==stored;pending[source]=row
+    initial={};gcd=None;records=[]
+    for label in (17,101,256):
+        dp=retained(f&#x27;factor2_M_targeted_dag_{label}.json.gz&#x27;,f&#x27;results/metric_prior/cycle16/factor2_M_targeted_dag_{label}.json.gz&#x27;)
+        dag=json.loads(gzip.decompress(dp.read_bytes()));rows=[];divisors=[];maxdegree=0
+        for i,node in enumerate(dag[&#x27;nodes&#x27;]):
+            den=upoly(node[&#x27;divisor&#x27;]);assert den
+            divisors.append(den)
+            if node[&#x27;kind&#x27;]==&#x27;initial&#x27;:
+                rid=node[&#x27;rowid&#x27;]
+                if rid not in initial:
+                    gi,shift=base[&#x27;sources&#x27;][rid]
+                    chars={(mon[1]+mon[2]+mon[5]+mon[8])%2 for mon in gs[gi]}
+                    assert len(chars)==1
+                    chi=(next(iter(chars))+shift[2]+shift[5])%2
+                    assert chi==curve[&#x27;row_source_characters&#x27;][str(rid)]
+                    maxn,maxd=curve[&#x27;row_N_D_powers&#x27;][str(rid)];row={}
+                    for col,poly in pending[rid].items():
+                        aux=base[&#x27;basis&#x27;][col];delta=(aux[2]+aux[5])%2;val=U.zero
+                        for (ii,jj,kk),co in poly.items():
+                            exponent=jj+kk+chi-delta
+                            assert exponent&gt;=0 and exponent%2==0
+                            e=exponent//2
+                            assert kk&lt;=maxn and e&lt;=maxd
+                            val+=co*r**ii*L**kk*N**(e+maxn-kk)*D**(maxd-e)
+                        if val:row[col]=val
+                    stored={int(col):upoly(v) for col,v in curve[&#x27;rows&#x27;][str(rid)].items()}
+                    assert row==stored;initial[rid]=row
+                row=initial[rid]
+            else:
+                assert node[&#x27;kind&#x27;]==&#x27;eliminate&#x27; and 0&lt;=node[&#x27;left&#x27;]&lt;i and 0&lt;=node[&#x27;right&#x27;]&lt;i
+                pp=upoly(node[&#x27;p&#x27;]);coef=upoly(node[&#x27;coefficient&#x27;])
+                row={col:pp*v for col,v in rows[node[&#x27;left&#x27;]].items()}
+                for col,v in rows[node[&#x27;right&#x27;]].items():
+                    nv=row.get(col,U.zero)-coef*v
+                    if nv:row[col]=nv
+                    else:row.pop(col,None)
+            out={}
+            for col,value in row.items():
+                quotient,remainder=value.div(den);assert not remainder
+                if quotient:out[col]=quotient
+                maxdegree=max(maxdegree,quotient.degree())
+            rows.append(out)
+        final=rows[dag[&#x27;finalnode&#x27;]]
+        assert set(final)=={unitcol} and final[unitcol].is_ground and final[unitcol]
+        assert final=={int(col):upoly(v) for col,v in dag[&#x27;finalrow&#x27;].items()}
+        assert set(dag[&#x27;used_nodes&#x27;])==set(range(len(rows)))
+        lcm=U.one
+        for den in divisors:lcm=lcm.lcm(den).monic()
+        assert lcm==upoly(dag[&#x27;denominator_lcm&#x27;])
+        gcd=lcm if gcd is None else gcd.gcd(lcm).monic()
+        records.append({&#x27;label_only&#x27;:label,&#x27;nodes&#x27;:len(rows),&#x27;LCM_degree&#x27;:lcm.degree(),
+                        &#x27;final_nonzero_constant_unit&#x27;:str(final[unitcol]),
+                        &#x27;max_parameter_degree&#x27;:maxdegree,&#x27;sha256&#x27;:hashlib.sha256(dp.read_bytes()).hexdigest()})
+    order=min(mon[0] for mon in gcd)
+    nonzero=gcd.exquo(r**order)
+    x=sy.symbols(&#x27;r&#x27;);poly=sy.Poly.from_dict(nonzero.to_dict(),(x,))
+    assert poly.eval(0)!=0 and poly.eval(sy.Rational(5,6))!=0
+    fac=sy.factor_list(poly.as_expr(),x)
+    rebuilt=sy.Rational(fac[0]);counts=[]
+    for factor,power in fac[1]:
+        pp=sy.Poly(factor,x);count=pp.count_roots(0,sy.Rational(5,6))
+        assert count==0 and pp.eval(0)!=0 and pp.eval(sy.Rational(5,6))!=0
+        rebuilt*=factor**power;counts.append({&#x27;factor&#x27;:str(factor),&#x27;multiplicity&#x27;:power,&#x27;roots_on_closed_0_5over6&#x27;:int(count)})
+    assert sy.Poly(rebuilt-poly.as_expr(),x).is_zero
+    return {&#x27;status&#x27;:&#x27;PASS independent complete original-source M-curve raw cover&#x27;,
+        &#x27;raw_generators&#x27;:10,&#x27;exhaustive_legal_sources&#x27;:1646,&#x27;exhaustive_even_monomials&#x27;:1897,
+        &#x27;constant_pivots&#x27;:len(pivots),&#x27;residual_histories&#x27;:len(pending),
+        &#x27;distinct_initial_rows_reconstructed&#x27;:len(initial),&#x27;DAGs&#x27;:records,
+        &#x27;common_denominator_gcd_degree&#x27;:gcd.degree(),&#x27;endpoint_r_power&#x27;:order,
+        &#x27;common_nonzero_root_count_on_closed_0_to_5over6&#x27;:0,
+        &#x27;common_gcd_coefficients&#x27;:[[mon[0],str(co)] for mon,co in sorted(gcd.items())],
+        &#x27;exact_common_factors_with_Sturm_counts&#x27;:counts,&#x27;max_auxiliary_degree&#x27;:maxaux,&#x27;modular_rank_used_as_proof&#x27;:False,
+        &#x27;source_sha256&#x27;:{str(p.relative_to(BASE)):hashlib.sha256(p.read_bytes()).hexdigest()
+                         for p in (basepath,curvepath)}}
+
+
+def main():
+    start=time.monotonic()
+    result=original_raw_replay()
+    result.update({&#x27;status&#x27;:&#x27;PASS independent original-source entire factor2 M-curve raw D8 cover&#x27;,
+                   &#x27;scope&#x27;:&#x27;All realPD curve0&lt;r²&lt;rho&lt;2/3, covered by fullclosed0&lt;r&lt;5/6 denominator exclusion; no observed acquisition run.&#x27;,
+                   &#x27;creator_or_checker_imported&#x27;:False,&#x27;seconds&#x27;:time.monotonic()-start})
+    path=BASE/&#x27;results/metric_use10/cycle16/p2_raw_cover_independent_checks.json&#x27;
+    path.write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({&#x27;status&#x27;:result[&#x27;status&#x27;],&#x27;seconds&#x27;:result[&#x27;seconds&#x27;],&#x27;DAGs&#x27;:result[&#x27;DAGs&#x27;],&#x27;output&#x27;:str(path)}))
+
+if __name__==&#x27;__main__&#x27;:main()
+</pre></html>

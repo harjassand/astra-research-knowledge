@@ -1,0 +1,274 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>&quot;&quot;&quot;Exact, bounded supplied-graph certificate acquisition and verification.</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>&quot;&quot;&quot;Exact, bounded supplied-graph certificate acquisition and verification.</h1><p>Source ID d-dd08214b461ccefb; literature/sources/hessian_check12/cycle19/initial/colored_graph_certificate_initial.py; 2762 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>&quot;&quot;&quot;Exact, bounded supplied-graph certificate acquisition and verification.
+
+No release code, external solver, or peer implementation is imported.  A NO_GRAPH_WITNESS
+answer concerns this coloring only, never representability of its abstract lattice.
+&quot;&quot;&quot;
+from dataclasses import dataclass, asdict
+from itertools import combinations
+
+
+class BudgetExceeded(Exception):
+    pass
+
+
+class InvalidInput(Exception):
+    pass
+
+
+@dataclass
+class Limits:
+    carrier: int = 12
+    lattice: int = 64
+    search_nodes: int = 500_000
+    operations: int = 100_000
+
+
+@dataclass
+class Costs:
+    search_nodes: int = 0
+    csp_calls: int = 0
+    domain_comparisons: int = 0
+    admissibility_comparisons: int = 0
+    join_tests: int = 0
+    forest_edges: int = 0
+
+
+class DSU:
+    def __init__(self, k):
+        self.p = list(range(k))
+
+    def find(self, a):
+        while a != self.p[a]:
+            self.p[a] = self.p[self.p[a]]
+            a = self.p[a]
+        return a
+
+    def add(self, a, b):
+        a, b = self.find(a), self.find(b)
+        if a != b:
+            self.p[b] = a
+
+    def relation(self):
+        return [[self.find(i) == self.find(j) for j in range(len(self.p))]
+                for i in range(len(self.p))]
+
+
+def integer(x):
+    return type(x) is int
+
+
+class Instance:
+    def __init__(self, data, limits=None):
+        self.limits = limits or Limits()
+        le, d = data.get(&quot;le&quot;), data.get(&quot;color&quot;)
+        if type(le) is not list or type(d) is not list or not le or not d:
+            raise InvalidInput(&quot;nonempty explicit order and color tables required&quot;)
+        n, k = len(le), len(d)
+        # Before any quadratic/cubic work or new arrays.
+        if n &gt; self.limits.lattice or k &gt; self.limits.carrier:
+            raise BudgetExceeded(&quot;explicit lattice/carrier dimension cap&quot;)
+        if any(type(row) is not list or len(row) != n for row in le):
+            raise InvalidInput(&quot;order table shape&quot;)
+        if any(type(x) not in (bool, int) or x not in (0, 1)
+               for row in le for x in row):
+            raise InvalidInput(&quot;order entries must be boolean or literal integer 0/1&quot;)
+        if any(type(row) is not list or len(row) != k for row in d):
+            raise InvalidInput(&quot;color table shape&quot;)
+        if any(not integer(x) or not 0 &lt;= x &lt; n for row in d for x in row):
+            raise InvalidInput(&quot;colors must be literal bounded integer labels&quot;)
+        self.n, self.k, self.le, self.d = n, k, le, d
+        for a in range(n):
+            if not le[a][a]:
+                raise InvalidInput(&quot;non-reflexive order&quot;)
+            for b in range(n):
+                if a != b and le[a][b] and le[b][a]:
+                    raise InvalidInput(&quot;non-antisymmetric order&quot;)
+                for c in range(n):
+                    if le[a][b] and le[b][c] and not le[a][c]:
+                        raise InvalidInput(&quot;non-transitive order&quot;)
+        bottoms = [a for a in range(n) if all(le[a])]
+        tops = [a for a in range(n) if all(le[b][a] for b in range(n))]
+        if len(bottoms) != 1 or len(tops) != 1:
+            raise InvalidInput(&quot;not a bounded lattice&quot;)
+        self.bottom, self.top = bottoms[0], tops[0]
+        self.join = [[None] * n for _ in range(n)]
+        for a in range(n):
+            for b in range(n):
+                ups = [c for c in range(n) if le[a][c] and le[b][c]]
+                js = [c for c in ups if all(le[c][z] for z in ups)]
+                downs = [c for c in range(n) if le[c][a] and le[c][b]]
+                ms = [c for c in downs if all(le[z][c] for z in downs)]
+                if len(js) != 1 or len(ms) != 1:
+                    raise InvalidInput(&quot;missing unique join/meet&quot;)
+                self.join[a][b] = js[0]
+        for i in range(k):
+            for j in range(k):
+                if d[i][j] != d[j][i] or (d[i][j] == self.bottom) != (i == j):
+                    raise InvalidInput(&quot;symmetry/separated diagonal&quot;)
+                for h in range(k):
+                    if not le[d[i][j]][self.join[d[i][h]][d[h][j]]]:
+                        raise InvalidInput(&quot;triangle inequality&quot;)
+        self.theta = [[[bool(le[d[i][j]][a]) for j in range(k)] for i in range(k)]
+                      for a in range(n)]
+        for a in range(n):
+            for b in range(n):
+                if not le[a][b] and not any(self.theta[a][i][j] and
+                                            not self.theta[b][i][j]
+                                            for i in range(k) for j in range(k)):
+                    raise InvalidInput(&quot;order reflection&quot;)
+        self.edges = list(combinations(range(k), 2))
+
+    def join_defect(self, costs=None):
+        for a in range(self.n):
+            for b in range(a, self.n):
+                if costs:
+                    costs.join_tests += 1
+                uf = DSU(self.k)
+                for i, j in self.edges:
+                    if self.theta[a][i][j] or self.theta[b][i][j]:
+                        uf.add(i, j)
+                if uf.relation() != self.theta[self.join[a][b]]:
+                    return {&quot;a&quot;: a, &quot;b&quot;: b, &quot;join&quot;: self.join[a][b],
+                            &quot;actual_relation&quot;: uf.relation()}
+        return None
+
+    def admissible(self, mapping, costs=None):
+        if type(mapping) is not list or len(mapping) != self.k or any(
+                not integer(x) or not 0 &lt;= x &lt; self.k for x in mapping):
+            return False
+        for i, j in self.edges:
+            if costs:
+                costs.admissibility_comparisons += 1
+            if not self.le[self.d[mapping[i]][mapping[j]]][self.d[i][j]]:
+                return False
+        return True
+
+    def placement(self, p, q, u, v, costs):
+        &quot;&quot;&quot;Binary CSP, exhaustive if UNSAT; interruption is UNKNOWN, never UNSAT.&quot;&quot;&quot;
+        costs.csp_calls += 1
+        domains = [list(range(self.k)) for _ in range(self.k)]
+        domains[p], domains[q] = [u], [v]
+
+        def recurse(assigned, domains):
+            costs.search_nodes += 1
+            if costs.search_nodes &gt; self.limits.search_nodes:
+                raise BudgetExceeded(&quot;CSP search-node cap&quot;)
+            if len(assigned) == self.k:
+                return [assigned[i] for i in range(self.k)]
+            var = min((i for i in range(self.k) if i not in assigned),
+                      key=lambda i: len(domains[i]))
+            for value in domains[var]:
+                new = dict(assigned)
+                new[var] = value
+                reduced = [row[:] for row in domains]
+                possible = True
+                for j in range(self.k):
+                    if j in new:
+                        continue
+                    keep = []
+                    for w in reduced[j]:
+                        costs.domain_comparisons += 1
+                        if self.le[self.d[value][w]][self.d[var][j]]:
+                            keep.append(w)
+                    reduced[j] = keep
+                    if not keep:
+                        possible = False
+                        break
+                if possible:
+                    result = recurse(new, reduced)
+                    if result is not None:
+                        return result
+            return None
+
+        return recurse({}, domains)
+
+
+def verify(data, certificate, limits=None):
+    &quot;&quot;&quot;Polynomial verifier: no enumeration of self-maps or all seed subsets.&quot;&quot;&quot;
+    costs = Costs()
+    try:
+        inst = Instance(data, limits)
+        maps, forests = certificate.get(&quot;maps&quot;), certificate.get(&quot;forests&quot;)
+        if type(maps) is not list or type(forests) is not dict:
+            raise InvalidInput(&quot;certificate shape&quot;)
+        cap = len(inst.edges) * max(0, inst.k - 1)
+        if len(maps) &gt; cap or len(maps) &gt; inst.limits.operations:
+            raise InvalidInput(&quot;operation count exceeds witness cap&quot;)
+        if set(forests) != {f&quot;{i},{j}&quot; for i, j in inst.edges}:
+            raise InvalidInput(&quot;forest keys&quot;)
+        if any(not inst.admissible(m, costs) for m in maps):
+            raise InvalidInput(&quot;non-admissible map&quot;)
+        defect = inst.join_defect(costs)
+        if defect:
+            raise InvalidInput(&quot;binary join defect&quot;)
+        for p, q in inst.edges:
+            forest = forests[f&quot;{p},{q}&quot;]
+            if type(forest) is not list or len(forest) &gt; inst.k - 1:
+                raise InvalidInput(&quot;forest edge cap&quot;)
+            uf = DSU(inst.k)
+            for e in forest:
+                if type(e) is not list or len(e) != 3 or any(not integer(x) for x in e):
+                    raise InvalidInput(&quot;forest entry&quot;)
+                u, v, index = e
+                if not (0 &lt;= u &lt; inst.k and 0 &lt;= v &lt; inst.k and 0 &lt;= index &lt; len(maps)):
+                    raise InvalidInput(&quot;forest endpoint/index&quot;)
+                if sorted([maps[index][p], maps[index][q]]) != sorted([u, v]):
+                    raise InvalidInput(&quot;map does not witness marked edge&quot;)
+                uf.add(u, v)
+                costs.forest_edges += 1
+            if uf.relation() != inst.theta[inst.d[p][q]]:
+                raise InvalidInput(&quot;singleton forest misses color relation&quot;)
+        return {&quot;status&quot;: &quot;CERTIFIED_FULL_CONGRUENCE&quot;, &quot;costs&quot;: asdict(costs),
+                &quot;carrier_size&quot;: inst.k, &quot;lattice_size&quot;: inst.n,
+                &quot;unary_operation_count&quot;: len(maps)}
+    except BudgetExceeded as e:
+        return {&quot;status&quot;: &quot;BUDGET_UNKNOWN&quot;, &quot;reason&quot;: str(e), &quot;costs&quot;: asdict(costs)}
+    except (InvalidInput, AttributeError, TypeError) as e:
+        return {&quot;status&quot;: &quot;REJECTED_CERTIFICATE&quot;, &quot;reason&quot;: str(e), &quot;costs&quot;: asdict(costs)}
+
+
+def acquire(data, limits=None):
+    costs = Costs()
+    try:
+        inst = Instance(data, limits)
+        defect = inst.join_defect(costs)
+        if defect:
+            return {&quot;status&quot;: &quot;NO_GRAPH_WITNESS&quot;, &quot;reason&quot;: &quot;binary join defect&quot;,
+                    &quot;defect&quot;: defect, &quot;costs&quot;: asdict(costs)}
+        maps, indices, forests = [], {}, {}
+        for p, q in inst.edges:
+            c = inst.d[p][q]
+            uf, forest = DSU(inst.k), []
+            for u, v in inst.edges:
+                if not inst.theta[c][u][v] or uf.find(u) == uf.find(v):
+                    continue
+                mapping = inst.placement(p, q, u, v, costs)
+                if mapping is None:
+                    mapping = inst.placement(p, q, v, u, costs)
+                if mapping is None:
+                    continue
+                key = tuple(mapping)
+                if key not in indices:
+                    if len(maps) &gt;= inst.limits.operations:
+                        raise BudgetExceeded(&quot;output operation cap&quot;)
+                    indices[key] = len(maps)
+                    maps.append(mapping)
+                forest.append([u, v, indices[key]])
+                uf.add(u, v)
+                costs.forest_edges += 1
+            forests[f&quot;{p},{q}&quot;] = forest
+            if uf.relation() != inst.theta[c]:
+                return {&quot;status&quot;: &quot;NO_GRAPH_WITNESS&quot;, &quot;reason&quot;: &quot;singleton closure defect&quot;,
+                        &quot;seed&quot;: [p, q], &quot;color&quot;: c, &quot;closure&quot;: uf.relation(),
+                        &quot;costs&quot;: asdict(costs)}
+        certificate = {&quot;maps&quot;: maps, &quot;forests&quot;: forests}
+        check = verify(data, certificate, limits)
+        if check[&quot;status&quot;] != &quot;CERTIFIED_FULL_CONGRUENCE&quot;:
+            raise AssertionError(check)
+        return {&quot;status&quot;: &quot;CERTIFIED_FULL_CONGRUENCE&quot;, &quot;certificate&quot;: certificate,
+                &quot;costs&quot;: asdict(costs), &quot;verification&quot;: check}
+    except BudgetExceeded as e:
+        return {&quot;status&quot;: &quot;BUDGET_UNKNOWN&quot;, &quot;reason&quot;: str(e), &quot;costs&quot;: asdict(costs)}
+    except InvalidInput as e:
+        return {&quot;status&quot;: &quot;INVALID_INPUT&quot;, &quot;reason&quot;: str(e), &quot;costs&quot;: asdict(costs)}
+</pre></html>

@@ -1,0 +1,124 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>&quot;&quot;&quot;Bounded fixed-three-variable replay of the auxiliary A,H branch scheme.</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>&quot;&quot;&quot;Bounded fixed-three-variable replay of the auxiliary A,H branch scheme.</h1><p>Source ID d-d277e9598a90dbcd; literature/sources/metric_geometry10/cycle12/auxiliary_scheme_replay.py; 1719 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>&quot;&quot;&quot;Bounded fixed-three-variable replay of the auxiliary A,H branch scheme.
+
+The hidden q is supplied only to this proof audit. This is neither coefficient-
+only quartic acquisition nor a degree8 raw-generator membership computation.
+&quot;&quot;&quot;
+import itertools
+import json
+from pathlib import Path
+
+import sympy as s
+
+
+def expected_length(q,mass):
+    indices = [i for i in range(3) if mass[i]]
+    if not indices:return 8
+    if len(indices)==1:
+        i=indices[0];j,k=[a for a in range(3) if a!=i]
+        if q[i,j]==0 and q[i,k]==0:return 8
+        if q[i,j]==0 or q[i,k]==0:return 0
+        return 4 if q[k,k]*q[i,j]**2==q[j,j]*q[i,k]**2 else 0
+    if len(indices)==2:
+        i,j=indices;k=next(a for a in range(3) if a not in indices)
+        off=[q[i,j],q[i,k],q[j,k]]
+        if all(a==0 for a in off):return 8
+        if any(a==0 for a in off):return 0
+        r=q[i,k]/q[j,k];t=q[i,j]/q[j,k]
+        return 2 if q[i,i]==q[j,j]*r*r and q[i,i]+q[i,j]*r==2*q[k,k]*t*t else 0
+    off=[q[0,1],q[0,2],q[1,2]]
+    if all(a==0 for a in off):return 8
+    if any(a==0 for a in off):return 0
+    r1=q[1,2]/q[0,2];r3=q[0,1]/q[0,2]
+    return 2 if q[0,0]*r1*r1==q[1,1]==q[2,2]*r3*r3 else 0
+
+
+def standard_exponents(gb,u):
+    lead=[g.LM(order=gb.order).exponents for g in gb.polys]
+    if (0,0,0) in lead:return []
+    def allowed(a):return not any(all(a[i]&gt;=lm[i] for i in range(3)) for lm in lead)
+    basis={(0,0,0)};pending=[(0,0,0)]
+    while pending:
+        a=pending.pop()
+        for i in range(3):
+            nxt=tuple(a[k]+(i==k) for k in range(3))
+            if nxt not in basis and allowed(nxt):
+                basis.add(nxt);pending.append(nxt)
+                assert len(basis)&lt;=64,&quot;unexpected unbounded branch quotient&quot;
+    return sorted(basis,key=lambda a:(sum(a),a))
+
+
+def branch(q,mass):
+    u=s.symbols(&#x27;u0:3&#x27;)
+    eq=[]
+    for i in range(3):
+        if mass[i]:
+            eq.extend(q[i,i]*u[i]**2+q[i,j]*u[i]*u[j]-2 for j in range(3) if j!=i)
+        else:eq.append(q[i,i]*u[i]**2-1)
+    gb=s.groebner(eq,*u,order=&#x27;grlex&#x27;,domain=s.QQ)
+    exponents=standard_exponents(gb,u)
+    assert len(exponents)==expected_length(q,mass),(q,mass,exponents)
+    typ=&#x27;&#x27;.join(&#x27;A&#x27; if a else &#x27;B&#x27; for a in mass)
+    if not exponents:return {&#x27;branch&#x27;:typ,&#x27;length&#x27;:0,&#x27;status&#x27;:&#x27;PASS&#x27;}
+    basis=[s.prod(u[i]**a[i] for i in range(3)) for a in exponents]
+    def matrix(expr):
+        columns=[]
+        for mon in basis:
+            _,rem=gb.reduce(s.expand(mon*expr))
+            poly=s.Poly(rem,*u)
+            columns.append(s.Matrix([poly.coeff_monomial(a) for a in basis]))
+        return s.Matrix.hstack(*columns)
+    ms=[matrix(a) for a in basis]
+    gram=s.Matrix(len(basis),len(basis),lambda i,j:s.trace(ms[i]*ms[j]))
+    gram_minors=[gram[:i,:i].det() for i in range(1,len(basis)+1)]
+    assert all(a&gt;0 for a in gram_minors)
+    # Positive-definite trace pairing verifies reducedness and total reality
+    # for this finite quotient. This replay is not the universal proof.
+    ss=[]
+    for i in range(3):
+        if mass[i]:
+            j=(i+1)%3
+            ss.append((q[i,i]*u[i]+q[i,j]*u[j])/2)
+        else:ss.append(q[i,i]*u[i])
+    b=3*ss[0]*ss[1]*ss[2]-q[1,2]*ss[0]-q[0,2]*ss[1]-q[0,1]*ss[2]
+    mb=matrix(b)
+    assert mb.det()!=0
+    md=matrix(b*s.prod(u))
+    weighted=s.Matrix(len(basis),len(basis),lambda i,j:s.trace(ms[i]*ms[j]*md))
+    weighted_minors=[weighted[:i,:i].det() for i in range(1,len(basis)+1)]
+    assert all(a&gt;0 for a in weighted_minors)
+    return {&#x27;branch&#x27;:typ,&#x27;length&#x27;:len(basis),&#x27;basis&#x27;:[str(a) for a in basis],
+            &#x27;trace_Gram_principal_minors&#x27;:[str(a) for a in gram_minors],
+            &#x27;B_multiplication_determinant&#x27;:str(mb.det()),
+            &#x27;normalized_B_weighted_Gram_principal_minors&#x27;:[str(a) for a in weighted_minors],
+            &#x27;status&#x27;:&#x27;PASS&#x27;}
+
+
+def main():
+    fixtures=[
+        (&#x27;diagonal&#x27;,s.diag(2,3,5)),
+        (&#x27;generic&#x27;,s.Matrix([[2,s.Rational(1,4),-s.Rational(1,5)],
+                            [s.Rational(1,4),3,s.Rational(1,3)],
+                            [-s.Rational(1,5),s.Rational(1,3),4]])),
+        (&#x27;negative_exchangeable&#x27;,s.eye(3)-s.ones(3)/4),
+        (&#x27;near_PD_boundary&#x27;,s.eye(3)/100+99*s.ones(3)/100),
+        (&#x27;partial_zero&#x27;,s.Matrix([[1,0,0],[0,1,s.Rational(1,3)],[0,s.Rational(1,3),1]])),
+        (&#x27;nonempty_AAB&#x27;,s.Matrix([[1,s.Rational(1,2),s.Rational(1,2)],
+                               [s.Rational(1,2),1,s.Rational(1,2)],
+                               [s.Rational(1,2),s.Rational(1,2),s.Rational(3,4)]])),
+    ]
+    records=[]
+    for name,q in fixtures:
+        assert all(q[:k,:k].det()&gt;0 for k in range(1,4))
+        branches=[branch(q,mass) for mass in itertools.product([False,True],repeat=3)]
+        record={&#x27;fixture&#x27;:name,&#x27;Q&#x27;:str(q),&#x27;branches&#x27;:branches,
+                &#x27;total_length&#x27;:sum(a[&#x27;length&#x27;] for a in branches),&#x27;status&#x27;:&#x27;PASS&#x27;}
+        records.append(record)
+        print(json.dumps({&#x27;fixture&#x27;:name,&#x27;lengths&#x27;:[a[&#x27;length&#x27;] for a in branches],
+                          &#x27;total_length&#x27;:record[&#x27;total_length&#x27;],&#x27;status&#x27;:&#x27;PASS&#x27;}),flush=True)
+    result={&#x27;records&#x27;:records,
+            &#x27;scope&#x27;:&#x27;Finite exact branch-presentation quotient, length classification, positive trace Gram reduced/totally-real check, and B invertibility on six PD fixtures. Hidden q is supplied to this proof audit; no quartic acquisition or degree8 certificate result.&#x27;}
+    Path(&#x27;results/metric_prior/cycle11/auxiliary_scheme_replay.json&#x27;).write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+
+
+if __name__==&#x27;__main__&#x27;:main()
+</pre></html>

@@ -1,0 +1,1486 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>--- PDF PAGE 1 ---</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>--- PDF PAGE 1 ---</h1><p>Source ID d-0e47ef7679f735c0; literature/sources/metric_use10/cycle12/mesters_ribot_seigal_zwiernik2026_limiam_v1.txt; 19799 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>--- PDF PAGE 1 ---
+Causal discovery under mean independence and linearity
+Geert Mesters, Alvaro Ribot, Anna Seigal, and Piotr Zwiernik
+Abstract.Causal discovery methods such as LiNGAM identify causal structure from ob-
+servational data by assuming mutually independent disturbances. This assumption is fragile:
+shared volatility, common scale effects, or other forms of dependence can cause the methods
+to recover the wrong causal order, even with infinite data. We introduce the Linear Mean-
+Independent Acyclic Model (LiMIAM), which replaces full independence with weaker one-
+sided mean-independence restrictions on the disturbances. Under finite-order consequences
+of these restrictions, source nodes are generically identifiable, and hence a compatible causal
+order can be recovered recursively. Our proof is constructive and leads to DirectLiMIAM,
+a sequential residual-based algorithm for causal discovery under dependent noise. In sim-
+ulations with mean-independent but dependent disturbances, DirectLiMIAM outperforms
+LiNGAM methods. A large-scale empirical application to the oil market highlights the im-
+plausibility of the independence assumption and the ability of DirectLiMIAM to recover a
+realistic causal ordering, from policy to production and from prices to inflation.
+1. Introduction
+Recovering causal structure from observational data is a central problem in statistics,
+econometrics, andmanyotherempiricalsciences. Linearstructuralequationmodels(LSEMs)
+are a natural framework for representing causal mechanisms, but they are not identifiable
+from the joint distribution alone: without additional assumptions, different directed acyclic
+graphs (DAGs) can induce the same statistical model [Dhrymes, 1994, Pearl, 2009, Spirtes
+et al., 2000]. A major advance in this area was the Linear Non-Gaussian Acyclic Model
+(LiNGAM) of Shimizu et al. [2006]. Under the assumption that the causal mechanisms are
+linearandthestructuraldisturbancesaremutuallyindependentandnon-Gaussian, LiNGAM
+achieves identifiability of the causal DAG, by connecting causal discovery with independent
+component analysis (ICA) [Comon, 1994]. It has led to an extensive literature, including
+direct estimation [Shimizu et al., 2011], likelihood-based alternatives [Hyvärinen and Smith,
+2013], high-dimensional methods based on higher-order moments [Wang and Drton, 2020],
+extensions to time-series and structural vector autoregressive models (SVARs) [Lanne and
+Lütkepohl, 2010, Hyvärinen et al., 2010, Lanne et al., 2017, Gouriéroux et al., 2017, Hoesch
+et al., 2024], and treatments of latent confounding [Hoyer et al., 2008, Wang and Drton,
+2023]. At the level of higher-order statistics, independence implies diagonal cumulant ten-
+sors, a viewpoint that is explicit in tensor-diagonalization formulations of ICA.
+The key assumption underlying LiNGAM is that the errors are mutually independent
+and non-Gaussian. While non-Gaussianity is often plausible, mutual independence is harder
+to justify. A more realistic assumption is that the disturbances satisfy weaker first-moment
+All authors contributed equally.
+1
+arXiv:2605.04381v1  [stat.ME]  6 May 2026
+
+--- PDF PAGE 2 ---
+2 GEERT MESTERS, AL V ARO RIBOT, ANNA SEIGAL, AND PIOTR ZWIERNIK
+restrictions while still exhibiting dependence in their higher moments. Such dependence is
+common. Ineconomicsandfinance, disturbancesoftenexhibitconditionalheteroskedasticity,
+stochastic volatility, and common scale factors [Engle, 1982, Bollerslev, 1986, Harvey et al.,
+1994]. In SVARs, non-Gaussian identification has been proposed as an alternative to classical
+exclusion restrictions [Lanne and Lütkepohl, 2010, Hyvärinen et al., 2010, Lanne et al., 2017,
+Gouriéroux et al., 2017], but dependent non-Gaussian disturbances arise through volatility
+clustering and scale mixtures. In single-cell biology, cell-to-cell variability often contains
+extrinsic components, driven, for example, by differences in cell state, cell cycle, or other
+factors shared across genes or pathways [Elowitz et al., 2002, Brennecke et al., 2013, Buet-
+tner et al., 2015, Stegle et al., 2015]. In neuroscience, ongoing activity and common state
+fluctuations can induce shared variability across neural responses [Arieli et al., 1996, Cohen
+and Kohn, 2011, Rabinowitz et al., 2015]. In such situations, it may remain plausible that
+the mean of one disturbance cannot be predicted from earlier disturbances even though full
+independence fails. These exogeneity-type conditions motivate the framework in this paper.
+If independence is assumed when it is false, LiNGAM procedures can produce incorrect
+causal conclusions. We show that standard independence-based implementations, includ-
+ing JADE [Cardoso and Souloumiac, 1996], FastICA [Hyvärinen, 1999], and residual-based
+LiNGAM procedures [Shimizu et al., 2011], can recover the wrong causal order even at the
+population level. Under disturbances that satisfy mean-independence conditions but are
+dependent, these methods may reverse the direction of causation. We complement the pop-
+ulation counterexamples with simulations showing that the problem becomes more severe
+as the dimension grows: under dependent but mean-independent noise, the graph recovery
+performance of LiNGAM methods deteriorates, whereas our method remains stable.
+The starting point of this paper is that the assumptions needed for causal identification
+are weaker than those of independence-based LiNGAM procedures. We introduce theLinear
+Mean-Independent Acyclic Model(LiMIAM), in which the disturbances may be dependent
+but must satisfy one-sided mean-independence conditions, which we call order-dependent
+mean independence. The underlying causal object is a DAG. Whenever we write matrices
+or tensors in triangular form, we have fixed a compatible topological order and relabeled
+the variables accordingly. In this coordinate system, whenever one disturbance appears later
+than another in the chosen topological order, the later disturbance cannot be predicted in
+mean from the earlier one. This allows higher-order dependence and is weaker than usual
+independence-based assumptions, including the diagonal cumulant structure that underlies
+ICA, see Figure 1. Our main result is that, under finite-order moment conditions implied by
+this order-dependent mean independence, source nodes can be identified generically, and
+hence a compatible causal order is recovered recursively. Once an order is known, the
+coefficient matrix, and hence the DAG, can be estimated by regression restricted to earlier
+variables in the order. By generically, we mean away from a set of measure zero in the
+relevant parameter space.
+Our work is related in spirit to recent developments in non-independent component anal-
+ysis [Mesters and Zwiernik, 2024, Ribot et al., 2025a,b], which show that the independence
+assumption in ICA can be relaxed. The present paper goes beyond this work in two ways.
+First, it uses that the recursive causal model mixing matrix is lower-triangular, after a
+permutation, which allows weaker assumptions than those needed for identifiability of an
+unrestricted mixing. Second, it develops a causal-discovery algorithm based on recursive
+identification of source variables and residualization. This is a LiNGAM-type algorithm not
+
+--- PDF PAGE 3 ---
+CAUSAL DISCOVERY UNDER MEAN INDEPENDENCE AND LINEARITY 3
+distribution of
+disturbances
+moments/cumulants
+of disturbances
+LiNGAM
+LiMIAM
+independent =⇒ diagonal cumulants
+⇓ ⇓
+pairwise
+mean independent =⇒ (i, . . . , i, j)entry is0
+for alli̸=j
+⇓ ⇓
+order-dependent
+mean independent =⇒
+(i, . . . , i, j)entry is0
+wheniprecedesj
+in the causal order
+⇓
+Figure 1.From LiNGAM to LiMIAM.
+driven by ICA, which extends the logic of DirectLiNGAM [Shimizu et al., 2011] to dependent
+disturbances. Accordingly, the paper contributes at three levels: failure analysis, identifi-
+cation theory, and methodology. For finite-moments, our viewpoint leads to an algebraic
+model for coupled moments under order-dependent mean independence. More broadly, it
+shows that structural identifiability of the causal model is a separate issue from the validity
+of specific independence-based LiNGAM procedures.
+The finite-moment identification argument also connects to the higher-order moment
+criterion of Wang and Drton [2020]. They study high-dimensional LiNGAM under indepen-
+dent non-Gaussian disturbances and formulate their conditions in terms of DAG parents.
+We use the same algebraic type of moment identity under weaker one-sided moment restric-
+tions, where disturbances may be dependent. The resulting non-cancellation condition is the
+LiMIAM analogue of their parental faithfulness condition.
+The rest of the paper is organized as follows. In Section 2, we introduce the recursive
+linear model, the order-dependent mean independence assumption and show the failure of
+LiNGAM procedures under dependent but mean-independent disturbances. In Section 3,
+we show that source nodes, and hence a compatible causal order, can be recovered gener-
+ically from a pair of moments under order-dependent mean independence, and we study a
+distribution-level route based on residual mean independence. In Section 4, we describe the
+DirectLiMIAM algorithm and its relation to existing methods. Section 5 presents numeri-
+cal experiments on simulated data that show the performance of DirectLiMIAM. Section 6
+presents an empirical application for the oil market where we connect to the economic lit-
+erature on SVAR models and show that DirectLiMIAM can identify an economically inter-
+pretable DAG, with causal order from policy to production and prices to inflation.
+Our Python code with an implementation of Algorithm 1 and scripts to replicate the
+numerical experiments is available on GitHub: https://github.com/alvaro-ribot/limiam.
+2. Motivation: non-independence and the brittleness of LiNGAM
+2.1. Recursive linear models and first-moment assumptions.We consider a lin-
+ear structural equation model (LSEM) for random variablesX1, . . . , Xp. The underlying
+
+--- PDF PAGE 4 ---
+4 GEERT MESTERS, AL V ARO RIBOT, ANNA SEIGAL, AND PIOTR ZWIERNIK
+
+
+
+X1 =ε 1
+X2 =β 21X1 +ε 2
+X3 =β 31X1 +ε 3
+X4 =β 42X2 +β 43X3 +ε 4
+(a)LSEM
+X1
+X2 X3
+X4
+(b)DAG
+−1.0 −0.5 0.0 0.5 1.0
+ε1
+−1.0
+−0.5
+0.0
+0.5
+1.0
+ε2 (c)Mean independence
+Figure 2.(a) Linear structural equation model, (b) corresponding directed
+acyclic graph, and (c) order-dependent mean independent disturbances, i.e.,
+E[ε2 |ε 1] = 0butE[ε 1 |ε 2]̸= 0.
+causal structure is a directed acyclic graph (DAG). For notational convenience, we fix a
+compatible topological order and relabel variables so that parents precede children, written
+1&lt;· · ·&lt; p. Thus,
+(1)X i =
+X
+j&lt;i
+βijXj +ε i, i= 1, . . . , p,
+where some coefficientsβij ∈Rmay be zero. The variableε i is the disturbance forXi. The
+set of parents ofi, denotedpa(i), are the indicesj &lt; ifor whichβ ij ̸= 0, and these parent
+sets define the DAG. See Figure 2. A variable isexogenous, or asource, if it has no parents.
+WritingB= (β ij)ij ∈R p×p, the model (1) is equivalent to
+(2)X=BX+ε,
+whereBis strictly lower triangular. Hence
+(3)X=Aε,whereA:= (I−B) −1,
+andAis lower triangular with unit diagonal.
+A standard structural exogeneity condition is that each disturbance has conditional mean
+zero given the variables on the right-hand side of its equation in (1), that is
+E[εi |X pa(i)] = 0, i= 1, . . . , p,
+which says that the unexplained part ofXi cannot be predicted in mean from its direct
+causes. In LiMIAM we impose related first-moment restrictions on the disturbances. These
+restrictions still allow dependence in higher moments. See Figure 2c.
+LiNGAM strengthens such first-moment exogeneity to mutual independence of the coor-
+dinates ofε. We show that identifiability still holds under weaker first-moment conditions,
+which rule out certain one-sided mean predictions among disturbances while allowing depen-
+dence in higher moments. The motivation is that independence-based LiNGAM procedures
+can fail when mutual independence is replaced by weaker first-moment assumptions. This is
+not a small-sample issue: even at the population level, LiNGAM methods may recover the
+wrong causal order.
+
+--- PDF PAGE 5 ---
+CAUSAL DISCOVERY UNDER MEAN INDEPENDENCE AND LINEARITY 5
+2.2. Population failure of independence-based LiNGAM.We recall the classical
+LiNGAM setup [Shimizu et al., 2006]. In the model (2)–(3), if the structural disturbances
+ε= (ε 1, . . . , εp)are mutually independent and at most one component is Gaussian, then the
+mixing matrixAis identifiable up to permutation and scaling via ICA [Comon, 1994]. The
+ICA–LiNGAM algorithm first estimates an unmixing matrixW=A−1 using ICA and then
+applies row permutation and scaling to obtain a strictly lower-triangular representation ofB.
+We first analyze ICA-based LiNGAM under weaker first-moment assumptions. Assume
+E[ε] = 0andCov(ε) =Ifor simplicity. Procedures such as JADE [Cardoso and Souloumiac,
+1996] are justified by mutual independence of the structural errors. Under mutual indepen-
+dence, the fourth-order cumulant tensor ofεis diagonal. Under weaker mean-independence
+assumptions, this is no longer true (cf. Figure 1). For example, the joint cumulant
+cum(εi, εi, εj, εj) = Cov(ε2
+i , ε2
+j)
+need not vanish.
+We illustrate the failure mechanism in the bivariate model
+X1 =ε 1, X 2 =X 1 +ε 2,
+which corresponds to the true DAGX1 →X 2 and mixing matrix
+(4)A=
+
+1 0
+1 1
+
+.
+Letκ 4(ε)be the fourth-order cumulant tensor ofεwith
+κ4(ε)1111 =k 1, κ 4(ε)2222 =k 2, κ 4(ε)1122 =c, κ 4(ε)1112 =κ 4(ε)1222 = 0,
+wherek 1, k2 &gt;0andc &gt;0. We argue that LiNGAM-based methods recover the wrong
+causal order ifcis large enough.
+Theorem 2.1.If(k 1 +k 2 + 6c)2 &lt;8(k 2
+1 +k 2
+2), then the population JADE step recovers the
+true mixing matrix in(4). If the reverse inequality holds, it recovers
+ˆA= 1√
+2
+
+1 1
+0 2
+
+,
+which leads to the reversed causal orderX2 →X 1. In the boundary case of equality, both
+mixing matrices are global maximizers.
+Theorem 2.1 shows that, even with infinite data, JADE-based ICA–LiNGAM can recover
+the wrong causal order. Its proof is in Appendix A. Here, strong dependence in the squared
+disturbances, as measured byc, causes the procedure to select the reversed DAG.
+Example 2.2.The parameter region in Theorem 2.1 is nonempty, and it arises under
+common-variance disturbances. Let
+ε1 =σZ 1, ε 2 =σZ 2,
+whereZ 1, Z2 are independent copies of a uniform random variable on[−
+√
+3,
+√
+3], andσis
+independent of(Z 1, Z2). Assume thatσ 2 takes values0.1and1.9with probability1/2each.
+ThenE[σ 2] = 1andE[σ 4] = (0.1 2 + 1.92)/2 = 1.81, soCov(ε) =I. SinceZ 1 andZ 2 are
+symmetric and independent, we haveκ4(ε)1112 =κ 4(ε)1222 = 0. Moreover,
+c=κ 4(ε)1122 = Cov(ε2
+1, ε2
+2) =E[σ 4]−1 = 0.81.
+
+--- PDF PAGE 6 ---
+6 GEERT MESTERS, AL V ARO RIBOT, ANNA SEIGAL, AND PIOTR ZWIERNIK
+BecauseE[Z 4
+1] = 9/5, we also obtain
+k1 =k 2 =κ 4(ε1) =E[σ 4]E[Z 4
+1]−3 = 1.81·1.8−3 = 0.258.
+Hence
+(k1 +k 2 + 6c)2 = (0.258 + 0.258 + 6·0.81) 2 &gt;8(k 2
+1 +k 2
+2).
+By Theorem 2.1, the population JADE step recovers the wrong mixing matrix and hence
+the reversed causal orderX2 →X 1.
+It is instructive to considerε i =σZ i, whereZ 1, Z2 are i.i.d. standard Gaussian and
+independent ofσ. After normalizing so thatE[σ 2] = 1, and assumingE[σ 4]&lt;∞, we have
+k1 =k 2 = 3c, regardless of the distribution ofσ. Consequently,(k1 +k 2 + 6c)2 = 8(k2
+1 +k 2
+2),
+so Gaussian scale mixtures lie on the boundary case of Theorem 2.1. This extends to all
+elliptical distributions.
+In the two-dimensional setting, kurtosis-based FastICA also optimizes a marginal fourth-
+order contrast over orthogonal rotations. Therefore it induces the same ordering of the
+candidate rotations as the JADE objective, and under the same condition converges to
+the same incorrectπ/4rotation. After the usual LiNGAM post-processing step, FastICA–
+LiNGAM returns the same incorrect causal order.
+2.3. Failure of residual-based LiNGAM.The phenomenon is not confined to ICA-
+based implementations. Residual-based LiNGAM procedures can also fail at the population
+level. DirectLiNGAM [Shimizu et al., 2011] identifies a variable that appears most nearly
+exogenous by checking whether its regression residuals are independent of it. To illustrate
+the population behavior under mean independence, consider the dependence score
+D(U, V) :=
+Cov(U 2, V 2)
+.
+IfX 1 is treated as the candidate exogenous variable, then regressingX2 onX 1 gives the
+residualR 2|1 =X 2 −X 1 =ε 2, so
+D(X1, R2|1) =
+Cov(ε2
+1, ε2
+2)
+ =c.
+If insteadX 2 is treated as the candidate exogenous variable, then regressingX1 onX 2 gives
+R1|2 =X 1 − 1
+2 X2 = 1
+2(ε1 −ε 2), X 2 =ε 1 +ε 2.
+A direct calculation yieldsD(X 2, R1|2) = 1
+4
+k1 +k 2 −2c
+. ThereforeX 2 appears more
+exogenous whenever 1
+4
+k1 +k 2 −2c
+ &lt; c. In particular, ifc &gt;(k 1 +k 2)/6, the incorrect
+variableX 2 has the smaller dependence score.
+Thus procedures that select the apparently most exogenous variable by minimizing resid-
+ual dependence can also fail under mean independence. The failure is again driven by depen-
+dence in second moments, such as shared volatility, which is not removed by regression. In
+the casek1 =k 2 =k, the condition reduces toc &gt; k/3, the same threshold as in Theorem 2.1.
+Simulations in Section 5 suggest that this problematic behavior of LiNGAM algorithms
+under mean independence becomes more severe in higher dimensions.
+3. Identification under order-dependent mean independence
+We formalize the assumptions behind LiMIAM. We first develop a finite-moment identi-
+fication argument based on the second andd-th moment tensors, for a fixed integerd≥3.
+We then turn to a distribution-level criterion, based on residual mean independence.
+
+--- PDF PAGE 7 ---
+CAUSAL DISCOVERY UNDER MEAN INDEPENDENCE AND LINEARITY 7
+3.1. Mean independence and one-sided moment zeros.LetUandVbe random
+variables. We say thatUismean independentofVif
+E[U|V] =E[U]almost surely.
+Mean independence is not symmetric. For example, ifU∼N(0,1)andV=U 2, then
+E[U|V] = 0 =E[U], butE[V|U] =U 2 ̸=E[V].
+In the sequel, all random variables are assumed mean centered:E[ε] = 0. Our results
+can also be expressed in terms of cumulants, but for simplicity we work with moments.
+Since the model is recursive, the variables can be arranged in any compatible topological
+order. We writej⪯iifj=ior ifjis an ancestor ofiin the DAG. The graph-based first-
+momentrestrictionusedbelowisone-sided: ifj̸⪯i, thenE(ε j |ε i) = 0. Inafixedtopological
+order, this implies the triangular condition obtained by requiring later disturbances to be
+mean independent of earlier ones.
+Proposition 3.1(One-sided moment zeros).LetUandVbe mean-zero random variables.
+IfUis mean independent ofV, thenE[U V d] = 0for all integersd≥0whenever the moments
+exist. Conversely, ifE[U V d] = 0for alld≥0and the moment generating function ofVis
+finite in a neighborhood of zero, thenUis mean independent ofV.
+Proof.IfUis mean independent ofV, then
+E[U V d] =E
+
+V dE[U|V]
+
+=E
+
+V dE[U]
+
+= 0
+for alld≥0. The converse follows from standard arguments using analyticity of the mo-
+ment generating function and density of exponentials; see, for example, [Ribot et al., 2025b,
+Theorem 2.3].□
+3.2. Finite-order LiMIAM.We first study a finite-order version of LiMIAM, namely
+the moment-level consequence of order-dependent mean independence at one fixed orderd
+given by Proposition 3.1.
+Assumption 3.2(Finite-order LiMIAM).The observed variables follow the recursive linear
+model (2)–(3). Equivalently,X=Aε, whereA= (I−B) −1, andBis the weighted adjacency
+matrix of a DAGG. Letj⪯idenote thatj=ior thatjis an ancestor ofiinG. Assume
+thatE[ε] = 0,E[ε 2
+i ]&gt;0for alli, andE[∥ε∥ d]&lt;∞for some fixed integerd≥3. Moreover,
+E[εiεj] = 0for alli̸=j,
+and
+E[ε d−1
+i εj] = 0wheneverj̸⪯i.
+Remark 3.3.Under full order-dependent mean independence, the corresponding moment
+entries vanish at all orders. If these entries vanish up to orderd, then the corresponding
+entries of the cumulant tensorκd(ε)also vanish, by the moment–cumulant relation. Thus one
+may often work with moments or cumulants. This is analogous to ICA: instead of imposing
+full independence, which makes all mixed cumulants vanish, one may impose a finite-order
+condition at one fixed orderd≥3. In the setting of Assumption 3.2, the relevant structure
+is not full diagonality of the cumulant tensor, but the one-sided vanishing pattern above. It
+is simpler to state directly in terms of moments.
+
+--- PDF PAGE 8 ---
+8 GEERT MESTERS, AL V ARO RIBOT, ANNA SEIGAL, AND PIOTR ZWIERNIK
+3.3. Identification of source nodes from a pair of moments.Assumption 3.2
+implies a moment identity that singles out the source nodes of the DAG. Related higher-
+order residual moment identities were used by Wang and Drton [2020] for high-dimensional
+LiNGAM under independent non-Gaussian disturbances; see their Theorem 1. In their
+setting, the vanishing of the score follows from independence after adjustment for parents.
+Here the same algebraic type of identity follows from one-sided moment restrictions implied
+by order-dependent mean independence. The criterion is also related in spirit to higher-order
+least squares [Schultheiss et al., 2024].
+Fori, j∈[p], define the score
+S(d)
+ij =E[X iX d−1
+j ]E[X 2
+j ]−E[X iXj]E[X d
+j ].
+Lemma 3.4(Source identity).Under Assumption 3.2, letjbe a source node ofG. Then
+S(d)
+ij = 0for everyi∈[p].
+Proof.Sincejis a source node,X j =ε j. AlsoX i =P
+k Aikεk. Hence
+E[XiX d−1
+j ] =
+X
+k
+AikE[εkεd−1
+j ] =
+X
+k
+AikE[εd−1
+j εk].
+By Assumption 3.2, the momentE[εd−1
+j εk]is zero wheneverk̸⪯j. Sincejis a source,k⪯j
+holds only fork=j. Thus only the termk=jremains, and
+E[XiX d−1
+j ] =A ijE[εd
+j] =A ijE[X d
+j ].
+Similarly, using the diagonal covariance condition,
+E[XiXj] =
+X
+k
+AikE[εkεj] =A ijE[ε2
+j] =A ijE[X 2
+j ].
+Combining the two identities givesS(d)
+ij = 0.□
+Lemma 3.5(Generic failure for non-sources).Under Assumption 3.2, letjbe a non-source
+node ofG. Then, for generic admissible parameters, there existsi∈[p]such thatS (d)
+ij ̸= 0.
+Proof.Choose a source ancestoriofj, which exists becausejis not a source. Consider
+Pij =S (d)
+ij . We show thatPij is not the zero polynomial in the admissible parameters. Since
+Ajj = 1, the momentE[ε d
+j]appears inE[X d
+j ]with coefficient one. It does not appear in
+E[XiX d−1
+j ], becauseX i =ε i andX d−1
+j has total degreed−1. It also does not appear in the
+second-order moments. HenceP ij is affine inE[εd
+j], with coefficient−E[XiXj]. Sinceiis a
+source,X i =ε i. Therefore, using the diagonal covariance condition,
+E[XiXj] =E[ε iXj] =
+X
+k
+AjkE[εiεk] =A jiE[ε2
+i ].
+NowA ji is not the zero polynomial in the structural coefficients: indeed,A= (I−B) −1 =
+I+B+· · ·+B p−1, andA ji is the sum of products of edge coefficients over all directed paths
+fromitoj. Sinceiis an ancestor ofj, at least one such path exists. ThusA jiE[ε2
+i ]is not
+identically zero. Therefore the coefficient ofE[εd
+j]inP ij is not identically zero, andPij is
+not the zero polynomial. HenceS(d)
+ij ̸= 0outside a proper algebraic subset of the admissible
+parameter space.□
+
+--- PDF PAGE 9 ---
+CAUSAL DISCOVERY UNDER MEAN INDEPENDENCE AND LINEARITY 9
+Theorem 3.6(Generic identification from a pair of moments).Under Assumption 3.2, the
+coefficient matrixBis generically identifiable from(µ 2(X), µd(X)).
+Proof.By Lemma 3.4, every source nodejsatisfiesS (d)
+ij = 0for alli∈[p]. By
+Lemma 3.5, every non-source nodejviolates this identity for at least onei, outside a
+proper algebraic subset of the admissible parameter space. Hence the source nodes ofGare
+generically identifiable from(µ2(X), µd(X)).
+Choose one identified source nodej. SinceXj =ε j, the proof of Lemma 3.4 gives
+E[XiXj]
+E[X 2
+j ] =A ij for everyi.
+Define residual variablesX′
+i =X i −A ijXj for alli̸=j. Then
+X ′
+i =
+X
+k
+Aikεk −A ijεj =
+X
+k̸=j
+Aikεk.
+Thus residualization removes the source disturbanceεj from all remaining variables. The
+residual vector has the same recursive form for the reduced DAG obtained by deletingj,
+and its mixing matrix is the submatrix ofAobtained by deleting the row and column
+corresponding toj. The finite-order LiMIAM moment conditions are also inherited by the
+reduced disturbance vector.
+The same argument can therefore be applied recursively. At each step, the exceptional
+set is defined by the vanishing of finitely many nonzero polynomials of the same type as in
+Lemma 3.5. Since only finitely many reduced DAGs can arise along source-removal recur-
+sions, the union of these exceptional sets is contained in a proper algebraic subset of the
+original admissible parameter space. Outside this set, the recursion identifies a compatible
+topological order.
+Once a topological order is found,Bis recovered fromµ2(X)by successive linear regres-
+sions of each variable on its predecessors in that order, equivalently by the corresponding
+LDL decomposition. HenceBis generically identifiable from(µ 2(X), µd(X)).□
+Remark 3.7.The coupled use ofµ 2(X)andµ d(X)is essential. A single higher-order
+moment tensor does not identify the causal order; see Section 3.5.
+Remark 3.8.The moment conditions in Assumption 3.2 are directional, but Theorem 3.6
+remains valid if one imposes stronger symmetric conditions. For example, it still holds if
+E[εiεj] =E[ε iε d−1
+j ] = 0for alli̸=j.
+It also still holds if all off-diagonal entries ofκd(ε)vanish. In Figure 1, LiMIAM can be
+applied to all three settings: those implied by independence, pairwise mean independence,
+and order-dependent mean independence. The directional conditions are minimal for our
+argument; see Proposition 3.16. In Appendix B we give more details of these genericity
+conditions for the binary case.
+3.4. Distribution-level source detection and residualization.The finite-moment
+results above show that a pair of moments is already enough for generic identification. We
+now turn to a distribution-level criterion. There are two reasons for doing this. First, the
+primitive assumption in LiMIAM is mean independence, not a finite collection of moment
+equations. Second, the distribution-level formulation leads directly to a residual source-
+detection criterion, closer in spirit to DirectLiNGAM.
+
+--- PDF PAGE 10 ---
+10 GEERT MESTERS, AL V ARO RIBOT, ANNA SEIGAL, AND PIOTR ZWIERNIK
+Assumption 3.9(LiMIAM).The observed variables follow the recursive linear model (2)–
+(3), whereBis the weighted adjacency matrix of a DAGG, andE[ε] = 0. Moreover, with
+j⪯idenoting ancestry inG,
+E[εj |ε i] = 0wheneverj̸⪯i.
+Fori̸=j, define the regression residual
+Ri|j =X i − E[XiXj]
+E[X 2
+j ] Xj.
+This is the same object that has a central role in DirectLiNGAM [Shimizu et al., 2011], where
+exogenous variables are characterized through independence between a candidate regressor
+and the residuals obtained after regressing the other variables on it. Here we replace full
+independence by mean independence.
+Lemma 3.10.Under Assumption 3.9, letjbe a source node ofG. ThenR i|j is mean
+independent ofX j for alli̸=j.
+Proof.Sincejis a source node,X j =ε j. Write
+Xi =A ijεj +η i, η i =
+X
+k̸=j
+Aikεk.
+By Assumption 3.9,E[εk |ε j] = 0for everyk̸=j, becausek̸⪯jwhenjis a source. Hence
+E[ηi |ε j] =
+X
+k̸=j
+AikE[εk |ε j] = 0.
+SinceX j =ε j, this givesE[ηi |X j] = 0. It also impliesE[ηiXj] = 0, soE[X iXj] =A ijE[X 2
+j ].
+ThereforeR i|j =X i −A ijXj =η i, andE[R i|j |X j] = 0.□
+The next result shows that, for a fixed pair of variables, residual mean independence is
+equivalent to linearity of the corresponding conditional mean.
+Proposition 3.11.LetXandYbe random variables such thatE[X] =E[Y] = 0and
+E[X 2]&gt;0. Letβ=E[XY]/E[X 2]. Then the following are equivalent:
+(i) the residualR Y|X =Y−βXis mean independent ofX;
+(ii)E[Y|X]is linear inX, namelyE[Y|X] =βX.
+If, in addition, the moment generating function ofXis finite in a neighborhood of the origin,
+then these conditions are also equivalent to
+(iii) for every integerd≥1,
+E[Y X d] =βE[X d+1].
+Proof.SinceE[X] =E[Y] = 0, the statement thatE[Y|X]is linear is equivalent to
+E[Y|X] =βXalmost surely. By definition,
+E[RY|X |X] =E[Y|X]−βX.
+HenceR Y|X is mean independent ofXif and only ifE[Y|X] =βX. This proves the
+equivalence of (i) and (ii).
+IfE[Y|X] =βX, then for every integerd≥1,
+E[Y X d] =E
+
+X dE[Y|X]
+
+=βE[X d+1],
+
+--- PDF PAGE 11 ---
+CAUSAL DISCOVERY UNDER MEAN INDEPENDENCE AND LINEARITY 11
+which gives (iii). Conversely, if (iii) holds andh(X) =E[Y|X]−βX, thenE[h(X)X d] = 0
+for alld≥0. By the same argument as in Proposition 3.1, this impliesh(X) = 0almost
+surely, henceE[Y|X] =βX.□
+A non-source variable can pass the residual criterion only if certain conditional means
+are accidentally linear. We collect the needed non-cancellation condition in the following
+assumption.
+Assumption 3.12(Exogenous-variable detectability).Assume Assumption 3.9. Moreover,
+in every recursively reduced model obtained by successively removing source nodes and
+residualizing the remaining variables, the variablesXj such thatR i|j is mean independent
+ofX j for alli̸=jare exactly the source nodes of the current reduced DAG.
+Remark 3.13.Assumption 3.12 is satisfied for general distributions, in the sense that
+the genericity conditions considered in Lemma 3.5 and Theorem 3.6 are the finite-order
+consequences of Assumption 3.12.
+Theorem 3.14(Generic identification from the distribution).Under Assumption 3.12, the
+coefficient matrixBis identifiable from the joint distribution ofX.
+Proof.The source nodes satisfy the residual mean independence criterion given in
+Lemma 3.10. The converse holds in every recursively reduced model by Assumption 3.12.
+Hence the source nodes are identifiable from the joint distribution. After choosing one source,
+we residualize the remaining variables and apply the same argument inductively. This recov-
+ers a compatible causal order. Once the order is known,Bis recovered by linear regression
+of each variable on its predecessors.□
+Remark 3.15.Gaussian and, more generally, elliptical distributions satisfy the linearity
+condition in Proposition 3.11; see Kelker [1970]. Hence the direct residual criterion may fail
+there even for non-exogenous variables. Non-Gaussian elliptical disturbances are incompati-
+ble with LiNGAM for a different reason: in the elliptical family, mutual independence occurs
+only in the Gaussian case.
+3.5. Non-identifiability under weaker conditions.The previous identification re-
+sults use one-sided source-detection conditions. Once a compatible source-removal order is
+fixed, these conditions imply the triangular just-off-diagonal zero pattern in the disturbance
+moments. We now explain why this triangular pattern cannot be weakened arbitrarily. A
+natural question is whether some of these one-sided zeros can be removed while retaining
+generic identifiability. The next proposition shows that this is impossible in the worst case:
+if one one-sided zero relation is dropped, then the same observed moments may arise from
+two causal orders.
+To formulate this, letSymd(Rp)denote the space ofp× · · · ×psymmetric tensors of order
+d. Define
+Vd =
+
+S ∈Sym d(Rp) :S i,...,i,j = 0for alli &lt; j
+	
+.
+LetLU(p)be the group ofp×plower triangular matrices with ones on the diagonal, acting
+onSym d(Rp)by
+[A• S] i1,...,id :=
+pX
+j1,...,jd=1
+Ai1,j1 · · ·A id,jdSj1,...,jd.
+For a fixed topological order, Assumption 3.2 impliesµd(ε)∈ V d, and the observed moment
+tensor isµ d(X) =A•µ d(ε).
+
+--- PDF PAGE 12 ---
+12 GEERT MESTERS, AL V ARO RIBOT, ANNA SEIGAL, AND PIOTR ZWIERNIK
+Proposition 3.16(Worst-case necessity of the one-sided zero relations).Fixd≥3and a
+total order1&lt;· · ·&lt; p. For a setW⊊{(i, j)∈[p] 2 :i &lt; j}, let
+Vd(W) ={S ∈Sym d(Rp) :S i,...,i,j = 0for all(i, j)∈W}.
+Consider the coupled moment model
+(M,T) = (A•D, A• S), A∈LU(p), D∈ V 2,S ∈ V d(W).
+Then generic identifiability fails.
+Proof.By relabeling, we may assume that the omitted relation is at the pair(1,2). It
+therefore suffices to consider the two-node case. Let
+M=
+
+m11 m12
+m12 m22
+
+∈Sym 2(R2)
+withm 11, m22 ̸= 0, and letT ∈Sym d(R2)be arbitrary. For the orientation1→2, set
+A=
+
+1 0
+a1
+
+, a= m12
+m11
+, D=A −1M(A −1)⊤.
+ThenDis diagonal. The unique constraintS 1,...,1,2 = 0has been removed, so every tensor
+S=A −1 • Tis admissible. Thus(M,T)belongs to the model with order1&lt;2.
+Now reverse the order. Let
+P=
+
+0 1
+1 0
+
+, fM=P M P ⊤, eT=P• T.
+Define
+eA=
+
+1 0
+ea1
+
+,ea=
+fM12
+fM11
+= m12
+m22
+, eD= eA−1fM(eA−1)⊤.
+Again eDis diagonal, and every tensoreS= eA−1 •eTis admissible. Undoing the permutation
+writes(M,T)via the reverse order2&lt;1.□
+The next result shows that a single higher-order moment tensor is not enough to identify
+the causal order, because the following decomposition also exists for any permuted order.
+Theorem 3.17(Higher-order LDL).A genericT ∈Sym d(Rp)has a unique decomposition
+T=L• D,
+whereL∈LU(p)andD ∈Sym d(Rp)hasD i,...,i,j = 0for alli &lt; j.
+The proof is given in Appendix A. Theorem 3.17 explains why one cannot identify the
+causal order fromµ d(X)alone. The coupling withµ 2(X)is what breaks the symmetry,
+becauseµ 2(X)andµ d(X)share the same lower-triangular mixing matrixA.
+4. Causal discovery algorithms under mean independence
+The identification results of Section 3 suggest causal discovery algorithms based on mea-
+suring departure from mean independence. Theorem 3.14 ensures that under LiMIAM the
+source nodes can be identified recursively, and Lemma 3.10 gives a constructive criterion.
+The resulting algorithm mimics DirectLiNGAM [Shimizu et al., 2011]. At each iteration,
+one identifies a variable that appears most nearly exogenous in the current reduced DAG
+by checking whether the residuals of the other variables are mean independent of it, then
+
+--- PDF PAGE 13 ---
+CAUSAL DISCOVERY UNDER MEAN INDEPENDENCE AND LINEARITY 13
+Algorithm 1DirectLiMIAM
+Input:i.i.d. samplesX (1), . . . , X(N) ∈R p,
+Output:compatible causal orderπ 1 &lt;· · ·&lt; π p
+1:I ← {1, . . . , p}
+2:π←()▷start with an empty tuple
+3:whileI ̸=∅do
+4:X i ←standardize(X i) := Xi− \Mean(Xi)√
+dVar(Xi)
+∀i∈ I
+5:j ⋆ ←arg min j∈I
+P
+i∈I\{j} MeanInd(bRi|j, Xj),with bRi|j =X i −
+dCov(Xi,Xj )
+dVar(Xj ) Xj,
+6:X i ←R i|j⋆ ∀i∈ I \ {j ⋆}
+7:π←(π, j ⋆)▷appendj ⋆ to the end ofπ
+8:I ← I \ {j ⋆}
+9:end while
+10:returnπ
+regresses it out and continues on the reduced system. The output is a compatible causal
+order.
+Once we have a compatible causal order via Algorithm 1, the adjacency matrix, and
+hence the DAG, can be estimated by conventional regression methods, such as ordinary
+least squares (OLS) or least absolute shrinkage and selection operator (LASSO), restricted to
+predecessors in the order. We use OLS in Sections 5 and 6; our code available on GitHub also
+contains a LASSO implementation. Determining which variable is next in the order requires
+a statistic that measures departure from mean independence, that is, fromE(Ri|j |X j) = 0,
+which we denote byMeanInd(Ri|j, Xj). Several alternatives can be used.
+Kernel and nonparametric regression.One estimates the conditional mean nonparametri-
+cally using kernel or local polynomial regression and measures the magnitude of the fitted
+conditional mean. For example, ifˆm(x)≈E[Ri|j |X j =x], one may use
+(5)MeanInd( bRi|j, Xj) = 1
+N
+NX
+ν=1
+( ˆm(X(ν)
+j )− ¯Ri|j)2
+as a dependence score; see for example Fan and Li [1996]. Here¯Ri|j denotes the average
+residual, i.e. the constant estimate.
+Series methods.One approximates the conditional mean by a finite-dimensional basis ex-
+pansion,
+bRi|j =a 0 +
+KX
+k=1
+akϕk(Xj) +u i,
+and uses (5) to assess mean independence. Alternatively, one can measure an auxiliaryR2
+or the sum of squared fitted values as a score. These are simple to implement and directly
+target conditional mean predictability; see Chen [2007].
+Moment-based methods.Mean independence implies
+E
+
+Ri|jgk(Xj)
+
+= 0, k= 1, . . . , K,
+
+--- PDF PAGE 14 ---
+14 GEERT MESTERS, AL V ARO RIBOT, ANNA SEIGAL, AND PIOTR ZWIERNIK
+for any family of test functionsgk. One may therefore form a quadratic-form statistic based
+on these empirical moments, in the spirit of the generalized method of moments.
+All of these procedures test the weaker condition of mean independence rather than full
+independence. In contrast to the original DirectLiNGAM dependence measure, which detects
+arbitrary nonlinear dependence, the statistics above focus on whether the conditional mean
+of the residual varies with the candidate regressor.
+Remark 4.1.The moment-based measures connect directly to our identification arguments.
+Using the definition ofRi|j, the moment conditionE[Ri|jg(Xj)] = 0becomes
+E[Xig(Xj)]
+E[Xjg(Xj)] = Cov(Xi, Xj)
+Var(Xj) .
+For monomialsg(x) =x d−1, this is the moment-ratio of Section 3.
+5. Numerical experiments
+We compare the finite-sample performance of DirectLiNGAM Shimizu et al. [2011] and
+various versions of our DirectLiMIAM method: Kernel, Sieves and Moment based. We
+assess the absolute and relative performance of these methods under both independent and
+dependent errors.
+5.1. Simulation design.For each of the 100 Monte Carlo replications, we generate
+a DAG withp∈ {2,3,4,5,6}nodes and sample sizeT= 500. The true causal order is
+1, . . . , p. Observations are simulated from the structural model (2), whereBis strictly lower
+triangular and its nonzero coefficients are drawn independently from a uniform distribution
+on[0.3,0.8].
+The main ingredient of the simulation study is how the disturbancesεi are generated. We
+first sample independent mean-zero auxiliary variablesu1, . . . , up, and then transform them
+according to one of several dependence designs. In the benchmark design, the disturbances
+are simplyε j =u j, so they are mutually independent. In the four nonlinear designs below,
+the disturbances satisfy the order-dependent mean-independence property
+E[εj |ε 1, . . . , εj−1] = 0,
+while generally failing to be mutually independent.
+We consider four distributions for an auxiliary variableu:
+(1) uniform:u∼U[−1,1];
+(2) U-shaped Beta:u= 2V−1, whereV∼Beta(0.5,0.5);
+(3) concentrated Beta:u= 2V−1, whereV∼Beta(2,2);
+(4) Bimodal:u∼ 1
+2 U[−1,−0.3] + 1
+2 U[0.3,1]
+All four are symmetric around zero, but differ in shape. Similarly as in the ICA literature,
+stronger deviations from spherical distributions generally imply that it is easier to detect the
+correct causal order. We combine them with four dependence designs for the disturbances.
+Independent design.This is the benchmark setting. We take
+εj =u j, j= 1, . . . , p,
+so the disturbances are mutually independent.
+
+--- PDF PAGE 15 ---
+CAUSAL DISCOVERY UNDER MEAN INDEPENDENCE AND LINEARITY 15
+Lagged heteroskedasticity design.The scale depends on a signed exponentially weighted
+history of the past. We setε1 =u 1 and forj≥2, define
+Sj−1 =
+j−1X
+ℓ=1
+ρ j−ℓ−1εℓ, ρ∈(0,1),
+so that more recent disturbances receive larger weight. To make the strength comparable
+across dimensions and across auxiliary-variable distributions, we standardize this history:
+eSj−1 =S j−1/sd(S j−1). We then setε j =σ juj,σ j = exp
+
+γ
+2
+eSj−1
+
+, whereγ &gt;0controls
+the strength of the heteroskedasticity. The scale of the disturbance depends on the signed
+magnitude of all previous disturbances.
+Threshold design.The scale changes discontinuously depending on the sign of the average
+past disturbance. We setε1 =u 1, and forj≥2,
+εj =
+(
+uj,¯ε j−1 ≤0,
+2uj,¯ε j−1 &gt;0,
+¯εj−1 = 1
+j−1
+j−1X
+ℓ=1
+εℓ.
+The conditional variance is larger when the average of the previous disturbances is positive.
+Conditional mixture design.The distribution of the current disturbance depends on the
+past through a two-component mixture. Let
+¯εj−1 = 1
+j−1
+j−1X
+ℓ=1
+εℓ, p j−1 = 1
+1 + exp(−2¯εj−1) .
+Forj≥2, define
+εj =
+(
+u(L)
+j ,with probabilityp j−1,
+2.5u (H)
+j ,with probability1−p j−1,
+whereu (L)
+j andu (H)
+j are independent draws from the chosen auxiliary-variable distribution.
+Since both mixture components are centered at zero, the conditional mean remains zero, but
+the conditional distribution and tail behavior vary with the disturbance history.
+Combining the four dependence designs with the four auxiliary-variable distributions
+yields16simulation environments.
+5.2. Implementation details.For DirectLiNGAM Shimizu et al. [2011] we use the
+pairwise likelihood score of Hyvärinen and Smith [2013] to measure departures from in-
+dependence. For the mean independent kernel implementation we rely on a local linear
+regression to compute the regression function where the bandwidth is chosen usingK-fold
+cross-validation withK= 5. Using the kernel estimate we compute (5) as our measure for
+mean independence. For the sieves implementation we use a cubic B-spline basis with equi-
+spaced knots and a number of splines that is selected using5-fold cross-validation. Finally,
+for the moment-based implementation we useg(x) = (x2, x3)′ and measure deviations from
+mean independence from the inner-product of the sample moments.
+We report exact DAG recovery and the structural Hamming distance (SHD) between the
+estimated and true DAGs. The SHD between two DAGsGandeGis the number of directed
+edges present inGbut not eG, plus the number present ineGbut notG.
+
+--- PDF PAGE 16 ---
+16 GEERT MESTERS, AL V ARO RIBOT, ANNA SEIGAL, AND PIOTR ZWIERNIK
+0.0
+0.5
+1.0
+Uniform
+Ordering success
+Independent
+0.0
+0.5
+1.0
+LaggedHeteroskedastic
+0.0
+0.5
+1.0
+ThresholdScale
+0.0
+0.5
+1.0
+ConditionalMixture
+0.0
+0.5
+1.0
+Beta05
+Ordering success 0.0
+0.5
+1.0
+0.0
+0.5
+1.0
+0.0
+0.5
+1.0
+0.0
+0.5
+1.0
+Beta2
+Ordering success 0.0
+0.5
+1.0
+0.0
+0.5
+1.0
+0.0
+0.5
+1.0
+2 3 4 5 6
+Number of variables p
+0.0
+0.5
+1.0
+Bimodal
+Ordering success
+2 3 4 5 6
+Number of variables p
+0.0
+0.5
+1.0
+2 3 4 5 6
+Number of variables p
+0.0
+0.5
+1.0
+2 3 4 5 6
+Number of variables p
+0.0
+0.5
+1.0
+DirectLiNGAM DirectLiMIAM-Moment DirectLiMIAM-Sieve DirectLiMIAM-Kernel
+Figure 3.Exact ordering success rate across causal recovery algorithms.
+5.3. Results.Figures 3-4 document the main results for the causal orderings. The
+order success rate and SHD show qualitatively comparable results. First, for the independent
+design, there are no systematic differences between the independent and mean independent
+algorithms. This is reassuring for the LiMIAM methods, as there do not appear to be large
+losses when the true errors are independent.
+In the other three designs, which violate mutual independence, it is clear that the conven-
+tional DirectLiNGAM procedure performs worse. Most notably, the probability of getting
+the ordering correct drops severely for many designs and the SHD increases. In contrast,
+the DirectLiMIAM algorithm continues to perform adequately. Among the implementations,
+the kernel implementation appears most reliable. It is never the worst and often the best.
+Remark 5.1.We also compared our methods with ICA-LiNGAM Shimizu et al. [2006] and
+NOTEARS Zheng et al. [2018]. Their performance was found to be inferior to that of the
+DirectLiNGAM method and, therefore, omitted from the discussion.
+6. Causal discovery for the oil market
+Since the seminal work of Sims [1980], causal inference in macroeconomics often proceeds
+in two steps. First, an essentially unrestricted vector autoregressive model is used to describe
+the dynamics of a set of macroeconomic or financial variables. Second, contemporaneous
+identificationrestrictionsareimposedtotraceoutthedynamiccausaleffectsoftheexogenous
+inputs. The SVAR model withklags is described by
+Xt =c+ Φ 1Xt−1 +. . .+ Φ kXt−k +Aε t , t= 1, . . . , T ,
+
+--- PDF PAGE 17 ---
+CAUSAL DISCOVERY UNDER MEAN INDEPENDENCE AND LINEARITY 17
+0.0
+2.5
+5.0
+7.5
+Uniform
+Mean SHD
+Independent
+0
+5
+LaggedHeteroskedastic
+0
+5
+10
+ThresholdScale
+0
+5
+10
+ConditionalMixture
+0.0
+2.5
+5.0
+7.5
+Beta05
+Mean SHD
+0.0
+2.5
+5.0
+7.5
+0
+5
+10
+0
+5
+10
+0
+5
+Beta2
+Mean SHD
+0
+5
+10
+0
+5
+10
+15
+0
+5
+10
+2 3 4 5 6
+Number of variables p
+0.0
+2.5
+5.0
+7.5
+Bimodal
+Mean SHD
+2 3 4 5 6
+Number of variables p
+0.0
+2.5
+5.0
+7.5
+2 3 4 5 6
+Number of variables p
+0.0
+2.5
+5.0
+7.5
+2 3 4 5 6
+Number of variables p
+0.0
+2.5
+5.0
+7.5
+DirectLiNGAM DirectLiMIAM-Moment DirectLiMIAM-Sieve DirectLiMIAM-Kernel
+Figure 4.Structural Hamming distance across causal recovery algorithms.
+where the disturbancesε t = (ε 1t, . . . , εpt)′ often have an economic interpretation. This
+model faces a similar identification problem as the static LSEM (3), which can be resolved
+by imposing restrictions onAand on the distribution of the disturbancesεt.
+An early identification approach is based on timing restrictions, which setAto be lower
+triangular according to an order defined a priori by economic theory or institutional knowl-
+edge [Sims, 1980]. More recently, works such as [Lanne and Lütkepohl, 2010, Hyvärinen
+et al., 2010, Lanne et al., 2017, Gouriéroux et al., 2017, Hoesch et al., 2024] have used the
+ICA assumption, that the components of the disturbancesεi are mutually independent, to
+recoverAup to sign and permutation. Additional identifying restrictions are discussed in
+the review by Ramey [2016] and in the textbook of Kilian and Lütkepohl [2017].
+Our framework also imposes thatAis lower triangular, after a permutation, but does not
+require knowledge of the permutation; i.e., of the causal ordering. The only requirement is
+that the disturbances satisfy the order-dependent mean-independence Assumption 3.9. Mean
+independenceallowsforcommonvolatilitychanges, whichareomnipresentinmacroeconomic
+time series.
+In this empirical study we explore our identification results and the DirectLiMIAM al-
+gorithm for a monthly SVAR model of the oil market. Such models have previously been
+studied in Kilian [2009] and Känzig [2021], among many others. We refer to Kilian and Zhou
+[2023] for a recent review of oil market modeling.
+6.1. Data.We consider an SVAR model for five variables: WTI oil price (POIL), world
+oil production (OILPROD), world oil inventories (OILSTOCKS), U.S. industrial production
+(IP), and the U.S. consumer price index (CPI). The data are monthly from January 1975
+
+--- PDF PAGE 18 ---
+18 GEERT MESTERS, AL V ARO RIBOT, ANNA SEIGAL, AND PIOTR ZWIERNIK
+Figure 5.Estimated oil market DAGs for LiNGAM and LiMIAM.
+until June 2025. We includek= 24lags in the SVAR to ensure that all serial correlation is
+captured and that no serial correlation remains in the errors.
+To this baseline oil SVAR we add a sixth variable that measures surprises in Organization
+of the Petroleum Exporting Countries (OPEC) announcements from high-frequency changes
+in oil price futures (SURPRISE). Känzig [2021] argues that these surprises should come first
+in the causal ordering of the SVAR disturbances and presents exercises to verify this claim.
+In our study we use this variable to capture part of the “ground truth” of the causal ordering
+and thus to assess the validity of our methodology.
+6.2. Independence tests.We start by testing whether the disturbance independence
+assumption underlying DirectLiNGAM is reasonable for oil market disturbances. For this,
+we first estimate the coefficientsc,Φ1, . . . ,Φk using least squares, compute the residuals of
+the SVAR, standardize them so that they have unit variance, and apply the DirectLiNGAM
+algorithm. Using the estimatedA= (I−B) −1, we can estimate the disturbances:
+ˆεt = ˆA−1 ˆUt , t= 1, . . . , T
+where the residuals are
+ˆUt = standardize
+
+Xt −ˆc− ˆΦ1Xt−1 −. . .− ˆΦkXt−k
+
+.
+We apply the mutual independence test of Pfister et al. [2018] to{ˆεt}to assess whether the
+independence assumption underlying DirectLiNGAM is plausible.
+Thep-value of the test is 0.024, rejecting the independence assumption. Moreover, the
+causal ordering produced by the DirectLiNGAM algorithm (left panel of Figure 5) does not
+correspond to economic intuition. First, OPEC surprises are not ordered first in the DAG,
+and second, oil production disturbance is last in the ordering, whereas we would expect pro-
+duction to come earlier, since oil production adjusts with delay to economic developments.
+Oil production cannot scale up quickly, making an immediate dependence on economic condi-
+tions and oil prices implausible [Kilian, 2009]. In summary, the conventional DirectLiNGAM
+approach does not give interpretable results when applied to the oil market SVAR.
+
+--- PDF PAGE 19 ---
+CAUSAL DISCOVERY UNDER MEAN INDEPENDENCE AND LINEARITY 19
+6.3. DirectLiMIAM results.Next, we apply our DirectLiMIAM algorithm, using the
+local linear kernel implementation, to the SVAR residuals. The DAG is shown in the right
+panel of Figure 5. The estimated DAG now orders the surprises in the OPEC announcements
+first, consistent with Känzig [2021], who argues that these announcements provide exogenous
+changes in oil supply and should not be a function of other contemporaneous inputs. Further
+corroborating evidence is the positive link from the OPEC surprise to world oil production,
+which subsequently reduces the price of oil and increases the U.S. general price level (CPI).
+Also, the surprise increases the price of oil and reduces inventories.
+The estimatedBmatrix, with bootstrap standard errors in the subscripts, becomes
+SURPRISE OILPROD OILSTOCKS IP POIL
+OILPROD0.033 (0.043) –
+OILSTOCKS−0.028 (0.043) 0.017(0.042) –
+IP−0.043 (0.076) −0.039(0.055) −0.072(0.062) –
+POIL0.209 (0.046) −0.126(0.041) −0.138(0.034) 0.116(0.055) –
+CPI−0.002 (0.038) 0.017(0.029) −0.015(0.032) 0.025(0.052) 0.572(0.047)
+There is substantial uncertainty in the estimated coefficients. Nevertheless, the OPEC sur-
+prises have a significant effect on oil prices, which in turn significantly affect U.S. inflation.
+6.4. Mean independence tests.Next, we assess the validity of the order-dependent
+mean independence assumption. Specifically, we conduct a specification test for
+H0 :E[ε it |ε 1t, . . . , εi−1,t] = 0∀i≥2.
+We build our test statistics using a kernel regression approach. That is, we recover the SVAR
+residuals ˆUt, run the DirectLiMIAM algorithm to getˆA= (I− ˆB)−1 andˆεt = ˆA−1 ˆUt for
+t= 1, . . . , T. We then reorder the disturbances according to the estimated causal ordering.
+Let ˜εi denote theT×1vector of centered realizations ofˆεit, and leteKi−1 denote a centered
+T×TGaussian kernel matrix constructed from(ˆε 1,t, . . . ,ˆεi−1,t). The test statistic is
+ˆT=
+pX
+i=2
+ˆTi,with ˆTi = ˜ε′
+i eKi−1 ˜εi.
+UnderH 0, the conditional mean ofˆεit is zero, so ˆTi should be close to zero. We obtain
+p-values by permutation, randomly permutingˆεit while holding the conditioning variables
+fixed. When applying this test to the oil market residuals, we find ap-value of 0.772, and
+thus do not reject the ordered mean-independence hypothesis.
+7. Conclusion
+We have introduced LiMIAM, a model and algorithm for causal discovery under mean
+independence and linearity. We demonstrated its identifiability and provided a practical
+algorithm, called DirectLiMIAM, that is evaluated both in theory and in synthetic experi-
+ments. We showed that LiMIAM works under any notion of independence at least as strong
+as our order-dependent mean-independence (or its implication for a fixedd-th order moment
+tensor). Ifε i is mean independent ofεj for alli̸=j, then the unrestricted mixing matrix in
+X=Aεis generically identifiable up to signed permutation of its columns by Ribot et al.
+[2025b]. IfA= (I−B) −1, the LiNGAM permutation-and-scaling step identifiesB. The
+present paper goes further by removing the need for full pairwise mean independence, using
+
+--- PDF PAGE 20 ---
+20 GEERT MESTERS, AL V ARO RIBOT, ANNA SEIGAL, AND PIOTR ZWIERNIK
+the ordered structure of the model, and developing a DirectLiNGAM analogue that does
+not rely on ICA. In our experiments, the pairwise mean independent component analysis
+algorithm of Ribot et al. [2025b] was not competitive with DirectLiMIAM, even when full
+pairwise mean independence held.
+We conclude by commenting on a direction for future work regarding the linearity of the
+causal dependencies. Given any two random variablesXandY, we can always write
+X=E[X|Y] +ε
+suchthatεismeanindependentofY. Henceidentifiabilitycannotholdifoneallowsarbitrary
+nonlinear causal dependencies. The distribution-level route in Section 3.4 relies on the fact
+that, for linear regression, mean independence of the residualRY|X is equivalent to linearity
+of the conditional meanE[Y|X]; see Proposition 3.11. One could replace the linear family
+by a richer classFof functions and define the residual using the bestF-approximation ofY
+by a function ofX. An analogue of Proposition 3.11 would characterize when the residual
+is mean independent ofXin terms of whetherE[Y|X]belongs toF.
+This suggests that, if one allows nonlinear structural relations, identifiability can still be
+pursued relative to the chosen function classF. The corresponding genericity assumption
+would exclude observational laws for which a reverse-direction representation also belongs to
+F. The role here of linearity and Assumption 3.12 would be replaced by a nonlinear function
+class with analogous exogenous-variable detectability assumption adapted to that class.
+References
+Amos Arieli, Avital Sterkin, Amiram Grinvald, and Ad Aertsen. Dynamics of ongoing activ-
+ity: Explanation of the large variability in evoked cortical responses.Science, 273(5283):
+1868–1871, 1996.
+Tim Bollerslev. Generalized autoregressive conditional heteroskedasticity.Journal of Econo-
+metrics, 31(3):307–327, 1986.
+Philip Brennecke, Simon Anders, Jong Kyoung Kim, Aleksandra A. Kołodziejczyk, Xiuwei
+Zhang, Valentina Proserpio, Bjoern Baying, Vladimir Benes, Sarah A. Teichmann, John C.
+Marioni, and Marcus G. Heisler. Accounting for technical noise in single-cell RNA-seq
+experiments.Nature Methods, 10(11):1093–1095, 2013.
+Florian Buettner, Kedar N. Natarajan, F. Paolo Casale, Valentina Proserpio, Antonio Scial-
+done, Fabian J. Theis, Sarah A. Teichmann, John C. Marioni, and Oliver Stegle. Com-
+putational analysis of cell-to-cell heterogeneity in single-cell RNA-sequencing data reveals
+hidden subpopulations of cells.Nature Biotechnology, 33(2):155–160, 2015.
+Jean-François Cardoso and Antoine Souloumiac. Jacobi angles for simultaneous diagonal-
+ization.SIAM Journal on Matrix Analysis and Applications, 17(1):161–164, 1996.
+Xiaohong Chen. Chapter 76 large sample sieve estimation of semi-nonparametric models.
+volume 6 ofHandbook of Econometrics, pages 5549–5632. Elsevier, 2007.
+Marlene R. Cohen and Adam Kohn. Measuring and interpreting neuronal correlations.
+Nature Neuroscience, 14(7):811–819, 2011.
+Pierre Comon. Independent component analysis, a new concept?Signal Processing, 36(3):
+287–314, 1994.
+Phoebus J. Dhrymes.Topics in Advanced Econometrics, Volume II Linear and Nonlinear
+Simultaneous Equations. Springer-Verlag New York, 1994.
+
+--- PDF PAGE 21 ---
+REFERENCES 21
+Michael B. Elowitz, Arnold J. Levine, Eric D. Siggia, and Peter S. Swain. Stochastic gene
+expression in a single cell.Science, 297(5584):1183–1186, 2002.
+Robert F. Engle. Autoregressive conditional heteroskedasticity with estimates of the variance
+of UK inflation.Econometrica, 50(4):987–1007, 1982.
+Yanqin Fan and Qi Li. Consistent model specification tests: Omitted variables and semi-
+parametric functional forms.Econometrica, 64(4):865–890, 1996.
+ChristianGouriéroux, AlainMonfort, andJean-PaulRenne. Statisticalinferenceforindepen-
+dentcomponentanalysis: ApplicationtostructuralVARmodels.Journal of Econometrics,
+196(1):111–126, 2017.
+Andrew Harvey, Esther Ruiz, and Neil Shephard. Multivariate stochastic variance models.
+The Review of Economic Studies, 61(2):247–264, 1994.
+Lukas Hoesch, Adam Lee, and Geert Mesters. Locally robust inference for non-gaussian svar
+models.Quantitative Economics, 15(2):523–570, 2024.
+Patrik O. Hoyer, Shohei Shimizu, Antti Kerminen, and Markus Palviainen. Estimation of
+causal effects using linear non-Gaussian causal models with hidden variables. InPro-
+ceedings of the 24th Conference on Uncertainty in Artificial Intelligence, pages 257–264,
+2008.
+AapoHyvärinen. Fastandrobustfixed-pointalgorithmsforindependentcomponentanalysis.
+IEEE Transactions on Neural Networks, 10(3):626–634, 1999.
+Aapo Hyvärinen and Stephen M. Smith. Pairwise likelihood ratios for estimation of non-
+Gaussian structural equation models.Journal of Machine Learning Research, 14:111–152,
+2013.
+Aapo Hyvärinen, Kun Zhang, Shohei Shimizu, and Patrik O. Hoyer. Estimation of a struc-
+tural vector autoregression model using non-Gaussianity.Journal of Machine Learning
+Research, 11(56):1709–1731, 2010.
+Douglas Kelker. Distribution theory of spherical distributions and a location-scale parameter
+generalization.Sankhy¯ a: The Indian Journal of Statistics, Series A, pages 419–430, 1970.
+Lutz Kilian. Not all oil price shocks are alike: Disentangling demand and supply shocks
+in the crude oil market.American Economic Review, 99(3):1053–69, June 2009. doi:
+10.1257/aer.99.3.1053. URLhttps://www.aeaweb.org/articles?id=10.1257/aer.99.
+3.1053.
+Lutz Kilian and Helmut Lütkepohl.Structural Vector Autoregressive Analysis. Cambridge
+University Press, 2017.
+Lutz Kilian and Xiaoqing Zhou. The econometrics of oil market var models, October 2023.
+Diego R. Känzig. The macroeconomic effects of oil supply news: Evidence from opec an-
+nouncements.American Economic Review, 111(4):1092–1125, April 2021. doi: 10.1257/
+aer.20190964. URLhttps://www.aeaweb.org/articles?id=10.1257/aer.20190964.
+Markku Lanne and Helmut Lütkepohl. Structural vector autoregressions with nonnormal
+residuals.Journal of Business &amp; Economic Statistics, 28(1):159–168, 2010.
+Markku Lanne, Mika Meitz, and Pentti Saikkonen. Identification of structural vector autore-
+gressions via non-Gaussianity.Journal of Business &amp; Economic Statistics, 35(3):466–477,
+2017.
+Geert Mesters and Piotr Zwiernik. Non-independent component analysis.The Annals of
+Statistics, 52(6):2506–2528, 2024.
+Judea Pearl.Causality. Cambridge University Press, 2009.
+
+--- PDF PAGE 22 ---
+22 REFERENCES
+Niklas Pfister, Peter Bühlmann, Bernhard Schölkopf, and Jonas Peters. Kernel-based
+tests for joint independence.Journal of the Royal Statistical Society Series B: Statis-
+tical Methodology, 80(1):5–31, 01 2018. ISSN 1369-7412. doi: 10.1111/rssb.12235. URL
+https://doi.org/10.1111/rssb.12235.
+Neil C. Rabinowitz, Robbe L. T. Goris, Marlene R. Cohen, and Eero P. Simoncelli. Attention
+stabilizes the shared gain of V4 populations.Nature, 528(7582):423–427, 2015.
+Valerie A. Ramey. Macroeconomic shocks and their propagation. In John B. Taylor and
+Harald Uhlig, editors,Handbook of Macroeconomics, volume 2, pages 71–162. Elsevier,
+2016. doi: 10.1016/bs.hesmac.2016.03.003.
+Álvaro Ribot, Anna Seigal, and Piotr Zwiernik. Orthogonal eigenvectors and singular vectors
+of tensors. 2025a. URLhttps://arxiv.org/abs/2506.19009.
+Álvaro Ribot, Anna Seigal, and Piotr Zwiernik. Beyond independent component analysis:
+Identifiability and algorithms. 2025b. URLhttps://arxiv.org/abs/2510.07525.
+Christoph Schultheiss, Peter Bühlmann, and Ming Yuan. Higher-order least squares: As-
+sessing partial goodness of fit of linear causal models.Journal of the American Statistical
+Association, 119(546):1019–1031, 2024.
+Shohei Shimizu, Patrik O. Hoyer, Aapo Hyvärinen, and Antti Kerminen. A linear
+non-Gaussian acyclic model for causal discovery.Journal of Machine Learning Re-
+search, 7:2003–2030, 2006. URLhttps://www.jmlr.org/papers/volume7/shimizu06a/
+shimizu06a.pdf.
+Shohei Shimizu, Takanori Inazumi, Yasuhiro Sogawa, Aapo Hyvärinen, Yoshinobu Kawa-
+hara, Takashi Washio, Patrik O. Hoyer, and Kenneth Bollen. DirectLiNGAM: A direct
+method for learning a linear non-Gaussian structural equation model.Journal of Ma-
+chine Learning Research, 12(33):1225–1248, 2011. URLhttps://www.jmlr.org/papers/
+volume12/shimizu11a/shimizu11a.pdf.
+Christopher A. Sims. Macroeconomics and reality.Econometrica, 48(1):1–48, 1980.
+Peter Spirtes, Clark N. Glymour, and Richard Scheines.Causation, Prediction, and Search.
+MIT Press, 2000.
+Oliver Stegle, Sarah A. Teichmann, and John C. Marioni. Computational and analytical
+challenges in single-cell transcriptomics.Nature Reviews Genetics, 16(3):133–145, 2015.
+Y. Samuel Wang and Mathias Drton. High-dimensional causal discovery under non-
+Gaussianity.Biometrika, 107(1):41–59, 2020. doi: 10.1093/biomet/asz049.
+Y. Samuel Wang and Mathias Drton. Causal discovery with unobserved confounding and
+non-Gaussian data.Journal of Machine Learning Research, 24(271):1–61, 2023.
+Xun Zheng, Bryon Aragam, Pradeep K Ravikumar, and Eric P Xing. Dags with no tears:
+Continuous optimization for structure learning.Advances in neural information processing
+systems, 31, 2018.
+Appendix A. Omitted proofs
+Proof of Theorem 2.1.The ICA step in LiNGAM first whitens the data. We in-
+troduce whitening to analyze the behavior of ICA-based LiNGAM contrasts. It is not a
+natural step for our proposed method, because whitening replaces the triangular mixing
+matrixA= (I−B) −1 by an orthogonal factor and therefore discards the lower triangular
+structure induced by the DAG.
+SinceCov(X) =AA ⊤, the whitened vector is
+Y0 = (AA⊤)−1/2X=U 0ε, U 0 := (AA⊤)−1/2A,
+
+--- PDF PAGE 23 ---
+APPENDIX 23
+whereU 0 is orthogonal. ICA then applies another orthogonal matrixQto the whitened
+data, so the recovered components are
+ˆε=QY0 =QU 0ε.
+BecauseQU 0 is orthogonal, and every2×2orthogonal matrix is a rotation or a reflection,
+while reflections are immaterial for the present argument, we may write
+ˆε(θ) =R(θ)ε, R(θ) =
+
+cosθ−sinθ
+sinθcosθ
+
+.
+The valueθ= 0corresponds to the true source coordinates, whileθ=π/4gives
+ˆε(π/4) = 1√
+2
+
+1−1
+1 1
+
+ε.
+In the present two-dimensional setting, the population JADE objective isg(θ) =κ4(ˆε1(θ))2+
+κ4(ˆε2(θ))2. By multilinearity of cumulants and the assumptionsκ4(ε)1112 =κ 4(ε)1222 = 0,
+κ4(ˆε1(θ)) =k 1 cos4 θ+k 2 sin4 θ+ 6ccos 2 θsin 2 θ,
+κ4(ˆε2(θ)) =k 1 sin4 θ+k 2 cos4 θ+ 6ccos 2 θsin 2 θ.
+Using
+sin4 θ+ cos 4 θ= 1−2 sin 2 θcos 2 θ,cos 4 θ−sin 4 θ= cos(2θ),
+and
+sin2 θcos 2 θ= sin2(2θ)
+4 = 1−cos 2(2θ)
+4 ,
+we can rewrite these as
+κ4(ˆε1(θ)) =a+bcos(2θ)−qcos 2(2θ),
+κ4(ˆε2(θ)) =a−bcos(2θ)−qcos 2(2θ),
+where
+a= k1 +k 2 + 6c
+4 , b= k1 −k 2
+2 , q= 6c−(k 1 +k 2)
+4 .
+Settingu= cos 2(2θ)∈[0,1], the linear terms incos(2θ)cancel when the two squares are
+added, and so
+g(θ) = 2(a−qu) 2 + 2b2u.
+Thusgis a quadratic polynomial inuwith nonnegative leading coefficient2q2. Its maximum
+overu∈[0,1]is therefore attained at the boundary pointsu∈ {0,1}, corresponding to
+θ∈ {0, π/4}(modπ/2).
+Atθ= 0, we haveg(0) =k 2
+1 +k 2
+2. Atθ=π/4, both recovered components have fourth
+cumulant(k 1 +k 2 + 6c)/4, sog(π/4) = (k 1 +k 2 + 6c)2/8. Comparing these two values gives
+the stated inequality criterion.
+It remains to compute the recovered mixing matrix in the caseθ=π/4. SinceX=Aε=
+ˆAˆε(π/4), we obtain
+ˆA=A 1√
+2
+
+1 1
+−1 1
+
+= 1√
+2
+
+1 1
+0 2
+
+.
+A direct calculation then gives
+ˆW= ˆA−1 = 1√
+2
+
+2−1
+0 1
+
+.
+
+--- PDF PAGE 24 ---
+24 APPENDIX
+LiNGAM rescales the rows ofˆWto make the diagonal equal to one, yielding
+ˆWscaled =
+
+1−1/2
+0 1
+
+and so ˆB=I− ˆWscaled =
+
+0 1/2
+0 0
+
+.
+This is exactly the structural matrix associated with the reversed causal orderX2 →X 1.□
+Proof of Theorem 3.17.We argue by induction onp. The casep= 1is trivial.
+Assume the statement holds forp−1, and letT ∈Sym d(Rp)be generic. We construct
+M∈LU(p)such that
+[M• T] i,...,i,j = 0for all1≤i &lt; j≤p.
+ThenD=M• TandL=M −1. WriteM=M (2)M (1), where
+M (1) =
+
+
+1 0 0· · ·0
+M (1)
+21 1 0· · ·0
+M (1)
+31 0 1· · ·0
+... ... ... ... ...
+M (1)
+p1 0 0· · ·1
+
+
+andM (2) =
+
+
+1 0· · ·0
+0
+... fM
+0
+
+ ,
+with fM∈LU(p−1). For eachj≥2,
+[M (1) • T] 1,...,1,j =
+jX
+k=1
+M (1)
+jk T1,...,1,k =M (1)
+j1 T1,...,1 +T 1,...,1,j.
+Hence imposing
+[M (1) • T] 1,...,1,j = 0for allj≥2
+uniquely determines
+M (1)
+j1 =− T1,...,1,j
+T1,...,1
+, j= 2, . . . , p,
+providedT 1,...,1 ̸= 0, which holds generically. LeteT=M (1) • T. By construction,
+eT1,...,1,j = 0for allj≥2.
+Now let1&lt; i &lt; j≤p. SinceM (2)
+k1 = 0for allk &gt;1, we obtain
+[M (2) •eT] i,...,i,j =
+iX
+k1=1
+· · ·
+iX
+kd−1=1
+jX
+kd=1
+M (2)
+ik1 · · ·M (2)
+ikd−1M (2)
+jkd
+eTk1,...,kd
+=
+iX
+k1=2
+· · ·
+iX
+kd−1=2
+jX
+kd=2
+M (2)
+ik1 · · ·M (2)
+ikd−1M (2)
+jkd
+eTk1,...,kd.
+Theseequationsinvolveonlythe(p−1)-dimensionalsubtensorof eTindexedby{2, . . . , p}and
+the lower unit triangular blockfM. Since a generic subtensor remains generic, the induction
+hypothesis applies and uniquely determinesfMby imposing
+[M (2) •eT] i,...,i,j = 0for all1&lt; i &lt; j≤p.
+Moreover,
+[M (2) •eT] 1,...,1,j = 0for allj≥2,
+
+--- PDF PAGE 25 ---
+APPENDIX 25
+because eT1,...,1,j = 0andM (2)
+j1 = 0for allj≥2. This proves existence and uniqueness.□
+Appendix B. Genericity conditions in the binary case
+Consider the finite order LiMIAM setup from Assumption 3.2 for the two-variable DAG
+X1 →X 2. That is, we have the LSEM(
+X1 =ε 1
+X2 =B 21X1 +ε 2
+such thatB 21 ̸= 0,E[ε] = 0,E[ε 2
+1],E[ε 2
+2]&gt;0,E[ε 1ε2] = 0,E[∥ε∥ d]&lt;∞, andE[ε d−1
+1 ε2] = 0
+for some integerd≥3. The genericity conditions of Lemma 3.5 are given by
+S(d)
+12 :=E[X 1X d−1
+2 ]E[X 2
+2]−E[X 1X2]E[X d
+2]̸= 0.
+Expanding this expression, we obtain
+S(d)
+12 =E
+
+ε1(B21ε1 +ε 2)d−1
+E
+
+(B21ε1 +ε 2)2
+−E[ε 1(B21ε1 +ε 2)]E
+
+(B21ε1 +ε 2)d
+=−B 21E[ε2
+1]E[εd
+2] +
+dX
+k=1
+k̸=d−1
+d−1
+k−1
+
+Bk−1
+21 E[ε2
+2]−
+d−1
+k
+
+Bk+1
+21 E[ε2
+1]
+
+E[εk
+1ε d−k
+2 ],
+which is not identically zero. Under pairwise mean independence (i.e., if we also assume
+E[ε1 |ε 2] = 0), the termk= 1in the expression above would also vanish, but we would still
+get a nonzero polynomial. Under independence and using cumulants instead of moments,
+all off-diagonal entries vanish, so the genericity condition becomes
+−B21κ2(ε)11κd(ε)2,...,2 +B d−1
+21 κ2(ε)22κd(ε)1,...,1 ̸= 0.
+This explains why LiMIAM subsumes LiNGAM, cf. Figure 1.
+Federal Reser ve Bank of New York
+Email address:geert.mesters@ny.frb.org
+Har v ard University
+Email address:aribotbarrado@g.harvard.edu
+Har v ard University
+Email address:aseigal@seas.harvard.edu
+Universitat Pompeu F abra and Barcelona School of Economics
+Email address:piotr.zwiernik@upf.edu</pre></html>

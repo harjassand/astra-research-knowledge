@@ -1,0 +1,129 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>&quot;&quot;&quot;Independent bounded exact checks of the triangle proof transcription.</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>&quot;&quot;&quot;Independent bounded exact checks of the triangle proof transcription.</h1><p>Source ID d-84f7b0be4c4ca926; literature/sources/charges_design9/cycle13/triangle_independent_check_script_snapshot.py; 2223 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>&quot;&quot;&quot;Independent bounded exact checks of the triangle proof transcription.
+
+Do not import author code. Universal implications are reconstructed in the
+gate note; these symbolic/rational checks do not execute universal acquisition.
+&quot;&quot;&quot;
+from fractions import Fraction as Q
+from itertools import product
+from pathlib import Path
+import hashlib
+import json
+import time
+import sympy as sp
+
+
+def main():
+    started = time.perf_counter()
+    root = Path(__file__).resolve().parents[3]
+    source = root/&quot;notes/charges_design9/cycle13/TRIANGLE_GRID_POLYNOMIAL_WITNESSES.md&quot;
+    checks = {}
+    delta, eps = Q(1, 100), Q(1, 10000)
+    checks[&quot;elimination_lower_above_half&quot;] = Q(1, 3)*(2-6*delta)/(1+2*delta)**2 &gt; Q(1, 2)
+    checks[&quot;elimination_error_below_three&quot;] = 2/(1-2*delta)+2*(delta+2*delta)/(1-2*delta)**2 &lt; 3
+    checks[&quot;balanced_off_diagonal_constant&quot;] = 36/(1-2*delta) &lt; 40
+    checks[&quot;balanced_diagonal_constant&quot;] = 288/(1-2*delta) &lt; 400
+    checks[&quot;balanced_F_Hessian&quot;] = 80*eps+400*eps*eps &lt; Q(1, 32)
+    checks[&quot;balanced_R_Hessian_including_coordinate_term&quot;] = Q(12, 1000)+6*delta/Q(20000) &lt; Q(1, 32)
+    checks[&quot;combined_Hessian_below_one_sixteenth&quot;] = 80*eps+400*eps*eps+Q(12, 1000)+6*delta/Q(20000) &lt; Q(1, 16)
+    checks[&quot;unbalanced_harmonic_no_transfer_m8_budget&quot;] = Q(4, 100)*729/Q(2**20) &lt; Q(1, 20000)
+    checks[&quot;unbalanced_elimination_upper&quot;] = Q(50, 47)*(2+6*delta)/(1-2*delta)**2 &lt; 3
+    # Elementary e&lt;11/4 proof: sum through5 plus the entire6-and-up tail.
+    e_upper = sum((Q(1, sp.factorial(j)) for j in range(6)), Q(0))+Q(7, 4320)
+    checks[&quot;elementary_e_upper&quot;] = e_upper &lt; Q(11, 4)
+    checks[&quot;main_target_integer&quot;] = 11**32 &lt; 2**113
+    checks[&quot;count_target_integer&quot;] = 11**8 &lt; 2**28
+    checks[&quot;main_tail_ratio_integer&quot;] = 2**38*168**64 &lt;= 255**64
+    checks[&quot;count_tail_ratio_integer&quot;] = 2**44*32**32 &lt;= 85**32
+    k = 4
+    checks[&quot;main_tail_induction_base&quot;] = 7864320000*(128*k+1)*(64*k+1)**7 &lt;= k*2**(31*k)
+    checks[&quot;count_tail_induction_base&quot;] = 11796480000*(64*k+1)*(32*k+1)**7 &lt;= k*2**(32*k)
+    checks[&quot;placement_and_padding_base&quot;] = Q(1204, 2**26) &lt;= Q(k, 80000)
+    checks[&quot;old_Taylor_integer_base&quot;] = 3600000 &lt;= 2**60
+    checks[&quot;new_Taylor_integer_base&quot;] = 3600000 &lt;= 3**31
+    # Complete polynomial differentiation with independent formal factor jets.
+    x = sp.symbols(&quot;x0:3&quot;)
+    c = sp.symbols(&quot;c0:3&quot;)
+    a, ap, app = [sp.symbols(prefix+&quot;0:3&quot;) for prefix in (&quot;a&quot;, &quot;ap&quot;, &quot;app&quot;)]
+    factors = [a[i]+ap[i]*(x[i]-c[i])+app[i]*(x[i]-c[i])**2/2 for i in range(3)]
+    F = sum(factors[i]*x[(i+1)%3]*x[(i+2)%3] for i in range(3))
+    substitute = dict(zip(x, c))
+    symbolic_checks = []
+    for i in range(3):
+        j, l = (i+1)%3, (i+2)%3
+        expected = ap[i]*c[j]*c[l]+a[j]*c[l]+a[l]*c[j]
+        symbolic_checks.append(sp.expand(sp.diff(F, x[i]).subs(substitute)-expected) == 0)
+        for j in range(i, 3):
+            if i == j:
+                expected = app[i]*c[(i+1)%3]*c[(i+2)%3]
+            else:
+                l = 3-i-j
+                expected = a[l]+(ap[i]+ap[j])*c[l]
+            symbolic_checks.append(sp.expand(sp.diff(F, x[i], x[j]).subs(substitute)-expected) == 0)
+    checks[&quot;all_symbolic_original_derivatives&quot;] = all(symbolic_checks)
+    # Three severe amplitude scales, with genuine original-gradient checks;
+    # b,z are solved from the other two exact gradient equations.
+    jets = []
+    for n in (1, 10**10, 10**30):
+        A, B, C = Q(n*n), Q(n), Q(n)
+        for signs in product((-1, 0, 1), repeat=3):
+            pA, pB, pC = [2*sign*v for sign, v in zip(signs, (A, B, C))]
+            t, g2, g3 = eps/16, eps/4, -eps/4
+            u, v = 1+pB*t/A, 1+pC*t/A
+            z, b = (g2-C*t)/(A*u), (g3-B*t)/(A*v)
+            gradient = [C*b+B*z+pA*b*z, C*t+(A+pB*t)*z, B*t+(A+pC*t)*b]
+            assert max(map(abs, gradient)) &lt;= eps
+            assert max(map(abs, (t, b, z))) &lt;= 10*eps
+            factors_here = [A, B, C]
+            point = [t, b, z]
+            first = [pA, pB, pC]
+            balanced = []
+            for i in range(3):
+                row = []
+                for j in range(3):
+                    if i == j:
+                        l, h = (i+1)%3, (i+2)%3
+                        value = 4*factors_here[i]**2*point[l]*point[h]/(factors_here[l]*factors_here[h])
+                    else:
+                        l = 3-i-j
+                        value = 1+(first[i]+first[j])*point[l]/factors_here[l]
+                    row.append(value)
+                balanced.append(row)
+            row_bound = max(sum(abs(balanced[i][j]-(0 if i == j else 1)) for j in range(3)) for i in range(3))
+            assert row_bound &lt;= 80*eps+400*eps*eps
+            jets.append({&quot;largest_amplitude&quot;: str(A), &quot;ratio_largest_to_next&quot;: str(A/B), &quot;relative_derivative_signs&quot;: list(signs),
+                         &quot;original_gradient&quot;: list(map(str, gradient)), &quot;coordinates&quot;: list(map(str, point)),
+                         &quot;balanced_Hessian_row_bound&quot;: str(row_bound)})
+    # A retained abstract-factor counterexample demonstrates exactly why the
+    # balanced estimate cannot be applied to every point of a chart.
+    A, B, C = Q(10**12), Q(10**6), Q(10**6)
+    off_gradient_diagonal = 4*A*A*Q(1, 200)**2/(B*C)
+    checks[&quot;whole_chart_Hessian_counterexample_retained&quot;] = off_gradient_diagonal == 10**8
+    # Without the triangle ratio, even small original gradients do not localize
+    # an abstract admissible constant-factor chart. This is not a U_k counterexample;
+    # the note separately proves the actual harmonic linear no-transfer.
+    A, B, C, t = Q(10**8), Q(2), Q(2), Q(1, 200)
+    no_triangle_g1 = -2*B*C*t/A
+    checks[&quot;missing_triangle_localization_counterexample&quot;] = abs(no_triangle_g1) &lt;= Q(1, 10**9) and t &gt; 10*Q(1, 10**9)
+    counts = []
+    for m in (1, 2, 8):
+        count = 8*sum(1 for a, b, c in product(range(m), repeat=3) if max(a, b, c) &lt;= a+b+c-max(a, b, c))
+        assert count == 4*m**3+4*m
+        counts.append({&quot;m&quot;: m, &quot;exact_count&quot;: count})
+    assert all(checks.values())
+    result = {&quot;passed&quot;: True, &quot;author_source_sha256&quot;: hashlib.sha256(source.read_bytes()).hexdigest(),
+              &quot;checks&quot;: checks, &quot;symbolic_derivative_identities&quot;: len(symbolic_checks), &quot;rational_original_gradient_jets&quot;: jets,
+              &quot;exact_counts&quot;: counts, &quot;retained_boundaries&quot;: {&quot;whole_chart_balanced_diagonal&quot;: str(off_gradient_diagonal),
+                    &quot;missing_triangle_gradient&quot;: str(no_triangle_g1), &quot;missing_triangle_coordinate&quot;: str(t)},
+              &quot;first_counts&quot;: {&quot;D64k_mode&quot;: 720000*257**2, &quot;D32k_mode&quot;: 720000*129**2},
+              &quot;explicit_count_coefficient_ratio_to_cycle12&quot;: str(Q(513**3, 2*257**3)),
+              &quot;total_seconds&quot;: time.perf_counter()-started,
+              &quot;scope&quot;: &quot;independent bounded transcription checks; the universal reconstruction is in TRIANGLE_WITNESS_AND_COMPILER_GATE.md; no source acquisition/radial execution&quot;}
+    target = root/&quot;results/handoff_sol_max_check/cycle13/TRIANGLE_CONSTANT_CHECKS.json&quot;
+    target.write_text(json.dumps(result, indent=2)+&quot;\n&quot;)
+    print(json.dumps({&quot;passed&quot;: True, &quot;checks&quot;: len(checks), &quot;jets&quot;: len(jets), &quot;seconds&quot;: result[&quot;total_seconds&quot;],
+                      &quot;source_sha256&quot;: result[&quot;author_source_sha256&quot;]}, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre></html>

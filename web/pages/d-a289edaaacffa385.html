@@ -1,0 +1,228 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>&quot;&quot;&quot;Certified modular-chart lifting, with an explicitly SUPPLIED support oracle.</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>&quot;&quot;&quot;Certified modular-chart lifting, with an explicitly SUPPLIED support oracle.</h1><p>Source ID d-a289edaaacffa385; literature/sources/stat_exec15/cycle17/AUDITED_INPUTS/hessian_code/quiver_canonical_lift.py; 3010 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>&quot;&quot;&quot;Certified modular-chart lifting, with an explicitly SUPPLIED support oracle.
+
+No optimizer or prime sampler is hidden here. Input supplies integer arrows,
+a caller-certified prime and modular subspaces, rational weight, and a valid
+Fp support upper value for that weight. Acceptance verifies every original
+Q arrow and matching score; without upstream validity it is only conditional.
+All overdetermined equations are checked at every lifted precision.
+&quot;&quot;&quot;
+from collections import Counter
+from fractions import Fraction as Q
+from math import gcd, isqrt
+import argparse, json, sys, time
+from partial_flag_oracle import Field, rref
+
+
+class Poly:
+    def __init__(self,n,terms=None):
+        self.n=n; self.terms={m:int(c) for m,c in (terms or {}).items() if c}
+    @classmethod
+    def const(cls,n,c): return cls(n,{(0,)*n:int(c)})
+    @classmethod
+    def var(cls,n,i):
+        m=[0]*n; m[i]=1; return cls(n,{tuple(m):1})
+    def __add__(self,other):
+        if not isinstance(other,Poly): other=Poly.const(self.n,other)
+        d=self.terms.copy()
+        for m,c in other.terms.items(): d[m]=d.get(m,0)+c
+        return Poly(self.n,d)
+    __radd__=__add__
+    def __neg__(self): return Poly(self.n,{m:-c for m,c in self.terms.items()})
+    def __sub__(self,other): return self+(-other)
+    def __mul__(self,other):
+        if not isinstance(other,Poly): other=Poly.const(self.n,other)
+        d={}
+        for a,c in self.terms.items():
+            for b,e in other.terms.items():
+                m=tuple(x+y for x,y in zip(a,b)); d[m]=d.get(m,0)+c*e
+        return Poly(self.n,d)
+    __rmul__=__mul__
+    def derivative(self,i):
+        d={}
+        for m,c in self.terms.items():
+            if m[i]:
+                t=list(m); t[i]-=1; d[tuple(t)]=c*m[i]
+        return Poly(self.n,d)
+    def evaluate(self,x,ring=None):
+        if ring is None:
+            return sum((Q(c)*product(Q(t)**e for t,e in zip(x,m))
+                        for m,c in self.terms.items()),Q(0))
+        answer=ring.elt(0)
+        for m,c in self.terms.items():
+            term=ring.elt(c)
+            for t,e in zip(x,m):
+                for _ in range(e): term=ring.mul(term,ring.elt(t))
+            answer=ring.add(answer,term)
+        return answer
+    def dump(self): return [{&#x27;monomial&#x27;:list(m),&#x27;coefficient&#x27;:c} for m,c in sorted(self.terms.items())]
+
+
+def product(xs):
+    z=1
+    for x in xs:z*=x
+    return z
+
+
+class UnitRing:
+    &quot;&quot;&quot;Z/modulus with unit-only division; modulus is a power of supplied p.&quot;&quot;&quot;
+    def __init__(self,modulus,p,cost): self.modulus=modulus; self.p=p; self.cost=cost
+    def elt(self,x): self.cost[&#x27;convert&#x27;]+=1; return int(x)%self.modulus
+    def add(self,a,b):self.cost[&#x27;add&#x27;]+=1; return (a+b)%self.modulus
+    def sub(self,a,b):self.cost[&#x27;sub&#x27;]+=1; return (a-b)%self.modulus
+    def mul(self,a,b):self.cost[&#x27;mul&#x27;]+=1; return a*b%self.modulus
+    def div(self,a,b):
+        if b%self.p==0:raise ZeroDivisionError(&#x27;nonunit modular pivot&#x27;)
+        self.cost[&#x27;unit_div&#x27;]+=1;return a*pow(b,-1,self.modulus)%self.modulus
+
+
+def solve_square(matrix,rhs,ring):
+    n=len(matrix)
+    if any(len(row)!=n for row in matrix) or len(rhs)!=n:raise ValueError(&#x27;square dimensions&#x27;)
+    a=[[ring.elt(x) for x in row]+[ring.elt(y)] for row,y in zip(matrix,rhs)]
+    for j in range(n):
+        k=next((i for i in range(j,n) if a[i][j]%ring.p),None)
+        if k is None:raise ValueError(&#x27;selected Jacobian not invertible modulo p&#x27;)
+        a[j],a[k]=a[k],a[j];pivot=a[j][j]
+        a[j]=[ring.div(x,pivot) for x in a[j]]
+        for i in range(n):
+            if i!=j and a[i][j]:
+                c=a[i][j];a[i]=[ring.sub(x,ring.mul(c,y)) for x,y in zip(a[i],a[j])]
+    return [row[-1] for row in a]
+
+
+def chart(data):
+    dims=data[&#x27;dimensions&#x27;]; p=data[&#x27;p&#x27;]; bases=data[&#x27;modular_bases&#x27;]; f=Field(p)
+    if len(dims)!=len(bases):raise ValueError(&#x27;one basis per vertex required&#x27;)
+    rows=[]; pivots=[]; coords=[]; variables=[]
+    for v,(dim,basis) in enumerate(zip(dims,bases)):
+        rr,pp=rref(basis,dim,f);rows.append(rr);pivots.append(pp)
+        for r in range(dim):
+            if r not in pp:
+                for j in range(len(rr)):
+                    variables.append((v,r,j));coords.append(rr[j][r])
+    n=len(coords); lookup={triple:i for i,triple in enumerate(variables)}; y=[]
+    for v,dim in enumerate(dims):
+        pp=pivots[v]; k=len(pp); block=[]
+        for r in range(dim):
+            block.append([Poly.const(n,int(r==pp[j])) if r in pp
+                          else Poly.var(n,lookup[(v,r,j)]) for j in range(k)])
+        y.append(block)
+    equations=[]; locations=[]
+    for a,arrow in enumerate(data[&#x27;arrows&#x27;]):
+        t,h=arrow[&#x27;tail&#x27;],arrow[&#x27;head&#x27;]; m=arrow[&#x27;matrix&#x27;]
+        if len(m)!=dims[h] or any(len(row)!=dims[t] for row in m):raise ValueError(&#x27;arrow shape&#x27;)
+        if any(type(z) is not int for row in m for z in row):raise ValueError(&#x27;integer arrows required&#x27;)
+        kt=len(pivots[t]);kh=len(pivots[h])
+        image=[[sum((m[r][l]*y[t][l][j] for l in range(dims[t])),Poly.const(n,0))
+                for j in range(kt)] for r in range(dims[h])]
+        for r in range(dims[h]):
+            if r not in pivots[h]:
+                for j in range(kt):
+                    eq=image[r][j]-sum((y[h][r][l]*image[pivots[h][l]][j]
+                                        for l in range(kh)),Poly.const(n,0))
+                    if eq.terms:
+                        equations.append(eq);locations.append({&#x27;arrow&#x27;:a,&#x27;row&#x27;:r,&#x27;column&#x27;:j})
+    return {&#x27;equations&#x27;:equations,&#x27;jacobian&#x27;:[[eq.derivative(i) for i in range(n)] for eq in equations],
+            &#x27;initial&#x27;:list(coords),&#x27;pivots&#x27;:pivots,&#x27;variables&#x27;:variables,&#x27;dimensions&#x27;:[len(pp) for pp in pivots],
+            &#x27;locations&#x27;:locations,&#x27;basis_conversion_cost&#x27;:f.report()}
+
+
+def independent_rows(matrix,p,n):
+    f=Field(p);selected=[];rank=0
+    for i,row in enumerate(matrix):
+        rr,_=rref([matrix[j] for j in selected]+[row],n,f)
+        if len(rr)&gt;rank:selected.append(i);rank=len(rr)
+        if rank==n:break
+    return selected,f.report()
+
+
+def reconstruct(a,modulus,bound):
+    a%=modulus
+    if modulus&lt;=2*bound*bound: return None
+    r0,r1=modulus,a;t0,t1=0,1
+    while abs(r1)&gt;bound:
+        q=r0//r1;r0,r1=r1,r0-q*r1;t0,t1=t1,t0-q*t1
+    if t1==0 or abs(t1)&gt;bound or gcd(r1,t1)!=1:return None
+    if t1&lt;0:r1,t1=-r1,-t1
+    if gcd(t1,modulus)!=1 or (r1-a*t1)%modulus:return None
+    return Q(r1,t1)
+
+
+def rational_bases(c,x,dims):
+    values=dict(zip(c[&#x27;variables&#x27;],x));out=[]
+    for v,dim in enumerate(dims):
+        pp=c[&#x27;pivots&#x27;][v]
+        out.append([[Q(int(r==pp[j])) if r in pp else values[(v,r,j)] for r in range(dim)]
+                    for j in range(len(pp))])
+    return out
+
+
+def original_closure(data,bases):
+    f=Field()
+    for arrow in data[&#x27;arrows&#x27;]:
+        t,h=arrow[&#x27;tail&#x27;],arrow[&#x27;head&#x27;];m=arrow[&#x27;matrix&#x27;];dim=data[&#x27;dimensions&#x27;][h]
+        image=[[sum((Q(m[r][l])*col[l] for l in range(len(col))),Q(0)) for r in range(dim)]
+               for col in bases[t]]
+        if len(rref(bases[h]+image,dim,f)[0])!=len(bases[h]):return False
+    return True
+
+
+def lift(data):
+    start=time.perf_counter();p=data[&#x27;p&#x27;]
+    if len(data[&#x27;weight&#x27;])!=len(data[&#x27;dimensions&#x27;]):raise ValueError(&#x27;one signed weight per vertex required&#x27;)
+    if any(type(a) is not int or a&lt;0 for a in data[&#x27;dimensions&#x27;]):raise ValueError(&#x27;nonnegative integer dimensions required&#x27;)
+    if data.get(&#x27;height_bound&#x27;,1)&lt;1 or data.get(&#x27;max_precision_exponent&#x27;,64)&lt;1:raise ValueError(&#x27;positive height and precision budgets required&#x27;)
+    cost=Counter();c=chart(data);n=len(c[&#x27;initial&#x27;])
+    precision=1;modulus=p;x=c[&#x27;initial&#x27;];eqs=c[&#x27;equations&#x27;];jac=c[&#x27;jacobian&#x27;];trace=[]
+    initial_ring=UnitRing(p,p,cost);res=[eq.evaluate(x,initial_ring) for eq in eqs]
+    report={&#x27;status&#x27;:&#x27;UNKNOWN&#x27;,&#x27;p&#x27;:p,&#x27;prime_obligation&#x27;:&#x27;caller-certified prime; not sampled/certified here&#x27;,
+            &#x27;support_obligation&#x27;:&#x27;supplied support_upper must be a justified Fp support upper bound for supplied weight&#x27;,
+            &#x27;number_variables&#x27;:n,&#x27;number_equations&#x27;:len(eqs),&#x27;chart_pivots&#x27;:c[&#x27;pivots&#x27;],
+            &#x27;dimensions&#x27;:c[&#x27;dimensions&#x27;],&#x27;equation_locations&#x27;:c[&#x27;locations&#x27;],
+            &#x27;basis_conversion_cost&#x27;:c[&#x27;basis_conversion_cost&#x27;],&#x27;precision_trace&#x27;:trace,
+            &#x27;construction_seconds&#x27;:time.perf_counter()-start}
+    def finish(status,reason):
+        report.update(status=status,reason=reason,total_seconds=time.perf_counter()-start,
+                      declared_modular_calls=dict(cost),max_modulus_bits=modulus.bit_length(),
+                      cost_scope=&#x27;declared modular primitives; excludes Q/Fraction internals, polynomial construction and I/O&#x27;)
+        return report
+    if any(res):return finish(&#x27;REJECTED&#x27;,&#x27;supplied modular bases violate full arrow closure&#x27;)
+    j0=[[v.evaluate(x,initial_ring) for v in row] for row in jac]
+    selected,row_cost=independent_rows(j0,p,n) if n else ([],Field(p).report())
+    report.update(selected_equation_rows=selected,row_selection_cost=row_cost)
+    if len(selected)!=n:return finish(&#x27;UNKNOWN&#x27;,&#x27;modular chart lacks full-column Jacobian rank&#x27;)
+    budget=data.get(&#x27;max_precision_exponent&#x27;,64)
+    while True:
+        allres=[eq.evaluate(x,UnitRing(modulus,p,cost)) for eq in eqs]
+        trace.append({&#x27;precision_exponent&#x27;:precision,&#x27;modulus_bits&#x27;:modulus.bit_length(),
+                      &#x27;all_residuals_zero&#x27;:not any(allres),&#x27;coordinates&#x27;:list(x)})
+        if any(allres):return finish(&#x27;REJECTED&#x27;,&#x27;omitted/full arrow equations fail after selected-row Newton step&#x27;)
+        bound=data.get(&#x27;height_bound&#x27;,isqrt((modulus-1)//2))
+        reconstructed=[reconstruct(a,modulus,bound) for a in x]
+        if all(q is not None for q in reconstructed):
+            bases=rational_bases(c,reconstructed,data[&#x27;dimensions&#x27;])
+            exact_chart=all(eq.evaluate(reconstructed)==0 for eq in eqs)
+            exact_original=original_closure(data,bases)
+            score=sum((Q(w)*k for w,k in zip(data[&#x27;weight&#x27;],c[&#x27;dimensions&#x27;])),Q(0))
+            if exact_chart and exact_original and score==Q(data[&#x27;support_upper&#x27;]):
+                report.update(rational_coordinates=[str(q) for q in reconstructed],
+                              rational_bases=[[[str(q) for q in row] for row in b] for b in bases],
+                              exact_original_closure=True,score=str(score),
+                              acceptance_scope=&#x27;deterministic Q optimum conditional only on supplied Fp support upper bound validity&#x27;)
+                return finish(&#x27;CERTIFIED_CONDITIONAL&#x27;,&#x27;all Q arrow equations and supplied support equality verified&#x27;)
+        if precision*2&gt;budget:return finish(&#x27;UNKNOWN&#x27;,&#x27;precision budget exhausted without exact Q certificate&#x27;)
+        newmod=modulus*modulus;ring=UnitRing(newmod,p,cost)
+        selected_jac=[[v.evaluate(x,ring) for v in jac[i]] for i in selected]
+        selected_res=[eqs[i].evaluate(x,ring) for i in selected]
+        delta=solve_square(selected_jac,selected_res,ring) if n else []
+        x=[ring.sub(a,b) for a,b in zip(x,delta)];modulus=newmod;precision*=2
+
+
+def main():
+    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument(&#x27;input&#x27;,nargs=&#x27;?&#x27;,default=&#x27;-&#x27;)
+    args=parser.parse_args();data=json.load(sys.stdin if args.input==&#x27;-&#x27; else open(args.input))
+    print(json.dumps(lift(data),indent=2))
+
+
+if __name__==&#x27;__main__&#x27;:main()
+</pre></html>

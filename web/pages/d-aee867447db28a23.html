@@ -1,0 +1,637 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>!/usr/bin/env python3</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>!/usr/bin/env python3</h1><p>Source ID d-aee867447db28a23; literature/sources/stat_exec15/cycle15/input_snapshots/work_actual_row_operator.py; 7853 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;One preregistered actual-row operator experiment; no fixture/sample search.
+
+Floating linear algebra only proposes. Every accepting inequality below uses
+rationals, outward scalar bounds, and exact positive-definite LDL tests.
+The shared certificate is an established-method posterior, not a new ICA solver.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import hashlib
+import itertools
+import json
+import math
+import os
+from pathlib import Path
+import platform
+import resource
+import secrets
+import signal
+import sys
+import time
+from fractions import Fraction as F
+
+import flint
+from flint import fmpq, fmpq_mat, fmpz_mat
+import numpy as np
+import scipy
+from scipy.spatial.transform import Rotation
+
+BASE = Path(__file__).resolve().parents[3]
+OUT = BASE / &#x27;results/pde_gate9/cycle15&#x27;
+OUT.mkdir(parents=True, exist_ok=True)
+M = N = 1 &lt;&lt; 23
+U = F(1323, 8)  # D^2/2, true population envelope, not observed diameter.
+ALPHA2 = ALPHA4 = F(1, 40)
+NU = [F(2), F(6), F(2), F(2), F(2)]
+NU3 = [F(1)] * 3
+BASIS = [
+    [[1, 0, 0], [0, -1, 0], [0, 0, 0]],
+    [[1, 0, 0], [0, 1, 0], [0, 0, -2]],
+    [[0, 1, 0], [1, 0, 0], [0, 0, 0]],
+    [[0, 0, 1], [0, 0, 0], [1, 0, 0]],
+    [[0, 0, 0], [0, 0, 1], [0, 1, 0]],
+]
+TIMINGS = {}
+LOG = []
+START = time.monotonic()
+
+
+class BudgetStop(Exception):
+    pass
+
+
+def enc(x):
+    if isinstance(x, F):
+        return str(x)
+    if isinstance(x, (fmpq,)):
+        return str(x)
+    if isinstance(x, np.generic):
+        return x.item()
+    if isinstance(x, np.ndarray):
+        return enc(x.tolist())
+    if isinstance(x, Path):
+        return str(x.relative_to(BASE))
+    if isinstance(x, dict):
+        return {str(k): enc(v) for k, v in x.items()}
+    if isinstance(x, (list, tuple)):
+        return [enc(v) for v in x]
+    return x
+
+
+def save(name, value):
+    p = OUT / name
+    p.write_text(json.dumps(enc(value), indent=2) + &#x27;\n&#x27;)
+    return p
+
+
+def filehash(p):
+    h = hashlib.sha256()
+    with open(p, &#x27;rb&#x27;) as f:
+        while block := f.read(1 &lt;&lt; 22):
+            h.update(block)
+    return h.hexdigest()
+
+
+def memory_bytes():
+    r = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    return int(r if platform.system() == &#x27;Darwin&#x27; else 1024 * r)
+
+
+def mark(name, t):
+    TIMINGS[name] = time.monotonic() - t
+    row = dict(stage=name, seconds=TIMINGS[name], peak_memory_bytes=memory_bytes(),
+               elapsed_seconds=time.monotonic() - START)
+    LOG.append(row)
+    save(&#x27;PROGRESS.json&#x27;, dict(log=LOG, timings=TIMINGS))
+    print(json.dumps(row), flush=True)
+    if memory_bytes() &gt; 8 * (1 &lt;&lt; 30):
+        raise BudgetStop(&#x27;8GiB memory ceiling&#x27;)
+
+
+def alarm_handler(*_):
+    raise BudgetStop(&#x27;fixed execution guard reached&#x27;)
+
+
+def fm(a):
+    return [[F(x) for x in row] for row in a]
+
+
+def tr(a):
+    return [list(row) for row in zip(*a)]
+
+
+def mm(a, b):
+    return [[sum((a[i][k] * b[k][j] for k in range(len(b))), F(0))
+             for j in range(len(b[0]))] for i in range(len(a))]
+
+
+def add(a, b, sign=1):
+    return [[x + sign * y for x, y in zip(ar, br)] for ar, br in zip(a, b)]
+
+
+def scale(a, c):
+    return [[F(c) * x for x in row] for row in a]
+
+
+def eye(n):
+    return [[F(i == j) for j in range(n)] for i in range(n)]
+
+
+def dotmat(a, b):
+    return sum((x * y for ar, br in zip(a, b) for x, y in zip(ar, br)), F(0))
+
+
+def inv(a):
+    z = fmpq_mat([[fmpq(x.numerator, x.denominator) for x in row] for row in a]).inv()
+    return [[F(str(z[i, j])) for j in range(z.ncols())] for i in range(z.nrows())]
+
+
+def posdef(a):
+    &quot;&quot;&quot;Exact Sylvester/LDL certificate; no numerical tolerance.&quot;&quot;&quot;
+    a = [row[:] for row in a]
+    pivots = []
+    for k in range(len(a)):
+        p = a[k][k]
+        pivots.append(p)
+        if p &lt;= 0:
+            return False, pivots
+        for i in range(k + 1, len(a)):
+            for j in range(i, len(a)):
+                a[j][i] = a[i][j] = a[i][j] - a[i][k] * a[k][j] / p
+    return True, pivots
+
+
+def metric_shift(a, nu, lam, sign=1):
+    return [[sign * a[i][j] + (lam * nu[i] if i == j else F(0))
+             for j in range(len(nu))] for i in range(len(nu))]
+
+
+def eigen_bound(a, nu, kind=&#x27;upper&#x27;):
+    &quot;&quot;&quot;Numeric proposal + exact weighted LDL; at most 8 deterministic margins.&quot;&quot;&quot;
+    v = np.array([[float(x) for x in row] for row in a])
+    weights = np.sqrt(np.array([float(x) for x in nu]))
+    v = v / weights[:, None] / weights[None, :]
+    eig = np.linalg.eigvalsh(v)
+    guess = float(eig[-1] if kind == &#x27;upper&#x27; else eig[0])
+    den = 1 &lt;&lt; 40
+    for j in range(8):
+        margin = max(1., abs(guess)) * 2. ** (-34 + 3 * j)
+        if kind == &#x27;upper&#x27;:
+            lam = F(math.ceil((guess + margin) * den), den)
+            ok, piv = posdef(metric_shift(a, nu, lam, -1))
+        else:
+            lam = F(math.floor((guess - margin) * den), den)
+            ok, piv = posdef(metric_shift(a, nu, -lam, +1))
+        if ok:
+            return lam, dict(kind=kind, proposed_spectrum=eig.tolist(), value=lam,
+                             exact_LDL_pivots=piv, margin_index=j)
+    raise ArithmeticError(&#x27;failed exact spectral proposal verification&#x27;)
+
+
+def opnorm(a, nu):
+    lp, cp = eigen_bound(a, nu)
+    lm, cm = eigen_bound(scale(a, -1), nu)
+    return max(lp, lm, F(0)), dict(positive=cp, negative=cm)
+
+
+def sqrtup(x, bits=88):
+    if x &lt; 0:
+        raise ArithmeticError(&#x27;negative square root&#x27;)
+    den = 1 &lt;&lt; bits
+    k = math.isqrt(x.numerator * den * den // x.denominator)
+    if k * k * x.denominator &lt; x.numerator * den * den:
+        k += 1
+    return F(k, den)
+
+
+def logup(x, terms=84):
+    &quot;&quot;&quot;atanh series, range reduction to [1,2), positive exact tail.&quot;&quot;&quot;
+    if x &lt; 1:
+        raise ArithmeticError(&#x27;log interface requires x&gt;=1&#x27;)
+    s = 0
+    while x &gt;= 2:
+        x /= 2
+        s += 1
+
+    def partial(y):
+        t = (y - 1) / (y + 1)
+        p = t
+        val = F(0)
+        for k in range(terms):
+            val += 2 * p / (2 * k + 1)
+            p *= t * t
+        tail = 2 * p / ((2 * terms + 1) * (1 - t * t))
+        return val + tail
+
+    upper = s * partial(F(2)) + partial(x)
+    grid = 1 &lt;&lt; 100
+    # Outward compression avoids carrying the series&#x27; enormous denominators
+    # into every downstream certificate; the exact tail proof is unchanged.
+    return F((upper.numerator * grid + upper.denominator - 1)//upper.denominator, grid)
+
+
+def empirical_bernstein(count, dim, v, alpha):
+    # Two-sided at failure alpha; one-sided theorem invoked at alpha/2.
+    L = logup(F(count * dim, count - 1) / (alpha / 2))
+    J = logup(F(2 * count * dim) / (alpha / 2))
+    terms = [L / (3 * count), sqrtup(2 * v * L / count),
+             (sqrtup(F(5, 3)) + 1) * sqrtup(L * J) / count]
+    return sum(terms), dict(count=count, dimension=dim, two_sided_failure=alpha,
+                            variance_upper=v, log_L_upper=L, log_J_upper=J,
+                            radius_terms=terms, series_terms=84, log_outward_bits=100,
+                            sqrt_bits=88)
+
+
+def quaternion_rotation(q):
+    &quot;&quot;&quot;Homogeneous rational quaternion; q order scalar,x,y,z.&quot;&quot;&quot;
+    w, x, y, z = map(F, q)
+    norm = w*w + x*x + y*y + z*z
+    if norm == 0:
+        raise ArithmeticError(&#x27;zero quaternion&#x27;)
+    return scale([[w*w+x*x-y*y-z*z, 2*(x*y-w*z), 2*(x*z+w*y)],
+                  [2*(x*y+w*z), w*w-x*x+y*y-z*z, 2*(y*z-w*x)],
+                  [2*(x*z-w*y), 2*(y*z+w*x), w*w-x*x-y*y+z*z]], 1/norm)
+
+
+def rational_frame(v):
+    v = v.copy()
+    if np.linalg.det(v) &lt; 0:
+        v[:, 0] *= -1
+    xyzw = Rotation.from_matrix(v).as_quat()
+    nums = [round(float(x) * (1 &lt;&lt; 30)) for x in [xyzw[3], *xyzw[:3]]]
+    R = quaternion_rotation(nums)
+    assert mm(tr(R), R) == eye(3)
+    return R, nums
+
+
+def generate_fixture():
+    &quot;&quot;&quot;Private generator; only raw path/den/D are passed into learner.&quot;&quot;&quot;
+    t = time.monotonic()
+    seed = secrets.randbits(128)
+    rng = np.random.default_rng(seed)
+    r = rng.integers(-16, 17, size=3).tolist()
+    Q = quaternion_rotation([32, *r])
+    norm = 32**2 + sum(x*x for x in r)
+    P = fm([[0, 0, 1], [1, 0, 0], [0, 1, 0]])
+    A = mm(add(eye(3), scale(P, F(1, 4))), Q)
+    den = 20 * norm
+    anum = [[int(x * (4 * norm)) for x in row] for row in A]
+    munum = rng.integers(-den//2, den//2 + 1, size=3).tolist()
+    private = dict(seed=seed, hidden_Cayley_parameters=r, hidden_quaternion=[32, *r],
+                   A=A, Q=Q, mu=[F(x, den) for x in munum], covariance=mm(A, tr(A)),
+                   difference_cd=F(817, 625), difference_beta=[F(3027, 625)]*3,
+                   lattice_denominator=den, verified_population_D_squared=F(1323, 4))
+    save(&#x27;PRIVATE_FIXTURE.json&#x27;, private)
+    path = OUT / &#x27;ordered_raw_rows.npy&#x27;
+    raw = np.lib.format.open_memmap(path, mode=&#x27;w+&#x27;, dtype=np.int32,
+                                    shape=(2*(M+N), 3))
+    anum = np.array(anum, dtype=np.int64)
+    munum = np.array(munum, dtype=np.int64)
+    block = 1 &lt;&lt; 18
+    for start in range(0, len(raw), block):
+        end = min(len(raw), start + block)
+        draws = rng.integers(0, 18, size=(end-start, 3), dtype=np.int16)
+        eta = np.where(draws == 0, 3, np.where(draws == 1, -3, 0)).astype(np.int64)
+        tau = np.where(rng.integers(0, 5, size=end-start) &lt; 3, 3, 7)
+        rows = (eta * tau[:, None]) @ anum.T + munum
+        assert np.max(np.abs(rows)) &lt; 1 &lt;&lt; 31
+        raw[start:end] = rows.astype(np.int32)
+    raw.flush()
+    digest = filehash(path)
+    meta = dict(path=path, sha256=digest, raw_rows=len(raw), coordinates=raw.size,
+                dtype=str(raw.dtype), bytes=path.stat().st_size, common_denominator=den,
+                model_promise=&#x27;positive common-variance, independent symmetric base&#x27;,
+                supplied_D_squared=2*U, PRNG=&#x27;NumPy PCG64, seed withheld until freeze&#x27;,
+                row_generation=&#x27;every raw ordered row drawn individually; no multinomial replacement&#x27;)
+    save(&#x27;RAW_ACQUISITION.json&#x27;, meta)
+    mark(&#x27;all_raw_generation_flush_and_hash&#x27;, t)
+    return path, den, private, meta
+
+
+def observed_cache(raw, offset, count, name):
+    t = time.monotonic()
+    rows = raw[offset:offset+2*count]
+    d = rows[0::2] - rows[1::2]
+    atoms, labels, counts = np.unique(d, axis=0, return_inverse=True, return_counts=True)
+    k = len(atoms)
+    pairs = np.bincount(labels[0::2]*k + labels[1::2], minlength=k*k).reshape(k, k)
+    assert int(counts.sum()) == count and int(pairs.sum()) == count//2
+    assert np.array_equal(pairs.sum(0) + pairs.sum(1), counts)
+    for suffix, arr in [(&#x27;atoms&#x27;, atoms), (&#x27;counts&#x27;, counts), (&#x27;ordered_pairs&#x27;, pairs)]:
+        np.save(OUT / f&#x27;{name}_{suffix}.npy&#x27;, arr)
+    dhash = hashlib.sha256(d.tobytes(order=&#x27;C&#x27;)).hexdigest()
+    lhash = hashlib.sha256(labels.tobytes(order=&#x27;C&#x27;)).hexdigest()
+    cache = dict(atom_vectors=atoms, counts=counts, pairs=pairs, difference_count=count,
+                 distinct_difference_atoms=k, difference_order_sha256=dhash,
+                 label_order_sha256=lhash, source_row_offset=offset,
+                 paired_variance=&#x27;genuine labels[2j],labels[2j+1] in original order&#x27;)
+    save(name + &#x27;_CACHE.json&#x27;, {a:b for a,b in cache.items() if a not in [&#x27;atom_vectors&#x27;,&#x27;counts&#x27;,&#x27;pairs&#x27;]})
+    mark(name + &#x27;_full_read_and_ordered_cache&#x27;, t)
+    return cache
+
+
+def exact_rankone_statistics(cache, features, norms, denom, label):
+    &quot;&quot;&quot;Exact mean and genuine paired matrix variance in orthogonal basis.
+
+    features[i,p] = &lt;B_p,phi_i&gt;*denom; basis norms are norms[p].
+    Stored matrices are bilinear: S_pq=&lt;B_p,K B_q&gt;. For pilot phi=Y,
+    denom=sqrt(2)*rawden; its powers below are specified by denom_squared.
+    &quot;&quot;&quot;
+    t = time.monotonic()
+    f = [[int(x) for x in row] for row in features]
+    counts = [int(x) for x in cache[&#x27;counts&#x27;]]
+    dim = len(norms)
+    sample_count = cache[&#x27;difference_count&#x27;]
+    k = len(f)
+    den2 = denom  # square of feature common denominator, always rational integer.
+    S = [[F(sum(counts[i]*f[i][p]*f[i][q] for i in range(k)), sample_count*den2)
+          for q in range(dim)] for p in range(dim)]
+    # First summand: each feature observation appears once in a genuine pair.
+    V = [[sum((F(counts[i]*f[i][p]*f[i][q]) *
+                    sum((F(f[i][s]*f[i][s])/norms[s] for s in range(dim)), F(0))
+                    for i in range(k)), F(0))
+          for q in range(dim)] for p in range(dim)]
+    C = fmpz_mat(cache[&#x27;pairs&#x27;].tolist())
+    for s in range(dim):
+        Fs = fmpz_mat([[f[i][p]*f[i][s] for p in range(dim)] for i in range(k)])
+        cross = Fs.transpose() * (C * Fs)
+        for p in range(dim):
+            for q in range(dim):
+                V[p][q] -= F(int(cross[p,q]) + int(cross[q,p])) / norms[s]
+    V = scale(V, F(1, sample_count*den2*den2))
+    # Nonnegative covariance and paired-variance are also exactly certified below.
+    mark(label + &#x27;_exact_mean_and_paired_variance&#x27;, t)
+    save(label + &#x27;_EXACT_STATISTICS.json&#x27;, dict(basis_norm_squared=norms,
+          rankone_mean_bilinear=S, paired_variance_bilinear=V,
+          denominator_squared=den2, samples=sample_count,
+          operation=&#x27;observed rankone sums and original paired differences squared&#x27;))
+    return S, V
+
+
+def make_whitener(Sigma):
+    t = time.monotonic()
+    a = np.array([[float(x) for x in row] for row in Sigma])
+    ev, eig = np.linalg.eigh(a)
+    if min(ev) &lt;= 0:
+        raise ArithmeticError(&#x27;pilot covariance not SPD&#x27;)
+    w = (eig / np.sqrt(ev)) @ eig.T
+    wden = 1 &lt;&lt; 20
+    wnum = [[round(float(x)*wden) for x in row] for row in w]
+    W = [[F(x,wden) for x in row] for row in wnum]
+    Wi = inv(W)
+    wtw = mm(tr(W), W)
+    kw2, kwcert = eigen_bound(wtw, NU3)
+    lw2, lwcert = eigen_bound(wtw, NU3, &#x27;lower&#x27;)
+    if lw2 &lt;= 0:
+        raise ArithmeticError(&#x27;rounded whitener not certified invertible&#x27;)
+    delta, deltacert = opnorm(add(mm(mm(tr(W), Sigma), W), eye(3), -1), NU3)
+    mark(&#x27;pilot_whitener_and_exact_metric_checks&#x27;, t)
+    return W, Wi, wnum, wden, dict(W=W, W_inverse=Wi, round_bits=20,
+               pilot_numerical_eigenvalues=ev.tolist(), K_w_squared_upper=kw2,
+               K_w_squared_lower=lw2, K_w_cert=kwcert, lower_cert=lwcert,
+               delta_w=delta, delta_cert=deltacert, condition_squared_upper=kw2/lw2)
+
+
+def confirmation_features(atoms, wnum):
+    f=[]; whitenum=[]
+    for d in atoms:
+        v=[sum(int(d[i])*wnum[i][j] for i in range(3)) for j in range(3)]
+        x,y,z=v
+        f.append([x*x-y*y,x*x+y*y-2*z*z,2*x*y,2*x*z,2*y*z])
+        whitenum.append(v)
+    return f, whitenum
+
+
+def propose(S, whitenum, counts, zd):
+    proposals = {}
+    t = time.monotonic()
+    norm = np.sqrt(np.array([float(x) for x in NU]))
+    A = np.array([[float(x) for x in row] for row in S])/norm[:,None]/norm[None,:]
+    ev, eig = np.linalg.eigh(A)
+    top = eig[:,-2:]
+    basis = np.array(BASIS, dtype=float)/norm[:,None,None]
+    probe = np.outer(np.arange(1,4),np.arange(1,4))
+    pc = np.einsum(&#x27;pij,ij-&gt;p&#x27;,basis,probe)
+    form = np.einsum(&#x27;p,pij-&gt;ij&#x27;,top@(top.T@pc),basis)
+    probe_eigs, r = np.linalg.eigh(form)
+    R, q = rational_frame(r)
+    proposals[&#x27;eigenmatrix&#x27;] = dict(R=R, quaternion_integer=q,
+            seconds=time.monotonic()-t, observed_operator_spectrum=ev.tolist(),
+            probe_spectrum=probe_eigs.tolist(),
+            method=&#x27;Classical top-2 trace-free eigenmatrix subspace, fixed rank-one probe, diagonalization&#x27;)
+    t = time.monotonic()
+    z = np.array(whitenum, dtype=float)/float(zd)/math.sqrt(2)
+    weight = np.array(counts, dtype=float)/N
+    tensor = np.einsum(&#x27;i,ia,ib,ic,id-&gt;abcd&#x27;,weight,z,z,z,z,optimize=True)
+    tw=tensor.copy(); rot=np.eye(3); initial=sum(tw[i,i,i,i] for i in range(3))
+    history=[]
+    for sweep in range(30):
+        largest=0.
+        for i in range(3):
+            for j in range(i+1,3):
+                aa=(tw[i,i,i,i]+tw[j,j,j,j]-6*tw[i,i,j,j])/4
+                bb=tw[i,i,i,j]-tw[i,j,j,j]
+                theta=np.arctan2(bb,aa)/4
+                largest=max(largest,abs(theta))
+                c,s=np.cos(theta),np.sin(theta)
+                G=np.eye(3);G[i,i]=G[j,j]=c;G[i,j]=-s;G[j,i]=s
+                tw=np.einsum(&#x27;ia,jb,kc,ld,ijkl-&gt;abcd&#x27;,G,G,G,G,tw,optimize=True)
+                rot=rot@G
+        history.append(dict(sweep=sweep+1,max_angle=largest,
+                            contrast=float(sum(tw[i,i,i,i] for i in range(3)))))
+        if largest&lt;1e-11:
+            break
+    R,q=rational_frame(rot)
+    proposals[&#x27;maxkurt&#x27;]=dict(R=R,quaternion_integer=q,seconds=time.monotonic()-t,
+            sweeps=len(history),sweep_history=history,initial_contrast=float(initial),
+            final_contrast=float(sum(tw[i,i,i,i] for i in range(3))),
+            method=&#x27;Established ordinary MaxKurt Jacobi, fixed 30-sweep cap, no convergence theorem&#x27;)
+    save(&#x27;FROZEN_PROPOSALS.json&#x27;,proposals)
+    mark(&#x27;both_fixed_classical_proposals_and_freeze&#x27;, t)
+    return proposals
+
+
+def posterior(S, common, proposal, W, Wi):
+    t=time.monotonic()
+    R=proposal[&#x27;R&#x27;]
+    Rbasis=[mm(mm(R,fm(B)),tr(R)) for B in BASIS]
+    T=[[dotmat(fm(BASIS[i]),Rbasis[j])/NU[i] for j in range(5)] for i in range(5)]
+    Sprime=mm(mm(tr(T),S),T)
+    assert mm(mm(tr(T),[[NU[i] if i==j else F(0) for j in range(5)] for i in range(5)]),T)==[[NU[i] if i==j else F(0) for j in range(5)] for i in range(5)]
+    top=[row[:2] for row in Sprime[:2]]
+    bottom=[row[2:] for row in Sprime[2:]]
+    a,ac=eigen_bound(top,NU[:2],&#x27;lower&#x27;)
+    c,cc=eigen_bound(bottom,NU[2:])
+    b2=sum((Sprime[i][j]**2/(NU[i]*NU[j]) for i in range(2,5) for j in range(2)),F(0))
+    b=sqrtup(b2)
+    e=common[&#x27;total_operator_error&#x27;]
+    g=a-c-2*e
+    result=dict(a=a,c_obs=c,b=b,cross_Frobenius_squared=b2,g=g,
+                top_lower_certificate=ac,bottom_upper_certificate=cc,
+                basis_rotation=T,candidate_operator_bilinear=Sprime,
+                proposed_physical_mixing_columns=mm(tr(Wi),R),
+                proposed_source_linear_forms_columns=mm(W,R))
+    if g&lt;=0:
+        result.update(status=&#x27;UNKNOWN_SPECTRAL_SEPARATION&#x27;,seconds=time.monotonic()-t)
+        return result
+    eta=(b+e)/g
+    r=F(2,3)*eta**2/(1+eta**2)
+    zeta=common[&#x27;zeta&#x27;]
+    s=sqrtup(r)
+    sqrtminuslo=1/sqrtup(1/(1-zeta))
+    cond=sqrtup(common[&#x27;condition_squared_upper&#x27;])
+    plus=1-sqrtminuslo
+    minus=sqrtup(1/(1-zeta))-1
+    physical=min(F(1),cond*(s+plus)/sqrtminuslo)
+    demixing=min(F(1),cond*sqrtup(1+zeta)*(s+minus))
+    result.update(eta=eta,r_axis=r,ideal_axis_sine_upper=s,
+                  physical_column_sine_upper=physical,source_row_sine_upper=demixing,
+                  unique_projective_matching=(r&lt;F(1,2)),
+                  status=&#x27;INFORMATIVE_ALL_AXIS_CERTIFICATE&#x27; if r&lt;F(1,2) and max(physical,demixing)&lt;F(1,2)
+                         else &#x27;VALID_BUT_UNINFORMATIVE_AMBIGUITY&#x27;,seconds=time.monotonic()-t)
+    return result
+
+
+def learner(path,den,raw_meta):
+    &quot;&quot;&quot;Only actual raw rows, lattice scale, D/model promise and fixed protocol.&quot;&quot;&quot;
+    raw=np.load(path,mmap_mode=&#x27;r&#x27;)
+    pilot=observed_cache(raw,0,M,&#x27;pilot&#x27;)
+    Sigma,V2=exact_rankone_statistics(pilot,pilot[&#x27;atom_vectors&#x27;],NU3,2*den*den,&#x27;pilot&#x27;)
+    v2,cv2=eigen_bound(V2,NU3)
+    assert v2&gt;=0
+    rad2,eb2=empirical_bernstein(M,3,v2/(U*U),ALPHA2)
+    eps2=U*rad2
+    W,Wi,wnum,wden,white=make_whitener(Sigma)
+    zeta=white[&#x27;delta_w&#x27;]+white[&#x27;K_w_squared_upper&#x27;]*eps2
+    if zeta&gt;=1:
+        raise ArithmeticError(&#x27;UNKNOWN pilot whitening radius&gt;=1&#x27;)
+    save(&#x27;PILOT_CONFIDENCE.json&#x27;,dict(Sigmahat=Sigma,raw_paired_variance=V2,
+          variance_LDL=cv2,EB=eb2,epsilon2=eps2,zeta=zeta,whitener=white))
+    confirm=observed_cache(raw,2*M,N,&#x27;confirmation&#x27;)
+    features,whitenum=confirmation_features(confirm[&#x27;atom_vectors&#x27;],wnum)
+    zd=den*wden
+    S,V4=exact_rankone_statistics(confirm,features,NU,4*zd**4,&#x27;confirmation&#x27;)
+    # Feature denominator is 2*(den*wden)^2; square is 4*(den*wden)^4.
+    H=F(2,3)*U*U*white[&#x27;K_w_squared_upper&#x27;]**2
+    v4,cv4=eigen_bound(V4,NU)
+    rad4,eb4=empirical_bernstein(N,5,v4/(H*H),ALPHA4)
+    eps4=H*rad4
+    mhat,cm=eigen_bound(S,NU)
+    k=(2*zeta+zeta*zeta)*F(5,2)+F(3,2)*zeta*zeta
+    if k&gt;=1:
+        raise ArithmeticError(&#x27;UNKNOWN k&gt;=1&#x27;)
+    e=eps4+k*(mhat+eps4)/(1-k)
+    common=dict(epsilon2=eps2,epsilon4=eps4,zeta=zeta,k_transport=k,
+                observed_operator_upper=mhat,total_operator_error=e,
+                condition_squared_upper=white[&#x27;condition_squared_upper&#x27;],
+                raw_feature_range_upper=H,conditional_EB=eb4,variance_LDL=cv4,
+                raw_confirmation_variance_upper=v4,operator_upper_LDL=cm,
+                joint_failure_budget=ALPHA2+ALPHA4,
+                effective_original_observations=2*(M+N),whitener=white)
+    save(&#x27;COMMON_CONFIDENCE.json&#x27;,common)
+    # End acquisition/statistics budget; new fixed 90-second guard for proposals/certs.
+    signal.alarm(90)
+    props=propose(S,whitenum,confirm[&#x27;counts&#x27;],zd)
+    t=time.monotonic()
+    posts={name:posterior(S,common,p,W,Wi) for name,p in props.items()}
+    mark(&#x27;both_exact_posteriors&#x27;,t)
+    freeze=save(&#x27;FROZEN_LEARNER_OUTPUT.json&#x27;,dict(common_confidence=common,
+          proposals=props,posteriors=posts,raw_acquisition=raw_meta,
+          truth_access=&#x27;no private model moments or frame passed to learner&#x27;))
+    digest=filehash(freeze)
+    save(&#x27;LEARNER_FREEZE.json&#x27;,dict(path=freeze,sha256=digest,seconds=time.monotonic()-START))
+    return dict(Sigma=Sigma,S=S,W=W,Wi=Wi,proposals=props,posteriors=posts,
+                common=common,freeze=freeze,freeze_sha256=digest)
+
+
+def exact_population_operator(W,private):
+    C=mm(mm(tr(W),private[&#x27;covariance&#x27;]),W)
+    A=mm(tr(W),private[&#x27;A&#x27;])
+    atoms=[[[A[i][k]*A[j][k] for j in range(3)] for i in range(3)] for k in range(3)]
+    S=[]
+    for p in range(5):
+        row=[];Bp=fm(BASIS[p])
+        for q in range(5):
+            Bq=fm(BASIS[q])
+            isotropic=dotmat(Bp,C)*dotmat(Bq,C)+2*dotmat(Bp,mm(mm(C,Bq),C))
+            diagonal=sum((private[&#x27;difference_beta&#x27;][k]*dotmat(Bp,atoms[k])*dotmat(Bq,atoms[k]) for k in range(3)),F(0))
+            row.append(private[&#x27;difference_cd&#x27;]*isotropic+diagonal)
+        S.append(row)
+    return S
+
+
+def projective_match(true, proposed):
+    # Columns; all projective sine squares exact, one permutation covers all axes.
+    cost=[]
+    for perm in itertools.permutations(range(3)):
+        sins=[]
+        for j in range(3):
+            a=[true[i][perm[j]] for i in range(3)]
+            b=[proposed[i][j] for i in range(3)]
+            dot=sum((x*y for x,y in zip(a,b)),F(0))
+            sins.append(1-dot*dot/(sum(x*x for x in a)*sum(y*y for y in b)))
+        cost.append((max(sins),list(perm),sins))
+    return min(cost,key=lambda x:x[0])
+
+
+def private_evaluate(fit,private):
+    t=time.monotonic()
+    eps2=fit[&#x27;common&#x27;][&#x27;epsilon2&#x27;];eps4=fit[&#x27;common&#x27;][&#x27;epsilon4&#x27;]
+    cov_error,covcert=opnorm(add(fit[&#x27;Sigma&#x27;],private[&#x27;covariance&#x27;],-1),NU3)
+    pop=exact_population_operator(fit[&#x27;W&#x27;],private)
+    op_error,opcert=opnorm(add(fit[&#x27;S&#x27;],pop,-1),NU)
+    evaluation=dict(learner_freeze_sha256=fit[&#x27;freeze_sha256&#x27;],
+                    true_covariance_error_upper=cov_error,covariance_error_LDL=covcert,
+                    pilot_error_event_holds=cov_error&lt;=eps2,
+                    true_candidate_population_operator=pop,
+                    true_confirmation_operator_error_upper=op_error,
+                    operator_error_LDL=opcert,confirmation_error_event_holds=op_error&lt;=eps4,
+                    scope=&#x27;single private finite truth check, not empirical coverage validation&#x27;)
+    rows={}
+    true_demixing=tr(inv(private[&#x27;A&#x27;]))
+    for name,p in fit[&#x27;posteriors&#x27;].items():
+        mix=projective_match(private[&#x27;A&#x27;],p[&#x27;proposed_physical_mixing_columns&#x27;])
+        demix=projective_match(true_demixing,p[&#x27;proposed_source_linear_forms_columns&#x27;])
+        rows[name]=dict(physical_column_max_sine_squared=mix[0],physical_permutation=mix[1],
+             physical_per_axis_sine_squared=mix[2],source_row_max_sine_squared=demix[0],
+             source_permutation=demix[1],source_per_axis_sine_squared=demix[2],
+             physical_advertised_bound_holds=mix[0]&lt;=p.get(&#x27;physical_column_sine_upper&#x27;,F(1))**2,
+             source_advertised_bound_holds=demix[0]&lt;=p.get(&#x27;source_row_sine_upper&#x27;,F(1))**2)
+    evaluation[&#x27;all_controls&#x27;]=rows
+    save(&#x27;PRIVATE_POST_FREEZE_EVALUATION.json&#x27;,evaluation)
+    mark(&#x27;private_post_freeze_exact_evaluation&#x27;,t)
+    return evaluation
+
+
+def main():
+    signal.signal(signal.SIGALRM,alarm_handler)
+    signal.alarm(180)
+    script=Path(__file__)
+    admission=BASE/&#x27;work/pde_gate9/cycle15/FINITE_DATA_ADMISSION.md&#x27;
+    seal=save(&#x27;METHOD_SEAL.json&#x27;,dict(script=script,script_sha256=filehash(script),
+            admission=admission,admission_sha256=filehash(admission),
+            sealed_before_fixture=True,M=M,N=N,alpha2=ALPHA2,alpha4=ALPHA4,
+            runtime=dict(python=sys.version,numpy=np.__version__,scipy=scipy.__version__,
+                         python_flint=flint.__version__,platform=platform.platform()),
+            budgets=dict(acquisition_statistics_seconds=180,proposal_certificate_seconds=90,
+                         peak_memory_bytes=8*(1&lt;&lt;30)),
+            timer=&#x27;includes generator/read/hash/cache/exact stats/proposals/certs/truth and serialization, excludes process startup and existing dependency setup&#x27;))
+    try:
+        path,den,private,meta=generate_fixture()
+        fit=learner(path,den,meta)
+        evaluation=private_evaluate(fit,private)
+        signal.alarm(0)
+        save(&#x27;RUN.json&#x27;,dict(status=&#x27;COMPLETE&#x27;,method_seal=seal,timings=TIMINGS,
+             seconds_total_before_run_serialization=time.monotonic()-START,
+             peak_memory_bytes=memory_bytes(),effective_original_observations=2*(M+N),
+             coordinate_observations=6*(M+N),raw_rows_path=path,raw_rows_sha256=meta[&#x27;sha256&#x27;],
+             statuses={name:p[&#x27;status&#x27;] for name,p in fit[&#x27;posteriors&#x27;].items()},
+             private_evaluation_pass=(evaluation[&#x27;pilot_error_event_holds&#x27;] and
+               evaluation[&#x27;confirmation_error_event_holds&#x27;] and
+               all(v[&#x27;physical_advertised_bound_holds&#x27;] and v[&#x27;source_advertised_bound_holds&#x27;]
+                   for v in evaluation[&#x27;all_controls&#x27;].values())),
+             claims=&#x27;one synthetic actual-row execution, shared posterior; no speed, sample superiority or statistical-coverage claim&#x27;))
+        print(json.dumps(dict(status=&#x27;COMPLETE&#x27;,statuses={name:p[&#x27;status&#x27;] for name,p in fit[&#x27;posteriors&#x27;].items()},
+                              seconds=time.monotonic()-START)),flush=True)
+    except (BudgetStop,ArithmeticError,Exception) as e:
+        signal.alarm(0)
+        save(&#x27;RUN.json&#x27;,dict(status=&#x27;UNKNOWN&#x27;,exception=type(e).__name__,reason=str(e),
+             timings=TIMINGS,seconds_total=time.monotonic()-START,peak_memory_bytes=memory_bytes(),
+             no_retry=True,partial_artifacts_retained=True))
+        raise
+
+
+if __name__==&#x27;__main__&#x27;:
+    main()
+</pre></html>

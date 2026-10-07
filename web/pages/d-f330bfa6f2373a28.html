@@ -1,0 +1,2424 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Automated Conjecturing with TxGraffiti</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>Automated Conjecturing with TxGraffiti</h1><p>Source ID d-f330bfa6f2373a28; literature/sources/r01_discovery/txgraffiti-v2.html; 27508 o200k tokens; role primary_source_or_metadata; extraction html_text_discovery_only_math_may_be_lossy. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>Automated Conjecturing with TxGraffiti
+
+      Report GitHub Issue
+      ×
+
+      Title:
+
+Content selection saved. Describe the issue below:
+
+      Description:
+
+      Submit without GitHub
+      Submit in GitHub
+
+    arXiv is now an independent nonprofit!
+    Learn more
+    ×
+
+      Back to arXiv
+
+    License: CC Zero
+
+arXiv:2409.19379v2 [math.CO] 11 May 2026
+
+Automated Conjecturing with TxGraffiti
+
+Randy Davila
+
+Email: rrd6@rice.com
+
+Affiliation: First Principles, 100 University Ave, Toronto, ON M5J 1V6, Canada
+
+Affiliation: Department of Computational Applied Mathematics &amp; Operations Research, Rice University, 6100 Main Street, Houston, 77005, Texas, USA
+
+Abstract
+
+Texas Graffiti (TxGraffiti) is an automated conjecturing system that operates on a finite, versioned snapshot table of mathematical objects equipped with precomputed numerical invariants and Boolean predicates. For a chosen target invariant and hypothesis predicate, TxGraffiti searches over predicate–predictor combinations and generates table-true conditional inequalities by fitting coefficients within simple, human-readable templates (e.g., univariate affine upper and lower bounds) via a sequence of small linear programs. The resulting candidates are ranked and compressed using heuristics that measure informativeness (e.g., touch/sharp behavior) and remove redundancy or transitive implication, producing a compact set of interpretable conjectures suitable for further testing and proof. We describe the system architecture, data curation workflow, optimization models, and filtering procedures, and we provide an interactive web interface together with an open-source Python implementation. Although our examples focus on graph invariants, the snapshot-table paradigm and optimization-and-filtering pipeline apply broadly whenever objects admit computable features and predicates.
+
+Keywords: Automated conjecturing; Graffiti; TxGraffiti. 
+
+AMS subject classification: 05C69
+
+1 Introduction
+
+In 1948, Turing suggested that digital computers could play a significant role in intellectual work—including parts of mathematical research—especially in settings requiring substantial reasoning but little interaction with the external world Turing (2004). This vision helped motivate early work in computer-assisted mathematics. One of the first notable efforts was Newell and Simon’s Logic Theorist, developed in the mid-1950s Simon and Newell (1958). By proving many theorems from Principia Mathematica, Logic Theorist helped establish a template for later automated reasoning systems, even if its early achievements were modest by modern standards. Newell and Simon also advanced an influential long-range prediction that computers would eventually discover and prove important mathematical theorems Simon and Newell (1958). Along with many programs of its era, Logic Theorist focused primarily on automated theorem proving, a domain that reached a widely recognized milestone with McCune’s computer-assisted proof of the Robbins conjecture in the mid-1990s McCune (1997).
+
+While automated theorem proving matured into a well-established area, the complementary problem of computer-assisted conjecture generation (automated conjecturing) was already being explored, though it attracted far less sustained attention. In the late 1950s, Hao Wang’s Program II generated a large number of formulas in propositional logic—outputs that can be viewed as conjectures or candidate theorems Wang (1960). A central challenge for early conjecture-making systems, including Wang’s, was sifting through the resulting flood of statements to identify those of genuine mathematical interest.
+
+A particularly influential response to this “too-many-statements” problem was Fajtlowicz’s Graffiti, which generated mathematical conjectures by proposing inequalities among real-valued invariants of mathematical objects (see Fajtlowicz’s series On Conjectures of Graffiti Fajtlowicz (1988b); Fajtlowicz (1987); Fajtlowicz (1988a); Fajtlowicz (1990); Fajtlowicz (1995)). To control redundancy and avoid conjectures that are subsumed by stronger ones, Fajtlowicz introduced the Dalmatian heuristic, a selection rule that retains a new conjecture only when it yields genuinely new information relative to those already accepted Larson and Van Cleemput (2016). The program was named Graffiti because its conjectures were metaphorically “written on the wall” for mathematicians to explore DeLaViña (2005b). Graffiti’s conjectures have inspired a substantial body of follow-up work in graph theory and related areas (see DeLaViña’s historical account of Graffiti DeLaViña (2005b)).
+
+This paper describes Texas Graffiti (TxGraffiti), a heuristic- and optimization-based automated conjecturing program developed and maintained by the author since 2016 and available as an interactive web application11
+            1
+
+          https://txgraffiti.streamlit.app and PyPI-distributed Python package txgraffiti Davila and Eddy (2025). The name honors Graffiti and its successor Graffiti.pc DeLaViña (2005a). Like its predecessors, TxGraffiti primarily generates conjectures in inequality form—upper and lower bounds on a chosen target invariant under explicit Boolean hypotheses—and when a table-true upper bound and a table-true lower bound coincide on the available data, it reports the induced equality conjecture. These statements are conjectures in the traditional mathematical sense: they are validated against a finite snapshot table of instances and may fail on objects not yet represented. Accordingly, throughout the paper we use “table-true” (or “true on the snapshot”) to mean “no counterexample among the stored instances,” and we reserve “theorem” exclusively for statements established by a formal proof.
+
+The remainder of the paper is structured as follows. In
+Section 2, we recall the original Graffiti program and describe its process. In Section 3, we briefly discuss other
+notable conjecturing systems. In Section 4, we detail the implementation of TxGraffiti. In Section 5, we illustrate a typical workflow to interpret and refine the conjectures produced by TxGraffiti. Section 6 presents conjectures generated by TxGraffiti that have led to publications. Finally, Section 7 offers concluding remarks.
+
+2 Fajtlowicz’s Graffiti
+
+Fajtlowicz’s Graffiti is one of the first and most influential automated conjecturing systems, demonstrating that a computer can generate mathematically useful conjectures while using explicit rules to suppress redundancy and trivial output. Developed in the mid-1980s, Graffiti searches for relations—primarily inequalities—among numerical invariants evaluated on a finite database of objects (most often graphs), and records conjectures that survive both empirical testing and a built-in informativeness screen Fajtlowicz (1988b); DeLaViña (2005b). Since its inception, Graffiti’s conjectures have motivated substantial follow-up work, especially in graph theory (see Fajtlowicz and Waller (1986); Chung (1988); Alon and Seymour (1989); Fajtlowicz (1989); Beezer et al. (1989); Favaron et al. (1990); Favaron et al. (1991b); Favaron et al. (1991a); Favaron et al. (1993); Griggs and Kleitman (1994); Fajtlowicz et al. (1995); Wang (1997); Firby and Haviland (1997); Bollobás and Erdős (1998); Bollobás and Riordan (1998); Caro (1998); Dankelmann et al. (1998); Jelen (1999); Codenotti et al. (2000); Beezer et al. (2001); Favaron et al. (2003); Zhang (2004); Dankelmann et al. (2005); Hansen et al. (2009); Cygan et al. (2012); Yue et al. (2020)) and mathematical chemistry (see Fowler (1997); Fowler et al. (1998); Fowler et al. (2001); Fajtlowicz and Larson (2003); Fajtlowicz (2005); Fajtlowicz et al. (2005); Došlić and Retić (2011)). Historical accounts also record interactions with other researchers and feedback (including Erdős) in response to early Graffiti conjectures Fajtlowicz (1988b); DeLaViña (2005b).
+
+Beyond its mathematical contributions, Graffiti has figured prominently in philosophical discussions about the nature of machine creativity. Penrose famously argued in The Emperor’s New Mind and Shadows of the Mind that digital computers cannot possess genuine mathematical understanding Penrose (1989); Penrose (1994). In contrast, Fajtlowicz explicitly designed Graffiti as an empirical test, echoing Hilary Putnam’s position that whether machines can discover mathematics is not a theoretical question, but an empirical one Fajtlowicz (1987). Graffiti’s ability to produce thousands of plausible and sometimes deep conjectures, later explored and proved by human mathematicians, lends weight to this empirical perspective. As Horgan noted in Scientific American, this contrast—between Penrose’s skepticism and Graffiti’s output—epitomizes a larger philosophical divide in understanding the role of AI in discovery Horgan (1993).
+
+What was once a largely abstract debate has taken on renewed urgency with the emergence of large language models (LLMs) and generative AI. These systems increasingly exhibit capabilities once thought exclusive to human reasoning—such as proof synthesis inference-making the notion of fully automated machine-driven discovery more plausible than ever. Although questions remain–particularly about whether such systems truly “understand”—automated conjecturing systems provide structured evidence that machines can participate meaningfully in open-ended mathematical inquiry.
+
+At a high level, Graffiti operates on (i) a finite collection of objects (typically graphs) and (ii) a library of numerical invariants evaluated on those objects. Given a user-selected target invariant (denoted abstractly by 
+\alpha
+α\alpha), the system searches for inequalities of the form
+
+\alpha\leq f(\text{invariants})\qquad\text{or}\qquad\alpha\geq f(\text{invariants}),
+α≤f⁡(invariants)orα≥f⁡(invariants),\alpha\leq f(\text{invariants})\qquad\text{or}\qquad\alpha\geq f(\text{invariants}),
+
+where 
+f
+ff is a low-complexity expression built from the available invariants and a fixed menu of algebraic operations. Candidate expressions are generated within a grammar/complexity budget and then tested against the stored instances; candidates with a counterexample in the current database are discarded.
+
+The key mechanism that controls output is the Dalmatian heuristic, introduced by Fajtlowicz to avoid being overwhelmed by the enormous number of database-true but uninformative statements that arise from systematic enumeration Larson and Van Cleemput (2016). In its basic form, it combines two ideas. First, a truth screen retains only candidates with no counterexample in the current database; equivalently, using our terminology, the inequality is table-true in the database. Second, a significance (informativeness) screen suppresses candidates that add no new information relative to the current conjecture bank (e.g., candidates that are everywhere weaker than what is already retained on the finite database). Historical descriptions emphasize precisely this “non-informativeness” rejection rule together with the maintenance step that revises the conjecture bank when a new statement is accepted (including dropping conjectures that become redundant) Fajtlowicz (1995); DeLaViña (2005b). For a modern exposition and refinements, we refer the reader to Larson and Van Cleemput (2016).
+
+A convenient formalization of the significance intuition uses touch (tightness) in the database. Fix a target invariant 
+\alpha
+α\alpha and suppose that we are conjecturing lower bounds. Let 
+\mathcal{O}
+𝒪\mathcal{O} be the current database and 
+\mathcal{F}=\{f_{1},\dots,f_{k}\}
+ℱ={f1,…,fk}\mathcal{F}=\{f_{1},\dots,f_{k}\} the accepted lower bound functions in the conjecture bank, where each 
+f_{i}
+fif_{i} satisfies
+
+\alpha(G)\ \geq\ f_{i}(G)\qquad\text{for all }G\in\mathcal{O}.
+α⁡(G)≥fi​(G)for all ​G∈𝒪.\alpha(G)\ \geq\ f_{i}(G)\qquad\text{for all }G\in\mathcal{O}.
+
+(1)
+
+The bank induces the aggregate bound
+
+B_{\mathcal{F}}(G)\ :=\ \max_{1\leq i\leq k}f_{i}(G).
+Bℱ​(G):=max1≤i≤k⁡fi​(G).B_{\mathcal{F}}(G)\ :=\ \max_{1\leq i\leq k}f_{i}(G).
+
+(2)
+
+A graph 
+G\in\mathcal{O}
+G∈𝒪G\in\mathcal{O} is touched if 
+\alpha(G)=B_{\mathcal{F}}(G)
+α​(G)=Bℱ​(G)\alpha(G)=B_{\mathcal{F}}(G),
+or equivalently, if 
+\alpha(G)=f_{i}(G)
+α​(G)=fi​(G)\alpha(G)=f_{i}(G) for some 
+i
+ii. A natural database-dependent notion of “coverage” is therefore:
+
+\bigcup_{i=1}^{k}\{G\in\mathcal{O}:\alpha(G)=f_{i}(G)\}\ =\ \mathcal{O}.
+⋃i=1k{G∈𝒪:α⁡(G)=fi​(G)}=𝒪.\bigcup_{i=1}^{k}\{G\in\mathcal{O}:\alpha(G)=f_{i}(G)\}\ =\ \mathcal{O}.
+
+(3)
+
+In this language, the significance screen can be viewed as preferring conjectures that increase coverage (by touching at least one previously untouched object) and discarding those that never improve the bank on the finite database. Absent an explicit coverage goal such as (3), a generate–test-retain loop has no canonical termination point: as the expression grammar expands, one can often continue to produce new table-true candidates that are not strictly dominated by the current bank. Consequently, practical implementations enforce external stopping rules (e.g., time limits, complexity caps, or explicit coverage objectives).
+
+2.1 Graffiti.pc, a variant of Graffiti
+
+Graffiti.pc, developed by DeLaViña, is an important descendant of Fajtlowicz’s Graffiti that preserves the same overall paradigm: given a finite database of graphs with precomputed invariant values, it searches for conjectured inequalities among algebraic expressions in those invariants and filters the resulting stream to retain a compact, nonredundant set of “interesting” statements DeLaViña (2005a). DeLaViña describes a three-part architecture consisting of (i) BuildDbs, which computes and stores invariant values; (ii) dalmatians, which implement a Graffiti-style selection rule; and (iii) a graphical user interface that supports interactive choices of invariants, relations, and parameters, and also supports incorporating counterexamples provided by the user DeLaViña (2005a).
+
+A distinguishing design feature is that conjecture candidates are built inside a user-controlled 
+\Sigma
+Σ\Sigma-algebra of expressions: invariant symbols are treated as atomic terms, and new expressions are formed by applying operations from a fixed (user-selectable) menu and representing the result as a syntax tree DeLaViña (2005a). In practice, the search space is regulated by syntactic constraints such as which operations are enabled, the maximum expression size/depth, and which invariants are allowed to appear. The conjectures are then generated by testing the relations (such as 
+\leq
+≤\leq and 
+\geq
+≥\geq) between the generated expressions against the stored database values DeLaViña (2005a). This “grammar-first” approach differs from statistical fitting: candidates are produced by explicit enumeration in a structured hypothesis space and then validated (or refuted) directly on the database.
+
+As in Graffiti, the Dalmatian component provides the main nonredundancy control. For inequality mining, it retains a conjecture only if it is not dominated by the current bank in the database-dependent sense that it contributes new tightness information—e.g., it touches at least one graph not already explained as sharp by the bank DeLaViña (2005a). Because the candidate space is, in principle, unbounded under iterative expression-building, Graffiti.pc relies on external controls (limits on expression generation) together with database-dependent objectives; a common and conceptually natural objective is to continue until the retained conjectures collectively touch all (or nearly all) stored graphs, since candidates found beyond that point tend to be redundant from the “explaining sharpness” viewpoint DeLaViña (2005a). Operationally, this also explains why runs can be long (potentially hours or longer) when generous operation menus and size bounds are enabled, since the number of syntactically distinct expressions – and therefore candidate inequalities to test – grows rapidly.
+
+In addition to inequality mining, Graffiti.pc supports conjecturing sufficient conditions for graph properties via the Sophie heuristic. Here, the output is an implication of the form
+
+\text{(simple condition)}\ \Rightarrow\ \text{(property)},
+(simple condition)⇒(property),\text{(simple condition)}\ \Rightarrow\ \text{(property)},
+
+validated against the current database and prioritized toward conditions that are broadly correct on known instances while remaining syntactically simple. In early Graffiti.pc case studies, Sophie-generated conjectures were used, for example, to propose structural descriptions of equality cases and related sufficient-condition phenomena arising in total domination DeLaViña et al. (2007).
+
+2.2 TxGraffiti in context: comparison with Graffiti and Graffiti.pc
+
+TxGraffiti descends from Graffiti and Graffiti.pc in the sense that it targets the same style of output: concise conjectured relationships among invariants, together with explicit preferences for nonredundancy and mathematical usefulness. However, in this paper, TxGraffiti refers to an algorithmic design to convert a finite collection of objects—equipped with numerical invariants and Boolean predicates—into a filtered list of candidate inequalities. The interactive website is one system-level instantiation of this design for graph invariants, while the companion Python package txgraffiti factors the design into modular components so it can be applied to arbitrary snapshot tables Davila and Eddy (2025).
+
+The first difference concerns how evidence is represented and reused. Both Graffiti and Graffiti.pc test candidate statements against an evolving database of objects for which invariant values are computed (and stored) by program-specific workflows. In TxGraffiti, on the contrary, the evidence is made explicit as a snapshot table 
+T
+TT: rows are objects and columns are precomputed invariants and predicates. Conjecturing then reduces to a sequence of structured queries and optimization calls over 
+T
+TT, and the table itself becomes a reusable artifact that can be inspected, versioned, and shared.
+
+The second difference concerns the generation of candidates. Graffiti and Graffiti.pc search within hand-designed or user-configured expression grammars (expression trees), proposing many candidate formulas and testing them against stored instances. In TxGraffiti, the algorithm instead fixes a simple parametric hypothesis class (for example, affine inequalities of the form 
+\alpha\leq mx+b
+α≤m​x+b\alpha\leq mx+b under a predicate 
+P
+PP) and fits the coefficients by solving an optimization model over the corresponding rows of the snapshot table. For a chosen target invariant 
+\alpha
+α\alpha, it enumerates predictor–predicate combinations available in the current schema and solves the associated models.
+
+A third difference concerns termination and the role of Dalmatian-style filtering. In the original Graffiti paradigm, the Dalmatian heuristic functions as an internal selection rule within an open-ended search loop: absent an explicit external budget, target list, or coverage objective, there is no canonical point at which the pipeline must stop, since one can often continue to generate additional table-true statements on a finite database that are not strictly dominated by the current bank. TxGraffiti also uses Dalmatian-style nonredundancy filters (see Section 4.3), but its conjecturing runs terminate by construction: for a fixed snapshot table 
+T
+TT, a fixed predicate vocabulary, and a fixed hypothesis class (together with an explicit complexity budget), the system solves a finite batch of optimization problems and returns the resulting table-true candidates after redundancy filtering.
+
+Direct head-to-head benchmarking against historical installations of Graffiti and Graffiti.pc is difficult to interpret, since reported behavior depends strongly on the underlying databases, invariant libraries, operation menus, and interactive workflows. In addition, the systems are organized around different search regimes: TxGraffiti runs a finite batch of optimization-and-filtering steps over a fixed snapshot table and template family, whereas Graffiti/Graffiti.pc were designed for open-ended conjecture banking under user-driven exploration. With these caveats in mind, informal comparisons indicate that TxGraffiti reproduces many classical Graffiti-style conjectures whenever invariant vocabularies and hypothesis templates overlap, while also producing qualitatively different conjectures when optimization-based templates and richer predicate vocabularies are enabled. For example, using invariants available in earlier systems, TxGraffiti discovered the bound that the independence number is at most the matching number for 
+r
+rr-regular graphs (see Caro et al. (2020)).
+
+3 Other Notable Conjecturing Systems
+
+Automated conjecturing systems have developed along several largely independent lines, ranging from early AI-driven concept formation, to graph-focused optimization and inequality mining, and (more recently) statistical and
+machine-learning pipelines. We briefly survey representative systems in this broader landscape.
+
+3.1 Symbolic systems
+
+Early automated conjecturing systems largely pursued symbolic concept formation and rule-based exploration, often with explicit measures of “interestingness.” A later and particularly influential branch focused on
+discrete structures—most notably graphs—where conjectures can be generated from computed invariants and tested systematically against growing collections of examples and counterexamples. We briefly highlight representative systems in this lineage.
+
+Lenat’s AM Lenat (1977); Lenat (1979); Lenat (1982) (1970s) explored elementary mathematical concept formation via heuristic search. Starting from a small set of primitives and production rules, AM generated new concepts and conjectural relationships among them, using explicit heuristics and measures of “interestingness” to prioritize which avenues to pursue Lenat (1979); Lenat (1977). Although its mathematical output was limited in scope, AM helped establish the general paradigm of automated discovery as a guided expansion of a concept space under heuristic control.
+
+Epstein’s GT (Graph Theorist) Epstein (1988) (1980s) focused directly on graph theory. From the definitional information in its knowledge base, GT constructs examples, proposes conjectures, and (in some cases) proves theorems about graph-theoretic concepts Epstein (1988). It is an early example of an AI system organized around a specific mathematical domain and illustrates how example generation and property evaluation can be coupled to conjecture formation.
+
+Colton’s HR Colton et al. (1999); Colton (1999); Colton (2002) (late 1990s) generalized the concept-formation paradigm across multiple domains, including algebra, graph theory, and number theory. Given foundational domain information supplied by the user (e.g., axioms, objects, or tables), HR applies production rules to construct new concepts and then proposes conjectures by detecting regularities and shared structure between independently generated concepts, guided by explicit measures of “interestingness” Colton et al. (1999); Colton (2002).
+
+Hansen and Caporossi’s AutoGraphiX (AGX) Caporossi and Hansen (2000); Caporossi and Hansen (2004) (developed since the late 1990s) emphasizes combinatorial optimization on graph spaces. It frames the search for extremal graphs (for a chosen invariant expression under constraints) as an optimization problem and applies Variable Neighborhood Search, using neighborhoods defined by edge additions, deletions, exchanges, and related local transformations to escape local optima and identify extremal candidates Caporossi and Hansen (2000). This workflow is particularly effective in extremal graph theory, where sharpness phenomena and small families of extremal examples often drive conjecture formation. In addition to producing extremal examples, AGX’s “automation” mode supports conjecture discovery by repeatedly solving extremal instances across related objectives, constraint choices, and recording patterns that persist between runs Caporossi and Hansen (2004).
+
+Mélot’s GraPHedron Mélot (2008) (2008) introduced a geometric perspective: represent each graph as a point in a space of invariants and study the convex hull of these points. Facets of the resulting polytope correspond to linear inequalities among invariants, and extremal graphs appear as vertices supporting tight inequalities Mélot (2008). This polyhedral view supports the extraction of compact, nonredundant inequality libraries and has been extended in successor projects such as PHOEG, which explicitly builds on and augments the GraPHedron approach Devillez et al. (2019).
+
+Larson and Van Cleemput’s Conjecturing program Larson and Van Cleemput (2016); Larson and Van Cleemput (2017) (mid-2010s), implemented within SageMath, revisits automated conjecturing in a flexible user-facing environment. In their inequality-mining work, the program searches for conjectured relations between real-valued invariants (often under hypotheses) and filters candidates using Graffiti-style screening, implemented via a truth test together with a Dalmatian-style significance test Larson and Van Cleemput (2016). Complementing this, they also study property-relation conjectures—relations among properties of objects—aiming to output simple statements that hold for all objects currently known to the program, with case studies including conjectures about Hamiltonicity Larson and Van Cleemput (2017). The same conjecturing architecture has also been demonstrated outside of graph theory, for example, in combinatorial game theory (Chomp), where the goal is a compact and human-readable “theory” of positions and the authors prove one generated conjecture as a demonstration of output quality Bradford et al. (2020). As they emphasize, this Dalmatian-style screening still requires an explicit stopping condition; an idealized endpoint is exact predictive power on the stored instance set, while in general one must impose an external cap such as time or complexity Bradford et al. (2020). Related community outreach efforts include the Independence Number Project22
+              2
+
+            https://independencenumber.wordpress.com/.
+
+3.2 Statistical and machine learning approaches
+
+The systems above primarily rely on symbolic rules, combinatorial optimization, or geometric representations of invariant spaces. A complementary line of work uses statistical learning to detect regularities in large mathematical datasets and to propose candidate relationships that can then be examined, refined, and
+(when possible) proved. In this paradigm, the immediate output is often empirical evidence or a compact candidate pattern rather than a deductive proof, but the resulting hypotheses can nevertheless play the same role as traditional conjectures: they focus attention, suggest new definitions, and guide proof search.
+
+The Ramanujan Machine of Raayoni et al. Raayoni et al. (2021) is a data-driven discovery engine for conjecturing new formulas for fundamental
+constants (e.g., 
+\pi
+π\pi, 
+e
+ee, Catalan’s constant, and special values of 
+\zeta(s)
+ζ⁡(s)\zeta(s)), with output prominently featuring structured continued-fraction representations. The system searches within restricted parametric families encoded by its algorithms, including a meet-in-the-middle procedure and a gradient-descent scheme tailored to the recurrent structure of continued fractions, and retains candidates by high-precision numerical agreement rather than by proof Raayoni et al. (2021). Accordingly, the output is conjectural in an explicitly experimental sense. Subsequent work has rigorously proved and, in many cases, generalized families of conjectures arising from this program Yamamoto (2024); Dougherty-Bliss and Zeilberger (2023).
+
+DeepMind’s 2021 study of Davies et al. Davies et al. (2021)
+illustrated a different ML-assisted discovery loop: train predictive models on large datasets of mathematical objects, then use attribution methods to isolate the salient structure that can be reformulated into human-legible conjectures and, in favorable cases, theorems Davies et al. (2021). In knot theory, they trained a supervised model to predict the signature 
+\sigma(K)
+σ⁡(K)\sigma(K) of hyperbolic knots from geometric features and used gradient-based attribution to identify cusp-shaped quantities—specifically meridional translation 
+\mu
+μ\mu and
+longitudinal translation 
+\lambda
+λ\lambda—as dominant predictors Davies et al. (2021). This guided the introduction of the natural slope 
+\mathrm{Re}(\lambda/\mu)
+Re⁡(λ/μ)\mathrm{Re}(\lambda/\mu) and led to conjectures and a proved theorem relating slope and signature, with additional geometric correction terms Davies et al. (2021). In representation theory, a message-passing neural network was trained to predict Kazhdan–Lusztig polynomials from unlabeled Bruhat intervals; attribution and analysis of salient subgraphs highlighted the role of extremal reflections and suggested a hypercube-based decomposition heuristic, providing structural evidence relevant to combinatorial invariance conjecture Davies et al. (2021).
+
+In contrast to expression-grammar enumeration and to purely statistical pattern extraction, TxGraffiti is organized around an explicit snapshot table: a finite, reusable artifact whose rows are objects and whose columns are precomputed invariants and Boolean predicates. For a fixed schema, the program generates conjectures by enumerating a finite family of optimization models indexed by target, predictor, and hypothesis predicate and then applies Graffiti-style screening to retain a compact, nonredundant set of table-true statements together with their equality witnesses. We now describe this pipeline in a concrete graph-theoretic instance.
+
+4 TxGraffiti Design Principles
+
+In this section, we describe the design principles underlying TxGraffiti and the conjecturing pipeline implemented in the current web application.33
+            3
+
+          https://txgraffiti.streamlit.app To support reproducibility, companion code for the illustrative example in this section is available in the paper’s GitHub repository.44
+            4
+
+          https://github.com/RandyRDavila/Automated-conjecturing-in-mathematics-with-TxGraffiti
+
+For exposition, we begin with the small dataset 
+\mathcal{O}
+𝒪\mathcal{O} shown in Figure 1, consisting of nine connected graphs. These graphs are included only to make the mechanics of the pipeline and the structure of the underlying table completely explicit; they are not intended to be sufficiently rich to support high-quality conjecturing. In research use, TxGraffiti relies on a substantially larger snapshot table (currently on the order of a few hundred) of special graphs, curated over several years from named extremal constructions and standard counterexamples in the literature, together with graphs that arose during conjecture testing and proof attempts. The guiding principle of this curation is coverage rather than randomness: the table is strengthened by adding diagnostically important instances—especially equality (or near-equality) witnesses for candidate bounds and newly discovered counterexamples that expose missing hypotheses or structural obstructions.
+
+This workflow differs from the standard supervised-learning setting. The goal is not to fit a predictor and estimate generalization from held-out data, but to propose concise universal statements supported by all currently available evidence: generate a candidate conjecture, test it against every stored instance, and update the evidence base when new witnesses are found. Nevertheless, any finite snapshot has limitations: it may underrepresent large-order behavior or omit rare obstructions, so table-truth is evidence rather than a guarantee of universal validity. In practice, we mitigate this by repeatedly enlarging the snapshot with additional extremal families and counterexamples and rerunning the same conjecturing queries; conjectures that persist under such table growth are prioritized for follow-up, while failures are incorporated into the table and used to repair hypotheses or refine the conjecture bank.
+
+From the illustrative dataset 
+\mathcal{O}
+𝒪\mathcal{O}, we compute the graph-theoretic features used by TxGraffiti, including numerical invariants (e.g., the number of vertices 
+n
+nn, the matching number 
+\mu
+μ\mu, and the independence number 
+\alpha
+α\alpha) and Boolean predicates (e.g., whether a graph is bipartite or regular). Appendix A lists the graph-theoretic terminology and notation used throughout the paper.
+
+(
+G_{1}
+G1G_{1})(
+G_{2}
+G2G_{2})(
+G_{3}
+G3G_{3})(
+G_{4}
+G4G_{4})(
+G_{5}
+G5G_{5})(
+G_{6}
+G6G_{6})(
+G_{7}
+G7G_{7})(
+G_{8}
+G8G_{8})(
+G_{9}
+G9G_{9})
+Figure 1: A dataset of 9 connected graphs: (
+G_{1}
+G1G_{1}) the path graph on 3 vertices, (
+G_{2}
+G2G_{2}) the cycle graph on 3 vertices, (
+G_{3}
+G3G_{3}) the cycle graph on 4 vertices, (
+G_{4}
+G4G_{4}) the diamond graph, (
+G_{5}
+G5G_{5}) the complete graph 
+K_{4}
+K4K_{4}, (
+G_{6}
+G6G_{6}) the complete bipartite graph 
+K_{4,4}
+K4,4K_{4,4}, (
+G_{7}
+G7G_{7}) the star graph 
+K_{1,3}
+K1,3K_{1,3}, (
+G_{8}
+G8G_{8}) the double star graph 
+S(2,2)
+S⁡(2,2)S(2,2), (
+G_{9}
+G9G_{9}) and graph obtained by two triangles joined by an edge.
+
+Table 1 summarizes these precomputed properties for each graph in our dataset and serves as the evidence base for TxGraffiti’s conjecturing queries (in this toy example). This table-first design differs from Graffiti and Graffiti.pc, which compute (and repeatedly recompute) invariant values during candidate-generation and screening, a workflow that can lead to long runs when expensive invariants and large candidate menus are enabled. In TxGraffiti, invariant computation is moved to an offline snapshot-construction step, and conjecturing reduces to a finite batch of optimization calls and subsequent redundancy filtering on the fixed snapshot table (see the static-Dalmatian complexity discussion in Section 4.3). Consequently, the cost of expensive invariant computation is amortized across many conjecturing queries on the same snapshot, enabling rapid interactive feedback once the table is built.55
+            5
+
+          In our web deployment, computing the full snapshot table (all property columns) takes on the order of 
+30
+3030–
+60
+6060 minutes, while once the snapshot is available, a typical single-target conjecturing query completes in minutes; recomputing all invariants per query would dominate interactive latency. Timing depends on hardware, the invariant set, and snapshot size.
+
+name
+
+n
+nn
+
+\mu
+μ\mu
+
+\alpha
+α\alpha
+
+n-\mu
+n−μn-\mu
+
+n-\delta
+n−δn-\delta
+
+\Delta^{2}
+Δ2\Delta^{2}
+connected
+tree
+regular
+bipartite
+
+G_{1}
+G1G_{1}
+3
+1
+2
+2
+2
+4
+True
+True
+False
+True
+
+G_{2}
+G2G_{2}
+3
+1
+1
+2
+1
+4
+True
+False
+True
+False
+
+G_{3}
+G3G_{3}
+4
+2
+2
+2
+2
+4
+True
+False
+True
+True
+
+G_{4}
+G4G_{4}
+4
+2
+2
+2
+2
+9
+True
+False
+False
+False
+
+G_{5}
+G5G_{5}
+4
+2
+1
+2
+1
+9
+True
+False
+True
+False
+
+G_{6}
+G6G_{6}
+8
+4
+4
+4
+4
+16
+True
+False
+True
+True
+
+G_{7}
+G7G_{7}
+4
+1
+3
+3
+3
+9
+True
+True
+False
+True
+
+G_{8}
+G8G_{8}
+6
+2
+4
+4
+5
+9
+True
+True
+False
+True
+
+G_{9}
+G9G_{9}
+6
+3
+2
+3
+4
+9
+True
+False
+False
+False
+
+Table 1: Precomputed numerical invariants and Boolean predicates for the illustrative dataset in Figure 1. Here 
+n=|V(G)|
+n=|V⁡(G)|n=|V(G)| is the order, 
+\mu(G)
+μ⁡(G)\mu(G) is the matching number, 
+\alpha(G)
+α⁡(G)\alpha(G) is the independence number, 
+\delta(G)
+δ⁡(G)\delta(G) and 
+\Delta(G)
+Δ⁡(G)\Delta(G) are the minimum and maximum degrees, and 
+n-\mu
+n−μn-\mu, 
+n-\delta
+n−δn-\delta, and 
+\Delta^{2}
+Δ2\Delta^{2} are simple derived features included as additional columns.
+
+Because TxGraffiti reports statements that are table-true on a concrete snapshot, the dominant robustness risk is not statistical noise in the supervised-learning sense, but table corruption: an invariant value computed incorrectly, a Boolean predicate mislabeled, or a missing value silently coerced into a numerical default. Any such error can (by design) create spurious counterexamples or spurious sharpness events, thereby changing which candidates pass the truth test, altering touch counts, and affecting downstream pruning. For this reason, TxGraffiti treats the snapshot table as a versioned artifact whose entries are intended to be reproducible and auditable: invariants are computed by deterministic routines when available; expensive or heuristic computations are explicitly flagged; and conjectures are interpreted as prompts for verification, counterexample search, and table revision. In practice, when a candidate conjecture appears sensitive to a small set of rows, those rows are inspected and recomputed, and the conjecture bank is regenerated on the corrected snapshot. This workflow mirrors standard mathematical practice: a single counterexample is informative, but it must be a genuine counterexample rather than a data artifact.
+
+4.1 Generating inequalities
+
+Once a snapshot table of objects with precomputed numerical invariants and Boolean predicates is available, the next step is to generate candidate inequalities that are table-true on that snapshot. In this subsection, we fix a target invariant—denoted abstractly by 
+\alpha
+α\alpha (for example, the independence number 
+\alpha(G)
+α⁡(G)\alpha(G))—and, under a chosen Boolean predicate 
+P
+PP, compute the affine upper and lower bounds for 
+\alpha
+α\alpha as functions of a single predictor column 
+x
+xx (for example, 
+x=\mu
+x=μx=\mu). Throughout, 
+[N]=\{1,2,\dots,N\}
+[N]={1,2,…,N}[N]=\{1,2,\dots,N\} indexes the rows of the snapshot table, and we write
+
+I(P)\ :=\ \{\,i\in[N]:P_{i}=\texttt{True}\,\}
+I⁡(P):={i∈[N]:Pi=True}I(P)\ :=\ \{\,i\in[N]:P_{i}=\texttt{True}\,\}
+
+for the set of rows satisfying the hypothesis predicate 
+P
+PP (discarding the case 
+I(P)=\varnothing
+I⁡(P)=∅I(P)=\varnothing).
+
+To compute a table-true upper bound on 
+\alpha
+α\alpha of the form 
+mx+b
+m​x+bmx+b over the support set 
+I(P)
+I⁡(P)I(P), we solve the linear program
+
+\displaystyle\underset{m,b}{\text{minimize}}
+minimizem,b\displaystyle\underset{m,b}{\text{minimize}}
+
+\displaystyle\sum_{i\in I(P)}\big(mx_{i}+b-\alpha_{i}\big)
+∑i∈I⁡(P)(m​xi+b−αi)\displaystyle\sum_{i\in I(P)}\big(mx_{i}+b-\alpha_{i}\big)
+
+(4)
+
+\displaystyle\text{subject to}
+subject to\displaystyle\text{subject to}
+
+\displaystyle\alpha_{i}\leq mx_{i}+b,\qquad\forall i\in I(P),
+αi≤mxi+b,∀i∈I(P),\displaystyle\alpha_{i}\leq mx_{i}+b,\qquad\forall i\in I(P),
+
+where 
+x_{i}
+xix_{i} denotes the predictor value in row 
+i
+ii and 
+\alpha_{i}
+αi\alpha_{i} the target value. The constraints enforce table-truth on 
+I(P)
+I⁡(P)I(P), and the objective minimizes the total slack 
+mx_{i}+b-\alpha_{i}
+m​xi+b−αimx_{i}+b-\alpha_{i} across the supported rows. Thus, among all all affine functions that lie above 
+\alpha
+α\alpha in the snapshot, (4) selects one that is, in the sense of 
+\ell_{1}
+ℓ1\ell_{1}, as close as possible to 
+\alpha
+α\alpha while remaining an upper bound.
+Figure 2 illustrates the resulting bounds for 
+\alpha
+α\alpha versus 
+\mu
+μ\mu in several predicates.
+
+Figure 2: Independence number 
+\alpha
+α\alpha versus matching number 
+\mu
+μ\mu under several Boolean predicates. Red lines show solutions to the upper-bound model (4).
+
+Similarly, to compute a table-true lower bound of the form 
+mx+b
+m​x+bmx+b over the same support set, we solve
+
+\displaystyle\underset{m,b}{\text{maximize}}
+maximizem,b\displaystyle\underset{m,b}{\text{maximize}}
+
+\displaystyle\sum_{i\in I(P)}\big(mx_{i}+b-\alpha_{i}\big)
+∑i∈I⁡(P)(m​xi+b−αi)\displaystyle\sum_{i\in I(P)}\big(mx_{i}+b-\alpha_{i}\big)
+
+(5)
+
+\displaystyle\text{subject to}
+subject to\displaystyle\text{subject to}
+
+\displaystyle\alpha_{i}\geq mx_{i}+b,\qquad\forall i\in I(P).
+αi≥mxi+b,∀i∈I(P).\displaystyle\alpha_{i}\geq mx_{i}+b,\qquad\forall i\in I(P).
+
+Here, the constraints enforce 
+mx_{i}+b\leq\alpha_{i}
+m​xi+b≤αimx_{i}+b\leq\alpha_{i} on 
+I(P)
+I⁡(P)I(P), so every term in the objective is nonpositive; therefore, maximizing the sum chooses, among all affine lower bounds, one that stays as close as possible to 
+\alpha
+α\alpha (again in a 
+\ell_{1}
+ℓ1\ell_{1} sense) while remaining below it.
+
+For a table-true inequality restricted to 
+I(P)
+I⁡(P)I(P), the touch number is the number of rows 
+i\in I(P)
+i∈I⁡(P)i\in I(P) on which the inequality holds with equality; these rows are the sharp instances of the bound on the current snapshot. In the baseline setting, we apply (4) and (5) across all choices of predictor invariant 
+x
+xx (ranging over numerical columns distinct from the target) and all predicates 
+P
+PP available in the schema. The output of this stage is a list of table-true one-predictor affine bounds together with their touch numbers and sharp-instance sets; subsequent filtering (Section 4.3) reduces redundancy while retaining useful aliases.
+
+Implementation details (LP solvers).
+
+All linear programs used to fit the affine bounds in (4)–(5) are modeled and solved in Python. In the companion Jupyter notebooks and in the interactive website, we use the PuLP modeling layer Mitchell et al. (2011) with its default backend solver CBC (COIN-OR Branch-and-Cut) Forrest and Lougee-Heimer (2005).
+In the current released Python package, the same LPs are solved using scipy.optimize.linprog Virtanen et al. (2020) using the HiGHS solver Huangfu and Hall (2018). When an LP admits multiple optimal solutions (e.g., more than one pair 
+(m,b)
+(m,b)(m,b) attains the optimum), we accept any optimal solution returned by the solver; such non-uniqueness may change the reported coefficients but does not affect the induced table-truth of the resulting conjecture, nor downstream touch/sharp sets or redundancy filtering.
+
+4.2 Extending single variable bounds to multivariable and nonlinear bounds
+
+The baseline inequality generator searches, for each Boolean predicate 
+P
+PP and each numerical predictor column 
+x
+xx in the snapshot table, within a deliberately restricted but highly interpretable hypothesis class. The upper bounds are obtained by solving (4) (with 
+x_{i}
+xix_{i} set to the chosen predictor values) and the lower bounds by (5). Consequently, every upper-bound conjecture produced by the baseline procedure has the univariate affine form
+
+\alpha\leq mx+b,
+α≤m​x+b,\alpha\leq mx+b,
+
+(6)
+
+and every lower-bound conjecture has the analogous form 
+\alpha\geq mx+b
+α≥m​x+b\alpha\geq mx+b, where 
+m,b\in\mathbb{R}
+m,b∈ℝm,b\in\mathbb{R} are returned by the solver. If 
+x
+xx is itself a derived feature (for example, 
+x=n-\mu
+x=n−μx=n-\mu), then the right-hand side can reflect richer structure via schema-level feature engineering, although the optimization step still treats one numerical column at a time. More broadly, while the baseline generator is linear in the fitted coefficients, it can capture many nonlinear relationships in the underlying invariants by expanding the snapshot schema with additional derived columns (e.g., 
+\log n
+log⁡n\log n, 
+x^{2}
+x2x^{2}, 
+\Delta^{2}
+Δ2\Delta^{2}, 
+\min\{x,y\}
+min⁡{x,y}\min\{x,y\}, 
+\max\{x,y\}
+max⁡{x,y}\max\{x,y\}, or piecewise-linear surrogates), and then applying the same linear-programming pipeline to the enlarged feature set. The main effect of this added expressiveness is an increase in the number of candidate predictors (and hence the number of LPs solved), trading runtime for a broader search space. This design keeps reported conjectures easy to interpret and compare, but it excludes genuinely multivariate linear relationships unless they are included explicitly through additional columns or derived features.
+
+The same template extends directly to multivariate affine bounds in the newer PyPI-distributed txgraffiti Python package Davila and Eddy (2025). Let 
+X\in\mathbb{R}^{|I(P)|\times k}
+X∈ℝ|I⁡(P)|×kX\in\mathbb{R}^{|I(P)|\times k} denote the matrix of 
+k
+kk predictor columns restricted to the support set 
+I(P)
+I⁡(P)I(P), and let 
+y\in\mathbb{R}^{|I(P)|}
+y∈ℝ|I⁡(P)|y\in\mathbb{R}^{|I(P)|} denote the corresponding target values (so 
+y_{i}=\alpha_{i}
+yi=αiy_{i}=\alpha_{i}). In the implementation, multivariate bounds are obtained by a minimum total slack linear program with explicit box constraints on coefficients and intercept, which stabilizes the fit and enforces interpretability.
+
+For an upper bound 
+y\leq Xw+b\mathbf{1}
+y≤X​w+b​𝟏y\leq Xw+b\mathbf{1}, we solve
+
+\displaystyle\underset{w,\,b,\,s}{\text{minimize}}
+minimizew,b,s\displaystyle\underset{w,\,b,\,s}{\text{minimize}}
+
+\displaystyle\sum_{i\in I(P)}s_{i}
+∑i∈I⁡(P)si\displaystyle\sum_{i\in I(P)}s_{i}
+
+(7)
+
+\displaystyle\text{subject to}
+subject to\displaystyle\text{subject to}
+
+\displaystyle X_{i}w+b-s_{i}=y_{i},\qquad\forall i\in I(P),
+Xiw+b−si=yi,∀i∈I(P),\displaystyle X_{i}w+b-s_{i}=y_{i},\qquad\forall i\in I(P),
+
+\displaystyle s_{i}\geq 0,\qquad\forall i\in I(P),
+si≥0,∀i∈I(P),\displaystyle s_{i}\geq 0,\qquad\forall i\in I(P),
+
+\displaystyle-M\leq w_{j}\leq M\ \ (\forall j),\qquad-M\leq b\leq M,
+−M≤wj≤M(∀j),−M≤b≤M,\displaystyle-M\leq w_{j}\leq M\ \ (\forall j),\qquad-M\leq b\leq M,
+
+where 
+X_{i}
+XiX_{i} is the 
+i
+iith row of 
+X
+XX, 
+s
+ss is a vector of nonnegative slack variables, and 
+M&gt;0
+M&gt;0M&gt;0 is a coefficient bound chosen by the user. Eliminating 
+s_{i}
+sis_{i} shows that 
+X_{i}w+b\geq y_{i}
+Xi​w+b≥yiX_{i}w+b\geq y_{i} for all 
+i\in I(P)
+i∈I⁡(P)i\in I(P), and the objective minimizes the total slack 
+\sum_{i}(X_{i}w+b-y_{i})
+∑i(Xi​w+b−yi)\sum_{i}(X_{i}w+b-y_{i}).
+
+For a lower bound 
+y\geq Xw+b\mathbf{1}
+y≥X​w+b​𝟏y\geq Xw+b\mathbf{1}, we solve the following.
+
+\displaystyle\underset{w,\,b,\,s}{\text{minimize}}
+minimizew,b,s\displaystyle\underset{w,\,b,\,s}{\text{minimize}}
+
+\displaystyle\sum_{i\in I(P)}s_{i}
+∑i∈I⁡(P)si\displaystyle\sum_{i\in I(P)}s_{i}
+
+(8)
+
+\displaystyle\text{subject to}
+subject to\displaystyle\text{subject to}
+
+\displaystyle X_{i}w+b+s_{i}=y_{i},\qquad\forall i\in I(P),
+Xiw+b+si=yi,∀i∈I(P),\displaystyle X_{i}w+b+s_{i}=y_{i},\qquad\forall i\in I(P),
+
+\displaystyle s_{i}\geq 0,\qquad\forall i\in I(P),
+si≥0,∀i∈I(P),\displaystyle s_{i}\geq 0,\qquad\forall i\in I(P),
+
+\displaystyle-M\leq w_{j}\leq M\ \ (\forall j),\qquad-M\leq b\leq M.
+−M≤wj≤M(∀j),−M≤b≤M.\displaystyle-M\leq w_{j}\leq M\ \ (\forall j),\qquad-M\leq b\leq M.
+
+Here, feasibility implies 
+X_{i}w+b\leq y_{i}
+Xi​w+b≤yiX_{i}w+b\leq y_{i} on 
+I(P)
+I⁡(P)I(P), and minimizing 
+\sum_{i}s_{i}=\sum_{i}(y_{i}-(X_{i}w+b))
+∑isi=∑i(yi−(Xi​w+b))\sum_{i}s_{i}=\sum_{i}(y_{i}-(X_{i}w+b)) is equivalent (for fixed 
+y
+yy) to maximizing the aggregate fitted bound 
+\sum_{i}(X_{i}w+b)
+∑i(Xi​w+b)\sum_{i}(X_{i}w+b) while remaining below 
+y
+yy.
+
+Specializing (8) to 
+k=2
+k=2k=2 predictors 
+(x,z)
+(x,z)(x,z) yields table-true inequalities of the form
+
+\alpha\geq m_{1}x+m_{2}z+b,
+α≥m1​x+m2​z+b,\alpha\geq m_{1}x+m_{2}z+b,
+
+capturing interactions between invariants that are inaccessible to a single predictor unless those interactions are explicitly engineered as additional derived columns. After solving, TxGraffiti additionally rationalizes the coefficients to small denominators and applies stricter “human-niceness” thresholds to suppress overly large or fragile expressions.
+
+Although the underlying software supports multivariate bounds, the interactive website defaults to single-predictor models. In practice, many multivariate expressions were less useful to domain experts: as syntactic complexity increases, a conjecture can become harder to interpret, harder to communicate, and less likely to suggest a proof strategy, even when it is table-true and numerically tighter on a fixed snapshot. This preference for simplicity motivates the default presentation in the web interface, which prioritizes single-predictor bounds (together with a small number of engineered features).
+
+At the same time, the multivariate structure can remain interpretable when expressed through a natural derived target. As an illustration, suppose that we add the derived column 
+\alpha\Delta
+α​Δ\alpha\Delta; the product of two numerical columns.
+Applying the lower-bound model (8) to 
+\alpha\Delta
+α​Δ\alpha\Delta (as a target) over pairs of predictors yields inequalities of the form
+
+\alpha\Delta\geq m_{1}a+m_{2}\operatorname{res}+b,
+α​Δ≥m1​a+m2​res+b,\alpha\Delta\geq m_{1}a+m_{2}\operatorname{res}+b,
+
+which can be rearranged into lower bounds on 
+\alpha
+α\alpha involving a small number of invariants; in this case 
+a
+aa and 
+res
+r​e​sres. For example, this procedure produced (after standard filtering) the following early (open) conjecture.
+
+Conjecture 1 (TxGraffiti).
+
+If 
+G
+GG is a connected graph with order 
+n(G)\geq 3
+n⁡(G)≥3n(G)\geq 3, then
+
+\alpha(G)\geq\frac{a(G)+\operatorname{res}(G)}{\Delta(G)}.
+α⁡(G)≥a⁡(G)+res⁡(G)Δ⁡(G).\alpha(G)\geq\frac{a(G)+\operatorname{res}(G)}{\Delta(G)}.
+
+Here, 
+\alpha(G)
+α⁡(G)\alpha(G) is the independence number, 
+a(G)
+a⁡(G)a(G) is the annihilation number Yue et al. (2020), 
+\operatorname{res}(G)
+res⁡(G)\operatorname{res}(G) is the Havel-Hakimi residue Favaron et al. (1991a), and 
+\Delta(G)
+Δ⁡(G)\Delta(G) is the maximum degree.
+
+This inequality illustrates the “middle ground” motivating our design: it combines a small number of standard invariants in a form that is easy to state and plausibly amenable to proof, while still expressing an interaction that cannot be captured by a single predictor column.
+
+4.3 The static-Dalmatian heuristic
+
+Because TxGraffiti systematically enumerates predictors and hypotheses—testing each numerical column as a predictor for the target under each available Boolean predicate—the baseline stage typically generates a large family of table-true candidate bounds (often dozens to hundreds for a single target invariant). We therefore rank and filter candidates using touch. For a table-true inequality 
+c
+cc on a finite object set 
+\mathcal{O}
+𝒪\mathcal{O}, define its sharp set
+
+\Sharp(c)\ :=\ \{o\in\mathcal{O}:\ c\text{ holds with equality on }o\},
+Sharp⁡(c):={o∈𝒪:c​ holds with equality on ​o},\Sharp(c)\ :=\ \{o\in\mathcal{O}:\ c\text{ holds with equality on }o\},
+
+and its touch number as 
+|\Sharp(c)|
+|Sharp⁡(c)||\Sharp(c)|. Intuitively, a high touch number indicates that the bound is supported by many equality witnesses on the current snapshot. Nevertheless, even after sorting by touch number, many candidates remain redundant: they introduce no new equality witnesses beyond those already explained by earlier bounds, or they describe the same equality locus in a different syntactic form. To control this redundancy, we adapt the acceptance logic of Fajtlowicz’s Dalmatian heuristic to the setting where the object collection and candidate list are fixed. We refer to this one-pass variant as the static-Dalmatian heuristic.
+
+The original Dalmatian heuristic is dynamic: conjectures are proposed and filtered while the conjecture bank and database evolve over time (for example, as counterexamples are discovered and added). In contrast, static-Dalmatian operates on a single snapshot: a finite family of table-true inequalities generated from a fixed table and then ordered (here, by touch number). Its purpose is not to decide the logical implication among inequalities but to return a compact set of representative bounds, while optionally retaining aliases—distinct formulas that identify the same equality locus on the snapshot.
+
+The heuristic maintains a running coverage set 
+S\subseteq\mathcal{O}
+S⊆𝒪S\subseteq\mathcal{O} consisting of objects already touched by accepted representatives. A conjecture 
+c
+cc is
+accepted as representative if it contributes at least one new equality witness,
+
+\Sharp(c)\setminus S\neq\emptyset,
+Sharp⁡(c)∖S≠∅,\Sharp(c)\setminus S\neq\emptyset,
+
+in which case we update 
+S\leftarrow S\cup\Sharp(c)
+S←S∪Sharp⁡(c)S\leftarrow S\cup\Sharp(c). If, instead, 
+\Sharp(c)
+Sharp⁡(c)\Sharp(c) coincides with the sharp set of some previously accepted representative, then 
+c
+cc is retained as an alias, since it provides a different syntactic
+description of the same equality structure.
+
+Given a list 
+\mathcal{C}=(c_{1},\dots,c_{M})
+𝒞=(c1,…,cM)\mathcal{C}=(c_{1},\dots,c_{M}) sorted in non-increasing order by touch number, the static-Dalmatian filter performs a single scan. It accepts 
+c_{1}
+c1c_{1} as a representative and initializes 
+S\leftarrow\Sharp(c_{1})
+S←Sharp⁡(c1)S\leftarrow\Sharp(c_{1}). For each 
+j=2,\dots,M
+j=2,…,Mj=2,\dots,M, it computes 
+\Sharp(c_{j})
+Sharp⁡(cj)\Sharp(c_{j}) and: (i) accepts 
+c_{j}
+cjc_{j} as a representative if 
+\Sharp(c_{j})\setminus S\neq\emptyset
+Sharp⁡(cj)∖S≠∅\Sharp(c_{j})\setminus S\neq\emptyset, updating 
+S\leftarrow S\cup\Sharp(c_{j})
+S←S∪Sharp⁡(cj)S\leftarrow S\cup\Sharp(c_{j});
+(ii) otherwise, retains 
+c_{j}
+cjc_{j} as an alias if 
+\Sharp(c_{j})=\Sharp(c_{i})
+Sharp⁡(cj)=Sharp⁡(ci)\Sharp(c_{j})=\Sharp(c_{i}) for some previously accepted representative 
+c_{i}
+cic_{i}; and (iii) discards 
+c_{j}
+cjc_{j} if neither condition holds. The output is the set of accepted conjectures (representatives and aliases).
+
+If 
+N=|\mathcal{O}|
+N=|𝒪|N=|\mathcal{O}| and 
+M
+MM is the number of candidate conjectures, then a direct implementation that computes 
+\Sharp(c)
+Sharp⁡(c)\Sharp(c) by scanning all 
+N
+NN objects has worst-case runtime 
+O(MN)
+O⁡(M​N)O(MN). In practice, constant factors can be reduced by caching computed sharp sets and hashing them to detect aliases efficiently.
+
+4.4 Full TxGraffiti conjecture generation
+
+In the previous two subsections, we described the two core components of the baseline pipeline: (i) generating table-true one-predictor affine bounds by solving (4)–(5), and (ii) filtering the resulting candidate list to remove redundancy on the current snapshot via static-Dalmatian. We now summarize how these pieces come together into an end-to-end routine that produces conjectures simultaneously for multiple target invariants.
+
+Fix a snapshot table with numerical invariant columns and Boolean predicate columns. Let 
+\mathcal{A}
+𝒜\mathcal{A} be a set of target invariants (columns) for which we wish to conjecture bounds, let 
+\mathcal{P}
+𝒫\mathcal{P} be the set of available Boolean predicates (hypothesis classes), and let 
+\mathcal{X}(\alpha)
+𝒳⁡(α)\mathcal{X}(\alpha) denote the admissible numerical predictors for target 
+\alpha
+α\alpha (for example, all numerical columns distinct from 
+\alpha
+α\alpha). For each target 
+\alpha\in\mathcal{A}
+α∈𝒜\alpha\in\mathcal{A} and each pair 
+(x,P)\in\mathcal{X}(\alpha)\times\mathcal{P}
+(x,P)∈𝒳⁡(α)×𝒫(x,P)\in\mathcal{X}(\alpha)\times\mathcal{P}, we solve the upper and lower-bound models (4)–(5) restricted to the support set 
+I(P)
+I⁡(P)I(P). Feasible solutions yield affine inequalities
+
+\alpha\leq mx+b\qquad\text{and}\qquad\alpha\geq mx+b
+α≤m​x+bandα≥m​x+b\alpha\leq mx+b\qquad\text{and}\qquad\alpha\geq mx+b
+
+that are table-true on the predicate-restricted subpopulation. Each candidate is annotated with its predicate 
+P
+PP, its touch number, and its sharp set. Candidates are then sorted by touch number to prioritize bounds that are sharp on many stored instances, and the static-Dalmatian heuristic can be applied to eliminate candidates that add no new sharp witnesses on the current snapshot, while retaining aliases when multiple formulas describe the same equality locus.
+
+Algorithmically, the procedure is a loop over the targets:
+
+1. 
+
+For each target 
+\alpha\in\mathcal{A}
+α∈𝒜\alpha\in\mathcal{A}, enumerate all predictor–predicate pairs 
+(x,P)\in\mathcal{X}(\alpha)\times\mathcal{P}
+(x,P)∈𝒳⁡(α)×𝒫(x,P)\in\mathcal{X}(\alpha)\times\mathcal{P} and solve (4)–(5) to obtain table-true affine upper and lower bounds.
+
+2. 
+
+Compute touch numbers and sharp sets and sort the resulting upper and lower candidate lists by touch number.
+
+3. 
+
+Optionally apply static-Dalmatian (Section 4.3) separately to the upper and lower lists.
+
+4. 
+
+Merge the surviving conjectures across all targets and sort them for presentation (e.g., by touch number).
+
+This stage provides explicit snapshot-dependent guarantees: every returned inequality is table-true on the selected snapshot table (under its stated predicate), and the optimization objectives in (4)–(5) favor bounds with small total slack on the corresponding support set. Touch number and static-Dalmatian then act as prioritization and de-duplication mechanisms, producing a compact list of representative conjectures together with metadata (sharp instances and aliases) useful for subsequent mathematical scrutiny. For transparency and reproducibility, the companion repository includes a driver routine that implements this full pipeline and scripts that reproduce the conjecture lists and figures reported in this paper.66
+              6
+
+            https://github.com/RandyRDavila/Automated-conjecturing-in-mathematics-with-TxGraffiti
+
+5 Example workflow: total domination
+
+We illustrate a typical “TxGraffiti-to-theorem” workflow using the TxGraffiti web application.77
+            7
+
+          https://txgraffiti.streamlit.app
+The goal is demonstrative rather than exhaustive: we fix one target invariant (the total domination number 
+\gamma_{t}
+γt\gamma_{t}), generate candidate bounds under a simple hypothesis, quickly refute several spurious patterns, and then (i) extract one
+clean statement that admits a short proof by standard estimates, and (ii) highlight one remaining table-true conjecture that appears to merit further study. We use standard terminology as in West West (2001); see Appendix A for definitions of 
+\gamma_{t}(G)
+γt​(G)\gamma_{t}(G), 
+\gamma(G)
+γ⁡(G)\gamma(G), 
+R(G)
+R⁡(G)R(G), and graph products 
+\square
+□\square and 
+\times
+×\times.
+
+We begin with a conjecture produced by TxGraffiti when restricting the snapshot by the Boolean hypothesis 
+P(G)\equiv(G\ \text{connected})\wedge(\Delta(G)\leq 3)
+P⁡(G)≡(G​connected)∧(Δ⁡(G)≤3)P(G)\equiv(G\ \text{connected})\wedge(\Delta(G)\leq 3). Specifically, the system returns the table-true inequality 
+\gamma_{t}(G)\geq\tfrac{2}{3}R(G)
+γt​(G)≥23​R​(G)\gamma_{t}(G)\geq\tfrac{2}{3}R(G) in this restricted snapshot. Although it first appears as a numerical pattern, it becomes transparent once translated into standard notation: it follows by combining two elementary bounds in terms of 
+n(G)
+n⁡(G)n(G) (proved below).
+
+Conjecture 2 (TxGraffiti).
+
+If 
+G
+GG is a connected graph of order 
+n(G)\geq 2
+n⁡(G)≥2n(G)\geq 2 with 
+\Delta(G)\leq 3
+Δ⁡(G)≤3\Delta(G)\leq 3, then
+
+\gamma_{t}(G)\ \geq\ \frac{2}{3}\,R(G).
+γt​(G)≥23​R​(G).\gamma_{t}(G)\ \geq\ \frac{2}{3}\,R(G).
+
+A common step in our workflow is to test whether a conjecture obtained under a restricted hypothesis is simply a specialization of a more general inequality. Here, the hypothesis 
+\Delta(G)\leq 3
+Δ⁡(G)≤3\Delta(G)\leq 3 suggests replacing the constant 
+\tfrac{2}{3}
+23\tfrac{2}{3} by the parameter 
+\tfrac{2}{\Delta(G)}
+2Δ⁡(G)\tfrac{2}{\Delta(G)}, and indeed the conjecture above is exactly the specialization of the following 
+\Delta
+Δ\Delta-dependent bound at 
+\Delta(G)=3
+Δ⁡(G)=3\Delta(G)=3.
+
+Theorem 1.
+
+If 
+G
+GG is a connected graph of order 
+n(G)\geq 2
+n⁡(G)≥2n(G)\geq 2, then
+
+\gamma_{t}(G)\ \geq\ \frac{2}{\Delta(G)}\,R(G).
+γt​(G)≥2Δ⁡(G)​R​(G).\gamma_{t}(G)\ \geq\ \frac{2}{\Delta(G)}\,R(G).
+
+Proof.
+
+Let 
+D\subseteq V(G)
+D⊆V⁡(G)D\subseteq V(G) be a minimum total dominating set, and so, every vertex in 
+G
+GG has a neighbor in 
+D
+DD. Since every vertex has a
+neighbor in 
+D
+DD, we have 
+V(G)\subseteq\bigcup_{v\in D}N(v)
+V⁡(G)⊆⋃v∈DN⁡(v)V(G)\subseteq\bigcup_{v\in D}N(v) and hence
+
+n(G)\ \leq\ \sum_{v\in D}|N(v)|\ =\ \sum_{v\in D}d(v)\ \leq\ \Delta(G)\,|D|.
+n⁡(G)≤∑v∈D|N⁡(v)|=∑v∈Dd⁡(v)≤Δ⁡(G)​|D|.n(G)\ \leq\ \sum_{v\in D}|N(v)|\ =\ \sum_{v\in D}d(v)\ \leq\ \Delta(G)\,|D|.
+
+Thus, 
+\gamma_{t}(G)=|D|\geq n(G)/\Delta(G)
+γt​(G)=|D|≥n⁡(G)/Δ⁡(G)\gamma_{t}(G)=|D|\geq n(G)/\Delta(G).
+
+Next, 
+G
+GG has no isolated vertices (because it is connected and 
+n(G)\geq 2
+n⁡(G)≥2n(G)\geq 2). For each edge 
+uv\in E(G)
+u​v∈E⁡(G)uv\in E(G), AM–GM yields
+
+\frac{1}{\sqrt{d(u)d(v)}}\ \leq\ \frac{1}{2}\!\left(\frac{1}{d(u)}+\frac{1}{d(v)}\right).
+1d⁡(u)​d​(v)≤12​(1d⁡(u)+1d⁡(v)).\frac{1}{\sqrt{d(u)d(v)}}\ \leq\ \frac{1}{2}\!\left(\frac{1}{d(u)}+\frac{1}{d(v)}\right).
+
+Summing over edges and collecting by vertex gives
+
+R(G)\ \leq\ \frac{1}{2}\sum_{v\in V(G)}d(v)\cdot\frac{1}{d(v)}\ =\ \frac{n(G)}{2}.
+R⁡(G)≤12​∑v∈V⁡(G)d⁡(v)⋅1d⁡(v)=n⁡(G)2.R(G)\ \leq\ \frac{1}{2}\sum_{v\in V(G)}d(v)\cdot\frac{1}{d(v)}\ =\ \frac{n(G)}{2}.
+
+Combining 
+R(G)\leq n(G)/2
+R⁡(G)≤n⁡(G)/2R(G)\leq n(G)/2 with 
+\gamma_{t}(G)\geq n(G)/\Delta(G)
+γt​(G)≥n⁡(G)/Δ⁡(G)\gamma_{t}(G)\geq n(G)/\Delta(G) yields
+
+\frac{2}{\Delta(G)}\,R(G)\ \leq\ \frac{n(G)}{\Delta(G)}\ \leq\ \gamma_{t}(G),
+2Δ⁡(G)​R​(G)≤n⁡(G)Δ⁡(G)≤γt​(G),\frac{2}{\Delta(G)}\,R(G)\ \leq\ \frac{n(G)}{\Delta(G)}\ \leq\ \gamma_{t}(G),
+
+as claimed.
+∎
+
+Corollary 1.
+
+If 
+G
+GG is a connected graph of order 
+n(G)\geq 2
+n⁡(G)≥2n(G)\geq 2 and maximum degree 
+\Delta(G)\leq 3
+Δ⁡(G)≤3\Delta(G)\leq 3, then
+
+\gamma_{t}(G)\ \geq\ \frac{2}{3}\,R(G).
+γt​(G)≥23​R​(G).\gamma_{t}(G)\ \geq\ \frac{2}{3}\,R(G).
+
+In particular, Conjecture 2 holds.
+
+Proof.
+
+Apply Theorem 1 and note that 
+\Delta(G)\leq 3
+Δ⁡(G)≤3\Delta(G)\leq 3 implies
+
+\frac{2}{\Delta(G)}\geq\frac{2}{3}
+2Δ⁡(G)≥23\frac{2}{\Delta(G)}\geq\frac{2}{3}.
+∎
+
+Not all TxGraffiti conjectures reduce to such direct combinations of standard estimates. In our runs, several candidates were quickly refuted by well-known constructions, but a smaller subset remained table-true after basic counterexample searches and did not appear to follow from routine containment or monotonicity arguments. The following conjecture is representative: it compares total domination in the Cartesian product to domination in the direct product.
+
+Conjecture 3 (TxGraffiti).
+
+If 
+G
+GG and 
+H
+HH are connected graphs with 
+n(G),n(H)\geq 2
+n⁡(G),n⁡(H)≥2n(G),n(H)\geq 2, then
+
+\gamma_{t}(G\&gt;\square\&gt;H)\ \geq\ \gamma(G\times H).
+γt​(G​□​H)≥γ⁡(G×H).\gamma_{t}(G\&gt;\square\&gt;H)\ \geq\ \gamma(G\times H).
+
+Conjecture 3 is typical of the statements we regard as most promising: it is table-true on the curated datasets used in our runs, it has many sharp instances, and it does not follow from an obvious containment relation between the two products. Moreover, several superficially similar product inequalities were rapidly refuted, often by exploiting disconnectedness and sparsity phenomena in the direct product, suggesting that any proof here would require genuinely new structural input rather than a routine estimate.
+
+6 TxGraffiti-stimulated results in graph theory
+
+This section records a small selection of graph-theoretic results whose discovery was stimulated by TxGraffiti. By “stimulated” we mean that each statement below first appeared as a conjecture output by TxGraffiti from a curated snapshot table of graph invariants, and then proceeded through the usual mathematical pipeline—counterexample search, refinement of hypotheses, and proof development—culminating (in the cases collected here) in published theorems or peer-reviewed preprints.
+
+Our aim is not to provide a comprehensive bibliography of TxGraffiti-related outcomes. Rather, we document concrete downstream results: specific program-generated conjectures that were subsequently proved in the literature. For ease of reference, each theorem is annotated with the corresponding attribution. Several of these results concern zero forcing and its variants; others relate classical cover- and domination-type invariants. All graph-theoretic terminology and parameters used in the following (including 
+\alpha,\mu,\beta,\gamma,\gamma_{t},Z,Z_{t},
+α,μ,β,γ,γt,Z,Zt,\alpha,\mu,\beta,\gamma,\gamma_{t},Z,Z_{t}, and 
+Z_{+}
+Z+Z_{+}) are defined in the Appendix A, for standard terminology, we refer the reader to West West (2001).
+
+6.1 Independence versus matching in regular graphs
+
+TxGraffiti conjectured that in regular graphs, the independence number 
+\alpha(G)
+α⁡(G)\alpha(G) is at most the matching number 
+\mu(G)
+μ⁡(G)\mu(G). The parameters 
+\alpha(G)
+α⁡(G)\alpha(G) and 
+\mu(G)
+μ⁡(G)\mu(G) lie at the core of graph theory: 
+\alpha(G)
+α⁡(G)\alpha(G) is a basic extremal measure of sparsity, while 
+\mu(G)
+μ⁡(G)\mu(G) is a canonical packing parameter and a cornerstone of structural and algorithmic graph theory. The resulting clean
+inequality
+
+\alpha(G)\leq\mu(G)
+α⁡(G)≤μ⁡(G)\alpha(G)\leq\mu(G)
+
+for 
+r
+rr-regular graphs (
+r&gt;0
+r&gt;0r&gt;0) was proved in Caro et al. (2020). From an algorithmic viewpoint, this is also meaningful: computing 
+\alpha(G)
+α⁡(G)\alpha(G) is 
+\mathcal{NP}
+𝒩​𝒫\mathcal{NP}-hard in general, whereas 
+\mu(G)
+μ⁡(G)\mu(G) is computable in polynomial time (e.g., via Edmonds’ matching algorithm). Thus, in regular graphs, Theorem 2 yields a nontrivial efficiently computable upper bound on 
+\alpha(G)
+α⁡(G)\alpha(G) in terms of a standard polynomial-time invariant, and it does so with equality on natural sharpness families.
+
+Theorem 2 (TxGraffiti; proved in Caro et al. (2020)).
+
+If 
+G
+GG is an 
+r
+rr-regular graph with 
+r&gt;0
+r&gt;0r&gt;0, then
+
+\alpha(G)\leq\mu(G).
+α⁡(G)≤μ⁡(G).\alpha(G)\leq\mu(G).
+
+Moreover, Caro et al. (2020) proves a degree-weighted refinement that extends the regular-graph statement to all connected graphs by balancing 
+\alpha(G)
+α⁡(G)\alpha(G) and 
+\mu(G)
+μ⁡(G)\mu(G) against the minimum and maximum degrees. The regular case follows immediately by setting 
+\delta(G)=\Delta(G)=r
+δ⁡(G)=Δ⁡(G)=r\delta(G)=\Delta(G)=r.
+
+Theorem 3 (Caro et al. (2020)).
+
+If 
+G
+GG is a connected graph of order 
+n(G)\geq 2
+n⁡(G)≥2n(G)\geq 2, then
+
+\delta(G)\,\alpha(G)\leq\Delta(G)\,\mu(G).
+δ⁡(G)​α​(G)≤Δ⁡(G)​μ​(G).\delta(G)\,\alpha(G)\leq\Delta(G)\,\mu(G).
+
+Theorem 3 interpolates smoothly between highly regular and highly irregular graphs: as the degree spread 
+\Delta(G)/\delta(G)
+Δ⁡(G)/δ⁡(G)\Delta(G)/\delta(G) narrows, the matching number increasingly constrains the size of an independent set, recovering Theorem 2 in the regular setting.
+
+6.2 Zero forcing related results
+
+Zero forcing originated as a combinatorial tool for bounding matrix parameters (see AIM Minimum Rank–Special Graphs Work Group (2008)), but it has also developed into a rich intrinsic graph invariant defined by a local propagation rule. A consistent theme in the TxGraffiti output is that, in structured graph families, the forcing dynamics of 
+Z(G)
+Z⁡(G)Z(G) and its variants are often sharply constrained by classical cover and domination parameters.
+
+TxGraffiti conjectured, for instance, that claw-freeness forces the zero forcing number to lie below the vertex cover number. This inequality relates a static certificate (a minimum vertex cover) to a dynamic propagation process
+(zero forcing): in a claw-free graph, the restricted local neighborhood structure allows one to convert an appropriately organized cover into an initial forcing set. The proof in Brimkov et al. (2024) is constructive in this sense, producing a zero forcing set from an appropriate vertex cover.
+
+Theorem 4 (TxGraffiti; proved in Brimkov et al. (2024)).
+
+If 
+G
+GG is a connected claw-free graph, then
+
+Z(G)\leq\beta(G).
+Z⁡(G)≤β⁡(G).Z(G)\leq\beta(G).
+
+A second recurring pattern is that within highly structured families—most notably cubic graphs—domination-type parameters exert strong control over zero forcing. The next two theorems formalize this phenomenon for the standard and total variants. We emphasize that these results are not routine consequences of
+general-purpose techniques: the proofs in Davila and Henning (2021); Davila and Henning (2019) require substantial structural analysis and case work, reflecting the complexity of forcing dynamics even in the restrictive setting of connected cubic graphs.
+
+Theorem 5 (TxGraffiti; proved in Davila and Henning (2021)).
+
+If 
+G\neq K_{4}
+G≠K4G\neq K_{4} is a connected and cubic graph, then
+
+Z(G)\leq 2\,\gamma(G).
+Z⁡(G)≤2​γ​(G).Z(G)\leq 2\,\gamma(G).
+
+Theorem 6 (TxGraffiti; proved in Davila and Henning (2019)).
+
+If 
+G\neq K_{3,3}
+G≠K3,3G\neq K_{3,3} is a connected and cubic graph, then
+
+Z_{t}(G)\leq\tfrac{3}{2}\,\gamma_{t}(G).
+Zt​(G)≤32​γt​(G).Z_{t}(G)\leq\tfrac{3}{2}\,\gamma_{t}(G).
+
+Restricting further to claw-free cubic graphs, TxGraffiti conjectured a stronger additive domination bound. The following theorem strengthens what can be guaranteed for the full cubic class by exploiting the additional structure imposed by claw-freeness; the proof in Davila (2024) also identifies the extremal graphs (i.e. those achieving equality).
+
+Theorem 7 (TxGraffiti; proved in Davila (2024)).
+
+If 
+G
+GG is a connected, cubic, and claw-free graph, then
+
+Z(G)\leq\gamma(G)+2,
+Z⁡(G)≤γ⁡(G)+2,Z(G)\leq\gamma(G)+2,
+
+and this bound is sharp if and only if 
+G
+GG is a diamond-necklace or 
+G
+GG is the complete graph 
+K_{4}
+K4K_{4}.
+
+The preceding theorems motivate a broader conjectural relationship between the independence number and the zero forcing number in graphs of maximum degree at most three. This conjecture has been studied extensively and remains a central open problem originating from TxGraffiti output.
+
+Conjecture 4 (TxGraffiti).
+
+If 
+G\neq K_{4}
+G≠K4G\neq K_{4} is a connected graph with 
+\Delta(G)\leq 3
+Δ⁡(G)≤3\Delta(G)\leq 3, then
+
+Z(G)\leq\alpha(G)+1.
+Z⁡(G)≤α⁡(G)+1.Z(G)\leq\alpha(G)+1.
+
+Conjecture 4 has been proved in important special cases, including cubic claw-free graphs Davila and Henning (2020). More recently, Schuerger, Warnberg, and Young show that almost all cubic graphs satisfy the weaker bound 
+Z(G)\leq\alpha(G)+2
+Z⁡(G)≤α⁡(G)+2Z(G)\leq\alpha(G)+2, and they exhibit an infinite family of cubic graphs
+with 
+Z(G)=\alpha(G)+1
+Z⁡(G)=α⁡(G)+1Z(G)=\alpha(G)+1 Schuerger et al. (2024).
+
+TxGraffiti also suggested that claw-free structure collapses the gap between standard and positive semidefinite zero forcing. Since 
+Z_{+}(G)
+Z+​(G)Z_{+}(G) is motivated by minimum-rank problems for positive semidefinite matrices, the equality below provides a bridge between a forbidden-induced-subgraph condition and an algebraically motivated forcing parameter. The proof in Davila et al. (2024) establishes equality for all claw-free graphs and yields a characterization in terms of induced subgraphs.
+
+Theorem 8 (TxGraffiti; proved in Davila et al. (2024)).
+
+If 
+G
+GG is claw-free, then
+
+Z(G)=Z_{+}(G).
+Z​(G)=Z+​(G).Z(G)=Z_{+}(G).
+
+Corollary 2 (Davila et al. (2024)).
+
+A connected graph 
+G
+GG is claw-free if and only if 
+Z(H)=Z_{+}(H)
+Z​(H)=Z+​(H)Z(H)=Z_{+}(H) for every induced subgraph 
+H\subseteq G
+H⊆GH\subseteq G.
+
+Taken together, these results illustrate a typical “TxGraffiti-to-theorem” trajectory: empirically discovered inequalities are subjected to systematic counterexample search, refined to the appropriate hypothesis class (often expressed via forbidden induced subgraphs or degree constraints), and then proved—frequently alongside sharpness analyses, identification of extremal families, and isolation of a small number of exceptional graphs.
+
+7 Conclusion
+
+TxGraffiti, as described in this manuscript, frames automated conjecturing around a finite versioned snapshot table of objects equipped with precomputed numerical invariants and Boolean predicates. In this setting, conjecturing becomes a sequential optimization-and-filtering pipeline: for a chosen target invariant and hypothesis predicate, the system searches over (predicate, predictor) combinations, solves a sequence of small linear programs to fit coefficients within simple templates (e.g., univariate affine bounds) and outputs table-true conditional inequalities of the form
+
+P(G)\ \Rightarrow\ \alpha(G)\leq f(G)\qquad\text{or}\qquad P(G)\ \Rightarrow\ \alpha(G)\geq f(G),
+P⁡(G)⇒α⁡(G)≤f⁡(G)orP⁡(G)⇒α⁡(G)≥f⁡(G),P(G)\ \Rightarrow\ \alpha(G)\leq f(G)\qquad\text{or}\qquad P(G)\ \Rightarrow\ \alpha(G)\geq f(G),
+
+which can be interpreted as conjectures and then tested, refined, or pursued for proof beyond the snapshot. Heuristics such as touch/sharp statistics and redundancy filtering are subsequently applied to compress the resulting candidate set into a small collection of informative and human-readable statements.
+
+The account presented here reflects the system in its formative stage and emphasizes the design choice to prioritize fast, interpretable conjectures from fixed evidence tables. Ongoing development has extended the platform’s capabilities, and a modern open-source implementation is available as the txgraffiti Python package on PyPI Davila and Eddy (2025). Future directions include tighter integration between interactive table construction and conjecturing, richer but still interpretable template families (including schema-level feature engineering and multivariate bounds), and collaborative workflows for curating snapshot tables and theory libraries.
+
+Acknowledgements
+
+The author gratefully acknowledges the referees for their careful reading and many insightful suggestions, which substantially improved the quality and clarity of this manuscript.
+
+Data availability
+
+All data generated or analyzed during this study are included in this published article and its supplementary information files.
+
+Code availability
+
+All code used in this paper can be found at this GitHub repository: https://github.com/RandyRDavila/Automated-conjecturing-in-mathematics-with-TxGraffiti
+
+Declarations
+
+The authors declare no competing interests.
+
+Appendix A Graph-theoretic notation and terminology
+
+This appendix provides notation and graph-theoretic parameters used in this paper. Unless stated otherwise, all graphs are finite, simple, and
+undirected. For a graph 
+G
+GG, we write 
+V(G)
+V⁡(G)V(G) and 
+E(G)
+E⁡(G)E(G) for its vertex and edge sets, and we set 
+n(G)=|V(G)|
+n⁡(G)=|V⁡(G)|n(G)=|V(G)| and 
+m(G)=|E(G)|
+m⁡(G)=|E⁡(G)|m(G)=|E(G)|. For 
+v\in V(G)
+v∈V⁡(G)v\in V(G), the (open) neighborhood is 
+N(v)=\{u\in V(G):uv\in E(G)\}
+N⁡(v)={u∈V⁡(G):u​v∈E⁡(G)}N(v)=\{u\in V(G):uv\in E(G)\}, the degree is 
+d(v)=|N(v)|
+d⁡(v)=|N⁡(v)|d(v)=|N(v)|, and we write 
+\Delta(G)=\max_{v\in V(G)}d(v)
+Δ⁡(G)=maxv∈V⁡(G)⁡d⁡(v)\Delta(G)=\max_{v\in V(G)}d(v) and 
+\delta(G)=\min_{v\in V(G)}d(v)
+δ⁡(G)=minv∈V⁡(G)⁡d⁡(v)\delta(G)=\min_{v\in V(G)}d(v) for the maximum and minimum degrees.
+
+Several classical invariants appear throughout. An independent set is a set 
+S\subseteq V(G)
+S⊆V⁡(G)S\subseteq V(G) in which no two vertices are adjacent, and the
+independence number 
+\alpha(G)
+α⁡(G)\alpha(G) is the maximum size of such a set. A matching is a set of pairwise edge-disjoint edges, and the
+matching number 
+\mu(G)
+μ⁡(G)\mu(G) is the maximum size of a matching. A
+vertex cover is a set 
+C\subseteq V(G)
+C⊆V⁡(G)C\subseteq V(G) meeting every edge (equivalently, for every 
+uv\in E(G)
+u​v∈E⁡(G)uv\in E(G) at least one of 
+u
+uu or 
+v
+vv lies in 
+C
+CC), and the vertex cover number 
+\beta(G)
+β⁡(G)\beta(G) is the minimum size of a vertex cover. A dominating set is a set 
+D\subseteq V(G)
+D⊆V⁡(G)D\subseteq V(G) such that every vertex in 
+V(G)\setminus D
+V⁡(G)∖DV(G)\setminus D has a neighbor in 
+D
+DD, and the domination number 
+\gamma(G)
+γ⁡(G)\gamma(G) is the minimum size of a dominating set. Total domination is the variant in which all vertices must be dominated by a neighbor: a graph admits a total dominating set precisely when it has no isolated vertices, and in that case a set 
+D\subseteq V(G)
+D⊆V⁡(G)D\subseteq V(G) is a total dominating set if every vertex has a neighbor in 
+D
+DD. The total domination number 
+\gamma_{t}(G)
+γt​(G)\gamma_{t}(G) is the minimum size of a total dominating set.
+
+We also refer to certain graph classes. A graph is 
+r
+rr-regular if 
+d(v)=r
+d⁡(v)=rd(v)=r for all 
+v\in V(G)
+v∈V⁡(G)v\in V(G); in particular, it is cubic if it is
+
+3
+33-regular. A graph is claw-free if it contains no induced subgraph isomorphic to 
+K_{1,3}
+K1,3K_{1,3}. The Randić index of 
+G
+GG is
+
+R(G)\;=\;\sum_{uv\in E(G)}\frac{1}{\sqrt{d(u)d(v)}}.
+R⁡(G)=∑u​v∈E⁡(G)1d⁡(u)​d​(v).R(G)\;=\;\sum_{uv\in E(G)}\frac{1}{\sqrt{d(u)d(v)}}.
+
+Two standard graph products are used. The Cartesian product 
+G\&gt;\square\&gt;H
+G​□​HG\&gt;\square\&gt;H has vertex set 
+V(G)\times V(H)
+V⁡(G)×V⁡(H)V(G)\times V(H), where 
+(g,h)
+(g,h)(g,h) is adjacent to 
+(g^{\prime},h^{\prime})
+(g′,h′)(g^{\prime},h^{\prime}) if either 
+g=g^{\prime}
+g=g′g=g^{\prime} and 
+hh^{\prime}\in E(H)
+h​h′∈E⁡(H)hh^{\prime}\in E(H), or 
+h=h^{\prime}
+h=h′h=h^{\prime} and 
+gg^{\prime}\in E(G)
+g​g′∈E⁡(G)gg^{\prime}\in E(G). The direct product (also called the tensor product) 
+G\times H
+G×HG\times H likewise has vertex set 
+V(G)\times V(H)
+V⁡(G)×V⁡(H)V(G)\times V(H), but now 
+(g,h)
+(g,h)(g,h) is adjacent to 
+(g^{\prime},h^{\prime})
+(g′,h′)(g^{\prime},h^{\prime}) precisely when 
+gg^{\prime}\in E(G)
+g​g′∈E⁡(G)gg^{\prime}\in E(G) and 
+hh^{\prime}\in E(H)
+h​h′∈E⁡(H)hh^{\prime}\in E(H).
+
+Finally, we use zero forcing and two common variants. In the standard
+zero forcing process AIM Minimum Rank–Special Graphs Work Group (2008), one starts from an initial set 
+S\subseteq V(G)
+S⊆V⁡(G)S\subseteq V(G) of blue vertices (all others white) and repeatedly applies the color-change rule: a blue vertex 
+u
+uu with exactly one white neighbor 
+w
+ww forces that neighbor to become blue (written 
+u\to w
+u→wu\to w). A set 
+S
+SS is a zero forcing set if this process eventually colors all vertices blue, and the zero forcing number 
+Z(G)
+Z⁡(G)Z(G) is the minimum size of such a set. The total zero forcing number 
+Z_{t}(G)
+Zt​(G)Z_{t}(G) is defined analogously, with the additional requirement that the initial blue set induces no isolated vertices (equivalently, every initially blue vertex has a blue neighbor), see Davila (2019).
+
+The positive semidefinite zero forcing number 
+Z_{+}(G)
+Z+​(G)Z_{+}(G) is defined using the positive semidefinite color-change rule Barioli et al. (2010). Given a current set 
+B
+BB of blue vertices, let 
+W_{1},\dots,W_{k}
+W1,…,WkW_{1},\dots,W_{k} be the vertex sets of the connected components of the induced subgraph 
+G[V(G)\setminus B]
+G⁡[V⁡(G)∖B]G[V(G)\setminus B]. If 
+u\in B
+u∈Bu\in B and 
+w\in W_{i}
+w∈Wiw\in W_{i} is the only white neighbor of 
+u
+uu in the induced subgraph 
+G[W_{i}\cup B]
+G⁡[Wi∪B]G[W_{i}\cup B], then 
+u
+uu forces 
+w
+ww to become blue. A set 
+S
+SS is a positive semidefinite zero forcing set if repeated application of this rule colors all vertices blue, and 
+Z_{+}(G)
+Z+​(G)Z_{+}(G) is the minimum size of such a set.
+
+References
+
+AIM Minimum Rank–Special Graphs Work Group (2008)
+AIM Minimum Rank–Special Graphs Work Group
+
+Zero forcing sets and the minimum rank of graphs.
+
+Linear Algebra and its Applications 428 (7), pp. 1628–1648.
+
+External Links: Document
+
+Cited by: Appendix A,
+§6.2.
+
+Alon and Seymour (1989)
+N. Alon and P. D. Seymour
+
+A counterexample to the rank-coloring conjecture.
+
+Journal of Graph Theory 13 (4), pp. 523–525.
+
+External Links: Document
+
+Cited by: §2.
+
+Barioli et al. (2010)
+F. Barioli, W. Barrett, S. M. Fallat, H. T. Hall, L. Hogben, B. Shader, P. van den Driessche, and H. van der Holst
+
+Zero forcing parameters and minimum rank problems.
+
+Linear Algebra and its Applications 433 (2), pp. 401–411.
+
+External Links: Document
+
+Cited by: Appendix A.
+
+Beezer et al. (1989)
+R. A. Beezer, J. Riegsecker, and B. A. Smith
+
+On conjectures of Graffiti concerning regular graphs.
+
+Technical report
+
+Technical Report 89-1,  University of Puget Sound, Department of Mathematics and Computer Science.
+
+Cited by: §2.
+
+Beezer et al. (2001)
+R. A. Beezer, J. E. Riegsecker, and B. A. Smith
+
+Using minimum degree to bound average distance.
+
+Discrete Math. 226 (1-3), pp. 365–371.
+
+External Links: Document,
+Link
+
+Cited by: §2.
+
+Bollobás and Erdős (1998)
+B. Bollobás and P. Erdős
+
+Graphs of extremal weights.
+
+Ars Combinatoria 50, pp. 225–233.
+
+External Links: Link
+
+Cited by: §2.
+
+Bollobás and Riordan (1998)
+B. Bollobás and O. M. Riordan
+
+On some conjectures of Graffiti.
+
+Discrete Mathematics 179 (1-3), pp. 223–230.
+
+External Links: Document
+
+Cited by: §2.
+
+Bradford et al. (2020)
+A. Bradford, J. K. Day, L. Hutchinson, B. Kaperick, C. E. Larson, M. Mills, D. Muncy, and N. Van Cleemput
+
+Automated conjecturing II: chomp and reasoned game play.
+
+Journal of Artificial Intelligence Research 68, pp. 447–461.
+
+External Links: Document
+
+Cited by: §3.1.
+
+Brimkov et al. (2024)
+B. Brimkov, R. Davila, H. Schuerger, and M. Young
+
+On a conjecture of TxGraffiti: relating zero forcing and vertex covers in graphs.
+
+Discrete Applied Mathematics 359, pp. 290–302.
+
+External Links: Document
+
+Cited by: §6.2,
+Theorem 4.
+
+Caporossi and Hansen (2000)
+G. Caporossi and P. Hansen
+
+Variable neighborhood search for extremal graphs: I. the AutoGraphiX system.
+
+Discrete Mathematics 212 (1–2), pp. 29–44.
+
+External Links: Document
+
+Cited by: §3.1.
+
+Caporossi and Hansen (2004)
+G. Caporossi and P. Hansen
+
+Variable neighborhood search for extremal graphs: V. three ways to automate finding conjectures.
+
+Discrete Mathematics 276 (1–3), pp. 81–94.
+
+External Links: Document
+
+Cited by: §3.1.
+
+Caro et al. (2020)
+Y. Caro, R. Davila, and R. Pepper
+
+New results relating matching and independence.
+
+Discussiones Mathematicae Graph Theory 42 (3), pp. 921–935.
+
+External Links: Document
+
+Cited by: §2.2,
+§6.1,
+§6.1,
+Theorem 2,
+Theorem 3.
+
+Caro (1998)
+Y. Caro
+
+Colorability, frequency and Graffiti–119.
+
+J. Comb. Math. Comb. Comput. 27, pp. 129–134.
+
+Cited by: §2.
+
+Chung (1988)
+F. R. K. Chung
+
+The average distance and the independence number.
+
+Journal of Graph Theory 12, pp. 229–235.
+
+External Links: Document
+
+Cited by: §2.
+
+Codenotti et al. (2000)
+B. Codenotti, G. Del Corso, and G. Manzini
+
+Matrix rank and communication complexity.
+
+Linear Algebra Appl. 304 (1-3), pp. 193–200.
+
+External Links: Document,
+Link
+
+Cited by: §2.
+
+Colton et al. (1999)
+S. Colton, A. Bundy, and T. Walsh
+
+Automated concept formation in pure mathematics.
+
+In Proceedings of the Sixteenth International Joint Conference on Artificial Intelligence (IJCAI-99), Stockholm, Sweden, July 31–August 6, 1999,  T. Dean (Ed.),
+
+Vol. 2, San Francisco, CA, pp. 786–791.
+
+External Links: Link
+
+Cited by: §3.1.
+
+Colton (1999)
+S. Colton
+
+Refactorable numbers—a machine invention.
+
+J. Integer Seq. 2, pp. Article 99.1.2.
+
+External Links: Link
+
+Cited by: §3.1.
+
+Colton (2002)
+S. Colton
+
+Automated theory formation in pure mathematics.
+
+Distinguished Dissertations,  Springer London, London.
+
+External Links: Document,
+ISBN 978-1-85233-609-7
+
+Cited by: §3.1.
+
+Cygan et al. (2012)
+M. Cygan, M. Pilipczuk, and R. Škrekovski
+
+On the inequality between radius and randić index for graphs.
+
+MATCH Commun. Math. Comput. Chem. 67 (2), pp. 451–466.
+
+External Links: Link
+
+Cited by: §2.
+
+Dankelmann et al. (2005)
+P. Dankelmann, G. Dlamini, and H. C. Swart
+
+Upper bounds on distance measures in 
+K_{3,3}
+K3,3K_{3,3}-free graphs.
+
+Utilitas Mathematica 67, pp. 205–222.
+
+Cited by: §2.
+
+Dankelmann et al. (1998)
+P. Dankelmann, H. C. Swart, and O. R. Oellermann
+
+On three conjectures of Graffiti.
+
+Journal of Combinatorial Mathematics and Combinatorial Computing 26, pp. 131–137.
+
+External Links: Link
+
+Cited by: §2.
+
+Davies et al. (2021)
+A. Davies, P. Veličković, L. Buesing, S. Blackwell, D. Zheng, N. Tomašev, R. Tanburn, P. W. Battaglia, C. Blundell, A. Juhász, M. Lackenby, G. Williamson, D. Hassabis, and P. Kohli
+
+Advancing mathematics by guiding human intuition with AI.
+
+Nature 600 (7887), pp. 70–74.
+
+External Links: Document
+
+Cited by: §3.2.
+
+Davila and Eddy (2025)
+R. Davila and Jillian. Eddy
+
+txgraffiti (python package).
+
+Note: Python Package Index (PyPI)Accessed 2025-12-30
+
+External Links: Link
+
+Cited by: §1,
+§2.2,
+§4.2,
+§7.
+
+Davila and Henning (2019)
+R. Davila and M. A. Henning
+
+Total forcing versus total domination in cubic graphs.
+
+Applied Mathematics and Computation 354, pp. 385–395.
+
+External Links: Document
+
+Cited by: §6.2,
+Theorem 6.
+
+Davila and Henning (2020)
+R. Davila and M. A. Henning
+
+Zero forcing in claw-free cubic graphs.
+
+Bulletin of the Malaysian Mathematical Sciences Society 43, pp. 673–688.
+
+External Links: Document
+
+Cited by: §6.2.
+
+Davila and Henning (2021)
+R. Davila and M. A. Henning
+
+Zero forcing versus domination in cubic graphs.
+
+Journal of Combinatorial Optimization 41, pp. 553–577.
+
+External Links: Document
+
+Cited by: §6.2,
+Theorem 5.
+
+Davila et al. (2024)
+R. Davila, H. Schuerger, and B. Small
+
+A characterization of claw-free graphs using zero forcing invariants.
+
+Note: Under revision (Journal of Graph Theory)
+
+External Links: 2412.03463,
+Link
+
+Cited by: §6.2,
+Corollary 2,
+Theorem 8.
+
+Davila (2019)
+R. Davila
+
+Total and zero forcing in graphs.
+
+D.Phil. thesis, University of Johannesburg.
+
+External Links: Link
+
+Cited by: Appendix A.
+
+Davila (2024)
+R. Davila
+
+Another conjecture of TxGraffiti concerning zero forcing and domination in graphs.
+
+Note: Under revision (Electronic Journal of Combinatorics)
+
+External Links: 2406.19231,
+Document,
+Link
+
+Cited by: §6.2,
+Theorem 7.
+
+DeLaViña et al. (2007)
+E. DeLaViña, R. Pepper, and W. Waller
+
+Some conjectures of Graffiti.pc on total domination.
+
+Note: Preprint (online PDF)
+
+External Links: Link
+
+Cited by: §2.1.
+
+DeLaViña (2005a)
+E. DeLaViña
+
+Graffiti.pc: A variant of Graffiti.
+
+In Graphs and Discovery,  S. Fajtlowicz, P. W. Fowler, P. Hansen, M. F. Janowitz, and F. S. Roberts (Eds.),
+
+DIMACS Series in Discrete Mathematics and Theoretical Computer Science, Vol. 69, pp. 71–80.
+
+External Links: Document
+
+Cited by: §1,
+§2.1,
+§2.1,
+§2.1.
+
+DeLaViña (2005b)
+E. DeLaViña
+
+Some history of the development of Graffiti.
+
+In Graphs and Discovery,  S. Fajtlowicz, P. W. Fowler, P. Hansen, M. F. Janowitz, and F. S. Roberts (Eds.),
+
+DIMACS Series in Discrete Mathematics and Theoretical Computer Science, Vol. 69, pp. 81–118.
+
+External Links: Document
+
+Cited by: §1,
+§2,
+§2.
+
+Devillez et al. (2019)
+G. Devillez, P. Hauweele, and H. Mélot
+
+PHOEG helps to obtain extremal graphs.
+
+In Operations Research Proceedings 2018: Selected Papers of the Annual International Conference of the German Operations Research Society (GOR), Brussels, Belgium, September 12–14, 2018,  B. Fortz and M. Labbé (Eds.),
+
+Operations Research Proceedings, pp. 251–257.
+
+External Links: Document
+
+Cited by: §3.1.
+
+Došlić and Retić (2011)
+T. Došlić and T. Retić
+
+Spectral properties of fullerene graphs.
+
+MATCH Communications in Mathematical and in Computer Chemistry 66, pp. 733–742.
+
+External Links: Link
+
+Cited by: §2.
+
+Dougherty-Bliss and Zeilberger (2023)
+R. Dougherty-Bliss and D. Zeilberger
+
+Automatic conjecturing and proving of exact values of some infinite families of infinite continued fractions.
+
+The Ramanujan Journal 61, pp. 31–47.
+
+Note: Published online 24 Feb 2021
+
+External Links: Document
+
+Cited by: §3.2.
+
+Epstein (1988)
+S. L. Epstein
+
+Learning and discovery: one system’s search for mathematical knowledge.
+
+Computational Intelligence 4 (1), pp. 42–53.
+
+External Links: Link
+
+Cited by: §3.1.
+
+Fajtlowicz et al. (2005)
+S. Fajtlowicz, P. E. John, and H. Sachs
+
+On maximum matchings and eigenvalues of benzenoid graphs.
+
+Croatica Chemica Acta 78 (2), pp. 195–201.
+
+External Links: Link
+
+Cited by: §2.
+
+Fajtlowicz and Larson (2003)
+S. Fajtlowicz and C. E. Larson
+
+Graph-theoretic independence as a predictor of fullerene stability.
+
+Chemical Physics Letters 377, pp. 485–490.
+
+External Links: Document
+
+Cited by: §2.
+
+Fajtlowicz et al. (1995)
+S. Fajtlowicz, T. McColgan, T. Reid, and W. Staton
+
+Ramsey numbers for induced regular subgraphs.
+
+Ars Combinatoria 39, pp. 149–154.
+
+External Links: Link
+
+Cited by: §2.
+
+Fajtlowicz and Waller (1986)
+S. Fajtlowicz and W. A. Waller
+
+On two conjectures of Graffiti.
+
+Congressus Numerantium 55, pp. 51–56.
+
+Cited by: §2.
+
+Fajtlowicz (1987)
+S. Fajtlowicz
+
+On conjectures of Graffiti, II.
+
+Congressus Numerantium 60, pp. 187–197.
+
+Cited by: §1,
+§2.
+
+Fajtlowicz (1988a)
+S. Fajtlowicz
+
+On conjectures of Graffiti, III.
+
+Congressus Numerantium 66, pp. 23–32.
+
+Cited by: §1.
+
+Fajtlowicz (1988b)
+S. Fajtlowicz
+
+On conjectures of Graffiti.
+
+Discrete Math. 72 (1-3), pp. 113–118.
+
+External Links: Document
+
+Cited by: §1,
+§2.
+
+Fajtlowicz (1989)
+S. Fajtlowicz
+
+On conjectures and methods of Graffiti.
+
+In Proceedings of the Fourth Clemson Mini-Conference on Graph Theory and Combinatorics,
+
+Clemson, SC.
+
+Note: Clemson University
+
+Cited by: §2.
+
+Fajtlowicz (1990)
+S. Fajtlowicz
+
+On conjectures of Graffiti, IV.
+
+Congressus Numerantium 70, pp. 231–240.
+
+Cited by: §1.
+
+Fajtlowicz (1995)
+S. Fajtlowicz
+
+On conjectures of Graffiti, V.
+
+In Graph Theory, Combinatorics, and Algorithms: Proceedings of the Seventh Quadrennial International Conference on the Theory and Applications of Graphs,  Y. Alavi and A. Schwenk (Eds.),
+
+Vol. 1, New York, pp. 367–376.
+
+Cited by: §1,
+§2.
+
+Fajtlowicz (2005)
+S. Fajtlowicz
+
+On representation and characterization of buckminsterfullerene 
+C_{60}
+C60C_{60}.
+
+In Graphs and Discovery,  S. Fajtlowicz, P. W. Fowler, P. Hansen, M. F. Janowitz, and F. S. Roberts (Eds.),
+
+DIMACS Series in Discrete Mathematics and Theoretical Computer Science, Vol. 69, pp. 127–135.
+
+External Links: Document
+
+Cited by: §2.
+
+Favaron et al. (1991a)
+O. Favaron, M. Mahéo, and J. Saclé
+
+On the residue of a graph.
+
+Journal of Graph Theory 15 (1), pp. 39–64.
+
+External Links: Document
+
+Cited by: §2,
+Conjecture 1.
+
+Favaron et al. (1993)
+O. Favaron, M. Mahéo, and J. Saclé
+
+Some eigenvalue properties in graphs (conjectures of Graffiti II).
+
+Discrete Math. 111 (1-3), pp. 197–220.
+
+External Links: Document
+
+Cited by: §2.
+
+Favaron et al. (2003)
+O. Favaron, M. Mahéo, and J. Saclé
+
+The randić index and other Graffiti parameters of graphs.
+
+MATCH Commun. Math. Comput. Chem. 47, pp. 7–23.
+
+External Links: Link
+
+Cited by: §2.
+
+Favaron et al. (1990)
+O. Favaron, M. Mahéo, and J.-F. Saclé
+
+Some results on conjectures of Graffiti I.
+
+Ars Combinatoria 29C, pp. 90–106.
+
+Cited by: §2.
+
+Favaron et al. (1991b)
+O. Favaron, M. Mahéo, and J.-F. Saclé
+
+Some results on conjectures of Graffiti III.
+
+Research Report
+
+Technical Report 670,  LRI, Université de Paris-Sud.
+
+Cited by: §2.
+
+Firby and Haviland (1997)
+P. Firby and J. Haviland
+
+Independence and average distance in graphs.
+
+Discrete Applied Mathematics 75 (1), pp. 27–37.
+
+External Links: Document
+
+Cited by: §2.
+
+Forrest and Lougee-Heimer (2005)
+J. Forrest and R. Lougee-Heimer
+
+CBC user guide.
+
+ INFORMS.
+
+Note: COIN-OR Branch-and-Cut (CBC) documentation
+
+External Links: Document
+
+Cited by: §4.1.
+
+Fowler et al. (1998)
+P. W. Fowler, P. Hansen, K. M. Rogers, and S. Fajtlowicz
+
+C_{60}Br_{24}
+C60​B​r24C_{60}Br_{24} as a chemical illustration of graph theoretical independence.
+
+J. Chem. Soc., Perkin Trans. 2, pp. 1531–1534.
+
+External Links: Document
+
+Cited by: §2.
+
+Fowler (1997)
+P. W. Fowler
+
+Fullerene graphs with more negative than positive eigenvalues: the exceptions that prove the rule of electron deficiency?.
+
+J. Chem. Soc., Faraday Trans. 93, pp. 1–3.
+
+External Links: Document
+
+Cited by: §2.
+
+Fowler et al. (2001)
+P. W. Fowler, K. M. Rogers, S. Fajtlowicz, P. Hansen, and G. Caporossi
+
+Facts and conjectures about fullerene graphs: leapfrog, cylinder and ramanujan fullerenes.
+
+In Algebraic Combinatorics and Applications,  A. Betten, A. Kohnert, R. Laue, and A. Wassermann (Eds.),
+
+pp. 134–146.
+
+External Links: Document
+
+Cited by: §2.
+
+Griggs and Kleitman (1994)
+J. R. Griggs and D. J. Kleitman
+
+Independence and the Havel–Hakimi residue.
+
+Discrete Mathematics 127 (1–3), pp. 209–212.
+
+External Links: Document
+
+Cited by: §2.
+
+Hansen et al. (2009)
+P. Hansen, A. Hertz, R. Kilani, O. Marcotte, and D. Schindl
+
+Average distance and maximum induced forest.
+
+J. Graph Theory 60 (1), pp. 31–54.
+
+External Links: Document
+
+Cited by: §2.
+
+Horgan (1993)
+J. Horgan
+
+The death of proof.
+
+Scientific American 269 (4), pp. 92–103.
+
+Note: Contrasts Penrose’s skepticism with Graffiti’s conjecture-making
+
+External Links: Link
+
+Cited by: §2.
+
+Huangfu and Hall (2018)
+Q. Huangfu and J. A. J. Hall
+
+Parallelizing the dual revised simplex method.
+
+Mathematical Programming Computation 10 (1), pp. 119–142.
+
+External Links: Document
+
+Cited by: §4.1.
+
+Jelen (1999)
+F. Jelen
+
+k
+kk-Independence and the 
+k
+kk-residue of a graph.
+
+J. Graph Theory 32 (3), pp. 241–249.
+
+External Links: Document
+
+Cited by: §2.
+
+Larson and Van Cleemput (2017)
+C. E. Larson and N. Van Cleemput
+
+Automated conjecturing III: property-relations conjectures.
+
+Annals of Mathematics and Artificial Intelligence 81, pp. 315–327.
+
+External Links: Document
+
+Cited by: §3.1.
+
+Larson and Van Cleemput (2016)
+C. E. Larson and N. Van Cleemput
+
+Automated conjecturing I: Fajtlowicz’s Dalmatian heuristic revisited.
+
+Artificial Intelligence 231, pp. 17–38.
+
+External Links: Document
+
+Cited by: §1,
+§2,
+§3.1.
+
+Lenat (1977)
+D. B. Lenat
+
+The ubiquity of discovery.
+
+Artificial Intelligence 9 (3), pp. 257–285.
+
+External Links: Document
+
+Cited by: §3.1.
+
+Lenat (1979)
+D. B. Lenat
+
+On automated scientific theory formation: A case study using the AM program.
+
+In Machine Intelligence 9,  J. E. Hayes, D. Michie, and L. I. Mikulich (Eds.),
+
+pp. 251–283.
+
+Cited by: §3.1.
+
+Lenat (1982)
+D. B. Lenat
+
+The nature of heuristics.
+
+Artificial Intelligence 19 (2), pp. 189–249.
+
+External Links: Document
+
+Cited by: §3.1.
+
+McCune (1997)
+W. McCune
+
+Solution of the robbins problem.
+
+Journal of Automated Reasoning 19 (3), pp. 263–276.
+
+External Links: Document
+
+Cited by: §1.
+
+Mélot (2008)
+H. Mélot
+
+Facet defining inequalities among graph invariants: the system GraPHedron.
+
+Discrete Applied Mathematics 156 (10), pp. 1875–1891.
+
+External Links: Document
+
+Cited by: §3.1.
+
+Mitchell et al. (2011)
+S. Mitchell, M. O’Sullivan, and I. Dunning
+
+PuLP: a linear programming toolkit for python.
+
+Note: Optimization Online
+
+External Links: Link
+
+Cited by: §4.1.
+
+Penrose (1989)
+R. Penrose
+
+The emperor’s new mind: concerning computers, minds and the laws of physics.
+
+ Oxford University Press, Oxford, UK.
+
+External Links: ISBN 978-0198519737
+
+Cited by: §2.
+
+Penrose (1994)
+R. Penrose
+
+Shadows of the mind: a search for the missing science of consciousness.
+
+ Oxford University Press, Oxford, UK.
+
+External Links: ISBN 978-0195106466
+
+Cited by: §2.
+
+Raayoni et al. (2021)
+G. Raayoni, S. Gottlieb, N. Burshtein, I. Kaminer, et al.
+
+Generating conjectures on fundamental constants with the Ramanujan machine.
+
+Nature 590 (7844), pp. 67–73.
+
+External Links: Document
+
+Cited by: §3.2.
+
+Schuerger et al. (2024)
+H. Schuerger, N. Warnberg, and M. Young
+
+Zero forcing and vertex independence number on cubic and subcubic graphs.
+
+External Links: 2410.21724,
+Link
+
+Cited by: §6.2.
+
+Simon and Newell (1958)
+H. A. Simon and A. Newell
+
+Heuristic problem solving: the next advance in operations research.
+
+Operations Research 6 (1), pp. 1–10.
+
+External Links: Document
+
+Cited by: §1.
+
+Turing (2004)
+A. M. Turing
+
+Intelligent machinery.
+
+In The Essential Turing: Seminal Writings in Computing, Logic, Philosophy, Artificial Intelligence, and Artificial Life: Plus The Secrets of Enigma,  B. J. Copeland (Ed.),
+
+pp. 395–432.
+
+Note: Written in 1948; reprinted in this volume.
+
+Cited by: §1.
+
+Virtanen et al. (2020)
+P. Virtanen, R. Gommers, T. E. Oliphant, M. Haberland, T. Reddy, D. Cournapeau, E. Burovski, P. Peterson, W. Weckesser, J. Bright, S. J. van der Walt, M. Brett, J. Wilson, K. J. Millman, N. Mayorov, A. R. J. Nelson, E. Jones, R. Kern, E. Larson, C. J. Carey, İ. Polat, Y. Feng, E. W. Moore, J. VanderPlas, D. Laxalde, J. Perktold, R. Cimrman, I. Henriksen, E. A. Quintero, C. R. Harris, A. M. Archibald, A. H. Ribeiro, F. Pedregosa, P. van Mulbregt, and SciPy 1.0 Contributors
+
+SciPy 1.0: Fundamental Algorithms for Scientific Computing in Python.
+
+Nature Methods 17, pp. 261–272.
+
+External Links: Document
+
+Cited by: §4.1.
+
+Wang (1960)
+H. Wang
+
+Proving theorems by pattern recognition i.
+
+Communications of the ACM 3 (4), pp. 220–234.
+
+External Links: Document
+
+Cited by: §1.
+
+Wang (1997)
+L. Wang
+
+On one of Graffiti’s conjecture (583).
+
+Applied Mathematics and Mechanics 18, pp. 381–383.
+
+External Links: Document
+
+Cited by: §2.
+
+West (2001)
+D. B. West
+
+Introduction to graph theory.
+
+2 edition,  Prentice Hall, Upper Saddle River, NJ.
+
+External Links: ISBN 0-13-014400-2
+
+Cited by: §5,
+§6.
+
+Yamamoto (2024)
+S. Yamamoto
+
+Proof and generalization of conjectures of Ramanujan Machine.
+
+Note: arXiv preprint
+
+External Links: 2403.09729,
+Document
+
+Cited by: §3.2.
+
+Yue et al. (2020)
+J. Yue, S. Zhang, Y. Zhu, S. Klavžar, and Y. Shi
+
+The annihilation number does not bound the 
+2
+22-domination number from the above.
+
+Discrete Mathematics 343 (6), pp. 111707.
+
+External Links: Document
+
+Cited by: §2,
+Conjecture 1.
+
+Zhang (2004)
+X.-D. Zhang
+
+On the two conjectures of Graffiti.
+
+Linear Algebra and its Applications 385, pp. 369–379.
+
+External Links: Document
+
+Cited by: §2.
+
+    Experimental support, please
+    view the build logs
+    for errors. Generated by
+
+        L
+        A
+        T
+        E
+      
+      xml
+      
+    .
+
+Instructions for reporting errors
+
+We are continuing to improve HTML versions of papers, and your feedback helps enhance accessibility and mobile
+      support. To report errors in the HTML that will help us improve conversion and rendering, choose any of the
+      methods listed below:
+
+Click the &quot;Report Issue&quot; (
+            
+          ) button, located in the page header.
+
+Tip: You can select the relevant text first, to include it in your report.
+
+Our team has already identified the following issues. We appreciate your time reviewing and reporting rendering errors we
+      may not have found yet. Your efforts will help us improve the HTML versions for all readers, because disability
+      should not be a barrier to accessing research. Thank you for your continued support in championing open access for
+      all.
+
+Have a free development cycle? Help support accessibility at arXiv! Our collaborators at LaTeXML maintain a list of packages that need conversion, and welcome developer contributions.
+
+        We gratefully acknowledge support from
+        our major funders,
+        member institutions, ,
+        and all contributors.
+
+Major funding support from</pre></html>

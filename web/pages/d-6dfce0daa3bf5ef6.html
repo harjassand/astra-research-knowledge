@@ -1,0 +1,42 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>&quot;&quot;&quot;Cancel the common polynomial gcd in the preserved symbolic certificate.&quot;&quot;&quot;</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>&quot;&quot;&quot;Cancel the common polynomial gcd in the preserved symbolic certificate.&quot;&quot;&quot;</h1><p>Source ID d-6dfce0daa3bf5ef6; literature/sources/metric_geometry10/cycle12/reduce_exchangeable_certificate.py; 477 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>&quot;&quot;&quot;Cancel the common polynomial gcd in the preserved symbolic certificate.&quot;&quot;&quot;
+import hashlib
+import json
+from pathlib import Path
+
+import sympy as s
+
+from exchangeable_symbolic_certificate import matrix
+
+
+def main():
+    source=Path(&#x27;results/metric_prior/cycle12/exchangeable_degree8_symbolic.json&#x27;)
+    record=json.loads(source.read_text());r=s.symbols(&#x27;r&#x27;)
+    den=s.Poly(s.sympify(record[&#x27;denominator&#x27;]),r,domain=s.QQ)
+    nums=[s.Poly(s.sympify(a),r,domain=s.QQ) for a in record[&#x27;coefficient_numerators&#x27;]]
+    common=den
+    for num in sorted((a for a in nums if a),key=lambda a:a.degree()):
+        common=common.gcd(num)
+        if common.degree()==0:break
+    reduced_den=den.exquo(common)
+    scale=reduced_den.LC()
+    final_den=s.expand(reduced_den.as_expr()/scale)
+    final_nums=[s.expand(a.exquo(common).as_expr()/scale) for a in nums]
+    M,target,sources,basis,rows,expr,var=matrix(r)
+    assert len(sources)==len(final_nums)
+    assert all(s.expand(a)==0 for a in M*s.Matrix(final_nums)-final_den*target)
+    record[&#x27;original_source&#x27;]=str(source)
+    record[&#x27;original_source_sha256&#x27;]=hashlib.sha256(source.read_bytes()).hexdigest()
+    record[&#x27;cancelled_gcd&#x27;]=str(s.factor(common.as_expr()))
+    record[&#x27;denominator&#x27;]=str(final_den)
+    record[&#x27;factored_denominator&#x27;]=str(s.factor(final_den))
+    record[&#x27;coefficient_numerators&#x27;]=[str(a) for a in final_nums]
+    record[&#x27;status&#x27;]=&#x27;PASS gcd-reduced cleared exact degree8 identity&#x27;
+    destination=source.with_name(&#x27;exchangeable_degree8_symbolic_reduced.json&#x27;)
+    destination.write_text(json.dumps(record,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({&#x27;status&#x27;:record[&#x27;status&#x27;],&#x27;factored_denominator&#x27;:record[&#x27;factored_denominator&#x27;],
+                      &#x27;cancelled_gcd&#x27;:record[&#x27;cancelled_gcd&#x27;],&#x27;nonzero_numerators&#x27;:sum(a!=0 for a in final_nums),
+                      &#x27;path&#x27;:str(destination)}),flush=True)
+
+
+if __name__==&#x27;__main__&#x27;:main()
+</pre></html>

@@ -1,0 +1,1476 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>On the Generalization Bounds of Symbolic Regression with Genetic Programming</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>On the Generalization Bounds of Symbolic Regression with Genetic Programming</h1><p>Source ID d-21223dfc53f9f603; literature/sources/handoff_sol_max_check/cycle18/nomura_hamano_ono_2604.17402v2.html; 18309 o200k tokens; role primary_source_or_metadata; extraction html_text_discovery_only_math_may_be_lossy. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>On the Generalization Bounds of Symbolic Regression with Genetic Programming
+
+      Report GitHub Issue
+      ×
+
+      Title:
+
+Content selection saved. Describe the issue below:
+
+      Description:
+
+      Submit without GitHub
+      Submit in GitHub
+
+    arXiv is now an independent nonprofit!
+    Learn more
+    ×
+
+      Back to arXiv
+
+    License: arXiv.org perpetual non-exclusive license
+
+arXiv:2604.17402v2 [cs.LG] 12 Jun 2026
+
+On the Generalization Bounds of Symbolic Regression with Genetic Programming
+
+Masahiro Nomura
+
+Affiliation: Institute of Science Tokyo, Yokohama, Japan
+
+E-mail {nomura,isao}@comp.isct.ac.jp
+
+  
+Ryoki Hamano
+
+Affiliation: CyberAgent, Shibuya, Japan
+
+E-mail hamano_ryoki_xa@cyberagent.co.jp
+
+  
+Isao Ono
+
+Affiliation: Institute of Science Tokyo, Yokohama, Japan
+
+E-mail {nomura,isao}@comp.isct.ac.jp
+
+Abstract
+
+Symbolic regression (SR) with genetic programming (GP) aims to discover interpretable mathematical expressions directly from data.
+Despite its strong empirical success, the theoretical understanding of why GP-based SR generalizes beyond the training data remains limited.
+In this work, we provide a learning-theoretic analysis of SR models represented as expression trees.
+We derive a generalization bound for GP-style SR under constraints on tree size, depth, and learnable constants.
+Our result decomposes the generalization gap into two interpretable components:
+a structure-selection term, reflecting the combinatorial complexity of choosing an expression-tree structure, and a constant-fitting term, capturing the complexity of optimizing numerical constants within a fixed structure.
+This decomposition provides a theoretical perspective on several widely used practices in GP, including parsimony pressure, depth limits, numerically stable operators, and interval arithmetic.
+In particular, our analysis shows how structural restrictions reduce hypothesis-class growth while stability mechanisms control the sensitivity of predictions to parameter perturbations.
+By linking these practical design choices to explicit complexity terms in the generalization bound, our work offers a principled explanation for commonly observed empirical behaviors in GP-based SR and contributes towards a more rigorous understanding of its generalization properties.
+
+Keywords: Symbolic regression Genetic programming Generalization bound.
+
+1 Introduction
+
+Symbolic regression (SR) [19] aims to discover analytical expressions that describe relationships between input variables and target outputs directly from data.
+Unlike conventional regression methods, which assume a predefined model class and then optimize parameters within that class, SR simultaneously searches for both the functional form of the predictor and its numerical coefficients.
+Because the output of SR is an explicit mathematical expression, the resulting models are often interpretable and can sometimes reveal underlying mechanisms in the data.
+For this reason, SR has long been regarded as a promising approach for interpretable modeling and scientific discovery, where compact analytical expressions can provide insight in addition to predictive accuracy [33, 7, 35].
+
+Genetic programming (GP) [18, 29] is one of the most widely used approaches to SR.
+In GP-based SR, candidate models are typically represented as expression trees whose internal nodes correspond to operators and whose leaves correspond to variables or constants.
+Evolutionary search is then used to explore the space of symbolic structures through operations such as mutation, crossover, and selection.
+In addition, the numerical constants within a given structure are often refined using dedicated continuous optimization techniques, such as nonlinear least squares [17].
+This hybrid nature—combining discrete structure search with continuous parameter optimization—makes GP particularly attractive for SR, as it enables open-ended exploration of functional forms without requiring prior commitment to a specific model class.
+However, the same flexibility that allows GP to discover concise symbolic models also raises a fundamental question: why should a model found by GP generalize beyond the training data?
+In learning-theoretic terms, this question concerns how well a model that fits the training data will perform on unseen data.
+This is typically formalized through the notion of a generalization gap, the difference between training error and expected prediction error, and the goal of deriving bounds that hold uniformly over a class of models.
+In practice, GP-based SR is known to be sensitive to design choices such as tree-size limits, maximum depth, constant optimization strategies, and the use of numerically stable operators, many of which are motivated by the need to control overfitting.
+
+These observations naturally lead to the question of how such design choices influence generalization from a theoretical perspective.
+The GP literature has proposed various techniques intended to improve the generalization ability of SR models, including parsimony pressure, depth limits, and operator design aimed at improving numerical stability [30, 23, 15].
+These approaches are widely used and often effective in practice.
+Nevertheless, their effects are typically justified empirically rather than through a unified theoretical framework.
+One reason is that SR induces a hypothesis class with a hybrid structure, combining discrete structural choices with continuous parameter optimization, which makes standard learning-theoretic tools difficult to apply directly.
+As a result, although many practical heuristics for controlling overfitting in GP-based SR have been developed, there remains limited learning-theoretic understanding of how these two aspects jointly influence generalization.
+Understanding this interplay is essential for developing principled methods for controlling model complexity in SR.
+
+In this paper, we present a learning-theoretic analysis of SR models represented by expression trees.
+To the best of our knowledge, this is among the first works to derive an explicit generalization bound for GP-style SR models.
+Our main result provides a bound that decomposes the generalization gap into two interpretable components corresponding to structure selection and constant fitting.
+Specifically, the bound consists of a term that scales with the sensitivity of the model to its learnable constants and a term that depends on the logarithm of the number of admissible tree structures, reflecting the combinatorial complexity of structure selection.
+This decomposition offers a theoretical lens for understanding how common mechanisms used in GP-based SR influence generalization.
+In particular, structural control techniques such as parsimony pressure or depth limits restrict the space of admissible tree structures, while numerical-stability mechanisms such as interval-based restrictions help control the sensitivity of predictions to parameter perturbations.
+The resulting separation is reminiscent of the function- and parameter-complexity penalties used in MDL and Bayesian model-selection approaches to SR [3, 2, 10], but here it is obtained top-down from a generalization analysis rather than derived from coding-length or marginal-likelihood principles.
+
+The remainder of this paper is organized as follows.
+Section 2 introduces the SR setting and the expression-tree representation considered in this paper.
+Section 3 presents our main theorem, the generalization bound for GP-based SR.
+Section 4 proves the main theorem using learning-theoretic analysis.
+Section 5 discusses the connection between our theoretical result and empirical successes in GP-based SR.
+Finally, Section 6 concludes the paper.
+
+2 Setup
+
+2.1 Data, Risks, and Loss
+
+For SR, we consider a supervised regression setting.
+Let 
+(x,y)\sim\mathcal{D}
+(x,y)∼𝒟(x,y)\sim\mathcal{D} with 
+x\in\mathcal{X}\subseteq\mathbb{R}^{d}
+x∈𝒳⊆ℝdx\in\mathcal{X}\subseteq\mathbb{R}^{d} and 
+y\in\mathcal{Y}\subseteq\mathbb{R}
+y∈𝒴⊆ℝy\in\mathcal{Y}\subseteq\mathbb{R}.
+Given an i.i.d. sample 
+S=\{(x_{i},y_{i})\}_{i=1}^{m}
+S={(xi,yi)}i=1mS=\{(x_{i},y_{i})\}_{i=1}^{m}, define the population risk and the empirical risk:
+
+\displaystyle L(f)=\mathbb{E}[\ell(f(x),y)]\kern 5.0pt,\quad\widehat{L}_{S}(f)=\frac{1}{m}\sum_{i=1}^{m}\ell(f(x_{i}),y_{i})\kern 5.0pt,
+L⁡(f)=𝔼⁡[ℓ⁡(f⁡(x),y)],L^S​(f)=1m​∑i=1mℓ⁡(f⁡(xi),yi),\displaystyle L(f)=\mathbb{E}[\ell(f(x),y)]\kern 5.0pt,\quad\widehat{L}_{S}(f)=\frac{1}{m}\sum_{i=1}^{m}\ell(f(x_{i}),y_{i})\kern 5.0pt,
+
+(1)
+
+where 
+\ell
+ℓ\ell is a loss function measuring prediction error.
+
+Definition 1 (Bounded Lipschitz loss)
+
+We assume 
+\ell:\mathbb{R}\times\mathcal{Y}\to[0,1]
+ℓ:ℝ×𝒴→[0,1]\ell:\mathbb{R}\times\mathcal{Y}\to[0,1] is 1-Lipschitz in its first argument:
+
+\displaystyle\left\lvert\ell(a,y)-\ell(a^{\prime},y)\right\rvert\leqslant\left\lvert a-a^{\prime}\right\rvert\kern 5.0pt,\quad\forall a,a^{\prime}\in\mathbb{R}\kern 5.0pt,\ \forall y\in\mathcal{Y}\kern 5.0pt.
+|ℓ⁡(a,y)−ℓ⁡(a′,y)|⩽|a−a′|,∀a,a′∈ℝ,∀y∈𝒴.\displaystyle\left\lvert\ell(a,y)-\ell(a^{\prime},y)\right\rvert\leqslant\left\lvert a-a^{\prime}\right\rvert\kern 5.0pt,\quad\forall a,a^{\prime}\in\mathbb{R}\kern 5.0pt,\ \forall y\in\mathcal{Y}\kern 5.0pt.
+
+(2)
+
+This assumption is standard in statistical learning theory [25] and allows generalization bounds to be expressed in terms of the complexity of the function class.
+In practice, common losses such as mean squared error (MSE) can be accommodated through appropriate normalization or bounded-domain restrictions.
+
+2.2 Expression-tree Structures
+
+Our predictors are represented as expression trees, as commonly used in GP-based SR.
+Internal nodes represent operators and leaves represent input variables or constants.
+
+Let the operator vocabulary be partitioned by arity (number of arguments) up to 
+a_{\max}
+amaxa_{\max}:
+
+\displaystyle\mathcal{O}=\bigcup_{k=1}^{a_{\max}}\mathcal{O}_{k}\kern 5.0pt,\quad M_{k}=\left\lvert\mathcal{O}_{k}\right\rvert\kern 5.0pt.
+𝒪=⋃k=1amax𝒪k,Mk=|𝒪k|.\displaystyle\mathcal{O}=\bigcup_{k=1}^{a_{\max}}\mathcal{O}_{k}\kern 5.0pt,\quad M_{k}=\left\lvert\mathcal{O}_{k}\right\rvert\kern 5.0pt.
+
+(3)
+
+Typical examples include 
+\mathcal{O}_{1}=\{\sin,\cos,\exp\}
+𝒪1={sin,cos,exp}\mathcal{O}_{1}=\{\sin,\cos,\exp\} and 
+\mathcal{O}_{2}=\{+,-,\times,\div\}
+𝒪2={+,−,×,÷}\mathcal{O}_{2}=\{+,-,\times,\div\}, where unary operators belong to 
+\mathcal{O}_{1}
+𝒪1\mathcal{O}_{1} and binary operators belong to 
+\mathcal{O}_{2}
+𝒪2\mathcal{O}_{2}.
+
+Leaves of the tree represent input variables and constants.
+Let
+
+\displaystyle\mathcal{L}_{0}=\{x_{1},\dots,x_{d}\}\cup\mathcal{C}_{\mathrm{fix}}\kern 5.0pt,\quad N_{0}=\left\lvert\mathcal{L}_{0}\right\rvert\kern 5.0pt,
+ℒ0={x1,…,xd}∪𝒞fix,N0=|ℒ0|,\displaystyle\mathcal{L}_{0}=\{x_{1},\dots,x_{d}\}\cup\mathcal{C}_{\mathrm{fix}}\kern 5.0pt,\quad N_{0}=\left\lvert\mathcal{L}_{0}\right\rvert\kern 5.0pt,
+
+(4)
+
+where 
+\mathcal{C}_{\mathrm{fix}}
+𝒞fix\mathcal{C}_{\mathrm{fix}} is an optional set of fixed constants (for example, 
+\{1,\pi\}
+{1,π}\{1,\pi\}).
+In addition, we allow a special leaf symbol 
+c
+cc, representing a learnable constant.
+During model fitting, this constant is optimized using the data.
+
+Definition 2 (Expression-tree structure)
+
+An expression-tree structure 
+T
+TT is a rooted ordered tree with the following properties:
+
+• 
+
+Each internal node has arity 
+k
+kk and is labeled by an operator in 
+\mathcal{O}_{k}
+𝒪k\mathcal{O}_{k}.
+
+• 
+
+Each leaf is labeled by a symbol in 
+\mathcal{L}_{0}\cup\{c\}
+ℒ0∪{c}\mathcal{L}_{0}\cup\{c\}.
+
+Let 
+p(T)
+p⁡(T)p(T) be the number of leaves labeled by the learnable constant symbol 
+c
+cc.
+We fix a deterministic ordering of these leaves (e.g., depth-first order).
+For a parameter vector 
+\theta\in\mathbb{R}^{p(T)}
+θ∈ℝp⁡(T)\theta\in\mathbb{R}^{p(T)}, the function represented by the tree is 
+f_{T,\theta}:\mathcal{X}\to\mathbb{R}
+fT,θ:𝒳→ℝf_{T,\theta}:\mathcal{X}\to\mathbb{R} obtained by assigning the value 
+\theta_{j}
+θj\theta_{j} to the 
+j
+jj-th constant leaf.
+
+Thus, each tree structure defines a family of functions parameterized by the constants 
+\theta
+θ\theta.
+
+2.3 Budgets and the Union Class
+
+To control model complexity, we restrict both the size and depth of expression trees.
+Let 
+\mathrm{size}(T)
+size⁡(T)\mathrm{size}(T) be the number of nodes and 
+\mathrm{depth}(T)
+depth⁡(T)\mathrm{depth}(T) the maximum root-to-leaf path length measured in edges (with the root at depth 
+0
+00).
+
+Definition 3 (Budgets and induced classes)
+
+Fix a size budget 
+s\in\mathbb{N}
+s∈ℕs\in\mathbb{N} and a depth budget 
+D\in\mathbb{N}
+D∈ℕD\in\mathbb{N} with 
+D\geqslant 1
+D⩾1D\geqslant 1.
+We define the set of admissible tree structures
+
+\displaystyle\mathcal{T}_{s,D}=\{T:\ \mathrm{size}(T)\leqslant s,\ \mathrm{depth}(T)\leqslant D\}\kern 5.0pt.
+𝒯s,D={T:size(T)⩽s,depth(T)⩽D}.\displaystyle\mathcal{T}_{s,D}=\{T:\ \mathrm{size}(T)\leqslant s,\ \mathrm{depth}(T)\leqslant D\}\kern 5.0pt.
+
+(5)
+
+For a parameter radius 
+R&gt;0
+R&gt;0R&gt;0 and dimension 
+p\in\mathbb{N}
+p∈ℕp\in\mathbb{N}, define
+
+\Theta_{p}(R)=\{\theta\in\mathbb{R}^{p}:\left\lVert\theta\right\rVert_{2}\leqslant R\}
+Θp​(R)={θ∈ℝp:‖θ‖2⩽R}\Theta_{p}(R)=\{\theta\in\mathbb{R}^{p}:\left\lVert\theta\right\rVert_{2}\leqslant R\}.
+For each tree 
+T\in\mathcal{T}_{s,D}
+T∈𝒯s,DT\in\mathcal{T}_{s,D}, we consider the class of functions
+
+\displaystyle\mathcal{F}_{T}(R)=\{f_{T,\theta}:\ \theta\in\Theta_{p(T)}(R)\}\kern 5.0pt.
+ℱT​(R)={fT,θ:θ∈Θp⁡(T)​(R)}.\displaystyle\mathcal{F}_{T}(R)=\{f_{T,\theta}:\ \theta\in\Theta_{p(T)}(R)\}\kern 5.0pt.
+
+(6)
+
+Finally, the overall function class allowed under the budgets is the union
+
+\displaystyle\mathcal{F}_{s,D}(R)=\bigcup_{T\in\mathcal{T}_{s,D}}\mathcal{F}_{T}(R)\kern 5.0pt.
+ℱs,D​(R)=⋃T∈𝒯s,DℱT​(R).\displaystyle\mathcal{F}_{s,D}(R)=\bigcup_{T\in\mathcal{T}_{s,D}}\mathcal{F}_{T}(R)\kern 5.0pt.
+
+(7)
+
+This class contains all expression-tree predictors whose structure satisfies the size and depth constraints and whose learnable constants lie within the radius-
+R
+RR ball.
+
+2.4 Assumptions
+
+To obtain generalization guarantees, we impose two standard conditions on the functions represented by expression trees.
+Intuitively, these assumptions ensure that predictions remain bounded and that small changes in the learnable constants lead to controlled changes in the output.
+
+We assume that predictions produced by budgeted trees are uniformly bounded.
+
+Definition 4 (Bounded predictions)
+
+There exists 
+B&gt;0
+B&gt;0B&gt;0 such that for all 
+T\in\mathcal{T}_{s,D}
+T∈𝒯s,DT\in\mathcal{T}_{s,D}, all 
+\theta\in\Theta_{p(T)}(R)
+θ∈Θp⁡(T)​(R)\theta\in\Theta_{p(T)}(R), and all 
+x\in\mathcal{X}
+x∈𝒳x\in\mathcal{X},
+
+\displaystyle\left\lvert f_{T,\theta}(x)\right\rvert\leqslant B\kern 5.0pt.
+|fT,θ​(x)|⩽B.\displaystyle\left\lvert f_{T,\theta}(x)\right\rvert\leqslant B\kern 5.0pt.
+
+(8)
+
+This condition prevents expressions from producing arbitrarily large values.
+In practice, boundedness can be enforced by restricting the input domain, limiting parameter magnitudes, or using numerically stable operators.
+
+We also assume that the output of the tree varies smoothly with respect to the learnable constants.
+
+Definition 5 (Coefficient-Lipschitz sensitivity)
+
+There exists a quantity 
+G&gt;0
+G&gt;0G&gt;0 such that for all 
+T\in\mathcal{T}_{s,D}
+T∈𝒯s,DT\in\mathcal{T}_{s,D}, all 
+\theta,\theta^{\prime}\in\Theta_{p(T)}(R)
+θ,θ′∈Θp⁡(T)​(R)\theta,\theta^{\prime}\in\Theta_{p(T)}(R), and all 
+x\in\mathcal{X}
+x∈𝒳x\in\mathcal{X},
+
+\displaystyle\left\lvert f_{T,\theta}(x)-f_{T,\theta^{\prime}}(x)\right\rvert\leqslant G\,\left\lVert\theta-\theta^{\prime}\right\rVert_{2}\kern 5.0pt.
+|fT,θ​(x)−fT,θ′​(x)|⩽G​‖θ−θ′‖2.\displaystyle\left\lvert f_{T,\theta}(x)-f_{T,\theta^{\prime}}(x)\right\rvert\leqslant G\,\left\lVert\theta-\theta^{\prime}\right\rVert_{2}\kern 5.0pt.
+
+(9)
+
+The above condition is satisfied whenever the gradient with respect to the parameters is uniformly bounded: 
+\left\lVert\nabla_{\theta}f_{T,\theta}(x)\right\rVert_{2}\leqslant G
+‖∇θfT,θ​(x)‖2⩽G\left\lVert\nabla_{\theta}f_{T,\theta}(x)\right\rVert_{2}\leqslant G.
+In SR practice, the constant 
+G
+GG typically depends on the stability of operators, restrictions on the input domain, and scaling of the expressions.
+
+3 Main Result
+
+The following theorem provides a unified generalization bound for SR models represented by expression trees.
+The result explicitly decomposes the generalization error into two sources: structure selection and constant fitting.
+
+Theorem 3.1 (Unified generalization bound for GP-SR)
+
+Assume the bounded Lipschitz loss, bounded predictions, and coefficient-Lipschitz sensitivity assumptions.
+Fix a size budget 
+s
+ss, a depth budget 
+D
+DD, and a parameter radius 
+R&gt;0
+R&gt;0R&gt;0.
+Then for any confidence level 
+\delta\in(0,1)
+δ∈(0,1)\delta\in(0,1), with probability at least 
+1-\delta
+1−δ1-\delta over the samples 
+S\sim\mathcal{D}^{m}
+S∼𝒟mS\sim\mathcal{D}^{m}, the following inequality holds simultaneously for all 
+f\in\mathcal{F}_{s,D}(R)
+f∈ℱs,D​(R)f\in\mathcal{F}_{s,D}(R):
+
+\displaystyle L(f)\ \leqslant\widehat{L}_{S}(f)+C_{1}\,R\,G\sqrt{\frac{s}{m}}+C_{2}\,B\sqrt{\frac{\log\left\lvert\mathcal{T}_{s,D}\right\rvert}{m}}+C_{3}\sqrt{\frac{\log(1/\delta)}{m}},
+L⁡(f)⩽L^S​(f)+C1​R​G​sm+C2​B​log⁡|𝒯s,D|m+C3​log⁡(1/δ)m,\displaystyle L(f)\ \leqslant\widehat{L}_{S}(f)+C_{1}\,R\,G\sqrt{\frac{s}{m}}+C_{2}\,B\sqrt{\frac{\log\left\lvert\mathcal{T}_{s,D}\right\rvert}{m}}+C_{3}\sqrt{\frac{\log(1/\delta)}{m}},
+
+(10)
+
+where 
+C_{1},C_{2},C_{3}&gt;0
+C1,C2,C3&gt;0C_{1},C_{2},C_{3}&gt;0 are absolute constants.
+
+Moreover, in the unary/binary operator regime (arity at most 2), 
+\log|\mathcal{T}_{s,D}|
+log⁡|𝒯s,D|\log|\mathcal{T}_{s,D}| admits a depth-aware bound with exponential base
+
+\displaystyle\rho_{D}\;=\;4\cos^{2}\!\left(\frac{\pi}{D+2}\right)\;&lt;\;4,
+ρD= 4​cos2⁡(πD+2)&lt; 4,\displaystyle\rho_{D}\;=\;4\cos^{2}\!\left(\frac{\pi}{D+2}\right)\;&lt;\;4,
+
+(11)
+
+so that 
+\log|\mathcal{T}_{s,D}|=O\!\left(\log s+s\log(\rho_{D}(M_{1}+M_{2})(N_{0}+1))\right)
+log⁡|𝒯s,D|=O⁡(log⁡s+s​log⁡(ρD​(M1+M2)​(N0+1)))\log|\mathcal{T}_{s,D}|=O\!\left(\log s+s\log(\rho_{D}(M_{1}+M_{2})(N_{0}+1))\right) up to lower-order terms.
+
+The first complexity term, 
+R\,G\sqrt{s/m}
+R​G​s/mR\,G\sqrt{s/m}, reflects the cost of fitting learnable constants within a fixed tree structure, while the second term, 
+B\sqrt{\log|\mathcal{T}_{s,D}|/m}
+B​log⁡|𝒯s,D|/mB\sqrt{\log|\mathcal{T}_{s,D}|/m}, captures the combinatorial cost of selecting a tree structure.
+The depth budget affects the latter term through 
+\rho_{D}
+ρD\rho_{D}: smaller depth reduces the exponential growth rate of admissible structures.
+
+4 Proof
+
+This section proves the generalization bound stated in Theorem 3.1.
+The argument proceeds in three main steps.
+First, in Section 4.1, we control the Rademacher complexity of a finite union of function classes, which corresponds to selecting a tree structure among the candidates in 
+\mathcal{T}_{s,D}
+𝒯s,D\mathcal{T}_{s,D}.
+Second, in Section 4.2, we bound the Rademacher complexity of functions associated with a fixed tree structure, capturing the cost of fitting the learnable constants.
+Third, in Section 4.3, we bound the number of admissible tree structures, which determines the structure-selection term in the generalization bound.
+Finally, combining these results yields the main theorem (Section 4.4).
+
+4.1 Finite Union Rademacher Complexity
+
+Our function class 
+\mathcal{F}_{s,D}(R)
+ℱs,D​(R)\mathcal{F}_{s,D}(R) is defined as a union over tree structures: 
+\mathcal{F}_{s,D}(R)=\bigcup_{T\in\mathcal{T}_{s,D}}\{f_{T,\theta}:\theta\in\Theta_{p(T)}(R)\}
+ℱs,D​(R)=⋃T∈𝒯s,D{fT,θ:θ∈Θp⁡(T)​(R)}\mathcal{F}_{s,D}(R)=\bigcup_{T\in\mathcal{T}_{s,D}}\{f_{T,\theta}:\theta\in\Theta_{p(T)}(R)\}.
+Thus, bounding its Rademacher complexity requires controlling the complexity of a finite union of function classes.
+This corresponds to the learning-theoretic cost of selecting a tree structure among the candidates in 
+\mathcal{T}_{s,D}
+𝒯s,D\mathcal{T}_{s,D}.
+
+We use empirical Rademacher complexity [5, 25]:
+
+\displaystyle\mathfrak{R}_{S}(\mathcal{G})=\mathbb{E}_{\sigma}\left[\sup_{g\in\mathcal{G}}\frac{1}{m}\sum_{i=1}^{m}\sigma_{i}g(x_{i})\right]\kern 5.0pt,
+ℜS​(𝒢)=𝔼σ​[supg∈𝒢1m​∑i=1mσi​g​(xi)],\displaystyle\mathfrak{R}_{S}(\mathcal{G})=\mathbb{E}_{\sigma}\left[\sup_{g\in\mathcal{G}}\frac{1}{m}\sum_{i=1}^{m}\sigma_{i}g(x_{i})\right]\kern 5.0pt,
+
+(12)
+
+where 
+\sigma_{i}
+σi\sigma_{i} are i.i.d. Rademacher variables.
+The following standard lemma bounds the Rademacher complexity of a finite union of classes.
+
+Lemma 1 (Finite union Rademacher bound)
+
+Fix sample inputs 
+x_{1},\dots,x_{m}
+x1,…,xmx_{1},\dots,x_{m}.
+Let 
+\{\mathcal{F}_{j}\}_{j=1}^{M}
+{ℱj}j=1M\{\mathcal{F}_{j}\}_{j=1}^{M} be function classes such that 
+\left\lvert f(x_{i})\right\rvert\leqslant B
+|f⁡(xi)|⩽B\left\lvert f(x_{i})\right\rvert\leqslant B for all 
+f\in\cup_{j}\mathcal{F}_{j}
+f∈∪jℱjf\in\cup_{j}\mathcal{F}_{j} and all 
+i
+ii.
+Then
+
+\displaystyle\mathfrak{R}_{S}\!\left(\bigcup_{j=1}^{M}\mathcal{F}_{j}\right)\ \leqslant\ \max_{1\leqslant j\leqslant M}\mathfrak{R}_{S}(\mathcal{F}_{j})\ +\ B\sqrt{\frac{2\log M}{m}}\kern 5.0pt.
+ℜS​(⋃j=1Mℱj)⩽max1⩽j⩽M⁡ℜS​(ℱj)+B​2​log⁡Mm.\displaystyle\mathfrak{R}_{S}\!\left(\bigcup_{j=1}^{M}\mathcal{F}_{j}\right)\ \leqslant\ \max_{1\leqslant j\leqslant M}\mathfrak{R}_{S}(\mathcal{F}_{j})\ +\ B\sqrt{\frac{2\log M}{m}}\kern 5.0pt.
+
+(13)
+
+Proof
+
+Define
+
+\displaystyle Z_{j}(\sigma):=\sup_{f\in\mathcal{F}_{j}}\frac{1}{m}\sum_{i=1}^{m}\sigma_{i}f(x_{i})\kern 5.0pt,\quad Z(\sigma):=\max_{1\leqslant j\leqslant M}Z_{j}(\sigma)\kern 5.0pt.
+Zj​(σ):=supf∈ℱj1m​∑i=1mσi​f​(xi),Z⁡(σ):=max1⩽j⩽M⁡Zj​(σ).\displaystyle Z_{j}(\sigma):=\sup_{f\in\mathcal{F}_{j}}\frac{1}{m}\sum_{i=1}^{m}\sigma_{i}f(x_{i})\kern 5.0pt,\quad Z(\sigma):=\max_{1\leqslant j\leqslant M}Z_{j}(\sigma)\kern 5.0pt.
+
+(14)
+
+Then 
+\mathfrak{R}_{S}(\mathcal{F}_{j})=\mathbb{E}_{\sigma}Z_{j}(\sigma)
+ℜS​(ℱj)=𝔼σ​Zj​(σ)\mathfrak{R}_{S}(\mathcal{F}_{j})=\mathbb{E}_{\sigma}Z_{j}(\sigma) and 
+\mathfrak{R}_{S}(\cup_{j}\mathcal{F}_{j})=\mathbb{E}_{\sigma}Z(\sigma)
+ℜS(∪jℱj)=𝔼σZ(σ)\mathfrak{R}_{S}(\cup_{j}\mathcal{F}_{j})=\mathbb{E}_{\sigma}Z(\sigma).
+
+For each 
+i
+ii, modifying only 
+\sigma_{i}
+σi\sigma_{i} changes 
+Z_{j}(\sigma)
+Zj​(σ)Z_{j}(\sigma) by at most 
+2B/m
+2​B/m2B/m.
+Hence the centered variables 
+Z_{j}(\sigma)-\mathbb{E}Z_{j}(\sigma)
+Zj​(σ)−𝔼​Zj​(σ)Z_{j}(\sigma)-\mathbb{E}Z_{j}(\sigma) are sub-Gaussian with proxy variance 
+B^{2}/m
+B2/mB^{2}/m.
+For sub-Gaussian variables with variance proxy 
+\sigma^{2}
+σ2\sigma^{2}, the standard maximal inequality [25] holds that
+
+\displaystyle\mathbb{E}\left[\max_{1\leqslant j\leqslant M}(Z_{j}-\mathbb{E}[Z_{j}])\right]\leqslant\sigma\sqrt{2\log M}\kern 5.0pt.
+𝔼⁡[max1⩽j⩽M⁡(Zj−𝔼⁡[Zj])]⩽σ​2​log⁡M.\displaystyle\mathbb{E}\left[\max_{1\leqslant j\leqslant M}(Z_{j}-\mathbb{E}[Z_{j}])\right]\leqslant\sigma\sqrt{2\log M}\kern 5.0pt.
+
+(15)
+
+With 
+\sigma=B/\sqrt{m}
+σ=B/m\sigma=B/\sqrt{m}, it yields
+
+\displaystyle\mathbb{E}\left[\max_{1\leqslant j\leqslant M}(Z_{j}-\mathbb{E}[Z_{j}])\right]\ \leqslant\ B\sqrt{\frac{2\log M}{m}}\kern 5.0pt.
+𝔼⁡[max1⩽j⩽M⁡(Zj−𝔼⁡[Zj])]⩽B​2​log⁡Mm.\displaystyle\mathbb{E}\left[\max_{1\leqslant j\leqslant M}(Z_{j}-\mathbb{E}[Z_{j}])\right]\ \leqslant\ B\sqrt{\frac{2\log M}{m}}\kern 5.0pt.
+
+(16)
+
+Therefore
+
+\displaystyle\mathbb{E}[Z]\leqslant\max_{j}\mathbb{E}[Z_{j}]+B\sqrt{\frac{2\log M}{m}},
+𝔼⁡[Z]⩽maxj⁡𝔼⁡[Zj]+B​2​log⁡Mm,\displaystyle\mathbb{E}[Z]\leqslant\max_{j}\mathbb{E}[Z_{j}]+B\sqrt{\frac{2\log M}{m}},
+
+(17)
+
+which is the claim.
+∎
+
+Remark 1 (Structure selection as model choice)
+
+Lemma 1 captures the learning-theoretic cost of selecting a tree structure.
+Each class 
+\mathcal{F}_{T}(R)
+ℱT​(R)\mathcal{F}_{T}(R) corresponds to a fixed symbolic structure with different numerical constants.
+The union over 
+T
+TT therefore represents the discrete model-selection problem inherent in SR.
+The additional log term quantifies the combinatorial cost of searching over
+alternative symbolic forms.
+
+4.2 Constant-Fitting Complexity
+
+We now analyze the complexity of functions associated with a fixed tree structure 
+T
+TT.
+In this setting, the tree structure is fixed, and the only source of variability comes from the learnable constants appearing in the tree.
+
+Let 
+T\in\mathcal{T}_{s,D}
+T∈𝒯s,DT\in\mathcal{T}_{s,D} be fixed and let 
+p=p(T)
+p=p⁡(T)p=p(T) denote the number of constant leaves.
+To control the complexity of this parameterized class, we measure distances between parameter vectors through the induced prediction pseudometric
+
+\displaystyle d_{S}(\theta,\theta^{\prime})=\left(\frac{1}{m}\sum_{i=1}^{m}(f_{T,\theta}(x_{i})-f_{T,\theta^{\prime}}(x_{i}))^{2}\right)^{1/2}\kern 5.0pt.
+dS​(θ,θ′)=(1m​∑i=1m(fT,θ​(xi)−fT,θ′​(xi))2)1/2.\displaystyle d_{S}(\theta,\theta^{\prime})=\left(\frac{1}{m}\sum_{i=1}^{m}(f_{T,\theta}(x_{i})-f_{T,\theta^{\prime}}(x_{i}))^{2}\right)^{1/2}\kern 5.0pt.
+
+(18)
+
+Lemma 2 (Pseudometric domination)
+
+Under the coefficient-Lipschitz sensitivity assumption, for all 
+\theta,\theta^{\prime}\in\Theta_{p}(R)
+θ,θ′∈Θp​(R)\theta,\theta^{\prime}\in\Theta_{p}(R),
+
+\displaystyle d_{S}(\theta,\theta^{\prime})\leqslant G\,\left\lVert\theta-\theta^{\prime}\right\rVert_{2}\kern 5.0pt.
+dS​(θ,θ′)⩽G​‖θ−θ′‖2.\displaystyle d_{S}(\theta,\theta^{\prime})\leqslant G\,\left\lVert\theta-\theta^{\prime}\right\rVert_{2}\kern 5.0pt.
+
+(19)
+
+Proof
+
+For each 
+i
+ii, 
+\left\lvert f_{T,\theta}(x_{i})-f_{T,\theta^{\prime}}(x_{i})\right\rvert\leqslant G\left\lVert\theta-\theta^{\prime}\right\rVert_{2}
+|fT,θ​(xi)−fT,θ′​(xi)|⩽G​‖θ−θ′‖2\left\lvert f_{T,\theta}(x_{i})-f_{T,\theta^{\prime}}(x_{i})\right\rvert\leqslant G\left\lVert\theta-\theta^{\prime}\right\rVert_{2}.
+Squaring, averaging over 
+i
+ii, and taking square roots gives the claim.
+∎
+
+Remark 2 (Sensitivity to constants)
+
+The quantity 
+G
+GG measures how strongly predictions change when the learnable constants are perturbed.
+Large values of 
+G
+GG correspond to expressions whose outputs vary sharply with small parameter changes.
+Such expressions are often numerically unstable and prone to overfitting,
+a phenomenon frequently observed in GP-based SR when nested nonlinear operators are present.
+
+We next bound the covering number of the parameter space under the pseudometric 
+d_{S}
+dSd_{S}.
+Intuitively, this measures how many parameter vectors are needed to approximate all possible constant settings up to prediction error 
+\varepsilon
+ε\varepsilon on the sample.
+
+Lemma 3 (Covering number under 
+d_{S}
+dSd_{S})
+
+Let 
+p=p(T)
+p=p⁡(T)p=p(T). For any 
+\varepsilon&gt;0
+ε&gt;0\varepsilon&gt;0,
+
+N(\varepsilon,\Theta_{p}(R),d_{S})\ \leqslant\ \left(1+\frac{2R\,G}{\varepsilon}\right)^{p}\kern 5.0pt.
+N⁡(ε,Θp​(R),dS)⩽(1+2​R​Gε)p.N(\varepsilon,\Theta_{p}(R),d_{S})\ \leqslant\ \left(1+\frac{2R\,G}{\varepsilon}\right)^{p}\kern 5.0pt.
+
+Proof
+
+By Lemma 2, an 
+(\varepsilon/G)
+(ε/G)(\varepsilon/G)-cover in Euclidean norm is an 
+\varepsilon
+ε\varepsilon-cover under 
+d_{S}
+dSd_{S}.
+By the Euclidean ball covering bound [34] (scaled to radius 
+R
+RR),
+
+N(\eta,\Theta_{p}(R),\left\lVert\cdot\right\rVert_{2})\leqslant(1+2R/\eta)^{p}
+N⁡(η,Θp​(R),‖⋅‖2)⩽(1+2​R/η)pN(\eta,\Theta_{p}(R),\left\lVert\cdot\right\rVert_{2})\leqslant(1+2R/\eta)^{p}. Substitute 
+\eta=\varepsilon/G
+η=ε/G\eta=\varepsilon/G.
+∎
+
+To convert this covering-number bound into a Rademacher complexity estimate, we use Dudley’s entropy integral, which relates Rademacher complexity to
+the logarithm of covering numbers.
+
+Theorem 4.1 (Dudley’s entropy integral [11])
+
+There exists an absolute constant 
+C&gt;0
+C&gt;0C&gt;0 such that for any class 
+\mathcal{G}
+𝒢\mathcal{G} of real-valued functions on 
+\{x_{1},\dots,x_{m}\}
+{x1,…,xm}\{x_{1},\dots,x_{m}\}, the empirical Rademacher complexity satisfies
+
+\displaystyle\mathfrak{R}_{S}(\mathcal{G})\ \leqslant\ \frac{C}{\sqrt{m}}\int_{0}^{\infty}\sqrt{\log N(\varepsilon,\mathcal{G},d_{S})}\,d\varepsilon\kern 5.0pt,
+ℜS​(𝒢)⩽Cm​∫0∞log⁡N⁡(ε,𝒢,dS)​𝑑ε,\displaystyle\mathfrak{R}_{S}(\mathcal{G})\ \leqslant\ \frac{C}{\sqrt{m}}\int_{0}^{\infty}\sqrt{\log N(\varepsilon,\mathcal{G},d_{S})}\,d\varepsilon\kern 5.0pt,
+
+(20)
+
+where 
+d_{S}
+dSd_{S} is the empirical 
+L_{2}
+L2L_{2} pseudo-metric.
+
+Applying this result to the class 
+\mathcal{F}_{T}(R)
+ℱT​(R)\mathcal{F}_{T}(R) yields the following bound.
+
+Theorem 4.2 (Fixed-structure constant-fitting bound)
+
+For fixed 
+T
+TT with 
+p=p(T)
+p=p⁡(T)p=p(T), there exists an absolute constant 
+C_{\mathrm{par}}&gt;0
+Cpar&gt;0C_{\mathrm{par}}&gt;0 such that
+
+\displaystyle\mathfrak{R}_{S}(\mathcal{F}_{T}(R))\ \leqslant\ C_{\mathrm{par}}\,R\,G\sqrt{\frac{p}{m}}\kern 5.0pt.
+ℜS​(ℱT​(R))⩽Cpar​R​G​pm.\displaystyle\mathfrak{R}_{S}(\mathcal{F}_{T}(R))\ \leqslant\ C_{\mathrm{par}}\,R\,G\sqrt{\frac{p}{m}}\kern 5.0pt.
+
+(21)
+
+Consequently, since 
+p(T)\leqslant\mathrm{size}(T)\leqslant s
+p⁡(T)⩽size⁡(T)⩽sp(T)\leqslant\mathrm{size}(T)\leqslant s,
+
+\displaystyle\mathfrak{R}_{S}(\mathcal{F}_{T}(R))\ \leqslant\ C_{\mathrm{par}}\,R\,G\sqrt{\frac{s}{m}}\kern 5.0pt.
+ℜS​(ℱT​(R))⩽Cpar​R​G​sm.\displaystyle\mathfrak{R}_{S}(\mathcal{F}_{T}(R))\ \leqslant\ C_{\mathrm{par}}\,R\,G\sqrt{\frac{s}{m}}\kern 5.0pt.
+
+(22)
+
+Proof
+
+By Theorem 4.1 and Lemma 3,
+
+\displaystyle\mathfrak{R}_{S}(\mathcal{F}_{T}(R))\leqslant\frac{C}{\sqrt{m}}\int_{0}^{\infty}\sqrt{p\log\left(1+\frac{2RG}{\varepsilon}\right)}\,d\varepsilon\kern 5.0pt.
+ℜS​(ℱT​(R))⩽Cm​∫0∞p​log⁡(1+2​R​Gε)​𝑑ε.\displaystyle\mathfrak{R}_{S}(\mathcal{F}_{T}(R))\leqslant\frac{C}{\sqrt{m}}\int_{0}^{\infty}\sqrt{p\log\left(1+\frac{2RG}{\varepsilon}\right)}\,d\varepsilon\kern 5.0pt.
+
+(23)
+
+Truncate the integral at 
+2RG
+2​R​G2RG using the diameter bound from Lemma 2.
+Then bound 
+\log(1+u)\leqslant u
+log⁡(1+u)⩽u\log(1+u)\leqslant u and integrate as in standard Dudley computations, yielding
+
+\mathfrak{R}_{S}(\mathcal{F}_{T}(R))\leqslant(4C)\,RG\sqrt{p/m}
+ℜS​(ℱT​(R))⩽(4​C)​R​G​p/m\mathfrak{R}_{S}(\mathcal{F}_{T}(R))\leqslant(4C)\,RG\sqrt{p/m}.
+Set 
+C_{\mathrm{par}}=4C
+Cpar=4​CC_{\mathrm{par}}=4C.
+∎
+
+Remark 3 (Effect of learnable constants)
+
+The bound grows with the square root of the number of constant leaves.
+This reflects the intuition that introducing additional numerical parameters increases the flexibility of the expression even when its symbolic structure is fixed.
+
+4.3 Structure-Selection Complexity
+
+We now bound the number of admissible tree structures in 
+\mathcal{T}_{s,D}
+𝒯s,D\mathcal{T}_{s,D}.
+This quantity determines the structure-selection term in the generalization bound through 
+\log|\mathcal{T}_{s,D}|
+log⁡|𝒯s,D|\log|\mathcal{T}_{s,D}|.
+
+The analysis proceeds in two steps.
+First, we bound the number of possible tree shapes with bounded size and depth.
+Second, we incorporate labelings by operators and terminals.
+
+Definition 6 (Unary/binary operator regime)
+
+Assume all operators have arity at most 2.
+Let 
+M_{1}=\left\lvert\mathcal{O}_{1}\right\rvert
+M1=|𝒪1|M_{1}=\left\lvert\mathcal{O}_{1}\right\rvert and 
+M_{2}=\left\lvert\mathcal{O}_{2}\right\rvert
+M2=|𝒪2|M_{2}=\left\lvert\mathcal{O}_{2}\right\rvert denote the number of unary and binary operators, respectively.
+
+We begin by bounding the number of rooted order tree shapes of bounded depth.
+Classical results on planted plane trees (see, e.g., [9]) imply that the number of trees with bounded depth admits the following asymptotic growth:
+
+Theorem 4.3 (de Bruijn–Knuth–Rice asymptotic [9])
+
+Let 
+A_{s,D}
+As,DA_{s,D} denote the number of planted plane trees with 
+s
+ss nodes and depth
+11
+                  1
+
+                While we use a depth measured in edges 
+D
+DD (with the root at depth 
+0
+00), [9] uses a height in nodes 
+h
+hh (counting the root as 
+1
+11).
+The two are related by 
+D=h-1
+D=h−1D=h-1.
+
+at most 
+D
+DD.
+Then for fixed 
+D
+DD and 
+s\to\infty
+s→∞s\to\infty,
+
+\displaystyle A_{s,D}\sim\frac{4^{s}}{D+2}\tan^{2}\!\left(\frac{\pi}{D+2}\right)\,\cos^{2s}\!\left(\frac{\pi}{D+2}\right)\kern 5.0pt.
+As,D∼4sD+2​tan2⁡(πD+2)​cos2​s⁡(πD+2).\displaystyle A_{s,D}\sim\frac{4^{s}}{D+2}\tan^{2}\!\left(\frac{\pi}{D+2}\right)\,\cos^{2s}\!\left(\frac{\pi}{D+2}\right)\kern 5.0pt.
+
+(24)
+
+The asymptotic expression reveals the exponential growth rate of 
+A_{s,D}
+As,DA_{s,D}.
+From this we obtain a simple exponential upper bound.
+
+Corollary 1 (Exponential upper bound with explicit base)
+
+For each fixed 
+D\geqslant 1
+D⩾1D\geqslant 1 there exists 
+c_{D}&gt;0
+cD&gt;0c_{D}&gt;0 such that for all 
+s\geqslant 0
+s⩾0s\geqslant 0,
+
+\displaystyle A_{s,D}\leqslant c_{D}\,\rho_{D}^{s}\kern 5.0pt,\quad\rho_{D}:=4\cos^{2}\!\left(\frac{\pi}{D+2}\right)&lt;4\kern 5.0pt.
+As,D⩽cD​ρDs,ρD:=4​cos2⁡(πD+2)&lt;4.\displaystyle A_{s,D}\leqslant c_{D}\,\rho_{D}^{s}\kern 5.0pt,\quad\rho_{D}:=4\cos^{2}\!\left(\frac{\pi}{D+2}\right)&lt;4\kern 5.0pt.
+
+(25)
+
+Proof
+
+From Theorem 4.3, the dominant exponential factor is
+
+4^{s}\cos^{2s}(\pi/(D+2))=(4\cos^{2}(\pi/(D+2)))^{s}
+4s​cos2​s⁡(π/(D+2))=(4​cos2⁡(π/(D+2)))s4^{s}\cos^{2s}(\pi/(D+2))=(4\cos^{2}(\pi/(D+2)))^{s}.
+The remaining factors depend only on 
+D
+DD and can therefore be absorbed into the constant 
+c_{D}
+cDc_{D}, yielding the stated bound.
+
+Combining the results yields the following estimate.
+
+Theorem 4.4 (Depth-aware structure counting)
+
+Assume the unary/binary operator regime.
+There exists 
+c_{D}&gt;0
+cD&gt;0c_{D}&gt;0 such that
+
+\displaystyle|\mathcal{T}_{s,D}|
+|𝒯s,D|\displaystyle|\mathcal{T}_{s,D}|
+
+\displaystyle\leqslant c_{D}\,(s+1)\,\Big(\rho_{D}(M_{1}+M_{2})\,(N_{0}+1)\Big)^{s}\kern 5.0pt,
+⩽cD​(s+1)​(ρD​(M1+M2)​(N0+1))s,\displaystyle\leqslant c_{D}\,(s+1)\,\Big(\rho_{D}(M_{1}+M_{2})\,(N_{0}+1)\Big)^{s}\kern 5.0pt,
+
+(26)
+
+where
+
+\displaystyle\rho_{D}
+ρD\displaystyle\rho_{D}
+
+\displaystyle=4\cos^{2}\!\left(\frac{\pi}{D+2}\right)&lt;4\kern 5.0pt.
+=4​cos2⁡(πD+2)&lt;4.\displaystyle=4\cos^{2}\!\left(\frac{\pi}{D+2}\right)&lt;4\kern 5.0pt.
+
+(27)
+
+Consequently,
+
+\displaystyle\log|\mathcal{T}_{s,D}|\ \leqslant\ O(\log s)\ +\ s\log\rho_{D}\ +\ s\log(M_{1}+M_{2})\ +\ s\log(N_{0}+1)\kern 5.0pt.
+log|𝒯s,D|⩽O⁡(log⁡s)+s​log⁡ρD+s​log⁡(M1+M2)+s​log⁡(N0+1).\displaystyle\log|\mathcal{T}_{s,D}|\ \leqslant\ O(\log s)\ +\ s\log\rho_{D}\ +\ s\log(M_{1}+M_{2})\ +\ s\log(N_{0}+1)\kern 5.0pt.
+
+(28)
+
+Proof
+
+We derive an upper bound on 
+|\mathcal{T}_{s,D}|
+|𝒯s,D||\mathcal{T}_{s,D}| by overcounting admissible tree structures.
+For each 
+n\leqslant s
+n⩽sn\leqslant s, let 
+A_{n,D}
+An,DA_{n,D} denote the number of rooted ordered tree shapes with 
+n
+nn nodes and depth at most 
+D
+DD.
+By Corollary 1, we have
+
+\displaystyle A_{n,D}\leqslant c_{D}\rho_{D}^{n}\kern 5.0pt.
+An,D⩽cD​ρDn.\displaystyle A_{n,D}\leqslant c_{D}\rho_{D}^{n}\kern 5.0pt.
+
+(29)
+
+For each such tree shape, each internal node can be labeled by one of at most 
+M_{1}+M_{2}
+M1+M2M_{1}+M_{2} operators, and each leaf by one of 
+N_{0}+1
+N0+1N_{0}+1 terminal symbols.
+Let 
+i
+ii and 
+\ell
+ℓ\ell denote the number of internal nodes and leaves, respectively, so that 
+i+\ell=n
+i+ℓ=ni+\ell=n.
+The number of labelings is at most
+
+\displaystyle(M_{1}+M_{2})^{i}(N_{0}+1)^{\ell}\leqslant(M_{1}+M_{2})^{n}(N_{0}+1)^{n}\kern 5.0pt.
+(M1+M2)i​(N0+1)ℓ⩽(M1+M2)n​(N0+1)n.\displaystyle(M_{1}+M_{2})^{i}(N_{0}+1)^{\ell}\leqslant(M_{1}+M_{2})^{n}(N_{0}+1)^{n}\kern 5.0pt.
+
+(30)
+
+Summing over 
+n\leqslant s
+n⩽sn\leqslant s gives
+
+\displaystyle|\mathcal{T}_{s,D}|
+|𝒯s,D|\displaystyle|\mathcal{T}_{s,D}|
+
+\displaystyle\leqslant\sum_{n=0}^{s}c_{D}\rho_{D}^{n}\,(M_{1}+M_{2})^{n}\,(N_{0}+1)^{n}
+⩽∑n=0scD​ρDn​(M1+M2)n​(N0+1)n\displaystyle\leqslant\sum_{n=0}^{s}c_{D}\rho_{D}^{n}\,(M_{1}+M_{2})^{n}\,(N_{0}+1)^{n}
+
+(31)
+
+\displaystyle=c_{D}\sum_{n=0}^{s}\Big(\rho_{D}(M_{1}+M_{2})(N_{0}+1)\Big)^{n}
+=cD​∑n=0s(ρD​(M1+M2)​(N0+1))n\displaystyle=c_{D}\sum_{n=0}^{s}\Big(\rho_{D}(M_{1}+M_{2})(N_{0}+1)\Big)^{n}
+
+(32)
+
+\displaystyle\leqslant c_{D}(s+1)\Big(\rho_{D}(M_{1}+M_{2})(N_{0}+1)\Big)^{s}\kern 5.0pt.
+⩽cD​(s+1)​(ρD​(M1+M2)​(N0+1))s.\displaystyle\leqslant c_{D}(s+1)\Big(\rho_{D}(M_{1}+M_{2})(N_{0}+1)\Big)^{s}\kern 5.0pt.
+
+(33)
+
+We used the elementary bound for a geometric series
+
+\displaystyle\sum_{n=0}^{s}a^{n}\leqslant(s+1)a^{s}\quad(a\geqslant 1)
+∑n=0san⩽(s+1)​as(a⩾1)\displaystyle\sum_{n=0}^{s}a^{n}\leqslant(s+1)a^{s}\quad(a\geqslant 1)
+
+(34)
+
+in the last step.
+Taking logarithms gives the stated bound.
+∎
+
+Remark 4 (Effect of depth constraints)
+
+The depth parameter 
+D
+DD influences the growth rate of the hypothesis class through the exponential base
+
+\displaystyle\rho_{D}=4\cos^{2}\!\left(\frac{\pi}{D+2}\right)\kern 5.0pt.
+ρD=4​cos2⁡(πD+2).\displaystyle\rho_{D}=4\cos^{2}\!\left(\frac{\pi}{D+2}\right)\kern 5.0pt.
+
+(35)
+
+This quantity is strictly smaller than 
+4
+44 and increases monotonically toward 
+4
+44 as 
+D
+DD grows.
+Consequently, smaller depth budgets reduce the exponential growth rate of admissible tree structures.
+Intuitively, depth constraints remove highly elongated trees with long chains of nested operators.
+Even when the size budget 
+s
+ss is fixed, such trees constitute a large fraction of the combinatorial search space.
+Restricting depth therefore acts as a structural regularizer by limiting the variety of possible expression shapes.
+
+4.4 Proof of the Main Theorem
+
+We now combine the preceding ingredients.
+A standard generalization bound for bounded 1-Lipschitz losses [25] implies that, with probability at least 
+1-\delta
+1−δ1-\delta,
+
+\displaystyle\sup_{f\in\mathcal{F}_{s,D}(R)}\big(L(f)-\widehat{L}_{S}(f)\big)\ \leqslant\ a\,\mathfrak{R}_{S}(\mathcal{F}_{s,D}(R))\ +\ b\sqrt{\frac{\log(1/\delta)}{m}}\kern 5.0pt,
+supf∈ℱs,D​(R)(L⁡(f)−L^S​(f))⩽a​ℜS​(ℱs,D​(R))+b​log⁡(1/δ)m,\displaystyle\sup_{f\in\mathcal{F}_{s,D}(R)}\big(L(f)-\widehat{L}_{S}(f)\big)\ \leqslant\ a\,\mathfrak{R}_{S}(\mathcal{F}_{s,D}(R))\ +\ b\sqrt{\frac{\log(1/\delta)}{m}}\kern 5.0pt,
+
+(36)
+
+for absolute constants 
+a,b&gt;0
+a,b&gt;0a,b&gt;0.
+Since the hypothesis class decomposes as 
+\mathcal{F}_{s,D}(R)=\cup_{T\in\mathcal{T}_{s,D}}\mathcal{F}_{T}(R)
+ℱs,D(R)=∪T∈𝒯s,DℱT(R)\mathcal{F}_{s,D}(R)=\cup_{T\in\mathcal{T}_{s,D}}\mathcal{F}_{T}(R), Lemma 1 gives
+
+\displaystyle\mathfrak{R}_{S}(\mathcal{F}_{s,D}(R))\ \leqslant\ \max_{T\in\mathcal{T}_{s,D}}\mathfrak{R}_{S}(\mathcal{F}_{T}(R))\ +\ B\sqrt{\frac{2\log|\mathcal{T}_{s,D}|}{m}}\kern 5.0pt.
+ℜS​(ℱs,D​(R))⩽maxT∈𝒯s,D⁡ℜS​(ℱT​(R))+B​2​log⁡|𝒯s,D|m.\displaystyle\mathfrak{R}_{S}(\mathcal{F}_{s,D}(R))\ \leqslant\ \max_{T\in\mathcal{T}_{s,D}}\mathfrak{R}_{S}(\mathcal{F}_{T}(R))\ +\ B\sqrt{\frac{2\log|\mathcal{T}_{s,D}|}{m}}\kern 5.0pt.
+
+(37)
+
+By Theorem 4.2, for every 
+T\in\mathcal{T}_{s,D}
+T∈𝒯s,DT\in\mathcal{T}_{s,D},
+
+\displaystyle\mathfrak{R}_{S}(\mathcal{F}_{T}(R))\leqslant C_{\mathrm{par}}\,R\,G\sqrt{\frac{s}{m}}\kern 5.0pt.
+ℜS​(ℱT​(R))⩽Cpar​R​G​sm.\displaystyle\mathfrak{R}_{S}(\mathcal{F}_{T}(R))\leqslant C_{\mathrm{par}}\,R\,G\sqrt{\frac{s}{m}}\kern 5.0pt.
+
+(38)
+
+Hence the maximum over 
+T
+TT satisfies the same bound.
+
+In the unary/binary regime, Theorem 4.4 provides an explicit bound on 
+\log|\mathcal{T}_{s,D}|
+log⁡|𝒯s,D|\log|\mathcal{T}_{s,D}|, with exponential base
+
+\displaystyle\rho_{D}=4\cos^{2}\!\left(\frac{\pi}{D+2}\right)\kern 5.0pt.
+ρD=4​cos2⁡(πD+2).\displaystyle\rho_{D}=4\cos^{2}\!\left(\frac{\pi}{D+2}\right)\kern 5.0pt.
+
+(39)
+
+Substituting these bounds and absorbing absolute constants into 
+C_{1},C_{2},C_{3}
+C1,C2,C3C_{1},C_{2},C_{3} yields the statement of Theorem 3.1.
+∎
+
+5 Connecting the Generalization Bound to GP Practice
+
+We now relate the generalization bound in (10) to recurring design choices and empirical phenomena in GP-based SR.
+The key organizing principle is the two-term decomposition of the bound: a structure-selection term, governed by the size of the discrete hypothesis set, and a constant-fitting term, governed by the sensitivity of predictions to learnable constants.
+This perspective helps clarify how common GP heuristics act as forms of complexity control.
+
+5.1 Structure-Selection Term
+
+The structure-selection term reflects the combinatorial cost of choosing a tree structure from the hypothesis set 
+\mathcal{T}_{s,D}
+𝒯s,D\mathcal{T}_{s,D}. Accordingly, mechanisms that restrict structural complexity can be interpreted as reducing 
+\log|\mathcal{T}_{s,D}|
+log⁡|𝒯s,D|\log|\mathcal{T}_{s,D}|.
+
+Bloat as hypothesis-class growth.
+
+A well-known empirical phenomenon in GP is bloat [32, 20, 21, 31], where program size increases even when improvements in training fitness have saturated.
+In our framework, increasing the tree-size budget enlarges the hypothesis set 
+\mathcal{T}_{s,D}
+𝒯s,D\mathcal{T}_{s,D} and therefore increases the structure-selection term 
+\log|\mathcal{T}_{s,D}|
+log⁡|𝒯s,D|\log|\mathcal{T}_{s,D}| in the bound. From this perspective, bloat can be interpreted as expanding the effective hypothesis class considered by the algorithm, which may increase the risk of overfitting.
+
+Parsimony pressure as capacity control.
+
+Parsimony pressure explicitly biases selection toward smaller trees, for example by adding a size penalty to fitness.
+The accuracy–parsimony tradeoff and methods for parsimony pressure are classical topics in GP [36, 30], including lexicographic variants [23].
+Under our decomposition, parsimony pressure acts as an algorithmic proxy for reducing structural complexity by shifting the search toward smaller-
+s
+ss structures.
+Consequently, it can be interpreted as reducing 
+\log|\mathcal{T}_{s,D}|
+log⁡|𝒯s,D|\log|\mathcal{T}_{s,D}|.
+
+Depth limits.
+
+Depth constraints are ubiquitous in GP practice and are widely observed to stabilize evolution and improve test performance.
+In our framework, depth constraints reduce the number of admissible structures and hence lower the growth rate of 
+|\mathcal{T}_{s,D}|
+|𝒯s,D||\mathcal{T}_{s,D}|.
+They may also improve stability by limiting sensitivity amplification caused by deep compositions, although their most direct effect in the bound is through the structure-selection term.
+
+5.2 Constant-Fitting Term
+
+The constant-fitting term captures the complexity of optimizing continuous parameters within a fixed structure.
+In the bound, this contribution appears through the factor 
+RG\sqrt{s/m}
+R​G​s/mRG\sqrt{s/m}, where 
+G
+GG measures the sensitivity of predictions to perturbations of learnable constants.
+
+Constant optimization and sensitivity-driven overfitting.
+
+GP-based SR commonly introduces ephemeral random constants and may further optimize them via local search, nonlinear least squares [22, 24], covariance matrix adaptation evolution strategy (CMA-ES) [13, 14], or related procedures [17].
+Constant optimization generally improves SR performance and can lead to smaller, better-generalizing trees.
+However, when the fitted expression is sensitive to its constants, especially due to unstable operators or highly nonlinear compositions, aggressive fitting may still increase overfitting risk.
+In the lens of (10), this behavior corresponds to a larger constant-fitting term when the induced function is highly sensitive to changes in constants, that is, when 
+G
+GG is large.
+For example, expressions involving nested nonlinear operators such as 
+\exp(\exp(c_{1}x))
+exp⁡(exp⁡(c1​x))\exp(\exp(c_{1}x)) can exhibit high sensitivity to small changes in the learnable constants, leading to large values of 
+G
+GG.
+In contrast, simpler expressions such as 
+\sin(c_{2}x)+c_{3}x
+sin⁡(c2​x)+c3​x\sin(c_{2}x)+c_{3}x tend to be more stable.
+
+Interval arithmetic and interval-aware operators.
+
+Interval arithmetic can detect expressions that produce undefined or unbounded outputs on the input domain, enabling rejection or penalization of such trees.
+Keijzer showed that incorporating interval arithmetic can substantially improve the robustness of SR [15].
+Under our decomposition, these techniques primarily improve generalization by ruling out expressions that produce undefined or excessively large outputs, thereby helping to control 
+B
+BB, while also discouraging unstable expressions and helping to reduce 
+G
+GG.
+Smooth operator definitions, such as analytic quotient operators, therefore fit naturally into our framework as mechanisms for limiting sensitivity amplification [27, 28].
+Interval-based pruning may also remove invalid structures from the search space, which can indirectly reduce the effective structural complexity.
+
+Linear scaling.
+
+Linear scaling, which fits an affine transformation of a candidate expression to the targets, is often effective in practice and is emphasized in interval-arithmetic-based SR [15, 16].
+In our framework, linear scaling can be interpreted as concentrating continuous fitting into a small and relatively well-conditioned set of parameters.
+This provides a structured way to reduce effective sensitivity without substantially enlarging the continuous search space.
+
+5.3 Summary and Implications
+
+Overall, the generalization bound highlights two complementary sources of complexity: the combinatorial growth of possible tree structures and the sensitivity of predictions to numerical constants.
+This perspective suggests that effective SR systems should balance structural expressiveness and numerical stability.
+Limiting tree size and depth reduces the combinatorial complexity of the hypothesis space, while stabilizing operators and controlling constant optimization reduce sensitivity to parameter perturbations.
+
+6 Conclusion
+
+In this paper, we presented a learning-theoretic analysis of SR models represented by expression trees.
+We derived a generalization bound for GP-based SR that explicitly accounts for both structural complexity and parameter fitting.
+Our result shows that the generalization gap can be decomposed into two interpretable components corresponding to the selection of the tree structure and the estimation of numerical constants.
+This perspective provides a principled way to understand how common mechanisms in GP-based SR influence generalization.
+In particular, our analysis offers a theoretical interpretation of widely used practices such as parsimony pressure, structural constraints, and the use of numerically stable operators.
+By relating these mechanisms to the complexity terms appearing in the bound, our work helps bridge the gap between empirical heuristics and learning-theoretic principles.
+We hope that this perspective will contribute to the development of more principled methods for controlling model complexity and improving generalization in SR.
+
+Our analysis is based on worst-case complexity measures, including uniform sensitivity bounds and covering arguments over the full hypothesis class.
+As a result, the obtained generalization bound is data-independent and may be conservative in practice.
+Although the qualitative implications of our decomposition for model design remain largely unchanged, the resulting conservativeness may affect the quantitative tightness of the bound.
+An important direction for future work is to develop data-dependent bounds that better capture the effective complexity of SR models on observed data, as has been extensively studied in other areas of machine learning [6, 12, 1].
+For example, replacing worst-case sensitivity parameters by empirical measures of parameter sensitivity, or characterizing the effective set of structures explored by the search process, could lead to substantially tighter guarantees.
+Such refinements may enable more nuanced trade-offs between expressiveness and stability, while preserving the core insights provided by our analysis.
+
+Another promising direction is to leverage the proposed bound for the design of generalization-aware SR algorithms.
+In many areas of machine learning, generalization bounds have been used to guide model design and training, for instance through PAC-Bayes objectives [12], norm-based regularization in deep learning [26, 4], and stability-driven analysis [6].
+In SR, related ideas have been explored through structural risk minimization (SRM)-driven GP approaches [8], which incorporate complexity estimates, such as approximations of the VC dimension, into the evolutionary process.
+However, these methods typically rely on empirical or surrogate complexity measures and are not derived from explicit generalization bounds for GP-style models.
+In contrast, our analysis provides a unified learning-theoretic framework that explicitly decomposes generalization into structural and parametric components, which may serve as a principled basis for algorithm design.
+This perspective opens the possibility of directly optimizing surrogate objectives derived from the generalization bound.
+
+Acknowledgement
+
+We are grateful to the anonymous reviewers for their helpful comments and suggestions.
+We are also grateful to Peter Rockett for valuable feedback.
+
+References
+
+[1]
+S. Arora, R. Ge, B. Neyshabur, and Y. Zhang (2018)
+
+Stronger generalization bounds for deep nets via a compression approach.
+
+In International Conference on Machine Learning,
+
+pp. 254–263.
+
+Cited by: §6.
+
+[2]
+D. Bartlett, H. Desmond, and P. Ferreira (2023)
+
+Priors for Symbolic Regression.
+
+In Proceedings of the Companion Conference on Genetic and Evolutionary Computation,
+
+pp. 2402–2411.
+
+Cited by: §1.
+
+[3]
+D. J. Bartlett, H. Desmond, and P. G. Ferreira (2023)
+
+Exhaustive Symbolic Regression.
+
+IEEE Transactions on Evolutionary Computation 28 (4), pp. 950–964.
+
+Cited by: §1.
+
+[4]
+P. L. Bartlett, D. J. Foster, and M. J. Telgarsky (2017)
+
+Spectrally-normalized margin bounds for neural networks.
+
+Advances in neural information processing systems 30.
+
+Cited by: §6.
+
+[5]
+P. L. Bartlett and S. Mendelson (2002)
+
+Rademacher and Gaussian Complexities: Risk Bounds and Structural Results.
+
+Journal of machine learning research 3 (Nov), pp. 463–482.
+
+Cited by: §4.1.
+
+[6]
+O. Bousquet and A. Elisseeff (2002)
+
+Stability and Generalization.
+
+Journal of Machine Learning Research 2 (Mar), pp. 499–526.
+
+Cited by: §6,
+§6.
+
+[7]
+S. L. Brunton, J. L. Proctor, and J. N. Kutz (2016)
+
+Discovering governing equations from data by sparse identification of nonlinear dynamical systems.
+
+Proceedings of the national academy of sciences 113 (15), pp. 3932–3937.
+
+Cited by: §1.
+
+[8]
+Q. Chen, M. Zhang, and B. Xue (2018)
+
+Structural Risk Minimization-Driven Genetic Programming for Enhancing Generalization in Symbolic Regression.
+
+IEEE Transactions on Evolutionary Computation 23 (4), pp. 703–717.
+
+Cited by: §6.
+
+[9]
+N. G. de Bruijn, D. E. Knuth, and S. Rice (1972)
+
+The average height of planted plane trees.
+
+In Graph theory and computing,
+
+pp. 15–22.
+
+Cited by: §4.3,
+Theorem 4.3,
+footnote 1.
+
+[10]
+H. Desmond (2026)
+
+(Exhaustive) Symbolic Regression and model selection by minimum description length.
+
+Philosophical Transactions of the Royal Society A: Mathematical, Physical and Engineering Sciences 384 (2317), pp. 20240584.
+
+Cited by: §1.
+
+[11]
+R. M. Dudley (1967)
+
+The sizes of compact subsets of Hilbert space and continuity of Gaussian processes.
+
+Journal of Functional Analysis 1 (3), pp. 290–330.
+
+Cited by: Theorem 4.1.
+
+[12]
+G. K. Dziugaite and D. M. Roy (2017)
+
+Computing Nonvacuous Generalization Bounds for Deep (Stochastic) Neural Networks with Many More Parameters than Training Data.
+
+arXiv preprint arXiv:1703.11008.
+
+Cited by: §6,
+§6.
+
+[13]
+N. Hansen and A. Ostermeier (2001)
+
+Completely Derandomized Self-Adaptation in Evolution Strategies.
+
+Evolutionary computation 9 (2), pp. 159–195.
+
+Cited by: §5.2.
+
+[14]
+N. Hansen (2016)
+
+The CMA Evolution Strategy: A Tutorial.
+
+arXiv preprint arXiv:1604.00772.
+
+Cited by: §5.2.
+
+[15]
+M. Keijzer (2003)
+
+Improving Symbolic Regression with Interval Arithmetic and Linear Scaling.
+
+In European Conference on Genetic Programming,
+
+pp. 70–82.
+
+Cited by: §1,
+§5.2,
+§5.2.
+
+[16]
+M. Keijzer (2004)
+
+Scaled Symbolic Regression.
+
+Genetic Programming and Evolvable Machines 5 (3), pp. 259–269.
+
+Cited by: §5.2.
+
+[17]
+M. Kommenda, B. Burlacu, G. Kronberger, and M. Affenzeller (2020)
+
+Parameter identification for symbolic regression using nonlinear least squares.
+
+Genetic Programming and Evolvable Machines 21 (3), pp. 471–501.
+
+Cited by: §1,
+§5.2.
+
+[18]
+J. R. Koza (1992)
+
+Genetic Programming: On the Programming of Computers by Means of Natural Selection.
+
+Vol. 1,  MIT Press.
+
+Cited by: §1.
+
+[19]
+G. Kronberger, B. Burlacu, M. Kommenda, S. M. Winkler, and M. Affenzeller (2024)
+
+Symbolic Regression.
+
+ Chapman and Hall/CRC.
+
+Cited by: §1.
+
+[20]
+W. B. Langdon and R. Poli (1997)
+
+Fitness Causes Bloat.
+
+In Soft Computing in Engineering Design and Manufacturing,
+
+pp. 13–22.
+
+Cited by: §5.1.
+
+[21]
+W. B. Langdon (1995)
+
+Evolving Data Structures with Genetic Programming.
+
+In Proceedings of the 6th International Conference on Genetic Algorithms,
+
+pp. 295–302.
+
+Cited by: §5.1.
+
+[22]
+K. Levenberg (1944)
+
+A method for the solution of certain non-linear problems in least squares.
+
+Quarterly of applied mathematics 2 (2), pp. 164–168.
+
+Cited by: §5.2.
+
+[23]
+S. Luke and L. Panait (2002)
+
+Lexicographic Parsimony Pressure.
+
+In Proceedings of the 4th Annual Conference on Genetic and Evolutionary Computation,
+
+pp. 829–836.
+
+Cited by: §1,
+§5.1.
+
+[24]
+D. W. Marquardt (1963)
+
+An Algorithm for Least-Squares Estimation of Nonlinear Parameters.
+
+Journal of the society for Industrial and Applied Mathematics 11 (2), pp. 431–441.
+
+Cited by: §5.2.
+
+[25]
+M. Mohri, A. Rostamizadeh, and A. Talwalkar (2018)
+
+Foundations of Machine Learning.
+
+ MIT press.
+
+Cited by: §2.1,
+§4.1,
+§4.4,
+Proof.
+
+[26]
+B. Neyshabur, R. Tomioka, and N. Srebro (2015)
+
+Norm-Based Capacity Control in Neural Networks.
+
+In Conference on Learning Theory,
+
+pp. 1376–1401.
+
+Cited by: §6.
+
+[27]
+J. Ni, R. H. Drieberg, and P. I. Rockett (2012)
+
+The Use of an Analytic Quotient Operator in Genetic Programming.
+
+IEEE Transactions on Evolutionary Computation 17 (1), pp. 146–152.
+
+Cited by: §5.2.
+
+[28]
+M. Nicolau and A. Agapitos (2021)
+
+Choosing function sets with better generalisation performance for symbolic regression models.
+
+Genetic programming and evolvable machines 22 (1), pp. 73–100.
+
+Cited by: §5.2.
+
+[29]
+R. Poli, W. B. Langdon, N. F. McPhee, and J. R. Koza (2008)
+
+A Field Guide to Genetic Programming.
+
+ Lulu. com.
+
+Cited by: §1.
+
+[30]
+R. Poli and N. F. McPhee (2008)
+
+Parsimony Pressure Made Easy.
+
+In Proceedings of the 10th annual conference on Genetic and evolutionary computation,
+
+pp. 1267–1274.
+
+Cited by: §1,
+§5.1.
+
+[31]
+T. Soule and R. B. Heckendorn (2002)
+
+An Analysis of the Causes of Code Growth in Genetic Programming.
+
+Genetic Programming and Evolvable Machines 3 (3), pp. 283–309.
+
+Cited by: §5.1.
+
+[32]
+W. A. Tackett (1993)
+
+Genetic Programming for Feature Discovery and Image Discrimination.
+
+In Proceedings of the 5th International Conference on Genetic Algorithms,
+
+pp. 303–311.
+
+Cited by: §5.1.
+
+[33]
+S. Udrescu and M. Tegmark (2020)
+
+AI Feynman: A Physics-Inspired Method for Symbolic Regression.
+
+Science advances 6 (16), pp. eaay2631.
+
+Cited by: §1.
+
+[34]
+R. Vershynin (2018)
+
+High-Dimensional Probability: An Introduction with Applications in Data Science.
+
+Vol. 47,  Cambridge university press.
+
+Cited by: Proof.
+
+[35]
+Y. Wang, N. Wagner, and J. M. Rondinelli (2019)
+
+Symbolic Regression in Materials Science.
+
+MRS communications 9 (3), pp. 793–805.
+
+Cited by: §1.
+
+[36]
+B. Zhang and H. Mühlenbein (1995)
+
+Balancing Accuracy and Parsimony in Genetic Programming.
+
+Evolutionary Computation 3 (1), pp. 17–38.
+
+Cited by: §5.1.
+
+    Experimental support, please
+    view the build logs
+    for errors. Generated by
+
+        L
+        A
+        T
+        E
+      
+      xml
+      
+    .
+
+Instructions for reporting errors
+
+We are continuing to improve HTML versions of papers, and your feedback helps enhance accessibility and mobile
+      support. To report errors in the HTML that will help us improve conversion and rendering, choose any of the
+      methods listed below:
+
+Click the &quot;Report Issue&quot; (
+            
+          ) button, located in the page header.
+
+Tip: You can select the relevant text first, to include it in your report.
+
+Our team has already identified the following issues. We appreciate your time reviewing and reporting rendering errors we
+      may not have found yet. Your efforts will help us improve the HTML versions for all readers, because disability
+      should not be a barrier to accessing research. Thank you for your continued support in championing open access for
+      all.
+
+Have a free development cycle? Help support accessibility at arXiv! Our collaborators at LaTeXML maintain a list of packages that need conversion, and welcome developer contributions.
+
+        We gratefully acknowledge support from
+        our major funders,
+        member institutions, ,
+        and all contributors.
+
+Major funding support from</pre></html>

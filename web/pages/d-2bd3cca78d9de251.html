@@ -1,0 +1,2069 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Efficient Hamiltonian learning from Gibbs states</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>Efficient Hamiltonian learning from Gibbs states</h1><p>Source ID d-2bd3cca78d9de251; literature/sources/b_prior/cycle4/2403.18061v2_html.html; 26759 o200k tokens; role primary_source_or_metadata; extraction html_text_discovery_only_math_may_be_lossy. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>Efficient Hamiltonian learning from Gibbs states
+
+      Report GitHub Issue
+      ×
+
+      Title:
+
+Content selection saved. Describe the issue below:
+
+      Description:
+
+      Submit without GitHub
+      Submit in GitHub
+
+    arXiv is now an independent nonprofit!
+    Learn more
+    ×
+
+      Back to arXiv
+
+    License: CC BY 4.0
+
+arXiv:2403.18061v2 [quant-ph] 23 Sep 2024
+
+Efficient Hamiltonian learning from Gibbs states
+
+Adam Artymowicz
+
+Affiliation: California Institute of Technology, Pasadena, CA 91125, USA
+
+Abstract
+
+We describe a novel algorithm that learns a Hamiltonian from local expectations of its Gibbs state using the free energy variational principle. The algorithm avoids the need to compute the free energy directly, instead using efficient estimates of the derivatives of the free energy with respect to perturbations of the state. These estimates are based on a new entropy bound for Lindblad evolutions, which is of independent interest. We benchmark the algorithm by performing black-box learning of a nearest-neighbour Hamiltonian on a 100-qubit spin chain. A implementation of the algorithm with a Python front-end is made available for use.
+
+1 Introduction
+
+In this work we consider the problem of learning a quantum Hamiltonian from its Gibbs state. Gibbs states are ubiquitous in quantum physics and represent systems in thermal equilibrium. They can be defined by a variational principle: they are the minimizers of free energy. This fact can in principle be used for Hamiltonian learning [1, 2], but a naive implementation of this idea is impractical because the free energy is known to be classically exponentially difficult to compute [3]. However, this does not preclude use of the variational principle in an efficient algorithm. Indeed, since the free energy is convex, the global variational principle is equivalent to a local one, which requires only knowledge of the derivatives of the free energy with respect to perturbations of the state. Linear response theory relates derivatives of free energy to locally measurable quantities, suggesting that they can be estimated without knowledge of the free energy itself. If such estimates can be made efficient, then the variational principle can be efficiently implemented.
+
+The current work contains two main contributions. The first is a new lower bound on the entropy change due to a local perturbation of a quantum state (Theorem 1). We relate this to a hierarchy of semidefinite constraints known as the matrix EEB inequality [4] by showing that it is a relaxation of the free energy variational principle which can be enforced using polynomial classical resources.
+
+Second, we use this to formulate a semidefinite algorithm for Hamiltonian learning. The algorithm either finds a local Hamiltonian respecting the matrix EEB inequality, or else it gives a proof that the given state is not a Gibbs state of any local Hamiltonian. We benchmark the algorithm by performing black-box learning of a nearest-neighbour Hamiltonian on 100 qubits from local expectation values with realistic levels of measurement noise.
+
+These contributions are significant for several reasons. Hamiltonian learning is relevant in experimental settings [5]: near-term applications include studying frustrated systems by learning effective Hamiltonians [6] and probing entanglement properties of many-body states via their entanglement Hamiltonians [7]. For such applications, the problem of learning a Hamiltonian from local expectation values currently presents a practical bottleneck limiting the system sizes under consideration. Indeed, local expectation values of systems of 
+\sim
+∼\sim100 qubits can in many cases be obtained either numerically or using current NISQ technology. Meanwhile, practical algorithms for Hamiltonian learning that do not assume prior information or additional control over the state have so far achieved reliable learning only for systems of 10 or fewer qubits. The algorithm we propose in this work has the potential to remove this bottleneck.
+
+The entropy lower bound in Theorem 1 is also of independent interest beyond Hamiltonian learning.
+For instance, efficient preparation of Gibbs states on a quantum computer remains an important open problem. A common approach is to thermalize an initial state using Lindbladian dynamics. The convergence speed can be related to the rate of change of free energy, which can be estimated using Theorem 1.
+
+We begin in Section 2 by introducing the main entropy lower bound (Theorem 1) and the matrix EEB inequality (Corollary 1). Section 3 describes the semidefinite algorithm.. In Section 4 we describe the results of numerical simulations on a 100-qubit spin chain. We conclude in Section 5 with a discussion of the results, and some future directions for research. This work additionally includes three appendices. In appendix A we compare our algorithm to some existing approaches, with a focus on practical performance. In appendix B we prove in detail the main theoretical results introduced in Section 2. Finally, C contains extra details about the numerical implementation described in section 4.
+
+The implementation of the learning algorithm used in this work is available for use at
+
+https://github.com/artymowicz/hamiltonian-learning
+
+Aside from the learning algorithm itself, this repository also contains all routines used for performing the numerical tests in Section 4.
+
+2 The lower bound on dS
+
+In this section we begin by introducing Theorem 1 and derive the matrix EEB inequality as a consequence. We defer all proofs in this section to Appendix B. Let 
+\mathcal{H}
+ℋ\mathcal{H} be the Hilbert space of a quantum system, and assume that 
+\dim\mathcal{H}&lt;\infty
+dimℋ&lt;∞\dim\mathcal{H}&lt;\infty. Let 
+\mathcal{A}
+𝒜\mathcal{A} be the set of all operators on 
+\mathcal{A}
+𝒜\mathcal{A}. As a rule, we will use lowercase letters to denote elements of 
+\mathcal{A}
+𝒜\mathcal{A}. We will denote the adjoint of an operator 
+a
+aa by 
+a^{*}
+a∗a^{*}. We say a mixed state represented by a density matrix 
+\rho
+ρ\rho is faithful if the matrix 
+\rho
+ρ\rho is invertible. Let 
+\rho
+ρ\rho be such a state.
+
+We are interested in perturbations of 
+\rho
+ρ\rho due to interactions with its environment. In the Lindblad formalism [8, 9] the evolution of the state 
+\rho
+ρ\rho under open-system dynamics is given for 
+t\geq 0
+t≥0t\geq 0 by
+
+\displaystyle\rho_{t}=e^{tL}[\rho]
+ρt=et​L​[ρ]\displaystyle\rho_{t}=e^{tL}[\rho]
+
+(1)
+
+where 
+L
+LL is the Lindbladian superoperator. Under the assumption that the environment is Markovian and interacts weakly with the system, 
+L
+LL can be written in the form
+
+\displaystyle L[\rho]:=\sum_{i,j=1}^{r}\left\{\frac{1}{2}\boldsymbol{M}_{ij}[a_{j}^{*}a_{i},\rho]+\boldsymbol{\Lambda}_{ij}(a_{i}\rho a_{j}^{*}-\frac{1}{2}(a_{j}^{*}a_{i}\rho+\rho a_{j}^{*}a_{i}))\right\}
+L⁡[ρ]:=∑i,j=1r{12​𝑴i​j​[aj∗​ai,ρ]+𝚲i​j​(ai​ρ​aj∗−12​(aj∗​ai​ρ+ρ​aj∗​ai))}\displaystyle L[\rho]:=\sum_{i,j=1}^{r}\left\{\frac{1}{2}\boldsymbol{M}_{ij}[a_{j}^{*}a_{i},\rho]+\boldsymbol{\Lambda}_{ij}(a_{i}\rho a_{j}^{*}-\frac{1}{2}(a_{j}^{*}a_{i}\rho+\rho a_{j}^{*}a_{i}))\right\}
+
+(2)
+
+where 
+\boldsymbol{M}
+𝑴\boldsymbol{M} anti-Hermitian, 
+\boldsymbol{\Lambda}
+𝚲\boldsymbol{\Lambda} is positive-semidefinite, and 
+a_{1},\ldots,a_{r}
+a1,…,ara_{1},\ldots,a_{r} is a set of operators satisfying 
+\tr(\rho a_{i}^{*}a_{j})=\delta_{ij}
+tr⁡(ρ​ai∗​aj)=δi​j\tr(\rho a_{i}^{*}a_{j})=\delta_{ij} and 
+\tr(\rho a_{i})=0
+tr⁡(ρ​ai)=0\tr(\rho a_{i})=0 for all 
+i=1,\ldots r
+i=1,…​ri=1,\ldots r.
+
+A straightforward calculation using the cyclic property of the trace yields the following expression for the first-order change in the expectation value of an observable under the evolution generated by the Lindbladian (2):
+
+Lemma 1.
+
+Let 
+h\in\mathcal{A}
+h∈𝒜h\in\mathcal{A} be selfadjoint and define the 
+r\times r
+r×rr\times r matrix 
+\boldsymbol{H}_{ij}:=\tr(\rho a_{i}^{*}[h,a_{j}])
+𝐇i​j:=tr⁡(ρ​ai∗​[h,aj])\boldsymbol{H}_{ij}:=\tr(\rho a_{i}^{*}[h,a_{j}]). Then we have
+
+\displaystyle\frac{d}{dt}\bigg|_{t=0}\tr(\rho_{t}h)=\tr(\boldsymbol{M}\boldsymbol{H}_{-})+\tr(\boldsymbol{\Lambda}\boldsymbol{H}_{+})
+dd​t|t=0​tr⁡(ρt​h)=tr⁡(𝑴​𝑯−)+tr⁡(𝚲​𝑯+)\displaystyle\frac{d}{dt}\bigg|_{t=0}\tr(\rho_{t}h)=\tr(\boldsymbol{M}\boldsymbol{H}_{-})+\tr(\boldsymbol{\Lambda}\boldsymbol{H}_{+})
+
+(3)
+
+where 
+\boldsymbol{H}_{\pm}:=(\boldsymbol{H}\pm\boldsymbol{H}^{\dagger})/2
+𝐇±:=(𝐇±𝐇†)/2\boldsymbol{H}_{\pm}:=(\boldsymbol{H}\pm\boldsymbol{H}^{\dagger})/2.
+
+Notice that if 
+a_{1},\ldots,a_{r}
+a1,…,ara_{1},\ldots,a_{r} and 
+h
+hh are operators of bounded locality, then the expression (3) uses only expectation values of operators of bounded locality.
+One may ask if a similar expression exists for the first-order change in the von Neumann entropy 
+S(\rho)=-\tr(\rho\log\rho)
+S⁡(ρ)=−tr⁡(ρ​log⁡ρ)S(\rho)=-\tr(\rho\log\rho). In general, this cannot be expected, since entropy is not a local property of the state. However, instead of an exact expression, the following proposition bounds first-order change in entropy using only the correlations of the hopping operators:
+
+Theorem 1.
+
+We have
+
+\displaystyle\frac{d}{dt}\bigg|_{t=0}S(\rho_{t})
+dd​t|t=0​S​(ρt)\displaystyle\frac{d}{dt}\bigg|_{t=0}S(\rho_{t})
+
+\displaystyle\geq-\tr(\boldsymbol{\Lambda}\log\boldsymbol{\Delta})
+≥−tr⁡(𝚲​log⁡𝚫)\displaystyle\geq-\tr(\boldsymbol{\Lambda}\log\boldsymbol{\Delta})
+
+(4)
+
+where the matrix 
+\boldsymbol{\Delta}
+𝚫\boldsymbol{\Delta} is defined as 
+\boldsymbol{\Delta}_{ij}:=\tr(\rho a_{j}a_{i}^{*})
+𝚫i​j:=tr⁡(ρ​aj​ai∗)\boldsymbol{\Delta}_{ij}:=\tr(\rho a_{j}a_{i}^{*}).
+
+Let us remark on some ambiguities in the expression (2) and their effect on the above inequality. For a given Lindbladian 
+L
+LL, the operators 
+a_{1},\ldots,a_{r}
+a1,…,ara_{1},\ldots,a_{r} and the matrices 
+\boldsymbol{M}
+𝑴\boldsymbol{M} and 
+\boldsymbol{\Lambda}
+𝚲\boldsymbol{\Lambda} in (2) are not uniquely defined. Indeed, there are two ambiguities in their definition11
+            1
+
+          It is shown in appendix B that these are the only ambiguities in the definition of 
+\boldsymbol{\Lambda}
+𝚲\boldsymbol{\Lambda}.:
+
+1. 
+
+Applying a change of basis 
+a_{i}^{\prime}=\sum_{ij}Q_{ij}a_{j}
+ai′=∑i​jQi​j​aja_{i}^{\prime}=\sum_{ij}Q_{ij}a_{j} that preserves the condition 
+\tr(\rho a_{i}^{*}a_{j})=\delta_{ij}
+tr⁡(ρ​ai∗​aj)=δi​j\tr(\rho a_{i}^{*}a_{j})=\delta_{ij} and applying the inverse change of basis to the matrices 
+\boldsymbol{M}
+𝑴\boldsymbol{M} and 
+\boldsymbol{\Lambda}
+𝚲\boldsymbol{\Lambda}.
+
+2. 
+
+Appending additional operators 
+a_{r+1},\ldots,a_{r+q}
+ar+1,…,ar+qa_{r+1},\ldots,a_{r+q} to the list and setting all new matrix elements in 
+\boldsymbol{M}
+𝑴\boldsymbol{M} and 
+\boldsymbol{\Lambda}
+𝚲\boldsymbol{\Lambda} to zero.
+
+While the first ambiguity does not change the right-hand side of (4), it turns out that the second ambiguity does. Indeed, adding operators to the list 
+a_{1},\ldots,a_{r}
+a1,…,ara_{1},\ldots,a_{r} increases the right-hand side of (4). This can be seen as the result of the nonlinearity of the matrix logarithm 
+\log(\boldsymbol{\Delta})
+log⁡(𝚫)\log(\boldsymbol{\Delta}). We summarize the above discussion as follows. Let 
+\mathcal{P}=\spn\{a_{1},\ldots,a_{r}\}\subset\mathcal{A}
+𝒫=span⁡{a1,…,ar}⊂𝒜\mathcal{P}=\spn\{a_{1},\ldots,a_{r}\}\subset\mathcal{A}. Then the bound (4) depends only on 
+L
+LL and 
+\mathcal{P}
+𝒫\mathcal{P}. Growing 
+\mathcal{P}
+𝒫\mathcal{P} improves the bound, but requires knowledge of a larger number of correlations.
+
+In the remainder of this section we describe one of the consequences of the bound (4).
+The free energy of a state 
+\rho
+ρ\rho with respect to a Hamiltonian 
+h
+hh and a temperature 
+T
+TT is
+
+\displaystyle F(\rho):=-TS(\rho)+\tr(\rho h).
+F⁡(ρ):=−T​S​(ρ)+tr⁡(ρ​h).\displaystyle F(\rho):=-TS(\rho)+\tr(\rho h).
+
+(5)
+
+Lemma 1 and Theorem 1 give an upper bound on the first-order change of free energy under the Lindbladian evolution generated by (2):
+
+\displaystyle\frac{d}{dt}\bigg|_{t=0}F(\rho_{t})
+dd​t|t=0​F​(ρt)\displaystyle\frac{d}{dt}\bigg|_{t=0}F(\rho_{t})
+
+\displaystyle\leq\tr(\boldsymbol{M}\boldsymbol{H}_{-})+\tr(\boldsymbol{\Lambda}(T\log\boldsymbol{\Delta}+\boldsymbol{H}_{+}))
+≤tr⁡(𝑴​𝑯−)+tr⁡(𝚲⁡(T​log⁡𝚫+𝑯+))\displaystyle\leq\tr(\boldsymbol{M}\boldsymbol{H}_{-})+\tr(\boldsymbol{\Lambda}(T\log\boldsymbol{\Delta}+\boldsymbol{H}_{+}))
+
+(6)
+
+Given a Hamiltonian 
+h
+hh and a temperature 
+T
+TT, the Gibbs state 
+\rho:=e^{-h/T}/\tr(e^{-h/T})
+ρ:=e−h/T/tr(e−h/T)\rho:=e^{-h/T}/\tr(e^{-h/T}) is the unique minimizer of the free energy. Let us call a Lindbladian 
+L
+LL 
+\mathcal{P}
+𝒫\mathcal{P}-supported if the operators 
+a_{1},\ldots,a_{r}
+a1,…,ara_{1},\ldots,a_{r} in the expression (2) can be chosen to lie in 
+\mathcal{P}
+𝒫\mathcal{P}.
+
+Corollary 1.
+
+If 
+\rho
+ρ\rho is the Gibbs state of a Hamiltonian 
+h
+hh then
+
+\displaystyle T\log\boldsymbol{\Delta}+\boldsymbol{H}\succeq 0.
+T​log⁡𝚫+𝑯⪰0.\displaystyle T\log\boldsymbol{\Delta}+\boldsymbol{H}\succeq 0.
+
+(7)
+
+Moreover, if (7) fails, then there is a 
+\mathcal{P}
+𝒫\mathcal{P}-supported Lindbladian that decreases the free energy of 
+\rho
+ρ\rho with respect to 
+h
+hh.
+
+The inequality (7) is known as the matrix EEB inequality [4]. It is a hierarchy (depending on 
+\mathcal{P}
+𝒫\mathcal{P}) of convex constraints that converges to the Hamiltonian of a Gibbs state.
+
+3 Algorithm
+
+In this section we apply the EEB inequality to the problem of learning the Hamiltonian of a Gibbs state. Given a set of selfadjoint traceless operators 
+h_{1},\ldots,h_{s}
+h1,…,hsh_{1},\ldots,h_{s}, we give an efficient algorithm that either finds a Hamiltonian in the span of 
+h_{1},\ldots,h_{s}
+h1,…,hsh_{1},\ldots,h_{s} that satisfies the matrix EEB inequality, or else returns a Lindbladian that simultaneously rules out every 
+h
+hh in the span of 
+h_{1},\ldots,h_{s}
+h1,…,hsh_{1},\ldots,h_{s} by decreasing the free energy.
+
+By adding a regularization parameter to the matrix EEB inequality and setting 
+T=1
+T=1T=1 we get the following linear semidefinite program:
+
+\displaystyle\underset{\begin{subarray}{c}h\in\spn\{h_{1},\ldots,h_{s}\}\\
+\mu\in\R\end{subarray}}{\text{minimize}}
+minimizeh∈span⁡{h1,…,hs}μ∈ℝ\displaystyle\underset{\begin{subarray}{c}h\in\spn\{h_{1},\ldots,h_{s}\}\\
+\mu\in\R\end{subarray}}{\text{minimize}}
+
+\displaystyle\mu
+μ\displaystyle\mu
+
+(8)
+
+subject to
+
+\displaystyle\log(\boldsymbol{\Delta})+\boldsymbol{H}+\mu I\succeq 0,
+log⁡(𝚫)+𝑯+μ​I⪰0,\displaystyle\log(\boldsymbol{\Delta})+\boldsymbol{H}+\mu I\succeq 0,
+
+(9)
+
+As before, 
+\boldsymbol{\Delta}
+𝚫\boldsymbol{\Delta} and 
+\boldsymbol{H}
+𝑯\boldsymbol{H} are defined as
+
+\displaystyle\boldsymbol{\Delta}_{ij}
+𝚫i​j\displaystyle\boldsymbol{\Delta}_{ij}
+
+\displaystyle:=\tr(\rho a_{j}a_{i}^{*}),
+:=tr⁡(ρ​aj​ai∗),\displaystyle:=\tr(\rho a_{j}a_{i}^{*}),
+
+(10)
+
+\displaystyle\boldsymbol{H}_{ij}
+𝑯i​j\displaystyle\boldsymbol{H}_{ij}
+
+\displaystyle:=\tr(\rho a_{i}^{*}[h,a_{j}]).
+:=tr⁡(ρ​ai∗​[h,aj]).\displaystyle:=\tr(\rho a_{i}^{*}[h,a_{j}]).
+
+(11)
+
+where 
+a_{1},\ldots,a_{r}
+a1,…,ara_{1},\ldots,a_{r} satisfy 
+\tr(\rho a_{i}^{*}a_{j})=\delta_{ij}
+tr⁡(ρ​ai∗​aj)=δi​j\tr(\rho a_{i}^{*}a_{j})=\delta_{ij} and 
+\tr(\rho a_{i})=0
+tr⁡(ρ​ai)=0\tr(\rho a_{i})=0.
+The convex dual of the above program reads:
+
+\displaystyle\underset{\begin{subarray}{c}\boldsymbol{\Lambda}\succeq 0\\
+\boldsymbol{M}^{\dagger}=-\boldsymbol{M}\end{subarray}}{\text{maximize}}
+maximize𝚲⪰0𝑴†=−𝑴\displaystyle\underset{\begin{subarray}{c}\boldsymbol{\Lambda}\succeq 0\\
+\boldsymbol{M}^{\dagger}=-\boldsymbol{M}\end{subarray}}{\text{maximize}}
+
+\displaystyle-\tr(\boldsymbol{\Lambda}\log(\boldsymbol{\Delta}))
+−tr⁡(𝚲​log⁡(𝚫))\displaystyle-\tr(\boldsymbol{\Lambda}\log(\boldsymbol{\Delta}))
+
+(12)
+
+subject to
+
+\displaystyle\tr(\boldsymbol{M}\boldsymbol{H}_{-})+\tr(\boldsymbol{\Lambda}\boldsymbol{H}_{+})=0,
+tr⁡(𝑴​𝑯−)+tr⁡(𝚲​𝑯+)=0,\displaystyle\tr(\boldsymbol{M}\boldsymbol{H}_{-})+\tr(\boldsymbol{\Lambda}\boldsymbol{H}_{+})=0,
+
+(13)
+
+\displaystyle\tr(\boldsymbol{\Lambda})=1
+tr⁡(𝚲)=1\displaystyle\tr(\boldsymbol{\Lambda})=1
+
+(14)
+
+In light of Lemma 1 and Theorem 1, the dual program seeks a 
+\mathcal{P}
+𝒫\mathcal{P}-supported Lindbladian that maximizes 
+dS/dt
+d​S/d​tdS/dt while preserving (to first order) the expectation values of the operators 
+h_{1},\ldots,h_{s}
+h1,…,hsh_{1},\ldots,h_{s}. Thus the dual program can be thought of as seeking the direction of steepest ascent for preparing the maximum-entropy state with prescribed expectation values of the operators 
+h_{1},\ldots,h_{s}
+h1,…,hsh_{1},\ldots,h_{s}.
+
+A primal-dual pair is said to satisfy Slater’s condition if the primal program has a strictly feasible point.
+Such a point can be found for (8) by setting 
+h=0
+h=0h=0 and taking 
+\mu
+μ\mu sufficiently large. As a consequence, a standard result in convex optimization states that the optimal values of the primal and dual program coincide [10]. Thus we have:
+
+Proposition 1.
+
+Let 
+\mu
+μ\mu, 
+h
+hh be the optmizers of the primal program (8), and 
+\boldsymbol{M},\boldsymbol{\Lambda}
+𝐌,𝚲\boldsymbol{M},\boldsymbol{\Lambda} the optimizers of the dual program (12).
+
+1. 
+
+If 
+\mu\leq 0
+μ≤0\mu\leq 0, then 
+h
+hh satisfies the matrix EEB inequality (7).
+
+2. 
+
+If 
+\mu&gt;0
+μ&gt;0\mu&gt;0 then the Lindbladian 
+L
+LL corresponding to 
+\boldsymbol{M}
+𝑴\boldsymbol{M} and 
+\boldsymbol{\Lambda}
+𝚲\boldsymbol{\Lambda} increases the entropy of 
+\rho
+ρ\rho while preserving 
+\tr(\rho h_{\alpha})
+tr⁡(ρ​hα)\tr(\rho h_{\alpha}) to first order for every 
+\alpha=1,\ldots,s
+α=1,…,s\alpha=1,\ldots,s.
+
+Thus, by running the primal-dual pair, we are guaranteed to get either a Hamiltonian 
+h
+hh that satisfies the EEB inequality, or else get a 
+\mathcal{P}
+𝒫\mathcal{P}-supported Lindbladian that a) acts as an interpretable guarantee that 
+\rho
+ρ\rho is not the Gibbs state of any Hamiltonian in the search space, and b) is a heuristic for the best available Lindbladian for thermalizing the state 
+\rho
+ρ\rho.
+
+We conclude this section by discussing the computational complexity of the primal-dual pair. Interior-point methods produce solutions to the primal and dual problem whose objectives are within 
+\epsilon
+ϵ\epsilon of the true optimum in 
+poly(r)\log(1/\epsilon)
+p​o​l​y​(r)​log⁡(1/ϵ)poly(r)\log(1/\epsilon) time, where 
+r
+rr is the dimension of 
+\mathcal{P}
+𝒫\mathcal{P} [11]. In the remainder of the paper we will restrict our attention to a system of 
+n
+nn spins on a lattice, where it is natural to choose an integer 
+k&gt;0
+k&gt;0k&gt;0 and let 
+\mathcal{P}
+𝒫\mathcal{P} be the span of all 
+k
+kk-local Pauli operators, and the variational Hamiltonian terms 
+h_{1},\ldots,h_{s}
+h1,…,hsh_{1},\ldots,h_{s} to be the set of all 
+k^{\prime}
+k′k^{\prime}-local Pauli operators. Here we mean 
+k
+kk-local in the sense that the operator acts trivially outside a set of 
+k
+kk contiguous qubits. With these choices we have 
+r=O(4^{k}n)
+r=O⁡(4k​n)r=O(4^{k}n) and the algorithm requires 
+O(4^{k^{\prime}+2k}n^{2})
+O⁡(4k′+2​k​n2)O(4^{k^{\prime}+2k}n^{2}) expectation values of Paulis of weight at most 
+k+2k
+k+2​kk+2k.
+
+4 Numerical results
+
+In this section, we describe a numerical implementation of the algorithm from section 3, applied to the problem of learning a nearest-neighbour 100-qubit Hamiltonian from local expectation values of its Gibbs state. A variable amount of noise was added to the input of the algorithm. At zero noise, this acts as a test to how tightly the matrix EEB inequality constrains the set of possible Hamiltonians. At nonzero noise levels, this acts as a test of the number of independent samples of the state 
+\rho
+ρ\rho required to accurately reconstruct the Hamiltonian.
+
+Learning an XXZ Hamiltonian
+
+The MPS purification technique [12] was used to prepare thermal states of the following anisotropic Heisenberg ferromagnet:
+
+\displaystyle h_{XXZ}=-\sum_{i=1}^{n-1}(\sigma_{i}^{x}\sigma_{i+1}^{x}+\sigma_{i}^{y}\sigma_{i+1}^{y}+\frac{1}{2}\sigma_{i}^{y}\sigma_{i+1}^{y}).
+hX​X​Z=−∑i=1n−1(σixσi+1x+σiyσi+1y+12σiyσi+1y).\displaystyle h_{XXZ}=-\sum_{i=1}^{n-1}(\sigma_{i}^{x}\sigma_{i+1}^{x}+\sigma_{i}^{y}\sigma_{i+1}^{y}+\frac{1}{2}\sigma_{i}^{y}\sigma_{i+1}^{y}).
+
+(15)
+
+with 
+n=100
+n=100n=100. Both the set of perturbing operators 
+b_{1},\ldots,b_{r}
+b1,…,brb_{1},\ldots,b_{r} and the set of variational Hamiltonian terms 
+h_{1},\ldots,h_{s}
+h1,…,hsh_{1},\ldots,h_{s} were chosen to be the 
+1192
+11921192 geometrically 
+2
+22-local Pauli operators. Measurement error was simulated by adding Gaussian noise with variance 
+\sigma_{noise}
+σn​o​i​s​e\sigma_{noise} to the expectation value of each Pauli operator. The learning algorithm itself was implemented in Python, using the MOSEK solver [13] for the semidefinite optimization22
+              2
+
+            The convex modeling language CVXPy [14] and the open source solver SCS [15] were used in prototyping but not in the final code..
+
+Hamiltonian recovery error was quantified using the overlap as in [16]: let 
+y\in\R^{s}
+y∈ℝsy\in\R^{s} be the vector of recovered Hamiltonian coefficients and 
+z\in\R^{s}
+z∈ℝsz\in\R^{s} the vector of true Hamiltonian coefficients. The Hamiltonian recovery error is then defined as the relative angle of the two, which for small angles approximately equals the reciprocal of the signal-to-noise ratio:
+
+\displaystyle\theta=\arccos\left(\frac{|\langle y|z\rangle|}{\|y\|\|z\|}\right)\approx\frac{\|y-z\|}{\|z\|}.
+θ=arccos⁡(|⟨y|z⟩|‖y‖​‖z‖)≈‖y−z‖‖z‖.\displaystyle\theta=\arccos\left(\frac{|\langle y|z\rangle|}{\|y\|\|z\|}\right)\approx\frac{\|y-z\|}{\|z\|}.
+
+(16)
+
+Note that this metric is not sensitive to the overall scaling of the Hamiltonian. This degree of freedom is effectively the inverse temperature 
+1/T
+1/T1/T. Interestingly, the algorithm reconstructed the “projective” degrees of freedom of the Hamiltonian terms much more accurately than it did its overall scale (or equivalently, the temperature).
+
+The Hamiltonian recovery error 
+\theta
+θ\theta and the recovered temperature 
+T
+TT are plotted against 
+\sigma_{noise}
+σn​o​i​s​e\sigma_{noise} in Figure 1. A temperature-dependent noise threshold is found between 
+\sigma_{noise}\approx 10^{-5}
+σn​o​i​s​e≈10−5\sigma_{noise}\approx 10^{-5} and 
+\sigma_{noise}\approx 10^{-3}
+σn​o​i​s​e≈10−3\sigma_{noise}\approx 10^{-3} above which the matrix 
+\boldsymbol{\Delta}
+𝚫\boldsymbol{\Delta} ceases to be positive definite – these are the right endpoints of the plots in Figure 1. The algorithm could possibly be emended to work for higher noise values by projecting onto the positive eigenspace of 
+\boldsymbol{\Delta}
+𝚫\boldsymbol{\Delta}, but we leave this to future work.
+
+Figure 1: Numerical results for the 100-qubit anisotropic Heisenberg model (15) at several temperatures. Left: Recovery error 
+\theta
+θ\theta as a function of noise amplitude 
+\sigma_{noise}
+σn​o​i​s​e\sigma_{noise}, averaged over 10 runs. Dotted line is (mean) + (standard deviation). Right: Ratio of recovered temperature to actual temperature, averaged over 10 runs. Shaded region is (mean) 
+\pm
+±\pm (standard deviation).
+
+As one shrinks the noise amplitude, the recovery error first decreases (for high temperatures, this decrease is linear to a good approximation). This persists up until, at some temperature-dependent critical value of the noise amplitude, the recovery error plateaus. We interpret this two-stage behaviour as follows. In the limit of zero measurement error, perfect recovery is not guaranteed because the matrix EEB inequality (7) is weaker than the Gibbs condition. Instead, it defines a convex set of candidate Hamiltonians, and the algorithm picks one of these by maximizing the regularization parameter 
+\mu
+μ\mu. The recovery error is then on the order of the diameter of this convex set. Thus for low enough levels of measurement noise the recovery error is approximately noise-independent.
+
+The only way to lower the levels of these plateaux is to enlarge 
+\mathcal{P}
+𝒫\mathcal{P}, which tightens the matrix EEB constraint. This is relevant if one wants to prove asymptotic bounds on the number of copies of the state and the computational resources needed to specify the Hamiltonian up to an arbitrarily low error. Such results, however, do not necessarily have practical implications. Indeed, for the particular Hamiltonian under consideration, the plateaux start at noise amplitudes 
+\sigma_{noise}
+σn​o​i​s​e\sigma_{noise} of around 
+10^{-9}
+10−910^{-9} to 
+10^{-8}
+10−810^{-8}. Assuming that expectation values are estimated from independent copies of the state, this would require on the order of 
+10^{16}
+101610^{16} to 
+10^{18}
+101810^{18} samples, far beyond what is experimentally feasible anyway. So for practical applications it may be more important to understand the high-noise regime rather than the locations of the plateaux.
+
+5 Outlook
+
+Let us conclude by describing some directions for future research. While Proposition 4 establishes the correctness of the algorithm, it suffers from two important limitations which must be overcome if one is to prove sample complexity and computational complexity bounds. First, neither the feasibility nor the recoverability statements of Proposition 4 take into account measurement noise in the expectation values of the state, which is unavoidable whenever these are estimated using finitely many copies of the state. Second, the recoverability statement only holds when the set of perturbing operators is grown to a complete set of operators. The utility of this algorithm depends on approximate recoverability when the set of perturbing operators is far smaller than a complete set. Section 4 gives numerical evidence that this is indeed the case, but a proof is still lacking.
+
+Acknowledgements
+
+The author would like to thank Anton Kapustin, Hsin-Yuan (Robert) Huang, and Elliott Gesteau for helpful discussions and comments on the draft.
+
+References
+
+[1]
+Brian Swingle and Isaac. Kim
+
+“Reconstructing Quantum States from Local Data”
+
+In Physical Review Letters 113.26
+
+American Physical Society (APS), 2014
+
+DOI: 10.1103/physrevlett.113.260501
+
+[2]
+Anurag Anshu, Srinivasan Arunachalam, Tomotaka Kuwahara and Mehdi Soleimanifar
+
+“Sample-efficient learning of interacting quantum systems”
+
+In Nature Physics 17.8
+
+Springer ScienceBusiness Media LLC, 2021, pp. 931–935
+
+DOI: 10.1038/s41567-021-01232-0
+
+[3]
+Andrea Montanari
+
+“Computational implications of reducing data to sufficient statistics”
+
+In Electronic Journal of Statistics 9.2
+
+Institute of Mathematical Statistics, 2015
+
+DOI: 10.1214/15-ejs1059
+
+[4]
+Hamza Fawzi, Omar Fawzi and Samuel. Scalet
+
+“Certified algorithms for equilibrium states of local quantum Hamiltonians”
+
+DOI: 10.48550/arXiv.2311.18706
+
+[5]
+Anurag Anshu and Srinivasan Arunachalam
+
+“A survey on the complexity of learning quantum states”
+
+arXiv, 2023
+
+DOI: 10.48550/ARXIV.2305.20069
+
+[6]
+Henning Schlömer et al.
+
+“Quantifying hole-motion-induced frustration in doped antiferromagnets by Hamiltonian reconstruction”
+
+In Communications Materials 4.1
+
+Springer ScienceBusiness Media LLC, 2023
+
+DOI: 10.1038/s43246-023-00382-3
+
+[7]
+Marcello Dalmonte, Viktor Eisler, Marco Falconi and Benoît Vermersch
+
+“Entanglement Hamiltonians: From Field Theory to Lattice Models and Experiments”
+
+In Annalen der Physik 534.11
+
+Wiley, 2022
+
+DOI: 10.1002/andp.202200064
+
+[8]
+G. Lindblad
+
+“On the generators of quantum dynamical semigroups”
+
+In Communications in Mathematical Physics 48.2
+
+Springer ScienceBusiness Media LLC, 1976, pp. 119–130
+
+DOI: 10.1007/bf01608499
+
+[9]
+Robert Alicki and Karl Lendi
+
+“Quantum Dynamical Semigroups and Applications”
+
+Springer Berlin Heidelberg, 2007
+
+DOI: 10.1007/3-540-70861-8
+
+[10]
+Stephen Boyd and Lieven Vandenberghe
+
+“Convex Optimization”
+
+Cambridge University Press, 2004
+
+DOI: 10.1017/cbo9780511804441
+
+[11]
+Yurii Nesterov and Arkadii Nemirovskii
+
+“Interior-Point Polynomial Algorithms in Convex Programming”
+
+Society for IndustrialApplied Mathematics, 1994
+
+DOI: 10.1137/1.9781611970791
+
+[12]
+Adrian. Feiguin and Steven. White
+
+“Finite-temperature density matrix renormalization using an enlarged Hilbert space”
+
+In Physical Review B 72.22
+
+American Physical Society (APS), 2005
+
+DOI: 10.1103/physrevb.72.220401
+
+[13]
+Erling. Andersen and Knud. Andersen
+
+“The Mosek Interior Point Optimizer for Linear Programming: An Implementation of the Homogeneous Algorithm”
+
+In High Performance Optimization
+
+Springer US, 2000, pp. 197–232
+
+DOI: 10.1007/978-1-4757-3216-0˙8
+
+[14]
+Steven Diamond and Stephen Boyd
+
+“CVXPY: a python-embedded modeling language for convex optimization”
+
+In J. Mach. Learn. Res. 17.1
+
+JMLR.org, 2016, pp. 2909–2913
+
+[15]
+Brendan O’Donoghue, Eric Chu, Neal Parikh and Stephen Boyd
+
+“Conic Optimization via Operator Splitting and Homogeneous Self-Dual Embedding”
+
+In Journal of Optimization Theory and Applications 169.3
+
+Springer ScienceBusiness Media LLC, 2016, pp. 1042–1068
+
+DOI: 10.1007/s10957-016-0892-3
+
+[16]
+Xiao-Liang Qi and Daniel Ranard
+
+“Determining a local Hamiltonian from a single eigenstate”
+
+In Quantum 3
+
+Verein zur Forderung des Open Access Publizierens in den Quantenwissenschaften, 2019, pp. 159
+
+DOI: 10.22331/q-2019-07-08-159
+
+[17]
+Jeongwan Haah, Robin Kothari and Ewin Tang
+
+“Optimal learning of quantum Hamiltonians from high-temperature Gibbs states”
+
+In 2022 IEEE 63rd Annual Symposium on Foundations of Computer Science (FOCS)
+
+IEEE, 2022
+
+DOI: 10.1109/focs54457.2022.00020
+
+[18]
+Ainesh Bakshi, Allen Liu, Ankur Moitra and Ewin Tang
+
+“Learning quantum Hamiltonians at any temperature in polynomial time”
+
+arXiv, 2023
+
+DOI: 10.48550/ARXIV.2310.02243
+
+[19]
+Christian Kokail et al.
+
+“Entanglement Hamiltonian tomography in quantum simulation”
+
+In Nature Physics 17.8
+
+Springer ScienceBusiness Media LLC, 2021, pp. 936–942
+
+DOI: 10.1038/s41567-021-01260-w
+
+[20]
+Yotam. Lifshitz et al.
+
+“Practical Quantum State Tomography for Gibbs states”
+
+arXiv, 2021
+
+DOI: 10.48550/ARXIV.2112.10418
+
+[21]
+Ola Bratteli and Derek. Robinson
+
+“Operator Algebras and Quantum Statistical Mechanics II”
+
+Springer Berlin Heidelberg, 1981
+
+DOI: 10.1007/978-3-662-09089-3
+
+[22]
+Eyal Bairey, Itai Arad and Netanel. Lindner
+
+“Learning a Local Hamiltonian from Local Measurements”
+
+In Physical Review Letters 122.2
+
+American Physical Society (APS), 2019
+
+DOI: 10.1103/physrevlett.122.020504
+
+[23]
+Tim. Evans, Robin Harper and Steven. Flammia
+
+“Scalable Bayesian Hamiltonian learning”
+
+arXiv, 2019
+
+DOI: 10.48550/ARXIV.1912.07636
+
+[24]
+Vittorio Gorini, Andrzej Kossakowski and E… Sudarshan
+
+“Completely positive dynamical semigroups of N-level systems”
+
+In Journal of Mathematical Physics 17.5
+
+AIP Publishing, 1976, pp. 821–825
+
+DOI: 10.1063/1.522979
+
+[25]
+Ola Bratteli and Derek. Robinson
+
+“Operator Algebras and Quantum Statistical Mechanics I”
+
+Springer Berlin Heidelberg, 1987
+
+DOI: 10.1007/978-3-662-02520-8
+
+[26]
+Masamichi Takesaki
+
+“Fundamentals of Banach Algebras and C*-Algebras”
+
+In Theory of Operator Algebras I
+
+Springer New York, 1979, pp. 1–57
+
+DOI: 10.1007/978-1-4612-6188-9˙1
+
+[27]
+Edward Witten
+
+“APS Medal for Exceptional Achievement in Research: Invited article on entanglement properties of quantum field theory”
+
+In Reviews of Modern Physics 90.4
+
+American Physical Society (APS), 2018
+
+DOI: 10.1103/revmodphys.90.045003
+
+[28]
+Chandler Davis
+
+“A Schwarz inequality for convex operator functions”
+
+In Proceedings of the American Mathematical Society 8.1
+
+JSTOR, 1957, pp. 42–44
+
+[29]
+Pattrawut Chansangiam
+
+“A Survey on Operator Monotonicity, Operator Convexity, and Operator Means”
+
+In International Journal of Analysis 2015
+
+Hindawi Limited, 2015, pp. 1–8
+
+DOI: 10.1155/2015/649839
+
+Appendix A Comparison to other work
+
+In this appendix we compare the Hamiltonian learning algorithm discussed in sections 3 and 4 to a few existing approaches, focusing on practical performance. We include only algorithms that learn from independent copies of an identical state 
+\rho
+ρ\rho without assuming any other control over 
+\rho
+ρ\rho. On the theoretical side, the recent series of works [2, 17, 18] culminated with a proof by Bakshi et al. that this problem can be solved using polynomial classical resources [18]. However, their result is asymptotic and no implementation yet exists by which to assess its practical performance. Algorithms which have so far seen practical implementation either use exponential classical resources [2, 19, 20], or solve the more general problem of learning a Hamiltonian from a stationary state, which we show below is ill-posed in the setting of Gibbs states. Thus, so far a demonstration that the problem of learning a Hamiltonian from local expectations can reliably be solved in the noisy 100-qubit regime has been missing.
+
+Local equilibrium criteria
+
+On a theoretical level, the current work bears closest resemblance to the algorithm given by Bakshi et al in [18]. The KMS condition [21, Section 5.3] states that 
+\rho
+ρ\rho is the Gibbs state of a Hamiltonian 
+h
+hh at temperature 
+T=1/\beta
+T=1/βT=1/\beta if and only if
+
+\displaystyle\tr(\rho e^{-\beta H}ae^{\beta H}b)=\tr(\rho ba)
+tr⁡(ρ​e−β​H​a​eβ​H​b)=tr⁡(ρ​b​a)\displaystyle\tr(\rho e^{-\beta H}ae^{\beta H}b)=\tr(\rho ba)
+
+(17)
+
+for all 
+a,b\in\mathcal{A}
+a,b∈𝒜a,b\in\mathcal{A}. Another is the EEB condition [21, Theorem 5.3.15]: 
+\rho
+ρ\rho is the Gibbs state of 
+h
+hh at temperature 
+T=1/\beta
+T=1/βT=1/\beta if and only if
+
+\displaystyle\tr(\rho a^{*}a)\log\left(\frac{\tr(\rho aa^{*})}{\tr(\rho a^{*}a)}\right)+\beta\tr(a^{*}[h,a])\geq 0
+tr⁡(ρ​a∗​a)​log⁡(tr⁡(ρ​a​a∗)tr⁡(ρ​a∗​a))+β​tr⁡(a∗​[h,a])≥0\displaystyle\tr(\rho a^{*}a)\log\left(\frac{\tr(\rho aa^{*})}{\tr(\rho a^{*}a)}\right)+\beta\tr(a^{*}[h,a])\geq 0
+
+(18)
+
+for all 
+a\in\mathcal{A}
+a∈𝒜a\in\mathcal{A}. Both of these are local conditions in the sense that they can be checked for a subset of operators, yielding relaxations of the Gibbs condition. While the matrix EEB inequality used in the current work is a semidefinite relaxation of the EEB condition[4], the algorithm in [18] uses a sum-of-squares relaxation of the KMS condition.
+
+Learning from steady states
+
+The algorithms [22] and [23] learn a Hamiltonian from local expectation values of a steady state. This can be applied to a Gibbs state, since a Gibbs state is necessarily a steady state. Both these algorithms work by approximately enforcing the linear constraints
+
+\displaystyle\tr(\rho[h,b_{i}])=0,\ \ \ \ i=1,\ldots,m
+tr(ρ[h,bi])=0,i=1,…,m\displaystyle\tr(\rho[h,b_{i}])=0,\ \ \ \ i=1,\ldots,m
+
+(19)
+
+for some choice of operators 
+b_{1},\ldots,b_{m}
+b1,…,bmb_{1},\ldots,b_{m}.
+
+A constraint of this form can be seen to be implicit in the constraint used in the current algorithm. Indeed, by breaking the regularized EEB constraint
+
+\displaystyle\log(\boldsymbol{\Delta})+\boldsymbol{H}+\mu\boldsymbol{1}\succeq 0
+log⁡(𝚫)+𝑯+μ​𝟏⪰0\displaystyle\log(\boldsymbol{\Delta})+\boldsymbol{H}+\mu\boldsymbol{1}\succeq 0
+
+(20)
+
+into its hermitean and anti-hermitean parts, (20) can be see to be equivalent to the pair of constraints
+
+\displaystyle\boldsymbol{H}_{-}
+𝑯−\displaystyle\boldsymbol{H}_{-}
+
+\displaystyle=0
+=0\displaystyle=0
+
+(21)
+
+\displaystyle\log(\boldsymbol{\Delta})+\boldsymbol{H}_{+}+\mu\boldsymbol{1}
+log⁡(𝚫)+𝑯++μ​𝟏\displaystyle\log(\boldsymbol{\Delta})+\boldsymbol{H}_{+}+\mu\boldsymbol{1}
+
+\displaystyle\succeq 0,
+⪰0,\displaystyle\succeq 0,
+
+(22)
+
+where 
+\boldsymbol{H}_{\pm}=(\boldsymbol{H}\pm\boldsymbol{H}^{\dagger})/2
+𝑯±=(𝑯±𝑯†)/2\boldsymbol{H}_{\pm}=(\boldsymbol{H}\pm\boldsymbol{H}^{\dagger})/2. It is not hard to check that 
+\boldsymbol{H}_{-}=0
+𝑯−=0\boldsymbol{H}_{-}=0 if and only if
+
+\displaystyle\tr(\rho[h,a_{i}^{*}a_{j}])=0\text{ for all }1\leq i,j\leq r.
+tr⁡(ρ⁡[h,ai∗​aj])=0​ for all ​1≤i,j≤r.\displaystyle\tr(\rho[h,a_{i}^{*}a_{j}])=0\text{ for all }1\leq i,j\leq r.
+
+(23)
+
+Let us remark on why the additional positive-semidefinite constraint is necessary. The linear constraint alone cannot recover 
+h
+hh if the state 
+\rho
+ρ\rho has any local symmetries other than the Hamiltonian. This happens, for instance, for Gibbs states of the XXZ model (15) considered in Section 4. A Gibbs state of 
+h_{XXZ}
+hX​X​Zh_{XXZ} at any temperature will commute with the generator 
+q:=\sum_{i}\sigma^{z}_{i}
+q:=∑iσizq:=\sum_{i}\sigma^{z}_{i} of onsite 
+z
+zz-rotations. This means that the linear constraint alone, and in general any algorithm that does not discriminate steady states from Gibbs states, cannot distinguish the Hamiltonians 
+h_{XXZ}+\lambda q
+hX​X​Z+λ​qh_{XXZ}+\lambda q for different values of the parameter 
+\lambda
+λ\lambda.
+
+Algorithms using loss functions
+
+Several algorithms [2, 19, 20] work by minimizing a loss function which is intended to measure the discrepancy between the input state and the Gibbs state of a trial Hamiltonian. In [2] the loss function can be shown to equivalent to the relative entropy and requires computing the partition function of the trial Hamiltonian. In both [19] and [20], the loss function is a 
+\chi^{2}
+χ2\chi^{2} statistic based on a random measurement scheme. In all three cases, the loss function requires exponential classical resources to compute, preventing these algorithms from being scaled beyond the 
+\sim 10
+∼10\sim 10 qubit regime.
+
+Appendix B Proofs
+
+In this appendix we prove the claims made in section 2. First we prove a standard form for Markovian Lindbladians analogous to the GKSL standard form [24, 8]. In what follows 
+\rho
+ρ\rho will always refer to a faithful state.
+
+Proposition 2 (Standard form for Lindbladians).
+
+Every Markovian Lindbladian can be written in the form
+
+\displaystyle L[\sigma]
+L⁡[σ]\displaystyle L[\sigma]
+
+\displaystyle=\sum_{i,j=1}^{r}\left\{\frac{1}{2}\boldsymbol{M}_{ij}[a_{j}^{*}a_{i},\sigma]+\boldsymbol{\Lambda}_{ij}(a_{i}\sigma a_{j}^{*}-\frac{1}{2}(a_{j}^{*}a_{i}\sigma+\sigma a_{j}^{*}a_{i}))\right\}
+=∑i,j=1r{12​𝑴i​j​[aj∗​ai,σ]+𝚲i​j​(ai​σ​aj∗−12​(aj∗​ai​σ+σ​aj∗​ai))}\displaystyle=\sum_{i,j=1}^{r}\left\{\frac{1}{2}\boldsymbol{M}_{ij}[a_{j}^{*}a_{i},\sigma]+\boldsymbol{\Lambda}_{ij}(a_{i}\sigma a_{j}^{*}-\frac{1}{2}(a_{j}^{*}a_{i}\sigma+\sigma a_{j}^{*}a_{i}))\right\}
+
+(24)
+
+where 
+\boldsymbol{M}
+𝐌\boldsymbol{M} is anti-Hermitian, 
+\boldsymbol{\Lambda}
+𝚲\boldsymbol{\Lambda} is positive-semidefinite, and 
+a_{1},\ldots,a_{r}
+a1,…,ara_{1},\ldots,a_{r} satisfy 
+\tr(\rho a_{i}^{*}a_{j})=\delta_{ij}
+tr⁡(ρ​ai∗​aj)=δi​j\tr(\rho a_{i}^{*}a_{j})=\delta_{ij} and 
+\tr(\rho a_{i})=0
+tr⁡(ρ​ai)=0\tr(\rho a_{i})=0. For a given 
+L
+LL, the matrix 
+\boldsymbol{\Lambda}
+𝚲\boldsymbol{\Lambda} is uniquely determined by the choice of 
+a_{1},\ldots,a_{r}
+a1,…,ara_{1},\ldots,a_{r}.
+
+Next we prove a detailed version of the entropy bound in Theorem 1:
+
+Proposition 3 (Entropy bound).
+
+Let 
+L
+LL be a Lindbladian of the form given by Proposition 2 and define
+
+\displaystyle\mathscr{S}:=-\tr(\boldsymbol{\Lambda}\log\boldsymbol{\Delta}),
+𝒮:=−tr⁡(𝚲​log⁡𝚫),\displaystyle\mathscr{S}:=-\tr(\boldsymbol{\Lambda}\log\boldsymbol{\Delta}),
+
+(25)
+
+where 
+\boldsymbol{\Delta}_{ij}:=\tr(\rho a_{j}a_{i}^{*})
+𝚫i​j:=tr⁡(ρ​aj​ai∗)\boldsymbol{\Delta}_{ij}:=\tr(\rho a_{j}a_{i}^{*}). Then
+
+i) 
+
+\mathcal{S}
+𝒮\mathcal{S} depends only on 
+\rho
+ρ\rho, 
+L
+LL, and 
+\mathcal{P}=\spn\{a_{1},\ldots,a_{r}\}
+𝒫=span⁡{a1,…,ar}\mathcal{P}=\spn\{a_{1},\ldots,a_{r}\}.
+
+ii) 
+
+If 
+\mathcal{P}\subset\mathcal{P}^{\prime}
+𝒫⊂𝒫′\mathcal{P}\subset\mathcal{P}^{\prime} then 
+\mathcal{S}(\rho,L,\mathcal{P})\leq\mathcal{S}(\rho,L,\mathcal{P}^{\prime})
+𝒮⁡(ρ,L,𝒫)≤𝒮⁡(ρ,L,𝒫′)\mathcal{S}(\rho,L,\mathcal{P})\leq\mathcal{S}(\rho,L,\mathcal{P}^{\prime}).
+
+iii) 
+
+If 
+\mathcal{P}=\{a\in\mathcal{A}:\tr(\rho a)=0\}
+𝒫={a∈𝒜:tr⁡(ρ​a)=0}\mathcal{P}=\{a\in\mathcal{A}:\tr(\rho a)=0\} then
+
+\displaystyle\mathscr{S}=\frac{d}{dt}\bigg|_{t=0}S(\rho_{t})
+𝒮=dd​t|t=0​S​(ρt)\displaystyle\mathscr{S}=\frac{d}{dt}\bigg|_{t=0}S(\rho_{t})
+
+(26)
+
+for 
+\rho_{t}=e^{tL}[\rho]
+ρt=et​L​[ρ]\rho_{t}=e^{tL}[\rho].
+
+Finally, we state in detail the matrix EEB inequality.
+
+Proposition 4 (Matrix EEB inequality).
+
+Let 
+a_{1},\ldots,a_{r}
+a1,…,ara_{1},\ldots,a_{r} be operators satisfying 
+\tr(\rho a_{i}^{*}a_{j})=\delta_{ij}
+tr⁡(ρ​ai∗​aj)=δi​j\tr(\rho a_{i}^{*}a_{j})=\delta_{ij} and 
+\tr(\rho a_{i})
+tr⁡(ρ​ai)\tr(\rho a_{i}). For a given 
+T\geq 0
+T≥0T\geq 0 define 
+K
+KK to be the convex set of all traceless selfadjoint operators 
+h\in\mathcal{A}
+h∈𝒜h\in\mathcal{A} such that
+
+\displaystyle T\log(\boldsymbol{\Delta})+\boldsymbol{H}\succeq 0
+T​log⁡(𝚫)+𝑯⪰0\displaystyle T\log(\boldsymbol{\Delta})+\boldsymbol{H}\succeq 0
+
+(27)
+
+where 
+\boldsymbol{\Delta}_{ij}:=\tr(\rho a_{j}a_{i}^{*})
+𝚫i​j:=tr⁡(ρ​aj​ai∗)\boldsymbol{\Delta}_{ij}:=\tr(\rho a_{j}a_{i}^{*}) and 
+\boldsymbol{H}=\tr(\rho a_{i}^{*}[h,a_{j}])
+𝐇=tr⁡(ρ​ai∗​[h,aj])\boldsymbol{H}=\tr(\rho a_{i}^{*}[h,a_{j}]). Then
+
+i) 
+
+K
+KK depends only on 
+\rho
+ρ\rho, 
+T
+TT, and 
+\mathcal{P}:=\spn\{a_{1},\ldots,a_{r}\}
+𝒫:=span⁡{a1,…,ar}\mathcal{P}:=\spn\{a_{1},\ldots,a_{r}\}.
+
+ii) 
+
+If 
+\mathcal{P}\subset\mathcal{P}^{\prime}
+𝒫⊂𝒫′\mathcal{P}\subset\mathcal{P}^{\prime} then 
+K(\rho,T,\mathcal{P}^{\prime})\subset K(\rho,T,\mathcal{P})
+K⁡(ρ,T,𝒫′)⊂K⁡(ρ,T,𝒫)K(\rho,T,\mathcal{P}^{\prime})\subset K(\rho,T,\mathcal{P}).
+
+iii) 
+
+If 
+\mathcal{P}=\{a\in\mathcal{A}:\tr(\rho a)=0\}
+𝒫={a∈𝒜:tr⁡(ρ​a)=0}\mathcal{P}=\{a\in\mathcal{A}:\tr(\rho a)=0\} then 
+K(\rho,T,\mathcal{P})
+K⁡(ρ,T,𝒫)K(\rho,T,\mathcal{P}) is a singleton containing the unique traceless operator 
+h
+hh such that 
+\rho=e^{-h/T}/\tr(e^{-h/T})
+ρ=e−h/T/tr(e−h/T)\rho=e^{-h/T}/\tr(e^{-h/T}).
+
+Parts 
+iii)
+OPENi​i​i)iii) of the above two propositions can be seen as convergence results. We remark however that when 
+\mathcal{P}=\{a\in\mathcal{A}:\tr(\rho a)=0\}
+𝒫={a∈𝒜:tr⁡(ρ​a)=0}\mathcal{P}=\{a\in\mathcal{A}:\tr(\rho a)=0\}, the expressions (25) and (27) use the expectation values of all operators, and thus requires full tomography of the state 
+\rho
+ρ\rho. As such, this result does not give a practical convergence proof for the Hamiltonian learning algorithm considered in section 3. Instead it acts as a sanity check that the algorithm performs no worse than the naive algorithm using full state tomography.
+
+The proofs of these three propositions will use the Gelfand-Naimark-Segal (GNS) construction, which we introduce briefly now. Although our introduction is entirely self-contained, readers wanting more details are referred to the standard references [25, 26], or to the lecture notes [27] which contain an introduction aimed at physicists.
+
+Let 
+\mathcal{A}
+𝒜\mathcal{A} be the space of all operators on the physical Hilbert space 
+\mathcal{H}
+ℋ\mathcal{H}, and let 
+\rho
+ρ\rho be a faithful state. The bilinear form 
+(a,b)\mapsto\tr(\rho a^{*}b)
+(a,b)↦tr⁡(ρ​a∗​b)(a,b)\mapsto\tr(\rho a^{*}b) endows 
+\mathcal{A}
+𝒜\mathcal{A} with the structure of a Hilbert space. For an operator 
+a\in\mathcal{A}
+a∈𝒜a\in\mathcal{A} we write 
+|a\rangle
+|a⟩|a\rangle when we view 
+a
+aa as a vector in this Hilbert space33
+            3
+
+          There is a close analogy between this notation and the state-operator correspondence in CFT.. The GNS vector 
+|1\rangle
+|1⟩|1\rangle corresponding to the identity operator is usually denoted 
+|\Omega\rangle
+|Ω⟩|\Omega\rangle.
+
+The modular operator 
+\Delta:\mathcal{A}\to\mathcal{A}
+Δ:𝒜→𝒜\Delta:\mathcal{A}\to\mathcal{A} is defined by the equation
+
+\displaystyle\langle a|\Delta|b\rangle=\tr(\rho ba^{*}).
+⟨a|Δ|b⟩=tr⁡(ρ​b​a∗).\displaystyle\langle a|\Delta|b\rangle=\tr(\rho ba^{*}).
+
+(28)
+
+It is easy to check that 
+\Delta
+Δ\Delta is self-adjoint with respect to the GNS inner product.
+As the following calculation shows, an equivalent characterization of 
+\Delta
+Δ\Delta is that it takes a GNS vector 
+|b\rangle
+|b⟩|b\rangle to 
+|\rho b\rho^{-1}\rangle
+|ρ​b​ρ−1⟩|\rho b\rho^{-1}\rangle:
+
+\displaystyle\langle a|\Delta|b\rangle
+⟨a|Δ|b⟩\displaystyle\langle a|\Delta|b\rangle
+
+\displaystyle=\tr(\rho ba^{*})
+=tr⁡(ρ​b​a∗)\displaystyle=\tr(\rho ba^{*})
+
+(29)
+
+\displaystyle=\tr((\rho b\rho^{-1})\rho a^{*})
+=tr⁡((ρ​b​ρ−1)​ρ​a∗)\displaystyle=\tr((\rho b\rho^{-1})\rho a^{*})
+
+(30)
+
+\displaystyle=\tr(\rho a^{*}(\rho b\rho^{-1}))
+=tr⁡(ρ​a∗​(ρ​b​ρ−1))\displaystyle=\tr(\rho a^{*}(\rho b\rho^{-1}))
+
+(31)
+
+\displaystyle=\langle a|\rho b\rho^{-1}\rangle.
+=⟨a|ρ​b​ρ−1⟩.\displaystyle=\langle a|\rho b\rho^{-1}\rangle.
+
+(32)
+
+We will use the following conventions: operators on the physical Hilbert space will be denoted by lowercase letters, operators on the GNS Hilbert space will be denoted by capital letters like 
+\Delta
+Δ\Delta and 
+\Lambda
+Λ\Lambda, and numerical matrices will be denoted by boldface captial letters like 
+\boldsymbol{\Delta}
+𝚫\boldsymbol{\Delta} and 
+\boldsymbol{\Lambda}
+𝚲\boldsymbol{\Lambda}.
+
+Proof of Proposition 2
+
+First let us show that every Markovian Lindbladian has a parametrization of the form (24).
+The GKSL theorem [24, 8] says that every Markovian Lindbladian has an expression of the form (24) but where 
+a_{1},\ldots,a_{r}
+a1,…,ara_{1},\ldots,a_{r} don’t necessarily satisfy 
+\tr(\rho a_{i}^{*}a_{j})=\delta_{ij}
+tr⁡(ρ​ai∗​aj)=δi​j\tr(\rho a_{i}^{*}a_{j})=\delta_{ij} and 
+\tr(\rho a_{i})=0
+tr⁡(ρ​ai)=0\tr(\rho a_{i})=0.
+Notice that the right-hand side of (24) is invariant under the following two operations
+
+1. 
+
+Applying a coordinate transformation 
+a_{i}\mapsto\sum_{j}\boldsymbol{Q}_{ij}a_{j}
+ai↦∑j𝑸i​j​aja_{i}\mapsto\sum_{j}\boldsymbol{Q}_{ij}a_{j} while taking 
+\boldsymbol{\Lambda}\mapsto(\boldsymbol{Q}^{-1})^{\dagger}\boldsymbol{\Lambda}\boldsymbol{Q}^{-1}
+𝚲↦(𝑸−1)†​𝚲​𝑸−1\boldsymbol{\Lambda}\mapsto(\boldsymbol{Q}^{-1})^{\dagger}\boldsymbol{\Lambda}\boldsymbol{Q}^{-1} and 
+\boldsymbol{M}\mapsto(\boldsymbol{Q}^{-1})^{\dagger}\boldsymbol{M}\boldsymbol{Q}^{-1}
+𝑴↦(𝑸−1)†​𝑴​𝑸−1\boldsymbol{M}\mapsto(\boldsymbol{Q}^{-1})^{\dagger}\boldsymbol{M}\boldsymbol{Q}^{-1}.
+
+2. 
+
+Adding new operators 
+a_{r+1},\ldots,a_{r+q}
+ar+1,…,ar+qa_{r+1},\ldots,a_{r+q} to the list and setting all new matrix elements of 
+\boldsymbol{M}
+𝑴\boldsymbol{M} and 
+\boldsymbol{\Lambda}
+𝚲\boldsymbol{\Lambda} to zero.
+
+Using the above operations we can ensure that 
+r=N^{2}
+r=N2r=N^{2} (where 
+N
+NN is the dimension of the physical Hilbert space 
+\mathcal{H}
+ℋ\mathcal{H}), 
+a_{N^{2}}=1_{\mathcal{H}}
+aN2=1ℋa_{N^{2}}=1_{\mathcal{H}}, and 
+\tr(\rho a_{i}^{*}a_{j})=\delta_{ij}
+tr⁡(ρ​ai∗​aj)=δi​j\tr(\rho a_{i}^{*}a_{j})=\delta_{ij} for 
+1\leq i,j\leq N^{2}
+1≤i,j≤N21\leq i,j\leq N^{2}. Notice now that for every term in (24) where 
+i=N^{2}
+i=N2i=N^{2}, the dissipative part can be absorbed into the unitary part:
+
+\displaystyle\frac{1}{2}\boldsymbol{M}_{N^{2},j}[a_{j}^{*},\sigma]+\boldsymbol{\Lambda}_{N^{2},j}(\sigma a_{j}^{*}-\frac{1}{2}(a_{j}^{*}\sigma+\sigma a_{j}^{*}))
+12​𝑴N2,j​[aj∗,σ]+𝚲N2,j​(σ​aj∗−12​(aj∗​σ+σ​aj∗))\displaystyle\frac{1}{2}\boldsymbol{M}_{N^{2},j}[a_{j}^{*},\sigma]+\boldsymbol{\Lambda}_{N^{2},j}(\sigma a_{j}^{*}-\frac{1}{2}(a_{j}^{*}\sigma+\sigma a_{j}^{*}))
+
+\displaystyle=\frac{1}{2}(\boldsymbol{M}_{N^{2},j}-\boldsymbol{\Lambda}_{N^{2},j})[a_{j}^{*},\sigma].
+=12​(𝑴N2,j−𝚲N2,j)​[aj∗,σ].\displaystyle=\frac{1}{2}(\boldsymbol{M}_{N^{2},j}-\boldsymbol{\Lambda}_{N^{2},j})[a_{j}^{*},\sigma].
+
+(33)
+
+Together with an analogous calculation for terms where 
+j=N^{2}
+j=N2j=N^{2}, we have
+
+\displaystyle L[\sigma]
+L⁡[σ]\displaystyle L[\sigma]
+
+\displaystyle=[h,\sigma]+\sum_{i,j=1}^{N^{2}-1}\boldsymbol{\Lambda}_{ij}(a_{i}\sigma a_{j}^{*}-\frac{1}{2}(a_{j}^{*}a_{i}\sigma+\sigma a_{j}^{*}a_{i}))
+=[h,σ]+∑i,j=1N2−1𝚲i​j​(ai​σ​aj∗−12​(aj∗​ai​σ+σ​aj∗​ai))\displaystyle=[h,\sigma]+\sum_{i,j=1}^{N^{2}-1}\boldsymbol{\Lambda}_{ij}(a_{i}\sigma a_{j}^{*}-\frac{1}{2}(a_{j}^{*}a_{i}\sigma+\sigma a_{j}^{*}a_{i}))
+
+(34)
+
+where
+
+\displaystyle h=\frac{1}{2}\sum_{i,j=1}^{N^{2}}(\boldsymbol{M}_{ij}+(\delta_{i,N^{2}}-\delta_{j,N^{2}})\boldsymbol{\Lambda}_{ij}).
+h=12​∑i,j=1N2(𝑴i​j+(δi,N2−δj,N2)​𝚲i​j).\displaystyle h=\frac{1}{2}\sum_{i,j=1}^{N^{2}}(\boldsymbol{M}_{ij}+(\delta_{i,N^{2}}-\delta_{j,N^{2}})\boldsymbol{\Lambda}_{ij}).
+
+(35)
+
+To conclude the existence proof, we need to replace 
+h
+hh with 
+\sum_{i,j=1}^{N^{2}-1}\boldsymbol{M}^{\prime}_{ij}a_{i}^{*}a_{j}
+∑i,j=1N2−1𝑴i​j′​ai∗​aj\sum_{i,j=1}^{N^{2}-1}\boldsymbol{M}^{\prime}_{ij}a_{i}^{*}a_{j} for some antiselfadjoint matrix 
+\boldsymbol{M}^{\prime}_{ij}
+𝑴i​j′\boldsymbol{M}^{\prime}_{ij}. We will use the following lemma:
+
+Lemma 2.
+
+Every 
+a\in\mathcal{A}
+a∈𝒜a\in\mathcal{A} can be written as 
+a=\sum_{i=1}^{m}b_{i}^{*}c_{i}+\gamma\boldsymbol{1}_{\mathcal{H}}
+a=∑i=1mbi∗​ci+γ​𝟏ℋa=\sum_{i=1}^{m}b_{i}^{*}c_{i}+\gamma\boldsymbol{1}_{\mathcal{H}} where 
+\tr(\rho b_{i})=\tr(\rho c_{i})=0
+tr⁡(ρ​bi)=tr⁡(ρ​ci)=0\tr(\rho b_{i})=\tr(\rho c_{i})=0 and 
+\gamma\in\C
+γ∈ℂ\gamma\in\C.
+
+Proof.
+
+For 
+N=1
+N=1N=1 this is immediate with 
+m=0
+m=0m=0 and 
+\gamma=a
+γ=a\gamma=a. Suppose that 
+N&gt;1
+N&gt;1N&gt;1. Let 
+\rho=\sum_{i=1}^{N}\rho_{i}|i\rangle\langle i|
+ρ=∑i=1Nρi​|i⟩​⟨i|\rho=\sum_{i=1}^{N}\rho_{i}|i\rangle\langle i|. It suffices to prove the claim for 
+a=|i\rangle\langle j|
+a=|i⟩​⟨j|a=|i\rangle\langle j| for any 
+1\leq i,j\leq N
+1≤i,j≤N1\leq i,j\leq N. Choose any 
+k\neq j
+k≠jk\neq j. Then we have 
+a=b^{*}c
+a=b∗​ca=b^{*}c where 
+b=|j\rangle\langle i|
+b=|j⟩​⟨i|b=|j\rangle\langle i| and 
+c=|j\rangle\langle j|-\frac{\rho_{j}}{\rho_{k}}|k\rangle\langle k|
+c=|j⟩​⟨j|−ρjρk|k⟩​⟨k|c=|j\rangle\langle j|-\frac{\rho_{j}}{\rho_{k}}|k\rangle\langle k|.
+∎
+
+Since 
+a_{1},\ldots,a_{N^{2}-1}
+a1,…,aN2−1a_{1},\ldots,a_{N^{2}-1} form a basis for 
+\{a\in\mathcal{A}:\tr(\rho a)=0\}
+{a∈𝒜:tr⁡(ρ​a)=0}\{a\in\mathcal{A}:\tr(\rho a)=0\}, by the above Lemma we can write
+
+\displaystyle h
+h\displaystyle h
+
+\displaystyle=\sum_{i,j=1}^{N^{2}-1}c_{ij}a_{i}^{*}a_{j}+\gamma\boldsymbol{1}_{\mathcal{H}}
+=∑i,j=1N2−1ci​j​ai∗​aj+γ​𝟏ℋ\displaystyle=\sum_{i,j=1}^{N^{2}-1}c_{ij}a_{i}^{*}a_{j}+\gamma\boldsymbol{1}_{\mathcal{H}}
+
+(36)
+
+\displaystyle=\frac{1}{2}\sum_{i,j=1}^{N^{2}-1}(c_{ij}-\overline{c_{ji}})a_{i}^{*}a_{j}+Im(\gamma)\boldsymbol{1}_{\mathcal{H}}
+=12​∑i,j=1N2−1(ci​j−cj​i¯)​ai∗​aj+I​m​(γ)​𝟏ℋ\displaystyle=\frac{1}{2}\sum_{i,j=1}^{N^{2}-1}(c_{ij}-\overline{c_{ji}})a_{i}^{*}a_{j}+Im(\gamma)\boldsymbol{1}_{\mathcal{H}}
+
+(37)
+
+for some 
+\{c_{ij}\}_{i,j=1}^{N^{2}-1}
+{ci​j}i,j=1N2−1\{c_{ij}\}_{i,j=1}^{N^{2}-1}, where the second line is because 
+h
+hh is anti-Hermitian. Thus finally we have
+
+\displaystyle L[\sigma]
+L⁡[σ]\displaystyle L[\sigma]
+
+\displaystyle=\frac{1}{2}\sum_{i,j=1}^{N^{2}-1}(c_{ij}-\overline{c_{ji}})[a_{i}^{*}a_{j},\sigma]+\sum_{i,j=1}^{N^{2}-1}\boldsymbol{\Lambda}_{ij}(a_{i}\sigma a_{j}^{*}-\frac{1}{2}(a_{j}^{*}a_{i}\sigma+\sigma a_{j}^{*}a_{i}))
+=12​∑i,j=1N2−1(ci​j−cj​i¯)​[ai∗​aj,σ]+∑i,j=1N2−1𝚲i​j​(ai​σ​aj∗−12​(aj∗​ai​σ+σ​aj∗​ai))\displaystyle=\frac{1}{2}\sum_{i,j=1}^{N^{2}-1}(c_{ij}-\overline{c_{ji}})[a_{i}^{*}a_{j},\sigma]+\sum_{i,j=1}^{N^{2}-1}\boldsymbol{\Lambda}_{ij}(a_{i}\sigma a_{j}^{*}-\frac{1}{2}(a_{j}^{*}a_{i}\sigma+\sigma a_{j}^{*}a_{i}))
+
+(38)
+
+which establishes the existence statement of Proposition 2.
+
+The uniqueness statement will follow from the following result, which we will also use in the proof of Theorem 1. Let 
+\Lambda:\mathcal{A}\to\mathcal{A}
+Λ:𝒜→𝒜\Lambda:\mathcal{A}\to\mathcal{A} be the positive-semidefinite operator
+
+\displaystyle\Lambda:=\sum_{i,j=1}^{r}\boldsymbol{\Lambda}_{ij}|a_{i}\rangle\langle a_{j}|.
+Λ:=∑i,j=1r𝚲i​j​|ai⟩​⟨aj|.\displaystyle\Lambda:=\sum_{i,j=1}^{r}\boldsymbol{\Lambda}_{ij}|a_{i}\rangle\langle a_{j}|.
+
+(39)
+
+Lemma 3.
+
+Suppose a Lindbladian 
+L
+LL is expressed in the form (24) where the operators 
+a_{1},\ldots,a_{r}
+a1,…,ara_{1},\ldots,a_{r} are unrestricted. Let 
+Q=1-|\Omega\rangle\langle\Omega|
+Q=1−|Ω⟩​⟨Ω|Q=1-|\Omega\rangle\langle\Omega|.
+
+i) 
+
+The operator 
+Q\Lambda Q
+Q​Λ​QQ\Lambda Q is independent of parametrization, ie. for a given 
+L
+LL it does not depend on (
+a_{1},\ldots,a_{r}
+a1,…,ara_{1},\ldots,a_{r}, 
+\boldsymbol{M}
+𝑴\boldsymbol{M}, 
+\boldsymbol{\Lambda}
+𝚲\boldsymbol{\Lambda}).
+
+ii) 
+
+If 
+a_{1},\ldots,a_{r}
+a1,…,ara_{1},\ldots,a_{r} are required to satisfy 
+\tr(\rho a_{i})=0
+tr⁡(ρ​ai)=0\tr(\rho a_{i})=0, then 
+\Lambda=Q\Lambda Q
+Λ=Q​Λ​Q\Lambda=Q\Lambda Q and thus 
+\Lambda
+Λ\Lambda is parametrization-independent.
+
+Proof.
+
+To prove part 
+i)
+OPENi)i), suppose (
+a_{1},\ldots,a_{r}
+a1,…,ara_{1},\ldots,a_{r}, 
+\boldsymbol{M}
+𝑴\boldsymbol{M}, 
+\boldsymbol{\Lambda}
+𝚲\boldsymbol{\Lambda}) and (
+a^{\prime}_{1},\ldots,a^{\prime}_{r^{\prime}}
+a1′,…,ar′′a^{\prime}_{1},\ldots,a^{\prime}_{r^{\prime}}, 
+\boldsymbol{M}^{\prime}
+𝑴′\boldsymbol{M}^{\prime}, 
+\boldsymbol{\Lambda}^{\prime}
+𝚲′\boldsymbol{\Lambda}^{\prime}) are two parametrizations of 
+L
+LL of the form (24). Notice that 
+\Lambda
+Λ\Lambda is invariant under the operations 1. and 2. above. As a result we can assume without loss of generality that 
+r=r^{\prime}=N^{2}
+r=r′=N2r=r^{\prime}=N^{2} and 
+a_{1},\ldots,a_{N^{2}}=a^{\prime}_{1},\ldots,a^{\prime}_{N^{2}}
+a1,…,aN2=a1′,…,aN2′a_{1},\ldots,a_{N^{2}}=a^{\prime}_{1},\ldots,a^{\prime}_{N^{2}} is a basis of 
+\mathcal{A}
+𝒜\mathcal{A} with 
+a_{N^{2}}=1_{\mathcal{H}}/2^{N-1}
+aN2=1ℋ/2N−1a_{N^{2}}=1_{\mathcal{H}}/2^{N-1} and 
+\tr(a_{i}^{*}a_{j})=\delta_{ij}
+tr⁡(ai∗​aj)=δi​j\tr(a_{i}^{*}a_{j})=\delta_{ij} for 
+1\leq 1,j\leq N^{2}
+1≤1,j≤N21\leq 1,j\leq N^{2}. Then the trick used to obtain (34) shows that there are self-adjoint operators 
+h
+hh and 
+h^{\prime}
+h′h^{\prime} such that
+
+\displaystyle L[\sigma]
+L⁡[σ]\displaystyle L[\sigma]
+
+\displaystyle=-i[h,\sigma]+\sum_{i,j=1}^{N^{2}-1}\boldsymbol{\Lambda}_{ij}(a_{i}\sigma a_{j}^{*}-\frac{1}{2}(a_{j}^{*}a_{i}\sigma+\sigma a_{j}^{*}a_{i}))
+=−i⁡[h,σ]+∑i,j=1N2−1𝚲i​j​(ai​σ​aj∗−12​(aj∗​ai​σ+σ​aj∗​ai))\displaystyle=-i[h,\sigma]+\sum_{i,j=1}^{N^{2}-1}\boldsymbol{\Lambda}_{ij}(a_{i}\sigma a_{j}^{*}-\frac{1}{2}(a_{j}^{*}a_{i}\sigma+\sigma a_{j}^{*}a_{i}))
+
+(40)
+
+\displaystyle=-i[h^{\prime},\sigma]+\sum_{i,j=1}^{N^{2}-1}\boldsymbol{\Lambda}^{\prime}_{ij}(a_{i}\sigma a_{j}^{*}-\frac{1}{2}(a_{j}^{*}a_{i}\sigma+\sigma a_{j}^{*}a_{i})).
+=−i⁡[h′,σ]+∑i,j=1N2−1𝚲i​j′​(ai​σ​aj∗−12​(aj∗​ai​σ+σ​aj∗​ai)).\displaystyle=-i[h^{\prime},\sigma]+\sum_{i,j=1}^{N^{2}-1}\boldsymbol{\Lambda}^{\prime}_{ij}(a_{i}\sigma a_{j}^{*}-\frac{1}{2}(a_{j}^{*}a_{i}\sigma+\sigma a_{j}^{*}a_{i})).
+
+(41)
+
+for every 
+\sigma
+σ\sigma. By adding a multiple of the identity, 
+h
+hh and 
+h^{\prime}
+h′h^{\prime} can be made traceless and so the uniqueness statement of Theorem 2.2 in [24] shows that 
+\boldsymbol{\Lambda}_{ij}=\boldsymbol{\Lambda}^{\prime}_{ij}
+𝚲i​j=𝚲i​j′\boldsymbol{\Lambda}_{ij}=\boldsymbol{\Lambda}^{\prime}_{ij} for all 
+1\leq i,j\leq N^{2}-1
+1≤i,j≤N2−11\leq i,j\leq N^{2}-1.
+Thus we have
+
+\displaystyle\Lambda^{\prime}-\Lambda
+Λ′−Λ\displaystyle\Lambda^{\prime}-\Lambda
+
+\displaystyle=\sum_{i=N^{2}\text{ or }j=N^{2}}(\boldsymbol{\Lambda}^{\prime}_{ij}-\boldsymbol{\Lambda}_{ij})|a_{i}\rangle\langle a_{j}|
+=∑i=N2​ or ​j=N2(𝚲i​j′−𝚲i​j)​|ai⟩​⟨aj|\displaystyle=\sum_{i=N^{2}\text{ or }j=N^{2}}(\boldsymbol{\Lambda}^{\prime}_{ij}-\boldsymbol{\Lambda}_{ij})|a_{i}\rangle\langle a_{j}|
+
+(42)
+
+\displaystyle=|\Omega\rangle\langle a|+|a\rangle\langle\Omega|.
+=|Ω⟩​⟨a|+|a⟩​⟨Ω|.\displaystyle=|\Omega\rangle\langle a|+|a\rangle\langle\Omega|.
+
+(43)
+
+for some 
+a\in\mathcal{A}
+a∈𝒜a\in\mathcal{A}. The result then follows from the fact that 
+Q(|\Omega\rangle\langle a|+|a\rangle\langle\Omega|)Q=0
+Q⁡(|Ω⟩​⟨a|+|a⟩​⟨Ω|)​Q=0Q(|\Omega\rangle\langle a|+|a\rangle\langle\Omega|)Q=0.
+
+Part 
+ii)
+OPENi​i)ii) then follows immediately from part 
+i)
+OPENi)i) and the fact that 
+\tr(\rho a_{i})=\langle\Omega|a_{i}\rangle
+tr⁡(ρ​ai)=⟨Ω|ai⟩\tr(\rho a_{i})=\langle\Omega|a_{i}\rangle.
+∎
+
+The above lemma proves the uniqueness statement of Proposition 2, since the additional condition 
+\tr(\rho a_{i}^{*}a_{j})=\delta_{ij}
+tr⁡(ρ​ai∗​aj)=δi​j\tr(\rho a_{i}^{*}a_{j})=\delta_{ij} implies that 
+\boldsymbol{\Lambda}_{ij}=\langle a_{i}|\Lambda|a_{j}\rangle
+𝚲i​j=⟨ai|Λ|aj⟩\boldsymbol{\Lambda}_{ij}=\langle a_{i}|\Lambda|a_{j}\rangle.
+
+Proof of Proposition 3
+
+Part 
+i)
+OPENi)i).
+
+Let 
+Q:\mathcal{A}\to\mathcal{A}
+Q:𝒜→𝒜Q:\mathcal{A}\to\mathcal{A} be the orthogonal projection onto 
+\mathcal{P}:=\spn\{a_{1},\ldots,a_{r}\}
+𝒫:=span⁡{a1,…,ar}\mathcal{P}:=\spn\{a_{1},\ldots,a_{r}\}. Since 
+\boldsymbol{\Delta}
+𝚫\boldsymbol{\Delta} is the coordinate expression for 
+Q\Delta Q
+Q​Δ​QQ\Delta Q in the basis 
+a_{1},\ldots,a_{r}
+a1,…,ara_{1},\ldots,a_{r} and since 
+\langle a_{i}|a_{j}\rangle=\tr(\rho a_{i}^{*}a_{j})=\delta_{ij}
+⟨ai|aj⟩=tr⁡(ρ​ai∗​aj)=δi​j\langle a_{i}|a_{j}\rangle=\tr(\rho a_{i}^{*}a_{j})=\delta_{ij} it is easy to check that
+
+\displaystyle-\tr(\boldsymbol{\Lambda}\log(\boldsymbol{\Delta}))=-\tr(\Lambda Q\log(Q\Delta Q)Q)
+−tr⁡(𝚲​log⁡(𝚫))=−tr⁡(Λ​Q​log⁡(Q​Δ​Q)​Q)\displaystyle-\tr(\boldsymbol{\Lambda}\log(\boldsymbol{\Delta}))=-\tr(\Lambda Q\log(Q\Delta Q)Q)
+
+(44)
+
+By part 
+ii)
+OPENi​i)ii) of Lemma 3, this expression depends only on 
+L,\rho
+L,ρL,\rho, and 
+\mathcal{P}
+𝒫\mathcal{P}.
+
+Part 
+ii)
+OPENi​i)ii).
+
+We will use the operator version of Jensen’s inequality applied to the matrix logarithm, which follows from the main theorem in [28] and the fact that 
+\log
+log\log is operator convex [29]:
+
+Lemma 4 (Operator Jensen’s inequality for 
+\log
+log\log).
+
+Let 
+\mathcal{K}
+𝒦\mathcal{K} be a Hilbert space and let 
+Q
+QQ and 
+Q^{\prime}
+Q′Q^{\prime} be projections in 
+\mathcal{K}
+𝒦\mathcal{K} such that the image of 
+Q
+QQ is contained in the image of 
+Q^{\prime}
+Q′Q^{\prime}. Then for any positive operator 
+M
+MM on 
+\mathcal{K}
+𝒦\mathcal{K} we have
+
+\displaystyle Q\log(QMQ)Q\succeq Q\log(Q^{\prime}MQ^{\prime})Q.
+Q​log⁡(Q​M​Q)​Q⪰Q​log⁡(Q′​M​Q′)​Q.\displaystyle Q\log(QMQ)Q\succeq Q\log(Q^{\prime}MQ^{\prime})Q.
+
+(45)
+
+Let 
+(a_{1},\ldots,a_{r},\boldsymbol{M},\boldsymbol{\Lambda})
+(a1,…,ar,𝑴,𝚲)(a_{1},\ldots,a_{r},\boldsymbol{M},\boldsymbol{\Lambda}) and 
+(a_{1}^{\prime},\ldots,a_{r}^{\prime},\boldsymbol{M}^{\prime},\boldsymbol{\Lambda}^{\prime})
+(a1′,…,ar′,𝑴′,𝚲′)(a_{1}^{\prime},\ldots,a_{r}^{\prime},\boldsymbol{M}^{\prime},\boldsymbol{\Lambda}^{\prime}) be two parametrizations of 
+L
+LL, and suppose 
+\mathcal{P}\subset\mathcal{P}
+𝒫⊂𝒫\mathcal{P}\subset\mathcal{P}’. Letting 
+Q
+QQ and 
+Q^{\prime}
+Q′Q^{\prime} be the orthogonal projections onto 
+\mathcal{P}
+𝒫\mathcal{P} and 
+\mathcal{P}^{\prime}
+𝒫′\mathcal{P}^{\prime}, we have
+
+\displaystyle-\tr(\boldsymbol{\Lambda}\log(\boldsymbol{\Delta}))
+−tr⁡(𝚲​log⁡(𝚫))\displaystyle-\tr(\boldsymbol{\Lambda}\log(\boldsymbol{\Delta}))
+
+\displaystyle=-\tr(\Lambda Q\log(Q\Delta Q)Q)
+=−tr⁡(Λ​Q​log⁡(Q​Δ​Q)​Q)\displaystyle=-\tr(\Lambda Q\log(Q\Delta Q)Q)
+
+(46)
+
+\displaystyle\leq-\tr(\Lambda Q\log(Q^{\prime}\Delta Q^{\prime})Q)
+≤−tr⁡(Λ​Q​log⁡(Q′​Δ​Q′)​Q)\displaystyle\leq-\tr(\Lambda Q\log(Q^{\prime}\Delta Q^{\prime})Q)
+
+(47)
+
+\displaystyle=-\tr(\Lambda Q^{\prime}\log(Q^{\prime}\Delta Q^{\prime})Q^{\prime})
+=−tr⁡(Λ​Q′​log⁡(Q′​Δ​Q′)​Q′)\displaystyle=-\tr(\Lambda Q^{\prime}\log(Q^{\prime}\Delta Q^{\prime})Q^{\prime})
+
+(48)
+
+\displaystyle=-\tr(\boldsymbol{\Lambda}^{\prime}\log(\boldsymbol{\Delta}^{\prime}))
+=−tr⁡(𝚲′​log⁡(𝚫′))\displaystyle=-\tr(\boldsymbol{\Lambda}^{\prime}\log(\boldsymbol{\Delta}^{\prime}))
+
+(49)
+
+where in the third line we used the fact that 
+\Lambda=Q\Lambda Q=Q^{\prime}\Lambda Q^{\prime}
+Λ=Q​Λ​Q=Q′​Λ​Q′\Lambda=Q\Lambda Q=Q^{\prime}\Lambda Q^{\prime}.
+
+Part 
+iii)
+OPENi​i​i)iii).
+
+We begin by computing a general expression for the derivative of the entropy:
+
+Lemma 5.
+
+Let 
+\sigma_{t}
+σt\sigma_{t}, 
+t\geq 0
+t≥0t\geq 0 be a smooth path of density matrices and suppose that 
+\sigma_{0}
+σ0\sigma_{0} is faithful. Write 
+S_{t}=-\tr(\sigma_{t}\log\sigma_{t})
+St=−tr⁡(σt​log⁡σt)S_{t}=-\tr(\sigma_{t}\log\sigma_{t}). Then using a prime to denote a time-derivative at 
+t=0
+t=0t=0, we have
+
+\displaystyle S^{\prime}=-\tr(\sigma^{\prime}\log(\sigma)).
+S′=−tr⁡(σ′​log⁡(σ)).\displaystyle S^{\prime}=-\tr(\sigma^{\prime}\log(\sigma)).
+
+(50)
+
+Proof.
+
+We have
+
+\displaystyle-\tr(\sigma\log(\sigma))^{\prime}
+−tr⁡(σ​log⁡(σ))′\displaystyle-\tr(\sigma\log(\sigma))^{\prime}
+
+\displaystyle=-\tr(\sigma^{\prime}\log(\sigma))-\tr(\sigma\log(\sigma)^{\prime}).
+=−tr⁡(σ′​log⁡(σ))−tr⁡(σ​log⁡(σ)′).\displaystyle=-\tr(\sigma^{\prime}\log(\sigma))-\tr(\sigma\log(\sigma)^{\prime}).
+
+(51)
+
+Using the power series of 
+\log
+log\log about the identity operator and the cyclicity of the trace, the second term can be seen to equal 
+-\tr(\rho^{\prime})=0
+−tr⁡(ρ′)=0-\tr(\rho^{\prime})=0.
+∎
+
+Now we apply the above lemma to the time-evolution of our state 
+\rho
+ρ\rho generated by the Lindbladian (24):
+
+Lemma 6.
+
+With 
+\rho_{t}=e^{tL}[\rho]
+ρt=et​L​[ρ]\rho_{t}=e^{tL}[\rho], we have
+
+\displaystyle\frac{d}{dt}\bigg|_{t=0}S(\rho_{t})=-\tr(\Lambda\log(\Delta))
+dd​t|t=0​S​(ρt)=−tr⁡(Λ​log⁡(Δ))\displaystyle\frac{d}{dt}\bigg|_{t=0}S(\rho_{t})=-\tr(\Lambda\log(\Delta))
+
+(52)
+
+where 
+\Lambda:=\sum_{ij}\boldsymbol{\Lambda}_{ij}|a_{j}\rangle\langle a_{i}|
+Λ:=∑i​j𝚲i​j​|aj⟩​⟨ai|\Lambda:=\sum_{ij}\boldsymbol{\Lambda}_{ij}|a_{j}\rangle\langle a_{i}|
+
+Proof.
+
+Since the first term of (24) generates a unitary evolution it does not contribute to the entropy and so we may set 
+\boldsymbol{M}=0
+𝑴=0\boldsymbol{M}=0 without loss of generality. Since 
+\Delta|a\rangle=|\rho a\rho^{-1}\rangle
+Δ⁡|a⟩=|ρ​a​ρ−1⟩\Delta|a\rangle=|\rho a\rho^{-1}\rangle, we have 
+\log(\Delta)|a\rangle=|[\log(\rho),a]\rangle
+log⁡(Δ)​|a⟩=|[log⁡(ρ),a]⟩\log(\Delta)|a\rangle=|[\log(\rho),a]\rangle. Thus we can expand the right-hand of (52) as
+
+\displaystyle-\tr(\Lambda\log(\Delta))
+−tr⁡(Λ​log⁡(Δ))\displaystyle-\tr(\Lambda\log(\Delta))
+
+\displaystyle=-\sum_{ij}\boldsymbol{\Lambda}_{ij}\langle a_{j}|\log(\Delta)|a_{i}\rangle
+=−∑i​j𝚲i​j⟨aj|log(Δ)|ai⟩\displaystyle=-\sum_{ij}\boldsymbol{\Lambda}_{ij}\langle a_{j}|\log(\Delta)|a_{i}\rangle
+
+(53)
+
+\displaystyle=-\sum_{ij}\boldsymbol{\Lambda}_{ij}\langle a_{j}|[\log(\rho),a_{i}]\rangle
+=−∑i​j𝚲i​j⟨aj|[log(ρ),ai]⟩\displaystyle=-\sum_{ij}\boldsymbol{\Lambda}_{ij}\langle a_{j}|[\log(\rho),a_{i}]\rangle
+
+(54)
+
+\displaystyle=-\sum_{ij}\boldsymbol{\Lambda}_{ij}\tr(\rho a_{j}^{*}[\log(\rho),a_{i}])
+=−∑i​j𝚲i​jtr(ρaj∗[log(ρ),ai])\displaystyle=-\sum_{ij}\boldsymbol{\Lambda}_{ij}\tr(\rho a_{j}^{*}[\log(\rho),a_{i}])
+
+(55)
+
+\displaystyle=-\sum_{ij}\boldsymbol{\Lambda}_{ij}\bigg[\tr(a_{i}\rho a_{j}^{*}\log(\rho))-\tr(\rho\log(\rho)a_{j}^{*}a_{i})\bigg]
+=−∑i​j𝚲i​j[tr(aiρaj∗log(ρ))−tr(ρlog(ρ)aj∗ai)]\displaystyle=-\sum_{ij}\boldsymbol{\Lambda}_{ij}\bigg[\tr(a_{i}\rho a_{j}^{*}\log(\rho))-\tr(\rho\log(\rho)a_{j}^{*}a_{i})\bigg]
+
+(56)
+
+\displaystyle=-\sum_{ij}\boldsymbol{\Lambda}_{ij}\bigg[\tr(a_{i}\rho a_{j}^{*}\log(\rho))-\frac{1}{2}\tr(a_{j}^{*}a_{i}\rho\log(\rho))-\frac{1}{2}\tr(\rho a_{j}^{*}a_{i}\log(\rho))\bigg]
+=−∑i​j𝚲i​j[tr(aiρaj∗log(ρ))−12tr(aj∗aiρlog(ρ))−12tr(ρaj∗ailog(ρ))]\displaystyle=-\sum_{ij}\boldsymbol{\Lambda}_{ij}\bigg[\tr(a_{i}\rho a_{j}^{*}\log(\rho))-\frac{1}{2}\tr(a_{j}^{*}a_{i}\rho\log(\rho))-\frac{1}{2}\tr(\rho a_{j}^{*}a_{i}\log(\rho))\bigg]
+
+(57)
+
+\displaystyle=-\tr(L[\rho]\log(\rho)),
+=−tr⁡(L⁡[ρ]​log⁡(ρ)),\displaystyle=-\tr(L[\rho]\log(\rho)),
+
+(58)
+
+which equals 
+\frac{d}{dt}\big|_{t=0}S(\rho_{t})
+dd​t|t=0​S​(ρt)\frac{d}{dt}\big|_{t=0}S(\rho_{t}) by Lemma 5.
+∎
+
+Finally, we need the following lemma:
+
+Lemma 7.
+
+Let 
+Q=1-|\Omega\rangle\langle\Omega|
+Q=1−|Ω⟩​⟨Ω|Q=1-|\Omega\rangle\langle\Omega| be the orthogonal projection onto 
+\{a\in\mathcal{A}:\tr(\rho a)=0\}
+{a∈𝒜:tr⁡(ρ​a)=0}\{a\in\mathcal{A}:\tr(\rho a)=0\}. We have
+
+\displaystyle Q\log(Q\Delta Q)Q=\log(\Delta).
+Q​log⁡(Q​Δ​Q)​Q=log⁡(Δ).\displaystyle Q\log(Q\Delta Q)Q=\log(\Delta).
+
+(59)
+
+Proof.
+
+Since 
+\Delta|\Omega\rangle=|\Omega\rangle
+Δ​|Ω⟩=|Ω⟩\Delta|\Omega\rangle=|\Omega\rangle, we have 
+\log(\Delta)|\Omega\rangle=0
+log⁡(Δ)​|Ω⟩=0\log(\Delta)|\Omega\rangle=0, which proves the lemma.
+∎
+
+We are now ready to prove part iii). Suppose 
+\mathcal{P}=\{a\in\mathcal{A}:\tr(\rho a)=0\}
+𝒫={a∈𝒜:tr⁡(ρ​a)=0}\mathcal{P}=\{a\in\mathcal{A}:\tr(\rho a)=0\}. Then
+
+\displaystyle-\tr(\boldsymbol{\Lambda}\log(\boldsymbol{\Delta}))
+−tr⁡(𝚲​log⁡(𝚫))\displaystyle-\tr(\boldsymbol{\Lambda}\log(\boldsymbol{\Delta}))
+
+\displaystyle=-\tr(\Lambda Q\log(Q\Delta Q)Q)
+=−tr⁡(Λ​Q​log⁡(Q​Δ​Q)​Q)\displaystyle=-\tr(\Lambda Q\log(Q\Delta Q)Q)
+
+(60)
+
+\displaystyle=-\tr(\Lambda\log(\Delta))
+=−tr⁡(Λ​log⁡(Δ))\displaystyle=-\tr(\Lambda\log(\Delta))
+
+(61)
+
+\displaystyle=\frac{d}{dt}\bigg|_{t=0}S(\rho_{t}).
+=dd​t|t=0​S​(ρt).\displaystyle=\frac{d}{dt}\bigg|_{t=0}S(\rho_{t}).
+
+(62)
+
+Proof of Proposition 4
+
+Parts 
+i)
+OPENi)i) and 
+ii)
+OPENi​i)ii) follow from the corresponding parts of Proposition 3.
+
+Part 
+iii)
+OPENi​i​i)iii).
+
+Suppose first that 
+\rho=e^{-h/T}/\tr(e^{-h/T})
+ρ=e−h/T/tr(e−h/T)\rho=e^{-h/T}/\tr(e^{-h/T}). Define 
+H:\mathcal{A}\to\mathcal{A}
+H:𝒜→𝒜H:\mathcal{A}\to\mathcal{A} as 
+H:|a\rangle\to|[h,a]\rangle
+H:|a⟩→|[h,a]⟩H:|a\rangle\to|[h,a]\rangle.
+Since 
+T\log(\Delta)+H=0
+T​log⁡(Δ)+H=0T\log(\Delta)+H=0, Lemma 7 gives 
+TQ\log(Q\Delta Q)Q+H=0
+T​Q​log⁡(Q​Δ​Q)​Q+H=0TQ\log(Q\Delta Q)Q+H=0, and sandwiching this expression between 
+\langle a_{i}|
+⟨ai|\langle a_{i}| and 
+|a_{j}\rangle
+|aj⟩|a_{j}\rangle for all 
+1\leq i,j\leq N^{2}-1
+1≤i,j≤N2−11\leq i,j\leq N^{2}-1 gives 
+T\log(\boldsymbol{\Delta})+\boldsymbol{H}=0
+T​log⁡(𝚫)+𝑯=0T\log(\boldsymbol{\Delta})+\boldsymbol{H}=0.
+
+Conversely, suppose 
+h
+hh satisfies the matrix EEB inequality for 
+\mathcal{P}=\{a\in\mathcal{A}:\tr(\rho a)=0\}
+𝒫={a∈𝒜:tr⁡(ρ​a)=0}\mathcal{P}=\{a\in\mathcal{A}:\tr(\rho a)=0\}. This implies in particular that 
+\boldsymbol{H}
+𝑯\boldsymbol{H} is self-adjoint, and the calculation
+
+\displaystyle 0
+0\displaystyle 0
+
+\displaystyle=\boldsymbol{H}_{ij}-\overline{\boldsymbol{H}}_{ji}
+=𝑯i​j−𝑯¯j​i\displaystyle=\boldsymbol{H}_{ij}-\overline{\boldsymbol{H}}_{ji}
+
+(63)
+
+\displaystyle=\tr([\rho,h]a_{i}^{*}a_{j})
+=tr⁡([ρ,h]​ai∗​aj)\displaystyle=\tr([\rho,h]a_{i}^{*}a_{j})
+
+(64)
+
+together with Lemma 2 shows that 
+[h,\rho]=0
+[h,ρ]=0[h,\rho]=0. From this it is easy to show that 
+QHQ=H
+Q​H​Q=HQHQ=H, and so the matrix EEB inequality gives
+
+\displaystyle T\log(\Delta)+H\succeq 0.
+T​log⁡(Δ)+H⪰0.\displaystyle T\log(\Delta)+H\succeq 0.
+
+(65)
+
+Let 
+J
+JJ be the modular involution, which is the complex-antilnear operator defined as
+
+\displaystyle J|a\rangle:=|\rho^{1/2}a^{*}\rho^{-1/2}\rangle.
+J|a⟩:=|ρ1/2a∗ρ−1/2⟩.\displaystyle J|a\rangle:=|\rho^{1/2}a^{*}\rho^{-1/2}\rangle.
+
+(66)
+
+For any 
+a\in\mathcal{A}
+a∈𝒜a\in\mathcal{A} we have
+
+\displaystyle\langle Ja|H|Ja\rangle
+⟨J​a​|H|​J​a⟩\displaystyle\langle Ja|H|Ja\rangle
+
+\displaystyle=\tr(\rho\,\rho^{-1/2}a\rho^{1/2}[h,\rho^{1/2}a^{*}\rho^{-1/2}])
+=tr(ρρ−1/2aρ1/2[h,ρ1/2a∗ρ−1/2])\displaystyle=\tr(\rho\,\rho^{-1/2}a\rho^{1/2}[h,\rho^{1/2}a^{*}\rho^{-1/2}])
+
+(67)
+
+\displaystyle=\tr(a\rho^{1/2}h\rho^{1/2}a^{*})-\tr(\rho^{1/2}a\rho a^{*}\rho^{-1/2}h)
+=tr(aρ1/2hρ1/2a∗)−tr(ρ1/2aρa∗ρ−1/2h)\displaystyle=\tr(a\rho^{1/2}h\rho^{1/2}a^{*})-\tr(\rho^{1/2}a\rho a^{*}\rho^{-1/2}h)
+
+(68)
+
+\displaystyle=-\tr(\rho a^{*}[h,a])
+=−tr⁡(ρ​a∗​[h,a])\displaystyle=-\tr(\rho a^{*}[h,a])
+
+(69)
+
+\displaystyle=-\langle a|H|a\rangle,
+=−⟨a|H|a⟩,\displaystyle=-\langle a|H|a\rangle,
+
+(70)
+
+where in the third line we used the fact that 
+[\rho,h]=0
+[ρ,h]=0[\rho,h]=0. Thus 
+J^{\dagger}HJ=-H
+J†​H​J=−HJ^{\dagger}HJ=-H. The same calculation with 
+\log(\rho)
+log⁡(ρ)\log(\rho) replacing 
+h
+hh shows that 
+J^{\dagger}\log(\Delta)J=-\log(\Delta)
+J†​log⁡(Δ)​J=−log⁡(Δ)J^{\dagger}\log(\Delta)J=-\log(\Delta). It follows that 
+-(T\log\Delta+H)=J^{\dagger}(T\log(\Delta)+H)J\succeq 0
+−(T​log⁡Δ+H)=J†​(T​log⁡(Δ)+H)​J⪰0-(T\log\Delta+H)=J^{\dagger}(T\log(\Delta)+H)J\succeq 0 and thus 
+T\log(\Delta)+H=0
+T​log⁡(Δ)+H=0T\log(\Delta)+H=0. From this we see that 
+\log(\rho)-h/T
+log⁡(ρ)−h/T\log(\rho)-h/T commutes with every operator in 
+\mathcal{A}
+𝒜\mathcal{A}, which means it is a multiple of the identity, and so 
+\rho=e^{-h/T}/\tr(e^{-h/T})
+ρ=e−h/T/tr(e−h/T)\rho=e^{-h/T}/\tr(e^{-h/T}).
+
+Appendix C Corrections to ideal algorithm
+
+In this appendix we describe several modifications that were made to the idealized algorithm (8) for the numerical work in section 4.
+
+1. 
+
+For any matrix 
+M
+MM, a semidefnite constraint 
+M\succeq 0
+M⪰0M\succeq 0 can be broken down to the constraints 
+M_{-}=0
+M−=0M_{-}=0 and 
+M_{+}\succeq 0
+M+⪰0M_{+}\succeq 0, where 
+M_{\pm}:=(M\pm M^{\dagger})/2
+M±:=(M±M†)/2M_{\pm}:=(M\pm M^{\dagger})/2. Doing so with the semidefinite constraint (9) yields
+
+\displaystyle\boldsymbol{H}_{-}
+𝑯−\displaystyle\boldsymbol{H}_{-}
+
+\displaystyle=0
+=0\displaystyle=0
+
+(71)
+
+\displaystyle\log(\boldsymbol{\Delta})+\boldsymbol{H}_{+}
+log⁡(𝚫)+𝑯+\displaystyle\log(\boldsymbol{\Delta})+\boldsymbol{H}_{+}
+
+\displaystyle\succeq 0
+⪰0\displaystyle\succeq 0
+
+(72)
+
+Instead of imposing these constraints simultaneously, we impose the linear constraint 
+\boldsymbol{H}_{-}=0
+𝑯−=0\boldsymbol{H}_{-}=0 first. This greatly reduces the number of degrees of freedom in the semidefinite program, leading to a more computationally efficient algorithm.
+
+2. 
+
+In the presence of noise in the expectation values of 
+\rho
+ρ\rho, it is not appropriate to impose the linear constraint 
+\boldsymbol{H}_{-}=0
+𝑯−=0\boldsymbol{H}_{-}=0 exactly. Instead, the following matrix was computed
+
+\displaystyle W_{\alpha\beta}:=\tr((\boldsymbol{H}_{\alpha}-\boldsymbol{H}_{\alpha}^{\dagger})(\boldsymbol{H}_{\beta}-\boldsymbol{H}_{\beta}^{\dagger})^{\dagger}),
+Wα​β:=tr⁡((𝑯α−𝑯α†)​(𝑯β−𝑯β†)†),\displaystyle W_{\alpha\beta}:=\tr((\boldsymbol{H}_{\alpha}-\boldsymbol{H}_{\alpha}^{\dagger})(\boldsymbol{H}_{\beta}-\boldsymbol{H}_{\beta}^{\dagger})^{\dagger}),
+
+(73)
+
+where 
+(\boldsymbol{H}_{\alpha})_{ij}:=\tr(\rho a_{i}^{*}[h_{\alpha},a_{j}])
+(𝑯α)i​j:=tr⁡(ρ​ai∗​[hα,aj])(\boldsymbol{H}_{\alpha})_{ij}:=\tr(\rho a_{i}^{*}[h_{\alpha},a_{j}]) for 
+\alpha=1,\ldots s
+α=1,…​s\alpha=1,\ldots s, and the search space of Hamiltonians was restricted to the span of the eigenvectors of 
+W
+WW with eigenvalue below a threshold 
+\epsilon_{W}&gt;0
+ϵW&gt;0\epsilon_{W}&gt;0. This is equivalent to the matrix 
+\mathcal{K}
+𝒦\mathcal{K} used in [22].
+For sufficiently small values of 
+\sigma_{noise}
+σn​o​i​s​e\sigma_{noise}, the spectrum of 
+W
+WW was found to have several near-zero eigenvalues and a spectral gap to the rest of the eigenvalues, and 
+\epsilon_{W}
+ϵW\epsilon_{W} was chosen to lie in this gap. An empirical formula that was found to produce an 
+\epsilon_{W}
+ϵW\epsilon_{W} lying in the spectral gap of 
+W
+WW was
+
+\displaystyle\epsilon_{W}=400\max(\sigma_{noise}^{2}\sqrt{m},\ 10^{-11}),
+ϵW=400​max⁡(σn​o​i​s​e2​m, 10−11),\displaystyle\epsilon_{W}=400\max(\sigma_{noise}^{2}\sqrt{m},\ 10^{-11}),
+
+(74)
+
+where 
+m
+mm denotes the number of terms 
+a_{i}^{*}[h_{\alpha},a_{j}]
+ai∗​[hα,aj]a_{i}^{*}[h_{\alpha},a_{j}] such that 
+[h_{\alpha},a_{j}]\neq 0
+[hα,aj]≠0[h_{\alpha},a_{j}]\neq 0. This formula is not expected to be universal across different values of 
+n
+nn and choices of perturbing operators. We note that in practice, while choosing 
+\epsilon_{W}
+ϵW\epsilon_{W} to be too low caused the output to be inaccurate, choosing 
+\epsilon_{W}
+ϵW\epsilon_{W} to lie above the gap did not significantly affect the accuracy of the result.
+
+3. 
+
+Although the temperature can be thought of as the same degree of freedom as the overall scale of the Hamiltonian, we chose to explicitly isolate it by adding a variable 
+T\geq 0
+T≥0T\geq 0 to the the semidefinite program and replacing the constraint
+
+\displaystyle\log(\boldsymbol{\Delta})+\boldsymbol{H}_{+}-\mu I\succeq 0
+log⁡(𝚫)+𝑯+−μ​I⪰0\displaystyle\log(\boldsymbol{\Delta})+\boldsymbol{H}_{+}-\mu I\succeq 0
+
+(75)
+
+with
+
+\displaystyle T\log(\boldsymbol{\Delta})+\boldsymbol{H}_{+}-\mu I
+T​log⁡(𝚫)+𝑯+−μ​I\displaystyle T\log(\boldsymbol{\Delta})+\boldsymbol{H}_{+}-\mu I
+
+\displaystyle\succeq 0,
+⪰0,\displaystyle\succeq 0,
+
+(76)
+
+\displaystyle\tr(\rho h)
+tr⁡(ρ​h)\displaystyle\tr(\rho h)
+
+\displaystyle=-1.
+=−1.\displaystyle=-1.
+
+(77)
+
+Here the extra normalization (77) is necessary to eliminate the degree of freedom associated with simultaneously scaling 
+T,h
+T,hT,h, and 
+\mu
+μ\mu.
+
+4. 
+
+Although the MOSEK interior-point solver [13] solves the primal and dual programs simultaneously, it was found that the algorithm ran significantly faster when it was called explicitly with the dual program instead of the primal.
+
+    Experimental support, please
+    view the build logs
+    for errors. Generated by
+
+        L
+        A
+        T
+        E
+      
+      xml
+      
+    .
+
+Instructions for reporting errors
+
+We are continuing to improve HTML versions of papers, and your feedback helps enhance accessibility and mobile
+      support. To report errors in the HTML that will help us improve conversion and rendering, choose any of the
+      methods listed below:
+
+Click the &quot;Report Issue&quot; (
+            
+          ) button, located in the page header.
+
+Tip: You can select the relevant text first, to include it in your report.
+
+Our team has already identified the following issues. We appreciate your time reviewing and reporting rendering errors we
+      may not have found yet. Your efforts will help us improve the HTML versions for all readers, because disability
+      should not be a barrier to accessing research. Thank you for your continued support in championing open access for
+      all.
+
+Have a free development cycle? Help support accessibility at arXiv! Our collaborators at LaTeXML maintain a list of packages that need conversion, and welcome developer contributions.
+
+        We gratefully acknowledge support from
+        our major funders,
+        member institutions, ,
+        and all contributors.
+
+Major funding support from</pre></html>

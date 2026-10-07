@@ -1,0 +1,353 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>&quot;&quot;&quot;</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>&quot;&quot;&quot;</h1><p>Source ID d-a16a612a0ea50696; literature/sources/r01_discovery/repo_pipeline__cegis_novelty.py; 4472 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>&quot;&quot;&quot;
+pipeline/cegis_novelty.py — apply the legacy known-theorem filter to CEGIS output.
+
+The known-theorem table in ``pipeline.novelty`` (Whitney, Brooks, ω≤χ, ν≤n/2, …
+plus a convex-combination LP implication check) is linear-form only, but it is
+exactly what flags a CEGIS survivor as &quot;rediscovers a classical theorem&quot;. This
+module bridges the two: it parses a graffiti3 native conjecture&#x27;s pretty string
+into the linear ``Inequality`` the novelty filter understands, when the
+conjecture *is* linear with a single invariant on each side (the classical
+shapes). Nonlinear / multi-term / product / ratio conjectures parse to ``None``
+and are conservatively treated as novel (never wrongly dropped).
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import re
+from typing import List, Optional, Tuple
+
+from conjecture import Conjecture, Inequality
+from pipeline import novelty
+
+_REL = {&quot;≤&quot;: &quot;&lt;=&quot;, &quot;&lt;=&quot;: &quot;&lt;=&quot;, &quot;≥&quot;: &quot;&gt;=&quot;, &quot;&gt;=&quot;: &quot;&gt;=&quot;}
+
+# Non-restricting base predicates that graffiti3 carries on essentially every
+# conjecture (G is connected and non-trivial). They do not restrict the validity
+# of an invariant *upper* bound, so they must not be counted as a class
+# hypothesis — otherwise a genuinely single-class statement such as
+# ``(nontrivial ∧ bipartite) ⇒ …`` looks two-class and is skipped.
+_BASE_CLASSES = {&quot;nontrivial&quot;, &quot;connected&quot;}
+
+# graphcalc battery column  →  symbolic name used in pipeline.novelty.KNOWN_THEOREMS.
+# Only invariants the known-theorem table actually speaks about are mapped; a
+# conjecture using anything outside this map can&#x27;t be judged and stays novel.
+_GC2TABLE = {
+    &quot;order&quot;: &quot;n&quot;, &quot;size&quot;: &quot;m&quot;,
+    &quot;maximum_degree&quot;: &quot;Delta&quot;, &quot;minimum_degree&quot;: &quot;delta&quot;, &quot;average_degree&quot;: &quot;avg_deg&quot;,
+    &quot;clique_number&quot;: &quot;omega&quot;, &quot;independence_number&quot;: &quot;alpha&quot;, &quot;chromatic_number&quot;: &quot;chi&quot;,
+    &quot;domination_number&quot;: &quot;gamma&quot;, &quot;independent_domination_number&quot;: &quot;ind_dom&quot;,
+    &quot;vertex_cover_number&quot;: &quot;vertex_cover&quot;, &quot;matching_number&quot;: &quot;nu&quot;,
+    &quot;diameter&quot;: &quot;diam&quot;, &quot;radius&quot;: &quot;rad&quot;,
+    &quot;algebraic_connectivity&quot;: &quot;alg&quot;, &quot;spectral_radius&quot;: &quot;spectral_radius&quot;,
+    &quot;density&quot;: &quot;density&quot;,
+}
+
+# Extend with the domination / zero-forcing family columns so generated
+# conjectures over them parse into Inequalities the curated known-relation table
+# (pipeline/known_relations.py) can judge.
+try:
+    from pipeline.known_relations import GC_COLUMNS as _GC_EXTRA
+    _GC2TABLE.update(_GC_EXTRA)
+except Exception:  # pragma: no cover - defensive
+    pass
+
+
+def _num(tok: str) -&gt; Optional[float]:
+    &quot;&quot;&quot;Parse an int, float, or &#x27;a/b&#x27; fraction.&quot;&quot;&quot;
+    tok = tok.strip().strip(&quot;()&quot;)
+    try:
+        if &quot;/&quot; in tok:
+            a, b = tok.split(&quot;/&quot;, 1)
+            return float(a) / float(b)
+        return float(tok)
+    except Exception:
+        return None
+
+
+def _parse_side(s: str, cols: List[str]) -&gt; Optional[Tuple[float, str, float]]:
+    &quot;&quot;&quot;Parse a linear side into (coeff, invariant, constant), single invariant.
+
+    Handles ``inv``, ``c · inv``, ``c · inv + d``, ``inv + d`` and the
+    parenthesised graffiti3 forms. Returns None if not a single-invariant linear
+    expression.&quot;&quot;&quot;
+    s = s.replace(&quot;·&quot;, &quot;*&quot;).replace(&quot;(&quot;, &quot; &quot;).replace(&quot;)&quot;, &quot; &quot;)
+    present = [c for c in cols if re.search(r&quot;\b&quot; + re.escape(c) + r&quot;\b&quot;, s)]
+    if len(present) != 1:
+        return None
+    inv = present[0]
+    # coefficient: a number immediately before  &#x27;* inv&#x27;  (default 1)
+    coeff = 1.0
+    m = re.search(r&quot;([0-9]+(?:\.[0-9]+)?(?:\s*/\s*[0-9]+)?)\s*\*\s*&quot; + re.escape(inv), s)
+    if m:
+        v = _num(m.group(1).replace(&quot; &quot;, &quot;&quot;))
+        if v is None:
+            return None
+        coeff = v
+    # constant: standalone numeric tokens not glued to the invariant
+    s_wo = re.sub(re.escape(inv), &quot; &quot;, s)
+    # drop any &#x27;c *&#x27; multiplier (the coefficient) so it is not double-counted as
+    # a constant once the invariant it multiplied has been removed
+    s_wo = re.sub(r&quot;[0-9.]+(?:\s*/\s*[0-9.]+)?\s*\*&quot;, &quot; &quot;, s_wo)
+    s_wo = re.sub(r&quot;[0-9.]+\s*/\s*[0-9.]+|\d+(?:\.\d+)?&quot;, lambda mm: f&quot; {mm.group(0)} &quot;, s_wo)
+    const = 0.0
+    for tok in re.findall(r&quot;[+-]?\s*\d+(?:\.\d+)?(?:\s*/\s*\d+)?&quot;, s_wo):
+        # skip the coefficient token if it reappeared
+        v = _num(tok.replace(&quot; &quot;, &quot;&quot;))
+        if v is not None and &quot;*&quot; not in tok:
+            const += v
+    return coeff, inv, const
+
+
+def native_to_inequality(native, cols: List[str]) -&gt; Optional[Inequality]:
+    &quot;&quot;&quot;Best-effort linear ``Inequality`` from a graffiti3 native, else None.&quot;&quot;&quot;
+    try:
+        pretty = native.pretty()
+    except Exception:
+        return None
+    return inequality_from_pretty(pretty, cols)
+
+
+def inequality_from_pretty(pretty: str, cols: List[str]) -&gt; Optional[Inequality]:
+    &quot;&quot;&quot;Linear ``Inequality`` from a pretty string ``[(cond) ⇒] lhs REL rhs``.&quot;&quot;&quot;
+    hypothesis = None
+    if &quot;⇒&quot; in pretty:                                   # &quot;(cond) ⇒ body&quot;
+        cond, pretty = pretty.split(&quot;⇒&quot;, 1)
+        conds = [c for c in cols if re.search(r&quot;\b&quot; + re.escape(c) + r&quot;\b&quot;, cond)
+                 and c not in _BASE_CLASSES]
+        # only single-class conditions map to the novelty hypothesis model
+        hypothesis = conds[0] if len(conds) == 1 else None
+        if len(conds) &gt; 1:
+            return None
+    rel = next((r for r in (&quot;≤&quot;, &quot;≥&quot;, &quot;&lt;=&quot;, &quot;&gt;=&quot;) if r in pretty), None)
+    if rel is None:
+        return None                                     # equalities not handled
+    lhs, rhs = pretty.split(rel, 1)
+    left = _parse_side(lhs, cols)
+    right = _parse_side(rhs, cols)
+    if not left or not right:
+        return None
+    ca, inv_a, const_l = left
+    cb, inv_b, const_r = right
+    # The known-theorem table is upper-bound form (lhs ≤ rhs); normalise a
+    # lower-bound conjecture  a ≥ b  into the equivalent  b ≤ a  by swapping
+    # sides, so ≥-shaped rediscoveries (most of the domination/zero-forcing
+    # folklore) are matched too rather than silently passing as novel.
+    if rel in (&quot;≥&quot;, &quot;&gt;=&quot;):
+        (ca, inv_a, const_l), (cb, inv_b, const_r) = (cb, inv_b, const_r), (ca, inv_a, const_l)
+    # Map to the table&#x27;s symbolic names; both sides must be known to the table.
+    if inv_a not in _GC2TABLE or inv_b not in _GC2TABLE:
+        return None
+    # coeff_a·inv_a (+const_l) ≤ coeff_b·inv_b (+const_r)  →  normalise const to RHS
+    return Inequality(
+        inv_a=_GC2TABLE[inv_a], inv_b=_GC2TABLE[inv_b], coeff_a=ca, coeff_b=cb,
+        offset=const_r - const_l, op=&quot;&lt;=&quot;,
+        hypothesis=hypothesis)
+
+
+# ── Conditioned-known rules (the linear table is unconditioned-only) ────────
+# Graph classes on which every graph is perfect: χ = ω and α = clique-cover
+# number hold by the perfect graph theorem / definition.
+_PERFECT_CLASSES = {&quot;cograph&quot;, &quot;chordal&quot;, &quot;bipartite&quot;, &quot;interval&quot;, &quot;split&quot;}
+
+
+def _body_parts(pretty: str, cols: List[str]):
+    &quot;&quot;&quot;(classes, body_invariants, relation, constants) for a conditioned
+    conjecture, else None. ``classes`` are the boolean class columns in the
+    hypothesis; ``body_invariants`` the numeric invariants in the bounded
+    relation; ``constants`` the bare integers in the body.&quot;&quot;&quot;
+    if not isinstance(pretty, str):
+        return None
+    if &quot;⇒&quot; not in pretty and &quot;=&gt;&quot; not in pretty:
+        return None
+    cond, body = re.split(r&quot;⇒|=&gt;&quot;, pretty, maxsplit=1)
+    classes = [c for c in cols if re.search(r&quot;\b&quot; + re.escape(c) + r&quot;\b&quot;, cond)
+               and c not in _BASE_CLASSES]
+    rel = next((r for r in (&quot;≤&quot;, &quot;≥&quot;, &quot;&lt;=&quot;, &quot;&gt;=&quot;, &quot;=&quot;) if r in body), None)
+    if rel is None:
+        return None
+    body_invs = {c for c in cols if re.search(r&quot;\b&quot; + re.escape(c) + r&quot;\b&quot;, body)}
+    consts = {int(m) for m in re.findall(r&quot;(?&lt;![\w.])\d+(?![\w./])&quot;, body)}
+    return classes, body_invs, _REL.get(rel, rel), consts
+
+
+def conditioned_known(pretty, cols: List[str]) -&gt; Tuple[bool, Optional[str]]:
+    &quot;&quot;&quot;Flag conditioned conjectures that restate a perfect-graph property or a
+    class definition — the classical results the unconditioned table misses.
+
+    Accepts either a native (with ``.pretty()``) or a pretty string.&quot;&quot;&quot;
+    if not isinstance(pretty, str):
+        try:
+            pretty = pretty.pretty()
+        except Exception:
+            return False, None
+    parts = _body_parts(pretty, cols)
+    if parts is None:
+        return False, None
+    classes, invs, _rel, consts = parts
+    if not classes:
+        return False, None
+    # a fact proved for a superclass holds for the subclass (tree ⊂ bipartite ⊂
+    # perfect, cubic ⊂ regular, …), so inherit superclass class-definitional rules
+    cls = set(classes)
+    for c in list(cls):
+        cls |= novelty.SUPERCLASSES.get(c, set())
+    perfect = any(c in _PERFECT_CLASSES for c in cls)
+
+    # perfect-graph identities (any relation direction — equality holds)
+    if perfect and invs == {&quot;chromatic_number&quot;, &quot;clique_number&quot;}:
+        return True, &quot;perfect graph: χ = ω&quot;
+    if perfect and invs == {&quot;independence_number&quot;, &quot;vertex_clique_cover_number&quot;}:
+        return True, &quot;perfect graph: α = θ̄ (clique cover)&quot;
+
+    # class-definitional facts
+    deg = {&quot;maximum_degree&quot;, &quot;minimum_degree&quot;, &quot;average_degree&quot;}
+    if &quot;regular&quot; in cls and invs and invs &lt;= deg and len(invs) &gt;= 2:
+        return True, &quot;regular: Δ = δ = 2m/n&quot;
+    if &quot;cubic&quot; in cls and invs and invs &lt;= {&quot;maximum_degree&quot;, &quot;minimum_degree&quot;}:
+        return True, &quot;cubic: Δ = δ = 3&quot;
+    if &quot;subcubic&quot; in cls and invs == {&quot;maximum_degree&quot;} and 3 in consts:
+        return True, &quot;subcubic: Δ ≤ 3 (definition)&quot;
+    if &quot;triangle_free&quot; in cls and invs == {&quot;clique_number&quot;} and consts &lt;= {2}:
+        return True, &quot;triangle-free: ω ≤ 2 (definition)&quot;
+    if &quot;K_4_free&quot; in cls and invs == {&quot;clique_number&quot;} and consts &lt;= {3}:
+        return True, &quot;K₄-free: ω ≤ 3 (definition)&quot;
+    if &quot;bipartite&quot; in cls and invs == {&quot;clique_number&quot;} and consts &lt;= {2}:
+        return True, &quot;bipartite: ω ≤ 2&quot;
+    if &quot;bipartite&quot; in cls and invs == {&quot;chromatic_number&quot;} and consts &lt;= {2}:
+        return True, &quot;bipartite: χ ≤ 2 (definition)&quot;
+    return False, None
+
+
+def _inequality_known(pretty: str, cols: List[str]) -&gt; Tuple[bool, Optional[str]]:
+    &quot;&quot;&quot;A single linear (in)equality string implied by the known table?&quot;&quot;&quot;
+    ineq = inequality_from_pretty(pretty, cols)
+    if ineq is None:
+        return False, None
+    c = Conjecture(statement=&quot;&quot;, inequality=ineq, generation_method=&quot;cegis-graffiti3&quot;)
+    try:
+        return novelty.classify(c)
+    except Exception:
+        return False, None
+
+
+# strict/loose negation:  ¬(a &lt; b) ≡ (a ≥ b), etc.  Only the two ordered forms
+# whose negation is a *non-strict* bound (≤ / ≥, the tabled shapes) are useful.
+_NEG = {&quot;&lt;&quot;: &quot;≥&quot;, &quot;&gt;&quot;: &quot;≤&quot;, &quot;≤&quot;: &quot;&gt;&quot;, &quot;≥&quot;: &quot;&lt;&quot;, &quot;&lt;=&quot;: &quot;≥&quot;, &quot;&gt;=&quot;: &quot;≤&quot;}
+
+
+def _equality_known(stmt: str, cols: List[str]) -&gt; Tuple[bool, Optional[str]]:
+    &quot;&quot;&quot;An equality ``[(H) ⇒] f = g`` is known iff *both* f ≤ g and f ≥ g are
+    implied by the table — i.e. the two bounds are simultaneously necessary and
+    sufficient.&quot;&quot;&quot;
+    body = stmt.split(&quot;⇒&quot;)[-1]
+    if &quot;=&quot; not in body or any(r in body for r in (&quot;≤&quot;, &quot;≥&quot;, &quot;&lt;=&quot;, &quot;&gt;=&quot;, &quot;&lt;&quot;, &quot;&gt;&quot;)):
+        return False, None
+    le, _ = _inequality_known(stmt.replace(&quot;=&quot;, &quot;≤&quot;, 1), cols)
+    ge, _ = _inequality_known(stmt.replace(&quot;=&quot;, &quot;≥&quot;, 1), cols)
+    if le and ge:
+        return True, &quot;equality: both bounds known&quot;
+    return False, None
+
+
+def _necessary_condition_known(stmt: str, cols: List[str]) -&gt; Tuple[bool, Optional[str]]:
+    &quot;&quot;&quot;A Sophie necessary condition ``(A) ⇒ ¬C`` (A a numeric predicate, C a
+    graph class) is known iff its contrapositive ``C ⇒ ¬A`` is a tabled class
+    bound — e.g. ``(2 &lt; χ) ⇒ ¬bipartite`` is the contrapositive of the known
+    ``bipartite ⇒ χ ≤ 2``.&quot;&quot;&quot;
+    if &quot;⇒&quot; not in stmt:
+        return False, None
+    ante, cons = stmt.rsplit(&quot;⇒&quot;, 1)
+    cons = cons.strip()
+    if not cons.startswith(&quot;¬&quot;):
+        return False, None                          # only negative-class conclusions
+    C = cons[1:].strip().strip(&quot;()&quot;).strip()
+    if C not in cols or C in _GC2TABLE:             # C must be a boolean class
+        return False, None
+    rel = next((r for r in (&quot;&lt;=&quot;, &quot;&gt;=&quot;, &quot;≤&quot;, &quot;≥&quot;, &quot;&lt;&quot;, &quot;&gt;&quot;) if r in ante), None)
+    if rel is None:
+        return False, None
+    nrel = _NEG[rel]
+    if nrel not in (&quot;≤&quot;, &quot;≥&quot;):                       # negation must be a tabled bound
+        return False, None
+    lhs, rhs = ante.split(rel, 1)
+    contrapositive = f&quot;({C}) ⇒ {lhs}{nrel}{rhs}&quot;
+    known, why = _classify_core(contrapositive, cols)
+    if known:
+        return True, f&quot;necessary condition (contrapositive of: {why})&quot;
+    return False, None
+
+
+# Textbook *sufficient conditions for class membership* (characterizations).
+# These are the converse of the tabled class bounds and CANNOT be data-mined:
+# a rare equality can agree with a class on every tested graph by coincidence
+# (e.g. γ = a happens to imply K₄-free on the snapshot but is no theorem), so
+# only genuine characterizations are listed here, by hand.
+#   regular:   δ = Δ, and (since δ ≤ 2m/n ≤ ρ ≤ Δ) equality of any two of
+#              {δ, 2m/n, ρ, Δ} collapses the chain ⇒ regular.
+#   connected: Fiedler — the algebraic connectivity a(G) &gt; 0 iff G is connected.
+_REGULAR_EQ_PAIRS = {
+    frozenset({&quot;delta&quot;, &quot;Delta&quot;}), frozenset({&quot;avg_deg&quot;, &quot;Delta&quot;}),
+    frozenset({&quot;avg_deg&quot;, &quot;delta&quot;}), frozenset({&quot;spectral_radius&quot;, &quot;Delta&quot;}),
+    frozenset({&quot;spectral_radius&quot;, &quot;avg_deg&quot;}), frozenset({&quot;spectral_radius&quot;, &quot;delta&quot;}),
+}
+
+
+def _sufficient_class_known(stmt: str, cols: List[str]) -&gt; Tuple[bool, Optional[str]]:
+    &quot;&quot;&quot;A Sophie sufficient condition ``(A) ⇒ C`` (C a positive graph class) is
+    flagged known only when ``A`` is a textbook characterization of ``C``.&quot;&quot;&quot;
+    if &quot;⇒&quot; not in stmt:
+        return False, None
+    ante, cons = stmt.rsplit(&quot;⇒&quot;, 1)
+    C = cons.strip().strip(&quot;()&quot;).strip()
+    if C.startswith(&quot;¬&quot;) or C not in cols or C in _GC2TABLE:
+        return False, None
+    a = ante.strip()
+    # Fiedler:  (0 &lt; a(G)) ⇒ connected
+    if C == &quot;connected&quot; and &quot;algebraic_connectivity&quot; in a \
+            and (&quot;&lt;&quot; in a or &quot;&gt;&quot; in a) and re.search(r&quot;(?&lt;![\d.])0(?![\d.])&quot;, a):
+        return True, &quot;Fiedler: a(G) &gt; 0 ⇔ connected&quot;
+    # regular:  equality of two invariants in the degree/spectral chain
+    if C == &quot;regular&quot; and &quot;=&quot; in a and not any(r in a for r in (&quot;≤&quot;, &quot;≥&quot;, &quot;&lt;&quot;, &quot;&gt;&quot;)):
+        syms = {_GC2TABLE[c] for c in cols
+                if c in _GC2TABLE and re.search(r&quot;\b&quot; + re.escape(c) + r&quot;\b&quot;, a)}
+        if frozenset(syms) in _REGULAR_EQ_PAIRS:
+            return True, &quot;regular: δ ≤ 2m/n ≤ ρ ≤ Δ collapses ⇔ regular&quot;
+    return False, None
+
+
+def _classify_core(stmt: str, cols: List[str]) -&gt; Tuple[bool, Optional[str]]:
+    &quot;&quot;&quot;Numeric / equality / class-definitional novelty for one statement string
+    (no necessary-condition recursion).&quot;&quot;&quot;
+    known, why = _inequality_known(stmt, cols)
+    if known:
+        return True, why
+    eq = _equality_known(stmt, cols)
+    if eq[0]:
+        return eq
+    return conditioned_known(stmt, cols)
+
+
+def classify_statement(stmt: str, cols: List[str]) -&gt; Tuple[bool, Optional[str]]:
+    &quot;&quot;&quot;(is_known, why) for a conjecture *statement string*. Handles numeric
+    inequalities and their conditioned forms, equalities (both bounds known),
+    perfect-graph / class-definitional restatements, and Sophie necessary
+    conditions ``(A) ⇒ ¬C`` — implications judged in both the sufficient and the
+    necessary direction.&quot;&quot;&quot;
+    core = _classify_core(stmt, cols)
+    if core[0]:
+        return core
+    nec = _necessary_condition_known(stmt, cols)
+    if nec[0]:
+        return nec
+    return _sufficient_class_known(stmt, cols)
+
+
+def classify_native(native, cols: List[str]) -&gt; Tuple[bool, Optional[str]]:
+    &quot;&quot;&quot;(is_known, matched_theorem) for a graffiti3 native, via its pretty form.&quot;&quot;&quot;
+    try:
+        pretty = native.pretty()
+    except Exception:
+        return False, None
+    if not isinstance(pretty, str):
+        return False, None
+    return classify_statement(pretty, cols)
+</pre></html>

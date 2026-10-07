@@ -1,0 +1,2995 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Overcoming critical slowing down in frustrated spin systems by learned multiscale sampling.</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>Overcoming critical slowing down in frustrated spin systems by learned multiscale sampling.</h1><p>Source ID d-16659a7de9167c19; literature/sources/c_priorart/2608.31114v1.html.html; 41826 o200k tokens; role primary_source_or_metadata; extraction html_text_discovery_only_math_may_be_lossy. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>Overcoming critical slowing down in frustrated spin systems by learned multiscale sampling.
+
+      Report GitHub Issue
+      ×
+
+      Title:
+
+Content selection saved. Describe the issue below:
+
+      Description:
+
+      Submit without GitHub
+      Submit in GitHub
+
+    arXiv is now an independent nonprofit!
+    Learn more
+    ×
+
+      Back to arXiv
+
+(T\to 0)
+
+\lambda
+
+\lambda T
+
+    License: CC BY 4.0
+
+arXiv:2608.31114v1 [cond-mat.stat-mech] 31 Aug 2026
+
+Overcoming critical slowing down in frustrated spin systems by learned multiscale sampling. 
+
+Preprint: APS/123-QED
+
+Gabriele Bandini
+
+Email: gbandini@sissa.it
+
+Affiliation: SISSA — International School for Advanced Studies and INFN, via Bonomea 265, 34136 Trieste, Italy
+
+  
+Giulio Biroli
+
+Affiliation: Laboratoire de Physique Statistique, École normale supérieure, PSL Research University, 24 rue Lhomond, 75005 Paris, France
+
+  
+Patrick Charbonneau
+
+Affiliation: Department of Physics, Duke University, Durham, North Carolina 27708, USA
+
+Affiliation: Department of Chemistry, Duke University, Durham, North Carolina 27708, USA
+
+  
+Andrea Gambassi
+
+Affiliation: SISSA — International School for Advanced Studies and INFN, via Bonomea 265, 34136 Trieste, Italy
+
+August 31, 2026
+
+Abstract
+
+Cluster algorithms, such as the Swendsen–Wang and Wolff methods, are among the most successful MCMC methods for mitigating critical slowing down in statistical systems. These constructive cluster algorithms, however, fail in the presence of even extremely weak frustration. Here, we sidestep this fundamental limitation by learning rather than constructing the relevant clusters. Specifically, we use the wavelet conditional renormalization group (WCRG) sampling method to learn the probability distribution of collective fluctuations of a frustrated two-dimensional soft-spin model. Configurations are then generated recursively from coarse to fine scales by sampling conditional wavelet distributions. The WCRG method reproduces the main statistical properties of the system across different phases, including the local-field distribution and the structure factor. At an Ising-like critical point, the conditional dynamics remains decorrelated within 
+\mathcal{O}(1)
+𝒪⁡(1)\mathcal{O}(1) sweeps at each scale, yielding an overall sampling complexity of 
+\mathcal{O}(\log_{2}L)
+𝒪⁡(log2⁡L)\mathcal{O}(\log_{2}L), thus making WCRG much more efficient than standard local MCMC methods. These results show that learned multiscale sampling can overcome critical slowing down in frustrated systems for which conventional cluster algorithms fail. By assessing the sampling accuracy of different observables, we also clarify the main tradeoff of the WCRG method: the accuracy of the fast sampling scheme depends on the expressiveness of the energy-based model used to estimate the wavelet conditional distributions.
+
+I Introduction
+
+Efficiently sampling high-dimensional probability distributions is a central challenge in computational statistical physics and for many other applications of Markov chain Monte Carlo (MCMC) methods. The difficulty becomes especially acute close to a continuous phase transition, where the correlation length grows with the system size and the local-update dynamics is limited by the corresponding critical slowing down [1, 2]. The equilibration and decorrelation times 
+\tau
+τ\tau then scale as
+
+\tau\sim L^{z}
+τ∼Lz\tau\sim L^{z},
+where 
+L
+LL is the linear system size and 
+z
+zz is a dynamical critical exponent that depends on the microscopic model and on the update rule. For two-dimensional systems, local algorithms generally have 
+z
+zz of order two and can grow up to six in models with disorder [3, 4].
+
+Cluster algorithms provide one of the most successful strategies for mitigating this problem. In unfrustrated spin systems, the Swendsen–Wang and Wolff algorithms update correlated degrees of freedom collectively and strongly reduce critical slowing down [5]. Various generalizations of this scheme have since been proposed, but for—even weakly—frustrated models comparable improvements have been elusive [6, 7]. Recent works [8, 6] have identified the fundamental origin of this failure.
+In short, although clusters underlying efficient sampling of the probability in configuration space likely exist, they cannot be identified by any constructive procedure.
+This fundamental obstacle calls for a completely new approach to sampling. Could these clusters be (machine) learned instead of constructed?
+Standard, off-the-shelf approaches offer only limited grounds for hope.
+
+Machine-learning-based approaches have recently emerged as a promising route to accelerating sampling more broadly and have therefore attracted growing interest in statistical physics. Examples include normalizing-flow-augmented Monte Carlo schemes
+[9], autoregressive variational networks [10],
+diffusion-based samplers [11, 12], and
+machine-learning-assisted Monte Carlo algorithms [13]. These approaches
+show that learned generative models can accelerate sampling in favorable cases,
+but they also make clear that efficiency and accuracy are not automatic:
+sampling difficulties can persist, depending on the structure of the target
+distribution, the training procedure, and the expressiveness of the model. This
+motivates the consideration of architectures that combine learning with physical structure.
+
+The approach followed here belongs to this broad line of learned sampling
+methods, explicitly guided by renormalization-group (RG) ideas from
+statistical physics [14, 15, 16]. More specifically, the wavelet conditional renormalization group (WCRG) introduced in
+Ref. [17],
+decomposes the target distribution scale by scale through an orthogonal wavelet transform. This transform separates
+a configuration into coarse variables, which encode long-wavelength structure,
+and wavelet coefficients, which describe the fluctuations added at each finer
+scale. The learned functions are then the various conditional distributions for the wavelet
+fluctuations at fixed coarse variables. Each approximation is therefore tied to
+a definite length scale and to a specific step of the reconstruction, thus making the
+learned model interpretable and providing a natural route for
+systematic improvements.
+
+In the present work, the conditional distributions are learned from equilibrium Monte Carlo configurations by score matching, which fits unnormalized probability models by matching gradients of log-probabilities and therefore avoids the direct evaluation of normalization constants [18]. Once the conditional distributions have been inferred, microscopic configurations can be generated recursively: the coarsest field is sampled first, and the microscopic configuration is then reconstructed by conditional Monte Carlo sampling of the wavelet variables at successively finer scales. As discussed in Ref. [17], this sampling is expected to remain fast because long-range correlations are already encoded in the conditioning coarse fields and do not have to emerge through slow microscopic dynamics.
+
+In this work, we show that this strategy is capable of bypassing the failure of conventional cluster algorithms in frustrated systems.
+In particular, we consider soft-spin 
+\phi^{4}
+ϕ4\phi^{4} models with competing interactions on a square lattice in two spatial dimensions, the coupling stencil of which encompasses the axial next-nearest-neighbor Ising (ANNNI), biaxial next-nearest-neighbor Ising (BNNNI), and third-nearest-neighbor Ising (3NNNI) geometries.
+Our numerical analysis focuses primarily on the soft-spin BNNNI (sBNNNI) model, whose phase diagram contains homogeneous ferromagnetic and paramagnetic regimes separated by an Ising-like critical line as well as modulated disordered and ordered phases.
+
+This analysis leads to three main results.
+(i) The generated configurations reproduce the local field distributions and the
+two-point correlations, as measured by the structure factor, across representative regions of the sBNNNI phase diagram. The method captures both homogeneous and finite-wavevector structures, although the strongly constrained antiphase remains a challenging case.
+(ii) At the Ising-like critical point, the autocorrelation time of conventional local Monte Carlo dynamics grows approximately as 
+L^{2.16}
+L2.16L^{2.16}, whereas the conditional wavelet updates remain decorrelated in 
+\mathcal{O}(1)
+𝒪⁡(1)\mathcal{O}(1) sweeps at every scale. Because the number of reconstruction levels grows as 
+\log_{2}L
+log2⁡L\log_{2}L, the number of conditional sweeps required to generate an independent critical configuration scales overall as 
+\mathcal{O}(\log_{2}L)
+𝒪⁡(log2⁡L)\mathcal{O}(\log_{2}L).
+(iii) For configuration-wide observables, the magnetization distribution is accurately reproduced,
+while the histogram of the microscopic energy displays a residual mismatch.
+We relate this discrepancy to the finite-dimensional ansatz used for the learned conditional energies and to the difference between the original Gibbs measure and the approximate hierarchical measure sampled by the reconstruction procedure.
+
+The rest of the paper is organized as follows.
+In Sec. II, we introduce the frustrated soft-spin models and discuss the phase diagram of the sBNNNI model. In Sec. III, we present the WCRG decomposition, the learned conditional energies, and the recursive sampling procedure. Section IV compares Monte Carlo configurations with WCRG-generated samples across representative points of the phase diagram. In Sec. IV.2, we analyze the autocorrelation times at criticality and demonstrate that conditional wavelet updates eliminate critical slowing down.
+Section IV.3 considers configuration-wide observables, with particular emphasis on the distributions of the magnetization and of the microscopic energy. Section V summarize the findings and speculates on possible improvements and applications.
+
+Technical details are provided in the appendices.
+Appendix A discusses the zero-temperature analysis of the
+sBNNNI model and the origin of the extended IC regime.
+Appendix B presents the finite-size scaling analysis used to locate
+the Ising-like critical point. Appendix C describes
+the implementation of the orthogonal wavelet transform and the conventions used
+throughout the paper. Finally, App. D
+contains the details of the parameterizations of the conditional energies, score-matching procedure,
+and conditional sampling algorithm used in the
+WCRG implementation.
+
+Figure 1: Phase diagram of the sBNNNI model with 
+\lambda=1
+λ=1\lambda=1 and representative behaviors in the various phases.
+Top: Phase diagram in the 
+(\kappa,T)
+(κ,T)(\kappa,T) plane obtained from Monte Carlo simulations. The five phases (different colored zones) are identified from the behavior and finite-size scaling of the structure factor 
+S(q_{x},q_{y})
+S⁡(qx,qy)S(q_{x},q_{y}) (see Sec. II), sampled at the points indicated by symbols in the phase diagram.
+While the faint boundaries between the various phases are approximate guides to the eyes, the Ising-like ferromagnetic-to-paramagnetic phase transition was quantitatively determined via finite-size scaling of the magnetic susceptibility using Ising critical exponents (black crosses, see App. B). Note that the IC phase here extends over a broader region of the phase diagram than in the 
+\lambda\rightarrow\infty
+λ→∞\lambda\rightarrow\infty model studied in Ref. [19], as
+further discussed in App. A.
+Representative illustrations of the five different phases and the Ising critical line are provided for points A–F.
+Bottom: For each representative point (A–F): a typical equilibrium configuration in real space (left), the averaged
+structure factor 
+S(q_{x},q_{y})
+S⁡(qx,qy)S(q_{x},q_{y}) (center), and its diagonal cut 
+S_{\rm diag}(q)
+Sdiag​(q)S_{\rm diag}(q) (see Eq. (4))
+for three different system sizes 
+L
+LL (right). The peak position and the size scaling of its amplitude distinguishes homogeneous from modulated phases as well as ordered from disordered regimes (see Sec. II).
+
+II Models
+
+In order to leverage wavelet decompositions, which naturally act on real-valued signals [20, 21], we here consider models with continuous spin variables 
+\phi_{0}(i)\in\mathbb{R}
+ϕ0​(i)∈ℝ\phi_{0}(i)\in\mathbb{R}, where 
+i
+ii denotes the lattice site at position 
+\mathbf{r}_{i}=(x_{i},y_{i})
+𝐫i=(xi,yi)\mathbf{r}_{i}=(x_{i},y_{i}).
+The microscopic energy on a square lattice is then taken to be
+
+\begin{split}E_{0}(\phi_{0})=&amp;\frac{1}{2T}\sum_{i,j}\phi_{0}(i)\,K_{ij}\phi_{0}(j)\\
+&amp;+\sum_{i}\Big[\,\phi_{0}^{2}(i)+\lambda\big(\phi_{0}^{2}(i)-1\big)^{2}\Big],\end{split}
+E0​(ϕ0)=12​T​∑i,jϕ0​(i)​Ki​j​ϕ0​(j)+∑i[ϕ02(i)+λ(ϕ02(i)−1)2],\begin{split}E_{0}(\phi_{0})=&amp;\frac{1}{2T}\sum_{i,j}\phi_{0}(i)\,K_{ij}\phi_{0}(j)\\
+&amp;+\sum_{i}\Big[\,\phi_{0}^{2}(i)+\lambda\big(\phi_{0}^{2}(i)-1\big)^{2}\Big],\end{split}
+
+(1)
+
+Note that, following Refs. [17, 22], 
+E_{0}
+E0E_{0} is the dimensionless energy entering the Gibbs weight,
+
+p_{0}(\phi_{0})\propto e^{-E_{0}(\phi_{0})}
+p0​(ϕ0)∝e−E0​(ϕ0)p_{0}(\phi_{0})\propto e^{-E_{0}(\phi_{0})}. It does not take the conventional form,
+
+H(\phi_{0})/T
+H⁡(ϕ0)/TH(\phi_{0})/T, with a temperature-independent Hamiltonian 
+H
+HH, because the
+factor 
+1/T
+1/T1/T multiplies only the quadratic interaction kernel, while the local
+potential is not rescaled by temperature. As a consequence, the low-temperature limit requires some care, as discussed in
+App. A.
+The frustrated quadratic interactions are captured by a 
+5\times 5
+5×55\times 5 translationally-invariant matrix
+
+\mathbf{K}=\begin{pmatrix}0&amp;0&amp;\kappa_{y}&amp;0&amp;0\\[4.0pt]
+0&amp;\kappa_{d}&amp;-J&amp;\kappa_{d}&amp;0\\[4.0pt]
+\kappa_{x}&amp;-J&amp;0&amp;-J&amp;\kappa_{x}\\[4.0pt]
+0&amp;\kappa_{d}&amp;-J&amp;\kappa_{d}&amp;0\\[4.0pt]
+0&amp;0&amp;\kappa_{y}&amp;0&amp;0\end{pmatrix}
+𝐊=(00κy000κd−Jκd0κx−J0−Jκx0κd−Jκd000κy00)\mathbf{K}=\begin{pmatrix}0&amp;0&amp;\kappa_{y}&amp;0&amp;0\\[4.0pt]
+0&amp;\kappa_{d}&amp;-J&amp;\kappa_{d}&amp;0\\[4.0pt]
+\kappa_{x}&amp;-J&amp;0&amp;-J&amp;\kappa_{x}\\[4.0pt]
+0&amp;\kappa_{d}&amp;-J&amp;\kappa_{d}&amp;0\\[4.0pt]
+0&amp;0&amp;\kappa_{y}&amp;0&amp;0\end{pmatrix}
+
+(2)
+
+with rows and columns encoding the relative displacements 
+\Delta x,\Delta y\in\{+2,+1,0,-1,-2\}
+Δ​x,Δ​y∈{+2,+1,0,−1,−2}\Delta x,\Delta y\in\{+2,+1,0,-1,-2\}, i.e.,
+
+K_{ij}=[\mathbf{K}]_{\Delta x,\Delta y}
+Ki​j=[𝐊]Δ​x,Δ​yK_{ij}=[\mathbf{K}]_{\Delta x,\Delta y}, where 
+\mathbf{r}_{i}-\mathbf{r}_{j}=(\Delta x,\Delta y)
+𝐫i−𝐫j=(Δ​x,Δ​y)\mathbf{r}_{i}-\mathbf{r}_{j}=(\Delta x,\Delta y).
+In practice, nearest-neighbor interactions are characterized by ferromagnetic coupling 
+J&gt;0
+J&gt;0J&gt;0, axial next-nearest neighbors along 
+\hat{x}
+x^\hat{x} and 
+\hat{y}
+y^\hat{y} by antiferromagnetic couplings 
+\kappa_{x}\geq 0
+κx≥0\kappa_{x}\geq 0 and 
+\kappa_{y}\geq 0
+κy≥0\kappa_{y}\geq 0, respectively, and diagonal nearest neighbors by 
+\kappa_{d}\geq 0
+κd≥0\kappa_{d}\geq 0. All other interactions vanish.
+
+The quartic term in Eq. (1) controls spin stiffness. In the Gaussian limit 
+\lambda\rightarrow 0
+λ→0\lambda\rightarrow 0, 
+E_{0}(\phi_{0})
+E0​(ϕ0)E_{0}(\phi_{0}) in Eq. (1) reduces to
+a free (quadratic) theory; in the hard-spin limit 
+\lambda\to\infty
+λ→∞\lambda\to\infty, fields are restricted to values 
+\phi_{0}(i)=\pm 1
+ϕ0​(i)=±1\phi_{0}(i)=\pm 1, thus recovering Ising spins. For finite 
+\lambda
+λ\lambda, the model is a soft-spin 
+\phi^{4}
+ϕ4\phi^{4} theory which, at equilibrium, belongs to
+the same universality class as the corresponding frustrated Ising model, differing only at subleading corrections to scaling [22]. The various frustrated soft spin models mentioned in Sec. I are then defined as:
+(a) ANNNI with 
+\kappa_{x}&gt;0
+κx&gt;0\kappa_{x}&gt;0, 
+\kappa_{y}=0
+κy=0\kappa_{y}=0, 
+\kappa_{d}=0
+κd=0\kappa_{d}=0,
+(b) BNNNI with 
+\kappa_{x}=\kappa_{y}&gt;0
+κx=κy&gt;0\kappa_{x}=\kappa_{y}&gt;0, 
+\kappa_{d}=0
+κd=0\kappa_{d}=0, and
+(c) 3NNNI with 
+\kappa_{x}=\kappa_{y}&gt;0
+κx=κy&gt;0\kappa_{x}=\kappa_{y}&gt;0, 
+\kappa_{d}&gt;0
+κd&gt;0\kappa_{d}&gt;0.
+In this work we focus on the soft-spin BNNNI (sBNNNI) model with 
+\lambda=1
+λ=1\lambda=1. Without loss of generality we set 
+J=1
+J=1J=1 and vary 
+\kappa=\kappa_{x}=\kappa_{y}
+κ=κx=κy\kappa=\kappa_{x}=\kappa_{y} and 
+T
+TT.
+
+The resulting equilibrium phase diagram, which we determined using Monte Carlo simulations (see Fig. 1), exhibits five distinct phases. The structure factor
+
+S(q_{x},q_{y})=\frac{1}{L^{2}}\left\langle\left|\sum_{i}\phi_{0}(i)\,e^{i(q_{x}x_{i}+q_{y}y_{i})}\right|^{2}\right\rangle,
+S⁡(qx,qy)=1L2​⟨|∑iϕ0​(i)​ei⁡(qx​xi+qy​yi)|2⟩,S(q_{x},q_{y})=\frac{1}{L^{2}}\left\langle\left|\sum_{i}\phi_{0}(i)\,e^{i(q_{x}x_{i}+q_{y}y_{i})}\right|^{2}\right\rangle,
+
+(3)
+
+distinguishes these phases from the diagonal cut
+
+S_{\rm diag}(q)=S(q,q),
+Sdiag​(q)=S⁡(q,q),S_{\rm diag}(q)=S(q,q),
+
+(4)
+
+and the scaling of its peak amplitude with linear system size 
+L
+LL [23]. In particular:
+
+• 
+
+the ferromagnetic (FM) phase exhibits a peak at 
+q=0
+q=0q=0,
+the amplitude of which scales extensively, i.e., as 
+S_{\rm diag}(q=0)\sim L^{2}
+Sdiag​(q=0)∼L2S_{\rm diag}(q=0)\sim L^{2} (see Fig. 1C);
+
+• 
+
+the homogeneous paramagnetic (PM) phase exhibits a peak at 
+q=0
+q=0q=0, the amplitude of which remains finite as 
+L\to\infty
+L→∞L\to\infty (see Fig. 1A);
+
+• 
+
+the modulated paramagnetic phase (MPM) exhibits a peak at finite 
+q&gt;0
+q&gt;0q&gt;0,
+the amplitude of which also remains finite as 
+L\to\infty
+L→∞L\to\infty (see Fig. 1D);
+
+• 
+
+the incommensurate (IC) phase presents modulated oder and its structure factor exhibits a peak at finite 
+0&lt;q&lt;\pi/2
+0&lt;q&lt;π/20&lt;q&lt;\pi/2,
+the amplitude of which scales as 
+S_{\rm diag}(q)\sim L^{2-\eta}
+Sdiag​(q)∼L2−ηS_{\rm diag}(q)\sim L^{2-\eta} (see Fig. 1E);
+
+• 
+
+the antiphase (AF) corresponds to a checkerboard pattern with a width of two lattice spacings and is characterized by a peak at 
+q=\pi/2
+q=π/2q=\pi/2, the amplitude of which scales extensively (see Fig. 1F).
+
+Ising-like transition points between the FM and homogeneous PM phases Fig. 1 were further determined from the asymptotic finite-size scaling of the magnetic susceptibility and second moment correlation length, using the known critical exponents, as detailed in App. B. Precise determinations of the other phase transitions were not attempted.
+
+In the following, we apply the WCRG to representative points spanning all five phases of the sBNNNI model and to the Ising-like critical line, with particular emphasis on the latter.
+
+III Wavelet conditional renormalization group
+
+The WCRG algorithm is based on learning the conditional probability
+distributions of the fast degrees of freedom, represented by wavelet
+coefficients, conditioned on the slow degrees of freedom, represented by
+coarse-grained fields at different scales. A microscopic field configuration is recursively decomposed by an orthogonal
+wavelet transform. At scale 
+j
+jj, the field 
+\phi_{j-1}
+ϕj−1\phi_{j-1}, defined on a
+lattice of linear size 
+L_{j-1}
+Lj−1L_{j-1}, is mapped to a coarse field 
+\phi_{j}
+ϕj\phi_{j} on a
+lattice of linear size 
+L_{j}=L/2^{j}
+Lj=L/2jL_{j}=L/2^{j}, together with a set of wavelet variables
+
+\bar{\phi}_{j}
+ϕ¯j\bar{\phi}_{j} containing the fast fluctuations removed by the coarse graining.
+The explicit construction of the two-dimensional transform
+
+\mathcal{W}_{j}\phi_{j-1}=(\phi_{j}=W_{j}\phi_{j-1},\bar{\phi}_{j}=\overline{W}_{j}\phi_{j-1})
+𝒲j​ϕj−1=(ϕj=Wj​ϕj−1,ϕ¯j=W¯j​ϕj−1)\mathcal{W}_{j}\phi_{j-1}=(\phi_{j}=W_{j}\phi_{j-1},\bar{\phi}_{j}=\overline{W}_{j}\phi_{j-1}), including the low-pass map
+
+W_{j}
+WjW_{j}, the high-pass maps 
+\overline{W}_{j}
+W¯j\overline{W}_{j}, and the three wavelet channels,
+is given in App. C, see Eqs. (70)–(73).
+
+The transform is orthogonal and therefore invertible. We denote its inverse by
+
+\phi_{j-1}=\mathcal{W}_{j}^{-1}(\phi_{j},\bar{\phi}_{j}).
+ϕj−1=𝒲j−1​(ϕj,ϕ¯j).\phi_{j-1}=\mathcal{W}_{j}^{-1}(\phi_{j},\bar{\phi}_{j}).
+
+(5)
+
+As discussed in App. C, orthogonality also implies
+that the corresponding change of variables has unit Jacobian. As a result, expressing probability densities in terms of 
+(\phi_{j},\bar{\phi}_{j})
+(ϕj,ϕ¯j)(\phi_{j},\bar{\phi}_{j}) does not require any additional Jacobian factor.
+
+Iterating the decomposition gives a one-to-one representation of the
+microscopic field in terms of the coarsest field and all wavelet variables,
+
+\phi_{0}\longleftrightarrow\left(\phi_{J},\bar{\phi}_{J},\bar{\phi}_{J-1},\ldots,\bar{\phi}_{1}\right).
+ϕ0⟷(ϕJ,ϕ¯J,ϕ¯J−1,…,ϕ¯1).\phi_{0}\longleftrightarrow\left(\phi_{J},\bar{\phi}_{J},\bar{\phi}_{J-1},\ldots,\bar{\phi}_{1}\right).
+
+(6)
+
+In the numerical applications considered in this work, the hierarchy is
+iterated down to 
+L_{J}=1
+LJ=1L_{J}=1.
+
+The probability distribution of the field at scale 
+j
+jj is written in terms of
+an effective energy 
+E_{j}
+EjE_{j},
+
+p_{j}(\phi_{j})=\frac{1}{Z_{j}}e^{-E_{j}(\phi_{j})}.
+pj​(ϕj)=1Zj​e−Ej​(ϕj).p_{j}(\phi_{j})=\frac{1}{Z_{j}}e^{-E_{j}(\phi_{j})}.
+
+(7)
+
+That energy is obtained recursively from the finer-scale distribution (starting from the microscopic energy 
+E_{0}
+E0E_{0})
+by integrating out the wavelet variables,
+
+e^{-E_{j}(\phi_{j})}=\int{\rm d}\bar{\phi}_{j}\,e^{-E_{j-1}(\mathcal{W}_{j}^{-1}(\phi_{j},\bar{\phi}_{j}))}.
+e−Ej​(ϕj)=∫d​ϕ¯j​e−Ej−1​(𝒲j−1​(ϕj,ϕ¯j)).e^{-E_{j}(\phi_{j})}=\int{\rm d}\bar{\phi}_{j}\,e^{-E_{j-1}(\mathcal{W}_{j}^{-1}(\phi_{j},\bar{\phi}_{j}))}.
+
+(8)
+
+Note that here and in the following, effective energies are defined up to additive
+constants, which are absorbed into the corresponding normalizations.
+
+Because the wavelet transform has unit Jacobian, the joint probability density of
+
+(\phi_{j},\bar{\phi}_{j})
+(ϕj,ϕ¯j)(\phi_{j},\bar{\phi}_{j}) is simply
+
+p_{j-1}\!\left(\mathcal{W}_{j}^{-1}(\phi_{j},\bar{\phi}_{j})\right).
+pj−1​(𝒲j−1​(ϕj,ϕ¯j)).p_{j-1}\!\left(\mathcal{W}_{j}^{-1}(\phi_{j},\bar{\phi}_{j})\right).
+
+Therefore, the conditional distribution of the wavelet variables at fixed
+coarse field is
+
+p_{j}(\bar{\phi}_{j}|\phi_{j})=\frac{p_{j-1}\!\left(\mathcal{W}_{j}^{-1}(\phi_{j},\bar{\phi}_{j})\right)}{p_{j}(\phi_{j})}.
+pj​(ϕ¯j|ϕj)=pj−1​(𝒲j−1​(ϕj,ϕ¯j))pj​(ϕj).p_{j}(\bar{\phi}_{j}|\phi_{j})=\frac{p_{j-1}\!\left(\mathcal{W}_{j}^{-1}(\phi_{j},\bar{\phi}_{j})\right)}{p_{j}(\phi_{j})}.
+
+(9)
+
+Equivalently, this conditional probability can be written as
+
+p_{j}(\bar{\phi}_{j}|\phi_{j})=\exp\left[-\bar{E}_{j}(\bar{\phi}_{j};\phi_{j})+\bar{F}_{j}(\phi_{j})\right],
+pj​(ϕ¯j|ϕj)=exp⁡[−E¯j​(ϕ¯j,ϕj)+F¯j​(ϕj)],p_{j}(\bar{\phi}_{j}|\phi_{j})=\exp\left[-\bar{E}_{j}(\bar{\phi}_{j};\phi_{j})+\bar{F}_{j}(\phi_{j})\right],
+
+(10)
+
+where the conditional energy is defined from the finer-scale effective energy,
+
+\bar{E}_{j}(\bar{\phi}_{j};\phi_{j})=E_{j-1}\!\left(\mathcal{W}_{j}^{-1}(\phi_{j},\bar{\phi}_{j})\right).
+E¯j​(ϕ¯j,ϕj)=Ej−1​(𝒲j−1​(ϕj,ϕ¯j)).\bar{E}_{j}(\bar{\phi}_{j};\phi_{j})=E_{j-1}\!\left(\mathcal{W}_{j}^{-1}(\phi_{j},\bar{\phi}_{j})\right).
+
+(11)
+
+The corresponding free-energy contribution is fixed by normalization,
+
+e^{-\bar{F}_{j}(\phi_{j})}=\int{\rm d}\bar{\phi}_{j}\,e^{-\bar{E}_{j}(\bar{\phi}_{j};\phi_{j})}.
+e−F¯j​(ϕj)=∫d​ϕ¯j​e−E¯j​(ϕ¯j,ϕj).e^{-\bar{F}_{j}(\phi_{j})}=\int{\rm d}\bar{\phi}_{j}\,e^{-\bar{E}_{j}(\bar{\phi}_{j};\phi_{j})}.
+
+(12)
+
+The exact microscopic distribution can be factorized into a product of
+conditional probabilities associated with the successive wavelet decompositions of
+Eq. (6),
+
+p_{0}(\phi_{0})=p_{J}(\phi_{J})\prod_{j=1}^{J}p_{j}(\bar{\phi}_{j}|\phi_{j}).
+p0​(ϕ0)=pJ​(ϕJ)​∏j=1Jpj​(ϕ¯j|ϕj).p_{0}(\phi_{0})=p_{J}(\phi_{J})\prod_{j=1}^{J}p_{j}(\bar{\phi}_{j}|\phi_{j}).
+
+(13)
+
+Equivalently, using Eqs. (7) and
+(10), the microscopic energy can be expressed using a
+hierarchical form,
+
+E_{0}(\phi_{0})=E_{J}(\phi_{J})+\sum_{j=1}^{J}\left[\bar{E}_{j}(\bar{\phi}_{j};\phi_{j})-\bar{F}_{j}(\phi_{j})\right],
+E0​(ϕ0)=EJ​(ϕJ)+∑j=1J[E¯j​(ϕ¯j,ϕj)−F¯j​(ϕj)],E_{0}(\phi_{0})=E_{J}(\phi_{J})+\sum_{j=1}^{J}\left[\bar{E}_{j}(\bar{\phi}_{j};\phi_{j})-\bar{F}_{j}(\phi_{j})\right],
+
+(14)
+
+neglecting an irrelevant additive constant.
+Up to this point, everything is exact. The idea behind WCRG is that expressing the probability distributions as a cascade over conditional probability distributions, Eq. (6), allows one to circumvent critical slowing down since all 
+p_{j}(\bar{\phi}_{j}|\phi_{j})
+pj​(ϕ¯j|ϕj)p_{j}(\bar{\phi}_{j}|\phi_{j})s are easy to sample.
+
+The challenge is then to learn or infer from data these conditional distributions. In order to do that,
+the exact energies appearing in
+Eq. (14) are estimated by finite-dimensional
+parametrizations. The coarsest energy 
+E_{J}(\phi_{J})
+EJ​(ϕJ)E_{J}(\phi_{J}) is approximated by a
+parametric energy 
+E_{\theta_{J}}(\phi_{J})
+EθJ​(ϕJ)E_{\theta_{J}}(\phi_{J}), where 
+\theta_{J}
+θJ\theta_{J} is the vector of
+learned coefficients. Because we here set 
+L_{J}=1
+LJ=1L_{J}=1, 
+E_{\theta_{J}}
+EθJE_{\theta_{J}} is a
+one-dimensional potential expanded on a fixed finite family of sigmoid
+functions, as described in App. D.
+
+Each exact conditional energy 
+\bar{E}_{j}(\bar{\phi}_{j};\phi_{j})
+E¯j​(ϕ¯j,ϕj)\bar{E}_{j}(\bar{\phi}_{j};\phi_{j}) is approximated as
+
+\bar{E}_{\bar{\theta}_{j}}(\bar{\phi}_{j};\phi_{j})=\bar{\theta}_{j}^{\mathrm{T}}\Psi_{j}(W_{j}^{-1}(\phi_{j},\bar{\phi}_{j})),
+E¯θ¯j​(ϕ¯j,ϕj)=θ¯jT​Ψj​(Wj−1​(ϕj,ϕ¯j)),\bar{E}_{\bar{\theta}_{j}}(\bar{\phi}_{j};\phi_{j})=\bar{\theta}_{j}^{\mathrm{T}}\Psi_{j}(W_{j}^{-1}(\phi_{j},\bar{\phi}_{j})),
+
+(15)
+
+where 
+\Psi_{j}
+Ψj\Psi_{j} collects the retained symmetry-allowed functions of the
+fields. In the present work,
+
+\Psi_{j}
+Ψj\Psi_{j} contains translationally invariant quadratic couplings and local
+potential terms, as detailed in App. D. The vector
+
+\bar{\theta}_{j}
+θ¯j\bar{\theta}_{j} contains the associated coupling constants. The ansatz is
+therefore linear in the parameters 
+\bar{\theta}_{j}
+θ¯j\bar{\theta}_{j}, while the functions in
+
+\Psi_{j}
+Ψj\Psi_{j} can be nonlinear functions of the fields. The parameters 
+\bar{\theta}_{j}
+θ¯j\bar{\theta}_{j} are learned independently at each scale by
+matching the score to the conditional distributions
+
+p_{j}(\bar{\phi}_{j}|\phi_{j})
+pj​(ϕ¯j|ϕj)p_{j}(\bar{\phi}_{j}|\phi_{j}).
+
+After learning, synthetic microscopic configurations are generated
+recursively. One first samples the coarsest field from
+
+p_{\theta_{J}}(\phi_{J})
+pθJ​(ϕJ)p_{\theta_{J}}(\phi_{J}), and then for 
+j=J,J-1,\ldots,1
+j=J,J−1,…,1j=J,J-1,\ldots,1 one samples
+
+\bar{\phi}_{j}
+ϕ¯j\bar{\phi}_{j} from the learned conditional distribution at fixed 
+\phi_{j}
+ϕj\phi_{j}
+and reconstructs the finer field through Eq. (5). The
+conditional sampling is performed using a standard local Metropolis Monte Carlo
+algorithm. At fixed 
+\phi_{j}
+ϕj\phi_{j}, the acceptance ratio for a proposed change
+
+\bar{\phi}_{j}\to\bar{\phi}_{j}^{\prime}
+ϕ¯j→ϕ¯j′\bar{\phi}_{j}\to\bar{\phi}_{j}^{\prime} depends only on
+
+\Delta\bar{E}_{\bar{\theta}_{j}}=\bar{E}_{\bar{\theta}_{j}}(\bar{\phi}_{j}^{\prime};\phi_{j})-\bar{E}_{\bar{\theta}_{j}}(\bar{\phi}_{j};\phi_{j}).
+Δ​E¯θ¯j=E¯θ¯j​(ϕ¯j′,ϕj)−E¯θ¯j​(ϕ¯j,ϕj).\Delta\bar{E}_{\bar{\theta}_{j}}=\bar{E}_{\bar{\theta}_{j}}(\bar{\phi}_{j}^{\prime};\phi_{j})-\bar{E}_{\bar{\theta}_{j}}(\bar{\phi}_{j};\phi_{j}).
+
+(16)
+
+Therefore, for the purpose of generating synthetic configurations,
+only the coarsest energy 
+E_{\theta_{J}}
+EθJE_{\theta_{J}} and the conditional energies
+
+\bar{E}_{\bar{\theta}_{j}}
+E¯θ¯j\bar{E}_{\bar{\theta}_{j}} are needed explicitly. (See App. D for implementation details.)
+
+The learned conditional energy
+
+\bar{E}_{\bar{\theta}_{j}}
+E¯θ¯j\bar{E}_{\bar{\theta}_{j}} nevertheless induces a conditional normalization,
+
+\bar{F}_{\bar{\theta}_{j}}^{\rm ind}(\phi_{j})=-\log\int{\rm d}\bar{\phi}_{j}\,\exp\left[-\bar{E}_{\bar{\theta}_{j}}(\bar{\phi}_{j};\phi_{j})\right].
+F¯θ¯jind(ϕj)=−log∫dϕ¯jexp[−E¯θ¯j(ϕ¯j;ϕj)].\bar{F}_{\bar{\theta}_{j}}^{\rm ind}(\phi_{j})=-\log\int{\rm d}\bar{\phi}_{j}\,\exp\left[-\bar{E}_{\bar{\theta}_{j}}(\bar{\phi}_{j};\phi_{j})\right].
+
+(17)
+
+Although this quantity is not computed during conditional sampling, it defines the
+synthetic hierarchical measure actually sampled by the generative procedure,
+
+E_{0}^{\rm synth}(\phi_{0})=E_{\theta_{J}}(\phi_{J})+\sum_{j=1}^{J}\left[\bar{E}_{\bar{\theta}_{j}}(\bar{\phi}_{j};\phi_{j})-\bar{F}_{\bar{\theta}_{j}}^{\rm ind}(\phi_{j})\right].
+E0synth​(ϕ0)=EθJ​(ϕJ)+∑j=1J[E¯θ¯j​(ϕ¯j,ϕj)−F¯θ¯jind​(ϕj)].E_{0}^{\rm synth}(\phi_{0})=E_{\theta_{J}}(\phi_{J})+\sum_{j=1}^{J}\left[\bar{E}_{\bar{\theta}_{j}}(\bar{\phi}_{j};\phi_{j})-\bar{F}_{\bar{\theta}_{j}}^{\rm ind}(\phi_{j})\right].
+
+(18)
+
+In general, this energy differs from the original microscopic energy
+
+E_{0}
+E0E_{0}, because the conditional energies are represented within a finite
+ansatz class.
+
+To reconstruct an explicit microscopic energy functional
+associated with the learned WCRG hierarchy, the induced free-energy terms must
+also be approximated. We denote these fitted free-energy contributions
+
+\bar{F}_{\alpha_{j}}
+F¯αj\bar{F}_{\alpha_{j}}, where 
+\alpha_{j}
+αj\alpha_{j} denotes the corresponding vector of
+parameters. This gives the explicit WCRG energy
+
+E_{0}^{\rm WCRG}(\phi_{0})=E_{\theta_{J}}(\phi_{J})+\sum_{j=1}^{J}\left[\bar{E}_{\bar{\theta}_{j}}(\bar{\phi}_{j};\phi_{j})-\bar{F}_{\alpha_{j}}(\phi_{j})\right].
+E0WCRG​(ϕ0)=EθJ​(ϕJ)+∑j=1J[E¯θ¯j​(ϕ¯j,ϕj)−F¯αj​(ϕj)].E_{0}^{\rm WCRG}(\phi_{0})=E_{\theta_{J}}(\phi_{J})+\sum_{j=1}^{J}\left[\bar{E}_{\bar{\theta}_{j}}(\bar{\phi}_{j};\phi_{j})-\bar{F}_{\alpha_{j}}(\phi_{j})\right].
+
+(19)
+
+(See App. D for details of the 
+\alpha_{j}
+αj\alpha_{j} estimation.)
+
+The choice of wavelet family is adapted to the phase structure. We use Haar wavelets [24] for the points that have an homogeneous texture, namely within the
+FM and PM phases, and along Ising-like critical line.
+We use Daubechies wavelets with four
+vanishing moments (DB4) [21] for the MPM, IC, and AF regimes. The smoother and wider filters of the latter are better suited to finite-wavevector modulations.
+
+IV Numerical results
+
+In this section, we test the efficacy of the WCRG construction as a sampling
+method for the sBNNNI model. We first compare Monte Carlo and WCRG-generated
+configurations across representative regions of the phase diagram. We then
+analyze the decorrelation of the conditional wavelet chains at criticality,
+where local Monte Carlo dynamics suffers from critical slowing down. Finally,
+we study configuration-wide observables, focusing on the magnetization and the
+microscopic energy as diagnostics of the generated measure.
+
+IV.1 Wavelet sampling across the phase diagram
+
+Figure 2: Comparison between Monte Carlo configurations and samples generated through WCRG for representative points of the sBNNNI phase diagram (A–F in Fig. 1).
+Subsequent rows correspond to a point—from top to bottom: (A) in the PM phase, (B) along the Ising critical line, (C) in the FM phase, (D) in the MPM phase, (E) in the IC phase, and (F) in the AF phase.
+For each point, the panels display: (1st column) an original Monte Carlo configuration, (2nd column) a synthetic configuration reconstructed through recursive conditional sampling,
+the comparison between the original (blue) and the reconstructed (yellow) distributions of (3rd column) 
+P(\phi_{0}(i))
+P​(ϕ0​(i))P(\phi_{0}(i)) and (4th column) the diagonal structure factor 
+S_{\rm diag}(q)
+Sdiag​(q)S_{\rm diag}(q) (see Eq. (4)).
+Standard Haar wavelets are used for the FM, Ising critical, and PM points. To better capture the emerging modulated structures, Daubechies wavelets with four vanishing moments (DB4) are used for the MPM, IC, and AF phases.
+A good agreement is obtained between generated and original samples for both local observables and long-range correlations in all cases except the AF phase, for which the reconstruction is hindered for the reasons explained at the end of Sec. IV.1.
+
+We apply the WCRG construction to the representative points of the sBNNNI
+phase diagram in Fig. 1. Unless otherwise stated,
+we use systems of linear size 
+L=64
+L=64L=64. For each condition 
+(T,\kappa)
+(T,κ)(T,\kappa), we
+first generate a reference ensemble of 3000 equilibrium Monte Carlo configurations
+of the microscopic model in Eq. (1), using local single-site
+Metropolis updates (see App. D). These configurations are then used both as reference samples and as training data for the conditional WCRG models.
+
+For the ordered phases, namely FM, IC, and AF, each run is initialized from an
+independent random configuration. The system is then equilibrated until the
+magnetization 
+m_{0}
+m0m_{0} and the second moment 
+\langle\phi_{0}^{2}\rangle
+⟨ϕ02⟩\langle\phi_{0}^{2}\rangle, defined
+in Eqs. (23) and (24), reach stationary values, and
+discard an additional time window of at least five autocorrelation times of
+these observables. Simulation time is defined in units of Monte Carlo sweeps, which consist of 
+L^{2}
+L2L^{2} attempted single-site updates. In the PM and MPM phases, and at the Ising-like critical
+point, we start from a disordered configuration and sample configurations only
+after the same observables have thermalized. Configurations separated in time by at least twice the largest measured autocorrelation time among these observables are then stored for further analysis. At the critical point, this procedure reflects the critical slowing down of the underlying local Metropolis dynamics: for 
+L=64
+L=64L=64, the largest autocorrelation time is approximately 
+10^{4}
+10410^{4} Monte Carlo sweeps, as shown in Fig. 4. Hence, generating the 3000 configurations used here required up to 
+6\times 10^{7}
+6×1076\times 10^{7} Monte Carlo sweeps, following equilibration.
+
+These Monte Carlo configurations are then used to construct the scale-dependent training pairs of Eq. (74), from which the conditional WCRG models are learned. After training, (synthetic) configurations are generated—recursively from coarse to fine scales—according to the procedure described in Sec. III.
+
+Figure 2 compares original and synthetic
+configurations at representative points for each phase, which includes a typical microscopic configuration, the distribution of local field values
+
+P(\phi_{0}(i))
+P​(ϕ0​(i))P(\phi_{0}(i)), and the diagonal structure factor 
+S_{\rm diag}(q)
+Sdiag​(q)S_{\rm diag}(q) of Eq. (4). The
+local field distribution assesses whether the reconstruction captures the
+single-site statistics of the soft-spin variable, while the structure factor
+probes spatial correlations and, in particular, the dominant ordering
+wavevector.
+
+Agreement is generally good for all phase points considered. In the homogeneous
+phases and at the critical point, the reconstructed samples reproduce both the
+local field statistics and the peak structure at small wavevector. In the MPM
+and IC regimes, the method similarly captures the finite-wavevector peak of
+
+S_{\rm diag}(q)
+Sdiag​(q)S_{\rm diag}(q), showing that the synthetic configurations retain the
+modulated structure of the original ones.
+
+The AF regime exhibits the most pronounced discrepancy. This case offers a particularly stringent
+test for the present reconstruction scheme, because the ordered state is a
+rigid commensurate modulation whose wavelength is tied directly to the
+microscopic lattice scale. In this situation, the low-pass fields generated at
+intermediate scales carry little information about the alternating pattern. After coarse graining, the checkerboard modulation is largely averaged out;
+the relevant information is concentrated only in the finest wavelet degrees of
+freedom. As a result, the conditional reconstruction
+exploits the multiscale hierarchy much less effectively than in phases where the
+dominant structures are visible at coarse and intermediate scales as well.
+
+IV.2 Absence of critical slowing down
+
+Figure 3: Multiscale sampling and reconstruction of two representative
+configurations. Each realization is generated starting from the coarsest scale (top configurations, 
+\phi_{J}
+ϕJ\phi_{J}) and moving towards the finer ones (bottom configurations, 
+\phi_{0}
+ϕ0\phi_{0}) by accounting recursively for the details encoded in three sampled wavelets at each scale (denoted 
+\bar{\phi}_{J},\ldots,\bar{\phi}_{1}
+ϕ¯J,…,ϕ¯1\bar{\phi}_{J},\ldots,\bar{\phi}_{1} and represented by smaller squares). Colors encode 
+\phi_{j}
+ϕj\phi_{j} and 
+\bar{\phi}_{j}
+ϕ¯j\bar{\phi}_{j} at the various levels 
+j=J,J-1,\ldots,0
+j=J,J−1,…,0j=J,J-1,\ldots,0, as in the previous figures.
+In practice, the coarsest variable 
+\phi_{J}
+ϕJ\phi_{J} is sampled first. Then, at each scale
+
+j=J,J-1,\ldots,1
+j=J,J−1,…,1j=J,J-1,\ldots,1, the wavelet variables 
+\bar{\phi}_{j}
+ϕ¯j\bar{\phi}_{j} are sampled
+from the learned conditional distribution at fixed 
+\phi_{j}
+ϕj\phi_{j}, and the
+next finer field 
+\phi_{j-1}
+ϕj−1\phi_{j-1} is reconstructed through the inverse
+wavelet transform 
+{\cal W}^{-1}
+𝒲−1{\cal W}^{-1}. The large-scale structure of the eventual finer configuration 
+\phi_{0}
+ϕ0\phi_{0} is therefore already determined at
+the coarser levels and is progressively dressed by shorter-wavelength
+fluctuations, rather than assembled through local propagation on the
+microscopic lattice. Note that at the coarsest scale configurations 1 and 2 are rather similar and so are two of the three initial wavelets 
+\bar{\phi}_{J}
+ϕ¯J\bar{\phi}_{J}. Minor differences on that scale nevertheless suffice to give rise to completely different clusters at the finest scale.
+
+At a continuous phase transition, critical slowing down originates from the
+growth of the correlation length 
+\xi
+ξ\xi. In a finite system at criticality,
+
+\xi
+ξ\xi becomes comparable to the system size 
+L
+LL. For MCMC algorithms based on local microscopic updates, the reorganization of
+correlated structures then requires information to propagate across distances
+of order 
+L
+LL, leading to a growth of equilibration and decorrelation times
+with system size [1, 2].
+
+To quantify this effect, we consider an observable 
+O(t)
+O⁡(t)O(t) measured along a
+trajectory, with time 
+t
+tt measured in Monte Carlo sweeps, for a step size chosen such that the acceptance rate is about 
+50\%
+50%50\%.
+The normalized autocorrelation function in the stationary state is
+
+C_{O}(t)=\frac{\langle O(t_{0}+t)O(t_{0})\rangle-\langle O\rangle^{2}}{\langle O^{2}\rangle-\langle O\rangle^{2}},
+CO​(t)=⟨O⁡(t0+t)​O​(t0)⟩−⟨O⟩2⟨O2⟩−⟨O⟩2,C_{O}(t)=\frac{\langle O(t_{0}+t)O(t_{0})\rangle-\langle O\rangle^{2}}{\langle O^{2}\rangle-\langle O\rangle^{2}},
+
+(20)
+
+where the average is over the reference time 
+t_{0}
+t0t_{0} along the stationary
+trajectory. At long times we fit
+
+C_{O}(t)\sim e^{-t/\tau_{O}},
+CO(t)∼e−t/τO,C_{O}(t)\sim e^{-t/\tau_{O}},
+
+(21)
+
+which defines the exponential autocorrelation time 
+\tau_{O}
+τO\tau_{O}. This quantity
+provides an estimate of the number of sweeps needed to obtain effectively
+decorrelated samples with respect to the observable 
+O
+OO.
+
+For conventional local MCMC dynamics at criticality, autocorrelation
+times are expected to grow algebraically,
+
+\tau_{O}\sim L^{z_{O}},
+τO∼LzO,\tau_{O}\sim L^{z_{O}},
+
+(22)
+
+where the dynamical exponent may depend on the update rule and on the observable.
+As a microscopic reference dynamics, we use single-site local Monte Carlo
+updates for the sBNNNI model at 
+\kappa_{x}=\kappa_{y}=0.2
+κx=κy=0.2\kappa_{x}=\kappa_{y}=0.2 and at the
+size-dependent (pseudo-)critical temperature 
+T_{\rm pc}(L)
+Tpc​(L)T_{\rm pc}(L). In order to investigate the critical slowing down,
+we naturally monitor both the magnetization
+
+m_{0}=\frac{1}{L^{2}}\sum_{i}\phi_{0}(i),
+m0=1L2​∑iϕ0​(i),m_{0}=\frac{1}{L^{2}}\sum_{i}\phi_{0}(i),
+
+(23)
+
+and the spatial second moment of the field,
+
+\langle\phi_{0}^{2}\rangle=\frac{1}{L^{2}}\sum_{i}\phi_{0}^{2}(i).
+⟨ϕ02⟩=1L2​∑iϕ02​(i).\langle\phi_{0}^{2}\rangle=\frac{1}{L^{2}}\sum_{i}\phi_{0}^{2}(i).
+
+(24)
+
+The latter is here particularly important because magnetization—the standard observable in these systems—is ill-suited to extract an autocorrelation time in dynamical algorithms based on WCRG, for reasons discussed below. As shown in Fig. 4, both observables display the
+expected algebraic growth. A power-law fit gives
+
+\tau_{m_{0}},\,\tau_{\langle\phi_{0}^{2}\rangle}\sim L^{z_{\rm loc}},\qquad z_{\rm loc}=2.11(4),
+τm0,τ⟨ϕ02⟩∼Lzloc,zloc=2.11​(4),\tau_{m_{0}},\,\tau_{\langle\phi_{0}^{2}\rangle}\sim L^{z_{\rm loc}},\qquad z_{\rm loc}=2.11(4),
+
+(25)
+
+compatible, within the accuracy of our simulations, with the known dynamic
+critical exponent of local single-spin dynamics in the two-dimensional Ising
+universality class, 
+z=2.1665(12)
+z=2.1665​(12)z=2.1665(12) [25, 26].
+
+Cluster algorithms provide an important point of comparison. In unfrustrated
+ferromagnetic systems, Swendsen–Wang and Wolff updates construct extended
+correlated clusters and update them collectively, thereby strongly reducing the
+critical slowing down associated with single-site dynamics
+[2, 27]. In frustrated systems, however,
+constructing such clusters is not directly possible [8, 7]. The WCRG strategy
+is conceptually different. It does not attempt to identify microscopic clusters
+to be flipped, but instead samples the long-wavelength degrees of freedom first
+and then conditionally generates the fluctuations associated with progressively
+finer wavelet degrees of freedom. The sampling protocol is described in Sec. III and illustrated in Fig. 3, which shows the scale-by-scale reconstruction of two representative configurations. As the figure illustrates, the main spatial structures present in the final fields 
+\phi_{0}
+ϕ0\phi_{0} can already be recognized at intermediate scales, while each successive reconstruction step adds ever finer details. The two configurations are not obtained by slowly decorrelating one microscopic field from the other, but through two separate top-down cascades, with independently sampled wavelet variables introducing different fluctuations at every level. The statistical efficiency of this construction is quantified below through the autocorrelation times of the conditional wavelet chains.
+
+In this context, magnetization is not a useful observable for monitoring the evolution of the conditional chain. For the wavelet transform used here, each wavelet channel contains at least one high-pass filter whose coefficients sum to zero, as expressed by Eq. (69) in App. C. Consequently, the contribution of the wavelet variables 
+\bar{\phi}_{j}
+ϕ¯j\bar{\phi}_{j} to the reconstructed finer field has zero spatial average. Since the conditional dynamics updates only 
+\bar{\phi}_{j}
+ϕ¯j\bar{\phi}_{j} while keeping 
+\phi_{j}
+ϕj\phi_{j} fixed, the spatial average of the reconstructed field is entirely determined by 
+\phi_{j}
+ϕj\phi_{j}, up to the fixed normalization factor, and remains constant along the conditional chain. The magnetization therefore carries no information about the decorrelation of this chain. We instead monitor the spatial second moment of the reconstructed field,
+
+O_{j,L}(t)=\frac{1}{L_{j-1}^{2}}\sum_{i\in\Lambda_{j-1}}\phi_{j-1}^{2}(i,t),
+Oj,L​(t)=1Lj−12​∑i∈Λj−1ϕj−12​(i,t),O_{j,L}(t)=\frac{1}{L_{j-1}^{2}}\sum_{i\in\Lambda_{j-1}}\phi_{j-1}^{2}(i,t),
+
+(26)
+
+where 
+L\equiv L_{0}
+L≡L0L\equiv L_{0} is the final microscopic size and
+
+L_{j}=L/2^{j}
+Lj=L/2jL_{j}=L/2^{j} is the size of the coarse field at reconstruction level 
+j
+jj.
+For each pair 
+(L,j)
+(L,j)(L,j), we measure the autocorrelation function of
+
+O_{j,L}(t)
+Oj,L​(t)O_{j,L}(t) along the conditional Markov chain and extract the corresponding
+exponential autocorrelation time, 
+\bar{\tau}_{j}(L)
+τ¯j​(L)\bar{\tau}_{j}(L). The reported values are obtained by fitting the autocorrelation function averaged over 50 independent chains, with error bars indicating the corresponding statistical uncertainty.
+
+Figure 4: Autocorrelation times at the Ising-like critical point of the sBNNNI model
+with 
+\kappa=0.2
+κ=0.2\kappa=0.2 and 
+T=T_{\rm pc}(L)
+T=Tpc​(L)T=T_{\rm pc}(L). For local Monte Carlo dynamics, the autocorrelation times of the
+magnetization 
+m_{0}
+m0m_{0} and of the second moment
+
+\langle\phi_{0}^{2}\rangle
+⟨ϕ02⟩\langle\phi_{0}^{2}\rangle grow algebraically with system size. The
+dashed line shows a power-law fit, yielding
+
+z_{\rm loc}=2.11(4)
+zloc=2.11​(4)z_{\rm loc}=2.11(4). By contrast, the conditional autocorrelation
+times 
+\bar{\tau}_{j}(L)
+τ¯j​(L)\bar{\tau}_{j}(L), measured for the second moment of the
+reconstructed field during conditional wavelet sampling at scale 
+j
+jj,
+remain of order unity. No systematic growth is observed either with the
+final microscopic size 
+L
+LL or with the scale-dependent size
+
+L_{j}=L/2^{j}
+Lj=L/2jL_{j}=L/2^{j}.
+
+The results in Fig. 4 show a qualitative difference
+between local and WCRG dynamics, which is one of the main results of this work. Within the
+range of sizes and scales investigated here, the conditional autocorrelation
+times remain bounded,
+
+\bar{\tau}_{j}(L)=\mathcal{O}(1),
+τ¯j​(L)=𝒪​(1),\bar{\tau}_{j}(L)=\mathcal{O}(1),
+
+(27)
+
+with no detectable systematic increase as either 
+L
+LL or 
+L_{j}
+LjL_{j} grows.
+In other words, although the conditional distributions are sampled with
+local Metropolis moves, a fixed number of conditional sweeps suffices to
+decorrelate wavelet variables at each reconstruction level.
+A complete microscopic realization the requires but one conditional sampling stage for
+each wavelet level. Iterating the hierarchy down to 
+L_{J}=1
+LJ=1L_{J}=1, requires sampling all levels,
+
+J=\log_{2}L.
+J=log2⁡L.J=\log_{2}L.
+
+(28)
+
+As a result, the sequential decorrelation depth of the full WCRG reconstruction,
+measured in conditional-sweep units, scales as
+
+\tau_{\rm WCRG}^{\rm depth}\sim\sum_{j=1}^{J}\bar{\tau}_{j}(L)=\mathcal{O}(J)=\mathcal{O}(\log_{2}L).
+τWCRGdepth∼∑j=1Jτ¯j​(L)=𝒪⁡(J)=𝒪⁡(log2⁡L).\tau_{\rm WCRG}^{\rm depth}\sim\sum_{j=1}^{J}\bar{\tau}_{j}(L)=\mathcal{O}(J)=\mathcal{O}(\log_{2}L).
+
+(29)
+
+This logarithmic scaling should not be confused with the total number of
+elementary local update attempts. A conditional sweep at scale 
+j
+jj updates a
+number of wavelet degrees of freedom proportional to 
+L_{j}^{2}
+Lj2L_{j}^{2}. If
+
+\bar{\tau}_{j}(L)=\mathcal{O}(1)
+τ¯j​(L)=𝒪​(1)\bar{\tau}_{j}(L)=\mathcal{O}(1), the total number of local update attempts required for the full hierarchy scales as
+
+\mathcal{\#}_{\rm WCRG}\propto\sum_{j=1}^{J}L_{j}^{2}=\mathcal{O}(L^{2}),
+#WCRG∝∑j=1JLj2=𝒪⁡(L2),\mathcal{\#}_{\rm WCRG}\propto\sum_{j=1}^{J}L_{j}^{2}=\mathcal{O}(L^{2}),
+
+(30)
+
+up to scale-independent factors. This cost is
+linear in the number of microscopic degrees of freedom and does not acquire the
+additional critical scaling factor 
+L^{z_{O}}
+LzOL^{z_{O}} characteristic of local microscopic
+sampling.
+
+IV.3 Configuration-wide observables
+
+In the two previous subsections, we demonstrated the ability of the WCRG to generate microscopic configurations across different phases of the sBNNNI model and along its Ising-like critical line. The quality of the generated samples was assessed by comparing local observables, i.e., the single-site probability distribution 
+P(\phi_{0}(i))
+P​(ϕ0​(i))P(\phi_{0}(i)) and the diagonal structure factor 
+S_{\rm diag}(q)
+Sdiag​(q)S_{\rm diag}(q) which probes two-point correlation functions.
+
+We now consider configuration-wide observables. The simplest such examples are the magnetization 
+m
+mm from Eq. (23), and the energy per site
+
+e=\frac{E_{0}[\phi_{0}]}{L^{2}}.
+e=E0​[ϕ0]L2.e=\frac{E_{0}[\phi_{0}]}{L^{2}}.
+
+(31)
+
+Figure 5 compares these two quantities for original and synthetic configurations along the Ising-like critical point (with 
+\kappa=0.2
+κ=0.2\kappa=0.2, 
+T=1.0
+T=1.0T=1.0, and 
+L=64
+L=64L=64).
+
+(a)(b)
+Figure 5: Comparison between the statistics of configuration-wide observables for original and synthetic configurations along the Ising-like critical point of the sBNNNI model, with 
+\kappa=0.2
+κ=0.2\kappa=0.2, 
+T=1.0
+T=1.0T=1.0, and 
+L=64
+L=64L=64.
+Distribution of (a) the absolute magnetization 
+|m|
+|m||m| and (b) the intensive microscopic energy 
+e
+ee. While the former shows excellent
+agreement between original and synthetic samples
+the latter presents a
+visible mismatch. This discrepancy reflects the truncation of the exact multiscale effective energies entering the hierarchical probability distribution of the WCRG. 
+
+Magnetization.
+
+Figure 5(a) shows excellent agreement between the magnetization distributions obtained on these two different kinds of configurations.
+However, this agreement should be interpreted with caution.
+The distribution 
+P(m)
+P⁡(m)P(m) encodes all moments 
+\langle m^{n}\rangle
+⟨mn⟩\langle m^{n}\rangle, which are actually determined by spatial integrals of the multi-point correlation functions of the microscopic variables.
+Accordingly, once the complete hierarchy of correlation functions is reproduced, the magnetization distribution 
+P(m)
+P⁡(m)P(m) follows automatically. The converse, however, is not true: reproducing the magnetization distribution 
+P(m)
+P⁡(m)P(m) alone does not guarantee the correct reproduction of the full hierarchy of correlation functions.
+
+Reproducing the magnetization distribution
+in Fig. 5(a) is therefore largely built into the multiscale reconstruction scheme of the WCRG.
+At the coarsest scale 
+j=J
+j=Jj=J, the field 
+\phi_{J}
+ϕJ\phi_{J} consists of a single degree of freedom 
+(L_{J}=1)
+(LJ=1)(L_{J}=1), which is proportional to the spatial average of the microscopic field (i.e., of the field 
+\phi_{0}
+ϕ0\phi_{0} at scale 
+j=0
+j=0j=0). Learning its distribution amounts to fitting the one-dimensional effective potential 
+V_{J}(\phi_{J})
+VJ​(ϕJ)V_{J}(\phi_{J}) with 
+E_{J}(\phi_{J})=V_{J}(\phi_{J})
+EJ​(ϕJ)=VJ​(ϕJ)E_{J}(\phi_{J})=V_{J}(\phi_{J}). Once this coarse distribution is correctly reproduced, the subsequent recursive reconstruction preserves the total magnetization, up to the normalization convention of the wavelet transform, because all wavelet modes are constructed to have vanishing spatial averages. As a result, the magnetization distribution is fixed at the coarsest scale and is preserved throughout the reconstruction.
+
+Energy.
+
+Figure 5(b) presents a visible mismatch between the two energy distributions. This discrepancy is rooted in the synthetic configurations not being drawn from the exact microscopic Gibbs measure, 
+p_{0}(\phi_{0})
+p0​(ϕ0)p_{0}(\phi_{0}). As discussed
+in Sec. III, the exact hierarchical representation of the
+microscopic energy, Eq. (14), involves the true
+conditional energies 
+\bar{E}_{j}
+E¯j\bar{E}_{j}, defined in Eq. (11), and the
+corresponding free-energy terms 
+\bar{F}_{j}
+F¯j\bar{F}_{j}, defined in
+Eq. (12). These quantities are determined by the exact
+coarse-grained effective energies, which contain all the possible interaction terms compatible with the symmetry of the model, that are
+generated by integrating out finer degrees of freedom in
+Eq. (8).
+
+By contrast, in the learned model the exact conditional energies 
+\bar{E}_{j}
+E¯j\bar{E}_{j} are
+estimated by the finite-dimensional ansatz
+
+\bar{E}_{\bar{\theta}_{j}}
+E¯θ¯j\bar{E}_{\bar{\theta}_{j}} of Eq. (15). The
+conditional sampling procedure therefore uses
+
+\bar{p}_{\bar{\theta}_{j}}(\bar{\phi}_{j}|\phi_{j})=\exp\left[-\bar{E}_{\bar{\theta}_{j}}(\bar{\phi}_{j};\phi_{j})+\bar{F}_{\bar{\theta}_{j}}^{\rm ind}(\phi_{j})\right],
+p¯θ¯j​(ϕ¯j|ϕj)=exp⁡[−E¯θ¯j​(ϕ¯j,ϕj)+F¯θ¯jind​(ϕj)],\bar{p}_{\bar{\theta}_{j}}(\bar{\phi}_{j}|\phi_{j})=\exp\left[-\bar{E}_{\bar{\theta}_{j}}(\bar{\phi}_{j};\phi_{j})+\bar{F}_{\bar{\theta}_{j}}^{\rm ind}(\phi_{j})\right],
+
+(32)
+
+where the normalization 
+\bar{F}_{\bar{\theta}_{j}}^{\rm ind}
+F¯θ¯jind\bar{F}_{\bar{\theta}_{j}}^{\rm ind} is the induced
+free energy defined in Eq. (17). Because
+
+\bar{E}_{\bar{\theta}_{j}}
+E¯θ¯j\bar{E}_{\bar{\theta}_{j}} is in general only an approximation of 
+\bar{E}_{j}
+E¯j\bar{E}_{j},
+
+\bar{F}_{\bar{\theta}_{j}}^{\rm ind}
+F¯θ¯jind\bar{F}_{\bar{\theta}_{j}}^{\rm ind} is also different from the exact
+
+\bar{F}_{j}
+F¯j\bar{F}_{j}: the two quantities normalize different conditional energies.
+Consequently,
+
+\bar{p}_{\bar{\theta}_{j}}(\bar{\phi}_{j}|\phi_{j})\neq\bar{p}_{j}(\bar{\phi}_{j}|\phi_{j}),
+p¯θ¯j​(ϕ¯j|ϕj)≠p¯j​(ϕ¯j|ϕj),\bar{p}_{\bar{\theta}_{j}}(\bar{\phi}_{j}|\phi_{j})\neq\bar{p}_{j}(\bar{\phi}_{j}|\phi_{j}),
+
+(33)
+
+even for an infinite number of training samples. In short, our chosen finite-dimensional representation of 
+\bar{E}_{j}
+E¯j\bar{E}_{j} is not expressive enough.
+The reconstruction procedure therefore samples from the synthetic hierarchical
+measure defined in Eq. (18), rather than from
+the exact Gibbs measure associated with the microscopic energy 
+E_{0}
+E0E_{0}. In
+general,
+
+p_{0}^{\rm synth}(\phi_{0})\neq p_{0}(\phi_{0}),\qquad E_{0}^{\rm synth}(\phi_{0})\neq E_{0}(\phi_{0}).
+p0synth​(ϕ0)≠p0​(ϕ0),E0synth​(ϕ0)≠E0​(ϕ0).p_{0}^{\rm synth}(\phi_{0})\neq p_{0}(\phi_{0}),\qquad E_{0}^{\rm synth}(\phi_{0})\neq E_{0}(\phi_{0}).
+
+(34)
+
+In other words, the
+distribution is obtained by evaluating the original microscopic energy 
+E_{0}
+E0E_{0} on
+configurations generated from the synthetic measure. Because these configurations
+are not distributed exactly according to 
+p_{0}
+p0p_{0}, the distribution of
+
+E_{0}[\phi_{0}^{\rm synth}]
+E0​[ϕ0synth]E_{0}[\phi_{0}^{\rm synth}] need not coincide with the distribution of
+
+E_{0}[\phi_{0}^{\rm orig}]
+E0​[ϕ0orig]E_{0}[\phi_{0}^{\rm orig}].
+Resolving the mismatch in Fig. 5(b) would require a more refined finite-dimensional representation of 
+\bar{E}_{j}
+E¯j\bar{E}_{j}, but such representation is not immediately available. This issue is therefore left as future work.
+
+V Conclusion and perspectives
+
+In this work we applied the WCRG to the
+sBNNNI model as a benchmark for learned multiscale sampling in frustrated
+systems. As described in Sec. III, the method decomposes
+microscopic configurations into coarse fields and wavelet degrees of freedom,
+learns the conditional distribution of the wavelet variables at each scale, and
+generates new configurations recursively from coarse to fine scales.
+
+In Sec. IV.1, we showed that WCRG-generated
+configurations reproduce the main statistical features of Monte Carlo samples
+across representative points of the sBNNNI phase diagram. In particular, the
+method captures both local field distributions and diagonal structure factors
+in the homogeneous phases, along the Ising-like critical line, and in the
+modulated MPM and IC regimes. The AF regime, however, is pathological for this approach.
+
+In Sec. IV.2, we showed that, while conventional local Monte Carlo
+dynamics displays the expected critical slowing down, the conditional wavelet
+chains used in WCRG remain decorrelated in 
+\mathcal{O}(1)
+𝒪⁡(1)\mathcal{O}(1) sweeps at each
+reconstruction scale, within the range of sizes investigated here. Because the
+number of wavelet levels grows as 
+\log_{2}L
+log2⁡L\log_{2}L, the computational time required to generate independent configurations grows only logarithmically with 
+L
+LL. The total
+number of elementary local updates remains proportional to the number of
+generated degrees of freedom, but does not require an additional critical
+factor 
+L^{z}
+LzL^{z} characteristic of local microscopic sampling. For the sBNNNI model, this represents a significant
+sampling advantage over standard Monte Carlo strategies: local updates suffer
+from critical slowing down, while cluster algorithms, which are highly
+efficient in unfrustrated systems, cannot be exploited in the
+presence of frustration, even in the weakly frustrated regime.
+
+In Sec. IV.3, we analyzed configuration-wide observables.
+Although the magnetization distribution is accurately reproduced —by construction—the microscopic
+energy histogram presents a residual mismatch. This difference reflects the main
+tradeoff of the method: Monte Carlo sampling is asymptotically exact but slows
+down near criticality, whereas WCRG provides fast sampling but from an approximate
+recursive measure whose accuracy is controlled by the expressiveness of the
+parametrized energies.
+
+From this perspective, WCRG is best viewed as a complementary strategy to
+Monte Carlo. It trades exact sampling at fixed microscopic energy for a fast
+generative procedure that can, in principle, be systematically improved. The
+present results suggest that this tradeoff can be particularly useful in
+frustrated systems, where conventional cluster constructions are ineffective.
+
+This places WCRG within the broader line of machine-learning-assisted sampling
+approaches in statistical physics
+[9, 10, 11, 13, 12]. Its specific
+contribution is to combine learning with an explicit multiscale RG structure:
+the learned functions are the conditional energies associated with each length
+scale, rather than a single black-box generator. This organization makes it
+possible to associate approximation errors with specific reconstruction levels
+and to improve the model in a controlled way.
+
+Natural directions for further studies include adding symmetry-allowed operators beyond the
+quadratic-plus-local ansatz used in the present work.
+Developing better ansätze would also be expected to resolve the poor sampling of AF phase.
+Another possibility,
+which provides a compromise between expressiveness and interpretability, is to
+consider convolutional neural networks with local receptive fields, following
+Ref. [28]. Quantifying how WCRG errors decrease with
+ansatz expressiveness, and developing practical diagnostics for this
+convergence, are important directions for future work.
+
+Finally, the scaling analysis in Sec. IV.2 assumes that the conditional energies were already learned from an available set original configurations. To achieve a given accuracy in this learning, one might need to analyze an increasing number of training configurations as their size increases, possibly leading to an additional increase of the computational cost with 
+L
+LL. We expect this dependence to be rather weak, but a systematic evaluation of this effect for WCRG, remains to be considered and is left for future investigation.
+
+Data availability statement.
+
+The data that support the findings of this article are openly available [29]. [Data will be made openly available upon manuscript acceptance, but a DOI is not available at the time of submission.]
+
+Acknowledgment
+
+We thank Etienne Lempereur for helpful explanations of the implementation of
+the WCRG algorithm and of the code associated with
+Ref. [30] that we used for this work. Gabriele Bandini thanks Cristiano Muzzi for helpful discussions throughout the development of this work.
+
+Appendix A Low-temperature analysis of the soft-spin BNNNI model
+
+In this section, we analyze the low-temperature behavior of BNNNI model. For this purpose, we distinguish between the discrete-spin—
+\lambda\to\infty
+λ→∞\lambda\to\infty—BNNNI model (dBNNNI), whose fields
+take the values 
+\phi_{i}=\pm 1
+ϕi=±1\phi_{i}=\pm 1, and the soft-spin—finite 
+\lambda
+λ\lambda—sBNNNI model considered in
+this work, for which 
+\phi_{i}\in\mathbb{R}
+ϕi∈ℝ\phi_{i}\in\mathbb{R}. Note, however, that the relation
+between the hard-spin limit and the low-temperature analysis below requires
+some care, because the latter is performed at fixed finite 
+\lambda
+λ\lambda.
+
+An important qualitative difference between the phase diagram in
+Fig. 1 and that of the discrete model studied in
+Ref. [19] is the extent of the incommensurate (IC) phase. In the
+soft-spin model, the IC regime is broad and appears to extend down to
+relatively low temperatures, whereas in the discrete model it disappears
+as 
+T\to 0
+T→0T\to 0, where the ferromagnetic phase gives way directly to the
+antiphase. Note that the purpose of the analysis below is not to determine the
+two-dimensional phase boundaries quantitatively, but to identify a
+low-temperature mechanism by which continuous field amplitudes at finite
+
+\lambda
+λ\lambda can stabilize modulated profiles over an interval of frustration
+strengths.
+
+We consider the auxiliary one-dimensional analogue with dimensionless energy,
+consistently with Eq. (1),
+
+\begin{split}E_{T}[\phi]={}&amp;-\frac{J}{T}\sum_{i}\phi_{i}\phi_{i+1}+\frac{\kappa J}{T}\sum_{i}\phi_{i}\phi_{i+2}\\
+&amp;+\sum_{i}\left[\phi_{i}^{2}+\lambda\left(\phi_{i}^{2}-1\right)^{2}\right].\end{split}
+ET​[ϕ]=−JT∑iϕiϕi+1+κ​JT∑iϕiϕi+2+∑i[ϕi2+λ(ϕi2−1)2].\begin{split}E_{T}[\phi]={}&amp;-\frac{J}{T}\sum_{i}\phi_{i}\phi_{i+1}+\frac{\kappa J}{T}\sum_{i}\phi_{i}\phi_{i+2}\\
+&amp;+\sum_{i}\left[\phi_{i}^{2}+\lambda\left(\phi_{i}^{2}-1\right)^{2}\right].\end{split}
+
+(35)
+
+Because 
+1/T
+1/T1/T multiplies only the quadratic interaction terms, the
+low-temperature behavior is controlled by a balance between the quadratic
+interaction energy and the quartic confinement. At the level of scaling,
+
+\frac{\phi^{2}}{T}\sim\lambda\phi^{4},
+ϕ2T∼λ​ϕ4,\frac{\phi^{2}}{T}\sim\lambda\phi^{4},
+
+(36)
+
+so that
+
+\phi^{2}\sim\frac{1}{\lambda T}.
+ϕ2∼1λ​T.\phi^{2}\sim\frac{1}{\lambda T}.
+
+(37)
+
+This scaling suggests introducing directly the rescaled field
+
+\psi_{i}=\sqrt{\lambda T}\,\phi_{i},
+ψi=λ​T​ϕi,\psi_{i}=\sqrt{\lambda T}\,\phi_{i},
+
+(38)
+
+for expressing Eq. (35),
+
+\begin{split}E_{T}[\psi]={}&amp;\frac{1}{\lambda T^{2}}\left[-J\sum_{i}\psi_{i}\psi_{i+1}+\kappa J\sum_{i}\psi_{i}\psi_{i+2}+\sum_{i}\psi_{i}^{4}\right]\\
+&amp;+\frac{1-2\lambda}{\lambda T}\sum_{i}\psi_{i}^{2}+\lambda N.\end{split}
+ET​[ψ]=1λ​T2[−J∑iψiψi+1+κJ∑iψiψi+2+∑iψi4]+1−2​λλ​T∑iψi2+λN.\begin{split}E_{T}[\psi]={}&amp;\frac{1}{\lambda T^{2}}\left[-J\sum_{i}\psi_{i}\psi_{i+1}+\kappa J\sum_{i}\psi_{i}\psi_{i+2}+\sum_{i}\psi_{i}^{4}\right]\\
+&amp;+\frac{1-2\lambda}{\lambda T}\sum_{i}\psi_{i}^{2}+\lambda N.\end{split}
+
+(39)
+
+For fixed finite 
+\lambda
+λ\lambda, the term in square brackets dominates as
+
+T\to 0
+T→0T\to 0. Its prefactor is positive and therefore does not affect the
+profile selected by minimization. The leading low-temperature variational
+problem therefore reduces to minimizing the reduced functional
+
+\mathcal{F}[\psi]=-J\sum_{i}\psi_{i}\psi_{i+1}+\kappa J\sum_{i}\psi_{i}\psi_{i+2}+\sum_{i}\psi_{i}^{4},
+ℱ[ψ]=−J∑iψiψi+1+κJ∑iψiψi+2+∑iψi4,\mathcal{F}[\psi]=-J\sum_{i}\psi_{i}\psi_{i+1}+\kappa J\sum_{i}\psi_{i}\psi_{i+2}+\sum_{i}\psi_{i}^{4},
+
+(40)
+
+which depends neither on 
+T
+TT nor on 
+\lambda
+λ\lambda.
+These two parameters determine only the relation between the original and
+rescaled amplitudes, 
+\phi_{i}=\psi_{i}/\sqrt{\lambda T}
+ϕi=ψi/λ​T\phi_{i}=\psi_{i}/\sqrt{\lambda T}, and the overall scale
+of the leading energy. In particular, at fixed finite 
+\lambda
+λ\lambda, the
+original field diverges as 
+T^{-1/2}
+T−1/2T^{-1/2}, whereas the rescaled field remains
+finite.
+
+A.1 Variational families and the leading 
+(T\to 0)
+(T→0)(T\to 0) window
+
+We compare three variational families: the FM state is uniform,
+
+\psi_{i}=m;
+ψi=m;\psi_{i}=m;
+
+(41)
+
+the one-dimensional antiphase is
+
+\psi_{i}=A(-1)^{\lfloor i/2\rfloor},
+ψi=A​(−1)⌊i/2⌋,\psi_{i}=A(-1)^{\lfloor i/2\rfloor},
+
+(42)
+
+corresponding to the repeating pattern 
+++--
+++−−++--;
+and the multiharmonic IC profile has
+
+\psi_{i}=A\sum_{n=0}^{N_{h}-1}c_{2n+1}\cos\!\left[(2n+1)q_{\star}(\kappa)i\right],\qquad c_{1}=1,
+ψi=A​∑n=0Nh−1c2​n+1​cos⁡[(2​n+1)​q⋆​(κ)​i],c1=1,\psi_{i}=A\sum_{n=0}^{N_{h}-1}c_{2n+1}\cos\!\left[(2n+1)q_{\star}(\kappa)i\right],\qquad c_{1}=1,
+
+(43)
+
+with 
+N_{h}=5
+Nh=5N_{h}=5. The wavevector is chosen to minimize the quadratic part of
+Eq. (35),
+
+q_{\star}(\kappa)=\arccos\!\left(\frac{1}{4\kappa}\right),\qquad\kappa\geq\frac{1}{4}.
+q⋆​(κ)=arccos⁡(14​κ),κ≥14.q_{\star}(\kappa)=\arccos\!\left(\frac{1}{4\kappa}\right),\qquad\kappa\geq\frac{1}{4}.
+
+(44)
+
+The overall amplitude and the coefficients 
+c_{3},c_{5},c_{7},c_{9}
+c3,c5,c7,c9c_{3},c_{5},c_{7},c_{9} are optimized
+variationally. Fixing 
+q=q_{\star}
+q=q⋆q=q_{\star} is an approximation, because nonlinear
+terms can shift the optimal modulation wavevector.
+
+For a generic profile 
+\psi_{i}=Af_{i}
+ψi=A​fi\psi_{i}=Af_{i}, the reduced functional per site is
+
+\frac{\mathcal{F}}{N}=a_{2}[f]A^{2}+a_{4}[f]A^{4},
+ℱN=a2​[f]​A2+a4​[f]​A4,\frac{\mathcal{F}}{N}=a_{2}[f]A^{2}+a_{4}[f]A^{4},
+
+(45)
+
+with
+
+\displaystyle a_{2}[f]
+a2​[f]\displaystyle a_{2}[f]
+
+\displaystyle=-J\langle f_{i}f_{i+1}\rangle+\kappa J\langle f_{i}f_{i+2}\rangle,
+=−J⁡⟨fi​fi+1⟩+κ​J​⟨fi​fi+2⟩,\displaystyle=-J\langle f_{i}f_{i+1}\rangle+\kappa J\langle f_{i}f_{i+2}\rangle,
+
+(46)
+
+\displaystyle a_{4}[f]
+a4​[f]\displaystyle a_{4}[f]
+
+\displaystyle=\langle f_{i}^{4}\rangle.
+=⟨fi4⟩.\displaystyle=\langle f_{i}^{4}\rangle.
+
+(47)
+
+When 
+a_{2}&lt;0
+a2&lt;0a_{2}&lt;0, minimization over the amplitude gives
+
+A^{2}=-\frac{a_{2}}{2a_{4}},\qquad\frac{\mathcal{F}^{\rm min}}{N}=-\frac{a_{2}^{2}}{4a_{4}},
+A2=−a22​a4,ℱminN=−a224​a4,A^{2}=-\frac{a_{2}}{2a_{4}},\qquad\frac{\mathcal{F}^{\rm min}}{N}=-\frac{a_{2}^{2}}{4a_{4}},
+
+(48)
+
+while 
+A=0
+A=0A=0 otherwise. The FM and antiphase branches are therefore
+
+\displaystyle\frac{\mathcal{F}^{\rm FM}}{N}
+ℱFMN\displaystyle\frac{\mathcal{F}^{\rm FM}}{N}
+
+\displaystyle=-\frac{J^{2}(1-\kappa)^{2}}{4},
+=−J2​(1−κ)24,\displaystyle=-\frac{J^{2}(1-\kappa)^{2}}{4},
+
+\displaystyle\kappa&lt;1,
+κ&lt;1,\displaystyle\kappa&lt;1,
+
+(49)
+
+\displaystyle\frac{\mathcal{F}^{\rm AF}}{N}
+ℱAFN\displaystyle\frac{\mathcal{F}^{\rm AF}}{N}
+
+\displaystyle=-\frac{J^{2}\kappa^{2}}{4}.
+=−J2​κ24.\displaystyle=-\frac{J^{2}\kappa^{2}}{4}.
+
+(50)
+
+Figure 6 compares these branches with the
+optimized multiharmonic one. The IC
+profile then has the lowest leading energy approximately for
+
+0.393\lesssim\kappa\lesssim 0.869.
+0.393≲κ≲0.869.0.393\lesssim\kappa\lesssim 0.869.
+
+(51)
+
+Because
+
+\mathcal{F}
+ℱ\mathcal{F} contains neither 
+T
+TT nor 
+\lambda
+λ\lambda, the three variational
+profiles and their crossing points are independent of both parameters within
+this leading scaling problem. The 
+\lambda
+λ\lambda dependence enters only through
+the common prefactor 
+1/\lambda
+1/λ1/\lambda of the leading contribution to the original
+energy in Eq. (39).
+Note, however, that because this analysis only consider a finite set of variational families, this statement concerns the restricted ansatz space and does not establish the
+global minimizer of Eq. (40).
+
+Figure 6: Reduced functional density 
+\mathcal{F}/N
+ℱ/N\mathcal{F}/N of the FM state (solid line),
+period-four antiphase (dashed line), and multiharmonic IC profile
+(dash-dotted line). The IC branch is shown for 
+\kappa\geq 1/4
+κ≥1/4\kappa\geq 1/4, where
+
+q_{\star}
+q⋆q_{\star} in
+Eq. (44) is real. Within the variational
+families considered, it has the lowest leading energy approximately for
+
+0.393\lesssim\kappa\lesssim 0.869
+0.393≲κ≲0.8690.393\lesssim\kappa\lesssim 0.869. Since 
+\mathcal{F}
+ℱ\mathcal{F} is independent
+of 
+T
+TT and 
+\lambda
+λ\lambda, the profiles and crossing points are universal
+within the leading low-temperature scaling problem.
+
+A.2 Reconciling the finite-
+\lambda
+λ\lambda and Ising
+limits: the scaling variable 
+\lambda T
+λ​T\lambda T
+
+The reduced functional 
+\mathcal{F}
+ℱ\mathcal{F} in
+Eq. (40) describes the regime reached by
+taking 
+T\to 0
+T→0T\to 0 first at fixed 
+\lambda
+λ\lambda: the field that remains of order one
+is 
+\psi
+ψ\psi, and 
+\mathcal{F}
+ℱ\mathcal{F} knows about neither 
+\lambda
+λ\lambda nor 
+T
+TT. The
+opposite order—
+\lambda\to\infty
+λ→∞\lambda\to\infty first at fixed 
+T
+TT—instead restricts
+
+\phi_{i}\to\pm 1
+ϕi→±1\phi_{i}\to\pm 1 and reduces the energy to the discrete form
+Eq. (35), which produces the direct FM–AF transition
+reported for the discrete model in Ref. [19]. The two orderings
+therefore define different variational problems, and the limits do not commute.
+
+This non-commutativity signals that a single
+combination of 
+\lambda
+λ\lambda and 
+T
+TT is being driven to opposite values by the
+two orderings. Factoring the leading prefactor in
+Eq. (39),
+
+E_{T}[\psi]=\frac{1}{\lambda T^{2}}\Big[\,\mathcal{F}[\psi]+(1-2\lambda)\,T\sum_{i}\psi_{i}^{2}\,\Big]+\lambda N,
+ET​[ψ]=1λ​T2​[ℱ⁡[ψ]+(1−2​λ)​T​∑iψi2]+λ​N,E_{T}[\psi]=\frac{1}{\lambda T^{2}}\Big[\,\mathcal{F}[\psi]+(1-2\lambda)\,T\sum_{i}\psi_{i}^{2}\,\Big]+\lambda N,
+
+(52)
+
+the only place the two limits differ is the coefficient 
+(1-2\lambda)T
+(1−2​λ)​T(1-2\lambda)T of the
+mass term relative to 
+\mathcal{F}
+ℱ\mathcal{F}. Introducing the scaling variable
+
+g\equiv\lambda T,
+g≡λ​T,g\equiv\lambda T,
+
+(53)
+
+one has 
+(1-2\lambda)T=T-2g
+(1−2​λ)​T=T−2​g(1-2\lambda)T=T-2g. Taking 
+T\to 0
+T→0T\to 0 at fixed 
+\lambda
+λ\lambda sends
+
+g\to 0
+g→0g\to 0, the mass term vanishes, and one recovers
+Eq. (40). Taking 
+\lambda\to\infty
+λ→∞\lambda\to\infty at
+fixed 
+T
+TT sends 
+g\to\infty
+g→∞g\to\infty and 
+(1-2\lambda)T\to-\infty
+(1−2​λ)​T→−∞(1-2\lambda)T\to-\infty, so the mass
+term dominates and pins 
+\psi
+ψ\psi (equivalently 
+\phi_{i}=\pm 1
+ϕi=±1\phi_{i}=\pm 1). The two
+orderings are thus the two endpoints 
+g\to 0
+g→0g\to 0 and 
+g\to\infty
+g→∞g\to\infty of a single
+axis.
+
+The natural object interpolating between them is obtained by taking 
+T\to 0
+T→0T\to 0
+and 
+\lambda\to\infty
+λ→∞\lambda\to\infty jointly at fixed 
+g=\lambda T
+g=λ​Tg=\lambda T. Then
+
+T-2g\to-2g
+T−2​g→−2​gT-2g\to-2g, and the selected profile minimizes the 
+g
+gg-dependent reduced
+functional
+
+\mathcal{F}_{g}[\psi]=-J\sum_{i}\psi_{i}\psi_{i+1}+\kappa J\sum_{i}\psi_{i}\psi_{i+2}+\sum_{i}\psi_{i}^{4}-2g\sum_{i}\psi_{i}^{2}.
+ℱg[ψ]=−J∑iψiψi+1+κJ∑iψiψi+2+∑iψi4−2g∑iψi2.\mathcal{F}_{g}[\psi]=-J\sum_{i}\psi_{i}\psi_{i+1}+\kappa J\sum_{i}\psi_{i}\psi_{i+2}+\sum_{i}\psi_{i}^{4}-2g\sum_{i}\psi_{i}^{2}.
+
+(54)
+
+The residual prefactor 
+1/(gT)
+1/(g​T)1/(gT) of Eq. (54) in the original
+energy is positive and diverges but is configuration-independent, as is the
+additive 
+gN/T
+g​N/TgN/T; neither affects the minimizer. The functional
+
+\mathcal{F}_{g}
+ℱg\mathcal{F}_{g} is a Landau functional with a tunable double well: its on-site
+part 
+-2g\psi^{2}+\psi^{4}
+−2​g​ψ2+ψ4-2g\psi^{2}+\psi^{4} has minima at 
+\psi=\pm\sqrt{g}
+ψ=±g\psi=\pm\sqrt{g}, i.e. exactly at
+
+\phi=\psi/\sqrt{\lambda T}=\pm 1
+ϕ=ψ/λ​T=±1\phi=\psi/\sqrt{\lambda T}=\pm 1. As 
+g\to 0
+g→0g\to 0 the well flattens to the pure
+quartic and 
+\mathcal{F}_{g}\to\mathcal{F}
+ℱg→ℱ\mathcal{F}_{g}\to\mathcal{F}; as 
+g\to\infty
+g→∞g\to\infty, writing
+
+\psi_{i}=\sqrt{g}\,s_{i}
+ψi=g​si\psi_{i}=\sqrt{g}\,s_{i} gives
+
+\frac{\mathcal{F}_{g}}{g^{2}}=\frac{1}{g}\Big[-J\!\sum_{i}s_{i}s_{i+1}+\kappa J\!\sum_{i}s_{i}s_{i+2}\Big]+\sum_{i}\big(s_{i}^{4}-2s_{i}^{2}\big),
+ℱgg2=1g[−J∑isisi+1+κJ∑isisi+2]+∑i(si4−2si2),\frac{\mathcal{F}_{g}}{g^{2}}=\frac{1}{g}\Big[-J\!\sum_{i}s_{i}s_{i+1}+\kappa J\!\sum_{i}s_{i}s_{i+2}\Big]+\sum_{i}\big(s_{i}^{4}-2s_{i}^{2}\big),
+
+(55)
+
+whose on-site part forces 
+s_{i}=\pm 1
+si=±1s_{i}=\pm 1 and leaves the discrete BNNNI energy at
+
+O(1/g)
+O⁡(1/g)O(1/g). The single variable 
+g=\lambda T
+g=λ​Tg=\lambda T therefore interpolates
+continuously between the soft-spin functional
+Eq. (40) and the Ising problem.
+
+Branch energies.—For 
+\psi_{i}=Af_{i}
+ψi=A​fi\psi_{i}=Af_{i} the reduced density retains the
+form Eq. (45) with 
+a_{2}
+a2a_{2} shifted by the mass
+term,
+
+a_{2}(g)[f]=-J\langle f_{i}f_{i+1}\rangle+\kappa J\langle f_{i}f_{i+2}\rangle-2g\langle f_{i}^{2}\rangle,
+a2​(g)​[f]=−J⁡⟨fi​fi+1⟩+κ​J​⟨fi​fi+2⟩−2​g​⟨fi2⟩,a_{2}(g)[f]=-J\langle f_{i}f_{i+1}\rangle+\kappa J\langle f_{i}f_{i+2}\rangle-2g\langle f_{i}^{2}\rangle,
+
+(56)
+
+while 
+a_{4}
+a4a_{4} is unchanged; the amplitude minimization
+Eq. (48) is therefore identical in form.
+For the FM and antiphase families,
+
+a_{2}^{\mathrm{FM}}(g)=-J(1-\kappa)-2g,\qquad a_{2}^{\mathrm{AF}}(g)=-\kappa J-2g,
+a2FM​(g)=−J⁡(1−κ)−2​g,a2AF​(g)=−κ​J−2​g,a_{2}^{\mathrm{FM}}(g)=-J(1-\kappa)-2g,\qquad a_{2}^{\mathrm{AF}}(g)=-\kappa J-2g,
+
+(57)
+
+with 
+a_{4}=1
+a4=1a_{4}=1. The mass term 
+-2g
+−2​g-2g is common to both, so 
+\mathcal{F}^{\mathrm{FM}}=\mathcal{F}^{\mathrm{AF}}
+ℱFM=ℱAF\mathcal{F}^{\mathrm{FM}}=\mathcal{F}^{\mathrm{AF}} at 
+\kappa=1/2
+κ=1/2\kappa=1/2 for every 
+g
+gg: the FM–AF boundary
+is pinned at 
+\kappa=1/2
+κ=1/2\kappa=1/2 independently of 
+\lambda T
+λ​T\lambda T, consistent both with
+the 
+g\to 0
+g→0g\to 0 continuum result and with the discrete transition of
+Ref. [19].
+
+Fate of the IC window.—As 
+g\to\infty
+g→∞g\to\infty, the mass term dominates
+
+a_{2}(g)\approx-2g\langle f^{2}\rangle
+a2​(g)≈−2​g​⟨f2⟩a_{2}(g)\approx-2g\langle f^{2}\rangle and
+
+\frac{\mathcal{F}^{\rm min}}{N}\approx-g^{2}\,\frac{\langle f^{2}\rangle^{2}}{\langle f^{4}\rangle}\equiv-g^{2}\,R[f],
+ℱminN≈−g2​⟨f2⟩2⟨f4⟩≡−g2​R​[f],\frac{\mathcal{F}^{\rm min}}{N}\approx-g^{2}\,\frac{\langle f^{2}\rangle^{2}}{\langle f^{4}\rangle}\equiv-g^{2}\,R[f],
+
+(58)
+
+so the selected profile maximizes the shape factor
+
+R[f]=\langle f^{2}\rangle^{2}/\langle f^{4}\rangle
+R⁡[f]=⟨f2⟩2/⟨f4⟩R[f]=\langle f^{2}\rangle^{2}/\langle f^{4}\rangle. One has 
+R=1
+R=1R=1 for a 
+\pm 1
+±1\pm 1
+profile (FM and AF), whereas 
+R&lt;1
+R&lt;1R&lt;1 for any smooth incommensurate modulation
+(
+R=2/3
+R=2/3R=2/3 for a single cosine; additional harmonics increase 
+R
+RR but cannot
+reach unity without turning the profile into a 
+\pm 1
+±1\pm 1 square wave, which an
+incommensurate 
+q_{\star}
+q⋆q_{\star} forbids). The FM and AF branches therefore have
+strictly lower leading energy than the IC branch at large 
+g
+gg, and the IC
+region closes.
+
+The crossover is quantitative. Minimizing 
+\mathcal{F}_{g}
+ℱg\mathcal{F}_{g} over the same three
+families—with 
+q=q_{\star}(\kappa)
+q=q⋆​(κ)q=q_{\star}(\kappa) fixed and 
+c_{3},c_{5},c_{7},c_{9}
+c3,c5,c7,c9c_{3},c_{5},c_{7},c_{9}
+optimized—on a grid of 
+g
+gg yields the IC window
+
+\kappa_{-}(g)&lt;\kappa&lt;\kappa_{+}(g)
+κ−​(g)&lt;κ&lt;κ+​(g)\kappa_{-}(g)&lt;\kappa&lt;\kappa_{+}(g) shown in Fig. 7. As
+
+g\to 0
+g→0g\to 0 it opens to the interval 
+[0.393,0.869]
+[0.393,0.869][0.393,0.869] of
+Eq. (51), reproducing
+Fig. 6; as 
+g
+gg increases the window narrows
+monotonically and pinches shut at 
+\kappa=1/2
+κ=1/2\kappa=1/2, 
+\lambda T\simeq J
+λ​T≃J\lambda T\simeq J. At
+Gaussian order the mass term is a 
+q
+qq-independent shift, so
+
+q_{\star}=\arccos(1/4\kappa)
+q⋆=arccos⁡(1/4​κ)q_{\star}=\arccos(1/4\kappa) is unchanged to quadratic order; only the quartic
+couplings can drift it, the same caveat noted above.
+
+Figure 7: Restricted-variational phase diagram of the auxiliary one-dimensional model
+in the joint low-temperature, large-
+\lambda
+λ\lambda limit, as a function of frustration 
+\kappa
+κ\kappa and the scaling variable
+
+\lambda T
+λ​T\lambda T, setting 
+J=1
+J=1J=1. The IC lobe (amber) is the region where the optimized multiharmonic
+profile has lower leading energy than both the FM (uniform) and AF
+(
+++--
+++−−++--) states. It opens to 
+[0.393,0.869]
+[0.393,0.869][0.393,0.869] as 
+\lambda T\to 0
+λ​T→0\lambda T\to 0,
+recovering Fig. 6, and closes at 
+\kappa=1/2
+κ=1/2\kappa=1/2, 
+\lambda T\simeq 1
+λ​T≃1\lambda T\simeq 1, above which the FM–AF transition is
+direct (dashed line). The FM–AF boundary is pinned at 
+\kappa=1/2
+κ=1/2\kappa=1/2 for all
+
+\lambda T
+λ​T\lambda T. The finite-
+\lambda
+λ\lambda simulations of
+Fig. 1, taken at low 
+T
+TT, lie near the
+
+\lambda T\to 0
+λ​T→0\lambda T\to 0 edge, whereas the discrete model of Ref. [19]
+corresponds to the 
+\lambda T\to\infty
+λ​T→∞\lambda T\to\infty edge.
+
+Interpretation.—The dBNNNI and sBNNNI phase diagrams are the two edges of a single family controlled by 
+\lambda T
+λ​T\lambda T. The finite-
+\lambda
+λ\lambda simulations of
+Fig. 1, performed at low 
+T
+TT, sit at small
+
+g=\lambda T
+g=λ​Tg=\lambda T and therefore in the IC-favorable part of the plane, while the
+discrete model of Ref. [19] corresponds to the 
+g\to\infty
+g→∞g\to\infty edge,
+where the shape penalty Eq. (58) excludes IC and the
+FM–AF transition is direct.
+
+Within its limitations—an auxiliary one-dimensional model and a
+restricted multiharmonic ansatz—this calculation provides qualitative support for the
+extended IC region in Fig. 1, and shows explicitly
+how that region connects to the direct FM–AF transition of the discrete model.
+
+Appendix B Finite-size scaling of the Ising critical line
+
+To determine quantitatively the location of the Ising-like critical points in the phase diagram in Fig. 1, we performed a finite-size scaling analysis of the sBNNNI model at fixed frustration. For the sake of illustration, we focus here on the case
+
+\kappa=\kappa_{x}=\kappa_{y}=0.2
+κ=κx=κy=0.2\kappa=\kappa_{x}=\kappa_{y}=0.2,
+
+\kappa_{d}=0
+κd=0\kappa_{d}=0,
+
+\lambda=1
+λ=1\lambda=1,
+with 
+J=1
+J=1J=1,
+which lies on the FM-PM transition line, which belongs to the two-dimensional Ising universality class, known to be characterized by the critical exponents
+
+\nu=1
+ν=1\nu=1, and 
+\gamma=7/4
+γ=7/4\gamma=7/4.
+
+The magnetic susceptibility 
+\chi
+χ\chi, reported in Fig. 8(a), was computed from the uniform magnetization 
+m
+mm
+as
+
+\chi(T,L)=L^{2}\left(\langle m^{2}\rangle-\langle m\rangle^{2}\right)/T
+χ⁡(T,L)=L2​(⟨m2⟩−⟨m⟩2)/T\chi(T,L)=L^{2}\left(\langle m^{2}\rangle-\langle m\rangle^{2}\right)/T.
+For each lattice size 
+L
+LL, the pseudocritical temperature 
+T_{\rm pc}(L)
+Tpc​(L)T_{\rm pc}(L) corresponding to the location of the maximum of 
+\chi(T,L)
+χ⁡(T,L)\chi(T,L) with 
+T
+TT was determined by fitting the available numerical data for the peak of 
+\chi(T,L)
+χ⁡(T,L)\chi(T,L) with a quadratic polynomial. The bulk critical temperature 
+T_{c}
+TcT_{c} was then obtained from 
+T_{\rm pc}(L)
+Tpc​(L)T_{\rm pc}(L) by fitting its finite-size dependence [31, 32] as (see Fig. 8(c))
+
+T_{\rm pc}(L)=T_{c}+aL^{-1/\nu}.
+Tpc(L)=Tc+aL−1/ν.T_{\rm pc}(L)=T_{c}+aL^{-1/\nu}.
+
+(59)
+
+As an additional check, we computed the second-moment correlation length
+
+\xi_{2}=\frac{1}{2\sin(\pi/L)}\sqrt{\frac{S(\mathbf{0})}{S(\mathbf{q}_{\min})}-1},
+ξ2=12​sin⁡(π/L)​S⁡(𝟎)S⁡(𝐪min)−1,\xi_{2}=\frac{1}{2\sin(\pi/L)}\sqrt{\frac{S(\mathbf{0})}{S(\mathbf{q}_{\min})}-1},
+
+(60)
+
+where 
+S(\mathbf{q})
+S⁡(𝐪)S(\mathbf{q}) is the structure factor of Eq. (3) and
+
+\mathbf{q}_{\min}=(2\pi/L,0)
+𝐪min=(2​π/L,0)\mathbf{q}_{\min}=(2\pi/L,0)
+is the smallest non-zero momentum compatible with periodic boundary
+conditions.
+
+Close to criticality, the finite-size scaling forms are
+
+\chi(T,L)=L^{\gamma/\nu}f_{\chi}\left((T-T_{c})L^{1/\nu}\right),
+χ⁡(T,L)=Lγ/ν​fχ​((T−Tc)​L1/ν),\chi(T,L)=L^{\gamma/\nu}f_{\chi}\left((T-T_{c})L^{1/\nu}\right),
+
+(61)
+
+and
+
+\frac{\xi_{2}(T,L)}{L}=f_{\xi}\left((T-T_{c})L^{1/\nu}\right),
+ξ2​(T,L)L=fξ​((T−Tc)​L1/ν),\frac{\xi_{2}(T,L)}{L}=f_{\xi}\left((T-T_{c})L^{1/\nu}\right),
+
+(62)
+
+where 
+f_{\chi}
+fχf_{\chi} and 
+f_{\xi}
+fξf_{\xi} are scaling functions.
+
+Figure 8: Finite-size scaling analysis of the sBNNNI model with 
+\kappa_{x}=\kappa_{y}=0.2
+κx=κy=0.2\kappa_{x}=\kappa_{y}=0.2, 
+\kappa_{d}=0
+κd=0\kappa_{d}=0, 
+\lambda=1
+λ=1\lambda=1, and 
+J=1
+J=1J=1. Panels (a) and (b) show, respectively, the magnetic susceptibility 
+\chi
+χ\chi and the ratio 
+\xi_{2}/L
+ξ2/L\xi_{2}/L as functions of the temperature 
+T
+TT for different system sizes 
+L
+LL. Panel (c) shows the pseudocritical temperatures 
+T_{\rm pc}(L)
+Tpc​(L)T_{\rm pc}(L), extracted from the maxima in panel (a), as functions of 
+L^{-1/\nu}
+L−1/νL^{-1/\nu}. The solid line is the fit according to Eq. (59); the dashed horizontal line indicate the resulting bulk critical temperature 
+T_{c}
+TcT_{c}. Panels (d) and (e) show the finite-size scaling collapses of 
+\chi L^{-\gamma/\nu}
+χL−γ/ν\chi L^{-\gamma/\nu} and 
+\xi_{2}/L
+ξ2/L\xi_{2}/L, respectively, obtained using the two-dimensional Ising exponents 
+\nu=1
+ν=1\nu=1 and 
+\gamma=7/4
+γ=7/4\gamma=7/4, together with the value of 
+T_{c}
+TcT_{c}
+determined in panel (c).
+
+Figure 8 shows the raw and collapsed data for 
+\chi
+χ\chi and 
+\xi_{2}/L
+ξ2/L\xi_{2}/L. The quality of the collapses using the Ising exponents provides a consistency check of the
+Ising character of the transition and on the value of 
+T_{c}
+TcT_{c}.
+
+Appendix C Implementation of the wavelet transform
+
+In this appendix, we briefly summarize how the wavelet transform is here implemented. At the core, we use orthogonal discrete wavelet transforms with periodic boundary
+conditions. The transform is applied recursively to the microscopic field
+configuration in order to separate, at each scale, slow coarse degrees of
+freedom from fast wavelet degrees of freedom.
+
+The maps 
+W_{j}
+WjW_{j}, 
+\overline{W}_{j}
+W¯j\overline{W}_{j}, and 
+\mathcal{W}_{j}
+𝒲j\mathcal{W}_{j} introduced in
+Sec. III act on two-dimensional field configurations and are used to
+construct the WCRG. In turn, they can be expressed in terms of the maps 
+w_{j}
+wjw_{j}, 
+\bar{w}_{j}
+w¯j\bar{w}_{j}, and 
+\omega_{j}
+ωj\omega_{j} specified below, which act on field configurations in one spatial dimension.
+In particular, the linear maps
+
+w_{j}
+wjw_{j} and 
+\bar{w}_{j}
+w¯j\bar{w}_{j} act on a field 
+\varphi_{j-1}
+φj−1\varphi_{j-1} defined on a lattice
+of size 
+L_{j-1}
+Lj−1L_{j-1} and they render a coarse field 
+\varphi_{j}
+φj\varphi_{j} and a wavelet
+field 
+\bar{\varphi}_{j}
+φ¯j\bar{\varphi}_{j} on a lattice of size 
+L_{j}=L_{j-1}/2
+Lj=Lj−1/2L_{j}=L_{j-1}/2, respectively, according to
+
+\begin{split}\varphi_{j}(x)&amp;=w_{j}\varphi_{j-1}=\sum_{n=0}^{L_{j-1}-1}g_{j}(n)\,\varphi_{j-1}(2x+n),\\[5.69054pt]
+\bar{\varphi}_{j}(x)&amp;=\bar{w}_{j}\varphi_{j-1}=\sum_{n=0}^{L_{j-1}-1}\bar{g}_{j}(n)\,\varphi_{j-1}(2x+n),\end{split}
+φj​(x)=wj​φj−1=∑n=0Lj−1−1gj​(n)​φj−1​(2​x+n),φ¯j​(x)=w¯j​φj−1=∑n=0Lj−1−1g¯j​(n)​φj−1​(2​x+n),\begin{split}\varphi_{j}(x)&amp;=w_{j}\varphi_{j-1}=\sum_{n=0}^{L_{j-1}-1}g_{j}(n)\,\varphi_{j-1}(2x+n),\\[5.69054pt]
+\bar{\varphi}_{j}(x)&amp;=\bar{w}_{j}\varphi_{j-1}=\sum_{n=0}^{L_{j-1}-1}\bar{g}_{j}(n)\,\varphi_{j-1}(2x+n),\end{split}
+
+(63)
+
+where 
+x=0,1,\ldots,L_{j}-1
+x=0,1,…,Lj−1x=0,1,\ldots,L_{j}-1. Hereafter, the arguments of the fields 
+\varphi_{j-1}
+φj−1\varphi_{j-1}, 
+\bar{\varphi}_{j-1}
+φ¯j−1\bar{\varphi}_{j-1} and of the coefficients 
+g_{j}
+gjg_{j} and 
+\bar{g}_{j}
+g¯j\bar{g}_{j} are understood modulo 
+L_{j-1}
+Lj−1L_{j-1}. The coefficients 
+g_{j}
+gjg_{j} and 
+\bar{g}_{j}
+g¯j\bar{g}_{j}
+characterize these one-dimensional low-pass and high-pass
+filters, respectively.
+The low-pass component
+
+\varphi_{j}
+φj\varphi_{j} contains the coarse information, while the high-pass component
+
+\bar{\varphi}_{j}
+φ¯j\bar{\varphi}_{j} contains the fluctuations removed by the coarse graining.
+
+The two maps define together the
+wavelet step
+
+\omega_{j}=(w_{j},\bar{w}_{j}),\qquad\omega_{j}\varphi_{j-1}=(\varphi_{j},\bar{\varphi}_{j}).
+ωj=(wj,w¯j),ωj​φj−1=(φj,φ¯j).\omega_{j}=(w_{j},\bar{w}_{j}),\qquad\omega_{j}\varphi_{j-1}=(\varphi_{j},\bar{\varphi}_{j}).
+
+(64)
+
+The filter coefficients 
+g_{j}
+gjg_{j} and 
+\bar{g}_{j}
+g¯j\bar{g}_{j} are chosen
+so that this map is orthogonal, i.e.,
+
+\omega_{j}^{\mathrm{T}}\omega_{j}=\omega_{j}\omega_{j}^{\mathrm{T}}=I,
+ωjT​ωj=ωj​ωjT=I,\omega_{j}^{\mathrm{T}}\omega_{j}=\omega_{j}\omega_{j}^{\mathrm{T}}=I,
+
+(65)
+
+Orthogonality implies invertibility, with inverse given by the transpose, i.e.,
+
+\varphi_{j-1}=w_{j}^{\mathrm{T}}\varphi_{j}+\bar{w}_{j}^{\mathrm{T}}\bar{\varphi}_{j}
+φj−1=wjT​φj+w¯jT​φ¯j\varphi_{j-1}=w_{j}^{\mathrm{T}}\varphi_{j}+\bar{w}_{j}^{\mathrm{T}}\bar{\varphi}_{j}
+
+(66)
+
+which, in components, reads
+
+\varphi_{j-1}(x)=\sum_{n=0}^{L_{j}-1}\left[g_{j}(x-2n)\,\varphi_{j}(n)+\bar{g}_{j}(x-2n)\,\bar{\varphi}_{j}(n)\right],
+φj−1​(x)=∑n=0Lj−1[gj​(x−2​n)​φj​(n)+g¯j​(x−2​n)​φ¯j​(n)],\varphi_{j-1}(x)=\sum_{n=0}^{L_{j}-1}\left[g_{j}(x-2n)\,\varphi_{j}(n)+\bar{g}_{j}(x-2n)\,\bar{\varphi}_{j}(n)\right],
+
+(67)
+
+where the filter indices are understood modulo 
+L_{j-1}
+Lj−1L_{j-1}. Accordingly, the
+wavelet decomposition is invertible and no information is lost.
+Orthogonality also implies that the change of variables 
+\varphi_{j-1}\mapsto\varphi_{j},\bar{\varphi}_{j}
+φj−1↦φj,φ¯j\varphi_{j-1}\mapsto\varphi_{j},\bar{\varphi}_{j} has unit Jacobian, i.e.,
+
+{\rm d}\varphi_{j-1}={\rm d}\varphi_{j}\,{\rm d}\bar{\varphi}_{j}.
+d​φj−1=d​φj​d​φ¯j.{\rm d}\varphi_{j-1}={\rm d}\varphi_{j}\,{\rm d}\bar{\varphi}_{j}.
+
+(68)
+
+The transform acting on two-dimensional configurations, used in the main text, inherits the same
+property, which is used in Sec. III when rewriting probability
+densities in terms of coarse and wavelet variables.
+
+In addition, the filter coefficients satisfy
+
+\sum_{n}g_{j}(n)=\sqrt{2}\quad\mbox{and}\quad\sum_{n}\bar{g}_{j}(n)=0.
+∑ngj​(n)=2and∑ng¯j​(n)=0.\sum_{n}g_{j}(n)=\sqrt{2}\quad\mbox{and}\quad\sum_{n}\bar{g}_{j}(n)=0.
+
+(69)
+
+The first relation fixes the normalization of the coarse mode, while the
+second encodes the wavelet filter having zero mean. As a result,
+wavelet variables do not contribute to the uniform component of the field.
+This observation is relevant for the autocorrelation analysis of the
+conditional wavelet chains. At fixed 
+\phi_{j}
+ϕj\phi_{j}, conditional sampling updates
+only the wavelet variables 
+\bar{\phi}_{j}
+ϕ¯j\bar{\phi}_{j}. Because the wavelet sector has zero
+spatial average, these updates do not change the uniform mode of the
+reconstructed field. The magnetization of the reconstructed configuration is
+therefore fixed by the coarse field, up to the normalization factor, and cannot be used to
+monitor the decorrelation of the conditional Monte Carlo dynamics. For this
+reason, in Sec. IV.2 we use the spatial second moment of the
+reconstructed field instead.
+
+Explicit expressions for the standard wavelet filters used in this work,
+including the Haar and Daubechies families, can be found in
+Ref. [20].
+
+We now describe the two-dimensional transform used in the simulations. The maps
+
+W_{j}
+WjW_{j}, 
+\overline{W}_{j}
+W¯j\overline{W}_{j}, and 
+\mathcal{W}_{j}
+𝒲j\mathcal{W}_{j} appearing in
+Sec. III are obtained from the one-dimensional case discussed above by
+applying the filters separately along the two lattice directions. The low-low component defines the coarse
+field,
+
+\phi_{j}(x,y)=\sum_{m,n=0}^{L_{j-1}-1}g_{j}(m)g_{j}(n)\,\phi_{j-1}(2x+m,2y+n),
+ϕj​(x,y)=∑m,n=0Lj−1−1gj​(m)​gj​(n)​ϕj−1​(2​x+m,2​y+n),\phi_{j}(x,y)=\sum_{m,n=0}^{L_{j-1}-1}g_{j}(m)g_{j}(n)\,\phi_{j-1}(2x+m,2y+n),
+
+(70)
+
+while the remaining three components define the wavelet degrees of freedom,
+
+\displaystyle\bar{\phi}_{j,1}(x,y)
+ϕ¯j,1​(x,y)\displaystyle\bar{\phi}_{j,1}(x,y)
+
+\displaystyle=\sum_{m,n=0}^{L_{j-1}-1}g_{j}(m)\bar{g}_{j}(n)\,\phi_{j-1}(2x+m,2y+n),
+=∑m,n=0Lj−1−1gj​(m)​g¯j​(n)​ϕj−1​(2​x+m,2​y+n),\displaystyle=\sum_{m,n=0}^{L_{j-1}-1}g_{j}(m)\bar{g}_{j}(n)\,\phi_{j-1}(2x+m,2y+n),
+
+\displaystyle\bar{\phi}_{j,2}(x,y)
+ϕ¯j,2​(x,y)\displaystyle\bar{\phi}_{j,2}(x,y)
+
+\displaystyle=\sum_{m,n=0}^{L_{j-1}-1}\bar{g}_{j}(m)g_{j}(n)\,\phi_{j-1}(2x+m,2y+n),
+=∑m,n=0Lj−1−1g¯j​(m)​gj​(n)​ϕj−1​(2​x+m,2​y+n),\displaystyle=\sum_{m,n=0}^{L_{j-1}-1}\bar{g}_{j}(m)g_{j}(n)\,\phi_{j-1}(2x+m,2y+n),
+
+\displaystyle\bar{\phi}_{j,3}(x,y)
+ϕ¯j,3​(x,y)\displaystyle\bar{\phi}_{j,3}(x,y)
+
+\displaystyle=\sum_{m,n=0}^{L_{j-1}-1}\bar{g}_{j}(m)\bar{g}_{j}(n)\,\phi_{j-1}(2x+m,2y+n).
+=∑m,n=0Lj−1−1g¯j​(m)​g¯j​(n)​ϕj−1​(2​x+m,2​y+n).\displaystyle=\sum_{m,n=0}^{L_{j-1}-1}\bar{g}_{j}(m)\bar{g}_{j}(n)\,\phi_{j-1}(2x+m,2y+n).
+
+(71)
+
+The three fields 
+\bar{\phi}_{j,\mu}
+ϕ¯j,μ\bar{\phi}_{j,\mu}, with 
+\mu=1,2,3
+μ=1,2,3\mu=1,2,3, are referred to as
+the wavelet channels at scale 
+j
+jj. We write them compactly as
+
+\bar{\phi}_{j}=\left\{\bar{\phi}_{j,\mu}(i)\right\}_{i\in\Lambda_{j},\ \mu=1,2,3},
+ϕ¯j={ϕ¯j,μ​(i)}i∈Λj,μ=1,2,3,\bar{\phi}_{j}=\left\{\bar{\phi}_{j,\mu}(i)\right\}_{i\in\Lambda_{j},\ \mu=1,2,3},
+
+(72)
+
+where 
+i
+ii denotes a site of the coarse lattice 
+\Lambda_{j}
+Λj\Lambda_{j} of linear size
+
+L_{j}
+LjL_{j}. Accordingly, 
+\bar{\phi}_{j}
+ϕ¯j\bar{\phi}_{j} is a vector carrying both spatial and
+channel indices.
+
+With this notation, the two-dimensional transform used in the main text is
+
+\mathcal{W}_{j}\phi_{j-1}=(\phi_{j},\bar{\phi}_{j}),\qquad\bar{\phi}_{j}=\{\bar{\phi}_{j,\mu}\}_{\mu=1,2,3}.
+𝒲j​ϕj−1=(ϕj,ϕ¯j),ϕ¯j={ϕ¯j,μ}μ=1,2,3.\mathcal{W}_{j}\phi_{j-1}=(\phi_{j},\bar{\phi}_{j}),\qquad\bar{\phi}_{j}=\{\bar{\phi}_{j,\mu}\}_{\mu=1,2,3}.
+
+(73)
+
+The transform preserves the number of degrees of freedom. Indeed, a field on
+the lattice 
+\Lambda_{j-1}
+Λj−1\Lambda_{j-1} has 
+L_{j-1}^{2}=4L_{j}^{2}
+Lj−12=4​Lj2L_{j-1}^{2}=4L_{j}^{2} degrees of freedom.
+After one wavelet step, these are split into 
+L_{j}^{2}
+Lj2L_{j}^{2} coarse variables and
+
+3L_{j}^{2}
+3​Lj23L_{j}^{2} wavelet variables, corresponding to the three wavelet channels.
+
+Different wavelet families correspond to different choices of the filters
+
+g_{j}(n)
+gj​(n)g_{j}(n) and 
+\bar{g}_{j}(n)
+g¯j​(n)\bar{g}_{j}(n), while the structure of the decomposition is
+unchanged. As mentioned in Sec. IV, in the FM and PM
+phases and close to the Ising-like critical line we use the Haar basis. In the
+MP, IC, and AF regimes we use Daubechies wavelets with four vanishing moments.
+The latter have wider and smoother filters and are better suited to
+representing finite-wavevector modulations, whereas the Haar basis is
+sufficient for uniform or long-wavelength configurations.
+
+Appendix D Learning and sampling conditional energies
+
+In this appendix, we describe the parameterizations used for the coarsest energy,
+the conditional energies, and the conditional free-energy contributions entering
+the WCRG hierarchy. We also describe how these quantities are estimated from
+the original (Monte Carlo) data and how they are used either to generate synthetic configurations or to reconstruct
+an explicit hierarchical energy.
+
+At each scale 
+j=1,2,\ldots,J
+j=1,2,…,Jj=1,2,\ldots,J,
+the training data consist of pairs
+
+\left\{\phi_{j}^{(n)},\bar{\phi}_{j}^{(n)}\right\}_{n=1}^{N_{\mathrm{train}}},
+{ϕj(n),ϕ¯j(n)}n=1Ntrain,\left\{\phi_{j}^{(n)},\bar{\phi}_{j}^{(n)}\right\}_{n=1}^{N_{\mathrm{train}}},
+
+(74)
+
+obtained by applying the wavelet decomposition of
+App. C to equilibrium configurations
+
+\phi_{0}^{(n)}
+ϕ0(n)\phi_{0}^{(n)} of the microscopic model.
+
+Coarsest energy.
+
+The WCRG reconstruction starts from the coarsest field 
+\phi_{J}
+ϕJ\phi_{J}, distributed
+according to
+
+p_{\theta_{J}}(\phi_{J})=\frac{1}{Z_{J}}\exp\left[-E_{\theta_{J}}(\phi_{J})\right].
+pθJ​(ϕJ)=1ZJ​exp⁡[−EθJ​(ϕJ)].p_{\theta_{J}}(\phi_{J})=\frac{1}{Z_{J}}\exp\left[-E_{\theta_{J}}(\phi_{J})\right].
+
+(75)
+
+In the present implementation the decomposition is iterated until
+
+L_{J}=1
+LJ=1L_{J}=1, so that 
+\phi_{J}
+ϕJ\phi_{J} consists of a single degree of freedom. The
+coarsest energy 
+E_{\theta_{J}}(\phi_{J})
+EθJ​(ϕJ)E_{\theta_{J}}(\phi_{J}) is a one-dimensional potential 
+V_{\theta_{J}}(\phi_{J})
+VθJ​(ϕJ)V_{\theta_{J}}(\phi_{J}) that is parametrized linearly, i.e.,
+
+E_{\theta_{J}}(\phi_{J})=V_{\theta_{J}}(\phi_{J})=\theta_{J}^{\mathrm{T}}\Xi_{J}(\phi_{J}).
+EθJ​(ϕJ)=VθJ​(ϕJ)=θJT​ΞJ​(ϕJ).E_{\theta_{J}}(\phi_{J})=V_{\theta_{J}}(\phi_{J})=\theta_{J}^{\mathrm{T}}\Xi_{J}(\phi_{J}).
+
+(76)
+
+Here
+
+\Xi_{J}(u)=\left(s_{1}(u),s_{2}(u),\ldots,s_{N_{s}}(u)\right)
+ΞJ​(u)=(s1​(u),s2​(u),…,sNs​(u))\Xi_{J}(u)=\left(s_{1}(u),s_{2}(u),\ldots,s_{N_{s}}(u)\right)
+
+(77)
+
+is a finite family of fixed one-dimensional functions, and
+
+\theta_{J}=\left(\theta_{J,1},\theta_{J,2},\ldots,\theta_{J,N_{s}}\right)
+θJ=(θJ,1,θJ,2,…,θJ,Ns)\theta_{J}=\left(\theta_{J,1},\theta_{J,2},\ldots,\theta_{J,N_{s}}\right)
+
+(78)
+
+is the corresponding vector of learned coefficients.
+Equivalently,
+
+V_{\theta_{J}}(u)=\sum_{\ell=1}^{N_{s}}\theta_{J,\ell}s_{\ell}(u).
+VθJ​(u)=∑ℓ=1NsθJ,ℓ​sℓ​(u).V_{\theta_{J}}(u)=\sum_{\ell=1}^{N_{s}}\theta_{J,\ell}s_{\ell}(u).
+
+(79)
+
+In this sense, the functions 
+s_{\ell}
+sℓs_{\ell} are used as a sort of finite approximation basis
+for the local potential: they are fixed before training, while the optimization only
+determines their linear coefficients.
+Following Ref. [33], we choose this finite family to be made
+of translated sigmoids,
+
+s_{\ell}(u)=\sigma\!\left(\frac{u-u_{\ell}}{\Delta_{\ell}}\right)\quad\mbox{with}\quad\sigma(z)=\frac{1}{1+e^{-z}}.
+sℓ​(u)=σ⁡(u−uℓΔℓ)withσ⁡(z)=11+e−z.s_{\ell}(u)=\sigma\!\left(\frac{u-u_{\ell}}{\Delta_{\ell}}\right)\quad\mbox{with}\quad\sigma(z)=\frac{1}{1+e^{-z}}.
+
+(80)
+
+The centers 
+u_{\ell}
+uℓu_{\ell} are chosen as 
+N_{s}
+NsN_{s} equally spaced points covering the
+empirical support of the field variable. The
+widths are fixed proportionally to the spacing between consecutive centers, i.e.,
+
+\Delta_{\ell}=(3/2)\left(u_{\ell+1}-u_{\ell}\right)
+Δℓ=(3/2)​(uℓ+1−uℓ)\Delta_{\ell}=(3/2)\left(u_{\ell+1}-u_{\ell}\right),
+with the endpoint widths chosen by extending the same spacing convention.
+More generally, the wavelet decomposition discussed above, which is stopped at 
+L_{J}=1
+LJ=1L_{J}=1, could be
+stopped at a finite coarse size
+
+L_{J}&gt;1
+LJ&gt;1L_{J}&gt;1. In that case, 
+E_{\theta_{J}}
+EθJE_{\theta_{J}} is no longer a
+one-dimensional potential, but an effective energy defined on the remaining
+coarse lattice.
+It could then be parametrized according to the same “quadratic-plus-local”
+structure used below for the free-energy terms, which encompasses quadratic terms involving different lattice sites and a local potential involving also higher powers of the local field.
+In the
+numerical results presented here, however, we always use system sizes for which
+the hierarchy reaches 
+L_{J}=1
+LJ=1L_{J}=1.
+
+The parameters 
+\theta_{J}
+θJ\theta_{J} in Eq. (76)
+are estimated from the empirical distribution of
+the coarsest field using the same score-matching strategy described below for
+the conditional energies.
+
+Conditional energies.
+
+At fixed coarse field 
+\phi_{j}
+ϕj\phi_{j}, the parametric conditional distribution of
+the wavelet variables is given by
+Eq. (32). In the implementation used in this work, the conditional energy is obtained by
+first reconstructing the finer field
+
+\phi_{j-1}=\mathcal{W}_{j}^{-1}(\phi_{j},\bar{\phi}_{j}),
+ϕj−1=𝒲j−1​(ϕj,ϕ¯j),\phi_{j-1}=\mathcal{W}_{j}^{-1}(\phi_{j},\bar{\phi}_{j}),
+and then evaluating on it the parametrized energy ansatz of Eq. (15).
+Thus 
+\bar{E}_{\bar{\theta}_{j}}
+E¯θ¯j\bar{E}_{\bar{\theta}_{j}} is a function of the wavelet variables
+
+\bar{\phi}_{j}
+ϕ¯j\bar{\phi}_{j} through the inverse wavelet reconstruction, while the coarse
+field 
+\phi_{j}
+ϕj\phi_{j} is kept fixed. The model is linear in the parameters
+
+\bar{\theta}_{j}
+θ¯j\bar{\theta}_{j}, although the basis function collected in 
+\Psi_{j}
+Ψj\Psi_{j} are nonlinear
+functions of the reconstructed field.
+
+In the present work, the vector 
+\Psi_{j}
+Ψj\Psi_{j} contains a translationally
+invariant quadratic part and a local scalar-potential part. The quadratic part
+is built from products of the reconstructed field at displaced sites. The
+local part is expanded on the sigmoid functions introduced in
+Eq. (80),
+
+\bar{V}_{\bar{\gamma}_{j}}(u)=\sum_{\ell=1}^{N_{s}}\bar{\gamma}_{j,\ell}s_{\ell}(u),
+V¯γ¯j​(u)=∑ℓ=1Nsγ¯j,ℓ​sℓ​(u),\bar{V}_{\bar{\gamma}_{j}}(u)=\sum_{\ell=1}^{N_{s}}\bar{\gamma}_{j,\ell}s_{\ell}(u),
+
+(81)
+
+with 
+N_{s}=20
+Ns=20N_{s}=20. The retained displacements in the quadratic part are collected
+in the set 
+\mathcal{R}_{j}
+ℛj\mathcal{R}_{j}, which contains first- and second-neighbor
+displacements on the lattice at scale 
+j
+jj, with periodic boundary conditions.
+
+Accordingly, the complete vector of learned parameters is
+
+\bar{\theta}_{j}=\left(\left\{\bar{K}_{j}(r)\right\}_{r\in\mathcal{R}_{j}},\left\{\bar{\gamma}_{j,\ell}\right\}_{\ell=1}^{N_{s}}\right).
+θ¯j=({K¯j​(r)}r∈ℛj,{γ¯j,ℓ}ℓ=1Ns).\bar{\theta}_{j}=\left(\left\{\bar{K}_{j}(r)\right\}_{r\in\mathcal{R}_{j}},\left\{\bar{\gamma}_{j,\ell}\right\}_{\ell=1}^{N_{s}}\right).
+
+(82)
+
+The corresponding vector of basis functions is
+
+\Psi_{j}(\phi_{j-1})=\left(\left\{\frac{1}{2}\sum_{i\in\Lambda_{j-1}}\phi_{j-1}(i)\,\phi_{j-1}(i+r)\right\}_{r\in\mathcal{R}_{j}},\left\{\sum_{i\in\Lambda_{j-1}}s_{\ell}\!\left(\phi_{j-1}(i)\right)\right\}_{\ell=1}^{N_{s}}\right).
+Ψj​(ϕj−1)=({12​∑i∈Λj−1ϕj−1​(i)​ϕj−1​(i+r)}r∈ℛj,{∑i∈Λj−1sℓ​(ϕj−1​(i))}ℓ=1Ns).\Psi_{j}(\phi_{j-1})=\left(\left\{\frac{1}{2}\sum_{i\in\Lambda_{j-1}}\phi_{j-1}(i)\,\phi_{j-1}(i+r)\right\}_{r\in\mathcal{R}_{j}},\left\{\sum_{i\in\Lambda_{j-1}}s_{\ell}\!\left(\phi_{j-1}(i)\right)\right\}_{\ell=1}^{N_{s}}\right).
+
+(83)
+
+Equivalently, Eq. (15) can be
+written explicitly as
+
+\begin{split}\bar{E}_{\bar{\theta}_{j}}(\bar{\phi}_{j};\phi_{j})=&amp;\frac{1}{2}\sum_{i\in\Lambda_{j-1}}\sum_{r\in\mathcal{R}_{j}}\bar{K}_{j}(r)\phi_{j-1}(i)\,\phi_{j-1}(i+r)\\
+&amp;+\sum_{\ell=1}^{N_{s}}\bar{\gamma}_{j,\ell}\sum_{i\in\Lambda_{j-1}}s_{\ell}\!\left(\phi_{j-1}(i)\right),\end{split}
+E¯θ¯j​(ϕ¯j,ϕj)=12​∑i∈Λj−1∑r∈ℛjK¯j​(r)​ϕj−1​(i)​ϕj−1​(i+r)+∑ℓ=1Nsγ¯j,ℓ∑i∈Λj−1sℓ(ϕj−1(i)),\begin{split}\bar{E}_{\bar{\theta}_{j}}(\bar{\phi}_{j};\phi_{j})=&amp;\frac{1}{2}\sum_{i\in\Lambda_{j-1}}\sum_{r\in\mathcal{R}_{j}}\bar{K}_{j}(r)\phi_{j-1}(i)\,\phi_{j-1}(i+r)\\
+&amp;+\sum_{\ell=1}^{N_{s}}\bar{\gamma}_{j,\ell}\sum_{i\in\Lambda_{j-1}}s_{\ell}\!\left(\phi_{j-1}(i)\right),\end{split}
+
+(84)
+
+where 
+\phi_{j-1}
+ϕj−1\phi_{j-1} is the reconstructed field.
+
+At fixed 
+\phi_{j}
+ϕj\phi_{j}, this ansatz defines an effective conditional energy for
+the wavelet variables 
+\bar{\phi}_{j}
+ϕ¯j\bar{\phi}_{j}. Additive terms depending only on
+
+\phi_{j}
+ϕj\phi_{j} are absorbed into the induced free energy
+
+\bar{F}_{\bar{\theta}_{j}}^{\rm ind}
+F¯θ¯jind\bar{F}_{\bar{\theta}_{j}}^{\rm ind} and therefore do not affect either the
+conditional probability or the score with respect to 
+\bar{\phi}_{j}
+ϕ¯j\bar{\phi}_{j}.
+
+Score matching.
+
+In order to learn the parameters 
+\bar{\theta}_{j}
+θ¯j\bar{\theta}_{j}, we use score matching
+[18]. At scale 
+j
+jj, the goal is to match
+the score of the parametrized conditional distribution
+
+p_{\bar{\theta}_{j}}(\bar{\phi}_{j}|\phi_{j})
+pθ¯j​(ϕ¯j|ϕj)p_{\bar{\theta}_{j}}(\bar{\phi}_{j}|\phi_{j}), defined in
+Eq. (32), to the score of the
+exact conditional distribution 
+p_{j}(\bar{\phi}_{j}|\phi_{j})
+pj​(ϕ¯j|ϕj)p_{j}(\bar{\phi}_{j}|\phi_{j}), defined in
+Eq. (10). The score is the gradient of the
+logarithm of the conditional probability with respect to the sampled wavelet
+variables 
+\bar{\phi}_{j}
+ϕ¯j\bar{\phi}_{j}.
+
+The ideal score-matching loss is therefore
+
+\mathcal{J}_{j}(\bar{\theta}_{j})=\frac{1}{2}\left\langle\left|\nabla_{\bar{\phi}_{j}}\log p_{\bar{\theta}_{j}}(\bar{\phi}_{j}|\phi_{j})-\nabla_{\bar{\phi}_{j}}\log p_{j}(\bar{\phi}_{j}|\phi_{j})\right|^{2}\right\rangle_{p_{j-1}(\phi_{j-1})}.
+𝒥j​(θ¯j)=12​⟨|∇ϕ¯j​log​pθ¯j​(ϕ¯j|ϕj)−∇ϕ¯j​log​pj​(ϕ¯j|ϕj)|2⟩pj−1​(ϕj−1).\mathcal{J}_{j}(\bar{\theta}_{j})=\frac{1}{2}\left\langle\left|\nabla_{\bar{\phi}_{j}}\log p_{\bar{\theta}_{j}}(\bar{\phi}_{j}|\phi_{j})-\nabla_{\bar{\phi}_{j}}\log p_{j}(\bar{\phi}_{j}|\phi_{j})\right|^{2}\right\rangle_{p_{j-1}(\phi_{j-1})}.
+
+(85)
+
+Given
+
+\nabla_{\bar{\phi}_{j}}\log p_{\bar{\theta}_{j}}(\bar{\phi}_{j}|\phi_{j})=-\nabla_{\bar{\phi}_{j}}\bar{E}_{\bar{\theta}_{j}}(\bar{\phi}_{j};\phi_{j}),
+∇ϕ¯j​log​pθ¯j​(ϕ¯j|ϕj)=−∇ϕ¯jE¯θ¯j​(ϕ¯j,ϕj),\nabla_{\bar{\phi}_{j}}\log p_{\bar{\theta}_{j}}(\bar{\phi}_{j}|\phi_{j})=-\nabla_{\bar{\phi}_{j}}\bar{E}_{\bar{\theta}_{j}}(\bar{\phi}_{j};\phi_{j}),
+
+(86)
+
+the induced free energy
+\bar{F}^{\rm ind}_{\bar{\theta}_{j}}
+F¯θ¯jind\bar{F}^{\rm ind}_{\bar{\theta}_{j}} does not enter the score, because it depends only on
+
+\phi_{j}
+ϕj\phi_{j}.
+
+After integrating by parts and replacing the exact average over
+
+p_{j-1}(\phi_{j-1})
+pj−1​(ϕj−1)p_{j-1}(\phi_{j-1}) by the empirical average over the training pairs
+defined in Eq. (74), one obtains
+
+\mathcal{L}_{j}(\bar{\theta}_{j})=\left\langle\frac{1}{2}\left|\nabla_{\bar{\phi}_{j}}\bar{E}_{\bar{\theta}_{j}}(\bar{\phi}_{j};\phi_{j})\right|^{2}-\Delta_{\bar{\phi}_{j}}\bar{E}_{\bar{\theta}_{j}}(\bar{\phi}_{j};\phi_{j})\right\rangle_{\mathrm{data}}.
+ℒj​(θ¯j)=⟨12​|∇ϕ¯jE¯θ¯j​(ϕ¯j,ϕj)|2−Δϕ¯j​E¯θ¯j​(ϕ¯j,ϕj)⟩data.\mathcal{L}_{j}(\bar{\theta}_{j})=\left\langle\frac{1}{2}\left|\nabla_{\bar{\phi}_{j}}\bar{E}_{\bar{\theta}_{j}}(\bar{\phi}_{j};\phi_{j})\right|^{2}-\Delta_{\bar{\phi}_{j}}\bar{E}_{\bar{\theta}_{j}}(\bar{\phi}_{j};\phi_{j})\right\rangle_{\mathrm{data}}.
+
+(87)
+
+The derivatives in Eq. (87) are taken only with
+respect to the wavelet variables and are computed by automatic differentiation
+of the ansatz in Eq. (84).
+
+Using the expression of 
+\bar{E}_{\bar{\theta}_{j}}(\bar{\phi}_{j};\phi_{j})
+E¯θ¯j​(ϕ¯j,ϕj)\bar{E}_{\bar{\theta}_{j}}(\bar{\phi}_{j};\phi_{j}) given in Eq. (15), the loss 
+\mathcal{L}_{j}(\bar{\theta}_{j})
+ℒj​(θ¯j)\mathcal{L}_{j}(\bar{\theta}_{j}) in Eq. (87) turns out to have a quadratic dependence on the parameters, i.e.,
+
+\mathcal{L}_{j}(\bar{\theta}_{j})=\frac{1}{2}\bar{\theta}_{j}^{\mathrm{T}}\overline{M}_{j}\bar{\theta}_{j}-\bar{\theta}_{j}^{\mathrm{T}}\bar{b}_{j},
+ℒj​(θ¯j)=12​θ¯jT​M¯j​θ¯j−θ¯jT​b¯j,\mathcal{L}_{j}(\bar{\theta}_{j})=\frac{1}{2}\bar{\theta}_{j}^{\mathrm{T}}\overline{M}_{j}\bar{\theta}_{j}-\bar{\theta}_{j}^{\mathrm{T}}\bar{b}_{j},
+
+(88)
+
+where
+
+\overline{M}_{j}=\left\langle\nabla_{\bar{\phi}_{j}}\Psi_{j}\,\nabla_{\bar{\phi}_{j}}\Psi_{j}^{\mathrm{T}}\right\rangle_{\mathrm{data}}\quad\mbox{and}\quad\bar{b}_{j}=\left\langle\Delta_{\bar{\phi}_{j}}\Psi_{j}\right\rangle_{\mathrm{data}}.
+M¯j=⟨∇ϕ¯jΨj​∇ϕ¯jΨjT⟩dataandb¯j=⟨Δϕ¯j​Ψj⟩data.\overline{M}_{j}=\left\langle\nabla_{\bar{\phi}_{j}}\Psi_{j}\,\nabla_{\bar{\phi}_{j}}\Psi_{j}^{\mathrm{T}}\right\rangle_{\mathrm{data}}\quad\mbox{and}\quad\bar{b}_{j}=\left\langle\Delta_{\bar{\phi}_{j}}\Psi_{j}\right\rangle_{\mathrm{data}}.
+
+(89)
+
+The parameters that minimize the loss are then obtained by solving the regularized linear system
+
+\left(\overline{M}_{j}+\lambda I\right)\bar{\theta}_{j}=\bar{b}_{j}.
+(M¯j+λ​I)​θ¯j=b¯j.\left(\overline{M}_{j}+\lambda I\right)\bar{\theta}_{j}=\bar{b}_{j}.
+
+(90)
+
+The parameter 
+\lambda
+λ\lambda—not to be confused with the softness parameter—is used to stabilize the inversion of the
+empirical matrix 
+\overline{M}_{j}
+M¯j\overline{M}_{j}: we check that moderate changes
+of 
+\lambda
+λ\lambda do not affect the observables of the synthetic configurations (obtained from the sampling of the parametrized distribution) within statistical
+accuracy.
+
+Conditinoal free energy
+
+The induced free energy
+
+\bar{F}_{\bar{\theta}_{j}}^{\rm ind}(\phi_{j})
+F¯θ¯jind​(ϕj)\bar{F}_{\bar{\theta}_{j}}^{\rm ind}(\phi_{j}) in
+Eq. (17) is fixed by the normalization of
+the conditional probability. It is not required for conditional sampling,
+because 
+\phi_{j}
+ϕj\phi_{j} is kept fixed during the sampling of 
+\bar{\phi}_{j}
+ϕ¯j\bar{\phi}_{j}. However,
+it is needed if one wants to reconstruct an explicit microscopic energy
+functional associated with the learned WCRG hierarchy.
+
+Following the WCRG construction of Ref. [33], we approximate
+the induced free energy by a finite-dimensional ansatz,
+
+\bar{F}_{\bar{\theta}_{j}}^{\rm ind}(\phi_{j})\simeq\bar{F}_{\alpha_{j}}(\phi_{j})=\alpha_{j}^{\mathrm{T}}\Phi_{j}(\phi_{j}),
+F¯θ¯jind​(ϕj)≃F¯αj​(ϕj)=αjT​Φj​(ϕj),\bar{F}_{\bar{\theta}_{j}}^{\rm ind}(\phi_{j})\simeq\bar{F}_{\alpha_{j}}(\phi_{j})=\alpha_{j}^{\mathrm{T}}\Phi_{j}(\phi_{j}),
+
+(91)
+
+where 
+\Phi_{j}
+Φj\Phi_{j} is a vector of functions depending only on the coarse field. In the
+present work we use a quadratic-plus-local structure, analogous to Eq. (84), i.e.,
+
+\begin{split}\bar{F}_{\alpha_{j}}(\phi_{j})=&amp;\frac{1}{2}\sum_{x\in\Lambda_{j}}\sum_{r\in\mathcal{R}_{j}^{F}}\phi_{j}(x)\,\widetilde{K}_{j}(r)\,\phi_{j}(x+r)\\
+&amp;+\sum_{i\in\Lambda_{j}}\widetilde{V}_{\widetilde{\gamma}_{j}}\!\left(\phi_{j}(i)\right),\end{split}
+F¯αj​(ϕj)=12​∑x∈Λj∑r∈ℛjFϕj​(x)​K~j​(r)​ϕj​(x+r)+∑i∈ΛjV~γ~j(ϕj(i)),\begin{split}\bar{F}_{\alpha_{j}}(\phi_{j})=&amp;\frac{1}{2}\sum_{x\in\Lambda_{j}}\sum_{r\in\mathcal{R}_{j}^{F}}\phi_{j}(x)\,\widetilde{K}_{j}(r)\,\phi_{j}(x+r)\\
+&amp;+\sum_{i\in\Lambda_{j}}\widetilde{V}_{\widetilde{\gamma}_{j}}\!\left(\phi_{j}(i)\right),\end{split}
+
+(92)
+
+where periodic boundary conditions are understood.
+The set
+
+\mathcal{R}_{j}^{F}
+ℛjF\mathcal{R}_{j}^{F} contains the displacements on the lattice which are considered when constructing the quadratic term at
+scale 
+j
+jj, while 
+\widetilde{K}_{j}(r)
+K~j​(r)\widetilde{K}_{j}(r) is a translationally invariant quadratic
+kernel on the coarse lattice.
+
+The local potential 
+\widetilde{V}_{\widetilde{\gamma}_{j}}(u)
+V~γ~j​(u)\widetilde{V}_{\widetilde{\gamma}_{j}}(u) in the previous equation
+is expanded on the same fixed one-dimensional basis
+functions as that introduced in Eq. (80), i.e.,
+
+\widetilde{V}_{\widetilde{\gamma}_{j}}(u)=\sum_{\ell=1}^{N_{s}}\widetilde{\gamma}_{j,\ell}\,s_{\ell}(u).
+V~γ~j​(u)=∑ℓ=1Nsγ~j,ℓ​sℓ​(u).\widetilde{V}_{\widetilde{\gamma}_{j}}(u)=\sum_{\ell=1}^{N_{s}}\widetilde{\gamma}_{j,\ell}\,s_{\ell}(u).
+
+(93)
+
+Accordingly, the parameter vector in Eq. (91) is given by
+
+\alpha_{j}=\left(\left\{\widetilde{K}_{j}(r)\right\}_{r\in\mathcal{R}_{j}^{F}},\left\{\widetilde{\gamma}_{j,\ell}\right\}_{\ell=1}^{N_{s}}\right).
+αj=({K~j​(r)}r∈ℛjF,{γ~j,ℓ}ℓ=1Ns).\alpha_{j}=\left(\left\{\widetilde{K}_{j}(r)\right\}_{r\in\mathcal{R}_{j}^{F}},\left\{\widetilde{\gamma}_{j,\ell}\right\}_{\ell=1}^{N_{s}}\right).
+
+(94)
+
+The corresponding vector of basis functions is
+
+\Phi_{j}(\phi_{j})=\left(\left\{\frac{1}{2}\sum_{x\in\Lambda_{j}}\phi_{j}(x)\phi_{j}(x+r)\right\}_{r\in\mathcal{R}_{j}^{F}},\left\{\sum_{i\in\Lambda_{j}}s_{\ell}(\phi_{j}(i))\right\}_{\ell=1}^{N_{s}}\right).
+Φj​(ϕj)=({12​∑x∈Λjϕj​(x)​ϕj​(x+r)}r∈ℛjF,{∑i∈Λjsℓ​(ϕj​(i))}ℓ=1Ns).\Phi_{j}(\phi_{j})=\left(\left\{\frac{1}{2}\sum_{x\in\Lambda_{j}}\phi_{j}(x)\phi_{j}(x+r)\right\}_{r\in\mathcal{R}_{j}^{F}},\left\{\sum_{i\in\Lambda_{j}}s_{\ell}(\phi_{j}(i))\right\}_{\ell=1}^{N_{s}}\right).
+
+(95)
+
+The parameters 
+\alpha_{j}
+αj\alpha_{j} are obtained by matching the coarse-field gradient
+of the ansatz 
+\bar{F}_{\alpha_{j}}
+F¯αj\bar{F}_{\alpha_{j}} to the gradient of the induced free energy
+
+\bar{F}_{\bar{\theta}_{j}}^{\rm ind}
+F¯θ¯jind\bar{F}_{\bar{\theta}_{j}}^{\rm ind}. We focus on the gradient because the free
+energy is defined only up to an additive constant, while its gradient is fixed
+by the conditional model. Differentiating
+Eq. (17) gives
+
+\nabla_{\phi_{j}}\bar{F}_{\bar{\theta}_{j}}^{\rm ind}(\phi_{j})=\left\langle\nabla_{\phi_{j}}\bar{E}_{\bar{\theta}_{j}}(\bar{\phi}_{j};\phi_{j})\right\rangle_{p_{\bar{\theta}_{j}}(\bar{\phi}_{j}|\phi_{j})}.
+∇ϕjF¯θ¯jind​(ϕj)=⟨∇ϕjE¯θ¯j​(ϕ¯j,ϕj)⟩pθ¯j​(ϕ¯j|ϕj).\nabla_{\phi_{j}}\bar{F}_{\bar{\theta}_{j}}^{\rm ind}(\phi_{j})=\left\langle\nabla_{\phi_{j}}\bar{E}_{\bar{\theta}_{j}}(\bar{\phi}_{j};\phi_{j})\right\rangle_{p_{\bar{\theta}_{j}}(\bar{\phi}_{j}|\phi_{j})}.
+
+(96)
+
+Formally, the average above taken over the wavelet variables sampled from the learned
+conditional distribution 
+p_{\bar{\theta}_{j}}(\bar{\phi}_{j}|\phi_{j})
+pθ¯j​(ϕ¯j|ϕj)p_{\bar{\theta}_{j}}(\bar{\phi}_{j}|\phi_{j}) at fixed coarse field 
+\phi_{j}
+ϕj\phi_{j}.
+In the implementation used in this work, we approximate this gradient-matching
+problem using the empirical wavelet–coarse pairs of Eq. (74).
+Accordingly, no additional wavelet variables are generated from
+
+p_{\bar{\theta}_{j}}(\bar{\phi}_{j}|\phi_{j}^{(n)})
+pθ¯j​(ϕ¯j|ϕj(n))p_{\bar{\theta}_{j}}(\bar{\phi}_{j}|\phi_{j}^{(n)}) during the free-energy fit.
+
+The free-energy parameters are then estimated by minimizing the
+gradient-matching loss
+
+\mathcal{L}_{j}^{F}(\alpha_{j})=\left\langle\left|\nabla_{\phi_{j}}\bar{F}_{\alpha_{j}}(\phi_{j})-\nabla_{\phi_{j}}\bar{E}_{\bar{\theta}_{j}}(\bar{\phi}_{j};\phi_{j})\right|^{2}\right\rangle_{\mathrm{data}}.
+ℒjF​(αj)=⟨|∇ϕjF¯αj​(ϕj)−∇ϕjE¯θ¯j​(ϕ¯j,ϕj)|2⟩data.\mathcal{L}_{j}^{F}(\alpha_{j})=\left\langle\left|\nabla_{\phi_{j}}\bar{F}_{\alpha_{j}}(\phi_{j})-\nabla_{\phi_{j}}\bar{E}_{\bar{\theta}_{j}}(\bar{\phi}_{j};\phi_{j})\right|^{2}\right\rangle_{\mathrm{data}}.
+
+(97)
+
+Using the linear parametrizations of Eqs. (15) and (91)
+this becomes
+
+\mathcal{L}_{j}^{F}(\alpha_{j})=\left\langle\left|\alpha_{j}^{\mathrm{T}}\nabla_{\phi_{j}}\Phi_{j}(\phi_{j})-\bar{\theta}_{j}^{\mathrm{T}}\nabla_{\phi_{j}}\Psi_{j}(\phi_{j},\bar{\phi}_{j})\right|^{2}\right\rangle_{\mathrm{data}}.
+ℒjF​(αj)=⟨|αjT​∇ϕjΦj​(ϕj)−θ¯jT​∇ϕjΨj​(ϕj,ϕ¯j)|2⟩data.\mathcal{L}_{j}^{F}(\alpha_{j})=\left\langle\left|\alpha_{j}^{\mathrm{T}}\nabla_{\phi_{j}}\Phi_{j}(\phi_{j})-\bar{\theta}_{j}^{\mathrm{T}}\nabla_{\phi_{j}}\Psi_{j}(\phi_{j},\bar{\phi}_{j})\right|^{2}\right\rangle_{\mathrm{data}}.
+
+(98)
+
+Since 
+\bar{F}_{\alpha_{j}}
+F¯αj\bar{F}_{\alpha_{j}} is linear in 
+\alpha_{j}
+αj\alpha_{j}, the minimization of
+Eq. (98) gives a linear regression problem.
+Writing 
+\Phi_{j,a}
+Φj,a\Phi_{j,a} and 
+\Psi_{j,b}
+Ψj,b\Psi_{j,b} for the components of the
+vectors 
+\Phi_{j}
+Φj\Phi_{j} and 
+\Psi_{j}
+Ψj\Psi_{j}, we define
+
+\left(\widetilde{M}_{j}\right)_{ab}=\left\langle\nabla_{\phi_{j}}\Phi_{j,a}(\phi_{j})\cdot\nabla_{\phi_{j}}\Phi_{j,b}(\phi_{j})\right\rangle_{\mathrm{data}},
+(M~j)a​b=⟨∇ϕjΦj,a​(ϕj)⋅∇ϕjΦj,b​(ϕj)⟩data,\left(\widetilde{M}_{j}\right)_{ab}=\left\langle\nabla_{\phi_{j}}\Phi_{j,a}(\phi_{j})\cdot\nabla_{\phi_{j}}\Phi_{j,b}(\phi_{j})\right\rangle_{\mathrm{data}},
+
+(99)
+
+and
+
+\left(\widetilde{B}_{j}\right)_{ab}=\left\langle\nabla_{\phi_{j}}\Phi_{j,a}(\phi_{j})\cdot\nabla_{\phi_{j}}\Psi_{j,b}(\phi_{j},\bar{\phi}_{j})\right\rangle_{\mathrm{data}}.
+(B~j)a​b=⟨∇ϕjΦj,a​(ϕj)⋅∇ϕjΨj,b​(ϕj,ϕ¯j)⟩data.\left(\widetilde{B}_{j}\right)_{ab}=\left\langle\nabla_{\phi_{j}}\Phi_{j,a}(\phi_{j})\cdot\nabla_{\phi_{j}}\Psi_{j,b}(\phi_{j},\bar{\phi}_{j})\right\rangle_{\mathrm{data}}.
+
+(100)
+
+The fitted parameters are obtained from the regularized normal equations
+
+\left(\widetilde{M}_{j}+\lambda_{F}I\right)\alpha_{j}=\widetilde{B}_{j}\bar{\theta}_{j},
+(M~j+λF​I)​αj=B~j​θ¯j,\left(\widetilde{M}_{j}+\lambda_{F}I\right)\alpha_{j}=\widetilde{B}_{j}\bar{\theta}_{j},
+
+(101)
+
+or equivalently
+
+\alpha_{j}=\left(\widetilde{M}_{j}+\lambda_{F}I\right)^{-1}\widetilde{B}_{j}\bar{\theta}_{j}.
+αj=(M~j+λF​I)−1​B~j​θ¯j.\alpha_{j}=\left(\widetilde{M}_{j}+\lambda_{F}I\right)^{-1}\widetilde{B}_{j}\bar{\theta}_{j}.
+
+(102)
+
+The parameter 
+\lambda_{F}
+λF\lambda_{F} regularizes the empirical regression matrix
+
+\widetilde{M}_{j}
+M~j\widetilde{M}_{j}, in the same way as 
+\lambda
+λ\lambda regularizes the
+score-matching regression for the conditional energies.
+
+The dependence of 
+\alpha_{j}
+αj\alpha_{j} on 
+\bar{\theta}_{j}
+θ¯j\bar{\theta}_{j} simply reflects the fact
+that the target gradient in Eq. (97) is computed
+from the conditional energy model learned in the previous step. The free-energy
+fit therefore does not introduce an independent conditional model; it provides
+an explicit parametrization of the normalization induced by
+
+\bar{E}_{\bar{\theta}_{j}}
+E¯θ¯j\bar{E}_{\bar{\theta}_{j}}.
+
+Conditional sampling.
+
+Once 
+\bar{\theta}_{j}
+θ¯j\bar{\theta}_{j} has been learned, the conditional distribution 
+\bar{p}_{\bar{\theta}_{j}}(\bar{\phi}_{j}|\phi_{j})
+p¯θ¯j​(ϕ¯j|ϕj)\bar{p}_{\bar{\theta}_{j}}(\bar{\phi}_{j}|\phi_{j}) is sampled using a standard local Metropolis Monte Carlo algorithm.
+A single wavelet coefficient is updated according to
+
+\bar{\phi}_{j,a}\longrightarrow\bar{\phi}_{j,a}^{\prime}=\bar{\phi}_{j,a}+\eta,
+ϕ¯j,a⟶ϕ¯j,a′=ϕ¯j,a+η,\bar{\phi}_{j,a}\longrightarrow\bar{\phi}_{j,a}^{\prime}=\bar{\phi}_{j,a}+\eta,
+
+(103)
+
+where 
+a
+aa labels both the spatial position and the wavelet channel and 
+\eta
+η\eta is a random variable uniformly distributed over the interval 
+[-\delta,\delta]
+[−δ,δ][-\delta,\delta].
+The move is then accepted with probability
+
+P_{\mathrm{acc}}=\min\left[1,e^{-\Delta\bar{E}_{\bar{\theta}_{j}}}\right],
+Pacc=min⁡[1,e−Δ​E¯θ¯j],P_{\mathrm{acc}}=\min\left[1,e^{-\Delta\bar{E}_{\bar{\theta}_{j}}}\right],
+
+(104)
+
+with
+
+\Delta\bar{E}_{\bar{\theta}_{j}}
+Δ​E¯θ¯j\Delta\bar{E}_{\bar{\theta}_{j}} is given by Eq. (16).
+The proposal amplitude 
+\delta
+δ\delta is tuned, during a short warm-up stage, so as to
+obtain an acceptance rate of roughly 
+50\%
+50%50\%.
+
+The same local Metropolis scheme is used to generate the original Monte Carlo
+configurations of the microscopic model. In that case, the proposed
+update is applied to a single microscopic field variable 
+\phi_{0}(i)
+ϕ0​(i)\phi_{0}(i), and the
+acceptance probability is computed from the corresponding change
+
+\Delta E_{0}
+Δ​E0\Delta E_{0} of the microscopic energy in Eq. (1).
+
+The choice of local conditional updates should be contrasted with global
+Langevin-based proposals, such as MALA
+[34, 35], which have also been used in
+related learned multiscale sampling contexts [30]. In such
+methods, the update of the full set of variables is proposed at once, then accepted or rejected. Global proposals are naturally parallelizable—in contrast to local
+Metropolis sweeps—but their acceptance and decorrelation properties typically
+degrade as the number of degrees of freedom increases. For example, optimal
+scaling results for MALA give a characteristic scaling of order 
+N^{1/3}
+N1/3N^{1/3}
+decorrelation steps for a target distribution of 
+N
+NN variables. In two spatial
+dimensions, where 
+N=L^{2}
+N=L2N=L^{2}, this corresponds to 
+L^{2/3}
+L2/3L^{2/3}. Local conditional Metropolis updates also
+provide a direct measure the decorrelation time of the conditional chain at each reconstruction
+scale (in units of MC sweeps).
+
+Configuration and energy reconstruction.
+
+In order to generate a microscopic configuration, we first sample the coarsest field
+
+\phi_{J}
+ϕJ\phi_{J} from 
+p_{\theta_{J}}(\phi_{J})
+pθJ​(ϕJ)p_{\theta_{J}}(\phi_{J}). Then, for
+
+j=J,J-1,\ldots,1
+j=J,J−1,…,1j=J,J-1,\ldots,1, we sample the wavelet variables
+
+\bar{\phi}_{j}
+ϕ¯j\bar{\phi}_{j} from 
+p_{\bar{\theta}_{j}}(\bar{\phi}_{j}|\phi_{j})
+pθ¯j​(ϕ¯j|ϕj)p_{\bar{\theta}_{j}}(\bar{\phi}_{j}|\phi_{j}) and reconstruct 
+\phi_{j-1}
+ϕj−1\phi_{j-1} with the inverse filter of Eq. (5).
+For this generative procedure, only the knowledge of 
+E_{\theta_{J}}
+EθJE_{\theta_{J}} and of the conditional
+energies 
+\bar{E}_{\bar{\theta}_{j}}
+E¯θ¯j\bar{E}_{\bar{\theta}_{j}} is required.
+
+The fitted free-energy terms 
+\bar{F}_{\alpha_{j}}
+F¯αj\bar{F}_{\alpha_{j}} are instead used to
+construct an explicit hierarchical energy for the learned WCRG model, according to Eq. (19).
+Equivalently,
+
+\begin{split}p_{0}^{\rm WCRG}(\phi_{0})&amp;\propto\exp\left[-E_{0}^{\rm WCRG}(\phi_{0})\right]\\
+&amp;=p_{\theta_{J}}(\phi_{J})\prod_{j=1}^{J}p_{\bar{\theta}_{j}}(\bar{\phi}_{j}|\phi_{j}).\end{split}
+p0WCRG​(ϕ0)∝exp⁡[−E0WCRG​(ϕ0)]=pθJ​(ϕJ)​∏j=1Jpθ¯j​(ϕ¯j|ϕj).\begin{split}p_{0}^{\rm WCRG}(\phi_{0})&amp;\propto\exp\left[-E_{0}^{\rm WCRG}(\phi_{0})\right]\\
+&amp;=p_{\theta_{J}}(\phi_{J})\prod_{j=1}^{J}p_{\bar{\theta}_{j}}(\bar{\phi}_{j}|\phi_{j}).\end{split}
+
+(105)
+
+The energy 
+E_{0}^{\rm WCRG}
+E0WCRGE_{0}^{\rm WCRG} is the microscopic energy induced by the learned
+hierarchical model. It is not, in general, identical to the original
+microscopic energy 
+E_{0}
+E0E_{0}, because the conditional energies and the
+free-energy contributions are both represented in terms of finite-dimensional
+ansätze.
+
+References
+
+[1]
+P. C. Hohenberg and B. I. Halperin, Theory of dynamic critical phenomena, Rev. Mod. Phys. 49, 435 (1977). 
+
+[2]
+A. Sokal, Monte Carlo methods in statistical mechanics: Foundations and new algorithms, in Functional Integration: Basics and Applications, edited by C. DeWitt-Morette, P. Cartier, and A. Folacci (Springer, 1997) pp. 131–192. 
+
+[3]
+R. Agrawal, L. F. Cugliandolo, L. Faoro, L. B. Ioffe, and M. Picco, Nonequilibrium critical dynamics of the two-dimensional 
+\pm{J}
+±J\pm{J} Ising model, Phys. Rev. E 108, 064131 (2023). 
+
+[4]
+R. Agrawal, L. F. Cugliandolo, L. Faoro, L. B. Ioffe, and M. Picco, Dynamical critical behavior on the Nishimori point of frustrated Ising models, Phys. Rev. E 110, 034120 (2024). 
+
+[5]
+D. Landau and K. Binder, A Guide to Monte Carlo Simulations in Statistical Physics, 5th ed. (Cambridge University Press, 2021). 
+
+[6]
+G. Alfaro Miranda, M. Zheng, P. Charbonneau, A. Coniglio, L. F. Cugliandolo, and M. Tarzia, Percolation and criticality of systems with competing interactions on bethe lattices: Limitations and potential strengths of cluster schemes, Phys. Rev. E 114, 014114 (2026). 
+
+[7]
+G. Alfaro Miranda (2026), in preparation. 
+
+[8]
+M. Zheng, M. Tarzia, and P. Charbonneau, Communication: Weakening the critical dynamical slowing down of models with SALR interactions, J. Chem. Phys. 157, 181103 (2022). 
+
+[9]
+M. Gabrié, G. M. Rotskoff, and E. Vanden-Eijnden, Adaptive Monte Carlo augmented with normalizing flows, Proceedings of the National Academy of Sciences 119, e2109420119 (2022). 
+
+[10]
+D. Wu, L. Wang, and P. Zhang, Solving statistical mechanics using variational autoregressive networks, Physical Review Letters 122, 080602 (2019). 
+
+[11]
+D. Ghio, Y. Dandi, F. Krzakala, and L. Zdeborová, Sampling with flows, diffusion, and autoregressive neural networks from a spin-glass perspective, Proceedings of the National Academy of Sciences 121, e2311810121 (2024). 
+
+[12]
+L. M. Del Bono, G. Biroli, P. Charbonneau, and M. Gabrié, The critical slowing down in diffusion models, arXiv preprint arXiv:2605.12597  (2026), arXiv:2605.12597 [cond-mat.stat-mech] . 
+
+[13]
+L. M. Del Bono, F. Ricci-Tersenghi, and F. Zamponi, Performance of machine-learning-assisted Monte Carlo in sampling from simple statistical physics models, Physical Review E 112, 045307 (2025). 
+
+[14]
+L. P. Kadanoff, Scaling laws for ising models near 
+t_{c}
+tct_{c}, Physics Physique Fizika 2, 263 (1966). 
+
+[15]
+K. G. Wilson, Renormalization group and critical phenomena. i. renormalization group and the kadanoff scaling picture, Physical Review B 4, 3174 (1971). 
+
+[16]
+K. G. Wilson and J. Kogut, The renormalization group and the 
+\epsilon
+ϵ\epsilon expansion, Physics Reports 12, 75 (1974). 
+
+[17]
+T. Marchand, M. Ozawa, G. Biroli, and S. Mallat, Multiscale data-driven energy estimation and generation, Phys. Rev. X 13, 041038 (2023). 
+
+[18]
+A. Hyvärinen, Estimation of non-normalized statistical models by score matching, J. Mach. Learn. Res. 6, 695–709 (2005). 
+
+[19]
+Y. Hu and P. Charbonneau, Numerical transfer matrix study of frustrated next-nearest-neighbor Ising models on square lattices, Phys. Rev. B 104, 144429 (2021). 
+
+[20]
+S. Mallat, A theory for multiresolution signal decomposition: the wavelet representation, IEEE Transactions on Pattern Analysis and Machine Intelligence 11, 674 (1989). 
+
+[21]
+I. Daubechies, Orthonormal bases of compactly supported wavelets, in Fundamental Papers in Wavelet Theory (Princeton University Press, Princeton, 2009) pp. 564–652. 
+
+[22]
+J. Kaupužs, R. V. N. Melnik, and J. Rimšāns, Corrections to finite-size scaling in the 
+\phi^{4}
+ϕ4\phi^{4} model on square lattices, International Journal of Modern Physics C 27, 1650108 (2016). 
+
+[23]
+D. J. Amit and V. Martin-Mayor, Field Theory, the Renormalization Group, and Critical Phenomena, 3rd ed. (World Scientific, 2005). 
+
+[24]
+A. Haar, Zur Theorie der orthogonalen Funktionensysteme, Mathematische Annalen 69, 331 (1910). 
+
+[25]
+M. P. Nightingale and H. W. J. Blöte, Dynamic exponent of the two-dimensional Ising model and Monte Carlo computation of the subdominant eigenvalue of the stochastic matrix, Phys. Rev. Lett. 76, 4548 (1996). 
+
+[26]
+M. P. Nightingale and H. W. J. Blöte, Monte Carlo computation of correlation times of independent relaxation modes at criticality, Phys. Rev. B 62, 1089 (2000). 
+
+[27]
+A. M. Ferrenberg and R. H. Swendsen, New Monte Carlo technique for studying phase transitions, Phys. Rev. Lett. 61, 2635 (1988). 
+
+[28]
+Z. Kadkhodaie, F. Guth, S. Mallat, and E. P. Simoncelli, Learning multi-scale local conditional probability models of images, arXiv preprint arXiv:2303.02984  (2023). 
+
+[29]
+Duke Research Data Repository https://doi.org/10.7924/r4r539. 
+
+[30]
+F. Guth, E. Lempereur, J. Bruna, and S. Mallat, Conditionally strongly log-concave generative models (2023). 
+
+[31]
+V. Privman, Finite Size Scaling and Numerical Simulation of Statistical Systems (World Scientific, 1990). 
+
+[32]
+M. E. Fisher and M. N. Barber, Scaling theory for finite-size effects in the critical region, Phys. Rev. Lett. 28, 1516 (1972). 
+
+[33]
+A. Brossollet, E. Lempereur, S. Mallat, and G. Biroli, Effective energy, interactions and out of equilibrium nature of scalar active matter, Communications Physics 8, 499 (2025). 
+
+[34]
+N. S. Pillai, A. M. Stuart, and A. H. Thiéry, Optimal scaling and diffusion limits for the Langevin algorithm in high dimensions, The Annals of Applied Probability 22, 2320  (2012). 
+
+[35]
+G. O. Roberts and J. S. Rosenthal, Optimal scaling of discrete approximations to Langevin diffusions, J. R. Stat. Soc. Ser. B Stat. Methodol. 60, 255 (1998). 
+
+    Experimental support, please
+    view the build logs
+    for errors. Generated by
+
+        L
+        A
+        T
+        E
+      
+      xml
+      
+    .
+
+Instructions for reporting errors
+
+We are continuing to improve HTML versions of papers, and your feedback helps enhance accessibility and mobile
+      support. To report errors in the HTML that will help us improve conversion and rendering, choose any of the
+      methods listed below:
+
+Click the &quot;Report Issue&quot; (
+            
+          ) button, located in the page header.
+
+Tip: You can select the relevant text first, to include it in your report.
+
+Our team has already identified the following issues. We appreciate your time reviewing and reporting rendering errors we
+      may not have found yet. Your efforts will help us improve the HTML versions for all readers, because disability
+      should not be a barrier to accessing research. Thank you for your continued support in championing open access for
+      all.
+
+Have a free development cycle? Help support accessibility at arXiv! Our collaborators at LaTeXML maintain a list of packages that need conversion, and welcome developer contributions.
+
+        We gratefully acknowledge support from
+        our major funders,
+        member institutions, ,
+        and all contributors.
+
+Major funding support from</pre></html>

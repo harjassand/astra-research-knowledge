@@ -1,0 +1,69 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>import ast</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>import ast</h1><p>Source ID d-fbcb3de0d4d2890d; literature/sources/hessian_check12/cycle17/sky_inv_quiv_pinned/sky_inv_quiv/quiver_parser.py; 686 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>import ast
+import time
+from typing import Any, Dict, List, Optional,Union, Tuple
+import numpy as np
+import math
+
+from sky_inv_quiv.Field import Field
+from sky_inv_quiv.Quiver import Quiver
+
+def parse_quiver_file(path: str, field: Optional[Field] = None, grid_flag: bool = False) -&gt; Quiver:
+    &quot;&quot;&quot;
+    Parse a simple Quiver file
+    &quot;&quot;&quot;
+    if field is None:
+        field = Field(&quot;Q&quot;)
+
+    with open(path, &quot;r&quot;, encoding=&quot;utf-8&quot;) as f:
+        lines = f.readlines()
+
+    if len(lines) &lt; 2:
+        raise ValueError(&quot;Less than two lines&quot;)
+
+    # Find Quiver( call
+    quiver_line = lines[0].strip()
+    start_char = quiver_line.find(&quot;Quiver(&quot;)+len(&quot;Quiver(&quot;)
+    comma = quiver_line.find(&quot;,&quot;, start_char)
+    
+    vertices: List[Union[int, Tuple[int, int]]]
+    #parse vertices
+    if grid_flag:
+        grid_dims = quiver_line[start_char:comma].split(&quot; &quot;)
+        n = int(grid_dims[0].strip())
+        if len(grid_dims)==2:
+            m = int(grid_dims[1].strip())
+            vertices = [(i,j) for j in range(0, m ) for i in range(0, n )]
+        elif (len(grid_dims)!=1) or (math.isqrt(n)**2!=n):
+            print(&quot;not grid input format&quot;)
+        else:
+            vertices = [(i,j) for j in range(0,math.isqrt(n) ) for i in range(0, math.isqrt(n) )]
+    else:
+        n = int(quiver_line[start_char:comma])
+        vertices = list(range(1, n + 1))
+   
+    #parse edges
+    edges: Dict[Any, List[Any]] = {}
+    str_edges = quiver_line[comma + 1 :].strip().strip(&quot;);&quot;)
+    for edge_list in ast.literal_eval(str_edges):
+       edges[str(edge_list[2])] = [vertices[int(edge_list[0]-1)], vertices[int(edge_list[1]-1)]]
+
+    #line 2
+    rep_line = lines[1].strip().strip(&quot;);&quot;)
+    start_dimvec = rep_line.find(&quot;[&quot;) 
+    startve = rep_line.find(&quot;],&quot;) + len(&quot;],&quot;)
+    #parse dimvec
+    dimvec_list = ast.literal_eval(rep_line[start_dimvec : startve - 1].strip())
+    dimvec_list_dict = dict(zip(vertices, dimvec_list))
+
+    #parse Ve
+    Ve: Dict[Any, np.ndarray] = {}
+    #initialize Ve with zero matrices
+    for e in edges.keys():
+        Ve[e] = field.to_Field(np.zeros((dimvec_list_dict[edges[e][1]], dimvec_list_dict[edges[e][0] ]), dtype=&quot;i&quot;))
+    #read nonzero Ve&#x27;s
+    Ve_list = ast.literal_eval(rep_line[startve :].strip())
+    for ve in Ve_list:
+        Ve[str(ve[0])] = field.to_Field(np.array(ve[1]).transpose())
+    return Quiver(vertices, edges, Ve, field=field, grid=grid_flag)
+
+</pre></html>

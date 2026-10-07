@@ -1,0 +1,1526 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>High-accuracy sampling for diffusion models and log-concave distributions</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>High-accuracy sampling for diffusion models and log-concave distributions</h1><p>Source ID d-a8d7d03b70f4d200; literature/sources/r10_probability/2602.01338v1.html.txt; 56990 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>High-accuracy sampling for diffusion models and log-concave distributions
+Report GitHub Issue
+×
+Title:
+Content selection saved. Describe the issue below:
+Description:
+Submit without GitHub
+Submit in GitHub
+arXiv is now an independent nonprofit!
+Learn more
+×
+Back to arXiv
+Why HTML?
+Report Issue
+Back to Abstract
+Download PDF
+Abstract
+1 Introduction
+1.1 Our contribution
+Diffusion sampling
+Log-concave sampling
+1.2 Related work
+High-accuracy diffusion sampling
+Concurrent work
+Log-concave sampling
+1.3 Notation
+2 Background on diffusion models
+Score function and estimates
+Roadmap
+3 Key subroutine: Gaussian tilts
+3.1 First-order rejection sampling (FORS)
+3.2 Sampling from Gaussian tilts with an exact oracle
+General path integral
+4 Diffusion sampling
+4.1 A simple method
+4.2 A DDPM-like method
+4.3 Adaptation to low-dimensional structure
+5 Application to log-concave sampling
+6 Conclusion
+References
+A Discussion
+A.1 Concurrent work
+B Additional notation and technical tools
+B.1 Functional inequalities
+B.2 Lemmas
+C Proof of Theorem
+D Proofs for Section
+Claim 1
+Proof of Claim 1
+Claim 2
+Proof of Claim 2
+E Proofs for Section
+E.1 Proof of Theorem
+E.2 Analysis of a DDPM-like method
+Notation
+Distributions
+E.3 Proof of Theorem
+E.4 Proof of Theorem
+E.5 Technical lemmas
+E.6 Proof of Proposition
+Bounds on the moments
+Bound on the tail
+Bound on the tail probability
+E.7 Proof of Proposition
+Decomposition of KL divergence
+Upper bound on  $h$
+Putting everything together
+F Log-concave sampling
+License: arXiv.org perpetual non-exclusive license
+arXiv:2602.01338v1 [cs.LG] 01 Feb 2026
+High-accuracy sampling for diffusion models and log-concave distributions
+Fan Chen
+Affiliation: MIT
+Email: fanchen@mit.edu
+Sinho Chewi
+Affiliation: Yale University
+Email: sinho.chewi@yale.edu
+Constantinos Daskalakis
+Affiliation: MIT
+Email: costis@csail.mit.edu
+Alexander Rakhlin
+Affiliation: MIT
+Email: rakhlin@mit.edu
+Abstract
+We present algorithms for diffusion model sampling which obtain  $\delta$ -error in  $\mathrm{polylog}(1/\delta)$  steps, given access to  $\widetilde{O}(\delta)$ -accurate score estimates in  $L^{2}$ . This is an exponential improvement over all previous results. Specifically, under minimal data assumptions, the complexity is  $\widetilde{O}(d\,\mathrm{polylog}(1/\delta))$  where  $d$  is the dimension of the data; under a non-uniform  $L$ -Lipschitz condition, the complexity is  $\widetilde{O}(\sqrt{dL}\,\mathrm{polylog}(1/\delta))$ ; and if the data distribution has intrinsic dimension  $d_{\star}$ , then the complexity reduces to  $\widetilde{O}(d_{\star}\,\mathrm{polylog}(1/\delta))$ . Our approach also yields the first  $\mathrm{polylog}(1/\delta)$  complexity sampler for general log-concave distributions using only gradient evaluations.
+1 Introduction
+What is the complexity of sampling from a continuous probability distribution, given access to evaluations of the gradient of the log-density?
+In particular, can one design algorithms whose iteration complexity scales as  $\mathrm{polylog}(1/\delta)$ , where  $\delta$  is the target accuracy, or must they necessarily take  $\mathrm{poly}(1/\delta)$  steps?
+Complexity bounds which scale as  $\mathrm{polylog}(1/\delta)$ , indicating that algorithms converge exponentially fast, are known as “high-accuracy” guarantees, as they ensure that one can draw an extremely accurate sample without too many iterations.
+When access to the log-density of the target distribution is available, and not just its gradient, then high-accuracy samplers abound, based on accept-reject mechanisms such as rejection sampling or the Metropolis–Hastings filter.
+Without density evaluations, the answer is less clear.
+In this setting, existing sampling methods are typically based on discretizations of stochastic differential equations, and the need to control the discretization error precludes high-accuracy guarantees.
+(Note that this is unlike the setting of optimization, in which gradient descent enjoys a high-accuracy guarantee under strong convexity—there, discretization does not bias the algorithm.)
+A notable exception is discretization of piecewise deterministic Markov processes (PDMPs), for which Lu and Wang (2022) show that  $\mathrm{polylog}(1/\delta)$  evaluations of the gradient suffice from a warm-start.
+This question has become particularly interesting in light of recent developments on diffusion-based generative modeling.
+Such models are based on implementing a certain reverse Markov process, in which each iteration requires evaluation of a score function—the gradient of the log-density along a diffusion process.
+Since these models only learn the score function and not the density function itself (unlike earlier approaches such as energy-based models), it is natural to ask what the best achievable complexity is using score evaluations alone.
+More precisely, we are interested in bounding the number of steps (and queries to the score function) required to sample from a distribution  $\widehat{p}$  such that
+$\displaystyle D(p_{\mathsf{data}},\widehat{p})\leq\delta+C_{\texttt{apx}}\cdot\varepsilon_{\mathsf{score}}\,,$
+where  $D$  is a measure of discrepancy,  $\delta\in(0,1)$  is the target accuracy,  $\varepsilon_{\mathsf{score}}$  measures the error in the score function estimates, and  $C_{\texttt{apx}}$  is a target approximation factor.
+The initial work of Chen et al. (2023c); Lee et al. (2023) showed that with  $L^{2}$ -accurate score estimates, Denoising Diffusion Probabilistic Models (DDPMs) achieve a query complexity of  $1/\delta^{2}$  in total variation distance for sampling from an early stopped distribution, provided that  $p_{\mathsf{data}}$  has bounded support, and with an overhead that is polynomial in the dimension and radius and with  $C_{\texttt{apx}}=\widetilde{O}(1)$ .
+By a standard argument, this can be converted to guarantees for sampling from  $p_{\mathsf{data}}$  itself in a weaker metric.
+Importantly, these results impose almost no assumptions on the data distribution, providing strong theoretical justification for diffusion models.
+Since then, there has been an explosion of works aimed at extending and refining these guarantees (Chen et al., 2023a; Li et al., 2023; Benton et al., 2024; Gao et al., 2025; Conforti et al., 2025; Jain and Zhang, 2025; Li and Yan, 2025; Chen et al., 2023b; Li et al., 2024b; Gao and Zhu, 2024; Huang et al., 2025a, e.g.,), which we cannot fully survey here.
+However, it is known that the complexity of  $1/\delta$  is unimprovable for DDPM (Jiao et al., 2025), which motivates changing the algorithm.
+Under minimal assumptions, the algorithm of Li and Cai (2024) achieves a query complexity of  $1/\delta^{1/2}$ .
+Other works achieved similar speed-ups assuming that the Jacobian of the score error is bounded (Li et al., 2024a; Li et al., 2025b).
+A recent line of works (Huang et al., 2025a; Huang et al., 2025b; Li et al., 2025b, e.g.,) studied higher-order discretization methods, with the resulting query complexity scaling roughly as  $C_{\rm P}\,d^{1+1/p}/\delta^{1/p}$ ,
+where  $p\geq 1$  is the chosen acceleration order, and  $C_{\rm P}$  hides dependence on other problem parameters11
+1
+For example, in the results of Huang et al. (2024a); Huang et al. (2025a); Huang et al. (2025b),  $C_{\rm P}$  hides polynomial dependence on higher-order Lipschitz parameters or the diameter of the support of  $p_{\mathsf{data}}$ .
+along with an implicit (often exponential) dependence on  $p$ . These results show that diffusion sampling can be performed with sub-polynomial dependence on  $1/\delta$ ,22
+2
+Roughly, we should expect  $C_{\rm P}\geq e^{\Omega(p)}$ . Hence, the complexity is at least  $d\exp(O(\sqrt{\log(d/\delta)}))$  with the best choice of acceleration order  $p$ , which is better than  $\mathrm{poly}(1/\delta)$  but much worse than  $\mathrm{poly}\log(1/\delta)$ .
+but they still fall well short of the desired poly-logarithmic complexity.33
+3
+Furthermore, the approximation factor  $C_{\texttt{apx}}$  in Huang et al. (2025a); Huang et al. (2025b) scales polynomially in the early stopping time, and Li et al. (2025b) additionally relies on the second-order score error  $\varepsilon_{\mathsf{Jacobi}}$ , making the results sensitive to score errors.
+Meanwhile, the works Huang et al. (2024a); Wainwright (2025) propose to use density evaluations to achieve high-accuracy samplers.
+As discussed above, this is not compatible with the current practice of diffusion sampling, which only learns score estimates.
+Therefore, we state our main question of interest:
+Is there a diffusion model sampler which achieves a high-accuracy guarantee using only score evaluations, under minimal assumptions on both the data distribution and the score error?
+1.1 Our contribution
+We answer this question affirmatively via a new meta-algorithm, which we call first-order rejection sampling (FORS); see Algorithm 1.
+This algorithm aims at simulating rejection sampling using only first-order (gradient) queries.
+We give consequences of our method for diffusion sampling and for log-concave sampling.
+Diffusion sampling
+We show the following results, where the error is measured in the bounded Lipschitz metric and  $\varepsilon_{\mathsf{score}}$  denotes the  $L^{2}$ -error of the score estimates (Definition 2.1).
+•
+Under minimal data assumptions—namely,  $p_{\mathsf{data}}$  has a finite second moment  $\mathsf{M}_{2}^{2}$ —we obtain  $\delta$  error in  $O(d\log^{2}(M/\delta)+\log^{3}(M/\delta))$  queries with  $C_{\texttt{apx}}=O(1)$ , where  $M\coloneqq d+\mathsf{M}_{2}^{2}$ .
+This result strictly improves upon all prior results in the literature in this setting.
+Beyond this setting, many works in the literature aim to sample with a number of steps which is sublinear in the dimension (Chen et al., 2023b; Jiao and Li, 2024; Jiao et al., 2025; Zhang et al., 2025).
+In an orthogonal direction, other works aim to show that the number of steps depend on the intrinsic dimension of the data (Azangulov et al., 2024; Huang et al., 2024b; Li and Yan, 2024; Potaptchik et al., 2024; Li et al., 2025a; Liang et al., 2025; Tang and Yan, 2025).
+We also incorporate these advances into our framework.
+•
+Assuming Lipschitz score functions—where we use the significantly weaker notion of a “non-uniform” Lipschitz constant  $L$  (Assumption 4.3)—we obtain  $\delta$  error in  $O(\sqrt{dL}\log^{3/2}(M/\delta)+L\log^{2}(M/\delta))$  steps, where  $L$  is the Lipschitz constant, and with  $C_{\texttt{apx}}=O(\sqrt{d/L})$ .
+•
+For low-dimensional data distributions, we obtain  $\delta$  error in  $O(\mathsf{d}_{\star}\log^{2}(M/\delta)+\log^{3}(M/\delta))$  steps, where  $\mathsf{d}_{\star}$  is the intrinsic dimension (Definition 4.5), and with  $C_{\texttt{apx}}=O(d/\mathsf{d}_{\star})$  under a slightly stronger notion of error in the score estimates.
+Log-concave sampling
+For sampling from log-concave (and isoperimetric) densities with gradient evaluations of the log-density, we recover state-of-the-art results from Fan et al. (2023), except that we do not require density evaluations; see Section 5.
+1.2 Related work
+As we do not have space to survey the vast literature on diffusion model guarantees, we focus on the ones most relevant to our work.
+High-accuracy diffusion sampling
+Prior to this work, Huang et al. (2024a); Wainwright (2025) studied diffusion sampling with additional zeroth-order queries. Specifically, given access to estimates of the log-densities with bounded error, query complexity bounds of  $\widetilde{O}(d^{2}\log(1/\delta))$  (Huang et al., 2024a) and  $\widetilde{O}(\sqrt{d}\log^{3}(1/\delta))$  (Wainwright, 2025) under additional Lipschitz conditions on the score functions. Both works resort to standard high-accuracy sampling methods (e.g., Metropolis-adjusted Langevin). However, estimating the densities can be extremely challenging in practice.
+Concurrent work
+In concurrent work, Gatmiry et al. (2026) also obtains a high-accuracy guarantee for diffusion sampling.
+Assuming that  $p_{\mathsf{data}}$  is a Gaussian convolution, i.e.,  $p_{\mathsf{data}}=p_{\star}*\mathsf{N}\left(0,\sigma^{2}I\right)$  where  $p_{\star}$  is supported on a ball of radius  $R$ , and that the score errors are bounded in the sub-exponential norm, they obtain a query complexity of  $\widetilde{O}((R/\sigma)^{2}\log^{2}(1/\delta))$ .
+While their assumptions are stronger than ours, the final complexity bounds are incomparable. We defer a lengthier comparison to
+Section A.1.
+Log-concave sampling
+Our application to log-concave sampling is based on the proximal sampler (Lee et al., 2021; Chen et al., 2022), and our results can be compared to Altschuler and Chewi (2024); Fan et al. (2023).
+See the book draft Chewi (2026) for an overview of the subject.
+1.3 Notation
+We make use of the following divergences between probability distributions: the total variation (TV) distance  $D_{\mathsf{TV}}\left(\mu,\nu\right)\coloneqq\frac{1}{2}\int|\mu-\nu|$ ; the Hellinger distance  $D^{2}_{\mathsf{H}}\left(\mu,\nu\right)\coloneqq\frac{1}{2}\int(\sqrt{\mu}-\sqrt{\nu})^{2}$ ; the KL divergence  $D_{\mathsf{KL}}\left(\mu\,\|\,\nu\right)\coloneqq\En_{\mu}\log(\mu/\nu)$ ; the chi-squared divergence  $D_{\chi^{2}}\left(\mu\;\|\;{}\nu\right)\coloneqq\mathbb{E}_{\mu}(\mu/\nu)^{2}-1$ ; and the Wasserstein distance  $W_{2}^{2}(\mu,\nu)\coloneqq\inf_{\gamma~\text{coupling of }\mu,\nu}\En_{(X,Y)\sim\gamma}\|X-Y\|^{2}$ .
+In addition, we consider the bounded Lipschitz metric which metrizes weak convergence:
+$\displaystyle D_{\mathsf{BL}}\left(\mu,\nu\right)\coloneqq\sup\{\mathbb{E}_{\mu}f-\mathbb{E}_{\nu}f:|f|\leq 1,\,\|f\|_{\rm Lip}\leq 1\}.$
+We define
+$\displaystyle\mathsf{Clip}_{B}(x)\coloneqq\max\{-B,\min\{B,x\}\}\,,\qquad\forall x\in\mathbb{R}\,.$
+We use  $\lesssim$  and  $O(\cdot)$  to hide absolute constant, i.e.,  $f\lesssim g$  (and  $f=O(g)$ ) if there is an absolute constant such that  $f\leq Cg$ .
+The notation  $\widetilde{O}(\cdot)$  hides logarithmic factors.
+2 Background on diffusion models
+Recall that Denoising Diffusion Probabilistic Models (DDPMs) are based on the following forward process that transforms a sample  $X_{0}\sim p_{\mathsf{data}}$  to noise:
+$\displaystyle X_{0}\sim p_{\mathsf{data}}\,,\quad X_{t+1}\sim\mathsf{N}\left(\alpha_{t}X_{t},\alpha_{t}^{2}\eta_{t}I\right)\,,~~t\in[T]\,.$
+(1)
+Note that this is a Markov chain, and it is easy to see that  $X_{t}\mid X_{0}\sim\mathsf{N}\left(\bar{\alpha}_{t}X_{0},\sigma_{t}^{2}I\right)$ , where
+$\displaystyle\bar{\alpha}_{t}=\prod_{s=0}^{t-1}\alpha_{s}\,,\qquad\sigma_{t}^{2}=\alpha_{t-1}^{2}\,(\sigma_{t-1}^{2}+\eta_{t-1})\,.$
+Conversely, given the parameter sequence  $(\bar{\alpha}_{t},\sigma_{t})_{t\in[T]}$ , the corresponding  $(\alpha_{t},\eta_{t})_{t\in[T]}$  is given by
+$\displaystyle\alpha_{t}=\frac{\bar{\alpha}_{t+1}}{\bar{\alpha}_{t}}\,,\qquad\eta_{t}=\frac{\sigma_{t+1}^{2}}{\alpha_{t}^{2}}-\sigma_{t}^{2}=\frac{\sigma_{t+1}^{2}}{\bar{\alpha}_{t+1}^{2}}\,\bar{\alpha}_{t}^{2}-\sigma_{t}^{2}\,.$
+We say that the DDPM is variance-preserving if  $\bar{\alpha}_{t}^{2}+\sigma_{t}^{2}=1$ , and hence  $\alpha_{t}^{2}=\frac{1-\sigma_{t+1}^{2}}{1-\sigma_{t}^{2}}$ ,  $\sigma_{t+1}^{2}=\frac{1-\sigma_{t+1}^{2}}{1-\sigma_{t}^{2}}\,(\sigma_{t}^{2}+\eta_{t})$ .
+We let  $p_{t}$  be the probability density function of  $X_{t}$ , and let  $\rho_{t}(\cdot\mid x^{\prime})$  be the probability density function of the backward transition kernel  $\mathbb{P}(X_{t}=\cdot\mid X_{t+1}=x^{\prime})$ . Then, by Bayes rule, it holds that
+$\displaystyle\rho_{t}(x\mid x^{\prime})\propto_{x}p_{t}(x)\exp\Big(-\frac{\|x-\alpha_{t}^{-1}x^{\prime}\|^{2}}{2\eta_{t}}\Big)\,.$
+(2)
+In this work, we focus on the task of sampling from  $p_{1}$  with extremely small values of  $1-\alpha_{0}$  and  $\sigma_{1}$ .
+This corresponds to early stopping; see Section 4.1 for further discussion.
+Score function and estimates
+As above, we assume that we have access to approximate score functions  $(\mathsf{s}_{t})_{t\in[T]}$  such that  $\mathsf{s}_{t}\approx\mathsf{s}^{\star}_{t}\vcentcolon=\nabla\log p_{t}$  with controlled mean-squared error. Recall that by Tweedie’s identity,
+$\displaystyle\mathsf{s}^{\star}_{t}(x)=\nabla\log p_{t}=\frac{1}{\sigma_{t}^{2}}\En[\bar{\alpha}_{t}X_{0}-X_{t}\mid X_{t}]\,,$
+(3)
+where the conditional expectation is taken over  $X_{0}\sim p_{\mathsf{data}}$ ,  $X_{t}\sim\mathsf{N}\left(\bar{\alpha}_{t}X_{0},\sigma_{t}^{2}\right)$ .
+Definition 2.1 (Score estimation error).
+Given the score estimates  $(\mathsf{s}_{t})_{t\in[T]}$ , we define
+$\displaystyle\varepsilon_{t,\mathsf{score}}^{2}\vcentcolon=\En_{X_{t}\sim p_{t}}\|\mathsf{s}_{t}(X_{t})-\mathsf{s}^{\star}_{t}(X_{t})\|^{2}\,,\qquad t\in[T]\,.$
+Roadmap
+To approximately generate a sample from  $p_{\mathsf{data}}$ , we learn approximate score functions  $\mathsf{s}_{t}\approx\nabla\log p_{t}$ .
+DDPM uses the approximation  $\log p_{t}(x)\approx\log p_{t}(x^{\prime})+\langle\mathsf{s}_{t}(x^{\prime}),x-x^{\prime}\rangle$ , yielding
+$\displaystyle\rho_{t}(\cdot\mid x^{\prime})\approx\mathsf{N}\left(\alpha_{t}^{-1}x^{\prime}+\eta_{t}\mathsf{s}_{t}(x^{\prime}),\eta_{t}I\right).$
+(4)
+In our work, we develop algorithms for sampling from (2) directly. In Section 3, we motivate our approach by assuming that  $\mathsf{s}_{t}=\nabla\log p_{t}$  is exact, which has implications for log-concave sampling described in Section 5. In Section 4, we instantiate our methods on diffusion sampling and show that the convergence guarantees are robust with respect to the error in the score function estimates.
+3 Key subroutine: Gaussian tilts
+In this section, we focus on the problem of sampling from a Gaussian tilt of the form
+$\displaystyle\nu(x)\propto\exp\Big(-f(x)-\frac{\|x-x_{0}\|^{2}}{2\eta}\Big)\,,$
+(5)
+where we assume access to first-order queries for  $f$ . For our eventual application to diffusion models, we will choose  $f=\log p_{t}$  in view of Eq. 2 and approximate  $\nabla f\approx\mathsf{s}_{t}$ .
+3.1 First-order rejection sampling (FORS)
+We motivate our approach by considering the simple problem of sampling from a density  $p\propto e^{-f}$ , where  $f:[0,1]\to\mathbb{R}$ ,  $f(0)=0$ , and  $-1\leq f^{\prime}\leq 1$ .
+Our goal is to develop a high-accuracy sampler—a sampler whose sampled distribution has  $\delta$  error in total variation distance to  $p$ —in  $\mathrm{polylog}(1/\delta)$  steps, using only queries to  $f^{\prime}$ .
+Consider performing rejection sampling with the base measure  $\mathsf{Unif}([0,1])$ . To do so, we must generate randomness  $b\sim\mathsf{Ber}(ce^{-f(x)})$  for any given  $x\in[0,1]$ . However, we only have access to  $f^{\prime}$ . The identity  $f(x)=\int_{0}^{x}f^{\prime}(y)\,dy$ , written as
+$\displaystyle f(x)=\En_{y\sim\mathsf{Unif}([0,x])}[xf^{\prime}(y)]\,,$
+(6)
+suggests an unbiased estimate of  $f(x)$ . Is it possible to sample from  $\mathsf{Ber}(ce^{-f(x)})$  if we have access to an unbiased estimate of  $f(x)$ ? A general version of this question is known as the “Bernoulli factory” problem (Keane and O’Brien, 1994; Nacu and Peres, 2005). For our purposes, this can be stated as the following abstract task:
+Task: Given i.i.d. random variables  $W_{1},W_{2},W_{3},\dotsc$  in  $[-1,1]$ , generate a sample  $b\sim\mathsf{Ber}(ce^{\En W_{1}})$ .
+To solve this, we write the Taylor series as
+$\displaystyle e^{\En W_{1}}=e^{-1}\cdot e^{\En[1+W_{1}]}=\sum_{j\geq 0}\frac{e^{-1}}{j!}\,\bigl(\En[1+W_{1}]\bigr)^{j}\,.$
+Suppose that  $J\sim\mathsf{Poisson}(2)$  is independent of the i.i.d. sequence  $W_{1},W_{2},W_{3},\dotsc$ . Then we notice that
+$\displaystyle e^{\En W_{1}}=e\En\Big[\prod_{j=1}^{J}\bigl(\frac{1+W_{j}}{2}\bigr)\Big]\,,$
+and simply set  $b\sim\mathsf{Ber}\big(\prod_{j=1}^{J}\bigl(\frac{1+W_{j}}{2}\bigr)\big)$ .
+Indeed,  $\mathbb{P}(b=1)=\mathbb{E}\prod_{j=1}^{J}\bigl(\frac{1+W_{j}}{2}\bigr)=e^{-1+\En W_{1}}$ .
+In summary, we can generate a sample  $b\sim\mathsf{Ber}(ce^{-f(x)})$  without having to compute or accurately approximate  $f(x)$  (this requires the integration step  $f(x)=\int_{0}^{x}f^{\prime}(y)\,dy$  and can be expensive). Instead, it is sufficient to have access to (a random number of) unbiased estimates of  $f(x)$ . The latter can be achieved with derivative information, in view of (6).
+We now generalize this setup via the following meta-algorithm, called first-order rejection sampling (FORS). Given a proposal distribution  $q$  and a tilt function  $w$ , the goal of Algorithm 1 is to produce a sample from  $\widehat{p}(x)\propto q(x)\,e^{w(x)}$  without having access to the value  $w(x)$ . Instead, for each  $x\in\mathbb{R}^{d}$ , we can generate i.i.d. samples  $W_{1},W_{2},W_{3}\dotsc$  such that  $\En[W_{1}\mid x]=w(x)$ .
+Let  $\mathcal{W}_{x}$  denote the conditional distribution of  $W_{1}$  given  $x$ .
+Algorithm 1  First-order rejection sampling (FORS)
+Input: Parameter  $B&gt;0$ , proposal distribution  $q$  over  $\mathbb{R}^{d}$ , estimator distributions  $(\mathcal{W}_{x})_{x\in\mathbb{R}^{d}}$  supported on  $[-B,B]$
+for  $i=1,2,3,\dotsc$  do
+Sample  $x\sim q$ .
+Sample  $J\sim\mathsf{Poisson}(2B)$ .
+Sample i.i.d.  $W_{1},\dotsc,W_{J}\sim\mathcal{W}_{x}$ .
+Output  $x$  with probability  $\prod_{j=1}^{J}\frac{B+W_{j}}{2B}$ .
+end for
+Theorem 3.1 (FORS guarantee).
+Algorithm 1 outputs a random point with density  $\widehat{p}(x)\propto q(x)\,e^{\En[W_{1}\mid x]}$ .
+The number of sampled  $W_{j}$ ’s is bounded, with probability at least  $1-\delta$ , by  $3Be^{2B}\log(2/\delta)$ .
+Moreover, if Algorithm 1 is called  $T$  times, then with probability at least  $1-\delta$ , the total number of sampled  $W_{j}$ ’s is  $O(Be^{2B}\,(T+\log(1/\delta)))$ .
+3.2 Sampling from Gaussian tilts with an exact oracle
+To perform rejection sampling, we have to appropriately choose the proposal distribution  $q$ . By Taylor’s expansion, for a fixed  $x_{+}\in\mathbb{R}^{d}$ , we have
+$\displaystyle f(x)\approx f(x_{+})+\langle x-x_{+},\nabla f(x_{+})\rangle\,,$
+and hence it is natural to choose  $q=\mathsf{N}\left(x_{0}-\eta\nabla f(x_{+}),\eta I\right)$  so that
+$\displaystyle q(x)\propto\exp\Bigl(-\langle x-x_{+},\nabla f(x_{+})\rangle-\frac{1}{2\eta}\left\lVert x-x_{0}\right\rVert^{2}\Bigr)\,.$
+Then, we can express
+$\displaystyle\log\nu(x)-\log q(x)-\mathrm{const}=$
+$\displaystyle~\langle x-x_{+},\nabla f(x_{+})\rangle-f(x)+f(x_{+})$
+$\displaystyle=$
+$\displaystyle~\int_{0}^{1}\langle x-x_{+},\nabla f(x_{+})-\nabla f(rx+(1-r)x_{+})\rangle\,dr\,.$
+In particular, we can set
+$\displaystyle W_{r,x}\vcentcolon=\langle x-x_{+},\nabla f(x_{+})-\nabla f(rx+(1-r)x_{+})\rangle\,,$
+so that
+$\displaystyle\nu(x)\propto q(x)\exp\left(\En_{r}W_{r,x}\right)\,,$
+where the expectation  $\En_{r}[\cdot]$  is taken over  $r\sim\mathsf{Unif}([0,1])$ .
+Further, assuming that  $\nabla f$  is  $\beta$ -Lipschitz, we can bound  $\lvert W_{r,x}\rvert\leq\beta\,\|x-x_{+}\|^{2}$ . Therefore, as long as  $x_{+}\approx x_{0}-\eta\nabla f(x_{+})$  and  $\beta d\eta\ll 1$ , we can guarantee that  $\sup_{r}{\lvert W_{r,x}\rvert}\leq 1$  with high probability over  $x\sim q$ . This implies the following distribution is a good approximation of  $\nu$ :
+$\displaystyle\widehat{\nu}(x)\propto q(x)\exp(\En_{r}\widehat{W}_{r,x})\,,$
+where  $\widehat{W}_{r,x}=\mathsf{Clip}_{B}(W_{r,x})$  and  $B=\Theta(1)$  is a tuneable parameter.
+General path integral
+We can generalize the above pipeline with any path integral and demonstrate (a) that in the gradient Lipschitz case, we in fact only need to ensure  $\beta\sqrt{d}\eta\ll 1$ , and (b) the Lipschitz continuity of  $\nabla f$  can be weakened to Hölder continuity for any exponent  $s\in[0,1]$ .
+Fix a distribution  $P$  (to be determined later) over  $\mathbb{R}^{d}$  and a path function  $\gamma_{z,r}(x)\vcentcolon=\gamma(x;z,r)$  such that  $\gamma_{z,1}(x)=x$  and  $\gamma_{z,0}(x)=\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}(z)$  is independent of  $x$ . Then we can express any smooth function  $h:\mathbb{R}^{d}\to\mathbb{R}$  as
+$\displaystyle\begin{aligned} h(x)-\En_{z\sim P}[h(\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}(z))]=&amp;~\int_{0}^{1}\En_{z\sim P}\langle\dot{\gamma}_{z,r}(x),\nabla h(\gamma_{z,r}(x))\rangle\,dr\\
+=&amp;~\En_{z\sim P,\,r\sim\mathsf{Unif}([0,1])}\langle\dot{\gamma}_{z,r}(x),\nabla h(\gamma_{z,r}(x))\rangle\,,\end{aligned}$
+(7)
+where  $\dot{\gamma}_{z,r}(x)=\frac{d}{dr}\gamma_{z,r}(x)$  is the path derivative with respect to  $r$ .
+This inspires us to consider
+$\displaystyle W_{r,z,x}\vcentcolon=\langle\dot{\gamma}_{z,r}(x),\nabla f(x_{+})-\nabla f(\gamma_{z,r}(x))\rangle\,,$
+(8)
+so that
+$\displaystyle\nu(x)\propto q(x)\exp\left(\En_{r,z}W_{r,z,x}\right)\,,$
+where the expectation  $\En_{r,z}[\cdot]$  is taken over  $r\sim\mathsf{Unif}([0,1])$  and  $z\sim P$ .
+Again, we will truncate  $W_{r,z,x}$  to ensure that the estimator lies in  $[-B,B]$ .
+For better dimension dependence, we consider the following path function ( $\widehat{x}=x_{0}-\eta\nabla f(x_{+})$ ):
+$\displaystyle\begin{aligned} &amp;~\gamma_{z,r}(x)=a_{r}x+(1-a_{r})\widehat{x}+b_{r}z\,,\\
+&amp;~a_{r}=\sin(\pi r/2)\,,~~b_{r}=\cos(\pi r/2)\,,\end{aligned}$
+(9)
+so that  $\dot{\gamma}_{z,r}(x)=a_{r}^{\prime}(x-x_{0})+b_{r}^{\prime}z$ .
+Assumption 3.2.
+There exists  $s\in[0,1]$  and  $\beta_{s}\geq 0$  such that  $\left\lVert\nabla f(x)-\nabla f(y)\right\rVert\leq\beta_{s}\left\lVert x-y\right\rVert^{s}$  for all  $x,y\in\mathbb{R}^{d}$ .
+Theorem 3.3.
+Suppose that Assumption 3.2 holds,  $B=\Theta(1)$ , and  $\|x_{0}-\eta\nabla f(x_{+})-x_{+}\|\leq(d\eta)^{1/2}$ .
+Consider instantiating Algorithm 1 with the choices  $q=\mathsf{N}\left(x_{0}-\eta\nabla f(x_{+}),\eta I\right)$ , and  $\mathcal{W}_{x}$  the law of  $\mathsf{Clip}_{B}(W_{r,z,x})$ , where  $W_{r,z,x}$  is defined in (8)-(9) and  $z\sim\mathsf{N}\left(0,\eta I\right)$ ,  $r\sim\mathsf{Unif}([0,1])$ .
+Then, the law  $\widehat{\nu}$  of Algorithm 1 satisfies  $D_{\chi^{2}}\left(\nu\;\|\;{}\widehat{\nu}\right)\leq\delta^{2}$ , provided that
+$\displaystyle\eta^{-1}\gg\Big(\beta_{s}^{2}d^{s}\log(1/\delta)+\frac{s\beta_{s}^{2}}{d^{1-s}}\log^{2}(1/\delta)\Big)^{1/(1+s)}.$
+Note that  $x_{0}-\eta\nabla f(x_{+})-x_{+}=0$  when  $x_{+}=\text{prox}_{\eta f}(x_{0})$ , that is, the requirement of Theorem 3.3 is that we can approximately take a proximal step on  $f$  from  $x_{0}$ .
+Theorem 3.3 interpolates between the Lipschitz case  $s=0$ , which requires  $\eta^{-1}\gg\beta_{1}^{2}\log(1/\delta)$ , and the smooth case  $s=1$ , which requires  $\eta^{-1}\gg\beta_{2}\,d^{1/2}\log(1/\delta)$ .
+This recovers the result of Fan et al. (2023), except that we only use first-order queries; we spell out the implications for log-concave sampling in Section 5.
+4 Diffusion sampling
+A key insight is that sampling from the backward transition kernel (2), given access to score estimate  $\mathsf{s}_{t}$ , is a special case of the setup of Section 3, except that we only have approximately correct first-order evaluations.
+This leads to the template Algorithm 2 for high-accuracy diffusion sampling.
+In the following subsections, we show how to choose  $q_{t}$  and  $\mathcal{W}_{x}^{t}$  for  $t\in[T]$ .
+Algorithm 2  Backward diffusion sampling
+Input: Score estimates  $\{\mathsf{s}_{t}\}_{t\in[T]}$ , initial distribution  $\widehat{p}_{T}$ , parameters  $(\alpha_{t},\eta_{t})_{t\in[T]}$
+Sample  $X_{T}\sim\widehat{p}_{T}$ .
+for  $t=T-1,\dotsc,1$  do
+Sample  $X_{t}\leftarrow\textsf{FORS}(B,q_{t},(\mathcal{W}^{t}_{x})_{x\in\mathbb{R}^{d}})$ .
+end for
+Output:  $X_{1}$
+4.1 A simple method
+We first propose a simple method that uses as a proposal the Gaussian portion of (2).
+We state all our guarantees for sampling from the early stopped distribution  $p_{1}$ , the law of  $X_{1}\sim\mathsf{N}\left(\alpha_{0}X_{0},\sigma_{1}^{2}\right)$  with  $X_{0}\sim p_{\mathsf{data}}$ ; see the discussion after the theorem.
+Theorem 4.1.
+Suppose that  $\delta\in(0,\frac{1}{2}]$ ,  $B=\Theta(1)$ , and
+$\displaystyle\frac{\sigma_{t}^{2}}{\eta_{t}}\gg d\log(1/\delta)+\log^{2}(1/\delta)\,.$
+(10)
+Consider instantiating the subroutine
+FORS in Algorithm 2 with the following choices:  $q_{t}=\mathsf{N}(\bar{x}_{t},\eta_{t}I)$ , where  $\bar{x}_{t}\coloneqq\alpha_{t}^{-1}X_{t+1}$ , and  $\mathcal{W}_{x}^{t}$  is the law of
+$\displaystyle\widehat{W}_{r,x}\coloneqq\mathsf{Clip}_{B}(\langle x-\bar{x}_{t},\mathsf{s}_{t}(rx+(1-r)\bar{x}_{t})\rangle)\,,$
+for  $r\sim\mathsf{Unif}([0,1])$ .
+Let  $\widehat{p}_{1}$  be the law of  $X_{1}$  generated by Algorithm 2. Then,
+$\displaystyle D_{\mathsf{KL}}\left(p_{1}\,\|\,\widehat{p}_{1}\right)\lesssim$
+$\displaystyle~D_{\mathsf{KL}}\left(p_{T}\,\|\,\widehat{p}_{T}\right)+T\delta+\sum_{t=1}^{T-1}\eta_{t}\varepsilon_{t,\mathsf{score}}^{2}\,.$
+Next, we describe the implications of Theorem 4.1 for diffusion model sampling.
+We should always choose  $B=\Theta(1)$  and we denote  $G\coloneqq C(d+\log(1/\delta))\log(d/\delta)$  for a sufficiently large constant  $C$  from Eq. 10.
+Then, in the variance-preserving setting:
+•
+Recall that  $\alpha_{t}^{2}=\frac{1-\sigma_{t+1}^{2}}{1-\sigma_{t}^{2}}$  and  $\sigma_{t+1}^{2}=\frac{1-\sigma_{t+1}^{2}}{1-\sigma_{t}^{2}}\,(\sigma_{t}^{2}+\eta_{t})$ .
+•
+The condition  $\eta_{t}\leq\frac{\sigma_{t}^{2}}{G}$  reduces to  $\frac{\sigma_{t+1}^{2}}{1-\sigma_{t+1}^{2}}\leq\frac{\sigma_{t}^{2}}{1-\sigma_{t}^{2}}\cdot\left(1+\frac{1}{G}\right)$ .
+•
+This implies that as long as  $T\geq O(G\log(1/(\bar{\delta}\sigma_{0}^{2})))$ , we can guarantee that  $1-\sigma_{T}^{2}\leq\bar{\delta}$ .
+•
+From known results on the convergence of the forward process,  $1-\sigma_{T}^{2}\leq\bar{\delta}$  and  $\widehat{p}_{T}=\mathsf{N}\left(0,\sigma_{T}^{2}I\right)$  imply that  $D_{\mathsf{KL}}\left(p_{T}\,\|\,\widehat{p}_{T}\right)\lesssim\bar{\delta}\En\|X_{0}\|^{2}$ .
+By the above calculation, we can show the following corollary. We denote  $\mathsf{M}_{2}^{2}\coloneqq\mathbb{E}_{X_{0}\sim p_{\mathsf{data}}}\|X_{0}\|^{2}$  to be the second moment of  $p_{\mathsf{data}}$ .
+Corollary 4.2.
+In the variance-preserving setting, for any  $\delta\in(0,\frac{1}{2}]$ ,  $\sigma_{0}&gt;0$ , there exists a schedule  $(\sigma_{t})_{t\in[T]}$  such that
+$\displaystyle T\leq O\big((d+\log(1/\delta))\log^{2}(\kappa/\delta)\big)\,,$
+where  $\kappa\coloneqq(d+M_{2}^{2})/\sigma_{0}^{2}$ ,
+and Algorithm 2 can be instantiated with  $\widehat{p}_{T}=\mathsf{N}\left(0,\sigma_{T}^{2}I\right)$ , so that
+$\displaystyle D_{\mathsf{KL}}\left(p_{1}\,\|\,\widehat{p}_{1}\right)\lesssim$
+$\displaystyle~\delta^{2}+\sum_{t=1}^{T-1}\eta_{t}\varepsilon_{t,\mathsf{score}}^{2}\,.$
+Further, the number of queries made by Algorithm 2 is  $O(T)$  with probability at least  $1-\delta$ .
+This governs the complexity of sampling from the early stopped distribution  $p_{1}$ .
+To convert this into a guarantee for sampling from  $p_{\mathsf{data}}$  itself, we can note that  $W_{2}^{2}(p_{\mathsf{data}},p_{1})\leq(1-\alpha_{0})^{2}\,\mathbb{E}\|X_{0}\|^{2}+\sigma_{0}^{2}d$ .
+This can be made at most  $\delta^{2}$  by choosing  $\sigma_{0}^{2}\asymp\delta^{2}/(d+\mathsf{M}_{2}^{2})$ .
+In terms of the bounded Lipschitz metric, this implies that  $D_{\mathsf{BL}}\left(p_{\mathsf{data}},\widehat{p}_{1}\right)^{2}\lesssim\delta^{2}+\sum_{t=1}^{T-1}\eta_{t}\varepsilon_{t,\mathsf{score}}^{2}$  with a total complexity of
+$\displaystyle\boxed{\max\{d,\log(1/\delta)\}\log^{2}\Big(\frac{d+\mathsf{M}_{2}^{2}}{\delta^{2}}\Big)}.$
+Note that this guarantee imposes no assumptions on  $p_{\mathsf{data}}$  beyond a second moment bound.
+This improves upon prior works Benton et al. (2024); Conforti et al. (2025) which achieved  $\widetilde{O}(d/\delta^{2})$  under these assumptions, and Jain and Zhang (2025); Li and Yan (2025) which recently improved the complexity to  $\widetilde{O}(d/\delta)$ .
+4.2 A DDPM-like method
+Next, we present a method which we call a “DDPM-like” method because the proposal  $q$  takes the form  $\mathsf{N}\left(\alpha_{t}^{-1}X_{t+1}+\eta_{t}\mathsf{s}_{t}(\alpha_{t}^{-1}X_{t+1}),\eta_{t}I\right)$ , which is similar but slightly different from a step of DDPM (4).
+We show that our method, similar to the one from Section 3, achieves  $\sqrt{d}$ -complexity under the non-uniform Lipschitz condition, following Jiao and Li (2024); Jiao et al. (2025).
+Assumption 4.3 (Non-uniform Lipschitz condition).
+For any  $\delta&gt;0$ , there is a parameter  $L_{\delta}\geq 1$  such that for any  $t\in[T]$ ,
+$\displaystyle\mathbb{P}_{X_{t}\sim p_{t}}\Big(\|\nabla\mathsf{s}^{\star}_{t}(X_{t})\|_{\mathrm{op}}&gt;\frac{L_{\delta}}{\sigma_{t}^{2}}\Big)\leq\frac{\delta^{2}}{d^{8}}\,.$
+(11)
+We note that by Proposition E.8, Assumption 4.3 holds unconditionally with  $L_{\delta}=O(d+\log(1/\delta))$ . In other words, the score function  $\mathsf{s}^{\star}_{t}$  is smooth “with high probability”. Further, when  $p_{\mathsf{data}}$  is Gaussian, Assumption 4.3 holds with  $L_{\delta}\equiv 1$  for any  $\delta\geq 0$ .
+As shown in Jiao et al. (2025), when  $p_{\mathsf{data}}=\sum_{h=1}^{H}p_{h}\mathsf{N}\left(\mu_{h},\sigma_{h}^{2}\right)$  is a mixture of  $H$  Gaussian distributions, it holds that  $L_{\delta}\leq O(\log(dH/\delta))$  (see also Proposition E.7).
+Theorem 4.4.
+Suppose that Assumption 4.3 holds,  $\delta\in(0,\frac{1}{2}]$ ,  $B=\Theta(1)$ , and
+$\displaystyle\frac{\sigma_{t}^{2}}{\eta_{t}}\gg\sqrt{dL_{\delta}\log(d/\delta)}+L_{\delta}\log(d/\delta)\,.$
+(12)
+Consider instantiating the subroutine FORS in Algorithm 2 with the following choices:  $q_{t}=\mathsf{N}\left(\bar{x}_{t}+\eta_{t}\mathsf{s}_{t}(\bar{x}_{t}),\eta_{t}I\right)$ , where  $\bar{x}_{t}\coloneqq\alpha_{t}^{-1}X_{t+1}$ , and  $\mathcal{W}_{x}^{t}$  is the law of
+$\displaystyle\widehat{W}_{r,z,x}\coloneqq\mathsf{Clip}_{B}(\langle\dot{\gamma}_{z,r,\bar{x}_{t}}(x),\mathsf{s}_{t}(\gamma_{z,r,\bar{x}_{t}}(x))-\mathsf{s}_{t}(\bar{x}_{t})\rangle)\,,$
+where  $z\sim\mathsf{N}\left(0,\eta_{t}I\right)$ ,  $r\sim\mathsf{Unif}([0,1])$ ,
+and  $\gamma_{z,r,\bar{x}_{t}}$  denotes the path function
+$\displaystyle\gamma_{z,r,\bar{x}_{t}}(x)\coloneqq a_{r}x+(1-a_{r})\bar{x}_{t}+b_{r}z\,,$
+(13)
+$\displaystyle a_{r}\coloneqq\sin(\pi r/2)\,,~~b_{r}\coloneqq\cos(\pi r/2)\,.$
+(14)
+Let  $\widehat{p}_{1}$  be the law of  $X_{1}$  generated by Algorithm 2. Then
+$\displaystyle D_{\mathsf{TV}}\left(p_{1},\widehat{p}_{1}\right)^{2}\leq 2D^{2}_{\mathsf{H}}\left(p_{1},\widehat{p}_{1}\right)\lesssim D_{\mathsf{KL}}\left(p_{T}\,\|\,\widehat{p}_{T}\right)+T\delta+\sqrt{d/L_{\delta}}\cdot\sum_{t=1}^{T-1}\eta_{t}\varepsilon_{t,\mathsf{score}}^{2}\,.$
+Following the reasoning of the preceding subsection, Theorem 4.4 implies a complexity of
+$\displaystyle\boxed{\max\{\sqrt{dL_{\delta}\log(d/\delta)},L_{\delta}\log(d/\delta)\}\log\frac{d+\mathsf{M}_{2}^{2}}{\delta^{2}}}$
+to reach  $D_{\mathsf{BL}}\left(\widehat{p}_{1},p_{\mathsf{data}}\right)^{2}\lesssim\delta^{2}+\sqrt{d/L_{\delta}}\sum_{t=1}^{T-1}\eta_{t}\varepsilon_{t,\mathsf{score}}^{2}$ .
+Note that the dependence on the score error is worse; we do not know if this is fundamental.
+4.3 Adaptation to low-dimensional structure
+While Theorem 4.4 improves the dependence on the ambient dimension to  $\sqrt{d}$ , ideally, we would like to choose  $\eta$  according to the intrinsic dimension of the data distribution  $p_{\mathsf{data}}$  (Li and Yan, 2024) (cf. Definition 4.5).
+The key observation is that for  $p=p_{\mathsf{data}}*\mathsf{N}\left(0,\sigma^{2}I\right)$ , we can write, for  $X_{0}\sim p_{\mathsf{data}}$ ,  $X\sim\mathsf{N}\left(X_{0},\sigma^{2}I\right)$ ,
+$\displaystyle\nabla^{2}\log p(x)=-\frac{I}{\sigma^{2}}+\frac{\mathrm{Cov}(X_{0}\mid X=x)}{\sigma^{4}}\,,$
+(15)
+and hence, when  $p_{\mathsf{data}}$  has low-dimensional structure, we may expect the shifted Hessian  $\nabla^{2}\log p+\sigma^{-2}I$  to be well-behaved. This motivates adapting Theorem 4.4 by replacing the score function with the shifted score function  $\widetilde{\mathsf{s}}(x)=\mathsf{s}(x)+\sigma^{-2}x$ .
+Definition 4.5 (Intrinsic dimension).
+Suppose that the data distribution  $p_{\mathsf{data}}$  has support  $\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}=\mathrm{supp}(p_{\mathsf{data}})$ . Let  $N_{\mathsf{data}}(r)=N(\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{};r,\|\cdot\|_{2})$  be the covering number of  $\mathcal{X}$  under Euclidean norm, and we define the intrinsic dimension of  $p_{\mathsf{data}}$  as  $\mathsf{d}_{\star}=1+\log N_{\mathsf{data}}(\sigma_{0}/\sqrt{d})$ .
+Theorem 4.6.
+Suppose that  $\delta\in(0,\frac{1}{2}]$ ,  $B=\Theta(1)$ , and
+$\displaystyle\frac{\sigma_{t}^{2}}{\eta_{t}}\gg\mathsf{d}_{\star}\log(d/\delta)+\log^{2}(d/\delta)\,.$
+(16)
+Consider instantiating the subroutine FORS in Algorithm 2 with the following choices:  $q_{t}=\mathsf{N}\left(\bar{x}_{t}+\bar{\eta}_{t}\mathsf{s}_{t}(\bar{x}_{t}),\bar{\eta}_{t}I\right)$ , where  $\bar{x}_{t}\coloneqq\alpha_{t}^{-1}X_{t+1}$ ,  $\lambda_{t}=\frac{1}{\sigma_{t}^{2}}$ ,  $1/\bar{\eta}_{t}=1/\eta_{t}+\lambda_{t}$ , and  $\mathcal{W}_{x}^{t}$  is the law of
+$\displaystyle\widehat{W}_{r,z,x}\coloneqq\mathsf{Clip}_{B}\bigl(\langle\dot{\gamma}_{z,r,\bar{x}_{t}}(x),$
+$\displaystyle~\mathsf{s}_{t}(\gamma_{z,r,\bar{x}_{t}}(x))-\mathsf{s}_{t}(\bar{x}_{t})$
+$\displaystyle\quad+\lambda_{t}\,(\gamma_{z,r,\bar{x}_{t}}(x)-\bar{x}_{t})\rangle\bigr)\,,$
+where  $z\sim\mathsf{N}\left(0,\eta_{t}I\right)$ ,  $r\sim\mathsf{Unif}([0,1])$ ,
+and  $\gamma_{z,r,\bar{x}_{t}}$  is the path function given in (13)–(14).
+Let  $\widehat{p}_{1}$  be the law of  $X_{1}$  generated by Algorithm 2. Then
+$\displaystyle D_{\mathsf{KL}}\left(p_{1}\,\|\,\widehat{p}_{1}\right)\lesssim$
+$\displaystyle~D_{\mathsf{KL}}\left(p_{T}\,\|\,\widehat{p}_{T}\right)+T\delta+\frac{d}{\mathsf{d}_{\star}}\sum_{t=1}^{T-1}\eta_{t}\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}_{t,\mathsf{score}}^{2}\,,$
+where for each  $t\in[T]$ , we define
+$\displaystyle\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}_{t,\mathsf{score}}^{2}\vcentcolon=\max_{\eta\in[0,2\eta_{t}]}\En_{X\sim p_{t}*\mathsf{N}\left(0,\eta I\right)}\|\mathsf{s}_{t}(X_{t})-\mathsf{s}^{\star}_{t}(X_{t})\|^{2}\,.$
+This implies a complexity of
+$\displaystyle\boxed{\max\{\mathsf{d}_{\star},\log(d/\delta)\}\log^{2}\Big(\frac{d+\mathsf{M}_{2}^{2}}{\delta^{2}}\Big)}$
+to reach  $D_{\mathsf{BL}}\left(p_{\mathsf{data}},\widehat{p}_{1}\right)^{2}\lesssim\delta^{2}+(d/\mathsf{d}_{\star})\sum_{t=1}^{T-1}\eta_{t}\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}_{t,\mathsf{score}}^{2}$ .
+Again, the dependence on the score error is worse.
+5 Application to log-concave sampling
+In this section, we briefly describe the implications of our results (Theorem 3.3) for the problem of sampling from a log-concave density  $\mu\propto e^{-f}$ .
+The key connection lies in the proximal sampler (Lee et al., 2021; Chen et al., 2022), which is an instance of the Gibbs sampler in which the target distribution is the augmented density
+$\displaystyle\widetilde{\mu}(x,y)\propto\exp\Big(-f(x)-\frac{1}{2\eta}\,\|y-x\|^{2}\Big)\,.$
+See Algorithm 3.
+Algorithm 3  Proximal sampler
+Input: Gradient  $\nabla f$ , step size  $\eta&gt;0$
+for  $n=1,2,3,\dotsc,N$  do
+Sample  $Y_{n}\sim\mathsf{N}\left(X_{n},\eta I\right)$ .
+Sample  $X_{n+1}\sim\mathsf{RGO}_{f,\eta,Y_{n}}$ .
+end for
+Output  $X_{N}$ .
+Algorithm 3 hinges on being able to implement the restricted Gaussian oracle (RGO):
+$\displaystyle\mathsf{RGO}_{f,\eta,y}(x)\propto_{x}\exp\Big(-f(x)-\frac{1}{2\eta}\,\|y-x\|^{2}\Big)\,.$
+Convergence of Algorithm 3 was shown in Lee et al. (2021) under log-concavity of  $\pi$ , and in Chen et al. (2022) under weaker isoperimetric assumptions.
+On the other hand, note that the RGO is exactly a Gaussian tilt distribution, which we considered in Section 3.
+Hence, implementing the RGO step using FORS leads to novel high-accuracy sampling results for log-concave (and isoperimetric) distributions, without assuming access to zeroth-order queries for  $f$ .
+Almost all previous approaches (e.g., rejection sampling, Metropolis–Hastings) required zeroth-order queries, whereas algorithms using only first-order queries typically arise as discretizations of diffusion processes and the resulting discretization error degraded their accuracy guarantees.
+A notable exception is the result of Lu and Wang (2022) on the zigzag sampler, an example of a PDMP, which achieved a complexity of  $\widetilde{O}(\kappa^{2}d^{3/2}\log^{5/2}(1/\delta))$  evaluations of partial derivatives of  $f$ , under strong-log-concavity and given a warm start, where  $\kappa$  is the condition number.
+We only summarize some representative results here, and defer a full presentation to Appendix F.
+Let  $\mu_{0}$ ,  $\widehat{\mu}$  denote the initialization and output of Algorithm 3, and in all cases we track the number of queries to a first-order and proximal oracle for  $f$  in expectation.
+Suppose that  $f$  is smooth ( $s=1$  in Assumption 3.2).
+•
+Under a log-Sobolev inequality, we obtain  $D_{\chi^{2}}\left(\widehat{\mu}\;\|\;{}\mu\right)\leq\varepsilon^{2}$  in  $\widetilde{O}(\kappa\,(d^{1/2}\log^{3/2}(\mathcal{R}/\varepsilon^{2})+\log^{2}(\mathcal{R}/\varepsilon^{2})))$  queries, where  $\mathcal{R}\coloneqq\log(1+D_{\chi^{2}}\left(\mu_{0}\;\|\;{}\mu\right))$  and  $\kappa\coloneqq C_{\mathsf{LSI}}\,\beta_{1}$ .
+•
+Under a Poincaré inequality, we obtain  $D_{\chi^{2}}\left(\widehat{\mu}\;\|\;{}\mu\right)\leq\varepsilon^{2}$  using  $\widetilde{O}(\kappa\,(d^{1/2}\log^{1/2}(1/\varepsilon)+\log(1/\varepsilon))\log(\chi^{2}/\varepsilon^{2}))$  queries, where  $\chi^{2}\coloneqq D_{\chi^{2}}\left(\mu_{0}\;\|\;{}\mu\right)$  and  $\kappa\coloneqq C_{\mathsf{PI}}\,\beta_{1}$ .
+•
+Under log-concavity, we obtain  $D_{\mathsf{KL}}\left(\widehat{\mu}\,\|\,\mu\right)\leq\varepsilon^{2}$  in  $\widetilde{O}(\beta d^{1/2}\,W_{2}^{2}(\mu_{0},\mu)/\varepsilon^{2})$  queries.
+Suppose now that  $f$  is Lipschitz ( $s=0$  in Assumption 3.2).
+•
+Under a Poincaré inequality, we obtain  $D_{\chi^{2}}\left(\widehat{\mu}\;\|\;{}\mu\right)\leq\varepsilon^{2}$  in  $\widetilde{O}(C_{\mathsf{PI}}\,\beta_{0}^{2}\log(1/\varepsilon)\log(\chi^{2}/\varepsilon^{2}))$  queries.
+•
+Under log-concavity, we obtain  $D_{\mathsf{KL}}\left(\widehat{\mu}\,\|\,\mu\right)\leq\varepsilon^{2}$  in  $\widetilde{O}(\beta_{0}^{2}\,W_{2}^{2}(\mu_{0},\pi)/\varepsilon^{2})$  queries.
+6 Conclusion
+In this work, we have presented high-accuracy algorithms for diffusion sampling which operate under minimal data assumptions (Theorem 4.1), with improved dimension dependence under a Lipschitz score assumption (Theorem 4.4) and low-dimensional data (Theorem 4.6).
+With regards to the dependence on the target accuracy, our results improve exponentially over all prior works.
+Our framework also has implications for log-concave sampling (Section 5) using only first-order queries.
+Although this is a primarily theoretical work, we are working toward implementation and experimental evaluation, which will be left as future work.
+Acknowledgments
+We acknowledge support from ARO through award W911NF-21-1-0328, Simons Foundation and the NSF through awards DMS-2031883 and PHY-2019786, the DARPA AIQ program, and AFOSR FA9550-25-1-0375. CD is supported by a Simons Investigator Award, a Simons Collaboration on Algorithmic Fairness, ONR MURI grant N00014-25-1-2116, and ONR grant N00014-25-1-2296.
+References
+Altschuler and Chewi (2024)
+J. M. Altschuler and S. Chewi
+Faster high-accuracy log-concave sampling via algorithmic warm starts.
+J. ACM 71 (3).
+Cited by: Appendix F,
+Appendix F,
+§1.2.
+Azangulov et al. (2024)
+I. Azangulov, G. Deligiannidis, and J. Rousseau
+Convergence of diffusion models under the manifold hypothesis in high-dimensions.
+arXiv preprint arXiv:2409.18804.
+Cited by: §1.1.
+Bakry et al. (2014)
+D. Bakry, I. Gentil, and M. Ledoux
+Analysis and geometry of Markov diffusion operators.
+Grundlehren der Mathematischen Wissenschaften [Fundamental
+Principles of Mathematical Sciences], Vol. 348,  Springer, Cham.
+Cited by: §B.1.
+Benton et al. (2024)
+J. Benton, V. D. Bortoli, A. Doucet, and G. Deligiannidis
+Nearly  $d$ -linear convergence bounds for diffusion models via stochastic localization.
+In The Twelfth International Conference on Learning Representations,
+Cited by: §1,
+§4.1.
+Chen et al. (2023a)
+H. Chen, H. Lee, and J. Lu
+Improved analysis of score-based generative modeling: user-friendly bounds under minimal smoothness assumptions.
+In International Conference on Machine Learning,
+pp. 4735–4763.
+Cited by: §1.
+Chen et al. (2023b)
+S. Chen, S. Chewi, H. Lee, Y. Li, J. Lu, and A. Salim
+The probability flow ODE is provably fast.
+In Advances in Neural Information Processing Systems,  A. Oh, T. Neumann, A. Globerson, K. Saenko, M. Hardt, and S. Levine (Eds.),
+Vol. 36, pp. 68552–68575.
+Cited by: §1.1,
+§1.
+Chen et al. (2023c)
+S. Chen, S. Chewi, J. Li, Y. Li, A. Salim, and A. R. Zhang
+Sampling is as easy as learning the score: theory for diffusion models with minimal data assumptions.
+In The Eleventh International Conference on Learning Representations,
+Cited by: §1.
+Chen et al. (2022)
+Y. Chen, S. Chewi, A. Salim, and A. Wibisono
+Improved analysis for a proximal algorithm for sampling.
+In Proceedings of Thirty Fifth Conference on Learning Theory,  P. Loh and M. Raginsky (Eds.),
+Proceedings of Machine Learning Research, Vol. 178, pp. 2984–3014.
+Cited by: Appendix F,
+§1.2,
+§5,
+§5.
+Chewi et al. (2024)
+S. Chewi, M. A. Erdogdu, M. (. Li, R. Shen, and M. S. Zhang
+Analysis of Langevin Monte Carlo from Poincaré to log-Sobolev.
+Found. Comput. Math., pp. .
+Cited by: Appendix F.
+Chewi (2026)
+S. Chewi
+Log-concave sampling.
+Forthcoming.
+Note: Available online at https://chewisinho.github.io/
+Cited by: §B.1,
+§1.2.
+Conforti et al. (2025)
+G. Conforti, A. Durmus, and M. Gentiloni Silveri
+KL convergence guarantees for score diffusion models under minimal data assumptions.
+SIAM J. Math. Data Sci. 7 (1), pp. 86–109.
+Cited by: §1,
+§4.1.
+Duchi (2023)
+J. C. Duchi
+Lecture notes on statistics and information theory.
+Cited by: §B.2.
+Fan et al. (2023)
+J. Fan, B. Yuan, and Y. Chen
+Improved dimension dependence of a proximal algorithm for sampling.
+In Proceedings of Thirty Sixth Conference on Learning Theory,  G. Neu and L. Rosasco (Eds.),
+Proceedings of Machine Learning Research, Vol. 195, pp. 1473–1521.
+Cited by: Appendix F,
+Appendix F,
+§1.1,
+§1.2,
+§3.2.
+Foster et al. (2024)
+D. J. Foster, Y. Han, J. Qian, and A. Rakhlin
+Online estimation via offline estimation: an information-theoretic framework.
+In Advances in Neural Information Processing Systems,  A. Globerson, L. Mackey, D. Belgrave, A. Fan, U. Paquet, J. Tomczak, and C. Zhang (Eds.),
+Vol. 37, pp. 42840–42898.
+Cited by: §B.2.
+Gao et al. (2025)
+X. Gao, H. M. Nguyen, and L. Zhu
+Wasserstein convergence guarantees for a general class of score-based generative models.
+Journal of machine learning research 26 (43), pp. 1–54.
+Cited by: §1.
+Gao and Zhu (2024)
+X. Gao and L. Zhu
+Convergence analysis for general probability flow odes of diffusion models in wasserstein distances.
+arXiv preprint arXiv:2401.17958.
+Cited by: §1.
+Gatmiry et al. (2026)
+K. Gatmiry, S. Chen, and A. Salim
+High-accuracy and dimension-free sampling with diffusions.
+arXiv preprint arXiv:2601.10708.
+Cited by: 1st item,
+§A.1,
+§A.1,
+§1.2.
+Huang et al. (2025a)
+D. Z. Huang, J. Huang, and Z. Lin
+Convergence analysis of probability flow ODE for score-based generative models.
+IEEE Transactions on Information Theory.
+Cited by: §1,
+§1,
+footnote 1,
+footnote 3.
+Huang et al. (2025b)
+D. Z. Huang, J. Huang, and Z. Lin
+Fast convergence for high-order ODE solvers in diffusion probabilistic models.
+arXiv preprint arXiv:2506.13061.
+Cited by: §1,
+footnote 1,
+footnote 3.
+Huang et al. (2024a)
+X. Huang, D. Zou, H. Dong, Z. Zhang, Y. Ma, and T. Zhang
+Reverse transition kernel: a flexible framework to accelerate diffusion inference.
+Advances in Neural Information Processing Systems 37, pp. 95515–95578.
+Cited by: §1.2,
+§1,
+footnote 1.
+Huang et al. (2024b)
+Z. Huang, Y. Wei, and Y. Chen
+Denoising diffusion probabilistic models are optimally adaptive to unknown low dimensionality.
+arXiv preprint arXiv:2410.18784.
+Cited by: §E.4,
+§1.1.
+Jain and Zhang (2025)
+N. Jain and T. Zhang
+A sharp KL-convergence analysis for diffusion models under minimal assumptions.
+arXiv preprint 2508.16306.
+Cited by: §1,
+§4.1.
+Jayram (2009)
+T. S. Jayram
+Hellinger strikes back: a note on the multi-party information complexity of AND.
+In Approximation, randomization, and combinatorial optimization,
+Lecture Notes in Comput. Sci., Vol. 5687, pp. 562–573.
+Cited by: §B.2.
+Jiao and Li (2024)
+Y. Jiao and G. Li
+Instance-dependent convergence theory for diffusion models.
+arXiv preprint arXiv:2410.13738.
+Cited by: §1.1,
+§4.2.
+Jiao et al. (2025)
+Y. Jiao, Y. Zhou, and G. Li
+Optimal convergence analysis of DDPM for general distributions.
+arXiv preprint arXiv:2510.27562.
+Cited by: §1.1,
+§1,
+§4.2,
+§4.2.
+Keane and O’Brien (1994)
+M. Keane and G. L. O’Brien
+A Bernoulli factory.
+ACM Transactions on Modeling and Computer Simulation (TOMACS) 4 (2), pp. 213–219.
+Cited by: §3.1.
+Lee et al. (2023)
+H. Lee, J. Lu, and Y. Tan
+Convergence of score-based generative modeling for general data distributions.
+In Proceedings of the 34th International Conference on Algorithmic Learning Theory,  S. Agrawal and F. Orabona (Eds.),
+Proceedings of Machine Learning Research, Vol. 201, pp. 946–985.
+Cited by: §1.
+Lee et al. (2021)
+Y. T. Lee, R. Shen, and K. Tian
+Structured logconcave sampling with a restricted Gaussian oracle.
+In Proceedings of Thirty Fourth Conference on Learning Theory,  M. Belkin and S. Kpotufe (Eds.),
+Proceedings of Machine Learning Research, Vol. 134, pp. 2993–3050.
+Cited by: §1.2,
+§5,
+§5.
+Li et al. (2025a)
+G. Li, C. Cai, and Y. Wei
+Dimension-free convergence of diffusion models for approximate Gaussian mixtures.
+arXiv preprint arXiv:2504.05300.
+Cited by: §1.1.
+Li and Cai (2024)
+G. Li and C. Cai
+Provable acceleration for diffusion models under minimal assumptions.
+arXiv preprint arXiv:2410.23285.
+Cited by: §1.
+Li et al. (2024a)
+G. Li, Y. Huang, T. Efimov, Y. Wei, Y. Chi, and Y. Chen
+Accelerating convergence of score-based diffusion models, provably.
+In Proceedings of the 41st International Conference on Machine Learning,  R. Salakhutdinov, Z. Kolter, K. Heller, A. Weller, N. Oliver, J. Scarlett, and F. Berkenkamp (Eds.),
+Proceedings of Machine Learning Research, Vol. 235, pp. 27942–27954.
+Cited by: §1.
+Li et al. (2023)
+G. Li, Y. Wei, Y. Chen, and Y. Chi
+Towards faster non-asymptotic convergence for diffusion-based generative models.
+arXiv preprint arXiv:2306.09251.
+Cited by: §1.
+Li et al. (2024b)
+G. Li, Y. Wei, Y. Chi, and Y. Chen
+A sharp convergence theory for the probability flow odes of diffusion models.
+arXiv preprint arXiv:2408.02320.
+Cited by: §1.
+Li and Yan (2024)
+G. Li and Y. Yan
+Adapting to unknown low-dimensional structures in score-based diffusion models.
+Advances in Neural Information Processing Systems 37, pp. 126297–126331.
+Cited by: §1.1,
+§4.3.
+Li and Yan (2025)
+G. Li and Y. Yan
+$O(d/T)$  convergence theory for diffusion probabilistic models under minimal assumptions.
+In The Thirteenth International Conference on Learning Representations,
+Cited by: §1,
+§4.1.
+Li et al. (2025b)
+G. Li, Y. Zhou, Y. Wei, and Y. Chen
+Faster diffusion models via higher-order approximation.
+arXiv preprint arXiv:2506.24042.
+Cited by: §1,
+§1,
+footnote 3.
+Liang et al. (2025)
+J. Liang, Z. Huang, and Y. Chen
+Low-dimensional adaptation of diffusion models: convergence in total variation.
+arXiv preprint arXiv:2501.12982.
+Cited by: §1.1.
+Lu and Wang (2022)
+J. Lu and L. Wang
+Complexity of zigzag sampling algorithm for strongly log-concave distributions.
+Stat. Comput. 32 (3), pp. Paper No. 48, 12.
+Cited by: §1,
+§5.
+Nacu and Peres (2005)
+Ş. Nacu and Y. Peres
+Fast simulation of new coins from old.
+Cited by: §3.1.
+Potaptchik et al. (2024)
+P. Potaptchik, I. Azangulov, and G. Deligiannidis
+Linear convergence of diffusion models under the manifold hypothesis.
+arXiv preprint arXiv:2410.09046.
+Cited by: §1.1.
+Tang and Yan (2025)
+J. Tang and Y. Yan
+Adaptivity and convergence of probability flow ODEs in diffusion generative models.
+arXiv preprint arXiv:2501.18863.
+Cited by: §1.1.
+Wainwright (2025)
+M. J. Wainwright
+Score-based sampling without diffusions: guidance from a simple and modular scheme.
+arXiv preprint arXiv:2512.24152.
+Cited by: §1.2,
+§1.
+Zhang et al. (2025)
+M. S. Zhang, S. Huan, J. Huang, N. M. Boffi, S. Chen, and S. Chewi
+Sublinear iterations can suffice even for DDPMs.
+arXiv preprint arXiv:2511.04844.
+Cited by: §1.1.
+Appendix A Discussion
+A.1 Concurrent work
+In independent and concurrent work, Gatmiry et al. (2026) study an accelerated ODE flow and remarkably obtain a high-accuracy guarantee under a set of structural assumptions. This is highly non-trivial since, as discussed in the introduction, prior works based on higher-order methods incur implicit exponential dependencies on problem parameters and the order of the method. Their results rely on the following conditions:
+(A1)
+The data distribution satisfies  $p_{\mathsf{data}}=p_{\star}*\mathsf{N}\left(0,\sigma^{2}I\right)$ , where  $p_{\star}$  is supported on a ball of radius  $R$ .
+(A2)
+Sub-exponential score error: for some  $\varepsilon_{\mathsf{score}}=\widetilde{O}(\delta)$ ,
+$\mathbb{P}_{X\sim p_{t}}\!\left(\|\mathsf{s}_{t}(X)-\mathsf{s}^{\star}_{t}(X)\|\geq u\right)\leq\exp(-u/\varepsilon_{\mathsf{score}})\,.$
+(A3)
+The score estimates  $(\mathsf{s}_{t})_{t\in[T]}$  are Lipschitz.
+Under these assumptions, Gatmiry et al. (2026) propose a method with query complexity  $\widetilde{O}\left((R/\sigma)^{2}\log^{2}(1/\delta)\right)$ .
+In comparing with our results, we make the following remarks:
+•
+The query complexity, which scales with  $R/\sigma$ , is incomparable to ours. On one hand, when  $R/\sigma$  is constant, then their guarantee is dimension-free. On the other,  $R/\sigma$  could be large in many settings.
+For example, as noted by Gatmiry et al. (2026), (A1) indeed holds in the early stopping regime, i.e., their data distribution actually corresponds to the early stopped distribution  $p_{1}$ . However, for this case, achieving distributional closeness to the real data distribution  $p_{\star}$  typically requires  $\sigma\ll\delta/\sqrt{d}$ , and then we should expect  $\mathrm{poly}(1/\delta)$  dependence, instead of a high-accuracy  $\mathrm{polylog}(1/\delta)$  dependence. Further, the bound  $R$  may also scale with  $\sqrt{d}$  in some settings.
+•
+Assumption (A2) is substantially stronger than our average error condition (Definition 2.1). It is unclear whether standard statistical learning procedures can achieve convergence guarantees expressed in terms of sub-exponential tail bounds.
+Finally, while their analysis is specific to accelerated ODE-based diffusion models, our approach applies more broadly to general first-order sampling methods, including log-concave sampling (Section 5).
+Appendix B Additional notation and technical tools
+For any function  $f:\mathbb{R}^{d}\to\mathbb{R}$  such that  $Z_{f}\coloneqq\int_{\mathbb{R}^{d}}e^{-f(x)}dx&lt;+\infty$ , we define  $\mu_{f}$  to be the distribution over  $\mathbb{R}^{d}$  with density  $\mu_{f}(x)=\frac{1}{Z_{f}}e^{-f(x)}$ .
+For  $\nu\ll\mu$ , let  $\mathcal{R}_{\lambda}\left(\nu\,\|\,\mu\right)\coloneqq\frac{1}{\lambda-1}\log\En_{\mu}[(\frac{d\nu}{d\mu})^{\lambda}]$  denote the Rényi divergence of order  $\lambda&gt;1$ .
+B.1 Functional inequalities
+Definition B.1 (PI).
+A probability distribution  $\mu$  on  $\mathbb{R}^{d}$  satisfies a Poincaré inequality (PI) with constant  $C$  if for all smooth and compactly supported functions  $\phi:\mathbb{R}^{d}\to\mathbb{R}$ ,
+$\displaystyle\mathrm{Var}_{\mu}(\phi)\leq C\En_{\mu}\|\nabla\phi\|^{2}\,.$
+We let  $C_{\mathsf{PI}}(\mu)$  to be the smallest constant  $C$  such that  $\mu$  satisfies PI with constant  $C$ .
+Definition B.2 (LSI).
+A probability distribution  $\mu$  on  $\mathbb{R}^{d}$  satisfies a log-Sobolev inequality (LSI) with constant  $C$  if for all smooth and compactly supported functions  $\phi:\mathbb{R}^{d}\to\mathbb{R}$ ,
+$\displaystyle\En_{\mu}\Big[\phi^{2}\log\frac{\phi^{2}}{\En_{\mu}[\phi^{2}]}\Big]\leq 2C\En_{\mu}\|\nabla\phi\|^{2}\,.$
+We let  $C_{\mathsf{LSI}}(\mu)$  to be the smallest constant  $C$  such that  $\mu$  satisfies LSI with constant  $C$ .
+The following facts are standard, see Bakry et al. (2014) or Chewi (2026, Chapter 2).
+Lemma B.3 (Bakry–Émery).
+If  $\mu$  is  $\alpha$ -strongly log-concave, then  $C_{\mathsf{LSI}}(\mu)\leq\frac{1}{\alpha}$ .
+Lemma B.4 (Holley–Stroock perturbation principle).
+Let  $\mu$  and  $\nu$  be probability measures such that  $\frac{1}{b}\leq\frac{d\nu}{d\mu}\leq b$  for some parameter  $b&gt;0$ . Then  $C_{\mathsf{LSI}}(\nu)\leq b^{2}\,C_{\mathsf{LSI}}(\mu)$ .
+B.2 Lemmas
+Lemma B.5.
+$\displaystyle\En_{W\sim\mathsf{N}\left(0,\eta I\right)}\exp\left(\lvert\langle W,v\rangle\rvert\right)\leq 2\exp\Big(\frac{\eta\|v\|^{2}}{2}\Big)\,.$
+For  $\lambda\leq\frac{1}{2\eta}$ ,
+$\displaystyle\En_{W\sim\mathsf{N}\left(0,\eta I\right)}\exp\Big(\frac{1}{2}\lambda\|W+v\|^{2}\Big)\leq\exp\big(d\lambda\eta+\lambda\|v\|^{2}\big)\,.$
+Further, for  $t\geq 0$ ,
+$\displaystyle\mathbb{P}_{x\sim\mathsf{N}\left(v,\Sigma\right)}\left(\lvert x^{\top}Ax-v^{\top}Av-\mathrm{tr}(\Sigma A)\rvert\geq t\right)$
+$\displaystyle\leq 2\exp\left(-\frac{1}{16\|\Sigma\|_{\mathrm{op}}}\min\left\{\frac{t^{2}}{\|\Sigma\|_{\mathrm{op}}\|A\|_{\mathrm{F}}^{2}+\|Av\|^{2}},\frac{t}{\|A\|_{\mathrm{op}}}\right\}\right)\,.$
+Proof.
+The first two statements are standard. For the third, for any  $A\preceq\frac{1}{2}\Sigma^{-1}$ , we can calculate
+$\displaystyle\En_{x\sim\mathsf{N}\left(v,\Sigma\right)}\exp\Big(\frac{1}{2}\,x^{\top}Ax-\frac{1}{2}\,v^{\top}Av\Big)=\En_{W\sim\mathsf{N}\left(0,\Sigma\right)}\exp\Big(v^{\top}AW+\frac{1}{2}\,W^{\top}AW\Big)=\sqrt{\frac{\det(\widetilde{\Sigma})}{\det(\Sigma)}}\exp\Big(\frac{1}{2}\|Av\|_{\widetilde{\Sigma}}^{2}\Big)\,,$
+where  $\widetilde{\Sigma}^{-1}=\Sigma^{-1}-A$ . Noting that  $\Sigma^{1/2}\widetilde{\Sigma}^{-1}\Sigma^{1/2}=I-\Sigma^{1/2}A\Sigma^{1/2}\succeq\frac{1}{2}I$ , we can bound
+$\displaystyle\frac{\det(\widetilde{\Sigma})}{\det(\Sigma)}=\frac{1}{\det\left(I-\Sigma^{1/2}A\Sigma^{1/2}\right)}\leq\exp\big(\mathrm{tr}(\Sigma^{1/2}A\Sigma^{1/2})+\|\Sigma^{1/2}A\Sigma^{1/2}\|_{\mathrm{F}}^{2}\big)\,,$
+where we use  $-\log(1-\lambda)\leq\lambda+\lambda^{2}$  for  $\lambda\leq\frac{1}{2}$ . Therefore, we have shown
+$\displaystyle\En_{x\sim\mathsf{N}\left(v,\Sigma\right)}\exp\Big(\frac{1}{2}\,\left(x^{\top}Ax-v^{\top}Av-\mathrm{tr}(\Sigma A)\right)\Big)\leq\exp\big(\|\Sigma^{1/2}A\Sigma^{1/2}\|_{\mathrm{F}}^{2}+\|Av\|_{\Sigma}^{2}\big)\,,$
+as long as  $A\preceq\frac{1}{2}\Sigma^{-1}$ . Then, by rescaling  $A\leftarrow\lambda A$  and requiring  $\lvert\lambda\rvert\leq\frac{1}{2\|\Sigma^{1/2}A\Sigma^{1/2}\|_{\mathrm{op}}}$ , we have
+$\displaystyle\mathbb{P}\left(\lvert x^{\top}Ax-v^{\top}Av-\mathrm{tr}(\Sigma A)\rvert\geq t\right)\leq 2\exp\Big(\lambda^{2}\,\big(\|\Sigma^{1/2}A\Sigma^{1/2}\|_{\mathrm{F}}^{2}+\|Av\|_{\Sigma}^{2}\big)-\frac{1}{2}\lambda t\Big)\,,\qquad\forall t&gt;0\,.$
+Suitably choosing  $\lambda$  gives, for all  $t\geq 0$ ,
+$\displaystyle\mathbb{P}\left(\lvert x^{\top}Ax-v^{\top}Av-\mathrm{tr}(\Sigma A)\rvert\geq t\right)\leq$
+$\displaystyle~2\exp\left(-\min\left\{\frac{t^{2}}{16(\|\Sigma^{1/2}A\Sigma^{1/2}\|_{\mathrm{F}}^{2}+\|Av\|_{\Sigma}^{2})},\,\frac{t}{8\|\Sigma^{1/2}A\Sigma^{1/2}\|_{\mathrm{op}}}\right\}\right)$
+$\displaystyle\leq$
+$\displaystyle~2\exp\left(-\frac{1}{16\|\Sigma\|_{\mathrm{op}}}\min\left\{\frac{t^{2}}{\|\Sigma\|_{\mathrm{op}}\|A\|_{\mathrm{F}}^{2}+\|Av\|^{2}},\,\frac{t}{\|A\|_{\mathrm{op}}}\right\}\right)\,.$
+∎
+Lemma B.6.
+Suppose that  $\eta&gt;0$  and  $0\leq\lambda\leq\frac{d^{1-s}}{4s\eta^{s}}$ . Then, it holds that
+$\displaystyle\En_{W\sim\mathsf{N}\left(0,\eta I\right)}\exp\left(\lambda\|W\|^{2s}\right)\leq\exp\left(2(\eta d)^{s}\lambda\right)\,.$
+Proof. We use the inequality  $w^{s}\leq s\cdot\frac{w}{(\eta d)^{1-s}}+(1-s)\cdot(\eta d)^{s}$  for  $w\geq 0$ . Therefore, as long as  $\frac{s\lambda}{(\eta d)^{1-s}}\leq\frac{1}{4\eta}$ , it holds that
+$\displaystyle\En\exp\left(\lambda\|W\|^{2s}\right)\leq\En\exp\Big(\frac{s\lambda}{(\eta d)^{1-s}}\|W\|^{2}+(1-s)(\eta d)^{s}\lambda\Big)\leq\exp\left(2s(\eta d)^{s}\lambda+(1-s)(\eta d)^{s}\lambda\right)\leq\exp\left(2(\eta d)^{s}\lambda\right)\,,$
+where the second inequality follows from Lemma B.5.
+∎
+Lemma B.7.
+For any  $f:\mathcal{X}\to[0,1]$ , it holds that
+$\displaystyle\En_{p}[f]-M\En_{q}[f]\leq\inf_{\lambda&gt;1}M^{-(\lambda-1)}\,(1+D_{\lambda}\left(p\,\|\,q\right))\,,$
+where  $D_{\lambda}\left(p\,\|\,q\right)\coloneqq\mathbb{E}_{p}\big(\frac{dp}{dq}\big)^{\lambda}-1$ .
+Proof. By definition,
+$\displaystyle\En_{p}[f]-M\En_{q}[f]=\En_{q}\Big[\Big(\frac{dp}{dq}-M\Big)\,f\Big]\leq\En_{q}\Big(\frac{dp}{dq}-M\Big)_{+}\,.$
+Note that for any random variable  $Y\geq 0$ , we have
+$\displaystyle\En(Y-M)_{+}=\En[\mathbb{I}{\{Y&gt;M\}}\,(Y-M)_{+}]\leq\mathbb{P}(Y&gt;M)^{1-\frac{1}{\lambda}}\left(\En[(Y-M)_{+}^{\lambda}]\right)^{\frac{1}{\lambda}}\leq\frac{\En[Y^{\lambda}]}{M^{\lambda-1}}\,.$
+Combining these inequalities and taking infimum over  $\lambda&gt;1$  completes the proof.
+∎
+Lemma B.8.
+$\displaystyle D_{\mathsf{KL}}\left(\nu\,\|\,\widehat{\mu}\right)\leq 2D_{\mathsf{KL}}\left(\nu\,\|\,\mu\right)+\log\left(1+D_{\chi^{2}}\left(\mu\;\|\;{}\widehat{\mu}\right)\right)\,.$
+Proof. We define  $h=\log\frac{d\mu}{d\widehat{\mu}}$ . Then, we know that  $\En_{\mu}[e^{h}]=1+D_{\chi^{2}}\left(\mu\;\|\;{}\widehat{\mu}\right)$ , and hence
+$\displaystyle D_{\mathsf{KL}}\left(\nu\,\|\,\widehat{\mu}\right)-D_{\mathsf{KL}}\left(\nu\,\|\,\mu\right)=$
+$\displaystyle~\En_{\nu}\Big[\log\frac{d\nu}{d\widehat{\mu}}-\log\frac{d\nu}{d\mu}\Big]=\En_{\nu}[h]$
+$\displaystyle\leq$
+$\displaystyle~D_{\mathsf{KL}}\left(\nu\,\|\,\mu\right)+\log\En_{\mu}[e^{h}]=D_{\mathsf{KL}}\left(\nu\,\|\,\mu\right)+\log\left(1+D_{\chi^{2}}\left(\mu\;\|\;{}\widehat{\mu}\right)\right)\,,$
+where we use the Donsker–Varadhan variational inequality.
+∎
+Lemma B.9.
+Suppose that  $\mu\propto pe^{h}$  and  $\widehat{\mu}\propto qe^{h}$ , such that  $\lvert h\rvert\leq B$ . Then it holds that
+$\displaystyle D_{\chi^{2}}\left(\mu\;\|\;{}\widehat{\mu}\right)\leq e^{4B}D_{\chi^{2}}\left(p\;\|\;{}q\right)\,.$
+Proof. By definition,
+$\displaystyle 1+D_{\chi^{2}}\left(\mu\;\|\;{}\widehat{\mu}\right)=$
+$\displaystyle~\En_{x\sim\mu}\Big[\frac{\mu(x)}{\widehat{\mu}(x)}\Big]=\frac{\En_{q}[e^{h}]}{(\En_{p}[e^{h}])^{2}}\cdot\En_{x\sim q}\Big[\frac{p(x)^{2}}{q(x)^{2}}\cdot e^{h(x)}\Big]\,.$
+Note that  $\frac{p(x)^{2}}{q(x)^{2}}=\big(\frac{p(x)}{q(x)}-1\big)^{2}+2\,\frac{p(x)}{q(x)}-1$ , and hence
+$\displaystyle\En_{x\sim q}\Big[\frac{p(x)^{2}}{q(x)^{2}}\cdot e^{h(x)}\Big]=\En_{x\sim q}\Big[\Big(\frac{p(x)}{q(x)}-1\Big)^{2}\cdot e^{h(x)}\Big]+2\En_{p}[e^{h}]-\En_{q}[e^{h}]\,.$
+Hence, we can rewrite
+$\displaystyle D_{\chi^{2}}\left(\mu\;\|\;{}\widehat{\mu}\right)=$
+$\displaystyle~\frac{\En_{q}[e^{h}]}{(\En_{p}[e^{h}])^{2}}\cdot\En_{x\sim q}\Big[\Big(\frac{p(x)}{q(x)}-1\Big)^{2}\cdot e^{h(x)}\Big]-\Big(\frac{\En_{q}[e^{h}]}{\En_{p}[e^{h}]}-1\Big)^{2}$
+$\displaystyle\leq$
+$\displaystyle~e^{4B}\En_{x\sim q}\Big[\Big(\frac{p(x)}{q(x)}-1\Big)^{2}\Big]=e^{4B}D_{\chi^{2}}\left(p\;\|\;{}q\right)\,.$
+∎
+Lemma B.10.
+Suppose that  $\widehat{\mu}\propto\mu e^{-h}$ , where  $\lvert h\rvert\leq B$ . Then for any distribution  $\nu$ , it holds that
+$\displaystyle D_{\mathsf{KL}}\left(\nu\,\|\,\widehat{\mu}\right)\leq 4e^{B}D_{\mathsf{KL}}\left(\nu\,\|\,\mu\right)+4e^{B}\En_{\nu}[h^{2}]\,.$
+Proof. By definition,
+$\displaystyle D_{\mathsf{KL}}\left(\nu\,\|\,\widehat{\mu}\right)-D_{\mathsf{KL}}\left(\nu\,\|\,\mu\right)=$
+$\displaystyle~\En_{\nu}[\log\mu(x)-\log\widehat{\mu}(x)]$
+$\displaystyle=$
+$\displaystyle~\En_{\nu}[h]+\log\En_{\mu}[e^{-h}]\leq\En_{\nu}[h]-\En_{\mu}[h]+c_{B}\En_{\mu}[h^{2}]\,,$
+where  $c_{B}=\frac{e^{B}-B-1}{B^{2}}$ .
+It holds that  $\En_{\mu}[h^{2}]\leq 2\En_{\nu}[h^{2}]+2B^{2}D^{2}_{\mathsf{H}}\left(\nu,\mu\right)$  because
+$\displaystyle\En_{\mu}[h^{2}]$
+$\displaystyle=\int h^{2}\,d(\sqrt{\nu}+\sqrt{\mu}-\sqrt{\nu})^{2}\leq 2\int h^{2}\,d\nu+2\int h^{2}\,(\sqrt{\mu}-\sqrt{\nu})^{2}\leq 2\En_{\nu}[h^{2}]+4B^{2}D^{2}_{\mathsf{H}}\left(\nu,\mu\right)\,.$
+Also,
+$\displaystyle\lvert\En_{\nu}[h]-\En_{\mu}[h]\rvert$
+$\displaystyle\leq\sqrt{\int h^{2}\,(\sqrt{\mu}+\sqrt{\nu})^{2}\int(\sqrt{\mu}-\sqrt{\nu})^{2}}\leq\sqrt{4D^{2}_{\mathsf{H}}\left(\nu,\mu\right)\,(\En_{\mu}[h^{2}]+\En_{\nu}[h^{2}])}$
+$\displaystyle\leq\sqrt{4D^{2}_{\mathsf{H}}\left(\nu,\mu\right)\,(3\En_{\nu}[h^{2}]+4B^{2}D^{2}_{\mathsf{H}}\left(\nu,\mu\right))}\leq\sqrt{12\En_{\nu}[h^{2}]D^{2}_{\mathsf{H}}\left(\nu,\mu\right)}+4BD^{2}_{\mathsf{H}}\left(\nu,\mu\right)$
+$\displaystyle\leq 2\En_{\nu}[h^{2}]+(4B+2)D^{2}_{\mathsf{H}}\left(\nu,\mu\right)\,.$
+Combining the inequalities above with  $D^{2}_{\mathsf{H}}\left(\nu,\mu\right)\leq\frac{1}{2}D_{\mathsf{KL}}\left(\nu\,\|\,\mu\right)$  completes the proof.
+∎
+Lemma B.11.
+Suppose that  $\lvert f(x)-g(x)\rvert\leq u(x)+v(x)$  such that  $0\leq u(x)\leq B$  for any  $x$ . Then
+$\displaystyle D_{\mathsf{KL}}\left(\mu_{f}\,\|\,\mu_{g}\right)\leq$
+$\displaystyle~e^{B}\En_{\mu_{f}}[u(x)^{2}+(e^{v(x)}-1)_{+}]\,.$
+Proof. By definition,
+$\displaystyle D_{\mathsf{KL}}\left(\mu_{f}\,\|\,\mu_{g}\right)=\En_{\mu_{f}}[g(x)-f(x)]+\log\En_{\mu_{f}}e^{f(x)-g(x)}\,.$
+Note that  $e^{w}\leq 1+w+\frac{e^{B}}{2}w^{2}$  for any  $w\leq B$ . Now, we can verify that
+$\displaystyle e^{r}\leq 1+r+Cw^{2}+(e^{\lvert r\rvert}-e^{w})_{+}\,,\qquad r\in\mathbb{R}\,,\,w\in[0,B]\,,$
+where  $C=\frac{e^{B}}{2}$ . Specifically, when  $\lvert r\rvert\leq w$ , this reduces to  $e^{r}\leq 1+r+Cw^{2}$ ; when  $r&gt;w$ , this reduces to  $e^{w}\leq 1+r+Cw^{2}$ ; and when  $r&lt;-w$ , this reduces to  $e^{w}-1-w-Cw^{2}\leq e^{-r}-e^{r}+r-w$ , and we can use  $e^{t}-e^{-t}\geq 2t$  which holds for all  $t\geq 0$ . Applying this inequality gives
+$\displaystyle D_{\mathsf{KL}}\left(\mu_{f}\,\|\,\mu_{g}\right)\leq$
+$\displaystyle~\En_{\mu_{f}}[g(x)-f(x)]+\En_{\mu_{f}}e^{f(x)-g(x)}-1$
+$\displaystyle\leq$
+$\displaystyle~C\En_{\mu_{f}}[u(x)^{2}]+\En_{\mu_{f}}(e^{\lvert f(x)-g(x)\rvert}-e^{u(x)})_{+}$
+$\displaystyle\leq$
+$\displaystyle~e^{B}\En_{\mu_{f}}[u(x)^{2}+(e^{v(x)}-1)_{+}]\,.$
+∎
+Lemma B.12.
+For any  $\ell&gt;1$ , it holds that
+$\displaystyle\max\{D_{\ell}\left(\mu_{f}\,\|\,\mu_{g}\right),D_{\ell}\left(\mu_{g}\,\|\,\mu_{f}\right)\}\leq\En_{x\sim\mu_{f}}[e^{2\ell\,\lvert f(x)-g(x)\rvert}-1]\,.$
+(17)
+Proof. By definition, we can write
+$\displaystyle\frac{\mu_{f}(x)}{\mu_{g}(x)}=e^{g(x)-f(x)}\En_{\mu_{f}}[e^{f-g}]\,.$
+Therefore, we have
+$\displaystyle 1+D_{\ell}\left(\mu_{f}\,\|\,\mu_{g}\right)=$
+$\displaystyle~\En_{\mu_{f}}\big(\frac{\mu_{f}}{\mu_{g}}\big)^{\ell-1}=\left(\En_{\mu_{f}}[e^{f-g}]\right)^{\ell-1}\cdot\En_{\mu_{f}}[e^{(\ell-1)(g-f)}]$
+$\displaystyle\leq$
+$\displaystyle~\big(\En_{\mu_{f}}e^{(\ell-1)\lvert f-g\rvert}\big)^{2}\leq\En_{\mu_{f}}[e^{2\ell\lvert f-g\rvert}]\,.$
+Similarly,
+$\displaystyle 1+D_{\ell}\left(\mu_{g}\,\|\,\mu_{f}\right)=$
+$\displaystyle~\En_{\mu_{f}}\big(\frac{\mu_{g}}{\mu_{f}}\big)^{\ell}=\left(\En_{\mu_{f}}[e^{f-g}]\right)^{-\ell}\cdot\En_{\mu_{f}}[e^{\ell(f-g)}]\leq\En_{\mu_{f}}[e^{-\ell(f-g)}]\cdot\En_{\mu_{f}}[e^{\ell(f-g)}]$
+$\displaystyle\leq$
+$\displaystyle~\big(\En_{\mu_{f}}e^{\ell\lvert f-g\rvert}\big)^{2}\leq\En_{\mu_{f}}[e^{2\ell\lvert f-g\rvert}]\,.$
+Combining both inequalities completes the proof.
+∎
+The following lemma can be regarded as a “chain rule” of Hellinger distance (Jayram, 2009), see also Duchi (2023, Lemma 11.5.3) or Foster et al. (2024, Lemma D.2).
+Lemma B.13 (Sub-additivity for squared Hellinger distance).
+Suppose that  $X_{1}\to\cdots\to X_{T}$  is a Markov chain. Given a family of transition kernels  $\rho=(\rho_{t}:\mathcal{X}\to\Delta(\mathcal{X}))_{t\in[T]}$ , we let  $\mathbb{P}_{\rho}$  be the law of  $X_{1},\ldots,X_{T}$  under  $X_{1}\sim\rho_{1}$ ,  $X_{t}\sim\rho_{t}(\cdot\mid X_{t-1})$ . Then, for any families of transition kernels  $\rho,\rho^{\prime}$ , it holds that
+$\displaystyle D^{2}_{\mathsf{H}}\left(\mathbb{P}_{\rho},\mathbb{P}_{\rho^{\prime}}\right)\leq 7\sum_{t=1}^{T}\En_{X_{t-1}\sim\mathbb{P}_{\rho}}\left[D^{2}_{\mathsf{H}}\left(\rho_{t}(\cdot\mid X_{t-1}),\rho^{\prime}_{t}(\cdot\mid X_{t-1})\right)\right]\,,$
+where we regard  $X_{0}={\perp}$  and  $\rho_{1}(\cdot\mid\perp)=\rho_{1}$ .
+Appendix C Proof of Theorem 3.1
+Proof of Theorem 3.1.
+Let  $x_{\rm out}$  denote the output of Algorithm 1.
+On a given iteration of the algorithm, conditional on the draw  $x\sim q$ , the probability that the algorithm terminates on that iteration is
+$\displaystyle a(x)$
+$\displaystyle=\mathbb{E}\Bigl[\prod_{j=1}^{J}\frac{B+W_{j}}{2B}\Bigm|x\Bigr]=\mathbb{E}\Bigl[\Bigl(\frac{B+\mathbb{E}[W_{1}\mid x]}{2B}\Bigr)^{J}\Bigr]$
+$\displaystyle=\sum_{J\geq 0}\frac{e^{-2B}\,(2B)^{J}}{J!}\,\Bigl(\frac{B+\mathbb{E}[W_{1}\mid x]}{2B}\Bigr)^{J}=e^{\mathbb{E}[W_{1}\mid x]-B}\,.$
+Thus, the acceptance probability of a given iteration is  $A\coloneqq\int a(x)\,q(dx)$ .
+Then,
+$\displaystyle\mathbb{P}(x_{\rm out}\in dx)$
+$\displaystyle=\sum_{i=1}^{\infty}\mathbb{P}(x_{\rm out}\in dx,\,\text{\lx@cref{creftype~refnum}{alg:fors} succeeds on iteration}~i)$
+$\displaystyle=\sum_{i=1}^{\infty}(1-A)^{i-1}\,q(dx)\,a(x)=\frac{q(dx)\,a(x)}{A}\,.$
+For the second statement, let  $J_{1},J_{2},J_{3},\dotsc$  be an i.i.d. sequence of  $\mathsf{Poisson}(2B)$  random variables.
+The probability that the number  $N$  of draws from  $\mathcal{W}$  exceeds  $m$  is  $\mathbb{P}(N\geq m)=\mathbb{P}(\sum_{i=1}^{I}J_{i}\geq m)$ , where  $I$  is the number of iterations of the algorithm.
+For any  $i_{0}$ , we take  $m=(2+c)\,i_{0}B$  and bound
+$\displaystyle\mathbb{P}\Bigl(\sum_{i=1}^{I}J_{i}\geq m\Bigr)$
+$\displaystyle\leq\mathbb{P}(I&gt;i_{0})+\mathbb{P}\Bigl(\sum_{i=1}^{i_{0}}J_{i}\geq(2+c)\,i_{0}B\Bigr)\,.$
+Note that if any  $J_{i}=0$ , then  $I\leq i$ , so the first term is bounded by  $(1-e^{-2B})^{i_{0}}\leq\exp(-e^{-2B}\,i_{0})$ .
+The second term, using a concentration bound for the Poisson random variable, is bounded by  $\exp(-\frac{c^{2}}{c+2}\,i_{0}B)$ .
+Setting  $i_{0}=e^{2B}\log(2/\delta)$  and  $c=e^{-2B}$  suffices to bound both terms by  $\delta/2$ .
+Note that this also implies  $\En[\exp(N/(CBe^{2B}))]\leq 2$  for an absolute constant  $C&gt;0$ , where  $N=\sum_{i=1}^{I}J_{i}$  is the total number of draw from  $\mathcal{W}$ .
+So, the last statement follows immediately.
+∎
+Appendix D Proofs for Section 3
+In the following, we prove a slightly stronger version of Theorem 3.3.
+Theorem D.1.
+Suppose that Assumption 3.2 holds, and Algorithm 1 is instantiated as in Theorem 3.3. Let  $B=\Theta(1)$ ,  $\ell\geq 2$ ,  $\delta\in(0,\frac{1}{2}]$ , and
+$\displaystyle\frac{1}{\eta^{1+s}}\gg\beta_{s}^{2}\,\Big(d^{s}\,(\ell+\log(1/\delta))+\frac{s}{d^{1-s}}(\ell^{2}+\log^{2}(1/\delta))\Big)\,.$
+Then the law  $\widehat{\nu}$  of Algorithm 1 satisfies
+$\displaystyle\max\left\{D_{\ell}\left(\nu\,\|\,\widehat{\nu}\right),D_{\ell}\left(\widehat{\nu}\,\|\,\nu\right)\right\}\leq\delta.$
+Proof of Theorem D.1.
+We recall that  $q=\mathsf{N}\left(\widehat{x},\eta I\right)$ , where we denote  $\widehat{x}\coloneqq x_{0}-\eta\nabla f(x_{+})$ .
+By Theorem 3.1, the output of Algorithm 1 with the specified choices samples from  $\widehat{\nu}$ , such that
+$\displaystyle\log\widehat{\nu}(x)-\log q(x)=\mathrm{const}+\En_{z\sim P,\,r\sim\mathsf{Unif}([0,1])}\mathsf{Clip}_{B}(\langle\dot{\gamma}_{z,r}(x),\nabla f(x_{+})-\nabla f(\gamma_{z,r}(x))\rangle)\,.$
+In the following, we denote  $\En_{z,r}[\cdot]\vcentcolon=\En_{z\sim P,\,r\sim\mathsf{Unif}([0,1])}[\cdot]$  and define
+$\displaystyle W_{r,z,x}\vcentcolon=\langle\dot{\gamma}_{z,r}(x),\nabla f(x_{+})-\nabla f(\gamma_{z,r}(x))\rangle\,.$
+Then,  $\lvert\log\nu(x)-\log\widehat{\nu}(x)-\mathrm{const}\rvert\leq V(x)$ , where
+$\displaystyle V(x)=\En_{z,r}\tau_{B}(W_{r,z,x})\,,$
+where we recall  $\tau_{B}(y)\coloneqq(\lvert y\rvert-B)_{+}=|y-\mathsf{Clip}_{B}(y)|$ . Then, using Lemma B.12, we can bound
+$\displaystyle\begin{aligned} \max\left\{D_{\ell}\left(\nu\,\|\,\widehat{\nu}\right),D_{\ell}\left(\widehat{\nu}\,\|\,\nu\right)\right\}\leq&amp;~\En_{x\sim\widehat{\nu}}[e^{2\ell V(x)}-1]\leq e^{2B}\En_{x\sim q}[e^{2\ell V(x)}-1]\\
+\leq&amp;~e^{2B}\En_{x\sim q}\En_{z,r}[e^{2\ell\tau_{B}(W_{r,z,x})}-1]\,,\end{aligned}$
+(18)
+where we use  $\frac{d\widehat{\nu}}{dq}(x)\leq e^{2B}$  for  $x\in\mathbb{R}^{d}$  and the convexity of  $w\mapsto e^{w}$ .
+In the following, we proceed to prove the following claims.
+Claim 1
+It holds that for any fixed  $r\in[0,1]$  and  $\lambda^{2}\leq\frac{d^{1-s}}{12s\beta_{s}^{2}\eta^{1+s}}$ ,
+$\displaystyle\log\En_{x\sim q,\,z\sim P}\exp\left(\lambda\lvert W_{r,z,x}\rvert\right)\leq 10d^{s}\eta^{1+s}\lambda^{2}\beta_{s}^{2}\,.$
+Proof of Claim 1
+Recall that  $a_{r}=\sin(\pi r/2),~~b_{r}=\cos(\pi r/2)$ ,
+$\displaystyle\gamma_{z,r}(x)=\widehat{x}+a_{r}(x-\widehat{x})+b_{r}z\,,\qquad\dot{\gamma}_{z,r}(x)=a_{r}^{\prime}(x-\widehat{x})+b_{r}^{\prime}z\,.$
+Hence, under  $x\sim q=\mathsf{N}\left(\widehat{x},\eta I\right)$  and  $z\sim P=\mathsf{N}\left(0,\eta I\right)$ ,  $[\gamma_{z,r}(x);\dot{\gamma}_{z,r}(x)]$  are jointly distributed as
+$\displaystyle[\gamma_{z,r}(x);\dot{\gamma}_{z,r}(x)]\sim\mathsf{N}\left(\begin{bmatrix}\widehat{x}\\
+0\end{bmatrix},\begin{bmatrix}\eta I&amp;\\
+&amp;(\pi/2)^{2}\eta I\end{bmatrix}\right)\,.$
+Hence, as long as  $3\eta\lambda^{2}\beta_{s}^{2}\leq\frac{d^{1-s}}{4s\eta^{s}}$ ,
+$\displaystyle\En_{x\sim q,\,z\sim P}\exp\left(\lambda\lvert W_{r,z,x}\rvert\right)=$
+$\displaystyle~\En_{Z_{1},Z_{2}\sim\mathsf{N}\left(0,\eta I\right)}\exp\left(\lambda\lvert\langle Z_{1}\pi/2,\nabla f(\widehat{x}+Z_{2})-\nabla f(x_{+})\rangle\rvert\right)$
+$\displaystyle\leq$
+$\displaystyle~2\En_{Z_{2}\sim\mathsf{N}\left(0,\eta I\right)}\exp\Big(\frac{3}{2}\eta\lambda^{2}\,\|\nabla f(\widehat{x}+Z_{2})-\nabla f(x_{+})\|^{2}\Big)$
+$\displaystyle\leq$
+$\displaystyle~2\En_{Z_{2}\sim\mathsf{N}\left(0,\eta I\right)}\exp\Big(\frac{3}{2}\eta\lambda^{2}\beta_{s}^{2}\,\|\widehat{x}-x_{+}+Z_{2}\|^{2s}\Big)$
+$\displaystyle\leq$
+$\displaystyle~2\exp\left(3\eta\lambda^{2}\beta_{s}^{2}\|\widehat{x}-x_{+}\|^{2s}\right)\En_{W\sim\mathsf{N}\left(0,\eta I\right)}\exp\left(3\eta\lambda^{2}\beta_{s}^{2}\,\|W\|^{2s}\right)$
+$\displaystyle\leq$
+$\displaystyle~2\exp\big(3\eta\lambda^{2}\beta^{2}\,\|\widehat{x}-x_{+}\|^{2s}+6d^{s}\eta^{1+s}\lambda^{2}\beta_{s}^{2}\big)\leq 2\exp\big(10d^{s}\eta^{1+s}\lambda^{2}\beta_{s}^{2}\big)\,,$
+where the second line uses Lemma B.5, and the last line uses Lemma B.6. This completes the proof of Claim 1.
+Finally, we use Claim 1 to prove the following claim, from which Theorem D.1 follows immediately.
+Claim 2
+Suppose that
+$\displaystyle\frac{1}{\eta^{1+s}}\geq 64\beta_{s}^{2}\,\Big(\ell B^{-1}d^{s}+\frac{s\ell^{2}}{d^{1-s}}\Big)\,.$
+Then for any  $r\in[0,1]$ , it holds that
+$\displaystyle\En_{x\sim q,\,z\sim P}[e^{2\ell\tau_{B}(W_{r,z,x})}-1]\leq$
+$\displaystyle~2\exp\Big(-\min\Big\{\frac{B^{2}}{40\beta_{s}^{2}d^{s}\eta^{1+s}},\,\frac{Bd^{(1-s)/2}}{8\sqrt{s}\beta_{s}\eta^{(1+s)/2}}\Big\}\Big)\,.$
+Proof of Claim 2
+Using Claim 1, for any fixed  $r\in[0,1]$  and  $2\ell\leq\lambda\leq\frac{d^{(1-s)/2}}{4\sqrt{s}\beta_{s}\eta^{(1+s)/2}}$ , we can upper bound
+$\displaystyle\En_{x\sim q,\,z\sim P}[e^{2\ell\tau_{B}(W_{r,z,x})}-1]\leq$
+$\displaystyle~\En_{x\sim q,\,z\sim P}[e^{\lambda\tau_{B}(W_{r,z,x})}-1]\leq e^{-\lambda B}\En_{x\sim q,\,z\sim P}[e^{\lambda\lvert W_{r,z,x}\rvert}]$
+$\displaystyle\leq$
+$\displaystyle~2\exp\left(10d^{s}\eta^{1+s}\lambda^{2}\beta_{s}^{2}-B\lambda\right)\,.$
+Therefore, the desired upper bound follows from setting
+$\displaystyle\lambda=\min\Big\{\frac{d^{(1-s)/2}}{4\sqrt{s}\beta_{s}\eta^{(1+s)/2}},\,\frac{B}{20\beta_{s}^{2}d^{s}\eta^{1+s}}\Big\}\geq 2\ell\,.$
+Combining Claim 2 above with Eq. 18, we can deduce the desired upper bound.
+∎
+Appendix E Proofs for Section 4
+E.1 Proof of Theorem 4.1
+Proof of Theorem 4.1.
+The process  $X_{T}\to\cdots\to X_{1}$  generated by Algorithm 2 is a Markov chain such that  $X_{T}\sim\widehat{p}_{T}$ , and  $X_{t}\mid X_{t+1}\sim\widehat{\rho}_{t}(\cdot\mid X_{t+1})$ .
+The chain rule for the KL divergence yields
+$\displaystyle D_{\mathsf{KL}}\left(p_{1}\,\|\,\widehat{p}_{1}\right)$
+$\displaystyle=D_{\mathsf{KL}}\left(p_{T}\,\|\,\widehat{p}_{T}\right)+\sum_{t=1}^{T-1}\mathbb{E}_{X_{t+1}\sim p_{t+1}}D_{\mathsf{KL}}\left(\rho_{t}(\cdot\mid X_{t+1})\,\|\,\widehat{\rho}_{t}(\cdot\mid X_{t+1})\right)\,.$
+Given  $X_{t+1}=x_{t+1}$  and  $\bar{x}_{t}=\alpha_{t}^{-1}x_{t+1}$ , Algorithm 1 is instantiated with base measure  $q_{t}=\mathsf{N}\left(\bar{x}_{t},\eta_{t}I\right)$ . Consider the target  $\rho_{t}(\cdot\mid x_{t+1})$ , and by Theorem 3.1,
+$\displaystyle~\log\widehat{\rho}_{t}(x\mid x_{t+1})-\log\rho_{t}(x\mid x_{t+1})-\mathrm{const}$
+$\displaystyle=$
+$\displaystyle~\mathbb{E}_{r\sim\mathsf{Unif}([0,1])}\mathsf{Clip}_{B}(\langle x-\bar{x}_{t},\mathsf{s}_{t}(rx+(1-r)\bar{x}_{t})\rangle)-\log p_{t}(x)$
+$\displaystyle=$
+$\displaystyle~\mathbb{E}_{r\sim\mathsf{Unif}([0,1])}\big[\mathsf{Clip}_{B}(\langle x-\bar{x}_{t},\mathsf{s}_{t}(rx+(1-r)\bar{x}_{t})\rangle)-\langle x-\bar{x}_{t},\nabla\log p_{t}(rx+(1-r)\bar{x}_{t})\rangle\big]\,,$
+and hence
+$\displaystyle\lvert\log\widehat{\rho}_{t}(x\mid x_{t+1})-\log\rho_{t}(x\mid x_{t+1})-\mathrm{const}\rvert\leq$
+$\displaystyle~\underbrace{\mathbb{E}_{r\sim\mathsf{Unif}([0,1])}\mathsf{Clip}_{B}(\lvert\langle x-\bar{x}_{t},[\mathsf{s}_{t}-\nabla\log p_{t}](rx+(1-r)\bar{x}_{t})\rangle\rvert)}_{\eqqcolon u(x)}$
+$\displaystyle~+{\underbrace{\mathbb{E}_{r\sim\mathsf{Unif}([0,1])}\tau_{B}(\langle x-\bar{x}_{t},\nabla\log p_{t}(rx+(1-r)\bar{x}_{t})\rangle)}_{\eqqcolon v(x)}},$
+where we used  $\lvert a-\mathsf{Clip}_{B}(b)\rvert\leq\mathsf{Clip}_{B}(\lvert a-b\rvert)+\tau_{B}(b)$  for  $a,b\in\mathbb{R}$ .
+Applying Lemma B.11 gives
+$\displaystyle D_{\mathsf{KL}}\left(\rho_{t}(\cdot\mid x_{t+1})\,\|\,\widehat{\rho}_{t}(\cdot\mid x_{t+1})\right)\leq$
+$\displaystyle~e^{B}\En_{x\sim\rho_{t}(\cdot\mid\bar{x}_{t}),\,r\sim\mathsf{Unif}([0,1])}\left[\langle x-\bar{x}_{t},[\nabla\log p_{t}-\mathsf{s}_{t}](rx+(1-r)\bar{x}_{t})\rangle^{2}\wedge B^{2}\right]$
+$\displaystyle~+\En_{x\sim\rho_{t}(\cdot\mid\bar{x}_{t}),\,r\sim\mathsf{Unif}([0,1])}\left(\exp\left(\langle x-x^{\prime},\nabla\log p_{t}(rx+(1-r)\bar{x}_{t})\rangle\right)-e^{B}\right)_{+}\,.$
+Taking expectation over  $X_{t+1}\sim p_{t+1}$  and using the fact that  $X_{t+1}\mid X_{t}\sim\mathsf{N}\left(\alpha_{t}X_{t},\alpha_{t}^{2}\eta_{t}I\right)$ , we can conclude that
+$\displaystyle~\En_{X_{t+1}\sim p_{t+1}}D_{\mathsf{KL}}\left(\rho_{t}(\cdot\mid X_{t+1})\,\|\,\widehat{\rho}_{t}(\cdot\mid X_{t+1})\right)$
+$\displaystyle\leq$
+$\displaystyle~e^{B}\En_{X_{t}\sim p_{t},\,r\sim\mathsf{Unif}([0,1]),\,Z\sim\mathsf{N}\left(0,\eta_{t}I\right)}\left[\langle Z,[\nabla\log p_{t}-\mathsf{s}_{t}](X_{t}+rZ)\rangle^{2}\wedge B^{2}\right]$
+$\displaystyle~+\En_{X_{t}\sim p_{t},\,r\sim\mathsf{Unif}([0,1]),\,Z\sim\mathsf{N}\left(0,\eta_{t}I\right)}\left(\exp\left(\lvert\langle Z,\nabla\log p_{t}(X_{t}+rZ)\rangle\rvert\right)-e^{B}\right)_{+}\,.$
+By Proposition E.1 (1), it holds that for any  $r\in[0,1]$ ,
+$\displaystyle~\En_{X_{t}\sim p_{t},\,Z\sim\mathsf{N}\left(0,\eta_{t}I\right)}\left[\langle Z,[\nabla\log p_{t}-\mathsf{s}_{t}](X_{t}+rZ)\rangle^{2}\wedge B^{2}\right]$
+$\displaystyle\leq$
+$\displaystyle~2\En_{X_{t}\sim p_{t},\,Z\sim\mathsf{N}\left(0,\eta_{t}I\right)}\left[\langle Z,[\nabla\log p_{t}-\mathsf{s}_{t}](X_{t})\rangle^{2}\wedge B^{2}\right]+O(B^{2})\cdot e^{-K/12}$
+$\displaystyle\leq$
+$\displaystyle~2\eta_{t}\En_{X_{t}\sim p_{t}}\|\nabla\log p_{t}(X_{t})-\mathsf{s}_{t}(X_{t})\|^{2}+O(B^{2})\cdot e^{-K/12}\,,$
+where we use  $\En_{Z\sim\mathsf{N}\left(0,\eta_{t}I\right)}[ZZ^{\top}]=\eta_{t}I$ .
+By Proposition E.1 (2) and the fact that  $\En[Y\mathbb{I}\{Y&gt;M\}]\leq M^{\lambda-1}\En[Y^{\lambda}]$  for  $\lambda&gt;1$ , it holds that for any  $r\in[0,1]$ ,
+$\displaystyle\En_{X_{t}\sim p_{t},Z\sim\mathsf{N}\left(0,\eta_{t}I\right)}\left(\exp\left(\lvert\langle Z,\nabla\log p_{t}(X_{t}+rZ)\rangle\rvert\right)-e^{B}\right)_{+}\leq O(e^{B})\cdot e^{-c_{B}K}.$
+Combining these inequalities completes the proof.
+∎
+Proposition E.1.
+Suppose that  $\eta\leq\frac{\sigma^{2}}{\max\{Kd,K^{2}\}}$  and  $K\geq 2$ , and  $P=\bar{P}*\mathsf{N}\left(0,\sigma^{2}I\right)$ .
+(1) For any  $0\leq F\leq 1$  and  $r\in[0,1]$ , it holds that
+$\displaystyle\En_{X\sim P,\,Z\sim\mathsf{N}\left(0,\eta I\right)}F(Z,X+rZ)-2\En_{X\sim P,\,Z\sim\mathsf{N}\left(0,\eta I\right)}F(Z,X)\leq 2\exp\Big(-\frac{K}{12}\Big)\,.$
+(2) For any  $r\in[0,1]$  and  $B&gt;0$ , it holds that
+$\displaystyle\En_{X\sim P,\,Z\sim\mathsf{N}\left(0,\eta I\right)}\left(\exp\left(\left\lvert\langle Z,\nabla\log p(X+rZ)\rangle\right\rvert\right)-e^{B}\right)_{+}\leq e^{B+1}\cdot\exp\Big(-\frac{\min\{B,1\}B}{32}K\Big)\,.$
+Proof.
+(1)
+Fix any  $X_{0}$ , and let  $Q^{r}_{X_{0}}$  be the distribution of  $(W,Z)$  under  $X\sim\mathsf{N}\left(X_{0},\sigma^{2}I\right)$ ,  $Z\sim\mathsf{N}\left(0,\eta I\right)$ , and  $W=X+rZ$ . In other words,  $Q^{r}_{X_{0}}=\mathsf{N}\left([X_{0};\mathbf{0}],\Sigma_{r}\right)$  where  $\Sigma_{r}=\begin{bmatrix}(\sigma^{2}+r^{2}\eta)I&amp;r\eta I\\
+r\eta I&amp;\eta I\end{bmatrix}$ .
+We consider the  $\lambda$ -divergence  $D_{\lambda}\left(p\,\|\,q\right)\vcentcolon=\En_{q}\big(\frac{dp}{dq}\big)^{\lambda}-1$ . Then, as long as  $\lambda(\lambda-1)r^{2}\eta&lt;\sigma^{2}$ , we can calculate
+$\displaystyle 2\log\left(1+D_{\lambda}\left(Q^{r}_{X_{0}}\,\|\,Q^{0}_{X_{0}}\right)\right)=$
+$\displaystyle~(\lambda-1)\log\det(\Sigma_{0})-\lambda\log\det(\Sigma_{r})-\log\det(\lambda\Sigma_{r}^{-1}-(\lambda-1)\Sigma_{0}^{-1})$
+$\displaystyle=$
+$\displaystyle~(\lambda-1)\log\det(\Sigma_{0})-(\lambda-1)\log\det(\Sigma_{r})-\log\det(\lambda I-(\lambda-1)\Sigma_{r}\Sigma_{0}^{-1})$
+$\displaystyle=$
+$\displaystyle~-d\log\Big(1-\frac{\lambda(\lambda-1)r^{2}\eta}{\sigma^{2}}\Big)\,.$
+In particular, as long as  $\lambda^{2}\leq\frac{\sigma^{2}}{2\eta}$ , it holds that
+$\displaystyle 1+\max_{r\in[0,1]}D_{\lambda}\left(Q^{r}_{X_{0}}\,\|\,Q^{0}_{X_{0}}\right)\leq\exp\Big(\frac{d\lambda^{2}\eta}{\sigma^{2}}\Big)\,.$
+Now, consider the following distribution of  $(X_{0},W,Z)$ :
+$\displaystyle\mathbf{Q}^{r}:X_{0}\sim\bar{P}\,,\;X\sim\mathsf{N}\left(X_{0},\sigma^{2}I\right)\,,\;Z\sim\mathsf{N}\left(0,\eta I\right)\,,\;W=X+rZ\,.$
+By the data-processing inequality, we know
+$\displaystyle 1+D_{\lambda}\left(\mathbf{Q}^{r}\,\|\,\mathbf{Q}^{0}\right)\leq\exp\Big(\frac{d\lambda^{2}\eta}{\sigma^{2}}\Big)\leq\exp\Big(\frac{\lambda^{2}}{K}\Big)\,,\qquad\text{for all}~1\leq\lambda\leq\frac{\sigma}{\sqrt{2\eta}}\,,\;~r\in[0,1]\,.$
+In particular, choosing  $\lambda=\frac{K}{2}$  gives  $2^{-\lambda}\,(1+D_{\lambda}\left(\mathbf{Q}^{r}\,\|\,\mathbf{Q}^{0}\right))\leq\exp\left(-\frac{K}{12}\right)$ . Applying Lemma B.7 completes the proof.
+(2) We denote  $f=\log P$ . By Proposition E.8,
+for  $0\leq\lambda\leq\frac{\sigma^{2}}{4}$ , we can bound
+$\displaystyle\En_{X\sim P}\exp\left(\lambda\|\nabla f(X)\|^{2}\right)\leq\exp\Big(\frac{2d\lambda}{\sigma^{2}}\Big)\,.$
+Next, recalling the definition of  $\mathbf{Q}^{r}$ , we can write
+$\displaystyle\En_{X\sim P,\,Z\sim\mathsf{N}\left(0,\eta I\right)}\exp\left(\lambda\left\lvert\langle Z,\nabla f(X+rZ)\rangle\right\rvert\right)=$
+$\displaystyle~\En_{X_{0}\sim\bar{P}}\En_{X\sim\mathsf{N}\left(X_{0},\sigma^{2}I\right),\,Z\sim\mathsf{N}\left(0,\eta I\right)}\exp\left(\lambda\left\lvert\langle Z,\nabla f(X+rZ)\rangle\right\rvert\right)$
+$\displaystyle=$
+$\displaystyle~\En_{(Z,W)\sim\mathbf{Q}^{r}}\exp\left(\lambda\left\lvert\langle Z,\nabla f(W)\rangle\right\rvert\right)\,.$
+By the Cauchy–Schwarz inequality,
+$\displaystyle\En_{(W,Z)\sim\mathbf{Q}^{r}}\exp\left(\lambda\left\lvert\langle Z,\nabla f(W)\rangle\right\rvert\right)\leq$
+$\displaystyle~\sqrt{\left(1+D_{\chi^{2}}\left(\mathbf{Q}^{r}\;\|\;{}\mathbf{Q}^{0}\right)\right)\En_{(W,Z)\sim\mathbf{Q}^{0}}\exp\left(2\lambda\left\lvert\langle Z,\nabla f(W)\rangle\right\rvert\right)}$
+$\displaystyle\leq$
+$\displaystyle~e\cdot\sqrt{\En_{W\sim\mathbf{Q}^{0}}[e^{4\lambda^{2}\eta\|\nabla f(W)\|^{2}}]}\,,$
+where we use that under  $\mathbf{Q}^{0}$ ,  $\langle Z,\nabla f(W)\rangle\mid W\sim\mathsf{N}\left(0,\eta\|\nabla f(W)\|^{2}\right)$ . Note that the distribution of  $W\sim\mathbf{Q}^{0}$  is exactly  $P$ . Hence, this implies that as long as  $8\lambda^{2}\eta\leq\frac{\sigma^{2}}{4}$ ,
+$\displaystyle\En_{(W,Z)\sim\mathbf{Q}^{r}}\exp\left(\lambda\left\lvert\langle Z,\nabla f(W)\rangle\right\rvert\right)\leq\exp\Big(1+\frac{8d\lambda^{2}\eta}{\sigma^{2}}\Big)\leq\exp\Big(1+\frac{8\lambda^{2}}{K}\Big)\,.$
+Taking  $\lambda=\frac{\min\{B,1\}}{16}K$  gives
+$\displaystyle\En_{(W,Z)\sim\mathbf{Q}^{r}}\left(\exp\left(\left\lvert\langle Z,\nabla f(W)\rangle\right\rvert\right)-e^{B}\right)_{+}\leq$
+$\displaystyle~e^{-(\lambda-1)B}\En_{(W,Z)\sim\mathbf{Q}^{r}}\exp\left(\lambda\left\lvert\langle Z,\nabla f(W)\rangle\right\rvert\right)$
+$\displaystyle\leq$
+$\displaystyle~\exp\Big(B+1-\frac{\min\{B,1\}B}{32}K\Big)\,.$
+∎
+E.2 Analysis of a DDPM-like method
+In this subsection, our goal is to sample from the tilt measure
+$\displaystyle\nu_{x_{0}}(x)\propto p(x)\exp\Big(-\frac{\|x-x_{0}\|^{2}}{2\eta}\Big)\,,$
+(19)
+given an estimated score function  $\mathsf{s}\approx\nabla\log p$ .
+We carry out our analysis under the following assumption, which will hold true in the diffusion model setting.
+Assumption E.2.
+The distribution  $p$  takes the form  $p=\overline{p}*\mathsf{N}\left(0,\sigma^{2}I\right)$ . We write  $\breve{p}=p*\mathsf{N}\left(0,\eta I\right)$ .
+For the diffusion model applications, we take  $p=p_{t}=\overline{p}_{t}*\mathsf{N}\left(0,\sigma^{2}I\right)$ , where  $\overline{p}_{t}$  is the distribution of  $\bar{\alpha}_{t}X_{0}$ ,  $X_{0}\sim p_{\mathsf{data}}$ . Further, under the true diffusion process, we have  $\alpha_{t}^{-1}X_{t+1}\sim p_{t}*\mathsf{N}\left(0,\eta_{t}I\right)$ .
+Notation
+We decompose  $\frac{1}{\eta}=\frac{1}{\bar{\eta}}-\lambda$  for some  $\lambda\geq 0$ .
+For Theorem 4.4, we can take the simple choice  $\lambda=0$ , but our proof of Theorem 4.6 requires taking  $\lambda&gt;0$ .
+To unify the analyses of the two results, we consider a general choice of  $\lambda$  here.
+We fix the parameter  $\lambda\geq 0$ , and we denote  $\mathsf{s}^{\star}=\nabla\log p$ ,
+$\displaystyle\widetilde{\mathsf{s}}(x)=\mathsf{s}(x)+\lambda x\,,\qquad\widetilde{\mathsf{s}}^{\star}(x)=\mathsf{s}^{\star}(x)+\lambda x\,.$
+We also write  $\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{B}=\max\{B,B^{-1}\}$ .
+In the following, we abbreviate  $\En_{r,z}[\cdot]\vcentcolon=\En_{r\sim\mathsf{Unif}([0,1]),\,z\sim\mathsf{N}\left(0,\eta I\right)}[\cdot]$ .
+Distributions
+By Theorem 3.1, Algorithm 1 instantiated with the choices  $q=\mathsf{N}\left(x_{0}+\bar{\eta}\mathsf{s}(x_{0}),\bar{\eta}I\right)$  and
+$\displaystyle\widehat{W}_{z,r,x}=\mathsf{Clip}_{B}(\langle\dot{\gamma}_{z,r,x_{0}}(x),\,\widetilde{\mathsf{s}}(\gamma_{z,r,x_{0}}(x))-\widetilde{\mathsf{s}}(x_{0})\rangle)$
+(20)
+samples from the distribution  $\widehat{\rho}_{x_{0}}(\cdot)$ , where
+$\displaystyle\log\widehat{\rho}_{x_{0}}(x)=\mathrm{const}+\En_{r,z}\mathsf{Clip}_{B}(\langle\dot{\gamma}_{z,r,x_{0}}(x),\widetilde{\mathsf{s}}(\gamma_{z,r,x_{0}}(x))-\widetilde{\mathsf{s}}(x_{0})\rangle)-\frac{\|x-x_{0}-\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}\mathsf{s}(x_{0})\|^{2}}{2\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}}\,.$
+(21)
+We write  $\rho^{\star}_{x_{0}}(\cdot)$  for the density corresponding to score  $\mathsf{s}=\mathsf{s}^{\star}$ , i.e.,
+$\displaystyle\log\rho^{\star}_{x_{0}}(x)=\mathrm{const}+\En_{r,z}\mathsf{Clip}_{B}(\langle\dot{\gamma}_{z,r,x_{0}}(x),\widetilde{\mathsf{s}}^{\star}(\gamma_{z,r,x_{0}}(x))-\widetilde{\mathsf{s}}^{\star}(x_{0})\rangle)-\frac{\|x-x_{0}-\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}\mathsf{s}^{\star}(x_{0})\|^{2}}{2\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}}\,.$
+(22)
+Using Eq. 7, we can also write
+$\displaystyle\log\nu_{x_{0}}(x)+\frac{\|x-x_{0}-\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}\mathsf{s}^{\star}(x_{0})\|^{2}}{2\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}}=$
+$\displaystyle~\mathrm{const}+\log p(x)-\langle\mathsf{s}^{\star}(x_{0}),x-x_{0}\rangle+\frac{\lambda}{2}\,\|x-x_{0}\|^{2}$
+$\displaystyle=$
+$\displaystyle~\mathrm{const}+\En_{r,z}\langle\dot{\gamma}_{z,r,x_{0}}(x),\widetilde{\mathsf{s}}^{\star}(\gamma_{z,r,x_{0}}(x))-\widetilde{\mathsf{s}}^{\star}(x_{0})\rangle\,,$
+where we recall  $\mathsf{s}^{\star}=\nabla\log p$ .
+Proposition E.3 (Convergence under true score).
+Suppose that Assumption E.2 holds and  $\mathsf{s}=\mathsf{s}^{\star}$ ,  $B=\Theta(1)$ ,  $G\geq K\geq 1$ ,  $\eta\leq\frac{\sigma^{2}}{4\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{B}G}$ .
+We define the set
+$\displaystyle\mathcal{E}_{G,K}=\Big\{(\bar{x},V)$
+$\displaystyle:H=\nabla\widetilde{\mathsf{s}}^{\star}(\bar{x}+V)\,,\;\|H\|_{\mathrm{op}}\leq\frac{G}{K\sigma^{2}}\,,\;\|H\|_{\mathrm{F}}\leq\frac{G}{\sqrt{K}\sigma^{2}}\,,$
+$\displaystyle\qquad\qquad\lvert\mathrm{tr}(H)\rvert\leq\frac{G^{2}}{\sigma^{2}}\,,\;\lvert V^{\top}HV\rvert\leq G^{2}\,,\;\|HV\|^{2}\leq\frac{G^{3}}{K\sigma^{2}}\Big\}\,.$
+Let  $\rho^{\star}_{x_{0}}(\cdot)$  be the probability density defined in (22). Then it holds that
+$\displaystyle\En_{x_{0}\sim\breve{p}}D_{\mathsf{KL}}\left(\nu_{x_{0}}(\cdot)\,\|\,\rho^{\star}_{x_{0}}(\cdot)\right)\lesssim\frac{d^{4.5}\eta}{\sigma^{2}}\,\bigg(e^{-cK}+\sqrt{\max_{\eta^{\prime}\in[0,2\eta]}\mathbb{P}_{\bar{x}\sim\overline{p},\,V\sim\mathsf{N}\left(0,(\sigma^{2}+\eta^{\prime})I\right)}\left((\bar{x},V)\not\in\mathcal{E}_{G,K}\right)}\bigg)\,.$
+Proposition E.4 (Score error).
+Fix any  $\delta\in(0,1)$ ,  $\eta&gt;0$ . Suppose that Assumption E.2 holds.
+Let  $\widehat{\rho}_{x_{0}}(\cdot)$  be the probability density of  $x$  defined in (21) with score function  $\mathsf{s}$ . Then, the following holds.
+(1) It holds that
+$\displaystyle\En_{x_{0}\sim\breve{p}}D_{\mathsf{KL}}\left(\nu_{x_{0}}(\cdot)\,\|\,\widehat{\rho}_{x_{0}}(\cdot)\right)\lesssim$
+$\displaystyle~e^{4B}\En_{x_{0}\sim\breve{p}}D_{\mathsf{KL}}\left(\nu_{x_{0}}(\cdot)\,\|\,\rho^{\star}_{x_{0}}(\cdot)\right)$
+$\displaystyle~+e^{4B}{\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{B}}^{2}\,\bigl(\delta+G\max_{\eta^{\prime}\in[0,2\eta]}\En_{X\sim p*\mathsf{N}\left(0,\eta^{\prime}I\right)}\|\mathsf{s}(X)-\mathsf{s}^{\star}(X)\|^{2}\bigr)\,,$
+where we denote  $G=\eta+\frac{\eta^{2}}{\sigma^{2}}\,(d+\log(1/\delta))$ .
+(2) Suppose that  $\eta\leq\frac{\sigma^{2}}{8\max\{\sqrt{d\log(1/\delta)},\log(1/\delta)\}}$ . Then, it holds that
+$\displaystyle\En_{x_{0}\sim\breve{p}}D^{2}_{\mathsf{H}}\left(\nu_{x_{0}}(\cdot),\widehat{\rho}_{x_{0}}(\cdot)\right)\lesssim e^{4B}\En_{x_{0}\sim\breve{p}}D_{\mathsf{KL}}\left(\nu_{x_{0}}(\cdot)\,\|\,\rho^{\star}_{x_{0}}(\cdot)\right)+e^{4B}{\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{B}}^{2}\,(\delta+G\En_{X\sim p}\|\mathsf{s}(X)-\mathsf{s}^{\star}(X)\|^{2})\,.$
+We give the proofs of Proposition E.3 and Proposition E.4 in Section E.6 and Section E.7 respectively.
+E.3 Proof of Theorem 4.4
+As a direct corollary of Proposition E.3, we have the following result.
+Corollary E.5.
+Suppose that Assumption E.2 holds,  $B=\Theta(1)$ ,  $L\geq 1$ ,  $\delta\in(0,\frac{1}{2})$ ,  $\lambda=0$ , and
+$\displaystyle\frac{\sigma^{2}}{\eta}\geq C_{0}\max\{L\log(1/\delta),\sqrt{dL\log(1/\delta)}\}\,,$
+where  $C_{0}$  is a sufficiently large constant.
+Suppose that given  $x_{0}$ , Algorithm 1 is instantiated with (20), and let  $\widehat{\rho}_{x_{0}}(\cdot)$  be the output distribution (given input  $x_{0}$ ).
+Then it holds that
+$\displaystyle\En_{x_{0}\sim\breve{p}}D^{2}_{\mathsf{H}}\left(\nu_{x_{0}}(\cdot),\widehat{\rho}_{x_{0}}(\cdot)\right)\lesssim d^{4}\,\Big(\delta+\sqrt{\mathbb{P}_{x\sim p}\big(\|\nabla\mathsf{s}^{\star}(x)\|_{\mathrm{op}}\geq\frac{L}{\sigma^{2}}\big)}\Big)\,+G\En_{x\sim p}\|\mathsf{s}(x)-\mathsf{s}^{\star}(x)\|^{2},$
+where  $\nu_{x_{0}}(x)\propto p(x)\exp\Big(-\frac{\|x-x_{0}\|^{2}}{2\eta}\Big)$  is the titled measure defined in Eq. 19, and  $G=\eta+\frac{\eta^{2}}{\sigma^{2}}\,(d+\log(1/\delta))$ .
+Proof of Corollary E.5.
+Fix any  ${\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}}^{2}\in[\sigma^{2},\sigma^{2}+2\eta]$  and  $K=\max\{c^{-1}\log(1/\delta),1\}$ . We write  $\mathbb{P}_{\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}}(\cdot)$  to be the probability distribution of  $(\bar{x},V)$  under  $\bar{x}\sim\overline{p}$  and  $V\sim\mathsf{N}\left(0,{\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}}^{2}I\right)$ .
+Define
+$\displaystyle E_{0}\vcentcolon=\big\{(\bar{x},V):\|\nabla\widetilde{\mathsf{s}}^{\star}(\bar{x}+V)\|_{\mathrm{op}}\leq\frac{L}{\sigma^{2}}\big\}\,.$
+By Proposition E.8 in Section E.5 and Lemma B.5, it holds that  $\mathbb{P}_{\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}}((\bar{x},V)\not\in E_{1})\leq\delta^{2}$ , where
+$\displaystyle E_{1}\coloneqq\Big\{(\bar{x},V):\|V\|^{2}\leq C\sigma^{2}(d+\log(1/\delta))\,,~~\|\nabla\widetilde{\mathsf{s}}^{\star}(\bar{x}+V)\|_{*}\leq\frac{C(d+\log(1/\delta))}{\sigma^{2}}\Big\}\,.$
+Now, suppose that
+$\displaystyle G\geq\max\{KL,\sqrt{C(d+\log(1/\delta))KL}\}\,.$
+We argue that  $E_{0}\cap E_{1}\subseteq\mathcal{E}_{G,K}$ . This is because for  $(\bar{x},V)\in E_{0}\cap E_{1}$  and  $H=\nabla\widetilde{\mathsf{s}}^{\star}(\bar{x}+V)$ , we can bound
+$\displaystyle~\|H\|_{\mathrm{F}}\leq\sqrt{\|H\|_{\mathrm{op}}\cdot\|H\|_{*}}\leq\frac{\sqrt{C(d+\log(1/\delta))L}}{\sigma^{2}}\leq\frac{G}{\sqrt{K}\sigma^{2}}\,,$
+$\displaystyle~\lvert\mathrm{tr}(H)\rvert\leq\|H\|_{*}\leq\frac{C(d+\log(1/\delta))}{\sigma^{2}}\leq\frac{G^{2}}{\sigma^{2}}\,,$
+$\displaystyle~\lvert V^{\top}HV\rvert\leq\|H\|_{\mathrm{op}}\|V\|^{2}\leq CL(d+\log(1/\delta))\leq G^{2}\,,$
+$\displaystyle~\|HV\|^{2}\leq\|H\|_{\mathrm{op}}^{2}\|V\|^{2}\leq\frac{CL^{2}(d+\log(1/\delta))}{\sigma^{2}}\leq\frac{G^{3}}{K\sigma^{2}}\,.$
+This immediately gives  $E_{0}\cap E_{1}\subseteq\mathcal{E}_{G,K}$ , and hence
+$\displaystyle\mathbb{P}_{\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}}\left((\bar{x},V)\not\in\mathcal{E}_{G,K}\right)\leq\mathbb{P}_{\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}}(E_{0}^{\mathrm{c}})+\mathbb{P}_{\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}}(E_{1}^{\mathrm{c}})\,.$
+Note that  $\mathbb{P}_{\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}}(E_{1}^{\mathrm{c}})\leq\delta^{2}$  and by Proposition E.8,
+$\displaystyle\mathbb{P}_{\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}}(E_{0}^{\mathrm{c}})\leq e\mathbb{P}_{\sigma}(E_{0}^{\mathrm{c}})+e\delta^{2}\,.$
+Then, by Proposition E.3, it holds that
+$\displaystyle\En_{x_{0}\sim\breve{p}}D_{\mathsf{KL}}\left(\nu_{x_{0}}(\cdot)\,\|\,\rho^{\star}_{x_{0}}(\cdot)\right)\lesssim d^{4}\,\Big(\delta+\sqrt{\mathbb{P}_{x\sim p}\big(\|\nabla\mathsf{s}^{\star}(x)\|_{\mathrm{op}}\geq\frac{L}{\sigma^{2}}\big)}\Big),$
+where  $\rho^{\star}_{x_{0}}(\cdot)$  is defined in Eq. 22. Finally, applying Proposition E.4 (2) gives the desired result.
+∎
+Proof of Theorem 4.4.
+To prove Theorem 4.4, we recall that the process  $X_{T}\to\cdots\to X_{1}$  generated by Algorithm 2 is a Markov chain such that  $X_{T}\sim\widehat{p}_{T}$ , and  $X_{t}\mid X_{t+1}\sim\widehat{\rho}_{t}(\cdot\mid X_{t+1})$ , where  $\widehat{\rho}_{t}(\cdot\mid X_{t+1})$  is the conditional distribution of  $X_{t}$  given  $X_{t+1}$ .
+The chain rule for the Hellinger distance (Lemma B.13) yields
+$\displaystyle D^{2}_{\mathsf{H}}\left(p_{1},\widehat{p}_{1}\right)$
+$\displaystyle\leq 7D^{2}_{\mathsf{H}}\left(p_{T},\widehat{p}_{T}\right)+7\sum_{t=1}^{T-1}\mathbb{E}_{X_{t+1}\sim p_{t+1}}D^{2}_{\mathsf{H}}\left(\rho_{t}(\cdot\mid X_{t+1}),\widehat{\rho}_{t}(\cdot\mid X_{t+1})\right)\,.$
+Note that under  $X_{t+1}\sim p_{t+1}$ , it holds that  $\bar{x}_{t}=\alpha_{t}^{-1}X_{t+1}\sim p*\mathsf{N}\left(0,\eta_{t}I\right)$ . Hence, Corollary E.5 implies that for  $t\in[T]$ , it holds that
+$\displaystyle\En_{X_{t+1}\sim p_{t+1}}D^{2}_{\mathsf{H}}\left(\rho_{t}(\cdot\mid X_{t+1}),\widehat{\rho}_{t}(\cdot\mid X_{t+1})\right)\lesssim$
+$\displaystyle~\delta+\Big(\eta+\frac{\eta^{2}}{\sigma^{2}}\,(d+\log(1/\delta))\Big)\En_{X\sim p_{t}}\|\mathsf{s}_{t}(X)-\mathsf{s}^{\star}_{t}(X)\|^{2}\,.$
+The proof of Theorem 4.4 is then completed by combining inequalities above.
+∎
+E.4 Proof of Theorem 4.6
+As a direct corollary of Proposition E.3 and Proposition E.7, we have the following result.
+Corollary E.6.
+Suppose that Assumption E.2 holds,  $B=\Theta(1)$ ,  $\delta\in(0,\frac{1}{2})$ ,  $\lambda=\frac{1}{\sigma^{2}}$ , and
+$\displaystyle\frac{\sigma^{2}}{\eta}\geq C_{0}\,big(\mathsf{d}_{\star}\log(d/\delta)+\log^{2}(d/\delta)big)\,,$
+where  $C_{0}$  is a sufficiently large constant.
+Suppose that given  $x_{0}$ , Algorithm 1 is instantiated with (20), and let  $\widehat{\rho}_{x_{0}}(\cdot)$  be the output distribution (given input  $x_{0}$ ).
+Then it holds that
+$\displaystyle\En_{x_{0}\sim\breve{p}}D_{\mathsf{KL}}\left(\nu_{x_{0}}(\cdot)\,\|\,\widehat{\rho}_{x_{0}}(\cdot)\right)\lesssim\delta+G\max_{\eta^{\prime}\in[0,2\eta]}\En_{X\sim p*\mathsf{N}\left(0,\eta^{\prime}I\right)}\|\mathsf{s}(X)-\mathsf{s}^{\star}(X)\|^{2}\,,$
+where we denote  $G=\eta+\frac{\eta^{2}}{\sigma^{2}}\,(d+\log(1/\delta))$ .
+Proof of Corollary E.6.
+We write  $\mathbb{P}_{\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}}(\cdot)$  to be the probability distribution of  $(\bar{x},V)$  under  $\bar{x}\sim\overline{p}$  and  $V\sim\mathsf{N}\left(0,{\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}}^{2}I\right)$ .
+Fix  $\delta\in(0,\frac{1}{2}]$  and write  $D=\mathsf{d}_{\star}+\log(d/\delta)$ ,  $K=\max\{c^{-1}\log(d^{10}/\delta^{2}),1\}$ .
+Recall that  $\widetilde{\mathsf{s}}^{\star}(x)=\mathsf{s}^{\star}(x)+\frac{x}{\sigma^{2}}$  and  $\nabla\widetilde{\mathsf{s}}^{\star}(x)=\nabla\mathsf{s}^{\star}(x)+\frac{I}{\sigma^{2}}$ . Consider the following set:
+$\displaystyle E=\Big\{(\bar{x},V):\mathrm{tr}(\nabla\widetilde{\mathsf{s}}^{\star}(\bar{x}+V))\leq\frac{CD}{\sigma^{2}}\,,\;V^{\top}\nabla\widetilde{\mathsf{s}}^{\star}(\bar{x}+V)V\leq CD\Big\}\,,$
+where  $C&gt;0$  is an absolute constant such that by Proposition E.7, it holds that  $\mathbb{P}_{\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}}((\bar{x},V)\not\in E)\leq\frac{\delta^{2}}{d^{10}}$  for  $\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}\in[0,2\sigma]$ .
+Now, note that for PSD matrix  $H\succeq 0$ , it holds that  $\|H\|_{\mathrm{op}}\leq\|H\|_{\mathrm{F}}\leq\mathrm{tr}(H)$ , and  $\|HV\|^{2}\leq\|H\|_{\mathrm{op}}\cdot V^{\top}HV$ . This immediately implies that with the choice  $G=CKD$ , it holds that  $E\subseteq\mathcal{E}_{G,K}$ . This immediately implies that for any  $\eta^{\prime}\in[0,2\eta]$ , it holds that
+$\displaystyle\mathbb{P}_{\bar{x}\sim\overline{p},\,V\sim\mathsf{N}\left(0,(\sigma^{2}+\eta^{\prime})I\right)}\left((\bar{x},V)\not\in\mathcal{E}_{G,K}\right)\leq\frac{\delta^{2}}{d^{10}}\,.$
+Applying Proposition E.3 with  $\eta\leq\frac{\sigma^{2}}{4\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{B}G}$  gives
+$\displaystyle\En_{x_{0}\sim\breve{p}}D_{\mathsf{KL}}\left(\nu_{x_{0}}(\cdot)\,\|\,\rho^{\star}_{x_{0}}(\cdot)\right)\lesssim\delta\,.$
+Applying Corollary E.6 completes the proof.
+∎
+Proof of Theorem 4.6.
+The proof is the same as the proof of Theorem 4.4, except that we use Corollary E.6 instead.
+∎
+The following proposition generalizes the argument of Huang et al. (2024b) that bounds the posterior covariance matrix in terms of the intrinsic dimension. As a remark, we also note that this argument can recover Proposition E.8 (2) easily.
+Proposition E.7.
+Suppose that the data distribution  $p_{\mathsf{data}}$  has support  $\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}=\mathrm{supp}(p_{\mathsf{data}})$ . Let  $N_{\mathsf{data}}(r)=N(\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{};r,\|\cdot\|_{2})$  be the covering number of  $\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}$  under Euclidean norm, and we denote  $\mathsf{d}_{\star}=1+\log N_{\mathsf{data}}(\sigma/\sqrt{d})$ .
+In the following, we consider  $p=p_{\mathsf{data}}*\mathsf{N}\left(0,\sigma^{2}I\right)$  and bound the shifted Hessian matrix  $H(x)\vcentcolon=\sigma^{2}\nabla^{2}\log p(x)+I\succeq 0$ .
+For  $\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}\geq 0$ , we write  $\mathbb{P}_{\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}}(\cdot)$  to the probability of  $(\bar{x},V)$  under  $\bar{x}\sim p_{\mathsf{data}}$ ,  $V\sim\mathsf{N}\left(0,{\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}}^{2}I\right)$ .
+Then, the following holds for any  $\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}\in[0,2\sigma]$  and any  $\delta\in(0,1)$ :
+$\displaystyle\mathbb{P}_{\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}}\left(\mathrm{tr}(H(\bar{x}+V))\geq C(\mathsf{d}_{\star}+\log(1/\delta))\right)\leq\delta\,,$
+(23)
+$\displaystyle\mathbb{P}_{\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}}\left(\|V\|_{H(\bar{x}+V)}\geq C\sigma(\mathsf{d}_{\star}+\log(1/\delta))\right)\leq\delta\,,$
+(24)
+where  $C&gt;0$  is an absolute constant.
+Proof. We first recall that by definition,
+$\displaystyle\nabla^{2}\log p(x)=-\frac{I}{\sigma^{2}}+\frac{\mathrm{Cov}(X_{0}\mid X=x)}{\sigma^{4}}\,,$
+where the conditional covariance is over the joint distribution of  $X_{0}\sim p_{\mathsf{data}}$ ,  $X\sim\mathsf{N}\left(X,\sigma^{2}I\right)$ . Then,
+$\displaystyle H(x)\vcentcolon=\sigma^{2}\nabla^{2}\log p(x)+I=\frac{\mathrm{Cov}(X_{0}\mid X=x)}{\sigma^{2}}\succeq 0\,,$
+and by the definition of covariance, we can bound  $H(\bar{x}+V)$  as follows:
+$\displaystyle\begin{aligned} \sigma^{2}\mathrm{tr}(H(\bar{x}+V))\leq&amp;~\frac{\En_{X_{0}\sim p_{\mathsf{data}}}\left[\|X_{0}-\bar{x}\|^{2}\exp\left(-\frac{\|\bar{x}+V-X_{0}\|^{2}}{2\sigma^{2}}\right)\right]}{\En_{X_{0}\sim p_{\mathsf{data}}}\left[\exp\left(-\frac{\|\bar{x}+V-X_{0}\|^{2}}{2\sigma^{2}}\right)\right]}\\
+\leq&amp;~M^{2}+\frac{\En_{X_{0}\sim p_{\mathsf{data}}}\left[\left(\|X_{0}-\bar{x}\|^{2}-M^{2}\right)_{+}\exp\left(-\frac{\|\bar{x}+V-X_{0}\|^{2}}{2\sigma^{2}}\right)\right]}{\En_{X_{0}\sim p_{\mathsf{data}}}\left[\exp\left(-\frac{\|\bar{x}+V-X_{0}\|^{2}}{2\sigma^{2}}\right)\right]}\\
+=&amp;~M^{2}+\frac{\En_{X_{0}\sim p_{\mathsf{data}}}\left[\left(\|X_{0}-\bar{x}\|^{2}-M^{2}\right)_{+}\exp\left(-\frac{\|\bar{x}-X_{0}\|^{2}+2\langle V,\bar{x}-X_{0}\rangle}{2\sigma^{2}}\right)\right]}{\En_{X_{0}\sim p_{\mathsf{data}}}\left[\exp\left(-\frac{\|\bar{x}-X_{0}\|^{2}+2\langle V,\bar{x}-X_{0}\rangle}{2\sigma^{2}}\right)\right]}\,.\end{aligned}$
+(25)
+Let  $r=\frac{\sigma}{\sqrt{d}}$ .
+Fix a  $r$ -covering of  $\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}$ :
+$\displaystyle\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}\subseteq\bigcup_{i=1}^{N}B_{i},$
+where  $N=N_{\mathsf{data}}(r)$  and  $B_{1},\dotsc,B_{N}$  are balls of radius  $r$  and centers  $z_{1},\dotsc,z_{N}$ .
+Let  $\mathcal{I}=\{i\in[N]:p_{\mathsf{data}}(B_{i})\geq\alpha\}$ , and let  $\mathcal{X}_{+}=\bigcup_{i\in\mathcal{I}}B_{i}$ .
+We make the following claims.
+Claim 1. Define  $M_{1}=2\sigma\,(\sqrt{d}+2\sqrt{\log(2/\delta)})$ ,  $M_{2}=\min\{8\sigma\sqrt{\log(2N/\delta)},M_{1}\}$ ,
+$\displaystyle\mathcal{V}=\{V:\|V\|\leq M_{1},\,\lvert\langle V,x-x^{\prime}\rangle\rvert\leq M_{2}\|x-x^{\prime}\|+4rM_{1},~\forall x,x^{\prime}\in\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}\}\,.$
+Then for any  $\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}\in[0,2\sigma]$ , it holds that  $\mathbb{P}_{V\sim\mathsf{N}\left(0,{\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}}^{2}I\right)}(V\not\in\mathcal{V})\leq\delta$ .
+Proof of Claim 1.
+By Gaussian concentration, it is clear that  $\mathbb{P}_{\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}}(\|V\|\geq\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}(\sqrt{d}+2\sqrt{t}))\leq e^{-t}$  for  $t\geq 0$ .
+Further, for any  $i,j\in[N]$ , it holds that  $\mathbb{P}_{\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}}(\lvert\langle V,z_{i}-z_{j}\rangle\rvert\leq\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}\|z_{i}-z_{j}\|\sqrt{2t})\leq 2e^{-t}$  for  $t\geq 0$ . Hence, by a union bound, we can show that  $\mathbb{P}_{\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}}(V\not\in\mathcal{V}_{0})\leq\delta$ , where
+$\displaystyle\mathcal{V}_{0}=\{V:\|V\|\leq M_{1},\,\lvert\langle V,z_{i}-z_{j}\rangle\rvert\leq M_{2}\|z_{i}-z_{j}\|,~\forall i,j\in[N]\}\,.$
+Note that for any  $V\in\mathcal{V}_{0}$ , it is clear that for any  $i,j\in[N]$ ,  $x\in B_{i},x^{\prime}\in B_{j}$ , we can bound
+$\displaystyle\lvert\langle V,x-x^{\prime}\rangle\rvert\leq\lvert\langle V,z_{i}-z_{j}\rangle\rvert+2r\|V\|\leq M_{2}\|z_{i}-z_{j}\|+2rM_{1}\leq M_{2}\|x-x^{\prime}\|+2r(M_{1}+M_{2})\,.$
+This implies that  $\mathcal{V}_{0}\subseteq\mathcal{V}$ , and the proof of Claim 1 is hence completed.
+∎
+Next, we proceed to bound  $\mathrm{tr}(H(\cdot))$  by combining Claim 1 and Eq. 25. Fix  $M\geq 8(M_{2}+\sqrt{rM_{1}})$ .
+Suppose that  $\bar{x}\in\mathcal{X}_{+}$  and  $V\in\mathcal{V}$ .
+Using  $V\in\mathcal{V}$  and  $\bar{x},x\in\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}$ , as long as  $\|\bar{x}-x\|\geq M$ , we know
+$\displaystyle\lvert\langle V,\bar{x}-x\rangle\rvert\leq M_{2}\|\bar{x}-x\|+4rM_{1}\leq\frac{1}{4}\,\|\bar{x}-x\|^{2}\,,$
+and hence in this case  $\|\bar{x}-x\|^{2}+2\langle V,\bar{x}-x\rangle\geq\frac{1}{2}\|\bar{x}-x\|^{2}$ . This immediately implies that
+$\displaystyle~\En_{X_{0}\sim p_{\mathsf{data}}}\Big[\big(\|X_{0}-\bar{x}\|^{2}-M^{2}\big)_{+}\exp\Big(-\frac{\|\bar{x}-X_{0}\|^{2}+2\langle V,\bar{x}-X_{0}\rangle}{2\sigma^{2}}\Big)\Big]$
+$\displaystyle\leq$
+$\displaystyle~\En_{X_{0}\sim p_{\mathsf{data}}}\Big[\left(\|X_{0}-\bar{x}\|^{2}-M^{2}\right)_{+}\exp\Big(-\frac{\|\bar{x}-X_{0}\|^{2}}{4\sigma^{2}}\Big)\Big]\ \leq M^{2}\exp\Big(-\frac{M^{2}}{4\sigma^{2}}\Big)\,,$
+where we use the fact that  $u\mapsto ue^{-u}$  is decreasing over  $u\geq 1$ .
+On the other hand, suppose that  $V\in\mathcal{V}$  and  $\bar{x}\in B_{i}$  such that  $p_{\mathsf{data}}(B_{i})\geq\alpha$ . Note that for any  $x\in B_{i}$ ,  $\|x-\bar{x}\|\leq 2r$ , and hence we can bound
+$\displaystyle\|\bar{x}-x\|^{2}+2\langle V,\bar{x}-x\rangle\leq 4r^{2}+4r(M_{1}+M_{2})\,.$
+This implies that
+$\displaystyle\En_{X_{0}\sim p_{\mathsf{data}}}\Big[\exp\Big(-\frac{\|\bar{x}-X_{0}\|^{2}+2\langle V,\bar{x}-X_{0}\rangle}{2\sigma^{2}}\Big)\Big]\geq$
+$\displaystyle~\En_{X_{0}\sim p_{\mathsf{data}}}\left[\mathbb{I}\{X_{0}\in B_{i}\}\exp\left(-2\sigma^{-2}(r^{2}+r(M_{1}+M_{2}))\right)\right]$
+$\displaystyle\geq$
+$\displaystyle~\alpha\exp\left(-2\sigma^{-2}(r^{2}+r(M_{1}+M_{2}))\right)\,.$
+Combining the above bounds, we can conclude that as long as  $\bar{x}\in\mathcal{X}_{+}$  and  $V\in\mathcal{V}$ , with  $M=8(M_{2}+\sqrt{r(M_{1}+M_{2})}+r)+2\sigma\sqrt{\log(1/\alpha)}$ ,
+it holds that
+$\displaystyle\sigma^{2}\mathrm{tr}(H(\bar{x}+V))\leq M^{2}+\frac{M^{2}}{\alpha}\exp\Big(\frac{2(r^{2}+r(M_{1}+M_{2}))}{\sigma^{2}}-\frac{M^{2}}{4\sigma^{2}}\Big)\leq 2M^{2}\,.$
+Note that  $\mathbb{P}_{\bar{x}\sim p_{\mathsf{data}}}(\bar{x}\not\in\mathcal{X}_{+})\leq\sum_{i:p_{\mathsf{data}}(B_{i})&lt;\alpha}p_{\mathsf{data}}(B_{i})\leq N\alpha=\delta$ , and hence
+$\displaystyle\mathbb{P}_{\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}}\left(\sigma^{2}\mathrm{tr}(H(\bar{x}+V))\leq 2M^{2}\right)\leq 2\delta\,.$
+Rescaling  $\delta\leftarrow\frac{\delta}{2}$  and plugging in the definition of  $M$  completes the proof of Eq. 23.
+Similarly, we note that for  $V\in\mathcal{V}$ ,
+$\displaystyle\sigma^{2}\cdot V^{\top}H(\bar{x}+V)V\leq$
+$\displaystyle~V^{\top}\En[(X_{0}-\bar{x})(X_{0}-\bar{x})^{\top}\mid X=\bar{x}+V]V=\En[\langle X_{0}-\bar{x},V\rangle^{2}\mid X=\bar{x}+V]$
+$\displaystyle\leq$
+$\displaystyle~\En[(M_{2}\|X_{0}-\bar{x}\|+4rM_{1})^{2}\mid X=\bar{x}+V]$
+$\displaystyle\leq$
+$\displaystyle~2M_{2}^{2}\En[\|X_{0}-\bar{x}\|^{2}\mid X=\bar{x}+V]+32r^{2}M_{1}^{2}\,.$
+Our argument above then shows that
+$\displaystyle\mathbb{P}_{\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}}\left(\sigma^{2}\cdot V^{\top}H(\bar{x}+V)V\leq c_{1}M^{4}\right)\leq 2\delta\,,$
+where  $c_{1}&gt;0$  is an absolute constant. Rescaling  $\delta$  gives Eq. 24.
+∎
+E.5 Technical lemmas
+Proposition E.8.
+Suppose that  $p=\overline{p}*\mathsf{N}\left(0,\sigma^{2}I\right)$  and  $\breve{p}=\overline{p}*\mathsf{N}\left(0,{\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}}^{2}I\right)$  such that  $\lvert{\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}}^{2}-\sigma^{2}\rvert\leq\frac{\sigma^{2}}{2}$ .
+(1) It holds that
+$\displaystyle\En_{X\sim\breve{p}}\exp\Big(\frac{\sigma^{2}}{8}\|\nabla\log p(X)\|^{2}\Big)\leq\exp\big(\frac{d}{2}\big)\,.$
+(2) It holds that
+$\displaystyle\En_{X\sim\breve{p}}\exp\Big(\frac{\sigma^{2}}{8}\left\|\nabla^{2}\log p(X)+\sigma^{-2}I\right\|_{*}\Big)\leq\exp\big(\frac{d}{2}\big)\,.$
+(3) Suppose that  $\lvert{\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}}^{2}-\sigma^{2}\rvert\leq\frac{\sigma^{2}}{8\max\{\sqrt{d\log(1/\delta)},\log(1/\delta)\}}$ . For any  $F:\mathbb{R}^{d}\to[0,1]$ , it holds that
+$\displaystyle\En_{X\sim\breve{p}}F(X)\leq e\cdot(\En_{X\sim p}F(X)+\delta)\,.$
+Proof. We first prove (3). Denote  $\mu=\mathsf{N}\left(0,\sigma^{2}I\right)$  and  $\pi=\mathsf{N}\left(0,{\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}}^{2}I\right)$ . We denote  $\epsilon\coloneqq\frac{{\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}}^{2}}{\sigma^{2}}-1$ . Then, as long as  $\lambda\epsilon&lt;\frac{1}{2}$  and  $\epsilon\geq-\frac{1}{2}$ ,
+$\displaystyle\log(1+D_{1+\lambda}\left(\pi\,\|\,\mu\right))=\frac{d}{2}\,\left[-\log(1-\lambda\epsilon)-\lambda\log(1+\epsilon)\right]\leq\frac{d\lambda(1+\lambda)}{2}\,\epsilon^{2}$
+where we use  $\log(1+u)\geq u-u^{2}$  for  $u\geq-\frac{1}{2}$ . Then, by the data-processing inequality, this gives
+$\displaystyle 1+D_{1+\lambda}\left(\breve{p}\,\|\,p\right)\leq\exp\Big(\frac{d\lambda(1+\lambda)}{2}\,\epsilon^{2}\Big)\,,\qquad\forall\lambda\leq\frac{1}{2\lvert\epsilon\rvert}\,.$
+Then, using Lemma B.7 and  $\epsilon^{2}d\leq\frac{1}{4}$ , we know
+$\displaystyle\En_{X\sim\breve{p}}F(X)-e\En_{X\sim p}F(X)\leq\min_{1\leq\lambda\leq\frac{1}{2\lvert\epsilon\rvert}}\exp\Big(\frac{d\lambda(1+\lambda)}{2}\,\epsilon^{2}-\lambda+1\Big)\leq\exp\Big(1-\min\Big\{\frac{1}{8d\epsilon^{2}},\,\frac{1}{8\lvert\epsilon\rvert}\Big\}\Big)\,.$
+This proves (3).
+Next, we turn toward the proofs of (1) and (2).
+We denote  $f=\log p$ . Then, we can express, for  $X_{0}\sim\bar{p}$ ,  $X\sim\mathsf{N}\left(X,\sigma^{2}I\right)$ ,
+$\displaystyle\nabla f(x)=\frac{1}{\sigma^{2}}\En\left[X_{0}-X\mid X=x\right]\,,\qquad\nabla^{2}f(x)=-\frac{I}{\sigma^{2}}+\frac{\mathrm{Cov}(X_{0}\mid X=x)}{\sigma^{4}}\,.$
+For  $0\leq\lambda\leq\frac{\sigma^{2}}{4}$ , we can bound
+$\displaystyle\En_{X\sim p}\exp\left(\lambda\|\nabla f(X)\|^{2}\right)\leq\exp\big(\frac{2d\lambda}{\sigma^{2}}\big)\,.$
+Therefore, for  $\lambda\leq\frac{\sigma^{2}}{8}$ , we have
+$\displaystyle\En_{X\sim\breve{p}}\exp\left(\lambda\|\nabla f(X)\|^{2}\right)\leq\sqrt{(1+D_{\chi^{2}}\left(\breve{p}\;\|\;{}p\right))\En_{X\sim p}\exp\left(2\lambda\|\nabla f(X)\|^{2}\right)}\leq\exp\Big(\frac{d}{8}+\frac{2d\lambda}{\sigma^{2}}\Big)\,,$
+where we use  $1+D_{\chi^{2}}\left(\breve{p}\;\|\;{}p\right)\leq\exp\left(\frac{d}{4}\right)$ . We can then choose  $\lambda=\frac{\sigma^{2}}{8}$  to complete the proof.
+Similarly, for  $0\leq\lambda\leq\frac{\sigma^{2}}{4}$ , we can bound
+$\displaystyle\En_{X\sim p}\exp\left(\lambda\|\nabla^{2}f(X)+\sigma^{-2}I\|_{*}\right)\leq$
+$\displaystyle~\En_{X_{0}\sim\bar{p},\,X\sim\mathsf{N}\left(X_{0},\sigma^{2}I\right)}\exp\Big(\frac{\lambda}{\sigma^{4}}\|X_{0}-X\|^{2}\Big)=\En_{Z\sim\mathsf{N}\left(0,\sigma^{2}I\right)}\exp\Big(\frac{\lambda}{\sigma^{4}}\|Z\|^{2}\Big)$
+$\displaystyle=$
+$\displaystyle~\left(1-2\sigma^{-2}\lambda\right)^{-\frac{d}{2}}\leq\exp\Big(\frac{2d\lambda}{\sigma^{2}}\Big)\,.$
+The upper bound then follows similarly.
+∎
+As a direct corollary of Proposition E.8 (1) and (2), we have the following moment bounds.
+Lemma E.9.
+Suppose that Assumption E.2 holds,  $0&lt;\eta\leq\frac{\sigma^{2}}{4}$ , and  $0\leq\lambda\leq\frac{1}{\sigma^{2}}$ . Then the following holds with an absolute constant  $C&gt;0$ : For any integer  $1\leq k\leq 16$ , and parameter  $\eta\in[0,2\eta]$ , it holds that
+$\displaystyle\left(\En_{X\sim p*\mathsf{N}\left(0,\eta^{\prime}I\right)}\|\widetilde{\mathsf{s}}^{\star}(X)\|^{k}\right)^{1/k}\leq\frac{C\sqrt{d}}{\sigma}\,,$
+$\displaystyle\left(\En_{X\sim p*\mathsf{N}\left(0,\eta^{\prime}I\right)}\|\nabla\widetilde{\mathsf{s}}^{\star}(X)\|_{*}^{k}\right)^{1/k}\leq\frac{Cd}{\sigma^{2}}\,.$
+E.6 Proof of Proposition E.3
+We denote
+$\displaystyle W^{\star}_{z,r,x_{0}}(x)=\langle\dot{\gamma}_{z,r,x_{0}}(x),\widetilde{\mathsf{s}}^{\star}(\gamma_{z,r,x_{0}}(x))-\widetilde{\mathsf{s}}^{\star}(x_{0})\rangle\,.$
+Then,
+$\displaystyle\log\nu_{x_{0}}(x)-\log\rho^{\star}_{x_{0}}(x)=\mathrm{const}+\En_{r,z}\tau_{B}(W^{\star}_{z,r,x_{0}}(x))\,.$
+Therefore,
+$\displaystyle\nabla\log\frac{\nu_{x_{0}}(x)}{\rho^{\star}_{x_{0}}(x)}=$
+$\displaystyle~\En_{r,z}\left[\nabla W^{\star}_{z,r,x_{0}}(x)\cdot h_{B}(W^{\star}_{z,r,x_{0}}(x))\right]\,,$
+where
+$\displaystyle h_{B}(y)=\begin{cases}1\,,&amp;y&gt;B\,,\\
+0\,,&amp;y\in[-B,B]\,,\\
+-1\,,&amp;y&lt;-B\,,\end{cases}$
+is the derivative of  $\tau_{B}(y)$ .
+By elementary calculation,
+$\displaystyle\nabla W^{\star}_{z,r,x_{0}}(x)=a_{r}^{\prime}\,(\widetilde{\mathsf{s}}^{\star}(\gamma_{z,r,x_{0}}(x))-\widetilde{\mathsf{s}}^{\star}(x_{0}))+a_{r}\,\nabla\widetilde{\mathsf{s}}^{\star}(\gamma_{z,r,x_{0}}(x))\cdot\dot{\gamma}_{z,r,x_{0}}(x)\,.$
+By Lemma B.3 and Lemma B.4, we know that
+$C_{\mathsf{LSI}}(\rho^{\star}_{x_{0}}(\cdot))\leq\eta e^{4B}$ . Hence,
+$\displaystyle D_{\mathsf{KL}}\left(\nu_{x_{0}}(\cdot)\,\|\,\rho^{\star}_{x_{0}}(\cdot)\right)\leq\frac{\eta e^{4B}}{2}\En_{x\sim\nu_{x_{0}}(\cdot)}\Big\|\nabla\log\frac{\nu_{x_{0}}(x)}{\rho^{\star}_{x_{0}}(x)}\Big\|^{2}\,.$
+Taking expectation over  $x_{0}\sim\breve{p}=p*\mathsf{N}\left(0,\eta I\right)$  and using Hölder’s inequality, we know that
+$\displaystyle\En_{x_{0}\sim\breve{p}}D_{\mathsf{KL}}\left(\nu_{x_{0}}(\cdot)\,\|\,\rho^{\star}_{x_{0}}(\cdot)\right)\leq$
+$\displaystyle~\frac{\eta e^{4B}}{2}\En_{z,r,x_{0},x}\left[\|\nabla W^{\star}_{z,r,x_{0}}(x)\|^{2}\cdot\mathbb{I}\{\lvert W^{\star}_{z,r,x_{0}}(x)\rvert&gt;B\}\right]$
+$\displaystyle\leq$
+$\displaystyle~\frac{\eta e^{4B}}{2}\,\left(\En_{z,r,x_{0},x}\left[\|\nabla W^{\star}_{z,r,x_{0}}(x)\|^{8}\right]\right)^{1/4}\,\mathbb{P}_{z,r,x_{0},x}\left(\lvert W^{\star}_{z,r,x_{0}}(x)\rvert&gt;B\right)^{3/4}\,,$
+where  $\En_{z,r,x_{0},x}$  is the expectation over  $x\sim p$ ,  $x_{0}\sim x+\mathsf{N}\left(0,\eta I\right)$ ,  $z\sim\mathsf{N}\left(0,\eta I\right)$ ,  $r\sim\mathsf{Unif}([0,1])$ .
+Bounds on the moments
+Fix any  $r\in[0,1]$ .
+We note that under this distribution,
+$\displaystyle\gamma_{z,r,x_{0}}(x)\mid x\sim\mathsf{N}\left(x,\eta((1-a_{r})^{2}+b_{r}^{2})I\right)\,,\qquad x_{0}\mid x\sim\mathsf{N}\left(x,\eta I\right)\,.$
+Therefore, we can bound
+$\displaystyle\left(\En_{z,x_{0},x}\left[\|\nabla W^{\star}_{z,r,x_{0}}(x)\|^{8}\right]\right)^{1/8}\lesssim$
+$\displaystyle~\left(\En_{z,x_{0},x}\left[\|\widetilde{\mathsf{s}}^{\star}(\gamma_{z,r,x_{0}}(x))\|^{8}\right]\right)^{1/8}+\left(\En_{z,x_{0},x}\left[\|\widetilde{\mathsf{s}}^{\star}(x_{0})\|^{8}\right]\right)^{1/8}$
+$\displaystyle~+\left(\En_{z,x_{0},x}\left[\|\nabla\widetilde{\mathsf{s}}^{\star}(\gamma_{z,r,x_{0}}(x))\|^{8}\|\dot{\gamma}_{z,r,x_{0}}(x)\|^{8}\right]\right)^{1/8}$
+$\displaystyle\lesssim$
+$\displaystyle~\frac{\sqrt{d}}{\sigma}+\sqrt{d\eta}\cdot\frac{d}{\sigma^{2}}\lesssim\frac{d^{3/2}}{\sigma}\,,$
+where we use Lemma E.9 and
+$\displaystyle\En_{z,x_{0},x}\left[\|\nabla\widetilde{\mathsf{s}}^{\star}(\gamma_{z,r,x_{0}}(x))\|^{8}\|\dot{\gamma}_{z,r,x_{0}}(x)\|^{8}\right]\leq$
+$\displaystyle~\left(\En_{z,x_{0},x}\left[\|\nabla\widetilde{\mathsf{s}}^{\star}(\gamma_{z,r,x_{0}}(x))\|^{16}\right]\right)^{1/2}\left(\En_{z,x_{0},x}\left[\|\dot{\gamma}_{z,r,x_{0}}(x)\|^{16}\right]\right)^{1/2}$
+$\displaystyle\lesssim$
+$\displaystyle~\sqrt{d\eta}\cdot\frac{d}{\sigma^{2}}\,.$
+Bound on the tail
+Next, we bound  $\mathbb{P}_{z,r,x_{0},x}\left(\lvert W^{\star}_{z,r,x_{0}}(x)\rvert&gt;B\right)$ .
+We write  $W=\dot{\gamma}_{z,r,x_{0}}(x)$  and  $U=\gamma_{z,r,x_{0}}(x)-x_{0}$ . By definition,
+$\displaystyle W^{\star}_{z,r,x_{0}}(x)=\langle W,\widetilde{\mathsf{s}}^{\star}(x_{0}+U)-\widetilde{\mathsf{s}}^{\star}(x_{0})\rangle=\int_{0}^{1}W^{\top}\nabla\widetilde{\mathsf{s}}^{\star}(x_{0}+yU)U\,dy\,.$
+Note that
+$\displaystyle\mathbb{I}\{\lvert W^{\star}_{z,r,x_{0}}(x)\rvert&gt;B\}\leq\frac{2}{B}\tau_{B/2}(W^{\star}_{z,r,x_{0}}(x))\leq\frac{2}{B}\int_{0}^{1}\tau_{B/2}(W^{\top}\nabla\widetilde{\mathsf{s}}^{\star}(x_{0}+yU)U)\,dy\,,$
+where we use the convexity of  $y\mapsto\tau_{B/2}(y)$ . Hence,
+$\displaystyle\mathbb{P}_{z,r,x_{0},x}\left(\lvert W^{\star}_{z,r,x_{0}}(x)\rvert&gt;B\right)\leq$
+$\displaystyle~\frac{2}{B}\max_{y\in[0,1]}\En\tau_{B/2}(W^{\top}\nabla\widetilde{\mathsf{s}}^{\star}(x_{0}+yU)U)$
+$\displaystyle\leq$
+$\displaystyle~\frac{2}{B}\max_{y\in[0,1]}\left(\En\|U\|^{9}\En\|W\|^{9}\En\|\nabla\widetilde{\mathsf{s}}^{\star}(x_{0}+yU)\|^{9}\right)^{1/9}\,\mathbb{P}\Big(\lvert W^{\top}\nabla\widetilde{\mathsf{s}}^{\star}(x_{0}+yU)U\rvert&gt;\frac{B}{2}\Big)^{2/3}\,.$
+Note that for any fixed  $y\in[0,1]$ ,
+$\displaystyle x_{0}+yU\mid x\sim\mathsf{N}\left(x,\eta((1-ya_{r})^{2}+y^{2}b_{r}^{2})I\right)\,,$
+and we can bound
+$\displaystyle\left(\En\|U\|^{9}\right)^{1/9}\leq O(\sqrt{d\eta})\,,\qquad\left(\En\|W\|^{9}\right)^{1/9}\leq O(\sqrt{d\eta})\,,\qquad\left(\En\|\nabla\widetilde{\mathsf{s}}^{\star}(x_{0}+yU)\|^{9}\right)^{1/9}\leq O\big(\frac{d}{\sigma^{2}}\big)\,.$
+To summarize, we have shown that
+$\displaystyle\En_{x_{0}\sim\breve{p}}D_{\mathsf{KL}}\left(\nu_{x_{0}}(\cdot)\,\|\,\rho^{\star}_{x_{0}}(\cdot)\right)\lesssim$
+$\displaystyle~B^{-3/4}e^{4B}\cdot\frac{d^{4.5}\eta}{\sigma^{2}}\cdot\max_{y\in[0,1]}\sqrt{\mathbb{P}\Big(\lvert W^{\top}\nabla\widetilde{\mathsf{s}}^{\star}(x_{0}+yU)U\rvert&gt;\frac{B}{2}\Big)}\,.$
+Bound on the tail probability
+Now, we fix any  $y\in[0,1]$  and consider the joint distribution of  $(\bar{x},x,x_{0},z)$  under
+$\displaystyle\bar{x}\sim\overline{p}\,,\quad x\sim\mathsf{N}\left(\bar{x},\sigma^{2}I\right)\,,\quad x_{0}\sim\mathsf{N}\left(x,\eta I\right)\,,\quad z\sim\mathsf{N}\left(0,\eta I\right)\,.$
+We define  $V=yU+x_{0}-\bar{x}$ , and the properties of  $(U,V,W)$  are summarized in Lemma E.10.
+In the following, we analyze the concentration of  $(U,W)$  conditional on  $(\bar{x},V)$ .
+We denote  $H\coloneqq\nabla\widetilde{\mathsf{s}}^{\star}(x_{0}+yU)=\nabla\widetilde{\mathsf{s}}^{\star}(\bar{x}+V)$ .
+Then, for any  $(\bar{x},V)\in\mathcal{E}_{G,K}$ , we can bound  $\lvert V^{\top}HV\rvert+\lvert\mathrm{tr}(H)\rvert\leq\frac{B\sigma^{2}}{16\eta^{2}}$ , and hence
+$\displaystyle\mathbb{P}\Big(\Bigl.\lvert W^{\top}HU\rvert\geq\frac{B}{2}~\Bigr|~\bar{x},V\Big)\leq$
+$\displaystyle~2\exp\Big(-c_{1}\min\Big\{\frac{B^{2}}{\eta^{2}\|H\|_{\mathrm{F}}^{2}+\eta(\eta/\sigma^{2})^{2}\|HV\|^{2}},\,\frac{B}{\eta\|H\|_{\mathrm{op}}}\Big\}\Big)$
+$\displaystyle\leq$
+$\displaystyle~2e^{-c_{2}K}\,,\qquad\forall(\bar{x},V)\in\mathcal{E}_{G,K}\,,$
+where  $c_{1},c_{2}&gt;0$  are absolute constants and we use  $\eta\leq\frac{\sigma^{2}}{8\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{B}G}$ .
+Hence,
+$\displaystyle\mathbb{P}\Big(\lvert W^{\top}HU\rvert&gt;\frac{B}{2}\Big)\leq$
+$\displaystyle~\mathbb{P}_{\bar{x}\sim\overline{p},\,V\sim\mathsf{N}\left(0,\sigma_{V}^{2}I\right)}(\mathcal{E}_{G,K})+2\exp\left(-c_{2}K\right)\,.$
+This is the desired upper bound.
+∎
+Lemma E.10.
+Fix  $r,y\in[0,1]$ .
+Consider the joint distribution of  $(\bar{x},x,x_{0},z)$  under
+$\displaystyle\bar{x}\sim\overline{p}\,,\quad x\sim\mathsf{N}\left(\bar{x},\sigma^{2}I\right)\,,\quad x_{0}\sim\mathsf{N}\left(x,\eta I\right)\,,\quad z\sim\mathsf{N}\left(0,\eta I\right)\,.$
+Under this law, we consider the random variables
+$\displaystyle W=\dot{\gamma}_{z,r,x_{0}}(x)\,,\quad U=\gamma_{z,r,x_{0}}(x)-x_{0}\,,\quad V=y\gamma_{z,r,x_{0}}(x)+(1-y)x_{0}-\bar{x}\,.$
+Then, the following holds.
+(1)  $(U,V,W)$  are jointly Gaussian and independent of  $\bar{x}$ , and marginally  $V\sim\mathsf{N}\left(0,\sigma_{V}^{2}I\right)$  with  $\sigma_{V}^{2}\in[\sigma^{2},\sigma^{2}+2\eta]$ .
+(2) The conditional distribution of  $[U;W]\mid V$  can be written as
+$\displaystyle[U;W]\mid V\sim\mathsf{N}\left([c_{U}V,c_{W}V],\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}\right)\,,\qquad\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}=\begin{bmatrix}\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}_{U}^{2}I&amp;\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}_{UW}I\\
+\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}_{UW}I&amp;\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}_{W}^{2}I\end{bmatrix}\,,$
+so that  $\|\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}\|_{\mathrm{op}}\leq 3\eta$  and
+$\displaystyle\lvert c_{U}\rvert\leq\frac{\eta}{\sigma^{2}}\,,\quad\lvert c_{W}\rvert\leq\frac{2\eta}{\sigma^{2}}\,,\quad\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}_{U}^{2}\leq\eta\,,\quad\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}_{W}^{2}\leq 3\eta\,,\quad\lvert\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}_{UW}\rvert\leq\frac{2\eta^{2}}{\sigma^{2}}\,.$
+(3) Suppose that the symmetric matrix  $H=\mathcal{H}(\bar{x}+V)$  is a function of  $\bar{x}+V$ . Then it holds that
+$\displaystyle\mathbb{P}\Big(\Big.\lvert W^{\top}HU\rvert\geq t+\frac{4\eta^{2}}{\sigma^{2}}(\lvert V^{\top}HV\rvert+\lvert\mathrm{tr}(H)\rvert)~\Big|~\bar{x},V\Big)$
+$\displaystyle\leq$
+$\displaystyle~2\exp\Big(-c\min\Big\{\frac{t^{2}}{\eta^{2}\|H\|_{\mathrm{F}}^{2}+\eta(\eta/\sigma^{2})^{2}\|HV\|^{2}},\,\frac{t}{\eta\|H\|_{\mathrm{op}}}\Big\}\Big)\,,\qquad\forall t\geq 0\,,$
+where  $c&gt;0$  is an absolute constant.
+Proof. By definition, we can consider  $w_{0}\vcentcolon=x-\bar{x}$ ,  $w_{1}\vcentcolon=x_{0}-x$ , and then
+$\displaystyle w_{0}\sim\mathsf{N}\left(0,\sigma^{2}I\right)\,,\quad w_{1}\sim\mathsf{N}\left(0,\eta I\right)\,,\quad z\sim\mathsf{N}\left(0,\eta I\right)\,,$
+where  $w_{0},w_{1},z$  are independent Gaussian vectors, and  $(w_{0},w_{1},z)$  is independent of  $\bar{x}\sim\overline{p}$ .
+Then, we can rewrite
+$\displaystyle W=-a_{r}^{\prime}w_{1}+b_{r}^{\prime}z\,,\qquad U=-a_{r}w_{1}+b_{r}z\,,\qquad V=w_{0}+(1-ya_{r})w_{1}+yb_{r}z\,.$
+Hence, under this distribution,  $(U,V,W)$  are jointly Gaussian and independent of  $\bar{x}\sim\overline{p}$ . The key fact is that  $a_{r}a_{r}^{\prime}+b_{r}b_{r}^{\prime}=0$  (because  $a_{r}^{2}+b_{r}^{2}\equiv 1$  for  $r\in[0,1]$ ), and hence  $\En[UW^{\top}]=0$ . Therefore, the joint distribution of  $[V;U;W]$  can be written
+$\displaystyle\begin{bmatrix}V\\
+U\\
+W\end{bmatrix}\sim\mathsf{N}\left(\begin{bmatrix}0\\
+0\\
+0\end{bmatrix},\begin{bmatrix}\sigma_{V}^{2}I&amp;\sigma_{VU}I&amp;\sigma_{VW}I\\
+\sigma_{VU}I&amp;\sigma_{U}^{2}I&amp;0\\
+\sigma_{VW}I&amp;0&amp;\sigma_{W}^{2}I\end{bmatrix}\right)\,,$
+and we can calculate
+$\displaystyle~\sigma_{V}^{2}=\sigma^{2}+\eta(1-ya_{r})^{2}+\eta y^{2}b_{r}^{2}\,,\qquad\sigma_{U}^{2}=\eta\,,\qquad\sigma_{W}^{2}=(\pi/2)^{2}\eta\,,$
+$\displaystyle~\sigma_{VU}=\eta(yb_{r}^{2}-a_{r}(1-ya_{r}))\,,\qquad\sigma_{VW}=\eta(yb_{r}b_{r}^{\prime}-a_{r}^{\prime}(1-ya_{r}))\,.$
+In particular, we know  $\sigma_{V}^{2}\in[\sigma^{2},\sigma^{2}+2\eta]$ ,  $\lvert\sigma_{VU}\rvert\leq\eta$ ,  $\lvert\sigma_{VW}\rvert\leq 2\eta$ , and  $\sigma_{W}^{2}\leq 3\eta$ . Further, we can write down
+$\displaystyle~c_{U}=\frac{\sigma_{VU}}{\sigma_{V}^{2}}\,,\qquad c_{W}=\frac{\sigma_{VW}}{\sigma_{V}^{2}}\,,$
+$\displaystyle~\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}_{U}^{2}=\sigma_{U}^{2}-\frac{\sigma_{VU}^{2}}{\sigma_{V}^{2}}\,,\qquad\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}_{W}^{2}=\sigma_{W}^{2}-\frac{\sigma_{VW}^{2}}{\sigma_{V}^{2}}\,,\qquad\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}_{UW}=-\frac{\sigma_{VU}\sigma_{VW}}{\sigma_{V}^{2}}\,.$
+The desired statement (2) then follows.
+Finally, to prove (3), we condition on  $(V,\bar{x})$  and apply Gaussian concentration (Lemma B.5) to the matrix  $A=\begin{bmatrix}0&amp;H\\
+H&amp;0\end{bmatrix}$  and the Gaussian vector  $[U;W]\mid(V,\bar{x})\sim\mathsf{N}\left(v,\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}\right)$ , where  $v=[c_{U}V,c_{W}V]$ . Note that  $v^{\top}Av=2c_{U}c_{W}V^{\top}HV$ ,  $\mathrm{tr}(\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}A)=2\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}_{UW}\mathrm{tr}(H)$ ,  $\|Av\|^{2}=(c_{U}^{2}+c_{W}^{2})\|HV\|^{2}$ , and  $\|A\|_{\mathrm{op}}\leq\|H\|_{\mathrm{op}}$ . Therefore, by Lemma B.5,
+for  $t\geq 0$ ,
+$\displaystyle\mathbb{P}\left(\left\lvert W^{\top}HU-2(c_{U}c_{W}V^{\top}HV^{\top}+\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}_{UW}\mathrm{tr}(H))\right\rvert&gt;t\mid\bar{x},V\right)$
+$\displaystyle\leq 2\exp\left(-\frac{1}{16}\min\left\{\frac{t^{2}}{\eta^{2}\|H\|_{\mathrm{F}}^{2}+\eta(c_{U}^{2}+c_{W}^{2})\|HV\|^{2}},\,\frac{t}{\eta\|H\|_{\mathrm{op}}}\right\}\right)\,.$
+The desired upper bound then follows from bounding  $\lvert c_{U}\rvert\leq\frac{\eta}{\sigma^{2}},\lvert c_{W}\rvert\leq\frac{2\eta}{\sigma^{2}},$  and  $\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}_{UW}\leq\frac{2\eta^{2}}{\sigma^{2}}$ .
+∎
+E.7 Proof of Proposition E.4
+We denote
+$\displaystyle\begin{aligned} W^{\star}_{z,r,x_{0}}(x)\coloneqq\langle\dot{\gamma}_{z,r,x_{0}}(x),\widetilde{\mathsf{s}}^{\star}(\gamma_{z,r,x_{0}}(x))-\widetilde{\mathsf{s}}^{\star}(x_{0})\rangle\,,\qquad W_{z,r,x_{0}}(x)\coloneqq\langle\dot{\gamma}_{z,r,x_{0}}(x),\widetilde{\mathsf{s}}(\gamma_{z,r,x_{0}}(x))-\widetilde{\mathsf{s}}(x_{0})\rangle\,.\end{aligned}$
+(26)
+Then, we can abbreviate
+$\displaystyle\log\widehat{\rho}_{x_{0}}(x)=$
+$\displaystyle~\mathrm{const}+\En_{r,z}\mathsf{Clip}_{B}(W_{z,r,x_{0}}(x))-\frac{\|x-x_{0}-\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}\mathsf{s}(x_{0})\|^{2}}{2\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}}\,,$
+$\displaystyle\log\rho^{\star}_{x_{0}}(x)=$
+$\displaystyle~\mathrm{const}+\En_{r,z}\mathsf{Clip}_{B}(W^{\star}_{z,r,x_{0}}(x))-\frac{\|x-x_{0}-\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}\mathsf{s}^{\star}(x_{0})\|^{2}}{2\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}}\,.$
+Decomposition of KL divergence
+As an intermediate distribution, we consider the density  $\widetilde{\rho}_{x_{0}}(\cdot)$  with
+$\displaystyle\log\widetilde{\rho}_{x_{0}}(x)=$
+$\displaystyle~\mathrm{const}+\En_{r,z}\mathsf{Clip}_{B}(W_{z,r,x_{0}}(x))-\frac{\|x-x_{0}-\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}\mathsf{s}^{\star}(x_{0})\|^{2}}{2\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}}\,.$
+Note that for  $u,v\in\mathbb{R}^{d}$ , it holds that
+$\displaystyle\log(1+D_{\chi^{2}}\left(\mathsf{N}\left(u,\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}I\right)\;\|\;{}\mathsf{N}\left(v,\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}I\right)\right))=\frac{\|u-v\|^{2}}{\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}}\,.$
+Therefore, using Lemma B.8, Lemma B.9, and the fact that  $\log(1+Ct)\leq C\log(1+t)$  for  $t\geq 0$  and  $C\geq 1$ , we know that for any  $x_{0}$ ,
+$\displaystyle D_{\mathsf{KL}}\left(\nu_{x_{0}}(\cdot)\,\|\,\widehat{\rho}_{x_{0}}(\cdot)\right)\leq 2D_{\mathsf{KL}}\left(\nu_{x_{0}}(\cdot)\,\|\,\widetilde{\rho}_{x_{0}}(\cdot)\right)+\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}e^{4B}\,\|\mathsf{s}^{\star}(x_{0})-\mathsf{s}(x_{0})\|^{2}\,.$
+Next, we note that we can write  $\widetilde{\rho}_{x_{0}}(\cdot)\propto\rho^{\star}_{x_{0}}(\cdot)\,e^{h_{x_{0}}}$ , where
+$\displaystyle h_{x_{0}}(x)=\En_{r,z}\mathsf{Clip}_{B}(W_{z,r,x_{0}}(x))-\En_{r,z}\mathsf{Clip}_{B}(W^{\star}_{z,r,x_{0}}(x))\in[-2B,2B]\,.$
+Then, using Lemma B.10, we can bound
+$\displaystyle D_{\mathsf{KL}}\left(\nu_{x_{0}}(\cdot)\,\|\,\widetilde{\rho}_{x_{0}}(\cdot)\right)\leq 4e^{2B}\,\big(D_{\mathsf{KL}}\left(\nu_{x_{0}}(\cdot)\,\|\,\rho^{\star}_{x_{0}}(\cdot)\right)+\En_{x\sim\nu_{x_{0}}(\cdot)}[h_{x_{0}}(x)^{2}]\big)\,.$
+Combining the inequalities above immediately implies
+$\displaystyle\begin{aligned} \En_{x_{0}\sim\breve{p}}D_{\mathsf{KL}}\left(\nu_{x_{0}}(\cdot)\,\|\,\widehat{\rho}_{x_{0}}(\cdot)\right)\leq&amp;~8e^{2B}\En_{x_{0}\sim\breve{p}}D_{\mathsf{KL}}\left(\nu_{x_{0}}(\cdot)\,\|\,\rho^{\star}_{x_{0}}(\cdot)\right)\\
+&amp;~+\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}e^{4B}\En_{x_{0}\sim\breve{p}}\|\mathsf{s}^{\star}(x_{0})-\mathsf{s}(x_{0})\|^{2}+8e^{2B}\En_{x_{0}\sim\breve{p},\,x\sim\nu_{x_{0}}(\cdot)}[h_{x_{0}}(x)^{2}]\,.\end{aligned}$
+(27)
+Further, using  $D^{2}_{\mathsf{H}}\left(\mu_{1},\mu_{2}\right)\leq\min\left\{\frac{1}{2}D_{\mathsf{KL}}\left(\mu_{1}\,\|\,\mu_{2}\right),1\right\}$ , we can upper bound
+$\displaystyle\begin{aligned} \En_{x_{0}\sim\breve{p}}D^{2}_{\mathsf{H}}\left(\nu_{x_{0}}(\cdot),\widehat{\rho}_{x_{0}}(\cdot)\right)\leq&amp;~8e^{2B}\En_{x_{0}\sim\breve{p}}D_{\mathsf{KL}}\left(\nu_{x_{0}}(\cdot)\,\|\,\rho^{\star}_{x_{0}}(\cdot)\right)\\
+&amp;~+e^{4B}\En_{x_{0}\sim\breve{p}}\min\{\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}\|\mathsf{s}^{\star}(x_{0})-\mathsf{s}(x_{0})\|^{2},1\}+8e^{2B}\En_{x_{0}\sim\breve{p},\,x\sim\nu_{x_{0}}(\cdot)}[h_{x_{0}}(x)^{2}]\,.\end{aligned}$
+(28)
+Upper bound on  $h$
+We denote
+$\displaystyle\begin{aligned} \phi_{\eta^{\prime}}\vcentcolon=\En_{X\sim p*\mathsf{N}\left(0,\eta^{\prime}I\right)}\min\left\{G\|\mathsf{s}(X)-\mathsf{s}^{\star}(X)\|^{2},B^{2}\right\}\,,\qquad\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}\vcentcolon=\max_{\eta^{\prime}\in[0,2\eta]}\phi_{\eta^{\prime}}\,.\end{aligned}$
+(29)
+In the following, we will show that  $\En_{x_{0}\sim\breve{p},\,x\sim\nu_{x_{0}}(\cdot)}[h_{x_{0}}(x)^{2}]$  can be upper bounded by  $\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}$ .
+We upper bound
+$\displaystyle\En_{x_{0}\sim\breve{p},\,x\sim\nu_{x_{0}}(\cdot)}[h_{x_{0}}(x)^{2}]=$
+$\displaystyle~\En_{x\sim p,\,x_{0}\sim\mathsf{N}\left(x,\eta I\right)}[h_{x_{0}}(x)^{2}]$
+$\displaystyle\leq$
+$\displaystyle~\max_{r\in[0,1]}\En_{x,x_{0},z}\mathsf{Clip}_{2B}(W_{z,r,x_{0}}(x)-W^{\star}_{z,r,x_{0}}(x))^{2}$
+$\displaystyle\lesssim$
+$\displaystyle~\max_{r\in[0,1]}\En_{x,x_{0},z}\mathsf{Clip}_{2B}(\langle\dot{\gamma}_{z,r,x_{0}}(x),\mathsf{s}^{\star}(\gamma_{z,r,x_{0}}(x))-\mathsf{s}(\gamma_{z,r,x_{0}}(x))\rangle)^{2}$
+$\displaystyle~+\max_{r\in[0,1]}\En_{x,x_{0},z}\mathsf{Clip}_{2B}(\langle\dot{\gamma}_{z,r,x_{0}}(x),\mathsf{s}^{\star}(x_{0})-\mathsf{s}(x_{0})\rangle)^{2}\,,$
+where the expectation  $\En_{x,x_{0},z}[\cdot]$  is taken over  $x\sim p$ ,  $x_{0}\sim x+\mathsf{N}\left(0,\eta I\right)$ ,  $z\sim\mathsf{N}\left(0,\eta I\right)$ .
+We fix  $r\in[0,1]$  and first analyze  $W_{r}\vcentcolon=\dot{\gamma}_{z,r,x_{0}}(x)$ ,  $U_{r}=\gamma_{z,r,x_{0}}(x)-x$ .
+Note that  $(U_{r},W_{r})$  is jointly Gaussian and independent of  $x\sim p$ , and we can write down the distribution of  $[U_{r};W_{r}]$  as  $[U_{r};W_{r}]\sim\mathsf{N}\left(0,\begin{bmatrix}\sigma_{U}^{2}I&amp;\sigma_{UW}I\\
+\sigma_{UW}I&amp;\sigma_{W}^{2}I\end{bmatrix}\right)$  such that
+$\displaystyle\sigma_{U}^{2}=\eta((1-a_{r})^{2}+b_{r}^{2})\,,\quad\sigma_{W}^{2}=(\pi/2)^{2}\eta\,,\quad\sigma_{UW}=-\eta a_{r}^{\prime}\,.$
+Applying Lemma E.11 to the function  $g(x)=\mathsf{s}^{\star}(x)-\mathsf{s}(x)$  gives
+$\displaystyle\En\mathsf{Clip}_{2B}(\langle\dot{\gamma}_{z,r,x_{0}}(x),\mathsf{s}^{\star}(\gamma_{z,r,x_{0}}(x))-\mathsf{s}(\gamma_{z,r,x_{0}}(x))\rangle)^{2}=$
+$\displaystyle~\En\mathsf{Clip}_{2B}(\langle W_{r},\mathsf{s}^{\star}(x+U_{r})-\mathsf{s}(x+U_{r})\rangle)^{2}$
+$\displaystyle\lesssim$
+$\displaystyle~B^{2}\delta+\En\min\left\{G\|\mathsf{s}^{\star}(\gamma_{z,r,x_{0}}(x))-\mathsf{s}(\gamma_{z,r,x_{0}}(x))\|^{2},B^{2}\right\}$
+$\displaystyle\leq$
+$\displaystyle~B^{2}\delta+\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}\,,$
+where we recall that we denote  $G=\eta+\frac{\eta^{2}}{\sigma^{2}}(d+\log(1/\delta))$ . Similarly, we can bound
+$\displaystyle\En\mathsf{Clip}_{2B}(\langle\dot{\gamma}_{z,r,x_{0}}(x),\mathsf{s}^{\star}(x_{0})-\mathsf{s}(x_{0})\rangle)^{2}\lesssim$
+$\displaystyle~B^{2}\delta+\En\min\left\{G\|\mathsf{s}^{\star}(x_{0})-\mathsf{s}(x_{0})\|^{2},B^{2}\right\}\leq B^{2}\delta+\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}\,.$
+Combining these inequalities, we can conclude that
+$\displaystyle\begin{aligned} \En_{x_{0}\sim q,x\sim\nu_{x_{0}}(\cdot)}[h_{x_{0}}(x)^{2}]\lesssim B^{2}\delta+\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}\,,\end{aligned}$
+(30)
+where  $\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}$  is defined in Eq. 29.
+Putting everything together
+We first prove Proposition E.4 (1). Combining Eq. 27, Eq. 30 and the definition of  $\phi_{\eta^{\prime}}$  in Eq. 29, we get
+$\displaystyle~\En_{x_{0}\sim\breve{p}}D_{\mathsf{KL}}\left(\nu_{x_{0}}(\cdot)\,\|\,\widehat{\rho}_{x_{0}}(\cdot)\right)$
+$\displaystyle\lesssim$
+$\displaystyle~e^{2B}\En_{x_{0}\sim\breve{p}}D_{\mathsf{KL}}\left(\nu_{x_{0}}(\cdot)\,\|\,\rho^{\star}_{x_{0}}(\cdot)\right)+\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}e^{4B}\En_{x_{0}\sim\breve{p}}\|\mathsf{s}^{\star}(x_{0})-\mathsf{s}(x_{0})\|^{2}+e^{2B}\Big(B^{2}\delta+\max_{\eta^{\prime}\in[0,2\eta]}\phi_{\eta^{\prime}}\Big)$
+$\displaystyle\lesssim$
+$\displaystyle~e^{2B}\En_{x_{0}\sim\breve{p}}D_{\mathsf{KL}}\left(\nu_{x_{0}}(\cdot)\,\|\,\rho^{\star}_{x_{0}}(\cdot)\right)+e^{2B}B^{2}\delta+e^{4B}G\max_{\eta^{\prime}\in[0,2\eta]}\En_{X\sim p*\mathsf{N}\left(0,\eta^{\prime}I\right)}\|\mathsf{s}(X)-\mathsf{s}^{\star}(X)\|^{2}\,,$
+where we use  $\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}\leq\eta\leq G$ .
+Similarly, combining Eq. 28, Eq. 30, we can bound
+$\displaystyle~\En_{x_{0}\sim\breve{p}}D^{2}_{\mathsf{H}}\left(\nu_{x_{0}}(\cdot),\widehat{\rho}_{x_{0}}(\cdot)\right)$
+$\displaystyle\lesssim$
+$\displaystyle~e^{2B}\En_{x_{0}\sim\breve{p}}D_{\mathsf{KL}}\left(\nu_{x_{0}}(\cdot)\,\|\,\rho^{\star}_{x_{0}}(\cdot)\right)+e^{4B}\En_{x_{0}\sim\breve{p}}\min\{\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}\|\mathsf{s}^{\star}(x_{0})-\mathsf{s}(x_{0})\|^{2},1\}+e^{2B}\Big(B^{2}\delta+\max_{\eta^{\prime}\in[0,2\eta]}\phi_{\eta^{\prime}}\Big)$
+$\displaystyle\lesssim$
+$\displaystyle~e^{2B}\En_{x_{0}\sim\breve{p}}D_{\mathsf{KL}}\left(\nu_{x_{0}}(\cdot)\,\|\,\rho^{\star}_{x_{0}}(\cdot)\right)+e^{2B}B^{2}\delta+e^{4B}{\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{B}}^{2}\max_{\eta^{\prime}\in[0,2\eta]}\En_{X\sim p*\mathsf{N}\left(0,\eta^{\prime}I\right)}\min\left\{\|\mathsf{s}(X)-\mathsf{s}^{\star}(X)\|^{2},1\right\}\,.$
+Combining the inequality above with Proposition E.8 (3) completes the proof of Proposition E.4 (2).
+∎
+Lemma E.11.
+Suppose that  $p=\overline{p}*\mathsf{N}\left(0,\sigma^{2}I\right)$ , and consider  $x\sim p$ ,  $(U,W)\sim\mathsf{N}\left(0,\Sigma\right)$  is independent of  $x$ , with  $\Sigma=\begin{bmatrix}\sigma_{U}^{2}I&amp;\sigma_{UW}I\\
+\sigma_{UW}I&amp;\sigma_{W}^{2}I\end{bmatrix}$ . Then, it holds that for any  $\delta\in(0,1)$ ,
+$\displaystyle\En\mathsf{Clip}_{B}(\langle W,g(x+U)\rangle)^{2}\leq 2B^{2}\delta+4\En\min\Big\{\Big(\sigma_{W}^{2}+\frac{3\sigma_{UW}^{2}}{\sigma^{2}}(d+\log(1/\delta))\Big)\|g(x+U)\|^{2},\,B^{2}\Big\}\,.$
+Proof. We consider the joint distribution of
+$\displaystyle\bar{x}\sim\overline{p}\,,\quad x\sim\mathsf{N}\left(\bar{x},\sigma^{2}I\right)\,,\quad[U;W]\sim\mathsf{N}\left(0,\Sigma\right)\,.$
+We write  $V=x-\bar{x}+U$ . Then,  $(V,W)$  is independent of  $\bar{x}\sim\overline{p}$  and the conditional distribution  $W\mid V$  can be written as
+$\displaystyle W\mid V\sim\mathsf{N}\left(cV,{\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}}^{2}I\right),$
+where  $c=\frac{\sigma_{VW}}{\sigma^{2}+\sigma_{U}^{2}}$ ,  ${\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}}^{2}=\sigma_{W}^{2}-\frac{\sigma_{VW}^{2}}{\sigma^{2}+\sigma_{U}^{2}}$ .
+Now, note that for random vector  $X$  and a fixed vector  $v$ , we can bound
+$\displaystyle\En\mathsf{Clip}_{B}(\langle X,v\rangle)^{2}=$
+$\displaystyle~\En\min\left\{\langle X,v\rangle^{2},B^{2}\right\}$
+$\displaystyle\leq$
+$\displaystyle~\min\left\{\En\langle X,v\rangle^{2},B^{2}\right\}=\min\left\{v^{\top}(\En[XX^{\top}])v,B^{2}\right\}\,.$
+Then, we can bound
+$\displaystyle\En\mathsf{Clip}_{B}(\langle W-cV,g(\bar{x}+V)\rangle)^{2}=$
+$\displaystyle~\En\left[\En\left[\mathsf{Clip}_{B}(\langle W-cV,g(\bar{x}+V)\rangle)^{2}\mid\bar{x},V\right]\right]$
+$\displaystyle\leq$
+$\displaystyle~\En\left[\min\left\{g(\bar{x}+V)^{\top}\En\left[(W-cV)(W-cV)^{\top}\mid\bar{x},V\right]g(\bar{x}+V),B^{2}\right\}\right]$
+$\displaystyle=$
+$\displaystyle~\En\min\left\{{\macc@depth\char 1\relax\macc@set@skewchar\macc@nested@a 111{}}^{2}\|g(\bar{x}+V)\|^{2},B^{2}\right\}\,.$
+Further, by Lemma B.5, we know that  $\mathbb{P}\left(\|V\|^{2}\geq(\sigma^{2}+\sigma_{U}^{2})(2d+3\log(1/\delta))\right)\leq\delta$ . This implies
+$\displaystyle\En\mathsf{Clip}_{B}(\langle cV,g(\bar{x}+V)\rangle)^{2}\leq B^{2}\delta+\En\min\left\{c^{2}(\sigma^{2}+\sigma_{U}^{2})(2d+3\log(1/\delta))\|g(\bar{x}+V)\|^{2},B^{2}\right\}\,.$
+Combining the inequalities, we can conclude
+$\displaystyle\En\mathsf{Clip}_{B}(\langle W,g(x+U)\rangle)^{2}=$
+$\displaystyle~\En\mathsf{Clip}_{B}(\langle W,g(\bar{x}+V)\rangle)^{2}$
+$\displaystyle\leq$
+$\displaystyle~2\En\mathsf{Clip}_{B}(\langle cV,g(\bar{x}+V)\rangle)^{2}+2\En\mathsf{Clip}_{B}(\langle W-cV,g(\bar{x}+V)\rangle)^{2}$
+$\displaystyle\leq$
+$\displaystyle~2B^{2}\delta+4\En\min\Big\{\Big(\sigma_{W}^{2}+\frac{3\sigma_{UW}^{2}}{\sigma^{2}}(d+\log(1/\delta))\Big)\|g(\bar{x}+V)\|^{2},B^{2}\Big\}\,.$
+This gives the desired upper bound.
+∎
+Appendix F Log-concave sampling
+Here, we apply Theorem 3.3 at each step of Algorithm 3 to sample from the RGO distribution.
+Note that Theorem 3.3 requires the choice of a point  $x_{+}$  which is close to  $\text{prox}_{\eta f}(x_{0})$ .
+For simplicity, we assume that this error is zero, which amounts to assuming that we have access to the proximal oracle for  $f$ .
+When  $f$  is  $\beta$ -smooth and  $h\leq 1/(2\beta)$ , then computation of the proximal map is a convex optimization problem, and error analysis can be done as in Altschuler and Chewi (2024).
+Otherwise, one could generalize the analysis to consider obtaining a stationary point of the proximal map optimization as in Fan et al. (2023).
+We recall the definitions of PI and LSI in Definition B.1 and Definition B.2.
+Theorem F.1.
+Let  $\lambda\geq 2$  be a fixed constant, and  $\varepsilon\in(0,\frac{1}{2}]$ .
+Suppose that  $\mu\propto e^{-f}$  and that  $f$  satisfies Assumption 3.2.
+Choose
+$\displaystyle\eta^{-1}=C\,\big(\beta_{s}^{2}d^{s}\log(1/\varepsilon)+\beta_{s}^{2}d^{-(1-s)}\log^{2}(1/\varepsilon)\big)^{1/(1+s)}$
+for a sufficiently large universal constant  $C=C_{\lambda}&gt;0$ .
+Let  $\widehat{\mu}$  denote the law of the output of Algorithm 3 initialized at  $\mu_{0}$ , where in each step the RGO is implemented by Algorithm 1 via Theorem 3.3.
+Then, the following holds.
+1.
+Suppose that  $\mu$  satisfies a log-Sobolev inequality with constant  $C_{\mathsf{LSI}}(\mu)&lt;\infty$ , which can only hold if  $s=1$  (i.e.,  $f$  is smooth).
+Then,  $\mathcal{R}_{\lambda}\left(\widehat{\mu}\,\|\,\mu\right)\leq\varepsilon^{2}$  using at most
+$\displaystyle N=\widetilde{O}\Big(\kappa d^{1/2}\log^{3/2}\frac{\mathcal{R}_{\lambda}\left(\mu_{0}\,\|\,\mu\right)}{\varepsilon^{2}}+\kappa\log^{2}\frac{\mathcal{R}_{\lambda}\left(\mu_{0}\,\|\,\mu\right)}{\varepsilon^{2}}\Big)\qquad\text{first-order queries in expectation}\,,$
+where  $\kappa\coloneqq C_{\mathsf{LSI}}(\mu)\,\beta_{1}$  is the condition number.
+2.
+Suppose that  $\mu$  satisfies a Poincaré inequality with constant  $C_{\mathsf{PI}}(\mu)&lt;\infty$ .
+Then,  $D_{\chi^{2}}\left(\widehat{\mu}\;\|\;{}\mu\right)\leq\varepsilon^{2}$  using at most
+$\displaystyle N=\widetilde{O}\Big(C_{\mathsf{PI}}(\mu)\,\beta_{s}^{2/(1+s)}\,d^{s/(1+s)}\log^{1/(1+s)}\big(\frac{1}{\varepsilon}\big)\,\Big(1+\frac{\log^{1/(1+s)}(1/\varepsilon)}{d^{(1-s)/s}}\Big)\log\frac{D_{\chi^{2}}\left(\mu_{0}\;\|\;{}\mu\right)}{\varepsilon^{2}}\Big)$
+first-order queries in expectation.
+3.
+Suppose that  $\pi$  is log-concave.
+Then,  $D_{\mathsf{KL}}\left(\widehat{\mu}\,\|\,\mu\right)\leq\varepsilon^{2}$  using at most
+$\displaystyle N=\widetilde{O}\Big(\beta_{s}^{2/(1+s)}\,d^{s/(1+s)}\,\frac{W_{2}^{2}(\mu_{0},\mu)}{\varepsilon^{2}}\Big)\qquad\text{first-order queries in expectation}\,.$
+Proof. This follows from tracking the error of the RGO implementation and choosing  $\delta$  appropriately, exactly as in Altschuler and Chewi (2024), and is therefore omitted.
+∎
+This theorem can be generalized in several directions.
+One could assume that  $\pi$  satisfies a Latała–Oleszkiewicz inequality which interpolates between Poincaré and log-Sobolev, as in Chen et al. (2022); Chewi et al. (2024).
+One could also consider RGO implementations under more complicated settings, such as composite settings (Fan et al., 2023).
+For brevity, we omit such extensions.
+Experimental support, please
+view the build logs
+for errors. Generated by
+L
+A
+T
+E
+xml
+.
+Instructions for reporting errors
+We are continuing to improve HTML versions of papers, and your feedback helps enhance accessibility and mobile
+support. To report errors in the HTML that will help us improve conversion and rendering, choose any of the
+methods listed below:
+Click the &quot;Report Issue&quot; (
+) button, located in the page header.
+Tip: You can select the relevant text first, to include it in your report.
+Our team has already identified the following issues. We appreciate your time reviewing and reporting rendering errors we
+may not have found yet. Your efforts will help us improve the HTML versions for all readers, because disability
+should not be a barrier to accessing research. Thank you for your continued support in championing open access for
+all.
+Have a free development cycle? Help support accessibility at arXiv! Our collaborators at LaTeXML maintain a list of packages that need conversion, and welcome developer contributions.
+We gratefully acknowledge support from
+our major funders,
+member institutions, ,
+and all contributors.
+About
+·
+Help
+·
+Contact
+·
+Subscribe
+·
+Copyright
+·
+Privacy
+·
+Accessibility
+·
+Operational Status (opens in new tab)
+Major funding support from</pre></html>

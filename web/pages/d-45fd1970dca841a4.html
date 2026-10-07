@@ -1,0 +1,190 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>!/usr/bin/env python3</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>!/usr/bin/env python3</h1><p>Source ID d-45fd1970dca841a4; literature/sources/logic_gate14/cycle19/independent_receipts/height_certificate_independent.py; 1936 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Independent data replay of a conditional height/generator certificate.
+
+Imports no release or peer implementation. The peer JSON is comparison data.
+Universal height and rank-one assumptions are recorded separately in the note.
+&quot;&quot;&quot;
+from fractions import Fraction as Q
+from math import gcd, isqrt
+from pathlib import Path
+import hashlib
+import json
+import time
+
+ROOT = Path(__file__).resolve().parents[3]
+INPUT = ROOT / &quot;results/logic_gate14/cycle19/EXPLICIT_HEIGHT_CONSTANTS.json&quot;
+OUTPUT = ROOT / &quot;results/logic_prior14/cycle19/HEIGHT_CERTIFICATE_INDEPENDENT.json&quot;
+started = time.monotonic()
+
+
+def plus(P, R):
+    if P is None:
+        return R
+    if R is None:
+        return P
+    x, y = P
+    u, v = R
+    if x == u and y == -v:
+        return None
+    slope = (v-y)/(u-x) if x != u else (3*x*x-25)/(2*y)
+    xx = slope*slope-x-u
+    return (xx, slope*(x-xx)-y)
+
+
+def mul(n, P):
+    answer = None
+    for bit in bin(n)[2:]:
+        answer = plus(answer, answer)
+        if bit == &quot;1&quot;:
+            answer = plus(answer, P)
+    return answer
+
+
+def hx(P):
+    return 1 if P is None else max(abs(P[0].numerator), P[0].denominator)
+
+
+def unpack(d):
+    if d[&quot;identity&quot;]:
+        return None
+    return (Q(d[&quot;x_num&quot;], d[&quot;x_den&quot;]), Q(d[&quot;y_num&quot;], d[&quot;y_den&quot;]))
+
+
+def pack(P):
+    if P is None:
+        return {&quot;identity&quot;: True}
+    return {&quot;identity&quot;: False, &quot;x_num&quot;: P[0].numerator,
+            &quot;x_den&quot;: P[0].denominator, &quot;y_num&quot;: P[1].numerator,
+            &quot;y_den&quot;: P[1].denominator}
+
+
+def padd(A, B):
+    C = dict(A)
+    for i, v in B.items():
+        C[i] = C.get(i, 0)+v
+    return {i: v for i, v in C.items() if v}
+
+
+def pmul(A, B):
+    C = {}
+    for i, v in A.items():
+        for j, w in B.items():
+            C[i+j] = C.get(i+j, 0)+v*w
+    return {i: v for i, v in C.items() if v}
+
+
+# Set b=1 in homogeneous degree-seven identities; all missing b exponents
+# are determined by homogeneity. This verifies every polynomial coefficient.
+F = {0: 625, 2: 50, 4: 1}
+G = {1: -100, 3: 4}
+b_identity = padd(pmul({0: 400, 2: -12}, F), pmul({1: 125, 3: 3}, G))
+a_identity = padd(pmul({1: -300, 3: 16}, F), pmul({0: -1875, 2: -125}, G))
+assert b_identity == {0: 250000}
+assert a_identity == {7: 16}
+assert 250000 % 16 == 0
+assert 250000**2 &lt; 4000**3
+assert 13**5 &gt; 250000
+assert 1681**3 &gt; 250000*3**6
+assert 8**8 &gt; 1681*3**8
+
+points = {None}
+tested = 0
+for d in range(1, 127):
+    dd = d*d
+    for a in range(-16000, 16001):
+        tested += 1
+        if gcd(a, d) != 1:
+            continue
+        square = a*(a*a-25*dd*dd)
+        if square &lt; 0:
+            continue
+        b = isqrt(square)
+        if b*b != square:
+            continue
+        for yy in ({b, -b} if b else {0}):
+            P = (Q(a, dd), Q(yy, d**3))
+            assert P[1]**2 == P[0]**3-25*P[0]
+            assert hx(P) &lt;= 16000
+            points.add(P)
+
+torsion = {None, (Q(0), Q(0)), (Q(5), Q(0)), (Q(-5), Q(0))}
+P = (Q(-4), Q(6))
+assert plus(P, P) == (Q(1681, 144), Q(-62279, 1728))
+orbit = {plus(signP, t) for signP in (P, (P[0], -P[1])) for t in torsion}
+assert len(orbit) == 8 and not (orbit &amp; torsion)
+assert orbit | torsion &lt;= points
+others = points-orbit-torsion
+assert len(points) == 20 and len(others) == 8
+bound = 250000**2 * 1681**3
+for point in others:
+    assert hx(plus(point, point))**3 &gt; bound
+
+payload = INPUT.read_bytes()
+data = json.loads(payload)
+supplied = {unpack(row[&quot;point&quot;]): row for row in data[&quot;generator&quot;][&quot;all_points&quot;]}
+assert set(supplied) == points
+for point, row in supplied.items():
+    expected = (&quot;torsion&quot; if point in torsion else
+                &quot;plus_minus_P_torsion_orbit&quot; if point in orbit else
+                &quot;strictly_greater_canonical_height&quot;)
+    assert row[&quot;class&quot;] == expected
+    if point in others:
+        height = hx(plus(point, point))
+        assert row[&quot;H_2Q&quot;] == height
+        assert row[&quot;exact_lhs&quot;] == height**3
+        assert row[&quot;exact_rhs&quot;] == bound
+
+constants = data[&quot;constants&quot;]
+assert constants[&quot;c_integer&quot;] == 5
+assert constants[&quot;scalar_m_star&quot;] == 10
+assert constants[&quot;kappa&quot;] == 2**61
+assert Q(constants[&quot;delta&quot;]) == Q(1, 51200)
+assert constants[&quot;ell&quot;] == 307201 &gt; 6*51200
+tenP = mul(10, P)
+assert constants[&quot;W1&quot;] == hx(tenP)
+assert constants[&quot;W1_bits&quot;] == hx(tenP).bit_length()
+assert constants[&quot;u0&quot;] == max(hx(tenP), 3**512, 4)
+assert constants[&quot;u0_bits&quot;] == constants[&quot;u0&quot;].bit_length()
+for n, record in zip((2, 4, 8, 10), constants[&quot;local_height_chain_points&quot;]):
+    assert unpack(record) == mul(n, P)
+
+controls = {}
+bad_points = set(points)
+bad_points.remove(P)
+controls[&quot;omitted_generator_point_rejected&quot;] = bad_points != set(supplied)
+controls[&quot;wrong_W1_rejected&quot;] = hx(tenP)+1 != constants[&quot;W1&quot;]
+controls[&quot;ordinary_float_comparison_not_used&quot;] = True
+assert all(controls.values())
+
+result = {
+    &quot;status&quot;: &quot;PASS_CONDITIONAL_EXACT_DATA_REPLAY&quot;,
+    &quot;universal_assumptions&quot;: [
+        &quot;rank(E(Q))=1 and torsion is exactly the four displayed points&quot;,
+        &quot;canonical-height quadraticity and torsion invariance&quot;,
+        &quot;the independent universal projective-height derivation in the note&quot;
+    ],
+    &quot;independent_imports&quot;: &quot;Python standard library only; no producer code&quot;,
+    &quot;input_path&quot;: str(INPUT),
+    &quot;input_sha256&quot;: hashlib.sha256(payload).hexdigest(),
+    &quot;bezout_coefficient_identities&quot;: {&quot;b7&quot;: b_identity, &quot;a7&quot;: a_identity},
+    &quot;enumeration&quot;: {&quot;pairs&quot;: tested, &quot;points_including_O&quot;: len(points),
+                    &quot;torsion&quot;: len(torsion), &quot;signed_torsion_orbit&quot;: len(orbit),
+                    &quot;strict_height_comparisons&quot;: len(others)},
+    &quot;recomputed_points&quot;: [pack(point) for point in sorted(
+        points-{None}, key=lambda T: (T[0], T[1]))] + [pack(None)],
+    &quot;recomputed_W1&quot;: hx(tenP),
+    &quot;W1_bits&quot;: hx(tenP).bit_length(),
+    &quot;recomputed_u0&quot;: constants[&quot;u0&quot;],
+    &quot;u0_bits&quot;: constants[&quot;u0&quot;].bit_length(),
+    &quot;negative_controls&quot;: controls,
+    &quot;elapsed_seconds_observed&quot;: time.monotonic()-started,
+    &quot;not_verified&quot;: [&quot;rank-one descent&quot;, &quot;whole single-fold theorem&quot;,
+                     &quot;expanded output polynomial&quot;, &quot;Lean kernel/comparator&quot;],
+}
+result[&quot;script_sha256&quot;] = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
+OUTPUT.write_text(json.dumps(result, indent=2)+&quot;\n&quot;)
+print(json.dumps({&quot;status&quot;: result[&quot;status&quot;], &quot;output&quot;: str(OUTPUT),
+                  &quot;enumeration&quot;: result[&quot;enumeration&quot;],
+                  &quot;input_sha256&quot;: result[&quot;input_sha256&quot;],
+                  &quot;seconds&quot;: result[&quot;elapsed_seconds_observed&quot;]}))
+</pre></html>

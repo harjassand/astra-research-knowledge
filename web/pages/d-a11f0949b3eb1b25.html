@@ -1,0 +1,120 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>&quot;&quot;&quot;Exact structural certificates on the admitted family; no Hirai imports/LP.&quot;&quot;&quot;</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>&quot;&quot;&quot;Exact structural certificates on the admitted family; no Hirai imports/LP.&quot;&quot;&quot;</h1><p>Source ID d-a11f0949b3eb1b25; literature/sources/metric_geometry10/cycle17/control_frozen_direct_family_controls.py; 1531 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>&quot;&quot;&quot;Exact structural certificates on the admitted family; no Hirai imports/LP.&quot;&quot;&quot;
+from fractions import Fraction
+from pathlib import Path
+import json
+import resource
+import sys
+import time
+
+BASE = Path(__file__).resolve().parents[3]
+OUT = BASE / &quot;results/metric_geometry10/cycle17&quot;
+
+
+def cross(a, b):
+    return [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]]
+
+
+def determinant(rows):
+    rows = [list(row) for row in rows]
+    n, sign, old = len(rows), 1, 1
+    for k in range(n - 1):
+        pivot = next((i for i in range(k, n) if rows[i][k] != 0), None)
+        if pivot is None:
+            return 0
+        if pivot != k:
+            rows[k], rows[pivot] = rows[pivot], rows[k]
+            sign = -sign
+        value = rows[k][k]
+        for i in range(k+1, n):
+            for j in range(k+1, n):
+                numerator = rows[i][j]*value-rows[i][k]*rows[k][j]
+                assert numerator % old == 0
+                rows[i][j] = numerator // old
+            rows[i][k] = 0
+        old = value
+    return sign * rows[-1][-1]
+
+
+def triangle_certificate(instance):
+    assert instance[&quot;n&quot;] == 3 and instance[&quot;costs&quot;] == [2, 2, 2]
+    matrices = instance[&quot;subspaces&quot;]
+    normals = [cross([r[0] for r in s], [r[1] for r in s]) for s in matrices]
+    det = determinant(normals)
+    assert det != 0 and all(any(x for x in row) for row in normals)
+    caps = [Fraction(u) for u in instance[&quot;caps&quot;]]
+    assert all(0 &lt;= u &lt;= 1 for u in caps)
+    ordered = sorted(range(3), key=lambda i: caps[i])
+    i, j, k = ordered
+    a, b, c = [caps[index] for index in ordered]
+    total = min(a+b+c, 1+a, Fraction(3, 2))
+    if total == a+b+c:
+        primal = caps
+        dual = {&quot;kind&quot;: &quot;all cap penalties&quot;, &quot;y&quot;: [2, 2, 2]}
+    elif total == Fraction(3, 2):
+        primal = [Fraction(1, 2)] * 3
+        dual = {&quot;kind&quot;: &quot;ambient uniform&quot;, &quot;p&quot;: [1, 1, 1]}
+    else:
+        primal = [Fraction(0)]*3
+        primal[i] = a
+        primal[j] = max(a, 1-c)
+        primal[k] = 1-primal[j]
+        line = cross(normals[j], normals[k])
+        assert any(line)
+        assert sum(x*y for x,y in zip(normals[i], line)) != 0
+        assert sum(x*y for x,y in zip(normals[j], line)) == 0
+        assert sum(x*y for x,y in zip(normals[k], line)) == 0
+        y = [0]*3
+        y[i] = 2
+        dual = {&quot;kind&quot;: &quot;pair intersection line&quot;, &quot;line&quot;: line, &quot;lambda&quot;: 2, &quot;y&quot;: y}
+    assert all(0 &lt;= x &lt;= u for x, u in zip(primal, caps))
+    assert all(primal[u]+primal[v] &lt;= 1 for u in range(3) for v in range(u+1,3))
+    assert sum(primal) == total
+    return {&quot;name&quot;: instance[&quot;name&quot;], &quot;normal_determinant&quot;: det, &quot;acquired_normals&quot;: normals,
+            &quot;primal&quot;: [str(x) for x in primal], &quot;exact_value&quot;: str(2*total), &quot;dual&quot;: dual,
+            &quot;scope&quot;: &quot;Three independent plane normals, uniform cost2, arbitrary rational caps; universal class proof supplies all-subspace feasibility.&quot;}
+
+
+def decomposition_certificate(instance):
+    n, spaces = instance[&quot;n&quot;], instance[&quot;subspaces&quot;]
+    assert n % 2 == 0 and len(spaces) == n and instance[&quot;costs&quot;] == [2]*n
+    half = n//2
+    first = [[entry for s in spaces[:half] for entry in s[i]] for i in range(n)]
+    second = [[entry for s in spaces[half:] for entry in s[i]] for i in range(n)]
+    determinants = [determinant(first), determinant(second)]
+    assert all(d != 0 for d in determinants)
+    caps = [Fraction(u) for u in instance[&quot;caps&quot;]]
+    assert all(0 &lt;= u &lt;= 1 for u in caps)
+    lower_t, upper_t = 1-min(caps[half:]), min(caps[:half])
+    assert lower_t &lt;= upper_t
+    primal = [lower_t]*half + [1-lower_t]*half
+    assert all(0 &lt;= x &lt;= u for x,u in zip(primal,caps))
+    assert 2*sum(primal) == n
+    return {&quot;name&quot;: instance[&quot;name&quot;], &quot;decomposition_determinants&quot;: determinants,
+            &quot;mixing_interval&quot;: [str(lower_t), str(upper_t)], &quot;primal&quot;: [str(x) for x in primal],
+            &quot;exact_value&quot;: str(n), &quot;dual&quot;: {&quot;kind&quot;: &quot;ambient uniform&quot;, &quot;p&quot;: [1]*n},
+            &quot;scope&quot;: &quot;Two acquired direct decompositions into2-planes and nonempty cap-compatible mixing interval; universal direct-sum argument supplies all-subspace feasibility.&quot;}
+
+
+def main():
+    start = time.perf_counter()
+    protocol = json.loads((OUT / &quot;FROZEN_PROTOCOL.json&quot;).read_text())
+    core = time.perf_counter()
+    rows = [triangle_certificate(protocol[&quot;instances&quot;][0]), decomposition_certificate(protocol[&quot;instances&quot;][1])]
+    seconds = time.perf_counter()-core
+    sample = json.loads((OUT / &quot;PRIME_SAMPLING.json&quot;).read_text())
+    p = int(sample[&quot;candidate&quot;])
+    for row in rows:
+        ds = row.get(&quot;decomposition_determinants&quot;, [row.get(&quot;normal_determinant&quot;)])
+        row[&quot;sample_determinants_nonzero&quot;] = all(d % p != 0 for d in ds)
+    result = {&quot;status&quot;: &quot;PASS&quot;, &quot;controls&quot;: rows, &quot;core_seconds&quot;: seconds,
+              &quot;process_measured_seconds&quot;: time.perf_counter()-start,
+              &quot;process_cpu_seconds&quot;: time.process_time(),
+              &quot;peak_rss_bytes&quot;: resource.getrusage(resource.RUSAGE_SELF).ru_maxrss * (1 if sys.platform == &quot;darwin&quot; else 1024),
+              &quot;scope&quot;: &quot;One execution of exact controls on frozen inputs. No universal optimizer/runtime or general-field lift claim.&quot;}
+    (OUT / &quot;DIRECT_FAMILY_CONTROLS.json&quot;).write_text(json.dumps(result,indent=2)+&quot;\n&quot;)
+    print(json.dumps(result))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre></html>

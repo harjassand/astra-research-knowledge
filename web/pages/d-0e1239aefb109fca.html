@@ -1,0 +1,72 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Gradient acquisition audit: Gaussian cloud correction</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>Gradient acquisition audit: Gaussian cloud correction</h1><p>Source ID d-0e1239aefb109fca; literature/notes/c_priorart/cycle2/APPENDIX_B_AUDIT.md; 2669 o200k tokens; role research_note; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre># Gradient acquisition audit: Gaussian cloud correction
+
+Worker c_priorart, cycle2, 2026-10-06. Prior files preserved. Primary paper: Chen, Chewi, Lu and Zhang, [arXiv2609.38710v1](https://arxiv.org/abs/2609.38710v1), submitted September30 2026, 00:48:09UTC, verified from primary record. Full newly downloaded PDF has 68 pages; AppendixB occupies printed pp56-66. Local supplied full HTML was inspected and copied; direct web HTML retrieval timed out. Excerpt-level reading, not a claim to have read all 68 pages. Snapshots, metadata and SHA256 are in `sources/c_priorart/cycle2/`.
+
+## Question and interface
+
+Can a smaller differential Frobenius budget of the ideal map replace ambient output dimension in the *actual gradient-only* correction, including smoothing, secants, reverse actions, caps and tilted-law clipping? Exact-Jacobian rank/Frobenius corollaries do not answer this acquisition question.
+
+## Verified construction and locations
+
+- **Main Theorem1.1, printed p2:** after normalization, V is C2 and gradV is 1-Lipschitz, the target has LSI constant kappa, and a supplied reference satisfies ||gradV(x_ref)||&lt;=sqrt(d/kappa). Claimed expected query cost is O(kappa[d+log(kappa d/epsilon)]^(1/5) log^(13/2)(kappa d/epsilon)). Global convexity is not required here. The local primitives below have stronger convexity assumptions supplied through the construction&#x27;s normalizations.
+- **B.1, EqB.1, p56:** convex 1-smooth V and eta&lt;=1. Fixed M gradient iterations approximate the prox, each evaluation costs M full-gradient queries; both endpoint calls must use that same M. The prox approximation is non-expansive, but a derivative of the iterated approximation is never assumed close pointwise to the true prox derivative.
+- **B.2, EqsB.2-B.4, p57:** center secants share a Gaussian perturbation at both endpoints. Every realization is odd and L-Lipschitz in its direction. Mean secant error relative to D(P_s f)v is &lt;=Lr||v||^2/(sqrt(2pi)s). Gaussian smoothing value error is &lt;=Ls sqrt(m). Prox derivative error is controlled after convolution using Gaussian integration by parts; no Hessian continuity modulus is required.
+- **B.3, EqB.5, pp57-59:** S-step identity/convex-gradient/prox composition with known linear coefficients. Its coefficient bound must hold for *every* collection of norm&lt;=1 square matrices, not just the true Jacobians. It returns deterministic values and randomized forward/transpose actions relative to a smoothed comparison map Phi°. Symmetry of primitive smoothed Jacobians permits the reverse recursion to use vector secants. Fresh auxiliary seeds are independent of each incoming direction; all reverse contributions are collected before drawing that stage&#x27;s seed. Query cost is CS^3 log* per value/action; S=O(1) for local sampler blocks. Source uses increasing s_i=t^(S-i+1), r_i=t s_i and M=ceil((S+1)log2(1/t)).
+- **B.4, EqB.6 and PropB.4, pp60-61:** the correction needs integrated likelihood-estimator bias under BOTH proposal Q and truncated tilted P_K. The paired quadratic directions use the same action realization; inner/outer derivative routines use independent seeds. Block selection preserves the operator bound after reweighting, but no realized Frobenius bound is stated.
+- **B.5/B.6, EqsB.7-B.11, pp61-63:** two smoothed secant terms estimate the mean correction. The averaged divergence error includes Cd[s_prox(theta^-1/2+eta^-1/2)+r_prox/s_prox+r_grad/s_grad+epsilon_prox(1/s_prox+1/s_grad)]. The smoothing error includes 2s_grad sqrt(d). In CorB.6 the theta/sqrt(eta) multiplier removes inverse-theta precision growth. The estimator&#x27;s Lp scale remains C(eta^(3/2)+theta/sqrt(eta))(sqrt(d)+sqrt(p)). Auxiliary RGO draws are excluded from the stated C log* gradient cost.
+- **B.7-B.9, pp63-66:** total call count, all input/direction norms, linear value tails and quadratic likelihood tails are capped and charged. Counts/radii can be exp(C log*) because precision costs are logarithmic in the exact-real oracle model. PropB.8 charges RGO normalizations; TheoremB.9 explicitly allocates TV error to values, derivatives, mean bias, caps and tails. This is not a numerical bit-complexity guarantee for subtracting extremely nearby gradient values.
+
+These are author statements, not a new proof of the full sampler. The exact structured calculations below are our independent deductions.
+
+## Structured obstruction inside the stated composition class
+
+Take 0&lt;a&lt;=1/4 and the separable smooth convex potential
+
+    V_omega(x)=sum_i[.25 x_i^2-.4 omega^2 cos(x_i/omega)],
+    f(x)=gradV_omega(x)=.5x+.4omega sin(x/omega).
+
+Hessian eigenvalues lie in [.1,.9], so these primitives satisfy all convex 1-smooth requirements. Build S=3 steps z1=f(g), z2=f(g), z3=a(z1-z2), with f3=identity. The true map Phi is identically zero, hence its true differential Frobenius budget is zero. EqB.5 holds with L=2a: for arbitrary norm&lt;=1 B1,B2,B3, the final matrix is a B3(B1-B2), whose norm is at most 2a. Thus coefficient robustness deliberately does not exploit exact branch cancellation.
+
+For the source schedule s1=t^3, s2=t^2 (the last identity&#x27;s smoothing is immaterial), choose omega=t^(5/2). Gaussian convolution can be computed exactly:
+
+    P_s f(g)=.5g+.4omega exp[-s^2/(2omega^2)]sin(g/omega),
+    Phi°(g)=.4aomega(exp[-t/2]-exp[-1/(2t)])sin(g/omega).
+
+Let b=.4a(exp[-t/2]-exp[-1/(2t)]). Then
+
+    ||Phi°-Phi||_sup &lt;= |b|omega sqrt(d),
+    D Phi°(g)=b diag_i cos(g_i/omega),
+    E||D Phi°(G)||_F^2 = d b^2[1+exp(-2/omega^2)]/2
+                            ~ .08 d a^2 as t tends to zero.
+
+The prescribed deterministic value calculation returns Phi_hat=0, and E Phi°(G)=0 by oddness. Thus value error can be arbitrarily small and mean error exactly zero while smoothed differential energy remains proportional to d. This is an admitted C-infinity family with increasingly large third derivatives, which the source&#x27;s C2/smoothness interface does not prohibit. It falsifies automatic transfer of an ideal-map Frobenius budget through the source&#x27;s B.3 construction.
+
+For direction e_j, independent stage Gaussians produce exactly
+
+    J_g(e_j)=.4a e_j[sinc(r1/omega)cos((g_j+s1 xi1_j)/omega)
+                      -sinc(r2/omega)cos((g_j+s2 xi2_j)/omega)].
+
+With r_i=t s_i, averaging G and both seeds gives sum_j E||J_G(e_j)||^2 ~ .16 d a^2. Its squared conditional mean has leading scale .08 d a^2. The full closed-form expressions are implemented in `work/c_priorart/cycle2/derivative_energy_check.py`; output is `results/c_priorart/cycle2/derivative_energy_check.json`. The exact formulas support the deduction; finite arithmetic is not a universal theorem.
+
+**Scope:** this is not a counterexample to the paper, nor a demonstrated TV failure of its sampler, nor impossibility for all gradient mechanisms. The true function is trivially sampled without correction. A fair implementation simplifies identical branches or uses the same smoothing radius, secant radius and seed for both, restoring exact cancellation. More subtly, the small amplitude of Phi° can make its actual Gaussian-cloud covariance small despite the large derivative-energy bound. We have not proved that a full likelihood/tilted-law error is necessarily large. What fails is the requested automatic original-to-implemented differential-budget implication.
+
+## Generic adjoint probes: a different obstruction
+
+For a generic value-access map with rank-one Jacobian J=u b^T, a scalarized two-point Gaussian estimator of J^T w is z[(w^T Jz)] = (w^T u) z(b^T z). Its mean is (w^T u)b, but its mean-squared error is (d+1)(w^T u)^2||b||^2. Proof: isotropy gives E[z z^T(b^T z)^2]=||b||^2 I+2bb^T, so the second moment is (d+2)||b||^2 and subtracting the mean norm gives d+1. Averaging M independent probes divides this by M. Rank one does not replace d unless the input subspace is supplied or acquired and the probes are restricted to it.
+
+This is an exact estimator lower bound, not a minimax lower bound for the source&#x27;s gradient oracle. For symmetric J=H, a centered *vector gradient* secant directly returns H w on a quadratic with two queries and zero stochastic variance. AppendixB exploits this symmetry stage by stage; importing generic noisy transpose bounds to declare its mechanism impossible would be unfair.
+
+## Prior art and fair baselines
+
+[Duchi, Jordan, Wainwright and Wibisono (2015)](https://www.cs.yale.edu/homes/wibisono/DucJorWaiWib15.pdf), IEEE Trans. Inf. Theory61(5), May2015; header verifies publication March5 and current version April17. SectionIII, Prop1, Eqs20-21 (p2794) gives dimension-dependent minimax optimization bounds for stochastic paired/multiple *function-value* observations; Euclidean scaling is GR min(1,sqrt(d/k)), with additional evaluation-count refinements. This is a relevant acquisition baseline for Gaussian scalar probes, not a lower bound for full-gradient sampling, and not grounds to rule out structured secants.
+
+[Avron and Toledo (2011)](https://www.cs.tau.ac.il/~stoledo/Bib/Pubs/randomized-trace.pdf), JACM58(2), Article8, April2011. Lemma5.1 states exact Gaussian trace variance 2||A||_F^2 for symmetric A; Theorem5.2 gives dimension-independent relative PSD trace approximation. Paired independent quadratic forms have variance 4||A||_F^2. Thus intrinsic Frobenius dependence with *actual linear matrix actions* is established numerical-linear-algebra prior art. For nonsymmetric A use sym(A), not an unchecked Frobenius formula for A; only the symmetric statement is used here.
+
+For known fixed ridge structure V(x)=v(U^T x)+||U_perp^T x||^2/2 with supplied orthonormal U of rank r, the target factorizes. Apply the existing sampler directly in r dimensions and sample the Gaussian complement exactly. A full gradient query supplies the reduced gradient U^T gradV(Uz), so there is no new oracle. This direct reduction is the decisive fair comparator for a known-subspace rank-sensitive gadget. Unknown differential rank, rotating pointwise ranges, or a small Frobenius average do not provide that factorization.
+
+## Novelty status and falsifiable next step
+
+No new full gradient-only sampler bound established. The strongest result here is an explicit failure of naive differential-budget preservation within the actual allowed smooth composition class, together with exact accounting of the symmetry that avoids generic transpose noise.
+
+The next claim to test must state a property of the **realized** forward/reverse covariance actions or their conditional tails under BOTH proposal and tilted law, after smoothing and caps. A sufficient route may involve shared-branch control variates or a supplied common subspace, but it must beat the direct reduced-dimensional source sampler and charge any subspace discovery. The mean correction&#x27;s independent dimension factors and the RGO/precision/tail budgets must also be rebuilt before replacing d in the end-to-end exponent.
+</pre></html>

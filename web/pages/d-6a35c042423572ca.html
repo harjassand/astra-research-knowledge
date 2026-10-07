@@ -1,0 +1,510 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>&quot;&quot;&quot;</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>&quot;&quot;&quot;</h1><p>Source ID d-6a35c042423572ca; literature/sources/r01_discovery/repo_pipeline__known_relations.py; 5916 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>&quot;&quot;&quot;
+pipeline/known_relations.py — curated known relations for the novelty filter.
+
+The base table in :mod:`pipeline.novelty` speaks a small symbolic vocabulary
+(``alpha``, ``gamma``, ``omega``, …) and covers the classical chains
+(Whitney, König–Egerváry, Gallai, …). This module *extends* it with a large,
+domain-curated list of known graph-invariant relations over the **domination**
+and **zero-forcing** families (``total_domination_number``,
+``zero_forcing_number``, ``annihilation_number``, ``slater``, …) that the base
+table does not name — the relations a graph theorist already considers folklore
+or published, so that a CEGIS survivor restating one of them is flagged
+*known* rather than *novel*.
+
+The relations are kept here as **human-readable strings** (exactly the form a
+domain expert writes them), and parsed at import time into the
+``(lhs, {rhs: coeff}, offset, class, name)`` tuples that
+``pipeline.novelty.KNOWN_THEOREMS`` consumes. Parsing is deliberately
+conservative: anything that does not parse cleanly to a linear relation over the
+known vocabulary (nonlinear ``ceil`` forms, multi-class hypotheses, unsupported
+&quot;not K_n&quot; / degree-bounded hypotheses, malformed fragments) is **skipped** and
+left *novel* — the safe direction, since wrongly hiding a real conjecture is the
+only error that matters here.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import logging
+import re
+from collections import defaultdict
+from typing import Dict, List, Optional, Tuple
+
+logger = logging.getLogger(__name__)
+
+# A KNOWN_THEOREMS entry:  (lhs, {rhs_inv: coeff, ...}, offset, class|None, name)
+Tuple5 = Tuple[str, Dict[str, float], float, Optional[str], str]
+
+# ---------------------------------------------------------------------------
+# Invariant vocabulary.  Tokens (graphcalc-style column names, plus a couple of
+# common spellings) map to the symbolic names used inside the novelty table.
+# The classical invariants reuse the base table&#x27;s short names so the new
+# relations *compose* with the existing ones through the LP; the domination /
+# zero-forcing family invariants are new and map to themselves.
+# ---------------------------------------------------------------------------
+
+TOKEN2SYM: Dict[str, str] = {
+    &quot;order&quot;: &quot;n&quot;, &quot;size&quot;: &quot;m&quot;,
+    &quot;max_degree&quot;: &quot;Delta&quot;, &quot;maximum_degree&quot;: &quot;Delta&quot;,
+    &quot;min_degree&quot;: &quot;delta&quot;, &quot;minimum_degree&quot;: &quot;delta&quot;,
+    &quot;average_degree&quot;: &quot;avg_deg&quot;,
+    &quot;clique_number&quot;: &quot;omega&quot;, &quot;independence_number&quot;: &quot;alpha&quot;,
+    &quot;chromatic_number&quot;: &quot;chi&quot;,
+    &quot;domination_number&quot;: &quot;gamma&quot;, &quot;independent_domination_number&quot;: &quot;ind_dom&quot;,
+    &quot;vertex_cover_number&quot;: &quot;vertex_cover&quot;, &quot;matching_number&quot;: &quot;nu&quot;,
+    &quot;diameter&quot;: &quot;diam&quot;, &quot;radius&quot;: &quot;rad&quot;,
+}
+
+_NEW_INVARIANTS = [
+    # domination family
+    &quot;total_domination_number&quot;, &quot;connected_domination_number&quot;,
+    &quot;restrained_domination_number&quot;, &quot;outer_connected_domination_number&quot;,
+    &quot;roman_domination_number&quot;, &quot;double_roman_domination_number&quot;,
+    &quot;two_rainbow_domination_number&quot;, &quot;three_rainbow_domination_number&quot;,
+    &quot;power_domination_number&quot;, &quot;sub_total_domination_number&quot;,
+    &quot;edge_domination_number&quot;,
+    # independence / matching / cover extras
+    &quot;annihilation_number&quot;, &quot;residue&quot;, &quot;square_residue&quot;,
+    &quot;slater&quot;, &quot;LG_slater&quot;, &quot;min_maximal_matching_number&quot;, &quot;min_edge_cover&quot;,
+    # zero-forcing family
+    &quot;zero_forcing_number&quot;, &quot;total_zero_forcing_number&quot;,
+    &quot;connected_zero_forcing_number&quot;, &quot;positive_semidefinite_zero_forcing_number&quot;,
+    # distance / misc
+    &quot;triameter&quot;,
+    &quot;power_min_degree_residue_sum&quot;, &quot;power_min_degree_annihilation_sum&quot;,
+    &quot;power_2_annihilation_sum&quot;, &quot;power_3_annihilation_sum&quot;,
+]
+for _t in _NEW_INVARIANTS:
+    TOKEN2SYM.setdefault(_t, _t)
+
+# Tokens, longest first, so e.g. ``total_domination_number`` is preferred over a
+# spurious ``domination_number`` substring (underscores already block most of
+# these, but length ordering is a cheap belt-and-braces).
+INV_TOKENS = sorted(TOKEN2SYM, key=len, reverse=True)
+
+# graphcalc column -&gt; symbol, for extending pipeline.cegis_novelty._GC2TABLE so
+# that *generated* conjectures over these invariants parse into Inequalities.
+GC_COLUMNS: Dict[str, str] = {t: TOKEN2SYM[t] for t in _NEW_INVARIANTS}
+
+# Graph-class words we model; anything else in a hypothesis -&gt; skip the relation.
+_CLASS_WORDS = {
+    &quot;well-covered&quot;: &quot;well_covered&quot;,
+    &quot;bipartite&quot;: &quot;bipartite&quot;,
+    &quot;claw-free&quot;: &quot;claw_free&quot;,
+    &quot;tree&quot;: &quot;tree&quot;,
+    &quot;triangle-free&quot;: &quot;triangle_free&quot;,
+    &quot;cubic&quot;: &quot;cubic&quot;,
+    # order-threshold predicates (n ≥ 3 / n ≥ 4): rule out the smallest graphs
+    # on which many &quot;total&quot; bounds fail only at K_2.
+    &quot;order_bigger_than_2&quot;: &quot;order_bigger_than_2&quot;,
+    &quot;order_bigger_than_3&quot;: &quot;order_bigger_than_3&quot;,
+}
+_SKIP = object()  # sentinel: hypothesis present but not modellable -&gt; drop
+
+
+# ---------------------------------------------------------------------------
+# Curated known relations (verbatim, expert-written).  Parsed below.
+# ---------------------------------------------------------------------------
+
+KNOWN_CONJECTURES = [
+    &quot;If G is a connected and well-covered graph, then independence_number &lt;= independent_domination_number&quot;,
+    &quot;If G is a connected and bipartite graph, then independence_number &gt;= (order - matching_number)&quot;,
+    &quot;If G is a connected and claw-free graph, then domination_number &gt;= independent_domination_number&quot;,
+    &quot;If G is a connected and claw-free graph, then independent_domination_number &lt;= domination_number&quot;,
+    &quot;If G is a connected and well-covered graph, then independent_domination_number &gt;= independence_number&quot;,
+    &quot;If G is a tree graph, then independence_number &gt;= (order - matching_number)&quot;,
+    &quot;If G is a connected and bipartite graph, then independence_number &gt;= min_edge_cover&quot;,
+    &quot;If G is a connected and triangle-free graph, then independence_number &gt;= max_degree&quot;,
+    &quot;If G is a connected and claw-free graph, then zero_forcing_number &lt;= positive_semidefinite_zero_forcing_number&quot;,
+    &quot;If G is a connected and claw-free graph, then zero_forcing_number = positive_semidefinite_zero_forcing_number&quot;,
+    # Recovered from the FALSIFIED set by adding the hypothesis under which they
+    # actually hold (verified with tools/validate_known_relations.py):
+    #   a(G) ≥ n − μ  holds on bipartite graphs (König α = n − μ, Pepper a ≥ α),
+    #   the &quot;total&quot;/edge bounds hold once the atomic graph K_2 is excluded (n ≥ 3).
+    &quot;If G is a connected and bipartite graph, then annihilation_number &gt;= (order - matching_number)&quot;,
+    &quot;If G is a connected and order_bigger_than_2 graph, then total_domination_number &lt;= order - 1&quot;,
+    &quot;If G is a connected and order_bigger_than_2 graph, then total_zero_forcing_number &lt;= order - 1&quot;,
+    &quot;If G is a connected and order_bigger_than_2 graph, then total_zero_forcing_number &lt;= size&quot;,
+    &quot;If G is a connected and order_bigger_than_2 graph, then zero_forcing_number &lt;= size - 1&quot;,
+]
+
+KNOWN_INEQUALITIES = [
+    &quot;independence_number &lt;= (order - matching_number)&quot;,
+    &quot;independence_number &lt;= (order - min_maximal_matching_number)&quot;,
+    &quot;independence_number &lt;= annihilation_number&quot;,
+    &quot;independence_number &lt;= (order - min_degree)&quot;,
+    &quot;independence_number &lt;= min_edge_cover&quot;,
+    &quot;independence_number &gt;= residue&quot;,
+    &quot;independence_number &gt;= independent_domination_number&quot;,
+    &quot;domination_number &gt;= slater&quot;,
+    &quot;domination_number &lt;= independent_domination_number&quot;,
+    &quot;domination_number &lt;= connected_domination_number&quot;,
+    &quot;domination_number &lt;= total_domination_number&quot;,
+    &quot;domination_number &lt;= restrained_domination_number&quot;,
+    &quot;domination_number &gt;= 1/2 * roman_domination_number&quot;,
+    &quot;domination_number &gt;= 1/3 * double_roman_domination_number&quot;,
+    &quot;domination_number &lt;= independence_number&quot;,
+    &quot;domination_number &lt;= outer_connected_domination_number&quot;,
+    &quot;total_domination_number &gt;= sub_total_domination_number&quot;,
+    &quot;total_domination_number &gt;= domination_number&quot;,
+    &quot;total_domination_number &lt;= connected_domination_number&quot;,
+    &quot;total_domination_number &gt;= slater&quot;,
+    &quot;connected_domination_number &gt;= slater&quot;,
+    &quot;slater &lt;= independent_domination_number&quot;,
+    &quot;slater &lt;= connected_domination_number&quot;,
+    &quot;slater &lt;= total_domination_number&quot;,
+    &quot;connected_domination_number &gt;= domination_number&quot;,
+    &quot;zero_forcing_number &lt;= connected_zero_forcing_number&quot;,
+    &quot;zero_forcing_number &lt;= total_zero_forcing_number&quot;,
+    &quot;zero_forcing_number &gt;= positive_semidefinite_zero_forcing_number&quot;,
+    &quot;zero_forcing_number &gt;= min_degree&quot;,
+    &quot;total_zero_forcing_number &gt;= min_degree&quot;,
+    &quot;connected_zero_forcing_number &gt;= min_degree&quot;,
+    &quot;zero_forcing_number &gt;= chromatic_number - 1&quot;,
+    &quot;zero_forcing_number &gt;= clique_number - 1&quot;,
+    &quot;power_domination_number &lt;= 1/2 * total_zero_forcing_number&quot;,
+    &quot;power_domination_number &lt;= domination_number&quot;,
+    &quot;independent_domination_number &gt;= domination_number&quot;,
+    &quot;independent_domination_number &lt;= independence_number&quot;,
+    &quot;positive_semidefinite_zero_forcing_number &gt;= min_degree&quot;,
+    &quot;positive_semidefinite_zero_forcing_number &lt;= connected_zero_forcing_number&quot;,
+    &quot;roman_domination_number &lt;= 2 * domination_number&quot;,
+    &quot;edge_domination_number &gt;= LG_slater&quot;,
+    &quot;edge_domination_number &lt;= matching_number&quot;,
+    &quot;total_zero_forcing_number &lt;= connected_zero_forcing_number&quot;,
+    &quot;total_zero_forcing_number &gt;= positive_semidefinite_zero_forcing_number&quot;,
+    &quot;total_zero_forcing_number &gt;= 2 * power_domination_number&quot;,
+    &quot;residue &lt;= independence_number&quot;,
+    &quot;annihilation_number &gt;= matching_number&quot;,
+    &quot;annihilation_number &gt;= independence_number&quot;,
+    &quot;annihilation_number &gt;= residue&quot;,
+    &quot;domination_number &lt;= order&quot;,
+    &quot;domination_number &lt;= roman_domination_number&quot;,
+    &quot;domination_number &lt;= double_roman_domination_number&quot;,
+    &quot;domination_number &lt;= two_rainbow_domination_number&quot;,
+    &quot;domination_number &lt;= three_rainbow_domination_number&quot;,
+    &quot;domination_number &lt;= vertex_cover_number&quot;,
+    &quot;domination_number &lt;= matching_number&quot;,
+    &quot;domination_number &lt;= 2 min_maximal_matching_number&quot;,
+    &quot;two_rainbow_domination_number &gt;= domination_number&quot;,
+    &quot;three_rainbow_domination_number &gt;= domination_number&quot;,
+    &quot;three_rainbow_domination_number &gt;= two_rainbow_domination_number&quot;,
+    &quot;domination_number &gt;= power_domination_number&quot;,
+    &quot;power_domination_number &lt;= zero_forcing_number&quot;,
+    &quot;power_domination_number &lt;= total_domination_number&quot;,
+    &quot;power_domination_number &lt;= connected_domination_number&quot;,
+    &quot;power_domination_number &lt;= total_zero_forcing_number&quot;,
+    &quot;restrained_domination_number &gt;= domination_number&quot;,
+    &quot;two_rainbow_domination_number &gt;= domination_number&quot;,
+    &quot;outer_connected_domination_number &gt;= domination_number&quot;,
+    &quot;outer_connected_domination_number &gt;= slater&quot;,
+    &quot;roman_domination_number &gt;= domination_number&quot;,
+    &quot;double_roman_domination_number &gt;= roman_domination_number&quot;,
+    &quot;roman_domination_number &gt;= slater&quot;,
+    &quot;double_roman_domination_number &gt;= slater&quot;,
+    &quot;roman_domination_number &lt;= double_roman_domination_number&quot;,
+    &quot;roman_domination_number &lt;= 2 domination_number&quot;,
+    &quot;roman_domination_number &lt;= 2 independent_domination_number&quot;,
+    &quot;roman_domination_number &lt;= 2 total_domination_number&quot;,
+    &quot;roman_domination_number &lt;= 2 connected_domination_number&quot;,
+    &quot;double_roman_domination_number &lt;= 3 domination_number&quot;,
+    &quot;double_roman_domination_number &lt;= 3 independent_domination_number&quot;,
+    &quot;double_roman_domination_number &lt;= 3 total_domination_number&quot;,
+    &quot;double_roman_domination_number &lt;= 3 connected_domination_number&quot;,
+    &quot;double_roman_domination_number &gt;= 2 domination_number&quot;,
+    &quot;positive_semidefinite_zero_forcing_number &lt;= zero_forcing_number&quot;,
+    &quot;positive_semidefinite_zero_forcing_number &lt;= total_zero_forcing_number&quot;,
+    &quot;positive_semidefinite_zero_forcing_number &lt;= connected_zero_forcing_number&quot;,
+    &quot;matching_number &gt;= min_maximal_matching_number&quot;,
+    &quot;min_maximal_matching_number &lt;= matching_number&quot;,
+    &quot;matching_number &lt;= 1/2 order&quot;,
+    &quot;domination_number &gt;= 1/2 total_domination_number&quot;,
+    &quot;domination_number &gt;= 1/2 roman_domination_number&quot;,
+    &quot;independent_domination_number &gt;= 1/2 roman_domination_number&quot;,
+    &quot;total_domination_number &gt;= 1/2 roman_domination_number&quot;,
+    &quot;connected_domination_number &gt;= 1/2 roman_domination_number&quot;,
+    &quot;domination_number &lt;= 1/2 order&quot;,
+    &quot;domination_number &lt;= (order - max_degree)&quot;,
+    &quot;total_domination_number &lt;= 2 domination_number&quot;,
+    &quot;total_domination_number &lt;= 2 independent_domination_number&quot;,
+    &quot;power_domination_number &lt;= independent_domination_number&quot;,
+    &quot;total_zero_forcing_number &lt;= order + -1&quot;,
+    &quot;zero_forcing_number &lt;= order + -1&quot;,
+    &quot;total_domination_number &lt;= order + -1&quot;,
+    &quot;domination_number &lt;= order + -1&quot;,
+    &quot;independent_domination_number &lt;= order + -1&quot;,
+    &quot;connected_domination_number &lt;= order + -1&quot;,
+    &quot;power_domination_number &lt;= order + -1&quot;,
+    &quot;min_degree &lt;= max_degree&quot;,
+    &quot;min_degree &lt;= zero_forcing_number&quot;,
+    &quot;annihilation_number &gt;= residue&quot;,
+    &quot;independence_number &gt;= radius&quot;,
+    &quot;sub_total_domination_number &lt;= total_domination_number&quot;,
+    &quot;sub_total_domination_number &gt;= slater&quot;,
+    &quot;slater &lt;= domination_number&quot;,
+    &quot;chromatic_number &gt;= clique_number&quot;,
+    &quot;matching_number &lt;= (order - matching_number)&quot;,
+    &quot;independent_domination_number &lt;= (order - max_degree)&quot;,
+    &quot;independent_domination_number &gt;= slater&quot;,
+    &quot;independent_domination_number &gt;= power_domination_number&quot;,
+    &quot;independent_domination_number &gt;= 1/2 total_domination_number&quot;,
+    &quot;independent_domination_number &lt;= 1/2 order&quot;,
+    &quot;independent_domination_number &lt;= 1/2 power_domination_number + 11/2&quot;,
+    &quot;independent_domination_number &lt;= 2/3 zero_forcing_number + 13/3&quot;,
+    &quot;independent_domination_number &lt;= 1/5 diameter + 27/5&quot;,
+    &quot;connected_domination_number &gt;= power_domination_number&quot;,
+    &quot;independence_number &lt;= radius&quot;,
+    &quot;independence_number &lt;= order + -1&quot;,
+    &quot;independence_number &lt;= size&quot;,
+    &quot;independence_number &gt;= domination_number&quot;,
+    &quot;diameter &gt;= radius&quot;,
+    &quot;zero_forcing_number &gt;= 1/2 total_zero_forcing_number&quot;,
+    &quot;annihilation_number &lt;= 1/2 order&quot;,
+    &quot;connected_zero_forcing_number &gt;= zero_forcing_number&quot;,
+    &quot;connected_zero_forcing_number &lt;= order + -1&quot;,
+    &quot;connected_zero_forcing_number &gt;= chromatic_number + -1&quot;,
+    &quot;connected_zero_forcing_number &gt;= clique_number + -1&quot;,
+    &quot;connected_zero_forcing_number &gt;= total_zero_forcing_number&quot;,
+    &quot;connected_zero_forcing_number &gt;= positive_semidefinite_zero_forcing_number&quot;,
+    &quot;zero_forcing_number &gt;= chromatic_number + -1&quot;,
+    &quot;zero_forcing_number &gt;= clique_number + -1&quot;,
+    &quot;total_zero_forcing_number &gt;= chromatic_number + -1&quot;,
+    &quot;total_zero_forcing_number &gt;= clique_number + -1&quot;,
+    &quot;annihilation_number &gt;= (order - matching_number)&quot;,
+    &quot;annihilation_number &gt;= domination_number&quot;,
+    &quot;annihilation_number &gt;= independent_domination_number&quot;,
+    &quot;annihilation_number &gt;= slater&quot;,
+    &quot;annihilation_number &gt;= power_domination_number&quot;,
+    &quot;double_roman_domination_number &lt;= 3 restrained_domination_number&quot;,
+    &quot;double_roman_domination_number &lt;= 3 outer_connected_domination_number&quot;,
+    &quot;double_roman_domination_number &lt;= 2 two_rainbow_domination_number&quot;,
+    &quot;restrained_domination_number &gt;= slater&quot;,
+    &quot;restrained_domination_number &gt;= 1/2 roman_domination_number&quot;,
+    &quot;restrained_domination_number &gt;= power_domination_number&quot;,
+    &quot;restrained_domination_number &gt;= 1/3 double_roman_domination_number&quot;,
+    &quot;triameter &lt;= 3 diameter&quot;,
+    &quot;slater &lt;= sub_total_domination_number&quot;,
+    &quot;slater &lt;= restrained_domination_number&quot;,
+    &quot;slater &lt;= outer_connected_domination_number&quot;,
+    &quot;domination_number &lt;= 1/2 double_roman_domination_number&quot;,
+    &quot;total_domination_number &lt;= 2 edge_domination_number&quot;,
+    &quot;zero_forcing_number &lt;= size + -1&quot;,
+    &quot;total_zero_forcing_number &lt;= size&quot;,
+    &quot;diameter &lt;= 2 radius&quot;,
+    &quot;radius &lt;= diameter&quot;,
+    &quot;radius &gt;= 1/2 diameter&quot;,
+    &quot;radius &lt;= independence_number&quot;,
+    &quot;independent_domination_number &lt;= (order - domination_number)&quot;,
+    &quot;chromatic_number &lt;= zero_forcing_number + 1&quot;,
+    &quot;chromatic_number &lt;= clique_number + 1&quot;,
+    &quot;chromatic_number &lt;= max_degree + 1&quot;,
+    &quot;clique_number &lt;= chromatic_number&quot;,
+    &quot;clique_number &lt;= zero_forcing_number + 1&quot;,
+    &quot;clique_number &lt;= max_degree + 1&quot;,
+    &quot;residue &lt;= power_min_degree_residue_sum&quot;,
+    &quot;residue &lt;= annihilation_number&quot;,
+    &quot;annihilation_number &lt;= power_min_degree_annihilation_sum&quot;,
+    &quot;min_edge_cover &lt;= order + -1&quot;,
+    &quot;positive_semidefinite_zero_forcing_number &lt;= vertex_cover_number&quot;,
+    &quot;total_domination_number &lt;= 2 * edge_domination_number&quot;,
+    &quot;zero_forcing_number &lt;= - diameter + order&quot;,
+    &quot;total_domination_number &lt;= 7/9 * max_degree + 5/3&quot;,
+    &quot;independence_number &lt;= order - vertex_cover_number&quot;,
+    &quot;vertex_cover_number &lt;= order - independence_number&quot;,
+    &quot;independence_number &gt;= square_residue&quot;,
+    &quot;independence_number &lt;= order - matching_number&quot;,
+    &quot;zero_forcing_number &lt;= order - 1&quot;,
+    &quot;total_zero_forcing_number &lt;= order - 1&quot;,
+    &quot;connected_zero_forcing_number &lt;= order - 1&quot;,
+    &quot;independence_number &lt;= order - 1&quot;,
+    &quot;independence_number &lt;= power_min_degree_annihilation_sum&quot;,
+    &quot;independence_number &lt;= power_2_annihilation_sum&quot;,
+    &quot;independence_number &lt;= power_3_annihilation_sum&quot;,
+]
+
+
+# ---------------------------------------------------------------------------
+# Parsing
+# ---------------------------------------------------------------------------
+
+def _num(tok: str) -&gt; Optional[float]:
+    tok = tok.strip()
+    if not tok:
+        return None
+    try:
+        if &quot;/&quot; in tok:
+            a, b = tok.split(&quot;/&quot;, 1)
+            return float(a) / float(b)
+        return float(tok)
+    except Exception:
+        return None
+
+
+def _parse_class(cond: str):
+    &quot;&quot;&quot;Hypothesis string -&gt; class symbol, ``None`` (unconditioned), or ``_SKIP``.&quot;&quot;&quot;
+    c = cond.lower().strip()
+    if any(bad in c for bad in (&quot;which is not&quot;, &quot;at least&quot;, &quot;at most&quot;, &quot;k_n&quot;)):
+        return _SKIP
+    c = c.replace(&quot; graphs&quot;, &quot;&quot;).replace(&quot; graph&quot;, &quot;&quot;).replace(&quot; and &quot;, &quot;,&quot;)
+    parts = [p.strip() for p in c.split(&quot;,&quot;) if p.strip()]
+    classes = []
+    for p in parts:
+        p = re.sub(r&quot;^(a|an)\s+&quot;, &quot;&quot;, p).strip()
+        if p in (&quot;&quot;, &quot;connected&quot;):
+            continue
+        if p in _CLASS_WORDS:
+            classes.append(_CLASS_WORDS[p])
+        else:
+            return _SKIP            # unknown class word -&gt; conservative skip
+    if not classes:
+        return None
+    if len(classes) &gt; 1:
+        return _SKIP                # multi-class hypothesis not modelled
+    return classes[0]
+
+
+def _parse_term(term: str):
+    &quot;&quot;&quot;One additive term -&gt; (&#x27;inv&#x27;, sym, coeff) | (&#x27;const&#x27;, None, value) | None.&quot;&quot;&quot;
+    t = term.strip().replace(&quot;*&quot;, &quot; &quot;).strip()
+    if not t:
+        return None
+    found = [tok for tok in INV_TOKENS if re.search(r&quot;\b&quot; + re.escape(tok) + r&quot;\b&quot;, t)]
+    if found:
+        inv = max(found, key=len)
+        leftover = [x for x in found if x != inv and x not in inv]
+        if leftover:
+            return None             # two invariants glued in one term
+        rest = re.sub(r&quot;\b&quot; + re.escape(inv) + r&quot;\b&quot;, &quot; &quot;, t).strip()
+        if rest in (&quot;&quot;, &quot;+&quot;):
+            coeff = 1.0
+        elif rest == &quot;-&quot;:
+            coeff = -1.0
+        else:
+            coeff = _num(rest)
+            if coeff is None:
+                return None
+        return (&quot;inv&quot;, TOKEN2SYM[inv], coeff)
+    c = _num(t)
+    if c is None:
+        return None
+    return (&quot;const&quot;, None, c)
+
+
+def _parse_linear(side: str):
+    &quot;&quot;&quot;Linear side -&gt; ({sym: coeff}, const) | None.&quot;&quot;&quot;
+    s = side.strip().replace(&quot;−&quot;, &quot;-&quot;)
+    if not s or &quot;[&quot; in s or &quot;]&quot; in s:
+        return None
+    if re.search(r&quot;-\s*\(&quot;, s):      # negated parenthesised group: paren-strip unsafe
+        return None
+    s = s.replace(&quot;(&quot;, &quot; &quot;).replace(&quot;)&quot;, &quot; &quot;).replace(&quot;·&quot;, &quot;*&quot;).replace(&quot;×&quot;, &quot;*&quot;)
+    s = re.sub(r&quot;\s*-\s*&quot;, &quot; + -&quot;, s)
+    invd: Dict[str, float] = defaultdict(float)
+    const = 0.0
+    for term in s.split(&quot;+&quot;):
+        if not term.strip():
+            continue
+        r = _parse_term(term)
+        if r is None:
+            return None
+        kind, sym, val = r
+        if kind == &quot;inv&quot;:
+            invd[sym] += val
+        else:
+            const += val
+    return dict(invd), const
+
+
+def parse_relation(text: str) -&gt; List[Tuple5]:
+    &quot;&quot;&quot;Parse one relation string into zero or more KNOWN_THEOREMS tuples.&quot;&quot;&quot;
+    text = text.strip().rstrip(&quot;,.&quot;)
+    cls: Optional[str] = None
+    m = re.match(r&quot;(?i)^if\s+g\s+is\s+(.*?),\s*then\s+(.*)$&quot;, text)
+    if m:
+        cls = _parse_class(m.group(1))
+        if cls is _SKIP:
+            return []
+        body = m.group(2)
+    else:
+        body = re.sub(r&quot;(?i)^then\s+&quot;, &quot;&quot;, text)
+    body = body.strip().rstrip(&quot;,.&quot;)
+
+    op = next((o for o in (&quot;&lt;=&quot;, &quot;&gt;=&quot;, &quot;=&quot;) if o in body), None)
+    if op is None:
+        return []
+    lhs_s, rhs_s = body.split(op, 1)
+    L = _parse_linear(lhs_s)
+    R = _parse_linear(rhs_s)
+    if L is None or R is None:
+        return []
+    (Ld, Lc), (Rd, Rc) = L, R
+
+    if op == &quot;=&quot;:
+        directions = [(Ld, Lc, Rd, Rc), (Rd, Rc, Ld, Lc)]
+    elif op == &quot;&gt;=&quot;:
+        directions = [(Rd, Rc, Ld, Lc)]
+    else:
+        directions = [(Ld, Lc, Rd, Rc)]
+
+    out: List[Tuple5] = []
+    for Ad, Ac, Bd, Bc in directions:          # encode  A &lt;= B
+        D: Dict[str, float] = defaultdict(float)
+        for k, v in Ad.items():
+            D[k] += v
+        for k, v in Bd.items():
+            D[k] -= v
+        C = Ac - Bc
+        D = {k: v for k, v in D.items() if abs(v) &gt; 1e-9}
+        pos = [k for k, v in D.items() if v &gt; 0]
+        if not pos:
+            continue
+        piv = next((k for k in pos if abs(D[k] - 1.0) &lt; 1e-9), pos[0])
+        dj = D[piv]
+        rhs = {k: -v / dj for k, v in D.items() if k != piv}
+        offset = -C / dj
+        out.append((piv, rhs, offset, cls, text))
+    return out
+
+
+# Relations that the curated list asserts but that have explicit counterexamples
+# among the 277,625 connected, non-trivial graphs of the refutation battery
+# (verified with tools/validate_known_relations.py). They are kept above for
+# provenance but EXCLUDED from the table — a false upper bound is the one error
+# that can wrongly hide a genuine conjecture, so we never trust an unverified
+# relation over the data. (e.g. α ≤ rad is violated by ~99% of graphs; the
+# remaining few fail only on small extremal graphs such as K_2.)
+FALSIFIED = {
+    &quot;independence_number &lt;= radius&quot;,
+    &quot;annihilation_number &lt;= 1/2 order&quot;,
+    &quot;annihilation_number &gt;= (order - matching_number)&quot;,
+    &quot;total_domination_number &lt;= 7/9 * max_degree + 5/3&quot;,
+    &quot;total_zero_forcing_number &lt;= connected_zero_forcing_number&quot;,
+    &quot;connected_zero_forcing_number &gt;= total_zero_forcing_number&quot;,
+    &quot;independent_domination_number &lt;= 2/3 zero_forcing_number + 13/3&quot;,
+    &quot;total_zero_forcing_number &lt;= order + -1&quot;,
+    &quot;total_zero_forcing_number &lt;= order - 1&quot;,
+    &quot;total_domination_number &lt;= order + -1&quot;,
+    &quot;independent_domination_number &lt;= 1/2 order&quot;,
+    &quot;independent_domination_number &lt;= 1/2 power_domination_number + 11/2&quot;,
+    &quot;independent_domination_number &lt;= 1/5 diameter + 27/5&quot;,
+    &quot;zero_forcing_number &lt;= size + -1&quot;,
+    &quot;total_zero_forcing_number &lt;= size&quot;,
+}
+
+
+def load_relations() -&gt; List[Tuple5]:
+    &quot;&quot;&quot;All curated relations as deduplicated KNOWN_THEOREMS tuples.
+
+    Empirically-falsified relations (see ``FALSIFIED``) are excluded.
+    &quot;&quot;&quot;
+    seen = set()
+    result: List[Tuple5] = []
+    for text in KNOWN_CONJECTURES + KNOWN_INEQUALITIES:
+        if text.strip().rstrip(&quot;,.&quot;) in FALSIFIED:
+            continue
+        for lhs, rhs, off, cls, name in parse_relation(text):
+            key = (lhs, frozenset(rhs.items()), round(off, 9), cls)
+            if key in seen:
+                continue
+            seen.add(key)
+            result.append((lhs, rhs, off, cls, name))
+    return result
+</pre></html>

@@ -1,0 +1,538 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>!/usr/bin/env python3</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>!/usr/bin/env python3</h1><p>Source ID d-e731ffb6f612b4f5; literature/sources/pde_spectrum9/cycle13_pit_gate/prime_capacity_tester.py; 6022 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact finite diagnostic and charged acquisition; no external packages.
+
+This executable is not a proof of historical novelty or a compiler benchmark.
+Its mathematical interface is notes/.../WEIGHTED_RESULTANT_TESTER.md.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from fractions import Fraction
+from itertools import product
+from pathlib import Path
+import hashlib
+import json
+import math
+import random
+import resource
+import time
+
+BASE = Path(__file__).resolve().parents[3]
+OUT = BASE / &quot;results/rounding_prior/cycle13&quot;
+
+
+def ceil_log2(n: int) -&gt; int:
+    if n &lt; 1:
+        raise ValueError(&quot;positive integer required&quot;)
+    return (n - 1).bit_length()
+
+
+def primality_certificate(n: int) -&gt; dict:
+    &quot;&quot;&quot;A deterministic trial-division proof or smallest found divisor.&quot;&quot;&quot;
+    if n &lt; 2:
+        return {&quot;n&quot;: n, &quot;prime&quot;: False, &quot;divisor&quot;: None, &quot;divisions&quot;: 0}
+    if n == 2:
+        return {&quot;n&quot;: n, &quot;prime&quot;: True, &quot;divisor&quot;: None, &quot;divisions&quot;: 0}
+    count = 1
+    if n % 2 == 0:
+        return {&quot;n&quot;: n, &quot;prime&quot;: False, &quot;divisor&quot;: 2, &quot;divisions&quot;: count}
+    d = 3
+    while d * d &lt;= n:
+        count += 1
+        if n % d == 0:
+            return {&quot;n&quot;: n, &quot;prime&quot;: False, &quot;divisor&quot;: d, &quot;divisions&quot;: count}
+        d += 2
+    return {&quot;n&quot;: n, &quot;prime&quot;: True, &quot;divisor&quot;: None, &quot;divisions&quot;: count,
+            &quot;last_odd_tested&quot;: d - 2}
+
+
+@dataclass
+class Acquisition:
+    records: list[dict] = field(default_factory=list)
+    order_attempts: list[dict] = field(default_factory=list)
+
+    def inner_pool(self, lower: int, capacity: int) -&gt; list[dict]:
+        q = lower + 1
+        if q &lt;= 2:
+            q = 2
+        elif q % 2 == 0:
+            q += 1
+        rows = []
+        total = 0
+        while total &lt; capacity:
+            cert = primality_certificate(q)
+            self.records.append({&quot;kind&quot;: &quot;q&quot;, **cert})
+            if cert[&quot;prime&quot;]:
+                ell = q.bit_length() - 1
+                rows.append({&quot;q&quot;: q, &quot;ell&quot;: ell, &quot;certificate&quot;: cert})
+                total += ell
+            q = q + 1 if q == 2 else q + 2
+        return rows
+
+    def outer_pool(self, q: int, capacity: int) -&gt; list[dict]:
+        rows = []
+        total = 0
+        multiplier = 1
+        while total &lt; capacity:
+            p = multiplier * q + 1
+            cert = primality_certificate(p)
+            self.records.append({&quot;kind&quot;: &quot;p&quot;, &quot;q&quot;: q,
+                                 &quot;multiplier&quot;: multiplier, **cert})
+            if cert[&quot;prime&quot;]:
+                h = 2
+                while True:
+                    gamma = pow(h, multiplier, p)
+                    accepted = gamma != 1 and gamma != 0
+                    self.order_attempts.append({&quot;p&quot;: p, &quot;q&quot;: q, &quot;h&quot;: h,
+                                                &quot;gamma&quot;: gamma,
+                                                &quot;accepted&quot;: accepted})
+                    if accepted:
+                        assert pow(gamma, q, p) == 1
+                        break
+                    h += 1
+                ell = p.bit_length() - 1
+                rows.append({&quot;p&quot;: p, &quot;ell&quot;: ell, &quot;gamma&quot;: gamma,
+                             &quot;h&quot;: h, &quot;certificate&quot;: cert})
+                total += ell
+            multiplier += 1
+        return rows
+
+    def summary(self) -&gt; dict:
+        return {&quot;candidate_count&quot;: len(self.records),
+                &quot;accepted_count&quot;: sum(r[&quot;prime&quot;] for r in self.records),
+                &quot;rejected_count&quot;: sum(not r[&quot;prime&quot;] for r in self.records),
+                &quot;trial_divisions&quot;: sum(r[&quot;divisions&quot;] for r in self.records),
+                &quot;order_attempt_count&quot;: len(self.order_attempts),
+                &quot;max_candidate_bits&quot;: max((r[&quot;n&quot;].bit_length()
+                                           for r in self.records), default=0)}
+
+
+class ExactRandom:
+    def __init__(self, seed: int):
+        self.rng = random.Random(seed)
+        self.bits = 0
+        self.rejections = 0
+
+    def below(self, n: int) -&gt; int:
+        if n &lt; 1:
+            raise ValueError(&quot;empty distribution&quot;)
+        if n == 1:
+            return 0
+        bits = (n - 1).bit_length()
+        while True:
+            self.bits += bits
+            r = self.rng.getrandbits(bits)
+            if r &lt; n:
+                return r
+            self.rejections += 1
+
+    def weighted(self, rows: list[dict]) -&gt; dict:
+        r = self.below(sum(row[&quot;ell&quot;] for row in rows))
+        for row in rows:
+            if r &lt; row[&quot;ell&quot;]:
+                return row
+            r -= row[&quot;ell&quot;]
+        raise AssertionError(&quot;weight table&quot;)
+
+
+def validate_pool(q_rows: list[dict], p_rows: list[dict], q: int,
+                  q_lower: int, q_capacity: int, p_capacity: int) -&gt; None:
+    q_values = [r[&quot;q&quot;] for r in q_rows]
+    p_values = [r[&quot;p&quot;] for r in p_rows]
+    if len(set(q_values)) != len(q_values) or len(set(p_values)) != len(p_values):
+        raise ValueError(&quot;repeated primes cannot add capacity&quot;)
+    if q not in q_values:
+        raise ValueError(&quot;selected q absent&quot;)
+    for r in q_rows:
+        n = r[&quot;q&quot;]
+        if n &lt;= q_lower or not primality_certificate(n)[&quot;prime&quot;]:
+            raise ValueError(&quot;invalid inner prime&quot;)
+        if r[&quot;ell&quot;] != n.bit_length() - 1:
+            raise ValueError(&quot;invalid inner weight&quot;)
+    for r in p_rows:
+        p = r[&quot;p&quot;]
+        if not primality_certificate(p)[&quot;prime&quot;] or (p - 1) % q:
+            raise ValueError(&quot;invalid outer prime&quot;)
+        if r[&quot;ell&quot;] != p.bit_length() - 1:
+            raise ValueError(&quot;invalid outer weight&quot;)
+        if not (1 &lt; r[&quot;gamma&quot;] &lt; p) or pow(r[&quot;gamma&quot;], q, p) != 1:
+            raise ValueError(&quot;invalid order-q element&quot;)
+    if sum(r[&quot;ell&quot;] for r in q_rows) &lt; q_capacity:
+        raise ValueError(&quot;insufficient inner capacity&quot;)
+    if sum(r[&quot;ell&quot;] for r in p_rows) &lt; p_capacity:
+        raise ValueError(&quot;insufficient outer capacity&quot;)
+
+
+class LinearExponentialOracle:
+    &quot;&quot;&quot;Fixed integer f_j(X),g_j(X),h_j=1, hidden from the tester.
+
+    Modular powers and reductions are actual computations, not a unit-cost
+    real-exponential or target-coefficient oracle. Counts describe this
+    supplied toy provider only, not general neural-network cost.
+    &quot;&quot;&quot;
+    def __init__(self, coefficient_pairs: list[tuple[int, int]],
+                 exponent_pairs: list[tuple[int, int]]):
+        self.fs = tuple(coefficient_pairs)
+        self.gs = tuple(exponent_pairs)
+        self.calls = []
+        self.modular_pow_calls = 0
+        self.modular_mul_calls = 0
+        self.constant_reduction_bits = 0
+
+    def __call__(self, p: int, q: int, a: int, u: list[int], v: list[int]):
+        assert len(u) == len(v) == 1
+        result = 0
+        for (fc, fa), (gc, ga) in zip(self.fs, self.gs):
+            self.constant_reduction_bits += sum(abs(t).bit_length()
+                                               for t in (fc, fa, gc, ga))
+            fv = (fc % p + (fa % p) * u[0]) % p
+            gv = (gc % q + (ga % q) * v[0]) % q
+            result = (result + fv * pow(a, gv, p)) % p
+            self.modular_pow_calls += 1
+            self.modular_mul_calls += 3
+        query_bits = p.bit_length() * (len(u) + 1) + q.bit_length() * (len(v) + 1)
+        record = {&quot;p&quot;: p, &quot;q&quot;: q, &quot;a&quot;: a, &quot;u&quot;: u, &quot;v&quot;: v,
+                  &quot;response&quot;: result, &quot;query_payload_upper_bits&quot;: query_bits,
+                  &quot;response_upper_bits&quot;: p.bit_length()}
+        self.calls.append(record)
+        return result
+
+
+def one_query(oracle, params: dict, q_rows: list[dict], acquisition: Acquisition,
+              rng: ExactRandom) -&gt; tuple[dict, list[dict]]:
+    selected = rng.weighted(q_rows)
+    q = selected[&quot;q&quot;]
+    required = 6 * ceil_log2(params[&quot;k&quot;] * params[&quot;w&quot;])
+    p_rows = acquisition.outer_pool(q, required)
+    p_selected = rng.weighted(p_rows)
+    p = p_selected[&quot;p&quot;]
+    r = rng.below(q - 1) + 1
+    a = pow(p_selected[&quot;gamma&quot;], r, p)
+    u = [rng.below(p) for _ in range(params[&quot;n&quot;])]
+    v = [rng.below(q) for _ in range(params[&quot;n&quot;])]
+    start = time.perf_counter()
+    answer = oracle(p, q, a, u, v)
+    oracle_seconds = time.perf_counter() - start
+    return {&quot;q&quot;: q, &quot;p&quot;: p, &quot;r&quot;: r, &quot;a&quot;: a, &quot;u&quot;: u, &quot;v&quot;: v,
+            &quot;answer&quot;: answer, &quot;accept_zero&quot;: answer in (0, None),
+            &quot;oracle_seconds&quot;: oracle_seconds}, p_rows
+
+
+def multiplication_matrix(c: tuple[int, ...], q: int) -&gt; list[list[int]]:
+    &quot;&quot;&quot;Multiply by C modulo the monic 1+z+...+z^(q-1).&quot;&quot;&quot;
+    n = q - 1
+    columns = []
+    for shift in range(n):
+        a = [0] * (len(c) + shift)
+        for j, coefficient in enumerate(c):
+            a[j + shift] += coefficient
+        for j in range(len(a) - 1, n - 1, -1):
+            coefficient = a[j]
+            for t in range(n + 1):
+                a[j - n + t] -= coefficient
+        columns.append((a + [0] * n)[:n])
+    return [[columns[j][i] for j in range(n)] for i in range(n)]
+
+
+def bareiss_det(a: list[list[int]]) -&gt; int:
+    a = [row[:] for row in a]
+    n = len(a)
+    if n == 1:
+        return a[0][0]
+    denominator = 1
+    sign = 1
+    for k in range(n - 1):
+        pivot_row = next((i for i in range(k, n) if a[i][k]), None)
+        if pivot_row is None:
+            return 0
+        if pivot_row != k:
+            a[k], a[pivot_row] = a[pivot_row], a[k]
+            sign *= -1
+        pivot = a[k][k]
+        for i in range(k + 1, n):
+            for j in range(k + 1, n):
+                numerator = pivot * a[i][j] - a[i][k] * a[k][j]
+                assert numerator % denominator == 0
+                a[i][j] = numerator // denominator
+            a[i][k] = 0
+        denominator = pivot
+    return sign * a[-1][-1]
+
+
+def modular_nullity(a: list[list[int]], p: int) -&gt; int:
+    a = [[v % p for v in row] for row in a]
+    m = len(a)
+    rank = 0
+    for col in range(m):
+        row = next((r for r in range(rank, m) if a[r][col]), None)
+        if row is None:
+            continue
+        a[rank], a[row] = a[row], a[rank]
+        inv = pow(a[rank][col], -1, p)
+        a[rank] = [v * inv % p for v in a[rank]]
+        for r in range(rank + 1, m):
+            factor = a[r][col]
+            a[r] = [(x - factor * y) % p for x, y in zip(a[r], a[rank])]
+        rank += 1
+    return m - rank
+
+
+def primitive_roots(p: int, q: int) -&gt; list[int]:
+    for h in range(2, p):
+        gamma = pow(h, (p - 1) // q, p)
+        if gamma != 1:
+            return [pow(gamma, r, p) for r in range(1, q)]
+    raise AssertionError(&quot;order-q subgroup&quot;)
+
+
+def polynomial_value(c: tuple[int, ...], a: int, p: int) -&gt; int:
+    value = 0
+    for coefficient in reversed(c):
+        value = (value * a + coefficient) % p
+    return value
+
+
+def root_diagnostics() -&gt; dict:
+    start = time.perf_counter()
+    checked = 0
+    nonzero_root_events = 0
+    max_det_bits = 0
+    randomizer = random.Random(131313)
+    row_reports = []
+    for q in (3, 5, 7, 11):
+        acquisition = Acquisition()
+        pool = acquisition.outer_pool(q, 18)
+        pool = pool[:3]
+        if q in (3, 5):
+            vectors = product((-2, -1, 0, 1, 2), repeat=q)
+        else:
+            vectors = []
+            for _ in range(250):
+                support = randomizer.sample(range(q), randomizer.randrange(1, min(q, 5)))
+                v = [0] * q
+                for i in support:
+                    v[i] = randomizer.choice((-3, -2, -1, 1, 2, 3))
+                vectors.append(tuple(v))
+        per_q = 0
+        for c in vectors:
+            if not any(c) or sum(v != 0 for v in c) == q:
+                continue
+            matrix = multiplication_matrix(c, q)
+            resultant = bareiss_det(matrix)
+            assert resultant != 0
+            norm = sum(abs(v) for v in c)
+            assert abs(resultant) &lt;= norm ** (q - 1)
+            max_det_bits = max(max_det_bits, abs(resultant).bit_length())
+            norm_product = 1
+            weighted_roots = 0
+            for row in pool:
+                p = row[&quot;p&quot;]
+                roots = sum(polynomial_value(c, a, p) == 0
+                            for a in primitive_roots(p, q))
+                assert modular_nullity(matrix, p) == roots
+                assert resultant % (p ** roots) == 0
+                norm_product *= p ** roots
+                weighted_roots += row[&quot;ell&quot;] * roots
+                nonzero_root_events += roots &gt; 0
+            assert abs(resultant) % norm_product == 0
+            assert norm_product &lt;= norm ** (q - 1)
+            assert weighted_roots &lt;= (q - 1) * ceil_log2(norm)
+            checked += 1
+            per_q += 1
+        row_reports.append({&quot;q&quot;: q, &quot;checked&quot;: per_q,
+                            &quot;p_pool&quot;: [r[&quot;p&quot;] for r in pool]})
+
+    # Decisive interface failures, not counterexamples to the admitted lemma.
+    full_support = bareiss_det(multiplication_matrix((1, 1, 1, 1, 1), 5)) == 0
+    composite_vector = (1, 0, 0, 1, 0, 0, 1, 0, 0)  # Phi_9, degree6, support3.
+    composite_det_zero = bareiss_det(multiplication_matrix(composite_vector, 9)) == 0
+    # Same prime counted three times falsely promises a capacity factor3.
+    repeated_prime_actual = Fraction(1)
+    repeated_prime_false_bound = Fraction(ceil_log2(11), 3 * (11 .bit_length() - 1))
+    # C_p=p is degree0/support1 at each characteristic, but input changes with p.
+    adaptive_pool = (11, 31, 41)
+    adaptive_false_bound = Fraction(ceil_log2(max(adaptive_pool)),
+                                   sum(p.bit_length() - 1 for p in adaptive_pool))
+    return {&quot;status&quot;: &quot;PASS&quot;, &quot;vectors_checked&quot;: checked,
+            &quot;prime_root_checks&quot;: checked * 3,
+            &quot;nonzero_root_events&quot;: nonzero_root_events,
+            &quot;max_determinant_bits&quot;: max_det_bits, &quot;rows&quot;: row_reports,
+            &quot;seconds&quot;: time.perf_counter() - start,
+            &quot;obstructions&quot;: {
+                &quot;full_support_zero_norm&quot;: full_support,
+                &quot;composite_q_sparse_zero_norm&quot;: composite_det_zero,
+                &quot;duplicate_prime_actual_error&quot;: str(repeated_prime_actual),
+                &quot;duplicate_prime_false_bound&quot;: str(repeated_prime_false_bound),
+                &quot;p_adaptive_constant_actual_error&quot;: &quot;1&quot;,
+                &quot;p_adaptive_constant_false_bound&quot;: str(adaptive_false_bound)}}
+
+
+def exact_characteristic_fixture() -&gt; tuple[dict, dict]:
+    &quot;&quot;&quot;P=1-exp(103): exact error from q=103, with d0/k2/w103.
+
+    Diagnostic enumerates roots; the tester itself never performs this scan.
+    &quot;&quot;&quot;
+    start = time.perf_counter()
+    acquisition = Acquisition()
+    q_rows = acquisition.inner_pool(2, 6 * 3 * ceil_log2(103))
+    capacity = sum(r[&quot;ell&quot;] for r in q_rows)
+    accepted = Fraction(0)
+    evaluations = 0
+    pools = {}
+    for row in q_rows:
+        q = row[&quot;q&quot;]
+        p_rows = acquisition.outer_pool(q, 6 * ceil_log2(206))
+        pools[str(q)] = p_rows
+        p_capacity = sum(p[&quot;ell&quot;] for p in p_rows)
+        conditional = Fraction(0)
+        for p_row in p_rows:
+            p = p_row[&quot;p&quot;]
+            roots = primitive_roots(p, q)
+            zeros = sum((1 - pow(a, 103 % q, p)) % p == 0 for a in roots)
+            evaluations += len(roots)
+            conditional += Fraction(p_row[&quot;ell&quot;] * zeros, p_capacity * (q - 1))
+        accepted += Fraction(row[&quot;ell&quot;], capacity) * conditional
+    predicted_exact = Fraction(next(r[&quot;ell&quot;] for r in q_rows if r[&quot;q&quot;] == 103), capacity)
+    assert accepted == predicted_exact
+    bound = Fraction(3 * ceil_log2(103), capacity) + Fraction(ceil_log2(206), 48)
+    assert accepted &lt;= bound &lt; Fraction(1, 2)
+    return {&quot;status&quot;: &quot;PASS&quot;, &quot;P&quot;: &quot;1-exp(103)&quot;, &quot;n&quot;: 0,
+            &quot;k&quot;: 2, &quot;d&quot;: 0, &quot;w&quot;: 103, &quot;q_count&quot;: len(q_rows),
+            &quot;q_min&quot;: q_rows[0][&quot;q&quot;], &quot;q_max&quot;: q_rows[-1][&quot;q&quot;],
+            &quot;inner_capacity&quot;: capacity, &quot;exact_acceptance&quot;: str(accepted),
+            &quot;theorem_upper_bound&quot;: str(bound), &quot;root_evaluations&quot;: evaluations,
+            &quot;seconds&quot;: time.perf_counter() - start,
+            &quot;acquisition&quot;: acquisition.summary()}, {
+                &quot;q_pool&quot;: q_rows, &quot;p_pools&quot;: pools,
+                &quot;candidates&quot;: acquisition.records,
+                &quot;order_attempts&quot;: acquisition.order_attempts}
+
+
+def charged_prototype() -&gt; tuple[dict, dict]:
+    start = time.perf_counter()
+    k, d, n, w = 4, 1, 1, 1 &lt;&lt; 256
+    params = {&quot;k&quot;: k, &quot;d&quot;: d, &quot;n&quot;: n, &quot;w&quot;: w}
+    constraints = k + k * (k - 1) // 2
+    q_capacity = 6 * constraints * ceil_log2(w)
+    p_capacity = 6 * ceil_log2(k * w)
+    q_lower = max(k, 6 * d * (k * k + 1))
+    acquisition = Acquisition()
+    q_start = time.perf_counter()
+    q_rows = acquisition.inner_pool(q_lower, q_capacity)
+    q_seconds = time.perf_counter() - q_start
+    fs = [(1, w), (-1, -w), (2, 1), (3, -1)]
+    gs = [(j * j, j + 1) for j in range(k)]
+    oracle = LinearExponentialOracle(fs, gs)
+    rng = ExactRandom(131313)
+    query_start = time.perf_counter()
+    query, p_rows = one_query(oracle, params, q_rows, acquisition, rng)
+    query_seconds = time.perf_counter() - query_start
+    gate_start = time.perf_counter()
+    validate_pool(q_rows, p_rows, query[&quot;q&quot;], q_lower, q_capacity, p_capacity)
+    pool_gate_seconds = time.perf_counter() - gate_start
+    actual_q_capacity = sum(row[&quot;ell&quot;] for row in q_rows)
+    actual_p_capacity = sum(row[&quot;ell&quot;] for row in p_rows)
+    # The global proof uses the promised p capacity for every lazy q;
+    # observed p minima/capacity alone are not treated as global minima.
+    certified_bound = (Fraction(constraints * ceil_log2(w), actual_q_capacity)
+                       + Fraction(d * (k * k + 1), q_rows[0][&quot;q&quot;])
+                       + Fraction(ceil_log2(k * w), p_capacity))
+    assert certified_bound &lt; Fraction(1, 2)
+    zero_oracle = LinearExponentialOracle([(0, 0)] * k, gs)
+    zero_answer = zero_oracle(query[&quot;p&quot;], query[&quot;q&quot;], query[&quot;a&quot;], query[&quot;u&quot;], query[&quot;v&quot;])
+    assert zero_answer == 0
+    assert len(oracle.calls) == len(zero_oracle.calls) == 1
+    # Admission/membership mutations are explicit and retain their failure.
+    mutants = {}
+    bad = p_rows + [dict(p_rows[0])]
+    try:
+        validate_pool(q_rows, bad, query[&quot;q&quot;], q_lower, q_capacity, p_capacity)
+        mutants[&quot;duplicate_outer_prime&quot;] = &quot;MISSED&quot;
+    except ValueError as error:
+        mutants[&quot;duplicate_outer_prime&quot;] = str(error)
+    bad = [dict(r) for r in p_rows]
+    bad[0][&quot;gamma&quot;] = 1
+    try:
+        validate_pool(q_rows, bad, query[&quot;q&quot;], q_lower, q_capacity, p_capacity)
+        mutants[&quot;identity_generator&quot;] = &quot;MISSED&quot;
+    except ValueError as error:
+        mutants[&quot;identity_generator&quot;] = str(error)
+    bad = [dict(r) for r in q_rows]
+    bad[0][&quot;q&quot;] = 105
+    try:
+        validate_pool(bad, p_rows, query[&quot;q&quot;], q_lower, q_capacity, p_capacity)
+        mutants[&quot;composite_inner_prime&quot;] = &quot;MISSED&quot;
+    except ValueError as error:
+        mutants[&quot;composite_inner_prime&quot;] = str(error)
+    assert &quot;MISSED&quot; not in mutants.values()
+    pool_storage_bits = sum(r[&quot;q&quot;].bit_length() + r[&quot;ell&quot;].bit_length() for r in q_rows)
+    pool_storage_bits += sum(r[&quot;p&quot;].bit_length() + r[&quot;ell&quot;].bit_length()
+                             + r[&quot;gamma&quot;].bit_length() for r in p_rows)
+    report = {&quot;status&quot;: &quot;PASS&quot;, &quot;params&quot;: params,
+              &quot;required_q_capacity&quot;: q_capacity, &quot;actual_q_capacity&quot;: actual_q_capacity,
+              &quot;required_p_capacity&quot;: p_capacity, &quot;actual_used_p_capacity&quot;: actual_p_capacity,
+              &quot;q_pool_count&quot;: len(q_rows), &quot;used_p_pool_count&quot;: len(p_rows),
+              &quot;q_min&quot;: q_rows[0][&quot;q&quot;], &quot;q_max&quot;: q_rows[-1][&quot;q&quot;],
+              &quot;used_p_min&quot;: p_rows[0][&quot;p&quot;], &quot;used_p_max&quot;: p_rows[-1][&quot;p&quot;],
+              &quot;max_q_bits&quot;: q_rows[-1][&quot;q&quot;].bit_length(),
+              &quot;max_used_p_bits&quot;: p_rows[-1][&quot;p&quot;].bit_length(),
+              &quot;pool_payload_upper_bits&quot;: pool_storage_bits,
+              &quot;guaranteed_error_upper_bound&quot;: str(certified_bound),
+              &quot;single_nonzero_query&quot;: query,
+              &quot;single_zero_query_response&quot;: zero_answer,
+              &quot;random_bits_consumed&quot;: rng.bits, &quot;sampling_rejections&quot;: rng.rejections,
+              &quot;input_constant_bits_read_nonzero_query&quot;: oracle.constant_reduction_bits,
+              &quot;oracle_modular_mul_calls&quot;: oracle.modular_mul_calls,
+              &quot;oracle_modular_pow_calls&quot;: oracle.modular_pow_calls,
+              &quot;acquisition&quot;: acquisition.summary(), &quot;mutant_rejections&quot;: mutants,
+              &quot;timing_seconds&quot;: {&quot;q_acquisition&quot;: q_seconds,
+                                   &quot;lazy_p_acquisition_plus_sampling_and_query&quot;: query_seconds,
+                                   &quot;fresh_trial_division_pool_gate&quot;: pool_gate_seconds,
+                                   &quot;nonzero_query_only&quot;: query[&quot;oracle_seconds&quot;],
+                                   &quot;prototype_total&quot;: time.perf_counter() - start},
+              &quot;control&quot;: {&quot;June_source_required_q_greater_than_2kw&quot;: str(2 * k * w),
+                          &quot;June_source_q_minimum_bit_length&quot;: (2 * k * w).bit_length(),
+                          &quot;large_field_source_not_executed&quot;: True,
+                          &quot;no_compiler_or_end_to_end_speedup_claim&quot;: True}}
+    log = {&quot;parameters&quot;: params, &quot;coefficient_pairs&quot;: fs, &quot;exponent_pairs&quot;: gs,
+           &quot;q_pool&quot;: q_rows, &quot;used_p_pool&quot;: p_rows,
+           &quot;selected_q&quot;: query[&quot;q&quot;], &quot;candidate_records&quot;: acquisition.records,
+           &quot;order_attempts&quot;: acquisition.order_attempts,
+           &quot;nonzero_oracle_log&quot;: oracle.calls, &quot;zero_oracle_log&quot;: zero_oracle.calls}
+    return report, log
+
+
+def main() -&gt; None:
+    OUT.mkdir(parents=True, exist_ok=True)
+    start = time.perf_counter()
+    roots = root_diagnostics()
+    characteristic, char_log = exact_characteristic_fixture()
+    prototype, log = charged_prototype()
+    for name, obj in ((&quot;root_diagnostics.json&quot;, roots),
+                      (&quot;characteristic_fixture.json&quot;, characteristic),
+                      (&quot;characteristic_acquisition.json&quot;, char_log),
+                      (&quot;charged_prototype.json&quot;, prototype),
+                      (&quot;charged_acquisition.json&quot;, log)):
+        (OUT / name).write_text(json.dumps(obj, indent=2) + &quot;\n&quot;)
+    report = {&quot;status&quot;: &quot;PASS&quot;, &quot;seconds_all_diagnostics_and_prototype&quot;: time.perf_counter() - start,
+              &quot;ru_maxrss_bytes_macos&quot;: resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
+              &quot;scoped_worker_process_only&quot;: True,
+              &quot;artifacts&quot;: {name: {&quot;bytes&quot;: (OUT / name).stat().st_size,
+                                     &quot;sha256&quot;: hashlib.sha256((OUT / name).read_bytes()).hexdigest()}
+                            for name in (&quot;root_diagnostics.json&quot;, &quot;characteristic_fixture.json&quot;,
+                                         &quot;characteristic_acquisition.json&quot;, &quot;charged_prototype.json&quot;,
+                                         &quot;charged_acquisition.json&quot;)}}
+    (OUT / &quot;execution_summary.json&quot;).write_text(json.dumps(report, indent=2) + &quot;\n&quot;)
+    print(json.dumps({&quot;status&quot;: report[&quot;status&quot;], &quot;vectors&quot;: roots[&quot;vectors_checked&quot;],
+                      &quot;characteristic_exact_error&quot;: characteristic[&quot;exact_acceptance&quot;],
+                      &quot;prototype_q&quot;: prototype[&quot;single_nonzero_query&quot;][&quot;q&quot;],
+                      &quot;prototype_p&quot;: prototype[&quot;single_nonzero_query&quot;][&quot;p&quot;],
+                      &quot;q_bits&quot;: prototype[&quot;max_q_bits&quot;],
+                      &quot;p_bits&quot;: prototype[&quot;max_used_p_bits&quot;],
+                      &quot;bound&quot;: prototype[&quot;guaranteed_error_upper_bound&quot;],
+                      &quot;seconds&quot;: report[&quot;seconds_all_diagnostics_and_prototype&quot;]}))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre></html>

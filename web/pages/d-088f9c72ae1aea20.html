@@ -1,0 +1,157 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Independent audit: differential-energy Gaussian cloud gadget</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>Independent audit: differential-energy Gaussian cloud gadget</h1><p>Source ID d-088f9c72ae1aea20; literature/notes/c_gaussian/rank_gadget_audit.md; 3577 o200k tokens; role research_note; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre># Independent audit: differential-energy Gaussian cloud gadget
+
+Auditor c_gaussian, 2026-10-06. Requested by root after the Gaussian mass benchmark. No new workers. I read r10&#x27;s technical note, the original paper&#x27;s §§3.3, 4.1, 4.2 and the relevant Appendix B.2 construction, then reconstructed the argument without importing r10&#x27;s checker.
+
+**Verdict:** the exact-Jacobian corollary passes this audit. The clipping scale can use a uniform differential Frobenius budget r rather than output dimension n. This is a scoped corollary using stronger oracle assumptions; it does not improve the full gradient-only sampler. I also prove below a concrete obstruction to extending that replacement to the paper&#x27;s general robust-action interface. There, even a constant map with zero true Jacobian can acquire a nonvanishing sampling bias from unbiased action noise and clipping. This is not a counterexample to the paper&#x27;s dimension-n theorem or to its particular secant implementation.
+
+## 1. Interface and source status
+
+The source is Fan Chen, Sinho Chewi, Jianfeng Lu, Matthew S. Zhang, *High-accuracy simulation of Picard HMC, part I: Gaussian cloud correction*, arXiv:2609.38710v1, submitted 30 September 2026 00:48:09 UTC. Original abstract/version metadata were verified live. The live HTML fetch timed out; the recoverable original HTML/text snapshots already saved by r10 were copied into my source path and used for the proof reading. Read depth is excerpts, not the whole sampler.
+
+The exact gadget assumes values of a globally L-Lipschitz Φ:R^m→R^n and exact, linear forward/transposed Jacobian actions. Standard Gaussians, consistent finite-time Brownian bridge queries, and exact real arithmetic are supplied. In addition to ||DΦ||op≤L, assume almost everywhere ||DΦ||F²≤rL², r≥1, and 0&lt;L²≤1/4. No common derivative range is supplied. The output is approximately N(EΦ(G),I_n); its unknown center is not estimated.
+
+The source supplies the Gaussian completion, randomized covariance products, FORS, and clipping mechanism. The replacement n→r under the stronger differential budget is r10&#x27;s deduction. I reconstructed the mathematical implication but did not establish publication novelty or validate the full Picard-HMC/RGO assembly.
+
+## 2. Martingale and covariance completion
+
+This part can be reconstructed directly without assuming the Clark–Ocone formula. Define h(t,x)=E Φ(x+sqrt(1−t)G). For t&lt;1 it solves the backward heat equation and has derivative A(t,x)=E DΦ(x+sqrt(1−t)G). Itô&#x27;s formula gives
+
+Φ(B_1)−EΦ(B_1)=∫_0^1 A(t,B_t)dB_t.
+
+Lipschitzness gives square-integrable endpoint convergence as t↑1. Conditional Jensen in the operator and Hilbert–Schmidt norms gives, pathwise,
+
+||A_t||op≤L, ||A_t||F²≤rL²,
+Σ=∫A_tA_tᵀdt satisfies 0≤Σ≤L²I and tr Σ≤rL².
+
+These are bounds on trace, not rank. Averaging a rotating rank-one derivative can produce a full-rank Σ. Let Z conditional on the whole Brownian path be a fresh N(0,I−Σ) variable. For fixed u,
+
+E exp[iuᵀ(Φ(B_1)−EΦ(B_1)+Z)]
+=exp(−||u||²/2) E exp[i∫uᵀA_t dB_t + ½∫||A_tᵀu||²dt]
+=exp(−||u||²/2).
+
+The complex stochastic exponential has absolute value at most exp(L²||u||²/2), so its expectation is one. Thus the ideal cloud is exactly Gaussian. The sign of the quadratic variation term is positive because the martingale parameter is imaginary; I checked this explicitly.
+
+## 3. Randomized products and norms
+
+Conditional on a fixed whole path, draw fresh T uniform on [0,1] and independent G_1,G_2 standard Gaussian. Put J_i=DΦ(B_T+sqrt(1−T)G_i), S=J_1J_2ᵀ. Then E[S|B]=Σ. The two derivative samples must be independent conditional on (T,B_T); using one sample twice would estimate E[JJᵀ], generally a different matrix.
+
+Every realized action has
+
+||S||op≤L², ||S||F≤sqrt(r)L², ||S||_*≤rL².
+
+The first two follow from submultiplicativity, and the last from ||UVᵀ||_*≤||U||F||V||F. For independent S_1,...,S_K conditional on B, M_k=S_k...S_1 has E[M_k|B]=Σ^k and
+
+||M_k||op≤L^(2k), ||M_k||F≤sqrt(r)L^(2k), ||M_k||_*≤rL^(2k).
+
+Use one matrix realization on both independent standard Gaussian vectors Z,Z′:
+
+W_K=½ sum_{k=1}^K [Z′ᵀM_kZ′/k−ZᵀM_kZ].
+
+Its conditional mean given (B,Z) is w_K=½ sum [tr Σ^k/k−ZᵀΣ^kZ]. Products at different levels are dependent. The argument below uses triangle inequalities and never assumes those products independent. Forward and transpose Jacobian actions compute each S on both vectors with four actions per level. No dense matrix is required.
+
+## 4. Nonsymmetric quadratic mgf and the tilted norm
+
+For any deterministic real M, write H=(M+Mᵀ)/2. Quadratic forms and traces are unchanged, and ||H||op,F≤||M||op,F. Diagonalizing H with eigenvalues a_i gives
+
+log E exp[t(ZᵀHZ−tr H)]
+=sum_i [−ta_i−½log(1−2ta_i)]
+≤t²||H||F²/(1−2|t|||H||op), for 2|t|||H||op&lt;1.
+
+The bound follows by expanding the logarithm from order two and summing a geometric series; negative eigenvalues cause no problem with this absolute-value restriction. Chernoff optimization gives the two-sided tail
+
+Pr(|ZᵀMZ−tr M|≥2||H||F sqrt(u)+2||H||op u)≤2e^(−u).
+
+Tail integration therefore gives ||ZᵀMZ−tr M||p≤C(sqrt(p)||M||F+p||M||op). Conditional on B and matrices, the k=1 trace terms cancel exactly under the proposal Q. For k≥2 the mean term is (1/k−1)tr M_k, whose absolute value is ≤rL^(2k). Summing the geometric series yields
+
+||W_K||Lp(Q)≤C[L²(sqrt(rp)+p)+rL⁴]=e_p.
+
+Under the exact truncated tilt P_K∝e^w_K Q, Z|B is Gaussian with C_K=(I+sum_{k≤K}Σ^k)^−1≤I. Auxiliary derivative samples and Z′ retain their conditional laws, because the tilt involves only (B,Z). Thus Z=C_K^1/2 Z_0, where Z_0 is conditionally standard and independent of those seeds. The matrix in the second quadratic is C_K^1/2 M_k C_K^1/2, whose op/Frobenius norms do not increase. The additional trace mismatch is
+
+|tr M_k(C_K−I)|≤||M_k||_*||C_K−I||op≤CrL^(2k+2).
+
+After summation, the same e_p bound holds under P_K. This step is valid without commutation of M_k and C_K and is exactly where a realized nuclear norm budget is useful.
+
+## 5. Truncation and normalization
+
+For an eigenvalue λ of Σ, 0≤λ≤L², the truncated covariance is
+
+C_K(λ)=(1−λ)/(1−λ^(K+1)).
+
+Its relative discrepancy from ideal covariance 1−λ is λ^(K+1)/(1−λ^(K+1)). Conditional Gaussian KL is consequently ≤C sum λ_i^(2K+2), and conditional TV is ≤C sqrt(r)L^(2K+2), since sum λ_i^(2K+2)≤(tr Σ)L^(4K+2)≤rL^(4K+4).
+
+Gaussian integration gives
+
+log Z_K(B)=½sum_i [sum_{k≤K}λ_i^k/k−log(sum_{k=0}^Kλ_i^k)]
+=½sum_i [−sum_{k&gt;K}λ_i^k/k−log(1−λ_i^(K+1))].
+
+Hence |log Z_K|≤C sum_i λ_i^(K+1)≤CrL^(2K+2). The Brownian marginal is multiplied by Z_K/E Z_K. Under the small-normalization condition CrL^(2K+2)≤c, that marginal changes by at most CrL^(2K+2) in TV. Both the Brownian marginal and conditional Gaussian errors are required; checking endpoint covariance alone would not prove the joint tilt bound. Because r≥1, their sum is CrL^(2K+2).
+
+## 6. Clipping, FORS, and costs
+
+Let tilde w=E[clip_B(W_K)|B,Z], B∈(0,1]. For either P=Q or P=P_K,
+
+E_P|w_K−tilde w|≤E_P(|W_K|−B)_+≤B(e_p/B)^p.
+
+For A=E_Qe^w_K and tilde A=E_Qe^tilde w, set Δ=∫|e^w_K−e^tilde w|dQ. The inequality |e^u−e^v|≤|u−v|(e^u+e^v) gives
+
+Δ≤A E_P_K|w_K−tilde w|+e^B E_Q|w_K−tilde w|.
+
+Also |A−tilde A|≤Δ and TV(P_K,Q_tilde w)≤Δ/A. A is bounded away from zero by the normalization bound. This proves the proposed total error
+
+TV(output,N(EΦ(G),I_n))≤C[rL^(2K+2)+B(e_p/B)^p].
+
+For FORS, a fresh J~Poisson(2B) and conditionally iid clipped estimates have acceptance expectation exp(tilde w−B). Therefore each attempt accepts with probability at least e^(−2B), expected attempts ≤e^(2B)≤1+CB, and expected estimator calls ≤2Be^(2B). Multiplying by 4K derivative actions gives O(BK) expected Jacobian queries. The conditional iid statement is with respect to the same full Brownian path, not merely the already revealed path points. A consistent bridge simulator realizes that joint path and adds finitely many new observations as requested.
+
+Query counts exclude Gaussian generation and vector work. Each proposal/output costs Ω(m+n); each estimator has O(K(m+n)) vector operations and O(mK) extra Brownian bridge storage before any endpoint cleanup, with an unbounded but finite random number of estimators. Oracle construction, uniform-budget verification, and precision are not free under a computational claim.
+
+One automatic consequence is r=min(m,n), because any m-input n-output L-Lipschitz map has Jacobian rank at most min(m,n). Much smaller r requires extra information about differential energy. A sufficient abstract implemented-action interface is exact conditional unbiasedness plus realized op/Frobenius/nuclear budgets as above; exact Jacobian access is one way to supply it, not the only possible way.
+
+## 7. Concrete obstruction to robust-oracle transfer
+
+The source&#x27;s robust theorem assumes an odd L²-Lipschitz randomized action S(v) with conditional mean Σv up to a relative bias tolerance. It does not impose a realized Frobenius or nuclear budget. That is insufficient for the refinement, even if the true map has zero differential energy.
+
+Take Φ≡0, so Σ=0, and choose r=1, K=1, B fixed. In dimension n let c_n=L_n²=n^(−1/4) and
+
+S(v)=ξ c_n v, Pr(ξ=1)=1/3, Pr(ξ=−1/2)=2/3.
+
+This action is odd, c_n-Lipschitz, linear, and exactly unbiased: Eξ=0. It meets the source robust assumptions with ε=0. The true Jacobian is zero and thus meets every proposed r budget. Yet
+
+W_1=½ξ c_n(||Z′||²−||Z||²),
+||W_1||2=c_n sqrt(n/2),
+
+which diverges as n^(1/4). Thus an r-only moment bound already fails.
+
+There is also a sampling error, not merely a proof failure. Let R=||Z||² and let F_n be the continuous χ²_n CDF. Under the proposal U=F_n(R) is exactly uniform on (0,1). Since the χ²_n density has supremum O(n^(−1/2)), replacing the clipped W by B sign(W) changes its conditional mean by at most
+
+C B²/(c_n sqrt(n))=O(n^(−1/4)),
+
+uniformly over R. The bound follows by restricting to |R′−R|≤2B/c_n and using the density supremum. Thus
+
+tilde w(R)=(B/3)(2F_n(R)−1)+o(1), uniformly.
+
+FORS outputs a radial law, with angular distribution identical to the Gaussian. Consequently its TV distance from the target equals its radial TV distance, and converges exactly to the TV between uniform U and the tilted density
+
+f(u)=exp[b(2u−1)]/[sinh(b)/b], b=B/3.
+
+In particular, the event U&gt;1/2 has limiting probability logistic(b), instead of 1/2. Therefore
+
+liminf TV≥½tanh(B/6)&gt;0.
+
+Integrating at the density crossing u_0=(1+log(sinh(b)/b)/b)/2 gives the exact limit
+
+TV∞=½coth(b)+[log(sinh(b)/b)−1]/(2b).
+
+For B=1, the event lower bound is .08257020646. Meanwhile an invalid r=1 robust substitution would put rL^(2K+2)=c_n²→0 and e_2=O(c_n)→0, predicting error→0. This proves that transfer false under the abstract robust assumptions. It leaves open whether the source&#x27;s particular structured gradient secants admit a stronger certificate.
+
+The symmetric ξ=±1 example also defeats the moment bound but has zero clipped mean by symmetry. Asymmetric noise is necessary for the nonzero clipping bias in this construction; I kept that distinction explicit.
+
+## 8. Independent finite evidence and scientific status
+
+Run `python3 work/c_gaussian/rank_gadget_audit.py`. Results are saved in results/c_gaussian/rank_gadget_audit.json. It checks nonsymmetric Gaussian mgfs, noncommuting product budgets, tilted trace mismatch, and 12 scalar truncation identities. It imports no r10 code.
+
+The robust-oracle simulation uses exact χ² radial draws and the actual Poisson-product FORS acceptance mechanism, without allocating vectors of size n. At n=10^12, c_n=.001, 160,000 proposals gave 59,802 accepted radii and an event gap .0827549, close to the analytic limiting lower bound .0825702. This finite simulation illustrates the proved obstruction; it is not independent external validation of the paper.
+
+Nearest prior art: the source already supplies the cloud correction and general clipping theorem; Gaussian quadratic concentration and the martingale completion are established ingredients. The differential-energy replacement is a plausible corollary but novelty is unverified. There is no demonstrated arithmetic advantage over a competent low-dimensional simulator/automatic-differentiation baseline, and no acquisition claim for the uniform differential budget.
+
+Next falsifiable step: analyze the realized derivative energy of Appendix B.2&#x27;s actual forward/reverse secant recursion. Either prove a uniform action/Frobenius budget and conditional tail bound through its compositions, or exhibit a structured smooth composition satisfying the target differential budget whose implemented actions lose it. This must precede a low-r claim for the gradient-only full sampler.
+</pre></html>

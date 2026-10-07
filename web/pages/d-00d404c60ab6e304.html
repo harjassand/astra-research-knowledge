@@ -1,0 +1,94 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>&quot;&quot;&quot;Owned cycle17 exact field/span/kernel code reused for the cycle18 compiler.</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>&quot;&quot;&quot;Owned cycle17 exact field/span/kernel code reused for the cycle18 compiler.</h1><p>Source ID d-00d404c60ab6e304; literature/sources/metric_geometry10/cycle18/peer_exact_linear.py; 1084 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>&quot;&quot;&quot;Owned cycle17 exact field/span/kernel code reused for the cycle18 compiler.
+
+No external optimizer. Row bases over Q or a caller-certified Fp.
+&quot;&quot;&quot;
+from fractions import Fraction
+from collections import Counter
+
+class Field:
+    def __init__(self, p=None):
+        if p is not None and (not isinstance(p,int) or p&lt;2):
+            raise ValueError(&quot;p must be a prime integer; primality is a caller obligation&quot;)
+        self.p=p; self.ops=Counter(); self.max_bits=0
+    def track(self,a):
+        if self.p is None:
+            self.max_bits=max(self.max_bits,abs(a.numerator).bit_length(),a.denominator.bit_length())
+        else: self.max_bits=max(self.max_bits,a.bit_length())
+        return a
+    def elt(self,a):
+        self.ops[&#x27;convert&#x27;]+=1
+        value=Fraction(a)
+        if self.p is None: return self.track(value)
+        if value.denominator % self.p==0: raise ValueError(&quot;rational denominator is zero in supplied field&quot;)
+        self.ops[&#x27;conversion_mod&#x27;]+=1
+        if value.denominator==1: return self.track(value.numerator%self.p)
+        self.ops[&#x27;conversion_inverse&#x27;]+=1; self.ops[&#x27;conversion_mul&#x27;]+=1
+        return self.track(value.numerator*pow(value.denominator,-1,self.p)%self.p)
+    def add(self,a,b):
+        self.ops[&#x27;add&#x27;]+=1; return self.track(a+b if self.p is None else (a+b)%self.p)
+    def sub(self,a,b):
+        self.ops[&#x27;sub&#x27;]+=1; return self.track(a-b if self.p is None else (a-b)%self.p)
+    def mul(self,a,b):
+        self.ops[&#x27;mul&#x27;]+=1; return self.track(a*b if self.p is None else a*b%self.p)
+    def div(self,a,b):
+        self.ops[&#x27;div&#x27;]+=1
+        if not b: raise ZeroDivisionError(&quot;zero pivot&quot;)
+        return self.track(a/b if self.p is None else a*pow(b,-1,self.p)%self.p)
+    def report(self):
+        return {&#x27;field&#x27;:&#x27;Q&#x27; if self.p is None else &#x27;Fp&#x27;,&#x27;p&#x27;:self.p,
+                &#x27;declared_primitive_calls&#x27;:dict(self.ops),&#x27;max_scalar_bits&#x27;:self.max_bits,
+                &#x27;p_bits&#x27;:self.p.bit_length() if self.p else None,
+                &#x27;count_scope&#x27;:&#x27;declared field/conversion calls; excludes Fraction weight operations, internals, serialization and I/O&#x27;,
+                &#x27;prime_obligation&#x27;:&#x27;caller supplies prime; this oracle does not certify primality&#x27; if self.p else None}
+
+
+def rref(rows,n,field):
+    a=[[field.elt(x) for x in row] for row in rows]
+    if any(len(row)!=n for row in a): raise ValueError(&quot;row length mismatch&quot;)
+    pivots=[]; k=0
+    for j in range(n):
+        pivot=next((i for i in range(k,len(a)) if a[i][j]),None)
+        if pivot is None: continue
+        a[k],a[pivot]=a[pivot],a[k]; factor=a[k][j]
+        a[k]=[field.div(x,factor) for x in a[k]]
+        for i in range(len(a)):
+            if i!=k and a[i][j]:
+                c=a[i][j]; a[i]=[field.sub(x,field.mul(c,y)) for x,y in zip(a[i],a[k])]
+        pivots.append(j); k+=1
+        if k==len(a): break
+    return tuple(tuple(row) for row in a[:k]),tuple(pivots)
+
+
+def span(rows,n,field): return rref(rows,n,field)[0]
+
+
+def nullspace(rows,n,field):
+    reduced,piv=rref(rows,n,field); free=[j for j in range(n) if j not in piv]
+    out=[]
+    for j in free:
+        v=[field.elt(0) for _ in range(n)]; v[j]=field.elt(1)
+        for i,k in enumerate(piv): v[k]=field.sub(field.elt(0),reduced[i][j])
+        out.append(tuple(v))
+    return tuple(out)
+
+
+def intersection(u,v,n,field):
+    if not u or not v: return ()
+    # Kernel coefficients satisfy a U - b V = 0 in the ambient space.
+    rows=[[*(row[j] for row in u),*(field.sub(field.elt(0),row[j]) for row in v)] for j in range(n)]
+    ker=nullspace(rows,len(u)+len(v),field); out=[]
+    for coeff in ker:
+        out.append(tuple(sum_field((field.mul(coeff[i],u[i][j]) for i in range(len(u))),field) for j in range(n)))
+    return span(out,n,field)
+
+
+def sum_field(values,field):
+    total=field.elt(0)
+    for x in values: total=field.add(total,x)
+    return total
+
+
+def ambient(n,field): return tuple(tuple(field.elt(int(i==j)) for j in range(n)) for i in range(n))
+
+
+</pre></html>

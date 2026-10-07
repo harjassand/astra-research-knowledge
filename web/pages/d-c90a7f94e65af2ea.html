@@ -1,0 +1,84 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>&quot;&quot;&quot;Exactly specified conforming P1 FEM coefficient model (finite Galerkin map).</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>&quot;&quot;&quot;Exactly specified conforming P1 FEM coefficient model (finite Galerkin map).</h1><p>Source ID d-c90a7f94e65af2ea; literature/sources/r07_analysis/cycle2/model_preheldout_snapshot.py; 1498 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>&quot;&quot;&quot;Exactly specified conforming P1 FEM coefficient model (finite Galerkin map).
+No continuum error certification is implied by finite matrix results.
+&quot;&quot;&quot;
+import numpy as np
+
+def boundary_nodes(n):
+    return np.array([i for i in range(n+1)]+[j*(n+1)+n for j in range(1,n+1)]+[n*(n+1)+i for i in range(n-1,-1,-1)]+[j*(n+1) for j in range(n-1,0,-1)])
+
+def build(n=4, base_boundary_n=4):
+    points=np.array([(i/n,j/n) for j in range(n+1) for i in range(n+1)])
+    nn=len(points);ground=0;free=np.arange(1,nn);nb=4*n
+    mats=[np.zeros((nn,nn)) for _ in range(3)]
+    triangles=[];labels=[]
+    for j in range(n):
+        for i in range(n):
+            ids=[j*(n+1)+i,j*(n+1)+i+1,(j+1)*(n+1)+i+1,(j+1)*(n+1)+i]
+            x,y=(i+.5)/n,(j+.5)/n
+            label=1 if x&lt;.5 and y&gt;.5 else (2 if x&gt;.5 and y&lt;.25 else 0)
+            for tri in [(ids[0],ids[1],ids[2]),(ids[0],ids[2],ids[3])]:
+                p=points[list(tri)];coef=np.linalg.inv(np.column_stack((np.ones(3),p)))
+                grad=coef[1:];area=abs(np.linalg.det(np.column_stack((p[1]-p[0],p[2]-p[0]))))/2
+                local=area*grad.T@grad
+                ix=np.ix_(tri,tri)
+                mats[0][ix]+=local
+                if label:mats[label][ix]+=local
+                triangles.append(tri);labels.append(label)
+    A0,A1,A2=[a[np.ix_(free,free)] for a in mats]
+    nodes=boundary_nodes(n);M=np.zeros((nb,nb))
+    for i in range(nb):
+        ix=np.ix_([i,(i+1)%nb],[i,(i+1)%nb]);M[ix]+=np.array([[2,1],[1,2]])/(6*n)
+    val,vec=np.linalg.eigh(M);Mhalf=(vec*np.sqrt(val))@vec.T;Minvhalf=(vec/np.sqrt(val))@vec.T
+    if n==base_boundary_n:
+        mean=Mhalf@np.ones(nb);Q=np.linalg.qr(np.column_stack((mean,np.eye(nb)[:,1:])))[0];V=Minvhalf@Q[:,1:]
+    else:
+        base=build(base_boundary_n,base_boundary_n);basecoords=base[&#x27;points&#x27;][base[&#x27;boundary_nodes&#x27;]]
+        Vbase=base[&#x27;boundary_values&#x27;];V=[]
+        for xy in points[nodes]:
+            # Interpolate coarse boundary trace along its physical edge.
+            d=np.linalg.norm(basecoords-xy,axis=1);exact=np.where(d&lt;1e-12)[0]
+            if len(exact):V.append(Vbase[exact[0]]);continue
+            for k in range(len(basecoords)):
+                a,b=basecoords[k],basecoords[(k+1)%len(basecoords)];ab=b-a
+                t=np.dot(xy-a,ab)/np.dot(ab,ab)
+                if -1e-12&lt;t&lt;1+1e-12 and np.linalg.norm(a+t*ab-xy)&lt;1e-12:
+                    V.append((1-t)*Vbase[k]+t*Vbase[(k+1)%len(basecoords)]);break
+            else:raise AssertionError(&#x27;Boundary point outside coarse interpolation&#x27;)
+        V=np.array(V)
+    loads=np.zeros((nn,V.shape[1]));loads[nodes]=M@V;B=loads[free]
+    eig,U=np.linalg.eigh(A0);W=(U/np.sqrt(eig))@U.T
+    C=np.stack([W@A1@W,W@A2@W]);B0=W@B
+    assert np.max(abs(V.T@M@V-np.eye(V.shape[1])))&lt;1e-11
+    assert np.max(abs(np.ones(nb)@M@V))&lt;1e-11
+    return {&#x27;n&#x27;:n,&#x27;points&#x27;:points,&#x27;triangles&#x27;:np.array(triangles),&#x27;region_labels&#x27;:np.array(labels),&#x27;boundary_nodes&#x27;:nodes,&#x27;boundary_mass&#x27;:M,&#x27;boundary_values&#x27;:V,&#x27;A0&#x27;:A0,&#x27;A&#x27;:np.stack([A1,A2]),&#x27;B&#x27;:B,&#x27;W&#x27;:W,&#x27;C&#x27;:C,&#x27;B0&#x27;:B0,&#x27;reference_min_eigenvalue&#x27;:eig[0]}
+
+def forward(model,theta):
+    A=model[&#x27;A0&#x27;]+np.einsum(&#x27;j,jab-&gt;ab&#x27;,theta,model[&#x27;A&#x27;])
+    U=np.linalg.solve(A,model[&#x27;B&#x27;])
+    return model[&#x27;B&#x27;].T@U
+
+def derivative(model,theta):
+    A=model[&#x27;A0&#x27;]+np.einsum(&#x27;j,jab-&gt;ab&#x27;,theta,model[&#x27;A&#x27;]);U=np.linalg.solve(A,model[&#x27;B&#x27;])
+    return -np.einsum(&#x27;ai,jab,bk-&gt;jik&#x27;,U,model[&#x27;A&#x27;],U)
+
+def detector_frame(J,count):
+    # Exact reference E-optimal output frame for d=2 and count even.
+    u,s,vt=np.linalg.svd(J,full_matrices=False)
+    if s[1]&lt;1e-14:raise ValueError(&#x27;Reference directional Jacobian deficient&#x27;)
+    w1=count*s[1]**2/(s[0]**2+s[1]**2);w2=count-w1
+    plus=np.sqrt(w1/count)*u[:,0]+np.sqrt(w2/count)*u[:,1]
+    minus=np.sqrt(w1/count)*u[:,0]-np.sqrt(w2/count)*u[:,1]
+    Q=np.array([plus]*(count//2)+[minus]*(count//2))
+    return Q
+
+def design_matrix(model,design,theta=(0.,0.)):
+    deriv=derivative(model,np.array(theta))
+    return np.vstack([np.stack([q@d@g for d in deriv],axis=1) for g,q in design])
+
+def secant_certificate(model,design,rho):
+    J=design_matrix(model,design);alpha=np.linalg.svd(J,compute_uv=False)[-1]
+    factor=rho*(2-rho)/(1-rho)**2
+    # Per-current factor improves over one uniform operator bound while keeping proof exact.
+    remainder=factor*np.sqrt(sum(np.linalg.norm(q@model[&#x27;B0&#x27;].T,2)**2*np.linalg.norm(model[&#x27;B0&#x27;]@g)**2 for g,q in design))
+    return {&#x27;reference_sigma&#x27;:float(alpha),&#x27;uniform_remainder_bound&#x27;:float(remainder),&#x27;global_secant_lower&#x27;:float(alpha-remainder)}
+</pre></html>

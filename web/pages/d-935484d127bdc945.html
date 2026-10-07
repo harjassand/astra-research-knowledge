@@ -1,0 +1,91 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Sharper retained baseline: Gaussian rotation and proposal-only clipping</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>Sharper retained baseline: Gaussian rotation and proposal-only clipping</h1><p>Source ID d-935484d127bdc945; literature/notes/team_c_multiscale/cycle3/rotation_refinement.md; 1974 o200k tokens; role research_note; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre># Sharper retained baseline: Gaussian rotation and proposal-only clipping
+
+2026-10-06. Independent reconstruction by Team C and r10, adopted after c_gaussian&#x27;s separate complete gate PASS in notes/c_gaussian/cycle3/rotation_gate.md. Uses the prior FORS paper arXiv:2602.01338v2, verified revision 27 April2026 (original1February2026), Section3.2, rather than claiming a new path estimator. The source&#x27;s diffusion Frobenius result uses supplied diffusion scores, a different interface from our target-gradient contract. The slower theorem remains preserved and valid.
+
+## Actual gradient estimator and its exact law
+
+Use the contract of whole_sampler_transfer.md. For a requested residual RGO R^U_{a,v}, compute a finite center c and cache g_c=grad U(c). Put
+
+    e=g_c+(c-v)/a, zeta=sqrt(a)|e|&lt;=1,
+    mu=c-ae=v-a g_c.
+
+The proposal is X=mu+sqrt(a)G, an explicitly known Gaussian. For independent G&#x27; standard and T uniform[0,1], let theta=pi T/2 and
+
+    Gamma=mu+sqrt(a)(sin(theta)G+cos(theta)G&#x27;),
+    Vdot=(pi/2)sqrt(a)(cos(theta)G-sin(theta)G&#x27;),
+    W=Vdot.[g_c-grad U(Gamma)].                     (R1)
+
+Only one fresh gradient is queried per W; g_c is cached and every rejected W is charged. The endpoints of the path are mu+sqrt(a)G&#x27; and X. The fundamental theorem of calculus gives
+
+    E[W|G]=-U(X)+g_c.X + E[U(mu+sqrt(a)G&#x27;)-g_c.(mu+sqrt(a)G&#x27;)].
+
+Completing the Gaussian proposal square proves exp(E[W|G])Q is exactly R^U_{a,v} after normalization. No function value is evaluated. Unconditional EW=0 by identical endpoint distributions, so its normalizer Z=E_Q exp(E[W|G])&gt;=1. Finite c creates no omitted approximation error: its known residual was integrated into the proposal mean mu.
+
+## Dimension-free exponential and moment bounds under the proposal
+
+For each fixed T, the orthogonal Gaussian rotation makes Gamma=mu+sqrt(a)Z and Vdot=(pi/2)sqrt(a)H, with independent standard Z,H. Therefore W conditional on Z is centered Gaussian with standard deviation (pi/2)R(Z), where
+
+    R(Z)=sqrt(a)|grad U(mu+sqrt(a)Z)-g_c|.
+
+Co-coercivity/Stein, followed by |mu-c|=sqrt(a)zeta, gives
+
+    E R²&lt;=2(ah)²(tau+zeta²)&lt;=2(ah)²(tau+1).
+
+R is ah-Lipschitz. The norm-square exponential inequality proved in nonodd_trace_lemma.md yields
+
+    E exp(lambda W)&lt;=exp[C lambda²(ah)²(tau+1)],
+                                    |lambda|ah&lt;=c, (R2)
+    ||W||_p&lt;=C ah[sqrt(tau p)+p], p&gt;=2.             (R3)
+
+For clarity, E exp(lambda W)=E exp[(pi²lambda²/8)R²]; substitute this coefficient in the norm-square inequality. Its logarithmic prefactor is absorbed because tau&gt;=1. Both signs of lambda are covered, and the law conditional on T is the same for every T. Unlike the independent-time straight-line estimator, this estimator has no leading tau term. No realized Hessian-vector map or second-derivative modulus is involved.
+
+## Complete clipping comparison from proposal information alone
+
+This elementary lemma avoids assuming a target-moment bound or applying a density-ratio bound exp(ah tau/2), which would lose the improvement. Let w=E[W|X], wbar=E[clip_B(W)|X], D=|W|1{|W|&gt;B}, and B&lt;=1. Suppose EW=0, E exp(2W)&lt;=C0, and ||W||_p&lt;=B/4 for p&gt;=2. Conditional Jensen gives
+
+    Z=E exp(w)&gt;=1, E exp(2w)&lt;=E exp(2W)&lt;=C0,
+    ||w-wbar||_2&lt;=||D||_2,
+    exp(wbar)&lt;=exp(B).
+
+For normalized densities the exact elementary comparison is
+
+    TV(Q_exp(w),Q_exp(wbar))&lt;=E|exp(w)-exp(wbar)|/Z.
+
+The inequality |exp(u)-exp(v)|&lt;=|u-v|(exp(u)+exp(v)), followed by Cauchy-Schwarz, gives
+
+    TV&lt;=||D||_2[sqrt(C0)+exp(B)].
+
+Finally E D²&lt;=B^(-(p-2)) E|W|^p&lt;=B²4^-p. Hence
+
+    TV&lt;=C B 2^-p.                                  (R4)
+
+Source Algorithm3.2/FORS produces the clipped exponential tilt exactly. Equations (R2)-(R4) prove local TV delta using p=C log(2/delta) and
+
+    ah[sqrt(tau p)+p]&lt;=cB.                          (R5)
+
+The selected condition also ensures E exp(2W)&lt;=C, since (ah)²tau is small. Neither the true-target moments nor its unknown normalizer need acquisition. This is an independently reconstructed proof, not merely an invocation of the predecessor&#x27;s theorem.
+
+Expected attempts&lt;=exp(2B) and estimator queries&lt;=2B exp(2B); each estimator uses ONE fresh residual-gradient query. Every failed proposal/estimator is included. Finite center descent only needs zeta&lt;=1, and contracts the computable residual by ah/(1+ah). Its cost under the existing gradient cap is O(L).
+
+## Complete chain and cost substitution
+
+Retain the acquired reference, translated residual, Gaussian initialization, self-contained OU/Langevin W2 bound A², ideal-chain gradient cap M² and first-mismatch coupling from whole_sampler_transfer.md unchanged. Let r=h/q,kappa=1+r, L=log(e+(tau+1)kappa/epsilon), p=C L. Substitute
+
+    eta=min(q^-1,c/[h(sqrt(tau p)+p)]),
+    N=ceil(C[1+r(sqrt(tau L)+L)]L),
+    delta=epsilon/(10N), a=eta/(1+qeta).
+
+Here log(N/epsilon)&lt;=C&#x27;L, so p is enough for local (R4). Exact-chain TV mixing still follows from A(1+qeta)^(-(N-1))/sqrt(2pi eta); its logarithm is O(L). The ideal cap at |grad U(v)|²&lt;=C N M²/epsilon retains the same Markov union bound. The fixed descent count is O(L) because aM²&lt;=M²/q is polynomial only in r,tau and logN is O(L). Every local RGO at valid history has TV&lt;=delta. Stop at first cap or replacement mismatch, so Ndelta and the IDEAL cap probability bound the entire implemented path error without transporting moments through approximate chains.
+
+Thus the complete exact-real gradient count sharpens to
+
+    C[1+(h/q)(sqrt(tau L)+L)]L²+C_ref.              (R6)
+
+Gaussian/Poisson/uniform access, full d-coordinate arithmetic and gradient precision have the same explicit interface/boundary as the slower theorem. With an approximate cached gradient gchat, the ACTUAL proposal mean is muhat=v-a gchat. Analyze its exact target tilt Fhat(x)=gchat.x-U(x); do not hold the old mean mu fixed. The ideal estimator at this proposal uses gchat in its first term and the true gradient at Gamma; the implemented error is only Vdot.[grad U(Gamma)-approx grad U(Gamma)]. A certified uniform Euclidean error rho hence costs O(sqrt(a)rho sqrt(d)) in the integrated likelihood. The residual/gradient cap/reference stopping margins must also be adjusted as in the common whole-chain note; acquiring the reference approximately requires rho&lt;=c sqrt(q) and stopping the observed gradient at sqrt(q)/2. This remains a conditional gradient-oracle robustness statement, not acquisition of numerical certificates. No native Picard forest transfer or finite-bit TV implementation is inferred. At h=0 the exact Gaussian baseline is used. The known q is analytically removed, not included in tau.
+
+## Comparative and novelty boundary
+
+The Gaussian rotation is already the predecessor&#x27;s Section3.2 (equations10–11); that source&#x27;s Section5/AppendixG already combines FORS with the proximal sampler. Our contributions here are the supplied-trace co-coercivity bound, proposal-only clipping reconstruction, dimension-free reference/cap ledger and exact full-chain consequence. Whether this consequence is already implicit elsewhere is unreviewed; no publication novelty or universal advantage is claimed. The source&#x27;s generic fast tilde-O(kappa d^(1/5)) theorem remains a retaining comparator. A known fixed residual subspace can be reduced directly. The useful dimensional comparison is the minimum of that generic bound and (R6), with the same supplied structure and all arithmetic/precision costs acknowledged.
+
+The native hidden-RGO quadratic variance counterexample and mean radial-shell high-moment obstruction remain valid: this refinement replaces those components with an explicit direct baseline instead of pretending their moment bounds transfer.
+</pre></html>

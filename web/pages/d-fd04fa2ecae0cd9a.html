@@ -1,0 +1,1163 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Tensor-based second-order causal discovery</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>Tensor-based second-order causal discovery</h1><p>Source ID d-fd04fa2ecae0cd9a; literature/sources/r09_algebra/2606.18074v2.html.txt; 23050 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>Tensor-based second-order causal discovery
+Report GitHub Issue
+×
+Title:
+Content selection saved. Describe the issue below:
+Description:
+Submit without GitHub
+Submit in GitHub
+arXiv is now an independent nonprofit!
+Learn more
+×
+Back to arXiv
+Why HTML?
+Report Issue
+Back to Abstract
+Download PDF
+Abstract.
+1 Introduction
+2 Setup and main results
+2.1 Directed acyclic graphs and structural equation models
+2.2 Interventions
+2.3 Identifiability
+2.4 Algorithmic overview
+2.5 Related Work
+3 The precision tensor
+4 Identifiability of the precision tensor decomposition
+5 Tensor-based root selection
+6 Algorithm
+6.1 The sample precision tensor
+6.2 Greedy root candidate selection
+6.3 Pairwise intervention-asymmetric correlation tests
+6.4 Root selection algorithm
+7 Experiments
+7.1 Linear SEM
+7.2 Scalability
+7.3 TSCD-nonlinear
+7.4 Light Causal Chamber
+7.5 Flow-cytometry Dataset
+8 Conclusion
+References
+A Algorithm Details
+A.1 Hypothesis testing for zero correlation
+Testing for nonzero correlation.
+Testing for effective zero correlation.
+Inconclusive cases.
+Summary.
+A.2 From causal order to adjacency matrix
+Lasso regression.
+Regression.
+Cholesky decomposition.
+B Experiment details
+B.1 Linear SEM
+B.2 Scalability
+B.3 Nonlinear SEM
+B.4 Flow-cytometry Dataset
+B.5 Light Causal Chamber
+B.6 Root Projection Scores
+B.7 Ablation
+License: arXiv.org perpetual non-exclusive license
+arXiv:2606.18074v2 [stat.ML] 22 Jun 2026
+Tensor-based second-order causal discovery
+Nathan Ouyang, Kexin Wang and Anna Seigal
+Abstract.
+Causal discovery seeks to uncover the causal dependencies among variables. For this purpose, we propose an algorithm called Tensor-based Second-order Causal Discovery (TSCD). Its input is a tensor obtained from the covariance matrices of observational and interventional data. Assuming the causal dependencies follow a linear structural equation model on a directed acyclic graph (DAG), TSCD outputs the DAG and the functions on its edges, requiring only that the noise variables are uncorrelated. We also implement a version of the approach for nonlinear models. Our focus on second-order statistics (via the covariance matrices) is motivated by their statistical and computational efficiency relative to higher-order moments, their identifiability relative to first-order statistics, and that they work regardless of whether the variables are Gaussian. We show that TSCD has identifiable causal order and parameters from a number of interventions that is logarithmic in the number of variables. Experiments show that TSCD is robust to noise, competitive with existing methods, and scales to hundreds of variables.
+1. Introduction
+Causal discovery is a fundamental problem in biology [10, 33], neuroscience [38], economics [16], public health [12] and machine learning [34]. Its goal is to determine the causal dependencies among a set of variables and to quantify the strength of the causal effects. With this information, one seeks to understand the system mechanisms, make predictions and answer counterfactual questions.
+Structural equation models (SEMs) [26, 50, 29] are a framework for describing causal relationships. In a SEM, each variable is a function of its direct causes, together with a noise variable. The causal structure is often represented by a directed acyclic graph (DAG) whose edges encode direct causal effects. Linear SEMs (LSEMs) are SEMs in which the functions on the edges are linear. We study both linear and nonlinear SEMs.
+Interventions are crucial in causal discovery because observational data alone in general identifies only a set of DAGs that induce the same conditional independence relations, known as a Markov equivalence class [44]. Perturbing variables alters their dependence on their parents, breaking observational symmetries. An example is Perturb-seq [5], where genetic perturbations are applied and their effects on gene expression are measured.
+In this paper, we propose a new algorithm for causal discovery, which we call Tensor-based Second-order Causal Discovery (TSCD). It recovers an unknown causal order, DAG, and model parameters, from the covariance matrices of observational and interventional data, assuming that the data follows an LSEM on an unknown DAG. The only distributional assumption required is that the noise variables are uncorrelated. We also propose an extension of the method to nonlinear SEMs, which we call TSCD-nonlinear.
+TSCD is second-order because it takes as input only the covariance matrices of the data.
+A method that uses only second-order statistics is necessary for a system with multiple Gaussian noise variables.
+It is practical when noise variables are close to Gaussian, making it difficult to estimate
+higher-order statistics. Second-order statistics are practical in applications where per-context sample sizes are too small to reliably estimate full distributions. We see that such scenarios limit the accuracy of approaches that use
+non-Gaussianity assumptions, such as Linear Non-Gaussian Acyclic Model (LiNGAM) [36], or
+distributions for conditional independence testing, such as the Peter-Clark (PC) algorithm [40].
+Second-order statistics are also useful summaries for situations where raw data are unavailable due to privacy, storage, or communication constraints. They are more informative than first-order statistics such as
+mean vectors, from which the parameters in our model are not identifiable.
+Several works have used second-order statistics for
+causal discovery and parameter estimation in an LSEM. From observational data alone, the problem is well-known to be non-identifiable [29]. To get around this, approaches include
+restricting the noise variances [28], applying nonlinear transformations [35], parameter identifiability for a fixed graph [9, 6], and outputting an equivalence class of DAGs [3]. By comparison, TSCD makes no assumptions on the graph, beyond that it is a DAG, and makes no extra assumptions on parameters, beyond those of a usual LSEM. Its only distributional assumption on the noise variables is that they are uncorrelated.
+To identify the causal order and model parameters, TSCD builds on a line of work to use
+the compatibility of causal structure across multiple contexts (also called views or environments) to recover parameters from a collection of covariance matrices [14, 32, 27, 41]. It studies observational data together with data generated via perfect interventions.
+TSCD is tensor-based because it works by constructing a tensor from the covariance matrices, whose decomposition encodes the causal relationships and intervention patterns. For p variables in k contexts, it is a p\times p\times k tensor that is symmetric in its first two indices; i.e., a stack of k many p\times p symmetric matrices, see Figure 1. The stability of second-order statistics across contexts is a necessary condition to be a root [29]. We use the tensor decomposition to devise a subspace-membership condition that is both necessary and sufficient. Subspace membership has well-studied connections to tensor decomposition, see [4, 18, 19, 22, 30, 47, 46]. TSCD identifies candidate root nodes using a subspace-proximity criterion, refined using pairwise intervention-asymmetric correlation tests. The tensor formulation yields identifiability guarantees, on the causal order and consequently on the parameters of the model. We show that \lceil\log_{2}p\rceil interventional environments, and one observational environment, are sufficient and, in the worst case, necessary to recover the order and parameters.
+The paper is organized as follows. In Section 2, we give background, identifiability results, and related work. In Section 3, we show how second-order statistics across observational and intervention contexts are combined into a tensor, which we call the precision tensor.
+In Section 4 we prove our identifiability results.
+In Section 5, we explain how roots can be recovered.
+In Section 6, we present the TSCD algorithm.
+Section 7 evaluates TSCD on linear and nonlinear models and real datasets.
+2. Setup and main results
+2.1. Directed acyclic graphs and structural equation models
+Causal relationships among a set of variables can be represented by a directed graph, where nodes are variables and directed edges encode the direct causal relationships between them.
+Definition 2.1.
+A directed acyclic graph (DAG) is a graph \mathcal{G}=(V,E) with nodes V and directed edges E\subseteq V\times V, such that \mathcal{G} contains no directed cycles.
+If there is an edge j\to i, we say j is a parent of i. We denote the set of parents of node i by \pa(i). A root is a node with no parents. If there is a directed path j\to\cdots\to i, we say that j is an ancestor of i.
+A structural equation model writes each variable as a function of its parents in the graph together with an exogenous noise variable. We consider DAGs with vertex set [p]=\{1,\ldots,p\}.
+Definition 2.2.
+Given a DAG with vertex set [p], where node i represents variable x_{i}, a
+structural equation model (SEM) writes
+x_{i}=f_{i}\big(x_{\pa(i)},\epsilon_{i}\big),\quad\text{for all}\quad i=1,\dots,p,
+where f_{i} is a function, x_{\pa(i)} is the set of variables with direct edges to x_{i},
+and \epsilon_{i} is an exogenous noise variable.
+A linear structural equation model (LSEM) is an SEM in which each function f_{i} is linear:
+x_{i}=\sum_{j=1}^{p}\Lambda_{ij}x_{j}+\epsilon_{i},\qquad i=1,\dots,p,
+with \Lambda_{ij} the weight of the dependency x_{j}\to x_{i}
+(or 0 if there is no such edge). We say that an LSEM follows the structure of a DAG if \Lambda_{ij}\neq 0 if and only if j\in\pa(i).
+Writing \mathbf{x}=(x_{1},\ldots,x_{p})^{\mathsf{T}} and
+\bm{\epsilon}=(\epsilon_{1},\ldots,\epsilon_{p})^{\mathsf{T}},
+the LSEM can be written as \mathbf{x}=\Lambda\mathbf{x}+\bm{\epsilon} or
+(1)
+\mathbf{x}=(I-\Lambda)^{-1}\bm{\epsilon},
+where \Lambda\in\mathbb{R}^{p\times p} is the matrix of edges weights. Denote the covariance of exogenous noise variables by \Omega.
+Let \mathbf{x} have covariance matrix \Sigma and precision matrix
+\Theta:=\Sigma^{-1}.
+Then
+(2)
+\Sigma=(I-\Lambda)^{-1}\Omega(I-\Lambda)^{-\mathsf{T}}\quad\text{and}\quad\Theta=(I-\Lambda)^{\mathsf{T}}\Omega^{-1}(I-\Lambda),
+see e.g. [1, 43].
+The noise variables being uncorrelated implies that \Omega is diagonal.
+The fact that the LSEM follows the structure of a DAG means there is a permutation of indices that makes \Lambda strictly lower triangular. This ensures that (I-\Lambda) is invertible.
+Finding the reordering that makes \Lambda lower triangular is the causal discovery problem.
+The uniqueness of causal order and recovered parameters in the model is important for interpretability and downstream analysis.
+Given a known causal order,
+the parameters in the model are identifiable from the covariance \Sigma,
+e.g. using the LDL decomposition. However, the matrix \Lambda in an LSEM on an unknown causal order is not identifiable from \Sigma. This can be seen by observing that an LDL decomposition of P\Sigma P^{\mathsf{T}} exists for every permutation matrix P.
+Recovery of the causal order is sufficient for recovery of the DAG and model parameters: subsequent steps, e.g. via regression, can detect the weights on the edges in the total DAG on a causal order, and hence whether edges are present or absent.
+Example 2.3.
+Consider the DAG x_{1}\to x_{2} with SEM
+x_{1}=\epsilon_{1},\qquad x_{2}=2x_{1}+\epsilon_{2},\quad\text{where}\quad\Omega=\begin{pmatrix}1&amp;0\\
+0&amp;1\end{pmatrix}.
+Now consider the reversed DAG x_{2}\to x_{1}, with SEM
+x_{2}=\tilde{\epsilon}_{2},\qquad x_{1}=\tfrac{2}{5}x_{2}+\tilde{\epsilon}_{1},\quad\text{where}\quad\tilde{\Omega}=\begin{pmatrix}\frac{1}{5}&amp;0\\
+0&amp;5\end{pmatrix}.
+Both models have covariance matrix
+\Sigma=\begin{pmatrix}1&amp;2\\
+2&amp;5\end{pmatrix}.
+2.2. Interventions
+Interventions can recover the parameters in LSEMs from covariance matrices identifiably.
+We consider perfect interventions [7], which remove the influence of parents on the intervened variables.
+Definition 2.4 (Perfect intervention).
+Fix an LSEM
+\mathbf{x}=(I-\Lambda)^{-1}\bm{\epsilon},
+where \bm{\epsilon} is a vector of noise variables and \Lambda_{ij} is the weight on the edge x_{j}\to x_{i}. Let I\subseteq[p] be a set of intervened nodes. A perfect intervention on I removes all incoming edges to nodes in I, i.e., sets
+\Lambda_{ij}=0\quad\text{ for all }\quad i\in I\quad\text{and}\quad j\in\pa(i),
+and changes \epsilon_{i} to \epsilon_{i}^{\prime} for i\in I,
+such that the p noise variables remain mutually uncorrelated.
+Hence
+the intervention at I can change \Omega at positions (i,i) for i\in I.
+We perform multiple interventions on a single LSEM, and call each interventional setting an intervention context. The set of intervened nodes in each intervention context is assumed to be known.
+2.3. Identifiability
+We present the identifiability results for our model. The input consists of the covariance matrices in the observational context and multiple intervention contexts.
+Assumption 2.5.
+The vector of variables \mathbf{x}=(x_{1},\dots,x_{p})^{\mathsf{T}}\
+follows an unknown LSEM
+\mathbf{x}=\Lambda\mathbf{x}+\bm{\epsilon},
+on an unknown DAG \mathcal{G},
+with noise variables \bm{\epsilon}=(\epsilon_{1},\dots,\epsilon_{p})^{\mathsf{T}} mutually uncorrelated with nonzero variances, where \Lambda_{ij} is the edge weight on the edge x_{j}\to x_{i}.
+In the intervention contexts, perfect interventions are performed at a known nonempty subset of variables.
+We have access to the covariance matrix \Sigma_{1} of data in the observational context and covariance matrices \Sigma_{2},\ldots,\Sigma_{k} of data under intervention contexts.
+Under Assumption 2.5, we show that second-order statistics suffice to recover the causal structure from one observational and \lceil\log_{2}p\rceil interventional contexts.
+Theorem 2.6 (Identifiability from intervention patterns).
+Consider an unknown LSEM
+\mathbf{x}=\Lambda\mathbf{x}+\bm{\epsilon},
+under Assumption 2.5.
+For each x_{i}, define its intervention-pattern vector \mathbf{b}_{i}\in\{0,1\}^{k} by
+(\mathbf{b}_{i})_{j}=\begin{cases}0&amp;x_{i}\text{ intervened in context }j\\
+1&amp;\text{otherwise.}\end{cases}
+If the vectors \mathbf{b}_{1},\dots,\mathbf{b}_{p} are nonzero and pairwise distinct,
+then the causal order and adjacency matrix \Lambda are identifiable.
+We prove Theorem 2.6
+by forming a tensor from the covariance matrices under observational and intervention contexts. Its decomposition encodes the rows of I-\Lambda and the intervention-pattern vectors.
+Identifiability follows from the uniqueness of its decomposition.
+The proof is in Section 5.
+Corollary 2.7.
+Given an observational context, \lceil\log_{2}p\rceil perfect-intervention contexts are sufficient and in the worst case necessary to recover the DAG and adjacency matrix \Lambda.
+Corollary 2.7 follows by observing that \lceil\log_{2}p\rceil intervention contexts suffice to assign distinct intervention-pattern vectors to all nodes. With fewer contexts, there exist two variables with the same intervention-pattern vectors, making the edge between them non-identifiable. See Section 5.
+2.4. Algorithmic overview
+The proof of Theorem 2.6 suggests an algorithm for recovering the causal order and parameters of the model: stack the covariance matrices across the contexts into a tensor and decompose it.
+TSCD performs this tensor decomposition, with two modifications. First, modified precision (inverse covariance) matrices are stacked across contexts, rather than the covariance matrices, since they yield a lower rank decomposition that encodes the DAG and intervention patterns. Second, the algorithm does not compute a full decomposition,
+since this is less numerically stable. Instead, it uses the sparsity of \Lambda and the known intervention-pattern vectors to build the decomposition step by step.
+TSCD uses a subspace-proximity score that, in the population setting, takes the value 1 only at roots of the DAG.
+In finite samples, it keeps a few high-scoring candidates and uses correlations to choose among them. After selecting a root, it removes it and repeats.
+2.5. Related Work
+The PC algorithm [40] is a constraint-based method that recovers the Markov equivalence class of a DAG using conditional independence tests. It iteratively removes edges based on conditional independence relations and orients edges using logical rules.
+Greedy equivalence search (GES) [3] learns a DAG by optimizing a score (e.g., the Bayesian Information Criterion) computed over the space of equivalence classes using a greedy forward-backward procedure. Its extension to interventional data, greedy interventional equivalence search (GIES) [13], incorporates interventions into the scoring framework to improve identifiability.
+Interventional greedy sparse permutation (IGSP) [48] learns a causal DAG from observational and interventional data with unknown intervention targets by searching over permutations and selecting the sparsest graph consistent with conditional independence and invariance constraints across environments. It is nonparametric but relies on accurate conditional independence testing.
+The linear non-Gaussian acyclic model (LiNGAM) via Independent Component Analysis (ICA) [36] identifies a linear SEM by assuming non-Gaussian noise. It estimates the mixing matrix via ICA and recovers the causal order by permuting and scaling components to match a DAG structure. Under the assumptions that the noise variables are independent and non-Gaussian, ICA-LiNGAM is identifiable. It breaks down when some noise variables are Gaussian or dependent.
+DirectLiNGAM [37] improves upon ICA-LiNGAM by estimating a causal order through iterative regression: at each step, it identifies an exogenous variable by testing independence between residuals and candidate predictors, removes its effect, and repeats. Though more stable than ICA-based methods, it still relies on independence testing and non-Gaussianity.
+NOTEARS [51] learns a DAG by solving a continuous optimization with a differentiable acyclicity constraint. It assumes access to individual samples rather than only second-order statistics
+and relies on optimization over a nonconvex objective.
+Invariant causal prediction (ICP) [27] identifies causal parents of a variable by searching over subsets of variables and selecting those for which the conditional distribution of the target is invariant across environments. This exhaustive subset search is computationally expensive and requires that there is at least one intervention on each parent. We do not compare to this method in our synthetic experiments because existing implementations are not publicly available in Python and the method is designed for parent identification of a single target variable rather than full DAG recovery.
+The paper [31] shows that commonly used data-generating processes can introduce artifacts that make the causal learning problem artificially easy. Heuristics such as sorting variables by their marginal variances can recover the causal order well under synthetic settings, not because they capture causal structure, but because the data generation encodes ordering information.
+To account for this, we include a sort-and-regress baseline (SortRegress) in the experiments, which orders variables by their marginal variances and then performs regression. This checks that our method does not rely on such artifacts.
+Our approach differs from the above methods in several ways. Unlike constraint-based methods such as PC and IGSP, it does not require access to individual samples and does not use conditional independence testing. Unlike ICA-LiNGAM and DirectLiNGAM, we only require that the noise variables are uncorrelated and do not assume independent or non-Gaussian noise variables.
+Our method is more computationally efficient than GES/GIES for many variables, as the search space becomes large for a score-based greedy search.
+It is also more computationally efficient than NOTEARS for many variables, since the constrained optimization calculates an expensive matrix exponential.
+Unlike invariance-based approaches such as ICP, our method does not require exhaustive subset search or interventions that target each parent individually.
+3. The precision tensor
+We construct the tensor that is the core of our identifiability proof and algorithm.
+It is obtained by combining precision matrices across contexts.
+For k contexts and p variables, it is a tensor T\in\mathbb{R}^{p\times p\times k} that is symmetric in its first two factors.
+Its decomposition encodes the DAG and the intervention-pattern vectors.
+For related ideas based on stacking covariance matrices rather than precision matrices, see [45].
+We stack precision matrices instead of covariance matrices because they lead to a decomposition involving the rows of I-\Lambda rather than (I-\Lambda)^{-1}. The former stays the same on the rows indexed by variables that are not intervened, but the latter does not.
+Definition 3.1 (Outer product).
+For \mathbf{u}\in\mathbb{R}^{p}, the outer product \mathbf{u}\otimes\mathbf{u} is the matrix \mathbf{u}\mathbf{u}^{\mathsf{T}}, which has (i,j) entry \mathbf{u}_{i}\mathbf{u}_{j}.
+For \mathbf{u}\in\mathbb{R}^{p} and \mathbf{v}\in\mathbb{R}^{k}, the outer product \mathbf{u}\otimes\mathbf{u}\otimes\mathbf{v}\in\mathbb{R}^{p\times p\times k} is
+(\mathbf{u}\otimes\mathbf{u}\otimes\mathbf{v})_{ij\ell}=\mathbf{u}_{i}\mathbf{u}_{j}\mathbf{v}_{\ell}.
+Given a tensor T\in\mathbb{R}^{p\times p\times k}, we denote its entry at position (i,j,\ell) by T_{ij\ell} or T(i,j,\ell).
+We say that a tensor T is symmetric under swapping the first two indices, if
+T_{ij\ell}=T_{ji\ell}. for all i,j\in[p] and \ell\in[k].
+For example, this holds for the tensor \mathbf{u}\otimes\mathbf{u}\otimes\mathbf{v}.
+Definition 3.2 (Tensor slices).
+For a tensor T\in\mathbb{R}^{p\times p\times k},
+fixing one index produces a matrix called a slice of the tensor. We denote them by T(i,:,:)\in\mathbb{R}^{p\times k}, T(:,j,:)\in\mathbb{R}^{p\times k}, and T(:,:,\ell)\in\mathbb{R}^{p\times p}.
+For example, T(i,:,:) is the matrix with (j,\ell) entry T(i,j,\ell).
+If T is symmetric under swapping the first two indices, then T(i,:,:) and T(:,i,:) are the same.
+For more on tensors and their slices, see e.g. [20].
+We stack the decompositions in (2) together across contexts. To do so, we begin with the following observation, recorded here as a proposition for clarity, which restates the expression for the precision matrix.
+Let \mathbf{e}_{i}\in\mathbb{R}^{p} denote the i-th standard basis vector.
+Proposition 3.3.
+Let \Theta be the precision matrix from the LSEM \mathbf{x}=(I-\Lambda)^{-1}\bm{\epsilon} on a DAG, where the noise covariance matrix \Omega is diagonal with non-zero entries.
+Let \mathbf{v}_{i} denote the i-th row of (I-\Lambda), and let \omega_{i} be the i-th diagonal entry of \Omega^{-1}.
+Then
+(3)
+\Theta=\sum_{i=1}^{p}\omega_{i}\,\mathbf{v}_{i}^{\otimes 2}.
+Node i is a root of the DAG if and only if \mathbf{v}_{i}=\mathbf{e}_{i}.
+Proof.
+The last statement follows because \Lambda_{ij}=0 for all j\in[p] exactly when i is a root.
+The matrix \Theta has decomposition (I-\Lambda)^{\mathsf{T}}\Omega^{-1}(I-\Lambda), see (2). Its (j,\ell) entry is \sum_{i=1}^{p}\omega_{i}(I-\Lambda)_{ij}(I-\Lambda)_{i\ell}. The product (I-\Lambda)_{ij}(I-\Lambda)_{i\ell} is the (j,\ell) entry of \mathbf{v}_{i}^{\otimes 2}.
+∎
+We derive a related expression for the precision matrix under an intervention context.
+The nodes that are intervened become roots, as the effect of their parents is set to zero. This zeros out the corresponding rows of \Lambda. The rows of \Lambda that are not intervened stay the same.
+Proposition 3.4.
+Under the same setting as Proposition 3.3,
+let \Theta_{j} be the precision matrix under a perfect intervention on I_{j}\subseteq[p].
+Then
+\Theta_{j}=\sum_{i\in I_{j}^{c}}\omega_{i}\,\mathbf{v}_{i}^{\otimes 2}+\sum_{i\in I_{j}}\omega_{i}^{\prime}\,\mathbf{e}_{i}^{\otimes 2},
+where \omega_{i}^{\prime} are new noise parameters.
+Proof.
+The precision matrix can be decomposed as
+\Theta_{j}=(I-\Lambda_{j})^{\mathsf{T}}\Omega^{-1}_{j}(I-\Lambda_{j})=\sum_{i=1}^{p}(\Omega_{j}^{-1})_{ii}(I-\Lambda_{j})_{i,:}^{\otimes 2},
+as in Proposition 3.3.
+It remains to relate the matrices \Lambda_{j} and \Omega_{j} to \Lambda and \Omega respectively.
+Under a perfect intervention on node \ell, all incoming edges to \ell are removed, i.e., the entries of the \ell-th row of \Lambda are zeroed out.
+Thus \Lambda_{j} is zero on rows i\in I_{j} and equals \Lambda on rows i\notin I_{j}. Finally,
+(\Omega_{j}^{-1})_{ii} is \omega_{i}^{\prime} for i\in I_{j} and \omega_{i} for i\notin I_{j}, since the intervention can alter the variance of the exogenous noise variables at intervened variables.
+∎
+Though the above matrix decompositions are not identifiable, the recovery of certain parameters is unique: the coefficients of the vectors \mathbf{e}_{i}.
+Proposition 3.5 (Rank reduction).
+Let intervention context j\geq 2 be a perfect intervention on a nonempty set I_{j}\subseteq[p].
+For each i\in I_{j}, there is a unique scalar \mu such that
+\rank\left(\Theta_{j}-\mu\,\mathbf{e}_{i}^{\otimes 2}\right)=\rank\left(\Theta_{j}\right)-1.
+Moreover, we have \mu=\tfrac{1}{(\Sigma_{j})_{ii}}.
+Proof.
+The matrix
+\Theta_{j}-\mu\mathbf{e}_{i}\mathbf{e}_{i}^{\mathsf{T}}
+drops rank by one if and only if
+\mu=\frac{1}{\mathbf{e}_{i}^{\mathsf{T}}\Theta_{j}^{-1}\mathbf{e}_{i}},
+by Wedderburn rank reduction [49].
+The denominator of \mu is
+\mathbf{e}_{i}^{\mathsf{T}}\Sigma_{j}\mathbf{e}_{i}=(\Sigma_{j})_{ii}.
+∎
+Corollary 3.6.
+Under Assumption 2.5, we can recover the set of matrices
+\mathcal{M}=\left\{\sum_{i\in I_{j}^{c}}\omega_{i}\,\mathbf{v}_{i}^{\otimes 2}:\ j=1,\dots,k\right\}.
+Proof.
+The precision matrix \Theta_{j} is a sum of two types of term: those of the form \omega_{i}\mathbf{v}_{i}^{\otimes 2}, for i\notin I_{j}, and those of the form \mu\mathbf{e}_{i}^{\otimes 2} where \mu is unique to (j,i).
+The coefficients of \mathbf{e}_{i}^{\otimes 2} can be recovered by Proposition 3.5, thus the terms of the second type can be removed.
+∎
+Definition 3.7 (Precision tensor).
+We stack the matrices in \mathcal{M} into a tensor T\in\mathbb{R}^{p\times p\times k} with slices
+T(:,:,j)=\sum_{i\in I_{j}^{c}}\omega_{i}\,\mathbf{v}_{i}^{\otimes 2}.
+We call T the precision tensor.
+It has decomposition
+(4)
+T=\sum_{i=1}^{p}\omega_{i}\,\mathbf{v}_{i}\otimes\mathbf{v}_{i}\otimes\mathbf{b}_{i},
+where \mathbf{b}_{i}\in\mathbb{R}^{k} has (\mathbf{b}_{i})_{j}=1 if node i is not intervened in context j, and 0 otherwise. We call \mathbf{b}_{i} the intervention-pattern vector of the i-th variable.
+We collect the intervention-pattern vectors \mathbf{b}_{i} together to form the intervention-pattern matrix B\in\mathbb{R}^{p\times k} with (i,j) entry (\mathbf{b}_{i})_{j}, which is 0 if variable i is intervened in context j and 1 otherwise.
+Figure 1. Constructing the precision tensor for 10 variables and five contexts (one observational). Top row: Precision matrices for each context. Middle row: The matrices after rank reduction. Bottom row: The matrices are stacked to form the precision tensor. The boxed entries are the only ones that change in the rank reduction step; they correspond to the zeros of the intervention-pattern matrix B\in\{0,1\}^{10\times 5} with rows \mathbf{b}_{i}^{\mathsf{T}}. For example, the boxed entries in the fifth matrix reflect that column 5 of B has zeros in entries i=1,3,5,7,9.
+4. Identifiability of the precision tensor decomposition
+The decompositions of the individual precision matrices (3) are not unique: multiple non-equivalent choices of vectors \mathbf{v}_{i} and scalars \omega_{i} yield the same matrix \Theta, cf. Example 2.3.
+In comparison, the decomposition of the precision tensor (4) is unique, under mild conditions. This typifies the benefit of combining second-order statistics across contexts.
+The decomposition of the precision tensor T is a CP decomposition: it writes a tensor as a sum of outer products. The decomposition is said to be unique if any such expression has summands that coincide with \mathbf{v}_{i}\otimes\mathbf{v}_{i}\otimes\mathbf{b}_{i}, up to scale and permutation [2]. Once the terms \mathbf{v}_{i}\otimes\mathbf{v}_{i}\otimes\mathbf{b}_{i} are recovered, the vectors \mathbf{v}_{i} and \mathbf{b}_{i} are obtained uniquely, up to scale.
+Lemma 4.1.
+The decomposition of T is unique when \mathbf{b}_{1},\ldots,\mathbf{b}_{p} are pairwise distinct.
+Proof.
+The decomposition of T is unique when no pair of vectors \mathbf{b}_{i},\mathbf{b}_{j} are collinear and \mathbf{v}_{1},\ldots,\mathbf{v}_{p} are linearly independent, by the Kruskal criterion [21].
+Linear independence of \{\mathbf{v}_{i}\}_{i=1}^{p} follows from the invertibility of I-\Lambda.
+Since each \mathbf{b}_{i} is binary and nonzero, collinearity only occurs if the vectors coincide.
+∎
+Theorem 2.6 follows by combining Lemma 4.1 with the structure of I-\Lambda.
+Proof of Theorem 2.6.
+Consider the tensor decomposition (4). The vectors \mathbf{v}_{i} are linearly independent since they are rows of I-\Lambda, which is invertible.
+By Lemma 4.1, the decomposition of T is identifiable. So, I-\Lambda is identifiable up to row scaling and permutation.
+The ambiguity is resolved since each \mathbf{v}_{i} is the i-th row of I-\Lambda, whose i-th entry is one.
+∎
+The resolution of the scaling and permutation ambiguity in the proof of Theorem 2.6 also appears in LiNGAM [36]. Corollary 2.7 quantifies how many intervention contexts are sufficient and in the worst case necessary for unique decomposition.
+Proof of Corollary 2.7.
+With one observational context, each intervention-pattern vector \mathbf{b}_{i}\in\{0,1\}^{k} has first entry equal to 1. Hence, with k-1 additional intervention contexts, there are at most 2^{k-1} distinct binary patterns available. To ensure that all p nodes have distinct intervention patterns, it suffices that
+2^{k-1}\geq p,
+which holds when k-1\geq\lceil\log_{2}p\rceil. In this case, we can assign distinct binary vectors \mathbf{b}_{i} to each node, and define the intervention sets I_{j} by intervening on node i in context j whenever (\mathbf{b}_{i})_{j}=0. By Theorem 2.6, this ensures identifiability of \Lambda.
+For necessity, assume we have fewer than \lceil\log_{2}p\rceil additional interventions, then there are two nodes, say 1 and 2, that share the same intervention pattern.
+Their contributions to each slice T(:,:,i) of the tensor T in (4) appear only through
+M=\omega_{1}\mathbf{v}_{1}^{\otimes 2}+\omega_{2}\mathbf{v}_{2}^{\otimes 2}.
+We show that this decomposition is not unique.
+Suppose M is only nonzero in the top-left 2\times 2 submatrix
+M_{[2]}=\begin{pmatrix}a&amp;b\\
+b&amp;c\end{pmatrix}.
+Then there exist distinct pairs (\mathbf{v}_{1},\mathbf{v}_{2}) that produce the same M_{[2]}. For example,
+\mathbf{v}_{1}=(0,1,0,\ldots,0),\ \mathbf{v}_{2}=(a,b,0,\ldots,0),\quad\text{and}\quad\mathbf{v}_{1}=(1,0,0,\ldots,0),\ \mathbf{v}_{2}=(b,c,0,\ldots,0).
+Hence, the edge direction between the first two nodes is not identifiable.
+∎
+5. Tensor-based root selection
+The previous section demonstrates the identifiability of the causal order, and parameters, from the precision tensor.
+In principle, the parameters of the model can be recovered via usual tensor decomposition of (4), e.g. using [46, 39].
+However, in practice such tensor decomposition suffers from numerical instability, worsened by the fact that the intervention-pattern vectors are often close to parallel, as most variables are not intervened.
+To avoid this, TSCD does not compute a full decomposition. Instead, it uses the sparsity of \Lambda and the known intervention-pattern vectors to build the decomposition.
+We show how root nodes can be identified from the precision tensor.
+Recall that we denote by T(i,:,:)\in\mathbb{R}^{p\times k} the slice of T obtained by fixing the first index to take the value i. The slices T(1,:,:),\ldots,T(p,:,:) span a linear space, which we denote by A. The form of the decomposition in (4)
+implies that
+A=\mathrm{span}\{\mathbf{v}_{i}\otimes\mathbf{b}_{i}:i=1,\dots,p\}\subseteq\mathbb{R}^{p\times k}.
+The connection between uniqueness of tensor decomposition and of the rank one matrices or tensors in a linear space is well-studied, see e.g. [22].
+In our case, it is as follows.
+Lemma 5.1.
+The only rank-one matrices in A are \mathbf{v}_{i}\otimes\mathbf{b}_{i} up to scaling for i=1,\ldots,p.
+Proof.
+Assume for contradiction that there exists a rank-one matrix \mathbf{a}\otimes\mathbf{b} in A that is not collinear to any \mathbf{v}_{i}\otimes\mathbf{b}_{i}. Then \mathbf{a}\otimes\mathbf{b}=\sum_{j=1}^{p}\mu_{j}\mathbf{v}_{j}\otimes\mathbf{b}_{j}, for some \mu_{j}\in\mathbb{R}. Without loss of generality, we assume \mu_{1}\neq 0. Hence we can build a new decomposition of T that uses
+\mathbf{a}\otimes\mathbf{b} instead of \mathbf{v}_{1}\otimes\mathbf{b}_{1}.
+That is, there exists \mathbf{c}_{i}\in\mathbb{R}^{p} for i=1,\ldots,p such that T=\mathbf{c}_{1}\otimes\mathbf{a}\otimes\mathbf{b}+\sum_{j=2}^{p}\mathbf{c}_{j}\otimes\mathbf{v}_{j}\otimes\mathbf{b}_{j}. The uniqueness result in Lemma 4.1 was stated for a decomposition in which the two vectors of length p are the same (a partially symmetric decomposition), but the decomposition is still unique if all vectors are allowed to differ. The new decomposition of T is thus a contradiction.
+∎
+Lemma 5.2.
+Node i is a root if and only if
+\mathbf{e}_{i}\otimes\mathbf{b}_{i}\in A.
+Proof.
+Node i is a root if and only if it has no incoming edges. This implies \mathbf{v}_{i}=\mathbf{e}_{i}, so \mathbf{e}_{i}\otimes\mathbf{b}_{i}\in A.
+Conversely, suppose \mathbf{e}_{i}\otimes\mathbf{b}_{i}\in A. Then there exist scalars \{\alpha_{j}\}_{j=1}^{p} such that
+(5)
+\mathbf{e}_{i}\otimes\mathbf{b}_{i}=\sum_{j=1}^{p}\alpha_{j}\mathbf{v}_{j}\otimes\mathbf{b}_{j}.
+The vectors \{\mathbf{v}_{j}\}_{j=1}^{p} are linearly independent, since they are rows of the invertible matrix I-\Lambda.
+Thus, there exists a dual set of vectors \{\mathbf{w}_{\ell}\}_{\ell=1}^{p} such that
+\langle\mathbf{w}_{\ell},\mathbf{v}_{j}\rangle=\delta_{\ell j}.
+Multiplying both sides of (5) by \mathbf{w}_{\ell}^{\mathsf{T}} yields
+\langle\mathbf{w}_{\ell},\mathbf{e}_{i}\rangle\mathbf{b}_{i}=\alpha_{\ell}\mathbf{b}_{\ell}.
+For \ell\neq i, the vectors \mathbf{b}_{\ell} and \mathbf{b}_{i} are not collinear, so the above equality implies
+\langle\mathbf{w}_{\ell},\mathbf{e}_{i}\rangle=0\quad\text{and}\quad\alpha_{\ell}=0.
+Thus only the term \ell=i remains, and we obtain
+\mathbf{e}_{i}\otimes\mathbf{b}_{i}=\alpha_{i}\mathbf{v}_{i}\otimes\mathbf{b}_{i}.
+Since \mathbf{b}_{i}\neq 0, this implies \mathbf{e}_{i}=\alpha_{i}\mathbf{v}_{i}. Comparing the i-th entries (both equal to 1) gives \alpha_{i}=1, hence \mathbf{v}_{i}=\mathbf{e}_{i}. Therefore, node i is a root.
+∎
+The subspace-membership condition \mathbf{e}_{i}\otimes\mathbf{b}_{i}\in A is equivalent to \mathbf{e}_{i}\otimes\mathbf{e}_{i}\otimes\mathbf{b}_{i} being a rank-one summand of T.
+This says the coefficient of \mathbf{e}_{i}\otimes\mathbf{e}_{i} in each precision matrix \Theta_{j} is the same across all contexts j in which i is not intervened, cf. Proposition 3.5.
+Thus, \mathbf{e}_{i}\otimes\mathbf{b}_{i}\in A implies that the variance
+of node i is stable across the contexts in which it is not intervened.
+We compare our approach to the simpler idea of checking the consistency of the variance of a variable across contexts. Doing so, one recovers the roots of the DAG together with variables that look like roots based on the pattern of interventions, as follows.
+Lemma 5.3.
+Under Assumption 2.5, fix i\in[p]. Consider an intervention context in which neither i nor any of its ancestors are intervened on. Then the variance of x_{i} is the same as in the observational context.
+Proof.
+If none of the ancestors of i are intervened on, then the structural equations for i and all of its ancestors are unchanged, and so the joint distribution of i and its ancestors is unchanged. Since x_{i} is a function only of its ancestors and its own noise variable, and since i is not intervened on, the distribution of x_{i} is unchanged. Hence its variance is unchanged.
+∎
+We compare Lemmas 5.2 and 5.3.
+Stable variance is only a necessary condition for a node to be a root, since non-root nodes whose ancestors are never intervened also satisfy this property.
+In comparison, the condition \mathbf{e}_{i}\otimes\mathbf{b}_{i}\in A is necessary and sufficient for i to be a root, because it also incorporates information from contexts where i is intervened.
+6. Algorithm
+We recover a causal order of the nodes in LSEMs with perfect interventions. This is achieved in two steps: a root candidate selection procedure (Section 6.2) followed by a pairwise refinement step (Section 6.3). The two-step algorithm design is validated by the ablation experiment in Appendix B.7. Estimation of the matrix \Lambda given the ordering is a standard problem and is deferred to the appendix.
+First we explain how to construct the sample precision tensor.
+6.1. The sample precision tensor
+So far, we have assumed access to the true population covariance matrices, and used these to construct the precision tensor.
+In practice, we recover a causal order from finite samples.
+Let X_{1}\in\mathbb{R}^{n_{1}\times p} be the observational dataset and X_{2}\in\mathbb{R}^{n_{2}\times p},\ldots,X_{k}\in\mathbb{R}^{n_{k}\times p} be the interventional datasets.
+We construct the sample precision tensor in Algorithm 1, see Figure 1 for an illustration.
+Algorithm 1 Sample precision tensor
+Input: Sample covariance matrices for contexts 1,\ldots,k; intervention-pattern matrix B\in\mathbb{R}^{p\times k}.
+Output: The sample precision tensor.
+for j=1,\ldots,k do
+M_{j}\leftarrow\Cov(X_{j})^{-1};
+for i=1,\ldots,p do
+if B_{ij}=0 then
+M_{j}\leftarrow M_{j}-\dfrac{1}{\Cov(X_{j})_{i,i}}\,\mathbf{e}_{i}\mathbf{e}_{i}^{\mathsf{T}};
+end if
+end for
+end for
+Form the tensor T=[M_{1}|\cdots|M_{k}]\in\mathbb{R}^{p\times p\times k};
+return T;
+The sample precision tensor only requires access to the sample covariance matrices \Cov(X_{1}),\ldots,\Cov(X_{k})\in\mathbb{R}^{p\times p}, not to individual data samples. Later for root selection we need the number of samples in each context, but again not the individual samples.
+6.2. Greedy root candidate selection
+We use a greedy procedure to identify root nodes from the precision tensor.
+Recall that root nodes are those satisfying \mathbf{e}_{i}\otimes\mathbf{b}_{i}\in A, see Lemma 5.2. In practice, to quantify how close a node is to satisfying this condition, we compute a subspace-proximity score from projection onto the subspace A:
+(6)
+\alpha_{i}=\frac{\|P_{A}(\mathbf{e}_{i}\otimes\mathbf{b}_{i})\|_{F}}{\|\mathbf{b}_{i}\|}\in[0,1],
+where P_{A} denotes orthogonal projection onto A.
+Lemma 6.1.
+Node i is a root if and only if \alpha_{i}=1.
+Proof.
+Node i is a root if and only if
+\mathbf{e}_{i}\otimes\mathbf{b}_{i}\in A,
+by Lemma 5.2.
+This is equivalent to
+\|P_{A}(\mathbf{e}_{i}\otimes\mathbf{b}_{i})\|_{F}=\|\mathbf{e}_{i}\otimes\mathbf{b}_{i}\|_{F}.
+Since \|\mathbf{e}_{i}\|=1, we have
+\|\mathbf{e}_{i}\otimes\mathbf{b}_{i}\|_{F}=\|\mathbf{b}_{i}\|,
+so this is equivalent to
+\frac{\|P_{A}(\mathbf{e}_{i}\otimes\mathbf{b}_{i})\|_{F}}{\|\mathbf{b}_{i}\|}=1.
+∎
+In the population setting, the top scores equal 1 and exactly identify the root nodes.
+The following result shows that if a node’s projection score given by (6) is high, then the node is close to being a root, in the sense that vectors \mathbf{e}_{i} and \mathbf{v}_{i} have similar directions.
+Lemma 6.2.
+Let
+A=\mathrm{span}\{\mathbf{v}_{j}\otimes\mathbf{b}_{j}:j=1,\ldots,p\},
+where \mathbf{v}_{j},\mathbf{b}_{j} are as in Proposition 3.3.
+Let \mathbf{w}_{1},\ldots,\mathbf{w}_{p} satisfy
+\langle\mathbf{w}_{\ell},\mathbf{v}_{j}\rangle=\delta_{\ell j}.
+Let \alpha_{i} be the projection score from (6) and define
+\delta_{i}=\sqrt{1-\alpha_{i}^{2}}.
+Assume the \mathbf{b}_{i} are separated, in that for every j\neq i,
+(7)
+\inf_{c}\|\mathbf{b}_{i}-c\mathbf{b}_{j}\|\geq\gamma_{i}\|\mathbf{b}_{i}\|\quad\text{ for some}\quad\gamma_{i}&gt;0.
+Then
+\left\|\mathbf{e}_{i}-\langle\mathbf{w}_{i},\mathbf{e}_{i}\rangle\mathbf{v}_{i}\right\|\leq\left(\sum_{j\neq i}\frac{\|\mathbf{w}_{j}\|\|\mathbf{v}_{j}\|}{\gamma_{i}}\right)\delta_{i}.
+Proof.
+When \alpha_{i} is close to 1, the matrix \mathbf{e}_{i}\otimes\mathbf{b}_{i} is well approximated by a linear combination of the matrices \mathbf{v}_{j}\otimes\mathbf{b}_{j}.
+There exist scalars c_{1},\ldots,c_{p} such that
+(8)
+\left\|\mathbf{e}_{i}\otimes\mathbf{b}_{i}-\sum_{j=1}^{p}c_{j}\mathbf{v}_{j}\otimes\mathbf{b}_{j}\right\|_{F}\leq\|\mathbf{b}_{i}\|\delta_{i},
+since
+\dist(\mathbf{e}_{i}\otimes\mathbf{b}_{i},A)=\|\mathbf{e}_{i}\otimes\mathbf{b}_{i}\|\sqrt{1-\alpha_{i}^{2}}=\|\mathbf{b}_{i}\|\delta_{i}.
+Multiplying the matrix in (8) by \mathbf{w}_{\ell}, we obtain
+(9)
+\displaystyle\left\|\langle\mathbf{w}_{\ell},\mathbf{e}_{i}\rangle\mathbf{b}_{i}-c_{\ell}\mathbf{b}_{\ell}\right\|
+\displaystyle=\|\mathbf{w}_{\ell}^{\mathsf{T}}(\mathbf{e}_{i}\otimes\mathbf{b}_{i}-\sum_{j=1}^{p}c_{j}\mathbf{v}_{j}\otimes\mathbf{b}_{j})\|
+(10)
+\displaystyle\leq\|\mathbf{w}_{\ell}\|\left\|\mathbf{e}_{i}\otimes\mathbf{b}_{i}-\sum_{j=1}^{p}c_{j}\mathbf{v}_{j}\otimes\mathbf{b}_{j}\right\|_{2}
+(11)
+\displaystyle\leq\|\mathbf{w}_{\ell}\|\left\|\mathbf{e}_{i}\otimes\mathbf{b}_{i}-\sum_{j=1}^{p}c_{j}\mathbf{v}_{j}\otimes\mathbf{b}_{j}\right\|_{F}\leq\|\mathbf{w}_{\ell}\|\|\mathbf{b}_{i}\|\delta_{i},
+where the equality follows from
+\langle\mathbf{w}_{\ell},\mathbf{v}_{j}\rangle=\delta_{\ell j}.
+By the separation assumption (7),
+(12)
+\inf_{c}\|\langle\mathbf{w}_{\ell},\mathbf{e}_{i}\rangle\mathbf{b}_{i}-c\mathbf{b}_{\ell}\|=|\langle\mathbf{w}_{\ell},\mathbf{e}_{i}\rangle|\inf_{c}\|\mathbf{b}_{i}-c\mathbf{b}_{\ell}\|\geq|\langle\mathbf{w}_{\ell},\mathbf{e}_{i}\rangle|\gamma_{i}\|\mathbf{b}_{i}\|.
+Combining (11) and (12) gives |\langle\mathbf{w}_{\ell},\mathbf{e}_{i}\rangle|\gamma_{i}\|\mathbf{b}_{i}\|\leq\|\mathbf{w}_{\ell}\|\|\mathbf{b}_{i}\|\delta_{i} which implies
+|\langle\mathbf{w}_{\ell},\mathbf{e}_{i}\rangle|\leq\frac{\|\mathbf{w}_{\ell}\|}{\gamma_{i}}\delta_{i}.
+Finally, using the dual-basis expansion
+\mathbf{e}_{i}=\sum_{\ell=1}^{p}\langle\mathbf{w}_{\ell},\mathbf{e}_{i}\rangle\mathbf{v}_{\ell},
+we get
+\mathbf{e}_{i}-\langle\mathbf{w}_{i},\mathbf{e}_{i}\rangle\mathbf{v}_{i}=\sum_{\ell\neq i}\langle\mathbf{w}_{\ell},\mathbf{e}_{i}\rangle\mathbf{v}_{\ell}.
+Taking norms and applying the bound above gives
+\left\|\mathbf{e}_{i}-\langle\mathbf{w}_{i},\mathbf{e}_{i}\rangle\mathbf{v}_{i}\right\|\leq\sum_{\ell\neq i}|\langle\mathbf{w}_{\ell},\mathbf{e}_{i}\rangle|\,\|\mathbf{v}_{\ell}\|\leq\left(\sum_{\ell\neq i}\frac{\|\mathbf{w}_{\ell}\|\|\mathbf{v}_{\ell}\|}{\gamma_{i}}\right)\delta_{i}.\qed
+Searching over the space of rank one matrices, or tensors, to find those that lie close to a subspace is behind tensor decomposition algorithms including [19, 46]. In TSCD, this idea is adapted to testing the membership of specific rank one matrices.
+Algorithm 2 Greedy causal order recovery
+Input: Sample precision tensor T\in\mathbb{R}^{p\times p\times k}; intervention-pattern matrix B\in\mathbb{R}^{p\times k}; number of candidates n.
+Output: A causal order \pi=(\pi_{1},\ldots,\pi_{p}).
+Initialize T, S\leftarrow\{1,\ldots,p\}, and \pi\leftarrow(\,);
+for t=1,\ldots,p do
+Compute the projection operator P_{A} onto the subspace spanned by the slices T(1,:,:),\ldots,T(p,:,:) of the current tensor T;
+foreach i\in S do
+\alpha_{i}\leftarrow\frac{\|P_{A}(\mathbf{e}_{i}\otimes\mathbf{b}_{i})\|_{F}}{\|\mathbf{b}_{i}\|}.
+end foreach
+Let C_{t}\subseteq S be the set of nodes with the top n values of \alpha_{i};
+\pi_{t}\leftarrow\textsc{RootSelection}(C_{t},\Cov(X_{j})\}_{j=1}^{k},B);  // Algorithm 3
+Append \pi_{t} to \pi;
+Remove \pi_{t} from S;
+Delete the \pi_{t}-th row and column from each slice T(:,:,1),\ldots,T(:,:,k) of T;
+end for
+return \pi;
+6.3. Pairwise intervention-asymmetric correlation tests
+In practice, roots can have scores less than one and non-root nodes may have high scores. See Appendix B.6 for empirical behavior of the scores at roots.
+To improve robustness, we retain a small set of top candidates with high \alpha_{i} scores.
+We then use a refinement step that resolves ambiguity among candidate root nodes using asymmetry in correlations across contexts.
+Consider two nodes i and j that are correlated in the observational context. If intervening on i leaves the correlation with j nonzero, then the dependence cannot be explained by paths ending at i; it must flow from i to j, so i is an ancestor of j. If instead the correlation disappears, the dependence must arise from a path into i (either j\to i or a latent confounder), and thus i is not a root.
+This is formalized in the following lemma.
+Lemma 6.3.
+Let i and j be two nodes in a DAG. Assume \mathrm{corr}(x_{i},x_{j})\neq 0 in the observational context. If there is a context where i is intervened on and j is not and in which \mathrm{corr}(x_{i},x_{j})\neq 0, then i is an ancestor of j. Otherwise, either j is an ancestor of i or i and j share an ancestor.
+ijdependence remainsi intervened, j notijdependence brokenintervening i removes incoming edgeijldependence brokenconfounding path into i removed
+Figure 2. Intervention-asymmetric correlation test. If intervening on i preserves correlation with j, then the dependence must flow from i to j, so i is an ancestor of j. If the correlation disappears, the observational dependence may instead come from j\to i or from a latent common cause.
+6.4. Root selection algorithm
+We use pairwise intervention-asymmetric tests to select a root from a candidate set C. For each pair i,j\in C, we compare how their correlation behaves across intervention contexts. Correlations are classified as NONZERO, ZERO, or INCONCLUSIVE using hypothesis tests (Appendix A.1).
+If the correlation between i and j is NONZERO when intervening on i but not when intervening on j, this is evidence that i is upstream of j. Conversely, ZERO correlation weakens this claim.
+We aggregate these pairwise comparisons into node scores and select the node with the highest score as the next root in the causal order.
+See Algorithm 3 for details.
+Algorithm 3 RootSelection by pairwise correlation tests
+Input: Candidate set C; sample covariance matrices for contexts \ell=1,\ldots,k; intervention-pattern matrix B; sample sizes \{N_{\ell}\}.
+Output: Selected root r\in C.
+Initialize \mathrm{score}(i)\leftarrow 0 for all i\in C;
+foreach pair i\neq j in C do
+for \ell=1,\ldots,k do
+Compute the sample correlation \rho_{ij}^{(\ell)} in each context.;
+Classify \rho_{ij}^{(\ell)} as NONZERO, ZERO, or INCONCLUSIVE for all \ell.;
+end for
+Let \mathcal{C}_{\text{obs}},\mathcal{C}_{i},\mathcal{C}_{j} be the collections of contexts in which neither, only i, or only j are intervened, respectively;
+Initialize s_{i}\leftarrow 0 and s_{j}\leftarrow 0;
+if \mathcal{C}_{\text{obs}} is NONZERO then
+if NONZERO appears in \mathcal{C}_{i}  then
+(s_{i},s_{j})\leftarrow(s_{i}+1,s_{j}-1);
+end if
+else
+s_{i}\leftarrow s_{i}-1;
+end if
+if NONZERO appears in \mathcal{C}_{j}  then
+(s_{i},s_{j})\leftarrow(s_{i}-1,s_{j}+1);
+end if
+else
+s_{j}\leftarrow s_{j}-1;
+end if
+end if
+if s_{i}&gt;s_{j} then
+\mathrm{score}(i)\leftarrow\mathrm{score}(i)+1;
+\mathrm{score}(j)\leftarrow\mathrm{score}(j)-1;
+end if
+else if s_{j}&gt;s_{i} then
+\mathrm{score}(j)\leftarrow\mathrm{score}(j)+1;
+\mathrm{score}(i)\leftarrow\mathrm{score}(i)-1;
+end if
+end foreach
+r\leftarrow\arg\max_{i\in C}\mathrm{score}(i);
+return r;
+One may wonder whether pairwise correlation tests alone are sufficient for causal order.
+While such tests exploit intervention asymmetry, they rely only on local, pairwise information and can be unreliable in finite samples or when intervention patterns are limited, e.g., when there are few or no contexts in which one node is intervened on while the other is not.
+The importance of combining both global projection norm-based candidate selection and local pairwise correlation testing steps is shown in Appendix B.7.
+7. Experiments
+We evaluate TSCD on synthetic linear and nonlinear structural equation models, comparing against causal discovery baselines. Experiment details are in Appendix B.
+Experiments were conducted on a MacBook Pro with an Apple M2 chip and on a university computing cluster.
+See this repository for the code.
+7.1. Linear SEM
+We generate data from random LSEMs with p=10 nodes and edge probability 0.6, under one observational and four intervention contexts. We consider three noise regimes (Gaussian, heavy-tailed, and mixed).
+We compare three classes of methods:
+(1)
+Interventional methods (ours, GIES, IGSP), which use interventional data and intervention patterns;
+(2)
+Observational methods with adjacency matrix output
+(LiNGAM, SortRegress, NOTEARS), applied separately to each context and combined;
+(3)
+Observational methods with graph output (GES, PC), applied to five times as many observational samples to match the total sample size used by the other methods.
+Performance is evaluated using the relative Frobenius error,
+\frac{\|{\Lambda_{\text{est}}}-\Lambda\|_{F}}{\|\Lambda\|_{F}},
+for methods estimating \Lambda, the F1 score for edge recovery,
+\mathrm{F1}=\frac{2\,\mathrm{precision}\cdot\mathrm{recall}}{\mathrm{precision}+\mathrm{recall}},
+and runtime.
+Results are shown in Figure 3. Our method achieves high accuracy and computational efficiency, performing comparably to LiNGAM in non-Gaussian settings and outperforming baselines when there is Gaussian noise.
+10^{2}10^{3}10^{4}10^{-1}10^{0}10^{1}10^{2}Sample size per contextRuntime (sec)Runtime (sec)10^{2}10^{3}10^{4}00.511.5Sample size per contextRelative Frob. ErrorRelative Frob. Error10^{2}10^{3}10^{4}00.51Sample size per contextF1 ScoreF1 ScoreGaussian ratio = 0
+10^{2}10^{3}10^{4}10^{0}10^{2}Sample size per contextRuntime (sec)Runtime (sec)10^{2}10^{3}10^{4}00.511.5Sample size per contextRelative Frob. ErrorRelative Frob. Error10^{2}10^{3}10^{4}0.51Sample size per contextF1 ScoreF1 ScoreGaussian ratio = 0.5
+10^{2}10^{3}10^{4}10^{0}10^{2}Sample size per contextRuntime (sec)Runtime (sec)10^{2}10^{3}10^{4}00.511.5Sample size per contextRelative Frob. ErrorRelative Frob. Error10^{2}10^{3}10^{4}00.51Sample size per contextF1 ScoreF1 ScoreGaussian ratio = 1Ours (TSCD)GESGIESIGSPPCSortRegressNOTEARSDirectLiNGAMICA-LiNGAM
+Figure 3. Performance comparison across different noise settings, with Gaussian ratios 0, 0.5, and 1.
+7.2. Scalability
+We consider graphs with up to p=400 nodes under sparse LSEMs with perfect interventions.
+Figure 4 reports F1 score and runtime as functions of p. The F1 score remains stable above 0.94 across the range, with no degradation as the problem size increases. Runtime grows from 0.13s at p=50 to 214s at p=400. The experiment was conducted on a MacBook Pro with an Apple M2 chip.
+1002003004000.940.960.9811.02pF1 scoreF1 score vs. number of nodes100200300400050100150pruntime (s)Runtime vs. number of nodes
+Figure 4. Scalability of TSCD.
+Left: F1 score versus number of nodes.
+Right: runtime versus number of nodes.
+Each point is averaged across 10 random sparse DAGs, each with sample size p^{2}. The error bars are given by the standard deviation across trials.
+7.3. TSCD-nonlinear
+We consider nonlinear SEMs with perfect interventions. The goal is to test whether we can recover the causal order and the DAG based on stability of each node when the structural functions are nonlinear. The study of nonlinear SEMs is widespread, also appearing in e.g. [52, 25, 15].
+TSCD-nonlinear constructs the causal order greedily based on stability across contexts. The initial root is selected using marginal variance stability. At each step, we predict each candidate node from previously selected variables using a neural network trained on pooled non-intervened contexts, and select the node whose prediction error is most stable across contexts. Parent sets are estimated via a gated network for feature selection.
+We compare TSCD-nonlinear against a baseline that orders nodes by marginal variance.
+The experiment is conducted on a random DAG with p=10 nodes and edge probability 0.8.
+Ordering accuracy is measured by the number of parent-child errors, edges where the parent appears after the child in the recovered order.
+Our method recovers the correct causal order, while the baseline produces 13 parent-child errors. A representative example is in Figure 5. Our recovered graph has an edge error rate of 0.34. The runtime is 134 seconds using 5 parallel workers.
+Figure 5. Ground-truth DAG (left) and recovered graph (right) for a nonlinear SEM. The recovered structure matches the true causal order, with an edge error rate of 0.34.
+7.4. Light Causal Chamber
+We evaluate TSCD and TSCD-nonlinear on a real-world light-chamber experiment from the Causal Chamber [11].
+The chamber is a controlled physical system in which light sources and sensor readings interact through the device. We use the light-tunnel intervention dataset lt_interventions_standard_v1. To focus on a setting where the intervention targets can be treated as perfect interventions, we restrict to a partial ground-truth graph over nine variables:
+R,G,B,\tilde{I}_{1},\tilde{V}_{1},L_{11},L_{12},D^{V}_{1},T^{V}_{1}.
+Here R,G,B denote the brightness of the red, green, and blue LEDs respectively on the main light source. The variables \tilde{I}_{1} and \tilde{V}_{1} are the uncalibrated infrared and visible-light intensity measurements from the first light sensor, which is placed before the polarizers. The variables L_{11} and L_{12} are the brightness settings of the two auxiliary LEDs placed by this first light sensor. Finally, D^{V}_{1} and T^{V}_{1} are visible-light sensor parameters for the first sensor: the selected visible photodiode and the photodiode exposure time.
+We compare against several standard causal discovery baselines. TSCD-nonlinear achieves high accuracy, recovering all ground-truth edges in the selected graph with precision 0.80 and recall 1.00. TSCD recovers the linear part of the graph, the edges from R,G,B to the two sink variables \tilde{I}_{1} and \tilde{V}_{1}, yielding precision 0.857 and recall 0.500. In contrast, the competing methods have lower recall or precision on this benchmark, see Table 1.
+Method
+Precision
+Recall
+TSCD
+0.857
+0.500
+TSCD-nonlinear
+0.800
+1.000
+SortRegress
+0.038
+0.500
+LiNGAM (ICA)
+0.028
+0.500
+LiNGAM (Direct)
+0.019
+0.500
+GIES
+0.833
+0.417
+IGSP
+0.000
+0.167
+Table 1. Causal discovery performance on the selected Causal Chamber light-tunnel graph.
+7.5. Flow-cytometry Dataset
+We consider the flow-cytometry dataset [33], which records single-cell protein phosphorylation for p=11 proteins across nine experimental conditions.
+We pool the two unperturbed baselines into one observational environment, and use the five kinase-inhibitor conditions as intervention contexts.
+We exclude the two activator conditions (PMA and \beta2-cAMP), since inhibitor interventions are closer to perfect interventions.
+We compare the graph recovered by our method in Table 2 with two reference DAGs from [33] and graphs recovered by ICP and hiddenICP [27, 24].
+TSCD recovers eight edges, seven of which appear in the DAG from [33] or recovered by hiddenICP.
+Most missing edges are either among \{\mathrm{Raf},\mathrm{PLCg},\mathrm{Erk},\mathrm{PKA},\mathrm{p38},\mathrm{JNK}\}, which are not intervened in any context so are not identifiable, or involve \mathrm{PKA},\mathrm{PKC}, where feedback loops and nonlinear effects are expected [17].
+Edge
+[33]a
+[33]b
+[27]ICP
+[27]hiddenICP
+TSCD (ours)
+Raf \to Mek
+\checkmark
+\checkmark
+\checkmark
+Mek \to Raf
+\checkmark
+\checkmark
+Mek \to Erk
+\checkmark
+\checkmark
+PLCg \to PIP2
+\checkmark
+\checkmark
+\checkmark
+\checkmark
+\checkmark
+PLCg \to PIP3
+\checkmark
+\checkmark
+PLCg \to PKC
+\checkmark
+PIP2 \to PLCg
+\checkmark
+PIP2 \to PKC
+\checkmark
+PIP3 \to PLCg
+\checkmark
+PIP3 \to PIP2
+\checkmark
+\checkmark
+\checkmark
+\checkmark
+\checkmark
+PIP3 \to Akt
+\checkmark
+Akt \to Erk
+\checkmark
+\checkmark
+\checkmark
+Akt \to PKA
+\checkmark
+Erk \to Akt
+\checkmark
+\checkmark
+\checkmark
+PKA \to Raf
+\checkmark
+\checkmark
+PKA \to Mek
+\checkmark
+\checkmark
+PKA \to Erk
+\checkmark
+\checkmark
+\checkmark
+PKA \to Akt
+\checkmark
+\checkmark
+\checkmark
+PKA \to p38
+\checkmark
+\checkmark
+PKA \to JNK
+\checkmark
+\checkmark
+PKC \to Raf
+\checkmark
+\checkmark
+PKC \to Mek
+\checkmark
+\checkmark
+PKC \to PKA
+\checkmark
+PKC \to p38
+\checkmark
+\checkmark
+\checkmark
+PKC \to JNK
+\checkmark
+\checkmark
+\checkmark
+\checkmark
+p38 \to JNK
+\checkmark
+\checkmark
+p38 \to PKC
+\checkmark
+\checkmark
+JNK \to PKC
+\checkmark
+JNK \to p38
+\checkmark
+Total
+18
+17
+7
+13
+8
+Table 2. Edges comparison across two reference graphs, graph recovered by ICP, hiddenICP and TSCD.
+TSCD recovers a sparse set of edges that is consistent with the other graphs. Red entries are non-identifiable edges, between
+\{\text{Raf},\text{PLCg},\text{Erk},\text{PKA},\text{p38},\text{JNK}\}, which TSCD cannot identify.
+8. Conclusion
+We propose a tensor-based method for causal discovery from covariance matrices, across multiple intervention contexts, to recover both a causal graph and edge weights. Our approach is identifiable under a logarithmic number of intervention contexts and performs well in linear and nonlinear settings, scaling to graphs with hundreds of nodes.
+Our method relies on assumptions such as perfect interventions and uncorrelated noise, which may be violated in real-world data.
+Future directions include extending the framework to handle other types of interventions and latent confounding.
+These could include noise-shift interventions [32], which also admit a tensor decomposition structure, and soft interventions [23] which modify rather than remove edge weights.
+TSCD relies only on second-order statistics through covariance and precision matrices. Incorporating first or higher-order statistics is another interesting direction for future work.
+Acknowledgments.
+NO received support from the Harvard Office of Undergraduate Research and Fellowships. AS was partially supported by NSF DMS 2608217 and an Alfred P. Sloan research fellowship.
+References
+[BP02]
+C. Brito and J. Pearl (2002)
+A new identification condition for recursive models with correlated errors.
+Structural Equation Modeling 9 (4), pp. 459–474.
+Cited by: §2.1.
+[CO12]
+L. Chiantini and G. Ottaviani (2012)
+On generic identifiability of 3-tensors of small rank.
+SIAM Journal on Matrix Analysis and Applications 33 (3), pp. 1018–1037.
+Cited by: §4.
+[CHI02]
+D. M. Chickering (2002)
+Optimal structure identification with greedy search.
+Journal of Machine Learning Research 3, pp. 507–554.
+Cited by: §1,
+§2.5.
+[DE 06]
+L. De Lathauwer (2006)
+A link between the canonical decomposition in multilinear algebra and simultaneous matrix diagonalization.
+SIAM journal on Matrix Analysis and Applications 28 (3), pp. 642–666.
+Cited by: §1.
+[DPL+16]
+A. Dixit, O. Parnas, B. Li, J. Chen, C. P. Fulco, L. Jerby-Arnon, N. D. Marjanovic, D. Dionne, T. Burks, R. Raychowdhury, et al. (2016)
+Perturb-seq: dissecting molecular circuits with scalable single-cell RNA profiling of pooled genetic screens.
+cell 167 (7), pp. 1853–1866.
+Cited by: §1.
+[DFS11]
+M. Drton, R. Foygel, and S. Sullivant (2011)
+Global identifiability of linear structural equation models.
+The Annals of Statistics 39 (2), pp. 865–886.
+Cited by: §1.
+[EGS05]
+F. Eberhardt, C. Glymour, and R. Scheines (2005)
+On the number of experiments sufficient and in the worst case necessary to identify all causal relations among N variables.
+In Proceedings of the Twenty-First Conference on Uncertainty in Artificial Intelligence,
+pp. 178–184.
+Cited by: §2.2.
+[FIS15]
+R. A. Fisher (1915)
+Frequency distribution of the values of the correlation coefficient in samples from an indefinitely large population.
+Biometrika 10 (4), pp. 507–521.
+Cited by: §A.1.
+[FDD12]
+R. Foygel, J. Draisma, and M. Drton (2012)
+Half-trek criterion for generic identifiability of linear structural equation models.
+The Annals of Statistics, pp. 1682–1713.
+Cited by: §1.
+[FLN+00]
+N. Friedman, M. Linial, I. Nachman, and D. Pe’er (2000)
+Using Bayesian networks to analyze expression data.
+In Proceedings of the fourth annual international conference on Computational molecular biology,
+pp. 127–135.
+Cited by: §1.
+[GPB25]
+J. L. Gamella, J. Peters, and P. Bühlmann (2025)
+Causal chambers as a real-world physical testbed for AI methodology.
+Nature Machine Intelligence 7 (1), pp. 107–118.
+Cited by: §B.5,
+§7.4.
+[GPR99]
+S. Greenland, J. Pearl, and J. M. Robins (1999)
+Causal diagrams for epidemiologic research.
+Epidemiology 10 (1), pp. 37–48.
+Cited by: §1.
+[HB12]
+A. Hauser and P. Bühlmann (2012)
+Characterization and greedy learning of interventional Markov equivalence classes of directed acyclic graphs.
+Journal of Machine Learning Research 13, pp. 2409–2464.
+Cited by: §2.5.
+[HCA+25]
+A. Heurtebise, O. Chehab, P. Ablin, A. Gramfort, and A. Hyvärinen (2025)
+Identifiable multi-view causal discovery without non-gaussianity.
+arXiv e-prints, pp. arXiv–2502.
+Cited by: §1.
+[HJM+08]
+P. Hoyer, D. Janzing, J. M. Mooij, J. Peters, and B. Schölkopf (2008)
+Nonlinear causal discovery with additive noise models.
+Advances in neural information processing systems 21.
+Cited by: §7.3.
+[IMB20]
+G. W. Imbens (2020)
+Potential outcome and directed acyclic graph approaches to causality: relevance for empirical practice in economics.
+Journal of Economic Literature 58 (4), pp. 1129–1179.
+Cited by: §1.
+[IOS+10]
+S. Itani, M. Ohannessian, K. Sachs, G. P. Nolan, and M. A. Dahleh (2010)
+Structure learning in causal cyclic networks.
+In Causality: Objectives and assessment,
+pp. 165–176.
+Cited by: §7.5.
+[JLV23]
+N. Johnston, B. Lovitz, and A. Vijayaraghavan (2023)
+Computing linear sections of varieties: quantum entanglement, tensor decompositions and beyond.
+In 2023 IEEE 64th Annual Symposium on Foundations of Computer Science (FOCS),
+pp. 1316–1336.
+Cited by: §1.
+[KP25]
+J. Kileel and J. M. Pereira (2025)
+Subspace power method for symmetric tensor decomposition.
+Numerical Algorithms, pp. 1–38.
+Cited by: §1,
+§6.2.
+[KB09]
+T. G. Kolda and B. W. Bader (2009)
+Tensor decompositions and applications.
+SIAM review 51 (3), pp. 455–500.
+Cited by: §3.
+[KRU77]
+J. B. Kruskal (1977)
+Three-way arrays: rank and uniqueness of trilinear decompositions, with application to arithmetic complexity and statistics.
+Linear algebra and its applications 18 (2), pp. 95–138.
+Cited by: §4.
+[LAN11]
+J. M. Landsberg (2011)
+Tensors: geometry and applications: geometry and applications.
+Vol. 128,  American Mathematical Soc..
+Cited by: §1,
+§5.
+[MGS05]
+F. Markowetz, S. Grossmann, and R. Spang (2005)
+Probabilistic soft interventions in conditional Gaussian networks.
+In International Workshop on Artificial Intelligence and Statistics,
+pp. 214–221.
+Cited by: §8.
+[MHM+16]
+N. Meinshausen, A. Hauser, J. M. Mooij, J. Peters, P. Versteeg, and P. Bühlmann (2016)
+Methods for causal inference from gene perturbation experiments and validation.
+Proceedings of the National Academy of Sciences 113 (27), pp. 7361–7368.
+Cited by: §B.4,
+§7.5.
+[MZH20]
+R. P. Monti, K. Zhang, and A. Hyvärinen (2020)
+Causal discovery with general non-linear relationships using non-linear ica.
+In Uncertainty in artificial intelligence,
+pp. 186–195.
+Cited by: §7.3.
+[PEA09]
+J. Pearl (2009)
+Causality.
+2 edition,  Cambridge University Press.
+Cited by: §1.
+[PBM16]
+J. Peters, P. Bühlmann, and N. Meinshausen (2016)
+Causal inference using invariant prediction: identification and confidence intervals.
+Journal of the Royal Statistical Society: Series B 78 (5), pp. 947–1012.
+Cited by: §B.4,
+§1,
+§2.5,
+§7.5,
+Table 2,
+Table 2.
+[PB14]
+J. Peters and P. Bühlmann (2014)
+Identifiability of gaussian structural equation models with equal error variances.
+Biometrika 101 (1), pp. 219–228.
+Cited by: §1.
+[PJS17]
+J. Peters, D. Janzing, and B. Scholkopf (2017)
+Elements of causal inference: foundations and learning algorithms.
+MIT press.
+Cited by: §1,
+§1,
+§1.
+[RSW26]
+K. Ranestad, A. Seigal, and K. Wang (2026)
+A real generalized trisecant trichotomy.
+Journal of Algebra.
+Cited by: §1.
+[RSW21]
+A. Reisach, C. Seiler, and S. Weichwald (2021)
+Beware of the simulated DAG! causal discovery benchmarks may be easy to game.
+Advances in Neural Information Processing Systems 34, pp. 27772–27784.
+Cited by: §2.5.
+[RHP+15]
+D. Rothenhäusler, C. Heinze, J. Peters, and N. Meinshausen (2015)
+BACKSHIFT: learning causal cyclic graphs from unknown shift interventions.
+Advances in neural information processing systems 28.
+Cited by: §1,
+§8.
+[SPP+05]
+K. Sachs, O. Perez, D. Pe’er, D. A. Lauffenburger, and G. P. Nolan (2005)
+Causal protein-signaling networks derived from multiparameter single-cell data.
+Science 308 (5721), pp. 523–529.
+Cited by: §B.4,
+§1,
+§7.5,
+§7.5,
+Table 2,
+Table 2.
+[SLB+21]
+B. Schölkopf, F. Locatello, S. Bauer, N. R. Ke, N. Kalchbrenner, A. Goyal, and Y. Bengio (2021)
+Toward causal representation learning.
+Proceedings of the IEEE 109 (5), pp. 612–634.
+Cited by: §1.
+[SB23]
+C. Schultheiss and P. Bühlmann (2023)
+Ancestor regression in linear structural equation models.
+Biometrika 110 (4), pp. 1117–1124.
+Cited by: §1.
+[SHH+06]
+S. Shimizu, P. O. Hoyer, A. Hyvärinen, and A. Kerminen (2006)
+A linear non-Gaussian acyclic model for causal discovery.
+Journal of Machine Learning Research 7, pp. 2003–2030.
+Cited by: §1,
+§2.5,
+§4.
+[SIS+11]
+S. Shimizu, T. Inazumi, Y. Sogawa, A. Hyvärinen, Y. Kawahara, T. Washio, P. O. Hoyer, and K. Bollen (2011)
+DirectLiNGAM: a direct method for learning a linear non-Gaussian structural equation model.
+Journal of Machine Learning Research 12, pp. 1225–1248.
+Cited by: §2.5.
+[SKP+22]
+S. H. Siddiqi, K. P. Kording, J. Parvizi, and M. D. Fox (2022)
+Causal mapping of human brain function.
+Nature reviews neuroscience 23 (6), pp. 361–375.
+Cited by: §1.
+[SVD15]
+L. Sorber, M. Van Barel, and L. De Lathauwer (2015)
+Structured data fusion.
+IEEE journal of selected topics in signal processing 9 (4), pp. 586–600.
+Cited by: §5.
+[SGS00]
+P. Spirtes, C. N. Glymour, and R. Scheines (2000)
+Causation, prediction, and search.
+MIT press.
+Cited by: §1,
+§2.5.
+[SSB+23]
+C. Squires, A. Seigal, S. S. Bhate, and C. Uhler (2023)
+Linear causal disentanglement via interventions.
+In International conference on machine learning,
+pp. 32540–32560.
+Cited by: §1.
+[STU08]
+Student (1908)
+The probable error of a mean.
+Biometrika, pp. 1–25.
+Cited by: §A.1.
+[SUL23]
+S. Sullivant (2023)
+Algebraic statistics.
+Vol. 194,  American Mathematical Society.
+Cited by: §2.1.
+[VP90]
+T. Verma and J. Pearl (1990)
+Equivalence and synthesis of causal models.
+In Proceedings of the Sixth Annual Conference on Uncertainty in Artificial Intelligence,
+pp. 255–270.
+Cited by: §1.
+[WBP+26]
+K. Wang, S. Bhate, J. M. Pereira, J. Kileel, M. Figlerowicz, and A. Seigal (2026)
+Multi-context principal component analysis.
+arXiv preprint arXiv:2601.15239.
+Cited by: §3.
+[WPK+25]
+K. Wang, J. M. Pereira, J. Kileel, and A. Seigal (2025)
+Multi-subspace power method for decomposing all tensors.
+arXiv preprint arXiv:2510.18627.
+Cited by: §1,
+§5,
+§6.2.
+[WS23]
+K. Wang and A. Seigal (2023)
+Lower bounds on the rank and symmetric rank of real tensors.
+Journal of Symbolic Computation 118, pp. 69–92.
+Cited by: §1.
+[WSY+17]
+Y. Wang, L. Solus, K. Yang, and C. Uhler (2017)
+Permutation-based causal inference algorithms with interventions.
+Advances in neural information processing systems 30.
+Cited by: §2.5.
+[WED34]
+J. H. M. Wedderburn (1934)
+Lectures on matrices.
+Vol. 17,  American Mathematical Soc..
+Cited by: §3.
+[WRI34]
+S. Wright (1934)
+The method of path coefficients.
+The annals of mathematical statistics 5 (3), pp. 161–215.
+Cited by: §1.
+[ZAR+18]
+X. Zheng, B. Aragam, P. Ravikumar, and E. P. Xing (2018)
+DAGs with NO TEARS: continuous optimization for structure learning.
+In Advances in Neural Information Processing Systems,
+Cited by: §2.5.
+[ZDA+20]
+X. Zheng, C. Dan, B. Aragam, P. Ravikumar, and E. Xing (2020)
+Learning sparse nonparametric dags.
+In International conference on artificial intelligence and statistics,
+pp. 3414–3425.
+Cited by: §7.3.
+Appendix A Algorithm Details
+A.1. Hypothesis testing for zero correlation
+The pairwise intervention-asymmetric tests whether a sample correlation is effectively zero. Finite sample can make small correlations appear nonzero (and vice versa), so we use a three-way classification:
+\texttt{NONZERO},\quad\texttt{ZERO},\quad\texttt{INCONCLUSIVE}.
+This allows us to avoid overconfident conclusions when the data are ambiguous.
+Testing for nonzero correlation.
+Given a sample correlation \hat{\rho} from N samples, we test
+H_{0}:\rho=0\qquad\text{against}\qquad H_{1}:\rho\neq 0.
+We use the standard t-statistic
+t=\hat{\rho}\sqrt{\frac{N-2}{1-\hat{\rho}^{2}}},
+which follows a t-distribution with N-2 degrees of freedom under H_{0} [42]. If the two-sided p-value is less than a significance level \alpha, we classify the correlation as NONZERO.
+Testing for effective zero correlation.
+If the null is not rejected, we next test the correlation using an equivalence test. Fix a tolerance \epsilon&gt;0, and test
+H_{0}:|\rho|\geq\epsilon\qquad\text{against}\qquad H_{1}:|\rho|&lt;\epsilon.
+We implement this using two one-sided tests. Using Fisher’s z-transform [8],
+z=\operatorname{arctanh}(\hat{\rho}),\qquad z_{\pm}=\operatorname{arctanh}(\pm\epsilon),
+with standard error
+\mathrm{SE}=\frac{1}{\sqrt{N-3}},
+we compute
+Z_{-}=\frac{z-z_{-}}{\mathrm{SE}},\qquad Z_{+}=\frac{z-z_{+}}{\mathrm{SE}}.
+If
+Z_{-}&gt;z_{1-\alpha}
+and Z_{+}&lt;-z_{1-\alpha},
+we reject H_{0} and classify the correlation as ZERO.
+Inconclusive cases.
+If neither test is decisive, we classify the correlation as INCONCLUSIVE. This occurs when the data cannot distinguish between zero and nonzero correlation.
+Summary.
+We classify each sample correlation as follows:
+•
+NONZERO: reject H_{0}:\rho=0,
+•
+ZERO: accept equivalence |\rho|&lt;\epsilon,
+•
+INCONCLUSIVE: neither test is decisive.
+This classification is used in the pairwise intervention-asymmetric test to infer causal order.
+A.2. From causal order to adjacency matrix
+Given a causal order \pi=(\pi_{1},\ldots,\pi_{p}), recovering the adjacency matrix \Lambda reduces to estimating the coefficients of each node from its ancestors in the order. For each node \pi_{t}, its parents lie in \{\pi_{1},\ldots,\pi_{t-1}\}, so estimation can be restricted to this set.
+We consider the following approaches.
+Lasso regression.
+For each node \pi_{t}, we regress x_{\pi_{t}} onto its ancestors \{x_{\pi_{1}},\ldots,x_{\pi_{t-1}}\} using Lasso. The \ell_{1}-penalty encourages sparse solutions. After identifying the support, one can optionally refit an ordinary least squares regression restricted to the parents to obtain less biased estimates. The resulting coefficients define the corresponding row of \Lambda.
+Regression.
+For each \pi_{t}, we regress x_{\pi_{t}} onto its ancestors. The coefficients define the corresponding row of \Lambda. We set entries with magnitude below a threshold to zero.
+Cholesky decomposition.
+The causal order induces a permutation under which the matrix (I-\Lambda) is lower triangular. Applying a Cholesky decomposition to the permuted precision matrix yields a dense estimate of the structural coefficients. To obtain a sparse adjacency matrix, we set entries with magnitude below a threshold to zero.
+The Lasso approach requires access to individual samples; the other two methods do not.
+Appendix B Experiment details
+B.1. Linear SEM
+For each experiment instance, we generate a random DAG with p=10 nodes. We first sample a weighted adjacency matrix \Lambda\in\mathbb{R}^{p\times p}, where each edge is included independently with probability 0.6. Nonzero edge weights are drawn uniformly from [0.4,1] with random signs. To enforce acyclicity, we construct \Lambda to be lower-triangular and then apply a random permutation.
+Noise variables \epsilon_{i} are independent across nodes, with variances sampled i.i.d. from \mathrm{U}[0.1,1]. We consider three noise settings:
+(i) fully Gaussian noise,
+(ii) half of the nodes have Gaussian noise and half follow a Student-t_{5} distribution,
+and (iii) fully Student-t_{5} noise.
+We use the intervention-pattern matrix
+B=\begin{pmatrix}1&amp;1&amp;1&amp;1&amp;1\\
+1&amp;1&amp;1&amp;1&amp;0\\
+1&amp;1&amp;1&amp;0&amp;1\\
+1&amp;1&amp;1&amp;0&amp;0\\
+1&amp;1&amp;0&amp;1&amp;1\\
+1&amp;1&amp;0&amp;1&amp;0\\
+1&amp;1&amp;0&amp;0&amp;1\\
+1&amp;1&amp;0&amp;0&amp;0\\
+1&amp;0&amp;1&amp;1&amp;1\\
+1&amp;0&amp;1&amp;1&amp;0\end{pmatrix}\in\mathbb{R}^{10\times 5}.
+Each row gives the intervention-pattern vector across the 5 contexts.
+For each context j, we generate samples from the corresponding interventional LSEM. Under perfect interventions, all incoming edges to intervened nodes are removed and their structural equations are replaced with exogenous noise. Samples are generated by solving the linear system
+(I-\Lambda^{(j)})X^{(j)}=E^{(j)},
+where \Lambda^{(j)} is the modified adjacency matrix for context j, and E^{(j)} contains independent noise samples.
+Each context contains the same number of samples, ranging from 100 to 10{,}000. Each experimental configuration is repeated over 30 independent trials.
+The root is selected using a candidate set of size 3 (Algorithm 3).
+From the causal order, \Lambda is estimated using Lasso regression.
+B.2. Scalability
+We vary the number of nodes p\in\{50,60,\dots,400\}. For each p, we generate a random DAG with edge probability 6/(p-1), yielding an expected in-degree of around 3. Edge weights are drawn from \mathrm{Unif}([-1,-0.1]\cup[0.1,1]), and noise variances from \mathrm{Unif}(0.01,0.05), with Gaussian noise.
+We use a binary-code design with L=\lceil\log_{2}p\rceil+1 contexts, including one observational context. Each context contains p^{2} samples.
+The root is selected using a candidate set of size 3 (Algorithm 3). The experimental configuration was repeated over 10 independent trials. Given the recovered causal order, we estimate the adjacency matrix via regression in the observational context with threshold 0.1.
+Performance is evaluated using the F1 score on the recovered adjacency support.
+B.3. Nonlinear SEM
+We consider nonlinear SEMs with perfect interventions on random DAGs with p=10 nodes and edge probability 0.8.
+Data are generated by
+x_{i}=f_{i}(x_{\mathrm{pa}(i)})+\epsilon_{i},
+where f_{i} is a randomly generated nonlinear function and \epsilon_{i} is Gaussian noise. Each f_{i} is implemented as a one-hidden-layer neural network with randomly initialized weights and a combination of activation functions, including tanh, ReLU, and square activations.
+Under interventions, if a node appears as a parent in a downstream structural equation, its input is masked to zero in that context, removing its influence. The structural equation of an intervened node is replaced by an exogenous noise term.
+We construct the causal order greedily. The initial root is selected based on stability of marginal variances across contexts where the node is not intervened on. At each subsequent step, for each candidate node, we train a feedforward neural network to predict the node from previously selected variables, using data pooled across contexts where the node is not intervened on. If a parent variable is intervened on in a context, its input is set to zero.
+To estimate the parent set, we use a gated neural network, where gates act as feature-selection weights. Variables with gate logits above a threshold are retained as parents. The model is then optionally refit using only the selected parents; if this refit improves validation loss, the reduced parent set is accepted. Otherwise, the full previously selected set is kept.
+Node selection is based on stability of prediction error across contexts. For each candidate node, we compute the mean squared error (MSE) in each valid context and select the node with the most stable normalized MSE, measured by the variance across contexts with a small penalty on the mean.
+B.4. Flow-cytometry Dataset
+We evaluate our method on the flow-cytometry dataset [33], which records single-cell protein phosphorylation.
+for p=11 signaling proteins across nine experimental conditions. We (i) pool the two unperturbed baselines (anti-CD3/CD28 with and without ICAM-2 co-stimulation) into a single observational environment, and (ii) restrict the intervention contexts to the five kinase-inhibitor conditions, each targeting a single protein (Akt, PKC, PIP2, Mek, PIP3 via PI3K).
+We exclude the two pharmacological-activator conditions (PMA and \beta2-cAMP), because inhibitors more closely approximate a perfect intervention while for activators, the target remains conditionally dependent on its parents.
+This yields six environments and 5{,}846 cells in total.
+We compare the graph recovered by our method (Table 2) with two reference DAGs from [33] and the recovered graphs of ICP and hiddenICP [27, 24].
+B.5. Light Causal Chamber
+We use the Causal Chamber light-tunnel dataset with single node interventions lt_interventions_standard_v1 from [11]. The selected variables and dataset columns are
+\{\texttt{red},\texttt{green},\texttt{blue},\texttt{ir\_1},\texttt{vis\_1},\texttt{l\_11},\texttt{l\_12},\texttt{diode\_vis\_1},\texttt{t\_vis\_1}\},
+corresponding to
+R,G,B,\tilde{I}_{1},\tilde{V}_{1},L_{11},L_{12},D^{V}_{1},T^{V}_{1}.
+The variables R,G,B control the main red, green, and blue LEDs, while L_{11},L_{12} control the two auxiliary LEDs placed by the first light-intensity sensor. The variables D^{V}_{1} and T^{V}_{1} are visible-light sensor parameters for the first sensor, controlling the selected visible photodiode and the photodiode exposure time. The variables \tilde{I}_{1} and \tilde{V}_{1} are sensor readings: the infrared and visible-light intensity measurements from the first sensor.
+The selected ground-truth graph contains twelve directed edges:
+R,G,B,L_{11},L_{12}\to\tilde{I}_{1},\qquad R,G,B,L_{11},L_{12},D^{V}_{1},T^{V}_{1}\to\tilde{V}_{1}.
+We use the reference experiment together with interventions on the selected actuator and sensor-parameter variables:
+\displaystyle\texttt{uniform\_reference},\ \texttt{uniform\_red\_strong},\ \texttt{uniform\_green\_strong},
+\displaystyle\texttt{uniform\_blue\_strong},\ \texttt{uniform\_t\_vis\_1\_strong},\ \texttt{uniform\_l\_11\_mid},
+\displaystyle\texttt{uniform\_l\_12\_mid},\ \texttt{uniform\_diode\_vis\_1\_mid}.
+TSCD recovers the six edges from R,G,B to \tilde{I}_{1} and \tilde{V}_{1}, corresponding to the strongest approximately linear effects in the subsystem.
+For TSCD-nonlinear, we set gate threshold to 2. It recovers all twelve ground-truth edges and adds three false positives, giving precision 12/15=0.800 and recall 12/12=1.000.
+For the other methods, we add a small independent Gaussian noise 10^{-5}\epsilon, with \epsilon\sim\mathcal{N}(0,1), to each data entry before running the algorithms. This is necessary because some variables have zero empirical variance in certain intervention context, which causes numerical failures for several baselines. The perturbation is negligible relative to the scale of the measurements and is used only to help the other methods.
+B.6. Root Projection Scores
+We study the projection score of roots, specifically, where the true roots appear in the ranking of nodes by projection score. In the population setting, the roots would all have projection score equal to 1 and appear at the top, but in practice they can be lower down the list. How far down they may appear guides the number of candidates that should be used for candidate root selection in Section 6.2. The top scoring root has a better rank when the graph is more sparse, since there are more roots.
+5101520253051015pRank(a) e=0.65101520253051015p(b) e=0.8
+Figure 6. The distribution of best ranks for root nodes in projection score, as
+p (the number of nodes) varies, for two values of e (the edge probability), cf. Section B.1.
+All experiments were conducted with 1000 samples, half of the nodes given Gaussian noise and the rest given Student-t_{5} distribution noise.
+B.7. Ablation
+We perform an ablation study using the LSEM data generation setup and hyperparameters in Section B.1. At each step, TSCD selects a candidate set of possible root nodes, then tests pairwise correlations to make a choice of root. We compare it to two ablated versions. The first only uses projection norm as a score to select the root at each step, i.e. there is only one root candidate.
+The second only uses pairwise correlation testing to determine the root at each step, i.e. all nodes are root candidates.
+Figure 7 reports these results. TSCD has improved performance compared to the ablated algorithms at low to moderate sample sizes. This justifies the importance of including both steps: selecting root candidates using projection norm and using pairwise correlations to choose the root from the candidates.
+10^{2}10^{3}10^{4}10^{-1}Sample size per contextRuntime (sec)Runtime (sec)10^{2}10^{3}10^{4}00.20.40.60.8Sample size per contextRelative Frob. ErrorRelative Frob. Error10^{2}10^{3}10^{4}0.70.80.91Sample size per contextF1 ScoreF1 ScoreGaussian ratio = 0
+10^{2}10^{3}10^{4}10^{-1}Sample size per contextRuntime (sec)Runtime (sec)10^{2}10^{3}10^{4}00.20.40.6Sample size per contextRelative Frob. ErrorRelative Frob. Error10^{2}10^{3}10^{4}0.70.80.91Sample size per contextF1 ScoreF1 ScoreGaussian ratio = 0.5
+10^{2}10^{3}10^{4}10^{-1}Sample size per contextRuntime (sec)Runtime (sec)10^{2}10^{3}10^{4}00.20.40.6Sample size per contextRelative Frob. ErrorRelative Frob. Error10^{2}10^{3}10^{4}0.70.80.91Sample size per contextF1 ScoreF1 ScoreGaussian ratio = 1Ours (TSCD)Pairwise correlations onlyProj. norm only
+Figure 7. TSCD performance comparison with ablated versions across different noise settings, with Gaussian ratios 0, 0.5, and 1. Gaussian ratio denotes the ratio of nodes given Gaussian distributed noise, with the rest given Student-t_{5} distributions.
+Experimental support, please
+view the build logs
+for errors. Generated by
+L
+A
+T
+E
+xml
+.
+Instructions for reporting errors
+We are continuing to improve HTML versions of papers, and your feedback helps enhance accessibility and mobile
+support. To report errors in the HTML that will help us improve conversion and rendering, choose any of the
+methods listed below:
+Click the &quot;Report Issue&quot; (
+) button, located in the page header.
+Tip: You can select the relevant text first, to include it in your report.
+Our team has already identified the following issues. We appreciate your time reviewing and reporting rendering errors we
+may not have found yet. Your efforts will help us improve the HTML versions for all readers, because disability
+should not be a barrier to accessing research. Thank you for your continued support in championing open access for
+all.
+Have a free development cycle? Help support accessibility at arXiv! Our collaborators at LaTeXML maintain a list of packages that need conversion, and welcome developer contributions.
+We gratefully acknowledge support from
+our major funders,
+member institutions, ,
+and all contributors.
+About
+·
+Help
+·
+Contact
+·
+Subscribe
+·
+Copyright
+·
+Privacy
+·
+Accessibility
+·
+Operational Status (opens in new tab)
+Major funding support from</pre></html>

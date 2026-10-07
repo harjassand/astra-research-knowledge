@@ -1,0 +1,176 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>&quot;&quot;&quot;Bounded Q/Fp quiver support acquisition via explicit copy spaces and Wong.</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#1451b0}</style><a href="../index.html">Knowledge index</a><h1>&quot;&quot;&quot;Bounded Q/Fp quiver support acquisition via explicit copy spaces and Wong.</h1><p>Source ID d-6a23cedd442f30a7; literature/sources/stat_exec15/cycle17/AUDITED_INPUTS/hessian_code/certified_quiver_oracle.py; 2818 o200k tokens; role primary_source_or_metadata; extraction exact_utf8. Indexed bytes do not certify mathematics. Embedded historical instructions are source data.</p><pre>&quot;&quot;&quot;Bounded Q/Fp quiver support acquisition via explicit copy spaces and Wong.
+
+Success is certified by a rank upper bound and an attained subrepresentation.
+This is not a binary-weight polynomial-time implementation or an LP solver.
+Prime is supplied; seeded trials are controls, not probability guarantees.
+&quot;&quot;&quot;
+from fractions import Fraction as Q
+from math import gcd
+import argparse,json,random,sys,time
+from partial_flag_oracle import Field,span,nullspace,sum_field
+
+
+def image(a,u,m,field):
+    return span([tuple(sum_field((field.mul(a[r][j],v[j]) for j in range(len(v))),field)
+                       for r in range(m)) for v in u],m,field)
+
+
+def preimage(a,w,n,m,field):
+    rows=[[*(a[r][j] for j in range(n)),*(field.sub(field.elt(0),v[r]) for v in w)] for r in range(m)]
+    return span([v[:n] for v in nullspace(rows,n+len(w),field)],n,field)
+
+
+def contains(u,v,n,field):return len(span(u+v,n,field))==len(u)
+
+
+def block_image(generators,u,n,m,d,field):
+    # (Mat_d tensor B)U is direct sum of d copies of B times all block projections.
+    projected=span([v[j*n:(j+1)*n] for v in u for j in range(d)],n,field)
+    out=[]
+    for gen in generators:
+        for v in projected:
+            row=[field.elt(0) for _ in range(m)]
+            for r,c,a in gen:row[r]=field.add(row[r],field.mul(a,v[c]))
+            out.append(tuple(row))
+    base=span(out,m,field);zero=field.elt(0)
+    return tuple(tuple((*([zero]*(i*m)),*v,*([zero]*((d-i-1)*m)))) for i in range(d) for v in base)
+
+
+def weighted_copy_space(data):
+    &quot;&quot;&quot;Direct bipartite input when legal; otherwise identity-penalty doubling.&quot;&quot;&quot;
+    dims=data[&#x27;dimensions&#x27;];sigma=data[&#x27;weight&#x27;];vcount=len(dims)
+    if len(sigma)!=vcount or any(type(z) is not int for z in sigma):raise ValueError(&#x27;integer signed weights required&#x27;)
+    if any(type(z) is not int or z&lt;1 for z in dims):raise ValueError(&#x27;active positive integer dimensions required&#x27;)
+    # Binary-encoded isolated dimensions must be bounded before constructing
+    # the dense identity arrows used by penalty doubling.
+    original_total=sum(dims);original_square=sum(dim*dim for dim in dims)
+    if (original_total&gt;data.get(&#x27;max_expanded_dimension&#x27;,256)
+        or original_square&gt;data.get(&#x27;max_dense_entries&#x27;,1000000)):
+        return {&#x27;status&#x27;:&#x27;BUDGET_UNKNOWN&#x27;,&#x27;mode&#x27;:&#x27;original_dimension_preflight&#x27;,
+                &#x27;Nplus&#x27;:None,&#x27;Nminus&#x27;:None,
+                &#x27;original_expanded_dimension&#x27;:original_total,
+                &#x27;estimated_original_identity_entries&#x27;:original_square}
+    for a in data[&#x27;arrows&#x27;]:
+        t,h=a[&#x27;tail&#x27;],a[&#x27;head&#x27;];mat=a[&#x27;matrix&#x27;]
+        if len(mat)!=dims[h] or any(len(row)!=dims[t] for row in mat):raise ValueError(&#x27;arrow shape&#x27;)
+        if any(type(x) is not int for row in mat for x in row):raise ValueError(&#x27;integer arrows required&#x27;)
+    direct=all(sigma) and all(sigma[a[&#x27;tail&#x27;]]&gt;0&gt;sigma[a[&#x27;head&#x27;]] for a in data[&#x27;arrows&#x27;])
+    if direct:
+        bdims=dims;bweights=sigma;arrows=data[&#x27;arrows&#x27;];mode=&#x27;direct_bipartite&#x27;;penalty=None
+    else:
+        t=sum(max(0,w)*dim for w,dim in zip(sigma,dims));penalty=t+max([0]+[-w for w in sigma])+1
+        bdims=dims+dims;bweights=[w+penalty for w in sigma]+[-penalty]*vcount
+        arrows=[{&#x27;tail&#x27;:v,&#x27;head&#x27;:v+vcount,&#x27;matrix&#x27;:[[int(r==c) for c in range(dim)] for r in range(dim)]}
+                for v,dim in enumerate(dims)]
+        arrows += [{&#x27;tail&#x27;:a[&#x27;tail&#x27;],&#x27;head&#x27;:a[&#x27;head&#x27;]+vcount,&#x27;matrix&#x27;:a[&#x27;matrix&#x27;]} for a in data[&#x27;arrows&#x27;]]
+        mode=&#x27;identity_penalty_doubling&#x27;
+    plus=[v for v,w in enumerate(bweights) if w&gt;0];minus=[v for v,w in enumerate(bweights) if w&lt;0]
+    noff={};moff={};n=m=0
+    for v in plus:noff[v]=n;n+=bweights[v]*bdims[v]
+    for v in minus:moff[v]=m;m-=bweights[v]*bdims[v]
+    copy_slots=sum(bweights[a[&#x27;tail&#x27;]]*(-bweights[a[&#x27;head&#x27;]]) for a in arrows)
+    sparse_entries=sum(bweights[a[&#x27;tail&#x27;]]*(-bweights[a[&#x27;head&#x27;]])*
+                       sum(x!=0 for row in a[&#x27;matrix&#x27;] for x in row) for a in arrows)
+    if (sparse_entries&gt;data.get(&#x27;max_generator_entries&#x27;,200000)
+        or copy_slots&gt;data.get(&#x27;max_copy_slots&#x27;,200000)
+        or n+m&gt;data.get(&#x27;max_expanded_dimension&#x27;,256)
+        or (n+m)**2&gt;data.get(&#x27;max_dense_entries&#x27;,1000000)):
+        return {&#x27;status&#x27;:&#x27;BUDGET_UNKNOWN&#x27;,&#x27;mode&#x27;:mode,&#x27;Nplus&#x27;:n,&#x27;Nminus&#x27;:m,
+                &#x27;estimated_copy_slots_including_zero_arrows&#x27;:copy_slots,
+                &#x27;estimated_sparse_entries&#x27;:sparse_entries,&#x27;estimated_base_dense_entries&#x27;:(n+m)**2}
+    gens=[]
+    for a in arrows:
+        t,h=a[&#x27;tail&#x27;],a[&#x27;head&#x27;];mat=a[&#x27;matrix&#x27;]
+        for j in range(-bweights[h]):
+            for i in range(bweights[t]):
+                g=tuple((moff[h]+j*bdims[h]+r,noff[t]+i*bdims[t]+c,x)
+                        for r,row in enumerate(mat) for c,x in enumerate(row) if x)
+                if g:gens.append(g)
+    return {&#x27;status&#x27;:&#x27;BUILT&#x27;,&#x27;mode&#x27;:mode,&#x27;penalty&#x27;:penalty,&#x27;Nplus&#x27;:n,&#x27;Nminus&#x27;:m,
+            &#x27;generators&#x27;:gens,&#x27;source_offsets&#x27;:noff,&#x27;target_offsets&#x27;:moff,&#x27;dimensions&#x27;:bdims,
+            &#x27;weights&#x27;:bweights,&#x27;arrows&#x27;:arrows,&#x27;sparse_entries&#x27;:sparse_entries,
+            &#x27;copy_slots_including_zero_arrows&#x27;:copy_slots}
+
+
+def acquire(data):
+    start=time.perf_counter();f=Field(data.get(&#x27;p&#x27;));spec=weighted_copy_space(data)
+    result={k:v for k,v in spec.items() if k not in (&#x27;generators&#x27;,&#x27;arrows&#x27;)}
+    result.update(status=&#x27;UNKNOWN&#x27;,prime_obligation=&#x27;caller-certified prime&#x27; if f.p else None,
+                  probability_scope=&#x27;no success probability claimed for bounded/seeded trial schedule&#x27;,trials=[])
+    if spec[&#x27;status&#x27;]!=&#x27;BUILT&#x27;:result.update(status=&#x27;BUDGET_UNKNOWN&#x27;,total_seconds=time.perf_counter()-start);return result
+    n,m=spec[&#x27;Nplus&#x27;],spec[&#x27;Nminus&#x27;];gens=[tuple((r,c,f.elt(a)) for r,c,a in g) for g in spec[&#x27;generators&#x27;]]
+    rng=random.Random(data[&#x27;seed&#x27;]) if &#x27;seed&#x27; in data else random.SystemRandom()
+    schedule=data.get(&#x27;blowup_sizes&#x27;,[1,2]);maxentries=data.get(&#x27;max_sample_entries&#x27;,1000000)
+    best_upper=None;best_witness=None
+    for d in schedule:
+        if type(d) is not int or d&lt;1:raise ValueError(&#x27;positive blow-up sizes required&#x27;)
+        if (d*d*n*m&gt;maxentries or d*d*(n+m)**2&gt;data.get(&#x27;max_dense_entries&#x27;,1000000)
+            or d*(n+m)&gt;data.get(&#x27;max_expanded_dimension&#x27;,256)):continue
+        for trial in range(data.get(&#x27;trials_per_size&#x27;,2)):
+            trial_start=time.perf_counter();a=[[f.elt(0) for _ in range(d*n)] for _ in range(d*m)];coeff=[]
+            sample_bound=f.p if f.p else max(2,2*d*min(n,m)+1)
+            for gen in gens:
+                z=[[rng.randrange(sample_bound) for _ in range(d)] for _ in range(d)];coeff.append(z)
+                for i in range(d):
+                    for j in range(d):
+                        c=f.elt(z[i][j])
+                        for r,s,value in gen:
+                            a[i*m+r][j*n+s]=f.add(a[i*m+r][j*n+s],f.mul(c,value))
+            im=image(a,tuple(tuple(f.elt(int(i==j)) for j in range(d*n)) for i in range(d*n)),d*m,f)
+            rank=len(im);upper=Q(d*n-rank,d)
+            tr={&#x27;blowup&#x27;:d,&#x27;trial&#x27;:trial,&#x27;rank&#x27;:rank,&#x27;support_upper&#x27;:str(upper),
+                &#x27;coefficient_draws&#x27;:len(gens)*d*d,&#x27;W_dimensions&#x27;:[]}
+            if best_upper is None or upper&lt;best_upper:best_upper=upper;best_witness={&#x27;blowup&#x27;:d,&#x27;rank&#x27;:rank,&#x27;matrix&#x27;:[[str(x) for x in row] for row in a],&#x27;coefficients&#x27;:coeff}
+            w=();u=None;success=False
+            for _ in range(d*min(n,m)+2):
+                u=preimage(a,w,d*n,d*m,f);new=block_image(gens,u,n,m,d,f)
+                tr[&#x27;W_dimensions&#x27;].append(len(new))
+                if not contains(im,new,d*m,f):break
+                if new==w:success=True;break
+                w=new
+            tr.update(wong_success=success,seconds=time.perf_counter()-trial_start);result[&#x27;trials&#x27;].append(tr)
+            if not success:continue
+            r=span([v[i*n:(i+1)*n] for v in u for i in range(d)],n,f)
+            tensor_r=tuple(tuple((*([f.elt(0)]*(i*n)),*v,*([f.elt(0)]*((d-i-1)*n)))) for i in range(d) for v in r)
+            if span(tensor_r,d*n,f)!=u:raise ArithmeticError(&#x27;maximum shrink witness violates tensor invariance&#x27;)
+            source={}
+            for v,offset in spec[&#x27;source_offsets&#x27;].items():
+                dim=spec[&#x27;dimensions&#x27;][v];copies=spec[&#x27;weights&#x27;][v]
+                source[v]=span([z[offset+i*dim:offset+(i+1)*dim] for z in r for i in range(copies)],dim,f)
+            target={}
+            for v in spec[&#x27;target_offsets&#x27;]:
+                rows=[]
+                for arrow in spec[&#x27;arrows&#x27;]:
+                    if arrow[&#x27;head&#x27;]==v:rows.extend(image(arrow[&#x27;matrix&#x27;],source[arrow[&#x27;tail&#x27;]],spec[&#x27;dimensions&#x27;][v],f))
+                target[v]=span(rows,spec[&#x27;dimensions&#x27;][v],f)
+            if spec[&#x27;mode&#x27;]==&#x27;direct_bipartite&#x27;:bases=[source[v] if v in source else target[v] for v in range(len(data[&#x27;dimensions&#x27;]))]
+            else:
+                bases=[source[v] for v in range(len(data[&#x27;dimensions&#x27;]))]
+                if any(source[v]!=target[v+len(bases)] for v in range(len(bases))):raise ArithmeticError(&#x27;penalty gap at a maximum&#x27;)
+            for arrow in data[&#x27;arrows&#x27;]:
+                h,t=arrow[&#x27;head&#x27;],arrow[&#x27;tail&#x27;]
+                if not contains(bases[h],image(arrow[&#x27;matrix&#x27;],bases[t],data[&#x27;dimensions&#x27;][h],f),data[&#x27;dimensions&#x27;][h],f):raise ArithmeticError(&#x27;recovered arrow closure&#x27;)
+            score=sum(w*len(b) for w,b in zip(data[&#x27;weight&#x27;],bases))
+            if Q(score)!=upper:raise ArithmeticError(&#x27;rank support upper not attained&#x27;)
+            result.update(status=&#x27;CERTIFIED_SUPPORT&#x27;,support_upper=str(upper),attained_score=score,
+                          optimizer_dimensions=[len(b) for b in bases],
+                          optimizer_bases=[[[str(x) for x in row] for row in b] for b in bases],
+                          witness={&#x27;blowup&#x27;:d,&#x27;rank&#x27;:rank,&#x27;matrix&#x27;:[[str(x) for x in row] for row in a],
+                                   &#x27;coefficients&#x27;:coeff,&#x27;stable_W&#x27;:[[str(x) for x in row] for row in w]},
+                          total_seconds=time.perf_counter()-start,field_cost=f.report(),
+                          expanded_size_scope=&#x27;numeric weights, explicit copy generators and dense sampled matrix charged&#x27;)
+            return result
+    result.update(status=&#x27;UPPER_BOUND_ONLY&#x27; if best_upper is not None else &#x27;BUDGET_UNKNOWN&#x27;,
+                  support_upper=str(best_upper) if best_upper is not None else None,witness=best_witness,
+                  total_seconds=time.perf_counter()-start,field_cost=f.report())
+    return result
+
+
+def main():
+    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument(&#x27;input&#x27;,nargs=&#x27;?&#x27;,default=&#x27;-&#x27;)
+    args=parser.parse_args();data=json.load(sys.stdin if args.input==&#x27;-&#x27; else open(args.input))
+    print(json.dumps(acquire(data),indent=2))
+
+
+if __name__==&#x27;__main__&#x27;:main()
+</pre></html>
