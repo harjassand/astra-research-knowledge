@@ -1,0 +1,75 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c02_s03/revisions/check_dense_admission_family.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c02_s03/revisions/check_dense_admission_family.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Exact checks of an all-size dense, conditioned approximation family.&quot;&quot;&quot;
+from frontier_rank_guard import *
+from representation_compiler import det,minor,rank
+from check_banded import determinant_table,table_prefix,encode
+from pathlib import Path
+from random import Random
+import json,time
+
+def family(n,epsilon):
+    assert n%2==0 and n&gt;=4
+    q=n//2;bound=n*n+2*n
+    delta=epsilon/(4*n*q*bound**(q-1)*2**n)
+    d=[[C(Q((i+1)**j,n**n)) if i!=j else C(0) for j in range(n)] for i in range(n)]
+    base=[[C(3 if i==j else int(1&lt;=j-i&lt;=2)) for j in range(n)] for i in range(n)]
+    f=[[base[i][j]+delta*d[i][j] for j in range(n)] for i in range(n)]
+    return f,delta,bound
+
+def run():
+    output=[];uniform_checks=[]
+    for n in (4,6,8,20):
+        start=time.monotonic();epsilon=Q(1,10);q=n//2
+        f,delta,bound=family(n,epsilon)
+        certificate=acquire_banded_certificate(f,2,0,q,epsilon)
+        assert certificate[&#x27;status&#x27;]==&#x27;CERTIFIED&#x27;
+        uniform=acquire_banded_uniform_certificate(f,2,0,q)
+        assert uniform[&#x27;status&#x27;]==&#x27;UNIFORM_CERTIFIED&#x27;
+        approximate=norm_uniform_accuracy(uniform,epsilon)
+        assert approximate[&#x27;branch&#x27;]==&#x27;APPROXIMATE_WIDTH_BACKEND&#x27;
+        assert approximate[&#x27;norm&#x27;]==certificate[&#x27;norm_estimate&#x27;]
+        assert certificate[&#x27;norm_estimate&#x27;]&gt;=1
+        assert all(f[i][j] for i in range(n) for j in range(n) if i!=j)
+        assert recognize_frontier(f)[&#x27;width&#x27;]==n-1
+        cutrank=rank(minor(f,range(q,n),range(q)))
+        assert cutrank==q
+        assert certificate[&#x27;operator_norm_upper_bound&#x27;]&lt;=bound
+        assert certificate[&#x27;eta_squared&#x27;]&lt;=n*n*delta*delta
+        assert delta*n&lt;=Q(1,16)
+        witness=det(minor(certificate[&#x27;H&#x27;],range(0,n,2),range(1,n,2)))
+        assert witness.im==0 and witness.re&gt;=1
+        z_true=None;relative_error=None
+        if n&lt;=8:
+            z_true=table_prefix(determinant_table(f),n)[q]
+            relative_error=abs(certificate[&#x27;norm_estimate&#x27;]-z_true)/z_true
+            assert relative_error&lt;=epsilon
+        if n==4:
+            d2=uniform[&#x27;amplitude_error_squared_bound&#x27;];z=uniform[&#x27;norm_estimate&#x27;]
+            assert d2&gt;0
+            accuracy_bits=d2.denominator.bit_length()+z.numerator.bit_length()+10
+            fine_epsilon=Q(1,1&lt;&lt;accuracy_bits)
+            fine=norm_uniform_accuracy(uniform,fine_epsilon)
+            assert fine[&#x27;branch&#x27;]==&#x27;EXACT_FINE_ACCURACY&#x27; and fine[&#x27;norm&#x27;]==z_true
+            sample=sample_uniform_accuracy(uniform,fine_epsilon,Random(17).getrandbits)
+            assert sample[&#x27;status&#x27;]==&#x27;SAMPLE&#x27; and sample[&#x27;branch&#x27;]==&#x27;EXACT_FINE_ACCURACY&#x27;
+            assert det(minor(f,sample[&#x27;up&#x27;],sample[&#x27;down&#x27;]))
+            uniform_checks.append({&#x27;n&#x27;:n,&#x27;accuracy_bits&#x27;:accuracy_bits,
+                &#x27;fine_count_branch&#x27;:fine[&#x27;branch&#x27;],&#x27;fine_sampler_branch&#x27;:sample[&#x27;branch&#x27;],
+                &#x27;charged_bound_verified&#x27;:Q(16**n)&lt;fine_epsilon**(-8)})
+        output.append({&#x27;n&#x27;:n,&#x27;k&#x27;:q,&#x27;status&#x27;:certificate[&#x27;status&#x27;],
+            &#x27;uniform_status&#x27;:uniform[&#x27;status&#x27;],
+            &#x27;norm_estimate&#x27;:certificate[&#x27;norm_estimate&#x27;],&#x27;delta&#x27;:delta,
+            &#x27;original_frontier&#x27;:n-1,&#x27;middle_right_to_left_rank&#x27;:cutrank,
+            &#x27;compiled_frontier&#x27;:certificate[&#x27;counts&#x27;][&#x27;extended_width&#x27;],
+            &#x27;matrix_condition_upper_bound&#x27;:Q(81,15),
+            &#x27;approximate_norm_bit_length&#x27;:certificate[&#x27;norm_estimate&#x27;].numerator.bit_length()+certificate[&#x27;norm_estimate&#x27;].denominator.bit_length(),
+            &#x27;true_norm_small_comparator&#x27;:z_true,&#x27;true_relative_error_small_comparator&#x27;:relative_error,
+            &#x27;backend_stats&#x27;:certificate[&#x27;counts&#x27;][&#x27;stats&#x27;],
+            &#x27;elapsed_seconds_diagnostic&#x27;:time.monotonic()-start})
+    return {&#x27;status&#x27;:&#x27;PASS&#x27;,&#x27;fixtures&#x27;:output,&#x27;uniform_accuracy_checks&#x27;:uniform_checks,
+            &#x27;scope&#x27;:&#x27;all-size theorem is in proof; n20 checks admission, positive witness and exact cut-rank, not original norm&#x27;}
+
+if __name__==&#x27;__main__&#x27;:
+    result=encode(run());Path(__file__).with_name(&#x27;dense_admission_family_checks.json&#x27;).write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({&#x27;status&#x27;:result[&#x27;status&#x27;],&#x27;sizes&#x27;:[x[&#x27;n&#x27;] for x in result[&#x27;fixtures&#x27;]],
+        &#x27;last&#x27;:{k:result[&#x27;fixtures&#x27;][-1][k] for k in (&#x27;n&#x27;,&#x27;k&#x27;,&#x27;status&#x27;,&#x27;original_frontier&#x27;,&#x27;middle_right_to_left_rank&#x27;,&#x27;compiled_frontier&#x27;,&#x27;approximate_norm_bit_length&#x27;,&#x27;elapsed_seconds_diagnostic&#x27;)}}))
+</pre><p><a href="../assets/0fb1a4aeb2bfb273d692664d37eb5b784a9414d1464afed3a002e42736b610fe.py">Exact original bytes</a></p></html>

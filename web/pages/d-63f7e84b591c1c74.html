@@ -1,0 +1,95 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c01_s01/rank_certificate_sampler.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c01_s01/rank_certificate_sampler.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Acquire and verify a rank-perturbation certificate, then sample prefixes.&quot;&quot;&quot;
+from fractions import Fraction
+from random import Random
+from pathlib import Path
+import json
+from near_monomial_dp import G, determinant
+from rank_monomial_mpo import counts, full_matrix
+
+
+def qdiv(x, y):
+    d = Fraction(y.abs2())
+    return G(Fraction(x.re * y.re + x.im * y.im) / d,
+             Fraction(x.im * y.re - x.re * y.im) / d)
+
+
+def acquire_factor(F, p, d):
+    n = len(F)
+    assert sorted(p) == list(range(n)) and len(d) == n
+    conv = lambda x: x if isinstance(x, G) else G(x)
+    residual = [[conv(x) for x in row] for row in F]
+    for i in range(n): residual[i][p[i]] -= conv(d[i])
+    R = [row[:] for row in residual]
+    pivots = []; rank = 0
+    for j in range(n):
+        pivot = next((i for i in range(rank, n) if R[i][j]), None)
+        if pivot is None: continue
+        R[rank], R[pivot] = R[pivot], R[rank]
+        den = R[rank][j]
+        R[rank] = [qdiv(x, den) for x in R[rank]]
+        for i in range(n):
+            if i == rank or not R[i][j]: continue
+            scale = R[i][j]
+            R[i] = [x - scale * y for x, y in zip(R[i], R[rank])]
+        pivots.append(j); rank += 1
+    U = [[residual[i][j] for j in pivots] for i in range(n)]
+    V = [[R[a][j] for a in range(rank)] for j in range(n)]
+    assert all(sum((U[i][a] * V[j][a] for a in range(rank)), G()) == residual[i][j]
+               for i in range(n) for j in range(n))
+    return U, V
+
+
+def exact_sample(p, d, U, V, k, rng, activities=None):
+    rows, cols = {}, {}
+    states = ((0, 0), (1, 0), (0, 1))
+    for i in range(len(p)):
+        masses = []
+        for ri, ci in states:
+            rc, cc = dict(rows), dict(cols)
+            rc[i], cc[i] = ri, ci
+            z, _ = counts(p, d, U, V, activities, rc, cc)
+            masses.append(Fraction(z[k]))
+        total = sum(masses)
+        if not total: raise ValueError(&#x27;zero norm conditional sector&#x27;)
+        # Integerize arbitrary exact rational masses before fair-bit rejection.
+        from math import lcm
+        den = lcm(*(m.denominator for m in masses))
+        weights = [int(m * den) for m in masses]
+        draw = rng.randrange(sum(weights))
+        for state, mass in zip(states, weights):
+            if draw &lt; mass:
+                rows[i], cols[i] = state
+                break
+            draw -= mass
+    return tuple(i for i, v in rows.items() if v), tuple(i for i, v in cols.items() if v)
+
+
+def run_checks():
+    p = [1, 2, 3, 0]
+    d = [G(1), G(1, 1), G(-1), G(1)]
+    U = [[G(1), G(0, 1)], [G(-1), G(1)], [G(1, 1), G(2)], [G(0), G(-1)]]
+    V = [[G(1), G(-1)], [G(2), G(1, 1)], [G(0, 1), G(1)], [G(-1), G(0, 1)]]
+    F = full_matrix(p, d, U, V)
+    U2, V2 = acquire_factor(F, p, d)
+    assert len(U2[0]) == 2
+    assert full_matrix(p, d, U2, V2) == F
+    z, _ = counts(p, d, U, V)
+    zz, _ = counts(p, d, U2, V2)
+    assert z == zz
+    rng = Random(61304)
+    samples = []
+    for k in (1, 2):
+        I, J = exact_sample(p, d, U2, V2, k, rng)
+        assert not set(I) &amp; set(J) and len(I) == len(J) == k
+        assert determinant([[F[i][j] for j in J] for i in I]).abs2() &gt; 0
+        samples.append({&#x27;k&#x27;: k, &#x27;I&#x27;: I, &#x27;J&#x27;: J})
+    return {&#x27;status&#x27;: &#x27;PASS&#x27;, &#x27;seed&#x27;: 61304, &#x27;acquired_rank&#x27;: 2,
+            &#x27;exact_norms&#x27;: [str(x) for x in zz], &#x27;support_valid_samples&#x27;: samples,
+            &#x27;scope&#x27;: &#x27;One exact rational rank-factor acquisition and two support-valid prefix samples; not a statistical sampling benchmark.&#x27;}
+
+
+if __name__ == &#x27;__main__&#x27;:
+    result = run_checks()
+    Path(__file__).with_name(&#x27;rank_certificate_checks.json&#x27;).write_text(json.dumps(result, indent=2) + &#x27;\n&#x27;)
+    print(json.dumps(result, indent=2))
+</pre><p><a href="../assets/f8504e3f82a0d3b7812ab1be724d130c5bb152c2970217bf19b29f9a23fab337.py">Exact original bytes</a></p></html>

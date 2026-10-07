@@ -1,0 +1,95 @@
+"""Exact small diagnostics for the XXZ local-Hessian/sign boundaries.
+
+All arithmetic is integer/Fraction arithmetic. This checks examples, not the
+universal derivations recorded in INITIAL.txt.
+"""
+from fractions import Fraction as F
+
+
+def edge_gate(alpha, gamma, s, kappa=None):
+    # F = I + s (kappa I + alpha(XX+YY) + gamma ZZ).
+    if kappa is None:
+        kappa = 3 * alpha
+    a = 1 + s * (kappa + gamma)
+    b = 1 + s * (kappa - gamma)
+    c = 2 * s * alpha
+    q_at_one = 2 * (a + b + c)
+    eig_hess_q = (
+        a + b + c,
+        a - b - c,
+        -a + b - c,
+        -a - b + c,
+    )
+    # Unit eigenvectors w+=(1,1,-1,-1)/2 and w-=(1,-1,1,-1)/2
+    # are orthogonal to grad(q)(1,1,1,1), so these are exact Hess(log q)
+    # eigenvalues in the two anisotropy-sensitive directions.
+    curv_plus = eig_hess_q[1] / q_at_one
+    curv_minus = eig_hess_q[2] / q_at_one
+    return a, b, c, q_at_one, eig_hess_q, curv_plus, curv_minus
+
+
+# Four-by-four real Pauli words, computational basis 00,01,10,11.
+XX = ((0, 0, 0, 1), (0, 0, 1, 0), (0, 1, 0, 0), (1, 0, 0, 0))
+YY = ((0, 0, 0, -1), (0, 0, 1, 0), (0, 1, 0, 0), (-1, 0, 0, 0))
+ZZ = ((1, 0, 0, 0), (0, -1, 0, 0), (0, 0, -1, 0), (0, 0, 0, 1))
+XI = ((0, 0, 1, 0), (0, 0, 0, 1), (1, 0, 0, 0), (0, 1, 0, 0))
+IX = ((0, 1, 0, 0), (1, 0, 0, 0), (0, 0, 0, 1), (0, 0, 1, 0))
+
+
+def add_scaled(*terms):
+    return tuple(tuple(sum(scale * matrix[i][j] for scale, matrix in terms)
+                       for j in range(4)) for i in range(4))
+
+
+def matmul(a, b):
+    return tuple(tuple(sum(a[i][k] * b[k][j] for k in range(4))
+                       for j in range(4)) for i in range(4))
+
+
+def trace_power(a, exponent):
+    p = tuple(tuple(F(int(i == j)) for j in range(4)) for i in range(4))
+    for _ in range(exponent):
+        p = matmul(p, a)
+    return sum(p[i][i] for i in range(4))
+
+
+def mixed_field_trace_cube(alpha, gamma, b1, b2):
+    h = add_scaled((alpha, XX), (alpha, YY), (gamma, ZZ),
+                   (b1, XI), (b2, IX))
+    return trace_power(h, 3)
+
+
+if __name__ == "__main__":
+    s = F(1, 10)
+    for gamma in (F(0), F(1), F(11, 10), F(-1), F(-11, 10)):
+        data = edge_gate(F(1), gamma, s)
+        print({"alpha": "1", "gamma": str(gamma), "s": str(s),
+               "a_b_c": [str(x) for x in data[:3]],
+               "hessian_q_eigenvalues": [str(x) for x in data[4]],
+               "anisotropy_log_curvatures": [str(data[5]), str(data[6])]})
+
+    # A larger scalar shift changes the last Hessian eigenvalue but cannot
+    # change either anisotropy-sensitive eigenvalue.
+    shift_data = edge_gate(F(1), F(11, 10), s, kappa=F(10))
+    print({"test": "scalar_shift_does_not_repair_anisotropy",
+           "gamma": "11/10", "kappa": "10",
+           "hessian_q_eigenvalues": [str(x) for x in shift_data[4]],
+           "anisotropy_log_curvatures": [str(shift_data[5]), str(shift_data[6])]})
+
+    print({"test": "two_site_mixed_field_trace_cube",
+           "alpha": "1", "gamma": "0", "b1": "1", "b2": "1",
+           "trace_H3": str(mixed_field_trace_cube(F(1), F(0), F(1), F(1)))})
+    print({"test": "two_site_mixed_field_trace_cube",
+           "alpha": "1", "gamma": "0", "b1": "1", "b2": "-1",
+           "trace_H3": str(mixed_field_trace_cube(F(1), F(0), F(1), F(-1)))})
+
+    # Exact formula is Tr(H^3)=24 alpha (b1*b2-alpha*gamma).
+    for alpha, gamma, b1, b2 in (
+        (F(1), F(0), F(1), F(1)),
+        (F(1), F(0), F(1), F(-1)),
+        (F(2), F(1, 2), F(-3), F(4)),
+    ):
+        lhs = mixed_field_trace_cube(alpha, gamma, b1, b2)
+        rhs = 24 * alpha * (b1 * b2 - alpha * gamma)
+        assert lhs == rhs, (lhs, rhs)
+    print({"test": "trace_cube_identity", "status": "PASS", "cases": 3})

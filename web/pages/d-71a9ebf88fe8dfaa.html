@@ -1,0 +1,95 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c01_s03/check_frontier.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c01_s03/check_frontier.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>from frontier_sampler import FrontierParity, brute, ZERO, qr
+from fractions import Fraction
+from itertools import product
+from pathlib import Path
+from datetime import datetime,timezone
+import json, random, time
+
+started=time.monotonic(); rng=random.Random(60103)
+checks=0; stats=[]
+
+def verify(F,A=None,name=&#x27;fixture&#x27;,prefix=True):
+    global checks
+    p=FrontierParity(F,A)
+    for k in range(len(F)//2+1):
+        x=p.partition(k); y=brute(F,k,A)
+        assert x==y,(name,k,x,y); checks+=1
+        stats.append({&#x27;name&#x27;:name,&#x27;n&#x27;:len(F),&#x27;k&#x27;:k,&#x27;norm&#x27;:str(x),**p.stats})
+        if prefix and len(F)&gt;1:
+            for a in (-1,0,1):
+                forced={0:(a,)}
+                assert p.partition(k,forced)==brute(F,k,A,forced),(name,k,a)
+                checks+=1
+        if x and k:
+            for _ in range(2):
+                s=p.sample(k,rng)
+                assert len(s[&#x27;I&#x27;])==len(s[&#x27;J&#x27;])==k
+                assert not set(s[&#x27;I&#x27;])&amp;set(s[&#x27;J&#x27;])
+                assert p.point_weight(s[&#x27;I&#x27;],s[&#x27;J&#x27;])&gt;0
+                checks+=3
+    return p
+
+F4=[[0,0,1,1],[0,0,1,-1],[0,0,0,0],[0,0,0,0]]
+p4=verify(F4,name=&#x27;nonwindable_4&#x27;)
+assert p4.partition(2)==4; checks+=1
+
+F8=[[0]*8 for _ in range(8)]
+for i,j in [(0,3),(2,1),(1,6),(4,0),(5,7)]: F8[i][j]=1
+p8=FrontierParity(F8)
+for R in ({0,1,2,3},{0,1,4,5,6,7}):
+    forced={v:((1,-1) if v in R else (0,)) for v in range(8)}
+    assert p8.partition(len(R)//2,forced)==1; checks+=1
+
+for n in range(2,7):
+    for rep in range(2):
+        width=1+rep
+        F=[[(rng.randrange(-2,3),rng.randrange(-2,3)) if 0&lt;abs(i-j)&lt;=width else 0 for j in range(n)] for i in range(n)]
+        A=[Fraction(rng.randrange(1,4),rng.randrange(1,4)) for i in range(n)]
+        verify(F,A,name=f&#x27;band_complex_{n}_{width}&#x27;)
+        order=list(range(n));rng.shuffle(order)
+        perm=FrontierParity(F,A,order)
+        for k in range(n//2+1):
+            assert perm.partition(k)==brute(F,k,A); checks+=1
+
+for n in (4,6):
+    F=[[Fraction(rng.randrange(-3,4),rng.randrange(1,5)) for j in range(n)] for i in range(n)]
+    verify(F,name=f&#x27;dense_rational_{n}&#x27;)
+
+cycles=[]
+for n in (4,6,8,10,12):
+    F=[[0]*n for _ in range(n)]
+    for i in range(n):F[i][(i+1)%n]=1
+    p=FrontierParity(F)
+    assert p.partition(n//2)==2; checks+=1
+    # A full-sector bounded-local chain disconnects, yet exact refresh succeeds.
+    sample=p.sample(n//2,rng)
+    assert sample[&#x27;I&#x27;] in (tuple(range(0,n,2)),tuple(range(1,n,2))); checks+=1
+    cycles.append({&#x27;n&#x27;:n,&#x27;width&#x27;:p.width,&#x27;norm&#x27;:&#x27;2&#x27;,&#x27;sample&#x27;:sample,&#x27;final_stats&#x27;:p.stats})
+
+# Exhaustively test the single-step self-reduction partition identity on F4.
+for q in range(5):
+    for labels in product((-1,0,1),repeat=q):
+        forced={v:(a,) for v,a in enumerate(labels)}
+        parent=p4.integer_partition(2,forced)
+        if q&lt;4:
+            child=sum(p4.integer_partition(2,{**forced,q:(a,)}) for a in (-1,0,1))
+            assert parent==child; checks+=1
+        assert p4.partition(2,forced)==brute(F4,2,allowed=forced);checks+=1
+
+# Exercise the explicit bounded random-bit fallback without a statistical claim.
+class MaxBits:
+    def getrandbits(self,b): return (1&lt;&lt;b)-1
+cap=FrontierParity([[0,1],[2,0]])
+out=cap.sample(1,MaxBits(),max_bit_trials=1)
+assert out[&#x27;fallback_events&#x27;]==1; checks+=1
+assert cap.point_weight(out[&#x27;I&#x27;],out[&#x27;J&#x27;])&gt;0;checks+=1
+for _ in range(3):
+    out=p4.sample(2,rng,max_bit_trials=12)
+    assert out[&#x27;fallback_events&#x27;]==0 and p4.point_weight(out[&#x27;I&#x27;],out[&#x27;J&#x27;])&gt;0;checks+=1
+
+result={&#x27;status&#x27;:&#x27;PASS&#x27;,&#x27;utc&#x27;:datetime.now(timezone.utc).isoformat(),&#x27;assertions&#x27;:checks,
+        &#x27;wall_seconds&#x27;:time.monotonic()-started,&#x27;fixtures&#x27;:stats,&#x27;directed_cycles&#x27;:cycles,
+        &#x27;scope&#x27;:&#x27;Exact finite identities, prefix masses, and supported output witnesses; no asymptotic or hardware certificate.&#x27;}
+Path(__file__).with_name(&#x27;checks.json&#x27;).write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+print(json.dumps({key:result[key] for key in (&#x27;status&#x27;,&#x27;assertions&#x27;,&#x27;wall_seconds&#x27;,&#x27;scope&#x27;)},indent=2))
+</pre><p><a href="../assets/dfe069599c4bb955e1f27027ddb09727b6518d2a5256be612e44e5d9dfbce3bb.py">Exact original bytes</a></p></html>

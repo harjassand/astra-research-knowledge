@@ -1,0 +1,133 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c10_l07/parametric_pair_exchange.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c10_l07/parametric_pair_exchange.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact rational certificates for pair exchange at arbitrary fixed total N.
+
+This checks the closed-form potential from REVISION_01.txt against every
+state/rate-box vertex.  For N &lt;= 16 it also calls reaction_recovery&#x27;s exact
+Fourier-Motzkin synthesizer as an independent executable replay.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import argparse
+import json
+from fractions import Fraction
+from pathlib import Path
+
+from reaction_recovery import (
+    propensity,
+    qs,
+    states_and_target,
+    synthesize,
+    verify_potential,
+)
+
+
+def qstr(value: Fraction) -&gt; str:
+    return qs(value)
+
+
+def make_network(total: int, ell: Fraction, upper: Fraction) -&gt; dict:
+    return {
+        &quot;name&quot;: f&quot;pair-exchange total={total}&quot;,
+        &quot;total&quot;: total,
+        &quot;core_min_each&quot;: 2,
+        &quot;row_cap&quot;: 200_000,
+        &quot;reactions&quot;: [
+            {&quot;name&quot;: &quot;AB_to_2A&quot;, &quot;reactants&quot;: [1, 1], &quot;products&quot;: [2, 0],
+             &quot;rate_min&quot;: qstr(ell), &quot;rate_max&quot;: qstr(upper)},
+            {&quot;name&quot;: &quot;2A_to_AB&quot;, &quot;reactants&quot;: [2, 0], &quot;products&quot;: [1, 1],
+             &quot;rate_min&quot;: qstr(ell), &quot;rate_max&quot;: qstr(upper)},
+            {&quot;name&quot;: &quot;AB_to_2B&quot;, &quot;reactants&quot;: [1, 1], &quot;products&quot;: [0, 2],
+             &quot;rate_min&quot;: qstr(ell), &quot;rate_max&quot;: qstr(upper)},
+            {&quot;name&quot;: &quot;2B_to_AB&quot;, &quot;reactants&quot;: [0, 2], &quot;products&quot;: [1, 1],
+             &quot;rate_min&quot;: qstr(ell), &quot;rate_max&quot;: qstr(upper)},
+        ],
+    }
+
+
+def closed_form(total: int, ell: Fraction, upper: Fraction) -&gt; tuple[Fraction, Fraction, Fraction]:
+    if total &lt; 4 or ell &lt;= 0 or upper &lt; ell:
+        raise ValueError(&quot;require total &gt;= 4 and 0 &lt; ell &lt;= upper&quot;)
+    delta = Fraction(1, 1) / (ell * total * (total - 1))
+    b = (Fraction(1, 1) / (ell * (total - 1) ** 2)
+         + upper / (ell ** 2 * total * (total - 1) ** 2))
+    a = b + delta
+    return delta, b, a
+
+
+def verify_closed_form(total: int, ell: Fraction, upper: Fraction) -&gt; dict:
+    delta, b, a = closed_form(total, ell, upper)
+    net = make_network(total, ell, upper)
+    states, target = states_and_target(total, 2)
+    # Only the four states immediately outside the target can be transient.
+    h = {x: Fraction(0) for x in target}
+    h[(0, total)] = a
+    h[(1, total - 1)] = b
+    h[(total - 1, 1)] = b
+    h[(total, 0)] = a
+    reactions = []
+    for item in net[&quot;reactions&quot;]:
+        reactants = tuple(item[&quot;reactants&quot;])
+        products = tuple(item[&quot;products&quot;])
+        reactions.append({
+            &quot;name&quot;: item[&quot;name&quot;],
+            &quot;reactants&quot;: reactants,
+            &quot;products&quot;: products,
+            &quot;jump&quot;: (products[0] - reactants[0], products[1] - reactants[1]),
+            &quot;low&quot;: ell,
+            &quot;high&quot;: upper,
+        })
+    result = verify_potential(states, target, reactions, h)
+    assert result[&quot;valid&quot;], result
+    assert result[&quot;minimum_negative_drift&quot;] == &quot;1&quot;, result
+    assert result[&quot;max_h&quot;] == qstr(a), result
+
+    replay = None
+    if total &lt;= 16:
+        replay = synthesize(net)
+        assert replay[&quot;status&quot;] == &quot;CERTIFIED&quot;, replay
+        replay_check = replay[&quot;checker&quot;]
+        assert replay_check[&quot;valid&quot;] and replay_check[&quot;minimum_negative_drift&quot;] != &quot;infinity&quot;
+    return {
+        &quot;total&quot;: total,
+        &quot;ell&quot;: qstr(ell),
+        &quot;upper&quot;: qstr(upper),
+        &quot;delta&quot;: qstr(delta),
+        &quot;h_boundary1&quot;: qstr(b),
+        &quot;h_boundary0&quot;: qstr(a),
+        &quot;closed_form_exact_checker&quot;: result,
+        &quot;fourier_motzkin_replay&quot;: None if replay is None else {
+            &quot;status&quot;: replay[&quot;status&quot;],
+            &quot;potential&quot;: replay[&quot;potential&quot;],
+            &quot;checker&quot;: replay[&quot;checker&quot;],
+        },
+        &quot;rate_corner_checks&quot;: (1 if ell == upper else 16) * 4,
+    }
+
+
+def main() -&gt; None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(&quot;--max-total&quot;, type=int, default=32)
+    parser.add_argument(&quot;--ell&quot;, default=&quot;1&quot;)
+    parser.add_argument(&quot;--upper&quot;, default=&quot;4&quot;)
+    parser.add_argument(&quot;--output&quot;, type=Path)
+    args = parser.parse_args()
+    ell, upper = Fraction(args.ell), Fraction(args.upper)
+    if args.max_total &lt; 4:
+        raise SystemExit(&quot;--max-total must be at least 4&quot;)
+    cases = [verify_closed_form(n, ell, upper) for n in range(4, args.max_total + 1)]
+    report = {
+        &quot;status&quot;: &quot;ALL_EXACT_CHECKS_PASSED&quot;,
+        &quot;interpretation&quot;: &quot;finite fixed-total classes; no unbounded-state theorem&quot;,
+        &quot;case_count&quot;: len(cases),
+        &quot;cases&quot;: cases,
+    }
+    encoded = json.dumps(report, indent=2, sort_keys=True)
+    if args.output:
+        args.output.write_text(encoded + &quot;\n&quot;, encoding=&quot;utf-8&quot;)
+    print(encoded)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/a44646b1af033b04fd05e54366f24d4c038ca94efa543fd0445cfd52c1823d19.py">Exact original bytes</a></p></html>

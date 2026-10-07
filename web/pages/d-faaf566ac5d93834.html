@@ -1,0 +1,85 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c07_l02/revisions/verify_axial_hankel_N72_delta81_50.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c07_l02/revisions/verify_axial_hankel_N72_delta81_50.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Integer/Fraction-only verifier for the saved N=72 Hankel witness.&quot;&quot;&quot;
+from fractions import Fraction
+from math import comb
+from pathlib import Path
+import json
+
+CERT = Path(__file__).with_suffix(&quot;.json&quot;)
+# Keep certificate and verifier names paired despite the verifier prefix.
+CERT = CERT.with_name(&quot;axial_hankel_N72_delta81_50_exact.json&quot;)
+D_BITS = 256
+D = 1 &lt;&lt; D_BITS
+RANGE_SQUARES = 10
+TAYLOR_ODD = 35
+TAYLOR_EVEN = 34
+N = 72
+
+
+def floor_f(x: Fraction) -&gt; int:
+    return x.numerator // x.denominator
+
+
+def ceil_f(x: Fraction) -&gt; int:
+    return -((-x.numerator) // x.denominator)
+
+
+def exp_interval(distance: int) -&gt; tuple[int, int]:
+    x = Fraction(9 * distance * distance, 400)
+    y = x / (1 &lt;&lt; RANGE_SQUARES)
+    assert y &lt;= Fraction(1, 16)
+    term = Fraction(1)
+    odd = even = term
+    for r in range(1, TAYLOR_ODD + 1):
+        term *= -y / r
+        odd += term
+        if r &lt;= TAYLOR_EVEN:
+            even += term
+    assert 0 &lt; odd &lt;= even
+    lo, hi = floor_f(odd * D), ceil_f(even * D)
+    for _ in range(RANGE_SQUARES):
+        lo = (lo * lo) // D
+        hi = ceil_f(Fraction(hi * hi, D))
+    return lo, hi
+
+
+def main() -&gt; None:
+    cert = json.loads(CERT.read_text())
+    assert cert[&quot;status&quot;] == &quot;CERTIFIED_NEGATIVE&quot;
+    assert cert[&quot;N&quot;] == N and cert[&quot;delta&quot;] == &quot;81/50&quot;
+    e = cert[&quot;scale_exponents_e_i&quot;]
+    z = [Fraction(int(a), int(b)) for a, b in cert[&quot;z_rational&quot;]]
+    assert len(e) == len(z) == 36 and z[-1] == 1
+    v = [z[i] * (1 &lt;&lt; e[i]) for i in range(36)]
+    coeff = {k: Fraction(0) for k in range(1, N)}
+    for i in range(36):
+        for j in range(36):
+            k = i + j + 1
+            coeff[k] += v[i] * v[j] / comb(N, k)
+
+    cache = {d: exp_interval(d) for d in range(36)}
+    lo_total = hi_total = 0
+    for k in range(1, N):
+        c = coeff[k]
+        if not c:
+            continue
+        lo, hi = cache[abs(k - 36)]
+        if c &gt; 0:
+            lo_total += floor_f(c * lo)
+            hi_total += ceil_f(c * hi)
+        else:
+            lo_total += floor_f(c * hi)
+            hi_total += ceil_f(c * lo)
+
+    recorded = [int(x) for x in cert[&quot;quadratic_interval_scaled_numerators&quot;]]
+    assert [lo_total, hi_total] == recorded
+    assert hi_total &lt; 0
+    assert Fraction(hi_total, D) &lt; Fraction(-1, 3000)
+    print(&quot;PASS: exact rational replay proves v^T(H1/72!)v in&quot;)
+    print(f&quot;[{lo_total}/{D}, {hi_total}/{D}] &lt; -1/3000&quot;)
+    print(&quot;No floating-point operation is used by this verifier.&quot;)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/468faa96e0736a9ef30390b8ac5a4129afb086c0786dc80242f003ce4bf8723f.py">Exact original bytes</a></p></html>

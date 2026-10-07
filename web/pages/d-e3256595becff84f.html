@@ -1,0 +1,38 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c02_s03/axial/hankel_diagnostic.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c02_s03/axial/hankel_diagnostic.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Independent high-precision diagnostic; floating point signs are not proofs.&quot;&quot;&quot;
+import json, math, time
+from pathlib import Path
+import mpmath as mp
+OUT=Path(__file__).parent
+
+def normalized_hankel(N, shift, delta):
+    m=(N-shift)//2
+    logs=[mp.log(math.comb(N,k)) for k in range(N+1)]
+    return [[mp.exp((logs[2*i+shift]+logs[2*j+shift])/2-logs[i+j+shift]+delta*(i-j)**2/N) for j in range(m+1)] for i in range(m+1)]
+
+def ldlt(A):
+    n=len(A); L=[[mp.mpf(0)]*n for _ in range(n)]; d=[]
+    for i in range(n):
+        for j in range(i):
+            L[i][j]=(A[i][j]-mp.fsum(L[i][k]*L[j][k]*d[k] for k in range(j)))/d[j]
+        di=A[i][i]-mp.fsum(L[i][k]**2*d[k] for k in range(i))
+        d.append(di); L[i][i]=1
+        if di&lt;=0:
+            return {&#x27;positive&#x27;:False,&#x27;first_nonpositive_index&#x27;:i,&#x27;pivot&#x27;:str(di),&#x27;min_previous&#x27;:str(min(d[:-1],default=mp.mpf(1)))}
+    return {&#x27;positive&#x27;:True,&#x27;minimum_pivot&#x27;:str(min(d)),&#x27;final_pivot&#x27;:str(d[-1]),&#x27;dimension&#x27;:n}
+
+def run(N):
+    mp.mp.dps=2*N+80
+    ans={&#x27;N&#x27;:N,&#x27;dps&#x27;:mp.mp.dps,&#x27;delta&#x27;:&#x27;2*log(2)&#x27;,&#x27;diagnostic_only&#x27;:True,&#x27;blocks&#x27;:[]}
+    t=time.monotonic()
+    for shift in [0,1]:
+        z=ldlt(normalized_hankel(N,shift,2*mp.log(2)))
+        ans[&#x27;blocks&#x27;].append({&#x27;shift&#x27;:shift,**z})
+        print(json.dumps({&#x27;N&#x27;:N,&#x27;shift&#x27;:shift,&#x27;positive&#x27;:z[&#x27;positive&#x27;],&#x27;elapsed&#x27;:time.monotonic()-t}),flush=True)
+    ans[&#x27;seconds&#x27;]=time.monotonic()-t
+    (OUT/f&#x27;diagnostic_N{N}.json&#x27;).write_text(json.dumps(ans,indent=2))
+    return ans
+
+if __name__==&#x27;__main__&#x27;:
+    import sys
+    for N in map(int,sys.argv[1:]): run(N)
+</pre><p><a href="../assets/c7ee4e184b6e3ee4da3be188dab5fc854126348dbdb234289dce5fe4b7f3bd55.py">Exact original bytes</a></p></html>

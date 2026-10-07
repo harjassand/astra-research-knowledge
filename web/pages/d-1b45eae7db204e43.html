@@ -1,0 +1,77 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c07_s01/revisions/exact_two_qubit_attack.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c07_s01/revisions/exact_two_qubit_attack.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Own N=2 symbolic block check and numerical boundary diagnostics.
+
+The all-field inside-radius conclusion is analytical, in the associated audit.
+Numerical values here are diagnostics; no interval theorem is inferred.
+&quot;&quot;&quot;
+from pathlib import Path
+import json
+import sympy as s
+import mpmath as m
+
+alpha, eps, bz = s.symbols(&#x27;alpha eps bz&#x27;, real=True)
+sx=s.Matrix([[0,1],[1,0]])/2
+sy=s.Matrix([[0,-s.I],[s.I,0]])/2
+sz=s.diag(s.Rational(1,2),-s.Rational(1,2))
+J=[s.kronecker_product(x,s.eye(2))+s.kronecker_product(s.eye(2),x) for x in [sx,sy,sz]]
+# Columns: triplet +, triplet 0, triplet -, singlet.
+P=s.Matrix([[1,0,0,0],[0,1/s.sqrt(2),0,1/s.sqrt(2)],
+            [0,1/s.sqrt(2),0,-1/s.sqrt(2)],[0,0,1,0]])
+assert s.simplify(P.conjugate().T*P)==s.eye(4)
+J2=sum((x*x for x in J),s.zeros(4))
+easy=alpha*J2-eps*J[2]*J[2]+s.sqrt(2)*bz*J[2]
+biax=alpha*J2+eps*(J[0]*J[0]-J[1]*J[1])+s.sqrt(2)*bz*J[2]
+easy_expected=s.diag(2*alpha-eps+s.sqrt(2)*bz,2*alpha,
+                     2*alpha-eps-s.sqrt(2)*bz,0)
+biax_expected=s.Matrix([[2*alpha+s.sqrt(2)*bz,0,eps,0],
+                        [0,2*alpha,0,0],[eps,0,2*alpha-s.sqrt(2)*bz,0],
+                        [0,0,0,0]])
+assert s.simplify(P.conjugate().T*easy*P-easy_expected)==s.zeros(4)
+assert s.simplify(P.conjugate().T*biax*P-biax_expected)==s.zeros(4)
+
+m.mp.dps=100
+def radius(a,B):
+    beta=10*a+2*B
+    H=3*a+B
+    k=16*a
+    Q=max(H,m.mpf(1))
+    R=H+3*m.log(2)+beta+3+m.log(2*Q)
+    L=k/2+m.sqrt(k*k/4+k*R)
+    x=2*m.log(2)+beta+L
+    eta=m.exp(-x)
+    return eta,a*eta*eta/40
+
+def biax_condition(a,b,e):
+    om=m.sqrt(2*b*b+e*e)
+    lhs=abs(e)*m.sinh(om)/om if om else abs(e)
+    rhs=(1+m.exp(-2*a))/2
+    # Exactly one PT eigenvalue can be negative, the odd-block x-w.
+    u=m.exp(2*a)
+    trace=2*u*m.cosh(om)+u+1
+    mineig=(u+1-2*u*lhs)/(2*trace)
+    return {&#x27;criterion_lhs&#x27;:m.nstr(lhs,30),&#x27;criterion_rhs&#x27;:m.nstr(rhs,30),
+            &#x27;pt_min_eigenvalue_diagnostic&#x27;:m.nstr(mineig,30),
+            &#x27;entangled_diagnostic&#x27;:bool(lhs&gt;rhs)}
+
+inside=[]
+for astr in [&#x27;0.1&#x27;,&#x27;1&#x27;,&#x27;10&#x27;]:
+    for bstr in [&#x27;0&#x27;,&#x27;1&#x27;,&#x27;10&#x27;]:
+        a=m.mpf(astr);B=m.mpf(bstr);eta,delta=radius(a,B)
+        row={&#x27;alpha&#x27;:astr,&#x27;B&#x27;:bstr,&#x27;eta&#x27;:m.nstr(eta,30),
+             &#x27;delta_star&#x27;:m.nstr(delta,30),&#x27;epsilon&#x27;:&#x27;0.99 delta_star&#x27;}
+        row.update(biax_condition(a,B,m.mpf(&#x27;.99&#x27;)*delta))
+        assert not row[&#x27;entangled_diagnostic&#x27;]
+        inside.append(row)
+outside=biax_condition(m.mpf(1),m.mpf(10),m.mpf(&#x27;.0001&#x27;))
+outside.update({&#x27;alpha&#x27;:&#x27;1&#x27;,&#x27;b&#x27;:&#x27;10&#x27;,&#x27;epsilon&#x27;:&#x27;0.0001&#x27;,
+                &#x27;admitted_delta_star&#x27;:m.nstr(radius(m.mpf(1),m.mpf(10))[1],30),
+                &#x27;scope&#x27;:&#x27;Outside admitted anisotropy radius; shows field dependence matters.&#x27;})
+assert outside[&#x27;entangled_diagnostic&#x27;]
+out={&#x27;symbolic_easy_plane_and_biaxial_blocks_exact&#x27;:True,
+     &#x27;easy_plane_ppt_threshold&#x27;:&#x27;epsilon &lt;= log(2/(1-exp(-2 alpha))); independent of b&#x27;,
+     &#x27;biaxial_ppt_threshold&#x27;:&#x27;abs(epsilon)*sinh(sqrt(2b^2+epsilon^2))/sqrt(2b^2+epsilon^2) &lt;= (1+exp(-2alpha))/2&#x27;,
+     &#x27;inside_radius_diagnostics&#x27;:inside,&#x27;outside_radius_entangled_control&#x27;:outside,
+     &#x27;precision_decimal_digits&#x27;:100,
+     &#x27;scope&#x27;:&#x27;Numerical diagnostics only. Universal inside-radius inequality is proved analytically in the audit.&#x27;}
+Path(__file__).with_suffix(&#x27;.json&#x27;).write_text(json.dumps(out,indent=2)+&#x27;\n&#x27;)
+print(json.dumps(out,indent=2))
+</pre><p><a href="../assets/b9916a5eb2b94ffc7d157b4aee5086619a74ebbb25da05fb9334d05fd0b0c059.py">Exact original bytes</a></p></html>

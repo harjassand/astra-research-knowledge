@@ -1,0 +1,90 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c05_s01/revisions/check_unbalanced_xy.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c05_s01/revisions/check_unbalanced_xy.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Small independent transcription check; not a separability proof.
+
+The actual proof of the weak-coupling PPT statement is in
+06_multispecies_exact_audit.txt. No peer program is imported or executed.
+Only spin-sector matrices are assembled; no N-site dense matrix is used.
+&quot;&quot;&quot;
+
+import json
+import math
+import time
+from pathlib import Path
+
+import numpy as np
+
+
+def coefficients(n, delta, two_j):
+    j = two_j / 2
+    return [delta / (n + 1) * math.sqrt((j - (-j + k)) * (j + (-j + k) + 1))
+            for k in range(two_j)]
+
+
+def predicted_pt_minimum(n, delta, two_j):
+    cs = coefficients(n, delta, two_j)
+    diagonals_up = [math.cosh(c) for c in cs] + [1.0]
+    diagonals_down = [1.0] + [math.cosh(c) for c in cs]
+    candidates = [diagonals_up[0], diagonals_down[-1]]
+    determinants = []
+    for k, c in enumerate(cs):
+        a, b = diagonals_down[k], diagonals_up[k + 1]
+        off = math.sinh(c)
+        determinants.append(a * b - off * off)
+        candidates.append((a + b - math.hypot(a - b, 2 * off)) / 2)
+    return min(candidates), min(determinants, default=1.0)
+
+
+def independent_matrix_check(n, delta):
+    # Maximal spin j=n/2; basis is (up,m=-j..j), then (down,m=-j..j).
+    two_j = n
+    dim = two_j + 1
+    h = np.zeros((2 * dim, 2 * dim))
+    for k, c in enumerate(coefficients(n, delta, two_j)):
+        h[k, dim + k + 1] = c
+        h[dim + k + 1, k] = c
+    vals, vecs = np.linalg.eigh(h)
+    exp_h = (vecs * np.exp(vals)) @ vecs.T
+    pt = exp_h.reshape(2, dim, 2, dim).transpose(2, 1, 0, 3).reshape(2 * dim, 2 * dim)
+    actual = float(np.linalg.eigvalsh(pt)[0])
+    predicted, _ = predicted_pt_minimum(n, delta, two_j)
+    return {&quot;n&quot;: n, &quot;delta&quot;: delta, &quot;spin_sector_dimension&quot;: 2 * dim,
+            &quot;matrix_pt_min_eigenvalue&quot;: actual,
+            &quot;formula_pt_min_eigenvalue&quot;: predicted,
+            &quot;absolute_residual&quot;: abs(actual - predicted)}
+
+
+def main():
+    start = time.perf_counter()
+    fixtures = [independent_matrix_check(n, delta)
+                for n, delta in [(1, 0.3), (2, 1.0), (5, 2.5)]]
+    assert all(row[&quot;absolute_residual&quot;] &lt; 1e-12 for row in fixtures)
+    rows = []
+    for n in [1, 2, 3, 5, 10, 20, 50]:
+        for delta in [0.1, 1.0, 1.7, 2.0, 4.0, 8.0, 16.0]:
+            # All allowed angular-momentum sectors of n spin-1/2 sites.
+            sector_values = [predicted_pt_minimum(n, delta, two_j)[0]
+                             for two_j in range(n % 2, n + 1, 2)]
+            rows.append({&quot;n_small&quot;: 1, &quot;n_large&quot;: n, &quot;delta&quot;: delta,
+                         &quot;minimum_unnormalized_pt_eigenvalue&quot;: min(sector_values),
+                         &quot;npt_diagnostic&quot;: min(sector_values) &lt; -1e-12})
+    assert all(not row[&quot;npt_diagnostic&quot;] for row in rows if row[&quot;delta&quot;] &lt;= 1.7)
+    result = {&quot;status&quot;: &quot;PASS_TRANSCRIPTION_ONLY&quot;,
+              &quot;proof&quot;: &quot;06_multispecies_exact_audit.txt Section 9&quot;,
+              &quot;claimed_radius_counterexample&quot;: &quot;NONE&quot;,
+              &quot;PPT_does_not_establish_full_separability&quot;: True,
+              &quot;weak_PPT_range_exact&quot;: &quot;abs(delta)&lt;=2*asinh(1)&quot;,
+              &quot;normalization&quot;: &quot;HS basis F=Pauli/sqrt(2), cross coefficient delta/(n+1)&quot;,
+              &quot;field&quot;: 0, &quot;within_species_Casimir&quot;: &quot;scalar in each spin sector&quot;,
+              &quot;fixtures&quot;: fixtures, &quot;stress_rows&quot;: rows,
+              &quot;elapsed_seconds&quot;: time.perf_counter() - start,
+              &quot;dense_full_N_site_operator_constructed&quot;: False,
+              &quot;max_dense_dimension&quot;: 12}
+    target = Path(__file__).with_name(&quot;unbalanced_xy_checks.json&quot;)
+    target.write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+    print(json.dumps({&quot;status&quot;: result[&quot;status&quot;], &quot;fixture_count&quot;: len(fixtures),
+                      &quot;stress_rows&quot;: len(rows), &quot;claimed_radius_counterexample&quot;: &quot;NONE&quot;,
+                      &quot;elapsed_seconds&quot;: result[&quot;elapsed_seconds&quot;]}))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/445a3556ff95fd35ff5bffd59cb4bf15a60ad4968cd6387cb90a05a37f593dda.py">Exact original bytes</a></p></html>

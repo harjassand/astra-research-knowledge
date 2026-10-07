@@ -1,0 +1,330 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c01_s02/phase2/deeper_checks.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c01_s02/phase2/deeper_checks.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Small exact checks for cross-review and mandatory-core residual attack.
+
+Writes only owned phase2/deeper_checks.json. No peer code is imported.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from itertools import combinations, product
+from math import comb
+from pathlib import Path
+import hashlib
+import json
+import random
+import time
+
+from paired_exact import (Q, mat, zeros, eye, adj, mul, det, inverse, columns,
+    paired_columns, canonical, gram_weight, brute_weights, estimator_sample,
+    skew_lift, force_project, mandatory_core_pit, bit_height)
+
+
+def pf(A):
+    n = len(A)
+    if n == 0:
+        return Q(1)
+    return sum((((-1)**(j+1))*A[0][j]*pf([
+        [A[a][b] for b in range(1, n) if b != j]
+        for a in range(1, n) if a != j]) for j in range(1, n)), Q())
+
+
+def pf_norm(A, k):
+    return sum((pf([[A[i][j] for j in R] for i in R]).abs2()
+                for R in combinations(range(len(A)), 2*k)), F(0))
+
+
+def sign_audit(V, k):
+    N = len(V[0])//2
+    Z = sum(brute_weights(V, k).values(), F(0))
+    vals = []
+    for signs in product((-1, 1), repeat=N):
+        y = estimator_sample(V, k, signs)
+        assert y == pf_norm(skew_lift(V, signs), k)
+        vals.append(y)
+    mean = sum(vals, F(0))/len(vals)
+    second = sum((y*y for y in vals), F(0))/len(vals)
+    assert mean == Z
+    assert second &lt;= 9**k*Z*Z
+    return {&#x27;k&#x27;: k, &#x27;N&#x27;: N, &#x27;mean&#x27;: Z, &#x27;second&#x27;: second,
+            &#x27;relative_second&#x27;: second/(Z*Z) if Z else None,
+            &#x27;samples&#x27;: len(vals)}
+
+
+def four_phase_audit(V, k):
+    N = len(V[0])//2
+    roots = [Q(1),Q(-1),Q(0,1),Q(0,-1)]
+    Z = sum(brute_weights(V,k).values(),F(0))
+    vals = [estimator_sample(V,k,xs) for xs in product(roots,repeat=N)]
+    mean = sum(vals,F(0))/len(vals)
+    second = sum((y*y for y in vals),F(0))/len(vals)
+    assert mean == Z
+    assert second &lt;= comb(2*k,k)*Z*Z
+    return {&#x27;k&#x27;:k,&#x27;N&#x27;:N,&#x27;mean&#x27;:mean,&#x27;second&#x27;:second,
+            &#x27;relative_second&#x27;:second/(Z*Z) if Z else None,&#x27;samples&#x27;:len(vals),
+            &#x27;variance_bound_origin&#x27;:&#x27;c01_s01 phase2 Section 2&#x27;}
+
+
+def block_pfaffian_audit(V):
+    A = skew_lift(V,[Q(1),Q(0,1),Q(-1),Q(0,-1)])
+    m = len(A)
+    H = mul(adj(A),A)
+    q = [estimator_sample(V,k,[Q(1),Q(0,1),Q(-1),Q(0,-1)])
+         for k in range(m//2+1)]
+    sign = (-1)**(m*(m-1)//2)
+    for t in (0,1,2):
+        B = [([t*z for z in A[i]]+eye(m)[i]) for i in range(m)]
+        Aadj = adj(A)
+        B += [([-z for z in eye(m)[i]]+Aadj[i]) for i in range(m)]
+        value = sum((q[k]*t**k for k in range(len(q))),F(0))
+        assert pf(B) == Q(sign*value)
+        assert det(B) == det([[eye(m)[i][j]+t*H[i][j]
+                              for j in range(m)] for i in range(m)])
+    return {&#x27;status&#x27;:&#x27;PASS&#x27;,&#x27;identity&#x27;:&#x27;Pf([[tA,I],[-I,A*]])=(-1)^(m(m-1)/2) sum_k X_k t^k&#x27;,
+            &#x27;tested_t&#x27;:[0,1,2],&#x27;sample_coefficients&#x27;:q}
+
+
+def all_prefix_audit(V, k, constraints):
+    weights = brute_weights(V, k)
+    ans = []
+    for forced, excluded in constraints:
+        exact = sum((w for S, w in weights.items()
+                     if set(forced) &lt;= set(S) and set(excluded).isdisjoint(S)), F(0))
+        d, W, labels = force_project(V, forced, excluded)
+        r = k-len(forced)
+        projected = d*sum(brute_weights(W, r).values(), F(0)) if d else F(0)
+        assert projected == exact
+        mean = F(0)
+        N = len(labels)
+        if d:
+            vals = [estimator_sample(W, r, signs)
+                    for signs in product((-1, 1), repeat=N)]
+            mean = d*sum(vals, F(0))/len(vals)
+            assert mean == exact
+        ans.append({&#x27;forced&#x27;: forced, &#x27;excluded&#x27;: excluded, &#x27;mass&#x27;: exact,
+                    &#x27;projected_input_bits&#x27;: bit_height(W) if d else None,
+                    &#x27;sign_mean&#x27;: mean})
+    return ans
+
+
+def review_exchange():
+    V = mat([[1,0,0,0,(1,1),2], [0,1,0,0,2,(1,-1)],
+             [0,0,1,0,1,(3,1)], [0,0,0,1,(1,-1),1]])
+    aa, bb = [0,1,2,3], [0,3,4,5]
+    A, B = columns(V, aa), columns(V, bb)
+    C = mul(inverse(A), B)
+    Ci = inverse(C)
+    i = 1
+    total = Q()
+    output_mass = F(0)
+    capacity = F(0)
+    mu = det(A).abs2()*det(B).abs2()
+    for j, label in enumerate(bb):
+        if label in aa:
+            assert C[i][j] == Q()
+            continue
+        ax, bx = aa[:], bb[:]
+        ax[i], bx[j] = bb[j], aa[i]
+        da, db = det(columns(V, ax)), det(columns(V, bx))
+        assert da == det(A)*C[i][j]
+        assert db == det(B)*Ci[j][i]
+        total += da*db
+        my = da.abs2()*db.abs2()
+        output_mass += my
+        capacity += mu*my/(16*(mu+my))
+    assert total == det(A)*det(B)
+    assert mu &lt;= 2*output_mass
+    assert capacity &gt;= mu/F(2*4**3)
+    # Cycle component diagnostic: all union-preserving moves conserve
+    # the sum of line occupancy under the true four-state product law.
+    states = [(a,b) for a in (0,1) for b in (0,1)]
+    observable = {s: sum(s) for s in states}
+    assert observable[(0,1)] == observable[(1,0)]
+    assert observable[(0,0)] != observable[(1,1)]
+    return {&#x27;complex_identity&#x27;: &#x27;PASS&#x27;, &#x27;mu&#x27;: mu, &#x27;output_mass&#x27;: output_mass,
+            &#x27;capacity&#x27;: capacity, &#x27;global_additive_union_obstruction&#x27;: &#x27;PASS&#x27;}
+
+
+def conditional_dpp_ordered(A):
+    &quot;&quot;&quot;Independent exhaustive probability audit of the projection recursion.&quot;&quot;&quot;
+    k, m = len(A), len(A[0])
+    P = mul(mul(adj(A), inverse(mul(A, adj(A)))), A)
+    out = {}
+
+    def rec(labels, kernel, rank, chosen, prob):
+        if rank == 0:
+            key = tuple(sorted(chosen))
+            out[key] = out.get(key, F(0))+prob
+            return
+        assert sum((kernel[i][i].re for i in range(len(labels))), F(0)) == rank
+        assert mul(kernel, kernel) == kernel
+        for j, label in enumerate(labels):
+            pj = kernel[j][j]
+            assert pj.im == 0 and pj.re &gt;= 0
+            if not pj:
+                continue
+            remain = [a for a in range(len(labels)) if a != j]
+            new = [[kernel[a][b]-kernel[a][j]*kernel[j][b]/pj
+                    for b in remain] for a in remain]
+            rec([labels[a] for a in remain], new, rank-1,
+                chosen+[label], prob*pj.re/rank)
+    rec(list(range(m)), P, k, [], F(1))
+    Z = det(mul(A, adj(A))).re
+    for J in combinations(range(m), k):
+        assert out.get(J, F(0)) == det(columns(A, J)).abs2()/Z
+    assert sum(out.values(), F(0)) == 1
+    return out
+
+
+def review_fiber(Fmat, k):
+    n = len(Fmat)
+    B = comb(n, k)
+    rowZ, weights = {}, {}
+    for I in combinations(range(n), k):
+        available = sorted(set(range(n))-set(I))
+        A = [[Fmat[i][j] for j in available] for i in I]
+        rowZ[I] = det(mul(A, adj(A))).re
+        if rowZ[I]:
+            law = conditional_dpp_ordered(A)
+            for inds, p in law.items():
+                J = tuple(available[j] for j in inds)
+                weights[I,J] = rowZ[I]*p
+    Z = sum(rowZ.values(), F(0))
+    states = list(weights)
+    assert sum(weights.values(), F(0)) == Z
+    min_ratio = None
+    for x in states:
+        for y in states:
+            if x == y:
+                continue
+            zx, zy = rowZ[x[0]], rowZ[y[0]]
+            pxy = weights[y]/(B*zy)*min(F(1), zy/zx)
+            pyx = weights[x]/(B*zx)*min(F(1), zx/zy)
+            assert weights[x]*pxy == weights[y]*pyx
+            ratio = (weights[x]/Z*pxy)/((weights[x]/Z)*(weights[y]/Z))
+            assert ratio &gt;= F(1,B)
+            min_ratio = ratio if min_ratio is None else min(min_ratio, ratio)
+    return {&#x27;supported_joint_states&#x27;: len(states), &#x27;row_proposals&#x27;: B,
+            &#x27;Z&#x27;: Z, &#x27;minimum_flow_over_product&#x27;: min_ratio,
+            &#x27;exact_conditional_law_and_reversibility&#x27;: &#x27;PASS&#x27;}
+
+
+def review_refresh(Fmat, lam, epsilon):
+    n = len(Fmat)
+    pairs = [(i,j) for i in range(n) for j in range(i+1,n)]
+    V = canonical(Fmat)
+    for i,j in pairs:
+        for row in range(n):
+            V[row] += [Q(int(row==i)), Q(int(row==j))]
+    activities = [epsilon*x for x in lam]+[F(1)]*len(pairs)
+    actual = F(0)
+    for S in combinations(range(len(activities)), n//2):
+        if not any(i&lt;n for i in S):
+            continue
+        wt = gram_weight(V, S)
+        for i in S:
+            wt *= activities[i]
+        actual += wt
+    es = [F(1)]+[F(0)]*(n//2)
+    for i in range(n):
+        a = lam[i]*sum((z.abs2() for z in Fmat[i]), F(0))
+        for s in range(n//2,0,-1):
+            es[s] += a*es[s-1]
+    sf = sum((comb(len(pairs), n//2-s)*es[s]
+              for s in range(1,n//2+1)), F(0))
+    assert actual &lt;= epsilon*sf
+    return {&#x27;actual_contaminant&#x27;: actual, &#x27;epsilon_S_F&#x27;: epsilon*sf,
+            &#x27;Hadamard_bound&#x27;: &#x27;PASS&#x27;}
+
+
+def core_audit(Fmat, k, delta, seed):
+    V = canonical(Fmat)
+    w = brute_weights(V, k)
+    supported = [set(S) for S in w if w[S]]
+    exact = sorted(set.intersection(*supported)) if supported else []
+    acquired = mandatory_core_pit(V, k, delta, random.Random(seed))
+    assert acquired[&#x27;status&#x27;] == &#x27;POSITIVE&#x27;
+    assert acquired[&#x27;core&#x27;] == exact
+    d,W,labels = force_project(V, exact)
+    r = k-len(exact)
+    residual = sum(brute_weights(W,r).values(), F(0))
+    Z = sum(w.values(), F(0))
+    assert d*residual == Z
+    # Full residual sign means use only small residual-label fixtures.
+    mean = None
+    if len(labels) &lt;= 5:
+        vals = [estimator_sample(W,r,s) for s in product((-1,1),repeat=len(labels))]
+        mean = sum(vals,F(0))/len(vals)
+        assert mean == residual
+    return {&#x27;n&#x27;: len(Fmat), &#x27;k&#x27;: k, &#x27;exact_core&#x27;: exact,
+            &#x27;PIT_acquisition&#x27;: acquired, &#x27;factor&#x27;: d, &#x27;residual_partition&#x27;: residual,
+            &#x27;partition&#x27;: Z, &#x27;residual_sign_mean&#x27;: mean,
+            &#x27;projected_entry_bits&#x27;: bit_height(W)}
+
+
+def variance_counters():
+    ratio = []
+    for L in (2,10,50,100):
+        d = F(1,2**L)
+        mean = 2*d*d/(1+d*d)
+        second = d*d
+        relative_second = second/(mean*mean)
+        assert relative_second == (1+d*d)**2/(4*d*d)
+        ratio.append({&#x27;L&#x27;: L, &#x27;mean&#x27;: mean, &#x27;second&#x27;: second,
+                      &#x27;relative_second&#x27;: relative_second})
+    product_moments = []
+    for k in range(1,6):
+        # Canonical F is k disjoint bidirected unit swaps. The skew lift
+        # is block diagonal with off-diagonal s_(2b)-s_(2b+1).
+        vals = []
+        for signs in product((-1,1),repeat=2*k):
+            y = 1
+            for b in range(k):
+                y *= (signs[2*b]-signs[2*b+1])**2
+            vals.append(y)
+        mean = F(sum(vals),len(vals))
+        second = F(sum(y*y for y in vals),len(vals))
+        assert mean == 2**k and second == 8**k
+        assert second/(mean*mean) == 2**k
+        assert F(sum(bool(y) for y in vals),len(vals)) == F(1,2**k)
+        product_moments.append({&#x27;k&#x27;:k, &#x27;mean&#x27;:mean, &#x27;second&#x27;:second,
+                                &#x27;relative_second&#x27;:second/(mean*mean),
+                                &#x27;nonzero_probability&#x27;:F(1,2**k)})
+    return {&#x27;sector_growth&#x27;:ratio,&#x27;sign_product_blocks&#x27;:product_moments}
+
+
+def main():
+    start = time.perf_counter()
+    dense = mat([[0,(1,1),2,(0,1)],[(1,-1),0,3,2],
+                 [2,(1,1),0,1],[1,2,(1,-1),0]])
+    V = canonical(dense)
+    signs = [sign_audit(V,k) for k in (0,1,2)]
+    prefixes = all_prefix_audit(V,2,[([0],[]),([1],[0]),([0,2],[1]),([],[3])])
+    d,W,_ = force_project(V,[0],[1])
+    four_phase = four_phase_audit(W,1)
+    upper6 = mat([[int(i&lt;j) for j in range(6)] for i in range(6)])
+    dense8 = mat([[int(i&lt;j) for j in range(8)] for i in range(8)])
+    dense8[7][6] = Q(1)
+    cores = [core_audit(upper6,3,F(1,10000),23),
+             core_audit(dense8,4,F(1,10000),29)]
+    FT = mat([[0,16,16,1],[0,0,16,1],[0,0,0,1],[0,0,0,0]])
+    cores.append(core_audit(FT,2,F(1,10000),31))
+    result = {&#x27;status&#x27;:&#x27;PASS&#x27;,&#x27;independent_peer_code_execution&#x27;:False,
+        &#x27;estimator_identity_and_improved_variance&#x27;:signs,
+        &#x27;positive_projection_prefixes&#x27;:prefixes,
+        &#x27;projected_four_phase_bound&#x27;:four_phase,
+        &#x27;unitary_normal_form_free_block_identity&#x27;:block_pfaffian_audit(V),
+        &#x27;mandatory_core_and_residual&#x27;:cores,
+        &#x27;c01_l02_exchange&#x27;:review_exchange(),
+        &#x27;c01_l05_conditional_DPP_kernel&#x27;:review_fiber(dense,2),
+        &#x27;c01_l08_refresh&#x27;:review_refresh(dense,[F(1),F(2),F(1,2),F(3)],F(1,128)),
+        &#x27;variance_counters&#x27;:variance_counters(),
+        &#x27;elapsed_seconds&#x27;:time.perf_counter()-start,
+        &#x27;randomness&#x27;:&#x27;seeded diagnostics only; ideal independent fair bits in theorem&#x27;,
+        &#x27;limitations&#x27;:&#x27;finite diagnostics; no general mixing theorem, no end-to-end FPRAS/sampler&#x27;}
+    own = Path(__file__).parent
+    result[&#x27;script_sha256&#x27;] = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
+    (own/&#x27;deeper_checks.json&#x27;).write_text(json.dumps(result,indent=2,default=str)+&#x27;\n&#x27;)
+    print(json.dumps({&#x27;status&#x27;:result[&#x27;status&#x27;],&#x27;elapsed_seconds&#x27;:result[&#x27;elapsed_seconds&#x27;],
+                      &#x27;core_residuals&#x27;:[x[&#x27;PIT_acquisition&#x27;][&#x27;residual&#x27;] for x in cores]},indent=2))
+
+
+if __name__ == &#x27;__main__&#x27;:
+    main()
+</pre><p><a href="../assets/d59e31465e67fe1c66631f7535b7e9b4ddc27a6e88eb2facc422b7336768ed83.py">Exact original bytes</a></p></html>

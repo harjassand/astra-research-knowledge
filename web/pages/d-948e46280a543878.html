@@ -1,0 +1,58 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c05_s03/revisions/axial_moment_probe.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c05_s03/revisions/axial_moment_probe.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Bounded high precision moment diagnostics; no universal proof claimed.&quot;&quot;&quot;
+from pathlib import Path
+import json
+import time
+import mpmath as mp
+
+mp.mp.dps=100
+
+
+def moments(N, delta):
+    return [mp.exp(-delta*(mp.mpf(k)-mp.mpf(N)/2)**2/N)/mp.binomial(N,k)
+            for k in range(N+1)]
+
+
+def matrix(N,delta,offset):
+    q=moments(N,delta)
+    size=(N-offset)//2+1
+    return mp.matrix([[q[i+j+offset]/mp.sqrt(q[2*i+offset]*q[2*j+offset])
+                       for j in range(size)] for i in range(size)])
+
+
+def ldl(A):
+    n=A.rows
+    L=mp.eye(n)
+    D=[]
+    for i in range(n):
+        d=A[i,i]-sum(L[i,k]**2*D[k] for k in range(i))
+        D.append(d)
+        if abs(d)&lt;mp.mpf(&#x27;1e-80&#x27;):
+            return D, &#x27;NUMERIC_SINGULAR&#x27;
+        if d&lt;0:
+            return D, &#x27;NEGATIVE_PIVOT&#x27;
+        for j in range(i+1,n):
+            L[j,i]=(A[j,i]-sum(L[j,k]*L[i,k]*D[k] for k in range(i)))/d
+    return D,&#x27;POSITIVE_NUMERIC&#x27;
+
+
+def main():
+    start=time.perf_counter()
+    rows=[]
+    delta=2*mp.log(2)
+    for N in list(range(2,33))+[40,48,64]:
+        record={&#x27;N&#x27;:N,&#x27;delta&#x27;:str(delta),&#x27;matrices&#x27;:[]}
+        for offset in [0,1]:
+            D,status=ldl(matrix(N,delta,offset))
+            record[&#x27;matrices&#x27;].append({&#x27;offset&#x27;:offset,&#x27;status&#x27;:status,
+                                      &#x27;min_pivot&#x27;:mp.nstr(min(D),20),
+                                      &#x27;pivots_completed&#x27;:len(D)})
+        rows.append(record)
+    out={&#x27;scope&#x27;:&#x27;High-precision finite diagnostics only. No all-N theorem, interval certificate, or SDP inference.&#x27;,
+         &#x27;precision_digits&#x27;:mp.mp.dps,&#x27;rows&#x27;:rows,&#x27;runtime_seconds&#x27;:time.perf_counter()-start}
+    Path(__file__).with_suffix(&#x27;.json&#x27;).write_text(json.dumps(out,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({&#x27;runtime_seconds&#x27;:out[&#x27;runtime_seconds&#x27;],&#x27;rows&#x27;:rows},indent=2))
+
+
+if __name__==&#x27;__main__&#x27;:
+    main()
+</pre><p><a href="../assets/84f856462caddad3e40d9b64bba3fc41a65ae46a686ef34f05fa4ec6f59a17c1.py">Exact original bytes</a></p></html>

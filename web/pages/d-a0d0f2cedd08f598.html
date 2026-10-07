@@ -1,0 +1,217 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c02_s02/reviews/peer_replay/balance_grid_checks.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c02_s02/reviews/peer_replay/balance_grid_checks.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Small exact checks for rational ambient-field balancing identities.&quot;&quot;&quot;
+
+from fractions import Fraction
+from itertools import combinations
+
+
+ALPHA = Fraction(1, 100_000)
+ETA = Fraction(1, 128)
+GRID = Fraction(25, 16)  # q_i = tau_i**2, tau_i=(5/4)**k
+
+
+def det(matrix):
+    a = [[Fraction(x) for x in row] for row in matrix]
+    n = len(a)
+    if n == 0:
+        return Fraction(1)
+    sign = 1
+    out = Fraction(1)
+    for j in range(n):
+        pivot = next((i for i in range(j, n) if a[i][j]), None)
+        if pivot is None:
+            return Fraction(0)
+        if pivot != j:
+            a[j], a[pivot] = a[pivot], a[j]
+            sign = -sign
+        p = a[j][j]
+        out *= p
+        for i in range(j + 1, n):
+            if not a[i][j]:
+                continue
+            c = a[i][j] / p
+            for k in range(j + 1, n):
+                a[i][k] -= c * a[j][k]
+    return sign * out
+
+
+def powerset_pairs(n):
+    return [(i, j) for i in range(n) for j in range(i + 1, n)]
+
+
+def partition(F, retained, epsilon, row_scale=None, include_original=True):
+    &quot;&quot;&quot;Full paired-basis sum for original (e_i,f_i) and coordinate pairs.&quot;&quot;&quot;
+    n = len(F)
+    retained = tuple(retained)
+    r = len(retained)
+    if r % 2:
+        return Fraction(0)
+    if row_scale is None:
+        row_scale = [Fraction(1)] * n
+    columns = []
+    pair_weights = []
+    for i in range(n):
+        e = [Fraction(int(j == i)) for j in range(n)]
+        f = [Fraction(F[i][j]) for j in range(n)]
+        columns.append((e, f))
+        pair_weights.append(epsilon if include_original else Fraction(0))
+    for i, j in powerset_pairs(n):
+        e_i = [Fraction(int(k == i)) for k in range(n)]
+        e_j = [Fraction(int(k == j)) for k in range(n)]
+        columns.append((e_i, e_j))
+        pair_weights.append(Fraction(1))
+
+    total = Fraction(0)
+    for chosen in combinations(range(len(columns)), r // 2):
+        weight = Fraction(1)
+        flat_cols = []
+        for pair_id in chosen:
+            weight *= pair_weights[pair_id]
+            flat_cols.extend(columns[pair_id])
+        if not weight:
+            continue
+        minor = [
+            [row_scale[i] * flat_cols[j][i] for j in range(len(flat_cols))]
+            for i in retained
+        ]
+        d = det(minor)
+        total += weight * d * d
+    return total
+
+
+def double_factorial_odd(k):
+    if k &lt;= 0:
+        return 1
+    out = 1
+    while k &gt; 0:
+        out *= k
+        k -= 2
+    return out
+
+
+def round_up_grid(x):
+    &quot;&quot;&quot;Smallest exact GRID**k not below positive rational x.&quot;&quot;&quot;
+    q = Fraction(1)
+    k = 0
+    if x &gt;= 1:
+        while q &lt; x:
+            q *= GRID
+            k += 1
+    else:
+        while q / GRID &gt;= x:
+            q /= GRID
+            k -= 1
+    assert q &gt;= x
+    assert q / x &lt;= GRID
+    return q, k
+
+
+def round_up_grid_square_root(x):
+    &quot;&quot;&quot;Smallest exact GRID**k whose square is at least positive rational x.&quot;&quot;&quot;
+    q = Fraction(1)
+    k = 0
+    if x &gt;= 1:
+        while q * q &lt; x:
+            q *= GRID
+            k += 1
+    else:
+        while (q / GRID) ** 2 &gt;= x:
+            q /= GRID
+            k -= 1
+    assert q * q &gt;= x
+    assert q * q / x &lt;= GRID * GRID
+    return q, k
+
+
+def one_pass(G):
+    n = len(G)
+    v = [Fraction(2)] * n
+    for i in range(n):
+        v[i] = max(G[i][j] / v[j] for j in range(n) if j != i)
+    for i in range(n):
+        assert all(v[i] * v[j] &gt;= G[i][j] for j in range(n) if j != i)
+        assert any(v[i] * v[j] == G[i][j] for j in range(n) if j != i)
+    return v
+
+
+def check_robust_grid_balance():
+    g = [
+        [Fraction(0), Fraction(1, 5), Fraction(1, 3), Fraction(1, 10)],
+        [Fraction(1, 5), Fraction(0), Fraction(1, 8), Fraction(1, 4)],
+        [Fraction(1, 3), Fraction(1, 8), Fraction(0), Fraction(1, 6)],
+        [Fraction(1, 10), Fraction(1, 4), Fraction(1, 6), Fraction(0)],
+    ]
+    assert all(max(g[i][j] for j in range(4) if j != i) &gt;= Fraction(1, 8)
+               for i in range(4))
+    G = [[Fraction(0) if i == j else g[i][j] + ALPHA
+          for j in range(4)] for i in range(4)]
+    assert all(ALPHA &lt;= G[i][j] &lt;= 3
+               for i in range(4) for j in range(4) if i != j)
+    v = one_pass(G)
+    assert all(Fraction(1, 16) &lt;= x &lt;= 2 for x in v)
+    rounded = [round_up_grid(x)[0] for x in v]
+    for i in range(4):
+        ratios = [g[i][j] / (rounded[i] * rounded[j])
+                  for j in range(4) if j != i]
+        assert max(ratios) &lt;= 1
+        assert max(ratios) &gt; Fraction(1, 4)
+
+
+def check_coordinate_dominated_base():
+    F = [
+        [0, 1, -1, -2],
+        [1, 0, 2, 1],
+        [-1, 2, 0, 1],
+        [-2, 1, 1, 0],
+    ]
+    n = len(F)
+    M = n + n * (n - 1) // 2
+    s = 3  # Every column norm is &lt; 2**s for this fixture.
+    Q = M + 2 * n * s + 7
+    epsilon = Fraction(1, 2**Q)
+    full = tuple(range(n))
+    for r in range(0, n + 1, 2):
+        for retained in combinations(range(n), r):
+            z = partition(F, retained, epsilon)
+            z_coord = Fraction(double_factorial_odd(r - 1))
+            w_original = z - z_coord
+            assert w_original &gt;= 0
+            assert w_original &lt;= ETA * z_coord
+    z0 = partition(F, full, epsilon)
+    z_coord_full = Fraction(double_factorial_odd(n - 1))
+    hole = Fraction(1, 3)  # Pure-coordinate ratio for n=4.
+    assert z_coord_full == 3
+    g_upper = (1 + ETA) * hole
+    q, k = round_up_grid_square_root(g_upper)
+    tau = Fraction(5, 4) ** k
+    assert q == tau * tau
+    assert q * q &gt;= g_upper
+    assert q * q / g_upper &lt;= GRID * GRID
+    for i, j in combinations(range(n), 2):
+        z_ij = partition(F, tuple(k for k in range(n) if k not in (i, j)), epsilon)
+        gij = z_ij / z0
+        scaled = gij / (q * q)
+        assert Fraction(1, 4) &lt; scaled &lt;= 1
+
+
+def check_row_scaling_identity():
+    F = [[0, 1, 2, -1], [1, 0, 1, 1], [2, 1, 0, -2], [-1, 1, -2, 0]]
+    n = len(F)
+    epsilon = Fraction(1, 1024)
+    tau = [Fraction(5, 4) ** e for e in (2, -1, 0, 1)]
+    for r in range(0, n + 1, 2):
+        for retained in combinations(range(n), r):
+            original = partition(F, retained, epsilon)
+            scaled = partition(F, retained, epsilon, row_scale=tau)
+            factor = Fraction(1)
+            for i in retained:
+                factor *= tau[i] * tau[i]
+            assert scaled == factor * original
+
+
+if __name__ == &quot;__main__&quot;:
+    check_robust_grid_balance()
+    check_coordinate_dominated_base()
+    check_row_scaling_identity()
+    print(&quot;exact rational balance-grid checks passed&quot;)
+</pre><p><a href="../assets/444b9618a1d3cb3312bbe5c6d6c9ddf03a075c218f4aa3b2412c689e691a4c55.py">Exact original bytes</a></p></html>

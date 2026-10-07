@@ -1,0 +1,94 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c03_l10/revisions/near_top_jacobi_audit.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c03_l10/revisions/near_top_jacobi_audit.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact audit of the near-top Jacobi transform and a false low-hole shortcut.&quot;&quot;&quot;
+
+from itertools import combinations
+import json
+import random
+
+import sympy as sp
+
+
+def minor(M, rows, cols):
+    if not rows:
+        return sp.Integer(1)
+    return sp.Matrix([[M[i, j] for j in cols] for i in rows]).det(method=&quot;domain-ge&quot;)
+
+
+def c_disjoint(F, k):
+    n = F.rows
+    sets = list(combinations(range(n), k))
+    total = sp.Integer(0)
+    for I in sets:
+        for J in sets:
+            if set(I).isdisjoint(J):
+                d = minor(F, I, J)
+                total += sp.expand(d * sp.conjugate(d))
+    return sp.simplify(total)
+
+
+def dual_overlap(G, k):
+    &quot;&quot;&quot;Sum over |K|=|L|=n-k, K union L=V, |K intersect L|=n-2k.&quot;&quot;&quot;
+    n = G.rows
+    q, h = n - k, n - 2 * k
+    sets = list(combinations(range(n), q))
+    total = sp.Integer(0)
+    for K in sets:
+        for L in sets:
+            if len(set(K) | set(L)) == n and len(set(K) &amp; set(L)) == h:
+                d = minor(G, K, L)
+                total += sp.expand(d * sp.conjugate(d))
+    return sp.simplify(total)
+
+
+def random_invertible(n, rng):
+    while True:
+        M = sp.Matrix(n, n,
+                      [sp.Rational(rng.randrange(-2, 3), rng.choice((1, 2, 3)))
+                       for _ in range(n * n)])
+        if M.det() != 0:
+            return M
+
+
+def verify_jacobi_family():
+    rng = random.Random(20261007)
+    cases = []
+    for n in range(2, 6):
+        for trial in range(5):
+            F = random_invertible(n, rng)
+            G = F.inv()
+            for k in range(n // 2 + 1):
+                lhs = c_disjoint(F, k)
+                rhs = sp.simplify((F.det() * sp.conjugate(F.det())) * dual_overlap(G, k))
+                assert sp.simplify(lhs - rhs) == 0, (n, trial, k, lhs, rhs)
+                cases.append({&quot;n&quot;: n, &quot;trial&quot;: trial, &quot;k&quot;: k, &quot;c_k&quot;: str(lhs),
+                              &quot;dual_overlap&quot;: str(dual_overlap(G, k)), &quot;pass&quot;: True})
+    return cases
+
+
+def counterexample_to_naive_disjoint_dual():
+    # For k=1, n=4, the Jacobi complement has 3x3 minors with 2 common
+    # indices. Replacing those by disjoint 2x2 minors is false.
+    n, k = 4, 1
+    F = sp.eye(n)
+    F[0, 1] = 2
+    G = F.inv()
+    h = n - 2 * k
+    target = sp.simplify((F.det() * sp.conjugate(F.det())) * dual_overlap(G, k))
+    naive = c_disjoint(G, h)
+    direct = c_disjoint(F, k)
+    assert direct == 4
+    assert target == direct
+    assert naive == 0
+    return {&quot;F&quot;: str(F.tolist()), &quot;F_inverse&quot;: str(G.tolist()), &quot;n&quot;: n, &quot;k&quot;: k,
+            &quot;h&quot;: h, &quot;c_k_F&quot;: str(direct), &quot;jacobi_overlap_expression&quot;: str(target),
+            &quot;naive_c_h_inverse&quot;: str(naive), &quot;result&quot;: &quot;NAIVE_DUAL_REFUTED&quot;}
+
+
+if __name__ == &quot;__main__&quot;:
+    cases = verify_jacobi_family()
+    counterexample = counterexample_to_naive_disjoint_dual()
+    print(json.dumps({&quot;scope&quot;: &quot;exact finite Jacobi identity audit only&quot;,
+                      &quot;random_invertible_cases&quot;: len(cases),
+                      &quot;cases&quot;: cases,
+                      &quot;naive_shortcut_counterexample&quot;: counterexample}, indent=2))
+</pre><p><a href="../assets/ccfe7ca247f6773da7c4d48e84b70526ccb645febd86519440eaa0da17c01126.py">Exact original bytes</a></p></html>

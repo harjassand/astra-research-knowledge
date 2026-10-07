@@ -1,0 +1,204 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c10_l03/audit_c10_s01.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c10_l03/audit_c10_s01.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Exact acquired Foster certificates for two-layer catalytic birth/death.
+
+Only standard-library rational arithmetic is used. The verifier computes the
+generator from raw reaction vectors, independently of the displayed bound.
+This is a specialized complete recognizer, not a generic CRN synthesizer.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from itertools import product
+import json
+import pathlib
+import time
+
+
+def rat(value):
+    return F(str(value))
+
+
+def ceil_rat(value):
+    return -((-value.numerator) // value.denominator)
+
+
+def acquire(spec):
+    roots = spec[&quot;roots&quot;]
+    children = spec[&quot;children&quot;]
+    names = [r[&quot;name&quot;] for r in roots] + [j[&quot;name&quot;] for j in children]
+    if not roots or len(set(names)) != len(names):
+        raise ValueError(&quot;Nonempty roots and unique disjoint species required&quot;)
+    root_names = {r[&quot;name&quot;] for r in roots}
+    b = {r[&quot;name&quot;]: rat(r[&quot;birth&quot;]) for r in roots}
+    delta = {r[&quot;name&quot;]: rat(r[&quot;death&quot;]) for r in roots}
+    if any(v &lt;= 0 for v in [*b.values(), *delta.values()]):
+        raise ValueError(&quot;Every root needs positive immigration and death&quot;)
+    c, gamma, edges = {}, {}, {}
+    for child in children:
+        name = child[&quot;name&quot;]
+        parents = child[&quot;parents&quot;]
+        if not parents or not set(parents) &lt;= root_names:
+            raise ValueError(&quot;Every child needs a nonempty subset of roots&quot;)
+        edges[name] = {i: (rat(k[&quot;birth&quot;]), rat(k[&quot;death&quot;]))
+                       for i, k in parents.items()}
+        if any(v &lt;= 0 for pair in edges[name].values() for v in pair):
+            raise ValueError(&quot;Every catalytic channel must have both positive rates&quot;)
+        beta_min = min(pair[1] for pair in edges[name].values())
+        delta_max = max(delta[i] for i in parents)
+        c[name] = min(F(1), beta_min / delta_max)
+        gamma[name] = min(c[name] * sum(b[i] for i in parents) / 2,
+                          beta_min / 2)
+    w = {i: (1 + sum((1 + c[j]) * edges[j][i][0]
+                      for j in edges if i in edges[j])) / delta[i]
+         for i in root_names}
+    constant = sum(w[i] * b[i] for i in root_names)
+    decay = min([1 / w[i] for i in root_names]
+                + [gamma[j] / (1 + c[j]) for j in edges])
+    gamma_min = min([F(1), *gamma.values()])
+    core_radius = max(1, ceil_rat((constant + 1) / gamma_min))
+    stationary_upper_means = {i: b[i] / delta[i] for i in root_names}
+    stationary_upper_means.update(
+        {j: max(a / z for a, z in edges[j].values()) for j in edges})
+    killing_rates = {j: sum(b[i] * z / (delta[i] + z)
+                            for i, (_, z) in edges[j].items())
+                     for j in edges}
+    return {&quot;spec&quot;: spec, &quot;names&quot;: names, &quot;b&quot;: b, &quot;delta&quot;: delta,
+            &quot;edges&quot;: edges, &quot;c&quot;: c, &quot;gamma&quot;: gamma, &quot;w&quot;: w,
+            &quot;C&quot;: constant, &quot;lambda&quot;: decay, &quot;core_radius&quot;: core_radius,
+            &quot;stationary_upper_means&quot;: stationary_upper_means,
+            &quot;killing_rates&quot;: killing_rates}
+
+
+def potential(cert, state):
+    x = dict(zip(cert[&quot;names&quot;], state))
+    answer = sum(cert[&quot;w&quot;][i] * x[i] for i in cert[&quot;w&quot;])
+    for j, parents in cert[&quot;edges&quot;].items():
+        s = sum(x[i] for i in parents)
+        answer += (1 + cert[&quot;c&quot;][j] / (s + 1)) * x[j]
+    return answer
+
+
+def raw_reactions(cert):
+    names = cert[&quot;names&quot;]
+    out = []
+    for i in cert[&quot;w&quot;]:
+        source = [0] * len(names)
+        target = source.copy()
+        target[names.index(i)] = 1
+        out.append((tuple(source), tuple(target), cert[&quot;b&quot;][i]))
+        out.append((tuple(target), tuple(source), cert[&quot;delta&quot;][i]))
+    for j, parents in cert[&quot;edges&quot;].items():
+        for i, (alpha, beta) in parents.items():
+            source = [0] * len(names)
+            source[names.index(i)] = 1
+            target = source.copy()
+            target[names.index(j)] = 1
+            out.append((tuple(source), tuple(target), alpha))
+            out.append((tuple(target), tuple(source), beta))
+    return out
+
+
+def falling_factorial(state, source):
+    answer = 1
+    for n, degree in zip(state, source):
+        for shift in range(degree):
+            answer *= max(0, n - shift)
+    return answer
+
+
+def raw_generator(cert, state):
+    value = potential(cert, state)
+    result = F(0)
+    for source, target, rate in raw_reactions(cert):
+        propensity = rate * falling_factorial(state, source)
+        if propensity:
+            new = tuple(n + z - y for n, y, z in zip(state, source, target))
+            result += propensity * (potential(cert, new) - value)
+    return result
+
+
+def serialized(obj):
+    if isinstance(obj, F):
+        return str(obj)
+    if isinstance(obj, dict):
+        return {k: serialized(v) for k, v in obj.items()}
+    if isinstance(obj, (tuple, list)):
+        return [serialized(v) for v in obj]
+    return obj
+
+
+def verify():
+    fixtures = [
+        {&quot;roots&quot;: [{&quot;name&quot;: &quot;A&quot;, &quot;birth&quot;: &quot;1&quot;, &quot;death&quot;: &quot;1&quot;}],
+         &quot;children&quot;: [{&quot;name&quot;: &quot;B&quot;, &quot;parents&quot;: {
+             &quot;A&quot;: {&quot;birth&quot;: &quot;1&quot;, &quot;death&quot;: &quot;1&quot;}}}]},
+        # Different ratios 1 and 2 force absence of complex balance.
+        {&quot;roots&quot;: [{&quot;name&quot;: &quot;A&quot;, &quot;birth&quot;: &quot;1&quot;, &quot;death&quot;: &quot;1&quot;},
+                   {&quot;name&quot;: &quot;C&quot;, &quot;birth&quot;: &quot;1&quot;, &quot;death&quot;: &quot;1&quot;}],
+         &quot;children&quot;: [{&quot;name&quot;: &quot;B&quot;, &quot;parents&quot;: {
+             &quot;A&quot;: {&quot;birth&quot;: &quot;1&quot;, &quot;death&quot;: &quot;1&quot;},
+             &quot;C&quot;: {&quot;birth&quot;: &quot;2&quot;, &quot;death&quot;: &quot;1&quot;}}}]},
+        {&quot;roots&quot;: [{&quot;name&quot;: &quot;A&quot;, &quot;birth&quot;: &quot;1/7&quot;, &quot;death&quot;: &quot;13/3&quot;},
+                   {&quot;name&quot;: &quot;C&quot;, &quot;birth&quot;: &quot;11/5&quot;, &quot;death&quot;: &quot;2/9&quot;}],
+         &quot;children&quot;: [{&quot;name&quot;: &quot;B&quot;, &quot;parents&quot;: {
+             &quot;A&quot;: {&quot;birth&quot;: &quot;1/17&quot;, &quot;death&quot;: &quot;1/19&quot;},
+             &quot;C&quot;: {&quot;birth&quot;: &quot;7/3&quot;, &quot;death&quot;: &quot;2/11&quot;}}},
+                      {&quot;name&quot;: &quot;D&quot;, &quot;parents&quot;: {
+             &quot;C&quot;: {&quot;birth&quot;: &quot;23/5&quot;, &quot;death&quot;: &quot;5/29&quot;}}}]},
+    ]
+    checked = 0
+    zero_catalyst_checks = 0
+    smallest_slack = None
+    certificates = []
+    for spec in fixtures:
+        cert = acquire(spec)
+        certificates.append(cert)
+        for state in product(range(6), repeat=len(cert[&quot;names&quot;])):
+            lv = raw_generator(cert, state)
+            v = potential(cert, state)
+            x = dict(zip(cert[&quot;names&quot;], state))
+            h = (sum(x[i] for i in cert[&quot;w&quot;])
+                 + sum(cert[&quot;gamma&quot;][j] * x[j] for j in cert[&quot;edges&quot;]))
+            slack = cert[&quot;C&quot;] - h - lv
+            assert slack &gt;= 0, (state, lv, cert[&quot;C&quot;] - h)
+            assert lv &lt;= cert[&quot;C&quot;] - cert[&quot;lambda&quot;] * v
+            checked += 1
+            if all(x[i] == 0 for i in cert[&quot;w&quot;]):
+                zero_catalyst_checks += 1
+            smallest_slack = (slack if smallest_slack is None
+                              else min(slack, smallest_slack))
+    simple = certificates[0]
+    # A nonzero rational state on the gate face has negative drift for large B.
+    boundary_lv = raw_generator(simple, (0, 60))
+    assert boundary_lv == -27
+    # Exponentiating this rational V is an invalid shortcut. At (1,60),
+    # theta=2 log 2 makes all four jump multipliers rational.
+    exponential_drift_ratio = (F(2**54) - 1 + F(1, 2**14) - 1
+                               + F(8) - 1 + 60 * (F(1, 8) - 1))
+    assert exponential_drift_ratio &gt; 0
+    # Syntax rejection: a downstream catalyst is outside the two-layer promise.
+    invalid = {&quot;roots&quot;: fixtures[0][&quot;roots&quot;], &quot;children&quot;: [
+        *fixtures[0][&quot;children&quot;],
+        {&quot;name&quot;: &quot;C&quot;, &quot;parents&quot;: {&quot;B&quot;: {&quot;birth&quot;: &quot;1&quot;, &quot;death&quot;: &quot;1&quot;}}}]}
+    try:
+        acquire(invalid)
+    except ValueError:
+        rejected = True
+    else:
+        raise AssertionError(&quot;Invalid second-layer catalyst was admitted&quot;)
+    return {&quot;status&quot;: &quot;EXACT_FINITE_DIAGNOSTIC_PASSED&quot;,
+            &quot;checked_states&quot;: checked,
+            &quot;zero_catalyst_states&quot;: zero_catalyst_checks,
+            &quot;smallest_slack&quot;: smallest_slack,
+            &quot;boundary_example_LV_at_0_60&quot;: boundary_lv,
+            &quot;exponential_V_counterexample_drift_ratio&quot;: exponential_drift_ratio,
+            &quot;out_of_class_rejected&quot;: rejected,
+            &quot;certificates&quot;: certificates}
+
+
+if __name__ == &quot;__main__&quot;:
+    started = time.monotonic()
+    report = verify()
+    report[&quot;elapsed_seconds&quot;] = time.monotonic() - started
+    destination = pathlib.Path(__file__).with_name(&quot;certificate_checks.json&quot;)
+    destination.write_text(json.dumps(serialized(report), indent=2) + &quot;\n&quot;)
+    print(json.dumps(serialized({k: v for k, v in report.items()
+                                  if k != &quot;certificates&quot;}), indent=2))
+</pre><p><a href="../assets/af9f27ee5c5835a0e3eba3f1275fa67ebf762db1721a1bb44209c3578c6f4665.py">Exact original bytes</a></p></html>

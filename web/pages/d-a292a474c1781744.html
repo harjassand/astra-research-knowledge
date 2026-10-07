@@ -1,0 +1,156 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c07_s03/evidence/source_snapshot/certified_weight_constant.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c07_s03/evidence/source_snapshot/certified_weight_constant.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Public fixed-bound diffusion weight moment by exact interval quadrature.
+
+Every decision/enclosure uses rational arithmetic.  The envelope proof is
+uniform for all N&gt;=65536 at M=1/10,B=1/5; this is not empirical Monte Carlo.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+import importlib.util
+import json
+from pathlib import Path
+import resource
+import time
+
+HERE=Path(__file__).resolve().parent
+spec=importlib.util.spec_from_file_location(&#x27;weight_iv&#x27;,HERE/&#x27;certified_two_spin.py&#x27;)
+base=importlib.util.module_from_spec(spec)
+spec.loader.exec_module(base)
+IV,iv=base.IV,base.iv
+
+
+def exp_scalar(x):
+    &quot;&quot;&quot;Range-reduced exp with an explicit outward underflow enclosure.&quot;&quot;&quot;
+    base.ledger.add(&#x27;extended_exp_scalar_calls&#x27;)
+    if x&lt;=-IV.P:
+        # e&gt;2 gives exp(-P)&lt;2^-P.  This never declares exact zero.
+        return IV(F(0),F(1,1&lt;&lt;IV.P),raw=True)
+    if x&lt;0:
+        return exp_scalar(-x).reciprocal()
+    halves=0
+    while x&gt;1:
+        x/=2
+        halves+=1
+    y=base.exp_scalar(x)
+    for _ in range(halves):
+        y=y*y
+    return y
+
+
+def exp_iv(x):
+    x=iv(x)
+    return IV(exp_scalar(x.lo).lo,exp_scalar(x.hi).hi,raw=True)
+
+
+def integrate_envelope(c,d,e,L,panels,lower=False):
+    &quot;&quot;&quot;Darboux enclosures; all of each panel lies in its interval image.&quot;&quot;&quot;
+    step=L/panels
+    total=F(0)
+    rows=[]
+    for j in range(panels):
+        a,b=j*step,(j+1)*step
+        r=IV(a,b)
+        r2=r*r
+        value=r2*exp_iv(-c*r2*r2+d*r2+e*r)
+        contribution=step*(value.lo if lower else value.hi)
+        total+=contribution
+        rows.append({&#x27;a&#x27;:str(a),&#x27;b&#x27;:str(b),&#x27;integrand_interval&#x27;:value.json(),
+                     &#x27;charged_contribution&#x27;:str(contribution)})
+    return total,rows
+
+
+def gaussian_tail(q,L):
+    # Integration by parts and the elementary Gaussian tail bound give
+    # int_L^infty r^2 exp(-q r^2)dr &lt;= exp(-qL^2)(L/(2q)+1/(4q^2L)).
+    return exp_scalar(-q*L*L).hi*(L/(2*q)+1/(4*q*q*L))
+
+
+def acquire(p=2,panels=512):
+    assert p&gt;=1
+    IV.precision(96)
+    M,B=F(1,10),F(1,5)
+    Lambda,Lc,Tc=M+1,2*M+1,3*(2*M+1)
+    Nmin,sqrtN,fourthN=65536,F(256),F(16)
+    dmin=1-Lambda/(2*sqrtN)
+    theta,young=F(1,10),F(8)
+    amplification=exp_scalar(Lc/(2*sqrtN)).hi
+    beta=B/(2*sqrtN)
+    d=F(p)*Lc*amplification**2*(1+theta)/16
+    e=F(p)*B*amplification/4
+    Kz=F(p)*Lc*amplification**2*(1+1/theta)/2
+    ellz=F(p)*B*amplification/2
+    K=Kz+young/2
+    a=F(Nmin)/(3*Tc)
+    assert a&gt;K
+    conditional_martingale_factor=1+6*K/(a-K)
+    exponent_constant=(F(p)*Tc/(4*sqrtN)+Kz*beta**2+
+                       ellz*beta+ellz**2/(2*young))
+    prefactor=exp_scalar(exponent_constant).hi*conditional_martingale_factor
+    c=F(11,2880)
+    upper_d=d-Lambda/16+1/(24*sqrtN)
+    L=F(16)
+    assert upper_d/L**2+e/L**3&lt;=c/2
+    upper,upper_panels=integrate_envelope(c,upper_d,e,L,panels)
+    tail_q=c*L**2/2
+    upper_tail=gaussian_tail(tail_q,L)
+    # For u&gt;=1 the seed Gaussian outer tail, even after the tilt, is bounded
+    # by R^2 exp(-R^2), uniformly over all N&gt;=Nmin. delta&gt;=3/50 is certified
+    # by the scalar logcosh enclosure reproduced in the proof text.
+    delta_lower=F(3,50)
+    exp_044=exp_scalar(F(11,25))
+    cosh_1=base.even_series_iv(iv(1),&#x27;cosh&#x27;)
+    assert exp_044.lo&gt;cosh_1.hi
+    outer_coefficient=delta_lower*sqrtN/4-d-1/(4*sqrtN)-e/(2*fourthN)
+    assert outer_coefficient&gt;=1
+    outer_tail=gaussian_tail(F(1),2*fourthN)
+    lower,lower_panels=integrate_envelope(F(1,192),-Lambda/(16*dmin),F(0),L,panels,lower=True)
+    assert lower&gt;0
+    seed_moment_upper=(upper+upper_tail+outer_tail)/lower
+    Kp=prefactor*seed_moment_upper
+    # Separate the universal every-path denominator lower bound.
+    inverse_mean_squared=exp_scalar(B*B).hi
+    proposal_coeff=Kp*inverse_mean_squared if p==2 else None
+    return {&#x27;status&#x27;:&#x27;CERTIFIED_PUBLIC_UNIFORM_WEIGHT_MOMENT&#x27;,
+      &#x27;worker_id&#x27;:&#x27;c07_s03&#x27;,&#x27;parameters&#x27;:{&#x27;M&#x27;:str(M),&#x27;B&#x27;:str(B),&#x27;Lambda&#x27;:str(Lambda),
+         &#x27;Lc&#x27;:str(Lc),&#x27;trace_C_upper&#x27;:str(Tc),&#x27;p&#x27;:p,&#x27;N_min&#x27;:Nmin,
+         &#x27;all_N_at_least_N_min&#x27;:True,&#x27;theta&#x27;:str(theta),&#x27;Young_parameter&#x27;:str(young)},
+      &#x27;constants&#x27;:{&#x27;drift_amplification_upper&#x27;:str(amplification),&#x27;seed_quadratic_tilt&#x27;:str(d),
+         &#x27;seed_linear_tilt&#x27;:str(e),&#x27;martingale_K&#x27;:str(K),&#x27;martingale_tail_a_lower&#x27;:str(a),
+         &#x27;conditional_martingale_factor_upper&#x27;:str(conditional_martingale_factor),
+         &#x27;prefactor_exponent_upper&#x27;:str(exponent_constant),&#x27;prefactor_upper&#x27;:str(prefactor),
+         &#x27;seed_normalizer_lower&#x27;:str(lower),&#x27;seed_tilt_integral_upper&#x27;:str(upper+upper_tail+outer_tail),
+         &#x27;seed_tilt_moment_upper&#x27;:str(seed_moment_upper),&#x27;weight_p_moment_upper&#x27;:str(Kp),
+         &#x27;inverse_mean_squared_upper&#x27;:str(inverse_mean_squared),
+         &#x27;importance_proposal_coefficient_upper&#x27;:str(proposal_coeff) if proposal_coeff else None},
+      &#x27;quadrature&#x27;:{&#x27;method&#x27;:&#x27;Exact rational Darboux/interval sums, not point quadrature&#x27;,
+         &#x27;working_dyadic_bits&#x27;:IV.P,&#x27;panels_per_integral&#x27;:panels,&#x27;cap&#x27;:str(L),
+         &#x27;upper_quartic_coefficient&#x27;:str(c),&#x27;upper_quadratic_coefficient&#x27;:str(upper_d),
+         &#x27;upper_tail_q&#x27;:str(tail_q),&#x27;upper_envelope_tail&#x27;:str(upper_tail),
+         &#x27;exterior_seed_tail&#x27;:str(outer_tail),&#x27;exterior_coefficient_lower&#x27;:str(outer_coefficient),
+         &#x27;delta_lower&#x27;:str(delta_lower),&#x27;exp_044_interval&#x27;:exp_044.json(),
+         &#x27;cosh_1_interval&#x27;:cosh_1.json(),&#x27;lower_panels&#x27;:lower_panels,&#x27;upper_panels&#x27;:upper_panels},
+      &#x27;proof_contract&#x27;:[&#x27;Uniform fixed M,B, known-parameter stopped/cutoff/Euler law with contracted heat seed.&#x27;,
+         &#x27;Conditional martingale bound is used given m0; independence is not assumed.&#x27;,
+         &#x27;Only the exact seed moment is integrated; no empirical weight variance is substituted.&#x27;,
+         &#x27;At p=2, R&gt;=coefficient/eta^2 controls averaged importance error eta.&#x27;,
+         &#x27;Acquisition cost is charged below; practical use is restricted to this admitted fixed-bound instance.&#x27;]}
+
+
+def main():
+    base.ledger=base.Ledger()
+    start,cpu=time.perf_counter(),time.process_time()
+    result=acquire()
+    result[&#x27;costs&#x27;]={**base.ledger.snapshot(),&#x27;wall_seconds&#x27;:time.perf_counter()-start,
+        &#x27;cpu_seconds&#x27;:time.process_time()-cpu,
+        &#x27;process_peak_rss_bytes_macos&#x27;:resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
+        &#x27;direct_Fraction_operations&#x27;:&#x27;Some loop bookkeeping uses Fraction operators directly; counts are helper calls, not complete CPU bit counts.&#x27;}
+    out=HERE/&#x27;evidence/certified_weight_constant.json&#x27;
+    out.write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({&#x27;output&#x27;:str(out),&#x27;status&#x27;:result[&#x27;status&#x27;],
+      &#x27;K2_upper_diagnostic&#x27;:float(F(result[&#x27;constants&#x27;][&#x27;weight_p_moment_upper&#x27;])),
+      &#x27;proposal_coefficient_diagnostic&#x27;:float(F(result[&#x27;constants&#x27;][&#x27;importance_proposal_coefficient_upper&#x27;])),
+      &#x27;normalizer_lower_diagnostic&#x27;:float(F(result[&#x27;constants&#x27;][&#x27;seed_normalizer_lower&#x27;])),
+      &#x27;wall_seconds&#x27;:result[&#x27;costs&#x27;][&#x27;wall_seconds&#x27;]}))
+
+
+if __name__==&#x27;__main__&#x27;: main()
+</pre><p><a href="../assets/5a51d3553bada613dceecb6592d1007b7badda76634f632b941ff8779b692e94.py">Exact original bytes</a></p></html>

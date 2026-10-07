@@ -1,0 +1,398 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c09_s03/revisions/digital_gibbs_codec.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c09_s03/revisions/digital_gibbs_codec.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Acquired blind archive for a known finite-digital weak-interaction model.
+
+No partition table, peer code, float exp, reference sampler, or unknown-v input.
+Rational probability arithmetic; Random is a reproducible diagnostic bit source.
+Full proof and exact interface are in DIGITAL_GIBBS_REPAIR.txt.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from pathlib import Path
+import math
+import json
+import random
+import time
+
+
+def ceil_fraction(x):
+    x = F(x)
+    return -(-x.numerator // x.denominator)
+
+
+def ceil_sqrt_fraction(x):
+    x = F(x)
+    if x &lt; 0:
+        raise ValueError(&#x27;nonnegative value required&#x27;)
+    n = math.isqrt(x.numerator // x.denominator)
+    return n if n*n &gt;= x else n+1
+
+
+def node(j, J):
+    if not 0 &lt;= j &lt;= J:
+        raise ValueError(&#x27;invalid node&#x27;)
+    return F(-1) + F(6*j*j, J*J) - F(4*j*j*j, J*J*J)
+
+
+def point(k, p):
+    if not 0 &lt;= k &lt; (1 &lt;&lt; p):
+        raise ValueError(&#x27;invalid grid point&#x27;)
+    return F(2*k+1-(1 &lt;&lt; p), 1 &lt;&lt; p)
+
+
+def hat(t, j, J):
+    t = F(t)
+    a = node(j, J)
+    if t == a:
+        return F(1)
+    if t &lt; a and j &gt; 0:
+        left = node(j-1, J)
+        return (t-left)/(a-left) if t &gt; left else F(0)
+    if t &gt; a and j &lt; J:
+        right = node(j+1, J)
+        return (right-t)/(right-a) if t &lt; right else F(0)
+    return F(0)
+
+
+def support_grid(j, J, p):
+    N = 1 &lt;&lt; p
+    a = node(max(0, j-1), J)
+    b = node(min(J, j+1), J)
+    lo = max(0, ceil_fraction((a+1)*N/2-F(1, 2)))
+    hi = min(N-1, ((b+1)*N/2-F(1, 2)).numerator // ((b+1)*N/2-F(1, 2)).denominator)
+    if lo &gt; hi:
+        raise ValueError(&#x27;hat contains no grid point; acquire adequate p&#x27;)
+    return lo, hi
+
+
+class RandomnessCap(Exception):
+    pass
+
+
+class BitSource:
+    def __init__(self, seed, max_attempts=None):
+        self.generator = random.Random(seed)
+        self.max_attempts = max_attempts
+        self.bits = 0
+        self.rejected_uniform_draws = 0
+        self.max_coin_bits = 0
+        self.cap_failures = 0
+
+    def below(self, n):
+        if n &lt; 1:
+            raise ValueError(&#x27;invalid uniform integer range&#x27;)
+        if n == 1:
+            return 0
+        b = (n-1).bit_length()
+        attempts = 0
+        while self.max_attempts is None or attempts &lt; self.max_attempts:
+            attempts += 1
+            self.bits += b
+            k = self.generator.getrandbits(b)
+            if k &lt; n:
+                return k
+            self.rejected_uniform_draws += 1
+        self.cap_failures += 1
+        raise RandomnessCap(&#x27;uniform integer rejection cutoff reached&#x27;)
+
+    def coin(self, prob):
+        prob = F(prob)
+        if not 0 &lt;= prob &lt;= 1:
+            raise ValueError(&#x27;invalid exact Bernoulli probability&#x27;)
+        self.max_coin_bits = max(self.max_coin_bits, prob.denominator.bit_length())
+        return self.below(prob.denominator) &lt; prob.numerator
+
+
+def adjacency(d, edges):
+    a = [[] for _ in range(d)]
+    seen = set()
+    for i, j, lam in edges:
+        lam = F(lam)
+        if not 0 &lt;= i &lt; j &lt; d or lam &lt; 0 or (i, j) in seen:
+            raise ValueError(&#x27;simple graph with nonnegative weights required&#x27;)
+        seen.add((i, j))
+        a[i].append((j, lam))
+        a[j].append((i, lam))
+    return a
+
+
+def taylor_degree(W, eta):
+    W, eta = F(W), F(eta)
+    if not W &gt;= 0 or eta &lt;= 0:
+        raise ValueError(&#x27;invalid remainder parameters&#x27;)
+    r = 0
+    remainder = W
+    while remainder &gt; eta:
+        r += 1
+        remainder *= W / (r+1)
+    return r, remainder
+
+
+def exp_minus_rational(u, degree):
+    u = F(u)
+    if u &lt; 0:
+        raise ValueError(&#x27;nonnegative exponent required&#x27;)
+    term = F(1)
+    val = F(1)
+    for k in range(1, degree+1):
+        term *= -u/k
+        val += term
+    return max(F(0), min(F(1), val))
+
+
+def plan(spectrum, edges, rho, epsilon):
+    s = list(map(F, spectrum))
+    eps, rho = F(epsilon), F(rho)
+    if not s or min(s) &lt; 0 or not 0 &lt;= rho &lt; 1 or not 0 &lt; eps &lt; 1 or sum(x*x for x in s) &gt; rho*rho:
+        raise ValueError(&#x27;invalid model range/precision&#x27;)
+    d = len(s)
+    a = adjacency(d, edges)
+    W = max(sum((lam for _, lam in row), F(0)) for row in a)
+    if W &gt;= 4:
+        raise ValueError(&#x27;Dobrushin regime W&lt;4 required&#x27;)
+    L = 2*W
+    C = 12+324*L
+    m = 0
+    tail2 = sum(x*x for x in s)
+    while tail2 &gt; eps*eps/64:
+        tail2 -= s[m]*s[m]
+        m += 1
+    M = ceil_sqrt_fraction(max(1, m))
+    J0 = max(3, ceil_fraction(6*L))
+    Js = [max(J0, ceil_sqrt_fraction(4*C*M*x/eps)) for x in s[:m]]
+    Jmax = max(Js, default=3)
+    p = 0
+    while (1 &lt;&lt; p) &lt; 16*Jmax*Jmax or F(1 &lt;&lt; p) &lt; 264/eps:
+        p += 1
+    alpha = W/4
+    contraction = 1-(1-alpha)/d
+    T = 1
+    mixing = d*contraction
+    while mixing &gt; eps/8:
+        T += 1
+        mixing *= contraction
+    delta_step = eps/(8*T)
+    exp_lower = F(1, 3**ceil_fraction(W))
+    eta = exp_lower*delta_step/2
+    degree, remainder = taylor_degree(W, eta)
+    D = math.prod(J+1 for J in Js)
+    # Bound every rejection loop and charge their extra total-TV error.
+    proposal_cap = 1
+    proposal_failure = T*(1-exp_lower/8)
+    while proposal_failure &gt; eps/8:
+        proposal_cap += 1
+        proposal_failure *= 1-exp_lower/8
+    uniform_calls_upper = m+T*(2*proposal_cap+1)
+    uniform_attempt_cap = 0
+    while F(uniform_calls_upper, 1 &lt;&lt; uniform_attempt_cap) &gt; eps/8:
+        uniform_attempt_cap += 1
+    qmax = max((math.lcm(*(lam.denominator for _, lam in row)) for row in a), default=1)
+    N = 1 &lt;&lt; p
+    denominator_upper = N*(2*Jmax**3)*(qmax*N**4)**degree*math.factorial(degree)
+    random_operand_bits_upper = max(p, (d-1).bit_length(), denominator_upper.bit_length())
+    allocation2 = C*C*sum((s[i]*s[i]/Js[i]**4 for i in range(m)), F(0))
+    digitization = 33*rho*F(2, 1 &lt;&lt; p)
+    # Rational prerequisites imply ideal TV&lt;=3eps/8 and total&lt;=5eps/8.
+    assert allocation2 &lt;= eps*eps/16
+    assert digitization &lt;= eps/4
+    assert tail2 &lt;= eps*eps/64
+    assert remainder &lt;= eta
+    return {&#x27;d&#x27;: d, &#x27;m&#x27;: m, &#x27;J&#x27;: Js, &#x27;p&#x27;: p, &#x27;D&#x27;: D,
+            &#x27;archive_bits&#x27;: (D-1).bit_length(), &#x27;input_output_bits&#x27;: d*p,
+            &#x27;W&#x27;: str(W), &#x27;L&#x27;: str(L), &#x27;C&#x27;: str(C), &#x27;alpha&#x27;: str(alpha),
+            &#x27;rho&#x27;: str(rho), &#x27;epsilon&#x27;: str(eps), &#x27;mixing_steps&#x27;: T,
+            &#x27;mixing_upper&#x27;: str(mixing), &#x27;local_kernel_TV_budget&#x27;: str(delta_step),
+            &#x27;exp_absolute_error_target&#x27;: str(eta), &#x27;exp_degree&#x27;: degree,
+            &#x27;exp_remainder_upper&#x27;: str(remainder),
+            &#x27;expected_proposals_upper&#x27;: str(8*T/exp_lower),
+            &#x27;allocation_squared_density_error&#x27;: str(allocation2),
+            &#x27;digitization_density_error&#x27;: str(digitization), &#x27;tail_squared_norm&#x27;: str(tail2),
+            &#x27;ideal_TV_upper&#x27;: str(3*eps/8), &#x27;uncapped_TV_upper&#x27;: str(5*eps/8),
+            &#x27;total_TV_upper&#x27;: str(7*eps/8),
+            &#x27;proposals_per_update_cap&#x27;: proposal_cap,
+            &#x27;total_proposals_hard_cap&#x27;: T*proposal_cap,
+            &#x27;proposal_cutoff_failure_upper&#x27;: str(proposal_failure),
+            &#x27;uniform_integer_attempt_cap&#x27;: uniform_attempt_cap,
+            &#x27;uniform_integer_calls_hard_cap&#x27;: uniform_calls_upper,
+            &#x27;uniform_integer_cutoff_failure_upper&#x27;: str(F(uniform_calls_upper, 1 &lt;&lt; uniform_attempt_cap)),
+            &#x27;random_integer_operand_bits_hard_cap&#x27;: random_operand_bits_upper,
+            &#x27;total_random_bits_hard_cap&#x27;: uniform_calls_upper*uniform_attempt_cap*random_operand_bits_upper,
+            &#x27;all_model_acquisition&#x27;: &#x27;supplied known graph/couplings/spectrum/rho; no discovery claim&#x27;,
+            &#x27;precision_scope&#x27;: &#x27;digital midpoint-weight model, not quantized continuous Gibbs law&#x27;}
+
+
+def _encode(grid_input, specification, bits):
+    d, m, Js, p = [specification[k] for k in [&#x27;d&#x27;, &#x27;m&#x27;, &#x27;J&#x27;, &#x27;p&#x27;]]
+    if len(grid_input) != d:
+        raise ValueError(&#x27;full input required&#x27;)
+    if any(not isinstance(k, int) or not 0 &lt;= k &lt; (1 &lt;&lt; p) for k in grid_input):
+        raise ValueError(&#x27;legal digital input required&#x27;)
+    labels = []
+    for i in range(m):
+        t = point(grid_input[i], p)
+        J = Js[i]
+        lo, hi = 0, J-1
+        while lo &lt; hi:
+            mid = (lo+hi+1)//2
+            if node(mid, J) &lt;= t:
+                lo = mid
+            else:
+                hi = mid-1
+        frac = (t-node(lo, J))/(node(lo+1, J)-node(lo, J))
+        labels.append(lo+1 if bits.coin(frac) else lo)
+    # Every random label is in this single counted mixed-radix record.
+    packed = 0
+    for label, J in zip(labels, Js):
+        packed = packed*(J+1)+label
+    assert 0 &lt;= packed &lt; specification[&#x27;D&#x27;]
+    return packed
+
+
+def encode(grid_input, specification, bits):
+    try:
+        return _encode(grid_input, specification, bits)
+    except RandomnessCap:
+        return 0  # A legal archive; cutoff contribution is charged in the plan.
+
+
+def unpack(packed, Js):
+    if not 0 &lt;= packed &lt; math.prod(J+1 for J in Js):
+        raise ValueError(&#x27;invalid archive&#x27;)
+    labels = []
+    for J in reversed(Js):
+        packed, label = divmod(packed, J+1)
+        labels.append(label)
+    return list(reversed(labels))
+
+
+def decode(packed, specification, edges, bits):
+    d, m, Js, p = [specification[k] for k in [&#x27;d&#x27;, &#x27;m&#x27;, &#x27;J&#x27;, &#x27;p&#x27;]]
+    labels = unpack(packed, Js)
+    a = adjacency(d, edges)
+    ranges = [support_grid(labels[i], Js[i], p) if i &lt; m else (0, (1 &lt;&lt; p)-1) for i in range(d)]
+    # Initialize inside each support; endpoints with zero hat are excluded here.
+    x = []
+    for i, (lo, hi) in enumerate(ranges):
+        k = (lo+hi)//2
+        if i &lt; m:
+            assert hat(point(k, p), labels[i], Js[i]) &gt; 0
+        x.append(k)
+    proposals = 0
+    neighbor_reads = 0
+    max_probability_bits = 0
+    proposal_cutoffs = 0
+    randomness_cutoff = False
+    updates_completed = 0
+    T = specification[&#x27;mixing_steps&#x27;]
+    degree = specification[&#x27;exp_degree&#x27;]
+    try:
+        for _ in range(T):
+            i = bits.below(d)
+            beta = sum((lam*point(x[j], p)**2 for j, lam in a[i]), F(0))
+            neighbor_reads += len(a[i])
+            lo, hi = ranges[i]
+            for attempt in range(specification[&#x27;proposals_per_update_cap&#x27;]):
+                proposals += 1
+                k = lo+bits.below(hi-lo+1)
+                t = point(k, p)
+                phi = hat(t, labels[i], Js[i]) if i &lt; m else F(1)
+                probability = phi*exp_minus_rational(beta*(1-t*t), degree)
+                max_probability_bits = max(max_probability_bits,
+                                           probability.numerator.bit_length(), probability.denominator.bit_length())
+                if bits.coin(probability):
+                    x[i] = k
+                    break
+            else:
+                proposal_cutoffs += 1  # Leave this coordinate unchanged.
+            updates_completed += 1
+    except RandomnessCap:
+        randomness_cutoff = True  # Return the existing legal state.
+    assert proposals &lt;= specification[&#x27;total_proposals_hard_cap&#x27;]
+    return x, {&#x27;planned_local_updates&#x27;: T, &#x27;completed_local_updates&#x27;: updates_completed, &#x27;proposals&#x27;: proposals,
+               &#x27;neighbor_values_read&#x27;: neighbor_reads,
+               &#x27;max_rational_probability_bits&#x27;: max_probability_bits,
+               &#x27;random_bits_requested&#x27;: bits.bits,
+               &#x27;rejected_uniform_integer_draws&#x27;: bits.rejected_uniform_draws,
+               &#x27;maximum_coin_denominator_bits&#x27;: bits.max_coin_bits,
+               &#x27;proposal_cutoffs&#x27;: proposal_cutoffs, &#x27;randomness_cutoff&#x27;: randomness_cutoff}
+
+
+def finite_checks():
+    # Exact linear reproduction and partition of unity on several finite grids.
+    hat_checks = 0
+    for J in [3, 4, 7, 12]:
+        for p in [3, 4, 6]:
+            for k in range(1 &lt;&lt; p):
+                t = point(k, p)
+                hs = [hat(t, j, J) for j in range(J+1)]
+                assert min(hs) &gt;= 0 and sum(hs) == 1
+                assert sum(node(j, J)*hs[j] for j in range(J+1)) == t
+                hat_checks += 1
+    mass_checks = 0
+    for J in [3, 4, 7, 12]:
+        p = (16*J*J-1).bit_length()
+        for j in range(J+1):
+            lo, hi = support_grid(j, J, p)
+            avg = sum((hat(point(k, p), j, J) for k in range(lo, hi+1)), F(0))/(hi-lo+1)
+            assert avg &gt;= F(1, 4)
+            mass_checks += 1
+    exp_checks = []
+    for W in [F(0), F(1, 2), F(1), F(3), F(399, 100)]:
+        degree, remainder = taylor_degree(W, F(1, 2**20))
+        assert remainder &lt;= F(1, 2**20)
+        # Clipping interval and exact polynomial arithmetic are checked;
+        # the mathematical Lagrange remainder supplies the exp enclosure.
+        for u in [F(0), W/3, W]:
+            assert 0 &lt;= exp_minus_rational(u, degree) &lt;= 1
+        exp_checks.append({&#x27;W&#x27;: str(W), &#x27;degree&#x27;: degree, &#x27;remainder&#x27;: str(remainder)})
+    return {&#x27;exact_hat_partition_and_reproduction_checks&#x27;: hat_checks,
+            &#x27;exact_discrete_hat_mass_checks&#x27;: mass_checks,
+            &#x27;rational_exponential_remainder_plans&#x27;: exp_checks}
+
+
+def main():
+    start = time.perf_counter()
+    checks = finite_checks()
+    s = [F(1, 16), F(1, 32), F(1, 64), F(1, 128)]
+    edges = [(0, 1, F(1, 2)), (1, 2, F(1, 2)), (2, 3, F(1, 2)), (0, 3, F(1, 2))]
+    specification = plan(s, edges, F(1, 2), F(1, 10))
+    p = specification[&#x27;p&#x27;]
+    N = 1 &lt;&lt; p
+    runs = []
+    for seed, supplied_observation in enumerate([[N//8, N//3, N//2, 7*N//8], [N//2]*4, [0, N-1, N//4, 3*N//4]]):
+        encoder_bits = BitSource(seed+101, specification[&#x27;uniform_integer_attempt_cap&#x27;])
+        packed = encode(supplied_observation, specification, encoder_bits)
+        decoder_bits = BitSource(seed+201, specification[&#x27;uniform_integer_attempt_cap&#x27;])
+        output, stats = decode(packed, specification, edges, decoder_bits)
+        assert all(0 &lt;= k &lt; N for k in output)
+        assert encoder_bits.bits+decoder_bits.bits &lt;= specification[&#x27;total_random_bits_hard_cap&#x27;]
+        assert decoder_bits.max_coin_bits &lt;= specification[&#x27;random_integer_operand_bits_hard_cap&#x27;]
+        runs.append({&#x27;seed&#x27;: seed, &#x27;input_grid_indices&#x27;: supplied_observation,
+                     &#x27;archive_integer&#x27;: packed, &#x27;labels&#x27;: unpack(packed, specification[&#x27;J&#x27;]),
+                     &#x27;output_grid_indices&#x27;: output, &#x27;encoder_random_bits&#x27;: encoder_bits.bits,
+                     &#x27;decoder_costs&#x27;: stats,
+                     &#x27;scope&#x27;: &#x27;Execution on supplied legal observations; no claim these test inputs were sampled from P_v or that empirical TV was estimated.&#x27;})
+    forced_encoder = BitSource(900, 0)
+    assert encode([N//2]*4, specification, forced_encoder) == 0 and forced_encoder.cap_failures == 1
+    forced_decoder = BitSource(901, 0)
+    fallback, fallback_stats = decode(0, specification, edges, forced_decoder)
+    assert fallback_stats[&#x27;randomness_cutoff&#x27;] and all(0 &lt;= k &lt; N for k in fallback)
+    no_interaction = plan([F(1, 1000)], [], F(1, 2), F(1, 10))
+    assert no_interaction[&#x27;m&#x27;] == 0 and no_interaction[&#x27;D&#x27;] == 1
+    xb = BitSource(303, no_interaction[&#x27;uniform_integer_attempt_cap&#x27;])
+    y, st = decode(0, no_interaction, [], xb)
+    assert len(y) == 1
+    result = {&#x27;known_cycle_plan&#x27;: specification, &#x27;checks&#x27;: checks, &#x27;actual_digital_decoder_runs&#x27;: runs,
+              &#x27;forced_cutoff_path_checks&#x27;: 2,
+              &#x27;empty_archive_plan&#x27;: no_interaction, &#x27;empty_archive_decoder&#x27;: {&#x27;output&#x27;: y, &#x27;costs&#x27;: st},
+              &#x27;elapsed_seconds&#x27;: time.perf_counter()-start,
+              &#x27;status&#x27;: &#x27;SCOPED_KNOWN_DIGITAL_MODEL_CONDITIONAL_SAMPLER_ACQUIRED&#x27;,
+              &#x27;limits&#x27;: [&#x27;All graph/spectrum data supplied; not learned.&#x27;, &#x27;Unbiased iid bit source assumed by theorem; seeded PRNG is reproducibility only.&#x27;,
+                         &#x27;No continuous-output TV claim.&#x27;, &#x27;Finite checks are not external theorem validation.&#x27;]}
+    out = Path(__file__).with_name(&#x27;digital_gibbs_checks.json&#x27;)
+    out.write_text(json.dumps(result, indent=2)+&#x27;\n&#x27;)
+    display_plan = {k:specification[k] for k in [&#x27;d&#x27;,&#x27;m&#x27;,&#x27;J&#x27;,&#x27;p&#x27;,&#x27;archive_bits&#x27;,&#x27;input_output_bits&#x27;,&#x27;mixing_steps&#x27;,&#x27;exp_degree&#x27;,&#x27;total_proposals_hard_cap&#x27;,&#x27;total_random_bits_hard_cap&#x27;,&#x27;total_TV_upper&#x27;]}
+    print(json.dumps({&#x27;plan&#x27;: display_plan, &#x27;exact_hat_checks&#x27;: checks[&#x27;exact_hat_partition_and_reproduction_checks&#x27;],
+                      &#x27;decoder_proposals&#x27;: [r[&#x27;decoder_costs&#x27;][&#x27;proposals&#x27;] for r in runs],
+                      &#x27;seconds&#x27;: result[&#x27;elapsed_seconds&#x27;], &#x27;output&#x27;: str(out)}, indent=2))
+
+if __name__ == &#x27;__main__&#x27;:
+    main()
+</pre><p><a href="../assets/824d9b6f5f744280466bd1cac44e7c7ade901d6e2431f43eb3c1fce885f06f4f.py">Exact original bytes</a></p></html>

@@ -1,0 +1,110 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c03_s01/implementation/portable_replay/work/cycle6/c03_s01/implementation/portable_replay_check.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c03_s01/implementation/portable_replay/work/cycle6/c03_s01/implementation/portable_replay_check.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Replay four small CLI fixtures after extracting the portable archive.
+
+This packaging check does not repeat the N32/N64 scientific probes.
+&quot;&quot;&quot;
+import argparse
+from datetime import datetime, timezone
+from fractions import Fraction
+import hashlib
+import importlib
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+import time
+import zipfile
+
+
+def rational(record):
+    return Fraction(int(record[&#x27;numerator&#x27;]), int(record[&#x27;denominator&#x27;]))
+
+
+def check_density(density):
+    a, b = map(rational, density[&#x27;diagonal&#x27;])
+    real = rational(density[&#x27;upper_right_real&#x27;])
+    imag = rational(density[&#x27;upper_right_imag&#x27;])
+    if not (a &gt;= 0 and b &gt;= 0 and a+b == 1 and real*real+imag*imag &lt;= a*b):
+        raise ArithmeticError(&#x27;portable output is not an exact PSD trace-one matrix&#x27;)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(&#x27;--archive&#x27;, required=True, type=Path)
+    parser.add_argument(&#x27;--extract-root&#x27;, required=True, type=Path)
+    parser.add_argument(&#x27;--receipt&#x27;, required=True, type=Path)
+    args = parser.parse_args()
+    root = args.extract_root.resolve()
+    root.mkdir(parents=True, exist_ok=False)
+    with zipfile.ZipFile(args.archive) as archive:
+        for name in archive.namelist():
+            if not (root / name).resolve().is_relative_to(root):
+                raise ValueError(&#x27;archive member escapes the extraction directory&#x27;)
+        archive.extractall(root)
+    impl = root / &#x27;work/cycle6/c03_s01/implementation&#x27;
+    expected = json.loads((impl / &#x27;RESULTS.json&#x27;).read_text())[&#x27;source_sha256&#x27;]
+    for name, value in expected.items():
+        if hashlib.sha256((impl / name).read_bytes()).hexdigest() != value:
+            raise ArithmeticError(&#x27;portable source hash mismatch: &#x27;+name)
+    env = dict(os.environ)
+    env[&#x27;PYTHONDONTWRITEBYTECODE&#x27;] = &#x27;1&#x27;
+    for key in (&#x27;OPENBLAS_NUM_THREADS&#x27;, &#x27;OMP_NUM_THREADS&#x27;, &#x27;MKL_NUM_THREADS&#x27;,
+                &#x27;VECLIB_MAXIMUM_THREADS&#x27;, &#x27;NUMEXPR_NUM_THREADS&#x27;):
+        env[key] = &#x27;1&#x27;
+    cases = [
+        (&#x27;dicke_compiler&#x27;, 2, &#x27;verify_model&#x27;, [&#x27;--samples&#x27;, &#x27;1&#x27;]),
+        (&#x27;whole_gibbs_compiler&#x27;, 3, &#x27;verify_whole_model&#x27;, [&#x27;--alpha&#x27;, &#x27;3&#x27;, &#x27;--samples&#x27;, &#x27;1&#x27;]),
+        (&#x27;filtered_sector_compiler&#x27;, 2, &#x27;verify_filtered&#x27;, [&#x27;--alpha&#x27;, &#x27;3&#x27;]),
+        (&#x27;filtered_sector_scaling&#x27;, 2, &#x27;verify_filtered&#x27;, [&#x27;--alpha&#x27;, &#x27;3&#x27;]),
+    ]
+    records = []
+    for module, n, verifier, extra in cases:
+        output = root / (module+&#x27;_smoke.json&#x27;)
+        command = [sys.executable, &#x27;-B&#x27;, str(impl / (module+&#x27;.py&#x27;)),
+                   &#x27;--n&#x27;, str(n), &#x27;--delta&#x27;, &#x27;1&#x27;, &#x27;--h&#x27;, &#x27;1/3&#x27;,
+                   &#x27;--epsilon&#x27;, &#x27;1e-8&#x27;, &#x27;--output&#x27;, str(output)] + extra
+        began = time.perf_counter()
+        completed = subprocess.run(command, cwd=root, env=env, capture_output=True,
+                                   text=True, timeout=20)
+        if completed.returncode:
+            raise RuntimeError(module+&#x27; portable CLI failed: &#x27;+completed.stderr[-2000:])
+        result = json.loads(output.read_text())
+        records.append({&#x27;module&#x27;: module, &#x27;n&#x27;: n, &#x27;verifier&#x27;: verifier,
+                        &#x27;output&#x27;: output.name,
+                        &#x27;cli_seconds&#x27;: time.perf_counter()-began,
+                        &#x27;cli_returncode&#x27;: completed.returncode,
+                        &#x27;output_sha256&#x27;: hashlib.sha256(output.read_bytes()).hexdigest(),
+                        &#x27;samples&#x27;: len(result[&#x27;samples&#x27;])})
+    # Import only the extracted portable hierarchy, after running its CLIs.
+    sys.path.insert(0, str(impl))
+    sys.dont_write_bytecode = True
+    density_checks = 0
+    for record in records:
+        result = json.loads((root / record[&#x27;output&#x27;]).read_text())
+        module = importlib.import_module(record[&#x27;module&#x27;])
+        if not getattr(module, record[&#x27;verifier&#x27;])(result[&#x27;model&#x27;]):
+            raise ArithmeticError(&#x27;portable verifier did not confirm output&#x27;)
+        for sample in result[&#x27;samples&#x27;]:
+            matrices = sample.get(&#x27;local_density_matrices&#x27;)
+            if matrices is None:
+                matrices = [sample[&#x27;finite_product_local_density&#x27;]]
+            for matrix in matrices:
+                check_density(matrix)
+                density_checks += 1
+        record[&#x27;exact_json_roundtrip_verifier&#x27;] = &#x27;PASS&#x27;
+    receipt = {&#x27;utc&#x27;: datetime.now(timezone.utc).isoformat(),
+               &#x27;status&#x27;: &#x27;PASS_PORTABLE_SMALL_CLI_REPLAY&#x27;,
+               &#x27;scope&#x27;: &#x27;Four small CLI fixtures; packaging/import/serialization check only. No larger science benchmark rerun.&#x27;,
+               &#x27;archive_sha256&#x27;: hashlib.sha256(args.archive.read_bytes()).hexdigest(),
+               &#x27;source_sha256&#x27;: expected, &#x27;records&#x27;: records,
+               &#x27;exact_local_PSD_trace_one_checks&#x27;: density_checks,
+               &#x27;package_installations&#x27;: 0,
+               &#x27;hardcoded_host_imports_required&#x27;: False}
+    args.receipt.write_text(json.dumps(receipt, indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({&#x27;status&#x27;: receipt[&#x27;status&#x27;], &#x27;CLI_fixtures&#x27;: len(records),
+                      &#x27;exact_local_PSD_checks&#x27;: density_checks}))
+
+
+if __name__ == &#x27;__main__&#x27;:
+    main()
+</pre><p><a href="../assets/059a35eb60447c54739e5c35edc75fe055736e079380fb62434b75aa25d90cc1.py">Exact original bytes</a></p></html>

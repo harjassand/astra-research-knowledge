@@ -1,0 +1,105 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c03_s03/bcs_count_sample.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c03_s03/bcs_count_sample.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;JSON command line for the delivered exact rational algorithms.
+
+Example: python3 bcs_count_sample.py fixture.json
+An entry is an integer, rational string, or {&quot;re&quot;: &quot;1/2&quot;, &quot;im&quot;: &quot;-3/7&quot;}.
+Methods: mps, green, balanced_tree, forest, separator, supplied_tree.
+All methods expose an explicit max_dimension cap. No width optimization,
+floating rank truncation, multiplicative oracle or postselection is hidden.
+&quot;&quot;&quot;
+from cutrank_bcs import *
+from treecut_bcs import *
+from green_bcs import *
+import argparse
+import json
+from pathlib import Path
+
+
+def rational(x):
+    if isinstance(x, float):
+        raise ValueError(&#x27;encode rational input as an integer or fraction string&#x27;)
+    return Q(x)
+
+
+def complex_rational(x):
+    if isinstance(x, dict):
+        return C(rational(x.get(&#x27;re&#x27;, 0)), rational(x.get(&#x27;im&#x27;, 0)))
+    return C(rational(x))
+
+
+def tuple_tree(x):
+    if isinstance(x, int):
+        return x
+    if not isinstance(x, list) or len(x) != 2:
+        raise ValueError(&#x27;binary tree is a site index or two children&#x27;)
+    return tuple_tree(x[0]), tuple_tree(x[1])
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(&#x27;input&#x27;)
+    args = parser.parse_args()
+    data = json.loads(Path(args.input).read_text())
+    F = [[complex_rational(x) for x in row] for row in data[&#x27;F&#x27;]]
+    n = len(F)
+    t = [rational(x) for x in data.get(&#x27;t&#x27;, [0]*n)]
+    cap = data.get(&#x27;max_dimension&#x27;, 64)
+    method = data.get(&#x27;method&#x27;, &#x27;mps&#x27;)
+    allowed = data.get(&#x27;allowed&#x27;)
+    out = {&#x27;method&#x27;: method, &#x27;arithmetic&#x27;: &#x27;exact Q(i)&#x27;, &#x27;max_dimension_cap&#x27;: cap}
+    if method == &#x27;green&#x27;:
+        if any(t):
+            raise ValueError(&#x27;the fast Green algorithm requires hard filters t=0&#x27;)
+        params = acquire_dense_green(F)
+        local = None if allowed is None else [[Q(int(x in s)) for x in (0,1,2)] for s in allowed]
+        counter = GreenCounter(params,local)
+        cs = counter.counts()
+        draw = lambda k, rng: counter.sample(k,rng)
+        out[&#x27;admission&#x27;] = &#x27;acquired dense complex diagonally gauged Green off-diagonal kernel&#x27;
+        out.pop(&#x27;max_dimension_cap&#x27;)
+    elif method == &#x27;mps&#x27;:
+        compiled = acquire_mps(F, max_dimension=cap)
+        cs = counts(compiled, t, allowed)
+        draw = lambda k, rng: sample(compiled, k, t, allowed=allowed, rng=rng)
+        out[&#x27;cut_ranks&#x27;] = [x.rank for x in compiled.cuts]
+        out[&#x27;bond_dimensions&#x27;] = [x.dim for x in compiled.cuts]
+    else:
+        if method == &#x27;balanced_tree&#x27;:
+            tree = balanced_order_tree(n)
+        elif method == &#x27;forest&#x27;:
+            tree = forest_tree(F)
+            if tree is None:
+                raise ValueError(&#x27;off-diagonal support is not a forest&#x27;)
+        elif method == &#x27;separator&#x27;:
+            bound = data.get(&#x27;separator_bound&#x27;, 1)
+            tree, witness = separator_tree(F, bound)
+            out[&#x27;separator_bound&#x27;] = bound
+            out[&#x27;separator_witness&#x27;] = witness
+        elif method == &#x27;supplied_tree&#x27;:
+            tree = tuple_tree(data[&#x27;tree&#x27;])
+        else:
+            raise ValueError(&#x27;unknown method&#x27;)
+        compiled = acquire_tree(F, tree, max_dimension=cap)
+        cs = tree_counts(compiled, t, allowed)
+        draw = lambda k, rng: tree_sample(compiled, k, t, rng=rng, allowed=allowed)
+        out[&#x27;site_order&#x27;] = compiled.order
+        out[&#x27;tree&#x27;] = tree
+        out[&#x27;cut_ranks&#x27;] = [x.basis.rank for x in compiled.nodes]
+        out[&#x27;bond_dimensions&#x27;] = [x.basis.dim for x in compiled.nodes]
+    out[&#x27;coefficients&#x27;] = [str(x) for x in cs]
+    out[&#x27;grandcanonical_norm&#x27;] = str(sum(cs))
+    out[&#x27;zero_sectors&#x27;] = [k for k, x in enumerate(cs) if not x]
+    number = data.get(&#x27;samples&#x27;, 0)
+    if number:
+        k = data[&#x27;pair_count&#x27;]
+        if not isinstance(k, int) or not 0 &lt;= k &lt;= n or not cs[k]:
+            raise ValueError(&#x27;requested sector is invalid or zero&#x27;)
+        rng = random.Random(data[&#x27;seed&#x27;]) if &#x27;seed&#x27; in data else random.SystemRandom()
+        out[&#x27;sample_states&#x27;] = [draw(k, rng) for _ in range(number)]
+        out[&#x27;sample_encoding&#x27;] = [&#x27;empty&#x27;, &#x27;up&#x27;, &#x27;down&#x27;, &#x27;both&#x27;]
+        out[&#x27;rng&#x27;] = &#x27;seeded reproducibility fixture&#x27; if &#x27;seed&#x27; in data else &#x27;OS random-bit interface&#x27;
+    print(json.dumps(out, indent=2))
+
+
+if __name__ == &#x27;__main__&#x27;:
+    main()
+</pre><p><a href="../assets/567ff7e670043826912e8155713c5a429f3f5b246bc8c9d44a515934bdbcc189.py">Exact original bytes</a></p></html>

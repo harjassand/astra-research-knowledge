@@ -1,0 +1,315 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c09_s02/revisions/entropy_table_certificate.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c09_s02/revisions/entropy_table_certificate.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Charged inverse-square-scale certificate for a supplied diagonal PSD table.
+
+Only rational arithmetic enters the returned certificates. Decimal logs in
+main are bounded diagnostic comparisons, never trusted as a theorem premise.
+The general matrix-entropy proof is c09_s01&#x27;s, independently audited here.
+The square-root mean/range comparison is proved in revision03.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from pathlib import Path
+from decimal import Decimal, localcontext
+import argparse
+import hashlib
+import json
+import math
+import time
+
+
+def add(a, b):
+    return a[0] + b[0], a[1] + b[1]
+
+
+def sub(a, b):
+    return a[0] - b[1], a[1] - b[0]
+
+
+def scale(a, c):
+    c = F(c)
+    return (a[0]*c, a[1]*c) if c &gt;= 0 else (a[1]*c, a[0]*c)
+
+
+def positive_square(a):
+    assert 0 &lt;= a[0] &lt;= a[1]
+    return a[0]*a[0], a[1]*a[1]
+
+
+def power_two(e):
+    return F(1 &lt;&lt; e) if e &gt;= 0 else F(1, 1 &lt;&lt; -e)
+
+
+def unit_log(z, width):
+    &quot;&quot;&quot;Exact positive-series enclosure for 1&lt;=z&lt;=2.&quot;&quot;&quot;
+    assert 1 &lt;= z &lt;= 2 and width &gt; 0
+    t = (z - 1)/(z + 1)
+    lo = F(0)
+    n = 0
+    power = t
+    while True:
+        tail = 2*power/((2*n+1)*(1-t*t))
+        if tail &lt;= width:
+            return (lo, lo+tail), n
+        lo += 2*power/(2*n+1)
+        power *= t*t
+        n += 1
+
+
+def log_interval(x, width=F(1, 1 &lt;&lt; 45)):
+    x = F(x)
+    if x &lt;= 0:
+        raise ValueError(&#x27;log input must be positive&#x27;)
+    e = x.numerator.bit_length()-x.denominator.bit_length()
+    z = x/power_two(e)
+    if z &lt; 1:
+        e -= 1
+        z *= 2
+    elif z &gt;= 2:
+        e += 1
+        z /= 2
+    assert 1 &lt;= z &lt; 2
+    local_width = width/(2*(abs(e)+1))
+    lz, nz = unit_log(z, local_width)
+    l2, n2 = unit_log(F(2), local_width)
+    ans = add(lz, scale(l2, e))
+    assert ans[1]-ans[0] &lt;= width
+    return ans, nz+n2
+
+
+def sqrt_interval(x, bits=45):
+    x = F(x)
+    if x &lt; 0:
+        raise ValueError(&#x27;negative square root&#x27;)
+    den = 1 &lt;&lt; bits
+    q = math.isqrt((x.numerator &lt;&lt; (2*bits))//x.denominator)
+    lo = F(q, den)
+    hi = lo if q*q*x.denominator == x.numerator*den*den else F(q+1, den)
+    assert lo*lo &lt;= x &lt;= hi*hi and hi-lo &lt;= F(1, den)
+    return lo, hi
+
+
+def serial_interval(a):
+    return {&#x27;lower_rational&#x27;: str(a[0]), &#x27;upper_rational&#x27;: str(a[1]),
+            &#x27;width_rational&#x27;: str(a[1]-a[0]), &#x27;upper_float_display_only&#x27;: float(a[1])}
+
+
+def certify(table, cap=F(64), bits=45):
+    ps = [F(x) for x in table[&#x27;probabilities&#x27;]]
+    rows = [[F(x) for x in row] for row in table[&#x27;diagonal_fields&#x27;]]
+    if not ps or len(ps) != len(rows) or sum(ps) != 1 or min(ps) &lt; 0:
+        raise ValueError(&#x27;invalid reference probabilities&#x27;)
+    modes = len(rows[0])
+    if modes &lt; 1 or any(len(row) != modes or min(row) &lt; 0 for row in rows):
+        raise ValueError(&#x27;invalid PSD diagonal fields&#x27;)
+    cap = F(cap)
+    if cap &lt;= 0 or bits &lt; 1:
+        raise ValueError(&#x27;invalid cap/precision&#x27;)
+    means = [sum(p*row[i] for p, row in zip(ps, rows)) for i in range(modes)]
+    trace_mean = sum(means)
+    cache = {}
+    series_terms = 0
+
+    def logged(x):
+        nonlocal series_terms
+        if x not in cache:
+            ans, count = log_interval(x, F(1, 1 &lt;&lt; bits))
+            cache[x] = ans
+            series_terms += count
+        return cache[x]
+
+    raw = (F(0), F(0))
+    for p, row in zip(ps, rows):
+        if p:
+            for a in row:
+                if a:
+                    raw = add(raw, scale(logged(a), p*a))
+    centered = (F(0), F(0))
+    for a in means:
+        if a:
+            centered = add(centered, scale(logged(a), a))
+    entropy = sub(raw, centered)
+    entropy = (max(F(0), entropy[0]), max(F(0), entropy[1]))
+    assert entropy[1]-entropy[0] &lt;= 2*trace_mean*F(1, 1 &lt;&lt; bits)
+    active = [i for i, a in enumerate(means) if a]
+    kapp = max([F(1)] + [row[i]/means[i] for p, row in zip(ps, rows)
+                                       if p for i in active])
+    envelope = scale(logged(kapp), trace_mean/2)
+    bound_candidates = {&#x27;matrix_entropy_upper&#x27;: entropy[1]/2,
+                        &#x27;trace_profile_upper&#x27;: cap*trace_mean/4,
+                        &#x27;joint_order_envelope_upper&#x27;: envelope[1]}
+    log_cap=logged(1+cap)
+    g_cap=scale(sub(scale(log_cap,(1+cap)/cap),(F(1),F(1))),F(1,2))
+    g_cap=(max(F(0),g_cap[0]),max(F(0),g_cap[1]))
+    bound_candidates[&#x27;peer_fixed_reference_trace_upper&#x27;]=g_cap[1]*trace_mean
+    root_report = {&#x27;common_zero_coordinates&#x27;: [i for i in range(modes) if i not in active]}
+    if active:
+        root_bits = bits
+        while True:
+            root_means = [(F(0), F(0)) for _ in range(modes)]
+            for p, row in zip(ps, rows):
+                if p:
+                    for i in active:
+                        root_means[i] = add(root_means[i], scale(sqrt_interval(row[i], root_bits), p))
+            s_lower = min(root_means[i][0] for i in active)
+            if s_lower &gt; 0:
+                break
+            root_bits *= 2
+        beta = max(row[i] for p, row in zip(ps, rows) if p for i in active)
+        r_upper = sqrt_interval(beta, root_bits)[1]
+        v_upper = r_upper/s_lower
+        assert v_upper &gt;= 1
+        if v_upper == 1:
+            b_upper = F(2)
+        else:
+            ln_v = logged(v_upper)
+            direct_upper = (2*v_upper*v_upper*ln_v[1]-v_upper*v_upper+1)/(v_upper-1)**2
+            # Stable upper: b(v)=4 int_0^1(1-t)[1+log(1+t(v-1))]dt
+            # &lt;=2(1+log v) for v&gt;=1. Avoid cancellation when v is near 1.
+            b_upper = min(direct_upper, 2+2*ln_v[1])
+            assert b_upper &gt;= 2
+        sum_squares = (F(0), F(0))
+        for i in active:
+            sum_squares = add(sum_squares, positive_square(root_means[i]))
+        variance = sub((trace_mean, trace_mean), sum_squares)
+        variance = (max(F(0), variance[0]), max(F(0), variance[1]))
+        bound_candidates[&#x27;square_root_mean_range_upper&#x27;] = b_upper*variance[1]/2
+        cap_coefficient = sub(scale(log_cap, (1+cap)**2/(cap*cap)),
+                              (F(1)+1/cap+F(1,2), F(1)+1/cap+F(1,2)))
+        cap_coefficient = (max(F(0),cap_coefficient[0]), max(F(0),cap_coefficient[1]))
+        bound_candidates[&#x27;peer_correct_weight_root_variance_upper&#x27;] = 2*cap_coefficient[1]*variance[1]
+        root_report.update({&#x27;root_precision_bits&#x27;: root_bits,
+                            &#x27;root_mean_intervals&#x27;: [serial_interval(x) for x in root_means],
+                            &#x27;s_lower&#x27;: str(s_lower), &#x27;r_upper&#x27;: str(r_upper),
+                            &#x27;ratio_upper&#x27;: str(v_upper), &#x27;b_upper&#x27;: str(b_upper),
+                            &#x27;root_variance_interval&#x27;: serial_interval(variance),
+                            &#x27;peer_H_L_interval&#x27;: serial_interval(cap_coefficient),
+                            &#x27;peer_G_L_interval&#x27;: serial_interval(g_cap)})
+    else:
+        bound_candidates[&#x27;square_root_mean_range_upper&#x27;] = F(0)
+    encoded = {&#x27;probabilities&#x27;: [str(p) for p in ps],
+               &#x27;diagonal_fields&#x27;: [[str(a) for a in row] for row in rows]}
+    return {&#x27;status&#x27;: &#x27;EXACT_RATIONAL_INTERVAL_UPPER_CERTIFICATE&#x27;,
+            &#x27;source_sha256&#x27;: hashlib.sha256(json.dumps(encoded,sort_keys=True).encode()).hexdigest(),
+            &#x27;K&#x27;: len(ps), &#x27;m&#x27;: modes, &#x27;cap&#x27;: str(cap), &#x27;log_precision_bits&#x27;: bits,
+            &#x27;full_scalar_inputs_read&#x27;: len(ps)*(modes+1), &#x27;mean_field&#x27;: [str(x) for x in means],
+            &#x27;trace_mean&#x27;: str(trace_mean), &#x27;entropy_interval&#x27;: serial_interval(entropy),
+            &#x27;joint_order_kappa&#x27;: str(kapp), &#x27;root_certificate&#x27;: root_report,
+            &#x27;candidate_upper_rationals&#x27;: {k: str(v) for k,v in bound_candidates.items()},
+            &#x27;integrated_information_upper_rational&#x27;: str(min(bound_candidates.values())),
+            &#x27;integrated_information_upper_float_display_only&#x27;: float(min(bound_candidates.values())),
+            &#x27;unique_log_arguments&#x27;: len(cache), &#x27;positive_series_terms&#x27;: series_terms,
+            &#x27;scope&#x27;: &#x27;Supplied finite diagonal PSD table; true continuous-source dT/T^2 MI upper. Also applies to digital-label MI by data processing. Dense matrix acquisition, unknown probabilities, physical sampling and N75 gate not implemented.&#x27;}
+
+
+def certify_partition(table, labels, bits=45):
+    &quot;&quot;&quot;Conditional-cell entropy acquisition; downstream Gaussian sampling ideal.
+
+    c09_s01&#x27;s full simulation proof is independently audited. This computes
+    its local entropy premise for a fixed supplied multidimensional diagonal
+    partition, and our new root mean/range certificate in each cell.
+    &quot;&quot;&quot;
+    ps = [F(x) for x in table[&#x27;probabilities&#x27;]]
+    rows = table[&#x27;diagonal_fields&#x27;]
+    if len(labels) != len(ps) or len(rows) != len(ps):
+        raise ValueError(&#x27;partition length mismatch&#x27;)
+    groups = {}
+    for i,(p,j) in enumerate(zip(ps,labels)):
+        if p:
+            groups.setdefault(j,[]).append(i)
+    cells = []
+    total_upper = F(0)
+    total_lower = F(0)
+    for j, indices in sorted(groups.items()):
+        weight = sum(ps[i] for i in indices)
+        conditional = {&#x27;probabilities&#x27;:[str(ps[i]/weight) for i in indices],
+                       &#x27;diagonal_fields&#x27;:[rows[i] for i in indices]}
+        report = certify(conditional, cap=1, bits=bits)
+        raw_upper = F(report[&#x27;entropy_interval&#x27;][&#x27;upper_rational&#x27;])
+        raw_lower = F(report[&#x27;entropy_interval&#x27;][&#x27;lower_rational&#x27;])
+        # These branches certify entropy, unlike cap-dependent MI branches.
+        envelope_upper = 2*F(report[&#x27;candidate_upper_rationals&#x27;][&#x27;joint_order_envelope_upper&#x27;])
+        root_upper = 2*F(report[&#x27;candidate_upper_rationals&#x27;][&#x27;square_root_mean_range_upper&#x27;])
+        h_upper = min(raw_upper,envelope_upper,root_upper)
+        total_upper += weight*h_upper
+        total_lower += weight*raw_lower
+        cells.append({&#x27;label&#x27;:j,&#x27;source_rows&#x27;:indices,&#x27;reference_weight&#x27;:str(weight),
+                      &#x27;mean_field&#x27;:report[&#x27;mean_field&#x27;],&#x27;conditional_entropy_upper&#x27;:str(h_upper),
+                      &#x27;conditional_certificate&#x27;:report})
+    return {&#x27;D_nonempty&#x27;:len(groups),&#x27;archive_bits&#x27;:max(0,(len(groups)-1).bit_length()),
+            &#x27;fixed_encoder_labels&#x27;:labels,&#x27;conditional_entropy_interval&#x27;:serial_interval((total_lower,total_upper)),
+            &#x27;cells&#x27;:cells,
+            &#x27;downstream_scope&#x27;:&#x27;Under supplied domination C and scale density w(T)&lt;=c_w/T^2, c09_s01 simulation has TV^2&lt;=k C c_w H_upper/4. Decoder Gaussian sampling remains ideal; this is an acquired finite conditional-field premise, not a digital Gaussian generator.&#x27;}
+
+
+def decimal_entropy(table):
+    with localcontext() as ctx:
+        ctx.prec = 110
+        def dec(x):
+            x = F(x)
+            return Decimal(x.numerator)/Decimal(x.denominator)
+        ps = [dec(p) for p in table[&#x27;probabilities&#x27;]]
+        rows = [[dec(a) for a in row] for row in table[&#x27;diagonal_fields&#x27;]]
+        means = [sum(p*row[i] for p,row in zip(ps,rows)) for i in range(len(rows[0]))]
+        ans = sum(p*a*a.ln() for p,row in zip(ps,rows) for a in row if a)
+        return ans-sum(a*a.ln() for a in means if a)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(&#x27;--table&#x27;, type=Path)
+    parser.add_argument(&#x27;--cap&#x27;, default=&#x27;64&#x27;)
+    parser.add_argument(&#x27;--bits&#x27;, type=int, default=45)
+    parser.add_argument(&#x27;--output&#x27;, type=Path, default=Path(__file__).with_name(&#x27;entropy_table_checks.json&#x27;))
+    args = parser.parse_args()
+    start = time.perf_counter()
+    if args.table:
+        fixtures = [json.loads(args.table.read_text())]
+    else:
+        fixtures = [
+            {&#x27;probabilities&#x27;:[&#x27;1/2&#x27;,&#x27;1/3&#x27;,&#x27;1/6&#x27;], &#x27;diagonal_fields&#x27;:[[&#x27;1/4&#x27;,&#x27;1&#x27;,&#x27;4&#x27;],[&#x27;1&#x27;,&#x27;4&#x27;,&#x27;1&#x27;],[&#x27;4&#x27;,&#x27;1/4&#x27;,&#x27;1/4&#x27;]]},
+            {&#x27;probabilities&#x27;:[&#x27;1/2&#x27;,&#x27;1/2&#x27;], &#x27;diagonal_fields&#x27;:[[&#x27;0&#x27;,&#x27;2&#x27;,&#x27;0&#x27;],[&#x27;2&#x27;,&#x27;0&#x27;,&#x27;0&#x27;]]},
+            {&#x27;probabilities&#x27;:[&#x27;127/128&#x27;,&#x27;1/128&#x27;], &#x27;diagonal_fields&#x27;:[[&#x27;0&#x27;],[&#x27;128&#x27;]]},
+            {&#x27;probabilities&#x27;:[&#x27;1/5&#x27;,&#x27;4/5&#x27;], &#x27;diagonal_fields&#x27;:[[&#x27;0&#x27;,&#x27;0&#x27;],[&#x27;0&#x27;,&#x27;0&#x27;]]},
+            {&#x27;probabilities&#x27;:[&#x27;1/3&#x27;,&#x27;2/3&#x27;], &#x27;diagonal_fields&#x27;:[[&#x27;1&#x27;,&#x27;4&#x27;],[&#x27;1&#x27;,&#x27;4&#x27;]]},
+        ]
+    reports = []
+    for table in fixtures:
+        report = certify(table, F(args.cap), args.bits)
+        reference = decimal_entropy(table)
+        interval = report[&#x27;entropy_interval&#x27;]
+        with localcontext() as ctx:
+            ctx.prec = 110
+            def dec(x):
+                x = F(x)
+                return Decimal(x.numerator)/Decimal(x.denominator)
+            assert dec(interval[&#x27;lower_rational&#x27;])-Decimal(&#x27;1e-95&#x27;) &lt;= reference
+            assert reference &lt;= dec(interval[&#x27;upper_rational&#x27;])+Decimal(&#x27;1e-95&#x27;)
+            for name in [&#x27;joint_order_envelope_upper&#x27;,&#x27;square_root_mean_range_upper&#x27;]:
+                assert reference/2 &lt;= dec(report[&#x27;candidate_upper_rationals&#x27;][name])+Decimal(&#x27;1e-95&#x27;)
+        report[&#x27;decimal_entropy_diagnostic&#x27;] = str(reference)
+        reports.append(report)
+    # Independent special-case entropy identity with varying null spaces.
+    if not args.table:
+        log2, _ = log_interval(F(2), F(1,1 &lt;&lt; args.bits))
+        interval = reports[1][&#x27;entropy_interval&#x27;]
+        assert F(interval[&#x27;lower_rational&#x27;]) &lt;= 2*log2[1]
+        assert F(interval[&#x27;upper_rational&#x27;]) &gt;= 2*log2[0]
+        assert reports[1][&#x27;root_certificate&#x27;][&#x27;common_zero_coordinates&#x27;] == [2]
+        assert reports[3][&#x27;integrated_information_upper_rational&#x27;] == &#x27;0&#x27;
+    result = {&#x27;status&#x27;: &#x27;PASS_ADMITTED_TABLE_CERTIFICATES&#x27;, &#x27;reports&#x27;: reports,
+              &#x27;elapsed_seconds&#x27;: time.perf_counter()-start,
+              &#x27;evidence_scope&#x27;: &#x27;Certified output uses rational positive-series remainder bounds. Decimal special-case comparisons are finite diagnostics, not a proof of matrix entropy theorem.&#x27;}
+    if not args.table:
+        partition_reports = [certify_partition(fixtures[0],labels,args.bits)
+                             for labels in ([0,0,0],[0,0,1],[0,1,2])]
+        for a,b in zip(partition_reports,partition_reports[1:]):
+            assert F(b[&#x27;conditional_entropy_interval&#x27;][&#x27;upper_rational&#x27;]) &lt;= F(a[&#x27;conditional_entropy_interval&#x27;][&#x27;upper_rational&#x27;])
+        assert partition_reports[-1][&#x27;conditional_entropy_interval&#x27;][&#x27;upper_rational&#x27;] == &#x27;0&#x27;
+        result[&#x27;fixed_partition_certificates&#x27;] = partition_reports
+    args.output.write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({&#x27;status&#x27;: result[&#x27;status&#x27;], &#x27;tables&#x27;: len(reports),
+                      &#x27;upper_displays&#x27;: [r[&#x27;integrated_information_upper_float_display_only&#x27;] for r in reports],
+                      &#x27;elapsed_seconds&#x27;: result[&#x27;elapsed_seconds&#x27;], &#x27;output&#x27;: str(args.output)},indent=2))
+
+
+if __name__ == &#x27;__main__&#x27;:
+    main()
+</pre><p><a href="../assets/aede67957a99169366b2e8740c8d455ca168c154a088a9d935b7de33b4fc1ea4.py">Exact original bytes</a></p></html>

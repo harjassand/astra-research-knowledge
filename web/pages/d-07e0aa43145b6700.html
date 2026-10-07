@@ -1,0 +1,167 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c03_l07/revisions/charge_branch_checks.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c03_l07/revisions/charge_branch_checks.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact small checks for the charge-detector route discussed in REVISION_01.&quot;&quot;&quot;
+
+from fractions import Fraction as Q
+import json
+
+
+def apply_mode_permutation(mask, perm):
+    &quot;&quot;&quot;Apply c_i^dagger -&gt; c_perm[i]^dagger to a canonical Fock basis vector.&quot;&quot;&quot;
+    old = [i for i in range(len(perm)) if (mask &gt;&gt; i) &amp; 1]
+    moved = [perm[i] for i in old]
+    inversions = sum(moved[i] &gt; moved[j]
+                     for i in range(len(moved))
+                     for j in range(i + 1, len(moved)))
+    newmask = sum(1 &lt;&lt; i for i in moved)
+    return newmask, (-1) ** inversions
+
+
+def arm_charges(mask):
+    # Mode order is a_up, a_down, b_up, b_down.
+    return ((mask &amp; 0b0011).bit_count(), (mask &amp; 0b1100).bit_count())
+
+
+def terminal_hard_projector(mask):
+    return arm_charges(mask) == (1, 1)
+
+
+def compose_pbs_charge_pbs(mask, pbs):
+    middle, s1 = apply_mode_permutation(mask, pbs)
+    if not terminal_hard_projector(middle):
+        return {}
+    out, s2 = apply_mode_permutation(middle, pbs)
+    return {out: s1 * s2}
+
+
+def pair_rotation_check():
+    &quot;&quot;&quot;Rotate one site of a two-site singlet using an exact rational SU(2).&quot;&quot;&quot;
+    c, s = Q(3, 5), Q(4, 5)
+    # Canonical order: u1,u2,d1,d2. The singlet is u1*d2 + u2*d1
+    # in this order (the physical site-order expression has the usual wedge sign).
+    initial = {(0, 3): Q(1), (1, 2): Q(1)}
+    # On site 1: u1 -&gt; c*u1 + s*d1; d1 -&gt; -s*u1 + c*d1.
+    images = {
+        0: [(0, c), (2, s)],
+        2: [(0, -s), (2, c)],
+        1: [(1, Q(1))],
+        3: [(3, Q(1))],
+    }
+    result = {}
+    for monomial, coeff in initial.items():
+        for m0, a0 in images[monomial[0]]:
+            for m1, a1 in images[monomial[1]]:
+                if m0 == m1:
+                    continue
+                if m0 &lt; m1:
+                    key, sign = (m0, m1), 1
+                else:
+                    key, sign = (m1, m0), -1
+                result[key] = result.get(key, Q(0)) + coeff * a0 * a1 * sign
+    result = {f&quot;{a}{b}&quot;: str(v) for (a, b), v in sorted(result.items()) if v}
+    # Modes 0,1 are up-up; modes 2,3 are down-down. Both appear with coefficient 4/5.
+    assert result == {&quot;01&quot;: &quot;4/5&quot;, &quot;03&quot;: &quot;3/5&quot;, &quot;12&quot;: &quot;3/5&quot;, &quot;23&quot;: &quot;4/5&quot;}
+    return result
+
+
+class Qsqrt2:
+    &quot;&quot;&quot;Exact a + b*sqrt(2), with rational a,b.&quot;&quot;&quot;
+    def __init__(self, a=0, b=0):
+        self.a, self.b = Q(a), Q(b)
+
+    def __mul__(self, other):
+        other = other if isinstance(other, Qsqrt2) else Qsqrt2(other)
+        return Qsqrt2(self.a * other.a + 2 * self.b * other.b,
+                      self.a * other.b + self.b * other.a)
+
+    def __eq__(self, other):
+        other = other if isinstance(other, Qsqrt2) else Qsqrt2(other)
+        return self.a == other.a and self.b == other.b
+
+    def __repr__(self):
+        return f&quot;({self.a})+({self.b})sqrt2&quot;
+
+
+def cnot_branch_from_appendix():
+    &quot;&quot;&quot;Check the fixed p1=p2=1,z=0 branch stated in Beenakker Appendix A.&quot;&quot;&quot;
+    first_outcome_amp = Qsqrt2(0, Q(1, 2))  # 1/sqrt(2) from input |+&gt;.
+    second_outcome_amp = Qsqrt2(Q(1, 2), 0)  # normalized H-P1-H branch.
+    branch_amp = first_outcome_amp * second_outcome_amp
+    assert branch_amp == Qsqrt2(0, Q(1, 4))  # sqrt(2)/4 = 1/(2 sqrt(2)).
+    table = {}
+    for x in range(2):
+        for y in range(2):
+            p1 = p2 = 1
+            z = 0
+            # Eq. (17): ancilla a=x+p1+1; Eq. (18): output target x+y+z+p1+1.
+            a = (x + p1 + 1) % 2
+            phase = (-1) ** (((p2 + 1) * (x + z + p1 + 1)) % 2)
+            target = (a + y + z) % 2
+            if z == 0:
+                assert target == (x + y) % 2
+            assert phase == 1
+            table[f&quot;{x}{y}&quot;] = f&quot;{x}{target}&quot;
+    assert table == {&quot;00&quot;: &quot;00&quot;, &quot;01&quot;: &quot;01&quot;, &quot;10&quot;: &quot;11&quot;, &quot;11&quot;: &quot;10&quot;}
+    # (sqrt(2)/4)^2 = 1/8, input-independent on every basis state.
+    success_probability = Q(1, 8)
+    return table, repr(branch_amp), str(success_probability)
+
+
+def main():
+    pbs = [0, 3, 2, 1]  # polarizing splitter: swap the two down-spin arms.
+    logical_basis = {
+        &quot;00&quot;: (1 &lt;&lt; 0) | (1 &lt;&lt; 2),
+        &quot;01&quot;: (1 &lt;&lt; 0) | (1 &lt;&lt; 3),
+        &quot;10&quot;: (1 &lt;&lt; 1) | (1 &lt;&lt; 2),
+        &quot;11&quot;: (1 &lt;&lt; 1) | (1 &lt;&lt; 3),
+    }
+    interleaved = {}
+    final_only = {}
+    for label, mask in logical_basis.items():
+        interleaved[label] = compose_pbs_charge_pbs(mask, pbs)
+        final_only[label] = {mask: 1} if terminal_hard_projector(mask) else {}
+    expected = {
+        &quot;00&quot;: {logical_basis[&quot;00&quot;]: 1},
+        &quot;01&quot;: {},
+        &quot;10&quot;: {},
+        &quot;11&quot;: {logical_basis[&quot;11&quot;]: 1},
+    }
+    assert interleaved == expected
+    assert final_only != interleaved
+    cnot_table, cnot_branch_amplitude, cnot_branch_probability = cnot_branch_from_appendix()
+
+    result = {
+        &quot;status&quot;: &quot;PASS_EXACT_FINITE_DIAGNOSTICS&quot;,
+        &quot;source_route&quot;: &quot;Beenakker et al., arXiv:quant-ph/0401066v1, Fig. 2 and Appendix A&quot;,
+        &quot;mode_order&quot;: [&quot;a_up&quot;, &quot;a_down&quot;, &quot;b_up&quot;, &quot;b_down&quot;],
+        &quot;interleaved_p1_branch_on_one_per_arm_basis&quot;: {
+            label: {format(mask, &quot;04b&quot;): amp for mask, amp in outputs.items()}
+            for label, outputs in interleaved.items()
+        },
+        &quot;terminal_only_p1_on_same_arms&quot;: {
+            label: {format(mask, &quot;04b&quot;): amp for mask, amp in outputs.items()}
+            for label, outputs in final_only.items()
+        },
+        &quot;interleaved_branch_is_even_spin_parity_projector&quot;: True,
+        &quot;terminal_only_projector_is_identity_on_input_logical_subspace&quot;: True,
+        &quot;appendix_selected_cnot_branch&quot;: {
+            &quot;p1&quot;: 1,
+            &quot;p2&quot;: 1,
+            &quot;ancilla_z&quot;: 0,
+            &quot;basis_map&quot;: cnot_table,
+            &quot;amplitude_per_basis_state&quot;: cnot_branch_amplitude,
+            &quot;success_probability&quot;: cnot_branch_probability,
+        },
+        &quot;opposite_spin_pair_interface_local_rotation&quot;: {
+            &quot;rational_rotation&quot;: [[&quot;3/5&quot;, &quot;-4/5&quot;], [&quot;4/5&quot;, &quot;3/5&quot;]],
+            &quot;two_site_singlet_after_site1_rotation_coefficients&quot;: pair_rotation_check(),
+            &quot;same_spin_terms&quot;: {&quot;up_up&quot;: &quot;4/5&quot;, &quot;down_down&quot;: &quot;4/5&quot;},
+            &quot;conclusion&quot;: &quot;a site-local spin rotation leaves the opposite-spin-only pair family&quot;,
+        },
+        &quot;scope&quot;: &quot;Finite exact checks; no impossibility theorem for ancillary or teleportation embeddings.&quot;,
+    }
+    print(json.dumps(result, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/dfe52798de852e45a7e42c4bd8bd0ae5e4c79f797196b6dabf1ca2e58aa095f5.py">Exact original bytes</a></p></html>

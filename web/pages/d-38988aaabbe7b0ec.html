@@ -1,0 +1,123 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c10_l05/revisions/multico_factor_aggregate.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c10_l05/revisions/multico_factor_aggregate.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact finite diagnostics for an aggregate-cofactor Foster certificate.
+
+All rates and checks use fractions. The script has no external dependencies.
+It checks the complete generator against the derived inequality on bounded
+boxes only; the all-state statement is proved separately in the paired note.
+&quot;&quot;&quot;
+
+from fractions import Fraction as F
+from itertools import product
+import json
+from pathlib import Path
+
+
+FIXTURES = [
+    {&quot;name&quot;: &quot;one_cofactor_unit&quot;, &quot;alpha&quot;: [F(1)], &quot;beta&quot;: [F(1)],
+     &quot;gamma&quot;: [F(1)], &quot;births&quot;: [2], &quot;extent&quot;: 60},
+    {&quot;name&quot;: &quot;two_heterogeneous&quot;, &quot;alpha&quot;: [F(1), F(2, 3)],
+     &quot;beta&quot;: [F(1), F(5, 4)], &quot;gamma&quot;: [F(1), F(3, 2)],
+     &quot;births&quot;: [1, 2], &quot;extent&quot;: 18},
+    {&quot;name&quot;: &quot;three_heterogeneous&quot;, &quot;alpha&quot;: [F(2, 5), F(3, 2), F(4, 3)],
+     &quot;beta&quot;: [F(3, 4), F(7, 5), F(5, 3)],
+     &quot;gamma&quot;: [F(2, 3), F(4, 5), F(7, 4)],
+     &quot;births&quot;: [1, 2, 1], &quot;extent&quot;: 9},
+]
+
+
+def ceil_fraction(x):
+    return (x.numerator + x.denominator - 1) // x.denominator
+
+
+def certify(alpha, beta, gamma):
+    assert len(alpha) == len(beta) == len(gamma) and len(alpha) &gt;= 1
+    assert all(x &gt; 0 for x in alpha + beta + gamma)
+    q = max(2, ceil_fraction(2 * max(beta) / min(gamma)))
+    dlt = min(sum(alpha, F(0)) / (q * (q + 1)),
+              min(gamma) / (2 * (q + 1)))
+    eta = min(q * dlt, min(beta) / 2)
+    return q, dlt, eta, 2 * sum(alpha, F(0))
+
+
+def potential(a, bs, q):
+    n = sum(bs)
+    return F(a, n + q) + 2 * n
+
+
+def direct_lv(a, bs, alpha, beta, gamma, births, q):
+    v0 = potential(a, bs, q)
+    total = F(0)
+    for i, bi in enumerate(bs):
+        # 0 -&gt; B_i
+        after = list(bs)
+        after[i] += 1
+        total += alpha[i] * (potential(a, after, q) - v0)
+        # B_i -&gt; 2A
+        if bi:
+            after = list(bs)
+            after[i] -= 1
+            total += beta[i] * bi * (potential(a + births[i], after, q) - v0)
+        # A + B_i -&gt; B_i
+        if a and bi:
+            total += gamma[i] * a * bi * (potential(a - 1, bs, q) - v0)
+    return total
+
+
+def formula_lv(a, bs, alpha, beta, gamma, births, q):
+    n = sum(bs)
+    asum = sum(alpha, F(0))
+    beta_n = sum((beta[i] * bs[i] for i in range(len(bs))), F(0))
+    gamma_n = sum((gamma[i] * bs[i] for i in range(len(bs))), F(0))
+    c = -asum / ((n + q) * (n + q + 1))
+    if n:
+        c += beta_n / ((n + q - 1) * (n + q))
+        c -= gamma_n / (n + q)
+        d = 2 * asum + sum((beta[i] * bs[i] *
+                            (F(births[i], n + q - 1) - 2)
+                            for i in range(len(bs))), F(0))
+    else:
+        d = 2 * asum
+    return a * c + d
+
+
+def run_fixture(fixture):
+    alpha, beta, gamma = fixture[&quot;alpha&quot;], fixture[&quot;beta&quot;], fixture[&quot;gamma&quot;]
+    births = fixture[&quot;births&quot;]
+    assert len(alpha) == len(births) and all(m in (1, 2) for m in births)
+    q, dlt, eta, const = certify(alpha, beta, gamma)
+    E = fixture[&quot;extent&quot;]
+    checked = 0
+    min_slack = None
+    for a in range(E + 1):
+        for bs in product(range(E + 1), repeat=len(alpha)):
+            lv = direct_lv(a, bs, alpha, beta, gamma, births, q)
+            lv_formula = formula_lv(a, bs, alpha, beta, gamma, births, q)
+            assert lv == lv_formula, (a, bs, lv, lv_formula)
+            v = potential(a, bs, q)
+            slack = -eta * v + const - lv
+            assert slack &gt;= 0, (a, bs, lv, v, slack)
+            min_slack = slack if min_slack is None else min(min_slack, slack)
+            checked += 1
+    return {
+        &quot;name&quot;: fixture[&quot;name&quot;],
+        &quot;cofactors&quot;: len(alpha),
+        &quot;A_birth_multiplicities&quot;: births,
+        &quot;extent&quot;: E,
+        &quot;states_checked&quot;: checked,
+        &quot;q&quot;: q,
+        &quot;delta&quot;: str(dlt),
+        &quot;eta&quot;: str(eta),
+        &quot;constant&quot;: str(const),
+        &quot;min_exact_slack&quot;: str(min_slack),
+        &quot;result&quot;: &quot;PASS&quot;,
+    }
+
+
+if __name__ == &quot;__main__&quot;:
+    out = {
+        &quot;scope&quot;: &quot;finite exact checks only; symbolic inequalities are in multico_factor_aggregate.txt&quot;,
+        &quot;method&quot;: &quot;Python fractions, complete transition generator, no simulation&quot;,
+        &quot;fixtures&quot;: [run_fixture(f) for f in FIXTURES],
+    }
+    print(json.dumps(out, indent=2))
+</pre><p><a href="../assets/cdee43e0b4b07669a3f4e948675a8e23339f3e50d38e54a2b88a8accea809f2e.py">Exact original bytes</a></p></html>

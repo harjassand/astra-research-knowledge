@@ -1,0 +1,175 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c01_s03/revisions/deterministic_low_sector.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c01_s03/revisions/deterministic_low_sector.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Deterministic relative physical-prefix counting from explicit small bias.
+
+Owned c01_s03 phase-two derivation. Classical small-bias construction:
+b_i(x,y) is the binary-coordinate dot product of x with y**i in GF(2**m).
+The trace pairing gives an equivalent family after changing the x basis.
+Finite-field irreducibles are acquired by bounded deterministic search.
+No random signs, normalizer, unknown support oracle or Pfaffian is used.
+&quot;&quot;&quot;
+from fractions import Fraction
+from random import SystemRandom
+from color_sector_control import ColorSector
+from low_sector_sampler import ceil_log2
+
+
+def polynomial_mod(a,b):
+    while a and a.bit_length() &gt;= b.bit_length():
+        a ^= b &lt;&lt; (a.bit_length()-b.bit_length())
+    return a
+
+
+def polynomial_gcd(a,b):
+    while b:
+        a,b=b,polynomial_mod(a,b)
+    return a
+
+
+def polynomial_multiply_mod(a,b,modulus):
+    degree=modulus.bit_length()-1
+    answer=0
+    while b:
+        if b&amp;1: answer ^= a
+        b &gt;&gt;= 1
+        a &lt;&lt;= 1
+        if a &amp; (1 &lt;&lt; degree): a ^= modulus
+    return answer
+
+
+def irreducible(modulus):
+    m=modulus.bit_length()-1
+    if m &lt;= 0 or not modulus&amp;1: return False
+    if m == 1: return modulus==3
+    x=2
+    h=x
+    for j in range(1,m+1):
+        h=polynomial_multiply_mod(h,h,modulus)
+        if j &lt;= m//2 and polynomial_gcd(h^x,modulus)!=1:
+            return False
+    return h==x
+
+
+class BinaryField:
+    def __init__(self,m):
+        if not isinstance(m,int) or m&lt;1: raise ValueError(&#x27;positive field degree required&#x27;)
+        self.degree,self.order=m,1&lt;&lt;m
+        self.modulus=None
+        self.candidates_checked=0
+        for candidate in range((1&lt;&lt;m)|1,1&lt;&lt;(m+1),2):
+            self.candidates_checked+=1
+            if irreducible(candidate):
+                self.modulus=candidate
+                break
+        if self.modulus is None:
+            raise AssertionError(&#x27;irreducible polynomial existence violated&#x27;)
+
+    def mul(self,a,b):
+        if not 0&lt;=a&lt;self.order or not 0&lt;=b&lt;self.order:
+            raise ValueError(&#x27;field element out of range&#x27;)
+        return polynomial_multiply_mod(a,b,self.modulus)
+
+    def pow(self,a,e):
+        answer=1
+        while e:
+            if e&amp;1: answer=self.mul(answer,a)
+            e &gt;&gt;=1
+            if e: a=self.mul(a,a)
+        return answer
+
+
+def small_bias_histogram(free_count,field):
+    &quot;&quot;&quot;Exact weighted family of q^2 words, with bias &lt;= (free_count-1)/q.&quot;&quot;&quot;
+    q,m=field.order,field.degree
+    histogram={}
+    for y in range(q):
+        powers=[1]
+        for _ in range(1,free_count): powers.append(field.mul(powers[-1],y))
+        basis_words=[0]*m
+        for i,power in enumerate(powers[:free_count]):
+            for j in range(m):
+                if (power&gt;&gt;j)&amp;1: basis_words[j] |= 1&lt;&lt;i
+        words=[0]*q
+        histogram[0]=histogram.get(0,0)+1
+        for x in range(1,q):
+            low=x&amp;-x
+            word=words[x^low]^basis_words[low.bit_length()-1]
+            words[x]=word
+            histogram[word]=histogram.get(word,0)+1
+    assert sum(histogram.values())==q*q
+    return histogram
+
+
+class DeterministicLowSector(ColorSector):
+    def __init__(self,f):
+        super().__init__(f)
+        self.field_cache={}
+        self.histogram_cache={}
+
+    def deterministic_count(self,k,eta,up=(),down=(),empty=()):
+        eta=Fraction(eta)
+        if not 0&lt;eta&lt;=Fraction(1,2): raise ValueError(&#x27;require 0&lt;eta&lt;=1/2&#x27;)
+        up,down,empty=self._restrictions(k,up,down,empty)
+        a,b=len(up),len(down)
+        if a&gt;k or b&gt;k or 2*k&gt;self.n-len(empty): return Fraction(0)
+        self.stats[&#x27;deterministic_count_calls&#x27;]=self.stats.get(&#x27;deterministic_count_calls&#x27;,0)+1
+        r=2*k-a-b
+        if r==0:
+            return Fraction(self.prefix_draw_integer(k,[1]*self.n,up,down,empty),self.denominator**(2*k))
+        free=sorted(set(range(self.n))-up-down-empty)
+        f=len(free)
+        # A pattern on r sites has relative probability error at most
+        # (2^r-1)*(f-1)/q. Use q&gt;=2 for a concrete binary field.
+        required=max(Fraction(2),Fraction(max(f-1,0)*((1&lt;&lt;r)-1),1)/eta)
+        degree=max(1,ceil_log2(required))
+        if degree not in self.field_cache:
+            field=BinaryField(degree)
+            self.field_cache[degree]=field
+            self.stats[&#x27;irreducible_candidates&#x27;]=self.stats.get(&#x27;irreducible_candidates&#x27;,0)+field.candidates_checked
+        field=self.field_cache[degree]
+        key=(f,degree)
+        if key not in self.histogram_cache:
+            self.histogram_cache[key]=small_bias_histogram(f,field)
+            self.stats[&#x27;family_words_constructed&#x27;]=self.stats.get(&#x27;family_words_constructed&#x27;,0)+field.order**2
+        histogram=self.histogram_cache[key]
+        self.stats[&#x27;maximum_field_order&#x27;]=max(self.stats.get(&#x27;maximum_field_order&#x27;,0),field.order)
+        self.stats[&#x27;maximum_distinct_colorings&#x27;]=max(self.stats.get(&#x27;maximum_distinct_colorings&#x27;,0),len(histogram))
+        self.stats[&#x27;family_words_charged&#x27;]=self.stats.get(&#x27;family_words_charged&#x27;,0)+field.order**2
+        numerator=0
+        for word,count in histogram.items():
+            signs=[1]*self.n
+            for i,site in enumerate(free): signs[site]=-1 if (word&gt;&gt;i)&amp;1 else 1
+            numerator+=count*self.prefix_draw_integer(k,signs,up,down,empty)
+        return Fraction(numerator,field.order**2*self.denominator**(2*k))
+
+    def born_sample(self,k,epsilon,rng=None):
+        &quot;&quot;&quot;No estimation failure; returns OK on positive sectors, NO_SECTOR iff zero.
+
+        Output distribution is within epsilon TV. Only the n categorical draws
+        consume random bits. Counts are deterministic relative approximations.
+        &quot;&quot;&quot;
+        epsilon=Fraction(epsilon)
+        if not 0&lt;epsilon&lt;1: raise ValueError(&#x27;require 0&lt;epsilon&lt;1&#x27;)
+        self._restrictions(k,(),(),())
+        if k==0:return {&#x27;status&#x27;:&#x27;OK&#x27;,&#x27;I&#x27;:[],&#x27;J&#x27;:[]}
+        rng=SystemRandom() if rng is None else rng
+        eta=epsilon/(8*self.n)
+        bits=ceil_log2(8*self.n/epsilon)
+        q=1&lt;&lt;bits
+        up,down,empty=set(),set(),set()
+        for site in range(self.n):
+            weights=[self.deterministic_count(k,eta,up|{site},down,empty),
+                     self.deterministic_count(k,eta,up,down|{site},empty),
+                     self.deterministic_count(k,eta,up,down,empty|{site})]
+            total=sum(weights)
+            if total==0:
+                assert site==0
+                return {&#x27;status&#x27;:&#x27;NO_SECTOR&#x27;}
+            x=q*weights[0]/total;y=q*(weights[0]+weights[1])/total
+            t1,t2=x.numerator//x.denominator,y.numerator//y.denominator
+            word=rng.getrandbits(bits)
+            if word&lt;t1:up.add(site)
+            elif word&lt;t2:down.add(site)
+            else:empty.add(site)
+            self.stats[&#x27;categorical_bits&#x27;]=self.stats.get(&#x27;categorical_bits&#x27;,0)+bits
+        assert len(up)==len(down)==k
+        return {&#x27;status&#x27;:&#x27;OK&#x27;,&#x27;I&#x27;:sorted(up),&#x27;J&#x27;:sorted(down)}
+</pre><p><a href="../assets/559080681636d61c9310c73d66f58349855adb9ff8354aa713133297598b41e6.py">Exact original bytes</a></p></html>

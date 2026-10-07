@@ -1,0 +1,212 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c03_l09/functional_digraph_dp.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c03_l09/functional_digraph_dp.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Exact partition DP for one-nonzero-per-row pair matrices.
+
+Given p[i]=the unique nonzero column in row i (or None for a zero row),
+weights w_i=|F[i,p[i]]|^2 and rational onsite weights t_j&gt;=0, this computes
+all coefficients of
+  sum_{I: p|_I injective} s^|I| prod_{i in I} w_i prod_{j in I cap p(I)} t_j,
+with optional forced row and column-membership bits. Fractions are exact.
+&quot;&quot;&quot;
+from collections import deque
+from fractions import Fraction as Q
+
+
+def padd(a, b):
+    out = [Q(0)] * max(len(a), len(b))
+    for i, v in enumerate(a):
+        out[i] += v
+    for i, v in enumerate(b):
+        out[i] += v
+    while len(out) &gt; 1 and out[-1] == 0:
+        out.pop()
+    return out
+
+
+def pscale(a, c):
+    c = Q(c)
+    out = [c * x for x in a]
+    while len(out) &gt; 1 and out[-1] == 0:
+        out.pop()
+    return out
+
+
+def pshift_scale(a, c):
+    c = Q(c)
+    if not c or all(x == 0 for x in a):
+        return [Q(0)]
+    return [Q(0)] + [c * x for x in a]
+
+
+def pmul(a, b):
+    if all(x == 0 for x in a) or all(x == 0 for x in b):
+        return [Q(0)]
+    out = [Q(0)] * (len(a) + len(b) - 1)
+    for i, x in enumerate(a):
+        if x:
+            for j, y in enumerate(b):
+                if y:
+                    out[i + j] += x * y
+    while len(out) &gt; 1 and out[-1] == 0:
+        out.pop()
+    return out
+
+
+def pmatmul(A, B):
+    return [[padd(pmul(A[i][0], B[0][j]), pmul(A[i][1], B[1][j]))
+             for j in range(2)] for i in range(2)]
+
+
+def zero_matrix():
+    return [[[Q(0)], [Q(0)]], [[Q(0)], [Q(0)]]]
+
+
+def identify_cycles_and_peel(p, children):
+    n = len(p)
+    indegree = [len(c) for c in children]
+    queue = deque(i for i in range(n) if indegree[i] == 0)
+    peeled = []
+    while queue:
+        v = queue.popleft()
+        peeled.append(v)
+        parent = p[v]
+        if parent is not None:
+            indegree[parent] -= 1
+            if indegree[parent] == 0:
+                queue.append(parent)
+    on_cycle = {i for i in range(n) if indegree[i] &gt; 0}
+    cycles = []
+    seen = set()
+    for start in sorted(on_cycle):
+        if start in seen:
+            continue
+        cycle = []
+        v = start
+        while v not in seen:
+            seen.add(v)
+            cycle.append(v)
+            v = p[v]
+            if v is None or v not in on_cycle:
+                raise AssertionError(&quot;functional graph cycle extraction failed&quot;)
+        if v != start:
+            raise AssertionError(&quot;cycle components unexpectedly merged&quot;)
+        cycles.append(cycle)
+    return peeled, on_cycle, cycles
+
+
+def count_poly(p, w, t, row_fixed=None, col_fixed=None):
+    &quot;&quot;&quot;Return exact coefficients, with optional x_i and y_j prefix constraints.
+
+    x_i indicates row i is in I. y_j indicates column j is in p(I); since
+    p|_I must be injective, y_j is exactly the number of selected preimages.
+    &quot;&quot;&quot;
+    n = len(p)
+    assert len(w) == len(t) == n
+    row_fixed = {} if row_fixed is None else dict(row_fixed)
+    col_fixed = {} if col_fixed is None else dict(col_fixed)
+    assert all(v in (0, 1) and 0 &lt;= i &lt; n for i, v in row_fixed.items())
+    assert all(v in (0, 1) and 0 &lt;= i &lt; n for i, v in col_fixed.items())
+    p = [None if v is None else int(v) for v in p]
+    w = [Q(v) for v in w]
+    t = [Q(v) for v in t]
+    assert all(v is None or 0 &lt;= v &lt; n for v in p)
+    assert all(v &gt;= 0 for v in w + t)
+    assert all(p[i] is not None or w[i] == 0 for i in range(n)), \
+        &quot;a zero row must have zero squared row weight&quot;
+
+    children = [[] for _ in range(n)]
+    for i, j in enumerate(p):
+        if j is not None:
+            children[j].append(i)
+
+    peeled, on_cycle, cycles = identify_cycles_and_peel(p, children)
+    sub = [None] * n  # sub[j][x_j] is the subtree polynomial at fixed x_j
+
+    def child_zero_one(j, allowed_children):
+        # S0: no allowed child selected; S1: exactly one selected child.
+        s0, s1 = [Q(1)], [Q(0)]
+        for c in allowed_children:
+            c0, c1 = sub[c]
+            s0, s1 = pmul(s0, c0), padd(pmul(s1, c0), pmul(s0, c1))
+        return s0, s1
+
+    for j in peeled:
+        # A peeled vertex is not on a directed cycle; all its children were
+        # peeled earlier, so its incoming-capacity constraint is wholly here.
+        s0, s1 = child_zero_one(j, children[j])
+        fixed_y = col_fixed.get(j)
+        w0 = s0 if fixed_y in (None, 0) else [Q(0)]
+        w1 = s1 if fixed_y in (None, 1) else [Q(0)]
+        # If y_j=1, one selected child contributes the onsite t_j exactly
+        # when x_j=1. With y_j free, sum the zero- and one-child cases.
+        value0 = padd(w0, w1)
+        value1 = pshift_scale(padd(w0, pscale(w1, t[j])), w[j])
+        if row_fixed.get(j) == 1:
+            value0 = [Q(0)]
+        if row_fixed.get(j) == 0:
+            value1 = [Q(0)]
+        sub[j] = (value0, value1)
+
+    total = [Q(1)]
+    roots = [j for j in range(n) if p[j] is None]
+    for root in roots:
+        # A sink&#x27;s row is zero (w[root]=0 in a faithful input), and its
+        # component has no cycle. The x_root sum completes the component.
+        total = pmul(total, padd(sub[root][0], sub[root][1]))
+
+    for cycle in cycles:
+        local = []
+        for j in cycle:
+            tree_children = [c for c in children[j] if c not in on_cycle]
+            s0, s1 = child_zero_one(j, tree_children)
+            fixed_y = col_fixed.get(j)
+            mat = zero_matrix()
+            for prev in (0, 1):
+                for x in (0, 1):
+                    if row_fixed.get(j) is not None and row_fixed[j] != x:
+                        continue
+                    terms = [Q(0)]
+                    # Off-cycle child count zero. Total incoming count is prev.
+                    if fixed_y is None or fixed_y == prev:
+                        terms = padd(terms, pscale(s0, t[j] ** (prev * x)))
+                    # If prev=0, one tree child may be selected, making y_j=1.
+                    if prev == 0 and (fixed_y is None or fixed_y == 1):
+                        terms = padd(terms, pscale(s1, t[j] ** x))
+                    mat[prev][x] = pscale(terms, 1) if x == 0 else pshift_scale(terms, w[j])
+            local.append(mat)
+        product = [[[Q(1)], [Q(0)]], [[Q(0)], [Q(1)]]]
+        for mat in local:
+            product = pmatmul(product, mat)
+        cycle_poly = padd(product[0][0], product[1][1])
+        total = pmul(total, cycle_poly)
+
+    return total + [Q(0)] * (n + 1 - len(total))
+
+
+def brute_poly(p, w, t, row_fixed=None, col_fixed=None):
+    n = len(p)
+    row_fixed = {} if row_fixed is None else dict(row_fixed)
+    col_fixed = {} if col_fixed is None else dict(col_fixed)
+    out = [Q(0)] * (n + 1)
+    for mask in range(1 &lt;&lt; n):
+        x = [(mask &gt;&gt; i) &amp; 1 for i in range(n)]
+        if any(x[i] != b for i, b in row_fixed.items()):
+            continue
+        incoming = [0] * n
+        for i, j in enumerate(p):
+            if j is not None:
+                incoming[j] += x[i]
+        if any(v &gt; 1 for v in incoming):
+            continue
+        if any(incoming[j] != b for j, b in col_fixed.items()):
+            continue
+        val = Q(1)
+        for i, bit in enumerate(x):
+            if bit:
+                val *= Q(w[i])
+        for j, bit in enumerate(x):
+            if bit and incoming[j]:
+                val *= Q(t[j])
+        out[sum(x)] += val
+    while len(out) &gt; 1 and out[-1] == 0:
+        out.pop()
+    return out + [Q(0)] * (n + 1 - len(out))
+</pre><p><a href="../assets/99e29e712ac073b4b0e15b2a476a79324ca44e34a6cd7c79caef09a4c0c2f11b.py">Exact original bytes</a></p></html>

@@ -1,0 +1,111 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c01_l02/cycle_family_lift_check.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c01_l02/cycle_family_lift_check.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact small checks for the directed-cycle paired-basis obstruction/lift.&quot;&quot;&quot;
+
+from itertools import combinations, product
+from fractions import Fraction
+import json
+from pathlib import Path
+
+from basis_exchange_check import det_bareiss
+
+
+def det_for_paired_set(n, sites):
+    # Pair block i=(e_i, f_i), with f_i=e_(i+1 mod n).
+    columns = []
+    for i in sites:
+        for row in (i, (i + 1) % n):
+            columns.append([int(j == row) for j in range(n)])
+    return det_bareiss([[columns[j][i] for j in range(n)] for i in range(n)])
+
+
+def main():
+    rows = []
+    for n in (4, 6, 8):
+        r = n // 2
+        paired = {}
+        for sites in combinations(range(n), r):
+            paired[sites] = det_for_paired_set(n, sites)
+        support = [s for s, value in paired.items() if value]
+        alternating = [tuple(range(0, n, 2)), tuple(range(1, n, 2))]
+        assert support == alternating
+        assert all(abs(paired[s]) == 1 for s in support)
+
+        # A full basis of [I,P] chooses exactly one of the two labeled copies
+        # of each standard basis vector, hence one bit per row and 2^n bases.
+        assignments = list(product((0, 1), repeat=n))
+        assert len(assignments) == 2**n
+        # The two paired bases are antipodes in this assignment hypercube.
+        x0 = tuple(int(i in support[0]) for i in range(n))
+        x1 = tuple(int(i in support[1]) for i in range(n))
+        assert all(x1[i] == 1 - x0[i] for i in range(n))
+
+        # Harmonic conductance kernel with D=n^2 and unit basis-pair weights:
+        # each of the n valid duplicate-row swaps has probability 1/(2 n^2).
+        degree = n
+        edge_probability = Fraction(1, 2 * n * n)
+        self_loop = 1 - degree * edge_probability
+        assert self_loop &gt;= 0
+        mu_x = mu_y = 1
+        forward_conductance = Fraction(mu_x * mu_y, n * n * (mu_x + mu_y))
+        reverse_conductance = Fraction(mu_y * mu_x, n * n * (mu_y + mu_x))
+        assert forward_conductance == reverse_conductance
+
+        # Linear Hamming extension g(x)=dist(x,x0)/n has target variance 1/4,
+        # ambient variance 1/(4n), and Dirichlet form 1/(4n^3).
+        variance_target = Fraction(1, 4)
+        variance_extension = Fraction(1, 4 * n)
+        dirichlet_extension = Fraction(1, 4 * n**3)
+        assert variance_target == n**3 * dirichlet_extension
+
+        def g(x):
+            return Fraction(sum(x[j] != x0[j] for j in range(n)), n)
+
+        g_values = [g(x) for x in assignments]
+        mean_g = sum(g_values, Fraction(0)) / len(assignments)
+        checked_variance = sum((v - mean_g) ** 2 for v in g_values) / len(assignments)
+        checked_dirichlet = Fraction(0)
+        for x in assignments:
+            for j in range(n):
+                y = list(x)
+                y[j] = 1 - y[j]
+                y = tuple(y)
+                # Uniform state weights and symmetric exchange probabilities.
+                checked_dirichlet += (
+                    Fraction(1, 2**n) * edge_probability * (g(x) - g(y)) ** 2 / 2
+                )
+        assert checked_variance == variance_extension
+        assert checked_dirichlet == dirichlet_extension
+
+        rows.append({
+            &quot;n&quot;: n,
+            &quot;paired_support&quot;: [list(s) for s in support],
+            &quot;paired_determinants&quot;: [paired[s] for s in support],
+            &quot;ambient_full_basis_count&quot;: 2**n,
+            &quot;paired_fiber_fraction&quot;: f&quot;2/{2**n}&quot;,
+            &quot;paired_rejection_acceptance&quot;: f&quot;1/{2**(n-1)}&quot;,
+            &quot;two_replica_paired_fraction&quot;: f&quot;1/{2**(2*n-2)}&quot;,
+            &quot;augmented_state_graph&quot;: &quot;n-dimensional hypercube&quot;,
+            &quot;harmonic_exchange_degree&quot;: degree,
+            &quot;harmonic_exchange_edge_probability&quot;: str(edge_probability),
+            &quot;harmonic_exchange_self_loop&quot;: str(self_loop),
+            &quot;target_variance_for_unit_difference&quot;: str(variance_target),
+            &quot;extension_variance&quot;: str(variance_extension),
+            &quot;extension_dirichlet&quot;: str(dirichlet_extension),
+            &quot;enumerated_extension_variance&quot;: str(checked_variance),
+            &quot;enumerated_extension_dirichlet&quot;: str(checked_dirichlet),
+            &quot;target_variance_over_extension_dirichlet&quot;: n**3,
+        })
+
+    result = {
+        &quot;family&quot;: &quot;n even; F is the directed n-cycle permutation; block i=(e_i,row_i(F))&quot;,
+        &quot;exact_checks&quot;: rows,
+        &quot;scope&quot;: &quot;finite Bareiss checks plus closed-form hypercube and Dirichlet derivation; not a general paired-energy theorem&quot;,
+    }
+    out = Path(__file__).with_name(&quot;cycle_family_lift_check.json&quot;)
+    out.write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+    print(json.dumps(result, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/ad7fa131c1120f31ed04e8920177ef74169030cbb8feadd6b2540b22d9ff64f9.py">Exact original bytes</a></p></html>

@@ -1,0 +1,175 @@
+REVISION 3 — CONDITION ON ONE ORIENTATION, THEN METROPOLIS-REFRESH ITS FIBER
+Worker c01_l05 | 7 October 2026
+
+RESULT
+
+There is a stronger exact transition than proposing an entire (I,J) uniformly.
+Choose the retained orientation I uniformly, sample J exactly from its
+conditional determinant-squared fiber by a rational projection-DPP sampler,
+and Metropolis-correct using only the fiber normalizer
+  Z_I = det(F[I,I^c] F[I,I^c]^*).
+The value Z_I is one polynomial-bit determinant, not the target c_k. This
+gives a reversible microstate chain with exact pairwise-flow minorization
+  pi(x) K(x,y) >= pi(x)pi(y) / binom(n,k).
+For two independently updated replicas, this proves the additive energy
+inequality with coefficient binom(n,k), while preserving the mismatch-register
+purification from INITIAL. Every transition has polynomial bit cost and needs
+no partition-function or hole-coefficient oracle.
+
+The coefficient is still exponential when k is central. On the directed
+2q-cycle, the chain has exactly two positive states and spectral gap
+  2 / binom(2q,q).
+Thus the stronger fiber sampler improves the proposal interface and removes
+the extra binom(n-k,k) combinatorial proposal factor, but it does not close
+the uniform polynomial-energy gate. The cycle calculation is an obstruction
+to this kernel, not to every possible kernel.
+
+MICROSTATE LAW AND EXACT CONDITIONAL
+
+Let F be in Q(i)^(n x n), k<=n/2, I,J subsets [n], |I|=|J|=k, I intersect
+J=empty. Set
+  w(I,J)=|det F[I,J]|^2,
+  Z_I=sum_{J subset I^c, |J|=k} w(I,J),
+  c=sum_{|I|=k} Z_I,
+  pi(I,J)=w(I,J)/c.
+Put A_I=F[I,I^c], a k by (n-k) matrix. Cauchy–Binet gives
+  Z_I=det(A_I A_I^*).
+If Z_I>0, A_I has full row rank and
+  P_I=A_I^*(A_I A_I^*)^{-1}A_I
+is a rational-complex Hermitian orthogonal projection of rank k on the I^c
+coordinates. For every k-subset J of I^c,
+  det(P_I[J,J]) = |det A_I[:,J]|^2 / det(A_I A_I^*)
+                 = w(I,J)/Z_I.
+So the conditional law J|I under pi is exactly the rank-k projection DPP
+with kernel P_I. If Z_I=0, that fiber has no positive microstate and a
+proposal to it is rejected.
+
+RATIONAL SEQUENTIAL SAMPLER
+
+The projection-DPP sample can be generated without an eigendecomposition.
+For a current rank-r projection P on m remaining coordinates, choose j with
+probability P[j,j]/r. If P[j,j]=0, its probability is zero. On the other
+coordinates set
+  P' = P[-j,-j] - P[-j,j] P[j,-j] / P[j,j].
+This is a rank-(r-1) orthogonal projection. Recurse; at rank zero stop.
+The first chosen coordinate j has the indicated rational probability because
+trace(P)=r. For a fixed size-r set S containing j, the Schur-complement
+identity gives det(P'[S\{j},S\{j}])=det(P[S,S])/P[j,j]. Therefore each
+ordered first choice contributes det(P[S,S])/r, and summing over the r
+possible first elements gives exactly det(P[S,S]). This proves the sampler's
+law by induction, including zero minors and rank-deficient conditional
+branches. The initial conditional projection P_I is full rank k whenever
+Z_I>0.
+
+Every probability used is an exact rational number: the Hermitian diagonal
+entries are nonnegative rationals and sum to the integer current rank. A
+categorical draw is implemented from a common integer denominator plus
+uniform-rank sampling. For Gaussian-rational input, determinants and inverses
+have polynomial bit length by fraction-free elimination and determinant
+minor bounds; the recursion performs at most k rational Schur updates, so
+the exact random choices and arithmetic have polynomial bit cost. This is an
+expected-polynomial-time exact conditional sampler (random bits included).
+The finite checker uses real integer fixtures; the argument covers Q(i).
+
+METROPOLIS KERNEL AND PROOF OF THE ENERGY COEFFICIENT
+
+Let B=binom(n,k). From current positive state x=(I,J):
+  1. draw I' uniformly from all k-subsets of [n];
+  2. if Z_I'=0, stay at x; otherwise draw J' from the exact conditional
+     projection-DPP law w(I',.)/Z_I';
+  3. accept y=(I',J') with alpha=min(1,Z_I'/Z_I), else stay at x.
+The probability of a non-null proposal y is
+  q(y)=w(y)/(B Z_{I_y});
+its total can be below one because unsupported I' values contribute rejection.
+For positive x,y the Metropolis ratio is
+  pi(y)q(x)/(pi(x)q(y)) = Z_{I_y}/Z_{I_x},
+so the stated acceptance rule is exact. In particular, c_k is not used.
+
+For x != y, the stationary directed flow is exactly
+  pi(x)K(x,y)
+   = w(x)w(y) / [c B max(Z_{I_x},Z_{I_y})].                 (1)
+Since each fiber total Z_I is at most c, (1) implies
+  pi(x)K(x,y) >= pi(x)pi(y)/B.                              (2)
+The same off-diagonal formula gives detailed balance. Taking the Dirichlet
+form and summing (2) yields for every real g
+  E_K(g,g) >= Var_pi(g)/B.                                  (3)
+No lower bound on a positive Z_I or on individual minors is assumed.
+
+Now independently update both replicas with K, giving K tensor K on
+pi tensor pi. For any f(I,J)=g(I,J first replica)+h(I,J second replica),
+independence and stationarity make the cross term between the two increments
+zero, hence
+  E_(K tensor K)(g(x)+h(y)) = E_K(g)+E_K(h).
+The product variance is Var_pi(g)+Var_pi(h). Applying (3) to both terms
+proves
+  Var_(pi tensor pi)(g(x)+h(y))
+      <= B E_(K tensor K)(g(x)+h(y)).                       (4)
+If the common-core mismatch register Delta_C(x,y) from INITIAL is attached,
+the lifted state is the graph {(x,y,Delta_C(x,y))}; this is an injective
+relabeling. Recompute Delta_C after every accepted pair update. The measure,
+variance and Dirichlet identities (1)–(4) are unchanged, so the register
+retains all independent product mass and the old equality-cut annihilation
+does not return.
+
+If the requested gate is the full Poincare inequality for arbitrary joint
+functions H(x,y), replace K by its lazy version Kbar=(Id+K)/2. Then
+E_Kbar>=Var/(2B), all eigenvalues of Kbar are nonnegative, and tensorization
+gives
+  Var_(pi tensor pi)(H) <= 2B E_(Kbar tensor Kbar)(H).
+Thus the construction supplies either the sharper B coefficient on the
+additive two-replica class in (4), or the full-joint-class coefficient 2B
+after laziness. Both remain exponential for central k.
+
+DIRECTED-CYCLE LIMIT FOR THIS KERNEL
+
+Take F[i,i+1 mod 2q]=1, n=2q, k=q. Exactly two I's have Z_I>0: the two
+alternating sets, and each has exactly one positive conditional J with weight
+one. From either state, a uniform I proposal chooses the other supported I
+with probability 1/B, and the ratio Z_I'/Z_I is one. All other I proposals
+are rejected. Thus K is the two-state chain with switch probability 1/B and
+gap 2/B. This is exp(-Theta(q)). For an indicator g of the first replica's
+alternating orientation, Var(g)=1/4 and E_K(g)=1/(2B), so any constant in
+(4) is at least B/2 on this instance. The claimed B bound is therefore tight
+up to a factor two for this kernel family. This matches the obstruction in
+INITIAL while improving its transition's fiber handling.
+
+EXECUTABLE CHECKS AND SOURCE BOUNDARY
+
+Run:
+  python3 work/cycle6/c01_l05/revisions/03_conditional_dpp_fiber_kernel.py
+Exact Fraction fixtures at (n,k)=(4,2),(5,2) verify every projection minor,
+the sequential conditional distribution, exact detailed balance, pairwise
+flow minorization, and the two-replica additive energy identity. The output is
+03_conditional_dpp_fiber_kernel_checks.json. The finite instances are indexing
+checks only; equations above are the general proof. Directed-cycle gaps are
+also computed symbolically in the script for q=2,3,4.
+
+The sequential projection-DPP/Gram–Schmidt sampler is standard; Hough,
+Krishnapur, Peres, and Virág give the projection-process sampler (Probability
+Surveys 3 (2006), Algorithm 18,
+https://arxiv.org/abs/math/0503110). DPPy gives a finite-kernel derivation of
+the exact projection-DPP chain rule and conditional Gram–Schmidt weights
+(Gautier, Polito, Bardenet, Valko, JMLR 20 (2019),
+https://jmlr.org/papers/volume20/19-179/19-179.pdf, Sec. 3, Eq. (4)). The
+conditional identity, rational-complex bit-cost specialization, independence
+Metropolis correction, flow minorization, additive two-replica inequality,
+and cycle obstruction above are derived here. The source sampler references
+are presentation background; our exact projection formula is Hermitian over
+Q(i).
+
+BOUNDARY / NEXT GATE
+
+This revision adds a polynomial-time exact conditional sampler and an
+all-pairs energy bound at scale B=binom(n,k), without computing the target
+normalizer or enumerating J. For fixed k, B is polynomial in n; that sector
+is already directly enumerable in n^(2k) and is not a general FPRAS result.
+For central k, B is exponential and the directed-cycle family attains an
+exponential gap. A successful general gate still needs an outer-I proposal
+whose density tracks Z_I, or a lifted flow that crosses the two cycle
+orientations without probability 1/B while paying only polynomial cost.
+The present theorem supplies neither. The mismatch-purified representation,
+orientation marginals, transition bit cost, supplied support/witness entry
+point, and all known limits must remain separate claims.
+
+STATUS: useful exact kernel and sharper scoped energy theorem; target
+polynomial-energy result unresolved.

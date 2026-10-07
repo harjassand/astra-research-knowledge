@@ -1,0 +1,127 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c02_l03/orientation_entropy_counterexample.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c02_l03/orientation_entropy_counterexample.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact n=6 counterexample to l1 / Renyi-1/2 orientation exchange.
+
+This only enumerates at most C(6,3)=20 complementary row orientations per
+coefficient and computes integer determinants by the Leibniz formula.
+&quot;&quot;&quot;
+from itertools import combinations, permutations
+import json
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+F = [
+    [0, -1, -1, -1, 0, 0],
+    [0,  0,  0,  0, 0, 0],
+    [1,  0,  0,  0, 0, 0],
+    [0,  0,  0,  0, 0, 0],
+    [0,  0, -1, -1, 0, 0],
+    [0, -1, -1,  0, 0, 0],
+]
+N = len(F)
+
+
+def determinant(a):
+    k = len(a)
+    if k == 0:
+        return 1
+    total = 0
+    for p in permutations(range(k)):
+        inversions = sum(p[i] &gt; p[j]
+                         for i in range(k) for j in range(i + 1, k))
+        term = (-1 if inversions % 2 else 1)
+        for i, j in enumerate(p):
+            term *= a[i][j]
+        total += term
+    return total
+
+
+def orientations(holes):
+    retained = [i for i in range(N) if i + 1 not in holes]
+    assert len(retained) % 2 == 0
+    k = len(retained) // 2
+    out = []
+    for rows in combinations(retained, k):
+        rowset = set(rows)
+        cols = tuple(i for i in retained if i not in rowset)
+        minor = [[F[i][j] for j in cols] for i in rows]
+        value = determinant(minor)
+        if value:
+            out.append({&quot;I_rows_1based&quot;: [i + 1 for i in rows],
+                        &quot;J_cols_1based&quot;: [j + 1 for j in cols],
+                        &quot;det&quot;: value})
+    return out
+
+
+def summary(holes):
+    ori = orientations(holes)
+    amplitudes = [o[&quot;det&quot;] for o in ori]
+    return {&quot;holes_1based&quot;: sorted(holes),
+            &quot;nonzero_orientations&quot;: ori,
+            &quot;l1&quot;: sum(abs(x) for x in amplitudes),
+            &quot;Z_sum_squares&quot;: sum(x*x for x in amplitudes),
+            &quot;support_size&quot;: len(amplitudes),
+            &quot;equal_absolute_amplitudes&quot;: len(set(map(abs, amplitudes))) &lt;= 1}
+
+S = frozenset()
+T = frozenset({2, 4, 5, 6})
+a = 2
+D = S ^ T
+assert a in D
+neighbors = []
+for j in sorted(D - {a}):
+    hs = S ^ {a, j}
+    ht = T ^ {a, j}
+    neighbors.append({&quot;j&quot;: j, &quot;S_exchange&quot;: summary(hs),
+                      &quot;T_exchange&quot;: summary(ht)})
+
+s = summary(S)
+t = summary(T)
+root_lhs_squared = s[&quot;Z_sum_squares&quot;] * t[&quot;Z_sum_squares&quot;]
+root_rhs = sum((nb[&quot;S_exchange&quot;][&quot;Z_sum_squares&quot;] *
+                nb[&quot;T_exchange&quot;][&quot;Z_sum_squares&quot;]) ** 0.5
+               for nb in neighbors)
+l1_lhs = s[&quot;l1&quot;] * t[&quot;l1&quot;]
+l1_rhs = sum(nb[&quot;S_exchange&quot;][&quot;l1&quot;] *
+             nb[&quot;T_exchange&quot;][&quot;l1&quot;] for nb in neighbors)
+
+# Exact audited values. The square-root exchange holds with equality, while
+# replacing each coefficient&#x27;s l2 orientation norm by its l1 norm fails.
+assert (s[&quot;Z_sum_squares&quot;], t[&quot;Z_sum_squares&quot;]) == (2, 2)
+assert (s[&quot;l1&quot;], t[&quot;l1&quot;]) == (2, 2)
+assert [nb[&quot;S_exchange&quot;][&quot;Z_sum_squares&quot;] *
+        nb[&quot;T_exchange&quot;][&quot;Z_sum_squares&quot;] for nb in neighbors] == [0, 1, 1]
+assert [nb[&quot;S_exchange&quot;][&quot;l1&quot;] * nb[&quot;T_exchange&quot;][&quot;l1&quot;]
+        for nb in neighbors] == [0, 1, 1]
+assert root_lhs_squared == 4 and root_rhs == 2
+assert (l1_lhs, l1_rhs) == (4, 2)
+assert all(summary(holes)[&quot;equal_absolute_amplitudes&quot;]
+           for holes in [S, T] +
+           [nb[&quot;S_exchange&quot;][&quot;holes_1based&quot;] for nb in neighbors] +
+           [nb[&quot;T_exchange&quot;][&quot;holes_1based&quot;] for nb in neighbors])
+
+result = {
+    &quot;claim&quot;: &quot;l1 (equivalently Renyi-1/2 orientation entropy) exchange fails&quot;,
+    &quot;matrix_F&quot;: F,
+    &quot;endpoint_S&quot;: s,
+    &quot;endpoint_T&quot;: t,
+    &quot;distinguished_coordinate_a&quot;: a,
+    &quot;neighbors&quot;: neighbors,
+    &quot;aggregate_sqrt_exchange&quot;: {
+        &quot;left_squared&quot;: root_lhs_squared,
+        &quot;rhs_sum_of_sqrt_products&quot;: root_rhs,
+        &quot;equality&quot;: root_lhs_squared ** 0.5 == root_rhs,
+    },
+    &quot;orientation_l1_exchange&quot;: {
+        &quot;left&quot;: l1_lhs,
+        &quot;right&quot;: l1_rhs,
+        &quot;violation_ratio&quot;: l1_lhs / l1_rhs,
+    },
+    &quot;entropy_identity&quot;: &quot;||v_U||_1 = sqrt(Z_U) * exp(H_{1/2}(p_U)/2)&quot;,
+    &quot;endpoint_Renyi_half_entropies&quot;: [&quot;log(2)&quot;, &quot;log(2)&quot;],
+    &quot;neighbor_Renyi_half_entropies_on_nonzero_terms&quot;: [&quot;0&quot;, &quot;0&quot;],
+    &quot;scope&quot;: &quot;exact finite counterexample only; no algorithm or general hardness claim&quot;,
+}
+(HERE / &quot;orientation_entropy_counterexample.json&quot;).write_text(
+    json.dumps(result, indent=2) + &quot;\n&quot;)
+print(json.dumps(result, indent=2))
+</pre><p><a href="../assets/650f93c537fa84b580464ffb4c9ed82f9d95a8b559505d96eb92fedf41a30025.py">Exact original bytes</a></p></html>

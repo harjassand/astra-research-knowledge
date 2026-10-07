@@ -1,0 +1,293 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c10_s01/revisions/phase2/four_layer_forest_certificate.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c10_s01/revisions/phase2/four_layer_forest_certificate.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Acquire the phase-corrected Foster/event certificate on depth-four forests.
+
+Roots may jointly catalyze a middle species. Each next species has one middle
+parent and each fourth-layer leaf one third-layer parent. No other reactions.
+See FOUR_LAYER_FOREST_ADDENDUM.txt; finite diagnostics are not the all-state proof.
+&quot;&quot;&quot;
+from fractions import Fraction as Q
+from itertools import product
+from pathlib import Path
+import json
+import random
+import time
+from four_layer_phase_certificate import interval, ceilq, cubic_envelope, dumpable
+
+
+def acquire(spec):
+    if not isinstance(spec, dict) or set(spec) != {&quot;roots&quot;, &quot;middle&quot;, &quot;third&quot;, &quot;fourth&quot;}:
+        raise ValueError(&quot;Full four-layer forest syntax required&quot;)
+    roots, middle, third, fourth = (spec[k] for k in (&quot;roots&quot;, &quot;middle&quot;, &quot;third&quot;, &quot;fourth&quot;))
+    groups = [(roots, {&quot;name&quot;, &quot;birth&quot;, &quot;death&quot;}), (middle, {&quot;name&quot;, &quot;parents&quot;}),
+              (third, {&quot;name&quot;, &quot;parent&quot;, &quot;birth&quot;, &quot;death&quot;}),
+              (fourth, {&quot;name&quot;, &quot;parent&quot;, &quot;birth&quot;, &quot;death&quot;})]
+    if any(not isinstance(xs, list) or any(not isinstance(z, dict) or set(z) != keys for z in xs)
+           for xs, keys in groups):
+        raise ValueError(&quot;Unknown or missing species fields&quot;)
+    names = [z[&quot;name&quot;] for xs, _ in groups for z in xs]
+    if (not roots or not fourth or any(not isinstance(x, str) or not x for x in names)
+            or len(set(names)) != len(names)):
+        raise ValueError(&quot;Distinct species, nonempty roots and fourth layer required&quot;)
+    rr = {z[&quot;name&quot;]: (interval(z[&quot;birth&quot;]), interval(z[&quot;death&quot;])) for z in roots}
+    mids = {}
+    for z in middle:
+        ps = z[&quot;parents&quot;]
+        if (not isinstance(ps, dict) or not ps or not set(ps) &lt;= set(rr)
+                or any(not isinstance(v, dict) or set(v) != {&quot;birth&quot;, &quot;death&quot;} for v in ps.values())):
+            raise ValueError(&quot;Middle species need nonempty root parent sets&quot;)
+        es = {i: (interval(v[&quot;birth&quot;]), interval(v[&quot;death&quot;])) for i, v in ps.items()}
+        blo = sum(rr[i][0][0] for i in es)
+        dhi = max(rr[i][1][1] for i in es)
+        al = min(x[0][0] for x in es.values()); ah = max(x[0][1] for x in es.values())
+        bl = min(x[1][0] for x in es.values()); bh = max(x[1][1] for x in es.values())
+        cb = min(Q(1), bl / (2 * dhi)); gamma = min(cb * blo / 2, bl / 4)
+        mids[z[&quot;name&quot;]] = {&quot;edges&quot;: es, &quot;blo&quot;: blo, &quot;dhi&quot;: dhi, &quot;al&quot;: al,
+                           &quot;ah&quot;: ah, &quot;bl&quot;: bl, &quot;bh&quot;: bh, &quot;c&quot;: cb,
+                           &quot;gamma&quot;: gamma, &quot;G&quot;: 1 + cb, &quot;cube&quot;: cubic_envelope(ah, bl)}
+    thirds = {}
+    for z in third:
+        parent = z[&quot;parent&quot;]
+        if parent not in mids:
+            raise ValueError(&quot;Third-layer species need exactly one middle parent&quot;)
+        a, t = interval(z[&quot;birth&quot;]), interval(z[&quot;death&quot;])
+        m = mids[parent]
+        s = 1 + 4 * m[&quot;dhi&quot;] / m[&quot;al&quot;]
+        c = min(Q(1), (t[0]/2)/(m[&quot;dhi&quot;]/s+m[&quot;bh&quot;]))
+        gamma = min(c*m[&quot;blo&quot;]/(s*(s+1)), c*m[&quot;al&quot;]/(4*(s+1)), t[0]/4)
+        thirds[z[&quot;name&quot;]] = {&quot;parent&quot;: parent, &quot;birth&quot;: a, &quot;death&quot;: t, &quot;s&quot;: s,
+                              &quot;c&quot;: c, &quot;gamma&quot;: gamma, &quot;G&quot;: 1+c/s,
+                              &quot;cube&quot;: cubic_envelope(a[1], t[0])}
+    fourths = {}
+    for z in fourth:
+        parent = z[&quot;parent&quot;]
+        if parent not in thirds:
+            raise ValueError(&quot;Fourth-layer species need exactly one third-layer parent&quot;)
+        e, u = interval(z[&quot;birth&quot;]), interval(z[&quot;death&quot;])
+        t = thirds[parent]; m = mids[t[&quot;parent&quot;]]
+        s = 1 + m[&quot;dhi&quot;]/m[&quot;bl&quot;] + 2*m[&quot;dhi&quot;]/m[&quot;al&quot;]
+        K = 2*m[&quot;ah&quot;]+3*m[&quot;bh&quot;]
+        kap = min(m[&quot;bl&quot;]/(s+1), m[&quot;blo&quot;]/(2*s*(s+1)))
+        J = m[&quot;blo&quot;]/(s*(s+1)); gh = min(J, m[&quot;al&quot;]/(2*(s+1)))
+        eps = t[&quot;birth&quot;][0]/(4*K)
+        F = eps*J+(eps*K+t[&quot;death&quot;][1]/2)**2/(4*eps*kap)
+        M = 1+(F+1)/(u[0]/2)
+        gamma = min(eps*gh, t[&quot;birth&quot;][0]/4, Q(1))
+        cube = cubic_envelope(e[1], u[0])
+        fourths[z[&quot;name&quot;]] = {&quot;parent&quot;: parent, &quot;middle&quot;: t[&quot;parent&quot;], &quot;birth&quot;: e,
+                               &quot;death&quot;: u, &quot;s&quot;: s, &quot;epsilon&quot;: eps, &quot;M&quot;: M,
+                               &quot;gamma&quot;: gamma, &quot;cube&quot;: cube,
+                               &quot;tB&quot;: cube*4*eps/(3*s),
+                               &quot;tC&quot;: cube*(M+1+8*eps/(3*s))}
+    wc = {k:(1+sum(f[&quot;tC&quot;] for f in fourths.values() if f[&quot;parent&quot;]==k))/t[&quot;gamma&quot;]
+          for k,t in thirds.items()}
+    wb = {j:(1+sum(f[&quot;tB&quot;] for f in fourths.values() if f[&quot;middle&quot;]==j)
+             +sum(wc[k]*t[&quot;G&quot;]*t[&quot;cube&quot;] for k,t in thirds.items() if t[&quot;parent&quot;]==j))/m[&quot;gamma&quot;]
+          for j,m in mids.items()}
+    wa = {i:2*(1+sum(wb[j]*m[&quot;G&quot;]*m[&quot;cube&quot;] for j,m in mids.items() if i in m[&quot;edges&quot;]))/r[1][0]
+          for i,r in rr.items()}
+    constant = sum(wa[i]*cubic_envelope(r[0][1], r[1][0]) for i,r in rr.items())
+    kap = min([Q(1), *[f[&quot;gamma&quot;] for f in fourths.values()]])
+    cert = {&quot;spec&quot;:spec, &quot;names&quot;:names, &quot;roots&quot;:rr, &quot;middle&quot;:mids, &quot;third&quot;:thirds,
+            &quot;fourth&quot;:fourths, &quot;root_weights&quot;:wa, &quot;middle_weights&quot;:wb,
+            &quot;third_weights&quot;:wc, &quot;constant&quot;:constant, &quot;kappa&quot;:kap,
+            &quot;core_radius&quot;:max(1,ceilq((2*constant+2)/kap))}
+    turnover = sum(bounds[1] for _,_,bounds in raw(cert))
+    cert[&quot;turnover&quot;] = turnover
+    cert[&quot;firing_bound_factor&quot;] = 2*len(names)*turnover/kap
+    return cert
+
+
+def acquire_from_reactions(species, reactions):
+    if (not isinstance(species, list) or not species
+            or any(not isinstance(x,str) or not x for x in species)
+            or len(set(species))!=len(species) or not isinstance(reactions,list)):
+        raise ValueError(&quot;Complete explicit species/reaction table required&quot;)
+    n=len(species); buckets={}
+    for r in reactions:
+        if not isinstance(r,dict) or set(r)!={&quot;source&quot;,&quot;target&quot;,&quot;rate&quot;}:
+            raise ValueError(&quot;Exactly source/target/rate required&quot;)
+        src,dst=r[&quot;source&quot;],r[&quot;target&quot;]
+        if (not isinstance(src,(tuple,list)) or not isinstance(dst,(tuple,list))
+                or len(src)!=n or len(dst)!=n
+                or any(isinstance(x,bool) or not isinstance(x,int) or x&lt;0 for x in (*src,*dst))):
+            raise ValueError(&quot;Nonnegative integer vectors required&quot;)
+        changes=[i for i in range(n) if src[i]!=dst[i]]
+        if len(changes)!=1 or abs(dst[changes[0]]-src[changes[0]])!=1:
+            raise ValueError(&quot;Only unit changes admitted&quot;)
+        j=changes[0];sign=dst[j]-src[j];residual=src if sign&gt;0 else dst
+        if sum(residual) not in (0,1):
+            raise ValueError(&quot;Only zero/one unchanged catalyst admitted&quot;)
+        i=None if sum(residual)==0 else residual.index(1)
+        if i==j:
+            raise ValueError(&quot;Self-catalysis rejected&quot;)
+        bounds=interval(r[&quot;rate&quot;]);key=(j,i,sign);old=buckets.get(key,(Q(0),Q(0)))
+        buckets[key]=tuple(a+b for a,b in zip(old,bounds))
+    pairs={(j,i) for j,i,_ in buckets}
+    if any((j,i,1) not in buckets or (j,i,-1) not in buckets for j,i in pairs):
+        raise ValueError(&quot;Positive reverse required for every channel&quot;)
+    roots={j for j,i in pairs if i is None}
+    ps={j:{i for k,i in pairs if k==j and i is not None} for j in range(n)}
+    if not roots or any(ps[j] for j in roots):
+        raise ValueError(&quot;Root cannot have a catalytic incoming edge&quot;)
+    rest=set(range(n))-roots
+    if any(not ps[j] for j in rest):
+        raise ValueError(&quot;Unused/disconnected species rejected&quot;)
+    middle={j for j in rest if ps[j]&lt;=roots};rest-=middle
+    third={j for j in rest if len(ps[j])==1 and ps[j]&lt;=middle};rest-=third
+    fourth={j for j in rest if len(ps[j])==1 and ps[j]&lt;=third};rest-=fourth
+    if rest or not fourth:
+        raise ValueError(&quot;Deeper, cyclic or multi-parent downstream graph rejected&quot;)
+    def rates(j,i):
+        return {&quot;birth&quot;:list(map(str,buckets[(j,i,1)])),&quot;death&quot;:list(map(str,buckets[(j,i,-1)]))}
+    spec={&quot;roots&quot;:[{&quot;name&quot;:species[j],**rates(j,None)} for j in sorted(roots)],
+          &quot;middle&quot;:[{&quot;name&quot;:species[j],&quot;parents&quot;:{species[i]:rates(j,i) for i in sorted(ps[j])}}
+                    for j in sorted(middle)],
+          &quot;third&quot;:[{&quot;name&quot;:species[j],&quot;parent&quot;:species[next(iter(ps[j]))],**rates(j,next(iter(ps[j])))}
+                   for j in sorted(third)],
+          &quot;fourth&quot;:[{&quot;name&quot;:species[j],&quot;parent&quot;:species[next(iter(ps[j]))],**rates(j,next(iter(ps[j])))}
+                    for j in sorted(fourth)]}
+    return acquire(spec)
+
+
+def raw(c):
+    n=len(c[&quot;names&quot;]);out=[]
+    def pair(parent,child,birth,death):
+        src=[0]*n
+        if parent is not None:src[c[&quot;names&quot;].index(parent)]=1
+        dst=src.copy();dst[c[&quot;names&quot;].index(child)]=1
+        out.extend([(tuple(src),tuple(dst),birth),(tuple(dst),tuple(src),death)])
+    for i,(b,d) in c[&quot;roots&quot;].items():pair(None,i,b,d)
+    for j,m in c[&quot;middle&quot;].items():
+        for i,(b,d) in m[&quot;edges&quot;].items():pair(i,j,b,d)
+    for group in [c[&quot;third&quot;],c[&quot;fourth&quot;]]:
+        for k,t in group.items():pair(t[&quot;parent&quot;],k,t[&quot;birth&quot;],t[&quot;death&quot;])
+    return out
+
+
+def gateD(c,k,x):
+    f=c[&quot;fourth&quot;][k];m=c[&quot;middle&quot;][f[&quot;middle&quot;]]
+    S=sum(x[i] for i in m[&quot;edges&quot;])
+    return f[&quot;M&quot;]+Q(1,x[f[&quot;parent&quot;]]+1)+f[&quot;epsilon&quot;]*(x[f[&quot;middle&quot;]]-1)**2/(S+f[&quot;s&quot;])
+
+
+def V(c,state):
+    x=dict(zip(c[&quot;names&quot;],state));v=sum(w*x[i]**3 for i,w in c[&quot;root_weights&quot;].items())
+    for j,m in c[&quot;middle&quot;].items():
+        S=sum(x[i] for i in m[&quot;edges&quot;])
+        v+=c[&quot;middle_weights&quot;][j]*(1+m[&quot;c&quot;]/(S+1))*x[j]**3
+    for k,t in c[&quot;third&quot;].items():
+        m=c[&quot;middle&quot;][t[&quot;parent&quot;]];S=sum(x[i] for i in m[&quot;edges&quot;])
+        v+=c[&quot;third_weights&quot;][k]*(1+t[&quot;c&quot;]/((S+t[&quot;s&quot;])*(x[t[&quot;parent&quot;]]+1)))*x[k]**3
+    for k in c[&quot;fourth&quot;]:v+=gateD(c,k,x)*x[k]**3
+    return v
+
+
+def generator(c,state,f):
+    value=f(state);lv=Q(0)
+    for src,dst,bounds in raw(c):
+        propensity=1
+        for x,y in zip(state,src):
+            for k in range(y):propensity*=max(0,x-k)
+        if propensity:
+            nxt=tuple(x+z-y for x,y,z in zip(state,src,dst));jump=f(nxt)-value
+            lv+=propensity*(bounds[1] if jump&gt;0 else bounds[0])*jump
+    return lv
+
+
+def acquire_positive_target(c,q):
+    &quot;&quot;&quot;Compact exact recovery/event certificate for all counts &gt;= q.
+
+    alpha**H is retained symbolically: expanding it may require exponentially
+    many bits in binary q. The accompanying proof charges that output cost.
+    &quot;&quot;&quot;
+    if isinstance(q,bool) or not isinstance(q,int) or q&lt;1:
+        raise ValueError(&quot;Positive integer target count required&quot;)
+    d=len(c[&quot;names&quot;]);R=c[&quot;core_radius&quot;];T0=c[&quot;turnover&quot;];kap=c[&quot;kappa&quot;]
+    coef=sum(c[&quot;root_weights&quot;].values())
+    coef+=sum(c[&quot;middle_weights&quot;][j]*m[&quot;G&quot;] for j,m in c[&quot;middle&quot;].items())
+    coef+=sum(c[&quot;third_weights&quot;][k]*t[&quot;G&quot;] for k,t in c[&quot;third&quot;].items())
+    coef+=sum(t[&quot;M&quot;]+1+t[&quot;epsilon&quot;]*(R+1)**2/t[&quot;s&quot;] for t in c[&quot;fourth&quot;].values())
+    Vcore=R**3*coef
+    H=d*q;D=R-1+H;Qtotal=T0*(D+1)**2
+    low=min(bounds[0] for _,_,bounds in raw(c));alpha=low/(2*Qtotal);t0=Q(H)/Qtotal
+    time_cycle=Vcore+(c[&quot;constant&quot;]+1)*t0
+    event_cycle=T0*t0+3*d*T0/kap*(Vcore+c[&quot;constant&quot;]*t0)
+    return {&quot;target_min_each&quot;:q,&quot;word_length_upper&quot;:H,&quot;path_count_upper&quot;:D,
+            &quot;path_rate_upper&quot;:Qtotal,&quot;step_probability_lower&quot;:alpha,
+            &quot;success_probability_lower&quot;:{&quot;base&quot;:alpha,&quot;exponent&quot;:H},&quot;attempt_duration&quot;:t0,
+            &quot;core_potential_upper&quot;:Vcore,&quot;mean_time_bound_expression&quot;:&quot;V(x)+time_cycle/alpha**H&quot;,
+            &quot;time_cycle&quot;:time_cycle,&quot;mean_all_event_bound_expression&quot;:&quot;firing_bound_factor*V(x)+event_cycle/alpha**H&quot;,
+            &quot;event_cycle&quot;:event_cycle,&quot;firing_bound_factor&quot;:c[&quot;firing_bound_factor&quot;],
+            &quot;status&quot;:&quot;COMPACT_EXACT_RATIONAL_POWER_CERTIFICATE; expanded output cost depends on numeric q&quot;}
+
+
+def verify():
+    start=time.perf_counter();rng=random.Random(130)
+    fixtures=[{&quot;roots&quot;:[{&quot;name&quot;:&quot;A&quot;,&quot;birth&quot;:[1,1],&quot;death&quot;:[1,1]}],
+               &quot;middle&quot;:[{&quot;name&quot;:&quot;B&quot;,&quot;parents&quot;:{&quot;A&quot;:{&quot;birth&quot;:[1,1],&quot;death&quot;:[1,1]}}}],
+               &quot;third&quot;:[{&quot;name&quot;:&quot;C&quot;,&quot;parent&quot;:&quot;B&quot;,&quot;birth&quot;:[1,1],&quot;death&quot;:[1,1]}],
+               &quot;fourth&quot;:[{&quot;name&quot;:&quot;D&quot;,&quot;parent&quot;:&quot;C&quot;,&quot;birth&quot;:[1,1],&quot;death&quot;:[1,1]}]},
+              {&quot;roots&quot;:[{&quot;name&quot;:&quot;A&quot;,&quot;birth&quot;:[1,3],&quot;death&quot;:[2,4]},
+                        {&quot;name&quot;:&quot;E&quot;,&quot;birth&quot;:[&quot;1/2&quot;,2],&quot;death&quot;:[1,5]}],
+               &quot;middle&quot;:[{&quot;name&quot;:&quot;B&quot;,&quot;parents&quot;:{&quot;A&quot;:{&quot;birth&quot;:[1,3],&quot;death&quot;:[1,4]},
+                                                     &quot;E&quot;:{&quot;birth&quot;:[2,4],&quot;death&quot;:[&quot;1/2&quot;,3]}}},
+                         {&quot;name&quot;:&quot;F&quot;,&quot;parents&quot;:{&quot;E&quot;:{&quot;birth&quot;:[1,2],&quot;death&quot;:[2,5]}}}],
+               &quot;third&quot;:[{&quot;name&quot;:&quot;C&quot;,&quot;parent&quot;:&quot;B&quot;,&quot;birth&quot;:[1,4],&quot;death&quot;:[1,3]},
+                        {&quot;name&quot;:&quot;G&quot;,&quot;parent&quot;:&quot;F&quot;,&quot;birth&quot;:[2,3],&quot;death&quot;:[1,2]}],
+               &quot;fourth&quot;:[{&quot;name&quot;:&quot;D&quot;,&quot;parent&quot;:&quot;C&quot;,&quot;birth&quot;:[1,2],&quot;death&quot;:[1,4]},
+                         {&quot;name&quot;:&quot;H&quot;,&quot;parent&quot;:&quot;G&quot;,&quot;birth&quot;:[2,4],&quot;death&quot;:[1,3]}]}]
+    checks=killed=admission=rejected=0;records=[]
+    for fi,spec in enumerate(fixtures):
+        c=acquire(spec);n=len(c[&quot;names&quot;])
+        states=list(product(range(5 if n==4 else 2),repeat=n))
+        states.extend(tuple(rng.randrange(60) for _ in range(n)) for _ in range(64))
+        for state in states:
+            x=dict(zip(c[&quot;names&quot;],state))
+            f=sum(x[i]**3 for i in c[&quot;names&quot;] if i not in c[&quot;fourth&quot;])
+            f+=sum(t[&quot;gamma&quot;]*x[i]**3 for i,t in c[&quot;fourth&quot;].items())
+            assert generator(c,state,lambda z:V(c,z))&lt;=c[&quot;constant&quot;]-f
+            checks+=1
+        for k,t in c[&quot;fourth&quot;].items():
+            for A,B,C in product([0,1,2,1000],[0,1,2,1000],[0,1,2]):
+                x={i:0 for i in c[&quot;names&quot;]};roots=list(c[&quot;middle&quot;][t[&quot;middle&quot;]][&quot;edges&quot;])
+                x[roots[0]]=A;x[t[&quot;middle&quot;]]=B;x[t[&quot;parent&quot;]]=C
+                state=tuple(x[i] for i in c[&quot;names&quot;])
+                q=gateD(c,k,x)
+                lv=generator(c,state,lambda z:gateD(c,k,dict(zip(c[&quot;names&quot;],z))))
+                assert lv-t[&quot;death&quot;][0]/2*C*q&lt;=-t[&quot;gamma&quot;]
+                killed+=1
+        rs=[{&quot;source&quot;:list(a),&quot;target&quot;:list(b),&quot;rate&quot;:list(map(str,k))} for a,b,k in raw(c)]
+        c2=acquire_from_reactions(c[&quot;names&quot;],rs)
+        assert V(c2,(3,)*n)==V(c,(3,)*n)
+        assert c2[&quot;constant&quot;]==c[&quot;constant&quot;]
+        admission+=1
+        # A declared fifth-layer species and its paired catalytic reactions
+        # must reject, even though each individual reaction is bimolecular.
+        extended=[]
+        for r in rs:
+            extended.append({&quot;source&quot;:r[&quot;source&quot;]+[0],&quot;target&quot;:r[&quot;target&quot;]+[0],&quot;rate&quot;:r[&quot;rate&quot;]})
+        src=[0]*(n+1);src[c[&quot;names&quot;].index(next(iter(c[&quot;fourth&quot;])))] = 1
+        dst=src.copy();dst[-1]=1
+        extended.extend([{&quot;source&quot;:src,&quot;target&quot;:dst,&quot;rate&quot;:[1,1]},
+                         {&quot;source&quot;:dst,&quot;target&quot;:src,&quot;rate&quot;:[1,1]}])
+        try:acquire_from_reactions(c[&quot;names&quot;]+[&quot;UNADMITTED_FIFTH&quot;],extended)
+        except ValueError:rejected+=1
+        else:raise AssertionError(&quot;Fifth layer silently admitted&quot;)
+        # Input species/columns may be supplied in arbitrary order.
+        flipped=[{&quot;source&quot;:r[&quot;source&quot;][::-1],&quot;target&quot;:r[&quot;target&quot;][::-1],&quot;rate&quot;:r[&quot;rate&quot;]} for r in rs]
+        c3=acquire_from_reactions(c[&quot;names&quot;][::-1],flipped)
+        named={name:j+2 for j,name in enumerate(c[&quot;names&quot;])}
+        assert V(c3,tuple(named[x] for x in c3[&quot;names&quot;]))==V(c,tuple(named[x] for x in c[&quot;names&quot;]))
+        assert c3[&quot;constant&quot;]==c[&quot;constant&quot;]
+        admission+=1
+        records.append({&quot;certificate&quot;:dumpable(c),&quot;state_checks&quot;:len(states),
+                        &quot;positive_target_certificate&quot;:dumpable(acquire_positive_target(c,1))})
+    return {&quot;status&quot;:&quot;EXACT_FINITE_DIAGNOSTICS_PASSED&quot;,&quot;raw_generator_states&quot;:checks,
+            &quot;killed_gate_states&quot;:killed,&quot;raw_admission_fixtures&quot;:admission,&quot;fifth_layer_rejections&quot;:rejected,&quot;fixtures&quot;:records,
+            &quot;elapsed_seconds&quot;:time.perf_counter()-start,&quot;scope&quot;:&quot;Finite diagnostics; all-state argument in addendum&quot;}
+
+
+if __name__==&quot;__main__&quot;:
+    out=verify();Path(__file__).with_name(&quot;four_layer_forest_checks.json&quot;).write_text(json.dumps(out,indent=2)+&quot;\n&quot;)
+    print(json.dumps({k:out[k] for k in [&quot;status&quot;,&quot;raw_generator_states&quot;,&quot;killed_gate_states&quot;,
+                                        &quot;raw_admission_fixtures&quot;,&quot;fifth_layer_rejections&quot;,&quot;elapsed_seconds&quot;]},indent=2))
+</pre><p><a href="../assets/d9473d68bcdac7c4f3bf6147aff9e9a0a6aba3feab08d1b6be4ca85d4542d417.py">Exact original bytes</a></p></html>

@@ -1,0 +1,62 @@
+#!/usr/bin/env python3
+"""Exact Fraction transcription checks for the post-exposure drift simplification."""
+from fractions import Fraction as F
+import json
+from pathlib import Path
+import time
+
+HERE=Path(__file__).resolve().parent
+start=time.perf_counter()
+def dot(x,y): return sum(a*b for a,b in zip(x,y))
+def plus(x,y): return [a+b for a,b in zip(x,y)]
+def scale(x,c): return [a*c for a in x]
+def outer(x,y): return [[a*b for b in y] for a in x]
+def madd(A,B): return [[a+b for a,b in zip(ar,br)] for ar,br in zip(A,B)]
+def mm(A,B): return [[sum(A[i][k]*B[k][j] for k in range(3)) for j in range(3)] for i in range(3)]
+def mv(A,x): return [dot(row,x) for row in A]
+def transpose(A): return [list(x) for x in zip(*A)]
+def cross(x,y): return [x[1]*y[2]-x[2]*y[1],x[2]*y[0]-x[0]*y[2],x[0]*y[1]-x[1]*y[0]]
+
+axes=[([F(1),F(0),F(0)],F(1)),([F(0),F(1),F(0)],F(1)),
+      ([F(0),F(0),F(1)],F(1)),([F(3,5),F(4,5),F(0)],F(1,4))]
+C=[[F(0) for _ in range(3)] for _ in range(3)]
+for n,lam in axes:
+    C=madd(C,[[lam*x for x in row] for row in outer(n,n)])
+b=[F(1,5),F(-1,7),F(1,9)]
+N,s=16,F(8)
+reports=[]
+for m in [[F(0)]*3,[F(1,50),F(-1,80),F(1,100)],[F(-1,40),F(1,90),F(-1,70)]]:
+    unsimplified=[F(0)]*3
+    D=[[F(0) for _ in range(3)] for _ in range(3)]
+    potential=F(0)
+    for n,lam in axes:
+        u=dot(n,m)
+        v=plus(n,scale(m,-u))
+        r=cross(n,m)
+        dv=plus(scale(n,-u),scale(m,2*u*u-1))
+        dr=plus(scale(n,u),scale(m,-1))
+        term=plus(scale(v,2*N*u),plus(dv,scale(dr,-1)))
+        unsimplified=plus(unsimplified,scale(term,lam/(4*s*s)))
+        D=madd(D,[[lam*x for x in row] for row in madd(outer(v,v),[[ -x for x in row] for row in outer(r,r)])])
+        potential+=lam*(N*N*u*u+N*(1-u*u))/(4*s*s)
+    field=scale(plus(b,scale(m,-dot(b,m))),F(1)/(2*s))
+    unsimplified=plus(unsimplified,field)
+    q=dot(m,mv(C,m))
+    simplified=plus(scale(plus(mv(C,m),scale(m,-q)),F(N-1)/(2*s*s)),field)
+    assert unsimplified==simplified
+    I=[[F(int(i==j)) for j in range(3)] for i in range(3)]
+    P=madd(I,[[-x for x in row] for row in outer(m,m)])
+    K=[[F(0),-m[2],m[1]],[m[2],F(0),-m[0]],[-m[1],m[0],F(0)]]
+    Dclosed=madd(mm(mm(P,C),P),[[-x for x in row] for row in mm(mm(K,C),transpose(K))])
+    assert D==Dclosed
+    potential+=N*dot(b,m)/(2*s)
+    simplified_p=((N*N-N)*q+N*sum(C[i][i] for i in range(3)))/(4*s*s)+N*dot(b,m)/(2*s)
+    assert potential==simplified_p
+    reports.append({'m':[str(x) for x in m],'drift':[str(x) for x in simplified],
+                    'potential':str(potential),'D_C':[[str(x) for x in row] for row in D]})
+report={'worker_id':'c07_s03','status':'EXACT_BASIS_FREE_COEFFICIENT_TRANSCRIPTION_PASS',
+        'C':[[str(x) for x in row] for row in C],'N':N,'cases':reports,
+        'checks':9,'wall_seconds':time.perf_counter()-start,
+        'scope':'Three rational points and a rational non-coordinate direction; the all-parameter identities are proved separately.'}
+(HERE/'evidence'/'diffusion_coefficients.json').write_text(json.dumps(report,indent=2)+'\n')
+print(json.dumps({'status':report['status'],'checks':9,'wall_seconds':report['wall_seconds']}))

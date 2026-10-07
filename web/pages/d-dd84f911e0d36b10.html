@@ -1,0 +1,131 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c10_l06/revisions/interface_checks.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c10_l06/revisions/interface_checks.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Exact finite diagnostics for c10_l06&#x27;s quantifier/interface audit.
+
+Standard library only.  These checks verify the two boundary witnesses and
+the exact factorial-potential jump ratios; they do not prove the infinite
+quantifiers stated in the accompanying audit.
+&quot;&quot;&quot;
+
+from collections import deque
+from fractions import Fraction
+from math import factorial, prod
+import json
+
+
+REACTIONS = [
+    ((2, 0), (-1, 1), &quot;2A-&gt;A+B&quot;),
+    ((0, 2), (1, -1), &quot;2B-&gt;A+B&quot;),
+]
+
+
+def enabled(x, source):
+    return all(a &gt;= b for a, b in zip(x, source))
+
+
+def successors(x):
+    ans = []
+    for source, nu, label in REACTIONS:
+        if enabled(x, source):
+            rate = prod(factorial(n) // factorial(n-k)
+                        for n, k in zip(x, source))
+            ans.append((tuple(a+b for a, b in zip(x, nu)), label, rate))
+    return ans
+
+
+def reachable(x):
+    todo, seen = deque([x]), {x}
+    while todo:
+        y = todo.popleft()
+        for z, _, _ in successors(y):
+            if z not in seen:
+                seen.add(z)
+                todo.append(z)
+    return seen
+
+
+def falling(n, k):
+    if n &lt; k:
+        return 0
+    return prod(range(n-k+1, n+1))
+
+
+def exp_factorial_potential(x):
+    # exp(F(x)) = product_i x_i! / max_{available complex y} x_under_y.
+    complexes = ((0, 0, 0), (0, 0, 1), (0, 1, 0),
+                 (1, 1, 0), (1, 0, 1))
+    max_falling = max(prod(falling(n, k) for n, k in zip(x, y))
+                      for y in complexes if enabled(x, y))
+    return prod(factorial(n) for n in x) // max_falling
+
+
+def factorial_witness(a):
+    x = (a, 0, 1)
+    transitions = [
+        ((a, 1, 0), &quot;A+C-&gt;A+B&quot;, a),
+        ((a, 0, 0), &quot;C-&gt;0&quot;, 1),
+        ((a, 0, 2), &quot;0-&gt;C&quot;, 1),
+    ]
+    base = exp_factorial_potential(x)
+    ratios = []
+    for y, label, rate in transitions:
+        ratios.append({&quot;reaction&quot;: label, &quot;rate&quot;: rate,
+                       &quot;expF_ratio&quot;: Fraction(exp_factorial_potential(y), base)})
+    assert [r[&quot;expF_ratio&quot;] for r in ratios] == [1, a, 1]
+    return ratios
+
+
+def main():
+    # Exact strongly-endotactic sign witnesses for rational w on both sides.
+    sign_witnesses = []
+    for wa, wb in ((Fraction(2), Fraction(1)),
+                   (Fraction(1), Fraction(2)),
+                   (Fraction(1), Fraction(1))):
+        if wa &gt; wb:
+            source, dot = &quot;2A&quot;, -wa + wb
+        elif wb &gt; wa:
+            source, dot = &quot;2B&quot;, wa - wb
+        else:
+            source, dot = &quot;tie&quot;, Fraction(0)
+        assert dot &lt;= 0
+        sign_witnesses.append({&quot;w&quot;: [str(wa), str(wb)],
+                               &quot;maximal_source&quot;: source,
+                               &quot;maximal_edge_dot&quot;: str(dot)})
+
+    total_one = {(1, 0), (0, 1)}
+    assert all(not successors(x) for x in total_one)
+    total_two = {(2, 0), (1, 1), (0, 2)}
+    reach_a = reachable((2, 0))
+    reach_b = reachable((0, 2))
+    assert reach_a == {(2, 0), (1, 1)}
+    assert reach_b == {(0, 2), (1, 1)}
+    assert not successors((1, 1))
+    assert all(sum(x) == 2 for x in total_two)
+
+    # The positive deterministic class x_A+x_B=c has a global linear flow
+    # dot(a)=c^2-2ca, whose exact equilibrium is c/2.
+    c, a0 = Fraction(1), Fraction(1, 4)
+    ode_drift = c*c - 2*c*a0
+    assert ode_drift == Fraction(1, 2)
+    assert Fraction(0) &lt; a0 &lt; c
+
+    # Independently reconstruct N76&#x27;s exact jump ratios on A+C state (a,0,1).
+    f_checks = {str(a): factorial_witness(a) for a in (2, 3, 7, 25)}
+    out = {
+        &quot;status&quot;: &quot;PASS_FINITE_DIAGNOSTICS&quot;,
+        &quot;network&quot;: &quot;2A-&gt;A+B; 2B-&gt;A+B&quot;,
+        &quot;direction_sign_witnesses&quot;: sign_witnesses,
+        &quot;total_one_absorbing&quot;: sorted(total_one),
+        &quot;total_two_reachability_from_2A&quot;: sorted(reach_a),
+        &quot;total_two_reachability_from_2B&quot;: sorted(reach_b),
+        &quot;total_two_center_successors&quot;: successors((1, 1)),
+        &quot;positive_ode_fixture&quot;: {&quot;c&quot;: str(c), &quot;a0&quot;: str(a0),
+                                  &quot;a_dot&quot;: str(ode_drift),
+                                  &quot;equilibrium_a&quot;: str(c/2)},
+        &quot;factorial_potential_ratio_checks&quot;: f_checks,
+        &quot;scope&quot;: &quot;finite exact diagnostics only; all-state claims are proved in text&quot;,
+    }
+    print(json.dumps(out, indent=2, default=str))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/3b93d6de7024fbb46c340360bde2a2ea7dacec7a7660210fa8ba9518ecafa2ed.py">Exact original bytes</a></p></html>

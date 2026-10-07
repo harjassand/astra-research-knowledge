@@ -1,0 +1,96 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c04_s03/weighted_instrument_check.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c04_s03/weighted_instrument_check.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Small exact Fraction diagnostic; no optimizer, no theorem inference.&quot;&quot;&quot;
+from fractions import Fraction as F
+from itertools import combinations
+import json,time,pathlib
+ROOT=pathlib.Path(__file__).resolve().parent
+start=time.monotonic()
+def zeros(n,m=None): return [[F(0) for _ in range(m or n)] for _ in range(n)]
+def eye(n):
+ a=zeros(n)
+ for i in range(n):a[i][i]=F(1)
+ return a
+def trans(a): return list(map(list,zip(*a)))
+def add(a,b): return [[x+y for x,y in zip(ar,br)] for ar,br in zip(a,b)]
+def sub(a,b): return [[x-y for x,y in zip(ar,br)] for ar,br in zip(a,b)]
+def scale(a,c): return [[c*x for x in ar] for ar in a]
+def mul(a,b):
+ bt=trans(b)
+ return [[sum((x*y for x,y in zip(ar,bc)),F(0)) for bc in bt] for ar in a]
+def vec(a,x):return [sum((v*w for v,w in zip(ar,x)),F(0)) for ar in a]
+def det(a):
+ a=[r[:] for r in a];v=F(1);n=len(a)
+ for k in range(n):
+  j=next((j for j in range(k,n) if a[j][k]),None)
+  if j is None:return F(0)
+  if j!=k:a[k],a[j]=a[j],a[k];v=-v
+  p=a[k][k];v*=p
+  for j in range(k+1,n):
+   q=a[j][k]/p
+   for l in range(k+1,n):a[j][l]-=q*a[k][l]
+ return v
+def psd_principal(a):
+ assert a==trans(a)
+ vals=[]
+ for k in range(1,len(a)+1):
+  for ids in combinations(range(len(a)),k):
+   z=det([[a[i][j] for j in ids] for i in ids]); assert z&gt;=0,(ids,z)
+   vals.append(z)
+ return {&#x27;count&#x27;:len(vals),&#x27;zero&#x27;:sum(z==0 for z in vals),&#x27;min&#x27;:str(min(vals))}
+def encode(a):return [[str(x) for x in r] for r in a]
+w=[F(1,3),F(2,3)]
+P=[[F(1,2),F(1,4)],[F(1,2),F(3,4)]] # P[output][input]
+assert all(sum(P[b][a] for b in range(2))==1 for a in range(2))
+assert [sum(P[b][a]*w[a] for a in range(2)) for b in range(2)]==w
+R=[[w[a]*P[b][a]/w[b] for a in range(2)] for b in range(2)]
+t=F(7,25);ell=[F(1),F(24,25),F(24,25),F(1)];q=[F(1),F(0),F(0),t]
+n=8;L=zeros(n);Q=zeros(n);Psi=zeros(n);G=zeros(n);Ginv=zeros(n)
+for b in range(2):
+ for k in range(4):
+  i=4*b+k;G[i][i]=w[b];Ginv[i][i]=1/w[b]
+  Psi[i][i]=[F(1),F(0),F(0),t*t][k]
+  for a in range(2):
+   L[i][4*a+k]=R[b][a]*ell[k];Q[i][4*a+k]=R[b][a]*q[k]
+C=scale(add(L,Q),F(1,2));Cdag=mul(mul(Ginv,trans(C)),G);Phi=mul(Cdag,C)
+I=eye(n)
+assert mul(G,Phi)==trans(mul(G,Phi))
+certs={
+ &#x27;I_minus_Ldag_L&#x27;:psd_principal(sub(G,mul(mul(trans(L),G),L))),
+ &#x27;Psi_minus_Qdag_Q&#x27;:psd_principal(sub(mul(G,Psi),mul(mul(trans(Q),G),Q))),
+ &#x27;factor_two&#x27;:psd_principal(mul(G,sub(add(I,Psi),scale(Phi,F(2)))))
+}
+# Exact identity using the noncanonical EB branch Q.
+left=mul(G,sub(add(I,Psi),scale(Phi,F(2))))
+right=add(add(sub(G,mul(mul(trans(L),G),L)),sub(mul(G,Psi),mul(mul(trans(Q),G),Q))),scale(mul(mul(trans(sub(L,Q)),G),sub(L,Q)),F(1,2)))
+assert left==right
+# Actual effects: P[b][a] times diag(16/25,9/25) or its reverse in input block a.
+# Preparation is pure |y&gt; in output block b; these are not canonical preparations.
+effects=[]
+for a in range(2):
+ for b in range(2):
+  for y in range(2):
+   diag=[F(0)]*4
+   diag[2*a:2*a+2]=[P[b][a]*F(16 if y==0 else 9,25),P[b][a]*F(9 if y==0 else 16,25)]
+   p=w[a]*P[b][a]/2
+   prep=[F(0)]*4;prep[2*b+y]=F(1)
+   effects.append({&#x27;input_block&#x27;:a,&#x27;output_block&#x27;:b,&#x27;outcome&#x27;:y,&#x27;effect_diagonal&#x27;:list(map(str,diag)),&#x27;p_tau&#x27;:str(p),&#x27;preparation_diagonal&#x27;:list(map(str,prep))})
+assert all(sum(F(e[&#x27;effect_diagonal&#x27;][i]) for e in effects)==1 for i in range(4))
+assert [sum(F(e[&#x27;p_tau&#x27;])*F(e[&#x27;preparation_diagonal&#x27;][i]) for e in effects) for i in range(4)]==[F(1,6),F(1,6),F(1,3),F(1,3)]
+# Full trace norm is exact on the diagonal likelihood fixtures below.
+def norm1_diag(x):return sum(w[a]*(abs(x[4*a]+x[4*a+3])+abs(x[4*a]-x[4*a+3]))/2 for a in range(2))
+fixtures=0;theta=F(1,2)
+for u in range(-2,3):
+ for v in range(-2,3):
+  for z in range(-2,3):
+   h=[F(0)]*n;h[0]=F(u,12);h[4]=-F(u,24);h[3]=F(v,12);h[7]=F(z,12)
+   assert w[0]*h[0]+w[1]*h[4]==0
+   assert max(abs(h[4*a])+abs(h[4*a+3]) for a in range(2))&lt;=theta
+   ph=vec(Phi,h);ps=vec(Psi,h)
+   r=norm1_diag([x-y for x,y in zip(h,ph)])
+   err=norm1_diag([x-y for x,y in zip(h,ps)])
+   assert err*err&lt;=2*theta*r
+   fixtures+=1
+out={&#x27;status&#x27;:&#x27;DIAGNOSTIC_ONLY&#x27;,&#x27;theorem_basis&#x27;:&#x27;Exact factorization and contraction proof in INITIAL.txt; these fixtures do not prove universality&#x27;,&#x27;algebra&#x27;:&#x27;M2 direct sum M2&#x27;,&#x27;weights&#x27;:list(map(str,w)),&#x27;transition_P&#x27;:encode(P),&#x27;likelihood_R&#x27;:encode(R),&#x27;noncanonical_preparation&#x27;:True,&#x27;block_changing&#x27;:True,&#x27;kraus_spin&#x27;:[&#x27;diag(4/5,3/5)&#x27;,&#x27;diag(3/5,4/5)&#x27;],&#x27;L&#x27;:encode(L),&#x27;Q&#x27;:encode(Q),&#x27;Psi&#x27;:encode(Psi),&#x27;Phi&#x27;:encode(Phi),&#x27;Gram&#x27;:encode(G),&#x27;principal_minor_certificates&#x27;:certs,&#x27;exact_SOS_identity&#x27;:True,&#x27;effects_and_preparations&#x27;:effects,&#x27;exact_diagonal_likelihood_fixtures&#x27;:fixtures,&#x27;wall_seconds&#x27;:time.monotonic()-start}
+(ROOT/&#x27;weighted_instrument_check.json&#x27;).write_text(json.dumps(out,indent=2)+&#x27;\n&#x27;)
+print(json.dumps({k:out[k] for k in [&#x27;status&#x27;,&#x27;principal_minor_certificates&#x27;,&#x27;exact_SOS_identity&#x27;,&#x27;exact_diagonal_likelihood_fixtures&#x27;,&#x27;wall_seconds&#x27;]},indent=2))
+</pre><p><a href="../assets/ec9886511d08f60d0b0efe006cdf3a3fbdcb32e543f0dbd53b3ad0f97d8d4dbf.py">Exact original bytes</a></p></html>

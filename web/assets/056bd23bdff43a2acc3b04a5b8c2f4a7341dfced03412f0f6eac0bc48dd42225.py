@@ -1,0 +1,101 @@
+"""Exact small-p check of the local virtual-projection identities.
+
+This checks N=1 and p=1,2,3 at a symbolic m with one rational unit axis.
+The derivation in VIRTUAL_PROJECTION_AUDIT.txt is the all-p proof; these
+fixtures are transcription checks only.
+"""
+from itertools import product
+
+import sympy as sp
+
+
+MX, MY, MZ = sp.symbols("mx my mz", real=True)
+M = sp.Matrix([MX, MY, MZ])
+X = MX**2 + MY**2 + MZ**2
+XS = sp.symbols("x", real=True)
+N = sp.Matrix([sp.Rational(3, 5), 0, sp.Rational(4, 5)])
+SIGMA = [
+    sp.Matrix([[0, 1], [1, 0]]),
+    sp.Matrix([[0, -sp.I], [sp.I, 0]]),
+    sp.Matrix([[1, 0], [0, -1]]),
+]
+
+
+def kron_all(mats):
+    out = mats[0]
+    for item in mats[1:]:
+        out = sp.kronecker_product(out, item)
+    return out
+
+
+def symmetric_basis(p):
+    rows = 2**p
+    cols = p + 1
+    U = sp.zeros(rows, cols)
+    bitstrings = list(product((0, 1), repeat=p))
+    for k in range(p + 1):
+        norm = sp.sqrt(sp.binomial(p, k))
+        for row, bits in enumerate(bitstrings):
+            if sum(bits) == k:
+                U[row, k] = 1 / norm
+    return U
+
+
+def eta(p):
+    F = sum(sp.binomial(p + 1, 2 * h + 1) * XS**h for h in range(p // 2 + 1))
+    et = p + 2 * (1 - XS) * sp.diff(F, XS) / F
+    return sp.simplify(et.subs(XS, X))
+
+
+def simplify_matrix(A):
+    return A.applyfunc(lambda z: sp.factor(sp.cancel(z)))
+
+
+def check(p):
+    U = symmetric_basis(p)
+    rho = (sp.eye(2) + sum((M[i] * SIGMA[i] for i in range(3)), sp.zeros(2))) / 2
+    qv = kron_all([rho] * p)
+    q = simplify_matrix(U.conjugate().T * qv * U)
+    z = sp.factor(sp.trace(q))
+    F = sum(sp.binomial(p + 1, 2 * h + 1) * X**h for h in range(p // 2 + 1))
+    assert sp.simplify(z - F / 2**p) == 0
+    R = simplify_matrix(q / z)
+
+    sn = sum((N[i] * SIGMA[i] for i in range(3)), sp.zeros(2)) / 2
+    Jv = sum(
+        (kron_all([sp.eye(2) if site != slot else sn for site in range(p)])
+         for slot in range(p)),
+        sp.zeros(2**p),
+    )
+    J = simplify_matrix(U.conjugate().T * Jv * U)
+    u = sp.simplify((N.T * M)[0])
+    V = N - u * M
+    Rot = N.cross(M)
+
+    def B(f):
+        out = eta(p) * u * f
+        for i, var in enumerate((MX, MY, MZ)):
+            out += V[i] * f.diff(var)
+        return simplify_matrix(out)
+
+    def Rop(f):
+        out = sp.zeros(*f.shape)
+        for i, var in enumerate((MX, MY, MZ)):
+            out += Rot[i] * f.diff(var)
+        return simplify_matrix(out)
+
+    anti = simplify_matrix(J * R + R * J)
+    comm = simplify_matrix(J * R - R * J)
+    assert simplify_matrix(anti - B(R)) == sp.zeros(p + 1)
+    assert simplify_matrix(comm - sp.I * Rop(R)) == sp.zeros(p + 1)
+
+    J2 = simplify_matrix(J * J)
+    lhs2 = simplify_matrix((J2 * R + R * J2) / 2)
+    rhs2 = simplify_matrix((B(B(R)) - Rop(Rop(R))) / 4)
+    assert simplify_matrix(lhs2 - rhs2) == sp.zeros(p + 1)
+    print(f"p={p}: trace, boost, rotation, and square identities exact")
+
+
+if __name__ == "__main__":
+    for p in (1, 2, 3):
+        check(p)

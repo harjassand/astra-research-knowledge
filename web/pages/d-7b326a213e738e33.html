@@ -1,0 +1,68 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c04_s01/sign_povm.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c04_s01/sign_povm.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Acquire exact polynomial-size real-flat canonical POVM.
+Outputs trace-dual finite-field labels for the Walsh embedding. This uses
+integer arithmetic only; exact four-wise moment checks certify the frame.
+No hardware circuit or floating point certification is claimed.
+&quot;&quot;&quot;
+from pathlib import Path
+import itertools,json
+
+def pmod(a,b):
+ while a.bit_length()&gt;=b.bit_length(): a^=b&lt;&lt;(a.bit_length()-b.bit_length())
+ return a
+
+def gcd(a,b):
+ while b:a,b=b,pmod(a,b)
+ return a
+
+def mul(a,b,p,t):
+ v=0
+ while b:
+  if b&amp;1:v^=a
+  b&gt;&gt;=1;a&lt;&lt;=1
+  if a&amp;(1&lt;&lt;t):a^=p
+ return v
+
+def irreducible(p,t):
+ x=2;y=x
+ for j in range(1,t+1):
+  y=mul(y,y,p,t)
+  if j&lt;=t//2 and gcd(y^x,p)!=1:return False
+ return y==x
+
+def field(d):
+ t=(d+1).bit_length()-1
+ if (1&lt;&lt;t)&lt;d+1:t+=1
+ for p in range((1&lt;&lt;t)|1,1&lt;&lt;(t+1),2):
+  if irreducible(p,t):return t,p
+ raise RuntimeError(&#x27;irreducible polynomial not found&#x27;)
+
+def trace(a,p,t):
+ b=a;v=0
+ for j in range(t):v^=b;b=mul(b,b,p,t)
+ assert v in [0,1]
+ return v
+
+def acquire(d):
+ t,p=field(d);q=1&lt;&lt;t;labels=[]
+ for x in range(1,d+1):
+  x3=mul(mul(x,x,p,t),x,p,t)
+  a=sum(trace(mul(1&lt;&lt;j,x,p,t),p,t)&lt;&lt;j for j in range(t))
+  b=sum(trace(mul(1&lt;&lt;j,x3,p,t),p,t)&lt;&lt;j for j in range(t))
+  labels.append(a|(b&lt;&lt;t))
+ assert len(set(labels))==d
+ cnt=0
+ for k in range(1,min(4,d)+1):
+  for subset in itertools.combinations(labels,k):
+   z=0
+   for x in subset:z^=x
+   assert z!=0
+   cnt+=1
+ # Sum_s s_i s_j = q^2 delta_ij exactly: character orthogonality.
+ # Full signs are s(seed,i)=(-1)^popcount(seed &amp; labels[i]).
+ # Row W_seed,i=s(seed,i)/q. M_seed=|s&gt;&lt;s|/q^2.
+ return {&#x27;d&#x27;:d,&#x27;field_degree&#x27;:t,&#x27;irreducible_polynomial_bits&#x27;:p,&#x27;q&#x27;:q,&#x27;POVM_outcomes&#x27;:q*q,&#x27;outcome_bits&#x27;:2*t,&#x27;walsh_labels&#x27;:labels,&#x27;distinct_subset_moment_checks&#x27;:cnt,&#x27;mean_and_fourth_moments&#x27;:&#x27;EXACT_BY_CHARACTER_ORTHOGONALITY&#x27;,&#x27;effect_entries&#x27;:&#x27;s_i s_j / q^2&#x27;,&#x27;prepared_projector_entries&#x27;:&#x27;s_i s_j / d&#x27;}
+if __name__==&#x27;__main__&#x27;:
+ rows=[acquire(d)for d in [2,3,4,5,8,12,16]]
+ Path(__file__).with_suffix(&#x27;.json&#x27;).write_text(json.dumps({&#x27;frames&#x27;:rows,&#x27;scope&#x27;:&#x27;implemented finite-field labels, exact moment tests, finite POVM; no gate compiler/hardware run&#x27;},indent=2)+&#x27;\n&#x27;)
+ print(json.dumps({&#x27;d_values&#x27;:[r[&#x27;d&#x27;]for r in rows],&#x27;outcome_counts&#x27;:[r[&#x27;POVM_outcomes&#x27;]for r in rows],&#x27;all_integer_checks_passed&#x27;:True}))
+</pre><p><a href="../assets/26abbf50a82de139ce409382452c14bcf1da854c74d5ad05934047722780b09c.py">Exact original bytes</a></p></html>

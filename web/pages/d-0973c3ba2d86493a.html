@@ -1,0 +1,110 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c04_l04/qutrit_cloner_exact.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c04_l04/qutrit_cloner_exact.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Exact qutrit audit for the sharp c=2 broadcasting/Dirichlet boundary.
+
+This is a symbolic identity check, not a proof of the unrestricted theorem.
+It uses the eight Gell-Mann directions and an explicit 12-vector qutrit MUB.
+&quot;&quot;&quot;
+
+import sympy as s
+
+
+d = 3
+I3 = s.eye(d)
+I9 = s.eye(d * d)
+
+# Swap on C^3 tensor C^3 and the symmetric projector.
+F = s.zeros(d * d)
+for i in range(d):
+    for j in range(d):
+        F[i * d + j, j * d + i] = 1
+Pplus = (I9 + F) / 2
+
+def ptr2(x):
+    return s.Matrix(d, d, lambda i, k: sum(x[i * d + j, k * d + j] for j in range(d)))
+
+
+# Generic input matrix. The channel B(X)=1/2 P_+(X tensor I)P_+ is CP by
+# construction, symmetric in its outputs, and has the displayed marginal.
+x = s.symbols(&quot;x00:03 x10:13 x20:23&quot;)
+X = s.Matrix(3, 3, x)
+B = s.Rational(1, 2) * Pplus * s.kronecker_product(X, I3) * Pplus
+expected = (5 * X + s.trace(X) * I3) / 8
+assert ptr2(B) == expected
+assert s.trace(B) == s.trace(X)
+assert F * B * F == B
+
+# The eight traceless Hermitian Gell-Mann matrices, normalized by
+# Tr(G_a G_b)=3 delta_ab, form a tau-orthonormal basis.
+rt = s.sqrt(3)
+lam = [
+    s.Matrix([[0, 1, 0], [1, 0, 0], [0, 0, 0]]),
+    s.Matrix([[0, -s.I, 0], [s.I, 0, 0], [0, 0, 0]]),
+    s.diag(1, -1, 0),
+    s.Matrix([[0, 0, 1], [0, 0, 0], [1, 0, 0]]),
+    s.Matrix([[0, 0, -s.I], [0, 0, 0], [s.I, 0, 0]]),
+    s.Matrix([[0, 0, 0], [0, 0, 1], [0, 1, 0]]),
+    s.Matrix([[0, 0, 0], [0, 0, -s.I], [0, s.I, 0]]),
+    s.diag(1, 1, -2) / rt,
+]
+G = [s.sqrt(s.Rational(3, 2)) * a for a in lam]
+for a in range(8):
+    assert s.trace(G[a] * G[a]) == 3
+    assert s.trace(G[a]) == 0
+    for b in range(a):
+        assert s.trace(G[a] * G[b]) == 0
+assert sum((s.kronecker_product(g, g) for g in G), s.zeros(9)) == 3 * F - I9
+
+# Explicit complete set of four qutrit MUBs: computational basis and
+# |psi_(a,b)&gt; = 3^-1/2 sum_x omega^(a*x^2+b*x)|x&gt; for a,b in F_3.
+omega = -s.Rational(1, 2) + s.sqrt(3) * s.I / 2
+vectors = []
+for j in range(3):
+    v = s.zeros(3, 1)
+    v[j] = 1
+    vectors.append(v)
+for a in range(3):
+    for b in range(3):
+        vectors.append(s.Matrix([omega ** (a * j * j + b * j) / rt for j in range(3)]))
+projectors = [v * v.conjugate().T for v in vectors]
+sum_p = sum(projectors, s.zeros(3))
+sum_pp = sum((s.kronecker_product(p, p) for p in projectors), s.zeros(9))
+assert s.simplify(sum_p - 4 * I3) == s.zeros(3)
+assert s.simplify(sum_pp - (I9 + F)) == s.zeros(9)
+
+# Effects M_y=P_y/4 form a POVM. Its canonical EB channel is
+# Psi(A)=1/4 sum_y Tr(P_y A)P_y=(A+Tr(A)I)/4.
+def psi(a):
+    return sum((s.trace(p * a) * p for p in projectors), s.zeros(3)) / 4
+
+assert s.simplify(psi(X) - (X + s.trace(X) * I3) / 4) == s.zeros(3)
+
+# On scalars both marginal and EB comparator are identity; on every
+# traceless direction their eigenvalues are 5/8 and 1/4, respectively.
+# Therefore 2(I-Phi)=I-Psi exactly, while any c&lt;2 fails on the traceless
+# subspace after Haar/unitary twirling (or by the frame witness below).
+for g in G:
+    assert expected.subs({x[k]: g[k // 3, k % 3] for k in range(9)}) == s.Rational(5, 8) * g
+    assert s.simplify(psi(g) - s.Rational(1, 4) * g) == s.zeros(3)
+
+# Uniform prior on the finite eight-element scaled frame H_a=theta G_a/sqrt(2).
+# Completeness gives sum_a &lt;psi|G_a|psi&gt;^2=2 for every pure psi, so the
+# collective-variance witness is exact and saturates q &lt;= c * mean Dirichlet.
+theta = s.symbols(&quot;theta&quot;, positive=True)
+Hscale = theta / s.sqrt(2)
+V = Hscale**2
+C = Hscale**2 * s.Rational(2, 8)
+q_witness = s.simplify(V - C)
+mean_dirichlet = s.simplify(s.Rational(3, 8) * V)
+assert s.simplify(q_witness - 2 * mean_dirichlet) == 0
+
+print({
+    &quot;status&quot;: &quot;PASS_EXACT_IDENTITIES&quot;,
+    &quot;dimension&quot;: 3,
+    &quot;cloner_marginal&quot;: &quot;(5 X + Tr(X) I)/8&quot;,
+    &quot;canonical_MUB_channel&quot;: &quot;(X + Tr(X) I)/4&quot;,
+    &quot;Dirichlet_identity&quot;: &quot;2(I-Phi) = I-Psi&quot;,
+    &quot;uniform_frame_variance_minus_capture&quot;: str(q_witness),
+    &quot;mean_Dirichlet_energy&quot;: str(mean_dirichlet),
+    &quot;ratio&quot;: &quot;2&quot;,
+    &quot;scope&quot;: &quot;exact finite-dimensional sharpness only; unrestricted c=2 theorem remains open&quot;,
+})
+</pre><p><a href="../assets/a1a73cfda3d94571296472c6253a0f48a6ee63971ff560f9a499a4a0c7626926.py">Exact original bytes</a></p></html>

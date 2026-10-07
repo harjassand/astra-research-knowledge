@@ -1,0 +1,344 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c03_s01/grassmann_bcs.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c03_s01/grassmann_bcs.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Exact hard-projected BCS norms by bounded-width Grassmann elimination.
+
+Standard library, rational real/imaginary pairs, no floating point arithmetic.
+Public functions: counts(F, allowed, order), width(F, order), min_degree_order(F).
+allowed[i] is a subset of {&#x27;0&#x27;,&#x27;u&#x27;,&#x27;d&#x27;} physical local occupations.
+F contains rational-complex values represented by (Fraction, Fraction).
+&quot;&quot;&quot;
+from fractions import Fraction as Q
+from itertools import combinations
+import json
+import random
+import time
+from pathlib import Path
+
+ZERO = (Q(0), Q(0))
+ONE = (Q(1), Q(0))
+
+def qc(a=0, b=0):
+    return (Q(a), Q(b))
+
+def add(a, b):
+    return (a[0]+b[0], a[1]+b[1])
+
+def neg(a):
+    return (-a[0], -a[1])
+
+def mul(a, b):
+    return (a[0]*b[0]-a[1]*b[1], a[0]*b[1]+a[1]*b[0])
+
+def conj(a):
+    return (a[0], -a[1])
+
+def div(a, b):
+    d=b[0]*b[0]+b[1]*b[1]
+    return ((a[0]*b[0]+a[1]*b[1])/d,
+            (a[1]*b[0]-a[0]*b[1])/d)
+
+def abs2(a):
+    return a[0]*a[0]+a[1]*a[1]
+
+def put(p, key, value):
+    if value == ZERO:
+        return
+    v=add(p.get(key, ZERO), value)
+    if v == ZERO:
+        p.pop(key, None)
+    else:
+        p[key]=v
+
+def wedge_sign(a, b):
+    &quot;&quot;&quot;Sign to sort all generators of a followed by those of b.&quot;&quot;&quot;
+    parity=0
+    aa=a
+    while aa:
+        bit=aa &amp; -aa
+        parity ^= (b &amp; (bit-1)).bit_count() &amp; 1
+        aa ^= bit
+    return -1 if parity else 1
+
+def product(p, q, stats=None):
+    out={}
+    for (a, ka), ca in p.items():
+        for (b, kb), cb in q.items():
+            if a &amp; b:
+                continue
+            c=mul(ca, cb)
+            if wedge_sign(a, b) &lt; 0:
+                c=neg(c)
+            put(out, (a|b, ka+kb), c)
+    if stats is not None:
+        stats[&#x27;products&#x27;] += 1
+        stats[&#x27;max_terms&#x27;] = max(stats[&#x27;max_terms&#x27;], len(out))
+    return out
+
+def linear_edge(a, b, c):
+    &quot;&quot;&quot;1 + c theta_a theta_b, input order retained exactly.&quot;&quot;&quot;
+    if c == ZERO:
+        return {(0, 0): ONE}
+    if a &gt; b:
+        c=neg(c)
+    return {(0, 0): ONE, ((1&lt;&lt;a)|(1&lt;&lt;b), 0): c}
+
+def support(F):
+    n=len(F)
+    adj=[set() for _ in range(n)]
+    for i in range(n):
+        for j in range(i):
+            if F[i][j] != ZERO or F[j][i] != ZERO:
+                adj[i].add(j)
+                adj[j].add(i)
+    return adj
+
+def width(F, order):
+    n=len(F)
+    if sorted(order) != list(range(n)):
+        raise ValueError(&#x27;order must be a permutation of the sites&#x27;)
+    adj=support(F)
+    live=set(range(n))
+    w=0
+    for v in order:
+        ns=adj[v] &amp; live
+        w=max(w, len(ns))
+        for a, b in combinations(ns, 2):
+            adj[a].add(b)
+            adj[b].add(a)
+        live.remove(v)
+    return w
+
+def min_degree_order(F):
+    &quot;&quot;&quot;Acquired heuristic order; no optimal-treewidth promise is asserted.&quot;&quot;&quot;
+    adj=support(F)
+    live=set(range(len(F)))
+    out=[]
+    while live:
+        v=min(live, key=lambda u:(len(adj[u]&amp;live), u))
+        ns=adj[v]&amp;live
+        for a, b in combinations(ns, 2):
+            adj[a].add(b)
+            adj[b].add(a)
+        live.remove(v)
+        out.append(v)
+    return out
+
+def counts(F, allowed=None, order=None, stats=None):
+    n=len(F)
+    if any(len(r)!=n for r in F):
+        raise ValueError(&#x27;F must be square&#x27;)
+    if allowed is None:
+        allowed=[{&#x27;0&#x27;,&#x27;u&#x27;,&#x27;d&#x27;} for _ in range(n)]
+    if len(allowed)!=n or any(set(s)-{&#x27;0&#x27;,&#x27;u&#x27;,&#x27;d&#x27;} for s in allowed):
+        raise ValueError(&#x27;invalid physical local occupation table&#x27;)
+    if order is None:
+        order=min_degree_order(F)
+    w=width(F, order)
+    if stats is None:
+        stats={}
+    stats.update({&#x27;products&#x27;:0,&#x27;max_terms&#x27;:0,&#x27;width&#x27;:w,&#x27;order&#x27;:list(order)})
+    factors=[]
+    # Four generators per site: bar-u,u,bar-d,d, in that order.
+    for i in range(n):
+        A=3&lt;&lt;(4*i)
+        B=12&lt;&lt;(4*i)
+        p={}
+        if &#x27;0&#x27; in allowed[i]: p[(A|B, 0)]=ONE
+        if &#x27;u&#x27; in allowed[i]: p[(B, 1)]=ONE
+        if &#x27;d&#x27; in allowed[i]: p[(A, 0)]=ONE
+        factors.append(({i}, p))
+    # Diagonal F is irrelevant under hard projection and is omitted.
+    for i in range(n):
+        for j in range(n):
+            if i==j or F[i][j]==ZERO:
+                continue
+            e1=linear_edge(4*i, 4*j+3, F[i][j])
+            e2=linear_edge(4*j+2, 4*i+1, neg(conj(F[i][j])))
+            factors.append(({i,j}, product(e1, e2, stats)))
+    for i in order:
+        bucket=[]
+        rem=[]
+        for scope, p in factors:
+            (bucket if i in scope else rem).append((scope,p))
+        bucket.sort(key=lambda f:len(f[1]))
+        p={(0,0):ONE}
+        scope=set()
+        for sc, q in bucket:
+            scope |= sc
+            p=product(p,q,stats)
+        mask=15&lt;&lt;(4*i)
+        out={}
+        # Removing a complete four-generator site block has even sign.
+        for (a,k),c in p.items():
+            if a &amp; mask == mask:
+                put(out,(a^mask,k),c)
+        scope.discard(i)
+        factors=rem+[(scope,out)]
+    p={(0,0):ONE}
+    for scope,q in factors:
+        assert not scope
+        p=product(p,q,stats)
+    ans=[Q(0) for _ in range(n//2+1)]
+    for (a,k),c in p.items():
+        assert a==0 and c[1]==0 and c[0]&gt;=0 and k&lt;=n//2
+        ans[k] += c[0]
+    return ans
+
+def determinant(A):
+    A=[list(r) for r in A]
+    r=len(A)
+    d=ONE
+    for j in range(r):
+        p=next((i for i in range(j,r) if A[i][j]!=ZERO),None)
+        if p is None: return ZERO
+        if p!=j:
+            A[p],A[j]=A[j],A[p]
+            d=neg(d)
+        pivot=A[j][j]
+        d=mul(d,pivot)
+        for i in range(j+1,r):
+            a=div(A[i][j],pivot)
+            for k in range(j+1,r):
+                A[i][k]=add(A[i][k],neg(mul(a,A[j][k])))
+    return d
+
+def brute_counts(F,allowed=None):
+    n=len(F)
+    if allowed is None: allowed=[{&#x27;0&#x27;,&#x27;u&#x27;,&#x27;d&#x27;} for _ in range(n)]
+    out=[Q(0) for _ in range(n//2+1)]
+    for k in range(n//2+1):
+        for I in combinations(range(n),k):
+            Is=set(I)
+            for J in combinations([i for i in range(n) if i not in Is],k):
+                Js=set(J)
+                if any((&#x27;u&#x27; if i in Is else &#x27;d&#x27; if i in Js else &#x27;0&#x27;)
+                       not in allowed[i] for i in range(n)):
+                    continue
+                out[k] += abs2(determinant([[F[i][j] for j in J] for i in I]))
+    return out
+
+def sample(F, k=None, epsilon=Q(1,1000), rng=None, order=None):
+    &quot;&quot;&quot;Finite-random-bit approximate Born self-reduction; no rejection.
+
+    k=None samples the grandcanonical norm at fugacity one. Otherwise use
+    exactly the requested canonical sector. Error bound: TV &lt;= epsilon.
+    The exact width-dependent counter is called at most 3n+1 times.
+    &quot;&quot;&quot;
+    n=len(F)
+    if not 0 &lt; epsilon &lt;= 1:
+        raise ValueError(&#x27;epsilon must be in (0,1]&#x27;)
+    if k is not None and not 0 &lt;= k &lt;= n//2:
+        raise ValueError(&#x27;canonical pair count is outside its physical range&#x27;)
+    if rng is None:
+        rng=random.SystemRandom()
+    if order is None:
+        order=min_degree_order(F)
+    allowed=[{&#x27;0&#x27;,&#x27;u&#x27;,&#x27;d&#x27;} for _ in range(n)]
+    def mass(table):
+        c=counts(F,table,order)
+        return sum(c) if k is None else c[k]
+    z=mass(allowed)
+    if z==0:
+        raise ValueError(&#x27;requested sector has exact zero norm&#x27;)
+    bits=0
+    D=1
+    while D &lt; 2*max(1,n)/epsilon:
+        bits += 1
+        D *= 2
+    state=[]
+    trace=[]
+    for i in range(n):
+        ws=[]
+        for local in (&#x27;0&#x27;,&#x27;u&#x27;,&#x27;d&#x27;):
+            allowed[i]={local}
+            ws.append(mass(allowed))
+        assert sum(ws)==z
+        cum=Q(0)
+        bounds=[0]
+        for a in ws[:-1]:
+            cum += a
+            bounds.append((D*cum/z).numerator // (D*cum/z).denominator)
+        bounds.append(D)
+        r=rng.getrandbits(bits)
+        branch=next(j for j in range(3) if bounds[j] &lt;= r &lt; bounds[j+1])
+        local=(&#x27;0&#x27;,&#x27;u&#x27;,&#x27;d&#x27;)[branch]
+        assert ws[branch]&gt;0
+        allowed[i]={local}
+        state.append(local)
+        trace.append({&#x27;site&#x27;:i,&#x27;weights&#x27;:[str(x) for x in ws],
+                      &#x27;dyadic_bounds&#x27;:bounds,&#x27;branch&#x27;:local})
+        z=ws[branch]
+    if k is not None:
+        assert state.count(&#x27;u&#x27;)==state.count(&#x27;d&#x27;)==k
+    return {&#x27;occupation&#x27;:state,&#x27;pair_count&#x27;:state.count(&#x27;u&#x27;),
+            &#x27;bits_per_site&#x27;:bits,&#x27;random_bits&#x27;:n*bits,
+            &#x27;TV_bound&#x27;:str(Q(2*n,D)),&#x27;trace&#x27;:trace}
+
+def test():
+    rng=random.Random(6190301)
+    t0=time.monotonic()
+    cases=[]
+    for n in range(1,6):
+        for rep in range(4):
+            F=[[qc() for j in range(n)] for i in range(n)]
+            for i in range(n):
+                for j in range(n):
+                    if rng.randrange(4)!=0:
+                        F[i][j]=qc(Q(rng.randrange(-2,3),rng.randrange(1,4)),
+                                   Q(rng.randrange(-1,2),rng.randrange(1,4)))
+            cases.append(F)
+    # Connected nonbipartite, nonmonomial, unbounded-component example.
+    for n in (5,7):
+        F=[[qc() for _ in range(n)] for _ in range(n)]
+        for v in range(0,n-2,2):
+            for i,j in combinations((v,v+1,v+2),2):
+                F[i][j]=qc(Q(2,3),Q(1,2))
+                F[j][i]=qc(Q(-1,3),Q(1,4))
+        cases.append(F)
+    count_checks=0
+    prefix_checks=0
+    rows=[]
+    for F in cases:
+        n=len(F)
+        st={}
+        a=counts(F,stats=st)
+        assert a==brute_counts(F)
+        count_checks += 1
+        # Several arbitrary elimination orders catch Grassmann sign issues.
+        for rep in range(2):
+            order=list(range(n))
+            rng.shuffle(order)
+            assert counts(F,order=order)==a
+            count_checks += 1
+        for rep in range(3):
+            allowed=[]
+            for i in range(n):
+                s={x for x in (&#x27;0&#x27;,&#x27;u&#x27;,&#x27;d&#x27;) if rng.randrange(3)}
+                allowed.append(s)
+            assert counts(F,allowed)==brute_counts(F,allowed)
+            prefix_checks += 1
+        rows.append({&#x27;n&#x27;:n,&#x27;stats&#x27;:st,&#x27;counts&#x27;:[str(x) for x in a]})
+    # A chain of 15 triangles: rank and connected component grow with n.
+    n=31
+    F=[[qc() for _ in range(n)] for _ in range(n)]
+    for v in range(0,n-2,2):
+        for i,j in combinations((v,v+1,v+2),2):
+            F[i][j]=qc(1)
+            F[j][i]=qc(-1)
+    st={}
+    t1=time.monotonic()
+    a=counts(F,stats=st)
+    assert st[&#x27;width&#x27;]==2
+    assert a[0]==1 and a[1]==90
+    # This skew pair matrix has odd n, but no bipartite support premise.
+    long={&#x27;n&#x27;:n,&#x27;stats&#x27;:st,&#x27;counts&#x27;:[str(x) for x in a],
+          &#x27;wall_seconds&#x27;:time.monotonic()-t1}
+    sam=sample(F,k=15,epsilon=Q(1,1000),rng=rng)
+    result={&#x27;status&#x27;:&#x27;PASS&#x27;,&#x27;exact_arithmetic&#x27;:&#x27;Fraction real and imaginary&#x27;,
+            &#x27;direct_count_checks&#x27;:count_checks,&#x27;prefix_checks&#x27;:prefix_checks,
+            &#x27;cases&#x27;:rows,&#x27;connected_triangle_chain&#x27;:long,&#x27;canonical_sample&#x27;:sam,
+            &#x27;wall_seconds&#x27;:time.monotonic()-t0}
+    path=Path(__file__).with_name(&#x27;grassmann_checks.json&#x27;)
+    path.write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({k:v for k,v in result.items() if k not in (&#x27;cases&#x27;,)},indent=2))
+
+if __name__==&#x27;__main__&#x27;: test()
+</pre><p><a href="../assets/658c7fb706df1781599626daf8b117da5ee0feb4578bf314ef59c6a8f4c446d3.py">Exact original bytes</a></p></html>

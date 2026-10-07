@@ -1,0 +1,58 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c03_s03/lowk_count_sample.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c03_s03/lowk_count_sample.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;JSON interface for exact-bit low-k relative counts and TV samples.&quot;&quot;&quot;
+from lowk_bcs import *
+import argparse
+import json
+from pathlib import Path
+
+
+def rational(x):
+    if isinstance(x, float):
+        raise ValueError(&#x27;encode exact rationals as integers or fraction strings&#x27;)
+    return Q(x)
+
+
+def entry(x):
+    return C(rational(x.get(&#x27;re&#x27;, 0)), rational(x.get(&#x27;im&#x27;, 0))) if isinstance(x, dict) else C(rational(x))
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(&#x27;input&#x27;)
+    args = parser.parse_args()
+    data = json.loads(Path(args.input).read_text())
+    f = [[entry(x) for x in row] for row in data[&#x27;F&#x27;]]
+    counter = LowKCounter(f, data[&#x27;pair_count&#x27;], data.get(&#x27;exact_sign_cap&#x27;, 256), data.get(&#x27;sign_budget&#x27;, 1000000))
+    rng = random.Random(data[&#x27;seed&#x27;]) if &#x27;seed&#x27; in data else random.SystemRandom()
+    out = {&#x27;method&#x27;: &#x27;paired-Pfaffian row projection and exact column volumes&#x27;, &#x27;arithmetic&#x27;: &#x27;Q(i) and Gaussian integers&#x27;,
+           &#x27;rng&#x27;: &#x27;seeded reproducibility fixture&#x27; if &#x27;seed&#x27; in data else &#x27;OS random-bit interface&#x27;,
+           &#x27;admitted_scope&#x27;: &#x27;arbitrary explicit rational-complex F, hard filters, prescribed low k&#x27;,
+           &#x27;pair_count&#x27;: counter.k, &#x27;sector_moment_bound&#x27;: math.comb(2*counter.k, counter.k)}
+    try:
+        estimate, receipt = counter.estimate(eta=rational(data.get(&#x27;count_relative_accuracy&#x27;, &#x27;1/4&#x27;)),
+                                             delta=rational(data.get(&#x27;count_failure_probability&#x27;, &#x27;1/16&#x27;)),
+                                             rng=rng, mode=data.get(&#x27;mode&#x27;, &#x27;auto&#x27;))
+        out[&#x27;norm_estimate&#x27;], out[&#x27;count_receipt&#x27;] = str(estimate), receipt
+        exact = receipt[&#x27;kind&#x27;].startswith(&#x27;EXACT&#x27;)
+        number = data.get(&#x27;samples&#x27;, 1)
+        if number and exact and not estimate:
+            out[&#x27;sample_status&#x27;] = &#x27;ZERO_SECTOR_EXACT&#x27;
+        elif number and not exact and not data.get(&#x27;positive_sector_promise&#x27;, False):
+            out[&#x27;sample_status&#x27;] = &#x27;UNKNOWN: randomized count is not an exact positive-sector certificate; promise required&#x27;
+        else:
+            samples = []
+            for _ in range(number):
+                i, j, sample_receipt = counter.sample(rational(data.get(&#x27;epsilon&#x27;, &#x27;1/10&#x27;)), rng, data.get(&#x27;mode&#x27;, &#x27;auto&#x27;))
+                samples.append({&#x27;up&#x27;: list(i), &#x27;down&#x27;: list(j), &#x27;receipt&#x27;: sample_receipt})
+            out[&#x27;samples&#x27;] = samples
+            out[&#x27;sample_accuracy_scope&#x27;] = &#x27;each draw has stated TV bound on the positive-sector promise&#x27;
+    except BudgetExceeded as e:
+        out[&#x27;status&#x27;] = &#x27;RUN_BUDGET_EXCEEDED&#x27;
+        out[&#x27;reason&#x27;] = str(e)
+        out[&#x27;accuracy_status&#x27;] = &#x27;no estimate or sample guarantee is claimed for an incomplete call&#x27;
+    out[&#x27;stats&#x27;] = counter.stats
+    print(json.dumps(out, indent=2))
+
+
+if __name__ == &#x27;__main__&#x27;:
+    main()
+</pre><p><a href="../assets/288fc7d98c9a0b940f4bdce3744c688a84765a4195bd7813d3f456883f153413.py">Exact original bytes</a></p></html>

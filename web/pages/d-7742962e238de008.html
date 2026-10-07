@@ -1,0 +1,111 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c01_s02/phase2/residual_counter.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c01_s02/phase2/residual_counter.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Executable mandatory-core residual counter, with an explicit admission cap.
+
+All arithmetic is exact. Randomness in diagnostics is seeded; the theorem
+assumes independent uniform fair bits. The cap avoids exponential work on an
+unadmitted input. Only imports the owned paired_exact module.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from math import ceil, isqrt, comb
+from statistics import median
+
+from paired_exact import Q, canonical, estimator_sample, force_project, mandatory_core_pit
+
+
+def log2_ceil(x):
+    assert x &gt;= 1
+    if not isinstance(x, F):
+        x = F(x)
+    exponent = max(0, x.numerator.bit_length()-x.denominator.bit_length())
+    while F(1 &lt;&lt; exponent) &lt; x:
+        exponent += 1
+    return exponent
+
+
+def sqrt_up_to_activity(lam, gamma):
+    &quot;&quot;&quot;Find rational b with lam &lt;= b*b &lt;= (1+gamma)*lam.
+
+    Exact exponent normalization and integer square root; polynomial in binary
+    input length and log(1/gamma), including very small/large activities.
+    &quot;&quot;&quot;
+    assert lam &gt; 0 and 0 &lt; gamma &lt; 1
+    numerator, denominator = lam.numerator, lam.denominator
+    e = numerator.bit_length()-denominator.bit_length()
+    if F(2)**e &gt; lam:
+        e -= 1
+    a = e//2
+    x = lam/(F(2)**(2*a))
+    assert 1 &lt;= x &lt; 4
+    p = log2_ceil(F(3)/gamma)
+    scaled_numerator = x.numerator &lt;&lt; (2*p)
+    q = isqrt(scaled_numerator//x.denominator)
+    if q*q*x.denominator != scaled_numerator:
+        q += 1
+    b = F(q, 1 &lt;&lt; p)*(F(2)**a)
+    assert lam &lt;= b*b &lt;= (1+gamma)*lam
+    return b
+
+
+def paired_fpras(V, k, epsilon, delta, rng, second_moment_bound=None):
+    assert 0 &lt; epsilon &lt; 1 and 0 &lt; delta &lt; 1
+    if k == 0:
+        return {&#x27;value&#x27;: F(1), &#x27;sign_samples&#x27;: 0, &#x27;batches&#x27;: 0, &#x27;batch_size&#x27;: 0}
+    # Post-exposure improvement credited to c01_s01, FOUR_PHASE_VARIANCE_PROOF
+    # Section 2: tensor monomials have orthogonal exponents 0,1,2, and each
+    # collision class has size at most binom(2k,k).
+    if second_moment_bound is None:
+        second_moment_bound = comb(2*k, k)
+    assert second_moment_bound &gt;= 1
+    batch = ceil(F(4*second_moment_bound)/(epsilon*epsilon))
+    groups = 16*log2_ceil(F(1)/delta)+1
+    N = len(V[0])//2
+    means = []
+    for _ in range(groups):
+        total = F(0)
+        for _ in range(batch):
+            roots = [Q(1),Q(-1),Q(0,1),Q(0,-1)]
+            phases = [roots[rng.getrandbits(2)] for _ in range(N)]
+            total += estimator_sample(V, k, phases)
+        means.append(total/batch)
+    return {&#x27;value&#x27;: median(means), &#x27;sign_samples&#x27;: batch*groups,
+            &#x27;batches&#x27;: groups, &#x27;batch_size&#x27;: batch,
+            &#x27;relative_second_moment_bound&#x27;: second_moment_bound,
+            &#x27;phase_random_bits&#x27;: 2*N*batch*groups,
+            &#x27;four_phase_bound_origin&#x27;: &#x27;c01_s01 phase2 Section 2&#x27;}
+
+
+def mandatory_core_count(Fmat, k, epsilon, delta, residual_cap, rng, activities=None):
+    &quot;&quot;&quot;Count on the acquired subclass; UNKNOWN when residual exceeds cap.
+
+    Count accuracy &gt;=1-delta for inputs whose true mandatory residual is within
+    cap. With probability &gt;=1-delta/2, support/core classification is correct
+    on every input. False admission is possible only within that PIT budget.
+    &quot;&quot;&quot;
+    assert 0 &lt; epsilon &lt; 1 and 0 &lt; delta &lt; 1 and residual_cap &gt;= 0
+    V = canonical(Fmat)
+    N = len(Fmat)
+    if activities is not None:
+        assert len(activities) == N and all(lam &gt; 0 for lam in activities)
+    acquired = mandatory_core_pit(V, k, delta/2, rng)
+    if acquired[&#x27;status&#x27;].startswith(&#x27;ZERO&#x27;):
+        return {&#x27;status&#x27;: &#x27;ZERO_WITH_CONFIDENCE&#x27;, &#x27;value&#x27;: F(0), &#x27;acquisition&#x27;: acquired}
+    r = acquired[&#x27;residual&#x27;]
+    if r is None or r &gt; residual_cap:
+        return {&#x27;status&#x27;: &#x27;UNKNOWN&#x27;, &#x27;value&#x27;: None, &#x27;acquisition&#x27;: acquired}
+    d, W, remaining = force_project(V, acquired[&#x27;core&#x27;])
+    eta = epsilon
+    if activities is not None:
+        for i in acquired[&#x27;core&#x27;]:
+            d *= activities[i]
+        if r:
+            eta = epsilon/4
+            gamma = epsilon/(8*r)
+            for j, label in enumerate(remaining):
+                b = sqrt_up_to_activity(activities[label], gamma)
+                for row in W:
+                    row[2*j+1] = b*row[2*j+1]
+    estimate = paired_fpras(W, r, eta, delta/2, rng)
+    return {&#x27;status&#x27;: &#x27;APPROXIMATE_WITH_CONFIDENCE&#x27;, &#x27;value&#x27;: d*estimate[&#x27;value&#x27;],
+            &#x27;acquisition&#x27;: acquired, &#x27;factor&#x27;: d, &#x27;residual_estimate&#x27;: estimate,
+            &#x27;residual_cap&#x27;: residual_cap,
+            &#x27;claim&#x27;: &#x27;relative epsilon, confidence 1-delta on admitted inputs&#x27;}
+</pre><p><a href="../assets/7ee7f367a54eeed9b5e06cd4b054336828e33202c798f22fa54b3a627c931cd2.py">Exact original bytes</a></p></html>

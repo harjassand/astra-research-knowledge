@@ -1,0 +1,277 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c10_l03/revisions/audit_s03_hinge_compiler.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c10_l03/revisions/audit_s03_hinge_compiler.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Rational coordinate-hinge certificates for reciprocal catalytic networks.
+
+Own worker extension after frozen INITIAL. Proof: HINGE_RECOVERY.txt.
+The compact certificate needs no LP, CAD, stationary oracle or floating point.
+&quot;&quot;&quot;
+
+from fractions import Fraction as F
+from itertools import product
+from pathlib import Path
+from math import ceil
+import hashlib
+import json
+import sys
+import time
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / &quot;initial&quot;))
+from compiler import reaction, falling, serialize, check_weak_reversibility, fixtures
+
+
+def coordinate_unit(y):
+    return y.index(1) if sum(y) == 1 and max(y) == 1 else None
+
+
+def add_rate(table, key, r):
+    old = table.get(key, (F(0), F(0)))
+    table[key] = (old[0]+r.lo, old[1]+r.hi)
+
+
+def acquire_pattern(rs):
+    if not rs:
+        return None, &quot;empty input&quot;
+    d = len(rs[0].y)
+    immigration, degradation, beta, gamma, conversions = {}, {}, {}, {}, {}
+    for r in rs:
+        if len(r.y) != d or len(r.yp) != d or not 0 &lt; r.lo &lt;= r.hi:
+            return None, &quot;invalid dimension/rate box&quot;
+        if any(not isinstance(v, int) or v &lt; 0 for v in r.y+r.yp):
+            return None, &quot;noninteger complex&quot;
+        i, j = coordinate_unit(r.y), coordinate_unit(r.yp)
+        if sum(r.y) == 0 and j is not None:
+            add_rate(immigration, j, r)
+        elif i is not None and sum(r.yp) == 0:
+            add_rate(degradation, i, r)
+        elif i is not None and j is not None and i != j:
+            add_rate(conversions, (i, j), r)
+        elif i is not None and sum(r.yp) == 2:
+            extra = tuple(b-a for a,b in zip(r.y, r.yp))
+            added = coordinate_unit(extra) if min(extra) &gt;= 0 else None
+            if added is None:
+                return None, &quot;noncatalytic first-order branching&quot;
+            add_rate(beta, (added, i), r)
+        elif sum(r.y) == 2 and j is not None:
+            removed_vector = tuple(a-b for a,b in zip(r.y, r.yp))
+            removed = coordinate_unit(removed_vector) if min(removed_vector) &gt;= 0 else None
+            if removed is None:
+                return None, &quot;quadratic reaction is not single-count removal&quot;
+            add_rate(gamma, (removed, j), r)
+        else:
+            return None, &quot;reaction outside declared pattern&quot;
+    if any(i not in immigration or i not in degradation for i in range(d)):
+        return None, &quot;requires positive immigration and degradation for every species&quot;
+    if any((j,i) not in gamma for i,j in beta):
+        return None, &quot;missing reciprocal removal of a birth catalyst&quot;
+    if not check_weak_reversibility(rs):
+        return None, &quot;not weakly reversible&quot;
+    return {&quot;d&quot;: d, &quot;immigration&quot;: immigration, &quot;degradation&quot;: degradation,
+            &quot;beta&quot;: beta, &quot;gamma&quot;: gamma, &quot;conversions&quot;: conversions}, None
+
+
+def value(x, thresholds):
+    return 1+sum(max(0, n-h) for n,h in zip(x, thresholds))
+
+
+def compile_hinges(rs, q=2, expand_probability=True):
+    p, error = acquire_pattern(rs)
+    if p is None or not isinstance(q,int) or q &lt; 1:
+        return {&quot;status&quot;: &quot;REJECTED_CLASS&quot;, &quot;reason&quot;: error or &quot;invalid q&quot;}
+    d, beta, gamma = p[&quot;d&quot;], p[&quot;beta&quot;], p[&quot;gamma&quot;]
+    h = [1]*d
+    for (i,j), (_,upper) in beta.items():
+        h[i] = max(h[i], 1+ceil(upper/gamma[j,i][0]))
+    delta = min(z[0] for z in p[&quot;degradation&quot;].values())
+    immigration_upper = sum((z[1] for z in p[&quot;immigration&quot;].values()), F(0))
+    birth_constant = sum((z[1]*h[j] for (i,j),z in beta.items()), F(0))
+    conversion_constant = sum((z[1]*h[i] for (i,j),z in p[&quot;conversions&quot;].items()), F(0))
+    c = immigration_upper+birth_constant+conversion_constant
+    b = c+delta
+    linear_birth_slope=max((sum((z[1] for (i,jj),z in beta.items() if jj==j),F(0))
+                           for j in range(d)),default=F(0))
+    eta=delta/(2*(linear_birth_slope+delta))
+    exponential_base=1+eta
+    exponential_decay=eta/exponential_base
+    exponential_core=ceil((3*c+2)/delta)
+    exponential_factor=exponential_decay*(1+3*c/2)
+    core_v = (b+1)/delta
+    core_n = ceil(core_v+sum(h))
+    a = d*q
+    steps = core_n+a
+    count_cap = max(core_n,a)
+    rate_cap = sum((r.hi for r in rs), F(0))*(count_cap+1)**2
+    alpha = min(r.lo for r in rs)/(2*rate_cap)
+    duration = F(steps)/rate_cap
+    cert = {&quot;status&quot;: &quot;CERTIFIED&quot;, &quot;d&quot;: d, &quot;q&quot;: q, &quot;thresholds&quot;: h,
+            &quot;pattern&quot;: p, &quot;delta&quot;: delta, &quot;C&quot;: c, &quot;B&quot;: b,
+            &quot;linear_birth_slope&quot;:linear_birth_slope,
+            &quot;exponential_base&quot;:exponential_base,&quot;exponential_decay&quot;:exponential_decay,
+            &quot;exponential_core_Z&quot;:exponential_core,
+            &quot;exponential_offset_compact&quot;:{&quot;rational_coefficient&quot;:exponential_factor,
+                                          &quot;rational_base&quot;:exponential_base,
+                                          &quot;integer_exponent&quot;:exponential_core},
+            &quot;core_V_radius&quot;: core_v, &quot;core_count_cap&quot;: core_n,
+            &quot;target_word_length&quot;: a, &quot;attempt_steps&quot;: steps,
+            &quot;path_count_cap&quot;: count_cap, &quot;total_rate_cap&quot;: rate_cap,
+            &quot;one_step_probability&quot;: alpha, &quot;attempt_duration&quot;: duration,
+            &quot;success_probability_compact&quot;: {&quot;rational_base&quot;: alpha,&quot;integer_exponent&quot;: steps}}
+    if expand_probability:
+        cert[&quot;exponential_offset&quot;]=exponential_factor*exponential_base**exponential_core
+        success = alpha**steps
+        recovery = (core_v+(b+1)*duration)/success
+        cert.update({&quot;success_probability&quot;:success,&quot;recovery_constant&quot;:recovery,
+                     &quot;expanded_height_bits&quot;:max(recovery.numerator.bit_length(),
+                                                recovery.denominator.bit_length())})
+    return cert
+
+
+def direct_generator_box_max(rs, x, h):
+    vx = value(x,h)
+    result = F(0)
+    for r in rs:
+        f = falling(x,r.y)
+        if not f:
+            continue
+        xp = tuple(a+b for a,b in zip(x,r.nu))
+        dv = value(xp,h)-vx
+        result += f*max(r.lo*dv,r.hi*dv)
+    return result
+
+
+def boundary_words(rs,x,q):
+    d = len(x)
+    unary_death, immigration = {}, {}
+    for k,r in enumerate(rs):
+        i,j = coordinate_unit(r.y),coordinate_unit(r.yp)
+        if i is not None and sum(r.yp)==0:
+            unary_death.setdefault(i,k)
+        if sum(r.y)==0 and j is not None:
+            immigration.setdefault(j,k)
+    word = [unary_death[i] for i in range(d) for _ in range(x[i])]
+    word += [immigration[i] for i in range(d) for _ in range(q)]
+    current, cap = tuple(x), sum(x)
+    for k in word:
+        r = rs[k]
+        assert falling(current,r.y)
+        current = tuple(a+b for a,b in zip(current,r.nu))
+        cap = max(cap,sum(current))
+    assert current==(q,)*d and cap&lt;=max(sum(x),d*q)
+    assert len(word)==sum(x)+d*q
+    return len(word)
+
+
+def certify_cells(rs,cert):
+    &quot;&quot;&quot;Independent finite boundary/large-axis diagnostics, not proof replacement.&quot;&quot;&quot;
+    h, d = cert[&quot;thresholds&quot;], cert[&quot;d&quot;]
+    lattice = list(product(*(range(z+3) for z in h)))
+    lattice += [tuple((10**6 if i==j else a[i]) for i in range(d))
+                for j in range(d) for a in product((0,1),repeat=d)]
+    maximum_slack = None
+    for x in lattice:
+        gen = direct_generator_box_max(rs,x,h)
+        slack = cert[&quot;B&quot;]-cert[&quot;delta&quot;]*value(x,h)-gen
+        assert slack&gt;=0,(x,gen,cert)
+        # Independently evaluate the exact generator ratio of rational a^Z.
+        ratio=F(0)
+        z=value(x,h)-1
+        for r in rs:
+            f=falling(x,r.y)
+            if not f:
+                continue
+            xp=tuple(a+b for a,b in zip(x,r.nu))
+            dv=value(xp,h)-value(x,h)
+            assert -1&lt;=dv&lt;=1
+            change=cert[&quot;exponential_base&quot;]**dv-1
+            ratio+=f*max(r.lo*change,r.hi*change)
+        if z&gt;cert[&quot;exponential_core_Z&quot;]:
+            assert ratio&lt;=-cert[&quot;exponential_decay&quot;]
+        else:
+            assert ratio&lt;=-cert[&quot;exponential_decay&quot;]+cert[&quot;exponential_offset&quot;]/cert[&quot;exponential_base&quot;]**z
+        maximum_slack = slack if maximum_slack is None else max(maximum_slack,slack)
+    word_checks=0
+    for x in product(range(3),repeat=d):
+        boundary_words(rs,x,cert[&quot;q&quot;])
+        word_checks+=1
+    # Exact rational cancellation verifies every acquired edge threshold.
+    edges_checked=0
+    for (i,j),(_,upper) in cert[&quot;pattern&quot;][&quot;beta&quot;].items():
+        lower = cert[&quot;pattern&quot;][&quot;gamma&quot;][j,i][0]
+        assert lower*h[i]&gt;=upper
+        edges_checked+=1
+    return {&quot;count_states_checked&quot;:len(lattice),&quot;boundary_words_checked&quot;:word_checks,
+            &quot;rational_exponential_generator_states_checked&quot;:len(lattice),
+            &quot;edge_cancellations_checked&quot;:edges_checked,&quot;largest_slack&quot;:maximum_slack}
+
+
+def make_cycle(d):
+    def e(i): return tuple(int(j==i) for j in range(d))
+    zero=(0,)*d
+    rs=[]
+    for i in range(d):
+        rs += [reaction(zero,e(i),1,2,f&quot;0-&gt;{i}&quot;), reaction(e(i),zero,1,2,f&quot;{i}-&gt;0&quot;)]
+    for j,upper in enumerate([3,4,2]):
+        i=(j+1)%d
+        pair=tuple(a+b for a,b in zip(e(i),e(j)))
+        rs += [reaction(e(j),pair,1,upper,f&quot;{j}-&gt;{i}+{j}&quot;),
+               reaction(pair,e(i),1,2,f&quot;{i}+{j}-&gt;{i}&quot;)]
+    return rs
+
+
+if __name__ == &quot;__main__&quot;:
+    start=time.perf_counter()
+    cases={&quot;initial_balanced_cross_rescued&quot;:fixtures()[&quot;balanced_cross_rejection&quot;]}
+    cases[&quot;strong_birth_rate_boxes&quot;]=[reaction((0,0),(1,0),1,2),
+                                     reaction((1,0),(0,0),1,2),
+                                     reaction((0,0),(0,1),1,2),
+                                     reaction((0,1),(0,0),1,2),
+                                     reaction((1,0),(1,1),2,3),
+                                     reaction((1,1),(1,0),1,2),
+                                     reaction((0,1),(1,1),3,5),
+                                     reaction((1,1),(0,1),1,2)]
+    cases[&quot;three_species_directed_catalytic_cycle&quot;]=make_cycle(3)
+    cases[&quot;self_autocatalysis&quot;]=fixtures()[&quot;autocatalytic&quot;]
+    cases[&quot;rational_conversions&quot;]=(fixtures()[&quot;balanced_cross_rejection&quot;]+
+            [reaction((1,0),(0,1),F(1,3),F(2,3)),
+             reaction((0,1),(1,0),F(1,5),F(3,5))])
+    cases[&quot;parallel_rational_channels&quot;]=[reaction((0,),(1,),F(1,4),F(1,2)),
+            reaction((1,),(0,),F(1,3),F(2,3)),
+            reaction((1,),(2,),F(1,7),F(2,7)),
+            reaction((1,),(2,),F(1,11),F(3,11)),
+            reaction((2,),(1,),F(1,5),F(3,5)),
+            reaction((2,),(1,),F(1,13),F(2,13))]
+    output={&quot;scope&quot;:&quot;exact rational compiler plus finite symbolic/large-axis diagnostics; no trajectory simulation&quot;,
+            &quot;fixtures&quot;:{}}
+    for name,rs in cases.items():
+        cert=compile_hinges(rs)
+        assert cert[&quot;status&quot;]==&quot;CERTIFIED&quot;
+        output[&quot;fixtures&quot;][name]={&quot;reactions&quot;:[{&quot;y&quot;:r.y,&quot;yp&quot;:r.yp,&quot;lo&quot;:r.lo,&quot;hi&quot;:r.hi}
+                                                     for r in rs],&quot;certificate&quot;:cert,
+                                  &quot;exact_checks&quot;:certify_cells(rs,cert)}
+    # This rejection is structural; it does not label the network unstable.
+    missing_reciprocal=[reaction((0,0),(1,0)),reaction((1,0),(0,0)),
+                        reaction((0,0),(0,1)),reaction((0,1),(0,0)),
+                        reaction((1,0),(1,1)),reaction((1,1),(1,0))]
+    output[&quot;missing_reciprocal_rejection&quot;]=compile_hinges(missing_reciprocal)
+    assert output[&quot;missing_reciprocal_rejection&quot;][&quot;status&quot;]==&quot;REJECTED_CLASS&quot;
+    huge=fixtures()[&quot;balanced_cross_rejection&quot;][:4]+[
+            reaction((1,0),(1,1),2**40),reaction((1,1),(1,0)),
+            reaction((0,1),(1,1),2**40),reaction((1,1),(0,1))]
+    compact_start=time.perf_counter()
+    compact=compile_hinges(huge,expand_probability=False)
+    compact_seconds=time.perf_counter()-compact_start
+    assert compact[&quot;status&quot;]==&quot;CERTIFIED&quot; and &quot;exponential_offset&quot; not in compact
+    assert &quot;success_probability&quot; not in compact and &quot;recovery_constant&quot; not in compact
+    assert compact[&quot;thresholds&quot;]==[2**40+1,2**40+1]
+    output[&quot;huge_threshold_compact_fixture&quot;]={&quot;certificate&quot;:compact,
+            &quot;compact_wall_seconds&quot;:compact_seconds,
+            &quot;json_bytes&quot;:len(json.dumps(serialize(compact)).encode())}
+    output[&quot;wall_seconds&quot;]=time.perf_counter()-start
+    output[&quot;script_sha256&quot;]=hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
+    path=Path(__file__).with_name(&quot;hinge_checks.json&quot;)
+    path.write_text(json.dumps(serialize(output),indent=2)+&quot;\n&quot;)
+    print(json.dumps({&quot;path&quot;:str(path),&quot;wall_seconds&quot;:output[&quot;wall_seconds&quot;],
+                      &quot;fixtures&quot;:{k:{&quot;thresholds&quot;:v[&quot;certificate&quot;][&quot;thresholds&quot;],
+                                       &quot;C&quot;:str(v[&quot;certificate&quot;][&quot;C&quot;]),
+                                       &quot;B&quot;:str(v[&quot;certificate&quot;][&quot;B&quot;]),
+                                       &quot;expanded_height_bits&quot;:v[&quot;certificate&quot;][&quot;expanded_height_bits&quot;],
+                                       &quot;checks&quot;:serialize(v[&quot;exact_checks&quot;])}
+                                  for k,v in output[&quot;fixtures&quot;].items()}},indent=2))
+</pre><p><a href="../assets/d1e2c25010ebe8897d3f7d71e69f681878b0ce25fa3618b345445b9a9ebcfc13.py">Exact original bytes</a></p></html>

@@ -1,0 +1,91 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c03_s03/check_treecut_bcs.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c03_s03/check_treecut_bcs.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>from treecut_bcs import *
+from check_cutrank_bcs import brute
+from pathlib import Path
+from math import comb
+import itertools
+import json
+import time
+
+
+def run():
+    started = time.monotonic()
+    report = {&#x27;status&#x27;: &#x27;PASS&#x27;, &#x27;scope&#x27;: &#x27;finite exact tree-tensor diagnostics&#x27;,
+              &#x27;cases&#x27;: [], &#x27;amplitude_comparisons&#x27;: 0,
+              &#x27;count_comparisons&#x27;: 0, &#x27;prefix_comparisons&#x27;: 0}
+    F = [[C(((3*i+5*j+i*j) % 7)-3, ((i+2*j*j) % 5)-2)
+          for j in range(4)] for i in range(4)]
+    cases = [(&#x27;noncontiguous_original_labels&#x27;, F, ((3,1),(0,2)))]
+    F = [[C(1 if i &lt; j else 0) for j in range(5)] for i in range(5)]
+    cases.append((&#x27;one_direction_cutrank1&#x27;, F, balanced_order_tree(5)))
+    F = [[C(0) for _ in range(5)] for _ in range(5)]
+    for i, j in ((0,1),(0,3),(1,2),(1,4)):
+        F[i][j], F[j][i] = C(i+1,j+1), C(j+1,-i-1)
+    for i in range(5):
+        F[i][i] = C(Q(i+1,7))
+    ft = forest_tree(F)
+    assert ft is not None
+    cases.append((&#x27;acquired_forest_with_soft_diagonals&#x27;, F, ft))
+    F = [[C(0) for _ in range(5)] for _ in range(5)]
+    for i, j in ((0,1),(1,2),(2,0),(2,3),(3,4)):
+        F[i][j], F[j][i] = C(i+1,j+1), C(j+1,-i-1)
+    assert forest_tree(F) is None
+    st, sw = separator_tree(F, 2)
+    cases.append((&#x27;nonbipartite_acquired_separator&#x27;, F, st))
+    report[&#x27;separator_witness&#x27;] = sw
+    for name, F, tree in cases:
+        n = len(F)
+        compiled = acquire_tree(F, tree, max_dimension=32)
+        for x in itertools.product(range(4), repeat=n):
+            assert compiled.amplitude(x) == direct_amplitude(F, x), (name,x)
+            report[&#x27;amplitude_comparisons&#x27;] += 1
+        filters = [[Q(0)]*n, [Q(1)]*n,
+                   [Q(0) if i % 3 == 0 else Q(i+1,2) for i in range(n)]]
+        for t in filters:
+            assert tree_counts(compiled, t) == brute(F,t), (name,t)
+            report[&#x27;count_comparisons&#x27;] += 1
+        for prefix in ([0], [1], [2], [3], [1,2]):
+            allowed = [{prefix[i]} if i &lt; len(prefix) else set(range(4))
+                       for i in range(n)]
+            assert tree_counts(compiled, filters[2], allowed) == brute(F,filters[2],allowed)
+            report[&#x27;prefix_comparisons&#x27;] += 1
+            conditional = tree_counts(compiled, filters[2], allowed)
+            for k,z in enumerate(conditional):
+                if z:
+                    states = tree_sample(compiled,k,filters[2],random.Random(19+k),allowed)
+                    assert states[:len(prefix)] == prefix
+                    assert direct_amplitude(F,states)
+        cs = tree_counts(compiled)
+        for k, z in enumerate(cs):
+            if z:
+                x = tree_sample(compiled, k, rng=random.Random(8303+k))
+                assert 3 not in x and sum(y &amp; 1 for y in x) == k
+                assert direct_amplitude(F,x)
+        report[&#x27;cases&#x27;].append({&#x27;name&#x27;: name, &#x27;n&#x27;: n,
+                                &#x27;acquired_order&#x27;: compiled.order,
+                                &#x27;max_cutrank&#x27;: compiled.max_cutrank,
+                                &#x27;hard_counts&#x27;: [str(z) for z in cs]})
+    n = 12
+    F = [[C(1 if i &lt; j else 2 if i &gt; j else 0)
+          for j in range(n)] for i in range(n)]
+    compiled = acquire_tree(F, balanced_order_tree(n), max_dimension=16)
+    expected = [Q(1)]+[Q(5*comb(n,2*k)) if 2*k &lt;= n else Q(0)
+                      for k in range(1,n+1)]
+    assert tree_counts(compiled) == expected
+    report[&#x27;dense_fullrank_balanced_tree&#x27;] = {&#x27;n&#x27;: n,
+        &#x27;max_cutrank&#x27;: compiled.max_cutrank, &#x27;status&#x27;: &#x27;PASS&#x27;,
+        &#x27;hard_counts&#x27;: [str(z) for z in expected]}
+    F = [[C(i != j) for j in range(6)] for i in range(6)]
+    try:
+        separator_tree(F, 2)
+    except ValueError as e:
+        report[&#x27;separator_rejection_certificate&#x27;] = e.args[0]
+    else:
+        raise AssertionError(&#x27;K6 has no size&lt;=2 balanced separator&#x27;)
+    report[&#x27;elapsed_seconds&#x27;] = time.monotonic()-started
+    Path(__file__).with_name(&#x27;checks_tree.json&#x27;).write_text(json.dumps(report,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps(report,indent=2))
+
+
+if __name__ == &#x27;__main__&#x27;:
+    run()
+</pre><p><a href="../assets/72021ee3a0f9f3d82ae6d957b137c064d0d55fa4c1e2b0cfe54d6d38c2a194f6.py">Exact original bytes</a></p></html>

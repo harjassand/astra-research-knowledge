@@ -1,0 +1,62 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c06_s03/revisions/001/certify_executed_sampler.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c06_s03/revisions/001/certify_executed_sampler.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Independent finite rational confidence certificate for the executed sampler.
+
+The 24-state certificate does not depend on the imported all-size gap theorem.
+It proves this finite matrix&#x27;s Poincare bound, not the general XXZ algorithm.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from pathlib import Path
+import json
+
+from xxz_quadratic_gates import compile_quadratic_trace
+from xxz_local_chain import LocalExchange, enumerate_supports, product_fraction
+
+
+gates = [(&quot;edge&quot;, (0,1), F(1,80), F(1), F(1,2))]
+instance = compile_quadratic_trace(2, gates)
+t = F(1,4096)
+states = enumerate_supports(instance)
+rows, weights = {}, {}
+for state in states:
+    chain = LocalExchange(instance, t=t, state=state)
+    rows[state] = chain.kernel_row()
+    weights[state] = chain.supported_weight()
+    assert min(rows[state].values()) &gt;= 0 and sum(rows[state].values(), F(0)) == 1
+Z = sum(weights.values(), F(0))
+pi = [weights[state]/Z for state in states]
+for state,row in rows.items():
+    for target,p in row.items():
+        assert weights[state]*p == weights[target]*rows[target].get(state,F(0))
+gap = t/(2*instance.n)
+A = []
+for i,state in enumerate(states):
+    row = []
+    for j,target in enumerate(states):
+        identity = int(i==j)
+        row.append(pi[i]*(identity-rows[state].get(target,F(0))) -
+                   gap*(identity*pi[i]-pi[i]*pi[j]))
+    A.append(row)
+pivots = []
+for k in range(len(A)):
+    pivot = A[k][k]
+    assert pivot &gt;= 0
+    pivots.append(str(pivot))
+    if pivot == 0:
+        assert all(A[k][j] == 0 for j in range(k+1,len(A)))
+        continue
+    for i in range(k+1,len(A)):
+        for j in range(i,len(A)):
+            A[i][j] -= A[i][k]*A[k][j]/pivot
+            A[j][i] = A[i][j]
+phard = sum((pi[i] for i,state in enumerate(states) if state[0].isdisjoint(state[1])),F(0))
+assert phard &gt;= F(3,4)
+R = product_fraction(max(f.table.values())/min(f.table.values()) for f in instance.factors)
+assert min(pi) &gt;= t**2/(4**4*R)
+out = {&quot;status&quot;:&quot;EXACT_FINITE_CONFIDENCE_CERTIFICATE&quot;,&quot;states&quot;:len(states),
+       &quot;discrete_gap_lower_bound&quot;:str(gap),&quot;psd_pivots&quot;:pivots,
+       &quot;hard_probability&quot;:str(phard),&quot;stationary_min&quot;:str(min(pi)),
+       &quot;coarse_stationary_min_lower_bound&quot;:str(t**2/(4**4*R)),
+       &quot;independent_of_imported_general_gap&quot;:True,
+       &quot;scope&quot;:&quot;This executed 24-state instance only. Confidence also assumes independent fair input bits; recorded seed is pseudorandom replay, not an entropy certificate.&quot;}
+Path(__file__).with_name(&quot;executed_sampler_certificate.json&quot;).write_text(json.dumps(out,indent=2)+&#x27;\n&#x27;)
+print(json.dumps({k:v for k,v in out.items() if k!=&#x27;psd_pivots&#x27;},indent=2))
+</pre><p><a href="../assets/8793bc8fb7bd38c380e8ea9a245dceef36495f0bc0cbe5ef464cf8fb6162bd3b.py">Exact original bytes</a></p></html>

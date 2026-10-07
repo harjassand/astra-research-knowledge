@@ -1,0 +1,251 @@
+#!/usr/bin/env python3
+"""Finite exact check of the color-coded Möbius/Pfaffian route.
+
+For n=4 and k=1,2, exhausts all colorings and color-sign assignments. The
+weighted square-root determinant is compared to direct principal Pfaffians,
+and its color finite difference is compared to the rainbow Pfaffian sum.
+This is a finite identity check, not a performance or confidence result.
+"""
+
+from fractions import Fraction as Q
+from itertools import combinations, permutations, product
+import json
+
+GI = tuple[int, int]
+Z = (0, 0)
+O = (1, 0)
+
+
+def add(a, b):
+    return (a[0] + b[0], a[1] + b[1])
+
+
+def neg(a):
+    return (-a[0], -a[1])
+
+
+def mul(a, b):
+    return (a[0]*b[0] - a[1]*b[1], a[0]*b[1] + a[1]*b[0])
+
+
+def conj(a):
+    return (a[0], -a[1])
+
+
+def matmul(a, b):
+    n = len(a)
+    return [[sum_g(mul(a[i][h], b[h][j]) for h in range(n))
+             for j in range(n)] for i in range(n)]
+
+
+def sum_g(xs):
+    out = Z
+    for x in xs:
+        out = add(out, x)
+    return out
+
+
+def pfaffian(a, indices):
+    if not indices:
+        return O
+    total = Z
+    for j in range(1, len(indices)):
+        rest = indices[1:j] + indices[j+1:]
+        term = mul(a[indices[0]][indices[j]], pfaffian(a, rest))
+        total = add(total, neg(term) if j % 2 == 0 else term)
+    return total
+
+
+def det(a):
+    n = len(a)
+    total = Z
+    for p in permutations(range(n)):
+        inversions = sum(p[i] > p[j] for i in range(n)
+                         for j in range(i + 1, n))
+        term = O
+        for i, j in enumerate(p):
+            term = mul(term, a[i][j])
+        total = add(total, neg(term) if inversions % 2 else term)
+    return total
+
+
+def sqrt_det_coefficient(c, k):
+    """[t^k]sqrt(det(I+tC)) using exact traces/Newton recurrences."""
+    n = len(c)
+    power = [[O if i == j else Z for j in range(n)] for i in range(n)]
+    traces = [Q(0)]
+    det_coeff = [Q(1)]
+    for j in range(1, k + 1):
+        power = matmul(power, c)
+        tr = sum_g(power[i][i] for i in range(n))
+        assert tr[1] == 0, tr
+        traces.append(Q(tr[0]))
+        numerator = sum(((-1)**(a-1))*det_coeff[j-a]*traces[a]
+                        for a in range(1, j + 1))
+        assert numerator % j == 0, (j, numerator)
+        det_coeff.append(numerator / j)
+    q = [Q(1)]
+    for j in range(1, k + 1):
+        q.append((det_coeff[j] - sum(q[a]*q[j-a]
+                                     for a in range(1, j))) / 2)
+    return q[k]
+
+
+def weighted_norm(a, k, h, active_colors):
+    """sum_R |Pf(A[R])|^2 over h(R) subset active_colors, via q_k."""
+    n = len(a)
+    w = [int(h[i] in active_colors) for i in range(n)]
+    ah = [[conj(a[j][i]) for j in range(n)] for i in range(n)]
+    waw = [[(w[i]*w[j]*ah[i][j][0], w[i]*w[j]*ah[i][j][1])
+            for j in range(n)] for i in range(n)]
+    c = matmul(waw, a)  # W A* W A; similar to (W^1/2 A W^1/2)*(...).
+    return sqrt_det_coefficient(c, k)
+
+
+def rainbow_difference(a, k, h, m):
+    total = Q(0)
+    for mask in range(1 << m):
+        active = {c for c in range(m) if (mask >> c) & 1}
+        q = weighted_norm(a, k, h, active)
+        total += (-1)**(m-len(active))*q
+    return total
+
+
+def skew(f, signs):
+    n = len(f)
+    return [[add((signs[i]*f[i][j][0], signs[i]*f[i][j][1]),
+                 (-signs[j]*f[j][i][0], -signs[j]*f[j][i][1]))
+             for j in range(n)] for i in range(n)]
+
+
+def abs2(z):
+    return z[0]*z[0] + z[1]*z[1]
+
+
+def direct_rainbow_pf_norm(a, k, h, m):
+    total = 0
+    for r in combinations(range(len(a)), 2*k):
+        if len({h[i] for i in r}) == m:
+            total += abs2(pfaffian(a, r))
+    return total
+
+
+def minor(f, rows, cols):
+    return [[f[i][j] for j in cols] for i in rows]
+
+
+def c_total(f, k):
+    total = 0
+    n = len(f)
+    for i in combinations(range(n), k):
+        for j in combinations(range(n), k):
+            if set(i) & set(j):
+                continue
+            d = det(minor(f, i, j))
+            total += abs2(d)
+    return total
+
+
+def c_colored(f, k, h, m):
+    total = 0
+    n = len(f)
+    for i in combinations(range(n), k):
+        for j in combinations(range(n), k):
+            if set(i) & set(j):
+                continue
+            if len({h[v] for v in set(i) | set(j)}) != m:
+                continue
+            total += abs2(det(minor(f, i, j)))
+    return total
+
+
+def main():
+    fixtures = [
+        [[(0, 0), (1, 1), (2, 0), (0, -1)],
+         [(1, 0), (0, 0), (1, -2), (3, 0)],
+         [(0, 2), (1, 0), (0, 0), (1, 0)],
+         [(1, 0), (-1, 0), (2, 0), (0, 0)]],
+        [[(1, 0), (2, -1), (-1, 1), (0, 2)],
+         [(0, -1), (-2, 0), (3, 1), (1, 0)],
+         [(2, 1), (0, 1), (1, -1), (-1, 0)],
+         [(1, 2), (-1, -1), (2, 0), (0, 1)]],
+    ]
+    rows = []
+    for fixture_id, f in enumerate(fixtures):
+        n = len(f)
+        for k in (1, 2):
+            m = 2*k
+            total = c_total(f, k)
+            assert total > 0
+            sum_colored = 0
+            coloring_count = 0
+            sign_count = 0
+            weighted_identity_checks = 0
+            for h in product(range(m), repeat=n):
+                coloring_count += 1
+                target_h = c_colored(f, k, h, m)
+                sign_sum = 0
+                for xi in product((-1, 1), repeat=m):
+                    signs = [xi[h[i]] for i in range(n)]
+                    a = skew(f, signs)
+                    got = rainbow_difference(a, k, h, m)
+                    want = direct_rainbow_pf_norm(a, k, h, m)
+                    assert got == want, (fixture_id, k, h, xi, got, want)
+                    sign_sum += got
+                    sign_count += 1
+                    weighted_identity_checks += 1 << m
+                assert Q(sign_sum, 1 << m) == target_h, (fixture_id, k, h)
+                sum_colored += target_h
+            p = Q(1)
+            for j in range(m):
+                p *= Q(m-j, m)
+            assert Q(sum_colored, coloring_count) == p*total
+            rows.append({"fixture": fixture_id, "n": n, "k": k,
+                         "colors": m, "c_total": total,
+                         "rainbow_probability": str(p),
+                         "exact_colorings": coloring_count,
+                         "color_sign_assignments": sign_count,
+                         "difference_to_direct_checks": sign_count,
+                         "sign_average_checks": coloring_count,
+                         "coloring_average_equals_p_c": True})
+    # A concrete warning: color filtering alone does not remove cross terms.
+    swap = [[Z, O], [O, Z]]
+    swap_h = (0, 1)
+    naive_all_plus = rainbow_difference(skew(swap, [1, 1]), 1, swap_h, 2)
+    sign_average = sum(rainbow_difference(
+        skew(swap, [xi[swap_h[i]] for i in range(2)]), 1, swap_h, 2)
+        for xi in product((-1, 1), repeat=2)) / 4
+    assert c_total(swap, 1) == 2
+    assert naive_all_plus == 0 and sign_average == 2
+    # A single nonzero k-pair forces the p_m color-injection bottleneck.
+    cross = [[Z for _ in range(4)] for _ in range(4)]
+    cross[0][2] = O
+    cross[1][3] = O
+    cross_c = c_total(cross, 2)
+    assert cross_c == 1
+    rainbow_hits = sum(c_colored(cross, 2, h, 4)
+                       for h in product(range(4), repeat=4))
+    assert rainbow_hits == 24
+    for xi in product((-1, 1), repeat=4):
+        assert rainbow_difference(skew(cross, xi), 2, (0, 1, 2, 3), 4) == 1
+        assert rainbow_difference(skew(cross, xi), 2, (0, 0, 1, 2), 4) == 0
+    p4 = Q(24, 4**4)
+    assert Q(rainbow_hits, 4**4) == p4
+    print(json.dumps({"status": "PASS", "cases": rows,
+                      "naive_counterexample": {"F": "2x2 swap", "k": 1,
+                          "rainbow_coloring": [0, 1],
+                          "target_c": 2,
+                          "color_difference_with_all_plus_signs": str(naive_all_plus),
+                          "color_sign_average": str(sign_average),
+                          "lesson": "color injectivity alone leaves Pfaffian cross terms; independent color signs are necessary"},
+                      "coloring_sampling_boundary": {"F": "4x4 cross identity with F[0,2]=F[1,3]=1", "k": 2,
+                          "c": cross_c, "rainbow_colorings": rainbow_hits,
+                          "all_colorings": 4**4, "p": str(p4),
+                          "relative_variance_of_exact_c_h_over_p": str(1/p4-1),
+                          "lesson": "this single-contribution fixture forces Omega(1/p) random colorings for the color-coded estimator; not a lower bound for other algorithms"},
+                      "scope": "Exhaustive n=4 Gaussian-integer checks of weighted Pfaffian norm identity, color Möbius difference, color-sign orthogonality, and p*c expectation.",
+                      "not_established": ["asymptotic speedup", "confidence calibration", "sampler", "novelty"]}, indent=2))
+
+
+if __name__ == "__main__":
+    main()

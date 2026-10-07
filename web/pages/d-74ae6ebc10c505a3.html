@@ -1,0 +1,187 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c01_s03/revisions/rank_frontier_sampler.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c01_s03/revisions/rank_frontier_sampler.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Exact exterior-algebra Gaussian MPS acquisition and hard-parity contraction.
+
+Field Q(i), no SVD/truncation, no coefficient oracle. Exponential in the
+acquired ranks across the supplied site order. Every residual polynomial
+is represented relative to an exact RREF basis of the cross row span.
+&quot;&quot;&quot;
+from fractions import Fraction
+from pathlib import Path
+import sys, random
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
+from frontier_sampler import qr,ga,gm,gc,gs,qdiv
+
+ZERO=qr(0);ONE=qr(1)
+
+def clean(d):return {key:v for key,v in d.items() if v!=ZERO}
+
+def rref(rows,ncols):
+    a=[[qr(x) for x in row] for row in rows]
+    pivots=[];r=0
+    for c in range(ncols):
+        j=next((j for j in range(r,len(a)) if a[j][c]!=ZERO),None)
+        if j is None:continue
+        a[r],a[j]=a[j],a[r]
+        z=a[r][c];a[r]=[qdiv(v,z) for v in a[r]]
+        for j in range(len(a)):
+            if j==r or a[j][c]==ZERO:continue
+            z=a[j][c];a[j]=[ga(a[j][h],gs(gm(z,a[r][h]),-1)) for h in range(ncols)]
+        pivots.append(c);r+=1
+        if r==len(a):break
+    return a[:r],pivots
+
+def wedge_sign(a,b):
+    inv=sum((b&amp;((1&lt;&lt;j)-1)).bit_count() for j in range(a.bit_length()) if a&gt;&gt;j&amp;1)
+    return -1 if inv%2 else 1
+
+def wedge(x,y):
+    result={}
+    for a,ca in x.items():
+        for b,cb in y.items():
+            if a&amp;b:continue
+            m=a|b;term=gs(gm(ca,cb),wedge_sign(a,b))
+            result[m]=ga(result.get(m,ZERO),term)
+    return clean(result)
+
+def add(x,y):
+    z=dict(x)
+    for m,c in y.items():z[m]=ga(z.get(m,ZERO),c)
+    return clean(z)
+
+def scale(x,c):return clean({m:gm(a,c) for m,a in x.items()})
+def parity(x):return {m:gs(c,-1 if m.bit_count()%2 else 1) for m,c in x.items()}
+def linear(row):return {1&lt;&lt;j:qr(c) for j,c in enumerate(row) if c!=ZERO}
+
+def compose(second,first):
+    # Sparse columns of second @ first.
+    out=[]
+    for col in first:
+        current={}
+        for mid,c in col.items():current=add(current,scale(second[mid],c))
+        out.append(current)
+    return out
+
+class RankParity:
+    def __init__(self,F,activities=None,order=None):
+        self.n=len(F);self.order=list(range(self.n)) if order is None else list(order)
+        if sorted(self.order)!=list(range(self.n)):raise ValueError(&#x27;permutation required&#x27;)
+        self.F=[[qr(F[i][j]) for j in self.order] for i in self.order]
+        self.activities=[Fraction(1)]*self.n if activities is None else [Fraction(activities[i]) for i in self.order]
+        if any(a&lt;0 for a in self.activities):raise ValueError(&#x27;nonnegative activities required&#x27;)
+        self.m=2*self.n
+        K=[[ZERO for _ in range(self.m)] for _ in range(self.m)]
+        for i in range(self.n):
+            for j in range(self.n):
+                K[2*i][2*j+1]=self.F[i][j]
+                K[2*j+1][2*i]=gs(self.F[i][j],-1)
+        self.K=K;self.bases=[];self.pivots=[]
+        for p in range(self.m+1):
+            B,cols=rref([row[p:] for row in K[:p]],self.m-p)
+            self.bases.append(B);self.pivots.append(cols)
+        self.ranks=[len(B) for B in self.bases]
+        self.mode_transfers=[]
+        for p in range(self.m):
+            B=self.bases[p];C=self.bases[p+1];pivs=self.pivots[p+1]
+            beta=[row[0] for row in B]
+            T=[[row[1:][j] for j in pivs] for row in B]
+            ell=[K[p][p+1:][j] for j in pivs]
+            # Explicitly verify every coordinate reconstruction: no rank
+            # factor or solver pivot is used as unverified data.
+            for a,row in enumerate(B):
+                reconstructed=[]
+                for j in range(self.m-p-1):
+                    z=ZERO
+                    for t,c in zip(T[a],C):z=ga(z,gm(t,c[j]))
+                    reconstructed.append(z)
+                if reconstructed!=row[1:]:raise AssertionError(&#x27;basis transition mismatch&#x27;)
+            reconstructed=[]
+            for j in range(self.m-p-1):
+                z=ZERO
+                for t,c in zip(ell,C):z=ga(z,gm(t,c[j]))
+                reconstructed.append(z)
+            if reconstructed!=K[p][p+1:]:raise AssertionError(&#x27;new edge form mismatch&#x27;)
+            zero=[];one=[];ellpoly=linear(ell)
+            for mask in range(1&lt;&lt;len(B)):
+                p0={0:ONE};p1={};old_degree=0
+                for a in range(len(B)):
+                    if not (mask&gt;&gt;a&amp;1):continue
+                    tpoly=linear(T[a])
+                    next_p1=add(wedge(p1,tpoly),scale(p0,gs(beta[a],-1 if old_degree%2 else 1)))
+                    p0=wedge(p0,tpoly);p1=next_p1;old_degree+=1
+                zero.append(p0)
+                one.append(add(p1,wedge(parity(p0),ellpoly)))
+            self.mode_transfers.append((zero,one))
+        self.tensors=[]
+        for i in range(self.n):
+            first=self.mode_transfers[2*i];second=self.mode_transfers[2*i+1]
+            self.tensors.append({0:compose(second[0],first[0]),
+                                 1:compose(second[0],first[1]),
+                                -1:compose(second[1],first[0])})
+        self.stats={}
+
+    def amplitude(self,labels):
+        v={0:ONE}
+        for i,s in enumerate(labels):
+            vv={}
+            for old,c in v.items():vv=add(vv,scale(self.tensors[i][s][old],c))
+            v=vv
+        return v.get(0,ZERO)
+
+    def partition(self,k,allowed=None):
+        allowed={} if allowed is None else allowed
+        if k&lt;0 or 2*k&gt;self.n:return Fraction(0)
+        current={(0,0,0):ONE};peak=1;transitions=0
+        for i in range(self.n):
+            nxt={}
+            for (a,b,q),v in current.items():
+                for label in allowed.get(i,(-1,0,1)):
+                    qq=q+(label==1)
+                    if qq&gt;k:continue
+                    activity=self.activities[i] if label==1 else Fraction(1)
+                    for aa,c in self.tensors[i][label][a].items():
+                        for bb,d in self.tensors[i][label][b].items():
+                            key=(aa,bb,qq)
+                            term=gs(gm(v,gm(c,gc(d))),activity)
+                            nxt[key]=ga(nxt.get(key,ZERO),term);transitions+=1
+            current=clean(nxt);peak=max(peak,len(current))
+        ans=current.get((0,0,k),ZERO)
+        if ans[1] or ans[0]&lt;0:raise ArithmeticError((&#x27;nonnegative norm violated&#x27;,ans))
+        self.stats={&#x27;max_site_cross_rank&#x27;:max(self.ranks[::2],default=0),
+                    &#x27;max_mode_cross_rank&#x27;:max(self.ranks,default=0),
+                    &#x27;peak_norm_states&#x27;:peak,&#x27;norm_transitions&#x27;:transitions}
+        return ans[0]
+
+    def sample(self,k,rng=None,allowed=None,max_bit_trials=None):
+        rng=random.SystemRandom() if rng is None else rng
+        fixed={} if allowed is None else {v:tuple(a) for v,a in allowed.items()}
+        total=self.partition(k,fixed)
+        if not total:raise ValueError(&#x27;zero sector&#x27;)
+        labels=[];fallback=0;bits=0
+        for i in range(self.n):
+            options=[]
+            for a in fixed.get(i,(-1,0,1)):
+                child={**fixed,i:(a,)}
+                options.append((a,self.partition(k,child)))
+            if sum(z for a,z in options)!=total:raise AssertionError(&#x27;prefix norm mismatch&#x27;)
+            from math import lcm
+            den=1
+            for a,z in options:den=lcm(den,z.denominator)
+            weights=[(a,int(z*den)) for a,z in options]
+            mass=sum(w for a,w in weights)
+            if max_bit_trials is None:draw=rng.randrange(mass)
+            else:
+                if max_bit_trials&lt;1:raise ValueError(&#x27;positive bit cap required&#x27;)
+                nb=(mass-1).bit_length();draw=None
+                for _ in range(max_bit_trials):
+                    t=rng.getrandbits(nb);bits+=nb
+                    if t&lt;mass:draw=t;break
+                if draw is None:draw=0;fallback+=1
+            for a,w in weights:
+                if draw&lt;w:
+                    chosen=a;break
+                draw-=w
+            fixed[i]=(chosen,);labels.append(chosen)
+            total=next(z for a,z in options if a==chosen)
+        return {&#x27;labels_ordered&#x27;:tuple(labels),&#x27;I&#x27;:tuple(self.order[i] for i,a in enumerate(labels) if a==1),
+                &#x27;J&#x27;:tuple(self.order[i] for i,a in enumerate(labels) if a==-1),
+                &#x27;fallback_events&#x27;:fallback,&#x27;charged_random_bits&#x27;:bits if max_bit_trials is not None else &#x27;UNKNOWN&#x27;}
+</pre><p><a href="../assets/7e466e75d5aa115f8210b8d9d3390f7da13877a8e77300fc4f89367f32554ab8.py">Exact original bytes</a></p></html>

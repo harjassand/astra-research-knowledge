@@ -1,0 +1,53 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c04_s02/revisions/exterior_split_checks.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c04_s02/revisions/exterior_split_checks.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>import os
+os.environ[&#x27;OPENBLAS_NUM_THREADS&#x27;]=&#x27;1&#x27;
+os.environ[&#x27;OMP_NUM_THREADS&#x27;]=&#x27;1&#x27;
+from pathlib import Path
+from itertools import combinations
+from math import comb,sqrt
+from fractions import Fraction as F
+import numpy as np
+import json,time
+st=time.monotonic()
+def falling(n,l):
+ q=1
+ for i in range(l):q*=n-i
+ return q
+def run(d,s):
+ N=2*s;a=list(combinations(range(d),N));b=list(combinations(range(d),s));D=len(a);Q=len(b);ids={x:i for i,x in enumerate(a)}
+ V=np.zeros((Q*Q,D))
+ for i,k in enumerate(b):
+  for j,l in enumerate(b):
+   if set(k)&amp;set(l):continue
+   sign=(-1)**sum(x&gt;y for x in k for y in l)
+   V[i*Q+j,ids[tuple(sorted(k+l))]]=sign/sqrt(comb(N,s))
+ ks=[V.reshape(Q,Q,D)[:,j,:] for j in range(Q)]
+ def T(x):return sum(k@x@k.T for k in ks)
+ def R(x):return Q/D*sum(k.T@x@k for k in ks)
+ def phi(x):return R(T(x))
+ matrix=np.zeros((D*D,D*D))
+ for i in range(D):
+  for j in range(D):
+   z=np.zeros((D,D));z[i,j]=1;matrix[:,i*D+j]=phi(z).reshape(-1)
+ exp=[]
+ for l in range(min(N,d-N)+1):
+  m=comb(d,l)**2-(comb(d,l-1)**2 if l else 0)
+  lam=F(falling(s,l)*falling(d-N,l),falling(N,l)*falling(d-s,l)) if l&lt;=s else F(0)
+  exp +=[float(lam)]*m
+ lam1=F(s*(d-N),N*(d-s))
+ c=1/(1-lam1)
+ replace=np.outer(np.eye(D).reshape(-1),np.eye(D).reshape(-1))/D
+ eig=np.linalg.eigvalsh((matrix+matrix.T)/2)
+ rec={&#x27;d&#x27;:d,&#x27;s&#x27;:s,&#x27;N&#x27;:N,&#x27;D_N&#x27;:D,&#x27;D_s&#x27;:Q,&#x27;lambda1&#x27;:str(lam1),&#x27;replacement_constant&#x27;:str(c),
+ &#x27;isometry_residual&#x27;:float(np.max(abs(V.T@V-np.eye(D)))),
+ &#x27;reference_T_residual&#x27;:float(np.max(abs(T(np.eye(D)/D)-np.eye(Q)/Q))),
+ &#x27;reference_Phi_residual&#x27;:float(np.max(abs(phi(np.eye(D)/D)-np.eye(D)/D))),
+ &#x27;symmetry_residual&#x27;:float(np.max(abs(matrix-matrix.T))),
+ &#x27;spectrum_residual&#x27;:float(np.max(abs(eig-np.sort(exp)))),
+ &#x27;Dirichlet_min_eig&#x27;:float(np.linalg.eigvalsh(float(c)*(np.eye(D*D)-matrix)-(np.eye(D*D)-replace)).min())}
+ assert all(v&lt;1e-10 for k,v in rec.items() if &#x27;residual&#x27; in k),rec
+ assert rec[&#x27;Dirichlet_min_eig&#x27;]&gt;-1e-10
+ return rec
+rec=[run(d,s) for d,s in [(3,1),(4,1),(5,1),(5,2),(6,2)]]
+result={&#x27;status&#x27;:&#x27;PASS_DIAGNOSTIC_ONLY&#x27;,&#x27;fixtures&#x27;:rec,&#x27;wall_seconds&#x27;:time.monotonic()-st,&#x27;scope&#x27;:&#x27;Finite transcription of exterior spectral proof; no asymptotic extrapolation or counterexample.&#x27;}
+Path(__file__).with_suffix(&#x27;.json&#x27;).write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;);print(json.dumps(result,indent=2))
+</pre><p><a href="../assets/be0a5103184f65c6adb977a0a27d9596101d5bb8500846cd1d067387a7e6a938.py">Exact original bytes</a></p></html>

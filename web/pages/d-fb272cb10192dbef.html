@@ -1,0 +1,129 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c02_l03/revisions/lp_orientation_exchange_boundary.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c02_l03/revisions/lp_orientation_exchange_boundary.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact certificates showing p=2 is the only possible universal l_p exchange exponent.&quot;&quot;&quot;
+from itertools import combinations, permutations
+import json
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+CASES = {
+    &quot;p_less_than_2&quot;: {
+        &quot;F&quot;: [
+            [0, -1, -1, -1, 0, 0],
+            [0,  0,  0,  0, 0, 0],
+            [1,  0,  0,  0, 0, 0],
+            [0,  0,  0,  0, 0, 0],
+            [0,  0, -1, -1, 0, 0],
+            [0, -1, -1,  0, 0, 0],
+        ],
+        &quot;S&quot;: [], &quot;T&quot;: [2, 4, 5, 6], &quot;a&quot;: 2,
+        &quot;expected_abs_amplitudes&quot;: {
+            &quot;S&quot;: [1, 1], &quot;T&quot;: [1, 1],
+            &quot;j=4:S&quot;: [], &quot;j=4:T&quot;: [],
+            &quot;j=5:S&quot;: [1], &quot;j=5:T&quot;: [1],
+            &quot;j=6:S&quot;: [1], &quot;j=6:T&quot;: [1],
+        },
+        &quot;p_condition&quot;: &quot;0&lt;p&lt;2&quot;,
+        &quot;lhs&quot;: &quot;2^(2/p)&quot;, &quot;rhs&quot;: &quot;2&quot;,
+    },
+    &quot;p_greater_than_2&quot;: {
+        &quot;F&quot;: [
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 1, 1, 0, 0],
+            [-1, 0, 0, 0, -1, 0],
+            [1, 0, 0, 0, -1, 0],
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, -1, 1, 0, 0],
+        ],
+        &quot;S&quot;: [1, 5], &quot;T&quot;: [2, 6], &quot;a&quot;: 1,
+        &quot;expected_abs_amplitudes&quot;: {
+            &quot;S&quot;: [2], &quot;T&quot;: [2],
+            &quot;j=2:S&quot;: [1, 1], &quot;j=2:T&quot;: [1, 1],
+            &quot;j=5:S&quot;: [], &quot;j=5:T&quot;: [],
+            &quot;j=6:S&quot;: [1, 1], &quot;j=6:T&quot;: [1, 1],
+        },
+        &quot;p_condition&quot;: &quot;2&lt;p&lt;=infinity&quot;,
+        &quot;lhs&quot;: &quot;4&quot;, &quot;rhs&quot;: &quot;2^(1+2/p)&quot;,
+    },
+}
+N = 6
+
+
+def det(a):
+    k = len(a)
+    if k == 0:
+        return 1
+    total = 0
+    for p in permutations(range(k)):
+        inversions = sum(p[i] &gt; p[j]
+                         for i in range(k) for j in range(i + 1, k))
+        term = -1 if inversions % 2 else 1
+        for i, j in enumerate(p):
+            term *= a[i][j]
+        total += term
+    return total
+
+
+def orientations(F, holes):
+    holes = set(holes)
+    retained = [i for i in range(N) if i + 1 not in holes]
+    if len(retained) % 2:
+        return []
+    k = len(retained) // 2
+    out = []
+    for rows in combinations(retained, k):
+        rowset = set(rows)
+        cols = [j for j in retained if j not in rowset]
+        value = det([[F[i][j] for j in cols] for i in rows])
+        if value:
+            out.append({&quot;I_rows_1based&quot;: [i + 1 for i in rows],
+                        &quot;J_cols_1based&quot;: [j + 1 for j in cols],
+                        &quot;det&quot;: value})
+    return out
+
+
+def toggle(U, i, j):
+    out = set(U)
+    for x in (i, j):
+        if x in out:
+            out.remove(x)
+        else:
+            out.add(x)
+    return sorted(out)
+
+
+results = {}
+for name, case in CASES.items():
+    F, S, T, a = case[&quot;F&quot;], case[&quot;S&quot;], case[&quot;T&quot;], case[&quot;a&quot;]
+    D = set(S) ^ set(T)
+    rows = {
+        &quot;S&quot;: orientations(F, S),
+        &quot;T&quot;: orientations(F, T),
+    }
+    for j in sorted(D - {a}):
+        rows[f&quot;j={j}:S&quot;] = orientations(F, toggle(S, a, j))
+        rows[f&quot;j={j}:T&quot;] = orientations(F, toggle(T, a, j))
+    abs_vectors = {key: sorted(abs(o[&quot;det&quot;]) for o in vals)
+                   for key, vals in rows.items()}
+    assert abs_vectors == case[&quot;expected_abs_amplitudes&quot;]
+    results[name] = {
+        &quot;F&quot;: F, &quot;S&quot;: S, &quot;T&quot;: T, &quot;a&quot;: a,
+        &quot;orientation_minors&quot;: rows,
+        &quot;absolute_amplitude_vectors&quot;: abs_vectors,
+        &quot;symbolic_p_exchange&quot;: {&quot;range&quot;: case[&quot;p_condition&quot;],
+                                 &quot;lhs&quot;: case[&quot;lhs&quot;], &quot;rhs&quot;: case[&quot;rhs&quot;]},
+    }
+
+result = {
+    &quot;claim&quot;: &quot;For every finite p&gt;0 other than p=2, the universal l_p orientation exchange fails on one of two exact n=6 integer instances.&quot;,
+    &quot;cases&quot;: results,
+    &quot;conclusion&quot;: {
+        &quot;p_less_than_2&quot;: &quot;2^(2/p)&gt;2&quot;,
+        &quot;p_greater_than_2&quot;: &quot;2^(1+2/p)&lt;4&quot;,
+        &quot;p_equals_2&quot;: &quot;both examples attain equality; universal p=2 inequality is the aggregate square-root exchange&quot;
+    },
+    &quot;scope&quot;: &quot;exact counterexamples for p!=2; no claim about other nonlinear orientation functionals&quot;
+}
+(HERE / &quot;lp_orientation_exchange_boundary.json&quot;).write_text(
+    json.dumps(result, indent=2) + &quot;\n&quot;)
+print(json.dumps(result, indent=2))
+</pre><p><a href="../assets/8ffd45d0a9b38289460d30dec763d385a60ca8af655edfc6a79f9a648314bdca.py">Exact original bytes</a></p></html>

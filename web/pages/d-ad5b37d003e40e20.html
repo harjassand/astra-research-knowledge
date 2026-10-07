@@ -1,0 +1,129 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c05_s03/revisions/axial_delta1_independent_evidence_verifier.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c05_s03/revisions/axial_delta1_independent_evidence_verifier.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Independent exact-Fraction verification of saved delta=1 interval evidence.
+
+This does not import the author&#x27;s arithmetic implementation. It verifies the
+Taylor input enclosures and that every saved LDL interval contains the direct
+unrounded rational-interval recurrence using previously certified intervals.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from math import comb,factorial
+from pathlib import Path
+import hashlib,json,time
+
+class I:
+    def __init__(self,lo,hi=None):
+        self.lo=F(lo);self.hi=F(lo if hi is None else hi)
+        assert self.lo&lt;=self.hi
+    def __add__(self,b):return I(self.lo+b.lo,self.hi+b.hi)
+    def __sub__(self,b):return I(self.lo-b.hi,self.hi-b.lo)
+    def __mul__(self,b):
+        v=[self.lo*b.lo,self.lo*b.hi,self.hi*b.lo,self.hi*b.hi]
+        return I(min(v),max(v))
+    def square(self):
+        v=[self.lo**2,self.hi**2]
+        return I(0 if self.lo&lt;=0&lt;=self.hi else min(v),max(v))
+    def __truediv__(self,b):
+        assert b.lo&gt;0
+        v=[self.lo/b.lo,self.lo/b.hi,self.hi/b.lo,self.hi/b.hi]
+        return I(min(v),max(v))
+    def contains(self,b):return self.lo&lt;=b.lo&lt;=b.hi&lt;=self.hi
+
+started=time.perf_counter()
+author_path=Path(&#x27;work/cycle6/c07_s02/phase2/evidence/axial_delta1_finite_N39_P384.json&#x27;)
+replay_path=Path(&#x27;work/cycle6/c05_s03/revisions/evidence/axial_delta1_finite_N39_P384.json&#x27;)
+author=json.loads(author_path.read_text());replay=json.loads(replay_path.read_text())
+assert author[&#x27;cases&#x27;]==replay[&#x27;cases&#x27;]
+P=author[&#x27;precision_bits&#x27;];D=int(author[&#x27;denominator&#x27;])
+assert P==384 and D==2**P
+assert [c[&#x27;N&#x27;] for c in author[&#x27;cases&#x27;]]==list(range(2,40))
+
+def decode(a):return I(F(int(a[0]),D),F(int(a[1]),D))
+counts={&#x27;exponential_input_enclosures&#x27;:0,&#x27;matrices&#x27;:0,&#x27;positive_pivots&#x27;:0,&#x27;lower_L_entries&#x27;:0}
+for case in author[&#x27;cases&#x27;]:
+    N=case[&#x27;N&#x27;];qraw=case[&#x27;q_intervals&#x27;]
+    assert len(qraw)==len(case[&#x27;exp_enclosure_metadata&#x27;])==N+1
+    for k,(qenc,meta) in enumerate(zip(qraw,case[&#x27;exp_enclosure_metadata&#x27;])):
+        x=F((2*k-N)**2,4*N);r=meta[&#x27;range_squares&#x27;];j=meta[&#x27;odd_terms&#x27;]
+        assert isinstance(r,int) and r&gt;=0
+        y=x/F(2**r);assert 0&lt;=y&lt;=F(1,8)
+        if not x:
+            assert j==0 and r==0
+            lo=hi=D
+        else:
+            assert j&gt;0 and j%2==1
+            total=F(1);term=F(1)
+            for n in range(1,j+1):
+                term*=y/n
+                total+=(-term if n%2 else term)
+            assert 0&lt;term&lt;=F(1,2**(P+24)) and total&gt;0
+            even=total+term
+            lo=(total.numerator*D)//total.denominator
+            hi=(even.numerator*D+even.denominator-1)//even.denominator
+            for _ in range(r):
+                lo=(lo*lo)//D
+                hi=(hi*hi+D-1)//D
+        C=comb(N,k)
+        assert list(map(int,qenc))==[lo//C,(hi+C-1)//C]
+        counts[&#x27;exponential_input_enclosures&#x27;]+=1
+
+    q=list(map(decode,qraw))
+    assert [m[&#x27;shift&#x27;] for m in case[&#x27;matrices&#x27;]]==[0,1]
+    for m in case[&#x27;matrices&#x27;]:
+        shift=m[&#x27;shift&#x27;];n=(N-shift)//2+1
+        assert m[&#x27;dimension&#x27;]==n
+        ds=list(map(decode,m[&#x27;diagonal_intervals&#x27;]))
+        assert len(ds)==n
+        L=[[I(0) for _ in range(n)] for _ in range(n)]
+        for i,row in enumerate(m[&#x27;L_strict_lower_intervals&#x27;]):
+            assert len(row)==i
+            for k,a in enumerate(row):L[i][k]=decode(a)
+            L[i][i]=I(1)
+        for i in range(n):
+            p=q[2*i+shift]
+            for k in range(i):p=p-L[i][k].square()*ds[k]
+            assert ds[i].contains(p) and ds[i].lo&gt;0
+            counts[&#x27;positive_pivots&#x27;]+=1
+            for j in range(i+1,n):
+                numer=q[i+j+shift]
+                for k in range(i):numer=numer-L[j][k]*L[i][k]*ds[k]
+                candidate=numer/ds[i]
+                assert L[j][i].contains(candidate)
+                counts[&#x27;lower_L_entries&#x27;]+=1
+        counts[&#x27;matrices&#x27;]+=1
+
+checks={}
+def test(name,v):
+    assert v,name
+    checks[name]=True
+z=F(11,10)
+S=z-z**3/6+z**5/120;C=1-z**2/2+z**4/24-z**6/720
+test(&#x27;strip_tangent&#x27;,C&gt;0 and S/C&lt;F(9,5)*z)
+test(&#x27;strip_logcos&#x27;,C*sum(F(121,150)**j/factorial(j) for j in range(5))&gt;1)
+test(&#x27;phase_cubic&#x27;,F(2,5)*F(9,5)**2/24==F(27,500))
+test(&#x27;phase_sqrt_bound&#x27;,F(27,50)**2&lt;F(3,10))
+test(&#x27;phase_factor_cancellation&#x27;,60*F(27,500)**2/F(729,50000)==12)
+test(&#x27;phase_allN_bound&#x27;,12*F(441,16000)==F(1323,4000)&lt;F(1,3))
+test(&#x27;exp2_lower7&#x27;,sum(F(2**j,factorial(j)) for j in range(6))&gt;7)
+test(&#x27;vertical_exponent&#x27;,-F(121,100)+F(21,20)**2/4+F(21,20)*F(121,150)==-F(699,8000))
+test(&#x27;vertical_sqrt&#x27;,F(11,3)**2&gt;F(40,3))
+test(&#x27;vertical_exp&#x27;,sum(F(699,200)**j/factorial(j) for j in range(9))&gt;F(154,5))
+test(&#x27;vertical_ratio&#x27;,F(77,20)/F(154,5)==F(1,8))
+test(&#x27;density_margin&#x27;,1-F(1,3)-F(1,1000)-F(1,8)&gt;F(1,2))
+test(&#x27;log2_lt7_over10&#x27;,sum(F(7,10)**j/factorial(j) for j in range(4))&gt;2)
+test(&#x27;correction_logderivative&#x27;,F(1,80)+F(7,10)-F(24,25)&lt;0)
+test(&#x27;correction_exponent&#x27;,-F(121,100)*40+F(42**2,4*40)==-F(299,8))
+test(&#x27;exp1_gt8_over3&#x27;,sum(F(1,factorial(j)) for j in range(5))&gt;F(8,3))
+test(&#x27;correction_integer_inequality&#x27;,11*F(8,3)**36&gt;324*2**41)
+
+source=Path(&#x27;work/cycle6/c07_s02/phase2/AXIAL_ONE_CERTIFICATE.txt&#x27;)
+code=Path(&#x27;work/cycle6/c07_s02/phase2/axial_finite_psd_certificate.py&#x27;)
+out={&#x27;status&#x27;:&#x27;INDEPENDENT_EXACT_EVIDENCE_AND_ANALYTIC_CONSTANTS_PASS&#x27;,
+     &#x27;proof_sha256&#x27;:hashlib.sha256(source.read_bytes()).hexdigest(),
+     &#x27;author_code_sha256&#x27;:hashlib.sha256(code.read_bytes()).hexdigest(),
+     &#x27;author_evidence_sha256&#x27;:hashlib.sha256(author_path.read_bytes()).hexdigest(),
+     &#x27;own_replay_evidence_path&#x27;:str(replay_path),&#x27;own_replay_wall_seconds&#x27;:replay[&#x27;wall_seconds&#x27;],
+     &#x27;deterministic_cases_equal&#x27;:True,&#x27;verified_counts&#x27;:counts,&#x27;analytic_constant_checks&#x27;:checks,
+     &#x27;independent_verifier_wall_seconds&#x27;:time.perf_counter()-started,
+     &#x27;scope&#x27;:&#x27;Exact finite certificates plus analytic constants; saved audit11 reconstructs compact moment sufficiency and all-alpha consequence.&#x27;}
+Path(__file__).with_suffix(&#x27;.json&#x27;).write_text(json.dumps(out,indent=2)+&#x27;\n&#x27;)
+print(json.dumps(out,indent=2))
+</pre><p><a href="../assets/f43e487b74c339b8920caf8957b77e2551db2a52180681a661b7f103535edd5d.py">Exact original bytes</a></p></html>

@@ -1,0 +1,340 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c03_s03/lowk_bcs.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c03_s03/lowk_bcs.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Finite-bit low-k hard-BCS counts and row/column Born self-reduction.
+
+Attribution: the random-sign Pfaffian estimator is c03_l10&#x27;s; positive
+forced-row projection and row/column sampling are c03_l06&#x27;s.  c03_s02
+sharpened the BCS moment bound to a central binomial coefficient.  This is
+an independent implementation, including an elementary Hellinger budget
+which uses eta=O(epsilon/sqrt(n)), rather than epsilon/n.
+
+Arithmetic is exact Q(i); per-sign production work uses Gaussian integers
+and Newton traces.  A zero randomized estimate is NOT an exact zero test.
+The sampler&#x27;s TV guarantee is on the promise c_k(F)&gt;0.  Small sign cubes
+may be exhausted exactly, but enumeration is explicitly capped.
+&quot;&quot;&quot;
+from cutrank_bcs import C, Q, ZERO, ONE, eye, zeros, dagger, mm, inverse, determinant, pivot_cols
+from dataclasses import dataclass
+import itertools
+import math
+import random
+
+
+def ceilq(x):
+    x = Q(x)
+    return -(-x.numerator // x.denominator)
+
+
+def ceil_log2_reciprocal(x):
+    x = Q(x)
+    if not 0 &lt; x &lt;= 1:
+        raise ValueError(&#x27;probability budget must be in (0,1]&#x27;)
+    h = 0
+    while (x.numerator &lt;&lt; h) &lt; x.denominator:
+        h += 1
+    return h
+
+
+def clear_complex(a):
+    d = 1
+    for row in a:
+        for z in row:
+            d = math.lcm(d, z.re.denominator, z.im.denominator)
+    return [[(int(z.re*d), int(z.im*d)) for z in row] for row in a], d
+
+
+def iadd(a, b):
+    return a[0]+b[0], a[1]+b[1]
+
+
+def imul(a, b):
+    return a[0]*b[0]-a[1]*b[1], a[0]*b[1]+a[1]*b[0]
+
+
+def imm(a, b):
+    z = [[(0, 0) for _ in b[0]] for _ in a]
+    for i in range(len(a)):
+        for h in range(len(b)):
+            if a[i][h] != (0, 0):
+                for j in range(len(b[0])):
+                    if b[h][j] != (0, 0):
+                        z[i][j] = iadd(z[i][j], imul(a[i][h], b[h][j]))
+    return z
+
+
+def skew_norm_coefficient(a, r):
+    &quot;&quot;&quot;[t^r] sqrt(det(I+t A* A)); O(r*m^3) integer operations.&quot;&quot;&quot;
+    m = len(a)
+    if r == 0:
+        return 1
+    if 2*r &gt; m:
+        return 0
+    adj = [[(a[j][i][0], -a[j][i][1]) for j in range(m)] for i in range(m)]
+    b = imm(adj, a)
+    power, traces, detco, rootco = b, [0], [1], [1]
+    for degree in range(1, r+1):
+        tr = (sum(power[i][i][0] for i in range(m)),
+              sum(power[i][i][1] for i in range(m)))
+        if tr[1]:
+            raise ArithmeticError(&#x27;Hermitian power has nonreal trace&#x27;)
+        traces.append(tr[0])
+        num = sum((-1)**(j-1)*detco[degree-j]*traces[j]
+                  for j in range(1, degree+1))
+        if num % degree:
+            raise ArithmeticError(&#x27;Newton coefficient was not integral&#x27;)
+        detco.append(num//degree)
+        num = detco[degree]-sum(rootco[j]*rootco[degree-j] for j in range(1, degree))
+        if num % 2 or num &lt; 0:
+            raise ArithmeticError(&#x27;skew norm coefficient was not nonnegative integral&#x27;)
+        rootco.append(num//2)
+        if degree &lt; r:
+            power = imm(power, b)
+    return rootco[r]
+
+
+def hermitian_coefficient(b, q):
+    &quot;&quot;&quot;[t^q] det(I+t B) by rational Newton traces.&quot;&quot;&quot;
+    m = len(b)
+    if q == 0:
+        return Q(1)
+    if q &gt; m:
+        return Q(0)
+    power, traces, co = b, [Q(0)], [Q(1)]
+    for degree in range(1, q+1):
+        tr = sum((power[i][i] for i in range(m)), ZERO)
+        if tr.im:
+            raise ArithmeticError(&#x27;nonreal Gram trace&#x27;)
+        traces.append(tr.re)
+        co.append(sum((-1)**(j-1)*co[degree-j]*traces[j]
+                      for j in range(1, degree+1))/degree)
+        if degree &lt; q:
+            power = mm(power, b)
+    if co[q] &lt; 0:
+        raise ArithmeticError(&#x27;negative Gram coefficient&#x27;)
+    return co[q]
+
+
+def gram_projection(c, m):
+    &quot;&quot;&quot;Return det(C*C) and exact orthogonal projector off span(C).&quot;&quot;&quot;
+    if not c or not c[0]:
+        return Q(1), eye(m)
+    g = mm(dagger(c), c)
+    d = determinant(g)
+    if d.im or d.re &lt; 0:
+        raise ArithmeticError(&#x27;Gram determinant not nonnegative real&#x27;)
+    if not d.re:
+        return Q(0), None
+    cg = mm(mm(c, inverse(g)), dagger(c))
+    p = eye(m)
+    for i in range(m):
+        for j in range(m):
+            p[i][j] = p[i][j]-cg[i][j]
+    return d.re, p
+
+
+@dataclass
+class RowPrefix:
+    n: int
+    remaining_pairs: int
+    free_sites: tuple
+    integer_vectors: list
+    factor: Q
+    moment_bound: int
+    exact_mass: object = None
+
+    def sign_value(self, signs):
+        if self.exact_mass is not None:
+            return Q(self.exact_mass)
+        if len(signs) != len(self.free_sites) or any(s not in (-1, 1) for s in signs):
+            raise ValueError(&#x27;one +/-1 sign is required per free site&#x27;)
+        a = [[(0, 0) for _ in range(self.n)] for _ in range(self.n)]
+        v = self.integer_vectors
+        for h, s in enumerate(signs):
+            for i in range(self.n):
+                for j in range(i+1, self.n):
+                    x = imul(v[i][2*h], v[j][2*h+1])
+                    y = imul(v[i][2*h+1], v[j][2*h])
+                    z = (s*(x[0]-y[0]), s*(x[1]-y[1]))
+                    a[i][j] = iadd(a[i][j], z)
+                    a[j][i] = (-a[i][j][0], -a[i][j][1])
+        return self.factor*skew_norm_coefficient(a, self.remaining_pairs)
+
+
+class BudgetExceeded(RuntimeError):
+    pass
+
+
+class LowKCounter:
+    def __init__(self, f, k, exact_sign_cap=256, sign_budget=1000000):
+        self.f = [[C.of(z) for z in row] for row in f]
+        self.n, self.k = len(f), k
+        if any(len(row) != self.n for row in f) or not isinstance(k, int) or not 0 &lt;= 2*k &lt;= self.n:
+            raise ValueError(&#x27;square F and 0 &lt;= 2k &lt;= n required&#x27;)
+        self.exact_sign_cap, self.sign_budget = exact_sign_cap, sign_budget
+        self.stats = {&#x27;prefix_calls&#x27;: 0, &#x27;sign_evaluations&#x27;: 0, &#x27;sign_random_bits&#x27;: 0,
+                      &#x27;exact_cube_calls&#x27;: 0, &#x27;randomized_calls&#x27;: 0, &#x27;exact_base_calls&#x27;: 0}
+
+    def prefix(self, selected=(), excluded=()):
+        a, b = set(selected), set(excluded)
+        n, k = self.n, self.k
+        if a &amp; b or not a | b &lt;= set(range(n)):
+            raise ValueError(&#x27;invalid disjoint row constraints&#x27;)
+        free = tuple(i for i in range(n) if i not in a | b)
+        r = k-len(a)
+        bound = math.comb(2*k-len(a), r) if 0 &lt;= r &lt;= 2*k-len(a) else 1
+        if 0 &lt;= r &lt;= len(free):
+            bound = min(bound, math.comb(len(free), r))
+        if r &lt; 0 or len(free) &lt; r:
+            return RowPrefix(n, max(0, r), free, [], Q(1), 1, Q(0))
+        if k == 0:
+            return RowPrefix(n, r, free, [], Q(1), 1, Q(1))
+        if k == 1:
+            rows = a if a else set(free)
+            mass = sum(self.f[i][j].abs2() for i in rows for j in range(n) if i != j)
+            return RowPrefix(n, r, free, [], Q(1), 1, mass)
+        allv = [[z for i in range(n) for z in (C(int(h == i)), self.f[i][h])]
+                for h in range(n)]
+        c = [[row[j] for i in sorted(a) for j in (2*i, 2*i+1)] for row in allv]
+        d, p = gram_projection(c, n)
+        if not d or r == 0:
+            return RowPrefix(n, r, free, [], Q(1), 1, d)
+        v = [[row[j] for i in free for j in (2*i, 2*i+1)] for row in allv]
+        v = mm(p, v)
+        integer, denom = clear_complex(v)
+        return RowPrefix(n, r, free, integer, d/Q(denom**(4*r)), bound)
+
+    def estimate(self, selected=(), excluded=(), eta=Q(1, 4), delta=Q(1, 16), rng=None, mode=&#x27;auto&#x27;):
+        eta, delta = Q(eta), Q(delta)
+        if not 0 &lt; eta &lt; 1 or not 0 &lt; delta &lt; 1 or mode not in (&#x27;auto&#x27;, &#x27;random&#x27;, &#x27;enumerate&#x27;):
+            raise ValueError(&#x27;invalid relative accuracy/confidence/mode&#x27;)
+        rng = rng or random.SystemRandom()
+        p = self.prefix(selected, excluded)
+        self.stats[&#x27;prefix_calls&#x27;] += 1
+        if p.exact_mass is not None:
+            self.stats[&#x27;exact_base_calls&#x27;] += 1
+            return Q(p.exact_mass), {&#x27;kind&#x27;: &#x27;EXACT_BASE&#x27;, &#x27;moment_bound&#x27;: 1}
+        if p.moment_bound == 1:
+            self.stats[&#x27;sign_evaluations&#x27;] += 1
+            value = p.sign_value([1]*len(p.free_sites))
+            return value, {&#x27;kind&#x27;: &#x27;EXACT_POINTWISE&#x27;, &#x27;moment_bound&#x27;: 1}
+        size = len(p.free_sites)
+        batch = ceilq(4*(p.moment_bound-1)/(eta*eta))
+        groups = 8*ceil_log2_reciprocal(delta)+1
+        cube = 1 &lt;&lt; size
+        exhaustive = mode == &#x27;enumerate&#x27; or (mode == &#x27;auto&#x27; and cube &lt;= self.exact_sign_cap and cube &lt;= batch*groups)
+        cost = cube if exhaustive else batch*groups
+        if exhaustive and cube &gt; self.exact_sign_cap:
+            raise BudgetExceeded(&#x27;exact sign cube exceeds explicit enumeration cap&#x27;)
+        if self.sign_budget is not None and self.stats[&#x27;sign_evaluations&#x27;]+cost &gt; self.sign_budget:
+            raise BudgetExceeded(f&#x27;needed {cost} additional sign evaluations; configured run budget exceeded&#x27;)
+        if exhaustive:
+            total = sum((p.sign_value(s) for s in itertools.product((-1, 1), repeat=size)), Q(0))
+            self.stats[&#x27;sign_evaluations&#x27;] += cube
+            self.stats[&#x27;exact_cube_calls&#x27;] += 1
+            return total/cube, {&#x27;kind&#x27;: &#x27;EXACT_CUBE&#x27;, &#x27;sign_evaluations&#x27;: cube, &#x27;moment_bound&#x27;: p.moment_bound}
+        means = []
+        for _ in range(groups):
+            total = Q(0)
+            for _ in range(batch):
+                word = rng.getrandbits(size)
+                total += p.sign_value([1 if word &gt;&gt; i &amp; 1 else -1 for i in range(size)])
+            means.append(total/batch)
+        self.stats[&#x27;sign_evaluations&#x27;] += cost
+        self.stats[&#x27;sign_random_bits&#x27;] += cost*size
+        self.stats[&#x27;randomized_calls&#x27;] += 1
+        means.sort()
+        return means[len(means)//2], {&#x27;kind&#x27;: &#x27;RANDOMIZED_RELATIVE&#x27;, &#x27;eta&#x27;: str(eta), &#x27;delta&#x27;: str(delta),
+                    &#x27;batch&#x27;: batch, &#x27;groups&#x27;: groups, &#x27;sign_evaluations&#x27;: cost,
+                    &#x27;moment_bound&#x27;: p.moment_bound,
+                    &#x27;zero_report&#x27;: &#x27;zero estimate is not exact zero certification&#x27;}
+
+    def column_mass(self, rows, selected=(), excluded=()):
+        rows, s, b = tuple(sorted(rows)), set(selected), set(excluded)
+        if len(rows) != self.k or len(set(rows)) != self.k or s &amp; b or (s | b) &amp; set(rows):
+            raise ValueError(&#x27;invalid column constraints&#x27;)
+        labels = [j for j in range(self.n) if j not in set(rows)]
+        if not s | b &lt;= set(labels):
+            raise ValueError(&#x27;column label outside allowed complement&#x27;)
+        q = self.k-len(s)
+        remain = [j for j in labels if j not in s | b]
+        if q &lt; 0 or len(remain) &lt; q:
+            return Q(0)
+        c = [[self.f[i][j] for j in sorted(s)] for i in rows]
+        d, p = gram_projection(c, self.k)
+        if not d or q == 0:
+            return d
+        m = [[self.f[i][j] for j in remain] for i in rows]
+        pm = mm(p, m)
+        return d*hermitian_coefficient(mm(pm, dagger(pm)), q)
+
+    def sample(self, epsilon=Q(1, 10), rng=None, mode=&#x27;auto&#x27;):
+        &quot;&quot;&quot;TV &lt;= epsilon on positive sector; at most 2*n dyadic branch draws.&quot;&quot;&quot;
+        epsilon = Q(epsilon)
+        if not 0 &lt; epsilon &lt;= 1:
+            raise ValueError(&#x27;epsilon must be in (0,1]&#x27;)
+        rng = rng or random.SystemRandom()
+        n, k = self.n, self.k
+        if not n:
+            return (), (), {&#x27;status&#x27;: &#x27;EXACT_VACUUM&#x27;, &#x27;branch_random_bits&#x27;: 0}
+        s = math.isqrt(n)
+        if s*s &lt; n:
+            s += 1
+        eta, delta = epsilon/(16*s), epsilon/(8*n)
+        bits = ceil_log2_reciprocal(epsilon/(8*n))
+        grid = 1 &lt;&lt; bits
+        used, a, b, trace = 0, set(), set(), []
+
+        def branch(w0, w1):
+            nonlocal used
+            if w0 &lt; 0 or w1 &lt; 0:
+                raise ArithmeticError(&#x27;negative branch mass&#x27;)
+            if not w0+w1:
+                return None
+            scaled = grid*w1/(w0+w1)
+            threshold = scaled.numerator // scaled.denominator
+            if threshold == 0:
+                return False
+            if threshold == grid:
+                return True
+            used += bits
+            return rng.getrandbits(bits) &lt; threshold
+
+        for i in range(n):
+            if len(a) == k:
+                b.update(range(i, n))
+                break
+            if k-len(a) == n-i:
+                a.update(range(i, n))
+                break
+            w0, r0 = self.estimate(a, b | {i}, eta, delta, rng, mode)
+            w1, r1 = self.estimate(a | {i}, b, eta, delta, rng, mode)
+            pick = branch(w0, w1)
+            trace.append({&#x27;site&#x27;: i, &#x27;mass_out&#x27;: str(w0), &#x27;mass_in&#x27;: str(w1),
+                          &#x27;out_engine&#x27;: r0[&#x27;kind&#x27;], &#x27;in_engine&#x27;: r1[&#x27;kind&#x27;]})
+            if pick is None:
+                # Only a charged estimator failure is possible on the positive promise.
+                return tuple(range(k)), tuple(range(k, 2*k)), {
+                    &#x27;status&#x27;: &#x27;BAD_EVENT_FALLBACK&#x27;, &#x27;positive_sector_promise&#x27;: True,
+                    &#x27;branch_random_bits&#x27;: used, &#x27;trace&#x27;: trace}
+            (a if pick else b).add(i)
+        rows = tuple(sorted(a))
+        cols, excluded = set(), set()
+        labels = [j for j in range(n) if j not in a]
+        for index, j in enumerate(labels):
+            if len(cols) == k:
+                break
+            if k-len(cols) == len(labels)-index:
+                cols.update(labels[index:])
+                break
+            w0 = self.column_mass(rows, cols, excluded | {j})
+            w1 = self.column_mass(rows, cols | {j}, excluded)
+            pick = branch(w0, w1)
+            if pick is None:
+                return tuple(range(k)), tuple(range(k, 2*k)), {
+                    &#x27;status&#x27;: &#x27;BAD_EVENT_FALLBACK&#x27;, &#x27;positive_sector_promise&#x27;: True,
+                    &#x27;branch_random_bits&#x27;: used, &#x27;trace&#x27;: trace}
+            (cols if pick else excluded).add(j)
+        return rows, tuple(sorted(cols)), {
+            &#x27;status&#x27;: &#x27;OK_TV&#x27;, &#x27;positive_sector_promise&#x27;: True, &#x27;epsilon&#x27;: str(epsilon),
+            &#x27;eta&#x27;: str(eta), &#x27;per_call_failure&#x27;: str(delta), &#x27;grid&#x27;: grid,
+            &#x27;branch_random_bits&#x27;: used, &#x27;branch_random_bits_upper_bound&#x27;: 2*n*bits,
+            &#x27;trace&#x27;: trace, &#x27;zero_boundary&#x27;: &#x27;no exact zero-sector oracle implemented&#x27;}
+</pre><p><a href="../assets/e5fba06f799c307bcdab55ef0fb5dc22fb933e89ae98dba82fa14386e5f794ad.py">Exact original bytes</a></p></html>

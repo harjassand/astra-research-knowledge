@@ -1,0 +1,272 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c10_s01/revisions/phase2/four_layer_phase_certificate.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c10_s01/revisions/phase2/four_layer_phase_certificate.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Exact acquisition for a bare four-layer catalytic chain.
+
+The universal proof is in FOUR_LAYER_PHASE_PROOF.txt. This file checks the
+actual falling-factorial generator, selecting each independent rate-box
+endpoint by the sign of the actual potential increment. No peer imports.
+&quot;&quot;&quot;
+from fractions import Fraction as Q
+from itertools import product
+from pathlib import Path
+import json
+import time
+
+
+def interval(v):
+    if (not isinstance(v, (list, tuple)) or len(v) != 2
+            or any(isinstance(x, bool) or not isinstance(x, (str, int)) for x in v)):
+        raise ValueError(&quot;Two exact rational strings/integers per interval required&quot;)
+    lo, hi = (Q(str(x)) for x in v)
+    if not 0 &lt; lo &lt;= hi:
+        raise ValueError(&quot;Strictly positive ordered rate intervals required&quot;)
+    return lo, hi
+
+
+def ceilq(x):
+    return -((-x.numerator) // x.denominator)
+
+
+def cubic_envelope(birth_hi, death_lo):
+    u = 3 * (birth_hi + death_lo) + max(3 * birth_hi - death_lo, Q(0)) + birth_hi
+    threshold = 1 + 2 * u / (5 * death_lo)
+    return u * threshold**2
+
+
+def acquire(spec):
+    if not isinstance(spec, dict) or set(spec) != {&quot;names&quot;, &quot;birth&quot;, &quot;death&quot;}:
+        raise ValueError(&quot;Complete four-layer chain syntax required&quot;)
+    names = spec[&quot;names&quot;]
+    if (not isinstance(names, list) or len(names) != 4
+            or any(not isinstance(x, str) or not x for x in names)
+            or len(set(names)) != 4
+            or not isinstance(spec[&quot;birth&quot;], list) or len(spec[&quot;birth&quot;]) != 4
+            or not isinstance(spec[&quot;death&quot;], list) or len(spec[&quot;death&quot;]) != 4):
+        raise ValueError(&quot;Four distinct species and four paired rate intervals required&quot;)
+    births = [interval(x) for x in spec[&quot;birth&quot;]]
+    deaths = [interval(x) for x in spec[&quot;death&quot;]]
+    b, alpha, a, e = births
+    delta, beta, t, u = deaths
+
+    # Cubic B and C correctors use half of their physical death lower bound.
+    cb = min(Q(1), beta[0] / (2 * delta[1]))
+    gb = min(cb * b[0] / 2, beta[0] / 4)
+    sbc = 1 + 4 * delta[1] / alpha[0]
+    cc = min(Q(1), (t[0] / 2) / (delta[1] / sbc + beta[1]))
+    gc = min(cc * b[0] / (sbc * (sbc + 1)),
+             cc * alpha[0] / (4 * (sbc + 1)), t[0] / 4)
+    Gb, Gc = 1 + cb, 1 + cc / sbc
+
+    # New, unbounded quadratic phase representation for D&#x27;s killed particles.
+    s = 1 + delta[1] / beta[0] + 2 * delta[1] / alpha[0]
+    k = 2 * alpha[1] + 3 * beta[1]
+    kap = min(beta[0] / (s + 1), b[0] / (2 * s * (s + 1)))
+    J = b[0] / (s * (s + 1))
+    gh = min(J, alpha[0] / (2 * (s + 1)))
+    eps = a[0] / (4 * k)
+    F = eps * J + (eps * k + t[1] / 2)**2 / (4 * eps * kap)
+    M = 1 + (F + 1) / (u[0] / 2)
+    gd = min(eps * gh, a[0] / 4, Q(1))
+
+    Ks = [cubic_envelope(x[1], y[0]) for x, y in zip(births, deaths)]
+    tB = Ks[3] * 4 * eps / (3 * s)
+    tC = Ks[3] * (M + 1 + 8 * eps / (3 * s))
+    wC = (1 + tC) / gc
+    wB = (1 + tB + wC * Gc * Ks[2]) / gb
+    wA = 2 * (1 + wB * Gb * Ks[1]) / delta[0]
+    C0 = wA * Ks[0]
+    kappa = min(Q(1), gd)
+    radius = max(1, ceilq((2 * C0 + 2) / kappa))
+    turnover = b[1] + delta[1] + alpha[1] + a[1] + e[1] + beta[1] + t[1] + u[1]
+    firing_factor = 8 * turnover / kappa
+    return {&quot;spec&quot;: spec, &quot;births&quot;: births, &quot;deaths&quot;: deaths,
+            &quot;cb&quot;: cb, &quot;gammaB&quot;: gb, &quot;sC&quot;: sbc, &quot;cC&quot;: cc, &quot;gammaC&quot;: gc,
+            &quot;GB&quot;: Gb, &quot;GC&quot;: Gc, &quot;s&quot;: s, &quot;K&quot;: k, &quot;kappa_h&quot;: kap,
+            &quot;J&quot;: J, &quot;gamma_h&quot;: gh, &quot;epsilon&quot;: eps, &quot;F&quot;: F, &quot;M&quot;: M,
+            &quot;gammaD&quot;: gd, &quot;cubic_envelopes&quot;: Ks,
+            &quot;weights&quot;: [wA, wB, wC], &quot;constant&quot;: C0,
+            &quot;kappa&quot;: kappa, &quot;core_radius&quot;: radius,
+            &quot;turnover&quot;: turnover, &quot;firing_bound_factor&quot;: firing_factor}
+
+
+def acquire_from_reactions(species, reactions):
+    &quot;&quot;&quot;Consume the full reaction table and acquire its root/chain ordering.
+
+    Parallel identical channels are aggregated exactly. Unknown reactions,
+    extra roots, branches, cycles, self-catalysis, bursts and unpaired channels
+    reject rather than silently being discarded.
+    &quot;&quot;&quot;
+    if (not isinstance(species, list) or len(species) != 4
+            or any(not isinstance(x, str) or not x for x in species)
+            or len(set(species)) != 4 or not isinstance(reactions, list)):
+        raise ValueError(&quot;Exactly four explicit distinct species required&quot;)
+    buckets = {}
+    for r in reactions:
+        if not isinstance(r, dict) or set(r) != {&quot;source&quot;, &quot;target&quot;, &quot;rate&quot;}:
+            raise ValueError(&quot;Exactly source/target/rate required&quot;)
+        src, dst = r[&quot;source&quot;], r[&quot;target&quot;]
+        if (not isinstance(src, (list, tuple)) or not isinstance(dst, (list, tuple))
+                or len(src) != 4 or len(dst) != 4
+                or any(isinstance(x, bool) or not isinstance(x, int) or x &lt; 0
+                       for x in (*src, *dst))):
+            raise ValueError(&quot;Nonnegative integer source/target vectors required&quot;)
+        changes = [i for i in range(4) if src[i] != dst[i]]
+        if len(changes) != 1 or abs(dst[changes[0]] - src[changes[0]]) != 1:
+            raise ValueError(&quot;Only one unit count change admitted&quot;)
+        child = changes[0]
+        sign = dst[child] - src[child]
+        residual = src if sign &gt; 0 else dst
+        if sum(residual) not in (0, 1):
+            raise ValueError(&quot;Only zero or one unchanged catalyst admitted&quot;)
+        parent = None if sum(residual) == 0 else residual.index(1)
+        if parent == child:
+            raise ValueError(&quot;Self-catalysis outside the chain grammar&quot;)
+        bounds = interval(r[&quot;rate&quot;])
+        key = (child, parent, sign)
+        old = buckets.get(key, (Q(0), Q(0)))
+        buckets[key] = tuple(x + y for x, y in zip(old, bounds))
+    pairs = {(j, i) for j, i, _ in buckets}
+    if any((j, i, 1) not in buckets or (j, i, -1) not in buckets for j, i in pairs):
+        raise ValueError(&quot;Every channel needs both positive directions&quot;)
+    roots = [j for j, i in pairs if i is None]
+    if len(roots) != 1 or len(pairs) != 4:
+        raise ValueError(&quot;One root and three chain edges required&quot;)
+    order = roots[:]
+    while len(order) &lt; 4:
+        nxt = [j for j, i in pairs if i == order[-1]]
+        if len(nxt) != 1 or nxt[0] in order:
+            raise ValueError(&quot;Branches, cycles or disconnected species rejected&quot;)
+        order.append(nxt[0])
+    expected = {(order[0], None), *((order[j], order[j-1]) for j in range(1, 4))}
+    if pairs != expected:
+        raise ValueError(&quot;Unexpected paired edge rejected&quot;)
+    spec = {&quot;names&quot;: [species[i] for i in order],
+            &quot;birth&quot;: [[str(x) for x in buckets[(j, i, 1)]] for j, i in
+                      [(order[0], None), *[(order[k], order[k-1]) for k in range(1, 4)]]],
+            &quot;death&quot;: [[str(x) for x in buckets[(j, i, -1)]] for j, i in
+                      [(order[0], None), *[(order[k], order[k-1]) for k in range(1, 4)]]]}
+    return acquire(spec)
+
+
+def gateB(c, A):
+    return 1 + c[&quot;cb&quot;] / (A + 1)
+
+
+def gateC(c, A, B):
+    return 1 + c[&quot;cC&quot;] / ((A + c[&quot;sC&quot;]) * (B + 1))
+
+
+def gateD(c, A, B, C):
+    return c[&quot;M&quot;] + Q(1, C + 1) + c[&quot;epsilon&quot;] * (B - 1)**2 / (A + c[&quot;s&quot;])
+
+
+def V(c, x):
+    A, B, C, D = x
+    wA, wB, wC = c[&quot;weights&quot;]
+    return (wA * A**3 + wB * gateB(c, A) * B**3
+            + wC * gateC(c, A, B) * C**3 + gateD(c, A, B, C) * D**3)
+
+
+def raw(c):
+    rs = []
+    for j in range(4):
+        src = [0] * 4
+        if j:
+            src[j-1] = 1
+        dst = src.copy()
+        dst[j] = 1
+        rs.append((tuple(src), tuple(dst), c[&quot;births&quot;][j]))
+        rs.append((tuple(dst), tuple(src), c[&quot;deaths&quot;][j]))
+    return rs
+
+
+def generator(c, x, f):
+    value = f(x)
+    total = Q(0)
+    for src, dst, bounds in raw(c):
+        rate = 1
+        for n, k in zip(x, src):
+            for j in range(k):
+                rate *= max(0, n - j)
+        if rate:
+            y = tuple(n + z - a for n, a, z in zip(x, src, dst))
+            jump = f(y) - value
+            total += rate * (bounds[1] if jump &gt; 0 else bounds[0]) * jump
+    return total
+
+
+def killedD(c, A, B, C):
+    x = (A, B, C, 0)
+    drift = generator(c, x, lambda z: gateD(c, *z[:3]))
+    return drift - c[&quot;deaths&quot;][3][0] / 2 * C * gateD(c, A, B, C)
+
+
+def dumpable(x):
+    if isinstance(x, Q):
+        return str(x)
+    if isinstance(x, dict):
+        return {k: dumpable(v) for k, v in x.items()}
+    if isinstance(x, (tuple, list)):
+        return [dumpable(v) for v in x]
+    return x
+
+
+def verify():
+    start = time.perf_counter()
+    specs = [
+        {&quot;names&quot;: [&quot;A&quot;, &quot;B&quot;, &quot;C&quot;, &quot;D&quot;], &quot;birth&quot;: [[1, 1]] * 4, &quot;death&quot;: [[1, 1]] * 4},
+        {&quot;names&quot;: [&quot;A&quot;, &quot;B&quot;, &quot;C&quot;, &quot;D&quot;], &quot;birth&quot;: [[1, 2], [1, 3], [2, 4], [1, 2]],
+         &quot;death&quot;: [[2, 5], [1, 4], [1, 3], [2, 6]]},
+        {&quot;names&quot;: [&quot;A&quot;, &quot;B&quot;, &quot;C&quot;, &quot;D&quot;], &quot;birth&quot;: [[&quot;1/3&quot;, &quot;2/3&quot;], [&quot;1/7&quot;, 2], [&quot;1/5&quot;, 4], [&quot;1/11&quot;, 3]],
+         &quot;death&quot;: [[1, 3], [&quot;1/2&quot;, 5], [&quot;1/9&quot;, 2], [&quot;1/13&quot;, 3]]},
+    ]
+    checks = killed = raw_admission = reject = 0
+    records = []
+    for spec in specs:
+        c = acquire(spec)
+        margin = None
+        for x in product(range(5), repeat=4):
+            lv = generator(c, x, lambda z: V(c, z))
+            A, B, C, D = x
+            upper = c[&quot;constant&quot;] - A**3 - B**3 - C**3 - c[&quot;gammaD&quot;] * D**3
+            assert lv &lt;= upper, (spec, x, lv, upper)
+            checks += 1
+            margin = upper - lv if margin is None else min(margin, upper - lv)
+        for A, B, C in product(range(9), repeat=3):
+            assert killedD(c, A, B, C) &lt;= -c[&quot;gammaD&quot;]
+            killed += 1
+        for A, B, C in product([0, 1, 10, 1000, 1000000], [0, 1, 2, 10, 1000], [0, 1, 2]):
+            assert killedD(c, A, B, C) &lt;= -c[&quot;gammaD&quot;]
+            killed += 1
+        reactions = [{&quot;source&quot;: list(src), &quot;target&quot;: list(dst), &quot;rate&quot;: list(map(str, bounds))}
+                     for src, dst, bounds in raw(c)]
+        c2 = acquire_from_reactions(spec[&quot;names&quot;], reactions)
+        assert {k: v for k, v in c2.items() if k != &quot;spec&quot;} == {k: v for k, v in c.items() if k != &quot;spec&quot;}
+        raw_admission += 1
+        extra = {&quot;source&quot;: [0]*4, &quot;target&quot;: [0, 0, 0, 2], &quot;rate&quot;: [1, 1]}
+        try:
+            acquire_from_reactions(spec[&quot;names&quot;], reactions + [extra])
+        except ValueError:
+            reject += 1
+        else:
+            raise AssertionError(&quot;Unrecognized extra reaction silently admitted&quot;)
+        records.append({&quot;certificate&quot;: dumpable(c), &quot;minimum_full_drift_margin&quot;: str(margin)})
+    unit = acquire(specs[0])
+    n = 100
+    q_new = gateD(unit, n, n, 0)
+    kd_new = killedD(unit, n, n, 0)
+    assert kd_new &lt; 0
+    witness = {&quot;upstream_state&quot;: [n, n, 0], &quot;new_gate_value&quot;: str(q_new),
+               &quot;new_killed_drift&quot;: str(kd_new), &quot;old_product_route&quot;:&quot;proved positive on this scaling in independent fourth-layer counterexample&quot;}
+    return {&quot;status&quot;: &quot;EXACT_FINITE_DIAGNOSTICS_PASSED&quot;, &quot;full_generator_states&quot;: checks,
+            &quot;killed_gate_states&quot;: killed, &quot;raw_table_acquisitions&quot;: raw_admission,
+            &quot;extra_reaction_rejections&quot;: reject, &quot;fixtures&quot;: records,
+            &quot;old_obstruction_witness&quot;: witness, &quot;elapsed_seconds&quot;: time.perf_counter()-start,
+            &quot;scope&quot;: &quot;Finite diagnostics only; infinite-lattice proof in FOUR_LAYER_PHASE_PROOF.txt&quot;}
+
+
+if __name__ == &quot;__main__&quot;:
+    output = verify()
+    Path(__file__).with_name(&quot;four_layer_phase_checks.json&quot;).write_text(json.dumps(output, indent=2)+&quot;\n&quot;)
+    print(json.dumps({k: output[k] for k in [&quot;status&quot;, &quot;full_generator_states&quot;, &quot;killed_gate_states&quot;,
+                                            &quot;raw_table_acquisitions&quot;, &quot;extra_reaction_rejections&quot;,
+                                            &quot;old_obstruction_witness&quot;, &quot;elapsed_seconds&quot;]}, indent=2))
+</pre><p><a href="../assets/a24bfa9095942fb20815979a5823bb1f26058d263e067eba73ef072d71851a51.py">Exact original bytes</a></p></html>

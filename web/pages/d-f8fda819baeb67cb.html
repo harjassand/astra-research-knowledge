@@ -1,0 +1,72 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c03_l09/revisions/functional_digraph_sampler.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c03_l09/revisions/functional_digraph_sampler.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Exact conditional sampler for a canonical functional-digraph BCS sector.
+
+The arithmetic oracle is functional_digraph_dp.count_poly. Each branch uses
+an exact rational conditional probability; uniform integers are obtained from
+unbiased bits with a polynomially capped rejection loop.
+&quot;&quot;&quot;
+from fractions import Fraction as Q
+import random
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from functional_digraph_dp import count_poly
+
+
+class SamplingAbort(RuntimeError):
+    pass
+
+
+def bernoulli_rational(p, rng, max_rejections):
+    p = Q(p)
+    if p &lt;= 0:
+        return 0
+    if p &gt;= 1:
+        return 1
+    a, d = p.numerator, p.denominator
+    bits = (d - 1).bit_length()
+    for _ in range(max_rejections):
+        value = rng.getrandbits(bits)
+        if value &lt; d:
+            return int(value &lt; a)
+    raise SamplingAbort(&quot;capped exact-uniform-integer rejection loop&quot;)
+
+
+def sample_canonical_rows(p, w, t, k, *, rng=None, failure_budget=Q(1, 1000000)):
+    &quot;&quot;&quot;Sample I with probability proportional to its exact BCS norm weight.
+
+    Returns (selected_rows, corresponding_columns, abort_probability_bound).
+    For the supplied failure_budget, the total probability of a capped random-
+    bit abort over at most n conditional choices is at most that budget.
+    &quot;&quot;&quot;
+    n = len(p)
+    if not 0 &lt;= k &lt;= n:
+        raise ValueError(&quot;k must be in [0,n]&quot;)
+    rng = random.SystemRandom() if rng is None else rng
+    failure_budget = Q(failure_budget)
+    if not 0 &lt; failure_budget &lt; 1:
+        raise ValueError(&quot;failure_budget must be strictly between 0 and 1&quot;)
+    norm = count_poly(p, w, t)[k]
+    if not norm:
+        raise ValueError(&quot;requested sector has zero norm&quot;)
+    # Per-choice rejection failure &lt;=2^-R; union bound over n choices.
+    max_rejections = 1
+    while Q(n, 2 ** max_rejections) &gt; failure_budget:
+        max_rejections += 1
+
+    fixed = {}
+    for i in range(n):
+        z0 = count_poly(p, w, t, {**fixed, i: 0})[k]
+        z1 = count_poly(p, w, t, {**fixed, i: 1})[k]
+        total = z0 + z1
+        if not total:
+            raise AssertionError(&quot;positive prefix lost all mass&quot;)
+        fixed[i] = bernoulli_rational(z1 / total, rng, max_rejections)
+    rows = tuple(i for i, bit in fixed.items() if bit)
+    columns = tuple(sorted(p[i] for i in rows if p[i] is not None))
+    if len(columns) != len(rows):
+        raise AssertionError(&quot;positive sample violated injectivity&quot;)
+    if len(rows) != k:
+        raise AssertionError(&quot;canonical sampler returned the wrong pair number&quot;)
+    return rows, columns, Q(n, 2 ** max_rejections)
+</pre><p><a href="../assets/24247ecbd64817f3a1c1821b9713d3012f55f76016e798955cd22f1708c0b394.py">Exact original bytes</a></p></html>

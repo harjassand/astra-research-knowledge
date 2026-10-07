@@ -1,0 +1,124 @@
+"""Finite 2x2 noncommuting diagnostics, using only the standard library.
+
+These test the proof's algebra at fixtures. They do not certify a theorem,
+general barycenter algorithm, quantum memory, or novelty.
+"""
+import json
+import math
+import time
+from pathlib import Path
+
+
+I=[[1.,0.],[0.,1.]]
+
+
+def add(a,b,wa=1.,wb=1.):
+    return [[wa*a[i][j]+wb*b[i][j] for j in range(2)] for i in range(2)]
+
+
+def mul(a,b):
+    return [[sum(a[i][k]*b[k][j] for k in range(2)) for j in range(2)] for i in range(2)]
+
+
+def tr(a):
+    return a[0][0]+a[1][1]
+
+
+def det(a):
+    return a[0][0]*a[1][1]-a[0][1]*a[1][0]
+
+
+def inv(a):
+    d=det(a)
+    return [[a[1][1]/d,-a[0][1]/d],[-a[1][0]/d,a[0][0]/d]]
+
+
+def norm2(a):
+    return sum(x*x for row in a for x in row)
+
+
+def eigen(a):
+    r=math.sqrt((a[0][0]-a[1][1])**2+4*a[0][1]*a[1][0])
+    return ((tr(a)-r)/2,(tr(a)+r)/2)
+
+
+def sqrtm(a):
+    d=math.sqrt(det(a))
+    return add(a,I,1/math.sqrt(tr(a)+2*d),d/math.sqrt(tr(a)+2*d))
+
+
+def logm(a):
+    lo,hi=eigen(a)
+    if abs(hi-lo)<1e-12:
+        return add(I,I,math.log((lo+hi)/2),0)
+    slope=(math.log(hi)-math.log(lo))/(hi-lo)
+    offset=(hi*math.log(lo)-lo*math.log(hi))/(hi-lo)
+    return add(a,I,slope,offset)
+
+
+def congr(a,b):
+    return mul(mul(a,b),a)
+
+
+def case(a0,a1):
+    a0h=sqrtm(a0)
+    a0mh=inv(a0h)
+    b=congr(a0h,sqrtm(congr(a0mh,a1)))
+    bmh=inv(sqrtm(b))
+    s0=congr(bmh,a0)
+    s1=congr(bmh,a1)
+    balance=norm2(add(logm(s0),logm(s1),.5,.5))**.5
+    assert balance<1e-12
+    commutator=norm2(add(mul(a0,a1),mul(a1,a0),1,-1))**.5
+    assert commutator>0.05
+    alpha=min(eigen(a0)[0],eigen(a1)[0])
+    beta=max(eigen(a0)[1],eigen(a1)[1])
+    K=beta/alpha
+    c=(K-1-math.log(K))/math.log(K)**2
+    dA=add(a1,a0,1,-1)
+    dS=congr(bmh,dA)
+    fixtures=[]
+    for t in [0.,.25,.5,.75,1.]:
+        a=add(a0,a1,1-t,t)
+        s=congr(bmh,a)
+        l=logm(s)
+        energy=tr(mul(mul(mul(inv(a),dA),inv(a)),dA))
+        epsilon=1e-6
+        dlog=add(logm(add(s,dS,1,epsilon)),logm(add(s,dS,1,-epsilon)),
+                 1/(2*epsilon),-1/(2*epsilon))
+        derivative_norm2=norm2(dlog)
+        assert derivative_norm2<=energy*(1+1e-7)
+        relative_energy=tr(mul(mul(mul(inv(s),dS),inv(s)),dS))
+        assert abs(relative_energy-energy)<1e-12
+        kl=(tr(s)-2-math.log(det(s)))/2
+        upper=c*norm2(l)/2
+        assert kl<=upper+1e-12
+        fixtures.append(dict(t=t,metric_energy=energy,
+                             finite_difference_log_energy=derivative_norm2,
+                             gaussian_KL=kl,log_quadratic_upper=upper))
+    return dict(alpha=alpha,beta=beta,K=K,c=c,balance_residual=balance,
+                commutator_norm=commutator,fixtures=fixtures)
+
+
+if __name__=='__main__':
+    start=time.perf_counter()
+    examples=[([[1.5,.3],[.3,2.8]],[[3.2,-.4],[-.4,1.9]]),
+              ([[1.,0.],[0.,4.]],[[2.5,.5],[.5,2.5]])]
+    records=[case(*ex) for ex in examples]
+    scalar=[]
+    for K in (1.01,2,4,64,2048):
+        L=math.log(K)
+        c=(K-1-L)/(L*L)
+        for j in range(-20,21):
+            t=L*j/20
+            remainder=math.expm1(t)-t
+            assert remainder<=c*t*t+1e-12*max(1,K)
+            scalar.append(dict(K=K,t=t,remainder=remainder,upper=c*t*t))
+    result=dict(status='PASS',matrix_examples=records,scalar_fixtures=len(scalar),
+                elapsed_seconds=time.perf_counter()-start,
+                scope='Finite floating noncommuting checks, not formal proof or full Karcher solver.')
+    p=Path(__file__).with_suffix('.json')
+    p.write_text(json.dumps(result,indent=2)+'\n')
+    print(json.dumps({'status':'PASS','matrix_examples':len(records),
+                      'scalar_fixtures':len(scalar),'seconds':result['elapsed_seconds'],
+                      'output':str(p)}))

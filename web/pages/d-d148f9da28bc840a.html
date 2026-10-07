@@ -1,0 +1,181 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c10_l08/recovery_return_cost.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c10_l08/recovery_return_cost.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact small-instance checks for the scalar bimolecular recovery certificate.
+
+This script checks rational identities and finite-state Poisson equations. The
+uniform predictable-control proof is in INITIAL.txt; these checks do not replace
+that proof or validate the general network certificate search.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from math import comb
+import json
+from pathlib import Path
+
+
+def falling(n, m):
+    if n &lt; m:
+        return 0
+    out = 1
+    for r in range(m):
+        out *= n - r
+    return out
+
+
+def ceil_fraction(x):
+    return (x.numerator + x.denominator - 1) // x.denominator
+
+
+def weights(V, m, kappa, K):
+    rho = kappa / K
+    out = {}
+    for j in range(m - 1, V - m + 2):
+        w = rho**j
+        for r in range(m):
+            w *= comb(V - 2 * r, j - r)
+        out[j] = w
+    return out
+
+
+def exact_lower_mean(V, m, kappa, K, L):
+    &quot;&quot;&quot;Exact lower-extremal birth-death mean from m-1 to L.&quot;&quot;&quot;
+    w = weights(V, m, kappa, K)
+    diffs = {}
+    cumulative = F(0)
+    for j in range(m - 1, L):
+        cumulative += w[j]
+        birth = kappa * F(falling(V - j, m), V ** (m - 1))
+        diffs[j] = cumulative / (w[j] * birth)
+    h = {L: F(0)}
+    for j in range(L - 1, m - 2, -1):
+        h[j] = h[j + 1] + diffs[j]
+
+    # Verify the backward Poisson equation exactly at each transient state.
+    for j in range(m - 1, L):
+        birth = kappa * F(falling(V - j, m), V ** (m - 1))
+        death = K * F(falling(j, m), V ** (m - 1))
+        rhs = birth * (h[j + 1] - h[j])
+        if j &gt; m - 1:
+            rhs += death * (h[j - 1] - h[j])
+        assert rhs == -1, (V, m, j, rhs)
+    return h[m - 1], max(max(x.numerator.bit_length(), x.denominator.bit_length())
+                          for x in h.values())
+
+
+def one_fixture(V, m, kappa, K, q):
+    assert V &gt;= 2 * m
+    L = (q.numerator * V) // q.denominator
+    assert m &lt;= L and 2 * L &lt; V
+    fq = kappa * (1 - q) ** m - K * q**m
+    assert fq &gt; 0
+    eta = fq / (2 * m * (kappa + K))
+    u = q + eta
+    fu = kappa * (1 - u) ** m - K * u**m
+    assert fu &gt;= fq / 2 &gt; 0
+    mu = F(1, V ** (m - 1)) * (
+        kappa * falling(V - L, m) - K * falling(L, m)
+    )
+    assert mu &gt; 0
+    delta = fu
+    assert mu / V &gt;= delta
+
+    # Exact drift floor for every left-outside state under the worst controls.
+    for j in range(m - 1, L):
+        drift_floor = F(1, V ** (m - 1)) * (
+            kappa * falling(V - j, m) - K * falling(j, m)
+        )
+        assert drift_floor &gt;= mu
+
+    S = kappa + K * F(L, V) ** m
+    theta = mu / (2 * V * S)
+    alpha = mu**2 / (4 * V * S)
+    assert 0 &lt; theta &lt;= F(1, 2)
+    gap = L - (m - 1)
+    expected_upper = F(gap, 1) / mu
+    return_time = F(4 * gap, 1) / mu
+    tail_exponent = theta * gap - alpha * return_time
+    assert tail_exponent == -mu * gap / (2 * V * S)
+    exact_mean, mean_bits = exact_lower_mean(V, m, kappa, K, L)
+    assert exact_mean &lt;= expected_upper
+
+    firing_rate_upper = K * V * (1 + F(L, V) ** m)
+    firing_count_upper = firing_rate_upper * expected_upper
+    return {
+        &quot;V&quot;: V,
+        &quot;m&quot;: m,
+        &quot;L&quot;: L,
+        &quot;kappa&quot;: str(kappa),
+        &quot;K&quot;: str(K),
+        &quot;q&quot;: str(q),
+        &quot;f_q&quot;: str(fq),
+        &quot;eta&quot;: str(eta),
+        &quot;u&quot;: str(u),
+        &quot;delta&quot;: str(delta),
+        &quot;mu_V&quot;: str(mu),
+        &quot;mu_V_over_V&quot;: str(mu / V),
+        &quot;S_L&quot;: str(S),
+        &quot;theta&quot;: str(theta),
+        &quot;alpha&quot;: str(alpha),
+        &quot;worst_start_expected_return_upper&quot;: str(expected_upper),
+        &quot;uniform_return_tail_time&quot;: str(return_time),
+        &quot;uniform_tail_exponent_at_that_time&quot;: str(tail_exponent),
+        &quot;exact_lower_chain_mean&quot;: str(exact_mean),
+        &quot;exact_mean_max_numerator_or_denominator_bits&quot;: mean_bits,
+        &quot;expected_firing_count_upper&quot;: str(firing_count_upper),
+        &quot;mu_numerator_or_denominator_bits&quot;: max(mu.numerator.bit_length(), mu.denominator.bit_length()),
+        &quot;exact_check&quot;: &quot;PASS&quot;
+    }
+
+
+def main():
+    fixtures = [
+        one_fixture(V, 2, F(1), F(4), F(1, 4))
+        for V in (64, 128, 256)
+    ]
+
+    # A true second-order family with O(b)-bit rate/core data and a vanishing
+    # large-deviation exponent. The asymptotic for Delta is proved in INITIAL.
+    b = 8
+    M = 1 &lt;&lt; b
+    N = M + 1
+    q = F(M, N * N)
+    kappa, K = F(1), F(M * M)
+    p = F(1, N)
+    fq = kappa * (1 - q) ** 2 - K * q**2
+    eta = fq / (4 * (kappa + K))
+    u = q + eta
+    volume_floor = max(2 * 2, ceil_fraction(F(2, 1) / q),
+                       ceil_fraction(F(1, 1) / eta))
+    if volume_floor % 2:
+        volume_floor += 1
+    bit_family = {
+        &quot;m&quot;: 2,
+        &quot;rate_parameter_b&quot;: b,
+        &quot;M&quot;: M,
+        &quot;N&quot;: N,
+        &quot;kappa&quot;: str(kappa),
+        &quot;K&quot;: str(K),
+        &quot;p&quot;: str(p),
+        &quot;q&quot;: str(q),
+        &quot;p_minus_q&quot;: str(p - q),
+        &quot;f_q&quot;: str(fq),
+        &quot;eta&quot;: str(eta),
+        &quot;u&quot;: str(u),
+        &quot;our_conservative_return_certificate_even_volume_floor&quot;: volume_floor,
+        &quot;rate_encoding_bits&quot;: K.numerator.bit_length(),
+        &quot;q_encoding_numerator_bits&quot;: q.numerator.bit_length(),
+        &quot;q_encoding_denominator_bits&quot;: q.denominator.bit_length(),
+        &quot;scope&quot;: &quot;cost illustration; the conservative volume threshold is not a lower bound&quot;
+    }
+    report = {
+        &quot;status&quot;: &quot;exact rational fixture checks; proof remains in INITIAL.txt&quot;,
+        &quot;fixtures&quot;: fixtures,
+        &quot;narrow_margin_family&quot;: bit_family,
+        &quot;verified&quot;: &quot;finite-volume drift floors and lower-chain backward Poisson equations&quot;
+    }
+    out = Path(__file__).with_name(&quot;recovery_return_cost_checks.json&quot;)
+    out.write_text(json.dumps(report, indent=2) + &quot;\n&quot;)
+    print(json.dumps(report, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/1dd465971968e0fe85fe483ae087016fb8f58c6156cf69c670a9663260f34877.py">Exact original bytes</a></p></html>

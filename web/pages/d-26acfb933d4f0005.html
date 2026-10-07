@@ -1,0 +1,135 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c08_s03/certificate_checks.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c08_s03/certificate_checks.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Small exact checks and a rational verifier for an admitted entropy cone.
+
+The verifier does not acquire a manifold, an h-net, Lipschitz constants,
+incompressibility, or primitive tensor enclosures. Those are explicit inputs.
+The homogeneous Sol identities are independently rebuilt symbolically.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from pathlib import Path
+import hashlib
+import json
+import math
+import time
+import sympy as z
+
+ROOT = Path(__file__).resolve().parent
+
+
+def sqrt_bounds(x, bits=72):
+    x = F(x)
+    assert x &gt;= 0
+    if x == 0:
+        return F(0), F(0)
+    scale = 1 &lt;&lt; bits
+    n = math.isqrt((x.numerator * scale * scale) // x.denominator)
+    lo = F(n, scale)
+    hi = F(n + 1, scale)
+    assert lo * lo &lt;= x &lt;= hi * hi
+    return lo, hi
+
+
+def log_cat_bounds(bits=72, terms=64):
+    # log((3+sqrt(5))/2)=2 artanh(1/sqrt(5)).
+    rl, ru = sqrt_bounds(F(5), bits)
+    zl, zu = 1 / ru, 1 / rl
+    lo = sum(2 * zl ** (2*k + 1) / (2*k + 1) for k in range(terms))
+    hi = sum(2 * zu ** (2*k + 1) / (2*k + 1) for k in range(terms))
+    hi += 2 * zu ** (2*terms + 1) / ((2*terms + 1) * (1 - zu*zu))
+    return lo, hi
+
+
+def cone_verifier(samples, h, lip_s, lip_w, eta_s, eta_w, alpha, kappa):
+    &quot;&quot;&quot;Exact arithmetic; return UNKNOWN rather than infer absent coverage.&quot;&quot;&quot;
+    h, lip_s, lip_w, eta_s, eta_w, alpha, kappa = map(
+        F, (h, lip_s, lip_w, eta_s, eta_w, alpha, kappa))
+    if not samples or min(h, lip_s, lip_w, eta_s, eta_w) &lt; 0:
+        return {&#x27;status&#x27;: &#x27;REJECTED_INPUT&#x27;}
+    s0 = min(F(s) for s, _ in samples) - eta_s - lip_s*h
+    omega = max(abs(F(w)) for _, w in samples) + eta_w + lip_w*h
+    admissible = (0 &lt; alpha &lt; 1 and kappa &gt; 0 and s0 &gt; 0 and
+                  omega*(1+alpha*alpha) &lt;= 2*s0*alpha and
+                  kappa &lt;= s0-omega*alpha)
+    return {&#x27;status&#x27;: &#x27;CERTIFIED&#x27; if admissible else &#x27;UNKNOWN&#x27;,
+            &#x27;s_lower&#x27;: str(s0), &#x27;omega_upper&#x27;: str(omega),
+            &#x27;alpha&#x27;: str(alpha), &#x27;entropy_lower&#x27;: str(kappa) if admissible else None,
+            &#x27;scope&#x27;: &#x27;Conditional on supplied covering h-net, uniform errors and Lipschitz bounds.&#x27;}
+
+
+def symbolic_checks():
+    a, c, u, v = z.symbols(&#x27;a c u v&#x27;, real=True)
+    n2 = c*c+u*u+v*v
+    yy = z.Matrix([c, u, v])
+    # Advected coordinates in the global orthonormal left-invariant frame.
+    G = z.Matrix([[0, 0, 0], [-a*u, a*c, 0], [a*v, 0, -a*c]])
+    S = (G+G.T)/2
+    P = z.eye(3)-yy*yy.T/n2
+    Q = z.simplify(P*G*P)
+    B = z.simplify((Q+Q.T)/2)
+    K = z.simplify((Q-Q.T)/2)
+    s2 = z.simplify(z.trace(B*B)/2)
+    w2 = z.simplify(-z.trace(K*K)/2)
+    checks = {
+        &#x27;advected_flow_line_zero&#x27;: G*yy == z.zeros(3, 1),
+        &#x27;divergence_zero&#x27;: z.trace(G) == 0,
+        &#x27;strain_norm&#x27;: z.simplify(z.trace(S*S) - 2*a*a*c*c - a*a*(u*u+v*v)/2) == 0,
+        &#x27;quotient_trace_zero&#x27;: z.simplify(z.trace(Q)) == 0,
+        &#x27;quotient_rate_discriminant&#x27;: z.simplify(s2-w2-a*a*c*c) == 0,
+        &#x27;homogeneous_full_characteristic_polynomial&#x27;:
+            z.simplify(G.charpoly().as_expr() - z.Symbol(&#x27;lambda&#x27;)*(z.Symbol(&#x27;lambda&#x27;)-a*c)*(z.Symbol(&#x27;lambda&#x27;)+a*c)) == 0,
+        &#x27;equal_power_zero_entropy_pair&#x27;:
+            z.simplify(z.trace(S*S).subs({c:0, u:2, v:0}) -
+                       z.trace(S*S).subs({c:1, u:0, v:0})) == 0,
+        &#x27;one_transverse_component_s&#x27;: z.simplify(s2.subs(v, 0)-a*a*c*c) == 0,
+        &#x27;one_transverse_component_rotation_zero&#x27;: z.simplify(w2.subs(v, 0)) == 0,
+    }
+    ss, ww, al = z.symbols(&#x27;s omega alpha&#x27;, real=True)
+    D = z.diag(ss, -ss)
+    dD = z.Matrix([[0, 2*ss*ww], [2*ss*ww, 0]])
+    frame_spin = z.Matrix([[0, -ww], [ww, 0]])
+    checks[&#x27;eigenframe_commutator_identity&#x27;] = z.simplify(
+        (dD*D-D*dD)/(4*ss*ss)-frame_spin) == z.zeros(2)
+    p = z.symbols(&#x27;p&#x27;, real=True)
+    checks[&#x27;projective_riccati_identity&#x27;] = z.simplify((ww-ss*p)-p*(ss-ww*p)-(ww*(1+p*p)-2*ss*p)) == 0
+    # The cone signs are tested exactly at the rational certificate boundary.
+    witness = {ss:F(9,10), ww:F(1,5), al:F(1,4)}
+    checks[&#x27;rational_upper_cone_points_inward&#x27;] = bool((ww*(1+al*al)-2*ss*al).subs(witness) &lt; 0)
+    checks[&#x27;rational_lower_cone_points_inward&#x27;] = bool((-ww*(1+al*al)+2*ss*al).subs(witness) &gt; 0)
+    return checks, str(s2), str(w2)
+
+
+def main():
+    start = time.perf_counter()
+    checks, s2, w2 = symbolic_checks()
+    exact = cone_verifier([(&#x27;1&#x27;, &#x27;0&#x27;)], &#x27;0&#x27;, &#x27;0&#x27;, &#x27;0&#x27;, &#x27;0&#x27;, &#x27;0&#x27;, &#x27;1/4&#x27;, &#x27;1&#x27;)
+    noisy = cone_verifier([(&#x27;1&#x27;, &#x27;1/10&#x27;)], &#x27;1/20&#x27;, &#x27;1&#x27;, &#x27;1&#x27;, &#x27;1/20&#x27;, &#x27;1/20&#x27;, &#x27;1/4&#x27;, &#x27;17/20&#x27;)
+    boundary = cone_verifier([(&#x27;1&#x27;, &#x27;1&#x27;)], &#x27;0&#x27;, &#x27;0&#x27;, &#x27;0&#x27;, &#x27;0&#x27;, &#x27;0&#x27;, &#x27;3/4&#x27;, &#x27;1/10&#x27;)
+    impossible = cone_verifier([(&#x27;0&#x27;, &#x27;0&#x27;)], &#x27;0&#x27;, &#x27;0&#x27;, &#x27;0&#x27;, &#x27;0&#x27;, &#x27;0&#x27;, &#x27;1/4&#x27;, &#x27;1/10&#x27;)
+    checks.update({&#x27;exact_sol_certificate&#x27;: exact[&#x27;status&#x27;] == &#x27;CERTIFIED&#x27;,
+                   &#x27;noise_budget_certificate&#x27;: noisy[&#x27;status&#x27;] == &#x27;CERTIFIED&#x27;,
+                   &#x27;rotation_threshold_retains_unknown&#x27;: boundary[&#x27;status&#x27;] == &#x27;UNKNOWN&#x27;,
+                   &#x27;shear_has_no_positive_certificate&#x27;: impossible[&#x27;status&#x27;] == &#x27;UNKNOWN&#x27;})
+    lo, hi = log_cat_bounds()
+    checks[&#x27;log_cat_enclosure_width&#x27;] = hi-lo &lt; F(1, 10**20)
+    fixtures = []
+    for cc, uu, vv in [(1,0,0),(0,2,0),(1,3,0),(1,1,1),(0,1,1),(F(1,2),2,3)]:
+        assert all(isinstance(x, (int,F)) for x in (cc,uu,vv))
+        rate = (abs(F(cc))*lo, abs(F(cc))*hi)
+        energy_factor = 4*F(cc)**2+F(uu)**2+F(vv)**2
+        fixtures.append({&#x27;coefficients&#x27;:list(map(str,(cc,uu,vv))),
+                         &#x27;H_lower&#x27;:str(rate[0]), &#x27;H_upper&#x27;:str(rate[1]),
+                         &#x27;W_over_nu_V_a_squared&#x27;:str(energy_factor)})
+    result = {&#x27;status&#x27;:&#x27;PASS&#x27; if all(checks.values()) else &#x27;FAIL&#x27;, &#x27;checks&#x27;:checks,
+              &#x27;symbolic_s_squared&#x27;:s2, &#x27;symbolic_omega_squared&#x27;:w2,
+              &#x27;certificates&#x27;:{&#x27;exact&#x27;:exact,&#x27;noisy&#x27;:noisy,&#x27;threshold&#x27;:boundary,&#x27;shear&#x27;:impossible},
+              &#x27;cat_log&#x27;:{&#x27;lower&#x27;:str(lo),&#x27;upper&#x27;:str(hi),&#x27;display_midpoint&#x27;:float((lo+hi)/2)},
+              &#x27;homogeneous_fixtures&#x27;:fixtures, &#x27;elapsed_seconds&#x27;:time.perf_counter()-start,
+              &#x27;limits&#x27;:&#x27;Finite algebra and admitted verifier checks; not Pesin proof, a generic field compiler, or hardware power measurements.&#x27;}
+    (ROOT/&#x27;checks.json&#x27;).write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({k:result[k] for k in [&#x27;status&#x27;,&#x27;checks&#x27;,&#x27;elapsed_seconds&#x27;]},indent=2))
+    if result[&#x27;status&#x27;] != &#x27;PASS&#x27;:
+        raise SystemExit(1)
+
+
+if __name__ == &#x27;__main__&#x27;:
+    main()
+</pre><p><a href="../assets/088230b6029fe73e8f8204677daf0ef088c34b0c19c4bd840ef4e0350b0caba1.py">Exact original bytes</a></p></html>

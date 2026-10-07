@@ -1,0 +1,116 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c09_s02/reviews/replays/c09_s03_gaussian_compander_codec.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c09_s02/reviews/replays/c09_s03_gaussian_compander_codec.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Exact digital stochastic codec for Q_p G_L(X), with a Gaussian proof report.
+All encoder/decoder probability arithmetic is rational or integer.
+Normal draws/CDFs in diagnostics alone are floating and are not certified.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+import math, random, time, pathlib, json
+
+
+def triangle_cdf(t,j,J):
+    t=F(t)
+    if not (0&lt;=t&lt;=1) or not (0&lt;=j&lt;J) or J&lt;3: raise ValueError(&#x27;bad triangle&#x27;)
+    x=J*t
+    if j==0:
+        if x&lt;=1: return x-x*x/2
+        if x&lt;=J-1: return F(1,2)
+        return F(1,2)+(x-(J-1))**2/2
+    if x&lt;=j-1: return F(0)
+    if x&lt;=j: return (x-(j-1))**2/2
+    if x&lt;=j+1: return 1-(j+1-x)**2/2
+    return F(1)
+
+
+def encode_bin(k,p,J,bits):
+    N=1&lt;&lt;p
+    if not 0&lt;=k&lt;N or not 0&lt;=bits&lt;2*N: raise ValueError(&#x27;bad input&#x27;)
+    q,rem=divmod(J*(2*k+1),2*N)
+    return (q+1)%J if bits&lt;rem else q%J
+
+
+def decode_bin(j,p,J,bits):
+    N=1&lt;&lt;p; D=1&lt;&lt;(2*p+1)
+    if not 0&lt;=bits&lt;D: raise ValueError(&#x27;bad randomness&#x27;)
+    lo=0;hi=N-1;steps=0
+    while lo&lt;hi:
+        mid=(lo+hi)//2
+        n=triangle_cdf(F(mid+1,N),j,J)*D
+        assert n.denominator==1
+        if bits&lt;n.numerator: hi=mid
+        else: lo=mid+1
+        steps+=1
+    return lo,steps
+
+
+def plan(radius,epsilon):
+    L=1+F(radius);epsilon=F(epsilon)
+    if L&lt;1 or not 0&lt;epsilon&lt;1: raise ValueError(&#x27;bad precision/radius&#x27;)
+    q=846*L*L/epsilon
+    J=max(3,math.isqrt(q.numerator//q.denominator))
+    while J*J&lt;q: J+=1
+    p=0
+    while (1&lt;&lt;p)*epsilon&lt;J: p+=1
+    return {&#x27;J&#x27;:J,&#x27;input_output_bits&#x27;:p,&#x27;archive_bits&#x27;:(J-1).bit_length(),
+        &#x27;encoder_random_bits&#x27;:p+1,&#x27;decoder_random_bits&#x27;:2*p+1,
+        &#x27;ideal_TV_upper&#x27;:str(423*L*L/(J*J)),
+        &#x27;input_midpoint_TV_upper&#x27;:str(F(J,2*(1&lt;&lt;p))),
+        &#x27;total_TV_upper&#x27;:str(423*L*L/(J*J)+F(J,2*(1&lt;&lt;p))),
+        &#x27;total_TV_upper_float&#x27;:float(423*L*L/(J*J)+F(J,2*(1&lt;&lt;p)))}
+
+
+def normal_cdf(x): return 0.5*(1+math.erf(x/math.sqrt(2)))
+
+
+def numeric_fixture(theta,L,J,p):
+    N=1&lt;&lt;p
+    boundaries=[0.0]
+    for k in range(1,N): boundaries.append(normal_cdf(L*math.tan(math.pi*(k/N-0.5))-theta))
+    boundaries.append(1.0)
+    pin=[boundaries[k+1]-boundaries[k] for k in range(N)]
+    labels=[0.0]*J
+    for k,prob in enumerate(pin):
+        q,rem=divmod(J*(2*k+1),2*N)
+        labels[q%J]+=prob*(1-rem/(2*N))
+        labels[(q+1)%J]+=prob*rem/(2*N)
+    out=[0.0]*N
+    for j,weight in enumerate(labels):
+        old=F(0)
+        for k in range(N):
+            now=triangle_cdf(F(k+1,N),j,J)
+            out[k]+=weight*float(now-old);old=now
+    tv=sum(abs(x-y) for x,y in zip(pin,out))/2
+    bound=423*L*L/(J*J)+J/(2*N)
+    assert tv&lt;=bound+1e-12 and abs(sum(out)-1)&lt;1e-12
+    return {&#x27;theta&#x27;:theta,&#x27;L&#x27;:L,&#x27;J&#x27;:J,&#x27;p&#x27;:p,&#x27;TV_float&#x27;:tv,&#x27;analytic_upper&#x27;:bound}
+
+
+def main():
+    start=time.perf_counter(); exact=0
+    # Exact finite-state checks: every rational CDF bin has a common dyadic denominator.
+    for J in [3,5,8,13]:
+        for p in [3,5,7]:
+            N=1&lt;&lt;p; D=1&lt;&lt;(2*p+1)
+            for j in range(J):
+                vals=[triangle_cdf(F(k,N),j,J) for k in range(N+1)]
+                assert vals[0]==0 and vals[-1]==1 and all(a&lt;=b for a,b in zip(vals,vals[1:]))
+                assert all((x*D).denominator==1 for x in vals)
+                for k in [0,N//2,N-1]:
+                    a=int(vals[k]*D);b=int(vals[k+1]*D)
+                    if a&lt;b:
+                        for r in [a,b-1]:
+                            got,steps=decode_bin(j,p,J,r);assert got==k and steps&lt;=p;exact+=1
+            for k in range(N):
+                q,rem=divmod(J*(2*k+1),2*N)
+                counts=[0]*J
+                for r in range(2*N): counts[encode_bin(k,p,J,r)]+=1
+                assert counts[q%J]==2*N-rem and counts[(q+1)%J]==rem
+                exact+=1
+    diagnostic=[numeric_fixture(theta,2.0,J,8) for J in [4,8,16,32] for theta in [-1.0,0.0,1.0]]
+    plans=[plan(F(1),F(1,10)),plan(F(1),F(1,1000)),plan(F(10),F(1,1000))]
+    result={&#x27;exact_probability_and_endpoint_fixtures&#x27;:exact,&#x27;float_Gaussian_diagnostics&#x27;:diagnostic,
+        &#x27;plans&#x27;:plans,&#x27;elapsed_seconds&#x27;:time.perf_counter()-start,
+        &#x27;scope&#x27;:&#x27;Digital probability compiler is exact. Gaussian quadrature fixtures are floating diagnostics. No hardware Gaussian instrument/continuous-output claim.&#x27;}
+    out=pathlib.Path(__file__).with_name(&#x27;gaussian_codec_checks.json&#x27;);out.write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({&#x27;exact_fixtures&#x27;:exact,&#x27;plans&#x27;:plans,&#x27;elapsed_seconds&#x27;:result[&#x27;elapsed_seconds&#x27;],&#x27;output&#x27;:str(out)},indent=2))
+
+if __name__==&#x27;__main__&#x27;: main()
+</pre><p><a href="../assets/0027f09f513dcf0627aa5fd739fae74f49c6ce96ffb0e9560c5be9bd0ca70868.py">Exact original bytes</a></p></html>

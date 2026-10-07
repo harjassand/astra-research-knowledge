@@ -1,0 +1,103 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c02_s03/check_compiler.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c02_s03/check_compiler.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Bounded exact algebra/support diagnostics; does not run an FPRAS.&quot;&quot;&quot;
+import json
+from pathlib import Path
+from itertools import combinations, product
+from random import Random
+from datetime import datetime, timezone
+from representation_compiler import (C,Q,matrix,minor,det,inverse,rank,
+    strip_diagonal,bipartition,recognize,prefix_support,exhaustive_prefix_norm)
+
+
+def encode(x):
+    if isinstance(x,C): return x.json()
+    if isinstance(x,Q): return str(x)
+    if isinstance(x,dict): return {k:encode(v) for k,v in x.items()}
+    if isinstance(x,(list,tuple)): return [encode(v) for v in x]
+    return x
+
+
+def run():
+    started=datetime.now(timezone.utc).isoformat(); rng=Random(203)
+    counters={&#x27;jacobi_amplitudes&#x27;:0,&#x27;slater_weights&#x27;:0,&#x27;prefix_supports&#x27;:0,
+              &#x27;prefix_norm_identities&#x27;:0,&#x27;inverse_cases&#x27;:0,&#x27;direct_cases&#x27;:0,
+              &#x27;strict_nonbipartite_examples&#x27;:0,&#x27;shifted_cases&#x27;:0}
+    fixtures=[]
+    for n in (2,4,6):
+        for t in range(3 if n &lt; 6 else 2):
+            a=n//2
+            h=[[C(5+i) if i == j else C(0) for j in range(n)] for i in range(n)]
+            for i in range(a):
+                for j in range(a,n):
+                    h[i][j]=C(rng.randint(-2,2), rng.randint(-1,1))
+                    h[j][i]=h[i][j] if t%2 == 0 else C(rng.randint(-2,2),rng.randint(-1,1))
+            if not det(h): continue
+            f=inverse(h); fixtures.append((f,&#x27;inverse&#x27;))
+            fixtures.append((strip_diagonal(h),&#x27;direct&#x27;))
+    strict_h=matrix([[2,0,1,1],[0,3,1,2],[1,1,5,0],[1,2,0,7]])
+    strict_f=inverse(strict_h)
+    fixtures.append((strict_f,&#x27;inverse&#x27;))
+    witnesses=[]
+    for f,kind in fixtures:
+        n=len(f); k=n//2; c=recognize(f,k)
+        assert c[&#x27;status&#x27;] == &#x27;COMPILED&#x27;, (n,kind,c)
+        branch=c[&#x27;branch&#x27;]; counters[&#x27;inverse_cases&#x27; if branch.startswith(&#x27;INVERSE&#x27;) else &#x27;direct_cases&#x27;]+=1
+        original_color,odd=bipartition(strip_diagonal(f))
+        if original_color is None:
+            counters[&#x27;strict_nonbipartite_examples&#x27;]+=1
+        h=c[&#x27;H&#x27;]; factor=c[&#x27;scalar&#x27;]; normf=Q(0); normh=Q(0)
+        for up in combinations(range(n),k):
+            down=sorted(set(range(n))-set(up))
+            af=det(minor(f,up,down)); ah=det(minor(h,up,down))
+            assert af == factor*ah
+            counters[&#x27;jacobi_amplitudes&#x27;]+=1; normf+=af.abs2(); normh+=ah.abs2()
+            rows=sorted(x for x in range(2*n) if c[&#x27;row_spins&#x27;][x] == (&#x27;U&#x27; if c[&#x27;row_sites&#x27;][x] in up else &#x27;D&#x27;))
+            if len(c[&#x27;G&#x27;][0]) == n:
+                assert det([c[&#x27;G&#x27;][x] for x in rows]).abs2() == ah.abs2()
+                counters[&#x27;slater_weights&#x27;]+=1
+        assert normf == c[&#x27;norm_factor&#x27;]*normh
+        # Every binary prefix through depth 3 and every complete assignment.
+        constraints=[{}]
+        for length in range(1,min(n,3)+1):
+            constraints.extend(dict(enumerate(s)) for s in product(&#x27;UD&#x27;,repeat=length))
+        constraints.extend(dict(enumerate(s)) for s in product(&#x27;UD&#x27;,repeat=n))
+        for prefix in constraints:
+            exact=exhaustive_prefix_norm(f,prefix)
+            exacth=exhaustive_prefix_norm(h,prefix)
+            assert exact == c[&#x27;norm_factor&#x27;]*exacth
+            counters[&#x27;prefix_norm_identities&#x27;]+=1
+            result=prefix_support(c,prefix)
+            assert (result[&#x27;status&#x27;] == &#x27;POSITIVE&#x27;) == bool(exact), (prefix,result,exact)
+            if exact:
+                assert all((&#x27;U&#x27; if i in result[&#x27;up&#x27;] else &#x27;D&#x27;) == s for i,s in prefix.items())
+                assert result[&#x27;amplitude&#x27;] and result[&#x27;weight&#x27;] &gt; 0
+            counters[&#x27;prefix_supports&#x27;]+=1
+        witnesses.append({&#x27;n&#x27;:n,&#x27;kind&#x27;:kind,&#x27;branch&#x27;:branch,&#x27;norm&#x27;:str(normf),
+                          &#x27;norm_factor&#x27;:str(c[&#x27;norm_factor&#x27;]),&#x27;odd_walk&#x27;:odd})
+    # Singular input repaired by a supplied bounded scalar diagonal shift.
+    shifted_f=[[x-(strict_f[0][0] if i == j else C(0)) for j,x in enumerate(row)]
+               for i,row in enumerate(strict_f)]
+    shifted=recognize(shifted_f,2,shifts=(strict_f[0][0],))
+    assert shifted[&#x27;status&#x27;] == &#x27;COMPILED&#x27;
+    for up in combinations(range(4),2):
+        down=sorted(set(range(4))-set(up))
+        assert det(minor(shifted_f,up,down)) == shifted[&#x27;scalar&#x27;]*det(minor(shifted[&#x27;H&#x27;],up,down))
+    counters[&#x27;shifted_cases&#x27;]+=1
+    # Outside full occupancy, the inverse formula can change support.
+    low=det(minor(strict_f,[0],[1])); lowh=det(minor(strip_diagonal(strict_h),[0],[1]))
+    assert low and not lowh
+    boundary={&#x27;n&#x27;:4,&#x27;k&#x27;:1,&#x27;up&#x27;:[0],&#x27;down&#x27;:[1],
+              &#x27;F_amplitude&#x27;:low,&#x27;H_amplitude&#x27;:lowh}
+    return {&#x27;status&#x27;:&#x27;PASS&#x27;,&#x27;started_utc&#x27;:started,&#x27;finished_utc&#x27;:datetime.now(timezone.utc).isoformat(),
+            &#x27;scope&#x27;:&#x27;finite exact identities and deterministic support diagnostics only&#x27;,
+            &#x27;counters&#x27;:counters,&#x27;fixtures&#x27;:witnesses,&#x27;strict_fixture&#x27;:{&#x27;H&#x27;:strict_h,&#x27;F&#x27;:strict_f,
+              &#x27;norm_F&#x27;:exhaustive_prefix_norm(strict_f,{}),
+              &#x27;norm_H&#x27;:exhaustive_prefix_norm(strip_diagonal(strict_h),{})},
+            &#x27;non_half_filling_counterexample&#x27;:boundary}
+
+
+if __name__ == &#x27;__main__&#x27;:
+    result=encode(run())
+    Path(__file__).with_name(&#x27;checks.json&#x27;).write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({&#x27;status&#x27;:result[&#x27;status&#x27;],&#x27;counters&#x27;:result[&#x27;counters&#x27;],
+                      &#x27;finished_utc&#x27;:result[&#x27;finished_utc&#x27;]}))
+</pre><p><a href="../assets/884ea15ee54e631f33739c37b7e817b2b767a9c255c0fcfe77d35aaf67560662.py">Exact original bytes</a></p></html>

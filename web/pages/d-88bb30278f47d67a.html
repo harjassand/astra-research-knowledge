@@ -1,0 +1,176 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c05_s03/pinching_lift.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c05_s03/pinching_lift.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Small diagnostics for the proved spectral-pinching EB lift.
+
+Float fixtures verify transcription, not the theorem or general acquisition.
+The first suite uses Fraction arithmetic and checks the one-step inequality.
+&quot;&quot;&quot;
+from fractions import Fraction
+import json
+import math
+from pathlib import Path
+import numpy as np
+
+
+def exact_pair(d, h):
+    spectrum = [Fraction(j, d) for j in range(d)]
+    residues = sorted(set([Fraction(0), h] + [x % h for x in spectrum]))
+    shifts = [(a + b) / 2 for a, b in zip(residues, residues[1:]) if a &lt; b]
+    candidates = []
+    b2 = Fraction(d - 1, 2 * d)
+    comm2 = Fraction(d - 1, 2 * d**3)
+    for u in shifts:
+        labels = [(x - u) // h for x in spectrum]
+        off2 = sum(Fraction(1, 2 * d) for j in range(d - 1)
+                   if labels[j] != labels[j + 1])
+        rounded = [min(Fraction(1), max(Fraction(-1), u + (k + Fraction(1, 2))*h))
+                   for k in labels]
+        pivot2 = sum((x-y)**2 for x, y in zip(spectrum, rounded)) / d
+        candidates.append((off2, pivot2, u))
+    off2, pivot2, u = min(candidates)
+    assert (h * off2)**2 &lt;= comm2 * b2
+    assert pivot2 &lt;= h*h/4
+    return {&quot;dimension&quot;: d, &quot;h&quot;: str(h), &quot;chosen_shift&quot;: str(u),
+            &quot;offblock_squared_L2&quot;: str(off2), &quot;pivot_squared_L2&quot;: str(pivot2),
+            &quot;commutator_squared_L2&quot;: str(comm2), &quot;exact_pass&quot;: True,
+            &quot;candidate_count&quot;: len(shifts)}
+
+
+def l2(a):
+    return float(np.linalg.norm(a, &#x27;fro&#x27;) / math.sqrt(a.shape[0]))
+
+
+def modulus(r, delta):
+    if r &lt;= 1 or delta == 0:
+        return 0.0
+    t = ((r-1)*delta)**(1/3)
+    return min(1.0, math.hypot(t, modulus(r-1, min(2.0, delta+4*t))))
+
+
+def block_diagonalize(pivot, blocks):
+    d = len(pivot)
+    w = np.zeros((d, d), dtype=complex)
+    spectrum = np.zeros(d)
+    for ids in blocks:
+        vals, vecs = np.linalg.eigh(pivot[np.ix_(ids, ids)])
+        w[np.ix_(ids, ids)] = vecs
+        spectrum[ids] = vals
+    return w, spectrum
+
+
+def pinching_basis(matrices, delta):
+    &quot;&quot;&quot;Return a unitary basis; use the proof&#x27;s predetermined recurrence.&quot;&quot;&quot;
+    d = matrices[0].shape[0]
+    current = [x.copy() for x in matrices]
+    u_total = np.eye(d, dtype=complex)
+    blocks = [np.arange(d)]
+    logs = []
+    bound = delta
+    for j in range(len(matrices)-1):
+        w, spectrum = block_diagonalize(current[j], blocks)
+        current = [w.conj().T @ x @ w for x in current]
+        u_total = u_total @ w
+        remaining = len(matrices)-j-1
+        h = max(1e-12, (remaining*bound)**(1/3))
+        cuts = np.unique(np.concatenate(([0.0, h], np.mod(spectrum, h))))
+        shifts = [(a+b)/2 for a, b in zip(cuts, cuts[1:]) if b-a &gt; 1e-13*h]
+        if not shifts:
+            shifts = [h/2]
+        best = None
+        for shift in shifts:
+            labels = np.floor((spectrum-shift)/h).astype(np.int64)
+            proposed = [old[labels[old] == label]
+                        for old in blocks for label in np.unique(labels[old])]
+            mask = np.zeros((d, d), dtype=bool)
+            for ids in proposed:
+                mask[np.ix_(ids, ids)] = True
+            cost = sum(l2(x * (~mask))**2 for x in current[j+1:])
+            if best is None or cost &lt; best[0]:
+                best = (cost, shift, proposed, mask)
+        cost, shift, blocks, mask = best
+        for k in range(j+1, len(current)):
+            current[k] *= mask
+        t = (remaining*bound)**(1/3)
+        assert cost &lt;= remaining*bound/h + 1e-10
+        logs.append({&quot;stage&quot;: j, &quot;h&quot;: h, &quot;sum_offblock_L2_squared&quot;: cost,
+                     &quot;proved_bound&quot;: remaining*bound/h, &quot;block_count&quot;: len(blocks)})
+        bound = min(2.0, bound+4*t)
+    w, _ = block_diagonalize(current[-1], blocks)
+    return u_total @ w, logs
+
+
+def dephase(x, u):
+    y = u.conj().T @ x @ u
+    return u @ np.diag(np.diag(y)) @ u.conj().T
+
+
+def float_suite():
+    rng = np.random.default_rng(7075303)
+    rows = []
+    for d in [3, 5, 8, 12]:
+        for r in [2, 3, 4]:
+            for eps in [1e-2, 1e-5, 1e-9]:
+                z = rng.normal(size=(d,d)) + 1j*rng.normal(size=(d,d))
+                q, _ = np.linalg.qr(z)
+                matrices = []
+                for j in range(r):
+                    diag = np.diag(rng.uniform(-.65, .65, d))
+                    noise = rng.normal(size=(d,d)) + 1j*rng.normal(size=(d,d))
+                    noise = (noise+noise.conj().T)/2
+                    noise /= max(1, np.linalg.norm(noise,2))
+                    matrices.append(q @ (diag+eps*noise) @ q.conj().T)
+                delta = max(l2(a@b-b@a) for a in matrices for b in matrices)
+                u, logs = pinching_basis(matrices, delta)
+                errors = [l2(a-dephase(a,u)) for a in matrices]
+                predicted = modulus(r,delta)
+                assert max(errors) &lt;= predicted + 2e-8
+                assert np.linalg.norm(u.conj().T@u-np.eye(d)) &lt; 1e-10
+                rows.append({&quot;d&quot;:d,&quot;r&quot;:r,&quot;epsilon&quot;:eps,&quot;delta&quot;:delta,
+                             &quot;max_lift_L2_error&quot;:max(errors),&quot;modulus&quot;:predicted,
+                             &quot;stages&quot;:logs})
+    return rows
+
+
+def eb_fixture():
+    # T=(1-epsilon)*computational dephasing+epsilon*identity is bistochastic.
+    d, eps = 4, .03
+    rng = np.random.default_rng(7075304)
+    z = rng.normal(size=(d,d)) + 1j*rng.normal(size=(d,d))
+    u, _ = np.linalg.qr(z)
+    def t(x):
+        return (1-eps)*np.diag(np.diag(x)) + eps*x
+    projectors = [np.outer(u[:,j],u[:,j].conj()) for j in range(d)]
+    effects = [t(p) for p in projectors]  # T*=T here.
+    choi = sum(np.kron(m.T,p) for m,p in zip(effects,projectors))
+    errors = []
+    for i in range(d):
+        for j in range(d):
+            e = np.zeros((d,d),dtype=complex); e[i,j] = 1
+            lhs = dephase(t(e),u)
+            rhs = sum(np.trace(m@e)*p for m,p in zip(effects,projectors))
+            errors.append(np.linalg.norm(lhs-rhs))
+    assert min(np.linalg.eigvalsh(m).min() for m in effects) &gt; -1e-12
+    assert np.linalg.norm(sum(effects)-np.eye(d)) &lt; 1e-12
+    assert max(errors) &lt; 1e-12
+    assert np.linalg.eigvalsh(choi).min() &gt; -1e-12
+    return {&quot;dimension&quot;:d,&quot;epsilon&quot;:eps,&quot;outcomes&quot;:len(effects),
+            &quot;minimum_effect_eigenvalue&quot;:float(min(np.linalg.eigvalsh(m).min() for m in effects)),
+            &quot;minimum_choi_eigenvalue&quot;:float(np.linalg.eigvalsh(choi).min()),
+            &quot;measure_prepare_identity_max_error&quot;:max(errors),
+            &quot;scope&quot;:&quot;explicit separable Choi decomposition; float transcription check&quot;}
+
+
+if __name__ == &#x27;__main__&#x27;:
+    report = {&quot;seed&quot;:7075303,&quot;exact_pairs&quot;:[exact_pair(d,Fraction(1,k))
+              for d,k in [(8,2),(27,3),(64,4)]],
+              &quot;float_approximate_commuting_fixtures&quot;:float_suite(),
+              &quot;eb_composition_fixture&quot;:eb_fixture(),
+              &quot;modulus_samples&quot;:[{&quot;r&quot;:r,&quot;delta&quot;:1e-12,&quot;F&quot;:modulus(r,1e-12)}
+                                  for r in range(2,9)],
+              &quot;scope&quot;:&quot;bounded small exact/float diagnostics only; no uniform theorem inferred&quot;}
+    path = Path(__file__).with_name(&#x27;pinching_lift_checks.json&#x27;)
+    path.write_text(json.dumps(report,indent=2))
+    print(json.dumps({&quot;exact_pairs&quot;:len(report[&#x27;exact_pairs&#x27;]),
+                     &quot;float_fixtures&quot;:len(report[&#x27;float_approximate_commuting_fixtures&#x27;]),
+                     &quot;eb_fixture&quot;:report[&#x27;eb_composition_fixture&#x27;],
+                     &quot;modulus_samples&quot;:report[&#x27;modulus_samples&#x27;],
+                     &quot;output&quot;:str(path)},indent=2))
+</pre><p><a href="../assets/f4b8f26816fc0f46e5b4b459edf4c41190b8642e5c30d24afe2d191301b2a67d.py">Exact original bytes</a></p></html>

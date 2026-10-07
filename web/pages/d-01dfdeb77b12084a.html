@@ -1,0 +1,103 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c07_s01/revisions/iid_oracle_boundary_fixtures.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c07_s01/revisions/iid_oracle_boundary_fixtures.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Independent rational boundary-witness and recovery-obstruction fixtures.
+
+The decision oracle here is a specially solved qubit J_z^2 slice, not CAD.
+It does not implement the general ellipsoid or rational SDP algorithm.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from pathlib import Path
+import json
+
+def closest_zero(interval):
+    l,h=interval
+    return l if l&gt;0 else h if h&lt;0 else F(0)
+
+def feasible(box,u,N,theta):
+    &quot;&quot;&quot;Exact exists-state decision for F_W=1/(2N)+(N-1)/(2N) z_sigma^2.
+
+    W=2 J_z^2/N^2 has operator norm1/2. Tau has entries a,b+ic,1-a.
+    Minimize b^2+c^2 independently in their boxes; positivity is
+    (2a-1)^2 &lt;=1-4(b^2+c^2). This is a exact fixed-variable slice.
+    &quot;&quot;&quot;
+    lo=max(box[0][0],F(0));hi=min(box[0][1],F(1))
+    if lo&gt;hi:return False
+    q=closest_zero(box[1])**2+closest_zero(box[2])**2
+    M=1-4*q
+    if M&lt;0:return False
+    zl,zh=2*lo-1,2*hi-1
+    base=F(1,2*N);k=F(N-1,2*N)*(1-2*theta)**2
+    if u&lt;=base:
+        return zl&lt;=0&lt;=zh or (zl&gt;0 and zl*zl&lt;=M) or (zh&lt;0 and zh*zh&lt;=M)
+    if k==0:return False
+    need=(u-base)/k
+    if need&gt;M:return False
+    positive=zh&gt;=0 and zh*zh&gt;=need and max(zl,F(0))**2&lt;=M
+    negative=zl&lt;=0 and zl*zl&gt;=need and min(zh,F(0))**2&lt;=M
+    return positive or negative
+
+def run(N,theta,t):
+    queries=0
+    def yes(box,u):
+        nonlocal queries
+        queries+=1
+        return feasible(box,u,N,theta)
+    box=[(F(-1),F(1)) for _ in range(3)]
+    lo,hi=F(-1,2),F(1,2)
+    assert yes(box,lo)
+    while hi-lo&gt;t/8:
+        mid=(lo+hi)/2
+        if yes(box,mid):lo=mid
+        else:hi=mid
+    u=lo
+    gamma=t/F(80*4*N)
+    for j in range(3):
+        while box[j][1]-box[j][0]&gt;gamma:
+            a,b=box[j];mid=(a+b)/2
+            trial=box.copy();trial[j]=(a,mid)
+            if yes(trial,u):box=trial
+            else:
+                trial[j]=(mid,b)
+                assert yes(trial,u)
+                box=trial
+    Q=[(a+b)/2 for a,b in box]
+    delta=t/F(20*2*N)
+    den=1+4*delta
+    ahat=(Q[0]+2*delta)/den
+    bhat=Q[1]/den;chat=Q[2]/den
+    assert ahat&gt;=0 and ahat&lt;=1 and ahat*(1-ahat)&gt;=bhat*bhat+chat*chat
+    scale=1-2*theta
+    asigma=theta+scale*ahat
+    bsigma=scale*bhat;csigma=scale*chat
+    assert asigma&gt;=theta and 1-asigma&gt;=theta
+    assert (asigma-theta)*(1-asigma-theta)&gt;=bsigma*bsigma+csigma*csigma
+    value=F(1,2*N)+F(N-1,2*N)*(2*asigma-1)**2
+    optimum=F(1,2*N)+F(N-1,2*N)*scale*scale
+    assert value&gt;=optimum-t/4
+    qdet=Q[0]*(1-Q[0])-Q[1]**2-Q[2]**2
+    return {&#x27;N&#x27;:N,&#x27;theta&#x27;:str(theta),&#x27;tolerance&#x27;:str(t),&#x27;queries&#x27;:queries,
+            &#x27;box_center_not_psd&#x27;:qdet&lt;0,&#x27;exact_repaired_state_psd&#x27;:True,
+            &#x27;exact_restricted_state_ge_theta&#x27;:True,
+            &#x27;near_max_error&#x27;:str(optimum-value),&#x27;error_le_tolerance_over_4&#x27;:True,
+            &#x27;output_max_entry_bits&#x27;:max(v.numerator.bit_length()+v.denominator.bit_length()
+                                        for v in [asigma,bsigma,csigma]),
+            &#x27;scope&#x27;:&#x27;Exactly solved degree-two support slice; no general CAD/ellipsoid/SDP execution.&#x27;}
+
+if __name__==&#x27;__main__&#x27;:
+    # General-theta counter to repairing Q directly by the unrestricted recipe.
+    theta=F(3,8);delta=F(1,100);qmin=theta-delta
+    bad=(qmin+2*delta)/(1+4*delta)
+    assert bad==F(77,208) and bad&lt;theta
+    # N=1 pure target: true iid distance0, retained-only-white distance1/2.
+    # A correct true-dual point (W=0,a=0) by itself cannot certify that list.
+    out={&#x27;ordinary_direct_repair_counter&#x27;:{&#x27;theta&#x27;:str(theta),&#x27;Q_min&#x27;:str(qmin),
+             &#x27;delta&#x27;:str(delta),&#x27;repaired_min&#x27;:str(bad),&#x27;violates_theta&#x27;:True,
+             &#x27;repair&#x27;:&#x27;Parameterize sigma=theta I+(1-d theta)tau, then repair tau.&#x27;},
+         &#x27;dual_point_alone_recovery_counter&#x27;:{&#x27;d&#x27;:2,&#x27;N&#x27;:1,&#x27;target&#x27;:&#x27;diag(1,0)&#x27;,
+             &#x27;true_iid_distance&#x27;:&#x27;0&#x27;,&#x27;retained_atoms&#x27;:[&#x27;I/2&#x27;],
+             &#x27;retained_distance&#x27;:&#x27;1/2&#x27;,&#x27;true_dual_point&#x27;:&#x27;W=0,a=0&#x27;,
+             &#x27;scope&#x27;:&#x27;Refutes point-only recovery; full transcript and failed-run volume avoid it.&#x27;},
+         &#x27;boundary_witness_cases&#x27;:[run(3,th,F(1,2**k)) for th in [F(0),F(3,8),F(1,2)-F(1,2**40)]
+                                   for k in [10,60]],
+         &#x27;general_algorithm_executed&#x27;:False}
+    Path(__file__).with_suffix(&#x27;.json&#x27;).write_text(json.dumps(out,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps(out,indent=2))
+</pre><p><a href="../assets/99f5137cf75d09b86da51878830c6455056d6c85ab126ec54b4de3888a915aa0.py">Exact original bytes</a></p></html>

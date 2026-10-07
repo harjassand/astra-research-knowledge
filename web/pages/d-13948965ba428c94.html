@@ -1,0 +1,470 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c06_l07/revisions/peer_audit.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c06_l07/revisions/peer_audit.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Independent exact checks of selected c06 peer claims; no peer code imported.&quot;&quot;&quot;
+
+from __future__ import annotations
+
+from fractions import Fraction as F
+from itertools import combinations
+import json
+import math
+from pathlib import Path
+import random
+import sys
+
+ROOT = Path(__file__).resolve().parents[4]
+sys.path.insert(0, str(ROOT / &quot;work/cycle6/c06_l07&quot;))
+from xxz_homogeneous_compiler import Gate, HomogeneousCompiler  # noqa: E402
+
+
+def qstr(x: F) -&gt; str:
+    return f&quot;{x.numerator}/{x.denominator}&quot;
+
+
+def bitsets(n: int, size: int | None = None):
+    if size is None:
+        for mask in range(1 &lt;&lt; n):
+            yield frozenset(i for i in range(n) if mask &gt;&gt; i &amp; 1)
+    else:
+        for c in combinations(range(n), size):
+            yield frozenset(c)
+
+
+def exact_small_soft_law(c_nonzero: bool = False) -&gt; dict:
+    if c_nonzero:
+        compiler = HomogeneousCompiler(1, (Gate.field(0, F(1, 2), F(1, 3), F(1, 4)),))
+        label = &quot;single_field_nonzero_Z_control&quot;
+    else:
+        compiler = HomogeneousCompiler(2, (
+            Gate.pair(0, 1, F(1, 2), F(-1, 4), F(1, 3)),
+            Gate.field(1, F(2, 3), F(0), F(1, 5)),
+        ))
+        label = &quot;pair_plus_c0_field&quot;
+    n = compiler.ground_size
+    d = compiler.target_degree
+    U = frozenset(range(n))
+    mu_support = [(S, compiler.mu_query(S)) for S in bitsets(n, d)]
+    mu_support = [(S, w) for S, w in mu_support if w]
+    nu_support = [(T, F(compiler.nu_query(T))) for T in bitsets(n, d)]
+    nu_support = [(T, w) for T, w in nu_support if w]
+    t = F(1, 256 * n * n)
+    Z = F(0)
+    p = [[F(0), F(0), F(0)] for _ in range(n)]
+    hard = F(0)
+    for S, mu in mu_support:
+        for T, nu in nu_support:
+            w = mu * nu * t ** len(S &amp; T)
+            Z += w
+            if T == U - S:
+                hard += w
+            for i in range(n):
+                copies = int(i in S) + int(i in T)
+                p[i][copies] += w
+    p = [[x / Z for x in row] for row in p]
+    return {
+        &quot;case&quot;: label,
+        &quot;ground_size&quot;: n,
+        &quot;t&quot;: qstr(t),
+        &quot;normalizer&quot;: qstr(Z),
+        &quot;coordinate_probabilities_statuses_0_1_2&quot;: [[qstr(x) for x in row] for row in p],
+        &quot;complement_balance_p0_equals_p2&quot;: all(row[0] == row[2] for row in p),
+        &quot;hard_complement_probability&quot;: qstr(hard / Z),
+        &quot;hard_probability_at_least_3_4&quot;: hard / Z &gt;= F(3, 4),
+        &quot;mu_complement_invariant&quot;: all(
+            compiler.mu_query(S) == compiler.mu_query(U - S) for S in bitsets(n)),
+        &quot;nu_complement_invariant&quot;: all(
+            compiler.nu_query(S) == compiler.nu_query(U - S) for S in bitsets(n)),
+    }
+
+
+def first_order_complement_checks() -&gt; dict:
+    rng = random.Random(60407)
+    pair_count = field_c0_count = 0
+    field_nonzero_failures = []
+    for _ in range(32):
+        alpha = F(rng.randint(0, 4), rng.randint(1, 7))
+        gamma = alpha * F(rng.choice([-1, 0, 1]) * rng.randint(0, 3), 3)
+        s = F(rng.randint(0, 4), rng.randint(1, 9))
+        c = HomogeneousCompiler(2, (Gate.pair(0, 1, alpha, gamma, s),))
+        f = c.factors[0]
+        Uloc = frozenset(f.variables)
+        assert all(f.terms.get(S, F(0)) == f.terms.get(Uloc - S, F(0))
+                   for S in bitsets(4))
+        pair_count += 1
+
+        b = F(rng.randint(0, 4), rng.randint(1, 7))
+        sf = F(rng.randint(0, 4), rng.randint(1, 9))
+        c0 = HomogeneousCompiler(1, (Gate.field(0, b, 0, sf),))
+        ff = c0.factors[0]
+        Uff = frozenset(ff.variables)
+        assert all(ff.terms.get(S, F(0)) == ff.terms.get(Uff - S, F(0))
+                   for S in bitsets(4))
+        field_c0_count += 1
+
+        if b and sf:
+            cn = HomogeneousCompiler(1, (Gate.field(0, b, F(1, 3), sf),))
+            fn = cn.factors[0]
+            Un = frozenset(fn.variables)
+            if not all(fn.terms.get(S, F(0)) == fn.terms.get(Un - S, F(0))
+                       for S in bitsets(4)):
+                field_nonzero_failures.append({&quot;b&quot;: qstr(b), &quot;c&quot;: &quot;1/3&quot;, &quot;s&quot;: qstr(sf)})
+    # Opposite pure-Z fields do not generally cancel the complement defect:
+    # the complement ratio depends on each field-factor support choice.
+    balanced_z = HomogeneousCompiler(2, (
+        Gate.field(0, F(0), F(1, 3), F(1, 5)),
+        Gate.field(1, F(0), F(-1, 3), F(1, 5)),
+    ))
+    S = frozenset((0, 2, 5, 6))
+    U = frozenset(range(balanced_z.ground_size))
+    ratio = balanced_z.mu_query(S) / balanced_z.mu_query(U - S)
+    assert ratio == F(289, 225) and ratio != 1
+    return {
+        &quot;pair_local_complement_checks&quot;: pair_count,
+        &quot;c0_field_local_complement_checks&quot;: field_c0_count,
+        &quot;nonzero_Z_field_counterexamples_to_symmetry&quot;: field_nonzero_failures[:3],
+        &quot;opposite_pure_Z_field_balance_attempt&quot;: {
+            &quot;fields&quot;: [&quot;c=1/3&quot;, &quot;c=-1/3&quot;], &quot;b&quot;: &quot;0&quot;, &quot;s&quot;: &quot;1/5&quot;,
+            &quot;ground_size&quot;: balanced_z.ground_size,
+            &quot;chosen_support_vs_complement_ratio&quot;: qstr(ratio),
+            &quot;global_complement_invariance&quot;: False,
+        },
+        &quot;interpretation&quot;: &quot;pair factors are complement invariant; field factors are so at c=0; this finite check does not prove the all-size gap or sampling theorem&quot;,
+    }
+
+
+def p2(x: F) -&gt; F:
+    return 1 + x + x * x / 2
+
+
+def second_order_gate_checks() -&gt; dict:
+    rng = random.Random(2601007)
+    edge_checks = field_checks = 0
+    max_margin_edge = None
+    min_margin_field = None
+    for _ in range(80):
+        alpha = F(rng.randint(0, 5), rng.randint(1, 8))
+        gamma = alpha * F(rng.choice([-1, 0, 1]) * rng.randint(0, 4), 4)
+        h = F(rng.randint(0, 5), rng.randint(1, 10))
+        low = p2(h * (alpha - gamma))
+        mid = p2(h * (3 * alpha + gamma))
+        high = p2(h * (5 * alpha - gamma))
+        a = mid
+        b = (high + low) / 2
+        c = (high - low) / 2
+        assert low &gt;= 0 and low &lt;= mid &lt;= high
+        margins = (a - b + c, -a + b + c, a + b - c)
+        assert min(margins) &gt;= 0
+        assert b &gt;= c &gt;= 0 and a &gt; 0
+        current = min(margins)
+        max_margin_edge = current if max_margin_edge is None else min(max_margin_edge, current)
+        edge_checks += 1
+
+        bx = F(rng.randint(0, 5), rng.randint(1, 8))
+        bz = F(rng.choice([-1, 1]) * rng.randint(0, 5), rng.randint(1, 8))
+        r = bx + abs(bz)
+        q2 = bx * bx + bz * bz
+        U = 1 + h * r + h * h * (r * r + q2) / 2
+        w = h + h * h * r
+        u, v, d = U - w * bz, U + w * bz, w * bx
+        margin = u * v - d * d
+        assert u &gt; 0 and v &gt; 0 and d &gt;= 0 and margin &gt; 0
+        # Independent direct calculation of P_2(h A_v).
+        direct_u = 1 + h * (r - bz) + h * h * ((r - bz) ** 2 + bx * bx) / 2
+        direct_v = 1 + h * (r + bz) + h * h * ((r + bz) ** 2 + bx * bx) / 2
+        direct_d = h * bx + h * h * r * bx
+        assert (u, v, d) == (direct_u, direct_v, direct_d)
+        min_margin_field = margin if min_margin_field is None else min(min_margin_field, margin)
+        field_checks += 1
+    return {
+        &quot;rational_edge_gate_cases&quot;: edge_checks,
+        &quot;rational_field_gate_cases&quot;: field_checks,
+        &quot;edge_triangle_margins_nonnegative&quot;: True,
+        &quot;smallest_uv_minus_d_squared&quot;: qstr(min_margin_field),
+        &quot;scope&quot;: &quot;finite exact checks of second-order local formulas; universal validity rests on the derivation in peer_audit.txt&quot;,
+    }
+
+
+def projector_matrix(q: int) -&gt; list[list[F]]:
+    dim = 1 &lt;&lt; q
+    out = [[F(0) for _ in range(dim)] for _ in range(dim)]
+    for row in range(dim):
+        r = row.bit_count()
+        for col in range(dim):
+            if col.bit_count() == r:
+                out[row][col] = F(1, math.comb(q, r))
+    return out
+
+
+def matmul(a, b):
+    n, mid, m = len(a), len(b), len(b[0])
+    out = [[F(0) for _ in range(m)] for _ in range(n)]
+    for i in range(n):
+        for k in range(mid):
+            if a[i][k]:
+                for j in range(m):
+                    out[i][j] += a[i][k] * b[k][j]
+    return out
+
+
+def projector_checks() -&gt; dict:
+    q_sizes = list(range(1, 6))
+    results = []
+    signature_derivatives = 0
+    for q in q_sizes:
+        Pi = projector_matrix(q)
+        assert matmul(Pi, Pi) == Pi
+        assert sum(Pi[i][i] for i in range(len(Pi))) == q + 1
+        support_count = 0
+        for row_mask in range(1 &lt;&lt; q):
+            for colbar_mask in range(1 &lt;&lt; q):
+                r = row_mask.bit_count()
+                cbar = colbar_mask.bit_count()
+                expected = F(1, math.comb(q, r)) if r + cbar == q else F(0)
+                col_mask = ((1 &lt;&lt; q) - 1) ^ colbar_mask
+                assert Pi[row_mask][col_mask] == expected
+                support_count += expected != 0
+        assert support_count == math.comb(2 * q, q)
+        if q &gt;= 2:
+            for a in range(q - 1):
+                b = q - 2 - a
+                m, ell = q - a, q - b
+                A = F(1, math.comb(q, a + 2))
+                B = F(1, math.comb(q, a + 1))
+                D = F(1, math.comb(q, a))
+                assert A * D * (m - 1) * (ell - 1) == B * B * m * ell
+                assert A * (m - 1) + D * (ell - 1) &gt; 0
+                signature_derivatives += 1
+        results.append({&quot;q&quot;: q, &quot;projector_idempotent&quot;: True,
+                        &quot;trace&quot;: q + 1, &quot;polynomial_support_size&quot;: support_count})
+    qA, qB = 2, 1
+    Pi = kron(projector_matrix(qA), projector_matrix(qB))
+    nconst = qA + qB
+    dim = 1 &lt;&lt; nconst
+    alpha, gamma, bx, bz = F(2, 3), F(-1, 4), F(1, 2), F(2, 5)
+    H = [[F(0) for _ in range(dim)] for _ in range(dim)]
+    pair = [[gamma, 0, 0, 0], [0, -gamma, 2 * alpha, 0],
+            [0, 2 * alpha, -gamma, 0], [0, 0, 0, gamma]]
+    field = [[bz / 2, bx / 2], [bx / 2, -bz / 2]]
+    for a in range(qA):
+        H = add_matrices(H, embed_local(nconst, (a, qA),
+                                        [[x / 4 for x in row] for row in pair]))
+        H = add_matrices(H, embed_local(nconst, (a,), field))
+    for b in range(qB):
+        H = add_matrices(H, embed_local(nconst, (qA + b,), field))
+    comm = add_matrices(matmul(Pi, H), [[-x for x in row] for row in matmul(H, Pi)])
+    assert all(x == 0 for row in comm for x in row)
+    return {&quot;projector_sizes&quot;: results,
+            &quot;exact_q_minus_2_derivative_signature_identities&quot;: signature_derivatives,
+            &quot;embedded_spin2_plus_spin1_half_commutator_zero&quot;: True,
+            &quot;scope&quot;: &quot;finite checks support the all-q formula; Lorentzian implication relies on Branden-Huh theorem, not these checks&quot;}
+
+
+def kron(a, b):
+    out = []
+    for ar in a:
+        for br in b:
+            out.append([x * y for x in ar for y in br])
+    return out
+
+
+def add_matrices(a, b):
+    return [[x + y for x, y in zip(ar, br)] for ar, br in zip(a, b)]
+
+
+def embed_local(nqubits: int, qubits: tuple[int, ...], local):
+    dim = 1 &lt;&lt; nqubits
+    out = [[F(0) for _ in range(dim)] for _ in range(dim)]
+    for row in range(dim):
+        ri = 0
+        for q in qubits:
+            ri = (ri &lt;&lt; 1) | ((row &gt;&gt; (nqubits - q - 1)) &amp; 1)
+        for col in range(dim):
+            if any(((row &gt;&gt; (nqubits - q - 1)) &amp; 1) !=
+                   ((col &gt;&gt; (nqubits - q - 1)) &amp; 1)
+                   for q in range(nqubits) if q not in qubits):
+                continue
+            ci = 0
+            for q in qubits:
+                ci = (ci &lt;&lt; 1) | ((col &gt;&gt; (nqubits - q - 1)) &amp; 1)
+            out[row][col] = local[ri][ci]
+    return out
+
+
+def local_boundary_checks() -&gt; dict:
+    alpha, s = F(1), F(1, 10)
+    results = []
+    for gamma in (F(11, 10), F(-11, 10)):
+        a = 1 + s * (3 * alpha + gamma)
+        b = 1 + s * (3 * alpha - gamma)
+        c = 2 * s * alpha
+        bad = (a - b - c, -a + b - c, -a - b + c)
+        assert a + b + c &gt; 0 and max(bad) &gt; 0
+        if gamma &gt; alpha:
+            witness = (a - b - c) / (2 * (a + b + c))
+        else:
+            witness = (-a + b - c) / (2 * (a + b + c))
+        results.append({&quot;alpha&quot;: qstr(alpha), &quot;gamma&quot;: qstr(gamma), &quot;s&quot;: qstr(s),
+                        &quot;positive_hessian_eigenvalue&quot;: qstr(max(bad)),
+                        &quot;log_hessian_positive_eigenvalue_at_ones&quot;: qstr(witness)})
+    assert results[0][&quot;log_hessian_positive_eigenvalue_at_ones&quot;] == &quot;1/280&quot;
+    assert results[1][&quot;log_hessian_positive_eigenvalue_at_ones&quot;] == &quot;1/280&quot;
+    # The c06_l04 shifted-scalar fixture changes q(1) but leaves the bad
+    # anisotropy eigenvalue unchanged.
+    kappa = F(10)
+    gamma = F(11, 10)
+    a = 1 + s * (kappa + gamma)
+    b = 1 + s * (kappa - gamma)
+    c = 2 * s * alpha
+    shifted_hessian = (a - b - c, -a + b - c)
+    shifted_log_curvature = shifted_hessian[0] / (2 * (a + b + c))
+    assert shifted_hessian == (F(1, 50), F(-21, 50))
+    assert shifted_log_curvature == F(1, 420)
+    return {
+        &quot;outside_cone_witnesses&quot;: results,
+        &quot;large_scalar_shift_witness&quot;: {
+            &quot;kappa&quot;: qstr(kappa),
+            &quot;hessian_anisotropy_eigenvalues&quot;: [qstr(x) for x in shifted_hessian],
+            &quot;positive_log_hessian_eigenvalue_at_ones&quot;: qstr(shifted_log_curvature),
+        },
+        &quot;interpretation&quot;: &quot;a direct local specialization/coefficient lift cannot extend beyond |gamma|&lt;=alpha because restriction or differentiation preserves LC; this is not a hardness result&quot;,
+    }
+
+
+def prior_art_scope_checks() -&gt; dict:
+    &quot;&quot;&quot;Independent exact fixtures for the attributed c06_l01 scope audit.&quot;&quot;&quot;
+    alpha, s = F(1), F(1, 10)
+    outputs = []
+    for gamma in (F(1, 2), F(-1, 2)):
+        a = 1 + s * (3 * alpha + gamma)
+        b = 1 + s * (3 * alpha - gamma)
+        c = 2 * s * alpha
+        linear = abs(a - b) &lt;= c and c &lt;= a + b
+        gaps = (a * a - b * b - c * c,
+                b * b - a * a - c * c,
+                c * c - a * a - b * b)
+        assert linear and sum(gap &gt; 0 for gap in gaps) == 1
+        assert max(gaps) == F(11, 50)
+        outputs.append({
+            &quot;alpha&quot;: qstr(alpha), &quot;gamma&quot;: qstr(gamma), &quot;s&quot;: qstr(s),
+            &quot;linear_triangle&quot;: linear,
+            &quot;squared_triangle_all_permutations&quot;: all(gap &lt;= 0 for gap in gaps),
+            &quot;positive_squared_triangle_gap&quot;: qstr(max(gaps)),
+        })
+    # P_{Psi+}=(I+XX+YY-ZZ)/4, so XX+YY-ZZ=4P_{Psi+}-I.
+    pauli_identity = {&quot;I&quot;: F(1, 4), &quot;XX&quot;: F(1, 4), &quot;YY&quot;: F(1, 4), &quot;ZZ&quot;: F(-1, 4)}
+    assert pauli_identity == {&quot;I&quot;: F(1, 4), &quot;XX&quot;: F(1, 4), &quot;YY&quot;: F(1, 4), &quot;ZZ&quot;: F(-1, 4)}
+    return {
+        &quot;cai_liu_lu_scope_fixtures&quot;: outputs,
+        &quot;epr_endpoint_projector_coefficients&quot;: {k: qstr(v) for k, v in pauli_identity.items()},
+        &quot;interpretation&quot;: &quot;The old squared-triangle condition misses these nonzero-gamma gates; Chen-Liu EPR overlap at gamma=-alpha remains a subfamily overlap, not a full-field solution.&quot;,
+    }
+
+
+def two_qubit_pauli(word: str) -&gt; list[list[F]]:
+    one = {
+        &quot;I&quot;: [[F(1), F(0)], [F(0), F(1)]],
+        &quot;X&quot;: [[F(0), F(1)], [F(1), F(0)]],
+        &quot;Y&quot;: [[F(0), F(-1)], [F(1), F(0)]],
+        &quot;Z&quot;: [[F(1), F(0)], [F(0), F(-1)]],
+    }
+    result = [[F(1)]]
+    for symbol in word:
+        b = one[symbol]
+        # Kronecker product, written explicitly to keep the check standalone.
+        result = [[result[i][j] * b[k][l]
+                   for j in range(len(result[0])) for l in range(2)]
+                  for i in range(len(result)) for k in range(2)]
+    # The real antisymmetric representative is iY, so its tensor square is
+    # -YY in the standard Pauli convention.
+    if word == &quot;YY&quot;:
+        result = [[-x for x in row] for row in result]
+    return result
+
+
+def matadd_scaled(terms):
+    n = len(terms[0][1])
+    return [[sum(scale * matrix[i][j] for scale, matrix in terms)
+             for j in range(n)] for i in range(n)]
+
+
+def exact_trace(a):
+    return sum(a[i][i] for i in range(len(a)))
+
+
+def exact_matrix_power(a, exponent: int):
+    n = len(a)
+    result = [[F(int(i == j)) for j in range(n)] for i in range(n)]
+    for _ in range(exponent):
+        result = matmul(result, a)
+    return result
+
+
+def mixed_field_trace_cube_checks() -&gt; dict:
+    rng = random.Random(604071)
+    checks = []
+    words = {name: two_qubit_pauli(name) for name in (&quot;XX&quot;, &quot;YY&quot;, &quot;ZZ&quot;, &quot;XI&quot;, &quot;IX&quot;)}
+    for _ in range(32):
+        alpha = F(rng.randint(-4, 4), rng.randint(1, 7))
+        gamma = F(rng.randint(-4, 4), rng.randint(1, 7))
+        b1 = F(rng.randint(-4, 4), rng.randint(1, 7))
+        b2 = F(rng.randint(-4, 4), rng.randint(1, 7))
+        H = matadd_scaled(((alpha, words[&quot;XX&quot;]), (alpha, words[&quot;YY&quot;]),
+                           (gamma, words[&quot;ZZ&quot;]), (b1, words[&quot;XI&quot;]),
+                           (b2, words[&quot;IX&quot;])))
+        lhs = exact_trace(exact_matrix_power(H, 3))
+        rhs = 24 * alpha * (b1 * b2 - alpha * gamma)
+        assert lhs == rhs
+        checks.append({&quot;alpha&quot;: qstr(alpha), &quot;gamma&quot;: qstr(gamma),
+                       &quot;b1&quot;: qstr(b1), &quot;b2&quot;: qstr(b2), &quot;trace_H3&quot;: qstr(lhs)})
+    examples = []
+    for b2 in (F(1), F(-1)):
+        alpha, gamma, b1 = F(1), F(0), F(1)
+        H = matadd_scaled(((alpha, words[&quot;XX&quot;]), (alpha, words[&quot;YY&quot;]),
+                           (gamma, words[&quot;ZZ&quot;]), (b1, words[&quot;XI&quot;]),
+                           (b2, words[&quot;IX&quot;])))
+        lhs = exact_trace(exact_matrix_power(H, 3))
+        rhs = 24 * alpha * (b1 * b2 - alpha * gamma)
+        assert lhs == rhs == (F(24) if b2 &gt; 0 else F(-24))
+        examples.append({&quot;alpha&quot;: &quot;1/1&quot;, &quot;gamma&quot;: &quot;0/1&quot;, &quot;b1&quot;: &quot;1/1&quot;,
+                         &quot;b2&quot;: qstr(b2), &quot;trace_H3&quot;: qstr(lhs)})
+    return {
+        &quot;exact_rational_matrix_cases&quot;: len(checks),
+        &quot;formula&quot;: &quot;Tr(H^3)=24 alpha (b1*b2-alpha*gamma)&quot;,
+        &quot;mixed_sign_examples&quot;: examples,
+        &quot;interpretation&quot;: &quot;The signed cubic moment is real and may change sign as field signs vary; this does not contradict positivity of Tr(exp(beta H)) or the shifted-gate coefficient representation.&quot;,
+    }
+
+
+def run() -&gt; dict:
+    soft = [exact_small_soft_law(False), exact_small_soft_law(True)]
+    assert soft[0][&quot;complement_balance_p0_equals_p2&quot;]
+    assert soft[0][&quot;hard_probability_at_least_3_4&quot;]
+    assert not soft[1][&quot;mu_complement_invariant&quot;]
+    return {
+        &quot;audits&quot;: {
+            &quot;c06_s03_complement_symmetry&quot;: first_order_complement_checks(),
+            &quot;c06_s03_exact_small_soft_law&quot;: soft,
+            &quot;c06_l03_and_c06_l08_second_order_local_gates&quot;: second_order_gate_checks(),
+            &quot;c06_s01_higher_spin_projector&quot;: projector_checks(),
+            &quot;c06_l05_easy_axis_boundary&quot;: local_boundary_checks(),
+            &quot;c06_l01_prior_art_scope&quot;: prior_art_scope_checks(),
+            &quot;c06_l04_mixed_field_cubic&quot;: mixed_field_trace_cube_checks(),
+        },
+        &quot;peer_attribution&quot;: {
+            &quot;c06_s01&quot;: &quot;higher-spin projector and compressed-layer transfer&quot;,
+            &quot;c06_s03&quot;: &quot;c_v=0 complement symmetry and local exact-exchange route&quot;,
+            &quot;c06_l03&quot;: &quot;rational P2 Taylor gates and second-order product bound&quot;,
+            &quot;c06_l08&quot;: &quot;independent/refined P2 constants and charged total cost&quot;,
+            &quot;c06_l01&quot;: &quot;prior-art scope: old squared-triangle exclusion, EPR endpoint overlap, other comparator boundaries&quot;,
+            &quot;c06_l04&quot;: &quot;local anisotropy curvature and mixed-field trace-cube boundary diagnostics&quot;,
+        },
+        &quot;status&quot;: &quot;VERIFIED_INTERNAL finite audit only; imported gap/FPRAS, asymptotic claims, external correctness, and priority remain unverified&quot;,
+    }
+
+
+if __name__ == &quot;__main__&quot;:
+    output = run()
+    path = Path(__file__).with_name(&quot;peer_audit.json&quot;)
+    path.write_text(json.dumps(output, indent=2) + &quot;\n&quot;)
+    print(json.dumps({&quot;saved&quot;: str(path), &quot;status&quot;: output[&quot;status&quot;],
+                      &quot;q_lorentzian_derivative_identities&quot;: output[&quot;audits&quot;][&quot;c06_s01_higher_spin_projector&quot;][&quot;exact_q_minus_2_derivative_signature_identities&quot;]}, indent=2))
+</pre><p><a href="../assets/da260327cebd3f543e1b8ab279298842b3fd746588d9c31240fe687f27e3d3c7.py">Exact original bytes</a></p></html>

@@ -1,0 +1,61 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c07_s02/phase2/verify_pipeline_records.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c07_s02/phase2/verify_pipeline_records.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Independent exact record-level checks; no sampler or peer imports.&quot;&quot;&quot;
+from fractions import Fraction as F
+from pathlib import Path
+import json, time
+HERE=Path(__file__).resolve().parent
+def rotation(v,g):
+    x,y,z=v
+    if g==&#x27;H&#x27;: return z,-y,x
+    if g==&#x27;S&#x27;: return -y,x,z
+    if g==&#x27;X&#x27;: return x,-y,-z
+    raise AssertionError(g)
+def check(name):
+    d=json.loads((HERE/&#x27;evidence&#x27;/name).read_text()); N=d[&#x27;parameter_contract&#x27;][&#x27;N&#x27;]
+    r2=F(d[&#x27;parameter_contract&#x27;][&#x27;r0_squared&#x27;]); errors=d[&#x27;numerical_error_certificate&#x27;]
+    assert F(d[&#x27;total_numerical_error_with_local_output_upper&#x27;])&lt;=F(errors[&#x27;requested_numerical_epsilon&#x27;])
+    assert not any(isinstance(x,float) for x in errors.values())
+    for m in d[&#x27;states&#x27;]: assert sum(F(x)**2 for x in m)&lt;=r2
+    o=d[&#x27;local_output&#x27;]; local=list(map(F,o[&#x27;dyadic_local_Bloch&#x27;])); D=o[&#x27;common_denominator&#x27;]
+    weights=o[&#x27;Pauli_axis_integer_weights&#x27;]; assert sum(weights)==D and all(n&gt;=0 for n in weights)
+    assert sum(map(abs,local))&lt;1
+    for i in range(3): assert F(weights[i],D)==abs(local[i])
+    gate_total=0
+    for t in o[&#x27;gate_transcript&#x27;]:
+        v=(0,0,1)
+        for g in t[&#x27;gates_in_application_order&#x27;]: v=rotation(v,g); gate_total+=1
+        label=t[&#x27;branch&#x27;]
+        if label.startswith(&#x27;I/2&#x27;): assert v in [(0,0,1),(0,0,-1)]
+        else:
+            expected=[0,0,0]; expected[&#x27;XYZ&#x27;.index(label[0])]=1 if label[-1]==&#x27;+&#x27; else -1
+            assert tuple(expected)==v
+    assert gate_total==o[&#x27;local_ideal_gate_count_executed&#x27;]
+    assert len(o[&#x27;gate_transcript&#x27;])==o[&#x27;sites_transcript_executed&#x27;]
+    assert o[&#x27;complete_N_site_transcript&#x27;]==(o[&#x27;sites_transcript_executed&#x27;]==N)
+    bitlog=d.get(&#x27;random_prefix_transcript&#x27;)
+    if bitlog is not None:
+        assert all(0&lt;=x[&#x27;integer&#x27;]&lt;(1&lt;&lt;x[&#x27;bits&#x27;]) for x in bitlog)
+        assert sum(x[&#x27;bits&#x27;] for x in bitlog)==d[&#x27;costs&#x27;][&#x27;random_bits_used&#x27;]
+    return {&#x27;name&#x27;:name,&#x27;N&#x27;:N,&#x27;states_checked&#x27;:len(d[&#x27;states&#x27;]),
+        &#x27;gate_words_checked&#x27;:len(o[&#x27;gate_transcript&#x27;]),&#x27;exact_gates_checked&#x27;:gate_total,
+        &#x27;complete_output_description&#x27;:o[&#x27;complete_N_site_transcript&#x27;],
+        &#x27;random_prefix_ledger_checked&#x27;:bitlog is not None,
+        &#x27;numerical_error_upper_rational&#x27;:d[&#x27;total_numerical_error_with_local_output_upper&#x27;]}
+def main():
+    start=time.perf_counter()
+    cases=[check(n) for n in [&#x27;N4096_replay.json&#x27;,&#x27;N4096_nondiagonal_replay.json&#x27;,&#x27;N4096_OS_sample.json&#x27;,&#x27;N2p48_replay.json&#x27;]]
+    budgets=[]
+    for name in [&#x27;N2p48_public_budget.json&#x27;,&#x27;N2p48_error_point1_budget.json&#x27;]:
+        b=json.loads((HERE/&#x27;evidence&#x27;/name).read_text())
+        bound=F(b[&#x27;combined_averaged_Gibbs_trace_error_upper_compact&#x27;])
+        assert b[&#x27;cone&#x27;][&#x27;certifies_cone_error_at_most_2_to_minus99&#x27;]
+        assert F(b[&#x27;cone&#x27;][&#x27;trace_error_upper&#x27;])==F(1,1&lt;&lt;99)
+        assert bound&lt;1
+        if &#x27;point1&#x27; in name: assert bound&lt;F(1,10)
+        budgets.append({&#x27;name&#x27;:name,&#x27;rational_scientific_bound&#x27;:str(bound)})
+    result={&#x27;status&#x27;:&#x27;PASS_EXACT_RECORD_CHECKS&#x27;,&#x27;scope&#x27;:&#x27;Own independent JSON/Fraction/Clifford reconstruction; not an all-N proof, independent code audit or Monte Carlo error check&#x27;,
+        &#x27;cases&#x27;:cases,&#x27;public_budgets&#x27;:budgets,&#x27;wall_seconds&#x27;:time.perf_counter()-start}
+    (HERE/&#x27;evidence/record_verification.json&#x27;).write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({&#x27;status&#x27;:result[&#x27;status&#x27;],&#x27;all_gate_words_checked&#x27;:sum(x[&#x27;gate_words_checked&#x27;] for x in cases),&#x27;wall_seconds&#x27;:result[&#x27;wall_seconds&#x27;]}))
+if __name__==&#x27;__main__&#x27;: main()
+</pre><p><a href="../assets/b5f16684a6f8b3e9caa4aab8768bdb59b8e691a578a7423876a582684db43601.py">Exact original bytes</a></p></html>

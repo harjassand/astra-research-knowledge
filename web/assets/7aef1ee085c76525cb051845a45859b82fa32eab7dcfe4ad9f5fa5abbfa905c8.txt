@@ -1,0 +1,202 @@
+EXPLICIT CAPPED HOMOGENEOUS COUNT IMPLEMENTATION
+Independent c06_s01 revision; conditional on Chen--Liu's uniform exchange gap.
+Code: revisions/homogeneous_count.py. No peers consulted.
+
+1. INPUT AND STATE PRESERVATION
+
+Ground set size n; nonnegative rational coefficient programs mu on a-sets and
+nu on (n-a)-sets; homogeneous multiaffine LC generating polynomials; separate
+positive seeds S0,T0; ranges R_mu<=2^r_mu,R_nu<=2^r_nu; rational rho in(0,1].
+Oracle running times and output lengths must be uniformly polynomial inputs.
+LC and the range guarantees are contracts, not inferred from finite tests.
+
+The soft pair weight is W_z(S,T)=mu(S)nu(T)t^|S intersect T| z^S z^T.
+The implemented lazy chain chooses one of the n present copies uniformly;
+deletion is accepted with probability1/2 if the coordinate is in the other
+set and t/2 otherwise. At R=S-u, reinsert v with probability proportional to
+z_v mu(R+v); the other side uses nu. Reinsertion u is always positive, so no
+denominator can vanish. The code exactly implements t/(2n) times the source
+continuous exchange generator; by Chen--Liu Lemma5.5 its gap is >=t/(2n).
+
+Conditional inclusions retain the original degree and multiply a coordinate
+derivative by x_i; exclusions set x_i=0. These operations preserve LC.
+Original range bounds remain valid. A currently supported conditional witness
+always initializes each conditional soft chain. No translated-superset sums,
+huge-lambda proof chain, inverse minimum coefficient or inverse Z is computed.
+
+2. EXACT CAPS AND MIXING
+
+Let r=r_mu+r_nu, B=2n+r, eta=1/(4n). Generic field search uses
+t=1/(256n^2), K=ceil(128B/eta^2)+1 updates and K+1 batches, each of size
+M_cd=ceil[(32/eta^2)*ceil_log2(128n(K+1))].
+Stop if empirical infinity-gradient<=eta/2; otherwise update the largest
+coordinate by multiplying/dividing z_u by 1+eta/8. At most K updates occur,
+on EVERY execution. Thus z_u=(1+1/(32n))^k_u, sum|k_u|<=K. Exact Fraction
+storage has O(K log n) bits. No exp/log update oracle is used.
+
+For normalizer self-reduction use alpha=rho/(64n) and
+M_norm=ceil[ceil_log2(256n)/(2alpha^2)] samples per each of the2n membership
+bits. For complement probability use
+M_p=ceil[ceil_log2(128)/(2(rho/8)^2)].
+Qsample=(K+1)M_cd+2n M_norm+M_p is an EVERY-execution sample cap.
+All samples use total variation tau_sample=1/(256Qsample).
+
+The field spread satisfies
+log2(zmax/zmin)<=K/(16n), since log2(1+1/(32n))<=1/(16n).
+For every nonempty conditional soft law,
+pi_min>=t^min(a,n-a)/(4^n R_mu R_nu)*(zmin/zmax)^n.
+Thus the integer
+
+ h=2n+r+min(a,n-a)*[8+2ceil_log2(n)]
+                          +n*ceil(K/(16n))
+
+satisfies pi_min>=2^-h. Each draw executes exactly
+
+ L=ceil[(2n/t)*(h+ceil_log2(1/tau_sample)+2)]
+
+exchange steps. Lazy-chain L2 mixing gives TV<=tau_sample, because
+TV<=.5*pi_start^-1/2*exp[-tL/(2n)]. This holds uniformly over ALL conditional
+witnesses, returned fields and prior random history. The coupling of every
+approximate draw to an exact independent conditional draw fails with probability
+at most Qsample*tau_sample=1/256 over the whole adaptive program.
+
+3. FIELD DESCENT PROOF AND BALANCED OVERLAP
+
+Phi(y)=log Z_(t,exp y)-sum y; G=1_S+1_T-1, E G=gradientPhi, coordinate
+curvature Var(G_u)<=1. If Zcap>0, Phi(0)-infPhi<=2n ln2+ln(R_mu R_nu)<=B.
+Hoeffding on G in[-1,1] and the displayed M_cd gives simultaneous empirical
+coordinate error<=eta/4 with failure<=1/64 across all n(K+1) comparisons.
+
+If the algorithm has not stopped, the chosen true coordinate has aligned sign
+and magnitude>eta/4. Its logarithmic step s=ln(1+eta/8) lies in[eta/16,eta/8].
+Coordinate1-smoothness gives a drop >=s*eta/4-s^2/2>=eta^2/128. K successive
+updates would exceed the available drop B, so a good statistical run stops
+and returns true infinity-gradient<=3eta/4<=eta. A minimizer need not exist.
+
+The source gap for unequal penalties/fields supplies the local tilt argument:
+if p_j is a coordinate's0/1/2-copy probability, removing its t penalty and
+tilting z by sqrt(t p0/p2) balances q0=q2. Poincare for the absence indicator
+and its <=q1 Dirichlet form gives p0p2<=4t p1^2. Consequently
+
+ P(not complementary)<=n*(||gradientPhi||infinity+4sqrt(t))<=1/2.
+
+This is the exact imported mixing mechanism. The code does not presume an
+initial hard-intersection witness or a nonvanishing original overlap fraction.
+
+4. NORMALIZER MAJORITY PATH AND FINAL ERROR
+
+At each membership bit choose its empirical majority and one sampled witness
+with that bit. Its empirical selected probability phat is>=1/2 on EVERY
+execution, so products cannot divide by zero and the witness is always legal.
+After2n bits are fixed, evaluate its exact original soft weight w and divide
+by the product of phat. If each frequency is within alpha of its exact
+conditional probability p, then |p/phat-1|<=2alpha and
+
+ |log(Zhat/Zsoft)|<=2n*4alpha=rho/8.
+
+Thus its relative error is<=rho/4. The displayed M_norm makes all such
+frequency bounds hold with failure<=1/64. No rare prescribed path is used.
+
+With the good field complementary probability pcap>=1/2. Hoeffding and M_p
+give |phatcap-pcap|<=rho/8 with failure<=1/64, hence relative error<=rho/4.
+Return Zhat*phatcap/z^U. Its ratio to Zcap lies between(1-rho/4)^2 and
+(1+rho/4)^2, hence within1+-rho. When Zcap=0, every supported sample fails
+the complement test, so EVERY execution returns zero. A zero on a positive
+instance's bad tape is NOT a support/zero certificate.
+
+5. FINITE RATIONAL COINS AND EVERY-EXECUTION BIT TIME
+
+Every exchange has at most2n+1 binary choices. Let
+Ncoin=(2n+1)Qsample L, Rcoin=ceil_log2(64 max(1,Ncoin)).
+A rational Bernoulli compares a fair coin prefix's dyadic interval with its
+threshold. If unresolved after Rcoin bits, abort the ENTIRE count and return0.
+Conditional probability of unresolved choice<=2^-Rcoin; union bound adds
+failure<=1/64. The global binary-choice cap also applies deterministically.
+Categorical draws use sequential rational Bernoulli choices, with the final
+positive remaining option selected deterministically. No unbounded rejection
+sampler or restarted ambiguity loop is present.
+
+Combined generic failure is at most4/64+1/256=17/256<1/4 (field, normalizer,
+complement-frequency, coin-cap, total sampling coupling). All oracle values,
+fields, partial sums and final products have polynomial bit lengths under
+the input contracts. Fixed loop counts/caps give polynomial bit running time
+on every tape. Small branches enumerate a fixed-size ground set exactly.
+Median amplification uses the fixed odd number8ceil_log2(1/delta)+1 of fresh
+repetitions; Hoeffding for individual failure<=1/4 gives total failure<=delta.
+
+6. EXACT COMPLEMENT SYMMETRY REMOVES FIELD ACQUISITION
+
+If a=n/2 and mu(S)=mu(U\S), nu(T)=nu(U\T), the transformation
+(S,T)->(U\S,U\T) preserves W at z=1: overlap equals missing count because
+|S|+|T|=n. Every G_u changes sign, so gradientPhi(0)=0 EXACTLY.
+No stochastic field search is needed. The same tilt bound permits the larger
+t=1/(64n^2), since n*4sqrt(t)=1/2. The code sets K=0, fieldbits=0 and replaces
+the penalty-bits8 by6. It does not guess complement symmetry from tests.
+
+All thermal pair factors and the wire/uniform partner are self-complementary.
+Lifted field factors have this property when c=0. Weighted projector factors
+have it when their onsite f table is palindromic. Thus c=0 plus even onsite
+concave potentials, including +D(Sz)^2 in physical energy, is an explicit
+admitted class for the field-free program.
+
+Asymptotic arithmetic/oracle cost in that class is
+O(n^7*(n log n+r+log(n/rho))*rho^-2*log n), before rational-bit costs.
+Indeed sample count is O(n^3 rho^-2 log n), mixing steps are
+O(n^3(n log n+r+log(n/rho))) and each step costs O(n) coefficient queries/operations.
+This is a costed simplification of the imported mechanism, not a new general
+counting theorem or a practical performance claim.
+
+7. THE N^-2 PENALTY SCALE IS NECESSARY FOR THIS SOFT ROUTE
+
+For even n use the two partition-matroid polynomials
+mu=product_(i even)(x_i+x_(i+1)),
+nu=product_(i even)(x_(i+1)+x_(i+2)), indices modulo n.
+Both are stable/self-complementary, uniform rank n/2 and coefficient range1.
+The union of their pairs is one alternating cycle. Each vertex chooses one
+of its incident edges. Recording whether it chooses clockwise gives a cyclic
+binary string; an overlap is exactly a10 transition. The2x2 transfer matrix
+[[1,t],[1,1]] therefore gives
+
+ Zsoft(t)=(1+sqrt(t))^n+(1-sqrt(t))^n
+         =2 sum_j binom(n,2j)t^j; Zcap=2.
+
+Consequently hard success=2/Zsoft(t). At t=c/n^2 this tends to1/cosh(sqrt(c));
+at t=c/n it tends to0 like exp(-sqrt(cn)) up to bounded factors. Already the
+coefficient ratio a1/a0=binom(n,2) is quadratic. A uniform constant hard
+overlap at z=1 therefore requires t=O(n^-2), even with EXACT gradient0 and
+perfectly conditioned coefficients. This refutes a proposed O(n^-1) softening
+shortcut in this representation, not other samplers or arbitrary physical
+Hamiltonians. n2..10 exact coefficient enumeration PASS in
+balanced_cycle_obstruction.py / balanced_cycle_checks.json.
+
+8. EXECUTION AND PRACTICAL LIMITS
+
+homogeneous_count.py actually ran exact small count29,500 supported exchange
+steps including forced-prefix restrictions, full finite-state rational detailed
+balance on4-state/2-state examples, and1792 exhaustive dyadic coin-prefix
+checks. The generic full certified MCMC loops were NOT run.
+
+For the n2,r_mu=r_nu=1,rho1/4 generic plan:
+ total exchange steps=31,054,874,120,552,448;
+ total capped coin digits=9,937,559,718,576,783,360.
+For n2,r=0,self-complementary,rho1/4:
+ total exchange steps=217,597,870,080;
+ total capped coin digits=50,047,510,118,400.
+These are rigorous conservative loop bounds of THIS implementation, not lower
+bounds on algorithmic complexity or measured CPU/GPU costs. Fixed-size exact
+fallbacks solve these tiny inputs immediately; the large figures expose the
+asymptotic certificate rather than suggest these should be run on a shared Mac.
+
+The spin1+spinhalf pipeline's N22,rho1/800, self-complementary plan would use
+177,551,337,823,477,432,320,000 exchange steps and
+711,093,107,983,027,116,441,600,000 capped coin digits. It was instead legally
+executed via its bounded exact local-factor branch; no claim of an FPRAS
+Markov run follows from that execution. This main implementation is a fully
+specified internally argued CODE CANDIDATE awaiting independent code review.
+
+Primary source checked: https://arxiv.org/html/2610.06724v1, section5,
+Lemma5.5, Theorem5.1, AppendixA.5/RemarkA.4. Prior internal baseline audit:
+work/cycle2/counting_gate_audit.txt. The code's explicit constants, majority
+witness bookkeeping, aggregate coupling and symmetry fast path were derived
+in this worker. No source repository was mutated; no external publication or
+messages occurred; mathematical novelty / specialist acceptance is UNKNOWN.

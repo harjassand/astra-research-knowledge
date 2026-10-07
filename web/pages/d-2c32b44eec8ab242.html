@@ -1,0 +1,403 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c07_s02/phase2/cutoff_euler_sampler.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c07_s02/phase2/cutoff_euler_sampler.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Owned finite-bit heat-seed/cutoff-Euler/importance/Clifford compiler.
+
+Exact rational decisions and outward intervals; measurements alone use floats.
+The scientific Euler/statistical/Gibbs bound is reported separately from the
+numerical law certificate. A bounded replay is not Monte Carlo validation.
+S03 normal/interval primitives are copied in vendor/; no peer file is executed.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from pathlib import Path
+import argparse, datetime, importlib.util, itertools, json, math, random
+import resource, secrets, time
+
+HERE=Path(__file__).resolve().parent
+spec=importlib.util.spec_from_file_location(&#x27;owned_normal&#x27;,HERE/&#x27;vendor/certified_normal.py&#x27;)
+normal=importlib.util.module_from_spec(spec); spec.loader.exec_module(normal)
+ar=normal.base; IV=ar.IV; iv=ar.iv
+
+def ceilq(x): return -((-x.numerator)//x.denominator)
+def bitbudget(x):
+    p=0
+    while F(1,1&lt;&lt;p)&gt;x: p+=1
+    return p
+def near(x,p):
+    y=x*(1&lt;&lt;p)+F(1,2)
+    return F(y.numerator//y.denominator,1&lt;&lt;p)
+def dot(x,y): return sum((a*b for a,b in zip(x,y)),F(0))
+def norm2(x): return dot(x,x)
+def eye(v=1): return [[F(v if i==j else 0) for j in range(3)] for i in range(3)]
+def mm(A,B): return [[sum((A[i][t]*B[t][j] for t in range(3)),F(0)) for j in range(3)] for i in range(3)]
+def mv(A,x): return [dot(row,x) for row in A]
+def rows(A): return max(sum(map(abs,row),F(0)) for row in A)
+def det(A):
+    if len(A)==1: return A[0][0]
+    return sum(((-1)**j)*A[0][j]*det([r[:j]+r[j+1:] for r in A[1:]]) for j in range(len(A)))
+def psd(A):
+    return all(det([[A[i][j] for j in I] for i in I])&gt;=0
+               for size in range(1,4) for I in itertools.combinations(range(3),size))
+def inverse(A):
+    d=det(A); assert d!=0
+    return [[F((-1)**(i+j))*det([[A[r][c] for c in range(3) if c!=i]
+                               for r in range(3) if r!=j])/d for j in range(3)] for i in range(3)]
+
+def exp_bounds(x,p):
+    &quot;&quot;&quot;Range-reduced rational Taylor enclosure, absolute width &lt;=2^-p.&quot;&quot;&quot;
+    x=F(x)
+    if x==0: return F(1),F(1)
+    if x&lt;-(p+2): return F(0),F(1,1&lt;&lt;(p+2))  # e&gt;=2
+    j=0; t=x
+    while abs(t)&gt;F(1,2): t/=2; j+=1
+    guard=j+ceilq(2*max(x,F(0)))+(j+1).bit_length()+16
+    tol=F(1,1&lt;&lt;(p+guard)); term=total=F(1); n=0
+    while True:
+        rem=2*abs(term*t/F(n+1))
+        if 2*rem&lt;=tol: break
+        n+=1; term=term*t/F(n); total+=term
+    Q=1&lt;&lt;(p+guard)
+    def out(a,b):
+        return F((a*Q).numerator//(a*Q).denominator,Q),F(ceilq(b*Q),Q)
+    lo,hi=out(max(F(0),total-rem),total+rem)
+    for _ in range(j): lo,hi=out(lo*lo,hi*hi)
+    assert 0&lt;=lo&lt;=hi and hi-lo&lt;=F(1,1&lt;&lt;p)
+    ar.ledger.add(&#x27;owned_exp_series_terms&#x27;,n)
+    return lo,hi
+
+def exp_iv(x):
+    x=iv(x)
+    return IV(exp_bounds(x.lo,IV.P+8)[0],exp_bounds(x.hi,IV.P+8)[1])
+def log_scalar(x):
+    assert x&gt;0
+    z=(x-1)/(x+1); assert abs(z)&lt;1
+    term=z; total=F(0); n=0; tol=F(1,1&lt;&lt;(IV.P+8))
+    while True:
+        total+=term/F(2*n+1)
+        tail=2*abs(term*z*z)/(F(2*n+3)*(1-z*z))
+        if tail&lt;=tol: break
+        term*=z*z; n+=1
+    ar.ledger.add(&#x27;owned_log_series_terms&#x27;,n+1)
+    return IV(2*total-tail,2*total+tail)
+def log_iv(x):
+    x=iv(x)
+    return IV(log_scalar(x.lo).lo,log_scalar(x.hi).hi)
+def cosh_iv(x): return (exp_iv(x)+exp_iv(-x))/2
+def sinch_iv(x):
+    x=iv(x)
+    if x.hi&lt;=1: return ar.even_series_iv(x,&#x27;sinch&#x27;)
+    assert x.lo&gt;0
+    return (exp_iv(x)-exp_iv(-x))/(2*x)
+
+def root_spd(D,p):
+    &quot;&quot;&quot;Fast bounded-domain Newton, certified by residual and PSD floor.&quot;&quot;&quot;
+    assert psd([[D[i][j]-F(3,4)*int(i==j) for j in range(3)] for i in range(3)])
+    gamma=F(1)
+    while gamma*gamma&lt;rows(D): gamma*=2
+    X=eye(gamma); q=F(1,1&lt;&lt;p); P=p+24
+    for iteration in range(1,25):
+        inv=inverse(X); A=mm(D,inv); B=mm(inv,D)
+        Y=[[X[i][j]/2+(A[i][j]+B[i][j])/4 for j in range(3)] for i in range(3)]
+        X=[[near(Y[i][j],P) for j in range(3)] for i in range(3)]
+        assert all(X[i][j]==X[j][i] for i in range(3) for j in range(3))
+        residual=rows([[z-D[i][j] for j,z in enumerate(row)] for i,row in enumerate(mm(X,X))])
+        if residual&lt;=q and psd([[X[i][j]-F(1,2)*int(i==j) for j in range(3)] for i in range(3)]):
+            # X E+E sqrt(D)=X²-D; both floors &gt;=1/2, so ||E||op&lt;=residual.
+            ar.ledger.add(&#x27;owned_spd_root_iterations&#x27;,iteration)
+            return X,residual,iteration
+    raise ArithmeticError(&#x27;SPD root residual guard failed; no output&#x27;)
+
+class Bits:
+    def __init__(self,seed): self.rng=None if seed is None else random.Random(seed); self.used=0; self.transcript=[]
+    def draw(self,n):
+        self.used+=n
+        answer=secrets.randbits(n) if self.rng is None else self.rng.getrandbits(n)
+        self.transcript.append({&#x27;bits&#x27;:n,&#x27;integer&#x27;:answer})
+        return answer
+
+class Compiler:
+    def __init__(self,N,T,R,eps,seed,A=None,b=None):
+        self.N=N; self.k=math.isqrt(math.isqrt(N)); assert self.k**4==N and N&gt;=4096
+        self.T=T; self.R=R; self.eps=eps; self.bits=Bits(seed)
+        self.M=F(1,10); self.B=F(1,5); self.Lambda=1+self.M; self.Lc=1+2*self.M
+        self.A=[[F(1,10),F(0),F(0)],[F(0),F(-2,25),F(0)],[F(0),F(0),F(3,100)]] if A is None else A
+        self.b=[F(1,10),F(1,20),F(-1,20)] if b is None else b
+        assert len(self.A)==3 and all(len(row)==3 for row in self.A)
+        assert all(self.A[i][j]==self.A[j][i] for i in range(3) for j in range(3)) and len(self.b)==3
+        self.C=[[self.A[i][j]+self.Lambda*int(i==j) for j in range(3)] for i in range(3)]
+        assert norm2(self.b)&lt;=self.B*self.B
+        for sign in [-1,1]: assert psd([[self.M*int(i==j)+sign*self.A[i][j] for j in range(3)] for i in range(3)])
+        self.Tc=sum(self.C[i][i] for i in range(3)); self.r02=1/(16*(self.Lc+1))
+        self.L=12; self.normalL=8; self.s=self.k**3; self.d0=1-self.Lambda/(2*self.k*self.k)
+        assert self.d0&gt;=F(1,2)
+        self.zbound=ceilq(2*(self.Lambda+1)); self.p0=F(1,(1&lt;&lt;self.zbound)*self.L**3)
+        self.eb=bitbudget(eps/(128*R)); self.K=ceilq(F(self.eb+8)/self.p0)
+        rho=2*self.L; self.Lseed=rho*(self.Lambda/4+F(1,12))+F(rho**3,48)
+        self.seed_p=bitbudget(eps/(1024*R*self.K*(2*self.L*self.Lseed+4)))
+        self.p=max(48,self.seed_p)
+        assert self.p&lt;=128
+        self.normal_p=min(64,max(48,bitbudget(eps/(4096*R*T*(self.k+1)))))
+        # Rational public Lipschitz bounds (r0&gt;1/8 for this admitted M).
+        self.La=(self.Lc*(1+3*self.r02)/2+8*self.Lc)/(self.k*self.k)+64*self.B/self.s
+        self.Lsig=(6*self.Lc+64*(3*self.Lc+1))/self.s
+        amp_log=self.La+2*self.normalL*self.Lsig*T
+        # sqrt(T)&lt;=T: deliberately conservative, polynomial precision budget.
+        self.amp_pow=ceilq(2*amp_log+1); self.amp=1&lt;&lt;self.amp_pow
+        self.path_p=max(self.p,bitbudget(eps/(8192*R*T*self.amp*(self.k*self.k+1))))
+        self.p=max(self.p,bitbudget(eps/(8192*R*T*self.amp*(self.k+1))))
+        self.path_p=max(self.path_p,self.p)
+        self.normal_p=max(self.normal_p,bitbudget(eps/(8192*R*T*self.amp*(self.k*self.k+1)*(self.normalL+1)*(self.Lc+1))))
+        assert self.normal_p&lt;=128, &#x27;Configured normal component precision exceeded; no certificate emitted&#x27;
+        self.stats={&#x27;seed_attempts&#x27;:0,&#x27;seed_full_evaluations&#x27;:0,&#x27;seed_upper_rejections&#x27;:0,
+                    &#x27;normal_calls&#x27;:0,&#x27;normal_bits&#x27;:0,&#x27;cdf_requests&#x27;:0,&#x27;cdf_terms&#x27;:0,
+                    &#x27;matrix_roots&#x27;:0,&#x27;max_root_residual&#x27;:F(0),&#x27;exhausted_seeds&#x27;:0}
+        self.precision()
+        delta=iv(F(1,2))-log_iv(cosh_iv(iv(1)))
+        assert delta.lo&gt;F(1,16), &#x27;Acquire the rational f(1) lower constant before use&#x27;
+
+    def precision(self): IV.precision(self.path_p+self.N.bit_length()+32)
+    def density(self,x):
+        self.precision(); r2=norm2(x)
+        if r2==0: return iv(1)
+        rad=ar.sqrt_iv(r2); y=rad/(2*self.k)
+        f=y*y/2-log_iv(cosh_iv(y))
+        ell=log_iv(sinch_iv(y))-r2*self.Lambda/(16*self.d0)-self.N*f
+        val=exp_iv(ell)
+        lo=max(F(0),val.lo); hi=min(F(1),val.hi)
+        assert hi-lo&lt;=F(1,1&lt;&lt;self.p)
+        return IV(lo,hi,raw=True)
+
+    def seed(self):
+        Q=1&lt;&lt;self.p
+        for attempt in range(1,self.K+1):
+            self.stats[&#x27;seed_attempts&#x27;]+=1
+            x=[F(2*self.bits.draw(self.p)+1-Q,Q)*self.L for _ in range(3)]
+            u=F(self.bits.draw(self.p),Q); r2=norm2(x)
+            # Certified scalar envelope; reject without a costly log-cosh evaluation.
+            if r2&lt;=4*self.k*self.k: fbound=r2*r2/256
+            else: fbound=self.k*self.k*r2/64
+            upper_log=r2/(24*self.k*self.k)-self.Lambda*r2/(16*self.d0)-fbound
+            _,upper=exp_bounds(upper_log,self.p+8)
+            if u&gt;upper:
+                self.stats[&#x27;seed_upper_rejections&#x27;]+=1; continue
+            self.stats[&#x27;seed_full_evaluations&#x27;]+=1
+            enc=self.density(x); alpha=(enc.lo+enc.hi)/2
+            n=min(Q,max(0,(alpha*Q).numerator//(alpha*Q).denominator))
+            if u&lt;F(n,Q):
+                m,me=self.bloch(x)
+                return self.seed_contract(m), {&#x27;attempts&#x27;:attempt,&#x27;field_R&#x27;:x,
+                    &#x27;acceptance_interval&#x27;:enc.json(),&#x27;precontract_bloch_error_upper&#x27;:me,&#x27;exhausted&#x27;:False}
+        self.stats[&#x27;exhausted_seeds&#x27;]+=1
+        return [F(0)]*3,{&#x27;attempts&#x27;:self.K,&#x27;exhausted&#x27;:True}
+
+    def bloch(self,x):
+        self.precision(); r2=norm2(x)
+        if r2==0: return [F(0)]*3,F(0)
+        rad=ar.sqrt_iv(r2); y=rad/(2*self.k); e=exp_iv(2*y); tanh=(e-1)/(e+1)
+        factor=tanh/rad; boxes=[factor*xi for xi in x]
+        m=[near((z.lo+z.hi)/2,self.path_p) for z in boxes]
+        err=sum((z.hi-z.lo for z in boxes),F(0))/2+F(3,1&lt;&lt;(self.path_p+1))
+        assert norm2(m)&lt;1
+        return m,err
+    def seed_contract(self,m):
+        c=min(F(1),max(F(0),2-16*norm2(m)/self.r02))
+        out=[near(c*x,self.path_p) for x in m]
+        assert norm2(out)&lt;=self.r02/9+F(1,1&lt;&lt;(self.path_p-3))
+        return out
+    def retract(self,m):
+        r2=norm2(m)
+        if r2&lt;=self.r02: return m
+        return [x*self.r02/r2 for x in m]
+    def V(self,m):
+        m=self.retract(m); quad=dot(m,mv(self.C,m))
+        return F(self.N*(self.N-1),4*self.s*self.s)*quad+F(self.N*self.Tc,4*self.s*self.s)+F(self.N,2*self.s)*dot(self.b,m)
+    def coefficients(self,m):
+        chi=min(F(1),max(F(0),3-4*norm2(m)/self.r02))
+        if chi==0: return [F(0)]*3,eye(0),F(0),0
+        P=[[F(int(i==j))-m[i]*m[j] for j in range(3)] for i in range(3)]
+        cross=[[F(0),-m[2],m[1]],[m[2],F(0),-m[0]],[-m[1],m[0],F(0)]]
+        trans=list(map(list,zip(*cross))); U=mm(mm(P,self.C),P); W=mm(mm(cross,self.C),trans)
+        D=[[U[i][j]-W[i][j] for j in range(3)] for i in range(3)]
+        root,residual,it=root_spd(D,self.path_p)
+        self.stats[&#x27;matrix_roots&#x27;]+=1; self.stats[&#x27;max_root_residual&#x27;]=max(self.stats[&#x27;max_root_residual&#x27;],residual)
+        quad=dot(m,mv(self.C,m)); field=dot(self.b,m)
+        drift=[chi*(F(self.N-1,2*self.s*self.s)*(z-quad*m[i])+F(1,2*self.s)*(self.b[i]-field*m[i])) for i,z in enumerate(mv(self.C,m))]
+        self.precision(); factor_iv=ar.sqrt_iv(F(1,2*self.T))/self.s
+        factor=(factor_iv.lo+factor_iv.hi)/2
+        noise=[[chi*factor*z for z in row] for row in root]
+        return drift,noise,residual,it
+
+    def one_normal(self):
+        n=self.normal_p+ceilq(F(self.normalL*self.normalL))+8
+        u=self.bits.draw(n); data=normal.generate(F(self.normalL),self.normal_p,u)
+        assert data[&#x27;exact_fair_random_bit_count&#x27;]==n
+        self.stats[&#x27;normal_calls&#x27;]+=1; self.stats[&#x27;normal_bits&#x27;]+=n
+        self.stats[&#x27;cdf_requests&#x27;]+=data[&#x27;cdf_request_count&#x27;]; self.stats[&#x27;cdf_terms&#x27;]+=data[&#x27;cdf_integral_taylor_terms&#x27;]
+        return F(data[&#x27;output_rational&#x27;])
+    def path(self):
+        m,seed=self.seed(); ell=F(0); maxr2=norm2(m)
+        for _ in range(self.T):
+            ell+=self.V(m)/self.T
+            drift,noise,residual,it=self.coefficients(m)
+            z=[self.one_normal() for i in range(3)]
+            inc=mv(noise,z)
+            m=[near(m[i]+drift[i]/self.T+inc[i],self.path_p) for i in range(3)]
+            maxr2=max(maxr2,norm2(m))
+        m=self.retract(m)
+        return m,ell,{&#x27;seed&#x27;:seed,&#x27;maximum_grid_norm_squared&#x27;:maxr2}
+
+    def choose(self,states,logs):
+        p=self.p; Q=1&lt;&lt;p; highest=max(logs); ints=[]; errors=[]
+        for ell in logs:
+            lo,hi=exp_bounds(ell-highest,p+8)
+            n=(F(lo+hi,2)*Q).numerator//(F(lo+hi,2)*Q).denominator
+            if ell==highest: n=Q
+            assert n&gt;=0
+            ints.append(n); errors.append(max(abs(F(n,Q)-lo),abs(F(n,Q)-hi)))
+        denom=sum(ints); b=denom.bit_length(); attempts=0
+        while True:
+            u=self.bits.draw(b); attempts+=1
+            if u&lt;denom: break
+            if attempts&gt;=128:
+                u=0; break  # arbitrary positive fallback; its probability is charged
+        total=0
+        for i,n in enumerate(ints):
+            total+=n
+            if u&lt;total: break
+        # A maximal unscaled weight is exactly1; normalized TV&lt;=sum abs errors.
+        return i,{&#x27;integer_weights&#x27;:ints,&#x27;denominator&#x27;:denom,&#x27;exact_integer_choice&#x27;:u,
+                  &#x27;random_integer_attempts&#x27;:attempts,&#x27;categorical_TV_error_upper&#x27;:sum(errors),
+                  &#x27;integer_selector_cap_failure_upper&#x27;:F(1,1&lt;&lt;128)}
+
+    def pauli_emissions(self,m,count):
+        # Tiny inward dyadic rounding gives an exact positive octahedron point.
+        P=self.path_p; D=1&lt;&lt;P
+        local=[near(x,P) for x in m]; assert sum(map(abs,local),F(0))&lt;1
+        weights=[abs(x) for x in local]
+        entries=[int(w*D) for w in weights]; entries.append(D-sum(entries))
+        assert sum(entries)==D and all(n&gt;=0 for n in entries)
+        gate_options=[[&#x27;H&#x27;],[&#x27;H&#x27;,&#x27;S&#x27;],[]]
+        choices=[]; gate_count=0
+        for _ in range(count):
+            u=self.bits.draw(P); total=0
+            for axis,n in enumerate(entries):
+                total+=n
+                if u&lt;total: break
+            if axis==3:
+                sign=self.bits.draw(1); gates=[&#x27;X&#x27;] if sign else []
+                label=&#x27;I/2 independently sampled +/-Z&#x27;
+            else:
+                gates=list(gate_options[axis])
+                if local[axis]&lt;0: gates.insert(0,&#x27;X&#x27;)
+                label=(&#x27;X&#x27;,&#x27;Y&#x27;,&#x27;Z&#x27;)[axis]+(&#x27;+&#x27; if local[axis]&gt;=0 else &#x27;-&#x27;)
+            choices.append({&#x27;branch&#x27;:label,&#x27;gates_in_application_order&#x27;:gates}); gate_count+=len(gates)
+        blocherr=sum(abs(a-b) for a,b in zip(local,m))
+        return {&#x27;method&#x27;:&#x27;Independent Pauli-octahedron draws at each site; ideal Clifford interface&#x27;,
+            &#x27;dyadic_local_Bloch&#x27;:local,&#x27;common_denominator&#x27;:D,&#x27;Pauli_axis_integer_weights&#x27;:entries,
+            &#x27;sites_requested&#x27;:self.N,&#x27;sites_transcript_executed&#x27;:count,
+            &#x27;complete_N_site_transcript&#x27;:count==self.N,&#x27;local_ideal_gate_count_executed&#x27;:gate_count,
+            &#x27;maximum_ideal_Clifford_gates_per_site&#x27;:3,
+            &#x27;description_rounding_product_trace_upper&#x27;:self.k*self.k*blocherr,
+            &#x27;gate_transcript&#x27;:choices,&#x27;physical_hardware_execution&#x27;:False}
+
+    def numerical_budget(self):
+        q=F(1,1&lt;&lt;self.p); qp=F(1,1&lt;&lt;self.path_p); qn=F(1,1&lt;&lt;self.normal_p)
+        # Continuous uniform cube -&gt; dyadic centers, acceptance -&gt; dyadic midpoint law.
+        seedcoin=self.R*self.K*((2*self.L*self.Lseed+4)*q)
+        seedexhaust=self.R*F(1,1&lt;&lt;(self.eb+8))
+        if self.L&gt;=2*self.k:
+            # The whole omitted radius is in the Gaussian region. Acquire
+            # f(y0)/y0² directly; monotonicity controls all y&gt;=y0.
+            self.precision(); y0=F(self.L,2*self.k)
+            f0=iv(y0*y0/2)-log_iv(cosh_iv(iv(y0)))
+            delta0=f0.lo/(y0*y0); assert delta0&gt;=F(1,16)
+            c=self.k*self.k*delta0/4+self.Lambda/(16*self.d0)-F(1,24*self.k*self.k)
+            assert c&gt;0
+            multiplier=max(1,ceilq(1/c)**2)*(1&lt;&lt;self.zbound)
+            exponent=(c*self.L*self.L/2).numerator//(c*self.L*self.L/2).denominator
+            exterior=min(F(1),F(multiplier,1&lt;&lt;exponent)); lowtail=F(0)
+        else:
+            lowtail=F(256*(1&lt;&lt;self.zbound),1&lt;&lt;(self.L**4//512))
+            exterior=F(1,1&lt;&lt;100) if self.N//64&gt;=100+self.zbound+12 else min(F(1),F(4096*(1&lt;&lt;self.zbound),1&lt;&lt;(self.N//64)))
+        seedtail=self.R*(lowtail+exterior)
+        # Upper bound on pointwise path coupling on the retained Gaussian draw set.
+        # Seed map has Lipschitz&lt;=4; m(R) has Lipschitz&lt;=1/(2k).
+        init=6*self.L*q/self.k+8*qp
+        one_step=8*qp+F(12*(self.Lc+1),self.s)*(qn+qp)*self.normalL
+        pathdelta=self.amp*(init+self.T*one_step)
+        Vlip=(self.Lc+self.B)*self.k*self.k  # r0&lt;=1, retract 1-Lipschitz
+        logdelta=Vlip*pathdelta
+        assert logdelta&lt;F(1,8)
+        categorical_from_path=4*logdelta
+        branch=self.k*self.k*pathdelta
+        tail,degree=normal.tail_upper(F(self.normalL))
+        normalbad=3*self.R*self.T*tail
+        selection=self.R*2*q+F(1,1&lt;&lt;128)
+        total=seedcoin+seedexhaust+seedtail+normalbad+categorical_from_path+branch+selection
+        return {&#x27;certificate_scope&#x27;:&#x27;Numerical average-state error to continuous full-heat-seed exact-normal Euler importance law at the SAME R,T, plus ideal Clifford output rounding&#x27;,
+            &#x27;seed_coin_coupling_upper&#x27;:seedcoin,&#x27;seed_exhaustion_upper&#x27;:seedexhaust,
+            &#x27;full_heat_seed_cube_tail_union_upper&#x27;:seedtail,&#x27;normal_tail_union_upper&#x27;:normalbad,
+            &#x27;retained_path_Bloch_coupling_upper&#x27;:pathdelta,&#x27;retained_logweight_coupling_upper&#x27;:logdelta,
+            &#x27;resampling_path_TV_upper&#x27;:categorical_from_path,&#x27;product_branch_trace_upper&#x27;:branch,
+            &#x27;dyadic_selection_upper&#x27;:selection,&#x27;total_before_output_rounding_upper&#x27;:total,
+            &#x27;requested_numerical_epsilon&#x27;:self.eps,&#x27;passes_numerical_budget&#x27;:total&lt;=self.eps,
+            &#x27;normal_tail_positive_Taylor_degree&#x27;:degree,
+            &#x27;warning&#x27;:&#x27;No statistical R^-1/2, Euler-to-SDE, or SDE-to-Gibbs error is included in this numerical bound.&#x27;}
+
+def stringize(x):
+    if isinstance(x,F): return str(x)
+    if isinstance(x,list): return [stringize(z) for z in x]
+    if isinstance(x,dict): return {k:stringize(v) for k,v in x.items()}
+    return x
+
+def main():
+    ap=argparse.ArgumentParser(); ap.add_argument(&#x27;--N&#x27;,type=int,default=4096)
+    ap.add_argument(&#x27;--steps&#x27;,type=int,default=1); ap.add_argument(&#x27;--proposals&#x27;,type=int,default=4)
+    ap.add_argument(&#x27;--epsilon&#x27;,default=&#x27;1/1000&#x27;); ap.add_argument(&#x27;--seed&#x27;,type=int)
+    ap.add_argument(&#x27;--emit-count&#x27;,type=int,default=4096); ap.add_argument(&#x27;--out&#x27;,required=True)
+    ap.add_argument(&#x27;--A&#x27;,help=&#x27;Nine comma-separated rational symmetric matrix entries, row order; fixed public M=1/10&#x27;)
+    ap.add_argument(&#x27;--b&#x27;,help=&#x27;Three comma-separated rational field entries; fixed public B=1/5&#x27;)
+    args=ap.parse_args(); assert args.steps&gt;=1 and args.proposals&gt;=1
+    ar.ledger=ar.Ledger(); start=time.perf_counter(); cpu=time.process_time()
+    A=None if args.A is None else [list(map(F,args.A.split(&#x27;,&#x27;)))[3*i:3*i+3] for i in range(3)]
+    b=None if args.b is None else list(map(F,args.b.split(&#x27;,&#x27;)))
+    c=Compiler(args.N,args.steps,args.proposals,F(args.epsilon),args.seed,A,b)
+    budget=c.numerical_budget(); assert budget[&#x27;passes_numerical_budget&#x27;]
+    assert not any(isinstance(z,float) for z in budget.values()), &#x27;No floating certificate allowed&#x27;
+    states=[]; logs=[]; paths=[]
+    for _ in range(c.R):
+        m,ell,path=c.path(); states.append(m); logs.append(ell); paths.append(path)
+    idx,choice=c.choose(states,logs); output=c.pauli_emissions(states[idx],min(c.N,args.emit_count))
+    total=budget[&#x27;total_before_output_rounding_upper&#x27;]+output[&#x27;description_rounding_product_trace_upper&#x27;]
+    assert total&lt;=c.eps
+    data={&#x27;worker&#x27;:&#x27;c07_s02&#x27;,&#x27;utc&#x27;:datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        &#x27;status&#x27;:&#x27;CERTIFIED_NUMERICAL_CUTOFF_EULER_PIPELINE; FULL_GIBBS_STATISTICAL_BUDGET_SEPARATE&#x27;,
+        &#x27;parameter_contract&#x27;:{&#x27;N&#x27;:c.N,&#x27;A&#x27;:c.A,&#x27;b&#x27;:c.b,&#x27;M&#x27;:c.M,&#x27;B&#x27;:c.B,&#x27;Lambda&#x27;:c.Lambda,&#x27;r0_squared&#x27;:c.r02},
+        &#x27;run_contract&#x27;:{&#x27;T&#x27;:c.T,&#x27;R&#x27;:c.R,&#x27;cube_L&#x27;:c.L,&#x27;seed_cap_K&#x27;:c.K,
+            &#x27;seed_grid_bits&#x27;:c.p,&#x27;Euler_coordinate_bits&#x27;:c.path_p,&#x27;normal_error_bits&#x27;:c.normal_p,
+            &#x27;path_amplification_upper&#x27;:c.amp,&#x27;source&#x27;:&#x27;OS secrets.randbits, theorem assumes iid fair bits&#x27; if args.seed is None else &#x27;seeded replay, not iid evidence&#x27;,&#x27;seed&#x27;:args.seed},
+        &#x27;numerical_error_certificate&#x27;:budget,&#x27;total_numerical_error_with_local_output_upper&#x27;:total,
+        &#x27;chosen_proposal_index&#x27;:idx,&#x27;states&#x27;:states,&#x27;logweights&#x27;:logs,&#x27;paths&#x27;:paths,
+        &#x27;importance_selection&#x27;:choice,&#x27;local_output&#x27;:output,
+        &#x27;random_prefix_transcript&#x27;:c.bits.transcript,
+        &#x27;unexecuted_scientific_guarantee&#x27;:{&#x27;Gibbs_comparison&#x27;:&#x27;Owned source stopped theorem plus cutoff/contracted seed comparison; explicit certificate may be vacuous for small N.&#x27;,
+            &#x27;Euler_systematic&#x27;:&#x27;Must add proved public C(M,B)*(1/T+N^-1/4/sqrt(T)), or the more conservative S03 sqrt(N/T) theorem.&#x27;,
+            &#x27;statistical&#x27;:&#x27;Must add exp(B²/2)*sqrt(K2/R), with certified public K2; empirical sample variance is not substituted.&#x27;,
+            &#x27;full_scientific_error_numeric&#x27;:&#x27;UNKNOWN in this numerical compiler artifact; separately acquired bounds required.&#x27;},
+        &#x27;costs&#x27;:{&#x27;random_bits_used&#x27;:c.bits.used,**c.stats,**ar.ledger.snapshot(),
+                 &#x27;arithmetic_count_limit&#x27;:&#x27;Counters/maximum integer sizes track explicit primitive calls, not all owned Fraction/GCD operations.&#x27;,
+                 &#x27;wall_seconds&#x27;:time.perf_counter()-start,&#x27;cpu_seconds&#x27;:time.process_time()-cpu,
+                 &#x27;process_peak_rss_bytes_macos&#x27;:resource.getrusage(resource.RUSAGE_SELF).ru_maxrss},
+        &#x27;limits&#x27;:[&#x27;Finite-bit program acquires the specified bounded Euler law, not exact Brownian paths.&#x27;,
+                  &#x27;Finite replay is not accuracy or Monte Carlo evidence for the continuous scientific theorem.&#x27;,
+                  &#x27;Ideal Clifford gates/reset and fair bits are explicit device/random-source interfaces.&#x27;,
+                  &#x27;Large N can use a compressed per-site gate generator; a partial transcript is flagged.&#x27;,
+                  &#x27;Priority, external mathematical certification, energy and physical hardware runtime UNKNOWN.&#x27;],
+        &#x27;attribution&#x27;:[&#x27;S02 exact generator/stopped theorem&#x27;, &#x27;S03 copied interval/normal primitives, cutoff/Euler/moment bridge and Pauli output insight&#x27;,
+                       &#x27;S01 quartic moment audit; L08 scalar envelopes&#x27;, &#x27;root/S08/S03 sharper Euler scaling pending full integration&#x27;]}
+    path=Path(args.out); path.parent.mkdir(parents=True,exist_ok=True); path.write_text(json.dumps(stringize(data),indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({&#x27;output&#x27;:str(path),&#x27;status&#x27;:data[&#x27;status&#x27;],&#x27;N&#x27;:c.N,&#x27;R&#x27;:c.R,&#x27;T&#x27;:c.T,
+        &#x27;full_emission_transcript&#x27;:output[&#x27;complete_N_site_transcript&#x27;],&#x27;seed_attempts&#x27;:c.stats[&#x27;seed_attempts&#x27;],
+        &#x27;normal_calls&#x27;:c.stats[&#x27;normal_calls&#x27;],&#x27;normal_bits&#x27;:c.stats[&#x27;normal_bits&#x27;],
+        &#x27;numerical_error_upper&#x27;:str(total),&#x27;wall_seconds&#x27;:data[&#x27;costs&#x27;][&#x27;wall_seconds&#x27;]}))
+
+if __name__==&#x27;__main__&#x27;: main()
+</pre><p><a href="../assets/16a3e5009d863c3dbcaf0549e1aa43f52ecf1ec1adcab74711aba1abe448e393.py">Exact original bytes</a></p></html>

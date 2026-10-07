@@ -1,0 +1,220 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c03_s01/implementation/check_finite_alpha.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c03_s01/implementation/check_finite_alpha.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Bounded N&lt;=3 whole-Gibbs fixture using explicitly imported exact LP.
+
+Independent full-matrix rational certificate; no polynomial simplex claim.
+Reads c01_s03 helper without writing its directory. Does not modify its source.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+import hashlib
+import importlib.util
+from itertools import combinations
+import json
+import math
+from pathlib import Path
+import random
+import sys
+import time
+
+from dicke_compiler import (as_record,from_record,compile_state,verify_model,
+                            recovered_populations,exp_negative_interval,
+                            sample_product,outward_dyadic)
+
+HERE = Path(__file__).resolve().parent
+PEER_SOURCE = HERE.parents[1]/&#x27;c01_s03&#x27;/&#x27;axial_compiler&#x27;/&#x27;axial_acquisition.py&#x27;
+sys.dont_write_bytecode = True
+spec = importlib.util.spec_from_file_location(&#x27;c01_s03_axial_readonly&#x27;,PEER_SOURCE)
+peer = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(peer)
+
+
+def matmul(A,B):
+    return [[sum(A[i][k]*B[k][j] for k in range(len(B)))
+             for j in range(len(B[0]))] for i in range(len(A))]
+
+
+def joint_projectors(N):
+    &quot;&quot;&quot;Acquire J² exactly in computational basis; no Schur oracle.&quot;&quot;&quot;
+    dim = 1 &lt;&lt; N
+    J2 = [[F(0) for _ in range(dim)] for _ in range(dim)]
+    for z in range(dim):
+        m = F(2*z.bit_count()-N,2)
+        J2[z][z] = m*m+F(N,2)
+        for i in range(N):
+            for j in range(i):
+                if ((z &gt;&gt; i)&amp;1) != ((z &gt;&gt; j)&amp;1):
+                    J2[z ^ (1 &lt;&lt; i) ^ (1 &lt;&lt; j)][z] += 1
+    eigenvalues = [F(N-2*b,2)*(F(N-2*b,2)+1) for b in range(N//2+1)]
+    all_projectors = []
+    I = [[F(int(i==j)) for j in range(dim)] for i in range(dim)]
+    for b,e in enumerate(eigenvalues):
+        P = I
+        for c,other in enumerate(eigenvalues):
+            if c == b:
+                continue
+            factor = [[(J2[i][j]-other*int(i==j))/(e-other)
+                       for j in range(dim)] for i in range(dim)]
+            P = matmul(P,factor)
+        assert matmul(P,P)==P
+        for r in range(N+1):
+            Q = [[P[i][j] if i.bit_count()==r and j.bit_count()==r else F(0)
+                  for j in range(dim)] for i in range(dim)]
+            tr = sum(Q[i][i] for i in range(dim))
+            if tr:
+                assert tr.denominator==1 and matmul(Q,Q)==Q
+                all_projectors.append((e,F(2*r-N,2),int(tr),Q))
+    total = [[sum(Q[i][j] for _,_,_,Q in all_projectors)
+              for j in range(dim)] for i in range(dim)]
+    assert total==I
+    return all_projectors
+
+
+def target_matrix_intervals(N,alpha,delta,h,bits=180):
+    projects = joint_projectors(N)
+    logs = [alpha*e/N-delta*m*m/N+h*m for e,m,_,_ in projects]
+    peak = max(logs)
+    values = [exp_negative_interval(peak-v,bits)[:2] for v in logs]
+    Zlo = sum(tr*lo for (_,_,tr,_),(lo,hi) in zip(projects,values))
+    Zhi = sum(tr*hi for (_,_,tr,_),(lo,hi) in zip(projects,values))
+    dim = 1 &lt;&lt; N
+    result = []
+    for i in range(dim):
+        row = []
+        for j in range(dim):
+            lo=hi=F(0)
+            for (_,_,_,Q),(a,b) in zip(projects,values):
+                c = Q[i][j]
+                lo += c*(a if c&gt;=0 else b)
+                hi += c*(b if c&gt;=0 else a)
+            options = [x/Z for x in (lo,hi) for Z in (Zlo,Zhi)]
+            row.append((min(options),max(options)))
+        result.append(row)
+    return result
+
+
+def mixture_matrix(N,branches,models):
+    dim = 1 &lt;&lt; N
+    rho = [[F(0) for _ in range(dim)] for _ in range(dim)]
+    for branch,model in zip(branches,models):
+        k,u = branch[&#x27;k&#x27;],branch[&#x27;u&#x27;]
+        weight = branch[&#x27;probability&#x27;]
+        q = recovered_populations(k,[int(v) for v in model[&#x27;node_integers&#x27;]],
+                                  [int(v) for v in model[&#x27;weight_integers&#x27;]],model[&#x27;node_weight_bits&#x27;])
+        for subset in combinations(range(N),k):
+            complement = [i for i in range(N) if i not in subset]
+            for ones in combinations(complement,u):
+                fixed = sum(1 &lt;&lt; i for i in ones)
+                for l in range(k+1):
+                    states = [fixed+sum(1 &lt;&lt; i for i in local)
+                              for local in combinations(subset,l)]
+                    atom = weight*q[l]/(math.comb(N,k)*math.comb(N-k,u)*math.comb(k,l))
+                    for a in states:
+                        for b in states:
+                            rho[a][b] += atom
+    assert sum(rho[i][i] for i in range(dim))==1
+    return rho
+
+
+def recursive_record(x):
+    if isinstance(x,F):
+        return as_record(x)
+    if isinstance(x,dict):
+        return {str(k):recursive_record(v) for k,v in x.items()}
+    if isinstance(x,(list,tuple)):
+        return [recursive_record(v) for v in x]
+    return x
+
+
+def sample_whole(N,branches,models,rng):
+    index = peer.sample_dyadic([b[&#x27;probability&#x27;] for b in branches],rng)
+    branch,model = branches[index],models[index]
+    k,u = branch[&#x27;k&#x27;],branch[&#x27;u&#x27;]
+    # The bounded fixture explicitly materializes &lt;=3-site subset lists.
+    subsets = list(combinations(range(N),k))
+    rank = (rng.getrandbits(128)*len(subsets)) &gt;&gt; 128
+    subset = subsets[rank]
+    complement = [i for i in range(N) if i not in subset]
+    strings = list(combinations(complement,u))
+    rank = (rng.getrandbits(128)*len(strings)) &gt;&gt; 128
+    ones = strings[rank]
+    component = sample_product(model,rng)
+    pure0 = {&#x27;diagonal&#x27;:[as_record(1),as_record(0)],
+             &#x27;upper_right_real&#x27;:as_record(0),&#x27;upper_right_imag&#x27;:as_record(0),
+             &#x27;PSD_and_trace_one_exact&#x27;:True}
+    pure1 = {&#x27;diagonal&#x27;:[as_record(0),as_record(1)],
+             &#x27;upper_right_real&#x27;:as_record(0),&#x27;upper_right_imag&#x27;:as_record(0),
+             &#x27;PSD_and_trace_one_exact&#x27;:True}
+    states = [component[&#x27;finite_product_local_density&#x27;] if i in subset
+              else (pure1 if i in ones else pure0) for i in range(N)]
+    for s in states:
+        diag = list(map(from_record,s[&#x27;diagonal&#x27;]))
+        re,im = from_record(s[&#x27;upper_right_real&#x27;]),from_record(s[&#x27;upper_right_imag&#x27;])
+        assert sum(diag)==1 and diag[0]*diag[1] &gt;= re*re+im*im
+    return {&#x27;branch_index&#x27;:index,&#x27;k&#x27;:k,&#x27;u&#x27;:u,&#x27;subset&#x27;:list(subset),
+            &#x27;complement_ones&#x27;:list(ones),&#x27;local_density_matrices&#x27;:states}
+
+
+def run(delta_one=False):
+    start=time.perf_counter()
+    records=[]
+    rng=random.Random(20261008)
+    inner=[(&#x27;1&#x27;,&#x27;1/3&#x27;),(&#x27;1&#x27;,&#x27;-2/5&#x27;)] if delta_one else [(&#x27;1/2&#x27;,&#x27;1/3&#x27;),(&#x27;1/4&#x27;,&#x27;-2/5&#x27;)]
+    grid=[(N,a,d,h) for N in [2,3] for a in [&#x27;0&#x27;,&#x27;1/2&#x27;,&#x27;3&#x27;] for d,h in inner]
+    for N,astr,dstr,hstr in grid:
+        alpha,delta,h=map(F,(astr,dstr,hstr))
+        epsilon=F(&#x27;1e-12&#x27;)
+        w,meta=peer.acquire_k_weights(N,alpha,delta,h,epsilon,
+                                      lp_backend=peer.exact_simplex_fixture)
+        assert w is not None and sum(w)==1 and min(w)&gt;=0
+        branches,bmeta=peer.acquire_branches(N,delta,h,w,epsilon)
+        models=[]
+        for branch in branches:
+            k=branch[&#x27;k&#x27;]
+            dd=delta*F(k,N)
+            hh=h-2*delta*branch[&#x27;m&#x27;]/N
+            model=compile_state(k,dd,hh,epsilon=&#x27;1e-30&#x27;)
+            assert verify_model(model)
+            models.append(model)
+        rho=mixture_matrix(N,branches,models)
+        interval=target_matrix_intervals(N,alpha,delta,h)
+        raw=F(0)
+        for i,row in enumerate(rho):
+            for j,value in enumerate(row):
+                lo,hi=interval[i][j]
+                raw+=max(abs(value-lo),abs(value-hi))
+        matrix_bound=outward_dyadic(raw/2,160,True)
+        # Exact uniform phase/subsets give rho. Charge bounded draw biases and
+        # finite density preparation for the actual sampler separately.
+        preparation=F(0)
+        for branch,model in zip(branches,models):
+            k,u=branch[&#x27;k&#x27;],branch[&#x27;u&#x27;]
+            bias=(F(math.comb(N,k)+math.comb(N-k,u),2*(1 &lt;&lt; 128))
+                  +from_record(model[&#x27;phase_uniform_TV_upper&#x27;])
+                  +from_record(model[&#x27;finite_density_trace_distance_upper&#x27;]))
+            preparation+=branch[&#x27;probability&#x27;]*bias
+        bound=matrix_bound+preparation
+        assert bound &lt;= epsilon
+        record={&#x27;N&#x27;:N,&#x27;alpha&#x27;:astr,&#x27;delta&#x27;:dstr,&#x27;h&#x27;:hstr,
+                &#x27;full_matrix_rational_certificate_trace_distance_upper&#x27;:as_record(matrix_bound),
+                &#x27;finite_sampler_additional_error_upper&#x27;:as_record(preparation),
+                &#x27;total_target_trace_distance_upper&#x27;:as_record(bound),
+                &#x27;epsilon&#x27;:as_record(epsilon),&#x27;K_weights&#x27;:recursive_record(w),
+                &#x27;LP_metadata&#x27;:recursive_record(meta),&#x27;branch_metadata&#x27;:recursive_record(bmeta),
+                &#x27;branches&#x27;:recursive_record([{&#x27;k&#x27;:b[&#x27;k&#x27;],&#x27;u&#x27;:b[&#x27;u&#x27;],&#x27;probability&#x27;:b[&#x27;probability&#x27;]} for b in branches]),
+                &#x27;branch_count&#x27;:len(branches),&#x27;Dicke_models&#x27;:models,
+                &#x27;samples&#x27;:[sample_whole(N,branches,models,rng) for _ in range(2)],
+                &#x27;certificate&#x27;:&#x27;Exact joint-spin projector target entry intervals; half entrywise L1 bounds half trace norm&#x27;,
+                &#x27;LP_backend&#x27;:&#x27;SymPy exact bounded simplex fixture; no polynomial runtime claim&#x27;}
+        records.append(record)
+    text=json.dumps({&#x27;status&#x27;:&#x27;PASS&#x27;,&#x27;cases&#x27;:len(records),&#x27;records&#x27;:records,
+                     &#x27;elapsed_seconds&#x27;:time.perf_counter()-start,
+                     &#x27;peer_source&#x27;:str(PEER_SOURCE),
+                     &#x27;peer_source_sha256&#x27;:hashlib.sha256(PEER_SOURCE.read_bytes()).hexdigest(),
+                     &#x27;scope&#x27;:&#x27;N2/N3 bounded whole finite-alpha Gibbs fixture; exact posterior matrix certificate&#x27;},indent=2)+&#x27;\n&#x27;
+    filename=&#x27;finite_alpha_delta1_checks.json&#x27; if delta_one else &#x27;finite_alpha_checks.json&#x27;
+    (HERE/filename).write_text(text)
+    print(json.dumps({&#x27;status&#x27;:&#x27;PASS&#x27;,&#x27;cases&#x27;:len(records),
+                      &#x27;elapsed_seconds&#x27;:time.perf_counter()-start,&#x27;output_bytes&#x27;:len(text.encode())}),flush=True)
+
+
+if __name__==&#x27;__main__&#x27;:
+    run(&#x27;--delta-one&#x27; in sys.argv)
+</pre><p><a href="../assets/4d93fa993b1a1470132d95f82710765c2438c864181d28e4f58774e742a28f3d.py">Exact original bytes</a></p></html>

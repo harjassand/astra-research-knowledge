@@ -1,0 +1,102 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c02_s01/cross_review_checks.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c02_s01/cross_review_checks.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>from low_rank_parity import *
+from paired_phase_estimator import det_elimination, matmul, adjoint
+from pathlib import Path
+import json,time,random
+start=time.perf_counter()
+
+def holes(F):
+    n=len(F);full=(1&lt;&lt;n)-1;out={}
+    for retained in range(1&lt;&lt;n):
+        ids=[i for i in range(n) if retained&gt;&gt;i&amp;1]
+        if len(ids)%2:continue
+        out[full^retained]=sum((determinant([[F[i][j] for j in ids if j not in I]
+                                           for i in I]).norm()
+                               for I in combinations(ids,len(ids)//2)),Q(0))
+    return out
+
+def rayleigh(f,n,i,j):
+    values={a:(-1 if a in (1,2,3) else 1) for a in range(n)};group=[Q(0)]*4
+    for mask,c in f.items():
+        sign=(-1)**((n-mask.bit_count())//2)
+        for a in range(n):
+            if a not in (i,j) and mask&gt;&gt;a&amp;1:sign*=values[a]
+        group[(int(mask&gt;&gt;i&amp;1))+2*int(mask&gt;&gt;j&amp;1)]+=c*sign
+    return group,group[1]*group[2]-group[0]*group[3]
+
+F4=[[G(x) for x in row] for row in [[0,0,1,1],[0,0,1,-1],[0,0,0,0],[0,0,0,0]]]
+f4=holes(F4)
+def defect(f):return f[3]*f[12]+f[5]*f[10]+f[9]*f[6]-f[0]*f[15]
+assert defect(f4)==-2
+edges=[(0,4),(0,5),(1,4),(1,5),(2,4),(2,5),(3,4)]
+F6=[[G(x) for x in row] for row in [
+ [0,0,1,1,Q(-1,4),0],[0,0,1,-1,Q(-1,4),0],[0,0,0,0,Q(1,4),0],
+ [0,0,0,0,Q(1,4),0],[Q(1,4),Q(1,4),0,Q(-1,4),0,1],
+ [Q(-1,4),Q(-1,4),Q(-1,4),Q(-1,4),1,0]]]
+f6=holes(F6);g=dict(f6)
+for i,j in edges:
+    pair=(1&lt;&lt;i)|(1&lt;&lt;j);old=dict(g)
+    for mask in g:
+        if not mask&amp;pair:g[mask]+=old.get(mask|pair,Q(0))
+newpin={mask:g[mask] for mask in range(16) if not mask.bit_count()%2}
+oldpin={mask:g[mask|48] for mask in range(16) if not mask.bit_count()%2}
+assert oldpin==f4 and defect(newpin)==Q(28101,32768)
+A=newpin[0]*newpin[15];h=[newpin[x]*newpin[15^x] for x in (3,5,9)]
+B=(sum(h)-A)/2;L=[max(Q(0),x-B) for x in h]
+assert B&gt;=0 and sum(L)&lt;=A
+
+F=[[G(x) for x in row] for row in [[0,1,1,1,0,0],[0,0,0,0,1,1],
+ [0,0,1,0,1,0],[1,0,0,0,0,0],[0,0,0,1,0,0],[1,0,1,0,0,0]]]
+f=holes(F);raw,original=rayleigh(f,6,0,4);sq,power=rayleigh({s:w*w for s,w in f.items()},6,0,4)
+assert raw==list(map(Q,[-11,-7,-9,-3])) and original==30
+assert sq==list(map(Q,[-55,-9,-17,-3])) and power==-12
+aux={s:w+(f.get(s|3,Q(0)) if not s&amp;3 else 0) for s,w in f.items()}
+assert rayleigh({s:w*w for s,w in aux.items()},6,0,4)[1]==-15
+physical_triangle=bool(F[0][2] and F[5][2] and F[5][0]);assert physical_triangle
+
+reject=[]
+for n in (4,6):
+    k=n//2;F=[[G(Q(1,4)*int(i==j)+int(j==(i+1)%n)) for j in range(n)] for i in range(n)]
+    sets=list(combinations(range(n),k));W=Q(0);hard=Q(0);row=[Q(0)]*n;col=[Q(0)]*n
+    for I in sets:
+        for J in sets:
+            w=determinant([[F[i][j] for j in J] for i in I]).norm();W+=w
+            for i in I:row[i]+=w
+            for j in J:col[j]+=w
+            if not set(I)&amp;set(J):hard+=w
+    assert hard==2 and all(x==W/2 for x in row+col)
+    assert W&gt;=Q(len(sets))*Q(3,4)**n
+    reject.append({&#x27;n&#x27;:n,&#x27;unrestricted_weight&#x27;:str(W),&#x27;hard_weight&#x27;:str(hard),&#x27;acceptance&#x27;:str(hard/W)})
+
+def pf(A):
+    if not A:return G(1)
+    if len(A)%2:return G()
+    ans=G()
+    for j in range(1,len(A)):
+        ids=[a for a in range(1,len(A)) if a!=j]
+        ans+=((-1)**(j-1))*A[0][j]*pf([[A[a][b] for b in ids] for a in ids])
+    return ans
+rng=random.Random(1202);support_cases=0
+for n in (2,3,4):
+    for trial in range(4):
+        F=[[G(rng.randrange(-1,2),rng.randrange(-1,2)) for j in range(n)] for i in range(n)]
+        M=[[G() for j in range(2*n)] for i in range(2*n)]
+        for i in range(n):
+            for j in range(n):M[i][n+j]=F[i][j];M[n+j][i]=-F[i][j]
+        for word in product(&#x27;ERC&#x27;,repeat=n):
+            I=[i for i,t in enumerate(word) if t==&#x27;R&#x27;];J=[i for i,t in enumerate(word) if t==&#x27;C&#x27;]
+            selected=sorted(I+[n+j for j in J])
+            left=bool(determinant([[F[i][j] for j in J] for i in I])) if len(I)==len(J) else False
+            right=bool(pf([[M[i][j] for j in selected] for i in selected]))
+            assert left==right
+        support_cases+=1
+res={&#x27;status&#x27;:&#x27;PASS&#x27;,&#x27;scope&#x27;:&#x27;Independent exact recomputation of finite consequential peer fixtures; universal proof and imported algorithm assessment separate&#x27;,
+     &#x27;l01_circulants&#x27;:reject,&#x27;l04_rayleigh_original&#x27;:str(original),&#x27;l04_rayleigh_square&#x27;:str(power),
+     &#x27;l04_aux_square&#x27;:str(rayleigh({s:w*w for s,w in aux.items()},6,0,4)[1]),
+     &#x27;l04_physical_site_triangle_0_2_5&#x27;:physical_triangle,
+     &#x27;l07_old_pin_defect&#x27;:str(defect(oldpin)),&#x27;l07_rescued_pin_defect&#x27;:str(defect(newpin)),
+     &#x27;l07_recognizer_accepts_rescued_pin&#x27;:True,&#x27;l10_support_cases&#x27;:support_cases,
+     &#x27;elapsed_seconds&#x27;:time.perf_counter()-start}
+Path(&#x27;work/cycle6/c02_s01/reviews&#x27;).mkdir(exist_ok=True)
+Path(&#x27;work/cycle6/c02_s01/reviews/CROSS_REVIEW_CHECKS.json&#x27;).write_text(json.dumps(res,indent=2)+&#x27;\n&#x27;)
+print(json.dumps(res,indent=2))
+</pre><p><a href="../assets/a9642c9b4ea9ef497997679ee72257a285160df5ea4d281187758af0cda859a1.py">Exact original bytes</a></p></html>

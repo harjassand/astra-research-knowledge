@@ -1,0 +1,215 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c07_s03/certified_normal.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c07_s03/certified_normal.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Certified finite-random-bit clipped normal, by rational CDF intervals.
+
+Guarantee: returned value is h-close to a coupled clipped ideal N(0,1).
+This is NOT total-variation approximation to a continuous normal law.
+No floating-point value participates in numerical decisions or certificates.
+&quot;&quot;&quot;
+import argparse
+import datetime
+from fractions import Fraction as F
+import importlib.util
+import json
+from pathlib import Path
+import resource
+import secrets
+import time
+
+HERE=Path(__file__).resolve().parent
+spec=importlib.util.spec_from_file_location(&#x27;rational_iv&#x27;,HERE/&#x27;certified_two_spin.py&#x27;)
+base=importlib.util.module_from_spec(spec)
+spec.loader.exec_module(base)
+IV,iv=base.IV,base.iv
+fa,fs,fm,fd=base.fa,base.fs,base.fm,base.fd
+
+
+def ceil_fraction(x): return -((-x.numerator)//x.denominator)
+
+
+def ceil_log2_positive(x):
+    p=0
+    z=F(1)
+    while z&lt;x:
+        p+=1
+        z*=2
+    return p
+
+
+def atan_inverse(d):
+    # Alternating arctangent series; its next term bounds the exact remainder.
+    base.ledger.add(&#x27;arctangent_calls&#x27;)
+    tol=F(1,1&lt;&lt;(IV.P+12))
+    term=F(1,d)
+    total=term
+    n=0
+    while True:
+        power_next=F(1,d**(2*n+3))
+        rem=fd(power_next,F(2*n+3))
+        if rem&lt;=tol:
+            break
+        n+=1
+        term=fd(F((-1)**n,d**(2*n+1)),F(2*n+1))
+        total=fa(total,term)
+        base.ledger.add(&#x27;arctangent_series_terms&#x27;)
+    return IV(fs(total,rem),fa(total,rem))
+
+
+class NormalCDF:
+    def __init__(self,L,delta):
+        self.L,self.delta=L,delta
+        pi=16*atan_inverse(5)-4*atan_inverse(239)
+        assert pi.lo&gt;3 and pi.hi&lt;4
+        self.pi=pi
+        self.coefficient=1/base.sqrt_iv(2*pi)
+        self.cache={}
+        self.calls=0
+        self.series_terms=0
+        self.max_interval_width=F(0)
+
+    def evaluate(self,z):
+        assert -self.L&lt;=z&lt;=self.L
+        self.calls+=1
+        base.ledger.add(&#x27;cdf_requests&#x27;)
+        if z in self.cache:
+            base.ledger.add(&#x27;cdf_cache_hits&#x27;)
+            return self.cache[z]
+        if z&lt;0:
+            result=1-self.evaluate(-z)
+        elif z==0:
+            result=iv(F(1,2))
+        else:
+            # Integral of the Taylor polynomial of exp(-t^2/2).
+            # On t&gt;=0, Lagrange&#x27;s remainder yields
+            # |integral remainder| &lt;= z*(z^2/2)^(n+1)/(n+1)!.
+            t=total=z
+            n=0
+            x=fm(fm(z,z),F(1,2))
+            rem=fm(z,x)
+            tol=self.delta/32
+            while rem&gt;tol:
+                next_t=fd(fm(fm(-t,x),F(2*n+1)),F((n+1)*(2*n+3)))
+                n+=1
+                t=next_t
+                total=fa(total,t)
+                rem=fd(fm(rem,x),F(n+1))
+                self.series_terms+=1
+                base.ledger.add(&#x27;cdf_integral_taylor_terms&#x27;)
+            integral=IV(fs(total,rem),fa(total,rem))
+            result=iv(F(1,2))+self.coefficient*integral
+        width=fs(result.hi,result.lo)
+        self.max_interval_width=max(self.max_interval_width,width)
+        if width&gt;self.delta:
+            raise ArithmeticError(&#x27;CDF guard budget insufficient; no certificate emitted&#x27;)
+        self.cache[z]=result
+        return result
+
+
+def tail_upper(L):
+    # Chernoff: P(|Z|&gt;L)&lt;=2 exp(-L^2/2). Positive Taylor terms enclose
+    # exp(L^2/2) from BELOW, giving a purely rational upper bound.
+    x=fm(fm(L,L),F(1,2))
+    total=term=F(1)
+    degree=ceil_fraction(L*L)+24
+    for n in range(1,degree+1):
+        term=fd(fm(term,x),F(n))
+        total=fa(total,term)
+        base.ledger.add(&#x27;tail_positive_taylor_terms&#x27;)
+    return min(F(1),fd(F(2),total)),degree
+
+
+def generate(L,ell,u_integer=None):
+    assert F(1)&lt;=L&lt;=F(8) and 8&lt;=ell&lt;=64
+    h=F(1,1&lt;&lt;ell)
+    power=ceil_fraction(L*L)+3
+    q=F(1,1&lt;&lt;power) # certified q&lt;=phi(L), no exp/ceil of real needed
+    random_bits=ell+power+5
+    delta=F(1,1&lt;&lt;random_bits) # exactly h*q/32
+    p=random_bits+ceil_log2_positive(L+1)+32
+    IV.precision(p)
+    if u_integer is None:
+        u_integer=secrets.randbits(random_bits)
+        source=&#x27;OS secrets.randbits; theorem assumes ideal fair bits&#x27;
+    else:
+        source=&#x27;supplied deterministic transcript; not a random-source validation&#x27;
+    assert 0&lt;=u_integer&lt;(1&lt;&lt;random_bits)
+    u=F(u_integer,1&lt;&lt;random_bits)
+    cdf=NormalCDF(L,delta)
+    left,right=cdf.evaluate(-L),cdf.evaluate(L)
+    steps=[]
+    if u&lt;left.lo:
+        answer,status=-L,&#x27;RESOLVED_LEFT_CLIP&#x27;
+    elif u&lt;=left.hi:
+        answer,status=-L,&#x27;TOLERANCE_LEFT_ENDPOINT&#x27;
+    elif u&gt;right.hi:
+        answer,status=L,&#x27;RESOLVED_RIGHT_CLIP&#x27;
+    elif u&gt;=right.lo:
+        answer,status=L,&#x27;TOLERANCE_RIGHT_ENDPOINT&#x27;
+    else:
+        lo,hi=-L,L
+        while True:
+            mid=fd(fa(lo,hi),F(2))
+            if hi-lo&lt;=h/2:
+                answer,status=mid,&#x27;BRACKET_RADIUS_STOP&#x27;
+                break
+            enclosure=cdf.evaluate(mid)
+            steps.append({&#x27;point&#x27;:str(mid),&#x27;cdf&#x27;:enclosure.json()})
+            if u&lt;enclosure.lo:
+                hi=mid
+            elif u&gt;enclosure.hi:
+                lo=mid
+            else:
+                answer,status=mid,&#x27;TOLERANCE_INTERIOR_STOP&#x27;
+                break
+    trunc,tail_degree=tail_upper(L)
+    # The clipped inverse is 1/q-Lipschitz. Any unresolved CDF comparison has
+    # CDF error &lt;=delta; the coupled full U differs from its bit prefix by delta.
+    # Resolved bracket stopping has radius &lt;=h/4. Both are dominated below.
+    coupling_upper=max(2*delta/q,h/4+delta/q)
+    assert coupling_upper&lt;h
+    return {&#x27;status&#x27;:&#x27;CERTIFIED_CLIPPED_NORMAL_COUPLING&#x27;,&#x27;L&#x27;:str(L),&#x27;h&#x27;:str(h),
+            &#x27;output_rational&#x27;:str(answer),&#x27;termination&#x27;:status,
+            &#x27;ideal_clipped_normal_coupling_error_upper&#x27;:str(coupling_upper),
+            &#x27;normal_tail_probability_upper&#x27;:str(trunc),
+            &#x27;tail_certificate_positive_exp_degree&#x27;:tail_degree,
+            &#x27;normal_density_lower_bound_on_clip&#x27;:str(q),
+            &#x27;cdf_interval_width_budget&#x27;:str(delta),
+            &#x27;max_observed_cdf_interval_width&#x27;:str(cdf.max_interval_width),
+            &#x27;working_bits&#x27;:p,&#x27;guard_bits_beyond_uniform&#x27;:p-random_bits,
+            &#x27;exact_fair_random_bit_count&#x27;:random_bits,&#x27;uniform_integer&#x27;:u_integer,
+            &#x27;uniform_prefix_rational&#x27;:str(u),&#x27;random_source&#x27;:source,
+            &#x27;cdf_request_count&#x27;:cdf.calls,&#x27;cdf_integral_taylor_terms&#x27;:cdf.series_terms,
+            &#x27;pi_interval&#x27;:cdf.pi.json(),&#x27;inverse_sqrt_2pi_interval&#x27;:cdf.coefficient.json(),
+            &#x27;bisection_steps&#x27;:steps,
+            &#x27;contract&#x27;:&#x27;Pointwise coupling to clipped inverse CDF; no TV-to-continuous-Gaussian claim.&#x27;,
+            &#x27;limits&#x27;:[&#x27;Only configured L in [1,8], ell in [8,64] executed&#x27;,
+                      &#x27;Not integrated with spin-path rejection or local filtering&#x27;,
+                      &#x27;Finite ideal fair-bit interface, not physical entropy certification&#x27;]}
+
+
+def main():
+    ap=argparse.ArgumentParser()
+    ap.add_argument(&#x27;--L&#x27;,default=&#x27;4&#x27;)
+    ap.add_argument(&#x27;--error-bits&#x27;,type=int,default=24)
+    ap.add_argument(&#x27;--uniform-integer&#x27;,type=int)
+    ap.add_argument(&#x27;--out&#x27;,required=True)
+    args=ap.parse_args()
+    base.ledger=base.Ledger()
+    start,cpu=time.perf_counter(),time.process_time()
+    data=generate(F(args.L),args.error_bits,args.uniform_integer)
+    data.update({&#x27;worker_id&#x27;:&#x27;c07_s03&#x27;,&#x27;utc&#x27;:datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                 &#x27;costs&#x27;:{**base.ledger.snapshot(),&#x27;wall_seconds&#x27;:time.perf_counter()-start,
+                           &#x27;cpu_seconds&#x27;:time.process_time()-cpu,
+                           &#x27;process_peak_rss_bytes_macos&#x27;:resource.getrusage(resource.RUSAGE_SELF).ru_maxrss}})
+    p=Path(args.out)
+    p.parent.mkdir(parents=True,exist_ok=True)
+    p.write_text(json.dumps(data,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({&#x27;output&#x27;:str(p),&#x27;status&#x27;:data[&#x27;status&#x27;],
+                      &#x27;point&#x27;:data[&#x27;output_rational&#x27;],&#x27;termination&#x27;:data[&#x27;termination&#x27;],
+                      &#x27;fair_bits&#x27;:data[&#x27;exact_fair_random_bit_count&#x27;],
+                      &#x27;coupling_error_upper&#x27;:data[&#x27;ideal_clipped_normal_coupling_error_upper&#x27;],
+                      &#x27;tail_probability_upper&#x27;:data[&#x27;normal_tail_probability_upper&#x27;],
+                      &#x27;wall_seconds&#x27;:data[&#x27;costs&#x27;][&#x27;wall_seconds&#x27;]}))
+
+
+if __name__==&#x27;__main__&#x27;: main()
+</pre><p><a href="../assets/f5f62e83a4b6cf8f5aebde81c0866658880f6c4fa194e8d8a24c9a2072180146.py">Exact original bytes</a></p></html>

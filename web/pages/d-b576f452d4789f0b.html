@@ -1,0 +1,91 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c02_s03/check_banded.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c02_s03/check_banded.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Small exact determinant comparator for the width-bounded count compiler.&quot;&quot;&quot;
+from representation_compiler import C,Q,matrix,det,minor
+from banded_hard_bcs import count_coefficients,local_masks,recognize_bandwidth
+from itertools import combinations
+from random import Random
+from pathlib import Path
+from datetime import datetime,timezone
+import json
+
+
+def encode(x):
+    if isinstance(x,C): return x.json()
+    if isinstance(x,Q): return str(x)
+    if isinstance(x,dict): return {str(k):encode(v) for k,v in x.items()}
+    if isinstance(x,(list,tuple)): return [encode(v) for v in x]
+    return x
+
+
+def determinant_table(f):
+    &quot;&quot;&quot;Exponential diagnostic comparator, outside the production interface.&quot;&quot;&quot;
+    n=len(f); table=[]
+    for k in range(n//2+1):
+        for up in combinations(range(n),k):
+            for down in combinations(sorted(set(range(n))-set(up)),k):
+                amplitude=det(minor(f,up,down))
+                occupations=tuple(1 if i in up else 2 if i in down else 0 for i in range(n))
+                table.append((k,occupations,amplitude.abs2()))
+    return table
+
+
+def table_prefix(table,n,mode_constraints=None,site_constraints=None):
+    allowed=local_masks(n,mode_constraints,site_constraints); total=[Q(0)]*(n//2+1)
+    for k,occupations,weight in table:
+        if all(occupations[i] in allowed[i] for i in range(n)): total[k]+=weight
+    return total
+
+
+def run():
+    start=datetime.now(timezone.utc).isoformat(); rng=Random(6203)
+    fixtures=[]; counters={&#x27;matrices&#x27;:0,&#x27;prefix_polynomials&#x27;:0,&#x27;sector_coefficients&#x27;:0,
+                           &#x27;determinant_terms&#x27;:0,&#x27;nonbipartite_connected&#x27;:0}
+    for n in range(0,7):
+        for width in range(min(2,n-1)+1) if n else (0,):
+            f=[[C(rng.randint(-2,2),rng.randint(-1,1))
+                if abs(i-j) &lt;= width else C(0) for j in range(n)] for i in range(n)]
+            # Keep every distance-1,2 directed edge nonzero in the nonbipartite case.
+            if width == 2:
+                for i in range(n):
+                    for j in range(n):
+                        if 0 &lt; abs(i-j) &lt;= 2 and not f[i][j]: f[i][j]=C(1)
+            fixtures.append(f)
+    # Connected arbitrary-size sequence of triangles, not bounded components.
+    n=8
+    f=[[C(0) if i == j or abs(i-j) &gt; 2 else C(1 if i &lt; j else Q(1,2),Q((-1)**(i+j),3))
+        for j in range(n)] for i in range(n)]
+    fixtures.append(f)
+    fixture_reports=[]
+    for f in fixtures:
+        n=len(f); table=determinant_table(f); counters[&#x27;determinant_terms&#x27;]+=len(table)
+        counters[&#x27;matrices&#x27;]+=1
+        queries=[({},{}),({}, {i:{1,2} for i in range(n)})]
+        if n:
+            # Arbitrary occupation-bit restrictions, including zero-support doubles.
+            queries.extend([({(0,&#x27;U&#x27;):1},{}),({(0,&#x27;U&#x27;):1,(0,&#x27;D&#x27;):1},{}),
+                            ({(n-1,&#x27;D&#x27;):0},{}),({}, {0:{0}})])
+            for length in range(1,min(n,4)+1):
+                constraints={(i,spin):rng.randrange(2) for i in range(length) for spin in (&#x27;U&#x27;,&#x27;D&#x27;)}
+                queries.append((constraints,{}))
+        first=None
+        for mode,site in queries:
+            calculated=count_coefficients(f,mode,site,collect_stats=True)
+            expected=table_prefix(table,n,mode,site)
+            assert calculated[&#x27;coefficients&#x27;] == expected, (n,mode,site,calculated,expected)
+            counters[&#x27;prefix_polynomials&#x27;]+=1; counters[&#x27;sector_coefficients&#x27;]+=len(expected)
+            if first is None: first=calculated
+        fixture_reports.append({&#x27;n&#x27;:n,&#x27;width&#x27;:first[&#x27;width&#x27;],&#x27;coefficients&#x27;:first[&#x27;coefficients&#x27;],
+                                &#x27;stats&#x27;:first[&#x27;stats&#x27;]})
+        if n &gt;= 3 and first[&#x27;width&#x27;] == 2: counters[&#x27;nonbipartite_connected&#x27;]+=1
+    rejection=recognize_bandwidth(matrix([[0,0,0,1],[0,0,0,0],[0,0,0,0],[0,0,0,0]]),2)
+    assert rejection[&#x27;status&#x27;] == &#x27;REJECTED_WIDTH&#x27; and rejection[&#x27;widest_nonzero_edge&#x27;] == [0,3]
+    return {&#x27;status&#x27;:&#x27;PASS&#x27;,&#x27;start_utc&#x27;:start,&#x27;end_utc&#x27;:datetime.now(timezone.utc).isoformat(),
+            &#x27;counters&#x27;:counters,&#x27;fixtures&#x27;:fixture_reports,&#x27;width_rejection&#x27;:rejection,
+            &#x27;scope&#x27;:&#x27;exact canonical/prefix count implementation compared with finite determinant enumeration&#x27;,
+            &#x27;quantum_circuit_status&#x27;:&#x27;UNIMPLEMENTED&#x27;,&#x27;general_parity_status&#x27;:&#x27;UNRESOLVED&#x27;}
+
+
+if __name__ == &#x27;__main__&#x27;:
+    result=encode(run()); Path(__file__).with_name(&#x27;banded_checks.json&#x27;).write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({&#x27;status&#x27;:result[&#x27;status&#x27;],&#x27;counters&#x27;:result[&#x27;counters&#x27;],
+                      &#x27;last_fixture&#x27;:result[&#x27;fixtures&#x27;][-1],&#x27;end_utc&#x27;:result[&#x27;end_utc&#x27;]}))
+</pre><p><a href="../assets/af556576bf1eabf1ce651e1e37bbc11bd6842692c89e14277f471dea018b8ff0.py">Exact original bytes</a></p></html>

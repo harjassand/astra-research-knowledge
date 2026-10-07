@@ -1,0 +1,147 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c09_s01/revisions/acquired_decoder_certificate.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c09_s01/revisions/acquired_decoder_certificate.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Train/held-out scalar reference certificate for the exact observation channel.
+
+Inputs are charged calibration records. The iid/range/domination contracts
+are assumptions supplied with the data, not inferred from empirical fits.
+The built-in demo uses declared finite tapes and is a software diagnostic.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+from fractions import Fraction as F
+from pathlib import Path
+import argparse
+import json
+import math
+import random
+import time
+
+from covariance_codec import fs, log_interval
+
+
+def sqrt_upper(x: F, bits: int = 40) -&gt; F:
+    assert x &gt;= 0
+    scale = 1 &lt;&lt; bits
+    scaled = x * scale * scale
+    k = math.isqrt(scaled.numerator // scaled.denominator)
+    if F(k * k) &lt; scaled:
+        k += 1
+    answer = F(k, scale)
+    assert answer * answer &gt;= x
+    return answer
+
+
+def divergence_interval(a: F, b: F, bits: int) -&gt; tuple[F, F]:
+    assert a &gt;= 0 and b &gt; 0
+    if a == b:
+        return F(0), F(0)
+    if a == 0:
+        return b, b
+    lo, hi = log_interval(a / b, bits)
+    return max(F(0), a * lo - a + b), a * hi - a + b
+
+
+def certify(raw: dict, bits: int = 48) -&gt; dict:
+    alpha, beta = F(raw[&quot;alpha&quot;]), F(raw[&quot;beta&quot;])
+    threshold, C, epsilon = F(raw[&quot;classifier_threshold&quot;]), F(raw[&quot;domination_C&quot;]), F(raw[&quot;epsilon&quot;])
+    delta, k = F(raw[&quot;confidence_delta&quot;]), int(raw[&quot;outputs_k&quot;])
+    t0, t1 = F(raw[&quot;T0&quot;]), F(raw[&quot;T1&quot;])
+    training = [F(x) for x in raw[&quot;training&quot;]]
+    validation = [F(x) for x in raw[&quot;validation&quot;]]
+    assert 0 &lt; alpha &lt;= threshold &lt; beta and C &gt;= 1 and 0 &lt; delta &lt; 1
+    assert k &gt;= 1 and 0 &lt; epsilon &lt;= 1 and 0 &lt; t0 &lt; t1
+    assert training and validation and all(alpha &lt;= a &lt;= beta for a in training + validation)
+    def label(a):
+        return int(a &gt; threshold)
+    means, counts = [], []
+    for j in (0, 1):
+        values = [a for a in training if label(a) == j]
+        counts.append(len(values))
+        means.append(sum(values, F(0)) / len(values) if values else alpha)
+        assert alpha &lt;= means[-1] &lt;= beta
+    intervals = [divergence_interval(a, means[label(a)], bits) for a in validation]
+    empirical_low = sum((v[0] for v in intervals), F(0)) / len(validation)
+    empirical_up = sum((v[1] for v in intervals), F(0)) / len(validation)
+    R0 = (beta - alpha) ** 2 / (2 * alpha)
+    for lo, hi in intervals:
+        assert 0 &lt;= lo &lt;= hi
+        # Roundoff interval width is separately paid; exact risk is &lt;=R0.
+        assert hi &lt;= R0 + F(1, 1 &lt;&lt; (bits - 4))
+    _, log_delta_upper = log_interval(1 / delta, bits)
+    confidence = R0 * sqrt_upper(log_delta_upper / (2 * len(validation)))
+    risk_upper = empirical_up + confidence
+    W = 1 / t0 - 1 / t1
+    criterion = 4 * W * epsilon * epsilon / (k * C)
+    tv_sq = k * C * risk_upper / (4 * W)
+    return {
+        &quot;status&quot;: &quot;CERTIFIED_UNDER_IID_RANGE_DOMINATION_CONTRACT&quot; if risk_upper &lt;= criterion else &quot;UNKNOWN&quot;,
+        &quot;confidence_failure_probability&quot;: fs(delta),
+        &quot;retained_dimension&quot;: 2, &quot;fixed_binary_bits&quot;: 1,
+        &quot;training_draws&quot;: len(training), &quot;validation_draws&quot;: len(validation),
+        &quot;training_bin_counts&quot;: counts, &quot;classifier_threshold&quot;: fs(threshold),
+        &quot;codebook_covariances&quot;: [fs(m) for m in means],
+        &quot;range_loss_upper_R0&quot;: fs(R0),
+        &quot;empirical_risk_interval&quot;: {&quot;lower&quot;: fs(empirical_low), &quot;upper&quot;: fs(empirical_up)},
+        &quot;confidence_radius_upper&quot;: fs(confidence), &quot;reference_risk_upper&quot;: fs(risk_upper),
+        &quot;reference_risk_threshold&quot;: fs(criterion), &quot;uniform_TV_squared_upper&quot;: fs(tv_sq),
+        &quot;epsilon&quot;: fs(epsilon), &quot;k&quot;: k, &quot;C&quot;: fs(C), &quot;W&quot;: fs(W),
+        &quot;precision_bits&quot;: bits,
+        &quot;source_assumptions&quot;: [&quot;training independent of fresh iid validation under mu&quot;,
+                               &quot;declared field range alpha&lt;=A&lt;=beta for the whole source&quot;,
+                               &quot;dP_v/dmu&lt;=C for all target parameters&quot;],
+        &quot;sampler_status&quot;: &quot;IDEAL_GAUSSIAN_DECODER; DIGITAL_CONTINUOUS_OUTPUT_NOT_IMPLEMENTED&quot;,
+    }
+
+
+def demo() -&gt; dict:
+    values = [&quot;1/2&quot;, &quot;3/5&quot;, &quot;9/10&quot;, &quot;1&quot;]
+    training_tape, validation_tape = random.Random(42), random.Random(2048)
+    return {
+        &quot;alpha&quot;: &quot;1/2&quot;, &quot;beta&quot;: &quot;1&quot;, &quot;classifier_threshold&quot;: &quot;3/4&quot;,
+        &quot;domination_C&quot;: &quot;2&quot;, &quot;epsilon&quot;: &quot;1/4&quot;, &quot;confidence_delta&quot;: &quot;1/20&quot;,
+        &quot;outputs_k&quot;: 3, &quot;cap_L&quot;: &quot;8&quot;, &quot;T0&quot;: &quot;1&quot;, &quot;T1&quot;: &quot;2&quot;,
+        &quot;training&quot;: [values[training_tape.getrandbits(2)] for _ in range(32)],
+        &quot;validation&quot;: [values[validation_tape.getrandbits(2)] for _ in range(512)],
+        &quot;fixture_reference_values&quot;: values,
+        &quot;fixture_note&quot;: &quot;Independent fixed pseudorandom tapes exercise the software; physical source/iid certification not claimed.&quot;,
+    }
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(&quot;--input&quot;, type=Path)
+    parser.add_argument(&quot;--output&quot;, type=Path, default=Path(__file__).with_name(&quot;acquired_decoder_certificate.json&quot;))
+    args = parser.parse_args()
+    target = args.output.resolve()
+    assert target.is_relative_to(Path(__file__).resolve().parent)
+    assert not target.exists(), &quot;Preserve existing results; choose a new output path&quot;
+    started = time.perf_counter()
+    raw = json.loads(args.input.read_text()) if args.input else demo()
+    result = certify(raw)
+    check = {&quot;scope&quot;: &quot;NOT_A_PHYSICAL_SOURCE_RUN&quot;}
+    if &quot;fixture_reference_values&quot; in raw:
+        means = [F(x) for x in result[&quot;codebook_covariances&quot;]]
+        threshold = F(raw[&quot;classifier_threshold&quot;])
+        exact = [divergence_interval(F(x), means[int(F(x) &gt; threshold)], 48)
+                 for x in raw[&quot;fixture_reference_values&quot;]]
+        exact_low = sum((x[0] for x in exact), F(0)) / len(exact)
+        exact_up = sum((x[1] for x in exact), F(0)) / len(exact)
+        assert exact_up &lt;= F(result[&quot;reference_risk_upper&quot;])
+        check.update({&quot;exact_fixture_reference_risk_interval&quot;: {&quot;lower&quot;: fs(exact_low), &quot;upper&quot;: fs(exact_up)},
+                      &quot;confidence_upper_covers_fixture_true_risk&quot;: True})
+    for x in [F(0), F(1, 9), F(2), F(2000, 13)]:
+        assert sqrt_upper(x) ** 2 &gt;= x
+    assert divergence_interval(F(0), F(1, 2), 48) == (F(1, 2), F(1, 2))
+    record = {&quot;input&quot;: raw, &quot;certificate&quot;: result, &quot;checks&quot;: check,
+              &quot;local_seconds&quot;: time.perf_counter() - started, &quot;backend_energy_tokens&quot;: &quot;UNKNOWN&quot;}
+    target.write_text(json.dumps(record, indent=2) + &quot;\n&quot;)
+    print(json.dumps({&quot;output&quot;: str(target), &quot;status&quot;: result[&quot;status&quot;], &quot;D&quot;: 2, &quot;binary_bits&quot;: 1,
+                      &quot;draws&quot;: result[&quot;training_draws&quot;] + result[&quot;validation_draws&quot;], &quot;k&quot;: result[&quot;k&quot;],
+                      &quot;TV_upper_approx&quot;: math.sqrt(float(F(result[&quot;uniform_TV_squared_upper&quot;]))),
+                      &quot;confidence_failure_probability&quot;: result[&quot;confidence_failure_probability&quot;],
+                      &quot;codebook_covariances&quot;: result[&quot;codebook_covariances&quot;],
+                      &quot;true_fixture_risk_upper_approx&quot;: float(F(check[&quot;exact_fixture_reference_risk_interval&quot;][&quot;upper&quot;])),
+                      &quot;local_seconds&quot;: record[&quot;local_seconds&quot;]}, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/755d77d9df691edced1604f18a79fc1d4afab234368701ac7797fce5a772b019.py">Exact original bytes</a></p></html>

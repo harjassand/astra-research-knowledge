@@ -1,0 +1,47 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c05_s01/revisions/check_eb_balancing.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c05_s01/revisions/check_eb_balancing.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Bounded transcription checks for explicit EB reference balancing.&quot;&quot;&quot;
+from pathlib import Path
+import numpy as np,json
+root=Path(__file__).resolve().parent
+rng=np.random.default_rng(6050103)
+
+def density(d):
+ z=rng.normal(size=(d,d))+1j*rng.normal(size=(d,d));s=z@z.conj().T
+ return s/np.trace(s)
+
+def povm(d,r):
+ Z=[density(d) for _ in range(r)];S=sum(Z);lam,U=np.linalg.eigh(S)
+ inv=(U*(lam**-.5))@U.conj().T
+ return [inv@z@inv for z in Z]
+
+def contract(d):
+ z=rng.normal(size=(d,d))+1j*rng.normal(size=(d,d));z=(z+z.conj().T)/2
+ return z/max(1,np.linalg.norm(z,2))
+
+fixtures=[]
+for d in range(2,7):
+ for r in [d,2*d]:
+  M=povm(d,r);rho=[density(d) for _ in range(r)]
+  E=lambda A:sum(np.trace(m@A)*p for m,p in zip(M,rho))
+  Es=lambda A:sum(np.trace(p@A)*m for m,p in zip(M,rho))
+  S=E(np.eye(d));lam,U=np.linalg.eigh(S)
+  f=np.minimum(1,lam**-.5);F=(U*f)@U.conj().T
+  Delta=np.eye(d)-F@S@F;Delta=(Delta+Delta.conj().T)/2
+  D=np.eye(d)-Es(F@F);D=(D+D.conj().T)/2
+  t=float(np.trace(Delta).real/d)
+  delta=float(np.linalg.svd(S-np.eye(d),compute_uv=False).sum()/d)
+  Ebal=lambda A:F@E(A)@F+np.trace(D@A)*Delta/(d*t)
+  assert np.linalg.eigvalsh(D).min()&gt;-1e-10 and np.linalg.eigvalsh(Delta).min()&gt;-1e-10
+  assert abs(t-delta/2)&lt;1e-10
+  uerr=float(np.linalg.norm(Ebal(np.eye(d))-np.eye(d),&#x27;fro&#x27;))
+  assert uerr&lt;1e-9
+  maxerr=0.;maxterr=0.
+  for _ in range(40):
+   A=contract(d);maxerr=max(maxerr,float(np.linalg.svd(E(A)-Ebal(A),compute_uv=False).sum()/d))
+   maxterr=max(maxterr,float(abs(np.trace(Ebal(A))-np.trace(A))))
+  bound=2*np.sqrt(t)+t
+  assert maxerr&lt;bound+1e-9 and maxterr&lt;1e-8
+  fixtures.append({&#x27;d&#x27;:d,&#x27;POVM_outcomes&#x27;:r,&#x27;delta&#x27;:delta,&#x27;t&#x27;:t,&#x27;bound&#x27;:float(bound),&#x27;sample_max_normalized_L1_change&#x27;:maxerr,&#x27;unital_error&#x27;:uerr,&#x27;sample_trace_error&#x27;:maxterr})
+(root/&#x27;eb_balancing_checks.json&#x27;).write_text(json.dumps({&#x27;seed&#x27;:6050103,&#x27;fixtures&#x27;:fixtures,&#x27;scope&#x27;:&#x27;Floating finite diagnostics only. Positivity, EB, reference fixation and uniform norm estimates follow from the written proof.&#x27;},indent=2)+&#x27;\n&#x27;)
+print(json.dumps({&#x27;fixtures&#x27;:len(fixtures),&#x27;max_unital_error&#x27;:max(x[&#x27;unital_error&#x27;] for x in fixtures),&#x27;max_trace_error&#x27;:max(x[&#x27;sample_trace_error&#x27;] for x in fixtures)},indent=2))
+</pre><p><a href="../assets/5a0bfbfd8cc60f61cba05dd78696a452d788638632de68f62d53d6bb3592b2d0.py">Exact original bytes</a></p></html>

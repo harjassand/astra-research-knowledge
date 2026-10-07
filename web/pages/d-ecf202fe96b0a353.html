@@ -1,0 +1,99 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c02_s01/bandwidth_parity_checks.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c02_s01/bandwidth_parity_checks.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>from bandwidth_parity import *
+from low_rank_parity import enumerate_count, determinant, factorize
+from pathlib import Path
+import random, time, json
+
+start = time.perf_counter()
+rng = random.Random(620201)
+cases = []
+sample_checks = 0
+conditional_checks = 0
+for n, b in [(4, 1), (5, 2), (6, 2), (7, 1)]:
+    F = [[G(Q(rng.randrange(-2, 3), 2), Q(rng.randrange(-1, 2), 3))
+          if i != j and abs(i-j) &lt;= b else G(int(i == j)*17)
+          for j in range(n)] for i in range(n)]
+    rw = [Q(rng.randrange(0, 4), 3) for _ in range(n)]
+    cw = [Q(rng.randrange(1, 4), 2) for _ in range(n)]
+    expected, law = enumerate_count(F, row_weights=rw, col_weights=cw)
+    actual, meta = count_band(F, row_weights=rw, col_weights=cw)
+    assert actual == expected
+    for k in range(n//2+1):
+        capped, _ = count_band(F, row_weights=rw, col_weights=cw, max_pairs=k)
+        assert capped == expected[:k+1]
+        if expected[k]:
+            word = sample_band(F, k, row_weights=rw, col_weights=cw, randbits=rng.getrandbits)
+            assert word in law and word.count(&#x27;R&#x27;) == word.count(&#x27;C&#x27;) == k
+            sample_checks += 1
+    for i in range(n):
+        for t in &#x27;ERC&#x27;:
+            tables = [set(&#x27;ERC&#x27;) for _ in range(n)]
+            tables[i] = {t}
+            expected_conditioned, _ = enumerate_count(F, tables, rw, cw)
+            actual_conditioned, _ = count_band(F, tables, rw, cw)
+            assert actual_conditioned == expected_conditioned
+            conditional_checks += 1
+    tables = [set(&#x27;ERC&#x27;) for _ in range(n)]
+    tables[0] = {&#x27;R&#x27;}
+    tables[-1] = {&#x27;E&#x27;, &#x27;C&#x27;}
+    expected_conditioned, conditional_law = enumerate_count(F, tables, rw, cw)
+    if sum(expected_conditioned):
+        word = sample_band(F, allowed=tables, row_weights=rw, col_weights=cw, randbits=rng.getrandbits)
+        assert word in conditional_law
+        sample_checks += 1
+    # Large arbitrary diagonal entries are irrelevant and are acquired away.
+    Fzero = [[G() if i == j else F[i][j] for j in range(n)] for i in range(n)]
+    assert count_band(Fzero, row_weights=rw, col_weights=cw)[0] == actual
+    cases.append({&#x27;n&#x27;: n, &#x27;bandwidth_requested&#x27;: b, &#x27;acquired&#x27;: meta,
+                  &#x27;coefficients&#x27;: list(map(str, actual))})
+
+# An extensive sector on an acquired full-rank, non-monomial, phase-interfering
+# band-two matrix. The transfer computes the sector directly, not by rare-event
+# rejection; independent enumeration of all 3^12 words is intentionally omitted.
+n = 12
+F = [[G((i+2*j) % 5 - 2, (2*i+j) % 3 - 1)
+      if 0 &lt; abs(i-j) &lt;= 2 else G() for j in range(n)] for i in range(n)]
+for i in range(n-1):
+    F[i][i+1] += G(3)  # Every alternating-word diagonal entry is now nonzero.
+coefficients, meta = count_band(F)
+U, V = factorize(F)
+rank = len(U[0])
+I = list(range(0, n, 2)); J = list(range(1, n, 2))
+witness = determinant([[F[i][j] for j in J] for i in I]).norm()
+assert witness &gt; 0 and coefficients[6] &gt;= witness and rank == 12
+word = sample_band(F, 6, randbits=rng.getrandbits)
+Is = [i for i, t in enumerate(word) if t == &#x27;R&#x27;]
+Js = [i for i, t in enumerate(word) if t == &#x27;C&#x27;]
+assert len(Is) == len(Js) == 6
+assert determinant([[F[i][j] for j in Js] for i in Is]).norm() &gt; 0
+extensive = {&#x27;n&#x27;: n, &#x27;rank_acquired&#x27;: rank, &#x27;meta&#x27;: meta,
+             &#x27;coefficients&#x27;: list(map(str, coefficients)),
+             &#x27;alternating_word_weight&#x27;: str(witness), &#x27;sample_k6&#x27;: word}
+
+boundaries = {}
+assert count_band([])[0] == [Q(1)]
+assert sample_band([], 0) == &#x27;&#x27;
+assert count_band([[1, 0], [0, 1]], allowed=[{&#x27;R&#x27;}, set(&#x27;ERC&#x27;)])[0] == [Q(0), Q(0)]
+for name, action in [
+    (&#x27;negative_sector&#x27;, lambda: sample_band([[0]], -1)),
+    (&#x27;large_sector&#x27;, lambda: sample_band([[0]], 1)),
+    (&#x27;negative_activity&#x27;, lambda: count_band([[0]], row_weights=[-1])),
+    (&#x27;nonsquare&#x27;, lambda: count_band([[0, 1]])),
+    (&#x27;bad_table&#x27;, lambda: count_band([[0]], allowed=[{&#x27;B&#x27;}])),
+    (&#x27;zero_sector&#x27;, lambda: sample_band([[0]], allowed=[{&#x27;R&#x27;}])),
+]:
+    try:
+        action()
+        raise AssertionError(name+&#x27; was accepted&#x27;)
+    except ValueError:
+        boundaries[name] = &#x27;REJECTED&#x27;
+result = {&#x27;status&#x27;: &#x27;PASS&#x27;, &#x27;seed&#x27;: 620201, &#x27;cases&#x27;: cases,
+          &#x27;conditional_coefficient_checks&#x27;: conditional_checks,
+          &#x27;sample_support_checks&#x27;: sample_checks,
+          &#x27;full_rank_extensive_sector&#x27;: extensive, &#x27;boundaries&#x27;: boundaries,
+          &#x27;scope&#x27;: &#x27;small exact counts compared with independent disjoint-word permutation-determinant enumeration; full-rank n12 fixture has exact transfer identities and independent support witnesses only; probability law is proved by transfer/self-reduction, not frequencies&#x27;,
+          &#x27;elapsed_seconds&#x27;: time.perf_counter()-start}
+Path(&#x27;work/cycle6/c02_s01/bandwidth_parity_checks.json&#x27;).write_text(json.dumps(result, indent=2)+&#x27;\n&#x27;)
+print(json.dumps({&#x27;status&#x27;: result[&#x27;status&#x27;], &#x27;conditional_coefficient_checks&#x27;: conditional_checks,
+                  &#x27;sample_support_checks&#x27;: sample_checks, &#x27;full_rank_k6_coefficient&#x27;: str(coefficients[6]),
+                  &#x27;elapsed_seconds&#x27;: result[&#x27;elapsed_seconds&#x27;]}, indent=2))
+</pre><p><a href="../assets/69e479c7252e4445a71f334f1ab4f61fc2e4b6a786dcb2462e2bb5e6d956e285.py">Exact original bytes</a></p></html>

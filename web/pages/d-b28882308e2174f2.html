@@ -1,0 +1,174 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c03_l07/revisions/near_matching_variance.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c03_l07/revisions/near_matching_variance.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact variance audit on dense rational perturbations of swap matchings.
+
+The imported implementation is a local copy of c01_s03&#x27;s phase-two program;
+all output is written by the caller into this worker&#x27;s revisions directory.
+&quot;&quot;&quot;
+from fractions import Fraction as Q
+from itertools import combinations, permutations, product
+import importlib.util
+import json
+from math import comb, lcm
+from pathlib import Path
+
+
+HERE = Path(__file__).resolve().parent
+COPIED_PROGRAM = HERE / &quot;low_sector_sampler_copy.py&quot;
+spec = importlib.util.spec_from_file_location(&quot;copied_low_sector_sampler&quot;, COPIED_PROGRAM)
+sampler = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(sampler)
+
+
+def inversion_sign(perm):
+    inv = sum(perm[i] &gt; perm[j] for i in range(len(perm))
+              for j in range(i + 1, len(perm)))
+    return -1 if inv % 2 else 1
+
+
+def det_int(matrix):
+    n = len(matrix)
+    if n == 0:
+        return 1
+    return sum(inversion_sign(p) *
+               __import__(&quot;math&quot;).prod(matrix[i][p[i]] for i in range(n))
+               for p in permutations(range(n)))
+
+
+def direct_disjoint_minor_sum(g, k):
+    n = len(g)
+    total = 0
+    for rows in combinations(range(n), k):
+        row_set = set(rows)
+        for cols in combinations([j for j in range(n) if j not in row_set], k):
+            total += det_int([[g[i][j] for j in cols] for i in rows]) ** 2
+    return total
+
+
+def phased_draw(problem, signs, k):
+    &quot;&quot;&quot;Evaluate c03_s01&#x27;s alternating real/imaginary site-sign X_k exactly.&quot;&quot;&quot;
+    n = problem.n
+    phases = [(s, 0) if i % 2 == 0 else (0, s)
+              for i, s in enumerate(signs)]
+    a = []
+    for i in range(n):
+        row = []
+        for j in range(n):
+            left = sampler.mul(phases[i], problem.g[i][j])
+            right = sampler.mul(phases[j], problem.g[j][i])
+            row.append(sampler.add(left, sampler.scale(right, -1)))
+        a.append(row)
+    return sampler.pfaffian_norm_coefficient(a, k)
+
+
+def build_near_matching(n, delta):
+    assert n % 2 == 0
+    k = n // 2
+    f = []
+    for i in range(n):
+        row = []
+        for j in range(n):
+            matching = int(j == (i ^ 1))
+            row.append(Q(matching) + delta)
+        f.append(row)
+    return f, delta, k
+
+
+def one_instance(n, delta, label):
+    f, delta, k = build_near_matching(n, delta)
+    problem = sampler.LowSector(f)
+    m = 1 &lt;&lt; n
+    xs = []
+    phased_xs = []
+    for bits in product((-1, 1), repeat=n):
+        xs.append(problem.prefix_draw_integer(k, bits))
+        phased_xs.append(phased_draw(problem, bits, k))
+    assert len(xs) == m
+    g = [[entry[0] for entry in row] for row in problem.g]
+    assert all(entry[1] == 0 for row in problem.g for entry in row)
+    c_direct = direct_disjoint_minor_sum(g, k)
+    expected_c = 2**k * (problem.denominator**k * (1 + k*delta))**2
+    assert expected_c.denominator == 1
+    assert c_direct == expected_c.numerator
+    sum_x = sum(xs)
+    sum_x2 = sum(x*x for x in xs)
+    assert sum_x == m * c_direct, (n, sum_x, m*c_direct)
+    relative_variance = Q(sum_x2, m*c_direct*c_direct) - 1
+    phased_sum = sum(phased_xs)
+    phased_sum2 = sum(x*x for x in phased_xs)
+    assert phased_sum == m * c_direct, (n, phased_sum, m*c_direct)
+    assert all(x == c_direct for x in phased_xs)
+    raw_positive = [x for x in xs if x]
+    expected_positive_value = 4**k * (problem.denominator**k * (1 + k*delta))**2
+    assert len(raw_positive) == 2**k
+    assert all(x == expected_positive_value for x in raw_positive)
+    assert set(xs) &lt;= {0, expected_positive_value}
+    phased_relative_variance = Q(phased_sum2, m*c_direct*c_direct) - 1
+    assert relative_variance == 2**k - 1
+    assert phased_relative_variance == 0
+    beta = [problem.g[i][i+1][0]**2 + problem.g[i+1][i][0]**2
+            for i in range(0, n, 2)]
+    baseline = __import__(&quot;math&quot;).prod(beta)
+    assert all(3*baseline &lt;= 4*x and 3*x &lt;= 4*baseline for x in phased_xs)
+    beta_min = 2 * (1 + delta) ** 2
+    residual_frobenius_sq = n * (n - 2) * delta * delta
+    certificate_threshold = beta_min / (256 * k * k)
+    certificate_accepts = residual_frobenius_sq &lt;= certificate_threshold
+    certificate_ratio = residual_frobenius_sq / certificate_threshold
+    if label == &quot;inside_certified_near_matching&quot;:
+        assert certificate_accepts
+    else:
+        assert not certificate_accepts
+    bound = comb(2*k, k) - 1
+    assert 0 &lt;= relative_variance &lt;= bound
+    # Relative Frobenius perturbation squared: ||delta*J||_F^2 / ||M||_F^2.
+    perturbation_ratio_sq = delta * delta * n
+    return {
+        &quot;case&quot;: label,
+        &quot;n&quot;: n,
+        &quot;k&quot;: k,
+        &quot;delta&quot;: str(delta),
+        &quot;all_entries_nonzero&quot;: all(value != 0 for row in f for value in row),
+        &quot;near_matching_matrix&quot;: f&quot;F=M+{delta}*J, M_(i,i xor 1)=1 and other entries 0&quot;,
+        &quot;relative_frobenius_perturbation_squared&quot;: str(perturbation_ratio_sq),
+        &quot;certificate_residual_frobenius_squared&quot;: str(residual_frobenius_sq),
+        &quot;certificate_threshold&quot;: str(certificate_threshold),
+        &quot;certificate_residual_over_threshold&quot;: str(certificate_ratio),
+        &quot;certificate_accepts&quot;: certificate_accepts,
+        &quot;scale_denominator&quot;: problem.denominator,
+        &quot;sign_words_exhausted&quot;: m,
+        &quot;direct_disjoint_minor_sum_for_scaled_matrix&quot;: str(c_direct),
+        &quot;closed_form_minor_sum_for_scaled_matrix&quot;: str(expected_c),
+        &quot;mean_pfaffian_estimator_for_scaled_matrix&quot;: str(Q(sum_x, m)),
+        &quot;mean_matches_direct_minor_sum&quot;: True,
+        &quot;relative_variance_exact&quot;: str(relative_variance),
+        &quot;relative_variance_decimal&quot;: float(relative_variance),
+        &quot;relative_variance_over_2powk_minus1&quot;: str(relative_variance / (2**k - 1)),
+        &quot;raw_nonzero_sample_count&quot;: len(raw_positive),
+        &quot;raw_nonzero_sample_value&quot;: str(expected_positive_value),
+        &quot;phased_mean_matches_direct_minor_sum&quot;: phased_sum == m*c_direct,
+        &quot;phased_relative_variance_exact&quot;: str(phased_relative_variance),
+        &quot;phased_relative_variance_decimal&quot;: float(phased_relative_variance),
+        &quot;phased_baseline_norm_for_scaled_matrix&quot;: str(baseline),
+        &quot;all_phased_draws_within_3over4_to_4over3_baseline&quot;: True,
+        &quot;universal_bound_Ck_minus1&quot;: bound,
+    }
+
+
+def main():
+    results = [one_instance(n, Q(1, 64*n*n), &quot;inside_certified_near_matching&quot;)
+               for n in (4, 6, 8)]
+    results.extend(one_instance(n, Q(1, 16*n), &quot;outside_certificate_but_near_matching&quot;)
+                   for n in (6, 8))
+    output = {
+        &quot;status&quot;: &quot;PASS_EXACT_FINITE_VARIANCE_AUDIT&quot;,
+        &quot;origin&quot;: &quot;c03_l07 independent diagnostic; uses copied c01_s03 low-sector sampler for X_k&quot;,
+        &quot;matrix_family&quot;: &quot;dense rational F=M+delta J, M a direct sum of 2x2 swaps&quot;,
+        &quot;results&quot;: results,
+        &quot;scope&quot;: &quot;Exact small-n witnesses and a finite near-matching robustness test; not an asymptotic proof for every dense family.&quot;,
+    }
+    print(json.dumps(output, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/739f35cd2a4734d4a250c2a6beed83e0646f21d959fa8de8ad9078e34d50e04b.py">Exact original bytes</a></p></html>

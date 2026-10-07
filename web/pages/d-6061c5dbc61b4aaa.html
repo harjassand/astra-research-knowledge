@@ -1,0 +1,137 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c02_l03/revisions/orientation_entropy_auxiliary_extension.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c02_l03/revisions/orientation_entropy_auxiliary_extension.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact l1-orientation exchange check after all 15 coordinate-pair auxiliaries.
+
+Every auxiliary edge has activity w=t^2, so a selected edge contributes t to
+an orientation amplitude. Two selected auxiliary edges may not share a
+coordinate: the corresponding determinant has repeated coordinate columns.
+&quot;&quot;&quot;
+from fractions import Fraction
+from itertools import combinations, permutations
+import json
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+F = [
+    [0, -1, -1, -1, 0, 0],
+    [0,  0,  0,  0, 0, 0],
+    [1,  0,  0,  0, 0, 0],
+    [0,  0,  0,  0, 0, 0],
+    [0,  0, -1, -1, 0, 0],
+    [0, -1, -1,  0, 0, 0],
+]
+N = len(F)
+T = frozenset({2, 4, 5, 6})
+S = frozenset()
+A = 2
+TAMP = Fraction(1, 100)  # sqrt(activity); activity w=10^-4 for each edge
+
+
+def det(a):
+    k = len(a)
+    if k == 0:
+        return 1
+    total = 0
+    for p in permutations(range(k)):
+        inversions = sum(p[i] &gt; p[j]
+                         for i in range(k) for j in range(i + 1, k))
+        term = -1 if inversions % 2 else 1
+        for i, j in enumerate(p):
+            term *= a[i][j]
+        total += term
+    return total
+
+
+def base_coefficients(holes):
+    retained = [i for i in range(N) if i + 1 not in holes]
+    if len(retained) % 2:
+        return 0, 0
+    k = len(retained) // 2
+    l1 = z = 0
+    for rows in combinations(retained, k):
+        rowset = set(rows)
+        cols = [i for i in retained if i not in rowset]
+        d = det([[F[i][j] for j in cols] for i in rows])
+        l1 += abs(d)
+        z += d*d
+    return l1, z
+
+
+def matching_terms(vertices):
+    &quot;&quot;&quot;Yield the vertex union and size of every matching on vertices.&quot;&quot;&quot;
+    vertices = tuple(vertices)
+    if not vertices:
+        yield 0, 0
+        return
+    first = vertices[0]
+    # First vertex is not covered by an auxiliary pair.
+    for union, size in matching_terms(vertices[1:]):
+        yield union, size
+    # First vertex is paired with one later vertex.
+    for pos, other in enumerate(vertices[1:]):
+        remaining = vertices[1:pos+1] + vertices[pos+2:]
+        for union, size in matching_terms(remaining):
+            yield union | (1 &lt;&lt; first) | (1 &lt;&lt; other), size + 1
+
+
+def extended_coefficients(holes):
+    holes = frozenset(holes)
+    available = [i for i in range(N) if i + 1 not in holes]
+    l1 = Fraction(0)
+    z = Fraction(0)
+    for union, size in matching_terms(available):
+        extra_holes = {i + 1 for i in range(N) if union &gt;&gt; i &amp; 1}
+        old_l1, old_z = base_coefficients(holes | extra_holes)
+        l1 += TAMP**size * old_l1
+        z += (TAMP*TAMP)**size * old_z
+    return l1, z
+
+
+# S, T and exchanged endpoints for a=2, j=4,5,6.
+neighbors = []
+for j in sorted(T - {A}):
+    hs = S ^ {A, j}
+    ht = T ^ {A, j}
+    neighbors.append({&quot;j&quot;: j,
+                      &quot;S_exchange&quot;: {&quot;holes&quot;: sorted(hs),
+                                     &quot;ell&quot;: extended_coefficients(hs)[0]},
+                      &quot;T_exchange&quot;: {&quot;holes&quot;: sorted(ht),
+                                     &quot;ell&quot;: extended_coefficients(ht)[0]}})
+
+ell_s, z_s = extended_coefficients(S)
+ell_t, z_t = extended_coefficients(T)
+lhs = ell_s * ell_t
+rhs = sum(nb[&quot;S_exchange&quot;][&quot;ell&quot;] * nb[&quot;T_exchange&quot;][&quot;ell&quot;]
+          for nb in neighbors)
+
+# The exact fractions verify the positive-activity counterexample.
+assert lhs &gt; rhs
+
+result = {
+    &quot;all_coordinate_auxiliaries&quot;: {
+        &quot;edge_set&quot;: &quot;all 15 unordered pairs of [6]&quot;,
+        &quot;activity_per_edge&quot;: &quot;1/10000&quot;,
+        &quot;amplitude_factor_per_selected_edge&quot;: &quot;1/100&quot;,
+        &quot;selected_edges_in_a_basis_must_be_a_matching&quot;: True
+    },
+    &quot;endpoint_ell&quot;: {&quot;S_empty&quot;: str(ell_s), &quot;T_2456&quot;: str(ell_t)},
+    &quot;endpoint_z&quot;: {&quot;S_empty&quot;: str(z_s), &quot;T_2456&quot;: str(z_t)},
+    &quot;neighbors&quot;: [
+        {&quot;j&quot;: nb[&quot;j&quot;],
+         &quot;S_exchange&quot;: {&quot;holes&quot;: nb[&quot;S_exchange&quot;][&quot;holes&quot;],
+                         &quot;ell&quot;: str(nb[&quot;S_exchange&quot;][&quot;ell&quot;])},
+         &quot;T_exchange&quot;: {&quot;holes&quot;: nb[&quot;T_exchange&quot;][&quot;holes&quot;],
+                         &quot;ell&quot;: str(nb[&quot;T_exchange&quot;][&quot;ell&quot;])},
+         &quot;product&quot;: str(nb[&quot;S_exchange&quot;][&quot;ell&quot;] *
+                        nb[&quot;T_exchange&quot;][&quot;ell&quot;])}
+        for nb in neighbors
+    ],
+    &quot;l1_exchange&quot;: {&quot;left&quot;: str(lhs), &quot;right&quot;: str(rhs),
+                    &quot;difference&quot;: str(lhs-rhs),
+                    &quot;ratio_decimal&quot;: float(lhs/rhs)},
+    &quot;formula&quot;: &quot;ell_w(U)=sum_{matching K subset [6]\\U} t^|K| ell_0(U union V(K)); z_w(U)=sum_K t^(2|K|) z_0(U union V(K))&quot;,
+    &quot;scope&quot;: &quot;exact finite check; positive auxiliary activity at every coordinate pair; no algorithmic consequence&quot;
+}
+(HERE / &quot;orientation_entropy_auxiliary_extension.json&quot;).write_text(
+    json.dumps(result, indent=2) + &quot;\n&quot;)
+print(json.dumps(result, indent=2))
+</pre><p><a href="../assets/62ff6cec1a3fa7138c88e4e6ece4390ca50a7218da437fbae3f06637aba39038.py">Exact original bytes</a></p></html>

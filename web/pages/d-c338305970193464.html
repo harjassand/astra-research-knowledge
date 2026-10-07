@@ -1,0 +1,116 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c01_l02/paired_single_exchange_check.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c01_l02/paired_single_exchange_check.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact paired-basis exchange check with two-site mismatch registers.&quot;&quot;&quot;
+
+from itertools import combinations
+import json
+from pathlib import Path
+
+from basis_exchange_check import det_bareiss
+
+
+def main():
+    d, r = 4, 2
+    # F[i,j]=1 iff j=i+1 mod 4; pair block i is (e_i,row_i(F)).
+    fmat = [[int(j == (i + 1) % d) for j in range(d)] for i in range(d)]
+    vectors = {}
+    for i in range(d):
+        vectors[(&#x27;e&#x27;, i)] = [int(row == i) for row in range(d)]
+        vectors[(&#x27;f&#x27;, i)] = list(fmat[i])
+
+    def block_basis(sites):
+        return [col for i in sorted(sites)
+                for col in ((&#x27;e&#x27;, i), (&#x27;f&#x27;, i))]
+
+    def determinant(cols):
+        return det_bareiss([[vectors[col][row] for col in cols]
+                            for row in range(d)])
+
+    def occupancy(cols):
+        return {i: sum(1 for kind, index in cols if index == i)
+                for i in range(d)}
+
+    weights = {sites: determinant(block_basis(sites))
+               for sites in combinations(range(d), r)}
+    support = [sites for sites, value in weights.items() if value]
+    assert support == [(0, 2), (1, 3)]
+    assert all(abs(weights[sites]) == 1 for sites in support)
+
+    direct_paired_edges = 0
+    for sites in support:
+        for i in sites:
+            for j in set(range(d)) - set(sites):
+                neighbor = tuple(sorted((set(sites) - {i}) | {j}))
+                if weights[neighbor]:
+                    direct_paired_edges += 1
+    assert direct_paired_edges == 0
+
+    s, t = support
+    a, b = block_basis(s), block_basis(t)
+    e = next(col for col in a if col not in b)
+    epos = a.index(e)
+    b_only = [col for col in b if col not in a]
+    signed_sum = 0
+    square_sum = 0
+    nonzero_terms = 0
+    mismatched_terms = 0
+    term_rows = []
+    for g in b_only:
+        gpos = b.index(g)
+        a2, b2 = list(a), list(b)
+        a2[epos] = g
+        b2[gpos] = e
+        da, db = determinant(a2), determinant(b2)
+        product = da * db
+        signed_sum += product
+        square_sum += product * product
+        if product:
+            nonzero_terms += 1
+            occ_a, occ_b = occupancy(a2), occupancy(b2)
+            e_site, g_site = e[1], g[1]
+            assert e_site != g_site
+            assert occ_a[e_site] == occ_a[g_site] == 1
+            assert occ_b[e_site] == occ_b[g_site] == 1
+            assert all(occ_a[i] in (0, 2, 1) for i in range(d))
+            assert all(occ_b[i] in (0, 2, 1) for i in range(d))
+            mismatched_terms += 1
+        term_rows.append({
+            &quot;exchange_column&quot;: list(g),
+            &quot;determinant_A_prime&quot;: da,
+            &quot;determinant_B_prime&quot;: db,
+            &quot;product&quot;: product,
+        })
+
+    lhs = determinant(a) * determinant(b)
+    assert signed_sum == lhs
+    assert lhs * lhs &lt;= len(b_only) * square_sum
+    assert nonzero_terms &gt; 0
+    assert mismatched_terms == nonzero_terms
+
+    result = {
+        &quot;matrix&quot;: &quot;4-cycle permutation&quot;,
+        &quot;ambient_dimension&quot;: d,
+        &quot;sector_size&quot;: r,
+        &quot;paired_support&quot;: [list(x) for x in support],
+        &quot;paired_determinants&quot;: [weights[x] for x in support],
+        &quot;direct_paired_single_block_exchange_edges&quot;: direct_paired_edges,
+        &quot;source_pair&quot;: [list(s), list(t)],
+        &quot;chosen_column_e&quot;: list(e),
+        &quot;candidate_columns&quot;: len(b_only),
+        &quot;exchange_terms&quot;: term_rows,
+        &quot;signed_basis_exchange_identity&quot;: &quot;PASS&quot;,
+        &quot;squared_cauchy_bound&quot;: &quot;PASS&quot;,
+        &quot;nonzero_terms&quot;: nonzero_terms,
+        &quot;nonzero_terms_with_two_site_mismatches&quot;: mismatched_terms,
+        &quot;target_product_squared&quot;: lhs * lhs,
+        &quot;sum_of_exchange_product_squares&quot;: square_sum,
+        &quot;exchange_factor&quot;: len(b_only),
+        &quot;scope&quot;: &quot;exact integer fixture; universal derivation is in REVISION_01.txt&quot;,
+    }
+    out = Path(__file__).with_name(&quot;paired_single_exchange_check.json&quot;)
+    out.write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+    print(json.dumps(result, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/f08069176123c01c2392a18733008af72beed4b6cd05cb9d8b1f169075b629b5.py">Exact original bytes</a></p></html>

@@ -1,0 +1,121 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c03_s02/precision_barrier.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c03_s02/precision_barrier.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact four-site dense hard-parity precision-sensitivity fixtures.&quot;&quot;&quot;
+import itertools
+import json
+import math
+from fractions import Fraction
+from pathlib import Path
+
+
+def determinant2(a, rows, cols):
+    i, j = rows
+    k, l = cols
+    return a[i][k] * a[j][l] - a[i][l] * a[j][k]
+
+
+def law(a):
+    w = {}
+    for rows in itertools.combinations(range(4), 2):
+        cols = tuple(i for i in range(4) if i not in rows)
+        value = determinant2(a, rows, cols)
+        assert value != 0
+        w[rows] = value * value
+    z = sum(w.values(), Fraction())
+    return z, {rows: value / z for rows, value in w.items()}
+
+
+def run(precision):
+    delta = Fraction(1, 1 &lt;&lt; precision)
+    h = math.factorial(4) * 65 ** 4
+    eta = delta * delta / h
+    c = [[0 if i == j else (i + 1) ** j for j in range(4)] for i in range(4)]
+    matrices = []
+    for i, j in ((0, 2), (2, 0)):
+        a = [[Fraction(i0 != j0) + eta * c[i0][j0]
+              for j0 in range(4)] for i0 in range(4)]
+        a[i][j] += delta
+        matrices.append(a)
+    z_plus, plus = law(matrices[0])
+    z_minus, minus = law(matrices[1])
+    tv = sum(abs(plus[x] - minus[x]) for x in plus) / 2
+    lower = 1 - 3 * delta * delta / (1 - delta) ** 2
+    assert tv &gt;= lower
+    a_support = {(0, 1), (0, 3)}
+    assert sum(plus[x] for x in a_support) &gt;= 1 - 2 * delta * delta / (1 - delta) ** 2
+    assert sum(minus[x] for x in a_support) &lt;= delta * delta / (1 - delta) ** 2
+    for z in (z_plus, z_minus):
+        assert 2 * delta * delta * (1 - delta) ** 2 &lt;= z
+        assert z &lt;= 2 * delta * delta * (1 + delta) ** 2 + 4 * delta ** 4
+    for a in matrices:
+        assert all(a[i][i] == 0 for i in range(4))
+        assert all(a[i][j] &gt; 0 for i in range(4) for j in range(4) if i != j)
+    # This rational norm bound certifies condition number &lt;4 without float SVD.
+    b = delta + delta * delta
+    condition = (3 + b) / (1 - b)
+    assert condition &lt; 4
+    return {
+        &quot;L&quot;: precision, &quot;all_six_states_positive&quot;: True,
+        &quot;delta_operator_distance_exact&quot;: str(delta),
+        &quot;TV_exact&quot;: str(tv), &quot;TV_decimal_diagnostic&quot;: float(tv),
+        &quot;TV_lower_bound_exact&quot;: str(lower),
+        &quot;norm_plus_exact&quot;: str(z_plus), &quot;norm_minus_exact&quot;: str(z_minus),
+        &quot;condition_number_certificate&quot;: str(condition),
+    }
+
+
+def symmetric_run(precision):
+    delta = Fraction(1, 1 &lt;&lt; precision)
+    matrices = []
+    # The three opposite-edge products are exactly x,y,z since edges
+    # 23,13,12 stay equal to one. Symmetric entries describe spin-singlet F.
+    products = (
+        (1 + delta ** 2, 1 + delta + 2 * delta ** 2, 1 - delta + 3 * delta ** 2),
+        (1 + delta + delta ** 2, 1 + 2 * delta ** 2, 1 + 3 * delta ** 2),
+    )
+    for x, y, z in products:
+        a = [[Fraction(i != j) for j in range(4)] for i in range(4)]
+        for j, entry in ((1, x), (2, y), (3, z)):
+            a[0][j] = a[j][0] = entry
+        matrices.append(a)
+    z_v, v = law(matrices[0])
+    z_u, u = law(matrices[1])
+    assert z_v == 12 * delta ** 2 * (1 - delta + delta ** 2)
+    assert z_u == 4 * delta ** 2 * (1 - 3 * delta + 3 * delta ** 2)
+    norm_ratio = z_v / z_u
+    assert 3 &lt; norm_ratio &lt; 4
+    tv = sum(abs(v[x] - u[x]) for x in v) / 2
+    tv_lower = (2 - delta) ** 2 / (6 * (1 - delta + delta ** 2)) - delta ** 2 / (2 * (1 - 3 * delta + 3 * delta ** 2))
+    assert tv == tv_lower
+    assert tv &gt; Fraction(3, 5)
+    # Perturbations are symmetric stars, with norm &lt;= sum of edge magnitudes.
+    for a in matrices:
+        perturbation_bound = sum(abs(a[0][j] - 1) for j in (1, 2, 3))
+        assert perturbation_bound &lt;= 2 * delta
+        assert (3 + perturbation_bound) / (1 - perturbation_bound) &lt; 4
+    return {
+        &quot;L&quot;: precision, &quot;symmetric_spin_singlet_F&quot;: True,
+        &quot;all_six_states_positive&quot;: True,
+        &quot;operator_distance_exact&quot;: &quot;sqrt(3)*&quot; + str(delta),
+        &quot;entrywise_relative_distance_upper&quot;: str(2 * delta),
+        &quot;TV_exact&quot;: str(tv), &quot;TV_decimal_diagnostic&quot;: float(tv),
+        &quot;TV_greater_than_3_over_5&quot;: True,
+        &quot;norm_v_exact&quot;: str(z_v), &quot;norm_u_exact&quot;: str(z_u),
+        &quot;norm_ratio_exact&quot;: str(norm_ratio),
+        &quot;condition_number_upper&quot;: &quot;25/7&quot;,
+    }
+
+
+def main():
+    fixtures = [run(precision) for precision in (4, 8, 16, 32)]
+    symmetric = [symmetric_run(precision) for precision in (4, 8, 16, 32)]
+    result = {&quot;scope&quot;: &quot;Exact rational finite checks, not approximate hardness&quot;,
+              &quot;all_assertions_passed&quot;: True, &quot;fixtures&quot;: fixtures,
+              &quot;symmetric_fixtures&quot;: symmetric}
+    Path(__file__).with_name(&quot;precision_barrier_checks.json&quot;).write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+    print(json.dumps({&quot;cases&quot;: len(fixtures) + len(symmetric), &quot;all_assertions_passed&quot;: True,
+                      &quot;min_symmetric_TV_decimal_diagnostic&quot;: min(x[&quot;TV_decimal_diagnostic&quot;] for x in symmetric)}))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/1506f4a5d9a56c4844482d8eee6e2f534f9cf652502d8f6ecbc4e05866c03189.py">Exact original bytes</a></p></html>

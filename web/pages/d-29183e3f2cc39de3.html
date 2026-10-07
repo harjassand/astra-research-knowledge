@@ -1,0 +1,79 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c01_l05/revisions/02_general_k_microstate_checks.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c01_l05/revisions/02_general_k_microstate_checks.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact checks of the fixed-k paired-Gram Cauchy--Binet microstate lift.&quot;&quot;&quot;
+from fractions import Fraction
+from itertools import combinations
+import json
+from pathlib import Path
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from lifted_orientation import det_bareiss
+
+
+def gram(a):
+    return [[sum(row[i] * row[j] for row in a) for j in range(len(a[0]))]
+            for i in range(len(a[0]))]
+
+
+def microstates(n, k):
+    out = []
+    universe = set(range(n))
+    for I in combinations(range(n), k):
+        rem = sorted(universe - set(I))
+        for J in combinations(rem, k):
+            out.append((tuple(I), tuple(J)))
+    return out
+
+
+def check_one(n, k, F):
+    V = [[int(i == j) for j in range(n)] + [F[j][i] for j in range(n)]
+         for i in range(n)]
+    marginal_rows = []
+    for I in combinations(range(n), k):
+        cols = tuple(I) + tuple(n + i for i in I)
+        V_I = [[V[r][c] for c in cols] for r in range(n)]
+        gram_weight = det_bareiss(gram(V_I))
+        minor_sum = 0
+        rem = sorted(set(range(n)) - set(I))
+        for J in combinations(rem, k):
+            d = det_bareiss([[F[i][j] for j in J] for i in I])
+            minor_sum += d * d
+        assert gram_weight == minor_sum
+        marginal_rows.append({&quot;I&quot;: list(I), &quot;weight&quot;: gram_weight})
+
+    states = microstates(n, k)
+    weights = {}
+    for I, J in states:
+        d = det_bareiss([[F[i][j] for j in J] for i in I])
+        weights[(I, J)] = d * d
+    Z = sum(weights.values())
+    assert Z == sum(row[&quot;weight&quot;] for row in marginal_rows)
+    support = [x for x, w in weights.items() if w]
+    if support:
+        # Uniform proposals over all M microstates, product MH on two replicas.
+        M = len(states)
+        proposal_size = M * M
+        for x in support:
+            for y in support:
+                wx, wy = weights[x], weights[y]
+                forward_flow = Fraction(wx * wy, Z * Z) * Fraction(1, proposal_size) * min(1, Fraction(wy * wx, wx * wy))
+                reverse_flow = Fraction(wy * wx, Z * Z) * Fraction(1, proposal_size) * min(1, Fraction(wx * wy, wy * wx))
+                assert forward_flow == reverse_flow
+    return {&quot;n&quot;: n, &quot;k&quot;: k, &quot;microstate_count&quot;: len(states), &quot;support_count&quot;: len(support),
+            &quot;partition&quot;: Z, &quot;all_site_gram_marginals_match&quot;: True,
+            &quot;pairwise_detailed_balance&quot;: bool(support)}
+
+
+def main():
+    F = [[1, 2, 0, -1], [0, 1, 3, 1], [2, -1, 1, 0], [1, 0, -2, 2]]
+    result = {&quot;scope&quot;: &quot;finite exact arithmetic check only&quot;,
+              &quot;fixtures&quot;: [check_one(4, k, F) for k in (1, 2)],
+              &quot;arithmetic&quot;: &quot;integer Bareiss determinants and Fraction flows&quot;}
+    Path(__file__).with_name(&quot;02_general_k_microstate_checks.json&quot;).write_text(
+        json.dumps(result, indent=2) + &quot;\n&quot;)
+    print(json.dumps(result, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/3dbac631065e1500a6ad533820cdc5531fa3e13607379e0f0fd0685c304423ea.py">Exact original bytes</a></p></html>

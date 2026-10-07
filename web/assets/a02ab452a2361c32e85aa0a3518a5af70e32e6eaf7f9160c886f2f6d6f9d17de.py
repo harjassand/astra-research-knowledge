@@ -1,0 +1,148 @@
+#!/usr/bin/env python3
+"""Small diagnostics for the critical-spin proof reconstruction.
+
+This checks the semigroup sign/Duhamel identity in a two-dimensional spin block
+and samples the claimed scalar Taylor-remainder inequality.  It is not a proof
+of the uniform-in-N estimates.
+"""
+from __future__ import annotations
+
+import json
+import math
+
+
+def eye(n):
+    return [[1.0 if i == j else 0.0 for j in range(n)] for i in range(n)]
+
+
+def add(A, B):
+    return [[x + y for x, y in zip(ar, br)] for ar, br in zip(A, B)]
+
+
+def scale(a, A):
+    return [[a * x for x in row] for row in A]
+
+
+def mul(A, B):
+    return [[sum(A[i][k] * B[k][j] for k in range(len(B)))
+             for j in range(len(B[0]))] for i in range(len(A))]
+
+
+def norm1(A):
+    return max(sum(abs(A[i][j]) for i in range(len(A)))
+               for j in range(len(A[0])))
+
+
+def expm(A, t=1.0):
+    B = scale(t, A)
+    n = len(B)
+    s = max(0, math.ceil(math.log2(max(1.0, norm1(B) / 0.5))) )
+    B = scale(2.0 ** (-s), B)
+    term = eye(n)
+    out = eye(n)
+    for k in range(1, 100):
+        term = scale(1.0 / k, mul(term, B))
+        out = add(out, term)
+        if norm1(term) < 2e-17:
+            break
+    for _ in range(s):
+        out = mul(out, out)
+    return out
+
+
+def comm(A, B):
+    return add(mul(A, B), scale(-1.0, mul(B, A)))
+
+
+def vec(A):
+    return [x for row in A for x in row]
+
+
+def unvec(v, n=2):
+    return [v[i * n:(i + 1) * n] for i in range(n)]
+
+
+def superoperator(apply, n=2):
+    cols = []
+    for k in range(n * n):
+        E = [[0.0 for _ in range(n)] for _ in range(n)]
+        E[k // n][k % n] = 1.0
+        cols.append(vec(apply(E)))
+    return [[cols[j][i] for j in range(n * n)] for i in range(n * n)]
+
+
+def matvec(A, x):
+    return [sum(a * b for a, b in zip(row, x)) for row in A]
+
+
+def maxdiff(A, B):
+    return max(abs(x - y) for ar, br in zip(A, B) for x, y in zip(ar, br))
+
+
+def main():
+    # Spin-1/2 block, with one noncommuting field component.
+    F = [[0.5, 0.0], [0.0, -0.5]]
+    Jx = [[0.0, 0.5], [0.5, 0.0]]
+    c, v = 0.3, -0.4
+    F2 = mul(F, F)
+    H = add(scale(c, F2), scale(v, Jx))
+    field = scale(v, Jx)
+
+    def M_H(X):
+        return scale(0.5, add(mul(H, X), mul(X, H)))
+
+    def D(X):
+        return scale(-c / 4.0, comm(F, comm(F, X)))
+
+    def L(X):
+        return add(M_H(X), D(X))
+
+    def full_filter_generator(X):
+        quad = add(add(mul(F2, X), scale(2.0, mul(mul(F, X), F))), mul(X, F2))
+        return add(scale(c / 4.0, quad), scale(0.5, add(mul(field, X), mul(X, field))))
+
+    probe = [[0.2, -0.7], [1.1, 0.3]]
+    sign_identity_error = maxdiff(L(probe), full_filter_generator(probe))
+
+    S = superoperator(L)
+    I = eye(2)
+    lhs = add(unvec(matvec(expm(S), vec(I))), scale(-1.0, expm(H)))
+
+    # Composite Simpson integration of the exact finite-dimensional Duhamel integrand.
+    steps = 400
+    rhs = [[0.0, 0.0], [0.0, 0.0]]
+    for k in range(steps + 1):
+        q = k / steps
+        weight = 1.0 if k in (0, steps) else (4.0 if k % 2 else 2.0)
+        eqH = expm(H, q)
+        residual = comm(F, comm(F, eqH))
+        propagated = unvec(matvec(expm(S, 1.0 - q), vec(residual)))
+        rhs = add(rhs, scale(weight * (-c / 4.0), propagated))
+    rhs = scale(1.0 / (3.0 * steps), rhs)
+    duhamel_error = maxdiff(lhs, rhs)
+
+    # Check the interior C6 scalar bound on a dense finite grid (diagnostic only).
+    N, M = 4096, 1.0
+    d0 = 1.0 - M / (2.0 * math.sqrt(N))
+    max_ratio = 0.0
+    for k in range(1, 20001):
+        r = (N ** 0.25 / 2.0) * k / 20000.0
+        z = 2.0 * N ** (-0.25) * r
+        log_sinch = math.log(math.sinh(z) / z) if z else 0.0
+        log_f = log_sinch + N * math.log(math.cosh(z)) - 2.0 * math.sqrt(N) * r * r / d0
+        target = -4.0 * r**4 / 3.0 - M * r * r
+        bound = N ** -0.5 * ((2.0 / 3.0 + M * M) * r * r + 64.0 * r**6)
+        max_ratio = max(max_ratio, abs(log_f - target) / bound)
+
+    print(json.dumps({
+        "scope": "two-dimensional semigroup/Duhamel diagnostic and finite scalar grid only",
+        "semigroup_filter_sign_identity_max_abs": sign_identity_error,
+        "Duhamel_Simpson_400_max_abs_residual": duhamel_error,
+        "scalar_remainder_grid": {"N": N, "M": M, "samples": 20000,
+                                   "max_error_over_bound": max_ratio},
+        "proof_status": "diagnostics do not establish uniform bounds or theorem"
+    }, indent=2))
+
+
+if __name__ == "__main__":
+    main()

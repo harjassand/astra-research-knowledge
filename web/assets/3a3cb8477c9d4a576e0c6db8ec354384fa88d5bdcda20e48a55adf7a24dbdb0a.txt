@@ -1,0 +1,383 @@
+ROUND 6 CROSS-PHASE CONSTRUCTIVE FOLLOW-ON
+Worker: c07_l05 (requested gpt-6-luna/max; observed model UNKNOWN)
+Date: 7 October 2026
+Artifact: constructive weighted-diffusion sampler for c07_s02's critical-spin
+candidate. Independent derivation; no code execution or hardware preparation.
+
+STATUS AND ATTRIBUTION
+
+This report does NOT claim the stopped-diffusion theorem as new. The input
+generator, Bloch identities, inner-ball positivity estimate, heat-seed tail,
+and stopped Ito/Feynman--Kac comparison are c07_s02's Revision 2 candidate in
+work/cycle6/c07_s02/revisions/STOPPED_DIFFUSION.txt (cross-exposure was
+authorized by control/CROSS_PHASE.json). Its frozen INITIAL is separately
+identified in outputs/round6/frozen_initials/c07_s02/INITIAL.txt. The proof
+candidate remains unaudited externally; this report is a constructive
+continuation, conditional on those exact identities and bounds.
+
+The added steps here are: (i) replace the stopped SDE by an explicit globally
+Lipschitz cutoff SDE that agrees on a high-probability interior event; (ii)
+Euler--Maruyama discretize its positively weighted endpoint law with an
+explicit trace-norm error; and (iii) use ordinary accept--reject sampling of
+the Feynman--Kac weight, so one accepted path directly prepares the averaged
+product state. No finite pool/resampling estimate or unknown normalization
+oracle is needed. Ito/Feynman--Kac, accept--reject, and Euler--Maruyama are
+standard tools; the latter's global-Lipschitz strong-convergence setting is
+documented, for example, by Higham, Mao & Stuart (2002), SIAM J. Numer. Anal.
+40(3), https://epubs.siam.org/doi/10.1137/S0036142901389530. The application
+constants below are derived for this specific critical-spin construction.
+
+INTERFACE
+
+Fix finite public rational M,B and rational known data A,b with ||A||<=M,
+|b|<=B. Put Lambda=M+1, Lc=2M+1, Tc=Tr(A+Lambda I)<=3Lc,
+s=N^(3/4), t0=2/N-Lambda/s^2, C=A+Lambda I, and
+
+  H = Q_C/s^2 + b.J/s,      K = t0 J^2 + H.
+
+The target is rho=exp(K)/Tr exp(K). The output is an averaged state on N
+qubits, with no external-reference guarantee. N is restricted to the explicit
+large-N regime where t0>0, the seed/tail bounds of c07_s02 apply, and the
+displayed residual below is at most epsilon/4. No statement is uniform in
+growing M or B.
+
+1. INTERIOR POSITIVE DIFFUSION AND AN EXPLICIT CUTOFF
+
+For the ordinary Bloch vector m, let k_N(m)=((I+m.sigma)/2)^tensor N.
+Use the exact c07_s02 identities, for unit n,
+
+  {n.J,k_N}=B_n k_N,  [n.J,k_N]=i R_n k_N,
+  {(n.J)^2,k_N}/2 = (B_n^2-R_n^2)k_N/4.
+
+Diagonalizing C only to display its terms gives the sandwich generator
+M_H(X)={H,X}/2 and its action
+
+  M_H k_N = V_N k_N + a_N.grad k_N + (D_C:Hess k_N)/(4s^2),
+  D_C=(I-mm^T)C(I-mm^T)-[m]_cross C[m]_cross^T.
+
+These equations are taken from c07_s02's exact derivation, not inferred from
+finite spin tests. On |m|<=r0, where r0^2=1/[16(Lc+1)], the quoted elementary
+bound gives D_C >=(3/4)I and D_C<=Tc I. The coefficient functions a_N,V_N
+are exactly the polynomials in Sections 1--2 of the cited revision. They obey
+
+  |a_N| <= A_N := Tc*r0*(2N+3)/(4s^2)+B*(1+r0^2)/(2s),
+  |V_N| <= H_N := Lc*N*(N/2+1)/(2s^2)+B*N/(2s)
+       = Lc*sqrt(N)/4 + Lc/(2sqrt(N)) + B*N^(1/4)/2.
+
+The first bound is a deliberately loose direct bound from the displayed
+generator expansion; the sharper c07_s02 beta_N may be substituted. For
+N sufficiently large, A_N<=r0/8. Each Brownian coordinate in the SDE below
+then has quadratic variation at most Tc/(2s^2).
+
+Set q=r0^2. Define a C^2 piecewise-polynomial radial cutoff chi (its
+coefficients are rational when M is rational):
+chi(m)=1 when |m|^2<=q/4, chi(m)=0 when |m|^2>=9q/16, and in between
+
+  u=(|m|^2-q/4)/(5q/16),
+  chi(m)=1-10u^3+15u^4-6u^5.
+
+It has 0<=chi<=1, vanishing first and second derivatives at the two joins,
+and |grad chi|<=9/r0. On its support D_C is uniformly positive, so its
+principal root is well-defined. Extend the following coefficients by zero
+outside |m|<3r0/4:
+
+  abar=chi*a_N,  sigmabar=chi*sqrt(D_C/(2s^2)),  Vbar=chi*V_N.
+
+All three coefficients are globally Lipschitz. At |m|=3r0/4 both drift and
+diffusion vanish. That sphere consists of equilibria; pathwise uniqueness
+implies a solution started inside cannot cross it. Thus the SDE
+
+  dX_t=abar(X_t)dt+sigmabar(X_t)dW_t
+
+stays in the physical Bloch ball. Start from the heat seed law of
+e^(t0 J^2), but replace every seed with |m|>r0/4 by m=0. Write p_seed for
+the replaced mass. The heat-tail proof in c07_s02 Section 3, with r0/2 there
+replaced by r0/4, gives
+
+  p_seed <= C_(Lambda,delta) N^(3/4) exp(-kappa0' N),
+  a0'=2 atanh(r0/4),
+  kappa0'=min((a0')^4/768, delta/4),
+  delta=1/2-logcosh(1)>0.
+
+The replaced seed differs in trace norm from the exact heat seed by at most
+2p_seed. The existing Maxwell rejection heat-seed sampler applies with
+M replaced by Lambda; its fixed positive acceptance lower bound is denoted
+p_seed_sampler below. The replacement requires no extra rejection: retain a
+good sampled Bloch vector and map a bad one to 0.
+
+2. CUTOFF ERROR IS EXPLICITLY SMALL
+
+Couple the cutoff SDE to c07_s02's original SDE stopped at radius r0, from
+the same replaced seed and Brownian motion. Before reaching r0/2, both laws
+and their Feynman--Kac weights agree. From |X_0|<=r0/4, reaching r0/2 by time
+one requires martingale displacement at least r0/8 after the drift budget.
+The coordinate exponential-martingale maximal inequality and a union bound
+give the conservative estimate
+
+  p_mid := P(hit r0/2 by time 1)
+       <= 6 exp[-kappa_mid N^(3/2)],
+  kappa_mid := r0^2/(384 Tc).
+
+The same inequality, or the weaker c07_s02 S9 bound from its larger start
+ball, gives for hitting r0
+
+  p_stop <= 6 exp[-kappa1 N^(3/2)],
+  kappa1 := r0^2/(256 Lc).
+
+Let W_cut=E[exp(int_0^1 Vbar(X_t)dt) k_N(X_1)] be the unnormalized positive
+product mixture, and G=exp(M_H)rho_seed_exact. On the cutoff/stop mismatch
+event both trace weights are at most exp(H_N), hence
+||W_cut-W_stop||_1<=2 exp(H_N) p_mid. The exact stopped Duhamel bound from
+c07_s02 is ||G_replaced-W_stop||_1<=H_N exp(2H_N) p_stop. The heat-seed
+replacement costs at most 2 exp(H_N) p_seed under exp(M_H). Consequently
+
+  ||G-W_cut||_1 <= Delta0_N,
+  Delta0_N := 2 exp(H_N) p_seed
+               + H_N exp(2H_N) p_stop
+               + 2 exp(H_N) p_mid.                    (C1)
+
+Every term tends to zero exponentially in N, with all weights charged.
+c07_s02's sector Jensen argument gives Tr G>=1. For positive G,W, the
+normalization inequality T(G/TrG,W/TrW)<=||G-W||_1/TrG therefore shows
+T(rho,W_cut/Tr W_cut)<=Delta0_N. In the rest assume Delta0_N<=epsilon/4.
+This implication is conditional on the parent stopped-Duhamel proof; (C1)
+does not repair an error in that proof if one is later found.
+
+3. EULER--MARUYAMA WITH WEIGHT AND PRODUCT-STATE ERROR
+
+Let A0=sup|abar|, S0=sup||sigmabar||_F, La a global Lipschitz constant of
+abar, Lsig a global Frobenius-Lipschitz constant of sigmabar, and Lv a
+Lipschitz constant of Vbar. The following are explicit bounds in M,B,N;
+they avoid any unknown eigenvalue-gap or hidden derivative oracle:
+
+  A0 <= A_N,
+  S0 <= sqrt(3Tc/2)/s,
+  La <= (9/r0)A_N
+        + Tc*[2N(1+2r_c^2)+3+4r_c^2]/(4s^2) + B*r_c/s,
+  Lsig <= [(9/r0)*sqrt(3Tc) + 6Lc*r_c]/(sqrt(2)*s),
+  Lv <= (9/r0)H_N + (N^2+N)Lc*r_c/(2s^2) + NB/(2s),
+  r_c=3r0/4.
+
+For La, differentiate the explicit vector fields v=n-(n.m)m and r=n x m;
+on |m|<=r_c, ||Dv||<=2r_c, ||D^2v||<=2, ||Dr||<=1. For Lsig,
+differentiate D_C; the displayed D_C formula gives
+||dD_C[z]||_F<=6sqrt(3)Lc*r_c |z|. The Sylvester identity
+S dS+dS S=dD_C, with S>=sqrt(3/4)I, gives
+||d sqrt(D_C)[z]||_F<=6Lc*r_c |z|. Multiplication by chi and
+|grad chi|<=9/r0 yields the stated Lsig. For Lv, use
+||grad V_N||<=((N^2+N)Lc*r_c)/(2s^2)+NB/(2s).
+For fixed M,B, these bounds scale as A0=O(N^-1/2), S0=O(N^-3/4),
+La=O(N^-1/2), Lsig=O(N^-3/4), Lv=O(sqrt(N)).
+
+Take T equal Euler steps h=1/T. Given Y_0 from the replaced seed and
+independent standard three-dimensional normals Z_k, define
+
+  Y_(k+1)=Pi_(|m|<=r0)[Y_k+h*abar(Y_k)+sqrt(h)*sigmabar(Y_k)Z_k],
+  I_T=h*sum_(k=0)^(T-1) Vbar(Y_k),  w_T=exp(I_T).
+
+Projection is nonexpansive and keeps every endpoint a valid Bloch vector;
+the exact cutoff diffusion is inside r_c<r0. Let
+Lambda0=La^2+Lsig^2 and
+
+  Cx=2 sqrt(Lambda0) exp((1+2Lambda0)/2) sqrt(A0^2+S0^2).
+
+A direct Ito/Grönwall estimate on the continuous Euler interpolation, with
+projection at grid points, gives E|X_1-Y_T|^2<=Cx^2/T for T>=1. One
+derivation is: within a step the interpolation increment has second moment
+at most 2A0^2/T^2+2S0^2/T; Ito's formula for the coupled error yields
+e'(t)<=(1+2Lambda0)e(t)+4Lambda0(A0^2/T^2+S0^2/T); projection can only
+decrease the grid error. Grönwall over unit time yields the stated Cx.
+This is the standard globally-Lipschitz Euler--Maruyama strong-error
+argument with constants exposed.
+
+For Bloch vectors |m|,|n|<=r0, the squared one-qubit fidelity satisfies
+1-F(m,n)<=|m-n|^2/[4(1-r0^2)]. Tensor-product fidelity and
+Fuchs--van de Graaf then give
+
+  ||k_N(m)-k_N(n)||_1 <= sqrt(N)|m-n|/sqrt(1-r0^2).   (C2)
+
+Since |int Vbar|<=H_N, |exp(x)-exp(y)|<=exp(H_N)|x-y| in the relevant
+range. Coupling X and Y by the same Brownian increments, the left-Riemann
+potential error obeys
+E|int_0^1 Vbar(X_t)dt-I_T|
+   <= Lv*(Cx+A0+S0)/sqrt(T).
+Thus for the cutoff continuous and Euler unnormalized mixtures,
+
+  ||W_cut-W_T||_1 <= Delta_EM(T),
+  Delta_EM(T) := exp(H_N)*C_T/sqrt(T),
+  C_T := Lv*(Cx+A0+S0) + sqrt(N)*Cx/sqrt(1-r0^2).     (C3)
+
+W_T=E[w_T k_N(Y_T)] is a positive identical-product mixture, not a
+potential-signed approximation. Choose the explicit integer
+
+  T=ceil((8 exp(H_N) C_T/epsilon)^2).                 (C4)
+
+Then Delta_EM<=epsilon/8. By C1, Tr W_cut>=1-Delta0_N>=3/4; hence
+Tr W_T>=3/4-epsilon/8>=1/2 for epsilon<=1/4. Normalizing (C3) therefore
+costs at most 2 Delta_EM<=epsilon/4 in trace distance.
+
+For fixed M,B, C_T=O_(M,B)(1) under the displayed bounds, so
+T=O_(M,B)(exp(2H_N) epsilon^-2), with H_N=O_(M,B)(sqrt(N)). This is an
+explicit discretization cost. No diffusion simulation is left as a free
+oracle.
+
+4. DIRECT WEIGHTED-PATH SAMPLING, NO RESAMPLING POOL
+
+For a proposal path drawn from the ordinary Euler law, accept it with
+probability
+
+  alpha(path)=w_T/exp(H_N)=exp(I_T-H_N) in [exp(-2H_N),1].
+
+This is ordinary rejection sampling with a known envelope. Its acceptance
+probability is Tr(W_T)/exp(H_N)>=exp(-H_N)/2. Conditional on acceptance,
+the entire path law is exactly tilted by w_T/Tr(W_T); therefore one accepted
+endpoint, followed by N preparations of tau_(Y_T)=(I+Y_T.sigma)/2, has
+averaged density exactly W_T/Tr(W_T). It does not need to estimate Tr(W_T),
+retain R candidates, or apply importance resampling. This is an exact
+real-arithmetic representation of the discretized mixture.
+
+The uncapped rejection sampler uses at most 2 exp(H_N) proposals in
+expectation. To make a bounded algorithm, make
+
+  Kcap=ceil(2 exp(H_N) log(4/delta_cap))
+
+independent proposals and emit tau_0^tensor N if none is accepted. Since
+p_accept>=exp(-H_N)/2, the fallback event has probability at most
+delta_cap/4 (and hence at most delta_cap). Conditional on success the output
+law remains exactly W_T/Tr(W_T); the capped averaged state differs from it
+by at most the fallback probability in trace distance.
+
+The resulting exact-real-arithmetic cost per output is at most Kcap paths,
+each with T three-dimensional Gaussian steps, one heat-seed draw, O(1)
+constant-size coefficient/root operations per step, and N one-qubit
+emissions. Expected path-step cost is
+
+  O(exp(H_N)*T) = O_(M,B)(exp(3H_N)*epsilon^-2),
+
+and a delta_cap-bounded runtime has
+  O_(M,B)(exp(3H_N)*epsilon^-2*log(1/delta_cap))
+path steps, plus the heat-seed rejection and N emissions. Since H_N is
+explicit above, this is exp(O_(M,B)(sqrt(N))) epsilon^-2, not polynomial in
+N. That is the material runtime limitation of this constructive route.
+
+5. FINITE-BIT COMPLETION AND ITS COST BOUNDARY
+
+The real-arithmetic sampler can be turned into a finite-bit sampler for
+rational A,b,M,B, but no such implementation was written or run here. A
+fully charged route is as follows.
+
+In a finite-bit implementation replace H_N by any certified rational upper
+bound Hbar_N>=H_N in the acceptance denominator and in T,Kcap. This only
+multiplies the weight by a path-independent constant, so the accepted law is
+unchanged. The lower acceptance estimate becomes
+Tr(W_T)/exp(Hbar_N)>=exp(-Hbar_N)/2. In the finite-bit cost formulas below,
+Hbar_N replaces H_N in Kcap and T; the exact-real formulas above use H_N.
+
+First, reuse the audited cycle-1 Maxwell heat-seed rejection construction
+with M replaced by Lambda. It supplies a public rational lower bound p0>0
+for seed acceptance and inverse-CDF Gaussian generation; the seed outside
+|m|<=r0/4 is mapped to zero. Put
+
+  Kseed=ceil(p0^-1 log(8Kcap/delta_seed)).
+
+For each of at most Kcap outer proposals, cap seed attempts at Kseed;
+union-bound seed exhaustion by delta_seed/8. Couple the finite-bit seed
+output to the ideal seed within the stated dseed tolerance except on an
+additional event of probability at most delta_seed/8. All seed normal
+values are included in the normal-tail count. To account for the discontinuous
+map that replaces |m|>r0/4 by 0, also choose dseed so the explicit heat-seed
+mass of the dseed-shell around |m|=r0/4 is at most delta_seed/(8Kcap); this
+shell mass is bounded by integrating the displayed radial heat density.
+
+Second, set D=3*T*Kcap+3*Kcap*Kseed for all diffusion and seed normal
+coordinates and L=sqrt(2 log(16D/delta_z)). The total probability of an
+ideal normal coordinate outside [-L,L] is at most delta_z/8 by the Gaussian
+tail bound.
+Generate the truncated normals by bisection on dyadic uniforms and a
+certified interval for the normal CDF; on the retained event, use a uniform
+absolute normal-coupling error delta_G. The required dyadic precision can
+be chosen explicitly from L, delta_G, and the number D (inverse-CDF
+conditioning costs O(L^2+log(1/delta_G)+log D) bits, up to fixed constants).
+
+Third, for the deterministic path update, put
+
+  Pnum=exp(La + sqrt(3)*Lsig*L*sqrt(T)),
+  eta_state=min{epsilon*sqrt(1-r0^2)/(16sqrt(N)),
+                delta_num/[16*Kcap*(Lv+1)]}.
+
+If the initial-seed coordinate error is <=eta_state/(2Pnum), and each
+coefficient/root evaluation, normal coordinate, and arithmetic update is
+guarded so that
+
+  da <= eta_state/(8Pnum),
+  dsigma <= eta_state/(8Pnum*sqrt(3T)*L),
+  dGaussian <= eta_state/(8Pnum*sqrt(T)*S0),
+  dupdate <= eta_state/(8Pnum*T),
+
+then the discrete perturbation recurrence
+
+  e_T <= Pnum*(dseed+da+sqrt(3T)*L*dsigma
+                         +sqrt(T)*S0*dGaussian+T*dupdate)
+
+gives e_T<=eta_state. The root is computable by a 3-by-3 Newton
+square-root iteration with O(log(1/tolerance)) steps: on the support,
+eigenvalues of D_C lie in [3/4,Tc], so its conditioning is bounded
+explicitly. Evaluate the acceptance probability exp(I_T-Hbar_N) and its uniform
+coin with interval
+precision so each acceptance-decision coupling error is at most
+delta_num/(8Kcap); compute I_T with per-step potential error at most
+delta_num/[16Kcap*T]. Since
+eta_state<=delta_num/[16Kcap*(Lv+1)], the state-induced log-weight error
+and direct potential-evaluation error together make the acceptance
+probability mismatch at most delta_num/(4Kcap). The dyadic acceptance coin
+adds at most delta_num/(8Kcap). Finally compute each emitted qubit to trace
+distance epsilon/(16N), adding at most epsilon/16 by tensor telescoping.
+Choose delta_seed=delta_z=delta_num=epsilon/32; the listed seed, normal,
+state-rounding, and acceptance couplings then sum to less than epsilon/8.
+
+All ceilings can be taken after certified rational upper bounds are formed;
+no exact comparison with exp(Hbar_N), a Gaussian tail, or a transcendental
+integer boundary is required. Precision bits can be taken as the ceiling of
+the logarithms of the displayed reciprocal tolerances, with enough guard
+bits for Pnum and interval arithmetic. For fixed M,B, log(Pnum) is explicit
+and at most O_(M,B)(N^-3/4*exp(Hbar_N)*L/epsilon + log N + log(1/epsilon));
+thus this conservative finite-bit completion has at most
+exp(O_(M,B)(sqrt(N))) times a polynomial in 1/epsilon and log(1/delta_cap)
+precision bits, and total bit operations remain
+exp(O_(M,B)(sqrt(N))) times a polynomial in input bit length, 1/epsilon,
+and log(1/delta_cap). This is an existence/cost derivation, not an executed
+compiler. The interface must charge rational input lengths and native
+one-qubit preparation precision/cost; arbitrary noncomputable A,b and
+unbounded-cost coefficient or hardware oracles are outside the claim.
+
+6. TOTAL ERROR, COST, AND OPEN GATES
+
+With Delta0_N<=epsilon/4, T from (C4), delta_cap<=epsilon/8, and
+delta_seed=delta_z=delta_num=epsilon/32, the averaged capped finite-bit
+output is within
+
+  Delta0_N + 2 Delta_EM(T) + delta_cap
+    + delta_seed/4 + delta_z/8 + delta_num + 2*epsilon/16
+  <= epsilon
+
+of rho, using the unnormalized-to-normalized inequality above and the local
+emission budget. This is a constructive weighted-diffusion representation
+with a finite-step, positive product-mixture output and an explicit
+worst-case finite cap. Its classical path-step cost is
+exp(O_(M,B)(sqrt(N))) epsilon^-2 log(1/epsilon), plus finite-bit arithmetic
+and N local state emissions. It is not polynomial-time in N, and does not
+establish quantum circuit depth, gate-set availability, hardware success,
+source acquisition, or energy advantage.
+
+The decisive remaining mathematical gate is independent verification of
+c07_s02's exact Bloch-generator identity, positivity lower bound, stopped
+Duhamel residual, and seed tail. This report does not establish the
+parameter-independent decoder's rate or optimality, and the cutoff/SDE
+construction depends on known A,b. External priority remains unknown. The
+standard numerical-method references above establish only generic
+Euler--Maruyama methodology, not the critical-spin theorem.
+
+Evidence status: no script, numerical diagnostic, end-to-end sampler,
+hardware run, or external review was performed for this report. The
+finite-bit path is a written proof candidate whose cost is explicit and
+whose principal weakness is exp(O(sqrt(N))) worst-case work.

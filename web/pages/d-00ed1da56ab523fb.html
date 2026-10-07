@@ -1,0 +1,266 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c09_s01/revisions/covariance_codec.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c09_s01/revisions/covariance_codec.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Exact finite-table compiler for the phase-two covariance-channel theorem.
+
+Only the sufficient conditional-entropy criterion is optimized. Gaussian
+output sampling is idealized and deliberately not implemented as floats.
+Run in this owned directory; writes only the explicitly selected own output.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import argparse
+from fractions import Fraction as F
+from functools import lru_cache
+from pathlib import Path
+import json
+import math
+import time
+
+
+def fs(x: F) -&gt; str:
+    return str(x.numerator) if x.denominator == 1 else f&quot;{x.numerator}/{x.denominator}&quot;
+
+
+@lru_cache(maxsize=None)
+def atanh_interval(t: F, terms: int) -&gt; tuple[F, F]:
+    assert 0 &lt;= t &lt;= F(1, 3)
+    total, power = F(0), t
+    for i in range(terms):
+        total += 2 * power / (2 * i + 1)
+        power *= t * t
+    tail = 2 * power / ((2 * terms + 1) * (1 - t * t))
+    return total, total + tail
+
+
+@lru_cache(maxsize=None)
+def log_interval(x: F, bits: int) -&gt; tuple[F, F]:
+    assert x &gt; 0 and bits &gt;= 8
+    if x == 1:
+        return F(0), F(0)
+    exponent = x.numerator.bit_length() - x.denominator.bit_length()
+    z = x / (1 &lt;&lt; exponent) if exponent &gt;= 0 else x * (1 &lt;&lt; -exponent)
+    while z &lt; 1:
+        z *= 2
+        exponent -= 1
+    while z &gt;= 2:
+        z /= 2
+        exponent += 1
+    terms = bits + abs(exponent).bit_length() + 4
+    lo, hi = atanh_interval((z - 1) / (z + 1), terms)
+    l2, u2 = atanh_interval(F(1, 3), terms)
+    if exponent &gt;= 0:
+        lo, hi = lo + exponent * l2, hi + exponent * u2
+    else:
+        lo, hi = lo + exponent * u2, hi + exponent * l2
+    assert 0 &lt;= hi - lo &lt;= F(1, 1 &lt;&lt; bits)
+    return lo, hi
+
+
+@lru_cache(maxsize=None)
+def phi_interval(a: F, bits: int) -&gt; tuple[F, F]:
+    assert a &gt;= 0
+    if a == 0:
+        return F(0), F(0)
+    lo, hi = log_interval(a, bits)
+    return a * lo, a * hi
+
+
+def cell_cost(rows: list[dict], indices: tuple[int, ...], bits: int) -&gt; tuple[F, F, F, F]:
+    mass = sum((rows[i][&quot;p&quot;] for i in indices), F(0))
+    mean = sum((rows[i][&quot;p&quot;] * rows[i][&quot;a&quot;] for i in indices), F(0)) / mass
+    if all(rows[i][&quot;a&quot;] == mean for i in indices):
+        return F(0), F(0), mass, mean
+    low, high = F(0), F(0)
+    for i in indices:
+        l, u = phi_interval(rows[i][&quot;a&quot;], bits)
+        low += rows[i][&quot;p&quot;] * l
+        high += rows[i][&quot;p&quot;] * u
+    l, u = phi_interval(mean, bits)
+    low, high = max(F(0), low - mass * u), high - mass * l
+    assert high &gt;= low
+    return low, high, mass, mean
+
+
+def compile_table(raw: dict, bits: int = 48) -&gt; dict:
+    rows = [{&quot;id&quot;: x[&quot;id&quot;], &quot;p&quot;: F(x[&quot;p&quot;]), &quot;a&quot;: F(x[&quot;a&quot;])} for x in raw[&quot;rows&quot;]]
+    assert rows and all(r[&quot;p&quot;] &gt; 0 and r[&quot;a&quot;] &gt;= 0 for r in rows)
+    assert sum((r[&quot;p&quot;] for r in rows), F(0)) == 1
+    assert len({r[&quot;id&quot;] for r in rows}) == len(rows)
+    rows.sort(key=lambda r: (r[&quot;a&quot;], r[&quot;id&quot;]))
+    C, eps, L = F(raw[&quot;domination_C&quot;]), F(raw[&quot;epsilon&quot;]), F(raw[&quot;cap_L&quot;])
+    t0, t1, k = F(raw[&quot;T0&quot;]), F(raw[&quot;T1&quot;]), int(raw[&quot;outputs_k&quot;])
+    assert C &gt;= 1 and 0 &lt; eps &lt;= 1 and L &gt; 0 and 0 &lt; t0 &lt; t1 and k &gt;= 1
+    W = 1 / t0 - 1 / t1
+    threshold = 4 * W * eps * eps / (k * C)
+    n = len(rows)
+    cells = {(l, r): cell_cost(rows, tuple(range(l, r)), bits)
+             for l in range(n) for r in range(l + 1, n + 1)}
+    low, up = [[None] * (n + 1) for _ in range(n + 1)], [[None] * (n + 1) for _ in range(n + 1)]
+    parents = [[None] * (n + 1) for _ in range(n + 1)]
+    low[0][0] = up[0][0] = F(0)
+    for d in range(1, n + 1):
+        for r in range(d, n + 1):
+            for l in range(d - 1, r):
+                if low[d - 1][l] is None:
+                    continue
+                lower = low[d - 1][l] + cells[l, r][0]
+                upper = up[d - 1][l] + cells[l, r][1]
+                if low[d][r] is None or lower &lt; low[d][r]:
+                    low[d][r] = lower
+                if up[d][r] is None or upper &lt; up[d][r]:
+                    up[d][r], parents[d][r] = upper, l
+    chosen = next(d for d in range(1, n + 1) if up[d][n] &lt;= threshold)
+    partition, end = [], n
+    for d in range(chosen, 0, -1):
+        start = parents[d][end]
+        partition.append((start, end))
+        end = start
+    partition.reverse()
+    codebook, encoder_map = [], {}
+    actual_low, actual_high = F(0), F(0)
+    for j, (l, r) in enumerate(partition):
+        lower, upper, mass, mean = cells[l, r]
+        actual_low += lower
+        actual_high += upper
+        ids = [rows[i][&quot;id&quot;] for i in range(l, r)]
+        encoder_map.update({x: j for x in ids})
+        codebook.append({&quot;label&quot;: j, &quot;input_ids&quot;: ids, &quot;reference_mass&quot;: fs(mass),
+                         &quot;reference_covariance_mean&quot;: fs(mean),
+                         &quot;entropy_cost&quot;: {&quot;lower&quot;: fs(lower), &quot;upper&quot;: fs(upper)}})
+    tv_squared = k * C * actual_high / (4 * W)
+    assert tv_squared &lt;= eps * eps
+    minimal = all(low[d][n] &gt; threshold for d in range(1, chosen))
+    return {
+        &quot;status&quot;: &quot;CERTIFIED_FOR_SUPPLIED_FINITE_TABLE_AND_DOMINATION&quot;,
+        &quot;retained_dimension&quot;: chosen,
+        &quot;fixed_binary_bits&quot;: (chosen - 1).bit_length(),
+        &quot;minimum_D_for_sufficient_entropy_criterion&quot;: chosen if minimal else &quot;UNKNOWN&quot;,
+        &quot;precision_bits&quot;: bits,
+        &quot;input_rows&quot;: n,
+        &quot;C&quot;: fs(C), &quot;k&quot;: k, &quot;L&quot;: fs(L), &quot;T0&quot;: fs(t0), &quot;T1&quot;: fs(t1), &quot;W&quot;: fs(W),
+        &quot;epsilon&quot;: fs(eps), &quot;entropy_threshold&quot;: fs(threshold),
+        &quot;entropy_selected_interval&quot;: {&quot;lower&quot;: fs(actual_low), &quot;upper&quot;: fs(actual_high)},
+        &quot;TV_squared_upper&quot;: fs(tv_squared),
+        &quot;encoder_map&quot;: encoder_map, &quot;codebook&quot;: codebook,
+        &quot;all_D_criterion_optimum_intervals&quot;: [
+            {&quot;D&quot;: d, &quot;lower&quot;: fs(low[d][n]), &quot;upper&quot;: fs(up[d][n])} for d in range(1, n + 1)
+        ],
+        &quot;sampler_status&quot;: &quot;IDEAL_GAUSSIAN_DECODER_SPECIFIED; FINITE_BIT_OUTPUT_NOT_IMPLEMENTED&quot;,
+        &quot;global_optimal_archive_dimension&quot;: &quot;UNKNOWN&quot;,
+    }
+
+
+def decoder_variance(code: dict, label: int, T: F) -&gt; F:
+    assert T &gt; 0 and 0 &lt;= label &lt; code[&quot;retained_dimension&quot;]
+    mean, L = F(code[&quot;codebook&quot;][label][&quot;reference_covariance_mean&quot;]), F(code[&quot;L&quot;])
+    s = T * mean
+    return 1 + s / (1 + s / L)
+
+
+def partitions(n: int):
+    &quot;&quot;&quot;All unlabeled set partitions for a tiny independent finite optimum audit.&quot;&quot;&quot;
+    blocks: list[list[int]] = []
+    def rec(i: int):
+        if i == n:
+            yield tuple(tuple(b) for b in blocks)
+            return
+        for b in blocks:
+            b.append(i)
+            yield from rec(i + 1)
+            b.pop()
+        blocks.append([i])
+        yield from rec(i + 1)
+        blocks.pop()
+    yield from rec(0)
+
+
+def audit_finite_optima(raw: dict, code: dict, bits: int) -&gt; dict:
+    rows = [{&quot;id&quot;: x[&quot;id&quot;], &quot;p&quot;: F(x[&quot;p&quot;]), &quot;a&quot;: F(x[&quot;a&quot;])} for x in raw[&quot;rows&quot;]]
+    rows.sort(key=lambda r: (r[&quot;a&quot;], r[&quot;id&quot;]))
+    n = len(rows)
+    assert n &lt;= 8
+    best_low, best_high, count = {}, {}, 0
+    for part in partitions(n):
+        count += 1
+        values = [cell_cost(rows, b, bits) for b in part]
+        low = sum((c[0] for c in values), F(0))
+        high = sum((c[1] for c in values), F(0))
+        d = len(part)
+        best_low[d] = min(best_low.get(d, low), low)
+        best_high[d] = min(best_high.get(d, high), high)
+    tolerance = F(1, 1 &lt;&lt; (bits - 8))
+    for item in code[&quot;all_D_criterion_optimum_intervals&quot;]:
+        d = item[&quot;D&quot;]
+        assert F(item[&quot;lower&quot;]) &lt;= best_high[d] and best_low[d] &lt;= F(item[&quot;upper&quot;])
+        assert F(item[&quot;upper&quot;]) - best_low[d] &lt;= tolerance
+    return {&quot;all_set_partitions_checked&quot;: count, &quot;scope&quot;: &quot;FINITE_ALGEBRA_OPTIMUM_AUDIT&quot;,
+            &quot;consecutive_DP_matches_global_interval_optima&quot;: True}
+
+
+def gaussian_kl_envelope_diagnostic(raw: dict, code: dict) -&gt; dict:
+    &quot;&quot;&quot;Floating check of the analytic KL integral, not a theorem or MI estimate.&quot;&quot;&quot;
+    rows = {r[&quot;id&quot;]: (float(F(r[&quot;p&quot;])), float(F(r[&quot;a&quot;]))) for r in raw[&quot;rows&quot;]}
+    L = float(F(raw[&quot;cap_L&quot;]))
+    def c(a, t):
+        s = t * a
+        return 1 + s / (1 + s / L)
+    def f(u):
+        T = math.exp(u)
+        kl = 0.0
+        for item in code[&quot;codebook&quot;]:
+            cm = c(float(F(item[&quot;reference_covariance_mean&quot;])), T)
+            for name in item[&quot;input_ids&quot;]:
+                p, a = rows[name]
+                ratio = c(a, T) / cm
+                kl += p * 0.5 * (ratio - 1 - math.log(ratio))
+        return kl * math.exp(-u)
+    steps, left, right = 4000, -20.0, 20.0
+    h = (right - left) / steps
+    integral = h / 3 * (f(left) + f(right) + sum((4 if i % 2 else 2) * f(left + i * h) for i in range(1, steps)))
+    upper = float(F(code[&quot;entropy_selected_interval&quot;][&quot;upper&quot;])) / 2
+    assert integral &gt;= -1e-9 and integral &lt;= upper + 1e-7
+    return {&quot;status&quot;: &quot;DIAGNOSTIC_ONLY&quot;, &quot;quadrature_log_T&quot;: [left, right], &quot;steps&quot;: steps,
+            &quot;conditional_KL_integral_approx&quot;: integral, &quot;analytic_H_J_over_2&quot;: upper,
+            &quot;actual_mutual_information_evaluated&quot;: False}
+
+
+def fixture() -&gt; dict:
+    return {&quot;rows&quot;: [
+        {&quot;id&quot;: &quot;zero&quot;, &quot;p&quot;: &quot;2/5&quot;, &quot;a&quot;: &quot;0&quot;},
+        {&quot;id&quot;: &quot;tiny&quot;, &quot;p&quot;: &quot;1/5&quot;, &quot;a&quot;: &quot;1/64&quot;},
+        {&quot;id&quot;: &quot;small&quot;, &quot;p&quot;: &quot;1/10&quot;, &quot;a&quot;: &quot;1/16&quot;},
+        {&quot;id&quot;: &quot;quarter&quot;, &quot;p&quot;: &quot;1/10&quot;, &quot;a&quot;: &quot;1/4&quot;},
+        {&quot;id&quot;: &quot;one&quot;, &quot;p&quot;: &quot;1/10&quot;, &quot;a&quot;: &quot;1&quot;},
+        {&quot;id&quot;: &quot;four&quot;, &quot;p&quot;: &quot;1/20&quot;, &quot;a&quot;: &quot;4&quot;},
+        {&quot;id&quot;: &quot;sixteen&quot;, &quot;p&quot;: &quot;1/20&quot;, &quot;a&quot;: &quot;16&quot;}],
+        &quot;domination_C&quot;: &quot;2&quot;, &quot;epsilon&quot;: &quot;1/4&quot;, &quot;cap_L&quot;: &quot;8&quot;, &quot;T0&quot;: &quot;1&quot;, &quot;T1&quot;: &quot;2&quot;, &quot;outputs_k&quot;: 1}
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(&quot;--input&quot;, type=Path)
+    parser.add_argument(&quot;--output&quot;, type=Path, default=Path(__file__).with_name(&quot;covariance_codec_certificate.json&quot;))
+    parser.add_argument(&quot;--bits&quot;, type=int, default=48)
+    args = parser.parse_args()
+    own_root = Path(__file__).resolve().parent
+    target = args.output.resolve()
+    assert target.is_relative_to(own_root), &quot;Output must stay in this owned revisions directory&quot;
+    assert not target.exists(), &quot;Preserve existing certificates; choose a new output path&quot;
+    raw = json.loads(args.input.read_text()) if args.input else fixture()
+    started = time.perf_counter()
+    code = compile_table(raw, args.bits)
+    checks = {&quot;exact_finite_optimum&quot;: audit_finite_optima(raw, code, args.bits) if len(raw[&quot;rows&quot;]) &lt;= 8 else &quot;NOT_RUN&quot;,
+              &quot;KL_integral_diagnostic&quot;: gaussian_kl_envelope_diagnostic(raw, code)}
+    variance_samples = [{&quot;label&quot;: j, &quot;T&quot;: &quot;3/2&quot;, &quot;variance_exact&quot;: fs(decoder_variance(code, j, F(3, 2)))}
+                        for j in range(code[&quot;retained_dimension&quot;])]
+    record = {&quot;input&quot;: raw, &quot;certificate&quot;: code, &quot;checks&quot;: checks, &quot;decoder_covariance_samples&quot;: variance_samples,
+              &quot;local_seconds&quot;: time.perf_counter() - started, &quot;backend_energy_tokens&quot;: &quot;UNKNOWN&quot;}
+    target.write_text(json.dumps(record, indent=2) + &quot;\n&quot;)
+    print(json.dumps({&quot;output&quot;: str(target), &quot;D&quot;: code[&quot;retained_dimension&quot;], &quot;binary_bits&quot;: code[&quot;fixed_binary_bits&quot;],
+                      &quot;minimum_D_criterion&quot;: code[&quot;minimum_D_for_sufficient_entropy_criterion&quot;],
+                      &quot;epsilon&quot;: code[&quot;epsilon&quot;], &quot;TV_upper_approx&quot;: math.sqrt(float(F(code[&quot;TV_squared_upper&quot;]))),
+                      &quot;entropy_upper_approx&quot;: float(F(code[&quot;entropy_selected_interval&quot;][&quot;upper&quot;])),
+                      &quot;checks&quot;: checks, &quot;local_seconds&quot;: record[&quot;local_seconds&quot;]}, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/eb5055c6cfb6a8e34e493425873bee055caef63230029acb6521abd28ab9f7f9.py">Exact original bytes</a></p></html>

@@ -1,0 +1,129 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c01_l08/revisions/refined_refresh_check.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c01_l08/revisions/refined_refresh_check.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Exact small-instance check of a row-norm-refined refresh bound.&quot;&quot;&quot;
+
+from fractions import Fraction
+from itertools import combinations, permutations
+from math import comb
+import json
+
+
+def det_int(matrix):
+    n = len(matrix)
+    total = 0
+    for p in permutations(range(n)):
+        inv = sum(p[i] &gt; p[j] for i in range(n) for j in range(i + 1, n))
+        term = (-1 if inv % 2 else 1)
+        for i in range(n):
+            term *= matrix[i][p[i]]
+        total += term
+    return total
+
+
+def main():
+    F = [
+        [0, 1, 2, 0],
+        [1, 0, 1, 2],
+        [2, 1, 0, 1],
+        [0, 2, 1, 0],
+    ]
+    r = len(F)
+    lambdas = [Fraction(1), Fraction(2), Fraction(1, 2), Fraction(3)]
+    h = [sum(F[i][j] ** 2 for j in range(r)) for i in range(r)]
+    alpha = [lambdas[i] * h[i] for i in range(r)]
+
+    coordinate_lines = []
+    for i in range(r):
+        for j in range(i + 1, r):
+            a = [0] * r
+            b = [0] * r
+            a[i], b[j] = 1, 1
+            coordinate_lines.append((&quot;coord&quot;, (a, b)))
+    original_lines = []
+    for i in range(r):
+        e = [0] * r
+        e[i] = 1
+        row = list(F[i])
+        original_lines.append((&quot;orig&quot;, (e, row), lambdas[i]))
+
+    M0 = len(coordinate_lines)
+    lines = coordinate_lines + original_lines
+    half = r // 2
+    actual_contaminant_at_epsilon_one = Fraction(0)
+    counted = 0
+    for chosen in combinations(range(len(lines)), half):
+        chosen_lines = [lines[j] for j in chosen]
+        s = sum(line[0] == &quot;orig&quot; for line in chosen_lines)
+        if s == 0:
+            continue
+        cols = []
+        activity = Fraction(1)
+        for line in chosen_lines:
+            if line[0] == &quot;coord&quot;:
+                cols.extend(line[1])
+            else:
+                cols.extend(line[1])
+                activity *= line[2]
+        W = [[cols[j][i] for j in range(r)] for i in range(r)]
+        d = det_int(W)
+        actual_contaminant_at_epsilon_one += activity * d * d
+        counted += 1
+
+    # S = sum_s binom(M0, r/2-s) e_s(lambda_i * ||f_i||^2).
+    S = Fraction(0)
+    for s in range(1, half + 1):
+        elementary = Fraction(0)
+        for I in combinations(range(r), s):
+            prod = Fraction(1)
+            for i in I:
+                prod *= alpha[i]
+            elementary += prod
+        S += comb(M0, half - s) * elementary
+    assert actual_contaminant_at_epsilon_one &lt;= S
+
+    Z0 = 1
+    for j in range(1, r, 2):
+        Z0 *= j
+    eta = Fraction(1, 32)
+    K = 0
+    while S / (1 &lt;&lt; K) &gt; eta * Z0:
+        K += 1
+    epsilon = Fraction(1, 1 &lt;&lt; K)
+
+    actual_contaminant = Fraction(0)
+    for chosen in combinations(range(len(lines)), half):
+        chosen_lines = [lines[j] for j in chosen]
+        s = sum(line[0] == &quot;orig&quot; for line in chosen_lines)
+        if s == 0:
+            continue
+        cols = []
+        activity = epsilon ** s
+        for line in chosen_lines:
+            if line[0] == &quot;coord&quot;:
+                cols.extend(line[1])
+            else:
+                cols.extend(line[1])
+                activity *= line[2]
+        W = [[cols[j][i] for j in range(r)] for i in range(r)]
+        d = det_int(W)
+        actual_contaminant += activity * d * d
+    assert actual_contaminant &lt;= epsilon * S &lt;= eta * Z0
+
+    print(json.dumps({
+        &quot;dimension&quot;: r,
+        &quot;coordinate_lines&quot;: M0,
+        &quot;original_lines&quot;: len(original_lines),
+        &quot;enumerated_original_containing_line_sets&quot;: counted,
+        &quot;row_squared_norms&quot;: h,
+        &quot;exact_contaminant_at_epsilon_one&quot;: str(actual_contaminant_at_epsilon_one),
+        &quot;exact_row_norm_bound_S&quot;: str(S),
+        &quot;coordinate_partition_Z0&quot;: Z0,
+        &quot;refresh_budget_eta&quot;: str(eta),
+        &quot;chosen_epsilon&quot;: f&quot;2^-{K}&quot;,
+        &quot;actual_contaminant_at_epsilon&quot;: str(actual_contaminant),
+        &quot;bound_epsilon_S&quot;: str(epsilon * S),
+        &quot;scope&quot;: &quot;finite exact fixture; general Hadamard derivation is in path_and_ratios.txt&quot;,
+    }, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/d804278eb3d6156649d08fb12e02d2849d1f205a959d66bd923b1dc3b848aae0.py">Exact original bytes</a></p></html>

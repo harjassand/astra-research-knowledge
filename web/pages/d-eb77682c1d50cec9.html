@@ -1,0 +1,439 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c10_s03/revisions/phase2/modular_compiler.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c10_s03/revisions/phase2/modular_compiler.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Acquired hinge cores and finite-jump reciprocal attachments.
+
+All writes are in this owned directory. INITIAL dependencies are imported,
+never executed as scripts. Output constants use explicit rational-power
+expressions; expanded-output costs are charged in MODULAR_RECOVERY.txt.
+&quot;&quot;&quot;
+from dataclasses import dataclass
+from fractions import Fraction as F
+from itertools import product
+from math import ceil
+from pathlib import Path
+import hashlib
+import json
+import sys
+import time
+
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE.parent))
+from hinge_compiler import compile_hinges
+from compiler import reaction, falling, serialize, check_weak_reversibility
+
+
+def support(v):
+    return {i for i, x in enumerate(v) if x}
+
+
+def project(rs, indices):
+    return [reaction(tuple(r.y[i] for i in indices),
+                     tuple(r.yp[i] for i in indices), r.lo, r.hi, r.name)
+            for r in rs]
+
+
+def aggregate(table, i, r):
+    lo, hi = table.get(i, (F(0), F(0)))
+    table[i] = (lo+r.lo, hi+r.hi)
+
+
+def peel_leaf(rs, leaf):
+    &quot;&quot;&quot;Recognize every incident reaction; no unaccounted leaf dynamics.&quot;&quot;&quot;
+    core, birth, death = [], {}, {}
+    for r in rs:
+        if not (r.y[leaf] or r.yp[leaf]):
+            core.append(r)
+            continue
+        changed = tuple(b-a for a, b in zip(r.y, r.yp))
+        others = [i for i, z in enumerate(r.y) if z and i != leaf]
+        if any(changed[i] for i in range(len(changed)) if i != leaf):
+            return None
+        if len(others) != 1 or r.y[others[0]] != 1:
+            return None
+        parent = others[0]
+        if (sum(r.y) == 1 and r.y[leaf] == 0
+                and sum(r.yp) == 2 and changed[leaf] == 1):
+            aggregate(birth, parent, r)
+        elif (sum(r.y) == 2 and r.y[leaf] == 1
+                and sum(r.yp) == 1 and changed[leaf] == -1):
+            aggregate(death, parent, r)
+        else:
+            return None
+    if not birth or birth.keys() != death.keys():
+        return None
+    return core, birth, death
+
+
+def gate_certificate(core, birth, death):
+    parents = sorted(birth)
+    pset = set(parents)
+    immigration_lower, unary_loss_upper, binary_loss_upper = F(0), F(0), F(0)
+    for r in core:
+        jump = sum(r.yp[i]-r.y[i] for i in parents)
+        if not any(r.y) and jump &gt; 0:
+            immigration_lower += r.lo
+        if jump &lt; 0:
+            if not support(r.y) &lt;= pset:
+                return None, &quot;negative gate jump has a reactant outside its gate&quot;
+            if sum(r.y) == 1:
+                unary_loss_upper += r.hi
+            elif sum(r.y) == 2:
+                binary_loss_upper += r.hi
+            else:
+                return None, &quot;gate loss has unsupported molecularity&quot;
+    if not immigration_lower:
+        return None, &quot;gate has no zero-source immigration&quot;
+    beta = min(lo for lo, _ in death.values())
+    alpha = max(hi for _, hi in birth.values())
+    loss_cap = unary_loss_upper/2+2*binary_loss_upper
+    c = min(F(1), beta/(2*loss_cap)) if loss_cap else F(1)
+    gamma = min(c*immigration_lower/2, beta/2)
+    return {&quot;parents&quot;: parents, &quot;birth&quot;: birth, &quot;death&quot;: death,
+            &quot;immigration_lower&quot;: immigration_lower,
+            &quot;unary_loss_upper&quot;: unary_loss_upper,
+            &quot;binary_loss_upper&quot;: binary_loss_upper,
+            &quot;loss_cap&quot;: loss_cap, &quot;c&quot;: c, &quot;G&quot;: 1+c,
+            &quot;gamma&quot;: gamma, &quot;tag_decay&quot;: gamma/(1+c),
+            &quot;alpha_max&quot;: alpha}, None
+
+
+def recognize(rs):
+    d = len(rs[0].y) if rs else 0
+    if not d or any(len(r.y) != d or len(r.yp) != d or
+                    any(type(x) is not int or x &lt; 0 for x in r.y+r.yp) or
+                    sum(r.y) &gt; 2 or sum(r.yp) &gt; 2 or not 0 &lt; r.lo &lt;= r.hi
+                    for r in rs):
+        return {&quot;status&quot;: &quot;REJECTED_CLASS&quot;, &quot;reason&quot;: &quot;invalid binary input&quot;}
+    memo, failures = {}, []
+
+    def search(active, current):
+        key = tuple(active)
+        if key in memo:
+            return memo[key]
+        # Additional binary two-count drains decrease every hinge and its
+        # exponential. They preserve the earlier inequalities by omission.
+        extras = [r for r in current if sum(r.y) == 2 and not any(r.yp)]
+        retained = [r for r in current if not (sum(r.y) == 2 and not any(r.yp))]
+        base = compile_hinges(project(retained, active), expand_probability=False)
+        if base[&quot;status&quot;] == &quot;CERTIFIED&quot; and check_weak_reversibility(current):
+            H = sum(base[&quot;thresholds&quot;])
+            scale = H+1
+            cert = {&quot;status&quot;: &quot;CERTIFIED&quot;, &quot;base_species&quot;: list(active),
+                    &quot;base_hinge&quot;: base, &quot;base_scale&quot;: scale,
+                    &quot;base_extra_monotone_drains&quot;: len(extras),
+                    &quot;attachments&quot;: [], &quot;B&quot;: scale*base[&quot;B&quot;],
+                    &quot;delta&quot;: base[&quot;delta&quot;], &quot;upper_linear_factor&quot;: F(scale)}
+            memo[key] = cert
+            return cert
+        for leaf in active:
+            peeled = peel_leaf(current, leaf)
+            if peeled is None:
+                continue
+            core, birth, death = peeled
+            gate, reason = gate_certificate(core, birth, death)
+            if gate is None:
+                failures.append({&quot;leaf&quot;: leaf, &quot;parents&quot;: sorted(birth), &quot;reason&quot;: reason})
+                continue
+            rest = search(tuple(i for i in active if i != leaf), core)
+            if rest is None:
+                continue
+            M = max(F(1), (gate[&quot;G&quot;]*gate[&quot;alpha_max&quot;]+1)/rest[&quot;delta&quot;])
+            delta = min(1/M, gate[&quot;gamma&quot;]/gate[&quot;G&quot;])
+            attachment = dict(gate, leaf=leaf, core_scale=M,
+                              previous_B=rest[&quot;B&quot;], previous_delta=rest[&quot;delta&quot;])
+            cert = dict(rest, attachments=rest[&quot;attachments&quot;]+[attachment],
+                        B=M*rest[&quot;B&quot;]+delta, delta=delta,
+                        upper_linear_factor=1+M*rest[&quot;upper_linear_factor&quot;]+gate[&quot;G&quot;])
+            memo[key] = cert
+            return cert
+        memo[key] = None
+        return None
+
+    cert = search(tuple(range(d)), rs)
+    if cert is None:
+        return {&quot;status&quot;: &quot;REJECTED_CLASS&quot;, &quot;reason&quot;: &quot;no admitted hinge/gate decomposition&quot;,
+                &quot;failed_gates&quot;: failures, &quot;searched_subsets&quot;: len(memo)}
+    cert[&quot;searched_subsets&quot;] = len(memo)
+    cert[&quot;failed_gates&quot;] = failures
+    return cert
+
+
+def potential(cert, x):
+    b = cert[&quot;base_species&quot;]
+    V = cert[&quot;base_scale&quot;]*(1+sum(max(0, x[i]-h)
+                                    for i, h in zip(b, cert[&quot;base_hinge&quot;][&quot;thresholds&quot;])))
+    for a in cert[&quot;attachments&quot;]:
+        S = sum(x[i] for i in a[&quot;parents&quot;])
+        V = 1+a[&quot;core_scale&quot;]*V+(1+a[&quot;c&quot;]/(S+1))*x[a[&quot;leaf&quot;]]
+    return V
+
+
+def generator_box_max(rs, cert, x):
+    old = potential(cert, x)
+    result = F(0)
+    for r in rs:
+        f = falling(x, r.y)
+        if f:
+            xp = tuple(n+b-a for n, a, b in zip(x, r.y, r.yp))
+            jump = potential(cert, xp)-old
+            result += f*max(r.lo*jump, r.hi*jump)
+    return result
+
+
+def recipes(rs, cert):
+    d = len(rs[0].y)
+    production, base_death, leaf_death = {}, {}, {}
+    for i in cert[&quot;base_species&quot;]:
+        production[i] = {&quot;edge&quot;: next(k for k, r in enumerate(rs)
+                                      if not any(r.y) and r.yp[i] == 1 and sum(r.yp) == 1),
+                         &quot;dependencies&quot;: [], &quot;length&quot;: 1}
+        base_death[i] = next(k for k, r in enumerate(rs)
+                             if r.y[i] == 1 and sum(r.y) == 1 and not any(r.yp))
+    for a in cert[&quot;attachments&quot;]:
+        j = a[&quot;leaf&quot;]
+        parent = min(a[&quot;parents&quot;], key=lambda i: (production[i][&quot;length&quot;], i))
+        production[j] = {&quot;edge&quot;: next(k for k, r in enumerate(rs)
+                                      if r.y[parent] == 1 and sum(r.y) == 1
+                                      and r.yp[j] == 1 and r.yp[parent] == 1 and sum(r.yp) == 2),
+                         &quot;dependencies&quot;: [parent], &quot;length&quot;: production[parent][&quot;length&quot;]+1}
+        leaf_death[j] = next(k for k, r in enumerate(rs)
+                             if r.y[j] == r.y[parent] == 1 and sum(r.y) == 2
+                             and r.yp[parent] == 1 and sum(r.yp) == 1)
+    assert len(production) == d
+    return {&quot;production&quot;: production, &quot;base_death&quot;: base_death,
+            &quot;leaf_death&quot;: leaf_death,
+            &quot;one_of_every_species_steps&quot;: sum(z[&quot;length&quot;] for z in production.values())}
+
+
+def power(base, exponent):
+    return {&quot;rational_base&quot;: base, &quot;integer_exponent&quot;: exponent}
+
+
+def compile_network(rs, q=2):
+    if type(q) is not int or q &lt; 1:
+        return {&quot;status&quot;: &quot;REJECTED_CLASS&quot;, &quot;reason&quot;: &quot;invalid target count&quot;}
+    cert = recognize(rs)
+    if cert[&quot;status&quot;] != &quot;CERTIFIED&quot;:
+        return cert
+    words = recipes(rs, cert)
+    B, delta = cert[&quot;B&quot;], cert[&quot;delta&quot;]
+    exponential_core = 2*(B+delta+1)/delta
+    count_core = ceil(exponential_core)  # V&gt;=N, W=1+V; deliberately loose.
+    d = len(rs[0].y)
+    A1 = words[&quot;one_of_every_species_steps&quot;]
+    Aq = q*A1
+    # Every selected production edge adds exactly one molecule, and every
+    # selected drain removes exactly one; competing events are suppressed.
+    H = count_core+2*A1+Aq
+    D = max(count_core+A1, Aq)
+    U = sum((r.hi for r in rs), F(0))
+    Q = U*(D+1)**2
+    alpha = min(r.lo for r in rs)/(2*Q)
+    t0 = F(H)/Q
+    eta_return = min(delta/2, 1/(2*t0))
+    cycle_mgf_cap = 2*(1+exponential_core+B*t0)
+    cert[&quot;boundary&quot;] = {&quot;q&quot;: q, &quot;recipes&quot;: words, &quot;exponential_core_W&quot;: exponential_core,
+                        &quot;core_count_cap&quot;: count_core, &quot;attempt_steps&quot;: H,
+                        &quot;path_count_cap&quot;: D, &quot;total_rate_coefficient&quot;: U,
+                        &quot;total_rate_cap&quot;: Q, &quot;one_step_probability&quot;: alpha,
+                        &quot;attempt_duration&quot;: t0, &quot;success_probability&quot;: power(alpha, H),
+                        &quot;cycle_mgf_at_eta_cap&quot;: cycle_mgf_cap, &quot;eta_return&quot;: eta_return,
+                        &quot;target_decay_expression&quot;: &quot;eta_return*p/(2*(cycle_mgf_at_eta_cap+p))&quot;,
+                        &quot;target_mgf_expression&quot;: &quot;(1+V(x))*(2+4/p)&quot;,
+                        &quot;target_mean_expression&quot;: &quot;V(x)+(exponential_core_W+(B+1)*attempt_duration)/p&quot;}
+    # A linear recurrence stores each moment node once; no expanded power or
+    # duplicated recursive expression tree is hidden in compact acquisition.
+    moment_layers = []
+    birth_counter_factor = F(2**24, 12)
+    for a in cert[&quot;attachments&quot;]:
+        eta, G, A = a[&quot;tag_decay&quot;], a[&quot;G&quot;], a[&quot;alpha_max&quot;]
+        T = (1+4/eta)**4
+        moment_layers.append({&quot;leaf&quot;: a[&quot;leaf&quot;],
+                              &quot;old_total_fourth_moment_coefficient&quot;:
+                                  8*(1+8*G*T*birth_counter_factor*20*A**4),
+                              &quot;leaf_initial_fourth_power_coefficient&quot;: 64*G,
+                              &quot;constant&quot;: 64*G*T*birth_counter_factor*16})
+    cert[&quot;fourth_moment_recurrence&quot;] = moment_layers
+    cert[&quot;firing_bound_expression&quot;] = &quot;(2/target_decay)*(1+8*U^2*(M4(x)+1)*(1+V(x))*(2+4/p))&quot;
+    return cert
+
+
+def fourth_moment(cert, x):
+    &quot;&quot;&quot;Explicit evaluation can be exponential in count encoding; not acquisition.&quot;&quot;&quot;
+    h = cert[&quot;base_hinge&quot;]
+    H = sum(h[&quot;thresholds&quot;])
+    z0 = sum(max(0, x[i]-v) for i, v in zip(cert[&quot;base_species&quot;], h[&quot;thresholds&quot;]))
+    base = h[&quot;exponential_base&quot;]
+    eps = base-1
+    offset = h[&quot;exponential_offset_compact&quot;]
+    offset_value = offset[&quot;rational_coefficient&quot;]*offset[&quot;rational_base&quot;]**offset[&quot;integer_exponent&quot;]
+    exp_bound = base**z0+offset_value/h[&quot;exponential_decay&quot;]
+    ans = 8*(1296+384*exp_bound/eps**4+H**4)
+    for a in cert[&quot;fourth_moment_recurrence&quot;]:
+        ans = (a[&quot;old_total_fourth_moment_coefficient&quot;]*ans
+               +a[&quot;leaf_initial_fourth_power_coefficient&quot;]*x[a[&quot;leaf&quot;]]**4+a[&quot;constant&quot;])
+    return ans
+
+
+def expanded_produce(words, i):
+    z = words[&quot;production&quot;][i]
+    return [k for parent in z[&quot;dependencies&quot;] for k in expanded_produce(words, parent)]+[z[&quot;edge&quot;]]
+
+
+def apply_word(rs, x, word):
+    current, cap = tuple(x), sum(x)
+    for k in word:
+        r = rs[k]
+        assert falling(current, r.y), (current, k)
+        current = tuple(n+b-a for n, a, b in zip(current, r.y, r.yp))
+        cap = max(cap, sum(current))
+    return current, cap
+
+
+def recovery_word(rs, cert, x, q):
+    words = cert[&quot;boundary&quot;][&quot;recipes&quot;]
+    current, full = tuple(x), []
+    for i in range(len(x)):
+        w = expanded_produce(words, i)
+        after, _ = apply_word(rs, current, w)
+        assert all(a &gt;= b+int(j == i) for j, (a, b) in enumerate(zip(after, current)))
+        current = after
+        full += w
+    for a in reversed(cert[&quot;attachments&quot;]):
+        j = a[&quot;leaf&quot;]
+        w = [words[&quot;leaf_death&quot;][j]]*current[j]
+        current, _ = apply_word(rs, current, w)
+        full += w
+    for i in cert[&quot;base_species&quot;]:
+        w = [words[&quot;base_death&quot;][i]]*current[i]
+        current, _ = apply_word(rs, current, w)
+        full += w
+    assert not any(current)
+    for i in range(len(x)):
+        w = expanded_produce(words, i)*q
+        current, _ = apply_word(rs, current, w)
+        full += w
+    assert all(n &gt;= q for n in current)
+    _, cap = apply_word(rs, x, full)
+    A1 = words[&quot;one_of_every_species_steps&quot;]
+    assert len(full) == sum(x)+2*A1+q*A1
+    assert cap &lt;= max(sum(x)+A1, q*A1)
+    return len(full), cap
+
+
+def fixtures():
+    def e(d, i): return tuple(int(j == i) for j in range(d))
+    def add_leaf(rs, d, parent_set, leaf):
+        for parent in parent_set:
+            pair = tuple(a+b for a, b in zip(e(d, parent), e(d, leaf)))
+            rs.extend([reaction(e(d, parent), pair, F(1, 2), F(3, 2)),
+                       reaction(pair, e(d, parent), F(2, 3), F(5, 3))])
+    # Nonlinear reciprocal hinge core A,B; no primitive leaf flows.
+    d = 4
+    zero = (0,)*d
+    core = []
+    for i in (0, 1):
+        core += [reaction(zero, e(d, i), 1, 2), reaction(e(d, i), zero, 1, 2)]
+    ab = tuple(a+b for a, b in zip(e(d, 0), e(d, 1)))
+    core += [reaction(e(d, 0), ab, 2, 3), reaction(ab, e(d, 0), 1, 2),
+             reaction(e(d, 1), ab, 3, 5), reaction(ab, e(d, 1), 1, 2)]
+    nonlinear = core[:]
+    add_leaf(nonlinear, d, [0, 1], 2)
+    add_leaf(nonlinear, d, [0, 1, 2], 3)
+    # Self-autocatalytic core exercises exact 2A falling factorials.
+    d = 2
+    self_core = [reaction((0, 0), (1, 0)), reaction((1, 0), (0, 0)),
+                 reaction((1, 0), (2, 0), 2), reaction((2, 0), (1, 0))]
+    add_leaf(self_core, d, [0], 1)
+    # Genuine two-count negative gate jump, handled by finite-jump inequality.
+    pair_loss = [reaction((0, 0), (1, 0)), reaction((1, 0), (0, 0)),
+                 reaction((1, 0), (2, 0), 2), reaction((2, 0), (1, 0)),
+                 reaction((2, 0), (0, 0), 1, 2)]
+    add_leaf(pair_loss, d, [0], 1)
+    # Already-known two-layer scope, compiled without a supplied partition.
+    d = 3
+    roots = []
+    for i in (0, 1):
+        roots += [reaction((0,)*d, e(d, i), F(1, 3), F(4, 3)),
+                  reaction(e(d, i), (0,)*d, F(1, 4), F(5, 4))]
+    add_leaf(roots, d, [0, 1], 2)
+    # Bare chain has no syntactically drain-closed immigration gate for C.
+    bare = [reaction((0, 0, 0), (1, 0, 0)), reaction((1, 0, 0), (0, 0, 0))]
+    add_leaf(bare, 3, [0], 1)
+    add_leaf(bare, 3, [1], 2)
+    return {&quot;hinge_core_two_attachment_depths&quot;: nonlinear,
+            &quot;self_autocatalytic_core_leaf&quot;: self_core,
+            &quot;two_count_gate_loss&quot;: pair_loss, &quot;two_layer_overlap&quot;: roots}, bare
+
+
+def verify():
+    started = time.perf_counter()
+    cases, bare = fixtures()
+    output = {&quot;fixtures&quot;: {}, &quot;scope&quot;: &quot;exact finite diagnostics; full proof in MODULAR_RECOVERY.txt&quot;}
+    all_counts = {&quot;complete_generator&quot;: 0, &quot;gate_killing_coefficients&quot;: 0,
+                  &quot;production_and_recovery_words&quot;: 0, &quot;moment_acquisition&quot;: 0}
+    for name, rs in cases.items():
+        cert = compile_network(rs)
+        assert cert[&quot;status&quot;] == &quot;CERTIFIED&quot;, (name, cert)
+        d = len(rs[0].y)
+        states = list(product(range(5), repeat=d))
+        states += [tuple(10**6 if i == j else int(i % 2) for i in range(d)) for j in range(d)]
+        for x in states:
+            V = potential(cert, x)
+            assert V &gt;= max(1, sum(x))
+            assert generator_box_max(rs, cert, x) &lt;= cert[&quot;B&quot;]-cert[&quot;delta&quot;]*V
+            all_counts[&quot;complete_generator&quot;] += 1
+            active = set(cert[&quot;base_species&quot;])
+            for a in cert[&quot;attachments&quot;]:
+                S = sum(x[i] for i in a[&quot;parents&quot;])
+                g = 1+a[&quot;c&quot;]/(S+1)
+                Lg = F(0)
+                for r in rs:
+                    if not (support(r.y)|support(r.yp)) &lt;= active:
+                        continue
+                    f = falling(x, r.y)
+                    if f:
+                        Sp = S+sum(r.yp[i]-r.y[i] for i in a[&quot;parents&quot;])
+                        dg = 1+a[&quot;c&quot;]/(Sp+1)-g
+                        Lg += f*max(r.lo*dg, r.hi*dg)
+                killing = sum(a[&quot;death&quot;][i][0]*x[i] for i in a[&quot;parents&quot;])
+                assert Lg-killing*g &lt;= -a[&quot;gamma&quot;]
+                all_counts[&quot;gate_killing_coefficients&quot;] += 1
+                active.add(a[&quot;leaf&quot;])
+        for x in product(range(3), repeat=d):
+            recovery_word(rs, cert, x, 2)
+            all_counts[&quot;production_and_recovery_words&quot;] += 1
+        m4 = fourth_moment(cert, (1,)*d)
+        assert m4 &gt;= d**4
+        all_counts[&quot;moment_acquisition&quot;] += 1
+        output[&quot;fixtures&quot;][name] = {&quot;certificate&quot;: cert, &quot;state_count&quot;: len(states),
+                                    &quot;M4_at_all_ones&quot;: m4,
+                                    &quot;M4_height_bits&quot;: max(m4.numerator.bit_length(), m4.denominator.bit_length())}
+    rejection = compile_network(bare)
+    assert rejection[&quot;status&quot;] == &quot;REJECTED_CLASS&quot;
+    output[&quot;bare_chain_rejection&quot;] = rejection
+    # Interpolation algebra, independent of rare-event-expanded fixture powers.
+    # log M&lt;=M−1 and log(1−p)&lt;=−p imply contraction at theta=p/[2(M+p)].
+    interpolation_checks = 0
+    for p in (F(1, 100), F(1, 7), F(1, 2)):
+        for M in (F(2), F(17, 2), F(10000)):
+            theta = p/(2*(M+p))
+            assert -(1-theta)*p+theta*(M-1) &lt;= -p/2
+            interpolation_checks += 1
+    output[&quot;interpolation_rational_checks&quot;] = interpolation_checks
+    output[&quot;counts&quot;] = all_counts
+    output[&quot;wall_seconds&quot;] = time.perf_counter()-started
+    output[&quot;script_sha256&quot;] = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
+    (HERE/&quot;modular_checks.json&quot;).write_text(json.dumps(serialize(output), indent=2)+&quot;\n&quot;)
+    print(json.dumps({&quot;counts&quot;: all_counts, &quot;interpolation_checks&quot;: interpolation_checks,
+                      &quot;wall_seconds&quot;: output[&quot;wall_seconds&quot;],
+                      &quot;fixtures&quot;: {k: {&quot;base&quot;: v[&quot;certificate&quot;][&quot;base_species&quot;],
+                                      &quot;leaves&quot;: [a[&quot;leaf&quot;] for a in v[&quot;certificate&quot;][&quot;attachments&quot;]],
+                                      &quot;B&quot;: str(v[&quot;certificate&quot;][&quot;B&quot;]),
+                                      &quot;delta&quot;: str(v[&quot;certificate&quot;][&quot;delta&quot;]),
+                                      &quot;attempt_steps&quot;: v[&quot;certificate&quot;][&quot;boundary&quot;][&quot;attempt_steps&quot;],
+                                      &quot;M4_bits&quot;: v[&quot;M4_height_bits&quot;]}
+                                   for k, v in output[&quot;fixtures&quot;].items()}}, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    verify()
+</pre><p><a href="../assets/349989dc52c20a194b52f35edefae80f1e041360a3386737edfb462366fb89a3.py">Exact original bytes</a></p></html>

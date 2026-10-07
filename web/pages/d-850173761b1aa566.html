@@ -1,0 +1,89 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c03_l05/general_support_graph_check.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c03_l05/general_support_graph_check.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Broader small exact checks on non-path sparse bases.
+
+Uses the independent original-minor enumerator and both Grassmann contractions
+from augmented_grassmann_dp.py. This is a finite algebra check, not a generic
+treewidth-DP proof or performance benchmark.
+&quot;&quot;&quot;
+
+import json
+import random
+
+from augmented_grassmann_dp import (
+    ZERO, ONE, gadd, gmul, make_case, direct_coefficients,
+    exact_augmented_elimination, exact_chiral_elimination, elimination_width,
+)
+
+
+def case_from_edges(rng, n, r, edges):
+    s = [[ZERO for _ in range(n)] for _ in range(n)]
+    for i in range(n):
+        s[i][i] = (rng.randrange(-1, 2), rng.randrange(-1, 2))
+    for i, j in edges:
+        s[i][j] = (rng.randrange(-2, 3), rng.randrange(-1, 2))
+        s[j][i] = (rng.randrange(-2, 3), rng.randrange(-1, 2))
+    u = [[(rng.randrange(-2, 3), rng.randrange(-1, 2)) for _ in range(r)]
+         for _ in range(n)]
+    v = [[(rng.randrange(-2, 3), rng.randrange(-1, 2)) for _ in range(r)]
+         for _ in range(n)]
+    uv = [[ZERO for _ in range(n)] for _ in range(n)]
+    for i in range(n):
+        for j in range(n):
+            for ell in range(r):
+                uv[i][j] = gadd(uv[i][j], gmul(u[i][ell], v[j][ell]))
+    f = [[gadd(s[i][j], uv[i][j]) for j in range(n)] for i in range(n)]
+
+    m = [[ZERO for _ in range(n + r)] for _ in range(n + r)]
+    for i in range(n):
+        for j in range(n):
+            m[i][j] = s[i][j]
+        for ell in range(r):
+            m[i][n + ell] = u[i][ell]
+    for ell in range(r):
+        for j in range(n):
+            m[n + ell][j] = (-v[j][ell][0], -v[j][ell][1])
+        m[n + ell][n + ell] = ONE
+    return f, m, s
+
+
+def main():
+    rng = random.Random(710305)
+    n = 6
+    supports = {
+        &quot;star&quot;: {(0, i) for i in range(1, n)},
+        &quot;cycle&quot;: {(i, (i + 1) % n) for i in range(n)},
+        &quot;2x3_grid&quot;: {(0, 1), (1, 2), (3, 4), (4, 5), (0, 3), (1, 4), (2, 5)},
+        &quot;K2_4&quot;: {(i, j) for i in (0, 1) for j in (2, 3, 4, 5)},
+    }
+    orders = {
+        &quot;star&quot;: list(range(1, n)) + [0],
+        &quot;cycle&quot;: list(range(n)),
+        &quot;2x3_grid&quot;: list(range(n)),
+        &quot;K2_4&quot;: [2, 3, 4, 5, 0, 1],
+    }
+    rows = []
+    for name, edges in supports.items():
+        base_order = orders[name]
+        for r in (0, 1, 2):
+            f, m, s = case_from_edges(rng, n, r, edges)
+            order = base_order + list(range(n, n + r))
+            base_w = elimination_width(s, base_order)
+            aug_w = elimination_width(m, order)
+            got1 = [x[0] for x in exact_augmented_elimination(m, n, order)]
+            got2 = [x[0] for x in exact_chiral_elimination(m, n, order)]
+            want = direct_coefficients(f)
+            assert got1 == want, (name, r, &quot;paired&quot;, got1, want)
+            assert got2 == want, (name, r, &quot;chiral&quot;, got2, want)
+            assert aug_w &lt;= base_w + r, (name, r, base_w, aug_w)
+            rows.append({&quot;base&quot;: name, &quot;n&quot;: n, &quot;rank_bound&quot;: r,
+                         &quot;base_order_width&quot;: base_w,
+                         &quot;augmented_order_width&quot;: aug_w,
+                         &quot;coefficients&quot;: want})
+    print(json.dumps({&quot;status&quot;: &quot;PASS&quot;, &quot;seed&quot;: 710305, &quot;cases&quot;: rows,
+                      &quot;scope&quot;: &quot;Twelve exact Gaussian-integer comparisons on star, cycle, 2x3-grid, and K2,4 sparse bases; both contractions match direct original-minor enumeration.&quot;,
+                      &quot;not_established&quot;: [&quot;generic theorem proof by experiment&quot;, &quot;treewidth recognition&quot;, &quot;decomposition discovery&quot;, &quot;runtime scaling&quot;, &quot;sampler&quot;, &quot;novelty&quot;]}, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/4833ffd0e611ceb630d89fb634797824be141abca9db49902cbef625bc5cfdab.py">Exact original bytes</a></p></html>

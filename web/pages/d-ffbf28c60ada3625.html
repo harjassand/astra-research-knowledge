@@ -1,0 +1,500 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c07_s01/reviews/l07_spin_certificates_repaired.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c07_s01/reviews/l07_spin_certificates_repaired.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Exact/interval diagnostics for critical-spin finite-N certificates.
+
+The sector bound is enclosed with outward-rounded dyadic intervals.  The
+matrix-square-root routine uses exact rational 3x3 operations between explicit
+dyadic rounding steps, with the perturbation budget stated in
+spin_certificates_notes.txt.  It is a mathematical compiler prototype; it does
+not prepare physical qubits or certify a hardware gate set.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+from dataclasses import dataclass
+from fractions import Fraction
+from math import comb, isqrt
+import json
+from pathlib import Path
+from typing import Iterable
+
+
+ROOT = Path(__file__).resolve().parent
+
+
+def ceil_div(a: int, b: int) -&gt; int:
+    assert b &gt; 0
+    return -((-a) // b)
+
+
+def iroot(n: int, degree: int) -&gt; int:
+    &quot;&quot;&quot;Floor integer degree-th root, for the small degrees used here.&quot;&quot;&quot;
+    assert n &gt;= 0 and degree &gt;= 1
+    if degree == 1:
+        return n
+    if degree == 2:
+        return isqrt(n)
+    lo, hi = 0, 1
+    while hi**degree &lt;= n:
+        hi *= 2
+    while hi - lo &gt; 1:
+        mid = (lo + hi) // 2
+        if mid**degree &lt;= n:
+            lo = mid
+        else:
+            hi = mid
+    return lo
+
+
+@dataclass(frozen=True)
+class Iv:
+    &quot;&quot;&quot;Closed interval [lo,hi] in units 2^-p.&quot;&quot;&quot;
+    lo: int
+    hi: int
+    p: int
+
+    def __post_init__(self):
+        assert self.lo &lt;= self.hi
+
+    @property
+    def scale(self) -&gt; int:
+        return 1 &lt;&lt; self.p
+
+    @classmethod
+    def frac(cls, q: Fraction | int, p: int) -&gt; &quot;Iv&quot;:
+        q = Fraction(q)
+        s = 1 &lt;&lt; p
+        return cls((q.numerator * s) // q.denominator,
+                   ceil_div(q.numerator * s, q.denominator), p)
+
+    @classmethod
+    def zero(cls, p: int) -&gt; &quot;Iv&quot;:
+        return cls(0, 0, p)
+
+    def _same(self, other: &quot;Iv&quot;) -&gt; None:
+        assert self.p == other.p
+
+    def __add__(self, other: &quot;Iv&quot;) -&gt; &quot;Iv&quot;:
+        self._same(other)
+        return Iv(self.lo + other.lo, self.hi + other.hi, self.p)
+
+    def __sub__(self, other: &quot;Iv&quot;) -&gt; &quot;Iv&quot;:
+        self._same(other)
+        return Iv(self.lo - other.hi, self.hi - other.lo, self.p)
+
+    def __mul__(self, other: &quot;Iv&quot;) -&gt; &quot;Iv&quot;:
+        self._same(other)
+        s = self.scale
+        products = (self.lo * other.lo, self.lo * other.hi,
+                    self.hi * other.lo, self.hi * other.hi)
+        return Iv(min(products) // s, ceil_div(max(products), s), self.p)
+
+    def scale_by(self, q: Fraction | int) -&gt; &quot;Iv&quot;:
+        q = Fraction(q)
+        a, b = self.lo * q.numerator, self.hi * q.numerator
+        if q.numerator &lt; 0:
+            a, b = b, a
+        return Iv((a // q.denominator), ceil_div(b, q.denominator), self.p)
+
+    def div_pos(self, other: &quot;Iv&quot;) -&gt; &quot;Iv&quot;:
+        self._same(other)
+        assert self.lo &gt;= 0 and other.lo &gt; 0
+        s = self.scale
+        return Iv((self.lo * s) // other.hi,
+                  ceil_div(self.hi * s, other.lo), self.p)
+
+    def div_int_pos(self, n: int) -&gt; &quot;Iv&quot;:
+        assert n &gt; 0 and self.lo &gt;= 0
+        return Iv(self.lo // n, ceil_div(self.hi, n), self.p)
+
+    def recip_pos(self) -&gt; &quot;Iv&quot;:
+        assert self.lo &gt; 0
+        s = self.scale
+        return Iv((s * s) // self.hi, ceil_div(s * s, self.lo), self.p)
+
+    def as_fraction_bounds(self) -&gt; tuple[Fraction, Fraction]:
+        s = self.scale
+        return Fraction(self.lo, s), Fraction(self.hi, s)
+
+
+def sqrt_iv(q: Fraction | int, p: int, degree: int = 2) -&gt; Iv:
+    &quot;&quot;&quot;Enclose the nonnegative rational root, returning dyadic endpoints.&quot;&quot;&quot;
+    q = Fraction(q)
+    assert q &gt;= 0 and degree &gt;= 1
+    s = 1 &lt;&lt; p
+    target_num = q.numerator * s**degree
+    k = iroot(target_num // q.denominator, degree)
+    exact = k**degree * q.denominator == target_num
+    return Iv(k, k if exact else k + 1, p)
+
+
+def exp_point(x: int, p: int) -&gt; Iv:
+    &quot;&quot;&quot;Certified enclosure of exp(x/2^p) using Taylor and range reduction.&quot;&quot;&quot;
+    s = 1 &lt;&lt; p
+    if x &lt; 0:
+        return exp_point(-x, p).recip_pos()
+    if x == 0:
+        return Iv(s, s, p)
+    # Enclose y=x/2^k in [0,1/2] at the same fixed-point precision.
+    k = 0
+    while ceil_div(x, 1 &lt;&lt; k) &gt; s // 2:
+        k += 1
+    den = 1 &lt;&lt; k
+    y = Iv(x // den, ceil_div(x, den), p)
+    assert 0 &lt;= y.lo &lt;= y.hi &lt;= s // 2
+
+    # Every Taylor term is nonnegative.  The remaining geometric tail is at
+    # most twice the first omitted term because y&lt;=1/2.
+    total = Iv(s, s, p)
+    term = Iv(s, s, p)
+    degree = p + 16
+    for n in range(1, degree + 1):
+        term = (term * y).div_int_pos(n)
+        total = total + term
+    next_term = (term * y).div_int_pos(degree + 1)
+    value = Iv(total.lo, total.hi + 2 * next_term.hi, p)
+    for _ in range(k):
+        value = value * value
+    return value
+
+
+def exp_iv(x: Iv) -&gt; Iv:
+    &quot;&quot;&quot;Monotonic interval extension of exp.&quot;&quot;&quot;
+    lo = exp_point(x.lo, x.p)
+    hi = exp_point(x.hi, x.p)
+    return Iv(lo.lo, hi.hi, x.p)
+
+
+def root_ratio(num: Fraction, denominator: Iv) -&gt; Iv:
+    &quot;&quot;&quot;Enclose num/(denominator/2^p), in units 2^-p; all values positive.&quot;&quot;&quot;
+    assert num &gt;= 0 and denominator.lo &gt; 0
+    s = denominator.scale
+    return Iv((num.numerator * s * s) // (num.denominator * denominator.hi),
+              ceil_div(num.numerator * s * s,
+                       num.denominator * denominator.lo), denominator.p)
+
+
+def fraction_text(q: Fraction) -&gt; str:
+    return f&quot;{q.numerator}/{q.denominator}&quot;
+
+
+def iv_text(x: Iv) -&gt; dict:
+    lo, hi = x.as_fraction_bounds()
+    return {&quot;lo&quot;: fraction_text(lo), &quot;hi&quot;: fraction_text(hi), &quot;dyadic_bits&quot;: x.p}
+
+
+def sector_certificate(N: int, M: Fraction, B: Fraction, p: int = 128) -&gt; dict:
+    &quot;&quot;&quot;Outward-rounded upper bound from the public finite-N sector formula.&quot;&quot;&quot;
+    M, B = Fraction(M), Fraction(B)
+    if N &lt; 1 or M &lt; 0 or B &lt; 0:
+        raise ValueError(&quot;require N&gt;=1 and public bounds M,B&gt;=0&quot;)
+    if 4 * N &lt;= M * M:
+        raise ValueError(&quot;excluded size: t0=2/N-M/N^(3/2) is not positive&quot;)
+    if not isinstance(p, int) or p &lt; 1:
+        raise ValueError(&quot;require positive integer dyadic precision&quot;)
+    s = 1 &lt;&lt; p
+    Miv, Biv = Iv.frac(M, p), Iv.frac(B, p)
+    rscale = sqrt_iv(Fraction(N**3), p, degree=4)
+    sqrtN = sqrt_iv(Fraction(N), p)
+    D, U = Iv.zero(p), Iv.zero(p)
+    sector_rows = []
+    dimension_sum = 0
+    j2_values = range(N % 2, N + 1, 2)
+    for j2 in j2_values:
+        d = j2 + 1
+        k = (N - j2) // 2
+        multiplicity = Fraction(d * comb(N + 1, k), N + 1)
+        dimension_sum += d * multiplicity
+        coeff = d * multiplicity
+        base_exp = Fraction(j2 * (j2 + 2), 2 * N)
+        a = Iv.frac(coeff, p) * exp_iv(Iv.frac(base_exp, p))
+        r = root_ratio(Fraction(j2 + 1, 2), rscale)
+        r2 = r * r
+        tilt = Miv * r2 + Biv * r
+        four_m_r2 = r2.scale_by(4) * Miv
+        b_half_r = Biv.scale_by(Fraction(1, 2)) * r
+        square_term = four_m_r2 + Biv * r
+        P = four_m_r2 + b_half_r + (square_term * square_term).scale_by(Fraction(1, 3))
+        d_term = a * exp_iv(Iv( -tilt.hi, -tilt.lo, p))
+        u_term = a * exp_iv(tilt) * P
+        D, U = D + d_term, U + u_term
+        sector_rows.append({&quot;j_twice&quot;: j2, &quot;multiplicity&quot;: fraction_text(multiplicity),
+                            &quot;r&quot;: iv_text(r), &quot;tilt&quot;: iv_text(tilt),
+                            &quot;D_term&quot;: iv_text(d_term), &quot;U_term&quot;: iv_text(u_term)})
+    assert dimension_sum == 1 &lt;&lt; N, &quot;Schur-sector multiplicities must sum to 2^N&quot;
+    if D.lo &lt;= 0:
+        # The exact ratio denominator is positive. This grid cannot resolve
+        # it; the PUBLIC clipped certificate still lies in [0,1]. Return a
+        # genuine containing interval, not [1,1] and not an unguarded ratio.
+        return {
+            &quot;N&quot;: N, &quot;M&quot;: fraction_text(M), &quot;B&quot;: fraction_text(B),
+            &quot;validity&quot;: &quot;exact check 4N&gt;M^2; t0&gt;0&quot;,
+            &quot;bound_formula&quot;: &quot;min(1, 3M/(2 N^(3/2)) * U_N/D_N)&quot;,
+            &quot;certificate&quot;: iv_text(Iv(0, s, p)),
+            &quot;unclipped_interval&quot;: None,
+            &quot;status&quot;: &quot;CERTIFIED_TRIVIAL_BOUND; denominator unresolved at requested precision&quot;,
+            &quot;dimension_identity&quot;: fraction_text(dimension_sum),
+            &quot;D&quot;: iv_text(D), &quot;U&quot;: iv_text(U), &quot;sectors&quot;: sector_rows,
+            &quot;repair_origin&quot;: &quot;c07_s01 owned-copy boundary repair; underlying primitive c07_l07&quot;,
+        }
+    if M == 0:
+        bound = Iv.zero(p)
+    else:
+        pref = Iv.frac(Fraction(3 * M, 2 * N), p).div_pos(sqrtN)
+        bound = pref * U.div_pos(D)
+    one = s
+    clipped_hi = min(bound.hi, one)
+    clipped = Iv(min(bound.lo, one), clipped_hi, p)
+    return {
+        &quot;N&quot;: N, &quot;M&quot;: fraction_text(M), &quot;B&quot;: fraction_text(B),
+        &quot;validity&quot;: &quot;exact check 4N&gt;M^2; t0&gt;0&quot;,
+        &quot;bound_formula&quot;: &quot;min(1, 3M/(2 N^(3/2)) * U_N/D_N)&quot;,
+        &quot;certificate&quot;: iv_text(clipped),
+        &quot;unclipped_interval&quot;: iv_text(bound),
+        &quot;interval_method&quot;: &quot;outward dyadic arithmetic; exp Taylor on [0,1/2] after range reduction; exact sector multiplicities&quot;,
+        &quot;sector_count&quot;: len(sector_rows),
+        &quot;dimension_identity&quot;: fraction_text(dimension_sum),
+        &quot;D&quot;: iv_text(D), &quot;U&quot;: iv_text(U), &quot;sectors&quot;: sector_rows,
+    }
+
+
+# Exact rational 3x3 matrix utilities used by the square-root construction.
+Matrix = list[list[Fraction]]
+
+
+def eye(n: int = 3) -&gt; Matrix:
+    return [[Fraction(int(i == j)) for j in range(n)] for i in range(n)]
+
+
+def m_add(A: Matrix, B: Matrix) -&gt; Matrix:
+    return [[A[i][j] + B[i][j] for j in range(3)] for i in range(3)]
+
+
+def m_scale(c: Fraction, A: Matrix) -&gt; Matrix:
+    return [[c * A[i][j] for j in range(3)] for i in range(3)]
+
+
+def m_mul(A: Matrix, B: Matrix) -&gt; Matrix:
+    return [[sum((A[i][k] * B[k][j] for k in range(3)), Fraction(0))
+             for j in range(3)] for i in range(3)]
+
+
+def det(A: Matrix) -&gt; Fraction:
+    return (A[0][0] * (A[1][1] * A[2][2] - A[1][2] * A[2][1])
+            - A[0][1] * (A[1][0] * A[2][2] - A[1][2] * A[2][0])
+            + A[0][2] * (A[1][0] * A[2][1] - A[1][1] * A[2][0]))
+
+
+def inv(A: Matrix) -&gt; Matrix:
+    d = det(A)
+    if d == 0:
+        raise ValueError(&quot;singular Newton iterate&quot;)
+    cof = [[Fraction(0) for _ in range(3)] for _ in range(3)]
+    for i in range(3):
+        for j in range(3):
+            rows = [r for r in range(3) if r != i]
+            cols = [c for c in range(3) if c != j]
+            minor = A[rows[0]][cols[0]] * A[rows[1]][cols[1]] - A[rows[0]][cols[1]] * A[rows[1]][cols[0]]
+            cof[i][j] = (-1 if (i + j) % 2 else 1) * minor
+    return [[cof[j][i] / d for j in range(3)] for i in range(3)]
+
+
+def principal_minors_nonnegative(A: Matrix) -&gt; bool:
+    if any(A[i][j] != A[j][i] for i in range(3) for j in range(3)):
+        return False
+    if any(A[i][i] &lt; 0 for i in range(3)):
+        return False
+    for i, j in ((0, 1), (0, 2), (1, 2)):
+        if A[i][i] * A[j][j] - A[i][j] * A[j][i] &lt; 0:
+            return False
+    return det(A) &gt;= 0
+
+
+def leading_minors_positive(A: Matrix) -&gt; bool:
+    return (A[0][0] &gt; 0
+            and A[0][0] * A[1][1] - A[0][1] * A[1][0] &gt; 0
+            and det(A) &gt; 0)
+
+
+def round_nearest_grid(x: Fraction, bits: int) -&gt; Fraction:
+    s = 1 &lt;&lt; bits
+    n, d = x.numerator * s, x.denominator
+    k = (2 * n + d) // (2 * d)
+    return Fraction(k, s)
+
+
+def round_symmetric(A: Matrix, bits: int) -&gt; Matrix:
+    out = [[Fraction(0) for _ in range(3)] for _ in range(3)]
+    for i in range(3):
+        for j in range(i, 3):
+            out[i][j] = out[j][i] = round_nearest_grid(A[i][j], bits)
+    return out
+
+
+def ceil_sqrt_fraction(q: Fraction, bits: int) -&gt; Fraction:
+    assert q &gt;= 0
+    s = 1 &lt;&lt; bits
+    target = q.numerator * s * s
+    k = isqrt(target // q.denominator)
+    if k * k * q.denominator &lt; target:
+        k += 1
+    return Fraction(k, s)
+
+
+def newton_schedule(M: Fraction, q: Fraction, gamma: Fraction) -&gt; tuple[int, int, Fraction, int]:
+    alpha = (q / 4) ** 2
+    # For every eigenvalue lambda in [alpha,2M+alpha], z_0&lt;=4 gamma/q.
+    z_bound = 4 * gamma / q
+    k0, z = 0, z_bound
+    while z &gt; 2:
+        z *= Fraction(5, 8)
+        k0 += 1
+    # Once z&lt;=2, e=z-1&lt;=1 and e_next&lt;=e^2/2.
+    k1, e = 0, Fraction(1)
+    while gamma * e &gt; q / 4:
+        e = e * e / 2
+        k1 += 1
+    k = k0 + k1
+    Lnewt = 1 + 4 * (2 * M + alpha) / alpha
+    local_budget = min(q, q / 4) / (16 * k * Lnewt**k)
+    round_bits = 0
+    while Fraction(3, 2 * (1 &lt;&lt; round_bits)) &gt; local_budget:
+        round_bits += 1
+    return k0, k1, local_budget, round_bits
+
+
+def sqrt_psd3_guarded(C: Matrix, M: Fraction, q: Fraction) -&gt; tuple[Matrix, dict]:
+    &quot;&quot;&quot;Return a rational X with the proved operator bound ||X-sqrt(C)||&lt;q.&quot;&quot;&quot;
+    M, q = Fraction(M), Fraction(q)
+    if M &lt; 0 or q &lt;= 0:
+        raise ValueError(&quot;require M&gt;=0 and target q&gt;0&quot;)
+    if not principal_minors_nonnegative(C):
+        raise ValueError(&quot;C is not exactly positive semidefinite&quot;)
+    cap = m_scale(2 * M, eye())
+    if not principal_minors_nonnegative(m_add(cap, m_scale(Fraction(-1), C))):
+        raise ValueError(&quot;C does not satisfy 0&lt;=C&lt;=2M I&quot;)
+    if M == 0:
+        # Exact PSD and cap checks imply C=0, so no Newton step or division
+        # by a zero iteration count is required.
+        return m_scale(Fraction(0), eye()), {
+            &quot;formal_operator_error_bound&quot;: &quot;0 &lt; q&quot;,
+            &quot;target_q&quot;: fraction_text(q), &quot;total_steps&quot;: 0,
+            &quot;input_psd_and_cap_certified_exactly&quot;: True,
+            &quot;repair_origin&quot;: &quot;c07_s01 owned-copy zero-input repair; underlying primitive c07_l07&quot;,
+        }
+    alpha = (q / 4) ** 2
+    L = 2 * M + alpha
+    gamma_bits = 0
+    while Fraction(1, 1 &lt;&lt; gamma_bits) &gt; q / 4:
+        gamma_bits += 1
+    gamma = ceil_sqrt_fraction(L, gamma_bits)
+    # gamma&gt;=sqrt(L), while the dyadic overshoot is &lt;=q/4&lt;=sqrt(L), hence
+    # gamma&lt;=2sqrt(L). This avoids an eigenvalue or spectral-gap computation.
+    k0, k1, local_budget, round_bits = newton_schedule(M, q, gamma)
+    D = m_add(C, m_scale(alpha, eye()))
+    X = m_scale(gamma, eye())
+    for _ in range(k0 + k1):
+        Xi = inv(X)
+        F = m_add(m_scale(Fraction(1, 2), X),
+                  m_scale(Fraction(1, 4), m_add(m_mul(D, Xi), m_mul(Xi, D))))
+        X = round_symmetric(F, round_bits)
+        if not leading_minors_positive(X):
+            raise AssertionError(&quot;guarded iterate lost positive definiteness&quot;)
+    return X, {
+        &quot;formal_operator_error_bound&quot;: &quot;33q/64 &lt; q&quot;,
+        &quot;target_q&quot;: fraction_text(q), &quot;alpha&quot;: fraction_text(alpha),
+        &quot;gamma&quot;: fraction_text(gamma), &quot;warmup_steps&quot;: k0,
+        &quot;quadratic_steps&quot;: k1, &quot;total_steps&quot;: k0 + k1,
+        &quot;local_rounding_budget&quot;: fraction_text(local_budget),
+        &quot;rounding_grid_bits&quot;: round_bits,
+        &quot;max_entry_rounding&quot;: fraction_text(Fraction(1, 2 * (1 &lt;&lt; round_bits))),
+        &quot;norm_charge&quot;: &quot;3x3 Frobenius bound: op norm per rounding &lt;= 3/(2*2^bits)&quot;,
+        &quot;input_psd_and_cap_certified_exactly&quot;: True,
+    }
+
+
+def mat_text(A: Matrix) -&gt; list[list[str]]:
+    return [[fraction_text(x) for x in row] for row in A]
+
+
+def rotated_diag(values: Iterable[Fraction]) -&gt; Matrix:
+    vals = list(map(Fraction, values))
+    R = [[Fraction(3, 5), Fraction(-4, 5), Fraction(0)],
+         [Fraction(4, 5), Fraction(3, 5), Fraction(0)],
+         [Fraction(0), Fraction(0), Fraction(1)]]
+    return m_mul(m_mul(R, [[vals[0], 0, 0], [0, vals[1], 0], [0, 0, vals[2]]]),
+                 [[R[j][i] for j in range(3)] for i in range(3)])
+
+
+def run_fixtures() -&gt; dict:
+    M = Fraction(1, 10)
+    B = Fraction(1, 5)
+    sector_cases = [
+        (1, Fraction(199, 100), Fraction(1, 10)),  # close to t0=0
+        (2, Fraction(14, 5), Fraction(1, 5)),      # near 2*sqrt(2) boundary
+        (8, M, B), (64, M, B),
+    ]
+    sector = [sector_certificate(N, m, b, 128) for N, m, b in sector_cases]
+    rejected = []
+    for N, m in ((1, Fraction(2)), (2, Fraction(283, 100))):
+        try:
+            sector_certificate(N, m, B)
+        except ValueError as exc:
+            rejected.append({&quot;N&quot;: N, &quot;M&quot;: fraction_text(m), &quot;reason&quot;: str(exc)})
+        else:
+            raise AssertionError(&quot;boundary/excluded t0 fixture was admitted&quot;)
+    zero_M = sector_certificate(8, Fraction(0), B, 96)
+    assert zero_M[&quot;certificate&quot;][&quot;hi&quot;] == &quot;0/1&quot;
+
+    sqrt_cases = []
+    matrices = [
+        (&quot;zero_matrix&quot;, [[Fraction(0) for _ in range(3)] for _ in range(3)], Fraction(1, 1 &lt;&lt; 10)),
+        (&quot;rank_deficient_rotated_tiny_eigenvalue&quot;,
+         rotated_diag([Fraction(0), Fraction(1, 10**40), Fraction(1, 5)]), Fraction(1, 1 &lt;&lt; 12)),
+        (&quot;repeated_eigenvalue&quot;, [[Fraction(1, 10) if i == j else Fraction(0)
+                                  for j in range(3)] for i in range(3)], Fraction(1, 1 &lt;&lt; 12)),
+    ]
+    for name, C, q in matrices:
+        X, cert = sqrt_psd3_guarded(C, M, q)
+        assert leading_minors_positive(X)
+        row = {&quot;name&quot;: name, &quot;C&quot;: mat_text(C), &quot;X&quot;: mat_text(X), **cert}
+        if name == &quot;zero_matrix&quot;:
+            frob2 = sum((x * x for r in X for x in r), Fraction(0))
+            assert frob2 &lt; q * q  # exact rational consequence for C=0
+            row[&quot;exact_fixture_check&quot;] = &quot;sum_ij X_ij^2 &lt; q^2; C=0&quot;
+        else:
+            row[&quot;exact_fixture_check&quot;] = &quot;exact PSD/cap checks; all rounded iterates exactly positive definite&quot;
+        sqrt_cases.append(row)
+    bad_psd = rotated_diag([Fraction(-1, 1 &lt;&lt; 200), Fraction(1, 10), Fraction(1, 5)])
+    try:
+        sqrt_psd3_guarded(bad_psd, M, Fraction(1, 1 &lt;&lt; 12))
+    except ValueError as exc:
+        psd_rejection = str(exc)
+    else:
+        raise AssertionError(&quot;tiny negative eigenvalue fixture was accepted&quot;)
+    bad_cap = [[Fraction(200001, 10**6) if i == j else Fraction(0)
+                for j in range(3)] for i in range(3)]
+    try:
+        sqrt_psd3_guarded(bad_cap, M, Fraction(1, 1 &lt;&lt; 12))
+    except ValueError as exc:
+        cap_rejection = str(exc)
+    else:
+        raise AssertionError(&quot;out-of-cap fixture was accepted&quot;)
+    return {
+        &quot;scope&quot;: &quot;Exact rational input checks and outward-dyadic certificate generation; no hardware preparation.&quot;,
+        &quot;sector_certificates&quot;: sector,
+        &quot;sector_rejections&quot;: rejected,
+        &quot;zero_M_identity&quot;: zero_M,
+        &quot;square_root_fixtures&quot;: sqrt_cases,
+        &quot;square_root_rejections&quot;: {&quot;negative_eigenvalue_minus_2^-200&quot;: psd_rejection,
+                                    &quot;eigenvalue_above_2M&quot;: cap_rejection},
+        &quot;limitations&quot;: [&quot;The finite-N expression certifies the stated separability bound, not optimality.&quot;,
+                        &quot;Square-root error is certified by the written perturbation proof; fixture checks exercise the guards.&quot;,
+                        &quot;No local quantum gate compiler, physical execution, or external priority review is supplied.&quot;],
+    }
+
+
+if __name__ == &quot;__main__&quot;:
+    out = run_fixtures()
+    target = ROOT / &quot;spin_certificates_fixtures.json&quot;
+    target.write_text(json.dumps(out, indent=2))
+    print(json.dumps(out, indent=2))
+    print(f&quot;Saved {target}&quot;)
+</pre><p><a href="../assets/c2ac26e2be253fee25ec93697412836b2e3f73470aaa7320689c553e6a6f4f62.py">Exact original bytes</a></p></html>

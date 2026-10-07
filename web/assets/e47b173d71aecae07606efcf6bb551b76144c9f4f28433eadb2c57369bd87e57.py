@@ -1,0 +1,81 @@
+from fractions import Fraction as F
+from pathlib import Path
+import json
+from time import perf_counter
+
+def potential(x,Q,l):
+    return sum(Q[i][j]*x[i]*x[j] for i in range(3) for j in range(3))+sum(l[i]*x[i] for i in range(3))
+
+def generator(x,Q,l,k=F(1)):
+    a,b,c=x
+    events=[(k*a*c,(0,1,-1)),(a*b,(0,-1,1)),(a*b,(-1,0,0)),
+            (b,(1,0,0)),(c,(0,0,-1)),(1,(0,0,1))]
+    old=potential(x,Q,l)
+    return sum(rate*(potential(tuple(xi+vi for xi,vi in zip(x,v)),Q,l)-old)
+               for rate,v in events if rate)
+
+def coef2(fun):
+    return (fun(2)-2*fun(1)+fun(0))/2
+
+def basis_cases():
+    for i in range(3):
+      for j in range(i,3):
+        Q=[[F(0) for _ in range(3)] for _ in range(3)]
+        Q[i][j]=Q[j][i]=F(1)
+        yield Q,[F(0)]*3
+    for i in range(3):
+        l=[F(0)]*3;l[i]=F(1)
+        yield [[F(0)]*3 for _ in range(3)],l
+
+def main():
+    start=perf_counter();checks=0
+    for Q,l in basis_cases():
+        assert coef2(lambda n:generator((0,n,0),Q,l))==2*Q[0][1];checks+=1
+        assert coef2(lambda a:generator((a,0,1),Q,l,F(2)))==4*(Q[0][1]-Q[0][2]);checks+=1
+        for a in range(1,8):
+            expected=2*(1-a)*(Q[0][1]+Q[0][2])-2*(Q[1][2]+Q[2][2])
+            assert coef2(lambda n:generator((a,n,n),Q,l))==expected;checks+=1
+    # General B,C block after the two A cross terms vanish.
+    for p,q,s in [(F(1),F(0),F(2)),(F(2),F(-1),F(3)),
+                  (F(1,3),F(1,5),F(1,2)),(F(1),F(1),F(1))]:
+        Q=[[F(2),F(0),F(0)],[F(0),p,q],[F(0),q,s]]
+        l=[F(-2),F(-3),F(-4)]
+        for k in (F(1),F(2)):
+          for a in range(1,5):
+            for t in (1,2,3):
+              expected=2*a*(k-t)*((p-q)*t+q-s)-2*(q*t+s)
+              assert coef2(lambda n:generator((a,t*n,n),Q,l,k))==expected;checks+=1
+    # The forced common block has the exact linear-in-n coefficient R(a).
+    for aa,q,la,lb,lc in [(F(2),F(1),F(-2),F(-4),F(-2)),
+                         (F(1,2),F(3,2),F(-1),F(0),F(1))]:
+        Q=[[aa,F(0),F(0)],[F(0),q,q],[F(0),q,q]];l=[la,lb,lc]
+        for a in range(8):
+            ga=lambda x:aa*x*x+la*x
+            qa=ga(a+1)-ga(a)+a*(ga(a-1)-ga(a))
+            expected=qa+a*(lc-lb)+2*q
+            assert generator((a,1,0),Q,l)-generator((a,0,0),Q,l)==expected;checks+=1
+            assert coef2(lambda n:generator((a,n,0),Q,l))==0;checks+=1
+        # Exact Poisson(1) moment identity, not a truncated Poisson sum.
+        expectation_qa=-2*aa*2+(3*aa-la)*1+(aa+la)
+        assert expectation_qa==0;checks+=1
+    # Robust P facet vertex signs (a,b,c admissible on each named facet).
+    facet_checks=0
+    for k in (F(1),F(2)):
+      for a in (F(1,2),F(2)):
+        c=F(1,16);b=c
+        assert a*(b-k*c)+1-c>0;facet_checks+=1
+        b=F(1,16);c=b
+        assert a*(k*c-b)>=0;facet_checks+=1
+        # H=12, endpoints b,c>=1/16 of its line segment.
+        for b,c in [(F(1,16),F(6,5)*(12-F(1,16))),
+                    (12-F(5,6)*F(1,16),F(1,16))]:
+            hprime=F(1,6)*a*(k*c-b)+F(5,6)*(1-c)
+            assert hprime<=-F(1,6);facet_checks+=1
+    out={'status':'PASS','exact_general_quadratic_coefficient_checks':checks,
+         'robust_polytope_facet_checks':facet_checks,
+         'elapsed_seconds':perf_counter()-start,
+         'scope':'Finite exact coefficient transcription and vertex diagnostics; universal no-go and absorber proofs are in common_quadratic_no_go.txt.'}
+    Path(__file__).with_name('general_quadratic_checks.json').write_text(json.dumps(out,indent=2)+'\n')
+    print(json.dumps(out,indent=2))
+
+if __name__=='__main__':main()

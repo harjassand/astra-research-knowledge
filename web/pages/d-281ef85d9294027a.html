@@ -1,0 +1,97 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c07_l08/revisions/stopped_diffusion_costs.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c07_l08/revisions/stopped_diffusion_costs.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Small reproducible arithmetic audit of STOPPED_DIFFUSION cost constants.
+
+This evaluates only displayed bounds and the proposed larger inner ball; it
+does not simulate the SDE or certify the theorem/algorithm.
+&quot;&quot;&quot;
+import json
+import math
+from pathlib import Path
+
+
+def record(M: float, B: float, N: int, theta: float = 0.99) -&gt; dict:
+    L = 2 * M + 1
+    T = 3 * L
+    lam = M + 1
+    # Positive root of (1-x)^2-Lx=0, written without cancellation.
+    xstar = 2 / (L + 2 + math.sqrt(L * L + 4 * L))
+    x_new = theta * xstar
+    r_new = math.sqrt(x_new)
+    gap_new = (1 - x_new) ** 2 - L * x_new
+    gap_identity = (1 - theta) * (1 - theta * xstar * xstar)
+
+    x_old = 1 / (16 * (L + 1))
+    r_old = math.sqrt(x_old)
+    a_old = 2 * math.atanh(r_old / 2)
+    a_new = 2 * math.atanh(r_new / 2)
+    delta = 0.5 - math.log(math.cosh(1))
+    kappa_old = min(a_old**4 / 768, delta / 4)
+    # STOPPED_DIFFUSION&#x27;s radial exponent, strengthened by the quartic bound
+    # f(u)&gt;=delta*u^4 on 0&lt;=u&lt;=1 (the companion L08 INITIAL lemma).
+    kappa_new = min(delta * a_new**4 / 16, delta / 4)
+
+    h = L * math.sqrt(N) / 4 + L / (2 * math.sqrt(N)) + B * N**0.25 / 2
+    kappa1_old = r_old**2 / (256 * L)
+    kappa1_new = r_new**2 / (256 * L)
+    beta_old = T * r_old / (2 * math.sqrt(N)) + 3 * T * r_old / (4 * N**1.5) + B / (2 * N**0.75)
+    beta_new = T * r_new / (2 * math.sqrt(N)) + 3 * T * r_new / (4 * N**1.5) + B / (2 * N**0.75)
+
+    return {
+        &quot;input&quot;: {&quot;M&quot;: M, &quot;B&quot;: B, &quot;N&quot;: N, &quot;theta&quot;: theta},
+        &quot;constants&quot;: {&quot;Lambda&quot;: lam, &quot;Lc&quot;: L, &quot;Tc_upper&quot;: T, &quot;delta&quot;: delta},
+        &quot;old_ball&quot;: {
+            &quot;r0&quot;: r_old,
+            &quot;seed_exponent_kappa0&quot;: kappa_old,
+            &quot;kappa0_times_N&quot;: kappa_old * N,
+            &quot;hit_exponent_kappa1_N15&quot;: kappa1_old * N**1.5,
+            &quot;drift_beta&quot;: beta_old,
+            &quot;r0_over_8&quot;: r_old / 8,
+        },
+        &quot;theta_root_ball&quot;: {
+            &quot;xstar&quot;: xstar,
+            &quot;r0&quot;: r_new,
+            &quot;ellipticity_lower_bound&quot;: gap_new,
+            &quot;ellipticity_identity_check&quot;: gap_identity,
+            &quot;seed_radius_a0&quot;: a_new,
+            &quot;seed_exponent_kappa0&quot;: kappa_new,
+            &quot;kappa0_times_N&quot;: kappa_new * N,
+            &quot;hit_exponent_kappa1_N15&quot;: kappa1_new * N**1.5,
+            &quot;drift_beta&quot;: beta_new,
+            &quot;r0_over_8&quot;: r_new / 8,
+        },
+        &quot;weight_cap&quot;: {
+            &quot;hN&quot;: h,
+            &quot;exp_hN&quot;: math.exp(h),
+            &quot;log10_exp_hN&quot;: h / math.log(10),
+            &quot;global_rejection_proposals_if_trace_lower_1_over_2&quot;: 2 * math.exp(h),
+            &quot;binary_integer_bits_for_weight_value&quot;: math.ceil(h / math.log(2)),
+            &quot;bits_for_logweight_range_plus_fractional_p&quot;: {
+                &quot;formula&quot;: &quot;ceil(log2(hN+1))+p&quot;,
+                &quot;at_p_40&quot;: math.ceil(math.log2(h + 1)) + 40,
+            },
+        },
+        &quot;proposed_seed_envelope&quot;: {
+            &quot;seed_quartic_coefficient_c&quot;: delta / 16,
+            &quot;net_seed_quadratic_coefficient_after_g&quot;: (L - lam) / 16,
+            &quot;note&quot;: &quot;g(R) leading R^2 coefficient is L/16; heat seed contributes -Lambda/16; quartic tail remains integrable.&quot;,
+        },
+        &quot;scope&quot;: &quot;Formula evaluation only; no interval proof, sampler, SDE solver, or local-qubit run.&quot;,
+    }
+
+
+def main() -&gt; None:
+    cases = [record(0.1, 0.2, 50_000), record(0.1, 0.2, 1_000_000)]
+    for item in cases:
+        gap = item[&quot;theta_root_ball&quot;][&quot;ellipticity_lower_bound&quot;]
+        identity = item[&quot;theta_root_ball&quot;][&quot;ellipticity_identity_check&quot;]
+        assert abs(gap - identity) &lt; 1e-12
+        assert gap &gt; 0
+    out = {&quot;scope&quot;: &quot;Displayed-bound arithmetic only; see sibling report for proof and implementation gaps.&quot;, &quot;cases&quot;: cases}
+    dest = Path(__file__).with_suffix(&quot;.json&quot;)
+    dest.write_text(json.dumps(out, indent=2) + &quot;\n&quot;)
+    print(json.dumps(out, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/56ede0c4aab296784332c636babae088a1792473de9f631bff8f934c703ab66d.py">Exact original bytes</a></p></html>

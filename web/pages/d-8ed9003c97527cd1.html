@@ -1,0 +1,96 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c07_s03/audit_two_spin.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c07_s03/audit_two_spin.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Small exact algebra checks and admitted-boundary interval compiler replays.&quot;&quot;&quot;
+import contextlib
+from fractions import Fraction as F
+import importlib.util
+import io
+import json
+from pathlib import Path
+import sys
+import time
+
+HERE=Path(__file__).resolve().parent
+spec=importlib.util.spec_from_file_location(&#x27;compiler&#x27;,HERE/&#x27;certified_two_spin.py&#x27;)
+compiler=importlib.util.module_from_spec(spec)
+spec.loader.exec_module(compiler)
+
+def c(r=0,i=0): return (F(r),F(i))
+def ca(x,y): return (x[0]+y[0],x[1]+y[1])
+def cm(x,y): return (x[0]*y[0]-x[1]*y[1],x[0]*y[1]+x[1]*y[0])
+def cs(x,t): return (x[0]*t,x[1]*t)
+def ma(A,B): return [[ca(a,b) for a,b in zip(ar,br)] for ar,br in zip(A,B)]
+def scale(A,t): return [[cs(x,F(t)) for x in row] for row in A]
+def mm(A,B):
+    n=len(A)
+    return [[sumc(cm(A[i][k],B[k][j]) for k in range(n)) for j in range(n)] for i in range(n)]
+def sumc(xs):
+    out=c()
+    for x in xs: out=ca(out,x)
+    return out
+def tensor(A,B):
+    return [[cm(A[i//len(B)][j//len(B)],B[i%len(B)][j%len(B)])
+             for j in range(len(A)*len(B))] for i in range(len(A)*len(B))]
+
+I=[[c(1),c()],[c(),c(1)]]
+X=[[c(),c(1)],[c(1),c()]]
+Y=[[c(),c(0,-1)],[c(0,1),c()]]
+Z=[[c(1),c()],[c(),c(-1)]]
+II=tensor(I,I)
+XX,YY,ZZ=[tensor(P,P) for P in [X,Y,Z]]
+J=[scale(ma(tensor(P,I),tensor(I,P)),F(1,2)) for P in [X,Y,Z]]
+J2=ma(ma(mm(J[0],J[0]),mm(J[1],J[1])),mm(J[2],J[2]))
+assert J2==ma(scale(II,F(3,2)),scale(ma(ma(XX,YY),ZZ),F(1,2)))
+assert ma(mm(J[0],J[0]),scale(mm(J[1],J[1]),-1))==scale(ma(XX,scale(YY,-1)),F(1,2))
+assert J[2]==scale(ma(tensor(Z,I),tensor(I,Z)),F(1,2))
+commutator=ma(mm(ma(mm(J[0],J[0]),scale(mm(J[1],J[1]),-1)),J[2]),
+              scale(mm(J[2],ma(mm(J[0],J[0]),scale(mm(J[1],J[1]),-1))),-1))
+assert any(x!=c() for row in commutator for x in row)
+
+cases=[(a,b,32) for a in [&#x27;-1&#x27;,&#x27;0&#x27;,&#x27;1&#x27;] for b in [&#x27;-1/2&#x27;,&#x27;0&#x27;,&#x27;1/2&#x27;]]
+cases += [(&#x27;1/4&#x27;,&#x27;1/8&#x27;,64),(&#x27;1/4&#x27;,&#x27;1/8&#x27;,128),
+          (&#x27;1/1099511627776&#x27;,&#x27;-1/1099511627776&#x27;,64)]
+summaries=[]
+start=time.perf_counter()
+for index,(a,b,k) in enumerate(cases):
+    out=HERE/&#x27;evidence&#x27;/&#x27;boundary&#x27;/f&#x27;case_{index:02d}.json&#x27;
+    compiler.ledger=compiler.Ledger()
+    old=sys.argv
+    sys.argv=[&#x27;certified_two_spin.py&#x27;,&#x27;--a=&#x27;+a,&#x27;--b=&#x27;+b,&#x27;--error-bits&#x27;,str(k),
+              &#x27;--uniform-integer&#x27;,str((1&lt;&lt;(k+8))-1),&#x27;--out&#x27;,str(out)]
+    try:
+        with contextlib.redirect_stdout(io.StringIO()): compiler.main()
+    finally:
+        sys.argv=old
+    data=json.loads(out.read_text())
+    assert data[&#x27;sample_local_preparation&#x27;][&#x27;branch_label&#x27;]==&#x27;mixed&#x27;
+    assert data[&#x27;sample_local_preparation&#x27;][&#x27;mixed_emission_independent_bits&#x27;]==[0,1]
+    qs=[F(x) for x in data[&#x27;dyadic_rational_weights&#x27;]]
+    tau=[]
+    for P in [X,scale(X,-1),Y,scale(Y,-1),Z,scale(Z,-1),[[c(),c()],[c(),c()]]]:
+        tau.append(scale(ma(I,P),F(1,2)))
+    density=[[c() for _ in range(4)] for _ in range(4)]
+    for q,t in zip(qs,tau): density=ma(density,scale(tensor(t,t),q))
+    expected=[[c(F(x)) for x in row] for row in data[&#x27;compiled_density_matrix&#x27;]]
+    assert density==expected
+    ns=data[&#x27;dyadic_integer_weights&#x27;]
+    W=data[&#x27;precision&#x27;][&#x27;weight_denominator_bits&#x27;]
+    cumul=0
+    for j,n in enumerate(ns):
+        assert n&gt;0
+        draw=compiler.emit(ns,W,cumul,[0,1])
+        assert draw[&#x27;branch_index&#x27;]==j
+        cumul+=n
+    assert cumul==(1&lt;&lt;W)
+    summaries.append({&#x27;a&#x27;:a,&#x27;b&#x27;:b,&#x27;error_bits&#x27;:k,&#x27;output&#x27;:str(out.relative_to(HERE)),
+                      &#x27;mixture_error_upper&#x27;:data[&#x27;mixture_trace_distance_upper&#x27;],
+                      &#x27;matrix_error_upper&#x27;:data[&#x27;independent_direct_matrix_certificate&#x27;][&#x27;direct_trace_distance_upper&#x27;],
+                      &#x27;max_observed_integer_bits&#x27;:data[&#x27;costs&#x27;][&#x27;audit_including_cumulative_arithmetic&#x27;][&#x27;max_observed_integer_bits&#x27;]})
+report={&#x27;status&#x27;:&#x27;EXACT_IDENTITIES_AND_12_INTERVAL_REPLAYS_PASS&#x27;,
+        &#x27;exact_pauli_identity_checks&#x27;:3,&#x27;exact_noncommutator_witness&#x27;:True,
+        &#x27;rational_complex_mixture_reconstructions&#x27;:len(cases),
+        &#x27;exact_dyadic_boundary_selection_cases&#x27;:7*len(cases),
+        &#x27;cases&#x27;:summaries,&#x27;wall_seconds&#x27;:time.perf_counter()-start,
+        &#x27;scope&#x27;:&#x27;Implementation checks for this admitted N=2 family; not a theorem or hardware validation.&#x27;}
+(HERE/&#x27;evidence&#x27;/&#x27;boundary_audit.json&#x27;).write_text(json.dumps(report,indent=2)+&#x27;\n&#x27;)
+print(json.dumps({&#x27;status&#x27;:report[&#x27;status&#x27;],&#x27;cases&#x27;:len(cases),&#x27;wall_seconds&#x27;:report[&#x27;wall_seconds&#x27;]}))
+</pre><p><a href="../assets/d51ea1136c97ff0614f803358a21383f076c9bcb778647ca882acdd33b6c7cdf.py">Exact original bytes</a></p></html>

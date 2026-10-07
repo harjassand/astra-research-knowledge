@@ -1,0 +1,99 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c06_s02/reviews/peer_copies/covariance_precision.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c06_s02/reviews/peer_copies/covariance_precision.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Exact rational audit of a covariance-quantized thermal-loss instance.
+
+The trace-distance continuity inequality is imported from Mele et al.,
+arXiv:2405.01431v4, Theorem 10. This script checks only the exact covariance,
+energy, physicality, and rational reset-bound arithmetic for the fixture; it
+does not certify either that imported inequality or the N72 reset theorem.
+&quot;&quot;&quot;
+
+from fractions import Fraction as F
+import json
+from pathlib import Path
+
+
+def main():
+    modes = 10_000
+    eta = F(1, 1_000)
+    delta = F(1, 100_000_000)
+
+    # One mode of a stable quadratic Gibbs state at beta*w_tilde=log(4),
+    # with q/p squeezing factors 2 and 1/2.
+    vq, vp = F(5, 3), F(5, 12)
+    xq, xp = vq - F(1, 2), vp - F(1, 2)
+    assert (vq, vp, xq, xp) == (F(5, 3), F(5, 12), F(7, 6), -F(1, 12))
+
+    # A rational raw covariance has spectral-norm error delta, then the
+    # rational delta*I slack makes it physical by V+i*Omega/2 &gt;= 0.
+    # For this exact fixture the raw errors are (-delta, delta/2), so after
+    # slack the q variance is exact and p grows by 3*delta/2.
+    raw_q, raw_p = vq - delta, vp + delta / 2
+    hat_q, hat_p = raw_q + delta, raw_p + delta
+    assert hat_q == vq
+    assert hat_p == vp + 3 * delta / 2
+    assert hat_q * hat_p &gt;= F(1, 4)  # one-mode uncertainty relation
+
+    # Input and output total mean photon numbers. Uniform vacuum loss scales
+    # centered input energy by eta; a passive circuit preserves it.
+    energy_per_mode = (vq + vp - 1) / 2
+    hat_energy_per_mode = (hat_q + hat_p - 1) / 2
+    energy_in = modes * energy_per_mode
+    hat_energy_in = modes * hat_energy_per_mode
+    energy_out = eta * energy_in
+    hat_energy_out = eta * hat_energy_in
+    assert energy_out == F(65, 12)
+    assert hat_energy_out &lt; 6
+
+    # Output covariance difference has one changed quadrature per mode.
+    cov_error_in_trace = modes * (hat_q - vq + hat_p - vp)
+    cov_error_out_trace = eta * cov_error_in_trace
+    assert cov_error_in_trace == F(3, 2) * modes * delta
+    assert cov_error_out_trace == F(3, 20_000_000)
+
+    # Mele et al. Theorem 10 uses V_paper=2*V_here and
+    # d_tr=||rho-sigma||_1/2. For zero means it implies
+    # d_tr &lt;= 2 f(N) sqrt(||V_here-Vhat_here||_1).
+    # With N=6, f(N)^2=6.5+sqrt(42)&lt;13. Hence d_tr^2&lt;52*tau.
+    # The rational 7/2500 bound squares to 7.84e-6 &gt; 52*tau=7.8e-6.
+    cov_tv_bound = F(7, 2_500)
+    assert cov_tv_bound**2 &gt; 52 * cov_error_out_trace
+
+    # N72 ideal-reset bound, evaluated on the rational physical covariance.
+    hat_xq = hat_q - F(1, 2)
+    hat_xp = hat_p - F(1, 2)
+    inv_one_minus_eta = 1 / (1 - eta)
+    phi_per_mode = eta**3 * (
+        hat_xq**2 * (hat_xq + inv_one_minus_eta)
+        + hat_xp**2 * (hat_xp + inv_one_minus_eta)
+    )
+    phi_total = modes * phi_per_mode
+    reset_tv_bound = F(5_184, 25) * phi_total
+    total_bound = cov_tv_bound + reset_tv_bound
+    assert total_bound &lt; F(9, 1_000)  # &lt; 0.009
+
+    result = {
+        &quot;modes&quot;: modes,
+        &quot;eta&quot;: str(eta),
+        &quot;raw_entrywise_slack_delta&quot;: str(delta),
+        &quot;exact_input_covariance_diagonal&quot;: [str(vq), str(vp)],
+        &quot;rational_physical_approx_covariance_diagonal&quot;: [str(hat_q), str(hat_p)],
+        &quot;physicality_determinant&quot;: str(hat_q * hat_p),
+        &quot;input_covariance_trace_error&quot;: str(cov_error_in_trace),
+        &quot;output_covariance_trace_error&quot;: str(cov_error_out_trace),
+        &quot;exact_output_mean_photon_number&quot;: str(energy_out),
+        &quot;approx_output_mean_photon_number&quot;: str(hat_energy_out),
+        &quot;energy_cap_used_for_continuity&quot;: 6,
+        &quot;continuity_tv_bound_rational&quot;: str(cov_tv_bound),
+        &quot;phi_total_for_approx_covariance&quot;: str(phi_total),
+        &quot;ideal_reset_tv_bound_rational&quot;: str(reset_tv_bound),
+        &quot;combined_tv_bound_rational&quot;: str(total_bound),
+        &quot;combined_tv_bound_decimal&quot;: float(total_bound),
+        &quot;status&quot;: &quot;PASS_EXACT_RATIONAL_INSTANCE; imported inequalities remain conditional&quot;,
+    }
+    out = Path(__file__).with_name(&quot;covariance_precision_checks.json&quot;)
+    out.write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+    print(json.dumps(result, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/8154ccd1c2e1d2806b1fbdf78db4797bd78c90680f60110923d1da48fbd95888.py">Exact original bytes</a></p></html>

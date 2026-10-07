@@ -1,0 +1,125 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c06_s03/revisions/001/pauli_order_certificate.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c06_s03/revisions/001/pauli_order_certificate.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Acquired exact third-order coefficient and l1-Pauli norm certificate.
+
+No 2**qubits matrix is constructed. Polynomial fixed-order dictionary algebra
+is charged; admission caps are explicit. This refines the independent quadratic
+gate error certificate and does not acquire any counting probabilities.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from xxz_quadratic_gates import quadratic_plan, ceil_sqrt_fraction
+
+
+ZERO, ONE = (F(0), F(0)), (F(1), F(0))
+
+
+def cadd(a, b):
+    return a[0] + b[0], a[1] + b[1]
+
+
+def cmul(a, b):
+    return a[0] * b[0] - a[1] * b[1], a[0] * b[1] + a[1] * b[0]
+
+
+def pscale(a, s):
+    return {key: (value[0] * s, value[1] * s) for key, value in a.items()
+            if value != ZERO and s != 0}
+
+
+def padd(a, b):
+    result = dict(a)
+    for key, value in b.items():
+        result[key] = cadd(result.get(key, ZERO), value)
+        if result[key] == ZERO:
+            del result[key]
+    return result
+
+
+def pmul(a, b, *, key_cap=4096):
+    result = {}
+    for (x, z), ca in a.items():
+        for (xx, zz), cb in b.items():
+            new_x, new_z = x ^ xx, z ^ zz
+            phase = ((x &amp; z).bit_count() + (xx &amp; zz).bit_count() -
+                     (new_x &amp; new_z).bit_count() + 2 * (z &amp; xx).bit_count()) % 4
+            rotation = [ONE, (F(0), F(1)), (F(-1), F(0)), (F(0), F(-1))][phase]
+            key = (new_x, new_z)
+            result[key] = cadd(result.get(key, ZERO), cmul(cmul(ca, cb), rotation))
+            if result[key] == ZERO:
+                del result[key]
+            if len(result) &gt; key_cap:
+                raise ValueError(&quot;Pauli dictionary admission cap exceeded&quot;)
+    return result
+
+
+def local_paulis(edges, fields):
+    terms = []
+    for u, v, alpha, gamma in edges:
+        alpha, gamma = F(alpha), F(gamma)
+        bits = (1 &lt;&lt; u) | (1 &lt;&lt; v)
+        term = {(0, 0): (3 * alpha, F(0)), (bits, 0): (alpha, F(0)),
+                (bits, bits): (alpha, F(0)), (0, bits): (gamma, F(0))}
+        terms.append({key: value for key, value in term.items() if value != ZERO})
+    for v, b, c in fields:
+        b, c = F(b), F(c)
+        bit = 1 &lt;&lt; v
+        term = {(0, 0): (b + abs(c), F(0)), (bit, 0): (b, F(0)), (0, bit): (c, F(0))}
+        terms.append({key: value for key, value in term.items() if value != ZERO})
+    return terms
+
+
+def third_defect(edges, fields, *, term_cap=12, key_cap=4096):
+    terms = local_paulis(edges, fields)
+    if len(terms) &gt; term_cap:
+        raise ValueError(&quot;local term admission cap exceeded&quot;)
+    identity = {(0, 0): ONE}
+    coefficients = [identity, {}, {}, {}]
+    for A in terms + list(reversed(terms)):
+        local = [identity, A, pscale(pmul(A, A, key_cap=key_cap), F(1, 2))]
+        new = [{}, {}, {}, {}]
+        for degree in range(4):
+            for j in range(min(2, degree) + 1):
+                new[degree] = padd(new[degree], pmul(coefficients[degree - j], local[j], key_cap=key_cap))
+        coefficients = new
+    S = coefficients[1]
+    square = pmul(S, S, key_cap=key_cap)
+    assert coefficients[2] == pscale(square, F(1, 2))
+    defect = padd(coefficients[3], pscale(pmul(square, S, key_cap=key_cap), F(-1, 6)))
+    assert all(imag == 0 for _, imag in defect.values())
+    bound = sum((abs(real) for real, _ in defect.values()), F(0))
+    return defect, bound
+
+
+def ceil_root_fraction(value, degree):
+    value = F(value)
+    if value &lt; 0 or degree &lt; 1:
+        raise ValueError(&quot;invalid root&quot;)
+    upper = (value.numerator + value.denominator - 1) // value.denominator
+    lo, hi = 0, max(1, upper)
+    while lo &lt; hi:
+        mid = (lo + hi) // 2
+        if mid ** degree &gt;= value:
+            hi = mid
+        else:
+            lo = mid + 1
+    return lo
+
+
+def third_certificate_plan(qubits, edges, fields, beta, error, *, term_cap=12, key_cap=4096):
+    original = quadratic_plan(qubits, edges, fields, beta, error)
+    beta, error, tau = F(beta), F(error), original[&quot;tau&quot;]
+    defect, L3 = third_defect(edges, fields, term_cap=term_cap, key_cap=key_cap)
+    m = max(1, (4 * tau.numerator + tau.denominator - 1) // tau.denominator,
+            ceil_sqrt_fraction(beta ** 3 * L3 / error),
+            ceil_root_fraction(8 * tau ** 4 / (9 * error), 3))
+    refined_bound = beta ** 3 * L3 / (8 * m * m) + tau ** 4 / (9 * m ** 3)
+    assert refined_bound &lt;= error / 4
+    if m &lt; original[&quot;m&quot;]:
+        original.update({&quot;m&quot;: m, &quot;s&quot;: beta / (2 * m), &quot;gates&quot;: 2 * m * original[&quot;local_terms&quot;],
+                         &quot;ground_size&quot;: 8 * m * original[&quot;local_terms&quot;],
+                         &quot;log_generator_error_bound&quot;: refined_bound})
+    original.update({&quot;acquired_third_pauli_l1_bound&quot;: L3,
+                     &quot;nonzero_third_paulis&quot;: len(defect), &quot;refined_candidate_m&quot;: m,
+                     &quot;refined_candidate_log_error&quot;: refined_bound,
+                     &quot;third_coefficient&quot;: [{&quot;x&quot;: key[0], &quot;z&quot;: key[1], &quot;real&quot;: value[0]}
+                                           for key, value in sorted(defect.items())]})
+    return original
+</pre><p><a href="../assets/a87e6c2335dbdaccfa9c0dc071052ca71f2b613bd8640700e9751baef3f2401c.py">Exact original bytes</a></p></html>

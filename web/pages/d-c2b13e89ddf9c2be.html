@@ -1,0 +1,198 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c07_s01/revisions/luna_N72/independent_N72_witness_verifier.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c07_s01/revisions/luna_N72/independent_N72_witness_verifier.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;C07_S01 fresh exact verifier of C07_L02&#x27;s finite N72 witness.
+
+No peer implementation is imported or executed. Exponentials use positive
+exp(x/64) Taylor sums and a geometric tail, reciprocal/exact64 powers, then
+owned outward512-bit rounding. This differs from the author&#x27;s alternating
+exp(-x/1024) and ten256-bit interval squares. All scientific operations are
+integer/Fraction arithmetic; wall time metadata may be floating point.
+&quot;&quot;&quot;
+from fractions import Fraction as Q
+from math import comb, factorial
+from pathlib import Path
+from hashlib import sha256
+from datetime import datetime, timezone
+from copy import deepcopy
+import json
+import time
+
+OWN = Path(__file__).resolve().parent
+ROOT = OWN.parents[4]
+SOURCE = ROOT / &#x27;work/cycle6/c07_l02/revisions/axial_hankel_N72_delta81_50_exact.json&#x27;
+EXPECTED_HASH = &#x27;c795d61b152331adc8feec51476bb4690927555b8721390a26fae00f65e1c3c8&#x27;
+BITS = 512
+D = 1 &lt;&lt; BITS
+
+
+def require(test, message):
+    if not test:
+        raise ValueError(message)
+
+
+def floor_q(x):
+    return x.numerator // x.denominator
+
+
+def ceil_q(x):
+    return -((-x.numerator) // x.denominator)
+
+
+def rational(pair):
+    require(isinstance(pair, list) and len(pair) == 2, &#x27;invalid rational pair&#x27;)
+    require(all(isinstance(a, str) and str(int(a)) == a for a in pair), &#x27;noncanonical integer&#x27;)
+    require(int(pair[1]) &gt; 0, &#x27;nonpositive denominator&#x27;)
+    return Q(int(pair[0]), int(pair[1]))
+
+
+def exp_minus(x):
+    require(0 &lt;= x &lt;= Q(729, 25), &#x27;exponent outside N72 declared scope&#x27;)
+    if not x:
+        return Q(1), Q(1)
+    z = x / 64
+    total = term = Q(1)
+    for j in range(1, 81):
+        term *= z / j
+        total += term
+    upper = total + (term * z / 81) / (1 - z / 82)
+    lo, hi = (1 / upper)**64, (1 / total)**64
+    return Q(floor_q(lo * D), D), Q(ceil_q(hi * D), D)
+
+
+def signed_sum(coeff, intervals):
+    lo = hi = Q(0)
+    for k, c in enumerate(coeff):
+        if c &gt;= 0:
+            lo += c * intervals[k][0]
+            hi += c * intervals[k][1]
+        else:
+            lo += c * intervals[k][1]
+            hi += c * intervals[k][0]
+    return lo, hi
+
+
+def powers_of_two(e):
+    return Q(1 &lt;&lt; e) if e &gt;= 0 else Q(1, 1 &lt;&lt; (-e))
+
+
+def strict_power_upper(x):
+    require(x &gt; 0, &#x27;norm must be positive&#x27;)
+    e = x.numerator.bit_length() - x.denominator.bit_length()
+    while x &gt;= powers_of_two(e):
+        e += 1
+    while x &lt; powers_of_two(e - 1):
+        e -= 1
+    return e
+
+
+def verify(cert, cache):
+    require(cert[&#x27;status&#x27;] == &#x27;CERTIFIED_NEGATIVE&#x27;, &#x27;wrong status&#x27;)
+    require(cert[&#x27;N&#x27;] == 72 and cert[&#x27;delta&#x27;] == &#x27;81/50&#x27;, &#x27;wrong physical target&#x27;)
+    require(cert[&#x27;dyadic_bits&#x27;] == 256 and cert[&#x27;quadratic_interval_denominator&#x27;] == str(1 &lt;&lt; 256), &#x27;wrong author interval grid&#x27;)
+    e = cert[&#x27;scale_exponents_e_i&#x27;]
+    z = [rational(pair) for pair in cert[&#x27;z_rational&#x27;]]
+    require(len(e) == len(z) == 36, &#x27;missing witness entry&#x27;)
+    require(all(isinstance(a, int) and 0 &lt;= a &lt;= 34 for a in e), &#x27;wrong witness scale&#x27;)
+    require(z[-1] == 1, &#x27;wrong terminal witness coordinate&#x27;)
+    v = [z_i * powers_of_two(e_i) for z_i, e_i in zip(z, e)]
+    coeff = [Q(0) for _ in range(73)]
+    for i in range(36):
+        for j in range(36):
+            k = i + j + 1
+            coeff[k] += v[i] * v[j] / comb(72, k)
+    saved = cert[&#x27;coefficient_c_k&#x27;]
+    require(set(saved) == {str(k) for k, c in enumerate(coeff) if c}, &#x27;missing coefficient&#x27;)
+    for k, c in enumerate(coeff):
+        if c:
+            require(rational(saved[str(k)]) == c, &#x27;false recorded witness coefficient&#x27;)
+    intervals = [cache[abs(k - 36)] for k in range(73)]
+    form = signed_sum(coeff, intervals)
+    q_intervals = [tuple(t / comb(72, k) for t in intervals[k]) for k in range(73)]
+    # Direct 36x36 quadratic recurrence, without aggregating repeated inputs.
+    lo = hi = Q(0)
+    for i in range(36):
+        for j in range(36):
+            c, k = v[i] * v[j], i + j + 1
+            if c &gt;= 0:
+                lo += c * q_intervals[k][0]
+                hi += c * q_intervals[k][1]
+            else:
+                lo += c * q_intervals[k][1]
+                hi += c * q_intervals[k][0]
+    require(lo &lt;= form[0] &lt;= form[1] &lt;= hi, &#x27;aggregated/direct enclosure mismatch&#x27;)
+    require(hi &lt; -Q(1, 3000), &#x27;direct quadratic form not negative enough&#x27;)
+    recorded = tuple(Q(int(a), 1 &lt;&lt; 256) for a in cert[&#x27;quadratic_interval_scaled_numerators&#x27;])
+    require(len(recorded) == 2 and recorded[0] &lt;= form[0] &lt;= form[1] &lt;= recorded[1], &#x27;independent form outside recorded interval&#x27;)
+    require(form[1] &lt; -Q(1, 3000), &#x27;independent form not negative enough&#x27;)
+    require(max(abs(a) for a in z) &lt; 10**14 and max(e) == 34, &#x27;author norm envelope false&#x27;)
+    norm = sum((v[i]**2 / (comb(36, i + 1) * comb(36, i)) for i in range(36)), Q(0))
+    require(norm &lt; powers_of_two(168), &#x27;author norm charge false&#x27;)
+    norm_e = strict_power_upper(norm)
+    # Scalar negative expectation of sigma uses unnormalized y and Tr(S)&lt;=73.
+    require(Q(1, 3000 * 73) &gt; powers_of_two(-18), &#x27;normalized state margin false&#x27;)
+    require(powers_of_two(168 + 36 + 73 - 300) == powers_of_two(-23), &#x27;author finite-alpha budget false&#x27;)
+    # Root-origin rank-one partial-transpose improvement: &lt;=||y||^2 operator norm.
+    require(powers_of_two(168 + 73 - 264) == powers_of_two(-23), &#x27;root improvement budget false&#x27;)
+    # Independently tighter exact y norm plus the root-origin observable bound.
+    sharper_alpha = norm_e + 93
+    require(norm * powers_of_two(73 - sharper_alpha) &lt; powers_of_two(-20), &#x27;sharper alpha budget false&#x27;)
+    return {&#x27;verified_witness_entries&#x27;: len(z), &#x27;verified_exact_coefficients&#x27;: len(saved),
+            &#x27;independent_exponential_grid_bits&#x27;: BITS,
+            &#x27;independent_quadratic_interval&#x27;: [str(a) for a in form],
+            &#x27;direct_quadratic_interval&#x27;: [str(lo), str(hi)],
+            &#x27;recorded_interval_contains_independent_interval&#x27;: True,
+            &#x27;negative_bound&#x27;: &#x27;-1/3000&#x27;, &#x27;norm_y_squared_exact&#x27;: str(norm),
+            &#x27;norm_y_squared_strict_power_upper&#x27;: norm_e,
+            &#x27;author_alpha_log2_multiplier&#x27;: 300,
+            &#x27;root_origin_improved_alpha_log2_multiplier&#x27;: 264,
+            &#x27;exact_norm_plus_root_bound_alpha_log2_multiplier&#x27;: sharper_alpha,
+            &#x27;all_finite_axial_fields&#x27;: &#x27;NPT preserved by invertible tensor local filters, independently reconstructed; root-origin suggested consequence&#x27;,
+            &#x27;q_intervals&#x27;: [[str(x) for x in pair] for pair in q_intervals]}
+
+
+def negative_controls(cert, cache):
+    controls = []
+    c = deepcopy(cert);c[&#x27;N&#x27;] = 73;controls.append((&#x27;wrong N&#x27;, c))
+    c = deepcopy(cert);c[&#x27;z_rational&#x27;].pop();controls.append((&#x27;missing witness entry&#x27;, c))
+    c = deepcopy(cert);c[&#x27;coefficient_c_k&#x27;][&#x27;1&#x27;][0] = str(int(c[&#x27;coefficient_c_k&#x27;][&#x27;1&#x27;][0]) + 1);controls.append((&#x27;false coefficient&#x27;, c))
+    c = deepcopy(cert);c[&#x27;quadratic_interval_scaled_numerators&#x27;] = [&#x27;-1&#x27;, &#x27;-1&#x27;];controls.append((&#x27;false recorded form interval&#x27;, c))
+    reports = []
+    for name, altered in controls:
+        try:
+            verify(altered, cache)
+        except ValueError as error:
+            reports.append({&#x27;control&#x27;: name, &#x27;status&#x27;: &#x27;REJECTED&#x27;, &#x27;reason&#x27;: str(error)})
+        else:
+            raise ValueError(&#x27;corrupted certificate accepted: &#x27; + name)
+    return reports
+
+
+def main():
+    start = time.perf_counter()
+    raw = SOURCE.read_bytes()
+    require(sha256(raw).hexdigest() == EXPECTED_HASH, &#x27;certificate changed&#x27;)
+    cert = json.loads(raw)
+    cache = {d: exp_minus(Q(9 * d * d, 400)) for d in range(37)}
+    result = verify(cert, cache)
+    result[&#x27;rejection_controls&#x27;] = negative_controls(cert, cache)
+    # A low-order negative control: all adjacent log-convexity gates still pass.
+    # exp(9/400)&lt;37/36 implies the minimum ratio bracket exceeds the Gaussian loss.
+    x = Q(9, 400)
+    S = sum((x**j / factorial(j) for j in range(19)), Q(0))
+    U = S + x**19 / factorial(19) / (1 - x / 20)
+    require(U &lt; Q(37, 36), &#x27;low-order gate check failed&#x27;)
+    result.update({&#x27;status&#x27;: &#x27;PASS distinct exact acquisition and full finite N72 transfer audit&#x27;,
+                   &#x27;utc&#x27;: datetime.now(timezone.utc).isoformat(),
+                   &#x27;certificate_path&#x27;: str(SOURCE), &#x27;certificate_sha256&#x27;: sha256(raw).hexdigest(),
+                   &#x27;verifier_sha256&#x27;: sha256(Path(__file__).read_bytes()).hexdigest(),
+                   &#x27;distinct_exp_method&#x27;: &#x27;positive exp(x/64) Taylor80/geometric tail, reciprocal/exact64 powers, own512-bit outward grid&#x27;,
+                   &#x27;all_two_by_two_principal_Hankel_minors&#x27;: &#x27;strictly positive by exact discrete log-convexity; higher-order H1 witness is nevertheless negative&#x27;,
+                   &#x27;finite_scope_only&#x27;: &#x27;N72 delta81/50; no unbounded-N persistence or eventual-positivity inference&#x27;,
+                   &#x27;wall_seconds&#x27;: time.perf_counter() - start})
+    (OWN / &#x27;INDEPENDENT_N72_WITNESS_VERIFY.json&#x27;).write_text(json.dumps(result, indent=2) + &#x27;\n&#x27;)
+    print(json.dumps({k: result[k] for k in [&#x27;status&#x27;, &#x27;verified_witness_entries&#x27;, &#x27;verified_exact_coefficients&#x27;,
+          &#x27;norm_y_squared_strict_power_upper&#x27;, &#x27;exact_norm_plus_root_bound_alpha_log2_multiplier&#x27;, &#x27;wall_seconds&#x27;]}, indent=2))
+
+
+if __name__ == &#x27;__main__&#x27;:
+    main()
+</pre><p><a href="../assets/fc71ebb726aa3f6f7d817e66cb78aa6912138944aa23d40f6c0d57d431379eb9.py">Exact original bytes</a></p></html>

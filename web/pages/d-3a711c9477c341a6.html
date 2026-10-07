@@ -1,0 +1,122 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c09_s03/revisions/trace_information_certificate.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c09_s03/revisions/trace_information_certificate.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Source-weight information upper from a supplied exact finite matrix table.
+
+No matrix square-root/eigenvalue oracle. PSD is checked by exact Schur steps.
+Log intervals reuse an owned implementation; importing it does not run checks.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from pathlib import Path
+import sys
+import json
+import time
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from log_covariance_certificate import log_interval
+
+
+def psd_check(matrix):
+    a = [[F(x) for x in row] for row in matrix]
+    d = len(a)
+    if not d or any(len(row) != d for row in a):
+        raise ValueError(&#x27;square nonempty matrix required&#x27;)
+    if any(a[i][j] != a[j][i] for i in range(d) for j in range(d)):
+        raise ValueError(&#x27;matrix must be symmetric&#x27;)
+    operations = 0
+    max_bits = 0
+    rank = 0
+    for k in range(d):
+        pivot = a[k][k]
+        if pivot &lt; 0:
+            raise ValueError(&#x27;negative Schur pivot&#x27;)
+        if pivot == 0:
+            if any(a[k][j] != 0 for j in range(k + 1, d)):
+                raise ValueError(&#x27;nonzero row at zero Schur pivot&#x27;)
+            continue
+        rank += 1
+        for i in range(k + 1, d):
+            for j in range(i, d):
+                a[i][j] -= a[i][k] * a[k][j] / pivot
+                a[j][i] = a[i][j]
+                operations += 4
+                max_bits = max(max_bits, a[i][j].numerator.bit_length(), a[i][j].denominator.bit_length())
+    return {&#x27;rank&#x27;: rank, &#x27;rational_operations&#x27;: operations, &#x27;max_fraction_bits&#x27;: max_bits}
+
+
+def certificate(weights, matrices, cap, eta=F(1, 2**36)):
+    weights = list(map(F, weights))
+    cap = F(cap)
+    if cap &lt;= 0 or len(weights) != len(matrices) or not weights or min(weights) &lt; 0 or sum(weights) != 1:
+        raise ValueError(&#x27;invalid cap/table law&#x27;)
+    d = len(matrices[0])
+    stats = []
+    energy = F(0)
+    for w, matrix in zip(weights, matrices):
+        if len(matrix) != d:
+            raise ValueError(&#x27;dimension mismatch&#x27;)
+        stats.append(psd_check(matrix))
+        energy += w * sum(F(matrix[i][i]) for i in range(d))
+    q = 1 + cap
+    # Cancellation-aware absolute H interval, not merely absolute log error.
+    lo, hi, terms = log_interval(q, F(eta) * cap**2 / q**2)
+    hlo = q**2 / cap**2 * lo - q / cap - F(1, 2)
+    hhi = q**2 / cap**2 * hi - q / cap - F(1, 2)
+    assert hhi - hlo &lt;= eta
+    hlo = max(F(0), hlo)
+    glo = max(F(0), (q/cap*lo-1)/2)
+    ghi = (q/cap*hi-1)/2
+    assert ghi-glo &lt;= eta
+    bound = ghi * energy
+    return {&#x27;cap&#x27;: str(cap), &#x27;G_lower&#x27;: str(glo), &#x27;G_upper&#x27;: str(ghi),
+            &#x27;H_lower&#x27;: str(hlo), &#x27;H_upper&#x27;: str(hhi),
+            &#x27;mean_trace_exact&#x27;: str(energy), &#x27;integrated_MI_dT_over_T_squared_upper&#x27;: str(bound),
+            &#x27;H_energy_corollary_upper_for_comparison&#x27;: str(2*hhi*energy),
+            &#x27;coarse_linear_cap_trace_upper_for_comparison&#x27;: str(cap*energy/4),
+            &#x27;upper_float_display_only&#x27;: float(bound), &#x27;states_read&#x27;: len(weights), &#x27;dimension&#x27;: d,
+            &#x27;scalar_model_entries_read&#x27;: len(weights) * (d*d + 1),
+            &#x27;psd_checks&#x27;: stats, &#x27;atanh_series_terms&#x27;: terms,
+            &#x27;H_absolute_interval_width&#x27;: str(eta),
+            &#x27;scope&#x27;: &#x27;Rigorous exact fixed-reference KL integral upper G_L EtrB for supplied PSD-table law. H_L variance branch separately derived but variance not acquired. No MI computation or unknown-field acquisition.&#x27;}
+
+
+def main():
+    start = time.perf_counter()
+    mats = [[[1, 1], [1, 1]], [[1, 0], [0, 0]], [[0, 0], [0, 2]]]
+    weights = [F(1, 4), F(1, 2), F(1, 4)]
+    caps = [F(1, 1000), F(1, 2), F(1), F(16), F(256), F(2**20)]
+    certs = [certificate(weights, mats, L) for L in caps]
+    # Different nullspaces and a noncommuting rank-one matrix are admitted.
+    assert sum(F(c[&#x27;mean_trace_exact&#x27;]) != F(3, 2) for c in certs) == 0
+    bad = [[[0, 1], [1, 0]], [[1, 2], [2, 1]], [[-1]], [[1, 1], [0, 1]]]
+    rejections = 0
+    for a in bad:
+        try:
+            psd_check(a)
+        except ValueError:
+            rejections += 1
+        else:
+            raise AssertionError(&#x27;invalid PSD table accepted&#x27;)
+    exact_derivative = 0
+    for L in caps:
+        q = 1 + L
+        for u in [F(1, 3), F(1), F(7)]:
+            for T in [F(1, 8), F(1), F(8)]:
+                t = T*u*u/L
+                a = 1 + L*T*u*u/(L + T*u*u)
+                # Squared u derivative / T^2 times dT/dt, no sqrt needed.
+                lhs = u*u*L**4 / ((L+T*u*u)**4 * a) * L/(u*u)
+                rhs = L / ((1+t)**3*(1+q*t))
+                assert lhs == rhs
+                exact_derivative += 1
+        lo, hi, _ = log_interval(1+L, F(1, 2**32))
+        assert F(certs[caps.index(L)][&#x27;H_lower&#x27;]) &lt;= hi
+    out = Path(__file__).with_name(&#x27;trace_information_checks.json&#x27;)
+    result = {&#x27;certificates&#x27;: certs, &#x27;invalid_matrix_rejections&#x27;: rejections,
+              &#x27;exact_derivative_change_of_variable_checks&#x27;: exact_derivative,
+              &#x27;elapsed_seconds&#x27;: time.perf_counter() - start,
+              &#x27;finite_fixtures_are_not_theorem_validation&#x27;: True}
+    out.write_text(json.dumps(result, indent=2) + &#x27;\n&#x27;)
+    print(json.dumps({&#x27;certificates&#x27;: len(certs), &#x27;exact_derivative_checks&#x27;: exact_derivative,
+                      &#x27;invalid_PSD_rejections&#x27;: rejections, &#x27;seconds&#x27;: result[&#x27;elapsed_seconds&#x27;], &#x27;output&#x27;: str(out)}))
+
+if __name__ == &#x27;__main__&#x27;:
+    main()
+</pre><p><a href="../assets/00e23611669ed78a9d08c416a1272bd76bb210f6b0bc0c39b222973f7abc2b0c.py">Exact original bytes</a></p></html>

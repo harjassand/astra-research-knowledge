@@ -1,0 +1,55 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c07_l04/anisotropy_scaling.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c07_l04/anisotropy_scaling.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Sector diagnostic for a growing one-axis anisotropy A_N=sqrt(N) e_x e_x^T.
+
+J^2 and J_x commute, so exact (j,m_x) weights are
+  d[N,j] exp(2 j(j+1)/N + m_x^2/N),
+where d[N,j] is the exact spin-j multiplicity. Multiplicities are formed from
+exact central binomials and a stable recurrence; only normalized exponentials
+are floating point. This is a bounded diagnostic, not a proof of concentration.
+&quot;&quot;&quot;
+import json
+import math
+from pathlib import Path
+
+
+def logsumexp(xs):
+    peak = max(xs)
+    return peak + math.log(math.fsum(math.exp(x - peak) for x in xs))
+
+
+def median(n):
+    half = n // 2
+    log_d = math.log(math.comb(n, half)) - math.log(half + 1)
+    logs = []
+    spins = range(half + 1)
+    for j in spins:
+        mlogs = [m * m / n for m in range(-j, j + 1)]
+        logs.append(log_d + 2 * j * (j + 1) / n + logsumexp(mlogs))
+        if j &lt; half:
+            log_d += math.log((half - j) * (2 * j + 3) / ((half + j + 2) * (2 * j + 1)))
+    peak = max(logs)
+    weights = [math.exp(x - peak) for x in logs]
+    threshold = math.fsum(weights) / 2
+    cumulative = 0.0
+    for j, w in zip(spins, weights):
+        cumulative += w
+        if cumulative &gt;= threshold:
+            return float(j)
+    raise RuntimeError(&quot;median not found&quot;)
+
+
+rows = []
+for n in (256, 1024, 4096):
+    jmed = median(n)
+    rows.append({&quot;N&quot;: n, &quot;median_j&quot;: jmed, &quot;median_j_over_N&quot;: jmed / n,
+                 &quot;median_j_over_N_3_4&quot;: jmed / n ** 0.75})
+path = Path(__file__).with_suffix(&quot;.json&quot;)
+path.write_text(json.dumps({
+    &quot;status&quot;: &quot;floating-point normalized exact-sector diagnostic; not a proof&quot;,
+    &quot;model&quot;: &quot;A_N=sqrt(N) diag(1,0,0), b=0; K=2J^2/N+J_x^2/N&quot;,
+    &quot;rows&quot;: rows,
+}, indent=2) + &quot;\n&quot;)
+print(path)
+for row in rows:
+    print(row)
+</pre><p><a href="../assets/680702f763ba5c5f6e25053587d3ccf3a81776de31c03ca9872cf6629bc09977.py">Exact original bytes</a></p></html>

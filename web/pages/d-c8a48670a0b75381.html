@@ -1,0 +1,173 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c05_s03/revisions/optimal_prefix_independent_integer_verifier.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c05_s03/revisions/optimal_prefix_independent_integer_verifier.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Bounded independent verification of optimal-prefix exact interval evidence.
+
+Inputs use a DIFFERENT exponential enclosure: positive Taylor series for
+exp(+y), an explicit geometric upper tail, reciprocal, and guarded squaring.
+LDL is checked using independently implemented INTEGER outward arithmetic;
+saved division bounds are checked by exact cross multiplication. No author&#x27;s
+Arithmetic import, libm, floating sign, or unrounded Fraction LDL is used.
+&quot;&quot;&quot;
+from pathlib import Path
+from math import comb,gcd
+import argparse,datetime,hashlib,json,time
+
+OWN=Path(__file__).parent
+DN,DD=138629437,100000000
+
+def up(n,d):
+    assert d&gt;0
+    return (n+d-1)//d
+
+class Checker:
+    def __init__(self,p,guard,deadline):
+        self.p=p;self.D=1&lt;&lt;p;self.guard=guard;self.Q=1&lt;&lt;(p+guard)
+        self.deadline=deadline;self.stage=&#x27;initialization&#x27;
+        self.counts={&#x27;independent_exp_inputs&#x27;:0,&#x27;contained_q_enclosures&#x27;:0,
+                     &#x27;certified_blocks&#x27;:0,&#x27;positive_pivots&#x27;:0,&#x27;cross_multiplied_L_entries&#x27;:0}
+    def check_time(self,stage):
+        self.stage=stage
+        if time.perf_counter()&gt;self.deadline:raise TimeoutError(&#x27;Prospective verifier cap reached: &#x27;+stage)
+    def add(self,a,b):return a[0]+b[0],a[1]+b[1]
+    def sub(self,a,b):return a[0]-b[1],a[1]-b[0]
+    def product(self,a,b):
+        products=(a[0]*b[0],a[0]*b[1],a[1]*b[0],a[1]*b[1])
+        return min(products)//self.D,up(max(products),self.D)
+    def sq(self,a):
+        low=0 if a[0]&lt;=0&lt;=a[1] else min(a[0]*a[0],a[1]*a[1])
+        high=max(a[0]*a[0],a[1]*a[1])
+        return low//self.D,up(high,self.D)
+    def independent_q(self,N,k):
+        numerator=DN*(2*k-N)**2;denominator=DD*4*N
+        if not numerator:
+            lo=hi=self.Q
+        else:
+            g=gcd(numerator,denominator);numerator//=g;denominator//=g
+            r=0
+            while 16*numerator&gt;denominator:denominator*=2;r+=1
+            # y&lt;=1/16. Sum positive exp(+y) terms with directed integer bounds.
+            term_lo=term_hi=self.Q;sum_lo=sum_hi=self.Q;n=0
+            threshold=1&lt;&lt;(self.guard//2)
+            while True:
+                n+=1
+                term_lo=(term_lo*numerator)//(denominator*n)
+                term_hi=up(term_hi*numerator,denominator*n)
+                if term_hi&lt;=threshold:
+                    tail=up(term_hi*denominator*(n+1),denominator*(n+1)-numerator)
+                    exp_plus_lo=sum_lo;exp_plus_hi=sum_hi+tail
+                    break
+                sum_lo+=term_lo;sum_hi+=term_hi
+                if n&gt;10000:raise ArithmeticError(&#x27;Independent positive series failed to terminate&#x27;)
+            # Reciprocal at guard precision; each exact quantity stays enclosed.
+            lo=(self.Q*self.Q)//exp_plus_hi;hi=up(self.Q*self.Q,exp_plus_lo)
+            for _ in range(r):
+                lo=(lo*lo)//self.Q;hi=up(hi*hi,self.Q)
+        C=comb(N,k)
+        self.counts[&#x27;independent_exp_inputs&#x27;]+=1
+        return lo//C,up(hi,C)
+    def inputs(self,case):
+        N=case[&#x27;N&#x27;];q=[tuple(map(int,a)) for a in case[&#x27;q_intervals&#x27;]]
+        assert len(q)==N+1
+        for k in range(N//2+1):
+            self.check_time(f&#x27;N{N} independent exp input{k}&#x27;)
+            independent=self.independent_q(N,k)
+            for j in {k,N-k}:
+                assert q[j][0]&lt;=q[j][1]
+                assert q[j]==q[k],&#x27;Exact palindrome not represented consistently&#x27;
+                # Cross multiplication compares the different guarded scales.
+                assert q[j][0]*self.Q&lt;=independent[0]*self.D
+                assert independent[1]*self.D&lt;=q[j][1]*self.Q
+                self.counts[&#x27;contained_q_enclosures&#x27;]+=1
+        return q
+    def blocks(self,N,q):
+        if N%2:
+            m=N//2+1
+            return [(0,&#x27;full_odd&#x27;,m,[[q[i+j] for j in range(m)] for i in range(m)])]
+        result=[]
+        for shift in (0,1):
+            m=(N-shift)//2+1;h=m//2
+            H=[[q[i+j+shift] for j in range(m)] for i in range(m)]
+            P=[];A=[]
+            for i in range(h):
+                pr=[];ar=[]
+                for j in range(h):
+                    p=self.add(H[i][j],H[i][m-1-j]);a=self.sub(H[i][j],H[i][m-1-j])
+                    pr.append((2*p[0],2*p[1]));ar.append((2*a[0],2*a[1]))
+                if m%2:pr.append((2*H[i][h][0],2*H[i][h][1]))
+                P.append(pr);A.append(ar)
+            if m%2:P.append([(2*H[h][i][0],2*H[h][i][1]) for i in range(h)]+[H[h][h]])
+            result.extend([(shift,&#x27;plus&#x27;,m,P),(shift,&#x27;minus&#x27;,m,A)])
+        return result
+    def verify_block(self,N,expected,saved):
+        shift,kind,original,H=expected;n=len(H)
+        assert (saved[&#x27;shift&#x27;],saved[&#x27;block_kind&#x27;],saved[&#x27;original_dimension&#x27;],saved[&#x27;dimension&#x27;])==(shift,kind,original,n)
+        ds=[tuple(map(int,a)) for a in saved[&#x27;diagonal_intervals&#x27;]]
+        assert len(ds)==n and len(saved[&#x27;L_strict_lower_intervals&#x27;])==n
+        L=[[(0,0) for _ in range(n)] for _ in range(n)]
+        for i,row in enumerate(saved[&#x27;L_strict_lower_intervals&#x27;]):
+            assert len(row)==i
+            for k,a in enumerate(row):L[i][k]=tuple(map(int,a));assert L[i][k][0]&lt;=L[i][k][1]
+            L[i][i]=(self.D,self.D)
+        for i in range(n):
+            self.check_time(f&#x27;N{N},shift{shift},{kind},pivot{i}&#x27;)
+            pivot=H[i][i]
+            for k in range(i):pivot=self.sub(pivot,self.product(self.sq(L[i][k]),ds[k]))
+            assert 0&lt;ds[i][0]&lt;=pivot[0]&lt;=pivot[1]&lt;=ds[i][1]
+            self.counts[&#x27;positive_pivots&#x27;]+=1
+            for j in range(i+1,n):
+                self.check_time(f&#x27;N{N},shift{shift},{kind},L{j},{i}&#x27;)
+                numerator=H[j][i]
+                for k in range(i):numerator=self.sub(numerator,self.product(self.product(L[j][k],L[i][k]),ds[k]))
+                lo,hi=L[j][i]
+                for u in numerator:
+                    for d in ds[i]:
+                        # All denominator endpoints are positive. No division
+                        # rounding implementation is shared with the author.
+                        assert lo*d&lt;=u*self.D&lt;=hi*d
+                self.counts[&#x27;cross_multiplied_L_entries&#x27;]+=1
+        self.counts[&#x27;certified_blocks&#x27;]+=1
+    def case(self,case):
+        N=case[&#x27;N&#x27;];q=self.inputs(case);blocks=self.blocks(N,q)
+        if N%2:assert case[&#x27;omitted_matrix_identity&#x27;]==&#x27;H1=J H0 J&#x27;
+        else:assert case[&#x27;omitted_matrix_identity&#x27;] is None
+        assert len(blocks)==len(case[&#x27;matrices&#x27;])
+        for expected,saved in zip(blocks,case[&#x27;matrices&#x27;]):self.verify_block(N,expected,saved)
+
+def main():
+    ap=argparse.ArgumentParser()
+    ap.add_argument(&#x27;--source&#x27;,required=True);ap.add_argument(&#x27;--wall-limit&#x27;,type=float,required=True)
+    ap.add_argument(&#x27;--guard&#x27;,type=int,default=64)
+    args=ap.parse_args();assert 0&lt;args.wall_limit&lt;=60 and args.guard&gt;=32
+    source=Path(args.source)
+    outpath=OWN/(source.stem+f&#x27;_independent_integer_G{args.guard}.json&#x27;)
+    if outpath.exists():raise SystemExit(&#x27;Preserving earlier verification receipt; choose a new declared guard precision.&#x27;)
+    started=time.perf_counter();deadline=started+args.wall_limit
+    receipt={&#x27;status&#x27;:&#x27;RUNNING&#x27;,&#x27;source&#x27;:str(source),&#x27;declared_total_wall_cap_seconds&#x27;:args.wall_limit,
+             &#x27;guard_bits&#x27;:args.guard,&#x27;started_utc&#x27;:datetime.datetime.now(datetime.timezone.utc).isoformat(),
+             &#x27;input_algorithm&#x27;:&#x27;positive directed Taylor exp(+y), y&lt;=1/16, geometric tail, reciprocal, guarded squaring&#x27;,
+             &#x27;operation_algorithm&#x27;:&#x27;independent outward INTEGER recurrence and exact cross-multiplication LDL division checks&#x27;,
+             &#x27;completed_cases&#x27;:[]}
+    checker=None
+    try:
+        data=json.loads(source.read_text())
+        assert data[&#x27;status&#x27;]==&#x27;PASS all requested finite cases strictly positive&#x27;
+        assert data[&#x27;delta&#x27;]==f&#x27;{DN}/{DD}&#x27;
+        P=data[&#x27;precision_bits&#x27;];assert int(data[&#x27;denominator&#x27;])==1&lt;&lt;P
+        lo,hi=data[&#x27;requested_N_range&#x27;];assert 3&lt;=lo&lt;=hi&lt;=199
+        assert [c[&#x27;N&#x27;] for c in data[&#x27;cases&#x27;]]==list(range(lo,hi+1))
+        checker=Checker(P,args.guard,deadline)
+        for case in data[&#x27;cases&#x27;]:
+            checker.case(case);receipt[&#x27;completed_cases&#x27;].append(case[&#x27;N&#x27;])
+        receipt[&#x27;status&#x27;]=&#x27;PASS independent exact inputs/congruences/LDL for every requested case&#x27;
+        receipt[&#x27;requested_N_range&#x27;]=[lo,hi];receipt[&#x27;precision_bits&#x27;]=P
+    except Exception as e:
+        receipt[&#x27;status&#x27;]=&#x27;INCOMPLETE&#x27;;receipt[&#x27;failure&#x27;]=repr(e)
+        receipt[&#x27;failure_stage&#x27;]=checker.stage if checker else &#x27;load/admission&#x27;
+    receipt[&#x27;wall_seconds&#x27;]=time.perf_counter()-started
+    receipt[&#x27;verified_counts&#x27;]=checker.counts if checker else None
+    receipt[&#x27;source_sha256&#x27;]=hashlib.sha256(source.read_bytes()).hexdigest()
+    receipt[&#x27;checker_sha256&#x27;]=hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
+    outpath.write_text(json.dumps(receipt,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({k:v for k,v in receipt.items() if k!=&#x27;completed_cases&#x27;},indent=2))
+    if receipt[&#x27;status&#x27;]==&#x27;INCOMPLETE&#x27;:raise SystemExit(1)
+
+if __name__==&#x27;__main__&#x27;:main()
+</pre><p><a href="../assets/19b91b7cc16fb349ba0306a57b9d803e575f797b32b0479513171a873262c502.py">Exact original bytes</a></p></html>

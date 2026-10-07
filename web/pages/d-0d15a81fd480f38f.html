@@ -1,0 +1,95 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c04_l10/revisions/gap_check.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c04_l10/revisions/gap_check.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact small checks for the fixed-point/gap and pairwise-compatibility note.&quot;&quot;&quot;
+
+from fractions import Fraction as F
+from itertools import product
+import json
+
+import sympy as s
+
+
+def kron(a, b):
+    return s.kronecker_product(a, b)
+
+
+def ptrace_second(a):
+    return s.Matrix(2, 2, lambda i, j: s.simplify(sum(a[2*i+k, 2*j+k] for k in range(2))))
+
+
+I2 = s.eye(2)
+I4 = s.eye(4)
+X = s.Matrix([[0, 1], [1, 0]])
+Y = s.Matrix([[0, -s.I], [s.I, 0]])
+Z = s.diag(1, -1)
+paulis = (I2, X, Y, Z)
+
+# Verify the d=2 symmetric 1-&gt;2 cloner used in the pairwise/global example.
+# Build swap directly in the computational basis |a,b&gt; -&gt; |b,a&gt;.
+swap = s.zeros(4)
+for a in range(2):
+    for b in range(2):
+        swap[2*b+a, 2*a+b] = 1
+Pplus = (I4 + swap) / 2
+Kraus = []
+for j in range(2):
+    ket = s.zeros(2, 1)
+    ket[j, 0] = 1
+    Kraus.append(s.sqrt(s.Rational(2, 3)) * Pplus * kron(I2, ket))
+
+assert all(s.simplify(x) == 0 for x in (sum((k.H*k for k in Kraus), s.zeros(2)) - I2))
+assert s.simplify(swap * Pplus - Pplus) == s.zeros(4)
+
+def clone(a):
+    return sum((k * a * k.H for k in Kraus), s.zeros(4))
+
+def depol(a, lam):
+    return s.Rational(lam) * a + (1 - s.Rational(lam)) * s.trace(a) * I2 / 2
+
+for a in paulis:
+    marginal = ptrace_second(clone(a))
+    assert s.simplify(marginal - depol(a, s.Rational(2, 3))) == s.zeros(2)
+
+# The 9/10 cloner + 1/10 replacement broadcaster has marginal Delta_(3/5).
+lam = F(3, 5)
+assert F(9, 10) * F(2, 3) == lam
+
+# Pairwise noisy Pauli measurements have an explicit exact parent. Positivity
+# is equivalent to 2*eta^2 &lt;= 1, checked without floating square roots.
+eta = F(3, 5)
+pair_positive_margin = F(1) - 2 * eta * eta
+assert pair_positive_margin &gt; 0
+
+# A symmetrized joint parent for the triple would require 3*eta^2 &lt;= 1.
+triple_positivity_margin = F(1) - 3 * eta * eta
+assert triple_positivity_margin &lt; 0
+
+# Classical two-state flip channel: Pauli eigenvalues (1,0,0,1-2eps).
+eps = F(1, 20)
+lam_slow = 1 - 2 * eps
+gamma = min(F(1), 1 - lam_slow)
+assert gamma == F(1, 10)
+IminusE = s.diag(0, 1, 1, 0)
+IminusPhi = s.diag(0, 1, 1, s.Rational(1, 10))
+gap_slack = (1 / s.Rational(1, 10)) * IminusPhi - IminusE
+assert gap_slack == s.diag(0, 9, 9, 1)
+
+result = {
+    &quot;status&quot;: &quot;PASS&quot;,
+    &quot;cloner_tp&quot;: True,
+    &quot;cloner_symmetric_output&quot;: True,
+    &quot;cloner_marginal_eigenvalues&quot;: [&quot;1&quot;, &quot;2/3&quot;, &quot;2/3&quot;, &quot;2/3&quot;],
+    &quot;mixture_weights&quot;: [&quot;9/10 cloner&quot;, &quot;1/10 replacement&quot;],
+    &quot;mixture_marginal&quot;: &quot;Delta_(3/5)&quot;,
+    &quot;pairwise_parent_positivity_margin_squared&quot;: str(pair_positive_margin),
+    &quot;triple_parent_positivity_margin&quot;: str(triple_positivity_margin),
+    &quot;classical_flip_epsilon&quot;: str(eps),
+    &quot;classical_spectral_gap&quot;: str(gamma),
+    &quot;fixed_projection_comparison_slack&quot;: [[str(x) for x in gap_slack.row(i)] for i in range(4)],
+    &quot;limitations&quot;: [
+        &quot;finite exact checks validate formulas only&quot;,
+        &quot;the fixed-projection constant depends on the spectral gap&quot;,
+        &quot;the pair/triple example blocks a proof route, not EB rounding itself&quot;,
+    ],
+}
+print(json.dumps(result, indent=2))
+</pre><p><a href="../assets/29d0f25bdfd667504b0e11a0d34eae676b96289446e6e651ec382d4fe6568865.py">Exact original bytes</a></p></html>

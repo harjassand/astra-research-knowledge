@@ -1,0 +1,64 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/control/harvest.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/control/harvest.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Read-only worker harvesting; preserve initial hashes and flag modifications.&quot;&quot;&quot;
+import json, hashlib, datetime, shutil
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[3]
+OUT = ROOT / &#x27;outputs/round6&#x27;
+now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+prior_path = OUT / &#x27;INITIAL_RECEIPTS.json&#x27;
+prior = json.loads(prior_path.read_text()) if prior_path.exists() else {&#x27;workers&#x27;: {}}
+workers = prior[&#x27;workers&#x27;]
+for cohort, count in [(&#x27;s&#x27;, 3), (&#x27;l&#x27;, 10)]:
+    for cluster in range(1, 11):
+        for index in range(1, count+1):
+            wid = f&#x27;c{cluster:02}_{cohort}{index:02}&#x27;
+            p = ROOT / &#x27;work/cycle6&#x27; / wid / &#x27;INITIAL.txt&#x27;
+            if not p.exists():
+                p = OUT / wid / &#x27;INITIAL.txt&#x27;
+            if not p.exists():
+                continue
+            raw = p.read_bytes()
+            digest = hashlib.sha256(raw).hexdigest()
+            metadata = p.with_suffix(&#x27;.json&#x27;)
+            if not metadata.exists():
+                alternate = OUT / wid / &#x27;INITIAL.json&#x27;
+                if alternate.exists():
+                    metadata = alternate
+            try:
+                md = json.loads(metadata.read_text())
+            except (FileNotFoundError, json.JSONDecodeError):
+                continue
+            if wid not in workers:
+                workers[wid] = {&#x27;first_seen_utc&#x27;: now, &#x27;path&#x27;: str(p.relative_to(ROOT)),
+                    &#x27;metadata_path&#x27;: str(metadata.relative_to(ROOT)),
+                    &#x27;sha256&#x27;: digest, &#x27;bytes&#x27;: len(raw), &#x27;metadata&#x27;: md,
+                    &#x27;cohort&#x27;: &#x27;sol&#x27; if cohort == &#x27;s&#x27; else &#x27;luna&#x27;, &#x27;modifications&#x27;: []}
+            elif workers[wid][&#x27;sha256&#x27;] != digest:
+                event = {&#x27;observed_utc&#x27;: now, &#x27;sha256&#x27;: digest}
+                if not workers[wid][&#x27;modifications&#x27;] or workers[wid][&#x27;modifications&#x27;][-1][&#x27;sha256&#x27;] != digest:
+                    workers[wid][&#x27;modifications&#x27;].append(event)
+prior[&#x27;captured_utc&#x27;] = now
+for wid, record in workers.items():
+    source = ROOT / record[&#x27;path&#x27;]
+    if hashlib.sha256(source.read_bytes()).hexdigest() != record[&#x27;sha256&#x27;]:
+        continue
+    frozen = OUT / &#x27;frozen_initials&#x27; / wid
+    frozen.mkdir(parents=True, exist_ok=True)
+    for ext in [&#x27;txt&#x27;, &#x27;json&#x27;]:
+        src = source.with_suffix(&#x27;.&#x27;+ext)
+        if ext == &#x27;json&#x27; and record.get(&#x27;metadata_path&#x27;):
+            src = ROOT / record[&#x27;metadata_path&#x27;]
+        dst = frozen / (&#x27;INITIAL.&#x27;+ext)
+        if src.exists() and not dst.exists():
+            shutil.copy2(src, dst)
+prior[&#x27;counts&#x27;] = {c: sum(w[&#x27;cohort&#x27;] == c for w in workers.values()) for c in [&#x27;sol&#x27;, &#x27;luna&#x27;]}
+prior_path.write_text(json.dumps(prior, indent=2)+&#x27;\n&#x27;)
+summary = {&#x27;utc&#x27;: now, &#x27;initial_counts&#x27;: prior[&#x27;counts&#x27;],
+    &#x27;science_starts&#x27;: len(list((ROOT/&#x27;work/cycle6&#x27;).glob(&#x27;*/SCIENCE_START.json&#x27;))),
+    &#x27;science_ends&#x27;: len(list((ROOT/&#x27;work/cycle6&#x27;).glob(&#x27;*/SCIENCE_END.json&#x27;))),
+    &#x27;modified_initials&#x27;: [wid for wid, w in workers.items() if w[&#x27;modifications&#x27;]],
+    &#x27;missing_sol_initials&#x27;: [f&#x27;c{c:02}_s{s:02}&#x27; for c in range(1,11) for s in range(1,4)
+                             if f&#x27;c{c:02}_s{s:02}&#x27; not in workers]}
+(OUT/&#x27;PROGRESS.json&#x27;).write_text(json.dumps(summary, indent=2)+&#x27;\n&#x27;)
+print(json.dumps(summary))
+</pre><p><a href="../assets/89bcc6a4f601b8d30a4071fb61532220f491ca7269f58550311be763a29e3204.py">Exact original bytes</a></p></html>

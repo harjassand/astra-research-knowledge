@@ -1,0 +1,74 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c06_s03/revisions/001/direct_trace_sampler.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c06_s03/revisions/001/direct_trace_sampler.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Actual capped hard trace sampler; no counting or field-descent call.
+
+Conditional on Chen--Liu Lemma5.5, positive LC local gates, and independent
+fair coin input. Pseudorandom seed is recorded for reproducible local execution.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from xxz_quadratic_gates import compile_quadratic_trace
+from xxz_local_chain import CoinTape, LocalExchange, TapeAbort, ceil_log2_fraction, mixing_steps
+from nofield_counter import acquired_complement_ratio, ResourceRefusal
+
+
+def trace_sample_plan(instance, tv=F(1, 4), *, allow_bounded_bias=False):
+    tv = F(tv)
+    if not 0 &lt; tv &lt;= F(1, 4):
+        raise ValueError(&quot;TV target in (0,1/4] required&quot;)
+    if not allow_bounded_bias and not instance.complement_symmetric():
+        raise ValueError(&quot;complement symmetry required unless numeric bias is admitted&quot;)
+    ratio = acquired_complement_ratio(instance)
+    n = instance.n
+    if n &lt; 1:
+        return {&quot;n&quot;:0,&quot;total_steps&quot;:0,&quot;tv&quot;:tv,&quot;trivial&quot;:True}
+    t = F(1, 256 * n * n) / ratio
+    repetitions = max(1, ceil_log2_fraction(4 / tv))
+    sample_tv = tv / (4 * repetitions)
+    steps = mixing_steps(instance, t, [F(1)] * n, sample_tv)
+    height = max(1, (n - 1).bit_length())
+    choices = repetitions * steps * (2 * height + 2) + instance.inactive_qubits
+    coin_bits = max(1, ceil_log2_fraction(4 * choices / tv))
+    return {&quot;n&quot;:n,&quot;tv&quot;:tv,&quot;t&quot;:t,&quot;complement_ratio&quot;:ratio,&quot;trivial&quot;:False,
+            &quot;repetitions&quot;:repetitions,&quot;soft_tv&quot;:sample_tv,&quot;steps_per_sample&quot;:steps,
+            &quot;total_steps&quot;:repetitions * steps,&quot;choice_cap&quot;:choices,
+            &quot;bits_per_choice&quot;:coin_bits,&quot;random_bits_cap&quot;:choices * coin_bits,
+            &quot;hard_rejection_failure_bound&quot;:F(1, 4 ** repetitions)}
+
+
+def sample_trace(qubits, gates, tv=F(1,4), *, max_steps=10000000, seed=20261007,
+                 allow_bounded_bias=False):
+    instance = compile_quadratic_trace(qubits, gates)
+    plan = trace_sample_plan(instance, tv, allow_bounded_bias=allow_bounded_bias)
+    if plan[&quot;total_steps&quot;] &gt; max_steps:
+        raise ResourceRefusal(plan)
+    first_rows = {}
+    for j, (kind, vertices, _, _, _) in enumerate(gates):
+        for local, vertex in enumerate(vertices):
+            first_rows.setdefault(vertex, 4 * j + local if kind == &quot;edge&quot; else 4 * j)
+    if plan[&quot;trivial&quot;]:
+        tape = CoinTape(seed, 1, max(1, qubits))
+        return {&quot;bits&quot;:[int(tape.bernoulli(F(1,2))) for _ in range(qubits)],
+                &quot;accepted&quot;:True,&quot;aborted&quot;:False,&quot;plan&quot;:plan,
+                &quot;steps&quot;:0,&quot;attempts&quot;:0,&quot;coin_bits&quot;:tape.bits,&quot;coin_choices&quot;:tape.choices}
+    tape = CoinTape(seed, plan[&quot;bits_per_choice&quot;], plan[&quot;choice_cap&quot;])
+    attempts = steps = 0
+    try:
+        for _ in range(plan[&quot;repetitions&quot;]):
+            attempts += 1
+            chain = LocalExchange(instance, t=plan[&quot;t&quot;])
+            for _ in range(plan[&quot;steps_per_sample&quot;]):
+                chain.step(tape)
+                steps += 1
+            if not chain.S.isdisjoint(chain.T):
+                continue
+            bits = [int(first_rows[v] in chain.S) if v in first_rows else int(tape.bernoulli(F(1,2)))
+                    for v in range(qubits)]
+            return {&quot;bits&quot;:bits,&quot;accepted&quot;:True,&quot;aborted&quot;:False,&quot;plan&quot;:plan,
+                    &quot;steps&quot;:steps,&quot;attempts&quot;:attempts,&quot;coin_bits&quot;:tape.bits,
+                    &quot;coin_choices&quot;:tape.choices,&quot;S&quot;:sorted(chain.S),&quot;T&quot;:sorted(chain.T)}
+        return {&quot;bits&quot;:[0]*qubits,&quot;accepted&quot;:False,&quot;aborted&quot;:False,
+                &quot;plan&quot;:plan,&quot;steps&quot;:steps,&quot;attempts&quot;:attempts,&quot;coin_bits&quot;:tape.bits,
+                &quot;coin_choices&quot;:tape.choices,&quot;fallback_reason&quot;:&quot;rejection cap&quot;}
+    except TapeAbort as error:
+        return {&quot;bits&quot;:[0]*qubits,&quot;accepted&quot;:False,&quot;aborted&quot;:True,
+                &quot;plan&quot;:plan,&quot;steps&quot;:steps,&quot;attempts&quot;:attempts,&quot;coin_bits&quot;:tape.bits,
+                &quot;coin_choices&quot;:tape.choices,&quot;fallback_reason&quot;:str(error)}
+</pre><p><a href="../assets/b0f20e92174eceda38107c65213e2e690e727c8de8680fa831ed22d1964daaac.py">Exact original bytes</a></p></html>

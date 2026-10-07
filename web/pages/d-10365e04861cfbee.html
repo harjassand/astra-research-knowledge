@@ -1,0 +1,198 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c10_l02/revisions/001/s02_boundary_audit.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c10_l02/revisions/001/s02_boundary_audit.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Independent bounded exact audit of c10_s02&#x27;s N76 boundary identities.
+
+This script reconstructs the complex set and six propensities directly. It
+checks exact factorial minima/ratios and detailed-balance edge identities on
+bounded boxes. The all-a formulas and concavity no-go remain symbolic claims
+proved in the accompanying audit note; finite loops are not those proofs.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+from fractions import Fraction
+from math import factorial, isclose, log
+
+State = tuple[int, int, int]
+
+# Complexes: 0, C, B, A+B, A+C.  Coordinates are (A,B,C).
+COMPLEXES: tuple[State, ...] = (
+    (0, 0, 0),
+    (0, 0, 1),
+    (0, 1, 0),
+    (1, 1, 0),
+    (1, 0, 1),
+)
+
+
+def available(x: State, y: State) -&gt; bool:
+    return all(xi &gt;= yi for xi, yi in zip(x, y))
+
+
+def residual_factorial(x: State) -&gt; int:
+    vals = [
+        factorial(x[0] - y[0])
+        * factorial(x[1] - y[1])
+        * factorial(x[2] - y[2])
+        for y in COMPLEXES
+        if available(x, y)
+    ]
+    assert vals
+    return min(vals)
+
+
+def transitions(x: State) -&gt; list[tuple[int, State]]:
+    a, b, c = x
+    out: list[tuple[int, State]] = []
+    if a and c:
+        out.append((a * c, (a, b + 1, c - 1)))  # A+C -&gt; A+B
+    if a and b:
+        out.append((a * b, (a, b - 1, c + 1)))  # A+B -&gt; A+C
+        out.append((a * b, (a - 1, b, c)))      # A+B -&gt; B
+    if b:
+        out.append((b, (a + 1, b, c)))          # B -&gt; A+B
+    if c:
+        out.append((c, (a, b, c - 1)))          # C -&gt; 0
+    out.append((1, (a, b, c + 1)))              # 0 -&gt; C
+    return out
+
+
+def poisson_unnormalized(x: State) -&gt; Fraction:
+    a, b, c = x
+    return Fraction(1, factorial(a) * factorial(b) * factorial(c))
+
+
+def two_jump_additive_drift(x: State) -&gt; float:
+    &quot;&quot;&quot;Compute E[F(Y_2)-F(Y_0)|Y_0=x] for the embedded jump chain.&quot;&quot;&quot;
+    fx = residual_factorial(x)
+    first = transitions(x)
+    total = sum(rate for rate, _ in first)
+    ans = 0.0
+    for rate1, y in first:
+        fy = residual_factorial(y)
+        second = transitions(y)
+        total2 = sum(rate2 for rate2, _ in second)
+        for rate2, z in second:
+            ans += (rate1 / total) * (rate2 / total2) * log(
+                residual_factorial(z) / fx
+            )
+    return ans
+
+
+def main() -&gt; None:
+    checked_f_points = 0
+    checked_z_points = 0
+    checked_balance_edges = 0
+    checked_component_states = 0
+    checked_two_jump_points = 0
+    checked_flat_ray_skeleton_points = 0
+
+    # Reconstruct the exact N76 min over the supplied complex set.
+    for a in range(2, 81):
+        x = (a, 0, 1)
+        fx = residual_factorial(x)
+        assert fx == factorial(a - 1)
+        actual = transitions(x)
+        expected = [
+            (a, (a, 1, 0)),
+            (1, (a, 0, 0)),
+            (1, (a, 0, 2)),
+        ]
+        assert actual == expected
+        ratios = [Fraction(residual_factorial(y), fx) for _, y in actual]
+        assert ratios == [Fraction(1), Fraction(a), Fraction(1)]
+        # The only nonzero log increment is the C-death edge, so LF=log(a).
+        lf = sum(rate * log(float(ratio)) for (rate, _), ratio in zip(actual, ratios))
+        assert isclose(lf, log(a), rel_tol=1e-13, abs_tol=1e-13)
+        checked_f_points += 1
+
+        # Independent direct P^2 calculation for F at the problematic ray.
+        # The formula below follows by enumerating all six possible two-jump
+        # paths from x_a; several terms are zero because their net F change is
+        # zero. It is a reaction-event skeleton, not physical-time LF.
+        direct = two_jump_additive_drift(x)
+        formula = (
+            -Fraction(a * a, (a + 2) * (2 * a + 2)) * log(a - 1)
+            + Fraction(a, (a + 2) * (2 * a + 2)) * log(a)
+            + Fraction(1, (a + 2) * (2 * a + 3)) * log(2)
+        )
+        assert isclose(direct, formula, rel_tol=1e-12, abs_tol=1e-12)
+        if a == 2:
+            assert direct &gt; 0
+        else:
+            assert direct &lt; 0
+        checked_two_jump_points += 1
+
+    # The other unbounded flat ray z_n=(0,n,0) is corrected by the same
+    # two-event jump skeleton for n&gt;=3, with a finite positive exception n=2.
+    for n in range(2, 81):
+        z = (0, n, 0)
+        direct = two_jump_additive_drift(z)
+        formula = (
+            -Fraction(n * n, (n + 1) * (3 * n + 1)) * log(n - 1)
+            + Fraction(1, (n + 1) * (n + 2)) * log(2)
+        )
+        assert isclose(direct, formula, rel_tol=1e-12, abs_tol=1e-12)
+        if n == 2:
+            assert direct &gt; 0
+        else:
+            assert direct &lt; 0
+        checked_flat_ray_skeleton_points += 1
+
+    # At z_n=(0,n,0), only B-&gt;A+B and 0-&gt;C fire, and both preserve F.
+    for n in range(1, 81):
+        z = (0, n, 0)
+        fz = residual_factorial(z)
+        assert fz == factorial(n - 1)
+        actual = transitions(z)
+        expected = [(n, (1, n, 0)), (1, (0, n, 1))]
+        assert actual == expected
+        assert [Fraction(residual_factorial(y), fz) for _, y in actual] == [1, 1]
+        checked_z_points += 1
+
+    # For each feasible directed edge whose endpoints lie in this box,
+    # verify pi(x)q(x,y)=pi(y)q(y,x) for the product-Poisson weights.
+    box = range(5)
+    for a in box:
+        for b in box:
+            for c in box:
+                x = (a, b, c)
+                if a + b == 0:
+                    continue  # the closed Gamma_0 component is excluded
+                for rate, y in transitions(x):
+                    if max(y) &gt;= 5 or y[0] + y[1] == 0:
+                        continue
+                    reverse_rate = next(
+                        (rr for rr, yy in transitions(y) if yy == x), None
+                    )
+                    assert reverse_rate is not None
+                    assert poisson_unnormalized(x) * rate == poisson_unnormalized(y) * reverse_rate
+                    checked_balance_edges += 1
+
+    # Check component predicate preservation on a bounded cube. This is a
+    # diagnostic for the six listed transitions, not an all-state proof.
+    for a in range(9):
+        for b in range(9):
+            for c in range(9):
+                x = (a, b, c)
+                for _, y in transitions(x):
+                    assert (a + b &gt;= 1) == (y[0] + y[1] &gt;= 1)
+                checked_component_states += 1
+
+    print(
+        &quot;PASS&quot;,
+        {
+            &quot;complex_set_size&quot;: len(COMPLEXES),
+            &quot;F_boundary_points_a_2_to_80&quot;: checked_f_points,
+            &quot;direct_two_jump_formula_points_a_2_to_80&quot;: checked_two_jump_points,
+            &quot;direct_two_jump_formula_points_z_n_2_to_80&quot;: checked_flat_ray_skeleton_points,
+            &quot;flat_rays_n_1_to_80&quot;: checked_z_points,
+            &quot;product_poisson_balance_edges_box_0_to_4&quot;: checked_balance_edges,
+            &quot;component_predicate_states_box_0_to_8&quot;: checked_component_states,
+            &quot;scope&quot;: &quot;finite exact checks plus floating log identity; symbolic proof remains in audit note&quot;,
+        },
+    )
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/dfd3f77abf73bdd2bc9cfac7809f132d951d4b8199a766ee0392db79b5e02d53.py">Exact original bytes</a></p></html>

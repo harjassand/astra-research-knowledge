@@ -1,0 +1,219 @@
+POST-INITIAL INDEPENDENT COMPONENT CONSTRUCTION — c07_s03
+No other cycle6 worker's results have been read. INITIAL remains unchanged.
+
+1. FINITE RANDOM-BIT CLIPPED NORMAL
+Code: certified_normal.py. Configured rational 1<=L<=8 and integer 8<=ell<=64.
+Put h=2^-ell, q=2^(-ceil(L^2)-3), delta=h q/32, b=ell+ceil(L^2)+8.
+All ceilings are of rational numbers. A b-bit uniform integer defines the
+dyadic prefix Uhat=floor(2^b U)/2^b of an ideal continuous uniform U, with
+0<=U-Uhat<delta. The normal generator computes only this finite prefix.
+
+The standard normal density satisfies phi(z)>=q on [-L,L]. Indeed pi<4 gives
+1/sqrt(2pi)>1/8, and log(2)>=1/2 follows by integrating 1/x over [1,2]. Thus
+2^(-ceil(L^2)-3)<=exp(-L^2/2)/8<phi(L). No transcendental ceiling or density
+oracle is requested. The clipped inverse z(U)=clip(Phi^-1(U),[-L,L]) is
+1/q-Lipschitz, including the constant endpoint pieces.
+
+CERTIFIED CDF. Use the identity pi=16 atan(1/5)-4 atan(1/239).
+It follows directly from tan(2 atan(1/5))=5/12 and tan(4 atan(1/5))=120/119:
+tan(4 atan(1/5)-atan(1/239))=(120*239-119)/(119*239+120)=1.
+This angle is in (0,pi/2), so it is pi/4. The branch is fixed by the positive
+elementary integral bounds for arctan; no numerical angle selection is used.
+Alternating rational arctangent partial sums have error at most their next term.
+Square-root/inversion intervals therefore enclose c=1/sqrt(2pi).
+
+For z>=0, integrate the Taylor polynomial of exp(-t^2/2):
+ I_n(z)=sum_(j=0)^n (-1)^j z^(2j+1)/(2^j j! (2j+1)).
+The scalar Taylor remainder of exp(-x), x>=0, has magnitude at most
+x^(n+1)/(n+1)! because its Lagrange derivative magnitude is <=1. Hence
+ |integral_0^z exp(-t^2/2)dt-I_n(z)|
+   <=z (z^2/2)^(n+1)/(n+1)!.
+The implementation advances the exact rational recurrence until this is
+<=delta/32, then encloses Phi(z)=1/2+c I(z). Phi(-z)=1-Phi(z).
+Every returned CDF interval is checked to have width <=delta. At each point
+the interval contains the exact CDF. Fixed guard failure raises rather than
+emits a certificate. P=b+ceil(log2(L+1))+32 working bits; its log2 ceiling is
+computed by powers-of-two comparisons of rationals.
+
+BISECTION. Compare Uhat to the enclosures at -L,L, then to midpoint CDF intervals.
+If a comparison is unresolved, return that midpoint/endpoint immediately.
+Its CDF difference from U is <=2delta, so its distance to the clipped ideal
+normal is <=2delta/q=h/16. If all comparisons resolve, a bracket width <=h/2
+gives midpoint error <=h/4 relative to z(Uhat), plus delta/q=h/32 from coupling U.
+Therefore the returned rational normal satisfies, for EVERY U under the prefix
+coupling,
+ |Zhat-clip(Phi^-1(U),[-L,L])|<=9h/32<h.
+No infinite comparison refinement occurs, and endpoint equality is allowed.
+
+The omitted unclipped tail has probability <=2 exp(-L^2/2), by a Gaussian
+Chernoff bound. The code certifies a rational upper bound on this expression
+using 2 divided by a positive Taylor LOWER sum for exp(L^2/2). A cap of D draws
+would have union probability <=min(1,D times this bound). This is not by itself
+a bound for an importance-weighted normalized Gibbs law; that application must
+use its complete coupling/weight budget. A discrete normal always has TV=1
+relative to a continuous normal, so no discrete-to-continuous TV claim is made.
+
+EXECUTION. L=4, ell=24, deterministic prefix integer 250000000000000:
+ returned Zhat=81664619/67108864,
+ coupling error <=9/536870912, h=1/16777216,
+ tail upper ~0.000670925255805024,
+ exactly 48 fair prefix bits in the sampling contract,
+ 83 working bits, 31 CDF requests, 485 integrated Taylor terms,
+ largest observed integer 963 bits, CPU 0.007224s, wall 0.007275s.
+The replayed transcript itself is deterministic, not a test of fair randomness.
+L=1,4,8 endpoint/tail/zero/interior tests give twelve passing cases, including
+an exact Uhat=1/2 unresolved interior comparison returning zero.
+
+RESOURCE SCALE. There are O(ell+log(L+1)) bisection/CDF calls. Exact integrated
+series need O(L^2+log(1/delta)) terms; exact rational term heights and alternating
+cancellation cost are charged rather than evaluated in unit-cost arithmetic.
+With rational L of bit length Lin, bit lengths are polynomial in Lin+ell+L^2.
+Machin arctangent series and scalar roots have polynomial work at the displayed
+working precision. The number of random bits is EXACTLY ell+ceil(L^2)+8 per draw.
+
+2. GAP-FREE PSD ROOT AND RESIDUAL CERTIFICATE
+Code: certified_psd_root.py. Input is a rational symmetric 3-by-3 C with acquired
+PSD certificate and absolute row-sum norm <=2. q=2^-ell, configured ell in [2,32].
+All seven principal minors are evaluated exactly. For a Hermitian 3-by-3 matrix,
+their nonnegativity is equivalent to PSD: use a positive diagonal pivot and its
+Schur complement, or, when a diagonal is zero, the 2-by-2 minors force its row
+and column to vanish. This gives an elementary inductive proof.
+
+Put alpha=q^2/64, D=C+alpha I, choose the smallest dyadic gamma>=1 with
+gamma^2>=row_norm(C)+alpha, and w=q^2/[64(gamma+1)]. Choose k so gamma/2^k<=w.
+The exact Newton path starts X0=gamma I and uses
+ F(X)=X/2+(D X^-1+X^-1 D)/4.
+Since exact iterates commute with D, each eigenvalue update is
+x_next=(x+lambda/x)/2. When x>=sqrt(lambda),
+x_next-sqrt(lambda)=(x-sqrt(lambda))^2/(2x)
+                    <=(x-sqrt(lambda))/2.
+Thus all exact iterates have least eigenvalue >=sqrt(alpha)=q/8 and final
+operator error to sqrt(D) <=gamma/2^k<=w. No eigenvalue gap of C is needed.
+
+In the q/32 neighborhood of this path, inverse norms are at most 16/q.
+The inverse identity gives a conservative Lipschitz factor
+ Lnewt=1+4(row_norm(C)+alpha)/alpha
+for the symmetric map. Choose dyadic working precision P so the nearest-entry
+rounding operator error 3/(2*2^P) is at most
+ r=min(w,q/8)/(16 k Lnewt^k).
+Then the perturbation recurrence bounds every rounded path error by
+ k Lnewt^(k-1) r<=w/16, which closes the neighborhood induction.
+The code also checks each rounded X>=q I/16 by exact principal minors.
+This verifies the inverse floor in the executed run rather than hiding it.
+P=O(ell^2+Lin) for fixed norm bound; exact 3-by-3 rational inverse intermediates
+have polynomial heights in P+Lin, since every update is rounded back to dyadics.
+There are O(ell) matrix steps. This is deliberately conservative guarded work,
+not a claim of optimal precision or a new Newton method.
+
+FINAL INDEPENDENT CERTIFICATE. The code computes the rational residual
+ R=X^2-C and delta=max_i sum_j |R_ij|.
+Since R is symmetric, ||R||op<=delta. The final exact checks X>=0 and delta<=q^2
+prove ||X-sqrt(C)||op<=q without a lower eigenvalue of C.
+Here is a complete proof of that familiar square-root continuity bound.
+For PSD A,
+ sqrt(A)=(2/pi) integral_0^infinity A(A+t^2 I)^-1 dt,
+by diagonalizing A and the scalar arctangent integral. Positive-definite matrix
+inversion reverses order. Thus A<=B implies
+A(A+t^2I)^-1<=B(B+t^2I)^-1, proving square-root order preservation on integrating.
+From C<=X^2+delta I, this gives sqrt(C)<=sqrt(X^2+delta I)<=X+sqrt(delta)I;
+the last step is scalar spectral calculus of X. From X^2<=C+delta I obtain
+X<=sqrt(C+delta I)<=sqrt(C)+sqrt(delta)I. Combining both inequalities gives
+-sqrt(delta)I<=X-sqrt(C)<=sqrt(delta)I and the asserted norm bound.
+This proof works without commutation of X and C. It is established matrix
+analysis, not a claimed novel theorem; the useful increment is the executed
+exact rational certificate/interface for spin-filter columns.
+
+The three acquired columns of X approximate those of sqrt(C) within q, and
+sum_j X_col_j X_col_j^T=X^2 approximates C within delta. Entrywise enclosures
+X_ij+[-q,q] follow from the operator norm. No spectral axes or eigenvalue oracle
+has entered the construction. Extremely small positive eigenvalues are allowed.
+
+EXECUTION. For C=v v^T+w w^T, v=(1/2,1/2,0), w=(0,1/3,1/3), q=1/4096:
+31 Newton steps, 1018 working bits, 31 exact inverses, 186 nearest dyadic entry
+roundings, max observed integer 4071 bits, CPU 0.090314s, wall 0.092196s.
+Certified delta is about 9.313225746154785e-10 < q^2=5.960464477539063e-8.
+The primitive audit passes zero, rank-one, rank-two and a positive matrix with
+input scales 2^-80 and 2^-100. It returns an exact negative-minor certificate
+for a diagonal input with -2^-80. This refutes that input's PSD promise, not
+any scientific spin theorem. Residuals are independently recomputed from the
+returned rational matrices, not accepted solely from stored certificate labels.
+
+3. GENERIC RETAINED LOCAL-FILTER PATH
+Code: certified_filter_path.py. Executed N=64, m=2, the above rank-two C,
+A=C-(1/2)I, b=(1/32,-1/16,1/8), and SUPPLIED exact seed tau=I/2.
+C>=0 and row_norm(C)<1 imply ||A||op<=1/2; t0=2/64-(1/2)/64^(3/2)>0.
+The field is nonzero and the column span of sqrt(C) has rank two, so at least
+one local Gaussian filter direction does not commute with its Pauli field.
+
+For each step and root column v_j, the exact local Gaussian factor is
+ exp[Z_j v_j.sigma/(2 sqrt(2m) N^(3/4))].
+The field factor is exp[b.sigma/(4m N^(3/4))]. These are the coefficients of the
+baseline Gaussian/Trotter semigroup, including the factor 1/2 from J=sum sigma/2.
+No physical filter is applied; these are classical 2-by-2 trajectory calculations.
+The rank-two root is acquired at q=2^-24. Six normal prefixes are acquired with
+L=4, ell=24. Their deterministic replay fractions are 1/5,2/5,3/5,4/5,1/3,2/3
+rounded down to the stated prefix mesh. The abstract fair-bit contract would
+charge 288 bits, and the endpoint/series costs for every draw are recorded.
+
+For a real vector u, (u.sigma)^2=|u|^2 I, hence
+ exp(u.sigma)=cosh(|u|)I+sinch(|u|)u.sigma.
+Interval roots, complete coefficient operations, complex 2-by-2 multiplication,
+and the cosh/sinch series enclose every factor and the full ordered product g.
+Root entries lie in the acquired +/-q enclosures; normal entries lie in the
+proved clipped-coupling enclosures. Thus they enclose the same ideal clipped
+trajectory, including all multiplication amplification, rather than assigning
+an unguarded elementary-primitive tolerance to a complete update.
+
+Compute the interval positive X=g tau g*, its positive trace t, and X/t.
+For a rational point description, take the midpoint matrix ghat and compute
+rhohat=ghat tau ghat*/Tr(ghat tau ghat*) EXACTLY over rational complex numbers.
+This guarantees positivity and normalization; the 2-by-2 determinant and Bloch
+ball condition are also checked exactly. Direct interval bounds on all real
+and imaginary matrix entries yield a conservative local trace-error bound:
+T<=||delta rho||F<=sum_(entries,real/imag) absolute error bounds.
+Tensor telescoping charges N times that bound for identical output products.
+
+The weight is not discarded: an interval encloses log w=N log t. For positive
+endpoint t, use x=(t-1)/(t+1), with verified |x|<=1/2, and
+log t=2 sum_(j>=0) x^(2j+1)/(2j+1).
+The omitted tail after index n is bounded by
+2 |x|^(2n+3)/[(2n+3)(1-x^2)]. All endpoints are rational and all cancellation
+and multiplication guards are charged. The executed trace interval is approximately
+[1.0000393781768002,1.0000393872274924], so normalization has a certified floor.
+
+RESULT. The rational local qubit has local error <=1.861e-8 and the 64-fold
+product has error <=1.191e-6 to the coupled clipped path. The path itself is not
+the Gibbs mixture. The supplied I/2 seed is not an acquired sample of the
+continuous HS seed law, and no seed rejection, importance proposal array or
+normalized selection has been executed. The six-normal tail union bound is
+recorded but must not be used as a complete importance-weighted Gibbs bound.
+Finite generic-direction gate compilation also remains unexecuted; a native
+per-qubit trace error d would add at most 64d to the path output error.
+
+Observed total CPU 0.791425s and wall 0.800780s, including root, all six normal
+draw descriptions, complete path intervals, exact normalization, logweight and
+final state description. Root work uses 55 steps/inverses and 330 roundings at
+3120 working bits, max inverse intermediate 12480 bits. Path interval work uses
+80 fraction bits, max observed series integer 3121 bits, 208 cosh and 192 sinch
+series terms. Operation counters instrument explicit calls, not all Python
+internal arithmetic; total timing and polynomial bit-height costs include the
+unlisted constant-size rational complex output operations. Hardware energy,
+noise, backend GPU use and token charges remain UNKNOWN.
+
+PRIMARY-SOURCE / PRIORITY LIMIT
+The exact scalar/matrix derivations above do not import a new scientific theorem.
+Higham's primary SIAM book record, Functions of Matrices, Chapter 6, covers
+matrix-square-root conditioning and methods:
+https://epubs.siam.org/doi/abs/10.1137/1.9780898717778.ch6?mobileUi=0
+Only that publisher record/abstract was consulted, not subscription chapter text.
+General matrix-root methods and two-qubit thermal separability are established
+subjects. No priority clearance is asserted for the admitted decomposition or
+this compiler. The baseline Fannes--Kossakowski--Verbeure 1991 comparison remains
+open because the full primary paper is not supplied or inspected.
+
+STATUS
+Executed interval/rational components and a complete admitted N=2 compiler;
+complete elementary derivations with no external expert/formal verification.
+The baseline general-N finite-bit existence construction is still not an executed
+end-to-end seed/importance/local-gate compiler. The sharp operational rates are
+preserved and are not improved by these component replays.

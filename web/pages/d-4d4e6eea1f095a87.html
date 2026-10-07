@@ -1,0 +1,67 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c04_s03/povm_compiler_check.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c04_s03/povm_compiler_check.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact rational specification compiler and small diagnostic.&quot;&quot;&quot;
+from fractions import Fraction as F
+import pathlib,json,time,math
+ROOT=pathlib.Path(__file__).resolve().parent
+started=time.monotonic()
+def plus(a,b):return [[x+y for x,y in zip(ar,br)] for ar,br in zip(a,b)]
+def scale(a,s):return [[x*s for x in ar] for ar in a]
+def eye(d):return [[F(int(i==j)) for j in range(d)] for i in range(d)]
+def zeros(d):return scale(eye(d),0)
+def tr(a):return sum(a[i][i] for i in range(len(a)))
+def round_grid(x,q):
+ y=x/q;k=y.numerator//y.denominator
+ return (k+int(y-k&gt;=F(1,2)))*q
+def compile_povm(effects,e):
+ m=len(effects);d=len(effects[0]);q=e/F(2*m*d);u=e/F(m);I=eye(d);S=zeros(d);N=[]
+ for A in effects:
+  B=[[round_grid(x,q) for x in ar] for ar in A]
+  assert B==list(map(list,zip(*B)))
+  for i in range(d):
+   assert sum(abs(B[i][j]-A[i][j]) for j in range(d))&lt;=u
+  Ny=plus(B,scale(I,u));N.append(Ny);S=plus(S,Ny)
+ den=1+2*e;out=[scale(A,1/den) for A in N]
+ rem=plus(I,scale(S,-1/den));out.append(rem)
+ assert all(sum(A[i][j] for A in out)==I[i][j] for i in range(d) for j in range(d))
+ return out,{&#x27;e&#x27;:str(e),&#x27;grid_q&#x27;:str(q),&#x27;operator_shift_u&#x27;:str(u),&#x27;proved_infinity_to_L1_error_upper&#x27;:str(18*e),&#x27;original_outcomes&#x27;:m,&#x27;compiled_outcomes&#x27;:m+1}
+def psd2(a):
+ assert a[0][1]==a[1][0]
+ assert a[0][0]&gt;=0 and a[1][1]&gt;=0 and a[0][0]*a[1][1]-a[0][1]*a[1][0]&gt;=0
+
+def canon(A,H):
+ d=len(A[0]);out=[[0.0]*d for _ in range(d)]
+ for a in A:
+  p=float(tr(a)/d)
+  if p==0:continue
+  score=sum(float(a[i][j])*H[j][i] for i in range(d) for j in range(d))/d
+  for i in range(d):
+   for j in range(d):out[i][j]+=score*float(a[i][j])/p
+ return out
+# POVM is a mixture of Z and rational rotated-basis dephasings, plus one rare split.
+rare=F(1,2**200)
+Pz=[[F(1),F(0)],[F(0),F(0)]];Pzc=[[F(0),F(0)],[F(0),F(1)]]
+Pr=[[F(9,25),F(12,25)],[F(12,25),F(16,25)]];Prc=plus(eye(2),scale(Pr,-1))
+M=[scale(Pz,(1-rare)/2),scale(Pzc,F(1,2)),scale(Pr,F(1,2)),scale(Prc,F(1,2)),scale(Pz,rare/2)]
+e=F(1,2**16);out,certificate=compile_povm(M,e)
+for A in M+out:psd2(A)
+# Gershgorin shift inequalities can be checked exactly in the small fixture.
+u=e/len(M)
+for A,B in zip(M,out[:-1]):
+ N=scale(B,1+2*e);diff=plus(N,scale(A,-1));psd2(diff);psd2(plus(scale(eye(2),2*u),scale(diff,-1)))
+probs=[tr(A)/2 for A in out];assert all(p&gt;0 for p in probs)
+preps=[scale(A,1/tr(A)) for A in out]
+assert all(tr(A)==1 for A in preps)
+maximum_observed=0.0
+for k in range(101):
+ angle=2*math.pi*k/101;z=math.cos(angle);x=math.sin(angle);H=[[z,x],[x,-z]]
+ old=canon(M,H);new=canon(out,H);D=[[new[i][j]-old[i][j] for j in range(2)] for i in range(2)]
+ # Difference is trace zero; normalized Schatten1 of real Hermitian 2x2 is radius.
+ v=math.sqrt(((D[0][0]-D[1][1])/2)**2+D[0][1]**2)
+ maximum_observed=max(maximum_observed,v);assert v&lt;=float(18*e)+1e-12
+# Output specifications are rational, exact normalized, and JSON serializable.
+enc=lambda A:[[str(x) for x in r] for r in A]
+max_bit=max(max(abs(x.numerator).bit_length(),x.denominator.bit_length()) for A in out+preps for r in A for x in r)
+result={&#x27;status&#x27;:&#x27;EXACT_SPECIFICATION_AND_DIAGNOSTIC_ONLY&#x27;,&#x27;certificate&#x27;:certificate,&#x27;original_min_tau_probability&#x27;:str(min(tr(A)/2 for A in M)),&#x27;compiled_min_tau_probability&#x27;:str(min(probs)),&#x27;compiled_effects&#x27;:[enc(A) for A in out],&#x27;compiled_preparations&#x27;:[enc(A) for A in preps],&#x27;max_rational_entry_bit_length&#x27;:max_bit,&#x27;exact_PSD_and_normalization_checks&#x27;:True,&#x27;floating_test_scope&#x27;:&#x27;101 real traceless unit contractions; theorem is INITIAL.txt proof&#x27;,&#x27;maximum_observed_infinity_to_L1_fixture_error&#x27;:maximum_observed,&#x27;wall_seconds&#x27;:time.monotonic()-started}
+(ROOT/&#x27;povm_compiler_check.json&#x27;).write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+print(json.dumps({k:result[k] for k in [&#x27;status&#x27;,&#x27;certificate&#x27;,&#x27;original_min_tau_probability&#x27;,&#x27;compiled_min_tau_probability&#x27;,&#x27;max_rational_entry_bit_length&#x27;,&#x27;exact_PSD_and_normalization_checks&#x27;,&#x27;maximum_observed_infinity_to_L1_fixture_error&#x27;,&#x27;wall_seconds&#x27;]},indent=2))
+</pre><p><a href="../assets/70837322c04f8be5eaa6adc613fe4cf1bd51083adf8a05ab18da67533666e7e0.py">Exact original bytes</a></p></html>

@@ -1,0 +1,250 @@
+C03_S01 — IMPLEMENTED POSTERIOR-CERTIFIED DICKE / AXIAL GIBBS COMPILERS
+8 October Brisbane 2026. Internally derived implementation and error proof.
+All earlier INITIAL / parity / phase-estimator artifacts remain unchanged.
+Trace distance throughout means one half of the trace norm.
+
+1. INPUT AND IMPORTED EXISTENCE
+
+The symmetric input is the explicitly known Dicke-diagonal state
+ p_k = exp[-delta(k-n/2)^2/n+h(k-n/2)] / Z, k=0,...,n.
+n=0 is the vacuous scalar state. Rational delta,h,epsilon are supplied, not
+acquired from an unknown physical state. The delivered implementation admits
+0<=n<=64, 0<=delta<=1 and 0<epsilon<1. Default numerical acquisition has at
+most three attempts. Failed acquisition/certification returns failure.
+
+The delta<=1 existence theorem is imported from
+ work/cycle6/c07_s02/phase2/AXIAL_ONE_CERTIFICATE.txt,
+with independent internal audits
+ work/cycle6/c02_s01/axial/AXIAL_ONE_INDEPENDENT_AUDIT.txt,
+ work/cycle6/c05_s03/revisions/11_axial_one_fresh_math_and_code_audit.txt.
+That theorem uses an analytic positive density for n>=40 and exact finite
+moment-sign certificates for n2..39. It is not attributed to this compiler.
+Strict finite moment signs allow subtraction of a sufficiently small uniform
+coherent measure while retaining the two positive Hankel forms; compact
+moment sufficiency then represents the remainder. Thus a representing measure
+can have a positive uniform component also in the finite prefix. The stronger
+radius remains an internally accepted, computer-assisted theorem, not external
+review. The original half-domain implementation receipt is preserved separately.
+
+The exact quadrature construction and a theoretical polynomial-bit rational
+Jacobi method are independently derived in
+ work/cycle6/c02_s03/quadrature/BIT_COMPLEXITY_PROOF.txt.
+Its displayed density-floor constants initially use the smaller radius in that
+document. We implement mpmath acquisition plus direct final-state verification,
+not that rational-Jacobi algorithm or its general uniform runtime guarantee.
+
+2. ORDINARY MOMENTS AND EXACT QUADRATURE
+
+For a probability measure mu on[0,1] representing the populations,
+ p_k = C(n,k) integral x^k(1-x)^(n-k) dmu(x).
+The ordinary moments are
+ u_l = sum_{k>=l} C(k,l)/C(n,l) p_k.
+Indeed C(n,k)C(k,l)=C(n,l)C(n-l,k-l), and the remaining binomial sum is1.
+These u_l are not the logit moments p_k/C(n,k).
+
+For odd n=2m+1 set d=m+1,
+ H_ij=u_(i+j), K_ij=u_(i+j+1), H=LL^T,
+ J=L^-1 K L^-T.
+Positivity of the coherent measure with a uniform component gives 0<K<H,
+so J has spectrum in(0,1). Since u0=1, L^T e0=e0. For j<m,
+ K e_j=H e_(j+1), hence J^j e0=L^T e_j through j=m.
+Splitting ell=i+j proves e0^T J^ell e0=u_ell through2m; using K on the two
+last Krylov vectors proves the remaining moment2m+1. The Krylov vectors span,
+so the d spectral nodes are distinct and all first-component squared weights
+are positive. Their sum is1. This is the exact Gaussian rule.
+
+For even n=2m, all K entries are known except the bottom-right. With
+ A_ij=u_(i+j+1), i,j<m, and v_i=u_(i+m+1), choose
+ K_mm=v^T A^-1 v.
+Then K is positive semidefinite of rank m. The unknown true next moment has
+nonnegative Schur complement, so K_true>=K; consequently
+ H-K>=H-K_true>0.
+The same Krylov proof reproduces moments through2m. J has one prescribed node0
+and m interior nodes, with positive spectral weights. This is the left-endpoint
+Radau rule. n1 needs only x=u1 and one weight; n0 uses an empty product.
+
+For the numerical variant H,K and J are evaluated in mpmath. J is symmetrized,
+the known Radau zero is imposed, and the computed nodes/weights are quantized
+to nonnegative dyadic values. Support, positivity and normalization of the final
+values are exact. Numerical residuals and condition estimates are separately
+marked FLOATING_DIAGNOSTICS_ONLY; no numerical eigenvalue is an interval proof.
+
+3. ZERO-FIELD REUSE AND LARGE BINARY FIELDS
+
+Acquire the rule at h=0. For each node x define
+ a=1-x+exp(h)x, y=exp(h)x/a, and w'=w a^n / sum_i w_i a_i^n.
+Then
+ C(n,k) w' y^k(1-y)^(n-k)
+ =exp(hk) C(n,k)w x^k(1-x)^(n-k) / sum_i w_i a_i^n.
+Thus every target population is tilted exactly. The denominator is correct
+because a^n=sum_k C(n,k)exp(hk)x^k(1-x)^(n-k), a degree-n polynomial.
+This avoids acquiring a nearly singular field-concentrated moment matrix.
+The larger whole-Gibbs implementation caches one zero-field rule per needed
+(subset size,effective delta,working precision), and reuses it for every u.
+Every tilted block still gets its own exact posterior certificate.
+
+If |h|-delta>=b, then for r>=1 the ratio to the favored endpoint obeys
+ p_(endpoint-r)/p_endpoint <= exp[-(|h|-delta)r] <=2^(-br),
+using e>=2. Hence the total off-endpoint mass, and the trace distance to its
+pure product state, are at most 1/(2^b-1). Choosing b by exact rational
+comparison to epsilon gives a product branch without evaluating enormous exp(h).
+
+4. EXACT POSTERIOR POPULATION CERTIFICATE
+
+Final nodes x_i=X_i/D and weights w_i=W_i/D, D=2^B, satisfy
+ 0<=X_i<=D, W_i>=0, sum_i W_i=D.
+The delivered ideal phase-averaged populations are computed independently by
+ q_k = C(n,k) sum_i W_i X_i^k(D-X_i)^(n-k) / D^(n+1).
+Integer arithmetic proves q>=0 and sum q=1; acquired moments/eigenvectors are
+not used by this checker.
+
+For every target rational exponent subtract its exact maximum, leaving exp(-r)
+with r>=0. To enclose it, range-reduce r/2^s=y<=1. The positive Taylor sum S
+for exp(y) has remainder bounded by next_term/(1-y/(degree+2)). Reciprocate
+the positive lower/upper bounds, round outwards to a fine dyadic grid, and square
+s times with outward rounding. Because these intervals lie in[0,1], width grows
+by at most a factor2 per square plus2 ulps. The implementation uses
+working bits=accuracy_bits+s+8 and a stricter Taylor cutoff; its asserted final
+width is at most2^(-accuracy_bits). Every operation uses exact rationals.
+
+If each target unnormalized weight lies in[a_k,b_k], then
+ p_k lies in[a_k/sum b,b_k/sum a], with sum a>=1 after shifting the maximum.
+Let E_k=max(|q_k-p_k_lower|,|q_k-p_k_upper|). The exact diagonal-state trace
+distance is bounded by (1/2)sum E_k. Stored bounds are rounded UP to dyadics.
+This certifies the final mixture independently of whether numerical acquisition
+was accurate, well conditioned, or produced the expected nodes.
+
+5. ROOT-OF-UNITY PHASES, BOUNDED RANDOMNESS, FINITE LOCAL OUTPUT
+
+For each x use the pure local vector
+ sqrt(1-x)|0>+exp(2*pi*i*j/(n+1))*sqrt(x)|1>.
+The ideal uniform j=0,...,n kills every off-diagonal Dicke entry because a
+nonzero population-index difference has magnitude at most n. Thus the exact
+uniform-phase ideal state has the certified q_k populations.
+
+Weights are dyadic, so one B-bit uniform integer samples the node exactly.
+Uniform roots can be sampled exactly by rejection, with finite expected cost.
+The default actual sampler has a predetermined bit budget: map a phase integer
+R uniform in0..2^b-1 to floor(R(n+1)/2^b). Each phase mass differs from uniform
+by at most2^-b, giving TV at most(n+1)/2^(b+1). If n+1 is a power of two, use
+its exact logarithmic number of bits and charge zero phase error. This is a
+classical distribution bound, hence also a quantum trace-distance bound between
+the two mixtures. It is included in the total error, not silently called uniform.
+
+The sampler supplies both a finite algebraic descriptor of the pure local
+vector and an exactly rational 2x2 PSD matrix for every site. Displayed polar
+angles are FLOATING DISPLAY ONLY. For the finite density matrix, retain the
+exact diagonal(1-x,x). Bound sqrt(x(1-x)) by integer square roots. Bound pi by
+the Machin identity16 atan(1/5)-4 atan(1/239) with alternating rational tails;
+the repaired tail cutoff is bits+14. Bound sin/cos of the exact root phase by
+rational Taylor sums and their Lagrange remainder on |angle|<7, plus the pi
+interval uncertainty. Each off-diagonal real/imag component is rounded TOWARD
+ZERO from the interval endpoint nearest zero. Its component magnitude is no
+larger than the true component magnitude, so
+ re^2+im^2 <=x(1-x)
+exactly. The local matrix has trace1 and is PSD exactly, including endpoints.
+The sum of the component error bounds is <=8*2^(-density_bits), and equals
+an upper bound on local trace distance because diagonals agree. Telescoping
+tensor products gives <=8n*2^(-density_bits) for the product. Sum this with
+the population and bounded-phase budgets. A label is a compact classical
+description; no physical device preparation or measurement has been executed.
+
+6. WHOLE FINITE-ALPHA STATE WITHOUT A DENSE MATRIX
+
+Use Jz=k-N/2 as the sign convention. The target is proportional to
+ exp[alpha J^2/N-delta Jz^2/N+hJz], alpha>=0.
+The imported c01_s03 subset/heat reduction acquires the positive isotropic
+columns K_k, k=0,...,N. Their physical spin-sector probabilities are
+ A_bk=(N-2b+1)[C(N-k,b)-C(N-k,b-k-1)]/[(k+1)2^(N-k)].
+Spin j_b=N/2-b has multiplicity d_b=C(N,b)-C(N,b-1) and dimension
+ D_b=(N-2b+1)d_b. These multiplicities are retained in every certificate.
+
+For N<=3 there are at most two spin sectors. A direct solver replaces generic
+simplex: w0=qhat_lower/A_lower,0 and wN=1-w0; the other weights vanish. N1
+has only one sector and K0 suffices. The resulting bounded small CLI directly
+certifies its full2^N rational candidate matrix against exact intervals from
+rational joint J^2,Jz projectors. Half the entrywise absolute-error sum bounds
+half trace norm. Earlier SymPy sector-LP fixtures are preserved as earlier
+evidence, not the delivered small CLI backend.
+
+For larger N, root proposed normalized filtered-column fitting. Let scaled
+global filter values be f_t=exp[-delta(t-N/2)^2/N+h(t-N/2)-peak]. Define
+ c_b=sum_{t=b}^{N-b}f_t/(N-2b+1), Z_k=sum_b A_bk c_b,
+ A'_bk=A_bk c_b/Z_k.
+The filtered target sector distribution is proportional to
+ D_b exp[-alpha*b*(N+1-b)/N] c_b.
+Fit positive simplex v to these normalized columns and recover isotropic
+ w_k proportional to v_k/Z_k.
+We fit an explicitly rounded rational table. N8/N16 use a bounded exact SymPy
+simplex fixture; larger probes use a bounded NumPy nonnegative active-set fit.
+Neither status nor objective is accepted as a physical accuracy certificate.
+The candidate rational w is nonnegative and normalized exactly.
+
+7. THE LOAD-BEARING BRIDGE TO THE ACTUAL WHOLE SAMPLER
+
+Global fhat_t are POSITIVE DYADIC approximations. Let a_b=(Aw)_b. The exact
+ideal filtered candidate Fhat(K_w) has joint spin/magnetization probabilities
+ s_b,t = [a_b fhat_t/(N-2b+1)] / sum_c a_c chat_c,
+ b<=t<=N-b.
+The true target joint probabilities are proportional to
+ d_b exp[-alpha*b*(N+1-b)/N] f_t.
+There are only sum_b(N-2b+1)=O(N^2) entries. Rigorous scalar exponential
+intervals enclose every true joint probability; the candidate entries are
+exact rationals. Their TV bounds the FULL physical trace distance, because
+both states are scalar within the same joint projectors. No2^N matrix occurs.
+If the exact filter were shared, the conditional magnetization laws would
+agree and the distance would reduce exactly to sector TV. The implemented
+joint certificate ALSO charges the actual rounded filter discrepancy.
+
+Disintegrate Fhat(K_w) by type(k,u): the raw mass is
+ w_k C(N-k,u) sum_{l=0}^k fhat_(u+l)/[(k+1)2^(N-k)].
+Choose the k-subset and complementary u-one string uniformly. On the subset,
+the ideal block populations are EXACTLY
+ phat_l=fhat_(u+l)/sum_{a=0}^k fhat_(u+a).
+The sum of raw masses is independently checked equal to sum_b a_b chat_b.
+Normalize and round type probabilities to dyadics; compute their exact TV
+rounding error. Each actual quadrature block is acquired using
+ delta'=delta*k/N, h'=h-delta*(2u-(N-k))/N.
+Its own true-Gaussian certificate alone does NOT bridge the rounded fhat input.
+We additionally compute the EXACT rational TV between its recovered q_l and
+the intended phat_l, for EVERY positive type. Weighted errors give the inner
+state bound. The scaling version rounds each weighted nonnegative block error
+UP to160 dyadic bits before summing, avoiding an exponential denominator LCM;
+the added upper-bound slack is <=branch_count*2^-160.
+
+Finally charge the finite phase/density budgets, plus bounded near-uniform
+subset and complement choices. A rank chosen by floor(R*C/2^128) has TV to
+uniform at most C/2^129. Lexicographic combinatorial unranking needs no list
+of all subsets. Every actual output is a product of explicitly rational PSD
+one-qubit matrices. Branch-dependent unused random bits are padded, giving a
+known predetermined total bit count. The triangle sum is the reported total
+target trace-distance bound, and acceptance requires it<=requested epsilon.
+
+8. VALIDATION SCHEMA, FAILURES AND LIMITS
+
+The independent auditor c02_s01 found a CONCLUSIVE earlier verifier bug:
+changing phase_modulus alone to1 passed verification yet removed dephasing.
+An exact X1 expectation proves the wrong state's trace distance>1/4. The
+receipt and old source are preserved in SCHEMA_FAILURE_02.json / pre_schema_fix.
+The repaired checker binds the model format, integer size, node/weight
+dimensions, canonical integer encodings, phase_modulus=n+1, phase bit count,
+density precision, component count, random-bit count and component error
+budgets to the certificate. The module refuses -O/-OO interpreter modes that
+would disable its assertion obligations. Mutated metadata is rejected.
+
+Earlier trig-tail assertion rejection and scaling error-sum serialization
+rejections are also retained. Those runs produced no accepted output. Exact
+positive ensemble certificates verify delivered finite outputs, not universal
+success of the numerical optimizer/eigensolver, practical scaling on all
+parameters, a rational-Jacobi implementation, historical novelty, external
+specialist approval, or real quantum hardware. Backend model/tokens/energy are
+UNKNOWN. Measured runtimes/RSS are local classical process evidence only.
+
+FINAL INDEPENDENT FINITE-OUTPUT REVIEW
+The c02_s01 receipt FILTERED_FINAL_ALL4_VERIFY.json independently recomputes
+the physical joint posterior, branch normalizers and every actual block bridge
+for N8,N16,N32,N64 (745 positive branches total). Its owned sampler replay
+checks 38448 exact local PSD/trace-one matrices and640 consumed bits in every
+forced positive branch. This scoped finite review does not certify universal
+optimizer success, quantum-device preparation, external priority or runtime
+within the missed original N64 overall budget. Paths/hashes are in SOURCES.json.

@@ -1,0 +1,100 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c02_s01/axial/algorithm_review/owned_replay_controls.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c02_s01/axial/algorithm_review/owned_replay_controls.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Targeted repaired-code replay, using only owned source copies.&quot;&quot;&quot;
+from copy import deepcopy
+from fractions import Fraction as Q
+from hashlib import sha256
+from pathlib import Path
+import importlib.util
+import json
+import random
+import subprocess
+import sys
+import time
+
+OWN = Path(__file__).resolve().parent
+ROOT = OWN.parents[4]
+REPLAY = OWN / &quot;replay/c03_s01/implementation&quot;
+sys.path.insert(0, str(REPLAY))
+import dicke_compiler as dicke
+import whole_gibbs_compiler as whole
+
+
+class CountingBits(random.Random):
+    def __init__(self, seed):
+        super().__init__(seed)
+        self.bits_used = 0
+
+    def getrandbits(self, k):
+        self.bits_used += k
+        return super().getrandbits(k)
+
+
+def main():
+    start = time.perf_counter()
+    code = REPLAY / &quot;dicke_compiler.py&quot;
+    assert sha256(code.read_bytes()).hexdigest() == &quot;18978186d75d38d93f454e574bc4baffa79e07481df97f6903b13342450e4aa5&quot;
+    assert sha256((REPLAY / &quot;whole_gibbs_compiler.py&quot;).read_bytes()).hexdigest() == &quot;1a1466354cffe3999f7bb15ff2ffe7cd4c91c5b7c8f95e3c73aa1f5c83827612&quot;
+    source = ROOT / &quot;work/cycle6/c03_s01/implementation&quot;
+    data = json.loads((source / &quot;delta1_checks.json&quot;).read_text())
+    model = next(m for m in data[&quot;models&quot;] if m[&quot;n&quot;] == 8 and dicke.from_record(m[&quot;h&quot;]) == Q(1, 3))
+    assert dicke.verify_model(model)
+    bad = deepcopy(model)
+    bad[&quot;phase_modulus&quot;] = 1
+    rejected = []
+    for name, operation in [(&quot;posterior verifier&quot;, lambda: dicke.verify_model(bad)),
+                            (&quot;sampler guard&quot;, lambda: dicke.sample_product(bad, random.Random(0)))]:
+        try:
+            operation()
+        except (AssertionError, ValueError):
+            rejected.append(name)
+        else:
+            raise AssertionError(&quot;repaired code accepted phase modulus corruption&quot;)
+    optimized = subprocess.run([sys.executable, &quot;-O&quot;, str(code)], capture_output=True, text=True, timeout=10)
+    assert optimized.returncode != 0 and &quot;without -O/-OO&quot; in optimized.stderr
+    api = json.loads((source / &quot;whole_api_checks.json&quot;).read_text())
+    draws = []
+    for index, example in enumerate(api[&quot;examples&quot;]):
+        outer = example[&quot;model&quot;]
+        assert whole.verify_whole_model(outer)
+        rng = CountingBits(12345 + index)
+        for repetition in range(8):
+            before = rng.bits_used
+            sample = whole.sample_whole_gibbs(outer, rng)
+            used = rng.bits_used - before
+            assert used == outer[&quot;predetermined_random_bits_per_sample&quot;] == sample[&quot;random_bits_consumed&quot;]
+            assert len(sample[&quot;subset&quot;]) == sample[&quot;k&quot;] and len(sample[&quot;complement_ones&quot;]) == sample[&quot;u&quot;]
+            assert set(sample[&quot;subset&quot;]).isdisjoint(sample[&quot;complement_ones&quot;])
+            for local in sample[&quot;local_density_matrices&quot;]:
+                a, b = map(dicke.from_record, local[&quot;diagonal&quot;])
+                re, im = map(dicke.from_record, (local[&quot;upper_right_real&quot;], local[&quot;upper_right_imag&quot;]))
+                assert min(a, b) &gt;= 0 and a + b == 1 and re * re + im * im &lt;= a * b
+            draws.append({&quot;N&quot;: outer[&quot;N&quot;], &quot;repetition&quot;: repetition, &quot;actual_bits&quot;: used,
+                          &quot;all_local_states_exact_PSD_trace_one&quot;: True})
+    # Domain obstruction is independently exact, separate from the guard.
+    import independent_posterior_verifier as independent
+    a, b = independent.independent_exp_minus(Q(1))
+    u2lo, u2hi = a / (1 + 2 * b), b / (1 + 2 * a)
+    assert u2hi - Q(1, 4) &lt; 0
+    try:
+        dicke.numeric_quadrature(2, Q(2), Q(0), 100)
+    except (ArithmeticError, ValueError):
+        outside_rejected = True
+    else:
+        raise AssertionError(&quot;outside-domain negative Gram passed Cholesky&quot;)
+    result = {&quot;status&quot;: &quot;PASS repaired frozen code, owned-copy replay only&quot;,
+              &quot;dicke_sha256&quot;: sha256(code.read_bytes()).hexdigest(),
+              &quot;whole_sha256&quot;: sha256((REPLAY / &quot;whole_gibbs_compiler.py&quot;).read_bytes()).hexdigest(),
+              &quot;phase_counterexample_rejected_by&quot;: rejected,
+              &quot;optimized_python_fail_closed&quot;: True,
+              &quot;whole_models_replayed&quot;: len(api[&quot;examples&quot;]), &quot;actual_counted_finite_bit_draws&quot;: len(draws),
+              &quot;draws&quot;: draws, &quot;outside_delta2_negative_Gram_upper&quot;: str(u2hi - Q(1, 4)),
+              &quot;outside_delta2_bypass_Cholesky_rejected&quot;: outside_rejected,
+              &quot;randomness_scope&quot;: &quot;seeded pseudorandom draws exercise exact bit counts and PSD output; fair-bit distribution theorem is separately audited&quot;,
+              &quot;wall_seconds&quot;: time.perf_counter() - start}
+    (OWN / &quot;REPAIRED_OWNED_REPLAY.json&quot;).write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+    print(json.dumps({k: result[k] for k in (&quot;status&quot;, &quot;whole_models_replayed&quot;, &quot;actual_counted_finite_bit_draws&quot;, &quot;wall_seconds&quot;)}, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/0c525a978e2061fe9edf4089bf89340cb43238d9d749d3d4b6d2e0deb70a1d86.py">Exact original bytes</a></p></html>

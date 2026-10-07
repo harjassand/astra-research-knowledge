@@ -1,0 +1,105 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c04_s03/revisions/phase2/multispecies_check.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c04_s03/revisions/phase2/multispecies_check.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Bounded exact 2-species checks; no SDE execution or large-N certificate.&quot;&quot;&quot;
+import itertools,json,pathlib,time
+import sympy as s
+R=s.Rational
+ROOT=pathlib.Path(__file__).resolve().parent
+t0=time.monotonic()
+
+def clean(x):return x.applyfunc(s.simplify)
+def tensor(xs):
+    z=s.ones(1)
+    for x in xs:z=s.kronecker_product(z,x)
+    return z
+def dk(r,n,v):
+    z=s.zeros(r.rows**n)
+    for j in range(n):
+        xs=[r]*n;xs[j]=v;z+=tensor(xs)
+    return z
+def collective(f,n):
+    z=s.zeros(f.rows**n)
+    for j in range(n):
+        xs=[s.eye(f.rows)]*n;xs[j]=f;z+=tensor(xs)
+    return z
+def v(r,f):return f*r+r*f-2*s.trace(f*r)*r
+def w(r,f):return -s.I*(f*r-r*f)
+
+rp=s.diag(R(2,5),R(3,5));rq=s.diag(R(1,2),R(1,3),R(1,6))
+fp=s.Matrix([[0,1],[1,0]])+s.diag(1,-1)/4
+fq=s.Matrix([[0,1,0],[1,0,0],[0,0,0]])+s.diag(1,1,-2)/3
+assert s.trace(fp*rp)!=0 and s.trace(fq*rq)!=0
+checks=0
+det_checks=0
+for np,nq in [(1,1),(1,2),(2,1)]:
+    kp,kq=tensor([rp]*np),tensor([rq]*nq)
+    k=s.kronecker_product(kp,kq)
+    jp=s.kronecker_product(collective(fp,np),s.eye(3**nq))
+    jq=s.kronecker_product(s.eye(2**np),collective(fq,nq))
+    vp,vq=v(rp,fp),v(rq,fq)
+    wp,wq=w(rp,fp),w(rq,fq)
+    bp,bq=2*np*s.trace(fp*rp),2*nq*s.trace(fq*rq)
+    dpk,dqk=dk(rp,np,vp),dk(rq,nq,vq)
+    drp,drq=dk(rp,np,wp),dk(rq,nq,wq)
+    assert clean(jp*k+k*jp-bp*k-s.kronecker_product(dpk,kq))==s.zeros(k.rows)
+    assert clean(jq*k+k*jq-bq*k-s.kronecker_product(kp,dqk))==s.zeros(k.rows)
+    assert clean(jp*k-k*jp-s.I*s.kronecker_product(drp,kq))==s.zeros(k.rows)
+    assert clean(jq*k-k*jq-s.I*s.kronecker_product(kp,drq))==s.zeros(k.rows)
+    BpBq=bp*bq*k+bp*s.kronecker_product(kp,dqk)+bq*s.kronecker_product(dpk,kq)+s.kronecker_product(dpk,dqk)
+    RpRq=s.kronecker_product(drp,drq)
+    assert clean(BpBq-RpRq-2*(jp*jq*k+k*jp*jq))==s.zeros(k.rows)
+    checks+=5
+    # Cross local-filter drift and log determinant convention.
+    delta=R(1,10000);n=np+nq
+    ap=delta*nq/(2*n)*s.trace(fq*rq)*vp
+    aq=delta*np/(2*n)*s.trace(fp*rp)*vq
+    assert s.simplify(s.trace(rp.inv()*ap)+2*delta*nq/n*s.trace(fp*rp)*s.trace(fq*rq))==0
+    assert s.simplify(s.trace(rq.inv()*aq)+3*delta*np/n*s.trace(fp*rp)*s.trace(fq*rq))==0
+    det_checks+=2
+
+def basis(d):
+    fs=[];gs=[]
+    for i in range(d):
+        for j in range(i+1,d):
+            x,y=s.zeros(d),s.zeros(d)
+            x[i,j]=x[j,i]=1;y[i,j]=-s.I;y[j,i]=s.I
+            fs.extend([x,y]);gs.extend([s.Integer(2)]*2)
+    for j in range(1,d):
+        fs.append(s.diag(*([1]*j+[-j]+[0]*(d-j-1))))
+        gs.append(s.Integer(j*(j+1)))
+    return fs,gs
+def iso_form(r,fs,gs):
+    V=s.Matrix([[s.trace(z*v(r,f)) for f in fs] for z in fs])
+    W=s.Matrix([[s.trace(z*w(r,f)) for f in fs] for z in fs])
+    gi=s.diag(*[1/g for g in gs])
+    return clean(V*gi*V.T-W*gi*W.T),V,W
+def psd(a):
+    assert clean(a-a.H)==s.zeros(a.rows)
+    count=0
+    for k in range(1,a.rows+1):
+        for ix in itertools.combinations(range(a.rows),k):
+            t=s.factor(a.extract(ix,ix).det());assert t&gt;=0,(ix,t);count+=1
+    return count
+fpb,gp=basis(2);fqb,gq=basis(3)
+Dp,Vp,Wp=iso_form(rp,fpb,gp)
+Dq,Vq,Wq=iso_form(rq,fqb,gq)
+np,nq=1,2;n=3;alpha_p=1;alpha_q=2;delta=R(1,10000)
+# Only the two normalized X axes interact, so global offblock B has norm 1.
+# Both axis squared norms are 2; the 1/sqrt(2*2) coefficient is exactly 1/2.
+X=delta/(4*n)*(Vp[:,0]*Vq[:,0].T-Wp[:,0]*Wq[:,0].T)
+gamma=R(1,600) # public gap alpha_min*eta^2/(2N), eta=1/10.
+P=R(alpha_p,np)*Dp-gamma*s.diag(*gp)
+Q=R(alpha_q,nq)*Dq-gamma*s.diag(*gq)
+schur=clean(Q-X.T*P.inv()*X)
+p_minors=psd(P);s_minors=psd(schur)
+assert p_minors==7 and s_minors==255
+assert P.det()&gt;0
+
+# Heterogeneous local dimensions: the parity-sign mixture has exactly
+# (I+P tensor Q)/6 for r=2, without equal-dimensional local factors.
+F=fpb[0];G=fqb[6]
+parity=(s.kronecker_product((s.eye(2)+F)/2,(s.eye(3)+G)/3)+s.kronecker_product((s.eye(2)-F)/2,(s.eye(3)-G)/3))/2
+assert clean(parity-(s.eye(6)+s.kronecker_product(F,G))/6)==s.zeros(6)
+
+out={&#x27;status&#x27;:&#x27;PASS_EXACT_SMALL_FIXTURES_ONLY&#x27;,&#x27;species_dimensions&#x27;:[2,3],&#x27;population_checks&#x27;:[[1,1],[1,2],[2,1]],&#x27;cross_product_kernel_identities&#x27;:checks,&#x27;local_cross_logdet_drift_checks&#x27;:det_checks,&#x27;covariance_gap_fixture&#x27;:{&#x27;Np&#x27;:1,&#x27;Nq&#x27;:2,&#x27;alpha&#x27;:[1,2],&#x27;delta&#x27;:str(delta),&#x27;eta&#x27;:&#x27;1/10&#x27;,&#x27;M&#x27;:1,&#x27;gamma&#x27;:str(gamma),&#x27;Schur_complement_PSD_principal_minors&#x27;:[p_minors,s_minors]},&#x27;unequal_dimension_separable_parity_identity&#x27;:True,&#x27;large_N_or_SDE_execution&#x27;:False,&#x27;priority&#x27;:&#x27;UNKNOWN&#x27;,&#x27;wall_seconds&#x27;:time.monotonic()-t0}
+(ROOT/&#x27;multispecies_check.json&#x27;).write_text(json.dumps(out,indent=2)+&#x27;\n&#x27;);print(json.dumps(out,indent=2))
+</pre><p><a href="../assets/a987f319e950792460a1a5874d725fbda4b75e97a5ce2729f931a827ba412277.py">Exact original bytes</a></p></html>

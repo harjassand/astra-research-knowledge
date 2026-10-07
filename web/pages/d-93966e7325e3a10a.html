@@ -1,0 +1,120 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c01_s03/axial_compiler/check_reusable_tilt.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c01_s03/axial_compiler/check_reusable_tilt.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Bounded exact-positive acquisition/tilt check for the N-call refinement.&quot;&quot;&quot;
+from fractions import Fraction as F
+import json
+import time
+import signal
+from pathlib import Path
+import numpy as np
+import axial_acquisition as a
+from check_axial_acquisition import hierarchy_expectation, target_numpy, CountedRandom
+
+
+def main():
+    def wall_limit(signum, frame):
+        raise TimeoutError(&quot;owned bounded fixture exceeded the declared20second wall cap&quot;)
+    signal.signal(signal.SIGALRM, wall_limit)
+    signal.alarm(20)
+    started = time.perf_counter()
+    assertions = 0
+    def check(value):
+        nonlocal assertions
+        assertions += 1
+        assert value
+    records = []
+    delivered = []
+    for N, alpha, delta, h in [(2, F(1, 2), F(1), F(1, 3)),
+                               (3, F(1, 3), F(1), F(-1, 2)),
+                               (3, F(1), F(1, 2), F(1, 3))]:
+        eps = F(1, 8)
+        Hcap = abs(h) + delta
+        B = a.ceil_fraction(2 * N * Hcap)
+        eta = eps / (1 &lt;&lt; (B + 10))
+        w, metadata = a.acquire_k_weights(N, alpha, delta, h, eps,
+                                          lp_backend=a.exact_simplex_fixture)
+        branches, branch_data = a.acquire_branches(N, delta, h, w, eps)
+        base = {}
+        base_nodes = 0
+        for k in range(1, N + 1):
+            p, acquisition = a.acquire_zero_field_probabilities(N, k, delta, eta)
+            mixture, fixture = a.symmetric_octahedron_fixture(k, p, eta / 2)
+            check(fixture[&quot;population_L1_error_before_rounding&quot;] == 0)
+            check(fixture[&quot;optimization_executed&quot;] is False)
+            check(fixture[&quot;rounding_TV&quot;] &lt;= eta / 16)
+            check(acquisition[&quot;acquisition_TV_bound&quot;] &lt;= eta / 16)
+            check(sum(v[0] for v in mixture) == 1)
+            base[k] = mixture
+            base_nodes += len(mixture)
+        inner = {}
+        filtered_nodes = 0
+        for branch in branches:
+            k, u, m = branch[&quot;k&quot;], branch[&quot;u&quot;], branch[&quot;m&quot;]
+            if not k:
+                continue
+            hprime = h - 2 * delta * m / N
+            check(abs(hprime) &lt;= Hcap)
+            mixture, tilt = a.tilt_iid_mixture(N, k, hprime, Hcap, base[k], eps)
+            check(tilt[&quot;B&quot;] == B and tilt[&quot;eta&quot;] == eta)
+            check(tilt[&quot;weight_rounding_TV&quot;] &lt;= eps / 128)
+            check(sum(v[0] for v in mixture) == 1)
+            D0, D1 = tilt[&quot;exact_rational_filter&quot;]
+            check(D0 &gt; 0 and D1 &gt; 0)
+            check(min(D0, D1) ** (2 * k) &gt;= F(1, 4 * (1 &lt;&lt; B)))
+            for weight, state in mixture:
+                check(weight &gt;= 0 and a.qubit_state_is_psd(state))
+                d0, d1, re, im = state
+                check(d0 * d1 == re * re + im * im)  # fixture atoms are pure
+            inner[(k, u)] = mixture
+            filtered_nodes += len(mixture)
+        expected = hierarchy_expectation(N, branches, inner)
+        target = target_numpy(N, alpha, delta, h)
+        error = float(np.abs(np.linalg.eigvalsh(expected - target)).sum() / 2)
+        check(error &lt; float(eps / 8))
+        check(abs(np.trace(expected) - 1) &lt; 1e-12)
+        rng = CountedRandom(17003 + N)
+        maximum_bits = 0
+        for trial in range(64):
+            before = rng.bits
+            local, label = a.sample_hierarchy(N, branches, inner, eps, rng)
+            check(len(local) == N and all(a.qubit_state_is_psd(s) for s in local))
+            maximum_bits = max(maximum_bits, rng.bits - before)
+        delivered.append({&quot;N&quot;: N, &quot;alpha&quot;: str(alpha), &quot;delta&quot;: str(delta),
+                          &quot;h&quot;: str(h), &quot;eps&quot;: str(eps),
+                          &quot;rational_K_weights&quot;: [str(v) for v in w],
+                          &quot;outer_types&quot;: [{&quot;k&quot;: b[&quot;k&quot;], &quot;u&quot;: b[&quot;u&quot;],
+                                            &quot;dyadic_probability&quot;: str(b[&quot;probability&quot;])}
+                                           for b in branches],
+                          &quot;rational_inner_mixtures&quot;: {
+                              str((k, u)): [{&quot;dyadic_weight&quot;: str(weight),
+                                             &quot;qubit_matrix_d0_d1_re_im&quot;: list(map(str, state))}
+                                            for weight, state in mixture]
+                              for (k, u), mixture in inner.items()},
+                          &quot;sampled_last_label&quot;: {key: list(val) if isinstance(val, tuple) else val
+                                                 for key, val in label.items()},
+                          &quot;sampled_rational_local_states&quot;: [list(map(str, state)) for state in local]})
+        records.append({&quot;N&quot;: N, &quot;alpha&quot;: str(alpha), &quot;delta&quot;: str(delta),
+                        &quot;h&quot;: str(h), &quot;zero_field_acquisition_calls&quot;: N,
+                        &quot;nonempty_type_count&quot;: len(inner), &quot;base_nodes&quot;: base_nodes,
+                        &quot;filtered_branch_nodes&quot;: filtered_nodes,
+                        &quot;base_error_budget_eta&quot;: str(eta),
+                        &quot;numeric_uniform_subset_trace_error&quot;: error,
+                        &quot;finite_bit_draws&quot;: 64,
+                        &quot;maximum_observed_fair_bits_per_draw&quot;: maximum_bits})
+    result = {&quot;status&quot;: &quot;PASS&quot;, &quot;assertions&quot;: assertions,
+              &quot;elapsed_seconds_shared_machine&quot;: time.perf_counter() - started,
+              &quot;records&quot;: records,
+              &quot;evidence_scope&quot;: &quot;bounded exact-positive six-node zero-field witness and rational tilt; trace errors numerical; generic certified Turing iid backend not executed&quot;,
+              &quot;hardware_preparation&quot;: &quot;NOT_EXECUTED&quot;, &quot;novelty_priority&quot;: &quot;UNKNOWN&quot;}
+    signal.alarm(0)
+    Path(__file__).with_name(&quot;reusable_tilt_checks.json&quot;).write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+    Path(__file__).with_name(&quot;bounded_reusable_mixtures.json&quot;).write_text(json.dumps({
+        &quot;status&quot;: &quot;ACQUIRED_BOUNDED_EXAMPLES&quot;, &quot;basis&quot;: &quot;0 down,1 up&quot;,
+        &quot;qubit_encoding&quot;: &quot;matrix [[d0,re+i im],[re-i im,d1]]&quot;,
+        &quot;uniform_subset_and_complement&quot;: &quot;bounded rank floor(M U/2^b),2^b&gt;=128M/eps&quot;,
+        &quot;certification_scope&quot;: &quot;exact local PSD/simplex/tilt; uniform-subset whole trace errors numerical in reusable_tilt_checks.json&quot;,
+        &quot;cases&quot;: delivered}, indent=2) + &quot;\n&quot;)
+    print(json.dumps(result, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/5dc867cf1f138ac71d28ce0db9008bd9b3540277a65293149573ae6a8798c30e.py">Exact original bytes</a></p></html>

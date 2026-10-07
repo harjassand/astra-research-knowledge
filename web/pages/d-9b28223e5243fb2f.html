@@ -1,0 +1,187 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c02_s03/quadrature/regularization/atomic_fixture_attempt1_failed.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c02_s03/quadrature/regularization/atomic_fixture_attempt1_failed.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Owned bounded regularization fixture; all posterior arithmetic is rational.
+
+The existing owned rational Jacobi core is imported without running its main.
+The fixture is one admitted execution capped at 30 seconds in total. It checks
+an endpoint rank-one n=2 target and a rank-three atomic n=6 target. It does not
+prove the universal complexity theorem or expand another worker&#x27;s code scope.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from math import comb
+from pathlib import Path
+import datetime, importlib.util, json, signal, time
+
+HERE = Path(__file__).resolve().parent
+CORE = HERE.parent / &quot;rational_jacobi.py&quot;
+spec = importlib.util.spec_from_file_location(&quot;owned_frozen_jacobi&quot;, CORE)
+jacobi = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(jacobi)
+
+def rank(A):
+    A = [r[:] for r in A]
+    nr, nc = len(A), len(A[0])
+    r = 0
+    for c in range(nc):
+        p = next((i for i in range(r, nr) if A[i][c]), None)
+        if p is None:
+            continue
+        A[r], A[p] = A[p], A[r]
+        q = A[r][c]
+        A[r] = [x / q for x in A[r]]
+        for i in range(nr):
+            if i != r and A[i][c]:
+                q = A[i][c]
+                A[i] = [x - q*y for x, y in zip(A[i], A[r])]
+        r += 1
+        if r == nr:
+            break
+    return r
+
+def solve(A, b):
+    n = len(A)
+    M = [A[i][:] + [b[i]] for i in range(n)]
+    for j in range(n):
+        p = next(i for i in range(j, n) if M[i][j])
+        M[j], M[p] = M[p], M[j]
+        q = M[j][j]
+        M[j] = [x / q for x in M[j]]
+        for i in range(n):
+            if i != j:
+                q = M[i][j]
+                M[i] = [x - q*y for x, y in zip(M[i], M[j])]
+    return [row[-1] for row in M]
+
+def inverse(A):
+    n = len(A)
+    cols = [solve(A, [F(int(i == j)) for i in range(n)]) for j in range(n)]
+    return jacobi.tr(cols)
+
+def positive_ldl(A):
+    n = len(A)
+    L = jacobi.ident(n)
+    D = []
+    for j in range(n):
+        q = A[j][j] - sum((L[j][k]**2 * D[k] for k in range(j)), F(0))
+        assert q &gt; 0
+        D.append(q)
+        for i in range(j + 1, n):
+            L[i][j] = (A[i][j] - sum((L[i][k]*L[j][k]*D[k] for k in range(j)), F(0))) / q
+    return D
+
+def approximate_cholesky(A, bits):
+    n = len(A)
+    L = [[F(0) for j in range(n)] for i in range(n)]
+    for i in range(n):
+        for j in range(i + 1):
+            q = A[i][j] - sum((L[i][k]*L[j][k] for k in range(j)), F(0))
+            if i == j:
+                assert q &gt; 0
+                lo, hi = jacobi.sqrt_dyadic_interval(q, bits)
+                L[i][j] = (lo + hi) / 2
+            else:
+                L[i][j] = jacobi.round_dyadic(q / L[j][j], bits)
+    assert L[0][0] == 1
+    return L
+
+def populations(n, nodes, weights):
+    return [sum((w * comb(n, k) * x**k * (1-x)**(n-k)
+                 for x, w in zip(nodes, weights)), F(0)) for k in range(n + 1)]
+
+def fixture(n, atoms, epsilon, tau):
+    start = time.monotonic()
+    m, d = n // 2, n // 2 + 1
+    eta = epsilon / 8
+    u = [sum((w*x**l for x, w in atoms), F(0)) for l in range(n + 1)]
+    assert u[0] == 1
+    ur = [(1-eta)*u[l] + eta/F(l+1) for l in range(n + 1)]
+    H0 = [[u[i+j] for j in range(d)] for i in range(d)]
+    H = [[ur[i+j] for j in range(d)] for i in range(d)]
+    oldrank = rank(H0)
+    assert oldrank &lt; d
+    hpivots = positive_ldl(H)
+    A = [[ur[i+j+1] for j in range(m)] for i in range(m)]
+    v = [ur[i+m+1] for i in range(m)]
+    s = sum((x*y for x, y in zip(v, solve(A, v))), F(0))
+    K = [[ur[i+j+1] if (i, j) != (m, m) else s for j in range(d)] for i in range(d)]
+    assert rank(K) == m
+    positive_ldl([[H[i][j]-K[i][j] for j in range(d)] for i in range(d)])
+    Lr = approximate_cholesky(H, 96)
+    LL = jacobi.mm(Lr, jacobi.tr(Lr))
+    # This exact support certificate protects the actual rounded factor.
+    support = [[(1+tau)*LL[i][j]-K[i][j] for j in range(d)] for i in range(d)]
+    support_pivots = positive_ldl(support)
+    Linv = inverse(Lr)
+    Jr = jacobi.mm(jacobi.mm(Linv, K), jacobi.tr(Linv))
+    M = [[x/(1+tau) for x in row] for row in Jr]
+    out = jacobi.diagonalize(M, tau)
+    nodes = [out[&#x27;T&#x27;][i][i] for i in range(d)]
+    assert all(0 &lt;= x &lt;= 1 for x in nodes)
+    endpoint = min(range(d), key=lambda i: nodes[i])
+    assert nodes[endpoint] &lt;= tau
+    nodes[endpoint] = F(0)
+    weights = out[&#x27;weights&#x27;]
+    assert all(w &gt;= 0 for w in weights) and sum(weights) == 1
+    target = populations(n, [x for x, w in atoms], [w for x, w in atoms])
+    regtarget = [(1-eta)*p + eta/F(n+1) for p in target]
+    recovered = populations(n, nodes, weights)
+    assert all(p &gt;= 0 for p in recovered) and sum(recovered) == 1
+    regerror = sum((abs(a-b) for a, b in zip(recovered, regtarget)), F(0))/2
+    totalerror = sum((abs(a-b) for a, b in zip(recovered, target)), F(0))/2
+    regularization_cost = sum((abs(a-b) for a, b in zip(regtarget, target)), F(0))/2
+    assert regularization_cost &lt;= eta
+    assert regerror &lt;= epsilon/8
+    assert totalerror &lt;= epsilon/4
+    return {
+        &#x27;n&#x27;: n, &#x27;atoms&#x27;: [[str(x), str(w)] for x, w in atoms],
+        &#x27;epsilon&#x27;: str(epsilon), &#x27;eta&#x27;: str(eta), &#x27;tau&#x27;: str(tau),
+        &#x27;original_gram_rank&#x27;: oldrank, &#x27;regularized_gram_rank&#x27;: rank(H),
+        &#x27;dimension&#x27;: d, &#x27;min_H_pivot&#x27;: str(min(hpivots)),
+        &#x27;min_support_pivot&#x27;: str(min(support_pivots)),
+        &#x27;nodes&#x27;: [str(x) for x in nodes], &#x27;weights&#x27;: [str(w) for w in weights],
+        &#x27;posterior_regularization_TD&#x27;: str(regularization_cost),
+        &#x27;posterior_quadrature_TD&#x27;: str(regerror),
+        &#x27;posterior_original_TD&#x27;: str(totalerror),
+        &#x27;posterior_original_TD_float_for_display&#x27;: float(totalerror),
+        &#x27;exact_positivity&#x27;: True, &#x27;exact_weight_sum&#x27;: True,
+        &#x27;exact_radau_endpoint0&#x27;: True, &#x27;posterior_budget_pass&#x27;: True,
+        &#x27;rotations&#x27;: out[&#x27;rotations&#x27;], &#x27;refinements&#x27;: out[&#x27;refinements&#x27;],
+        &#x27;max_output_bitlength&#x27;: out[&#x27;max_output_bitlength&#x27;],
+        &#x27;seconds&#x27;: time.monotonic() - start,
+    }
+
+class TimeCap(Exception):
+    pass
+
+def timeout(signum, frame):
+    raise TimeCap(&#x27;Admitted total 30-second fixture cap reached&#x27;)
+
+if __name__ == &#x27;__main__&#x27;:
+    admitted = time.monotonic()
+    rows = []
+    result = {
+        &#x27;utc&#x27;: datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        &#x27;admitted_total_seconds&#x27;: 30,
+        &#x27;scope&#x27;: &#x27;two owned atomic regularization fixtures, exact rational posterior; no generic frontend or physical execution claim&#x27;,
+        &#x27;old_core&#x27;: str(CORE), &#x27;fixtures&#x27;: rows,
+    }
+    signal.signal(signal.SIGALRM, timeout)
+    signal.setitimer(signal.ITIMER_REAL, 30)
+    try:
+        for n, atoms in [(2, [(F(1, 2), F(1))]),
+                         (6, [(F(0), F(1, 5)), (F(1, 3), F(1, 2)), (F(1), F(3, 10))])]:
+            row = fixture(n, atoms, F(1, 8), F(1, 2**22))
+            rows.append(row)
+            print(json.dumps({k: row[k] for k in [&#x27;n&#x27;, &#x27;original_gram_rank&#x27;, &#x27;regularized_gram_rank&#x27;, &#x27;posterior_original_TD_float_for_display&#x27;, &#x27;rotations&#x27;, &#x27;seconds&#x27;]}), flush=True)
+        result[&#x27;status&#x27;] = &#x27;PASS&#x27;
+        result[&#x27;all_passed&#x27;] = True
+    except Exception as err:
+        result[&#x27;status&#x27;] = type(err).__name__
+        result[&#x27;error&#x27;] = str(err)
+        result[&#x27;all_passed&#x27;] = False
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        result[&#x27;total_seconds&#x27;] = time.monotonic() - admitted
+        HERE.joinpath(&#x27;atomic_fixture.json&#x27;).write_text(json.dumps(result, indent=2))
+        print(json.dumps({k: result[k] for k in [&#x27;status&#x27;, &#x27;all_passed&#x27;, &#x27;total_seconds&#x27;]}), flush=True)
+    if not result[&#x27;all_passed&#x27;]:
+        raise SystemExit(1)
+</pre><p><a href="../assets/c659b7f43d0f5ca23063735e7ab26ac2803daf622f9dd1889812ba500fb970ef.py">Exact original bytes</a></p></html>

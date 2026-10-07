@@ -1,0 +1,246 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c02_s03/initial_evidence/representation_compiler.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c02_s03/initial_evidence/representation_compiler.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Exact recognition and support compiler for a scoped hard-BCS subclass.
+
+The module does not implement Chen--Liu counting or a quantum circuit. It
+acquires a bipartite pair representation, a rational graph Slater matrix,
+and deterministic exact prefix feasibility/witnesses. Only the inverse
+branch requires n=2k; diagonal shifts preserve every hard-sector minor.
+&quot;&quot;&quot;
+from fractions import Fraction as Q
+from collections import deque
+from itertools import combinations
+
+
+class C:
+    __slots__ = (&#x27;re&#x27;, &#x27;im&#x27;)
+    def __init__(self, re=0, im=0):
+        self.re, self.im = Q(re), Q(im)
+    @staticmethod
+    def make(x):
+        if isinstance(x, C): return x
+        if isinstance(x, (tuple, list)): return C(*x)
+        return C(x)
+    def __add__(self, x):
+        x = C.make(x); return C(self.re+x.re, self.im+x.im)
+    __radd__ = __add__
+    def __neg__(self): return C(-self.re, -self.im)
+    def __sub__(self, x): return self + -C.make(x)
+    def __rsub__(self, x): return C.make(x) + -self
+    def __mul__(self, x):
+        x = C.make(x)
+        return C(self.re*x.re-self.im*x.im, self.re*x.im+self.im*x.re)
+    __rmul__ = __mul__
+    def __truediv__(self, x):
+        x = C.make(x); d = x.re*x.re+x.im*x.im
+        return C((self.re*x.re+self.im*x.im)/d,
+                 (self.im*x.re-self.re*x.im)/d)
+    def __bool__(self): return bool(self.re or self.im)
+    def __eq__(self, x):
+        x = C.make(x); return self.re == x.re and self.im == x.im
+    def conjugate(self): return C(self.re, -self.im)
+    def abs2(self): return self.re*self.re+self.im*self.im
+    def json(self): return [str(self.re), str(self.im)]
+    def __repr__(self): return f&#x27;C({self.re},{self.im})&#x27;
+
+
+def matrix(a): return [[C.make(x) for x in row] for row in a]
+def minor(a, rows, cols): return [[a[i][j] for j in cols] for i in rows]
+
+
+def det(a):
+    a = matrix(a); n = len(a); d = C(1)
+    for j in range(n):
+        p = next((i for i in range(j, n) if a[i][j]), None)
+        if p is None: return C(0)
+        if p != j: a[p], a[j] = a[j], a[p]; d = -d
+        pivot = a[j][j]; d = d*pivot
+        for i in range(j+1, n):
+            if a[i][j]:
+                q = a[i][j]/pivot
+                for k in range(j+1, n): a[i][k] = a[i][k]-q*a[j][k]
+                a[i][j] = C(0)
+    return d
+
+
+def inverse(a):
+    a = matrix(a); n = len(a)
+    b = [row + [C(i == j) for j in range(n)] for i, row in enumerate(a)]
+    for j in range(n):
+        p = next((i for i in range(j, n) if b[i][j]), None)
+        if p is None: raise ValueError(&#x27;singular matrix&#x27;)
+        b[p], b[j] = b[j], b[p]
+        pivot = b[j][j]; b[j] = [x/pivot for x in b[j]]
+        for i in range(n):
+            if i != j and b[i][j]:
+                q = b[i][j]; b[i] = [x-q*y for x,y in zip(b[i], b[j])]
+    return [row[n:] for row in b]
+
+
+def rank(a):
+    if not a: return 0
+    a = matrix(a); r = 0
+    for j in range(len(a[0])):
+        p = next((i for i in range(r, len(a)) if a[i][j]), None)
+        if p is None: continue
+        a[p], a[r] = a[r], a[p]
+        q = a[r][j]; a[r] = [x/q for x in a[r]]
+        for i in range(r+1, len(a)):
+            if a[i][j]:
+                q = a[i][j]; a[i] = [x-q*y for x,y in zip(a[i],a[r])]
+        r += 1
+        if r == len(a): break
+    return r
+
+
+def strip_diagonal(a):
+    return [[C(0) if i == j else x for j,x in enumerate(row)]
+            for i,row in enumerate(matrix(a))]
+
+
+def bipartition(a):
+    &quot;&quot;&quot;Returns acquired colors, or an explicit odd closed walk.&quot;&quot;&quot;
+    n = len(a); color = [None]*n; parent = [None]*n
+    edges = [[j for j in range(n) if j != i and (a[i][j] or a[j][i])]
+             for i in range(n)]
+    for s in range(n):
+        if color[s] is not None: continue
+        color[s] = 0; queue = deque([s])
+        while queue:
+            i = queue.popleft()
+            for j in edges[i]:
+                if color[j] is None:
+                    color[j] = 1-color[i]; parent[j] = i; queue.append(j)
+                elif color[j] == color[i]:
+                    left=[]; x=i
+                    while x is not None: left.append(x); x=parent[x]
+                    right=[]; x=j
+                    while x not in left: right.append(x); x=parent[x]
+                    lca=x; left=left[:left.index(lca)+1]
+                    return None, left+list(reversed(right))+[i]
+    return color, None
+
+
+def graph_slater(h, color):
+    aa=[i for i,c in enumerate(color) if c == 0]
+    bb=[i for i,c in enumerate(color) if c == 1]
+    a,b=len(aa),len(bb); z=C(0)
+    g=[]; row_sites=[]; row_spins=[]
+    for i in aa:
+        g.append([z]*b+[h[i][j] for j in bb]); row_sites.append(i); row_spins.append(&#x27;U&#x27;)
+    for i in aa:
+        g.append([-h[j][i] for j in bb]+[z]*b); row_sites.append(i); row_spins.append(&#x27;D&#x27;)
+    for offset, spin in [(0,&#x27;D&#x27;),(b,&#x27;U&#x27;)]:
+        for j,i in enumerate(bb):
+            g.append([C(t == offset+j) for t in range(2*b)])
+            row_sites.append(i); row_spins.append(spin)
+    return g,row_sites,row_spins,aa,bb
+
+
+def recognize(f, k, shifts=(0,)):
+    &quot;&quot;&quot;Exact finite-union recognition; rejection means outside this compiler.
+
+    Default branches: off-diagonal bipartite F, or off-diagonal bipartite
+    F^{-1} at half filling. Explicit rational scalar diagonal shifts may
+    enlarge the inverse branch; their number and encodings are charged.
+    &quot;&quot;&quot;
+    f=matrix(f); n=len(f)
+    if any(len(row) != n for row in f): raise ValueError(&#x27;F must be square&#x27;)
+    if not (0 &lt;= k &lt;= n//2): return {&#x27;status&#x27;:&#x27;ZERO&#x27;,&#x27;reason&#x27;:&#x27;hard capacity&#x27;}
+    h=strip_diagonal(f); color,odd=bipartition(h)
+    scalar=C(1); branch=&#x27;DIRECT_BIPARTITE&#x27;; shifted=None
+    if color is None:
+        if n != 2*k:
+            return {&#x27;status&#x27;:&#x27;REJECTED_SUBCLASS&#x27;,&#x27;reason&#x27;:&#x27;inverse identity requires n=2k&#x27;,&#x27;odd_walk&#x27;:odd}
+        for shift in shifts:
+            q=C.make(shift)
+            shifted=[[x+(q if i == j else 0) for j,x in enumerate(row)] for i,row in enumerate(f)]
+            determinant=det(shifted)
+            if not determinant: continue
+            h=strip_diagonal(inverse(shifted)); color,odd_inv=bipartition(h)
+            if color is not None:
+                scalar=((-1)**k)*determinant; branch=&#x27;INVERSE_BIPARTITE_HALF_FILL&#x27;; break
+        else:
+            return {&#x27;status&#x27;:&#x27;REJECTED_SUBCLASS&#x27;,&#x27;reason&#x27;:&#x27;all inverse branches rejected&#x27;,&#x27;odd_walk&#x27;:odd}
+    g,sites,spins,aa,bb=graph_slater(h,color)
+    return {&#x27;status&#x27;:&#x27;COMPILED&#x27;,&#x27;branch&#x27;:branch,&#x27;n&#x27;:n,&#x27;k&#x27;:k,&#x27;F&#x27;:f,&#x27;H&#x27;:h,
+            &#x27;G&#x27;:g,&#x27;color&#x27;:color,&#x27;scalar&#x27;:scalar,&#x27;norm_factor&#x27;:scalar.abs2(),
+            &#x27;row_sites&#x27;:sites,&#x27;row_spins&#x27;:spins,&#x27;A&#x27;:aa,&#x27;B&#x27;:bb,
+            &#x27;shift&#x27;:None if shifted is None else q}
+
+
+def prefix_support(compiled, spin_constraints):
+    &quot;&quot;&quot;Deterministic full-single-occupancy support/witness by matroid intersection.
+
+    spin_constraints is {site:&#x27;U&#x27;/&#x27;D&#x27;}. The full-occupancy interface has only
+    n physical spin bits. Returns ZERO or an exact verified witness; no
+    randomized norm estimate is used as feasibility evidence.
+    &quot;&quot;&quot;
+    if compiled[&#x27;status&#x27;] != &#x27;COMPILED&#x27;: return {&#x27;status&#x27;:compiled[&#x27;status&#x27;]}
+    n,k=compiled[&#x27;n&#x27;],compiled[&#x27;k&#x27;]
+    if n != 2*k: raise ValueError(&#x27;this executable prefix interface requires half filling&#x27;)
+    g=compiled[&#x27;G&#x27;]; sites=compiled[&#x27;row_sites&#x27;]; spins=compiled[&#x27;row_spins&#x27;]
+    r=len(g[0]) if g else 0
+    if r != n: return {&#x27;status&#x27;:&#x27;ZERO&#x27;,&#x27;reason&#x27;:&#x27;unequal color populations&#x27;}
+    if any(i &lt; 0 or i &gt;= n or s not in (&#x27;U&#x27;,&#x27;D&#x27;) for i,s in spin_constraints.items()):
+        raise ValueError(&#x27;invalid physical spin constraint&#x27;)
+    forced={x for x in range(2*n) if spin_constraints.get(sites[x]) == spins[x]}
+    removed={x for x in range(2*n) if sites[x] in spin_constraints and x not in forced}
+    if rank([g[x] for x in sorted(forced)]) != len(forced):
+        return {&#x27;status&#x27;:&#x27;ZERO&#x27;,&#x27;reason&#x27;:&#x27;forced dependent rows&#x27;}
+    remaining=set(range(2*n))-forced-removed; chosen=set(); target=n-len(forced)
+    def linear(v):
+        vv=forced|v; return rank([g[x] for x in sorted(vv)]) == len(vv)
+    def partition(v):
+        return len({sites[x] for x in forced|v}) == len(forced|v)
+    while len(chosen) &lt; target:
+        outside=remaining-chosen
+        sources=[x for x in sorted(outside) if linear(chosen|{x})]
+        sinks={x for x in outside if partition(chosen|{x})}
+        queue=deque(sources); parent={x:None for x in sources}; end=None
+        while queue:
+            x=queue.popleft()
+            if x in sinks: end=x; break
+            if x in chosen:
+                successors=[y for y in sorted(outside) if linear((chosen-{x})|{y})]
+            else:
+                successors=[y for y in sorted(chosen) if partition((chosen-{y})|{x})]
+            for y in successors:
+                if y not in parent: parent[y]=x; queue.append(y)
+        if end is None:
+            reachable=set(parent)
+            linear_rank=rank([g[x] for x in sorted(forced|(remaining-reachable))])-len(forced)
+            partition_rank=len({sites[x] for x in reachable})
+            assert linear_rank+partition_rank == len(chosen)
+            return {&#x27;status&#x27;:&#x27;ZERO&#x27;,&#x27;reason&#x27;:&#x27;matroid rank-sum certificate&#x27;,
+                    &#x27;maximum_size&#x27;:len(forced|chosen),&#x27;certificate&#x27;:{
+                    &#x27;reachable&#x27;:sorted(reachable),&#x27;linear_contracted_rank&#x27;:linear_rank,
+                    &#x27;partition_contracted_rank&#x27;:partition_rank,
+                    &#x27;upper_total&#x27;:len(forced)+linear_rank+partition_rank}}
+        path=[]; x=end
+        while x is not None: path.append(x); x=parent[x]
+        chosen ^= set(path)
+        assert linear(chosen) and partition(chosen)
+    rows=sorted(forced|chosen); up=sorted(sites[x] for x in rows if spins[x] == &#x27;U&#x27;)
+    down=sorted(set(range(n))-set(up))
+    amplitude=det(minor(compiled[&#x27;F&#x27;],up,down))
+    assert len(up) == k and amplitude
+    return {&#x27;status&#x27;:&#x27;POSITIVE&#x27;,&#x27;up&#x27;:up,&#x27;down&#x27;:down,&#x27;rows&#x27;:rows,
+            &#x27;amplitude&#x27;:amplitude,&#x27;weight&#x27;:amplitude.abs2()}
+
+
+def physical_coefficient(compiled, up):
+    n,k=compiled[&#x27;n&#x27;],compiled[&#x27;k&#x27;]; up=sorted(up)
+    if len(up) != k: return Q(0)
+    down=sorted(set(range(n))-set(up))
+    return det(minor(compiled[&#x27;F&#x27;],up,down)).abs2()
+
+
+def exhaustive_prefix_norm(f, constraints):
+    &quot;&quot;&quot;Small exact diagnostic only: exponential, never the production counter.&quot;&quot;&quot;
+    f=matrix(f); n=len(f); k=n//2; answer=Q(0)
+    for up in combinations(range(n),k):
+        up=set(up)
+        if any((&#x27;U&#x27; if i in up else &#x27;D&#x27;) != s for i,s in constraints.items()): continue
+        down=sorted(set(range(n))-up)
+        answer += det(minor(f,sorted(up),down)).abs2()
+    return answer
+</pre><p><a href="../assets/0cc8a3055ac9e9281eb2f58f4e5aec9426ecb413637e0b29e15e7bf3441ff9f3.py">Exact original bytes</a></p></html>

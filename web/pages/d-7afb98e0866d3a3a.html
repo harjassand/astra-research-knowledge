@@ -1,0 +1,43 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c04_s01/spin1_covariance_probe.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c04_s01/spin1_covariance_probe.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Small diagnostic for SU(2) spin-one covariant broadcasters.
+No solver, no universal theorem from these fixtures.
+&quot;&quot;&quot;
+import json, os
+os.environ.setdefault(&#x27;OPENBLAS_NUM_THREADS&#x27;,&#x27;1&#x27;)
+os.environ.setdefault(&#x27;OMP_NUM_THREADS&#x27;,&#x27;1&#x27;)
+import numpy as np
+from pathlib import Path
+I=np.eye(3,dtype=complex)
+Jz=np.diag([1,0,-1]).astype(complex)
+Jp=np.array([[0,2**.5,0],[0,0,2**.5],[0,0,0]],complex)
+Js=[(Jp+Jp.conj().T)/2,(Jp-Jp.conj().T)/(2j),Jz]
+dip=[x/2**.5 for x in Js]
+quad=[]
+for i in range(3):
+ for j in range(i,3):
+  A=(Js[i]@Js[j]+Js[j]@Js[i])/2
+  A-=np.trace(A)*I/3
+  for B in dip+quad: A-=np.trace(B.conj().T@A)*B
+  n=np.linalg.norm(A)
+  if n&gt;1e-8: quad.append(A/n)
+assert len(quad)==5
+
+def star(fs):
+ return sum(np.kron(H.T,np.kron(H,I)+np.kron(I,H)) for H in fs)
+Kd,Kq=star(dip),star(quad)
+records=[]
+for a in [0,.01,.03,.1,.3,.5,.8,1,1.2,1.5,2,3,5,10,30,100]:
+ b=1.
+ K=a*Kd+b*Kq
+ ev,u=np.linalg.eigh(K)
+ v=u[:,ev&gt;ev[-1]-1e-8]
+ omega=v@v.conj().T/v.shape[1]
+ lambdad=float(np.trace(omega@Kd).real/2)
+ lambdaq=float(np.trace(omega@Kq).real/(2*5/3))
+ V=a+5*b/3
+ C=(a/2+b/6) if a&gt;=b else 2*b/3
+ F=ev[-1]/2
+ ratio=(V-C)/(V-F)
+ records.append(dict(a=a,b=b,lambda_dipole=lambdad,lambda_quad=lambdaq,positive=lambdad&gt;=-1e-8 and lambdaq&gt;=-1e-8,V=V,C=C,F=F,ratio=ratio,c2_slack=V+C-2*F,eig_multiplicity=v.shape[1]))
+print(json.dumps(records,indent=2))
+Path(__file__).with_suffix(&#x27;.json&#x27;).write_text(json.dumps(records,indent=2)+&#x27;\n&#x27;)
+</pre><p><a href="../assets/3ce93e6d2151a9cf7db83d5707a5c82782056f82367afc4e8654b14a46ad97d5.py">Exact original bytes</a></p></html>

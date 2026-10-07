@@ -1,0 +1,107 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c01_l07/revisions/r3_bounded_block_heatbath.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c01_l07/revisions/r3_bounded_block_heatbath.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact block-factorized heat-bath kernel and energy checks.&quot;&quot;&quot;
+
+from __future__ import annotations
+
+from fractions import Fraction
+from itertools import product
+from math import comb, prod
+import json
+from pathlib import Path
+import r1_ring_mh_bottleneck as ring
+
+
+def local_data(delta: Fraction):
+    f = ring.ring_matrix(6, delta)
+    all_states, dets = ring.exact_determinants(f)
+    support = list(dets)
+    weights = {s: dets[s] ** 2 for s in support}
+    z = sum(weights.values())
+    probs = {s: weights[s] / z for s in support}
+    return all_states, support, weights, probs
+
+
+def product_kernel(support, probs, r: int):
+    states = list(product(support, repeat=r))
+    index = {s: i for i, s in enumerate(states)}
+    q = [[Fraction(0) for _ in states] for _ in states]
+    for i, state in enumerate(states):
+        for b in range(r):
+            for replacement in support:
+                target = list(state)
+                target[b] = replacement
+                j = index[tuple(target)]
+                q[i][j] += probs[replacement] / r
+    return states, q
+
+
+def dirichlet(q, pi, f):
+    return sum(
+        pi[i] * q[i][j] * (f[i] - f[j]) ** 2 / 2
+        for i in range(len(q))
+        for j in range(len(q))
+    )
+
+
+def frac(x):
+    return {&quot;numerator&quot;: str(x.numerator), &quot;denominator&quot;: str(x.denominator)}
+
+
+def run(r: int) -&gt; dict[str, object]:
+    delta = Fraction(1, 8)
+    _, support, weights, probs = local_data(delta)
+    states, q = product_kernel(support, probs, r)
+    pi = [prod((probs[s] for s in state), start=Fraction(1)) for state in states]
+    assert sum(pi) == 1
+    for i in range(len(states)):
+        assert sum(q[i]) == 1
+        for j in range(len(states)):
+            assert pi[i] * q[i][j] == pi[j] * q[j][i]
+
+    local_sign = {s: Fraction(1 if len(set(s) &amp; {0, 2, 4}) &gt;= 2 else -1) for s in support}
+    test = [local_sign[state[0]] for state in states]
+    mean = sum(p * x for p, x in zip(pi, test))
+    variance = sum(p * (x - mean) ** 2 for p, x in zip(pi, test))
+    energy = dirichlet(q, pi, test)
+    assert mean == 0 and variance == 1
+    assert energy == Fraction(1, r)
+
+    # The pair kernel refreshes A or B, each with probability 1/2.
+    # For F=f1(A)+f2(B), the exact product Dirichlet form is
+    # (E_Q(f1)+E_Q(f2))/2. Choosing f1=test and f2=0 attains L=2r.
+    l_exact = 2 * r
+
+    return {
+        &quot;number_of_blocks&quot;: r,
+        &quot;candidate_states_per_block&quot;: 20,
+        &quot;supported_states_per_block&quot;: len(support),
+        &quot;all_global_fixed_cardinality_subsets&quot;: comb(6 * r, 3 * r),
+        &quot;blockwise_candidate_product_state_count&quot;: 20**r,
+        &quot;global_supported_state_count&quot;: len(states),
+        &quot;two_replica_supported_state_count&quot;: len(states) ** 2,
+        &quot;local_determinant_evaluations_for_preprocessing&quot;: 20 * r,
+        &quot;one_replica_heatbath_gap&quot;: frac(Fraction(1, r)),
+        &quot;tested_function_variance&quot;: frac(variance),
+        &quot;tested_function_one_replica_energy&quot;: frac(energy),
+        &quot;pair_energy_constant_exact&quot;: l_exact,
+    }
+
+
+def main() -&gt; None:
+    result = {
+        &quot;status&quot;: &quot;PASS&quot;,
+        &quot;arithmetic&quot;: &quot;exact Fractions; explicit transition matrix for r=1,2&quot;,
+        &quot;block_family&quot;: &quot;r direct-sum copies of the 6-coordinate F_delta block, delta=1/8&quot;,
+        &quot;kernel&quot;: &quot;uniformly choose a block and refresh it exactly from its local determinant law; pair kernel refreshes one of two replicas&quot;,
+        &quot;cases&quot;: [run(r) for r in (1, 2)],
+        &quot;general_exact_claim&quot;: &quot;for r independent finite blocks, random-scan exact block heat-bath has gap exactly 1/r and the two-replica additive energy constant is exactly 2r&quot;,
+        &quot;cost_scope&quot;: &quot;polynomial preprocessing when maximum block size is O(log n); for fixed size 6, exactly 20 minor evaluations per block&quot;,
+    }
+    path = Path(__file__).with_name(&quot;r3_bounded_block_heatbath_result.json&quot;)
+    path.write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+    print(json.dumps(result, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/220418d1dcd44da71fb433fa6550d24de23c7af2e33fd1e1fb8880dbaefcd5a9.py">Exact original bytes</a></p></html>

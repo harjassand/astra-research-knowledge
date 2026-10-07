@@ -1,0 +1,176 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c02_s03/banded_hard_bcs.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c02_s03/banded_hard_bcs.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Exact hard-BCS canonical/prefix counts at charged input-order bandwidth.
+
+The algorithm contracts a density matrix on at most w+1 physical sites.
+It permits holes and complex rational amplitudes. Runtime is exponential
+in w, polynomial in n and coefficient bit size; it does not implement a
+quantum circuit or infer an optimal-width ordering.
+&quot;&quot;&quot;
+from representation_compiler import C,Q,matrix
+
+
+def recognize_bandwidth(f, cap=None):
+    f=matrix(f); n=len(f)
+    if any(len(row) != n for row in f): raise ValueError(&#x27;F must be square&#x27;)
+    width=0; edge=None
+    for i in range(n):
+        for j in range(n):
+            if i != j and f[i][j] and abs(i-j) &gt; width:
+                width=abs(i-j); edge=[i,j]
+    return {&#x27;status&#x27;:&#x27;ACCEPTED&#x27; if cap is None or width &lt;= cap else &#x27;REJECTED_WIDTH&#x27;,
+            &#x27;width&#x27;:width,&#x27;widest_nonzero_edge&#x27;:edge,&#x27;n&#x27;:n,&#x27;F&#x27;:f}
+
+
+def creation_product(state, left_mode, right_mode):
+    &quot;&quot;&quot;Action of c_left^dagger c_right^dagger on a Fock basis mask.&quot;&quot;&quot;
+    sign=1
+    for mode in (right_mode,left_mode):
+        if state &amp; (1 &lt;&lt; mode): return None
+        if (state &amp; ((1 &lt;&lt; mode)-1)).bit_count() &amp; 1: sign=-sign
+        state |= 1 &lt;&lt; mode
+    return state,sign
+
+
+def add(out,key,value):
+    if not value: return
+    value=out.get(key,C(0))+value
+    if value: out[key]=value
+    else: out.pop(key,None)
+
+
+def pair_gate(rho, coefficient, left_mode, right_mode):
+    &quot;&quot;&quot;rho -&gt; (I+a c_l^+ c_r^+) rho (I+a c_l^+ c_r^+)^*.&quot;&quot;&quot;
+    coefficient=C.make(coefficient)
+    if not coefficient: return rho
+    out={}
+    for (a,b,q),weight in rho.items():
+        add(out,(a,b,q),weight)
+        ca=creation_product(a,left_mode,right_mode)
+        cb=creation_product(b,left_mode,right_mode)
+        if ca:
+            aa,sa=ca; add(out,(aa,b,q),coefficient*sa*weight)
+        if cb:
+            bb,sb=cb; add(out,(a,bb,q),coefficient.conjugate()*sb*weight)
+        if ca and cb:
+            add(out,(aa,bb,q),coefficient.abs2()*sa*sb*weight)
+    return out
+
+
+def local_masks(n, mode_constraints=None, site_constraints=None):
+    allowed=[{0,1,2} for _ in range(n)]  # 3 is hard-excluded double occupation.
+    if mode_constraints:
+        for (site,spin),bit in mode_constraints.items():
+            if site not in range(n) or spin not in (&#x27;U&#x27;,&#x27;D&#x27;) or bit not in (0,1):
+                raise ValueError(&#x27;invalid mode constraint&#x27;)
+            shift=0 if spin == &#x27;U&#x27; else 1
+            allowed[site]={s for s in allowed[site] if ((s &gt;&gt; shift)&amp;1) == bit}
+    if site_constraints:
+        for site,occupations in site_constraints.items():
+            if site not in range(n) or not set(occupations) &lt;= {0,1,2}:
+                raise ValueError(&#x27;invalid site constraint&#x27;)
+            allowed[site] &amp;= set(occupations)
+    return allowed
+
+
+def count_coefficients(f, mode_constraints=None, site_constraints=None,
+                       width_cap=None, collect_stats=False):
+    &quot;&quot;&quot;Returns every exact c_k under arbitrary physical occupation prefixes.
+
+    F is in the supplied site ordering. No bandwidth-minimization oracle is
+    called. Disjoint-minor diagonal invariance licenses omitting F_ii.
+    &quot;&quot;&quot;
+    certificate=recognize_bandwidth(f,width_cap)
+    if certificate[&#x27;status&#x27;] != &#x27;ACCEPTED&#x27;: raise ValueError(certificate)
+    f=certificate[&#x27;F&#x27;]; n=len(f); w=certificate[&#x27;width&#x27;]
+    allowed=local_masks(n,mode_constraints,site_constraints)
+    rho={(0,0,0):C(1)}; peak=1; gates=0; additions=0
+    # Frontier at step i is sites i,...,min(n-1,i+w), with site-ordered modes.
+    # New rightmost frontier sites are vacua, so their appended high bits are 0.
+    for i in range(n):
+        for j in range(i+1,min(n,i+w+1)):
+            distance=j-i
+            for coefficient,left,right in ((f[i][j],0,2*distance+1),
+                                           (f[j][i],2*distance,1)):
+                if coefficient:
+                    additions+=4*len(rho); gates+=1
+                    rho=pair_gate(rho,coefficient,left,right)
+                    peak=max(peak,len(rho))
+        out={}
+        for (a,b,q),weight in rho.items():
+            occupation=a&amp;3
+            if occupation != (b&amp;3) or occupation not in allowed[i]: continue
+            add(out,(a &gt;&gt; 2,b &gt;&gt; 2,q+occupation.bit_count()),weight)
+        rho=out; peak=max(peak,len(rho))
+    polynomial=[Q(0)]*(n+1)
+    for (a,b,q),weight in rho.items():
+        assert a == b == 0 and weight.im == 0 and weight.re &gt;= 0
+        polynomial[q] += weight.re
+    assert all(not polynomial[q] for q in range(1,n+1,2))
+    coefficients=[polynomial[2*k] for k in range(n//2+1)]
+    result={&#x27;coefficients&#x27;:coefficients,&#x27;width&#x27;:w}
+    if collect_stats:
+        result[&#x27;stats&#x27;]={&#x27;peak_nonzero_density_coefficients&#x27;:peak,
+                         &#x27;pair_creation_gates&#x27;:gates,&#x27;update_bound&#x27;:additions,
+                         &#x27;maximum_live_sites&#x27;:min(n,w+1),
+                         &#x27;scope&#x27;:&#x27;exact count contraction; quantum circuit unimplemented&#x27;}
+    return result
+
+
+def prefix_count(f,k,mode_constraints=None,site_constraints=None,width_cap=None):
+    n=len(f)
+    if k &lt; 0 or 2*k &gt; n: return Q(0)
+    return count_coefficients(f,mode_constraints,site_constraints,width_cap)[&#x27;coefficients&#x27;][k]
+
+
+def capped_rational_bit(p,getrandbits,attempts):
+    &quot;&quot;&quot;Exact Bernoulli(p) until a bounded rejection cap; returns None on abort.
+
+    Correct distribution/error claims require independent uniformly fair
+    getrandbits. A seeded PRNG is only a reproducible execution diagnostic.
+    &quot;&quot;&quot;
+    p=Q(p)
+    if not 0 &lt;= p &lt;= 1: raise ValueError(&#x27;invalid probability&#x27;)
+    if p == 0 or p == 1: return int(p),0
+    d=p.denominator; bits=(d-1).bit_length()
+    for attempt in range(attempts):
+        draw=getrandbits(bits)
+        if not 0 &lt;= draw &lt; (1 &lt;&lt; bits): raise ValueError(&#x27;getrandbits contract violated&#x27;)
+        if draw &lt; d: return int(draw &lt; p.numerator),(attempt+1)*bits
+    return None,attempts*bits
+
+
+def sample_born(f,k,getrandbits,epsilon=Q(1,1000000),width_cap=None):
+    &quot;&quot;&quot;Total capped Born sampler with TV error &lt;= epsilon under fair random bits.
+
+    Exact prefix counts and a supported fallback eliminate inverse-sector
+    costs. Arithmetic/coin budgets are finite on every execution. This is
+    classical sampling; no quantum circuit is executed.
+    &quot;&quot;&quot;
+    f=matrix(f); n=len(f); epsilon=Q(epsilon)
+    if not 0 &lt; epsilon &lt;= 1: raise ValueError(&#x27;epsilon must be in (0,1]&#x27;)
+    z=prefix_count(f,k,width_cap=width_cap)
+    if not z: return {&#x27;status&#x27;:&#x27;ZERO&#x27;,&#x27;norm&#x27;:z}
+    attempts=0
+    while Q(2*n,1 &lt;&lt; attempts) &gt; epsilon: attempts+=1
+    prefix={}; fallback=False; coin_bits=0; count_queries=1
+    for site,spin in ([(i,&#x27;U&#x27;) for i in range(n)]+[(i,&#x27;D&#x27;) for i in range(n)]):
+        zero=dict(prefix); zero[site,spin]=0
+        one=dict(prefix); one[site,spin]=1
+        z0=prefix_count(f,k,zero,width_cap=width_cap)
+        z1=prefix_count(f,k,one,width_cap=width_cap); count_queries+=2
+        assert z0+z1 &gt; 0
+        if fallback:
+            bit=int(bool(z1))
+        else:
+            bit,used=capped_rational_bit(z1/(z0+z1),getrandbits,attempts)
+            coin_bits+=used
+            if bit is None:
+                fallback=True; bit=int(bool(z1))
+        prefix[site,spin]=bit
+    up=[i for i in range(n) if prefix[i,&#x27;U&#x27;]]
+    down=[i for i in range(n) if prefix[i,&#x27;D&#x27;]]
+    assert len(up) == len(down) == k and not set(up)&amp;set(down)
+    return {&#x27;status&#x27;:&#x27;SAMPLE&#x27;,&#x27;up&#x27;:up,&#x27;down&#x27;:down,&#x27;norm&#x27;:z,
+            &#x27;fallback&#x27;:fallback,&#x27;coin_bits&#x27;:coin_bits,&#x27;attempt_cap&#x27;:attempts,
+            &#x27;exact_count_queries&#x27;:count_queries,
+            &#x27;randomness_contract&#x27;:&#x27;TV guarantee requires independent fair random bits&#x27;}
+</pre><p><a href="../assets/aaf84ad8f1316e5bc9a5d8685f1d56f47d08029a4521c37ad4c8bf93ddb48aba.py">Exact original bytes</a></p></html>

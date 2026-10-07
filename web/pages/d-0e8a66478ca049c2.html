@@ -1,0 +1,63 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c01_l06/revisions/schur_complement_audit.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c01_l06/revisions/schur_complement_audit.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact additive-energy block matrices for two binary pair kernels.&quot;&quot;&quot;
+from fractions import Fraction as Q
+from itertools import product
+import json
+
+states = tuple(product((0, 1), repeat=2))
+mu = {z: Q(1, 4) for z in states}
+
+def theta(z):
+    x, y = z
+    return (1 - y, 1 - x)
+
+def parity_kernel(z):
+    p = sum(z) % 2
+    targets = [w for w in states if sum(w) % 2 == p]
+    return {w: Q(1, len(targets)) for w in targets}
+
+def involution_kernel(z):
+    return {theta(z): Q(1)}
+
+def dirichlet(kernel, alpha, beta):
+    def phi(z):
+        x, y = z
+        return alpha * Q(2 * x - 1) + beta * Q(2 * y - 1)
+    value = Q(0)
+    for z in states:
+        for w, p in kernel(z).items():
+            value += mu[z] * p * (phi(z) - phi(w)) ** 2 / 2
+    return value
+
+def block_matrix(kernel):
+    A = dirichlet(kernel, Q(1), Q(0))
+    C = dirichlet(kernel, Q(0), Q(1))
+    both = dirichlet(kernel, Q(1), Q(1))
+    B = (both - A - C) / 2
+    return A, B, C
+
+results = {}
+for name, kernel in ((&quot;companion_cancellation&quot;, involution_kernel),
+                      (&quot;parity_heatbath&quot;, parity_kernel)):
+    A, B, C = block_matrix(kernel)
+    assert C &gt; 0
+    schur = A - B * B / C
+    results[name] = {
+        &quot;A&quot;: str(A), &quot;B&quot;: str(B), &quot;C&quot;: str(C),
+        &quot;schur_A_minus_BCinvB&quot;: str(schur)
+    }
+
+assert results[&quot;companion_cancellation&quot;][&quot;A&quot;] == &quot;1&quot;
+assert results[&quot;companion_cancellation&quot;][&quot;B&quot;] == &quot;1&quot;
+assert results[&quot;companion_cancellation&quot;][&quot;schur_A_minus_BCinvB&quot;] == &quot;0&quot;
+assert results[&quot;parity_heatbath&quot;][&quot;A&quot;] == &quot;1&quot;
+assert results[&quot;parity_heatbath&quot;][&quot;B&quot;] == &quot;0&quot;
+assert results[&quot;parity_heatbath&quot;][&quot;schur_A_minus_BCinvB&quot;] == &quot;1&quot;
+
+print(json.dumps({
+    &quot;status&quot;: &quot;PASS_EXACT_RATIONAL_ARITHMETIC&quot;,
+    &quot;centered_basis&quot;: &quot;u(x)=2x-1, v(y)=2y-1&quot;,
+    &quot;matrices&quot;: results,
+    &quot;interpretation&quot;: &quot;All-a,b coercivity is the Schur complement; positive Schur complement still does not control non-additive pair modes.&quot;
+}, indent=2))
+</pre><p><a href="../assets/29138e572738e4d1ec3bddebc8963a8896208c9b26d33845dd8e1195ffef244f.py">Exact original bytes</a></p></html>

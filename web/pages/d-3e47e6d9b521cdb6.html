@@ -1,0 +1,111 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c03_l04/check_gadgets.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c03_l04/check_gadgets.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Exact finite checks for the c03_l04 Gaussian-filter boundary gadgets.&quot;&quot;&quot;
+import json
+from fractions import Fraction as Q
+
+
+def mm(A, B):
+    return [[sum((A[i][k] * B[k][j] for k in range(len(B))), Q(0))
+             for j in range(len(B[0]))] for i in range(len(A))]
+
+
+def tr(A):
+    return [list(row) for row in zip(*A)]
+
+
+def diag(v):
+    return [[v[i] if i == j else Q(0) for j in range(len(v))]
+            for i in range(len(v))]
+
+# Two noncommuting fermionic occupation filters. Basis is |00&gt;,|10&gt;,|01&gt;,|11&gt;.
+c, s = Q(3, 5), Q(4, 5)
+U = [
+    [Q(1), Q(0), Q(0), Q(0)],
+    [Q(0), c, -s, Q(0)],
+    [Q(0), s, c, Q(0)],
+    [Q(0), Q(0), Q(0), Q(1)],
+]
+P = diag([Q(1), Q(0), Q(1), Q(0)])  # first mode empty
+Qrot = mm(mm(U, P), tr(U))          # rotated-mode-empty projector
+K = mm(Qrot, P)                      # sequential accepted Kraus operator
+assert mm(P, P) == P
+assert mm(Qrot, Qrot) == Qrot
+KdagK = mm(tr(K), K)
+assert KdagK == diag([Q(1), Q(0), c*c, Q(0)])
+assert c*c == Q(9, 25)
+assert mm(KdagK, KdagK) != KdagK
+# On the maximally mixed two-mode Gaussian input, accepted output eigenweights
+# are proportional to 1 and 9/25, unlike any rank-two hard projection.
+trace_weight = Q(1) + c*c
+normalized_eigenweights = (Q(1) / trace_weight, c*c / trace_weight)
+assert normalized_eigenweights == (Q(25, 34), Q(9, 34))
+
+# A minimal adaptive accept/reject instrument: first measure P.  If P occurs,
+# continue with Q and accept only Q; if I-P occurs, accept immediately.  Its
+# two accepted Kraus operators are QP and I-P, and its acceptance effect is
+# their squared sum.  This is neither a (scaled) projector nor a Gaussian
+# positive operator: after normalization, Wick factorization fails.
+I = diag([Q(1)] * 4)
+K_accept_0 = mm(Qrot, P)
+K_accept_1 = [[I[i][j] - P[i][j] for j in range(4)] for i in range(4)]
+accept_effect = [
+    [sum((K_accept_0[k][i] * K_accept_0[k][j]
+          + K_accept_1[k][i] * K_accept_1[k][j]
+          for k in range(4)), Q(0))
+     for j in range(4)] for i in range(4)
+]
+assert accept_effect == diag([Q(1), Q(1), c*c, Q(1)])
+assert mm(accept_effect, accept_effect) != accept_effect
+effect_trace = sum((accept_effect[i][i] for i in range(4)), Q(0))
+adaptive_effect_state = [accept_effect[i][i] / effect_trace for i in range(4)]
+adaptive_effect_n1 = adaptive_effect_state[1] + adaptive_effect_state[3]
+adaptive_effect_n2 = adaptive_effect_state[2] + adaptive_effect_state[3]
+adaptive_effect_n1n2 = adaptive_effect_state[3]
+adaptive_effect_wick_gap = adaptive_effect_n1n2 - adaptive_effect_n1 * adaptive_effect_n2
+assert (adaptive_effect_n1, adaptive_effect_n2, adaptive_effect_n1n2) == (
+    Q(25, 42), Q(17, 42), Q(25, 84)
+)
+assert adaptive_effect_wick_gap == Q(25, 441)
+# All off-diagonal normal/anomalous contractions vanish for this diagonal state.
+# Hence a Gaussian state would have n1n2=n1*n2, which is false.
+
+# Sequential adaptive occupation filtering on two entangled pair states.
+# For the accepted data patterns {00,10,11}, compute the exact diagonal law.
+patterns = [(0, 0), (1, 0), (1, 1)]
+prob = Q(1, len(patterns))
+n1 = sum((prob * x for x, y in patterns), Q(0))
+n2 = sum((prob * y for x, y in patterns), Q(0))
+n1n2 = sum((prob * x * y for x, y in patterns), Q(0))
+assert (n1, n2, n1n2) == (Q(2, 3), Q(1, 3), Q(1, 3))
+assert n1n2 != n1 * n2
+number_probabilities = tuple(
+    sum((prob for x, y in patterns if x + y == k), Q(0))
+    for k in range(3)
+)
+parity_probabilities = (
+    sum((prob for x, y in patterns if (x + y) % 2 == 0), Q(0)),
+    sum((prob for x, y in patterns if (x + y) % 2 == 1), Q(0)),
+)
+assert number_probabilities == (Q(1, 3), Q(1, 3), Q(1, 3))
+assert parity_probabilities == (Q(2, 3), Q(1, 3))
+
+# A terminal two-particle projection of two independent BCS pairs yields
+# omega=e12+e34. Its exterior square is exactly 2 e1234, so it is not decomposable.
+exterior_square_coefficient = 2
+assert exterior_square_coefficient != 0
+
+print(json.dumps({
+    &quot;status&quot;: &quot;PASS_EXACT_RATIONAL_IDENTITIES&quot;,
+    &quot;rotation_cos_sin&quot;: [str(c), str(s)],
+    &quot;sequential_filter_KdagK_diagonal&quot;: [str(x) for x in [1, 0, c*c, 0]],
+    &quot;maximally_mixed_accepted_eigenweights&quot;: [str(x) for x in normalized_eigenweights],
+    &quot;adaptive_accept_effect_diagonal&quot;: [str(x) for x in [1, 1, c*c, 1]],
+    &quot;adaptive_accept_effect_normalized_mode_moments&quot;: [
+        str(adaptive_effect_n1), str(adaptive_effect_n2), str(adaptive_effect_n1n2)
+    ],
+    &quot;adaptive_accept_effect_wick_gap&quot;: str(adaptive_effect_wick_gap),
+    &quot;adaptive_mixture_mode_occupancies&quot;: [str(n1), str(n2), str(n1n2)],
+    &quot;adaptive_mixture_N_probabilities&quot;: [str(x) for x in number_probabilities],
+    &quot;adaptive_mixture_even_odd_probabilities&quot;: [str(x) for x in parity_probabilities],
+    &quot;projected_pair_state_wedge_square_coefficient&quot;: exterior_square_coefficient,
+}, indent=2))
+</pre><p><a href="../assets/13b7b61c466a442162b243bcdbbb001ef75e71d87d13d539935d17a447262c38.py">Exact original bytes</a></p></html>

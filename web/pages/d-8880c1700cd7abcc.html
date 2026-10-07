@@ -1,0 +1,249 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c03_l08/revisions/peer_low_sector_sampler_copy.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c03_l08/revisions/peer_low_sector_sampler_copy.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Exact-bit, nonnegative physical-prefix estimator and low-sector sampler.
+
+Phase-two attributed origin: c03_l10&#x27;s random-sign Pfaffian norm estimator;
+c03_l06&#x27;s self-reduction; c03_s02&#x27;s physical-prefix projection and Cauchy bound.
+This implementation is written independently. Production coefficient work uses
+matrix powers and a logarithmic-derivative recurrence, not minor enumeration.
+Default randomness is SystemRandom. A supplied seeded RNG is diagnostic only.
+&quot;&quot;&quot;
+from fractions import Fraction
+from itertools import combinations, product
+from math import comb, factorial, lcm
+from random import SystemRandom
+
+ZERO = (0, 0)
+ONE = (1, 0)
+
+
+def add(a, b):
+    return (a[0] + b[0], a[1] + b[1])
+
+
+def mul(a, b):
+    return (a[0]*b[0] - a[1]*b[1], a[0]*b[1] + a[1]*b[0])
+
+
+def conj(a):
+    return (a[0], -a[1])
+
+
+def scale(a, z):
+    return (a[0]*z, a[1]*z)
+
+
+def matmul(a, b):
+    n = len(a)
+    out = [[ZERO for _ in range(n)] for _ in range(n)]
+    for i in range(n):
+        for h in range(n):
+            if a[i][h] == ZERO:
+                continue
+            for j in range(n):
+                if b[h][j] != ZERO:
+                    out[i][j] = add(out[i][j], mul(a[i][h], b[h][j]))
+    return out
+
+
+def pfaffian_norm_coefficient(a, k, stats=None):
+    &quot;&quot;&quot;[t^k] sqrt(det(I+t A* A)) using q&#x27;/q = tr(B(I+tB)^-1)/2.&quot;&quot;&quot;
+    n = len(a)
+    if k == 0:
+        return 1
+    if 2*k &gt; n:
+        return 0
+    b = matmul([[conj(a[j][i]) for j in range(n)] for i in range(n)], a)
+    power = b
+    tr = [0]
+    for j in range(1, k+1):
+        real = sum(power[i][i][0] for i in range(n))
+        imaginary = sum(power[i][i][1] for i in range(n))
+        assert imaginary == 0
+        tr.append(real)
+        if j != k:
+            power = matmul(power, b)
+    q = [1]
+    for degree in range(1, k+1):
+        numerator = sum((-1)**(j-1) * tr[j] * q[degree-j]
+                        for j in range(1, degree+1))
+        assert numerator % (2*degree) == 0
+        q.append(numerator // (2*degree))
+        assert q[-1] &gt;= 0
+    if stats is not None:
+        stats[&#x27;coefficient_calls&#x27;] = stats.get(&#x27;coefficient_calls&#x27;, 0) + 1
+        stats[&#x27;largest_trace_bits&#x27;] = max(stats.get(&#x27;largest_trace_bits&#x27;, 0),
+                                          max(abs(x).bit_length() for x in tr))
+    return q[k]
+
+
+def ceiling(x):
+    return -((-x.numerator)//x.denominator)
+
+
+def ceil_log2(x):
+    x = Fraction(x)
+    b = 0
+    while (1 &lt;&lt; b)*x.denominator &lt; x.numerator:
+        b += 1
+    return b
+
+
+class LowSector:
+    &quot;&quot;&quot;F over Q(i), encoded as numbers or (real, imaginary) rational tuples.&quot;&quot;&quot;
+    def __init__(self, f):
+        self.n = len(f)
+        if any(len(row) != self.n for row in f):
+            raise ValueError(&#x27;square matrix required&#x27;)
+        raw = [[(Fraction(v[0]), Fraction(v[1])) if isinstance(v, tuple)
+                else (Fraction(v), Fraction(0)) for v in row] for row in f]
+        den = 1
+        for row in raw:
+            for a, b in row:
+                den = lcm(den, a.denominator, b.denominator)
+        self.denominator = den
+        self.g = [[(int(a*den), int(b*den)) for a, b in row] for row in raw]
+        self.stats = {}
+
+    def _restrictions(self, k, up, down, empty):
+        if not isinstance(k, int) or not 0 &lt;= k &lt;= self.n//2:
+            raise ValueError(&#x27;legal integer sector required&#x27;)
+        up, down, empty = frozenset(up), frozenset(down), frozenset(empty)
+        if up &amp; down or up &amp; empty or down &amp; empty:
+            raise ValueError(&#x27;site restrictions must be disjoint&#x27;)
+        if not (up | down | empty) &lt;= set(range(self.n)):
+            raise ValueError(&#x27;invalid site index&#x27;)
+        return up, down, empty
+
+    def prefix_draw_integer(self, k, signs, up=(), down=(), empty=()):
+        up, down, empty = self._restrictions(k, up, down, empty)
+        a, b = len(up), len(down)
+        if a &gt; k or b &gt; k or 2*k &gt; self.n-len(empty):
+            return 0
+        if len(signs) != self.n:
+            raise ValueError(&#x27;one sign coordinate per site required&#x27;)
+        free = set(range(self.n)) - up - down - empty
+        if any(signs[i] not in (-1, 1) for i in free):
+            raise ValueError(&#x27;free coordinates require Rademacher signs&#x27;)
+        degree = 2*a
+        answer = 0
+        for removed_size in range(b+1):
+            for removed in combinations(sorted(down), removed_size):
+                retained = [i for i in range(self.n) if i not in empty and i not in removed]
+                if len(retained) &lt; 2*k:
+                    continue
+                finite_difference = 0
+                for z in range(degree+1):
+                    activities = [z if i in up else 0 if i in down or i in empty
+                                  else signs[i] for i in range(self.n)]
+                    skew = [[add(scale(self.g[i][j], activities[i]),
+                                 scale(self.g[j][i], -activities[j]))
+                             for j in retained] for i in retained]
+                    value = pfaffian_norm_coefficient(skew, k, self.stats)
+                    finite_difference += (-1)**(degree-z)*comb(degree, z)*value
+                assert finite_difference % factorial(degree) == 0
+                top = finite_difference // factorial(degree)
+                assert top &gt;= 0
+                answer += (-1)**removed_size * top
+        assert answer &gt;= 0
+        return answer
+
+    def estimate(self, k, eta, delta, up=(), down=(), empty=(), rng=None,
+                 enumerate_if_cheaper=True, memoize=True):
+        &quot;&quot;&quot;Relative estimate, confidence 1-delta, deterministic runtime cap.
+
+        True zero always outputs zero; positive mass can output zero with
+        probability at most delta. Zero output is not an exact-zero certificate.
+        Small sign spaces are enumerated only if cheaper than the stated cap.
+        &quot;&quot;&quot;
+        eta, delta = Fraction(eta), Fraction(delta)
+        if not 0 &lt; eta &lt;= Fraction(1, 2) or not 0 &lt; delta &lt; 1:
+            raise ValueError(&#x27;require 0&lt;eta&lt;=1/2 and 0&lt;delta&lt;1&#x27;)
+        up, down, empty = self._restrictions(k, up, down, empty)
+        a, b = len(up), len(down)
+        if a &gt; k or b &gt; k or 2*k &gt; self.n-len(empty):
+            return Fraction(0)
+        c = comb(2*k-a-b, k-a)
+        assert (1 &lt;&lt; b)*c &lt;= comb(2*k, k)
+        free = sorted(set(range(self.n)) - up - down - empty)
+        sign_template = [1]*self.n
+        self.stats[&#x27;count_calls&#x27;] = self.stats.get(&#x27;count_calls&#x27;, 0) + 1
+        if c == 1:
+            self.stats[&#x27;constant_draw_calls&#x27;] = self.stats.get(&#x27;constant_draw_calls&#x27;, 0) + 1
+            return Fraction(self.prefix_draw_integer(k, sign_template, up, down, empty),
+                            self.denominator**(2*k))
+        # The range bound X &lt;= c*mu gives multiplicative Chernoff:
+        # P(|mean-mu|&gt;eta*mu) &lt;= 2 exp(-m eta^2/(3c)).
+        sample_cap = ceiling(3*c*ceil_log2(2/delta)/(eta*eta))
+        enumeration_size = 1 &lt;&lt; len(free)
+        if enumerate_if_cheaper and enumeration_size &lt;= sample_cap:
+            total = 0
+            for word in product((-1, 1), repeat=len(free)):
+                signs = sign_template.copy()
+                for i, s in zip(free, word):
+                    signs[i] = s
+                total += self.prefix_draw_integer(k, signs, up, down, empty)
+            self.stats[&#x27;enumerated_words&#x27;] = self.stats.get(&#x27;enumerated_words&#x27;, 0) + enumeration_size
+            return Fraction(total, enumeration_size*self.denominator**(2*k))
+        rng = SystemRandom() if rng is None else rng
+        total, cache = 0, {}
+        for _ in range(sample_cap):
+            word = rng.getrandbits(len(free))
+            if not memoize or word not in cache:
+                signs = sign_template.copy()
+                for j, i in enumerate(free):
+                    signs[i] = 1 if (word &gt;&gt; j)&amp;1 else -1
+                value = self.prefix_draw_integer(k, signs, up, down, empty)
+                if memoize:
+                    cache[word] = value
+            else:
+                value = cache[word]
+            total += value
+        self.stats[&#x27;random_draws&#x27;] = self.stats.get(&#x27;random_draws&#x27;, 0) + sample_cap
+        self.stats[&#x27;random_bits&#x27;] = self.stats.get(&#x27;random_bits&#x27;, 0) + sample_cap*len(free)
+        self.stats[&#x27;maximum_cache_entries&#x27;] = max(self.stats.get(&#x27;maximum_cache_entries&#x27;, 0), len(cache))
+        return Fraction(total, sample_cap*self.denominator**(2*k))
+
+    def born_sample(self, k, epsilon, rng=None, enumerate_if_cheaper=True, memoize=True):
+        &quot;&quot;&quot;TV-epsilon sampler on {supported configurations} union {FAIL}.
+
+        Promise: c_k(F)&gt;0. FAIL is charged to estimation confidence. Every
+        successful return has positive target weight, including on bad events.
+        Finite dyadic categorical sampling never introduces a zero-weight child.
+        &quot;&quot;&quot;
+        epsilon = Fraction(epsilon)
+        if not 0 &lt; epsilon &lt; 1:
+            raise ValueError(&#x27;require 0&lt;epsilon&lt;1&#x27;)
+        self._restrictions(k, (), (), ())
+        rng = SystemRandom() if rng is None else rng
+        if k == 0:
+            return {&#x27;status&#x27;: &#x27;OK&#x27;, &#x27;I&#x27;: [], &#x27;J&#x27;: []}
+        eta, delta = epsilon/(8*self.n), epsilon/(12*self.n)
+        bits = ceil_log2(8*self.n/epsilon)
+        q = 1 &lt;&lt; bits
+        up, down, empty = set(), set(), set()
+        for site in range(self.n):
+            kwargs = {&#x27;rng&#x27;: rng, &#x27;enumerate_if_cheaper&#x27;: enumerate_if_cheaper,
+                      &#x27;memoize&#x27;: memoize}
+            weights = [self.estimate(k, eta, delta, up | {site}, down, empty, **kwargs),
+                       self.estimate(k, eta, delta, up, down | {site}, empty, **kwargs),
+                       self.estimate(k, eta, delta, up, down, empty | {site}, **kwargs)]
+            total = sum(weights)
+            if total == 0:
+                self.stats[&#x27;failures&#x27;] = self.stats.get(&#x27;failures&#x27;, 0) + 1
+                return {&#x27;status&#x27;: &#x27;FAIL&#x27;, &#x27;site&#x27;: site}
+            boundaries = [ceiling(Fraction(0))]
+            # Floors of exact cumulative probabilities. A zero child&#x27;s two
+            # endpoints agree exactly, so rounding preserves zero support.
+            for w in (weights[0], weights[0]+weights[1]):
+                x = q*w/total
+                boundaries.append(x.numerator//x.denominator)
+            word = rng.getrandbits(bits)
+            if word &lt; boundaries[1]:
+                up.add(site)
+            elif word &lt; boundaries[2]:
+                down.add(site)
+            else:
+                empty.add(site)
+            self.stats[&#x27;categorical_bits&#x27;] = self.stats.get(&#x27;categorical_bits&#x27;, 0) + bits
+        assert len(up) == len(down) == k
+        return {&#x27;status&#x27;: &#x27;OK&#x27;, &#x27;I&#x27;: sorted(up), &#x27;J&#x27;: sorted(down)}
+</pre><p><a href="../assets/1aa9cc863942a6ba10acd7af6656a1c134ea895b09e2dc450b8df4bd804cd769.py">Exact original bytes</a></p></html>

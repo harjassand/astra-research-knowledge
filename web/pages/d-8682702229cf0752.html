@@ -1,0 +1,75 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c03_s01/implementation/check_whole_api.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c03_s01/implementation/check_whole_api.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Verify reusable whole-Gibbs models after JSON roundtrip and count fair bits.&quot;&quot;&quot;
+from copy import deepcopy
+import json
+from pathlib import Path
+import random
+import resource
+import platform
+import time
+from whole_gibbs_compiler import compile_whole_gibbs,verify_whole_model,sample_whole_gibbs
+
+HERE=Path(__file__).resolve().parent
+
+
+class CountedRandom(random.Random):
+    def __init__(self,seed):
+        super().__init__(seed)
+        self.bits=0
+    def getrandbits(self,k):
+        self.bits+=k
+        return super().getrandbits(k)
+
+
+def run():
+    start=time.perf_counter()
+    records=[]
+    examples=[]
+    for N,alpha,epsilon in [(1,&#x27;0&#x27;,&#x27;1e-12&#x27;),(2,&#x27;1/2&#x27;,&#x27;1e-12&#x27;),(3,&#x27;3&#x27;,&#x27;1e-40&#x27;)]:
+        model=compile_whole_gibbs(N,alpha,&#x27;1&#x27;,&#x27;1/3&#x27;,epsilon)
+        restored=json.loads(json.dumps(model))
+        assert verify_whole_model(restored)
+        rng=CountedRandom(20261008)
+        samples=[]
+        for j in range(24):
+            before=rng.bits
+            sample=sample_whole_gibbs(restored,rng)
+            assert rng.bits-before==model[&#x27;predetermined_random_bits_per_sample&#x27;]
+            assert sample[&#x27;random_bits_consumed&#x27;]==model[&#x27;predetermined_random_bits_per_sample&#x27;]
+            assert len(sample[&#x27;local_density_matrices&#x27;])==N
+            if j&lt;2:
+                samples.append(sample)
+        records.append({&#x27;N&#x27;:N,&#x27;alpha&#x27;:alpha,&#x27;delta&#x27;:&#x27;1&#x27;,&#x27;h&#x27;:&#x27;1/3&#x27;,&#x27;epsilon&#x27;:epsilon,
+                        &#x27;compile_seconds&#x27;:model[&#x27;compile_seconds&#x27;],
+                        &#x27;total_target_trace_distance_upper&#x27;:model[&#x27;total_target_trace_distance_upper&#x27;],
+                        &#x27;json_roundtrip_certificate_verified&#x27;:True,
+                        &#x27;draws_checked&#x27;:24,&#x27;predetermined_fair_bits_per_draw&#x27;:model[&#x27;predetermined_random_bits_per_sample&#x27;]})
+        examples.append({&#x27;model&#x27;:model,&#x27;samples&#x27;:samples})
+    target=examples[-1][&#x27;model&#x27;]
+    corruptions=[]
+    for label,mutate in [
+        (&#x27;false_zero_matrix_error&#x27;,lambda m:m[&#x27;full_matrix_trace_distance_upper&#x27;].update(numerator=&#x27;0&#x27;)),
+        (&#x27;branch_normalization_wrong&#x27;,lambda m:m[&#x27;branches&#x27;][0][&#x27;probability&#x27;].update(numerator=&#x27;1&#x27;,denominator=&#x27;1&#x27;)),
+        (&#x27;subblock_parameter_wrong&#x27;,lambda m:m[&#x27;Dicke_models&#x27;][-1][&#x27;h&#x27;].update(numerator=&#x27;0&#x27;)),
+    ]:
+        bad=deepcopy(target)
+        mutate(bad)
+        try:
+            verify_whole_model(bad)
+        except (AssertionError,ValueError,ArithmeticError):
+            corruptions.append({&#x27;name&#x27;:label,&#x27;status&#x27;:&#x27;REJECTED&#x27;})
+        else:
+            raise AssertionError(&#x27;whole-model corruption accepted: &#x27;+label)
+    result={&#x27;status&#x27;:&#x27;PASS&#x27;,&#x27;models&#x27;:3,&#x27;draws_checked&#x27;:72,&#x27;records&#x27;:records,
+            &#x27;corruption_controls&#x27;:corruptions,&#x27;examples&#x27;:examples,
+            &#x27;elapsed_seconds&#x27;:time.perf_counter()-start,
+            &#x27;process_peak_rss_bytes&#x27;:resource.getrusage(resource.RUSAGE_SELF).ru_maxrss*(1 if platform.system()==&#x27;Darwin&#x27; else 1024),
+            &#x27;scope&#x27;:&#x27;Reusable bounded whole-Gibbs API; N&lt;=3, scalar inputs known; exact posterior full-matrix certification&#x27;}
+    text=json.dumps(result,indent=2)+&#x27;\n&#x27;
+    (HERE/&#x27;whole_api_checks.json&#x27;).write_text(text)
+    print(json.dumps({&#x27;status&#x27;:&#x27;PASS&#x27;,&#x27;models&#x27;:3,&#x27;draws_checked&#x27;:72,
+                      &#x27;elapsed_seconds&#x27;:result[&#x27;elapsed_seconds&#x27;],&#x27;output_bytes&#x27;:len(text.encode())}),flush=True)
+
+
+if __name__==&#x27;__main__&#x27;:
+    run()
+</pre><p><a href="../assets/fec39c1cf809b9e5e7cd9f4368ffff28e5d1b2c37be18fb908c6a35dd340877e.py">Exact original bytes</a></p></html>

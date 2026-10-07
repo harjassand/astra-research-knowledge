@@ -1,0 +1,134 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c03_s01/implementation/portable_replay/work/cycle6/c03_s01/implementation/half_domain/check_dicke_compiler.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c03_s01/implementation/portable_replay/work/cycle6/c03_s01/implementation/half_domain/check_dicke_compiler.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Bounded full test grid; independent decimal population reconstruction.&quot;&quot;&quot;
+from fractions import Fraction as F
+import hashlib
+import json
+import math
+from pathlib import Path
+import platform
+import random
+import resource
+import time
+
+import mpmath as mp
+from dicke_compiler import (compile_state, from_record, recovered_populations,
+                            sample_product, verify_model, target_intervals,
+                            finite_local_density)
+
+HERE = Path(__file__).resolve().parent
+
+
+def independent_population_error(model):
+    &quot;&quot;&quot;Do not reuse acquired moments, eigenvalues, or certificate exp engine.&quot;&quot;&quot;
+    n,bits = model[&#x27;n&#x27;],model[&#x27;node_weight_bits&#x27;]
+    delta,h = from_record(model[&#x27;delta&#x27;]),from_record(model[&#x27;h&#x27;])
+    with mp.workdps(100):
+        xs = [mp.mpf(int(x))/(1 &lt;&lt; bits) for x in model[&#x27;node_integers&#x27;]]
+        ws = [mp.mpf(int(w))/(1 &lt;&lt; bits) for w in model[&#x27;weight_integers&#x27;]]
+        md,mh = mp.mpf(delta.numerator)/delta.denominator,mp.mpf(h.numerator)/h.denominator
+        target_logs = [-(md/n)*(mp.mpf(k)-mp.mpf(n)/2)**2+mh*(mp.mpf(k)-mp.mpf(n)/2)
+                       if n else mp.mpf(0) for k in range(n+1)]
+        peak = max(target_logs)
+        target = [mp.exp(v-peak) for v in target_logs]
+        Z = mp.fsum(target)
+        target = [v/Z for v in target]
+        q = [math.comb(n,k)*mp.fsum(w*x**k*(1-x)**(n-k) for x,w in zip(xs,ws))
+             for k in range(n+1)]
+        maxerr = max(abs(x-y) for x,y in zip(q,target))
+        td = mp.fsum(abs(x-y) for x,y in zip(q,target))/2
+        bound = from_record(model[&#x27;certificate&#x27;][&#x27;target_trace_distance_upper&#x27;])
+        mpbound = mp.mpf(bound.numerator)/bound.denominator
+        assert td &lt;= mpbound+mp.mpf(&#x27;1e-95&#x27;)
+        return {&#x27;max_population_error&#x27;:mp.nstr(maxerr,14),
+                &#x27;trace_distance&#x27;:mp.nstr(td,14),
+                &#x27;status&#x27;:&#x27;INDEPENDENT_FLOATING_DIAGNOSTIC_ONLY; exact verifier also passed&#x27;}
+
+
+def run():
+    start = time.perf_counter()
+    grid = [(n,d,h) for n in [2,3,8,15,16,31,32]
+            for d in [&#x27;0&#x27;,&#x27;1/4&#x27;,&#x27;1/2&#x27;] for h in [&#x27;0&#x27;,&#x27;1/3&#x27;,&#x27;-2/5&#x27;]]
+    extra = [(0,&#x27;1/2&#x27;,&#x27;1/3&#x27;),(1,&#x27;1/2&#x27;,&#x27;1/3&#x27;),(64,&#x27;1/2&#x27;,&#x27;1/3&#x27;),
+             (32,&#x27;1/2&#x27;,&#x27;60&#x27;),(31,&#x27;1/2&#x27;,&#x27;-60&#x27;),
+             (64,&#x27;1/2&#x27;,&#x27;100000000000000000000&#x27;),
+             (64,&#x27;1/2&#x27;,&#x27;-100000000000000000000&#x27;)]
+    models,records = [],[]
+    rng = random.Random(20261008)
+    for index,(n,d,h) in enumerate(grid+extra):
+        model = compile_state(n,d,h,epsilon=&#x27;1e-20&#x27;)
+        assert verify_model(model)
+        diagnostic = independent_population_error(model)
+        sample = sample_product(model,rng)
+        density = sample[&#x27;finite_product_local_density&#x27;]
+        diag = [from_record(x) for x in density[&#x27;diagonal&#x27;]]
+        re,im = from_record(density[&#x27;upper_right_real&#x27;]),from_record(density[&#x27;upper_right_imag&#x27;])
+        assert sum(diag)==1 and min(diag)&gt;=0 and re*re+im*im &lt;= diag[0]*diag[1]
+        assert sample[&#x27;phase_index&#x27;] &lt; n+1
+        assert sample[&#x27;random_bits_consumed&#x27;] == model[&#x27;predetermined_random_bits_per_sample&#x27;]
+        record = {&#x27;n&#x27;:n,&#x27;delta&#x27;:d,&#x27;h&#x27;:h,&#x27;certificate_verified&#x27;:True,
+                  &#x27;compile_seconds&#x27;:model[&#x27;compile_seconds&#x27;],
+                  &#x27;node_count&#x27;:len(model[&#x27;node_integers&#x27;]),
+                  &#x27;phase_count&#x27;:model[&#x27;phase_modulus&#x27;],
+                  &#x27;exact_recipe_component_count&#x27;:model[&#x27;component_count&#x27;],
+                  &#x27;node_weight_bits&#x27;:model[&#x27;node_weight_bits&#x27;],
+                  &#x27;density_bits&#x27;:model[&#x27;density_bits&#x27;],
+                  &#x27;total_trace_distance_upper&#x27;:model[&#x27;total_output_trace_distance_upper&#x27;],
+                  &#x27;numeric_population_diagnostic&#x27;:diagnostic,
+                  &#x27;density_PSD_exact&#x27;:True,
+                  &#x27;predetermined_random_bits_per_sample&#x27;:model[&#x27;predetermined_random_bits_per_sample&#x27;],
+                  &#x27;attempt_count&#x27;:len(model[&#x27;acquisition_attempts&#x27;]),
+                  &#x27;certificate_kind&#x27;:model[&#x27;certificate&#x27;][&#x27;kind&#x27;]}
+        models.append(model)
+        records.append(record)
+        if index%9 == 8 or index==len(grid+extra)-1:
+            print(json.dumps({&#x27;completed&#x27;:index+1,&#x27;total&#x27;:len(grid+extra),
+                              &#x27;last_n&#x27;:n,&#x27;elapsed_seconds&#x27;:time.perf_counter()-start}),flush=True)
+    # Deterministic draw law and every phase of a representative measure.
+    representative = next(m for m in models if m[&#x27;n&#x27;]==8 and from_record(m[&#x27;delta&#x27;])==F(1,2)
+                          and from_record(m[&#x27;h&#x27;])==F(1,3))
+    phase_density_checks = 0
+    for node in representative[&#x27;node_integers&#x27;]:
+        x = F(int(node),1 &lt;&lt; representative[&#x27;node_weight_bits&#x27;])
+        for j in range(representative[&#x27;phase_modulus&#x27;]):
+            finite_local_density(x,j,representative[&#x27;phase_modulus&#x27;],representative[&#x27;density_bits&#x27;])
+            phase_density_checks += 1
+    # Budget exhaustion returns failure, not unverified output.
+    failure_preserved = False
+    try:
+        compile_state(8,&#x27;1/2&#x27;,&#x27;1/3&#x27;,epsilon=&#x27;1e-30&#x27;,bits=2,density_bits=2,max_attempts=1)
+    except ArithmeticError:
+        failure_preserved = True
+    assert failure_preserved
+    output = {&#x27;models&#x27;:models}
+    text = json.dumps(output,indent=2)+&#x27;\n&#x27;
+    (HERE/&#x27;certified_models.json&#x27;).write_text(text)
+    # A real sampler export with compact local density and exact phase label.
+    sample_model = next(m for m in models if m[&#x27;n&#x27;]==32 and from_record(m[&#x27;delta&#x27;])==F(1,2)
+                       and from_record(m[&#x27;h&#x27;])==F(1,3))
+    sample_output = {&#x27;model&#x27;:sample_model,&#x27;samples&#x27;:[sample_product(sample_model,rng) for _ in range(4)]}
+    sample_text = json.dumps(sample_output,indent=2)+&#x27;\n&#x27;
+    (HERE/&#x27;sampler_examples.json&#x27;).write_text(sample_text)
+    rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    peak_bytes = rss if platform.system()==&#x27;Darwin&#x27; else rss*1024
+    summary = {&#x27;status&#x27;:&#x27;PASS&#x27;,&#x27;utc_note&#x27;:&#x27;wall timestamps in implementation start/end metadata&#x27;,
+               &#x27;cases&#x27;:len(records),&#x27;requested_grid_cases&#x27;:len(grid),&#x27;extra_cases&#x27;:len(extra),
+               &#x27;records&#x27;:records,&#x27;phase_density_checks&#x27;:phase_density_checks,
+               &#x27;insufficient_precision_failure_preserved&#x27;:failure_preserved,
+               &#x27;elapsed_seconds&#x27;:time.perf_counter()-start,
+               &#x27;process_peak_rss_bytes&#x27;:peak_bytes,
+               &#x27;rss_scope&#x27;:&#x27;current Python process including interpreter/mpmath/test suite; OS peak RSS&#x27;,
+               &#x27;certified_models_output_bytes&#x27;:len(text.encode()),
+               &#x27;sampler_examples_output_bytes&#x27;:len(sample_text.encode()),
+               &#x27;BLAS_threads&#x27;:1,&#x27;mpmath_version&#x27;:mp.__version__,
+               &#x27;python_version&#x27;:platform.python_version(),
+               &#x27;platform&#x27;:platform.platform(),
+               &#x27;no_physical_device_preparation_claim&#x27;:True,
+               &#x27;quantum_accuracy&#x27;:&#x27;trace distance = half trace norm&#x27;,
+               &#x27;certification&#x27;:&#x27;exact rational certificates, recomputed; floating acquisition and independent mp diagnostics separately labelled&#x27;}
+    (HERE/&#x27;checks.json&#x27;).write_text(json.dumps(summary,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({k:summary[k] for k in [&#x27;status&#x27;,&#x27;cases&#x27;,&#x27;elapsed_seconds&#x27;,&#x27;process_peak_rss_bytes&#x27;,
+                                           &#x27;certified_models_output_bytes&#x27;,&#x27;sampler_examples_output_bytes&#x27;]}),flush=True)
+
+
+if __name__==&#x27;__main__&#x27;:
+    run()
+</pre><p><a href="../assets/ea92c7262589519fe4661288611c5eaa6781b14c29d1a886f456672115c54e66.py">Exact original bytes</a></p></html>

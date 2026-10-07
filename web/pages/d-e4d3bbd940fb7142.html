@@ -1,0 +1,576 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c06_l07/xxz_homogeneous_compiler.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c06_l07/xxz_homogeneous_compiler.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact rational compiler for the easy-plane XXZ Euler-gate lift.
+
+This is a bounded diagnostic and certificate generator, not an FPRAS.  It
+compiles a finite chronological list of rational gates F_i = I + s_i A_i into
+the homogeneous coefficient instance described in the accompanying report.
+The exact contraction is compared with an independent dense Fraction matrix
+product on small instances.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from fractions import Fraction
+import json
+import random
+from pathlib import Path
+from typing import Iterable, Sequence
+
+
+F = Fraction
+
+
+def qstr(x: Fraction) -&gt; str:
+    return f&quot;{x.numerator}/{x.denominator}&quot;
+
+
+@dataclass(frozen=True)
+class Gate:
+    kind: str
+    qubits: tuple[int, ...]
+    step: Fraction
+    alpha: Fraction = F(0)
+    gamma: Fraction = F(0)
+    field_x: Fraction = F(0)
+    field_z: Fraction = F(0)
+
+    @staticmethod
+    def pair(q0: int, q1: int, alpha, gamma, step) -&gt; &quot;Gate&quot;:
+        return Gate(&quot;pair&quot;, (q0, q1), F(step), F(alpha), F(gamma))
+
+    @staticmethod
+    def field(q, field_x, field_z, step) -&gt; &quot;Gate&quot;:
+        return Gate(&quot;field&quot;, (q,), F(step), field_x=F(field_x),
+                    field_z=F(field_z))
+
+    def validate(self, nqubits: int) -&gt; None:
+        if self.kind not in {&quot;pair&quot;, &quot;field&quot;}:
+            raise ValueError(f&quot;unknown gate kind: {self.kind}&quot;)
+        expected = 2 if self.kind == &quot;pair&quot; else 1
+        if len(self.qubits) != expected or len(set(self.qubits)) != expected:
+            raise ValueError(f&quot;invalid qubits for {self.kind} gate: {self.qubits}&quot;)
+        if any(q &lt; 0 or q &gt;= nqubits for q in self.qubits):
+            raise ValueError(f&quot;qubit index outside [0,{nqubits}): {self.qubits}&quot;)
+        if self.step &lt; 0:
+            raise ValueError(&quot;Euler step must be nonnegative&quot;)
+        if self.kind == &quot;pair&quot; and (self.alpha &lt; 0 or abs(self.gamma) &gt; self.alpha):
+            raise ValueError(&quot;pair gate requires alpha &gt;= |gamma| &gt;= 0&quot;)
+        if self.kind == &quot;field&quot; and self.field_x &lt; 0:
+            raise ValueError(&quot;field gate requires a nonnegative X field&quot;)
+
+
+@dataclass
+class LocalFactor:
+    gate_index: int
+    kind: str
+    variables: tuple[int, ...]
+    terms: dict[frozenset[int], Fraction]
+    seed: frozenset[int]
+    seed_coefficient: Fraction
+
+
+def gate_matrix(g: Gate) -&gt; list[list[Fraction]]:
+    &quot;&quot;&quot;Return the exact local matrix of I + s A for a supported gate.&quot;&quot;&quot;
+    s = g.step
+    if g.kind == &quot;pair&quot;:
+        a = 1 + s * (3 * g.alpha + g.gamma)
+        b = 1 + s * (3 * g.alpha - g.gamma)
+        c = 2 * s * g.alpha
+        return [[a, 0, 0, 0],
+                [0, b, c, 0],
+                [0, c, b, 0],
+                [0, 0, 0, a]]
+    b, c = g.field_x, g.field_z
+    r = b + abs(c)
+    u = 1 + s * (r + c)
+    v = 1 + s * (r - c)
+    d = s * b
+    return [[v, d], [d, u]]
+
+
+class ExactBudgetExceeded(RuntimeError):
+    pass
+
+
+class HomogeneousCompiler:
+    &quot;&quot;&quot;Compile a finite gate trace into two homogeneous coefficient measures.&quot;&quot;&quot;
+
+    def __init__(self, nqubits: int, gates: Sequence[Gate]):
+        if nqubits &lt; 0:
+            raise ValueError(&quot;nqubits must be nonnegative&quot;)
+        self.nqubits = nqubits
+        self.gates = tuple(gates)
+        for g in self.gates:
+            g.validate(nqubits)
+
+        self.names: list[str] = []
+        self.legs: list[dict[int, tuple[int, int]]] = []
+        self.dummies: list[tuple[int, int] | None] = []
+        self.factors: list[LocalFactor] = []
+        occurrences: dict[int, list[int]] = {q: [] for q in range(nqubits)}
+
+        for gi, g in enumerate(self.gates):
+            leg_map: dict[int, tuple[int, int]] = {}
+            for q in g.qubits:
+                row = self._new_var(f&quot;g{gi}.q{q}.row&quot;)
+                colbar = self._new_var(f&quot;g{gi}.q{q}.colbar&quot;)
+                leg_map[q] = (row, colbar)
+                occurrences[q].append(gi)
+            self.legs.append(leg_map)
+
+            dummy_pair = None
+            if g.kind == &quot;field&quot;:
+                z0 = self._new_var(f&quot;g{gi}.z0&quot;)
+                z1 = self._new_var(f&quot;g{gi}.z1&quot;)
+                dummy_pair = (z0, z1)
+            self.dummies.append(dummy_pair)
+            self.factors.append(self._make_factor(gi, g, leg_map, dummy_pair))
+
+        self.dummy_vars = tuple(v for pair in self.dummies if pair is not None
+                                for v in pair)
+        self.field_count = sum(g.kind == &quot;field&quot; for g in self.gates)
+        self.wires: list[tuple[int, int]] = []
+        touched = 0
+        for q, order in occurrences.items():
+            if order:
+                touched += 1
+                for j, gi in enumerate(order):
+                    gj = order[(j + 1) % len(order)]
+                    # The row output of occurrence j is identified with the
+                    # input column of its successor; complementing that column
+                    # turns equality into a one-of-two constraint.
+                    self.wires.append((self.legs[gi][q][0],
+                                       self.legs[gj][q][1]))
+        self.inactive_qubits = nqubits - touched
+        self.ground_size = len(self.names)
+        self.target_degree = self.ground_size // 2
+        self.mu_degree = 2 * len(self.gates)
+        self.nu_degree = len(self.wires) + self.field_count
+        if self.ground_size % 2 or self.mu_degree != self.nu_degree:
+            raise AssertionError(&quot;homogeneous degree accounting failed&quot;)
+        if self.mu_degree != self.target_degree:
+            raise AssertionError(&quot;each measure must have degree |U|/2&quot;)
+
+        self.local_maps = [factor.terms for factor in self.factors]
+        self.lc_certificates = [self._lc_certificate(g) for g in self.gates]
+        self.wire_of_var: dict[int, int] = {}
+        for wi, (u, v) in enumerate(self.wires):
+            if u == v:
+                raise AssertionError(&quot;a row and complemented column must be distinct&quot;)
+            for var in (u, v):
+                if var in self.wire_of_var:
+                    raise AssertionError(&quot;a physical half-edge belongs to two wires&quot;)
+                self.wire_of_var[var] = wi
+        physical_vars = {v for leg in self.legs for pair in leg.values() for v in pair}
+        if set(self.wire_of_var) != physical_vars:
+            raise AssertionError(&quot;wire system does not cover all physical half-edges&quot;)
+
+        self.mu_seed = frozenset(v for f in self.factors for v in f.seed)
+        self.nu_seed = frozenset([u for u, _ in self.wires] + list(self.dummy_vars[:self.field_count]))
+        if len(self.mu_seed) != self.mu_degree or len(self.nu_seed) != self.nu_degree:
+            raise AssertionError(&quot;support seeds have the wrong homogeneous degree&quot;)
+        if not self.mu_query(self.mu_seed) or not self.nu_query(self.nu_seed):
+            raise AssertionError(&quot;constructed support seed failed exact oracle check&quot;)
+
+    @staticmethod
+    def _lc_certificate(g: Gate) -&gt; dict:
+        s = g.step
+        if g.kind == &quot;pair&quot;:
+            a = 1 + s * (3 * g.alpha + g.gamma)
+            b = 1 + s * (3 * g.alpha - g.gamma)
+            c = 2 * s * g.alpha
+            bad_eigs = (a - b - c, -a + b - c, -a - b + c)
+            if min(a, b, c) &lt; 0 or max(bad_eigs) &gt; 0:
+                raise AssertionError(&quot;pair gate missed its exact quadratic LC certificate&quot;)
+            return {
+                &quot;gate_index&quot;: None,
+                &quot;kind&quot;: &quot;pair_quadratic&quot;,
+                &quot;a&quot;: qstr(a), &quot;b&quot;: qstr(b), &quot;c&quot;: qstr(c),
+                &quot;three_nonpositive_hessian_eigenvalues&quot;: [qstr(x) for x in bad_eigs],
+                &quot;fourth_hessian_eigenvalue&quot;: qstr(a + b + c),
+                &quot;certificate&quot;: &quot;all three displayed eigenvalues &lt;= 0; nonnegative homogeneous quadratic then has log-concave logarithm&quot;,
+            }
+        b, c = g.field_x, g.field_z
+        r = b + abs(c)
+        u = 1 + s * (r + c)
+        v = 1 + s * (r - c)
+        d = s * b
+        margin = u * v - d * d
+        if u &lt;= 0 or v &lt;= 0 or d &lt; 0 or margin &lt; 0:
+            raise AssertionError(&quot;field gate missed its exact homogeneous-lift LC certificate&quot;)
+        return {
+            &quot;gate_index&quot;: None,
+            &quot;kind&quot;: &quot;field_homogeneous_lift&quot;,
+            &quot;u&quot;: qstr(u), &quot;v&quot;: qstr(v), &quot;d&quot;: qstr(d),
+            &quot;uv_minus_d_squared&quot;: qstr(margin),
+            &quot;certificate&quot;: &quot;positive-rescaling gives pair weights d,sqrt(uv)/2,sqrt(uv)/2; d^2 &lt;= uv implies at most one positive Hessian eigenvalue&quot;,
+        }
+
+    def _new_var(self, name: str) -&gt; int:
+        idx = len(self.names)
+        self.names.append(name)
+        return idx
+
+    @staticmethod
+    def _combine_terms(raw: Iterable[tuple[Fraction, Iterable[int]]]) -&gt; dict[frozenset[int], Fraction]:
+        result: dict[frozenset[int], Fraction] = {}
+        for coefficient, variables in raw:
+            coefficient = F(coefficient)
+            if coefficient == 0:
+                continue
+            subset = frozenset(variables)
+            result[subset] = result.get(subset, F(0)) + coefficient
+        return {s: c for s, c in result.items() if c &gt; 0}
+
+    def _make_factor(self, gi: int, g: Gate, leg_map: dict[int, tuple[int, int]],
+                     dummy_pair: tuple[int, int] | None) -&gt; LocalFactor:
+        if g.kind == &quot;pair&quot;:
+            q0, q1 = g.qubits
+            r0, c0 = leg_map[q0]
+            r1, c1 = leg_map[q1]
+            s = g.step
+            a = 1 + s * (3 * g.alpha + g.gamma)
+            b = 1 + s * (3 * g.alpha - g.gamma)
+            c = 2 * s * g.alpha
+            raw = [(a, (r0, r1)), (a, (c0, c1)),
+                   (b, (r0, c1)), (b, (r1, c0)),
+                   (c, (r0, c0)), (c, (r1, c1))]
+            # A positive diagonal pair entry always supplies a local seed.
+            seed = frozenset((r0, r1))
+            owned = (r0, c0, r1, c1)
+        else:
+            (q,) = g.qubits
+            row, colbar = leg_map[q]
+            assert dummy_pair is not None
+            z0, z1 = dummy_pair
+            b, c = g.field_x, g.field_z
+            r = b + abs(c)
+            s = g.step
+            u = 1 + s * (r + c)
+            v = 1 + s * (r - c)
+            d = s * b
+            raw = [(d, (z0, z1)), (u / 2, (row, z0)),
+                   (u / 2, (row, z1)), (v / 2, (colbar, z0)),
+                   (v / 2, (colbar, z1)), (d, (row, colbar))]
+            seed = frozenset((row, z0))
+            owned = (row, colbar, z0, z1)
+        terms = self._combine_terms(raw)
+        if not terms or seed not in terms:
+            raise AssertionError(f&quot;positive seed missing for gate {gi}&quot;)
+        return LocalFactor(gi, g.kind, tuple(owned), terms, seed, terms[seed])
+
+    def mu_query(self, subset: Iterable[int]) -&gt; Fraction:
+        chosen = frozenset(subset)
+        if any(v &lt; 0 or v &gt;= self.ground_size for v in chosen):
+            return F(0)
+        value = F(1)
+        for factor in self.factors:
+            local = frozenset(v for v in factor.variables if v in chosen)
+            coeff = factor.terms.get(local, F(0))
+            if coeff == 0:
+                return F(0)
+            value *= coeff
+        return value
+
+    def nu_query(self, subset: Iterable[int]) -&gt; int:
+        chosen = frozenset(subset)
+        if any(v &lt; 0 or v &gt;= self.ground_size for v in chosen):
+            return 0
+        if sum(v in chosen for v in self.dummy_vars) != self.field_count:
+            return 0
+        if any((u in chosen) + (v in chosen) != 1 for u, v in self.wires):
+            return 0
+        return 1
+
+    @property
+    def coefficient_range_mu(self) -&gt; Fraction:
+        ratio = F(1)
+        for factor in self.factors:
+            vals = tuple(factor.terms.values())
+            ratio *= max(vals) / min(vals)
+        return ratio
+
+    def support_certificate(self) -&gt; dict:
+        mu_seed_value = self.mu_query(self.mu_seed)
+        nu_seed_value = self.nu_query(self.nu_seed)
+        return {
+            &quot;ground_size&quot;: self.ground_size,
+            &quot;target&quot;: &quot;all-ones exponent vector&quot;,
+            &quot;mu_degree&quot;: self.mu_degree,
+            &quot;nu_degree&quot;: self.nu_degree,
+            &quot;mu_seed&quot;: [self.names[v] for v in sorted(self.mu_seed)],
+            &quot;mu_seed_value&quot;: qstr(mu_seed_value),
+            &quot;nu_seed&quot;: [self.names[v] for v in sorted(self.nu_seed)],
+            &quot;nu_seed_value&quot;: nu_seed_value,
+            &quot;coefficient_range_mu_exact&quot;: qstr(self.coefficient_range_mu),
+            &quot;coefficient_range_nu_exact&quot;: &quot;1/1&quot;,
+            &quot;factor_certificates&quot;: [
+                {
+                    &quot;gate_index&quot;: f.gate_index,
+                    &quot;kind&quot;: f.kind,
+                    &quot;support_size&quot;: len(f.terms),
+                    &quot;minimum_positive_coefficient&quot;: qstr(min(f.terms.values())),
+                    &quot;maximum_positive_coefficient&quot;: qstr(max(f.terms.values())),
+                    &quot;seed&quot;: [self.names[v] for v in sorted(f.seed)],
+                    &quot;seed_coefficient&quot;: qstr(f.seed_coefficient),
+                }
+                for f in self.factors
+            ],
+            &quot;local_log_concavity_certificates&quot;: [
+                {**cert, &quot;gate_index&quot;: i} for i, cert in enumerate(self.lc_certificates)
+            ],
+            &quot;wire_count&quot;: len(self.wires),
+            &quot;field_gate_count&quot;: self.field_count,
+            &quot;inactive_qubits&quot;: self.inactive_qubits,
+            &quot;mu_oracle&quot;: &quot;product of exact local rational table lookups&quot;,
+            &quot;nu_oracle&quot;: &quot;one selected endpoint per wire and exactly f selected dummies; coefficient 1&quot;,
+        }
+
+    def exact_contraction(self, max_combinations: int = 2_000_000) -&gt; tuple[Fraction, dict]:
+        &quot;&quot;&quot;Enumerate supported local monomials and exactly contract Q.&quot;&quot;&quot;
+        branch_count = 1
+        for factor in self.factors:
+            branch_count *= len(factor.terms)
+        if branch_count &gt; max_combinations:
+            raise ExactBudgetExceeded(
+                f&quot;exact local-term product {branch_count} exceeds cap {max_combinations}&quot;)
+        term_lists = [tuple(f.terms.items()) for f in self.factors]
+        wire_counts = [0] * len(self.wires)
+        dummy_set = set(self.dummy_vars)
+        total = F(0)
+        accepted = 0
+        examined = 0
+
+        def visit(i: int, coeff: Fraction, dummy_count: int) -&gt; None:
+            nonlocal total, accepted, examined
+            if dummy_count &gt; self.field_count:
+                return
+            if i == len(self.factors):
+                examined += 1
+                if dummy_count == self.field_count and all(c == 1 for c in wire_counts):
+                    total += coeff
+                    accepted += 1
+                return
+            for local_set, local_coeff in term_lists[i]:
+                touched_wires: list[int] = []
+                valid = True
+                add_dummies = 0
+                for var in local_set:
+                    if var in dummy_set:
+                        add_dummies += 1
+                    else:
+                        wi = self.wire_of_var[var]
+                        wire_counts[wi] += 1
+                        touched_wires.append(wi)
+                        if wire_counts[wi] &gt; 1:
+                            valid = False
+                if valid:
+                    visit(i + 1, coeff * local_coeff, dummy_count + add_dummies)
+                for wi in touched_wires:
+                    wire_counts[wi] -= 1
+
+        visit(0, F(1), 0)
+        return total, {
+            &quot;local_term_product_upper_bound&quot;: branch_count,
+            &quot;complete_feasible_or_infeasible_leaves_examined&quot;: examined,
+            &quot;accepted_local_term_combinations&quot;: accepted,
+            &quot;max_combinations&quot;: max_combinations,
+        }
+
+    def coefficient_by_subset_sum(self) -&gt; Fraction:
+        &quot;&quot;&quot;Independent tiny-instance check of [x^U](g_mu g_nu).&quot;&quot;&quot;
+        if self.ground_size &gt; 24:
+            raise ExactBudgetExceeded(&quot;subset-sum cross-check is capped at 24 variables&quot;)
+        all_vars = frozenset(range(self.ground_size))
+        value = F(0)
+        for mask in range(1 &lt;&lt; self.ground_size):
+            s = frozenset(i for i in range(self.ground_size) if mask &gt;&gt; i &amp; 1)
+            m = self.mu_query(s)
+            if m:
+                value += m * self.nu_query(all_vars - s)
+        return value
+
+
+def matmul(a: Sequence[Sequence[Fraction]], b: Sequence[Sequence[Fraction]]) -&gt; list[list[Fraction]]:
+    n, inner, m = len(a), len(b), len(b[0]) if b else 0
+    if len(a[0]) != inner:
+        raise ValueError(&quot;matrix dimensions do not match&quot;)
+    out = [[F(0) for _ in range(m)] for _ in range(n)]
+    for i in range(n):
+        for k in range(inner):
+            if a[i][k] == 0:
+                continue
+            aik = a[i][k]
+            for j in range(m):
+                if b[k][j]:
+                    out[i][j] += aik * b[k][j]
+    return out
+
+
+def identity(d: int) -&gt; list[list[Fraction]]:
+    return [[F(i == j) for j in range(d)] for i in range(d)]
+
+
+def embed_gate(nqubits: int, g: Gate) -&gt; list[list[Fraction]]:
+    local = gate_matrix(g)
+    dim = 1 &lt;&lt; nqubits
+    qs = g.qubits
+    out = [[F(0) for _ in range(dim)] for _ in range(dim)]
+    for row in range(dim):
+        row_local = 0
+        for q in qs:
+            row_local = (row_local &lt;&lt; 1) | ((row &gt;&gt; (nqubits - q - 1)) &amp; 1)
+        for col in range(dim):
+            if any(((row &gt;&gt; (nqubits - q - 1)) &amp; 1) !=
+                   ((col &gt;&gt; (nqubits - q - 1)) &amp; 1)
+                   for q in range(nqubits) if q not in qs):
+                continue
+            col_local = 0
+            for q in qs:
+                col_local = (col_local &lt;&lt; 1) | ((col &gt;&gt; (nqubits - q - 1)) &amp; 1)
+            out[row][col] = local[row_local][col_local]
+    return out
+
+
+def dense_trace(nqubits: int, gates: Sequence[Gate]) -&gt; Fraction:
+    &quot;&quot;&quot;Exact trace of chronological gate action, using a dense independent route.&quot;&quot;&quot;
+    d = 1 &lt;&lt; nqubits
+    running = identity(d)
+    for g in gates:
+        running = matmul(embed_gate(nqubits, g), running)
+    return sum((running[i][i] for i in range(d)), F(0))
+
+
+def symmetric_euler_block(base: Sequence[Gate], repetitions: int) -&gt; tuple[Gate, ...]:
+    &quot;&quot;&quot;Build chronological gates whose matrix product is (W W^T)^repetitions.
+
+    If base is [F_1,...,F_p], chronological application has product
+    W=F_p...F_1.  Every local gate is symmetric, so reversing the operation
+    order inside each block gives W W^T.
+    &quot;&quot;&quot;
+    if repetitions &lt; 1:
+        raise ValueError(&quot;repetitions must be positive&quot;)
+    one_block = tuple(reversed(base)) + tuple(base)
+    return one_block * repetitions
+
+
+def check_case(name: str, nqubits: int, gates: Sequence[Gate],
+               max_combinations: int = 2_000_000,
+               do_subset_sum: bool = False) -&gt; dict:
+    compiler = HomogeneousCompiler(nqubits, gates)
+    contraction, contraction_stats = compiler.exact_contraction(max_combinations)
+    dense = dense_trace(nqubits, gates)
+    compiled_total = contraction * (2 ** compiler.inactive_qubits)
+    if compiled_total != dense:
+        raise AssertionError(f&quot;{name}: coefficient {compiled_total} != dense trace {dense}&quot;)
+    if do_subset_sum and compiler.ground_size &lt;= 24:
+        subset_sum = compiler.coefficient_by_subset_sum()
+        if subset_sum != contraction:
+            raise AssertionError(f&quot;{name}: subset sum {subset_sum} != local contraction {contraction}&quot;)
+    else:
+        subset_sum = None
+    return {
+        &quot;case&quot;: name,
+        &quot;qubits&quot;: nqubits,
+        &quot;gate_count&quot;: len(gates),
+        &quot;ground_size&quot;: compiler.ground_size,
+        &quot;inactive_qubits&quot;: compiler.inactive_qubits,
+        &quot;wire_count&quot;: len(compiler.wires),
+        &quot;field_gate_count&quot;: compiler.field_count,
+        &quot;local_contraction_exact&quot;: qstr(contraction),
+        &quot;inactive_factor&quot;: 2 ** compiler.inactive_qubits,
+        &quot;compiled_trace_exact&quot;: qstr(compiled_total),
+        &quot;dense_trace_exact&quot;: qstr(dense),
+        &quot;subset_sum_crosscheck_exact&quot;: qstr(subset_sum) if subset_sum is not None else &quot;SKIPPED_SIZE_CAP&quot;,
+        &quot;support_certificate&quot;: compiler.support_certificate(),
+        &quot;contraction_stats&quot;: contraction_stats,
+        &quot;status&quot;: &quot;PASS&quot;,
+    }
+
+
+def deterministic_cases() -&gt; list[tuple[str, int, tuple[Gate, ...]]]:
+    return [
+        (&quot;empty_two_qubit_trace&quot;, 2, ()),
+        (&quot;single_field_zero_x_boundary&quot;, 1,
+         (Gate.field(0, 0, F(-2, 3), F(1, 5)),)),
+        (&quot;single_field_nonzero_x&quot;, 2,
+         (Gate.field(0, F(2, 3), F(-1, 4), F(3, 7)),)),
+        (&quot;single_pair_gamma_equals_alpha&quot;, 2,
+         (Gate.pair(0, 1, F(3, 5), F(3, 5), F(2, 9)),)),
+        (&quot;single_pair_gamma_equals_minus_alpha&quot;, 2,
+         (Gate.pair(0, 1, F(2, 3), F(-2, 3), F(1, 7)),)),
+        (&quot;triangle_with_spatially_varying_fields&quot;, 3,
+         (Gate.pair(0, 1, F(1, 2), F(1, 2), F(1, 5)),
+          Gate.field(1, F(1, 3), F(-1, 4), F(2, 7)),
+          Gate.pair(1, 2, F(2, 5), F(-1, 5), F(1, 6)),
+          Gate.field(2, F(0), F(2, 7), F(1, 8)),
+          Gate.pair(2, 0, F(3, 4), F(-3, 4), F(1, 9)),
+          Gate.field(0, F(2, 5), F(1, 6), F(1, 10)))),
+        (&quot;same_qubit_repeated_fields&quot;, 1,
+         (Gate.field(0, F(1, 2), F(1, 3), F(1, 4)),
+          Gate.field(0, F(2, 3), F(-1, 5), F(1, 7)),
+          Gate.field(0, F(0), F(-1, 2), F(1, 9)))),
+    ]
+
+
+def random_cases(seed: int = 6107, count: int = 12) -&gt; list[tuple[str, int, tuple[Gate, ...]]]:
+    rng = random.Random(seed)
+    out = []
+    for case_i in range(count):
+        n = rng.randint(1, 3)
+        ngates = rng.randint(1, 4)
+        gates: list[Gate] = []
+        for _ in range(ngates):
+            step = F(rng.randint(1, 3), rng.randint(2, 9))
+            if n &gt;= 2 and rng.random() &lt; 0.5:
+                q0, q1 = rng.sample(range(n), 2)
+                alpha = F(rng.randint(0, 3), rng.randint(1, 5))
+                gamma = alpha * F(rng.choice([-1, 0, 1]) * rng.randint(0, 3), 3)
+                gates.append(Gate.pair(q0, q1, alpha, gamma, step))
+            else:
+                q = rng.randrange(n)
+                bx = F(rng.randint(0, 3), rng.randint(1, 5))
+                bz = F(rng.choice([-1, 1]) * rng.randint(0, 3), rng.randint(1, 5))
+                gates.append(Gate.field(q, bx, bz, step))
+        out.append((f&quot;seed{seed}_case{case_i:02d}&quot;, n, tuple(gates)))
+    return out
+
+
+def run_self_check() -&gt; dict:
+    cases = deterministic_cases() + random_cases()
+    results = [check_case(name, n, gates, do_subset_sum=(i &lt; 5))
+               for i, (name, n, gates) in enumerate(cases)]
+
+    # Verify the same compiler on repeated symmetric Euler blocks, which are
+    # the exact rational partition traces used by the thermal transfer.
+    base = (Gate.pair(0, 1, F(1, 2), F(-1, 4), F(1, 7)),
+            Gate.field(1, F(1, 3), F(1, 5), F(1, 9)))
+    for repetitions in (1, 2):
+        seq = symmetric_euler_block(base, repetitions)
+        results.append(check_case(f&quot;symmetric_euler_block_m{repetitions}&quot;, 2, seq,
+                                  max_combinations=2_000_000,
+                                  do_subset_sum=(repetitions == 1)))
+
+    return {
+        &quot;worker_id&quot;: &quot;c06_l07&quot;,
+        &quot;compiler&quot;: &quot;work/cycle6/c06_l07/xxz_homogeneous_compiler.py&quot;,
+        &quot;arithmetic&quot;: &quot;Python standard-library Fraction only&quot;,
+        &quot;test_count&quot;: len(results),
+        &quot;passed&quot;: sum(r[&quot;status&quot;] == &quot;PASS&quot; for r in results),
+        &quot;results&quot;: results,
+        &quot;scope&quot;: &quot;exact finite rational gate traces, local coefficient contraction, support seeds, and one tiny subset-sum cross-check; no FPRAS or many-body runtime&quot;,
+    }
+
+
+def main() -&gt; None:
+    report = run_self_check()
+    path = Path(__file__).with_name(&quot;diagnostics.json&quot;)
+    path.write_text(json.dumps(report, indent=2) + &quot;\n&quot;)
+    print(json.dumps({k: report[k] for k in (&quot;test_count&quot;, &quot;passed&quot;, &quot;scope&quot;)}, indent=2))
+    print(f&quot;saved: {path}&quot;)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/d6194842a3acb8aac5e01bb0f128ade4d5e584abd9cc38433eb4342a13f6070c.py">Exact original bytes</a></p></html>

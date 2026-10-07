@@ -1,0 +1,91 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c05_s02/checks.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c05_s02/checks.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Bounded exact bookkeeping checks; no solver or asymptotic certification.&quot;&quot;&quot;
+from fractions import Fraction as Q
+import json, time
+from pathlib import Path
+start = time.monotonic()
+
+def zero(r,c): return [[Q(0) for _ in range(c)] for _ in range(r)]
+def eye(d):
+    a=zero(d,d)
+    for i in range(d): a[i][i]=Q(1)
+    return a
+def mm(a,b):
+    return [[sum((a[i][k]*b[k][j] for k in range(len(b))),Q(0)) for j in range(len(b[0]))] for i in range(len(a))]
+def scale(a,s): return [[s*v for v in row] for row in a]
+def add(a,b): return [[x+y for x,y in zip(ra,rb)] for ra,rb in zip(a,b)]
+def tensor(a,b):
+    return [[a[i//len(b)][j//len(b[0])]*b[i%len(b)][j%len(b[0])] for j in range(len(a[0])*len(b[0]))] for i in range(len(a)*len(b))]
+def swap(d):
+    a=zero(d*d,d*d)
+    for i in range(d):
+        for j in range(d): a[i*d+j][j*d+i]=Q(1)
+    return a
+def partial(a,d,which):
+    r=zero(d,d)
+    for i in range(d):
+        for j in range(d):
+            r[i][j]=sum((a[i*d+k][j*d+k] if which==2 else a[k*d+i][k*d+j] for k in range(d)),Q(0))
+    return r
+
+def cloner_checks(d):
+    ident=eye(d); sw=swap(d)
+    sym=scale(add(eye(d*d),sw),Q(1,2))
+    assert mm(sym,sym)==sym
+    lam=Q(d+2,2*(d+1))
+    choi=zero(d**3,d**3)
+    marginal_supertrace=Q(0)
+    for i in range(d):
+        for j in range(d):
+            e=zero(d,d);e[i][j]=Q(1)
+            b=scale(mm(mm(sym,tensor(e,ident)),sym),Q(2,d+1))
+            expected=scale(e,lam)
+            if i==j: expected=add(expected,scale(ident,Q(1,2*(d+1))))
+            assert partial(b,d,1)==expected
+            assert partial(b,d,2)==expected
+            assert sum((b[k][k] for k in range(d*d)),Q(0))==(1 if i==j else 0)
+            assert mm(mm(sw,b),sw)==b
+            marginal_supertrace+=expected[i][j]
+            for u in range(d*d):
+                for v in range(d*d): choi[i*d*d+u][j*d*d+v]=b[u][v]
+    # CP: exact Choi Gram equality from the explicit isometric Kraus columns.
+    gram=zero(d**3,d**3)
+    for k in range(d):
+        col=[sym[u][i*d+k] for i in range(d) for u in range(d*d)]
+        for a in range(d**3):
+            for b in range(d**3): gram[a][b]+=Q(2,d+1)*col[a]*col[b]
+    assert gram==choi
+    assert marginal_supertrace==Q(d*(d+1),2)
+    return {&quot;d&quot;:d,&quot;checks&quot;:&quot;exact projector, both marginals, TP, swap symmetry, Choi Gram CP, supertrace&quot;,&quot;cloner_lambda&quot;:str(lam),&quot;supertrace&quot;:str(marginal_supertrace)}
+
+rows=[]
+for d in [2,3,4,8,16,32,64,128,1024]:
+    lam=Q(d+2,2*(d+1))
+    cap=Q(d*(d+3),4)
+    raw_cap=Q(d*d+1,2)
+    tr=Q(d*(d+1),2)
+    assert tr-cap==Q(d*(d-1),4)
+    assert tr-raw_cap==Q(d-1,2)
+    assert (cap-1)/Q(d*d-1)==Q(d+4,4*(d+1))
+    kappa=Q(4*((d*d)//4),d*d)
+    powers={str(m):str(kappa*max(Q(0),lam**m-Q(1,d+1))) for m in [1,2,4,8,16]}
+    rows.append({&quot;d&quot;:d,&quot;lambda&quot;:str(lam),&quot;corrected_supertrace_cap&quot;:str(cap),&quot;cloner_supertrace&quot;:str(tr),&quot;corrected_gap&quot;:str(tr-cap),&quot;raw_supertrace_cap&quot;:str(raw_cap),&quot;raw_gap&quot;:str(tr-raw_cap),&quot;corrected_norm_distance_lower&quot;:str(kappa*(tr-cap)/Q(d*d-1)),&quot;EB_power_distance_exact&quot;:powers})
+
+# Scalar eigenvalue inequality used to exclude even the raw instrument class.
+eigen_rows=[]
+for d in range(2,9):
+    samples=[[Q(1,d)]*d,[Q(1)]+[Q(0)]*(d-1)]
+    # Rational square-root eigenvalues, normalized by their square sum.
+    for seed in range(1,11):
+        r=[Q(((seed*(j+1)+j*j)%11)+1) for j in range(d)]
+        norm=sum((x*x for x in r),Q(0))
+        # S=(sum sqrt(p))^2 and purity, both rational for these p.
+        S=sum(r,Q(0))**2/norm
+        purity=sum((x**4 for x in r),Q(0))/norm**2
+        assert S+purity&lt;=Q(d)+Q(1,d)
+        eigen_rows.append({&quot;d&quot;:d,&quot;seed&quot;:seed,&quot;S_plus_purity&quot;:str(S+purity),&quot;bound&quot;:str(Q(d)+Q(1,d))})
+
+out={&quot;scope&quot;:&quot;Exact finite formula/transcription checks; proof is in INITIAL.txt. No general EB lifting or counterexample certified.&quot;,&quot;dense_cloner_checks&quot;:[cloner_checks(d) for d in [2,3,4]],&quot;parameter_rows&quot;:rows,&quot;scalar_fixtures&quot;:len(eigen_rows),&quot;elapsed_seconds&quot;:time.monotonic()-start}
+Path(__file__).with_name(&#x27;checks.json&#x27;).write_text(json.dumps(out,indent=2)+&#x27;\n&#x27;)
+print(json.dumps({&quot;dense_dimensions&quot;:[2,3,4],&quot;parameter_rows&quot;:len(rows),&quot;scalar_fixtures&quot;:len(eigen_rows),&quot;elapsed_seconds&quot;:out[&#x27;elapsed_seconds&#x27;],&quot;all_exact_checks_passed&quot;:True}))
+</pre><p><a href="../assets/bc60500a03726c0990cdcd8e0833a5ddd422ea370f2ed948fe33605b9e7d3cbc.py">Exact original bytes</a></p></html>

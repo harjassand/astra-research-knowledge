@@ -1,0 +1,71 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c01_s02/phase2/radius_checks.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c01_s02/phase2/radius_checks.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>from fractions import Fraction as F
+from itertools import combinations
+from pathlib import Path
+import hashlib
+import json
+import random
+import time
+
+from paired_exact import Q, canonical, mat, brute_weights, gram_weight
+from support_radius import acquire_support_radius, acquired_radius_count
+
+start = time.perf_counter()
+receipts = []
+for n,k,h,seed in [(4,2,3,103),(6,3,4,107),(8,4,5,109)]:
+    # Every square Cauchy subminor is nonzero. Exactly the k-subsets of H
+    # support the top canonical law, so mandatory core is empty and radius1.
+    Fmat = mat([[F(1,i+j+1) if i&lt;h else F(0)
+                for j in range(n)] for i in range(n)])
+    V = canonical(Fmat)
+    weights = brute_weights(V,k)
+    support = [set(S) for S,w in weights.items() if w]
+    core = sorted(set.intersection(*support))
+    a = acquire_support_radius(V,k,F(1,10000),random.Random(seed))
+    assert a[&#x27;status&#x27;] == &#x27;POSITIVE&#x27;
+    witness = set(a[&#x27;witness&#x27;])
+    true_radius = max(len(S-witness) for S in support)
+    true_diameter = max(len(S-T) for S in support for T in support)
+    assert true_radius == a[&#x27;radius&#x27;] == 1
+    assert core == [] and true_diameter == 1
+    assert len(support) == len(list(combinations(range(h),k)))
+    receipts.append({&#x27;n&#x27;:n,&#x27;k&#x27;:k,&#x27;active_rows&#x27;:h,&#x27;positive_support_count&#x27;:len(support),
+        &#x27;mandatory_core&#x27;:core,&#x27;true_radius&#x27;:true_radius,&#x27;true_diameter&#x27;:true_diameter,
+        &#x27;partition&#x27;:sum(weights.values(),F(0)), &#x27;acquired&#x27;:a})
+
+upper = mat([[int(i&lt;j) for j in range(6)] for i in range(6)])
+unique = acquired_radius_count(canonical(upper),3,F(1,4),F(1,1000),0,random.Random(113))
+assert unique[&#x27;value&#x27;] == 1 and unique[&#x27;acquisition&#x27;][&#x27;radius&#x27;] == 0
+assert unique[&#x27;samples&#x27;] == 0
+
+small = mat([[F(1,i+j+1) if i&lt;3 else F(0) for j in range(4)] for i in range(4)])
+Vsmall = canonical(small)
+count = acquired_radius_count(Vsmall,2,F(3,4),F(1,2),1,random.Random(127))
+exact = sum(brute_weights(Vsmall,2).values(),F(0))
+assert abs(count[&#x27;value&#x27;]/exact-1) &lt;= F(3,4)
+
+class AllZeroBits:
+    # One specified possible grid outcome, not a source of uniform randomness.
+    def getrandbits(self,bits):
+        return 0
+
+cancel = mat([[1,0,1,0,1,0],[0,1,0,1,0,-1]])
+underestimate = acquire_support_radius(cancel,1,F(1,10),AllZeroBits())
+assert sum(brute_weights(cancel,1).values(),F(0)) == 3
+assert underestimate[&#x27;witness&#x27;] == [0] and underestimate[&#x27;radius&#x27;] == 0
+# True radius is1, but x1=x2 outside the center cancels the leading polynomial.
+# This outcome has positive probability under ideal independent grid draws.
+# It demonstrates why the acquired radius is a confidence result, not exact.
+
+result = {&#x27;status&#x27;:&#x27;PASS&#x27;,&#x27;acquisitions&#x27;:receipts,&#x27;unique_support_exact_count&#x27;:unique,
+          &#x27;implemented_small_radius_FPRAS_run&#x27;:count,&#x27;run_exact_partition&#x27;:exact,
+          &#x27;explicit_possible_underestimation_outcome&#x27;:{
+              &#x27;true_radius&#x27;:1,&#x27;reported&#x27;:underestimate,
+              &#x27;note&#x27;:&#x27;all grid entries1 is a specified possible outcome, not an iid diagnostic; confidence failure must remain charged&#x27;},
+          &#x27;elapsed_seconds&#x27;:time.perf_counter()-start,
+          &#x27;script_sha256&#x27;:hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+          &#x27;limitations&#x27;:&#x27;finite exact support diagnostics and one seeded FPRAS execution; probability/asymptotic claims require the proof&#x27;}
+(Path(__file__).parent/&#x27;radius_checks.json&#x27;).write_text(json.dumps(result,indent=2,default=str)+&#x27;\n&#x27;)
+print(json.dumps({&#x27;status&#x27;:&#x27;PASS&#x27;,&#x27;elapsed_seconds&#x27;:result[&#x27;elapsed_seconds&#x27;],
+                  &#x27;radii&#x27;:[x[&#x27;acquired&#x27;][&#x27;radius&#x27;] for x in receipts],
+                  &#x27;count_samples&#x27;:count[&#x27;estimate&#x27;][&#x27;sign_samples&#x27;]},indent=2))
+</pre><p><a href="../assets/29fca898ce795c0a1b2269ed12e9f3ba9ab74844fd76a17490770af64df2a9dc.py">Exact original bytes</a></p></html>

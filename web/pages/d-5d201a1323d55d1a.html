@@ -1,0 +1,153 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c02_l02/weighted_hole_total_covariance_checks.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c02_l02/weighted_hole_total_covariance_checks.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact finite diagnostics for coordinate/total-count covariance bounds.
+
+This does not prove the general theorem in revisions/total_covariance_extension.txt.
+It checks localized fibers of bounded signed-hole examples using exact
+Fraction arithmetic, including zero coordinate activities and empty fibers.
+&quot;&quot;&quot;
+from fractions import Fraction
+from itertools import product
+from pathlib import Path
+from random import Random
+import json
+
+from weighted_hole_localization_checks import (
+    add_coordinate_pair_auxiliary,
+    all_hole_partitions,
+    paired_matrix,
+    random_matrix,
+)
+
+
+def diagnostics(f, n, activities, taus, tag):
+    checked = 0
+    empty_coefficient = 0
+    empty_weighted_tau = 0
+    min_cov = None
+    max_cov_minus_var = None
+    min_cov_minus_var = None
+    for status in product((0, 1, 2), repeat=n):
+        forced = sum(1 &lt;&lt; i for i, s in enumerate(status) if s == 0)
+        forbidden = sum(1 &lt;&lt; i for i, s in enumerate(status) if s == 1)
+        free = [i for i, s in enumerate(status) if s == 2]
+        support = []
+        for choice in range(1 &lt;&lt; len(free)):
+            U = forced
+            activity = Fraction(1)
+            for k, i in enumerate(free):
+                if (choice &gt;&gt; k) &amp; 1:
+                    U |= 1 &lt;&lt; i
+                    activity *= activities[i]
+            if U &amp; forbidden or U.bit_count() % 2 or f[U] == 0:
+                continue
+            K = U.bit_count() // 2
+            support.append((U, K, f[U] * activity))
+
+        if not support:
+            empty_coefficient += 1
+            continue
+
+        for tau in taus:
+            masses = [(U, K, a * tau**K) for U, K, a in support]
+            Z = sum(a for _, _, a in masses)
+            if Z == 0:
+                # A boundary activity can annihilate a fiber that was
+                # coefficient-nonempty before activities were applied.
+                empty_weighted_tau += 1
+                continue
+            EK = sum(a * K for _, K, a in masses) / Z
+            for i in free:
+                EI = sum(a for U, _, a in masses if (U &gt;&gt; i) &amp; 1) / Z
+                EIK = sum(a * K for U, K, a in masses if (U &gt;&gt; i) &amp; 1) / Z
+                cov = EIK - EI * EK
+                var_i = EI * (1 - EI)
+                assert cov &gt;= 0, (tag, status, tau, i, cov)
+                assert cov &lt;= var_i, (tag, status, tau, i, cov, var_i)
+                min_cov = cov if min_cov is None else min(min_cov, cov)
+                gap = cov - var_i
+                max_cov_minus_var = gap if max_cov_minus_var is None else max(max_cov_minus_var, gap)
+                min_cov_minus_var = gap if min_cov_minus_var is None else min(min_cov_minus_var, gap)
+                checked += 1
+    return {&quot;tag&quot;: tag, &quot;coordinate_tau_checks&quot;: checked,
+            &quot;empty_coefficient_fibres&quot;: empty_coefficient,
+            &quot;annihilated_weighted_fibre_tau_checks&quot;: empty_weighted_tau,
+            &quot;minimum_covariance&quot;: str(min_cov) if min_cov is not None else None,
+            &quot;maximum_covariance_minus_indicator_variance&quot;: str(max_cov_minus_var)
+            if max_cov_minus_var is not None else None,
+            &quot;minimum_covariance_minus_indicator_variance&quot;: str(min_cov_minus_var)
+            if min_cov_minus_var is not None else None}
+
+
+def pair_covariance(f, n, i, j, activities):
+    masses = []
+    for U, coeff in enumerate(f):
+        if coeff == 0:
+            continue
+        a = Fraction(coeff)
+        for k in range(n):
+            if (U &gt;&gt; k) &amp; 1:
+                a *= activities[k]
+        masses.append((U, a))
+    Z = sum(a for _, a in masses)
+    Ei = sum(a for U, a in masses if (U &gt;&gt; i) &amp; 1) / Z
+    Ej = sum(a for U, a in masses if (U &gt;&gt; j) &amp; 1) / Z
+    Eij = sum(a for U, a in masses if ((U &gt;&gt; i) &amp; 1) and ((U &gt;&gt; j) &amp; 1)) / Z
+    return Eij - Ei * Ej
+
+
+def main():
+    rng = Random(20261007)
+    n = 6
+    matrices = {
+        &quot;dense_gaussian_integer&quot;: random_matrix(n, rng),
+        &quot;sparse_gaussian_integer&quot;: random_matrix(n, rng, sparse=True),
+        &quot;three_disjoint_directed_pairs&quot;: paired_matrix(n, [(0, 1), (2, 3), (4, 5)]),
+        &quot;diagonal_boundary_case&quot;: [[(int(i == j), 0) for j in range(n)] for i in range(n)],
+    }
+    activity_vectors = {
+        &quot;positive&quot;: [Fraction(i + 1, 2) for i in range(n)],
+        &quot;boundary_zeros&quot;: [Fraction(0 if i % 3 == 0 else i + 1, 2) for i in range(n)],
+    }
+    taus = [Fraction(1, 3), Fraction(1), Fraction(3)]
+    results = []
+    for name, F in matrices.items():
+        f = all_hole_partitions(F)
+        for activity_name, activities in activity_vectors.items():
+            results.append(diagnostics(f, n, activities, taus,
+                                       f&quot;{name}:{activity_name}&quot;))
+        if name in {&quot;dense_gaussian_integer&quot;, &quot;three_disjoint_directed_pairs&quot;}:
+            f_aux = add_coordinate_pair_auxiliary(f, n, 0, 3, Fraction(1, 3))
+            results.append(diagnostics(f_aux, n, activity_vectors[&quot;boundary_zeros&quot;], taus,
+                                       f&quot;{name}:aux_0_3_activity_1_3&quot;))
+
+    F4 = [[(1, -1), (0, 0), (2, 1), (0, 0)],
+          [(2, -2), (0, 0), (0, 0), (0, 0)],
+          [(0, 0), (0, 0), (1, -2), (0, 0)],
+          [(0, 0), (0, 1), (0, 0), (0, 0)]]
+    f4 = all_hole_partitions(F4)
+    pair_cov = pair_covariance(f4, 4, 0, 3, [Fraction(1)] * 4)
+    assert pair_cov == Fraction(-1, 50)
+
+    summary = {
+        &quot;scope&quot;: &quot;finite exact diagnostics only; proof is in revisions/total_covariance_extension.txt&quot;,
+        &quot;dimension&quot;: n,
+        &quot;global_fugacities&quot;: [str(t) for t in taus],
+        &quot;localization_fixtures&quot;: results,
+        &quot;total_coordinate_tau_checks&quot;: sum(r[&quot;coordinate_tau_checks&quot;] for r in results),
+        &quot;negative_pair_covariance_control&quot;: {
+            &quot;dimension&quot;: 4,
+            &quot;hole_coefficients&quot;: f4,
+            &quot;pair&quot;: [0, 3],
+            &quot;activities&quot;: [1, 1, 1, 1],
+            &quot;covariance&quot;: str(pair_cov),
+            &quot;purpose&quot;: &quot;The total-count covariance theorem is not pairwise positive association.&quot;,
+        },
+    }
+    out = Path(__file__).with_suffix(&quot;.json&quot;)
+    out.write_text(json.dumps(summary, indent=2) + &quot;\n&quot;)
+    print(json.dumps(summary, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/2fe053796414de86aa62c284db56405ba4fc6d59b99c6baefa240451c20f454d.py">Exact original bytes</a></p></html>

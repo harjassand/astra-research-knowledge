@@ -1,0 +1,175 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c07_s02/phase2/vendor/certified_psd_root.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c07_s02/phase2/vendor/certified_psd_root.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Gap-free, finite-bit rational PSD-root columns for the spin compiler.
+
+Uses guarded symmetric Newton iteration, then independently checks PSD and
+an exact rational squared-residual bound. No eigenvector/eigenvalue oracle.
+&quot;&quot;&quot;
+import argparse
+from fractions import Fraction as F
+import importlib.util
+import itertools
+import json
+from pathlib import Path
+import resource
+import time
+
+HERE=Path(__file__).resolve().parent
+spec=importlib.util.spec_from_file_location(&#x27;arithmetic&#x27;,HERE/&#x27;certified_two_spin.py&#x27;)
+base=importlib.util.module_from_spec(spec)
+spec.loader.exec_module(base)
+fa,fs,fm,fd=base.fa,base.fs,base.fm,base.fd
+
+
+def eye(x): return [[F(x if i==j else 0) for j in range(3)] for i in range(3)]
+def add(A,B): return [[fa(a,b) for a,b in zip(ar,br)] for ar,br in zip(A,B)]
+def sub(A,B): return [[fs(a,b) for a,b in zip(ar,br)] for ar,br in zip(A,B)]
+def scale(A,c): return [[fm(a,c) for a in row] for row in A]
+def mm(A,B):
+    return [[sum((fm(A[i][t],B[t][j]) for t in range(3)),F(0))
+             for j in range(3)] for i in range(3)]
+def det(A):
+    n=len(A)
+    if n==1: return A[0][0]
+    total=F(0)
+    for p in itertools.permutations(range(n)):
+        inversions=sum(p[i]&gt;p[j] for i in range(n) for j in range(i+1,n))
+        term=F((-1)**inversions)
+        for i in range(n): term=fm(term,A[i][p[i]])
+        total=fa(total,term)
+    return total
+def principal_minors(A):
+    out=[]
+    for size in range(1,4):
+        for indices in itertools.combinations(range(3),size):
+            block=[[A[i][j] for j in indices] for i in indices]
+            out.append({&#x27;indices&#x27;:indices,&#x27;determinant&#x27;:det(block)})
+    return out
+def psd(A):
+    assert all(A[i][j]==A[j][i] for i in range(3) for j in range(3))
+    mins=principal_minors(A)
+    return all(m[&#x27;determinant&#x27;]&gt;=0 for m in mins),mins
+def inverse(A):
+    determinant=det(A)
+    if determinant==0: raise ArithmeticError(&#x27;Rational Newton iterate singular&#x27;)
+    adj=[]
+    for i in range(3):
+        row=[]
+        for j in range(3):
+            block=[[A[r][c] for c in range(3) if c!=i] for r in range(3) if r!=j]
+            row.append(fd(F((-1)**(i+j))*det(block),determinant))
+        adj.append(row)
+    base.ledger.add(&#x27;three_by_three_rational_inverses&#x27;)
+    return adj
+def rownorm(A): return max(sum(map(abs,row),F(0)) for row in A)
+def nearest_dyadic(x,P):
+    z=fm(x,F(1&lt;&lt;P))
+    # floor(z+1/2), exact and valid for signed values as well.
+    rounded=fa(z,F(1,2))
+    n=rounded.numerator//rounded.denominator
+    base.ledger.add(&#x27;nearest_dyadic_entry_roundings&#x27;)
+    return F(n,1&lt;&lt;P)
+
+
+def root(C,ell):
+    assert 2&lt;=ell&lt;=32
+    good,minors=psd(C)
+    if not good:
+        return {&#x27;status&#x27;:&#x27;REFUTED_PSD_INPUT&#x27;,&#x27;principal_minors&#x27;:
+                [{&#x27;indices&#x27;:m[&#x27;indices&#x27;],&#x27;determinant&#x27;:str(m[&#x27;determinant&#x27;])} for m in minors]}
+    rho=rownorm(C)
+    assert rho&lt;=2 # explicit configured bounded domain, not a hidden scale assumption
+    q=F(1,1&lt;&lt;ell)
+    alpha=q*q/64
+    D=add(C,eye(alpha))
+    gamma=F(1)
+    while gamma*gamma&lt;rho+alpha: gamma*=2
+    w=q*q/(64*(gamma+1))
+    k=0
+    while gamma/F(1&lt;&lt;k)&gt;w: k+=1
+    lipschitz=1+4*(rho+alpha)/alpha
+    # Approximate iterates stay in the sqrt(alpha)/4 neighborhood of exact ones.
+    # A nearest-entry rounding has operator error &lt;=3/(2*2^P).
+    rounding_budget=min(w,q/8)/(16*k*lipschitz**k)
+    P=1
+    while F(3,2*(1&lt;&lt;P))&gt;rounding_budget: P+=1
+    X=eye(gamma)
+    history=[]
+    for step in range(k):
+        inv=inverse(X)
+        exact=add(scale(X,F(1,2)),scale(add(mm(D,inv),mm(inv,D)),F(1,4)))
+        # Symmetric exact map, symmetric rounding by using only the upper triangle.
+        for i in range(3):
+            for j in range(i,3):
+                value=nearest_dyadic(exact[i][j],P)
+                X[i][j]=X[j][i]=value
+        good_x,xmins=psd(X)
+        if not good_x: raise ArithmeticError(&#x27;Guard invariant failed: non-PSD iterate&#x27;)
+        # This inverse bound is verified with rational PSD tests, rather than assumed.
+        lower=q/16
+        good_lower,_=psd(sub(X,eye(lower)))
+        if not good_lower: raise ArithmeticError(&#x27;Guard invariant failed: known inverse floor&#x27;)
+        residual=sub(mm(X,X),C)
+        history.append({&#x27;step&#x27;:step+1,&#x27;residual_row_norm&#x27;:str(rownorm(residual))})
+    residual=sub(mm(X,X),C)
+    delta=rownorm(residual)
+    # For Hermitian residual, operator norm &lt;= maximum absolute row sum.
+    # X&gt;=0 plus ||X^2-C||&lt;=q^2 implies ||X-sqrt(C)||&lt;=q, gap-free.
+    good_final,xmins=psd(X)
+    assert good_final and delta&lt;=q*q
+    commutator=sub(mm(X,C),mm(C,X))
+    return {&#x27;status&#x27;:&#x27;CERTIFIED_GAP_FREE_PSD_ROOT_COLUMNS&#x27;,&#x27;input_C&#x27;:[[str(x) for x in row] for row in C],
+            &#x27;target_root_operator_error&#x27;:str(q),&#x27;regularization&#x27;:str(alpha),
+            &#x27;initial_scalar&#x27;:str(gamma),&#x27;newton_steps&#x27;:k,&#x27;working_dyadic_bits&#x27;:P,
+            &#x27;per_matrix_update_operator_rounding_budget&#x27;:str(rounding_budget),
+            &#x27;conservative_step_lipschitz&#x27;:str(lipschitz),
+            &#x27;certified_root_matrix&#x27;:[[str(x) for x in row] for row in X],
+            &#x27;root_columns&#x27;:[[str(X[i][j]) for i in range(3)] for j in range(3)],
+            &#x27;root_entry_enclosures&#x27;:[[{&#x27;lo&#x27;:str(X[i][j]-q),&#x27;hi&#x27;:str(X[i][j]+q)}
+                                       for j in range(3)] for i in range(3)],
+            &#x27;squared_residual_matrix&#x27;:[[str(x) for x in row] for row in residual],
+            &#x27;squared_residual_operator_upper&#x27;:str(delta),
+            &#x27;commutator_operator_upper&#x27;:str(rownorm(commutator)),
+            &#x27;input_principal_minors&#x27;:[{&#x27;indices&#x27;:m[&#x27;indices&#x27;],&#x27;determinant&#x27;:str(m[&#x27;determinant&#x27;])} for m in minors],
+            &#x27;output_principal_minors&#x27;:[{&#x27;indices&#x27;:m[&#x27;indices&#x27;],&#x27;determinant&#x27;:str(m[&#x27;determinant&#x27;])} for m in xmins],
+            &#x27;iteration_residuals&#x27;:history,
+            &#x27;limits&#x27;:[&#x27;Configured rational symmetric 3x3 PSD input with row norm &lt;=2&#x27;,
+                      &#x27;Component, not a complete normal/filter/importance sampler&#x27;,
+                      &#x27;No eigenaxis gap, numerical eigenvalue or exact-real oracle&#x27;]}
+
+
+FIXTURES={
+ &#x27;rank2&#x27;:[[F(1,4),F(1,4),F(0)],
+          [F(1,4),F(13,36),F(1,9)],
+          [F(0),F(1,9),F(1,9)]],
+ &#x27;rank1&#x27;:[[F(1,9)]*3 for _ in range(3)],
+ &#x27;zero&#x27;:eye(0),
+ &#x27;tiny&#x27;:[[F(1,4),F(1,4),F(0)],
+         [F(1,4),F(1,4)+F(1,1&lt;&lt;80),F(0)],
+         [F(0),F(0),F(1,1&lt;&lt;100)]],
+ &#x27;negative&#x27;:[[F(1),F(0),F(0)],[F(0),F(-1,1&lt;&lt;80),F(0)],[F(0),F(0),F(0)]]}
+
+
+def main():
+    ap=argparse.ArgumentParser()
+    ap.add_argument(&#x27;--fixture&#x27;,choices=FIXTURES,default=&#x27;rank2&#x27;)
+    ap.add_argument(&#x27;--error-bits&#x27;,type=int,default=12)
+    ap.add_argument(&#x27;--out&#x27;,required=True)
+    args=ap.parse_args()
+    base.ledger=base.Ledger()
+    start,cpu=time.perf_counter(),time.process_time()
+    data=root(FIXTURES[args.fixture],args.error_bits)
+    data.update({&#x27;worker_id&#x27;:&#x27;c07_s03&#x27;,&#x27;fixture&#x27;:args.fixture,
+        &#x27;costs&#x27;:{**base.ledger.snapshot(),&#x27;wall_seconds&#x27;:time.perf_counter()-start,
+                 &#x27;cpu_seconds&#x27;:time.process_time()-cpu,
+                 &#x27;process_peak_rss_bytes_macos&#x27;:resource.getrusage(resource.RUSAGE_SELF).ru_maxrss}})
+    out=Path(args.out)
+    out.parent.mkdir(parents=True,exist_ok=True)
+    out.write_text(json.dumps(data,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({&#x27;output&#x27;:str(out),&#x27;status&#x27;:data[&#x27;status&#x27;],
+        &#x27;working_bits&#x27;:data.get(&#x27;working_dyadic_bits&#x27;),&#x27;steps&#x27;:data.get(&#x27;newton_steps&#x27;),
+        &#x27;squared_residual_upper&#x27;:data.get(&#x27;squared_residual_operator_upper&#x27;),
+        &#x27;wall_seconds&#x27;:data[&#x27;costs&#x27;][&#x27;wall_seconds&#x27;]}))
+
+
+if __name__==&#x27;__main__&#x27;: main()
+</pre><p><a href="../assets/b6eef37c853dbb55b44d38407ff3ff8932a869580bb091badb3a6e22cac04b9a.py">Exact original bytes</a></p></html>

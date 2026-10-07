@@ -1,0 +1,113 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c02_l03/revisions/linf_auxiliary_extension.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c02_l03/revisions/linf_auxiliary_extension.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact l-infinity exchange failure with all coordinate auxiliaries positive.&quot;&quot;&quot;
+from fractions import Fraction
+from itertools import combinations, permutations
+import json
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+F = [
+    [0, 0, 0, 0, 0, 0],
+    [0, 0, 1, 1, 0, 0],
+    [-1, 0, 0, 0, -1, 0],
+    [1, 0, 0, 0, -1, 0],
+    [0, 0, 0, 0, 0, 0],
+    [0, 0, -1, 1, 0, 0],
+]
+N = 6
+TAMP = Fraction(1, 100)
+
+
+def det(a):
+    k = len(a)
+    if k == 0:
+        return 1
+    total = 0
+    for p in permutations(range(k)):
+        inv = sum(p[i] &gt; p[j]
+                  for i in range(k) for j in range(i + 1, k))
+        term = -1 if inv % 2 else 1
+        for i, j in enumerate(p):
+            term *= a[i][j]
+        total += term
+    return total
+
+
+def old_linf(holes_mask):
+    retained = [i for i in range(N) if not (holes_mask &gt;&gt; i &amp; 1)]
+    if len(retained) % 2:
+        return 0
+    k = len(retained) // 2
+    maximum = 0
+    for rows in combinations(retained, k):
+        rowset = set(rows)
+        cols = [j for j in retained if j not in rowset]
+        value = abs(det([[F[i][j] for j in cols] for i in rows]))
+        maximum = max(maximum, value)
+    return maximum
+
+
+def matchings(vertices):
+    if not vertices:
+        yield 0, 0
+        return
+    first = vertices[0]
+    for union, size in matchings(vertices[1:]):
+        yield union, size
+    for pos, other in enumerate(vertices[1:]):
+        remaining = vertices[1:pos+1] + vertices[pos+2:]
+        for union, size in matchings(remaining):
+            yield union | (1 &lt;&lt; first) | (1 &lt;&lt; other), size + 1
+
+
+def lifted_linf(holes_mask):
+    available = [i for i in range(N) if not (holes_mask &gt;&gt; i &amp; 1)]
+    return max((TAMP**size) * old_linf(holes_mask | union)
+               for union, size in matchings(available))
+
+# Zero-based masks: S={1,5}=17, T={2,6}=34, a=1.
+S, T, A = 17, 34, 1
+D = S ^ T
+neighbors = []
+for j in sorted(i + 1 for i in range(N)
+                if i + 1 != A and (D &gt;&gt; i &amp; 1)):
+    hs = S ^ (1 &lt;&lt; (A - 1)) ^ (1 &lt;&lt; (j - 1))
+    ht = T ^ (1 &lt;&lt; (A - 1)) ^ (1 &lt;&lt; (j - 1))
+    neighbors.append({&quot;j&quot;: j, &quot;S_mask&quot;: hs, &quot;T_mask&quot;: ht,
+                      &quot;S_linf&quot;: lifted_linf(hs),
+                      &quot;T_linf&quot;: lifted_linf(ht)})
+
+s, t = lifted_linf(S), lifted_linf(T)
+lhs = s*t
+rhs = sum(row[&quot;S_linf&quot;] * row[&quot;T_linf&quot;] for row in neighbors)
+assert max(old_linf(m) for m in range(1 &lt;&lt; N)) == 2
+assert (s, t) == (2, 2)
+assert [(row[&quot;S_linf&quot;], row[&quot;T_linf&quot;]) for row in neighbors] == [
+    (Fraction(1), Fraction(1)),
+    (Fraction(1, 50), Fraction(1, 100)),
+    (Fraction(1), Fraction(1)),
+]
+assert lhs == 4 and rhs == Fraction(10001, 5000) and lhs &gt; rhs
+
+result = {
+    &quot;auxiliaries&quot;: &quot;all 15 unordered coordinate pairs in [6]&quot;,
+    &quot;activity_per_pair&quot;: &quot;1/10000&quot;,
+    &quot;amplitude_factor_per_selected_pair&quot;: &quot;1/100&quot;,
+    &quot;matrix_F&quot;: F,
+    &quot;S&quot;: [1, 5], &quot;T&quot;: [2, 6], &quot;a&quot;: 1,
+    &quot;endpoint_linf&quot;: {&quot;S&quot;: str(s), &quot;T&quot;: str(t)},
+    &quot;neighbors&quot;: [
+        {&quot;j&quot;: row[&quot;j&quot;], &quot;S_mask&quot;: row[&quot;S_mask&quot;],
+         &quot;T_mask&quot;: row[&quot;T_mask&quot;], &quot;S_linf&quot;: str(row[&quot;S_linf&quot;]),
+         &quot;T_linf&quot;: str(row[&quot;T_linf&quot;]),
+         &quot;product&quot;: str(row[&quot;S_linf&quot;] * row[&quot;T_linf&quot;])}
+        for row in neighbors
+    ],
+    &quot;exchange&quot;: {&quot;lhs&quot;: str(lhs), &quot;rhs&quot;: str(rhs),
+                 &quot;strict_gap&quot;: str(lhs-rhs)},
+    &quot;matching_formula&quot;: &quot;lifted_linf(U)=max_K t^|K| old_linf(U union V(K)), K a matching disjoint from U&quot;,
+    &quot;scope&quot;: &quot;exact finite positive-activity counterexample&quot;
+}
+(HERE / &quot;linf_auxiliary_extension.json&quot;).write_text(json.dumps(result, indent=2)+&quot;\n&quot;)
+print(json.dumps(result, indent=2))
+</pre><p><a href="../assets/a1cdf1a3647ec1e271ea808f885dc7ba2ae7b0c38830008dd17e5b429d8ff35c.py">Exact original bytes</a></p></html>

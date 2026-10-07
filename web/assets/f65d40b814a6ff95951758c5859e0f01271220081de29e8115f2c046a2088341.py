@@ -1,0 +1,189 @@
+#!/usr/bin/env python3
+"""Exact small-instance check for the low-rank augmentation identity.
+
+Uses Gaussian-integer arithmetic and permutation expansions. This is a finite
+algebra check, not evidence for the tree-decomposition running-time theorem.
+"""
+
+from itertools import combinations, permutations
+import json
+import random
+
+
+Z = tuple[int, int]
+ZERO: Z = (0, 0)
+ONE: Z = (1, 0)
+
+
+def add(a: Z, b: Z) -> Z:
+    return (a[0] + b[0], a[1] + b[1])
+
+
+def neg(a: Z) -> Z:
+    return (-a[0], -a[1])
+
+
+def mul(a: Z, b: Z) -> Z:
+    return (a[0] * b[0] - a[1] * b[1], a[0] * b[1] + a[1] * b[0])
+
+
+def conj(a: Z) -> Z:
+    return (a[0], -a[1])
+
+
+def abs2(a: Z) -> int:
+    return a[0] * a[0] + a[1] * a[1]
+
+
+def sign_of_perm(p: tuple[int, ...]) -> int:
+    inv = sum(p[i] > p[j] for i in range(len(p)) for j in range(i + 1, len(p)))
+    return -1 if inv & 1 else 1
+
+
+def determinant(a: list[list[Z]]) -> Z:
+    n = len(a)
+    total = ZERO
+    for p in permutations(range(n)):
+        term = (sign_of_perm(p), 0)
+        for i, j in enumerate(p):
+            term = mul(term, a[i][j])
+        total = add(total, term)
+    return total
+
+
+def det_pair_sum(a: list[list[Z]]) -> int:
+    """Expand det(a) * conjugate(det(a)) over pairs of permutations."""
+    n = len(a)
+    ps = list(permutations(range(n)))
+    total = ZERO
+    checked_cycle_signs = 0
+    for p in ps:
+        for q in ps:
+            term = (sign_of_perm(p) * sign_of_perm(q), 0)
+            for i, j in enumerate(p):
+                term = mul(term, a[i][j])
+            for i, j in enumerate(q):
+                term = mul(term, conj(a[i][j]))
+            total = add(total, term)
+
+            # The union of the two matchings has c alternating cycles, where
+            # c is the cycle count of q^{-1}p on row positions.
+            q_inv = [0] * n
+            for i, j in enumerate(q):
+                q_inv[j] = i
+            comp = tuple(q_inv[p[i]] for i in range(n))
+            seen = set()
+            cycles = 0
+            for i in range(n):
+                if i not in seen:
+                    cycles += 1
+                    j = i
+                    while j not in seen:
+                        seen.add(j)
+                        j = comp[j]
+            assert sign_of_perm(p) * sign_of_perm(q) == (-1) ** (n - cycles)
+            checked_cycle_signs += 1
+    assert total[1] == 0
+    return total[0], checked_cycle_signs
+
+
+def matmul(a: list[list[Z]], b: list[list[Z]]) -> list[list[Z]]:
+    if not a:
+        return []
+    out = [[ZERO for _ in range(len(b[0]))] for _ in range(len(a))]
+    for i in range(len(a)):
+        for j in range(len(b[0])):
+            x = ZERO
+            for h in range(len(b)):
+                x = add(x, mul(a[i][h], b[h][j]))
+            out[i][j] = x
+    return out
+
+
+def submatrix(a: list[list[Z]], rows: tuple[int, ...], cols: tuple[int, ...]) -> list[list[Z]]:
+    return [[a[i][j] for j in cols] for i in rows]
+
+
+def lowrank_augmented(s: list[list[Z]], u: list[list[Z]], v: list[list[Z]]) -> list[list[Z]]:
+    n = len(s)
+    r = len(u[0]) if n else 0
+    out = [[ZERO for _ in range(n + r)] for _ in range(n + r)]
+    for i in range(n):
+        for j in range(n):
+            out[i][j] = s[i][j]
+        for ell in range(r):
+            out[i][n + ell] = u[i][ell]
+    for ell in range(r):
+        for j in range(n):
+            out[n + ell][j] = neg(v[j][ell])
+        out[n + ell][n + ell] = ONE
+    return out
+
+
+def run_case(rng: random.Random, n: int, r: int, case_id: int) -> tuple[int, int]:
+    # A path-supported sparse base (plus occasional diagonal entries).
+    s = [[ZERO for _ in range(n)] for _ in range(n)]
+    for i in range(n):
+        s[i][i] = (rng.randint(-1, 1), rng.randint(-1, 1))
+        if i + 1 < n:
+            s[i][i + 1] = (rng.randint(-2, 2), rng.randint(-2, 2))
+            s[i + 1][i] = (rng.randint(-2, 2), rng.randint(-2, 2))
+
+    u = [[(rng.randint(-2, 2), rng.randint(-1, 1)) for _ in range(r)] for _ in range(n)]
+    v = [[(rng.randint(-2, 2), rng.randint(-1, 1)) for _ in range(r)] for _ in range(n)]
+    if r:
+        uv = matmul(u, [[v[j][ell] for j in range(n)] for ell in range(r)])
+    else:
+        uv = [[ZERO for _ in range(n)] for _ in range(n)]
+    f = [[add(s[i][j], uv[i][j]) for j in range(n)] for i in range(n)]
+    aug = lowrank_augmented(s, u, v)
+
+    checked_minors = 0
+    checked_matching_pairs = 0
+    for k in range(n + 1):
+        total_f = 0
+        total_aug = 0
+        for it in combinations(range(n), k):
+            for jt in combinations(range(n), k):
+                if set(it).intersection(jt):
+                    continue
+                d_f = determinant(submatrix(f, it, jt))
+                total_f += abs2(d_f)
+
+                q = k + r
+                rows = it + tuple(range(n, n + r))
+                cols = jt + tuple(range(n, n + r))
+                block = submatrix(aug, rows, cols)
+                d_aug = determinant(block)
+                pair_value, n_pairs = det_pair_sum(block)
+                assert pair_value == abs2(d_aug)
+                total_aug += pair_value
+                checked_matching_pairs += n_pairs
+                checked_minors += 1
+        assert total_f == total_aug, (case_id, n, r, k, total_f, total_aug)
+    return checked_minors, checked_matching_pairs
+
+
+def main() -> None:
+    rng = random.Random(731906)
+    cases = [(2, 0), (3, 1), (4, 1), (4, 2), (5, 1)]
+    checked_minors = 0
+    checked_matching_pairs = 0
+    for case_id, (n, r) in enumerate(cases):
+        m, p = run_case(rng, n, r, case_id)
+        checked_minors += m
+        checked_matching_pairs += p
+    result = {
+        "status": "PASS",
+        "seed": 731906,
+        "cases": [{"n": n, "rank_bound": r} for n, r in cases],
+        "disjoint_submatrix_identities": checked_minors,
+        "exact_matching_pair_terms": checked_matching_pairs,
+        "scope": "Gaussian-integer finite checks of Schur augmentation and alternating-cycle sign identity",
+        "not_established": ["general treewidth dynamic program correctness by implementation", "asymptotic complexity", "FPRAS or sampler", "novelty"],
+    }
+    print(json.dumps(result, indent=2))
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,98 @@
+"""Exact Gaussian-rational polynomial checks of the Bloch generator identity."""
+from fractions import Fraction as F
+from pathlib import Path
+import json
+
+zero=(F(0),F(0)); one=(F(1),F(0)); mon0=(0,0,0)
+def z(r=0,i=0): return (F(r),F(i))
+def za(a,b): return (a[0]+b[0],a[1]+b[1])
+def zm(a,b): return (a[0]*b[0]-a[1]*b[1],a[0]*b[1]+a[1]*b[0])
+def add(p,q):
+    out=dict(p)
+    for m,c in q.items():
+        out[m]=za(out.get(m,zero),c)
+        if out[m]==zero: del out[m]
+    return out
+def scale(p,c):
+    return {m:zm(v,c) for m,v in p.items() if zm(v,c)!=zero}
+def mul(p,q):
+    out={}
+    for m,c in p.items():
+        for n,d in q.items():
+            k=tuple(m[a]+n[a] for a in range(3))
+            out[k]=za(out.get(k,zero),zm(c,d))
+            if out[k]==zero: del out[k]
+    return out
+def const(c): return {} if c==zero else {mon0:c}
+def var(a): return {tuple(int(b==a) for b in range(3)):one}
+def deriv(p,a):
+    out={}
+    for m,c in p.items():
+        if m[a]:
+            k=list(m); k[a]-=1
+            out[tuple(k)]=zm(c,z(m[a]))
+    return out
+def lin(n): return sum_poly([scale(var(a),z(n[a])) for a in range(3)])
+def sum_poly(ps):
+    out={}
+    for p in ps: out=add(out,p)
+    return out
+def B(p,N,n):
+    u=lin(n)
+    out=scale(mul(u,p),z(N))
+    for a in range(3):
+        v=add(const(z(n[a])),scale(mul(u,var(a)),z(-1)))
+        out=add(out,mul(v,deriv(p,a)))
+    return out
+def R(p,n):
+    cross=[add(scale(var(2),z(n[1])),scale(var(1),z(-n[2]))),
+           add(scale(var(0),z(n[2])),scale(var(2),z(-n[0]))),
+           add(scale(var(1),z(n[0])),scale(var(0),z(-n[1])))]
+    return sum_poly([mul(cross[a],deriv(p,a)) for a in range(3)])
+def kernel(N):
+    tau=[[scale(add(const(one),var(2)),z(F(1,2))),
+          scale(add(var(0),scale(var(1),z(0,-1))),z(F(1,2)))],
+         [scale(add(var(0),scale(var(1),z(0,1))),z(F(1,2))),
+          scale(add(const(one),scale(var(2),z(-1))),z(F(1,2)))]]
+    size=2**N
+    out=[[None]*size for _ in range(size)]
+    for i in range(size):
+        for j in range(size):
+            p=const(one)
+            for bit in range(N): p=mul(p,tau[(i>>bit)&1][(j>>bit)&1])
+            out[i][j]=p
+    return out
+def collective(N,n):
+    size=2**N
+    out=[[{} for _ in range(size)] for _ in range(size)]
+    for i in range(size):
+        for bit in range(N):
+            sign=1-2*((i>>bit)&1)
+            out[i][i]=add(out[i][i],const(z(sign*n[2]/2)))
+            j=i^(1<<bit)
+            out[i][j]=add(out[i][j],const(z(n[0]/2,-sign*n[1]/2)))
+    return out
+def mm(a,b):
+    size=len(a)
+    return [[sum_poly([mul(a[i][k],b[k][j]) for k in range(size)]) for j in range(size)] for i in range(size)]
+def ma(a,b,sign=1): return [[add(p,scale(q,z(sign))) for p,q in zip(row_a,row_b)] for row_a,row_b in zip(a,b)]
+def apply(a,fun): return [[fun(p) for p in row] for row in a]
+def main():
+    records=[]
+    axes=[(F(0),F(0),F(1)),(F(3,5),F(0),F(4,5)),(F(1,3),F(2,3),F(2,3))]
+    for N in [1,2,3]:
+        k=kernel(N)
+        for n in axes:
+            f=collective(N,n); fk=mm(f,k); kf=mm(k,f)
+            ant=ma(fk,kf); com=ma(fk,kf,-1)
+            assert apply(k,lambda p:B(p,N,n))==ant
+            assert apply(k,lambda p:scale(R(p,n),z(0,1)))==com
+            lhs=apply(k,lambda p:add(B(B(p,N,n),N,n),scale(R(R(p,n),n),z(-1))))
+            f2=mm(f,f)
+            rhs=apply(ma(mm(f2,k),mm(k,f2)),lambda p:scale(p,z(2)))
+            assert lhs==rhs
+            records.append(dict(N=N,axis=[str(v) for v in n],anticommutator=True,commutator=True,quadratic_generator=True))
+    data=dict(scope="Exact Fraction arithmetic for polynomial matrix coefficients; checks transcription for N<=3, not the asymptotic theorem.",records=records)
+    Path(__file__).with_suffix('.json').write_text(json.dumps(data,indent=2)+'\n')
+    print(json.dumps(data,indent=2))
+if __name__=='__main__': main()

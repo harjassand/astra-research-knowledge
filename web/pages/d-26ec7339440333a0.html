@@ -1,0 +1,257 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c07_s01/certified_quartic_sampler.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c07_s01/certified_quartic_sampler.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Rational interval/random-bit quartic sampler and product-qubit description.
+
+Standard library only. The certified primitive uses exact Fraction arithmetic.
+It emits a classical positive rational Bloch vector, not a hardware state.
+Distributional guarantees assume the bits() interface supplies iid fair bits.
+The test replay uses a seeded bit source and is labelled as such.
+&quot;&quot;&quot;
+from __future__ import annotations
+from fractions import Fraction as F
+from itertools import combinations
+import argparse
+import datetime
+import json
+import math
+from pathlib import Path
+import random
+import secrets
+import time
+
+def ceilq(x):
+    return -((-x.numerator)//x.denominator)
+
+def ceilbits(target):
+    assert target &gt; 0
+    q = max(0, target.denominator.bit_length()-target.numerator.bit_length())
+    while F(1,1&lt;&lt;q)&gt;target:
+        q+=1
+    return q
+
+def exp_interval(x, bits):
+    &quot;&quot;&quot;Enclose exp(rational x), width &lt;=2^-bits; no real comparison.&quot;&quot;&quot;
+    x=F(x)
+    if x==0:
+        return F(1),F(1)
+    if x&lt;=-(bits+1):
+        return F(0),F(1,1&lt;&lt;(bits+1))
+    j=0
+    t=x
+    while abs(t)&gt;F(1,2):
+        t/=2
+        j+=1
+    guard=j+ceilq(2*max(x,F(0)))+(j+1).bit_length()+12
+    threshold=F(1,1&lt;&lt;(bits+guard))
+    term=F(1)
+    total=term
+    n=0
+    while True:
+        rem=2*abs(term*t/F(n+1))
+        if 2*rem&lt;=threshold:
+            break
+        n+=1
+        term=term*t/F(n)
+        total+=term
+    lo=max(F(0),total-rem)
+    hi=total+rem
+    if x&lt;0:
+        hi=min(F(1),hi)
+    # Outward dyadic rounding keeps every interval register polynomial-sized.
+    # The guard covers base rounding and each squaring, including amplification.
+    scale=1&lt;&lt;(bits+guard)
+    def outward(low,high):
+        return F((low*scale).numerator//(low*scale).denominator,scale),F(ceilq(high*scale),scale)
+    lo,hi=outward(lo,hi)
+    for _ in range(j):
+        lo,hi=outward(lo*lo,hi*hi)
+    assert 0&lt;=lo&lt;=hi and hi-lo&lt;=F(1,1&lt;&lt;bits)
+    return lo,hi
+
+def root_interval(x,power,bits,upper):
+    x=F(x)
+    if x==0:
+        return F(0),F(0)
+    lo=F(0)
+    hi=F(upper)
+    assert hi**power&gt;=x
+    tol=F(1,1&lt;&lt;bits)
+    while hi-lo&gt;tol:
+        mid=(hi+lo)/2
+        if mid**power&lt;=x:
+            lo=mid
+        else:
+            hi=mid
+    return lo,hi
+
+def det(M):
+    if len(M)==1:
+        return M[0][0]
+    return sum(((-1)**j)*M[0][j]*det([row[:j]+row[j+1:] for row in M[1:]]) for j in range(len(M)))
+
+def verify_input(A,b,M,B):
+    assert M&gt;=0 and B&gt;=0 and len(A)==3 and len(b)==3
+    assert all(len(row)==3 for row in A)
+    assert all(A[i][j]==A[j][i] for i in range(3) for j in range(3))
+    for sign in [-1,1]:
+        D=[[F(int(i==j))*M+sign*A[i][j] for j in range(3)] for i in range(3)]
+        for k in [1,2,3]:
+            for I in combinations(range(3),k):
+                assert det([[D[i][j] for j in I] for i in I])&gt;=0
+    assert sum(z*z for z in b)&lt;=B*B
+
+def rational_bloch(x,N,eps):
+    &quot;&quot;&quot;Positive rational Bloch vector enclosing tau_N(x), with charged bias.&quot;&quot;&quot;
+    r2=sum(z*z for z in x)
+    if r2==0:
+        return [F(0)]*3, {&#x27;near_zero&#x27;:True,&#x27;bloch_error_upper&#x27;:&#x27;0&#x27;}
+    local_tol=eps/(2048*N)
+    p=ceilbits(local_tol)+32
+    rupper=1+ceilq(max(F(1),r2))
+    refinements=0
+    while True:
+        alo,ahi=root_interval(F(16,N),4,p,2)
+        rlo,rhi=root_interval(r2,2,p,rupper)
+        if rlo==0:
+            p+=16
+            continue
+        zlo,zhi=alo*rlo,ahi*rhi
+        elo,_=exp_interval(2*zlo,p)
+        _,ehi=exp_interval(2*zhi,p)
+        tlo=(elo-1)/(elo+1)
+        thi=(ehi-1)/(ehi+1)
+        scalar_lo=max(F(0),tlo)/rhi
+        scalar_hi=thi/rlo
+        boxes=[]
+        for xi in x:
+            vals=[xi*scalar_lo,xi*scalar_hi]
+            boxes.append((min(vals),max(vals)))
+        width=max(hi-lo for lo,hi in boxes)
+        if width&lt;=local_tol:
+            break
+        p+=16
+        refinements+=1
+    midpoint=[(lo+hi)/2 for lo,hi in boxes]
+    # Euclidean midpoint error &lt;=sqrt(3)*width/2 &lt;=width.
+    # Scaling by (1+2width) ensures exact positivity and adds &lt;=2width.
+    e=2*width
+    answer=[z/(1+e) for z in midpoint]
+    assert sum(z*z for z in answer)&lt;=1
+    # Euclidean error &lt;=3width, trace distance &lt;=3width/2.
+    return answer, {&#x27;working_bits&#x27;:p,&#x27;refinements&#x27;:refinements,
+                    &#x27;component_enclosures&#x27;:[[str(lo),str(hi)] for lo,hi in boxes],
+                    &#x27;bloch_error_upper&#x27;:str(3*width),
+                    &#x27;one_qubit_trace_error_upper&#x27;:str(3*width/2),
+                    &#x27;N_product_trace_error_upper&#x27;:str(N*3*width/2)}
+
+class BitSource:
+    def __init__(self,seed=None):
+        self.seed=seed
+        self.rng=None if seed is None else random.Random(seed)
+        self.used=0
+    def bits(self,n):
+        self.used+=n
+        return secrets.randbits(n) if self.rng is None else self.rng.getrandbits(n)
+
+def sample(A,b,M,B,N,eps,seed=None):
+    A=[[F(z) for z in row] for row in A]
+    b=[F(z) for z in b]
+    M,B,eps=F(M),F(B),F(eps)
+    assert isinstance(N,int) and N&gt;=1 and 0&lt;eps&lt;F(1,4)
+    verify_input(A,b,M,B)
+    e=ceilbits(eps)
+    eps0=F(1,1&lt;&lt;e)
+    kg=ceilq(2*(3*(M+2)**2/16+B*B/4)+1)
+    k0=ceilq(2*(3*(M+1)**2/16+B*B/4)+1)
+    zbound=ceilq(2*(F(4,3)+M+B))
+    need=kg+zbound+e+8
+    L=math.isqrt(need)
+    if L*L&lt;need:
+        L+=1
+    L=max(1,L)
+    Henv=1&lt;&lt;k0
+    volume=(2*L)**3
+    p0=F(1,(1&lt;&lt;zbound)*2*volume*Henv)
+    K=ceilq(F(e+4)/p0)
+    radius=2*L
+    La=F(16,3)*radius**3+2*M*radius+B
+    q=max(ceilbits(eps0/(1024*K*(2*L*La+4))),
+          ceilbits(eps0/(1024*N*L)))
+    dyadic=1&lt;&lt;q
+    bits=BitSource(seed)
+    attempts=0
+    accepted=None
+    exp_calls=0
+    start=time.monotonic()
+    for attempts in range(1,K+1):
+        x=[F((2*bits.bits(q)+1)-dyadic,dyadic)*L for _ in range(3)]
+        r2=sum(z*z for z in x)
+        ell=-F(4,3)*r2*r2+sum(x[i]*A[i][j]*x[j] for i in range(3) for j in range(3))+sum(b[i]*x[i] for i in range(3))
+        lo,hi=exp_interval(ell,q+4)
+        exp_calls+=1
+        lo/=Henv
+        hi=min(F(1),hi/Henv)
+        alpha=(lo+hi)/2
+        threshold=(alpha*dyadic).numerator//(alpha*dyadic).denominator
+        u=bits.bits(q)
+        if u&lt;threshold:
+            accepted={&#x27;x&#x27;:x,&#x27;ell&#x27;:ell,&#x27;alpha_interval&#x27;:[lo,hi],
+                      &#x27;uniform_integer&#x27;:u,&#x27;dyadic_threshold&#x27;:threshold}
+            break
+    if accepted is None:
+        bloch=[F(0)]*3
+        quantum={&#x27;fallback&#x27;:True,&#x27;one_qubit_trace_error_upper&#x27;:&#x27;UNKNOWN&#x27;}
+    else:
+        bloch,quantum=rational_bloch(accepted[&#x27;x&#x27;],N,eps0)
+    def sdata(v):
+        if isinstance(v,F):
+            return str(v)
+        if isinstance(v,list):
+            return [sdata(z) for z in v]
+        if isinstance(v,dict):
+            return {k:sdata(z) for k,z in v.items()}
+        return v
+    return sdata({&#x27;scope&#x27;:&#x27;Certified rational scalar enclosures and positive product-qubit description; no hardware emissions.&#x27;,
+        &#x27;random_bit_model&#x27;:&#x27;OS random bits treated as iid fair interface&#x27; if seed is None else &#x27;Seeded replay; not an iid sampling claim&#x27;,
+        &#x27;seed&#x27;:seed,&#x27;utc&#x27;:datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        &#x27;input&#x27;:{&#x27;A&#x27;:A,&#x27;b&#x27;:b,&#x27;M&#x27;:M,&#x27;B&#x27;:B,&#x27;N&#x27;:N,&#x27;epsilon&#x27;:eps},
+        &#x27;budget&#x27;:{&#x27;epsilon_dyadic&#x27;:eps0,&#x27;cube_halfwidth&#x27;:L,&#x27;normal_envelope_log2&#x27;:kg,
+                  &#x27;cube_envelope&#x27;:Henv,&#x27;Z_lower&#x27;:F(1,1&lt;&lt;zbound),&#x27;acceptance_lower&#x27;:p0,
+                  &#x27;proposal_cap&#x27;:K,&#x27;draw_precision_bits&#x27;:q,&#x27;tail_upper&#x27;:F(12*(1&lt;&lt;kg)*(1&lt;&lt;zbound),1&lt;&lt;(L*L)),
+                  &#x27;acceptance_coupling_upper&#x27;:K*(2*L*La+4)*F(1,dyadic),
+                  &#x27;coordinate_product_error_upper&#x27;:2*L*N*F(1,dyadic),
+                  &#x27;native_emission_error_allocation&#x27;:eps0/16},
+        &#x27;run&#x27;:{&#x27;attempts&#x27;:attempts,&#x27;exhausted&#x27;:accepted is None,&#x27;random_bits_used&#x27;:bits.used,
+               &#x27;exp_interval_calls&#x27;:exp_calls,&#x27;wall_seconds&#x27;:time.monotonic()-start},
+        &#x27;accepted_proposal&#x27;:accepted,&#x27;bloch_vector&#x27;:bloch,&#x27;bloch_norm_squared&#x27;:sum(z*z for z in bloch),
+        &#x27;quantum_description_certificate&#x27;:quantum,
+        &#x27;theorem_boundary&#x27;:&#x27;Output description approximates S_N p_(A,b); adding whole-state density-transport bound is an unaudited mathematical candidate.&#x27;})
+
+def primitive_checks():
+    import mpmath as mp
+    mp.mp.dps=120
+    cases=[]
+    for x in [F(-120),F(-37,3),F(-1,7),F(0),F(1,7),F(4,3),F(10)]:
+        lo,hi=exp_interval(x,70)
+        v=mp.exp(mp.mpf(x.numerator)/x.denominator)
+        assert mp.mpf(lo.numerator)/lo.denominator&lt;=v&lt;=mp.mpf(hi.numerator)/hi.denominator
+        cases.append({&#x27;x&#x27;:str(x),&#x27;interval_width&#x27;:str(hi-lo)})
+    return {&#x27;scope&#x27;:&#x27;High-precision floating cross-check of exact rational interval primitive; containment proof is analytic.&#x27;,
+            &#x27;exp_cases&#x27;:cases}
+
+if __name__==&#x27;__main__&#x27;:
+    parser=argparse.ArgumentParser()
+    parser.add_argument(&#x27;--seed&#x27;,type=int)
+    parser.add_argument(&#x27;--N&#x27;,type=int,default=256)
+    parser.add_argument(&#x27;--epsilon&#x27;,default=&#x27;1/16&#x27;)
+    parser.add_argument(&#x27;--output&#x27;,default=&#x27;certified_quartic_sample.json&#x27;)
+    parser.add_argument(&#x27;--cross-check&#x27;,action=&#x27;store_true&#x27;,help=&#x27;Optional mpmath floating cross-check; not required by sampler.&#x27;)
+    args=parser.parse_args()
+    A=[[&#x27;1/8&#x27;,&#x27;1/32&#x27;,&#x27;0&#x27;],[&#x27;1/32&#x27;,&#x27;-1/8&#x27;,&#x27;1/64&#x27;],[&#x27;0&#x27;,&#x27;1/64&#x27;,&#x27;1/16&#x27;]]
+    b=[&#x27;1/8&#x27;,&#x27;1/16&#x27;,&#x27;-1/32&#x27;]
+    result=sample(A,b,&#x27;1/4&#x27;,&#x27;1/4&#x27;,args.N,F(args.epsilon),args.seed)
+    if args.cross_check:
+        result[&#x27;primitive_cross_checks&#x27;]=primitive_checks()
+    target=Path(__file__).with_name(args.output)
+    target.write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({&#x27;path&#x27;:str(target),&#x27;run&#x27;:result[&#x27;run&#x27;],&#x27;budget&#x27;:result[&#x27;budget&#x27;],
+                      &#x27;physical_quantum_emissions&#x27;:0,&#x27;bloch_positive&#x27;:F(result[&#x27;bloch_norm_squared&#x27;])&lt;=1},indent=2))
+</pre><p><a href="../assets/d6b0f74fac046809652c1b4cfc476f7502cd42200babbc0e0edfc65ee20b58e5.py">Exact original bytes</a></p></html>

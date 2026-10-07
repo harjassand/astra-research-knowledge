@@ -1,0 +1,96 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c03_l10/revisions/symbolic_diff_encoding_check.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c03_l10/revisions/symbolic_diff_encoding_check.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact audit of the apolar/determinant encoding for c_k(F).&quot;&quot;&quot;
+
+from itertools import combinations
+import json
+import random
+
+import sympy as sp
+
+
+def abs_square(z):
+    return sp.expand(z * sp.conjugate(z))
+
+
+def determinant(M):
+    return sp.Matrix(M).det(method=&quot;domain-ge&quot;)
+
+
+def build_pair_matrix(F):
+    n = F.rows
+    V = sp.zeros(n, 2 * n)
+    for i in range(n):
+        V[i, 2 * i] = 1
+        for j in range(n):
+            V[j, 2 * i + 1] = F[i, j]
+    return V
+
+
+def build_augmented(V):
+    n = V.rows
+    I = sp.eye(n)
+    return V.row_join(I)
+
+
+def c_k(F, k):
+    n = F.rows
+    sets = list(combinations(range(n), k))
+    total = sp.Integer(0)
+    for I in sets:
+        for J in sets:
+            if set(I).isdisjoint(J):
+                d = determinant([[F[i, j] for j in J] for i in I])
+                total += abs_square(d)
+    return sp.simplify(total)
+
+
+def apolar_sum_from_minors(F, k):
+    &quot;&quot;&quot;Compute &lt;det(W diag(y,y,z) W*), e_k(y^2)e_{n-2k}(z)&gt; directly.&quot;&quot;&quot;
+    n = F.rows
+    V = build_pair_matrix(F)
+    W = build_augmented(V)
+    pair_sets = list(combinations(range(n), k))
+    filler_sets = list(combinations(range(n), n - 2 * k))
+    total = sp.Integer(0)
+    for S in pair_sets:
+        pair_cols = [col for i in S for col in (2 * i, 2 * i + 1)]
+        for Q in filler_sets:
+            cols = pair_cols + [2 * n + j for j in Q]
+            d = determinant(W[:, cols])
+            # In the apolar pairing each selected y_i has exponent two,
+            # contributing 2!; filler variables have exponent one.
+            total += (2 ** k) * abs_square(d)
+    return sp.simplify(total)
+
+
+def random_matrix(n, rng):
+    values = []
+    for _ in range(n * n):
+        re = sp.Rational(rng.randrange(-2, 3), rng.choice((1, 2, 3)))
+        im = sp.Rational(rng.randrange(-2, 3), rng.choice((1, 2, 3)))
+        values.append(re + sp.I * im)
+    return sp.Matrix(n, n, values)
+
+
+def run():
+    rng = random.Random(20261007)
+    out = []
+    for n in (2, 3, 4):
+        for seed in range(3):
+            F = random_matrix(n, rng)
+            for k in range(n // 2 + 1):
+                direct = c_k(F, k)
+                apolar = apolar_sum_from_minors(F, k)
+                assert sp.simplify(apolar - (2 ** k) * direct) == 0
+                out.append({&quot;n&quot;: n, &quot;seed&quot;: seed, &quot;k&quot;: k,
+                            &quot;c_k&quot;: str(direct),
+                            &quot;apolar_value&quot;: str(apolar),
+                            &quot;pass&quot;: True})
+    return out
+
+
+if __name__ == &quot;__main__&quot;:
+    checks = run()
+    print(json.dumps({&quot;scope&quot;: &quot;finite exact identity check; symbolic differentiation algorithm not implemented&quot;,
+                      &quot;checks&quot;: len(checks), &quot;instances&quot;: checks}, indent=2))
+</pre><p><a href="../assets/4b5eca13cc1f14bb8436fd8097bd5bcf4d465a90167f05cc7ade29b298bc92f1.py">Exact original bytes</a></p></html>

@@ -1,0 +1,180 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c03_s02/audit_c03_l10/low_sector_pfaffian.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c03_s02/audit_c03_l10/low_sector_pfaffian.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Capped exact-bit implementation of the audited low-sector approximation.
+
+Origin: random-sign Pfaffian estimator c03_l10 (Luna); coefficient engine,
+central-binomial variance bound, and physical-prefix program c03_s02 (Sol).
+Input G is a square Gaussian-integer matrix and F=G/common_denominator.
+The asymptotic guarantees are in AUDIT_REPORT.txt, not inferred from tests.
+&quot;&quot;&quot;
+import math
+import random
+from fractions import Fraction
+
+from pfaffian_prefix_checks import prefix_sample
+
+
+def ceil_fraction(x):
+    return -((-x.numerator) // x.denominator)
+
+
+def ceil_log2_reciprocal(x):
+    bits = 0
+    while (1 &lt;&lt; bits) * x.numerator &lt; x.denominator:
+        bits += 1
+    return bits
+
+
+def canonical_configuration(n, k):
+    return {&quot;I&quot;: list(range(k)), &quot;J&quot;: list(range(k, 2 * k))}
+
+
+def relative_prefix_count(g, k, eta, delta, up=(), down=(), empty=(),
+                          common_denominator=1, rng=None, stats=None):
+    &quot;&quot;&quot;Median of capped means; exact zero when the true prefix mass is zero.
+
+    An output of zero on a positive instance has probability at most delta;
+    consequently an output zero is not a deterministic zero certificate.
+    &quot;&quot;&quot;
+    eta, delta = Fraction(eta), Fraction(delta)
+    if not 0 &lt; eta &lt;= Fraction(1, 2) or not 0 &lt; delta &lt; 1:
+        raise ValueError(&quot;require 0&lt;eta&lt;=1/2 and 0&lt;delta&lt;1&quot;)
+    n = len(g)
+    if any(len(row) != n for row in g) or not 0 &lt;= k &lt;= n // 2:
+        raise ValueError(&quot;require square matrix and a legal pair sector&quot;)
+    if not isinstance(common_denominator, int) or common_denominator &lt;= 0:
+        raise ValueError(&quot;common_denominator must be a positive integer&quot;)
+    up, down, empty = set(up), set(down), set(empty)
+    if up &amp; down or up &amp; empty or down &amp; empty:
+        raise ValueError(&quot;occupation restrictions must be disjoint&quot;)
+    if not up | down | empty &lt;= set(range(n)):
+        raise ValueError(&quot;occupation restrictions contain an invalid index&quot;)
+    a, b = len(up), len(down)
+    if a &gt; k or b &gt; k or 2 * k &gt; n - len(empty):
+        return Fraction(0)
+    if k == 0:
+        return Fraction(1)
+    c = math.comb(2 * k - a - b, k - a)
+    assert (1 &lt;&lt; b) * c &lt;= math.comb(2 * k, k)
+    if c == 1:
+        # The pointwise Y&lt;=c_prefix and E Y=c_prefix imply Y=c_prefix
+        # identically, since the sign space is finite with positive measure.
+        signs = [1] * n
+        value = prefix_sample(g, k, signs, up, down, empty)
+        if stats is not None:
+            stats[&quot;deterministic_C1_calls&quot;] = stats.get(&quot;deterministic_C1_calls&quot;, 0) + 1
+        return Fraction(value, common_denominator ** (2 * k))
+    per_batch = ceil_fraction(4 * c / (eta * eta))
+    batches = 16 * ceil_log2_reciprocal(delta) + 1
+    rng = random.SystemRandom() if rng is None else rng
+    free = sorted(set(range(n)) - up - down - empty)
+    means = []
+    for _ in range(batches):
+        total = 0
+        for _ in range(per_batch):
+            signs = [0] * n
+            for i in free:
+                signs[i] = 1 if rng.getrandbits(1) else -1
+            total += prefix_sample(g, k, signs, up, down, empty)
+        means.append(total)
+    means.sort()
+    if stats is not None:
+        stats[&quot;count_calls&quot;] = stats.get(&quot;count_calls&quot;, 0) + 1
+        stats[&quot;sign_samples&quot;] = stats.get(&quot;sign_samples&quot;, 0) + per_batch * batches
+        stats[&quot;max_sample_denominator_bits&quot;] = max(
+            stats.get(&quot;max_sample_denominator_bits&quot;, 0),
+            (common_denominator ** (2 * k)).bit_length())
+    return Fraction(means[batches // 2], per_batch * common_denominator ** (2 * k))
+
+
+def born_sample(g, k, epsilon, rng=None, stats=None):
+    &quot;&quot;&quot;Capped TV-epsilon sampler for the promise c_k(G)&gt;0.
+
+    Normalization cancels a common matrix denominator. On an all-zero estimate
+    event, return one fixed legal configuration. The probability of such bad
+    estimation events is included in the total-variation proof. Thus a rare
+    fallback can have zero target weight; no support guarantee is claimed for
+    every execution. A zero-total-norm input has no normalized target law.
+    &quot;&quot;&quot;
+    n, epsilon = len(g), Fraction(epsilon)
+    if not 0 &lt; epsilon &lt; 1 or not 0 &lt;= k &lt;= n // 2:
+        raise ValueError(&quot;require 0&lt;epsilon&lt;1 and a legal pair sector&quot;)
+    if any(len(row) != n for row in g):
+        raise ValueError(&quot;require a square matrix&quot;)
+    if k == 0:
+        return {&quot;I&quot;: [], &quot;J&quot;: [], &quot;fallback&quot;: False}
+    rng = random.SystemRandom() if rng is None else rng
+    root_n = math.isqrt(n)
+    if root_n * root_n &lt; n:
+        root_n += 1
+    # c03_s03&#x27;s Hellinger-chain refinement, independently reconstructed in
+    # HELLINGER_SAMPLER_ADDENDUM.txt, saves a factor n in sign evaluations.
+    eta, delta = epsilon / (16 * root_n), epsilon / (12 * n)
+    bits = 0
+    while (1 &lt;&lt; bits) * epsilon &lt; 8 * n:
+        bits += 1
+    denominator = 1 &lt;&lt; bits
+    up, down, empty = set(), set(), set()
+    for i in range(n):
+        weights = [relative_prefix_count(g, k, eta, delta, up | {i}, down, empty,
+                                         rng=rng, stats=stats),
+                   relative_prefix_count(g, k, eta, delta, up, down | {i}, empty,
+                                         rng=rng, stats=stats),
+                   relative_prefix_count(g, k, eta, delta, up, down, empty | {i},
+                                         rng=rng, stats=stats)]
+        total = sum(weights)
+        if total == 0:
+            return {**canonical_configuration(n, k), &quot;fallback&quot;: True}
+        first = weights[0] * denominator / total
+        second = (weights[0] + weights[1]) * denominator / total
+        t1, t2 = first.numerator // first.denominator, second.numerator // second.denominator
+        word = rng.getrandbits(bits)
+        if word &lt; t1:
+            up.add(i)
+        elif word &lt; t2:
+            down.add(i)
+        else:
+            empty.add(i)
+    assert len(up) == len(down) == k and not up &amp; down
+    return {&quot;I&quot;: sorted(up), &quot;J&quot;: sorted(down), &quot;fallback&quot;: False}
+
+
+def smoke_checks():
+    &quot;&quot;&quot;Small count calls and exact-prefix sampler smoke tests, not a benchmark.&quot;&quot;&quot;
+    from pfaffian_prefix_checks import direct_norm, ZERO
+    stats, rng, records = {}, random.Random(55102), []
+    matrices = [([[(0, 0), (1, 1)], [(2, -1), (0, 0)]], 1, 3),
+                ([[(1, 1), (2, -1), (-1, 2)],
+                  [(0, 1), (3, 2), (1, -1)],
+                  [(2, 0), (-2, 1), (0, 1)]], 1, 6),
+                ([[(1, 0) if i != j else ZERO for j in range(4)] for i in range(4)], 2, 1)]
+    for g, k, denominator in matrices:
+        target = Fraction(direct_norm(g, k), denominator ** (2 * k))
+        value = relative_prefix_count(g, k, Fraction(1, 2), Fraction(1, 4),
+                                      common_denominator=denominator, rng=rng, stats=stats)
+        if target == 0:
+            assert value == 0
+        else:
+            assert abs(value - target) &lt;= target / 2
+        records.append({&quot;n&quot;: len(g), &quot;k&quot;: k, &quot;target&quot;: str(target), &quot;estimate&quot;: str(value)})
+    assert born_sample(matrices[0][0], 0, Fraction(1, 2), rng=rng) == {&quot;I&quot;: [], &quot;J&quot;: [], &quot;fallback&quot;: False}
+    support_samples = []
+    for _ in range(32):
+        sample = born_sample(matrices[0][0], 1, Fraction(1, 4), rng=rng, stats=stats)
+        assert not sample[&quot;fallback&quot;]
+        assert len(sample[&quot;I&quot;]) == len(sample[&quot;J&quot;]) == 1
+        assert sample[&quot;I&quot;][0] != sample[&quot;J&quot;][0]
+        support_samples.append(sample)
+    for kwargs in ({&quot;up&quot;: (0, 1)}, {&quot;down&quot;: (0, 1)}, {&quot;empty&quot;: (0,)}):
+        assert relative_prefix_count(matrices[0][0], 1, Fraction(1, 2), Fraction(1, 4),
+                                     rng=rng, **kwargs) == 0
+    return {&quot;status&quot;: &quot;PASS&quot;, &quot;scope&quot;: &quot;3 complete randomized count calls; 32 two-site Born sampler calls using exact C=1 prefixes; no generic nontrivial Born FPRAS benchmark&quot;,
+            &quot;records&quot;: records, &quot;two_site_sample_count&quot;: len(support_samples), &quot;telemetry&quot;: stats}
+
+
+if __name__ == &quot;__main__&quot;:
+    import json
+    from pathlib import Path
+    result = smoke_checks()
+    Path(__file__).with_name(&quot;low_sector_smoke_checks.json&quot;).write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+    print(json.dumps(result))
+</pre><p><a href="../assets/06403420918a9f058ed1271e310812a6058900a4c8c2cf6a63f2eb825c273144.py">Exact original bytes</a></p></html>

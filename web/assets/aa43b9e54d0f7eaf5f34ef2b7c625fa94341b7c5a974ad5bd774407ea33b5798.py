@@ -1,0 +1,507 @@
+"""Own tiny exact check of compressed rational correction and finite-bit laws.
+
+Uses Q(i) and Fraction, no floating PSD/sign decisions and no peer code.
+Dense tensors/enumerated parity products appear only in the tiny verification.
+This does not execute the imported general QE/ellipsoid/SDP pipeline.
+"""
+from dataclasses import dataclass
+from fractions import Fraction as F
+from itertools import product, combinations, permutations
+from math import factorial, comb
+from pathlib import Path
+from random import Random
+from time import perf_counter
+import json
+
+
+@dataclass(frozen=True)
+class Q:
+    re: F = F(0)
+    im: F = F(0)
+
+    def __post_init__(self):
+        object.__setattr__(self, "re", F(self.re))
+        object.__setattr__(self, "im", F(self.im))
+
+    @staticmethod
+    def cast(x):
+        return x if isinstance(x, Q) else Q(x)
+
+    def __add__(self, y):
+        y = self.cast(y)
+        return Q(self.re + y.re, self.im + y.im)
+
+    __radd__ = __add__
+
+    def __neg__(self):
+        return Q(-self.re, -self.im)
+
+    def __sub__(self, y):
+        return self + -self.cast(y)
+
+    def __rsub__(self, y):
+        return self.cast(y) - self
+
+    def __mul__(self, y):
+        y = self.cast(y)
+        return Q(self.re*y.re - self.im*y.im,
+                 self.re*y.im + self.im*y.re)
+
+    __rmul__ = __mul__
+
+    def __truediv__(self, y):
+        y = self.cast(y)
+        z = y.re*y.re + y.im*y.im
+        return self * Q(y.re/z, -y.im/z)
+
+    def __pow__(self, k):
+        assert k >= 0
+        z, x = Q(1), self
+        while k:
+            if k & 1:
+                z = z*x
+            x = x*x
+            k //= 2
+        return z
+
+    def conjugate(self):
+        return Q(self.re, -self.im)
+
+    def __bool__(self):
+        return bool(self.re or self.im)
+
+
+@dataclass
+class Mat:
+    d: int
+    a: dict
+
+    def __post_init__(self):
+        self.a = {k: Q.cast(v) for k, v in self.a.items() if v}
+
+    def __add__(self, y):
+        assert self.d == y.d
+        z = self.a.copy()
+        for k, v in y.a.items():
+            z[k] = z.get(k, Q()) + v
+        return Mat(self.d, z)
+
+    def __neg__(self):
+        return self.scale(-1)
+
+    def __sub__(self, y):
+        return self + -y
+
+    def scale(self, x):
+        return Mat(self.d, {k: v*x for k, v in self.a.items()})
+
+    def kron(self, y):
+        return Mat(self.d*y.d,
+                   {(i*y.d+k, j*y.d+l): x*z
+                    for (i, j), x in self.a.items()
+                    for (k, l), z in y.a.items()})
+
+    def trace(self):
+        return sum((self.a.get((i, i), Q()) for i in range(self.d)), Q())
+
+    def hs(self, y):
+        return sum((x.conjugate()*y.a.get(k, Q())
+                    for k, x in self.a.items()), Q())
+
+
+def eye(d):
+    return Mat(d, {(i, i): 1 for i in range(d)})
+
+
+def tensor(ms):
+    z = eye(1)
+    for m in ms:
+        z = z.kron(m)
+    return z
+
+
+def det_principal(m, inds):
+    ans = Q()
+    for perm in permutations(range(len(inds))):
+        inv = sum(perm[i] > perm[j] for i in range(len(inds))
+                  for j in range(i+1, len(inds)))
+        term = Q((-1)**inv)
+        for i, j in enumerate(perm):
+            term = term*m.a.get((inds[i], inds[j]), Q())
+        ans = ans + term
+    return ans
+
+
+def psd(m):
+    assert all(m.a.get((j, i), Q()) == v.conjugate()
+               for (i, j), v in m.a.items())
+    for k in range(1, m.d+1):
+        for inds in combinations(range(m.d), k):
+            v = det_principal(m, inds)
+            assert not v.im
+            if v.re < 0:
+                return False
+    return True
+
+
+def basis(d):
+    ts, names = [eye(d)], ["I"]
+    for a in range(d):
+        for b in range(a+1, d):
+            ts.append(Mat(d, {(a, b): 1, (b, a): 1}))
+            names.append(f"X{a}{b}")
+            ts.append(Mat(d, {(a, b): Q(0, 1), (b, a): Q(0, -1)}))
+            names.append(f"Y{a}{b}")
+    for l in range(1, d):
+        ts.append(Mat(d, {(a, a): F(1, l) for a in range(l)}
+                      | {(l, l): -1}))
+        names.append(f"H{l}")
+    hs = [t.hs(t).re for t in ts]
+    for a, ta in enumerate(ts):
+        for b, tb in enumerate(ts):
+            assert ta.hs(tb) == Q(hs[a] if a == b else 0)
+        if a:
+            assert not ta.trace()
+            assert psd(eye(d)+ta) and psd(eye(d)-ta)
+    return ts, hs, names
+
+
+def compositions(n, q):
+    if q == 1:
+        yield (n,)
+        return
+    for k in range(n+1):
+        for rest in compositions(n-k, q-1):
+            yield (k,) + rest
+
+
+def size(m):
+    z = factorial(sum(m))
+    for k in m:
+        z //= factorial(k)
+    return z
+
+
+def words(m):
+    if sum(m) == 0:
+        yield ()
+        return
+    for a, k in enumerate(m):
+        if k:
+            mm = list(m)
+            mm[a] -= 1
+            for tail in words(tuple(mm)):
+                yield (a,) + tail
+
+
+def orbit_matrix(m, ts):
+    n = ts[0].d**sum(m)
+    z = Mat(n, {})
+    for v in words(m):
+        z = z + tensor([ts[a] for a in v])
+    return z
+
+
+def poly_mul(x, y):
+    ans = {}
+    for m, a in x.items():
+        for k, b in y.items():
+            mk = tuple(u+v for u, v in zip(m, k))
+            ans[mk] = ans.get(mk, Q()) + a*b
+    return {k: v for k, v in ans.items() if v}
+
+
+def matrix_unit_orbit_coeffs(r, d, N):
+    ds = list(product(range(d), repeat=N))
+    out = {}
+    # All matrix entries are scanned only in this bounded verifier.
+    for i, row in enumerate(ds):
+        for j, col in enumerate(ds):
+            beta = [0]*(d*d)
+            for a, b in zip(row, col):
+                beta[a*d+b] += 1
+            beta = tuple(beta)
+            z = r.a.get((i, j), Q())
+            if beta in out:
+                assert out[beta] == z, (beta, out[beta], z)
+            else:
+                out[beta] = z
+    return {k: v for k, v in out.items() if v}
+
+
+def inverse_symmetric_power(rs, d, N, ts, hs):
+    """Formula W9/W10: polynomial, not a full inverse-matrix oracle."""
+    q = d*d
+    zero = (0,)*q
+    forms = []
+    for a in range(d):
+        for b in range(d):
+            f = {}
+            for u, t in enumerate(ts):
+                z = t.a.get((b, a), Q())/hs[u]
+                if z:
+                    m = list(zero)
+                    m[u] = 1
+                    f[tuple(m)] = z
+            forms.append(f)
+    ans = {}
+    for beta, b in rs.items():
+        poly = {zero: Q(1)}
+        for a, count in enumerate(beta):
+            for _ in range(count):
+                poly = poly_mul(poly, forms[a])
+        for m, v in poly.items():
+            ans[m] = ans.get(m, Q()) + b*size(beta)*v
+    return {m: v/size(m) for m, v in ans.items() if v}
+
+
+def direct_mixture_coeffs(sigmas, lambdas, ts, hs, N):
+    vs = [[t.hs(sigma)/h for t, h in zip(ts, hs)] for sigma in sigmas]
+    out = {}
+    for m in compositions(N, len(ts)):
+        c = Q()
+        for lam, v in zip(lambdas, vs):
+            term = Q(lam)
+            for a, k in enumerate(m):
+                term = term*v[a]**k
+            c = c + term
+        if c:
+            out[m] = c
+    return out
+
+
+def parity_average(m, sign, ts):
+    d, N = ts[0].d, sum(m)
+    z = Mat(d**N, {})
+    count = 0
+    for v in words(m):
+        active = [i for i, a in enumerate(v) if a]
+        for bits in product((-1, 1), repeat=len(active)-1):
+            signs = list(bits)
+            last = sign
+            for b in bits:
+                last *= b
+            signs.append(last)
+            out = [eye(d).scale(F(1, d)) for _ in range(N)]
+            for i, s in zip(active, signs):
+                out[i] = (eye(d)+ts[v[i]].scale(s)).scale(F(1, d))
+                assert psd(out[i]) and out[i].trace() == Q(1)
+            z = z + tensor(out)
+            count += 1
+    return z.scale(F(1, count)), count
+
+
+def conditional_mask_probability(mask, p):
+    N, ans, found = len(mask), F(1), False
+    for i, white in enumerate(mask):
+        r = N-i
+        if found:
+            prob = p if white else 1-p
+        elif white:
+            prob = p*(1-p**(r-1))/(1-p**r)
+        else:
+            prob = (1-p)/(1-p**r)
+        ans *= prob
+        found |= not white
+    return ans
+
+
+def dyadic_probabilities(probs, b, residual=None):
+    assert sum(probs) == 1 and all(p >= 0 for p in probs)
+    support = [i for i, p in enumerate(probs) if p]
+    if residual is None:
+        residual = support[-1]
+    assert residual in support
+    M, out = 1 << b, [0]*len(probs)
+    for i in support:
+        if i != residual:
+            out[i] = (probs[i]*M).numerator//(probs[i]*M).denominator
+    out[residual] = M-sum(out)
+    assert all(not out[i] for i, p in enumerate(probs) if not p)
+    tv = sum(abs(F(k, M)-p) for k, p in zip(out, probs))/2
+    assert tv <= F(len(support)-1, M)
+    return out, tv
+
+
+def choose(probs, b, rng, residual=None):
+    counts, _ = dyadic_probabilities(probs, b, residual)
+    u, acc = rng.getrandbits(b), 0
+    for i, k in enumerate(counts):
+        acc += k
+        if u < acc:
+            return i
+    raise AssertionError("missing dyadic category")
+
+
+def unrank(m, rank):
+    assert 0 <= rank < size(m)
+    left, total, out = list(m), size(m), []
+    for r in range(sum(m), 0, -1):
+        for a, k in enumerate(left):
+            branch = total*k//r
+            assert total*k % r == 0
+            if rank < branch:
+                out.append(a)
+                left[a] -= 1
+                total = branch
+                break
+            rank -= branch
+        else:
+            raise AssertionError("invalid rank")
+    return tuple(out)
+
+
+def rank_rounding_check(m):
+    s, b = size(m), size(m).bit_length()+10
+    M = 1 << b
+    ws = [unrank(m, rank) for rank in range(s)]
+    assert ws == list(words(m)) and len(set(ws)) == s
+    counts = [((r+1)*M+s-1)//s-(r*M+s-1)//s for r in range(s)]
+    assert sum(counts) == M
+    tv = sum(abs(F(k, M)-F(1, s)) for k in counts)/2
+    assert tv <= F(s, M)
+    return b, tv
+
+
+def bounded_sample(sigmas, lambdas, taus, mcs, masses, p, N, ts, rng, b=12):
+    d, w = ts[0].d, p**N
+    probs = [1-w, w-sum(masses)] + masses
+    branch = choose(probs, b, rng, residual=0)
+    white = eye(d).scale(F(1, d))
+    if branch == 1:
+        return [white]*N, "white"
+    if branch == 0:
+        j = choose(lambdas, b, rng)
+        out, found = [], False
+        for i in range(N):
+            r = N-i
+            pw = p if found else p*(1-p**(r-1))/(1-p**r)
+            a = choose([pw, 1-pw], b, rng, residual=1)
+            found |= bool(a)
+            out.append(taus[j] if a else white)
+        assert found
+        return out, "nonwhite"
+    m, c = mcs[branch-2]
+    sr = size(m)
+    br = sr.bit_length()+10
+    v = unrank(m, rng.getrandbits(br)*sr//(1 << br))
+    active = [i for i, a in enumerate(v) if a]
+    signs = [(-1 if rng.getrandbits(1) else 1) for _ in active[:-1]]
+    last = 1 if c > 0 else -1
+    for s in signs:
+        last *= s
+    signs.append(last)
+    out = [white]*N
+    for i, s in zip(active, signs):
+        out[i] = (eye(d)+ts[v[i]].scale(s)).scale(F(1, d))
+    return out, "parity"
+
+
+def case(d, N):
+    ts, hs, names = basis(d)
+    q, n, zeta, p = d*d, d**N, F(1, 2*d), F(1, 2)
+    w = p**N
+    ix, iy, ih = names.index("X01"), names.index("Y01"), names.index("H1")
+    s1 = (eye(d)+(ts[ix]+ts[iy]+ts[ih]).scale(F(1, 12))).scale(F(1, d))
+    s2 = (eye(d)+(ts[ix].scale(-2)+ts[iy]-ts[ih]).scale(F(1, 16))).scale(F(1, d))
+    sigmas, lambdas = [s1, s2], [F(1, 4), F(3, 4)]
+    taus = [(s-eye(d).scale(zeta)).scale(1/(1-p)) for s in sigmas]
+    for s, tau in zip(sigmas, taus):
+        assert s.trace() == Q(1) and tau.trace() == Q(1)
+        assert psd(s-eye(d).scale(zeta)) and psd(tau)
+        assert s == eye(d).scale(p/d)+tau.scale(1-p)
+    S = tensor([s1]*N).scale(lambdas[0])+tensor([s2]*N).scale(lambdas[1])
+    planted = []
+    for labels, sign in [([iy], 1), ([ix, ih], -1)] + ([([ix, iy, ih], 1)] if N == 3 else []):
+        m = [0]*q
+        m[0] = N-len(labels)
+        for a in labels:
+            m[a] += 1
+        planted.append((tuple(m), sign))
+    k, A = len(planted), F(0)
+    E = Mat(n, {})
+    mcs, masses = [], []
+    for m, sign in planted:
+        mass = w/(4*k)
+        c = sign*mass/(n*size(m))
+        E = E + orbit_matrix(m, ts).scale(c)
+        A += mass
+        mcs.append((m, c))
+        masses.append(mass)
+    R = S+E
+    assert R.trace() == Q(1) and not E.trace()
+    rb = matrix_unit_orbit_coeffs(R, d, N)
+    cb = inverse_symmetric_power(rb, d, N, ts, hs)
+    sc = direct_mixture_coeffs(sigmas, lambdas, ts, hs, N)
+    got = {m: cb.get(m, Q())-sc.get(m, Q()) for m in compositions(N, q)}
+    got = {m: c for m, c in got.items() if c}
+    assert got == {m: Q(c) for m, c in mcs}
+    assert all(not c.im for c in cb.values())
+    assert cb[(N,)+(0,)*(q-1)] == Q(F(1, n))
+    mass_got = sum(n*size(m)*abs(c.re) for m, c in got.items())
+    assert mass_got == A == w/4 and A <= w
+    exact_repaired = S-eye(n).scale(w/n)+eye(n).scale((w-A)/n)
+    counts, rank_tvs = [], []
+    for (m, c), mass in zip(mcs, masses):
+        fm = orbit_matrix(m, ts)
+        omega, count = parity_average(m, 1 if c > 0 else -1, ts)
+        assert omega == eye(n).scale(F(1, n))+fm.scale((1 if c > 0 else -1)*F(1, n*size(m)))
+        exact_repaired = exact_repaired + omega.scale(mass)
+        counts.append(count)
+        _, tv = rank_rounding_check(m)
+        rank_tvs.append(str(tv))
+    assert exact_repaired == R
+    for j, sigma in enumerate(sigmas):
+        avg = Mat(n, {})
+        total = F(0)
+        for mask in product((False, True), repeat=N):
+            if all(mask):
+                continue
+            direct = p**sum(mask)*(1-p)**(N-sum(mask))/(1-w)
+            assert conditional_mask_probability(mask, p) == direct
+            avg = avg + tensor([eye(d).scale(F(1, d)) if a else taus[j] for a in mask]).scale(direct)
+            total += direct
+        assert total == 1
+        assert avg == (tensor([sigma]*N)-eye(n).scale(w/n)).scale(1/(1-w))
+    # Weighted coefficient-ball identity is exact, without a trace-norm oracle.
+    hsE = E.hs(E)
+    assert not hsE.im
+    l1 = sum(size(m)*abs(c) for m, c in mcs)
+    hsum = sum(1/h for h in hs)
+    assert l1*l1 <= hsE.re*hsum**N
+    assert A*A <= d**(4*N)*hsE.re
+    top_counts, top_tv = dyadic_probabilities([1-w, w-A]+masses, 12, residual=0)
+    assert sum(top_counts) == 4096
+    rng, branches = Random(7100+d*10+N), {}
+    for _ in range(96):
+        out, branch = bounded_sample(sigmas, lambdas, taus, mcs, masses, p, N, ts, rng)
+        assert len(out) == N and all(s.trace() == Q(1) and psd(s) for s in out)
+        branches[branch] = branches.get(branch, 0)+1
+    return {
+        "d": d, "N": N, "orbit_dimension": comb(N+q-1, q-1),
+        "nonzero_matrix_unit_orbits": len(rb), "rational_basis_norms": list(map(str, hs)),
+        "white_weight": str(w), "correction_mass": str(A),
+        "planted_coefficients": [str(c) for _, c in mcs],
+        "orbit_sizes": [size(m) for m, _ in mcs], "enumerated_parity_products": counts,
+        "all_coefficient_recovery_exact": True, "full_matrix_repair_exact": True,
+        "all_local_PSD_exact": True, "conditional_masks_exact": True,
+        "dyadic_top_TV": str(top_tv), "rank_rounding_TVs": rank_tvs,
+        "bounded_sample_branch_counts": branches,
+        "sample_count": 96, "status": "PASS"
+    }
+
+
+def main():
+    start = perf_counter()
+    reports = [case(d, N) for d, N in [(2, 2), (2, 3), (3, 2), (3, 3)]]
+    out = {
+        "status": "PASS", "arithmetic": "exact Fraction and Q(i)",
+        "elapsed_seconds": perf_counter()-start, "cases": reports,
+        "scope": "Own tiny conversion, repair, positivity and finite-bit sampling identities; not general QE/ellipsoid/SDP execution or hardware."
+    }
+    Path(__file__).with_name("white_repair_checks.json").write_text(json.dumps(out, indent=2)+"\n")
+    print(json.dumps(out, indent=2))
+
+
+if __name__ == "__main__":
+    main()

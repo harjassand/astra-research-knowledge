@@ -1,0 +1,122 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c10_s01/revisions/moment_cost_certificate.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c10_s01/revisions/moment_cost_certificate.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Acquire rational all-time moments and recovery firing-cost bounds.
+
+No simulation is run. These numbers implement the analytic bounds in
+moment_cost_derivation.txt. Numerical bounds are deliberately conservative.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from math import comb, isqrt
+import json
+import pathlib
+from robust_three_layer_certificate import acquire, potential, serialized, ceil_rat
+
+
+def shifted_poisson_moment(n, mean, p):
+    # Stirling numbers of the second kind; E[Poisson(mean)^k]=Touchard_k(mean).
+    row = [1]
+    moments = [F(1)]
+    for k in range(1, p + 1):
+        row = [0] + [((row[j - 1] if j - 1 &lt; len(row) else 0)
+                      + (j * row[j] if j &lt; len(row) else 0))
+                     for j in range(1, k + 1)]
+        moments.append(sum(F(v) * mean**j for j, v in enumerate(row)))
+    return sum(F(comb(p, k)) * n**(p - k) * moments[k] for k in range(p + 1))
+
+
+def birth_interval_bound(rate_moment, p):
+    if p &lt; 2:
+        raise ValueError(&quot;Use integer p&gt;=2&quot;)
+    a = (2**(p - 2)) * (p - 1)
+    b = (2**(p - 2)) * (p + 1)
+    d = p * (2**(p - 2))
+    return F(2**(2 * a), a) * (b * rate_moment + d)
+
+
+def survivor_moment(n, births_p, gate_upper, kill_decay, p):
+    return gate_upper * (2**(p - 1)) * (
+        n**p + births_p * (1 + F(p) / kill_decay)**p)
+
+
+def ceil_sqrt(value):
+    if value &lt; 0:
+        raise ValueError(&quot;Nonnegative rational required&quot;)
+    result = isqrt(value.numerator // value.denominator)
+    return result if result * result * value.denominator &gt;= value.numerator else result + 1
+
+
+def acquire_moments(cert, state, p):
+    if len(state) != len(cert[&quot;names&quot;]) or any(not isinstance(n, int) or n &lt; 0 for n in state):
+        raise ValueError(&quot;Nonnegative integer count vector required&quot;)
+    x = dict(zip(cert[&quot;names&quot;], state))
+    bounds, birth_bounds, tag_rates = {}, {}, {}
+    for i, (birth, death) in cert[&quot;root_rates&quot;].items():
+        mean = birth[1] / death[0]
+        bounds[i] = shifted_poisson_moment(x[i], mean, p)
+    for j, parents in cert[&quot;mid_edges&quot;].items():
+        alpha_sum = sum(z[0][1] for z in parents.values())
+        rate_p = alpha_sum**(p - 1) * sum(
+            z[0][1] * bounds[i] for i, z in parents.items())
+        births_p = birth_interval_bound(rate_p, p)
+        gate = 1 + cert[&quot;mid_data&quot;][j][&quot;c&quot;]
+        decay = cert[&quot;mid_data&quot;][j][&quot;gamma&quot;] / gate
+        bounds[j] = survivor_moment(x[j], births_p, gate, decay, p)
+        birth_bounds[j] = births_p
+        tag_rates[j] = decay
+    for k, z in cert[&quot;leaf_data&quot;].items():
+        rate_p = z[&quot;alpha&quot;][1]**p * bounds[z[&quot;parent&quot;]]
+        births_p = birth_interval_bound(rate_p, p)
+        gate = 1 + z[&quot;c&quot;] / z[&quot;s&quot;]
+        decay = z[&quot;gamma&quot;] / gate
+        bounds[k] = survivor_moment(x[k], births_p, gate, decay, p)
+        birth_bounds[k] = births_p
+        tag_rates[k] = decay
+    return {&quot;p&quot;: p, &quot;uniform_species_moments&quot;: bounds,
+            &quot;unit_birth_count_moments&quot;: birth_bounds,
+            &quot;uniform_tagged_lifetime_decay&quot;: tag_rates}
+
+
+def acquire_return_cost(cert, state):
+    m4 = acquire_moments(cert, state, 4)
+    d = len(cert[&quot;names&quot;])
+    n4 = d**3 * sum(m4[&quot;uniform_species_moments&quot;].values())
+    b = sum(z[0][1] for z in cert[&quot;root_rates&quot;].values())
+    linear = (sum(z[1][1] for z in cert[&quot;root_rates&quot;].values())
+              + sum(z[0][1] for parents in cert[&quot;mid_edges&quot;].values()
+                    for z in parents.values())
+              + sum(z[&quot;alpha&quot;][1] for z in cert[&quot;leaf_data&quot;].values()))
+    quadratic = (sum(z[1][1] for parents in cert[&quot;mid_edges&quot;].values()
+                     for z in parents.values())
+                 + sum(z[&quot;beta&quot;][1] for z in cert[&quot;leaf_data&quot;].values()))
+    q2 = 3 * (b**2 + (linear**2 + quadratic**2) * n4)
+    w0 = 1 + potential(cert, state)
+    radius = max(1, ceil_rat((2 * (cert[&quot;C&quot;] + cert[&quot;lambda&quot;])
+                             / cert[&quot;lambda&quot;] - 1) / cert[&quot;min_weight&quot;]))
+    ceiling = ceil_sqrt(q2 * w0)
+    cost = 4 * ceiling / cert[&quot;lambda&quot;]
+    if sum(state) &lt; radius:
+        cost = F(0)  # First entry is immediate from an already admitted state.
+    return {&quot;fourth_moment_certificate&quot;: m4,
+            &quot;uniform_total_count_fourth_moment&quot;: n4,
+            &quot;uniform_total_intensity_second_moment&quot;: q2,
+            &quot;W_initial&quot;: w0, &quot;exponential_return_core_radius&quot;: radius,
+            &quot;return_exponent&quot;: cert[&quot;lambda&quot;] / 2,
+            &quot;expected_reaction_firings_before_first_core_entry_upper&quot;: cost}
+
+
+if __name__ == &quot;__main__&quot;:
+    path = pathlib.Path(__file__)
+    checks = json.loads(path.with_name(&quot;robust_three_layer_checks.json&quot;).read_text())
+    cert = acquire(checks[&quot;certificates&quot;][1][&quot;spec&quot;])
+    # Independent exact known Poisson moment identity, not simulation.
+    assert shifted_poisson_moment(0, F(1), 4) == 15
+    assert shifted_poisson_moment(0, F(2), 4) == 94
+    assert ceil_sqrt(F(81, 16)) == 3
+    assert ceil_sqrt(F(9, 1)) == 3
+    state = [0, 0, 6000]
+    report = acquire_return_cost(cert, state)
+    report[&quot;initial_state&quot;] = state
+    report[&quot;status&quot;] = &quot;EXPLICIT_ANALYTIC_BOUND_ACQUIRED_NOT_SIMULATED&quot;
+    destination = path.with_name(&quot;moment_cost_certificate.json&quot;)
+    destination.write_text(json.dumps(serialized(report), indent=2) + &quot;\n&quot;)
+    print(json.dumps(serialized({k: v for k, v in report.items()
+                                  if k != &quot;fourth_moment_certificate&quot;}), indent=2))
+</pre><p><a href="../assets/3931b9a1bfb2240f8a64f4d8558086388eec156008b9210a69ff3c8e2c10329e.py">Exact original bytes</a></p></html>

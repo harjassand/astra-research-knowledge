@@ -1,0 +1,66 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/control/verify_snapshot.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/control/verify_snapshot.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Verify capture integrity only; this is not a mathematical proof checker.&quot;&quot;&quot;
+from pathlib import Path
+import ast
+import datetime
+import hashlib
+import json
+import time
+import zipfile
+
+root = Path(__file__).resolve().parents[3]
+out = root / &quot;outputs/round6&quot;
+start = time.monotonic()
+manifest = json.loads((out / &quot;SNAPSHOT_MANIFEST.json&quot;).read_text())
+archive = out / &quot;ROUND6_EVIDENCE.zip&quot;
+errors = []
+digest = hashlib.file_digest(archive.open(&quot;rb&quot;), &quot;sha256&quot;).hexdigest()
+if digest != manifest[&quot;archive_sha256&quot;]:
+    errors.append(&quot;archive hash&quot;)
+if archive.stat().st_size != manifest[&quot;archive_bytes&quot;]:
+    errors.append(&quot;archive size&quot;)
+with zipfile.ZipFile(archive) as z:
+    embedded = json.loads(z.read(&quot;SNAPSHOT_MANIFEST.json&quot;))
+    if embedded[&quot;files&quot;] != manifest[&quot;files&quot;]:
+        errors.append(&quot;embedded file manifest differs&quot;)
+    names = z.namelist()
+    expected = [f[&quot;path&quot;] for f in manifest[&quot;files&quot;]] + [&quot;SNAPSHOT_MANIFEST.json&quot;]
+    if sorted(names) != sorted(expected) or len(names) != len(set(names)):
+        errors.append(&quot;archive entry set&quot;)
+    for f in manifest[&quot;files&quot;]:
+        data = z.read(f[&quot;path&quot;])  # also checks the entry CRC
+        if len(data) != f[&quot;bytes&quot;] or hashlib.sha256(data).hexdigest() != f[&quot;sha256&quot;]:
+            errors.append(f[&quot;path&quot;])
+tree = ast.parse((root / &quot;work/cycle6/control/snapshot.py&quot;).read_text())
+selected = next(ast.literal_eval(n.value) for n in tree.body
+                if isinstance(n, ast.Assign) and any(isinstance(t, ast.Name)
+                and t.id == &quot;selected&quot; for t in n.targets))
+for name, relative in selected.items():
+    source, dest = root / &quot;work/cycle6&quot; / relative, out / name
+    if not source.exists() or not dest.exists():
+        errors.append(&quot;missing selected proof: &quot; + name)
+    elif source.read_bytes() != dest.read_bytes():
+        errors.append(&quot;selected alias differs: &quot; + name)
+cards = json.loads((out / &quot;RESEARCH_RESULT_CARDS.json&quot;).read_text())[&quot;cards&quot;]
+references = []
+for card in cards:
+    for key in (&quot;proofs&quot;, &quot;evidence&quot;):
+        for name in card.get(key, []):
+            references.append(name)
+            if not (out / name).is_file():
+                errors.append(&quot;missing card reference: &quot; + name)
+receipt = {
+    &quot;status&quot;: &quot;PASS&quot; if not errors else &quot;FAIL&quot;,
+    &quot;utc&quot;: datetime.datetime.now(datetime.timezone.utc).isoformat(),
+    &quot;scope&quot;: &quot;ZIP CRC, all captured SHA256 hashes, embedded manifest, selected proof aliases and card references; NOT proof validity or external validation&quot;,
+    &quot;archive_sha256&quot;: digest,
+    &quot;archive_bytes&quot;: archive.stat().st_size,
+    &quot;captured_files&quot;: len(manifest[&quot;files&quot;]),
+    &quot;selected_proofs&quot;: len(selected),
+    &quot;card_references&quot;: len(references),
+    &quot;seconds&quot;: time.monotonic() - start,
+    &quot;errors&quot;: errors,
+}
+(out / &quot;ARCHIVE_VERIFICATION.json&quot;).write_text(json.dumps(receipt, indent=2) + &quot;\n&quot;)
+print(json.dumps(receipt, indent=2))
+raise SystemExit(bool(errors))
+</pre><p><a href="../assets/e27514951a9841df036302f0f8a7225dbd6a4e6189fa92e92d3e20e984cae410.py">Exact original bytes</a></p></html>

@@ -1,0 +1,317 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c02_l07/coordinate_auxiliary_defect.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c02_l07/coordinate_auxiliary_defect.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact four-hole coordinate-auxiliary transform and windability witness.
+
+The symbolic engine uses sparse multivariate polynomials over Q. For a four-site
+hole signature f and one nonnegative activity w_ij per coordinate-pair
+auxiliary, it computes
+
+  f_E(U) = sum_{M matching in K4[V\\U]} (prod_{e in M} w_e) f(U union V(M)),
+
+which is the coefficient action of the stability-preserving product
+prod_e (1 + w_e d_i d_j) on the unsigned hole polynomial. It then checks the
+four-hole orbit-capacity defect exactly.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+from fractions import Fraction
+from itertools import combinations, permutations, product
+import json
+from pathlib import Path
+import sys
+
+N = 4
+FULL = (1 &lt;&lt; N) - 1
+PAIRS = tuple(combinations(range(N), 2))
+EVEN_MASKS = tuple(m for m in range(1 &lt;&lt; N) if m.bit_count() % 2 == 0)
+PAIRINGS = (
+    ((0, 1), (2, 3)),
+    ((0, 2), (1, 3)),
+    ((0, 3), (1, 2)),
+)
+
+# Sparse polynomial: monomial exponent tuple -&gt; rational coefficient.
+Poly = dict[tuple[int, ...], Fraction]
+
+
+def p_add(a: Poly, b: Poly) -&gt; Poly:
+    out = dict(a)
+    for m, c in b.items():
+        out[m] = out.get(m, Fraction(0)) + c
+        if not out[m]:
+            del out[m]
+    return out
+
+
+def p_scale(a: Poly, c: Fraction) -&gt; Poly:
+    if not c:
+        return {}
+    return {m: c * v for m, v in a.items() if c * v}
+
+
+def p_mul(a: Poly, b: Poly) -&gt; Poly:
+    out: Poly = {}
+    for ma, ca in a.items():
+        for mb, cb in b.items():
+            m = tuple(x + y for x, y in zip(ma, mb))
+            out[m] = out.get(m, Fraction(0)) + ca * cb
+    return {m: c for m, c in out.items() if c}
+
+
+def var_poly(index: int, dimension: int) -&gt; Poly:
+    exponents = [0] * dimension
+    exponents[index] = 1
+    return {tuple(exponents): Fraction(1)}
+
+
+def det_int(matrix: list[list[int]]) -&gt; int:
+    n = len(matrix)
+    if n == 0:
+        return 1
+    total = 0
+    for perm in __import__(&quot;itertools&quot;).permutations(range(n)):
+        inversions = sum(perm[i] &gt; perm[j] for i in range(n) for j in range(i + 1, n))
+        term = -1 if inversions % 2 else 1
+        for i, j in enumerate(perm):
+            term *= matrix[i][j]
+        total += term
+    return total
+
+
+def hole_signature_from_matrix(F: list[list[int]]) -&gt; dict[int, Fraction]:
+    &quot;&quot;&quot;Return f(U)=sum_{I subset R, |I|=|R|/2} |det F[I,R\\I]|^2.&quot;&quot;&quot;
+    n = len(F)
+    if n != 4 or any(len(row) != n for row in F):
+        raise ValueError(&quot;this exact diagnostic is specialized to 4 by 4 F&quot;)
+    out: dict[int, Fraction] = {}
+    for holes in range(1 &lt;&lt; n):
+        retained = [i for i in range(n) if not (holes &gt;&gt; i) &amp; 1]
+        if len(retained) % 2:
+            out[holes] = Fraction(0)
+            continue
+        half = len(retained) // 2
+        value = 0
+        for row_set_tuple in combinations(retained, half):
+            row_set = set(row_set_tuple)
+            col_set = [j for j in retained if j not in row_set]
+            submatrix = [[F[i][j] for j in col_set] for i in row_set_tuple]
+            d = det_int(submatrix)
+            value += d * d
+        out[holes] = Fraction(value)
+    return out
+
+
+def all_matching_edge_sets(edges: tuple[tuple[int, int], ...], allowed: int):
+    &quot;&quot;&quot;Yield edge-index tuples forming matchings within the allowed vertices.&quot;&quot;&quot;
+    allowed_edges = [i for i, (a, b) in enumerate(edges)
+                     if ((allowed &gt;&gt; a) &amp; 1) and ((allowed &gt;&gt; b) &amp; 1)]
+    # A four-vertex graph has at most two edges in a matching.
+    yield ()
+    for i in allowed_edges:
+        yield (i,)
+    for i, j in combinations(allowed_edges, 2):
+        e1, e2 = edges[i], edges[j]
+        if len(set(e1 + e2)) == 4:
+            yield (i, j)
+
+
+def transform_numeric(base: dict[int, Fraction],
+                      activities: tuple[Fraction, ...]) -&gt; dict[int, Fraction]:
+    out: dict[int, Fraction] = {}
+    for holes in EVEN_MASKS:
+        available = FULL ^ holes
+        value = Fraction(0)
+        for matching in all_matching_edge_sets(PAIRS, available):
+            covered = 0
+            weight = Fraction(1)
+            for edge_index in matching:
+                i, j = PAIRS[edge_index]
+                covered |= (1 &lt;&lt; i) | (1 &lt;&lt; j)
+                weight *= activities[edge_index]
+            value += weight * base[holes | covered]
+        out[holes] = value
+    for holes in range(1 &lt;&lt; N):
+        if holes not in out:
+            out[holes] = Fraction(0)
+    return out
+
+
+def apply_single_aux(base: dict[int, Fraction], edge_index: int,
+                     activity: Fraction) -&gt; dict[int, Fraction]:
+    i, j = PAIRS[edge_index]
+    edge_mask = (1 &lt;&lt; i) | (1 &lt;&lt; j)
+    out = {}
+    for holes in EVEN_MASKS:
+        out[holes] = base[holes]
+        if holes &amp; edge_mask == 0:
+            out[holes] += activity * base[holes | edge_mask]
+    for holes in range(1 &lt;&lt; N):
+        if holes not in out:
+            out[holes] = Fraction(0)
+    return out
+
+
+def defect_numeric(f: dict[int, Fraction]) -&gt; Fraction:
+    capacity = sum(f[(1 &lt;&lt; i) | (1 &lt;&lt; j)] *
+                   f[FULL ^ ((1 &lt;&lt; i) | (1 &lt;&lt; j))]
+                   for (i, j) in ((0, 1), (0, 2), (0, 3)))
+    demand = f[0] * f[FULL]
+    return capacity - demand
+
+
+def symbolically_transform(base_var_index: dict[int, int],
+                            activity_var_index: dict[tuple[int, int], int],
+                            dimension: int) -&gt; dict[int, Poly]:
+    out: dict[int, Poly] = {}
+    for holes in EVEN_MASKS:
+        available = FULL ^ holes
+        value: Poly = {}
+        for matching in all_matching_edge_sets(PAIRS, available):
+            covered = 0
+            term: Poly = {tuple([0] * dimension): Fraction(1)}
+            for edge_index in matching:
+                edge = PAIRS[edge_index]
+                covered |= (1 &lt;&lt; edge[0]) | (1 &lt;&lt; edge[1])
+                term = p_mul(term, var_poly(activity_var_index[edge], dimension))
+            coefficient = var_poly(base_var_index[holes | covered], dimension)
+            value = p_add(value, p_mul(term, coefficient))
+        out[holes] = value
+    return out
+
+
+def symbolic_defect(f: dict[int, Poly]) -&gt; Poly:
+    out: Poly = {}
+    for i, j in ((0, 1), (0, 2), (0, 3)):
+        pair = (1 &lt;&lt; i) | (1 &lt;&lt; j)
+        out = p_add(out, p_mul(f[pair], f[FULL ^ pair]))
+    out = p_add(out, p_scale(p_mul(f[0], f[FULL]), Fraction(-1)))
+    return out
+
+
+def evaluate_poly(poly: Poly, values: tuple[Fraction, ...]) -&gt; Fraction:
+    total = Fraction(0)
+    for monomial, coefficient in poly.items():
+        value = coefficient
+        for x, exponent in zip(values, monomial):
+            if exponent:
+                value *= x ** exponent
+        total += value
+    return total
+
+
+def main() -&gt; None:
+    F = [
+        [0, 0, 1, 1],
+        [0, 0, 1, -1],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+    ]
+    base = hole_signature_from_matrix(F)
+    assert base == {
+        0: Fraction(4), FULL: Fraction(1),
+        0b0011: Fraction(0), 0b1100: Fraction(0),
+        0b0101: Fraction(1), 0b1010: Fraction(1),
+        0b1001: Fraction(1), 0b0110: Fraction(1),
+        0b0001: Fraction(0), 0b0010: Fraction(0),
+        0b0100: Fraction(0), 0b1000: Fraction(0),
+        0b0111: Fraction(0), 0b1011: Fraction(0),
+        0b1101: Fraction(0), 0b1110: Fraction(0),
+    }
+
+    # Formal proof certificate by exact expansion over Q: base coefficients
+    # and the six edge activities are independent indeterminates. Setting any
+    # activity to zero covers every subgraph; positive activities are arbitrary.
+    base_var_index = {mask: i for i, mask in enumerate(EVEN_MASKS)}
+    activity_var_index = {edge: len(EVEN_MASKS) + i for i, edge in enumerate(PAIRS)}
+    dimension = len(EVEN_MASKS) + len(PAIRS)
+    base_symbolic = {
+        mask: var_poly(base_var_index[mask], dimension) for mask in EVEN_MASKS
+    }
+    extended_symbolic = symbolically_transform(
+        base_var_index, activity_var_index, dimension
+    )
+    delta_base = symbolic_defect(base_symbolic)
+    delta_extended = symbolic_defect(extended_symbolic)
+    delta_difference = p_add(delta_extended, p_scale(delta_base, Fraction(-1)))
+    assert delta_difference == {}, f&quot;symbolic defect changed: {delta_difference}&quot;
+
+    # The F4 witness remains separated by an exact amount for every activity.
+    f4_transformed = extended_symbolic
+    # Substitute the exact F4 signature into the formal polynomial.
+    f4_values = tuple(base[m] for m in EVEN_MASKS) + tuple(
+        Fraction(0) for _ in PAIRS
+    )
+    # (The preceding call provides the universal transform shape; evaluate its
+    # coefficient polynomials only after setting the first eight variables.)
+    f4_defect_poly = symbolic_defect(f4_transformed)
+    # Convert the activity-only specialization by direct numeric evaluations,
+    # then verify its symbolic coefficients using a second sparse expansion.
+    # This avoids any floating-point root or positivity test.
+    substitutions = f4_values
+    f4_fixed_specialized: Poly = {}
+    for monomial, coefficient in f4_defect_poly.items():
+        factor = coefficient
+        exponents = [0] * len(PAIRS)
+        for idx, exponent in enumerate(monomial):
+            if idx &lt; len(EVEN_MASKS):
+                factor *= substitutions[idx] ** exponent
+            else:
+                exponents[idx - len(EVEN_MASKS)] = exponent
+        if factor:
+            key = tuple(exponents)
+            f4_fixed_specialized[key] = f4_fixed_specialized.get(key, Fraction(0)) + factor
+    assert f4_fixed_specialized == {(0,) * len(PAIRS): Fraction(-2)}, f4_fixed_specialized
+
+    # 3^6 = 729 exact activity assignments, with zero encoding omitted edges.
+    grid = (Fraction(0), Fraction(1, 2), Fraction(1))
+    checked = 0
+    for activities in product(grid, repeat=len(PAIRS)):
+        extended = transform_numeric(base, activities)
+        assert defect_numeric(extended) == Fraction(-2)
+        values = tuple(base[m] for m in EVEN_MASKS) + tuple(activities)
+        assert evaluate_poly(f4_fixed_specialized, activities) == defect_numeric(extended)
+        checked += 1
+
+    # Verify the matching expansion against sequential one-edge extensions
+    # in all 6! orders for one nontrivial rational activity vector.
+    order_activities = tuple(Fraction(i + 1, i + 2) for i in range(len(PAIRS)))
+    matching_form = transform_numeric(base, order_activities)
+    order_checks = 0
+    for order in permutations(range(len(PAIRS))):
+        sequential = dict(base)
+        for edge_index in order:
+            sequential = apply_single_aux(
+                sequential, edge_index, order_activities[edge_index]
+            )
+        assert sequential == matching_form
+        order_checks += 1
+
+    # Store a compact exact certificate for downstream audit.
+    report = {
+        &quot;worker_id&quot;: &quot;c02_l07&quot;,
+        &quot;construction&quot;: &quot;four-site coordinate-auxiliary matching transform&quot;,
+        &quot;base_matrix_F&quot;: F,
+        &quot;base_hole_signature&quot;: {str(k): str(v) for k, v in sorted(base.items())},
+        &quot;base_factor_one_defect_capacity_minus_demand&quot;: str(defect_numeric(base)),
+        &quot;formal_generic_signature_identity&quot;: &quot;Delta(T_W f) - Delta(f) is the zero polynomial for arbitrary even f and six independent auxiliary activities&quot;,
+        &quot;formal_defect_monomial_counts&quot;: {
+            &quot;extended_defect&quot;: len(delta_extended),
+            &quot;base_defect&quot;: len(delta_base),
+        },
+        &quot;specialized_F4_defect_polynomial&quot;: {
+            &quot;constant&quot;: &quot;-2&quot;,
+            &quot;nonconstant_terms&quot;: 0,
+        },
+        &quot;exact_activity_assignments_checked&quot;: checked,
+        &quot;activity_grid&quot;: [&quot;0&quot;, &quot;1/2&quot;, &quot;1&quot;],
+        &quot;sequential_extension_orderings_checked&quot;: order_checks,
+        &quot;claim_scope&quot;: &quot;coordinate-pair auxiliaries among the same four ambient coordinates only&quot;,
+        &quot;status&quot;: &quot;all assertions passed; exact finite algebra diagnostic plus symbolic identity&quot;,
+    }
+    out_path = Path(__file__).with_name(&quot;coordinate_auxiliary_defect_result.json&quot;)
+    out_path.write_text(json.dumps(report, indent=2) + &quot;\n&quot;)
+    print(json.dumps(report, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/69be34af9a97acf2a7af27ad741f5244f02b8cbae95219bc7cc60d53c99b905c.py">Exact original bytes</a></p></html>

@@ -1,0 +1,66 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c08_s03/revisions/sol_interval_simulation.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c08_s03/revisions/sol_interval_simulation.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Executed exact-rational time-one normal-map simulation for Sol.
+
+This implements first-order Euler plus proved scalar error enclosures.
+It is a restricted benchmark, not a generic interval ODE package.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from pathlib import Path
+import importlib.util
+import json
+import time
+
+ROOT=Path(__file__).resolve().parent
+spec=importlib.util.spec_from_file_location(&#x27;c1&#x27;,ROOT/&#x27;c1_certificate.py&#x27;)
+c1=importlib.util.module_from_spec(spec)
+spec.loader.exec_module(c1)
+
+
+def main():
+    start=time.perf_counter()
+    al,au=c1.initial.log_cat_bounds()
+    scale=10**12
+    al=c1.rational_floor(al,scale)
+    au=c1.rational_floor(au,scale)+F(1,scale)
+    rl,ru=c1.initial.sqrt_bounds(5,72)
+    ll,lu=(3+rl)/2,(3+ru)/2
+    il,iu=1/lu,1/ll
+    n=128
+    assert au&lt;n
+    plus_lower=(1+al/n)**n
+    plus_euler_upper=(1+au/n)**n
+    plus_remainder=lu*au*au/(2*n)
+    plus_upper=plus_euler_upper+plus_remainder
+    minus_lower=(1-au/n)**n
+    minus_euler_upper=(1-al/n)**n
+    minus_remainder=iu*au*au/(2*n*(1-au/n))
+    minus_upper=minus_euler_upper+minus_remainder
+    m=c1.rational_floor(plus_lower)
+    cert=c1.step_cone(plus_lower,0,0,minus_upper,1,m)
+    z=(m-1)/(m+1)
+    log_lower=sum(2*z**(2*k+1)/(2*k+1) for k in range(64))
+    rate=c1.rational_floor(log_lower)
+    checks={
+        &#x27;lambda_enclosed&#x27;:plus_lower&lt;=ll and lu&lt;=plus_upper,
+        &#x27;inverse_lambda_enclosed&#x27;:minus_lower&lt;=il and iu&lt;=minus_upper,
+        &#x27;normal_map_plus_width_lt_001&#x27;:plus_upper-plus_lower&lt;F(1,100),
+        &#x27;normal_map_minus_width_lt_0002&#x27;:minus_upper-minus_lower&lt;F(1,500),
+        &#x27;cone_from_executed_simulation&#x27;:cert[&#x27;status&#x27;]==&#x27;CERTIFIED&#x27;,
+        &#x27;scalar_euler_positive&#x27;:1-au/n&gt;0,
+        &#x27;positive_exact_log_entropy_lower&#x27;:rate&gt;0 and rate&lt;=log_lower,
+    }
+    result={&#x27;status&#x27;:&#x27;PASS&#x27; if all(checks.values()) else &#x27;FAIL&#x27;,&#x27;checks&#x27;:checks,
+            &#x27;steps&#x27;:n,&#x27;a_lower&#x27;:str(al),&#x27;a_upper&#x27;:str(au),
+            &#x27;plus_interval&#x27;:list(map(str,(plus_lower,plus_upper))),
+            &#x27;minus_interval&#x27;:list(map(str,(minus_lower,minus_upper))),
+            &#x27;display_plus_interval&#x27;:list(map(float,(plus_lower,plus_upper))),
+            &#x27;display_minus_interval&#x27;:list(map(float,(minus_lower,minus_upper))),
+            &#x27;cone_certificate&#x27;:cert,&#x27;certified_entropy_lower&#x27;:str(rate),
+            &#x27;display_entropy_lower&#x27;:float(rate),&#x27;elapsed_seconds&#x27;:time.perf_counter()-start,
+            &#x27;limits&#x27;:&#x27;Executed scalar normal-map Euler benchmark with exact error bounds; no general flow, chart, net, or actuator implementation.&#x27;}
+    (ROOT/&#x27;sol_interval_simulation_checks.json&#x27;).write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({k:result[k] for k in [&#x27;status&#x27;,&#x27;checks&#x27;,&#x27;steps&#x27;,&#x27;display_plus_interval&#x27;,&#x27;display_minus_interval&#x27;,&#x27;cone_certificate&#x27;,&#x27;display_entropy_lower&#x27;,&#x27;elapsed_seconds&#x27;]},indent=2))
+    if result[&#x27;status&#x27;]!=&#x27;PASS&#x27;:raise SystemExit(1)
+
+
+if __name__==&#x27;__main__&#x27;:main()
+</pre><p><a href="../assets/718eb9c61cf238a92407b60f93732af68bc907d6c181c4c394e81c5bf33daf62.py">Exact original bytes</a></p></html>

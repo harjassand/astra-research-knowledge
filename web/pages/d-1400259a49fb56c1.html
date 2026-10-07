@@ -1,0 +1,101 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c09_l03/revisions/peer_checks/c09_s03_log_covariance_certificate_copy.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c09_l03/revisions/peer_checks/c09_s03_log_covariance_certificate_copy.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Exact rational certificates for a supplied diagonal covariance-field table.
+No Gaussian likelihood integration, matrix-log oracle, or scientific packages.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+import json, math, time, pathlib
+
+
+def log_interval(x, eta=F(1, 2**36)):
+    x=F(x)
+    if x&lt;=0: raise ValueError(&#x27;strictly positive covariance eigenvalue required&#x27;)
+    z=x; k=0
+    while z&gt;=2: z/=2; k+=1
+    while z&lt;1: z*=2; k-=1
+    target=eta/(abs(k)+1)
+    def atanh_log(z):
+        t=(z-1)/(z+1); s=F(0); power=t; n=0
+        while True:
+            s+=2*power/(2*n+1); n+=1; power*=t*t
+            rem=2*power/((2*n+1)*(1-t*t))
+            if rem&lt;=target: return (s,s+rem,n)
+    a,b,n1=atanh_log(z); c,d,n2=atanh_log(F(2))
+    lo=a+(k*c if k&gt;=0 else k*d)
+    hi=b+(k*d if k&gt;=0 else k*c)
+    assert hi-lo&lt;=eta
+    return lo,hi,n1+n2
+
+
+def square_interval(lo,hi):
+    if lo&lt;=0&lt;=hi: return F(0),max(lo*lo,hi*hi)
+    return min(lo*lo,hi*hi),max(lo*lo,hi*hi)
+
+
+def certificate(weights, diagonal_table, saturation=F(1), eta=F(1,2**36)):
+    weights=list(map(F,weights)); K=len(weights); m=len(diagonal_table[0])
+    if sum(weights)!=1 or min(weights)&lt;0: raise ValueError(&#x27;invalid table law&#x27;)
+    if any(len(row)!=m for row in diagonal_table): raise ValueError(&#x27;dimension mismatch&#x27;)
+    intervals=[]; terms=0
+    for row in diagonal_table:
+        out=[]
+        for val in row:
+            lo,hi,n=log_interval(F(val),eta); terms+=n; out.append((lo,hi))
+        intervals.append(out)
+    vlo=vhi=F(0)
+    for a in range(K):
+        for b in range(K):
+            for i in range(m):
+                lo=intervals[a][i][0]-intervals[b][i][1]
+                hi=intervals[a][i][1]-intervals[b][i][0]
+                qlo,qhi=square_interval(lo,hi)
+                factor=weights[a]*weights[b]/2
+                vlo+=factor*qlo; vhi+=factor*qhi
+    info_upper=F(saturation)**2*vhi/24
+    return {&#x27;variance_lower&#x27;:str(vlo),&#x27;variance_upper&#x27;:str(vhi),
+        &#x27;scale_information_upper_nats&#x27;:str(info_upper),
+        &#x27;upper_float_for_display&#x27;:float(info_upper),&#x27;states_read&#x27;:K,&#x27;matrix_dimension&#x27;:m,
+        &#x27;model_scalar_entries_read&#x27;:K*m+K,&#x27;atanh_terms&#x27;:terms,
+        &#x27;log_abs_interval_width_target&#x27;:str(eta),
+        &#x27;scope&#x27;:&#x27;analytic upper certificate; actual mutual information was not numerically computed&#x27;}
+
+
+def exact_integrand_identity(b,c,u):
+    b,c,u=F(b),F(c),F(u); d=b-c
+    if d==0: return True
+    lhs=u*d*d/((1+b*u)**2*(1+c*u)**2)
+    rhs=(b+c)*b/d/(1+b*u)-b/(1+b*u)**2-(b+c)*c/d/(1+c*u)-c/(1+c*u)**2
+    return lhs==rhs
+
+
+def main():
+    start=time.perf_counter()
+    weights=[F(1,4),F(1,2),F(1,4)]
+    table=[[F(1,2),F(1),F(4)],[F(1),F(2),F(2)],[F(2),F(4),F(1)]]
+    c=certificate(weights,table)
+    fixtures=0
+    for b in [F(1,8),F(1,2),F(1),F(2),F(8)]:
+        for d in [F(1,3),F(1),F(3)]:
+            for u in [F(0),F(1,7),F(1),F(7)]:
+                assert exact_integrand_identity(b,d,u); fixtures+=1
+    # Bounds for the scalar kernel, with sign-aware certified log intervals.
+    kernel_checks=[]
+    for k in range(1,17):
+        ratio=F(2**k); tlo,thi,_=log_interval(ratio)
+        a=(ratio+1)/(ratio-1)
+        klo=a*tlo-2; khi=a*thi-2
+        assert klo&gt;=0 and khi&lt;=tlo*tlo/6 and khi&lt;=tlo
+        kernel_checks.append({&#x27;ratio&#x27;:str(ratio),&#x27;kernel_upper&#x27;:str(khi),&#x27;log_lower&#x27;:str(tlo)})
+    # Controlled-dependence table: all modes see the same reference state.
+    dependent=certificate([F(1,2),F(1,2)],[[F(1)]*8,[F(2)]*8])
+    # A null mode is admitted exactly, outside the log theorem: its covariance is constant.
+    null_covariance_note=&#x27;Common nullspace can be removed; mismatched positive-probability nullspaces can give an infinite scale integral.&#x27;
+    result={&#x27;table_certificate&#x27;:c,&#x27;exact_partial_fraction_fixtures&#x27;:fixtures,
+        &#x27;kernel_interval_checks&#x27;:kernel_checks,&#x27;dependent_eight_mode_table&#x27;:dependent,
+        &#x27;null_boundary&#x27;:null_covariance_note,&#x27;elapsed_seconds&#x27;:time.perf_counter()-start,
+        &#x27;proof_scope&#x27;:&#x27;finite exact algebra/interval certificates, not empirical MI or external theorem validation&#x27;}
+    dest=pathlib.Path(__file__).with_name(&#x27;log_covariance_checks.json&#x27;)
+    dest.write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({&#x27;certificate_upper_nats&#x27;:c[&#x27;upper_float_for_display&#x27;],
+        &#x27;exact_fixtures&#x27;:fixtures,&#x27;elapsed_seconds&#x27;:result[&#x27;elapsed_seconds&#x27;],&#x27;output&#x27;:str(dest)},indent=2))
+
+if __name__==&#x27;__main__&#x27;: main()
+</pre><p><a href="../assets/9d92366015dec1e6d5e1519cbfd9be0356cf90e2a38cc6c8dc19af529298ba09.py">Exact original bytes</a></p></html>

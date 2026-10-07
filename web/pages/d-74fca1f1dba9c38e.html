@@ -1,0 +1,74 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c06_s03/revisions/002/exact_small_comparator.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c06_s03/revisions/002/exact_small_comparator.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Competent exact comparator for admitted small constituent count only.
+
+This is explicitly exponential in Q. It checks physical charge readout and
+does not claim the large-Q imported polynomial counting result.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from pathlib import Path
+import time,json
+from higher_order_certificate import projected_plan,acquire_projected_circuit
+from projected_chain import Gate,local_gate,mm,CoinTape,sampler_plan
+from check_projected import embed
+
+
+def matrix_product(Q,gates):
+    matrix=[[F(i==j) for j in range(1&lt;&lt;Q)] for i in range(1&lt;&lt;Q)]
+    for g in gates: matrix=mm(matrix,embed(g,Q))
+    return matrix
+
+
+def exact_comparator(plan,*,constituent_cap=8,gate_cap=200,seed=20261007):
+    Q=plan[&quot;constituents&quot;]
+    if Q&gt;constituent_cap or plan[&quot;Hamiltonian_gate_occurrences&quot;]+plan[&quot;projector_occurrences&quot;]&gt;gate_cap:
+        raise ValueError(&quot;exact comparator admission exceeded before dense allocation&quot;)
+    started=time.monotonic()
+    instance,gates=acquire_projected_circuit(plan,coordinate_cap=10000)
+    forward=[local_gate(&quot;edge&quot;,(u,v),plan[&quot;s&quot;],a,g,plan[&quot;degree&quot;]) for u,v,a,g in plan[&quot;embedded_edges&quot;]]
+    forward += [local_gate(&quot;field&quot;,(v,),plan[&quot;s&quot;],b,c,plan[&quot;degree&quot;]) for v,b,c in plan[&quot;embedded_fields&quot;]]
+    Pi=matrix_product(Q,[Gate(&quot;projector&quot;,tuple(qs)) for qs in plan[&quot;qsets&quot;]])
+    B0=matrix_product(Q,forward+list(reversed(forward)))
+    Bphys=mm(mm(Pi,B0),Pi)
+    compressed=[[F(i==j) for j in range(1&lt;&lt;Q)] for i in range(1&lt;&lt;Q)]
+    for _ in range(plan[&quot;m&quot;]): compressed=mm(compressed,Bphys)
+    raw=matrix_product(Q,gates)
+    Z=sum((compressed[i][i] for i in range(1&lt;&lt;Q)),F(0))
+    assert Z&gt;0 and Z==sum((raw[i][i] for i in range(1&lt;&lt;Q)),F(0))
+    laws=[]
+    for matrix in (raw,compressed):
+        weights={}
+        for i in range(1&lt;&lt;Q):
+            charge=tuple(len(qs)-2*sum((i&gt;&gt;v)&amp;1 for v in qs) for qs in plan[&quot;qsets&quot;])
+            assert matrix[i][i]&gt;=0
+            weights[charge]=weights.get(charge,F(0))+matrix[i][i]/Z
+        laws.append(weights)
+    assert laws[0]==laws[1]
+    # Constituent marginals need not be physical at this cut; only charges are.
+    different_constituent_diagonal=any(raw[i][i]!=compressed[i][i] for i in range(1&lt;&lt;Q))
+    witness=next(({&quot;constituent_basis_integer&quot;:i,&quot;raw_cut_diagonal&quot;:str(raw[i][i]),
+                   &quot;compressed_physical_diagonal&quot;:str(compressed[i][i])} for i in range(1&lt;&lt;Q)
+                  if raw[i][i]!=compressed[i][i]),None)
+    law=laws[1]
+    tape=CoinTape(seed,64,100)
+    outcomes=sorted(law)
+    choice=tape.categorical([(j,law[c]) for j,c in enumerate(outcomes)])
+    elapsed=time.monotonic()-started
+    def height(x): return max(x.numerator.bit_length(),x.denominator.bit_length())
+    return {&quot;status&quot;:&quot;PASS_EXACT_BOUNDED_Q_COMPARATOR&quot;,&quot;Q&quot;:Q,&quot;matrix_dimension&quot;:1&lt;&lt;Q,
+            &quot;matrix_entries&quot;:1&lt;&lt;(2*Q),&quot;layers&quot;:plan[&quot;m&quot;],&quot;Taylor_degree&quot;:plan[&quot;degree&quot;],
+            &quot;ground_size&quot;:instance.n,&quot;exact_trace&quot;:str(Z),
+            &quot;charge_probabilities&quot;:[{&quot;twice_Sz&quot;:c,&quot;probability&quot;:str(law[c])} for c in outcomes],
+            &quot;raw_cut_charge_law_equals_compressed_physical_law&quot;:True,
+            &quot;raw_constituent_diagonal_differs&quot;:different_constituent_diagonal,
+            &quot;constituent_readout_counterexample&quot;:witness,
+            &quot;sampled_twice_Sz&quot;:outcomes[choice],&quot;coin_choices&quot;:tape.choices,&quot;coin_bits&quot;:tape.bits,
+            &quot;max_compressed_entry_operand_bits&quot;:max(height(x) for row in compressed for x in row),
+            &quot;elapsed_seconds&quot;:elapsed,&quot;polynomial_sampler_plan&quot;:sampler_plan(instance),
+            &quot;scope&quot;:&quot;Exact sampler for rational projected transfer at Q&lt;=8; exponential dense comparator. Not exact Gibbs at nonzero temperature; log-generator approximation error still applies. Seeded replay, fair-bit theorem conditional on no cap abort.&quot;}
+
+
+if __name__==&quot;__main__&quot;:
+    plan=projected_plan([2,1],[(0,1,F(1),F(-1,2))],[(0,F(1,3),F(0))],F(1,2),F(1,10),3,4)
+    result=exact_comparator(plan)
+    Path(__file__).with_name(&quot;small_comparator.json&quot;).write_text(json.dumps(result,indent=2,default=str)+&#x27;\n&#x27;)
+    print(json.dumps({k:v for k,v in result.items() if k not in (&quot;charge_probabilities&quot;,&quot;exact_trace&quot;,&quot;polynomial_sampler_plan&quot;)},indent=2,default=str))
+</pre><p><a href="../assets/72721aca9c0a5907f35b36305d42efa0a6e4c5887e0af52234130979b9c83818.py">Exact original bytes</a></p></html>

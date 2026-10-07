@@ -1,0 +1,105 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c02_s03/revisions/check_frontier_rank_guard.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c02_s03/revisions/check_frontier_rank_guard.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Independent determinant comparisons for the owned phase-two backend.&quot;&quot;&quot;
+import sys,json
+from pathlib import Path
+from random import Random
+from itertools import combinations
+sys.path.insert(0,str(Path(__file__).resolve().parent))
+from frontier_rank_guard import *
+from representation_compiler import det,minor,rank
+from check_banded import determinant_table,table_prefix,encode
+
+def run():
+    rng=Random(623207)
+    fixtures=[];total_queries=0;sector_checks=0;minor_checks=0
+    for n,r in ((2,0),(3,1),(4,1),(4,2),(5,1),(6,1)):
+        base=[[C(rng.randrange(-1,3),rng.randrange(-1,2)) if 0&lt;abs(i-j)&lt;=1 else C(0)
+               for j in range(n)] for i in range(n)]
+        u=[[C(Q(rng.randrange(-2,3),2),Q(rng.randrange(-1,2),3)) for _ in range(r)] for _ in range(n)]
+        v=[[C(Q(rng.randrange(-2,3),3),Q(rng.randrange(-1,2),2)) for _ in range(r)] for _ in range(n)]
+        f=[[base[i][j]+sum((u[i][a]*v[j][a] for a in range(r)),C(0)) for j in range(n)] for i in range(n)]
+        ext=augmented_matrix(base,u,v);aux=list(range(n,n+r));table=determinant_table(f)
+        for k in range(n//2+1):
+            for ii in combinations(range(n),k):
+                for jj in combinations(sorted(set(range(n))-set(ii)),k):
+                    assert det(minor(ext,list(ii)+aux,list(jj)+aux))==det(minor(f,ii,jj))
+                    minor_checks+=1
+        queries=[({},{}),({(0,&#x27;U&#x27;):1},{}),({(0,&#x27;U&#x27;):1,(0,&#x27;D&#x27;):1},{}),
+                 ({(n-1,&#x27;D&#x27;):0},{}),({}, {n-1:{0,2}})]
+        first=None
+        for modes,sites in queries:
+            counts=count_rank_update(base,u,v,modes,sites,collect_stats=True)
+            expected=table_prefix(table,n,modes,sites)
+            assert counts[&#x27;coefficients&#x27;]==expected,(n,r,modes,sites,counts,expected)
+            total_queries+=1;sector_checks+=len(expected)
+            if first is None:first=counts
+        fixtures.append({&#x27;n&#x27;:n,&#x27;r&#x27;:r,&#x27;counts&#x27;:first})
+    # Exact rank recovery and an explicitly charged sparse base.
+    n=5
+    u=[[C(i+1,1-i)] for i in range(n)];v=[[C(1,Q(i,3))] for i in range(n)]
+    residual=[[u[i][0]*v[j][0] for j in range(n)] for i in range(n)]
+    acquired=rational_rank_approximation(residual,1)
+    assert acquired[&#x27;rank&#x27;]==1 and not acquired[&#x27;frobenius_residual_squared&#x27;]
+    base=[[C(i+1) if j==i+1 else C(0) for j in range(n)] for i in range(n)]
+    delta=Q(1,1&lt;&lt;70)
+    f=[[base[i][j]+residual[i][j]+(C(delta) if i==j else C(0)) for j in range(n)] for i in range(n)]
+    certificate=acquire_certificate(f,base,1,2,Q(1,20),order=list(range(n)))
+    assert certificate[&#x27;status&#x27;]==&#x27;CERTIFIED&#x27;,certificate
+    truez=table_prefix(determinant_table(f),n)[2]
+    estimated=certificate[&#x27;norm_estimate&#x27;]
+    assert abs(estimated-truez)&lt;=certificate[&#x27;epsilon&#x27;]*truez
+    # F-only acceptance beyond exact support frontier: tiny dense off-band noise.
+    n=8;delta=Q(1,1&lt;&lt;80)
+    base=[[C(0) if i==j or abs(i-j)&gt;2 else C(1 if i&lt;j else Q(1,2),Q((-1)**(i+j),3))
+           for j in range(n)] for i in range(n)]
+    f=[[base[i][j]+(C(delta*(pow(i+1,j+1,101)+1)) if abs(i-j)&gt;2 else C(0))
+        for j in range(n)] for i in range(n)]
+    dense=acquire_banded_certificate(f,2,0,4,Q(1,100))
+    assert dense[&#x27;status&#x27;]==&#x27;CERTIFIED&#x27;,dense
+    assert recognize_frontier(f)[&#x27;width&#x27;]==n-1
+    dense_original_width=recognize_frontier(f)[&#x27;width&#x27;]
+    table=determinant_table(f);truez=table_prefix(table,n)[4]
+    estimated=dense[&#x27;norm_estimate&#x27;];assert abs(estimated-truez)&lt;=dense[&#x27;epsilon&#x27;]*truez
+    physical_weights=[(o,w) for k,o,w in table if k==4]
+    htable=determinant_table(dense[&#x27;H&#x27;]);hweights={o:w for k,o,w in htable if k==4}
+    tv=sum((abs(w/truez-hweights.get(o,Q(0))/estimated) for o,w in physical_weights),Q(0))/2
+    assert tv&lt;=dense[&#x27;epsilon&#x27;]/4
+    # Small matrix error alone is not enough: a zero approximate sector rejects.
+    zero=matrix([[int(i!=j) for j in range(4)] for i in range(4)])
+    perturbed=[[zero[i][j]+(C(delta) if (i,j)==(0,1) else C(0)) for j in range(4)] for i in range(4)]
+    rejected=acquire_certificate(perturbed,zero,0,2,Q(1,100),order=list(range(4)))
+    assert rejected[&#x27;status&#x27;]==&#x27;UNKNOWN_ADMISSION&#x27; and rejected[&#x27;norm_estimate&#x27;]==0
+    assert table_prefix(determinant_table(perturbed),4)[2]==2*delta*delta
+    # A whole-law guard gives no relative guarantee on a rare prefix.
+    d=Q(1,10000)
+    h=matrix([[0,1,0,0],[0,0,0,0],[0,0,0,d],[0,0,0,0]])
+    f=matrix([[0,1,0,0],[0,0,0,0],[0,0,0,d*d],[0,0,0,0]])
+    rare=acquire_certificate(f,h,0,1,Q(1,100),order=list(range(4)))
+    assert rare[&#x27;status&#x27;]==&#x27;CERTIFIED&#x27;
+    prefix={(2,&#x27;U&#x27;):1,(3,&#x27;D&#x27;):1}
+    z_h=table_prefix(determinant_table(h),4,prefix)[1]
+    z_f=table_prefix(determinant_table(f),4,prefix)[1]
+    assert z_h==d*d and z_f==d**4 and z_h/z_f==10**8
+    # Executed random seeds only test support/code; randomness theorem requires fair bits.
+    sampled=[]
+    for seed in range(3):
+        result=sample_certified(certificate,Random(seed).getrandbits)
+        assert result[&#x27;status&#x27;]==&#x27;SAMPLE&#x27;
+        sampled.append(result)
+    return {&#x27;status&#x27;:&#x27;PASS&#x27;,&#x27;checks&#x27;:{&#x27;augmented_minor_identities&#x27;:minor_checks,
+        &#x27;prefix_polynomials&#x27;:total_queries,&#x27;sector_coefficients&#x27;:sector_checks,
+        &#x27;exact_greedy_rank_recovery&#x27;:1,&#x27;certified_rank_approximation&#x27;:1,
+        &#x27;F_only_dense_full_occupancy_certificate&#x27;:1,&#x27;correct_zero_approximate_sector_rejection&#x27;:1,
+        &#x27;rare_prefix_relative_failure&#x27;:1,&#x27;seeded_sampler_support_runs&#x27;:len(sampled)},
+        &#x27;fixtures&#x27;:fixtures,&#x27;rank_certificate&#x27;:{k:certificate[k] for k in (&#x27;rank&#x27;,&#x27;eta_squared&#x27;,&#x27;amplitude_error_squared_bound&#x27;,&#x27;norm_estimate&#x27;,&#x27;counts&#x27;)},
+        &#x27;dense_certificate&#x27;:{k:dense[k] for k in (&#x27;rank&#x27;,&#x27;eta_squared&#x27;,&#x27;amplitude_error_squared_bound&#x27;,&#x27;norm_estimate&#x27;,&#x27;guard_right_hand_side&#x27;,&#x27;counts&#x27;)},
+        &#x27;dense_original_support_frontier&#x27;:dense_original_width,
+        &#x27;dense_original_middle_cut_rank_sum&#x27;:rank(minor(dense[&#x27;F&#x27;],range(4),range(4,8)))+rank(minor(dense[&#x27;F&#x27;],range(4,8),range(4))),
+        &#x27;dense_exact_true_norm&#x27;:truez,&#x27;dense_exact_TV&#x27;:tv,
+        &#x27;rare_prefix_ratio&#x27;:z_h/z_f,&#x27;samples&#x27;:sampled,
+        &#x27;scope&#x27;:&#x27;finite exact diagnostics; full all-size proof is separate; circuit unimplemented&#x27;}
+
+if __name__==&#x27;__main__&#x27;:
+    output=encode(run());Path(__file__).with_name(&#x27;frontier_rank_guard_checks.json&#x27;).write_text(json.dumps(output,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({&#x27;status&#x27;:output[&#x27;status&#x27;],&#x27;checks&#x27;:output[&#x27;checks&#x27;],&#x27;dense_norm&#x27;:output[&#x27;dense_certificate&#x27;][&#x27;norm_estimate&#x27;],
+        &#x27;dense_cut_rank&#x27;:output[&#x27;dense_original_middle_cut_rank_sum&#x27;]}))
+</pre><p><a href="../assets/78f51f3e07a95351e6186cc7ef95db4a0c10fe0e19bfbb74782328e07211956b.py">Exact original bytes</a></p></html>

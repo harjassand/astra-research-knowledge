@@ -1,0 +1,92 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c08_l05/diagnostics/mapping_torus_path.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c08_l05/diagnostics/mapping_torus_path.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Small floating diagnostic for the mapping-torus symmetric-space formulas.
+
+This checks explicit smooth determinant-one paths over a hyperbolic torus
+mapping torus. It does not verify the general cocycle theorem, entropy formula,
+CAT(0) stability argument, or any numerical error bound.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import json
+import math
+
+
+LAMBDA = (3.0 + math.sqrt(5.0)) / 2.0
+H = math.log(LAMBDA)
+
+
+def values(t: float, amp_u: float, amp_v: float) -&gt; tuple[float, float]:
+    angle = 2.0 * math.pi * t
+    u = amp_u * math.sin(angle)
+    up = 2.0 * math.pi * amp_u * math.cos(angle)
+    v = amp_v * math.sin(angle)
+    vp = 2.0 * math.pi * amp_v * math.cos(angle)
+    g11 = math.exp(2.0 * H * t + u)
+    g12 = v
+    g22 = math.exp(-2.0 * H * t - u) * (1.0 + v * v)
+    g11p = g11 * (2.0 * H + up)
+    g12p = vp
+    g22p = g22 * (-2.0 * H - up + 2.0 * v * vp / (1.0 + v * v))
+
+    # Since det(G)=1, G^{-1}=[[g22,-g12],[-g12,g11]].
+    c11 = g22 * g11p - g12 * g12p
+    c12 = g22 * g12p - g12 * g22p
+    c21 = -g12 * g11p + g11 * g12p
+    # C=G^{-1}Gdot has trace zero; its eigenvalues are +/-2s.
+    kappa2 = c11 * c11 + c12 * c21
+    if kappa2 &lt; -1.0e-10:
+        raise ArithmeticError(f&quot;negative squared eigenvalue at t={t}: {kappa2}&quot;)
+    s = 0.5 * math.sqrt(max(0.0, kappa2))
+    axis_distance = math.asinh(abs(g12))
+    return s, axis_distance
+
+
+def simpson(fn, n: int = 40000) -&gt; float:
+    if n % 2:
+        raise ValueError(&quot;Simpson grid size must be even&quot;)
+    h = 1.0 / n
+    total = fn(0.0) + fn(1.0)
+    total += 4.0 * sum(fn(j * h) for j in range(1, n, 2))
+    total += 2.0 * sum(fn(j * h) for j in range(2, n, 2))
+    return total * h / 3.0
+
+
+def run_case(amp_u: float, amp_v: float) -&gt; dict[str, float | bool]:
+    speed_mean = simpson(lambda t: values(t, amp_u, amp_v)[0])
+    work_ratio = simpson(lambda t: values(t, amp_u, amp_v)[0] ** 2)
+    defect = work_ratio - H * H
+    excess = 2.0 * (speed_mean - H)
+    variance_about_H = simpson(lambda t: (values(t, amp_u, amp_v)[0] - H) ** 2)
+    max_axis_distance = max(values(j / 20000.0, amp_u, amp_v)[1] for j in range(20001))
+    cat_tube_bound = math.sqrt(max(0.0, H * excess + excess * excess / 4.0))
+    return {
+        &quot;amp_u&quot;: amp_u,
+        &quot;amp_v&quot;: amp_v,
+        &quot;H&quot;: H,
+        &quot;mean_s&quot;: speed_mean,
+        &quot;integral_s_squared&quot;: work_ratio,
+        &quot;power_defect_D&quot;: defect,
+        &quot;path_length_excess_epsilon&quot;: excess,
+        &quot;integral_(s-H)^2&quot;: variance_about_H,
+        &quot;max_distance_to_Sol_axis&quot;: max_axis_distance,
+        &quot;CAT0_tube_bound&quot;: cat_tube_bound,
+        &quot;checks&quot;: {
+            &quot;mean_s_ge_H&quot;: speed_mean + 1.0e-10 &gt;= H,
+            &quot;D_ge_H_epsilon_plus_epsilon2_over4&quot;: defect + 1.0e-9 &gt;= H * excess + excess * excess / 4.0,
+            &quot;variance_identity&quot;: abs(defect - H * excess - variance_about_H) &lt; 2.0e-7,
+            &quot;axis_distance_within_CAT0_bound&quot;: max_axis_distance &lt;= cat_tube_bound + 1.0e-6,
+            &quot;axis_distance_within_sqrt_defect&quot;: max_axis_distance &lt;= math.sqrt(max(0.0, defect)) + 1.0e-6,
+        },
+    }
+
+
+def main() -&gt; None:
+    cases = [run_case(0.0, 0.0), run_case(0.03, 0.02), run_case(0.10, 0.06)]
+    print(json.dumps({&quot;status&quot;: &quot;PASS&quot; if all(all(c[&quot;checks&quot;].values()) for c in cases) else &quot;FAIL&quot;,
+                      &quot;diagnostic_scope&quot;: &quot;floating Simpson quadrature, sampled axis distance; not a proof or certified numerical bound&quot;,
+                      &quot;cases&quot;: cases}, indent=2, sort_keys=True))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/67b21d63037433a37a87e8abc83b97ebf3b23a0ba5a7321414d67395c0a55bd7.py">Exact original bytes</a></p></html>

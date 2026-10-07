@@ -1,0 +1,234 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c07_s01/revisions/axial5over4/independent_delta5over4_verifier.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c07_s01/revisions/axial5over4/independent_delta5over4_verifier.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Independent exact verifier of C07_S02&#x27;s finite delta=5/4 certificates. Adapted by C07_S01 from C02_S01&#x27;s frozen verifier.
+
+No author code is imported or executed. Input exp enclosures are reacquired by
+positive Taylor sums for exp(x/64), a geometric tail, reciprocal and exact
+64th powers. LDL is checked by unrounded Fraction interval inclusions against
+every saved pivot and lower-triangular entry, using the saved previously
+verified entries only. All mathematical comparisons are exact rational ones.
+&quot;&quot;&quot;
+from copy import deepcopy
+from datetime import datetime, timezone
+from fractions import Fraction as Q
+from hashlib import sha256
+from pathlib import Path
+import argparse
+import json
+import math
+import time
+
+OWN = Path(__file__).resolve().parent
+ROOT = OWN.parents[4]
+SOURCE = ROOT / &quot;work/cycle6/c07_s02/phase2/evidence/axial_delta5over4_finite_N63_P384.json&quot;
+EXPECTED_SOURCE_HASH = &quot;f54fb418fbfbc73dc71458cb4da01aad0c98935de972ffd8d6474714bc357fb8&quot;
+
+
+def require(condition, message):
+    if not condition:
+        raise ValueError(message)
+
+
+def read_interval(pair, denominator):
+    require(isinstance(pair, list) and len(pair) == 2, &quot;invalid interval shape&quot;)
+    require(all(isinstance(x, str) and str(int(x)) == x for x in pair),
+            &quot;interval endpoints must be canonical integer strings&quot;)
+    result = tuple(Q(int(x), denominator) for x in pair)
+    require(result[0] &lt;= result[1], &quot;interval endpoints reversed&quot;)
+    return result
+
+
+def add(a, b):
+    return a[0] + b[0], a[1] + b[1]
+
+
+def subtract(a, b):
+    return a[0] - b[1], a[1] - b[0]
+
+
+def multiply(a, b):
+    corners = [x * y for x in a for y in b]
+    return min(corners), max(corners)
+
+
+def square(a):
+    ends = [a[0] ** 2, a[1] ** 2]
+    return (Q(0) if a[0] &lt;= 0 &lt;= a[1] else min(ends)), max(ends)
+
+
+def divide(a, b):
+    require(b[0] &gt; 0, &quot;division denominator not proved positive&quot;)
+    corners = [x / y for x in a for y in b]
+    return min(corners), max(corners)
+
+
+def contains(outer, inner):
+    return outer[0] &lt;= inner[0] &lt;= inner[1] &lt;= outer[1]
+
+
+def exact_exp_minus_bounds(x):
+    &quot;&quot;&quot;Reacquire exp(-x), independently of saved alternating-series metadata.
+
+    For z=x/64 &lt;=315/1024 and M=80, let S=sum_{j=0}^M z^j/j!.
+    The positive remaining terms have successive ratio &lt;=z/(M+2), so
+      S &lt;= exp(z) &lt;= S + [z^(M+1)/(M+1)!]/[1-z/(M+2)].
+    Reciprocation and exact 64th powers enclose exp(-x). No dyadic rounding is
+    done in this acquisition, so it differs from the candidate algorithm.
+    &quot;&quot;&quot;
+    require(0 &lt;= x &lt;= Q(315, 16), &quot;input exponent outside declared finite scope&quot;)
+    if x == 0:
+        return Q(1), Q(1)
+    z = x / 64
+    total = term = Q(1)
+    degree = 80
+    for j in range(1, degree + 1):
+        term *= z / j
+        total += term
+    next_term = term * z / (degree + 1)
+    ratio = z / (degree + 2)
+    require(0 &lt; ratio &lt; 1, &quot;invalid geometric positive-series tail&quot;)
+    upper = total + next_term / (1 - ratio)
+    return (1 / upper) ** 64, (1 / total) ** 64
+
+
+def check_matrix(N, matrix, q, D):
+    shift = matrix[&quot;shift&quot;]
+    require(shift in (0, 1), &quot;wrong Hankel shift&quot;)
+    dimension = (N - shift) // 2 + 1
+    require(matrix[&quot;dimension&quot;] == dimension, &quot;wrong Hankel dimension&quot;)
+    require(len(matrix[&quot;diagonal_intervals&quot;]) == dimension, &quot;missing pivots&quot;)
+    require(len(matrix[&quot;L_strict_lower_intervals&quot;]) == dimension, &quot;missing L rows&quot;)
+    diagonal = [read_interval(x, D) for x in matrix[&quot;diagonal_intervals&quot;]]
+    lower = []
+    for i, row in enumerate(matrix[&quot;L_strict_lower_intervals&quot;]):
+        require(len(row) == i, &quot;missing or excess strict-lower entries&quot;)
+        lower.append([read_interval(x, D) for x in row])
+    checked_lower = 0
+    for i in range(dimension):
+        require(diagonal[i][0] &gt; 0, f&quot;nonpositive lower pivot N={N} shift={shift} i={i}&quot;)
+        recurrence = q[2 * i + shift]
+        for k in range(i):
+            recurrence = subtract(recurrence, multiply(square(lower[i][k]), diagonal[k]))
+        require(contains(diagonal[i], recurrence),
+                f&quot;pivot recurrence not enclosed N={N} shift={shift} i={i}&quot;)
+        for j in range(i + 1, dimension):
+            numerator = q[j + i + shift]
+            for k in range(i):
+                term = multiply(multiply(lower[j][k], lower[i][k]), diagonal[k])
+                numerator = subtract(numerator, term)
+            recurrence = divide(numerator, diagonal[i])
+            require(contains(lower[j][i], recurrence),
+                    f&quot;L recurrence not enclosed N={N} shift={shift} j={j} i={i}&quot;)
+            checked_lower += 1
+    saved_min = int(matrix[&quot;minimum_lower_pivot_integer&quot;])
+    require(saved_min == min(int(x[0]) for x in matrix[&quot;diagonal_intervals&quot;]),
+            &quot;incorrect declared minimum pivot&quot;)
+    return {&quot;N&quot;: N, &quot;shift&quot;: shift, &quot;dimension&quot;: dimension,
+            &quot;verified_pivots&quot;: dimension, &quot;verified_strict_lower_entries&quot;: checked_lower,
+            &quot;minimum_lower_pivot_integer&quot;: str(saved_min)}
+
+
+def verify(data, stop_N=None):
+    require(data[&quot;delta&quot;] == &quot;5/4&quot;, &quot;wrong target delta&quot;)
+    require(data[&quot;precision_bits&quot;] == 384, &quot;unexpected precision&quot;)
+    D = 2 ** 384
+    require(data[&quot;denominator&quot;] == str(D), &quot;wrong interval denominator&quot;)
+    require(data[&quot;max_N_requested&quot;] == data[&quot;completed_max_N&quot;] == 63,
+            &quot;finite case split does not close through N=63&quot;)
+    require([case[&quot;N&quot;] for case in data[&quot;cases&quot;]] == list(range(2, 64)),
+            &quot;finite cases missing, repeated, or reordered&quot;)
+    reports = []
+    acquired_inputs = 0
+    cache = {}
+    for case in data[&quot;cases&quot;]:
+        N = case[&quot;N&quot;]
+        if stop_N is not None and N &gt; stop_N:
+            break
+        require(len(case[&quot;q_intervals&quot;]) == N + 1, &quot;missing q input intervals&quot;)
+        q = [read_interval(x, D) for x in case[&quot;q_intervals&quot;]]
+        for k, saved in enumerate(q):
+            exponent = Q(5, 4) * Q((2 * k - N) ** 2, 4 * N)
+            if exponent not in cache:
+                cache[exponent] = exact_exp_minus_bounds(exponent)
+            binomial = math.comb(N, k)
+            independently_acquired = tuple(x / binomial for x in cache[exponent])
+            require(contains(saved, independently_acquired),
+                    f&quot;input exp/binomial enclosure false N={N} k={k}&quot;)
+            acquired_inputs += 1
+        if N % 8 == 0:
+            print(json.dumps({&quot;progress_N&quot;: N, &quot;acquired_q&quot;: acquired_inputs}), flush=True)
+        require([m[&quot;shift&quot;] for m in case[&quot;matrices&quot;]] == [0, 1],
+                &quot;missing or repeated H0/H1&quot;)
+        for matrix in case[&quot;matrices&quot;]:
+            reports.append(check_matrix(N, matrix, q, D))
+    return {&quot;verified_input_q_intervals&quot;: acquired_inputs,
+            &quot;distinct_independently_acquired_exponents&quot;: len(cache),
+            &quot;verified_matrices&quot;: len(reports),
+            &quot;verified_pivots&quot;: sum(x[&quot;verified_pivots&quot;] for x in reports),
+            &quot;verified_strict_lower_entries&quot;: sum(x[&quot;verified_strict_lower_entries&quot;] for x in reports),
+            &quot;matrix_reports&quot;: reports,
+            &quot;minimum_global_lower_pivot_integer&quot;: min((x[&quot;minimum_lower_pivot_integer&quot;]
+                                                        for x in reports), key=int)}
+
+
+from independent_tail_constants import rational_constant_checks
+
+
+def rejection_controls(data):
+    controls = []
+    altered = deepcopy(data)
+    altered[&quot;delta&quot;] = &quot;1&quot;
+    controls.append((&quot;wrong delta target&quot;, altered))
+    altered = deepcopy(data)
+    altered[&quot;cases&quot;][0][&quot;q_intervals&quot;][1] = [str(2 ** 384), str(2 ** 384)]
+    controls.append((&quot;false exact central input q&quot;, altered))
+    altered = deepcopy(data)
+    altered[&quot;cases&quot;][0][&quot;matrices&quot;][0][&quot;diagonal_intervals&quot;][1] = [&quot;1&quot;, &quot;1&quot;]
+    controls.append((&quot;positive but false LDL pivot interval&quot;, altered))
+    altered = deepcopy(data)
+    altered[&quot;cases&quot;][0][&quot;matrices&quot;][0][&quot;L_strict_lower_intervals&quot;][1][0] = [&quot;0&quot;, &quot;0&quot;]
+    controls.append((&quot;false lower-triangular recurrence interval&quot;, altered))
+    altered = deepcopy(data)
+    altered[&quot;cases&quot;].pop()
+    controls.append((&quot;missing finite case N63&quot;, altered))
+    result = []
+    for name, mutated in controls:
+        try:
+            verify(mutated, stop_N=2)
+        except ValueError as error:
+            result.append({&quot;control&quot;: name, &quot;status&quot;: &quot;REJECTED&quot;, &quot;reason&quot;: str(error)})
+        else:
+            raise ValueError(f&quot;corrupted certificate accepted: {name}&quot;)
+    return result
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument(&quot;--certificate&quot;, type=Path, default=SOURCE)
+    args = ap.parse_args()
+    start = time.perf_counter()
+    raw = args.certificate.read_bytes()
+    require(sha256(raw).hexdigest() == EXPECTED_SOURCE_HASH, &quot;certificate changed from inspected source&quot;)
+    data = json.loads(raw)
+    result = {&quot;status&quot;: &quot;PASS independent exact rational verification&quot;,
+              &quot;certificate_path&quot;: str(args.certificate.resolve()),
+              &quot;certificate_sha256&quot;: sha256(raw).hexdigest(),
+              &quot;verifier_sha256&quot;: sha256(Path(__file__).read_bytes()).hexdigest(),
+              &quot;input_method&quot;: &quot;positive Taylor exp(x/64) through degree80, exact geometric tail, reciprocal and exact 64th powers&quot;,
+              &quot;LDL_method&quot;: &quot;unrounded Fraction interval recurrence inclusion for every saved entry, no author execution/import&quot;,
+              &quot;scope&quot;: &quot;delta=5/4, N2..63 exact input and PSD certificates; uniform N&gt;=64 is separately reconstructed in owned audit&quot;,
+              &quot;utc&quot;: datetime.now(timezone.utc).isoformat(),
+              &quot;adapted_source&quot;: &quot;work/cycle6/c02_s01/axial/independent_delta1_verifier.py&quot;,
+              &quot;adapted_source_sha256&quot;: &quot;3e62034789ebdd0cc9de0a52e743430077e6356cfaa075bfc9d170075c81892c&quot;,
+              &quot;rational_analytic_constants&quot;: rational_constant_checks()}
+    result.update(verify(data))
+    result[&quot;rejection_controls&quot;] = rejection_controls(data)
+    result[&quot;wall_seconds&quot;] = time.perf_counter() - start
+    output = OWN / &quot;INDEPENDENT_DELTA5OVER4_CERTIFICATE_VERIFY.json&quot;
+    output.write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+    print(json.dumps({k: result[k] for k in (&quot;status&quot;, &quot;verified_input_q_intervals&quot;, &quot;verified_matrices&quot;,
+          &quot;verified_pivots&quot;, &quot;verified_strict_lower_entries&quot;, &quot;wall_seconds&quot;)}, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/8f05ca344ccb752766028a832c89d2b3a765f88dc888d46417ebbe351b5c8d9d.py">Exact original bytes</a></p></html>

@@ -1,0 +1,104 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c05_s03/revisions/system_obstruction_checks.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c05_s03/revisions/system_obstruction_checks.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Bounded diagnostics for the full operator-system ball obstruction.&quot;&quot;&quot;
+from fractions import Fraction
+from pathlib import Path
+import itertools
+import json
+import math
+import numpy as np
+
+
+def factorization(n):
+    assert n % 2 == 0
+    return [[(n-1,f)] + [((f+k)%(n-1),(f-k)%(n-1))
+            for k in range(1,n//2)] for f in range(n-1)]
+
+
+def exact_combinatorics(n):
+    flags = factorization(n)
+    edges = [tuple(sorted(e)) for f in flags for e in f]
+    assert len(set(edges)) == n*(n-1)//2
+    assert sorted(edges) == list(itertools.combinations(range(n),2))
+    c = [Fraction((-1)**i*(i+1),n+1) for i in range(n)]
+    d = [Fraction((i*i+3) % (n+2),n+2) for i in range(n)]
+    flags_wedge = sum((c[i]*d[j]-c[j]*d[i])**2 for flag in flags for i,j in flag)
+    all_wedge = sum((c[i]*d[j]-c[j]*d[i])**2 for i,j in itertools.combinations(range(n),2))
+    lagrange = sum(x*x for x in c)*sum(x*x for x in d)-sum(x*y for x,y in zip(c,d))**2
+    assert flags_wedge == all_wedge == lagrange
+    return {&quot;n&quot;:n,&quot;flags&quot;:len(flags),&quot;all_pairs_once&quot;:True,
+            &quot;wedge_squared&quot;:str(all_wedge),&quot;lagrange_identity&quot;:True,
+            &quot;Hilbert_dimension_symbolic&quot;:f&quot;{n-1} * 2^{n//2}&quot;,
+            &quot;system_commutator_supremum&quot;:2/math.sqrt(n-1),
+            &quot;EB_restricted_identity_error&quot;:.5,
+            &quot;UCP_frame_preimage_L2_error_floor&quot;:(3-math.sqrt(5))/4}
+
+
+def tensor_at(a,pos,k):
+    r = np.array([[1]],dtype=complex)
+    for j in range(k):
+        r = np.kron(r,a if j==pos else np.eye(2))
+    return r
+
+
+def blocks(n):
+    x = np.array([[0,1],[1,0]],dtype=complex)
+    z = np.diag([1,-1]).astype(complex)
+    out = []
+    for flag in factorization(n):
+        ops = [None]*n
+        for pos,(i,j) in enumerate(flag):
+            i,j = sorted((i,j))
+            ops[i]=tensor_at(x,pos,n//2)
+            ops[j]=tensor_at(z,pos,n//2)
+        out.append(ops)
+    return out
+
+
+def matrix_suite(n):
+    bs=blocks(n); size=2**(n//2)
+    rng=np.random.default_rng(7075305+n)
+    max_comm_formula_error=0.0
+    max_norm_formula_error=0.0
+    max_product_projection=0.0
+    max_sampled_numerical_range=0.0
+    for _ in range(12):
+        c=rng.normal(size=n); d=rng.normal(size=n)
+        predicted=4/(n-1)*(np.dot(c,c)*np.dot(d,d)-np.dot(c,d)**2)
+        observed=0.0
+        predicted_norm=max(sum(math.hypot(c[i],c[j]) for i,j in f) for f in factorization(n))
+        observed_norm=0.0
+        for ops in bs:
+            a=sum(t*op for t,op in zip(c,ops)); b=sum(t*op for t,op in zip(d,ops))
+            comm=a@b-b@a
+            observed+=float(np.linalg.norm(comm,&#x27;fro&#x27;)**2/size)/(n-1)
+            observed_norm=max(observed_norm,float(np.linalg.norm(a,2)))
+            vec=rng.normal(size=size)+1j*rng.normal(size=size); vec/=np.linalg.norm(vec)
+            score=sum(float(np.vdot(vec,op@vec).real)**2 for op in ops)
+            max_sampled_numerical_range=max(max_sampled_numerical_range,score)
+            assert score &lt;= n/2+1e-10
+        max_comm_formula_error=max(max_comm_formula_error,abs(predicted-observed))
+        max_norm_formula_error=max(max_norm_formula_error,abs(predicted_norm-observed_norm))
+    for i,j in itertools.combinations(range(n),2):
+        for k in range(n):
+            projection=sum(np.trace(ops[k]@(ops[i]@ops[j]))/size for ops in bs)/(n-1)
+            max_product_projection=max(max_product_projection,abs(projection))
+        scalar=sum(np.trace(ops[i]@ops[j])/size for ops in bs)/(n-1)
+        max_product_projection=max(max_product_projection,abs(scalar))
+    assert max_comm_formula_error&lt;1e-10
+    assert max_norm_formula_error&lt;1e-10
+    assert max_product_projection&lt;1e-10
+    return {&quot;n&quot;:n,&quot;materialized_block_dimension&quot;:size,&quot;block_count&quot;:n-1,
+            &quot;commutator_formula_max_error&quot;:max_comm_formula_error,
+            &quot;norm_formula_max_error&quot;:max_norm_formula_error,
+            &quot;product_to_system_projection_max&quot;:float(max_product_projection),
+            &quot;sampled_numerical_range_max&quot;:max_sampled_numerical_range,
+            &quot;numerical_range_proved_upper&quot;:n/2}
+
+
+if __name__==&#x27;__main__&#x27;:
+    report={&quot;exact_combinatorics&quot;:[exact_combinatorics(n) for n in [4,6,8,20,100]],
+            &quot;small_matrix_diagnostics&quot;:[matrix_suite(n) for n in [4,6]],
+            &quot;scope&quot;:&quot;Exact pair-cover/wedge identities plus small floating matrix checks; no full growing matrices or generic channel optimization&quot;}
+    path=Path(__file__).with_name(&#x27;system_obstruction_checks.json&#x27;)
+    path.write_text(json.dumps(report,indent=2))
+    print(json.dumps(report,indent=2))
+</pre><p><a href="../assets/03fcbfff7124fea554b4439ae3c08dd46da05793185cacbf1d0441829a76aea9.py">Exact original bytes</a></p></html>

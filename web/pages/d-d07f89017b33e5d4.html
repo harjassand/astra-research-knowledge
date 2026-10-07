@@ -1,0 +1,228 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c01_l07/revisions/r1_ring_mh_bottleneck.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c01_l07/revisions/r1_ring_mh_bottleneck.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact bit-precision bottleneck for a one-pair Metropolis kernel.&quot;&quot;&quot;
+
+from __future__ import annotations
+
+from fractions import Fraction
+from itertools import combinations
+import json
+from pathlib import Path
+
+
+def det_fraction(a: list[list[Fraction]]) -&gt; Fraction:
+    n = len(a)
+    if n == 0:
+        return Fraction(1)
+    m = [row[:] for row in a]
+    sign = 1
+    result = Fraction(1)
+    for col in range(n):
+        pivot_row = next((r for r in range(col, n) if m[r][col]), None)
+        if pivot_row is None:
+            return Fraction(0)
+        if pivot_row != col:
+            m[col], m[pivot_row] = m[pivot_row], m[col]
+            sign = -sign
+        pivot = m[col][col]
+        result *= pivot
+        for r in range(col + 1, n):
+            factor = m[r][col] / pivot
+            for c in range(col + 1, n):
+                m[r][c] -= factor * m[col][c]
+            m[r][col] = Fraction(0)
+    return sign * result
+
+
+def ring_matrix(n: int, delta: Fraction) -&gt; list[list[Fraction]]:
+    f = [[Fraction(0) for _ in range(n)] for _ in range(n)]
+    for i in range(n):
+        f[i][(i + 1) % n] = Fraction(1)
+        f[i][(i - 1) % n] = delta
+    return f
+
+
+def exact_determinants(f: list[list[Fraction]]) -&gt; tuple[list[tuple[int, ...]], dict[tuple[int, ...], Fraction]]:
+    n = len(f)
+    k = n // 2
+    all_states = list(combinations(range(n), k))
+    universe = set(range(n))
+    dets: dict[tuple[int, ...], Fraction] = {}
+    for state in all_states:
+        complement = sorted(universe.difference(state))
+        minor = [[f[i][j] for j in complement] for i in state]
+        d = det_fraction(minor)
+        if d:
+            dets[state] = d
+    return all_states, dets
+
+
+def one_swap_kernel(
+    all_states: list[tuple[int, ...]],
+    dets: dict[tuple[int, ...], Fraction],
+    exchange_radius: int,
+) -&gt; tuple[list[tuple[int, ...]], dict[tuple[int, ...], Fraction], list[list[Fraction]]]:
+    support = list(dets)
+    weights = {s: dets[s] ** 2 for s in support}
+    k = len(support[0])
+    from math import comb
+
+    degree = comb(k, exchange_radius) ** 2
+    q = [[Fraction(0) for _ in support] for _ in support]
+    support_index = {s: i for i, s in enumerate(support)}
+    for i, state in enumerate(support):
+        state_set = set(state)
+        outgoing = Fraction(0)
+        for proposed in all_states:
+            if proposed == state or len(state_set.difference(proposed)) != exchange_radius:
+                continue
+            j = support_index.get(proposed)
+            if j is None:
+                continue
+            acceptance = min(Fraction(1), weights[proposed] / weights[state])
+            q[i][j] = acceptance / degree
+            outgoing += q[i][j]
+        q[i][i] = 1 - outgoing
+    z = sum(weights.values())
+    for i, a in enumerate(support):
+        for j, b in enumerate(support):
+            assert weights[a] * q[i][j] == weights[b] * q[j][i]
+    return support, weights, q
+
+
+def pair_kernel(q: list[list[Fraction]]) -&gt; list[list[Fraction]]:
+    m = len(q)
+    states = [(i, j) for i in range(m) for j in range(m)]
+    index = {s: i for i, s in enumerate(states)}
+    p = [[Fraction(0) for _ in states] for _ in states]
+    for r, (i, j) in enumerate(states):
+        for ii in range(m):
+            p[r][index[(ii, j)]] += q[i][ii] / 3
+        for jj in range(m):
+            p[r][index[(i, jj)]] += q[j][jj] / 3
+        p[r][index[(j, i)]] += Fraction(1, 3)
+    return p
+
+
+def dirichlet(p: list[list[Fraction]], mu: list[Fraction], values: list[Fraction]) -&gt; Fraction:
+    return sum(
+        mu[i] * p[i][j] * (values[i] - values[j]) ** 2 / 2
+        for i in range(len(p))
+        for j in range(len(p))
+    )
+
+
+def connected(support: list[tuple[int, ...]]) -&gt; bool:
+    unseen = set(support)
+    todo = [unseen.pop()]
+    while todo:
+        state = set(todo.pop())
+        for other in list(unseen):
+            if len(state.difference(other)) == 1:
+                unseen.remove(other)
+                todo.append(other)
+    return not unseen
+
+
+def run(b: int) -&gt; dict[str, object]:
+    n = 6
+    delta = Fraction(1, 2**b)
+    f = ring_matrix(n, delta)
+    all_states, dets = exact_determinants(f)
+    support = list(dets)
+    weights = {s: dets[s] ** 2 for s in support}
+    assert len(all_states) == 20
+    assert len(support) == 14
+    assert connected(support)
+
+    even = {0, 2, 4}
+    sign = [Fraction(1 if len(set(s) &amp; even) &gt;= 2 else -1) for s in support]
+    z = sum(weights.values())
+    pi = [weights[s] / z for s in support]
+    mean = sum(p * x for p, x in zip(pi, sign))
+    variance = sum(p * (x - mean) ** 2 for p, x in zip(pi, sign))
+    assert mean == 0 and variance == 1
+    expected_z = 2 * (1 + delta**3) ** 2 + 6 * delta**2 + 6 * delta**4
+    assert z == expected_z
+
+    kernel_results = {}
+    pi_pair = [pi[i] * pi[j] for i in range(len(support)) for j in range(len(support))]
+    values_pair = [sign[i] + sign[j] for i in range(len(support)) for j in range(len(support))]
+    for radius in (1, 2):
+        _, _, q = one_swap_kernel(all_states, dets, radius)
+        one_energy = dirichlet(q, pi, sign)
+        p_pair = pair_kernel(q)
+        pair_energy = dirichlet(p_pair, pi_pair, values_pair)
+        assert pair_energy == Fraction(2, 3) * one_energy
+        cross_min = Fraction(0)
+        cross_count = 0
+        cross_weight_counts = {&quot;delta2&quot;: 0, &quot;delta4&quot;: 0}
+        for i, a in enumerate(support):
+            for j in range(i + 1, len(support)):
+                c = support[j]
+                if len(set(a).difference(c)) != radius or sign[i] == sign[j]:
+                    continue
+                cross_count += 1
+                contribution = min(weights[a], weights[c])
+                cross_min += contribution
+                if contribution == delta**2:
+                    cross_weight_counts[&quot;delta2&quot;] += 1
+                elif contribution == delta**4:
+                    cross_weight_counts[&quot;delta4&quot;] += 1
+                else:
+                    raise AssertionError((radius, a, c, contribution))
+        degree = 3**2  # binom(3,radius)^2 for both radius 1 and 2.
+        assert one_energy == Fraction(4) * cross_min / (degree * z)
+        energy_constant_lower = 1 / pair_energy
+        kernel_results[str(radius)] = {
+            &quot;candidate_neighbor_count&quot;: degree,
+            &quot;crossing_edges&quot;: cross_count,
+            &quot;crossing_min_weight_counts&quot;: cross_weight_counts,
+            &quot;crossing_min_weight_sum&quot;: {&quot;numerator&quot;: str(cross_min.numerator), &quot;denominator&quot;: str(cross_min.denominator)},
+            &quot;one_replica_rayleigh_quotient&quot;: {&quot;numerator&quot;: str(one_energy.numerator), &quot;denominator&quot;: str(one_energy.denominator)},
+            &quot;one_replica_gap_upper_bound&quot;: {&quot;numerator&quot;: str(one_energy.numerator), &quot;denominator&quot;: str(one_energy.denominator)},
+            &quot;two_replica_additive_energy&quot;: {&quot;numerator&quot;: str(pair_energy.numerator), &quot;denominator&quot;: str(pair_energy.denominator)},
+            &quot;two_replica_L_lower_bound&quot;: {&quot;numerator&quot;: str(energy_constant_lower.numerator), &quot;denominator&quot;: str(energy_constant_lower.denominator)},
+        }
+    assert kernel_results[&quot;1&quot;][&quot;crossing_edges&quot;] == 18
+    assert kernel_results[&quot;1&quot;][&quot;crossing_min_weight_counts&quot;] == {&quot;delta2&quot;: 3, &quot;delta4&quot;: 15}
+    assert kernel_results[&quot;1&quot;][&quot;crossing_min_weight_sum&quot;] == {&quot;numerator&quot;: str((3*delta**2+15*delta**4).numerator), &quot;denominator&quot;: str((3*delta**2+15*delta**4).denominator)}
+    assert kernel_results[&quot;2&quot;][&quot;crossing_edges&quot;] == 24
+    assert kernel_results[&quot;2&quot;][&quot;crossing_min_weight_counts&quot;] == {&quot;delta2&quot;: 12, &quot;delta4&quot;: 12}
+    assert kernel_results[&quot;2&quot;][&quot;crossing_min_weight_sum&quot;] == {&quot;numerator&quot;: str((12*delta**2+12*delta**4).numerator), &quot;denominator&quot;: str((12*delta**2+12*delta**4).denominator)}
+    assert Fraction(int(kernel_results[&quot;1&quot;][&quot;two_replica_L_lower_bound&quot;][&quot;numerator&quot;]), int(kernel_results[&quot;1&quot;][&quot;two_replica_L_lower_bound&quot;][&quot;denominator&quot;])) &gt;= Fraction(1) / delta**2
+    assert Fraction(int(kernel_results[&quot;2&quot;][&quot;two_replica_L_lower_bound&quot;][&quot;numerator&quot;]), int(kernel_results[&quot;2&quot;][&quot;two_replica_L_lower_bound&quot;][&quot;denominator&quot;])) &gt;= Fraction(9, 20) / delta**2
+
+    return {
+        &quot;delta&quot;: f&quot;1/2^{b}&quot;,
+        &quot;delta_fraction&quot;: {&quot;numerator&quot;: str(delta.numerator), &quot;denominator&quot;: str(delta.denominator)},
+        &quot;input_bits_per_nonzero_entry&quot;: b + 1,
+        &quot;matrix_dimension&quot;: n,
+        &quot;candidate_configurations&quot;: len(all_states),
+        &quot;supported_configurations&quot;: len(support),
+        &quot;support_graph_connected_under_one_swap&quot;: True,
+        &quot;pair_state_count&quot;: len(support) ** 2,
+        &quot;partition_function&quot;: {&quot;numerator&quot;: str(z.numerator), &quot;denominator&quot;: str(z.denominator)},
+        &quot;kernel_by_exchange_radius&quot;: kernel_results,
+        &quot;simple_L1_lower_bound&quot;: f&quot;1/delta^2 = {str((Fraction(1)/delta**2).numerator)}/{str((Fraction(1)/delta**2).denominator)}&quot;,
+        &quot;simple_L2_lower_bound&quot;: f&quot;9/(20*delta^2) = {str((Fraction(9,20)/delta**2).numerator)}/{str((Fraction(9,20)/delta**2).denominator)}&quot;,
+    }
+
+
+def main() -&gt; None:
+    cases = [run(b) for b in range(1, 13)]
+    out = {
+        &quot;status&quot;: &quot;PASS&quot;,
+        &quot;arithmetic&quot;: &quot;exact Fractions and exact rational Gaussian elimination&quot;,
+        &quot;matrix_family&quot;: &quot;n=6; F[i,i+1]=1 and F[i,i-1]=delta cyclically&quot;,
+        &quot;kernel&quot;: &quot;exactly t selected/unselected label swaps with Metropolis acceptance for t=1,2; pair kernel adds independent coordinate updates and whole-layer swap&quot;,
+        &quot;claim_scope&quot;: &quot;exact n=6 input-bit bottleneck for these local MH kernels; no universal-kernel lower bound&quot;,
+        &quot;cases&quot;: cases,
+    }
+    target = Path(__file__).with_name(&quot;r1_ring_mh_bottleneck_result.json&quot;)
+    target.write_text(json.dumps(out, indent=2) + &quot;\n&quot;)
+    print(json.dumps(out, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/c7bcc34c5f90ba6506342ad5d5fe1510c5d2cebb7bcb81842cc3c3b7c59c74be.py">Exact original bytes</a></p></html>

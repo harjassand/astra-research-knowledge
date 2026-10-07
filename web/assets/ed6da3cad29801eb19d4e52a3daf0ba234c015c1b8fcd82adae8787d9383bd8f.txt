@@ -1,0 +1,188 @@
+ACQUIRED FINITE-FRONTIER TRANSFER WITH EXTENSIVE PAIR NUMBER
+c02_s01. Independent continuation after immutable INITIAL, 7 October 2026.
+
+RESULT / EXACT INTERFACE
+Given an explicit rational-complex n-by-n F in the supplied site order, acquire
+ b=max{|i-j| : i!=j, Fij!=0}, with b=0 if that set is empty.
+Let w=min(n,b+1). All coefficients
+ c_k=sum_{I,J disjoint, |I|=|J|=k}|det F[I,J]|^2
+are computed exactly, including arbitrary sitewise allowed subsets of
+{empty,row,column} and nonnegative rational row/column activities, using
+ O(n^2 (b+1)16^w) rational-complex field operations and
+ O(n16^w+n^2) field/input storage. The n^2 scan to acquire bandwidth is included.
+For a supplied canonical sector k, retaining only sectors<=k reduces transfer
+work to O(n(b+1)(k+1)16^w), in addition to the input scan.
+An exact self-reduction sampler is implemented, recomputing at most3 branch
+counts per site. Its all-sector or canonical worst-case operation bound is
+ O(n^3(b+1)16^w), with expected polynomial random-bit overhead per call.
+No coefficient, ratio, mixing or phase oracle is supplied. No inverse sector
+probability appears. Each arithmetic operation has polynomial input bit cost.
+Thus b<=C log n for fixed public C admits exact polynomial-bit counting and
+expected-polynomial-bit sampling. The bound does not limit active pair number:
+k can equal floor(n/2) even when b is constant and rank F=n.
+
+The parameter is acquired in the supplied order; finding an optimal ordering
+is not part of the result. Diagonal entries are ignored exactly, because no
+disjoint minor uses Fii. Full-rank, non-monomial complex band matrices are
+admitted. Arbitrary dense matrices have b=Theta(n), making the bound
+exponential. This does not solve the general parity FPRAS or energy gate.
+
+AMPLITUDE IDENTITY
+Use fermionic creation modes a_i^dagger (row/up) and d_i^dagger (column/down),
+ordered by site: a_1,d_1,a_2,d_2,...,a_n,d_n. Put
+ Delta=sum_{i!=j} Fij a_i^dagger d_j^dagger,
+ |Psi>=exp(Delta)|vac>.
+Every summand is an even product of two creation operators. Two such summands
+commute: when they share a mode both products are zero; otherwise moving two
+creators past two others introduces sign(+1). Each summand squares to zero.
+Consequently
+ exp(Delta)=product_{i!=j}(1+Fij a_i^dagger d_j^dagger).       (1)
+The order in this finite product is arbitrary.
+
+For row set I and column set J of size k, expand Delta^k/k! and reorder into
+all row creators followed by all column creators, both in ascending indices.
+The k! orderings of a matching cancel the factorial. Moving the interleaved
+column creators past the later rows contributes(-1)^(k(k-1)/2). Reordering
+the matched column indices contributes the matching permutation sign, so
+the coefficient in that ordering is
+ (-1)^(k(k-1)/2) det F[I,J].                              (2)
+Changing to the site-ordered occupation basis adds another sign depending
+only on I,J. Thus its squared modulus is |det F[I,J]|^2.
+The hard local projection removes occupation of both modes at any site,
+leaving exactly disjoint I,J. It cannot produce an unbalanced row/column
+word: every creation term creates one of each. Including diagonal terms in
+Delta would not change projected amplitudes, since every such term creates
+both modes on one site and no subsequent creation can remove them.
+
+For local table S_i and activities r_i,c_i let a local diagonal weight be
+ d_i(empty)=1, d_i(row)=r_i, d_i(column)=c_i, d_i(both)=0,
+with zero weight for states not in S_i. The projected, activity-weighted norm
+then equals sum_k c_k, with the stated weighted version of c_k. This identity
+is exact and retains determinant interference. It is not a sum of positive
+matching weights or a postulated Gaussian approximation.
+
+FRONTIER SCHEDULE / PROOF
+Process sites a=0,...,n-1. Before tracing site a, apply all gates in(1) whose
+leftmost physical endpoint is a. They are
+ 1+F[a,j] a_a^dagger d_j^dagger and
+ 1+F[j,a] a_j^dagger d_a^dagger,
+for a<j<=min(n-1,a+b). There are at most2b such gates.
+Retain only the frontier sites a,...,min(n-1,a+b). The newly admitted rightmost
+site is vacuum: every earlier processed gate had both endpoints<=a+b-1.
+
+This procedure also handles fermionic signs exactly. In the site-ordered
+occupation tensor product, a creation operator carries the usual parity
+string on earlier modes. In a product of two creators on sites i,j, strings
+on sites strictly before min(i,j) appear twice and cancel. Hence its physical
+support is contained in the interval[min(i,j),max(i,j)]. Every future gate
+has min(i,j)>a and acts as identity on the traced site a. Thus applying the
+local weighted trace at a before those gates is legitimate, even though
+intermediate local gates are nonunitary. Pair gates can be reordered as in(1).
+An induction therefore identifies the frontier density tensor with the
+weighted partial trace of the processed part of |Psi><Psi|. At the final
+site, the remaining scalar is exactly the desired weighted projected norm.
+
+Track the number h of row occupations already traced. Partial trace requires
+the ket and bra occupation at a to agree, so h is the same on both layers.
+When that occupation is row, increment h; otherwise leave it unchanged.
+At the end h=k selects c_k. A cap h<=k can be imposed during the transfer
+because there is no annihilation and h cannot decrease. This computes the
+specified canonical sector directly, including a rare one.
+
+EXPLICIT LOCAL UPDATE / IMPLEMENTATION
+With w sites the frontier ket basis has4^w occupation bit strings; the density
+has16^w ket/bra entries. Each entry also carries h. The code's mode2t is row
+and mode2t+1 is column on relative frontier site t.
+Creating mode m on a bit string s is zero if it is occupied; otherwise it is
+ s -> s|(1<<m), sign=(-1)^(number of occupied modes below m).
+For K=a_up^dagger d_down^dagger, apply the down creator first and then the row
+creator. This supplies its exact matrix entry(+/-1), including direction.
+For T=1+fK update density as
+ D -> D+fKD+conj(f)DK^*+|f|^2 KDK^*.                       (3)
+Every old entry has at most4 output entries. Conjugation is only on the bra
+gate amplitude; (3) is an actual conjugate-transpose density update. This
+differs from the algebraic-transpose suffix dual in the low-rank algorithm.
+For the weighted trace at the first site, keep only entries with equal local
+ket/bra bit pair, kill the doubly occupied pair, multiply by its rational
+activity, remove the lowest two bits from both masks, and increment h for row.
+These are the literal updates in bandwidth_parity.py. Exact cancellation is
+retained in Gaussian-rational Fraction arithmetic; entries need not be
+termwise nonnegative. Positive final coefficients follow from(2) and the
+trace induction, and are asserted in the implementation.
+
+For a fixed prefix, restrict its tables to singleton choices. The three legal
+next-choice masses are computed by the same transfer. They are nonnegative
+rationals summing exactly to the current prefix mass. Rational integer draws
+select a branch with those probabilities. Telescoping gives precisely the
+activity times |det F[I,J]|^2 divided by the selected sector's total.
+Zero sectors are detected exactly. The sampler uses no rare-sector rejection.
+The integer rejection draw has acceptance at least1/2 and expected fewer than
+2 draws; its expected bit cost is polynomial. A fixed wall-time guarantee or
+coherent state-preparation circuit is not delivered.
+
+COST / BIT ACCOUNTING
+With h<=floor(n/2), there are at most(n+1)16^w density entries. Each of n
+stages applies at most2b gates and one weighted trace with constant arithmetic
+per entry. This proves the field-operation/storage bounds above. Keeping only
+h<=k replaces the n+1 factor in transfer work by k+1. The simple sampler makes
+at most3n+1 transfers and retains their existing dense input scan cost, giving
+the stated O(n^3(b+1)16^w) upper bound. It is not a cached frontier sampler.
+
+There are at most n(n-1) rational-complex pair amplitudes and n local rational
+activity factors. A common denominator obtained by multiplying the real and
+imaginary entry denominators twice, and all activity denominators, has
+polynomial input bit length. Every update term has denominator dividing this
+common denominator: a ket and bra can each use a given pair gate at most once,
+and each site weight is used at most once. Expanding all density updates gives
+at most4^(n(n-1)) times finitely many trace choices, whose logarithm is
+polynomial in n. Magnitudes are bounded by products of(1+|Fij|)^2 and local
+activities, so numerator bit lengths are also polynomial in total input
+encoding size. Intermediate cancellation does not require numerical tolerance.
+Exact integer branch probabilities have polynomial-bit denominators.
+The library uses Fraction gcd reduction. This is an arithmetic and bit-cost
+proof, not a physical energy or high-width performance benchmark.
+
+ACTUAL EVIDENCE / FAILURE PRESERVATION
+Implementation: work/cycle6/c02_s01/bandwidth_parity.py
+Checks: work/cycle6/c02_s01/bandwidth_parity_checks.py and its JSON.
+Small rational-complex fixtures have(n,b)=(4,1),(5,2),(6,2),(7,1), activities
+including zeros, arbitrary diagonals, capped sectors and every single-site
+conditioning. Their entire coefficient vectors are compared with independent
+3^n-word enumeration using a permutation determinant formula. Exact sampling
+checks legal support/sector and all prefix partition sums; probabilities are
+proved by self-reduction, not inferred from sample frequencies.
+
+The separate n=12,b=2 fixture has exact rank12, non-monomial complex support
+and positive c6. Its counts are NOT exhaustively validated over3^12 words.
+A fixed alternating word and the sampled full-occupation word have independent
+permutation-determinant support witnesses. Rank is acquired by exact Gaussian
+elimination. Thus this fixture demonstrates extensive pair number without
+treating its complete vector as an independent theorem audit.
+
+The first version of the n12 fixture had rank12 and c6=131128 but the prescribed
+alternating reference word was zero. That assertion failed. The original script
+and failure are retained at revisions/BANDWIDTH_CHECKS_FAILED_FIXTURE.py and
+revisions/BANDWIDTH_FIXTURE_FAILURE.json. The updated fixture increases all
+nearest-neighbor upper entries by3, giving an explicit nonzero alternating
+determinant. No counting output was modified to force agreement. The mathematical
+transfer and the previously successful small controls were unchanged.
+
+PRIORITY / LIMITS
+Fermionic Fock encodings, Jordan-Wigner signs, Gaussian amplitudes, finite-width
+tensor contraction and exact counting self-reduction are established methods.
+Primary related representation reference: Petrica, Zheng, Chan, Clark,
+Finite and Infinite Matrix Product States for Gutzwiller Projected Mean-Field
+Wavefunctions, arXiv2009.00064 (2020), https://arxiv.org/pdf/2009.00064.
+Its abstract/introduction and setup were inspected; the whole paper is not
+independently audited and no result from it is required in the derivation above.
+This transfer is a complete explicit acquired-width realization for the current
+disjoint-minor interface. A new general tensor principle, an optimal exponent,
+and external novelty are not claimed. Novelty UNKNOWN; external audit NONE.
+
+The baseline's monomial-cycle exact DP already covers important narrow sparse
+classes with extensive occupation; this width transfer also admits overlapping
+local pair choices and their determinant interference. It does not dominate
+the existing bipartite or monomial subclasses. Nonlocal edges enlarge the
+frontier in the supplied order, and a low-rank dense instance may be handled
+better by the separate four-exterior-register algorithm. General full-rank
+dense counting remains unresolved. Source/model/backend energy is UNKNOWN.

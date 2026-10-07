@@ -1,0 +1,190 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c03_s01/revisions/band_lowrank_bcs.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c03_s01/revisions/band_lowrank_bcs.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Sparse-support plus low-rank exact hard-BCS contraction.
+
+S is explicit, F-S is exactly factored by lowrank_bcs.factor. All auxiliary
+Grassmann variables survive until the end. The executable uses a width-
+checked greedy order for S, retaining full complex interference.
+&quot;&quot;&quot;
+import sys
+from pathlib import Path
+sys.path.insert(0,str(Path(__file__).resolve().parent.parent))
+import grassmann_bcs as g
+import lowrank_bcs as lr
+from fractions import Fraction as Q
+import random
+import json
+import time
+
+def counts(F,S,allowed=None,order=None,stats=None):
+    n=len(F)
+    if allowed is None: allowed=[{&#x27;0&#x27;,&#x27;u&#x27;,&#x27;d&#x27;} for _ in range(n)]
+    if order is None: order=g.min_degree_order(S)
+    w=g.width(S,order)
+    R=[[g.add(F[i][j],g.neg(S[i][j])) for j in range(n)] for i in range(n)]
+    U,V=lr.factor(R)
+    r=len(V)
+    if stats is None: stats={}
+    stats.update({&#x27;support_width&#x27;:w,&#x27;residual_rank&#x27;:r,&#x27;products&#x27;:0,&#x27;max_terms&#x27;:0})
+    factors=[]
+    for i in range(n):
+        A=3&lt;&lt;(4*i)
+        B=12&lt;&lt;(4*i)
+        p={}
+        if &#x27;0&#x27; in allowed[i]: p[(A|B,0)]=g.ONE
+        if &#x27;u&#x27; in allowed[i]: p[(B,1)]=g.ONE
+        if &#x27;d&#x27; in allowed[i]: p[(A,0)]=g.ONE
+        factors.append(({i},p))
+    for i in range(n):
+        for j in range(n):
+            if S[i][j]==g.ZERO: continue
+            e=g.product(g.linear_edge(4*i,4*j+3,S[i][j]),
+                        g.linear_edge(4*j+2,4*i+1,g.neg(g.conj(S[i][j]))),stats)
+            factors.append(({i,j},e))
+    for i in range(n):
+        for a in range(r):
+            # Aux modes xi1_a and xi2_a occupy 4r generators after phys.
+            b1=4*n+2*a
+            p1=b1+1
+            b2=4*n+2*r+2*a
+            p2=b2+1
+            terms=((4*i,p1,U[i][a]),
+                   (4*i+2,p2,g.neg(g.conj(V[a][i]))),
+                   (b1,4*i+3,g.neg(V[a][i])),
+                   (b2,4*i+1,g.neg(g.conj(U[i][a]))))
+            for x,y,c in terms:
+                if c!=g.ZERO: factors.append(({i},g.linear_edge(x,y,c)))
+    for i in order:
+        bucket=[]
+        rem=[]
+        for sc,p in factors: (bucket if i in sc else rem).append((sc,p))
+        bucket.sort(key=lambda f:len(f[1]))
+        p={(0,0):g.ONE}
+        sc=set()
+        for s,q in bucket:
+            sc |= s
+            p=g.product(p,q,stats)
+        m=15&lt;&lt;(4*i)
+        q={}
+        for (a,k),c in p.items():
+            if a&amp;m==m: g.put(q,(a^m,k),c)
+        sc.discard(i)
+        factors=rem+[(sc,q)]
+    p={(0,0):g.ONE}
+    for sc,q in factors:
+        assert not sc
+        p=g.product(p,q,stats)
+    raw=[g.ZERO for _ in range(n//2+1)]
+    for (m,k),c in p.items():
+        assert not m &amp; ((1&lt;&lt;(4*n))-1)
+        a=m&gt;&gt;(4*n)
+        if any((a&gt;&gt;(2*j))&amp;3 not in (0,3) for j in range(2*r)): continue
+        assert k&lt;len(raw)
+        raw[k]=g.add(raw[k],c)
+    assert all(c[1]==0 and c[0]&gt;=0 for c in raw)
+    return [c[0] for c in raw]
+
+def band_split(F,b):
+    n=len(F)
+    return [[F[i][j] if abs(i-j)&lt;=b else g.ZERO for j in range(n)]
+            for i in range(n)]
+
+def inverse(B):
+    r=len(B)
+    A=[list(row)+[g.ONE if i==j else g.ZERO for j in range(r)]
+       for i,row in enumerate(B)]
+    for j in range(r):
+        p=next((i for i in range(j,r) if A[i][j]!=g.ZERO),None)
+        if p is None: raise ValueError(&#x27;fixed corner minor is singular&#x27;)
+        A[j],A[p]=A[p],A[j]
+        a=A[j][j]
+        A[j]=[g.div(x,a) for x in A[j]]
+        for i in range(r):
+            if i==j: continue
+            a=A[i][j]
+            A[i]=[g.add(x,g.neg(g.mul(a,y))) for x,y in zip(A[i],A[j])]
+    return [row[r:] for row in A]
+
+def acquire_corner_split(F,r):
+    &quot;&quot;&quot;F-only split from its first r rows and last r columns.
+
+    This is a computable admission rule, not a general algorithm to discover
+    arbitrary sparse-plus-low-rank decompositions. Its support width is checked.
+    &quot;&quot;&quot;
+    n=len(F)
+    if not 1&lt;=r&lt;=n: raise ValueError(&#x27;invalid corner rank&#x27;)
+    K=list(range(n-r,n))
+    B=[[F[i][j] for j in K] for i in range(r)]
+    Bi=inverse(B)
+    U=[[F[i][j] for j in K] for i in range(n)]
+    V=[]
+    for a in range(r):
+        row=[]
+        for j in range(n):
+            z=g.ZERO
+            for b in range(r): z=g.add(z,g.mul(Bi[a][b],F[b][j]))
+            row.append(z)
+        V.append(row)
+    R=lr.matmul(U,V)
+    S=[[g.add(F[i][j],g.neg(R[i][j])) for j in range(n)] for i in range(n)]
+    return S,U,V
+
+def test():
+    rng=random.Random(6190320)
+    t0=time.monotonic()
+    checks=prefix=0
+    rows=[]
+    for n in range(1,7):
+        r=1 if n&lt;4 else 2
+        U=[[g.qc(rng.randrange(-1,2),Q(rng.randrange(-1,2),2))
+            for a in range(r)] for i in range(n)]
+        V=[[g.qc(rng.randrange(-1,2),Q(rng.randrange(-1,2),3))
+            for i in range(n)] for a in range(r)]
+        R=lr.matmul(U,V)
+        S=[[g.ZERO for j in range(n)] for i in range(n)]
+        for i in range(n):
+            S[i][i]=g.qc(rng.randrange(-1,2))
+            if i+1&lt;n:
+                S[i][i+1]=g.qc(Q(1,2),Q(1,3))
+                S[i+1][i]=g.qc(-1,Q(1,4))
+        F=[[g.add(S[i][j],R[i][j]) for j in range(n)] for i in range(n)]
+        st={}
+        p=counts(F,S,stats=st)
+        assert p==g.brute_counts(F)
+        checks+=1
+        for rep in range(3):
+            a=[{s for s in (&#x27;0&#x27;,&#x27;u&#x27;,&#x27;d&#x27;) if rng.randrange(3)} for i in range(n)]
+            assert counts(F,S,a)==g.brute_counts(F,a)
+            prefix+=1
+        rows.append({&#x27;n&#x27;:n,&#x27;stats&#x27;:st,&#x27;counts&#x27;:[str(x) for x in p]})
+    n=21
+    S=[[g.ZERO for _ in range(n)] for _ in range(n)]
+    for i in range(n-1):
+        S[i][i+1]=g.qc(1)
+        S[i+1][i]=g.qc(-1)
+    # Dense rank-one perturbation of a large-rank width-one matrix.
+    F=[[g.add(S[i][j],g.qc(1)) for j in range(n)] for i in range(n)]
+    st={}
+    t1=time.monotonic()
+    p=counts(F,S,stats=st)
+    assert st[&#x27;support_width&#x27;]==1 and st[&#x27;residual_rank&#x27;]==1
+    assert p[0]==1 and p[1]==sum(g.abs2(F[i][j]) for i in range(n)
+                               for j in range(n) if i!=j)
+    small=[row[:7] for row in F[:7]]
+    ssmall=[row[:7] for row in S[:7]]
+    assert counts(small,ssmall)==g.brute_counts(small)
+    checks+=1
+    benchmark={&#x27;n&#x27;:n,&#x27;full_rank&#x27;:len(lr.factor(F)[1]),&#x27;stats&#x27;:st,
+               &#x27;counts&#x27;:[str(x) for x in p],&#x27;wall_seconds&#x27;:time.monotonic()-t1}
+    Sc,Uc,Vc=acquire_corner_split(F,1)
+    stc={}
+    pc=counts(F,Sc,stats=stc)
+    assert pc==p
+    acquired={&#x27;rule&#x27;:&#x27;first one row and last one column, exact nonsingular corner&#x27;,
+              &#x27;stats&#x27;:stc,&#x27;counts&#x27;:[str(x) for x in pc]}
+    out={&#x27;status&#x27;:&#x27;PASS&#x27;,&#x27;exact_count_checks&#x27;:checks,&#x27;exact_prefix_checks&#x27;:prefix,
+         &#x27;cases&#x27;:rows,&#x27;dense_benchmark&#x27;:benchmark,&#x27;acquired_corner&#x27;:acquired,
+         &#x27;wall_seconds&#x27;:time.monotonic()-t0}
+    Path(__file__).with_name(&#x27;band_lowrank_checks.json&#x27;).write_text(json.dumps(out,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({k:v for k,v in out.items() if k!=&#x27;cases&#x27;},indent=2))
+
+if __name__==&#x27;__main__&#x27;: test()
+</pre><p><a href="../assets/8b51695b9de4d0a920cd1b99cdbfeb5e7828ead09c2943e4cc23cf4fb6754ecf.py">Exact original bytes</a></p></html>

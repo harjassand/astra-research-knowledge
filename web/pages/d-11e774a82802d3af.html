@@ -1,0 +1,74 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c07_l02/spin1_certificate.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c07_l02/spin1_certificate.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Finite-sum diagnostic for the fixed spin-1 critical certificate.
+
+The sector multiplicities are exact integers. Exponential summation is in
+binary64 and is diagnostic only; this is not a proof or certified evaluator.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import math
+
+
+def spin1_weight_multiplicities(n: int) -&gt; list[int]:
+    &quot;&quot;&quot;Return mu_N(m), indexed by m+N, for coefficients of (z^-1+1+z)^N.&quot;&quot;&quot;
+    mu = [1]
+    lo = 0
+    for _ in range(n):
+        nxt = [0] * (len(mu) + 2)
+        for idx, count in enumerate(mu):
+            if count:
+                nxt[idx] += count
+                nxt[idx + 1] += count
+                nxt[idx + 2] += count
+        mu = nxt
+        lo -= 1
+    assert len(mu) == 2 * n + 1 and lo == -n
+    return mu
+
+
+def logsumexp(values: list[float]) -&gt; float:
+    top = max(values)
+    return top + math.log(math.fsum(math.exp(v - top) for v in values))
+
+
+def certificate(n: int, M: float = 1.0, B: float = 0.5) -&gt; tuple[float, float]:
+    if n &lt;= 0 or math.sqrt(n) &lt;= 4 * M / 3:
+        raise ValueError(&quot;the displayed positive seed requires 3/(4N)-M/N^(3/2) &gt;= 0&quot;)
+    mu = spin1_weight_multiplicities(n)
+    terms_z: list[float] = []
+    terms_u: list[float] = []
+    for j in range(n + 1):
+        next_weight = mu[j + 1 + n] if j &lt; n else 0
+        mult = mu[j + n] - next_weight
+        if mult == 0:
+            continue
+        x = j * (j + 1) / (n ** 1.5)
+        ell = j / (n ** 0.75)
+        p = 2 * M * x + (B / 2) * ell + (2 * M * x + B * ell) ** 2 / 3
+        logw = math.log(2 * j + 1) + math.log(mult) + 0.75 * j * (j + 1) / n
+        terms_z.append(logw - M * x)
+        if p &gt; 0:
+            terms_u.append(logw + M * x + B * ell + math.log(p))
+    assert terms_z
+    assert sum(
+        (2 * j + 1)
+        * (mu[j + n] - (mu[j + 1 + n] if j &lt; n else 0))
+        for j in range(n + 1)
+    ) == 3**n
+    log_ratio = logsumexp(terms_u) - logsumexp(terms_z) if terms_u else -math.inf
+    ratio = math.exp(log_ratio)
+    E = 3 * M / (2 * n**1.5) * ratio
+    return E, ratio
+
+
+def main() -&gt; None:
+    print(&quot;spin-1 certificate diagnostic; M=1, B=0.5; exponentials are binary64&quot;)
+    print(&quot;N, U/Z_-, N^(3/2) E_N&quot;)
+    for n in (16, 32, 64, 128, 256, 512):
+        E, ratio = certificate(n)
+        print(f&quot;{n}, {ratio:.12g}, {n**1.5 * E:.12g}&quot;)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/a94f174725d7603baeede4658743269b104773b716daff75a34cb735ff164adf.py">Exact original bytes</a></p></html>

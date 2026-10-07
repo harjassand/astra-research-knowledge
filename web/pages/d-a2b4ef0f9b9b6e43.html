@@ -1,0 +1,233 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c09_s02/revisions/correlated_covariance_codec.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c09_s02/revisions/correlated_covariance_codec.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Finite digital bin archive for every Gaussian I&lt;=C&lt;=bI, including correlation.
+
+Scalar triangle CDF/encoder/decoder arithmetic is reused with attribution from
+c09_s03/gaussian_compander_codec.py, audited and copied before any execution.
+The new covariance derivative budget and tuple compiler are proved in rev03.
+No physical Gaussian sampler or continuous-TV digital output is implemented.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from pathlib import Path
+import argparse
+import json
+import math
+import time
+
+
+def triangle_cdf(t, j, J):
+    t = F(t)
+    if not (0 &lt;= t &lt;= 1) or not (0 &lt;= j &lt; J) or J &lt; 3:
+        raise ValueError(&#x27;bad triangle&#x27;)
+    x = J*t
+    if j == 0:
+        if x &lt;= 1:
+            return x-x*x/2
+        if x &lt;= J-1:
+            return F(1, 2)
+        return F(1, 2)+(x-(J-1))**2/2
+    if x &lt;= j-1:
+        return F(0)
+    if x &lt;= j:
+        return (x-(j-1))**2/2
+    if x &lt;= j+1:
+        return 1-(j+1-x)**2/2
+    return F(1)
+
+
+def encode_coordinate(k, p, J, bits):
+    N = 1 &lt;&lt; p
+    if not 0 &lt;= k &lt; N or not 0 &lt;= bits &lt; 2*N:
+        raise ValueError(&#x27;bad input/random tape&#x27;)
+    q, rem = divmod(J*(2*k+1), 2*N)
+    return (q+1) % J if bits &lt; rem else q % J
+
+
+def decode_coordinate(j, p, J, bits):
+    N = 1 &lt;&lt; p
+    D = 1 &lt;&lt; (2*p+1)
+    if not 0 &lt;= j &lt; J or not 0 &lt;= bits &lt; D:
+        raise ValueError(&#x27;bad archive/random tape&#x27;)
+    lo, hi, steps = 0, N-1, 0
+    while lo &lt; hi:
+        mid = (lo+hi)//2
+        threshold = triangle_cdf(F(mid+1, N), j, J)*D
+        assert threshold.denominator == 1
+        if bits &lt; threshold.numerator:
+            hi = mid
+        else:
+            lo = mid+1
+        steps += 1
+    return lo, steps
+
+
+def pack(labels, J):
+    result = 0
+    for j in reversed(labels):
+        if not 0 &lt;= j &lt; J:
+            raise ValueError(&#x27;bad label&#x27;)
+        result = result*J+j
+    return result
+
+
+def unpack(code, modes, J):
+    if not 0 &lt;= code &lt; J**modes:
+        raise ValueError(&#x27;bad archive code&#x27;)
+    labels = []
+    for _ in range(modes):
+        code, j = divmod(code, J)
+        labels.append(j)
+    assert code == 0
+    return labels
+
+
+def encode_bins(bins, p, J, independent_bits):
+    if len(bins) != len(independent_bits):
+        raise ValueError(&#x27;wrong tape count&#x27;)
+    return pack([encode_coordinate(k,p,J,r) for k,r in zip(bins,independent_bits)], J)
+
+
+def decode_bins(code, modes, p, J, independent_bits):
+    if len(independent_bits) != modes:
+        raise ValueError(&#x27;wrong tape count&#x27;)
+    pairs = [decode_coordinate(j,p,J,r) for j,r in zip(unpack(code,modes,J),independent_bits)]
+    return [x for x,_ in pairs], sum(steps for _,steps in pairs)
+
+
+def plan(modes, covariance_upper, epsilon):
+    upper, epsilon = F(covariance_upper), F(epsilon)
+    if modes &lt; 1 or upper &lt; 1 or not 0 &lt; epsilon &lt; 1:
+        raise ValueError(&#x27;invalid covariance/precision contract&#x27;)
+    ell = math.isqrt(upper.numerator//upper.denominator)
+    if ell*ell &lt; upper:
+        ell += 1
+    b = F(ell*ell)
+    q = 194*modes*b/epsilon
+    J = max(3, math.isqrt(q.numerator//q.denominator))
+    if J*J &lt; q:
+        J += 1
+    p = 0
+    while (1 &lt;&lt; p)*epsilon &lt; modes*J:
+        p += 1
+    ideal = F(97)*modes*b/(J*J)
+    midpoint = F(modes*J, 2*(1 &lt;&lt; p))
+    assert ideal+midpoint &lt;= epsilon
+    return {&#x27;m&#x27;: modes, &#x27;C_upper&#x27;: str(upper), &#x27;public_integer_compander_width&#x27;: ell,
+            &#x27;b&#x27;: str(b), &#x27;epsilon&#x27;: str(epsilon), &#x27;J&#x27;: J, &#x27;p&#x27;: p,
+            &#x27;acquired_input_bits&#x27;: modes*p, &#x27;output_bits&#x27;: modes*p,
+            &#x27;archive_total_dimension&#x27;: str(J**modes), &#x27;archive_bits&#x27;: (J**modes-1).bit_length(),
+            &#x27;encoder_random_bits&#x27;: modes*(p+1), &#x27;decoder_random_bits&#x27;: modes*(2*p+1),
+            &#x27;ideal_TV_upper&#x27;: str(ideal), &#x27;midpoint_TV_upper&#x27;: str(midpoint),
+            &#x27;total_TV_upper_rational&#x27;: str(ideal+midpoint),
+            &#x27;total_TV_upper_float_display_only&#x27;: float(ideal+midpoint)}
+
+
+def pairings_moment(indices, covariance):
+    if not indices:
+        return F(1)
+    if len(indices) % 2:
+        return F(0)
+    first = indices[0]
+    answer = F(0)
+    for j in range(1, len(indices)):
+        rest = indices[1:j]+indices[j+1:]
+        answer += covariance[first][indices[j]]*pairings_moment(rest,covariance)
+    return answer
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(&#x27;--output&#x27;, type=Path, default=Path(__file__).with_name(&#x27;correlated_covariance_checks.json&#x27;))
+    args = parser.parse_args()
+    start = time.perf_counter()
+    checks = 0
+    # All small mixed-radix archives and probability thresholds.
+    for J in (3, 5, 8):
+        for modes in (1, 2, 3):
+            for code in range(J**modes):
+                assert pack(unpack(code,modes,J),J) == code
+                checks += 1
+    for J in (3, 5):
+        for p in (1, 2, 4):
+            N, D = 1 &lt;&lt; p, 1 &lt;&lt; (2*p+1)
+            for k in range(N):
+                counts = [0]*J
+                for r in range(2*N):
+                    counts[encode_coordinate(k,p,J,r)] += 1
+                q, rem = divmod(J*(2*k+1),2*N)
+                assert counts[q % J] == 2*N-rem and counts[(q+1) % J] == rem
+                checks += 1
+            for j in range(J):
+                old = F(0)
+                for k in range(N):
+                    now = triangle_cdf(F(k+1,N),j,J)
+                    a, b = old*D, now*D
+                    assert a.denominator == b.denominator == 1 and a &lt;= b
+                    for r in (a.numerator, b.numerator-1):
+                        if a &lt;= r &lt; b:
+                            out, steps = decode_coordinate(j,p,J,r)
+                            assert out == k and steps &lt;= p
+                            checks += 1
+                    old = now
+                assert old == 1
+    # Exact correlated input-bin fixture: diagonal joint law, NOT a product.
+    J, p = 3, 2
+    N, D = 1 &lt;&lt; p, 1 &lt;&lt; (2*p+1)
+    labels = [[F(0) for _ in range(J)] for _ in range(J)]
+    for k in range(N):
+        q, rem = divmod(J*(2*k+1),2*N)
+        probs = [F(0)]*J
+        probs[q % J] += F(2*N-rem,2*N)
+        probs[(q+1) % J] += F(rem,2*N)
+        for i in range(J):
+            for j in range(J):
+                labels[i][j] += probs[i]*probs[j]/N
+    assert sum(map(sum,labels)) == 1
+    marginal = [sum(row) for row in labels]
+    dependence = sum(abs(labels[i][j]-marginal[i]*marginal[j]) for i in range(J) for j in range(J))/2
+    assert dependence &gt; 0
+    transition = [[triangle_cdf(F(k+1,N),j,J)-triangle_cdf(F(k,N),j,J) for k in range(N)] for j in range(J)]
+    output = [[sum(labels[i][j]*transition[i][a]*transition[j][b]
+                   for i in range(J) for j in range(J)) for b in range(N)] for a in range(N)]
+    assert sum(map(sum,output)) == 1
+    om = [sum(row) for row in output]
+    output_dependence = sum(abs(output[a][b]-om[a]*om[b]) for a in range(N) for b in range(N))/2
+    assert output_dependence &gt; 0
+    for code in range(J*J):
+        for r1 in (0,D//2,D-1):
+            for r2 in (0,D//2,D-1):
+                bins, steps = decode_bins(code,2,p,J,[r1,r2])
+                assert len(bins)==2 and all(0&lt;=x&lt;N for x in bins) and steps&lt;=2*p
+                checks += 1
+    # Exact Wick-moment identities underlying the correlated Gaussian budget.
+    moments = []
+    # C=I+3 vv^T for rational unit v; C has eigenvalues exactly 1,4.
+    for vx, vy in [(F(1),F(0)),(F(3,5),F(4,5)),(F(4,5),F(-3,5))]:
+        c00, c01, c11 = 1+3*vx*vx, 3*vx*vy, 1+3*vy*vy
+        determinant = c00*c11-c01*c01
+        assert determinant == 4
+        for v, h in [(c00,c11/determinant),(c11,c00/determinant)]:
+            covariance = [[v,F(1)],[F(1),h]]
+            m22 = pairings_moment([0,0,1,1],covariance)
+            m42 = pairings_moment([0,0,0,0,1,1],covariance)
+            assert m22 == v*h+2 and m42 == 3*v*v*h+12*v
+            # Exact third bracket &lt;=28b for b=4.
+            b = F(4)
+            third = 2*b*h+4*v*h+4+(6*v*v*h+12*v)/b
+            assert third &lt;= 28*b and 1&lt;=v&lt;=b and 0&lt;h&lt;=1
+            moments.append({&#x27;variance&#x27;:str(v),&#x27;precision&#x27;:str(h),&#x27;EX2W2&#x27;:str(m22),&#x27;EX4W2&#x27;:str(m42),&#x27;third_bracket&#x27;:str(third)})
+            checks += 2
+    plans = [plan(2, F(4), F(1,1000)),plan(8, F(4), F(1,1000)),plan(32, F(5,2), F(1,100))]
+    result = {&#x27;status&#x27;:&#x27;PASS_FINITE_EXACT_COMPILER_AND_MOMENT_CHECKS&#x27;,&#x27;exact_checks&#x27;:checks,
+              &#x27;correlated_fixture&#x27;:{&#x27;J&#x27;:J,&#x27;p&#x27;:p,&#x27;label_dependence_TV&#x27;:str(dependence),
+                                   &#x27;decoded_dependence_TV&#x27;:str(output_dependence),
+                                   &#x27;scope&#x27;:&#x27;NonGaussian rational bin-law fixture checks that the tensor decoder retains input-induced label correlations; it is not a Gaussian convergence fixture.&#x27;},
+              &#x27;exact_joint_Gaussian_moments&#x27;:moments,&#x27;plans&#x27;:plans,
+              &#x27;elapsed_seconds&#x27;:time.perf_counter()-start,
+              &#x27;scope&#x27;:&#x27;Exact integer probability compiler, finite rational correlations/Wick identities, and analytic-plan arithmetic. No physical Gaussian instrument, dense MI evaluation, continuous-TV digital output, or formal theorem verification.&#x27;}
+    args.output.write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({&#x27;status&#x27;:result[&#x27;status&#x27;],&#x27;checks&#x27;:checks,&#x27;plans&#x27;:plans,
+                      &#x27;elapsed_seconds&#x27;:result[&#x27;elapsed_seconds&#x27;],&#x27;output&#x27;:str(args.output)},indent=2))
+
+
+if __name__ == &#x27;__main__&#x27;:
+    main()
+</pre><p><a href="../assets/c953497850b7e55fdca4293df9857844b3a67b78a02956f6f78db07fb9efb59a.py">Exact original bytes</a></p></html>

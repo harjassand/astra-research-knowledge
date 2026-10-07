@@ -1,0 +1,137 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c04_l07/qutrit_rounding_exact.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c04_l07/qutrit_rounding_exact.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact qutrit realization of the sharp c=2 broadcasting calibration.
+
+All arithmetic is symbolic in Q(exp(2*pi*i/3)); no floating point or SDP
+solver is used. The script verifies a 12-outcome complete-MUB measurement,
+its EB channel, the symmetric universal-cloner channel, and exact equality
+I-Psi = 2(I-Phi) on the full 9-dimensional operator space.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import json
+import time
+from pathlib import Path
+
+import sympy as sp
+
+
+def zero_matrix(matrix: sp.MatrixBase) -&gt; bool:
+    return all(sp.simplify(entry) == 0 for entry in matrix)
+
+
+def partial_trace_second(matrix: sp.MatrixBase, d: int) -&gt; sp.Matrix:
+    return sp.Matrix(d, d, lambda i, k: sum(matrix[i * d + j, k * d + j] for j in range(d)))
+
+
+def partial_trace_first(matrix: sp.MatrixBase, d: int) -&gt; sp.Matrix:
+    return sp.Matrix(d, d, lambda j, ell: sum(matrix[i * d + j, i * d + ell] for i in range(d)))
+
+
+def main() -&gt; None:
+    started = time.perf_counter()
+    d = 3
+    eye = sp.eye(d)
+    omega = (-1 + sp.I * sp.sqrt(3)) / 2
+
+    # Wootters--Fields prime-dimensional vectors: the computational basis
+    # and the three quadratic-phase bases |a,k&gt;_j = omega^(a*j^2+k*j)/sqrt(3).
+    bases: list[list[sp.Matrix]] = [[sp.eye(d)[:, j] for j in range(d)]]
+    root_d = sp.sqrt(d)
+    for a in range(d):
+        bases.append([
+            sp.Matrix([omega ** (a * j * j + k * j) for j in range(d)]) / root_d
+            for k in range(d)
+        ])
+
+    for basis in bases:
+        unitary = sp.Matrix.hstack(*basis)
+        assert zero_matrix(unitary.conjugate().T * unitary - eye)
+
+    for left in range(d + 1):
+        for right in range(left + 1, d + 1):
+            for v in bases[left]:
+                for w in bases[right]:
+                    overlap = (v.conjugate().T * w)[0]
+                    assert sp.simplify(overlap * sp.conjugate(overlap) - sp.Rational(1, d)) == 0
+
+    projectors = [v * v.conjugate().T for basis in bases for v in basis]
+    assert len(projectors) == d * (d + 1)
+    assert zero_matrix(sum(projectors, sp.zeros(d)) - (d + 1) * eye)
+
+    def psi(matrix: sp.MatrixBase) -&gt; sp.Matrix:
+        return sum((sp.trace(p * matrix) * p for p in projectors), sp.zeros(d)) / (d + 1)
+
+    matrix_units = [sp.eye(d)[:, i] * sp.eye(d)[j, :] for i in range(d) for j in range(d)]
+    for unit in matrix_units:
+        expected = (unit + sp.trace(unit) * eye) / (d + 1)
+        assert zero_matrix(psi(unit) - expected)
+
+    swap = sp.zeros(d * d)
+    for i in range(d):
+        for j in range(d):
+            swap[i * d + j, j * d + i] = 1
+    symmetric_projector = (sp.eye(d * d) + swap) / 2
+    assert zero_matrix(symmetric_projector * symmetric_projector - symmetric_projector)
+
+    # K_a = sqrt(2/(d+1)) P_sym (I tensor |a&gt;) are exact Kraus matrices for
+    # C(A) = 2/(d+1) P_sym (A tensor I) P_sym.
+    kraus = []
+    for a in range(d):
+        embedding = sp.zeros(d * d, d)
+        for i in range(d):
+            embedding[i * d + a, i] = 1
+        kraus.append(sp.sqrt(sp.Rational(2, d + 1)) * symmetric_projector * embedding)
+    assert zero_matrix(sum((k.conjugate().T * k for k in kraus), sp.zeros(d)) - eye)
+
+    def cloner_marginal(matrix: sp.MatrixBase) -&gt; sp.Matrix:
+        output = sum((k * matrix * k.conjugate().T for k in kraus), sp.zeros(d * d))
+        return partial_trace_second(output, d)
+
+    def phi(matrix: sp.MatrixBase) -&gt; sp.Matrix:
+        return ((d + 2) * matrix + sp.trace(matrix) * eye) / (2 * (d + 1))
+
+    def phi_from_superoperator(matrix: sp.MatrixBase) -&gt; sp.Matrix:
+        return cloner_marginal(matrix)
+
+    for unit in matrix_units:
+        assert zero_matrix(phi_from_superoperator(unit) - phi(unit))
+        output = sum((k * unit * k.conjugate().T for k in kraus), sp.zeros(d * d))
+        assert zero_matrix(partial_trace_first(output, d) - phi(unit))
+        assert zero_matrix(swap * output * swap - output)
+        assert zero_matrix((unit - psi(unit)) - 2 * (unit - phi(unit)))
+
+    result = {
+        &quot;status&quot;: &quot;PASS_EXACT_SYMBOLIC&quot;,
+        &quot;dimension&quot;: d,
+        &quot;coefficient_field&quot;: &quot;Q(exp(2*pi*i/3))&quot;,
+        &quot;measurement_outcomes&quot;: len(projectors),
+        &quot;checks&quot;: {
+            &quot;four_orthonormal_bases&quot;: True,
+            &quot;pairwise_mutual_unbiasedness&quot;: True,
+            &quot;complete_MUB_projectors_sum_to_4I&quot;: True,
+            &quot;Psi(A)=(A+Tr(A)I)/4_on_all_matrix_units&quot;: True,
+            &quot;cloner_Kraus_completeness&quot;: True,
+            &quot;both_clone_marginals_equal_Phi&quot;: True,
+            &quot;clone_output_is_swap_symmetric&quot;: True,
+            &quot;I_minus_Psi_equals_2_times_I_minus_Phi&quot;: True,
+        },
+        &quot;maps&quot;: {
+            &quot;Phi(A)&quot;: &quot;(5 A + Tr(A) I)/8&quot;,
+            &quot;Psi(A)&quot;: &quot;(A + Tr(A) I)/4&quot;,
+            &quot;traceless_eigenvalues&quot;: {&quot;Phi&quot;: &quot;5/8&quot;, &quot;Psi&quot;: &quot;1/4&quot;},
+            &quot;Dirichlet_ratio&quot;: &quot;2 exactly&quot;,
+        },
+        &quot;runtime_seconds&quot;: round(time.perf_counter() - started, 6),
+        &quot;limitations&quot;: [
+            &quot;This is a sharp calibration/example, not a proof of universal EB Dirichlet rounding.&quot;,
+            &quot;The exact finite qutrit construction does not establish an efficient general-dimensional compiler.&quot;,
+        ],
+    }
+    out = Path(__file__).with_suffix(&quot;.json&quot;)
+    out.write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+    print(json.dumps(result, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/fb8a9f6de5339e67fc552cf15b628f9174eb6346e1f4f5175c4ef3efe87fb3e3.py">Exact original bytes</a></p></html>

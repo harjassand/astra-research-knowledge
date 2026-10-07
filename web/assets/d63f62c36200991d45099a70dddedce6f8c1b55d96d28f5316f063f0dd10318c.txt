@@ -1,0 +1,201 @@
+C03_L05 PHASE 2 — COLOR-CODED / MÖBIUS PFAFFIAN ROUTE
+2026-10-08
+
+Origin and scope
+----------------
+
+This is an attributed post-exposure derivation for the phase-2 assignment
+received through c03_l06. I read only the named c03_s02 audit report, the
+named c01_s03 low-sector sampler, and c03_s01's current phased extension and
+its check receipt. The original INITIAL remains immutable. I copied
+low_sector_sampler.py to low_sector_sampler_phase2.py before any execution;
+that copy was not run. The finite checks below are a new small standalone
+program, with output redirected to this revisions directory.
+
+The route reuses c03_l10/c03_s02's paired-vector skew-Pfaffian identity and
+the exact trace/Newton computation for a square-root determinant coefficient.
+The new attack is to impose a rainbow condition on the 2k occupied sites by
+random color coding and a color-subset Möbius difference. It is distinct from
+the physical-prefix leading-z coefficient and down-site inclusion-exclusion
+in the named audit. It is not an independent replacement for the underlying
+paired-volume identity, and no novelty or priority claim is made.
+
+Construction
+------------
+
+Let m=2k and
+
+  c_k(F)=sum_{|I|=|J|=k, I intersect J=empty} |det F[I,J]|^2.
+
+Use the paired-vector identity from the audit. For site signs s_i in {+1,-1},
+let A_s=diag(s)F-F^Tdiag(s), a complex skew-symmetric matrix. For every
+R subset [n] of size m,
+
+  Pf(A_s[R]) = sum_{S subset R, |S|=k} d_{R,S} product_{i in S}s_i,
+  |d_{R,S}|^2=|det F[S,R minus S]|^2.
+
+Let h:[n]->[m] be a uniformly random coloring and let xi_1,...,xi_m be
+independent Rademacher signs. Set s_i=xi_{h(i)}. Define the rainbow norm
+
+  Z(h,xi)=sum_{|R|=m, h|_R injective} |Pf(A_s[R])|^2.
+
+When h is injective on R, the characters indexed by S subset R are distinct
+characters of xi. Orthogonality therefore gives
+
+  E_xi Z(h,xi)=c_h,
+
+where c_h is exactly the portion of c_k whose union I union J is rainbow under
+h. A fixed m-set is rainbow with probability
+
+  p_m=(m)_m/m^m=m!/m^m.
+
+Thus E_{h,xi} Z=p_m c_k. This yields the nonnegative unbiased estimator
+Z/p_m. It returns exact zero whenever c_k=0; on a positive instance a zero
+sample remains possible and is covered by the confidence bound.
+
+Exact one-sample construction by weighted Pfaffian norm and difference
+-----------------------------------------------------------------------
+
+The rainbow sum need not enumerate R. For a skew matrix A and diagonal W,
+write q_k(W A* W A) for [t^k] sqrt(det(I+t W A* W A)), where * is conjugate
+transpose. The weighted identity is
+
+  q_k(W A* W A)=sum_{|R|=2k} (product_{i in R} W_ii)|Pf(A[R])|^2.   (1)
+
+For positive invertible W, set B=W^(1/2) A W^(1/2). Then B is skew,
+Pf(B[R])=(product_{i in R}sqrt(W_ii))Pf(A[R]), and B*B is similar to
+W A* W A. The standard skew-matrix identity
+sum_j sum_{|R|=2j}|Pf(B[R])|^2 t^j=sqrt(det(I+tB*B)) proves (1) there.
+Both coefficient sides are polynomials in the diagonal entries of W, so the
+identity extends to zero-one W by polynomial identity. This is an exact
+symbolic argument; it uses no square root of a zero-one weight in the
+implementation.
+
+For T subset [m], let W_T,ii=1 iff h(i) is in T. Define
+
+  Q_T(A)=q_k(W_T A* W_T A),
+  Z(h,xi)=sum_{T subset [m]} (-1)^(m-|T|) Q_T(A_s).           (2)
+
+By (1), a fixed R contributes its Pfaffian norm times
+sum_{T superset h(R)}(-1)^(m-|T|)=(1-1)^(m-|h(R)|). It survives iff
+|h(R)|=m, which for |R|=m is exactly injectivity. Thus (2) computes the
+rainbow norm exactly with 2^m=4^k weighted coefficient calls.
+
+Every Q_T is computed by exact trace/Newton recurrences, without numerical
+eigenvalues or Pfaffian enumeration. For C=W_T A* W_T A, set u_0=1 and
+
+  j u_j=sum_{a=1}^j (-1)^(a-1) u_(j-a) tr(C^a),
+  q_0=1, 2q_j=u_j-sum_{a=1}^{j-1}q_a q_(j-a).
+
+Then Q_T=q_k. These identities are for the formal square root with constant
+term 1. With rational-complex F, all divisions are exact rational operations
+and operand heights are polynomial in n,k,L. The finite difference has 2^m
+terms and adds at most m bits to coefficient magnitudes.
+
+Cost and comparison
+-------------------
+
+For any site-sign word, Cauchy-Schwarz in the Pfaffian expansion gives
+X_k(A_s)=sum_R |Pf(A_s[R])|^2 <= C_k c_k,
+where C_k=binom(2k,k), the pointwise bound reconstructed in the named audit.
+Since 0<=Z<=X_k, the scaled estimator Y=Z/p_m obeys
+
+  0<=Y<=(C_k/p_m)c_k,   E Y=c_k,   E Y^2<=(C_k/p_m)c_k^2.
+
+Median-of-means or bounded nonnegative Chernoff therefore gives a relative
+eta estimate with failure probability delta using
+
+  O((C_k/p_m) eta^-2 log(1/delta))
+
+independent color/sign samples. Sampling a uniform h in a strict bit model can
+be capped: draw b=ceil(log2(m^n)) bits, accept the resulting integer only if
+it is below m^n and decode it in base m; otherwise output zero. The acceptance
+probability rho=m^n/2^b is at least 1/2, the accepted coloring is exactly
+uniform, and dividing accepted Y by rho restores unbiasedness while increasing
+the pointwise bound by at most two. Each accepted sample uses 2^m=4^k exact
+coefficient calls, each O(k n^3+k^2) arithmetic operations plus polynomial
+bit cost. Total cost is
+
+  4^k (C_k/p_m) poly(n,L,k,eta^-1,log(1/delta))
+    = (16 e^2)^k poly(n,L,eta^-1,log(1/delta)) / poly(k)
+
+up to polynomial factors and asymptotic central-binomial constants. For
+k<=A log2(n+1), the k-dependent factor is n^(6.89 A+o(1)); it remains
+polynomial for fixed A, but has a much worse exponent than the named
+c03_l10 route, whose C_k samples each cost polynomial in n. This route is
+therefore a universal finite-parameter alternative, not an improvement.
+
+The exact-randomness bit cap is part of the cost claim: if h is generated by
+one b-bit draw and rejected when its integer is >=m^n, then rho>=1/2 and
+Y/(rho p_m) on acceptance, zero on rejection, is exactly unbiased with bound
+at most 2C_k/p_m. Color signs use exactly m bits. This avoids an unbounded
+rejection loop.
+
+Necessary counterexample to a naive version
+-------------------------------------------
+
+Color filtering alone does not make the Pfaffian squares diagonal. Let
+n=2,k=1,F=[[0,1],[1,0]], and color its two sites 0 and 1. Then c_1(F)=2,
+but A_(+,+)=F-F^T=0, so the color-difference estimate with all signs + is
+zero. Averaging two independent color signs gives 2 exactly. The sign layer
+is necessary to remove cross terms; it is not optional. The executable
+receipt includes this exact counterexample.
+
+The p_m outer-sample factor is also inherent to this particular color-coded
+estimator, not a general lower bound on c_k algorithms. Let n=2k and let F
+have only the k entries F[i,k+i]=1, i=0,...,k-1. Then c_k=1, with one
+nonzero pair (I,J). Its union is rainbow with probability p_m, and its
+color-sign Pfaffian norm is exactly one on a rainbow coloring and zero
+otherwise. Thus the estimator sees no positive contribution unless a
+coloring is rainbow; m independent colorings all miss with probability
+(1-p_m)^m, forcing Omega(1/p_m) colorings for constant success. The n=4,
+k=2 finite check has 24 rainbow maps among 256, p=3/32, and relative variance
+29/3. This explains the exponential coloring factor for this route and says
+nothing about algorithms that avoid color coding.
+
+Comparison with the current c03_s01 phase-matching extension
+------------------------------------------------------------
+
+The inspected c03_s01/phased_pfaffian.py takes fixed physical pairs
+(0,1),(2,3),..., builds a real matching baseline from the two real
+off-diagonal entries per pair, and accepts when the residual Frobenius norm
+squared is at most beta_min/(256 k^2). It then uses alternating real/i
+phases on the site signs and bounds each sampled norm coefficient between
+3/4 and 4/3 of the baseline coefficient. Its `phased_pfaffian_checks.json`
+reports 96 exhausted sign words and a swap-block fixture with raw relative
+second moment 2^k but phased moment 1. Those are source-reported finite checks,
+not an independent proof audit. This is a much cheaper route on instances
+where its matching certificate passes, but it is not the universal route
+derived here. My color-coded construction requires no near-matching
+certificate, at the cost of (16e^2)^k poly arithmetic.
+
+Attribution is exact: the random-sign paired-volume representation and
+trace/Newton coefficient route belong to c03_l10 and are audited/reconstructed
+in c03_s02/audit_c03_l10/AUDIT_REPORT.txt; c03_s01/phased_pfaffian.py is the
+distinct acquired-matching/phase extension. The color restriction, weighted
+identity (1), Möbius formula (2), cost accounting, and counterexample above
+are my post-exposure derivation. Agreement or finite tests do not establish
+novelty.
+
+Executable evidence and open gate
+---------------------------------
+
+`color_difference_check.py` exhausts two Gaussian-integer 4x4 matrices at
+k=1,2. It checks every color assignment and all 2^(2k) color-sign words,
+compares the weighted trace/Newton difference against direct principal
+Pfaffians, checks the sign average against the direct rainbow-minor mass,
+checks the full coloring average equals p_m c_k, and verifies the
+single-contribution variance fixture. Receipt:
+`color_difference_checks.json`. All checks pass. The 2x2 swap check confirms
+the naive no-sign counterexample.
+
+Not established: practical runtime for k beyond tiny tests; asymptotic
+confidence calibration beyond the derived bounded-variable proof; a sampler;
+an improvement over the l10 estimator; certificate acquisition; novelty;
+or any dense-sector polynomial algorithm. The route still has exponential
+dependence on k and does not address FPRAS for unrestricted k.
+
+Primary background source inspected through the named audit: Matoya--Oki,
+Pfaffian Pairs and Parities, https://arxiv.org/html/1912.00620v2. The present
+construction is not asserted to meet their constant-determinant parity
+representation promise.

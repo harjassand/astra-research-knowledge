@@ -1,0 +1,207 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c06_s02/observable_checks.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c06_s02/observable_checks.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Small exact diagnostics for the sparse-observable extension; not an FPRAS.&quot;&quot;&quot;
+from fractions import Fraction as F
+from itertools import product, combinations
+import json
+from pathlib import Path
+from time import perf_counter
+
+START = perf_counter()
+
+def eye(n):
+    return [[F(i == j) for j in range(n)] for i in range(n)]
+
+def mm(a, b):
+    return [[sum((a[i][k] * b[k][j] for k in range(len(b))), F(0))
+             for j in range(len(b[0]))] for i in range(len(a))]
+
+def tr(a):
+    return sum((a[i][i] for i in range(len(a))), F(0))
+
+def transpose(a):
+    return [list(x) for x in zip(*a)]
+
+def kron(a, b):
+    return [[x * y for x in ar for y in br] for ar in a for br in b]
+
+def scale(a, c):
+    return [[c * v for v in row] for row in a]
+
+def add(a, b):
+    return [[x + y for x, y in zip(ar, br)] for ar, br in zip(a, b)]
+
+def embed1(a, q, n=2):
+    mats = [a if j == q else eye(2) for j in range(n)]
+    out = [[F(1)]]
+    for mat in mats:
+        out = kron(out, mat)
+    return out
+
+X = [[F(0), F(1)], [F(1), F(0)]]
+Z = [[F(1), F(0)], [F(0), F(-1)]]
+s = F(1, 7)
+alpha, gamma = F(3, 4), F(-1, 4)
+av = 1 + s * (3 * alpha + gamma)
+bv = 1 + s * (3 * alpha - gamma)
+cv = 2 * s * alpha
+edge = [[av, 0, 0, 0], [0, bv, cv, 0],
+        [0, cv, bv, 0], [0, 0, 0, av]]
+
+def field(b, c):
+    r = b + abs(c)
+    out = [[1 + s * (r + c), s * b],
+           [s * b, 1 + s * (r - c)]]
+    assert out[0][0] * out[1][1] &gt;= out[0][1] ** 2
+    return out
+
+f0 = field(F(2, 3), F(-1, 5))
+f1 = field(F(0), F(1, 7))
+W = mm(mm(edge, embed1(f0, 0)), embed1(f1, 1))
+B = mm(W, transpose(W))
+K = mm(mm(B, B), B)
+sig = scale(K, 1 / tr(K))
+assert K == transpose(K)
+
+# Construct every lifted local monomial directly from the gate matrix.
+gates = [(edge, (0, 1)), (f0, (0,)), (f1, (1,))]
+legs, row_ids, col_ids, dummy_ids = 0, [], [], []
+for mat, qs in gates:
+    row_ids.append(list(range(legs, legs + len(qs))))
+    legs += len(qs)
+    col_ids.append(list(range(legs, legs + len(qs))))
+    legs += len(qs)
+for mat, qs in gates:
+    if len(qs) == 1:
+        dummy_ids.append([legs, legs + 1])
+        legs += 2
+    else:
+        dummy_ids.append([])
+
+local = []
+for gi, (mat, qs) in enumerate(gates):
+    terms = []
+    d = len(qs)
+    for ri in range(2 ** d):
+        rb = tuple((ri &gt;&gt; (d - 1 - j)) &amp; 1 for j in range(d))
+        for ci in range(2 ** d):
+            val = mat[ri][ci]
+            if not val:
+                continue
+            cb = tuple((ci &gt;&gt; (d - 1 - j)) &amp; 1 for j in range(d))
+            chosen = {row_ids[gi][j] for j in range(d) if rb[j]}
+            chosen |= {col_ids[gi][j] for j in range(d) if not cb[j]}
+            if d == 1:
+                options = list(combinations(dummy_ids[gi], 2 - len(chosen)))
+                for ds in options:
+                    terms.append((chosen | set(ds), F(val) / len(options)))
+            else:
+                assert len(chosen) == 2
+                terms.append((chosen, F(val)))
+    local.append(terms)
+
+monomials = []
+for combo in product(*local):
+    selected, weight = set(), F(1)
+    for chosen, val in combo:
+        selected |= chosen
+        weight *= val
+    assert len(selected) == 6
+    monomials.append((selected, weight))
+
+wires, boundary = [], []
+for q in range(2):
+    occ = [(gi, qs.index(q)) for gi, (mat, qs) in enumerate(gates) if q in qs]
+    for t, (gi, pos) in enumerate(occ):
+        gj, posj = occ[(t + 1) % len(occ)]
+        pair = (col_ids[gi][pos], row_ids[gj][posj])
+        if t == len(occ) - 1:
+            boundary.append((q, pair))
+        else:
+            wires.append(pair)
+
+all_dummies = {i for ds in dummy_ids for i in ds}
+f_count = 2
+entries_checked, shifted_nonzero = 0, []
+for ai, bi in product(range(4), repeat=2):
+    ab = tuple((ai &gt;&gt; (1 - j)) &amp; 1 for j in range(2))
+    bb = tuple((bi &gt;&gt; (1 - j)) &amp; 1 for j in range(2))
+    delta = sum(ab) - sum(bb)
+    out = F(0)
+    for chosen, weight in monomials:
+        if any((x in chosen) + (y in chosen) != 1 for x, y in wires):
+            continue
+        if any((row in chosen) != bool(ab[q]) or
+               (col in chosen) != bool(1 - bb[q])
+               for q, (col, row) in boundary):
+            continue
+        q_dummy_rank = len(all_dummies - chosen)
+        assert q_dummy_rank == f_count + delta
+        out += weight
+    assert out == W[ai][bi], (ai, bi, out, W[ai][bi])
+    entries_checked += 1
+    if delta and out:
+        shifted_nonzero.append({&quot;a&quot;: ai, &quot;b&quot;: bi, &quot;delta&quot;: delta,
+                                &quot;correct_Q_rank&quot;: f_count + delta,
+                                &quot;entry&quot;: str(out), &quot;fixed_f_rank_entry&quot;: &quot;0&quot;})
+
+XX, XZ, ZZ = kron(X, X), kron(X, Z), kron(Z, Z)
+# Y tensor Y is real despite the imaginary one-qubit Y.
+YY = [[F(0), F(0), F(0), F(-1)], [F(0), F(0), F(1), F(0)],
+      [F(0), F(1), F(0), F(0)], [F(-1), F(0), F(0), F(0)]]
+observables = {&quot;XX&quot;: XX, &quot;XZ&quot;: XZ, &quot;YY&quot;: YY, &quot;ZZ&quot;: ZZ,
+               &quot;(XX+ZZ)/3&quot;: scale(add(XX, ZZ), F(1, 3))}
+variance_checks = []
+for name, A in observables.items():
+    g, u = [], []
+    for b in range(4):
+        g.append(sum((A[b][a] * sig[a][b] / sig[b][b]
+                      for a in range(4)), F(0)))
+        u.append(sum((abs(A[b][a]) * sig[a][b] / sig[b][b]
+                      for a in range(4)), F(0)))
+    mean = sum((sig[b][b] * g[b] for b in range(4)), F(0))
+    moment = sum((sig[b][b] * g[b] ** 2 for b in range(4)), F(0))
+    trace_bound = tr(mm(mm(A, sig), A))
+    assert mean == tr(mm(A, sig))
+    assert moment &lt;= trace_bound &lt;= 1
+    r = max(sum(v != 0 for v in row) for row in A)
+    u_moment = sum((sig[b][b] * u[b] ** 2 for b in range(4)), F(0))
+    assert u_moment &lt;= r ** 2
+    T = F(5)
+    clip_mean = sum((sig[b][b] * max(-T, min(T, g[b]))
+                     for b in range(4)), F(0))
+    assert abs(mean - clip_mean) &lt;= moment / T &lt;= 1 / T
+    variance_checks.append({&quot;observable&quot;: name, &quot;mean&quot;: str(mean),
+                            &quot;second_moment&quot;: str(moment),
+                            &quot;trace_O_sigma_O&quot;: str(trace_bound),
+                            &quot;row_sparsity&quot;: r, &quot;u_second_moment&quot;: str(u_moment)})
+
+# A tiny diagonal need not cause inverse-probability sample complexity.
+R = F(2 ** 40)
+rare_K = [[F(1), R], [R, R * R + 1]]
+rare_sig = scale(rare_K, 1 / tr(rare_K))
+rare_g = [rare_sig[1][0] / rare_sig[0][0],
+          rare_sig[0][1] / rare_sig[1][1]]
+rare_moment = sum((rare_sig[b][b] * rare_g[b] ** 2 for b in range(2)), F(0))
+assert rare_g[0] == 2 ** 40 and rare_moment &lt; 1
+
+# Exact Hessian witness for the illegal X boundary insertion 1+x*y.
+# At x=y=1/2, Hessian log(1+xy) has diagonal -4/25,
+# off-diagonal 16/25; the (1,1) quadratic form is 24/25.
+illegal_curvature = 2 * F(-4, 25) + 2 * F(16, 25)
+assert illegal_curvature == F(24, 25)
+
+result = {&quot;status&quot;: &quot;PASS&quot;, &quot;scope&quot;: &quot;exact finite diagnostics, no FPRAS executed&quot;,
+          &quot;lifted_boundary_entries_checked&quot;: entries_checked,
+          &quot;off_charge_nonzero_entries&quot;: shifted_nonzero,
+          &quot;variance_checks&quot;: variance_checks,
+          &quot;rare_diagonal_fixture&quot;: {&quot;diagonal_probability&quot;: str(rare_sig[0][0]),
+                                     &quot;maximum_ratio&quot;: str(rare_g[0]),
+                                     &quot;second_moment&quot;: str(rare_moment)},
+          &quot;illegal_X_boundary_curvature&quot;: str(illegal_curvature),
+          &quot;wall_seconds&quot;: perf_counter() - START}
+path = Path(__file__).with_name(&quot;observable_checks.json&quot;)
+path.write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+print(json.dumps({&quot;status&quot;: result[&quot;status&quot;], &quot;entries&quot;: entries_checked,
+                  &quot;off_charge_nonzero&quot;: len(shifted_nonzero),
+                  &quot;variance_fixtures&quot;: len(variance_checks),
+                  &quot;wall_seconds&quot;: result[&quot;wall_seconds&quot;]}))
+</pre><p><a href="../assets/4ac0f29649f2f2015adb3fa7f1a2ad9f28d86f42beb4fedddce9c9a1eb7b83e7.py">Exact original bytes</a></p></html>

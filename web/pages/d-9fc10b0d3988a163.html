@@ -1,0 +1,114 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c08_s03/revisions/c1_certificate.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c08_s03/revisions/c1_certificate.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Exact rational C1-generator and finite-step cone certificates.
+
+Finite tests validate certificate arithmetic and exact benchmark identities.
+No generic ODE solver, native field interval compiler, or physical device.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from pathlib import Path
+import importlib.util
+import json
+import math
+import time
+import sympy as z
+
+PARENT = Path(__file__).resolve().parents[1]
+spec = importlib.util.spec_from_file_location(&#x27;initial_certificate&#x27;, PARENT/&#x27;certificate_checks.py&#x27;)
+initial = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(initial)
+
+
+def arctan_bounds(x, terms):
+    x = F(x)
+    partial = sum((-1)**k * x**(2*k+1)/(2*k+1) for k in range(terms))
+    next_term = (-1)**terms*x**(2*terms+1)/(2*terms+1)
+    return min(partial, partial+next_term), max(partial, partial+next_term)
+
+
+def pi_bounds(terms=36):
+    lo5, hi5 = arctan_bounds(F(1,5), terms)
+    lo239, hi239 = arctan_bounds(F(1,239), terms)
+    return 16*lo5-4*hi239, 16*hi5-4*lo239
+
+
+def rational_floor(x, denominator=10**12):
+    x = F(x)
+    return F((x.numerator*denominator)//x.denominator,denominator)
+
+
+def full_cone(a_lower, delta_upper, alpha, rate):
+    a, d, al, rate = map(F,(a_lower,delta_upper,alpha,rate))
+    if min(a,d,al,rate) &lt; 0 or a == 0 or al == 0:
+        return {&#x27;status&#x27;:&#x27;REJECTED_INPUT&#x27;}
+    _, root_upper = initial.sqrt_bounds(1+al*al)
+    passed = d*(1+al*al) &lt;= a*al and 0 &lt; rate &lt;= a-d*root_upper
+    return {&#x27;status&#x27;:&#x27;CERTIFIED&#x27; if passed else &#x27;UNKNOWN&#x27;,&#x27;a_lower&#x27;:str(a),
+            &#x27;generator_error_upper&#x27;:str(d),&#x27;alpha&#x27;:str(al),&#x27;entropy_lower&#x27;:str(rate) if passed else None}
+
+
+def step_cone(a_lower,b_upper,c_upper,d_upper,alpha,m):
+    a,b,c,d,al,m=map(F,(a_lower,b_upper,c_upper,d_upper,alpha,m))
+    if min(a,b,c,d,al)&lt;0 or al==0:
+        return {&#x27;status&#x27;:&#x27;REJECTED_INPUT&#x27;}
+    passed=(m&gt;1 and m&lt;=a-b*al and c+d*al&lt;=al*(a-b*al))
+    return {&#x27;status&#x27;:&#x27;CERTIFIED&#x27; if passed else &#x27;UNKNOWN&#x27;,
+            &#x27;expansion_lower&#x27;:str(m) if passed else None,
+            &#x27;entropy_lower&#x27;:&#x27;log(expansion_lower)/T&#x27; if passed else None}
+
+
+def main():
+    start=time.perf_counter()
+    a_lo,a_hi=initial.log_cat_bounds()
+    pi_lo,pi_hi=pi_bounds()
+    eps=F(1,100)
+    _, delta_hi=initial.sqrt_bounds(eps*eps*(4*pi_hi*pi_hi+a_hi*a_hi))
+    _, rt2=initial.sqrt_bounds(2)
+    rate=rational_floor(a_lo-rt2*delta_hi)
+    cert=full_cone(a_lo,delta_hi,1,rate)
+    c1_noise=F(1,100)
+    noisy_rate=rational_floor(a_lo-rt2*(delta_hi+c1_noise))
+    noisy=full_cone(a_lo,delta_hi+c1_noise,1,noisy_rate)
+    failed=full_cone(1,F(3,5),1,F(1,10))
+    # Use simple rational enclosures of lambda and inverse lambda.
+    rl,ru=initial.sqrt_bounds(5)
+    lam_lo=(3+rl)/2
+    lam_hi=(3+ru)/2
+    inv_hi=1/lam_lo
+    epsilon_map=F(1,2)
+    m=rational_floor(lam_lo-2*epsilon_map)
+    step=step_cone(lam_lo-epsilon_map,epsilon_map,epsilon_map,
+                   inv_hi+epsilon_map,1,m)
+    threshold=step_cone(F(5,2)-F(3,5),F(3,5),F(3,5),F(2,5)+F(3,5),1,F(11,10))
+    # Directly check full-cone boundary inequality and benchmark matrix.
+    a,g=z.symbols(&#x27;a g&#x27;,real=True)
+    G=z.Matrix([[0,0,0],[g,a,0],[0,0,-a]])
+    S=(G+G.T)/2
+    lam=z.Symbol(&#x27;lambda&#x27;)
+    u,v0,vs,al,de=z.symbols(&#x27;u v0 vs alpha delta&#x27;,real=True)
+    norm_boundary=al*(1+al*al)*u*u
+    checks={
+        &#x27;inhomogeneous_triangular_characteristic&#x27;:z.simplify(G.charpoly().as_expr()-lam*(lam-a)*(lam+a))==0,
+        &#x27;inhomogeneous_strain_norm&#x27;:z.simplify(z.trace(S*S)-2*a*a-g*g/2)==0,
+        &#x27;cone_boundary_noise_product&#x27;:z.simplify((al*al+al**4)*(1+al*al)-al*al*(1+al*al)**2)==0,
+        &#x27;pi_enclosure_width&#x27;:pi_hi-pi_lo&lt;F(1,10**20),
+        &#x27;sinusoidal_native_c1_certificate&#x27;:cert[&#x27;status&#x27;]==&#x27;CERTIFIED&#x27;,
+        &#x27;additional_generator_noise_certificate&#x27;:noisy[&#x27;status&#x27;]==&#x27;CERTIFIED&#x27;,
+        &#x27;excess_noise_stays_unknown&#x27;:failed[&#x27;status&#x27;]==&#x27;UNKNOWN&#x27;,
+        &#x27;half_unit_map_error_certificate&#x27;:step[&#x27;status&#x27;]==&#x27;CERTIFIED&#x27;,
+        &#x27;map_threshold_stays_unknown&#x27;:threshold[&#x27;status&#x27;]==&#x27;UNKNOWN&#x27;,
+    }
+    result={&#x27;status&#x27;:&#x27;PASS&#x27; if all(checks.values()) else &#x27;FAIL&#x27;,&#x27;checks&#x27;:checks,
+            &#x27;sinusoidal_epsilon&#x27;:str(eps),&#x27;certified_entropy_lower&#x27;:str(rate),
+            &#x27;display_entropy_lower&#x27;:float(rate),&#x27;display_exact_entropy&#x27;:float((a_lo+a_hi)/2),
+            &#x27;additional_generator_noise&#x27;:str(c1_noise),&#x27;noisy_entropy_lower&#x27;:str(noisy_rate),
+            &#x27;display_noisy_entropy_lower&#x27;:float(noisy_rate),
+            &#x27;sinusoidal_native_C1&#x27;:cert,&#x27;additional_noise_C1&#x27;:noisy,
+            &#x27;finite_step&#x27;:step,&#x27;pi_bounds&#x27;:{&#x27;lower&#x27;:str(pi_lo),&#x27;upper&#x27;:str(pi_hi)},
+            &#x27;elapsed_seconds&#x27;:time.perf_counter()-start,
+            &#x27;limits&#x27;:&#x27;Admitted rational inequalities and exact Sol benchmark only; no general field acquisition or ODE simulation executed.&#x27;}
+    (Path(__file__).parent/&#x27;c1_checks.json&#x27;).write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({k:result[k] for k in [&#x27;status&#x27;,&#x27;checks&#x27;,&#x27;display_entropy_lower&#x27;,&#x27;display_exact_entropy&#x27;,&#x27;display_noisy_entropy_lower&#x27;,&#x27;elapsed_seconds&#x27;]},indent=2))
+    if result[&#x27;status&#x27;]!=&#x27;PASS&#x27;:raise SystemExit(1)
+
+
+if __name__==&#x27;__main__&#x27;:main()
+</pre><p><a href="../assets/acf745982c8ab3bb6c69fcb0439447a7fb7e60227e11ea6ab0c0c8a5effdec39.py">Exact original bytes</a></p></html>

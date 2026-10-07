@@ -1,0 +1,102 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c01_s03/revisions/check_color_sector.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c01_s03/revisions/check_color_sector.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Exact finite control comparisons; owned output only.&quot;&quot;&quot;
+import itertools
+import json
+import math
+import random
+import time
+from fractions import Fraction
+from pathlib import Path
+from color_sector_control import ColorSector
+from low_sector_sampler import LowSector
+from check_low_sector import det, norm, direct_mass
+
+assertions=0
+
+def check(value):
+    global assertions
+    assertions+=1
+    assert value
+
+
+def direct_draw(engine,k,signs,up=(),down=(),empty=()):
+    up,down,empty=set(up),set(down),set(empty)
+    if len(up)&gt;k or len(down)&gt;k or 2*k&gt;engine.n-len(empty): return 0
+    if k==0:return 1
+    free=set(range(engine.n))-up-down-empty
+    left=up|{i for i in free if signs[i]==1}
+    right=down|{i for i in free if signs[i]==-1}
+    directions=[(left,right)]
+    if not up and not down: directions.append((right,left))
+    value=0
+    for rows,cols in directions:
+        for ii in itertools.combinations(sorted(rows),k):
+            if not up&lt;=set(ii): continue
+            for jj in itertools.combinations(sorted(cols),k):
+                if not down&lt;=set(jj):continue
+                value+=norm(det([[engine.g[i][j] for j in jj] for i in ii]))
+    return engine.range_multiplier(k,len(up),len(down))*value
+
+
+def audit(f,k,up=(),down=(),empty=(),name=&#x27;&#x27;):
+    engine=ColorSector(f);pfengine=LowSector(f)
+    free=sorted(set(range(engine.n))-set(up)-set(down)-set(empty))
+    true=direct_mass(engine,k,up,down,empty)
+    bad=len(up)&gt;k or len(down)&gt;k or 2*k&gt;engine.n-len(empty)
+    c=0 if bad else engine.range_multiplier(k,len(up),len(down))
+    values=[];pvalues=[]
+    for word in itertools.product((-1,1),repeat=len(free)):
+        signs=[1]*engine.n
+        for i,s in zip(free,word): signs[i]=s
+        value=engine.prefix_draw_integer(k,signs,up,down,empty)
+        check(value==direct_draw(engine,k,signs,up,down,empty))
+        check(0&lt;=value&lt;=c*true)
+        values.append(value)
+        pvalues.append(pfengine.prefix_draw_integer(k,signs,up,down,empty))
+    mean=Fraction(sum(values),len(values));second=Fraction(sum(x*x for x in values),len(values))
+    check(mean==true)
+    check(second&lt;=c*true*true)
+    psecond=Fraction(sum(x*x for x in pvalues),len(pvalues))
+    return {&#x27;name&#x27;:name,&#x27;n&#x27;:engine.n,&#x27;k&#x27;:k,&#x27;up&#x27;:list(up),&#x27;down&#x27;:list(down),&#x27;empty&#x27;:list(empty),
+            &#x27;sign_words&#x27;:len(values),&#x27;target&#x27;:str(Fraction(true,engine.denominator**(2*k))),
+            &#x27;color_C&#x27;:c,&#x27;color_relative_second_moment&#x27;:str(second/(true*true)) if true else &#x27;ZERO&#x27;,
+            &#x27;pfaffian_relative_second_moment&#x27;:str(psecond/(true*true)) if true else &#x27;ZERO&#x27;}
+
+
+def main():
+    started=time.monotonic();rng=random.Random(712244);cases=[];matrices={}
+    for n in range(2,7):
+        f=[[(Fraction(rng.randrange(-4,5),3),Fraction(rng.randrange(-4,5),5)) for _ in range(n)] for _ in range(n)]
+        matrices[n]=f
+        for k in range(n//2+1):cases.append(audit(f,k,name=&#x27;generic_rational_root&#x27;))
+        cases.append(audit(f,n//2,up=(0,),down=(n-1,),name=&#x27;up_down&#x27;))
+        cases.append(audit(f,1,down=(0,),empty=(1,),name=&#x27;down_empty&#x27;))
+    for length in range(1,5):
+        for labels in itertools.product((0,1,-1),repeat=length):
+            up=[i for i,label in enumerate(labels) if label==1]
+            down=[i for i,label in enumerate(labels) if label==-1]
+            empty=[i for i,label in enumerate(labels) if label==0]
+            cases.append(audit(matrices[4],2,up,down,empty,name=&#x27;all_four_site_prefixes&#x27;))
+    f=[[0]*4 for _ in range(4)];f[0][2]=f[1][3]=1
+    unique=audit(f,2,name=&#x27;unique_supported_word&#x27;)
+    check(unique[&#x27;color_relative_second_moment&#x27;]==&#x27;8&#x27;)
+    check(unique[&#x27;pfaffian_relative_second_moment&#x27;]==&#x27;1&#x27;)
+    cases.append(unique)
+    cases.append(audit([[0 if i==j else 1 for j in range(4)] for i in range(4)],2,name=&#x27;exact_zero&#x27;))
+    sampler_runs=[]
+    for n,k,runs in ((3,1,8),(4,2,8),(5,2,4)):
+        engine=ColorSector(matrices[n])
+        for seed in range(runs):
+            sample=engine.born_sample(k,Fraction(3,4),rng=random.Random(2000+seed),enumerate_if_cheaper=False)
+            check(sample[&#x27;status&#x27;]==&#x27;OK&#x27;)
+            i,j=sample[&#x27;I&#x27;],sample[&#x27;J&#x27;]
+            check(len(i)==len(j)==k and not set(i)&amp;set(j))
+            check(norm(det([[engine.g[x][y] for y in j] for x in i]))&gt;0)
+        sampler_runs.append({&#x27;n&#x27;:n,&#x27;k&#x27;:k,&#x27;runs&#x27;:runs,&#x27;stats&#x27;:engine.stats})
+    result={&#x27;status&#x27;:&#x27;PASS&#x27;,&#x27;assertions&#x27;:assertions,&#x27;cases&#x27;:len(cases),&#x27;sign_words&#x27;:sum(x[&#x27;sign_words&#x27;] for x in cases),
+            &#x27;elapsed_seconds&#x27;:time.monotonic()-started,&#x27;fixtures&#x27;:cases,&#x27;samplers&#x27;:sampler_runs,
+            &#x27;scope&#x27;:&#x27;Independent exact color-coding/prefix comparisons and 20 full-cap sampler runs. No universal variance advantage or unrestricted FPRAS claim.&#x27;}
+    Path(__file__).with_name(&#x27;color_sector_checks.json&#x27;).write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({k:v for k,v in result.items() if k!=&#x27;fixtures&#x27;},indent=2))
+
+if __name__==&#x27;__main__&#x27;:main()
+</pre><p><a href="../assets/9d0ba8c25bffbe8eb9de0035d48e2ce061c27d3d8420ac9b442b60d5a9427373.py">Exact original bytes</a></p></html>

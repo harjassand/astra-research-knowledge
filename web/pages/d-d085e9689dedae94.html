@@ -1,0 +1,168 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c02_l07/four_site_windability_recognizer.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c02_l07/four_site_windability_recognizer.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact even-windability recognizer for even functions on four bits.&quot;&quot;&quot;
+from fractions import Fraction
+import json
+from pathlib import Path
+
+N = 4
+FULL = 15
+PAIRINGS = (((0,1),(2,3)),((0,2),(1,3)),((0,3),(1,2)))
+
+
+def pair_mask(pair):
+    return (1 &lt;&lt; pair[0]) | (1 &lt;&lt; pair[1])
+
+
+def pairing_index(matching):
+    normalized = tuple(sorted(tuple(sorted(p)) for p in matching))
+    candidates = [tuple(sorted(tuple(sorted(p)) for p in m)) for m in PAIRINGS]
+    return candidates.index(normalized)
+
+
+def matchings_for_difference(diff):
+    sites = [i for i in range(N) if (diff &gt;&gt; i) &amp; 1]
+    if not sites:
+        return [()]
+    if len(sites) == 2:
+        return [(tuple(sites),)]
+    if len(sites) == 4:
+        return list(PAIRINGS)
+    return []
+
+
+def analyze_even_signature(f):
+    &quot;&quot;&quot;Return exact witness data iff f is even-windable on four sites.
+
+    The criterion is necessary and sufficient for the McQuillan witness on a
+    four-site even function. It checks all pinnings through the direct ordered
+    pair witness construction below.
+    &quot;&quot;&quot;
+    if len(f) != 16 or any(f[m] &lt; 0 for m in range(16)):
+        raise ValueError(&quot;expected 16 nonnegative rational coefficients&quot;)
+    if any(f[m] != 0 for m in range(16) if m.bit_count() % 2):
+        raise ValueError(&quot;function is not supported on even subsets&quot;)
+    capacities = []
+    for first, second in PAIRINGS:
+        capacities.append(f[pair_mask(first)] * f[pair_mask(second)])
+    demand = f[0] * f[FULL]
+    residual = (sum(capacities) - demand) / 2
+    if residual &lt; 0:
+        return {&quot;windable&quot;: False, &quot;reason&quot;: &quot;negative four-hole defect&quot;, &quot;demand&quot;: demand, &quot;capacities&quot;: capacities}
+    lower = [max(Fraction(0), h - residual) for h in capacities]
+    upper = capacities
+    if sum(lower) &gt; demand or sum(upper) &lt; demand:
+        return {
+            &quot;windable&quot;: False,
+            &quot;reason&quot;: &quot;four-hole orbit masses have incompatible nonnegative bounds&quot;,
+            &quot;demand&quot;: demand,
+            &quot;capacities&quot;: capacities,
+            &quot;cross_orbit_total&quot;: residual,
+            &quot;lower_bounds&quot;: lower,
+            &quot;lower_bound_sum&quot;: sum(lower),
+        }
+    a = list(lower)
+    remaining = demand - sum(a)
+    for i in range(3):
+        increment = min(remaining, upper[i] - a[i])
+        a[i] += increment
+        remaining -= increment
+    if remaining:
+        raise AssertionError(&quot;greedy fill failed despite the exact interval criterion&quot;)
+    b = [a[i] + residual - capacities[i] for i in range(3)]
+    assert all(x &gt;= 0 for x in a + b)
+    assert sum(a) == demand and sum(b) == residual
+    assert all(capacities[i] == a[i] + sum(b[j] for j in range(3) if j != i)
+               for i in range(3))
+
+    def witness(x, y):
+        diff = x ^ y
+        matchings = matchings_for_difference(diff)
+        value = f[x] * f[y]
+        if not value:
+            return {m: Fraction(0) for m in matchings}
+        if diff.bit_count() in (0, 2):
+            assert len(matchings) == 1
+            return {matchings[0]: value}
+        assert diff.bit_count() == 4 and len(matchings) == 3
+        out = {}
+        for matching in matchings:
+            index = pairing_index(matching)
+            aligned = all(((x &gt;&gt; i) &amp; 1) == ((x &gt;&gt; j) &amp; 1)
+                          for i, j in matching)
+            out[matching] = a[index] if aligned else b[index]
+        return out
+
+    pair_checks = 0
+    flip_checks = 0
+    for x in range(1 &lt;&lt; N):
+        for y in range(1 &lt;&lt; N):
+            masses = witness(x, y)
+            assert sum(masses.values()) == f[x] * f[y]
+            pair_checks += 1
+            for matching, mass in masses.items():
+                for edge in matching:
+                    flipped = pair_mask(edge)
+                    assert witness(x ^ flipped, y ^ flipped)[matching] == mass
+                    flip_checks += 1
+    return {
+        &quot;windable&quot;: True,
+        &quot;demand&quot;: demand,
+        &quot;pairing_capacities&quot;: capacities,
+        &quot;cross_orbit_total&quot;: residual,
+        &quot;empty_orbit_masses&quot;: a,
+        &quot;cross_orbit_masses&quot;: b,
+        &quot;ordered_assignment_pairs_checked&quot;: pair_checks,
+        &quot;pair_flip_equalities_checked&quot;: flip_checks,
+    }
+
+
+def format_result(result):
+    out = {}
+    for key, value in result.items():
+        if isinstance(value, Fraction):
+            out[key] = str(value)
+        elif isinstance(value, list):
+            out[key] = [str(x) if isinstance(x, Fraction) else x for x in value]
+        else:
+            out[key] = value
+    return out
+
+
+def main():
+    from cross_aux_counterexample import (
+        CROSS_EDGES, F as F6, hole_signature, transform_slice
+    )
+
+    original_f4 = [Fraction(0) for _ in range(16)]
+    original_f4[0] = Fraction(4)
+    original_f4[15] = Fraction(1)
+    for mask in (5, 6, 9, 10):
+        original_f4[mask] = Fraction(1)
+
+    larger_delta_but_not_windable = [Fraction(0) for _ in range(16)]
+    larger_delta_but_not_windable[0] = Fraction(1)
+    larger_delta_but_not_windable[15] = Fraction(1)
+    larger_delta_but_not_windable[3] = Fraction(3)
+    larger_delta_but_not_windable[12] = Fraction(1)
+
+    sig6 = hole_signature(F6)
+    minimal_edges = CROSS_EDGES[:7]
+    rescued_slice = transform_slice(sig6, minimal_edges)
+    # The displayed seven-edge set is (04,05,14,15,24,25,34).
+    results = {
+        &quot;F4_original&quot;: analyze_even_signature(original_f4),
+        &quot;positive_delta_but_infeasible&quot;: analyze_even_signature(larger_delta_but_not_windable),
+        &quot;cross_coordinate_rescued_slice&quot;: analyze_even_signature(rescued_slice),
+    }
+    assert results[&quot;F4_original&quot;][&quot;windable&quot;] is False
+    assert results[&quot;positive_delta_but_infeasible&quot;][&quot;windable&quot;] is False
+    assert results[&quot;positive_delta_but_infeasible&quot;][&quot;reason&quot;].startswith(&quot;four-hole orbit&quot;)
+    assert results[&quot;cross_coordinate_rescued_slice&quot;][&quot;windable&quot;] is True
+    out = {name: format_result(value) for name, value in results.items()}
+    path = Path(__file__).with_name(&quot;four_site_windability_recognizer_result.json&quot;)
+    path.write_text(json.dumps(out, indent=2) + &quot;\n&quot;)
+    print(json.dumps(out, indent=2))
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/33133c5a8c1f0659c37e89bd4ece7e8fe9a1ee5977edf15b7ee1033f9692982e.py">Exact original bytes</a></p></html>

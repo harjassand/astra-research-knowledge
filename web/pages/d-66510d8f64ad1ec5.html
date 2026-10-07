@@ -1,0 +1,113 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c10_s02/revisions/quadratic_certificate.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c10_s02/revisions/quadratic_certificate.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>from fractions import Fraction as Q
+from pathlib import Path
+from time import perf_counter
+import json
+
+REACTIONS = [((1,0,1),(1,1,0)), ((1,1,0),(1,0,1)),
+             ((1,1,0),(0,1,0)), ((0,1,0),(1,1,0)),
+             ((0,0,1),(0,0,0)), ((0,0,0),(0,0,1))]
+
+def ceilq(x):
+    return -((-x.numerator)//x.denominator)
+
+def synthesize(rates):
+    k1,k2,k3,k4,k5,k6 = map(Q,rates)
+    assert min(k1,k2,k3,k4,k5,k6)&gt;0
+    beta,gamma = k2,k1
+    center_b = (beta+3*gamma)/(2*beta)
+    lin_a = 3*k3+2*k4+2*k2*(k1+k2)
+    lin_c = 3*k5+2*k6
+    drift_c_max = k1*lin_c**2/(8*k5)
+    drift_a_max = lin_a**2/(8*k3)
+    eps = min(Q(1), k1, k1*k6)
+    a_threshold = max(1,ceilq(lin_a/k3),ceilq((drift_c_max+1)/k3)+1,
+                      ceilq((lin_c+1)/(2*k1)))
+    delta = min(k2**2, 2*k1*k5/(1+2*k1**2/k2**2))
+    joint_threshold = ceilq((drift_a_max+k1*lin_c+delta+1)/delta)
+    b_threshold_zero_a = ceilq((drift_c_max+eps)/k4)+1
+    c_threshold_zero_a = max(1,ceilq((lin_c+1)/(2*k5)))
+    return {&#x27;rates&#x27;:tuple(map(Q,rates)), &#x27;beta&#x27;:beta,&#x27;gamma&#x27;:gamma,
+            &#x27;center_b&#x27;:center_b,&#x27;eps&#x27;:eps,&#x27;delta&#x27;:delta,
+            &#x27;a_threshold&#x27;:a_threshold,
+            &#x27;b_threshold&#x27;:max(joint_threshold,b_threshold_zero_a),
+            &#x27;c_threshold&#x27;:max(joint_threshold,c_threshold_zero_a)}
+
+def potential(x,cert):
+    a,b,c=map(Q,x)
+    return 1+(a-1)**2+cert[&#x27;beta&#x27;]*(b-cert[&#x27;center_b&#x27;])**2+cert[&#x27;gamma&#x27;]*(c-1)**2
+
+def propensity(x,y,k):
+    val=k
+    for xi,yi in zip(x,y):
+        for j in range(yi):
+            val*=max(0,xi-j)
+    return val
+
+def direct_generator(x,cert):
+    old=potential(x,cert)
+    ans=Q(0)
+    for (y,yp),rate in zip(REACTIONS,cert[&#x27;rates&#x27;]):
+        lam=propensity(x,y,rate)
+        if lam:
+            xp=tuple(xi-yi+zi for xi,yi,zi in zip(x,y,yp))
+            ans+=lam*(potential(xp,cert)-old)
+    return ans
+
+def formula_generator(x,cert):
+    a,b,c=map(Q,x)
+    k1,k2,k3,k4,k5,k6=cert[&#x27;rates&#x27;]
+    h=-2*k3*a*a+(3*k3+2*k4+2*k2*(k1+k2))*a-k4
+    return b*h-2*a*(k2*b-k1*c)**2+k1*(-2*k5*c*c+(3*k5+2*k6)*c-k6)
+
+def outside_box(x,cert):
+    return any(v&gt;=cert[n+&#x27;_threshold&#x27;] for v,n in zip(x,(&#x27;a&#x27;,&#x27;b&#x27;,&#x27;c&#x27;)))
+
+def main():
+    started=perf_counter()
+    rate_sets=[(1,1,1,1,1,1),(Q(1,2),Q(3,2),2,3,Q(1,3),2),
+               (3,Q(1,4),Q(1,2),Q(1,3),2,Q(1,2)),
+               (Q(1,5),4,Q(2,3),Q(5,2),Q(7,4),Q(3,5))]
+    identity_checks=0; outside_checks=0; targeted_checks=0
+    certificates=[]
+    for rates in rate_sets:
+        cert=synthesize(rates)
+        for a in range(7):
+          for b in range(8):
+            for c in range(8):
+                x=(a,b,c)
+                assert direct_generator(x,cert)==formula_generator(x,cert)
+                assert potential(x,cert)&gt;=1
+                identity_checks+=1
+                if a+b and outside_box(x,cert):
+                    assert formula_generator(x,cert)&lt;=-cert[&#x27;eps&#x27;]
+                    outside_checks+=1
+        aa,bb,cc=(cert[n+&#x27;_threshold&#x27;] for n in (&#x27;a&#x27;,&#x27;b&#x27;,&#x27;c&#x27;))
+        for x in [(aa,0,0),(aa,0,1),(aa,1,0),(0,bb,0),
+                  (0,1,cc),(1,bb,0),(1,0,cc),(aa,bb,cc),
+                  (aa+1,2*bb,3*cc)]:
+            assert direct_generator(x,cert)==formula_generator(x,cert)
+            assert outside_box(x,cert)
+            assert formula_generator(x,cert)&lt;=-cert[&#x27;eps&#x27;]
+            targeted_checks+=1
+        certificates.append({k:([str(v) for v in val] if k==&#x27;rates&#x27; else str(val))
+                             for k,val in cert.items()})
+    # Tighter exact unit-rate box from the separate hand inequalities.
+    unit=synthesize(rate_sets[0]); unit_outside=0
+    for a in range(11):
+      for b in range(26):
+        for c in range(22):
+          if not a+b: continue
+          if a&gt;=5 or b&gt;=20 or c&gt;=16:
+            assert formula_generator((a,b,c),unit)&lt;=-1
+            unit_outside+=1
+    out={&#x27;status&#x27;:&#x27;PASS&#x27;,&#x27;symbolic_formula_exact_checks&#x27;:identity_checks,
+         &#x27;outside_synthesized_box_checks&#x27;:outside_checks,
+         &#x27;large_exact_threshold_checks&#x27;:targeted_checks,
+         &#x27;unit_tighter_box_checks&#x27;:unit_outside,&#x27;certificates&#x27;:certificates,
+         &#x27;elapsed_seconds&#x27;:perf_counter()-started,
+         &#x27;scope&#x27;:&#x27;Bounded exact diagnostics; universal inequalities in quadratic_certificate.txt prove drift outside the synthesized box.&#x27;}
+    Path(__file__).with_name(&#x27;quadratic_checks.json&#x27;).write_text(json.dumps(out,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps(out,indent=2))
+
+if __name__==&#x27;__main__&#x27;: main()
+</pre><p><a href="../assets/317628f9d3cef75d74a9722161715fb13567e15559245e1c8fa618ede0bac311.py">Exact original bytes</a></p></html>

@@ -1,0 +1,102 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c01_l08/acceptance_cost_audit.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c01_l08/acceptance_cost_audit.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Small exact diagnostics for the c01_l08 parity cost audit.
+
+Uses only Python&#x27;s standard library. These checks illustrate the rational
+acceptance and refresh bit bounds; they are not a mixing or FPRAS test.
+&quot;&quot;&quot;
+
+from fractions import Fraction
+from itertools import combinations
+import json
+import math
+
+
+def det2(a, b, c, d):
+    return a * d - b * c
+
+
+def submatrix_det2(matrix, rows, cols):
+    a, b = (matrix[rows[0]][cols[0]], matrix[rows[0]][cols[1]])
+    c, d = (matrix[rows[1]][cols[0]], matrix[rows[1]][cols[1]])
+    return det2(a, b, c, d)
+
+
+def dyadic_acceptance(p, bits):
+    &quot;&quot;&quot;Down-round p to a bounded-time coin using exactly `bits` fair bits.&quot;&quot;&quot;
+    p = Fraction(p)
+    scale = 1 &lt;&lt; bits
+    threshold = (p.numerator * scale) // p.denominator
+    return Fraction(threshold, scale)
+
+
+def modulo_tv_bound(modulus, bits):
+    &quot;&quot;&quot;Exact TV distance from x mod modulus for uniform x in [0,2**bits).&quot;&quot;&quot;
+    size = 1 &lt;&lt; bits
+    q, rem = divmod(size, modulus)
+    probs = [Fraction(q + (i &lt; rem), size) for i in range(modulus)]
+    return sum(abs(p - Fraction(1, modulus)) for p in probs) / 2
+
+
+def main():
+    # The four-site determinant reassignment from the inherited report.
+    for L in range(1, 20):
+        delta = Fraction(1, 1 &lt;&lt; L)
+        F = [
+            [0, delta, 1, 0],
+            [delta, 0, 0, 1],
+            [1, 0, 0, 1],
+            [0, 1, 1, 0],
+        ]
+        good_1 = submatrix_det2(F, (0, 1), (2, 3))
+        good_2 = submatrix_det2(F, (2, 3), (0, 1))
+        reassigned_1 = submatrix_det2(F, (0, 2), (1, 3))
+        reassigned_2 = submatrix_det2(F, (1, 3), (0, 2))
+        ratio = (reassigned_1 * reassigned_2) ** 2 / (good_1 * good_2) ** 2
+        assert good_1 == good_2 == 1
+        assert reassigned_1 == reassigned_2 == delta
+        assert ratio == Fraction(1, 1 &lt;&lt; (4 * L))
+
+    # Every dyadic acceptance approximation has one-sided error &lt; 2**(-k).
+    acceptance_cases = 0
+    for denominator in range(1, 41):
+        for numerator in range(denominator + 1):
+            p = Fraction(numerator, denominator)
+            for bits in range(1, 9):
+                rounded = dyadic_acceptance(p, bits)
+                assert 0 &lt;= p - rounded &lt; Fraction(1, 1 &lt;&lt; bits)
+                acceptance_cases += 1
+
+    # A recursive matching sampler with modulo choices has fixed cost and a
+    # summable explicit bias; this checks the per-choice exact TV expression.
+    matching_choice_cases = []
+    for q in range(1, 32, 2):
+        bits = math.ceil(math.log2(q)) + 8
+        tv = modulo_tv_bound(q, bits)
+        assert tv &lt;= Fraction(q, 1 &lt;&lt; bits)
+        matching_choice_cases.append({&quot;choices&quot;: q, &quot;bits&quot;: bits, &quot;tv&quot;: str(tv)})
+
+    # Example refresh precision: r=8, M=36 lines, R=2**3, eta=2**-10.
+    # K is chosen so 2**(-K) 2**M r**r R**(2r) &lt;= eta.
+    r, M, log2_R, log2_inv_eta = 8, 36, 3, 10
+    K = M + math.ceil(r * math.log2(r)) + 2 * r * log2_R + log2_inv_eta
+    assert K == 118
+    assert K &gt;= M + r * math.log2(r) + 2 * r * log2_R + log2_inv_eta
+
+    print(json.dumps({
+        &quot;delta_reassignment&quot;: &quot;exact ratio 2^(-4L), L=1..19&quot;,
+        &quot;dyadic_acceptance_checks&quot;: acceptance_cases,
+        &quot;modulo_matching_choice_examples&quot;: matching_choice_cases,
+        &quot;refresh_example&quot;: {
+            &quot;dimension_r&quot;: r,
+            &quot;line_count_M&quot;: M,
+            &quot;max_coordinate_R&quot;: &quot;2^3&quot;,
+            &quot;refresh_tv_budget&quot;: &quot;2^-10&quot;,
+            &quot;epsilon&quot;: &quot;2^-118&quot;,
+            &quot;epsilon_encoding_bits&quot;: 119,
+        },
+        &quot;scope&quot;: &quot;exact arithmetic diagnostics only; no mixing or sampler validation&quot;,
+    }, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/26908ea2ba4daeca209f0cc8bae035d45dc6770dc4ce2174979f0fcab2e5b809.py">Exact original bytes</a></p></html>

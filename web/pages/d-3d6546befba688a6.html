@@ -1,0 +1,101 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c09_s02/revisions/acquisition_algebra_checks.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c09_s02/revisions/acquisition_algebra_checks.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Bounded additional diagnostics for revision03; no external dependencies.
+
+Exact/rational table checks and floating noncommuting matrix fixtures remain
+separate. Neither certifies the full analytic theorems or their priority.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from pathlib import Path
+from decimal import Decimal, localcontext
+import json
+import math
+import time
+
+import entropy_table_certificate as cert
+import matrix_contrast_checks as mat
+
+
+def xlog_trace(a):
+    return sum(x*math.log(x) if x&gt;0 else 0. for x in mat.eigen(a))
+
+
+def rootm_psd(a):
+    # This admits PSD fixtures (including rank one), unlike a matrix-log oracle.
+    d = math.sqrt(max(0.,mat.det(a)))
+    denominator = math.sqrt(mat.tr(a)+2*d)
+    if denominator == 0:
+        return [[0.,0.],[0.,0.]]
+    return mat.add(a,mat.I,1/denominator,d/denominator)
+
+
+def main():
+    start = time.perf_counter()
+    examples = [
+        ([[1.,0.],[0.,4.]],[[2.5,1.5],[1.5,2.5]]),
+        ([[0.,0.],[0.,2.]],[[1.,1.],[1.,1.]]),
+        ([[.2,.1],[.1,2.]],[[1.5,-.4],[-.4,.8]]),
+    ]
+    matrix_results = []
+    for a0,a1 in examples:
+        r0,r1 = rootm_psd(a0),rootm_psd(a1)
+        s = mat.add(r0,r1,.5,.5)
+        mean_a = mat.add(a0,a1,.5,.5)
+        entropy = (xlog_trace(a0)+xlog_trace(a1))/2-xlog_trace(mean_a)
+        variance = (mat.norm2(mat.add(r0,s,1,-1))+mat.norm2(mat.add(r1,s,1,-1)))/2
+        r = math.sqrt(max(mat.eigen(a0)[1],mat.eigen(a1)[1]))
+        lo = mat.eigen(s)[0]
+        assert lo &gt; 0
+        ratio = r/lo
+        b = (2*ratio*ratio*math.log(ratio)-ratio*ratio+1)/(ratio-1)**2
+        reference = mat.mul(s,s)
+        log_reference = mat.logm(reference)
+        avg_divergence = sum(xlog_trace(a)-mat.tr(mat.mul(a,log_reference))-mat.tr(a)+mat.tr(reference)
+                             for a in (a0,a1))/2
+        assert entropy&gt;=-1e-12 and entropy &lt;= avg_divergence+1e-12
+        assert avg_divergence &lt;= b*variance+1e-12
+        assert b &lt;= 2+2*math.log(ratio)+1e-12
+        matrix_results.append({&#x27;A0&#x27;:a0,&#x27;A1&#x27;:a1,&#x27;matrix_entropy&#x27;:entropy,
+                               &#x27;root_variance&#x27;:variance,&#x27;mean_lower&#x27;:lo,&#x27;range_root&#x27;:r,
+                               &#x27;ratio&#x27;:ratio,&#x27;coefficient&#x27;:b,&#x27;S_squared_reference_divergence&#x27;:avg_divergence,
+                               &#x27;entropy_upper&#x27;:b*variance,
+                               &#x27;commutator_norm&#x27;:math.sqrt(mat.norm2(mat.add(mat.mul(a0,a1),mat.mul(a1,a0),1,-1)))})
+    caps = []
+    table = {&#x27;probabilities&#x27;:[&#x27;3/4&#x27;,&#x27;1/4&#x27;], &#x27;diagonal_fields&#x27;:[[&#x27;0&#x27;,&#x27;1&#x27;],[&#x27;4&#x27;,&#x27;0&#x27;]]}
+    with localcontext() as ctx:
+        ctx.prec = 100
+        for cap in [F(1,1024),F(1,16),F(1),F(64),F(1&lt;&lt;20)]:
+            report = cert.certify(table,cap,bits=70)
+            enclosure = report[&#x27;root_certificate&#x27;][&#x27;peer_H_L_interval&#x27;]
+            x = Decimal(cap.numerator)/Decimal(cap.denominator)
+            actual = (1+x)**2/(x*x)*(1+x).ln()-(1+x)/x-Decimal(&#x27;0.5&#x27;)
+            actual_g = ((1+x)/x*(1+x).ln()-1)/2
+            def dec(t):
+                q=F(t)
+                return Decimal(q.numerator)/Decimal(q.denominator)
+            assert dec(enclosure[&#x27;lower_rational&#x27;]) &lt;= actual &lt;= dec(enclosure[&#x27;upper_rational&#x27;])
+            assert actual&gt;0 and actual &lt;= (1+x).ln()
+            g_enclosure=report[&#x27;root_certificate&#x27;][&#x27;peer_G_L_interval&#x27;]
+            assert dec(g_enclosure[&#x27;lower_rational&#x27;])&lt;=actual_g&lt;=dec(g_enclosure[&#x27;upper_rational&#x27;])
+            assert 0&lt;actual_g&lt;=x/4
+            caps.append({&#x27;cap&#x27;:str(cap),&#x27;H_L_interval&#x27;:enclosure,&#x27;Decimal_H_L_diagnostic&#x27;:str(actual),
+                         &#x27;G_L_interval&#x27;:g_enclosure,&#x27;Decimal_G_L_diagnostic&#x27;:str(actual_g),
+                         &#x27;combined_information_upper_rational&#x27;:report[&#x27;integrated_information_upper_rational&#x27;]})
+    # Exact profile-at-zero omission witness; no numerical information estimate.
+    witness = {&#x27;Y_probabilities&#x27;:[&#x27;1/2&#x27;,&#x27;1/2&#x27;],&#x27;A_values&#x27;:[&#x27;0&#x27;,&#x27;1&#x27;],
+               &#x27;profile_f0&#x27;:&#x27;1&#x27;,&#x27;profile_positive_u&#x27;:&#x27;0&#x27;,&#x27;J_profile&#x27;:&#x27;0&#x27;,
+               &#x27;conditional_Gaussian_variances&#x27;:[&#x27;2&#x27;,&#x27;1&#x27;],
+               &#x27;consequence&#x27;:&#x27;Conditional laws distinct for every T, so MI is a positive constant; integral with dT/T^2 diverges. Measurable profiles need explicit f(0)=0.&#x27;}
+    result = {&#x27;status&#x27;:&#x27;PASS_BOUNDED_ACQUISITION_ALGEBRA_CHECKS&#x27;,
+              &#x27;noncommuting_matrix_floating_diagnostics&#x27;:matrix_results,
+              &#x27;exact_interval_cap_certificates&#x27;:caps,&#x27;profile_zero_counterexample&#x27;:witness,
+              &#x27;elapsed_seconds&#x27;:time.perf_counter()-start,
+              &#x27;scope&#x27;:&#x27;Noncommuting square-root entropy inequality checked at three small floating examples, including rank-one fields. Cap output is rationally enclosed and compared with finite Decimal diagnostics. General proofs and novelty not certified.&#x27;}
+    out = Path(__file__).with_name(&#x27;acquisition_algebra_checks.json&#x27;)
+    out.write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({&#x27;status&#x27;:result[&#x27;status&#x27;],&#x27;matrix_examples&#x27;:len(matrix_results),
+                      &#x27;cap_certificates&#x27;:len(caps),&#x27;elapsed_seconds&#x27;:result[&#x27;elapsed_seconds&#x27;],
+                      &#x27;output&#x27;:str(out)},indent=2))
+
+
+if __name__ == &#x27;__main__&#x27;:
+    main()
+</pre><p><a href="../assets/1035b06c505622378bcb6bc81e18f37e998ddba97c0d38fb1fc70b078625b781.py">Exact original bytes</a></p></html>

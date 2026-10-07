@@ -1,0 +1,154 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c02_s01/bandwidth_parity.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c02_s01/bandwidth_parity.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Acquired finite-frontier hard-BCS norm transfer for rational-complex F.
+
+Bandwidth b=max{|i-j| : i!=j and F[i,j]!=0} is acquired directly.
+All coefficients: O(n^2 (b+1) 16^(b+1)) exact field operations.
+This is an exact admitted-width algorithm, not a general-rank FPRAS.
+&quot;&quot;&quot;
+from low_rank_parity import G, Q, cast, choose_rational
+import secrets
+
+
+def create(bits, mode):
+    if bits &gt;&gt; mode &amp; 1:
+        return None
+    return bits | (1 &lt;&lt; mode), (-1) ** ((bits &amp; ((1 &lt;&lt; mode) - 1)).bit_count())
+
+
+def pair_create(bits, up_mode, down_mode):
+    # a_up^dagger b_down^dagger acts right to left.
+    first = create(bits, down_mode)
+    if first is None:
+        return None
+    second = create(first[0], up_mode)
+    if second is None:
+        return None
+    return second[0], first[1] * second[1]
+
+
+def gate(D, up_mode, down_mode, amplitude):
+    &quot;&quot;&quot;D -&gt; (1+f K) D (1+f K)^*, K=a_up^dagger b_down^dagger.&quot;&quot;&quot;
+    N = {}
+
+    def add(key, val):
+        if val:
+            N[key] = N.get(key, G()) + val
+
+    for (ket, bra, k), val in D.items():
+        left = pair_create(ket, up_mode, down_mode)
+        right = pair_create(bra, up_mode, down_mode)
+        add((ket, bra, k), val)
+        if left is not None:
+            add((left[0], bra, k), val * amplitude * left[1])
+        if right is not None:
+            add((ket, right[0], k), val * amplitude.conj() * right[1])
+        if left is not None and right is not None:
+            add((left[0], right[0], k), val * amplitude.norm() * left[1] * right[1])
+    return {key: val for key, val in N.items() if val}
+
+
+def trace_front(D, table, row_weight, col_weight, cap):
+    &quot;&quot;&quot;Trace the first physical site with its hard projection and activity.&quot;&quot;&quot;
+    N = {}
+    for (ket, bra, k), val in D.items():
+        occupation = ket &amp; 3
+        if occupation != bra &amp; 3 or occupation == 3:
+            continue
+        letter = &#x27;ERC&#x27;[occupation]
+        if letter not in table:
+            continue
+        kk = k + int(occupation == 1)
+        if kk &gt; cap:
+            continue
+        weight = Q(1) if occupation == 0 else row_weight if occupation == 1 else col_weight
+        key = (ket &gt;&gt; 2, bra &gt;&gt; 2, kk)
+        N[key] = N.get(key, G()) + val * weight
+    return {key: val for key, val in N.items() if val}
+
+
+def validate(F, allowed, row_weights, col_weights):
+    n = len(F)
+    if any(len(row) != n for row in F):
+        raise ValueError(&#x27;F must be square&#x27;)
+    F = [[cast(v) for v in row] for row in F]
+    tables = [set(&#x27;ERC&#x27;) for _ in range(n)] if allowed is None else [set(t) for t in allowed]
+    if len(tables) != n or any(not t &lt;= set(&#x27;ERC&#x27;) for t in tables):
+        raise ValueError(&#x27;bad site table&#x27;)
+    rw = [Q(1)] * n if row_weights is None else [Q(v) for v in row_weights]
+    cw = [Q(1)] * n if col_weights is None else [Q(v) for v in col_weights]
+    if len(rw) != n or len(cw) != n or any(v &lt; 0 for v in rw + cw):
+        raise ValueError(&#x27;bad nonnegative activities&#x27;)
+    return F, tables, rw, cw
+
+
+def count_band(F, allowed=None, row_weights=None, col_weights=None, max_pairs=None):
+    &quot;&quot;&quot;Return exact disjoint-minor coefficients and acquired-width metadata.
+
+    Optional max_pairs discards only sectors above that number. Entries Fii are
+    ignored because disjoint I,J never use them. Site order is the supplied order.
+    &quot;&quot;&quot;
+    F, tables, rw, cw = validate(F, allowed, row_weights, col_weights)
+    n = len(F)
+    if max_pairs is not None and (not isinstance(max_pairs, int) or max_pairs &lt; 0):
+        raise ValueError(&#x27;bad sector cap&#x27;)
+    cap = n // 2 if max_pairs is None else min(max_pairs, n // 2)
+    b = max((abs(i-j) for i in range(n) for j in range(n) if i != j and F[i][j]), default=0)
+    D = {(0, 0, 0): G(1)}
+    max_states = 1
+    gate_count = 0
+    for a in range(n):
+        # Each off-diagonal pair is applied exactly once, before its leftmost
+        # physical site is traced. The next unseen rightmost site starts vacuum.
+        for j in range(a+1, min(n, a+b+1)):
+            if F[a][j]:
+                D = gate(D, 0, 2*(j-a)+1, F[a][j])
+                gate_count += 1
+                max_states = max(max_states, len(D))
+            if F[j][a]:
+                D = gate(D, 2*(j-a), 1, F[j][a])
+                gate_count += 1
+                max_states = max(max_states, len(D))
+        D = trace_front(D, tables[a], rw[a], cw[a], cap)
+        max_states = max(max_states, len(D))
+    coefficients = [Q(0)] * (cap+1)
+    for (ket, bra, k), val in D.items():
+        assert ket == bra == 0
+        assert not val.im and val.re &gt;= 0
+        coefficients[k] += val.re
+    return coefficients, {&#x27;bandwidth_acquired&#x27;: b, &#x27;frontier_sites&#x27;: min(n, b+1),
+                          &#x27;max_density_entries&#x27;: max_states, &#x27;pair_gates&#x27;: gate_count,
+                          &#x27;sector_cap&#x27;: cap}
+
+
+def sample_band(F, k=None, allowed=None, row_weights=None, col_weights=None,
+                randbits=secrets.randbits):
+    &quot;&quot;&quot;Exact canonical/grandcanonical law by acquired branch masses.
+
+    Recomputes the small-width transfer for each prefix choice. No rare-sector
+    rejection or externally supplied coefficient oracle is used.
+    &quot;&quot;&quot;
+    F, tables, rw, cw = validate(F, allowed, row_weights, col_weights)
+    n = len(F)
+    if k is not None and (not isinstance(k, int) or k &lt; 0 or k &gt; n//2):
+        raise ValueError(&#x27;invalid sector&#x27;)
+
+    def mass():
+        coefficients, _ = count_band(F, tables, rw, cw, k)
+        return sum(coefficients) if k is None else coefficients[k]
+
+    total = mass()
+    if not total:
+        raise ValueError(&#x27;zero sector&#x27;)
+    out = []
+    for i in range(n):
+        choices = [t for t in &#x27;ERC&#x27; if t in tables[i]]
+        weights = []
+        for t in choices:
+            tables[i] = {t}
+            weights.append(mass())
+        assert sum(weights) == total
+        selected = choose_rational(weights, randbits)
+        tables[i] = {choices[selected]}
+        out.append(choices[selected])
+        total = weights[selected]
+    return &#x27;&#x27;.join(out)
+</pre><p><a href="../assets/d0f35b7e790ba7258687752824f77c8d4d6127840cb92910f794f9d04e0f2afc.py">Exact original bytes</a></p></html>

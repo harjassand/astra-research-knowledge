@@ -1,0 +1,49 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c08_s01/revisions/check_sheared_sol.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c08_s01/revisions/check_sheared_sol.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Independent exact connection check for the sheared Sol counterexample.&quot;&quot;&quot;
+from pathlib import Path
+import json
+import sympy as sp
+
+x,y,t=sp.symbols(&#x27;x y t&#x27;,real=True)
+a,eps,omega,nu=sp.symbols(&#x27;a eps omega nu&#x27;,positive=True)
+h=sp.Function(&#x27;h&#x27;)(t)
+c=sp.diff(h,t)-2*a*h
+coords=(x,y,t)
+g=sp.Matrix([[sp.exp(2*a*t),h,0],[h,sp.exp(-2*a*t)*(1+h*h),0],[0,0,1]])
+gi=g.inv()
+U=sp.Matrix([[sp.exp(-a*t),-h*sp.exp(-a*t),0],[0,sp.exp(a*t),0],[0,0,1]])
+checks={}
+simp=lambda z:sp.simplify(sp.trigsimp(z))
+def check(name,z):
+    checks[name]=all(simp(v)==0 for v in z) if isinstance(z,(sp.MatrixBase,list,tuple)) else simp(z)==0
+
+check(&#x27;constant_volume&#x27;,g.det()-1)
+check(&#x27;orthonormal_frame&#x27;,U.T*g*U-sp.eye(3))
+Gamma=[[[simp(sum(gi[i,l]*(sp.diff(g[l,k],coords[j])+sp.diff(g[l,j],coords[k])-sp.diff(g[j,k],coords[l])) for l in range(3))/2) for k in range(3)] for j in range(3)] for i in range(3)]
+D=sp.Matrix(3,3,lambda i,j:Gamma[i][j][2])
+S=simp((D+gi*D.T*g)/2)
+B=U.inv()*S*U
+check(&#x27;strain_from_connection&#x27;,B-sp.Matrix([[a,c/2,0],[c/2,-a,0],[0,0,0]]))
+check(&#x27;divergence_X&#x27;,sum(Gamma[i][i][2] for i in range(3)))
+check(&#x27;zero_advection&#x27;,sp.Matrix([Gamma[i][2][2] for i in range(3)]))
+Scov=g*S
+divcov=sp.Matrix(3,1,lambda i,_:simp(sum(gi[j,k]*(sp.diff(Scov[k,i],coords[j])-sum(Gamma[l][j][k]*Scov[l,i]+Gamma[l][j][i]*Scov[k,l] for l in range(3))) for j in range(3) for k in range(3))))
+check(&#x27;stress_divergence&#x27;,gi*divcov-sp.Matrix([0,0,-2*a*a-c*c/2]))
+coframe=U.inv()[:2,:2]
+check(&#x27;normal_growth_generator&#x27;,sp.diff(coframe,t)*coframe.inv()-sp.Matrix([[a,c],[0,-a]]))
+hpert=eps*(omega*sp.sin(omega*t)-2*a*sp.cos(omega*t))/(omega**2+4*a*a)
+check(&#x27;periodic_shear_solution&#x27;,sp.diff(hpert,t)-2*a*hpert-eps*sp.cos(omega*t))
+p=-nu*eps*eps/(4*omega)*sp.sin(2*omega*t)
+check(&#x27;constant_force_with_pressure&#x27;,nu*(4*a*a+(eps*sp.cos(omega*t))**2)+sp.diff(p,t)-nu*(4*a*a+eps*eps/2))
+cc,theta=sp.symbols(&#x27;cc theta&#x27;,real=True)
+xi=sp.Matrix([sp.cos(theta),sp.sin(theta)])
+perp=sp.Matrix([-sp.sin(theta),sp.cos(theta)])
+skew=sp.Matrix([[0,cc/2],[-cc/2,0]])
+check(&#x27;strain_eigenline_spin&#x27;, (perp.T*skew*xi)[0]+cc/2)
+z=sp.Function(&#x27;z&#x27;)(t)
+check(&#x27;angle_derivative&#x27;,sp.diff(sp.atan(z/(2*a))/2,t)-a*sp.diff(z,t)/(4*a*a+z*z))
+check(&#x27;rotation_cross_term_is_derivative&#x27;,a*z*sp.diff(z,t)/(4*a*a+z*z)-sp.diff(a*sp.log(4*a*a+z*z)/2,t))
+report={&#x27;status&#x27;:&#x27;PASS&#x27; if all(checks.values()) else &#x27;FAIL&#x27;,&#x27;checks&#x27;:checks,&#x27;scope&#x27;:&#x27;Exact smooth sheared metric, strain/stress, cocycle generator, force and angular formulas. No entropy acquisition or external analytic certification.&#x27;,&#x27;sympy_version&#x27;:sp.__version__}
+Path(__file__).with_name(&#x27;shear_checks.json&#x27;).write_text(json.dumps(report,indent=2)+&#x27;\n&#x27;)
+print(json.dumps(report,indent=2))
+assert all(checks.values())
+</pre><p><a href="../assets/16b2848eaa5b63be40c64144491d2489f9b4b37b781532a21dfbf1ca05c5092f.py">Exact original bytes</a></p></html>

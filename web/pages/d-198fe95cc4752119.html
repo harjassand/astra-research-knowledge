@@ -1,0 +1,558 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c02_s01/axial/filtered_review/replay/c03_s01/implementation/dicke_compiler.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c02_s01/axial/filtered_review/replay/c03_s01/implementation/dicke_compiler.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Bounded Dicke-Gaussian quadrature with exact posterior certification.
+
+Numerical acquisition: mpmath Cholesky + symmetric eigensolve.
+Certificate: exact rational final binomial mixture versus rational exp intervals.
+No interval-eigensolver claim. Requires Python 3.10+ and mpmath 1.3.
+&quot;&quot;&quot;
+import argparse
+import bisect
+from fractions import Fraction as F
+from functools import lru_cache
+import json
+import math
+import os
+from pathlib import Path
+import random
+import time
+
+# These prototypes use assertions as exact verification obligations. Refuse
+# an interpreter mode that would silently remove them.
+if not __debug__:
+    raise RuntimeError(&#x27;certified compiler requires Python without -O/-OO&#x27;)
+
+# mpmath itself does not call BLAS. Bound any optional dependency threads.
+for _name in (&quot;OPENBLAS_NUM_THREADS&quot;, &quot;OMP_NUM_THREADS&quot;, &quot;MKL_NUM_THREADS&quot;,
+              &quot;VECLIB_MAXIMUM_THREADS&quot;, &quot;NUMEXPR_NUM_THREADS&quot;):
+    os.environ[_name] = &quot;1&quot;
+import mpmath as mp
+
+N_CAP = 64
+
+
+def ceil_fraction(x):
+    return -((-x.numerator) // x.denominator)
+
+
+def as_record(x):
+    x = F(x)
+    return {&quot;numerator&quot;: str(x.numerator), &quot;denominator&quot;: str(x.denominator)}
+
+
+def from_record(x):
+    return F(int(x[&quot;numerator&quot;]), int(x[&quot;denominator&quot;]))
+
+
+def ceil_log2_reciprocal(x):
+    &quot;&quot;&quot;Least nonnegative b with 2**(-b) &lt;= positive rational x.&quot;&quot;&quot;
+    x = F(x)
+    if x &lt;= 0:
+        raise ValueError(&quot;positive accuracy required&quot;)
+    b = max(0, x.denominator.bit_length() - x.numerator.bit_length())
+    while F(1, 1 &lt;&lt; b) &gt; x:
+        b += 1
+    return b
+
+
+def outward_dyadic(x, bits, up=False):
+    scaled = F(x) * (1 &lt;&lt; bits)
+    z = ceil_fraction(scaled) if up else scaled.numerator // scaled.denominator
+    return F(z, 1 &lt;&lt; bits)
+
+
+def exp_negative_interval(r, accuracy_bits):
+    &quot;&quot;&quot;Exact rational enclosure of exp(-r), r&gt;=0, width &lt;=2^-accuracy_bits.
+
+    Range reduce to [0,1], enclose exp(y) by positive Taylor remainder,
+    invert and square with outward dyadic rounding. All arithmetic is exact.
+    &quot;&quot;&quot;
+    r = F(r)
+    if r &lt; 0:
+        raise ValueError(&quot;r must be nonnegative&quot;)
+    if not r:
+        return F(1), F(1), {&quot;terms&quot;: 0, &quot;squarings&quot;: 0}
+    s = max(0, r.numerator.bit_length() - r.denominator.bit_length())
+    while r &gt; (1 &lt;&lt; s):
+        s += 1
+    y = r / (1 &lt;&lt; s)
+    bits = accuracy_bits + s + 8
+    cutoff = F(1, 1 &lt;&lt; (bits + 3))
+    total = F(1)
+    term = F(1)
+    degree = 0
+    while True:
+        nxt = term * y / (degree + 1)
+        rem = nxt / (1 - y / (degree + 2))
+        if rem &lt;= cutoff:
+            break
+        total += nxt
+        term = nxt
+        degree += 1
+    lo = outward_dyadic(1 / (total + rem), bits)
+    hi = outward_dyadic(1 / total, bits, up=True)
+    for _ in range(s):
+        lo = outward_dyadic(lo * lo, bits)
+        hi = min(F(1), outward_dyadic(hi * hi, bits, up=True))
+    assert 0 &lt;= lo &lt;= hi &lt;= 1
+    assert hi - lo &lt;= F(1, 1 &lt;&lt; accuracy_bits)
+    return lo, hi, {&quot;terms&quot;: degree + 1, &quot;squarings&quot;: s}
+
+
+def exponents(n, delta, h):
+    if n == 0:
+        return [F(0)]
+    return [-delta * F((2*k-n)**2, 4*n) + h * F(2*k-n, 2)
+            for k in range(n+1)]
+
+
+def target_intervals(n, delta, h, bits):
+    a = exponents(n, delta, h)
+    peak = max(a)
+    enclosed = [exp_negative_interval(peak - x, bits) for x in a]
+    total_lo = sum(x[0] for x in enclosed)
+    total_hi = sum(x[1] for x in enclosed)
+    assert total_lo &gt;= 1
+    populations = [(lo/total_hi, hi/total_lo) for lo, hi, _ in enclosed]
+    stats = {&quot;max_taylor_terms&quot;: max(t[&quot;terms&quot;] for _, _, t in enclosed),
+             &quot;max_squarings&quot;: max(t[&quot;squarings&quot;] for _, _, t in enclosed)}
+    return populations, stats
+
+
+def recovered_populations(n, node_integers, weight_integers, bits):
+    &quot;&quot;&quot;Independent exact integer evaluation, common denominator D**(n+1).&quot;&quot;&quot;
+    D = 1 &lt;&lt; bits
+    assert len(node_integers)==len(weight_integers)&gt;0
+    assert all(0 &lt;= x &lt;= D for x in node_integers)
+    assert all(w &gt;= 0 for w in weight_integers)
+    assert sum(weight_integers) == D
+    denominator = D ** (n+1)
+    q = [F(math.comb(n,k) * sum(w * x**k * (D-x)**(n-k)
+                               for x,w in zip(node_integers,weight_integers)),
+           denominator) for k in range(n+1)]
+    assert sum(q) == 1
+    assert all(x &gt;= 0 for x in q)
+    return q
+
+
+def certify_measure(n, delta, h, nodes, weights, bits, exp_bits):
+    q = recovered_populations(n, nodes, weights, bits)
+    intervals, stats = target_intervals(n, delta, h, exp_bits)
+    errors = [max(abs(qk-lo), abs(qk-hi))
+              for qk,(lo,hi) in zip(q,intervals)]
+    l1 = sum(errors)
+    # Store small exact upper bounds, rather than huge recovered fractions.
+    bound_bits = max(bits + 32, exp_bits)
+    return {
+        &quot;kind&quot;: &quot;EXACT_RATIONAL_POSTERIOR_CERTIFICATE&quot;,
+        &quot;definition&quot;: &quot;trace_distance = half trace_norm&quot;,
+        &quot;population_l1_upper&quot;: as_record(outward_dyadic(l1,bound_bits,True)),
+        &quot;target_trace_distance_upper&quot;: as_record(outward_dyadic(l1/2,bound_bits,True)),
+        &quot;max_population_error_upper&quot;: as_record(outward_dyadic(max(errors),bound_bits,True)),
+        &quot;exp_interval_bits&quot;: exp_bits,
+        &quot;bound_rounding_bits&quot;: bound_bits,
+        &quot;normalization_exact&quot;: True,
+        &quot;nodes_nonnegative_and_at_most_one_exact&quot;: True,
+        &quot;weights_nonnegative_exact&quot;: True,
+        **stats,
+    }
+
+
+def apportion_weights(weights, bits):
+    D = 1 &lt;&lt; bits
+    total = mp.fsum(weights)
+    raw = [w / total * D for w in weights]
+    ints = [int(mp.floor(x)) for x in raw]
+    leftover = D - sum(ints)
+    assert 0 &lt;= leftover &lt;= len(ints)
+    order = sorted(range(len(ints)), key=lambda i: raw[i]-ints[i], reverse=True)
+    for i in order[:leftover]:
+        ints[i] += 1
+    return ints
+
+
+def phase_sampling_budget(n,bits):
+    q = n+1
+    if q &amp; (q-1) == 0:
+        return (q-1).bit_length(),F(0)
+    return bits,F(q,2*(1 &lt;&lt; bits))
+
+
+def numeric_quadrature(n, delta, h, dps):
+    with mp.workdps(dps):
+        mh = mp.mpf(h.numerator) / h.denominator
+        a = [mp.mpf(x.numerator)/x.denominator for x in exponents(n,delta,h)]
+        peak = max(a)
+        unnormalized = [mp.exp(x-peak) for x in a]
+        total = mp.fsum(unnormalized)
+        p = [x/total for x in unnormalized]
+        target_u = [mp.fsum(mp.mpf(math.comb(k,l))*p[k]/math.comb(n,l)
+                           for k in range(l,n+1)) for l in range(n+1)]
+        target_u[0] = mp.mpf(1)
+        if n == 0:
+            return [mp.mpf(0)], [mp.mpf(1)], {&quot;type&quot;:&quot;VACUOUS&quot;, &quot;dps&quot;:dps}
+        if n == 1:
+            return [target_u[1]], [mp.mpf(1)], {&quot;type&quot;:&quot;ONE_SITE&quot;, &quot;dps&quot;:dps}
+        # Acquire at zero field. The positive polynomial tilt below reproduces
+        # all populations exactly for exact quadrature, and avoids ill-
+        # conditioned moment matrices when the field concentrates at an edge.
+        a0 = [mp.mpf(x.numerator)/x.denominator for x in exponents(n,delta,F(0))]
+        base_raw = [mp.exp(x-max(a0)) for x in a0]
+        base_total = mp.fsum(base_raw)
+        base_p = [x/base_total for x in base_raw]
+        u = [mp.fsum(mp.mpf(math.comb(k,l))*base_p[k]/math.comb(n,l)
+                    for k in range(l,n+1)) for l in range(n+1)]
+        u[0] = mp.mpf(1)
+        m = n // 2
+        d = m+1
+        H = mp.matrix([[u[i+j] for j in range(d)] for i in range(d)])
+        K = mp.matrix(d,d)
+        for i in range(d):
+            for j in range(d):
+                if i+j+1 &lt;= n:
+                    K[i,j] = u[i+j+1]
+        if n % 2 == 0:
+            top = mp.matrix([[u[i+j+1] for j in range(m)] for i in range(m)])
+            v = mp.matrix([u[i+m+1] for i in range(m)])
+            K[m,m] = (v.T * mp.lu_solve(top,v))[0]
+        L = mp.cholesky(H)
+        Linv = L**-1
+        J = Linv*K*Linv.T
+        asymmetry = max(abs(J[i,j]-J[j,i]) for i in range(d) for j in range(d))
+        J = (J+J.T)/2
+        eigenvalues, eigenvectors = mp.eigsy(J)
+        nodes = [eigenvalues[i] for i in range(d)]
+        weights = [eigenvectors[0,i]**2 for i in range(d)]
+        radau_zero_before_clamp = abs(nodes[0]) if n%2 == 0 else mp.mpf(0)
+        if n % 2 == 0:
+            nodes[0] = mp.mpf(0)
+        tol = mp.mpf(10)**(-dps//3)
+        if any(x &lt; -tol or x &gt; 1+tol for x in nodes):
+            raise ArithmeticError(&quot;numerical nodes outside support; increase precision&quot;)
+        nodes = [max(mp.mpf(0),min(mp.mpf(1),x)) for x in nodes]
+        field_factor = mp.exp(mh)
+        tilt_factors = [(1-x)+field_factor*x for x in nodes]
+        tilted_log_weights = [mp.log(w)+n*mp.log(t) for w,t in zip(weights,tilt_factors)]
+        max_log_weight = max(tilted_log_weights)
+        weights = [mp.exp(v-max_log_weight) for v in tilted_log_weights]
+        weight_total = mp.fsum(weights)
+        weights = [w/weight_total for w in weights]
+        nodes = [field_factor*x/t for x,t in zip(nodes,tilt_factors)]
+        moment_error = max(abs(mp.fsum(w*x**ell for x,w in zip(nodes,weights))-target_u[ell])
+                           for ell in range(n+1))
+        population_error = max(abs(math.comb(n,k)*mp.fsum(w*x**k*(1-x)**(n-k)
+                                  for x,w in zip(nodes,weights))-p[k])
+                               for k in range(n+1))
+        diagnostics = {
+            &quot;type&quot;: &quot;GAUSSIAN_ODD&quot; if n%2 else &quot;RADAU_ZERO_EVEN&quot;,
+            &quot;field_acquisition&quot;: &quot;h=0 quadrature followed by positive exponential tilt&quot;,
+            &quot;dps&quot;: dps, &quot;dimension&quot;: d,
+            &quot;numeric_moment_error&quot;: mp.nstr(moment_error,12),
+            &quot;numeric_population_error&quot;: mp.nstr(population_error,12),
+            &quot;numeric_J_asymmetry&quot;: mp.nstr(asymmetry,12),
+            &quot;numeric_Radau_zero_before_clamp&quot;: mp.nstr(radau_zero_before_clamp,12),
+            &quot;numeric_min_weight&quot;: mp.nstr(min(weights),12),
+            &quot;numeric_min_node&quot;: mp.nstr(min(nodes),12),
+            &quot;numeric_max_node&quot;: mp.nstr(max(nodes),12),
+            &quot;numeric_condition_H_inf&quot;: mp.nstr(mp.norm(H,&#x27;inf&#x27;)*mp.norm(H**-1,&#x27;inf&#x27;),12),
+            &quot;status&quot;: &quot;FLOATING_DIAGNOSTICS_ONLY&quot;,
+        }
+        return nodes, weights, diagnostics
+
+
+def compile_state(n, delta=&quot;0&quot;, h=&quot;0&quot;, epsilon=&quot;1e-20&quot;, bits=None,
+                  dps=None, max_attempts=3, density_bits=None):
+    start = time.perf_counter()
+    delta, h, epsilon = F(delta), F(h), F(epsilon)
+    if not isinstance(n,int) or not 0 &lt;= n &lt;= N_CAP:
+        raise ValueError(&quot;bounded implementation requires 0&lt;=n&lt;=64&quot;)
+    if not 0 &lt;= delta &lt;= 1:
+        raise ValueError(&quot;internally admitted analytic family requires 0&lt;=delta&lt;=1&quot;)
+    if not 0 &lt; epsilon &lt; 1:
+        raise ValueError(&quot;requires 0&lt;epsilon&lt;1&quot;)
+    requested_bits = ceil_log2_reciprocal(epsilon)
+    bits = max(128,requested_bits+16+(n+1).bit_length()) if bits is None else bits
+    density_bits = max(bits,requested_bits+8+(n+1).bit_length()) if density_bits is None else density_bits
+    if bits &lt; 1 or density_bits &lt; 1:
+        raise ValueError(&quot;positive bit budgets required&quot;)
+    density_budget = F(8*n,1 &lt;&lt; density_bits)
+    phase_bits,phase_budget = phase_sampling_budget(n,bits)
+    # Arbitrarily large binary h has a bounded exact product-state branch.
+    threshold_bits = ceil_log2_reciprocal(epsilon/4)
+    endpoint = n if h &gt;= 0 else 0
+    tail_bound = F(1,(1 &lt;&lt; threshold_bits)-1)
+    if n &gt; 0 and abs(h)-delta &gt;= threshold_bits:
+        D = 1 &lt;&lt; bits
+        nodes = [D if endpoint==n else 0]
+        weights = [D]
+        certificate = {
+            &quot;kind&quot;:&quot;EXACT_ENDPOINT_TAIL_CERTIFICATE&quot;,
+            &quot;target_trace_distance_upper&quot;:as_record(tail_bound),
+            &quot;tail_proof&quot;:&quot;p[n-r]/p[n] &lt;= exp(-(abs(h)-delta)*r) &lt;= 2^(-threshold_bits*r)&quot;,
+            &quot;threshold_bits&quot;:threshold_bits,
+            &quot;normalization_exact&quot;:True,
+            &quot;nodes_nonnegative_and_at_most_one_exact&quot;:True,
+            &quot;weights_nonnegative_exact&quot;:True,
+        }
+        diagnostics = {&quot;type&quot;:&quot;CERTIFIED_LARGE_FIELD_PRODUCT_BRANCH&quot;,
+                       &quot;status&quot;:&quot;NO_EIGENSOLVE_REQUIRED&quot;}
+        attempts = []
+    else:
+        dps = max(100,math.ceil(bits*0.302)+2*n+50) if dps is None else dps
+        attempts = []
+        for attempt in range(max_attempts):
+            attempt_start = time.perf_counter()
+            try:
+                xs, ws, diagnostics = numeric_quadrature(n,delta,h,dps)
+                with mp.workdps(dps):
+                    D = 1 &lt;&lt; bits
+                    nodes = [max(0,min(D,int(mp.floor(x*D+mp.mpf(&#x27;0.5&#x27;))))) for x in xs]
+                    weights = apportion_weights(ws,bits)
+                certificate = certify_measure(n,delta,h,nodes,weights,bits,bits+32)
+                phase_bits,phase_budget = phase_sampling_budget(n,bits)
+                accepted = from_record(certificate[&quot;target_trace_distance_upper&quot;])+density_budget+phase_budget &lt;= epsilon
+                attempts.append({&quot;dps&quot;:dps,&quot;bits&quot;:bits,&quot;accepted&quot;:accepted,
+                                 &quot;elapsed_seconds&quot;:time.perf_counter()-attempt_start})
+                if accepted:
+                    break
+            except (ArithmeticError,ValueError,ZeroDivisionError) as error:
+                attempts.append({&quot;dps&quot;:dps,&quot;bits&quot;:bits,&quot;accepted&quot;:False,
+                                 &quot;error&quot;:repr(error),&quot;elapsed_seconds&quot;:time.perf_counter()-attempt_start})
+            dps += 60
+            bits += 32
+            density_bits = max(density_bits,bits)
+            density_budget = F(8*n,1 &lt;&lt; density_bits)
+        else:
+            raise ArithmeticError(&quot;bounded acquisition exhausted; no uncertified output: &quot;+json.dumps(attempts))
+    total_budget = from_record(certificate[&quot;target_trace_distance_upper&quot;])+density_budget+phase_budget
+    if total_budget &gt; epsilon:
+        raise ArithmeticError(&quot;certificate does not meet requested accuracy&quot;)
+    model = {
+        &quot;format&quot;:&quot;DICKE_GAUSSIAN_CERTIFIED_V1&quot;, &quot;n&quot;:n,
+        &quot;delta&quot;:as_record(delta),&quot;h&quot;:as_record(h),&quot;epsilon&quot;:as_record(epsilon),
+        &quot;node_weight_bits&quot;:bits,&quot;node_integers&quot;:[str(x) for x in nodes],
+        &quot;weight_integers&quot;:[str(w) for w in weights],
+        &quot;phase_modulus&quot;:n+1,&quot;component_count&quot;:len(nodes)*(n+1),
+        &quot;phase_sampling_bits&quot;:phase_bits,&quot;phase_uniform_TV_upper&quot;:as_record(phase_budget),
+        &quot;predetermined_random_bits_per_sample&quot;:bits+phase_bits,
+        &quot;product_components_stored&quot;:False,
+        &quot;density_bits&quot;:density_bits,&quot;finite_density_trace_distance_upper&quot;:as_record(density_budget),
+        &quot;total_output_trace_distance_upper&quot;:as_record(total_budget),
+        &quot;certificate&quot;:certificate,&quot;floating_diagnostics&quot;:diagnostics,
+        &quot;acquisition_attempts&quot;:attempts,&quot;compile_seconds&quot;:time.perf_counter()-start,
+        &quot;analytic_input_dependency&quot;:&quot;c07_s02 AXIAL_ONE_CERTIFICATE plus c02_s01/c05_s03 independent audits; exponential h tilting preserves positive coherent measure&quot;,
+        &quot;randomness&quot;:&quot;Exact sampling law assumes independent uniform random bits; seeded examples use Python PRNG&quot;,
+    }
+    return model
+
+
+def verify_model(model):
+    &quot;&quot;&quot;Recompute the certificate using exact arithmetic, independent of eigensolve.&quot;&quot;&quot;
+    assert model[&#x27;format&#x27;]==&#x27;DICKE_GAUSSIAN_CERTIFIED_V1&#x27;
+    n, bits = model[&quot;n&quot;],model[&quot;node_weight_bits&quot;]
+    delta,h = from_record(model[&quot;delta&quot;]),from_record(model[&quot;h&quot;])
+    assert type(n) is int and 0&lt;=n&lt;=N_CAP
+    assert type(bits) is int and bits&gt;=1
+    assert type(model[&#x27;density_bits&#x27;]) is int and model[&#x27;density_bits&#x27;]&gt;=1
+    assert 0&lt;=delta&lt;=1 and 0&lt;from_record(model[&#x27;epsilon&#x27;])&lt;1
+    assert type(model[&#x27;phase_modulus&#x27;]) is int and model[&#x27;phase_modulus&#x27;]==n+1
+    assert type(model[&#x27;phase_sampling_bits&#x27;]) is int and model[&#x27;phase_sampling_bits&#x27;]&gt;=0
+    assert type(model[&#x27;predetermined_random_bits_per_sample&#x27;]) is int
+    assert isinstance(model[&#x27;node_integers&#x27;],list) and isinstance(model[&#x27;weight_integers&#x27;],list)
+    assert len(model[&#x27;node_integers&#x27;])==len(model[&#x27;weight_integers&#x27;])&gt;0
+    assert type(model[&#x27;component_count&#x27;]) is int and model[&#x27;component_count&#x27;]==len(model[&#x27;node_integers&#x27;])*(n+1)
+    assert model[&#x27;product_components_stored&#x27;] is False
+    assert all(type(x) is str and str(int(x))==x for x in model[&#x27;node_integers&#x27;]+model[&#x27;weight_integers&#x27;])
+    nodes = [int(x) for x in model[&quot;node_integers&quot;]]
+    weights = [int(x) for x in model[&quot;weight_integers&quot;]]
+    recovered_populations(n,nodes,weights,bits)
+    stored = model[&quot;certificate&quot;]
+    if stored[&quot;kind&quot;] == &quot;EXACT_RATIONAL_POSTERIOR_CERTIFICATE&quot;:
+        fresh = certify_measure(n,delta,h,nodes,weights,bits,stored[&quot;exp_interval_bits&quot;])
+        for key in (&quot;target_trace_distance_upper&quot;,&quot;population_l1_upper&quot;,&quot;max_population_error_upper&quot;):
+            assert from_record(fresh[key]) &lt;= from_record(stored[key])
+    elif stored[&quot;kind&quot;] == &quot;EXACT_ENDPOINT_TAIL_CERTIFICATE&quot;:
+        b = stored[&quot;threshold_bits&quot;]
+        assert n&gt;0 and abs(h)-delta &gt;= b
+        assert nodes == [(1 &lt;&lt; bits) if h&gt;=0 else 0] and weights == [1 &lt;&lt; bits]
+        assert F(1,(1 &lt;&lt; b)-1) &lt;= from_record(stored[&quot;target_trace_distance_upper&quot;])
+    else:
+        raise ValueError(&quot;unknown certificate kind&quot;)
+    density_budget = F(8*n,1 &lt;&lt; model[&quot;density_bits&quot;])
+    assert density_budget == from_record(model[&quot;finite_density_trace_distance_upper&quot;])
+    phase_bits,phase_budget = phase_sampling_budget(n,bits)
+    assert phase_bits == model[&#x27;phase_sampling_bits&#x27;]
+    assert phase_budget == from_record(model[&#x27;phase_uniform_TV_upper&#x27;])
+    assert model[&#x27;predetermined_random_bits_per_sample&#x27;] == bits+phase_bits
+    total = from_record(stored[&quot;target_trace_distance_upper&quot;])+density_budget+phase_budget
+    assert total == from_record(model[&quot;total_output_trace_distance_upper&quot;])
+    assert total &lt;= from_record(model[&quot;epsilon&quot;])
+    return True
+
+
+@lru_cache(maxsize=8)
+def pi_interval(bits):
+    &quot;&quot;&quot;Machin identity with exact alternating-series bounds.&quot;&quot;&quot;
+    def arctan_inverse(q):
+        total = F(0)
+        j = 0
+        while True:
+            term = F((-1)**j,(2*j+1)*q**(2*j+1))
+            total += term
+            j += 1
+            nxt = F((-1)**j,(2*j+1)*q**(2*j+1))
+            if abs(nxt) &lt;= F(1,1 &lt;&lt; (bits+14)):
+                return min(total,total+nxt),max(total,total+nxt)
+    a,b = arctan_inverse(5)
+    c,d = arctan_inverse(239)
+    return 16*a-4*d,16*b-4*c
+
+
+@lru_cache(maxsize=8)
+def trig_degree(bits):
+    degree = 8
+    while F(7**(degree+1),math.factorial(degree+1)) &gt; F(1,1 &lt;&lt; (bits+8)):
+        degree += 1
+    return degree
+
+
+def trig_intervals(j, modulus, bits):
+    plo,phi = pi_interval(bits)
+    alo,ahi = 2*F(j,modulus)*plo,2*F(j,modulus)*phi
+    center = (alo+ahi)/2
+    radius = (ahi-alo)/2
+    degree = trig_degree(bits)
+    rem = F(7**(degree+1),math.factorial(degree+1))
+    sin_value = sum((F((-1)**((k-1)//2))*center**k/math.factorial(k)
+                     for k in range(1,degree+1,2)),F(0))
+    cos_value = sum((F((-1)**(k//2))*center**k/math.factorial(k)
+                     for k in range(0,degree+1,2)),F(0))
+    error = radius+rem
+    assert 2*error &lt;= F(1,1 &lt;&lt; (bits+5))
+    def enclosure(value):
+        return max(F(-1),value-error),min(F(1),value+error)
+    return enclosure(cos_value),enclosure(sin_value)
+
+
+def interval_product(a,b):
+    vals = [x*y for x in a for y in b]
+    return min(vals),max(vals)
+
+
+def conservative_component(interval,bits):
+    &quot;&quot;&quot;Round toward zero using the interval endpoint nearest zero.&quot;&quot;&quot;
+    lo,hi = interval
+    if lo &gt; 0:
+        return outward_dyadic(lo,bits)
+    if hi &lt; 0:
+        return outward_dyadic(hi,bits,up=True)
+    return F(0)
+
+
+def finite_local_density(x,j,modulus,bits):
+    &quot;&quot;&quot;Certified PSD dyadic approximation to the sampled pure local state.&quot;&quot;&quot;
+    D = 1 &lt;&lt; bits
+    r2 = x*(1-x)
+    scaled = r2*D*D
+    root_floor = math.isqrt(scaled.numerator // scaled.denominator)
+    rlo = F(root_floor,D)
+    rhi = rlo if rlo*rlo == r2 else F(root_floor+1,D)
+    cosine,sine = trig_intervals(j,modulus,bits)
+    real_interval = interval_product((rlo,rhi),cosine)
+    imag_interval = interval_product((rlo,rhi),(-sine[1],-sine[0]))
+    re = conservative_component(real_interval,bits)
+    im = conservative_component(imag_interval,bits)
+    assert re*re+im*im &lt;= r2  # PSD exact; trace one exact.
+    local_error = max(abs(re-real_interval[0]),abs(re-real_interval[1]))
+    local_error += max(abs(im-imag_interval[0]),abs(im-imag_interval[1]))
+    assert local_error &lt;= F(8,D)
+    return {&quot;diagonal&quot;:[as_record(1-x),as_record(x)],
+            &quot;upper_right_real&quot;:as_record(re),&quot;upper_right_imag&quot;:as_record(im),
+            &quot;lower_left&quot;:&quot;complex conjugate of upper right&quot;,
+            &quot;PSD_and_trace_one_exact&quot;:True,
+            &quot;local_trace_distance_upper&quot;:as_record(outward_dyadic(local_error,bits+16,True))}
+
+
+def sample_product(model,rng=None,phase_mode=&#x27;bounded&#x27;):
+    &quot;&quot;&quot;Draw one iid-product component; exact probabilities from uniform bits.
+
+    Returns compact exact pure-state recipe and a certified finite PSD local
+    density matrix to repeat on n sites. Uses no expanded 2**n matrix.
+    &quot;&quot;&quot;
+    # Cheap schema bindings for sampler inputs; callers verify the expensive
+    # posterior certificate once after compilation or loading.
+    assert model[&#x27;format&#x27;]==&#x27;DICKE_GAUSSIAN_CERTIFIED_V1&#x27;
+    assert type(model[&#x27;n&#x27;]) is int and 0&lt;=model[&#x27;n&#x27;]&lt;=N_CAP
+    assert model[&#x27;phase_modulus&#x27;]==model[&#x27;n&#x27;]+1
+    expected_phase_bits,expected_phase_bias=phase_sampling_budget(model[&#x27;n&#x27;],model[&#x27;node_weight_bits&#x27;])
+    assert model[&#x27;phase_sampling_bits&#x27;]==expected_phase_bits
+    assert expected_phase_bias&lt;=from_record(model[&#x27;phase_uniform_TV_upper&#x27;])
+    assert F(8*model[&#x27;n&#x27;],1 &lt;&lt; model[&#x27;density_bits&#x27;])&lt;=from_record(model[&#x27;finite_density_trace_distance_upper&#x27;])
+    rng = random.SystemRandom() if rng is None else rng
+    bits = model[&quot;node_weight_bits&quot;]
+    weights = [int(x) for x in model[&quot;weight_integers&quot;]]
+    cumulative = []
+    count = 0
+    for w in weights:
+        count += w
+        cumulative.append(count)
+    draw = rng.getrandbits(bits)
+    index = bisect.bisect_right(cumulative,draw)
+    x = F(int(model[&quot;node_integers&quot;][index]),1 &lt;&lt; bits)
+    modulus = model[&quot;phase_modulus&quot;]
+    phase_bits = model[&#x27;phase_sampling_bits&#x27;]
+    used = bits
+    if phase_mode == &#x27;bounded&#x27;:
+        j = (rng.getrandbits(phase_bits)*modulus) &gt;&gt; phase_bits
+        used += phase_bits
+        phase_status = &#x27;BOUNDED_DYADIC_PHASE; bias to uniform included in ensemble budget&#x27;
+    elif phase_mode == &#x27;exact&#x27;:
+        phase_bits = (modulus-1).bit_length()
+        j = 0
+        phase_status = &#x27;EXACT_UNIFORM_PHASE; rejection has finite expected cost&#x27;
+        if modulus &gt; 1:
+            while True:
+                j = rng.getrandbits(phase_bits)
+                used += phase_bits
+                if j &lt; modulus:
+                    break
+    else:
+        raise ValueError(&#x27;phase_mode must be bounded or exact&#x27;)
+    density = finite_local_density(x,j,modulus,model[&quot;density_bits&quot;])
+    with mp.workdps(50):
+        mx = mp.mpf(x.numerator)/x.denominator
+        angles = {&quot;polar_theta&quot;:mp.nstr(2*mp.asin(mp.sqrt(mx)),30),
+                  &quot;azimuth_phi&quot;:mp.nstr(2*mp.pi*j/modulus,30),
+                  &quot;status&quot;:&quot;DISPLAY_ONLY_FLOATING_ANGLES; use exact recipe or certified density&quot;}
+    return {&quot;node_index&quot;:index,&quot;phase_index&quot;:j,&quot;phase_modulus&quot;:modulus,
+            &quot;phase_sampling_status&quot;:phase_status,
+            &quot;x&quot;:as_record(x),&quot;sites&quot;:model[&quot;n&quot;],&quot;random_bits_consumed&quot;:used,
+            &quot;exact_pure_local_ket&quot;:&quot;sqrt(1-x)|0&gt; + exp(2*pi*i*phase_index/phase_modulus)*sqrt(x)|1&gt;&quot;,
+            &quot;finite_product_local_density&quot;:density,&quot;display_angles&quot;:angles,
+            &quot;finite_product_trace_distance_to_sampled_pure_upper&quot;:
+                as_record(model[&quot;n&quot;]*from_record(density[&quot;local_trace_distance_upper&quot;])),
+            &quot;ensemble_total_target_trace_distance_upper&quot;:model[&quot;total_output_trace_distance_upper&quot;]}
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(&#x27;--n&#x27;,type=int,required=True)
+    parser.add_argument(&#x27;--delta&#x27;,default=&#x27;0.5&#x27;)
+    parser.add_argument(&#x27;--h&#x27;,default=&#x27;1/3&#x27;)
+    parser.add_argument(&#x27;--epsilon&#x27;,default=&#x27;1e-20&#x27;)
+    parser.add_argument(&#x27;--output&#x27;,type=Path)
+    parser.add_argument(&#x27;--samples&#x27;,type=int,default=2)
+    parser.add_argument(&#x27;--seed&#x27;,type=int,default=0)
+    args = parser.parse_args()
+    model = compile_state(args.n,args.delta,args.h,args.epsilon)
+    verify_model(model)
+    rng = random.Random(args.seed)
+    result = {&quot;model&quot;:model,&quot;samples&quot;:[sample_product(model,rng) for _ in range(args.samples)]}
+    text = json.dumps(result,indent=2)+&#x27;\n&#x27;
+    if args.output:
+        args.output.write_text(text)
+    else:
+        print(text,end=&#x27;&#x27;)
+
+
+if __name__ == &#x27;__main__&#x27;:
+    main()
+</pre><p><a href="../assets/18978186d75d38d93f454e574bc4baffa79e07481df97f6903b13342450e4aa5.py">Exact original bytes</a></p></html>

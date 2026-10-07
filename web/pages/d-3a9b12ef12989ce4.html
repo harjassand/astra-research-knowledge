@@ -1,0 +1,74 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c08_s01/reviews/check_claims.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c08_s01/reviews/check_claims.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Independent exact audit fixtures. No imports or writes from peer scripts.&quot;&quot;&quot;
+import json
+import time
+from pathlib import Path
+import sympy as s
+
+t0 = time.perf_counter()
+checks = {}
+
+def geometry(entries, velocity):
+    c = s.MutableDenseNDimArray.zeros(3, 3, 3)
+    for i, j, k, value in entries:
+        c[i,j,k], c[j,i,k] = value, -value
+    ga = s.MutableDenseNDimArray.zeros(3, 3, 3)
+    for i in range(3):
+        for j in range(3):
+            for k in range(3):
+                ga[i,j,k] = (c[i,j,k]-c[j,k,i]+c[k,i,j])/2
+    grad = s.Matrix(3, 3, lambda k,i: s.simplify(velocity*ga[i,0,k]))
+    strain = s.simplify((grad+grad.T)/2)
+    div = s.Matrix(3, 1, lambda k,j: s.simplify(sum(
+        ga[i,l,k]*strain[l,i]-strain[k,l]*ga[i,i,l]
+        for i in range(3) for l in range(3))))
+    ric = s.Matrix(3,3,lambda j,k: s.simplify(sum(
+        ga[j,k,l]*ga[i,l,i]-ga[i,k,l]*ga[j,l,i]-c[i,j,l]*ga[l,k,i]
+        for i in range(3) for l in range(3))))
+    return grad, strain, div, ric
+
+a,b,v,nu = s.symbols(&#x27;a b v nu&#x27;, real=True)
+g,S,div,Ric = geometry([(0,1,1,-a),(0,2,2,a),(1,2,0,b)],v)
+checks[&#x27;sl2_gradient&#x27;] = s.simplify(g-s.Matrix([[0,0,0],[0,a*v,b*v/2],[0,-b*v/2,-a*v]])) == s.zeros(3)
+checks[&#x27;sl2_strain&#x27;] = S == s.diag(0,a*v,-a*v)
+checks[&#x27;sl2_stress_divergence&#x27;] = div == s.Matrix([-2*a*a*v,0,0])
+checks[&#x27;sl2_scalar_curvature&#x27;] = s.simplify(s.trace(Ric)+2*a*a+b*b/2) == 0
+checks[&#x27;sl2_power&#x27;] = s.simplify(-2*nu*div[0]*v-4*nu*a*a*v*v) == 0
+
+k = s.symbols(&#x27;k&#x27;, positive=True)
+T = s.Matrix([[1,0,0],[0,1/s.sqrt(1+k*k),1/s.sqrt(1+k*k)],[0,k/s.sqrt(1+k*k),-k/s.sqrt(1+k*k)]])
+gram = s.simplify(T.T*T)
+checks[&#x27;sasaki_proposed_inner_product&#x27;] = s.simplify(gram[1,2]-(1-k*k)/(1+k*k)) == 0
+checks[&#x27;sasaki_k2_is_not_orthogonal&#x27;] = gram.subs(k,2)[1,2] == -s.Rational(3,5)
+gs,Ss,ds,rs = geometry([(0,1,2,-k*k),(0,2,1,-1),(1,2,0,1)],s.S.One)
+checks[&#x27;sasaki_actual_strain&#x27;] = Ss == s.Matrix([[0,0,0],[0,0,(1+k*k)/2],[0,(1+k*k)/2,0]])
+checks[&#x27;sasaki_actual_strain_norm&#x27;] = s.simplify(s.trace(Ss.T*Ss)-(1+k*k)**2/2) == 0
+checks[&#x27;sasaki_actual_force&#x27;] = s.simplify(-2*nu*ds[0]-nu*(1+k*k)**2) == 0
+checks[&#x27;sasaki_entropy_power_residual&#x27;] = s.simplify(-2*nu*ds[0]-4*nu*k*k-nu*(k*k-1)**2) == 0
+checks[&#x27;sasaki_k2_claim_refuted&#x27;] = s.simplify(-2*ds[0]).subs(k,2) == 25
+checks[&#x27;sasaki_k1_equality_retained&#x27;] = s.simplify(-2*ds[0]-4*k*k).subs(k,1) == 0
+
+n = s.symbols(&#x27;n&#x27;, positive=True)
+frame = s.diag(-1/(2*n),1,-n/2)
+checks[&#x27;l07_revision03_fixed_volume&#x27;] = s.simplify(frame.det()-s.Rational(1,4)) == 0
+checks[&#x27;l07_revision03_fixed_generator&#x27;] = frame[:,0]*n == s.Matrix([-s.Rational(1,2),0,0])
+checks[&#x27;l07_revision03_exact_equality&#x27;] = s.simplify((-2*nu*div[0]*v).subs({a:1/n,b:n*n,v:n})-4*nu) == 0
+checks[&#x27;l07_revision03_scalar&#x27;] = s.simplify(s.trace(Ric).subs({a:1/n,b:n*n})+2/n**2+n**4/2) == 0
+
+d = s.sqrt(n*n-1)
+A = s.Matrix([[n,1],[n*n-1,n]])
+P = s.Matrix([[1,1],[d,-d]])/n
+checks[&#x27;l04_monodromy_determinant&#x27;] = A.det() == 1
+checks[&#x27;l04_monodromy_diagonalization&#x27;] = s.simplify(A*P-P*s.diag(n+d,n-d)) == s.zeros(2)
+checks[&#x27;l04_lattice_covolume&#x27;] = s.simplify(2*d/n**2/(-P.det())) == 1
+short = P.inv()*s.Matrix([0,1])
+checks[&#x27;l04_short_loop_squared&#x27;] = s.simplify((2*d/n**2)*(short.dot(short))-1/d) == 0
+
+out = {&#x27;status&#x27;:&#x27;PASS&#x27; if all(checks.values()) else &#x27;FAIL&#x27;,
+       &#x27;checks&#x27;:checks,&#x27;sasaki_proposed_gram&#x27;:str(gram),
+       &#x27;sasaki_actual_strain&#x27;:str(Ss),&#x27;sasaki_actual_divergence&#x27;:str(ds),
+       &#x27;runtime_seconds&#x27;:time.perf_counter()-t0,&#x27;sympy_version&#x27;:s.__version__,
+       &#x27;scope&#x27;:&#x27;Exact algebra/transcription fixtures only; analytic entropy, global quotient, physical force implementation, novelty, and finite-bit acquisition are not certified.&#x27;}
+Path(__file__).with_name(&#x27;claim_checks.json&#x27;).write_text(json.dumps(out,indent=2)+&#x27;\n&#x27;)
+print(json.dumps(out,indent=2))
+assert all(checks.values())
+</pre><p><a href="../assets/a9ce842d53d828ebd0581838a6dc2ef77f984e0cd047d4492e083ddfad60891c.py">Exact original bytes</a></p></html>

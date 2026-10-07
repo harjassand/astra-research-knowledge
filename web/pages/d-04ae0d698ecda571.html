@@ -1,0 +1,149 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c03_l08/revisions/REVISION_01.txt</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c03_l08/revisions/REVISION_01.txt</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>ROUND 6 c03_l08 — revision 01 (post-exposure cost and sampling audit)
+Timestamp: 2026-10-07 UTC; INITIAL remains immutable.
+
+RESULT
+The exact rank-r transfer survives an independent audit and admits a tighter
+coefficient-specific bound than the initial 16^r envelope. For a requested
+sector k, all exterior degrees above k can be discarded. Put
+
+  s(r,k) = sum_{p=0}^{min(k,r)} binom(r,p)^2.
+
+The reachable state count is at most s(r,k)^2, so one coefficient takes
+O(n r^2 s(r,k)^2) exact field operations after factorization, with
+O(s(r,k)^2) working state. For all coefficients in one pass the bound is
+O(n r^2 binom(2r,r)^2), which is at most O(n r^2 16^r) and asymptotically
+about O(n r 16^r) using the central-binomial estimate. This is a true FPT
+bound, not n^{O(r)} subset enumeration. For small k, the coefficient-specific
+bound can be much smaller. The prototype now implements and tests that pruning.
+
+For orientation, state-count bounds (all sectors; target k=1; target k=2) are:
+r=2: 36, 25, 36; r=3: 400, 100, 361; r=5: 63,504, 676, 15,876; r=10:
+34,134,779,536, 10,201, 4,519,876. These are formula evaluations, not
+measured resident states or runtimes. They show why the parameter is useful
+for low rank and/or low target k while the worst-case base remains high.
+
+EXACT FACTORIZATION AND TRANSFER
+For exact F in Q(i)^{n x n} of rank r, choose r independent columns C and
+then r independent rows R of F[:,C]. Let A=F[:,C], P=F[R,C], and
+B=P^{-1}F[R,:]. Each column of F lies in the span of A; restricting to R
+shows its unique coordinates are P^{-1}F[R,j]. Thus F=AB. This is an exact
+polynomial-time acquisition from rational input. Rank zero is handled by the
+empty factorization.
+
+For each site i, write a_i=A[i,:] and b_i=B[:,i]. For selected disjoint
+I,J of size k, the wedge coordinates satisfy
+  det F[I,J] = &lt;A_I,B_J&gt;_bilinear,
+where A_I is the wedge of rows a_i in increasing site order and B_J the wedge
+of columns b_j in increasing site order. Expanding the squared absolute value
+introduces two independent coordinate indices S,T. Therefore the sufficient
+state consists of four exterior factors and the final linear functional keeps
+only (S,S,T,T) with |S|=|T|=k. A site&#x27;s three alternatives are empty, row/I,
+and column/J, with the row or column update applied to its two replicas at
+once. Since the alternatives are mutually exclusive, I intersect J is empty.
+This proves the transfer identity by Cauchy–Binet and local multiplication;
+there is no determinant enumeration in the algorithm.
+
+In every reachable state, the two A-replica masks have equal degree p, and
+the two B-replica masks have equal degree q. The number of such states is
+  (sum_p binom(r,p)^2)^2 = binom(2r,r)^2.
+For a single target k, degrees p,q&gt;k cannot contribute to the terminal
+contraction and can be pruned. This leaves s(r,k)^2 states. An occupied site
+applies two coordinate insertions, each ranging over at most r choices, so
+the direct transition costs O(r^2) per state. This justifies the refined
+arithmetic bound. It does not claim the polynomial factor r^2 is optimal.
+
+EXACT SAMPLING AND COST
+For a fixed k, let V_i be the forward state after a fixed prefix and let W_{i+1}
+be the backward covector of all suffixes that end in the k-sector. The three
+next-site masses are
+  m_s = &lt;W_{i+1}, T_{i,s} V_i&gt;,  s in {empty,row,col}.
+They are nonnegative rationals, sum to the current completion mass, and their
+conditional proportions are exactly the probabilities of the next local
+occupancy under weight |det F[I,J]|^2. Thus sequential exact integer draws
+produce the desired distribution whenever c_k(F)&gt;0. No probability lower
+bound is needed for correctness; a small branch can cost random bits only via
+the bit length of the exact integer masses, not inverse probability. The
+implemented suffix table costs O(n r^2 s(r,k)^2) field operations and
+O(n s(r,k)^2) stored entries. Recomputing messages trades this for
+O(s(r,k)^2) state memory at higher time. The implementation uses the
+coefficient-pruned forward update and exact common-denominator draws.
+
+TOTAL BIT COST AND CONDITIONING
+Let L be the total binary encoding length of the rational-complex input. Clear
+all input denominators by a product Q with log2 Q &lt;= L and write G=QF. The
+Gaussian-integer entries of G have O(L) bits (up to a fixed encoding factor).
+The selected pivot determinant and cofactors have O(r(L+log r)) bits by the
+determinant expansion/Hadamard bound. Thus A and B can be represented with
+polynomial bit length O(r(L+log r)). A transfer term contains at most 2n
+factor entries; the number of summands reaching one state is at most
+(1+2r^2)^n. Consequently state numerators and denominators have a crude
+polynomial bit bound O(nr(L+log r)+n log r). Exact arithmetic therefore gives
+total bit complexity of the form
+  O(n r^2 s(r,k)^2 * poly(n,r,L))
+plus polynomial-time factorization and output. This is conservative and does
+not rely on well-conditioned pivots: a near-singular exact pivot increases
+bit lengths only as the determinant/cofactor bound, while floating-point
+stability is not claimed.
+
+For the output itself, c_k(F)=Q^{-2k}c_k(G); if nonzero, c_k(G) is a positive
+integer, so c_k(F)&gt;=Q^{-2k}&gt;=2^{-2kL}. Hadamard and at most 3^n local
+occupancy configurations give output bit length O(n+kL+k log n). This lower
+bound can be exponentially small in n, so replacing exact arithmetic with a
+floating low-rank approximation requires a sector-relative residual
+certificate. More precisely, for ||E||_op&lt;=1, if s_k(F) is the vector of
+all disjoint k-minors, then
+  ||s_k(F+E)-s_k(F)||_2
+    &lt;= k sqrt(binomial(n,k)) ||E||_op (||F||_op+1)^(k-1).
+Hence relative error in c_k is at most 2x+x^2, where x is this bound divided
+by sqrt(c_k(F)). Approximate rank by itself is not a safe certificate when
+c_k is tiny; exact rank acquisition is a discrete property and may be
+unstable under rounding.
+
+ATTRIBUTED OVERLAP AND DIFFERENTIATION
+The bounded-support Grassmann/treewidth construction in INITIAL duplicates
+the exact support-graph-width route in c03_s01&#x27;s frozen Sol report. I do not
+claim that route as a separate contribution. c03_s03 independently gives an
+exact ordered cut-rank MPS with bond D_p=2^(a_p+b_p), where a_p and b_p are the
+two cross-block ranks, all-coefficient contractions O(n^2 D^3), and exact
+sampling. If global rank(F)=r, then a_p,b_p&lt;=r and c=max(a_p+b_p)&lt;=2r.
+Thus the MPS result already gives an exact rank-FPT algorithm with a
+conservative O(n^2 2^(6r)) contraction bound. The direct four-factor norm
+transfer is an independent contraction and has O(n r^2 binom(2r,r)^2),
+approximately O(n r 2^(4r)), for global rank r. This may improve the
+exponential dependence in the global-rank case under the stated direct
+cost models, but is a cost optimization/alternative derivation, not a new
+tractable class. For matrices whose cut-rank c is much smaller than r, the
+MPS route can be substantially better. A practical exact solver should
+estimate both state bounds and select the cheaper admissible contraction.
+
+Literature checked after peer release: Fishman and White, arXiv:1504.07701,
+and Liu, Wu, Tu, and Xiang, arXiv:2408.01155, give fermionic Gaussian-state
+MPS construction/compression context. These are relevant background, not a
+claim that the exact disjoint-minor norm transfer is new or already covered.
+A bounded targeted search did not establish priority. Novelty remains
+UNKNOWN; all literature statements are scoped to the inspected sources.
+
+EXECUTABLE AUDIT
+Updated prototype: work/cycle6/c03_l08/parity_treewidth_dp.py
+Updated check summary: work/cycle6/c03_l08/prototype_checks.json
+Command: python3 work/cycle6/c03_l08/parity_treewidth_dp.py
+Observed: PASS; 40 treewidth/direct determinant fixtures, 24 integer rank
+factorizations through n=5/r=3, 8 rational-complex factorization fixtures.
+For each positive sector in tested dense rank fixtures, the k-pruned transfer
+equals direct determinants; every prefix mass for all prefixes of n&lt;=4
+fixtures equals direct enumeration, and constrained local sectors partition
+the unconstrained polynomial. This finite evidence checks implementation only.
+
+OPEN GATES
+1. External specialist review of the transfer identity, rank factorization
+   cost, and comparison to known fermionic Gaussian/MPS contractions.
+2. Larger charged dense-rank fixtures with state counts, peak memory, and
+   bit-size telemetry; no production-scale benchmark has been run.
+3. Exact interface check against the project-level parity coefficient and
+   microscopic energy/sampler problem. This result applies to c_k(F) for an
+   explicitly supplied rational-complex matrix F; it is not a general
+   weighted partition oracle, generic FPRAS, or proof of the unrestricted
+   parity gate.
+4. Stable approximate-rank acquisition remains conditional on a verified
+   residual-to-sector certificate. No such general certificate is claimed.
+</pre><p><a href="../assets/20d128424bb9394b474e5a0fc2d66e686381d9779cf78887fe4ec49f013ef37b.txt">Exact original bytes</a></p></html>

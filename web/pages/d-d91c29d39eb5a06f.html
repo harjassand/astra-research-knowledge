@@ -1,0 +1,155 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c06_s03/revisions/002/higher_order_certificate.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c06_s03/revisions/002/higher_order_certificate.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Acquire low-degree Pauli defects and a rational remainder certificate.
+
+Positive Taylor degree improves local truncation, not generic Strang order.
+No dense 2**Q matrix; cost counters and admission precede expansion.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from math import factorial
+from pathlib import Path
+import sys
+
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]/&quot;001&quot;))
+from pauli_order_certificate import (local_paulis, pmul, padd, pscale, ONE)
+from projected_chain import Gate, local_gate, compile_projected_trace
+
+
+def acquire_defects(edges, fields, degree=2, order=4, *, term_cap=12, key_cap=4096):
+    if not 2 &lt;= degree &lt;= 12 or not 3 &lt;= order &lt;= 4:
+        raise ValueError(&quot;Taylor/certificate order admission&quot;)
+    terms = local_paulis(edges,fields)
+    if len(terms) &gt; term_cap:
+        raise ValueError(&quot;term cap exceeded before polynomial acquisition&quot;)
+    counters = {&quot;dictionary_multiplications&quot;:0,&quot;Pauli_pair_products&quot;:0,&quot;peak_keys&quot;:1}
+    def multiply(a,b):
+        counters[&quot;dictionary_multiplications&quot;] += 1
+        counters[&quot;Pauli_pair_products&quot;] += len(a)*len(b)
+        result = pmul(a,b,key_cap=key_cap)
+        counters[&quot;peak_keys&quot;] = max(counters[&quot;peak_keys&quot;],len(result))
+        return result
+    identity = {(0,0):ONE}
+    coefficients = [identity]+[{} for _ in range(order)]
+    local_polys = []
+    for A in terms:
+        powers = [identity]
+        for k in range(1,min(degree,order)+1):
+            powers.append(multiply(powers[-1],A))
+        local_polys.append([pscale(v,F(1,factorial(k))) for k,v in enumerate(powers)])
+    for poly in local_polys + list(reversed(local_polys)):
+        new = [{} for _ in range(order+1)]
+        for k in range(order+1):
+            for j in range(min(len(poly)-1,k)+1):
+                new[k] = padd(new[k],multiply(coefficients[k-j],poly[j]))
+                counters[&quot;peak_keys&quot;] = max(counters[&quot;peak_keys&quot;],len(new[k]))
+                if len(new[k]) &gt; key_cap:
+                    raise ValueError(&quot;accumulated Pauli key cap exceeded&quot;)
+        coefficients = new
+    S = coefficients[1]
+    powers = [identity]
+    for k in range(1,order+1): powers.append(multiply(powers[-1],S))
+    assert coefficients[2] == pscale(powers[2],F(1,2))
+    defects, bounds = {}, {}
+    for k in range(3,order+1):
+        defect = padd(coefficients[k],pscale(powers[k],F(-1,factorial(k))))
+        counters[&quot;peak_keys&quot;] = max(counters[&quot;peak_keys&quot;],len(defect))
+        assert all(imag == 0 for _,imag in defect.values())
+        defects[k] = defect
+        bounds[k] = sum((abs(real) for real,_ in defect.values()),F(0))
+    return defects,bounds,counters
+
+
+def error_bound(beta,tau,m,bounds):
+    beta,tau = F(beta),F(tau)
+    K = max(bounds)
+    delta = tau/m
+    if delta &gt;= K+2:
+        raise ValueError(&quot;geometric tail ratio must be &lt;1&quot;)
+    explicit = sum((beta**k * L / (2**k * m**(k-1)) for k,L in bounds.items()),F(0))
+    # Both product and exponential degree tails are dominated by exp(delta).
+    tail = 2*tau**(K+1)/(factorial(K+1)*m**K*(1-delta/F(K+2)))
+    return explicit+tail
+
+
+def minimum_layers(beta,tau,error,bounds):
+    beta,tau,error = F(beta),F(tau),F(error)
+    if beta &lt; 0 or tau &lt; 0 or not 0 &lt; error &lt;= 1:
+        raise ValueError(&quot;invalid plan&quot;)
+    lower = max(1,int(tau/(max(bounds)+2))+1)
+    upper = lower
+    while error_bound(beta,tau,upper,bounds) &gt; error/4:
+        upper *= 2
+    lo,hi = lower,upper
+    while lo &lt; hi:
+        mid = (lo+hi)//2
+        if error_bound(beta,tau,mid,bounds) &lt;= error/4: hi=mid
+        else: lo=mid+1
+    assert error_bound(beta,tau,lo,bounds) &lt;= error/4
+    return lo
+
+
+def high_spin_terms(qvalues, edges, fields, *, constituent_cap=100000, term_cap=12):
+    if not qvalues or any(not isinstance(q,int) or q&lt;1 for q in qvalues):
+        raise ValueError(&quot;explicit positive constituent counts required&quot;)
+    if sum(qvalues)&gt;constituent_cap:
+        raise ValueError(&quot;constituent admission exceeded before allocation&quot;)
+    planned_terms=0
+    for u,v,a,g in edges:
+        if not 0&lt;=u&lt;len(qvalues) or not 0&lt;=v&lt;len(qvalues) or u==v or F(a)&lt;abs(F(g)):
+            raise ValueError(&quot;allowed site edge required&quot;)
+        if F(a): planned_terms+=qvalues[u]*qvalues[v]
+    for v,b,c in fields:
+        if not 0&lt;=v&lt;len(qvalues) or F(b)&lt;0:
+            raise ValueError(&quot;allowed site field required&quot;)
+        if F(b) or F(c): planned_terms+=qvalues[v]
+    if planned_terms&gt;term_cap:
+        raise ValueError(&quot;embedded term admission exceeded before constituent expansion&quot;)
+    qsets,cursor = [],0
+    for q in qvalues:
+        qsets.append(tuple(range(cursor,cursor+q))); cursor+=q
+    embedded_edges,embedded_fields = [],[]
+    seen = set()
+    for u,v,a,g in edges:
+        a,g = F(a),F(g)
+        if not 0 &lt;= u &lt; len(qsets) or not 0 &lt;= v &lt; len(qsets) or u==v or a&lt;abs(g):
+            raise ValueError(&quot;allowed site edge required&quot;)
+        if tuple(sorted((u,v))) in seen:
+            raise ValueError(&quot;combine parallel edges explicitly&quot;)
+        seen.add(tuple(sorted((u,v))))
+        if a:
+            embedded_edges.extend((x,y,a/4,g/4) for x in qsets[u] for y in qsets[v])
+    for v,b,c in fields:
+        b,c = F(b),F(c)
+        if not 0 &lt;= v &lt; len(qsets) or b&lt;0:
+            raise ValueError(&quot;allowed site field required&quot;)
+        if b or c: embedded_fields.extend((x,b/2,c/2) for x in qsets[v])
+    return qsets,embedded_edges,embedded_fields
+
+
+def projected_plan(qvalues,edges,fields,beta,error,degree=2,order=4,*,term_cap=12,key_cap=4096):
+    qsets,ee,ff = high_spin_terms(qvalues,edges,fields,term_cap=term_cap)
+    C = 3*sum((a for _,_,a,_ in ee),F(0))+sum((b+abs(c) for _,b,c in ff),F(0))
+    tau = 2*F(beta)*C
+    defects,bounds,cost = acquire_defects(ee,ff,degree,order,term_cap=term_cap,key_cap=key_cap)
+    m = minimum_layers(beta,tau,error,bounds)
+    p,Q = len(ee)+len(ff),sum(qvalues)
+    return {&quot;degree&quot;:degree,&quot;certificate_order&quot;:order,&quot;beta&quot;:F(beta),&quot;error&quot;:F(error),
+            &quot;qvalues&quot;:qvalues,&quot;qsets&quot;:qsets,&quot;C&quot;:C,&quot;tau&quot;:tau,&quot;m&quot;:m,&quot;s&quot;:F(beta)/(2*m),
+            &quot;embedded_edges&quot;:ee,&quot;embedded_fields&quot;:ff,&quot;local_terms&quot;:p,&quot;constituents&quot;:Q,
+            &quot;Hamiltonian_gate_occurrences&quot;:2*m*p,&quot;projector_occurrences&quot;:m*len(qvalues),
+            &quot;ground_size&quot;:8*m*p+2*m*Q,&quot;log_error_bound&quot;:error_bound(beta,tau,m,bounds),
+            &quot;defect_l1_bounds&quot;:bounds,&quot;defect_nonzero_keys&quot;:{k:len(d) for k,d in defects.items()},
+            &quot;acquisition_cost&quot;:cost,&quot;admission&quot;:{&quot;term_cap&quot;:term_cap,&quot;key_cap&quot;:key_cap},
+            &quot;scope&quot;:&quot;Operator bound internally derived; actual counting/mixing remains source-conditional.&quot;}
+
+
+def acquire_projected_circuit(plan,*,coordinate_cap=100000):
+    if plan[&quot;ground_size&quot;] &gt; coordinate_cap:
+        raise ValueError(&quot;circuit admission exceeded before allocation&quot;)
+    s = plan[&quot;s&quot;]
+    forward = [local_gate(&quot;edge&quot;,(u,v),s,a,g,plan[&quot;degree&quot;]) for u,v,a,g in plan[&quot;embedded_edges&quot;]]
+    forward += [local_gate(&quot;field&quot;,(v,),s,b,c,plan[&quot;degree&quot;]) for v,b,c in plan[&quot;embedded_fields&quot;]]
+    projectors = [Gate(&quot;projector&quot;,tuple(qs)) for qs in plan[&quot;qsets&quot;]]
+    gates = (forward+list(reversed(forward))+projectors)*plan[&quot;m&quot;]
+    instance = compile_projected_trace(plan[&quot;constituents&quot;],gates,coordinate_cap=coordinate_cap)
+    assert instance.n == plan[&quot;ground_size&quot;]
+    return instance,gates
+</pre><p><a href="../assets/581a46adb7ef941f78a5792d33dae27701321e79ae5cade6f3f00621e6dc6127.py">Exact original bytes</a></p></html>

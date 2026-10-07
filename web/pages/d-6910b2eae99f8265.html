@@ -1,0 +1,117 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c10_s01/reviews/peer_replays/c10_l04/reconstruct_n77.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c10_s01/reviews/peer_replays/c10_l04/reconstruct_n77.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact, bounded reconstruction checks for the N77 reaction example.
+
+This is finite algebra evidence only; the report contains the uniform derivation.
+Uses Python standard-library exact integers and Fractions.
+&quot;&quot;&quot;
+from fractions import Fraction
+from math import factorial
+import json
+from pathlib import Path
+
+REACTIONS = [
+    ((0, 0, 2, 0), (1, 1, 1, 0)),  # 2C -&gt; A+B+C
+    ((1, 1, 1, 0), (3, 2, 0, 0)),  # A+B+C -&gt; 3A+2B
+    ((3, 2, 0, 0), (0, 0, 2, 0)),  # 3A+2B -&gt; 2C
+    ((0, 0, 2, 0), (0, 0, 2, 1)),  # 2C -&gt; 2C+D
+    ((0, 0, 2, 1), (0, 0, 2, 0)),  # 2C+D -&gt; 2C
+]
+
+
+def falling(x, k):
+    out = 1
+    for j in range(k):
+        out *= x - j
+    return out if x &gt;= k else 0
+
+
+def propensity(x, reactants):
+    out = 1
+    for xi, yi in zip(x, reactants):
+        out *= falling(xi, yi)
+    return out
+
+
+def invariant(x):
+    a, b, _, _ = x
+    return a - b * (b + 1) // 2
+
+
+# Check the alleged nonlinear invariant against every enabled reaction in a
+# bounded slice of the integer plane B+C=2.
+invariant_transitions = 0
+for a in range(13):
+    for b in range(3):
+        c = 2 - b
+        for d in range(4):
+            x = (a, b, c, d)
+            for reactants, products in REACTIONS:
+                rate = propensity(x, reactants)
+                if rate:
+                    y = tuple(xi - ri + pi for xi, ri, pi in zip(x, reactants, products))
+                    assert y[1] + y[2] == 2
+                    assert invariant(y) == invariant(x)
+                    invariant_transitions += 1
+
+# Outside the plane the same state function is not a stochastic invariant.
+x = (2, 1, 2, 0)  # 2C reaction is enabled; B+C=3.
+reactants, products = REACTIONS[0]
+y = tuple(xi - ri + pi for xi, ri, pi in zip(x, reactants, products))
+assert invariant(y) - invariant(x) == -1
+
+# The continuous extension N(a,b)=a-b(b+1)/2 is not a first integral of
+# the deterministic mass-action ODE, even on B+C=2.
+a, b, c = Fraction(2), Fraction(1, 2), Fraction(3, 2)
+dot_a = c**2 + 2*a*b*c - 3*a**3*b**2
+dot_b = c**2 + a*b*c - 2*a**3*b**2
+dot_n = dot_a - (b + Fraction(1, 2)) * dot_b
+assert b + c == 2 and dot_n == Fraction(-1, 2)
+
+# Exact stationary-balance checks on the three-phase class Gamma_n x Z_+.
+stationary_states_checked = 0
+for n in range(13):
+    p = (n + 1) * (n + 2) * (n + 3)
+    phase_rates = (2, n + 1, 2 * p)
+    phase_weights = (Fraction(1, 2), Fraction(1, n + 1), Fraction(1, 2 * p))
+    for phase in range(3):
+        prev = (phase - 1) % 3
+        for d in range(10):
+            qd = Fraction(1, factorial(d))  # common e^-1 factor omitted
+            incoming = phase_weights[prev] * phase_rates[prev] * qd
+            outgoing = phase_weights[phase] * phase_rates[phase] * qd
+            if phase == 0:
+                if d:
+                    incoming += phase_weights[0] * Fraction(1, factorial(d - 1)) * 2
+                incoming += phase_weights[0] * Fraction(1, factorial(d + 1)) * 2 * (d + 1)
+                outgoing += phase_weights[0] * qd * (2 + 2 * d)
+            assert incoming == outgoing
+            stationary_states_checked += 1
+
+# Exact phase-probability formula and escaping observables.
+phase_formulas = []
+for n in range(13):
+    P = (n + 1) * (n + 2) * (n + 3)
+    z = P + 2 * (n + 2) * (n + 3) + 1
+    p0 = Fraction(P, z)
+    p1 = Fraction(2 * (n + 2) * (n + 3), z)
+    p2 = Fraction(1, z)
+    assert p0 + p1 + p2 == 1
+    ea = n * p0 + (n + 1) * p1 + (n + 3) * p2
+    assert ea == Fraction(n) + Fraction(2*n*n + 10*n + 15, z)
+    assert p0 &gt; Fraction(1, 1) - Fraction(3, n + 1) if n else True
+    phase_formulas.append({&quot;n&quot;: n, &quot;p_phase0&quot;: str(p0), &quot;p_phase1&quot;: str(p1), &quot;p_phase2&quot;: str(p2), &quot;E_A&quot;: str(ea)})
+
+result = {
+    &quot;scope&quot;: &quot;bounded exact checks; not proof certification&quot;,
+    &quot;method&quot;: &quot;Python standard-library integer/Fraction arithmetic; no simulation&quot;,
+    &quot;plane_invariant_transitions_checked&quot;: invariant_transitions,
+    &quot;outside_plane_witness&quot;: {&quot;source&quot;: x, &quot;target&quot;: y, &quot;delta_invariant&quot;: invariant(y) - invariant(x)},
+    &quot;deterministic_derivative_witness&quot;: {&quot;a&quot;: &quot;2&quot;, &quot;b&quot;: &quot;1/2&quot;, &quot;c&quot;: &quot;3/2&quot;, &quot;B_plus_C&quot;: &quot;2&quot;, &quot;dN_dt&quot;: str(dot_n)},
+    &quot;stationary_balance_states_checked&quot;: stationary_states_checked,
+    &quot;phase_probabilities_and_EA&quot;: phase_formulas,
+    &quot;formula&quot;: &quot;p0=P/Z, p1=2(n+2)(n+3)/Z, p2=1/Z; Z=n^3+8n^2+21n+19; E[A]=n+(2n^2+10n+15)/Z&quot;,
+}
+out = Path(__file__).with_name(&quot;exact_checks.json&quot;)
+out.write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+print(json.dumps({k: result[k] for k in (&quot;plane_invariant_transitions_checked&quot;, &quot;outside_plane_witness&quot;, &quot;deterministic_derivative_witness&quot;, &quot;stationary_balance_states_checked&quot;)}, indent=2))
+</pre><p><a href="../assets/3ef4b0eec86c9145c6737a48df2881bd5ce6ad129d03b598d26d8e5522781c97.py">Exact original bytes</a></p></html>

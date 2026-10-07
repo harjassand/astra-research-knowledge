@@ -1,0 +1,99 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c07_s02/phase2/axial_optimal_prefix_certificate.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c07_s02/phase2/axial_optimal_prefix_certificate.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Bounded exact rational-delta prefix certificates with proved congruences.&quot;&quot;&quot;
+from pathlib import Path
+from fractions import Fraction as F
+import argparse,datetime,hashlib,json,math,time
+from axial_finite_psd_certificate import Arithmetic,cdiv
+OWN=Path(__file__).parent
+DELTA=F(138629437,100000000)
+
+class BoundedArithmetic(Arithmetic):
+    def __init__(self,p,deadline):
+        super().__init__(p);self.deadline=deadline;self.stage=&#x27;initialization&#x27;
+    def check(self,stage):
+        self.stage=stage
+        if time.perf_counter()&gt;self.deadline:
+            raise TimeoutError(&#x27;declared wall limit reached at &#x27;+stage)
+    def scale(self,a,n):
+        assert n&gt;=0
+        return n*a[0],n*a[1]
+    def populations(self,N):
+        q=[None]*(N+1);meta=[None]*(N+1)
+        for k in range(N//2+1):
+            self.check(f&#x27;N={N}, input k={k}&#x27;)
+            x=DELTA*F((2*k-N)**2,4*N)
+            ex,m=self.exp_minus(x);C=math.comb(N,k)
+            q[k]=(ex[0]//C,cdiv(ex[1],C));meta[k]=m
+            q[N-k]=q[k];meta[N-k]=m
+        return q,meta
+    def ldl_matrix(self,N,shift,kind,H,original_dimension):
+        n=len(H);L=[[(0,0) for _ in range(n)] for _ in range(n)];ds=[]
+        for i in range(n):
+            self.check(f&#x27;N={N}, shift={shift}, block={kind}, pivot={i}&#x27;)
+            v=H[i][i]
+            for k in range(i):v=self.sub(v,self.mul(self.square(L[i][k]),ds[k]))
+            if v[0]&lt;=0:
+                raise ArithmeticError(f&#x27;uncertified pivot N={N},shift={shift},block={kind},i={i},bounds={v}&#x27;)
+            ds.append(v);L[i][i]=(self.D,self.D)
+            for j in range(i+1,n):
+                self.check(f&#x27;N={N}, shift={shift}, block={kind}, row={j}, column={i}&#x27;)
+                v=H[j][i]
+                for k in range(i):v=self.sub(v,self.mul(self.mul(L[j][k],L[i][k]),ds[k]))
+                L[j][i]=self.div(v,ds[i])
+        return {&#x27;shift&#x27;:shift,&#x27;block_kind&#x27;:kind,&#x27;original_dimension&#x27;:original_dimension,&#x27;dimension&#x27;:n,
+                &#x27;diagonal_intervals&#x27;:[[str(x),str(y)] for x,y in ds],
+                &#x27;L_strict_lower_intervals&#x27;:[[[str(x),str(y)] for x,y in row[:i]] for i,row in enumerate(L)],
+                &#x27;minimum_lower_pivot_integer&#x27;:str(min(d[0] for d in ds)) if ds else None}
+    def required_matrices(self,N,q):
+        if N%2:
+            m=N//2+1;H=[[q[i+j] for j in range(m)] for i in range(m)]
+            return [self.ldl_matrix(N,0,&#x27;full_odd&#x27;,H,m)]
+        result=[]
+        for shift in [0,1]:
+            m=(N-shift)//2+1;h=m//2
+            H=[[q[i+j+shift] for j in range(m)] for i in range(m)]
+            P=[[self.scale(self.add(H[i][j],H[i][m-1-j]),2) for j in range(h)] for i in range(h)]
+            A=[[self.scale(self.sub(H[i][j],H[i][m-1-j]),2) for j in range(h)] for i in range(h)]
+            if m%2:
+                for i in range(h):P[i].append(self.scale(H[i][h],2))
+                P.append([self.scale(H[h][i],2) for i in range(h)]+[H[h][h]])
+            result.append(self.ldl_matrix(N,shift,&#x27;plus&#x27;,P,m))
+            result.append(self.ldl_matrix(N,shift,&#x27;minus&#x27;,A,m))
+        return result
+
+def main():
+    ap=argparse.ArgumentParser();ap.add_argument(&#x27;--min-N&#x27;,type=int,required=True);ap.add_argument(&#x27;--max-N&#x27;,type=int,required=True)
+    ap.add_argument(&#x27;--precision&#x27;,type=int,required=True);ap.add_argument(&#x27;--wall-limit&#x27;,type=float,required=True)
+    args=ap.parse_args()
+    assert 3&lt;=args.min_N&lt;=args.max_N&lt;=199 and 128&lt;=args.precision&lt;=4096 and 0&lt;args.wall_limit&lt;=60
+    path=OWN/&#x27;evidence&#x27;/f&#x27;axial_optimal_rational_prefix_N{args.min_N}_{args.max_N}_P{args.precision}.json&#x27;
+    if path.exists():raise SystemExit(&#x27;preserving existing evidence; choose a new range or precision&#x27;)
+    start=time.perf_counter();a=BoundedArithmetic(args.precision,start+args.wall_limit);cases=[]
+    out={&#x27;scope&#x27;:&#x27;Exact finite strict PSD at rational delta_bar only; requires separate analytic N&gt;=200 endpoint proof, N2 explicit mixture, and compact Bernstein moment lemma.&#x27;,
+         &#x27;delta&#x27;:str(DELTA),&#x27;precision_bits&#x27;:args.precision,&#x27;denominator&#x27;:str(a.D),&#x27;requested_N_range&#x27;:[args.min_N,args.max_N],
+         &#x27;declared_acquisition_wall_limit_seconds&#x27;:args.wall_limit,&#x27;cases&#x27;:cases,
+         &#x27;algorithm&#x27;:&#x27;owned outward dyadic arithmetic, alternating rational exp with range squaring; exact palindrome, odd reversal and even plus/minus congruences; enclosed unit-L LDL&#x27;,
+         &#x27;started_utc&#x27;:datetime.datetime.now(datetime.timezone.utc).isoformat()}
+    try:
+        for N in range(args.min_N,args.max_N+1):
+            a.check(f&#x27;N={N}, case start&#x27;);q,meta=a.populations(N);matrices=a.required_matrices(N,q)
+            cases.append({&#x27;N&#x27;:N,&#x27;q_intervals&#x27;:[[str(x),str(y)] for x,y in q],
+                          &#x27;exp_enclosure_metadata&#x27;:meta,&#x27;matrices&#x27;:matrices,
+                          &#x27;omitted_matrix_identity&#x27;:&#x27;H1=J H0 J&#x27; if N%2 else None})
+        out[&#x27;status&#x27;]=&#x27;PASS all requested finite cases strictly positive&#x27;
+    except Exception as e:
+        out[&#x27;status&#x27;]=&#x27;INCOMPLETE&#x27;;out[&#x27;failure&#x27;]=repr(e);out[&#x27;failure_stage&#x27;]=a.stage
+    out[&#x27;acquisition_wall_seconds&#x27;]=time.perf_counter()-start
+    out[&#x27;completed_N_range&#x27;]=[cases[0][&#x27;N&#x27;],cases[-1][&#x27;N&#x27;]] if cases else None
+    out[&#x27;code_sha256&#x27;]=hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
+    out[&#x27;arithmetic_source_sha256&#x27;]=hashlib.sha256((OWN/&#x27;axial_finite_psd_certificate.py&#x27;).read_bytes()).hexdigest()
+    out[&#x27;congruence_proof_sha256&#x27;]=hashlib.sha256((OWN/&#x27;PREFIX_SYMMETRY_AND_BUDGET.txt&#x27;).read_bytes()).hexdigest()
+    serialize_start=time.perf_counter();payload=json.dumps(out,indent=2)+&#x27;\n&#x27;;path.write_text(payload)
+    receipt={&#x27;status&#x27;:out[&#x27;status&#x27;],&#x27;delta&#x27;:str(DELTA),&#x27;completed_N_range&#x27;:out[&#x27;completed_N_range&#x27;],
+             &#x27;acquisition_wall_seconds&#x27;:out[&#x27;acquisition_wall_seconds&#x27;],&#x27;serialization_wall_seconds&#x27;:time.perf_counter()-serialize_start,
+             &#x27;path&#x27;:str(path),&#x27;evidence_sha256&#x27;:hashlib.sha256(path.read_bytes()).hexdigest()}
+    path.with_suffix(&#x27;.receipt.json&#x27;).write_text(json.dumps(receipt,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps(receipt))
+    if out[&#x27;status&#x27;]==&#x27;INCOMPLETE&#x27;:raise SystemExit(1)
+if __name__==&#x27;__main__&#x27;:main()
+</pre><p><a href="../assets/e32bfc8d59591bef4018604f3dfeb10293add2931101ef03804a975f69414e2d.py">Exact original bytes</a></p></html>

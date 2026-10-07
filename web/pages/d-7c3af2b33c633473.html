@@ -1,0 +1,141 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c01_s03/axial_compiler/check_domain_extension.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c01_s03/axial_compiler/check_domain_extension.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Bounded scalar-only evidence for the separate optimal-domain corollary.
+
+This does not run an LP, a generic iid compiler, or an optimal-domain Gibbs
+sampler. Existing practical code retains its frozen nonnegative delta1 scope.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from pathlib import Path
+import json
+import signal
+import time
+
+from axial_acquisition import exp_neg_dyadic, choose, sector_matrix
+from filtered_sector import filtered_sector_columns, conditional_max_shift_probabilities
+
+
+def endpoint_enclosure(accuracy):
+    &quot;&quot;&quot;Exact lower/upper rationals for delta*=4atanh(1/3).&quot;&quot;&quot;
+    accuracy = F(accuracy)
+    if accuracy &lt;= 0:
+        raise ValueError(&quot;positive rational absolute accuracy required&quot;)
+    M, lower = 0, F(0)
+    while True:
+        lower += F(4, (2 * M + 1) * 3 ** (2 * M + 1))
+        M += 1
+        tail = F(4, (2 * M + 1) * 3 ** (2 * M + 1)) / F(8, 9)
+        if tail &lt;= accuracy:
+            return lower, lower + tail, M
+
+
+def general_shifted_grid(N, delta, h, bits):
+    &quot;&quot;&quot;Scalar fixture only; mathematical admitted domain supplied by promise.&quot;&quot;&quot;
+    delta, h = F(delta), F(h)
+    H = max(F(0), -delta) * N / 4 + abs(h) * N / 2
+    args = []
+    for t in range(N + 1):
+        m = F(2 * t - N, 2)
+        args.append(H + delta * m * m / N - h * m)
+    if min(args) &lt; 0:
+        raise AssertionError(&quot;exact exponent shift failed&quot;)
+    return [exp_neg_dyadic(x, bits) for x in args], args
+
+
+def main():
+    def wall_limit(signum, frame):
+        raise TimeoutError(&quot;declared20second extension-scalar wall cap exceeded&quot;)
+    signal.signal(signal.SIGALRM, wall_limit)
+    signal.alarm(20)
+    started, assertions = time.perf_counter(), 0
+
+    def check(condition):
+        nonlocal assertions
+        assertions += 1
+        assert condition
+
+    endpoint_records = []
+    for N in [1, 2, 8, 64]:
+        for accuracy_bits in [3, 20, 100]:
+            eps = F(1, 1 &lt;&lt; accuracy_bits)
+            lo, hi, M = endpoint_enclosure(eps / (2 * N))
+            check(hi - lo &lt;= eps / (2 * N))
+            # Separate much longer positive-series enclosure validates inclusion.
+            fine_lo, fine_hi, fine_M = endpoint_enclosure(eps / (1024 * N))
+            check(lo &lt; fine_lo &lt; fine_hi &lt; hi)
+            check(F(4, 3) &lt;= lo &lt; hi &lt; F(7, 5))
+            check(M &lt;= accuracy_bits + N.bit_length() + 3)
+            # The proof uses a&lt;=eps/8 and T&lt;=2a&lt;=eps/4.
+            check(N * (hi - lo) / 4 &lt;= eps / 8)
+            endpoint_records.append({&quot;N&quot;: N, &quot;epsilon_bits&quot;: accuracy_bits,
+                                     &quot;series_terms&quot;: M,
+                                     &quot;lower&quot;: str(lo), &quot;upper&quot;: str(hi),
+                                     &quot;generator_range_upper&quot;: str(N * (hi - lo) / 4),
+                                     &quot;Gibbs_TV_upper&quot;: str(N * (hi - lo) / 2)})
+
+    # This exact rational lies below the endpoint by a distinct fixed series.
+    near_endpoint = F(138629, 100000)
+    delta_lo, delta_hi, _ = endpoint_enclosure(F(1, 1 &lt;&lt; 100))
+    check(near_endpoint &lt; delta_lo &lt; delta_hi &lt; 2)
+    huge = F(1 &lt;&lt; 256)
+    cases = []
+    for N in [1, 2, 8, 16, 64]:
+        parameter_cases = [(-huge, huge), (-huge, -huge)]
+        if N &lt;= 16:
+            parameter_cases += [(near_endpoint, F(1, 3)), (F(-1), F(0))]
+        for delta, h in parameter_cases:
+            bits = 2 * N + 32
+            grid, args = general_shifted_grid(N, delta, h, bits)
+            aligned = N if h &gt;= 0 else 0
+            check(args[aligned] == max(F(0), delta) * N / 4)
+            check(min(args) &gt;= 0 and max(grid) &lt;= 1)
+            check(grid[aligned] &gt;= F(1, 1 &lt;&lt; N))
+            if delta &lt; 0:
+                check(grid[aligned] == 1)
+            C, c, Z = filtered_sector_columns(N, grid)
+            check(min(Z) &gt;= F(1, 1 &lt;&lt; (2 * N)))
+            if delta &lt; 0:
+                check(min(Z) &gt;= F(1, 1 &lt;&lt; N))
+            check((N + 1) * c[0] == sum(grid))
+            check((N + 1) * c[0] &gt;= F(1, 1 &lt;&lt; N))
+            for k in range(N + 1):
+                check(sum(C[b][k] for b in range(len(C))) == 1)
+                raw_sum = sum(F(choose(N - k, u), (k + 1) * (1 &lt;&lt; (N - k)))
+                              * sum(grid[u:u + k + 1]) for u in range(N - k + 1))
+                check(raw_sum == Z[k])
+            # Selected conditional fixtures keep a scalar denominator &gt;=1 even
+            # when the common grid has clipped zero slices. No iid backend run.
+            conditional_ks = range(N + 1) if N &lt;= 2 else sorted(set([0, 1, 2, N // 2, N]))
+            for k in conditional_ks:
+                conditional_us = range(N - k + 1) if N &lt;= 2 else sorted(set([0, (N-k)//2, N-k]))
+                for u in conditional_us:
+                    p, meta = conditional_max_shift_probabilities(N, k, u, delta, h, F(1, 1024))
+                    check(sum(p) == 1 and min(p) &gt;= 0)
+                    check(meta[&quot;normalizer_at_least_one&quot;])
+                    check(meta[&quot;scalar_bits&quot;] &lt;= 25)
+            cases.append({&quot;N&quot;: N, &quot;delta&quot;: str(delta), &quot;h&quot;: str(h),
+                          &quot;input_magnitude_bits&quot;: max(delta.numerator.bit_length(), h.numerator.bit_length()),
+                          &quot;precision_bits&quot;: bits,
+                          &quot;extremal_grid_value&quot;: str(grid[aligned]),
+                          &quot;clipped_zero_values&quot;: grid.count(F(0)),
+                          &quot;minimum_K_normalizer&quot;: str(min(Z))})
+
+    result = {&quot;status&quot;: &quot;PASS&quot;, &quot;assertions&quot;: assertions,
+              &quot;elapsed_seconds_shared_machine&quot;: time.perf_counter() - started,
+              &quot;wall_cap_seconds&quot;: 20,
+              &quot;endpoint_enclosures&quot;: endpoint_records,
+              &quot;scalar_domain_cases&quot;: cases,
+              &quot;scope&quot;: &quot;exact acquired one-sided endpoint plus scalar/normalizer/conditional-input checks only&quot;,
+              &quot;optimal_domain_Gibbs_sampler_executed&quot;: False,
+              &quot;LP_or_generic_iid_backend_executed&quot;: False,
+              &quot;frozen_practical_domain&quot;: &quot;nonnegative delta&lt;=1 cases only&quot;,
+              &quot;hardware_preparation&quot;: &quot;NOT_EXECUTED&quot;}
+    signal.alarm(0)
+    Path(__file__).with_name(&quot;domain_extension_checks.json&quot;).write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+    print(json.dumps({&quot;status&quot;: result[&quot;status&quot;], &quot;assertions&quot;: assertions,
+                      &quot;elapsed_seconds_shared_machine&quot;: result[&quot;elapsed_seconds_shared_machine&quot;],
+                      &quot;scalar_cases&quot;: len(cases), &quot;endpoint_cases&quot;: len(endpoint_records),
+                      &quot;scope&quot;: result[&quot;scope&quot;]}, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/f5cb4651f765b3208c3a58c7bd04c3fb6c96cc4dc8cca526a699343ee0c6685b.py">Exact original bytes</a></p></html>

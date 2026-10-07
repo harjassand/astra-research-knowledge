@@ -1,0 +1,103 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c06_s01/revisions/concave_spin_potentials.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c06_s01/revisions/concave_spin_potentials.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Acquired weighted spin-projector coefficients for concave onsite energies.
+
+No counting FPRAS is executed. Uses exact rational coefficients and separately
+verifies small contraction identities against direct dense matrices.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from dataclasses import dataclass
+from math import comb
+from pathlib import Path
+import sys,json
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
+from spin_projection_transfer import (Gate,CompiledCircuit,edge_gate,field_gate,
+                                     ceil_log2,circuit_trace)
+
+
+@dataclass(frozen=True)
+class WeightedProjector:
+    qubits: tuple
+    weights: tuple
+    kind: str=&quot;projector&quot;
+
+    def __post_init__(self):
+        q=len(self.qubits)
+        assert len(self.weights)==q+1 and all(w&gt;0 for w in self.weights)
+        assert all(self.weights[r+1]**2&gt;=self.weights[r]*self.weights[r+2]
+                   for r in range(q-1))
+
+    def entry(self,row,col):
+        r=row.bit_count()
+        return F(0) if r!=col.bit_count() else self.weights[r]/comb(len(self.qubits),r)
+
+    def range_bits(self):
+        return len(self.qubits)+ceil_log2(max(self.weights)/min(self.weights))
+
+
+def potential_gate(qubits,potential,s):
+    &quot;&quot;&quot;One combined G^2 gate, w_r=(1+s(M+f_r))^2 / binom(q,r).&quot;&quot;&quot;
+    q=len(qubits); potential=tuple(map(F,potential)); s=F(s)
+    assert len(potential)==q+1 and s&gt;=0
+    for r in range(q-1):
+        if 2*potential[r+1]&lt;potential[r]+potential[r+2]:
+            raise ValueError(&quot;nonconcave onsite energy table at index %d&quot;%(r+1))
+    shift=max(abs(f) for f in potential)
+    first=tuple(1+s*(shift+f) for f in potential)
+    assert all(x&gt;=1 for x in first)
+    assert all(first[r+1]**2&gt;=first[r]*first[r+2] for r in range(q-1))
+    return WeightedProjector(tuple(qubits),tuple(w*w for w in first)),shift
+
+
+def compile_weighted(nqubits,gates):
+    circuit=CompiledCircuit(nqubits,gates)
+    # The original unweighted constructor assigns the q-bit binomial bound.
+    # Acquire the extra positive charge-weight ratio explicitly here.
+    circuit.range_bits=sum(f.gate.range_bits() if isinstance(f.gate,WeightedProjector)
+                           else f.range_bit_bound() for f in circuit.factors)
+    assert circuit.p_coefficient(circuit.p_seed)&gt;0
+    return circuit
+
+
+def checks():
+    derivative_checks=0
+    for q in range(2,11):
+        potential=[F(-r*r,7)+F(2*r,5)-3 for r in range(q+1)]
+        for s in (F(0),F(1,17),F(3,2)):
+            gate,shift=potential_gate(tuple(range(q)),potential,s)
+            weights=gate.weights
+            for a in range(q-1):
+                b=q-2-a; m=q-a; ell=q-b
+                aa=weights[a+2]/comb(q,a+2)
+                bb=weights[a+1]/comb(q,a+1)
+                cc=weights[a]/comb(q,a)
+                det=aa*cc*(m-1)*(ell-1)-bb*bb*m*ell
+                assert det&lt;=0
+                derivative_checks+=1
+    fixtures=[]
+    for s in (F(1,7),F(2,11),F(1,100)):
+        weighted,shift=potential_gate((0,1),(-2,0,-2),s)
+        edge=edge_gate((0,2),F(1,4),F(-1,8),s)
+        field=field_gate(2,F(1,3),F(-1,5),s)
+        gates=[weighted,edge,field,field,edge]
+        compiler=compile_weighted(3,gates)
+        polynomial,work,accepted=compiler.exact_diagnostic_count()
+        matrix=circuit_trace(gates,3)
+        assert matrix==polynomial
+        fixtures.append({&quot;s&quot;:str(s),&quot;shift&quot;:str(shift),&quot;N&quot;:compiler.n,
+                         &quot;trace&quot;:str(matrix),&quot;range_bits&quot;:compiler.range_bits,
+                         &quot;monomial_checks&quot;:work,&quot;accepted&quot;:accepted})
+    try:
+        potential_gate((0,1),(0,-1,0),F(1,10))
+    except ValueError:
+        nonconcave_rejected=True
+    else:
+        raise AssertionError(&quot;nonconcave potential was not rejected&quot;)
+    return {&quot;status&quot;:&quot;PASS&quot;,&quot;scope&quot;:&quot;exact weighted projector and finite contraction identities, not a full FPRAS run&quot;,
+            &quot;quadratic_derivative_type_checks&quot;:derivative_checks,
+            &quot;fixtures&quot;:fixtures,&quot;nonconcave_rejected&quot;:nonconcave_rejected}
+
+
+if __name__==&quot;__main__&quot;:
+    result=checks()
+    Path(__file__).with_name(&#x27;concave_potential_checks.json&#x27;).write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps(result,indent=2))
+</pre><p><a href="../assets/c0afe12c9ad3748b7fc1fce69f0a2142b3e418e1de0f17d8761bee64d7995997.py">Exact original bytes</a></p></html>

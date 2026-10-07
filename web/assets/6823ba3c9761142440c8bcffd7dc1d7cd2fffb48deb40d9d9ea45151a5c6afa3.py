@@ -1,0 +1,65 @@
+from fractions import Fraction
+from itertools import combinations, permutations
+import random
+n=6; FULL=63; OLD=4; OLD_FULL=15
+F4=[[0,0,1,1],[0,0,1,-1],[0,0,0,0],[0,0,0,0]]
+G=[[0,1],[1,0]]
+
+def det(a):
+    if not a:return Fraction(1)
+    t=Fraction(0)
+    for p in permutations(range(len(a))):
+        inv=sum(p[i]>p[j] for i in range(len(p)) for j in range(i+1,len(p)))
+        x=Fraction(-1 if inv%2 else 1)
+        for i,j in enumerate(p):x*=a[i][j]
+        t+=x
+    return t
+
+def signature(F):
+    out={}
+    for U in range(1<<n):
+        R=[i for i in range(n) if not (U>>i)&1]
+        if len(R)%2:out[U]=Fraction(0);continue
+        k=len(R)//2;z=Fraction(0)
+        for I in combinations(R,k):
+            J=[j for j in R if j not in I]
+            d=det([[F[i][j] for j in J] for i in I]);z+=d*d
+        out[U]=z
+    return out
+
+pairings=(((0,1),(2,3)),((0,2),(1,3)),((0,3),(1,2)))
+def delta(s):
+    c=sum(s[(1<<i)|(1<<j)]*s[(1<<k)|(1<<l)] for ((i,j),(k,l)) in pairings)
+    return c-s[0]*s[15]
+def one_edge(s,i,j,w):
+    e=(1<<i)|(1<<j);o=dict(s)
+    for U in range(16):
+        if U.bit_count()%2==0 and not U&e:o[U]=s[U]+w*s[U|e]
+    return o
+
+rng=random.Random(11132026)
+vals=(Fraction(-1,4),Fraction(0),Fraction(1,4))
+weights=(Fraction(1),Fraction(2),Fraction(4),Fraction(8),Fraction(16))
+for trial in range(400):
+    F=[[Fraction(0) for _ in range(n)] for _ in range(n)]
+    for i in range(4):
+      for j in range(4):F[i][j]=F4[i][j]
+    for i in range(2):
+      for j in range(2):F[4+i][4+j]=G[i][j]
+    for i in range(4):
+      for j in (4,5):F[i][j]=rng.choice(vals)
+    for i in (4,5):
+      for j in range(4):F[i][j]=rng.choice(vals)
+    s=signature(F);sl={U:s[U] for U in range(16)};d0=delta(sl)
+    if d0>=0:continue
+    for i in range(4):
+      for j in (4,5):
+        for w in weights:
+          after=one_edge(s,i,j,w);pin={U:after[U] for U in range(16)};d1=delta(pin)
+          if d1>=0:
+            print('FOUND',trial,'edge',(i,j),'w',w,'deltas',d0,d1)
+            print('F=',[[str(x) for x in row] for row in F])
+            print('before=',{k:str(v) for k,v in sl.items()})
+            print('after=',{k:str(v) for k,v in pin.items()})
+            raise SystemExit
+print('NONE')

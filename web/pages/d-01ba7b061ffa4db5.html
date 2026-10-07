@@ -1,0 +1,258 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c02_s03/revisions/frontier_rank_guard.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c02_s03/revisions/frontier_rank_guard.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Costed hard-BCS approximation admission with an exact frontier backend.
+
+The Schur augmentation overlaps c03_l05 INITIAL (read before implementing).
+This owned implementation adds forced-double auxiliary contraction, exact
+greedy rational column acquisition, and a projected-norm error certificate.
+No peer code is imported, executed or changed.
+&quot;&quot;&quot;
+import sys
+from pathlib import Path
+from math import comb
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
+from representation_compiler import C,Q,matrix,inverse,strip_diagonal
+from banded_hard_bcs import pair_gate,add,local_masks,capped_rational_bit
+from frontier_hard_bcs import recognize_frontier,insert_vacuum,compile_admission
+from frontier_hard_bcs import prefix_count as full_frontier_count
+from frontier_hard_bcs import sample_born as full_frontier_sample
+
+def product(a,b):
+    if not a:return []
+    ncols=len(b[0]) if b else 0
+    return [[sum((a[i][t]*b[t][j] for t in range(len(b))),C(0))
+             for j in range(ncols)] for i in range(len(a))]
+
+def adjoint(a):
+    return [[a[i][j].conjugate() for i in range(len(a))] for j in range(len(a[0]) if a else 0)]
+
+def frobenius2(a):return sum((x.abs2() for row in a for x in row),Q(0))
+
+def subtract(a,b):return [[x-y for x,y in zip(ar,br)] for ar,br in zip(a,b)]
+
+def rational_rank_approximation(residual,rank_budget):
+    &quot;&quot;&quot;Greedily acquire independent columns and exact least-squares coefficients.
+
+    This is certificate admission, not optimal numerical-rank recognition.
+    If the exact residual rank is &lt;= rank_budget, recovery is exact.
+    &quot;&quot;&quot;
+    a=matrix(residual);n=len(a)
+    if any(len(row)!=n for row in a) or not 0&lt;=rank_budget&lt;=n:
+        raise ValueError(&#x27;square residual and rank budget in [0,n] required&#x27;)
+    selected=[];error=a;u=[[] for _ in range(n)];v=[[] for _ in range(n)]
+    approximation=[[C(0) for _ in range(n)] for _ in range(n)]
+    for _ in range(rank_budget):
+        norms=[sum((error[i][j].abs2() for i in range(n)),Q(0)) for j in range(n)]
+        if not any(norms):break
+        col=max(range(n),key=lambda j:(norms[j],-j));selected.append(col)
+        u=[[a[i][j] for j in selected] for i in range(n)]
+        ua=adjoint(u);gram=product(ua,u)
+        coefficients=product(product(inverse(gram),ua),a)
+        approximation=product(u,coefficients)
+        error=subtract(a,approximation)
+        v=[[coefficients[t][j] for t in range(len(selected))] for j in range(n)]
+    return {&#x27;U&#x27;:u,&#x27;V&#x27;:v,&#x27;rank&#x27;:len(selected),&#x27;selected_columns&#x27;:selected,
+            &#x27;approximation&#x27;:approximation,&#x27;residual&#x27;:error,
+            &#x27;frobenius_residual_squared&#x27;:frobenius2(error),
+            &#x27;scope&#x27;:&#x27;exact rational greedy acquisition; not best-rank approximation&#x27;}
+
+def augmented_matrix(base,u,v):
+    base=matrix(base);u=matrix(u);v=matrix(v);n=len(base)
+    r=len(u[0]) if n else 0
+    if len(u)!=n or len(v)!=n or any(len(row)!=r for row in u+v):
+        raise ValueError(&#x27;factor shape mismatch&#x27;)
+    return [base[i]+u[i] for i in range(n)]+[
+        [-v[j][a] for j in range(n)]+[C(a==b) for b in range(r)]
+        for a in range(r)]
+
+def count_rank_update(base,u,v,mode_constraints=None,site_constraints=None,
+                      physical_order=None,frontier_cap=None,collect_stats=False):
+    &quot;&quot;&quot;Exact all-sector/prefix contraction with every auxiliary site doubled.&quot;&quot;&quot;
+    base=matrix(base);n=len(base);r=len(u[0]) if n else 0
+    base_cert=recognize_frontier(base,physical_order)
+    order=base_cert[&#x27;order&#x27;]+list(range(n,n+r))
+    ext=augmented_matrix(base,u,v)
+    cert=recognize_frontier(ext,order,frontier_cap)
+    if cert[&#x27;status&#x27;]!=&#x27;ACCEPTED&#x27;:raise ValueError(cert)
+    assert cert[&#x27;width&#x27;]&lt;=base_cert[&#x27;width&#x27;]+r
+    pos={site:i for i,site in enumerate(order)}
+    ff=[[ext[i][j] for j in order] for i in order]
+    graph=[{pos[j] for j in cert[&#x27;graph&#x27;][site]} for site in order]
+    physical_allowed=local_masks(n,mode_constraints,site_constraints)
+    allowed=[physical_allowed[site] if site&lt;n else {3} for site in order]
+    rho={(0,0,0):C(1)};live=[];peak=1;live_peak=0;gates=0
+    for i,original_site in enumerate(order):
+        needed={i}|{j for j in graph[i] if j&gt;i}
+        for j in sorted(needed-set(live)):
+            at=sum(vv&lt;j for vv in live)
+            rho=insert_vacuum(rho,at);live.insert(at,j)
+        assert live[0]==i
+        live_peak=max(live_peak,len(live))
+        for j in sorted(graph[i]):
+            if j&lt;=i:continue
+            p=live.index(j)
+            for coefficient,left,right in ((ff[i][j],0,2*p+1),(ff[j][i],2*p,1)):
+                if coefficient:
+                    rho=pair_gate(rho,coefficient,left,right);gates+=1
+                    peak=max(peak,len(rho))
+        # Physical diagonal creation is killed by the hard local filter.
+        # Auxiliary diagonal creation MUST be retained for the identity pivot.
+        if original_site&gt;=n and ff[i][i]:
+            rho=pair_gate(rho,ff[i][i],0,1);gates+=1
+            peak=max(peak,len(rho))
+        out={}
+        for (a,b,q),weight in rho.items():
+            occupation=a&amp;3
+            if occupation==(b&amp;3) and occupation in allowed[i]:
+                increment=occupation.bit_count() if original_site&lt;n else 0
+                add(out,(a&gt;&gt;2,b&gt;&gt;2,q+increment),weight)
+        rho=out;live.pop(0);peak=max(peak,len(rho))
+        assert set(order[j] for j in live)==set(cert[&#x27;boundaries&#x27;][i])
+    polynomial=[Q(0)]*(n+1)
+    for (a,b,q),weight in rho.items():
+        assert a==b==0 and weight.im==0 and weight.re&gt;=0
+        polynomial[q]+=weight.re
+    assert all(not polynomial[q] for q in range(1,n+1,2))
+    result={&#x27;coefficients&#x27;:[polynomial[2*k] for k in range(n//2+1)],
+            &#x27;base_width&#x27;:base_cert[&#x27;width&#x27;],&#x27;auxiliary_rank&#x27;:r,
+            &#x27;extended_width&#x27;:cert[&#x27;width&#x27;],&#x27;order&#x27;:base_cert[&#x27;order&#x27;]}
+    if collect_stats:result[&#x27;stats&#x27;]={&#x27;peak_density_coefficients&#x27;:peak,
+        &#x27;maximum_live_sites&#x27;:live_peak,&#x27;pair_creation_gates&#x27;:gates}
+    return result
+
+def acquire_certificate(f,base,rank_budget,k,epsilon=Q(1,100),
+                        order=None,separator_budget=3,frontier_cap=None):
+    &quot;&quot;&quot;Return CERTIFIED or UNKNOWN_ADMISSION; failure says nothing about FPRAS.
+
+    Base is an explicit charged matrix (or an explicitly costed finite guess).
+    U,V and residual are acquired from F-base. No singular-value oracle is used.
+    &quot;&quot;&quot;
+    f=matrix(f);base=matrix(base);n=len(f);epsilon=Q(epsilon)
+    if len(base)!=n or any(len(row)!=n for row in f+base):raise ValueError(&#x27;shape mismatch&#x27;)
+    if not 0&lt;=k&lt;=n//2 or not 0&lt;epsilon&lt;=1:raise ValueError(&#x27;sector/error range&#x27;)
+    if order is None:
+        admission=compile_admission(base,separator_budget)
+        if admission[&#x27;status&#x27;]!=&#x27;ACCEPTED&#x27;:
+            return {&#x27;status&#x27;:&#x27;UNKNOWN_ADMISSION&#x27;,&#x27;reason&#x27;:&#x27;base frontier search failed&#x27;,&#x27;admission&#x27;:admission}
+        order=admission[&#x27;order&#x27;]
+    else:admission=recognize_frontier(base,order)
+    factors=rational_rank_approximation(subtract(f,base),rank_budget)
+    u,v=factors[&#x27;U&#x27;],factors[&#x27;V&#x27;]
+    h=[[base[i][j]+factors[&#x27;approximation&#x27;][i][j] for j in range(n)] for i in range(n)]
+    error=strip_diagonal(subtract(f,h))
+    eta2=frobenius2(error)
+    f0,h0=strip_diagonal(f),strip_diagonal(h)
+    bound=max(sum((abs(x.re)+abs(x.im) for row in a for x in row),Q(0)) for a in (f0,h0))
+    delta2=Q(0) if k==0 else comb(n,k)*k*k*eta2*bound**(2*k-2)
+    if frontier_cap is not None:
+        ext=augmented_matrix(base,u,v)
+        ext_cert=recognize_frontier(ext,list(order)+list(range(n,n+factors[&#x27;rank&#x27;])),frontier_cap)
+        if ext_cert[&#x27;status&#x27;]!=&#x27;ACCEPTED&#x27;:
+            return {&#x27;status&#x27;:&#x27;UNKNOWN_ADMISSION&#x27;,&#x27;reason&#x27;:&#x27;charged frontier cap exceeded&#x27;,
+                    &#x27;candidate_rank&#x27;:factors[&#x27;rank&#x27;],&#x27;extended_frontier&#x27;:ext_cert[&#x27;width&#x27;]}
+    counts=count_rank_update(base,u,v,physical_order=order,
+        frontier_cap=frontier_cap,collect_stats=True)
+    z=counts[&#x27;coefficients&#x27;][k]
+    accepted=bool(z) and delta2&lt;=epsilon*epsilon*z/16
+    return {&#x27;status&#x27;:&#x27;CERTIFIED&#x27; if accepted else &#x27;UNKNOWN_ADMISSION&#x27;,
+            &#x27;reason&#x27;:&#x27;projected residual bound passed&#x27; if accepted else &#x27;zero approximate sector or residual guard failed&#x27;,
+            &#x27;n&#x27;:n,&#x27;k&#x27;:k,&#x27;epsilon&#x27;:epsilon,&#x27;F&#x27;:f,&#x27;base&#x27;:base,&#x27;U&#x27;:u,&#x27;V&#x27;:v,&#x27;H&#x27;:h,
+            &#x27;rank&#x27;:factors[&#x27;rank&#x27;],&#x27;selected_columns&#x27;:factors[&#x27;selected_columns&#x27;],
+            &#x27;eta_squared&#x27;:eta2,&#x27;operator_norm_upper_bound&#x27;:bound,
+            &#x27;amplitude_error_squared_bound&#x27;:delta2,&#x27;norm_estimate&#x27;:z,
+            &#x27;guard_right_hand_side&#x27;:epsilon*epsilon*z/16,&#x27;counts&#x27;:counts,
+            &#x27;base_admission&#x27;:admission,&#x27;order&#x27;:list(order),
+            &#x27;guarantee&#x27;:&#x27;relative norm error &lt;= epsilon; pure-state trace distance &lt;= epsilon/4&#x27;}
+
+def acquire_banded_certificate(f,bandwidth,rank_budget,k,epsilon=Q(1,100),frontier_cap=None):
+    &quot;&quot;&quot;F-only deterministic admission: keep the specified band, then acquire rank.&quot;&quot;&quot;
+    f=matrix(f);n=len(f)
+    if bandwidth&lt;0:raise ValueError(&#x27;negative bandwidth&#x27;)
+    base=[[f[i][j] if abs(i-j)&lt;=bandwidth else C(0) for j in range(n)] for i in range(n)]
+    return acquire_certificate(f,base,rank_budget,k,epsilon,order=list(range(n)),frontier_cap=frontier_cap)
+
+def sample_certified(certificate,getrandbits):
+    &quot;&quot;&quot;Fair-bit capped sampler; whole-law TV &lt;= 3 epsilon/4 on certification.&quot;&quot;&quot;
+    if certificate[&#x27;status&#x27;]!=&#x27;CERTIFIED&#x27;:return {&#x27;status&#x27;:&#x27;UNKNOWN_ADMISSION&#x27;}
+    n,k=certificate[&#x27;n&#x27;],certificate[&#x27;k&#x27;];eps=certificate[&#x27;epsilon&#x27;]
+    attempts=0
+    while Q(2*n,1&lt;&lt;attempts)&gt;eps/2:attempts+=1
+    prefix={};fallback=False;coin_bits=0;queries=0
+    def count(p):
+        nonlocal queries
+        queries+=1
+        return count_rank_update(certificate[&#x27;base&#x27;],certificate[&#x27;U&#x27;],certificate[&#x27;V&#x27;],
+             mode_constraints=p,physical_order=certificate[&#x27;order&#x27;])[&#x27;coefficients&#x27;][k]
+    for site,spin in [(i,&#x27;U&#x27;) for i in range(n)]+[(i,&#x27;D&#x27;) for i in range(n)]:
+        p0=dict(prefix);p0[site,spin]=0;p1=dict(prefix);p1[site,spin]=1
+        z0,z1=count(p0),count(p1);assert z0+z1&gt;0
+        if fallback:bit=int(bool(z1))
+        else:
+            bit,used=capped_rational_bit(z1/(z0+z1),getrandbits,attempts);coin_bits+=used
+            if bit is None:fallback=True;bit=int(bool(z1))
+        prefix[site,spin]=bit
+    up=[i for i in range(n) if prefix[i,&#x27;U&#x27;]];down=[i for i in range(n) if prefix[i,&#x27;D&#x27;]]
+    assert len(up)==len(down)==k and not set(up)&amp;set(down)
+    return {&#x27;status&#x27;:&#x27;SAMPLE&#x27;,&#x27;up&#x27;:up,&#x27;down&#x27;:down,&#x27;fallback&#x27;:fallback,
+        &#x27;coin_bits&#x27;:coin_bits,&#x27;count_queries&#x27;:queries,&#x27;norm_estimate&#x27;:certificate[&#x27;norm_estimate&#x27;],
+        &#x27;TV_bound&#x27;:3*eps/4,&#x27;randomness_contract&#x27;:&#x27;independent fair random bits&#x27;}
+
+def acquire_uniform_accuracy_certificate(f,base,rank_budget,k,order=None,
+        separator_budget=3,frontier_cap=None):
+    &quot;&quot;&quot;Recognize a matrix class supporting EVERY requested accuracy.
+
+    Exponentially small certified relative residual permits a fine-accuracy
+    exact fallback: on that branch 16^n &lt; epsilon^-8. Width/rank admission
+    remains charged separately. This is no general approximation theorem.
+    &quot;&quot;&quot;
+    certificate=acquire_certificate(f,base,rank_budget,k,Q(1),order,
+                                  separator_budget,frontier_cap)
+    if certificate[&#x27;status&#x27;]!=&#x27;CERTIFIED&#x27;:return certificate
+    n=certificate[&#x27;n&#x27;];rhs=certificate[&#x27;norm_estimate&#x27;]/Q(16*(1&lt;&lt;n))
+    if certificate[&#x27;amplitude_error_squared_bound&#x27;]&gt;rhs:
+        certificate[&#x27;status&#x27;]=&#x27;UNKNOWN_ADMISSION&#x27;
+        certificate[&#x27;reason&#x27;]=&#x27;uniform-accuracy precision-gap guard failed&#x27;
+        certificate[&#x27;uniform_accuracy_guard_rhs&#x27;]=rhs
+        return certificate
+    certificate[&#x27;status&#x27;]=&#x27;UNIFORM_CERTIFIED&#x27;
+    certificate[&#x27;uniform_accuracy_guard_rhs&#x27;]=rhs
+    certificate[&#x27;guarantee&#x27;]=&#x27;all epsilon in (0,1]: polynomial in n,L,epsilon^-1 when base width+rank=O(log n)&#x27;
+    return certificate
+
+def acquire_banded_uniform_certificate(f,bandwidth,rank_budget,k,frontier_cap=None):
+    f=matrix(f);n=len(f)
+    if bandwidth&lt;0:raise ValueError(&#x27;negative bandwidth&#x27;)
+    base=[[f[i][j] if abs(i-j)&lt;=bandwidth else C(0) for j in range(n)] for i in range(n)]
+    return acquire_uniform_accuracy_certificate(f,base,rank_budget,k,
+                    order=list(range(n)),frontier_cap=frontier_cap)
+
+def uniform_branch(certificate,epsilon):
+    epsilon=Q(epsilon)
+    if not 0&lt;epsilon&lt;=1:raise ValueError(&#x27;epsilon must lie in (0,1]&#x27;)
+    if certificate[&#x27;status&#x27;]!=&#x27;UNIFORM_CERTIFIED&#x27;:return &#x27;UNKNOWN_ADMISSION&#x27;
+    if certificate[&#x27;amplitude_error_squared_bound&#x27;]&lt;=epsilon*epsilon*certificate[&#x27;norm_estimate&#x27;]/16:
+        return &#x27;APPROXIMATE_WIDTH_BACKEND&#x27;
+    assert epsilon*epsilon &lt; Q(1,1&lt;&lt;certificate[&#x27;n&#x27;])
+    # This exact rational assertion is the load-bearing fallback cost charge.
+    assert Q(16**certificate[&#x27;n&#x27;]) &lt; epsilon**(-8)
+    return &#x27;EXACT_FINE_ACCURACY&#x27;
+
+def norm_uniform_accuracy(certificate,epsilon):
+    branch=uniform_branch(certificate,epsilon)
+    if branch==&#x27;UNKNOWN_ADMISSION&#x27;:return {&#x27;status&#x27;:branch}
+    if branch==&#x27;APPROXIMATE_WIDTH_BACKEND&#x27;:norm=certificate[&#x27;norm_estimate&#x27;]
+    else:norm=full_frontier_count(certificate[&#x27;F&#x27;],certificate[&#x27;k&#x27;],order=certificate[&#x27;order&#x27;])
+    return {&#x27;status&#x27;:&#x27;NORM&#x27;,&#x27;branch&#x27;:branch,&#x27;norm&#x27;:norm,&#x27;epsilon&#x27;:Q(epsilon),
+        &#x27;guarantee&#x27;:&#x27;relative error &lt;= epsilon; exact on fine-accuracy branch&#x27;}
+
+def sample_uniform_accuracy(certificate,epsilon,getrandbits):
+    branch=uniform_branch(certificate,epsilon)
+    if branch==&#x27;UNKNOWN_ADMISSION&#x27;:return {&#x27;status&#x27;:branch}
+    if branch==&#x27;APPROXIMATE_WIDTH_BACKEND&#x27;:
+        local=dict(certificate);local[&#x27;status&#x27;]=&#x27;CERTIFIED&#x27;;local[&#x27;epsilon&#x27;]=Q(epsilon)
+        result=sample_certified(local,getrandbits)
+    else:
+        result=full_frontier_sample(certificate[&#x27;F&#x27;],certificate[&#x27;k&#x27;],getrandbits,
+            epsilon=Q(epsilon),order=certificate[&#x27;order&#x27;])
+        result[&#x27;TV_bound&#x27;]=Q(epsilon)
+    result[&#x27;branch&#x27;]=branch
+    return result
+</pre><p><a href="../assets/acfec5a5e44b8a1463d73930deab3be8b95cfe0673d91409f5f56cbd3985c343.py">Exact original bytes</a></p></html>

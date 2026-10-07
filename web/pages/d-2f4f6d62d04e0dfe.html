@@ -1,0 +1,141 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c06_s03/nofield_counter.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c06_s03/nofield_counter.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Completely capped no-field-balancing count for the symmetric trace lift.
+
+All-size confidence remains conditional on Chen--Liu Lemma 5.5. No generic
+FPRAS is called. Conservative default admission refuses prohibitive work
+BEFORE any random bit/chain step; the saved run does not claim a full FPRAS.
+&quot;&quot;&quot;
+from dataclasses import dataclass
+from fractions import Fraction as F
+
+from xxz_local_chain import (CoinTape, LocalExchange, TapeAbort, ceil_log2_fraction,
+                             mixing_steps, product_fraction)
+
+
+class ResourceRefusal(RuntimeError):
+    def __init__(self, plan):
+        self.plan = plan
+        super().__init__(f&quot;planned {plan[&#x27;total_steps&#x27;]} steps exceeds supplied admission&quot;)
+
+
+def ceiling(x):
+    x = F(x)
+    return (x.numerator + x.denominator - 1) // x.denominator
+
+
+def acquired_complement_ratio(instance):
+    &quot;&quot;&quot;Finite rational bound mu(S)/mu(S^c); raises on asymmetric support.
+
+    The other factor must have half-size disjoint quotas, as in trace counts.
+    This is a NUMERIC bias parameter, not a free logarithmic-range substitute.
+    &quot;&quot;&quot;
+    if (2 * instance.mu_degree != instance.n or 2 * instance.nu_degree != instance.n or
+            any(2 * rank != len(coordinates) for coordinates, rank in instance.groups)):
+        raise ValueError(&quot;half-degree complement-invariant quota support required&quot;)
+    ratio = F(1)
+    for factor in instance.factors:
+        full = (1 &lt;&lt; len(factor.coordinates)) - 1
+        if any((full ^ mask) not in factor.table for mask in factor.table):
+            raise ValueError(&quot;mu support is not complement invariant&quot;)
+        ratio *= max(value / factor.table[full ^ mask] for mask, value in factor.table.items())
+    assert ratio &gt;= 1
+    return ratio
+
+
+def nofield_plan(instance, rho=F(1, 10), delta=F(1, 4), *, allow_bounded_bias=False):
+    rho, delta = F(rho), F(delta)
+    if not instance.complement_symmetric() and not allow_bounded_bias:
+        raise ValueError(&quot;default no-balancing interface requires complement symmetry&quot;)
+    bias_ratio = acquired_complement_ratio(instance)
+    if not 0 &lt; rho &lt;= 1 or not 0 &lt; delta &lt;= F(1, 4):
+        raise ValueError(&quot;invalid relative accuracy or confidence&quot;)
+    n = instance.n
+    if n &lt; 1:
+        return {&quot;n&quot;: 0, &quot;total_steps&quot;: 0, &quot;total_samples&quot;: 0,
+                &quot;trivial_count&quot;: 1 &lt;&lt; instance.inactive_qubits}
+    t = F(1, 256 * n * n) / bias_ratio
+    alpha = rho / (128 * n)
+    # Binary logs overcount natural logs, avoiding a floating/log oracle.
+    M = ceiling(2 / (alpha * alpha) * max(1, ceil_log2_fraction(16 * n / delta)))
+    ac = rho / 64
+    Mc = ceiling(2 / (ac * ac) * max(1, ceil_log2_fraction(8 / delta)))
+    J = mixing_steps(instance, t, [F(1)] * n, alpha / 2)
+    samples = 2 * n * M + Mc
+    height = max(1, (n - 1).bit_length())
+    choices = samples * J * (2 * height + 2)
+    bits_per_choice = max(1, ceil_log2_fraction(F(4 * choices) / delta))
+    return {&quot;n&quot;: n, &quot;t&quot;: t, &quot;alpha&quot;: alpha, &quot;rho&quot;: rho, &quot;delta&quot;: delta,
+            &quot;complement_ratio&quot;: bias_ratio, &quot;numeric_bias_parameter_charged&quot;: True,
+            &quot;mass_samples_per_stage&quot;: M, &quot;complement_samples&quot;: Mc,
+            &quot;steps_per_sample&quot;: J, &quot;total_samples&quot;: samples,
+            &quot;total_steps&quot;: samples * J, &quot;choice_cap&quot;: choices,
+            &quot;bits_per_choice&quot;: bits_per_choice, &quot;random_bits_cap&quot;: choices * bits_per_choice}
+
+
+def count_nofield(instance, rho=F(1, 10), delta=F(1, 4), *, max_steps=1000000, seed=0,
+                  allow_bounded_bias=False):
+    &quot;&quot;&quot;Whole count, or supported zero abort; raises before unaffordable work.
+
+    A seeded PRNG is supplied for reproducibility. The confidence theorem
+    assumes independent fair coin input, the usual randomized algorithm model.
+    Tiny/coherent tapes do not get silently retried after an abort.
+    &quot;&quot;&quot;
+    plan = nofield_plan(instance, rho, delta, allow_bounded_bias=allow_bounded_bias)
+    if plan[&quot;n&quot;] == 0:
+        return {&quot;estimate&quot;: F(plan[&quot;trivial_count&quot;]), &quot;plan&quot;: plan, &quot;aborted&quot;: False,
+                &quot;coin_choices&quot;: 0, &quot;coin_bits&quot;: 0, &quot;executed_steps&quot;: 0}
+    if plan[&quot;total_steps&quot;] &gt; max_steps:
+        raise ResourceRefusal(plan)
+    tape = CoinTape(seed, plan[&quot;bits_per_choice&quot;], plan[&quot;choice_cap&quot;])
+    n, t, J = plan[&quot;n&quot;], plan[&quot;t&quot;], plan[&quot;steps_per_sample&quot;]
+    mu_in, mu_out, nu_in, nu_out = set(), set(), set(), set()
+    witness = instance.seed()
+    empirical_product = F(1)
+    executed_steps = 0
+
+    def sample(pins, start):
+        nonlocal executed_steps
+        chain = LocalExchange(instance, t=t, pins=pins, state=start)
+        for _ in range(J):
+            chain.step(tape)
+            executed_steps += 1
+        return frozenset(chain.S), frozenset(chain.T)
+
+    try:
+        M = plan[&quot;mass_samples_per_stage&quot;]
+        for side in (0, 1):
+            for u in range(n):
+                first = {}
+                count_one = 0
+                pins = tuple(map(frozenset, (mu_in, mu_out, nu_in, nu_out)))
+                for _ in range(M):
+                    state = sample(pins, witness)
+                    bit = int(u in state[side])
+                    count_one += bit
+                    first.setdefault(bit, state)
+                chosen_bit = int(2 * count_one &gt;= M)
+                frequency = count_one if chosen_bit else M - count_one
+                assert frequency * 2 &gt;= M and chosen_bit in first
+                empirical_product *= F(frequency, M)
+                witness = first[chosen_bit]
+                included, excluded = (mu_in, mu_out) if side == 0 else (nu_in, nu_out)
+                (included if chosen_bit else excluded).add(u)
+        S, T = witness
+        exact_weight = instance.mu(S) * instance.nu(T) * t ** len(S &amp; T)
+        assert exact_weight &gt; 0 and len(mu_in) == instance.mu_degree and len(nu_in) == instance.nu_degree
+        soft_estimate = exact_weight / empirical_product
+        complement_count = 0
+        start = instance.seed()
+        empty_pins = tuple(frozenset() for _ in range(4))
+        for _ in range(plan[&quot;complement_samples&quot;]):
+            S, T = sample(empty_pins, start)
+            complement_count += int(S.isdisjoint(T))
+        estimate = (soft_estimate * F(complement_count, plan[&quot;complement_samples&quot;]) *
+                    (1 &lt;&lt; instance.inactive_qubits))
+        return {&quot;estimate&quot;: estimate, &quot;plan&quot;: plan, &quot;aborted&quot;: False,
+                &quot;coin_choices&quot;: tape.choices, &quot;coin_bits&quot;: tape.bits,
+                &quot;executed_steps&quot;: executed_steps}
+    except TapeAbort as error:
+        return {&quot;estimate&quot;: F(0), &quot;plan&quot;: plan, &quot;aborted&quot;: True,
+                &quot;abort_reason&quot;: str(error), &quot;coin_choices&quot;: tape.choices,
+                &quot;coin_bits&quot;: tape.bits, &quot;executed_steps&quot;: executed_steps}
+</pre><p><a href="../assets/b15e5a99102627dfd02f4ace0adce7038d8279889211064f68d3a9aca92ddd46.py">Exact original bytes</a></p></html>

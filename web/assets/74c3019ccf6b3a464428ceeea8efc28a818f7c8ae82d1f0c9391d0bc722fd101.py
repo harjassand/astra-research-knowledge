@@ -1,0 +1,300 @@
+#!/usr/bin/env python3
+"""Exact outside-coordinate auxiliary counterexample, using only Fraction."""
+from fractions import Fraction
+from itertools import combinations, permutations
+import json
+from pathlib import Path
+
+N = 6
+OLD_N = 4
+FULL = (1 << N) - 1
+OLD_FULL = (1 << OLD_N) - 1
+OLD_PAIRINGS = (((0,1),(2,3)),((0,2),(1,3)),((0,3),(1,2)))
+CROSS_EDGES = tuple((i,j) for i in range(4) for j in (4,5))
+F4_SIGNATURE = {
+    0: Fraction(4), 15: Fraction(1),
+    5: Fraction(1), 6: Fraction(1), 9: Fraction(1), 10: Fraction(1),
+    3: Fraction(0), 12: Fraction(0),
+    1: Fraction(0), 2: Fraction(0), 4: Fraction(0), 8: Fraction(0),
+    7: Fraction(0), 11: Fraction(0), 13: Fraction(0), 14: Fraction(0),
+}
+
+F = [
+    [0, 0, 1, 1, Fraction(-1,4), 0],
+    [0, 0, 1,-1, Fraction(-1,4), 0],
+    [0, 0, 0, 0, Fraction(1,4), 0],
+    [0, 0, 0, 0, Fraction(1,4), 0],
+    [Fraction(1,4), Fraction(1,4), 0, Fraction(-1,4), 0, 1],
+    [Fraction(-1,4), Fraction(-1,4), Fraction(-1,4), Fraction(-1,4), 1, 0],
+]
+
+
+def det(a):
+    n = len(a)
+    if n == 0:
+        return Fraction(1)
+    total = Fraction(0)
+    for p in permutations(range(n)):
+        inversions = sum(p[i] > p[j] for i in range(n) for j in range(i+1,n))
+        term = Fraction(-1 if inversions % 2 else 1)
+        for i,j in enumerate(p):
+            term *= a[i][j]
+        total += term
+    return total
+
+
+def hole_signature(matrix):
+    out = {}
+    for holes in range(1 << N):
+        retained = [i for i in range(N) if not (holes >> i) & 1]
+        if len(retained) % 2:
+            out[holes] = Fraction(0)
+            continue
+        k = len(retained) // 2
+        total = Fraction(0)
+        for rows in combinations(retained, k):
+            rowset = set(rows)
+            cols = [j for j in retained if j not in rowset]
+            minor = [[matrix[i][j] for j in cols] for i in rows]
+            d = det(minor)
+            total += d * d  # F is rational real in this exact fixture.
+        out[holes] = total
+    return out
+
+
+def matching_subsets(edges):
+    # At n=6 every matching has size at most three. Enumerate all edge subsets
+    # and retain pairwise vertex-disjoint ones; exactly finite and transparent.
+    for r in range(len(edges) + 1):
+        for subset in combinations(edges, r):
+            vertices = [v for e in subset for v in e]
+            if len(vertices) == len(set(vertices)):
+                yield subset
+
+
+def transform_full(base, active_edges):
+    out = {}
+    for holes in range(1 << N):
+        if holes.bit_count() % 2:
+            out[holes] = Fraction(0)
+            continue
+        available = [e for e in active_edges
+                     if not ((holes >> e[0]) & 1)
+                     and not ((holes >> e[1]) & 1)]
+        total = Fraction(0)
+        for matching in matching_subsets(tuple(available)):
+            covered = 0
+            for i,j in matching:
+                covered |= (1 << i) | (1 << j)
+            total += base[holes | covered]
+        out[holes] = total
+    return out
+
+
+def transform_slice(base, active_edges):
+    full = transform_full(base, active_edges)
+    return {u: full[u] for u in range(1 << OLD_N)}
+
+
+def apply_single_edge(base, edge):
+    i,j = edge
+    e = (1 << i) | (1 << j)
+    out = {}
+    for holes in range(1 << N):
+        out[holes] = base[holes]
+        if holes.bit_count() % 2 == 0 and holes & e == 0:
+            out[holes] += base[holes | e]
+    return out
+
+
+def defect(f):
+    capacity = Fraction(0)
+    for (i,j),(k,l) in OLD_PAIRINGS:
+        a = (1 << i) | (1 << j)
+        b = (1 << k) | (1 << l)
+        capacity += f[a] * f[b]
+    return capacity - f[0] * f[OLD_FULL]
+
+
+def pairing_index(matching):
+    norm = tuple(sorted(tuple(sorted(e)) for e in matching))
+    return tuple(tuple(sorted(e)) for e in OLD_PAIRINGS).index(norm)
+
+
+def all_matchings_on_difference(diff_mask):
+    sites = [i for i in range(OLD_N) if (diff_mask >> i) & 1]
+    if not sites:
+        return [()]
+    if len(sites) == 2:
+        return [(tuple(sites),)]
+    if len(sites) != 4:
+        return []
+    return list(OLD_PAIRINGS)
+
+
+def exact_even_windability_witness(f):
+    """Construct and verify McQuillan's pair-flip witness on four sites."""
+    demand = f[0] * f[OLD_FULL]
+    capacities = []
+    for (i,j),(k,l) in OLD_PAIRINGS:
+        p = (1 << i) | (1 << j)
+        q = (1 << k) | (1 << l)
+        capacities.append(f[p] * f[q])
+    residual = (sum(capacities) - demand) / 2
+    if residual < 0:
+        return None
+
+    # Let a_m be the orbit mass for empty/all/edges of matching m; let b_m
+    # be the mass on its crossing-pair orbit. The equations are
+    # H_m = a_m + sum_{r != m} b_r, sum_m a_m=demand.
+    lower = [max(Fraction(0), h - residual) for h in capacities]
+    upper = capacities
+    if sum(lower) > demand or sum(upper) < demand:
+        return None
+    a = list(lower)
+    remain = demand - sum(a)
+    for i in range(3):
+        add = min(remain, upper[i] - a[i])
+        a[i] += add
+        remain -= add
+    if remain:
+        return None
+    b = [a[i] + residual - capacities[i] for i in range(3)]
+    if any(x < 0 for x in a + b):
+        return None
+    if sum(a) != demand or sum(b) != residual:
+        return None
+    if any(capacities[i] != a[i] + sum(b[j] for j in range(3) if j != i)
+           for i in range(3)):
+        return None
+
+    def witness(x, y):
+        diff = x ^ y
+        matchings = all_matchings_on_difference(diff)
+        hxy = f[x] * f[y]
+        if not hxy:
+            return {m: Fraction(0) for m in matchings}
+        if diff.bit_count() == 0 or diff.bit_count() == 2:
+            assert len(matchings) == 1
+            return {matchings[0]: hxy}
+        assert diff.bit_count() == 4 and len(matchings) == 3
+        out = {}
+        for m in matchings:
+            mi = pairing_index(m)
+            x_is_union_of_pairs = all(
+                ((x >> i) & 1) == ((x >> j) & 1)
+                for i,j in m
+            )
+            out[m] = a[mi] if x_is_union_of_pairs else b[mi]
+        return out
+
+    checked_pairs = 0
+    checked_flips = 0
+    for x in range(1 << OLD_N):
+        for y in range(1 << OLD_N):
+            masses = witness(x,y)
+            assert sum(masses.values()) == f[x] * f[y]
+            checked_pairs += 1
+            for matching, mass in masses.items():
+                for i,j in matching:
+                    edge = (1 << i) | (1 << j)
+                    assert witness(x ^ edge, y ^ edge)[matching] == mass
+                    checked_flips += 1
+    return {
+        "demand": demand,
+        "pairing_capacities": capacities,
+        "residual_total_cross_orbit_mass": residual,
+        "empty_orbit_masses_a": a,
+        "cross_orbit_masses_b": b,
+        "ordered_assignment_pairs_checked": checked_pairs,
+        "pair_flip_equalities_checked": checked_flips,
+    }
+
+
+def fracmap(d):
+    return {format(i, "04b"): str(d.get(i, Fraction(0))) for i in range(1 << OLD_N)}
+
+
+def main():
+    sig = hole_signature(F)
+    before = {u: sig[u] for u in range(1 << OLD_N)}
+    all_cross_full = transform_full(sig, CROSS_EDGES)
+    all_cross = {u: all_cross_full[u] for u in range(1 << OLD_N)}
+    before_delta = defect(before)
+    after_delta = defect(all_cross)
+    assert before_delta == Fraction(-245931,32768)
+    assert after_delta == Fraction(281397,32768)
+
+    # Independently compare the matching expansion with sequential one-edge
+    # updates on every even-hole coefficient of the six-site polynomial.
+    sequential_full = dict(sig)
+    for edge in CROSS_EDGES:
+        sequential_full = apply_single_edge(sequential_full, edge)
+    assert sequential_full == all_cross_full
+
+    # Exact subset search: find the smallest number of cross auxiliaries,
+    # all of activity one, that makes this pinned four-site necessary defect
+    # nonnegative. This is an exhaustive 2^8 graph search, not optimization.
+    qualifying = []
+    for r in range(len(CROSS_EDGES)+1):
+        for subset in combinations(CROSS_EDGES, r):
+            candidate = transform_slice(sig, subset)
+            d = defect(candidate)
+            if d >= 0:
+                qualifying.append((r, subset, d, candidate))
+        if qualifying:
+            break
+    assert qualifying
+    min_size, min_edges, min_delta, min_slice = qualifying[0]
+    min_full = transform_full(sig, min_edges)
+    min_sequential = dict(sig)
+    for edge in min_edges:
+        min_sequential = apply_single_edge(min_sequential, edge)
+    assert min_sequential == min_full
+    # Pin both new coordinates as holes. Every cross auxiliary is then
+    # unavailable, and the retained submatrix is exactly the old F4 block.
+    pinned_new_holes = {u: min_full[u | (1 << 4) | (1 << 5)]
+                        for u in range(1 << OLD_N)}
+    assert pinned_new_holes == F4_SIGNATURE
+    pinned_defect = defect(pinned_new_holes)
+    assert pinned_defect == Fraction(-2)
+    witness = exact_even_windability_witness(min_slice)
+    assert witness is not None
+
+    report = {
+        "worker_id": "c02_l07",
+        "matrix_F": [[str(F[i][j]) for j in range(N)] for i in range(N)],
+        "interpretation": "six-site rational determinant-hole signature; inspect four old coordinates while external holes 4,5 are pinned absent",
+        "auxiliary_family": "coordinate-pair operators on selected edges of K_{4,2}, all activities 1",
+        "all_cross_edges": [f"{i}{j}" for i,j in CROSS_EDGES],
+        "pinned_signature_before": fracmap(before),
+        "before_capacity_minus_demand": str(before_delta),
+        "pinned_signature_after_all_8_cross_auxiliaries": fracmap(all_cross),
+        "after_all_8_capacity_minus_demand": str(after_delta),
+        "full_six_site_coefficients_after_all_8_auxiliaries_checked": len(all_cross_full),
+        "smallest_auxiliary_count_to_make_necessary_defect_nonnegative": min_size,
+        "one_minimal_auxiliary_edge_set": [f"{i}{j}" for i,j in min_edges],
+        "minimal_set_defect": str(min_delta),
+        "minimal_set_pinned_signature": fracmap(min_slice),
+        "full_six_site_coefficients_after_minimal_set_checked": len(min_full),
+        "pin_both_new_coordinates_as_holes_signature": fracmap(pinned_new_holes),
+        "pin_both_new_coordinates_as_holes_defect": str(pinned_defect),
+        "pinning_equals_original_F4_signature": True,
+        "strictly_smaller_subsets_exhausted": sum(
+            len(list(combinations(CROSS_EDGES, r))) for r in range(min_size)
+        ),
+        "subsets_at_minimum_cardinality_checked": len(list(combinations(CROSS_EDGES, min_size))),
+        "exact_even_windability_witness": {
+            k: ([str(x) for x in v] if isinstance(v, list) else str(v)
+                if isinstance(v, Fraction) else v)
+            for k,v in witness.items()
+        },
+        "scope": "This only removes the four-hole non-windability witness after a six-site extension and pinning. It does not prove the full six-site signature windable or provide a sampler.",
+        "arithmetic": "exact rational determinants and matching sums; no floating point or solver",
+    }
+    out = Path(__file__).with_name("cross_aux_counterexample_result.json")
+    out.write_text(json.dumps(report, indent=2) + "\n")
+    print(json.dumps(report, indent=2))
+
+if __name__ == "__main__":
+    main()

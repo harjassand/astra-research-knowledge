@@ -1,0 +1,194 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c03_l06/revisions/phase_variance_classification.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c03_l06/revisions/phase_variance_classification.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Exact small-instance checks for site-phase variance classification.
+
+This is independent code in c03_l06/revisions.  It does not import or execute
+the peer sampler or phased-Pfaffian program.  Arithmetic is exact Q(i).
+&quot;&quot;&quot;
+from fractions import Fraction as Q
+from itertools import combinations, product
+import json
+from pathlib import Path
+
+Z = (Q(0), Q(0))
+ONE = (Q(1), Q(0))
+I = (Q(0), Q(1))
+
+
+def add(x, y):
+    return (x[0] + y[0], x[1] + y[1])
+
+
+def neg(x):
+    return (-x[0], -x[1])
+
+
+def sub(x, y):
+    return add(x, neg(y))
+
+
+def mul(x, y):
+    return (x[0]*y[0] - x[1]*y[1], x[0]*y[1] + x[1]*y[0])
+
+
+def conj(x):
+    return (x[0], -x[1])
+
+
+def abs2(x):
+    return x[0]*x[0] + x[1]*x[1]
+
+
+def scale(x, q):
+    return (x[0]*q, x[1]*q)
+
+
+def skew(F, signs, gamma):
+    p = [scale(gamma[j], signs[j]) for j in range(len(F))]
+    n = len(F)
+    A = [[sub(mul(p[i], F[i][j]), mul(p[j], F[j][i]))
+          for j in range(n)] for i in range(n)]
+    assert all(A[i][j] == neg(A[j][i]) for i in range(n) for j in range(n))
+    return A
+
+
+def pf(A, R):
+    if not R:
+        return ONE
+    x = Z
+    for j in range(1, len(R)):
+        term = mul(A[R[0]][R[j]], pf(A, R[1:j] + R[j+1:]))
+        if j % 2 == 0:
+            term = neg(term)
+        x = add(x, term)
+    return x
+
+
+def Xk(A, k):
+    return sum((abs2(pf(A, R)) for R in combinations(range(len(A)), 2*k)), Q(0))
+
+
+def elementary(xs, k):
+    c = [Q(1)] + [Q(0)]*k
+    for x in xs:
+        for j in range(k, 0, -1):
+            c[j] += x*c[j-1]
+    return c[k]
+
+
+def matching_matrix(ab):
+    n = 2*len(ab)
+    F = [[Z for _ in range(n)] for _ in range(n)]
+    for j, (a, b) in enumerate(ab):
+        F[2*j][2*j+1] = (Q(a), Q(0))
+        F[2*j+1][2*j] = (Q(b), Q(0))
+    return F
+
+
+def sample_values(F, k, gamma):
+    n = len(F)
+    return [Xk(skew(F, signs, gamma), k)
+            for signs in product((-1, 1), repeat=n)]
+
+
+def moments(xs):
+    mean = sum(xs, Q(0))/len(xs)
+    var = sum(((x-mean)**2 for x in xs), Q(0))/len(xs)
+    return mean, var
+
+
+def main():
+    matching_cases = []
+    for q in range(1, 5):
+        ab = [(j+1, j+2) for j in range(q)]
+        F = matching_matrix(ab)
+        gamma_raw = [ONE]*(2*q)
+        gamma_phase = [ONE if j % 2 == 0 else I for j in range(2*q)]
+        beta = [Q(a*a+b*b) for a, b in ab]
+        for k in range(1, q+1):
+            expected = elementary(beta, k)
+            xs = sample_values(F, k, gamma_phase)
+            mean, var = moments(xs)
+            assert mean == expected and var == 0 and all(x == expected for x in xs)
+            matching_cases.append({
+                &#x27;blocks&#x27;: q, &#x27;k&#x27;: k, &#x27;beta&#x27;: [str(x) for x in beta],
+                &#x27;target_e_k&#x27;: str(expected), &#x27;sign_words&#x27;: len(xs),
+                &#x27;phased_mean&#x27;: str(mean), &#x27;phased_variance&#x27;: str(var),
+                &#x27;all_samples_equal_target&#x27;: True,
+            })
+        Fswap = matching_matrix([(1, 1)]*q)
+        phased_swap = sample_values(Fswap, q, gamma_phase)
+        phased_mean, phased_var = moments(phased_swap)
+        assert phased_mean == 2**q and phased_var == 0
+        xs = sample_values(Fswap, q, gamma_raw)
+        mean, var = moments(xs)
+        relative_second = 1 + var/(mean*mean)
+        assert mean == 2**q and relative_second == 2**q
+        matching_cases.append({
+            &#x27;blocks&#x27;: q, &#x27;k&#x27;: q, &#x27;unphased_central_target&#x27;: str(mean),
+            &#x27;unphased_central_relative_second_moment&#x27;: str(relative_second),
+            &#x27;unphased_central_variance&#x27;: str(var),
+            &#x27;phased_central_target&#x27;: str(phased_mean),
+            &#x27;phased_central_relative_second_moment&#x27;: str(1+phased_var/(phased_mean*phased_mean)),
+            &#x27;phased_central_variance&#x27;: str(phased_var),
+        })
+
+    # Triangle F=J-I: its phase-cycle flux obstructs zero variance.
+    F = [[Z if i == j else ONE for j in range(3)] for i in range(3)]
+    roots = [ONE, I, neg(ONE), neg(I)]
+    fourth_root_rows = []
+    best = None
+    for gamma in product(roots, repeat=3):
+        xs = sample_values(F, 1, list(gamma))
+        mean, var = moments(xs)
+        assert mean == 6
+        if best is None or var &lt; best:
+            best = var
+        fourth_root_rows.append(var)
+    assert best == 4
+    raw = sample_values(F, 1, [ONE]*3)
+    raw_mean, raw_var = moments(raw)
+    assert (raw_mean, raw_var) == (Q(6), Q(12))
+
+    # A row/column unit-phase gauge identity, tested over exact fourth roots.
+    rho = [ONE, I, neg(I)]
+    kappa = [I, neg(ONE), ONE]
+    Fg = [[mul(mul(rho[i], F[i][j]), kappa[j]) for j in range(3)]
+          for i in range(3)]
+    gauge_checks = 0
+    for signs in product((-1, 1), repeat=3):
+        gamma = [mul(rho[i], conj(kappa[i])) for i in range(3)]
+        # A_s(D_rho F D_kappa) = D_kappa A_{s*rho/kappa}(F) D_kappa.
+        left = skew(Fg, signs, [ONE]*3)
+        shifted = [scale(gamma[i], signs[i]) for i in range(3)]
+        # skew() accepts an additional site phase, so this is the right side
+        # before the outer diagonal congruence.
+        right0 = skew(F, [1]*3, shifted)
+        right = [[mul(mul(kappa[i], right0[i][j]), kappa[j])
+                  for j in range(3)] for i in range(3)]
+        assert left == right
+        assert Xk(left, 1) == Xk(right, 1)
+        gauge_checks += 1
+
+    out = {
+        &#x27;status&#x27;: &#x27;PASS&#x27;,
+        &#x27;matching_block_cases&#x27;: matching_cases,
+        &#x27;triangle&#x27;: {
+            &#x27;matrix&#x27;: &#x27;J_3-I_3&#x27;, &#x27;target_c1&#x27;: &#x27;6&#x27;,
+            &#x27;unphased_variance&#x27;: str(raw_var),
+            &#x27;minimum_variance_over_mu4_gauges&#x27;: str(best),
+            &#x27;number_of_mu4_gauges_checked&#x27;: len(fourth_root_rows),
+            &#x27;continuous_phase_minimum_variance&#x27;: &#x27;3&#x27;,
+            &#x27;continuous_minimizer_angles_over_pi&#x27;: [&#x27;0&#x27;, &#x27;1/3&#x27;, &#x27;2/3&#x27;],
+            &#x27;cycle_flux_obstruction&#x27;: &#x27;g_12*g_23*g_31=1, but odd 3-cycle requires a purely imaginary product for zero variance&#x27;,
+        },
+        &#x27;row_column_gauge_identity_checks&#x27;: gauge_checks,
+        &#x27;arithmetic&#x27;: &#x27;exact rational and Gaussian-rational only&#x27;,
+        &#x27;scope&#x27;: &#x27;Exact finite checks of the stated formulas on matching blocks and one frustrated triangle; the general identities and cycle criterion are proved in PHASE_VARIANCE_CLASSIFICATION.txt.&#x27;,
+    }
+    dest = Path(__file__).with_name(&#x27;phase_variance_classification_checks.json&#x27;)
+    dest.write_text(json.dumps(out, indent=2) + &#x27;\n&#x27;)
+    print(json.dumps(out, indent=2))
+
+
+if __name__ == &#x27;__main__&#x27;:
+    main()
+</pre><p><a href="../assets/12597af7148b14ec8698e51a47f0ac504274a1bcae6f3880b70f70052b595ac9.py">Exact original bytes</a></p></html>

@@ -1,0 +1,327 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c07_s01/reviews/c08_cubature_replay/certified_cubature.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c07_s01/reviews/c08_cubature_replay/certified_cubature.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Independent, all-rational local diffusion/weight fixture.
+
+Run from any directory. Writes only beside this file. This is a one-step
+quantum-sandwich fixture, NOT the large-N heat-seed Gibbs compiler.
+No numpy, sympy, floating eigensolver, continuous random draw, or peer code.
+&quot;&quot;&quot;
+from fractions import Fraction as Q
+from math import isqrt, factorial
+from pathlib import Path
+import hashlib
+import json
+import random
+import time
+
+HERE = Path(__file__).resolve().parent
+N, DIM = 4, 16
+HSTEP = Q(1, 1024)
+SQRT_H = Q(1, 32)
+ROOT_BITS, WEIGHT_BITS, SELECT_BITS, SQRT_CERT_BITS = 48, 80, 64, 96
+P_EXP = 7
+C = [Q(1), Q(4), Q(9)]
+R0_SQUARED = Q(1, 160)
+SEEDS = [([Q(0), Q(0), Q(0)], Q(1, 3)),
+         ([Q(1, 64), Q(0), Q(1, 64)], Q(2, 3))]
+
+
+def enc(x):
+    return str(x.numerator) + &#x27;/&#x27; + str(x.denominator)
+
+
+def sqrt_interval(x, bits):
+    assert x &gt;= 0
+    scale = 1 &lt;&lt; bits
+    k = isqrt((x.numerator &lt;&lt; (2 * bits)) // x.denominator)
+    lo, hi = Q(k, scale), Q(k + 1, scale)
+    assert lo * lo &lt;= x &lt; hi * hi
+    return lo, hi
+
+
+def exp_positive_interval(x, order=20):
+    assert 0 &lt;= x &lt; 1
+    value, term = Q(1), Q(1)
+    for k in range(1, order + 1):
+        term *= x / k
+        value += term
+    # Integral Taylor remainder &lt;= e^x x^(order+1)/(order+1)!.
+    remainder = x ** (order + 1) / (factorial(order + 1) * (1 - x))
+    return value, value + remainder
+
+
+def zero(n):
+    return [[Q(0) for _ in range(n)] for _ in range(n)]
+
+
+def eye(n):
+    z = zero(n)
+    for i in range(n):
+        z[i][i] = Q(1)
+    return z
+
+
+def add(a, b):
+    return [[x + y for x, y in zip(ra, rb)] for ra, rb in zip(a, b)]
+
+
+def sub(a, b):
+    return [[x - y for x, y in zip(ra, rb)] for ra, rb in zip(a, b)]
+
+
+def scale(a, k):
+    return [[x * k for x in row] for row in a]
+
+
+def multiply(a, b):
+    n = len(a)
+    z = zero(n)
+    for i in range(n):
+        for k in range(n):
+            if a[i][k]:
+                for j in range(n):
+                    if b[k][j]:
+                        z[i][j] += a[i][k] * b[k][j]
+    return z
+
+
+def transpose(a):
+    return [list(row) for row in zip(*a)]
+
+
+def trace(a):
+    return sum(a[i][i] for i in range(len(a)))
+
+
+def frobenius_squared(a):
+    return sum(x * x for row in a for x in row)
+
+
+def dot(x, y):
+    return sum(a * b for a, b in zip(x, y))
+
+
+def generator(m):
+    p = [[Q(i == j) - m[i] * m[j] for j in range(3)] for i in range(3)]
+    cross = [[Q(0), -m[2], m[1]], [m[2], Q(0), -m[0]],
+             [-m[1], m[0], Q(0)]]
+    cd = [[C[i] if i == j else Q(0) for j in range(3)] for i in range(3)]
+    d = sub(multiply(multiply(p, cd), p),
+            multiply(multiply(cross, cd), transpose(cross)))
+    cm = [C[i] * m[i] for i in range(3)]
+    energy = dot(m, cm)
+    # N=4, s^2=8 and b=0. All quantities here are rational.
+    a = [Q(3, 16) * (cm[i] - energy * m[i]) for i in range(3)]
+    v = Q(3, 8) * energy + Q(1, 8) * sum(C)
+    return d, a, v
+
+
+def rational_cholesky(d):
+    l = zero(3)
+    intervals = []
+    for i in range(3):
+        for j in range(i + 1):
+            residual = d[i][j] - sum(l[i][k] * l[j][k] for k in range(j))
+            if i == j:
+                assert residual &gt; 0
+                lo, hi = sqrt_interval(residual, ROOT_BITS)
+                assert lo &gt; 0
+                l[i][j] = lo
+                intervals.append({&#x27;pivot&#x27;: i, &#x27;argument&#x27;: enc(residual),
+                                  &#x27;lower&#x27;: enc(lo), &#x27;upper&#x27;: enc(hi)})
+            else:
+                l[i][j] = residual / l[j][j]
+    covariance_error = sub(multiply(l, transpose(l)), d)
+    err_squared = frobenius_squared(covariance_error)
+    lo, hi = sqrt_interval(err_squared, SQRT_CERT_BITS)
+    # Frobenius residual bounds operator residual without a spectral oracle.
+    assert hi &lt; Q(1, 10 ** 12)
+    return l, intervals, hi
+
+
+def cmul(a, b):
+    return (a[0] * b[0] - a[1] * b[1],
+            a[0] * b[1] + a[1] * b[0])
+
+
+def product_kernel(m):
+    x, y, z = m
+    tau = [[((1 + z) / 2, Q(0)), (x / 2, -y / 2)],
+           [(x / 2, y / 2), ((1 - z) / 2, Q(0))]]
+    result = []
+    for i in range(DIM):
+        row = []
+        for j in range(DIM):
+            value = (Q(1), Q(0))
+            for bit in range(N):
+                value = cmul(value, tau[(i &gt;&gt; bit) &amp; 1][(j &gt;&gt; bit) &amp; 1])
+            row.append(value)
+        result.append(row)
+    return result
+
+
+def quantum_hamiltonian():
+    jx, by, jz = zero(DIM), zero(DIM), zero(DIM)
+    for ket in range(DIM):
+        jz[ket][ket] = Q(N, 2) - ket.bit_count()
+        for bit in range(N):
+            bra = ket ^ (1 &lt;&lt; bit)
+            jx[bra][ket] += Q(1, 2)
+            by[bra][ket] += Q(1, 2) if not ((ket &gt;&gt; bit) &amp; 1) else -Q(1, 2)
+    # Jy=i*by, hence Jy^2=-by^2. H is real symmetric and PSD.
+    h = scale(add(sub(multiply(jx, jx), scale(multiply(by, by), 4)),
+                  scale(multiply(jz, jz), 9)), Q(1, 8))
+    assert h == transpose(h)
+    return h
+
+
+def matrix_exp_polynomial(a, order):
+    out = eye(len(a))
+    term = eye(len(a))
+    for k in range(1, order + 1):
+        term = scale(multiply(term, a), Q(1, k))
+        out = add(out, term)
+    return out
+
+
+def weighted_real_matrix(branches, probabilities):
+    result = zero(DIM)
+    imag = zero(DIM)
+    for branch, prob in zip(branches, probabilities):
+        kernel = product_kernel(branch[&#x27;m&#x27;])
+        for i in range(DIM):
+            for j in range(DIM):
+                result[i][j] += prob * kernel[i][j][0]
+                imag[i][j] += prob * kernel[i][j][1]
+    assert all(x == 0 for row in imag for x in row)
+    assert result == transpose(result)
+    assert trace(result) == 1
+    return result
+
+
+def write_json(name, obj):
+    (HERE / name).write_text(json.dumps(obj, indent=2) + &#x27;\n&#x27;)
+
+
+def main():
+    started = time.monotonic()
+    branches, raw_weights, root_certificates, weight_certificates = [], [], [], []
+    for seed_id, (m0, p0) in enumerate(SEEDS):
+        assert dot(m0, m0) &lt; R0_SQUARED
+        d, a, v = generator(m0)
+        l, pivots, cov_error = rational_cholesky(d)
+        root_certificates.append({&#x27;seed&#x27;: seed_id, &#x27;matrix&#x27;: [[enc(x) for x in r] for r in d],
+                                  &#x27;factor&#x27;: [[enc(x) for x in r] for r in l],
+                                  &#x27;pivot_intervals&#x27;: pivots,
+                                  &#x27;covariance_frobenius_error_upper&#x27;: enc(cov_error)})
+        wlo, whi = exp_positive_interval(HSTEP * v)
+        w = Q((wlo * (1 &lt;&lt; WEIGHT_BITS)).numerator //
+              (wlo * (1 &lt;&lt; WEIGHT_BITS)).denominator, 1 &lt;&lt; WEIGHT_BITS)
+        assert 0 &lt; w &lt;= wlo &lt;= whi
+        weight_certificates.append({&#x27;seed&#x27;: seed_id, &#x27;potential&#x27;: enc(v),
+                                    &#x27;exponent&#x27;: enc(HSTEP * v), &#x27;weight&#x27;: enc(w),
+                                    &#x27;exact_weight_lower&#x27;: enc(wlo),
+                                    &#x27;exact_weight_upper&#x27;: enc(whi),
+                                    &#x27;weight_error_upper&#x27;: enc(whi - w)})
+        for code in range(8):
+            noise = [Q(1) if ((code &gt;&gt; bit) &amp; 1) else -Q(1) for bit in range(3)]
+            m = [m0[i] + HSTEP * a[i] + SQRT_H * dot(l[i], noise) / 4
+                 for i in range(3)]
+            assert dot(m, m) &lt; R0_SQUARED
+            branches.append({&#x27;seed&#x27;: seed_id, &#x27;noise_bits&#x27;: code, &#x27;m&#x27;: m})
+            raw_weights.append(p0 * w / 8)
+
+    mass = sum(raw_weights)
+    probabilities = [w / mass for w in raw_weights]
+    denominator = 1 &lt;&lt; SELECT_BITS
+    counts = [int(p * denominator) for p in probabilities[:-1]]
+    counts.append(denominator - sum(counts))
+    assert all(c &gt; 0 for c in counts)
+    selected_probabilities = [Q(c, denominator) for c in counts]
+    categorical_tv = sum(abs(x - y) for x, y in zip(probabilities, selected_probabilities)) / 2
+    assert categorical_tv &lt;= Q(len(branches) - 1, denominator)
+    # Down-rounding the first R-1 categories breaks the conjugate pair symmetry
+    # only in the final residual category. Include this exact TV separately;
+    # compare the conjugate-symmetric rational weighted mixture to the target.
+    w_matrix = weighted_real_matrix(branches, probabilities)
+    rho0 = weighted_real_matrix([{&#x27;m&#x27;: m} for m, _ in SEEDS], [p for _, p in SEEDS])
+
+    h = quantum_hamiltonian()
+    e_polynomial = matrix_exp_polynomial(scale(h, HSTEP / 2), P_EXP)
+    gp = multiply(multiply(e_polynomial, rho0), e_polynomial)
+    zp = trace(gp)
+    assert zp &gt;= 1
+    gp_normalized = scale(gp, 1 / zp)
+    discrepancy = sub(w_matrix, gp_normalized)
+    frob_squared = frobenius_squared(discrepancy)
+    frob_lo, frob_hi = sqrt_interval(frob_squared, SQRT_CERT_BITS)
+    # ||H|| &lt;= 9*jmax*(jmax+1)/s^2=27/4. Tr rho0 e^(hH)&gt;=1.
+    x = HSTEP * Q(27, 4) / 2
+    exp_op_error = x ** (P_EXP + 1) / (factorial(P_EXP + 1) * (1 - x))
+    sandwich_raw_error = 2 * exp_op_error / (1 - x)
+    trace_distance_upper = 2 * frob_hi + sandwich_raw_error + categorical_tv
+    # Finite fixture claim, verified without floating arithmetic.
+    assert trace_distance_upper &lt; Q(1, 10000)
+
+    payload = {&#x27;description&#x27;: &#x27;16 positive identical-product branches, exact rational local states&#x27;,
+               &#x27;N&#x27;: N, &#x27;categorical_bits&#x27;: SELECT_BITS,
+               &#x27;categorical_denominator&#x27;: denominator,
+               &#x27;branches&#x27;: [{&#x27;seed&#x27;: br[&#x27;seed&#x27;], &#x27;noise_bits&#x27;: br[&#x27;noise_bits&#x27;],
+                             &#x27;bloch&#x27;: [enc(x) for x in br[&#x27;m&#x27;]],
+                             &#x27;bloch_norm_squared&#x27;: enc(dot(br[&#x27;m&#x27;], br[&#x27;m&#x27;])),
+                             &#x27;raw_weight&#x27;: enc(raw), &#x27;probability&#x27;: enc(p),
+                             &#x27;dyadic_count&#x27;: count}
+                            for br, raw, p, count in zip(branches, raw_weights, probabilities, counts)]}
+    write_json(&#x27;branches.json&#x27;, payload)
+    rng = random.Random(700803)
+    emitted = []
+    for draw_id in range(12):
+        bitword = rng.getrandbits(SELECT_BITS)
+        cumulative, selected = 0, None
+        for idx, count in enumerate(counts):
+            cumulative += count
+            if bitword &lt; cumulative:
+                selected = idx
+                break
+        assert selected is not None
+        emitted.append({&#x27;draw&#x27;: draw_id, &#x27;random_word&#x27;: bitword, &#x27;branch&#x27;: selected,
+                        &#x27;N_identical_qubit_bloch_states&#x27;: [enc(x) for x in branches[selected][&#x27;m&#x27;]]})
+    write_json(&#x27;output_trace.json&#x27;, {&#x27;random_stream&#x27;: &#x27;Python Random seed 700803, reproducibility fixture only&#x27;,
+                                     &#x27;law&#x27;: &#x27;Exact when each input is an independent uniform 64-bit word&#x27;,
+                                     &#x27;outputs&#x27;: emitted, &#x27;native_quantum_hardware&#x27;: &#x27;NOT_EXECUTED&#x27;})
+    max_bits = max(max(x.numerator.bit_length(), x.denominator.bit_length())
+                   for row in discrepancy for x in row)
+    check = {&#x27;status&#x27;: &#x27;PASS&#x27;, &#x27;scope&#x27;: &#x27;one-step full-16-dimensional quantum sandwich&#x27;,
+             &#x27;not_claimed&#x27;: [&#x27;heat seed at large N&#x27;, &#x27;stopped/cutoff SDE over unit time&#x27;,
+                             &#x27;general full Gibbs compiler&#x27;, &#x27;native qubit preparation&#x27;, &#x27;novelty&#x27;],
+             &#x27;parameters&#x27;: {&#x27;N&#x27;: N, &#x27;C&#x27;: [&#x27;1/1&#x27;, &#x27;4/1&#x27;, &#x27;9/1&#x27;], &#x27;b&#x27;: [&#x27;0/1&#x27;] * 3,
+                            &#x27;step&#x27;: enc(HSTEP), &#x27;s_squared&#x27;: &#x27;8/1&#x27;, &#x27;r0_squared&#x27;: enc(R0_SQUARED),
+                            &#x27;M&#x27;: &#x27;4/1&#x27;, &#x27;Lambda&#x27;: &#x27;5/1&#x27;, &#x27;A&#x27;: [&#x27;-4/1&#x27;, &#x27;-1/1&#x27;, &#x27;4/1&#x27;],
+                            &#x27;t0&#x27;: &#x27;-1/8&#x27;, &#x27;large_N_heat_seed_threshold_met&#x27;: False},
+             &#x27;root_bits&#x27;: ROOT_BITS, &#x27;weight_bits&#x27;: WEIGHT_BITS,
+             &#x27;select_bits&#x27;: SELECT_BITS, &#x27;matrix_exp_order&#x27;: P_EXP,
+             &#x27;all_bloch_branches_inside_inner_ball&#x27;: True,
+             &#x27;stopping_or_rare_event_error&#x27;: &#x27;0/1 (finite exhaustive one-step support)&#x27;,
+             &#x27;root_certificates&#x27;: root_certificates, &#x27;weight_certificates&#x27;: weight_certificates,
+             &#x27;categorical_tv_exact&#x27;: enc(categorical_tv),
+             &#x27;frob_squared_exact&#x27;: enc(frob_squared),
+             &#x27;frob_lower&#x27;: enc(frob_lo), &#x27;frob_upper&#x27;: enc(frob_hi),
+             &#x27;target_matrix_exp_operator_remainder_upper&#x27;: enc(exp_op_error),
+             &#x27;sandwich_raw_error_upper&#x27;: enc(sandwich_raw_error),
+             &#x27;target_trace_lower&#x27;: &#x27;1/1&#x27;, &#x27;polynomial_target_trace&#x27;: enc(zp),
+             &#x27;full_output_trace_distance_upper&#x27;: enc(trace_distance_upper),
+             &#x27;decimal_for_display_only&#x27;: float(trace_distance_upper),
+             &#x27;exact_fraction_max_bits_in_final_discrepancy&#x27;: max_bits,
+             &#x27;elapsed_seconds&#x27;: time.monotonic() - started,
+             &#x27;script_sha256&#x27;: hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+             &#x27;branches_sha256&#x27;: hashlib.sha256((HERE / &#x27;branches.json&#x27;).read_bytes()).hexdigest(),
+             &#x27;output_trace_sha256&#x27;: hashlib.sha256((HERE / &#x27;output_trace.json&#x27;).read_bytes()).hexdigest()}
+    write_json(&#x27;certificate.json&#x27;, check)
+    print(json.dumps({&#x27;status&#x27;: &#x27;PASS&#x27;, &#x27;branches&#x27;: len(branches),
+                      &#x27;trace_distance_upper_display&#x27;: float(trace_distance_upper),
+                      &#x27;exact_upper_lt&#x27;: &#x27;1/10000&#x27;,
+                      &#x27;rare_event_error&#x27;: 0, &#x27;elapsed_seconds&#x27;: check[&#x27;elapsed_seconds&#x27;]}))
+
+
+if __name__ == &#x27;__main__&#x27;:
+    main()
+</pre><p><a href="../assets/b4f2798bc8081fe43c2b6a6f2a729edfa0f49b35582b991d641f7809f95e3449.py">Exact original bytes</a></p></html>

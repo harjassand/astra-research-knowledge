@@ -1,0 +1,228 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c06_s02/revisions/phase_gauge.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c06_s02/revisions/phase_gauge.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Exact product-phase recognizer and bounded rational compiler primitives.
+
+This is not a counting/Gibbs sampler implementation. Gaussian rationals are
+pairs of Fractions; no numerical phase tests or irrational equality tests.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from math import isqrt
+import json
+from pathlib import Path
+from time import perf_counter
+
+def c(x=0, y=0):
+    return (F(x), F(y))
+
+def add(a, b):
+    return (a[0] + b[0], a[1] + b[1])
+
+def mul(a, b):
+    return (a[0]*b[0] - a[1]*b[1], a[0]*b[1] + a[1]*b[0])
+
+def conj(a):
+    return (a[0], -a[1])
+
+def scale(a, s):
+    return (a[0]*s, a[1]*s)
+
+def norm2(a):
+    return a[0]**2 + a[1]**2
+
+def positive_real(a):
+    return a[1] == 0 and a[0] &gt; 0
+
+def acquire_gauge(n, edges, fields):
+    &quot;&quot;&quot;edges=(u,v,h,gamma), directed h for S+_u S-_v; q field.&quot;&quot;&quot;
+    adj = [[] for _ in range(n)]
+    for u, v, h, gamma in edges:
+        if gamma**2 &gt; norm2(h):
+            return {&quot;accepted&quot;: False, &quot;reason&quot;: &quot;EASY_PLANE_CONE&quot;, &quot;edge&quot;: (u,v)}
+        if norm2(h) == 0:
+            continue
+        adj[u].append((v, conj(h)))
+        adj[v].append((u, h))
+    t = [None] * n
+    components = []
+    for root in range(n):
+        if t[root] is not None:
+            continue
+        t[root] = c(1)
+        comp, queue = [], [root]
+        for u in queue:
+            comp.append(u)
+            for v, factor in adj[u]:
+                if t[v] is None:
+                    t[v] = mul(t[u], factor)
+                    queue.append(v)
+        components.append(comp)
+    for u, v, h, gamma in edges:
+        if norm2(h) and not positive_real(mul(mul(h, conj(t[u])), t[v])):
+            return {&quot;accepted&quot;: False, &quot;reason&quot;: &quot;EDGE_HOLONOMY&quot;, &quot;edge&quot;: (u,v)}
+    for comp in components:
+        anchors = [(v, mul(fields[v], conj(t[v])))
+                   for v in comp if norm2(fields[v])]
+        if not anchors:
+            continue
+        v0, p0 = anchors[0]
+        for v, p in anchors:
+            if not positive_real(mul(p, conj(p0))):
+                return {&quot;accepted&quot;: False, &quot;reason&quot;: &quot;FIELD_ANCHOR_CONFLICT&quot;,
+                        &quot;vertices&quot;: (v0,v)}
+        for v in comp:
+            t[v] = mul(p0, t[v])
+    for u, v, h, gamma in edges:
+        assert not norm2(h) or positive_real(mul(mul(h, conj(t[u])), t[v]))
+    for v, q in enumerate(fields):
+        assert not norm2(q) or positive_real(mul(q, conj(t[v])))
+    return {&quot;accepted&quot;: True, &quot;unnormalized_gauge&quot;: t, &quot;components&quot;: components}
+
+def ceil_sqrt_dyadic(q, k):
+    &quot;&quot;&quot;Least nonnegative multiple of 2^-k at least sqrt(q), q rational.&quot;&quot;&quot;
+    assert q &gt;= 0 and k &gt;= 0
+    target = q.numerator * 2**(2*k)
+    root = isqrt(target // q.denominator)
+    if root*root*q.denominator &lt; target:
+        root += 1
+    out = F(root, 2**k)
+    assert out*out &gt;= q
+    low = out - F(1, 2**k)
+    assert low &lt; 0 or low*low &lt; q or q == 0
+    return out
+
+def precision_k(max_error):
+    &quot;&quot;&quot;A bounded-length binary loop; O(encoding length + log inverse error).&quot;&quot;&quot;
+    assert max_error &gt; 0
+    k, grid = 0, F(1)
+    while grid &gt; max_error:
+        k += 1
+        grid /= 2
+    return k
+
+def rational_unit_phase(t, delta_w):
+    &quot;&quot;&quot;Exact rational unit point within 2*delta_w of t/abs(t).&quot;&quot;&quot;
+    assert norm2(t) &gt; 0 and 0 &lt; delta_w &lt; F(1,4)
+    sign = 1 if t[0] &gt;= 0 else -1
+    a, b = sign*t[0], sign*t[1]
+    lower = max(abs(a), abs(b))
+    k = precision_k(delta_w * lower)
+    radius_up = ceil_sqrt_dyadic(norm2(t), k)
+    w = b/(radius_up+a)
+    zhat = scale(c((1-w*w)/(1+w*w), 2*w/(1+w*w)), sign)
+    assert norm2(zhat) == 1
+    # Exact algebraic error certification: distance^2 = 2-2inner/sqrt(norm2(t)).
+    error = 2*delta_w
+    inner = mul(zhat, conj(t))[0]
+    threshold = 1-error*error/2
+    assert inner &gt;= 0 and inner*inner &gt;= threshold*threshold*norm2(t)
+    return zhat, k
+
+def encode(value):
+    if isinstance(value, F):
+        return str(value)
+    if isinstance(value, dict):
+        return {k:encode(v) for k,v in value.items()}
+    if isinstance(value, (tuple,list)):
+        return [encode(v) for v in value]
+    return value
+
+def bitheight(t):
+    return max(max(abs(x.numerator).bit_length(), x.denominator.bit_length()) for x in t)
+
+def diagnostics():
+    start = perf_counter()
+    one = c(1)
+    z = [c(1), c(F(3,5), F(4,5)), c(F(5,13), F(-12,13)), c(0,1)]
+    specs = [(0,1,F(1,2)),(1,2,F(2,3)),(2,0,F(3,4)),(2,3,F(5,7))]
+    edges = [(u,v,scale(mul(z[u],conj(z[v])),alpha),
+              alpha if j%2 else -alpha)
+             for j,(u,v,alpha) in enumerate(specs)]
+    fields = [scale(zv,F(v+1,11)) for v,zv in enumerate(z)]
+    good = acquire_gauge(4,edges,fields)
+    assert good[&quot;accepted&quot;]
+
+    fixtures = {&quot;rational_nontrivial_phases&quot;:good,
+                &quot;irrational_unit_phase_from_rational_data&quot;:
+                acquire_gauge(2,[(0,1,c(1,1),F(1))],[c(1),c(1,-1)]),
+                &quot;disconnected_unanchored_components&quot;:
+                acquire_gauge(4,[(0,1,c(0,2),F(2)),(2,3,c(3,4),F(-5))],
+                              [c(),c(),c(),c()]),
+                &quot;negative_triangle_flux&quot;:
+                acquire_gauge(3,[(0,1,one,F(0)),(1,2,one,F(0)),
+                                 (2,0,c(-1),F(0))],[c(),c(),c()]),
+                &quot;tree_conflicting_fields&quot;:
+                acquire_gauge(2,[(0,1,one,F(0))],[one,c(0,1)]),
+                &quot;outside_cone&quot;:
+                acquire_gauge(2,[(0,1,c(1,1),F(3,2))],[c(),c()])}
+    assert fixtures[&quot;irrational_unit_phase_from_rational_data&quot;][&quot;accepted&quot;]
+    assert fixtures[&quot;disconnected_unanchored_components&quot;][&quot;accepted&quot;]
+    assert fixtures[&quot;negative_triangle_flux&quot;][&quot;reason&quot;] == &quot;EDGE_HOLONOMY&quot;
+    assert fixtures[&quot;tree_conflicting_fields&quot;][&quot;reason&quot;] == &quot;FIELD_ANCHOR_CONFLICT&quot;
+    assert fixtures[&quot;outside_cone&quot;][&quot;reason&quot;] == &quot;EASY_PLANE_CONE&quot;
+
+    phase_tests = []
+    values = [c(1,1),c(-1,1),c(-1,-1),c(0,-1),c(F(1,2**80),F(-1,2**81)),
+              c(F(7,13),F(2,3))]
+    values += good[&quot;unnormalized_gauge&quot;]
+    for t in values:
+        for delta in [F(1,100),F(1,100000)]:
+            zhat,k = rational_unit_phase(t,delta)
+            phase_tests.append({&quot;t&quot;:t,&quot;phase&quot;:zhat,&quot;root_bits&quot;:k,
+                                &quot;input_height_bits&quot;:bitheight(t),
+                                &quot;phase_height_bits&quot;:bitheight(zhat),
+                                &quot;certified_error&quot;:2*delta})
+
+    root_tests = []
+    for q in [F(0),F(2),F(25),F(1,2**160),F(13,17),F(2**160+1)]:
+        for k in [0,3,20,90]:
+            alpha = ceil_sqrt_dyadic(q,k)
+            root_tests.append({&quot;norm_square&quot;:q,&quot;grid_bits&quot;:k,&quot;upper_root&quot;:alpha})
+
+    # Complete exact Hamiltonian conjugation check, on 3 qubits only.
+    n=3
+    H=[[c() for _ in range(2**n)] for _ in range(2**n)]
+    Hb=[[c() for _ in range(2**n)] for _ in range(2**n)]
+    small_edges = edges[:3]
+    cs = [F(1,7),F(-1,5),F(2,9)]
+    for col in range(2**n):
+        bits=[(col&gt;&gt;(n-1-v))&amp;1 for v in range(n)]
+        diag=sum(cs[v]*(1-2*bits[v]) for v in range(n))
+        for u,v,h,gamma in small_edges:
+            diag+=gamma*(1-2*bits[u])*(1-2*bits[v])
+            if bits[u]!=bits[v]:
+                row=col^(1&lt;&lt;(n-1-u))^(1&lt;&lt;(n-1-v))
+                coefficient=scale(h if bits[u] else conj(h),2)
+                H[row][col]=add(H[row][col],coefficient)
+                # h has explicitly rational magnitude alpha in this fixture.
+                magnitude = next(al for uu,vv,al in specs if uu==u and vv==v)
+                Hb[row][col]=add(Hb[row][col],c(2*magnitude))
+        H[col][col]=Hb[col][col]=c(diag)
+        for v in range(n):
+            row=col^(1&lt;&lt;(n-1-v))
+            q=fields[v]
+            H[row][col]=add(H[row][col],q if bits[v] else conj(q))
+            Hb[row][col]=add(Hb[row][col],c(F(v+1,11)))
+    diagD=[]
+    for row in range(2**n):
+        val=c(1)
+        for v in range(n):
+            if (row&gt;&gt;(n-1-v))&amp;1:
+                val=mul(val,z[v])
+        diagD.append(val)
+    for row in range(2**n):
+        for col in range(2**n):
+            assert mul(mul(diagD[row],H[row][col]),conj(diagD[col])) == Hb[row][col]
+
+    result={&quot;status&quot;:&quot;PASS&quot;, &quot;scope&quot;:&quot;recognizer/compiler primitives only; no FPRAS&quot;,
+            &quot;recognition_fixtures&quot;:fixtures,&quot;phase_compiler_fixtures&quot;:phase_tests,
+            &quot;root_compiler_fixtures&quot;:root_tests,
+            &quot;dense_conjugation_entries_checked&quot;:(2**n)**2,
+            &quot;wall_seconds&quot;:perf_counter()-start}
+    path=Path(__file__).with_name(&quot;phase_gauge_checks.json&quot;)
+    path.write_text(json.dumps(encode(result),indent=2)+&quot;\n&quot;)
+    print(json.dumps({&quot;status&quot;:&quot;PASS&quot;,&quot;recognition_fixtures&quot;:len(fixtures),
+                      &quot;phase_fixtures&quot;:len(phase_tests),&quot;root_fixtures&quot;:len(root_tests),
+                      &quot;dense_conjugation_entries&quot;:(2**n)**2,
+                      &quot;wall_seconds&quot;:result[&quot;wall_seconds&quot;]}))
+
+if __name__ == &quot;__main__&quot;:
+    diagnostics()
+</pre><p><a href="../assets/6055a20cc13e0ac94b87ae507df89e9ab6e7e2c7f7e9d12ebf8b383724fb4432.py">Exact original bytes</a></p></html>

@@ -1,0 +1,86 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c05_l10/finite_alphabet_coarsening_check.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c05_l10/finite_alphabet_coarsening_check.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Small diagnostic for finite-net coarsening of a measure-and-prepare channel.&quot;&quot;&quot;
+import json
+import math
+import numpy as np
+
+I = np.eye(2, dtype=complex)
+sx = np.array([[0, 1], [1, 0]], dtype=complex)
+sy = np.array([[0, -1j], [1j, 0]], dtype=complex)
+sz = np.diag([1, -1]).astype(complex)
+paulis = [sx, sy, sz]
+
+# Three net states around sigma=I/2, all with Bloch norm &lt;= theta.
+theta = 0.6
+bloch = [np.array([0.12, 0.10, 0.08]), np.array([-0.08, 0.10, -0.12]),
+         np.array([0.10, -0.12, 0.08])]
+states = [(I + sum(v[k] * paulis[k] for k in range(3))) / 2 for v in bloch]
+sigma = I / 2
+
+# Six-outcome POVM E_{axis,sign}=(I+sign*sigma_axis)/6.
+effects = [(I + sign * p) / 6 for p in paulis for sign in (-1, 1)]
+assert np.linalg.norm(sum(effects) - I) &lt; 1e-12
+# Arbitrary prepared qubit states; this makes a valid EB channel.
+prepared = [(I + sign * p) / 2 for p in paulis for sign in (1, -1)]
+assert all(np.linalg.eigvalsh(s).min() &gt;= -1e-12 for s in prepared)
+
+def probs(state):
+    return np.array([float(np.trace(e @ state).real) for e in effects])
+
+p0 = probs(sigma)
+pi = [probs(state) for state in states]
+ratios = [p / p0 for p in pi]
+assert all(np.all(q &gt;= 1 - theta - 1e-12) and np.all(q &lt;= 1 + theta + 1e-12)
+           for q in ratios)
+
+delta = 0.40
+# Quantize each net state&#x27;s likelihood ratio. One joint key groups outcomes.
+keys = []
+for y in range(len(effects)):
+    keys.append(tuple(math.floor((ratios[i][y] - 1 + delta / 2) / delta + 1e-12)
+                      for i in range(len(states))))
+groups = {}
+for y, key in enumerate(keys):
+    groups.setdefault(key, []).append(y)
+
+coarse_effects = []
+coarse_prepared = []
+for ids in groups.values():
+    coarse_effects.append(sum((effects[y] for y in ids), np.zeros((2, 2), complex)))
+    mass = float(sum(p0[y] for y in ids))
+    coarse_prepared.append(sum((p0[y] * prepared[y] for y in ids),
+                               np.zeros((2, 2), complex)) / mass)
+assert np.linalg.norm(sum(coarse_effects) - I) &lt; 1e-12
+
+def original_output(state):
+    p = probs(state)
+    return sum((p[y] * prepared[y] for y in range(len(effects))),
+               np.zeros((2, 2), complex))
+
+def coarse_output(state):
+    p = [float(np.trace(e @ state).real) for e in coarse_effects]
+    return sum((p[j] * coarse_prepared[j] for j in range(len(groups))),
+               np.zeros((2, 2), complex))
+
+errors = []
+for state in states:
+    diff = original_output(state) - coarse_output(state)
+    errors.append(float(np.linalg.svd(diff, compute_uv=False).sum() / 2))
+
+K = math.ceil(2 * theta / delta) + 1
+assert len(groups) &lt;= K ** len(states)
+assert max(errors) &lt;= delta / 2 + 1e-10
+
+print(json.dumps({
+    &quot;dimension&quot;: 2,
+    &quot;theta&quot;: theta,
+    &quot;cover_size&quot;: len(states),
+    &quot;original_outcomes&quot;: len(effects),
+    &quot;coarse_outcomes&quot;: len(groups),
+    &quot;per_coordinate_mesh&quot;: delta,
+    &quot;theoretical_outcome_bound&quot;: K ** len(states),
+    &quot;max_net_state_trace_distance&quot;: max(errors),
+    &quot;claimed_bound&quot;: delta / 2,
+    &quot;status&quot;: &quot;finite diagnostic passed; analytic statement is proved in INITIAL.txt&quot;
+}, indent=2))
+</pre><p><a href="../assets/be06642f8e44385ebac2e1457a216535d67a749c59de9efa996666e4ca76fffa.py">Exact original bytes</a></p></html>

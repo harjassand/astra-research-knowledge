@@ -1,0 +1,419 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c07_s03/evidence/source_snapshot/certified_two_spin.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c07_s03/evidence/source_snapshot/certified_two_spin.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Finite-bit local compiler for an explicitly admitted N=2 critical-spin family.
+
+No float participates in interval endpoints, acceptance, rounding, or certificates.
+Rationals and outward dyadic intervals suffice. Runtime measurements are floats.
+The emitted object is a local preparation description; no hardware is controlled.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import argparse
+import datetime
+from fractions import Fraction as F
+import json
+from math import isqrt
+from pathlib import Path
+import resource
+import secrets
+import time
+
+
+class Ledger:
+    def __init__(self):
+        self.counts = {}
+        self.max_integer_bits = 0
+
+    def add(self, key, n=1):
+        self.counts[key] = self.counts.get(key, 0) + n
+
+    def see(self, *values):
+        for x in values:
+            if isinstance(x, F):
+                self.max_integer_bits = max(self.max_integer_bits,
+                    abs(x.numerator).bit_length(), x.denominator.bit_length())
+            elif isinstance(x, int):
+                self.max_integer_bits = max(self.max_integer_bits, abs(x).bit_length())
+
+    def op(self, symbol, x, y):
+        self.add(&#x27;fraction_&#x27; + symbol)
+        z = {&#x27;add&#x27;: lambda: x+y, &#x27;sub&#x27;: lambda: x-y,
+             &#x27;mul&#x27;: lambda: x*y, &#x27;div&#x27;: lambda: x/y}[symbol]()
+        self.see(x, y, z)
+        return z
+
+    def snapshot(self):
+        return {&#x27;explicit_operation_counts&#x27;: dict(self.counts),
+                &#x27;max_observed_integer_bits&#x27;: self.max_integer_bits,
+                &#x27;scope&#x27;: &#x27;Explicit arithmetic calls, not Python/Fraction internal GCD or CPU bit-operation counts.&#x27;}
+
+
+ledger = Ledger()
+
+
+def fa(x, y): return ledger.op(&#x27;add&#x27;, x, y)
+def fs(x, y): return ledger.op(&#x27;sub&#x27;, x, y)
+def fm(x, y): return ledger.op(&#x27;mul&#x27;, x, y)
+def fd(x, y): return ledger.op(&#x27;div&#x27;, x, y)
+
+
+class IV:
+    P = 0
+    Q = 1
+
+    @classmethod
+    def precision(cls, p):
+        cls.P, cls.Q = p, 1 &lt;&lt; p
+
+    def __init__(self, lo, hi=None, raw=False):
+        lo, hi = F(lo), F(lo if hi is None else hi)
+        assert lo &lt;= hi
+        ledger.see(lo, hi)
+        if raw:
+            self.lo, self.hi = lo, hi
+        else:
+            ledger.add(&#x27;outward_dyadic_endpoint_roundings&#x27;, 2)
+            a, b = fm(lo, F(self.Q)), fm(hi, F(self.Q))
+            self.lo = F(a.numerator // a.denominator, self.Q)
+            self.hi = F(-((-b.numerator) // b.denominator), self.Q)
+            ledger.see(self.lo, self.hi)
+
+    def __add__(self, other):
+        other = iv(other)
+        return IV(fa(self.lo, other.lo), fa(self.hi, other.hi))
+
+    __radd__ = __add__
+
+    def __neg__(self):
+        ledger.add(&#x27;interval_negations&#x27;)
+        return IV(-self.hi, -self.lo, raw=True)
+
+    def __sub__(self, other): return self + (-iv(other))
+    def __rsub__(self, other): return iv(other) + (-self)
+
+    def __mul__(self, other):
+        other = iv(other)
+        products = [fm(a, b) for a in (self.lo, self.hi)
+                    for b in (other.lo, other.hi)]
+        ledger.add(&#x27;interval_endpoint_extrema&#x27;, 2)
+        return IV(min(products), max(products))
+
+    __rmul__ = __mul__
+
+    def reciprocal(self):
+        if self.lo &lt;= 0 &lt;= self.hi:
+            raise ArithmeticError(&#x27;Certified division denominator includes zero&#x27;)
+        return IV(fd(F(1), self.hi), fd(F(1), self.lo))
+
+    def __truediv__(self, other): return self * iv(other).reciprocal()
+    def __rtruediv__(self, other): return iv(other) * self.reciprocal()
+
+    def json(self):
+        return {&#x27;lo&#x27;: str(self.lo), &#x27;hi&#x27;: str(self.hi),
+                &#x27;width&#x27;: str(fs(self.hi, self.lo))}
+
+
+def iv(x): return x if isinstance(x, IV) else IV(x)
+
+
+def sqrt_iv(x):
+    x = iv(x)
+    assert x.lo &gt;= 0
+    def endpoint(y, upper):
+        z = fm(y, F(IV.Q * IV.Q))
+        n = z.numerator // z.denominator
+        ledger.add(&#x27;integer_square_roots&#x27;)
+        k = isqrt(n)
+        if upper and F(k*k) != z:
+            k += 1
+        ledger.see(n, k)
+        return F(k, IV.Q)
+    return IV(endpoint(x.lo, False), endpoint(x.hi, True), raw=True)
+
+
+def exp_scalar(x):
+    &quot;&quot;&quot;For |x|&lt;=2, enclose exp(x) by range reduction and exact Taylor sums.
+
+    On 0&lt;=z&lt;=1, Lagrange&#x27;s remainder is &lt;=3/(n+1)! since e&lt;=3.
+    For negative x use reciprocal; square after each halving.
+    &quot;&quot;&quot;
+    ledger.add(&#x27;exp_scalar_calls&#x27;)
+    if x &lt; 0:
+        return exp_scalar(-x).reciprocal()
+    assert x &lt;= 2
+    halves = 0
+    while x &gt; 1:
+        x = fd(x, F(2))
+        halves += 1
+    tol = F(1, 1 &lt;&lt; (IV.P + 8))
+    total, term, factorial = F(1), F(1), 1
+    n = 0
+    while True:
+        rem = F(3, factorial * (n+1))
+        ledger.see(rem, factorial)
+        if rem &lt;= tol:
+            break
+        n += 1
+        term = fd(fm(term, x), F(n))
+        total = fa(total, term)
+        factorial *= n
+        ledger.add(&#x27;exp_taylor_terms&#x27;)
+        ledger.see(factorial)
+    out = IV(total, fa(total, rem))
+    for _ in range(halves):
+        out = out * out
+    return out
+
+
+def exp_iv(x):
+    x = iv(x)
+    return IV(exp_scalar(x.lo).lo, exp_scalar(x.hi).hi, raw=True)
+
+
+def even_series_scalar(x, kind):
+    &quot;&quot;&quot;Enclose cosh(x), or sinh(x)/x with its removable value at x=0.
+
+    For |x|&lt;=1 the omitted positive tail after k terms is bounded by
+    3/(2k+2)! for cosh and 3/(2k+3)! for sinch. This follows from
+    Lagrange&#x27;s exponential remainder and, for sinch, integration of cosh.
+    &quot;&quot;&quot;
+    assert 0 &lt;= x &lt;= 1
+    ledger.add(kind + &#x27;_scalar_calls&#x27;)
+    offset = 0 if kind == &#x27;cosh&#x27; else 1
+    tol = F(1, 1 &lt;&lt; (IV.P + 8))
+    total, term, k, factorial = F(1), F(1), 0, 1
+    x2 = fm(x, x)
+    while True:
+        d1, d2 = 2*k+1+offset, 2*k+2+offset
+        next_factorial = factorial*d1*d2
+        rem = F(3, next_factorial)
+        ledger.see(next_factorial, rem)
+        if rem &lt;= tol:
+            break
+        term = fd(fm(term, x2), F(d1*d2))
+        total = fa(total, term)
+        factorial = next_factorial
+        k += 1
+        ledger.add(kind + &#x27;_taylor_terms&#x27;)
+    return IV(total, fa(total, rem))
+
+
+def even_series_iv(x, kind):
+    x = iv(x)
+    assert x.lo &gt;= 0
+    return IV(even_series_scalar(x.lo, kind).lo,
+              even_series_scalar(x.hi, kind).hi, raw=True)
+
+
+def moments(a_input, b_input):
+    &quot;&quot;&quot;N=2, A=diag(a,-a,0), b=(0,0,b). Drop the scalar 3I/2 in K.&quot;&quot;&quot;
+    root2 = sqrt_iv(iv(2))
+    s = root2 * sqrt_iv(root2)   # 2^(3/4)
+    a = iv(a_input) / (2*root2) # even-block X coefficient
+    h = iv(b_input) / s        # even-block Z coefficient
+    # A signed interval times itself need not have a nonnegative lower bound.
+    def square(x):
+        hi = max(fm(x.lo, x.lo), fm(x.hi, x.hi))
+        lo = F(0) if x.lo &lt;= 0 &lt;= x.hi else min(fm(x.lo,x.lo),fm(x.hi,x.hi))
+        return IV(lo,hi)
+    d = sqrt_iv(square(a) + square(h))
+    E, O = exp_iv(F(1,2)), exp_iv(F(-1,2))
+    cd, sd = even_series_iv(d,&#x27;cosh&#x27;), even_series_iv(d,&#x27;sinch&#x27;)
+    c1, s1 = even_series_iv(iv(1),&#x27;cosh&#x27;), even_series_iv(iv(1),&#x27;sinch&#x27;)
+    denom = 2*(E*cd + O*c1)
+    mz = 2*E*h*sd/denom
+    cx = 2*(E*a*sd+O*s1)/denom
+    cy = 2*(O*s1-E*a*sd)/denom
+    cz = 2*(E*cd-O*c1)/denom
+    weights = [cx/2,cx/2,cy/2,cy/2,(cz+mz)/2,(cz-mz)/2,
+               4*O*(c1-s1)/denom]
+    H = [[iv(0) for _ in range(4)] for _ in range(4)]
+    H[0][0],H[3][3] = iv(F(1,2))+h,iv(F(1,2))-h
+    H[0][3]=H[3][0]=a
+    H[1][1]=H[2][2]=iv(F(-1,2))
+    H[1][2]=H[2][1]=iv(1)
+    return weights, H, {&#x27;a&#x27;:a,&#x27;h&#x27;:h,&#x27;d&#x27;:d,&#x27;partition_without_scalar&#x27;:denom,
+                        &#x27;mean_z&#x27;:mz,&#x27;corr_x&#x27;:cx,&#x27;corr_y&#x27;:cy,&#x27;corr_z&#x27;:cz}
+
+
+def quantize(weights, k):
+    W, D = k+8, 1 &lt;&lt; (k+8)
+    ns = []
+    for w in weights[:6]:
+        mid = fd(fa(w.lo,w.hi),F(2))
+        x = fm(mid,F(D))
+        ns.append(x.numerator // x.denominator)
+    ns.append(D-sum(ns))
+    qs = [F(n,D) for n in ns]
+    assert all(n&gt;=0 for n in ns) and sum(ns)==D
+    errors = [max(abs(fs(q,w.lo)),abs(fs(q,w.hi))) for q,w in zip(qs,weights)]
+    tv_upper = fd(sum(errors,F(0)),F(2))
+    assert tv_upper &lt;= F(1,1&lt;&lt;k)
+    return ns,qs,W,tv_upper,errors
+
+
+def mixture_matrix(q):
+    &quot;&quot;&quot;Exact rational matrix of seven axis/mixed iid-product branches.&quot;&quot;&quot;
+    cx,cy,cz,mz = q[0]+q[1],q[2]+q[3],q[4]+q[5],q[4]-q[5]
+    return [[(1+2*mz+cz)/4, F(0), F(0), (cx-cy)/4],
+            [F(0),(1-cz)/4,(cx+cy)/4,F(0)],
+            [F(0),(cx+cy)/4,(1-cz)/4,F(0)],
+            [(cx-cy)/4,F(0),F(0),(1-2*mz+cz)/4]]
+
+
+def mm(A,B):
+    return [[sum((A[i][t]*B[t][j] for t in range(4)),iv(0))
+             for j in range(4)] for i in range(4)]
+
+
+def independent_exp_audit(H, target, k):
+    &quot;&quot;&quot;Direct 4x4 Taylor enclosure, independent of the two-block formulas.
+
+    The admitted family has ||H||_infinity&lt;=2. Remainder &lt;=
+    9*2^(n+1)/(n+1)! since e^2&lt;=9. Outward intervals carry all arithmetic.
+    T(rho,target)&lt;=||rho-target||_F&lt;=sum entrywise absolute bounds.
+    &quot;&quot;&quot;
+    rowbound = max(sum(max(abs(x.lo),abs(x.hi)) for x in row) for row in H)
+    assert rowbound &lt;= 2
+    identity = [[iv(int(i==j)) for j in range(4)] for i in range(4)]
+    S,term,n = identity,identity,0
+    factorial, power = 1,2
+    tol=F(1,1&lt;&lt;(k+16))
+    while True:
+        rem=F(9*power,factorial*(n+1))
+        ledger.see(rem,factorial,power)
+        if rem&lt;=tol:
+            break
+        n+=1
+        term=mm(term,H)
+        term=[[x/n for x in row] for row in term]
+        S=[[S[i][j]+term[i][j] for j in range(4)] for i in range(4)]
+        factorial*=n
+        power*=2
+        ledger.add(&#x27;direct_matrix_taylor_terms&#x27;)
+    S=[[x+IV(-rem,rem) for x in row] for row in S]
+    Z=sum((S[i][i] for i in range(4)),iv(0))
+    assert Z.lo&gt;0
+    rho=[[x/Z for x in row] for row in S]
+    eb=[[max(abs(fs(target[i][j],rho[i][j].lo)),
+             abs(fs(target[i][j],rho[i][j].hi))) for j in range(4)] for i in range(4)]
+    bound=sum((sum(row,F(0)) for row in eb),F(0))
+    assert bound&lt;=F(1,1&lt;&lt;k)
+    return {&#x27;matrix_taylor_degree&#x27;:n,&#x27;matrix_remainder_infinity_bound&#x27;:str(rem),
+            &#x27;matrix_input_infinity_norm_upper&#x27;:str(rowbound),
+            &#x27;direct_trace_distance_upper&#x27;:str(bound),
+            &#x27;normalized_gibbs_entry_intervals&#x27;:[[x.json() for x in row] for row in rho]}
+
+
+BRANCHES=[&#x27;+X&#x27;,&#x27;-X&#x27;,&#x27;+Y&#x27;,&#x27;-Y&#x27;,&#x27;+Z&#x27;,&#x27;-Z&#x27;,&#x27;mixed&#x27;]
+GATES={&#x27;+X&#x27;:[&#x27;H&#x27;],&#x27;-X&#x27;:[&#x27;X&#x27;,&#x27;H&#x27;],&#x27;+Y&#x27;:[&#x27;H&#x27;,&#x27;S&#x27;],&#x27;-Y&#x27;:[&#x27;H&#x27;,&#x27;Sdg&#x27;],
+       &#x27;+Z&#x27;:[],&#x27;-Z&#x27;:[&#x27;X&#x27;]}
+BLOCH={&#x27;+X&#x27;:[1,0,0],&#x27;-X&#x27;:[-1,0,0],&#x27;+Y&#x27;:[0,1,0],&#x27;-Y&#x27;:[0,-1,0],
+       &#x27;+Z&#x27;:[0,0,1],&#x27;-Z&#x27;:[0,0,-1],&#x27;mixed&#x27;:[0,0,0]}
+
+
+def emit(ns,W,uniform_integer=None,mixed_bits=None):
+    D=1&lt;&lt;W
+    if uniform_integer is None:
+        u=secrets.randbits(W)
+        entropy=&#x27;OS secrets.randbits; correctness theorem assumes ideal fair bits&#x27;
+    else:
+        u=uniform_integer
+        entropy=&#x27;supplied deterministic transcript; not evidence of random-source fairness&#x27;
+    assert 0&lt;=u&lt;D
+    cumul=0
+    for j,n in enumerate(ns):
+        cumul+=n
+        if u&lt;cumul:
+            break
+    branch=BRANCHES[j]
+    if branch==&#x27;mixed&#x27;:
+        bits=[secrets.randbits(1),secrets.randbits(1)] if mixed_bits is None else mixed_bits
+        assert len(bits)==2 and all(x in [0,1] for x in bits)
+        gates=[[&#x27;X&#x27;] if bit else [] for bit in bits]
+    else:
+        bits=[]
+        gates=[GATES[branch],GATES[branch]]
+    return {&#x27;uniform_integer&#x27;:u,&#x27;selection_random_bits&#x27;:W,&#x27;branch_index&#x27;:j,
+            &#x27;branch_label&#x27;:branch,&#x27;local_bloch_vector&#x27;:BLOCH[branch],
+            &#x27;identical_local_density_copies&#x27;:2,
+            &#x27;mixed_emission_independent_bits&#x27;:bits,
+            &#x27;emission_random_bits&#x27;:len(bits),
+            &#x27;single_qubit_gate_lists_from_zero&#x27;:gates,
+            &#x27;single_qubit_gate_count&#x27;:sum(map(len,gates)),
+            &#x27;random_source&#x27;:entropy,&#x27;hardware_executed&#x27;:False}
+
+
+def main():
+    ap=argparse.ArgumentParser()
+    ap.add_argument(&#x27;--a&#x27;,default=&#x27;1/4&#x27;)
+    ap.add_argument(&#x27;--b&#x27;,default=&#x27;1/8&#x27;)
+    ap.add_argument(&#x27;--error-bits&#x27;,type=int,default=32)
+    ap.add_argument(&#x27;--uniform-integer&#x27;,type=int)
+    ap.add_argument(&#x27;--mixed-bits&#x27;,default=&#x27;0,1&#x27;)
+    ap.add_argument(&#x27;--out&#x27;,required=True)
+    args=ap.parse_args()
+    a,b,k=F(args.a),F(args.b),args.error_bits
+    assert abs(a)&lt;=1 and abs(b)&lt;=F(1,2) and 8&lt;=k&lt;=128
+    t0,c0=time.perf_counter(),time.process_time()
+    IV.precision(k+32)
+    weights,H,intermediates=moments(a,b)
+    assert all(w.lo&gt;0 for w in weights)
+    ns,qs,W,tv,errors=quantize(weights,k)
+    compiled_matrix=mixture_matrix(qs)
+    compile_cost=ledger.snapshot()
+    compile_wall,compile_cpu=time.perf_counter()-t0,time.process_time()-c0
+    t1,c1=time.perf_counter(),time.process_time()
+    audit=independent_exp_audit(H,compiled_matrix,k)
+    audit_wall,audit_cpu=time.perf_counter()-t1,time.process_time()-c1
+    t2,c2=time.perf_counter(),time.process_time()
+    emission=emit(ns,W,args.uniform_integer,[int(x) for x in args.mixed_bits.split(&#x27;,&#x27;)])
+    emission_wall,emission_cpu=time.perf_counter()-t2,time.process_time()-c2
+    expected_gates=sum(q*2*len(GATES[label]) for q,label in zip(qs[:6],BRANCHES[:6]))+qs[6]
+    result={&#x27;worker_id&#x27;:&#x27;c07_s03&#x27;,&#x27;status&#x27;:&#x27;CERTIFIED_ADMITTED_N2_CLASSICAL_DESCRIPTION&#x27;,
+        &#x27;utc&#x27;:datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        &#x27;input&#x27;:{&#x27;N&#x27;:2,&#x27;A_diagonal&#x27;:[str(a),str(-a),&#x27;0&#x27;],&#x27;b_vector&#x27;:[&#x27;0&#x27;,&#x27;0&#x27;,str(b)],
+                 &#x27;public_domain&#x27;:&#x27;|a|&lt;=1, |b|&lt;=1/2; known rational parameters&#x27;,
+                 &#x27;requested_trace_error&#x27;:str(F(1,1&lt;&lt;k))},
+        &#x27;precision&#x27;:{&#x27;working_fraction_bits&#x27;:IV.P,&#x27;weight_denominator_bits&#x27;:W,
+                     &#x27;taylor_internal_absolute_tolerance&#x27;:str(F(1,1&lt;&lt;(IV.P+8))),
+                     &#x27;guard_bits&#x27;:32,&#x27;rounding&#x27;:&#x27;outward exact dyadic rational&#x27;},
+        &#x27;exact_weight_intervals&#x27;:[w.json() for w in weights],
+        &#x27;dyadic_integer_weights&#x27;:ns,&#x27;dyadic_weight_denominator&#x27;:1&lt;&lt;W,
+        &#x27;dyadic_rational_weights&#x27;:[str(q) for q in qs],
+        &#x27;per_weight_absolute_error_upper&#x27;:[str(e) for e in errors],
+        &#x27;mixture_trace_distance_upper&#x27;:str(tv),
+        &#x27;intermediate_enclosures&#x27;:{key:value.json() for key,value in intermediates.items()},
+        &#x27;compiled_density_matrix&#x27;:[[str(x) for x in row] for row in compiled_matrix],
+        &#x27;independent_direct_matrix_certificate&#x27;:audit,
+        &#x27;sample_local_preparation&#x27;:emission,
+        &#x27;costs&#x27;:{&#x27;compile&#x27;:{**compile_cost,&#x27;wall_seconds&#x27;:compile_wall,&#x27;cpu_seconds&#x27;:compile_cpu},
+                 &#x27;audit_including_cumulative_arithmetic&#x27;:{**ledger.snapshot(),
+                    &#x27;wall_seconds&#x27;:audit_wall,&#x27;cpu_seconds&#x27;:audit_cpu},
+                 &#x27;sample_emission_description&#x27;:{&#x27;wall_seconds&#x27;:emission_wall,&#x27;cpu_seconds&#x27;:emission_cpu},
+                 &#x27;process_peak_rss_bytes_macos&#x27;:resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
+                 &#x27;worst_case_fair_random_bits_per_output&#x27;:W+2,
+                 &#x27;expected_fair_random_bits_per_output&#x27;:str(F(W)+2*qs[6]),
+                 &#x27;worst_case_single_qubit_clifford_gates&#x27;:4,
+                 &#x27;expected_single_qubit_clifford_gates&#x27;:str(expected_gates),
+                 &#x27;physical_initializations&#x27;:2,&#x27;physical_output_qubits&#x27;:2,
+                 &#x27;retained_mixture_weights&#x27;:7,&#x27;physical_energy&#x27;:&#x27;UNKNOWN: no hardware run&#x27;,
+                 &#x27;backend_token_and_gpu_cost&#x27;:&#x27;UNKNOWN&#x27;,
+                 &#x27;guard_strategy&#x27;:&#x27;Every numerical operation is enclosed, then final rational error inequalities are checked. Fixed guard failure raises, never silently certifies.&#x27;},
+        &#x27;limits&#x27;:[&#x27;N=2 only; no growing-N finite-Trotter sampler implementation&#x27;,
+                  &#x27;rational parameter acquisition is supplied, not inferred&#x27;,
+                  &#x27;ideal Clifford-gate action is the physical interface; no noise or reset energy certified&#x27;,
+                  &#x27;fair bits are an explicit source assumption; a recorded sample does not validate that source&#x27;,
+                  &#x27;no claim of historical novelty, external validation, or field-breaking science&#x27;]}
+    out=Path(args.out)
+    out.parent.mkdir(parents=True,exist_ok=True)
+    out.write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({&#x27;output&#x27;:str(out),&#x27;status&#x27;:result[&#x27;status&#x27;],
+                      &#x27;mixture_error_upper&#x27;:str(tv),&#x27;direct_matrix_error_upper&#x27;:audit[&#x27;direct_trace_distance_upper&#x27;],
+                      &#x27;requested_error&#x27;:str(F(1,1&lt;&lt;k)),&#x27;working_bits&#x27;:IV.P,
+                      &#x27;compile_wall_seconds&#x27;:compile_wall,&#x27;audit_wall_seconds&#x27;:audit_wall,
+                      &#x27;max_integer_bits&#x27;:ledger.max_integer_bits,&#x27;selected_branch&#x27;:emission[&#x27;branch_label&#x27;]}))
+
+
+if __name__==&#x27;__main__&#x27;:
+    main()
+</pre><p><a href="../assets/32b6a71e5953241ef8fa8e891d0e7feebf16affacfd6673cdb90c47f3e11d373.py">Exact original bytes</a></p></html>

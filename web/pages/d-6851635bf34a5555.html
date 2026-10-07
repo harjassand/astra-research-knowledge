@@ -1,0 +1,103 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c02_l01/pair_dpp_rejection.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c02_l01/pair_dpp_rejection.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Exact small checks for rejection from an unrestricted paired-minor k-DPP.
+
+The theorem is proved in revisions/micro_rejection_obstruction.txt. This script
+checks only finite determinant identities/support/marginals, not the theorem.
+&quot;&quot;&quot;
+from fractions import Fraction
+from itertools import combinations
+import json
+
+EPS = Fraction(1, 4)
+
+
+def det_q(M):
+    M = [[Fraction(x) for x in row] for row in M]
+    n = len(M)
+    if n == 0:
+        return Fraction(1)
+    sign = 1
+    result = Fraction(1)
+    for j in range(n):
+        pivot = next((i for i in range(j, n) if M[i][j]), None)
+        if pivot is None:
+            return Fraction(0)
+        if pivot != j:
+            M[j], M[pivot] = M[pivot], M[j]
+            sign *= -1
+        p = M[j][j]
+        result *= p
+        for i in range(j + 1, n):
+            if not M[i][j]:
+                continue
+            c = M[i][j] / p
+            for t in range(j + 1, n):
+                M[i][t] -= c * M[j][t]
+            M[i][j] = 0
+    return sign * result
+
+
+def submatrix(A, rows, cols):
+    return [[A[i][j] for j in cols] for i in rows]
+
+
+def fixture(n):
+    assert n % 2 == 0
+    k = n // 2
+    F = [[Fraction(int(j == (i + 1) % n)) + EPS * int(i == j)
+          for j in range(n)] for i in range(n)]
+    Isets = list(combinations(range(n), k))
+    weights = {}
+    row_marginal = [Fraction(0) for _ in range(n)]
+    col_marginal = [Fraction(0) for _ in range(n)]
+    total = Fraction(0)
+    hard = Fraction(0)
+    hard_support = []
+    for I in Isets:
+        for J in Isets:
+            value = det_q(submatrix(F, I, J)) ** 2
+            weights[(I, J)] = value
+            total += value
+            for i in I:
+                row_marginal[i] += value
+            for j in J:
+                col_marginal[j] += value
+            if set(I).isdisjoint(J):
+                hard += value
+                if value:
+                    hard_support.append((I, J, value))
+    gram = [[sum(F[r][i] * F[r][j] for r in range(n))
+             for j in range(n)] for i in range(n)]
+    e_k_gram = sum(det_q(submatrix(gram, J, J)) for J in Isets)
+    assert total == e_k_gram
+    assert all(m == total / 2 for m in row_marginal)
+    assert all(m == total / 2 for m in col_marginal)
+    expected = []
+    for parity in (0, 1):
+        I = tuple(i for i in range(n) if i % 2 == parity)
+        J = tuple(i for i in range(n) if i % 2 != parity)
+        expected.append((I, J, Fraction(1)))
+    assert sorted(hard_support) == sorted(expected)
+    assert hard == 2
+    bound = Fraction(2, 1) / (Fraction(__import__(&#x27;math&#x27;).comb(n, k)) * (1 - EPS) ** n)
+    assert Fraction(hard, total) &lt;= bound
+    return {
+        &quot;n&quot;: n,
+        &quot;k&quot;: k,
+        &quot;epsilon&quot;: &quot;1/4&quot;,
+        &quot;matrix_nonzeros&quot;: 2 * n,
+        &quot;condition_number_upper_bound&quot;: &quot;5/3&quot;,
+        &quot;unrestricted_partition_exact&quot;: str(total),
+        &quot;hard_disjoint_partition_exact&quot;: str(hard),
+        &quot;hard_probability_exact&quot;: str(Fraction(hard, total)),
+        &quot;hard_probability_upper_bound&quot;: str(bound),
+        &quot;row_marginals_all_equal_half&quot;: True,
+        &quot;column_marginals_all_equal_half&quot;: True,
+        &quot;hard_support_count&quot;: len(hard_support),
+        &quot;hard_supports&quot;: [[list(I), list(J), str(w)] for I, J, w in sorted(hard_support)],
+        &quot;scope&quot;: &quot;exact finite rational diagnostics only&quot;
+    }
+
+
+if __name__ == &quot;__main__&quot;:
+    print(json.dumps([fixture(n) for n in (4, 6, 8)], indent=2))
+</pre><p><a href="../assets/13e0f20454fff8b50d4615660f364f219286bba98b2da22eb01a6d9e6eb4f638.py">Exact original bytes</a></p></html>

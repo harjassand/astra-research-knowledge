@@ -1,0 +1,216 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c01_s03/axial_compiler/filtered_sector.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c01_s03/axial_compiler/filtered_sector.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Exact normalized filtered columns and outward compressed posterior metrics.
+
+These helpers do not invoke a numerical LP or a quantum optimizer.  They
+verify the actual rational candidate with true exponential enclosures.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from axial_acquisition import (sector_matrix, spin_dimensions, matvec,
+                                exp_neg_dyadic, ceil_log2, choose,
+                                round_dyadic_probabilities)
+
+
+def simplex(v):
+    v = list(map(F, v))
+    if not v or min(v) &lt; 0 or sum(v) != 1:
+        raise ValueError(&quot;exact nonnegative rational simplex required&quot;)
+    return v
+
+
+def exp_neg_enclosure(x, bits):
+    x = F(x)
+    if x &lt; 0:
+        raise ValueError(&quot;negative exponential argument required&quot;)
+    if x == 0:
+        return F(1), F(1)
+    value = exp_neg_dyadic(x, bits + 2)
+    error = F(1, 1 &lt;&lt; (bits + 2))
+    return max(F(0), value - error), min(F(1), value + error)
+
+
+def interval_sum(terms, weights=None):
+    terms = list(terms)
+    weights = [F(1)] * len(terms) if weights is None else list(map(F, weights))
+    if len(weights) != len(terms) or min(weights, default=0) &lt; 0:
+        raise ValueError(&quot;nonnegative interval combination required&quot;)
+    return (sum((w * t[0] for w, t in zip(weights, terms)), F(0)),
+            sum((w * t[1] for w, t in zip(weights, terms)), F(0)))
+
+
+def positive_interval_product(a, b):
+    if min(a[0], b[0]) &lt; 0 or a[1] &lt; a[0] or b[1] &lt; b[0]:
+        raise ValueError(&quot;valid nonnegative intervals required&quot;)
+    return a[0] * b[0], a[1] * b[1]
+
+
+def positive_normalize(raw):
+    total = interval_sum(raw)
+    if total[0] &lt;= 0:
+        raise ValueError(&quot;normalizer lower endpoint is not positive&quot;)
+    return [(max(F(0), lo / total[1]), min(F(1), hi / total[0]))
+            for lo, hi in raw], total
+
+
+def interval_TV_upper(a, b):
+    if len(a) != len(b):
+        raise ValueError(&quot;matching vector dimensions required&quot;)
+    return sum((max(abs(x[0] - y[1]), abs(x[1] - y[0]))
+                for x, y in zip(a, b)), F(0)) / 2
+
+
+def scaled_filter_values(N, delta, h, bits):
+    delta, h = F(delta), F(h)
+    if N &lt; 1 or not 0 &lt;= delta &lt;= 1:
+        raise ValueError(&quot;current admitted domain is N&gt;=1,delta&lt;=1&quot;)
+    H = abs(h) * N / 2
+    values, intervals = [], []
+    for t in range(N + 1):
+        m = F(2 * t - N, 2)
+        x = H + delta * m * m / N - h * m
+        if x &lt; 0:
+            raise AssertionError(&quot;global exponent shift was not an upper bound&quot;)
+        values.append(exp_neg_dyadic(x, bits))
+        intervals.append(exp_neg_enclosure(x, bits))
+    return values, intervals
+
+
+def filtered_sector_columns(N, filter_values):
+    f = list(map(F, filter_values))
+    if len(f) != N + 1 or min(f) &lt; 0 or max(f) &gt; 1:
+        raise ValueError(&quot;scaled nonnegative magnetization grid required&quot;)
+    A = sector_matrix(N)
+    c = [sum(f[b:N - b + 1]) / (N - 2 * b + 1) for b in range(N // 2 + 1)]
+    Z = [sum((A[b][k] * c[b] for b in range(len(c))), F(0))
+         for k in range(N + 1)]
+    if min(Z) &lt;= 0:
+        raise ValueError(&quot;all filtered K normalizers must be positive&quot;)
+    C = [[A[b][k] * c[b] / Z[k] for k in range(N + 1)] for b in range(len(c))]
+    assert all(sum(C[b][k] for b in range(len(c))) == 1 for k in range(N + 1))
+    return C, c, Z
+
+
+def filtered_isotropic_target(N, alpha, filter_values, bits):
+    alpha = F(alpha)
+    if alpha &lt; 0:
+        raise ValueError(&quot;ferromagnetic alpha&gt;=0 required&quot;)
+    _, c, _ = filtered_sector_columns(N, filter_values)
+    dims = spin_dimensions(N)
+    r = [exp_neg_dyadic(alpha * b * F(N + 1 - b, N), bits)
+         for b in range(len(c))]
+    raw = [D * v * cb for D, v, cb in zip(dims, r, c)]
+    Z = sum(raw)
+    if Z &lt;= 0:
+        raise ValueError(&quot;target normalizer is not positive&quot;)
+    return [v / Z for v in raw]
+
+
+def backconvert_filtered_weights(v, Z):
+    &quot;&quot;&quot;Optional practical conversion; certify actual returned w, not fitted v.&quot;&quot;&quot;
+    v, Z = simplex(v), list(map(F, Z))
+    if len(v) != len(Z) or min(Z) &lt;= 0:
+        raise ValueError(&quot;positive filtered normalizers required&quot;)
+    raw = [weight / normalizer for weight, normalizer in zip(v, Z)]
+    denominator = sum(raw)
+    return [v / denominator for v in raw]
+
+
+def filtered_posterior(N, alpha, delta, h, bits, *, isotropic_weights=None,
+                       direct_filtered_weights=None):
+    &quot;&quot;&quot;Outward full trace-distance certificate via the shared true filter.&quot;&quot;&quot;
+    if (isotropic_weights is None) == (direct_filtered_weights is None):
+        raise ValueError(&quot;supply exactly one actual candidate interface&quot;)
+    alpha = F(alpha)
+    if alpha &lt; 0:
+        raise ValueError(&quot;alpha&gt;=0 required&quot;)
+    values, fiv = scaled_filter_values(N, delta, h, bits)
+    A = sector_matrix(N)
+    civ = []
+    for b in range(N // 2 + 1):
+        lo, hi = interval_sum(fiv[b:N - b + 1])
+        civ.append((lo / (N - 2 * b + 1), hi / (N - 2 * b + 1)))
+    dims = spin_dimensions(N)
+    riv = [exp_neg_enclosure(alpha * b * F(N + 1 - b, N), bits)
+           for b in range(len(civ))]
+    target_raw = [positive_interval_product(r, c) for r, c in zip(riv, civ)]
+    target_raw = [(lo * D, hi * D) for (lo, hi), D in zip(target_raw, dims)]
+    target, target_Z = positive_normalize(target_raw)
+    if isotropic_weights is not None:
+        w = simplex(isotropic_weights)
+        if len(w) != N + 1:
+            raise ValueError(&quot;wrong K-weight count&quot;)
+        a = matvec(A, w)
+        candidate_raw = [(x * lo, x * hi) for x, (lo, hi) in zip(a, civ)]
+        candidate, candidate_Z = positive_normalize(candidate_raw)
+        interface = &quot;actual rational isotropic w&quot;
+    else:
+        v = simplex(direct_filtered_weights)
+        if len(v) != N + 1:
+            raise ValueError(&quot;wrong filtered-weight count&quot;)
+        columns = []
+        candidate_Z = []
+        for k in range(N + 1):
+            raw = [(A[b][k] * lo, A[b][k] * hi) for b, (lo, hi) in enumerate(civ)]
+            column, Zk = positive_normalize(raw)
+            columns.append(column)
+            candidate_Z.append(Zk)
+        candidate = [interval_sum([column[b] for column in columns], v)
+                     for b in range(len(civ))]
+        interface = &quot;actual rational normalized-filtered v&quot;
+    upper = interval_TV_upper(target, candidate)
+    return {&quot;TV_upper&quot;: upper, &quot;target_sector_intervals&quot;: target,
+            &quot;candidate_sector_intervals&quot;: candidate,
+            &quot;target_scaled_normalizer_interval&quot;: target_Z,
+            &quot;candidate_scaled_normalizer_intervals&quot;: candidate_Z,
+            &quot;candidate_interface&quot;: interface, &quot;precision_bits&quot;: bits,
+            &quot;physical_multiplicities_retained&quot;: True,
+            &quot;block_sampler_errors_included&quot;: False}
+
+
+def direct_filtered_branch_data(N, delta, h, v, eps):
+    &quot;&quot;&quot;Positive finite type probabilities; zero slices deliberately not divided.&quot;&quot;&quot;
+    eps = F(eps)
+    v = simplex(v)
+    if len(v) != N + 1:
+        raise ValueError(&quot;wrong filtered-weight count&quot;)
+    bits = 2 * N + max(1, ceil_log2(1 / eps)) + 14
+    f, _ = scaled_filter_values(N, delta, h, bits)
+    _, c, Z = filtered_sector_columns(N, f)
+    branches = []
+    for k in range(N + 1):
+        n = N - k
+        column_sum = F(0)
+        for u in range(n + 1):
+            interval_sum_value = sum(f[u:u + k + 1])
+            R = F(choose(n, u), (k + 1) * (1 &lt;&lt; n)) * interval_sum_value
+            p = R / Z[k]
+            column_sum += p
+            branches.append({&quot;k&quot;: k, &quot;u&quot;: u, &quot;m&quot;: F(2 * u - n, 2),
+                             &quot;pre_rounding_probability&quot;: v[k] * p,
+                             &quot;global_slice_sum&quot;: interval_sum_value})
+        assert column_sum == 1
+    raw = [b[&quot;pre_rounding_probability&quot;] for b in branches]
+    probabilities, draw_bits = round_dyadic_probabilities(raw, F(256 * len(raw)) / eps)
+    for branch, probability in zip(branches, probabilities):
+        branch[&quot;probability&quot;] = probability
+    return branches, {&quot;scalar_bits&quot;: bits, &quot;outer_draw_bits&quot;: draw_bits,
+                      &quot;filter_values&quot;: f, &quot;filtered_K_normalizers&quot;: Z,
+                      &quot;zero_global_slices&quot;: sum(b[&quot;global_slice_sum&quot;] == 0 for b in branches)}
+
+
+def conditional_max_shift_probabilities(N, k, u, delta, h, eps):
+    &quot;&quot;&quot;PSD Dicke input at precision independent of numerical field magnitude.&quot;&quot;&quot;
+    delta, h, eps = map(F, (delta, h, eps))
+    if not 0 &lt;= k &lt;= N or not 0 &lt;= u &lt;= N - k:
+        raise ValueError(&quot;invalid branch&quot;)
+    exponents = []
+    for l in range(k + 1):
+        m = F(2 * (l + u) - N, 2)
+        exponents.append(-delta * m * m / N + h * m)
+    maximum = max(exponents)
+    bits = max(1, ceil_log2(F(256 * (k + 1)) / eps))
+    raw = [exp_neg_dyadic(maximum - e, bits) for e in exponents]
+    Z = sum(raw)
+    assert Z &gt;= 1
+    return [v / Z for v in raw], {&quot;scalar_bits&quot;: bits,
+                                 &quot;normalizer_at_least_one&quot;: True,
+                                 &quot;target_TV_bound&quot;: eps / 256}
+</pre><p><a href="../assets/d8cc90e0f1fd749a819ad596094737dbcb462116ba80d36ee1b847f554402656.py">Exact original bytes</a></p></html>

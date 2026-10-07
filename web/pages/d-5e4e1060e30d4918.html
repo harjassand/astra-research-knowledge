@@ -1,0 +1,366 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c10_l03/initial/compiler.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c10_l03/initial/compiler.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Exact rational Foster and boundary-recovery compiler for an admitted class.
+
+No floating point solver, stationary oracle, imported CAD, or trajectory simulation.
+All scientific conclusions and general complexity bounds are in INITIAL.txt.
+&quot;&quot;&quot;
+
+from dataclasses import dataclass
+from fractions import Fraction as F
+from itertools import combinations, product
+from math import ceil, prod
+from pathlib import Path
+import hashlib
+import json
+import time
+
+
+@dataclass(frozen=True)
+class Reaction:
+    y: tuple
+    yp: tuple
+    lo: F
+    hi: F
+    name: str
+
+    @property
+    def nu(self):
+        return tuple(b-a for a, b in zip(self.y, self.yp))
+
+
+def reaction(y, yp, lo=1, hi=None, name=&quot;&quot;):
+    return Reaction(tuple(y), tuple(yp), F(lo), F(lo if hi is None else hi), name)
+
+
+def dot(a, b):
+    return sum((x*y for x, y in zip(a, b)), F(0))
+
+
+def falling(x, y):
+    if any(a &lt; b for a, b in zip(x, y)):
+        return 0
+    return prod(prod(range(a-b+1, a+1)) for a, b in zip(x, y))
+
+
+def check_weak_reversibility(rs):
+    nodes = {r.y for r in rs} | {r.yp for r in rs}
+    graph = {y: [] for y in nodes}
+    for r in rs:
+        graph[r.y].append(r.yp)
+    def reachable(a, b):
+        seen, stack = {a}, [a]
+        while stack:
+            z = stack.pop()
+            if z == b:
+                return True
+            for zz in graph[z]:
+                if zz not in seen:
+                    seen.add(zz)
+                    stack.append(zz)
+        return False
+    return all(reachable(r.yp, r.y) for r in rs)
+
+
+def acquire_drain_paths(rs, d):
+    &quot;&quot;&quot;Each chosen edge is one molecule -&gt; one molecule or zero.&quot;&quot;&quot;
+    edges = []
+    for k, r in enumerate(rs):
+        if sum(r.y) == 1 and sum(r.yp) &lt;= 1:
+            i = r.y.index(1)
+            j = -1 if sum(r.yp) == 0 else r.yp.index(1)
+            edges.append((i, j, k))
+    distance = {-1: 0}
+    successor = {}
+    for _ in range(d):
+        changed = False
+        for i, j, k in edges:
+            if i not in distance and j in distance:
+                distance[i] = distance[j]+1
+                successor[i] = (j, k)
+                changed = True
+        if not changed:
+            break
+    if any(i not in distance for i in range(d)):
+        return None
+    paths = {}
+    for i in range(d):
+        j, p = i, []
+        while j != -1:
+            j, k = successor[j]
+            p.append(k)
+        paths[i] = p
+    return paths
+
+
+def acquire_production_recipes(rs, d):
+    &quot;&quot;&quot;An acyclic recipe recursively manufactures extra reactants then fires.&quot;&quot;&quot;
+    recipes, order = {}, []
+    for _ in range(d):
+        changed = False
+        for k, r in enumerate(rs):
+            if all(r.y[i] == 0 or i in recipes for i in range(d)):
+                for j in range(d):
+                    if r.yp[j] &gt; 0 and j not in recipes:
+                        recipes[j] = k
+                        order.append(j)
+                        changed = True
+        if not changed:
+            break
+    if len(recipes) != d:
+        return None
+    def word(i):
+        r = rs[recipes[i]]
+        result = []
+        for j, count in enumerate(r.y):
+            for _ in range(count):
+                result.extend(word(j))
+        result.append(recipes[i])
+        return result
+    words = {i: word(i) for i in range(d)}
+    return {&quot;order&quot;: order, &quot;recipes&quot;: recipes, &quot;words&quot;: words}
+
+
+def grouped(rs):
+    groups = {}
+    for r in rs:
+        groups.setdefault(r.y, []).append(r)
+    return groups
+
+
+def source_vertices(group, d):
+    if not group:
+        return [tuple(F(0) for _ in range(d))]
+    vertices = set()
+    for ks in product(*(sorted({r.lo, r.hi}) for r in group)):
+        vertices.add(tuple(sum((k*r.nu[i] for k, r in zip(ks, group)), F(0))
+                           for i in range(d)))
+    return sorted(vertices)
+
+
+def constraints(rs, d, quadratic_species):
+    groups = grouped(rs)
+    rows = []
+    for i in range(d):
+        rows.append((tuple(F(-1 if i == j else 0) for j in range(d)), F(-1)))
+    for i in range(d):
+        yi = tuple(int(j == i) for j in range(d))
+        if i not in quadratic_species:
+            rows.extend((a, F(-1)) for a in source_vertices(groups.get(yi, []), d))
+        y2 = tuple(2*int(j == i) for j in range(d))
+        rows.extend((a, F(-1 if i in quadratic_species else 0))
+                    for a in source_vertices(groups.get(y2, []), d))
+    for y, group in groups.items():
+        if sum(y) == 2 and max(y) == 1:
+            rows.extend((a, F(0)) for a in source_vertices(group, d))
+    return sorted(set(rows))
+
+
+def solve_equalities(rows, d):
+    a = [list(coeff)+[rhs] for coeff, rhs in rows]
+    for col in range(d):
+        pivot = next((i for i in range(col, d) if a[i][col]), None)
+        if pivot is None:
+            return None
+        a[col], a[pivot] = a[pivot], a[col]
+        scale = a[col][col]
+        a[col] = [v/scale for v in a[col]]
+        for i in range(d):
+            if i != col and a[i][col]:
+                factor = a[i][col]
+                a[i] = [v-factor*u for v, u in zip(a[i], a[col])]
+    return tuple(a[i][-1] for i in range(d))
+
+
+def feasible(w, rows):
+    return all(dot(a, w) &lt;= b for a, b in rows)
+
+
+def synthesize_weight(rs, d, linear_only=False):
+    stats = {&quot;partitions_considered&quot;: 0, &quot;bases_solved&quot;: 0}
+    masks = [0] if linear_only else range(2**d)
+    for mask in masks:
+        s = {i for i in range(d) if mask &amp; (1 &lt;&lt; i)}
+        rows = constraints(rs, d, s)
+        stats[&quot;partitions_considered&quot;] += 1
+        if any(not any(a) and b &lt; 0 for a, b in rows):
+            continue
+        ones = tuple(F(1) for _ in range(d))
+        if feasible(ones, rows):
+            return ones, s, rows, stats
+        for indices in combinations(range(len(rows)), d):
+            stats[&quot;bases_solved&quot;] += 1
+            w = solve_equalities([rows[j] for j in indices], d)
+            if w is not None and feasible(w, rows):
+                return w, s, rows, stats
+    return None, None, None, stats
+
+
+def source_worst(group, w):
+    return sum((max(r.lo*dot(w, r.nu), r.hi*dot(w, r.nu))
+                for r in group), F(0))
+
+
+def compile_certificate(rs, q=2, linear_only=False):
+    if not rs or not isinstance(q, int) or q &lt; 1:
+        return {&quot;status&quot;: &quot;REJECTED_INPUT&quot;}
+    d = len(rs[0].y)
+    if d &lt; 1 or not all(len(r.y) == d == len(r.yp)
+               and all(isinstance(v, int) and v &gt;= 0 for v in r.y+r.yp)
+               and sum(r.y) &lt;= 2 and sum(r.yp) &lt;= 2
+               and 0 &lt; r.lo &lt;= r.hi for r in rs):
+        return {&quot;status&quot;: &quot;REJECTED_INPUT&quot;}
+    if not check_weak_reversibility(rs):
+        return {&quot;status&quot;: &quot;REJECTED_NOT_WEAKLY_REVERSIBLE&quot;}
+    drain = acquire_drain_paths(rs, d)
+    production = acquire_production_recipes(rs, d)
+    if drain is None or production is None:
+        return {&quot;status&quot;: &quot;REJECTED_BOUNDARY_CLASS&quot;}
+    w, s, rows, stats = synthesize_weight(rs, d, linear_only)
+    if w is None:
+        return {&quot;status&quot;: &quot;NO_CERTIFICATE_IN_ADMITTED_FOSTER_CLASS&quot;, &quot;search&quot;: stats}
+    groups = grouped(rs)
+    zero = tuple(0 for _ in range(d))
+    b0 = source_worst(groups.get(zero, []), w)
+    correction = {}
+    for i in sorted(s):
+        y = tuple(int(j == i) for j in range(d))
+        ci = source_worst(groups.get(y, []), w)
+        correction[i] = max(F(0), ci+2)
+    b = b0+sum((v*v/4 for v in correction.values()), F(0))
+    radius_w = 2*max(w)*(b+1)
+    radius_n = ceil(radius_w)
+    cover = [k for i in range(d) for _ in range(q) for k in production[&quot;words&quot;][i]]
+    production_length = len(cover)
+    h = d*radius_n+production_length
+    count_cap = max(radius_n, 2*production_length)
+    u = sum((r.hi for r in rs), F(0))
+    total_rate_cap = u*(count_cap+1)**2
+    alpha = min(r.lo for r in rs)/(2*total_rate_cap)
+    p = alpha**h
+    t0 = F(h)/total_rate_cap
+    recovery_constant = (radius_w+(b+1)*t0)/p
+    return {&quot;status&quot;: &quot;CERTIFIED&quot;, &quot;dimension&quot;: d, &quot;weight&quot;: w,
+            &quot;quadratic_species&quot;: sorted(s), &quot;constraint_count&quot;: len(rows),
+            &quot;search&quot;: stats, &quot;B0&quot;: b0, &quot;quadratic_linear_corrections&quot;: correction,
+            &quot;B&quot;: b, &quot;weighted_core_radius&quot;: radius_w, &quot;count_core_radius&quot;: radius_n,
+            &quot;drain_paths&quot;: drain, &quot;production&quot;: production, &quot;cover_word&quot;: cover,
+            &quot;q&quot;: q, &quot;attempt_steps&quot;: h, &quot;path_count_cap&quot;: count_cap,
+            &quot;total_rate_cap&quot;: total_rate_cap, &quot;one_step_probability&quot;: alpha,
+            &quot;attempt_success_probability&quot;: p, &quot;attempt_duration&quot;: t0,
+            &quot;recovery_constant&quot;: recovery_constant,
+            &quot;recovery_constant_bit_length&quot;: max(recovery_constant.numerator.bit_length(),
+                                                recovery_constant.denominator.bit_length())}
+
+
+def fire(x, r):
+    if not falling(x, r.y):
+        raise AssertionError((&quot;disabled&quot;, x, r))
+    return tuple(a+b for a, b in zip(x, r.nu))
+
+
+def apply_word(x, rs, word):
+    cap = sum(x)
+    for k in word:
+        x = fire(x, rs[k])
+        cap = max(cap, sum(x))
+    return x, cap
+
+
+def drain_word(x, rs, paths):
+    current, word = tuple(x), []
+    while any(current):
+        i = next(j for j, n in enumerate(current) if n)
+        for k in paths[i]:
+            current = fire(current, rs[k])
+            word.append(k)
+    return word
+
+
+def exact_diagnostics(rs, cert, extent=7):
+    d, w, b = cert[&quot;dimension&quot;], cert[&quot;weight&quot;], cert[&quot;B&quot;]
+    counts = {&quot;global_drift_states_checked&quot;: 0, &quot;rate_vertex_states_checked&quot;: 0,
+              &quot;drain_paths_checked&quot;: 0, &quot;production_dominance_checked&quot;: 0}
+    for x in product(range(extent+1), repeat=d):
+        # Directly maximize the full enabled generator, independently of source constraints.
+        direct = sum((falling(x, r.y)*max(r.lo*dot(w, r.nu), r.hi*dot(w, r.nu))
+                      for r in rs), F(0))
+        assert direct &lt;= b-sum(x), (x, direct, b)
+        counts[&quot;global_drift_states_checked&quot;] += 1
+    for x in product(range(3), repeat=d):
+        for rates in product(*(sorted({r.lo, r.hi}) for r in rs)):
+            generator = sum((k*falling(x, r.y)*dot(w, r.nu)
+                             for k, r in zip(rates, rs)), F(0))
+            assert generator &lt;= b-sum(x)
+            counts[&quot;rate_vertex_states_checked&quot;] += 1
+        word = drain_word(x, rs, cert[&quot;drain_paths&quot;])
+        terminal, cap = apply_word(x, rs, word)
+        assert terminal == (0,)*d and len(word) &lt;= d*sum(x) and cap &lt;= sum(x)
+        counts[&quot;drain_paths_checked&quot;] += 1
+        terminal, cap = apply_word(x, rs, cert[&quot;cover_word&quot;])
+        assert all(a &gt;= z+cert[&quot;q&quot;] for a, z in zip(terminal, x))
+        assert cap &lt;= sum(x)+2*len(cert[&quot;cover_word&quot;])
+        counts[&quot;production_dominance_checked&quot;] += 1
+    return counts
+
+
+def serialize(value):
+    if isinstance(value, F):
+        return str(value)
+    if isinstance(value, dict):
+        return {str(k): serialize(v) for k, v in value.items()}
+    if isinstance(value, (tuple, list)):
+        return [serialize(v) for v in value]
+    return value
+
+
+def fixtures():
+    linear = [reaction((0,0,0),(1,0,0),1,2,&quot;0-&gt;A&quot;),
+              reaction((1,0,0),(0,0,0),8,10,&quot;A-&gt;0&quot;),
+              reaction((1,0,0),(0,1,0),1,2,&quot;A-&gt;B&quot;),
+              reaction((0,1,0),(1,0,0),1,2,&quot;B-&gt;A&quot;),
+              reaction((1,0,0),(1,1,0),1,2,&quot;A-&gt;A+B&quot;),
+              reaction((1,1,0),(0,0,1),1,2,&quot;A+B-&gt;C&quot;),
+              reaction((0,0,1),(1,0,0),1,2,&quot;C-&gt;A&quot;)]
+    autocatalytic = [reaction((0,),(1,),1,name=&quot;0-&gt;A&quot;),
+                    reaction((1,),(0,),1,name=&quot;A-&gt;0&quot;),
+                    reaction((1,),(2,),2,name=&quot;A-&gt;2A&quot;),
+                    reaction((2,),(1,),1,name=&quot;2A-&gt;A&quot;)]
+    balanced_cross = [reaction((0,0),(1,0),name=&quot;0-&gt;A&quot;),
+                      reaction((1,0),(0,0),name=&quot;A-&gt;0&quot;),
+                      reaction((0,0),(0,1),name=&quot;0-&gt;B&quot;),
+                      reaction((0,1),(0,0),name=&quot;B-&gt;0&quot;),
+                      reaction((1,0),(1,1),name=&quot;A-&gt;A+B&quot;),
+                      reaction((1,1),(1,0),name=&quot;A+B-&gt;A&quot;),
+                      reaction((0,1),(1,1),name=&quot;B-&gt;A+B&quot;),
+                      reaction((1,1),(0,1),name=&quot;A+B-&gt;B&quot;)]
+    return {&quot;nonlinear_assembly&quot;: linear, &quot;autocatalytic&quot;: autocatalytic,
+            &quot;balanced_cross_rejection&quot;: balanced_cross}
+
+
+if __name__ == &quot;__main__&quot;:
+    start = time.perf_counter()
+    output = {&quot;method&quot;: &quot;Fraction exact vertex enumeration and constructive boundary words&quot;,
+              &quot;scope&quot;: &quot;finite diagnostics support the derivation; no trajectory or general-corpus run&quot;,
+              &quot;fixtures&quot;: {}}
+    for name, rs in fixtures().items():
+        cert = compile_certificate(rs)
+        entry = {&quot;reactions&quot;: [{&quot;source&quot;: r.y, &quot;product&quot;: r.yp, &quot;lo&quot;: r.lo,
+                                  &quot;hi&quot;: r.hi, &quot;name&quot;: r.name} for r in rs],
+                 &quot;certificate&quot;: cert}
+        if cert[&quot;status&quot;] == &quot;CERTIFIED&quot;:
+            entry[&quot;exact_diagnostics&quot;] = exact_diagnostics(rs, cert,
+                                                           extent=12 if len(rs[0].y)==1 else 7)
+        if name == &quot;autocatalytic&quot;:
+            entry[&quot;linear_only_search&quot;] = compile_certificate(rs, linear_only=True)
+            assert entry[&quot;linear_only_search&quot;][&quot;status&quot;] == &quot;NO_CERTIFICATE_IN_ADMITTED_FOSTER_CLASS&quot;
+        output[&quot;fixtures&quot;][name] = entry
+    assert output[&quot;fixtures&quot;][&quot;nonlinear_assembly&quot;][&quot;certificate&quot;][&quot;status&quot;] == &quot;CERTIFIED&quot;
+    assert output[&quot;fixtures&quot;][&quot;autocatalytic&quot;][&quot;certificate&quot;][&quot;status&quot;] == &quot;CERTIFIED&quot;
+    assert output[&quot;fixtures&quot;][&quot;balanced_cross_rejection&quot;][&quot;certificate&quot;][&quot;status&quot;] == &quot;NO_CERTIFICATE_IN_ADMITTED_FOSTER_CLASS&quot;
+    output[&quot;wall_seconds&quot;] = time.perf_counter()-start
+    output[&quot;script_sha256&quot;] = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
+    dest = Path(__file__).with_name(&quot;checks.json&quot;)
+    dest.write_text(json.dumps(serialize(output), indent=2)+&quot;\n&quot;)
+    print(json.dumps({&quot;result&quot;: str(dest), &quot;wall_seconds&quot;: output[&quot;wall_seconds&quot;],
+                      &quot;statuses&quot;: {n: e[&quot;certificate&quot;][&quot;status&quot;] for n,e in output[&quot;fixtures&quot;].items()},
+                      &quot;checks&quot;: {n: e.get(&quot;exact_diagnostics&quot;) for n,e in output[&quot;fixtures&quot;].items()}}, indent=2))
+</pre><p><a href="../assets/7298eab166cc57249b5231165eb97a4ca64d056608dfb6d8eb21325b75e109ea.py">Exact original bytes</a></p></html>

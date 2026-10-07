@@ -1,0 +1,165 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c03_l02/revisions/phase2_low_sector_audit.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c03_l02/revisions/phase2_low_sector_audit.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Independent exact checks of the attributed low-sector physical-prefix code.&quot;&quot;&quot;
+from fractions import Fraction
+from itertools import combinations, product
+import importlib.util, json
+from pathlib import Path
+from types import MethodType
+
+ROOT = Path(&#x27;work/cycle6/c03_l02/revisions&#x27;)
+def load(name, file):
+    spec=importlib.util.spec_from_file_location(name, ROOT/file)
+    m=importlib.util.module_from_spec(spec); spec.loader.exec_module(m); return m
+orig=load(&#x27;low_orig&#x27;,&#x27;low_sector_sampler_c01_s03_attributed.py&#x27;)
+fixed=load(&#x27;low_fixed&#x27;,&#x27;low_sector_sampler_c01_s03_legal_fallback.py&#x27;)
+
+def cadd(a,b): return (a[0]+b[0],a[1]+b[1])
+def csub(a,b): return (a[0]-b[0],a[1]-b[1])
+def cmul(a,b): return (a[0]*b[0]-a[1]*b[1],a[0]*b[1]+a[1]*b[0])
+def cconj(a): return (a[0],-a[1])
+def cabs2(a): return a[0]*a[0]+a[1]*a[1]
+def cd(v): return (Fraction(v[0]),Fraction(v[1])) if isinstance(v,tuple) else (Fraction(v),Fraction(0))
+def det(a):
+    n=len(a)
+    if n==0:return (Fraction(1),Fraction(0))
+    if n==1:return a[0][0]
+    out=(Fraction(0),Fraction(0))
+    for j,x in enumerate(a[0]):
+        minor=[row[:j]+row[j+1:] for row in a[1:]]
+        term=cmul(x,det(minor))
+        out=cadd(out,term if j%2==0 else (-term[0],-term[1]))
+    return out
+
+def direct_prefix(F,k,U=(),D=(),H=()):
+    n=len(F); f=[[cd(x) for x in row] for row in F]
+    U,D,H=set(U),set(D),set(H)
+    total=Fraction(0)
+    for I in combinations(range(n),k):
+        I=set(I)
+        if not U&lt;=I or I&amp;D or I&amp;H: continue
+        for J0 in combinations(range(n),k):
+            J=set(J0)
+            if I&amp;J or not D&lt;=J or J&amp;H or (I|J)&amp;H: continue
+            total += cabs2(det([[f[i][j] for j in sorted(J)] for i in sorted(I)]))
+    return total
+
+def prefix_assignments(n):
+    for labels in product(range(4), repeat=n):
+        U={i for i,x in enumerate(labels) if x==1}
+        D={i for i,x in enumerate(labels) if x==2}
+        H={i for i,x in enumerate(labels) if x==3}
+        yield U,D,H
+
+F=[]
+for i in range(4):
+    row=[]
+    for j in range(4):
+        re=Fraction((2*i+3*j+1)%7-3, 3)
+        im=Fraction((i-2*j+4)%5-2, 4)
+        row.append((re,im))
+    F.append(row)
+Fzero=[[Fraction(1 if i!=j else 0) for j in range(4)] for i in range(4)]
+unit=orig.LowSector(F)
+zero=orig.LowSector(Fzero)
+checks=0; zero_checks=0; max_sign_words=0
+for matrix,solver in ((F,unit),(Fzero,zero)):
+    for k in (1,2):
+        for U,D,H in prefix_assignments(4):
+            free=sorted(set(range(4))-U-D-H)
+            vals=[]
+            for signs_free in product((-1,1),repeat=len(free)):
+                signs=[1]*4
+                for i,s in zip(free,signs_free): signs[i]=s
+                vals.append(solver.prefix_draw_integer(k,signs,U,D,H))
+            mass=direct_prefix(matrix,k,U,D,H)
+            scaled=mass*solver.denominator**(2*k)
+            assert scaled.denominator==1
+            assert Fraction(sum(vals),len(vals))==scaled, (k,U,D,H,mass,vals)
+            a,b=len(U),len(D)
+            if a&lt;=k and b&lt;=k:
+                C=__import__(&#x27;math&#x27;).comb(2*k-a-b,k-a)
+            else: C=0
+            assert all(v&gt;=0 for v in vals)
+            assert all(v&lt;=C*scaled for v in vals), (k,U,D,H,C,scaled,max(vals))
+            if mass==0:
+                assert all(v==0 for v in vals)
+                zero_checks+=1
+            checks+=1; max_sign_words=max(max_sign_words,len(vals))
+
+# Exact-mean estimates make the entire dyadic self-reduction distribution explicit.
+# n=4,k=2, eta/delta as in the copied sampler; sign enumeration is cheaper than cap.
+probe=orig.LowSector(F); k=2; eps=Fraction(1,2)
+eta=eps/(8*probe.n); delta=eps/(12*probe.n)
+bits=orig.ceil_log2(Fraction(8*probe.n,1)/eps); q=1&lt;&lt;bits
+states={(frozenset(),frozenset(),frozenset()):Fraction(1)}
+for site in range(probe.n):
+    new={}
+    for (U,D,H),pstate in states.items():
+        kw={&#x27;enumerate_if_cheaper&#x27;:True,&#x27;memoize&#x27;:True}
+        ws=[probe.estimate(k,eta,delta,U|{site},D,H,**kw),
+            probe.estimate(k,eta,delta,U,D|{site},H,**kw),
+            probe.estimate(k,eta,delta,U,D,H|{site},**kw)]
+        assert sum(ws)&gt;0
+        cs=[]
+        for w in (ws[0],ws[0]+ws[1]):
+            x=q*w/sum(ws); cs.append(x.numerator//x.denominator)
+        counts=[cs[0],cs[1]-cs[0],q-cs[1]]
+        assert all(c&gt;=0 for c in counts)
+        assert (ws[0]==0)==(counts[0]==0)
+        assert (ws[1]==0)==(counts[1]==0)
+        assert (ws[2]==0)==(counts[2]==0)
+        for label,count in enumerate(counts):
+            if not count: continue
+            u,d,h=set(U),set(D),set(H)
+            (u if label==0 else d if label==1 else h).add(site)
+            key=(frozenset(u),frozenset(d),frozenset(h))
+            new[key]=new.get(key,Fraction(0))+pstate*Fraction(count,q)
+    states=new
+approx={(tuple(sorted(U)),tuple(sorted(D))):p for (U,D,H),p in states.items()}
+true={}
+for I0 in combinations(range(4),2):
+    I=set(I0)
+    for J0 in combinations(range(4),2):
+        J=set(J0)
+        if I&amp;J: continue
+        w=cabs2(det([[cd(F[i][j]) for j in sorted(J)] for i in sorted(I)]))
+        if w: true[(tuple(sorted(I)),tuple(sorted(J)))]=w
+Z=sum(true.values()); true={s:w/Z for s,w in true.items()}
+allkeys=set(approx)|set(true)
+TV=sum(abs(approx.get(s,0)-true.get(s,0)) for s in allkeys)/2
+assert TV &lt;= Fraction(2*4,q) &lt;= eps
+assert all(p==0 or s in true for s,p in approx.items())
+
+# Expose the output-contract mismatch and check a legal-completion repair.
+class FixedRng:
+    def getrandbits(self,n): return 0
+
+def forced_estimator(self,k,eta,delta,up=(),down=(),empty=(),**kw):
+    up,down,empty=set(up),set(down),set(empty)
+    if up=={0} and not down and not empty: return Fraction(1)
+    return Fraction(0)
+
+orig_forced=orig.LowSector(F); orig_forced.estimate=MethodType(forced_estimator,orig_forced)
+orig_result=orig_forced.born_sample(1,Fraction(1,2),rng=FixedRng())
+fixed_forced=fixed.LowSector(F); fixed_forced.estimate=MethodType(forced_estimator,fixed_forced)
+fixed_result=fixed_forced.born_sample(1,Fraction(1,2),rng=FixedRng())
+assert orig_result=={&#x27;status&#x27;:&#x27;FAIL&#x27;,&#x27;site&#x27;:1},orig_result
+assert fixed_result.get(&#x27;status&#x27;)==&#x27;OK&#x27; and fixed_result.get(&#x27;fallback&#x27;) is True,fixed_result
+assert len(fixed_result[&#x27;I&#x27;])==len(fixed_result[&#x27;J&#x27;])==1
+assert set(fixed_result[&#x27;I&#x27;]).isdisjoint(fixed_result[&#x27;J&#x27;])
+
+out={
+ &#x27;attributed_input&#x27;:&#x27;work/cycle6/c03_s02/audit_c03_l10/AUDIT_REPORT.txt and work/cycle6/c01_s03/revisions/low_sector_sampler.py&#x27;,
+ &#x27;phase_matching_extension&#x27;:&#x27;read work/cycle6/c03_s01/revisions/phased_pfaffian.py and phased_pfaffian_checks.json; separate approximate-count route, not a physical-prefix sampler&#x27;,
+ &#x27;exact_prefix_mean_checks&#x27;:checks,
+ &#x27;zero_prefix_checks&#x27;:zero_checks,
+ &#x27;max_sign_words_per_prefix&#x27;:max_sign_words,
+ &#x27;dyadic_sampler_fixture&#x27;:{&#x27;n&#x27;:4,&#x27;k&#x27;:2,&#x27;epsilon&#x27;:&#x27;1/2&#x27;,&#x27;bits_per_site&#x27;:bits,&#x27;output_support_size&#x27;:len(true),&#x27;exact_TV&#x27;:str(TV),&#x27;upper_bound_2n_over_q&#x27;:str(Fraction(8,q))},
+ &#x27;original_all_zero_call_result&#x27;:orig_result,
+ &#x27;legal_fallback_copy_result&#x27;:fixed_result,
+ &#x27;status&#x27;:&#x27;PASS&#x27;,
+}
+path=ROOT/&#x27;low_sector_outputs&#x27;/&#x27;phase2_low_sector_audit.json&#x27;
+path.write_text(json.dumps(out,indent=2)+&#x27;\n&#x27;)
+print(json.dumps(out,indent=2))
+</pre><p><a href="../assets/eb41c503db7c14730cbae462ecdbc27ad30846f75c4fa7ef24ad928fd69bd90f.py">Exact original bytes</a></p></html>

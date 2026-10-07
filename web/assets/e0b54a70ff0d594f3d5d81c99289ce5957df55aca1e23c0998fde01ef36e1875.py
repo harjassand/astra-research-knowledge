@@ -1,0 +1,231 @@
+#!/usr/bin/env python3
+"""Independent exact spot checks for the C10 Sol/Luna claims audited here.
+
+Finite arithmetic checks support transcription only. Universal statements are
+assessed separately in revisions/sol_audit.txt and remain proof-review scoped.
+"""
+from fractions import Fraction as Q
+from itertools import product
+from math import factorial
+import importlib.util
+import json
+from pathlib import Path
+import sys
+
+sys.dont_write_bytecode = True
+
+ROOT = Path(__file__).resolve().parents[3]
+
+
+def ff(x, y):
+    z = 1
+    for xi, yi in zip(x, y):
+        if xi < yi:
+            return 0
+        for j in range(yi):
+            z *= xi - j
+    return z
+
+
+def weight(x):
+    z = Q(1)
+    for a in x:
+        z /= factorial(a)
+    return z
+
+
+def rank(matrix):
+    a = [[Q(v) for v in row] for row in matrix]
+    m, n = len(a), len(a[0])
+    i = 0
+    for j in range(n):
+        pivot = next((k for k in range(i, m) if a[k][j]), None)
+        if pivot is None:
+            continue
+        a[i], a[pivot] = a[pivot], a[i]
+        scale = a[i][j]
+        a[i] = [v / scale for v in a[i]]
+        for k in range(m):
+            if k != i and a[k][j]:
+                q = a[k][j]
+                a[k] = [u - q*v for u, v in zip(a[k], a[i])]
+        i += 1
+        if i == m:
+            break
+    return i
+
+
+def load_module(name, path):
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def check_c10_s02():
+    # A+C <-> A+B <-> B; C <-> 0. Rate constants are all one.
+    reactions = [
+        ((1,0,1),(1,1,0)), ((1,1,0),(1,0,1)),
+        ((1,1,0),(0,1,0)), ((0,1,0),(1,1,0)),
+        ((0,0,1),(0,0,0)), ((0,0,0),(0,0,1)),
+    ]
+    reverse = {(y, yp):(yp, y) for y, yp in reactions}
+    edge_checks = class_checks = 0
+    for x in product(range(7), repeat=3):
+        for y, yp in reactions:
+            rate = ff(x, y)
+            if not rate:
+                continue
+            xp = tuple(xi-yi+zi for xi, yi, zi in zip(x, y, yp))
+            yr, ypr = reverse[(y, yp)]
+            assert weight(x)*rate == weight(xp)*ff(xp, yr)
+            assert (x[0]+x[1] == 0) == (xp[0]+xp[1] == 0)
+            edge_checks += 1
+            class_checks += 1
+    # The reported complexes/linkage/rank give deficiency 5-2-3=0.
+    vectors = [tuple(b-a for a,b in zip(y, yp)) for y,yp in reactions]
+    assert rank(vectors) == 3
+    complexes = {(0,0,0),(0,0,1),(0,1,0),(1,1,0),(1,0,1)}
+    assert len(complexes) == 5
+    assert 5-2-rank(vectors) == 0
+
+    def expF(x):
+        cs = [(0,0,0),(0,0,1),(0,1,0),(1,1,0),(1,0,1)]
+        residual = []
+        for y in cs:
+            if all(xi >= yi for xi,yi in zip(x,y)):
+                p = 1
+                for xi,yi in zip(x,y):
+                    p *= factorial(xi-yi)
+                residual.append(p)
+        return min(residual)
+
+    for n in range(2,40):
+        x=(n,0,1)
+        assert expF(x) == factorial(n-1)
+        jumps=[]
+        for y,yp in reactions:
+            rate=ff(x,y)
+            if rate:
+                xp=tuple(xi-yi+zi for xi,yi,zi in zip(x,y,yp))
+                jumps.append((rate,Q(expF(xp),expF(x))))
+        assert jumps == [(n,Q(1)),(1,Q(n)),(1,Q(1))]
+        # At the ray (0,n,0), both enabled jumps preserve exp(F).
+        z=(0,n,0)
+        for y,yp in reactions:
+            rate=ff(z,y)
+            if rate:
+                zp=tuple(xi-yi+zi for xi,yi,zi in zip(z,y,yp))
+                assert expF(zp)==expF(z)
+    return {"deficiency": 0, "stoichiometric_rank": 3,
+            "edge_balance_and_class_checks": edge_checks,
+            "factorial_ray_cases": 38, "status": "PASS"}
+
+
+def check_c10_l04():
+    # 2C -> A+B+C -> 3A+2B -> 2C; 2C <-> 2C+D.
+    reactions = [
+        ((0,0,2,0),(1,1,1,0)), ((1,1,1,0),(3,2,0,0)),
+        ((3,2,0,0),(0,0,2,0)), ((0,0,2,0),(0,0,2,1)),
+        ((0,0,2,1),(0,0,2,0)),
+    ]
+    reverse_pairs = [
+        (((0,0,2,0),(0,0,2,1)),((0,0,2,1),(0,0,2,0)))
+    ]
+    # Reaction vectors span three dimensions; 4 complexes, one linkage class.
+    vectors = [tuple(b-a for a,b in zip(y,yp)) for y,yp in reactions]
+    assert rank(vectors)==3
+    assert 4-1-rank(vectors)==0
+    checks=0
+    for n in range(8):
+        states=((n,0,2,0),(n+1,1,1,0),(n+3,2,0,0))
+        states_d=tuple((a,b,c,d) for a,b,c,_ in states for d in (0,))
+        P=(n+1)*(n+2)*(n+3)
+        Z=P+2*(n+2)*(n+3)+1
+        probs=(Q(P,Z),Q(2*(n+2)*(n+3),Z),Q(1,Z))
+        assert sum(probs)==1
+        assert probs[0] == Q(P,Z)
+        for x in states_d:
+            assert x[1]+x[2]==2
+            N=x[0]-(x[1]+1)*x[1]//2
+            assert N==n
+        for d in range(8):
+            cycle_states=((n,0,2,d),(n+1,1,1,d),(n+3,2,0,d))
+            cycle_sources=(reactions[0],reactions[1],reactions[2])
+            fluxes=[]
+            for x,(y,yp) in zip(cycle_states,cycle_sources):
+                xp=tuple(xi-yi+zi for xi,yi,zi in zip(x,y,yp))
+                assert xp[1]+xp[2]==2
+                assert xp[0]-(xp[1]+1)*xp[1]//2==n
+                fluxes.append(weight(x)*ff(x,y))
+                checks+=1
+            assert fluxes[0]==fluxes[1]==fluxes[2]
+            # The phase-0 immigration/death channel is reversible with Poisson weights.
+            x0=(n,0,2,d); x1=(n,0,2,d+1)
+            assert weight(x0)*ff(x0,reactions[3][0]) == weight(x1)*ff(x1,reactions[4][0])
+        # Unit phase fluxes and D birth/death detailed balance.
+        rates=(2,n+1,2*P)
+        phase_weights=(Q(1,2),Q(1,n+1),Q(1,2*P))
+        assert tuple(a*b for a,b in zip(phase_weights,rates))==(Q(1),Q(1),Q(1))
+        for d in range(8):
+            assert Q(1,factorial(d))*2 == Q(1,factorial(d+1))*2*(d+1)
+    return {"deficiency":0, "stoichiometric_rank":3,
+            "phase_invariant_and_rate_checks":checks,
+            "stationary_normalizer_checks":8,
+            "status":"PASS"}
+
+
+def check_s01_simple_fixture():
+    # 0 <-> A; A <-> A+B, all rates one. V=3A+(1+1/(A+1))B.
+    def V(a,b):
+        return 3*a+(1+Q(1,a+1))*b
+    checks=0
+    for a,b in product(range(7), repeat=2):
+        lv = (V(a+1,b)-V(a,b))  # 0 -> A
+        if a:
+            lv += a*(V(a-1,b)-V(a,b))
+            lv += a*(V(a,b+1)-V(a,b))
+        if a and b:
+            lv += a*b*(V(a,b-1)-V(a,b))
+        assert lv <= 3-Q(1,4)*V(a,b)
+        checks+=1
+    assert (V(1,0)-V(0,0)) == 3
+    assert (V(1,60)-V(0,60)) == Q(-27)
+    return {"checked_states":checks, "boundary_LV_at_A0_B60":-27,
+            "status":"PASS"}
+
+
+def check_peer_compilers():
+    s01 = load_module("peer_s01", ROOT/"work/cycle6/c10_s01/two_layer_certificate.py")
+    cert_report=s01.verify()
+    assert cert_report["status"]=="EXACT_FINITE_DIAGNOSTIC_PASSED"
+    assert cert_report["checked_states"]==1548
+
+    s03 = load_module("peer_s03", ROOT/"work/cycle6/c10_s03/compiler.py")
+    out={}
+    for name, rs in s03.fixtures().items():
+        cert=s03.compile_certificate(rs)
+        out[name]=cert["status"]
+        if cert["status"]=="CERTIFIED":
+            diag=s03.exact_diagnostics(rs,cert,extent=3)
+            assert diag["global_drift_states_checked"]==4**cert["dimension"]
+    assert out=={"nonlinear_assembly":"CERTIFIED",
+                 "autocatalytic":"CERTIFIED",
+                 "balanced_cross_rejection":"NO_CERTIFICATE_IN_ADMITTED_FOSTER_CLASS"}
+    return {"s01_reported_finite_diagnostic_replay":cert_report["status"],
+            "s01_checked_states":cert_report["checked_states"],
+            "s03_fixture_statuses":out,
+            "scope":"Only function calls; peer files were not changed."}
+
+
+def main():
+    result={"c10_s02":check_c10_s02(),
+            "c10_l04":check_c10_l04(),
+            "c10_s01_simple_fixture":check_s01_simple_fixture(),
+            "peer_code_replay":check_peer_compilers()}
+    result["status"]="PASS"
+    print(json.dumps(result,indent=2))
+    Path(__file__).with_name("audit_checks.json").write_text(json.dumps(result,indent=2)+"\n")
+
+if __name__=="__main__":
+    main()

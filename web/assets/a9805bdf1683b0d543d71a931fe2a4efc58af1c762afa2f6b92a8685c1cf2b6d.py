@@ -1,0 +1,108 @@
+#!/usr/bin/env python3
+"""Exact SU(3) checks for the global-Casimir / proper-subalgebra audit.
+
+Checks (i) the full su(3) principal-form identity in the tr(T_a T_b)=1/2
+normalization, and (ii) a negative principal direction for the embedded
+spin-1 su(2) subalgebra on the full qutrit density-matrix manifold.
+All matrix arithmetic is exact SymPy arithmetic.
+"""
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import sympy as sp
+
+
+I = sp.I
+sqrt = sp.sqrt
+
+
+def E(i: int, j: int) -> sp.Matrix:
+    out = sp.zeros(3)
+    out[i, j] = 1
+    return out
+
+
+def tr(x: sp.Matrix) -> sp.Expr:
+    return sp.trace(x)
+
+
+def principal_form(gens: list[sp.Matrix], rho: sp.Matrix, z: sp.Matrix) -> sp.Expr:
+    """sum_a <z,v_a>^2 - <z,r_a>^2 in c04_s02 normalization."""
+    total = sp.S.Zero
+    for t in gens:
+        x = tr(rho * t)
+        v = t * rho + rho * t - 2 * x * rho
+        r = -I * (t * rho - rho * t)
+        zv = sp.simplify(tr(z * v))
+        zr = sp.simplify(tr(z * r))
+        total += zv**2 - zr**2
+    return sp.simplify(sp.expand_complex(total))
+
+
+# Standard Gell-Mann generators with Tr(T_a T_b)=delta_ab/2.
+full_su3 = [
+    (E(0, 1) + E(1, 0)) / 2,
+    -I * (E(0, 1) - E(1, 0)) / 2,
+    sp.diag(1, -1, 0) / 2,
+    (E(0, 2) + E(2, 0)) / 2,
+    -I * (E(0, 2) - E(2, 0)) / 2,
+    (E(1, 2) + E(2, 1)) / 2,
+    -I * (E(1, 2) - E(2, 1)) / 2,
+    sp.diag(1, 1, -2) / (2 * sqrt(3)),
+]
+
+# A nontrivial full-rank rational density and a traceless Hermitian tangent.
+g_full = sp.Matrix([
+    [1, sp.Rational(1, 3), 0],
+    [0, 1, sp.Rational(1, 4)],
+    [0, 0, 1],
+])
+rho_full = g_full * g_full.T / tr(g_full * g_full.T)
+z_full = sp.Matrix([
+    [sp.Rational(1, 3), sp.Rational(1, 5), sp.Rational(1, 7)],
+    [sp.Rational(1, 5), -sp.Rational(1, 6), sp.Rational(1, 8)],
+    [sp.Rational(1, 7), sp.Rational(1, 8), -sp.Rational(1, 6)],
+])
+y_full = tr(rho_full * z_full)
+lhs_full = principal_form(full_su3, rho_full, z_full)
+rhs_full = sp.simplify(2 * tr(rho_full * (z_full - y_full * sp.eye(3))
+                               * rho_full * (z_full - y_full * sp.eye(3))))
+full_identity_holds = sp.simplify(lhs_full - rhs_full) == 0
+
+# Spin-1 su(2) embedded in su(3), with tr(T_a T_b)=delta_ab/2.
+Sx = (E(0, 1) + E(1, 0) + E(1, 2) + E(2, 1)) / sqrt(2)
+Sy = -I * (E(0, 1) - E(1, 0) + E(1, 2) - E(2, 1)) / sqrt(2)
+Sz = sp.diag(1, 0, -1)
+spin1_su2 = [Sx / 2, Sy / 2, Sz / 2]
+rho_spin1 = sp.diag(sp.Rational(4, 5), sp.Rational(1, 10), sp.Rational(1, 10))
+z_spin1 = sp.Rational(1, 5) * (E(0, 1) + E(1, 0)) \
+        - sp.Rational(9, 10) * (E(1, 2) + E(2, 1))
+spin1_value = principal_form(spin1_su2, rho_spin1, z_spin1)
+spin1_casimir = sp.simplify(sum((t * t for t in spin1_su2), sp.zeros(3)))
+
+result = {
+    "normalization": "Tr(T_a T_b)=delta_ab/2",
+    "full_su3_identity": {
+        "lhs": str(lhs_full),
+        "rhs": str(rhs_full),
+        "holds_exactly": full_identity_holds,
+    },
+    "embedded_spin1_su2_counterexample": {
+        "rho_diagonal": ["4/5", "1/10", "1/10"],
+        "test_tangent": "(1/5)(E12+E21)-(9/10)(E23+E32)",
+        "principal_form_value_exact": str(sp.factor(spin1_value)),
+        "principal_form_negative": bool(sp.simplify(spin1_value < 0)),
+        "sum_generators_squared": str(sp.simplify(spin1_casimir)),
+        "all_generators_have_trace_norm_squared": [str(tr(t * t)) for t in spin1_su2],
+    },
+}
+
+assert full_identity_holds
+assert sp.simplify(spin1_value + sp.Rational(49, 5000)) == 0
+assert spin1_casimir == sp.eye(3) / 2
+
+out = Path(__file__).with_suffix(".json")
+out.write_text(json.dumps(result, indent=2) + "\n")
+print(json.dumps(result, indent=2))

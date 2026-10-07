@@ -1,0 +1,204 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c09_l04/revisions/R2/full_dimensional_thin_noise.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c09_l04/revisions/R2/full_dimensional_thin_noise.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Finite diagnostics for R2; the asymptotic proof is in R2.txt.&quot;&quot;&quot;
+
+import json
+import math
+
+A = 1e-3
+BETA0 = 0.1
+SQRT2 = math.sqrt(2.0)
+SQRT3 = math.sqrt(3.0)
+NORM = math.sqrt(2.0 * math.pi)
+
+
+def phi(x):
+    return math.exp(-0.5*x*x) / NORM
+
+
+def Phi(x):
+    return 0.5 * (1.0 + math.erf(x/math.sqrt(2.0)))
+
+
+def g(x):
+    return 2.0*Phi(x)-1.0
+
+
+def gpp(x):
+    return -2.0*x*phi(x)
+
+
+def psi2(i, x):
+    k = 2.0*math.pi*i
+    phase = k*Phi(x)
+    return SQRT2*(-k*k*math.cos(phase)*phi(x)**2
+                  + k*x*math.sin(phase)*phi(x))
+
+
+def parameters(i):
+    s = A*math.exp(-i)
+    beta = BETA0*math.exp(-i*i)
+    alpha = math.sqrt(1.0-beta*beta/3.0)
+    return s, beta, alpha
+
+
+def p_log_hessian_upper(x, v):
+    entries = []
+    for i, vi in enumerate(v, start=1):
+        s, _, _ = parameters(i)
+        z = s*vi
+        den = 1.0+z*g(x[i-1])
+        gp = 2.0*phi(x[i-1])
+        entries.append(-1.0+z*gpp(x[i-1])/den-(z*gp/den)**2)
+    return max(entries)
+
+
+def c_log_hessian_upper(x0, xs, v):
+    h = 0.0
+    h00 = 0.0
+    other = []
+    for i, vi in enumerate(v, start=1):
+        s, beta, alpha = parameters(i)
+        phase = 2.0*math.pi*i*Phi(x0)
+        psi = SQRT2*math.cos(phase)
+        h += s*vi*(alpha*psi+beta*g(xs[i-1]))/SQRT3
+        h00 += s*vi*alpha*psi2(i,x0)/SQRT3
+        other.append(s*vi*beta*gpp(xs[i-1])/SQRT3)
+    return -1.0 + max([h00]+other)/(1.0+h)
+
+
+def hat_periodic_value(coeffs, j_count, u):
+    z = j_count*u
+    left = int(z) % j_count
+    alpha = z-math.floor(z)
+    right = (left+1) % j_count
+    return (1.0-alpha)*coeffs[left]+alpha*coeffs[right]
+
+
+def periodic_kernel_error(j_count, mode, grid_n=32768):
+    masses = [0.0]*j_count
+    vals, labels = [], []
+    for k in range(grid_n):
+        t = (k+0.5)/grid_n
+        z = j_count*t
+        left = int(z) % j_count
+        alpha = z-math.floor(z)
+        right = (left+1) % j_count
+        val = SQRT2*math.cos(2.0*math.pi*mode*t)
+        vals.append(val)
+        labels.append((left,right,alpha))
+        masses[left] += (1-alpha)*val/grid_n
+        masses[right] += alpha*val/grid_n
+    return max(abs(j_count*((1-a)*masses[l]+a*masses[r])-v)
+               for v,(l,r,a) in zip(vals,labels))
+
+
+def graded_mesh_bias(j_count, grid_n=20001):
+    nodes = [-1.0 + 6.0*(j/j_count)**2 - 4.0*(j/j_count)**3
+             for j in range(j_count+1)]
+    masses = []
+    means = []
+    for j in range(j_count+1):
+        left = nodes[j]-nodes[j-1] if j&gt;0 else 0.0
+        right = nodes[j+1]-nodes[j] if j&lt;j_count else 0.0
+        mass = (left+right)/4.0  # uniform[-1,1] base measure
+        if j == 0:
+            mean = nodes[0]+right/3.0
+        elif j == j_count:
+            mean = nodes[j]-left/3.0
+        else:
+            mean = nodes[j]+(right-left)/3.0
+        masses.append(mass)
+        means.append(mean)
+    max_bias = 0.0
+    for k in range(grid_n):
+        u = -1.0+2.0*k/(grid_n-1)
+        j = next((z for z in range(j_count)
+                  if nodes[z] &lt;= u &lt;= nodes[z+1]), j_count-1)
+        alpha = (u-nodes[j])/(nodes[j+1]-nodes[j])
+        decoded_mean = (1-alpha)*means[j]+alpha*means[j+1]
+        max_bias = max(max_bias, abs(decoded_mean-u))
+    return max_bias
+
+
+def main():
+    q = math.exp(-2.0)
+    s4 = q*(1+11*q+11*q*q+q**3)/(1-q)**5
+    s2 = q/(1-q)
+    assert s2 &lt; 1.0/6.0 and s4 &lt; 1.0
+    delta = A/math.sqrt(6.0)
+    g2 = 2.0/math.sqrt(2.0*math.pi*math.e)
+    p_h2 = A*g2
+    c_h2 = max(9.0*math.sqrt(2.0/3.0)*A,
+               A*BETA0*g2/math.sqrt(3.0))
+    p_curv = -1.0+p_h2/(1.0-delta)
+    c_curv = -1.0+c_h2/(1.0-delta)
+    assert p_curv &lt; -0.999 and c_curv &lt; -0.99
+
+    d=12
+    v=[(-1.0)**i/math.sqrt(d) for i in range(1,d+1)]
+    xs=[-3.0+6.0*k/600.0 for k in range(601)]
+    p_grid=max(p_log_hessian_upper(xs, v) for _ in [0])
+    c_grid=max(c_log_hessian_upper(x0, [0.25]*d, v) for x0 in xs)
+
+    periodic=[]
+    for j_count in (8,16,32):
+        err=periodic_kernel_error(j_count, mode=3)
+        bound=8.0*SQRT2*math.pi**2*3**2/(j_count*j_count)
+        assert err &lt;= bound + 2e-4
+        periodic.append({&quot;J&quot;:j_count,&quot;mode&quot;:3,&quot;grid_sup_bias&quot;:err,
+                         &quot;analytic_bound&quot;:bound})
+
+    graded=[]
+    for j_count in (2,4,8,16,32):
+        err=graded_mesh_bias(j_count)
+        bound=4.0/(j_count*j_count)
+        assert err &lt;= bound + 1e-8
+        graded.append({&quot;J&quot;:j_count,&quot;grid_sup_bias&quot;:err,
+                       &quot;analytic_bound&quot;:bound})
+
+    schedules=[]
+    for L in (25.0,100.0,400.0):
+        eps=math.exp(-L)
+        d_chosen=math.ceil(L)
+        tail_cut=SQRT3*eps/16.0
+        active=[i for i in range(1,d_chosen+1)
+                if parameters(i)[0]*parameters(i)[1] &gt; tail_cut]
+        k=len(active)
+        c_shared=8.0*SQRT2*math.pi**2*A/SQRT3
+        d0=max(5,math.ceil(math.sqrt(2.0*c_shared/eps)))
+        bits=math.log2(d0)
+        for i in active:
+            s,beta,_=parameters(i)
+            ji=max(2,math.ceil(math.sqrt(16.0*s*beta/(SQRT3*eps))) )
+            bits += math.log2(ji+1)
+        active_l2=eps/4.0
+        q_tail=(parameters(k+1)[0]*parameters(k+1)[1]
+                if k+1 &lt;= d_chosen else 0.0)
+        omitted_l2=q_tail/3.0
+        schedules.append({&quot;ln1_over_eps&quot;:L,&quot;d_chosen&quot;:d_chosen,
+                          &quot;active_noise_coordinates&quot;:k,
+                          &quot;archive_bits_upper_from_schedule&quot;:bits,
+                          &quot;shared_density_sup_bound&quot;:eps/2.0,
+                          &quot;active_noise_density_l2_bound&quot;:active_l2,
+                          &quot;omitted_noise_density_l2_bound&quot;:omitted_l2,
+                          &quot;spectral_sum_order_scale&quot;:L*L})
+
+    print(json.dumps({
+        &quot;scope&quot;:&quot;finite diagnostics only; proof and asymptotic cost are in R2.txt&quot;,
+        &quot;a&quot;:A,&quot;beta0&quot;:BETA0,&quot;d_grid&quot;:d,
+        &quot;sum_exp_minus_2i&quot;:s2,&quot;sum_i4_exp_minus_2i&quot;:s4,
+        &quot;uniform_abs_h_bound&quot;:delta,
+        &quot;P_log_hessian_upper_bound&quot;:p_curv,
+        &quot;C_log_hessian_upper_bound&quot;:c_curv,
+        &quot;P_grid_log_hessian_upper&quot;:p_grid,
+        &quot;C_grid_log_hessian_upper&quot;:c_grid,
+        &quot;periodic_codec&quot;:periodic,
+        &quot;graded_uniform_codec&quot;:graded,
+        &quot;memory_schedules&quot;:schedules,
+        &quot;score_covariance&quot;:&quot;both exactly diag(s_i^2/3)&quot;,
+    },indent=2))
+
+
+if __name__==&quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/1b011cb8e88366679581a105893b6a947f972784fe63ae85f7bb13e4aa60837c.py">Exact original bytes</a></p></html>

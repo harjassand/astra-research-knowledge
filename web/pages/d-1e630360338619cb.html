@@ -1,0 +1,151 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c01_l03/plucker_replica_sos.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c01_l03/plucker_replica_sos.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact small diagnostics for the two-replica Grassmann-Plucker inequality.&quot;&quot;&quot;
+from itertools import combinations
+from random import Random
+
+
+def det_int(a):
+    &quot;&quot;&quot;Bareiss determinant over integers.&quot;&quot;&quot;
+    a = [list(map(int, row)) for row in a]
+    n = len(a)
+    if n == 0:
+        return 1
+    sign = 1
+    prev = 1
+    for k in range(n - 1):
+        pivot = next((i for i in range(k, n) if a[i][k]), None)
+        if pivot is None:
+            return 0
+        if pivot != k:
+            a[k], a[pivot] = a[pivot], a[k]
+            sign = -sign
+        p = a[k][k]
+        for i in range(k + 1, n):
+            for j in range(k + 1, n):
+                a[i][j] = (a[i][j] * p - a[i][k] * a[k][j]) // prev
+        for i in range(k + 1, n):
+            a[i][k] = 0
+        prev = p
+    return sign * a[n - 1][n - 1]
+
+
+def ordered_minor(v, cols):
+    return det_int([[row[j] for j in cols] for row in v])
+
+
+def check_matrix(v):
+    n, m = len(v), len(v[0])
+    bases = list(combinations(range(m), n))
+    p = {a: ordered_minor(v, a) for a in bases}
+    checked = 0
+    positive_endpoints = 0
+    max_factor = 0
+    for A in bases:
+        sA = set(A)
+        for B in bases:
+            diff = sA - set(B)
+            if not diff:
+                continue
+            for a in diff:
+                X = [x for x in A if x != a]
+                Y = [a, *B]
+                # Plucker identity in ordered-bracket convention:
+                # sum_t (-1)^t [X,y_t] [Y with y_t omitted] = 0.
+                terms = []
+                for t, y in enumerate(Y):
+                    first = ordered_minor(v, [*X, y])
+                    second = ordered_minor(v, [z for j, z in enumerate(Y) if j != t])
+                    terms.append(((-1) ** t) * first * second)
+                assert sum(terms) == 0, (v, A, B, a, terms)
+                endpoint = terms[0]
+                # Terms for y in A intersect B vanish because [X,y]=0.
+                active = [abs(t) for t in terms[1:] if t]
+                d = len(set(B) - sA)
+                assert len(terms) == n + 1
+                # Cauchy-Schwarz after isolating the endpoint term.
+                rhs = d * sum(x * x for x in active)
+                assert endpoint * endpoint &lt;= rhs, (v, A, B, a, endpoint, rhs)
+                checked += 1
+                if endpoint:
+                    positive_endpoints += 1
+                    assert active
+                    max_factor = max(max_factor, d)
+    return checked, positive_endpoints, max_factor
+
+
+def paired_minor_matrix(F):
+    n = len(F)
+    # V=[I,F^T], with columns e_i first, then f_i (row i of F).
+    V = [[int(i == j) for j in range(n)] + [int(F[j][i]) for j in range(n)]
+          for i in range(n)]
+    return V
+
+
+def hard_pair_bases(V):
+    n = len(V)
+    out = {}
+    for sites in combinations(range(n), n // 2):
+        cols = tuple(sorted([*sites, *(n + i for i in sites)]))
+        out[sites] = ordered_minor(V, cols)
+    return out
+
+
+def check_F4():
+    F = [[0, 0, 1, 1],
+         [0, 0, 1, -1],
+         [0, 0, 0, 0],
+         [0, 0, 0, 0]]
+    V = paired_minor_matrix(F)
+    amps = hard_pair_bases(V)
+    # All ordered pairs of pair-closed bases, including zeros, obey the
+    # same Plucker/SOS bound when expanded in the 8-column representation.
+    n = len(V)
+    allcols = list(range(2 * n))
+    full_bases = list(combinations(allcols, n))
+    p = {A: ordered_minor(V, A) for A in full_bases}
+    checked = 0
+    for A_sites, a_amp in amps.items():
+        A = tuple(sorted([*A_sites, *(n + i for i in A_sites)]))
+        for B_sites, b_amp in amps.items():
+            B = tuple(sorted([*B_sites, *(n + i for i in B_sites)]))
+            if set(A) == set(B):
+                continue
+            a = next(x for x in A if x not in B)
+            X = [x for x in A if x != a]
+            Y = [a, *B]
+            terms = [((-1) ** t) * ordered_minor(V, [*X, y]) *
+                     ordered_minor(V, [z for j, z in enumerate(Y) if j != t])
+                     for t, y in enumerate(Y)]
+            assert sum(terms) == 0
+            endpoint = terms[0]
+            d = len(set(B) - set(A))
+            rhs = d * sum(t * t for t in terms[1:] if t)
+            assert endpoint * endpoint &lt;= rhs
+            checked += 1
+    return amps, checked
+
+
+def main():
+    rng = Random(610307)
+    totals = [0, 0]
+    for n, m, trials in [(2, 5, 12), (3, 6, 10), (4, 7, 5)]:
+        for _ in range(trials):
+            v = [[rng.randrange(-2, 3) for _ in range(m)] for _ in range(n)]
+            c, p, _ = check_matrix(v)
+            totals[0] += c
+            totals[1] += p
+    amps, paired_cases = check_F4()
+    print({
+        &quot;seed&quot;: 610307,
+        &quot;random_integer_matrices&quot;: 27,
+        &quot;ordered_gp_instances&quot;: totals[0],
+        &quot;nonzero_endpoint_instances&quot;: totals[1],
+        &quot;F4_pair_closed_amplitudes&quot;: {str(k): v for k, v in amps.items()},
+        &quot;F4_ordered_pair_closed_gp_instances&quot;: paired_cases,
+        &quot;status&quot;: &quot;PASS exact integer arithmetic&quot;
+    })
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/1419fb0e26399974bdca025d1653480695c058a0565b92f19e85064b6e21dcea.py">Exact original bytes</a></p></html>

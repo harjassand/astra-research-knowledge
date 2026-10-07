@@ -1,0 +1,243 @@
+#!/usr/bin/env python3
+"""Exact rational checks for cloner and bistochastic-instrument benchmarks.
+
+Only the small fixtures d=2,...,5 are executed.  The all-d statements are
+proved in INITIAL.txt; these checks validate the formulas and index
+conventions without numerical tolerances or an SDP solver.
+"""
+
+from __future__ import annotations
+
+from fractions import Fraction as Q
+import json
+import platform
+from pathlib import Path
+
+
+def zeros(rows: int, cols: int | None = None) -> list[list[Q]]:
+    cols = rows if cols is None else cols
+    return [[Q(0) for _ in range(cols)] for _ in range(rows)]
+
+
+def eye(n: int) -> list[list[Q]]:
+    a = zeros(n)
+    for i in range(n):
+        a[i][i] = Q(1)
+    return a
+
+
+def add(a: list[list[Q]], b: list[list[Q]]) -> list[list[Q]]:
+    return [[x + y for x, y in zip(ar, br)] for ar, br in zip(a, b)]
+
+
+def sub(a: list[list[Q]], b: list[list[Q]]) -> list[list[Q]]:
+    return [[x - y for x, y in zip(ar, br)] for ar, br in zip(a, b)]
+
+
+def scale(c: Q, a: list[list[Q]]) -> list[list[Q]]:
+    return [[c * x for x in row] for row in a]
+
+
+def transpose(a: list[list[Q]]) -> list[list[Q]]:
+    return [list(row) for row in zip(*a)]
+
+
+def mm(a: list[list[Q]], b: list[list[Q]]) -> list[list[Q]]:
+    bt = transpose(b)
+    return [[sum((x * y for x, y in zip(row, col)), Q(0)) for col in bt]
+            for row in a]
+
+
+def trace(a: list[list[Q]]) -> Q:
+    return sum((a[i][i] for i in range(len(a))), Q(0))
+
+
+def matrix_unit(d: int, a: int, b: int) -> list[list[Q]]:
+    x = zeros(d)
+    x[a][b] = Q(1)
+    return x
+
+
+def tensor(a: list[list[Q]], b: list[list[Q]]) -> list[list[Q]]:
+    out = zeros(len(a) * len(b), len(a[0]) * len(b[0]))
+    for i in range(len(a)):
+        for j in range(len(a[0])):
+            for k in range(len(b)):
+                for ell in range(len(b[0])):
+                    out[i * len(b) + k][j * len(b[0]) + ell] = a[i][j] * b[k][ell]
+    return out
+
+
+def swap_matrix(d: int) -> list[list[Q]]:
+    s = zeros(d * d)
+    for i in range(d):
+        for j in range(d):
+            s[j * d + i][i * d + j] = Q(1)
+    return s
+
+
+def partial_trace_second(y: list[list[Q]], d: int) -> list[list[Q]]:
+    out = zeros(d)
+    for a in range(d):
+        for b in range(d):
+            out[a][b] = sum((y[a * d + j][b * d + j] for j in range(d)), Q(0))
+    return out
+
+
+def partial_trace_first(y: list[list[Q]], d: int) -> list[list[Q]]:
+    out = zeros(d)
+    for a in range(d):
+        for b in range(d):
+            out[a][b] = sum((y[i * d + a][i * d + b] for i in range(d)), Q(0))
+    return out
+
+
+def depolarize(x: list[list[Q]], p: Q) -> list[list[Q]]:
+    d = len(x)
+    return add(scale(p, x), scale((1 - p) * trace(x) / d, eye(d)))
+
+
+def check_universal_cloner(d: int) -> dict[str, object]:
+    # B(X) = 2/(d+1) P_sym (X tensor I) P_sym, Werner's N=1,M=2 map.
+    p_sym = scale(Q(1, 2), add(eye(d * d), swap_matrix(d)))
+    scale_b = Q(2, d + 1)
+    tested = 0
+    for a in range(d):
+        for b in range(d):
+            x = matrix_unit(d, a, b)
+            out = scale(scale_b, mm(mm(p_sym, tensor(x, eye(d))), p_sym))
+            first = partial_trace_second(out, d)
+            second = partial_trace_first(out, d)
+            target = depolarize(x, Q(d + 2, 2 * (d + 1)))
+            assert first == target, (d, a, b, "first marginal")
+            assert second == target, (d, a, b, "second marginal")
+            assert trace(out) == trace(x), (d, a, b, "trace preservation")
+            assert mm(mm(swap_matrix(d), out), swap_matrix(d)) == out
+            tested += 1
+
+    p = Q(d + 2, 2 * (d + 1))
+    q = Q(1, d + 1)
+    dirichlet_left = 1 - q
+    dirichlet_right = 2 * (1 - p)
+    assert dirichlet_left == dirichlet_right == Q(d, d + 1)
+
+    # Normalized Choi state of a depolarizing map:
+    # p |Omega><Omega| + (1-p) I/d^2.
+    omega_projector = zeros(d * d)
+    for i in range(d):
+        for j in range(d):
+            omega_projector[i * d + i][j * d + j] = Q(1, d)
+    choi = zeros(d * d)
+    for a in range(d):
+        for b in range(d):
+            choi = add(choi, scale(Q(1, d), tensor(depolarize(matrix_unit(d, a, b), p),
+                                                   matrix_unit(d, a, b))))
+    expected_choi = add(scale(p, omega_projector),
+                        scale((1 - p) / (d * d), eye(d * d)))
+    assert choi == expected_choi
+    singlet_overlap = trace(mm(omega_projector, choi))
+    assert singlet_overlap == p + (1 - p) / (d * d)
+    assert singlet_overlap > Q(1, d)
+
+    # The EB endpoint q=1/(d+1) has exact product/Haar decomposition
+    # J = (I + d |Omega><Omega|)/(d(d+1)).
+    eb_choi = add(scale(q, omega_projector),
+                  scale((1 - q) / (d * d), eye(d * d)))
+    haar_second_moment = scale(Q(1, d * (d + 1)),
+                               add(eye(d * d), scale(Q(d), omega_projector)))
+    assert eb_choi == haar_second_moment
+    assert trace(mm(omega_projector, eb_choi)) == Q(1, d)
+
+    return {
+        "dimension": d,
+        "matrix_units_checked": tested,
+        "cloner_parameter_p": str(p),
+        "eb_parameter_q": str(q),
+        "symmetric_cptp_marginals_exact": True,
+        "dirichlet_factor_2_equality_exact": True,
+        "cloner_choi_overlap": str(singlet_overlap),
+        "separable_eb_endpoint_choi_exact": True,
+    }
+
+
+def idx(d: int, a: int, b: int) -> int:
+    return a * d + b
+
+
+def instrument_superoperators(d: int = 3) -> dict[str, object]:
+    # K0=sqrt(1/3) I, K1=sqrt(2/3) S, S the cyclic shift.
+    # The probabilities cancel in M_y/p_y, so canonical Psi is the
+    # completely depolarizing conditional-expectation map D.
+    n = d * d
+    ident = eye(n)
+    shift_adj = zeros(n)
+    for a in range(d):
+        for b in range(d):
+            shift_adj[idx(d, (a + 1) % d, (b + 1) % d)][idx(d, a, b)] = Q(1)
+    dep = zeros(n)
+    for a in range(d):
+        dep[idx(d, a, a)][idx(d, a, a)] = Q(1, d)
+        # Each diagonal matrix unit maps to I/d.
+        for i in range(d):
+            dep[idx(d, i, i)][idx(d, a, a)] = Q(1, d)
+    alpha, beta = Q(1, 3), Q(2, 3)
+    l = add(scale(alpha, ident), scale(beta, shift_adj))
+    c = scale(Q(1, 2), add(l, dep))
+    phi = mm(transpose(c), c)
+
+    lhs = sub(scale(Q(2), sub(ident, phi)), sub(ident, dep))
+    gram1 = sub(ident, mm(transpose(l), l))
+    gram2 = sub(dep, mm(dep, dep))
+    gram3 = scale(Q(1, 2), mm(transpose(sub(l, dep)), sub(l, dep)))
+    rhs = add(add(gram1, gram2), gram3)
+    assert lhs == rhs
+    assert gram1 == scale(alpha * beta,
+                          mm(transpose(sub(ident, shift_adj)), sub(ident, shift_adj)))
+    assert gram2 == zeros(n)
+
+    # H=S+S* is a nonzero traceless Hermitian fixed point of Ad_S.
+    shift = zeros(d)
+    for a in range(d):
+        shift[(a + 1) % d][a] = Q(1)
+    h = add(shift, transpose(shift))
+    hvec = [h[a][b] for a in range(d) for b in range(d)]
+    trh = trace(h)
+    assert trh == 0
+    assert any(x for x in hvec)
+    l_h = [sum((l[i][j] * hvec[j] for j in range(n)), Q(0)) for i in range(n)]
+    dep_h = [sum((dep[i][j] * hvec[j] for j in range(n)), Q(0)) for i in range(n)]
+    phi_h = [sum((phi[i][j] * hvec[j] for j in range(n)), Q(0)) for i in range(n)]
+    assert l_h == hvec
+    assert dep_h == [Q(0)] * n
+    assert phi_h == [x / 4 for x in hvec]
+
+    # On traceless operators D=0 and Phi=L*L/4 <= I/4.  Hence
+    # I-D <= (4/3)(I-Phi), with equality on H.
+    return {
+        "dimension": d,
+        "kraus_probabilities": ["1/3", "2/3"],
+        "L_is_nonselfadjoint": transpose(l) != l,
+        "canonical_EB_map": "D(X)=Tr(X) I/d",
+        "corrected_Phi_is_CstarC": True,
+        "instrument_SOS_identity_exact": True,
+        "traceless_fixed_witness_ratio_for_D": "4/3",
+        "D_comparison_factor_4_over_3_sharp_for_this_D": True,
+    }
+
+
+def main() -> None:
+    result = {
+        "arithmetic": "Python fractions.Fraction; exact rational operations",
+        "python": platform.python_version(),
+        "universal_cloners": [check_universal_cloner(d) for d in (2, 3, 4, 5)],
+        "nonselfadjoint_qutrit_instrument": instrument_superoperators(3),
+        "solver_used": False,
+        "floating_point_used": False,
+    }
+    out = Path(__file__).with_name("exact_checks.json")
+    out.write_text(json.dumps(result, indent=2) + "\n")
+    print(json.dumps(result, indent=2))
+
+
+if __name__ == "__main__":
+    main()

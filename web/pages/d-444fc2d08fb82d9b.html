@@ -1,0 +1,129 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c09_l06/interface_audit.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c09_l06/interface_audit.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Exact finite checks for the archive-channel interface audit.
+
+This is a finite diagnostic of normalizations and the proper-score coefficient,
+not a proof of the asymptotic memory theorem or its quantum information bound.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+import json
+from pathlib import Path
+
+
+def periodic_hat_channel(J=4, N=16):
+    assert N % J == 0
+    nodes = [F(j, J) for j in range(J)]
+
+    def hat(j, k):
+        x = F(k, N)
+        delta = abs(x - nodes[j])
+        delta = min(delta, 1 - delta)
+        return max(F(0), 1 - J * delta)
+
+    phi = [[hat(j, k) for k in range(N)] for j in range(J)]
+    assert all(sum(phi[j][k] for j in range(J)) == 1 for k in range(N))
+    masses = [sum(row, F(0)) / N for row in phi]
+    decoder = [[phi[j][y] / (N * masses[j]) for j in range(J)]
+               for y in range(N)]  # decoder[y][j]
+    assert all(sum(decoder[y][j] for y in range(N)) == 1 for j in range(J))
+    kernel = [[sum(phi[j][x] * decoder[y][j] for j in range(J))
+               for x in range(N)] for y in range(N)]
+    assert all(sum(kernel[y][x] for y in range(N)) == 1 for x in range(N))
+    assert all(sum(kernel[y][x] for x in range(N)) == 1 for y in range(N))
+    assert all(kernel[y][x] == kernel[x][y]
+               for y in range(N) for x in range(N))
+    # K is a Gram matrix: z^T K z = sum_j (sum_x z_x phi_j(x))^2/(N m_j).
+    z = [F((k * 7) % 11 - 5, 3) for k in range(N)]
+    quadratic_form = sum((sum(z[x] * phi[j][x] for x in range(N)) ** 2)
+                          / (N * masses[j]) for j in range(J))
+    assert quadratic_form &gt;= 0
+    return {&quot;labels_D&quot;: J, &quot;output_points&quot;: N,
+            &quot;reference_masses&quot;: [str(x) for x in masses],
+            &quot;column_sums_one&quot;: True, &quot;row_sums_one&quot;: True,
+            &quot;symmetric&quot;: True, &quot;gram_quadratic_form&quot;: str(quadratic_form)}
+
+
+def proper_score_and_tv():
+    # Common reference mu on {-1,0,1}; P_±(x)=mu(x)(1±s x), s=1/2.
+    mu = {F(-1): F(1, 3), F(0): F(1, 3), F(1): F(1, 3)}
+    s = F(1, 2)
+
+    def Fscore(p):
+        if p &lt; F(1, 4):
+            return F(3, 8) - p
+        if p &lt;= F(3, 4):
+            return 2 * (p - F(1, 2)) ** 2
+        return p - F(5, 8)
+
+    def dF(p):
+        if p &lt; F(1, 4):
+            return F(-1)
+        if p &lt;= F(3, 4):
+            return 4 * p - 2
+        return F(1)
+
+    def loss(t, p):
+        endpoint = Fscore(F(t))
+        return endpoint - Fscore(p) - (F(t) - p) * dF(p)
+
+    plus = {x: mu[x] * (1 + s * x) for x in mu}
+    minus = {x: mu[x] * (1 - s * x) for x in mu}
+    tv_plus = sum(abs(plus[x] - mu[x]) for x in mu) / 2
+    tv_minus = sum(abs(minus[x] - mu[x]) for x in mu) / 2
+
+    def posterior(x):
+        return (1 + s * x) / 2
+
+    # D_F(r,q)=s(U-V)^2/4 for these posterior values.
+    distortion = sum(mu[x] * mu[y] *
+                     (Fscore(posterior(x)) - Fscore(posterior(y))
+                      - (posterior(x) - posterior(y)) * dF(posterior(y)))
+                     for x in mu for y in mu)
+    expected_square = sum(mu[x] * mu[y] * (x - y) ** 2 for x in mu for y in mu)
+    assert distortion == s * expected_square / 4
+    # Directly check the average proper-score risk difference under T-X-Y,
+    # where the D=1 decoder outputs an independent reference sample Y~mu.
+    risk_x = sum(mu[x] *
+                 (posterior(x) * loss(1, posterior(x))
+                  + (1 - posterior(x)) * loss(0, posterior(x)))
+                 for x in mu)
+    risk_y = sum(mu[x] * mu[y] *
+                 (posterior(x) * loss(1, posterior(y))
+                  + (1 - posterior(x)) * loss(0, posterior(y)))
+                 for x in mu for y in mu)
+    assert risk_y - risk_x == distortion
+    all_losses = [loss(t, posterior(x)) for t in (0, 1) for x in mu]
+    assert min(all_losses) &gt;= 0 and max(all_losses) &lt;= 1
+    return {&quot;D&quot;: 1, &quot;tv_plus&quot;: str(tv_plus), &quot;tv_minus&quot;: str(tv_minus),
+            &quot;expected_squared_feature_error&quot;: str(expected_square),
+            &quot;expected_Bregman_regret&quot;: str(distortion),
+            &quot;risk_difference&quot;: str(risk_y - risk_x),
+            &quot;loss_range&quot;: [str(min(all_losses)), str(max(all_losses))]}
+
+
+def prior_average_is_not_uniform():
+    eta = F(1, 100)
+    p0 = {0: F(1, 2), 1: F(1, 2)}
+    p1 = {0: F(1, 4), 1: F(3, 4)}
+    tv = sum(abs(p0[x] - p1[x]) for x in p0) / 2
+    average = eta * tv  # zero-memory decoder always emits P_0
+    worst = tv
+    assert average == F(1, 400) and worst == F(1, 4)
+    return {&quot;parameter_prior_mass_on_hard_state&quot;: str(eta),
+            &quot;D&quot;: 1, &quot;prior_average_tv&quot;: str(average),
+            &quot;worst_case_tv&quot;: str(worst)}
+
+
+def main():
+    result = {
+        &quot;scope&quot;: &quot;finite exact interface and normalization checks only&quot;,
+        &quot;periodic_hat_channel&quot;: periodic_hat_channel(),
+        &quot;proper_score_tv_transfer&quot;: proper_score_and_tv(),
+        &quot;average_vs_uniform&quot;: prior_average_is_not_uniform(),
+    }
+    path = Path(__file__).with_name(&quot;interface_audit.json&quot;)
+    path.write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+    print(json.dumps(result, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/62d6a8934f71d988db0285bd00974c9f2feca2069dd25cd1259a679adaed4502.py">Exact original bytes</a></p></html>

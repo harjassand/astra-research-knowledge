@@ -1,0 +1,160 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c08_s03/revisions/c07_simulator/verify_weight_envelopes.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c08_s03/revisions/c07_simulator/verify_weight_envelopes.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Independent exact audit of S03&#x27;s saved 512-panel weight constant.
+
+Uses its OWN elementary interval kernel (160 bits) and NO peer imports.
+Every Darboux enclosure and tail, not just a reported final number, is read.
+Analytic envelope derivation is supplied in WEIGHT_ENVELOPE_AUDIT.txt.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from pathlib import Path
+from math import factorial
+import hashlib
+import json
+import time
+
+HERE = Path(__file__).resolve().parent
+P = 160
+GRID = 1 &lt;&lt; P
+
+
+def outward(lo, hi):
+    assert lo &lt;= hi
+    a, b = lo * GRID, hi * GRID
+    return (F(a.numerator // a.denominator, GRID),
+            F(-((-b.numerator) // b.denominator), GRID))
+
+
+def exp_interval(x):
+    x = F(x)
+    if x &lt;= -P:
+        return F(0), F(1, GRID)  # e&gt;2, and no declaration of exact zero.
+    if x &lt; 0:
+        a, b = exp_interval(-x)
+        assert a &gt; 0
+        return outward(1 / b, 1 / a)
+    reduced, halvings = x, 0
+    while reduced &gt; F(1, 2):
+        reduced /= 2
+        halvings += 1
+    order = 48
+    lo = sum(reduced ** k / factorial(k) for k in range(order + 1))
+    hi = lo + reduced ** (order + 1) / (factorial(order + 1) * (1 - reduced))
+    lo, hi = outward(lo, hi)
+    for _ in range(halvings):
+        lo, hi = outward(lo * lo, hi * hi)
+    return lo, hi
+
+
+def gaussian_tail_upper(q, L):
+    return exp_interval(-q * L * L)[1] * (L / (2 * q) + 1 / (4 * q * q * L))
+
+
+def check_panels(rows, c, d, e, lower):
+    cumulative = F(0)
+    independent = F(0)
+    preceding = F(0)
+    for row in rows:
+        a, b = F(row[&#x27;a&#x27;]), F(row[&#x27;b&#x27;])
+        assert a == preceding and b &gt; a
+        preceding = b
+        # Natural interval polynomial range, without dyadic intermediate
+        # rounding. The peer&#x27;s 96-bit boxes must contain these 160-bit bounds.
+        if d &gt;= 0:
+            exponent_lo = -c * b ** 4 + d * a ** 2 + e * a
+            exponent_hi = -c * a ** 4 + d * b ** 2 + e * b
+        else:
+            exponent_lo = -c * b ** 4 + d * b ** 2 + e * a
+            exponent_hi = -c * a ** 4 + d * a ** 2 + e * b
+        independent_lo = a * a * exp_interval(exponent_lo)[0]
+        independent_hi = b * b * exp_interval(exponent_hi)[1]
+        lo, hi = F(row[&#x27;integrand_interval&#x27;][&#x27;lo&#x27;]), F(row[&#x27;integrand_interval&#x27;][&#x27;hi&#x27;])
+        assert lo &lt;= independent_lo &lt;= independent_hi &lt;= hi
+        charged = (b - a) * (lo if lower else hi)
+        assert charged == F(row[&#x27;charged_contribution&#x27;])
+        cumulative += charged
+        independent += (b - a) * (independent_lo if lower else independent_hi)
+    return cumulative, independent, preceding
+
+
+def main():
+    started = time.monotonic()
+    payload_path = HERE / &#x27;peer_weight_constant_snapshot.json&#x27;
+    data = json.loads(payload_path.read_text())
+    p = data[&#x27;parameters&#x27;]
+    k, q = data[&#x27;constants&#x27;], data[&#x27;quadrature&#x27;]
+    M, B, Lambda, Lc, Tc = (F(p[key]) for key in (&#x27;M&#x27;, &#x27;B&#x27;, &#x27;Lambda&#x27;, &#x27;Lc&#x27;, &#x27;trace_C_upper&#x27;))
+    assert (M, B, Lambda, Lc, Tc) == (F(1, 10), F(1, 5), F(11, 10), F(6, 5), F(18, 5))
+    nmin, sqrt_n, fourth_n = 65536, F(256), F(16)
+    assert p[&#x27;N_min&#x27;] == nmin and p[&#x27;p&#x27;] == 2
+    theta, young = F(p[&#x27;theta&#x27;]), F(p[&#x27;Young_parameter&#x27;])
+    amp = F(k[&#x27;drift_amplification_upper&#x27;])
+    assert amp &gt;= exp_interval(Lc / (2 * sqrt_n))[1]
+    beta = B / (2 * sqrt_n)
+    d = 2 * Lc * amp ** 2 * (1 + theta) / 16
+    e = 2 * B * amp / 4
+    kz = 2 * Lc * amp ** 2 * (1 + 1 / theta) / 2
+    ellz = 2 * B * amp / 2
+    K = kz + young / 2
+    aa = F(nmin) / (3 * Tc)
+    assert aa &gt; K
+    mart = 1 + 6 * K / (aa - K)
+    exponent = 2 * Tc / (4 * sqrt_n) + kz * beta ** 2 + ellz * beta + ellz ** 2 / (2 * young)
+    assert d == F(k[&#x27;seed_quadratic_tilt&#x27;]) and e == F(k[&#x27;seed_linear_tilt&#x27;])
+    assert K == F(k[&#x27;martingale_K&#x27;]) and aa == F(k[&#x27;martingale_tail_a_lower&#x27;])
+    assert mart == F(k[&#x27;conditional_martingale_factor_upper&#x27;])
+    assert exponent == F(k[&#x27;prefactor_exponent_upper&#x27;])
+    prefactor = F(k[&#x27;prefactor_upper&#x27;])
+    assert prefactor &gt;= exp_interval(exponent)[1] * mart
+    exp044 = exp_interval(F(11, 25))
+    exp1, expminus1 = exp_interval(1), exp_interval(-1)
+    cosh1_hi = (exp1[1] + expminus1[1]) / 2
+    assert exp044[0] &gt; cosh1_hi  # hence delta&gt;3/50.
+    delta_lo = F(q[&#x27;delta_lower&#x27;])
+    assert delta_lo == F(3, 50)
+    upper_d = d - Lambda / 16 + 1 / (24 * sqrt_n)
+    c, L = F(11, 2880), F(16)
+    assert upper_d == F(q[&#x27;upper_quadratic_coefficient&#x27;])
+    assert upper_d / L ** 2 + e / L ** 3 &lt;= c / 2
+    exterior_coef = delta_lo * sqrt_n / 4 - d - 1 / (4 * sqrt_n) - e / (2 * fourth_n)
+    assert exterior_coef == F(q[&#x27;exterior_coefficient_lower&#x27;]) &gt;= 1
+    dmin = 1 - Lambda / (2 * sqrt_n)
+    lower, own_lower, low_cap = check_panels(q[&#x27;lower_panels&#x27;], F(1, 192), -Lambda / (16 * dmin), F(0), True)
+    upper, own_upper, up_cap = check_panels(q[&#x27;upper_panels&#x27;], c, upper_d, e, False)
+    assert low_cap == up_cap == L
+    assert len(q[&#x27;lower_panels&#x27;]) == len(q[&#x27;upper_panels&#x27;]) == 512
+    assert lower == F(k[&#x27;seed_normalizer_lower&#x27;]) &gt; 0
+    tailq = c * L ** 2 / 2
+    assert tailq == F(q[&#x27;upper_tail_q&#x27;])
+    tail_upper = F(q[&#x27;upper_envelope_tail&#x27;])
+    exterior_tail = F(q[&#x27;exterior_seed_tail&#x27;])
+    assert tail_upper &gt;= gaussian_tail_upper(tailq, L)
+    assert exterior_tail &gt;= gaussian_tail_upper(F(1), 2 * fourth_n)
+    upper_integral = upper + tail_upper + exterior_tail
+    assert upper_integral == F(k[&#x27;seed_tilt_integral_upper&#x27;])
+    seed_moment = upper_integral / lower
+    assert seed_moment == F(k[&#x27;seed_tilt_moment_upper&#x27;])
+    K2 = prefactor * seed_moment
+    assert K2 == F(k[&#x27;weight_p_moment_upper&#x27;]) &lt; F(17173, 1000)
+    inverse_mean_sq = F(k[&#x27;inverse_mean_squared_upper&#x27;])
+    assert inverse_mean_sq &gt;= exp_interval(B * B)[1]
+    proposal = inverse_mean_sq * K2
+    assert proposal == F(k[&#x27;importance_proposal_coefficient_upper&#x27;]) &lt; F(17874, 1000)
+    result = {&#x27;status&#x27;: &#x27;PASS_INDEPENDENT_ENVELOPES_AND_CONSTANT_FORMULAS&#x27;,
+              &#x27;origin_worker&#x27;: &#x27;c07_s03&#x27;, &#x27;auditor&#x27;: &#x27;c08_s03&#x27;,
+              &#x27;peer_snapshot_sha256&#x27;: hashlib.sha256(payload_path.read_bytes()).hexdigest(),
+              &#x27;own_interval_bits&#x27;: P, &#x27;all_1024_panels_enclosed&#x27;: True,
+              &#x27;parameter_scope&#x27;: &#x27;M=1/10,B=1/5,all N&gt;=65536,exact heat seed contracted radially&#x27;,
+              &#x27;K2_upper_exact&#x27;: str(K2), &#x27;proposal_coefficient_upper_exact&#x27;: str(proposal),
+              &#x27;K2_display&#x27;: float(K2), &#x27;proposal_coefficient_display&#x27;: float(proposal),
+              &#x27;own_lower_sum_display&#x27;: float(own_lower), &#x27;own_upper_sum_display&#x27;: float(own_upper),
+              &#x27;elapsed_seconds&#x27;: time.monotonic() - started,
+              &#x27;quantum_heat_identity&#x27;: &#x27;IMPORTED_S02_BASELINE_NOT_PROVED_BY_QUADRATURE&#x27;,
+              &#x27;integrated_sampler&#x27;: &#x27;NOT_EXECUTED_HERE&#x27;}
+    (HERE / &#x27;weight_envelope_verification.json&#x27;).write_text(json.dumps(result, indent=2) + &#x27;\n&#x27;)
+    print(json.dumps({key: value for key, value in result.items()
+                      if not key.endswith(&#x27;_exact&#x27;)}))
+
+
+if __name__ == &#x27;__main__&#x27;:
+    main()
+</pre><p><a href="../assets/5ff2b4b71e6e8c018c03eaca4768df28bce66f1683bf7170f007748e9058a597.py">Exact original bytes</a></p></html>

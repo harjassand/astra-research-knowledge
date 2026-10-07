@@ -1,0 +1,300 @@
+C01_S03 PHASE-TWO LOW-SECTOR ACQUISITION — 7 OCTOBER 2026
+Internal proof and independently written implementation; external review and
+priority UNKNOWN. This is an attributed continuation after all INITIALs froze.
+
+RESULT AND LEGAL INTERFACE
+
+Input is an explicit n x n matrix F over Q(i), total bit length L, an integer
+0 <= k <= n/2, and rational error/confidence parameters. Let
+
+ W_k(A,B,E) = sum_{|I|=|J|=k, I intersect J=empty,
+                    A subset I, B subset J, (I union J) intersect E=empty}
+                    |det F[I,J]|^2,
+
+where A,B,E are disjoint site sets. There is an acquired, nonnegative unbiased
+per-sign estimator for every physical prefix mass W_k(A,B,E), not merely a
+row marginal. With a=|A|, b=|B|, its pointwise and second-moment bounds are
+
+  0 <= X <= C W,  E X = W,  E X^2 <= C W^2,
+  C = binom(2k-a-b,k-a).
+
+Impossible counts give exact zero. If C=1, every draw equals W exactly.
+Each draw uses at most 2^b(2a+1) polynomial-bit matrix-coefficient operations.
+Because 2^b C <= binom(2k,k), all physical prefixes admit relative randomized
+approximation in binom(2k,k) poly(n,k,L,eta^-1,log(delta^-1)) bit time.
+
+Sequential self-reduction therefore gives an acquired TV-epsilon sampler for
+Pr[I,J]=|det F[I,J]|^2/c_k(F), under the promise c_k(F)>0, in
+binom(2k,k) poly(n,k,L,epsilon^-1,log(n/epsilon)) bit time. The implementation
+has deterministic sample/random-bit caps. It returns a supported pair (I,J),
+or FAIL; FAIL has target mass zero and is charged within the TV guarantee.
+Every successful output is supported even when an estimator confidence event
+fails. No zero-support oracle, normalizer, supplied cut ordering, annealing
+kernel or exact sampler is assumed. c_k=0 is exactly zero on every estimator
+draw, but observing estimator output zero on a positive instance is possible
+with probability at most delta, so it is not an exact-zero certificate.
+
+For k=O(log n) both relative counting and approximate classical Born sampling
+are polynomial. For k=Theta(n) the central-binomial factor remains exponential.
+This does not close the unrestricted canonical-sector FPRAS or energy gate,
+nor furnish coherent state preparation, approximation hardness or novelty.
+
+ATTRIBUTION AND INDEPENDENCE
+
+The random-sign Pfaffian estimator originates in c03_l10 INITIAL; the generic
+forced-line projection and TV self-reduction in c03_l06's attributed revision;
+the central-binomial pointwise bound and physical-prefix finite differences
+plus ambient inclusion-exclusion in c03_s02's audit. These ideas were read only
+after phase-two release. This worker independently reconstructed their proof,
+wrote its own coefficient engine/estimator/sampler/comparators, and added a
+single-mean multiplicative-Chernoff cap, successful-output support guarantee,
+FAIL convention, and bounded enumeration/memoization optimizations. The
+Chernoff and coupling methods are standard. This is validation/acquisition of
+an attributed low-sector gate, not an independent INITIAL discovery.
+
+1. PFAFFIAN FOURIER EXPANSION, INCLUDING EXACT SIGNS
+
+Let u_i=e_i, v_i=(row_i F)^T, and order paired columns as
+(u_1,v_1,u_2,v_2,...). For real activities x_i set
+
+ K(x) = sum_i x_i(u_i v_i^T - v_i u_i^T)
+      = diag(x) F - F^T diag(x).
+
+Expanding the exterior power of sum_i x_i u_i wedge v_i gives, on an ordered
+ambient subset R of size 2k,
+
+ Pf K(x)[R] = sum_{I subset R, |I|=k} d_{R,I} product_{i in I} x_i,
+ d_{R,I}=det V[R,P(I)].
+
+Terms with I outside R vanish because an identity column is zero there.
+Expanding the identity columns shows d_{R,I}=signed det F[I,R\I]. The signs
+are irrelevant after Parseval, but are retained in the per-sign amplitude.
+No positivity of F, determinants or Pfaffian coefficients is assumed.
+
+To force up sites A, set their activities to a common real scalar z; force
+down sites B to activity zero; keep independent Rademacher activities on free
+sites; delete E from the ambient indices. The coefficient of z^a in each
+Pfaffian consists exactly of row sets I containing A and avoiding B. All such
+I have k-a free sites, so it is a homogeneous multilinear Fourier polynomial.
+Further retain only ambient R containing B. Thus define
+
+ X(s) = sum_{R subset [n]\E, |R|=2k, A union B subset R}
+         |sum_{I subset R, |I|=k, A subset I, I intersect B=empty}
+                  d_{R,I} product_{i in I\A} s_i|^2.
+
+This manifestly nonnegative expression is an identity, not the exponential
+production algorithm. Orthogonality of distinct sign characters yields E X=W.
+For each R there are at most C=binom(2k-a-b,k-a) terms. Cauchy-Schwarz gives
+the squared amplitude <= C sum_I |d_{R,I}|^2 for every sign word. Summing R
+proves X<=CW; multiplying by X and averaging gives E X^2<=CW^2. If W=0,
+all coefficients vanish, so all sign words give exactly zero. If C=1, X<=W
+and E X=W on a finite full-support sign space imply X=W for every word.
+
+2. POLYNOMIAL COEFFICIENT ENGINE, WITHOUT PRINCIPAL-MINOR ENUMERATION
+
+For any complex skew matrix K, define
+ H_k(K)=sum_{|R|=2k}|Pf K[R]|^2.
+Then H_k is [t^k] sqrt(det(I+t K* K)), the square root with constant term one.
+One standard proof uses unitary congruence into 2x2 skew blocks and invariance
+of the exterior-power norm. The classical complex skew normal form is in
+Youla (1961), introduction equations (2)-(3); its primary indexed PDF introduction was retrieved; direct PDF opening failed.
+An alternative entirely algebraic proof is the block-Pfaffian identity
+
+ (-1)^{n(n-1)/2} Pf [[tK,I],[-I,-conjugate K]]
+     = sum_{R even} t^{|R|/2} Pf K[R] conjugate(Pf K[R]).
+
+The off-diagonal identity block forces the same internally matched subset R
+in the upper and lower blocks. For |R|=2k, move upper R, lower R, upper R^c,
+lower R^c into that order. The upper/lower within-block permutation signs
+occur twice, and moving 2k lower sites past n-2k upper sites is even. The
+remaining identity-block Pfaffian has sign (-1)^((n-2k)(n-2k-1)/2); the lower
+internal Pfaffian contributes (-1)^k. Their product equals the fixed sign
+(-1)^(n(n-1)/2), since the exponent difference is 2k(n-k-1). Squaring this block Pfaffian and
+swapping/eliminating the identity block gives det(I-t conjugate K K), which
+is det(I+t K* K) because K*=-conjugate K. This proves the formal-square-root
+identity without numerical singular values. The direct-Pfaffian comparator
+checks the identity independently on the finite diagnostic fixtures.
+
+Production uses B=K* K and traces p_j=tr(B^j), j=1,...,k. For q(t)=sqrt det(I+tB),
+formal differentiation gives
+
+  q'/q = (1/2) tr(B(I+tB)^-1),
+  q_0=1,
+  q_d = (1/(2d)) sum_{j=1}^d (-1)^{j-1} p_j q_{d-j}.
+
+Hence O(k n^3+k^2) Gaussian-integer operations compute H_k after common-
+denominator clearing. No determinant coefficient or square-root oracle is
+used. Although the trace recursion has cancellation, all divisions are exact
+for cleared input, and the resulting q_d are nonnegative integers.
+
+3. PHYSICAL PREFIXES BY TOP COEFFICIENT AND AMBIENT INCLUSION-EXCLUSION
+
+For T subset B, retain ambient [n]\(E union T), with the activities described
+in section 1. Each Pfaffian has degree at most a in z, so its squared norm
+polynomial H_k has degree at most 2a. Its top z^{2a} coefficient equals the
+sum of the squared z^a Pfaffian coefficients. The exact finite-difference
+formula for a degree-2a polynomial P is
+
+ [z^{2a}]P(z) = (1/(2a)!) sum_{z=0}^{2a}
+                  (-1)^{2a-z} binom(2a,z) P(z).
+
+Inclusion-exclusion sum_{T subset B}(-1)^{|T|} retains precisely the ambient
+sets R containing all forced down sites B. The resulting value is exactly the
+manifestly nonnegative X(s) in section 1. Cancellation in this computational
+formula cannot introduce relative precision error because arithmetic is exact.
+There are at most 2^b(2a+1) coefficient calls per draw. Deleting many empty
+sites only decreases matrix dimension; their number does not increase the
+exponential parameter.
+
+If a,b<=k, first remove the a forced-up requirements from the central binomial:
+
+ binom(2k-a-b,k-a) / binom(2k-b,k)
+      = product_{h=0}^{a-1} (k-h)/(2k-b-h) <= 1.
+
+Then
+ binom(2k-b,k) / binom(2k,k)
+      = product_{h=0}^{b-1} (k-h)/(2k-h) <= 2^-b.
+
+Consequently 2^b C <= binom(2k,k). This is the reason prefix constraints do
+not multiply the final cost by an additional unconditional 2^k factor.
+
+4. RELATIVE ESTIMATION WITH A DETERMINISTIC CAP
+
+For W>0, normalize each draw Y=X/(CW). Then 0<=Y<=1 and E Y=1/C. Convexity
+of exp(theta y) on [0,1] gives its Bernoulli-chord bound. Multiplying that
+bound over independent draws and optimizing theta gives, for 0<eta<=1/2,
+
+ Pr[|mean X-W|>eta W] <= 2 exp(-m eta^2/(3C)).
+
+The familiar estimates (1+eta)log(1+eta)-eta>=eta^2/3 and
+eta+(1-eta)log(1-eta)>=eta^2/2 establish the displayed two tails.
+The implementation takes
+
+ m=ceil(3 C eta^-2 ceil(log_2(2/delta))).
+
+Since log_2 r >= log r for r>=1, this ensures failure probability <=delta.
+An exact mean of m rational samples is the output. It is always nonnegative
+and gives true zero exactly. There are no unbounded rejection loops.
+
+If the complete free-sign space has size at most m, the optional enumeration
+computes its exact mean instead, with no greater coefficient cost and no
+confidence failure. A private cache only memoizes the deterministic draw
+value for repeated sign words; all m independent words are still generated
+and charged. The cache has at most m entries, so it does not violate the bound.
+C=1 uses a single exact draw. Tests also disable enumeration to exercise the
+complete capped randomized path. Supplying a seeded Python RNG is a diagnostic;
+SystemRandom is the default randomness interface. The mathematical guarantee
+is under independent fair-bit access, not a claim about empirical seed quality.
+
+5. FINITE-BIT PHYSICAL SAMPLER AND TV PROOF
+
+Scan all n sites. At a positive current prefix, estimate its three child masses
+(up,down,empty) with eta=epsilon/(8n), delta=epsilon/(12n). Normalize their
+nonnegative estimates. Given simultaneous relative success, each positive
+child has estimate between (1-eta)W_j and (1+eta)W_j. If p,p' are exact and
+estimated normalized child laws, then
+
+ TV(p,p') <= eta/(1-eta).
+
+Indeed, if e_j=estimate_j/W_j-1 and e=sum p_j e_j, then
+p'_j-p_j=p_j(e_j-e)/(1+e), and sum_j p_j|e_j-e|<=2eta.
+Zero children have estimate zero on every sign draw.
+
+Let Q=2^ceil(log_2(8n/epsilon)). Draw a uniform integer in [0,Q), compare it
+with the floors of Q times the two cumulative estimated probabilities. Each
+cumulative error is <1/Q, so categorical TV error is <=2/Q. Equal endpoints
+for a zero child remain equal, including trailing zero children; therefore
+rounding never introduces a zero-estimated branch. Every selected branch has
+strictly positive estimate, hence true positive mass. Induction ensures that
+any completed word has positive determinant-squared weight. All-zero estimates
+return FAIL, never an unsupported completed word.
+
+For adaptive FPRAS calls, conditioning on the current prefix still leaves
+fresh independent sign words, so each conditional failure probability is
+<=delta. At most 3n calls imply total bad-estimation probability <=3n delta
+=epsilon/4. Couple the ideal and implemented prefix choices at each step;
+first divergence is bounded by the sum of conditional TV errors. On good
+estimation events, a positive parent has at least one positive child estimate
+and cannot return FAIL. Thus, on the output space enlarged by FAIL of target
+mass zero,
+
+ TV(output,target) <= 3n delta + n eta/(1-eta) + 2n/Q
+                   <= epsilon/4 + epsilon/7 + epsilon/4
+                    = 9 epsilon/14 < epsilon.
+
+Here eta<=1/8 makes 1/(1-eta)<=8/7. This charges abort, branch approximation
+and dyadic rounding separately. No unknown small prefix probability is divided
+by or sampled using rejection. At zero total norm the normalized law is
+undefined; the promise c_k>0 is explicit. The zero-instance diagnostic returns
+FAIL but does not turn a positive-instance estimator zero into a certificate.
+
+6. BIT COMPLEXITY AND CHARGED COSTS
+
+Acquire a common denominator D of all real/imaginary input entries, bit length
+at most O(L), and G=D F over Gaussian integers. Every coefficient call is on a
+submatrix of diag(x)G-G^Tdiag(x), with |x_i|<=2k. Entry heights are O(L+log k).
+Matrix powers through degree k and their traces have height
+O(k(L+log n+log k)); their number of operations is polynomial. Pfaffian norms
+have denominators D^{2k} before clearing, with integer numerator height
+O(k(L+log n+log k)). Finite differences add O(k log k) bits; summing at most
+2^b terms adds O(k) bits. Factorial divisions are exact. A mean of m samples
+adds only log m bits. The compiler never forms an LCM of exponentially many
+unrelated sample denominators: all share D^{2k}. Every cost remains polynomial
+in L, k and logarithms of the requested accuracy/confidence.
+
+An estimator call has at most O(C eta^-2 log(delta^-1)) draws, each costing
+O(2^b k^2 n^3) Gaussian-integer operations by the conservative trace bound.
+Thus it costs O(binom(2k,k) k^2 n^3 eta^-2 log(delta^-1)) operations on
+polynomial-bit operands. The complete 3n-child sampler consequently costs
+
+ O(binom(2k,k) k^2 n^6 epsilon^-2 log(n/epsilon))
+
+Gaussian-integer operations, plus at most O(binom(2k,k) n^4 epsilon^-2
+log(n/epsilon)) sign random bits and n ceil(log_2(8n/epsilon)) categorical bits.
+Use the polynomial bit cost of those integer operations for total bit time.
+The k=0 case returns the vacuum in constant scientific work after input
+validation. The bounds are intentionally conservative, not a hardware claim.
+
+7. EXECUTABLE EVIDENCE AND LIMITS
+
+revisions/low_sector_sampler.py is standalone, standard-library code. Production
+coefficient calculations never enumerate minors. revisions/check_low_sector.py
+uses separate small Leibniz determinants and recursive principal Pfaffians as
+comparators. Recorded run: 16,536 exact assertions, 156 exhaustive cases,
+1,072 sign words, all passed. It checks all physical prefixes on a generic
+four-site matrix, noncontiguous forced sets, rational-complex denominator 30,
+exact tiny weights at L=8,64,256, independent swap blocks through k=4, and
+combinatorial prefactor inequalities through k=30. Independent swap blocks
+have exact relative second moment 2^k, preserving an exponential worst-case
+variance witness at large k rather than pretending universal low variance.
+
+It also executes 12 full-cap non-enumerating relative count calls, a zero-norm
+call and zero-instance FAIL, and 52 complete non-enumerating generic Born
+sampler runs (n,k)=(3,1),(4,2),(5,2). All returned supported configurations.
+The three sampler blocks charged 11,457,888 sign draws and 34,504,728 sign
+bits, with exact deterministic value caching. Runtime of the recorded finite
+script was about 1.01 seconds; shared CPU contention/backend work/tokens/energy
+are UNKNOWN, and that scoped time is not an asymptotic or independent hardware
+benchmark. A comparator initially expected a cleared tiny-weight numerator
+of one instead of D^2; that assertion was repaired, documented in
+LOW_K_REPAIRS.json, and the production code was unchanged.
+
+Finite tests corroborate algebra and implementation only. No formal proof
+assistant, external specialist review, literature priority clearance or quantum
+state preparation was performed. INITIAL and the independent checkpoint are
+unchanged. The unrestricted k=Theta(n) approximation/energy gate remains OPEN.
+
+PRIMARY SOURCE STATUS
+
+Youla, A Normal form for a Matrix under the Unitary Congruence Group (1961),
+primary indexed journal-PDF introduction (2)-(3) retrieved 7 October 2026; direct open returned Internal Error:
+https://www.cambridge.org/core/services/aop-cambridge-core/content/view/S0008414X00013584
+Ishikawa-Wakayama, Applications of Minor Summation Formula III (2003/2006),
+primary paper abstract/metadata and minor-summation framework reopened:
+https://arxiv.org/abs/math/0312358
+Matoya-Oki, Pfaffian Pairs and Parities, full primary HTML interface inspected:
+https://arxiv.org/html/1912.00620v2
+Those works supply classical algebraic ingredients or tractable special parity
+classes. They do not, by an audited imported theorem here, establish this exact
+low-k canonical-prefix complexity statement. A targeted source search did not
+settle its priority; absence of a found result is not a novelty certificate.

@@ -1,0 +1,313 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c08_l07/homogeneous_power_examples.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c08_l07/homogeneous_power_examples.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Exact examples and outward-rounded intervals for the entropy/power bound.
+
+The symbolic calculation is for an orthonormal left-invariant frame
+E0,E+,E- with brackets
+    [E0,E+] = -a E+, [E0,E-] = a E-, [E+,E-] = beta E0,
+and X = v E0.  Rational example parameters and all algebraic operations are
+exact.  The only floating-looking outputs (pi and exp) are enclosed by
+rational-series bounds with explicit remainders.
+
+This script checks finite-dimensional geometry, not the entropy theorem,
+Pesin&#x27;s formula, lattice existence, or physical model adequacy.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+from decimal import Decimal, ROUND_CEILING, ROUND_FLOOR, localcontext
+from fractions import Fraction as F
+from itertools import product
+from math import factorial
+import json
+from pathlib import Path
+
+import sympy as sp
+
+
+def symbolic_certificate():
+    a, beta, v, nu = sp.symbols(&quot;a beta v nu&quot;, real=True)
+    n = 3
+    c = [[[sp.S.Zero for _ in range(n)] for _ in range(n)] for _ in range(n)]
+    for i, j, k, value in (
+        (0, 1, 1, -a),
+        (0, 2, 2, a),
+        (1, 2, 0, beta),
+    ):
+        c[i][j][k] = value
+        c[j][i][k] = -value
+
+    jacobi = all(
+        sp.simplify(sum(
+            c[i][j][m] * c[m][k][ell]
+            + c[j][k][m] * c[m][i][ell]
+            + c[k][i][m] * c[m][j][ell]
+            for m in range(n)
+        )) == 0
+        for i, j, k, ell in product(range(n), repeat=4)
+    )
+    unimodular = all(sum(c[i][j][j] for j in range(n)) == 0 for i in range(n))
+    gamma = [[[
+        sp.simplify((c[i][j][k] - c[j][k][i] + c[k][i][j]) / 2)
+        for k in range(n)
+    ] for j in range(n)] for i in range(n)]
+    torsion_free = all(
+        sp.simplify(gamma[i][j][k] - gamma[j][i][k] - c[i][j][k]) == 0
+        for i, j, k in product(range(n), repeat=3)
+    )
+    metric_compatible = all(
+        sp.simplify(gamma[i][j][k] + gamma[i][k][j]) == 0
+        for i, j, k in product(range(n), repeat=3)
+    )
+
+    # A[k,i] = &lt;nabla_{E_i} X,E_k&gt;; rows are output coordinates.
+    grad_x = sp.Matrix(n, n, lambda k, i: sp.simplify(v * gamma[i][0][k]))
+    strain = sp.simplify((grad_x + grad_x.T) / 2)
+    div_strain = sp.Matrix(n, 1, lambda j, _:
+        sp.simplify(-sum(
+            gamma[i][i][k] * strain[k, j]
+            + gamma[i][j][k] * strain[i, k]
+            for i in range(n) for k in range(n)
+        )))
+    ric = sp.Matrix(n, n, lambda j, k: sp.simplify(sum(
+        sum(
+            gamma[j][k][ell] * gamma[i][ell][i]
+            - gamma[i][k][ell] * gamma[j][ell][i]
+            - c[i][j][ell] * gamma[ell][k][i]
+            for ell in range(n)
+        ) for i in range(n)
+    )))
+
+    expected_grad = sp.Matrix([
+        [0, 0, 0],
+        [0, a * v, beta * v / 2],
+        [0, -beta * v / 2, -a * v],
+    ])
+    expected_strain = sp.diag(0, a * v, -a * v)
+    expected_div = sp.Matrix([-2 * a**2 * v, 0, 0])
+    strain_sq = sp.simplify(sp.trace(strain.T * strain))
+    power_density = sp.simplify((-2 * nu * div_strain).dot(sp.Matrix([v, 0, 0])))
+    h = a * v
+    scalar_curvature = sp.simplify(sp.trace(ric))
+
+    checks = {
+        &quot;jacobi_identity&quot;: jacobi,
+        &quot;unimodular_volume_preservation&quot;: unimodular,
+        &quot;koszul_torsion_free&quot;: torsion_free,
+        &quot;koszul_metric_compatible&quot;: metric_compatible,
+        &quot;nabla_X_X_zero&quot;: sp.simplify(grad_x[:, 0]) == sp.zeros(n, 1),
+        &quot;div_X_zero&quot;: sp.trace(grad_x) == 0,
+        &quot;nabla_X_matrix&quot;: sp.simplify(grad_x - expected_grad) == sp.zeros(n),
+        &quot;strain_matrix&quot;: sp.simplify(strain - expected_strain) == sp.zeros(n),
+        &quot;strain_norm_squared&quot;: sp.simplify(strain_sq - 2 * a**2 * v**2) == 0,
+        &quot;stress_divergence&quot;: sp.simplify(div_strain - expected_div) == sp.zeros(n, 1),
+        &quot;power_density&quot;: sp.simplify(power_density - 4 * nu * a**2 * v**2) == 0,
+        &quot;entropy_power_residual_given_H_av&quot;: sp.simplify(power_density - 4 * nu * h**2) == 0,
+        &quot;scalar_curvature&quot;: sp.simplify(scalar_curvature + 2 * a**2 + beta**2 / 2) == 0,
+    }
+
+    # For beta != 0, H=-2E0/a, e=E+, f=-2E-/(a beta) obey the standard sl2 brackets.
+    H = sp.Matrix([-2 / a, 0, 0])
+    e = sp.Matrix([0, 1, 0])
+    f = sp.Matrix([0, 0, -2 / (a * beta)])
+    def bracket(u, w):
+        out = sp.zeros(n, 1)
+        for i, j in product(range(n), repeat=2):
+            for k in range(n):
+                out[k] += u[i] * w[j] * c[i][j][k]
+        return sp.simplify(out)
+    checks[&quot;beta_nonzero_sl2_brackets&quot;] = (
+        sp.simplify(bracket(H, e) - 2 * e) == sp.zeros(n, 1)
+        and sp.simplify(bracket(H, f) + 2 * f) == sp.zeros(n, 1)
+        and sp.simplify(bracket(e, f) - H) == sp.zeros(n, 1)
+    )
+
+    # Directly transform the canonical Sasaki frame on a constant-curvature
+    # surface, whose standard brackets are [X,H]=-k^2 V, [X,V]=-H, [H,V]=X.
+    k = sp.symbols(&quot;k&quot;, positive=True, real=True)
+    cc = [[[sp.S.Zero for _ in range(n)] for _ in range(n)] for _ in range(n)]
+    for i, j, m, value in ((0, 1, 2, -k**2), (0, 2, 1, -1), (1, 2, 0, 1)):
+        cc[i][j][m] = value
+        cc[j][i][m] = -value
+    denom = sp.sqrt(1 + k**2)
+    T = sp.Matrix([[1, 0, 0], [0, 1 / denom, 1 / denom],
+                    [0, k / denom, -k / denom]])
+    E0, Ep, Em = T[:, 0], T[:, 1], T[:, 2]
+    def canonical_bracket(u, w):
+        out = sp.zeros(n, 1)
+        for i, j in product(range(n), repeat=2):
+            for m in range(n):
+                out[m] += u[i] * w[j] * cc[i][j][m]
+        return sp.simplify(T.inv() * out)
+    beta_k = -2 * k / (1 + k**2)
+    checks[&quot;constant_curvature_sasaki_frame&quot;] = (
+        sp.simplify(canonical_bracket(E0, Ep) + k * sp.Matrix([0, 1, 0])) == sp.zeros(n, 1)
+        and sp.simplify(canonical_bracket(E0, Em) - k * sp.Matrix([0, 0, 1])) == sp.zeros(n, 1)
+        and sp.simplify(canonical_bracket(Ep, Em) - beta_k * sp.Matrix([1, 0, 0])) == sp.zeros(n, 1)
+    )
+
+    return {
+        &quot;status&quot;: &quot;PASS&quot; if all(checks.values()) else &quot;FAIL&quot;,
+        &quot;checks&quot;: checks,
+        &quot;nabla_X&quot;: str(grad_x),
+        &quot;strain&quot;: str(strain),
+        &quot;div_strain&quot;: str(div_strain),
+        &quot;ricci&quot;: str(ric),
+        &quot;scalar_curvature&quot;: str(scalar_curvature),
+        &quot;scope&quot;: &quot;Exact frame algebra only. H=av is derived from the adjoint flow rates plus the smooth-measure entropy formula; the script does not verify either theorem or compact quotient existence.&quot;,
+    }
+
+
+def arctan_bounds(x: F, n_terms: int) -&gt; tuple[F, F]:
+    &quot;&quot;&quot;Alternating-series enclosure for atan(x), 0 &lt; x &lt;= 1.&quot;&quot;&quot;
+    partial = sum(((-1) ** k) * x ** (2 * k + 1) / (2 * k + 1)
+                  for k in range(n_terms + 1))
+    next_term = ((-1) ** (n_terms + 1)) * x ** (2 * n_terms + 3) / (2 * n_terms + 3)
+    return (partial, partial + next_term) if next_term &gt; 0 else (partial + next_term, partial)
+
+
+def pi_bounds(n_terms: int = 20) -&gt; tuple[F, F]:
+    &quot;&quot;&quot;Machin identity pi=16 atan(1/5)-4 atan(1/239), with exact remainders.&quot;&quot;&quot;
+    a_lo, a_hi = arctan_bounds(F(1, 5), n_terms)
+    b_lo, b_hi = arctan_bounds(F(1, 239), n_terms)
+    return 16 * a_lo - 4 * b_hi, 16 * a_hi - 4 * b_lo
+
+
+def exp_bounds(x: F, n_terms: int = 20) -&gt; tuple[F, F]:
+    &quot;&quot;&quot;Taylor lower bound plus geometric upper bound for exp(x), x &gt;= 0.&quot;&quot;&quot;
+    partial = sum(x**k / factorial(k) for k in range(n_terms + 1))
+    first_omitted = x ** (n_terms + 1) / factorial(n_terms + 1)
+    ratio_bound = x / (n_terms + 2)
+    if ratio_bound &gt;= 1:
+        raise ValueError(&quot;choose more Taylor terms so x/(N+2) &lt; 1&quot;)
+    tail_bound = first_omitted / (1 - ratio_bound)
+    return partial, partial + tail_bound
+
+
+def outward_decimal(value: F, places: int, rounding: str) -&gt; str:
+    with localcontext() as ctx:
+        ctx.prec = places + 12
+        ctx.rounding = rounding
+        d = Decimal(value.numerator) / Decimal(value.denominator)
+        quantum = Decimal(1).scaleb(-places)
+        return str(d.quantize(quantum, rounding=rounding))
+
+
+def rational_string(x: F) -&gt; str:
+    return str(x.numerator) if x.denominator == 1 else f&quot;{x.numerator}/{x.denominator}&quot;
+
+
+def exact_case(name: str, a: F, beta: F, v: F, nu: F) -&gt; dict:
+    h = a * v
+    s2 = 2 * a * a * v * v
+    power_per_volume = 2 * nu * s2
+    rhs_per_volume = 4 * nu * h * h
+    exp_lo, exp_hi = exp_bounds(h)
+    return {
+        &quot;name&quot;: name,
+        &quot;a&quot;: rational_string(a),
+        &quot;beta&quot;: rational_string(beta),
+        &quot;speed_v&quot;: rational_string(v),
+        &quot;nu&quot;: rational_string(nu),
+        &quot;lie_algebra&quot;: &quot;sl2(R)&quot; if beta != 0 else &quot;solvable Sol algebra&quot;,
+        &quot;entropy_rate_H&quot;: rational_string(h),
+        &quot;strain_norm_squared&quot;: rational_string(s2),
+        &quot;sustaining_force_coefficient_F_equals_cX&quot;: rational_string(4 * nu * a * a),
+        &quot;power_per_unit_volume&quot;: rational_string(power_per_volume),
+        &quot;bound_per_unit_volume&quot;: rational_string(rhs_per_volume),
+        &quot;exact_residual&quot;: rational_string(power_per_volume - rhs_per_volume),
+        &quot;time_one_expansion_interval_lower&quot;: outward_decimal(exp_lo, 18, ROUND_FLOOR),
+        &quot;time_one_expansion_interval_upper&quot;: outward_decimal(exp_hi, 18, ROUND_CEILING),
+        &quot;time_one_expansion_width_lt_1e-8&quot;: exp_hi - exp_lo &lt; F(1, 10**8),
+    }
+
+
+def closed_geodesic_example(genus: int, kappa: F, nu: F) -&gt; dict:
+    &quot;&quot;&quot;Closed curvature -kappa^2 surface; Sasaki metric on its unit tangent bundle.&quot;&quot;&quot;
+    h = kappa
+    volume_coeff = F(8 * (genus - 1), 1) / (kappa * kappa)  # V = coeff*pi^2
+    work_coeff = F(32 * (genus - 1), 1) * nu  # W = coeff*pi^2
+    s2 = 2 * kappa * kappa
+    force_c = 4 * nu * kappa * kappa
+    p_lo, p_hi = pi_bounds()
+    pi2_lo, pi2_hi = p_lo * p_lo, p_hi * p_hi
+    vol_lo, vol_hi = volume_coeff * pi2_lo, volume_coeff * pi2_hi
+    work_lo, work_hi = work_coeff * pi2_lo, work_coeff * pi2_hi
+    exp_lo, exp_hi = exp_bounds(h)
+    return {
+        &quot;surface_genus&quot;: genus,
+        &quot;curvature&quot;: f&quot;-{rational_string(kappa*kappa)}&quot;,
+        &quot;kappa&quot;: rational_string(kappa),
+        &quot;nu&quot;: rational_string(nu),
+        &quot;lie_algebra_frame_beta&quot;: rational_string(-2 * kappa / (1 + kappa * kappa)),
+        &quot;entropy_rate_H&quot;: rational_string(h),
+        &quot;strain_norm_squared&quot;: rational_string(s2),
+        &quot;power_per_unit_volume&quot;: rational_string(4 * nu * kappa * kappa),
+        &quot;volume_exact&quot;: f&quot;{rational_string(volume_coeff)}*pi^2&quot;,
+        &quot;work_exact&quot;: f&quot;{rational_string(work_coeff)}*pi^2&quot;,
+        &quot;volume_interval_outward_24dp&quot;: [
+            outward_decimal(vol_lo, 24, ROUND_FLOOR),
+            outward_decimal(vol_hi, 24, ROUND_CEILING),
+        ],
+        &quot;work_interval_outward_24dp&quot;: [
+            outward_decimal(work_lo, 24, ROUND_FLOOR),
+            outward_decimal(work_hi, 24, ROUND_CEILING),
+        ],
+        &quot;pi_interval_width_lt_1e-30&quot;: p_hi - p_lo &lt; F(1, 10**30),
+        &quot;time_one_expansion_interval_outward_18dp&quot;: [
+            outward_decimal(exp_lo, 18, ROUND_FLOOR),
+            outward_decimal(exp_hi, 18, ROUND_CEILING),
+        ],
+        &quot;interval_method&quot;: &quot;Exact rational Machin arctan alternating-series bounds for pi; positive interval squaring and multiplication. Exact rational Taylor lower bound plus geometric upper bound for exp(kappa).&quot;,
+    }
+
+
+def measurement_residual_error(H0: F, nu0: F, P0: F,
+                               dH: F, dnu: F, dP: F) -&gt; F:
+    &quot;&quot;&quot;Bound |(P-4 nu H^2)-(P0-4 nu0 H0^2)| for nonnegative quantities.&quot;&quot;&quot;
+    H_hi = H0 + dH
+    return dP + 4 * (dnu * H_hi**2 + nu0 * dH * (2 * H0 + dH))
+
+
+def main():
+    cert = symbolic_certificate()
+    cases = [
+        exact_case(&quot;sl2 compact quotient A&quot;, F(3, 2), F(1), F(2), F(5, 7)),
+        exact_case(&quot;sl2 compact quotient B&quot;, F(2, 3), F(-3, 2), F(5, 4), F(7, 5)),
+    ]
+    surfaces = [
+        closed_geodesic_example(2, F(1, 2), F(1, 3)),
+        closed_geodesic_example(2, F(2), F(1, 3)),
+        closed_geodesic_example(3, F(3, 2), F(7, 5)),
+    ]
+    # Rounded independent measurements around the exact equality case have no
+    # strictly positive certification margin; the algebraic identity does.
+    H0, nu0, P0 = F(3), F(5, 7), F(180, 7)
+    error_radius = measurement_residual_error(
+        H0, nu0, P0, F(1, 10**6), F(1, 10**8), F(1, 10**7)
+    )
+    output = {
+        &quot;status&quot;: &quot;PASS&quot; if cert[&quot;status&quot;] == &quot;PASS&quot; and all(
+            F(case[&quot;exact_residual&quot;]) == 0 for case in cases
+        ) and all(surface[&quot;pi_interval_width_lt_1e-30&quot;] for surface in surfaces) else &quot;FAIL&quot;,
+        &quot;symbolic_certificate&quot;: cert,
+        &quot;exact_sl2_cases&quot;: cases,
+        &quot;constant_negative_curvature_geodesic_cases&quot;: surfaces,
+        &quot;finite_measurement_warning&quot;: {
+            &quot;exact_residual_case_A&quot;: &quot;0&quot;,
+            &quot;residual_uncertainty_bound_for_delta_H_1e-6_delta_nu_1e-8_delta_P_1e-7&quot;: rational_string(error_radius),
+            &quot;interpretation&quot;: &quot;This bound cannot certify nonnegativity from independent rounded measurements at an exact equality point. The exact symbolic identity and exact supplied parameters do certify equality; decimal agreement alone does not.&quot;,
+        },
+        &quot;limitations&quot;: [
+            &quot;The entropy rate uses the smooth-volume Pesin formula after exact Lyapunov exponents are derived; the script does not prove Pesin&#x27;s theorem.&quot;,
+            &quot;Compactness uses a supplied cocompact lattice in PSL(2,R), realized for the geodesic examples by a closed hyperbolic surface group.&quot;,
+            &quot;No lattice/metric acquisition protocol, external-force implementation, Navier-Stokes time evolution, or empirical work meter is modeled.&quot;,
+        ],
+    }
+    out = Path(__file__).with_name(&quot;homogeneous_power_examples.json&quot;)
+    out.write_text(json.dumps(output, indent=2) + &quot;\n&quot;)
+    print(json.dumps(output, indent=2))
+    if output[&quot;status&quot;] != &quot;PASS&quot;:
+        raise SystemExit(1)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/4aed13666725ac97bcb4da2ba748d01588172830e5b542900094c82d1936389e.py">Exact original bytes</a></p></html>

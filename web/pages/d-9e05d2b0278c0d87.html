@@ -1,0 +1,183 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c07_s01/reviews/c08_cubature_replay/verify_saved_certificate.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c07_s01/reviews/c08_cubature_replay/verify_saved_certificate.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Replay the saved finite fixture through independent matrix formulas.
+
+The full Hamiltonian is reconstructed from two-spin flips, not from squared
+Pauli matrices. Product matrix entries use binomial moments, not repeated
+Gaussian-rational tensor multiplication. The all-N analytic theorem is not
+verified by these finite computations.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from pathlib import Path
+from math import comb, factorial
+import hashlib
+import json
+import time
+
+HERE = Path(__file__).resolve().parent
+
+
+def load_fraction(x):
+    return F(x)
+
+
+def zeros(n):
+    return [[F(0) for _ in range(n)] for _ in range(n)]
+
+
+def matmul(a, b):
+    return [[sum(a[i][k] * b[k][j] for k in range(len(a)))
+             for j in range(len(a))] for i in range(len(a))]
+
+
+def transpose(a):
+    return [list(x) for x in zip(*a)]
+
+
+def kernel_real_element(bloch, bra, ket, n):
+    x, y, z = bloch
+    counts = [0, 0, 0, 0]
+    for bit in range(n):
+        counts[2 * ((bra &gt;&gt; bit) &amp; 1) + ((ket &gt;&gt; bit) &amp; 1)] += 1
+    n00, n01, n10, n11 = counts
+    real_offdiag = F(0)
+    for p in range(n01 + 1):
+        for q in range(n10 + 1):
+            if (p + q) % 2 == 0:
+                real_offdiag += (comb(n01, p) * comb(n10, q)
+                                 * x ** (n01 + n10 - p - q) * y ** (p + q)
+                                 * (-1) ** (p + (p + q) // 2))
+    return ((1 + z) ** n00 * (1 - z) ** n11 * real_offdiag) / (2 ** n)
+
+
+def mixture(states, weights, n):
+    return [[sum(p * kernel_real_element(m, i, j, n)
+                 for m, p in zip(states, weights))
+             for j in range(2 ** n)] for i in range(2 ** n)]
+
+
+def verify():
+    started = time.monotonic()
+    cert = json.loads((HERE / &#x27;certificate.json&#x27;).read_text())
+    branches = json.loads((HERE / &#x27;branches.json&#x27;).read_text())
+    checks = []
+    assert cert[&#x27;script_sha256&#x27;] == hashlib.sha256((HERE / &#x27;certified_cubature.py&#x27;).read_bytes()).hexdigest()
+    assert cert[&#x27;branches_sha256&#x27;] == hashlib.sha256((HERE / &#x27;branches.json&#x27;).read_bytes()).hexdigest()
+    assert cert[&#x27;output_trace_sha256&#x27;] == hashlib.sha256((HERE / &#x27;output_trace.json&#x27;).read_bytes()).hexdigest()
+    checks.append(&#x27;saved script and payload hashes&#x27;)
+    n, dim = cert[&#x27;parameters&#x27;][&#x27;N&#x27;], 2 ** cert[&#x27;parameters&#x27;][&#x27;N&#x27;]
+    assert n == 4
+    radius_sq = load_fraction(cert[&#x27;parameters&#x27;][&#x27;r0_squared&#x27;])
+    hstep = load_fraction(cert[&#x27;parameters&#x27;][&#x27;step&#x27;])
+    rows = branches[&#x27;branches&#x27;]
+    states = [[load_fraction(x) for x in row[&#x27;bloch&#x27;]] for row in rows]
+    probs = [load_fraction(row[&#x27;probability&#x27;]) for row in rows]
+    weights = [load_fraction(row[&#x27;raw_weight&#x27;]) for row in rows]
+    for m, row in zip(states, rows):
+        norm_sq = sum(x * x for x in m)
+        assert norm_sq == load_fraction(row[&#x27;bloch_norm_squared&#x27;]) &lt; radius_sq &lt; 1
+    assert probs == [w / sum(weights) for w in weights]
+    assert sum(probs) == 1
+    checks.append(&#x27;all rational product states physical and inside stopping ball&#x27;)
+    denom = branches[&#x27;categorical_denominator&#x27;]
+    counts = [row[&#x27;dyadic_count&#x27;] for row in rows]
+    assert sum(counts) == denom == 2 ** cert[&#x27;select_bits&#x27;]
+    assert all(c &gt;= 0 for c in counts)
+    cat_tv = sum(abs(F(c, denom) - p) for c, p in zip(counts, probs)) / 2
+    assert cat_tv == load_fraction(cert[&#x27;categorical_tv_exact&#x27;]) &lt;= F(len(rows) - 1, denom)
+    checks.append(&#x27;bounded exact categorical law and TV allocation&#x27;)
+    # Complex conjugate pairs make the real-entry calculation sufficient.
+    for i, (m, row) in enumerate(zip(states, rows)):
+        paired = row[&#x27;seed&#x27;] * 8 + (row[&#x27;noise_bits&#x27;] ^ 2)
+        assert probs[paired] == probs[i]
+        assert states[paired] == [m[0], -m[1], m[2]]
+    checks.append(&#x27;exact cancellation of every imaginary matrix entry&#x27;)
+    seed_states = [[F(0)] * 3, [F(1, 64), F(0), F(1, 64)]]
+    coefficient_c = [F(1), F(4), F(9)]
+    for seed, root in enumerate(cert[&#x27;root_certificates&#x27;]):
+        m = seed_states[seed]
+        d = [[load_fraction(x) for x in row] for row in root[&#x27;matrix&#x27;]]
+        l = [[load_fraction(x) for x in row] for row in root[&#x27;factor&#x27;]]
+        axes_cross_m = [[F(0), -m[2], m[1]], [m[2], F(0), -m[0]],
+                        [-m[1], m[0], F(0)]]
+        independent_d = [[sum(coefficient_c[k]
+                              * ((F(k == i) - m[k] * m[i])
+                                 * (F(k == j) - m[k] * m[j])
+                                 - axes_cross_m[k][i] * axes_cross_m[k][j])
+                              for k in range(3)) for j in range(3)] for i in range(3)]
+        assert d == independent_d
+        assert all(l[i][j] == 0 for i in range(3) for j in range(i + 1, 3))
+        assert all(l[i][i] &gt; 0 for i in range(3))
+        product = matmul(l, transpose(l))
+        residual_sq = sum((product[i][j] - d[i][j]) ** 2 for i in range(3) for j in range(3))
+        residual_hi = load_fraction(root[&#x27;covariance_frobenius_error_upper&#x27;])
+        assert residual_sq &lt;= residual_hi ** 2 &lt; F(1, 10 ** 24)
+        energy = sum(coefficient_c[i] * m[i] ** 2 for i in range(3))
+        drift = [F(3, 16) * (coefficient_c[i] - energy) * m[i] for i in range(3)]
+        for code in range(8):
+            noise = [F(1) if (code &gt;&gt; bit) &amp; 1 else F(-1) for bit in range(3)]
+            expected = [m[i] + hstep * drift[i] + F(1, 128) * sum(l[i][j] * noise[j] for j in range(3))
+                        for i in range(3)]
+            assert expected == states[seed * 8 + code]
+        wc = cert[&#x27;weight_certificates&#x27;][seed]
+        v = F(3, 8) * energy + F(7, 4)
+        assert v == load_fraction(wc[&#x27;potential&#x27;])
+        x = hstep * v
+        elo = sum(x ** k / factorial(k) for k in range(21))
+        ehi = elo + x ** 21 / (factorial(21) * (1 - x))
+        w = load_fraction(wc[&#x27;weight&#x27;])
+        assert load_fraction(wc[&#x27;exact_weight_lower&#x27;]) == elo
+        assert load_fraction(wc[&#x27;exact_weight_upper&#x27;]) == ehi
+        assert w &lt;= elo &lt;= ehi
+        assert ehi - w == load_fraction(wc[&#x27;weight_error_upper&#x27;])
+    checks.append(&#x27;axis-generator covariance, rational roots, full updates and weight intervals&#x27;)
+    # Independent Hamiltonian: every off-diagonal term flips exactly two spins.
+    H = zeros(dim)
+    for ket in range(dim):
+        jz = F(n, 2) - ket.bit_count()
+        H[ket][ket] = (F(5) + 9 * jz ** 2) / 8
+        for p in range(n):
+            for q in range(p + 1, n):
+                bra = ket ^ (1 &lt;&lt; p) ^ (1 &lt;&lt; q)
+                equal = ((ket &gt;&gt; p) &amp; 1) == ((ket &gt;&gt; q) &amp; 1)
+                H[bra][ket] = F(-3 if equal else 5, 16)
+    assert H == transpose(H)
+    ep = zeros(dim)
+    power = zeros(dim)
+    for i in range(dim):
+        ep[i][i] = power[i][i] = F(1)
+    for k in range(1, cert[&#x27;matrix_exp_order&#x27;] + 1):
+        power = matmul(power, H)
+        coef = (hstep / 2) ** k / factorial(k)
+        ep = [[ep[i][j] + coef * power[i][j] for j in range(dim)] for i in range(dim)]
+    rho0 = mixture(seed_states, [F(1, 3), F(2, 3)], n)
+    gp = matmul(matmul(ep, rho0), ep)
+    zp = sum(gp[i][i] for i in range(dim))
+    assert zp == load_fraction(cert[&#x27;polynomial_target_trace&#x27;]) &gt;= 1
+    wmat = mixture(states, probs, n)
+    discrepancy = [[wmat[i][j] - gp[i][j] / zp for j in range(dim)] for i in range(dim)]
+    fsq = sum(x * x for row in discrepancy for x in row)
+    assert fsq == load_fraction(cert[&#x27;frob_squared_exact&#x27;])
+    flo, fhi = load_fraction(cert[&#x27;frob_lower&#x27;]), load_fraction(cert[&#x27;frob_upper&#x27;])
+    assert flo ** 2 &lt;= fsq &lt;= fhi ** 2
+    x = hstep * F(27, 8)
+    exp_bound = x ** 8 / (factorial(8) * (1 - x))
+    raw_bound = 2 * exp_bound / (1 - x)
+    assert exp_bound == load_fraction(cert[&#x27;target_matrix_exp_operator_remainder_upper&#x27;])
+    assert raw_bound == load_fraction(cert[&#x27;sandwich_raw_error_upper&#x27;])
+    upper = 2 * fhi + raw_bound + cat_tv
+    assert upper == load_fraction(cert[&#x27;full_output_trace_distance_upper&#x27;]) &lt; F(1, 10 ** 6)
+    checks.append(&#x27;independent full Hamiltonian/product matrices and exact &lt;1e-6 output trace bound&#x27;)
+    out = {&#x27;status&#x27;: &#x27;PASS&#x27;, &#x27;exact_checks&#x27;: checks,
+           &#x27;exact_trace_distance_upper&#x27;: str(upper),
+           &#x27;display_only_upper&#x27;: float(upper),
+           &#x27;all_N_theorem_status&#x27;: &#x27;NOT_PROVED_BY_FINITE_CHECKS&#x27;,
+           &#x27;native_hardware_status&#x27;: &#x27;NOT_EXECUTED&#x27;,
+           &#x27;elapsed_seconds&#x27;: time.monotonic() - started}
+    (HERE / &#x27;verification.json&#x27;).write_text(json.dumps(out, indent=2) + &#x27;\n&#x27;)
+    print(json.dumps({k: v for k, v in out.items() if k not in (&#x27;exact_trace_distance_upper&#x27;, &#x27;exact_checks&#x27;)}
+                     | {&#x27;check_groups&#x27;: len(checks)}))
+
+
+if __name__ == &#x27;__main__&#x27;:
+    verify()
+</pre><p><a href="../assets/ee47a018c122be1933ccc4a9ce1b0e5e31ab4689fc5614b85767f0395d6dd437.py">Exact original bytes</a></p></html>

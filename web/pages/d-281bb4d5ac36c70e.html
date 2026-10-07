@@ -1,0 +1,152 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c02_s02/reviews/peer_replay/rank_one_block_complex_check.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c02_s02/reviews/peer_replay/rank_one_block_complex_check.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Gaussian-integer exact fixture for the complex rank-one moment formula.&quot;&quot;&quot;
+from fractions import Fraction
+from itertools import combinations, permutations
+import json
+from pathlib import Path
+
+class G:
+    __slots__ = (&quot;re&quot;, &quot;im&quot;)
+    def __init__(self, re=0, im=0): self.re, self.im = Fraction(re), Fraction(im)
+    def __add__(self, other):
+        other = as_g(other); return G(self.re+other.re, self.im+other.im)
+    __radd__ = __add__
+    def __neg__(self): return G(-self.re, -self.im)
+    def __sub__(self, other): return self + (-as_g(other))
+    def __rsub__(self, other): return as_g(other) - self
+    def __mul__(self, other):
+        other = as_g(other); return G(self.re*other.re-self.im*other.im, self.re*other.im+self.im*other.re)
+    __rmul__ = __mul__
+    def conj(self): return G(self.re, -self.im)
+    def norm2(self): return self.re*self.re+self.im*self.im
+    def __eq__(self, other):
+        other = as_g(other); return self.re == other.re and self.im == other.im
+    def __repr__(self): return f&quot;G({self.re},{self.im})&quot;
+
+def as_g(x): return x if isinstance(x, G) else G(x)
+def conj(x): return x.conj() if isinstance(x, G) else x
+def norm2(x): return x.norm2() if isinstance(x, G) else Fraction(x*x)
+
+def det(A):
+    n = len(A)
+    if n == 0: return G(1)
+    total = G(0)
+    for p in permutations(range(n)):
+        inv = sum(p[i] &gt; p[j] for i in range(n) for j in range(i+1,n))
+        term = G(-1 if inv%2 else 1)
+        for i,j in enumerate(p): term = term * A[i][j]
+        total = total + term
+    return total
+
+def mat(A,I,J): return [[A[i][j] for j in J] for i in I]
+def addpoly(a,b,cap):
+    z=[0]*(cap+1)
+    for i,x in enumerate(a[:cap+1]): z[i]=z[i]+x
+    for i,x in enumerate(b[:cap+1]): z[i]=z[i]+x
+    return z
+def mulpoly(a,b,cap):
+    z=[0]*(cap+1)
+    for i,x in enumerate(a):
+        for j,y in enumerate(b):
+            if i+j&lt;=cap: z[i+j]=z[i+j]+x*y
+    return z
+
+def local(A,u,v):
+    n=len(A); out={name:[] for name in (&quot;A&quot;,&quot;B&quot;,&quot;C&quot;,&quot;U&quot;,&quot;V&quot;)}
+    for ell in range(n//2+1):
+        aa=bb=cc=0
+        for I in combinations(range(n),ell):
+            si=set(I)
+            for J in combinations([j for j in range(n) if j not in si],ell):
+                M=mat(A,I,J); d=det(M); delta=G(0)
+                for p in range(ell):
+                    for q in range(ell):
+                        minor=[row[:q]+row[q+1:] for r,row in enumerate(M) if r!=p]
+                        cof=(-1 if (p+q)%2 else 1)*det(minor)
+                        delta=delta+v[J[q]]*cof*u[I[p]]
+                aa+=norm2(d); bb=bb+d*conj(delta); cc+=norm2(delta)
+        out[&quot;A&quot;].append(aa); out[&quot;B&quot;].append(bb); out[&quot;C&quot;].append(cc)
+    for ell in range((n-1)//2+1):
+        uu=vv=0
+        for I in combinations(range(n),ell+1):
+            si=set(I)
+            for J in combinations([j for j in range(n) if j not in si],ell):
+                M=mat(A,I,J); eta=G(0)
+                for p in range(ell+1):
+                    minor=[row[:] for r,row in enumerate(M) if r!=p]
+                    eta=eta+(-1 if p%2 else 1)*u[I[p]]*det(minor)
+                uu+=norm2(eta)
+        for I in combinations(range(n),ell):
+            si=set(I)
+            for J in combinations([j for j in range(n) if j not in si],ell+1):
+                M=mat(A,I,J); theta=G(0)
+                for q in range(ell+1):
+                    minor=[row[:q]+row[q+1:] for row in M]
+                    theta=theta+(-1 if q%2 else 1)*v[J[q]]*det(minor)
+                vv+=norm2(theta)
+        out[&quot;U&quot;].append(uu); out[&quot;V&quot;].append(vv)
+    return out
+
+def block_diag(blocks):
+    n=sum(len(B) for B in blocks); A=[[G(0) for _ in range(n)] for _ in range(n)]; off=0
+    for B in blocks:
+        for i in range(len(B)):
+            for j in range(len(B)): A[off+i][off+j]=B[i][j]
+        off+=len(B)
+    return A
+
+def formula(blocks,u,v,k):
+    stats=[]; off=0
+    for B in blocks:
+        stats.append(local(B,u[off:off+len(B)],v[off:off+len(B)])); off+=len(B)
+    cap=k; p0=[1]; p1=[G(0)]; p2=[0]
+    for s in stats:
+        a,b,c=s[&quot;A&quot;],s[&quot;B&quot;],s[&quot;C&quot;]
+        p0n=mulpoly(p0,a,cap)
+        p1n=addpoly(mulpoly(p1,a,cap),mulpoly(p0,b,cap),cap)
+        p2n=addpoly(addpoly(mulpoly(p2,a,cap),mulpoly(p0,c,cap),cap),
+                    addpoly(mulpoly([conj(x) for x in p1],b,cap),mulpoly(p1,[conj(x) for x in b],cap),cap),cap)
+        p0,p1,p2=p0n,p1n,p2n
+    balanced=p0[k]+p1[k]+conj(p1[k])+p2[k]
+    mismatch=0
+    for a in range(len(stats)):
+        for b in range(len(stats)):
+            if a==b or k==0: continue
+            prod=[1]
+            for t,s in enumerate(stats):
+                localpoly=s[&quot;U&quot;] if t==a else s[&quot;V&quot;] if t==b else s[&quot;A&quot;]
+                prod=mulpoly(prod,localpoly,k-1)
+            if k-1&lt;len(prod): mismatch+=prod[k-1]
+    return balanced+mismatch,balanced,mismatch
+
+def brute(F,k):
+    n=len(F); total=Fraction(0)
+    for I in combinations(range(n),k):
+        si=set(I)
+        for J in combinations([j for j in range(n) if j not in si],k): total+=norm2(det(mat(F,I,J)))
+    return total
+
+def main():
+    raw_blocks=[
+      [[[(0,1),(1,0)],[(1,0),(0,-1)]], [[(1,1),(0,1)],[(1,0),(1,-1)]]],
+      [[[(1,0),(0,1)],[(1,-1),(0,0)]], [[(0,1),(1,0)],[(1,1),(0,-1)]]],
+    ]
+    raw_uv=[
+      ([(1,1),(0,-1),(2,0),(1,-1)],[(0,1),(1,0),(-1,1),(2,0)]),
+      ([(0,1),(1,0),(1,1),(-1,0)],[(2,0),(-1,1),(0,1),(1,-1)]),
+    ]
+    results=[]
+    for blocks_raw,(u_raw,v_raw) in zip(raw_blocks,raw_uv):
+        blocks=[[[G(*z) for z in row] for row in B] for B in blocks_raw]
+        A=block_diag(blocks); u=[G(*z) for z in u_raw]; v=[G(*z) for z in v_raw]
+        F=[[A[i][j]+u[i]*v[j] for j in range(len(A))] for i in range(len(A))]
+        for k in range(len(A)//2+1):
+            got,bal,mis=formula(blocks,u,v,k); want=brute(F,k)
+            assert got==want,(k,got,want,bal,mis)
+            results.append({&quot;case&quot;:len(results)//3,&quot;n&quot;:len(A),&quot;k&quot;:k,&quot;coefficient&quot;:str(got),&quot;balanced&quot;:str(bal),&quot;defect_pairs&quot;:str(mis)})
+    result={&quot;status&quot;:&quot;PASS exact Gaussian-integer fixtures&quot;,&quot;results&quot;:results,
+            &quot;scope&quot;:&quot;Finite exact checks for complex cross terms; not proof or external validation.&quot;}
+    Path(__file__).with_name(&quot;rank_one_block_complex_check.json&quot;).write_text(json.dumps(result,indent=2)+&quot;\n&quot;)
+    print(json.dumps(result,indent=2))
+if __name__==&quot;__main__&quot;: main()
+</pre><p><a href="../assets/1bf7b329386f3c65a7acbde11cc5d17a517768b3390b10f38b7242edcb76e056.py">Exact original bytes</a></p></html>

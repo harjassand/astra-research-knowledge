@@ -1,0 +1,93 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c10_l04/revisions/peer_checks/c10_s02/exact_boundary_checks.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c10_l04/revisions/peer_checks/c10_s02/exact_boundary_checks.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>from fractions import Fraction
+from math import factorial
+import json
+from pathlib import Path
+from time import perf_counter
+
+# Species order A,B,C. Unit-rate reversible edges.
+REACTIONS=[((1,0,1),(1,1,0)),((1,1,0),(1,0,1)),
+           ((1,1,0),(0,1,0)),((0,1,0),(1,1,0)),
+           ((0,0,1),(0,0,0)),((0,0,0),(0,0,1))]
+COMPLEXES=sorted(set(z for reaction in REACTIONS for z in reaction))
+
+def ff(x,y):
+    z=1
+    for xi,yi in zip(x,y):
+        if xi&lt;yi: return 0
+        z*=factorial(xi)//factorial(xi-yi)
+    return z
+
+def potential_factor(x):
+    # exp(F(x)), computed as an integer residual factorial minimum.
+    return min(__import__(&#x27;functools&#x27;).reduce(lambda a,b:a*b,
+               (factorial(xi-yi) for xi,yi in zip(x,y)),1)
+               for y in COMPLEXES if all(xi&gt;=yi for xi,yi in zip(x,y)))
+
+def jumps(x):
+    for y,yp in REACTIONS:
+        rate=ff(x,y)
+        if rate:
+            yield rate,tuple(xi-yi+zi for xi,yi,zi in zip(x,y,yp))
+
+def weight(x):
+    return Fraction(1,factorial(x[0])*factorial(x[1])*factorial(x[2]))
+
+def check():
+    started=perf_counter()
+    cases=0; drift_rows=[]
+    # Exact rational identity for exp(F), not floating logs.
+    for a in range(2,121):
+        x=(a,0,1); e=potential_factor(x)
+        assert e==factorial(a-1)
+        ratios=[(rate,Fraction(potential_factor(xp),e),xp) for rate,xp in jumps(x)]
+        assert ratios==[(a,Fraction(1),(a,1,0)),(1,Fraction(a),(a,0,0)),(1,Fraction(1),(a,0,2))]
+        drift=sum(rate*(ratio-1) for rate,ratio,_ in ratios)
+        assert drift==a-1
+        drift_rows.append({&#x27;A&#x27;:a,&#x27;state&#x27;:x,&#x27;E_F_drift_over_E_F&#x27;:str(drift),&#x27;F_drift&#x27;:&#x27;log(A)&#x27;})
+        cases+=1
+    # At A=0,B=n,C=0, all enabled jumps are positive coordinate births.
+    for n in range(1,121):
+        x=(0,n,0)
+        assert list(jumps(x))==[(n,(1,n,0)),(1,(0,n,1))]
+        assert all(potential_factor(xp)==potential_factor(x) for _,xp in jumps(x))
+        cases+=1
+    # Product Poisson weights satisfy each reversible edge, pointwise.
+    balances=0; class_checks=0
+    for a in range(9):
+      for b in range(9):
+       for c in range(9):
+        x=(a,b,c)
+        for (y,yp) in REACTIONS:
+            rate=ff(x,y)
+            if not rate: continue
+            xp=tuple(xi-yi+zi for xi,yi,zi in zip(x,y,yp))
+            assert weight(x)*rate==weight(xp)*ff(xp,yp)
+            balances+=1
+            assert (a+b==0)==(xp[0]+xp[1]==0)
+            class_checks+=1
+    # Exact cube [1/2,2]^3 boundary signs; scalar monotonicity extends facets.
+    half=Fraction(1,2); two=Fraction(2)
+    def ode(x):
+        a,b,c=x
+        return (b*(1-a),a*(c-b),a*(b-c)+1-c)
+    facet_checks=0
+    for dim in range(3):
+      for side in (half,two):
+       for u in (half,two):
+        for v in (half,two):
+         x=[u,v];x.insert(dim,side)
+         z=ode(x)[dim]
+         assert z&gt;=0 if side==half else z&lt;=0
+         facet_checks+=1
+    out={&#x27;status&#x27;:&#x27;PASS&#x27;,&#x27;source_order_max&#x27;:max(sum(y) for y,_ in REACTIONS),
+         &#x27;all_complex_order_max&#x27;:max(sum(y) for y in COMPLEXES),
+         &#x27;factorial_drift_cases&#x27;:cases,&#x27;exact_edge_balance_checks&#x27;:balances,
+         &#x27;class_invariance_checks&#x27;:class_checks,&#x27;cube_corner_facet_checks&#x27;:facet_checks,
+         &#x27;positive_factorial_drift_examples&#x27;:drift_rows[:5],
+         &#x27;elapsed_seconds&#x27;:perf_counter()-started,
+         &#x27;scope&#x27;:&#x27;Finite exact identities only; infinite-class, recurrence, and no-go proofs are in INITIAL.txt.&#x27;}
+    Path(__file__).with_name(&#x27;exact_checks.json&#x27;).write_text(json.dumps(out,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps(out,indent=2))
+
+if __name__==&#x27;__main__&#x27;: check()
+</pre><p><a href="../assets/b13d3c06e9c61df04e35f9754c57f18efe06d0c082a0b261b9bb12e069ea819e.py">Exact original bytes</a></p></html>

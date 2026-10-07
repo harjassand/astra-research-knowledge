@@ -1,0 +1,67 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c07_l06/revisions/growing_boundary_check.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c07_l06/revisions/growing_boundary_check.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Small exact checks for the central-binomial witness in the phase-3 audit.&quot;&quot;&quot;
+
+from fractions import Fraction
+from math import comb, erf, exp, log, sqrt
+import json
+from pathlib import Path
+
+
+def central_mass(n: int, left: int, p: Fraction) -&gt; Fraction:
+    q = 1 - p
+    return sum(
+        (Fraction(comb(n, k)) * p**k * q ** (n - k)
+         for k in range(left, n - left + 1)),
+        Fraction(0),
+    )
+
+
+def normal_cdf(x: float) -&gt; float:
+    return (1.0 + erf(x / sqrt(2.0))) / 2.0
+
+
+def finite_distance(n: int, kappa: float) -&gt; float:
+    denom = 2**n
+    base = [comb(n, k) / denom for k in range(n + 1)]
+    weights = [exp(-kappa * (k - n / 2) ** 2 / n) for k in range(n + 1)]
+    z = sum(p * w for p, w in zip(base, weights))
+    return 0.5 * sum(p * abs(w / z - 1.0) for p, w in zip(base, weights))
+
+
+def main() -&gt; None:
+    rational_checks = 0
+    largest_excess = Fraction(0)
+    for n in range(1, 15):
+        for left in range(n // 2 + 1):
+            at_half = central_mass(n, left, Fraction(1, 2))
+            for denominator in range(2, 18):
+                for numerator in range(denominator + 1):
+                    p = Fraction(numerator, denominator)
+                    excess = central_mass(n, left, p) - at_half
+                    largest_excess = max(largest_excess, excess)
+                    assert excess &lt;= 0, (n, left, p, excess)
+                    rational_checks += 1
+
+    kappa = 2.0
+    beta = 1.0 + kappa / 2.0
+    a = sqrt(2.0 * log(beta) / kappa)
+    limit = 2.0 * (normal_cdf(a * sqrt(beta)) - normal_cdf(a))
+    sizes = [16, 64, 256, 1024, 4096]
+    finite = {str(n): finite_distance(n, kappa) for n in sizes}
+    result = {
+        &quot;status&quot;: &quot;PASS&quot;,
+        &quot;exact_rational_central_interval_checks&quot;: rational_checks,
+        &quot;largest_checked_mass_excess_over_p_half&quot;: str(largest_excess),
+        &quot;kappa&quot;: kappa,
+        &quot;gaussian_limit_tv&quot;: limit,
+        &quot;finite_n_tv&quot;: finite,
+        &quot;note&quot;: &quot;The checks are diagnostics only; the derivative identity and CLT proof are in PHASE3_GROWING_ANISOTROPY_AUDIT.txt.&quot;
+    }
+    out = Path(__file__).with_name(&quot;growing_boundary_check.json&quot;)
+    out.write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+    print(json.dumps(result, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/0c9504868ed86d67b80386a616665d649c0f81a89faddef3a58d4a45ab0d0ed1.py">Exact original bytes</a></p></html>

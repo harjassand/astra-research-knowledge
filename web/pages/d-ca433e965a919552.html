@@ -1,0 +1,123 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c09_s02/revisions/root_calibration_certificate.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c09_s02/revisions/root_calibration_certificate.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Root-centroid downstream certificate with charged held-out calibration.
+
+All issued upper bounds use Fraction intervals and integer square roots.
+Fixtures are fixed-tape software diagnostics, not evidence of a physical iid
+source, Gaussian output sampling, or the probability theorem itself.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from pathlib import Path
+import hashlib
+import json
+import random
+import time
+
+from entropy_table_certificate import log_interval, sqrt_interval
+
+
+def root_coefficient_upper(v,bits=55):
+    v=F(v)
+    if v&lt;1:
+        raise ValueError(&#x27;admitted r/gamma must be &gt;=1&#x27;)
+    if v==1:
+        return F(2)
+    ln,_=log_interval(v,F(1,1&lt;&lt;bits))
+    return min((2*v*v*ln[1]-v*v+1)/(v-1)**2,2+2*ln[1])
+
+
+def certify(training, validation, modes, labels_count, r, ridge, confidence_delta,
+            domination, requests, scale_window, epsilon, bits=55):
+    r,ridge,delta,C,epsilon=map(F,(r,ridge,confidence_delta,domination,epsilon))
+    t0,t1=map(F,scale_window)
+    if not 0&lt;ridge&lt;=r or not 0&lt;delta&lt;1 or C&lt;1 or requests&lt;1 or not 0&lt;t0&lt;t1:
+        raise ValueError(&#x27;invalid acquisition contract&#x27;)
+    if modes&lt;1 or labels_count&lt;1 or not validation or not 0&lt;epsilon&lt;1:
+        raise ValueError(&#x27;invalid dimensionality/records/tolerance&#x27;)
+    sums=[[F(0)]*modes for _ in range(labels_count)]
+    counts=[0]*labels_count
+    for label,row in training:
+        row=list(map(F,row))
+        if not 0&lt;=label&lt;labels_count or len(row)!=modes or not all(0&lt;=x&lt;=r for x in row):
+            raise ValueError(&#x27;training field violates supplied range&#x27;)
+        counts[label]+=1
+        for i,x in enumerate(row): sums[label][i]+=x
+    codebook=[[sums[j][i]/counts[j]+ridge if counts[j] else ridge
+               for i in range(modes)] for j in range(labels_count)]
+    assert all(ridge&lt;=x&lt;=r+ridge for row in codebook for x in row)
+    losses=[]
+    for label,row in validation:
+        row=list(map(F,row))
+        if not 0&lt;=label&lt;labels_count or len(row)!=modes or not all(0&lt;=x&lt;=r for x in row):
+            raise ValueError(&#x27;validation field violates supplied range&#x27;)
+        losses.append(sum((x-q)**2 for x,q in zip(row,codebook[label])))
+    W=modes*(r+ridge)**2
+    assert all(0&lt;=x&lt;=W for x in losses)
+    N=len(losses)
+    mean_loss=sum(losses)/N
+    log_confidence,_=log_interval(1/delta,F(1,1&lt;&lt;bits))
+    root_radius=sqrt_interval(log_confidence[1]/(2*N),bits)[1]
+    loss_upper=mean_loss+W*root_radius
+    coefficient=root_coefficient_upper(r/ridge,bits)
+    risk_upper=coefficient*loss_upper
+    scale_normalization=1/t0-1/t1
+    cw=1/scale_normalization
+    tv2=F(requests)*C*cw*risk_upper/4
+    status=&#x27;CERTIFIED_UNDER_IID_AND_MODEL_CONTRACT&#x27; if tv2&lt;=epsilon*epsilon else &#x27;UNKNOWN&#x27;
+    record_data={&#x27;training&#x27;:[[j,[str(F(x)) for x in row]] for j,row in training],
+                 &#x27;validation&#x27;:[[j,[str(F(x)) for x in row]] for j,row in validation]}
+    return {&#x27;status&#x27;:status,&#x27;m&#x27;:modes,&#x27;D&#x27;:labels_count,&#x27;archive_bits&#x27;:max(0,(labels_count-1).bit_length()),
+            &#x27;training_source_draws&#x27;:len(training),&#x27;held_out_source_draws&#x27;:N,
+            &#x27;scalar_field_values_read&#x27;:(len(training)+N)*modes,
+            &#x27;r&#x27;:str(r),&#x27;ridge&#x27;:str(ridge),&#x27;codebook_roots&#x27;:[[str(x) for x in row] for row in codebook],
+            &#x27;codebook_covariances&#x27;:[[str(x*x) for x in row] for row in codebook],
+            &#x27;training_cell_counts&#x27;:counts,&#x27;loss_range_upper&#x27;:str(W),
+            &#x27;empirical_loss&#x27;:str(mean_loss),&#x27;confidence_radius_upper&#x27;:str(W*root_radius),
+            &#x27;mean_loss_upper&#x27;:str(loss_upper),&#x27;root_coefficient_upper&#x27;:str(coefficient),
+            &#x27;reference_divergence_risk_upper&#x27;:str(risk_upper),&#x27;confidence_delta&#x27;:str(delta),
+            &#x27;domination_C&#x27;:str(C),&#x27;requested_observations&#x27;:requests,&#x27;scale_window&#x27;:[str(t0),str(t1)],
+            &#x27;scale_density_envelope_cw&#x27;:str(cw),&#x27;target_epsilon&#x27;:str(epsilon),
+            &#x27;TV_squared_upper_rational&#x27;:str(tv2),&#x27;TV_upper_float_display_only&#x27;:float(tv2)**.5,
+            &#x27;record_sha256&#x27;:hashlib.sha256(json.dumps(record_data,sort_keys=True).encode()).hexdigest(),
+            &#x27;precision_bits&#x27;:bits,
+            &#x27;scope&#x27;:&#x27;Valid under supplied PSD field range, iid source/evaluator, frozen classifier/codebook, reference domination and ideal Gaussian/scale decoder contracts. Issued bound rational; no physical sampler or continuous-TV digital claim.&#x27;}
+
+
+def main():
+    start=time.perf_counter()
+    fields=[[F(1,16),F(1,8)],[F(3,16),F(1,4)]]
+    # The classifier is FIXED and exactly reads the known finite state label.
+    # Separate seeded tapes exercise record handling; no statistical validity
+    # is inferred from pseudorandomness or this observed fixed-tape run.
+    train_rng=random.Random(6002)
+    valid_rng=random.Random(6003)
+    training=[]
+    validation=[]
+    for _ in range(32):
+        j=train_rng.randrange(2);training.append((j,fields[j]))
+    for _ in range(1024):
+        j=valid_rng.randrange(2);validation.append((j,fields[j]))
+    args=dict(training=training,validation=validation,modes=2,labels_count=2,r=F(1,4),
+              ridge=F(1,64),confidence_delta=F(1,10),domination=F(2),requests=3,
+              scale_window=(F(1),F(2)))
+    reports=[certify(**args,epsilon=eps) for eps in (F(1,3),F(1,10))]
+    assert all(x&gt;0 for x in reports[0][&#x27;training_cell_counts&#x27;])
+    assert reports[0][&#x27;status&#x27;]==&#x27;CERTIFIED_UNDER_IID_AND_MODEL_CONTRACT&#x27;
+    assert reports[1][&#x27;status&#x27;]==&#x27;UNKNOWN&#x27;
+    codebook=[[F(x) for x in row] for row in reports[0][&#x27;codebook_roots&#x27;]]
+    exact_population_loss=sum(sum((x-q)**2 for x,q in zip(row,code)) for row,code in zip(fields,codebook))/2
+    assert exact_population_loss==F(2,64*64)
+    assert exact_population_loss&lt;=F(reports[0][&#x27;mean_loss_upper&#x27;])
+    result={&#x27;status&#x27;:&#x27;PASS_EXACT_DIAGONAL_CALIBRATION_DIAGNOSTIC&#x27;,&#x27;reports&#x27;:reports,
+            &#x27;fixture_reference_probabilities&#x27;:[&#x27;1/2&#x27;,&#x27;1/2&#x27;],&#x27;fixture_root_fields&#x27;:[[str(x) for x in row] for row in fields],
+            &#x27;exact_fixture_population_loss&#x27;:str(exact_population_loss),
+            &#x27;elapsed_seconds&#x27;:time.perf_counter()-start,
+            &#x27;evidence_boundary&#x27;:&#x27;Records are fixed pseudorandom-tape fixtures; iid/range/domination hypotheses are admitted, not acquired from this diagnostic. Gaussian output primitive is not implemented. Failure at tighter epsilon is preserved as UNKNOWN.&#x27;}
+    out=Path(__file__).with_name(&#x27;root_calibration_checks.json&#x27;)
+    out.write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({&#x27;status&#x27;:result[&#x27;status&#x27;],&#x27;training&#x27;:32,&#x27;validation&#x27;:1024,
+                      &#x27;acceptance_statuses&#x27;:[r[&#x27;status&#x27;] for r in reports],
+                      &#x27;TV_upper_display_only&#x27;:reports[0][&#x27;TV_upper_float_display_only&#x27;],
+                      &#x27;elapsed_seconds&#x27;:result[&#x27;elapsed_seconds&#x27;],&#x27;output&#x27;:str(out)},indent=2))
+
+
+if __name__==&#x27;__main__&#x27;:main()
+</pre><p><a href="../assets/9890622c558dea1202d4d4b28a4753457c446b56d06581fd52592d9e016d5680.py">Exact original bytes</a></p></html>

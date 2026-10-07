@@ -1,0 +1,158 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c09_l04/analytic_logconcave_pair.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c09_l04/analytic_logconcave_pair.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Bounded numerical diagnostics for the c09_l04 log-concave pair.
+
+The proof is in INITIAL.txt.  This script checks the explicit analytic
+constant bounds and a finite midpoint-grid instance of the positive periodic
+hat codec; it does not certify the asymptotic theorem.
+&quot;&quot;&quot;
+
+import json
+import math
+
+
+A = 1e-3
+D = 24
+SQRT2 = math.sqrt(2.0)
+NORMALIZER = math.sqrt(2.0 * math.pi)
+
+
+def normal_pdf(x):
+    return math.exp(-0.5 * x * x) / NORMALIZER
+
+
+def normal_cdf(x):
+    return 0.5 * (1.0 + math.erf(x / math.sqrt(2.0)))
+
+
+def m2_midpoint(n=40000, radius=8.0):
+    step = 2.0 * radius / n
+    total = 0.0
+    for k in range(n):
+        x = -radius + (k + 0.5) * step
+        total += math.tanh(x) ** 2 * normal_pdf(x)
+    return total * step
+
+
+def h_terms(x, v, m2_value):
+    h = h1 = h2 = 0.0
+    for j, vj in enumerate(v, start=1):
+        r = A * math.exp(-j) * math.sqrt(m2_value)
+        k = 2.0 * math.pi * j
+        phase = k * normal_cdf(x)
+        co = math.cos(phase)
+        si = math.sin(phase)
+        h += r * vj * SQRT2 * co
+        h1 += r * vj * (-SQRT2 * k * si * normal_pdf(x))
+        h2 += r * vj * SQRT2 * (
+            -(k * k) * co * normal_pdf(x) ** 2
+            + k * x * si * normal_pdf(x)
+        )
+    return h, h1, h2
+
+
+def c_log_curvature(x, v, m2_value):
+    h, h1, h2 = h_terms(x, v, m2_value)
+    return -1.0 + h2 / (1.0 + h) - (h1 / (1.0 + h)) ** 2
+
+
+def product_log_curvature(x, s, v):
+    g = math.tanh(x)
+    gp = 1.0 - g * g
+    gpp = -2.0 * g * gp
+    z = s * v
+    den = 1.0 + z * g
+    return -1.0 + z * gpp / den - (z * gp / den) ** 2
+
+
+def shared_density(t, v, m2_value):
+    val = 1.0
+    for j, vj in enumerate(v, start=1):
+        r = A * math.exp(-j) * math.sqrt(m2_value)
+        val += SQRT2 * r * vj * math.cos(2.0 * math.pi * j * t)
+    return val
+
+
+def periodic_hat_codec_tv(j_count, v, m2_value, grid_n=32768):
+    &quot;&quot;&quot;Midpoint-grid TV diagnostic for the positive hat/Durrmeyer kernel.&quot;&quot;&quot;
+    masses = [0.0] * j_count
+    f_values = []
+    hats = []
+    for n in range(grid_n):
+        t = (n + 0.5) / grid_n
+        z = j_count * t
+        left = int(z) % j_count
+        alpha = z - math.floor(z)
+        right = (left + 1) % j_count
+        f = shared_density(t, v, m2_value)
+        f_values.append(f)
+        hats.append((left, right, alpha))
+        weight = 1.0 / grid_n
+        masses[left] += (1.0 - alpha) * f * weight
+        masses[right] += alpha * f * weight
+
+    absolute_error = 0.0
+    for f, (left, right, alpha) in zip(f_values, hats):
+        out_density = j_count * (
+            (1.0 - alpha) * masses[left] + alpha * masses[right]
+        )
+        absolute_error += abs(out_density - f) / grid_n
+    return absolute_error / 2.0
+
+
+def main():
+    # Sum i^4 q^i = q(1+11q+11q^2+q^3)/(1-q)^5, q=e^-2.
+    q = math.exp(-2.0)
+    s4 = q * (1.0 + 11.0 * q + 11.0 * q * q + q**3) / (1.0 - q) ** 5
+    assert s4 &lt; 1.0
+    m2 = m2_midpoint()
+    assert 0.0 &lt; m2 &lt; 1.0
+
+    # Analytic uniform bounds: e^2&gt;7 gives sum e^-2i&lt;1/6 and s4&lt;1.
+    delta_bound = A / math.sqrt(3.0)
+    h2_bound = 9.0 * math.sqrt(2.0) * A
+    c_curvature_bound = -1.0 + h2_bound / (1.0 - delta_bound)
+    tanh_second_bound = 4.0 / (3.0 * math.sqrt(3.0))
+    p_curvature_bound = -1.0 + A * tanh_second_bound / (1.0 - A)
+    assert c_curvature_bound &lt; -0.98
+    assert p_curvature_bound &lt; -0.99
+
+    v = [(-1.0) ** j / math.sqrt(D) for j in range(1, D + 1)]
+    c_grid_max = max(
+        c_log_curvature(-8.0 + 16.0 * k / 16000.0, v, m2)
+        for k in range(16001)
+    )
+    p_grid_max = max(
+        product_log_curvature(-8.0 + 16.0 * k / 16000.0, A * math.exp(-1), 1.0)
+        for k in range(16001)
+    )
+
+    # M2 is a uniform bound on ||f_v&#x27;&#x27;||_infinity; the kernel proof gives
+    # TV &lt;= M2/J^2 for every J&gt;=5.  Midpoint output is numerical evidence only.
+    m2_bound = SQRT2 * (2.0 * math.pi) ** 2 * A * math.sqrt(s4)
+    codec = []
+    for j_count in (8, 16, 32):
+        tv = periodic_hat_codec_tv(j_count, v, m2)
+        bound = m2_bound / (j_count * j_count)
+        assert tv &lt;= bound + 2e-7
+        codec.append({&quot;J&quot;: j_count, &quot;midpoint_TV&quot;: tv, &quot;analytic_TV_bound&quot;: bound})
+
+    print(json.dumps({
+        &quot;scope&quot;: &quot;finite numerical diagnostics; analytic proof is in INITIAL.txt&quot;,
+        &quot;a&quot;: A,
+        &quot;dimensions_checked&quot;: D,
+        &quot;m2_midpoint&quot;: m2,
+        &quot;sum_i4_exp_minus_2i&quot;: s4,
+        &quot;uniform_delta_bound&quot;: delta_bound,
+        &quot;uniform_abs_h_second_bound&quot;: h2_bound,
+        &quot;C_log_curvature_upper_bound&quot;: c_curvature_bound,
+        &quot;P_log_curvature_upper_bound&quot;: p_curvature_bound,
+        &quot;C_grid_log_curvature_max&quot;: c_grid_max,
+        &quot;P_grid_log_curvature_max_for_v1&quot;: p_grid_max,
+        &quot;periodic_hat_codec&quot;: codec,
+        &quot;fisher_gram_identity&quot;: &quot;both equal m2 * diag((a*exp(-i))^2) exactly&quot;,
+    }, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/c2b666b610d88d765fbc94f9be2bb0791e28ef78b7579a28a1e8fa29097c043d.py">Exact original bytes</a></p></html>

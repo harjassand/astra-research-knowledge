@@ -1,0 +1,98 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c06_l10/revisions/canonical_sector_search.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c06_l10/revisions/canonical_sector_search.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Deterministic finite diagnostic for canonical-sector log-concavity.
+
+Uses n=8 sector matrices only. This is numerical evidence, not a theorem,
+not a counterexample certificate, and not an FPRAS execution.
+&quot;&quot;&quot;
+import json
+import math
+from pathlib import Path
+import numpy as np
+
+
+def logsumexp(values):
+    m = float(max(values))
+    return m + math.log(sum(math.exp(float(x) - m) for x in values))
+
+
+def sector_logs(n, edges, alpha, gamma, beta, fields):
+    logs = []
+    for particle_count in range(n + 1):
+        masks = [s for s in range(1 &lt;&lt; n) if s.bit_count() == particle_count]
+        index = {s: i for i, s in enumerate(masks)}
+        H = np.zeros((len(masks), len(masks)))
+        for a, s in enumerate(masks):
+            z = [1 - 2 * ((s &gt;&gt; i) &amp; 1) for i in range(n)]
+            H[a, a] = sum(fields[i] * z[i] for i in range(n))
+            for (i, j), aa, gg in zip(edges, alpha, gamma):
+                H[a, a] += gg * z[i] * z[j]
+                if ((s &gt;&gt; i) &amp; 1) != ((s &gt;&gt; j) &amp; 1):
+                    H[a, index[s ^ (1 &lt;&lt; i) ^ (1 &lt;&lt; j)]] += 2 * aa
+        logs.append(logsumexp(beta * np.linalg.eigvalsh(H)))
+    return logs
+
+
+def main():
+    rng = np.random.default_rng(777)
+    n = 8
+    all_edges = [(i, j) for i in range(n) for j in range(i + 1, n)]
+    densities = [0.15, 0.4, 0.8, 1.0]
+    ratios = [-1, -0.9, -0.5, 0, 0.5, 0.9, 1]
+    alpha_choices = [0.1, 1, 5]
+    field_choices = [-5, -2, -1, 0, 1, 2, 5]
+    betas = [0.1, 1, 10, 100]
+    count = 0
+    minimum = float(&quot;inf&quot;)
+    min_case = None
+    violation = None
+    instances = 1000
+    for trial in range(instances):
+        density = float(rng.choice(densities))
+        edges = [e for e in all_edges if rng.random() &lt; density]
+        if not edges:
+            continue
+        alpha = rng.choice(alpha_choices, size=len(edges))
+        gamma = alpha * rng.choice(ratios, size=len(edges))
+        fields = rng.choice(field_choices, size=n)
+        for beta in betas:
+            L = sector_logs(n, edges, alpha, gamma, beta, fields)
+            for m in range(1, n):
+                margin = 2 * L[m] - L[m - 1] - L[m + 1]
+                count += 1
+                if margin &lt; minimum:
+                    minimum = float(margin)
+                    min_case = {
+                        &quot;trial&quot;: trial,
+                        &quot;density_parameter&quot;: density,
+                        &quot;beta&quot;: beta,
+                        &quot;sector&quot;: m,
+                        &quot;edges&quot;: edges,
+                        &quot;alpha&quot;: alpha.tolist(),
+                        &quot;gamma&quot;: gamma.tolist(),
+                        &quot;fields&quot;: fields.tolist(),
+                    }
+                if margin &lt; -1e-7 and violation is None:
+                    violation = {&quot;margin&quot;: float(margin), **min_case}
+    result = {
+        &quot;status&quot;: &quot;FINITE_NUMERICAL_DIAGNOSTIC_ONLY&quot;,
+        &quot;seed&quot;: 777,
+        &quot;n&quot;: n,
+        &quot;instances&quot;: instances,
+        &quot;densities&quot;: densities,
+        &quot;beta_values&quot;: betas,
+        &quot;alpha_values&quot;: alpha_choices,
+        &quot;gamma_over_alpha_values&quot;: ratios,
+        &quot;field_values&quot;: field_choices,
+        &quot;checks&quot;: count,
+        &quot;minimum_log_concavity_margin&quot;: minimum,
+        &quot;minimum_case&quot;: min_case,
+        &quot;violation_below_minus_1e-7&quot;: violation,
+        &quot;scope&quot;: &quot;float eigensolver, finite n only; no proof and no canonical algorithm&quot;,
+    }
+    target = Path(__file__).with_name(&quot;canonical_sector_search.json&quot;)
+    target.write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+    print(json.dumps(result, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/a2f8225e323e83fd931e5b967ca60c89c099c7aaaafd68ccbfd95f2d62e669cd.py">Exact original bytes</a></p></html>

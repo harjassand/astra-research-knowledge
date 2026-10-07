@@ -1,0 +1,75 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c07_s03/audit_primitives.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c07_s03/audit_primitives.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact boundary/ambiguity replays for the reusable normal and root components.&quot;&quot;&quot;
+from fractions import Fraction as F
+import importlib.util
+import json
+from pathlib import Path
+import time
+
+HERE=Path(__file__).resolve().parent
+def module(name,path):
+    spec=importlib.util.spec_from_file_location(name,path)
+    result=importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(result)
+    return result
+normal=module(&#x27;normal&#x27;,HERE/&#x27;certified_normal.py&#x27;)
+root=module(&#x27;root&#x27;,HERE/&#x27;certified_psd_root.py&#x27;)
+start=time.perf_counter()
+normal_reports=[]
+for L,ell in [(F(1),16),(F(4),24),(F(8),16)]:
+    bits=ell+normal.ceil_fraction(L*L)+8
+    D=1&lt;&lt;bits
+    for name,u in [(&#x27;left_tail&#x27;,0),(&#x27;zero&#x27;,D//2),(&#x27;interior&#x27;,D*8//9),(&#x27;right_tail&#x27;,D-1)]:
+        normal.base.ledger=normal.base.Ledger()
+        t0,c0=time.perf_counter(),time.process_time()
+        data=normal.generate(L,ell,u)
+        assert F(data[&#x27;ideal_clipped_normal_coupling_error_upper&#x27;])&lt;F(data[&#x27;h&#x27;])
+        if name==&#x27;zero&#x27;:
+            assert F(data[&#x27;output_rational&#x27;])==0
+            assert data[&#x27;termination&#x27;]==&#x27;TOLERANCE_INTERIOR_STOP&#x27;
+        if name==&#x27;left_tail&#x27;: assert F(data[&#x27;output_rational&#x27;])==-L
+        if name==&#x27;right_tail&#x27;: assert F(data[&#x27;output_rational&#x27;])==L
+        data[&#x27;costs&#x27;]={**normal.base.ledger.snapshot(),&#x27;wall_seconds&#x27;:time.perf_counter()-t0,
+                       &#x27;cpu_seconds&#x27;:time.process_time()-c0}
+        path=HERE/&#x27;evidence&#x27;/&#x27;normal_boundary&#x27;/f&#x27;L{L}_ell{ell}_{name}.json&#x27;
+        path.parent.mkdir(parents=True,exist_ok=True)
+        path.write_text(json.dumps(data,indent=2)+&#x27;\n&#x27;)
+        normal_reports.append({&#x27;output&#x27;:str(path.relative_to(HERE)),
+                               &#x27;termination&#x27;:data[&#x27;termination&#x27;],
+                               &#x27;coupling_bound&#x27;:data[&#x27;ideal_clipped_normal_coupling_error_upper&#x27;],
+                               &#x27;cdf_calls&#x27;:data[&#x27;cdf_request_count&#x27;],
+                               &#x27;max_integer_bits&#x27;:data[&#x27;costs&#x27;][&#x27;max_observed_integer_bits&#x27;]})
+root_reports=[]
+for name in [&#x27;zero&#x27;,&#x27;rank1&#x27;,&#x27;rank2&#x27;,&#x27;tiny&#x27;,&#x27;negative&#x27;]:
+    root.base.ledger=root.base.Ledger()
+    t0,c0=time.perf_counter(),time.process_time()
+    data=root.root(root.FIXTURES[name],12)
+    if name==&#x27;negative&#x27;: assert data[&#x27;status&#x27;]==&#x27;REFUTED_PSD_INPUT&#x27;
+    else:
+        assert data[&#x27;status&#x27;]==&#x27;CERTIFIED_GAP_FREE_PSD_ROOT_COLUMNS&#x27;
+        q=F(data[&#x27;target_root_operator_error&#x27;])
+        assert F(data[&#x27;squared_residual_operator_upper&#x27;])&lt;=q*q
+        # Independently recompute the delivered squared residual from its root.
+        X=[[F(x) for x in row] for row in data[&#x27;certified_root_matrix&#x27;]]
+        C=root.FIXTURES[name]
+        independent=[[sum(X[i][k]*X[k][j] for k in range(3))-C[i][j]
+                      for j in range(3)] for i in range(3)]
+        delta=max(sum(abs(x) for x in row) for row in independent)
+        assert delta==F(data[&#x27;squared_residual_operator_upper&#x27;])
+    data[&#x27;costs&#x27;]={**root.base.ledger.snapshot(),&#x27;wall_seconds&#x27;:time.perf_counter()-t0,
+                   &#x27;cpu_seconds&#x27;:time.process_time()-c0}
+    path=HERE/&#x27;evidence&#x27;/&#x27;root_boundary&#x27;/f&#x27;{name}.json&#x27;
+    path.parent.mkdir(parents=True,exist_ok=True)
+    path.write_text(json.dumps(data,indent=2)+&#x27;\n&#x27;)
+    root_reports.append({&#x27;fixture&#x27;:name,&#x27;output&#x27;:str(path.relative_to(HERE)),
+                         &#x27;status&#x27;:data[&#x27;status&#x27;],&#x27;working_bits&#x27;:data.get(&#x27;working_dyadic_bits&#x27;),
+                         &#x27;steps&#x27;:data.get(&#x27;newton_steps&#x27;),
+                         &#x27;max_integer_bits&#x27;:data[&#x27;costs&#x27;][&#x27;max_observed_integer_bits&#x27;]})
+report={&#x27;status&#x27;:&#x27;NORMAL_AND_ROOT_COMPONENT_AUDITS_PASS&#x27;,
+        &#x27;normal_cases&#x27;:normal_reports,&#x27;root_cases&#x27;:root_reports,
+        &#x27;wall_seconds&#x27;:time.perf_counter()-start,
+        &#x27;limits&#x27;:&#x27;Boundary and exact-residual checks support implemented components; not an end-to-end growing-N sampler.&#x27;}
+(HERE/&#x27;evidence&#x27;/&#x27;primitive_audit.json&#x27;).write_text(json.dumps(report,indent=2)+&#x27;\n&#x27;)
+print(json.dumps({&#x27;status&#x27;:report[&#x27;status&#x27;],&#x27;normal_cases&#x27;:len(normal_reports),
+                  &#x27;root_cases&#x27;:len(root_reports),&#x27;wall_seconds&#x27;:report[&#x27;wall_seconds&#x27;]}))
+</pre><p><a href="../assets/8228760e81c4ce6f41b49a51c5112e32143a767045f3fb8c8306e02bc626e425.py">Exact original bytes</a></p></html>

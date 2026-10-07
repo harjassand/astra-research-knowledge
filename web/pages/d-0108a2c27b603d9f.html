@@ -1,0 +1,119 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c09_s03/revisions/quadratic_inference_checks.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c09_s03/revisions/quadratic_inference_checks.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Exact Gaussian moment audit and rational sufficient-coefficient estimator.
+Ideal Gaussian statistical risk is not a certified finite-bit digitizer.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from collections import defaultdict
+from pathlib import Path
+import math
+import json
+import time
+
+
+def add(a, b):
+    out = defaultdict(F, a)
+    for k, v in b.items():
+        out[k] += v
+    return {k:v for k,v in out.items() if v}
+
+
+def scale(a, c):
+    return {k:F(c)*v for k,v in a.items() if c*v}
+
+
+def multiply(a, b):
+    out = defaultdict(F)
+    for i, v in a.items():
+        for j, w in b.items():
+            out[tuple(x+y for x,y in zip(i,j))] += v*w
+    return dict(out)
+
+
+def gaussian_expectation(poly):
+    ans = F(0)
+    for exponents, c in poly.items():
+        m = 1
+        for k in exponents:
+            if k % 2:
+                m = 0
+                break
+            m *= math.prod(range(1, k, 2))
+        ans += c*m
+    return ans
+
+
+def diagonal_risk_numerator(eigenvalues, noise_variance=F(1)):
+    eig = list(map(F, eigenvalues))
+    n = len(eig)
+    zero = (0,)*n
+    S = {}
+    f = {zero:-sum(eig)}
+    for i, val in enumerate(eig):
+        k = tuple(2 if j == i else 0 for j in range(n))
+        S[k] = F(1)
+        f[k] = val
+    Hnorm2 = add(add(multiply(S,S), scale(S,-2)), {zero:F(n)})
+    f2 = multiply(f,f)
+    energy = gaussian_expectation(multiply(f2,Hnorm2))
+    noise = F(noise_variance)*gaussian_expectation(Hnorm2)
+    norm2 = sum(x*x for x in eig)
+    numerator = energy+noise-4*norm2
+    formula = (2*n*n+18*n+28)*norm2+8*sum(eig)**2+F(noise_variance)*n*(n+1)
+    assert numerator == formula
+    return numerator
+
+
+def rational_moment_estimate(samples):
+    if not samples:
+        raise ValueError(&#x27;labeled observations required&#x27;)
+    n = len(samples[0][0])
+    out = [[F(0) for _ in range(n)] for _ in range(n)]
+    operations = 0
+    for x, y in samples:
+        x = list(map(F, x))
+        y = F(y)
+        if len(x) != n:
+            raise ValueError(&#x27;dimension mismatch&#x27;)
+        for i in range(n):
+            for j in range(i, n):
+                out[i][j] += y*(x[i]*x[j]-(i == j))
+                operations += 4
+    K = len(samples)
+    for i in range(n):
+        for j in range(i, n):
+            out[i][j] /= 2*K
+            out[j][i] = out[i][j]
+            operations += 1
+    return out, {&#x27;labeled_samples_read&#x27;:K, &#x27;feature_dimension&#x27;:n,
+                 &#x27;symmetric_coefficients_acquired&#x27;:n*(n+1)//2,
+                 &#x27;rational_operations&#x27;:operations,
+                 &#x27;max_output_fraction_bits&#x27;:max(max(x.numerator.bit_length(),x.denominator.bit_length()) for row in out for x in row)}
+
+
+def main():
+    start = time.perf_counter()
+    checks = []
+    for n in range(1,9):
+        for vals in [[F(1)]*n, [F((-1)**i,i+1) for i in range(n)],
+                     [F(1)]+[F(0)]*(n-1)]:
+            for noise in [F(0),F(1),F(3,2)]:
+                num = diagonal_risk_numerator(vals,noise)
+                checks.append({&#x27;n&#x27;:n,&#x27;eigenvalues&#x27;:list(map(str,vals)),
+                               &#x27;noise_variance&#x27;:str(noise),&#x27;four_K_times_MSE_exact&#x27;:str(num)})
+    samples = [([F(1),F(0)],F(1)),([F(0),F(2)],F(-1)),([F(1,2),F(-1,2)],F(3,4))]
+    estimate, cost = rational_moment_estimate(samples)
+    assert estimate == [[F(7,96),F(-1,32)],[F(-1,32),F(-73,96)]]
+    out = Path(__file__).with_name(&#x27;quadratic_inference_checks.json&#x27;)
+    result = {&#x27;exact_gaussian_polynomial_moment_checks&#x27;:checks,
+              &#x27;supplied_rational_label_estimator&#x27;:{&#x27;estimate&#x27;:[[str(x) for x in row] for row in estimate], &#x27;cost&#x27;:cost,
+              &#x27;scope&#x27;:&#x27;Actual arithmetic estimator on supplied observations; these fixtures are not sampled Gaussian observations and are not empirical capability evidence.&#x27;},
+              &#x27;elapsed_seconds&#x27;:time.perf_counter()-start,
+              &#x27;statistical_model&#x27;:&#x27;Ideal real Gaussian features and unit/known Gaussian label noise.&#x27;,
+              &#x27;precision_gate&#x27;:&#x27;UNKNOWN Gaussian digitizer/sample acquisition; no finite-bit risk transfer claimed.&#x27;,
+              &#x27;harness_repair&#x27;:&#x27;Initial hand-entered first fixture coefficient -1/96 was wrong; direct rational summation gives 7/96. Gaussian risk formula was unchanged and all 72 moment cases already passed.&#x27;}
+    out.write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({&#x27;exact_Gaussian_moment_cases&#x27;:len(checks),&#x27;estimator_cost&#x27;:cost,
+                      &#x27;seconds&#x27;:result[&#x27;elapsed_seconds&#x27;],&#x27;output&#x27;:str(out)}))
+
+if __name__ == &#x27;__main__&#x27;:
+    main()
+</pre><p><a href="../assets/d3b556e7d561504f595d25350bef53539af1ecba8c5c103eefdfde429a80d5b2.py">Exact original bytes</a></p></html>

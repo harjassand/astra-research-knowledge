@@ -1,0 +1,212 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c03_s01/implementation/portable_replay/work/cycle6/c03_s01/implementation/whole_gibbs_compiler.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c03_s01/implementation/portable_replay/work/cycle6/c03_s01/implementation/whole_gibbs_compiler.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Runnable N&lt;=3 whole finite-alpha axial Gibbs compiler and sampler.
+
+Bounded prototype: a direct rational K0/KN solve fits at most two spin sectors.
+Every accepted output gets an independent rational full-matrix certificate.
+Reads peer acquisition helper without mutating it. No polynomial LP claim.
+&quot;&quot;&quot;
+import argparse
+from fractions import Fraction as F
+import hashlib
+from itertools import combinations
+import json
+import math
+from pathlib import Path
+import random
+import time
+
+from dicke_compiler import (as_record,from_record,compile_state,verify_model,
+                            ceil_log2_reciprocal,sample_product,outward_dyadic)
+from check_finite_alpha import (peer,PEER_SOURCE,recursive_record,mixture_matrix,
+                                target_matrix_intervals)
+
+
+def direct_small_spin_backend(qhat,columns):
+    &quot;&quot;&quot;Exact K0/KN solve for N&lt;=3, whose spin table has at most two rows.&quot;&quot;&quot;
+    N=len(columns)-1
+    if N not in (1,2,3) or len(qhat)&gt;2:
+        raise ValueError(&#x27;direct bounded backend only supports N&lt;=3&#x27;)
+    if len(qhat)==1:
+        return [F(int(k==0)) for k in range(N+1)],F(0)
+    lower_in_white=columns[0][1]
+    assert lower_in_white&gt;0 and columns[N][1]==0
+    white_weight=F(qhat[1])/lower_in_white
+    assert 0&lt;=white_weight&lt;=1
+    weights=[F(0) for _ in range(N+1)]
+    weights[0],weights[N]=white_weight,1-white_weight
+    fit=peer.matvec([[col[b] for col in columns] for b in range(len(qhat))],weights)
+    objective=peer.total_variation(qhat,fit)
+    assert objective==0
+    return weights,objective
+
+
+def compile_whole_gibbs(N,alpha=&#x27;1/2&#x27;,delta=&#x27;1&#x27;,h=&#x27;1/3&#x27;,epsilon=&#x27;1e-12&#x27;):
+    start=time.perf_counter()
+    alpha,delta,h,epsilon=map(F,(alpha,delta,h,epsilon))
+    if N not in (1,2,3):
+        raise ValueError(&#x27;bounded whole-Gibbs compiler requires N in {1,2,3}&#x27;)
+    if not 0&lt;=alpha&lt;=16 or not 0&lt;=delta&lt;=1 or not abs(h)&lt;=8:
+        raise ValueError(&#x27;bounded whole-Gibbs parameters: 0&lt;=alpha&lt;=16,0&lt;=delta&lt;=1,|h|&lt;=8&#x27;)
+    if not F(&#x27;1e-80&#x27;)&lt;=epsilon&lt;F(1):
+        raise ValueError(&#x27;bounded whole-Gibbs accuracy requires 1e-80&lt;=epsilon&lt;1&#x27;)
+    w,meta=peer.acquire_k_weights(N,alpha,delta,h,epsilon,
+                                  lp_backend=direct_small_spin_backend)
+    assert w is not None and sum(w)==1 and min(w)&gt;=0
+    branches,bmeta=peer.acquire_branches(N,delta,h,w,epsilon)
+    models=[]
+    for branch in branches:
+        k=branch[&#x27;k&#x27;]
+        model=compile_state(k,delta*F(k,N),h-2*delta*branch[&#x27;m&#x27;]/N,
+                            epsilon=min(epsilon/64,F(&#x27;1e-30&#x27;)))
+        assert verify_model(model)
+        models.append(model)
+    rho=mixture_matrix(N,branches,models)
+    exp_bits=max(180,ceil_log2_reciprocal(epsilon)+32)
+    interval=target_matrix_intervals(N,alpha,delta,h,exp_bits)
+    raw=F(0)
+    for i,row in enumerate(rho):
+        for j,value in enumerate(row):
+            lo,hi=interval[i][j]
+            raw+=max(abs(value-lo),abs(value-hi))
+    matrix_bound=outward_dyadic(raw/2,exp_bits,True)
+    rank_bits=max(128,ceil_log2_reciprocal(epsilon)+16)
+    preparation=F(0)
+    for branch,model in zip(branches,models):
+        k,u=branch[&#x27;k&#x27;],branch[&#x27;u&#x27;]
+        bias=(F(math.comb(N,k)+math.comb(N-k,u),2*(1 &lt;&lt; rank_bits))
+              +from_record(model[&#x27;phase_uniform_TV_upper&#x27;])
+              +from_record(model[&#x27;finite_density_trace_distance_upper&#x27;]))
+        preparation+=branch[&#x27;probability&#x27;]*bias
+    bound=matrix_bound+preparation
+    if bound&gt;epsilon:
+        raise ArithmeticError(&#x27;full-state posterior certificate failed; output rejected&#x27;)
+    outer_bits=max(b[&#x27;probability&#x27;].denominator.bit_length()-1 for b in branches)
+    max_inner_bits=max(inner[&#x27;predetermined_random_bits_per_sample&#x27;] for inner in models)
+    result={&#x27;format&#x27;:&#x27;WHOLE_AXIAL_GIBBS_CERTIFIED_BOUNDED_V1&#x27;,&#x27;N&#x27;:N,
+            &#x27;alpha&#x27;:as_record(alpha),&#x27;delta&#x27;:as_record(delta),&#x27;h&#x27;:as_record(h),
+            &#x27;epsilon&#x27;:as_record(epsilon),&#x27;K_weights&#x27;:recursive_record(w),
+            &#x27;LP_metadata&#x27;:recursive_record(meta),&#x27;branch_metadata&#x27;:recursive_record(bmeta),
+            &#x27;branches&#x27;:recursive_record([{&#x27;k&#x27;:b[&#x27;k&#x27;],&#x27;u&#x27;:b[&#x27;u&#x27;],&#x27;probability&#x27;:b[&#x27;probability&#x27;]} for b in branches]),
+            &#x27;Dicke_models&#x27;:models,&#x27;uniform_rank_bits&#x27;:rank_bits,
+            &#x27;outer_sampling_bits&#x27;:outer_bits,&#x27;max_inner_sampling_bits&#x27;:max_inner_bits,
+            &#x27;predetermined_random_bits_per_sample&#x27;:outer_bits+2*rank_bits+max_inner_bits,
+            &#x27;target_matrix_exp_interval_bits&#x27;:exp_bits,
+            &#x27;full_matrix_trace_distance_upper&#x27;:as_record(matrix_bound),
+            &#x27;finite_sampler_additional_error_upper&#x27;:as_record(preparation),
+            &#x27;total_target_trace_distance_upper&#x27;:as_record(bound),
+            &#x27;compile_seconds&#x27;:time.perf_counter()-start,
+            &#x27;LP_backend&#x27;:&#x27;owned direct K0/KN two-sector formula for N&lt;=3; generic LP not called&#x27;,
+            &#x27;peer_source&#x27;:str(PEER_SOURCE),
+            &#x27;peer_source_sha256&#x27;:hashlib.sha256(PEER_SOURCE.read_bytes()).hexdigest(),
+            &#x27;certificate&#x27;:&#x27;Independent exact joint-spin projector target intervals and candidate matrix; half entrywise L1 bounds trace distance&#x27;}
+    return result
+
+
+def verify_whole_model(model):
+    assert model[&#x27;format&#x27;]==&#x27;WHOLE_AXIAL_GIBBS_CERTIFIED_BOUNDED_V1&#x27;
+    N=model[&#x27;N&#x27;]
+    alpha,delta,h=map(from_record,(model[&#x27;alpha&#x27;],model[&#x27;delta&#x27;],model[&#x27;h&#x27;]))
+    assert type(N) is int and N in (1,2,3) and 0&lt;=alpha&lt;=16 and 0&lt;=delta&lt;=1 and abs(h)&lt;=8
+    assert F(&#x27;1e-80&#x27;)&lt;=from_record(model[&#x27;epsilon&#x27;])&lt;1
+    assert type(model[&#x27;uniform_rank_bits&#x27;]) is int and model[&#x27;uniform_rank_bits&#x27;]&gt;=1
+    assert type(model[&#x27;target_matrix_exp_interval_bits&#x27;]) is int and model[&#x27;target_matrix_exp_interval_bits&#x27;]&gt;=1
+    assert type(model[&#x27;outer_sampling_bits&#x27;]) is int and model[&#x27;outer_sampling_bits&#x27;]&gt;=0
+    assert type(model[&#x27;max_inner_sampling_bits&#x27;]) is int and model[&#x27;max_inner_sampling_bits&#x27;]&gt;=0
+    assert type(model[&#x27;predetermined_random_bits_per_sample&#x27;]) is int
+    branches=[{&#x27;k&#x27;:b[&#x27;k&#x27;],&#x27;u&#x27;:b[&#x27;u&#x27;],&#x27;probability&#x27;:from_record(b[&#x27;probability&#x27;])}
+              for b in model[&#x27;branches&#x27;]]
+    assert len(branches)==len(model[&#x27;Dicke_models&#x27;])
+    assert sum(b[&#x27;probability&#x27;] for b in branches)==1 and min(b[&#x27;probability&#x27;] for b in branches)&gt;=0
+    for b,inner in zip(branches,model[&#x27;Dicke_models&#x27;]):
+        assert type(b[&#x27;k&#x27;]) is int and type(b[&#x27;u&#x27;]) is int
+        assert 0&lt;=b[&#x27;k&#x27;]&lt;=N and 0&lt;=b[&#x27;u&#x27;]&lt;=N-b[&#x27;k&#x27;] and inner[&#x27;n&#x27;]==b[&#x27;k&#x27;]
+        assert b[&#x27;probability&#x27;].denominator &amp; (b[&#x27;probability&#x27;].denominator-1)==0
+        assert verify_model(inner)
+        assert from_record(inner[&#x27;delta&#x27;])==delta*F(b[&#x27;k&#x27;],N)
+        m=F(2*b[&#x27;u&#x27;]-(N-b[&#x27;k&#x27;]),2)
+        assert from_record(inner[&#x27;h&#x27;])==h-2*delta*m/N
+    rho=mixture_matrix(N,branches,model[&#x27;Dicke_models&#x27;])
+    intervals=target_matrix_intervals(N,alpha,delta,h,model[&#x27;target_matrix_exp_interval_bits&#x27;])
+    error=F(0)
+    for i,row in enumerate(rho):
+        for j,value in enumerate(row):
+            lo,hi=intervals[i][j]
+            error+=max(abs(value-lo),abs(value-hi))
+    assert error/2&lt;=from_record(model[&#x27;full_matrix_trace_distance_upper&#x27;])
+    prep=F(0)
+    rb=model[&#x27;uniform_rank_bits&#x27;]
+    for b,inner in zip(branches,model[&#x27;Dicke_models&#x27;]):
+        k,u=b[&#x27;k&#x27;],b[&#x27;u&#x27;]
+        prep+=b[&#x27;probability&#x27;]*(F(math.comb(N,k)+math.comb(N-k,u),2*(1 &lt;&lt; rb))
+                               +from_record(inner[&#x27;phase_uniform_TV_upper&#x27;])
+                               +from_record(inner[&#x27;finite_density_trace_distance_upper&#x27;]))
+    assert prep&lt;=from_record(model[&#x27;finite_sampler_additional_error_upper&#x27;])
+    assert prep+from_record(model[&#x27;full_matrix_trace_distance_upper&#x27;])&lt;=from_record(model[&#x27;total_target_trace_distance_upper&#x27;])
+    assert from_record(model[&#x27;total_target_trace_distance_upper&#x27;])&lt;=from_record(model[&#x27;epsilon&#x27;])
+    outer_bits=max(b[&#x27;probability&#x27;].denominator.bit_length()-1 for b in branches)
+    max_inner_bits=max(inner[&#x27;predetermined_random_bits_per_sample&#x27;] for inner in model[&#x27;Dicke_models&#x27;])
+    assert model[&#x27;outer_sampling_bits&#x27;]==outer_bits and model[&#x27;max_inner_sampling_bits&#x27;]==max_inner_bits
+    assert model[&#x27;predetermined_random_bits_per_sample&#x27;]==outer_bits+2*rb+max_inner_bits
+    return True
+
+
+def sample_whole_gibbs(model,rng=None):
+    rng=random.SystemRandom() if rng is None else rng
+    branches=model[&#x27;branches&#x27;]
+    index=peer.sample_dyadic([from_record(b[&#x27;probability&#x27;]) for b in branches],rng)
+    branch=branches[index]
+    N,k,u=model[&#x27;N&#x27;],branch[&#x27;k&#x27;],branch[&#x27;u&#x27;]
+    rb=model[&#x27;uniform_rank_bits&#x27;]
+    choices=list(combinations(range(N),k))
+    subset=choices[(rng.getrandbits(rb)*len(choices)) &gt;&gt; rb]
+    complement=[i for i in range(N) if i not in subset]
+    choices=list(combinations(complement,u))
+    ones=choices[(rng.getrandbits(rb)*len(choices)) &gt;&gt; rb]
+    component=sample_product(model[&#x27;Dicke_models&#x27;][index],rng)
+    pad=model[&#x27;max_inner_sampling_bits&#x27;]-component[&#x27;random_bits_consumed&#x27;]
+    assert pad&gt;=0
+    if pad:
+        rng.getrandbits(pad)
+    states=[]
+    for i in range(N):
+        if i in subset:
+            state=component[&#x27;finite_product_local_density&#x27;]
+        else:
+            bit=int(i in ones)
+            state={&#x27;diagonal&#x27;:[as_record(1-bit),as_record(bit)],
+                   &#x27;upper_right_real&#x27;:as_record(0),&#x27;upper_right_imag&#x27;:as_record(0),
+                   &#x27;PSD_and_trace_one_exact&#x27;:True}
+        diag=list(map(from_record,state[&#x27;diagonal&#x27;]))
+        re,im=from_record(state[&#x27;upper_right_real&#x27;]),from_record(state[&#x27;upper_right_imag&#x27;])
+        assert sum(diag)==1 and diag[0]*diag[1]&gt;=re*re+im*im
+        states.append(state)
+    return {&#x27;branch_index&#x27;:index,&#x27;k&#x27;:k,&#x27;u&#x27;:u,&#x27;subset&#x27;:list(subset),
+            &#x27;random_bits_consumed&#x27;:model[&#x27;predetermined_random_bits_per_sample&#x27;],
+            &#x27;complement_ones&#x27;:list(ones),&#x27;local_density_matrices&#x27;:states,
+            &#x27;ensemble_target_trace_distance_upper&#x27;:model[&#x27;total_target_trace_distance_upper&#x27;]}
+
+
+def main():
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(&#x27;--n&#x27;,type=int,default=3)
+    parser.add_argument(&#x27;--alpha&#x27;,default=&#x27;3&#x27;)
+    parser.add_argument(&#x27;--delta&#x27;,default=&#x27;1&#x27;)
+    parser.add_argument(&#x27;--h&#x27;,default=&#x27;1/3&#x27;)
+    parser.add_argument(&#x27;--epsilon&#x27;,default=&#x27;1e-12&#x27;)
+    parser.add_argument(&#x27;--samples&#x27;,type=int,default=4)
+    parser.add_argument(&#x27;--seed&#x27;,type=int,default=20261008)
+    parser.add_argument(&#x27;--output&#x27;,type=Path)
+    args=parser.parse_args()
+    model=compile_whole_gibbs(args.n,args.alpha,args.delta,args.h,args.epsilon)
+    verify_whole_model(model)
+    rng=random.Random(args.seed)
+    result={&#x27;model&#x27;:model,&#x27;samples&#x27;:[sample_whole_gibbs(model,rng) for _ in range(args.samples)]}
+    text=json.dumps(result,indent=2)+&#x27;\n&#x27;
+    if args.output:
+        args.output.write_text(text)
+    else:
+        print(text,end=&#x27;&#x27;)
+
+
+if __name__==&#x27;__main__&#x27;:
+    main()
+</pre><p><a href="../assets/5041a5bac145584cbad8c115925a950d11ac77bf88204d04f2292f3d44d2270b.py">Exact original bytes</a></p></html>

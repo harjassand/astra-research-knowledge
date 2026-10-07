@@ -1,0 +1,100 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c01_s02/phase2/support_radius.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c01_s02/phase2/support_radius.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Acquire a supported k-pair set and its maximum support Johnson radius.
+
+N+1 projected support PIT queries plus 2k+1 exact univariate evaluations.
+No optimization, partition, conditional-sampling or support-diameter oracle.
+The one-sided finite-field-free PIT confidence is proved in the report.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from math import comb, ceil
+
+from paired_exact import estimator_sample, force_project, gram_weight
+from residual_counter import paired_fpras
+
+
+def acquire_support_radius(V, k, delta, rng):
+    m, N = len(V), len(V[0])//2
+    assert 0 &lt; delta &lt; 1
+    if k == 0:
+        return {&#x27;status&#x27;:&#x27;POSITIVE&#x27;,&#x27;witness&#x27;:[],&#x27;radius&#x27;:0,&#x27;diameter_bound&#x27;:0,
+                &#x27;moment_bound&#x27;:1,&#x27;grid&#x27;:1,&#x27;support_calls&#x27;:0}
+    if 2*k &gt; m or k &gt; N:
+        return {&#x27;status&#x27;:&#x27;ZERO&#x27;,&#x27;witness&#x27;:None,&#x27;radius&#x27;:None}
+    bits = (ceil(F(k*(N+2))/delta)-1).bit_length()
+    grid = 1 &lt;&lt; bits
+    calls = 0
+    query_random_bits = 0
+
+    def supported(forced, excluded):
+        nonlocal calls, query_random_bits
+        calls += 1
+        if len(forced) &gt; k:
+            return False
+        d, W, labels = force_project(V,forced,excluded)
+        if not d:
+            return False
+        r = k-len(forced)
+        if len(labels) &lt; r:
+            return False
+        if r == 0:
+            return True
+        xs = [rng.getrandbits(bits)+1 for _ in labels]
+        query_random_bits += bits*len(labels)
+        return estimator_sample(W,r,xs) != 0
+
+    if not supported([],[]):
+        return {&#x27;status&#x27;:&#x27;ZERO_WITH_CONFIDENCE&#x27;,&#x27;witness&#x27;:None,&#x27;radius&#x27;:None,
+                &#x27;grid&#x27;:grid,&#x27;support_calls&#x27;:calls,&#x27;random_bits&#x27;:query_random_bits}
+    forced, excluded = [],[]
+    for i in range(N):
+        if len(forced) == k:
+            excluded.append(i)
+        elif supported(forced+[i],excluded):
+            forced.append(i)
+        else:
+            excluded.append(i)
+    if len(forced) != k or not gram_weight(V,forced):
+        return {&#x27;status&#x27;:&#x27;UNKNOWN&#x27;,&#x27;witness&#x27;:forced,&#x27;radius&#x27;:None,
+                &#x27;grid&#x27;:grid,&#x27;support_calls&#x27;:calls,&#x27;random_bits&#x27;:query_random_bits}
+    # Conditional on the previous history, this is fresh independent integer
+    # randomness. A top-degree coefficient vanishes with probability &lt;=k/grid.
+    xs = [rng.getrandbits(bits)+1 for _ in range(N)]
+    query_random_bits += bits*N
+    inside = set(forced)
+    values = [estimator_sample(V,k,[x if i in inside else z*x
+                         for i,x in enumerate(xs)]) for z in range(2*k+1)]
+    diffs = values[:]
+    degree = 0
+    first_differences = []
+    for order in range(2*k+1):
+        first_differences.append(diffs[0])
+        if diffs[0]:
+            degree = order
+        diffs = [b-a for a,b in zip(diffs,diffs[1:])]
+    assert degree % 2 == 0
+    radius = degree//2
+    diameter = min(k,2*radius)
+    return {&#x27;status&#x27;:&#x27;POSITIVE&#x27;,&#x27;witness&#x27;:forced,&#x27;radius&#x27;:radius,
+            &#x27;diameter_bound&#x27;:diameter,&#x27;moment_bound&#x27;:comb(2*diameter,diameter),
+            &#x27;grid&#x27;:grid,&#x27;support_calls&#x27;:calls,&#x27;radius_evaluations&#x27;:2*k+1,
+            &#x27;random_bits&#x27;:query_random_bits,&#x27;finite_difference_degree&#x27;:degree,
+            &#x27;first_differences&#x27;:first_differences,
+            &#x27;confidence_contract&#x27;:&#x27;support and radius correct together with probability &gt;=1-delta&#x27;}
+
+
+def acquired_radius_count(V,k,epsilon,delta,radius_cap,rng):
+    assert radius_cap &gt;= 0
+    acquisition = acquire_support_radius(V,k,delta/2,rng)
+    if acquisition[&#x27;status&#x27;].startswith(&#x27;ZERO&#x27;):
+        return {&#x27;status&#x27;:&#x27;ZERO_WITH_CONFIDENCE&#x27;,&#x27;value&#x27;:F(0),&#x27;acquisition&#x27;:acquisition}
+    if acquisition[&#x27;status&#x27;] != &#x27;POSITIVE&#x27; or acquisition[&#x27;radius&#x27;] &gt; radius_cap:
+        return {&#x27;status&#x27;:&#x27;UNKNOWN&#x27;,&#x27;value&#x27;:None,&#x27;acquisition&#x27;:acquisition}
+    if acquisition[&#x27;radius&#x27;] == 0:
+        return {&#x27;status&#x27;:&#x27;EXACT_CONDITIONAL_ON_ACQUISITION&#x27;,
+                &#x27;value&#x27;:gram_weight(V,acquisition[&#x27;witness&#x27;]),
+                &#x27;acquisition&#x27;:acquisition,&#x27;samples&#x27;:0}
+    estimate = paired_fpras(V,k,epsilon,delta/2,rng,
+                           second_moment_bound=acquisition[&#x27;moment_bound&#x27;])
+    return {&#x27;status&#x27;:&#x27;APPROXIMATE_WITH_CONFIDENCE&#x27;,&#x27;value&#x27;:estimate[&#x27;value&#x27;],
+            &#x27;acquisition&#x27;:acquisition,&#x27;estimate&#x27;:estimate,
+            &#x27;contract&#x27;:&#x27;relative epsilon and confidence 1-delta on admitted inputs&#x27;}
+</pre><p><a href="../assets/eeab60475af2f78e4340dd7d38c6c33721568a18d35468bfe2adac94ce064bc7.py">Exact original bytes</a></p></html>

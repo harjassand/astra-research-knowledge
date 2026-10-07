@@ -1,0 +1,104 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c03_s01/implementation/check_delta_one.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c03_s01/implementation/check_delta_one.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Root-authorized delta1 extension and decisive negative/rejection controls.&quot;&quot;&quot;
+from copy import deepcopy
+from fractions import Fraction as F
+import json
+from pathlib import Path
+import random
+import time
+
+from dicke_compiler import (as_record,from_record,compile_state,verify_model,
+                            exp_negative_interval,numeric_quadrature,sample_product)
+from check_dicke_compiler import independent_population_error
+
+HERE=Path(__file__).resolve().parent
+
+
+def run():
+    start=time.perf_counter()
+    rng=random.Random(20261008)
+    records=[]
+    models=[]
+    for n in [2,3,8,16,32,64]:
+        for h in [&#x27;0&#x27;,&#x27;1/3&#x27;]:
+            model=compile_state(n,&#x27;1&#x27;,h,epsilon=&#x27;1e-20&#x27;)
+            assert verify_model(model)
+            numeric=independent_population_error(model)
+            sample=sample_product(model,rng)
+            assert sample[&#x27;random_bits_consumed&#x27;]==model[&#x27;predetermined_random_bits_per_sample&#x27;]
+            models.append(model)
+            records.append({&#x27;n&#x27;:n,&#x27;delta&#x27;:&#x27;1&#x27;,&#x27;h&#x27;:h,&#x27;verified&#x27;:True,
+                            &#x27;compile_seconds&#x27;:model[&#x27;compile_seconds&#x27;],
+                            &#x27;node_count&#x27;:len(model[&#x27;node_integers&#x27;]),
+                            &#x27;total_trace_distance_upper&#x27;:model[&#x27;total_output_trace_distance_upper&#x27;],
+                            &#x27;numeric_population_diagnostic&#x27;:numeric,
+                            &#x27;finite_sample_PSD_exact&#x27;:True})
+    control=next(m for m in models if m[&#x27;n&#x27;]==8 and from_record(m[&#x27;h&#x27;])==F(1,3))
+    corruptions=[]
+    for name,mutate in [
+        (&#x27;node_outside_support&#x27;,lambda m:m[&#x27;node_integers&#x27;].__setitem__(0,&#x27;-1&#x27;)),
+        (&#x27;node_inside_support_but_wrong&#x27;,lambda m:m[&#x27;node_integers&#x27;].__setitem__(1,&#x27;0&#x27;)),
+        (&#x27;weight_normalization_corrupted&#x27;,lambda m:m[&#x27;weight_integers&#x27;].__setitem__(0,str(int(m[&#x27;weight_integers&#x27;][0])+1))),
+        (&#x27;false_zero_population_certificate&#x27;,lambda m:m[&#x27;certificate&#x27;].__setitem__(&#x27;target_trace_distance_upper&#x27;,as_record(0))),
+        (&#x27;false_zero_total_error&#x27;,lambda m:m.__setitem__(&#x27;total_output_trace_distance_upper&#x27;,as_record(0))),
+        (&#x27;false_zero_phase_bias&#x27;,lambda m:m.__setitem__(&#x27;phase_uniform_TV_upper&#x27;,as_record(0))),
+        (&#x27;illegal_parameter_domain&#x27;,lambda m:m.__setitem__(&#x27;delta&#x27;,as_record(2))),
+        (&#x27;wrong_phase_modulus&#x27;,lambda m:m.__setitem__(&#x27;phase_modulus&#x27;,1)),
+        (&#x27;wrong_phase_sampling_bits&#x27;,lambda m:m.__setitem__(&#x27;phase_sampling_bits&#x27;,0)),
+        (&#x27;wrong_density_precision&#x27;,lambda m:m.__setitem__(&#x27;density_bits&#x27;,1)),
+        (&#x27;wrong_format&#x27;,lambda m:m.__setitem__(&#x27;format&#x27;,&#x27;UNVERIFIED_GENERIC_STATE&#x27;)),
+        (&#x27;wrong_component_count&#x27;,lambda m:m.__setitem__(&#x27;component_count&#x27;,1)),
+        (&#x27;wrong_random_bit_count&#x27;,lambda m:m.__setitem__(&#x27;predetermined_random_bits_per_sample&#x27;,0)),
+        (&#x27;wrong_node_dimension&#x27;,lambda m:m[&#x27;node_integers&#x27;].append(&#x27;0&#x27;)),
+        (&#x27;inflated_component_phase_budget&#x27;,lambda m:m.__setitem__(&#x27;phase_uniform_TV_upper&#x27;,as_record(F(1,10)))),
+        (&#x27;inflated_component_density_budget&#x27;,lambda m:m.__setitem__(&#x27;finite_density_trace_distance_upper&#x27;,as_record(F(1,10)))),
+    ]:
+        bad=deepcopy(control)
+        mutate(bad)
+        try:
+            verify_model(bad)
+        except (AssertionError,ValueError,ArithmeticError):
+            corruptions.append({&#x27;name&#x27;:name,&#x27;status&#x27;:&#x27;REJECTED&#x27;})
+        else:
+            raise AssertionError(&#x27;corruption accepted: &#x27;+name)
+    # Outside-domain obstruction is mathematical, not merely the input guard.
+    alo,ahi,_=exp_negative_interval(F(1),180)
+    p2lo,p2hi=alo/(1+2*ahi),ahi/(1+2*alo)
+    determinant=(p2lo-F(1,4),p2hi-F(1,4))
+    assert determinant[1]&lt;0
+    witness_gap=1/(1+2*ahi)-F(1,2)
+    assert witness_gap&gt;0
+    guard_rejected=bypass_cholesky_rejected=False
+    try:
+        compile_state(2,&#x27;2&#x27;,&#x27;0&#x27;)
+    except ValueError:
+        guard_rejected=True
+    try:
+        numeric_quadrature(2,F(2),F(0),100)
+    except (ValueError,ArithmeticError):
+        bypass_cholesky_rejected=True
+    assert guard_rejected and bypass_cholesky_rejected
+    outside={&#x27;n&#x27;:2,&#x27;delta&#x27;:&#x27;2&#x27;,&#x27;h&#x27;:&#x27;0&#x27;,
+             &#x27;ordinary_moment_H_determinant_interval&#x27;:[as_record(x) for x in determinant],
+             &#x27;proof&#x27;:&#x27;H=[[1,1/2],[1/2,a/(1+2a)]], a=exp(-1)&lt;1/2; determinant&lt;0&#x27;,
+             &#x27;separable_witness&#x27;:&#x27;Dicke Bell-state population &lt;=1/2 for every separable state&#x27;,
+             &#x27;target_trace_distance_from_any_separable_state_lower&#x27;:as_record(witness_gap),
+             &#x27;input_guard_rejected&#x27;:guard_rejected,&#x27;bypass_Cholesky_rejected&#x27;:bypass_cholesky_rejected}
+    # Exercise accepted adaptive refinement, as distinct from fail-closed path.
+    refined=compile_state(8,&#x27;1&#x27;,&#x27;1/3&#x27;,epsilon=&#x27;1e-5&#x27;,bits=2,density_bits=2,max_attempts=3)
+    assert verify_model(refined)
+    assert len(refined[&#x27;acquisition_attempts&#x27;])&gt;=2
+    result={&#x27;status&#x27;:&#x27;PASS&#x27;,&#x27;cases&#x27;:len(records),&#x27;records&#x27;:records,&#x27;models&#x27;:models,
+            &#x27;corruption_controls&#x27;:corruptions,&#x27;outside_domain_control&#x27;:outside,
+            &#x27;adaptive_refinement_attempts&#x27;:refined[&#x27;acquisition_attempts&#x27;],
+            &#x27;elapsed_seconds&#x27;:time.perf_counter()-start,
+            &#x27;preserved_half_receipt&#x27;:&#x27;half_domain/MANIFEST.json; accepted 70-case suite untouched&#x27;,
+            &#x27;mathematical_domain_source&#x27;:&#x27;c07_s02 AXIAL_ONE_CERTIFICATE and authorized independent audits; no priority/external validation claim&#x27;}
+    text=json.dumps(result,indent=2)+&#x27;\n&#x27;
+    (HERE/&#x27;delta1_checks.json&#x27;).write_text(text)
+    print(json.dumps({&#x27;status&#x27;:&#x27;PASS&#x27;,&#x27;cases&#x27;:len(records),&#x27;corruptions&#x27;:len(corruptions),
+                      &#x27;elapsed_seconds&#x27;:time.perf_counter()-start,&#x27;output_bytes&#x27;:len(text.encode())}),flush=True)
+
+
+if __name__==&#x27;__main__&#x27;:
+    run()
+</pre><p><a href="../assets/09d74b7bfe7b227bcb26d5cdaf3ef6e6de41df5e8a0420c949641f9d9fd36932.py">Exact original bytes</a></p></html>

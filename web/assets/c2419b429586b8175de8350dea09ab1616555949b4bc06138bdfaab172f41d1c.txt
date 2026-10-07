@@ -1,0 +1,99 @@
+EXECUTED S01 EXACT-RATIONAL QUARTIC SAMPLER: CERTIFICATE AND COST
+7 October 2026. Independent INITIAL unchanged. This realizes its quartic-
+output sampler claim with a UNIFORM CUBE rejection proposal, rather than the
+Gaussian proposal originally derived there. Both have polylogarithmic classical
+overhead at fixed bounds. It emits a positive rational qubit description,
+not hardware and not the new stopped diffusion. Its target is S_N p_(A,b).
+
+INPUT AND CODE
+certified_quartic_sampler.py uses standard-library Fraction, integer operations
+and the supplied iid fair-bit interface. A,b,M,B are exact rationals, N integer,
+0<epsilon<1/4. Exact symmetry/principal-minor checks certify ||A||<=M; sum b_i²
+<=B² certifies the vector bound. The optional mpmath flag is a floating cross-
+check and is not used in the algorithm or containment theorem.
+
+Let e=ceil(log2 epsilon^-1), epsilon0=2^-e<=epsilon, and f(x)=exp ell(x),
+ ell=-4|x|^4/3+x^TAx+b.x.
+Completing B r<=r²+B²/4 gives
+ f(x)<=exp[cg]exp(-r²), cg=3(M+2)²/16+B²/4,
+ f(x)<=exp[c0], c0=3(M+1)²/16+B²/4.
+The code's kg=ceil(2cg+1), k0=ceil(2c0+1) give safe dyadic envelopes since
+e^c<=2^(2c) for c>=0. On the unit ball f>=exp[-4/3-M-B], hence
+ Z>=2^-z, z=ceil[2(4/3+M+B)], using its volume>1.
+
+Choose integer L>=1 with L²>=kg+z+e+8. A three-coordinate Gaussian tail
+union, pi<4 and integral_L^infinity e^-t²dt<=e^-L²/(2L), give normalized
+mass outside [-L,L]^3 at most 12*2^(kg+z-L²)<=3epsilon0/64.
+The proposal is uniform on that cube, with acceptance f/2^k0. Its true
+acceptance is >=p0=2^-z/[2(2L)^3 2^k0]. With K=ceil[(e+4)/p0], ideal
+proposal exhaustion is <=exp[-(e+4)]<=epsilon0/16.
+
+FINITE GRID AND ACCEPTANCE
+Draw q-bit grid-centre coordinates L(2j+1-2^q)/2^q and a q-bit uniform
+acceptance integer. Couple to ideal cube draws with vector error<=2L2^-q.
+On the cube the gradient of ell is bounded by
+ La=16(2L)^3/3+2M(2L)+B.
+Because acceptance<=1, its gradient is also bounded by La. The rational
+exp interval, midpoint and dyadic threshold together cost at most 4*2^-q
+in acceptance probability; coordinate perturbation adds 2LLa2^-q.
+Union over K proposals gives K(2LLa+4)2^-q, the reported exact budget.
+q enforces this <=epsilon0/1024. Continuous coupling charges grid position
+through the OUTPUT kernel; continuous and discrete observation laws themselves
+are singular, so no TV claim between those unblurred observation laws is made.
+
+INTERVAL PRIMITIVES AND POSITIVE OUTPUT
+The exp enclosure range-reduces rational x to t=x/2^j, |t|<=1/2. Its Taylor
+tail is <=2 times the first omitted absolute term. The stop rule, then outward
+dyadic rounding, encloses exp(t). Repeated interval squaring encloses exp(x).
+At precision P=bits+j+ceil(2max(x,0))+bitlength(j+1)+12, a conservative endpoint
+propagation bound is 32(j+1)2^j exp(max(x,0))2^-P<=2^-bits. For negative x,
+hi<=1 throughout, so the bound follows directly from a factor2 recurrence;
+for positive x, divide endpoint errors by the exact exponential and iterate
+2d+d² with grid error, whose final relative error stays below1/100 with this
+guard. If x<=-(bits+1), [0,2^-(bits+1)] is already a valid enclosure. No
+floating elementary function is used for a decision.
+
+Scalar roots use rational bisection with a supplied finite upper bound. The
+Bloch map is m(x)=tanh(a|x|)x/|x|, a=(16/N)^(1/4). Exact r²=0 is handled.
+For nonzero rational r², adaptive root guards continue until rlo>0 and each
+component interval width<=epsilon0/(2048N). The midpoint differs in norm by
+<=width from m, and dividing by1+2width gives exact rational positivity, with
+norm error<=3width. Thus all-N tensor trace error is <=3Nwidth/2. The map's
+Euclidean derivative norm is <=a<=2, so coordinate-grid perturbation costs
+<=2NL2^-q, also explicitly bounded by q's second guard.
+All branches, including exhausted fallback I/2, are positive. With native
+local preparations accurate to epsilon0/(16N), the stated allocations sum
+to <epsilon. This describes a random product output within epsilon of S_Np.
+Adding a rigorously audited universal-decoder bound is a separate theorem;
+this implementation does not certify a rho_N state error by itself.
+
+COST AND EXECUTED EVIDENCE
+At fixed M,B, L=O(sqrt(log epsilon^-1)), K=O((log epsilon^-1)^(5/2)),
+q=O(logN+log epsilon^-1+Lin). Expected proposals are O(L^3), with a declared
+cap K. Every exact arithmetic register has polynomial length after outward
+dyadic rounding. Scalar evaluation/root guards cost polynomial in these bit
+lengths and input length. Worst random-bit count is4qK; expected count is
+O(qL^3). The final N emissions and native preparation cost are separate.
+
+Executed certified_quartic_replay.json: seeded replay, N256, epsilon1/16,
+765 proposals,153000 bits,50 bits/draw, K1024000,L5, positive rational output,
+no exhaustion; program-reported .05607 seconds. Seeded replay is not evidence
+for the iid bit law. certified_quartic_os_sample.json: OS-bit interface,
+N1024,epsilon1/64,2299 proposals,478192 bits,52bits/draw,K1280000,L5, positive
+rational output, no exhaustion; program-reported .204659 seconds. The OS
+interface is modeled as iid fair bits, not empirically proved such here.
+Physical quantum emissions in both runs: zero.
+
+FAILURES RETAINED
+The first exact-exp prototype produced huge unrounded fraction registers and
+hit Python's >4300-digit integer-to-string guard. Explicit outward dyadic
+rounding before/after squaring repaired that size-growth failure. Initial
+floating isotropic diagnostic used an erroneous sixth-order coefficient;
+it was corrected to64/45 before immutable INITIAL. The later independent
+exact generator script initially compared unsimplified SymPy expressions
+structurally; entrywise expansion repaired that assert without changing the
+mathematical identity. Neither failure was promoted into a theorem pass.
+
+No formal code verification or external reproduction, hardware, exact fixed
+gate-set implementation, unknown-parameter acquisition, or energy comparison.
+The stopped-diffusion finite-bit bridge remains a separate proof construction.

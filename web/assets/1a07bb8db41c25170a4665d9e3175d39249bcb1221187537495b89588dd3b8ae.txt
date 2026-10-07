@@ -1,0 +1,49 @@
+ROUND 6 INITIAL — c03_l08
+2026-10-07. Independent checkpoint frozen before peer exposure.
+
+STRONGEST CLAIM
+For an exact rational-complex matrix F in C^(n x n) of rank r, all determinant-weighted parity coefficients
+  c_k(F) = sum_{I,J disjoint, |I|=|J|=k} |det F[I,J]|^2
+admit an exact rank-parameter algorithm in O(n r^2 16^r) Gaussian-integer/rational arithmetic operations after an exact rank factorization, with polynomial bit cost in n and input length per arithmetic operation. It is fixed-parameter tractable in rank r, applies to dense matrices, and avoids n^{O(r)} subset enumeration. It also yields exact conditional sampling of (I,J) with probability proportional to |det F[I,J]|^2 in any nonzero canonical sector, by rerunning the transfer with local occupancy states fixed. This is an internally derived candidate algorithm; novelty and priority are unverified.
+
+DERIVATION
+Write F=AB with A in C^(n x r), B in C^(r x n), over Q(i). For each site i let a_i be row i of A and b_i column i of B. For I={i_1<...<i_k} and J={j_1<...<j_k}, define exterior vectors
+  A_I = a_{i_1} wedge ... wedge a_{i_k} in Lambda^k C^r,
+  B_J = b_{j_1} wedge ... wedge b_{j_k} in Lambda^k C^r.
+Their coordinates are det A[I,S] and det B[S,J]. Cauchy-Binet therefore gives det F[I,J] = sum_{|S|=k} (A_I)_S (B_J)_S.
+
+Use four copies of Lambda C^r and maintain
+  V = sum_{I,J disjoint} A_I tensor B_J tensor conjugate(A_I) tensor conjugate(B_J),
+where each site is processed in increasing order. Start with 1 tensor 1 tensor 1 tensor 1. At site i update V by
+  V <- V + (wedge-right a_i on factor 1)(wedge-right conjugate(a_i) on factor 3)V
+        + (wedge-right b_i on factor 2)(wedge-right conjugate(b_i) on factor 4)V.
+The three summands mean that i is empty, selected in I, or selected in J. This enforces I intersect J = empty locally. Wedge-right is the explicit linear map e_S -> e_S wedge v, whose coefficient on e_(S union {p}) is v_p times (-1)^(number of elements of S greater than p).
+
+After all sites, contract only entries with coordinate subsets (S,S,T,T) where |S|=|T|=k. Summing these entries gives
+  sum_{I,J disjoint, |I|=|J|=k} sum_{S,T} det A[I,S] det B[S,J] conjugate(det A[I,T] det B[T,J])
+  = c_k(F).
+This is a complete algebraic identity, not an approximation. Each of four exterior factors has dimension 2^r, so the state has at most 16^r entries. Applying the two wedge maps for each occupancy branch costs O(r^2 16^r) arithmetic operations per site in the direct implementation, hence O(n r^2 16^r) total. Degrees above r vanish automatically. A more careful sparse-axis implementation may lower the polynomial-in-r factor; no such improvement is needed for FPT status.
+
+For sampling in sector k, replace each site's three-way update by its chosen local state for a forced/excluded prefix. The final contraction is the exact nonnegative completion mass for that prefix. At each site choose empty/I/J with probabilities equal to the three completion masses divided by their sum. These conditional masses partition the current mass, so the output distribution is exactly |det F[I,J]|^2/c_k(F). Recomputing constrained partitions for each of n sites costs at most O(n^2 r^2 16^r) arithmetic operations; forward/backward messages could share work. After clearing factorization denominators, all sector weights are integers and the common scale cancels in the conditional probabilities. Exact integer sampling from a total of bit length B uses O(B) random bits in expected constant rejection rounds, independent of the smallest nonzero branch probability.
+
+A second, independent bounded-support route uses a Grassmann exterior-algebra elimination on the site-support graph. With four generators x_i,y_i,u_i,v_i per site, multiply edge factors (1+F_ij x_i y_j)(1+conjugate(F_ij)u_i v_j), then apply at each site the even local functional ell_i(1)=1, ell_i(x_i u_i)=-z, ell_i(y_i v_i)=1, and zero on all other local monomials. The row sign cancels the (-1)^k Koszul sign from interleaving the two determinant replicas. The resulting polynomial is sum_k c_k(F) z^k. Variable elimination along a width-w decomposition of the undirected site-support graph has 2^(O(w)) states per bag and polynomial bit cost. This treewidth route covers arbitrary rank when the support graph is narrow; rank and treewidth can be compared to select a route. The exact code is a prototype with a supplied elimination order.
+
+BIT/PRECISION AND CONDITIONING
+For rational-complex input of total encoding length L, clear all real/imaginary denominators by one positive integer D with log2 D <= L. Then G=DF is Gaussian integral and c_k(F)=D^(-2k)c_k(G). A nonzero coefficient contains a nonzero Gaussian-integer minor, so c_k(F)>=D^(-2k)>=2^(-2kL). Hadamard and at most 4^n terms give coefficient bit length O(n + kL + k log n), polynomial in the explicit input. Exact rational arithmetic has no floating-point condition-number dependency. The rank factorization itself is computed from the rational input with polynomial bit complexity; its pivot/minor bit growth must be included in a production implementation.
+
+If the entries arrive only as rounded data, exact-rank stability is not promised. For E with ||E||_op<=1, the disjoint-minor vector is a coordinate projection of wedge^k F, hence
+  |c_k(F+E)-c_k(F)|/c_k(F) <= 2x+x^2,
+  x = k sqrt(binomial(n,k)) ||E||_op (||F||_op+1)^(k-1) / sqrt(c_k(F)).
+Thus a sufficient spectral perturbation is ||E||_op <= epsilon sqrt(c_k(F))/(3k sqrt(binomial(n,k))(||F||_op+1)^(k-1)) for 0<epsilon<=1. Using the rational lower bound gives an explicit sufficient precision of O(kL + k log(n+||F||_op) + log(1/epsilon)) bits, plus log n if accuracy is entrywise. This can be conservative; it exposes why a floating implementation should use exact arithmetic or carry a relative conditioning certificate.
+
+EXECUTABLE EVIDENCE
+Prototype: work/cycle6/c03_l08/parity_treewidth_dp.py. Python standard library only; exact Gaussian-integer arithmetic. It compares the exterior-elimination result against direct determinant enumeration on 40 random cases through n=5, including complex entries, and compares the rank-transfer result against direct enumeration on 24 dense factorizations F=AB through n=5 and r=3. It also checks that the three constrained local sectors sum to the unconstrained partition at each site. All assertions passed. Separate path-support timings at treewidth 1 were 0.0033 s (n=12), 0.0047 s (n=24), and 0.0118 s (n=40). These are implementation diagnostics only; the derivations establish the formulas and the timings do not certify asymptotic runtime.
+
+COST AND BOUNDARIES
+The rank algorithm is exponential in r with base 16, polynomial in n and encoded precision, and does not charge determinant evaluation separately: it sums all amplitudes through the four-fold exterior transfer. It samples the selected occupation pair, not a full microscopic Markov chain over enlarged determinant bases and not a general hard-BCS state-preparation circuit. Exact rank r is an input property that can be computed in polynomial time; an untrusted approximate rank factorization is insufficient. Low rank is a sufficient subclass, not a claim that arbitrary-rank hard-BCS counting has a polynomial algorithm or FPRAS. The treewidth route needs a supplied or found decomposition of the site-support graph. The cycle6 baseline's aggregate signed-hole exchange/capacity theorem and deterministic support algorithm do not provide a general weighted partition oracle or replace the microscopic energy gate.
+
+PRIMARY CONTEXT / ATTRIBUTION
+The transfer identity above is derived directly here from Cauchy-Binet and exterior products; it imports no counting or optimization theorem. General treewidth contraction background: Markov and Shi, “Simulating quantum computation by contracting tensor networks,” arXiv:quant-ph/0511069, https://arxiv.org/abs/quant-ph/0511069. Fermionic tensor sign/order conventions: Gao et al., “Fermionic tensor network contraction for arbitrary geometries,” arXiv:2410.02215, https://arxiv.org/abs/2410.02215. These are context for the independent treewidth route, not premises for the rank-transfer proof. The baseline support oracle's imported Hamada–Iwata theorem is not used.
+
+STATUS AND NEXT GATE
+Status: internally derived exact FPT algorithm for rational-complex rank-r inputs; finite prototype checks pass; no external correctness/priority review and no optimized production implementation. Next decisive gate: independently derive the four-fold transfer and denominator/bit bounds; implement the factorization and conditional sampler for arbitrary exact rational-complex input; compare rank-transfer and treewidth routes on larger charged fixtures; audit prior art for an equivalent projected low-rank BCS norm algorithm. Preserve the open unrestricted microscopic sampler/energy problem unless this separate subclass is established.

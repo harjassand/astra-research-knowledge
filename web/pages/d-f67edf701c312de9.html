@@ -1,0 +1,95 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c01_s03/axial_compiler/check_scaling_models_failed_30s.py.txt</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c01_s03/axial_compiler/check_scaling_models_failed_30s.py.txt</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Independent true-filter model certificates for frozen peer deliveries.
+
+No peer code is imported/executed. This certifies the actual rational K weights,
+excluding conditional-block, phase, local-preparation and sampling errors.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from pathlib import Path
+import hashlib
+import json
+import signal
+import time
+
+from filtered_sector import filtered_posterior
+
+
+def interval_TV_lower(a, b):
+    if len(a) != len(b):
+        raise ValueError(&quot;matching interval vectors required&quot;)
+    return sum((max(F(0), x[0] - y[1], y[0] - x[1])
+                for x, y in zip(a, b)), F(0)) / 2
+
+
+def main():
+    def wall_limit(signum, frame):
+        raise TimeoutError(&quot;declared30second true-filter model check cap exceeded&quot;)
+    signal.signal(signal.SIGALRM, wall_limit)
+    signal.alarm(30)
+    started, assertions, records = time.perf_counter(), 0, []
+
+    def check(condition):
+        nonlocal assertions
+        assertions += 1
+        assert condition
+
+    def frac(record):
+        return F(int(record[&quot;numerator&quot;]), int(record[&quot;denominator&quot;]))
+
+    for N in [8, 16, 32, 64]:
+        stem = &quot;filtered&quot; if N &lt;= 16 else &quot;scaling&quot;
+        path = Path(f&quot;work/cycle6/c03_s01/implementation/{stem}_N{N}.json&quot;)
+        source = path.read_bytes()
+        model = json.loads(source)[&quot;model&quot;]
+        alpha, delta, h, eps = [frac(model[k]) for k in [&quot;alpha&quot;, &quot;delta&quot;, &quot;h&quot;, &quot;epsilon&quot;]]
+        check(alpha == 3 and delta == 1 and h == F(1, 3))
+        w = [frac(x) for x in model[&quot;isotropic_weights&quot;]]
+        check(len(w) == N + 1 and min(w) &gt;= 0 and sum(w) == 1)
+        bits = max(96, 2 * N + 32)
+        cert = filtered_posterior(N, alpha, delta, h, bits, isotropic_weights=w)
+        lower = interval_TV_lower(cert[&quot;target_sector_intervals&quot;], cert[&quot;candidate_sector_intervals&quot;])
+        upper = cert[&quot;TV_upper&quot;]
+        check(0 &lt;= lower &lt;= upper &lt; eps)
+        bad_w = [F(int(k == 0)) for k in range(N + 1)]
+        bad = filtered_posterior(N, alpha, delta, h, bits, isotropic_weights=bad_w)
+        bad_lower = interval_TV_lower(bad[&quot;target_sector_intervals&quot;], bad[&quot;candidate_sector_intervals&quot;])
+        check(bad_lower &gt; F(1, 100))
+        check(bad_lower &lt;= bad[&quot;TV_upper&quot;])
+        record = {&quot;N&quot;: N, &quot;alpha&quot;: str(alpha), &quot;delta&quot;: str(delta), &quot;h&quot;: str(h),
+                  &quot;epsilon&quot;: str(eps), &quot;source&quot;: str(path),
+                  &quot;source_sha256&quot;: hashlib.sha256(source).hexdigest(),
+                  &quot;source_bytes&quot;: len(source), &quot;precision_bits&quot;: bits,
+                  &quot;own_true_filter_model_TV_lower&quot;: str(lower),
+                  &quot;own_true_filter_model_TV_upper&quot;: str(upper),
+                  &quot;own_true_filter_model_TV_upper_float&quot;: float(upper),
+                  &quot;wrong_K0_model_TV_lower&quot;: str(bad_lower),
+                  &quot;wrong_K0_model_TV_lower_float&quot;: float(bad_lower),
+                  &quot;sampler_block_phase_preparation_errors_included&quot;: False}
+        if N &gt; 16:
+            record[&quot;peer_source_reported_compile_seconds&quot;] = model[&quot;compile_seconds&quot;]
+            record[&quot;peer_source_reported_total_trace_upper&quot;] = model[&quot;total_target_trace_distance_upper&quot;]
+            record[&quot;peer_source_reported_joint_entries&quot;] = model[&quot;joint_certificate_entries&quot;]
+            record[&quot;peer_source_reported_branches&quot;] = model[&quot;branch_count&quot;]
+            record[&quot;peer_source_reported_cached_zero_field_rules&quot;] = model[&quot;cached_zero_field_rules&quot;]
+            record[&quot;peer_source_reported_draw_bits&quot;] = model[&quot;predetermined_random_bits_per_sample&quot;]
+        records.append(record)
+
+    result = {&quot;status&quot;: &quot;PASS&quot;, &quot;assertions&quot;: assertions,
+              &quot;elapsed_seconds_shared_machine&quot;: time.perf_counter() - started,
+              &quot;wall_cap_seconds&quot;: 30,
+              &quot;independent_actual_peer_model_certificates&quot;: records,
+              &quot;scope&quot;: &quot;actual rational weights vs TRUE scalar-filter intervals, full physical trace metric&quot;,
+              &quot;peer_optimizer_or_sampler_executed&quot;: False,
+              &quot;generic_LP_or_iid_backend_executed&quot;: False,
+              &quot;hardware_preparation&quot;: &quot;NOT_EXECUTED&quot;}
+    signal.alarm(0)
+    Path(__file__).with_name(&quot;scaling_model_checks.json&quot;).write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+    print(json.dumps({&quot;status&quot;: result[&quot;status&quot;], &quot;assertions&quot;: assertions,
+                      &quot;elapsed_seconds_shared_machine&quot;: result[&quot;elapsed_seconds_shared_machine&quot;],
+                      &quot;own_model_errors&quot;: [{&quot;N&quot;: r[&quot;N&quot;], &quot;upper&quot;: r[&quot;own_true_filter_model_TV_upper_float&quot;],
+                                             &quot;wrong_K0_lower&quot;: r[&quot;wrong_K0_model_TV_lower_float&quot;]}
+                                            for r in records]}, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/df89dafe63c763bc36e62011be885ddeb0818eea4360f6636069f92ce4eadc93.txt">Exact original bytes</a></p></html>

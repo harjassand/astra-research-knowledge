@@ -1,0 +1,379 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c10_l07/reaction_recovery.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c10_l07/reaction_recovery.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact rational robust hitting-time certificates for finite 2-species CRNs.
+
+Admitted input: a fixed-total A+B=N class, integer complexes of total order at
+most two, and independent rational rate intervals. Propensities are products
+of falling factorials. The code either returns a checked rational potential,
+an exact closed-set witness against uniform recovery, or UNKNOWN on scope or
+resource limits. It makes no claim about unbounded classes.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import argparse
+import itertools
+import json
+from fractions import Fraction
+from typing import Any
+
+
+class ScopeError(Exception):
+    pass
+
+
+class BudgetExceeded(Exception):
+    pass
+
+
+class Infeasible(Exception):
+    pass
+
+
+def q(value: Any) -&gt; Fraction:
+    if isinstance(value, float):
+        raise ScopeError(&quot;rational inputs must be integers or strings, not floats&quot;)
+    return Fraction(value)
+
+
+def qs(value: Fraction) -&gt; str:
+    return str(value.numerator) if value.denominator == 1 else f&quot;{value.numerator}/{value.denominator}&quot;
+
+
+def falling(n: int, order: int) -&gt; int:
+    if order &lt; 0:
+        raise ScopeError(&quot;negative reactant count&quot;)
+    if n &lt; order:
+        return 0
+    out = 1
+    for j in range(order):
+        out *= n - j
+    return out
+
+
+def propensity(state: tuple[int, int], reactants: tuple[int, int]) -&gt; int:
+    return falling(state[0], reactants[0]) * falling(state[1], reactants[1])
+
+
+def validate(net: dict[str, Any]) -&gt; tuple[int, int, list[dict[str, Any]], int]:
+    total = net.get(&quot;total&quot;)
+    core_min = net.get(&quot;core_min_each&quot;)
+    cap = int(net.get(&quot;row_cap&quot;, 200_000))
+    if not isinstance(total, int) or total &lt; 0:
+        raise ScopeError(&quot;total must be a nonnegative integer&quot;)
+    if not isinstance(core_min, int) or core_min &lt; 0:
+        raise ScopeError(&quot;core_min_each must be a nonnegative integer&quot;)
+    if cap &lt; 1:
+        raise ScopeError(&quot;row_cap must be positive&quot;)
+    reactions = net.get(&quot;reactions&quot;)
+    if not isinstance(reactions, list) or not reactions:
+        raise ScopeError(&quot;a nonempty reaction list is required&quot;)
+    checked: list[dict[str, Any]] = []
+    for index, reaction in enumerate(reactions):
+        name = str(reaction.get(&quot;name&quot;, f&quot;r{index}&quot;))
+        reactants = tuple(reaction.get(&quot;reactants&quot;, ()))
+        products = tuple(reaction.get(&quot;products&quot;, ()))
+        if len(reactants) != 2 or len(products) != 2:
+            raise ScopeError(f&quot;{name}: exactly two species are required&quot;)
+        if any(not isinstance(v, int) or v &lt; 0 for v in reactants + products):
+            raise ScopeError(f&quot;{name}: complexes must be nonnegative integer pairs&quot;)
+        if sum(reactants) &gt; 2 or sum(products) &gt; 2:
+            raise ScopeError(f&quot;{name}: complex molecularity exceeds two&quot;)
+        if sum(reactants) != sum(products):
+            raise ScopeError(f&quot;{name}: reaction does not preserve A+B&quot;)
+        low, high = q(reaction[&quot;rate_min&quot;]), q(reaction[&quot;rate_max&quot;])
+        if low &lt; 0 or high &lt; low:
+            raise ScopeError(f&quot;{name}: invalid rational rate interval&quot;)
+        checked.append({
+            &quot;name&quot;: name,
+            &quot;reactants&quot;: reactants,
+            &quot;products&quot;: products,
+            &quot;jump&quot;: (products[0] - reactants[0], products[1] - reactants[1]),
+            &quot;low&quot;: low,
+            &quot;high&quot;: high,
+        })
+    if total + 1 &gt; 64:
+        raise BudgetExceeded(&quot;state count exceeds the admitted cap of 64&quot;)
+    return total, core_min, checked, cap
+
+
+def states_and_target(total: int, core_min: int) -&gt; tuple[list[tuple[int, int]], set[tuple[int, int]]]:
+    states = [(a, total - a) for a in range(total + 1)]
+    target = {x for x in states if min(x) &gt;= core_min}
+    return states, target
+
+
+def rate_corners(reactions: list[dict[str, Any]]) -&gt; list[tuple[Fraction, ...]]:
+    choices = [(r[&quot;low&quot;],) if r[&quot;low&quot;] == r[&quot;high&quot;] else (r[&quot;low&quot;], r[&quot;high&quot;]) for r in reactions]
+    return list(itertools.product(*choices))
+
+
+def next_state(state: tuple[int, int], reaction: dict[str, Any]) -&gt; tuple[int, int] | None:
+    if propensity(state, reaction[&quot;reactants&quot;]) == 0:
+        return None
+    jump = reaction[&quot;jump&quot;]
+    out = (state[0] + jump[0], state[1] + jump[1])
+    if min(out) &lt; 0:
+        raise AssertionError(&quot;enabled reaction produced a negative count&quot;)
+    return out
+
+
+def guaranteed_reachable(state: tuple[int, int], target: set[tuple[int, int]],
+                         reactions: list[dict[str, Any]]) -&gt; set[tuple[int, int]]:
+    seen = {state}
+    todo = [state]
+    while todo:
+        x = todo.pop()
+        for r in reactions:
+            if r[&quot;low&quot;] &lt;= 0:
+                continue
+            y = next_state(x, r)
+            if y is not None and y != x and y not in seen:
+                seen.add(y)
+                todo.append(y)
+    return seen
+
+
+def normalize_row(row: tuple[tuple[Fraction, ...], Fraction]) -&gt; tuple[tuple[Fraction, ...], Fraction] | None:
+    coeff, rhs = row
+    first = next((abs(c) for c in coeff if c), None)
+    if first is None:
+        if rhs &gt; 0:
+            raise Infeasible(&quot;constant contradiction 0 &gt;= positive&quot;)
+        return None
+    return tuple(c / first for c in coeff), rhs / first
+
+
+def deduplicate(rows: list[tuple[tuple[Fraction, ...], Fraction]], cap: int) -&gt; list[tuple[tuple[Fraction, ...], Fraction]]:
+    unique: dict[tuple[tuple[Fraction, ...], Fraction], None] = {}
+    for row in rows:
+        normalized = normalize_row(row)
+        if normalized is not None:
+            unique[normalized] = None
+            if len(unique) &gt; cap:
+                raise BudgetExceeded(f&quot;Fourier-Motzkin row cap {cap} exceeded&quot;)
+    return list(unique)
+
+
+def fm_solve(rows: list[tuple[tuple[Fraction, ...], Fraction]], nvars: int,
+             cap: int) -&gt; list[Fraction]:
+    &quot;&quot;&quot;Exact Fourier-Motzkin feasibility and rational back-substitution.&quot;&quot;&quot;
+    current = deduplicate(rows, cap)
+    remaining = set(range(nvars))
+    stages: list[tuple[int, list[tuple[tuple[Fraction, ...], Fraction]]]] = []
+    while remaining:
+        # Minimize the number of pairwise combinations at this elimination.
+        def cost(j: int) -&gt; tuple[int, int, int]:
+            pos = sum(1 for c, _ in current if c[j] &gt; 0)
+            neg = sum(1 for c, _ in current if c[j] &lt; 0)
+            return (pos * neg, pos + neg, j)
+
+        variable = min(remaining, key=cost)
+        stages.append((variable, current))
+        zero: list[tuple[tuple[Fraction, ...], Fraction]] = []
+        positive = []
+        negative = []
+        for row in current:
+            a = row[0][variable]
+            (positive if a &gt; 0 else negative if a &lt; 0 else zero).append(row)
+        generated = list(zero)
+        if positive and negative:
+            for p in positive:
+                ap = p[0][variable]
+                for n in negative:
+                    an = n[0][variable]
+                    mp, mn = -an, ap
+                    coeff = tuple(mp * u + mn * v for u, v in zip(p[0], n[0]))
+                    rhs = mp * p[1] + mn * n[1]
+                    generated.append((coeff, rhs))
+                    if len(generated) &gt; cap * 4:
+                        raise BudgetExceeded(f&quot;Fourier-Motzkin generation cap {cap * 4} exceeded&quot;)
+        current = deduplicate(generated, cap)
+        remaining.remove(variable)
+    # Any surviving constant contradiction is a genuine infeasibility result.
+    for coeff, rhs in current:
+        if any(coeff):
+            raise AssertionError(&quot;elimination left a variable coefficient&quot;)
+        if rhs &gt; 0:
+            raise Infeasible(&quot;eliminated system contains 0 &gt;= positive&quot;)
+
+    values = [Fraction(0) for _ in range(nvars)]
+    for variable, stage_rows in reversed(stages):
+        lower: list[Fraction] = []
+        upper: list[Fraction] = []
+        for coeff, rhs in stage_rows:
+            a = coeff[variable]
+            rest = sum((coeff[j] * values[j] for j in range(nvars) if j != variable), Fraction(0))
+            if a &gt; 0:
+                lower.append((rhs - rest) / a)
+            elif a &lt; 0:
+                upper.append((rhs - rest) / a)
+            elif rest &lt; rhs:
+                raise AssertionError(&quot;back-substitution found an inconsistent eliminated row&quot;)
+        lo = max(lower) if lower else None
+        hi = min(upper) if upper else None
+        if lo is not None and hi is not None:
+            if lo &gt; hi:
+                raise AssertionError(&quot;Fourier-Motzkin back-substitution interval is empty&quot;)
+            values[variable] = (lo + hi) / 2
+        elif lo is not None:
+            values[variable] = lo
+        elif hi is not None:
+            values[variable] = hi
+        else:
+            values[variable] = Fraction(0)
+    # A final exact check protects the synthesizer itself against implementation errors.
+    for coeff, rhs in rows:
+        if sum((a * x for a, x in zip(coeff, values)), Fraction(0)) &lt; rhs:
+            raise AssertionError(&quot;exact back-substitution failed an original inequality&quot;)
+    return values
+
+
+def generator_rows(states: list[tuple[int, int]], target: set[tuple[int, int]],
+                   reactions: list[dict[str, Any]]) -&gt; tuple[list[tuple[tuple[Fraction, ...], Fraction]], list[tuple[int, int]]]:
+    transient = [x for x in states if x not in target]
+    index = {x: i for i, x in enumerate(transient)}
+    rows: list[tuple[tuple[Fraction, ...], Fraction]] = []
+    for x in transient:
+        i = index[x]
+        nonnegative = [Fraction(0)] * len(transient)
+        nonnegative[i] = Fraction(1)
+        rows.append((tuple(nonnegative), Fraction(0)))
+        for action in rate_corners(reactions):
+            coeff = [Fraction(0)] * len(transient)
+            for r, rate in zip(reactions, action):
+                p = propensity(x, r[&quot;reactants&quot;])
+                if not p:
+                    continue
+                y = next_state(x, r)
+                if y is None or y == x:
+                    continue
+                intensity = rate * p
+                coeff[i] += intensity
+                if y not in target:
+                    coeff[index[y]] -= intensity
+            rows.append((tuple(coeff), Fraction(1)))
+    return rows, transient
+
+
+def verify_potential(states: list[tuple[int, int]], target: set[tuple[int, int]],
+                     reactions: list[dict[str, Any]], h: dict[tuple[int, int], Fraction]) -&gt; dict[str, Any]:
+    worst: tuple[Fraction, tuple[int, int], tuple[Fraction, ...]] | None = None
+    for x in states:
+        if x in target:
+            if h.get(x, Fraction(0)) != 0:
+                return {&quot;valid&quot;: False, &quot;reason&quot;: &quot;potential must be zero on target&quot;, &quot;state&quot;: x}
+            continue
+        if h.get(x, Fraction(0)) &lt; 0:
+            return {&quot;valid&quot;: False, &quot;reason&quot;: &quot;negative potential&quot;, &quot;state&quot;: x}
+        vals = []
+        for action in rate_corners(reactions):
+            drift = Fraction(0)
+            for r, rate in zip(reactions, action):
+                p = propensity(x, r[&quot;reactants&quot;])
+                if p:
+                    y = next_state(x, r)
+                    if y is not None and y != x:
+                        drift += rate * p * (h.get(y, Fraction(0)) - h[x])
+            vals.append((drift, action))
+        drift, action = max(vals, key=lambda z: z[0])
+        margin = -drift
+        if worst is None or margin &lt; worst[0]:
+            worst = (margin, x, action)
+    if worst is None:
+        return {&quot;valid&quot;: True, &quot;minimum_negative_drift&quot;: &quot;infinity&quot;, &quot;max_h&quot;: &quot;0&quot;}
+    return {
+        &quot;valid&quot;: worst[0] &gt;= 1,
+        &quot;minimum_negative_drift&quot;: qs(worst[0]),
+        &quot;worst_state&quot;: list(worst[1]),
+        &quot;worst_rate_corner&quot;: [qs(v) for v in worst[2]],
+        &quot;max_h&quot;: qs(max((h[x] for x in states), default=Fraction(0))),
+    }
+
+
+def synthesize(net: dict[str, Any]) -&gt; dict[str, Any]:
+    try:
+        total, core_min, reactions, cap = validate(net)
+        states, target = states_and_target(total, core_min)
+        if not target:
+            return {&quot;status&quot;: &quot;REFUTED&quot;, &quot;scope&quot;: &quot;uniform recovery to requested core&quot;, &quot;reason&quot;: &quot;target core is empty&quot;}
+        transient = [x for x in states if x not in target]
+        for source in transient:
+            reachable = guaranteed_reachable(source, target, reactions)
+            if not (reachable &amp; target):
+                return {
+                    &quot;status&quot;: &quot;REFUTED&quot;,
+                    &quot;scope&quot;: &quot;uniform recovery from every state to requested core&quot;,
+                    &quot;source&quot;: list(source),
+                    &quot;guaranteed_reachable_closed_set&quot;: [list(x) for x in sorted(reachable)],
+                    &quot;admissible_static_rate_choice&quot;: [qs(r[&quot;low&quot;] if r[&quot;low&quot;] &gt; 0 else Fraction(0)) for r in reactions],
+                    &quot;reason&quot;: &quot;under this allowed rate choice, no reaction path reaches the target&quot;,
+                }
+        if len(transient) &gt; 20:
+            raise BudgetExceeded(&quot;more than 20 transient states; exact elimination withheld&quot;)
+        rows, transient = generator_rows(states, target, reactions)
+        h_values = fm_solve(rows, len(transient), cap)
+        h = {x: Fraction(0) for x in target}
+        h.update({x: v for x, v in zip(transient, h_values)})
+        checked = verify_potential(states, target, reactions, h)
+        if not checked[&quot;valid&quot;]:
+            return {&quot;status&quot;: &quot;UNKNOWN&quot;, &quot;reason&quot;: &quot;synthesized candidate failed exact independent checker&quot;, &quot;checker&quot;: checked}
+        return {
+            &quot;status&quot;: &quot;CERTIFIED&quot;,
+            &quot;scope&quot;: &quot;uniform expected hitting time to requested core, from any state in fixed-total class&quot;,
+            &quot;network&quot;: net.get(&quot;name&quot;, &quot;unnamed&quot;),
+            &quot;model&quot;: &quot;lambda_r(x,t)=k_r(t,past)*product_i (x_i)_{under y_ri}; rates independently in supplied rational intervals&quot;,
+            &quot;total&quot;: total,
+            &quot;target_min_each&quot;: core_min,
+            &quot;potential&quot;: {f&quot;{x[0]},{x[1]}&quot;: qs(h[x]) for x in states},
+            &quot;expected_hitting_time_upper_by_state&quot;: {f&quot;{x[0]},{x[1]}&quot;: qs(h[x]) for x in states},
+            &quot;checker&quot;: checked,
+            &quot;checked_rate_corners_per_transient_state&quot;: len(rate_corners(reactions)),
+            &quot;elimination_row_cap&quot;: cap,
+        }
+    except BudgetExceeded as exc:
+        return {&quot;status&quot;: &quot;UNKNOWN&quot;, &quot;reason&quot;: str(exc)}
+    except ScopeError as exc:
+        return {&quot;status&quot;: &quot;UNKNOWN&quot;, &quot;reason&quot;: str(exc)}
+    except Infeasible as exc:
+        return {&quot;status&quot;: &quot;UNKNOWN&quot;, &quot;reason&quot;: f&quot;exact Foster system infeasible in admitted ansatz: {exc}&quot;}
+
+
+PAIR_EXCHANGE = {
+    &quot;name&quot;: &quot;four-channel pair exchange, N=4&quot;,
+    &quot;total&quot;: 4,
+    &quot;core_min_each&quot;: 2,
+    &quot;row_cap&quot;: 200_000,
+    &quot;reactions&quot;: [
+        {&quot;name&quot;: &quot;AB_to_2A&quot;, &quot;reactants&quot;: [1, 1], &quot;products&quot;: [2, 0], &quot;rate_min&quot;: &quot;1&quot;, &quot;rate_max&quot;: &quot;4&quot;},
+        {&quot;name&quot;: &quot;2A_to_AB&quot;, &quot;reactants&quot;: [2, 0], &quot;products&quot;: [1, 1], &quot;rate_min&quot;: &quot;1&quot;, &quot;rate_max&quot;: &quot;4&quot;},
+        {&quot;name&quot;: &quot;AB_to_2B&quot;, &quot;reactants&quot;: [1, 1], &quot;products&quot;: [0, 2], &quot;rate_min&quot;: &quot;1&quot;, &quot;rate_max&quot;: &quot;4&quot;},
+        {&quot;name&quot;: &quot;2B_to_AB&quot;, &quot;reactants&quot;: [0, 2], &quot;products&quot;: [1, 1], &quot;rate_min&quot;: &quot;1&quot;, &quot;rate_max&quot;: &quot;4&quot;},
+    ],
+}
+
+PARITY_TRAP = {
+    &quot;name&quot;: &quot;pair transmutation parity trap, N=2&quot;,
+    &quot;total&quot;: 2,
+    &quot;core_min_each&quot;: 1,
+    &quot;reactions&quot;: [
+        {&quot;name&quot;: &quot;2A_to_2B&quot;, &quot;reactants&quot;: [2, 0], &quot;products&quot;: [0, 2], &quot;rate_min&quot;: &quot;1&quot;, &quot;rate_max&quot;: &quot;1&quot;},
+        {&quot;name&quot;: &quot;2B_to_2A&quot;, &quot;reactants&quot;: [0, 2], &quot;products&quot;: [2, 0], &quot;rate_min&quot;: &quot;1&quot;, &quot;rate_max&quot;: &quot;1&quot;},
+    ],
+}
+
+
+def main() -&gt; None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(&quot;network_json&quot;, nargs=&quot;?&quot;, help=&quot;optional JSON input; omit to emit the two exact examples&quot;)
+    args = parser.parse_args()
+    if args.network_json:
+        with open(args.network_json, &quot;r&quot;, encoding=&quot;utf-8&quot;) as stream:
+            inputs = [json.load(stream)]
+    else:
+        inputs = [PAIR_EXCHANGE, PARITY_TRAP]
+    print(json.dumps([synthesize(net) for net in inputs], indent=2, sort_keys=True))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/538a38b796f5eec412a1a18ac4d1766c1634f826b7e5da595d7abbf8268cddf8.py">Exact original bytes</a></p></html>

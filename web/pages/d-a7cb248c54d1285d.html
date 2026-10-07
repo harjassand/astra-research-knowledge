@@ -1,0 +1,81 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c06_s01/revisions/projected_thermal_diagnostic.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c06_s01/revisions/projected_thermal_diagnostic.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Small floating matrix checks of the weighted compressed Euler proof.
+
+Not certified intervals, not a full expanded many-layer circuit, not an FPRAS.
+Exact coefficient/compiler evidence is in the companion Fraction diagnostics.
+&quot;&quot;&quot;
+from pathlib import Path
+import sys,json
+from fractions import Fraction as F
+from math import comb,sqrt
+import numpy as np
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
+from spin_projection_transfer import edge_gate,field_gate,embed
+
+
+def ceil_fraction(q):
+    q=F(q); return (q.numerator+q.denominator-1)//q.denominator
+
+
+def matrix(gate):
+    return np.array(embed(gate,3),dtype=float)
+
+
+def dicke_isometry():
+    v=np.zeros((8,6))
+    for state in range(8):
+        r=(state&amp;3).bit_count(); t=(state&gt;&gt;2)&amp;1
+        v[state,2*r+t]=1/sqrt(comb(2,r))
+    assert np.linalg.norm(v.T@v-np.eye(6),ord=2)&lt;1e-12
+    return v
+
+
+def trial(beta,b0,c0,b1,c1,potential):
+    alpha=F(7,5); gamma=F(-3,5)
+    terms=[(&quot;edge&quot;,(i,2),alpha/4,gamma/4) for i in (0,1)]
+    terms +=[(&quot;field&quot;,i,b0/2,c0/2) for i in (0,1)]
+    terms +=[(&quot;field&quot;,2,b1/2,c1/2)]
+    potential=tuple(map(F,potential)); shift=max(abs(f) for f in potential)
+    c=3*alpha*F(1,2)+(b0+abs(c0))+(b1+abs(c1))/2+shift
+    d=2*c; tau=beta*d; epsilon=F(1,2)
+    m=ceil_fraction(max(F(1),4*tau,20*tau*tau/epsilon)); s=beta/(2*m)
+    eye=np.eye(8); w=eye.copy(); shifted=np.zeros((8,8))
+    for kind,qubits,a,g in terms:
+        maker=lambda scale:edge_gate(qubits,a,g,scale) if kind==&quot;edge&quot; else field_gate(qubits,a,g,scale)
+        w=w@matrix(maker(s))
+        shifted+=matrix(maker(F(1)))-eye
+    onsite=np.diag([float(shift+potential[(state&amp;3).bit_count()]) for state in range(8)])
+    shifted+=onsite
+    onsite_euler=eye+float(s)*onsite
+    w=onsite_euler@w
+    v=dicke_isometry()
+    compressed=v.T@(w@w.T)@v
+    k=float(beta)*(v.T@shifted@v)
+    ev,rotation=np.linalg.eigh(compressed)
+    assert ev.min()&gt;=1-1e-12
+    log_b=(rotation*np.log(ev))@rotation.T
+    generator_error=float(np.linalg.norm(m*log_b-k,ord=2))
+    analytic_bound=float(5*tau*tau/m)
+    log_zb=float(np.log(np.exp(m*np.log(ev)).sum()))
+    log_zk=float(np.log(np.exp(np.linalg.eigvalsh(k)).sum()))
+    assert generator_error&lt;=analytic_bound+1e-10
+    assert abs(log_zb-log_zk)&lt;=generator_error+1e-9
+    return {&quot;beta&quot;:str(beta),&quot;longitudinal_fields&quot;:[str(c0),str(c1)],&quot;potential&quot;:[str(f) for f in potential],
+            &quot;m&quot;:m,&quot;generator_error&quot;:generator_error,&quot;analytic_bound&quot;:analytic_bound,
+            &quot;log_trace_error&quot;:abs(log_zb-log_zk)}
+
+
+def checks():
+    records=[]
+    for beta in (F(1,20),F(1,5),F(1),F(3)):
+        for potential in ((-2,0,-2),(-3,-1,-2)):
+            for fields in ((F(0),F(0)),(F(-1,7),F(2,9))):
+                records.append(trial(beta,F(1,3),fields[0],F(2,5),fields[1],potential))
+    return {&quot;status&quot;:&quot;PASS&quot;,&quot;scope&quot;:&quot;floating 6-dimensional compressed-generator diagnostics; no interval certification, expanded circuit or FPRAS executed&quot;,
+            &quot;trials&quot;:records,&quot;max_ratio&quot;:max(r[&#x27;generator_error&#x27;]/r[&#x27;analytic_bound&#x27;] for r in records)}
+
+
+if __name__==&quot;__main__&quot;:
+    result=checks()
+    Path(__file__).with_name(&#x27;projected_thermal_checks.json&#x27;).write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({k:v for k,v in result.items() if k!=&#x27;trials&#x27;},indent=2))
+</pre><p><a href="../assets/fb5fe294d7a260e3bbccc7517832de6e665b4abe99b47c7a01f74d8929cfbf8b.py">Exact original bytes</a></p></html>

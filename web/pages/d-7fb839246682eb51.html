@@ -1,0 +1,153 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c03_s02/full_support_barrier.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c03_s02/full_support_barrier.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact bounded fixtures for a hard-parity local-walk obstruction.
+
+The general theorem is proved in INITIAL.txt. This script does not test an
+asymptotic mixing theorem or run an FPRAS. Only Python standard-library
+integers and Fractions are used for acceptance assertions.
+&quot;&quot;&quot;
+
+import itertools
+import json
+import math
+from fractions import Fraction
+from pathlib import Path
+
+
+def det_int(a):
+    a = [list(row) for row in a]
+    n = len(a)
+    if not n:
+        return 1
+    sign, old = 1, 1
+    for k in range(n - 1):
+        if not a[k][k]:
+            pivot = next((j for j in range(k + 1, n) if a[j][k]), None)
+            if pivot is None:
+                return 0
+            a[k], a[pivot] = a[pivot], a[k]
+            sign = -sign
+        p = a[k][k]
+        for i in range(k + 1, n):
+            for j in range(k + 1, n):
+                num = a[i][j] * p - a[i][k] * a[k][j]
+                assert num % old == 0
+                a[i][j] = num // old
+            a[i][k] = 0
+        old = p
+    return sign * a[-1][-1]
+
+
+def minor(a, rows, cols):
+    return det_int([[a[i][j] for j in cols] for i in rows])
+
+
+def fraction_record(x):
+    return {
+        &quot;exact&quot;: str(x),
+        &quot;decimal_diagnostic&quot;: float(x),
+        &quot;numerator_bits&quot;: x.numerator.bit_length(),
+        &quot;denominator_bits&quot;: x.denominator.bit_length(),
+    }
+
+
+def fixture(n, precision):
+    q = n // 2
+    assert n &gt;= 4 and not n % 2 and precision &gt;= n + 2
+    sites = set(range(n))
+    p = [[int(j == (i + 1) % n) for j in range(n)] for i in range(n)]
+    c = [[0 if i == j else (i + 1) ** j for j in range(n)] for i in range(n)]
+    m = n ** (n - 1)
+    h = math.factorial(n) * (1 + m) ** n
+    denominator = (1 &lt;&lt; precision) * h
+    integer_f = [[denominator * p[i][j] + c[i][j]
+                  for j in range(n)] for i in range(n)]
+    amp_denominator = denominator ** q
+    a = Fraction(1, 1 &lt;&lt; precision)
+    bound_r = Fraction(1 &lt;&lt; n, 1 &lt;&lt; (2 * precision))
+    even = tuple(range(0, n, 2))
+    odd = tuple(range(1, n, 2))
+    endpoints = {even, odd}
+    weights = {}
+    endpoint_count = 0
+    for chosen in itertools.combinations(range(n), q):
+        other = tuple(sorted(sites - set(chosen)))
+        # The generalized Vandermonde perturbation has every such minor nonzero.
+        assert minor(c, chosen, other) != 0
+        unperturbed = minor(p, chosen, other)
+        assert (unperturbed != 0) == (chosen in endpoints)
+        endpoint_count += int(unperturbed != 0)
+        amplitude = Fraction(minor(integer_f, chosen, other), amp_denominator)
+        assert amplitude != 0
+        if chosen in endpoints:
+            assert abs(amplitude - unperturbed) &lt;= a
+        else:
+            assert abs(amplitude) &lt;= a
+        weights[chosen] = amplitude * amplitude
+    assert endpoint_count == 2
+    z = sum(weights.values(), Fraction())
+    w_even, w_odd = weights[even], weights[odd]
+    bridge = z - w_even - w_odd
+    assert bridge &lt;= bound_r
+    pi_even, pi_odd, pi_bridge = w_even / z, w_odd / z, bridge / z
+    assert pi_even &gt;= Fraction(1, 3) and pi_odd &gt;= Fraction(1, 3)
+    assert pi_bridge &lt;= bound_r
+    universal_gap_bound = pi_bridge / (pi_even * (1 - pi_even))
+    assert universal_gap_bound &lt;= 9 * bound_r
+    # Uniform one-pair proposal plus Metropolis acceptance is irreducible,
+    # since every q-set has positive weight. Its exact endpoint exit flow is
+    # also recorded, but the theorem bounds every stationary local kernel.
+    even_set = set(even)
+    proposal_exit = Fraction()
+    for x in even:
+        for y in sorted(sites - even_set):
+            neighbor = tuple(sorted((even_set - {x}) | {y}))
+            proposal_exit += min(Fraction(1), weights[neighbor] / w_even) / (q * q)
+    metropolis_gap_upper = proposal_exit / (1 - pi_even)
+    assert proposal_exit &lt;= bridge / w_even
+    assert metropolis_gap_upper &lt;= universal_gap_bound
+    norm_perturbation_bound = Fraction(n * m, denominator)
+    assert norm_perturbation_bound &lt;= a
+    condition_upper = (1 + norm_perturbation_bound) / (1 - norm_perturbation_bound)
+    assert condition_upper &lt;= Fraction(65, 63)
+    endpoint_sum = w_even + w_odd
+    relative_count_omission = bridge / z
+    assert relative_count_omission &lt;= bound_r
+    return {
+        &quot;n&quot;: n, &quot;q&quot;: q, &quot;precision_L&quot;: precision,
+        &quot;states&quot;: len(weights), &quot;all_weights_positive&quot;: True,
+        &quot;unperturbed_nonzero_states&quot;: endpoint_count,
+        &quot;unit_activities&quot;: True, &quot;F_diagonal_zero&quot;: True,
+        &quot;all_F_offdiagonals_positive&quot;: True,
+        &quot;entry_common_denominator_bits&quot;: denominator.bit_length(),
+        &quot;condition_number_upper&quot;: fraction_record(condition_upper),
+        &quot;stationary_bridge_mass&quot;: fraction_record(pi_bridge),
+        &quot;bridge_weight_bound_2n4minusL&quot;: fraction_record(bound_r),
+        &quot;universal_reversible_gap_upper&quot;: fraction_record(universal_gap_bound),
+        &quot;metropolis_endpoint_exit_probability&quot;: fraction_record(proposal_exit),
+        &quot;metropolis_gap_upper&quot;: fraction_record(metropolis_gap_upper),
+        &quot;endpoint_approximation_relative_error&quot;: fraction_record(relative_count_omission),
+        &quot;endpoint_sum_bits&quot;: {
+            &quot;numerator&quot;: endpoint_sum.numerator.bit_length(),
+            &quot;denominator&quot;: endpoint_sum.denominator.bit_length(),
+        },
+        &quot;universal_mixing_lower_1_over_4&quot;: (1 &lt;&lt; (2 * precision - n)) // 32,
+    }
+
+
+def main():
+    cases = [fixture(n, precision) for n in (4, 6, 8, 10)
+             for precision in (n + 2, n + 10, n + 24)]
+    result = {
+        &quot;scope&quot;: &quot;Exact finite rational bookkeeping; no general mixing run or FPRAS&quot;,
+        &quot;cases&quot;: len(cases), &quot;all_assertions_passed&quot;: True,
+        &quot;total_q_set_minors&quot;: sum(x[&quot;states&quot;] for x in cases),
+        &quot;fixtures&quot;: cases,
+    }
+    output = Path(__file__).with_name(&quot;full_support_barrier_checks.json&quot;)
+    output.write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+    print(json.dumps({k: v for k, v in result.items() if k != &quot;fixtures&quot;}))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/20236292b692bef0c52f1d4a73c2e4d7b21548736a7bd6b33f5c87ca44a6003b.py">Exact original bytes</a></p></html>

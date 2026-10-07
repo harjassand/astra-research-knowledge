@@ -1,0 +1,438 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c03_s01/implementation/portable_replay/work/cycle6/c03_s01/implementation/filtered_sector_scaling.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c03_s01/implementation/portable_replay/work/cycle6/c03_s01/implementation/filtered_sector_scaling.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Bounded N&lt;=64 whole-Gibbs compiler with compressed posterior certificate.
+
+Root supplied filtered-column preconditioning; c01_s03 reconstructed it.
+Owned implementation uses a rounded rational table, a TIME-LIMITED simplex
+subprocess, exact rational final certificates, and cached zero-field quadrature.
+No dense 2**N matrix. No polynomial/simplex/uniform-success runtime claim.
+&quot;&quot;&quot;
+import argparse
+from fractions import Fraction as F
+import json
+import math
+import os
+from pathlib import Path
+import random
+import resource
+import signal
+import subprocess
+import sys
+import time
+
+for key in (&#x27;OPENBLAS_NUM_THREADS&#x27;,&#x27;OMP_NUM_THREADS&#x27;,&#x27;MKL_NUM_THREADS&#x27;,&#x27;VECLIB_MAXIMUM_THREADS&#x27;):
+    os.environ[key]=&#x27;1&#x27;
+import mpmath as mp
+import dicke_compiler as dc
+from check_finite_alpha import peer
+
+HERE=Path(__file__).resolve().parent
+
+
+def dyadic_simplex(p,bits):
+    D=1 &lt;&lt; bits
+    assert min(p)&gt;=0 and sum(p)==1
+    ints=[(x*D).numerator//(x*D).denominator for x in p]
+    order=sorted(range(len(p)),key=lambda i:p[i]*D-ints[i],reverse=True)
+    for i in order[:D-sum(ints)]:
+        ints[i]+=1
+    return [F(x,D) for x in ints]
+
+
+def filter_data(N,alpha,delta,h,bits=160):
+    a=dc.exponents(N,delta,h)
+    peak=max(a)
+    f=[dc.exp_negative_interval(peak-x,bits)[:2] for x in a]
+    e=[dc.exp_negative_interval(alpha*b*F(N+1-b,N),bits)[:2]
+       for b in range(N//2+1)]
+    fhat=[dc.outward_dyadic((lo+hi)/2,128) for lo,hi in f]
+    assert min(fhat)&gt;0
+    return f,e,fhat
+
+
+def certify_joint(N,alpha,delta,h,w,fhat,bits=160):
+    &quot;&quot;&quot;Full physical joint spin/magnetization TV, retaining multiplicity.&quot;&quot;&quot;
+    f,e,_=filter_data(N,alpha,delta,h,bits)
+    dims=peer.spin_dimensions(N)
+    multiplicities=[dims[b]//(N-2*b+1) for b in range(len(dims))]
+    Aw=peer.matvec(peer.sector_matrix(N),w)
+    target=[]
+    candidate=[]
+    for b in range(len(dims)):
+        r=N-2*b+1
+        for t in range(b,N-b+1):
+            target.append((multiplicities[b]*e[b][0]*f[t][0],
+                           multiplicities[b]*e[b][1]*f[t][1]))
+            candidate.append(Aw[b]*fhat[t]/r)
+    Zlo=sum(lo for lo,hi in target)
+    Zhi=sum(hi for lo,hi in target)
+    Zhat=sum(candidate)
+    assert min(candidate)&gt;=0 and Zhat&gt;0 and Zlo&gt;0
+    error=sum(max(abs(q/Zhat-lo/Zhi),abs(q/Zhat-hi/Zlo))
+              for q,(lo,hi) in zip(candidate,target))/2
+    return dc.outward_dyadic(error,bits,True),{&#x27;joint_entries&#x27;:len(target),
+        &#x27;candidate_normalizer&#x27;:Zhat,&#x27;target_normalizer_lower&#x27;:Zlo,&#x27;target_normalizer_upper&#x27;:Zhi}
+
+
+def acquire_filtered_table(N,alpha,delta,h):
+    f,e,fhat=filter_data(N,alpha,delta,h)
+    A=peer.sector_matrix(N)
+    c=[sum(fhat[b:N-b+1])/F(N-2*b+1) for b in range(N//2+1)]
+    Z=[sum(A[b][k]*c[b] for b in range(len(c))) for k in range(N+1)]
+    columns=[[A[b][k]*c[b]/Z[k] for b in range(len(c))] for k in range(N+1)]
+    dims=peer.spin_dimensions(N)
+    raw=[dims[b]*((e[b][0]+e[b][1])/2)*c[b] for b in range(len(c))]
+    q=[x/sum(raw) for x in raw]
+    return q,columns,Z,fhat
+
+
+def solve_bounded_lp(q,columns,tag,timeout=15):
+    backend=&#x27;active-set-nnls&#x27; if len(columns)-1&gt;16 else &#x27;exact-simplex&#x27;
+    payload={&#x27;q&#x27;:[dc.as_record(x) for x in dyadic_simplex(q,56)],
+             &#x27;columns&#x27;:[[dc.as_record(x) for x in dyadic_simplex(col,56)] for col in columns],
+             &#x27;backend&#x27;:backend}
+    inp=HERE/(tag+&#x27;_lp_input.json&#x27;)
+    out=HERE/(tag+&#x27;_lp_output.json&#x27;)
+    inp.write_text(json.dumps(payload)+&#x27;\n&#x27;)
+    start=time.perf_counter()
+    try:
+        process=subprocess.run([sys.executable,str(Path(__file__).resolve()),&#x27;--solve-lp&#x27;,
+                                &#x27;--input&#x27;,str(inp),&#x27;--output&#x27;,str(out)],
+                               capture_output=True,text=True,timeout=timeout,
+                               env={**os.environ,&#x27;OPENBLAS_NUM_THREADS&#x27;:&#x27;1&#x27;,&#x27;OMP_NUM_THREADS&#x27;:&#x27;1&#x27;})
+    except subprocess.TimeoutExpired:
+        receipt={&#x27;status&#x27;:&#x27;TIMEOUT_REJECTED&#x27;,&#x27;declared_timeout_seconds&#x27;:timeout,
+                 &#x27;elapsed_seconds&#x27;:time.perf_counter()-start,&#x27;N&#x27;:len(columns)-1}
+        (HERE/(tag+&#x27;_lp_failure.json&#x27;)).write_text(json.dumps(receipt,indent=2)+&#x27;\n&#x27;)
+        raise ArithmeticError(&#x27;bounded filtered-sector simplex timed out; no output accepted&#x27;)
+    if process.returncode:
+        receipt={&#x27;status&#x27;:&#x27;LP_SUBPROCESS_REJECTED&#x27;,&#x27;returncode&#x27;:process.returncode,
+                 &#x27;stderr&#x27;:process.stderr[-2000:],&#x27;elapsed_seconds&#x27;:time.perf_counter()-start}
+        (HERE/(tag+&#x27;_lp_failure.json&#x27;)).write_text(json.dumps(receipt,indent=2)+&#x27;\n&#x27;)
+        raise ArithmeticError(&#x27;bounded filtered-sector simplex failed&#x27;)
+    result=json.loads(out.read_text())
+    v=[dc.from_record(x) for x in result[&#x27;v&#x27;]]
+    assert len(v)==len(columns) and min(v)&gt;=0 and sum(v)==1
+    return v,{&#x27;backend&#x27;:result[&#x27;backend&#x27;],
+              &#x27;objective&#x27;:result[&#x27;objective&#x27;],&#x27;declared_timeout_seconds&#x27;:timeout,
+              &#x27;subprocess_seconds&#x27;:time.perf_counter()-start,
+              &#x27;child_peak_rss_bytes&#x27;:result[&#x27;peak_rss_bytes&#x27;]}
+
+
+class CachedBlocks:
+    def __init__(self):
+        self.cache={}
+        self.acquisitions=0
+
+    def compile(self,n,delta,h):
+        if n&lt;=1:
+            return dc.compile_state(n,delta,h,epsilon=&#x27;1e-20&#x27;)
+        bits=128
+        dps=max(100,math.ceil(bits*0.302)+2*n+50)
+        key=(n,delta,dps)
+        if key not in self.cache:
+            self.cache[key]=dc.numeric_quadrature(n,delta,F(0),dps)
+            self.acquisitions+=1
+        bx,bw,base_diagnostic=self.cache[key]
+        start=time.perf_counter()
+        with mp.workdps(dps):
+            eh=mp.exp(mp.mpf(h.numerator)/h.denominator)
+            factors=[1-x+eh*x for x in bx]
+            logs=[mp.log(w)+n*mp.log(t) for w,t in zip(bw,factors)]
+            peak=max(logs)
+            ws=[mp.exp(x-peak) for x in logs]
+            total=mp.fsum(ws)
+            ws=[w/total for w in ws]
+            xs=[eh*x/t for x,t in zip(bx,factors)]
+            D=1 &lt;&lt; bits
+            nodes=[max(0,min(D,int(mp.floor(x*D+mp.mpf(&#x27;.5&#x27;))))) for x in xs]
+            weights=dc.apportion_weights(ws,bits)
+        cert=dc.certify_measure(n,delta,h,nodes,weights,bits,bits+32)
+        phase_bits,phase_budget=dc.phase_sampling_budget(n,bits)
+        density_budget=F(8*n,1 &lt;&lt; bits)
+        total_budget=dc.from_record(cert[&#x27;target_trace_distance_upper&#x27;])+phase_budget+density_budget
+        if total_budget&gt;F(&#x27;1e-20&#x27;):
+            raise ArithmeticError(&#x27;cached block failed exact posterior certificate&#x27;)
+        model={&#x27;format&#x27;:&#x27;DICKE_GAUSSIAN_CERTIFIED_V1&#x27;,&#x27;n&#x27;:n,
+               &#x27;delta&#x27;:dc.as_record(delta),&#x27;h&#x27;:dc.as_record(h),&#x27;epsilon&#x27;:dc.as_record(F(&#x27;1e-20&#x27;)),
+               &#x27;node_weight_bits&#x27;:bits,&#x27;node_integers&#x27;:[str(x) for x in nodes],
+               &#x27;weight_integers&#x27;:[str(w) for w in weights],
+               &#x27;phase_modulus&#x27;:n+1,&#x27;phase_sampling_bits&#x27;:phase_bits,
+               &#x27;phase_uniform_TV_upper&#x27;:dc.as_record(phase_budget),
+               &#x27;predetermined_random_bits_per_sample&#x27;:bits+phase_bits,
+               &#x27;component_count&#x27;:len(nodes)*(n+1),&#x27;product_components_stored&#x27;:False,
+               &#x27;density_bits&#x27;:bits,&#x27;finite_density_trace_distance_upper&#x27;:dc.as_record(density_budget),
+               &#x27;total_output_trace_distance_upper&#x27;:dc.as_record(total_budget),&#x27;certificate&#x27;:cert,
+               &#x27;floating_diagnostics&#x27;:{**base_diagnostic,&#x27;field_acquisition&#x27;:&#x27;cached zero-field rule followed by high-precision tilt&#x27;},
+               &#x27;acquisition_attempts&#x27;:[],&#x27;compile_seconds&#x27;:time.perf_counter()-start,
+               &#x27;analytic_input_dependency&#x27;:&#x27;c07_s02 delta1 theorem and independent audits&#x27;,
+               &#x27;randomness&#x27;:&#x27;Independent uniform bits required; deterministic fixtures use PRNG&#x27;}
+        assert dc.verify_model(model)
+        return model
+
+
+def all_raw_branches(N,w,fhat):
+    raw=[]
+    for k in range(N+1):
+        for u in range(N-k+1):
+            Z=sum(fhat[u:u+k+1])
+            mass=w[k]*F(math.comb(N-k,u),(k+1)*(1 &lt;&lt; (N-k)))*Z
+            raw.append((k,u,Z,mass))
+    total=sum(mass for k,u,Z,mass in raw)
+    assert total&gt;0
+    return raw,total
+
+
+def hierarchy_error(N,delta,h,w,fhat,branches):
+    raw,Z=all_raw_branches(N,w,fhat)
+    p={(k,u):mass/Z for k,u,z,mass in raw}
+    delivered={(b[&#x27;k&#x27;],b[&#x27;u&#x27;]):dc.from_record(b[&#x27;probability&#x27;]) for b in branches}
+    assert len(delivered)==len(branches) and sum(delivered.values())==1 and min(delivered.values())&gt;=0
+    outer=sum(abs(p[key]-delivered.get(key,F(0))) for key in p)/2
+    inner=prep=F(0)
+    rank_bits=128
+    for b in branches:
+        k,u=b[&#x27;k&#x27;],b[&#x27;u&#x27;]
+        model=b[&#x27;Dicke_model&#x27;]
+        assert dc.verify_model(model)
+        assert model[&#x27;n&#x27;]==k and dc.from_record(model[&#x27;delta&#x27;])==delta*F(k,N)
+        assert dc.from_record(model[&#x27;h&#x27;])==h-delta*F(2*u-(N-k),N)
+        q=dc.recovered_populations(k,[int(x) for x in model[&#x27;node_integers&#x27;]],
+                                  [int(x) for x in model[&#x27;weight_integers&#x27;]],model[&#x27;node_weight_bits&#x27;])
+        Zblock=sum(fhat[u:u+k+1])
+        block_error=sum(abs(x-fhat[u+l]/Zblock) for l,x in enumerate(q))/2
+        weight=delivered[(k,u)]
+        # Prevent an LCM over all unrelated block normalizers. Each directed
+        # rounding only enlarges the rigorous error, by at most 2^-160.
+        inner+=dc.outward_dyadic(weight*block_error,160,True)
+        prep+=weight*(F(math.comb(N,k)+math.comb(N-k,u),2*(1 &lt;&lt; rank_bits))
+                     +dc.from_record(model[&#x27;phase_uniform_TV_upper&#x27;])
+                     +dc.from_record(model[&#x27;finite_density_trace_distance_upper&#x27;]))
+    return outer,inner,prep
+
+
+def compile_filtered(N,alpha=&#x27;3&#x27;,delta=&#x27;1&#x27;,h=&#x27;1/3&#x27;,epsilon=&#x27;1e-8&#x27;,tag=None):
+    start=time.perf_counter()
+    alpha,delta,h,epsilon=map(F,(alpha,delta,h,epsilon))
+    if type(N) is not int or not 2&lt;=N&lt;=64 or not 0&lt;=alpha&lt;=16 or not 0&lt;=delta&lt;=1 or abs(h)&gt;2:
+        raise ValueError(&#x27;bounded filtered prototype: 2&lt;=N&lt;=64,alpha&lt;=16,delta&lt;=1,|h|&lt;=2&#x27;)
+    if not F(&#x27;1e-12&#x27;)&lt;=epsilon&lt;1:
+        raise ValueError(&#x27;bounded filtered accuracy requires 1e-12&lt;=eps&lt;1&#x27;)
+    tag=tag or (&#x27;scaling_N&#x27;+str(N))
+    q,columns,Zcolumns,fhat=acquire_filtered_table(N,alpha,delta,h)
+    v,lp=solve_bounded_lp(q,columns,tag,timeout=15)
+    iso=[x/z for x,z in zip(v,Zcolumns)]
+    norm=sum(iso)
+    w=dyadic_simplex([x/norm for x in iso],128)
+    joint,jdiag=certify_joint(N,alpha,delta,h,w,fhat)
+    raw,normalizer=all_raw_branches(N,w,fhat)
+    assert normalizer==jdiag[&#x27;candidate_normalizer&#x27;]
+    probabilities=dyadic_simplex([mass/normalizer for k,u,z,mass in raw],128)
+    cache=CachedBlocks()
+    branches=[]
+    for (k,u,Z,mass),weight in zip(raw,probabilities):
+        if time.perf_counter()-start&gt;58:
+            raise ArithmeticError(&#x27;declared 60s case budget approached during branch acquisition; output rejected&#x27;)
+        if weight==0:
+            continue
+        inner=cache.compile(k,delta*F(k,N),h-delta*F(2*u-(N-k),N))
+        branches.append({&#x27;k&#x27;:k,&#x27;u&#x27;:u,&#x27;probability&#x27;:dc.as_record(weight),&#x27;Dicke_model&#x27;:inner})
+    outer,inner,prep=hierarchy_error(N,delta,h,w,fhat,branches)
+    total=joint+outer+inner+prep
+    if total&gt;epsilon:
+        receipt={&#x27;status&#x27;:&#x27;POSTERIOR_REJECTED&#x27;,&#x27;joint_bound&#x27;:dc.as_record(joint),
+                 &#x27;total_bound&#x27;:dc.as_record(total),&#x27;epsilon&#x27;:dc.as_record(epsilon),&#x27;LP&#x27;:lp}
+        (HERE/(tag+&#x27;_posterior_failure.json&#x27;)).write_text(json.dumps(receipt,indent=2)+&#x27;\n&#x27;)
+        raise ArithmeticError(&#x27;filtered output failed exact posterior accuracy gate&#x27;)
+    outer_bits=max(dc.from_record(b[&#x27;probability&#x27;]).denominator.bit_length()-1 for b in branches)
+    max_inner=max(b[&#x27;Dicke_model&#x27;][&#x27;predetermined_random_bits_per_sample&#x27;] for b in branches)
+    if time.perf_counter()-start&gt;60:
+        raise ArithmeticError(&#x27;declared 60s case budget exceeded; output rejected&#x27;)
+    return {&#x27;format&#x27;:&#x27;FILTERED_SECTOR_GIBBS_CERTIFIED_SCALING_V1&#x27;,&#x27;N&#x27;:N,
+            &#x27;alpha&#x27;:dc.as_record(alpha),&#x27;delta&#x27;:dc.as_record(delta),&#x27;h&#x27;:dc.as_record(h),
+            &#x27;epsilon&#x27;:dc.as_record(epsilon),&#x27;isotropic_weights&#x27;:[dc.as_record(x) for x in w],
+            &#x27;filter_values&#x27;:[dc.as_record(x) for x in fhat],&#x27;branches&#x27;:branches,
+            &#x27;target_vs_ideal_joint_TV_upper&#x27;:dc.as_record(joint),
+            &#x27;outer_rounding_TV&#x27;:dc.as_record(outer),&#x27;block_population_TV&#x27;:dc.as_record(inner),
+            &#x27;finite_preparation_TV_upper&#x27;:dc.as_record(prep),
+            &#x27;total_target_trace_distance_upper&#x27;:dc.as_record(total),
+            &#x27;uniform_rank_bits&#x27;:128,&#x27;outer_sampling_bits&#x27;:outer_bits,
+            &#x27;max_inner_sampling_bits&#x27;:max_inner,
+            &#x27;predetermined_random_bits_per_sample&#x27;:outer_bits+256+max_inner,
+            &#x27;LP&#x27;:lp,&#x27;joint_certificate_entries&#x27;:jdiag[&#x27;joint_entries&#x27;],
+            &#x27;cached_zero_field_rules&#x27;:cache.acquisitions,&#x27;branch_count&#x27;:len(branches),
+            &#x27;dense_matrix_formed&#x27;:False,&#x27;compile_seconds&#x27;:time.perf_counter()-start,
+            &#x27;declared_case_compute_budget_seconds&#x27;:60}
+
+
+def verify_filtered(model):
+    assert model[&#x27;format&#x27;]==&#x27;FILTERED_SECTOR_GIBBS_CERTIFIED_SCALING_V1&#x27;
+    N=model[&#x27;N&#x27;]
+    alpha,delta,h,epsilon=map(dc.from_record,(model[&#x27;alpha&#x27;],model[&#x27;delta&#x27;],model[&#x27;h&#x27;],model[&#x27;epsilon&#x27;]))
+    assert type(N) is int and 2&lt;=N&lt;=64 and 0&lt;=alpha&lt;=16 and 0&lt;=delta&lt;=1 and abs(h)&lt;=2
+    assert F(&#x27;1e-12&#x27;)&lt;=epsilon&lt;1
+    w=[dc.from_record(x) for x in model[&#x27;isotropic_weights&#x27;]]
+    fhat=[dc.from_record(x) for x in model[&#x27;filter_values&#x27;]]
+    assert len(w)==N+1 and len(fhat)==N+1 and min(w)&gt;=0 and sum(w)==1 and min(fhat)&gt;0
+    branches=model[&#x27;branches&#x27;]
+    for b in branches:
+        assert type(b[&#x27;k&#x27;]) is int and type(b[&#x27;u&#x27;]) is int and 0&lt;=b[&#x27;k&#x27;]&lt;=N and 0&lt;=b[&#x27;u&#x27;]&lt;=N-b[&#x27;k&#x27;]
+        p=dc.from_record(b[&#x27;probability&#x27;])
+        assert p.denominator &amp; (p.denominator-1)==0
+    joint,diag=certify_joint(N,alpha,delta,h,w,fhat)
+    outer,inner,prep=hierarchy_error(N,delta,h,w,fhat,branches)
+    for value,key in [(joint,&#x27;target_vs_ideal_joint_TV_upper&#x27;),(outer,&#x27;outer_rounding_TV&#x27;),
+                      (inner,&#x27;block_population_TV&#x27;),(prep,&#x27;finite_preparation_TV_upper&#x27;)]:
+        assert value==dc.from_record(model[key])
+    total=joint+outer+inner+prep
+    assert total==dc.from_record(model[&#x27;total_target_trace_distance_upper&#x27;]) and total&lt;=epsilon
+    assert type(model[&#x27;uniform_rank_bits&#x27;]) is int and model[&#x27;uniform_rank_bits&#x27;]==128
+    ob=max(dc.from_record(b[&#x27;probability&#x27;]).denominator.bit_length()-1 for b in branches)
+    ib=max(b[&#x27;Dicke_model&#x27;][&#x27;predetermined_random_bits_per_sample&#x27;] for b in branches)
+    assert type(model[&#x27;outer_sampling_bits&#x27;]) is int and model[&#x27;outer_sampling_bits&#x27;]==ob
+    assert type(model[&#x27;max_inner_sampling_bits&#x27;]) is int and model[&#x27;max_inner_sampling_bits&#x27;]==ib
+    assert type(model[&#x27;predetermined_random_bits_per_sample&#x27;]) is int and model[&#x27;predetermined_random_bits_per_sample&#x27;]==ob+256+ib
+    return True
+
+
+def unrank_subset(N,k,rank):
+    assert 0&lt;=rank&lt;math.comb(N,k)
+    result=[]
+    start=0
+    for remaining in range(k,0,-1):
+        for i in range(start,N):
+            count=math.comb(N-i-1,remaining-1)
+            if rank&lt;count:
+                result.append(i)
+                start=i+1
+                break
+            rank-=count
+    return result
+
+
+def sample_filtered(model,rng=None):
+    rng=random.SystemRandom() if rng is None else rng
+    N=model[&#x27;N&#x27;]
+    branches=model[&#x27;branches&#x27;]
+    index=peer.sample_dyadic([dc.from_record(b[&#x27;probability&#x27;]) for b in branches],rng)
+    b=branches[index]
+    k,u=b[&#x27;k&#x27;],b[&#x27;u&#x27;]
+    subset=unrank_subset(N,k,(rng.getrandbits(128)*math.comb(N,k)) &gt;&gt; 128)
+    complement=[i for i in range(N) if i not in subset]
+    ones=[complement[i] for i in unrank_subset(N-k,u,(rng.getrandbits(128)*math.comb(N-k,u)) &gt;&gt; 128)]
+    component=dc.sample_product(b[&#x27;Dicke_model&#x27;],rng)
+    pad=model[&#x27;max_inner_sampling_bits&#x27;]-component[&#x27;random_bits_consumed&#x27;]
+    if pad:
+        rng.getrandbits(pad)
+    local=[]
+    for i in range(N):
+        if i in subset:
+            state=component[&#x27;finite_product_local_density&#x27;]
+        else:
+            bit=int(i in ones)
+            state={&#x27;diagonal&#x27;:[dc.as_record(1-bit),dc.as_record(bit)],
+                   &#x27;upper_right_real&#x27;:dc.as_record(0),&#x27;upper_right_imag&#x27;:dc.as_record(0),
+                   &#x27;PSD_and_trace_one_exact&#x27;:True}
+        local.append(state)
+    return {&#x27;branch_index&#x27;:index,&#x27;k&#x27;:k,&#x27;u&#x27;:u,&#x27;subset&#x27;:subset,&#x27;complement_ones&#x27;:ones,
+            &#x27;local_density_matrices&#x27;:local,&#x27;random_bits_consumed&#x27;:model[&#x27;predetermined_random_bits_per_sample&#x27;],
+            &#x27;ensemble_target_trace_distance_upper&#x27;:model[&#x27;total_target_trace_distance_upper&#x27;]}
+
+
+def main():
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(&#x27;--solve-lp&#x27;,action=&#x27;store_true&#x27;)
+    parser.add_argument(&#x27;--input&#x27;,type=Path)
+    parser.add_argument(&#x27;--output&#x27;,type=Path)
+    parser.add_argument(&#x27;--n&#x27;,type=int,default=8)
+    parser.add_argument(&#x27;--alpha&#x27;,default=&#x27;3&#x27;)
+    parser.add_argument(&#x27;--delta&#x27;,default=&#x27;1&#x27;)
+    parser.add_argument(&#x27;--h&#x27;,default=&#x27;1/3&#x27;)
+    parser.add_argument(&#x27;--epsilon&#x27;,default=&#x27;1e-6&#x27;)
+    parser.add_argument(&#x27;--recheck&#x27;,action=&#x27;store_true&#x27;,help=&#x27;Repeat the full posterior verifier before export; charged within the CLI deadline&#x27;)
+    parser.add_argument(&#x27;--deadline-seconds&#x27;,type=float,default=60,help=&#x27;Hard POSIX generation deadline, at most60s&#x27;)
+    args=parser.parse_args()
+    if args.solve_lp:
+        payload=json.loads(args.input.read_text())
+        q=[dc.from_record(x) for x in payload[&#x27;q&#x27;]]
+        columns=[[dc.from_record(x) for x in col] for col in payload[&#x27;columns&#x27;]]
+        if payload[&#x27;backend&#x27;]==&#x27;exact-simplex&#x27;:
+            v,obj=peer.exact_simplex_fixture(q,columns)
+            backend=&#x27;SymPy exact simplex on 56-bit rounded filtered-sector table&#x27;
+        else:
+            import numpy as np
+            A=np.asarray([[float(col[b]) for col in columns] for b in range(len(q))])
+            target=np.asarray([float(x) for x in q])
+            count=len(columns)
+            passive=[]
+            v=np.zeros(count)
+            began=time.perf_counter()
+            pivots=0
+            for outer in range(4*count):
+                dual=A.T@(target-A@v)
+                choices=[i for i in range(count) if i not in passive]
+                if not choices or max(dual[i] for i in choices)&lt;=1e-15:
+                    break
+                entering=max(choices,key=lambda i:dual[i])
+                passive.append(entering)
+                for inner in range(4*count):
+                    if time.perf_counter()-began&gt;12:
+                        raise ArithmeticError(&#x27;active-set 12s internal time limit&#x27;)
+                    pivots+=1
+                    z=np.zeros(count)
+                    z[passive]=np.linalg.lstsq(A[:,passive],target,rcond=1e-14)[0]
+                    if all(z[i]&gt;0 for i in passive):
+                        v=z
+                        break
+                    bad=[i for i in passive if z[i]&lt;=0]
+                    ratios=[v[i]/(v[i]-z[i]) for i in bad if v[i]-z[i]&gt;0]
+                    step=min(ratios) if ratios else 0
+                    v=v+step*(z-v)
+                    passive=[i for i in passive if v[i]&gt;1e-16]
+                    v=np.maximum(v,0)
+                else:
+                    raise ArithmeticError(&#x27;active-set bounded inner iteration limit&#x27;)
+            vals=[F(str(float(max(0,x)))) for x in v]
+            if not sum(vals):
+                raise ArithmeticError(&#x27;active-set returned zero vector&#x27;)
+            v=dyadic_simplex([x/sum(vals) for x in vals],128)
+            actual=peer.matvec([[col[b] for col in columns] for b in range(len(q))],v)
+            obj=peer.total_variation(q,actual)
+            backend=&#x27;bounded NumPy nonnegative least squares active set on 56-bit rational input; &#x27;+str(pivots)+&#x27; pivots&#x27;
+        import platform
+        rss=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss*(1 if platform.system()==&#x27;Darwin&#x27; else 1024)
+        args.output.write_text(json.dumps({&#x27;v&#x27;:[dc.as_record(x) for x in v],
+                                          &#x27;objective&#x27;:dc.as_record(obj),&#x27;peak_rss_bytes&#x27;:rss,
+                                          &#x27;backend&#x27;:backend})+&#x27;\n&#x27;)
+        return
+    if not 0&lt;args.deadline_seconds&lt;=60 or not hasattr(signal,&#x27;setitimer&#x27;):
+        raise ValueError(&#x27;strict scaling CLI deadline requires POSIX and0&lt;deadline&lt;=60&#x27;)
+    def deadline(signum,frame):
+        raise TimeoutError(&#x27;hard overall generation deadline reached; no output accepted&#x27;)
+    signal.signal(signal.SIGALRM,deadline)
+    signal.setitimer(signal.ITIMER_REAL,args.deadline_seconds)
+    began=time.perf_counter()
+    try:
+        model=compile_filtered(args.n,args.alpha,args.delta,args.h,args.epsilon)
+        # compile_filtered already computes every exact acceptance obligation.
+        # Rechecking a loaded model is available separately, never free work.
+        if args.recheck:
+            assert verify_filtered(model)
+        result={&#x27;model&#x27;:model,&#x27;samples&#x27;:[sample_filtered(model,random.Random(20261008+i)) for i in range(4)],
+                &#x27;cli_generation_seconds_before_serialization&#x27;:time.perf_counter()-began,
+                &#x27;hard_overall_deadline_seconds&#x27;:args.deadline_seconds}
+        text=json.dumps(result,indent=2)+&#x27;\n&#x27;
+        if args.output:
+            args.output.write_text(text)
+        else:
+            print(text,end=&#x27;&#x27;)
+    except TimeoutError:
+        receipt={&#x27;status&#x27;:&#x27;HARD_CLI_TIMEOUT_REJECTED&#x27;,&#x27;N&#x27;:args.n,
+                 &#x27;deadline_seconds&#x27;:args.deadline_seconds,&#x27;elapsed_seconds&#x27;:time.perf_counter()-began}
+        (HERE/(&#x27;scaling_N&#x27;+str(args.n)+&#x27;_cli_timeout.json&#x27;)).write_text(json.dumps(receipt,indent=2)+&#x27;\n&#x27;)
+        raise
+    finally:
+        signal.setitimer(signal.ITIMER_REAL,0)
+
+
+if __name__==&#x27;__main__&#x27;:
+    main()
+</pre><p><a href="../assets/3205bc21b94f3f952c2cd8739258eed018def01e8c1edcb9de9153253bfabacb.py">Exact original bytes</a></p></html>

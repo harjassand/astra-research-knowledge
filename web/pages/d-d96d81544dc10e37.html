@@ -1,0 +1,149 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c02_l05/phase_tensor_check.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c02_l05/phase_tensor_check.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Small exact fixtures for the phase-retaining block tensor and replica-rank bound.&quot;&quot;&quot;
+from fractions import Fraction
+from itertools import combinations, permutations
+import json
+from pathlib import Path
+
+
+def det(A):
+    n = len(A)
+    if n == 0:
+        return 1
+    total = 0
+    for p in permutations(range(n)):
+        inv = sum(p[i] &gt; p[j] for i in range(n) for j in range(i + 1, n))
+        term = (-1 if inv % 2 else 1)
+        for i, j in enumerate(p):
+            term *= A[i][j]
+        total += term
+    return total
+
+
+def minors(A, rows, cols):
+    return [[A[i][j] for j in cols] for i in rows]
+
+
+def local_coeffs(A):
+    n = len(A)
+    out = []
+    for ell in range(n // 2 + 1):
+        val = 0
+        for I in combinations(range(n), ell):
+            Iset = set(I)
+            for J in combinations([j for j in range(n) if j not in Iset], ell):
+                d = det(minors(A, I, J))
+                val += d * d
+        out.append(val)
+    return out
+
+
+def conv(a, b, cap):
+    z = [0] * (cap + 1)
+    for i, x in enumerate(a):
+        for j, y in enumerate(b):
+            if i + j &lt;= cap:
+                z[i + j] += x * y
+    return z
+
+
+def brute_c(A, k):
+    n = len(A)
+    total = 0
+    for I in combinations(range(n), k):
+        Iset = set(I)
+        for J in combinations([j for j in range(n) if j not in Iset], k):
+            d = det(minors(A, I, J))
+            total += d * d
+    return total
+
+
+def block_diagonal(blocks):
+    n = sum(len(B) for B in blocks)
+    A = [[0] * n for _ in range(n)]
+    offset = 0
+    for B in blocks:
+        b = len(B)
+        for i in range(b):
+            for j in range(b):
+                A[offset + i][offset + j] = B[i][j]
+        offset += b
+    return A
+
+
+def replica_matrix(q):
+    # One replica amplitude is sum_x |x&gt;_L |~x&gt;_R.
+    # Two independent replicas have row label (x,y), column (~x,~y).
+    d = 1 &lt;&lt; (2 * q)
+    M = [[0] * d for _ in range(d)]
+    mask = (1 &lt;&lt; q) - 1
+    for x in range(1 &lt;&lt; q):
+        for y in range(1 &lt;&lt; q):
+            row = x * (1 &lt;&lt; q) + y
+            col = (mask ^ x) * (1 &lt;&lt; q) + (mask ^ y)
+            M[row][col] = 1
+    return M
+
+
+def main():
+    blocks = [
+        [[0, 1], [1, 0]],
+        [[1, 1], [1, -1]],
+        [[1, 2, 0], [0, 1, 1], [2, 0, 1]],
+    ]
+    A = block_diagonal(blocks)
+    cap = len(A) // 2
+    dp = [1] + [0] * cap
+    for B in blocks:
+        dp = conv(dp, local_coeffs(B), cap)
+    brute = [brute_c(A, k) for k in range(cap + 1)]
+    assert dp == brute
+
+    q_results = []
+    for q in range(1, 5):
+        M = replica_matrix(q)
+        d = 1 &lt;&lt; (2 * q)
+        assert all(sum(row) == 1 for row in M)
+        assert all(sum(M[i][j] for i in range(d)) == 1 for j in range(d))
+        full_norm_sq = sum(x * x for row in M for x in row)
+        shared_norm_sq = 1 &lt;&lt; q
+        assert full_norm_sq == 1 &lt;&lt; (2 * q)
+        assert shared_norm_sq * (1 &lt;&lt; q) == full_norm_sq
+        q_results.append({
+            &quot;q&quot;: q,
+            &quot;two_replica_schmidt_rank&quot;: d,
+            &quot;full_tensor_norm_squared&quot;: full_norm_sq,
+            &quot;shared_orientation_norm_squared&quot;: shared_norm_sq,
+            &quot;retained_fraction&quot;: f&quot;1/{1 &lt;&lt; q}&quot;,
+        })
+
+    plus = [[1, 1], [1, 1]]
+    minus = [[1, 1], [1, -1]]
+    assert [abs(x) for row in plus for x in row] == [abs(x) for row in minus for x in row]
+    def embed_cross(A2):
+        return [[0, 0, *A2[0]], [0, 0, *A2[1]], [0, 0, 0, 0], [0, 0, 0, 0]]
+    plus4, minus4 = embed_cross(plus), embed_cross(minus)
+    phase_pair = {
+        &quot;abs_entrywise_equal&quot;: True,
+        &quot;legal_disjoint_minor_plus&quot;: det(plus),
+        &quot;legal_disjoint_minor_minus&quot;: det(minus),
+        &quot;c2_plus&quot;: brute_c(plus4, 2),
+        &quot;c2_minus&quot;: brute_c(minus4, 2),
+    }
+    assert phase_pair[&quot;c2_plus&quot;] == 0 and phase_pair[&quot;c2_minus&quot;] == 4
+
+    result = {
+        &quot;status&quot;: &quot;PASS exact integer fixtures&quot;,
+        &quot;block_dp_coefficients&quot;: dp,
+        &quot;block_bruteforce_coefficients&quot;: brute,
+        &quot;replica_rank_fixtures&quot;: q_results,
+        &quot;phase_sensitive_legal_disjoint_minor&quot;: phase_pair,
+        &quot;scope&quot;: &quot;Finite exact bookkeeping fixtures only; proofs are in INITIAL.txt. No sampler or general counting algorithm executed.&quot;,
+    }
+    Path(__file__).with_name(&quot;phase_tensor_check.json&quot;).write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+    print(json.dumps(result, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/fc23cd299a1a56ba8ccd018565a6bf76ed37fc56746e8a25ff207cea9a6c421c.py">Exact original bytes</a></p></html>

@@ -1,0 +1,110 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c05_s03/revisions/axial_five_fourths_independent_prefix_verifier.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c05_s03/revisions/axial_five_fourths_independent_prefix_verifier.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Independent exact-Fraction verification of saved delta=5/4 interval evidence.
+
+This does not import the author&#x27;s arithmetic implementation. It verifies the
+Taylor input enclosures and that every saved LDL interval contains the direct
+unrounded rational-interval recurrence using previously certified intervals.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from math import comb,factorial
+from pathlib import Path
+import hashlib,json,time
+
+class I:
+    def __init__(self,lo,hi=None):
+        self.lo=F(lo);self.hi=F(lo if hi is None else hi)
+        assert self.lo&lt;=self.hi
+    def __add__(self,b):return I(self.lo+b.lo,self.hi+b.hi)
+    def __sub__(self,b):return I(self.lo-b.hi,self.hi-b.lo)
+    def __mul__(self,b):
+        v=[self.lo*b.lo,self.lo*b.hi,self.hi*b.lo,self.hi*b.hi]
+        return I(min(v),max(v))
+    def square(self):
+        v=[self.lo**2,self.hi**2]
+        return I(0 if self.lo&lt;=0&lt;=self.hi else min(v),max(v))
+    def __truediv__(self,b):
+        assert b.lo&gt;0
+        v=[self.lo/b.lo,self.lo/b.hi,self.hi/b.lo,self.hi/b.hi]
+        return I(min(v),max(v))
+    def contains(self,b):return self.lo&lt;=b.lo&lt;=b.hi&lt;=self.hi
+
+started=time.perf_counter()
+author_path=Path(&#x27;work/cycle6/c07_s02/phase2/evidence/axial_delta5over4_finite_N63_P384.json&#x27;)
+replay_path=Path(&#x27;work/cycle6/c05_s03/revisions/evidence/axial_delta5over4_finite_N63_P384.json&#x27;)
+author=json.loads(author_path.read_text());replay=json.loads(replay_path.read_text())
+assert author[&#x27;cases&#x27;]==replay[&#x27;cases&#x27;]
+P=author[&#x27;precision_bits&#x27;];D=int(author[&#x27;denominator&#x27;])
+assert P==384 and D==2**P
+delta=F(author[&#x27;delta&#x27;]);assert delta==F(5,4)
+assert [c[&#x27;N&#x27;] for c in author[&#x27;cases&#x27;]]==list(range(2,64))
+
+def decode(a):return I(F(int(a[0]),D),F(int(a[1]),D))
+counts={&#x27;exponential_input_enclosures&#x27;:0,&#x27;matrices&#x27;:0,&#x27;positive_pivots&#x27;:0,&#x27;lower_L_entries&#x27;:0}
+for case in author[&#x27;cases&#x27;]:
+    assert time.perf_counter()-started&lt;30,&#x27;Declared30second independent-check cap reached&#x27;
+    N=case[&#x27;N&#x27;];qraw=case[&#x27;q_intervals&#x27;]
+    assert len(qraw)==len(case[&#x27;exp_enclosure_metadata&#x27;])==N+1
+    for k,(qenc,meta) in enumerate(zip(qraw,case[&#x27;exp_enclosure_metadata&#x27;])):
+        x=delta*F((2*k-N)**2,4*N);r=meta[&#x27;range_squares&#x27;];j=meta[&#x27;odd_terms&#x27;]
+        assert isinstance(r,int) and r&gt;=0
+        y=x/F(2**r);assert 0&lt;=y&lt;=F(1,8)
+        if not x:
+            assert j==0 and r==0
+            lo=hi=D
+        else:
+            assert j&gt;0 and j%2==1
+            total=F(1);term=F(1)
+            for n in range(1,j+1):
+                term*=y/n
+                total+=(-term if n%2 else term)
+            assert 0&lt;term&lt;=F(1,2**(P+24)) and total&gt;0
+            even=total+term
+            lo=(total.numerator*D)//total.denominator
+            hi=(even.numerator*D+even.denominator-1)//even.denominator
+            for _ in range(r):
+                lo=(lo*lo)//D
+                hi=(hi*hi+D-1)//D
+        C=comb(N,k)
+        assert list(map(int,qenc))==[lo//C,(hi+C-1)//C]
+        counts[&#x27;exponential_input_enclosures&#x27;]+=1
+
+    q=list(map(decode,qraw))
+    assert [m[&#x27;shift&#x27;] for m in case[&#x27;matrices&#x27;]]==[0,1]
+    for m in case[&#x27;matrices&#x27;]:
+        shift=m[&#x27;shift&#x27;];n=(N-shift)//2+1
+        assert m[&#x27;dimension&#x27;]==n
+        ds=list(map(decode,m[&#x27;diagonal_intervals&#x27;]))
+        assert len(ds)==n
+        L=[[I(0) for _ in range(n)] for _ in range(n)]
+        for i,row in enumerate(m[&#x27;L_strict_lower_intervals&#x27;]):
+            assert len(row)==i
+            for k,a in enumerate(row):L[i][k]=decode(a)
+            L[i][i]=I(1)
+        for i in range(n):
+            p=q[2*i+shift]
+            for k in range(i):p=p-L[i][k].square()*ds[k]
+            assert ds[i].contains(p) and ds[i].lo&gt;0
+            counts[&#x27;positive_pivots&#x27;]+=1
+            for j in range(i+1,n):
+                numer=q[i+j+shift]
+                for k in range(i):numer=numer-L[j][k]*L[i][k]*ds[k]
+                candidate=numer/ds[i]
+                assert L[j][i].contains(candidate)
+                counts[&#x27;lower_L_entries&#x27;]+=1
+        counts[&#x27;matrices&#x27;]+=1
+
+wrapper=Path(&#x27;work/cycle6/c07_s02/phase2/axial_finite_rational_delta_certificate.py&#x27;)
+code=Path(&#x27;work/cycle6/c07_s02/phase2/axial_finite_psd_certificate.py&#x27;)
+analytic=Path(&#x27;work/cycle6/c05_s03/revisions/12_axial_five_fourths_analytic_tail.txt&#x27;)
+out={&#x27;status&#x27;:&#x27;INDEPENDENT_EXACT_FIVE_FOURTHS_PREFIX_PASS&#x27;,
+     &#x27;delta_exact&#x27;:&#x27;5/4&#x27;,&#x27;prefix_range&#x27;:&#x27;every N2..63&#x27;,&#x27;precision_bits&#x27;:P,
+     &#x27;author_wrapper_sha256&#x27;:hashlib.sha256(wrapper.read_bytes()).hexdigest(),
+     &#x27;author_arithmetic_sha256&#x27;:hashlib.sha256(code.read_bytes()).hexdigest(),
+     &#x27;author_evidence_sha256&#x27;:hashlib.sha256(author_path.read_bytes()).hexdigest(),
+     &#x27;own_analytic_tail_sha256&#x27;:hashlib.sha256(analytic.read_bytes()).hexdigest(),
+     &#x27;own_replay_evidence_path&#x27;:str(replay_path),&#x27;own_replay_wall_seconds&#x27;:replay[&#x27;wall_seconds&#x27;],
+     &#x27;deterministic_cases_equal&#x27;:True,&#x27;verified_counts&#x27;:counts,
+     &#x27;independent_verifier_wall_seconds&#x27;:time.perf_counter()-started,
+     &#x27;scope&#x27;:&#x27;Exact finite prefix; joining with proof12 supplies allN symmetric separability and the allalpha subset consequence.&#x27;}
+Path(__file__).with_suffix(&#x27;.json&#x27;).write_text(json.dumps(out,indent=2)+&#x27;\n&#x27;)
+print(json.dumps(out,indent=2))
+</pre><p><a href="../assets/8b1a81f3364cd0c9f5770fd4e3f293893c7f71a4c5268c0782fc6ffcad8e8e2a.py">Exact original bytes</a></p></html>

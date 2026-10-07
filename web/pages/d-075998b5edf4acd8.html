@@ -1,0 +1,145 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c06_l08/strang_xxz_cost_check.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c06_l08/strang_xxz_cost_check.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Finite diagnostics for the rational quadratic-gate XXZ refinement.
+
+These checks do not implement or certify the imported Chen--Liu FPRAS.
+They check exact local log-concavity inequalities and small-matrix error
+bounds for the independently derived symmetric-product schedule.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+import itertools
+import json
+import math
+from pathlib import Path
+
+import numpy as np
+
+
+def p2(x):
+    return 1 + x + x * x / 2
+
+
+def edge_gate(alpha, gamma, h):
+    lo = alpha - gamma
+    mid = 3 * alpha + gamma
+    hi = 5 * alpha - gamma
+    vals = [p2(h * x) for x in (lo, mid, hi)]
+    low, a, high = vals
+    b = (high + low) / 2
+    c = (high - low) / 2
+    eigs = [a + b + c, a - b - c, -a + b - c, -a - b + c]
+    assert lo &gt;= 0 and lo &lt;= mid &lt;= hi
+    assert min(eigs) &gt;= 0 or max(eigs[1:]) &lt;= 0
+    assert eigs[0] &gt;= 0 and all(x &lt;= 0 for x in eigs[1:])
+    return {&quot;a&quot;: a, &quot;b&quot;: b, &quot;c&quot;: c, &quot;eigenvalues&quot;: eigs}
+
+
+def field_gate(b, c, h):
+    r = b + abs(c)
+    # A = [[r+c,b],[b,r-c]], F=I+hA+h^2 A^2/2.
+    A00, A01, A11 = r + c, b, r - c
+    v = 1 + h * A00 + h * h * (A00 * A00 + A01 * A01) / 2
+    d = h * A01 + h * h * A01 * (A00 + A11) / 2
+    u = 1 + h * A11 + h * h * (A11 * A11 + A01 * A01) / 2
+    assert u &gt; 0 and v &gt; 0 and d &gt;= 0 and u * v - d * d &gt; 0
+    return {&quot;u&quot;: u, &quot;v&quot;: v, &quot;d&quot;: d, &quot;det&quot;: u * v - d * d}
+
+
+I2 = np.eye(2, dtype=float)
+X = np.array([[0., 1.], [1., 0.]])
+Y = np.array([[0., -1j], [1j, 0.]])
+Z = np.diag([1., -1.]).astype(complex)
+
+
+def embed(n, ops):
+    out = np.ones((1, 1), dtype=complex)
+    for v in range(n):
+        out = np.kron(out, ops.get(v, I2))
+    return np.real_if_close(out).real
+
+
+def local_terms(n, case):
+    terms = []
+    # Include a triangle for n=3, plus one edge in the two-qubit fixtures.
+    edges = list(itertools.combinations(range(n), 2))
+    for j, (u, v) in enumerate(edges):
+        alpha = [.5, 1., 1.25][(case + j) % 3]
+        gamma = alpha * [-1., 0., 1.][(case + j) % 3]
+        term = alpha * (embed(n, {u: X, v: X}) + embed(n, {u: Y, v: Y}))
+        term += gamma * embed(n, {u: Z, v: Z})
+        term += 3 * alpha * np.eye(2**n)
+        terms.append(term)
+    for v in range(n):
+        b = [0., .25, .75][(case + v) % 3]
+        c = [-.5, 0., .75][(case + 2 * v) % 3]
+        r = b + abs(c)
+        terms.append(b * embed(n, {v: X}) + c * embed(n, {v: Z}) + r * np.eye(2**n))
+    return terms
+
+
+def main():
+    exact_edge_cases = 0
+    exact_field_cases = 0
+    for alpha in (F(1, 3), F(1), F(5, 4)):
+        for ratio in (F(-1), F(-1, 2), F(0), F(1, 2), F(1)):
+            for h in (F(1, 16), F(1, 3), F(2)):
+                edge_gate(alpha, alpha * ratio, h)
+                exact_edge_cases += 1
+    for b in (F(0), F(1, 3), F(2)):
+        for c in (F(-2, 3), F(0), F(5, 4)):
+            for h in (F(1, 16), F(1, 3), F(2)):
+                field_gate(b, c, h)
+                exact_field_cases += 1
+
+    numerical = []
+    for case in range(24):
+        n = 2 + case % 2
+        terms = local_terms(n, case)
+        D = sum(float(np.linalg.norm(a, 2)) for a in terms)
+        beta = [.2, .7, 1.3][case % 3]
+        eps = [.2, .05, .01, .005][case % 4]
+        tau = beta * D
+        m = math.ceil(max(1., 2 * tau, math.sqrt((43. / 15.) * tau**3 / eps)))
+        h = beta / (2 * m)
+        w = np.eye(2**n)
+        sum_a = np.zeros_like(w)
+        for a in terms:
+            sum_a += a
+            w = w @ (np.eye(2**n) + h * a + (h * h / 2) * (a @ a))
+        B = w @ w.T
+        vals, vecs = np.linalg.eigh(B)
+        assert vals[0] &gt;= 1. - 1e-9
+        logB = (vecs * np.log(vals)) @ vecs.T
+        err = float(np.linalg.norm(m * logB - beta * sum_a, 2))
+        bound = (43. / 60.) * tau**3 / m**2
+        assert err &lt;= bound + 2e-7 * max(1., bound), (case, err, bound)
+        assert err &lt;= eps / 4 + 2e-7
+        numerical.append({&quot;case&quot;: case, &quot;n&quot;: n, &quot;beta&quot;: beta, &quot;epsilon&quot;: eps,
+                          &quot;m&quot;: m, &quot;tau&quot;: tau, &quot;generator_error&quot;: err,
+                          &quot;proved_bound&quot;: bound, &quot;target&quot;: eps / 4})
+
+    old_exponents = {&quot;partition_m_large_tau&quot;: &quot;Theta(tau^2/epsilon)&quot;,
+                     &quot;partition_count_arithmetic_core&quot;: &quot;O(p^12 tau^24 epsilon^-14) up to logarithms&quot;,
+                     &quot;partition_count_with_explicit_oracle&quot;: &quot;O(p^13 tau^26 epsilon^-15) up to logarithms&quot;,
+                     &quot;constant_generator_budget_m&quot;: &quot;Theta(tau^2)&quot;}
+    new_exponents = {&quot;partition_m_large_tau&quot;: &quot;Theta(tau^(3/2)/sqrt(epsilon))&quot;,
+                     &quot;partition_count_arithmetic_core&quot;: &quot;O(p^12 tau^18 epsilon^-8) up to logarithms&quot;,
+                     &quot;partition_count_with_explicit_oracle&quot;: &quot;O(p^13 tau^(39/2) epsilon^(-17/2)) up to logarithms&quot;,
+                     &quot;constant_generator_budget_m&quot;: &quot;Theta(tau^(3/2))&quot;}
+    out = {
+        &quot;status&quot;: &quot;PASS: finite local and small-matrix diagnostics only; imported FPRAS not run&quot;,
+        &quot;exact_edge_gate_cases&quot;: exact_edge_cases,
+        &quot;exact_field_gate_cases&quot;: exact_field_cases,
+        &quot;matrix_cases&quot;: len(numerical),
+        &quot;max_generator_error_over_proved_bound&quot;: max(x[&quot;generator_error&quot;] / x[&quot;proved_bound&quot;] for x in numerical),
+        &quot;max_generator_error_over_target&quot;: max(x[&quot;generator_error&quot;] / x[&quot;target&quot;] for x in numerical),
+        &quot;old_exponents&quot;: old_exponents,
+        &quot;new_exponents&quot;: new_exponents,
+        &quot;matrix_details&quot;: numerical,
+    }
+    path = Path(__file__).with_name(&quot;strang_xxz_cost_check.json&quot;)
+    path.write_text(json.dumps(out, indent=2) + &quot;\n&quot;)
+    print(json.dumps({k: v for k, v in out.items() if k != &quot;matrix_details&quot;}, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/80d91193e5ed55b1e36b78a85580c1a00b3cafd7f5f8de9cc8e92833239c32fd.py">Exact original bytes</a></p></html>

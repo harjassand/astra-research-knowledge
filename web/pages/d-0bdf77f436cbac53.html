@@ -1,0 +1,88 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c05_s03/revisions/axial_uniform_audit_checks.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c05_s03/revisions/axial_uniform_audit_checks.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Exact rational checks of analytic constants in the fresh contour audit.&quot;&quot;&quot;
+from fractions import Fraction as F
+from math import factorial, comb
+from pathlib import Path
+import hashlib
+import json
+
+checks = {}
+def test(name, value):
+    assert value, name
+    checks[name] = True
+
+test(&quot;phase_cubic_constant_le_1_over_30&quot;, F(256, 7935) &lt; F(1, 30))
+test(&quot;quarter_phase_factor&quot;, F(15, 23) ** 4 &gt; F(2, 15))
+test(&quot;quarter_main_minus_vertical&quot;, F(31, 32) - F(1, 8) == F(27, 32))
+test(&quot;quarter_exp4_lower&quot;, sum(F(4 ** j, factorial(j)) for j in range(5)) &gt; 32)
+test(&quot;quarter_exp7_over3_lower&quot;, sum(F(7, 3) ** j / factorial(j) for j in range(4)) &gt; 8)
+test(&quot;quarter_correction_ratio&quot;, F(40, 81) &lt; F(1, 2))
+
+c = F(127, 207)
+phase_third_bound = F(25, 10935) / c ** 4
+test(&quot;third_phase_loss&quot;, phase_third_bound &lt; F(1, 60))
+vertical_third_coefficient = F(27, 16) - F(25, 108) - F(15, 23)
+test(&quot;third_vertical_exponent&quot;, vertical_third_coefficient &gt; F(4, 5))
+test(&quot;third_exp5_lower&quot;, sum(F(5 ** j, factorial(j)) for j in range(4)) &gt; 36)
+test(&quot;third_tail_loss&quot;, F(8, 27) / 36 &lt; F(1, 120))
+test(&quot;third_sqrt3_less_9_over5&quot;, F(9, 5) ** 2 &gt; 3)
+test(&quot;third_exp12_over5_lower&quot;, sum(F(12, 5) ** j / factorial(j) for j in range(4)) &gt; 8)
+test(&quot;third_main_minus_vertical&quot;, 1 - F(1, 60) - F(1, 120) - F(1, 8) == F(17, 20))
+test(&quot;third_main_at_least_quarter_constant&quot;, F(17, 20) &gt; F(27, 32))
+test(&quot;third_sqrt3_ge_5_over3&quot;, F(5, 3) ** 2 &lt; 3)
+test(&quot;third_F3_prefactor_less_36&quot;, F(14336, 405) &lt; 36)
+test(&quot;third_F3_exponent&quot;, F(629, 144) &gt; F(13, 3))
+test(&quot;third_exp4_lower54&quot;, sum(F(4 ** j, factorial(j)) for j in range(10)) &gt; 54)
+test(&quot;third_exp13_over3_lower72&quot;, 54 * F(4, 3) == 72)
+test(&quot;third_logF_derivative&quot;, F(1, 6) + 1 - F(77, 48) &lt; 0)
+
+# Reconstruct degree elevation and Legendre coefficient identities over Q.
+def mul(a, b):
+    out = [F(0)] * (len(a) + len(b) - 1)
+    for i, x in enumerate(a):
+        for j, y in enumerate(b):
+            out[i+j] += x*y
+    return out
+
+def bern(N, k):
+    return [F(0)] * k + [F(comb(N, k) * comb(N-k, j) * (-1)**j)
+                         for j in range(N-k+1)]
+
+polynomial_fixtures = 0
+for N in range(1, 13):
+    for ell in range(N+1):
+        deg_l_coeff = [F((-1)**(ell-j) * comb(ell,j)) for j in range(ell+1)]
+        # Rodrigues formula: d^ell [x^ell(x-1)^ell]/dx^ell / ell!.
+        rodrigues = [F((-1)**(ell-j) * comb(ell,j) * comb(ell+j,j)) for j in range(ell+1)]
+        elevated = []
+        for k in range(N+1):
+            terms = [(j, F(comb(ell,j)*comb(N-ell,k-j), comb(N,k)))
+                     for j in range(ell+1) if 0 &lt;= k-j &lt;= N-ell]
+            assert sum(w for _, w in terms) == 1
+            elevated.append(sum(deg_l_coeff[j]*w for j,w in terms))
+        expanded = [F(0)] * (N+1)
+        for k in range(N+1):
+            for j,v in enumerate(bern(N,k)):
+                expanded[j] += elevated[k]*v
+        assert expanded == rodrigues + [F(0)]*(N-ell)
+        assert max(map(abs,elevated)) &lt;= 2**ell
+        # Orthogonality to lower monomials and exact norm.
+        for j in range(ell):
+            assert sum(v/F(i+j+1) for i,v in enumerate(rodrigues)) == 0
+        square = mul(rodrigues,rodrigues)
+        assert sum(v/F(i+1) for i,v in enumerate(square)) == F(1,2*ell+1)
+        polynomial_fixtures += 1
+
+source = Path(&quot;work/cycle6/c07_s02/phase2/AXIAL_UNIFORM_SEPARABILITY.txt&quot;)
+out = {
+    &quot;status&quot;: &quot;EXACT_CONSTANT_AND_POLYNOMIAL_CHECKS_PASS&quot;,
+    &quot;scientific_role&quot;: &quot;Arithmetic checks support the saved general analytic reconstruction; bounded fixtures are not the all-N proof.&quot;,
+    &quot;source_path&quot;: str(source),
+    &quot;source_sha256&quot;: hashlib.sha256(source.read_bytes()).hexdigest(),
+    &quot;checks&quot;: checks,
+    &quot;polynomial_fixtures&quot;: polynomial_fixtures,
+    &quot;third_phase_upper_using_c_to_four&quot;: str(phase_third_bound),
+    &quot;third_vertical_exponent_coefficient&quot;: str(vertical_third_coefficient),
+}
+Path(__file__).with_suffix(&quot;.json&quot;).write_text(json.dumps(out,indent=2)+&quot;\n&quot;)
+print(json.dumps(out,indent=2))
+</pre><p><a href="../assets/e673cb96aa3afe05fb7409dc7cf408cf99b7f49235aa51288cb330eaf597bfc0.py">Exact original bytes</a></p></html>

@@ -1,0 +1,284 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c06_s02/phase2/bounded_thermal_checks.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c06_s02/phase2/bounded_thermal_checks.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Exact adversarial checks for the completed bounded thermal algorithm.
+
+Finite checks of implementation identities, not validation by agreement.
+Imports only the owned bounded_thermal.py; no peer files are imported.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from itertools import combinations
+from types import SimpleNamespace
+from pathlib import Path
+import json
+import time
+
+from bounded_thermal import (ceil_sqrt_q, ComponentInput, Limits, DyadicCDF,
+                             PauliObservable, BoundedThermal,
+                             FiniteRatioCompiler, quantize_clip)
+
+
+def eye(n):
+    return [[F(i == j) for j in range(n)] for i in range(n)]
+
+
+def mm(A, B):
+    return [[sum((A[i][k] * B[k][j] for k in range(len(B))), F(0))
+             for j in range(len(B[0]))] for i in range(len(A))]
+
+
+def add(A, B):
+    return [[x + y for x, y in zip(a, b)] for a, b in zip(A, B)]
+
+
+def scale(c, A):
+    return [[c * x for x in row] for row in A]
+
+
+def transpose(A):
+    return list(map(list, zip(*A)))
+
+
+def determinant(A):
+    a = [list(map(F, row)) for row in A]
+    out = F(1)
+    for k in range(len(a)):
+        pivot = next((j for j in range(k, len(a)) if a[j][k]), None)
+        if pivot is None:
+            return F(0)
+        if pivot != k:
+            a[k], a[pivot] = a[pivot], a[k]; out = -out
+        out *= a[k][k]
+        for j in range(k + 1, len(a)):
+            ratio = a[j][k] / a[k][k]
+            for l in range(k + 1, len(a)):
+                a[j][l] -= ratio * a[k][l]
+    return out
+
+
+def inverse(A):
+    n = len(A)
+    a = [list(map(F, row)) + e for row, e in zip(A, eye(n))]
+    for k in range(n):
+        pivot = next(j for j in range(k, n) if a[j][k])
+        a[k], a[pivot] = a[pivot], a[k]
+        divisor = a[k][k]
+        a[k] = [x / divisor for x in a[k]]
+        for j in range(n):
+            if j != k:
+                ratio = a[j][k]
+                a[j] = [x - ratio * y for x, y in zip(a[j], a[k])]
+    return [row[n:] for row in a]
+
+
+def principal_minors(A):
+    n = len(A)
+    return [determinant([[A[i][j] for j in inds] for i in inds])
+            for size in range(1, n + 1) for inds in combinations(range(n), size)]
+
+
+def check_cdf():
+    cases = [([2, 1, 4], F(1, 4)), ([0, 3, 0, 4], F(1, 4)), ([5], F(1, 10))]
+    records = []
+    for weights, delta in cases:
+        cdf = DyadicCDF(weights, delta)
+        frequencies = [0] * len(weights)
+        for j in range(cdf.grid):
+            frequencies[cdf.from_bits(j)] += 1
+        assert tuple(F(x, cdf.grid) for x in frequencies) == cdf.mu
+        for p, q in zip(cdf.pi, cdf.mu):
+            assert p or not q  # zero exact masses stay absent
+        records.append({&quot;weights&quot;: weights, &quot;bits&quot;: cdf.bits,
+                        &quot;exact_law&quot;: list(map(str, cdf.mu)), &quot;tv&quot;: str(cdf.actual_tv)})
+    return records
+
+
+def direct_two_qubit_component(comp, data, beta):
+    &quot;&quot;&quot;Independent Fraction matrix polynomial and sequential power.&quot;&quot;&quot;
+    I = eye(4)
+    X0 = [[F((i ^ j) == 1) for j in range(4)] for i in range(4)]
+    X1 = [[F((i ^ j) == 2) for j in range(4)] for i in range(4)]
+    Z0 = [[F((1 if i % 2 == 0 else -1) if i == j else 0) for j in range(4)] for i in range(4)]
+    Z1 = [[F((1 if i &lt; 2 else -1) if i == j else 0) for j in range(4)] for i in range(4)]
+    _, _, a, g = data.edges[0]
+    E = [[3*a+g, F(0), F(0), F(0)],
+         [F(0), 3*a-g, 2*a, F(0)],
+         [F(0), 2*a, 3*a-g, F(0)],
+         [F(0), F(0), F(0), 3*a+g]]
+    terms = [E]
+    for (b, c), X, Z in zip(data.fields, [X0, X1], [Z0, Z1]):
+        terms.append(add(add(scale(b+abs(c), I), scale(b, X)), scale(c, Z)))
+    h = beta/(2*comp.m)
+    W = I
+    for A in terms:
+        P = add(add(I, scale(h, A)), scale(h*h/2, mm(A, A)))
+        W = mm(W, P)
+    B = mm(W, transpose(W))
+    K = I
+    for _ in range(comp.m):
+        K = mm(K, B)
+    acquired = [[F(x, comp.Kden) for x in row] for row in comp.K]
+    assert K == acquired
+    return {&quot;dimension&quot;: 4, &quot;layers&quot;: comp.m, &quot;all_16_rational_entries_match&quot;: True}
+
+
+def check_global_dense():
+    first = ComponentInput(2, ((0, 1, F(1,8), -F(1,16)),),
+                           ((F(1,12), F(1,24)), (F(1,12), -F(1,24))))
+    second = ComponentInput(1, (), ((F(1,8), F(1,10)),))
+    obs = PauliObservable([(F(1,2), &quot;XXI&quot;), (F(1,3), &quot;XZX&quot;), (-F(1,6), &quot;ZZZ&quot;)], [2,1])
+    engine = BoundedThermal([first,second], F(1,4), obs, F(1,2), F(1,5))
+    direct = direct_two_qubit_component(engine.components[0], first, F(1,4))
+    left, right = engine.components
+    K = [[left.K[a&amp;3][b&amp;3] * right.K[a&gt;&gt;2][b&gt;&gt;2] for b in range(8)] for a in range(8)]
+    Z = sum(K[i][i] for i in range(8))
+    O = [[F(0) for _ in range(8)] for _ in range(8)]
+    for coefficient, word, _ in obs.terms:
+        flip = sum((x == &quot;X&quot;) &lt;&lt; j for j,x in enumerate(word))
+        signs = sum((x == &quot;Z&quot;) &lt;&lt; j for j,x in enumerate(word))
+        for b in range(8):
+            O[b^flip][b] += coefficient * (-1 if (b&amp;signs).bit_count()&amp;1 else 1)
+    theta = sum((O[b][a]*K[a][b] for a in range(8) for b in range(8)), F(0))/Z
+    first_moment, second_moment = F(0), F(0)
+    max_table_error = F(0)
+    for b in range(8):
+        state = (b&amp;3,b&gt;&gt;2)
+        ratio = obs.ratio(engine.components,state,engine.limits)
+        dense_ratio = sum((O[b][a]*K[a][b] for a in range(8)), F(0))/K[b][b]
+        assert ratio == dense_ratio
+        approx = engine.ratio_compiler.ratio(state)
+        max_table_error = max(max_table_error,abs(approx-ratio))
+        assert abs(approx-ratio) &lt;= engine.ratio_compiler.uniform_error
+        p = F(K[b][b], Z)
+        first_moment += p*ratio; second_moment += p*ratio*ratio
+    assert first_moment == theta == engine.pi_mean
+    assert second_moment == engine.pi_second &lt;= 1
+    return {&quot;global_qubits&quot;:3,&quot;all_8_global_ratios_match_dense&quot;:True,
+            &quot;exact_first_moment&quot;:str(theta),&quot;exact_second_moment&quot;:str(second_moment),
+            &quot;maximum_actual_table_error&quot;:str(max_table_error),
+            &quot;table_error_bound&quot;:str(engine.ratio_compiler.uniform_error),
+            &quot;independent_P2_matrix_check&quot;:direct}
+
+
+def check_rare_psd():
+    q = 1 &lt;&lt; 40
+    K = [[1,q],[q,q*q+1]]
+    assert determinant(K) == 1
+    epsilon = F(1,5)
+    delta = epsilon*epsilon/1000
+    comp = SimpleNamespace(n=1, dim=2, K=K, trace=q*q+2,
+                           cdf=DyadicCDF([1,q*q+1],delta))
+    obs = PauliObservable([(F(1),&quot;X&quot;)],[1])
+    compiler = FiniteRatioCompiler([comp],obs,epsilon/4000,Limits())
+    ratios = obs.local_values(comp,(1,0))
+    mean = sum((p*x for p,x in zip(comp.cdf.pi,ratios)), F(0))
+    moment = sum((p*x*x for p,x in zip(comp.cdf.pi,ratios)), F(0))
+    assert moment == F(q*q,q*q+1) &lt; 1
+    assert ratios[0] == q and comp.cdf.pi[0] &lt; F(1,1&lt;&lt;80)
+    T = 10/epsilon
+    outbits = 15
+    quantized = []
+    for b in range(2):
+        approx = compiler.ratio((b,))
+        assert abs(approx-ratios[b]) &lt;= compiler.uniform_error
+        quantized.append(F(quantize_clip(approx,T,outbits),1&lt;&lt;outbits))
+    implemented_mean = sum((p*x for p,x in zip(comp.cdf.mu,quantized)), F(0))
+    implemented_second = sum((p*x*x for p,x in zip(comp.cdf.mu,quantized)), F(0))
+    assert abs(implemented_mean-mean) &lt;= epsilon/5
+    assert implemented_second &lt;= F(6,5)
+    try:
+        FiniteRatioCompiler([comp],obs,epsilon/4000,Limits(max_global_ratio_bits=8))
+    except ValueError:
+        pass
+    else:
+        raise AssertionError(&quot;rare-ratio precision cap not enforced before table construction&quot;)
+    return {&quot;rare_diagonal_mass&quot;:str(comp.cdf.pi[0]),&quot;rare_ratio&quot;:str(ratios[0]),
+            &quot;PSD_determinant&quot;:&quot;1&quot;,&quot;exact_variance_bound&quot;:str(moment),
+            &quot;CDF_tv&quot;:str(comp.cdf.actual_tv),&quot;table_bits&quot;:compiler.bits,
+            &quot;maximum_table_operand_bits&quot;:compiler.max_operand_bits,
+            &quot;implemented_mean&quot;:str(implemented_mean),
+            &quot;implemented_second_moment&quot;:str(implemented_second),
+            &quot;absolute_bias&quot;:str(abs(implemented_mean-mean)),
+            &quot;no_inverse_probability_sample_schedule&quot;:True,
+            &quot;finite_ratio_operand_cap_rejection&quot;:True}
+
+
+def check_gaussian_schur():
+    I = eye(4)
+    J = [[F(0),F(0),F(1),F(0)], [F(0),F(0),F(0),F(1)],
+         [-F(1),F(0),F(0),F(0)], [F(0),-F(1),F(0),F(0)]]
+    S = [[F(1),F(0),F(1),F(1,2)], [F(0),F(1),F(1,2),-F(1)],
+         [F(0),F(0),F(1),F(0)], [F(0),F(0),F(0),F(1)]]
+    assert mm(mm(S,J),transpose(S)) == J
+    diag = [F(3,5),F(4,5),F(3,5),F(4,5)]
+    V = mm(mm(S,[[diag[i] if i==j else F(0) for j in range(4)] for i in range(4)]),transpose(S))
+    # Thermal diagonal covariance has symplectic eigenvalues 3/5,4/5&gt;1/2;
+    # real symplectic congruence certifies strict Gaussian physicality.
+    K = add(V,scale(-F(1,2),I))
+    R = scale(F(1,2),add(K,mm(mm(J,K),transpose(J))))
+    X = add(K,scale(-1,R))
+    assert mm(mm(J,R),transpose(J)) == R
+    assert mm(mm(J,X),transpose(J)) == scale(-1,X)
+    assert mm(R,X) != mm(X,R)  # the claimed algebra is genuinely noncommuting
+    assert min(principal_minors(R)) &gt; 0
+    D = add(mm(mm(X,inverse(R)),X),scale(-1,R))
+    deficits = principal_minors(add(I,scale(-1,D)))
+    assert min(deficits) &gt; 0
+    eta = F(1,1000)
+    Dloss = add(mm(mm(scale(eta,X),inverse(scale(eta,R))),scale(eta,X)),scale(-eta,R))
+    assert Dloss == scale(eta,D)
+    return {&quot;modes&quot;:2,&quot;R_X_noncommute&quot;:True,&quot;strict_physicality&quot;:&quot;symplectic image of diag(3/5,4/5,3/5,4/5)&quot;,
+            &quot;minimum_principal_minor_of_I_minus_D&quot;:str(min(deficits)),
+            &quot;D_loss_equals_eta_D&quot;:True}
+
+
+def check_schedules_and_rejections():
+    tests = [F(0),F(1),F(4),F(17,4),F(999999999999999999999999,1000000000000000000000000),
+             F(1000000000000000000000001,1000000000000000000000000)]
+    for x in tests:
+        c = ceil_sqrt_q(x)
+        assert c*c &gt;= x and (c==0 or (c-1)*(c-1)&lt;x)
+    obs = PauliObservable([(F(1),&quot;X&quot;)],[1])
+    cases = [
+        (ComponentInput(1,(),((-F(1),F(0)),)),F(1),Limits()),
+        (ComponentInput(1,(),((F(1),F(0)),)),F(1000),Limits(max_layers=1)),
+        (ComponentInput(1,(),((F(1),F(0)),)),F(1),Limits(max_entry_bits=8)),
+    ]
+    reasons=[]
+    for data,beta,limits in cases:
+        try:
+            BoundedThermal([data],beta,obs,F(1,5),F(1,10),limits)
+        except ValueError as e:
+            reasons.append(str(e))
+        else:
+            raise AssertionError(&quot;invalid/cost-capped input accepted&quot;)
+    outside=ComponentInput(2,((0,1,F(1),F(2)),),((F(0),F(0)),)*2)
+    try:
+        BoundedThermal([outside],F(1),PauliObservable([(F(1),&quot;XX&quot;)],[2]),F(1,5),F(1,10))
+    except ValueError as e:
+        reasons.append(str(e))
+    else:
+        raise AssertionError(&quot;outside-cone input accepted&quot;)
+    zero=ComponentInput(1,(),((F(0),F(0)),))
+    trivial=BoundedThermal([zero],F(0),obs,F(1,5),F(1,10))
+    assert trivial.components[0].K == [[1,0],[0,1]]
+    assert trivial.generator_bound==0 and trivial.components[0].cdf.actual_tv==0
+    return {&quot;exact_square_root_cases&quot;:len(tests),&quot;explicit_rejection_reasons&quot;:reasons,
+            &quot;zero_inverse_temperature_identity_case&quot;:True}
+
+
+def main():
+    start=time.monotonic()
+    result={&quot;scope&quot;:&quot;implementation identities and adversarial finite inputs; uniform guarantees are in BOUNDED_THERMAL_PROOF.txt&quot;,
+            &quot;CDF_full_fixed_tape_laws&quot;:check_cdf(),
+            &quot;global_same_state_and_matrix_checks&quot;:check_global_dense(),
+            &quot;exponentially_rare_PSD_ratio&quot;:check_rare_psd(),
+            &quot;noncommuting_Gaussian_Schur_bridge&quot;:check_gaussian_schur(),
+            &quot;schedules_and_admission&quot;:check_schedules_and_rejections()}
+    result[&quot;seconds&quot;]=time.monotonic()-start
+    result[&quot;status&quot;]=&quot;PASS_EXACT_IMPLEMENTATION_AND_ADVERSARIAL_CHECKS&quot;
+    Path(__file__).with_suffix(&quot;.json&quot;).write_text(json.dumps(result,indent=2)+&quot;\n&quot;)
+    print(json.dumps({&quot;status&quot;:result[&quot;status&quot;],&quot;seconds&quot;:result[&quot;seconds&quot;],
+                      &quot;checks&quot;:[k for k in result if k not in [&quot;scope&quot;,&quot;seconds&quot;,&quot;status&quot;]]},indent=2))
+
+
+if __name__==&quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/28165a26f1b789602cce273541d04284b1f77aab793482b7169257e497e6b8de.py">Exact original bytes</a></p></html>

@@ -1,0 +1,326 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c03_l08/revisions/phase_prefix_counterexamples.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c03_l08/revisions/phase_prefix_counterexamples.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Exact adversarial checks for raw and phase-matched low-sector estimators.
+
+All arithmetic is integer Gaussian/rational. The peer sampler is imported only
+from the copy in this directory, made before execution as required by the
+phase-two audit. Fixtures have n&lt;=8 and enumerate at most 256 sign words.
+&quot;&quot;&quot;
+from itertools import combinations, permutations, product
+from math import comb
+from pathlib import Path
+import json
+from fractions import Fraction as Q
+
+from peer_low_sector_sampler_copy import LowSector
+
+ZERO = (0, 0)
+ONE = (1, 0)
+
+
+def add(a, b):
+    return a[0] + b[0], a[1] + b[1]
+
+
+def neg(a):
+    return -a[0], -a[1]
+
+
+def mul(a, b):
+    return a[0] * b[0] - a[1] * b[1], a[0] * b[1] + a[1] * b[0]
+
+
+def abs2(a):
+    return a[0] * a[0] + a[1] * a[1]
+
+
+def det(A):
+    n = len(A)
+    if n == 0:
+        return ONE
+    ans = ZERO
+    for p in permutations(range(n)):
+        inv = sum(p[i] &gt; p[j] for i in range(n) for j in range(i + 1, n))
+        x = ONE
+        for i, j in enumerate(p):
+            x = mul(x, A[i][j])
+        ans = add(ans, neg(x) if inv &amp; 1 else x)
+    return ans
+
+
+def pf(A):
+    n = len(A)
+    if n == 0:
+        return ONE
+    if n % 2:
+        return ZERO
+    ans = ZERO
+    for j in range(1, n):
+        rest = [r for r in range(1, n) if r != j]
+        x = mul(A[0][j], pf([[A[r][c] for c in rest] for r in rest]))
+        ans = add(ans, neg(x) if j % 2 == 0 else x)
+    return ans
+
+
+def skew(F, signs, phased):
+    gammas = [(0, s) if phased and i % 2 else (s, 0)
+              for i, s in enumerate(signs)]
+    n = len(F)
+    return [[add(mul(gammas[i], F[i][j]), neg(mul(F[j][i], gammas[j])))
+             for j in range(n)] for i in range(n)]
+
+
+def sector_norm(F, k):
+    n = len(F)
+    total = 0
+    for I in combinations(range(n), k):
+        for J in combinations([j for j in range(n) if j not in I], k):
+            d = det([[F[i][j] for j in J] for i in I])
+            total += abs2(d)
+    return total
+
+
+def estimator_samples(F, k, phased):
+    n = len(F)
+    out = []
+    for signs in product((-1, 1), repeat=n):
+        A = skew(F, signs, phased)
+        out.append(sum(abs2(pf([[A[i][j] for j in R] for i in R]))
+                       for R in combinations(range(n), 2 * k)))
+    return out
+
+
+def exact_matching_certificate(F, k):
+    n = len(F)
+    G = [[F[i][i] if i == j else ZERO for j in range(n)] for i in range(n)]
+    beta = []
+    for i in range(0, n, 2):
+        a, b = F[i][i + 1][0], F[i + 1][i][0]
+        G[i][i + 1], G[i + 1][i] = (a, 0), (b, 0)
+        beta.append(a * a + b * b)
+    residual = sum(abs2(add(F[i][j], neg(G[i][j])))
+                   for i in range(n) for j in range(n))
+    beta = [Q(x) for x in beta]
+    residual = Q(residual)
+    threshold = None if k == 0 else min(beta, default=Q(0)) / (256 * k * k)
+    accepted = (k == 0 or (min(beta, default=Q(0)) &gt; 0 and residual &lt;= threshold))
+    return {&quot;accepted&quot;: accepted, &quot;beta&quot;: beta, &quot;residual_squared&quot;: residual,
+            &quot;threshold&quot;: threshold}
+
+
+def summary(samples):
+    mean = Q(sum(samples), len(samples))
+    second = Q(sum(x * x for x in samples), len(samples))
+    return {&quot;sample_count&quot;: len(samples), &quot;mean&quot;: mean,
+            &quot;second_moment_ratio&quot;: None if mean == 0 else second / (mean * mean),
+            &quot;zero_count&quot;: sum(x == 0 for x in samples),
+            &quot;zero_probability&quot;: Q(sum(x == 0 for x in samples), len(samples)),
+            &quot;positive_values&quot;: sorted(set(x for x in samples if x &gt; 0))}
+
+
+def adjacent_swaps(m):
+    n = 2 * m
+    F = [[ZERO for _ in range(n)] for _ in range(n)]
+    for i in range(0, n, 2):
+        F[i][i + 1] = F[i + 1][i] = ONE
+    return F
+
+
+def perturbed_adjacent_swaps(m, denominator=256):
+    &quot;&quot;&quot;Rational-complex residual near a nonuniform positive matching.&quot;&quot;&quot;
+    n = 2 * m
+    F = [[(Q(0), Q(0)) for _ in range(n)] for _ in range(n)]
+    for pair, i in enumerate(range(0, n, 2)):
+        F[i][i + 1] = (Q(1) + Q(pair, 7), Q(0))
+        F[i + 1][i] = (Q(1) - Q(pair, 11), Q(0))
+    for i in range(n):
+        for j in range(n):
+            if i == j or j == i + 1 and i % 2 == 0 or i == j + 1 and j % 2 == 0:
+                continue
+            re = Q((-1) ** (i + 2 * j), denominator)
+            im = Q((-1) ** (2 * i + j), 2 * denominator)
+            F[i][j] = (re, im)
+    return F
+
+
+def parity_class_swaps(q):
+    &quot;&quot;&quot;n=4q; matching edges join equal index parity, not adjacent sites.&quot;&quot;&quot;
+    n = 4 * q
+    F = [[ZERO for _ in range(n)] for _ in range(n)]
+    pairs = []
+    evens = list(range(0, n, 2))
+    odds = list(range(1, n, 2))
+    for group in (evens, odds):
+        for j in range(0, len(group), 2):
+            u, v = group[j], group[j + 1]
+            F[u][v] = F[v][u] = ONE
+            pairs.append((u, v))
+    return F, pairs
+
+
+def direct_prefix_count(F, k, up=(), down=(), empty=()):
+    n = len(F)
+    total = 0
+    for I in combinations(range(n), k):
+        I = set(I)
+        for J in combinations([j for j in range(n) if j not in I], k):
+            J = set(J)
+            if not set(up) &lt;= I or not set(down) &lt;= J:
+                continue
+            if (I | J) &amp; set(empty):
+                continue
+            d = det([[F[i][j] for j in sorted(J)] for i in sorted(I)])
+            total += abs2(d)
+    return total
+
+
+def main():
+    # The aligned paired-volume estimator is exactly constant after phases,
+    # while its unphased control has the familiar rare-positive event.
+    aligned = adjacent_swaps(3)
+    unphased_aligned = summary(estimator_samples(aligned, 3, phased=False))
+    phased_aligned = summary(estimator_samples(aligned, 3, phased=True))
+    assert sector_norm(aligned, 3) == 8
+    assert unphased_aligned[&quot;mean&quot;] == 8 and unphased_aligned[&quot;second_moment_ratio&quot;] == 8
+    assert unphased_aligned[&quot;zero_probability&quot;] == Q(7, 8)
+    assert phased_aligned[&quot;mean&quot;] == 8 and phased_aligned[&quot;second_moment_ratio&quot;] == 1
+    assert phased_aligned[&quot;zero_probability&quot;] == 0
+    aligned_cert = exact_matching_certificate(aligned, 3)
+    assert aligned_cert[&quot;accepted&quot;]
+
+    # Exact perturbation audit: every sign word, every k, on rational-complex
+    # inputs accepted by the squared-Frobenius matching certificate.
+    perturbation_checks = []
+    for m in (2, 3):
+        matrix = perturbed_adjacent_swaps(m)
+        for kk in range(1, m + 1):
+            cert = exact_matching_certificate(matrix, kk)
+            assert cert[&quot;accepted&quot;], (m, kk, cert)
+            baseline = [Q(1)] + [Q(0)] * m
+            for beta in cert[&quot;beta&quot;]:
+                for d in range(m, 0, -1):
+                    baseline[d] += beta * baseline[d - 1]
+            values = estimator_samples(matrix, kk, phased=True)
+            ratios = [Q(x) / baseline[kk] for x in values]
+            assert all(Q(3, 4) &lt;= x &lt;= Q(4, 3) for x in ratios), (m, kk, cert, ratios)
+            perturbation_checks.append({
+                &quot;n&quot;: 2 * m, &quot;k&quot;: kk, &quot;sign_words&quot;: len(values),
+                &quot;certificate&quot;: cert,
+                &quot;baseline_sector&quot;: baseline[kk],
+                &quot;min_sample_to_baseline_ratio&quot;: min(ratios),
+                &quot;max_sample_to_baseline_ratio&quot;: max(ratios),
+            })
+
+    # Negative control: the exact matching is misaligned with the acquired
+    # adjacent pairing. Applying alternating phases alone leaves an exact
+    # exponential-variance estimator; the certificate correctly abstains.
+    F, pairs = parity_class_swaps(2)
+    k, n = 4, 8
+    phased_misaligned = summary(estimator_samples(F, k, phased=True))
+    assert sector_norm(F, k) == 16
+    assert phased_misaligned[&quot;mean&quot;] == 16
+    assert phased_misaligned[&quot;second_moment_ratio&quot;] == 16
+    assert phased_misaligned[&quot;zero_probability&quot;] == Q(15, 16)
+    misaligned_cert = exact_matching_certificate(F, k)
+    assert not misaligned_cert[&quot;accepted&quot;] and min(misaligned_cert[&quot;beta&quot;]) == 0
+
+    # Exact physical-prefix counterinstances. U={0} has mass 8; its estimator
+    # is 64 on 1/8 of sign words and zero on 7/8. The formal C_ab=35 bound
+    # still holds. Forcing one up site in every true matching pair leaves a
+    # unique positive occupation and makes the prefix draw identically 1.
+    low = LowSector(F)
+    signs_all = list(product((-1, 1), repeat=n))
+    prefix_up = (0,)
+    mass = direct_prefix_count(F, k, up=prefix_up)
+    draws = [low.prefix_draw_integer(k, s, up=prefix_up) for s in signs_all]
+    a, b = 1, 0
+    C_ab = comb(2 * k - a - b, k - a)
+    assert mass == 8 and C_ab == 35
+    prefix_summary = summary(draws)
+    assert prefix_summary[&quot;mean&quot;] == mass
+    assert prefix_summary[&quot;zero_probability&quot;] == Q(7, 8)
+    assert prefix_summary[&quot;second_moment_ratio&quot;] == 8
+    assert max(draws) &lt;= C_ab * mass
+    forced_up = (0, 4, 1, 5)
+    forced_mass = direct_prefix_count(F, k, up=forced_up)
+    forced_draws = [low.prefix_draw_integer(k, s, up=forced_up) for s in signs_all]
+    assert forced_mass == 1 and set(forced_draws) == {1}
+
+    # Separate role restrictions at k&lt;m exercise down-site inclusion-exclusion
+    # and empty-site deletion. Compare every sign word to direct minor sums.
+    role_cases = [
+        {&quot;k&quot;: 3, &quot;up&quot;: (0,), &quot;down&quot;: (), &quot;empty&quot;: ()},
+        {&quot;k&quot;: 3, &quot;up&quot;: (), &quot;down&quot;: (0,), &quot;empty&quot;: ()},
+        {&quot;k&quot;: 3, &quot;up&quot;: (), &quot;down&quot;: (), &quot;empty&quot;: (0,)},
+        {&quot;k&quot;: 3, &quot;up&quot;: (0,), &quot;down&quot;: (), &quot;empty&quot;: (2,)},
+        {&quot;k&quot;: 3, &quot;up&quot;: (0,), &quot;down&quot;: (4,), &quot;empty&quot;: ()},
+    ]
+    role_outputs = []
+    for case in role_cases:
+        kk = case[&quot;k&quot;]
+        mass_case = direct_prefix_count(F, kk, case[&quot;up&quot;], case[&quot;down&quot;], case[&quot;empty&quot;])
+        vals = [low.prefix_draw_integer(kk, s, case[&quot;up&quot;], case[&quot;down&quot;], case[&quot;empty&quot;])
+                for s in signs_all]
+        a_case, b_case = len(case[&quot;up&quot;]), len(case[&quot;down&quot;])
+        cap_case = comb(2 * kk - a_case - b_case, kk - a_case)
+        vals_summary = summary(vals)
+        assert vals_summary[&quot;mean&quot;] == mass_case, (case, vals_summary, mass_case)
+        assert all(0 &lt;= value &lt;= cap_case * mass_case for value in vals), (case, vals, cap_case, mass_case)
+        if mass_case == 0:
+            assert not any(vals), (case, vals)
+        else:
+            assert vals_summary[&quot;second_moment_ratio&quot;] &lt;= cap_case, (case, vals_summary, cap_case)
+        role_outputs.append({**case, &quot;exact_prefix_mass&quot;: mass_case,
+                             &quot;C_ab&quot;: cap_case, &quot;draw_summary&quot;: vals_summary,
+                             &quot;pointwise_bound_holds&quot;: all(0 &lt;= value &lt;= cap_case * mass_case
+                                                           for value in vals)})
+
+    out = {
+        &quot;status&quot;: &quot;PASS&quot;,
+        &quot;source_program_copy&quot;: &quot;peer_low_sector_sampler_copy.py&quot;,
+        &quot;aligned_adjacent_matching&quot;: {
+            &quot;n&quot;: 6, &quot;k&quot;: 3, &quot;exact_norm&quot;: 8,
+            &quot;certificate&quot;: aligned_cert,
+            &quot;unphased&quot;: unphased_aligned,
+            &quot;phased&quot;: phased_aligned,
+        },
+        &quot;accepted_rational_complex_perturbation_checks&quot;: perturbation_checks,
+        &quot;misaligned_same_parity_matching&quot;: {
+            &quot;n&quot;: n, &quot;k&quot;: k, &quot;matching_pairs&quot;: pairs,
+            &quot;exact_norm&quot;: 16, &quot;certificate&quot;: misaligned_cert,
+            &quot;phased_without_certificate&quot;: phased_misaligned,
+        },
+        &quot;positive_prefix_with_false_zero_draws&quot;: {
+            &quot;n&quot;: n, &quot;k&quot;: k, &quot;up&quot;: list(prefix_up), &quot;down&quot;: [], &quot;empty&quot;: [],
+            &quot;exact_prefix_mass&quot;: mass, &quot;C_ab&quot;: C_ab,
+            &quot;prefix_draw_distribution&quot;: prefix_summary,
+            &quot;pointwise_bound_holds&quot;: max(draws) &lt;= C_ab * mass,
+            &quot;all_roles_forced&quot;: {
+                &quot;up&quot;: list(forced_up), &quot;exact_prefix_mass&quot;: forced_mass,
+                &quot;distinct_prefix_draw_values&quot;: sorted(set(forced_draws)),
+            },
+        },
+        &quot;down_and_empty_role_checks&quot;: role_outputs,
+        &quot;interpretation&quot;: (
+            &quot;Formal low-k C_k and prefix bounds survive these checks. &quot;
+            &quot;An alternating-phase heuristic without successful matching &quot;
+            &quot;acquisition has exponential variance; the phase certificate &quot;
+            &quot;rejects this family. Positive prefix mass may still yield a &quot;
+            &quot;zero single draw, so zero is not a support certificate.&quot;
+        ),
+    }
+    path = Path(__file__).with_name(&quot;phase_prefix_counterexamples.json&quot;)
+    def encode(x):
+        if isinstance(x, Q):
+            return str(x)
+        if isinstance(x, list):
+            return [encode(y) for y in x]
+        if isinstance(x, dict):
+            return {key: encode(value) for key, value in x.items()}
+        return x
+    encoded = encode(out)
+    path.write_text(json.dumps(encoded, indent=2) + &quot;\n&quot;)
+    print(json.dumps(encoded, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/43b34fbeae803f03b81dd9e2e25a16d0597e5471bcdf029ef1d770c58bb5913f.py">Exact original bytes</a></p></html>

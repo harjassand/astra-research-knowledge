@@ -1,0 +1,163 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c01_s03/axial_compiler/check_filtered_sector.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c01_s03/axial_compiler/check_filtered_sector.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Independent exact/dense metric checks and actual compressed posterior certs.&quot;&quot;&quot;
+from fractions import Fraction as F
+from pathlib import Path
+import hashlib
+import json
+import signal
+import time
+
+from axial_acquisition import (sector_matrix, matvec, spin_dimensions, total_variation,
+                                choose)
+from filtered_sector import (filtered_sector_columns, filtered_isotropic_target,
+                             backconvert_filtered_weights, filtered_posterior,
+                             scaled_filter_values, direct_filtered_branch_data,
+                             conditional_max_shift_probabilities)
+from check_axial_acquisition import zeros, identity, scale, add, mm, tr, spin_projectors
+
+
+def main():
+    def wall_limit(signum, frame):
+        raise TimeoutError(&quot;declared30second filtered-sector fixture wall cap exceeded&quot;)
+    signal.signal(signal.SIGALRM, wall_limit)
+    signal.alarm(30)
+    started = time.perf_counter()
+    assertions = 0
+    def check(condition):
+        nonlocal assertions
+        assertions += 1
+        assert condition
+    dense_cases = 0
+    for N in range(1, 5):
+        d = 1 &lt;&lt; N
+        P = spin_projectors(N)
+        dims = spin_dimensions(N)
+        f = [F((t + 1) * (N + 2 - t), (N + 2) ** 2) for t in range(N + 1)]
+        A = sector_matrix(N)
+        x = [F(b + 1, sum(range(1, len(P) + 1))) for b in range(len(P))]
+        y = list(reversed(x))
+        C, c, Z = filtered_sector_columns(N, f)
+        Qx = [v * cb / sum(a * z for a, z in zip(x, c)) for v, cb in zip(x, c)]
+        Qy = [v * cb / sum(a * z for a, z in zip(y, c)) for v, cb in zip(y, c)]
+        states = []
+        for weights in [x, y]:
+            G = zeros(d)
+            for q, dim, projector in zip(weights, dims, P):
+                G = add(G, scale(q / dim, projector))
+            filtered = zeros(d)
+            for i in range(d):
+                for j in range(d):
+                    if i.bit_count() == j.bit_count():
+                        filtered[i][j] = G[i][j] * f[i.bit_count()]
+                    else:
+                        check(G[i][j] == 0)
+            states.append(scale(1 / tr(filtered), filtered))
+        sign_operator = zeros(d)
+        for b, projector in enumerate(P):
+            q_difference = Qx[b] - Qy[b]
+            sign = 1 if q_difference &gt; 0 else -1 if q_difference &lt; 0 else 0
+            sign_operator = add(sign_operator, scale(F(sign), projector))
+            check(tr(mm(P[b], states[0])) == Qx[b])
+            check(tr(mm(P[b], states[1])) == Qy[b])
+        difference = add(states[0], scale(F(-1), states[1]))
+        # Signs are constant in each positive conditional block, so this is
+        # the exact physical trace norm witness, not a numeric eigenvalue call.
+        metric = tr(mm(sign_operator, difference)) / 2
+        check(metric == total_variation(Qx, Qy))
+        v = [F(k + 1, choose(N + 2, 2)) for k in range(N + 1)]
+        w = backconvert_filtered_weights(v, Z)
+        model_prior = matvec(A, w)
+        beta = sum(q * z for q, z in zip(model_prior, c))
+        model_sector = [q * z / beta for q, z in zip(model_prior, c)]
+        check(model_sector == matvec(C, v))
+        dense_cases += 1
+    compressed_cases = 0
+    for N in [8, 16, 32, 64]:
+        f = [F(t + 1, N + 1) for t in range(N + 1)]
+        C, c, Z = filtered_sector_columns(N, f)
+        check(len(C) == N // 2 + 1 and len(Z) == N + 1)
+        for k in range(N + 1):
+            check(sum(C[b][k] for b in range(len(C))) == 1)
+            R = sum(F(choose(N - k, u), (k + 1) * (1 &lt;&lt; (N - k)))
+                    * sum(f[u:u + k + 1]) for u in range(N - k + 1))
+            check(R == Z[k])
+        compressed_cases += 1
+    # Coupling-independent floors and clipped conditional acquisition.
+    huge = F(1 &lt;&lt; 256)
+    huge_records = []
+    for h in [huge, -huge]:
+        N, eps = 16, F(1, 1024)
+        values, intervals = scaled_filter_values(N, F(1), h, 64)
+        C, c, Z = filtered_sector_columns(N, values)
+        aligned = N if h &gt; 0 else 0
+        check(values[aligned] &gt; F(1, 1 &lt;&lt; N))
+        check(min(Z) &gt; F(1, 1 &lt;&lt; (2 * N)))
+        qhat = filtered_isotropic_target(N, huge, values, 64)
+        check(qhat[0] == 1)
+        v = [F(int(k == 0)) for k in range(N + 1)]
+        posterior = filtered_posterior(N, huge, F(1), h, 64,
+                                      direct_filtered_weights=v)
+        check(posterior[&quot;TV_upper&quot;] &lt; eps)
+        branches, data = direct_filtered_branch_data(N, F(1), h, v, eps)
+        check(sum(b[&quot;probability&quot;] for b in branches) == 1)
+        check(data[&quot;zero_global_slices&quot;] &gt; 0)
+        for branch in branches:
+            p, meta = conditional_max_shift_probabilities(N, branch[&quot;k&quot;], branch[&quot;u&quot;], F(1), h, eps)
+            check(min(p) &gt;= 0 and sum(p) == 1)
+            check(meta[&quot;normalizer_at_least_one&quot;])
+            check(meta[&quot;scalar_bits&quot;] &lt; 40)
+        huge_records.append({&quot;h_sign&quot;: int(h &gt; 0), &quot;N&quot;: N,
+                             &quot;magnitude_bits&quot;: 257,
+                             &quot;posterior_upper&quot;: str(posterior[&quot;TV_upper&quot;]),
+                             &quot;global_zero_slices&quot;: data[&quot;zero_global_slices&quot;]})
+    # Independently validate actual peer-proposed rational weights against TRUE
+    # filter intervals.  This is a model metric, not the complete sampler cert.
+    peer_records = []
+    for N in [8, 16]:
+        path = Path(f&#x27;work/cycle6/c03_s01/implementation/filtered_N{N}.json&#x27;)
+        raw = path.read_bytes()
+        model = json.loads(raw)[&quot;model&quot;]
+        def frac(record):
+            return F(int(record[&quot;numerator&quot;]), int(record[&quot;denominator&quot;]))
+        alpha, delta, h = [frac(model[name]) for name in [&quot;alpha&quot;, &quot;delta&quot;, &quot;h&quot;]]
+        w = [frac(v) for v in model[&quot;isotropic_weights&quot;]]
+        check(len(w) == N + 1 and sum(w) == 1 and min(w) &gt;= 0)
+        result = filtered_posterior(N, alpha, delta, h, 96, isotropic_weights=w)
+        check(result[&quot;TV_upper&quot;] &lt; F(1, 1000000))
+        # The deliberately wrong K0 candidate must fail this same tight claim.
+        bad = [F(int(k == 0)) for k in range(N + 1)]
+        rejected = filtered_posterior(N, alpha, delta, h, 96, isotropic_weights=bad)
+        check(rejected[&quot;TV_upper&quot;] &gt; F(1, 100))
+        peer_records.append({&quot;N&quot;: N, &quot;alpha&quot;: str(alpha), &quot;delta&quot;: str(delta),
+                             &quot;h&quot;: str(h), &quot;source&quot;: str(path),
+                             &quot;source_sha256&quot;: hashlib.sha256(raw).hexdigest(),
+                             &quot;own_true_filter_model_TV_upper&quot;: str(result[&quot;TV_upper&quot;]),
+                             &quot;own_true_filter_model_TV_upper_float&quot;: float(result[&quot;TV_upper&quot;]),
+                             &quot;wrong_K0_upper&quot;: float(rejected[&quot;TV_upper&quot;]),
+                             &quot;sampler_block_phase_and_local_errors_included&quot;: False})
+    # Explicit API rejection controls.
+    for call in [lambda: filtered_posterior(2, F(1), F(1), F(0), 64,
+                                          isotropic_weights=[F(-1), F(1), F(1)]),
+                 lambda: filtered_sector_columns(2, [F(0)] * 3),
+                 lambda: filtered_posterior(2, F(1), F(1), F(0), 64)]:
+        try:
+            call()
+        except ValueError:
+            check(True)
+        else:
+            check(False)
+    result = {&quot;status&quot;: &quot;PASS&quot;, &quot;assertions&quot;: assertions,
+              &quot;elapsed_seconds_shared_machine&quot;: time.perf_counter() - started,
+              &quot;exact_dense_metric_cases&quot;: dense_cases,
+              &quot;exact_compressed_cases&quot;: compressed_cases,
+              &quot;binary_magnitude_cases&quot;: huge_records,
+              &quot;independent_actual_peer_model_certificates&quot;: peer_records,
+              &quot;evidence_scope&quot;: &quot;exact algebra plus outward physical model trace certificates; candidate LP and generic iid backends not executed; sampler certificates remain separate&quot;,
+              &quot;hardware_preparation&quot;: &quot;NOT_EXECUTED&quot;}
+    signal.alarm(0)
+    Path(__file__).with_name(&#x27;filtered_sector_checks.json&#x27;).write_text(json.dumps(result, indent=2) + &#x27;\n&#x27;)
+    print(json.dumps(result, indent=2))
+
+
+if __name__ == &#x27;__main__&#x27;:
+    main()
+</pre><p><a href="../assets/58b3446a400f8c9fb8c093c1f6f702c0bdc76e2f577ba668abcb57155becab29.py">Exact original bytes</a></p></html>

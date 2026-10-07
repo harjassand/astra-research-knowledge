@@ -1,0 +1,311 @@
+c07_l08 CROSS-PHASE COST AUDIT OF c07_s02 STOPPED_DIFFUSION
+7 October 2026. INITIAL remains immutable. This is a cost/implementation
+audit of c07_s02/revisions/STOPPED_DIFFUSION.txt, not an independent proof of
+its whole theorem. Origin: stopped-diffusion proposal by c07_s02; the seed
+quartic inequality below was already derived in c07_l08/INITIAL.txt.
+
+STATUS
+
+The written construction is a mathematical positive-mixture/separability
+candidate. It is not yet a finite-bit state-preparation algorithm. Its own
+global Feynman--Kac bound gives an exponential-in-sqrt(N) rejection cost, and
+the paper explicitly leaves Brownian generation, weight normalization,
+stopping resolution, and local emissions uncompiled.
+
+I derive two cost improvements that are compatible with the stated interface:
+(i) a larger certified diffusion ball and sharper heat-seed tail exponent;
+(ii) a seed-radius-dependent rejection envelope. For the stopped diffusion,
+the latter has a finite N-uniform normalizer, whereas the global envelope is
+exp(h_N). A uniform second-moment bound supports truncating the rare bad paths
+without paying exp(h_N). This gives a credible polynomial finite-bit route
+conditional on a certified weak-error/interval implementation of the stopped
+SDE. That final compiler gate is NOT closed here. In particular, no achieved
+runtime or practical advantage is claimed.
+
+1. RAW COSTS ACTUALLY PRESENT IN THE ASSIGNED DERIVATION
+
+Write L=2M+1, T=Tr C<=3L, s=N^(3/4). Its path weight obeys
+
+  |log w| <= h_N = (L/4)sqrt(N)+L/(2sqrt(N))+(B/2)N^(1/4).
+
+The obvious exact-rejection implementation samples the reference stopped
+diffusion and accepts with w/exp(h_N). Since the represented trace is >=1/2
+for sufficiently large N, its acceptance probability is >=(1/2)exp(-h_N),
+so its expected proposals are at most 2exp(h_N). This is a valid upper bound,
+not an observed runtime; it grows superpolynomially.
+
+Reproducible example M=0.1, B=0.2, N=50,000:
+
+  h_N=68.5801; exp(h_N)=6.0806e29; global rejection bound=1.2161e30
+  proposals; the largest raw weight needs 99 binary integer bits (plus the
+  chosen fractional precision). At N=1,000,000, h_N=303.163 and the global
+  rejection bound is about 9.18e131 proposals.
+
+The large numeric weight does not itself imply exponential bit complexity:
+storing log(w) needs O(log N+p) fixed-point bits for p fractional bits, and
+storing w=e^(log w) directly uses O(sqrt(N)+p) magnitude bits. The expensive
+part of the global-envelope sampler is the acceptance rate. Repeatedly
+normalizing a batch of raw weights has the same range problem if one relies
+only on max(w)<=exp(h_N); the report gives a pathwise envelope that removes
+that dependence.
+
+Other costs present at the interface:
+
+* A local Bloch-vector error d_m changes k_N(m)=rho(m)^(tensor N) in trace
+  distance by at most N*d_m/2 (telescoping the N factors). Thus a final
+  vector precision d_m<=epsilon/(4N) suffices for epsilon/8 state error.
+* Emitting rho(m)^(tensor N) needs N local mixed-qubit preparations. If the
+  primitive is pure-state preparation, write rho(m) as a Bernoulli mixture
+  of the two pure eigenstates in direction m/|m| and spend N additional
+  independent random bits (or use N local purifying ancillas). One common
+  random sign for all qubits would give the wrong tensor product.
+* For rational/finite-bit A,b, interval evaluation of the displayed 3x3
+  coefficients and square root costs polynomially in their input bit length
+  and working precision because the diffusion matrix has a stated positive
+  margin on the stopped ball. Arbitrary exact-real A,b with no representation
+  or evaluation oracle are not a finite-bit input interface. A sufficient
+  worst-case coefficient quantization is ||dA||=O(epsilon/sqrt(N)) and
+  ||db||=O(epsilon/N^(1/4)); this follows from ||J||<=N/2 and ||Q_dA||<=
+  N^2||dA||/4 in the exponent.
+
+2. LARGER INNER BALL; IMPACT ON THE HIDDEN THRESHOLD
+
+The exact lower bound in (S5), with x=|m|^2, is
+  g_L(x)=(1-x)^2-Lx=1-(L+2)x+x^2.
+Let
+  x_* = 2/(L+2+sqrt(L^2+4L)),
+the smaller root of g_L. For any fixed 0<theta<1, choosing
+  r_0^2=theta*x_*
+gives the exact margin
+  g_L(theta*x_*)=(1-theta)(1-theta*x_*^2)>0.
+Thus the stopped diffusion remains uniformly elliptic. With theta=0.99 and
+L>=1, the margin is at least 0.0085; the square-root conditioning is still a
+fixed constant. The prescribed radius in STOPPED_DIFFUSION is much smaller:
+r_old^2=1/[16(L+1)].
+
+The heat-seed proof in c07_l08/INITIAL also establishes
+  f(u)=u^2/2-log(cosh u) >= delta*u^4, 0<=u<=1,
+  delta=1/2-log(cosh 1)=0.0662191695... .
+This strengthens the assigned text's f(u)>=u^4/48. Consequently its small-r
+tail exponent can use delta*a_0^4/16 rather than a_0^4/768, where
+a_0=2*atanh(r_0/2). This uses only the same heat seed, and does not change
+the proof's supplied/acquired boundary.
+
+For M=0.1, B=0.2, N=50,000, theta=0.99:
+
+  assigned radius r_old=0.16855; assigned kappa_0*N=0.0530;
+  larger radius r_0=0.58948; ellipticity lower bound=0.00878;
+  a_0=0.60750; strengthened kappa_0*N=28.19;
+  assigned hit exponent kappa_1*N^(3/2)=1,033.9; larger-ball value=12,646.7.
+
+At N=50,000 the *published coarse error bound* (S12) is still vacuous: its
+seed term contains exp(h_N-kappa_0*N), which remains enormous even after
+these changes. With the larger ball and strengthened seed exponent,
+kappa_0 approximately 5.64e-4; the leading comparison kappa_0*N versus
+(L/4)sqrt(N) crosses only around N~2.8e5, before the N^(3/4) prefactor and
+unknown tail constant are paid. N=10^6 gives a large exponent gap, but is
+already a million-qubit mathematical regime. So the improvement repairs a
+hidden constant materially; it does not establish practical utility at the
+50,000-spin illustration.
+
+3. A WEIGHT-MOMENT LEMMA, WITH ITS ASSUMPTIONS MADE EXPLICIT
+
+The global cap exp(h_N) ignores the seed's quartic radial tail. Let R=N^(1/4)r
+be the radial heat-field variable (so |m_0|=tanh(r/2)<=r/2), and let
+Z=N^(3/4) sup_{t<=1 wedge tau}|M_t| for the stopped martingale. For N large
+enough that the retained seed mass is at least 1/2, the exact heat density
+and its lower normalizer L_base=(7/3)exp(-Lambda/2-1/12) give
+
+  density(R) <= C_0 R^2 exp(-c R^4-Lambda*R^2/16),
+  c=delta/16, C_0=2 exp(a_0/2)/L_base,
+
+on the retained branches (with an atom at R=0 from the replacement). This
+uses t_0<2/N, including the extra negative quadratic from Lambda.
+
+For each coordinate of the stopped martingale, quadratic variation is at
+most T/(2N^(3/2)). The exponential-martingale maximal inequality and a
+three-coordinate union bound give
+  P(Z>z | initial branch) <= 6 exp(-z^2/(3T)).
+The bound is uniform in that branch. The drift bound (S8) implies
+
+  y := N^(1/4) sup_{t<=1 wedge tau}|m_t|
+     <= R/2+d_N+Z/sqrt(N),
+  d_N=N^(1/4)*beta_N
+     <= c_a*N^(-1/4),
+  c_a=T*r_0/2+3T*r_0/4+B/2.
+
+Using the exact potential formula, on every stopped path
+  |log w| <= (L/4)y^2+(B/2)y+T/(4sqrt(N)).
+Apply (u+v)^2 <= (3/2)u^2+3v^2 to u=R/2 and
+v=d_N+Z/sqrt(N), then (d+e)^2<=2d^2+2e^2. This yields the explicit
+second-moment domination
+
+  w^2 <= exp(C_N) exp((3L/16)R^2+(B/2)R)
+                 exp((3L/N)Z^2+(B/sqrt(N))Z),
+  C_N=T/(2sqrt(N))+3L*c_a^2/sqrt(N)+B*c_a/N^(1/4).
+
+Combining it with the heat and martingale tails proves E[w^2]<=C_2(Lambda,L,T,B)
+uniformly for N>=max(Lambda^2, 18LT, N_seed), where N_seed ensures retained
+mass>=1/2. For example one explicit finite upper bound is
+
+ C_2 = exp(T/2+3L*c_a^2+B*c_a) * C_Z(1/(6T),B;T)
+       * [1+C_0*Integral_0^infinity
+                       R^2 exp(-cR^4+alpha R^2+(B/2)R)dR],
+ alpha=(3L-Lambda)/16,
+ C_Z(a,b;T)=1+6*Integral_0^infinity (2az+b)
+                           exp(az^2+bz-z^2/(3T)) dz.
+
+The atom at R=0 from the bad-branch replacement is covered by the leading
+1. Both integrals converge: the seed integral has a negative quartic leading
+term; the martingale integral has a negative quadratic leading term. This is
+an explicit N-uniform moment result, but its coarse C_2 can be large and must
+be interval evaluated before it can be treated as a numerical runtime
+constant.
+
+Since trace(k_N(m))=1, E[w]=Tr(W_1). For the stopped process started from
+rho_0' (the radially truncated/replaced heat seed), its un-stopped comparison
+G'=e^(M_H)rho_0' also has trace>=1: Tr(H rho_0')>=0 because the seed has zero
+mean Bloch vector and the C quadratic part is nonnegative on the Bloch ball;
+then scalar Jensen gives Tr(e^H rho_0')>=exp(Tr(H rho_0'))>=1. Equation
+(S10) bounds only the stopping residual from G' to W_1, so E[w]>=1/2 once
+that residual is <=1/2. This avoids relying on the coarse rho_0-to-rho_0'
+term of (S11) for the sampler's normalization, but it does NOT repair that
+initial-replacement term in the final target-to-mixture certificate.
+The moment lemma permits weighted rare-event truncation by Cauchy--Schwarz:
+for any path event E,
+  E[w 1_E] <= sqrt(C_2*P(E)).
+This is the exact place where typical weighted mass can replace the crude
+e^(h_N)P(E) estimate for sampling. It does not on its own improve every
+operator-norm Duhamel remainder in (S11).
+
+4. PATHWISE ENVELOPE THAT AVOIDS GLOBAL-WEIGHT REJECTION
+
+Fix epsilon<1/8. Choose cutoffs X,Z_* so that (using the preceding density
+and tail bounds)
+  E[w 1_{R>X}] <= epsilon/16,
+  E[w 1_{Z>Z_*}] <= epsilon/16,
+and choose N so the stop/extension remainder has weighted mass <=epsilon/16.
+For instance Z_* can be O_T(sqrt(log(C_2/epsilon^2))); X can be
+O_{Lambda,L,B}((log(C_2/epsilon))^(1/4)). On the retained event, the
+pathwise displacement bound gives
+
+ d_*=N^(1/4)*beta_N+Z_*/sqrt(N),
+ log w <= log g_N(R)
+   := (L/4)(R/2+d_*)^2+(B/2)(R/2+d_*)+T/(4sqrt(N)).
+
+Therefore a reference proposal with initial radial law proportional to
+q_N(R)g_N(R)1_{R<=X}, uniform direction, and the original conditional path
+law can accept a path with probability (w/g_N(R))1_{good}. On accepted
+paths, the factor g cancels exactly:
+  q_N(R)g_N(R) * w/g_N(R) = q_N(R)w.
+The accepted path is the desired Feynman--Kac law restricted to the good
+event. The discarded weighted mass is <=3epsilon/16. No unknown target
+partition function is used in the acceptance probability.
+
+The tilted-seed normalizer has no exp(sqrt(N)) factor. Its replacement atom
+contributes at most g_N(0); the continuous radial integrand is bounded by a
+constant times
+
+ R^2 exp(-cR^4 + (L-Lambda)R^2/16
+          +(L*d_*/4+B/4)R + O_{L,B,T}(d_*^2+N^(-1/2))).
+
+Since L-Lambda=M, its positive quadratic is dominated by the quartic for
+every fixed M. Hence G_N=E_q[g_N 1_{R<=X}] is bounded by an explicit finite
+constant depending on M,B and (at worst) polynomially on 1/epsilon, not
+exp(h_N). Once E[w 1_good]>=1/4, acceptance is >=1/(4G_N); capping the
+number of proposals at 4G_N*log(1/delta) makes failure probability <=delta.
+This changes the weight-normalization bottleneck from exp(O(sqrt(N))) to a
+cost controlled by explicit fixed-parameter quartic integrals and log(1/delta).
+
+For the numerical example above, a 30-digit mpmath quadrature (not an
+interval proof) estimates C_2<=2.59e4 at N=50,000. Taking epsilon=0.1,
+the displayed Cauchy--Schwarz cutoffs are Z_*=15.45 and X=8.16. The
+path-envelope normalizer bound, including the replacement atom and d_*, is
+about G_N<=62.5. This gives an expected-proposal upper bound 4G_N about
+250; a fixed cap about 750 proposals gives a 95% acceptance-run success
+bound. These numbers cover only the ideal continuous/discrete-law
+normalization analysis, and the integral values are not interval-certified.
+
+To implement the proposal with finite bits, the initial radial law can be
+rescaled to R and tabulated on a grid. On R<=X, a radial grid spacing
+O(epsilon/N^(3/4)) gives Bloch error O(epsilon/N), since |m|<=r/2 and the
+product-kernel Lipschitz constant is N/2. The number of radial bins is
+O(X*N^(3/4)/epsilon); angular uniforms need O(log(N*X/epsilon)) bits. Use
+interval quadrature for bin masses and rational cumulative probabilities.
+For path increments, a Rademacher Euler scheme uses exactly 3 random bits per
+time step instead of 3 inverse-CDF normals. It matches Gaussian mean,
+covariance and third moments, so a weak Taylor audit can target first-order
+global error. With coefficients on the inner ball,
+  |a|=O(N^(-1/2)), |sigma|=O(N^(-3/4)), |V|=O(sqrt(N));
+and the product-kernel derivatives through order four are O(N^4). The
+leading local weak-defect scales are V^2*k=O(N), a^2*D^2k=O(N), and
+sigma^4*D^4k=O(N), suggesting a certified step count K=poly(N,1/epsilon)
+(a first-order estimate is K>=C(M,B,X)*N/epsilon). Each step requires
+constant-dimension interval arithmetic and a fixed number of random bits.
+
+That last weak-error estimate is a target, not a verified bound in this
+artifact. A complete compiler still must: (a) prove the stopped-boundary or
+smooth-extension discretization remainder in trace norm; (b) propagate
+interval errors through square roots, weights and the tilted-seed table;
+(c) specify a finite-bit Bernoulli/angle implementation and accumulate its
+total error; and (d) check N against the analytic separability error (S12),
+whose constants are not yet interval-certified. Until then, this is a
+conditional implementation path, not a certified polynomial sampler.
+
+5. PREPARATION/WEIGHT PRECISION LEDGER
+
+If the preceding compiler gates pass with K time steps and total requested
+error epsilon, a conservative per-output ledger is:
+
+* path random bits: 3K Rademacher bits, plus O(log(NX/epsilon)) angular and
+  seed-table index bits and O(N) independent local-mixture bits;
+* coefficient/state arithmetic: p=O(log(NK/epsilon)+log(1/delta_D)) bits
+  after the 3x3 spectral margin delta_D is fixed; table preprocessing uses
+  O(X*N^(3/4)/epsilon) radial intervals and certified elementary-function
+  quadrature;
+* weight arithmetic on accepted candidates: storing raw log w globally costs
+  O(log N+p) log-weight bits, while direct exp(h_N) weights require
+  O(sqrt(N)+p) magnitude bits. Under the localized envelope, R<=X and Z<=Z_*
+  bound log(w/g) on the accepted support by O_{M,B}(sqrt(log(1/epsilon))+1),
+  so only O(log(1/epsilon)+log G_N) weight bits are needed;
+* proposals: at most O(G_N log(1/delta)) complete paths for failure delta,
+  each K steps, instead of the global 2exp(h_N) bound;
+* output: N mixed single-qubit preparations and N independent local random
+  choices, with per-qubit angle/Bloch precision O(epsilon/N).
+
+The input must be known finite-bit A,b (or supply a certified evaluation
+oracle); the construction is not an acquisition algorithm for unknown A,b.
+The total cost is polynomial in N, 1/epsilon and input bit length only after
+the weak-error and interval compiler gates above are proved. No practical
+runtime claim follows from polynomiality alone; the displayed radial table,
+step constant, and N-threshold need actual interval evaluation.
+
+6. GATES AND VERIFICATION STATUS
+
+Independent algebra check: the Bloch identities (S2)-(S4) are consistent
+with the exact Fraction fixture report supplied in c07_s02, but N<=3 fixtures
+do not prove them for all N. The sign of -R_n^2 and the inner-ball PSD bound
+remain essential. The cost derivations here use those displayed formulas;
+they do not validate (S1) as a whole.
+
+New exact algebra: the larger-ball identity
+g_L(theta*x_*)=(1-theta)(1-theta*x_*^2) follows by substituting
+g_L(x_*)=0. It preserves a fixed positive margin for theta<1.
+New analytic derivation: the uniform E[w^2] bound above follows from the
+quartic heat-seed tail, stopped-martingale maximal tail, and explicit
+potential envelope. It is an internal derivation; no independent verifier
+has checked every constant or boundary condition.
+
+Runnable evidence is limited to the arithmetic scripts and JSON beside this
+report. The pure-Python script evaluates displayed constants for
+(M,B,N)=(0.1,0.2,50,000) and (0.1,0.2,1,000,000), and numerically checks the
+radius identity. The separate mpmath script estimates the one-dimensional
+moment/envelope integrals above. Neither script interval-certifies those
+integrals, executes an SDE, runs a random-bit sampler, or emits qubits.
+
+Next decisive gate: implement a small rational-input finite-bit Euler path
+with interval coefficients and a certified trace-norm weak-error bound,
+then compare its accepted mixture against the exact finite-N state only at
+tiny N as a diagnostic. Separately produce interval-certified C_2/G_N and
+S12 thresholds for an admitted M,B,N; no result should be promoted from that
+finite diagnostic to all-N theorem evidence.

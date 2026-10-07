@@ -1,0 +1,57 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c03_s01/revisions/boundary_checks.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c03_s01/revisions/boundary_checks.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Small exact bookkeeping for coherent-bra and low-rank-tail obstructions.&quot;&quot;&quot;
+from pathlib import Path
+import sys
+sys.path.insert(0,str(Path(__file__).resolve().parent.parent))
+import grassmann_bcs as g
+import lowrank_bcs as lr
+from fractions import Fraction as Q
+from itertools import combinations
+import json
+
+def sector(F,k):
+    n=len(F)
+    out={}
+    for I in combinations(range(n),k):
+        for J in combinations([j for j in range(n) if j not in I],k):
+            a=g.determinant([[F[i][j] for j in J] for i in I])
+            if a!=g.ZERO: out[(I,J)]=g.abs2(a)
+    z=sum(out.values())
+    return z,{key:value/z for key,value in out.items()} if z else {}
+
+def test():
+    rows=[]
+    for e in (Q(1,4),Q(1,256),Q(1,65536)):
+        Fs=[]
+        for i,j in ((0,1),(1,0)):
+            F=[[g.qc(1) for _ in range(4)] for _ in range(4)]
+            F[i][j]=g.qc(1+e)
+            Fs.append(F)
+        z0,p0=sector(Fs[0],2)
+        z1,p1=sector(Fs[1],2)
+        assert z0==z1==2*e*e
+        keys=set(p0)|set(p1)
+        tv=sum(abs(p0.get(k,0)-p1.get(k,0)) for k in keys)/2
+        assert tv==1 and not set(p0)&amp;set(p1)
+        assert all(len(lr.factor(F)[1])==2 for F in Fs)
+        rows.append({&#x27;epsilon&#x27;:str(e),&#x27;norms_squared&#x27;:[str(z0),str(z1)],
+                     &#x27;TV&#x27;:str(tv),&#x27;supports&#x27;:[
+                         [{&#x27;I&#x27;:list(i),&#x27;J&#x27;:list(j),&#x27;p&#x27;:str(p)} for (i,j),p in d.items()]
+                         for d in (p0,p1)]})
+    same_norm=[]
+    for sign in (-1,1):
+        F=[[g.ZERO,g.ONE],[g.qc(sign),g.ZERO]]
+        z,p=sector(F,1)
+        amp=g.add(F[0][1],F[1][0])
+        assert z==2
+        same_norm.append({&#x27;relative_sign&#x27;:sign,&#x27;hard_norm&#x27;:str(z),
+                          &#x27;coherent_bra_squared_amplitude&#x27;:str(g.abs2(amp))})
+    assert [d[&#x27;coherent_bra_squared_amplitude&#x27;] for d in same_norm]==[&#x27;0&#x27;,&#x27;4&#x27;]
+    out={&#x27;status&#x27;:&#x27;PASS&#x27;,&#x27;lowrank_tail_discontinuity&#x27;:rows,
+         &#x27;diagonal_projector_vs_coherent_bra&#x27;:same_norm,
+         &#x27;magic_Pluecker_residual&#x27;:&#x27;1&#x27;,
+         &#x27;scope&#x27;:&#x27;Exact finite algebra; no universal FLO compiler or quantum circuit ran.&#x27;}
+    Path(__file__).with_name(&#x27;boundary_checks.json&#x27;).write_text(json.dumps(out,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({&#x27;status&#x27;:&#x27;PASS&#x27;,&#x27;tail_cases&#x27;:len(rows),&#x27;same_norm_cases&#x27;:len(same_norm)},indent=2))
+
+if __name__==&#x27;__main__&#x27;: test()
+</pre><p><a href="../assets/5ecd67e4a06dacf8f9f1b4d7bcac44516f99a5c2ce4c6ed205df6e9f8c3fd311.py">Exact original bytes</a></p></html>

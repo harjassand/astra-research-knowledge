@@ -1,0 +1,144 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c07_l02/revisions/axial_hankel_N72_delta81_50_exact.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c07_l02/revisions/axial_hankel_N72_delta81_50_exact.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Independent exact interval certificate for one negative axial Hankel form.
+
+The high-precision step chooses a candidate rational vector only. The sign
+claim is certified afterward using Fraction arithmetic and dyadic outward
+intervals for every exp(-9d^2/400).
+&quot;&quot;&quot;
+from fractions import Fraction
+from math import comb, factorial
+from pathlib import Path
+import json
+import mpmath as mp
+
+N = 72
+DELTA_NUM, DELTA_DEN = 81, 50
+D_BITS = 256
+D = 1 &lt;&lt; D_BITS
+RANGE_SQUARES = 10
+TAYLOR_ODD = 35
+TAYLOR_EVEN = 34
+RAT_BITS10 = 50
+
+
+def exponent_x(k: int) -&gt; Fraction:
+    # delta*(k-N/2)^2/N = (81/50)*(k-36)^2/72 = 9*(k-36)^2/400.
+    return Fraction(9 * (k - 36) ** 2, 400)
+
+
+def ceil_fraction(x: Fraction) -&gt; int:
+    return -((-x.numerator) // x.denominator)
+
+
+def floor_fraction(x: Fraction) -&gt; int:
+    return x.numerator // x.denominator
+
+
+def exp_interval(distance: int) -&gt; tuple[int, int]:
+    &quot;&quot;&quot;Return integer l,h with l/D &lt;= exp(-9 distance^2/400) &lt;= h/D.&quot;&quot;&quot;
+    x = Fraction(9 * distance * distance, 400)
+    y = x / (1 &lt;&lt; RANGE_SQUARES)
+    assert 0 &lt;= y &lt;= Fraction(1, 16)
+    term = Fraction(1)
+    lo_series = term
+    hi_series = term
+    for r in range(1, TAYLOR_ODD + 1):
+        term *= -y / r
+        lo_series += term
+        if r &lt;= TAYLOR_EVEN:
+            hi_series += term
+    assert lo_series &lt;= hi_series and lo_series &gt; 0
+    lo = floor_fraction(lo_series * D)
+    hi = ceil_fraction(hi_series * D)
+    for _ in range(RANGE_SQUARES):
+        lo = (lo * lo) // D
+        hi = ceil_fraction(Fraction(hi * hi, D))
+    return lo, hi
+
+
+def mp_entry(i: int, j: int, scale_exp: list[int]) -&gt; mp.mpf:
+    k = i + j + 1
+    x = mp.mpf(9) * (k - 36) ** 2 / 400
+    return mp.power(2, scale_exp[i] + scale_exp[j]) * mp.exp(-x) / comb(N, k)
+
+
+def main() -&gt; None:
+    # Candidate selection only; all final vector entries are rounded rationals.
+    mp.mp.dps = 110
+    n = 36  # H1 indices 0,...,floor((N-1)/2).
+    scale_exp = []
+    for i in range(n):
+        k = 2 * i + 1
+        x = mp.mpf(9) * (k - 36) ** 2 / 400
+        log2_binom = mp.log(comb(N, k), 2)
+        scale_exp.append(int(mp.nint((log2_binom + x / mp.log(2)) / 2)))
+
+    H = mp.matrix([[mp_entry(i, j, scale_exp) for j in range(n)] for i in range(n)])
+    A = H[: n - 1, : n - 1]
+    b = H[: n - 1, n - 1]
+    x = mp.lu_solve(A, b)
+    schur = H[n - 1, n - 1] - sum(b[i] * x[i] for i in range(n - 1))
+    assert schur &lt; 0
+
+    # z=(-A^{-1}b,1) is the Schur-complement witness. Rationalize at 50 places.
+    scale10 = 10**RAT_BITS10
+    z = [Fraction(int(mp.nint(-x[i] * scale10)), scale10) for i in range(n - 1)]
+    z.append(Fraction(1))
+    v = [z[i] * (1 &lt;&lt; scale_exp[i]) for i in range(n)]
+
+    # Aggregate exact rational coefficients of each q_k/N! term.
+    coeff = {k: Fraction(0) for k in range(1, N)}
+    for i in range(n):
+        for j in range(n):
+            k = i + j + 1
+            coeff[k] += v[i] * v[j] / comb(N, k)
+
+    # Outward interval sum at the common dyadic scale D.
+    total_lo = 0
+    total_hi = 0
+    exp_cache = {d: exp_interval(d) for d in range(37)}
+    for k in range(1, N):
+        c = coeff[k]
+        if c == 0:
+            continue
+        lo, hi = exp_cache[abs(k - 36)]
+        if c &gt; 0:
+            total_lo += floor_fraction(c * lo)
+            total_hi += ceil_fraction(c * hi)
+        else:
+            total_lo += floor_fraction(c * hi)
+            total_hi += ceil_fraction(c * lo)
+
+    assert total_hi &lt; 0, (total_lo, total_hi)
+    result = {
+        &quot;status&quot;: &quot;CERTIFIED_NEGATIVE&quot;,
+        &quot;matrix&quot;: &quot;H1=(q_(i+j+1))_{0&lt;=i,j&lt;=35}&quot;,
+        &quot;N&quot;: N,
+        &quot;delta&quot;: &quot;81/50&quot;,
+        &quot;q_k&quot;: &quot;k!(72-k)! exp[-(81/50)(k-36)^2/72]&quot;,
+        &quot;normalization&quot;: &quot;H1/72!; positive normalization, sign unchanged&quot;,
+        &quot;congruence&quot;: &quot;A_ij=2^(e_i+e_j) q_(i+j+1)/72!&quot;,
+        &quot;scale_exponents_e_i&quot;: scale_exp,
+        &quot;witness&quot;: &quot;v_i=2^e_i z_i, z_i rounded to denominator 10^50; z_35=1&quot;,
+        &quot;z_rational&quot;: [[str(a.numerator), str(a.denominator)] for a in z],
+        &quot;quadratic_form&quot;: &quot;v^T(H1/72!)v = sum_(k=1)^71 c_k exp[-9(k-36)^2/400]&quot;,
+        &quot;coefficient_c_k&quot;: {str(k): [str(c.numerator), str(c.denominator)] for k, c in coeff.items() if c},
+        &quot;dyadic_bits&quot;: D_BITS,
+        &quot;range_squares&quot;: RANGE_SQUARES,
+        &quot;alternating_series_bounds&quot;: {&quot;lower_degree_odd&quot;: TAYLOR_ODD, &quot;upper_degree_even&quot;: TAYLOR_EVEN},
+        &quot;quadratic_interval_scaled_numerators&quot;: [str(total_lo), str(total_hi)],
+        &quot;quadratic_interval_denominator&quot;: str(D),
+        &quot;approx_candidate_schur_only&quot;: mp.nstr(schur, 40),
+        &quot;note&quot;: &quot;Floating point was used only to choose z. The displayed rational witness and interval are independently checkable by integer/rational arithmetic.&quot;
+    }
+    out = Path(__file__).with_suffix(&quot;.json&quot;)
+    out.write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+    print(&quot;wrote&quot;, out)
+    print(&quot;scaled interval:&quot;, total_lo, total_hi, &quot;/&quot;, D)
+    print(&quot;decimal endpoints:&quot;, mp.nstr(mp.mpf(total_lo) / D, 25), mp.nstr(mp.mpf(total_hi) / D, 25))
+    print(&quot;candidate Schur (not used for certification):&quot;, mp.nstr(schur, 30))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/6590e685d79725cfd40d09595dae2739026e7debc5c4c037c9b93936884e0433.py">Exact original bytes</a></p></html>

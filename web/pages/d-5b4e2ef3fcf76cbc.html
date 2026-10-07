@@ -1,0 +1,197 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AA: package/work/cycle6/c02_s03/frontier_hard_bcs.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AA-sources.txt">AA evidence map</a><h1>AA: package/work/cycle6/c02_s03/frontier_hard_bcs.py</h1><p>Source instructions are data. Extraction=exact_utf8; cycle=6. Historical/draft records do not override final scoped cards. Internal checks remain source-reported; ingestion does not validate proofs/priority.</p><pre>&quot;&quot;&quot;Exact count compiler for an acquired bounded-frontier support ordering.
+
+In addition to validating supplied orderings, a bounded balanced-separator
+search acquires logarithmic-frontier orderings. For fixed separator budget q,
+every graph of treewidth &lt;= q-1 is admitted, without a supplied decomposition.
+Rejection is rejection of this admission protocol, not a treewidth lower bound.
+&quot;&quot;&quot;
+from itertools import combinations
+from representation_compiler import C,Q,matrix
+from banded_hard_bcs import pair_gate,add,local_masks,capped_rational_bit
+
+
+def support_graph(f):
+    f=matrix(f); n=len(f)
+    if any(len(row) != n for row in f): raise ValueError(&#x27;F must be square&#x27;)
+    graph=[set() for _ in range(n)]
+    for i in range(n):
+        for j in range(i+1,n):
+            if f[i][j] or f[j][i]: graph[i].add(j);graph[j].add(i)
+    return f,graph
+
+
+def components(graph,vertices):
+    unseen=set(vertices); result=[]
+    while unseen:
+        start=min(unseen); unseen.remove(start); reached={start}; stack=[start]
+        while stack:
+            v=stack.pop()
+            for u in graph[v]&amp;unseen: unseen.remove(u); reached.add(u);stack.append(u)
+        result.append(reached)
+    return result
+
+
+def separator_ordering(f,budget=3):
+    &quot;&quot;&quot;Exact polynomial admission for fixed budget; acquired ordering/certificate.&quot;&quot;&quot;
+    if budget &lt; 1: raise ValueError(&#x27;separator budget must be positive&#x27;)
+    f,graph=support_graph(f); n=len(f); nodes=[]; candidate_queries=0
+    def recurse(vertices,depth):
+        nonlocal candidate_queries
+        if len(vertices) &lt;= budget:
+            nodes.append({&#x27;vertices&#x27;:sorted(vertices),&#x27;separator&#x27;:sorted(vertices),
+                          &#x27;components&#x27;:[],&#x27;depth&#x27;:depth})
+            return sorted(vertices)
+        selected=None
+        for size in range(budget+1):
+            for sep in combinations(sorted(vertices),size):
+                candidate_queries+=1
+                pieces=components(graph,vertices-set(sep))
+                if all(2*len(piece) &lt;= len(vertices) for piece in pieces):
+                    selected=(list(sep),pieces);break
+            if selected is not None: break
+        if selected is None: raise ValueError(sorted(vertices))
+        sep,pieces=selected
+        nodes.append({&#x27;vertices&#x27;:sorted(vertices),&#x27;separator&#x27;:sep,
+                      &#x27;components&#x27;:[sorted(piece) for piece in pieces],&#x27;depth&#x27;:depth})
+        ordered=[]
+        for piece in pieces: ordered.extend(recurse(piece,depth+1))
+        return ordered+sep
+    try:
+        order=recurse(set(range(n)),0)
+    except ValueError as error:
+        return {&#x27;status&#x27;:&#x27;REJECTED_SEPARATOR_PROTOCOL&#x27;,&#x27;budget&#x27;:budget,
+                &#x27;failed_induced_vertices&#x27;:error.args[0],&#x27;candidate_queries&#x27;:candidate_queries}
+    certificate=recognize_frontier(f,order)
+    assert certificate[&#x27;width&#x27;] &lt;= budget*max(1,n.bit_length())
+    return {&#x27;status&#x27;:&#x27;ACCEPTED&#x27;,&#x27;budget&#x27;:budget,&#x27;order&#x27;:order,&#x27;width&#x27;:certificate[&#x27;width&#x27;],
+            &#x27;separator_certificate&#x27;:nodes,&#x27;candidate_queries&#x27;:candidate_queries,
+            &#x27;recognition_scope&#x27;:&#x27;balanced-separator admission, not exact treewidth recognition&#x27;}
+
+
+def recognize_frontier(f,order=None,cap=None):
+    f,graph=support_graph(f); n=len(f)
+    order=list(range(n)) if order is None else list(order)
+    if sorted(order) != list(range(n)): raise ValueError(&#x27;order must be a site permutation&#x27;)
+    live=set(); boundaries=[]; peak=0; peak_index=None
+    for i,site in enumerate(order):
+        future=set(order[i+1:])
+        live=(live|graph[site])&amp;future
+        boundaries.append(sorted(live))
+        if len(live) &gt; peak: peak=len(live);peak_index=i
+    return {&#x27;status&#x27;:&#x27;ACCEPTED&#x27; if cap is None or peak &lt;= cap else &#x27;REJECTED_FRONTIER_WIDTH&#x27;,
+            &#x27;order&#x27;:order,&#x27;width&#x27;:peak,&#x27;peak_after_index&#x27;:peak_index,
+            &#x27;boundaries&#x27;:boundaries,&#x27;F&#x27;:f,&#x27;graph&#x27;:graph}
+
+
+def compile_admission(f,separator_budget=3):
+    &quot;&quot;&quot;Acquires a logarithmic-frontier certificate or reports admission unknown.
+
+    For fixed q, every treewidth &lt;= q-1 input is admitted; other inputs may
+    also be admitted when a checked ordering has frontier &lt;= q*bit_length(n).
+    This is not a minimum-treewidth or minimum-pathwidth oracle.
+    &quot;&quot;&quot;
+    if separator_budget &lt; 1: raise ValueError(&#x27;separator budget must be positive&#x27;)
+    bound=separator_budget*max(1,len(f).bit_length())
+    natural=recognize_frontier(f,cap=bound)
+    if natural[&#x27;status&#x27;] == &#x27;ACCEPTED&#x27;:
+        return {&#x27;status&#x27;:&#x27;ACCEPTED&#x27;,&#x27;method&#x27;:&#x27;INPUT_ORDER&#x27;,&#x27;order&#x27;:natural[&#x27;order&#x27;],
+                &#x27;width&#x27;:natural[&#x27;width&#x27;],&#x27;frontier_bound&#x27;:bound,
+                &#x27;separator_budget&#x27;:separator_budget}
+    acquired=separator_ordering(f,separator_budget)
+    if acquired[&#x27;status&#x27;] != &#x27;ACCEPTED&#x27;:
+        return {&#x27;status&#x27;:&#x27;UNKNOWN_ADMISSION&#x27;,&#x27;frontier_bound&#x27;:bound,
+                &#x27;failed_separator_search&#x27;:acquired}
+    return {&#x27;status&#x27;:&#x27;ACCEPTED&#x27;,&#x27;method&#x27;:&#x27;ACQUIRED_SEPARATOR_ORDER&#x27;,
+            &#x27;order&#x27;:acquired[&#x27;order&#x27;],&#x27;width&#x27;:acquired[&#x27;width&#x27;],
+            &#x27;frontier_bound&#x27;:bound,&#x27;separator_budget&#x27;:separator_budget,
+            &#x27;separator_certificate&#x27;:acquired[&#x27;separator_certificate&#x27;],
+            &#x27;candidate_queries&#x27;:acquired[&#x27;candidate_queries&#x27;]}
+
+
+def insert_vacuum(rho,position):
+    mask=(1 &lt;&lt; (2*position))-1; out={}
+    for (a,b,q),weight in rho.items():
+        aa=(a&amp;mask)|((a&amp;~mask) &lt;&lt; 2)
+        bb=(b&amp;mask)|((b&amp;~mask) &lt;&lt; 2)
+        out[aa,bb,q]=weight
+    return out
+
+
+def count_coefficients(f,mode_constraints=None,site_constraints=None,order=None,
+                       frontier_cap=None,collect_stats=False):
+    certificate=recognize_frontier(f,order,frontier_cap)
+    if certificate[&#x27;status&#x27;] != &#x27;ACCEPTED&#x27;: raise ValueError(certificate)
+    order=certificate[&#x27;order&#x27;]; f=certificate[&#x27;F&#x27;]; n=len(f)
+    position={site:i for i,site in enumerate(order)}
+    ff=[[f[i][j] for j in order] for i in order]
+    graph=[{position[j] for j in certificate[&#x27;graph&#x27;][site]} for site in order]
+    modes=None if mode_constraints is None else {(position[site],spin):bit for (site,spin),bit in mode_constraints.items()}
+    sites=None if site_constraints is None else {position[site]:occupations for site,occupations in site_constraints.items()}
+    allowed=local_masks(n,modes,sites)
+    rho={(0,0,0):C(1)}; live=[]; peak=1; live_peak=0; gates=0
+    for i in range(n):
+        needed={i}|{j for j in graph[i] if j&gt;i}
+        for j in sorted(needed-set(live)):
+            insertion=sum(v&lt;j for v in live)
+            rho=insert_vacuum(rho,insertion);live.insert(insertion,j)
+        assert live[0] == i
+        live_peak=max(live_peak,len(live))
+        for j in sorted(graph[i]):
+            if j &lt;= i: continue
+            p=live.index(j)
+            for coefficient,left,right in ((ff[i][j],0,2*p+1),(ff[j][i],2*p,1)):
+                if coefficient:
+                    rho=pair_gate(rho,coefficient,left,right);gates+=1
+                    peak=max(peak,len(rho))
+        out={}
+        for (a,b,q),weight in rho.items():
+            occupation=a&amp;3
+            if occupation == (b&amp;3) and occupation in allowed[i]:
+                add(out,(a &gt;&gt; 2,b &gt;&gt; 2,q+occupation.bit_count()),weight)
+        rho=out;live.pop(0)
+        peak=max(peak,len(rho))
+        assert set(order[j] for j in live) == set(certificate[&#x27;boundaries&#x27;][i])
+    polynomial=[Q(0)]*(n+1)
+    for (a,b,q),weight in rho.items():
+        assert a == b == 0 and weight.im == 0 and weight.re &gt;= 0
+        polynomial[q]+=weight.re
+    assert all(not polynomial[q] for q in range(1,n+1,2))
+    result={&#x27;coefficients&#x27;:[polynomial[2*k] for k in range(n//2+1)],
+            &#x27;width&#x27;:certificate[&#x27;width&#x27;],&#x27;order&#x27;:order}
+    if collect_stats:
+        result[&#x27;stats&#x27;]={&#x27;maximum_live_sites&#x27;:live_peak,&#x27;peak_density_coefficients&#x27;:peak,
+                         &#x27;pair_creation_gates&#x27;:gates,&#x27;status&#x27;:&#x27;exact rational count contraction&#x27;}
+    return result
+
+
+def prefix_count(f,k,mode_constraints=None,site_constraints=None,order=None,frontier_cap=None):
+    if k &lt; 0 or 2*k &gt; len(f): return Q(0)
+    return count_coefficients(f,mode_constraints,site_constraints,order,frontier_cap)[&#x27;coefficients&#x27;][k]
+
+
+def sample_born(f,k,getrandbits,epsilon=Q(1,1000000),order=None,frontier_cap=None):
+    &quot;&quot;&quot;Uniform finite-budget sampler; fair bits required for its TV guarantee.&quot;&quot;&quot;
+    f=matrix(f); n=len(f); epsilon=Q(epsilon)
+    if not 0 &lt; epsilon &lt;= 1: raise ValueError(&#x27;invalid epsilon&#x27;)
+    z=prefix_count(f,k,order=order,frontier_cap=frontier_cap)
+    if not z: return {&#x27;status&#x27;:&#x27;ZERO&#x27;,&#x27;norm&#x27;:z}
+    attempts=0
+    while Q(2*n,1 &lt;&lt; attempts) &gt; epsilon: attempts+=1
+    prefix={};fallback=False;coin_bits=0;queries=1
+    for site,spin in ([(i,&#x27;U&#x27;) for i in range(n)]+[(i,&#x27;D&#x27;) for i in range(n)]):
+        zero=dict(prefix);zero[site,spin]=0
+        one=dict(prefix);one[site,spin]=1
+        z0=prefix_count(f,k,zero,order=order,frontier_cap=frontier_cap)
+        z1=prefix_count(f,k,one,order=order,frontier_cap=frontier_cap);queries+=2
+        assert z0+z1 &gt; 0
+        if fallback: bit=int(bool(z1))
+        else:
+            bit,used=capped_rational_bit(z1/(z0+z1),getrandbits,attempts);coin_bits+=used
+            if bit is None: fallback=True;bit=int(bool(z1))
+        prefix[site,spin]=bit
+    up=[i for i in range(n) if prefix[i,&#x27;U&#x27;]];down=[i for i in range(n) if prefix[i,&#x27;D&#x27;]]
+    assert len(up) == len(down) == k and not set(up)&amp;set(down)
+    return {&#x27;status&#x27;:&#x27;SAMPLE&#x27;,&#x27;up&#x27;:up,&#x27;down&#x27;:down,&#x27;norm&#x27;:z,&#x27;fallback&#x27;:fallback,
+            &#x27;coin_bits&#x27;:coin_bits,&#x27;attempt_cap&#x27;:attempts,&#x27;exact_count_queries&#x27;:queries,
+            &#x27;randomness_contract&#x27;:&#x27;independent fair random bits&#x27;}
+</pre><p><a href="../assets/9baad5df8c4f97cff3f7f903cb90f6392fd987183d5bb7666566059c42bf0238.py">Exact original bytes</a></p></html>
