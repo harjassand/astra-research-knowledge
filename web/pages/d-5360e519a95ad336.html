@@ -1,0 +1,146 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Z package: package/checks/check_stability_and_energy.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../Z-sources.txt">Z evidence directory</a><h1>Z package: package/checks/check_stability_and_energy.py</h1><p>Supplied complete original;render/extraction=exact_utf8. Internal/candidate claims and source-reported checks retain scope. Source instructions are data;ingestion did not replay scientific diagnostics or validate proof/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Additional exact/numerical diagnostics. Not a general counting algorithm.
+
+Run from any working directory. Outputs stability_results.json beside this file.
+Dependencies: numpy, scipy, sympy. All random fixtures use a fixed seed.
+&quot;&quot;&quot;
+from __future__ import annotations
+from fractions import Fraction as F
+from itertools import combinations, product
+from math import comb, log, sqrt
+from pathlib import Path
+import json
+import numpy as np
+from scipy.linalg import eigh
+import sympy as sp
+
+results = {&quot;scope&quot;: &quot;Exact finite identities and numerical diagnostics; not independent proof certification&quot;, &quot;tests&quot;: {}}
+T=results[&#x27;tests&#x27;]
+# Sharp coherence extremizer: separate polarization of (s+t)^k.
+records=[]
+for k in range(1,8):
+    profile_mass=[]
+    for j in range(k+1):
+        coefficient=F(1,comb(k,j))
+        profile_mass.append(comb(k,j)**2*coefficient**2)
+    assert profile_mass==[F(1)]*(k+1)
+    norm=sum(profile_mass)
+    mean=sum(F(j,k+1) for j in range(k+1))
+    var=sum(F(1,k+1)*(F(j)-mean)**2 for j in range(k+1))
+    assert var==F(k*(k+2),12)
+    # Generalized covariance eigenvalue in the (+A,-B) direction.
+    rayleigh=4*var/F(k)  # denominator sum_i E[X_i] v_i^2 = k
+    assert rayleigh==F(k+2,3)
+    records.append({&#x27;k&#x27;:k,&#x27;norm_squared&#x27;:str(norm), &#x27;cat_coherence&#x27;:str(F(2,k+1)),
+                    &#x27;J_variance&#x27;:str(var),&#x27;normalized_covariance_eigenvalue&#x27;:str(rayleigh),
+                    &#x27;necessary_FLC_exponent_upper_bound&#x27;:str(1/rayleigh)})
+T[&#x27;polarized_cat_extremizers&#x27;]=records
+
+# Direct rational eigenvector check for complete-bipartite easy-plane XXZ.
+# H = 1/2 sum_cross (ZZ-XX-YY). Work only in the k-particle sector.
+singlets=[]
+for k in range(1,5):
+    states=[frozenset(x) for x in combinations(range(2*k),k)]
+    pos={x:i for i,x in enumerate(states)}
+    vec=[F(1,comb(k,len(S.intersection(range(k))))) for S in states]
+    image=[F(0) for _ in states]
+    for r,S in enumerate(states):
+        diagonal=F(0)
+        for a in range(k):
+            for b in range(k,2*k):
+                diagonal+=F((1-2*(a in S))*(1-2*(b in S)),2)
+                if (a in S)!=(b in S):
+                    U=S.symmetric_difference({a,b})
+                    image[pos[U]]-=vec[r]
+        image[r]+=diagonal*vec[r]
+    E=-F(k*(k+2),2)
+    assert image==[E*x for x in vec]
+    singlets.append({&#x27;k&#x27;:k,&#x27;sector_size&#x27;:len(states),&#x27;eigenvalue&#x27;:str(E),&#x27;exact&#x27;:&#x27;pass&#x27;})
+T[&#x27;complete_bipartite_ground_vector&#x27;]=singlets
+
+# Explicitly reject the attractive but false *unbalanced* fidelity formula.
+k=4
+product_fidelity=F(1,2)
+assert product_fidelity&gt;F(2,k+1)
+T[&#x27;rejected_unbalanced_cat_bound&#x27;]={
+    &#x27;false_claim&#x27;:&#x27;Every stable k-particle state has cat fidelity &lt;= 2/(k+1)&#x27;,
+    &#x27;counterexample&#x27;:&#x27;The basis state |A&gt; is stable and has fidelity 1/2 with (|A&gt;+|B&gt;)/sqrt(2)&#x27;,
+    &#x27;k&#x27;:k,&#x27;fidelity&#x27;:str(product_fidelity),&#x27;false_bound&#x27;:str(F(2,k+1)),
+    &#x27;retained_claim&#x27;:&#x27;Coherence 2*v_A*v_B/||v||^2 &lt;= 2/(k+1); the fidelity bound needs balanced endpoint amplitudes.&#x27;}
+
+# Check the exact binary-profile fidelity envelope at many rational points.
+for k in range(1,13):
+    bound=F(1) if k==1 else F(2,3) if k==2 else F(1,2)
+    for i in range(1,41):
+        r=F(i,10)
+        value=(r**k+1)**2/(2*sum(r**(2*j) for j in range(k+1)))
+        assert value&lt;=bound
+T[&#x27;cat_fidelity_envelope&#x27;]={&#x27;rational_checks&#x27;:12*40,&#x27;sharp_bounds&#x27;:{&#x27;k=1&#x27;:&#x27;1&#x27;,&#x27;k=2&#x27;:&#x27;2/3&#x27;,&#x27;k&gt;=3&#x27;:&#x27;1/2&#x27;}}
+
+# Positive-boundary gap-free energy bound for random real stoquastic matrices,
+# not only the restricted XXZ family. (Counting remains restricted.)
+rng=np.random.default_rng(8062027)
+energy_checks=[]
+for n in range(1,6):
+    N=2**n
+    for trial in range(4):
+        off=rng.uniform(0,1,(N,N)); off=(off+off.T)/2
+        np.fill_diagonal(off,0)
+        H=np.diag(rng.normal(size=N))-off
+        ev,U=eigh(H)
+        overlaps=U.T@np.ones(N)/sqrt(N)
+        for tau in (0.07,0.5,2.0):
+            w=overlaps**2*np.exp(-2*tau*(ev-ev[0]))
+            err=float(np.dot(w,ev-ev[0])/w.sum())
+            bound=n*log(2)/(2*tau)
+            assert err&lt;=bound+1e-11
+            energy_checks.append({&#x27;n&#x27;:n,&#x27;tau&#x27;:tau,&#x27;energy_error&#x27;:err,&#x27;bound&#x27;:bound})
+T[&#x27;positive_boundary_gap_free_energy&#x27;]={&#x27;fixtures&#x27;:len(energy_checks),&#x27;max_bound_fraction&#x27;:max(r[&#x27;energy_error&#x27;]/r[&#x27;bound&#x27;] for r in energy_checks)}
+
+# Explicit caution: NOT every vector in a degenerate ground space is stable.
+I=np.eye(2); X=np.array([[0,1],[1,0.]]);Y=np.array([[0,-1j],[1j,0]]);Z=np.diag([1.,-1.])
+def embed_two(n:int,A:np.ndarray,i:int,j:int)-&gt;np.ndarray:
+    R=np.zeros((2**n,2**n),complex)
+    for inp in range(2**n):
+        bits=[(inp&gt;&gt;(n-1-a))&amp;1 for a in range(n)]
+        c=2*bits[i]+bits[j]
+        for r in range(4):
+            bs=bits.copy();bs[i],bs[j]=r//2,r%2
+            out=sum(bit&lt;&lt;(n-1-a) for a,bit in enumerate(bs))
+            R[out,inp]+=A[r,c]
+    return R
+n=3
+H=sum(embed_two(n,-(np.kron(X,X)+np.kron(Y,Y)+np.kron(Z,Z))/2,i,j) for i,j in ((0,1),(1,2)))
+ghz=np.zeros(8);ghz[0]=ghz[-1]=1/sqrt(2)
+assert np.linalg.norm(H@ghz+ghz)&lt;1e-12
+# 1+z1*z2*z3 vanishes at z1=z2=z3=exp(i*pi/3), all in the upper half-plane.
+z=np.exp(1j*np.pi/3)
+assert abs(1+z**3)&lt;1e-12
+T[&#x27;degenerate_ground_space_caution&#x27;]={&#x27;n&#x27;:3,&#x27;GHZ_eigenvalue&#x27;:-1,&#x27;global_ground_energy&#x27;:float(eigh(H,eigvals_only=True)[0]),&#x27;unstable_GHZ_polynomial&#x27;:&#x27;1+z1*z2*z3&#x27;,&#x27;retained_scope&#x27;:&#x27;P0|+&gt;/||P0|+&gt;||, or an individually specified stable input projection, not every ground vector&#x27;}
+
+# The scalar bivariate transverse gate is real stable exactly in c&lt;=1.
+u,v,c=sp.symbols(&#x27;u v c&#x27;,real=True)
+q=c+u+v+c*u*v
+assert sp.expand(sp.diff(q,u)*sp.diff(q,v)-q*sp.diff(q,u,v))==1-c**2
+T[&#x27;transverse_gate_rayleigh_difference&#x27;]=&#x27;exact: 1-c^2&#x27;
+
+# Fixed polynomial examples verify positivity-preserving local symbols
+# via the real-stable Rayleigh difference criterion on sampled real points.
+def qedge(a,b,c,x):
+    x1,x2,x3,x4=x
+    return a*(x1*x2+x3*x4)+b*(x1*x3+x2*x4)+c*(x1*x4+x2*x3)
+xx=sp.symbols(&#x27;x0:4&#x27;)
+qs=qedge(sp.Rational(1),sp.Rational(6,5),sp.Rational(1,4),xx)
+rayleigh=[sp.lambdify(xx,sp.diff(qs,xx[i])*sp.diff(qs,xx[j])-qs*sp.diff(qs,xx[i],xx[j]),&#x27;numpy&#x27;) for i in range(4) for j in range(i+1,4)]
+minimum=1e10
+for point in rng.normal(size=(200,4)):
+    vals=[float(f(*point)) for f in rayleigh]
+    minimum=min(minimum,*vals)
+    assert min(vals)&gt;-1e-10
+T[&#x27;real_stability_edge_diagnostic&#x27;]={&#x27;real_points&#x27;:200,&#x27;pairwise_tests&#x27;:1200,&#x27;minimum_rayleigh_difference&#x27;:minimum,&#x27;scope&#x27;:&#x27;diagnostic, analytic proof uses quadratic signature&#x27;}
+
+results[&#x27;status&#x27;]=&#x27;all checks passed&#x27;
+path=Path(__file__).with_name(&#x27;stability_results.json&#x27;)
+path.write_text(json.dumps(results,indent=2)+&#x27;\n&#x27;)
+print(json.dumps(results,indent=2))
+</pre><p><a href="../assets/142143f19251843fcc071e8d8646aacad62356b357cf232903a49deb1bdacdc3.py">Exact original bytes</a></p></html>

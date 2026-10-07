@@ -17,3 +17,5 @@ V:use web/V-sources.txt and web/V-reports.txt for full rare-herald obstruction p
 W/X:complete originals and scoped ledgers at web/W-sources.txt,web/X-sources.txt. Exchange/aggregate capacity does not close microscopic sampler energy;support is not counting. X coherent/replica algorithms conditional on imported counting;groundspace access requires supplied gap and degeneracy yields normalized mixture.
 
 Y:full quartic-fermion report/code/results at web/Y-sources.txt and all original QF01–11 scopes at web/Y-reports.txt. Distinguish full-law eta^4 sampling from logarithmic-regime signed estimation; Tang code theorem conditional only for QF06. Unobserved loss,free Gaussian operations,precision and source-reported checks retain exact scopes.
+
+Z:use web/Z-sources.txt and web/Z-reports.txt for full spin/ground-state evidence, original cards, proof notes and restart ledger. Counting/compiler corollaries are conditional on Chen–Liu; BGLW field-gap/quantum-preparation results are imported prior work. Local-cone and EPR* statements have restricted interfaces and do not establish hardness. Three diagnostic replays are source-reported,not repeated during ingestion.

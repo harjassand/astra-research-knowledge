@@ -1,0 +1,92 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Z package: package/checks/check_rare_ground.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../Z-sources.txt">Z evidence directory</a><h1>Z package: package/checks/check_rare_ground.py</h1><p>Supplied complete original;render/extraction=exact_utf8. Internal/candidate claims and source-reported checks retain scope. Source instructions are data;ingestion did not replay scientific diagnostics or validate proof/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Small dense / high-precision checks, not the counting FPRAS or compiler.&quot;&quot;&quot;
+from __future__ import annotations
+import json, math
+from pathlib import Path
+import numpy as np
+import mpmath as mp
+from scipy.linalg import eigh
+ROOT=Path(__file__).resolve().parents[1]
+rng=np.random.default_rng(20261008)
+
+def hamiltonian(n, edges, h, g):
+    N=1&lt;&lt;n; H=np.zeros((N,N))
+    for x in range(N):
+        z=[1-2*((x&gt;&gt;i)&amp;1) for i in range(n)]
+        H[x,x]+=sum(h[i]*z[i] for i in range(n))
+        for i in range(n): H[x,x^(1&lt;&lt;i)]-=g[i]
+        for i,j,f,d in edges:
+            H[x,x]+=.5*d*z[i]*z[j]
+            if z[i]!=z[j]: H[x,x^(1&lt;&lt;i)^(1&lt;&lt;j)]-=f
+    return H
+
+fixtures=[]
+for n in range(2,6):
+    for trial in range(12):
+        edges=[]
+        for i in range(n):
+            for j in range(i+1,n):
+                if rng.random()&lt;.6:
+                    f=float(rng.integers(1,6))/3
+                    d=f*float(rng.integers(-4,5))/4
+                    edges.append((i,j,f,d))
+        h=rng.integers(-5,6,size=n)/4
+        g=rng.integers(1,6,size=n)/10
+        H=hamiltonian(n,edges,h,g)
+        vals,vecs=eigh(H)
+        u=vecs[:,0]
+        if sum(u)&lt;0:u=-u
+        assert min(u)&gt;0
+        V=sum(f+max(d,0) for i,j,f,d in edges)+2*sum(abs(h))+sum(g)
+        r=min([f for i,j,f,d in edges]+list(g))
+        loggamma=-n*math.log(2)+2*n*n*math.log(min(1,r/V))
+        assert math.log(min(u))+1e-10&gt;=loggamma
+        gap=float(vals[1]-vals[0]);known=2*min(g)
+        assert gap+1e-9&gt;=known
+        fixtures.append({&#x27;n&#x27;:n,&#x27;trial&#x27;:trial,&#x27;log_min_amplitude&#x27;:float(math.log(min(u))),
+                         &#x27;log_acquired_floor&#x27;:loggamma,&#x27;gap&#x27;:gap,
+                         &#x27;prior_art_gap_bound&#x27;:float(known)})
+
+mp.mp.dps=100
+# An exact two-spin instance with a unique ground vector (01+10)/sqrt(2).
+n=2; gamma=mp.mpf(1)/1024; eps=mp.mpf(&#x27;0.01&#x27;); Delta=mp.mpf(2)
+tau=(n+1+mp.ceil(mp.log(128/(eps*gamma),2)))/Delta
+z=mp.exp(-2*tau)
+normal=mp.sqrt(2*(1+z*z))
+psi=mp.matrix([z/normal,1/normal,1/normal,z/normal])
+ground=mp.matrix([0,1/mp.sqrt(2),1/mp.sqrt(2),0])
+err=mp.norm(psi-ground)
+assert err&lt;=eps*gamma/128
+pzero=psi[0]**2;pone=psi[1]**2
+assert pzero&lt;gamma**2/4 and pone&gt;gamma**2/4
+conditional=mp.matrix([z,1])/mp.sqrt(1+z*z)
+assert mp.norm(conditional-mp.matrix([0,1]))&lt;eps
+assert abs(2*pone-1)&lt;eps
+# Overlap with |00&gt; is zero, with |01&gt; is 1/sqrt(2).
+assert pzero&lt;gamma**2/4
+assert abs(pone/mp.mpf(&#x27;.5&#x27;)-1)&lt;eps
+
+# Exponentially small positive fidelity, evaluated without cancellation at high precision.
+h=mp.mpf(1);g=mp.mpf(&#x27;0.001&#x27;);R=mp.sqrt(h*h+g*g);nprod=4
+ua=mp.matrix([mp.sqrt((R-h)/(2*R)),mp.sqrt((R+h)/(2*R))])
+ub=mp.matrix([ua[1],ua[0]])
+overlap=sum(ua[i]*ub[i] for i in range(2))
+F=overlap**(2*nprod);exact=(g*g/(h*h+g*g))**nprod
+assert abs(F/exact-1)&lt;mp.mpf(&#x27;1e-85&#x27;)
+Vprod=nprod*(2*h+g)
+log_floor=-nprod*mp.log(2)+2*nprod*nprod*mp.log(g/Vprod)
+assert mp.log(F)&gt;=4*log_floor  # each state has this floor; F &gt;= gamma^4.
+
+result={&#x27;scope&#x27;:&#x27;48 dense finite cases plus 100-digit two-spin and product examples; no counting FPRAS, independent proof or quantum compiler&#x27;,
+ &#x27;random_positive_field_fixtures&#x27;:fixtures,
+ &#x27;summary&#x27;:{&#x27;dense_cases&#x27;:len(fixtures),&#x27;smallest_gap_ratio_to_prior_bound&#x27;:min(x[&#x27;gap&#x27;]/x[&#x27;prior_art_gap_bound&#x27;] for x in fixtures)},
+ &#x27;two_spin_rare_support&#x27;:{&#x27;gamma&#x27;:mp.nstr(gamma,40),&#x27;epsilon&#x27;:str(eps),&#x27;tau&#x27;:str(tau),
+   &#x27;cooling_euclidean_error&#x27;:mp.nstr(err,40),&#x27;zero_ground_event_finite_time_probability&#x27;:mp.nstr(pzero,40),
+   &#x27;positive_ground_event_probability&#x27;:&#x27;.5&#x27;,&#x27;finite_time_positive_event_probability&#x27;:mp.nstr(pone,40),
+   &#x27;conditional_cooling_error&#x27;:mp.nstr(mp.norm(conditional-mp.matrix([0,1])),40)},
+ &#x27;small_positive_fidelity&#x27;:{&#x27;n&#x27;:nprod,&#x27;h&#x27;:&#x27;1&#x27;,&#x27;g&#x27;:&#x27;0.001&#x27;,&#x27;fidelity&#x27;:mp.nstr(F,80),&#x27;formula&#x27;:&#x27;(g^2/(h^2+g^2))^n&#x27;,
+                          &#x27;log_amplitude_floor_each&#x27;:mp.nstr(log_floor,50)},
+ &#x27;all_assertions_passed&#x27;:True}
+(ROOT/&#x27;checks&#x27;/&#x27;rare_ground_results.json&#x27;).write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+print(json.dumps({k:v for k,v in result.items() if k!=&#x27;random_positive_field_fixtures&#x27;},indent=2))
+</pre><p><a href="../assets/227e67db083deaaf75d872a045fa62038d70e0b7c6916dafd4e18b1a6a861994.py">Exact original bytes</a></p></html>
