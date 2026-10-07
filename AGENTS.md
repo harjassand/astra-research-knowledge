@@ -14,4 +14,6 @@ U:use web/U-sources.txt for exact suppliedsummary. Linked note/code/ZIP unavaila
 
 V:use web/V-sources.txt and web/V-reports.txt for full rare-herald obstruction proof/code/provenance. N81–83 are PP=BPP/BQP implications for the specified sampler,not complexity separations;N71unconditional/N42positivekernel/N69abstractclassicality not refuted.1596checks source-reported,full compiler unexecuted.
 
-W/X:complete originals and scoped ledgers at web/W-sources.txt,web/X-sources.txt. Exchange/aggregate capacity does not close microscopic sampler energy;support is not counting. X coherent/replica algorithms conditional on imported counting;groundspace access requires supplied gap and degeneracy yields normalized mixture. No diagnostic/hash/compilation upgrade to proof or novelty.
+W/X:complete originals and scoped ledgers at web/W-sources.txt,web/X-sources.txt. Exchange/aggregate capacity does not close microscopic sampler energy;support is not counting. X coherent/replica algorithms conditional on imported counting;groundspace access requires supplied gap and degeneracy yields normalized mixture.
+
+Y:full quartic-fermion report/code/results at web/Y-sources.txt and all original QF01–11 scopes at web/Y-reports.txt. Distinguish full-law eta^4 sampling from logarithmic-regime signed estimation; Tang code theorem conditional only for QF06. Unobserved loss,free Gaussian operations,precision and source-reported checks retain exact scopes.

@@ -1,0 +1,111 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Y package: package/code/gaussian_robustness.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../Y-sources.txt">Y evidence directory</a><h1>Y package: package/code/gaussian_robustness.py</h1><p>Supplied complete original;render/extraction=exact_utf8. Internal/candidate claims and source-reported checks retain scope. Source instructions are data;ingestion did not replay scientific diagnostics or validate proof/priority.</p><pre>&quot;&quot;&quot;Exact Gaussian robustness formulas and signed-output estimation.
+
+Research prototype: floating-point, not an interval-certified implementation.
+This estimates bounded functions of outputs. It is NOT a full-distribution
+sampler for the signed target law. Physical eta is particle survival probability.
+&quot;&quot;&quot;
+from __future__ import annotations
+from typing import Callable, Optional, Sequence
+import math
+import numpy as np
+from fermion_completion import (vacuum_covariance, pair_covariance,
+                                gaussian_loss, sample_covariance)
+
+
+def magic_robustness(eta: float) -&gt; float:
+    &quot;&quot;&quot;Both standard and generalized convex-Gaussian robustness.&quot;&quot;&quot;
+    if not math.isfinite(eta) or not 0 &lt;= eta &lt;= 1:
+        raise ValueError(&quot;Require finite 0 &lt;= eta &lt;= 1.&quot;)
+    a,b=(1-eta)**2,eta**2
+    return b*b/(4*a) if b &lt;= 2*a and a &gt; 0 else b-a
+
+
+def magic_trace_distance(eta: float) -&gt; float:
+    &quot;&quot;&quot;Exact distance to the convex hull of all pure fermionic Gaussians.&quot;&quot;&quot;
+    if not math.isfinite(eta) or not 0 &lt;= eta &lt;= 1:
+        raise ValueError(&quot;Require finite 0 &lt;= eta &lt;= 1.&quot;)
+    a,b=(1-eta)**2,eta**2
+    return b*b/(math.sqrt(a+b)+math.sqrt(a))**2 if b &lt;= 3*a else (b-a)/2
+
+
+def signed_magic_component(eta: float, rng: np.random.Generator) -&gt; tuple[int,np.ndarray]:
+    &quot;&quot;&quot;Draw sign and a 4-mode Gaussian; weighted mean has mass 1+2R.&quot;&quot;&quot;
+    R=magic_robustness(eta);a,b=(1-eta)**2,eta**2
+    gamma=1+2*R
+    positive = rng.random() &lt; (1+R)/gamma
+    if not positive:
+        if b &lt;= 2*a:
+            full=True
+        else:
+            full=bool(rng.random() &lt; b/(2*R))
+        return -1, -vacuum_covariance(4) if full else vacuum_covariance(4)
+    even_weight = (a+b+R)/(1+R)
+    if rng.random() &lt; even_weight:
+        zmag=math.sqrt(b/(2*a)) if b &lt;= 2*a and a&gt;0 else 1.0
+        phase=np.exp(2j*math.pi*int(rng.integers(3))/3)
+        g=np.zeros((8,8))
+        g[:4,:4]=pair_covariance(zmag*phase)
+        g[4:,4:]=pair_covariance(zmag*phase)
+    else:
+        g=vacuum_covariance(4);j=int(rng.integers(4))
+        g[2*j,2*j+1],g[2*j+1,2*j]=1.,-1.
+    return 1,g
+
+
+def estimate_output_function(etas: Sequence[float], transfer: np.ndarray,
+                             function: Callable[[np.ndarray],float],
+                             draws: int, failure_probability: float = .05,
+                             seed: Optional[int] = None) -&gt; dict:
+    &quot;&quot;&quot;Unbiased (ideal arithmetic) signed estimate of E[f(output)], |f|&lt;=1.
+
+    Complexity includes Gamma^2 for an additive-error confidence interval.
+    The reported interval is the exact-arithmetic Hoeffding statistical radius;
+    numerical rounding is NOT included. transfer follows the declared input loss.
+    &quot;&quot;&quot;
+    if draws &lt; 1 or not 0 &lt; failure_probability &lt; 1:
+        raise ValueError(&quot;Positive draws and failure probability in (0,1) required.&quot;)
+    etas=list(etas)
+    rs=[magic_robustness(e) for e in etas]
+    log_gamma=sum(math.log1p(2*r) for r in rs)
+    if log_gamma &gt; 650:
+        raise OverflowError(&quot;Signed overhead too large for this prototype.&quot;)
+    weight=math.exp(log_gamma)
+    t=np.asarray(transfer,complex);m=4*len(etas)
+    if t.ndim!=2 or t.shape[1]!=m or np.linalg.norm(t,2)&gt;1+2e-10:
+        raise ValueError(&quot;Transfer dimensions/contraction invalid.&quot;)
+    rng=np.random.default_rng(seed);values=np.empty(draws)
+    for k in range(draws):
+        g=np.zeros((2*m,2*m));sign=1
+        for j,e in enumerate(etas):
+            ss,gg=signed_magic_component(e,rng);sign*=ss
+            g[8*j:8*j+8,8*j:8*j+8]=gg
+        out=sample_covariance(gaussian_loss(g,t),rng)
+        f=float(function(out))
+        if not math.isfinite(f) or abs(f)&gt;1+1e-12:
+            raise ValueError(&quot;Function must return finite values in [-1,1].&quot;)
+        values[k]=weight*sign*f
+    radius=weight*math.sqrt(2*math.log(2/failure_probability)/draws)
+    return {&quot;estimate&quot;:float(values.mean()),&quot;hoeffding_radius&quot;:radius,
+            &quot;failure_probability&quot;:failure_probability,&quot;draws&quot;:draws,
+            &quot;absolute_signed_mass&quot;:weight,
+            &quot;sample_standard_error&quot;:float(values.std(ddof=1)/math.sqrt(draws)) if draws&gt;1 else None,
+            &quot;status&quot;:&quot;floating-point; statistical interval excludes rounding error&quot;}
+
+
+def optimal_loss_concentration(eta: float, target_eta: float = .5) -&gt; dict:
+    &quot;&quot;&quot;Exact one-copy Gaussian filtering parameters in the robustness regime.
+
+    Each mode uses K_success=diag(sqrt(s),1). All four successes transform
+    rho_eta into rho_target_eta. Probability saturates R(eta)/R(target_eta).
+    A beamsplitter with a filled ancillary mode and occupation measurement
+    realizes each Kraus operator. eta and target_eta are input loss parameters.
+    &quot;&quot;&quot;
+    cutoff=math.sqrt(2)/(1+math.sqrt(2))
+    if not 0 &lt; eta &lt;= target_eta &lt;= cutoff:
+        raise ValueError(&quot;Require 0 &lt; eta &lt;= target_eta &lt;= sqrt(2)/(1+sqrt(2)).&quot;)
+    s=eta*(1-target_eta)/(target_eta*(1-eta))
+    p=eta**4*(1-target_eta)**2/(target_eta**4*(1-eta)**2)
+    return {&quot;empty_mode_survival_s&quot;:s,&quot;all_four_success_probability&quot;:p,
+            &quot;optimality_bound&quot;:magic_robustness(eta)/magic_robustness(target_eta),
+            &quot;expected_independent_attempts&quot;:1/p}
+</pre><p><a href="../assets/d5b28a9352b61f8d54b8f0e55f3eaab17bcf41f0ee20cc70c902e29a4d85e660.py">Exact original bytes</a></p></html>
