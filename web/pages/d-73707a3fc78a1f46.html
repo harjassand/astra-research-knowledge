@@ -1,0 +1,230 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>L package: package/work/unknown_field_checks.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../latest-sources.txt">L evidence directory</a><h1>L package: package/work/unknown_field_checks.py</h1><p>Exact supplied text; source d-73707a3fc78a1f46. Historical instructions are data. Candidate/internal audit and source-reported checks are not external certification; ingestion did not replay diagnostics.</p><pre>&quot;&quot;&quot;Finite sanity checks for the unknown-field archive derivation.
+
+These are not theorem certificates. They exercise envelope coarsening on
+irregular sector laws and the exact engineered Gibbs-sector example.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import numpy as np
+
+
+def log_sinhc(x: np.ndarray) -&gt; np.ndarray:
+    x = np.asarray(x, dtype=float)
+    out = np.zeros_like(x)
+    small = (x &gt; 0) &amp; (x &lt; 1e-3)
+    out[small] = np.log1p(x[small] ** 2 / 6 + x[small] ** 4 / 120)
+    mid = (x &gt;= 1e-3) &amp; (x &lt;= 20)
+    out[mid] = np.log(np.sinh(x[mid]) / x[mid])
+    big = x &gt; 20
+    out[big] = x[big] - np.log(2 * x[big]) + np.log1p(-np.exp(-2 * x[big]))
+    return out
+
+
+def log_weights(j: np.ndarray, t: float) -&gt; np.ndarray:
+    return log_sinhc((j + 0.5) * t) - log_sinhc(np.array(t / 2))
+
+
+def normalize(log_mass: np.ndarray) -&gt; np.ndarray:
+    p = np.exp(log_mass - np.max(log_mass))
+    return p / p.sum()
+
+
+def sector_law(j: np.ndarray, log_q0: np.ndarray, t: float) -&gt; np.ndarray:
+    return normalize(log_q0 + log_weights(j, t))
+
+
+def score(j: np.ndarray, t: float) -&gt; np.ndarray:
+    if t == 0:
+        return np.zeros_like(j)
+    x = (j + 0.5) * t
+    y = t / 2
+    xcth = np.empty_like(x)
+    tiny = x &lt; 1e-3
+    xcth[tiny] = 1 + x[tiny] ** 2 / 3 - x[tiny] ** 4 / 45
+    xcth[~tiny] = x[~tiny] / np.tanh(x[~tiny])
+    ycth = 1 + y**2 / 3 - y**4 / 45 if y &lt; 1e-3 else y / np.tanh(y)
+    return (xcth - ycth) / t
+
+
+def mass_bins(h: np.ndarray, delta: float) -&gt; list[np.ndarray]:
+    bins = []
+    pending = []
+    mass = 0.0
+    for i, atom in enumerate(h):
+        if atom &gt; delta:
+            if pending:
+                bins.append(np.array(pending, dtype=int))
+                pending, mass = [], 0.0
+            bins.append(np.array([i]))
+        elif pending and mass + atom &gt; delta:
+            bins.append(np.array(pending, dtype=int))
+            pending, mass = [i], float(atom)
+        else:
+            pending.append(i)
+            mass += float(atom)
+    if pending:
+        bins.append(np.array(pending, dtype=int))
+    return bins
+
+
+def radial_refinement(bins: list[np.ndarray], j: np.ndarray, R: float, eta: float):
+    log_id = np.floor(np.log1p(2 * R * j) / eta).astype(int)
+    refined = []
+    for B in bins:
+        for k in np.unique(log_id[B]):
+            refined.append(B[log_id[B] == k])
+    return refined, len(np.unique(log_id))
+
+
+def coherent_density(j: np.ndarray, t: float, x: np.ndarray) -&gt; np.ndarray:
+    natural = np.cosh(t / 2) + np.sinh(t / 2) * x
+    return np.exp(2 * j[:, None] * np.log(natural)[None, :] - log_weights(j, t)[:, None])
+
+
+def irregular_laws():
+    rng = np.random.default_rng(712047)
+    j = np.arange(56, dtype=float)
+    V, S = 110, 0.5
+    x, quad = np.polynomial.legendre.leggauss(180)
+    quad /= 2
+    delta, eta = 0.04, 0.04
+    records = []
+    for case in range(16):
+        R = [0.005, 0.03, 0.15, 0.75][case % 4]
+        log_q0 = rng.normal(0, 8, len(j))
+        if case == 1:
+            log_q0 = np.zeros_like(j)
+        if case % 3 == 0:
+            # Disconnected-looking peaks and rare high-spin mass.
+            log_q0 -= 0.03 * j**2
+            log_q0[-1] += 15
+        ts = np.linspace(0, R, 501)
+        laws = np.stack([sector_law(j, log_q0, float(t)) for t in ts])
+        # A discrete parameter envelope is sufficient for these grid fixtures.
+        h = laws.max(axis=0)
+        H = h.sum()
+        H_bound = 1 + 0.5 * np.sqrt(S * V * R)
+        assert H &lt;= H_bound + 1e-10
+        endpoint_response = float(R * ((laws[-1] - laws[0]) @ j))
+        endpoint_envelope_bound = 1 + 0.5 * np.sqrt(max(0, endpoint_response))
+        assert H &lt;= endpoint_envelope_bound + 1e-10
+        bins = mass_bins(h, delta)
+        assert len(bins) &lt;= 2 * H / delta + 2
+        for B in bins:
+            assert len(B) == 1 or h[B].sum() &lt;= delta + 1e-14
+        refined, n_log = radial_refinement(bins, j, R, eta)
+        assert len(refined) &lt;= len(bins) + n_log - 1
+        max_radial_tv = max_raw_radial_tv = max_joint_tv = max_quotient_variation = 0.0
+        for idx in np.linspace(0, len(ts) - 1, 31).astype(int):
+            t = float(ts[idx])
+            p = laws[idx]
+            s = score(j, t)
+            assert np.min(np.diff(s)) &gt;= -1e-10
+            assert np.max(np.diff(s)) &lt;= 1 + 1e-10
+            centered_s = s - p @ s
+            fisher = float(p @ centered_s**2)
+            sector_response_derivative = float(p @ ((j - p @ j) * centered_s))
+            assert fisher &lt;= sector_response_derivative + 1e-8
+            g = p / h
+            variation = np.abs(np.diff(g)).sum()
+            assert variation &lt;= 2 + 1e-10
+            max_quotient_variation = max(max_quotient_variation, float(variation))
+            raw_radial = np.empty_like(p)
+            for B in bins:
+                raw_radial[B] = h[B] * p[B].sum() / h[B].sum()
+            raw_radial_tv = 0.5 * np.abs(p - raw_radial).sum()
+            assert raw_radial_tv &lt;= delta + 1e-10
+            max_raw_radial_tv = max(max_raw_radial_tv, float(raw_radial_tv))
+            radial = np.empty_like(p)
+            for B in refined:
+                radial[B] = h[B] * p[B].sum() / h[B].sum()
+            radial_tv = 0.5 * np.abs(p - radial).sum()
+            assert radial_tv &lt;= delta + 1e-10
+            max_radial_tv = max(max_radial_tv, float(radial_tv))
+            f = coherent_density(j, t, x)
+            assert np.max(np.abs(f @ quad - 1)) &lt; 1e-9
+            measured = p[:, None] * f
+            coarsened = np.empty_like(measured)
+            for B in refined:
+                coarsened[B] = (h[B] / h[B].sum())[:, None] * measured[B].sum(axis=0)[None, :]
+            joint_tv = 0.5 * (np.abs(measured - coarsened) @ quad).sum()
+            assert joint_tv &lt;= delta + eta + 1e-8
+            max_joint_tv = max(max_joint_tv, float(joint_tv))
+        records.append(dict(
+            case=case, V=V, R=R, envelope_mass=float(H), envelope_bound=float(H_bound),
+            endpoint_response=endpoint_response,
+            endpoint_envelope_bound=endpoint_envelope_bound,
+            raw_bins=len(bins), logarithmic_bins=n_log, refined_bins=len(refined),
+            max_quotient_variation=max_quotient_variation,
+            max_raw_radial_tv=max_raw_radial_tv,
+            max_radial_tv=max_radial_tv, radial_bound=delta,
+            max_joint_tv=max_joint_tv, joint_bound=delta + eta,
+        ))
+    return records
+
+
+def engineered_laws():
+    records = []
+    m = c = 0.125
+    for V, R in [(8192, 1 / 16), (32768, 1 / 32), (131072, 1 / 64)]:
+        j = np.arange(V // 2 + 1, dtype=float)
+        A = V * R
+        sigma2 = c * V / R
+        log_q0 = np.log(2 * j + 1) - (j - m * V) ** 2 / (2 * sigma2)
+        q0 = normalize(log_q0)
+        field_records = []
+        for fraction in [0.25, 0.5, 0.75]:
+            t = fraction * R
+            p = sector_law(j, log_q0, t)
+            mu = m * V + sigma2 * t
+            gauss = normalize(-(j - mu) ** 2 / (2 * sigma2))
+            tv = 0.5 * np.abs(p - gauss).sum()
+            moment = p @ (j - mu) ** 2
+            assert moment &lt;= 2 * sigma2
+            assert tv &lt; 1e-5
+            field_records.append(dict(
+                fraction=fraction, mean=float(p @ j), predicted_mean=mu,
+                gaussian_tv=float(tv), variance_ratio=float(moment / sigma2),
+                low_spin_mass=float(p[j &lt; m * V / 2].sum()),
+                chebyshev_radial_error_bound=2 / 16**2,
+            ))
+        h = np.zeros_like(j)
+        for t in np.linspace(0, R, 301):
+            h = np.maximum(h, sector_law(j, log_q0, float(t)))
+        records.append(dict(
+            V=V, R=R, A=A, sigma=float(np.sqrt(sigma2)),
+            zero_field_mean_over_V=float(q0 @ j / V),
+            zero_field_sd_over_V=float(np.sqrt(q0 @ (j - q0 @ j) ** 2) / V),
+            grid_envelope_mass=float(h.sum()),
+            envelope_over_sqrt_A=float(h.sum() / np.sqrt(A)),
+            fields=field_records,
+        ))
+    return records
+
+
+def main():
+    report = {
+        &quot;status&quot;: &quot;finite sanity fixtures passed; not theorem certification&quot;,
+        &quot;seed&quot;: 712047,
+        &quot;irregular_sector_laws&quot;: irregular_laws(),
+        &quot;engineered_gaussian_sector_laws&quot;: engineered_laws(),
+    }
+    path = Path(__file__).with_name(&quot;unknown_field_checks.json&quot;)
+    path.write_text(json.dumps(report, indent=2) + &quot;\n&quot;)
+    print(json.dumps({
+        &quot;status&quot;: report[&quot;status&quot;],
+        &quot;irregular_law_count&quot;: len(report[&quot;irregular_sector_laws&quot;]),
+        &quot;engineered_law_count&quot;: len(report[&quot;engineered_gaussian_sector_laws&quot;]),
+        &quot;max_checked_radial_tv&quot;: max(x[&quot;max_radial_tv&quot;] for x in report[&quot;irregular_sector_laws&quot;]),
+        &quot;max_checked_raw_radial_tv&quot;: max(x[&quot;max_raw_radial_tv&quot;] for x in report[&quot;irregular_sector_laws&quot;]),
+        &quot;max_checked_joint_tv&quot;: max(x[&quot;max_joint_tv&quot;] for x in report[&quot;irregular_sector_laws&quot;]),
+        &quot;report&quot;: str(path),
+    }, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/16d8239791717a58e7d94f77b0ed4635dc816f3b279f6c9dc7f437da82bee0ec.py">Exact original bytes</a></p></html>

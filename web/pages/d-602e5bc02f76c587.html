@@ -1,0 +1,101 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>L package: package/work/selective_tensor_checks.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../latest-sources.txt">L evidence directory</a><h1>L package: package/work/selective_tensor_checks.py</h1><p>Exact supplied text; source d-602e5bc02f76c587. Historical instructions are data. Candidate/internal audit and source-reported checks are not external certification; ingestion did not replay diagnostics.</p><pre>&quot;&quot;&quot;Exact checks for the selective tensor note. No upstream code is executed.&quot;&quot;&quot;
+from fractions import Fraction as Q
+from itertools import combinations
+from math import comb
+import json
+from pathlib import Path
+
+
+def solve(a, b):
+    a = [list(row) + [rhs] for row, rhs in zip(a, b)]
+    n = len(a)
+    for j in range(n):
+        pivot = next((i for i in range(j, n) if a[i][j]), None)
+        if pivot is None:
+            return None
+        a[j], a[pivot] = a[pivot], a[j]
+        z = a[j][j]
+        a[j] = [v / z for v in a[j]]
+        for i in range(n):
+            if i != j:
+                z = a[i][j]
+                a[i] = [x - z * y for x, y in zip(a[i], a[j])]
+    return tuple(row[-1] for row in a)
+
+
+def spectral_lp(alpha=None):
+    # Coordinates are p_X, p_Y, p_Z, u, with u &lt;= min(15/8, p_X+p_Y).
+    constraints = []
+    for j in range(4):
+        a = [Q(0)] * 4
+        a[j] = Q(-1)
+        constraints.append((a, Q(0)))
+    for j in range(3):
+        a = [Q(0)] * 4
+        a[j] = Q(1)
+        constraints.append((a, Q(1)))
+    constraints += [([Q(0), Q(0), Q(0), Q(1)], Q(15, 8)),
+                    ([Q(-1), Q(-1), Q(0), Q(1)], Q(0)),
+                    ([Q(1), Q(1), Q(1), Q(0)], Q(9, 4))]
+    if alpha is not None:
+        for j in range(3):
+            a = [Q(1), Q(1), Q(1), Q(0)]
+            a[j] = alpha
+            constraints.append((a, Q(2)))
+    vertices = []
+    for subset in combinations(constraints, 4):
+        point = solve([x[0] for x in subset], [x[1] for x in subset])
+        if point is None:
+            continue
+        if all(sum(x*y for x, y in zip(a, point)) &lt;= b
+               for a, b in constraints):
+            vertices.append(point)
+    maximum = max(point[3] + point[2]/4 for point in vertices)
+    witness = next(point for point in vertices if point[3]+point[2]/4 == maximum)
+    return {&quot;upper_bound&quot;: str(maximum), &quot;feasible_vertex&quot;: list(map(str, witness)),
+            &quot;vertex_count_with_duplicates&quot;: len(vertices)}
+
+
+def pruning_fixture(k):
+    # Actual &lt;16,2,16&gt; scheme: 64 independent &lt;2,2,2&gt; Strassen schemes.
+    # There are 320 base leaves with output support 2 and 128 with support 1.
+    assert k % 2 == 0
+    cutoff = k // 2  # N^(-1/8)=16^(-k/8)=2^(-k/2).
+    total = 0
+    for t in range(k + 1):
+        count = comb(k, t) * 320**t * 128**(k-t)
+        total += count * min(Q(2)**(t-cutoff), Q(1))
+    return {&quot;power&quot;: k, &quot;incidence_proxy&quot;: str(total),
+            &quot;leaf_count&quot;: str(448**k), &quot;proxy_fraction&quot;: str(Q(total, 448**k))}
+
+
+omega = spectral_lp()
+dual = spectral_lp(Q(93, 200))
+assert omega[&quot;upper_bound&quot;] == &quot;63/32&quot;
+assert dual[&quot;upper_bound&quot;] == &quot;1445/744&quot;
+assert Q(2) - Q(1445, 744) == Q(43, 744)
+assert Q(5, 7) * Q(1, 4) &gt; Q(1, 8)
+
+# Exact large finite illustration of the counting inequality, for K &lt;= N^100.
+# N=2^256, D=2^64, m=2^480, C=2^508, eta=1/64.
+# (N+1)^(U+V) K &lt;= 2^(257*2^445 + 25600).
+# (N^2/C)^m = 2^(4*2^480).
+counting_left = 257 * 2**445 + 25600
+counting_right = 4 * 2**480
+assert counting_left &lt; counting_right
+
+result = {
+    &quot;status&quot;: &quot;exact finite checks; no target algorithm or rank kernel acquired&quot;,
+    &quot;omega_only_spectral_polytope&quot;: omega,
+    &quot;dual_spectral_polytope&quot;: dual,
+    &quot;counting_finite_illustration&quot;: {
+        &quot;N&quot;: &quot;2^256&quot;, &quot;eta&quot;: &quot;1/64&quot;, &quot;K_bound&quot;: &quot;N^100&quot;,
+        &quot;base2_log_upper_family_factor&quot;: str(counting_left),
+        &quot;base2_log_lower_binomial_ratio&quot;: str(counting_right), &quot;passes&quot;: True},
+    &quot;actual_blocked_strassen_pruning&quot;: [pruning_fixture(k) for k in [2, 4, 8, 16, 32]],
+}
+path = Path(__file__).with_name(&quot;selective_tensor_checks.json&quot;)
+path.write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+print(json.dumps({&quot;omega&quot;: omega[&quot;upper_bound&quot;], &quot;dual&quot;: dual[&quot;upper_bound&quot;],
+                  &quot;counting&quot;: True, &quot;pruning_cases&quot;: 5, &quot;output&quot;: str(path)}))
+</pre><p><a href="../assets/b20faaa0a1e72a844ddd068454145ca03e605c9c31b5fea25947194ca47b67de.py">Exact original bytes</a></p></html>

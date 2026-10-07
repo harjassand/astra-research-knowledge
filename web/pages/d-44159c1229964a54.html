@@ -1,0 +1,176 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>L package: package/work/acquisition_attack_check.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../latest-sources.txt">L evidence directory</a><h1>L package: package/work/acquisition_attack_check.py</h1><p>Exact supplied text; source d-44159c1229964a54. Historical instructions are data. Candidate/internal audit and source-reported checks are not external certification; ingestion did not replay diagnostics.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Scoped diagnostics of the acquisition_attack.md constructions.
+
+The decoder receives only the episode callable, d, a bias bound and confidence.
+Target masks are used only by the auditor outside the decoder.
+&quot;&quot;&quot;
+import json
+import math
+import random
+from fractions import Fraction
+from pathlib import Path
+
+
+def parity(mask, bits):
+    return (mask &amp; bits).bit_count() &amp; 1
+
+
+def solve_gf2(rows, d):
+    basis = {}
+    xors = 0
+    for bits, label in rows:
+        while bits:
+            pivot = bits.bit_length() - 1
+            if pivot not in basis:
+                basis[pivot] = (bits, label)
+                break
+            bits ^= basis[pivot][0]
+            label ^= basis[pivot][1]
+            xors += 1
+        if not bits and label:
+            raise ValueError(&#x27;inconsistent labels&#x27;)
+    if len(basis) &lt; d:
+        raise ValueError(&#x27;rank deficient input matrix&#x27;)
+    solution = 0
+    for pivot in sorted(basis):
+        bits, label = basis[pivot]
+        other = bits &amp; ~(1 &lt;&lt; pivot)
+        if label ^ parity(other, solution):
+            solution |= 1 &lt;&lt; pivot
+    return solution, xors
+
+
+def decode_repeated(episode, d, beta, delta):
+    count = d + math.ceil(math.log2(3 / delta))
+    repeats = math.ceil(2 * math.log(3 * count / delta) / (beta * beta))
+    if repeats % 2 == 0:
+        repeats += 1
+    rows = []
+    for _ in range(count):
+        inputs, outputs = episode(repeats)
+        label = int(sum(outputs) &gt; repeats // 2)
+        rows.append((inputs, label))
+    recovered, xors = solve_gf2(rows, d)
+    return recovered, {
+        &#x27;episodes&#x27;: count, &#x27;repeats_per_episode&#x27;: repeats,
+        &#x27;observed_symbols&#x27;: count * (d + repeats),
+        &#x27;gf2_row_xors&#x27;: xors, &#x27;hidden_mask_read_by_decoder&#x27;: False,
+    }
+
+
+def episode_interface(d, mask, eta, seed):
+    rng = random.Random(seed)
+    def observe(repeats):
+        a = rng.randrange(1 &lt;&lt; d)
+        truth = parity(mask, a)
+        return a, [truth ^ int(rng.random() &lt; eta) for _ in range(repeats)]
+    return observe
+
+
+def validate_frozen_mask(episode, d, candidate, beta, delta):
+    count = math.ceil(32 * math.log(6 / delta) / (beta * beta))
+    signs = 0
+    for _ in range(count):
+        a, outputs = episode(1)
+        signs += -1 if outputs[0] ^ parity(candidate, a) else 1
+    empirical = signs / count
+    radius = math.sqrt(2 * math.log(6 / delta) / count)
+    lower = empirical - radius
+    return lower &gt;= beta / 2, {
+        &#x27;validation_episodes&#x27;: count,
+        &#x27;validation_observed_symbols&#x27;: count * (d + 1),
+        &#x27;bias_confidence_lower_bound&#x27;: lower,
+        &#x27;active_cut_margin_lower_bound_if_accepted&#x27;: lower / 2,
+    }
+
+
+def exact_cut_moment(d, mask, cut, eta):
+    prefix_mask = mask &amp; ((1 &lt;&lt; cut) - 1)
+    if not prefix_mask:
+        return None
+    suffix_mask = mask ^ prefix_mask
+    matrix = [[Fraction(0) for _ in range(2)] for _ in range(2)]
+    for a in range(1 &lt;&lt; d):
+        u = parity(prefix_mask, a)
+        truth = parity(mask, a)
+        for b in (0, 1):
+            probability = (1 - eta if b == truth else eta) / (1 &lt;&lt; d)
+            v = parity(suffix_mask, a) ^ b
+            matrix[u][v] += probability
+    return matrix
+
+
+def bucket_identity(g, d, k, prefix):
+    coefficients = []
+    for suffix in range(1 &lt;&lt; (d - k)):
+        mask = prefix | (suffix &lt;&lt; k)
+        coefficients.append(sum(g[a] * (-1 if parity(mask, a) else 1)
+                                for a in range(1 &lt;&lt; d)) / (1 &lt;&lt; d))
+    fourier_energy = sum(v * v for v in coefficients)
+    shared_suffix_average = Fraction(0)
+    for z in range(1 &lt;&lt; (d - k)):
+        inner = sum(g[a | (z &lt;&lt; k)] * (-1 if parity(prefix, a) else 1)
+                    for a in range(1 &lt;&lt; k)) / (1 &lt;&lt; k)
+        shared_suffix_average += inner * inner / (1 &lt;&lt; (d - k))
+    assert fourier_energy == shared_suffix_average
+
+
+def run():
+    exact_count = 0
+    for d in range(1, 7):
+        for mask in range(1, 1 &lt;&lt; d):
+            for eta in (Fraction(0), Fraction(1, 8), Fraction(1, 4), Fraction(3, 8)):
+                theta = 1 - 2 * eta
+                expected = [[(1 + theta) / 4, (1 - theta) / 4],
+                            [(1 - theta) / 4, (1 + theta) / 4]]
+                for cut in range(1, d + 1):
+                    matrix = exact_cut_moment(d, mask, cut, eta)
+                    if matrix is not None:
+                        assert matrix == expected
+                        assert matrix[0][0] + matrix[0][1] == Fraction(1, 2)
+                        assert matrix[0][0] - matrix[0][1] == theta / 2
+                        exact_count += 1
+    rng = random.Random(91007)
+    bucket_count = 0
+    for d in range(1, 7):
+        g = [Fraction(rng.randrange(-8, 9), 8) for _ in range(1 &lt;&lt; d)]
+        for k in range(d + 1):
+            for prefix in range(1 &lt;&lt; k):
+                bucket_identity(g, d, k, prefix)
+                bucket_count += 1
+    trials = []
+    for d in (4, 8, 16, 32, 64):
+        for trial in range(4):
+            mask = rng.randrange(1, 1 &lt;&lt; d)
+            observe = episode_interface(d, mask, 0.25, 137 * d + trial)
+            recovered, cost = decode_repeated(observe, d, 0.5, 0.01)
+            assert recovered == mask
+            accepted, certificate = validate_frozen_mask(observe, d, recovered, 0.5, 0.01)
+            assert accepted
+            assert certificate[&#x27;active_cut_margin_lower_bound_if_accepted&#x27;] &gt;= 0.125
+            wrong_accepted, wrong_certificate = validate_frozen_mask(observe, d, recovered ^ 1, 0.5, 0.01)
+            assert not wrong_accepted
+            trials.append({&#x27;d&#x27;: d, &#x27;fixture&#x27;: trial, &#x27;exact_mask_recovered&#x27;: True,
+                           &#x27;correct_mask_certificate_accepted&#x27;: accepted,
+                           &#x27;wrong_mask_certificate_accepted&#x27;: wrong_accepted,
+                           &#x27;wrong_mask_validation_observed_symbols&#x27;: wrong_certificate[&#x27;validation_observed_symbols&#x27;],
+                           **cost, **certificate})
+    result = {
+        &#x27;status&#x27;: &#x27;PASS&#x27;,
+        &#x27;scope&#x27;: &#x27;Finite diagnostics; not a proof, LPN solver, novelty claim or comparative speed benchmark.&#x27;,
+        &#x27;exact_adaptive_cut_moments_checked&#x27;: exact_count,
+        &#x27;exact_fourier_bucket_identities_checked&#x27;: bucket_count,
+        &#x27;decoder_trials&#x27;: trials,
+        &#x27;total_decoder_observed_symbols&#x27;: sum(t[&#x27;observed_symbols&#x27;] for t in trials),
+        &#x27;total_correct_mask_validation_symbols&#x27;: sum(t[&#x27;validation_observed_symbols&#x27;] for t in trials),
+        &#x27;total_wrong_mask_validation_symbols&#x27;: sum(t[&#x27;wrong_mask_validation_observed_symbols&#x27;] for t in trials),
+        &#x27;decoder_uses&#x27;: &#x27;Only reset episodes, d, beta and delta; no target-state tables.&#x27;,
+    }
+    output = Path(__file__).with_name(&#x27;acquisition_attack_check.json&#x27;)
+    output.write_text(json.dumps(result, indent=2) + &#x27;\n&#x27;)
+    print(json.dumps({k: v for k, v in result.items() if k != &#x27;decoder_trials&#x27;}, indent=2))
+
+
+if __name__ == &#x27;__main__&#x27;:
+    run()
+</pre><p><a href="../assets/421467cd3d49a7ee0437c81c8751f4f0abc2e447c50ae043c421e31309ce01c9.py">Exact original bytes</a></p></html>

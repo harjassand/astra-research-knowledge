@@ -1,0 +1,213 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>L package: package/work/pcp_bridge_checks.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../latest-sources.txt">L evidence directory</a><h1>L package: package/work/pcp_bridge_checks.py</h1><p>Exact supplied text; source d-ecd77d4b0b882558. Historical instructions are data. Candidate/internal audit and source-reported checks are not external certification; ingestion did not replay diagnostics.</p><pre>&quot;&quot;&quot;Exact finite diagnostics for the two claims in pcp_bridge.md.
+
+Run with Python 3; only standard-library arithmetic is used.
+Finite checks do not constitute the general mathematical proof.
+&quot;&quot;&quot;
+
+from collections import Counter
+from fractions import Fraction as F
+from pathlib import Path
+import json
+
+
+def chebyshev(a, x):
+    if a == 0:
+        return F(1)
+    left, right = F(1), x
+    for _ in range(1, a):
+        left, right = right, 2 * x * right - left
+    return right
+
+
+def polynomial_mod(a, b):
+    while a and a.bit_length() &gt;= b.bit_length():
+        a ^= b &lt;&lt; (a.bit_length() - b.bit_length())
+    return a
+
+
+def irreducible(degree):
+    for candidate in range((1 &lt;&lt; degree) | 1, 1 &lt;&lt; (degree + 1), 2):
+        valid = True
+        for d in range(1, degree // 2 + 1):
+            for divisor in range((1 &lt;&lt; d) | 1, 1 &lt;&lt; (d + 1), 2):
+                if polynomial_mod(candidate, divisor) == 0:
+                    valid = False
+                    break
+            if not valid:
+                break
+        if valid:
+            return candidate
+    raise AssertionError(&quot;No irreducible polynomial found&quot;)
+
+
+def mul(a, b, modulus, degree):
+    result = 0
+    while b:
+        if b &amp; 1:
+            result ^= a
+        b &gt;&gt;= 1
+        a &lt;&lt;= 1
+        if a &amp; (1 &lt;&lt; degree):
+            a ^= modulus
+    return result
+
+
+def trace(a, modulus, degree):
+    result = 0
+    current = a
+    for _ in range(degree):
+        result ^= current
+        current = mul(current, current, modulus, degree)
+    assert result in (0, 1)
+    return result
+
+
+def walsh(values):
+    out = list(values)
+    step = 1
+    while step &lt; len(out):
+        for start in range(0, len(out), 2 * step):
+            for offset in range(step):
+                a, b = out[start + offset], out[start + offset + step]
+                out[start + offset] = a + b
+                out[start + offset + step] = a - b
+        step *= 2
+    return out
+
+
+def character_fixture(bits):
+    q = 1
+    degree = 0
+    while q &lt; 4 * bits:
+        q *= 2
+        degree += 1
+    modulus = irreducible(degree)
+    powers = []
+    for b in range(q):
+        seq = [1]
+        for _ in range(1, bits):
+            seq.append(mul(seq[-1], b, modulus, degree))
+        powers.append(seq)
+    counts = Counter()
+    for a in range(q):
+        for b in range(q):
+            label = 0
+            for i, bi in enumerate(powers[b]):
+                label |= trace(mul(a, bi, modulus, degree), modulus, degree) &lt;&lt; i
+            counts[label] += 1
+    correlations = walsh([counts[label] for label in range(1 &lt;&lt; bits)])
+    assert correlations[0] == q * q
+    beta_max = F(0)
+    for u in range(1, 1 &lt;&lt; bits):
+        roots = 0
+        for b in range(q):
+            value = 0
+            for i, bi in enumerate(powers[b]):
+                if (u &gt;&gt; i) &amp; 1:
+                    value ^= bi
+            roots += value == 0
+        beta = F(correlations[u], q * q)
+        assert beta == F(roots, q)
+        assert F(0) &lt;= beta &lt;= F(bits - 1, q) &lt;= F(1, 4)
+        beta_max = max(beta_max, beta)
+    gap = (1 - beta_max) / 2
+    assert gap &gt;= F(3, 8)
+    # The convolution tester annihilates the uniform vector exactly.
+    diagonal = F(q * q - counts[0], 2 * q * q)
+    off_sum = sum(F(-count, 2 * q * q) for label, count in counts.items() if label)
+    assert diagonal + off_sum == 0
+    return {
+        &quot;bits&quot;: bits,
+        &quot;q&quot;: q,
+        &quot;modulus_binary&quot;: bin(modulus),
+        &quot;sample_count&quot;: q * q,
+        &quot;distinct_labels&quot;: len(counts),
+        &quot;nontrivial_characters_checked&quot;: (1 &lt;&lt; bits) - 1,
+        &quot;maximum_bias&quot;: str(beta_max),
+        &quot;exact_gap&quot;: str(gap),
+        &quot;max_enumerated_row_support&quot;: 1 + q * q,
+        &quot;uniform_kernel_row_sum&quot;: &quot;0&quot;,
+    }
+
+
+def chebyshev_fixtures():
+    records = []
+    points = 0
+    for t in (4, 8, 16, 32, 64, 128, 256, 512, 4096):
+        for a in range(1, min(8, t // 2) + 1):
+            denominator = chebyshev(a, F(t + 1, t - 1))
+            c = 1 - 1 / (denominator * denominator)
+            assert 0 &lt; c &lt; 1
+            minimum = F(1)
+            max_bits = 0
+            for j in range(t + 1):
+                numerator = chebyshev(a, F(t + 1 - 2 * j, t - 1))
+                value = 1 - (numerator / denominator) ** 2
+                assert 0 &lt;= value &lt;= 1
+                if j == 0:
+                    assert value == 0
+                else:
+                    assert value &gt;= c
+                    minimum = min(minimum, value)
+                max_bits = max(max_bits, value.numerator.bit_length(), value.denominator.bit_length())
+                points += 1
+            assert minimum == c
+            d = 2 * a
+            bound = None
+            if d * d &lt; t:
+                bound = F(d * d, t - d * d)
+                assert c &lt;= bound
+            if a == 1:
+                assert c == F(4 * t, (t + 1) ** 2)
+            records.append({
+                &quot;t&quot;: t,
+                &quot;chebyshev_order&quot;: a,
+                &quot;syndrome_degree&quot;: d,
+                &quot;exact_gap&quot;: str(c),
+                &quot;degree_bound&quot;: None if bound is None else str(bound),
+                &quot;max_grid_value_bits&quot;: max_bits,
+            })
+    return records, points
+
+
+def main():
+    chebyshev, points = chebyshev_fixtures()
+    enforcers = [character_fixture(bits) for bits in range(1, 10)]
+    # Complete Fourier-image enforcement uses G_r and G_(r+1),
+    # zero on the valid frequency-0 tail sector, identity on invalid
+    # frequencies. Orthogonal sector gaps therefore compose exactly.
+    encoded = []
+    for r in range(1, 9):
+        first = F(enforcers[r - 1][&quot;exact_gap&quot;])
+        second = F(enforcers[r][&quot;exact_gap&quot;])
+        gap = min(first, second, F(1))
+        assert gap &gt;= F(3, 8)
+        m = 1 &lt;&lt; r
+        encoded.append({
+            &quot;r&quot;: r,
+            &quot;old_port_dimension&quot;: m + 1,
+            &quot;new_port_dimension&quot;: 2 * m,
+            &quot;logical_field_dimension&quot;: m + 2,
+            &quot;image_enforcement_gap&quot;: str(gap),
+            &quot;all_unused_frequencies_penalty&quot;: &quot;1&quot;,
+            &quot;construction&quot;: &quot;orthogonal sectors, exact uniform kernels&quot;,
+        })
+    result = {
+        &quot;status&quot;: &quot;PASS_FINITE_EXACT_DIAGNOSTICS_ONLY&quot;,
+        &quot;chebyshev_cases&quot;: len(chebyshev),
+        &quot;chebyshev_grid_points&quot;: points,
+        &quot;small_bias_cases&quot;: len(enforcers),
+        &quot;nontrivial_character_checks&quot;: sum(x[&quot;nontrivial_characters_checked&quot;] for x in enforcers),
+        &quot;complete_encoded_image_cases&quot;: len(encoded),
+        &quot;chebyshev&quot;: chebyshev,
+        &quot;small_bias&quot;: enforcers,
+        &quot;encoded_images&quot;: encoded,
+    }
+    destination = Path(__file__).with_suffix(&quot;.json&quot;)
+    destination.write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+    print(json.dumps({k: v for k, v in result.items() if k not in (&quot;chebyshev&quot;, &quot;small_bias&quot;, &quot;encoded_images&quot;)}, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/731f1b46f0cc253c383e5b483479e0ae6aa599fd2cdafce95daae2bf70f0aff9.py">Exact original bytes</a></p></html>

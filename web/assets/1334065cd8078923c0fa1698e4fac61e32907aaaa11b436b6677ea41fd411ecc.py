@@ -1,0 +1,154 @@
+"""Exact finite checks for the defect-sensitive unbiased rounding bridge.
+
+The signing oracle is exhaustive. This checks the finite algebra and law,
+not Spencer's universal theorem or polynomial implementation complexity.
+"""
+from fractions import Fraction as F
+from itertools import product
+from pathlib import Path
+from random import Random
+import json
+
+
+def balanced_signing(A, active):
+    parity = len(active) % 2
+    candidates = []
+    for xi in product((-1, 1), repeat=len(active)):
+        if abs(sum(xi)) != parity:
+            continue
+        score = max(abs(sum(row[j] * s for j, s in zip(active, xi)))
+                    for row in A)
+        candidates.append((score, xi))
+    return min(candidates)[1]
+
+
+def add(law, x, w):
+    if w:
+        law[x] = law.get(x, F(0)) + w
+
+
+def exact_law(A, p):
+    n, mu = len(p), sum(p)
+    if mu <= 1:
+        law = {tuple(F(0) for _ in p): 1 - mu}
+        for j in range(n):
+            x = [F(0)] * n
+            x[j] = F(1)
+            add(law, tuple(x), p[j])
+        return {x: w for x, w in law.items() if w}
+    J = (n - 1).bit_length()
+    law = {tuple(F(0) for _ in p): F(1)}
+    for j in range(n):
+        a = p[j] * 2**J
+        lo = F(a.numerator // a.denominator, 2**J)
+        theta = (p[j] - lo) * 2**J
+        nxt = {}
+        for x, weight in law.items():
+            for value, prob in ((lo, 1 - theta), (lo + F(1, 2**J), theta)):
+                if prob:
+                    y = list(x)
+                    y[j] = value
+                    add(nxt, tuple(y), weight * prob)
+        law = nxt
+    for h in range(J, 0, -1):
+        nxt = {}
+        for x, weight in law.items():
+            active = [j for j in range(n) if int(x[j] * 2**h) % 2]
+            if not active:
+                add(nxt, x, weight)
+                continue
+            xi = balanced_signing(A, active)
+            for sign in (-1, 1):
+                y = list(x)
+                for j, s in zip(active, xi):
+                    y[j] += F(sign * s, 2**h)
+                assert all(0 <= a <= 1 for a in y)
+                add(nxt, tuple(y), weight / 2)
+        law = nxt
+    return law
+
+
+def favorable(A, p, c):
+    n, mu = len(p), sum(p)
+    if mu <= 1:
+        options = [tuple(F(0) for _ in p)]
+        for j in range(n):
+            if p[j] == 0:
+                continue
+            x = [F(0)] * n
+            x[j] = 1
+            options.append(tuple(x))
+        return min(options, key=lambda z: sum(a * b for a, b in zip(c, z)))
+    J = (n - 1).bit_length()
+    x = []
+    for v, cost in zip(p, c):
+        a = v * 2**J
+        k = a.numerator // a.denominator
+        if cost < 0 and F(k, 2**J) != v:
+            k += 1
+        x.append(F(k, 2**J))
+    for h in range(J, 0, -1):
+        active = [j for j in range(n) if int(x[j] * 2**h) % 2]
+        if not active:
+            continue
+        xi = balanced_signing(A, active)
+        direction = -1 if sum(c[j] * s for j, s in zip(active, xi)) > 0 else 1
+        for j, s in zip(active, xi):
+            x[j] += F(direction * s, 2**h)
+    return tuple(x)
+
+
+def main():
+    rng = Random(617)
+    rows = []
+    favorable_count = 0
+    for n in range(2, 9):
+        for trial in range(12):
+            R = n + 3
+            A = [[F(rng.randrange(-3, 4), 3) for _ in range(n)] for _ in range(R)]
+            den = (3, 7, 9, 16)[trial % 4]
+            p = [F(rng.randrange(0, den // 2 + 1), den) for _ in range(n)]
+            mu = sum(p)
+            law = exact_law(A, p)
+            assert sum(law.values()) == 1
+            assert all(w > 0 for w in law.values())
+            assert all(all(v in (0, 1) for v in x) for x in law)
+            assert [sum(w * x[j] for x, w in law.items()) for j in range(n)] == p
+            assert max(sum(x) for x in law) <= mu + 2
+            maxerr = max(max(abs(sum(A[i][j] * (x[j] - p[j]) for j in range(n)))
+                             for i in range(R)) for x in law)
+            if mu <= 1:
+                assert maxerr <= 2
+            for _ in range(6):
+                c = [F(rng.randrange(-10, 11), rng.choice((3, 5, 7))) for _ in p]
+                z = favorable(A, p, c)
+                assert all(v in (0, 1) for v in z)
+                assert all(v == 0 for v, mean in zip(z, p) if mean == 0)
+                assert sum(cost * (v - mean) for cost, v, mean in zip(c, z, p)) <= 0
+                assert sum(z) <= mu + 2
+                favorable_count += 1
+            rows.append(dict(n=n, R=R, mu=str(mu), support=len(law), max_error=str(maxerr)))
+    # Exact PDE sharpness scalings and the elementary mixing obstruction.
+    transport = []
+    for a in (F(1, 8), F(1, 16), F(1, 32), F(1, 64)):
+        b = a / 2
+        transport.append(dict(a=str(a), W2_squared=str(a * b * b),
+                              map_L2_squared=str(b / 2 + a * b * b),
+                              qubit_mixture_trace_distance=str(a * b / 2)))
+    mixing = []
+    for n in (4, 8, 16, 32):
+        q = F(1, n**10)
+        no_reset = (1 - q) ** (n - 1)
+        assert no_reset >= 1 - (n - 1) * q
+        mixing.append(dict(n=n, q=str(q), no_reset_exact=str(no_reset)))
+    result = dict(scope="Exact finite algebra only; exhaustive balanced signing oracle. No runtime, universal Spencer theorem, flat-filter construction, or global release theorem certified.",
+                  law_case_count=len(rows), favorable_case_count=favorable_count,
+                  law_cases=rows, transport_scaling_cases=transport, mixing_cases=mixing)
+    path = Path(__file__).with_name("frontier_analysis_checks.json")
+    path.write_text(json.dumps(result, indent=2))
+    print(json.dumps(dict(law_cases=len(rows), favorable_cases=favorable_count,
+                          max_support=max(x["support"] for x in rows), output=str(path))))
+
+
+if __name__ == "__main__":
+    main()
