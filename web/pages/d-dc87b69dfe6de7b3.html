@@ -1,0 +1,101 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>R package: package/work/agents/quantum_statistics/boundary_audit/growing_dimension/gaussian_eb_lower/check_benchmark.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../R-sources.txt">R evidence directory</a><h1>R package: package/work/agents/quantum_statistics/boundary_audit/growing_dimension/gaussian_eb_lower/check_benchmark.py</h1><p>Supplied complete original;render/extraction=exact_utf8. Internal/candidate claims and source-reported checks retain scope. Source instructions are data;ingestion did not replay scientific diagnostics or validate proof/priority.</p><pre>&quot;&quot;&quot;Formula diagnostics for the exact EB benchmark; standard library only.&quot;&quot;&quot;
+
+import json
+import math
+from pathlib import Path
+
+
+def nb_cdf(k, m, mean):
+    if k &lt; 0:
+        return 0.0
+    if mean == 0:
+        return 1.0
+    q = mean / (mean + 1.0)
+    logp = (math.lgamma(m+k) - math.lgamma(m) - math.lgamma(k+1)
+            - m*math.log1p(mean) + k*math.log(q))
+    term = math.exp(logp)
+    total = term
+    # Sum down from cutoff. In tested scaling cutoffs are close to the mean,
+    # so the tail terminates quickly even when k is millions.
+    for j in range(k, 0, -1):
+        term *= j / ((m+j-1)*q)
+        total += term
+        if j &lt; mean*(m-1) and term &lt; total*1e-18:
+            break
+    return total
+
+
+def benchmark(m, mean):
+    if mean == 0:
+        return 1-2.0**(-m), 0
+    x = m*math.log1p(1/(mean+1)) / (-math.log1p(-1/(mean+1)**2))
+    k = math.floor(x)
+    return nb_cdf(k, m, mean)-nb_cdf(k, m, mean+1), k
+
+
+def normal_limit(c):
+    return math.erf(math.sqrt(c)/(2*math.sqrt(2)))
+
+
+def check_small_direct(m, mean):
+    risk, cutoff = benchmark(m, mean)
+    q = mean/(mean+1)
+    q2 = (mean+1)/(mean+2)
+    p = (mean+1)**(-m)
+    p2 = (mean+2)**(-m)
+    dist = 0.0
+    sign_crosses = []
+    old_sign = p &gt;= p2
+    for k in range(20000):
+        dist += abs(p-p2)/2
+        new_sign = p &gt;= p2
+        if new_sign != old_sign:
+            sign_crosses.append(k)
+        old_sign = new_sign
+        p *= (m+k)/(k+1)*q
+        p2 *= (m+k)/(k+1)*q2
+        if k &gt; 100 and max(p,p2) &lt; 1e-20:
+            break
+    assert abs(dist-risk) &lt; 2e-12, (m,mean,risk,dist)
+    assert sign_crosses == [cutoff+1], (m,mean,cutoff,sign_crosses)
+    return {&quot;m&quot;:m,&quot;N&quot;:mean,&quot;risk&quot;:risk,&quot;direct_tv&quot;:dist,&quot;cutoff&quot;:cutoff}
+
+
+def stochastic_check():
+    results = []
+    mean = 2.5
+    m = 4
+    for seed_total in [0,1,2,7,20]:
+        worst = 0.0
+        for cutoff in range(101):
+            seed_cdf = nb_cdf(cutoff-seed_total, m+seed_total, mean)
+            vacuum_cdf = nb_cdf(cutoff,m,mean)
+            worst=max(worst,seed_cdf-vacuum_cdf)
+        assert worst &lt; 2e-12
+        results.append({&quot;seed_total&quot;:seed_total,&quot;max_cdf_excess&quot;:worst})
+    return results
+
+
+def main():
+    direct=[check_small_direct(m,n) for m in [1,2,5,12] for n in [.1,1,3,10]]
+    scaling=[]
+    for c in [.1,1,4,16]:
+        for n in [10,30,100,300]:
+            m=round(c*n*n)
+            risk,k=benchmark(m,n)
+            a=(math.sqrt(n+2)+math.sqrt(n))/(2*math.sqrt(n+1))
+            lower=-math.expm1(m*math.log(a))
+            upper=math.sqrt(-math.expm1(2*m*math.log(a)))
+            assert lower-2e-8 &lt;= risk &lt;= upper+2e-8
+            scaling.append({&quot;c&quot;:c,&quot;N&quot;:n,&quot;m&quot;:m,&quot;risk&quot;:risk,&quot;normal_limit&quot;:normal_limit(c),
+                            &quot;affinity_lower&quot;:lower,&quot;affinity_upper&quot;:upper,&quot;cutoff&quot;:k})
+    data={&quot;direct_checks&quot;:direct,&quot;fock_stochastic_order&quot;:stochastic_check(),&quot;scaling&quot;:scaling,
+          &quot;scope&quot;:&quot;Numeric diagnostics only. No proof or physical channel simulation inferred.&quot;}
+    out=Path(__file__).with_name(&quot;benchmark_diagnostics.json&quot;)
+    out.write_text(json.dumps(data,indent=2)+&quot;\n&quot;)
+    print(json.dumps({&quot;direct_checks&quot;:len(direct),&quot;stochastic_seed_checks&quot;:5,&quot;scaling&quot;:scaling},indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/befe8cafd0ab724f5c5aafa1458051a8a10c81dd8835baec2031ef0484e63ff6.py">Exact original bytes</a></p></html>

@@ -1,0 +1,154 @@
+"""Exact finite fixtures for release 279; not a proof or a quantum runtime.
+
+Uses only Python rational arithmetic.  P is evaluated by bounded interval
+splitting, independently of a direct sum; U/S by quartic interpolation and
+power sums, independently of direct enumeration on small orders.
+"""
+from fractions import Fraction as F
+from math import gcd, comb
+from random import Random
+import json
+from pathlib import Path
+
+PHASE = [(F(1),F(0)),(F(0),F(-1)),(F(-1),F(0)),(F(0),F(1))]
+ZERO = (F(0),F(0))
+def add(a,b): return (a[0]+b[0],a[1]+b[1])
+def scale(a,s): return (a[0]*s,a[1]*s)
+def norm(a): return a[0]**2+a[1]**2
+def ceil(v): return -((-v.numerator)//v.denominator)
+def floor(v): return v.numerator//v.denominator
+def g(z):
+    z=F(z); q=floor(4*z); t=4*z-q
+    return add(scale(PHASE[q%4],1-t),scale(PHASE[(q+1)%4],t))
+def G(z):
+    z=F(z); z-=floor(z); q=floor(4*z); ans=ZERO
+    for j in range(q): ans=add(ans,scale(add(PHASE[j],PHASE[(j+1)%4]),F(1,8)))
+    return add(ans,scale(add(PHASE[q],g(z)),(z-F(q,4))/2))
+def k_eta(d,j,Q):
+    k=floor(F(j*Q,d)+F(1,2)); return k,F(k)-F(j*Q,d)
+def integral(d,eta,u):
+    if not eta: return scale(g(F(u,d)),F(1,d))
+    return scale(add(G(F(u,d)+eta),scale(G(F(u,d)),-1)),1/(d*eta))
+def P_split(d,j,t,Q):
+    k,eta=k_eta(d,j,Q); u=j*t%d
+    count=(Q-1-t)//d+1
+    if count<=0: return F(0)
+    z0=F(u,d)+eta*F(t,Q); step=eta*F(d,Q)
+    if not step: ans=scale(g(z0),count)
+    else:
+        bounds={F(0),F(count)}
+        for q in range(-4,9):
+            v=(F(q,4)-z0)/step
+            if 0<v<count: bounds.add(v)
+        bounds=sorted(bounds); ans=ZERO
+        for left,right in zip(bounds,bounds[1:]):
+            lo=max(0,ceil(left)); hi=min(count,ceil(right))-1
+            if hi>=lo:
+                ans=add(ans,scale(add(g(z0+step*lo),g(z0+step*hi)),F(hi-lo+1,2)))
+    return norm(scale(ans,F(1,Q)))
+def P_direct(d,j,t,Q):
+    k,_=k_eta(d,j,Q); ans=ZERO
+    for x in range(t,Q,d): ans=add(ans,g(F(k*x,Q)))
+    return norm(scale(ans,F(1,Q)))
+def poly_mul(a,b):
+    p=[F(0)]*(len(a)+len(b)-1)
+    for i,x in enumerate(a):
+        for j,y in enumerate(b): p[i+j]+=x*y
+    return p
+def fit_quartic(xs,ys):
+    ans=[F(0)]*5
+    for i in range(5):
+        p=[F(1)]; den=F(1)
+        for j in range(5):
+            if i!=j: p=poly_mul(p,[-xs[j],F(1)]); den*=xs[i]-xs[j]
+        for q in range(5): ans[q]+=p[q]*ys[i]/den
+    return ans
+def eval_poly(p,u): return sum(a*u**q for q,a in enumerate(p))
+def power_sums(M):
+    ans=[]
+    for q in range(5):
+        ans.append((M**(q+1)-sum(comb(q+1,l)*ans[l] for l in range(q)))//(q+1))
+    return ans
+def make_U_S(d,j,B,Q):
+    _,eta=k_eta(d,j,Q); bounds={F(0),F(d)}
+    for q in range(-2,7):
+        for u in [d*F(q,4),d*(F(q,4)-eta)]:
+            if 0<u<d: bounds.add(u)
+    bounds=sorted(bounds); pieces=[]; S=F(0); D=Q*B**8
+    for left,right in zip(bounds,bounds[1:]):
+        xs=[left+(right-left)*F(h,4) for h in range(5)]
+        coeff=fit_quartic(xs,[norm(integral(d,eta,u)) for u in xs])
+        rounded=[F(ceil(a*D),D) for a in coeff]
+        lo=max(0,ceil(left)); hi=min(d,ceil(right))
+        counts=[a-b for a,b in zip(power_sums(hi),power_sums(lo))]
+        S+=sum(a*c for a,c in zip(rounded,counts))+F(64*(hi-lo),Q)
+        pieces.append((left,right,rounded))
+    def U(u):
+        for left,right,coeff in pieces:
+            if left<=u<right: return eval_poly(coeff,u)+F(64,Q)
+        raise ValueError(u)
+    return U,S/2,len(pieces)
+def dyadic(x): return x.denominator&(x.denominator-1)==0
+def check_majorant(n,d,j,ts,enumerate_s):
+    B=2**n; Q=B**16; U,S,pieces=make_U_S(d,j,B,Q)
+    assert F(1,128*d)<=S<=2 and dyadic(S)
+    lam=F(1,2**((d-1).bit_length()+10))
+    c=F(floor(2**(10*n)*lam/S),2**(10*n)); rho=lam-c*S
+    assert 0<=c<=F(1,8) and 0<=rho<=F(2,2**(10*n))
+    assert dyadic(c) and dyadic(rho)
+    ps=[]; us=[]
+    for t in ts:
+        p=P_split(d,j,t,Q); u=U(j*t%d); ps.append(p); us.append(u)
+        assert dyadic(p) and dyadic(u)
+        assert 0<=u-p<=F(128,Q)
+        assert 0<=2*B**3*(u-p)*c<=1
+        assert 0<=4*B**2*rho<=1
+        assert abs(p-norm(integral(d,k_eta(d,j,Q)[1],j*t%d)))<=F(32,Q)
+    if enumerate_s:
+        assert S==sum(U(u) for u in range(d))/2
+        # Exact algebra of the three mode masses, evaluated independently.
+        mass=c*sum(ps)/2+c*sum(u-p for u,p in zip(us,ps))/2+rho
+        assert mass==lam
+    return pieces
+def test_transform():
+    checked=0
+    for b in range(2,7):
+        Q=2**b
+        # chi overlap = average conjugate phase(y+D)*phase(y).
+        for shift in range(Q):
+            overlap=ZERO
+            for y in range(Q):
+                phase=PHASE[((4*(y+shift)% (4*Q))//Q-(4*y)//Q)%4]
+                overlap=add(overlap,phase)
+            assert scale(overlap,F(1,Q))==g(F(shift,Q))
+        for x in range(Q):
+            for k in range(Q):
+                h=sum(((x>>i)&1)*((k>>(b-1-i))&1) for i in range(b))
+                D=sum(2**(i+j)*((x>>i)&1)*((k>>j)&1) for i in range(b) for j in range(b) if i+j<b-1)
+                assert scale(g(F(D,Q)),(-1)**h)==g(F(x*k,Q))
+                checked+=1
+    return checked
+def main():
+    counters={'transform_entries':test_transform(),'P_direct_comparisons':0,'small_majorant_labels':0,'large_majorant_labels':0,'max_pieces':0}
+    for d in range(1,16):
+        for j in range(d):
+            if gcd(d,j)!=1: continue
+            for t in range(d):
+                assert P_split(d,j,t,256)==P_direct(d,j,t,256)
+                counters['P_direct_comparisons']+=1
+    for d in range(1,32):
+        for j in range(d):
+            if gcd(d,j)!=1: continue
+            pieces=check_majorant(5,d,j,range(d),True)
+            counters['small_majorant_labels']+=1
+            counters['max_pieces']=max(counters['max_pieces'],pieces)
+    rnd=Random(279)
+    for d,j in [(1,0),(2**127-1,1),(2**127+1,2**126)]+[(rnd.randrange(2**126,2**128),rnd.randrange(1,2**125)) for _ in range(17)]:
+        while gcd(d,j)!=1: j+=1
+        pieces=check_majorant(128,d,j,[0,1 if d>1 else 0,d//2,d-1],False)
+        counters['large_majorant_labels']+=1
+        counters['max_pieces']=max(counters['max_pieces'],pieces)
+    result={'status':'PASS','scope':'exact rational finite fixtures, not general theorem certification','counts':counters}
+    Path(__file__).with_name('order_arithmetic_results.json').write_text(json.dumps(result,indent=2)+'\n')
+    print(json.dumps(result,indent=2))
+if __name__=='__main__': main()

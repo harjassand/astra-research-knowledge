@@ -1,0 +1,217 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>R package: package/work/agents/groups_operator/free_factor_attack/check_compact_cocycle.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../R-sources.txt">R evidence directory</a><h1>R package: package/work/agents/groups_operator/free_factor_attack/check_compact_cocycle.py</h1><p>Supplied complete original;render/extraction=exact_utf8. Internal/candidate claims and source-reported checks retain scope. Source instructions are data;ingestion did not replay scientific diagnostics or validate proof/priority.</p><pre>&quot;&quot;&quot;Finite diagnostics for the compact cocycle notes; not a general proof.&quot;&quot;&quot;
+import itertools
+import json
+import math
+from fractions import Fraction
+from pathlib import Path
+
+
+def multiply_words(u, v):
+    out = list(u)
+    for x in v:
+        if out and out[-1] == -x:
+            out.pop()
+        else:
+            out.append(x)
+    return tuple(out)
+
+
+def star_words(u):
+    return tuple(-x for x in reversed(u))
+
+
+def ring_multiply(p, q):
+    out = {}
+    for u, a in p.items():
+        for v, b in q.items():
+            word = multiply_words(u, v)
+            out[word] = out.get(word, 0) + a * b
+    return {word: c for word, c in out.items() if c}
+
+
+def ring_add(p, q):
+    out = dict(p)
+    for word, c in q.items():
+        out[word] = out.get(word, 0) + c
+    return {word: c for word, c in out.items() if c}
+
+
+def scale(p, c):
+    return {word: c * v for word, v in p.items() if c * v}
+
+
+def kesten_moment(k, exponent):
+    dp = {0: 1}
+    for _ in range(exponent):
+        nxt = {}
+        for radius, number in dp.items():
+            if radius:
+                nxt[radius - 1] = nxt.get(radius - 1, 0) + number
+            nxt[radius + 1] = nxt.get(radius + 1, 0) + number * (k if radius == 0 else k - 1)
+        dp = nxt
+    return dp.get(0, 0)
+
+
+def check_codes():
+    records = []
+    for m in (2, 3, 4, 8):
+        r = math.ceil(math.log2(m))
+        codes = list(itertools.product((2, 3), repeat=r))[:m]
+        bases = [code + code for code in codes]
+        signed = {j + 1: word for j, word in enumerate(bases)}
+        signed.update({-j: star_words(word) for j, word in list(signed.items())})
+        checked = 0
+        smallest_core = None
+        letters = list(signed)
+        for size in range(1, 5):
+            for abstract in itertools.product(letters, repeat=size):
+                if any(a == -b for a, b in zip(abstract, abstract[1:])):
+                    continue
+                concrete = ()
+                for letter in abstract:
+                    concrete = multiply_words(concrete, signed[letter])
+                assert concrete, (m, abstract)
+                checked += 1
+                smallest_core = len(concrete) if smallest_core is None else min(smallest_core, len(concrete))
+        records.append({&quot;m&quot;: m, &quot;r&quot;: r, &quot;reduced_abstract_words_checked&quot;: checked,
+                        &quot;minimum_reduced_length&quot;: smallest_core,
+                        &quot;w_length&quot;: m * (2 * r + 1) + 1})
+    return records
+
+
+def check_moments():
+    records = []
+    for m in range(1, 5):
+        t = {(): 1, **{(j,): 1 for j in range(1, m + 1)}}
+        tstar = {star_words(word): c for word, c in t.items()}
+        q = ring_multiply(t, tstar)
+        power = {(): 1}
+        moments = []
+        for exponent in range(1, 5):
+            power = ring_multiply(power, q)
+            moment = power.get((), 0)
+            assert moment == kesten_moment(m + 1, 2 * exponent)
+            moments.append(moment)
+        records.append({&quot;m&quot;: m, &quot;Q_moments_1_through_4&quot;: moments})
+    return records
+
+
+def check_finite_polynomial():
+    m = 2
+    t = {(): Fraction(1), **{(j,): Fraction(1) for j in range(1, m + 1)}}
+    tstar = {star_words(word): c for word, c in t.items()}
+    q = ring_multiply(t, tstar)
+    c = 4 * m + 1
+    transition = ring_add({(): Fraction(1 - 1 / c)}, scale(q, Fraction(-1, c)))
+    # Replace the floating 1-1/c above by an exact fraction.
+    transition[()] = Fraction(1) - Fraction(1, c) - q.get((), 0) / c
+    power = {(): Fraction(1)}
+    polynomial = {}
+    records = []
+    for degree in range(7):
+        polynomial = ring_add(polynomial, scale(power, Fraction(1, c)))
+        h = ring_multiply(tstar, polynomial)
+        error = ring_add(ring_multiply(t, h), {(): Fraction(-1)})
+        hn = sum(a * a for a in h.values())
+        en = sum(a * a for a in error.values())
+        total = hn + en
+        exact_infinite_minimum = 4 / (1 + 3 * math.sqrt(9))
+        assert float(total) + 1e-14 &gt;= exact_infinite_minimum
+        assert all(isinstance(a, Fraction) for a in h.values())
+        records.append({&quot;m&quot;: m, &quot;degree&quot;: degree, &quot;expanded_support&quot;: len(h),
+                        &quot;norm_squared&quot;: float(hn), &quot;residual_squared&quot;: float(en),
+                        &quot;norm_plus_residual_squared&quot;: float(total),
+                        &quot;resolvent_limit&quot;: exact_infinite_minimum})
+        power = ring_multiply(power, transition)
+    return records
+
+
+def simpson(function, pieces=20000):
+    step = math.pi / (2 * pieces)
+    value = function(0.0) + function(math.pi / 2)
+    for index in range(1, pieces):
+        value += (4 if index % 2 else 2) * function(index * step)
+    return value * step / 3
+
+
+def check_integrals():
+    records = []
+    for m in (1, 2, 3, 10, 100, 1000):
+        def density(theta):
+            if m == 1:
+                return 2 / math.pi
+            sine, cosine = math.sin(theta), math.cos(theta)
+            return 4 * m * (m + 1) * cosine * cosine / (math.pi * ((m + 1) ** 2 - 4 * m * sine * sine))
+        def qvalue(theta):
+            return 4 * m * math.sin(theta) ** 2
+        mass = simpson(density)
+        trace = simpson(lambda theta: density(theta) * qvalue(theta))
+        residual = simpson(lambda theta: density(theta) / (qvalue(theta) + 1) ** 2)
+        hnorm = simpson(lambda theta: density(theta) * qvalue(theta) / (qvalue(theta) + 1) ** 2)
+        resolvent = 2 * m / (m - 1 + (m + 1) * math.sqrt(1 + 4 * m))
+        assert abs(mass - 1) &lt; 1e-10
+        assert abs(trace - (m + 1)) &lt; 1e-8
+        assert abs(residual + hnorm - resolvent) &lt; 1e-10
+        records.append({&quot;m&quot;: m, &quot;mass&quot;: mass, &quot;mean&quot;: trace,
+                        &quot;norm_squared&quot;: hnorm, &quot;residual_squared&quot;: residual,
+                        &quot;R_m_1&quot;: resolvent})
+    return records
+
+
+def check_exact_radial_polynomials():
+    def padd(a, b):
+        result = [Fraction(0)] * max(len(a), len(b))
+        for i, value in enumerate(a):
+            result[i] += value
+        for i, value in enumerate(b):
+            result[i] += value
+        return result
+    records = []
+    for m in (1, 2, 3, 4):
+        d = m + 1
+        t = {(): Fraction(1), **{(j,): Fraction(1) for j in range(1, m + 1)}}
+        tstar = {star_words(word): c for word, c in t.items()}
+        q = ring_multiply(t, tstar)
+        fs = [[Fraction(1)], [Fraction(0), Fraction(1)],
+              [Fraction(-d), Fraction(0), Fraction(1)]]
+        for index in range(3, 9):
+            fs.append(padd([Fraction(0)] + fs[-1], [-m * value for value in fs[-2]]))
+        for radius in range(1, 5):
+            kr = Fraction(m + radius * d, m)
+            qp = [Fraction(1)]
+            for index in range(1, radius + 1):
+                assert all(value == 0 for value in fs[2 * index][1::2])
+                even = fs[2 * index][::2]
+                qp = padd(qp, [Fraction((-1) ** index, m ** index) * value for value in even])
+            qp = [value / kr for value in qp]
+            assert qp[0] == 1
+            hp = [-value for value in qp[1:]]
+            power = {(): Fraction(1)}
+            polynomial = {}
+            for value in hp:
+                polynomial = ring_add(polynomial, scale(power, value))
+                power = ring_multiply(power, q)
+            h = ring_multiply(tstar, polynomial)
+            error = ring_add(ring_multiply(t, h), {(): Fraction(-1)})
+            hn = sum(value * value for value in h.values())
+            en = sum(value * value for value in error.values())
+            assert en == Fraction(m, m + radius * d)
+            assert hn == Fraction(d * radius * (radius + 1) * (2 * radius + 1),
+                                  6 * (m + radius * d) ** 2)
+            records.append({&quot;m&quot;: m, &quot;r&quot;: radius, &quot;expanded_h_support&quot;: len(h),
+                            &quot;norm_squared_exact&quot;: str(hn), &quot;residual_squared_exact&quot;: str(en)})
+    return records
+
+
+if __name__ == &quot;__main__&quot;:
+    results = {&quot;scope&quot;: &quot;Finite exact word and rational-coefficient diagnostics plus quadrature; not proof certification.&quot;,
+               &quot;codes&quot;: check_codes(), &quot;moments&quot;: check_moments(),
+               &quot;finite_polynomial&quot;: check_finite_polynomial(), &quot;integrals&quot;: check_integrals(),
+               &quot;exact_radial_polynomials&quot;: check_exact_radial_polynomials()}
+    output = Path(__file__).with_name(&quot;diagnostics.json&quot;)
+    output.write_text(json.dumps(results, indent=2) + &quot;\n&quot;)
+    print(json.dumps({&quot;status&quot;: &quot;passed&quot;, &quot;output&quot;: str(output.resolve()),
+                      &quot;code_words_checked&quot;: sum(row[&quot;reduced_abstract_words_checked&quot;] for row in results[&quot;codes&quot;]),
+                      &quot;moment_fixtures&quot;: 16, &quot;polynomial_fixtures&quot;: 7, &quot;quadrature_cases&quot;: 6,
+                      &quot;exact_radial_polynomial_fixtures&quot;: 16}))
+</pre><p><a href="../assets/156fa11ba06baed204abe6bd85f3249ee2a307f4b46aa443e4574878788c24c4.py">Exact original bytes</a></p></html>

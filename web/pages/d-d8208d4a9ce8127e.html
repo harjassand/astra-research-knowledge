@@ -1,0 +1,41 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>R package: package/work/agents/potts_certificate_audit/polynomial_attack/optimize.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../R-sources.txt">R evidence directory</a><h1>R package: package/work/agents/potts_certificate_audit/polynomial_attack/optimize.py</h1><p>Supplied complete original;render/extraction=exact_utf8. Internal/candidate claims and source-reported checks retain scope. Source instructions are data;ingestion did not replay scientific diagnostics or validate proof/priority.</p><pre>&quot;&quot;&quot;Boundary family sweep and projected stochastic local attacks.&quot;&quot;&quot;
+from attack import *
+
+def to_p(X):
+    S=np.array([[1,0,0,0],[.5,.5,0,0],[1/3,1/3,1/3,0],[.25,.25,.25,.25]])
+    return X @ S
+
+def objective(X,which):
+    vs=margins(to_p(X[:,:4]),to_p(X[:,4:]))
+    if which==&#x27;cubic&#x27;:return vs[2]
+    return np.divide(vs[1],vs[3]*vs[4],out=np.full_like(vs[1],np.inf),where=vs[3]*vs[4]&gt;1e-12)
+
+def optimize(which):
+    X=np.concatenate([RNG.dirichlet([.1]*4,size=128),RNG.dirichlet([.1]*4,size=128)],axis=1)
+    # A known close boundary family to seed the cubic search.
+    X[0]=[.5,0,.5,0,.5,0,.5,0]
+    scores=objective(X,which)
+    history=[]
+    for scale in [.2,.1,.03,.01,.003,.001,.0003,.0001,.00003]:
+      for _ in range(30):
+       trial=np.repeat(X,16,axis=0)
+       noise=RNG.standard_normal(trial.shape)*scale
+       noise[::4,RNG.integers(0,8,size=len(noise[::4]))]=0
+       trial=np.maximum(0,trial+noise)
+       trial[:,:4][trial[:,:4].sum(axis=1)==0]=.25
+       trial[:,4:][trial[:,4:].sum(axis=1)==0]=.25
+       trial[:,:4]/=trial[:,:4].sum(axis=1)[:,None];trial[:,4:]/=trial[:,4:].sum(axis=1)[:,None]
+       values=objective(trial,which).reshape(len(X),16)
+       ids=values.argmin(axis=1);vv=values[np.arange(len(X)),ids]
+       keep=vv&lt;scores;X[keep]=trial.reshape(len(X),16,8)[np.arange(len(X)),ids][keep];scores[keep]=vv[keep]
+      history.append(float(scores.min()))
+    idx=int(scores.argmin());return {&#x27;value&#x27;:float(scores[idx]),&#x27;p&#x27;:to_p(X[idx:idx+1,:4])[0].tolist(),&#x27;q&#x27;:to_p(X[idx:idx+1,4:])[0].tolist(),&#x27;history&#x27;:history}
+
+def main():
+    a=np.linspace(1/3,1,20001);p=np.column_stack([a,(1-a)/2,(1-a)/2,np.zeros_like(a)])
+    ratio=margins(p,p)[2];i=int(ratio.argmin())
+    result={&#x27;diagonal_boundary_sweep&#x27;:{&#x27;value&#x27;:float(ratio[i]),&#x27;a&#x27;:float(a[i]),&#x27;p&#x27;:p[i].tolist()},&#x27;local_cubic&#x27;:optimize(&#x27;cubic&#x27;),&#x27;local_H_normalized&#x27;:optimize(&#x27;H&#x27;)}
+    (OUT/&#x27;optimized_results.json&#x27;).write_text(json.dumps(result,indent=2));print(json.dumps(result,indent=2))
+
+if __name__==&#x27;__main__&#x27;:main()
+</pre><p><a href="../assets/30cb43d8badaa49367e5876aff95e35b29465e6b8115a5e1f3f71f230d4f7a40.py">Exact original bytes</a></p></html>

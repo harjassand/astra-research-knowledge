@@ -1,0 +1,87 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>R package: package/work/agents/quantum_statistics/boundary_audit/growing_dimension/gaussian_eb_lower/trace_benchmark/check_negative_binomial.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../R-sources.txt">R evidence directory</a><h1>R package: package/work/agents/quantum_statistics/boundary_audit/growing_dimension/gaussian_eb_lower/trace_benchmark/check_negative_binomial.py</h1><p>Supplied complete original;render/extraction=exact_utf8. Internal/candidate claims and source-reported checks retain scope. Source instructions are data;ingestion did not replay scientific diagnostics or validate proof/priority.</p><pre>&quot;&quot;&quot;Numerical sanity checks of the derived formulas; not a proof certificate.
+
+Uses only Python&#x27;s standard library and records finite benchmark values.
+&quot;&quot;&quot;
+
+import json
+import math
+from pathlib import Path
+
+
+def crossing(m, n):
+    if n == 0:
+        return 0
+    return math.floor(m * math.log1p(1 / (n + 1)) / -math.log1p(-1 / (n + 1) ** 2))
+
+
+def nb_cdf(m, n, cutoff, tolerance=1e-15):
+    if cutoff &lt; 0:
+        return 0.0
+    if n == 0:
+        return 1.0
+    ratio = n / (n + 1)
+    mode = math.floor((m - 1) * n)
+    center = min(mode, cutoff)
+    log_mass = (
+        math.lgamma(center + m) - math.lgamma(center + 1)
+        - math.lgamma(m) - m * math.log(n + 1)
+        + center * math.log(ratio)
+    )
+    mass = math.exp(log_mass)
+    pieces = [mass]
+    down = mass
+    for k in range(center, 0, -1):
+        step = k / (k + m - 1) / ratio
+        down *= step
+        pieces.append(down)
+        # Subsequent ratios decrease, so the rest is bounded by a series.
+        if step &lt; 1 and down * step / (1 - step) &lt; tolerance:
+            break
+    up = mass
+    for k in range(center, cutoff):
+        up *= (k + m) / (k + 1) * ratio
+        pieces.append(up)
+    return min(1.0, math.fsum(pieces))
+
+
+def normal_cdf(x):
+    return (1 + math.erf(x / math.sqrt(2))) / 2
+
+
+def benchmark(m, n):
+    cutoff = crossing(m, n)
+    return cutoff, nb_cdf(m, n, cutoff) - nb_cdf(m, n + 1, cutoff)
+
+
+def main():
+    # The m=1 exact formula agrees with Guta--Bowles--Adesso IV.2.
+    checks = []
+    for n in [0, 1, 2, 10, 100]:
+        cutoff, error = benchmark(1, n)
+        exact = 0.5 if n == 0 else ((n + 1) / (n + 2)) ** (cutoff + 1) - (n / (n + 1)) ** (cutoff + 1)
+        assert abs(error - exact) &lt; 1e-12, (n, error, exact)
+        checks.append({&quot;m&quot;: 1, &quot;N&quot;: n, &quot;cutoff&quot;: cutoff, &quot;error&quot;: error, &quot;one_mode_formula&quot;: exact})
+
+    profiles = []
+    for c in [0.25, 1.0, 4.0]:
+        limit = 2 * normal_cdf(math.sqrt(c) / 2) - 1
+        for n in [10, 30, 100]:
+            m = round(c * n * n)
+            cutoff, error = benchmark(m, n)
+            affinity = (math.sqrt(n + 2) + math.sqrt(n)) / (2 * math.sqrt(n + 1))
+            lower = -math.expm1(m * math.log(affinity))
+            upper = math.sqrt(-math.expm1(2 * m * math.log(affinity)))
+            assert lower - 1e-8 &lt;= error &lt;= upper + 1e-8
+            profiles.append({&quot;c&quot;: c, &quot;m&quot;: m, &quot;N&quot;: n, &quot;cutoff&quot;: cutoff, &quot;error&quot;: error,
+                             &quot;normal_limit&quot;: limit, &quot;absolute_difference&quot;: abs(error - limit),
+                             &quot;affinity_lower&quot;: lower, &quot;affinity_upper&quot;: upper})
+
+    result = {&quot;status&quot;: &quot;scoped numerical sanity checks passed&quot;, &quot;one_mode&quot;: checks, &quot;profiles&quot;: profiles}
+    target = Path(__file__).with_name(&quot;negative_binomial_checks.json&quot;)
+    target.write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+    print(json.dumps(result, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/f158c1069e6a8d781be0a50c5e213b812d121bc92ae2d3304fc4616273467943.py">Exact original bytes</a></p></html>

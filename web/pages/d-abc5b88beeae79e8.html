@@ -1,0 +1,57 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>R package: package/work/agents/quantum_statistics/check_bridges.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../R-sources.txt">R evidence directory</a><h1>R package: package/work/agents/quantum_statistics/check_bridges.py</h1><p>Supplied complete original;render/extraction=exact_utf8. Internal/candidate claims and source-reported checks retain scope. Source instructions are data;ingestion did not replay scientific diagnostics or validate proof/priority.</p><pre>&quot;&quot;&quot;Finite diagnostics only; proofs are in RESULTS.md. No asymptotic certification.&quot;&quot;&quot;
+import json
+from pathlib import Path
+import numpy as np
+
+rng = np.random.default_rng(714190)
+
+def exp_hermitian(x):
+    v, u = np.linalg.eigh(x)
+    return (u * np.exp(v)) @ u.conj().T
+
+def log_hermitian(x):
+    v, u = np.linalg.eigh(x)
+    return (u * np.log(v)) @ u.conj().T
+
+def hermitian(n):
+    z = rng.normal(size=(n, n)) + 1j * rng.normal(size=(n, n))
+    return (z + z.conj().T) / 2
+
+def gibbs(logw, a):
+    x = exp_hermitian(logw + a)
+    return x / np.trace(x).real
+
+stats = {&quot;fixtures&quot;: 0, &quot;max_wy_bound_ratio&quot;: 0., &quot;max_central_kl_bound_ratio&quot;: 0.}
+for n in [2, 3, 7, 16]:
+    for _ in range(100):
+        e = rng.uniform(-4, 4, n)
+        beta = rng.uniform(.1, 2)
+        p = np.exp(-beta * e)
+        p /= p.sum()
+        w = np.diag(p)
+        a = hermitian(n)
+        comm_s = np.sqrt(p)[:, None] * a - a * np.sqrt(p)[None, :]
+        comm_h = e[:, None] * a - a * e[None, :]
+        lhs = np.vdot(comm_s, comm_s).real
+        rhs = beta**2 / 4 * np.trace(w @ comm_h.conj().T @ comm_h).real
+        assert lhs &lt;= rhs + 1e-10
+        stats[&quot;max_wy_bound_ratio&quot;] = max(stats[&quot;max_wy_bound_ratio&quot;], lhs / rhs)
+
+        c = rng.uniform(.2, 2)
+        a *= c / max(abs(np.linalg.eigvalsh(a)))
+        b = np.diag(rng.uniform(-c, c, n))
+        d = a-b
+        ra, rb = gibbs(np.diag(np.log(p)), a), gibbs(np.diag(np.log(p)), b)
+        kl = np.trace(rb @ (log_hermitian(rb)-log_hermitian(ra))).real
+        eps = np.trace(w @ d @ d).real
+        kc = np.expm1(2*c)/(4*c*c) - 1/(2*c)
+        bound = np.exp(2*c) * kc * eps
+        assert kl &lt;= bound + 1e-9
+        stats[&quot;max_central_kl_bound_ratio&quot;] = max(stats[&quot;max_central_kl_bound_ratio&quot;], kl/bound)
+        stats[&quot;fixtures&quot;] += 1
+
+stats[&quot;scope&quot;] = &quot;Random finite fixtures check constants and matrix conventions only.&quot;
+out = Path(__file__).with_name(&quot;bridge_diagnostics.json&quot;)
+out.write_text(json.dumps(stats, indent=2)+&quot;\n&quot;)
+print(json.dumps(stats, indent=2))
+</pre><p><a href="../assets/ffe2d83deb26a81a8042d63d1a1a1d40ba1406618062f26cfb5d809cd146e196.py">Exact original bytes</a></p></html>

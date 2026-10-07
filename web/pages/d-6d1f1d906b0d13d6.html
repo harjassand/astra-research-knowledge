@@ -1,0 +1,193 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>R package: package/work/agents/potts_certificate_audit/certificate_portable.cpp</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../R-sources.txt">R evidence directory</a><h1>R package: package/work/agents/potts_certificate_audit/certificate_portable.cpp</h1><p>Supplied complete original;render/extraction=exact_utf8. Internal/candidate claims and source-reported checks retain scope. Source instructions are data;ingestion did not replay scientific diagnostics or validate proof/priority.</p><pre>#include&lt;algorithm&gt;
+#include&lt;array&gt;
+#include&lt;cassert&gt;
+#include&lt;iostream&gt;
+#include&lt;map&gt;
+#include&lt;numeric&gt;
+#include&lt;tuple&gt;
+#include&lt;vector&gt;
+#include&lt;boost/multiprecision/cpp_int.hpp&gt;
+using namespace std;
+using R=long long;
+using RR=boost::multiprecision::cpp_int;
+
+RR Pow(RR a,int n){RR r=1;while(n--)r*=a;return r;}
+RR gcdB(RR a,RR b){RR c;while(b!=0){c=a%b;a=b;b=c;}return a;} 
+using v=array&lt;int,4&gt;;
+using V=array&lt;R,4&gt;;
+vector&lt;v&gt; l[20];int id_[20][20][20][20]; R fact[21];
+int id(int d,v x){return id_[d][x[0]][x[1]][x[2]];} int S(int d){return l[d].size();}
+v operator+(v a,v b){for(int i=0;i&lt;4;i++)a[i]+=b[i];return a;}
+v e(int j){v a={};a[j]=1;return a;}
+void init(){
+ fact[0]=1;
+ for(int d=0;d&lt;20;d++){ if(d)fact[d]=d*fact[d-1]; // l[1] idx 0..3
+ for(int i=d;i&gt;=0;i--)for(int j=d-i;j&gt;=0;j--)for(int k=d-i-j;k&gt;=0;k--){id_[d][i][j][k]=S(d);l[d].push_back({i,j,k,d-i-j-k});}
+ }}
+R coef(v a){return fact[accumulate(a.begin(),a.end(),0)]/(fact[a[0]]*fact[a[1]]*fact[a[2]]*fact[a[3]]);}
+struct P{
+ int d;RR den=1;vector&lt;RR&gt; b;
+ explicit P(int n,R r=0):d(n),b(S(n)*S(n),r){}
+ RR &amp; operator()(int i,int j){return b[i*S(d)+j];}
+ RR const&amp; operator()(int i,int j)const{return b[i*S(d)+j];}
+};
+P ones(int d){P r(d);for(int i=0;i&lt;S(d);i++)for(int j=0;j&lt;S(d);j++) r(i,j)=coef(l[d][i])*coef(l[d][j]); return r;}
+P operator*(const P&amp;a,const P&amp;b){
+ int m=a.d,n=b.d,d=m+n;
+ P c(d); vector&lt;int&gt;w(S(m)*S(n));
+ for(int i=0,h=0;i&lt;S(m);i++)for(int j=0;j&lt;S(n);j++)w[h++]=id(d,l[m][i]+l[n][j]);
+ // b smaller
+ for(int j=0;j&lt;S(n);j++)for(int k=0;k&lt;S(n);k++){RR B=b(j,k);if(B==0)continue;for(int i=0;i&lt;S(m);i++){
+   RR*z=&amp;c(w[i*S(n)+j],0); for(int h=0;h&lt;S(m);h++) z[w[h*S(n)+k]]+=a(i,h)*B;
+ }}
+ c.den=a.den*b.den;return c;
+}
+P operator*(RR r,P a){for(auto&amp;x:a.b)x*=r;return a;}
+P divi(P a,R b){ a.den*=b;return a;}
+P lift(P a,int d){while(a.d&lt;d)a=a*ones(1);return a;}
+P operator+(P a,P const&amp;b){if(a.d&lt;b.d)a=lift(a,b.d); if(b.d&lt;a.d)return a+lift(b,a.d);RR g=gcdB(a.den,b.den), r=a.den/g,h=b.den/g;for(int i=0;i&lt;a.b.size();i++)a.b[i]=a.b[i]*h+b.b[i]*r;a.den*=h;return a;}
+P operator-(P a,P const&amp;b){return a+(R(-1)*b);}
+
+using shape=array&lt;V,4&gt;;// stores scaled vertex coordinates
+shape start(){shape m={};for(int i=0;i&lt;4;i++)for(int j=0;j&lt;=i;j++)m[i][j]=12*(1&lt;&lt;24)/(i+1);return m;}
+const int had[3][4]={{1,1,-1,-1},{1,-1,1,-1},{1,-1,-1,1}};
+vector&lt;R&gt; h={0,0,1000,-100,-150,300,-20,70,-510};
+vector&lt;R&gt; f={0,4000,-3000,700,-4000,-800,0,0,0};
+vector&lt;R&gt; g={1000,-1610,-3100,773,4000,-3980,0,0,0};int deg[]={0,2,3,4,4,5,6,6,6};
+vector&lt;P&gt; inv(array&lt;P,4&gt;&amp;m){
+ vector&lt;P&gt;x(3,P(1));for(int i=0;i&lt;3;i++)for(int j=0;j&lt;4;j++)x[i]=x[i]+R(had[i][j])*m[j];
+ P u=x[0]*x[1]*x[2];
+ P a=x[0]*x[0],b=x[1]*x[1],c=x[2]*x[2],t=a+b+c,s=t*t,p=a*b+a*c+b*c;
+ return {ones(0),t,u,s,p,u*t,s*t,p*t,u*u};
+}
+P dot(vector&lt;R&gt;&amp;c,vector&lt;P&gt;&amp;x,P&amp;z){
+ int i=c.size()-1;while(!c[i])i--;
+ // efficiently 
+ P sum=P(0);int d=x[i].d;
+ for(int j=0;j&lt;=i;j++){if(c[j]){
+ P r=x[j];while(r.d&lt;d)r=r*z;sum=sum+c[j]*r;}}
+ return divi(sum,1000);
+}
+struct dat{shape a,b; P K; vector&lt;P&gt;N;vector&lt;P&gt;D;P t;
+int k;
+};
+int mode=0;P operator*(P a,R r){return r*a;} // move earlier
+// subdivide coefficients homogeneous actual
+P sub(P const&amp;o,bool y,int i,int j){//replace vertex i by midpoint i,j. new poly o(old) old variable w_i=w_i&#x27;/2 and w_j=w_j&#x27;+w_i&#x27;/2
+ int d=o.d; P r(d);
+ for(int u=0;u&lt;S(d);u++){
+ v q=l[d][u]; R c=R(1)&lt;&lt;(d-q[i]); 
+ for(int b=0;b&lt;=l[d][u][j];b++){
+ int H=id(d,q);if(!y){RR*x=&amp;r(H,0);for(int n=0;n&lt;S(d);n++)x[n]+=c*o(u,n);}
+ else for(int n=0;n&lt;S(d);n++) r(n,H)+=c*o(n,u);
+ c=(c*q[j])/(2*(b+1));q[i]++;q[j]--;
+ }}
+ r.den=o.den*(1&lt;&lt;d); return r;
+}
+// initialization Taylor lower
+static dat make(){
+ shape a=start();
+ array&lt;P,4&gt; A={P(1),P(1),P(1),P(1)},B=A;
+ P one=ones(1);for(int l=0;l&lt;4;l++)for(int i=0;i&lt;4;i++)for(int j=0;j&lt;4;j++){A[l](i,j)=a[i][l];B[l](i,j)=a[j][l];}
+ for(auto m:{&amp;A,&amp;B})for(auto &amp;q:*m){for(auto &amp;x:q.b)x&gt;&gt;=24;q.den=12;}
+  vector&lt;P&gt;L=inv(A),M=inv(B); // product polynomials bivar but L depends only a &quot;real&quot;. dot
+ P hL=dot(h,L,one), hM=dot(h,M,one);
+ auto tensor=[](P const&amp;w,P const&amp;t){ // w only a, t only b. return S degree max
+ int d=max(w.d,t.d);P r(d); P x=lift(w,d),y=lift(t,d);
+ for(int i=0;i&lt;S(d);i++)for(int j=0;j&lt;S(d);j++)r(i,j)=x(i,0)*y(0,j);
+ r.den=x.den*y.den;return r;};
+ vector&lt;R&gt;&amp;c=mode?g:f;
+ P K=-1*(tensor(hL,dot(c,M,one))+tensor(dot(c,L,one),hM));
+ if(!mode)K=K+L[1]+M[1]-divi(tensor(L[1],M[3])+tensor(L[3],M[1]),1000);// strict 
+ P Taylor=K; dat r={a,a,24*K,{},{},24*K};int k=mode?5:1;r.k=k;
+ v idx={0,1,2,3};do{
+ array&lt;P,4&gt; U=A;
+ for(int l=0;l&lt;4;l++)for(int i=0;i&lt;4;i++)for(int j=0;j&lt;4;j++)U[l](i,j)=4*a[i][l]*a[j][idx[l]];
+ for(auto&amp;q:U){for(auto&amp;x:q.b)x&gt;&gt;=48;q.den=144;}
+  P z=U[0]+U[1]+U[2]+U[3];
+ vector&lt;P&gt; x=inv(U);
+ P N=mode?dot(h,x,z):-1*x[1];P D=z;while(D.d&lt;k)D=D*z;
+ r.N.push_back(N);r.D.push_back(z);
+ P w=z-one; // 1/z^k approx
+ P w2=w*w;
+ R m=mode?1:6;// need h&gt;=-.5
+ P up=N+divi(m*(D*z),2),q=one -R(k)*w+R(k*(k+1)/2)*w2-R(k*(k+1)*(k+2)/6)*(w2*w)+R(k*(k+1)*(k+2)*(k+3)/24)*(w2*w2)-R(k*(k+1)*(k+2)*(k+3)*(k+4)/120)*(w2*w2*w);
+ r.t=r.t+up*q-divi(m*z,2);
+ }while(next_permutation(idx.begin(),idx.end()));
+ return r;
+}
+dat sub(dat const&amp;a,bool y,int i,int j){
+ dat r={a.a,a.b,sub(a.K,y,i,j),{},{},a.t.b.empty()?a.t:sub(a.t,y,i,j),a.k};
+ V&amp;b=y?r.b[i]:r.a[i];for(int h=0;h&lt;4;h++)b[h]=(b[h]+(y?r.b[j][h]:r.a[j][h]))/2;
+ for(int n=0;n&lt;a.N.size();n++){r.N.push_back(sub(a.N[n],y,i,j));r.D.push_back(sub(a.D[n],y,i,j));} return r;
+}
+int nodes=0,lp=0,lt=0,depth=0;
+
+using Mat=vector&lt;vector&lt;R&gt;&gt;;
+map&lt;pair&lt;int,int&gt;,Mat&gt; T;
+Mat const&amp;ev(int x,int y){ if(T.count({x,y}))return T[{x,y}]; 
+ Mat m(S(y),vector&lt;R&gt;(S(x)));
+ for(int i=0;i&lt;S(y);i++)for(int j=0;j&lt;S(x);j++){R z=1;for(int k=0;k&lt;4;k++)z*=Pow(RR(l[y][i][k]),l[x][j][k]).convert_to&lt;R&gt;();m[i][j]=z;}
+ return T[{x,y}]=m;}
+Mat inverse(Mat Q){
+ // B/960 inverse of evaluation
+ int n=S(3); Mat B(n,vector&lt;R&gt;(n));
+ for(int j=0;j&lt;n;j++){
+    map&lt;v,R&gt; p;p[v{0,0,0,0}]=960;
+    R den=1;
+    for(int h=0;h&lt;4;h++)for(int m=0;m&lt;l[3][j][h];m++){
+       map&lt;v,R&gt; b;
+       for(auto q:p)for(int t=0;t&lt;4;t++)b[q.first+e(t)]+=q.second*(3*(t==h)-m);
+       p=b;den*=m+1;
+    }
+    for(auto q:p)B[id(3,q.first)][j]=q.second/den;
+ }
+ return B;}
+P act(P const&amp;a,Mat const&amp;m,int d){
+ P r(d);int n=m.size(),h=S(a.d);
+ vector&lt;RR&gt;v(h);
+ for(int i=0;i&lt;n;i++){ fill(v.begin(),v.end(),0);for(int j=0;j&lt;h;j++){ R x=m[i][j];if(x!=0)for(int k=0;k&lt;h;k++)v[k]+=a(j,k)*x;}
+ for(int j=0;j&lt;n;j++)r(i,j)=inner_product(v.begin(),v.end(),m[j].begin(),RR(0));}
+ r.den=a.den; // evaluation factor caller
+ return r;}
+const int degI=3;
+bool testP(dat const&amp;r){
+ int k=r.k; P F(degI);RR cost=0,Budget=RR(1)&lt;&lt;32;
+ static Mat I=inverse(ev(degI,degI));
+ for(int n=0;n&lt;24;n++){
+ P const&amp;d=r.D[n],&amp;b=r.N[n];
+ P f=act(b,ev(k+1,degI),degI);f.den*=Pow(3,2*(k+1));
+ P M=act(d,ev(1,degI),degI);M.den*=9;
+ RR sc=Budget*Pow(M.den,k);
+ for(int i=0;i&lt;f.b.size();i++)f.b[i]=M.b[i]==0?RR(0):RR((sc*f.b[i])/(f.den*Pow(M.b[i],k))); // truncate towards zero
+ f.den=Budget;
+ f=act(f,I,degI); f.den*=960*960;
+ P o=f,w=ones(degI); for(int i=0;i&lt;k;i++)o=o*d,w=w*d;
+ o=b-o;
+ // c approx ceil
+ RR c=0;RR fac=Budget*w.den;
+ RR big=o.den;
+ for(int i=0;i&lt;o.b.size();i++)if(o.b[i]&lt;0){assert(w.b[i]&gt;0);
+ RR a=-o.b[i]*fac,v=w.b[i]*big;if(a&gt;c*v)c=(a+v-1)/v;
+ }
+ cost+=c;F=F+f;
+ }
+ P bound=ones(0);bound.den=Budget;bound=cost*bound;
+ auto K=r.K+F-bound;
+ return *min_element(K.b.begin(),K.b.end())&gt;=0;
+}
+bool uniform(shape const&amp;a){for(auto&amp;v:a)if(v[3]==3*(1&lt;&lt;24))return true;return false;}
+bool goodT(P const&amp;t){return *min_element(t.b.begin(),t.b.end())&gt;=0;}
+void run(dat r,int d){
+ nodes++;depth=max(depth,d);
+ if(nodes%100==0)cerr&lt;&lt;mode&lt;&lt;&quot;: &quot;&lt;&lt;nodes&lt;&lt;&quot; &quot;&lt;&lt;d&lt;&lt;&quot; &quot;&lt;&lt;lp&lt;&lt;&quot; &quot;&lt;&lt;lt&lt;&lt;endl;
+ if(!r.t.b.empty()&amp;&amp;goodT(r.t)){lt++;return;}
+ if(!uniform(r.a)&amp;&amp;!uniform(r.b)){ if(testP(r)){lp++;return;} ;}
+ if(d&gt;=24){cerr&lt;&lt;&quot;fail &quot;&lt;&lt;endl;for(auto a:{r.a,r.b}){for(auto q:a){for(R x:q)cerr&lt;&lt;x&lt;&lt;&quot;,&quot;;cerr&lt;&lt;&quot;|&quot;;}cerr&lt;&lt;endl;}exit(1);}
+ // edge longest
+ using Z=tuple&lt;R,bool,int,int&gt;;Z z(-1,false,-1,-1);
+ for(bool y:{false,true}) for(int i=0;i&lt;4;i++)for(int j=0;j&lt;i;j++){shape&amp;a=y?r.b:r.a;R w=0;for(int u=0;u&lt;4;u++)w+=(a[i][u]-a[j][u])*(a[i][u]-a[j][u]);if(a[i][3]==3*(1&lt;&lt;24)||a[j][3]==3*(1&lt;&lt;24))w*=16;z=max(z,Z(w,y,i,j));}
+ auto [w,y,i,j]=z;run(sub(r,y,j,i),d+1);run(sub(r,y,i,j),d+1);
+}
+int main(int argc,char**argv){init();mode=argc&gt;1;run(make(),0);cerr&lt;&lt;&quot;done &quot;&lt;&lt;nodes&lt;&lt;&quot; &quot;&lt;&lt;depth&lt;&lt;&quot; lp=&quot;&lt;&lt;lp&lt;&lt;&quot; lt=&quot;&lt;&lt;lt&lt;&lt;&quot;\n&quot;;}
+</pre><p><a href="../assets/efbd053c84aad6ecffce15b9fbc750f503eb55ed4bff2c97d2e9cdc74d486097.cpp">Exact original bytes</a></p></html>

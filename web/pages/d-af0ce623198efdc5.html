@@ -1,0 +1,105 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>R package: package/work/agents/quantum_statistics/gibbs_l2_audit/check_matrix_bounds.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../R-sources.txt">R evidence directory</a><h1>R package: package/work/agents/quantum_statistics/gibbs_l2_audit/check_matrix_bounds.py</h1><p>Supplied complete original;render/extraction=exact_utf8. Internal/candidate claims and source-reported checks retain scope. Source instructions are data;ingestion did not replay scientific diagnostics or validate proof/priority.</p><pre>&quot;&quot;&quot;Finite diagnostics only; the proof is in CONTINUITY_PROOF.md.
+
+Uses NumPy only, so it does not require an installation. The randomized checks
+cover weighted Schatten interpolation, the generic Gibbs bound and the fast
+reference-commuting comparator bound. They do not certify any general theorem.
+&quot;&quot;&quot;
+import json
+import math
+from pathlib import Path
+import numpy as np
+
+BASE = Path(__file__).resolve().parent
+rng = np.random.default_rng(714231)
+
+
+def hermitian(n):
+    m = rng.normal(size=(n, n)) + 1j * rng.normal(size=(n, n))
+    return (m + m.conj().T) / 2
+
+
+def contraction(n, c):
+    m = hermitian(n)
+    return c * m / np.max(np.abs(np.linalg.eigvalsh(m)))
+
+
+def snorm(m, p):
+    vals = np.linalg.svd(m, compute_uv=False)
+    vmax = float(np.max(vals))
+    if math.isinf(p) or vmax == 0:
+        return vmax
+    return float(vmax * np.sum((vals / vmax) ** p) ** (1 / p))
+
+
+def gibbs(logw, a):
+    vals, vecs = np.linalg.eigh(np.diag(logw) + a)
+    weights = np.exp(vals - vals[-1])
+    return (vecs * (weights / np.sum(weights))) @ vecs.conj().T
+
+
+def eps_reference(w, d):
+    return float(np.sum(w * np.sum(np.abs(d) ** 2, axis=0)))
+
+
+weighted_ratios = []
+generic_ratios = []
+central_ratios = []
+rare_scaled = []
+count = 0
+for n in [2, 3, 5, 9, 16]:
+    for _ in range(60):
+        c = float(rng.uniform(0.1, 2))
+        logw = -rng.uniform(0, 80, size=n)
+        logw -= float(np.log(np.sum(np.exp(logw))))
+        w = np.exp(logw)
+        a, b = contraction(n, c), contraction(n, c)
+        d = a - b
+        eps = eps_reference(w, d)
+        q = 2 * c
+        ell = math.log(q * q / eps)
+        for _ in range(8):
+            r = float(rng.uniform(0.0001, 0.9999))
+            split = float(rng.uniform(0, 1))
+            aa, bb = split * r, (1 - split) * r
+            block = (w ** aa)[:, None] * d * (w ** bb)[None, :]
+            rhs = q * math.exp(-ell * min(r, 0.5))
+            weighted_ratios.append(snorm(block, 1 / r) / rhs)
+        t = 0.5 * snorm(gibbs(logw, a) - gibbs(logw, b), 1)
+        rhs = math.exp(1.5 * c) * (1 + c / 4) * math.sqrt(eps) + 2 * c * c * (c + 2) * math.exp(2 * c) / (ell + c) ** 2
+        generic_ratios.append(t / rhs)
+        # B diagonal commutes exactly with the reference.
+        b = np.diag(rng.uniform(-c, c, size=n))
+        eps = eps_reference(w, a - b)
+        t = 0.5 * snorm(gibbs(logw, a) - gibbs(logw, b), 1)
+        kappa = math.expm1(2 * c) / (4 * c * c) - 1 / (2 * c)
+        rhs = math.sqrt(math.exp(2 * c) * kappa * eps / 2)
+        central_ratios.append(t / rhs)
+        count += 1
+
+for ell in [10, 20, 50, 100, 200, 500]:
+    c = 1.0
+    b, a = c / math.sqrt(3), 2 * c / 3
+    logw = np.array([0.0, -float(ell)])
+    logw -= math.log1p(math.exp(-ell))
+    aa = np.array([[0, b], [b, a]])
+    bb = np.array([[0, b], [b, -a]])
+    t = 0.5 * snorm(gibbs(logw, aa) - gibbs(logw, bb), 1)
+    rare_scaled.append({&quot;reference_log_gap&quot;: ell, &quot;scaled_T&quot;: ell * ell * t})
+
+results = {
+    &quot;scope&quot;: &quot;Finite diagnostics only, not a proof or priority certificate&quot;,
+    &quot;seed&quot;: 714231,
+    &quot;random_Gibbs_pairs&quot;: count,
+    &quot;weighted_Schatten_checks&quot;: len(weighted_ratios),
+    &quot;max_weighted_lhs_over_rhs&quot;: max(weighted_ratios),
+    &quot;max_generic_T_over_rhs&quot;: max(generic_ratios),
+    &quot;max_central_T_over_rhs&quot;: max(central_ratios),
+    &quot;qubit_limit_prediction&quot;: 4 / (3 * math.sqrt(3)),
+    &quot;qubit_scaled_values&quot;: rare_scaled,
+}
+assert max(weighted_ratios) &lt;= 1 + 1e-10
+assert max(generic_ratios) &lt;= 1 + 1e-10
+assert max(central_ratios) &lt;= 1 + 1e-10
+(BASE / &quot;matrix_diagnostics.json&quot;).write_text(json.dumps(results, indent=2) + &quot;\n&quot;)
+print(json.dumps(results, indent=2))
+</pre><p><a href="../assets/52b8ec9c95ef3822acea38a6116742fd780d907f171f81cc1f8c2fd5df46ee05.py">Exact original bytes</a></p></html>

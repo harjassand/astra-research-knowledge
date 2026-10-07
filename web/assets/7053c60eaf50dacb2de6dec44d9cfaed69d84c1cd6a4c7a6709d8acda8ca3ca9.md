@@ -1,0 +1,120 @@
+# Dimension-independent approximate no broadcasting
+
+Status: complete alternative ultraproduct proof; the normal channel/marginal extensions, faithful-support reduction, ergodic expectation and centralizer conclusion passed two independent adversarial audits. An explicit finite-dimensional information-chain proof now supersedes the need for this qualitative argument, in ../broadcast_quantitative/EXPLICIT_PAIR_BOUND.md. The present argument is preserved as a broader algebraic interface audit. External correctness and priority review remain open.
+
+## Statement and quantifiers
+
+For two density matrices rho and sigma on any finite-dimensional Hilbert space H, let
+
+b_2(rho,sigma) = inf_B max_{tau in {rho,sigma}, a in {1,2}} T(Tr_{other a} B(tau),tau),
+
+where B ranges over all CPTP maps B(H)_* -> B(H tensor H)_*, and T(rho,sigma)=||rho-sigma||_1/2. Correlations between outputs are allowed. The same channel must work for both unknown input states.
+
+There exists a dimension-independent function v(epsilon) tending to zero as epsilon decreases to zero such that
+
+Delta(rho,sigma) <= v(b_2(rho,sigma)),
+
+where Delta(rho,sigma)=||sqrt(rho)sqrt(sigma)||_1-Tr sqrt(rho)sqrt(sigma).
+
+Equivalently, no sequence of pairs in growing dimension can have vanishing two-receiver marginal broadcasting error and a root-fidelity/affinity gap bounded away from zero. No entropy assumption is required for this converse. The proof below is qualitative; the finite-dimensional proof in ../broadcast_quantitative/EXPLICIT_PAIR_BOUND.md supplies the explicit stronger modulus
+
+v(epsilon)=min(1, inf_(L>=0 integer) 2 sqrt(2[L epsilon+sqrt(ln(2)/(2*2^L))]))
+
+with v(0)=0, of order sqrt(epsilon log(1/epsilon)) for small epsilon. A pure-qubit construction forces every universal modulus to be at least order sqrt(epsilon); the possible logarithmic loss remains unresolved.
+
+For an experiment E_n, define b_(n,2) by taking the worst marginal error over all states of E_n. The pair theorem gives delta_n <= v(b_(n,2)). Combined with GENERAL_CRITERION.md, under uniform total boundedness in trace distance the following are equivalent:
+
+1. sup_{rho,sigma in E_n} Delta(rho,sigma) tends to zero.
+2. A single measure-and-prepare channel reconstructs every unknown state with vanishing worst-case trace-distance error.
+3. A single one-to-two broadcasting channel has vanishing worst marginal trace-distance error.
+4. For every prescribed receiver-count sequence K_n >= 2, a one-to-K_n broadcasting channel has vanishing worst marginal error, with an upper bound independent of K_n.
+
+The last condition concerns marginal density matrices. It says nothing about independent copies, the joint distance to rho^(tensor K_n), or preservation of a purification.
+
+## 1. Contradiction and compatible ultraproduct channels
+
+Suppose rho_(i,n), i=1,2, and broadcasting channels B_n have marginal errors tending to zero while Delta(rho_(1,n),rho_(2,n)) >= d_0 > 0.
+
+Put M_n=B(H_n), N_n=B(H_n tensor H_n), and choose a free ultrafilter U. Raynaud's theorem identifies the Banach ultraproducts of the preduals with M_* and N_* for Groh-Raynaud von Neumann algebras M and N. Proposition5.2 p67 makes these identifications complete isometries, compatible with fixed finite matrix amplification. Coordinate CPTP predual maps are completely contractive, so their Banach ultraproduct is a completely contractive map
+
+B_*: M_* -> N_*.
+
+Its adjoint Phi:N -> M is normal, unital and completely contractive. A unital completely contractive map between C*-algebras is UCP: every amplification is unital contractive, and composition with any state gives a norm-one functional with value one at the unit, hence a positive functional. Thus every amplification is positive. This construction uses all bounded sequences of trace-class functionals, rather than only the states of the experiment. Unitality follows because the coordinate channels preserve the value of every normal functional at the unit.
+
+Likewise the two coordinate partial traces define contractive CP, trace-preserving ultraproduct predual maps P_(a,*):N_* -> M_*, with normal UCP adjoints
+
+iota_a:M -> N, a=1,2.
+
+The iota_a are normal *-homomorphisms with commuting ranges. Here is the interface proof, which is essential and cannot be replaced by an unsupported assertion of a normal spatial tensor-product limit.
+
+Let C_M be the represented C*-ultraproduct of the coordinate algebras M_n, which is ultraweakly dense in M. Pairing against every element of N_* shows that for x=(x_n)_U in C_M, iota_1(x) is represented by (x_n tensor I)_U, and iota_2(x) by (I tensor x_n)_U. Thus each restriction iota_a|_(C_M) is multiplicative and the two restrictions have commuting ranges. Normality extends these identities to all of M: for one factor in C_M, first extend the other by ultraweak density and separate ultraweak continuity of multiplication; then extend the remaining factor. This proves both multiplicativity and range commutation. Injectivity is not required below.
+
+Let phi_i in M_* be the normal state corresponding to (rho_(i,n))_U. The vanishing marginal errors give exact identities
+
+phi_i composed with Phi composed with iota_a = phi_i, for i=1,2 and a=1,2.
+
+No identification of N with the normal spatial tensor product M bar-tensor M is used or needed.
+
+## 2. Faithful input reduction without compressing the output
+
+Set phi=(phi_1+phi_2)/2, and let p be its support in M. Work on R=pMp, where phi is a faithful normal state and phi_i <= 2 phi. Haagerup Lp of a corner identifies with p Lp(M) p; the state densities have support under p, so products, norms and the gap are unchanged by this restriction or extension by zero. Keep the full output algebra N, so that the two marginal ranges remain commuting.
+
+Define the normal UCP map Phi_p:N -> R by Phi_p(y)=p Phi(y) p. Its unit is p. Restrict iota_a to R; it remains a *-homomorphism, but is not assumed unital into N. Define
+
+T_a:R -> R, T_a(x)=Phi_p(iota_a(x)).
+
+These maps are normal CP and preserve phi_i and phi. They are unital on R: 0 <= T_a(p) <= p, while phi(T_a(p))=phi(p)=1. Faithfulness of phi on R forces T_a(p)=p. Consequently T_1 and T_2 are normal UCP phi-preserving Markov maps on R.
+
+## 3. A normal ergodic conditional expectation
+
+Put T=(T_1+T_2)/2, and F={x in R:T(x)=x}.
+
+F is a von Neumann subalgebra. For a fixed point x, Schwarz gives T(x* x)-x* x >= 0, with phi of this difference equal to zero. Faithfulness gives equality. The analogous equality for xx* implies x belongs to the multiplicative domain of T. Therefore products of fixed points are fixed; ultraweak closure follows from normality.
+
+Every x in F is also fixed by both T_a. On the Hilbert space L2(R,phi), each T_a is a contraction by Schwarz and phi invariance. Equality x=(T_1x+T_2x)/2, together with the strict convexity of Hilbert norm and both contraction bounds, forces T_1x=T_2x=x.
+
+The Cesaro means C_L=(1/L) sum_{j=0}^{L-1} T^j satisfy ||C_L T-C_L|| <= 2/L and ||T C_L-C_L|| <= 2/L. Their values on any bounded x lie in an ultraweakly compact operator-norm ball. Compactness of the product of these balls gives one subnet converging ultraweakly for every x simultaneously. Denote the pointwise limit by E. The limit is linear, unital CP and phi-preserving. Normality of T and the two norm estimates give T E=E T=E. Since every C_L fixes F, E fixes F; its range is exactly F and E is a projection.
+
+The projection is normal. If 0 <= x_alpha increases to x, then E(x_alpha) increases to y <= E(x). Normality of phi gives phi(y)=sup_alpha phi(x_alpha)=phi(x)=phi(E(x)). Faithfulness forces y=E(x).
+
+For a in F, E(a*a)=a*a=E(a)*E(a) and likewise for aa*. The multiplicative-domain theorem for E gives E(ax)=a E(x) and E(xa)=E(x)a. Thus E is a normal conditional expectation onto F. Each phi_i is T-invariant and normal; taking the same pointwise ultraweak Cesaro limit gives phi_i composed with E = phi_i.
+
+## 4. Broadcasting forces the sufficient algebra to be abelian
+
+For x,y in F, we have T_1(x)=x and T_1(x*x)=x*x. Because iota_1 is a *-homomorphism, these equalities show that iota_1(x) belongs to the multiplicative domain of Phi_p. The same holds for iota_2(y). Therefore
+
+xy = Phi_p(iota_1(x) iota_2(y))
+   = Phi_p(iota_2(y) iota_1(x)) = yx,
+
+where the middle equality uses the commuting marginal ranges. F is abelian.
+
+This is the established operator-algebraic no-broadcasting mechanism. Kuramochi's Corollary1 (2017), p14, provides an alternative exact theorem for normal-state experiments and a Schwarz channel on the algebraic tensor product. Our proof has been included to make the corner and normality contracts explicit.
+
+## 5. An abelian sufficient algebra forces root-gap zero
+
+Because E is phi-preserving, bimodular and has abelian range, every a in F lies in the centralizer of phi. Indeed, for any x in R,
+
+phi(ax)=phi(a E(x))=phi(E(x) a)=phi(xa).
+
+The bounded domination phi_i <= 2 phi implies that the restrictions to the abelian algebra F have bounded Radon-Nikodym derivatives f_i in F, with 0 <= f_i <= 2. Thus phi_i(a)=phi(f_i a) for a in F. Sufficiency and bimodularity extend this identity to all x in R:
+
+phi_i(x)=phi_i(E(x))=phi(f_i E(x))=phi(E(f_i x))=phi(f_i x).
+
+In the Haagerup Lp realization, an element of the centralizer commutes with the density h_phi. Hence h_(phi_i)=f_i h_phi; the f_i commute with one another and with h_phi. The positive square roots h_(phi_i)^(1/2) strongly commute, so their L1 product is positive and
+
+||h_(phi_1)^(1/2) h_(phi_2)^(1/2)||_1
+  - tr(h_(phi_1)^(1/2) h_(phi_2)^(1/2)) = 0.
+
+Raynaud's compatible L1/L2 product, norm, Mazur-map and inner-product identifications transfer this expression back to
+
+lim_U Delta(rho_(1,n),rho_(2,n))=0,
+
+contradicting d_0. The pairwise approximation modulus follows by the usual sequential contradiction: define v(epsilon) as the supremum of Delta over all finite-dimensional pairs admitting marginal error at most epsilon (or its monotone envelope). If v failed to tend to zero, the sequence above would exist. Taking a channel arbitrarily close to the infimum handles nonattainment.
+
+## Sources and limits
+
+Yves Raynaud, On ultrapowers of non commutative Lp spaces, Journal of Operator Theory48(2002),41-68: https://jot.theta.ro/jot/archive/2002-048-001/2002-048-001-003.pdf . Theorem1.1 p44 and Proposition1.6 p46 establish the normal predual/Groh identification and its positive cone; the introduction p42 gives its varying-algebra version. Proposition5.2 p67 establishes complete isometry and compatibility with fixed finite matrix amplification. Theorem3.6 and Theorem5.1 are the compatible Lp/Mazur/product results. The source does not state the approximation theorem above.
+
+Yui Kuramochi, Accessible information without disturbing partially known quantum states on a von Neumann algebra (2017): https://arxiv.org/pdf/1710.01599 . Corollary1 p14 identifies broadcasting on the algebraic tensor product with equivalence to a classical experiment. The spatial normal tensor-product criterion is more restrictive (Remark2), so that topology must not be silently imposed on the ultraproduct.
+
+This proof gives a dimension-free qualitative obstruction for pairs, and a compact-experiment equivalence after combining with GENERAL_CRITERION.md. Its finite-dimensional replacement now gives an explicit universal rate and finite-ensemble reconstruction estimate, but still does not turn correlated broadcasting into independent cloning or assert that pair gap alone reconstructs an experiment whose covering entropy diverges. The MUB obstruction remains valid for EB reconstruction; it cannot by itself disprove the pair broadcasting converse. The finite-label bound and the growing-entropy condition b_n log N_n(a_n)->0 are in GENERAL_M_BROADCAST_BOUND.md. The exact operator-algebraic proof and its own source ingredients remain established mechanisms rather than newly introduced principles.

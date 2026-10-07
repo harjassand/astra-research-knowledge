@@ -1,0 +1,82 @@
+"""Exact finite checks of the derived Kesten-Christoffel specialization.
+
+This is algebraic verification of small fixtures, not proof or novelty evidence.
+"""
+from fractions import Fraction as F
+from collections import defaultdict
+import json
+
+def add(a, b):
+    out = defaultdict(F, a)
+    for w, c in b.items():
+        out[w] += c
+    return {w: c for w, c in out.items() if c}
+
+def scale(a, c):
+    return {w: c*v for w, v in a.items() if c*v}
+
+def left_word(g, w):
+    out = list(g)
+    for x in w:
+        if out and out[-1] == -x:
+            out.pop()
+        else:
+            out.append(x)
+    return tuple(out)
+
+def shifts(a, generators):
+    out = defaultdict(F)
+    for g in generators:
+        for w, c in a.items():
+            out[left_word(g, w)] += c
+    return {w: c for w, c in out.items() if c}
+
+def norm_sq(a):
+    return sum((c*c for c in a.values()), F(0))
+
+def pol_add(a, b):
+    out = [F(0)] * max(len(a), len(b))
+    for i, x in enumerate(a):
+        out[i] += x
+    for i, x in enumerate(b):
+        out[i] += x
+    while len(out)>1 and not out[-1]:
+        out.pop()
+    return out
+
+records=[]
+for m in range(1,5):
+    d=m+1
+    generators=[()]+[(j,) for j in range(1,m+1)]
+    inverse=[()]+[(-j,) for j in range(1,m+1)]
+    def Q(a):
+        return shifts(shifts(a,inverse),generators)
+    # F_even(A) are even polynomials, represented in x=A^2.
+    # Build full F_j first in the adjacency variable and extract even powers.
+    full=[[F(1)],[F(0),F(1)],[F(-d),F(0),F(1)]]
+    for j in range(3,9):
+        full.append(pol_add([F(0)]+full[-1],[-m*c for c in full[-2]]))
+    for r in range(1,5):
+        k=F(1)+F(r*d,m)
+        q=[F(1)]
+        for j in range(1,r+1):
+            even=full[2*j][::2]
+            q=pol_add(q,[F((-1)**j,m**j)*c for c in even])
+        q=[c/k for c in q]
+        assert q[0] == 1
+        p=[-c for c in q[1:]]
+        h0={}
+        power={():F(1)}
+        for c in p:
+            h0=add(h0,scale(power,c))
+            power=Q(power)
+        h=shifts(h0,inverse)
+        error=add(shifts(h,generators),{():F(-1)})
+        expected_residual=F(m,m+r*d)
+        expected_norm=F(d*r*(r+1)*(2*r+1),6*(m+r*d)**2)
+        assert norm_sq(error)==expected_residual
+        assert norm_sq(h)==expected_norm
+        assert norm_sq(h)<F(r,3*m)
+        assert len(h)==d*sum(m**(2*j) for j in range(r))
+        records.append(dict(m=m,r=r,support=len(h),norm_sq=str(expected_norm),residual_sq=str(expected_residual)))
+print(json.dumps({"exact_checks":len(records),"records":records},indent=2))

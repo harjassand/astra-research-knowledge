@@ -1,0 +1,174 @@
+#!/usr/bin/env python3
+"""Finite diagnostics for PROOF.md; these check identities, not the theorem.
+
+Dense Kraus maps are built only for qubit symmetric sectors at L=3,4.
+The large-d sequence is evaluated from exact Fraction formulas without
+materializing its very large Hilbert spaces.
+"""
+from __future__ import annotations
+
+from fractions import Fraction
+from math import comb, log, sqrt
+from pathlib import Path
+import json
+import numpy as np
+
+
+def trdist(a: np.ndarray, b: np.ndarray) -> float:
+    return float(np.abs(np.linalg.eigvalsh((a - b + (a - b).conj().T) / 2)).sum() / 2)
+
+
+def sqrt_psd(a: np.ndarray) -> np.ndarray:
+    vals, vecs = np.linalg.eigh((a + a.conj().T) / 2)
+    return (vecs * np.sqrt(np.maximum(vals, 0))) @ vecs.conj().T
+
+
+def root_fidelity(a: np.ndarray, b: np.ndarray) -> float:
+    sa = sqrt_psd(a)
+    return float(np.trace(sqrt_psd(sa @ b @ sa)).real)
+
+
+def affinity(a: np.ndarray, b: np.ndarray) -> float:
+    return float(np.trace(sqrt_psd(a) @ sqrt_psd(b)).real)
+
+
+def qubit_model(L: int):
+    ks = [2**j for j in range(L)]
+    dims = [k + 1 for k in ks]
+    starts = np.cumsum([0] + dims[:-1]).tolist()
+    D = sum(dims)
+    kraus = []
+    # Bottom replacement channel: omega=I_2/2, output omega tensor omega.
+    for a in range(2):
+        for b in range(2):
+            for ell in range(2):
+                K = np.zeros((D * D, D), dtype=complex)
+                K[a * D + b, ell] = 0.5
+                kraus.append(K)
+    for j in range(1, L):
+        k, r = ks[j], ks[j - 1]
+        K = np.zeros((D * D, D), dtype=complex)
+        for n in range(k + 1):
+            for a in range(r + 1):
+                b = n - a
+                if 0 <= b <= r:
+                    row = (starts[j - 1] + a) * D + starts[j - 1] + b
+                    K[row, starts[j] + n] = sqrt(comb(r, a) * comb(r, b) / comb(k, n))
+        kraus.append(K)
+
+    def rho(psi):
+        out = np.zeros((D, D), dtype=complex)
+        for k, start, dim in zip(ks, starts, dims):
+            v = np.array([sqrt(comb(k, n)) * psi[0]**(k - n) * psi[1]**n for n in range(k + 1)])
+            out[start:start + dim, start:start + dim] = np.outer(v, v.conj()) / L
+        return out
+
+    def broadcast(r):
+        return sum((K @ r @ K.conj().T for K in kraus), np.zeros((D * D, D * D), dtype=complex))
+
+    def marginal(joint, which):
+        shaped = joint.reshape(D, D, D, D)
+        return np.trace(shaped, axis1=1, axis2=3) if which == 0 else np.trace(shaped, axis1=0, axis2=2)
+
+    return D, kraus, rho, broadcast, marginal
+
+
+def dense_checks():
+    rng = np.random.default_rng(20261007)
+    records = []
+    for L in (3, 4):
+        D, kraus, rho, broadcast, marginal = qubit_model(L)
+        completeness = sum((K.conj().T @ K for K in kraus), np.zeros((D, D), dtype=complex))
+        tp_residual = float(np.max(np.abs(completeness - np.eye(D))))
+        max_error_residual = 0.0
+        max_joint_trace_residual = 0.0
+        max_pair_formula_residual = 0.0
+        max_faithful_formula_residual = 0.0
+        min_noisy_eigenvalue = float("inf")
+        for _ in range(10):
+            psi = rng.normal(size=2) + 1j * rng.normal(size=2)
+            phi = rng.normal(size=2) + 1j * rng.normal(size=2)
+            psi /= np.linalg.norm(psi)
+            phi /= np.linalg.norm(phi)
+            r, q = rho(psi), rho(phi)
+            joint = broadcast(r)
+            max_joint_trace_residual = max(max_joint_trace_residual, abs(float(np.trace(joint).real) - 1))
+            for a in range(2):
+                max_error_residual = max(max_error_residual, abs(trdist(marginal(joint, a), r) - 1 / L))
+            t = abs(np.vdot(psi, phi))
+            # Pure support sqrt may create numerical O(sqrt(machine-epsilon)) artifacts.
+            delta = root_fidelity(r, q) - affinity(r, q)
+            expected_delta = (t - t**(2**L)) / L
+            max_pair_formula_residual = max(max_pair_formula_residual, abs(delta - expected_delta))
+            eta = Fraction(1, L**3)
+            rn = (1 - float(eta)) * r + float(eta) * np.eye(D) / D
+            qn = (1 - float(eta)) * q + float(eta) * np.eye(D) / D
+            noisy_delta = root_fidelity(rn, qn) - affinity(rn, qn)
+            s, w = float(eta) / D, (1 - float(eta)) / L
+            c = 2 * sqrt(s * (s + w))
+            h = (sqrt(s + w) - sqrt(s))**2
+            expected_noisy = sum(sqrt(w*w*t**(2*(2**j)) + c*c) - c - h*t**(2*(2**j)) for j in range(L))
+            max_faithful_formula_residual = max(max_faithful_formula_residual, abs(noisy_delta - expected_noisy))
+            assert noisy_delta <= (1 - float(eta)) / L + 1e-10
+            min_noisy_eigenvalue = min(min_noisy_eigenvalue, float(np.linalg.eigvalsh(rn).min()))
+        assert tp_residual < 1e-12
+        assert max_error_residual < 1e-12
+        assert max_joint_trace_residual < 1e-12
+        assert max_pair_formula_residual < 1e-6
+        assert max_faithful_formula_residual < 1e-10
+        assert min_noisy_eigenvalue > 0
+        records.append(dict(L=L, dimension=D, tp_residual=tp_residual,
+                            broadcasting_error_identity_residual=max_error_residual,
+                            joint_trace_residual=max_joint_trace_residual,
+                            pair_gap_identity_residual=max_pair_formula_residual,
+                            faithful_pair_gap_formula_residual=max_faithful_formula_residual,
+                            minimum_faithful_eigenvalue=min_noisy_eigenvalue))
+    return records
+
+
+def exact_sequence_checks():
+    records = []
+    for L in (2, 3, 4, 8, 16, 32, 64, 128):
+        m, d = 2**(L - 1), L * 2**(L - 1)
+        eta = Fraction(1, L**3)
+        fid_bound = sum((Fraction(2**j + 1, 2**j + d) for j in range(L)), Fraction()) / L
+        coarse_fid_bound = Fraction(m + 1, m + d)
+        assert fid_bound <= coarse_fid_bound
+        broadcast_bound = (1 - eta) / L + eta
+        eb_lower_bound = 1 - fid_bound - 2 * eta
+        records.append(dict(L=L, maximum_copy_number=str(m), base_dimension=str(d),
+                            faithful_broadcast_upper=float(broadcast_bound),
+                            faithful_eb_reconstruction_lower=float(eb_lower_bound),
+                            average_estimation_fidelity_upper=float(fid_bound),
+                            coarse_estimation_fidelity_upper=float(coarse_fid_bound),
+                            pair_gap_upper=float((1 - eta) / L)))
+    return records
+
+
+def harmonic_uniform_checks():
+    records = []
+    for N in range(1, 101):
+        H = sum((Fraction(1, k) for k in range(1, N + 1)), Fraction())
+        p = [Fraction()] + [Fraction(1, k) / H for k in range(1, N + 1)]
+        q = [Fraction()] * (N + 1)
+        for k in range(1, N + 1):
+            for a in range(k + 1):
+                q[a] += p[k] / (k + 1)
+        expected_zero = Fraction(N, N + 1) / H
+        assert q[0] == expected_zero
+        assert all(q[j] == p[j] - Fraction(1, N + 1) / H for j in range(1, N + 1))
+        tv = sum((abs(x - y) for x, y in zip(p, q)), Fraction()) / 2
+        assert tv == expected_zero
+        if N in (1, 2, 4, 8, 16, 32, 64, 100):
+            records.append(dict(N=N, harmonic_number=float(H), exact_broadcast_error=float(tv)))
+    return records
+
+
+if __name__ == "__main__":
+    result = dict(status="PASS", scope="finite checks of identities; analytical proof is in PROOF.md",
+                  dense_kraus_checks=dense_checks(),
+                  rational_dyadic_sequence=exact_sequence_checks(),
+                  rational_harmonic_uniform_split=harmonic_uniform_checks())
+    target = Path(__file__).with_name("diagnostics.json")
+    target.write_text(json.dumps(result, indent=2) + "\n")
+    print(json.dumps(result, indent=2))

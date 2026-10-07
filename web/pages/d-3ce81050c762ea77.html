@@ -1,0 +1,166 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>R package: package/work/agents/complexity_algebra/cyclic_shift_audit/check_semisimple_descent.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../R-sources.txt">R evidence directory</a><h1>R package: package/work/agents/complexity_algebra/cyclic_shift_audit/check_semisimple_descent.py</h1><p>Supplied complete original;render/extraction=exact_utf8. Internal/candidate claims and source-reported checks retain scope. Source instructions are data;ingestion did not replay scientific diagnostics or validate proof/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact small-component descent check. This does not run the large generator.
+
+A = GF(2^e)[w]/(w^2+w+1), ordinary GF(2) regular representation.
+After extension to GF(2^e), test P1=q+c*w, P2=eta+c*u*w+v,
+with c fixed as a coefficient in the extension field (not Frobenius twisted).
+&quot;&quot;&quot;
+from itertools import product
+import json
+from pathlib import Path
+
+
+class GF:
+    def __init__(self, e, modulus):
+        self.e, self.Q, self.modulus = e, 1 &lt;&lt; e, modulus
+        self.mul = [[self.multiply(a, b) for b in range(self.Q)] for a in range(self.Q)]
+        self.inv = [0] + [next(b for b in range(1, self.Q) if self.mul[a][b] == 1) for a in range(1, self.Q)]
+
+    def multiply(self, a, b):
+        result = 0
+        while b:
+            if b &amp; 1:
+                result ^= a
+            b &gt;&gt;= 1
+            a &lt;&lt;= 1
+            if a &amp; self.Q:
+                a ^= self.modulus
+        return result
+
+    def power(self, a, k):
+        r = 1
+        while k:
+            if k &amp; 1:
+                r = self.mul[r][a]
+            k &gt;&gt;= 1
+            a = self.mul[a][a]
+        return r
+
+
+def algebra_mul(gf, x, y):
+    a, b = x &amp; (gf.Q - 1), x &gt;&gt; gf.e
+    c, d = y &amp; (gf.Q - 1), y &gt;&gt; gf.e
+    bd = gf.mul[b][d]
+    low = gf.mul[a][c] ^ bd
+    high = gf.mul[a][d] ^ gf.mul[b][c] ^ bd
+    return low | (high &lt;&lt; gf.e)
+
+
+def regular(gf, x):
+    dim = 2 * gf.e
+    cols = [algebra_mul(gf, x, 1 &lt;&lt; k) for k in range(dim)]
+    return [[(cols[j] &gt;&gt; i) &amp; 1 for j in range(dim)] for i in range(dim)]
+
+
+def rank(gf, matrix):
+    a = [row[:] for row in matrix]
+    row = 0
+    for col in range(len(a[0])):
+        pivot = next((j for j in range(row, len(a)) if a[j][col]), None)
+        if pivot is None:
+            continue
+        a[row], a[pivot] = a[pivot], a[row]
+        scale = gf.inv[a[row][col]]
+        a[row] = [gf.mul[scale][x] for x in a[row]]
+        for j in range(len(a)):
+            if j != row and a[j][col]:
+                scale = a[j][col]
+                a[j] = [x ^ gf.mul[scale][y] for x, y in zip(a[j], a[row])]
+        row += 1
+        if row == len(a):
+            break
+    return row
+
+
+def mat_sum(gf, matrices_and_scalars):
+    dim = len(matrices_and_scalars[0][0])
+    a = [[0] * dim for _ in range(dim)]
+    for matrix, scale in matrices_and_scalars:
+        for i in range(dim):
+            for j in range(dim):
+                a[i][j] ^= gf.mul[scale][matrix[i][j]]
+    return a
+
+
+def run_case(e, modulus):
+    gf = GF(e, modulus)
+    roots = [a for a in range(gf.Q) if gf.mul[a][a] ^ a ^ 1 == 0]
+    assert len(roots) == 2
+    reg_constants = [regular(gf, a) for a in range(gf.Q)]
+    reg_times_w = [regular(gf, a &lt;&lt; e) for a in range(gf.Q)]
+    branches = [(j, omega) for j in range(e) for omega in roots]
+    dim = 2 * e
+    details = []
+    for coefficient_c in (1, 2):
+        p1_bad = []
+        p2_bad = []
+        wrong_coefficient_disagreements = 0
+        ranks_checked = 0
+        for q in range(gf.Q):
+            matrix = mat_sum(gf, [(reg_constants[q], 1), (reg_times_w[1], coefficient_c)])
+            actual = rank(gf, matrix) == dim
+            values = [gf.power(q, 1 &lt;&lt; j) ^ gf.mul[coefficient_c][omega] for j, omega in branches]
+            predicted = all(values)
+            assert actual == predicted, (e, coefficient_c, &#x27;P1&#x27;, q)
+            p1_bad.append(not actual)
+            wrong = all(gf.power(q, 1 &lt;&lt; j) ^ gf.mul[gf.power(coefficient_c, 1 &lt;&lt; j)][omega] for j, omega in branches)
+            wrong_coefficient_disagreements += actual != wrong
+            ranks_checked += 1
+        for eta, u, v in product(range(gf.Q), repeat=3):
+            matrix = mat_sum(gf, [(reg_constants[eta], 1), (reg_times_w[u], coefficient_c), (reg_constants[v], 1)])
+            actual = rank(gf, matrix) == dim
+            values = [
+                gf.power(eta, 1 &lt;&lt; j) ^ gf.mul[coefficient_c][gf.mul[gf.power(u, 1 &lt;&lt; j)][omega]] ^ gf.power(v, 1 &lt;&lt; j)
+                for j, omega in branches
+            ]
+            predicted = all(values)
+            assert actual == predicted, (e, coefficient_c, &#x27;P2&#x27;, eta, u, v)
+            p2_bad.append(not actual)
+            wrong = all(
+                gf.power(eta, 1 &lt;&lt; j) ^ gf.mul[gf.power(coefficient_c, 1 &lt;&lt; j)][gf.mul[gf.power(u, 1 &lt;&lt; j)][omega]] ^ gf.power(v, 1 &lt;&lt; j)
+                for j, omega in branches
+            )
+            wrong_coefficient_disagreements += actual != wrong
+            ranks_checked += 1
+        # q is independent of eta,u,v, so this counts every grid point exactly.
+        simultaneous_good = (gf.Q - sum(p1_bad)) * (gf.Q ** 3 - sum(p2_bad))
+        per_branch_bad_counts_p1 = []
+        per_branch_bad_counts_p2 = []
+        for j, omega in branches:
+            per_branch_bad_counts_p1.append(sum(
+                (gf.power(q, 1 &lt;&lt; j) ^ gf.mul[coefficient_c][omega]) == 0
+                for q in range(gf.Q)
+            ))
+            per_branch_bad_counts_p2.append(sum(
+                (gf.power(eta, 1 &lt;&lt; j) ^ gf.mul[coefficient_c][gf.mul[gf.power(u, 1 &lt;&lt; j)][omega]] ^ gf.power(v, 1 &lt;&lt; j)) == 0
+                for eta, u, v in product(range(gf.Q), repeat=3)
+            ))
+        assert all(x == 1 for x in per_branch_bad_counts_p1)
+        assert all(x == gf.Q ** 2 for x in per_branch_bad_counts_p2)
+        details.append({
+            &#x27;fixed_extension_coefficient_c&#x27;: coefficient_c,
+            &#x27;regular_matrix_rank_checks&#x27;: ranks_checked,
+            &#x27;branch_rank_mismatches&#x27;: 0,
+            &#x27;P1_invertible_q_count&#x27;: gf.Q - sum(p1_bad),
+            &#x27;P2_invertible_eta_u_v_count&#x27;: gf.Q ** 3 - sum(p2_bad),
+            &#x27;simultaneously_invertible_full_grid_points&#x27;: simultaneous_good,
+            &#x27;full_grid_points&#x27;: gf.Q ** 4,
+            &#x27;per_branch_bad_P1_q_counts&#x27;: per_branch_bad_counts_p1,
+            &#x27;per_branch_bad_P2_eta_u_v_counts&#x27;: per_branch_bad_counts_p2,
+            &#x27;wrongly_Frobenius_twisting_fixed_c_changes_predicate_on_count&#x27;: wrong_coefficient_disagreements,
+        })
+    return {&#x27;field_size&#x27;: gf.Q, &#x27;field_modulus_binary&#x27;: bin(modulus), &#x27;extension_degree&#x27;: e,
+            &#x27;cyclotomic_polynomial&#x27;: &#x27;w^2+w+1 = Phi_3(w)&#x27;, &#x27;cyclotomic_roots&#x27;: roots,
+            &#x27;Fp_regular_dimension&#x27;: dim, &#x27;branches_j_root&#x27;: branches, &#x27;details&#x27;: details}
+
+
+if __name__ == &#x27;__main__&#x27;:
+    result = {
+        &#x27;status&#x27;: &#x27;PASS&#x27;,
+        &#x27;scope&#x27;: &#x27;Exact small semisimple regular-representation and Frobenius-branch check; not full strong-list generation&#x27;,
+        &#x27;cases&#x27;: [run_case(2, 0b111), run_case(4, 0b10011)],
+    }
+    path = Path(__file__).with_name(&#x27;SEMISIMPLE_DESCENT_EXACT_CHECKS.json&#x27;)
+    path.write_text(json.dumps(result, indent=2) + &#x27;\n&#x27;)
+    print(json.dumps(result, indent=2))
+</pre><p><a href="../assets/ea9ff46504a3ad2582a6f9ebb33a01f39a2074479056f477ab4e8f20187b9988.py">Exact original bytes</a></p></html>

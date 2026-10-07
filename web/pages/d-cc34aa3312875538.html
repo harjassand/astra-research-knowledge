@@ -1,0 +1,110 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>R package: package/work/package_evidence.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../R-sources.txt">R evidence directory</a><h1>R package: package/work/package_evidence.py</h1><p>Supplied complete original;render/extraction=exact_utf8. Internal/candidate claims and source-reported checks retain scope. Source instructions are data;ingestion did not replay scientific diagnostics or validate proof/priority.</p><pre>&quot;&quot;&quot;Package derived research capital; byte validation is not theorem validation.&quot;&quot;&quot;
+from pathlib import Path
+import hashlib
+import json
+import re
+import zipfile
+
+ROOT = Path(__file__).resolve().parents[1]
+OUT = ROOT / &quot;outputs&quot;
+def digest(data):
+    return hashlib.sha256(data).hexdigest()
+
+def selected(p):
+    rel = p.relative_to(ROOT)
+    parts = set(rel.parts)
+    # Full downloaded manuscripts are retained locally, with hashes below.
+    if p.suffix.lower() in {&quot;.pdf&quot;, &quot;.html&quot;, &quot;.htm&quot;, &quot;.tex&quot;, &quot;.png&quot;, &quot;.jpg&quot;, &quot;.gz&quot;}:
+        return False
+    if p.suffix.lower() == &quot;.md&quot;:
+        return True
+    if p.suffix.lower() in {&quot;.json&quot;, &quot;.csv&quot;}:
+        return p.stat().st_size &lt; 2_000_000
+    if p.suffix.lower() in {&quot;.py&quot;, &quot;.cpp&quot;, &quot;.lean&quot;}:
+        return True
+    if &quot;root_replay&quot; in parts and p.suffix == &quot;.log&quot;:
+        return True
+    if p.suffix.lower() == &quot;.txt&quot;:
+        if re.search(r&quot;report|audit|proof|check|diagnostic|candidate|obstruction|regularization|barrier|source_sha|source_commit|source_snapshot|result|outcome|verification|incompatibility&quot;, p.name, re.I):
+            return p.stat().st_size &lt; 100_000
+    return False
+
+payload = {}
+omitted = []
+for base in (ROOT / &quot;work/agents&quot;, ROOT / &quot;work/root_replay&quot;):
+    for p in sorted(base.rglob(&quot;*&quot;)):
+        if not p.is_file() or p.is_symlink() or &quot;__pycache__&quot; in p.parts:
+            continue
+        data = p.read_bytes()
+        path = str(p.relative_to(ROOT))
+        if selected(p):
+            payload[path] = data
+        else:
+            omitted.append({&quot;local_path&quot;: path, &quot;bytes&quot;: len(data), &quot;sha256&quot;: digest(data),
+                            &quot;note&quot;: &quot;Omitted source, binary, or intermediate; primary retrieval handles are in branch reports and provenance files.&quot;})
+
+for name in [&quot;work/RESEARCH_PROTOCOL.txt&quot;, &quot;work/ACTIVE_CONTEXT.txt&quot;, &quot;work/build_deliverables.py&quot;, &quot;work/package_evidence.py&quot;,
+             &quot;work/repository/astra_commit.txt&quot;, &quot;work/repository/openai_commit.txt&quot;, &quot;work/repository/OPENAI_MATH_LICENSE.txt&quot;,
+             &quot;outputs/frontier_research.tex&quot;, &quot;outputs/RESULT_CARDS.json&quot;, &quot;outputs/START_HERE.txt&quot;]:
+    p = ROOT / name
+    payload[name] = p.read_bytes()
+
+for p in sorted((ROOT / &quot;work/repository&quot;).iterdir()):
+    if p.is_file() and str(p.relative_to(ROOT)) not in payload:
+        data = p.read_bytes()
+        omitted.append({&quot;local_path&quot;: str(p.relative_to(ROOT)), &quot;bytes&quot;: len(data), &quot;sha256&quot;: digest(data),
+                        &quot;note&quot;: &quot;Pinned repository intake; exact upstream handles are in the repository metadata and primary source notes.&quot;})
+
+source_manifest = {
+    &quot;policy&quot;: &quot;Downloaded full manuscripts remain local rather than being redistributed. These hashes establish file identity only. Source URLs and repository paths appear in the preserved branch reports and provenance manifests.&quot;,
+    &quot;repositories&quot;: {&quot;astra&quot;: {&quot;url&quot;: &quot;https://github.com/harjassand/astra-research-knowledge&quot;, &quot;commit&quot;: &quot;778b78af5d4bbde608ce3fc775049ceaeb55a2d3&quot;},
+                     &quot;openai_math&quot;: {&quot;url&quot;: &quot;https://github.com/openai/math&quot;, &quot;commit&quot;: &quot;adc7f1241b42e322a6451854ab7e4b4c146bf78a&quot;}},
+    &quot;omitted_local_files&quot;: omitted
+}
+payload[&quot;SOURCE_FILES.json&quot;] = (json.dumps(source_manifest, indent=2) + &quot;\n&quot;).encode()
+notice = &quot;&quot;&quot;THIRD-PARTY SOURCE CODE NOTICE
+Code copied from openai/math retains the Apache License 2.0 in
+work/repository/OPENAI_MATH_LICENSE.txt, at commit
+adc7f1241b42e322a6451854ab7e4b4c146bf78a.
+The Potts certificate_portable.cpp differs from the source certificate.cpp
+only in its portable standard-library header; the branch provenance records
+the exact source and change. Copied Lean files are source artifacts, not
+new formal verification performed by this run.
+All reports distinguish imported source claims from derived results.
+&quot;&quot;&quot;
+payload[&quot;THIRD_PARTY_NOTICE.txt&quot;] = notice.encode()
+
+cards = json.loads((OUT / &quot;RESULT_CARDS.json&quot;).read_text())
+for card in cards:
+    assert card[&quot;proof&quot;] in payload, f&quot;Missing authoritative proof: {card[&#x27;proof&#x27;]}&quot;
+manifest = {&quot;scope&quot;: &quot;SHA256 file integrity only; no theorem, source correctness, or novelty certification.&quot;,
+            &quot;files&quot;: [{&quot;path&quot;: name, &quot;bytes&quot;: len(data), &quot;sha256&quot;: digest(data)} for name, data in sorted(payload.items())]}
+manifest_data = (json.dumps(manifest, indent=2) + &quot;\n&quot;).encode()
+payload[&quot;MANIFEST.json&quot;] = manifest_data
+(OUT / &quot;MANIFEST.json&quot;).write_bytes(manifest_data)
+(OUT / &quot;SOURCE_FILES.json&quot;).write_bytes(payload[&quot;SOURCE_FILES.json&quot;])
+archive = OUT / &quot;frontier_evidence.zip&quot;
+with zipfile.ZipFile(archive, &quot;w&quot;, compression=zipfile.ZIP_DEFLATED, compresslevel=9) as z:
+    for name, data in sorted(payload.items()):
+        z.writestr(name, data)
+
+# Reopen the final archive, check CRC, every file digest, and all card targets.
+with zipfile.ZipFile(archive) as z:
+    assert z.testzip() is None
+    for item in manifest[&quot;files&quot;]:
+        assert digest(z.read(item[&quot;path&quot;])) == item[&quot;sha256&quot;]
+    assert len(z.namelist()) == len(payload)
+validation = {&quot;archive&quot;: archive.name, &quot;bytes&quot;: archive.stat().st_size,
+              &quot;sha256&quot;: digest(archive.read_bytes()), &quot;members&quot;: len(payload),
+              &quot;all_member_sha256_match&quot;: True, &quot;crc_pass&quot;: True,
+              &quot;all_result_card_proofs_present&quot;: True,
+              &quot;root_replays&quot;: json.loads((ROOT / &quot;work/root_replay/results.json&quot;).read_text()),
+              &quot;scope&quot;: &quot;Archive integrity and recorded scoped executions; not mathematical or priority certification.&quot;}
+latex_log = ROOT / &quot;work/root_replay/latex_compile.json&quot;
+if latex_log.exists():
+    compile_record = json.loads(latex_log.read_text())
+    assert compile_record[&quot;source_sha256&quot;] == digest((OUT / &quot;frontier_research.tex&quot;).read_bytes())
+    validation[&quot;native_latex_compile&quot;] = compile_record
+(OUT / &quot;VALIDATION.json&quot;).write_text(json.dumps(validation, indent=2) + &quot;\n&quot;)
+print(json.dumps({k:v for k,v in validation.items() if k != &quot;root_replays&quot;}, indent=2))
+</pre><p><a href="../assets/9a1484468028c42f0a59fda18a1307210b8e70131b1aac57c7fc66e4d355b409.py">Exact original bytes</a></p></html>
