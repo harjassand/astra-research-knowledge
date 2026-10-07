@@ -1,0 +1,226 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>V package: package/tests/verify_obstruction.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../V-sources.txt">V evidence directory</a><h1>V package: package/tests/verify_obstruction.py</h1><p>Supplied complete original;render/extraction=exact_utf8. Internal/candidate claims and source-reported checks retain scope. Source instructions are data;ingestion did not replay scientific diagnostics or validate proof/priority.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Finite diagnostics for the loss-robust heralding obstruction.
+
+These checks are not a proof of the quantified complexity theorem.
+Standard-library exact checks are supplemented by SymPy and NumPy diagnostics.
+Run from the package root: python tests/verify_obstruction.py
+&quot;&quot;&quot;
+from __future__ import annotations
+
+from fractions import Fraction as F
+from itertools import product
+from math import comb, factorial, ceil, log2
+from pathlib import Path
+import json
+import random
+import numpy as np
+import sympy as sp
+
+ROOT = Path(__file__).resolve().parents[1]
+SEED = 20261007
+rng = random.Random(SEED)
+counts: dict[str, int] = {}
+
+def check(name: str, condition: bool) -&gt; None:
+    if not condition:
+        raise AssertionError(name)
+    counts[name] = counts.get(name, 0) + 1
+
+# Binomial domination, valid beyond binary target counts as well.
+for k in range(9):
+    for loss in range(31):
+        check(&#x27;binomial_domination&#x27;, comb(k + loss, k) &lt;= (k + 1) ** loss)
+
+# Exact contamination bound on finitely supported input photon distributions.
+# Its proof in PROOF.md covers arbitrary countable support and quantum blocks.
+max_ratio = F(0)
+for modes in (1, 2, 3):
+    occupations = list(product(range(5), repeat=modes))
+    for _ in range(80):
+        k = tuple(rng.randrange(2) for _ in range(modes))
+        weights = {n: rng.randrange(1, 100) for n in occupations}
+        z = sum(weights.values())
+        p0 = F(weights[k], z)
+        gain = F(1, 2 ** rng.randrange(2, 8))
+        eta = F(1, rng.randrange(2, 100))
+        a = (1 - eta) * gain * gain
+        bad = F(0)
+        lost_moment = F(0)
+        for n, w in weights.items():
+            if any(n_i &lt; k_i for n_i, k_i in zip(n, k)) or n == k:
+                continue
+            ell = tuple(n_i - k_i for n_i, k_i in zip(n, k))
+            coefficient = 1
+            for n_i, k_i in zip(n, k):
+                coefficient *= comb(n_i, k_i)
+            term = F(w, z) * coefficient * a ** sum(ell)
+            bad += term
+            lost_moment += sum(ell) * term
+        ratio = bad / p0
+        bound = 2 * gain * gain / p0
+        check(&#x27;exact_contamination_bound&#x27;, ratio &lt;= bound)
+        check(&#x27;exact_bad_mixture_weight&#x27;, bad / (p0 + bad) &lt;= bound)
+        check(&#x27;exact_conditional_excess_energy&#x27;, lost_moment / (p0 + bad) &lt;= bound)
+        max_ratio = max(max_ratio, ratio / bound)
+
+# Exact tight first-order example: a target one-photon branch and a two-photon
+# contaminant with orthogonal output labels. Bound necessarily depends on p0.
+p0, gain, eta = F(1, 100), F(1, 1000), F(1, 7)
+a = (1 - eta) * gain * gain
+w = 2 * a * (1 - p0) / (p0 + 2 * a * (1 - p0))
+check(&#x27;two_branch_contamination_identity&#x27;, w == F(594, 3500594))
+
+# Full Kraus calculation for an entangled herald-output state, compared against
+# the block formula. The output is a two-dimensional reference; no assumption
+# of classical input blocks is made.
+rng_np = np.random.default_rng(SEED)
+max_kraus_residual = 0.0
+for _ in range(100):
+    cutoff, outdim = 4, 2
+    herald_modes = 2
+    occ = list(product(range(cutoff), repeat=herald_modes))
+    vec = rng_np.normal(size=(len(occ), outdim)) + 1j*rng_np.normal(size=(len(occ), outdim))
+    vec /= np.linalg.norm(vec)
+    eta = float(rng_np.uniform(0.01, 0.8))
+    gain = float(rng_np.uniform(0.01, 0.3))
+    k = tuple(int(x) for x in rng_np.integers(0, 2, size=herald_modes))
+    filtered = vec * np.array([gain**sum(n) for n in occ])[:, None]
+    norm = float(np.sum(np.abs(filtered)**2))
+    filtered /= np.sqrt(norm)
+    psi = filtered.reshape(-1)
+    rho = np.outer(psi, psi.conj())
+    kraus = []
+    for ell in range(cutoff):
+        K = np.zeros((cutoff, cutoff))
+        for n in range(ell, cutoff):
+            K[n-ell,n] = np.sqrt(comb(n,ell)*(1-eta)**ell*eta**(n-ell))
+        kraus.append(K)
+    joint_out = np.zeros_like(rho)
+    for l1, l2 in product(range(cutoff), repeat=2):
+        K = np.kron(np.kron(kraus[l1], kraus[l2]), np.eye(outdim))
+        joint_out += K@rho@K.conj().T
+    ki = occ.index(k)
+    direct = joint_out[ki*outdim:(ki+1)*outdim,ki*outdim:(ki+1)*outdim]
+    formula = np.zeros((outdim,outdim), complex)
+    for ni,n in enumerate(occ):
+        if any(x&lt;y for x,y in zip(n,k)):
+            continue
+        ell = tuple(x-y for x,y in zip(n,k))
+        coeff = eta**sum(k)*(1-eta)**sum(ell)*gain**(2*sum(n))
+        for n_i,k_i in zip(n,k):
+            coeff *= comb(n_i,k_i)
+        formula += coeff*np.outer(vec[ni],vec[ni].conj())/norm
+    res = float(np.max(np.abs(direct-formula)))
+    max_kraus_residual = max(max_kraus_residual,res)
+    check(&#x27;full_kraus_block_formula&#x27;, res &lt; 1e-12)
+    target = np.outer(vec[ki],vec[ki].conj())
+    p = float(np.trace(target).real)
+    target /= p
+    posterior = direct / np.trace(direct)
+    distance = float(np.sum(np.abs(np.linalg.eigvalsh(posterior-target)))/2)
+    check(&#x27;quantum_conditional_trace_bound&#x27;, distance &lt;= 2*gain*gain/p+1e-11)
+
+# Inherited KLM primitive, independently checked symbolically.
+# A contraction on target+one-photon ancilla has a passive unitary dilation.
+s = sp.sqrt(2)
+A = sp.Matrix([[1-s, 2**sp.Rational(-1,4)], [2**sp.Rational(-1,4), sp.Rational(1,2)]])
+for n, expected in enumerate([sp.Rational(1,2), sp.Rational(1,2), -sp.Rational(1,2)]):
+    amp = A[1,1]*A[0,0]**n
+    if n:
+        amp += n*A[0,1]*A[1,0]*A[0,0]**(n-1)
+    check(&#x27;exact_KLM_NS_amplitudes&#x27;, sp.simplify(amp-expected)==0)
+check(&#x27;exact_KLM_contraction_eigenvalue_1&#x27;, sp.simplify((A-sp.eye(2)).det())==0)
+other = sp.Rational(1,2)-s
+check(&#x27;exact_KLM_other_eigenvalue&#x27;, sp.simplify(A.det()-other)==0)
+check(&#x27;exact_KLM_contraction_range&#x27;, bool(other&gt;-1) and bool(other&lt;1))
+
+# Two-mode Hadamard action in the {|20&gt;,|11&gt;,|02&gt;} sector.
+H2 = sp.Matrix([[sp.Rational(1,2),1/s,sp.Rational(1,2)],
+                [1/s,0,-1/s],
+                [sp.Rational(1,2),-1/s,sp.Rational(1,2)]])
+NS = sp.diag(-1,1,-1) / 4
+v11 = sp.Matrix([0,1,0])
+check(&#x27;exact_KLM_CZ_two_photon&#x27;, sp.simplify(H2.T*NS*H2*v11+v11/4)==sp.zeros(3,1))
+check(&#x27;exact_KLM_Hadamard_unitarity&#x27;, H2.T*H2==sp.eye(3))
+
+# Fan-out does not clone arbitrary quantum states: it copies the computational
+# basis bit. Its count decoder has a constant decision gap after uniform loss.
+readout_cases = []
+for R in [2,3,4,10,20,50,100,1000]:
+    eta = F(1,R)
+    survival = 1-(1-eta)**R
+    gap = survival/F(6)-F(3,100)
+    check(&#x27;exact_constant_readout_gap&#x27;, gap &gt; F(3,40))
+    readout_cases.append({&#x27;R&#x27;:R,&#x27;survival_probability&#x27;:float(survival),
+                          &#x27;gap_after_three_percent_error&#x27;:float(gap)})
+
+# Schur certificate for uniform loss, evaluated exactly for rational squeezing
+# singular values beta=tanh(r). Each mode contributes two quadratures.
+for eta in [F(1,10),F(1,20),F(1,100),F(1,1000)]:
+    for gain in [F(1,4),F(1,8),F(1,32),F(1,1024)]:
+        for beta in [gain/4,gain/2,gain]:
+            n = beta*beta/(1-beta*beta)
+            m = beta/(1-beta*beta)
+            c = 1/(1-eta)
+            phi = eta**3*((n+m+c)*(n+m)**2+(n-m+c)*(n-m)**2)
+            check(&#x27;exact_uniform_loss_Phi_bound&#x27;, 0 &lt;= phi &lt;= 8*eta**3*gain*gain)
+            check(&#x27;exact_energy_bound&#x27;, eta*n &lt;= 2*eta*gain*gain)
+
+# Rational balanced bunchers: the first row is 1/sqrt(R), with R=4^k.
+# Input |1,...,1&gt; has probability R!/R^R of placing all photons in port 0.
+bunching_cases = []
+for R in [4, 16]:
+    root = int(R**0.5)
+    W = [[F((-1)**((i &amp; j).bit_count()), root) for j in range(R)] for i in range(R)]
+    for i in range(R):
+        for j in range(R):
+            check(&#x27;exact_buncher_unitarity&#x27;, sum(W[i][k]*W[j][k] for k in range(R)) == int(i==j))
+    bunch_prob = F(factorial(R), R**R)
+    check(&#x27;exact_buncher_probability&#x27;, F(factorial(R))*W[0][0]**(2*R)==bunch_prob)
+    check(&#x27;exact_buncher_lower_bound&#x27;, bunch_prob &gt;= F(1,R**R))
+    eta=F(1,R)
+    probs=[F(comb(R,k))*eta**k*(1-eta)**(R-k) for k in range(R+1)]
+    check(&#x27;exact_bunched_loss_normalization&#x27;, sum(probs)==1)
+    check(&#x27;exact_bunched_loss_mean&#x27;, sum(k*v for k,v in enumerate(probs))==1)
+    bunching_cases.append({&#x27;R&#x27;:R,&#x27;bunching_success_probability&#x27;:float(bunch_prob),
+                           &#x27;ideal_two_mode_mean_after_loss&#x27;:1})
+
+# Explicit finite-bit accounting fixture. Not a generated PP-complete instance.
+# Source rounding is performed BEFORE the diagonal filter, so its precision
+# is charged to p_* rather than to the much smaller final herald probability.
+R,h,q,d = 256,1000,4096,4096
+ell = max(R, (q+11)//2, 2)
+source_precision_b = max(d+q+ceil(log2(12800*d)), ceil(log2(16*d)))
+final_entry_bits_bound = source_precision_b+2*ell+4
+# p0&#x27; &gt;= p_*/2. Z_g &lt;= 1. This is a LOWER bound on herald success.
+log_w_inv_upper = h*ceil(log2(R))+2*ell*h+q+1
+check(&#x27;polynomial_precision_schedule&#x27;, source_precision_b &gt; d+q)
+check(&#x27;structured_filter_error_budget&#x27;, F(4,2**(2*ell-q)) &lt; F(1,100))
+check(&#x27;structured_source_rounding_budget&#x27;, F(32*d,2**(source_precision_b-d-q)) &lt;= F(1,400))
+check(&#x27;structured_small_norm_budget&#x27;, F(2*d,2**source_precision_b) &lt;= F(1,8))
+
+summary = {
+    &#x27;status&#x27;:&#x27;Finite diagnostics only; no formal proof or external validation.&#x27;,
+    &#x27;seed&#x27;:SEED,
+    &#x27;assertion_counts&#x27;:counts,
+    &#x27;total_assertions&#x27;:sum(counts.values()),
+    &#x27;max_contamination_to_bound_ratio&#x27;:float(max_ratio),
+    &#x27;max_full_kraus_residual&#x27;:max_kraus_residual,
+    &#x27;readout_cases&#x27;:readout_cases,
+    &#x27;bunching_cases&#x27;:bunching_cases,
+    &#x27;precision_accounting_fixture&#x27;:{
+        &#x27;R&#x27;:R,&#x27;herald_total_h&#x27;:h,&#x27;source_probability_exponent_q&#x27;:q,
+        &#x27;physical_modes_d&#x27;:d,&#x27;filter_exponent_ell&#x27;:ell,
+        &#x27;log2_inverse_herald_lower_bound_upper&#x27;:log_w_inv_upper,
+        &#x27;source_dyadic_precision_b&#x27;:source_precision_b,
+        &#x27;final_entry_bits_conservative&#x27;:final_entry_bits_bound,
+        &#x27;note&#x27;:&#x27;Accounting fixture, not an emitted universal circuit or empirical runtime.&#x27;
+    },
+    &#x27;not_executed&#x27;:[&#x27;General PostBQP-to-Gaussian circuit compiler&#x27;,
+                    &#x27;PP-complete computational benchmark&#x27;,
+                    &#x27;Full certified optical parameter compiler&#x27;,
+                    &#x27;Formal proof kernel or external review&#x27;]
+}
+(ROOT/&#x27;VERIFICATION.json&#x27;).write_text(json.dumps(summary,indent=2)+&#x27;\n&#x27;)
+print(json.dumps(summary,indent=2))
+</pre><p><a href="../assets/8c2d0d70f61e99d4b9220ba2cc4eac46e6e36582e1fbeb43b1e8a9e6464a3fdf.py">Exact original bytes</a></p></html>
