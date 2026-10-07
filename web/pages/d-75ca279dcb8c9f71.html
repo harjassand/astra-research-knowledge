@@ -1,0 +1,117 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>T package: package/sampler.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../T-sources.txt">T evidence directory</a><h1>T package: package/sampler.py</h1><p>Supplied complete original;render/extraction=exact_utf8. Internal/candidate claims and source-reported checks retain scope. Source instructions are data;ingestion did not replay scientific diagnostics or validate proof/priority.</p><pre>&quot;&quot;&quot;Floating-point prototype of Lim&#x27;s centered Gaussian reset sampler.
+
+The new research result concerns its IDEAL real-arithmetic distribution.
+This implementation has no certified total-variation rounding-error bound.
+It does not evaluate hafnians, postselect records, or impose a photon cutoff.
+A resource guard raises an exception instead of returning a truncated record.
+&quot;&quot;&quot;
+from __future__ import annotations
+import numpy as np
+from numpy.typing import ArrayLike, NDArray
+
+FloatMatrix = NDArray[np.float64]
+
+def covariance_from_network(transfer: ArrayLike, squeezings: ArrayLike) -&gt; FloatMatrix:
+    &quot;&quot;&quot;Return K = covariance - I/2 for a supplied passive vacuum-loss map.
+
+    transfer has shape (output_modes, squeezed_input_modes). Entries may be
+    complex; singular values must not exceed one. Squeezings are nonnegative
+    real magnitudes, one per input. Their phases can be absorbed into transfer.
+    &quot;&quot;&quot;
+    t = np.asarray(transfer, dtype=np.complex128)
+    r = np.asarray(squeezings, dtype=np.float64)
+    if t.ndim != 2 or min(t.shape) &lt; 1 or r.shape != (t.shape[1],):
+        raise ValueError(&#x27;Expected an M-by-N transfer and N squeezing magnitudes.&#x27;)
+    if not np.all(np.isfinite(t)) or not np.all(np.isfinite(r)) or np.any(r &lt; 0):
+        raise ValueError(&#x27;Inputs must be finite and squeezing magnitudes nonnegative.&#x27;)
+    if np.linalg.svd(t, compute_uv=False)[0] &gt; 1 + 1e-12:
+        raise ValueError(&#x27;Transfer is not a contraction.&#x27;)
+    with np.errstate(over=&#x27;raise&#x27;, invalid=&#x27;raise&#x27;):
+        ns = np.sinh(r)**2
+        ms = np.sinh(r)*np.cosh(r)
+    l = np.block([[t.real,-t.imag],[t.imag,t.real]])
+    k = (l*np.concatenate([ns+ms,ns-ms]))@l.T
+    return np.asarray((k+k.T)/2, dtype=np.float64)
+
+def spectral_cubic(transfer: ArrayLike) -&gt; float:
+    &quot;&quot;&quot;Sum of cubed power transmissions, equivalently sum of singular values^6.&quot;&quot;&quot;
+    t = np.asarray(transfer, dtype=np.complex128)
+    if t.ndim != 2 or not np.all(np.isfinite(t)):
+        raise ValueError(&#x27;Expected a finite two-dimensional matrix.&#x27;)
+    return float(np.sum(np.linalg.svd(t,compute_uv=False)**6))
+
+def sample_centered_covariance(
+    k0: ArrayLike,
+    rng: np.random.Generator,
+    *,
+    inversion_steps: int = 64,
+    max_events: int = 100000,
+    check_physical: bool = True,
+) -&gt; NDArray[np.int64]:
+    &quot;&quot;&quot;Sample one approximate photon-count vector using dense covariance updates.
+
+    Quadratures are ordered q_1,...,q_M,p_1,...,p_M. A tiny negative rate
+    (at most 1e-11 times matrix norm) is clipped as a numerical expedient.
+    No claim of a certified numerical TV error is made for this expedient,
+    the eigendecomposition, finite bisection, or floating-point randomness.
+    &quot;&quot;&quot;
+    k = np.asarray(k0,dtype=np.float64).copy()
+    if k.ndim != 2 or k.shape[0] != k.shape[1] or k.shape[0]%2 or not k.size:
+        raise ValueError(&#x27;K must be a nonempty real 2M-by-2M matrix.&#x27;)
+    if not np.all(np.isfinite(k)) or not np.allclose(k,k.T,rtol=0,atol=1e-11):
+        raise ValueError(&#x27;K must be finite and symmetric.&#x27;)
+    if inversion_steps &lt; 16 or max_events &lt; 1:
+        raise ValueError(&#x27;Use at least 16 inversion steps and a positive resource guard.&#x27;)
+    modes=k.shape[0]//2
+    if check_physical:
+        j=np.block([[np.zeros((modes,modes)),-np.eye(modes)],
+                    [np.eye(modes),np.zeros((modes,modes))]])
+        h=k+np.eye(2*modes)/2+0.5j*j
+        if np.linalg.eigvalsh(h)[0] &lt; -1e-10:
+            raise ValueError(&#x27;Covariance fails the uncertainty relation numerically.&#x27;)
+    counts=np.zeros(modes,dtype=np.int64)
+    for _ in range(max_events):
+        ev,vec=np.linalg.eigh((k+k.T)/2)
+        if ev[0] &lt;= -1:
+            raise FloatingPointError(&#x27;No-click determinant has left its domain.&#x27;)
+        log_p0=-0.5*float(np.log1p(ev).sum())
+        if log_p0 &gt; 1e-10:
+            raise FloatingPointError(&#x27;Unphysical vacuum probability.&#x27;)
+        p0=float(np.exp(min(log_p0,0.)))
+        uniform=float(rng.random())
+        if uniform &lt;= p0:
+            return counts
+        target_log=float(np.log(uniform))
+        low,high=0.,1.
+        for _ in range(inversion_steps):
+            v=(low+high)/2
+            log_survival=-0.5*float(np.log1p((1-v)*ev).sum())
+            if log_survival &lt; target_log:
+                low=v
+            else:
+                high=v
+        v=(low+high)/2
+        flowed=v*ev/(1+(1-v)*ev)
+        k=(vec*flowed)@vec.T
+        rates=0.5*(np.diag(k)[:modes]+np.diag(k)[modes:])
+        tolerance=1e-11*max(1.,float(np.max(np.abs(flowed))))
+        if float(np.min(rates)) &lt; -tolerance:
+            raise FloatingPointError(&#x27;Negative detection rate beyond rounding tolerance.&#x27;)
+        rates=np.maximum(rates,0)
+        total=float(rates.sum())
+        if not total&gt;0:
+            raise FloatingPointError(&#x27;A nonterminal event has numerically zero rate.&#x27;)
+        chosen=int(rng.choice(modes,p=rates/total))
+        cols=k[:,[chosen,chosen+modes]]
+        k=k+(cols@cols.T)/rates[chosen]
+        k=(k+k.T)/2
+        counts[chosen]+=1
+    raise RuntimeError(&#x27;Resource guard reached; no truncated sample was returned.&#x27;)
+
+if __name__ == &#x27;__main__&#x27;:
+    random=np.random.default_rng(20261007)
+    transfer=np.diag(np.sqrt([.04,.01])).astype(complex)
+    covariance=covariance_from_network(transfer,[np.log(2),np.log(3)])
+    print({&#x27;S3&#x27;:spectral_cubic(transfer),
+           &#x27;sample&#x27;:sample_centered_covariance(covariance,random).tolist()})
+</pre><p><a href="../assets/686817df66067511e5f8e1a76f9cbd8b3a3ab2f2dcfc0767cc212a504e39d55d.py">Exact original bytes</a></p></html>

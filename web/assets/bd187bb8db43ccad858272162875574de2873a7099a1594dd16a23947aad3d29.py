@@ -1,0 +1,76 @@
+"""Exact checks of the general passive Schur-complement flow identity.
+Finite diagnostics; not a formal proof or external review.
+"""
+from pathlib import Path
+import json, itertools
+import sympy as s
+q=s.Rational
+root=Path(__file__).resolve().parent
+
+def realify(T):
+    return T.applyfunc(s.re).row_join(-T.applyfunc(s.im)).col_join(
+        T.applyfunc(s.im).row_join(T.applyfunc(s.re)))
+
+def psd(A):
+    count=0
+    for size in range(1,A.rows+1):
+        for inds in itertools.combinations(range(A.rows),size):
+            x=s.factor(A.extract(inds,inds).det())
+            assert x.is_nonnegative is True, (inds,x)
+            count+=1
+    return count
+
+J=s.zeros(4); J[:2,2:]=-s.eye(2); J[2:,:2]=s.eye(2)
+project=lambda A:(A+J*A*J.T)/2
+U=s.Matrix([[q(3,5),s.I*q(4,5)],[s.I*q(4,5),q(3,5)]])
+V=s.Matrix([[q(3,5),-q(4,5)],[q(4,5),q(3,5)]])
+T=V*s.diag(q(1,4),q(1,8))*U
+L=realify(T); C=L*L.T
+# Unequal squeezing: r1=log2, r2=log3; rational covariance entries.
+n1,m1=q(9,16),q(15,16)
+n2,m2=q(16,9),q(20,9)
+R=L*s.diag(n1,n2,n1,n2)*L.T
+X=L*s.diag(m1,m2,-m1,-m2)*L.T
+K=R+X
+D=s.simplify(X*R.inv()*X-R)
+B=C*(s.eye(4)-C).inv()
+assert D*J==J*D
+assert s.simplify(project(K)-R)==s.zeros(4)
+assert B*K!=K*B
+count=psd(C-D)
+records=[]
+for u in [q(0),q(1,4),q(1,2),q(3,4),q(1)]:
+    H=K*(s.eye(4)+u*K).inv()
+    Ru=project(H); Xu=H-Ru
+    Du=s.simplify(Xu*Ru.inv()*Xu-Ru)
+    expected=D*(s.eye(4)-u*D).inv()
+    assert s.simplify(Du-expected)==s.zeros(4); count+=1
+    count+=psd(Ru)
+    count+=psd(B-Du)
+    G=-B+B*(H+B).inv()*B
+    count+=psd(-project(G))
+    # The paired inverse identity behind the criterion is also tested directly.
+    A=Ru+B
+    paired=( (A+Xu).inv()+(A-Xu).inv())/2
+    assert s.simplify(paired-(A-Xu*A.inv()*Xu).inv())==s.zeros(4); count+=1
+    records.append({'u':str(u),'flow_identity':'exact zero','passive_resolvent':'PSD verified'})
+
+# Independent generic rational R,X, not tied to the source optical normal form.
+Rg=s.diag(q(1,40),q(1,50),q(1,40),q(1,50))
+A=s.Matrix([[q(1,25),q(1,100)],[q(1,100),q(1,30)]])
+Bq=s.Matrix([[q(1,200),q(1,150)],[q(1,150),q(1,250)]])
+Xg=A.row_join(Bq).col_join(Bq.row_join(-A))
+Dg=s.simplify(Xg*Rg.inv()*Xg-Rg)
+count+=psd(s.eye(4)/10-Dg)
+Kg=Rg+Xg
+for u in [q(1,3),q(2,3),q(1)]:
+    H=Kg*(s.eye(4)+u*Kg).inv(); Rh=project(H); Xh=H-Rh
+    assert s.simplify(Xh*Rh.inv()*Xh-Rh-Dg*(s.eye(4)-u*Dg).inv())==s.zeros(4)
+    count+=1
+
+out={'status':'PASS','exact_assertions_or_principal_minors':count,
+     'fixture':'unequal rational squeezings with complex mixing interleaved with unequal losses, plus generic passive/anomalous matrices',
+     'identities':'D(F_u(K))=D(K)(I-uD(K))^{-1}; passive paired inverse Schur identity',
+     'records':records,'scope':'Finite diagnostics, not a formal proof or external validation'}
+(root/'schur_results.json').write_text(json.dumps(out,indent=2))
+print(json.dumps(out,indent=2))

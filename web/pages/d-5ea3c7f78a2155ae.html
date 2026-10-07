@@ -1,0 +1,132 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>T package: package/compiler_primitives.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../T-sources.txt">T evidence directory</a><h1>T package: package/compiler_primitives.py</h1><p>Supplied complete original;render/extraction=exact_utf8. Internal/candidate claims and source-reported checks retain scope. Source instructions are data;ingestion did not replay scientific diagnostics or validate proof/priority.</p><pre>&quot;&quot;&quot;Exact building blocks for BIT_COMPILER.md (not a complete sampler).
+
+Uses only Python&#x27;s standard library. Parameters may be extremely conservative.
+These routines do not establish the statistical theorem or certify sampler.py.
+&quot;&quot;&quot;
+from __future__ import annotations
+from fractions import Fraction as F
+from math import isqrt
+from typing import Sequence
+
+Matrix = list[list[F]]
+
+def matrix(a: Sequence[Sequence[int | F]]) -&gt; Matrix:
+    &quot;&quot;&quot;Copy a square rational matrix, checking its shape.&quot;&quot;&quot;
+    out = [[F(x) for x in row] for row in a]
+    n = len(out)
+    if not n or any(len(row) != n for row in out):
+        raise ValueError(&quot;A nonempty square matrix is required&quot;)
+    return out
+
+def ceil_log2(x: int | F) -&gt; int:
+    &quot;&quot;&quot;Smallest integer k such that x &lt;= 2**k; no floating logarithm.&quot;&quot;&quot;
+    x = F(x)
+    if x &lt;= 0:
+        raise ValueError(&quot;Logarithm argument must be positive&quot;)
+    k = x.numerator.bit_length() - x.denominator.bit_length()
+    power = F(1 &lt;&lt; k) if k &gt;= 0 else F(1, 1 &lt;&lt; (-k))
+    return k + int(x &gt; power)
+
+def determinant(a: Sequence[Sequence[int | F]]) -&gt; F:
+    &quot;&quot;&quot;Exact determinant by rational Gaussian elimination with row pivoting.&quot;&quot;&quot;
+    a = matrix(a)
+    n = len(a)
+    out = F(1)
+    for j in range(n):
+        pivot = next((i for i in range(j, n) if a[i][j]), None)
+        if pivot is None:
+            return F(0)
+        if pivot != j:
+            a[j], a[pivot] = a[pivot], a[j]
+            out = -out
+        p = a[j][j]
+        out *= p
+        for i in range(j + 1, n):
+            c = a[i][j] / p
+            for k in range(j + 1, n):
+                a[i][k] -= c * a[j][k]
+            a[i][j] = F(0)
+    return out
+
+def is_psd(a: Sequence[Sequence[int | F]]) -&gt; bool:
+    &quot;&quot;&quot;Exact PSD test for a symmetric rational matrix using Schur elimination.&quot;&quot;&quot;
+    a = matrix(a)
+    n = len(a)
+    if any(a[i][j] != a[j][i] for i in range(n) for j in range(n)):
+        raise ValueError(&quot;PSD test requires a symmetric matrix&quot;)
+    for j in range(n):
+        p = a[j][j]
+        if p &lt; 0:
+            return False
+        if p == 0:
+            if any(a[j][k] for k in range(j + 1, n)):
+                return False
+            continue
+        for i in range(j + 1, n):
+            for k in range(i, n):
+                v = a[i][k] - a[i][j] * a[j][k] / p
+                a[i][k] = a[k][i] = v
+    return True
+
+def physical_round(a: Sequence[Sequence[int | F]], bits: int) -&gt; Matrix:
+    &quot;&quot;&quot;Round a symmetric covariance, adding PSD noise of norm &lt;= 2*d*2^-bits.
+
+If the input covariance is physical, the output is physical. No attempt to
+validate the quantum uncertainty relation is made inside this function.
+&quot;&quot;&quot;
+    if not isinstance(bits, int) or bits &lt; 1:
+        raise ValueError(&quot;bits must be a positive integer&quot;)
+    a = matrix(a)
+    n = len(a)
+    if any(a[i][j] != a[j][i] for i in range(n) for j in range(n)):
+        raise ValueError(&quot;Rounding requires a symmetric matrix&quot;)
+    scale = 1 &lt;&lt; bits
+    out = [[F(0) for _ in range(n)] for _ in range(n)]
+    for i in range(n):
+        for j in range(i, n):
+            x = a[i][j] * scale + F(1, 2)
+            out[i][j] = out[j][i] = F(x.numerator // x.denominator, scale)
+        out[i][i] += F(n, scale)
+    return out
+
+def survival_bracket(k: Sequence[Sequence[int | F]], v: int | F,
+                     bits: int) -&gt; tuple[F, F]:
+    &quot;&quot;&quot;Enclose det[I+(1-v)K]^(-1/2) in a dyadic interval of width 2^-bits.&quot;&quot;&quot;
+    if not isinstance(bits, int) or bits &lt; 1:
+        raise ValueError(&quot;bits must be a positive integer&quot;)
+    v = F(v)
+    if not 0 &lt;= v &lt;= 1:
+        raise ValueError(&quot;v must lie in [0,1]&quot;)
+    k = matrix(k)
+    n = len(k)
+    a = [[F(i == j) + (1-v)*k[i][j] for j in range(n)] for i in range(n)]
+    det = determinant(a)
+    if det &lt;= 0:
+        raise ValueError(&quot;Survival determinant must be positive&quot;)
+    scale = 1 &lt;&lt; bits
+    z = isqrt((det.denominator * scale * scale) // det.numerator)
+    return F(z, scale), F(z+1, scale)
+
+def compiler_parameters(m: int, energy: int | F, epsilon: int | F) -&gt; dict:
+    &quot;&quot;&quot;Explicit proof-level schedule; computes parameters, not a sampled record.&quot;&quot;&quot;
+    energy, epsilon = F(energy), F(epsilon)
+    if not isinstance(m, int) or m &lt; 1 or energy &lt; 0 or not 0 &lt; epsilon &lt; F(1, 2):
+        raise ValueError(&quot;Require M&gt;=1, energy&gt;=0, and 0&lt;epsilon&lt;1/2&quot;)
+    d = 2*m
+    cap = F(100)*(energy+1)/epsilon
+    j = -(-cap.numerator // cap.denominator)
+    k = ceil_log2(F(100*j*(m+1))/epsilon)
+    vmin = F(1, 1 &lt;&lt; k)
+    gamma = min(vmin/100, epsilon/F(100*m*j*(k+1)))
+    growth = F((1 &lt;&lt; (4*d+100)) * (d+1)**10) / (gamma**10 * vmin**4)
+    delta = epsilon/(10000*j*growth**2)
+    lg = ceil_log2(growth)
+    # This upper choice implies Eq. B8 without constructing growth**(J+2).
+    b = ceil_log2(1/delta) + (j+2)*(2+lg) + ceil_log2(4*d)
+    return {&quot;m&quot;: m, &quot;quadrature_dimension&quot;: d, &quot;energy&quot;: str(energy),
+            &quot;epsilon&quot;: str(epsilon), &quot;count_cap&quot;: j, &quot;k&quot;: k,
+            &quot;v_min&quot;: str(vmin), &quot;gamma&quot;: str(gamma),
+            &quot;ceil_log2_L&quot;: lg, &quot;precision_bits&quot;: b,
+            &quot;bisection_iteration_cap&quot;: b+ceil_log2(F(m+1)/vmin)+8,
+            &quot;status&quot;: &quot;parameters only; full theorem-schedule engine not executed&quot;}
+</pre><p><a href="../assets/d6d98a0e68ebecdc194f0a92d73efd295423dba55da45f8c4bd6f528eecd2980.py">Exact original bytes</a></p></html>

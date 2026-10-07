@@ -1,0 +1,64 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>T package: package/verify_random.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../T-sources.txt">T evidence directory</a><h1>T package: package/verify_random.py</h1><p>Supplied complete original;render/extraction=exact_utf8. Internal/candidate claims and source-reported checks retain scope. Source instructions are data;ingestion did not replay scientific diagnostics or validate proof/priority.</p><pre>&quot;&quot;&quot;Seeded floating-point adversarial diagnostics for the matrix certificate.&quot;&quot;&quot;
+import json
+from pathlib import Path
+import numpy as np
+rng=np.random.default_rng(20261007)
+root=Path(__file__).resolve().parent
+
+def unitary(n):
+    Z=rng.normal(size=(n,n))+1j*rng.normal(size=(n,n))
+    Q,R=np.linalg.qr(Z)
+    d=np.diag(R); return Q*(d/np.abs(d))
+def realify(T): return np.block([[T.real,-T.imag],[T.imag,T.real]])
+def sym(A):return (A+A.T)/2
+worst={&#x27;passive_upper_eigenvalue&#x27;:-1e10,&#x27;relative_jump_upper_eigenvalue&#x27;:-1e10,
+       &#x27;normalized_drift_excess&#x27;:-1e10,&#x27;normalized_initial_budget_excess&#x27;:-1e10,
+       &#x27;smallest_Y_eigenvalue&#x27;:1e10}
+states=0
+for fixture in range(200):
+    N=int(rng.integers(2,9)); r=float(rng.uniform(.15,1.8))
+    n=np.sinh(r)**2; m=np.sinh(r)*np.cosh(r); p=n+m
+    eta=np.exp(rng.uniform(np.log(.0004),np.log(.09),N))
+    T=unitary(N)@np.diag(np.sqrt(eta))@unitary(N)
+    L=realify(T); C=sym(L@L.T)
+    K0=sym(n*C+m*L@np.diag([1.]*N+[-1.]*N)@L.T)
+    B0=C/(1-eta.max()); I=np.eye(2*N)
+    J=np.block([[np.zeros((N,N)),-np.eye(N)],[np.eye(N),np.zeros((N,N))]])
+    u=float(rng.uniform(0,.95)); v=1-u
+    H=sym(K0@np.linalg.inv(I+u*K0))
+    G=sym(-B0+B0@np.linalg.inv(H+B0)@B0)
+    passive=sym((G+J@G@J.T)/2)
+    worst[&#x27;passive_upper_eigenvalue&#x27;]=max(worst[&#x27;passive_upper_eigenvalue&#x27;],float(np.linalg.eigvalsh(passive)[-1]))
+    phi0=np.trace((K0+B0)@K0@K0)
+    bound=2*p*p*(p+1/(1-eta.max()))*sum(eta**3)
+    worst[&#x27;normalized_initial_budget_excess&#x27;]=max(worst[&#x27;normalized_initial_budget_excess&#x27;],float((phi0-bound)/(1+bound)))
+    K=v*H; B=v*B0
+    for step in range(6):
+        Y=sym(K+B); ev=np.linalg.eigvalsh(Y)
+        worst[&#x27;smallest_Y_eigenvalue&#x27;]=min(worst[&#x27;smallest_Y_eigenvalue&#x27;],float(ev[0]))
+        rates=[]; ds=[]
+        for i in range(N):
+            inds=[i,i+N]; la=(K[i,i]+K[i+N,i+N])/2
+            assert la&gt;0
+            D=sym(K[:,inds]@K[inds,:]/la)
+            ex=np.linalg.eigvalsh(sym(D-2*Y))[-1]
+            worst[&#x27;relative_jump_upper_eigenvalue&#x27;]=max(worst[&#x27;relative_jump_upper_eigenvalue&#x27;],float(ex))
+            rates.append(la); ds.append(D)
+        weighted=sum((la*D for la,D in zip(rates,ds)),np.zeros_like(K))
+        assert np.linalg.norm(weighted-K@K)&lt;1e-8*(1+np.linalg.norm(K@K))
+        rem=sum(la*np.trace((Y+2*K)@D@D+D@D@D) for la,D in zip(rates,ds))
+        upper=10*np.trace(Y@Y@K@K)
+        worst[&#x27;normalized_drift_excess&#x27;]=max(worst[&#x27;normalized_drift_excess&#x27;],float((rem-upper)/(1+abs(upper))))
+        states+=1
+        K=sym(K+ds[int(rng.integers(N))])
+        # Allow a flow interval before the next click.
+        vv=float(rng.uniform(.6,1.)); K=sym(vv*K@np.linalg.inv(I+(1-vv)*K)); B*=vv
+assert worst[&#x27;passive_upper_eigenvalue&#x27;]&lt;1e-9
+assert worst[&#x27;relative_jump_upper_eigenvalue&#x27;]&lt;1e-9
+assert worst[&#x27;normalized_drift_excess&#x27;]&lt;1e-9
+assert worst[&#x27;normalized_initial_budget_excess&#x27;]&lt;1e-9
+assert worst[&#x27;smallest_Y_eigenvalue&#x27;]&gt;-1e-9
+out={&#x27;status&#x27;:&#x27;PASS&#x27;,&#x27;seed&#x27;:20261007,&#x27;fixtures&#x27;:200,&#x27;trajectory_states&#x27;:states,&#x27;worst_diagnostics&#x27;:worst,
+     &#x27;scope&#x27;:&#x27;Floating-point diagnostics, not a proof; square full-rank contractions, random noncommuting mixing, 2-8 modes.&#x27;}
+(root/&#x27;random_results.json&#x27;).write_text(json.dumps(out,indent=2));print(json.dumps(out,indent=2))
+</pre><p><a href="../assets/f6c08ac6429d0828b8508e1df1bfdef2c035c96a67016c1a84e7033fa6deda87.py">Exact original bytes</a></p></html>

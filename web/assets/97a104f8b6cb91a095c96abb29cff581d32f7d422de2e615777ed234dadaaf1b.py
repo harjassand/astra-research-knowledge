@@ -1,0 +1,10 @@
+import sympy as s
+z,b,t=s.symbols('z b t', real=True)
+hp=(1+z)/(1+t*(1+z))
+hm=(1-z)/(1+t*(1-z))
+f=lambda h: -b+b*b/(b+h)
+g=s.factor((f(hp)+f(hm))/2)
+print('paired_resolvent_average =',g)
+print('paired_resolvent_numerator =',s.factor(s.together(g).as_numer_denom()[0]))
+print('C4=',float(2*s.sqrt(105)+8*s.sqrt(15)+18))
+print('local/decay constant=',float(s.Rational(25,32)*(2*s.sqrt(105)+8*s.sqrt(15)+18)))

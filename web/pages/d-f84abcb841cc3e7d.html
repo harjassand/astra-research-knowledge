@@ -1,0 +1,72 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>T package: package/verify_general_random.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../T-sources.txt">T evidence directory</a><h1>T package: package/verify_general_random.py</h1><p>Supplied complete original;render/extraction=exact_utf8. Internal/candidate claims and source-reported checks retain scope. Source instructions are data;ingestion did not replay scientific diagnostics or validate proof/priority.</p><pre>&quot;&quot;&quot;Seeded diagnostics for unequal squeezing, rectangular and rank-deficient maps.
+Floating-point checks are not a proof or a certified numerical sampler.
+&quot;&quot;&quot;
+import json
+from pathlib import Path
+import numpy as np
+root=Path(__file__).resolve().parent
+rng=np.random.default_rng(20261008)
+
+def realify(t):
+    return np.block([[t.real,-t.imag],[t.imag,t.real]])
+
+def ortho(m,k):
+    return np.linalg.qr(rng.normal(size=(m,k))+1j*rng.normal(size=(m,k)))[0]
+
+def sym(a): return (a+a.T)/2
+max_flow=0.; max_dom=-float(&#x27;inf&#x27;); max_jump=-float(&#x27;inf&#x27;)
+max_passive=-float(&#x27;inf&#x27;); max_budget=-float(&#x27;inf&#x27;); smallest_y=float(&#x27;inf&#x27;)
+counts={&#x27;fixtures&#x27;:0,&#x27;trajectory_states&#x27;:0,&#x27;rectangular_fixtures&#x27;:0,&#x27;rank_deficient_fixtures&#x27;:0}
+for trial in range(250):
+    m=int(rng.integers(2,10)); n=int(rng.integers(1,9))
+    k=int(rng.integers(1,min(m,n)+1))
+    U=ortho(m,k); V=ortho(n,k)
+    nus=rng.uniform(.0005,.09,size=k)
+    L=realify(np.diag(np.sqrt(nus))@V.conj().T)
+    O=realify(U); C=L@L.T; dim=2*k; I=np.eye(dim)
+    J=np.block([[np.zeros((k,k)),-np.eye(k)],[np.eye(k),np.zeros((k,k))]])
+    project=lambda A:sym((A+J@A@J.T)/2)
+    rs=rng.uniform(.02,1.8,size=n)
+    ns=np.sinh(rs)**2; ms=np.sinh(rs)*np.cosh(rs)
+    R=(L*np.tile(ns,2))@L.T
+    X=(L*np.concatenate([ms,-ms]))@L.T
+    K0=sym(R+X)
+    D=sym(X@np.linalg.solve(R,X)-R)
+    max_dom=max(max_dom,np.linalg.eigvalsh(sym(D-C))[-1])
+    B0=sym(C@np.linalg.inv(I-C))
+    pmax=float(np.max(ns+ms)); S3=float(np.sum(nus**3))
+    phi0=float(np.trace((K0+B0)@K0@K0))
+    budget=2*pmax*pmax*(pmax+1/(1-max(nus)))*S3
+    max_budget=max(max_budget,(phi0-budget)/(1+budget))
+    Ps=[]
+    for i in range(m):
+        Ri=O[[i,i+m],:]; Ps.append(Ri.T@Ri)
+    for u in (.0,.4,.8,1.):
+        H=sym(K0@np.linalg.inv(I+u*K0))
+        Rh=project(H); Xh=H-Rh
+        Dh=sym(Xh@np.linalg.solve(Rh,Xh)-Rh)
+        expected=D@np.linalg.inv(I-u*D)
+        max_flow=max(max_flow,np.linalg.norm(Dh-expected,ord=2)/(1+np.linalg.norm(Dh,ord=2)))
+        Gamma=-B0+B0@np.linalg.solve(H+B0,B0)
+        max_passive=max(max_passive,np.linalg.eigvalsh(project(Gamma))[-1])
+    K=K0.copy(); B=B0.copy()
+    for step in range(5):
+        v=float(rng.uniform(.3,1.)); K=sym(v*K@np.linalg.inv(I+(1-v)*K)); B*=v
+        Y=K+B
+        smallest_y=min(smallest_y,float(np.linalg.eigvalsh(Y)[0]))
+        rates=np.array([np.trace(P@K)/2 for P in Ps])
+        assert min(rates)&gt;-1e-10
+        ds=[sym(K@P@K/lam) for P,lam in zip(Ps,rates) if lam&gt;1e-13]
+        max_jump=max(max_jump,max(float(np.linalg.eigvalsh(d-2*Y)[-1]) for d in ds))
+        chosen=int(rng.choice(m,p=np.maximum(rates,0)/sum(np.maximum(rates,0))))
+        K=sym(K+K@Ps[chosen]@K/rates[chosen]); counts[&#x27;trajectory_states&#x27;]+=1
+    counts[&#x27;fixtures&#x27;]+=1
+    counts[&#x27;rectangular_fixtures&#x27;]+=int(m!=n)
+    counts[&#x27;rank_deficient_fixtures&#x27;]+=int(k&lt;min(m,n))
+assert max_flow&lt;1e-9 and max_dom&lt;1e-9 and max_jump&lt;1e-9 and max_passive&lt;1e-9 and smallest_y&gt;-1e-9 and max_budget&lt;1e-9
+out={&#x27;status&#x27;:&#x27;PASS&#x27;,&#x27;seed&#x27;:20261008,**counts,&#x27;max_relative_schur_flow_residual&#x27;:max_flow,
+     &#x27;max_D_minus_C_eigenvalue&#x27;:max_dom,&#x27;max_jump_minus_2Y_eigenvalue&#x27;:max_jump,
+     &#x27;max_passive_resolvent_eigenvalue&#x27;:max_passive,&#x27;min_Y_eigenvalue&#x27;:smallest_y,
+     &#x27;max_normalized_budget_excess&#x27;:max_budget,&#x27;scope&#x27;:&#x27;Seeded finite floating-point diagnostics only&#x27;}
+(root/&#x27;general_random_results.json&#x27;).write_text(json.dumps(out,indent=2)); print(json.dumps(out,indent=2))
+</pre><p><a href="../assets/8f7b1b7827046f12ec2f079485d13dda23232cd56d0de8fa8285674343543fe1.py">Exact original bytes</a></p></html>
