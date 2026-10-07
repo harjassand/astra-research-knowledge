@@ -1,0 +1,205 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>M package: package/work/scouts/optimization_sdp_check.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../M-sources.txt">M evidence directory</a><h1>M package: package/work/scouts/optimization_sdp_check.py</h1><p>Exact supplied text; source d-0a866f6c3cb44bdc. Historical instructions are data. Candidate/internal audit and source-reported checks are not external certification; ingestion did not replay diagnostics.</p><pre># /// script
+# requires-python = &quot;&gt;=3.12&quot;
+# dependencies = [&quot;numpy&gt;=2.0&quot;, &quot;cvxpy&gt;=1.6&quot;]
+# ///
+&quot;&quot;&quot;Small transcription checks for the isotropic fourth-moment SDP.
+
+The optimizer interface receives only the coefficient tensor. Hidden frames and
+couplings are confined to fixture generation and retrospective assessment.
+Floating-point solver status is not a universal proof or an exact certificate.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import itertools
+import json
+import resource
+import time
+from pathlib import Path
+
+import cvxpy as cp
+import numpy as np
+
+
+def tensor_from_coupling(g, u):
+    n = len(g)
+    t = np.zeros((n,) * 4)
+    for i in range(n):
+        t[i, i, i, i] = g[i, i]
+        for j in range(i):
+            for p in set(itertools.permutations((i, i, j, j))):
+                t[p] = g[i, j] / 3
+    return np.einsum(&quot;ai,bj,ck,dl,ijkl-&gt;abcd&quot;, u, u, u, u, t)
+
+
+def axis_moment(u):
+    return np.einsum(&quot;ai,bi,ci,di-&gt;abcd&quot;, u, u, u, u) / len(u)
+
+
+def sphere_moment(n):
+    eye = np.eye(n)
+    return (
+        np.einsum(&quot;ij,kl-&gt;ijkl&quot;, eye, eye)
+        + np.einsum(&quot;ik,jl-&gt;ijkl&quot;, eye, eye)
+        + np.einsum(&quot;il,jk-&gt;ijkl&quot;, eye, eye)
+    ) / (n * (n + 2))
+
+
+def recover_moment(observed_t):
+    &quot;&quot;&quot;No hidden frame, coupling matrix, or margin is passed to this function.&quot;&quot;&quot;
+    n = len(observed_t)
+    monomials = list(itertools.combinations_with_replacement(range(n), 4))
+    lookup = {p: i for i, p in enumerate(monomials)}
+    pairs = list(itertools.combinations_with_replacement(range(n), 2))
+    weights = np.array([1 if i == j else np.sqrt(2) for i, j in pairs])
+    y = cp.Variable(len(monomials))
+    objective_coefficients = np.zeros(len(monomials))
+    for p in itertools.product(range(n), repeat=4):
+        objective_coefficients[lookup[tuple(sorted(p))]] += observed_t[p]
+    cat_index = np.zeros((len(pairs), len(pairs)), dtype=int)
+    cat_weight = weights[:, None] * weights[None, :]
+    for a, p in enumerate(pairs):
+        for b, q in enumerate(pairs):
+            cat_index[a, b] = lookup[tuple(sorted(p + q))]
+    c_expr = cp.bmat([
+        [weights[a] * weights[b] * y[lookup[tuple(sorted(p + q))]]
+         for b, q in enumerate(pairs)]
+        for a, p in enumerate(pairs)
+    ])
+    contraction = np.zeros((len(pairs), len(monomials)))
+    target = np.zeros(len(pairs))
+    for a, (i, j) in enumerate(pairs):
+        target[a] = (1 / n) if i == j else 0
+        for k in range(n):
+            contraction[a, lookup[tuple(sorted((i, j, k, k)))]] += 1
+    psd = c_expr &gt;&gt; 0
+    equality = contraction @ y == target
+    problem = cp.Problem(cp.Maximize(objective_coefficients @ y), [psd, equality])
+    started = time.perf_counter()
+    problem.solve(solver=&quot;CLARABEL&quot;, tol_gap_abs=1e-10, tol_gap_rel=1e-10,
+                  tol_feas=1e-10, max_iter=300)
+    elapsed = time.perf_counter() - started
+    if y.value is None:
+        raise RuntimeError(f&quot;No solver output: {problem.status}&quot;)
+
+    # A numerical affine projection and inward mix protect the audit from tiny
+    # equality/PSD residuals. These are not exact rational certificates.
+    values = np.asarray(y.value).copy()
+    values += contraction.T @ np.linalg.lstsq(
+        contraction @ contraction.T, target - contraction @ values, rcond=None
+    )[0]
+    c_val = cat_weight * values[cat_index]
+    raw_min_eigenvalue = float(np.linalg.eigvalsh(c_val)[0])
+    sph = sphere_moment(n)
+    sph_values = np.array([sph[p] for p in monomials])
+    sph_min = 2 / (n * (n + 2))
+    mix = max(0.0, (1e-12 - raw_min_eigenvalue) / (sph_min - raw_min_eigenvalue))
+    values = (1 - mix) * values + mix * sph_values
+    c_val = cat_weight * values[cat_index]
+    out = np.empty((n,) * 4)
+    for p in itertools.product(range(n), repeat=4):
+        out[p] = values[lookup[tuple(sorted(p))]]
+
+    # Numerical dual upper estimate: project the dual PSD matrix, then bound its
+    # stationarity error using ||y||_2 &lt;= ||Y||_F &lt;= trace(C_Y) = 1.
+    dual_psd = np.asarray(psd.dual_value)
+    ev, vec = np.linalg.eigh(dual_psd)
+    dual_psd = (vec * np.maximum(ev, 0)) @ vec.T
+    dual_eq = np.asarray(equality.dual_value)
+    psd_adjoint = np.bincount(
+        cat_index.ravel(), weights=(dual_psd * cat_weight).ravel(),
+        minlength=len(monomials),
+    )
+    stationarity = objective_coefficients + psd_adjoint - contraction.T @ dual_eq
+    upper = float(target @ dual_eq + np.linalg.norm(stationarity))
+    observed_value = float(np.einsum(&quot;ijkl,ijkl&quot;, observed_t, out))
+    audit = {
+        &quot;status&quot;: problem.status,
+        &quot;solver_seconds&quot;: elapsed,
+        &quot;raw_min_eigenvalue&quot;: raw_min_eigenvalue,
+        &quot;inward_mix&quot;: mix,
+        &quot;output_min_eigenvalue&quot;: float(np.linalg.eigvalsh(c_val)[0]),
+        &quot;contraction_max_residual&quot;: float(np.max(np.abs(contraction @ values - target))),
+        &quot;observed_objective&quot;: observed_value,
+        &quot;numerical_dual_upper_estimate&quot;: upper,
+        &quot;numerical_dual_gap_estimate&quot;: max(0.0, upper - observed_value),
+        &quot;dual_stationarity_l2&quot;: float(np.linalg.norm(stationarity)),
+        &quot;psd_block_dimension&quot;: len(pairs),
+        &quot;moment_variables&quot;: len(monomials),
+    }
+    return out, audit
+
+
+def retrospective_axis_error(y, u, seed):
+    rng = np.random.default_rng(seed)
+    a = rng.normal(size=(len(u), len(u)))
+    a = (a + a.T) / 2
+    _, v = np.linalg.eigh(np.einsum(&quot;ijkl,kl-&gt;ij&quot;, y, a))
+    match = np.abs(u.T @ v)
+    # Small-fixture matching, never used by the learner/rounding procedure.
+    best = max(min(match[i, perm[i]] for i in range(len(u)))
+               for perm in itertools.permutations(range(len(u))))
+    return float(np.sqrt(max(0, 1 - best * best)))
+
+
+def main():
+    started = time.perf_counter()
+    rng = np.random.default_rng(7401)
+    fixtures = [
+        (&quot;coupled_pd&quot;, np.array([[2., .5, -.25], [.5, 3., .2], [-.25, .2, 4.]]), 0.),
+        (&quot;near_radial_equal_diagonal&quot;, np.ones((4, 4)) + .05 * np.eye(4), 0.),
+        (&quot;indefinite_positive_contrasts&quot;, np.array([[1., .5, .5], [.5, 1., -3.5], [.5, -3.5, 1.]]), 0.),
+        (&quot;additive_tensor_noise&quot;, np.ones((4, 4)) + .1 * np.eye(4), 1e-4),
+        (&quot;negative_contrast_control&quot;, np.array([[1., 2.], [2., 1.]]), 0.),
+        (&quot;zero_contrast_control&quot;, np.ones((3, 3)), 0.),
+    ]
+    rows = []
+    for case, g, sigma in fixtures:
+        n = len(g)
+        u, _ = np.linalg.qr(rng.normal(size=(n, n)))
+        true = tensor_from_coupling(g, u)
+        noise = np.zeros_like(true)
+        if sigma:
+            for p in itertools.combinations_with_replacement(range(n), 4):
+                value = rng.normal()
+                for q in set(itertools.permutations(p)):
+                    noise[q] = value
+            noise *= sigma / np.linalg.norm(noise)
+        out, audit = recover_moment(true + noise)
+        target = axis_moment(u)
+        true_objective = float(np.einsum(&quot;ijkl,ijkl&quot;, true, out))
+        gap = float(np.trace(g) / n - true_objective)
+        r = float(np.linalg.norm(out - target))
+        gamma = min(g[i, i] + g[j, j] - 2 * g[i, j]
+                    for i in range(n) for j in range(i))
+        row = {
+            &quot;case&quot;: case, &quot;n&quot;: n,
+            &quot;min_coupling_eigenvalue&quot;: float(np.linalg.eigvalsh(g)[0]),
+            &quot;gamma&quot;: float(gamma), &quot;noise_frobenius&quot;: float(np.linalg.norm(noise)),
+            &quot;moment_error_frobenius&quot;: r, &quot;true_objective_gap&quot;: gap,
+            &quot;axis_error_max_sine&quot;: retrospective_axis_error(out, u, 137),
+            **audit,
+        }
+        if gamma &gt; 0:
+            row[&quot;growth_bound_rhs&quot;] = max(0., 4 * gap / gamma)
+            row[&quot;growth_bound_lhs&quot;] = r * r
+            row[&quot;growth_inequality_with_roundoff&quot;] = bool(r * r &lt;= 4 * gap / gamma + 1e-8)
+            delta_est = max(1e-8, audit[&quot;numerical_dual_gap_estimate&quot;])
+            row[&quot;noise_bound_with_numerical_delta&quot;] = 4 * sigma / gamma + 2 * np.sqrt(delta_est / gamma)
+            row[&quot;noise_inequality_with_roundoff&quot;] = bool(r &lt;= row[&quot;noise_bound_with_numerical_delta&quot;] + 1e-8)
+        rows.append(row)
+
+    result = {
+        &quot;scope&quot;: &quot;Six small floating-point SDP transcription checks; no universal proof or exact certification.&quot;,
+        &quot;optimizer_input&quot;: &quot;Only the observed fourth coefficient tensor.&quot;,
+        &quot;solver&quot;: &quot;CVXPY + CLARABEL&quot;, &quot;fixtures&quot;: rows,
+        &quot;body_seconds&quot;: time.perf_counter() - started,
+        &quot;process_peak_rss_bytes_macos&quot;: resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
+    }
+    destination = Path(__file__).with_name(&quot;optimization_sdp_check.json&quot;)
+    destination.write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+    print(json.dumps(result, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/edf82b957e791debb7b98f41f3d28885e5fab88d77033b350e868c1198d76918.py">Exact original bytes</a></p></html>

@@ -1,0 +1,233 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>M package: package/work/scouts/causal_inference_check.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../M-sources.txt">M evidence directory</a><h1>M package: package/work/scouts/causal_inference_check.py</h1><p>Exact supplied text; source d-852cf41f3269de13. Historical instructions are data. Candidate/internal audit and source-reported checks are not external certification; ingestion did not replay diagnostics.</p><pre>&quot;&quot;&quot;Finite diagnostics for the causal-inference scout; no theorem certification.
+
+Run with python3 work/scouts/causal_inference_check.py.
+Only NumPy and the standard library are required.
+&quot;&quot;&quot;
+
+from itertools import combinations, permutations
+from math import comb
+import json
+from pathlib import Path
+import numpy as np
+
+
+def norm(a):
+    return float(np.linalg.norm(a, 2))
+
+
+def projector(a, tol=1e-8):
+    vals, vecs = np.linalg.eigh((a + a.T) / 2)
+    u = vecs[:, np.abs(vals) &gt; tol]
+    return u @ u.T
+
+
+def code_targets(d):
+    k = 2
+    while comb(k, k // 2) &lt; d:
+        k += 1
+    codes = list(combinations(range(k), k // 2))[:d]
+    return [np.array([i for i, code in enumerate(codes) if e in code])
+            for e in range(k)]
+
+
+def covariances(b, a, d1, d2, omega, targets):
+    p, d = b.shape
+    out = []
+    for target in [np.array([], dtype=int), *targets]:
+        ak = a.copy()
+        ak[target, :] = 0
+        gk = np.eye(d) - ak
+        invg = np.linalg.inv(gk)
+        pair = []
+        for diag in (d1, d2):
+            diagk = diag.copy()
+            diagk[target] = 0
+            sz = invg @ np.diag(diagk) @ invg.T
+            pair.append(b @ sz @ b.T + omega)
+        out.append(pair)
+    return out
+
+
+def one_trial(seed, d):
+    rng = np.random.default_rng(seed)
+    p = d + 2
+    b = rng.normal(size=(p, d))
+    b /= np.linalg.norm(b, axis=0)
+    a = np.tril(rng.uniform(-0.7, 0.7, (d, d)), -1)
+    d1 = rng.uniform(1.0, 1.5, d)
+    shifts = rng.uniform(0.35, 0.9, d) * np.where(np.arange(d) % 2, -1, 1)
+    d2 = d1 + shifts
+    q = rng.normal(size=(p, p))
+    omega = q @ q.T + np.eye(p)
+    targets = code_targets(d)
+    covs = covariances(b, a, d1, d2, omega, targets)
+    projs = [projector(pair[0] - pair[1]) for pair in covs[1:]]
+    lines = []
+    min_gap = float(&quot;inf&quot;)
+    k = len(targets)
+    for size in range(1, k + 1):
+        for ts in combinations(range(k), size):
+            h = sum((np.eye(p) - projs[t] for t in ts), start=np.zeros((p, p)))
+            vals, vecs = np.linalg.eigh((h + h.T) / 2)
+            positives = vals[vals &gt; 1e-8]
+            if len(positives):
+                min_gap = min(min_gap, float(positives.min()))
+            zeros = vecs[:, np.abs(vals) &lt; 1e-8]
+            if zeros.shape[1] == 1:
+                v = zeros[:, 0]
+                pp = np.outer(v, v)
+                if all(norm(pp - np.outer(u, u)) &gt; 1e-6 for u in lines):
+                    lines.append(v)
+    assert len(lines) == d, (seed, d, len(lines))
+    raw = np.column_stack(lines)
+    perm = max(permutations(range(d)), key=lambda pp: sum(abs(b[:, i] @ raw[:, j]) for i, j in enumerate(pp)))
+    bh = raw[:, perm]
+    bh *= np.sign(np.sum(b * bh, axis=0))
+    mix_error = norm(bh - b)
+    what = np.linalg.pinv(bh)
+    guessed_targets = [np.array([i for i in range(d) if norm((np.eye(p) - pr) @ bh[:, i:i+1]) &gt; 1e-6])
+                       for pr in projs]
+    assert all(np.array_equal(t, th) for t, th in zip(targets, guessed_targets))
+    proxy = [[what @ sx @ what.T for sx in pair] for pair in covs]
+    psi = np.zeros((d, d))
+    for i in range(d):
+        ki = next(kj for kj, tt in enumerate(guessed_targets) if i in tt)
+        psi[i] = proxy[ki + 1][0][i]
+    psi = (psi + psi.T) / 2
+    sz1, sz2 = [x - psi for x in proxy[0]]
+    omega_hat = covs[0][0] - bh @ sz1 @ bh.T
+    s, u = np.linalg.eigh(sz2)
+    invsqrt = (u * (s ** -0.5)) @ u.T
+    lam, evec = np.linalg.eigh(invsqrt @ sz1 @ invsqrt)
+    rows = (invsqrt @ evec).T
+    row_perm = next(pp for pp in permutations(range(d))
+                    if all(abs(rows[pp[i], i]) &gt; 1e-6 for i in range(d)))
+    gh = rows[list(row_perm), :]
+    gh /= np.diag(gh)[:, None]
+    ah = np.eye(d) - gh
+    kappa = np.linalg.cond(b)
+    assert min_gap + 1e-8 &gt;= kappa ** -2
+    return {
+        &quot;seed&quot;: seed, &quot;d&quot;: d, &quot;p&quot;: p, &quot;K&quot;: k,
+        &quot;mixing_error&quot;: mix_error,
+        &quot;sensor_covariance_error&quot;: norm(omega_hat - omega),
+        &quot;causal_matrix_error&quot;: norm(ah - a),
+        &quot;minimum_sum_projector_gap&quot;: min_gap,
+        &quot;proved_gap_lower_bound&quot;: float(kappa ** -2),
+    }
+
+
+def drift_counterexample():
+    theta = 0.4
+    r = np.array([[np.cos(theta), -np.sin(theta)],
+                  [np.sin(theta), np.cos(theta)]])
+    profiles = [np.array([0.01, 0.014]), np.array([0.021, 0.032]),
+                np.array([0.013, 0.015])]
+    targets = [np.array([0]), np.array([1])]
+    old = []
+    same = []
+    drift_size = 0.0
+    minimum_noise_eigenvalue = 1.0
+    for ki, target in enumerate([np.array([], dtype=int), *targets]):
+        pair = []
+        old_pair = []
+        for ell, diag in enumerate(profiles):
+            diagk = diag.copy()
+            diagk[target] = 0
+            signal_old = np.diag(diagk)
+            signal_new = r @ signal_old @ r.T
+            noise_new = np.eye(2) + signal_old - signal_new
+            drift_size = max(drift_size, norm(noise_new - np.eye(2)))
+            minimum_noise_eigenvalue = min(minimum_noise_eigenvalue, float(np.linalg.eigvalsh(noise_new).min()))
+            pair.append(signal_new + noise_new)
+            old_pair.append(signal_old + np.eye(2))
+        same.append(pair)
+        old.append(old_pair)
+    return {
+        &quot;representation_rotation_radians&quot;: theta,
+        &quot;maximum_sensor_covariance_drift&quot;: drift_size,
+        &quot;minimum_sensor_covariance_eigenvalue&quot;: minimum_noise_eigenvalue,
+        &quot;maximum_observed_covariance_difference&quot;: max(norm(old[k][l] - same[k][l]) for k in range(3) for l in range(3)),
+        &quot;baseline_contrast_ratios&quot;: ((profiles[2] - profiles[0]) / (profiles[1] - profiles[0])).tolist(),
+        &quot;interpretation&quot;: &quot;Two distinct latent coordinate systems produce identical centered Gaussian observed laws when sensor noise may vary by environment and variance regime.&quot;,
+    }
+
+
+def confounded_three_profile_trial(seed, d):
+    &quot;&quot;&quot;Unknown B, dense sensor noise, dense confounding, both varying by k.&quot;&quot;&quot;
+    rng = np.random.default_rng(1000 + seed)
+    p = d + 2
+    b = rng.normal(size=(p, d))
+    b /= np.linalg.norm(b, axis=0)
+    a = np.tril(rng.uniform(-0.7, 0.7, (d, d)), -1)
+    targets = code_targets(d)
+    profiles = [np.zeros(d), rng.uniform(0.5, 1.5, d), rng.uniform(0.5, 1.5, d)]
+    covs = []
+    for target in [np.array([], dtype=int), *targets]:
+        ak = a.copy()
+        ak[target, :] = 0
+        ig = np.linalg.inv(np.eye(d) - ak)
+        q = rng.normal(size=(d, d))
+        background = q @ q.T + np.eye(d)
+        background[target, :] = 0
+        background[:, target] = 0
+        qsensor = rng.normal(size=(p, p))
+        omega = qsensor @ qsensor.T + np.eye(p)
+        covs.append([])
+        for profile in profiles:
+            diag = profile.copy()
+            diag[target] = 0
+            sz = ig @ (background + np.diag(diag)) @ ig.T
+            covs[-1].append(b @ sz @ b.T + omega)
+    projs = [projector(triple[1] - triple[0]) for triple in covs[1:]]
+    lines = []
+    k = len(targets)
+    for size in range(1, k + 1):
+        for ts in combinations(range(k), size):
+            h = sum((np.eye(p) - projs[t] for t in ts), start=np.zeros((p, p)))
+            vals, vecs = np.linalg.eigh((h + h.T) / 2)
+            zeros = vecs[:, np.abs(vals) &lt; 1e-8]
+            if zeros.shape[1] == 1:
+                v = zeros[:, 0]
+                if all(norm(np.outer(v, v) - np.outer(u, u)) &gt; 1e-6 for u in lines):
+                    lines.append(v)
+    assert len(lines) == d
+    raw = np.column_stack(lines)
+    perm = max(permutations(range(d)), key=lambda pp: sum(abs(b[:, i] @ raw[:, j]) for i, j in enumerate(pp)))
+    bh = raw[:, perm]
+    bh *= np.sign(np.sum(b * bh, axis=0))
+    what = np.linalg.pinv(bh)
+    c1 = what @ (covs[0][1] - covs[0][0]) @ what.T
+    c2 = what @ (covs[0][2] - covs[0][0]) @ what.T
+    s, u = np.linalg.eigh(c1)
+    invsqrt = (u * (s ** -0.5)) @ u.T
+    lam, evec = np.linalg.eigh(invsqrt @ c2 @ invsqrt)
+    rows = (invsqrt @ evec).T
+    row_perm = next(pp for pp in permutations(range(d))
+                    if all(abs(rows[pp[i], i]) &gt; 1e-6 for i in range(d)))
+    gh = rows[list(row_perm), :]
+    gh /= np.diag(gh)[:, None]
+    return {&quot;seed&quot;: seed, &quot;d&quot;: d, &quot;p&quot;: p, &quot;K&quot;: k,
+            &quot;mixing_error&quot;: norm(bh - b),
+            &quot;causal_matrix_error&quot;: norm((np.eye(d) - gh) - a)}
+
+
+if __name__ == &quot;__main__&quot;:
+    trials = [one_trial(seed, 2 + seed % 5) for seed in range(50)]
+    confounded_trials = [confounded_three_profile_trial(seed, 2 + seed % 5) for seed in range(50)]
+    result = {
+        &quot;status&quot;: &quot;finite_diagnostic_passed_not_proof&quot;,
+        &quot;trials&quot;: trials,
+        &quot;max_errors&quot;: {key: max(x[key] for x in trials) for key in
+                       [&quot;mixing_error&quot;, &quot;sensor_covariance_error&quot;, &quot;causal_matrix_error&quot;]},
+        &quot;drift_counterexample&quot;: drift_counterexample(),
+        &quot;confounded_three_profile_trials&quot;: confounded_trials,
+        &quot;confounded_max_errors&quot;: {key: max(x[key] for x in confounded_trials) for key in
+                                  [&quot;mixing_error&quot;, &quot;causal_matrix_error&quot;]},
+    }
+    path = Path(__file__).with_name(&quot;causal_inference_check.json&quot;)
+    path.write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+    print(json.dumps({&quot;status&quot;: result[&quot;status&quot;], &quot;max_errors&quot;: result[&quot;max_errors&quot;],
+                      &quot;confounded_max_errors&quot;: result[&quot;confounded_max_errors&quot;],
+                      &quot;drift_counterexample&quot;: result[&quot;drift_counterexample&quot;]}, indent=2))
+</pre><p><a href="../assets/1ff7b36da23c808cc892cb1b016a9580a1ef94a83467f79e3c588bb54a94b5f0.py">Exact original bytes</a></p></html>

@@ -1,0 +1,91 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>M package: package/work/scouts/nonequilibrium_derivations.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../M-sources.txt">M evidence directory</a><h1>M package: package/work/scouts/nonequilibrium_derivations.py</h1><p>Exact supplied text; source d-c0e5b12d3996a422. Historical instructions are data. Candidate/internal audit and source-reported checks are not external certification; ingestion did not replay diagnostics.</p><pre>&quot;&quot;&quot;Scoped algebra checks for nonequilibrium_physics.md; not a proof certificate.
+
+Run with python3 work/scouts/nonequilibrium_derivations.py.
+The symbolic checks concern a proposed exact equilibrium completion and the
+spectral algebra. Quadrature checks only confirm the derived integral on fixtures.
+&quot;&quot;&quot;
+from pathlib import Path
+import json
+import math
+import sympy as s
+import mpmath as mp
+
+checks = {}
+g, r, nu = s.symbols(&quot;g r nu&quot;, positive=True, real=True)
+alpha = 2 * g / (2 + r)
+beta = 2 * g * (1 + r) / (2 + r)
+kappa = (g - alpha) ** 2
+Cq = 1 / alpha
+temperature = kappa / alpha
+Aeq = s.Matrix([[-alpha, 1], [-kappa, -beta]])
+Ceq = s.diag(Cq, temperature)
+Deq = s.diag(1, beta * temperature)
+parity = s.diag(1, -1)
+
+def zero_matrix(m):
+    return all(s.simplify(z) == 0 for z in m)
+
+checks[&quot;equilibrium_lyapunov&quot;] = zero_matrix(
+    Aeq * Ceq + Ceq * Aeq.T + 2 * Deq
+)
+checks[&quot;equilibrium_parity_reversal&quot;] = zero_matrix(
+    Ceq * Aeq.T * Ceq.inv() - parity * Aeq * parity
+)
+checks[&quot;equilibrium_poles&quot;] = (
+    s.simplify(Aeq.trace() + 2 * g) == 0
+    and s.simplify(Aeq.det() - g**2) == 0
+)
+checks[&quot;equilibrium_observed_PSD&quot;] = (
+    s.simplify(beta**2 + beta * temperature - g**2 * (1 + r)) == 0
+)
+
+a, b, c, d = s.symbols(&quot;a b c d&quot;, positive=True, real=True)
+Jc = 1 / ((a + b) * (a + c) * (b + c))
+Jd = 1 / ((a + b) * (a + d) * (b + d))
+I4 = (a + b + c + d) / (
+    (a + b) * (c + d) * (a + c) * (b + c) * (a + d) * (b + d)
+)
+checks[&quot;four_pole_integral_algebra&quot;] = s.simplify(
+    (Jc - Jd) / (d**2 - c**2) - I4
+) == 0
+
+# Check the Gaussian 2x2 forward/reversed spectral trace directly.
+aa, bb, cr, ci = s.symbols(&quot;aa bb cr ci&quot;, real=True)
+Sm = s.Matrix([[aa, cr+s.I*ci], [cr-s.I*ci, bb]])
+checks[&quot;spectral_trace_identity&quot;] = s.simplify(
+    (Sm.T.inv()*Sm).trace() - 2 - 4*ci**2/Sm.det()
+) == 0
+
+mp.mp.dps = 45
+fixtures = []
+for av, bv, cv, dv in [(1, 2, 3, 4), (1, 1, 1, 2), (.4, 1.3, .7, .7001)]:
+    f = lambda x: x*x / (
+        (x*x+av*av)*(x*x+bv*bv)*(x*x+cv*cv)*(x*x+dv*dv)
+    )
+    numeric = mp.quad(f, [-mp.inf, 0, mp.inf]) / mp.pi
+    analytic = (av+bv+cv+dv) / (
+        (av+bv)*(cv+dv)*(av+cv)*(bv+cv)*(av+dv)*(bv+dv)
+    )
+    fixtures.append({&quot;poles&quot;: [av,bv,cv,dv],
+                     &quot;absolute_error&quot;: float(abs(numeric-analytic))})
+checks[&quot;quadrature_fixtures&quot;] = fixtures
+
+# Exact stroboscopic OU observation ambiguity is represented algebraically;
+# trigonometric evaluation at large integer multiples would be a floating check.
+theta, decay, cov = s.symbols(&quot;theta decay cov&quot;, real=True, positive=True)
+R = s.Matrix([[s.cos(theta),-s.sin(theta)],
+              [s.sin(theta),s.cos(theta)]])
+checks[&quot;OU_transition_noise_independent_of_rotation&quot;] = zero_matrix(
+    decay*R*(cov*s.eye(2))*(decay*R).T - decay**2*cov*s.eye(2)
+)
+checks[&quot;OU_sampled_EPR&quot;] = s.simplify(
+    (R - R.T).T*(R - R.T)
+    - 4*s.sin(theta)**2*s.eye(2)
+) == s.zeros(2)
+
+out = {&quot;status&quot;:&quot;scoped_symbolic_and_quadrature_checks_only&quot;, &quot;checks&quot;:checks}
+assert all(v for v in checks.values() if isinstance(v, bool))
+path = Path(__file__).with_name(&quot;nonequilibrium_derivations.json&quot;)
+path.write_text(json.dumps(out, indent=2) + &quot;\n&quot;)
+print(json.dumps(out, indent=2))
+</pre><p><a href="../assets/fb604576bd4e157ab5831895684c0d7a0bf4593bfb54d4ab041e541aa4a1e9de.py">Exact original bytes</a></p></html>

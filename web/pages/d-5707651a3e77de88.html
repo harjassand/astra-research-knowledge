@@ -1,0 +1,311 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>M package: package/work/scouts/algebra_geometry_check.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../M-sources.txt">M evidence directory</a><h1>M package: package/work/scouts/algebra_geometry_check.py</h1><p>Exact supplied text; source d-5707651a3e77de88. Historical instructions are data. Candidate/internal audit and source-reported checks are not external certification; ingestion did not replay diagnostics.</p><pre>&quot;&quot;&quot;Exact finite diagnostics; mathematical proof is in algebra_geometry.md.
+
+The coefficient field is F_p(A,B), with A and B indeterminates.  This
+preserves inseparability and avoids the invalid specialization to a finite
+coefficient field.  No global field-reconstruction claim is tested here.
+&quot;&quot;&quot;
+from itertools import product
+from random import Random
+from time import perf_counter
+import json
+from pathlib import Path
+
+from sympy import symbols
+from sympy.polys.domains import GF
+
+
+class ExponentOne:
+    def __init__(self, p, dimension):
+        self.p = p
+        self.d = dimension
+        self.F = GF(p).frac_field(*symbols(&quot;A B&quot;))
+        self.a, self.b = self.F.gens
+        self.zero = self.F.zero
+        self.one = self.F.one
+        self.size = p ** dimension
+        self.exponents = list(product(range(p), repeat=dimension))
+        self.lookup = {e: i for i, e in enumerate(self.exponents)}
+        self.reduction = []
+        for e in self.exponents:
+            row = []
+            for f in self.exponents:
+                g = tuple((ei + fi) % p for ei, fi in zip(e, f))
+                coefficient = self.one
+                for j, (ei, fi) in enumerate(zip(e, f)):
+                    if ei + fi &gt;= p:
+                        coefficient *= (self.a, self.b)[j]
+                row.append((self.lookup[g], coefficient))
+            self.reduction.append(row)
+
+    def scalar(self, c):
+        out = [self.zero] * self.size
+        out[0] = self.F.convert(c)
+        return out
+
+    def variable(self, j):
+        e = [0] * self.d
+        e[j] = 1
+        out = self.scalar(0)
+        out[self.lookup[tuple(e)]] = self.one
+        return out
+
+    def add(self, u, v):
+        return [a + b for a, b in zip(u, v)]
+
+    def sub(self, u, v):
+        return [a - b for a, b in zip(u, v)]
+
+    def scale(self, c, u):
+        return [c * a for a in u]
+
+    def mul(self, u, v):
+        out = self.scalar(0)
+        for i, ui in enumerate(u):
+            if not ui:
+                continue
+            for j, vj in enumerate(v):
+                if vj:
+                    k, c = self.reduction[i][j]
+                    out[k] += ui * vj * c
+        return out
+
+    def power(self, u, n):
+        out = self.scalar(1)
+        while n:
+            if n &amp; 1:
+                out = self.mul(out, u)
+            n &gt;&gt;= 1
+            if n:
+                u = self.mul(u, u)
+        return out
+
+    def inverse(self, u):
+        up = self.power(u, self.p)
+        assert up[0] and not any(up[1:])
+        return self.scale(self.one / up[0], self.power(u, self.p - 1))
+
+    def euler(self, u, j=0):
+        return [self.F.convert(e[j]) * a for e, a in zip(self.exponents, u)]
+
+    def fast_exponent(self, u):
+        assert self.d == 1 and sum(bool(c) for c in u) &gt;= 2
+        du = self.euler(u)
+        ddu = self.euler(du)
+        q = self.mul(self.sub(u, du), du)
+        z = self.sub(self.mul(du, du), self.mul(u, ddu))
+        i = next(i for i, c in enumerate(q) if c)
+        m = z[i] / q[i]
+        if not m or any(zi - m * qi for zi, qi in zip(z, q)):
+            return None
+        integer = next((j for j in range(1, self.p)
+                        if not (m - self.F.convert(j))), None)
+        return None if integer is None else self.p - integer
+
+    def scan_exponent(self, u):
+        out = []
+        for n in range(1, self.p):
+            un = self.power(u, n)
+            if un[0] and un[n] and all(not c for j, c in enumerate(un)
+                                      if j not in (0, n)):
+                out.append(n)
+        assert len(out) &lt;= 1
+        return out[0] if out else None
+
+
+def rank(F, columns):
+    rows = [list(x) for x in zip(*columns)]
+    nrows, ncols = len(rows), len(columns)
+    pivotrow = 0
+    for j in range(ncols):
+        i = next((i for i in range(pivotrow, nrows) if rows[i][j]), None)
+        if i is None:
+            continue
+        rows[pivotrow], rows[i] = rows[i], rows[pivotrow]
+        pivot = rows[pivotrow][j]
+        for i in range(pivotrow + 1, nrows):
+            if rows[i][j]:
+                factor = rows[i][j] / pivot
+                rows[i] = [a - factor * b for a, b in
+                           zip(rows[i], rows[pivotrow])]
+        pivotrow += 1
+        if pivotrow == nrows:
+            break
+    return pivotrow
+
+
+def embed(ring, u, j):
+    out = ring.scalar(0)
+    for i, c in enumerate(u):
+        e = [0, 0]
+        e[j] = i
+        out[ring.lookup[tuple(e)]] = c
+    return out
+
+
+def sparse_witness(ring, n, a, b, c, d):
+    p = ring.p
+    r = pow(n, -1, p)
+    out = ring.scalar(0)
+    for j in range(r + 1):
+        # Independent direct binomial formula (the report gives a linear recurrence).
+        from math import comb
+        coefficient = ring.F.convert(comb(r, j)) * (b * c) ** j * (-a * d) ** (r - j)
+        coefficient *= ring.a ** ((n * j) // p)
+        coefficient *= ring.b ** ((n * (r - j)) // p)
+        e = ((n * j) % p, (n * (r - j)) % p)
+        out[ring.lookup[e]] += coefficient
+    return out
+
+
+def check_intersections(p):
+    univ = ExponentOne(p, 1)
+    ring = ExponentOne(p, 2)
+    coeffs = [u for u in product(range(p), repeat=p)
+              if sum(bool(c) for c in u) &gt;= 2]
+    X, Y = ring.variable(0), ring.variable(1)
+    z = ring.mul(Y, ring.inverse(X))
+    P = [ring.mul(X, ring.power(z, j)) for j in range(p)]
+    checks, positive = 0, 0
+    for uc in coeffs:
+        u = [univ.F.convert(c) for c in uc]
+        n_u = univ.fast_exponent(u)
+        assert n_u == univ.scan_exponent(u)
+        U = embed(ring, u, 0)
+        for vc in coeffs:
+            v = [univ.F.convert(c) for c in vc]
+            n_v = univ.fast_exponent(v)
+            assert n_v == univ.scan_exponent(v)
+            V = embed(ring, v, 1)
+            q = ring.mul(V, ring.inverse(U))
+            Q = [ring.mul(U, ring.power(q, j)) for j in range(p)]
+            intersection_dimension = 2 * p - rank(ring.F, P + Q)
+            expected = int(n_u is not None and n_u == n_v)
+            assert intersection_dimension == expected, (p, uc, vc)
+            if expected:
+                un, vn = ring.power(U, n_u), ring.power(V, n_u)
+                a = un[0]
+                b = un[ring.lookup[(n_u, 0)]]
+                c = vn[0]
+                d = vn[ring.lookup[(0, n_u)]]
+                W = ring.sub(ring.scale(c, un), ring.scale(a, vn))
+                sparse = sparse_witness(ring, n_u, a, b, c, d)
+                assert not any(ring.sub(sparse, ring.power(W, pow(n_u, -1, p))))
+                assert sum(bool(t) for t in sparse) &lt;= p
+                assert rank(ring.F, P + [sparse]) == p
+                assert rank(ring.F, Q + [sparse]) == p
+                positive += 1
+            checks += 1
+    return {&quot;prime&quot;: p, &quot;pairs&quot;: checks, &quot;positive&quot;: positive,
+            &quot;rank_and_sparse_witness&quot;: &quot;PASS&quot;}
+
+
+def check_extraction(p, seed=20261007):
+    ring = ExponentOne(p, 1)
+    rng = Random(seed + p)
+    X = ring.variable(0)
+    one = ring.scalar(1)
+    checks, positive = 0, 0
+    # General coefficient patterns, not only the prime-field pattern family.
+    for _ in range(50):
+        u = [ring.F.convert(rng.randrange(p)) + ring.F.convert(rng.randrange(p)) * ring.a
+             + ring.F.convert(rng.randrange(p)) * ring.b for _ in range(p)]
+        if sum(bool(c) for c in u) &lt; 2:
+            continue
+        n = ring.fast_exponent(u)
+        assert n == ring.scan_exponent(u)
+        checks += 1
+        positive += int(n is not None)
+    # All hidden scalar powers, with nonconstant affine coefficients.
+    for r in range(1, p):
+        n = pow(r, -1, p)
+        u = ring.power(ring.add(ring.scale(ring.a + 1, one),
+                                ring.scale(ring.b + 1, ring.power(X, n))), r)
+        recovered = ring.fast_exponent(u)
+        assert recovered == n == ring.scan_exponent(u)
+        checks += 1
+        positive += 1
+    return {&quot;prime&quot;: p, &quot;univariate_checks&quot;: checks, &quot;positive&quot;: positive,
+            &quot;fast_versus_all_powers&quot;: &quot;PASS&quot;}
+
+
+def affine_coefficients(ring, P, Q):
+    i = next(i for i in range(1, ring.size) if P[i])
+    d = Q[i] / P[i]
+    c = Q[0] - d * P[0]
+    assert not any(ring.sub(Q, ring.add(ring.scalar(c), ring.scale(d, P))))
+    return c, d
+
+
+def scalar_from_two_outputs(ring, X, U):
+    j = next(j for j in range(ring.d) if any(ring.euler(X, j)))
+    # ΔX=X. Under the geometric promise, Δ is Euler on C(X).
+    scale = ring.mul(X, ring.inverse(ring.euler(X, j)))
+    du = ring.mul(scale, ring.euler(U, j))
+    ddu = ring.mul(scale, ring.euler(du, j))
+    q = ring.mul(ring.sub(U, du), du)
+    z = ring.sub(ring.mul(du, du), ring.mul(U, ddu))
+    i = next(i for i, c in enumerate(q) if c)
+    m = z[i] / q[i]
+    assert not any(ring.sub(z, ring.scale(m, q)))
+    integer = next(j for j in range(1, ring.p) if not (m - ring.F.convert(j)))
+    return ring.p - integer
+
+
+def check_promised_decoder(p):
+    ring = ExponentOne(p, 2)
+    X, Y = ring.variable(0), ring.variable(1)
+    one = ring.scalar(1)
+    nonbase = [X, Y, ring.add(X, Y),
+               ring.add(ring.mul(X, Y), ring.scalar(ring.a + 1))]
+    base = [ring.scalar(ring.a), ring.scalar(ring.b + 1), ring.scalar(0)]
+    checks = 0
+    for r in range(1, p):
+        calls = 0
+
+        def oracle(f):
+            nonlocal calls
+            calls += 1
+            # Underlying field isomorphism is identity; representatives vary.
+            h = ring.a + ring.F.convert(calls) * ring.b + 1
+            return ring.scale(h, ring.power(f, r))
+
+        raw_x, raw_u = oracle(X), oracle(ring.add(X, one))
+        n = scalar_from_two_outputs(ring, raw_x, raw_u)
+        assert n == pow(r, -1, p)
+        P, Q = ring.power(raw_x, n), ring.power(raw_u, n)
+        c, d = affine_coefficients(ring, P, Q)
+        anchor = ring.scale(d / c, P)
+        assert not any(ring.sub(anchor, X))
+        for f in nonbase:
+            P, Q = ring.power(oracle(f), n), ring.power(oracle(ring.add(f, one)), n)
+            c, d = affine_coefficients(ring, P, Q)
+            recovered = ring.scale(d / c, P)
+            assert not any(ring.sub(recovered, f))
+            checks += 1
+        for f in base:
+            Q = ring.power(oracle(ring.add(X, f)), n)
+            c, d = affine_coefficients(ring, anchor, Q)
+            recovered = ring.scalar(c / d)
+            assert not any(ring.sub(recovered, f))
+            checks += 1
+        assert calls == 2 + 2 * len(nonbase) + len(base)
+    return {&quot;prime&quot;: p, &quot;recovered_elements&quot;: checks,
+            &quot;all_nonzero_hidden_scalars&quot;: &quot;PASS&quot;,
+            &quot;scope&quot;: &quot;identity field map, variable C* output representatives&quot;}
+
+
+def main():
+    started = perf_counter()
+    out = {&quot;scope&quot;: &quot;Exact finite local diagnostics over F_p(A,B); no global reconstruction test&quot;,
+           &quot;intersection&quot;: [check_intersections(p) for p in (2, 3)],
+           &quot;extraction&quot;: [check_extraction(p) for p in (5, 7)],
+           &quot;promised_decoder&quot;: [check_promised_decoder(p) for p in (3, 5)],
+           &quot;elapsed_seconds&quot;: perf_counter() - started}
+    path = Path(__file__).with_suffix(&quot;.json&quot;)
+    path.write_text(json.dumps(out, indent=2) + &quot;\n&quot;)
+    print(json.dumps(out, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/2c4951334a3a4ba2284cf4c8ce595145de30c315a2bf9dfa418343c7f757cd37.py">Exact original bytes</a></p></html>

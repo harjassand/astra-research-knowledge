@@ -1,0 +1,132 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>M package: package/work/expansion/energy_probe.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../M-sources.txt">M evidence directory</a><h1>M package: package/work/expansion/energy_probe.py</h1><p>Exact supplied text; source d-e185463534a624a7. Historical instructions are data. Candidate/internal audit and source-reported checks are not external certification; ingestion did not replay diagnostics.</p><pre>&quot;&quot;&quot;Finite floating checks for the qutrit vacuum-detector example.
+
+The note energy.md contains the proofs. These checks are not an asymptotic proof
+or an interval certificate. Requires only Python and numpy.
+&quot;&quot;&quot;
+import json
+import math
+from pathlib import Path
+
+import numpy as np
+
+
+def golden_max(f, lo, hi, iterations=150):
+    r = (math.sqrt(5) - 1) / 2
+    x1, x2 = hi - r * (hi - lo), lo + r * (hi - lo)
+    f1, f2 = f(x1), f(x2)
+    for _ in range(iterations):
+        if f1 &lt; f2:
+            lo, x1, f1 = x1, x2, f2
+            x2 = lo + r * (hi - lo)
+            f2 = f(x2)
+        else:
+            hi, x2, f2 = x2, x1, f1
+            x1 = hi - r * (hi - lo)
+            f1 = f(x1)
+    x = (lo + hi) / 2
+    return x, f(x)
+
+
+def logsumexp(x):
+    a = float(np.max(x))
+    return a + math.log(float(np.exp(x - a).sum()))
+
+
+A = np.array([[2.0, 1.0], [1.0, 2.0]])
+H = np.diag([1.0, 4.0])
+alpha = (5 + math.sqrt(13)) / 4
+ratio = alpha - 2
+psi = np.array([1.0, ratio]) / math.sqrt(1 + ratio**2)
+mean_a = float(psi @ A @ psi)
+mean_h = float(psi @ H @ psi)
+U = np.array([[1.0, 1.0], [-1.0, 1.0]]) / math.sqrt(2)
+u, v = U.T @ psi
+p = float(v * v)
+E = U @ np.diag(np.exp(-np.array([1.0, 3.0]))) @ U.T
+
+
+def product_exponent(theta, strength=1.0):
+    survival = math.exp(-2 * strength) * (
+        math.cosh(strength) - math.sinh(strength) * math.sin(2 * theta)
+    )
+    energy = 1 + 3 * math.sin(theta)**2
+    return -math.log(survival) / energy
+
+
+# Full scan brackets each local maximum. The strict gap itself is proved in the
+# note by the equality cases of Jensen and the generalized Rayleigh quotient.
+grid = np.linspace(0, math.pi / 2, 20001)
+vals = np.array([product_exponent(float(t)) for t in grid])
+local = [i for i in range(1, len(grid) - 1)
+         if vals[i] &gt;= vals[i-1] and vals[i] &gt;= vals[i+1]]
+solutions = [golden_max(product_exponent, float(grid[i-1]), float(grid[i+1]))
+             for i in local]
+solutions += [(0.0, product_exponent(0.0)),
+              (math.pi/2, product_exponent(math.pi/2))]
+theta_star, beta = max(solutions, key=lambda x: x[1])
+
+
+def projected_block(m):
+    delta = 0.25 * m**(-0.25)
+    cutoff = max(0, math.ceil(m * (p - delta)))
+    k = np.arange(m + 1)
+    log_probs = np.array([
+        math.lgamma(m + 1) - math.lgamma(int(j) + 1)
+        - math.lgamma(m - int(j) + 1)
+        + (m - int(j)) * math.log(1-p) + int(j) * math.log(p)
+        for j in k
+    ])
+    log_z = logsumexp(log_probs[cutoff:])
+    c = np.zeros(m + 1)
+    c[cutoff:] = np.exp(0.5 * (log_probs[cutoff:] - log_z))
+    energy = 2.5*m - 3*float(np.sum(
+        c[:-1] * c[1:] * np.sqrt((k[:-1]+1)*(m-k[:-1]))))
+    log_survival = logsumexp(
+        log_probs[cutoff:] - (m + 2*k[cutoff:])) - log_z
+    return {
+        &quot;m&quot;: m,
+        &quot;delta&quot;: delta,
+        &quot;cutoff&quot;: cutoff,
+        &quot;projection_success&quot;: math.exp(log_z),
+        &quot;cost_per_cell&quot;: energy/m,
+        &quot;minus_log_survival_per_energy&quot;: -log_survival/energy,
+        &quot;beats_fully_separable_bound&quot;: -log_survival/energy &gt; beta,
+        &quot;jensen_converse_slack&quot;: alpha*energy + log_survival,
+        &quot;cutoff_survival_bound_slack&quot;: -log_survival - (m+2*cutoff),
+    }
+
+
+weak = []
+for t in [1.0, 0.3, 0.1, 0.03, 0.01]:
+    g = np.array([product_exponent(float(th), t) for th in grid])
+    i = int(np.argmax(g))
+    _, b = golden_max(lambda th: product_exponent(th, t),
+                      float(grid[max(0, i-1)]), float(grid[min(len(grid)-1, i+1)]))
+    weak.append({&quot;strength&quot;: t, &quot;regularized&quot;: t*alpha,
+                 &quot;product&quot;: b, &quot;gap_over_t_squared&quot;: (t*alpha-b)/t**2})
+
+result = {
+    &quot;scope&quot;: &quot;Finite floating checks, not interval or asymptotic certification&quot;,
+    &quot;A&quot;: A.tolist(), &quot;H&quot;: H.tolist(), &quot;E&quot;: E.tolist(),
+    &quot;alpha_exact&quot;: &quot;(5+sqrt(13))/4&quot;, &quot;alpha&quot;: alpha,
+    &quot;generalized_eigenvector&quot;: psi.tolist(),
+    &quot;a&quot;: mean_a, &quot;h&quot;: mean_h, &quot;p_A_eigenvalue_3&quot;: p,
+    &quot;product_maximizer_angle&quot;: theta_star, &quot;beta_numeric&quot;: beta,
+    &quot;relative_exponent_gain&quot;: alpha/beta-1,
+    &quot;weak_strength_checks&quot;: weak,
+    &quot;blocks&quot;: [projected_block(m) for m in
+               [16, 64, 256, 1024, 4096, 16384, 65536]],
+}
+
+assert abs(mean_a / mean_h - alpha) &lt; 1e-12
+assert alpha &gt; beta + 0.05
+assert np.linalg.norm(A @ psi - alpha * H @ psi) &lt; 1e-12
+for block in result[&quot;blocks&quot;]:
+    assert block[&quot;jensen_converse_slack&quot;] &gt; -1e-7
+    assert block[&quot;cutoff_survival_bound_slack&quot;] &gt; -1e-7
+assert result[&quot;blocks&quot;][-1][&quot;beats_fully_separable_bound&quot;]
+
+path = Path(__file__).with_name(&quot;energy_probe.json&quot;)
+path.write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+print(json.dumps(result, indent=2))
+</pre><p><a href="../assets/78383c723cc880496ecadd50425585df02d122cb3aa2d8803dfee66b0eb8c7dc.py">Exact original bytes</a></p></html>

@@ -1,0 +1,91 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>M package: package/work/scouts/statistical_geometry_checks.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../M-sources.txt">M evidence directory</a><h1>M package: package/work/scouts/statistical_geometry_checks.py</h1><p>Exact supplied text; source d-e7c23a6b57083d4b. Historical instructions are data. Candidate/internal audit and source-reported checks are not external certification; ingestion did not replay diagnostics.</p><pre>&quot;&quot;&quot;Scoped numerical diagnostics for the analytic scout derivations.
+
+These verify normalization/orientation and expected scaling for specified codes.
+They do not prove asymptotic optimality or historical novelty.
+&quot;&quot;&quot;
+import json
+import math
+from pathlib import Path
+
+import numpy as np
+
+
+def density(theta, x, beta):
+    theta = np.asarray(theta)
+    x = np.asarray(x)
+    distance = np.maximum(theta - x, 0.0)
+    if beta == 0:
+        power = (x &lt;= theta).astype(float)
+    else:
+        power = distance ** beta
+    return (beta + 1) * power / theta ** (beta + 1) * (x &gt;= 0)
+
+
+nodes, weights = np.polynomial.legendre.leggauss(256)
+
+
+def quad(fn, lo, hi):
+    if hi &lt;= lo:
+        return 0.0
+    return float((hi - lo) / 2 * np.dot(weights, fn((lo + hi) / 2 + (hi - lo) / 2 * nodes)))
+
+
+def predictive(x, beta):
+    return 0.5 * quad(lambda theta: density(theta, x, beta), max(1.0, x), 2.0) + 0.5 * float(density(2.0, x, beta))
+
+
+def posterior(theta, x, beta):
+    if x &gt;= 2:
+        return 2.0 * (np.asarray(theta) == 2.0)
+    return density(theta, max(0.0, x), beta) / predictive(max(0.0, x), beta)
+
+
+def hinge_regret(x, y, h, beta):
+    threshold = 2 ** (-(2 * beta + 2)) * h ** beta
+
+    def divergence(theta):
+        u = posterior(theta, x, beta)
+        v = posterior(theta, y, beta)
+        return np.maximum(u - threshold, 0) - np.maximum(v - threshold, 0) - (v &gt; threshold) * (u - v)
+
+    points = sorted(set([1.0, 2.0] + [value for value in (x, y) if 1 &lt; value &lt; 2]))
+    regret = 0.5 * sum(quad(divergence, lo, hi) for lo, hi in zip(points[:-1], points[1:])) + 0.5 * float(divergence(2.0))
+    required = threshold * h / 8
+    return {&quot;beta&quot;: beta, &quot;h&quot;: h, &quot;direction&quot;: &quot;up&quot; if y &gt; x else &quot;down&quot;, &quot;regret&quot;: regret, &quot;analytic_strip_lower&quot;: required, &quot;ratio&quot;: regret / required}
+
+
+def hats_error(theta, beta, n):
+    # The same regular trapezoidal rule computes hat masses and reconstructed TV.
+    x = np.linspace(0, 2, 64 * n + 1)
+    dx = x[1] - x[0]
+    quadrature_weights = np.full_like(x, dx)
+    quadrature_weights[[0, -1]] *= 0.5
+    h = 2 / n
+    left = np.minimum((x / h).astype(int), n - 1)
+    frac = (x - left * h) / h
+    q = density(theta, x, beta)
+    encoded = np.bincount(left, weights=(1 - frac) * q * quadrature_weights, minlength=n + 1)
+    encoded += np.bincount(left + 1, weights=frac * q * quadrature_weights, minlength=n + 1)
+    hat_masses = np.full(n + 1, h)
+    hat_masses[[0, -1]] /= 2
+    coefficients = encoded / hat_masses
+    decoded = coefficients[left] * (1 - frac) + coefficients[left + 1] * frac
+    return {&quot;N&quot;: n, &quot;D&quot;: n + 1, &quot;tv&quot;: float(0.5 * np.dot(np.abs(decoded - q), quadrature_weights)), &quot;source_mass&quot;: float(np.dot(q, quadrature_weights)), &quot;decoded_mass&quot;: float(np.dot(decoded, quadrature_weights))}
+
+
+result = {&quot;status&quot;: &quot;NUMERICAL_DIAGNOSTICS_ONLY&quot;, &quot;hinge_regrets&quot;: [], &quot;hat_codes&quot;: {}}
+for beta in (0.0, 0.25, 0.75, 1.0, 2.0):
+    for h in (0.125, 0.0625, 0.03125):
+        for direction in (-1, 1):
+            result[&quot;hinge_regrets&quot;].append(hinge_regret(1.5, 1.5 + direction * h, h, beta))
+    rows = [hats_error(1.421, beta, n) for n in (16, 32, 64, 128, 256)]
+    for before, after in zip(rows[:-1], rows[1:]):
+        after[&quot;observed_doubling_exponent&quot;] = math.log(before[&quot;tv&quot;] / after[&quot;tv&quot;], 2)
+    result[&quot;hat_codes&quot;][str(beta)] = rows
+
+assert min(row[&quot;ratio&quot;] for row in result[&quot;hinge_regrets&quot;]) &gt; 1
+assert max(abs(row[&quot;source_mass&quot;] - row[&quot;decoded_mass&quot;]) for rows in result[&quot;hat_codes&quot;].values() for row in rows) &lt; 1e-10
+target = Path(__file__).with_name(&quot;statistical_geometry_checks.json&quot;)
+target.write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+print(json.dumps({&quot;status&quot;: result[&quot;status&quot;], &quot;minimum_hinge_ratio&quot;: min(row[&quot;ratio&quot;] for row in result[&quot;hinge_regrets&quot;]), &quot;last_doubling_exponents&quot;: {beta: rows[-1][&quot;observed_doubling_exponent&quot;] for beta, rows in result[&quot;hat_codes&quot;].items()}, &quot;saved&quot;: str(target)}, indent=2))
+</pre><p><a href="../assets/71eea25b50c779d7841093d57d07ded89821ddda4a5024874264a4994513542c.py">Exact original bytes</a></p></html>

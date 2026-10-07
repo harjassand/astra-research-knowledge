@@ -1,0 +1,55 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>M package: package/work/scouts/random_matrices_check.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../M-sources.txt">M evidence directory</a><h1>M package: package/work/scouts/random_matrices_check.py</h1><p>Exact supplied text; source d-c354c7c91dd4886b. Historical instructions are data. Candidate/internal audit and source-reported checks are not external certification; ingestion did not replay diagnostics.</p><pre>&quot;&quot;&quot;Finite diagnostics only; analytical claims are in random_matrices.md.&quot;&quot;&quot;
+import json
+from pathlib import Path
+import numpy as np
+
+rng = np.random.default_rng(741026)
+
+def tsvd(a, k):
+    u, s, vh = np.linalg.svd(a, full_matrices=False)
+    return (u[:, :k] * s[:k]) @ vh[:k]
+
+def op(a):
+    return np.linalg.norm(a, 2)
+
+checks = []
+for m, n in [(2, 2), (4, 7), (7, 4), (8, 8), (16, 10)]:
+    p = min(m, n)
+    for k in [1, p // 2, p - 1]:
+        for trial in range(100):
+            # Include a wide retained spectrum and a narrow boundary gap.
+            s = np.sort(np.exp(rng.uniform(-3, 5, size=p)))[::-1]
+            if trial % 3 == 0:
+                s[k-1] = max(s[k], 1.0) * (1 + 10**rng.uniform(-6, -1))
+                s[:k-1] = np.maximum(s[:k-1], s[k-1] * 2)
+                s[k:] = np.minimum(s[k:], s[k-1] * 0.9999999)
+            s = np.sort(s)[::-1]
+            u, _ = np.linalg.qr(rng.normal(size=(m, p)) + 1j*rng.normal(size=(m, p)))
+            v, _ = np.linalg.qr(rng.normal(size=(n, p)) + 1j*rng.normal(size=(n, p)))
+            a = (u*s) @ v.conj().T
+            e = rng.normal(size=(m, n)) + 1j*rng.normal(size=(m, n))
+            gap = s[k-1] - s[k]
+            eta = gap * 10**rng.uniform(-4, 3)
+            e *= eta/op(e)
+            lhs = op(tsvd(a+e, k)-tsvd(a, k))
+            scale = s[k-1]/gap * eta
+            checks.append({&quot;m&quot;:m,&quot;n&quot;:n,&quot;k&quot;:k,&quot;ratio_to_unit_scale&quot;:float(lhs/scale)})
+
+# Necessity of the boundary factor: a 2x2 off-diagonal perturbation.
+necessity = []
+for gap in [1e-1, 1e-2, 1e-3, 1e-4]:
+    a = np.diag([1+gap, 1.0])
+    eta = gap * 1e-3
+    e = np.array([[0.0, eta], [eta, 0.0]])
+    ratio = op(tsvd(a+e,1)-tsvd(a,1)) / ((1+gap)/gap*eta)
+    necessity.append({&quot;gap&quot;:gap,&quot;ratio_to_unit_scale&quot;:float(ratio)})
+
+result = {&quot;scope&quot;:&quot;finite diagnostics, not proof or priority evidence&quot;,
+          &quot;cases&quot;:len(checks),
+          &quot;max_ratio_to_unit_scale&quot;:max(x[&quot;ratio_to_unit_scale&quot;] for x in checks),
+          &quot;candidate_constant&quot;:8,
+          &quot;all_cases_below_candidate_constant&quot;:all(x[&quot;ratio_to_unit_scale&quot;] &lt;= 8*(1+1e-7) for x in checks),
+          &quot;boundary_factor_necessity&quot;:necessity}
+Path(__file__).with_suffix(&quot;.json&quot;).write_text(json.dumps(result,indent=2)+&quot;\n&quot;)
+print(json.dumps(result,indent=2))
+</pre><p><a href="../assets/2a520e1148d105f311dde595e9d183fc52057c32a0d272d274a2be6626db951f.py">Exact original bytes</a></p></html>
