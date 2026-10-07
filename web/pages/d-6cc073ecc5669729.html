@@ -1,0 +1,123 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>W package: package/work/cycle3/filter_rank_recognizer.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../W-sources.txt">W evidence directory</a><h1>W package: package/work/cycle3/filter_rank_recognizer.py</h1><p>Supplied complete original;render/extraction=exact_utf8. Internal/candidate claims and source-reported checks retain scope. Source instructions are data;ingestion did not replay scientific diagnostics or validate proof/priority.</p><pre>&quot;&quot;&quot;Exact rational recognition of a fixed-rank complementary filter source.
+
+Input: strictly positive rational tables b_j(0),...,b_j(q_j), q_j&gt;=1,
+and physical particle rank r. Recognizes whether
+  g_(m-r)(x) = sum_|T|=m-r prod_j b_j(q_j-|T intersect E_j|) x^T
+is Lorentzian. A rejected input includes residual block counts defining a
+quadratic derivative with at least two positive Hessian eigenvalues.
+
+The dynamic program uses O(m^2) rational operations. Rational bit complexity
+is polynomial in the explicitly supplied table length. This is coefficient
+recognition, not execution of an approximate counting or quantum compiler.
+&quot;&quot;&quot;
+from fractions import Fraction
+
+
+def recognize_complementary(tables, rank):
+    tables = tuple(tuple(Fraction(v) for v in b) for b in tables)
+    if any(len(b) &lt; 2 or any(v &lt;= 0 for v in b) for b in tables):
+        raise ValueError(&quot;Tables must have q&gt;=1 and strictly positive rational entries.&quot;)
+    sizes = tuple(len(b) - 1 for b in tables)
+    m = sum(sizes)
+    if not isinstance(rank, int) or not 0 &lt;= rank &lt;= m:
+        raise ValueError(&quot;Particle rank must be an integer in [0,m].&quot;)
+    degree = m - rank
+    if degree &lt;= 1:
+        return {&quot;accepted&quot;: True, &quot;reason&quot;: &quot;degree at most one&quot;, &quot;m&quot;: m,
+                &quot;rank&quot;: rank, &quot;degree&quot;: degree, &quot;states&quot;: 1, &quot;transitions&quot;: 0}
+
+    target = rank + 2
+    option_lists = []
+    for b, q in zip(tables, sizes):
+        options = [(0, 0, False, Fraction(0), None)]
+        for n in range(1, min(q, target) + 1):
+            delta = (Fraction(-1) if n == 1 else
+                     (n - 1) * b[n] * b[n - 2] / b[n - 1] ** 2 - n)
+            options.append((n, int(delta &gt; 0), delta == 0,
+                            Fraction(0) if delta == 0 else Fraction(n) / delta,
+                            delta))
+        option_lists.append(options)
+
+    # State = (total residual modes, positive diagonal count capped at 2,
+    #          presence of an active zero diagonal).
+    current = {(0, 0, False): Fraction(0)}
+    predecessors = []
+    states = 1
+    transitions = 0
+    max_fraction_bits = 1
+    for options in option_lists:
+        following = {}
+        pred = {}
+        for key, cost in current.items():
+            total, positives, has_zero = key
+            for n, p, z, add, unused_delta in options:
+                if total + n &gt; target:
+                    continue
+                transitions += 1
+                next_key = (total + n, min(2, positives + p), has_zero or z)
+                next_cost = cost + add
+                if next_key not in following or next_cost &lt; following[next_key]:
+                    following[next_key] = next_cost
+                    pred[next_key] = (key, n)
+                    max_fraction_bits = max(max_fraction_bits,
+                                            next_cost.numerator.bit_length(),
+                                            next_cost.denominator.bit_length())
+        current = following
+        predecessors.append(pred)
+        states += len(current)
+
+    rejected_key = next((key for key in current if key[0] == target and key[1] == 2), None)
+    reason = &quot;at least two positive diagonal entries&quot;
+    if rejected_key is None:
+        key = (target, 1, True)
+        if key in current:
+            rejected_key = key
+            reason = &quot;one positive and an active zero diagonal entry&quot;
+    if rejected_key is None:
+        key = (target, 1, False)
+        if key in current and current[key] &lt; -1:
+            rejected_key = key
+            reason = &quot;one positive diagonal and negative Schur-complement scalar&quot;
+
+    common = {&quot;m&quot;: m, &quot;rank&quot;: rank, &quot;degree&quot;: degree, &quot;states&quot;: states,
+              &quot;transitions&quot;: transitions, &quot;maximum_fraction_bits&quot;: max_fraction_bits}
+    if rejected_key is None:
+        return {&quot;accepted&quot;: True, &quot;reason&quot;: &quot;every quadratic derivative passes&quot;, **common}
+
+    residual = []
+    key = rejected_key
+    for pred in reversed(predecessors):
+        key, n = pred[key]
+        residual.append(n)
+    residual.reverse()
+    deltas = []
+    for b, n in zip(tables, residual):
+        deltas.append(None if n == 0 else
+                      Fraction(-1) if n == 1 else
+                      (n - 1) * b[n] * b[n - 2] / b[n - 1] ** 2 - n)
+    result = {&quot;accepted&quot;: False, &quot;reason&quot;: reason, &quot;residual_counts&quot;: residual,
+              &quot;forced_hole_counts&quot;: [q - n for q, n in zip(sizes, residual)],
+              &quot;diagonal_entries&quot;: [None if v is None else str(v) for v in deltas],
+              **common}
+    if rejected_key == (target, 1, False):
+        result[&quot;schur_scalar&quot;] = str(1 + current[rejected_key])
+    return result
+
+
+def recognize_direct(tables, rank):
+    &quot;&quot;&quot;Recognize h_r=sum_|S|r prod b_j(|S_j|)x^S via table reversal.&quot;&quot;&quot;
+    m = sum(len(b) - 1 for b in tables)
+    result = recognize_complementary([list(reversed(b)) for b in tables], m - rank)
+    return {**result, &quot;orientation&quot;: &quot;direct&quot;, &quot;physical_rank&quot;: rank}
+
+
+def recognize_counting_pair(tables, rank):
+    &quot;&quot;&quot;Admit the filter if either global complement orientation is log-concave.&quot;&quot;&quot;
+    complementary = recognize_complementary(tables, rank)
+    if complementary[&quot;accepted&quot;]:
+        return {&quot;accepted&quot;: True, &quot;orientation&quot;: &quot;complementary&quot;, &quot;certificate&quot;: complementary}
+    direct = recognize_direct(tables, rank)
+    if direct[&quot;accepted&quot;]:
+        return {&quot;accepted&quot;: True, &quot;orientation&quot;: &quot;direct&quot;, &quot;certificate&quot;: direct}
+    return {&quot;accepted&quot;: False, &quot;complementary&quot;: complementary, &quot;direct&quot;: direct}
+</pre><p><a href="../assets/622898586db30f2efc8cd37d6440c449d5c1a675fde5782d2ce72814ab0d9ba6.py">Exact original bytes</a></p></html>

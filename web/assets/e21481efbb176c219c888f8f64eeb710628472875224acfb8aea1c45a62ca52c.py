@@ -1,0 +1,216 @@
+"""Exact fixtures for parity_wick_sewing.txt; no sampler or FPRAS is run."""
+from fractions import Fraction
+from functools import lru_cache
+from itertools import combinations, permutations
+from pathlib import Path
+import json
+import platform
+import time
+
+START = time.perf_counter()
+HERE = Path(__file__).resolve().parent
+
+
+def det(a):
+    """Integer Bareiss determinant, with exact row pivots."""
+    n = len(a)
+    if not n:
+        return 1
+    a = [list(row) for row in a]
+    sign, previous = 1, 1
+    for k in range(n - 1):
+        pivot = next((r for r in range(k, n) if a[r][k]), None)
+        if pivot is None:
+            return 0
+        if pivot != k:
+            a[k], a[pivot] = a[pivot], a[k]
+            sign = -sign
+        p = a[k][k]
+        for i in range(k + 1, n):
+            for j in range(k + 1, n):
+                numerator = a[i][j] * p - a[i][k] * a[k][j]
+                assert numerator % previous == 0
+                a[i][j] = numerator // previous
+            a[i][k] = 0
+        previous = p
+    return sign * a[-1][-1]
+
+
+def det_permutations(a):
+    n = len(a)
+    answer = 0
+    for p in permutations(range(n)):
+        sign = (-1) ** sum(p[i] > p[j] for i in range(n) for j in range(i + 1, n))
+        product = sign
+        for i in range(n):
+            product *= a[i][p[i]]
+        answer += product
+    return answer
+
+
+def orientations(f, retained):
+    retained = tuple(sorted(retained))
+    if len(retained) % 2:
+        return {}
+    answer = {}
+    for up in combinations(retained, len(retained) // 2):
+        down = tuple(i for i in retained if i not in up)
+        minor = [[f[i][j] for j in down] for i in up]
+        value = det(minor)
+        assert value == det_permutations(minor)
+        if value:
+            answer[up] = value
+    return answer
+
+
+def partition(f, retained):
+    return sum(value * value for value in orientations(f, retained).values())
+
+
+def all_holes(f):
+    n = len(f)
+    return {
+        mask: partition(f, [i for i in range(n) if not (mask >> i & 1)])
+        for mask in range(1 << n)
+    }
+
+
+def block_diagonal(block, q):
+    width = len(block)
+    f = [[0] * (width * q) for _ in range(width * q)]
+    for b in range(q):
+        for i in range(width):
+            for j in range(width):
+                f[width * b + i][width * b + j] = block[i][j]
+    return f
+
+
+def pairings(indices):
+    if not indices:
+        yield ()
+        return
+    a = indices[0]
+    for j in range(1, len(indices)):
+        b = indices[j]
+        remainder = indices[1:j] + indices[j + 1:]
+        for rest in pairings(remainder):
+            yield ((a, b),) + rest
+
+
+F4 = [[0, 0, 1, 1], [0, 0, 1, -1], [0, 0, 0, 0], [0, 0, 0, 0]]
+BASE = all_holes(F4)
+assert BASE == {0: 4, 5: 1, 6: 1, 9: 1, 10: 1, 15: 1, **{
+    x: 0 for x in range(16) if x not in (0, 5, 6, 9, 10, 15)
+}}
+F8 = block_diagonal(F4, 2)
+DIRECT8 = all_holes(F8)
+assert all(DIRECT8[x] == BASE[x & 15] * BASE[x >> 4] for x in range(256))
+
+
+def tensor_holes(mask, q):
+    answer = 1
+    for b in range(q):
+        answer *= BASE[(mask >> (4 * b)) & 15]
+    return answer
+
+
+orbit_checks = []
+for q in range(1, 4):
+    n, full = 4 * q, (1 << (4 * q)) - 1
+    h = [tensor_holes(x, q) * tensor_holes(full ^ x, q) for x in range(full + 1)]
+    count, capacity, hist = 0, 0, {}
+    for m in pairings(tuple(range(n))):
+        pair_masks = [(1 << a) | (1 << b) for a, b in m]
+        orbit = [0]
+        for pair_mask in pair_masks:
+            orbit += [x ^ pair_mask for x in orbit]
+        c = min(h[x] for x in orbit)
+        count += 1
+        capacity += c
+        hist[c] = hist.get(c, 0) + 1
+    assert capacity == 2 ** q
+    assert hist.get(1, 0) == 2 ** q
+    assert h[0] == 4 ** q
+    orbit_checks.append(dict(q=q, pairings=count, positive_orbits=hist.get(1, 0),
+                             capacity_sum=capacity, input_product=h[0],
+                             minimum_global_loss=h[0] // capacity))
+
+
+FSEW = [[0] * 8 for _ in range(8)]
+for i, j in [(0, 3), (2, 1), (1, 6), (4, 0), (5, 7)]:
+    FSEW[i][j] = 1
+R1, R2, CORE = (0, 1, 2, 3), (0, 1, 4, 5, 6, 7), (0, 1)
+V1, V2 = orientations(FSEW, R1), orientations(FSEW, R2)
+assert V1 == {(0, 2): -1}
+assert V2 == {(1, 4, 5): -1}
+equal_core_mass = sum(a * a * b * b for up1, a in V1.items() for up2, b in V2.items()
+                      if tuple(i for i in CORE if i in up1) == tuple(i for i in CORE if i in up2))
+assert partition(FSEW, R1) == partition(FSEW, R2) == 1
+assert equal_core_mass == 0
+
+
+def cut_skew(f, cut_mask):
+    n = len(f)
+    return tuple(tuple((f[i][j] if cut_mask >> i & 1 and not (cut_mask >> j & 1)
+                        else -f[j][i] if not (cut_mask >> i & 1) and cut_mask >> j & 1
+                        else 0) for j in range(n)) for i in range(n))
+
+
+def pfaffian(k, indices):
+    @lru_cache(None)
+    def recurse(t):
+        if not t:
+            return 1
+        a = t[0]
+        return sum((-1) ** (j + 1) * k[a][t[j]] * recurse(t[1:j] + t[j + 1:])
+                   for j in range(1, len(t)))
+    return recurse(tuple(indices))
+
+
+shared_cut_mass = 0
+for cut in range(256):
+    k = cut_skew(FSEW, cut)
+    x, y = pfaffian(k, R1), pfaffian(k, R2)
+    shared_cut_mass += x * x * y * y
+    assert x * y == 0
+assert shared_cut_mass == 0
+sew_holes = all_holes(FSEW)
+S, T = sum(1 << i for i in (4, 5, 6, 7)), sum(1 << i for i in (2, 3))
+exchange_products = {}
+for a in (2, 3, 4, 5, 6, 7):
+    products = [sew_holes[S ^ (1 << a) ^ (1 << j)] * sew_holes[T ^ (1 << a) ^ (1 << j)]
+                for j in (2, 3, 4, 5, 6, 7) if j != a]
+    assert sum(products) >= 1  # all values are zero or one in this fixture
+    assert all(p in (0, 1) for p in products)
+    exchange_products[a] = products
+
+
+balanced_core = []
+for q in range(1, 6):
+    f = block_diagonal([[0, 1], [1, 0]], q)
+    v = orientations(f, range(2 * q))
+    z = sum(a * a for a in v.values())
+    shared = sum(a ** 4 for a in v.values())
+    assert z == shared == 2 ** q
+    ratio = Fraction(shared, z * z)
+    assert ratio == Fraction(1, 2 ** q)
+    balanced_core.append(dict(q=q, original_squared_norm=z*z, sewn_squared_norm=shared,
+                              retained_fraction=str(ratio)))
+
+result = dict(
+    status="PASS: exact finite identities and counterexample fixtures only",
+    python=platform.python_version(), dependencies="Python standard library only",
+    f4_hole_values=BASE,
+    direct_block_factorization_checks=256,
+    orbit_capacity_checks=orbit_checks,
+    common_core_annihilation=dict(matrix_nonzero_edges=[[0,3],[2,1],[1,6],[4,0],[5,7]],
+                                 retained_sets=[R1,R2], orientations=[list(V1),list(V2)],
+                                 partitions=[1,1], shared_core_mass=equal_core_mass,
+                                 enumerated_cuts=256, shared_cut_pfaffian_mass=shared_cut_mass,
+                                 exchange_term_products=exchange_products),
+    balanced_core_projection=balanced_core,
+    runtime_seconds=round(time.perf_counter()-START, 6),
+    exclusions=["No sampler, FPRAS, asymptotic mixing test, Gaussian circuit, or energy estimator was run."]
+)
+(HERE / "parity_wick_sewing_checks_result.json").write_text(json.dumps(result, indent=2) + "\n")
+print(json.dumps(result, indent=2))

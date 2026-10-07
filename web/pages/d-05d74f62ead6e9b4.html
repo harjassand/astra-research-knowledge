@@ -1,0 +1,139 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>W package: package/work/cycle2/bounded_capacity_mixed_checks.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../W-sources.txt">W evidence directory</a><h1>W package: package/work/cycle2/bounded_capacity_mixed_checks.py</h1><p>Supplied complete original;render/extraction=exact_utf8. Internal/candidate claims and source-reported checks retain scope. Source instructions are data;ingestion did not replay scientific diagnostics or validate proof/priority.</p><pre>&quot;&quot;&quot;Finite checks for the mixed bosonic orbit; not an optimality certificate.&quot;&quot;&quot;
+from collections import Counter
+from itertools import product
+from math import comb, log, sqrt
+from pathlib import Path
+import json
+import numpy as np
+
+
+def occupations(k, d):
+    if d == 1:
+        return [(k,)]
+    return [(r,) + rest for r in range(k + 1)
+            for rest in occupations(k - r, d - 1)]
+
+
+def embedding(k, d):
+    basis = occupations(k, d)
+    index = {v: j for j, v in enumerate(basis)}
+    vectors = np.zeros((d**k, len(basis)), dtype=complex)
+    strings = list(product(range(d), repeat=k))
+    counts = Counter(tuple(s.count(a) for a in range(d)) for s in strings)
+    for i, s in enumerate(strings):
+        count = tuple(s.count(a) for a in range(d))
+        vectors[i, index[count]] = 1 / sqrt(counts[count])
+    return vectors, basis
+
+
+def number_operator(psi, k, d, basis):
+    index = {v: j for j, v in enumerate(basis)}
+    ans = np.zeros((len(basis), len(basis)), dtype=complex)
+    for col, occ in enumerate(basis):
+        for a in range(d):
+            for b in range(d):
+                if occ[b] == 0:
+                    continue
+                temp = list(occ)
+                temp[b] -= 1
+                coeff = sqrt(occ[b]) * sqrt(temp[a] + 1)
+                temp[a] += 1
+                ans[index[tuple(temp)], col] += psi[a] * psi[b].conjugate() * coeff
+    return ans
+
+
+def partial_trace_last(matrix, first_dim, last_dim):
+    return np.einsum(&#x27;abcb-&gt;ac&#x27;, matrix.reshape(first_dim, last_dim, first_dim, last_dim))
+
+
+def distance(a, b):
+    return float(np.abs(np.linalg.eigvalsh(a - b)).sum() / 2)
+
+
+def orbit_stats(k, d):
+    probs = [((d - 1) / (k + d - 1))]
+    for r in range(k):
+        probs.append(probs[-1] * (k - r) / (k - r + d - 2))
+    ratios = [d * r / k for r in range(k + 1)]
+    capacity = sum(p * x * log(x) for p, x in zip(probs, ratios) if x &gt; 0)
+    separation = sum(p * abs(x - 1) for p, x in zip(probs, ratios)) / 2
+    return {&quot;capacity&quot;: capacity, &quot;distance_to_reference&quot;: separation,
+            &quot;EB_error&quot;: d / (k + d) * separation,
+            &quot;b2&quot;: d / (2 * (k + d)) * separation}
+
+
+def main():
+    rng = np.random.default_rng(736109)
+    cases = []
+    residuals = []
+    for d, k, receivers in [(2, 1, 2), (2, 2, 2), (2, 3, 2),
+                            (2, 1, 3), (2, 2, 3), (3, 1, 2),
+                            (3, 2, 2), (3, 1, 3), (3, 2, 3)]:
+        m = receivers * k
+        uk, basis = embedding(k, d)
+        um, _ = embedding(m, d)
+        psi = rng.normal(size=d) + 1j * rng.normal(size=d)
+        psi /= np.linalg.norm(psi)
+        dk, dm = uk.shape[1], um.shape[1]
+        rho = d * number_operator(psi, k, d, basis) / (k * dk)
+        omega = np.eye(dk) / dk
+        joint = (dk / dm) * um.conj().T @ np.kron(uk @ rho @ uk.conj().T,
+                                                np.eye(d**(m - k))) @ um
+        marginal = uk.conj().T @ partial_trace_last(um @ joint @ um.conj().T,
+                                                   d**k, d**(m - k)) @ uk
+        eta = (m + d) / (receivers * (k + d))
+        expected = eta * rho + (1 - eta) * omega
+        cloning_residual = float(np.linalg.norm(marginal - expected))
+
+        # Exact Haar moment for the covariant measure/prepare output.
+        uplus, _ = embedding(k + 1, d)
+        pplus = uplus @ uplus.conj().T
+        ppsi = np.outer(psi, psi.conjugate())
+        mp = d / uplus.shape[1] * partial_trace_last(
+            np.kron(np.eye(d**k), ppsi) @ pplus, d**k, d)
+        mp = uk.conj().T @ mp @ uk
+        expected_mp = k / (k + d) * rho + d / (k + d) * omega
+        moment_residual = float(np.linalg.norm(mp - expected_mp))
+        trace_residual = float(abs(np.trace(joint) - 1))
+        minimum_eigenvalue = float(np.linalg.eigvalsh(joint).min())
+        residuals.extend([cloning_residual, moment_residual, trace_residual])
+        cases.append({&quot;d&quot;: d, &quot;k&quot;: k, &quot;receivers&quot;: receivers,
+                      &quot;cloning_residual&quot;: cloning_residual,
+                      &quot;moment_residual&quot;: moment_residual,
+                      &quot;trace_residual&quot;: trace_residual,
+                      &quot;minimum_joint_eigenvalue&quot;: minimum_eigenvalue,
+                      &quot;broadcast_error&quot;: distance(marginal, rho),
+                      &quot;predicted_broadcast_error&quot;: (1 - eta) * distance(rho, omega),
+                      &quot;MP_error&quot;: distance(mp, rho),
+                      &quot;predicted_MP_error&quot;: d / (k + d) * distance(rho, omega)})
+    stats = [{&quot;d&quot;: d, &quot;k&quot;: k, **orbit_stats(k, d)}
+             for d, k in [(2, 2), (4, 4), (16, 16), (64, 64),
+                          (256, 256), (16, 64), (16, 256)]]
+    capacity_checks = []
+    for d in [2, 3, 4, 8, 16, 32, 64]:
+        for k in [d, 2*d, 4*d, 16*d]:
+            st = orbit_stats(k, d)
+            lower = log(1 + (d - 1)/k)
+            upper = log(d * (2*k + d - 1) / (k * (d + 1)))
+            assert lower - 1e-12 &lt;= st[&#x27;capacity&#x27;] &lt;= upper + 1e-12
+            assert st[&#x27;capacity&#x27;] &lt;= log(3) + 1e-12
+            capacity_checks.append({&quot;d&quot;: d, &quot;k&quot;: k, &quot;capacity&quot;: st[&#x27;capacity&#x27;],
+                                    &quot;lower&quot;: lower, &quot;upper&quot;: upper})
+    assert max(residuals) &lt; 1e-12
+    assert min(c[&#x27;minimum_joint_eigenvalue&#x27;] for c in cases) &gt; -1e-12
+    output = {&quot;status&quot;: &quot;passed&quot;, &quot;seed&quot;: 736109,
+              &quot;max_formula_residual&quot;: max(residuals),
+              &quot;dense_cases&quot;: cases, &quot;orbit_stats&quot;: stats,
+              &quot;capacity_checks&quot;: capacity_checks,
+              &quot;scope&quot;: &quot;Finite formula/normalization checks only; optimality is mathematical.&quot;}
+    destination = Path(__file__).with_suffix(&#x27;.json&#x27;)
+    destination.write_text(json.dumps(output, indent=2) + &#x27;\n&#x27;)
+    print(json.dumps({&quot;status&quot;: output[&#x27;status&#x27;], &quot;dense_cases&quot;: len(cases),
+                      &quot;capacity_cases&quot;: len(capacity_checks),
+                      &quot;max_formula_residual&quot;: max(residuals),
+                      &quot;orbit_stats&quot;: stats}, indent=2))
+
+
+if __name__ == &#x27;__main__&#x27;:
+    main()
+</pre><p><a href="../assets/7431ec94750e10cf9cfdbb470262d469f0e38aa456f0751cea24dd82a56bf8c3.py">Exact original bytes</a></p></html>

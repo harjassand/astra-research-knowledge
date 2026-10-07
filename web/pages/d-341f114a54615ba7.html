@@ -1,0 +1,58 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>W package: package/work/cycle4/bipartite_scope_checks.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../W-sources.txt">W evidence directory</a><h1>W package: package/work/cycle4/bipartite_scope_checks.py</h1><p>Supplied complete original;render/extraction=exact_utf8. Internal/candidate claims and source-reported checks retain scope. Source instructions are data;ingestion did not replay scientific diagnostics or validate proof/priority.</p><pre>&quot;&quot;&quot;An exact scope counterexample, not a norm or state-preparation algorithm.&quot;&quot;&quot;
+import importlib.util
+import itertools
+import json
+from fractions import Fraction as Q
+from pathlib import Path
+
+source = Path(__file__).resolve().parents[1] / &quot;cycle3&quot; / &quot;paired_fermion_checks.py&quot;
+spec = importlib.util.spec_from_file_location(&quot;paired_checks&quot;, source)
+base = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(base)
+
+n = 4
+A = {0, 1}
+B = {2, 3}
+X = [[Q(1), Q(1)], [Q(1), Q(1, 2)]]
+F = [[Q(0) for _ in range(n)] for _ in range(n)]
+for i in range(2):
+    for j in range(2):
+        F[i][2 + j] = X[i][j]
+        F[2 + j][i] = X[i][j]
+assert F == list(map(list, zip(*F)))
+assert all(F[i][j] == 0 for C in (A, B) for i in C for j in C)
+
+state = base.exp_pair(F)
+rows = []
+for U in itertools.combinations(range(n), 2):
+    U = set(U)
+    D = set(range(n)) - U
+    mask = sum(1 &lt;&lt; i for i in U) + sum(1 &lt;&lt; (n + j) for j in D)
+    # Occupation order is (all up, all down). The tensor spin basis creates
+    # the occupied mode of each site in increasing site order.
+    sequence = [i if i in U else n + i for i in range(n)]
+    inversions = sum(sequence[i] &gt; sequence[j] for i in range(n)
+                     for j in range(i + 1, n))
+    amp = state.get(mask, Q(0)) * (-1) ** inversions
+    corrected = amp * (-1) ** len(A &amp; D)
+    rows.append({&quot;spins&quot;: &quot;&quot;.join(&quot;u&quot; if i in U else &quot;d&quot; for i in range(n)),
+                 &quot;spin_basis_amplitude&quot;: str(amp),
+                 &quot;Marshall_corrected_amplitude&quot;: str(corrected)})
+
+corrected = {x[&quot;spins&quot;]: Q(x[&quot;Marshall_corrected_amplitude&quot;]) for x in rows}
+assert corrected[&quot;uudd&quot;] == Q(1, 2)
+assert corrected[&quot;udud&quot;] == Q(1)
+assert corrected[&quot;uddu&quot;] == Q(-1, 2)
+assert any(x &gt; 0 for x in corrected.values()) and any(x &lt; 0 for x in corrected.values())
+result = {&quot;F_AB&quot;: [[str(x) for x in row] for row in X],
+          &quot;symmetric_bipartite_pair_matrix&quot;: True,
+          &quot;hard_projection_k&quot;: 2,
+          &quot;spin_basis&quot;: &quot;site-ordered creation operators&quot;,
+          &quot;Marshall_correction&quot;: &quot;(-1)^(number of down spins on sites 0,1)&quot;,
+          &quot;amplitudes&quot;: rows,
+          &quot;fails_Marshall_sign_up_to_global_phase&quot;: True,
+          &quot;pass&quot;: True}
+target = Path(__file__).with_name(&quot;bipartite_scope_checks.json&quot;)
+target.write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+print(json.dumps(result, indent=2))
+</pre><p><a href="../assets/b3bde713128874aef7f46e8c5991e2e4bb283330d57aa8f72da131cad0fd625a.py">Exact original bytes</a></p></html>

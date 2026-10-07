@@ -1,0 +1,271 @@
+"""Small exact-construction diagnostics, not proof or novelty certification."""
+import json
+from itertools import product
+from pathlib import Path
+
+import numpy as np
+
+
+I = np.eye(2, dtype=complex)
+X = np.array([[0, 1], [1, 0]], dtype=complex)
+Y = np.array([[0, -1j], [1j, 0]], dtype=complex)
+Z = np.diag([1, -1]).astype(complex)
+
+
+def tensor(xs):
+    out = np.ones((1, 1), complex)
+    for x in xs:
+        out = np.kron(out, x)
+    return out
+
+
+def factorization(n):
+    row = list(range(n))
+    out = []
+    for _ in range(n - 1):
+        out.append([(row[i], row[n - 1 - i]) for i in range(n // 2)])
+        row = [row[0], row[-1], *row[1:-1]]
+    assert len({tuple(sorted(e)) for m in out for e in m}) == n * (n - 1) // 2
+    return out
+
+
+def block_scores(matching, n):
+    out = [None] * n
+    q = n // 2
+    for k, (i, j) in enumerate(matching):
+        out[i] = tensor([X if l == k else I for l in range(q)])
+        out[j] = tensor([Z if l == k else I for l in range(q)])
+    return out
+
+
+def blockdiag(xs):
+    size = sum(len(x) for x in xs)
+    out = np.zeros((size, size), complex)
+    k = 0
+    for x in xs:
+        out[k:k+len(x), k:k+len(x)] = x
+        k += len(x)
+    return out
+
+
+def root(x):
+    vals, vecs = np.linalg.eigh(x)
+    assert vals.min() > -1e-10
+    return (vecs * np.sqrt(np.maximum(vals, 0))) @ vecs.conj().T
+
+
+def gap(rho, sigma):
+    v = root(rho) @ root(sigma)
+    return float(np.linalg.svd(v, compute_uv=False).sum() - np.trace(v).real)
+
+
+def trace_distance(x, y):
+    return float(np.abs(np.linalg.eigvalsh(x-y)).sum() / 2)
+
+
+def entropy(x):
+    v = np.linalg.eigvalsh(x)
+    return float(-np.sum(v[v > 1e-14] * np.log(v[v > 1e-14])))
+
+
+def color_union(k, l, n):
+    adj = [set() for _ in range(n)]
+    for i, j in k + l:
+        adj[i].add(j)
+        adj[j].add(i)
+    color = [-1] * n
+    for i in range(n):
+        if color[i] >= 0:
+            continue
+        color[i] = 0
+        stack = [i]
+        while stack:
+            u = stack.pop()
+            for v in adj[u]:
+                if color[v] < 0:
+                    color[v] = 1-color[u]
+                    stack.append(v)
+                assert color[v] != color[u]
+    return color
+
+
+def affine_plane(q):
+    points = [(x, y) for x in range(q) for y in range(q)]
+    index = {v: i for i, v in enumerate(points)}
+    flags = []
+    for slope in range(q):
+        flags.append([[index[x, (slope*x+b) % q] for x in range(q)] for b in range(q)])
+    flags.append([[index[x, y] for y in range(q)] for x in range(q)])
+    pair_count = np.zeros((q*q, q*q), int)
+    for p in flags:
+        assert sorted(i for line in p for i in line) == list(range(q*q))
+        for line in p:
+            for i in line:
+                for j in line:
+                    if i != j:
+                        pair_count[i, j] += 1
+    assert np.all(pair_count[~np.eye(q*q, dtype=bool)] == 1)
+    return flags
+
+
+def incidence_factorization(partitions, n):
+    # All selected partitions have the same group size r and n/r groups.
+    r = len(partitions)
+    slots = [(k, line) for k, p in enumerate(partitions) for line in range(len(p))]
+    slot_index = {x:i for i,x in enumerate(slots)}
+    edges = [set() for _ in range(n)]
+    for k, p in enumerate(partitions):
+        for j, group in enumerate(p):
+            for i in group:
+                edges[i].add(slot_index[k, j])
+    assert len(slots) == n
+    assert all(len(e) == r for e in edges)
+    matchings = []
+    for _ in range(r):
+        occupied = [-1] * n
+        def augment(i, seen):
+            for j in sorted(edges[i]):
+                if j in seen:
+                    continue
+                seen.add(j)
+                if occupied[j] < 0 or augment(occupied[j], seen):
+                    occupied[j] = i
+                    return True
+            return False
+        for i in range(n):
+            assert augment(i, set())
+        matching = [None] * n
+        for j, i in enumerate(occupied):
+            matching[i] = slots[j]
+            edges[i].remove(j)
+        matchings.append(matching)
+    assert all(not e for e in edges)
+    for i in range(n):
+        assert sorted(m[i][0] for m in matchings) == list(range(r))
+    return matchings
+
+
+def clifford(r):
+    m = max(1, r // 2)
+    out = []
+    for k in range(m):
+        out.append(tensor([Z]*k + [X] + [I]*(m-k-1)))
+        out.append(tensor([Z]*k + [Y] + [I]*(m-k-1)))
+    if r > 2*m:
+        out.append(tensor([Z]*m))
+    return out[:r]
+
+
+results = {"status": "diagnostics only; analytic proof is in quantum_classicality.txt"}
+graph_count = 0
+for n in range(2, 42, 2):
+    fs = factorization(n)
+    for k in fs:
+        for l in fs:
+            color_union(k, l, n)
+            graph_count += 1
+results["matching_flag_pair_colorings"] = graph_count
+
+a = 0.6
+c = ((1+a)*np.log(1+a)+(1-a)*np.log(1-a))/2
+g = np.sqrt(1-a*a/2) - (1+np.sqrt(1-a*a))/2
+dense = []
+for n in [2, 4, 6]:
+    fs = factorization(n)
+    blocks = [block_scores(m, n) for m in fs]
+    scores = [blockdiag([p[i] for p in blocks]) for i in range(n)]
+    D = len(scores[0])
+    states = [(np.eye(D)+s*a*A)/D for A in scores for s in [-1,1]]
+    gram = np.array([[np.trace(A@B).real/D for B in scores] for A in scores])
+    assert np.max(np.abs(gram-np.eye(n))) < 1e-12
+    max_gap_error = 0
+    for i in range(n):
+        for j in range(i+1, n):
+            for s in [-1, 1]:
+                v = gap((np.eye(D)+a*scores[i])/D, (np.eye(D)+s*a*scores[j])/D)
+                max_gap_error = max(max_gap_error, abs(v-g/(n-1)))
+    holevo = np.log(D)-entropy(states[0])
+    assert abs(holevo-c) < 1e-12
+    assert max_gap_error < 1e-12
+    for p in blocks:
+        for signs in product([-1,1], repeat=n):
+            norm = np.max(np.abs(np.linalg.eigvalsh(sum(s*A for s,A in zip(signs,p)))))
+            assert abs(norm-n/np.sqrt(2)) < 1e-12
+    dense.append({"n":n, "D":D, "capacity":holevo, "pair_gap":g/(n-1), "max_gap_abs_error":max_gap_error})
+results["dense_matching_checks"] = dense
+
+# An explicit unital symmetric clone for the X,Z plane.
+V = np.array([[1,0],[0,1/np.sqrt(2)],[0,1/np.sqrt(2)],[0,0]],complex)
+R = (I-1j*X)/np.sqrt(2)
+base_K = [V/np.sqrt(2), np.kron(X,X)@V@X/np.sqrt(2)]
+clone_K = [np.kron(R,R)@K@R.conj().T for K in base_K]
+assert np.max(np.abs(sum(K.conj().T@K for K in clone_K)-I)) < 1e-12
+def clone(x):
+    return sum(K@x@K.conj().T for K in clone_K)
+def marginal(x, receiver):
+    u = x.reshape(2,2,2,2)
+    return np.trace(u,axis1=1 if receiver==0 else 0,axis2=3 if receiver==0 else 2)
+for A, target in [(I,I),(X,X/np.sqrt(2)),(Z,Z/np.sqrt(2)),(Y,Y/2)]:
+    for receiver in [0,1]:
+        assert np.max(np.abs(marginal(clone(A),receiver)-target)) < 1e-12
+for A in [X,Z]:
+    for s in [-1,1]:
+        rho=(I+s*a*A)/2
+        for receiver in [0,1]:
+            assert abs(trace_distance(rho,marginal(clone(rho),receiver))-a*(1-1/np.sqrt(2))/2) < 1e-12
+results["explicit_unital_plane_clone"] = {"kraus_count":2,"shrink":1/np.sqrt(2),"trace_error":a*(1-1/np.sqrt(2))/2}
+
+incidence = []
+for q in [2,3,5,7,11]:
+    flags = affine_plane(q)
+    selected = [flags[(3*k+1) % len(flags)] for k in range(q)]
+    decomposition = incidence_factorization(selected,q*q)
+    incidence.append({"q":q,"n":q*q,"flags":q+1,"perfect_matchings":len(decomposition)})
+results["affine_partition_incidence_checks"] = incidence
+
+clifford_checks = []
+for r in [2,3,4,5,6]:
+    gs=clifford(r)
+    h=len(gs[0]); eye=np.eye(h)
+    for i,A in enumerate(gs):
+        assert np.max(np.abs(A@A-eye)) < 1e-12
+        assert abs(np.trace(A)) < 1e-12
+        for B in gs[i+1:]:
+            assert np.max(np.abs(A@B+B@A)) < 1e-12
+    B=sum(gs)/np.sqrt(r)
+    for A in gs:
+        residual=np.trace((A-B/np.sqrt(r))@(A-B/np.sqrt(r))).real/h
+        assert abs(residual-(1-1/r)) < 1e-12
+    L=sum(np.kron(np.kron(A.T,A),eye)+np.kron(np.kron(A.T,eye),A) for A in gs)
+    norm=float(np.max(np.abs(np.linalg.eigvalsh(L))))
+    assert norm <= np.sqrt(2*r*r+2*r)+1e-12
+    clifford_checks.append({"r":r,"h":h,"same_flag_choi_norm":norm,"proved_bound":float(np.sqrt(2*r*r+2*r))})
+results["local_clifford_checks"] = clifford_checks
+
+# Check the collective broadcasting SOS with arbitrary, unrelated output scores.
+rng = np.random.default_rng(7102026)
+def reflection(d):
+    u, _ = np.linalg.qr(rng.normal(size=(d,d))+1j*rng.normal(size=(d,d)))
+    signs = np.array([1 if i < d//2 else -1 for i in range(d)])
+    return (u*signs)@u.conj().T
+sos_max_error=0.0
+sos_max_norm=0.0
+for _ in range(200):
+    b1,b2,c1,c2=reflection(3),reflection(3),reflection(4),reflection(4)
+    g1,g2=np.kron(X,np.eye(12)),np.kron(Z,np.eye(12))
+    B1,B2=np.kron(np.eye(2),np.kron(b1,np.eye(4))),np.kron(np.eye(2),np.kron(b2,np.eye(4)))
+    C1,C2=np.kron(np.eye(2),np.kron(np.eye(3),c1)),np.kron(np.eye(2),np.kron(np.eye(3),c2))
+    F=1j*g1@g2
+    K=g1@(B1+C1)+g2@(B2+C2)
+    M=(B1-C1)+1j*F@(B2-C2)
+    err=float(np.max(np.abs(8*np.eye(24)-K@K-M.conj().T@M)))
+    norm=float(np.max(np.abs(np.linalg.eigvalsh(K))))
+    assert err < 1e-12
+    assert norm <= 2*np.sqrt(2)+1e-12
+    sos_max_error=max(sos_max_error,err)
+    sos_max_norm=max(sos_max_norm,norm)
+results["arbitrary_output_SOS_checks"]={"fixtures":200,"max_identity_abs_error":sos_max_error,"max_operator_norm":sos_max_norm,"proved_bound":float(2*np.sqrt(2))}
+
+out=Path(__file__).with_name("quantum_matching_checks.json")
+out.write_text(json.dumps(results,indent=2)+"\n")
+print(json.dumps(results,indent=2))

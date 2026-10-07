@@ -1,0 +1,251 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>W package: package/work/cycle3/paired_fermion_checks.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../W-sources.txt">W evidence directory</a><h1>W package: package/work/cycle3/paired_fermion_checks.py</h1><p>Supplied complete original;render/extraction=exact_utf8. Internal/candidate claims and source-reported checks retain scope. Source instructions are data;ingestion did not replay scientific diagnostics or validate proof/priority.</p><pre>&quot;&quot;&quot;Finite algebra and falsification checks, not a counting/preparation algorithm.&quot;&quot;&quot;
+import itertools
+import json
+import math
+from fractions import Fraction as Q
+from pathlib import Path
+
+import numpy as np
+
+
+class GQ:
+    &quot;&quot;&quot;Gaussian rationals with no floating-point arithmetic.&quot;&quot;&quot;
+    def __init__(self, real=0, imag=0):
+        if isinstance(real, GQ):
+            self.real, self.imag = real.real, real.imag
+        else:
+            self.real, self.imag = Q(real), Q(imag)
+
+    def __add__(self, other):
+        other = GQ(other)
+        return GQ(self.real + other.real, self.imag + other.imag)
+
+    __radd__ = __add__
+
+    def __mul__(self, other):
+        other = GQ(other)
+        return GQ(self.real * other.real - self.imag * other.imag,
+                  self.real * other.imag + self.imag * other.real)
+
+    __rmul__ = __mul__
+
+    def __truediv__(self, other):
+        other = GQ(other)
+        norm = other.real ** 2 + other.imag ** 2
+        return GQ((self.real * other.real + self.imag * other.imag) / norm,
+                  (self.imag * other.real - self.real * other.imag) / norm)
+
+    def __eq__(self, other):
+        other = GQ(other)
+        return self.real == other.real and self.imag == other.imag
+
+    def __bool__(self):
+        return bool(self.real or self.imag)
+
+
+def abs2(value):
+    if isinstance(value, GQ):
+        return value.real ** 2 + value.imag ** 2
+    return value ** 2
+
+
+def subsets(n, k):
+    return itertools.combinations(range(n), k)
+
+
+def det(M):
+    n = len(M)
+    if not n:
+        return 1
+    ans = 0
+    for p in itertools.permutations(range(n)):
+        inv = sum(p[i] &gt; p[j] for i in range(n) for j in range(i + 1, n))
+        val = (-1) ** inv
+        for i, j in enumerate(p):
+            val *= M[i][j]
+        ans += val
+    return ans
+
+
+def creation(state, mode):
+    out = {}
+    for mask, amplitude in state.items():
+        if mask &amp; (1 &lt;&lt; mode):
+            continue
+        sign = (-1) ** (mask &amp; ((1 &lt;&lt; mode) - 1)).bit_count()
+        new = mask | (1 &lt;&lt; mode)
+        out[new] = out.get(new, 0) + sign * amplitude
+    return out
+
+
+def pair_operator(state, F):
+    n = len(F)
+    out = {}
+    for i in range(n):
+        for j in range(n):
+            # Rightmost d_j^dagger acts first.
+            term = creation(creation(state, n + j), i)
+            for mask, amplitude in term.items():
+                out[mask] = out.get(mask, 0) + F[i][j] * amplitude
+    return {mask: amp for mask, amp in out.items() if amp}
+
+
+def exp_pair(F):
+    n = len(F)
+    term = {0: Q(1)}
+    out = dict(term)
+    for k in range(1, n + 1):
+        term = pair_operator(term, F)
+        for mask, amplitude in term.items():
+            out[mask] = out.get(mask, 0) + amplitude / math.factorial(k)
+    return {mask: amp for mask, amp in out.items() if amp}
+
+
+def exact_mapping():
+    cases = []
+    totals = 0
+    rng = np.random.default_rng(404071)
+    for n in range(1, 5):
+        for trial in range(6):
+            F = [[GQ(Q(int(rng.integers(-3, 4)), int(rng.integers(1, 5))),
+                     Q(int(rng.integers(-3, 4)), int(rng.integers(1, 5))))
+                  for _ in range(n)] for _ in range(n)]
+            t = [Q(int(rng.integers(1, 17)), 2) for _ in range(n)]
+            Fock = exp_pair(F)
+            A = F + [[Q(i == j) for j in range(n)] for i in range(n)]
+            norm0 = Q(0)
+            norm1 = Q(0)
+            for k in range(n + 1):
+                for U in subsets(n, k):
+                    for D in subsets(n, k):
+                        H = tuple(i for i in range(n) if i not in D)
+                        rows = U + tuple(n + i for i in H)
+                        minor = det([A[i] for i in rows])
+                        physical_mask = sum(1 &lt;&lt; i for i in U) + sum(1 &lt;&lt; (n + i) for i in D)
+                        # X on all holes, then Z on odd zero-based physical down modes.
+                        mapped = (-1) ** sum(D) * minor
+                        assert mapped == Fock.get(physical_mask, 0)
+                        amplitude = (-1) ** (k * (k - 1) // 2) * det([[F[i][j] for j in D] for i in U])
+                        assert mapped == amplitude
+                        w_physical = abs2(amplitude)
+                        for i in set(U).intersection(D):
+                            w_physical *= t[i]
+                        w_nambu = abs2(minor)
+                        for i in U:
+                            w_nambu *= t[i]
+                        for i in set(U).intersection(H):
+                            w_nambu /= t[i]
+                        assert w_physical == w_nambu
+                        norm0 += w_physical
+                        norm1 += w_nambu
+                        totals += 1
+            assert norm0 == norm1
+            cases.append({&quot;n&quot;: n, &quot;trial&quot;: trial, &quot;norm&quot;: str(norm0)})
+    return {&quot;matrix_cases&quot;: len(cases), &quot;exact_amplitude_weight_checks&quot;: totals, &quot;pass&quot;: True}
+
+
+def exact_clone_identity():
+    rng = np.random.default_rng(941115)
+    cases = 0
+    coeffs = 0
+    retained = 0
+    for n in range(1, 5):
+        for trial in range(3):
+            F = [[GQ(Q(int(rng.integers(-2, 3)), 3), Q(int(rng.integers(-2, 3)), 2))
+                  for _ in range(n)] for _ in range(n)]
+            # Pythagorean weights make both cloned columns Gaussian rational.
+            v = [Q(3, 5) if (i + trial) % 2 else Q(5, 13) for i in range(n)]
+            w = [Q(4, 5) if (i + trial) % 2 else Q(12, 13) for i in range(n)]
+            t = [x * x for x in w]
+            augmented = [[F[i][j] * v[j] for j in range(n)] +
+                         [F[i][j] * w[j] for j in range(n)] for i in range(n)]
+            Z = [Q(0) for _ in range(n + 1)]
+            for k in range(n + 1):
+                for U in subsets(n, k):
+                    for D in subsets(n, k):
+                        val = abs2(det([[F[i][j] for j in D] for i in U]))
+                        for i in set(U).intersection(D):
+                            val *= t[i]
+                        Z[k] += val
+            # Sum coefficients of principal characteristic polynomials for all
+            # fixed-size retained sets: one U_i or V_i plus every W_i.
+            avg = [Q(0) for _ in range(n + 1)]
+            for choice in itertools.product([0, 1], repeat=n):
+                us = [i for i in range(n) if choice[i] == 0]
+                ds = [i for i in range(n) if choice[i] == 1] + list(range(n, 2 * n))
+                retained += 1
+                for k in range(min(len(us), len(ds)) + 1):
+                    for U in itertools.combinations(us, k):
+                        for D in itertools.combinations(ds, k):
+                            val = abs2(det([[augmented[i][j] for j in D] for i in U]))
+                            # Vertex sqrt(2) on U and V; W vertex scale 1.
+                            val *= 2 ** (k + sum(j &lt; n for j in D))
+                            avg[k] += val / (2 ** n)
+            assert avg == Z, (n, trial, avg, Z)
+            coeffs += n + 1
+            cases += 1
+    return {&quot;Gaussian_rational_matrix_cases&quot;: cases, &quot;exact_coefficient_identities&quot;: coeffs, &quot;fixed_size_retained_sets&quot;: retained, &quot;pass&quot;: True}
+
+
+def pair_count_weights(F, t):
+    n = len(F)
+    z = []
+    for k in range(n + 1):
+        val = 0.0
+        for U in subsets(n, k):
+            for D in subsets(n, k):
+                weight = abs(np.linalg.det(F[np.ix_(U, D)])) ** 2 if k else 1.0
+                for i in set(U).intersection(D):
+                    weight *= t[i]
+                val += weight
+        z.append(val)
+    return np.array(z)
+
+
+def charge_search():
+    rng = np.random.default_rng(778303)
+    failures = []
+    realroot_failures = []
+    cases = 0
+    for n, trials in [(3, 1200), (4, 1000), (5, 500)]:
+        for trial in range(trials):
+            F = rng.normal(size=(n, n)) + 1j * rng.normal(size=(n, n))
+            # Entrywise scales test ill-conditioned and nonuniform pair geometry.
+            if trial % 3 == 1:
+                F *= np.exp(rng.uniform(-3, 3, size=(n, n)))
+            elif trial % 3 == 2:
+                F = np.diag(np.diag(F)) + 10 ** rng.uniform(-2, 1) * F
+            t = rng.uniform(0.5, 1.0, size=n)
+            Z = pair_count_weights(F, t)
+            cases += 1
+            ratios = Z[1:-1] ** 2 / (Z[:-2] * Z[2:])
+            if min(ratios) &lt; 1 - 1e-9:
+                failures.append({&quot;n&quot;: n, &quot;trial&quot;: trial, &quot;t&quot;: t.tolist(), &quot;Freal&quot;: F.real.tolist(), &quot;Fimag&quot;: F.imag.tolist(), &quot;Z&quot;: Z.tolist(), &quot;ratio&quot;: float(min(ratios))})
+                return {&quot;numeric_cases&quot;: cases, &quot;ordinary_logconcavity_failures&quot;: failures, &quot;real_root_failures&quot;: realroot_failures[:3]}
+            roots = np.roots(Z[::-1])
+            if max(abs(roots.imag)) &gt; 1e-7 * max(1, max(abs(roots))):
+                realroot_failures.append({&quot;n&quot;: n, &quot;trial&quot;: trial, &quot;t&quot;: t.tolist(), &quot;Freal&quot;: F.real.tolist(), &quot;Fimag&quot;: F.imag.tolist(), &quot;Z&quot;: Z.tolist(), &quot;roots&quot;: [[float(z.real), float(z.imag)] for z in roots]})
+    return {&quot;numeric_cases&quot;: cases, &quot;ordinary_logconcavity_failures&quot;: failures, &quot;real_root_failures_count&quot;: len(realroot_failures), &quot;real_root_failures&quot;: realroot_failures[:3]}
+
+
+def exact_barriers():
+    # n=2 auxiliary charge slice with a=2 (allowed t=1/2).
+    M = np.array([[2, 1], [1, 2]], dtype=float)
+    H = np.block([[np.zeros((2, 2)), M], [M.T, np.zeros((2, 2))]])
+    # On the all-ones point, the two sign-balanced within-side directions
+    # give a positive log-Hessian quadratic form.
+    v = np.array([1, -1, 1, -1], dtype=float)
+    assert v @ H @ v == 4
+    assert sum(v) == 0
+    # For T&gt;1, Z=1+2z+T^2 z^2, p1 is maximized at z=1/T.
+    T = Q(2) ** 80
+    pbest = 1 / (T + 1)
+    return {&quot;auxiliary_charge_slice_H_eigenvalues&quot;: np.linalg.eigvalsh(H).tolist(), &quot;log_hessian_witness_vHv&quot;: 4, &quot;fugacity_T&quot;: str(T), &quot;fugacity_best_p_k1&quot;: str(pbest)}
+
+
+if __name__ == &quot;__main__&quot;:
+    result = {&quot;exact_mapping&quot;: exact_mapping(), &quot;exact_clone_identity&quot;: exact_clone_identity(), &quot;exact_barriers&quot;: exact_barriers(), &quot;charge_search&quot;: charge_search()}
+    target = Path(__file__).with_name(&quot;paired_fermion_checks_result.json&quot;)
+    target.write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+    print(json.dumps({&quot;exact_mapping&quot;: result[&quot;exact_mapping&quot;], &quot;exact_clone_identity&quot;: result[&quot;exact_clone_identity&quot;], &quot;exact_barriers&quot;: result[&quot;exact_barriers&quot;], &quot;charge_search_cases&quot;: result[&quot;charge_search&quot;][&quot;numeric_cases&quot;], &quot;charge_LC_failures&quot;: len(result[&quot;charge_search&quot;][&quot;ordinary_logconcavity_failures&quot;]), &quot;charge_realroot_failures&quot;: result[&quot;charge_search&quot;].get(&quot;real_root_failures_count&quot;, &quot;early_exit&quot;)}))
+</pre><p><a href="../assets/c5b5fc7b32a1ad6cc9f35e138778a20fe8017729c75e631d4121a26504d06c2f.py">Exact original bytes</a></p></html>

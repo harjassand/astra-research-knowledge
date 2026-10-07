@@ -1,0 +1,175 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>W package: package/work/cycle1/number_wave_checks.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../W-sources.txt">W evidence directory</a><h1>W package: package/work/cycle1/number_wave_checks.py</h1><p>Supplied complete original;render/extraction=exact_utf8. Internal/candidate claims and source-reported checks retain scope. Source instructions are data;ingestion did not replay scientific diagnostics or validate proof/priority.</p><pre>&quot;&quot;&quot;Scoped diagnostics for the binary-convolution/profile compiler deductions.
+
+This does not implement or validate the released ultraflat construction.
+Exact calculations are explicitly separated from floating-point diagnostics.
+&quot;&quot;&quot;
+from fractions import Fraction
+from itertools import product
+import json
+from pathlib import Path
+import numpy as np
+import sympy as sp
+
+out = {&quot;scope&quot;: &quot;Independent small diagnostics; no ultraflat source theorem replay&quot;}
+
+# Exact continuous-versus-discrete spectrum obstruction.
+x = sp.symbols(&quot;x&quot;, real=True)
+a = [1, 1, 1, -1]
+N = len(a)
+c = [sum(a[j] * a[j+k] for j in range(N-k)) for k in range(N)]
+q = sp.expand(N + 2 * sum(c[k] * sp.chebyshevt(k, x) for k in range(1, N)))
+assert q == 4 + 8*x - 8*x**3
+assert sp.simplify(q.subs(x, 1/sp.sqrt(3)) - (4 + 16/(3*sp.sqrt(3)))) == 0
+assert sp.simplify(q.subs(x, -1/sp.sqrt(3)) - (4 - 16/(3*sp.sqrt(3)))) == 0
+z = sp.symbols(&quot;z&quot;)
+p = sum(a[k] * z**k for k in range(N))
+root_values = [sp.simplify(p.subs(z, t) * sp.conjugate(p.subs(z, t)))
+               for t in [1, sp.I, -1, -sp.I]]
+assert root_values == [4, 4, 4, 4]
+out[&quot;exact_four_point_counterexample&quot;] = {
+    &quot;signs&quot;: a, &quot;aperiodic_autocorrelations&quot;: c,
+    &quot;squared_modulus_Chebyshev&quot;: str(q),
+    &quot;squared_moduli_at_N_roots&quot;: [str(v) for v in root_values],
+    &quot;continuous_squared_modulus_min&quot;: &quot;4-16/(3*sqrt(3))&quot;,
+    &quot;continuous_squared_modulus_max&quot;: &quot;4+16/(3*sqrt(3))&quot;,
+    &quot;normalized_continuous_min&quot;: float(sp.sqrt(1-4/(3*sp.sqrt(3)))),
+    &quot;normalized_continuous_max&quot;: float(sp.sqrt(1+4/(3*sp.sqrt(3)))),
+}
+
+# Exact full convolution Gram identity, with finite integer inputs.
+identity_checks = 0
+for n in range(2, 9):
+    for signs in product([-1, 1], repeat=n-1):
+        aa = [1, *signs]
+        cc = [sum(aa[j]*aa[j+k] for j in range(n-k)) for k in range(n)]
+        for length in [1, 3, 7]:
+            signal = [((j*j+3*j+2) % 9)-4 for j in range(length)]
+            conv = [sum(aa[t-j]*signal[j] for j in range(length) if 0 &lt;= t-j &lt; n)
+                    for t in range(n+length-1)]
+            energy = sum(t*t for t in conv)
+            gram = sum(signal[j]*signal[k] * (cc[abs(j-k)] if abs(j-k)&lt;n else 0)
+                       for j in range(length) for k in range(length))
+            assert energy == gram
+            identity_checks += 1
+out[&quot;exact_full_convolution_Gram_identity_checks&quot;] = identity_checks
+
+# A square causal truncation has determinant N^{-L/2}, regardless of signs.
+truncation_checks = []
+for n, length in [(4, 5), (4, 9), (7, 5)]:
+    aa = [1 if j % 3 else -1 for j in range(n)]
+    mat = sp.Matrix([[aa[t-j] if 0 &lt;= t-j &lt; n else 0
+                      for j in range(length)] for t in range(length)])
+    assert abs(mat.det()) == 1
+    truncation_checks.append({&quot;N&quot;: n, &quot;L&quot;: length,
+                              &quot;unnormalized_abs_determinant&quot;: int(abs(mat.det())),
+                              &quot;normalized_abs_determinant&quot;: f&quot;{n}^(-{length}/2)&quot;})
+out[&quot;exact_square_causal_truncation_checks&quot;] = truncation_checks
+
+# Exact alias aggregation identity and l1 bound for finite Fourier profiles.
+# Conjugate symmetry is equivalent to all Fourier coefficients being real.
+alias_checks = 0
+alias_ratios = []
+for n in range(2, 18):
+    coeff = {}
+    for k in range(-3*n, 4*n):
+        if 0 &lt;= k &lt; n:
+            coeff[k] = Fraction((k % 3)-1, 2*n)
+        else:
+            coeff[k] = Fraction((-1)**abs(k), (n+abs(k))**3)
+    tail = sum(abs(v) for k, v in coeff.items() if not 0 &lt;= k &lt; n)
+    folded = [sum(v for k, v in coeff.items() if k % n == j) for j in range(n)]
+    alias = [folded[j] - coeff[j] for j in range(n)]
+    assert sum(abs(v) for v in alias) &lt;= tail
+    # Error polynomial Q-B has alias coefficients inside and discarded
+    # coefficients outside, so its Fourier l1 norm is at most twice tail.
+    error_l1 = sum(abs(v) for v in alias) + tail
+    assert error_l1 &lt;= 2*tail
+    ts = np.arange(n)/n
+    samples = np.zeros(n, dtype=complex)
+    for k, value in coeff.items():
+        samples += float(value)*np.exp(2j*np.pi*k*ts)
+    observed = np.fft.fft(samples)/n
+    assert np.max(np.abs(observed - np.array([float(v) for v in folded]))) &lt; 2e-14
+    alias_ratios.append(float(error_l1/(2*tail)))
+    alias_checks += 1
+out[&quot;exact_alias_l1_checks&quot;] = alias_checks
+out[&quot;floating_DFT_alias_checks&quot;] = alias_checks
+out[&quot;max_exact_error_l1_over_twice_tail&quot;] = max(alias_ratios)
+
+# Finite Toeplitz eigenvalues approach the continuous spectral bounds.
+# This floating diagnostic confirms the direction of the four-point failure.
+toeplitz = []
+for length in [4, 16, 64, 128]:
+    gram = np.array([[(c[abs(j-k)]/N) if abs(j-k)&lt;N else 0
+                      for k in range(length)] for j in range(length)])
+    ev = np.linalg.eigvalsh(gram)
+    toeplitz.append({&quot;L&quot;: length, &quot;min_Gram_eigenvalue&quot;: float(ev[0]),
+                     &quot;max_Gram_eigenvalue&quot;: float(ev[-1]),
+                     &quot;full_convolution_condition_number&quot;: float(np.sqrt(ev[-1]/ev[0]))})
+out[&quot;floating_four_sign_Toeplitz_extrema&quot;] = toeplitz
+
+# A finite dyadic rounding experiment uses exhaustive tiny discrepancy choices.
+# It verifies exact defect-mass accounting, not the Lovett-Meka implementation.
+rounding = []
+for n in range(2, 11):
+    defect = [Fraction(((j*7+n) % 8), 16) for j in range(n)]
+    mass0 = sum(defect)
+    mass_history = [mass0]
+    grid = np.arange(40*n)/(40*n)
+    fourier = np.exp(2j*np.pi*grid[:, None]*np.arange(n)[None, :])
+    for h in range(4, 0, -1):
+        active = [j for j in range(n) if int(defect[j]*(2**h)) % 2]
+        if not active:
+            continue
+        best = None
+        for choice in product([-1, 1], repeat=len(active)):
+            if sum(choice) &gt; 0:
+                continue
+            val = float(np.max(np.abs(fourier[:, active] @ np.array(choice))))
+            if best is None or val &lt; best[0]:
+                best = val, choice
+        for j, direction in zip(active, best[1]):
+            defect[j] += Fraction(direction, 2**h)
+        assert all(0 &lt;= p &lt;= 1 for p in defect)
+        assert sum(defect) &lt;= mass_history[-1]
+        mass_history.append(sum(defect))
+    assert all(p in [0, 1] for p in defect)
+    rounding.append({&quot;N&quot;: n, &quot;initial_mass&quot;: str(mass0),
+                     &quot;final_mass&quot;: str(sum(defect)),
+                     &quot;exact_monotone_mass_verified&quot;: True})
+out[&quot;tiny_exhaustive_dyadic_mass_checks&quot;] = rounding
+
+# Exact acceptance test for a rational target distortion. Strict positivity
+# makes the test complete for any candidate with a margin to the target.
+def certify_strict_binary_bounds(signs, epsilon):
+    n = len(signs)
+    corr = [sum(signs[j]*signs[j+k] for j in range(n-k)) for k in range(n)]
+    energy_poly = sp.expand(n + 2*sum(corr[k]*sp.chebyshevt(k, x)
+                                     for k in range(1, n)))
+    epsilon = sp.Rational(epsilon.numerator, epsilon.denominator)
+    lower = sp.Poly(energy_poly - n*(1-epsilon)**2, x, domain=sp.QQ)
+    upper = sp.Poly(n*(1+epsilon)**2 - energy_poly, x, domain=sp.QQ)
+    tests = []
+    for gap in [lower, upper]:
+        endpoint_positive = bool(gap.eval(-1)&gt;0 and gap.eval(1)&gt;0)
+        roots = int(gap.count_roots(-1, 1))
+        tests.append({&quot;endpoint_positive&quot;: endpoint_positive,
+                      &quot;number_of_real_gap_roots_on_interval&quot;: roots,
+                      &quot;strictly_positive&quot;: endpoint_positive and roots == 0})
+    return {&quot;epsilon&quot;: str(epsilon), &quot;signs&quot;: signs,
+            &quot;certified&quot;: all(t[&quot;strictly_positive&quot;] for t in tests),
+            &quot;lower_upper_exact_tests&quot;: tests}
+
+out[&quot;exact_Sturm_strict_certificates&quot;] = [
+    certify_strict_binary_bounds([1,1,1,-1], Fraction(3,5)),
+    certify_strict_binary_bounds([1,1,1,-1], Fraction(1,2)),
+    certify_strict_binary_bounds([1,1,1,1,1,-1,-1,1,1,-1,1,-1,1], Fraction(2,5)),
+]
+assert out[&quot;exact_Sturm_strict_certificates&quot;][0][&quot;certified&quot;]
+assert not out[&quot;exact_Sturm_strict_certificates&quot;][1][&quot;certified&quot;]
+assert out[&quot;exact_Sturm_strict_certificates&quot;][2][&quot;certified&quot;]
+
+path = Path(__file__).with_name(&quot;number_wave_checks.json&quot;)
+path.write_text(json.dumps(out, indent=2)+&quot;\n&quot;)
+print(json.dumps(out, indent=2))
+</pre><p><a href="../assets/c814b547b2f38b2d4a7cd7c35f59b220e424409d8efc79f6dffbb5bb5693f6a6.py">Exact original bytes</a></p></html>

@@ -1,0 +1,45 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>W package: package/work/cycle1/pde_transport_check.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../W-sources.txt">W evidence directory</a><h1>W package: package/work/cycle1/pde_transport_check.py</h1><p>Supplied complete original;render/extraction=exact_utf8. Internal/candidate claims and source-reported checks retain scope. Source instructions are data;ingestion did not replay scientific diagnostics or validate proof/priority.</p><pre>from pathlib import Path
+import json
+import sympy as s
+x,y,z=s.symbols(&quot;x y z&quot;,real=True)
+a=s.symbols(&quot;a&quot;,positive=True)
+nu=s.symbols(&quot;nu&quot;,positive=True)
+coords=[x,y,z]
+g=s.diag(s.exp(2*a*z),s.exp(-2*a*z),1)
+ginv=g.inv()
+n=3
+Gamma=[[[s.simplify(sum(ginv[i,l]*(s.diff(g[l,k],coords[j])+s.diff(g[l,j],coords[k])-s.diff(g[j,k],coords[l]))/2 for l in range(n))) for k in range(n)] for j in range(n)] for i in range(n)]
+Ric=s.Matrix(n,n,lambda j,k:s.simplify(sum(s.diff(Gamma[i][j][k],coords[i])-s.diff(Gamma[i][j][i],coords[k])+sum(Gamma[i][i][l]*Gamma[l][j][k]-Gamma[i][k][l]*Gamma[l][j][i] for l in range(n)) for i in range(n))))
+X=s.Matrix([0,0,1])
+nablaX=s.Matrix(n,n,lambda i,j:s.simplify(sum(Gamma[i][j][k]*X[k] for k in range(n))))
+SX=s.simplify((g*nablaX+(g*nablaX).T)/2)
+normS=s.simplify(s.trace(ginv*SX*ginv*SX))
+# Direct stress divergence: (div S)_j = g^{ik} nabla_i S_{kj}.
+divS=s.Matrix(n,1,lambda j,_unused:s.simplify(sum(ginv[i,k]*(s.diff(SX[k,j],coords[i])-sum(Gamma[l][i][k]*SX[l,j]+Gamma[l][i][j]*SX[k,l] for l in range(n))) for i in range(n) for k in range(n))))
+L=s.simplify(2*ginv*divS)
+checks={
+ &quot;volume_constant&quot;:s.simplify(g.det()-1)==0,
+ &quot;Ricci&quot;:Ric==s.diag(0,0,-2*a*a),
+ &quot;strain_norm&quot;:s.simplify(normS-2*a*a)==0,
+ &quot;strain_eigenvalues&quot;:s.simplify(nablaX-s.diag(a,-a,0))==s.zeros(3),
+ &quot;deformation_laplacian&quot;:s.simplify(L-s.Matrix([0,0,-4*a*a]))==s.zeros(3,1),
+ &quot;harmonic_force_residual&quot;:s.simplify(L-2*ginv*Ric*X)==s.zeros(3,1),
+ &quot;power_sharp&quot;:s.simplify(((-nu*L).T*g*X)[0]-4*nu*a*a)==0,
+}
+# General trace-free 3D strain in frame e=X/|X|.
+q,u,v,b,c=s.symbols(&quot;q u v b c&quot;,real=True)
+S=s.Matrix([[u-q/2,v,b],[v,-u-q/2,c],[b,c,q]])
+checks[&quot;general_quotient_block_identity&quot;]=s.simplify(s.trace(S*S)-(2*(u*u+v*v)+s.Rational(3,2)*q*q+2*b*b+2*c*c))==0
+# The transverse eigenvalues have c0 +/- sqrt(u^2+v^2), c0=-q/2.
+checks[&quot;transverse_characteristic&quot;]=s.expand(S[:2,:2].charpoly().as_expr()-((s.Symbol(&quot;lambda&quot;)+q/2)**2-u*u-v*v))==0
+# Mapping torus A has positive eigenvalues and preserves its lattice.
+A=s.Matrix([[2,1],[1,1]])
+lam=(3+s.sqrt(5))/2
+checks[&quot;cat_determinant&quot;]=A.det()==1
+checks[&quot;cat_eigenvalues&quot;]=s.simplify(A.charpoly().as_expr().subs(s.Symbol(&quot;lambda&quot;),lam))==0
+allpass=all(checks.values())
+output={&quot;status&quot;:&quot;PASS&quot; if allpass else &quot;FAIL&quot;,&quot;checks&quot;:checks,&quot;exact_scope&quot;:&quot;Symbolic Sol geometry and 3D strain identity; no entropy theorem or global compiler run.&quot;}
+Path(&quot;work/cycle1/pde_transport_checks.json&quot;).write_text(json.dumps(output,indent=2)+&quot;\n&quot;)
+print(json.dumps(output,indent=2))
+if not allpass:raise SystemExit(1)
+</pre><p><a href="../assets/f84b5839819f59445ab40253fdbdaeb6fd7d65ad74894338e693e733ec6b85bf.py">Exact original bytes</a></p></html>

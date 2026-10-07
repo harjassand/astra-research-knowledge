@@ -1,0 +1,168 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>W package: package/work/cycle5/parity_exchange_root_checks.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../W-sources.txt">W evidence directory</a><h1>W package: package/work/cycle5/parity_exchange_root_checks.py</h1><p>Supplied complete original;render/extraction=exact_utf8. Internal/candidate claims and source-reported checks retain scope. Source instructions are data;ingestion did not replay scientific diagnostics or validate proof/priority.</p><pre>&quot;&quot;&quot;Exact finite checks of the odd-degree proof&#x27;s coefficient interface.
+
+The universal proof is in parity_six_hole_exchange.txt. No FPRAS or walk is run.
+&quot;&quot;&quot;
+from fractions import Fraction as Q
+from itertools import combinations, permutations
+from functools import lru_cache
+from math import isqrt
+from pathlib import Path
+import json
+
+
+def polynomial_product(a, b):
+    out = [Q(0)] * (len(a) + len(b) - 1)
+    for i, x in enumerate(a):
+        for j, y in enumerate(b):
+            out[i + j] += x * y
+    return out
+
+
+def gaussian_product(a, b):
+    return (a[0] * b[0] - a[1] * b[1], a[0] * b[1] + a[1] * b[0])
+
+
+@lru_cache(None)
+def signed_permutations(n):
+    return [(p, (-1) ** sum(p[i] &gt; p[j] for i in range(n) for j in range(i + 1, n)))
+            for p in permutations(range(n))]
+
+
+def determinant_gaussian(a):
+    value = (0, 0)
+    for p, sign in signed_permutations(len(a)):
+        term = (sign, 0)
+        for i, j in enumerate(p):
+            term = gaussian_product(term, a[i][j])
+        value = (value[0] + term[0], value[1] + term[1])
+    return value
+
+
+def partitions(a):
+    n = len(a)
+    out = [0] * (1 &lt;&lt; n)
+    for holes in range(1 &lt;&lt; n):
+        retained = [i for i in range(n) if not holes &gt;&gt; i &amp; 1]
+        if len(retained) % 2:
+            continue
+        for rows in combinations(retained, len(retained) // 2):
+            cols = [j for j in retained if j not in rows]
+            d = determinant_gaussian([[a[i][j] for j in cols] for i in rows])
+            out[holes] += d[0] ** 2 + d[1] ** 2
+    return out
+
+
+def mask(items):
+    return sum(1 &lt;&lt; i for i in items)
+
+
+def radical_check(lhs, terms):
+    if lhs &lt;= sum(terms):
+        return
+    scale = 10 ** 60
+    hi = isqrt(lhs * scale * scale) + 1
+    lo = sum(isqrt(v * scale * scale) for v in terms)
+    assert hi &lt;= lo, (lhs, terms)
+
+
+def coefficient_fixture(f, n, S, T, a):
+    D = S ^ T
+    sites = [i for i in range(n) if D &gt;&gt; i &amp; 1]
+    J = [i for i in sites if i != a]
+    m = len(sites)
+    assert m &gt; 0 and m % 2 == 0 and a in sites
+    assert f[S] and f[T]
+    weights = {j: Q(j + 2, j + 1) for j in J}
+    W = Q(1)
+    for w in weights.values():
+        W *= w
+    coefficients = [Q(0)] * m
+    # Full twist by T, then zero outside D, then a=1 and x_j=w_j*z.
+    for local in range(1 &lt;&lt; m):
+        U = mask(sites[k] for k in range(m) if local &gt;&gt; k &amp; 1)
+        if U.bit_count() % 2:
+            continue
+        c = f[T ^ U]
+        degree, value = 0, Q(c)
+        for j in J:
+            if U &gt;&gt; j &amp; 1:
+                degree += 1
+                value *= weights[j]
+        coefficients[degree] += value
+    A = [f[T ^ (1 &lt;&lt; a) ^ (1 &lt;&lt; j)] for j in J]
+    B = [f[S ^ (1 &lt;&lt; a) ^ (1 &lt;&lt; j)] for j in J]
+    assert coefficients[0] == f[T]
+    assert coefficients[-1] == f[S] * W
+    assert coefficients[1] == sum((v * weights[j] for v, j in zip(A, J)), Q(0))
+    assert coefficients[-2] == W * sum((v / weights[j] for v, j in zip(B, J)), Q(0))
+    margin = coefficients[1] * coefficients[-2] - coefficients[0] * coefficients[-1]
+    assert margin &gt;= 0
+    terms = [x * y for x, y in zip(A, B)]
+    radical_check(f[S] * f[T], terms)
+    return {&quot;n&quot;: n, &quot;S&quot;: S, &quot;T&quot;: T, &quot;a&quot;: a, &quot;difference_size&quot;: m,
+            &quot;common_occupied_core_size&quot;: n - (S | T).bit_count(),
+            &quot;common_hole_size&quot;: (S &amp; T).bit_count(),
+            &quot;polynomial_coefficients&quot;: [str(c) for c in coefficients],
+            &quot;endpoint_minor_margin&quot;: str(margin),
+            &quot;exchange_left_product&quot;: f[S] * f[T],
+            &quot;exchange_right_products&quot;: terms}
+
+
+def main():
+    root_checks = []
+    for pairs in range(5):
+        p = [Q(3, 2), Q(1)]
+        for j in range(pairs):
+            p = polynomial_product(p, [Q(j + 2), Q(0 if j % 2 == 0 else 1), Q(1)])
+        margin = p[1] * p[-2] - p[0] * p[-1]
+        assert margin &gt;= 0
+        root_checks.append({&quot;degree&quot;: len(p) - 1, &quot;coefficients&quot;: [str(c) for c in p],
+                            &quot;endpoint_minor_margin&quot;: str(margin)})
+    # Odd degree is necessary for the lemma: 1+z^2 has boundary imaginary roots.
+    assert Q(0) * Q(0) - Q(1) * Q(1) == -1
+
+    fixtures = []
+    for n in [6, 8]:
+        a = [[(0, 0) for _ in range(n)] for _ in range(n)]
+        for i in range(0, n, 2):
+            a[i][i + 1] = (1, 0)
+        f = partitions(a)
+        assert all(f[u] == int(all(bool(u &gt;&gt; i &amp; 1) == bool(u &gt;&gt; (i + 1) &amp; 1)
+                                 for i in range(0, n, 2)))
+                   for u in range(1 &lt;&lt; n))
+        S, T = mask([0, 1, 2, 3]), mask([4, 5])
+        for site in range(6):
+            r = coefficient_fixture(f, n, S, T, site)
+            assert r[&#x27;exchange_left_product&#x27;] == 1
+            assert sum(r[&#x27;exchange_right_products&#x27;]) == 1
+            assert r[&#x27;endpoint_minor_margin&#x27;] == &#x27;0&#x27;
+            fixtures.append(r)
+
+    n = 8
+    a = [[((17 * i + 7 * j + 3 * i * j) % 5 - 2,
+           (3 * i + 11 * j + 5 * i * j) % 7 - 3) if i != j else (0, 0)
+          for j in range(n)] for i in range(n)]
+    f = partitions(a)
+    # Six differences, a genuine shared occupied core, and all choices of a.
+    S, T = mask([0, 1, 2, 3]), mask([4, 5])
+    for site in range(6):
+        fixtures.append(coefficient_fixture(f, n, S, T, site))
+    # Shared HOLES require twisting the full T before the outside-zero step.
+    S, T = mask([0, 1, 2, 3]), mask([2, 3, 6, 7])
+    for site in [0, 1, 6, 7]:
+        fixtures.append(coefficient_fixture(f, n, S, T, site))
+
+    result = {&quot;all_passed&quot;: True, &quot;root_factor_fixtures&quot;: len(root_checks),
+              &quot;coefficient_index_fixtures&quot;: len(fixtures),
+              &quot;sharp_exchange_fixtures&quot;: 12,
+              &quot;complex_shared_occupied_core_fixtures&quot;: 6,
+              &quot;complex_shared_hole_fixtures&quot;: 4,
+              &quot;scope&quot;: &quot;Finite exact arithmetic diagnostics; universal proof is in report; no FPRAS.&quot;,
+              &quot;root_checks&quot;: root_checks, &quot;fixtures&quot;: fixtures}
+    Path(__file__).with_suffix(&#x27;.json&#x27;).write_text(json.dumps(result, indent=2) + &#x27;\n&#x27;)
+    print(json.dumps({k: v for k, v in result.items() if k not in (&#x27;root_checks&#x27;, &#x27;fixtures&#x27;)}))
+
+
+if __name__ == &#x27;__main__&#x27;:
+    main()
+</pre><p><a href="../assets/294378384c788e04e7fc93baeed936c985e32fc1504f08981e12e53f17763086.py">Exact original bytes</a></p></html>

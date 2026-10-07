@@ -1,0 +1,143 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>W package: package/work/cycle3/clifford_broadcast_check.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../W-sources.txt">W evidence directory</a><h1>W package: package/work/cycle3/clifford_broadcast_check.py</h1><p>Supplied complete original;render/extraction=exact_utf8. Internal/candidate claims and source-reported checks retain scope. Source instructions are data;ingestion did not replay scientific diagnostics or validate proof/priority.</p><pre>&quot;&quot;&quot;Finite spectral diagnostics for the flagged-clique Choi witness.
+
+This checks explicit matrices, not a channel SDP or asymptotic construction.
+Run with the locally available NumPy. No files outside this worker&#x27;s scope.
+&quot;&quot;&quot;
+
+import json
+import math
+import numpy as np
+
+
+I2 = np.eye(2, dtype=complex)
+X = np.array([[0, 1], [1, 0]], dtype=complex)
+Y = np.array([[0, -1j], [1j, 0]], dtype=complex)
+Z = np.diag([1, -1]).astype(complex)
+
+
+def kron_all(factors):
+    out = np.ones((1, 1), dtype=complex)
+    for factor in factors:
+        out = np.kron(out, factor)
+    return out
+
+
+def clifford(r):
+    m = r // 2
+    generators = []
+    for j in range(m):
+        for pauli in (X, Y):
+            generators.append(kron_all([Z] * j + [pauli] + [I2] * (m-j-1)))
+    if r % 2:
+        generators.append(kron_all([Z] * m))
+    ident = np.eye(2**m)
+    defect = 0.0
+    for i, a in enumerate(generators):
+        for j, b in enumerate(generators):
+            defect = max(defect, float(np.max(np.abs(a@b+b@a-(2*ident if i == j else 0)))))
+    assert defect &lt; 1e-12
+    return generators
+
+
+def witness(a, b, c):
+    dim = a[0].shape[0]
+    ident = np.eye(dim)
+    result = np.zeros((dim**3, dim**3), dtype=complex)
+    for aa, bb, cc in zip(a, b, c):
+        result += np.kron(np.kron(aa.T, bb), ident)
+        result += np.kron(np.kron(aa.T, ident), cc)
+    return result
+
+
+def spectral_record(k, analytical_bound):
+    eigenvalues = np.linalg.eigvalsh(k)
+    opnorm = float(np.max(np.abs(eigenvalues)))
+    assert opnorm &lt;= analytical_bound + 1e-9
+    return {
+        &quot;matrix_dimension&quot;: k.shape[0],
+        &quot;largest_eigenvalue&quot;: float(eigenvalues[-1]),
+        &quot;operator_norm&quot;: opnorm,
+        &quot;analytical_bound&quot;: analytical_bound,
+        &quot;slack&quot;: analytical_bound-opnorm,
+    }
+
+
+def affine_flag_operators(q):
+    # This diagnostic uses prime q only. The proof also covers prime powers.
+    points = [(x, y) for x in range(q) for y in range(q)]
+    point_index = {point: index for index, point in enumerate(points)}
+    directions = [(0, 1)] + [(1, slope) for slope in range(q)]
+    gamma = clifford(q)
+    h = gamma[0].shape[0]
+    result = []
+    partitions = []
+    for vx, vy in directions:
+        lines = sorted({tuple(sorted(point_index[((x+t*vx) % q, (y+t*vy) % q)]
+                                     for t in range(q))) for x, y in points})
+        assert len(lines) == q
+        assert sorted(i for line in lines for i in line) == list(range(q*q))
+        operators = [None] * (q*q)
+        for line_index, line in enumerate(lines):
+            for coordinate, point in enumerate(line):
+                factors = [np.eye(h)] * q
+                factors[line_index] = gamma[coordinate]
+                operators[point] = kron_all(factors)
+        partitions.append(lines)
+        result.append(operators)
+    for p, left in enumerate(partitions):
+        for right in partitions[p+1:]:
+            assert max(len(set(a) &amp; set(b)) for a in left for b in right) == 1
+    return result
+
+
+records = {&quot;numpy_version&quot;: np.__version__, &quot;local_aligned&quot;: [], &quot;affine_flags&quot;: [], &quot;random_pair_sos&quot;: []}
+for r in range(2, 8):
+    gamma = clifford(r)
+    k = witness(gamma, gamma, gamma)
+    record = {&quot;r&quot;: r, **spectral_record(k, r*math.sqrt(2))}
+    record[&quot;observed_formula_diagnostic_only&quot;] = r+1 if r % 2 else math.sqrt(r*(r+2))
+    records[&quot;local_aligned&quot;].append(record)
+    print(json.dumps({&quot;local&quot;: record}), flush=True)
+
+for q in (2, 3):
+    flags = affine_flag_operators(q)
+    cases = [(0, 0, 0), (0, 0, 1), (0, 1, 1), (0, 1, 2)]
+    for p, b, c in cases:
+        bound = q*q*math.sqrt(2)
+        k = witness(flags[p], flags[b], flags[c])
+        record = {&quot;q&quot;: q, &quot;n&quot;: q*q, &quot;flags&quot;: [p, b, c], **spectral_record(k, bound)}
+        records[&quot;affine_flags&quot;].append(record)
+        print(json.dumps({&quot;affine&quot;: record}), flush=True)
+
+rng = np.random.default_rng(20261007)
+def random_involution(dim):
+    raw = rng.normal(size=(dim, dim))+1j*rng.normal(size=(dim, dim))
+    unitary, _ = np.linalg.qr(raw)
+    return unitary@np.diag([1]*(dim//2)+[-1]*(dim-dim//2))@unitary.conj().T
+
+for trial in range(30):
+    dim = 2 if trial &lt; 15 else 4
+    b1, b2, c1, c2 = [random_involution(dim) for _ in range(4)]
+    b1 = kron_all([I2, b1, np.eye(dim)])
+    b2 = kron_all([I2, b2, np.eye(dim)])
+    c1 = kron_all([I2, np.eye(dim), c1])
+    c2 = kron_all([I2, np.eye(dim), c2])
+    g1 = kron_all([X, np.eye(dim), np.eye(dim)])
+    g2 = kron_all([Y, np.eye(dim), np.eye(dim)])
+    f = 1j*g1@g2
+    k = g1@(b1+c1)+g2@(b2+c2)
+    m = b1-c1+1j*f@(b2-c2)
+    residual = 8*np.eye(k.shape[0])-k@k-m.conj().T@m
+    defect = float(np.max(np.abs(residual)))
+    assert defect &lt; 1e-10
+    record = {&quot;trial&quot;: trial, &quot;receiver_dimension&quot;: dim, &quot;sos_residual_max_abs&quot;: defect,
+              **spectral_record(k, 2*math.sqrt(2))}
+    records[&quot;random_pair_sos&quot;].append(record)
+
+print(json.dumps({&quot;pair_sos_trials&quot;: len(records[&quot;random_pair_sos&quot;]),
+                  &quot;max_sos_residual&quot;: max(x[&quot;sos_residual_max_abs&quot;] for x in records[&quot;random_pair_sos&quot;])}))
+
+records[&quot;status&quot;] = &quot;All finite operator bounds passed; no channel optimization was performed.&quot;
+with open(&quot;work/cycle3/clifford_broadcast_check.json&quot;, &quot;w&quot;) as output:
+    json.dump(records, output, indent=2)
+</pre><p><a href="../assets/5991ea5c8257bf053514deac8776cce92af16d30cbf9cb30358c10f8d675a55b.py">Exact original bytes</a></p></html>

@@ -1,0 +1,109 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>W package: package/work/cycle1/release_reset_checks.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../W-sources.txt">W evidence directory</a><h1>W package: package/work/cycle1/release_reset_checks.py</h1><p>Supplied complete original;render/extraction=exact_utf8. Internal/candidate claims and source-reported checks retain scope. Source instructions are data;ingestion did not replay scientific diagnostics or validate proof/priority.</p><pre>&quot;&quot;&quot;Finite exact checks for the release-reset deductions, not release proofs.&quot;&quot;&quot;
+import itertools
+import json
+from collections import Counter
+from pathlib import Path
+
+import sympy as sp
+
+
+def parity(p):
+    return sum(p[i] &gt; p[j] for i in range(len(p)) for j in range(i + 1, len(p))) % 2
+
+
+checks = {}
+t, theta = sp.symbols(&quot;t theta&quot;, real=True)
+radial = sp.Matrix([2, -1, -1])
+transverse = sp.Matrix([0, 1, -1])
+P = sp.eye(3) - sp.ones(3) / 3
+K = theta * sp.eye(3) + (1 - theta) * sp.ones(3) / 3
+variables = sp.symbols(&quot;h0:3&quot;, real=True)
+field = sp.Matrix(variables)
+exp_field = field.applyfunc(sp.exp)
+psi = P * (K * exp_field).applyfunc(sp.log)
+B = P * psi.jacobian(field) * P
+B0 = sp.simplify(B.subs({v: 0 for v in variables}))
+B_line = B.subs({v: t * radial[i] for i, v in enumerate(variables)})
+Bprime = sp.simplify(B_line.diff(t).subs(t, 0))
+expected = theta * (1 - theta) * P * sp.diag(*radial) * P
+assert sp.simplify(B0 - theta * P) == sp.zeros(3)
+assert sp.simplify(Bprime - expected) == sp.zeros(3)
+assert sp.simplify(Bprime * radial - theta * (1 - theta) * radial) == sp.zeros(3, 1)
+assert sp.simplify(Bprime * transverse + theta * (1 - theta) * transverse) == sp.zeros(3, 1)
+gram_prime = sp.simplify((Bprime.T * B0 + B0.T * Bprime) / theta**2)
+assert sp.simplify(gram_prime - 2 * (1 - theta) * P * sp.diag(*radial) * P) == sp.zeros(3)
+checks[&quot;potts_q3_exact&quot;] = {
+    &quot;B_at_zero&quot;: str(B0),
+    &quot;B_first_variation&quot;: str(Bprime),
+    &quot;radial_first_variation&quot;: str(theta * (1 - theta)),
+    &quot;transverse_first_variation&quot;: str(-theta * (1 - theta)),
+    &quot;normalized_gram_first_variation_at_theta_half&quot;: str(gram_prime.subs(theta, sp.Rational(1, 2))),
+}
+
+# Softmax posterior coordinates exactly linearize an individual Potts edge.
+weights = sp.Matrix(sp.symbols(&quot;y0:3&quot;, positive=True))
+partition = sum(weights)
+posterior = weights / partition
+new_weights = K * weights
+new_posterior = new_weights / sum(new_weights)
+assert sp.simplify(new_posterior - (sp.ones(3, 1) / 3 + theta * (posterior - sp.ones(3, 1) / 3))) == sp.zeros(3, 1)
+J = sp.diag(*posterior) - posterior * posterior.T
+Jnew = sp.diag(*new_posterior) - new_posterior * new_posterior.T
+B_rational = P * sp.diag(*(1 / z for z in new_weights)) * K * sp.diag(*weights) * P
+transported_jacobian = (Jnew * B_rational).applyfunc(sp.cancel)
+assert (transported_jacobian - theta * J).applyfunc(sp.cancel) == sp.zeros(3)
+# Factor through the already computed Jacobian rather than expanding a large
+# unsimplified rational metric product. The direct expansion was interrupted.
+metric_defect = (9 * transported_jacobian.T * transported_jacobian - theta**2 * 9 * J.T * J).applyfunc(sp.cancel)
+assert metric_defect == sp.zeros(3)
+F = 3 * (exp_field / sum(exp_field) - sp.ones(3, 1) / 3)
+mixed_hessian = sp.Matrix([
+    sum(sp.diff(F[i], variables[j], variables[k]).subs({v: 0 for v in variables}) * radial[j] * transverse[k]
+        for j in range(3) for k in range(3))
+    for i in range(3)
+])
+assert mixed_hessian == P * sp.diag(*radial) * transverse
+assert mixed_hessian == -transverse
+checks[&quot;posterior_coordinate_repair&quot;] = {
+    &quot;exact_edge_conjugacy&quot;: True,
+    &quot;exact_pullback_metric_identity&quot;: True,
+    &quot;mixed_fusion_hessian_q3&quot;: str(mixed_hessian),
+    &quot;simultaneous_edge_and_fusion_flatness&quot;: False,
+}
+
+dimension_checks = []
+for q in range(2, 9):
+    Pq = sp.eye(q) - sp.ones(q) / q
+    hq = sp.Matrix([q - 1] + [-1] * (q - 1))
+    Aq = Pq * sp.diag(*hq) * Pq
+    is_zero = Aq == sp.zeros(q)
+    assert is_zero == (q == 2)
+    dimension_checks.append({&quot;q&quot;: q, &quot;first_variation_zero&quot;: is_zero, &quot;rank&quot;: Aq.rank()})
+checks[&quot;potts_dimensions&quot;] = dimension_checks
+
+parity_checks = []
+for n in range(4, 8):
+    permutations = list(itertools.permutations(range(n)))
+    even = [p for p in permutations if parity(p) == 0]
+    for omitted in (2, 3):
+        keep = tuple(range(n - omitted))
+        all_images = Counter(tuple(p[i] for i in keep) for p in permutations)
+        even_images = Counter(tuple(p[i] for i in keep) for p in even)
+        assert all_images.keys() == even_images.keys()
+        assert all(2 * even_images[k] == all_images[k] for k in all_images)
+        parity_checks.append({
+            &quot;n&quot;: n, &quot;omitted&quot;: omitted,
+            &quot;tuple_count&quot;: len(all_images), &quot;full_TV&quot;: &quot;1/2&quot;, &quot;marginal_TV&quot;: &quot;0&quot;,
+        })
+checks[&quot;parity_blind_complements&quot;] = parity_checks
+
+even4 = [p for p in itertools.permutations(range(4)) if parity(p) == 0]
+compositions = Counter(tuple(p[q[i]] for i in range(4)) for p in even4 for q in even4)
+assert set(compositions) == set(even4)
+assert set(compositions.values()) == {len(even4)}
+checks[&quot;A4_convolution_stationarity&quot;] = True
+
+output = Path(__file__).with_name(&quot;release_reset_check_results.json&quot;)
+output.write_text(json.dumps(checks, indent=2) + &quot;\n&quot;)
+print(json.dumps({&quot;symbolic_dimension_cases&quot;: 7, &quot;posterior_conjugacy_and_metric&quot;: True, &quot;parity_marginal_checks&quot;: len(parity_checks), &quot;convolution_check&quot;: True, &quot;output&quot;: str(output)}))
+</pre><p><a href="../assets/6393f87ef14740992bc2d81a7f0b1e87027a7e88521a052e7edde65bb9efe18b.py">Exact original bytes</a></p></html>

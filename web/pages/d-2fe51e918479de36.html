@@ -1,0 +1,91 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>W package: package/work/cycle3/canonical_bcs_check.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../W-sources.txt">W evidence directory</a><h1>W package: package/work/cycle3/canonical_bcs_check.py</h1><p>Supplied complete original;render/extraction=exact_utf8. Internal/candidate claims and source-reported checks retain scope. Source instructions are data;ingestion did not replay scientific diagnostics or validate proof/priority.</p><pre>&quot;&quot;&quot;Exact finite algebra checks of the cloned chiral representation.
+
+This is not an implementation of the imported FPRAS or quantum compiler.
+&quot;&quot;&quot;
+from itertools import combinations, product
+from pathlib import Path
+import json
+import random
+import sympy as sp
+
+
+def subsets(n, k):
+    return list(combinations(range(n), k))
+
+
+def coeffs(F, t):
+    n = F.rows
+    out = []
+    for k in range(n + 1):
+        value = sp.S.Zero
+        for I in subsets(n, k):
+            for J in subsets(n, k):
+                d = F.extract(I, J).det() if k else sp.S.One
+                value += d * sp.conjugate(d) * sp.prod(t[i] for i in set(I) &amp; set(J))
+        out.append(sp.simplify(value))
+    return out
+
+
+def check(F, alpha, beta):
+    # alpha=sqrt(t), beta=sqrt(1-t), chosen rational for exact fixtures.
+    n = F.rows
+    assert all(a*a+b*b == 1 for a, b in zip(alpha, beta))
+    t = [a*a for a in alpha]
+    B = (2 * F * sp.diag(*beta)).row_join(sp.sqrt(2) * F * sp.diag(*alpha))
+    H = sp.zeros(3*n)
+    H[:n, n:] = B
+    H[n:, :n] = B.conjugate().T
+    x = sp.Symbol(&quot;x&quot;, real=True)
+    mean_chi = sp.S.Zero
+    for bits in product((0, 1), repeat=n):
+        S = [i if bits[i] else n+i for i in range(n)] + list(range(2*n, 3*n))
+        chi = H.extract(S, S).charpoly()
+        mean_chi += chi.as_expr().subs(chi.gen, x)
+    mean_chi = sp.expand(mean_chi / 2**n)
+    Z = coeffs(F, t)
+    expected = sum((-1)**k * z * x**(2*n-2*k) for k, z in enumerate(Z))
+    assert sp.simplify(mean_chi-expected) == 0, (F, t, mean_chi, expected)
+    return {&quot;n&quot;: n, &quot;rank&quot;: F.rank(), &quot;t&quot;: list(map(str, t)),
+            &quot;Z&quot;: list(map(str, Z)), &quot;chiral_identity&quot;: True}
+
+
+def main():
+    rng = random.Random(910073)
+    pairs = [(sp.S.Zero, sp.S.One), (sp.S.One, sp.S.Zero),
+             (sp.Rational(3, 5), sp.Rational(4, 5)),
+             (sp.Rational(4, 5), sp.Rational(3, 5))]
+    records = []
+    # Every filter endpoint and both interior Pythagorean values for n=1,2.
+    for n in (1, 2):
+        F = sp.Matrix(n, n, lambda i, j: sp.Rational(2*i-j+1, i+j+1)
+                      + sp.I * sp.Rational(i+j-1, 2))
+        for ab in product(pairs, repeat=n):
+            records.append(check(F, [a for a, _ in ab], [b for _, b in ab]))
+    # Complex, singular, diagonal, off-diagonal, and zero n=3 fixtures.
+    matrices = [sp.Matrix(3, 3, lambda i, j: sp.Rational(rng.randint(-3, 3), rng.randint(1, 4))
+                          + sp.I * sp.Rational(rng.randint(-2, 2), rng.randint(1, 3))),
+                sp.Matrix([[1, 2, 3], [2, 4, 6], [1, 0, 1]]),
+                sp.diag(1, sp.I, 2),
+                sp.Matrix([[0, 1, 0], [0, 0, 2], [3, 0, 0]]),
+                sp.zeros(3)]
+    for q, F in enumerate(matrices):
+        ab = [pairs[(q+i) % len(pairs)] for i in range(3)]
+        records.append(check(F, [a for a, _ in ab], [b for _, b in ab]))
+    # Sharp repulsive boundary: swap pairing with t1=t2=2 gives nonreal zeros.
+    swap = sp.Matrix([[0, 1], [1, 0]])
+    attractive = coeffs(swap, [sp.Rational(2), sp.Rational(2)])
+    assert attractive == [1, 2, 4]
+    discriminant = attractive[1]**2 - 4*attractive[0]*attractive[2]
+    assert discriminant == -12
+    output = {&quot;status&quot;: &quot;exact algebra checks passed&quot;, &quot;exact_chiral_cases&quot;: len(records),
+              &quot;principal_submatrix_characteristic_polynomials&quot;: sum(2**r[&quot;n&quot;] for r in records),
+              &quot;records&quot;: records, &quot;t_gt_1_counterexample&quot;: {&quot;F&quot;: &quot;swap&quot;, &quot;t&quot;: [2, 2],
+              &quot;Z&quot;: list(map(str, attractive)), &quot;discriminant&quot;: str(discriminant)},
+              &quot;scope&quot;: &quot;finite algebra diagnostics; general theorem separately proved; FPRAS/compiler unimplemented&quot;}
+    Path(__file__).with_name(&quot;canonical_bcs_check.json&quot;).write_text(json.dumps(output, indent=2)+&quot;\n&quot;)
+    print(json.dumps({k: output[k] for k in (&quot;status&quot;, &quot;exact_chiral_cases&quot;, &quot;principal_submatrix_characteristic_polynomials&quot;)}))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/af856a164fed022e7ca13cd7349d15609aecaf097ba26e7fe3cd886802581ec5.py">Exact original bytes</a></p></html>

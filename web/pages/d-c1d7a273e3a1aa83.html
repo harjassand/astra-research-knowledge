@@ -1,0 +1,181 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>W package: package/work/cycle3/filter_threshold_check.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../W-sources.txt">W evidence directory</a><h1>W package: package/work/cycle3/filter_threshold_check.py</h1><p>Supplied complete original;render/extraction=exact_utf8. Internal/candidate claims and source-reported checks retain scope. Source instructions are data;ingestion did not replay scientific diagnostics or validate proof/priority.</p><pre>&quot;&quot;&quot;Exact independent finite checks for the complementary filter theorem.
+
+Builds full coefficient Hessians by subset enumeration, not the quotient formula.
+Inertia is computed by rational symmetric Schur complements. No FPRAS or
+quantum preparation code is implemented here.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from itertools import combinations, product
+from math import factorial
+from pathlib import Path
+import json
+import random
+
+
+def inertia(matrix):
+    a = [list(map(F, row)) for row in matrix]
+    positive = negative = zero = 0
+    while a:
+        n = len(a)
+        p = next((i for i in range(n) if a[i][i]), None)
+        if p is not None:
+            order = [p] + [i for i in range(n) if i != p]
+            a = [[a[i][j] for j in order] for i in order]
+            pivot = a[0][0]
+            positive += pivot &gt; 0
+            negative += pivot &lt; 0
+            a = [[a[i][j] - a[i][0] * a[0][j] / pivot
+                  for j in range(1, n)] for i in range(1, n)]
+            continue
+        pair = next(((i, j) for i in range(n) for j in range(i + 1, n)
+                     if a[i][j]), None)
+        if pair is None:
+            zero += n
+            break
+        i, j = pair
+        order = [i, j] + [k for k in range(n) if k not in pair]
+        a = [[a[k][l] for l in order] for k in order]
+        pivot = a[0][1]
+        positive += 1
+        negative += 1
+        a = [[a[k][l] - (a[k][0] * a[1][l] + a[k][1] * a[0][l]) / pivot
+              for l in range(2, n)] for k in range(2, n)]
+    return positive, negative, zero
+
+
+def subsets(m):
+    return [frozenset(c) for k in range(m + 1)
+            for c in combinations(range(m), k)]
+
+
+def coeff(tables, blocks, s, complementary=True):
+    value = F(1)
+    for b, e in zip(tables, blocks):
+        k = len(e) - len(s &amp; e) if complementary else len(s &amp; e)
+        value *= b[k]
+    return value
+
+
+def blocks_for(tables):
+    out = []
+    start = 0
+    for b in tables:
+        q = len(b) - 1
+        out.append(frozenset(range(start, start + q)))
+        start += q
+    return out
+
+
+def hessian(tables, r, complementary=True):
+    blocks = blocks_for(tables)
+    m = sum(len(e) for e in blocks)
+    remaining = [i for i in range(m) if i not in r]
+    return [[F(0) if i == j else coeff(tables, blocks, r | {i, j}, complementary)
+             for j in remaining] for i in remaining]
+
+
+def basis_exchange(support):
+    if not support:
+        return True
+    known = set(support)
+    for s in support:
+        for t in support:
+            for e in s - t:
+                if not any((s - {e}) | {f} in known for f in t - s):
+                    return False
+    return True
+
+
+def normalized_lc(b):
+    positive = [k for k, value in enumerate(b) if value]
+    if positive and positive != list(range(positive[0], positive[-1] + 1)):
+        return False
+    return all(F(k + 1) * b[k] ** 2 &gt;= F(k) * b[k - 1] * b[k + 1]
+               for k in range(1, len(b) - 1))
+
+
+def check_instance(tables):
+    blocks = blocks_for(tables)
+    m = sum(len(e) for e in blocks)
+    all_s = subsets(m)
+    checks = 0
+    for r in all_s:
+        if len(r) &lt;= m - 2:
+            counts = inertia(hessian(tables, r))
+            assert counts[0] &lt;= 1, (tables, sorted(r), counts)
+            checks += 1
+    support_checks = 0
+    for t in range(m + 1):
+        support = [s for s in all_s if len(s) == t and coeff(tables, blocks, s)]
+        assert basis_exchange(support), (tables, t)
+        support_checks += 1
+    return checks, support_checks
+
+
+randomizer = random.Random(701)
+random_hessians = random_supports = prefix_tables = 0
+for case in range(28):
+    sizes = randomizer.choice([(2, 2), (3, 2), (2, 2, 2), (3, 3)])
+    tables = []
+    for q in sizes:
+        low = randomizer.randrange(q + 1)
+        high = randomizer.randrange(low, q + 1)
+        ratios = sorted([F(randomizer.randrange(1, 6), randomizer.randrange(1, 6))
+                         for _ in range(high - low)], reverse=True)
+        beta = [F(0)] * (q + 1)
+        beta[low] = F(randomizer.randrange(1, 6), randomizer.randrange(1, 6))
+        for k, ratio in enumerate(ratios, low + 1):
+            beta[k] = beta[k - 1] * ratio
+        b = [factorial(k) * beta[k] for k in range(q + 1)]
+        assert normalized_lc(b)
+        tables.append(b)
+        for forced in range(q + 1):
+            for excluded in range(q - forced + 1):
+                remaining = q - forced - excluded
+                shifted = b[forced:forced + remaining + 1]
+                assert normalized_lc(shifted)
+                prefix_tables += 1
+    h, s = check_instance(tables)
+    random_hessians += h
+    random_supports += s
+
+# Sharp violation witnesses: two copies of a table with one depressed beta.
+sharp_witnesses = []
+for q in range(2, 6):
+    for k in range(1, q):
+        beta = [F(1)] * (q + 1)
+        beta[k] = F(1, 2)
+        b = [factorial(i) * beta[i] for i in range(q + 1)]
+        tables = [b, b]
+        forced_per_block = q - k - 1
+        r = frozenset(range(forced_per_block)) | frozenset(range(q, q + forced_per_block))
+        counts = inertia(hessian(tables, r))
+        assert counts[0] == 2, (q, k, counts)
+        sharp_witnesses.append({&quot;q&quot;: q, &quot;k&quot;: k, &quot;inertia&quot;: counts})
+
+# Direct/complement distinction, and heterogeneous compensation.
+factorial_tables = [[F(factorial(k)) for k in range(4)]] * 2
+direct_counts = inertia(hessian(factorial_tables, frozenset(), False))
+assert direct_counts[0] == 2
+factorial_hessians, factorial_supports = check_instance(factorial_tables)
+compensation_tables = [[F(1), F(1), F(4)], [F(1), F(1), F(1)]]
+assert not normalized_lc(compensation_tables[0])
+compensation_hessians, compensation_supports = check_instance(compensation_tables)
+
+result = {
+    &quot;status&quot;: &quot;PASS&quot;,
+    &quot;scope&quot;: &quot;Exact finite coefficient Hessian and support checks only; no FPRAS or quantum compiler executed.&quot;,
+    &quot;random_interval_instances&quot;: 28,
+    &quot;random_quadratic_derivative_hessians&quot;: random_hessians,
+    &quot;random_support_basis_exchange_families&quot;: random_supports,
+    &quot;forced_occupied_excluded_prefix_tables&quot;: prefix_tables,
+    &quot;sharp_two_copy_witnesses&quot;: sharp_witnesses,
+    &quot;direct_factorial_table_rank2_inertia&quot;: direct_counts,
+    &quot;complement_factorial_table_hessians_checked&quot;: factorial_hessians,
+    &quot;heterogeneous_compensation_hessians_checked&quot;: compensation_hessians,
+    &quot;heterogeneous_compensation_degree2_inertia&quot;: inertia(hessian(compensation_tables, frozenset())),
+}
+destination = Path(__file__).with_name(&quot;filter_threshold_check_result.json&quot;)
+destination.write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+print(json.dumps(result, indent=2))
+</pre><p><a href="../assets/8672ffd2499aca6c09278a8fa82c2c52922bb7502c19c96a676860ddd44ffe68.py">Exact original bytes</a></p></html>

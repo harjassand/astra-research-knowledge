@@ -1,0 +1,223 @@
+"""Small falsification fixtures for the compatible-smoothing candidate.
+
+Numerical checks only. No EB channel, broadcaster, or general theorem is tested.
+Uses NumPy, and an exact scalar KKT solve only for the tracial-reference smoother.
+"""
+from pathlib import Path
+import json
+import numpy as np
+
+BASE = Path(__file__).resolve().parent
+rng = np.random.default_rng(70146967)
+
+
+def herm(x):
+    return (x + x.conj().T) / 2
+
+
+def fpow(x, p):
+    w, v = np.linalg.eigh(herm(x))
+    scale = max(1.0, float(np.max(np.abs(w))))
+    if np.min(w) < -2e-10 * scale:
+        raise ValueError("Nonpositive input")
+    w = np.maximum(w, 0)
+    if p < 0:
+        wp = np.zeros_like(w)
+        active = w > 1e-13 * scale
+        wp[active] = w[active] ** p
+    else:
+        wp = w**p
+    return (v * wp) @ v.conj().T
+
+
+def tn(x):
+    return float(np.sum(np.linalg.svd(x, compute_uv=False)))
+
+
+def trace(x):
+    return float(np.trace(x).real)
+
+
+def fid(r, t):
+    return tn(fpow(r, 0.5) @ fpow(t, 0.5))
+
+
+def q(s, t):
+    y = fpow(s, -0.25) @ t @ fpow(s, -0.25)
+    return trace(y @ y)
+
+
+def random_u(d):
+    z = rng.normal(size=(d, d)) + 1j * rng.normal(size=(d, d))
+    u, _ = np.linalg.qr(z)
+    return u
+
+
+def density(d, spread=5, pure=False):
+    u = random_u(d)
+    if pure:
+        return np.outer(u[:, 0], u[:, 0].conj())
+    eig = np.exp(rng.uniform(-spread, spread, d))
+    eig /= eig.sum()
+    return herm((u * eig) @ u.conj().T)
+
+
+def random_channel(d, d_out=None, kraus_count=3):
+    d_out = d if d_out is None else d_out
+    z = rng.normal(size=(d_out*kraus_count, d))
+    z = z + 1j * rng.normal(size=z.shape)
+    v, _ = np.linalg.qr(z)
+    ks = [v[j*d_out:(j+1)*d_out] for j in range(kraus_count)]
+    return lambda x: herm(sum(k @ x @ k.conj().T for k in ks))
+
+
+max_ratios = {}
+worst_excess = {}
+counts = {}
+
+
+def check(name, lhs, rhs, atol=3e-7):
+    counts[name] = counts.get(name, 0) + 1
+    excess = lhs-rhs
+    worst_excess[name] = max(worst_excess.get(name, -float("inf")), excess)
+    if rhs > 1e-14:
+        max_ratios[name] = max(max_ratios.get(name, 0), lhs/rhs)
+    if excess > atol * max(1, abs(lhs), abs(rhs)):
+        raise AssertionError((name, lhs, rhs, excess))
+
+
+for it in range(1200):
+    d = int(rng.integers(2, 9))
+    s = density(d, spread=7)
+    r = density(d, pure=(it % 7 == 0))
+    m = float(rng.uniform(1.05, 7))
+    lam = float(rng.uniform(0.001, 0.2))
+    u = random_u(d)
+    a = herm((u * rng.uniform(0, m, d)) @ u.conj().T)
+    tau = fpow(s, 0.5) @ a @ fpow(s, 0.5)
+    if trace(tau) > 1:
+        a /= trace(tau)
+        tau = fpow(s, 0.5) @ a @ fpow(s, 0.5)
+    else:
+        tau = herm(tau)
+    if it % 6 == 0:
+        target = density(d, pure=True)
+        chan = lambda x: trace(x) * target
+        t = chan
+    else:
+        chan = random_channel(d)
+        eta = 10.0 ** float(rng.uniform(-8, 0))
+        t = lambda x: herm((1-eta)*x + eta*chan(x))
+    nu, rp, ttau = t(s), t(r), t(tau)
+    ds, dr = tn(nu-s), tn(rp-r)
+    delta = 2*m*np.sqrt(ds)
+    tau_p = herm(fpow(nu, 0.5) @ a @ fpow(nu, 0.5))
+    kap = tau_p / max(1.0, trace(tau_p))
+    check("transport_L1", tn(tau_p-tau), delta)
+    check("clipped_transport_L1", tn(kap-tau), 2*delta)
+    check("transport_Q", abs(q(nu, tau_p)-q(s, tau)), 2*m*m*np.sqrt(ds))
+    check("Q_bound", q(s, tau), m*trace(tau))
+    check("Q_DPI", q(nu, ttau), q(s, tau), atol=3e-6)
+    check("root_fidelity_DPI", fid(r, tau), fid(rp, ttau), atol=3e-6)
+    check("root_fidelity_variation", abs(fid(r,tau)-fid(rp,kap)), np.sqrt(dr)+np.sqrt(tn(tau-kap)))
+    xi = np.sqrt(dr)+2*np.sqrt(m)*ds**0.25+2*lam*m*m*np.sqrt(ds)
+    j0 = -fid(r, tau)+lam*q(s, tau)
+    j1 = -fid(rp, kap)+lam*q(nu, kap)
+    check("objective_transport", j1-j0, xi)
+    # The strict convexity identity is tested against a second feasible state.
+    a2u = random_u(d)
+    a2 = herm((a2u*rng.uniform(0, m, d)) @ a2u.conj().T)
+    v = fpow(s, 0.5) @ a2 @ fpow(s, 0.5)
+    v /= max(1.0, trace(v))
+    x = float(rng.uniform(0.01, 0.99))
+    mixed = (1-x)*tau+x*v
+    jv, jm = -fid(r,v)+lam*q(s,v), -fid(r,mixed)+lam*q(s,mixed)
+    check("strong_convexity_identity", jm, (1-x)*j0+x*jv-lam*x*(1-x)*q(s,v-tau))
+
+
+def tracial_g(r, m, lam):
+    """Solve the spectral convex program by scalar KKT equations.
+
+    Reference is I/d. Pinching in rho's basis increases fidelity and decreases
+    Q, so its unique minimizer is diagonal there.
+    """
+    eig, u = np.linalg.eigh(herm(r))
+    eig = np.maximum(eig, 0)
+    d = len(eig)
+    cap = m/d
+
+    def solve_at(mu):
+        ans = np.zeros(d)
+        for j, rr in enumerate(eig):
+            if rr < 1e-15:
+                continue
+            lo, hi = 0.0, cap
+            for _ in range(70):
+                z = (lo+hi)/2
+                der = 2*lam*d*z+mu-0.5*np.sqrt(rr/z)
+                if der < 0:
+                    lo = z
+                else:
+                    hi = z
+            ans[j] = (lo+hi)/2
+        return ans
+
+    out = solve_at(0)
+    mu = 0.0
+    if out.sum() > 1:
+        hi = 1.0
+        while solve_at(hi).sum() > 1:
+            hi *= 2
+        lo = 0.0
+        for _ in range(70):
+            mu = (lo+hi)/2
+            trial = solve_at(mu)
+            if trial.sum() > 1:
+                lo = mu
+            else:
+                hi = mu
+        mu = (lo+hi)/2
+        out = solve_at(mu)
+    return herm((u*out) @ u.conj().T), mu
+
+
+for it in range(120):
+    d = int(rng.integers(2, 7))
+    s = np.eye(d)/d
+    r = density(d, pure=(it%5 == 0))
+    m = float(rng.uniform(1.05, 3))
+    lam = float(rng.uniform(0.02, 0.2))
+    tau, _ = tracial_g(r, m, lam)
+    u = random_u(d)
+    eta = 10.0**float(rng.uniform(-10, -1))
+    t = lambda x: herm((1-eta)*x+eta*u@x@u.conj().T)
+    dr = tn(t(r)-r)
+    check("tracial_optimizer_fixed_reference", tn(t(tau)-tau), dr**0.25/np.sqrt(lam), atol=2e-6)
+    # Independent feasible perturbations test the claimed minimizer gap.
+    jtau = -fid(r,tau)+lam*q(s,tau)
+    for _ in range(8):
+        au = random_u(d)
+        a = herm((au*rng.uniform(0,m,d)) @ au.conj().T)
+        v = a/d
+        v /= max(1.0, trace(v))
+        jv = -fid(r,v)+lam*q(s,v)
+        check("tracial_optimizer_gap", lam*q(s,v-tau), jv-jtau, atol=2e-6)
+
+
+report = {
+    "status": "all finite numerical fixtures passed; analytic proof not certified",
+    "seed": 70146967,
+    "nontracial_transport_and_DPI_cases": 1200,
+    "exact_tracial_optimizer_cases": 120,
+    "counts": counts,
+    "worst_lhs_minus_rhs": worst_excess,
+    "max_lhs_over_rhs": max_ratios,
+    "limitations": [
+        "small matrices only",
+        "no nontracial minimizer solved",
+        "no approximate broadcaster or EB channel tested",
+        "no general bounded-capacity implication established",
+    ],
+}
+(BASE/"bounded_capacity_proof_checks.json").write_text(json.dumps(report, indent=2)+"\n")
+print(json.dumps(report, indent=2))

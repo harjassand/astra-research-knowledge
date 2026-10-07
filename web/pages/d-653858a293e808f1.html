@@ -1,0 +1,158 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>W package: package/work/cycle1/quantum_sparse_lift_checks.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../W-sources.txt">W evidence directory</a><h1>W package: package/work/cycle1/quantum_sparse_lift_checks.py</h1><p>Supplied complete original;render/extraction=exact_utf8. Internal/candidate claims and source-reported checks retain scope. Source instructions are data;ingestion did not replay scientific diagnostics or validate proof/priority.</p><pre>&quot;&quot;&quot;Finite diagnostics for the sparse universal-lift volume lemma.
+
+These checks are examples and algebra checks, not theorem or novelty validation.
+The proof is in quantum_complexity.txt. Uses NumPy only; deterministic seed.
+&quot;&quot;&quot;
+from fractions import Fraction
+from itertools import combinations
+from math import comb, exp, log, sqrt
+import json
+import numpy as np
+
+
+def cap_cdf(d, s, t):
+    # Squared distance from a Haar complex unit vector to a fixed s-plane.
+    return sum(Fraction(comb(d - 1, k)) * t**k * (1 - t)**(d - 1 - k)
+               for k in range(d - s, d))
+
+
+def lower_bound(d, n, s):
+    a = comb(n, s) * comb(d - 1, s - 1)
+    return (d - s) / (d - s + 1) * exp(-log(a) / (d - s))
+
+
+def complex_normal(rng, shape):
+    return rng.normal(size=shape) + 1j * rng.normal(size=shape)
+
+
+def haar_unitary(rng, d):
+    q, r = np.linalg.qr(complex_normal(rng, (d, d)))
+    diag = np.diag(r)
+    return q @ np.diag(diag / np.abs(diag))
+
+
+def row_spans(v, s):
+    spans = []
+    for ix in combinations(range(len(v)), s):
+        r = v[list(ix), :]
+        _, singular, vh = np.linalg.svd(r, full_matrices=False)
+        rank = int(np.sum(singular &gt; 1e-12))
+        basis = vh[:rank, :]
+        spans.append((ix, r, basis.conj().T @ basis))
+    return spans
+
+
+def best_row_sparse(v, u, spans):
+    targets = v @ u
+    m = np.zeros((len(v), len(v)), dtype=complex)
+    row_loss = 0.0
+    for j, target in enumerate(targets):
+        best = None
+        for ix, rows, p in spans:
+            loss = float(np.linalg.norm(target - target @ p)**2)
+            if best is None or loss &lt; best[0]:
+                best = (loss, ix, rows)
+        loss, ix, rows = best
+        m[j, list(ix)] = target @ np.linalg.pinv(rows)
+        row_loss += loss
+    residual = m @ v - targets
+    return row_loss / v.shape[1], np.linalg.norm(residual, &quot;fro&quot;)**2 / v.shape[1], \
+        np.linalg.norm(residual, 2)**2
+
+
+def main():
+    out = {&quot;scope&quot;: &quot;Finite diagnostics only; proof and priority are separate.&quot;}
+    rational_caps = 0
+    for d in range(2, 14):
+        for s in range(1, d):
+            for k in range(21):
+                t = Fraction(k, 20)
+                assert cap_cdf(d, s, t) &lt;= comb(d - 1, s - 1) * t**(d - s)
+                rational_caps += 1
+    out[&quot;exact_rational_cap_checks&quot;] = rational_caps
+
+    # For the coordinate frame, E max_j |psi_j|^2 = H_d/d.
+    basis = []
+    for d in range(2, 17):
+        harmonic = sum(Fraction(1, j) for j in range(1, d + 1))
+        exact = 1 - harmonic / d
+        bound = lower_bound(d, d, 1)
+        assert float(exact) &gt;= bound - 1e-14
+        basis.append({&quot;d&quot;: d, &quot;exact_mean_distortion&quot;: str(exact),
+                      &quot;volume_lower_bound&quot;: bound})
+    assert basis[0][&quot;exact_mean_distortion&quot;] == &quot;1/4&quot;
+    out[&quot;coordinate_frame_checks&quot;] = basis
+
+    rng = np.random.default_rng(7102026)
+    fixtures = []
+    for d, n, s in [(3, 8, 1), (4, 7, 2), (5, 9, 2)]:
+        v, _ = np.linalg.qr(complex_normal(rng, (n, d)))
+        assert np.linalg.norm(v.conj().T @ v - np.eye(d), 2) &lt; 1e-12
+        spans = row_spans(v, s)
+        weights = np.sum(np.abs(v)**2, axis=1) / d
+        # Deliberately nonuniform frame weights, unlike the first draft&#x27;s premise.
+        assert weights.max() - weights.min() &gt; 1e-3
+        losses, operators = [], []
+        for _ in range(160):
+            u = haar_unitary(rng, d)
+            a, b, c = best_row_sparse(v, u, spans)
+            assert abs(a - b) &lt; 2e-12
+            assert c + 2e-12 &gt;= b
+            losses.append(a)
+            operators.append(c)
+        mean = float(np.mean(losses))
+        bound = lower_bound(d, n, s)
+        assert mean &gt;= bound
+        fixtures.append({&quot;d&quot;: d, &quot;N&quot;: n, &quot;s&quot;: s, &quot;unitaries&quot;: len(losses),
+                         &quot;frame_weight_min&quot;: float(weights.min()),
+                         &quot;frame_weight_max&quot;: float(weights.max()),
+                         &quot;mean_optimal_row_LS_frobenius_squared_over_d&quot;: mean,
+                         &quot;mean_operator_error_squared&quot;: float(np.mean(operators)),
+                         &quot;volume_lower_bound&quot;: bound})
+    out[&quot;nonuniform_frame_fixtures&quot;] = fixtures
+
+    # Exact-rational 1-local counterexample: each site&#x27;s two projectors have
+    # distinct kernels, so every state violates at least half of all terms.
+    rational_hamiltonians = []
+    for bits in [1, 8, 64, 256]:
+        r = Fraction(1, 2**bits)
+        h00 = r*r / (2*(1 + r*r))
+        h01 = r / (2*(1 + r*r))
+        h11 = Fraction(1, 2) + Fraction(1, 2*(1 + r*r))
+        det = h00*h11 - h01*h01
+        assert h00 + h11 == 1
+        assert det == r*r / (4*(1 + r*r))
+        assert det &gt; 0
+        assert det &lt;= r*r/4
+        # The characteristic polynomial is decreasing on [0,1/2]. Its signs
+        # at these exact rational bounds sandwich the smaller eigenvalue.
+        lo, hi = det, r*r/4
+        assert 0 &lt; lo &lt;= hi &lt; Fraction(1, 2)
+        assert lo*lo - lo + det &gt;= 0
+        assert hi*hi - hi + det &lt;= 0
+        rational_hamiltonians.append({&quot;B&quot;: bits, &quot;exact_determinant&quot;: str(det),
+                                      &quot;spectral_energy_upper_bound&quot;: str(r*r/4),
+                                      &quot;combinatorial_energy&quot;: &quot;1/2&quot;})
+    out[&quot;rational_combinatorial_gap_counterexamples&quot;] = rational_hamiltonians
+
+    # A stable upper bound on log A avoids constructing astronomic N.
+    scaling = []
+    for n_qubits in [8, 16, 32, 64]:
+        d = 2**n_qubits
+        s = n_qubits**2
+        if s &gt;= d:
+            continue
+        log_n = n_qubits**2 * log(2)
+        log_a_upper = s * (1 + log_n - log(s))
+        if s &gt; 1:
+            log_a_upper += (s - 1) * (1 + log(d - 1) - log(s - 1))
+        eps_lower = sqrt((d - s)/(d - s + 1) * exp(-log_a_upper/(d - s)))
+        scaling.append({&quot;logical_qubits&quot;: n_qubits, &quot;physical_bits&quot;: n_qubits**2,
+                        &quot;row_sparsity&quot;: s, &quot;universal_operator_error_lower_bound&quot;: eps_lower})
+    out[&quot;polynomial_label_and_row_scaling&quot;] = scaling
+    print(json.dumps(out, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/99613bd5f1942828ea98d4883281bf90cc95a4191073a04e8d6ac874bc030fd0.py">Exact original bytes</a></p></html>

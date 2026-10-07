@@ -1,0 +1,41 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>W package: package/work/cycle2/tensor_dual_search.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../W-sources.txt">W evidence directory</a><h1>W package: package/work/cycle2/tensor_dual_search.py</h1><p>Supplied complete original;render/extraction=exact_utf8. Internal/candidate claims and source-reported checks retain scope. Source instructions are data;ingestion did not replay scientific diagnostics or validate proof/priority.</p><pre>import itertools, json
+import numpy as np
+
+rng=np.random.default_rng(713049)
+n=6
+triples=list(itertools.combinations(range(n),3))
+idx={t:i for i,t in enumerate(triples)}
+full=set(range(n))
+dualidx=[idx[tuple(sorted(full-set(t)))] for t in triples]
+matidx=[]
+for i in range(n):
+    others=[j for j in range(n) if j!=i]
+    M=np.full((5,5),-1,dtype=int)
+    for a,b in itertools.combinations(range(5),2):
+        M[a,b]=M[b,a]=idx[tuple(sorted((i,others[a],others[b])))]
+    matidx.append(M)
+def derivative_matrices(c):
+    A=c[:, np.maximum(np.array(matidx),0)]
+    A*=np.array(matidx)[None]&gt;=0
+    return A
+
+accepted=0
+for roundnum in range(40):
+    c=rng.integers(1,5,size=(2500,20))
+    eigen=np.linalg.eigvalsh(derivative_matrices(c))
+    good=np.max(eigen[:,:,-2],axis=1)&lt;-1e-7
+    accepted+=int(good.sum())
+    if not good.any(): continue
+    cand=c[good]
+    deigen=np.linalg.eigvalsh(derivative_matrices(cand[:,dualidx]))
+    bad=np.max(deigen[:,:,-2],axis=1)&gt;1e-6
+    if bad.any():
+        k=int(np.flatnonzero(bad)[0])
+        out={&#x27;triples&#x27;:[list(t) for t in triples], &#x27;coefficients&#x27;:cand[k].tolist(),
+             &#x27;p_derivative_eigenvalues&#x27;:np.linalg.eigvalsh(derivative_matrices(cand[k:k+1]))[0].tolist(),
+             &#x27;dual_derivative_eigenvalues&#x27;:deigen[k].tolist(), &#x27;accepted_before&#x27;:accepted}
+        print(json.dumps(out,indent=2))
+        break
+else:
+    print(json.dumps({&#x27;result&#x27;:&#x27;NO_COUNTEREXAMPLE_FOUND&#x27;,&#x27;trials&#x27;:100000,&#x27;accepted&#x27;:accepted}))
+</pre><p><a href="../assets/1e41100946457269590ed40d57507007e44297b7c7c480ad2309f3b1d46cd1e8.py">Exact original bytes</a></p></html>

@@ -1,0 +1,200 @@
+"""Independent algebraic and bounded finite-sample checks; not a proof certificate."""
+from pathlib import Path
+import json
+import numpy as np
+
+ROOT = Path(__file__).resolve().parent
+rng = np.random.default_rng(20261007)
+d, r = 10, 32
+while True:
+    code = rng.integers(0, 2, size=(r, d))
+    distances = np.mean(code[:, :, None] != code[:, None, :], axis=0)
+    delta = distances[np.triu_indices(d, 1)].min()
+    if delta >= 0.25:
+        break
+B = rng.normal(0, 0.12, (d, d))
+np.fill_diagonal(B, 0)
+A = np.eye(d) - B
+M = np.linalg.inv(A)
+a = rng.uniform(0.7, 1.3, d)
+latent = rng.normal(0, 0.15, (d, 3))
+omega = 0.4 * np.eye(d) + latent @ latent.T
+sigma0 = M @ omega @ M.T
+sigmastar = sigma0 + M @ np.diag(a) @ M.T
+sigmas = [sigma0 + M @ np.diag(a * b) @ M.T for b in code]
+
+
+def symmetric_power(mat, power):
+    vals, vecs = np.linalg.eigh((mat + mat.T) / 2)
+    if vals[0] <= 0:
+        raise ValueError("nonpositive calibration contrast")
+    return (vecs * vals**power) @ vecs.T
+
+
+def decode_fixed(cov0, covstar, covs):
+    C = covstar - cov0
+    W = symmetric_power(C, -0.5)
+    rows = []
+    nullvals = []
+    for i in range(d):
+        beta = code[:, i].mean()
+        L = beta * covstar - (1 - beta) * cov0
+        L += sum((1 - 2 * code[l, i]) * covs[l] for l in range(r)) / r
+        H = W @ L @ W
+        vals, vecs = np.linalg.eigh((H + H.T) / 2)
+        v = vecs[:, 0] @ W
+        rows.append(v / v[i])
+        nullvals.append([float(vals[0]), float(vals[1])])
+    return np.asarray(rows), np.asarray(nullvals)
+
+
+ahat, groundvals = decode_fixed(sigma0, sigmastar, sigmas)
+C = sigmastar - sigma0
+W = symmetric_power(C, -0.5)
+Q = W @ M @ np.diag(np.sqrt(a))
+projections = [W @ (s - sigma0) @ W for s in sigmas]
+
+# Arbitrary correlated full-rank inputs on each active support, with paired codes.
+paired = np.vstack([code, 1 - code])
+correlated_covs = []
+minimum_active = float("inf")
+for b in paired:
+    ids = np.flatnonzero(b)
+    K = np.zeros((d, d))
+    R = rng.normal(0, 0.2, (len(ids), len(ids)))
+    block = np.eye(len(ids)) + R @ R.T
+    if len(ids):
+        minimum_active = min(minimum_active, np.linalg.eigvalsh(block)[0])
+        K[np.ix_(ids, ids)] = block
+    correlated_covs.append(sigma0 + M @ K @ M.T)
+null_rows, gaps = [], []
+for i in range(d):
+    inactive = np.flatnonzero(paired[:, i] == 0)
+    S = sum(correlated_covs[l] - sigma0 for l in inactive) / r
+    vals, vecs = np.linalg.eigh((S + S.T) / 2)
+    v = vecs[:, 0]
+    null_rows.append(v / v[i])
+    gaps.append(float(vals[1]))
+
+# Same-signature stable two-cycle counterexample (even identical known strengths).
+t = 0.5
+duplicate_covariances = []
+for sign in (-1, 1):
+    A2 = np.array([[1, sign * t], [-sign * t, 1]])
+    M2 = np.linalg.inv(A2)
+    strength = (1 + t * t) * np.eye(2)
+    duplicate_covariances.append([
+        M2 @ strength @ M2.T,
+        M2 @ (2 * strength) @ M2.T,
+    ])
+
+
+def empirical_second_moment(cov, n, generator):
+    x = generator.multivariate_normal(np.zeros(d), cov, size=n)
+    return x.T @ x / n
+
+
+sample_rows = []
+for m in (1024, 4096, 16384):
+    errors, relative_errors, failures = [], [], 0
+    mask_n = int(np.ceil(m / r))
+    for seed in range(3):
+        gen = np.random.default_rng(7000 + 100 * m + seed)
+        ec0 = empirical_second_moment(sigma0, m, gen)
+        ecs = empirical_second_moment(sigmastar, m, gen)
+        ecl = [empirical_second_moment(s, mask_n, gen) for s in sigmas]
+        try:
+            ae, _ = decode_fixed(ec0, ecs, ecl)
+            errors.append(float(np.max(np.linalg.norm(ae - A, axis=1))))
+            relative_errors.append(float(np.linalg.norm(W @ (ecs - ec0 - C) @ W, 2)))
+        except ValueError:
+            failures += 1
+    sample_rows.append({
+        "anchor_samples": m,
+        "mask_samples": mask_n,
+        "total_samples": 2 * m + r * mask_n,
+        "maximum_row_error_each_seed": errors,
+        "relative_calibration_error_each_seed": relative_errors,
+        "whitening_failures": failures,
+    })
+
+# Exact boundary ambiguity for up to k whole corrupted contexts.
+robust_d, k, shear_t = 4, 2, 0.25
+all_masks = np.array([[(v >> i) & 1 for i in range(robust_d)] for v in range(2**robust_d)])
+Ai = np.eye(robust_d)
+Aj = np.eye(robust_d)
+Aj[0, 1] = -shear_t
+Mj = np.linalg.inv(Aj)
+separator = np.flatnonzero((all_masks[:, 1] == 1) & (all_masks[:, 0] == 0))
+second_half = set(separator[k:])
+robust_covs = []
+for e, b in enumerate(all_masks):
+    D = np.diag(b)
+    robust_covs.append(np.eye(robust_d) + (Mj @ D @ Mj.T if e in second_half else D))
+bad_counts = []
+for candidate in (Ai, Aj):
+    invalid = 0
+    for b, observed in zip(all_masks, robust_covs):
+        K = candidate @ (observed - np.eye(robust_d)) @ candidate.T
+        target = np.flatnonzero(b)
+        inactive = np.flatnonzero(1-b)
+        bad = np.max(np.abs(K[inactive, :]), initial=0) > 1e-10
+        if len(target):
+            bad |= np.linalg.eigvalsh(K[np.ix_(target, target)])[0] <= 1e-10
+        invalid += int(bad)
+    bad_counts.append(invalid)
+
+# Rank-one active inputs give a continuum even with distinct short codes.
+rank_d, rank_E = 50, 16
+rank_masks = rng.integers(0, 2, size=(rank_E, rank_d))
+rank_vectors = rng.uniform(0.5, 1.5, (rank_E, rank_d)) * rank_masks
+constraint_rows = rank_vectors[rank_masks[:, 0] == 0]
+constraint_rows = np.vstack([constraint_rows, np.eye(rank_d)[0]])
+_, _, vh = np.linalg.svd(constraint_rows, full_matrices=True)
+h = vh[-1]
+rank_A = np.eye(rank_d)
+rank_A[0] += 1e-3*h
+rank_M = np.linalg.inv(rank_A)
+rank_support_error = 0.0
+rank_observed_error = 0.0
+for b, v in zip(rank_masks, rank_vectors):
+    D = np.outer(v,v)
+    K = rank_A @ D @ rank_A.T
+    rank_support_error = max(rank_support_error, float(np.max(np.abs(K[np.flatnonzero(1-b), :]), initial=0)))
+    reconstructed = rank_M @ (rank_A @ rank_A.T + K) @ rank_M.T
+    rank_observed_error = max(rank_observed_error, float(np.linalg.norm(reconstructed - (np.eye(rank_d)+D), 2)))
+
+result = {
+    "dimension": d,
+    "code_rows": r,
+    "relative_code_distance": float(delta),
+    "fixed_population_maximum_row_error": float(np.max(np.linalg.norm(ahat - A, axis=1))),
+    "Q_orthogonality_error": float(np.linalg.norm(Q.T @ Q - np.eye(d), 2)),
+    "projection_idempotence_error": float(max(np.linalg.norm(P @ P - P, 2) for P in projections)),
+    "fixed_ground_spectrum_minimum_gap": float(groundvals[:, 1].min()),
+    "correlated_population_maximum_row_error": float(np.max(np.linalg.norm(np.asarray(null_rows) - A, axis=1))),
+    "correlated_minimum_positive_gap": float(min(gaps)),
+    "correlated_gap_lower_bound": float(minimum_active * delta * np.linalg.svd(M, compute_uv=False)[-1]**2),
+    "duplicate_signature_covariance_difference": float(max(np.linalg.norm(x-y, 2) for x,y in zip(*duplicate_covariances))),
+    "code_target_setting_activations": int(code.sum()),
+    "setting_activation_lower_bound": float(delta * r * (d - 1) / 2),
+    "all_on_logged_cross_covariance_recovery_error": float(np.linalg.norm(M @ np.diag(a) @ np.diag(1/a) - M)),
+    "gaussian_aggregate_checks": sample_rows,
+    "robust_boundary_ambiguity": {
+        "dimension": robust_d,
+        "contexts": len(all_masks),
+        "minimum_directed_separation": len(separator),
+        "corruption_budget": k,
+        "violations_for_two_distinct_models": bad_counts,
+    },
+    "rank_one_ambiguity": {
+        "dimension": rank_d,
+        "contexts": rank_E,
+        "known_zero_support_error": rank_support_error,
+        "observed_covariance_agreement_error": rank_observed_error,
+        "causal_matrix_difference": float(np.linalg.norm(np.eye(rank_d)-rank_A)),
+    },
+}
+output = ROOT / "causal_coding_audit_check.json"
+output.write_text(json.dumps(result, indent=2) + "\n")
+print(json.dumps(result, indent=2))

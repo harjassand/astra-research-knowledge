@@ -1,0 +1,278 @@
+"""Exact finite diagnostics for the laminar Jastrow theorem; no external packages."""
+from fractions import Fraction as F
+from itertools import combinations, product
+from random import Random
+import json
+from pathlib import Path
+
+rng = Random(7092026)
+
+
+def random_tree(items):
+    nodes = [frozenset(items)]
+    if len(items) > 1:
+        order = list(items)
+        rng.shuffle(order)
+        cut = rng.randrange(1, len(order))
+        nodes += random_tree(order[:cut]) + random_tree(order[cut:])
+    return nodes
+
+
+class Laminar:
+    def __init__(self, m, r, nodes, tables):
+        self.m, self.r = m, r
+        self.nodes = sorted(nodes, key=lambda s: (len(s), tuple(sorted(s))))
+        self.root = frozenset(range(m))
+        self.tables = tables
+        self.children = {v: [] for v in self.nodes}
+        self.parent = {}
+        for v in self.nodes:
+            bigger = [u for u in self.nodes if v < u]
+            if bigger:
+                p = min(bigger, key=len)
+                self.parent[v] = p
+                self.children[p].append(v)
+        self.bounds = {}
+        for v in self.nodes:
+            positive = [k for k, x in enumerate(tables[v]) if x]
+            self.bounds[v] = (min(positive), max(positive))
+
+    def weight(self, s):
+        if len(s) != self.r:
+            return F(0)
+        out = F(1)
+        for v in self.nodes:
+            out *= self.tables[v][len(s & v)]
+        return out
+
+    def dp(self, forced=frozenset(), deleted=frozenset(), witness=False):
+        if forced & deleted:
+            return None
+        intervals = {}
+        for v in self.nodes:
+            lo, hi = self.bounds[v]
+            if len(v) == 1:
+                e = next(iter(v))
+                a, b = ((1, 1) if e in forced else
+                        (0, 0) if e in deleted else (0, 1))
+            else:
+                kids = self.children[v]
+                if any(intervals[k] is None for k in kids):
+                    intervals[v] = None
+                    continue
+                a = sum(intervals[k][0] for k in kids)
+                b = sum(intervals[k][1] for k in kids)
+            lo, hi = max(lo, a), min(hi, b)
+            if v == self.root:
+                lo, hi = max(lo, self.r), min(hi, self.r)
+            intervals[v] = (lo, hi) if lo <= hi else None
+        if intervals[self.root] is None:
+            return None
+        if not witness:
+            return intervals[self.root]
+        chosen = set()
+
+        def recover(v, k):
+            if len(v) == 1:
+                if k:
+                    chosen.update(v)
+                return
+            kids = self.children[v]
+            ks = [intervals[c][0] for c in kids]
+            rem = k - sum(ks)
+            for j, c in enumerate(kids):
+                add = min(rem, intervals[c][1] - ks[j])
+                ks[j] += add
+                rem -= add
+            assert rem == 0
+            for c, kc in zip(kids, ks):
+                recover(c, kc)
+
+        recover(self.root, self.r)
+        return frozenset(chosen)
+
+    def exchange(self, x, y, a):
+        d = {v: len(x & v) - len(y & v) for v in self.nodes}
+        v = frozenset([a])
+        while d[v] > 0:
+            v = self.parent[v]
+        negative = [c for c in self.children[v] if d[c] < 0]
+        assert negative
+        v = negative[0]
+        while len(v) > 1:
+            v = next(c for c in self.children[v] if d[c] < 0)
+        b = next(iter(v))
+        assert b in y - x
+        return b
+
+
+def rank(rows):
+    if not rows:
+        return 0
+    a = [list(map(F, row)) for row in rows]
+    h = 0
+    for j in range(len(a[0])):
+        pivot = next((i for i in range(h, len(a)) if a[i][j]), None)
+        if pivot is None:
+            continue
+        a[h], a[pivot] = a[pivot], a[h]
+        q = a[h][j]
+        a[h] = [x / q for x in a[h]]
+        for i in range(h + 1, len(a)):
+            q = a[i][j]
+            if q:
+                a[i] = [x - q * y for x, y in zip(a[i], a[h])]
+        h += 1
+        if h == len(a):
+            break
+    return h
+
+
+def intersection(ground, indep1, indep2):
+    """Shortest augmenting paths for two explicit matroid independence oracles."""
+    current = frozenset()
+    while True:
+        outside = [e for e in ground if e not in current]
+        starts = [e for e in outside if indep1(current | {e})]
+        sinks = {e for e in outside if indep2(current | {e})}
+        pred = {e: None for e in starts}
+        queue = starts[:]
+        endpoint = None
+        for e in queue:
+            if e in sinks:
+                endpoint = e
+                break
+            if e in current:
+                adj = [f for f in outside if indep1(current - {e} | {f})]
+            else:
+                adj = [f for f in current if indep2(current - {f} | {e})]
+            for f in adj:
+                if f not in pred:
+                    pred[f] = e
+                    queue.append(f)
+        if endpoint is None:
+            return current, frozenset(pred)
+        path = []
+        while endpoint is not None:
+            path.append(endpoint)
+            endpoint = pred[endpoint]
+        current = current ^ frozenset(path)
+        assert indep1(current) and indep2(current)
+
+
+def all_prefixes(m):
+    for status in product(range(3), repeat=m):
+        yield (frozenset(i for i, v in enumerate(status) if v == 1),
+               frozenset(i for i, v in enumerate(status) if v == 2))
+
+
+stats = dict(instances=0, exchange_checks=0, dp_prefix_checks=0,
+             matroid_rank_checks=0, intersection_prefix_checks=0,
+             minmax_certificates=0, strict_zero_certificates=0)
+for m in range(2, 9):
+    for case in range(8):
+        r = rng.randrange(1, m)
+        anchor = frozenset(rng.sample(range(m), r))
+        nodes = random_tree(list(range(m)))
+        tables = {}
+        for v in nodes:
+            k0 = len(anchor & v)
+            lo, hi = ((0, len(v)) if case % 2 == 0 else
+                      (rng.randrange(k0 + 1), rng.randrange(k0, len(v) + 1)))
+            ratios = sorted([rng.choice([F(1, 4), F(1, 2), F(1), F(2), F(4)])
+                             for _ in range(hi - lo)], reverse=True)
+            vals = [F(0)] * (len(v) + 1)
+            vals[lo] = rng.choice([F(1, 3), F(1), F(2)])
+            for k, q in enumerate(ratios, lo + 1):
+                vals[k] = vals[k - 1] * q
+            for k in range(1, len(v)):
+                assert vals[k] ** 2 >= vals[k - 1] * vals[k + 1]
+            tables[v] = vals
+        law = Laminar(m, r, nodes, tables)
+        bases = [frozenset(s) for s in combinations(range(m), r)]
+        weights = {s: law.weight(s) for s in bases}
+        positive = [s for s in bases if weights[s]]
+        assert positive
+        stats['instances'] += 1
+        for x in positive:
+            for y in positive:
+                for a in x - y:
+                    b = law.exchange(x, y, a)
+                    xx, yy = x - {a} | {b}, y - {b} | {a}
+                    assert weights[x] * weights[y] <= weights[xx] * weights[yy]
+                    stats['exchange_checks'] += 1
+        prefixes = list(all_prefixes(m)) if m <= 5 else [
+            (frozenset(i for i in range(m) if rng.randrange(4) == 0), frozenset())
+            for _ in range(120)]
+        if m > 5:
+            prefixes += [(i, frozenset(j for j in range(m) if j not in i and
+                                      rng.randrange(3) == 0))
+                         for i, _ in prefixes[:]]
+        for required, excluded in prefixes:
+            feasible = [s for s in positive if required <= s and not s & excluded]
+            witness = law.dp(required, excluded, witness=True)
+            assert (witness is not None) == bool(feasible)
+            if witness is not None:
+                assert witness in feasible
+            stats['dp_prefix_checks'] += 1
+        # Greedy acquisition of the matroid rank on arbitrary subsets.
+        for _ in range(20):
+            t = frozenset(i for i in range(m) if rng.randrange(2))
+            chosen = frozenset()
+            for e in t:
+                if law.dp(chosen | {e}) is not None:
+                    chosen |= {e}
+            assert len(chosen) == max(len(t & s) for s in positive)
+            stats['matroid_rank_checks'] += 1
+        while True:
+            matrix = [[rng.randrange(-2, 3) for _ in range(r)] for _ in range(m)]
+            if rank(matrix) == r:
+                break
+        common = [s for s in positive if rank([matrix[i] for i in s]) == r]
+        for required, excluded in prefixes[:30]:
+            residual = [i for i in range(m) if i not in required | excluded]
+            separate1 = (rank([matrix[i] for i in required]) == len(required) and
+                         rank([matrix[i] for i in range(m) if i not in excluded]) == r)
+            separate2 = law.dp(required, excluded) is not None
+            feasible = [s for s in common if required <= s and not s & excluded]
+            if separate1 and separate2 and len(required) <= r:
+                def i1(k):
+                    kk = required | k
+                    return rank([matrix[i] for i in kk]) == len(kk)
+                def i2(k):
+                    return law.dp(required | k, excluded) is not None
+                got, reachable = intersection(residual, i1, i2)
+                assert (len(got) == r - len(required)) == bool(feasible)
+                if len(got) == r - len(required):
+                    assert required | got in feasible
+                q = frozenset(residual) - reachable
+                rank1q = rank([matrix[e] for e in required | q]) - len(required)
+                chosen = frozenset()
+                for e in reachable:
+                    if i2(chosen | {e}):
+                        chosen |= {e}
+                assert rank1q + len(chosen) == len(got)
+                stats['minmax_certificates'] += 1
+                stats['strict_zero_certificates'] += len(got) < r - len(required)
+            else:
+                assert not feasible
+            stats['intersection_prefix_checks'] += 1
+
+# Crossing repulsive factors on {1,2} and {2,3}: all arithmetic exact.
+t = F(1, 8)
+crossing = [frozenset([0, 1]), frozenset([1, 2])]
+def cw(s):
+    return t ** sum(len(s & v) == 2 for v in crossing)
+x, y, a = frozenset([0, 2]), frozenset([1, 3]), 0
+exchange_products = [cw(x - {a} | {b}) * cw(y - {b} | {a}) for b in y - x]
+assert cw(x) * cw(y) == 1 and all(z == t for z in exchange_products)
+# Hessian has eigenvalue -1 and 3x3 quotient determinant 4t-1 < 0.
+# Positive quotient trace and a negative direction imply two positive eigenvalues.
+assert 4 * t - 1 < 0
+stats['crossing_example'] = dict(t='1/8', original_product='1',
+    exchanged_products=list(map(str, exchange_products)),
+    quotient_determinant=str(4 * t - 1), hessian_determinant=str(1 - 4 * t),
+    positive_eigenvalues=2)
+out = Path(__file__).with_name('laminar_jastrow_check_results.json')
+out.write_text(json.dumps(stats, indent=2) + '\n')
+print(json.dumps(stats, indent=2))

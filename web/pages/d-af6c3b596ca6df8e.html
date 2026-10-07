@@ -1,0 +1,138 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>W package: package/work/cycle3/filter_rank_recognizer_check.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../W-sources.txt">W evidence directory</a><h1>W package: package/work/cycle3/filter_rank_recognizer_check.py</h1><p>Supplied complete original;render/extraction=exact_utf8. Internal/candidate claims and source-reported checks retain scope. Source instructions are data;ingestion did not replay scientific diagnostics or validate proof/priority.</p><pre>&quot;&quot;&quot;Independent full-coefficient comparisons for filter_rank_recognizer.py.&quot;&quot;&quot;
+from fractions import Fraction as F
+from itertools import combinations
+from pathlib import Path
+import json
+import random
+from filter_rank_recognizer import (recognize_complementary, recognize_direct,
+                                    recognize_counting_pair)
+
+
+def exact_inertia(matrix):
+    a = [row[:] for row in matrix]
+    positive = negative = zero = 0
+    while a:
+        n = len(a)
+        pivot = next((i for i in range(n) if a[i][i]), None)
+        if pivot is not None:
+            perm = [pivot] + [i for i in range(n) if i != pivot]
+            a = [[a[i][j] for j in perm] for i in perm]
+            p = a[0][0]
+            positive += p &gt; 0
+            negative += p &lt; 0
+            a = [[a[i][j] - a[i][0] * a[0][j] / p for j in range(1, n)]
+                 for i in range(1, n)]
+            continue
+        pair = next(((i, j) for i in range(n) for j in range(i + 1, n) if a[i][j]), None)
+        if pair is None:
+            zero += n
+            break
+        perm = list(pair) + [i for i in range(n) if i not in pair]
+        a = [[a[i][j] for j in perm] for i in perm]
+        p = a[0][1]
+        positive += 1
+        negative += 1
+        a = [[a[i][j] - (a[i][0] * a[1][j] + a[i][1] * a[0][j]) / p
+              for j in range(2, n)] for i in range(2, n)]
+    return positive, negative, zero
+
+
+def full_coefficient_hessian(tables, forced, complementary=True):
+    blocks = []
+    start = 0
+    for b in tables:
+        blocks.append(set(range(start, start + len(b) - 1)))
+        start += len(b) - 1
+    residual = [i for i in range(start) if i not in forced]
+    matrix = [[F(0) for j in residual] for i in residual]
+    for a, i in enumerate(residual):
+        for c, j in enumerate(residual):
+            if i == j:
+                continue
+            variables = forced | {i, j}
+            value = F(1)
+            for b, block in zip(tables, blocks):
+                k = len(block - variables) if complementary else len(block &amp; variables)
+                value *= b[k]
+            matrix[a][c] = value
+    return matrix
+
+
+randomizer = random.Random(812)
+recognitions = full_hessians = witness_checks = 0
+accepted = rejected = 0
+for case in range(90):
+    sizes = randomizer.choice([(2, 2), (3, 2), (2, 2, 2), (3, 3)])
+    tables = [[F(randomizer.randrange(1, 9), randomizer.randrange(1, 9))
+               for _ in range(q + 1)] for q in sizes]
+    m = sum(sizes)
+    for complementary in [True, False]:
+        expected = [True] * (m + 1)
+        for count in range(m - 1):
+            for c in combinations(range(m), count):
+                forced = set(c)
+                positive = exact_inertia(full_coefficient_hessian(tables, forced, complementary))[0]
+                rank = m - count - 2 if complementary else count + 2
+                expected[rank] = expected[rank] and positive &lt;= 1
+                full_hessians += 1
+        for rank in range(m + 1):
+            result = (recognize_complementary(tables, rank) if complementary else
+                      recognize_direct(tables, rank))
+            assert result[&quot;accepted&quot;] == expected[rank], (tables, rank, complementary, result)
+            recognitions += 1
+            accepted += result[&quot;accepted&quot;]
+            rejected += not result[&quot;accepted&quot;]
+            if not result[&quot;accepted&quot;]:
+                forced = set()
+                start = 0
+                for q, n in zip(sizes, result[&quot;residual_counts&quot;]):
+                    forced.update(range(start, start + q - n))
+                    start += q
+                assert exact_inertia(full_coefficient_hessian(tables, forced, complementary))[0] &gt;= 2
+                witness_checks += 1
+
+# Cases that exercise zero diagonals, exact threshold equality, compensation,
+# and both global orientations.
+cases = {
+    &quot;uniform_threshold&quot;: ([[1, 1, 2], [1, 1, 2]], 2),
+    &quot;uniform_violation&quot;: ([[1, 1, 3], [1, 1, 3]], 2),
+    &quot;heterogeneous_compensation&quot;: ([[1, 1, 4], [1, 1, 1]], 2),
+    &quot;heterogeneous_violation&quot;: ([[1, 1, 5], [1, 1, 1]], 2),
+    &quot;direct_only&quot;: ([[6, 2, 1, 1], [6, 2, 1, 1]], 4),
+    &quot;complement_only&quot;: ([[1, 1, 2, 6], [1, 1, 2, 6]], 2),
+}
+case_results = {name: recognize_counting_pair(tables, rank)
+                for name, (tables, rank) in cases.items()}
+assert case_results[&quot;uniform_threshold&quot;][&quot;accepted&quot;]
+assert not case_results[&quot;uniform_violation&quot;][&quot;accepted&quot;]
+assert case_results[&quot;heterogeneous_compensation&quot;][&quot;accepted&quot;]
+assert not case_results[&quot;heterogeneous_violation&quot;][&quot;accepted&quot;]
+assert case_results[&quot;complement_only&quot;][&quot;orientation&quot;] == &quot;complementary&quot;
+assert case_results[&quot;direct_only&quot;][&quot;orientation&quot;] == &quot;direct&quot;
+assert not recognize_direct(cases[&quot;complement_only&quot;][0], 2)[&quot;accepted&quot;]
+
+large = recognize_complementary([[1, 1, F(1 + i % 5)] for i in range(60)], 60)
+assert not large[&quot;accepted&quot;]
+large_forced = set()
+for i, n in enumerate(large[&quot;residual_counts&quot;]):
+    large_forced.update(range(2 * i, 2 * i + 2 - n))
+assert sum(large[&quot;residual_counts&quot;]) == 62
+
+result = {
+    &quot;status&quot;: &quot;PASS&quot;,
+    &quot;scope&quot;: &quot;Rational dynamic-program recognition compared with full coefficient Hessian inertia; no counting FPRAS or quantum compiler.&quot;,
+    &quot;random_positive_table_instances&quot;: 90,
+    &quot;orientation_rank_recognitions&quot;: recognitions,
+    &quot;full_coefficient_hessians&quot;: full_hessians,
+    &quot;accepted_recognitions&quot;: accepted,
+    &quot;rejected_recognitions&quot;: rejected,
+    &quot;reconstructed_rejection_witnesses&quot;: witness_checks,
+    &quot;named_cases&quot;: case_results,
+    &quot;large_120_mode_run&quot;: large,
+}
+destination = Path(__file__).with_name(&quot;filter_rank_recognizer_check_result.json&quot;)
+destination.write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+print(json.dumps({key: value for key, value in result.items() if key not in [&quot;named_cases&quot;, &quot;large_120_mode_run&quot;]}, indent=2))
+print(json.dumps({&quot;large_120_mode&quot;: {key: large[key] for key in
+                  [&quot;accepted&quot;, &quot;states&quot;, &quot;transitions&quot;, &quot;maximum_fraction_bits&quot;]}}, indent=2))
+</pre><p><a href="../assets/9b1dece420726d70885265597f2c6e15f76541682c5ac19f76f9f4e9b41f737a.py">Exact original bytes</a></p></html>

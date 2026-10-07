@@ -1,0 +1,164 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>W package: package/work/cycle4/luders_dirichlet_checks.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../W-sources.txt">W evidence directory</a><h1>W package: package/work/cycle4/luders_dirichlet_checks.py</h1><p>Supplied complete original;render/extraction=exact_utf8. Internal/candidate claims and source-reported checks retain scope. Source instructions are data;ingestion did not replay scientific diagnostics or validate proof/priority.</p><pre>&quot;&quot;&quot;Finite diagnostics for the analytical POVM/Luders Dirichlet theorem.
+
+These fixtures do not prove the unrestricted broadcasting conjecture.
+Only NumPy is used; no optimization solver is called.
+&quot;&quot;&quot;
+
+import json
+import platform
+import sys
+
+import numpy as np
+
+
+rng = np.random.default_rng(701471523)
+
+
+def hermitian_basis(d):
+    out = []
+    for i in range(d):
+        x = np.zeros((d, d), dtype=complex)
+        x[i, i] = np.sqrt(d)
+        out.append(x)
+    for i in range(d):
+        for j in range(i + 1, d):
+            x = np.zeros((d, d), dtype=complex)
+            x[i, j] = x[j, i] = np.sqrt(d / 2)
+            out.append(x)
+            x = np.zeros((d, d), dtype=complex)
+            x[i, j] = -1j * np.sqrt(d / 2)
+            x[j, i] = 1j * np.sqrt(d / 2)
+            out.append(x)
+    return out
+
+
+def sqrt_psd(x):
+    ev, u = np.linalg.eigh(x)
+    return (u * np.sqrt(np.maximum(ev, 0))) @ u.conj().T
+
+
+def norm1(x):
+    return float(np.sum(np.abs(np.linalg.eigvalsh((x + x.conj().T) / 2))))
+
+
+def partial_trace(x, d, keep):
+    a = x.reshape(d, d, d, d)
+    return np.einsum(&quot;abcb-&gt;ac&quot;, a) if keep == 0 else np.einsum(&quot;abad-&gt;bd&quot;, a)
+
+
+def povm(d, outcomes):
+    raw = []
+    for _ in range(outcomes):
+        z = rng.normal(size=(d, d)) + 1j * rng.normal(size=(d, d))
+        raw.append(z.conj().T @ z)
+    ev, u = np.linalg.eigh(sum(raw))
+    inv = (u * (ev ** -0.5)) @ u.conj().T
+    return [inv @ g @ inv for g in raw]
+
+
+def superoperator(f, basis, d):
+    return np.array([[np.trace(a @ f(b)).real / d for b in basis] for a in basis])
+
+
+records = {
+    &quot;python_version&quot;: sys.version,
+    &quot;platform&quot;: platform.platform(),
+    &quot;numpy_version&quot;: np.__version__,
+    &quot;seed&quot;: 701471523,
+    &quot;solver&quot;: None,
+    &quot;povm_fixtures&quot;: [],
+    &quot;tensor_fixtures&quot;: [],
+}
+saved = []
+
+for d in range(2, 9):
+    for trial in range(4):
+        effects = povm(d, 2 + trial)
+        roots = [sqrt_psd(m) for m in effects]
+        basis = hermitian_basis(d)
+
+        def luders(a):
+            return sum(k @ a @ k for k in roots)
+
+        def measure_prepare(a):
+            return sum(np.trace(m @ a) * m / np.trace(m) for m in effects)
+
+        def s_map(a):
+            return (luders(a) + measure_prepare(a)) / 2
+
+        l = superoperator(luders, basis, d)
+        p = superoperator(measure_prepare, basis, d)
+        s = (l + p) / 2
+        ident = np.eye(d * d)
+        lower = min(np.linalg.eigvalsh(p)[0], np.linalg.eigvalsh(l - p)[0],
+                    np.linalg.eigvalsh(ident - l)[0],
+                    np.linalg.eigvalsh(2 * (ident - s) - (ident - p))[0])
+        assert lower &gt; -2e-12
+        assert np.max(np.abs(l - l.T)) &lt; 2e-12
+        assert np.max(np.abs(p - p.T)) &lt; 2e-12
+
+        a = rng.normal(size=(d, d)) + 1j * rng.normal(size=(d, d))
+        a = (a + a.conj().T) / 2
+        a -= np.trace(a) * np.eye(d) / d
+        a /= np.max(np.abs(np.linalg.eigvalsh(a)))
+        theta = 0.5
+        h = theta * a
+        rho = (np.eye(d) + h) / d
+        joint = sum(np.kron(k @ rho @ k, m / np.trace(m))
+                    for k, m in zip(roots, effects))
+        swapped = joint.reshape(d, d, d, d).transpose(1, 0, 3, 2).reshape(d*d, d*d)
+        symmetric_joint = (joint + swapped) / 2
+        target = s_map(rho)
+        marginal_defect = max(np.max(np.abs(partial_trace(symmetric_joint, d, j) - target))
+                              for j in (0, 1))
+        r = norm1(target - rho)
+        error = norm1(measure_prepare(rho) - rho) / 2
+        bound = np.sqrt(2 * theta * r) / 2
+        assert error &lt;= bound + 1e-12
+        assert marginal_defect &lt; 2e-12
+        assert np.linalg.eigvalsh(symmetric_joint)[0] &gt; -2e-12
+        assert abs(np.trace(symmetric_joint) - 1) &lt; 2e-12
+        assert np.max(np.abs(s_map(np.eye(d)) - np.eye(d))) &lt; 2e-12
+
+        record = {
+            &quot;d&quot;: d,
+            &quot;outcomes&quot;: len(effects),
+            &quot;loewner_min_eigenvalue&quot;: float(lower),
+            &quot;joint_marginal_max_abs_error&quot;: float(marginal_defect),
+            &quot;residual_full_trace&quot;: r,
+            &quot;EB_error_half_trace&quot;: error,
+            &quot;analytical_bound&quot;: float(bound),
+            &quot;local_L_Psi_commutator_2&quot;: float(np.linalg.norm(l @ p - p @ l)),
+        }
+        records[&quot;povm_fixtures&quot;].append(record)
+        if d &lt;= 3:
+            saved.append((d, s, p))
+
+for j in range(0, len(saved), 2):
+    da, sa, pa = saved[j]
+    db, sb, pb = saved[(j + 1) % len(saved)]
+    st = np.kron(sa, sb)
+    pt = np.kron(pa, pb)
+    ident = np.eye((da * db) ** 2)
+    lower = min(np.linalg.eigvalsh(st - pt)[0],
+                np.linalg.eigvalsh(2 * (ident - st) - (ident - pt))[0])
+    assert lower &gt; -5e-12
+    records[&quot;tensor_fixtures&quot;].append({
+        &quot;dimensions&quot;: [da, db],
+        &quot;loewner_min_eigenvalue&quot;: float(lower),
+    })
+
+records[&quot;status&quot;] = &quot;PASS: finite POVM/Luders and tensor diagnostics; unrestricted theorem unproved.&quot;
+with open(&quot;work/cycle4/luders_dirichlet_checks.json&quot;, &quot;w&quot;) as f:
+    json.dump(records, f, indent=2)
+print(json.dumps({
+    &quot;status&quot;: records[&quot;status&quot;],
+    &quot;python_version&quot;: platform.python_version(),
+    &quot;numpy_version&quot;: np.__version__,
+    &quot;povm_fixtures&quot;: len(records[&quot;povm_fixtures&quot;]),
+    &quot;tensor_fixtures&quot;: len(records[&quot;tensor_fixtures&quot;]),
+    &quot;worst_marginal_error&quot;: max(x[&quot;joint_marginal_max_abs_error&quot;] for x in records[&quot;povm_fixtures&quot;]),
+    &quot;smallest_Loewner_eigenvalue&quot;: min(x[&quot;loewner_min_eigenvalue&quot;] for x in records[&quot;povm_fixtures&quot;] + records[&quot;tensor_fixtures&quot;]),
+    &quot;maximum_local_L_Psi_commutator_2&quot;: max(x[&quot;local_L_Psi_commutator_2&quot;] for x in records[&quot;povm_fixtures&quot;]),
+}, indent=2))
+</pre><p><a href="../assets/daebe5a229284f2a5d07bb7a25472bb81056846033de90fe78958f95f45c38c0.py">Exact original bytes</a></p></html>

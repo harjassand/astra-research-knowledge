@@ -1,0 +1,105 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>W package: package/work/cycle1/optimization_sampling_checks.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../W-sources.txt">W evidence directory</a><h1>W package: package/work/cycle1/optimization_sampling_checks.py</h1><p>Supplied complete original;render/extraction=exact_utf8. Internal/candidate claims and source-reported checks retain scope. Source instructions are data;ingestion did not replay scientific diagnostics or validate proof/priority.</p><pre>&quot;&quot;&quot;Scoped fixtures for optimization_sampling.txt, not a sampler implementation.&quot;&quot;&quot;
+from fractions import Fraction as F
+import json
+import math
+from pathlib import Path
+
+
+def rational_unit(m, k):
+    if m == 1:
+        return [F(1)]
+    t = [F((i + 2) * (k + 1) % 11 - 5, 13) for i in range(m - 1)]
+    s = sum(x * x for x in t)
+    return [2 * x / (1 + s) for x in t] + [(1 - s) / (1 + s)]
+
+
+rank_fixtures = []
+for m in range(1, 9):
+    for k in range(5):
+        for sine, cosine in [(F(5, 13), F(12, 13)),
+                             (F(8, 17), F(15, 17)),
+                             (F(7, 25), F(24, 25))]:
+            D = F(k + 2, 3)
+            u = rational_unit(m, k)
+            v = [2 * D * sine * x for x in u]
+            q = sum(x * x for x in v)
+            assert q &lt;= D * D
+            P = [[F(i == j) - v[i] * v[j] / (4 * D * D * (1 + cosine))
+                  for j in range(m)] for i in range(m)]
+            for i in range(m):
+                for j in range(m):
+                    product = sum(P[i][a] * P[j][a] for a in range(m))
+                    assert product + v[i] * v[j] / (4 * D * D) == F(i == j)
+            for i in range(m):
+                assert sum(P[i][j] * v[j] for j in range(m)) == cosine * v[i]
+            rank_fixtures.append({&quot;slots&quot;: m, &quot;k&quot;: k, &quot;sine&quot;: str(sine)})
+
+
+def simpson(fun, radius=12.0, n=100_000):
+    step = 2 * radius / n
+    total = fun(-radius) + fun(radius)
+    total += 4 * sum(fun(-radius + i * step) for i in range(1, n, 2))
+    total += 2 * sum(fun(-radius + i * step) for i in range(2, n, 2))
+    return total * step / 3
+
+
+mixture_checks = []
+for a in [1.1, math.sqrt(2), 2.0]:
+    beta = max(1.0, a * a - 1.0)
+    def density(x):
+        return (math.exp(-0.5 * (x-a)**2) + math.exp(-0.5 * (x+a)**2)) / (2*math.sqrt(2*math.pi))
+    def gradient(x):
+        return x - a * math.tanh(a*x)
+    def hessian(x):
+        return 1 - a*a / math.cosh(a*x)**2
+    mass = simpson(density)
+    fisher = simpson(lambda x: density(x) * gradient(x)**2)
+    mean_hessian = simpson(lambda x: density(x) * hessian(x))
+    fourth = simpson(lambda x: density(x) * gradient(x)**4)
+    fourth_identity = simpson(lambda x: density(x) * 3 * gradient(x)**2 * hessian(x))
+    assert abs(mass - 1) &lt; 1e-10
+    assert abs(fisher - mean_hessian) &lt; 1e-10
+    assert abs(fourth - fourth_identity) &lt; 1e-9
+    assert fisher &lt;= beta + 1e-10
+    assert fourth &lt;= 3 * beta**2 + 1e-9
+    mixture_checks.append({&quot;a&quot;: a, &quot;minimum_hessian&quot;: 1-a*a,
+                           &quot;beta&quot;: beta, &quot;mass&quot;: mass, &quot;fisher&quot;: fisher,
+                           &quot;mean_hessian&quot;: mean_hessian, &quot;fourth&quot;: fourth,
+                           &quot;fourth_identity&quot;: fourth_identity,
+                           &quot;fourth_bound&quot;: 3*beta**2})
+
+
+translation_error = 0.0
+sample_translation_error = 0.0
+for k in range(1000):
+    x = (k % 19 - 9) / 5
+    displacement = (k % 13 - 6) / 17
+    r = (k % 7 + 1) / 11
+    seed = (k % 31 - 15) / 9
+    def g(z):
+        return 0.03 * (z + 0.2 * math.tanh(z))
+    before = g(x + r*seed)
+    after = g(x+displacement+r*(seed-displacement/r))
+    translation_error = max(translation_error, abs(before-after))
+    sample_before = seed-r*before
+    sample_after = seed-displacement/r-r*after
+    sample_translation_error = max(sample_translation_error,
+                                   abs(sample_after-sample_before+displacement/r))
+assert translation_error &lt; 1e-15
+assert sample_translation_error &lt; 1e-14
+
+result = {
+    &quot;status&quot;: &quot;scoped_algebra_and_quadrature_only&quot;,
+    &quot;exact_rank_one_covariance_fixtures&quot;: len(rank_fixtures),
+    &quot;exact_covariance_failures&quot;: 0,
+    &quot;terminal_translation_fixtures&quot;: 1000,
+    &quot;maximum_mean_translation_error&quot;: translation_error,
+    &quot;maximum_sample_translation_error&quot;: sample_translation_error,
+    &quot;nonconvex_mixture_quadratures&quot;: mixture_checks,
+    &quot;not_executed&quot;: [&quot;OA139 full sampler&quot;, &quot;PI transfer sampler&quot;,
+                     &quot;finite-bit compiler&quot;, &quot;Chen-Liu FPRAS&quot;, &quot;Lean build&quot;],
+}
+path = Path(__file__).with_name(&quot;optimization_sampling_checks.json&quot;)
+path.write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+print(json.dumps(result, indent=2))
+</pre><p><a href="../assets/ba730a18a7cc704fcbe70ef51a9fc45c899d331d7d24b162abc919c0734bea10.py">Exact original bytes</a></p></html>

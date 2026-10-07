@@ -1,0 +1,181 @@
+CONDITIONAL SUBPOLYNOMIAL SAMPLING UNDER A POINCARE INEQUALITY
+7 October 2026. Worker optimization_sampling. Internal derivation, external review absent.
+
+STATUS
+The transfer below is reconstructed explicitly. It imports the noisy near-quadratic primitive, Theorem thm:primitive of OpenAI release family OA139, whose full analytic proof is not externally certified here. It does not assume an oracle for conditional means or a restricted Gaussian sampler: the imported primitive is explicitly a gradient-query algorithm. The arithmetic/digital extension in section 7 has additional effective-schedule hypotheses and is a compiler candidate rather than an implemented algorithm.
+
+1. GRADIENT MOMENTS WITHOUT CONVEXITY
+
+Lemma. Let pi(dx)=Z^-1 exp(-V(x)) dx on R^d, with V in C^2, ||Hess V||op <= beta everywhere, Z finite, and E_pi |X|^2 finite. Then
+
+  E_pi ||grad V(X)||^2 <= beta d,
+  E_pi ||grad V(X)||^4 <= beta^2 d(d+2).
+
+Proof. Put g=grad V. Its linear growth implies g in L^2(pi). Integration by parts with a compact radial cutoff chi_R yields
+
+  E[chi_R ||g||^2] = E[chi_R Delta V] + E[grad chi_R . g].
+
+The last term tends to zero: |grad chi_R| <= C/R and E|g| finite. Thus E||g||^2=E Delta V <= beta d. For a smooth bounded increasing function f_L(s)=L(1-exp(-s/L)), 0<=f_L'<=1, f_L<=s and f_L(s)->s, integrate by parts with the test f_L(||g||^2). The cutoff boundary term again vanishes, now using boundedness of f_L and E|g| finite. This gives
+
+  E[f_L(||g||^2)||g||^2]
+    = E[2 f_L'(||g||^2) g^T (Hess V) g
+        + f_L(||g||^2) Delta V]
+    <= beta(d+2) E||g||^2.
+
+Fatou proves the fourth-moment bound. Convexity and the position of a minimizer are unused. If pi=N(0,beta^-1 I), both bounds are equalities, so the constants cannot be improved uniformly in this interface.
+
+For Y=X+sqrt(h)G, independent G~N(0,I), and beta h<=1, Lipschitzness and (a+b)^4<=8(a^4+b^4) give
+
+  E||g(Y)||^4 <= 16 beta^2 d(d+2).
+
+For any law mu with chi^2(mu || pi*N(0,hI))<=W, Cauchy-Schwarz therefore gives
+
+  E_mu ||g(Y)||^2
+    <= 4 beta sqrt(d(d+2)) sqrt(1+W).
+
+The constants in the later estimates may be enlarged to avoid tracking d+2 separately.
+
+2. THE ESTABLISHED PROXIMAL CONTRACTION
+
+Assume Var_pi(f)<=C E_pi|grad f|^2. Let pi_s=pi*N(0,sI). Conditional variance and the Gaussian PI imply PI(pi_s)<=C+s. For simultaneous heat flows, chi-squared divergence satisfies
+
+  d/ds chi^2(mu_s || pi_s)
+    = - E_pi_s |grad(dmu_s/dpi_s)|^2
+    <= - chi^2(mu_s || pi_s)/(C+s).
+
+The forward Gaussian channel from 0 to h thus contracts chi-squared divergence by at most C/(C+h). The simultaneous reverse heat channel contracts by the same factor, integrating 1/(C+h-s) from 0 to h. The reverse channel at its endpoint is the conditional kernel
+
+  kappa_y(dx) proportional to exp[-V(x)-|x-y|^2/(2h)] dx.
+
+Consequently the Y-chain
+
+  P_h(y,dy') = [kappa_y * N(0,hI)](dy')
+
+preserves tilde_pi=pi*N(0,hI) and obeys
+
+  chi^2(mu P_h^T || tilde_pi)
+    <= chi^2(mu || tilde_pi) [C/(C+h)]^(2T).
+
+This is the Y-order of Chen, Chewi, Salim and Wibisono (COLT 2022), Theorem 4 and Appendix A.5; the proof's two separate channel bounds justify this order as well as their stated X-chain order. Regular approximation/truncation extends the heat identities beyond smooth rapidly decaying test ratios. This component is established primary prior art, not claimed new.
+
+3. EXACT INTERFACE OF THE IMPORTED PRIMITIVE
+
+Fix e in (0,1), delta=d^-e, an integer K>=2, and t>0 with 40(K+2)t<1/4. OA139 thm:primitive asserts: for every C^2 F with Lip(grad F)<=delta, every center x and scale 0<r<=1, there is a uniform finite procedure using
+
+  q_prim <= B_d delta^-t,    B_d <= C0(1+log d)^C0,
+
+exact gradient queries on EVERY execution. It returns Zhat with W2 and TV errors <= B_d delta^K (sqrt(d)+|grad F(x)|) against
+
+  [ exp(-|z|^2/2-F(x+rz)) dz / normalizer ] * N(0,I).
+
+Its output has a final independent Gaussian reserve G/2. Its computation shapes and query caps are independent of the input center and oracle. No value queries, unknown normalizers, supplied conditional means, or target samples are required by this primitive. It is only asserted above a dimension threshold depending on e,K,t.
+
+For F_y(z)=V(y+sqrt(h)z), choose h=delta/beta. Then Lip(grad F_y)<=delta, even when V is nonconvex. Taking x=0,r=1, the physical image y+sqrt(h)Zhat defines an actual kernel Phat_h with
+
+  TV(Phat_h(y),P_h(y))
+    <= B_d delta^K [sqrt(d)+sqrt(h)|g(y)|].                 (A)
+
+Each primitive gradient evaluation is one original gradient evaluation: grad F_y(z)=sqrt(h) grad V(y+sqrt(h)z). This accounts for acquisition of the conditional operation rather than assuming it.
+
+4. WARM-START THEOREM AND COMPLETE ERROR BUDGET
+
+Conditional theorem. Fix a>=0, beta>0, C>0 and theta>0. For all sufficiently large d, every V satisfying section 1 and PI(pi)<=C can be sampled within TV 1/10 using at most C_theta,a,beta,C d^theta exact gradient queries on every execution, PROVIDED a sampler for an initial law rho_0 with chi^2(rho_0 || pi)<=d^a is supplied. The cost of one initial draw from rho_0 is added separately. No minimizer is required. The theorem is conditional on the validity of section 3's imported primitive.
+
+Proof. Sample X_0~rho_0 and set Y_0=X_0+sqrt(h)G. Data processing gives chi^2(Law(Y_0)||tilde_pi)<=W:=d^a. Choose e>0 with e<min(theta/2,1/4), then a fixed integer K satisfying
+
+  e(K-1) > 1/2+a/4,
+
+and finally t satisfying section 3. Run the actual kernel Phat_h for
+
+  T = ceil[(C+h)/h * (log(2+W)+log(40))]
+
+steps. For the ideal chain, log(1+h/C)>=h/(C+h), the chi-squared contraction and TV<=sqrt(chi^2)/2 imply mixing error at most 1/40, with ample slack. Ideal chi-squared warmness never exceeds W. Section 1 and Jensen show, at every ideal history,
+
+  E[sqrt(d)+sqrt(h)|g(Y_k)|]
+    <= sqrt(d)+C1 sqrt(delta d) (1+W)^1/4
+    <= C2 d^(1/2+a/4).
+
+Telescope the actual and ideal kernels in the order
+
+  rho_0 P_h^j (Phat_h-P_h) Phat_h^(T-j-1).
+
+Data processing and (A) bound their total TV difference by
+
+  C2 T B_d delta^K d^(1/2+a/4)
+    = polylog(d) d^[1/2+a/4-e(K-1)] = o(1).               (B)
+
+The exponent is negative by the chosen K. Every expectation in this argument is taken under the ideal prefix, whose warmness is certified; no unproved moment statement about an approximate trajectory is used.
+
+5. REMOVING THE GAUSSIAN NOISE
+
+Once the output Y is close to tilde_pi, implement the conditional kappa_Y without its added Gaussian by the variance-halving procedure in OA139 sampling.tex. This uses only the same nonconvex-Lipschitz primitive class. In its normalized coordinates let r_j=2^-j/2, x_0=0, draw approximately
+
+  Y_j = Z_j + N_j,   Z_j~nu_{x_j,r_j},
+
+and set x_(j+1)=x_j+r_j Y_j/2. Exactly conditioning the observation implies
+
+  x_j+r_j Z_j = x_(j+1)+r_(j+1) Z_(j+1).
+
+After J=ceil(C3 log d) levels, use a Gaussian at an approximate mode of the final conditional. The mode is obtained with m0=ceil(C4 log d) iterations
+
+  z^(k+1) = -r_J grad F_y(x_J+r_J z^k).
+
+The contraction factor is delta r_J^2; the final conditional differs from its mode-centered Gaussian in TV at most C delta r_J^2 sqrt(d). This is the elementary interpolation/variance proof in OA139 lem:mode-gaussian, whose hypothesis is Lip(grad F)<=delta, not original-target convexity.
+
+The one original use of a strong-convexity moment in the source descent proof can be replaced here: under Y~tilde_pi,
+
+  E|grad F_y(0)|^2 = h E|g(Y)|^2 <= C delta d.
+
+The source's recurrence, using only the Lipschitz constant delta, yields E|grad F_y(x_j)|^2<=C d for every ideal descent prefix. Its telescoping error is therefore <=C J B_d delta^K sqrt(d)=o(1). Choose C3 large enough that delta 2^-J sqrt(d)=o(1); C4 makes the mode error o(1). Final input-law replacement uses data processing. Combining (B), ideal mixing and descent gives TV<=1/10 above a uniform threshold.
+
+6. QUERIES, RUNTIME AND THE HARD ACQUISITION BOUNDARY
+
+T=O(d^e log d); J,m0=O(log d). Thus
+
+  Q <= (T+J)B_d delta^-t + m0
+     = d^[e(1+t)+o(1)] <= C_theta d^theta.
+
+The cap holds on every execution because each local primitive and all outer iteration counts are capped in advance. Total cost is B_warm + Q B_grad + the separately accounted arithmetic/randomness, not Q alone. The supplied PI bound and chi-squared warmness certificate are hypotheses. Local gradient access does not acquire either.
+
+More quantitatively, the bound is Q<=polylog(d)(1+beta C)d^[e(1+t)]. The moment estimate for grad F_y has beta h=delta, so beta cancels there. Thus the same argument allows a declared product beta C=d^o(1), not only fixed beta,C, retaining a positive error-exponent margin in section 4. For smooth isotropic log-concave targets, existing polylogarithmic KLS/PI bounds can supply such a product when beta is bounded; no new KLS result is needed. Isotropic preprocessing, smoothness certification and polynomial chi-squared warm-start acquisition are still charged separately.
+
+Even excellent conditioning does not automatically make a standard Gaussian polynomially warm: for pi=N(0,(2/3)I_d) and rho_0=N(0,I_d),
+
+  1+chi^2(rho_0||pi) = (2/sqrt(3))^d.
+
+The target has Hessian (3/2)I. Applying this PI transfer with that initial law would take Theta(d/h) rather than O(log(d)/h) ideal iterations. The original strongly-convex OA139 route avoids this warm-start issue by a different contraction proof; the present transfer does not supersede that proof or solve arbitrary nonconvex initialization.
+
+For a concrete legal nonconvex family, V(x)=|x|^2/2+A cos(x_1), fixed A>1, has Hessian minimum 1-A<0, smoothness beta<=1+A, PI<=exp(2A), and a standard Gaussian initial law with chi^2<=exp(2A)-1 by bounded-density comparison. This verifies that the added interface genuinely admits nonconvex targets. It is not a useful speedup witness: when its explicit value formula is supplied, ordinary Gaussian rejection sampling has constant expected cost, and must be included as a competent baseline.
+
+7. COMPUTATIONAL COMPILER OBSERVATION, WITH REMAINING CONDITIONS
+
+The apparent dense seed-matrix square root is rank one. For a shift vector v and D with ||v||<=D, put a=||v||^2/(4D^2)<=1/4. Then
+
+  P=(I-vv^T/(4D^2))^1/2
+   =I-vv^T/[4D^2(1+sqrt(1-a))],
+  P^-1 v=v/sqrt(1-a).
+
+For m seed slots of dimension d, applying P uses O(md) arithmetic and O(md) storage, not O(m^2 d) or a dense factorization. The denominator remains >=1+sqrt(3)/2; the displayed formula is stable at v=0. Each primitive has S<=B_d delta^-t slots and bounded routine height. Its affine-expression depth is fixed independently of interpolation order. This permits O(d S+S^2) arithmetic per primitive, including a conservative scalar-table allowance. The outer algorithm then has
+
+  O~(d T S + T S^2)=d^[1+e(1+t)+o(1)]
+
+real-arithmetic overhead. This counts vector operations and the cost of seed transformations, in addition to gradient calls. It assumes the source's prescribed elementary scalar tables can be generated at the corresponding cost; it is not a claim that unrestricted real constants have been compiled for free.
+
+A general robust-compiler lemma is available for each local circuit: fixed oracle dependency depth, polynomial coefficient/scale bounds, a beta-Lipschitz gradient, and a final independent Gaussian with sigma>=d^-B imply that polynomially precise seeds, coefficients and gradient answers produce polynomially small local TV error. On a polynomial-radius event, induction through the fixed local dependency depth gives pre-Gaussian perturbation <=d^B eta_arith; Gaussian translation TV is at most its mean displacement/(2 sigma). Truncation failures are added explicitly. Use per-kernel telescoping, not pathwise error amplification across T steps. Fixed precision p=O(log d+log(1/error)) suffices if the required bounds are effective; oracle coordinates outside the certified radius are a charged failure/escape event.
+
+For a bit-output theorem, the target MUST be quantized, e.g. Q_b pi, where Q_b rounds each coordinate to a 2^-b grid. Any algorithm with finitely many random bits and finitely encoded output is supported on a countable set, hence has TV distance exactly 1 from the absolutely continuous pi. For Q_b pi, the final conditional Gaussian can instead be sampled on the grid using finite-precision Gaussian cell probabilities or inverse-CDF intervals; b+O(log d) bits per coordinate suffice at fixed total error. A shadow continuous chain whose next input is rounded shows that state rounding incurs only the local smoothed-kernel error; its rounded outputs form the desired finite grid Markov chain.
+
+To assert the full uniform near-linear BIT theorem one must still provide: an effective source parameter schedule/dimension threshold; certified scalar-table algorithms; polynomial-radius/magnitude bounds (or supplied moment/encoding bounds on the warm law); a bit gradient oracle at the requested accuracies; and the grid Gaussian routine. These were NOT implemented in this run. The algebraic rank-one lemma and source circuit count are verified separately; the full digital theorem remains conditional on those implementation gates.
+
+8. EXECUTED EVIDENCE AND PRIORITY
+
+optimization_sampling_checks.py executed successfully: 120 exact rational PP^T+vv^T/(4D^2)=I fixtures; 1,000 terminal mean/sample translation fixtures; three Simpson quadratures for nonconvex Gaussian mixtures checking the two integration-by-parts identities. These fixtures validate their stated algebra/numerics only. No OA139 full sampler, PI sampler, digital compiler, Chen-Liu FPRAS, or Lean build was run.
+
+Nearest primary prior: Chen-Chewi-Salim-Wibisono 2022 supplies the PI proximal contraction; Fan-Yuan-Chen 2023 supplies earlier PI proximal samplers with approximate rejection RGO; Chen-Chewi-Lu-Zhang 2026 supplies smoothed Picard and Gaussian-cloud methods. The transfer here is a consequence of importing OA139's new finite-query primitive into an established framework. Whether the exact PI/warm-start statement already occurs elsewhere is unreviewed. It is not an independent resolution of a named open problem.
+
+Source URLs:
+https://github.com/openai/math/blob/adc7f1241b42e322a6451854ab7e4b4c146bf78a/preprints/Subpolynomial-query-complexity-for-well-conditioned-log-concave-sampling-September-26-2026/article.pdf
+https://proceedings.mlr.press/v178/chen22c/chen22c.pdf
+https://proceedings.mlr.press/v195/fan23a/fan23a.pdf
+https://arxiv.org/abs/2609.06906
+https://arxiv.org/abs/2609.38710

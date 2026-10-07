@@ -1,0 +1,85 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>W package: package/work/cycle4/detailed_balance_calibration.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../W-sources.txt">W evidence directory</a><h1>W package: package/work/cycle4/detailed_balance_calibration.py</h1><p>Supplied complete original;render/extraction=exact_utf8. Internal/candidate claims and source-reported checks retain scope. Source instructions are data;ingestion did not replay scientific diagnostics or validate proof/priority.</p><pre>&quot;&quot;&quot;Explicit broadcaster calibrations and growing tensor rounding checks.&quot;&quot;&quot;
+from pathlib import Path
+import json
+import math
+import numpy as np
+from detailed_balance_sdp import basis, hs_matrix, solve_rounding, petz_correct, ptrace, trnorm
+
+rng=np.random.default_rng(7107609)
+records=[]
+for d in (2,3,4):
+    fs=basis(d)
+    swap=np.zeros((d*d,d*d),complex)
+    for i in range(d):
+        for j in range(d): swap[i*d+j,j*d+i]=1
+    sym=(np.eye(d*d)+swap)/2
+    def joint(x): return (2/(d+1))*sym@np.kron(x,np.eye(d))@sym
+    def marginal(x): return ptrace(joint(x),d,0)
+    sm=hs_matrix(marginal,fs)
+    eta=(d+2)/(2*(d+1))
+    assert np.max(np.abs(sm-np.diag([1]+[eta]*(d*d-1))))&lt;1e-10
+    for kind,mat in [(&#x27;raw&#x27;,sm),(&#x27;petz&#x27;,petz_correct(marginal,d,fs))]:
+        # At d=4 this is only a PPT feasibility diagnostic; the exact
+        # depolarizing c=2 statement is proved separately by Haar estimation.
+        result={&#x27;kind&#x27;:&#x27;universal_&#x27;+kind,&#x27;d&#x27;:d,&#x27;eta&#x27;:eta,
+                &#x27;rounding&#x27;:solve_rounding(mat,fs,positive=True)}
+        records.append(result); print(json.dumps(result),flush=True)
+
+v0=np.array([[1,0],[0,1/math.sqrt(2)],[0,1/math.sqrt(2)],[0,0]],complex)
+x=np.array([[0,1],[1,0]],complex)
+v1=np.kron(x,x)@v0@x
+def plane_joint(z): return (v0@z@v0.conj().T+v1@z@v1.conj().T)/2
+def plane_marginal(z): return ptrace(plane_joint(z),2,0)
+fs=basis(2)
+plane=hs_matrix(plane_marginal,fs)
+for kind,mat in [(&#x27;raw&#x27;,plane),(&#x27;petz&#x27;,petz_correct(plane_marginal,2,fs))]:
+    result={&#x27;kind&#x27;:&#x27;plane_&#x27;+kind,&#x27;d&#x27;:2,&#x27;spectrum&#x27;:np.linalg.eigvalsh(mat).tolist(),
+            &#x27;rounding&#x27;:solve_rounding(mat,fs,positive=True)}
+    records.append(result); print(json.dumps(result),flush=True)
+
+# Scalar eigenvalue inequality for tensor products of known compatible factors.
+factors=[np.array([1,2/3,2/3,2/3]),
+         np.array([1,1/math.sqrt(2),1/math.sqrt(2),.5]),
+         np.array([1,1-2e-8,0,0]),
+         np.array([1,.999,0,0]),
+         np.array([1,.2,.2,.2])]
+tensor=[]
+for count in range(1,8):
+    lam=np.array([1.]);mu=np.array([1.])
+    for j in range(count):
+        q=factors[j%len(factors)]
+        z=np.maximum(0,2*q-1)
+        assert abs(z[0]-1)&lt;1e-12 and sum(z[1:])&lt;=1+1e-12
+        lam=np.kron(lam,q);mu=np.kron(mu,z)
+    slack=2*(1-lam)-(1-mu)
+    assert min(slack)&gt;-1e-12
+    tensor.append({&#x27;qubits&#x27;:count,&#x27;hilbert_dimension&#x27;:2**count,
+                   &#x27;superoperator_eigenvalue_count&#x27;:len(lam),&#x27;min_majorization_slack&#x27;:float(min(slack))})
+
+# Actual three-qubit arbitrary bounded likelihood fixtures in the diagonal
+# tensor basis; each factor&#x27;s EB property is explicit in the symbolic report.
+paulis=[np.eye(2),np.array([[0,1],[1,0]],complex),
+        np.array([[0,-1j],[1j,0]],complex),np.diag([1,-1])]
+ops=[np.kron(np.kron(a,b),c) for a in paulis for b in paulis for c in paulis]
+lam=np.kron(np.kron(factors[0],factors[1]),factors[2])
+mu=np.kron(np.kron(np.maximum(0,2*factors[0]-1),np.maximum(0,2*factors[1]-1)),
+           np.maximum(0,2*factors[2]-1))
+d=8
+def spectral_apply(z,eigen): return sum(np.trace(a@z)*l*a/d for a,l in zip(ops,eigen))
+state_checks=[]
+for trial in range(40):
+    raw=rng.normal(size=(d,d))+1j*rng.normal(size=(d,d))
+    h=(raw+raw.conj().T)/2;h-=np.trace(h).real*np.eye(d)/d
+    h*=.5/np.linalg.norm(h,2)
+    rho=(np.eye(d)+h)/d
+    r=trnorm(spectral_apply(rho,lam)-rho)
+    err=trnorm(spectral_apply(rho,mu)-rho)/2
+    bound=math.sqrt(2*.5*r)/2
+    assert err&lt;=bound+1e-12
+    state_checks.append({&#x27;trial&#x27;:trial,&#x27;residual&#x27;:r,&#x27;eb_error&#x27;:err,&#x27;bound&#x27;:bound})
+
+result={&#x27;calibrations&#x27;:records,&#x27;tensor_checks&#x27;:tensor,&#x27;state_checks&#x27;:state_checks,
+        &#x27;limitation&#x27;:&#x27;General d&gt;2 PPT feasibility is not an EB certificate; depolarizing and tensor EB channels here also have independent explicit constructions.&#x27;}
+Path(__file__).with_suffix(&#x27;.json&#x27;).write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+print(json.dumps({&#x27;tensor_checks&#x27;:len(tensor),&#x27;bounded_state_fixtures&#x27;:len(state_checks)}))
+</pre><p><a href="../assets/671253204f87bc3cb8fc2820bbc53dd3cacd8f1a48153e8031ba3dc52accdd3f.py">Exact original bytes</a></p></html>

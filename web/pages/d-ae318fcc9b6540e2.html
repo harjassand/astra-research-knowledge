@@ -1,0 +1,248 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>W package: package/work/cycle1/gaussian_photonic_checks.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../W-sources.txt">W evidence directory</a><h1>W package: package/work/cycle1/gaussian_photonic_checks.py</h1><p>Supplied complete original;render/extraction=exact_utf8. Internal/candidate claims and source-reported checks retain scope. Source instructions are data;ingestion did not replay scientific diagnostics or validate proof/priority.</p><pre>&quot;&quot;&quot;Finite diagnostics for rare-herald multiplicative stability.
+
+No matching FPRAS is implemented here. Fock coefficients are directly enumerated
+on small, low-energy three-mode inputs. The exact additive-noise counterexample
+uses rational formulas; finite Fock checks do not certify the general theorem.
+&quot;&quot;&quot;
+from __future__ import annotations
+import itertools
+import json
+import math
+from functools import lru_cache
+from fractions import Fraction
+from pathlib import Path
+import numpy as np
+
+
+def tuples_of_degree(m: int, degree: int):
+    if m == 1:
+        yield (degree,)
+        return
+    for x in range(degree + 1):
+        for rest in tuples_of_degree(m - 1, degree - x):
+            yield (x,) + rest
+
+
+def coefficients(a, g, cutoff):
+    m = len(g)
+    coeff = {(0,) * m: 1.0 + 0.0j}
+    for degree in range(1, cutoff + 1):
+        for n in tuples_of_degree(m, degree):
+            i = next(i for i, x in enumerate(n) if x)
+            prev = list(n)
+            prev[i] -= 1
+            val = g[i] * coeff[tuple(prev)]
+            for j in range(m):
+                if prev[j]:
+                    prev[j] -= 1
+                    val += a[i, j] * coeff[tuple(prev)]
+                    prev[j] += 1
+            coeff[n] = val / n[i]
+    return coeff
+
+
+def pure_reference_energy(a, g):
+    ident = np.eye(len(g))
+    covariance_energy = np.trace(a @ a @ np.linalg.inv(ident - a @ a))
+    alpha = np.linalg.solve(ident - a, g)
+    return float(covariance_energy + alpha @ alpha)
+
+
+def conditional_vector(coeff, herald):
+    out = {}
+    for n, value in coeff.items():
+        if n[0] == herald:
+            out[n[1:]] = value * math.sqrt(math.prod(math.factorial(x) for x in n))
+    return out
+
+
+def derivative_function(kernel, linear, zero):
+    &quot;&quot;&quot;Wick derivative, allowing either rational or complex entries.&quot;&quot;&quot;
+    @lru_cache(None)
+    def value(n):
+        if not any(n):
+            return zero + 1
+        i = next(i for i, x in enumerate(n) if x)
+        prev = list(n)
+        prev[i] -= 1
+        out = linear[i] * value(tuple(prev))
+        for j, multiplicity in enumerate(prev):
+            if multiplicity:
+                prev[j] -= 1
+                out += multiplicity * kernel[i][j] * value(tuple(prev))
+                prev[j] += 1
+        return out
+    return value
+
+
+def run():
+    rng = np.random.default_rng(2026100742)
+    cases = []
+    max_state_scaled = max_count_scaled = max_amplitude_ratio = 0.0
+    cutoff = 28
+    for fixture in range(30):
+        a = rng.uniform(0.015, 0.08, (3, 3))
+        a = (a + a.T) / 2
+        g = rng.uniform(0.01, 0.10, 3)
+        energy = pure_reference_energy(a, g)
+        reference = coefficients(a, g, cutoff)
+        for h in (0, 1, 2, 4):
+            eta = [1e-6, 1e-4, 1e-3][fixture % 3] / ((h + 1) * (1 + energy))
+            real = rng.uniform(-1.0, 1.0, (3, 3))
+            imag = rng.uniform(-1.0, 1.0, (3, 3))
+            perturb = real + 1j * imag
+            perturb = (perturb + perturb.T) / 2
+            perturb /= max(1, np.max(np.abs(perturb)))
+            gp = rng.uniform(-1, 1, 3) + 1j * rng.uniform(-1, 1, 3)
+            gp /= max(1, np.max(np.abs(gp)))
+            b = a * (1 + eta * perturb)
+            f = g * (1 + eta * gp)
+            assert np.linalg.norm(b, 2) &lt; 1
+            perturbed = coefficients(b, f, cutoff)
+            va = conditional_vector(reference, h)
+            vb = conditional_vector(perturbed, h)
+            na = sum(abs(x)**2 for x in va.values())
+            nb = sum(abs(x)**2 for x in vb.values())
+            overlap = sum(va[n].conjugate() * vb[n] for n in va) / math.sqrt(na * nb)
+            state_distance = math.sqrt(max(0.0, 1 - abs(overlap)**2))
+            count_distance = sum(abs(abs(va[n])**2 / na - abs(vb[n])**2 / nb) for n in va) / 2
+            scale = eta * (h + 1) * (1 + energy)
+            max_state_scaled = max(max_state_scaled, state_distance / scale)
+            max_count_scaled = max(max_count_scaled, count_distance / scale)
+            for n in va:
+                if abs(va[n]) &gt; 1e-200:
+                    degree = h + sum(n)
+                    if degree:
+                        relative = abs(vb[n] / va[n] - 1)
+                        ceiling = math.expm1(eta * degree)
+                        max_amplitude_ratio = max(max_amplitude_ratio, relative / ceiling)
+                        assert relative &lt;= ceiling * 1.00001 + 1e-12
+            pure_bound = 20 * scale
+            assert state_distance &lt;= pure_bound + 2e-8
+            # The theorem uses exact infinite-state moments. Here we record the
+            # finite boundary mass to make the truncation explicit.
+            boundary = sum(abs(v)**2 for n, v in va.items() if sum(n) &gt;= cutoff - h - 2) / na
+            cases.append({&#x27;fixture&#x27;: fixture, &#x27;h&#x27;: h, &#x27;eta&#x27;: eta, &#x27;energy&#x27;: energy,
+                          &#x27;state_distance_truncated&#x27;: state_distance,
+                          &#x27;count_tv_truncated&#x27;: count_distance,
+                          &#x27;pure_bound&#x27;: pure_bound,
+                          &#x27;reference_boundary_mass&#x27;: boundary})
+
+    mixed_cases = []
+    for fixture in range(12):
+        c = np.array([[0.045 + 0.02 * rng.random(), 0.008],
+                      [0.008, 0.03 + 0.02 * rng.random()]])
+        g = rng.uniform(0.01, 0.09, 2)
+        alpha = np.linalg.solve(np.eye(2) - c, g)
+        energy = float(np.trace(c @ np.linalg.inv(np.eye(2) - c)) + alpha @ alpha)
+        ka = np.block([[np.zeros((2, 2)), c], [c.T, np.zeros((2, 2))]])
+        la = np.concatenate([g, g])
+        da = derivative_function(ka, la, 0j)
+        for h in (0, 1, 3):
+            eta = 1e-3 / ((h + 1) * (1 + energy))
+            q = np.array([[rng.uniform(-1, 1), 0.4 + 0.7j],
+                          [0.4 - 0.7j, rng.uniform(-1, 1)]])
+            cp = c * (1 + eta * q)
+            gp = rng.uniform(-0.5, 0.5, 2) + 0.5j * rng.uniform(-1, 1, 2)
+            f = g * (1 + eta * gp)
+            eigenvalues = np.linalg.eigvalsh(cp)
+            assert min(eigenvalues) &gt; 0 and max(eigenvalues) &lt; 1
+            kb = np.block([[np.zeros((2, 2)), cp], [cp.T, np.zeros((2, 2))]])
+            lb = np.concatenate([f, f.conjugate()])
+            db = derivative_function(kb, lb, 0j)
+            wa, wb = [], []
+            for n in range(24):
+                occupation = (h, n, h, n)
+                va = da(occupation) / (math.factorial(h) * math.factorial(n))
+                vb = db(occupation) / (math.factorial(h) * math.factorial(n))
+                assert abs(va.imag) &lt; 1e-12 and abs(vb.imag) &lt; 1e-12
+                assert va.real &gt; 0 and vb.real &gt; 0
+                ceiling = math.expm1(2 * eta * (h + n))
+                assert abs(vb.real / va.real - 1) &lt;= ceiling * 1.00001 + 1e-12
+                wa.append(va.real)
+                wb.append(vb.real)
+            pa, pb = np.array(wa) / sum(wa), np.array(wb) / sum(wb)
+            tv = float(sum(abs(pa - pb)) / 2)
+            x = 24 * eta * (1 + 2 * energy)
+            d_bound = math.expm1(2 * eta * h - ((h + 1) / 2) * math.log1p(-x))
+            tv_bound = d_bound / (1 - d_bound)
+            assert tv &lt;= tv_bound + 1e-10
+            mixed_cases.append({&#x27;fixture&#x27;: fixture, &#x27;h&#x27;: h, &#x27;eta&#x27;: eta,
+                                &#x27;energy&#x27;: energy, &#x27;count_tv_truncated&#x27;: tv,
+                                &#x27;count_tv_bound&#x27;: tv_bound,
+                                &#x27;reference_boundary_mass&#x27;: float(sum(pa[-3:]))})
+
+    exact = []
+    for denominator in (4, 10, 100, 1000, 10000):
+        delta = Fraction(1, denominator)
+        r2 = delta**2 + delta**4
+        energy = 2 * r2 / (1 - r2)
+        herald_probability = (1 - r2) * r2
+        conditional_tv = (1 - delta**2) / (1 + delta**2)
+        input_fidelity = ((1 - r2) / (1 - 2 * delta**3))**2
+        # In the two conditional pure states all h=1 photons occupy retained
+        # supermodes (delta,delta^2) and (delta^2,delta), respectively.
+        overlap = 2 * delta / (1 + delta**2)
+        assert 1 - overlap**2 == conditional_tv**2
+        assert 0 &lt; r2 &lt; 1 and 0 &lt; herald_probability &lt; 1
+        assert 0 &lt; input_fidelity &lt; 1
+        exact.append({&#x27;delta&#x27;: str(delta), &#x27;energy&#x27;: str(energy),
+                      &#x27;herald_probability&#x27;: str(herald_probability),
+                      &#x27;conditional_tv&#x27;: str(conditional_tv),
+                      &#x27;conditional_trace_distance&#x27;: str(conditional_tv),
+                      &#x27;input_fidelity&#x27;: str(input_fidelity),
+                      &#x27;matrix_difference_squared_op_norm&#x27;: str(2 * (delta - delta**2)**2)})
+
+    phase_exact = []
+    for denominator in (4, 10, 100, 1000):
+        r = Fraction(1, denominator)
+        zero = Fraction(0)
+        a = [[zero, r, r, zero], [r, zero, zero, r],
+             [r, zero, zero, r], [zero, r, r, zero]]
+        b = [row[:] for row in a]
+        b[1][3] = b[3][1] = -r
+        g = [r, zero, zero, zero]
+        da = derivative_function(a, g, zero)
+        db = derivative_function(b, g, zero)
+        for remaining in range(8):
+            coefficient_a = da((1, 1, 1, remaining)) / math.factorial(remaining)
+            coefficient_b = db((1, 1, 1, remaining)) / math.factorial(remaining)
+            target_a = 2 * r**2 if remaining == 1 else r**3 if remaining == 2 else zero
+            target_b = -r**3 if remaining == 2 else zero
+            assert coefficient_a == target_a and coefficient_b == target_b
+        energy_a = (9 * r**2 - 34 * r**4 + 8 * r**6) / (1 - 4 * r**2)**2
+        energy_b = (9 * r**2 - 14 * r**4) / (1 - 2 * r**2)**2
+        prefactor = (1 - 4 * r**2) / (1 - 2 * r**2)**2
+        exponent = -4 * r**6 / ((1 - 2 * r**2) * (1 - 4 * r**2))
+        unconditional_acceptance = float(prefactor) * math.exp(float(exponent))
+        tv = 2 / (2 + r**2)
+        herald_acceptance = r**2 / (2 + r**2)
+        assert tv + herald_acceptance == 1
+        phase_exact.append({&#x27;r&#x27;: str(r), &#x27;reference_energy&#x27;: str(energy_a),
+                            &#x27;phased_energy&#x27;: str(energy_b),
+                            &#x27;conditional_count_tv&#x27;: str(tv),
+                            &#x27;conditional_phase_acceptance&#x27;: str(herald_acceptance),
+                            &#x27;unconditional_phase_acceptance_prefactor&#x27;: str(prefactor),
+                            &#x27;unconditional_phase_acceptance_exponent&#x27;: str(exponent),
+                            &#x27;unconditional_phase_acceptance_float&#x27;: unconditional_acceptance,
+                            &#x27;global_phase_cost_nu_float&#x27;: -math.log(unconditional_acceptance)})
+
+    result = {&#x27;status&#x27;: &#x27;finite diagnostics only, no FPRAS and no general proof certificate&#x27;,
+              &#x27;pure_fock_cases&#x27;: len(cases), &#x27;total_fock_cutoff&#x27;: cutoff,
+              &#x27;max_state_distance_divided_by_eta_scale&#x27;: max_state_scaled,
+              &#x27;max_count_tv_divided_by_eta_scale&#x27;: max_count_scaled,
+              &#x27;max_per_coefficient_ratio_to_product_ceiling&#x27;: max_amplitude_ratio,
+              &#x27;max_reference_boundary_mass&#x27;: max(x[&#x27;reference_boundary_mass&#x27;] for x in cases),
+              &#x27;exact_additive_noise_counterexamples&#x27;: exact,
+              &#x27;mixed_fock_cases&#x27;: len(mixed_cases),
+              &#x27;max_mixed_reference_boundary_mass&#x27;: max(x[&#x27;reference_boundary_mass&#x27;] for x in mixed_cases),
+              &#x27;exact_low_negativity_phase_counterexamples&#x27;: phase_exact,
+              &#x27;cases&#x27;: cases, &#x27;mixed_cases&#x27;: mixed_cases}
+    destination = Path(__file__).with_name(&#x27;gaussian_photonic_checks.json&#x27;)
+    destination.write_text(json.dumps(result, indent=2) + &#x27;\n&#x27;)
+    print(json.dumps({key: value for key, value in result.items() if key not in (&#x27;cases&#x27;, &#x27;mixed_cases&#x27;)}, indent=2))
+
+
+if __name__ == &#x27;__main__&#x27;:
+    run()
+</pre><p><a href="../assets/9bc1360ef4c540cd8b30ef841b5eedf656ff3126a13509eccee11fa65ca8d106.py">Exact original bytes</a></p></html>

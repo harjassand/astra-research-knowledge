@@ -1,0 +1,243 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>W package: package/work/cycle2/matching_classicality_audit_check.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../W-sources.txt">W evidence directory</a><h1>W package: package/work/cycle2/matching_classicality_audit_check.py</h1><p>Supplied complete original;render/extraction=exact_utf8. Internal/candidate claims and source-reported checks retain scope. Source instructions are data;ingestion did not replay scientific diagnostics or validate proof/priority.</p><pre>&quot;&quot;&quot;Independent numerical diagnostics, not a proof or novelty certificate.&quot;&quot;&quot;
+import itertools
+import json
+import math
+from pathlib import Path
+
+import numpy as np
+
+I = np.eye(2, dtype=complex)
+X = np.array([[0, 1], [1, 0]], dtype=complex)
+Y = np.array([[0, -1j], [1j, 0]], dtype=complex)
+Z = np.diag([1, -1]).astype(complex)
+
+
+def tensor(items):
+    out = np.ones((1, 1), dtype=complex)
+    for item in items:
+        out = np.kron(out, item)
+    return out
+
+
+def local(op, site, sites):
+    return tensor([op if k == site else I for k in range(sites)])
+
+
+def root(matrix):
+    eig, vec = np.linalg.eigh(matrix)
+    return (vec * np.sqrt(np.maximum(eig, 0))) @ vec.conj().T
+
+
+def trace_norm(matrix):
+    return np.linalg.svd(matrix, compute_uv=False).sum().real
+
+
+def factors(n):
+    modulus = n - 1
+    return [[(n - 1, k)] + [((k + j) % modulus, (k - j) % modulus)
+            for j in range(1, n // 2)] for k in range(modulus)]
+
+
+def matching_scores(n):
+    partitions = factors(n)
+    scores = []
+    for matching in partitions:
+        block = [None] * n
+        for site, edge in enumerate(matching):
+            i, j = sorted(edge)
+            block[i] = local(X, site, n // 2)
+            block[j] = local(Z, site, n // 2)
+        scores.append(block)
+    return partitions, scores
+
+
+def eb_block(rho, sites):
+    out = np.zeros_like(rho)
+    for axis in (X, Z):
+        for signs in itertools.product((-1, 1), repeat=sites):
+            projector = tensor([(I + s * axis) / 2 for s in signs])
+            out += np.trace(projector @ rho) * projector / 2
+    return out
+
+
+def clone_marginal(rho):
+    v = np.array([[1, 0], [0, 1 / np.sqrt(2)],
+                  [0, 1 / np.sqrt(2)], [0, 0]], dtype=complex)
+    vm = np.kron(X, X) @ v @ X
+    # Rotate the equatorial XY plane into the XZ plane.
+    u = (I - 1j * X) / np.sqrt(2)
+    kraus = [np.kron(u, u) @ k @ u.conj().T / np.sqrt(2)
+             for k in (v, vm)]
+    joint = sum(k @ rho @ k.conj().T for k in kraus)
+    marginal = np.trace(joint.reshape(2, 2, 2, 2), axis1=1, axis2=3)
+    return marginal, kraus
+
+
+def coloring(first, second, n):
+    neighbors = [[] for _ in range(n)]
+    for i, j in first + second:
+        neighbors[i].append(j)
+        neighbors[j].append(i)
+    colors = [None] * n
+    for start in range(n):
+        if colors[start] is not None:
+            continue
+        colors[start] = 0
+        stack = [start]
+        while stack:
+            i = stack.pop()
+            for j in neighbors[i]:
+                if colors[j] is None:
+                    colors[j] = 1 - colors[i]
+                    stack.append(j)
+                assert colors[j] == 1 - colors[i]
+    return colors
+
+
+def joint_povm_check(first, second, scores1, scores2, n):
+    colors = coloring(first, second, n)
+    dim = scores1[0].shape[0]
+    identity = np.eye(dim)
+    totals = np.zeros((dim * dim, dim * dim), dtype=complex)
+    moments = [totals.copy() for _ in range(n)]
+    for signs in itertools.product((-1, 1), repeat=n):
+        effect = np.zeros_like(totals)
+        for flip in (0, 1):
+            p1, p2 = identity.copy(), identity.copy()
+            for i, s in enumerate(signs):
+                if colors[i] ^ flip == 0:
+                    p1 = p1 @ ((identity + s * scores1[i]) / 2)
+                else:
+                    p2 = p2 @ ((identity + s * scores2[i]) / 2)
+            effect += np.kron(p1, p2) / 2
+        totals += effect
+        for i, s in enumerate(signs):
+            moments[i] += s * effect
+    errs = [np.max(np.abs(totals - np.eye(dim * dim)))]
+    errs.extend(np.max(np.abs(moments[i] -
+                             (np.kron(scores1[i], identity) +
+                              np.kron(identity, scores2[i])) / 2))
+                for i in range(n))
+    return float(max(errs))
+
+
+def gamma_scores(r):
+    sites = r // 2
+    gammas = []
+    for j in range(sites):
+        for op in (X, Y):
+            gammas.append(tensor([Z if k &lt; j else op if k == j else I
+                                  for k in range(sites)]))
+    if r % 2:
+        gammas.append(tensor([Z] * sites))
+    return gammas
+
+
+def affine_prime_design(r):
+    labels = [(x, y) for x in range(r) for y in range(r)]
+    directions = [(1, slope) for slope in range(r)] + [(0, 1)]
+    partitions = []
+    for dx, dy in directions:
+        unused = set(labels)
+        groups = []
+        while unused:
+            x, y = min(unused)
+            group = [((x + t * dx) % r, (y + t * dy) % r)
+                     for t in range(r)]
+            unused.difference_update(group)
+            groups.append(group)
+        partitions.append(groups)
+    counts = {pair: 0 for pair in itertools.combinations(labels, 2)}
+    for groups in partitions:
+        for group in groups:
+            for pair in itertools.combinations(sorted(group), 2):
+                counts[pair] += 1
+    assert set(counts.values()) == {1}
+    return {&quot;r&quot;: r, &quot;n&quot;: r * r, &quot;flags&quot;: len(partitions),
+            &quot;pair_counts&quot;: len(counts)}
+
+
+report = {&quot;status&quot;: &quot;diagnostics only&quot;, &quot;matching&quot;: [], &quot;affine&quot;: []}
+a = 0.7
+gap = math.sqrt(1 - a * a / 2) - (1 + math.sqrt(1 - a * a)) / 2
+for n in (2, 4, 6):
+    partitions, scores = matching_scores(n)
+    edge_counts = {pair: 0 for pair in itertools.combinations(range(n), 2)}
+    for matching in partitions:
+        for edge in matching:
+            edge_counts[tuple(sorted(edge))] += 1
+    assert set(edge_counts.values()) == {1}
+    dim = 2 ** (n // 2)
+    numerical_gap = 0.0
+    for first, second in itertools.combinations(range(n), 2):
+        value = 0.0
+        for block in scores:
+            rho = (np.eye(dim) + a * block[first]) / dim
+            sigma = (np.eye(dim) - a * block[second]) / dim
+            product = root(rho) @ root(sigma)
+            value += (trace_norm(product) - np.trace(product).real) / (n - 1)
+        numerical_gap = max(numerical_gap, value)
+    assert abs(numerical_gap - gap / (n - 1)) &lt; 1e-12
+    eb_error = 0.0
+    for block in scores:
+        for score in block:
+            rho = (np.eye(dim) + a * score) / dim
+            eb_error = max(eb_error, trace_norm(eb_block(rho, n // 2) - rho) / 2)
+    assert abs(eb_error - a / 4) &lt; 1e-12
+    povm_error = max(joint_povm_check(partitions[k], partitions[l], scores[k],
+                                    scores[l], n)
+                     for k in range(n - 1) for l in range(n - 1))
+    assert povm_error &lt; 1e-12
+    report[&quot;matching&quot;].append({&quot;n&quot;: n, &quot;D&quot;: (n - 1) * dim,
+                               &quot;pairs&quot;: len(edge_counts),
+                               &quot;delta&quot;: numerical_gap,
+                               &quot;EB_error&quot;: eb_error,
+                               &quot;joint_POVM_max_error&quot;: povm_error,
+                               &quot;flag_pair_count&quot;: (n - 1) ** 2})
+
+lm, kraus = clone_marginal(I / 2)
+clone_error = max(float(np.max(np.abs(lm - I / 2))),
+                  float(np.max(np.abs(sum(k.conj().T @ k for k in kraus) - I))))
+for axis in (X, Z):
+    output, _ = clone_marginal(axis)
+    clone_error = max(clone_error, float(np.max(np.abs(output - axis / np.sqrt(2)))))
+assert clone_error &lt; 1e-12
+report[&quot;clone_unital_plane_error&quot;] = clone_error
+for r in (2, 3, 5, 7):
+    report[&quot;affine&quot;].append(affine_prime_design(r))
+for r in range(2, 10):
+    gammas = gamma_scores(r)
+    dim = gammas[0].shape[0]
+    identity = np.eye(dim)
+    for i in range(r):
+        assert np.max(np.abs(gammas[i] @ gammas[i] - identity)) &lt; 1e-12
+        for j in range(i):
+            assert np.max(np.abs(gammas[i] @ gammas[j] + gammas[j] @ gammas[i])) &lt; 1e-12
+    common = sum(gammas) / r
+    for gamma in gammas:
+        residual = np.trace((gamma - common).conj().T @ (gamma - common)).real / dim
+        assert abs(residual - (1 - 1 / r)) &lt; 1e-12
+report[&quot;gamma_sizes_checked&quot;] = list(range(2, 10))
+rng = np.random.default_rng(20261007)
+sos_error = 0.0
+for _ in range(32):
+    vectors = rng.normal(size=(4, 3))
+    vectors /= np.linalg.norm(vectors, axis=1)[:, None]
+    axes = [sum(v[k] * op for k, op in enumerate((X, Y, Z))) for v in vectors]
+    bs = [np.kron(axes[i], I) for i in range(2)]
+    cs = [np.kron(I, axes[i + 2]) for i in range(2)]
+    ds = [bs[i] + cs[i] for i in range(2)]
+    es = [bs[i] - cs[i] for i in range(2)]
+    score = np.kron(X, ds[0]) + np.kron(Z, ds[1])
+    f = 1j * X @ Z
+    m = np.kron(I, es[0]) + 1j * np.kron(f, es[1])
+    residual = 8 * np.eye(8) - score @ score - m.conj().T @ m
+    sos_error = max(sos_error, float(np.max(np.abs(residual))))
+    assert np.max(np.abs(np.linalg.eigvalsh(score))) &lt;= 2 * np.sqrt(2) + 1e-12
+assert sos_error &lt; 1e-12
+report[&quot;random_receiver_SOS_cases&quot;] = 32
+report[&quot;SOS_max_residual&quot;] = sos_error
+output = Path(__file__).with_name(&quot;matching_classicality_audit_check.json&quot;)
+output.write_text(json.dumps(report, indent=2) + &quot;\n&quot;)
+print(json.dumps(report, indent=2))
+</pre><p><a href="../assets/0286bba84baa34c46938caa103561b164dbcc377dc75f0819a9ec6b05f2dad43.py">Exact original bytes</a></p></html>

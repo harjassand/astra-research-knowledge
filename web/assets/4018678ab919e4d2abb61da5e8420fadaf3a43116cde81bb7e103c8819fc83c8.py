@@ -1,0 +1,115 @@
+"""PPT relaxation of an EB Dirichlet-majorization conjecture.
+
+Finite diagnostics only. For d=2 PPT is separability; for d>2 it is only a
+necessary EB condition. S is built by applying Petz recovery to both outputs
+of an explicit broadcaster, so selfcompatibility is not an SDP guess.
+"""
+from pathlib import Path
+import json
+import numpy as np
+import cvxpy as cp
+
+SEED = 7117701
+rng = np.random.default_rng(SEED)
+
+def herm(x): return (x+x.conj().T)/2
+def power(x,t):
+    v,u=np.linalg.eigh(herm(x))
+    return (u*np.maximum(v,1e-14)**t)@u.conj().T
+def trnorm(x): return float(np.sum(np.linalg.svd(x,compute_uv=False)))
+def basis(d):
+    result=[np.eye(d)/np.sqrt(d)]
+    for j in range(1,d):
+        f=np.diag([1]*j+[-j]+[0]*(d-j-1))/np.sqrt(j*(j+1))
+        result.append(f.astype(complex))
+    for i in range(d):
+        for j in range(i+1,d):
+            f=np.zeros((d,d),complex); f[i,j]=f[j,i]=1/np.sqrt(2)
+            result.append(f)
+            f=np.zeros((d,d),complex); f[i,j]=-1j/np.sqrt(2); f[j,i]=1j/np.sqrt(2)
+            result.append(f)
+    assert len(result)==d*d
+    return result
+def ptrace(x,d,receiver):
+    a=x.reshape(d,d,d,d)
+    return np.trace(a,axis1=1,axis2=3) if receiver==0 else np.trace(a,axis1=0,axis2=2)
+def random_broadcaster(d,anc):
+    z=rng.normal(size=(d*d*anc,d))+1j*rng.normal(size=(d*d*anc,d))
+    v,_=np.linalg.qr(z); v=v[:,:d].reshape(d*d,anc,d)
+    ks=[v[:,j,:] for j in range(anc)]
+    def joint(x): return sum(k@x@k.conj().T for k in ks)
+    def marginal(x): return (ptrace(joint(x),d,0)+ptrace(joint(x),d,1))/2
+    return marginal
+def diagonal_clone_marginal(x): return np.diag(np.diag(x))
+def hs_matrix(fn,fs):
+    return np.array([[np.trace(a.conj().T@fn(b)).real for b in fs] for a in fs])
+def petz_correct(fn,d,fs):
+    sigma=np.eye(d)/d
+    tm=hs_matrix(fn,fs)
+    tau=fn(sigma); it=power(tau,-.5)
+    def adjoint(x):
+        return sum(np.trace(f.conj().T@x).real*(sum(tm[j,i]*fs[i] for i in range(d*d)))
+                   for j,f in enumerate(fs))
+    # Adjoint must be complex-linear, so use traces without discarding imaginary
+    # parts when applying to arbitrary complex matrices.
+    def adjoint(x):
+        coeff=np.array([np.trace(f.conj().T@x) for f in fs])
+        return sum((tm.T@coeff)[i]*fs[i] for i in range(d*d))
+    def recover(x): return adjoint(it@x@it)/d
+    def corrected(x): return recover(fn(x))
+    sm=hs_matrix(corrected,fs)
+    assert np.max(np.abs(sm-sm.T))<1e-9
+    assert np.max(np.abs(corrected(sigma)-sigma))<1e-9
+    return sm
+
+def solve_rounding(sm,fs,positive=False):
+    d=fs[0].shape[0]
+    j=cp.Variable((d*d,d*d),hermitian=True)
+    c=cp.Variable(nonneg=True)
+    # Matrix in an orthonormal Hermitian basis is real for a Hermiticity-
+    # preserving map. This is the Hilbert-Schmidt superoperator, not the Choi.
+    rm=cp.bmat([[cp.real(cp.trace(j@np.kron(b.T,a))) for b in fs] for a in fs])
+    pt=cp.bmat([[j[i*d+b,k*d+a] for k in range(d) for b in range(d)]
+                for i in range(d) for a in range(d)])
+    constraints=[j >> 0, pt >> 0, rm == rm.T, c>=1,
+                 c*(np.eye(d*d)-sm)-(np.eye(d*d)-rm) >> 0]
+    for i in range(d):
+        for k in range(d):
+            constraints.append(sum(j[i*d+a,k*d+a] for a in range(d))==(1 if i==k else 0))
+    if positive: constraints.append(rm >> 0)
+    prob=cp.Problem(cp.Minimize(c),constraints)
+    prob.solve(solver='CLARABEL',tol_gap_abs=1e-8,tol_feas=1e-8,tol_gap_rel=1e-8,max_iter=200)
+    record={'status':prob.status,'optimal_c':None if c.value is None else float(c.value),
+            'positive_rounding':positive}
+    if j.value is not None:
+        jj=herm(j.value); rr=np.array(rm.value); pp=np.array(pt.value)
+        ds=np.eye(d*d)-sm
+        record.update(choi_min_eig=float(np.linalg.eigvalsh(jj).min()),
+                      ppt_min_eig=float(np.linalg.eigvalsh(herm(pp)).min()),
+                      majorization_min_eig=float(np.linalg.eigvalsh(herm(c.value*ds-(np.eye(d*d)-rr))).min()),
+                      rounding_min_eig=float(np.linalg.eigvalsh(herm(rr)).min()),
+                      super_symmetry_residual=float(np.max(np.abs(rr-rr.T))))
+    return record
+
+def main():
+    records=[]
+    for d in (2,3):
+        fs=basis(d)
+        for trial in range(12):
+            raw=random_broadcaster(d,1+trial%3)
+            if trial%3:
+                delta=[.01,.1,.4][trial%3]
+                fn=lambda x,raw=raw,delta=delta:(1-delta)*diagonal_clone_marginal(x)+delta*raw(x)
+                kind='near_classical'
+            else:
+                fn=raw; kind='generic'
+            sm=petz_correct(fn,d,fs)
+            record={'d':d,'trial':trial,'kind':kind,'spectrum':np.linalg.eigvalsh(sm).tolist(),
+                    'rounding':solve_rounding(sm,fs,positive=True)}
+            records.append(record)
+            print(json.dumps(record),flush=True)
+    result={'seed':SEED,'cvxpy_version':cp.__version__,'records':records,
+            'limitation':'PPT is equivalent to EB only for the d=2 tests. This is not a proof of the conjectured Dirichlet bound.'}
+    Path(__file__).with_suffix('.json').write_text(json.dumps(result,indent=2)+'\n')
+
+if __name__=='__main__': main()

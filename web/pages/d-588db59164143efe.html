@@ -1,0 +1,76 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>W package: package/work/cycle1/reaction_robust_birth_death.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../W-sources.txt">W evidence directory</a><h1>W package: package/work/cycle1/reaction_robust_birth_death.py</h1><p>Supplied complete original;render/extraction=exact_utf8. Internal/candidate claims and source-reported checks retain scope. Source instructions are data;ingestion did not replay scientific diagnostics or validate proof/priority.</p><pre>from math import comb, prod, log, lgamma
+from fractions import Fraction
+from decimal import Decimal, localcontext
+import json
+from pathlib import Path
+
+def fall(j,m): return prod(range(j-m+1,j+1)) if j&gt;=m else 0
+
+def weights(v,m,rho_num=1,rho_den=4):
+    lo,n=m-1,v-m+1
+    return {j:rho_num**(j-lo)*rho_den**(n-j)*prod(comb(v-2*r,j-r) for r in range(m)) for j in range(lo,n+1)}
+
+def numerical(x):
+    with localcontext() as c:
+        c.prec=60
+        return str(Decimal(x.numerator)/Decimal(x.denominator))
+
+checks=0
+for m in range(1,5):
+    for v in range(max(2*m,8),33):
+        w=weights(v,m)
+        for j in range(m-1,v-m+1):
+            assert w[j]*fall(v-j,m)==4*w[j+1]*fall(j+1,m)
+            checks+=1
+        for j in w:
+            flux=0
+            if j-1 in w:flux+=w[j-1]*fall(v-j+1,m)
+            if j+1 in w:flux+=4*w[j+1]*fall(j+1,m)
+            flux-=w[j]*(fall(v-j,m)+4*fall(j,m))
+            assert flux==0
+            checks+=1
+        L=max(m,v//4)
+        if L&lt;=v//2:
+            h={L-1:Fraction(0)}
+            tail=0
+            tails={}
+            for j in reversed(w):
+                tail+=w[j];tails[j]=tail
+            for j in range(L,v-m+2):
+                h[j]=h[j-1]+Fraction(tails[j]*v**(m-1),4*fall(j,m)*w[j])
+            for j in range(L,v-m+2):
+                b=Fraction(fall(v-j,m),v**(m-1));d=Fraction(4*fall(j,m),v**(m-1))
+                generator=d*(h[j-1]-h[j])
+                if j+1 in h:generator+=b*(h[j+1]-h[j])
+                assert generator==-1
+                checks+=1
+
+q,p=Fraction(1,4),Fraction(1,3)
+delta=2*(float(q)*log(float(q/p))+float(1-q)*log(float((1-q)/(1-p))))
+report={&quot;status&quot;:&quot;exact finite algebra checks plus numerical asymptotic evaluations, no trajectory simulation&quot;, &quot;exact_checks&quot;:checks,&quot;m&quot;:2,&quot;kappa&quot;:1,&quot;K&quot;:4,&quot;q&quot;:&quot;1/4&quot;,&quot;p&quot;:&quot;1/3&quot;,&quot;delta&quot;:delta,&quot;volumes&quot;:[]}
+for v in (100,200,500,1000,1200,1240,1280,1400,3000):
+    w=weights(v,2);L=v//4;mid=v//2;n=v-1
+    R=Fraction(sum(w[j] for j in range(1,L+1)),sum(w[j] for j in range(1,mid+1)))
+    T=6_000_000_000
+    dL=Fraction(4*fall(L,2),v)
+    exit_bound=2*dL*T*R
+    # Exact stationary comparison bound; Decimal evaluation is descriptive.
+    row={&quot;V&quot;:v,&quot;stationary_tail_ratio&quot;:numerical(R),&quot;uniform_marginal_bound&quot;:numerical(2*R),&quot;exit_bound_T_6e9&quot;:numerical(exit_bound),&quot;negative_log_ratio_per_V&quot;:-(log(R.numerator)-log(R.denominator))/v}
+    with localcontext() as c:
+        c.prec=70
+        running=0;mean=Decimal(0)
+        tails={}
+        for j in range(n,0,-1): running+=w[j];tails[j]=running
+        for j in range(L,mid+1):
+            mean+=Decimal(tails[j]*v)/Decimal(4*fall(j,2)*w[j])
+        row[&quot;left_hitting_mean_numerical&quot;]=str(mean)
+        row[&quot;log_mean_per_V&quot;]=float(mean.ln()/Decimal(v))
+    if v==3000:
+        row[&quot;rigorous_exit_bound_lt_1e_minus_30&quot;]=exit_bound&lt;Fraction(1,10**30)
+        row[&quot;rigorous_exit_bound_lt_1e_minus_29&quot;]=exit_bound&lt;Fraction(1,10**29)
+    if v==1240:
+        row[&quot;rigorous_exit_bound_lt_1e_minus_6&quot;]=exit_bound&lt;Fraction(1,10**6)
+    report[&quot;volumes&quot;].append(row)
+Path(&#x27;work/cycle1/reaction_robust_birth_death_checks.json&#x27;).write_text(json.dumps(report,indent=2)+&#x27;\n&#x27;)
+print(json.dumps(report,indent=2))
+</pre><p><a href="../assets/406de6ccf801ddb47862826442db3d6ca9160737f26d0a6fae41475b6217cc76.py">Exact original bytes</a></p></html>
