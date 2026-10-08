@@ -1,0 +1,89 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AV: werner_probe.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AV-sources.txt">Source map</a><h1>AV: werner_probe.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=0. Exact14-file NPT investigation and13 checksum payloads preserved; full source proof/finite verifier receipt available, primary fulltexts and October716-term certificate absent. Scientific proofs/checks SOURCE-REPORTED; no intake scientific replay or independent proof reconstruction. All-copy target unresolved; product-ray restriction and sufficient-method failure explicit. External correctness, formal verification and novelty unverified. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Exploratory rank-constrained Werner forms. No numerical result is a proof.&quot;&quot;&quot;
+from __future__ import annotations
+import itertools
+import numpy as np
+from numpy.typing import NDArray
+
+
+def partial_trace(c: NDArray, dims: tuple[int, ...], sites: tuple[int, ...]) -&gt; NDArray:
+    if c.shape != (np.prod(dims), np.prod(dims)):
+        raise ValueError(&#x27;Matrix shape disagrees with subsystem dimensions&#x27;)
+    a = c.reshape(dims + dims)
+    remaining = list(dims)
+    for i in sorted(sites, reverse=True):
+        a = np.trace(a, axis1=i, axis2=i + len(remaining))
+        del remaining[i]
+    size = int(np.prod(remaining))
+    return a.reshape(size, size)
+
+
+def werner_form(c: NDArray, dims: tuple[int, ...], alpha: float = -0.5) -&gt; float:
+    out = 0.0
+    for mask in range(1 &lt;&lt; len(dims)):
+        sites = tuple(i for i in range(len(dims)) if (mask &gt;&gt; i) &amp; 1)
+        t = partial_trace(c, dims, sites)
+        out += alpha ** len(sites) * np.vdot(t, t).real
+    return float(out)
+
+
+def form_operator(c: NDArray, dims: tuple[int, ...], alpha: float = -0.5) -&gt; NDArray:
+    &quot;&quot;&quot;Apply the HS-self-adjoint superoperator tensor_i (id + alpha D_i).&quot;&quot;&quot;
+    n = len(dims)
+    a = c.reshape(dims + dims).copy()
+    # Each D_i takes a partial trace and inserts the identity in that subsystem.
+    for i, d in enumerate(dims):
+        t = np.trace(a, axis1=i, axis2=n+i)
+        t = np.expand_dims(t, axis=(i, n+i))
+        shape = [1] * (2*n)
+        shape[i] = shape[n+i] = d
+        a = a + alpha * t * np.eye(d).reshape(shape)
+    return a.reshape(c.shape)
+
+
+def restricted_matrix(u: NDArray, dims: tuple[int, ...]) -&gt; NDArray:
+    &quot;&quot;&quot;Quadratic form for C=U W, where U has orthonormal columns.&quot;&quot;&quot;
+    N, r = u.shape
+    h = np.empty((r*N, r*N), dtype=complex)
+    for k in range(r*N):
+        w = np.zeros((r,N),dtype=complex)
+        w.flat[k]=1
+        h[:,k] = (u.conj().T @ form_operator(u@w, dims)).ravel()
+    if np.linalg.norm(h-h.conj().T)&gt;1e-8:
+        raise ArithmeticError(&#x27;Restricted form failed Hermiticity check&#x27;)
+    return (h+h.conj().T)/2
+
+
+def seesaw(dims: tuple[int, ...], seed: int, rounds: int = 30) -&gt; tuple[float, NDArray]:
+    rng = np.random.default_rng(seed)
+    N = int(np.prod(dims))
+    u, _ = np.linalg.qr(rng.normal(size=(N,2)) + 1j*rng.normal(size=(N,2)))
+    c = np.zeros((N,N),dtype=complex)
+    previous = float(&#x27;inf&#x27;)
+    for step in range(rounds):
+        h=restricted_matrix(u,dims)
+        vals,vecs=np.linalg.eigh(h)
+        w=vecs[:,0].reshape(2,N)
+        c=u@w
+        value=werner_form(c,dims)
+        if value&gt;previous+1e-8:
+            raise ArithmeticError(&#x27;Seesaw monotonicity check failed&#x27;)
+        if abs(value-previous)&lt;1e-12:
+            break
+        previous=value
+        # Adjoints leave the form invariant; replace the row space by the range.
+        u,_=np.linalg.qr(w.conj().T)
+    return value,c
+
+if __name__==&#x27;__main__&#x27;:
+    rng=np.random.default_rng(904)
+    for dims in [(2,), (3,3), (3,3,3)]:
+        N=int(np.prod(dims))
+        c=rng.normal(size=(N,N))+1j*rng.normal(size=(N,N))
+        assert np.allclose(werner_form(c,dims),np.vdot(c,form_operator(c,dims)).real)
+    for seed in range(8):
+        v,c=seesaw((3,3,3),seed,rounds=35)
+        print(&#x27;seed&#x27;,seed,&#x27;q3&#x27;,v,&#x27;rank&#x27;,np.linalg.matrix_rank(c,tol=1e-8),flush=True)
+    # Save beside this script so the exploratory replay is portable.
+    from pathlib import Path
+    np.save(Path(__file__).with_name(&#x27;last_probe_matrix.npy&#x27;), c)
+</pre><p><a href="../assets/1da1bde82d025247c129d58b3b334012fac19250fa3071b2c8b46a3676002e09.py">Exact original</a></p></html>

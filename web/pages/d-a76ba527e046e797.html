@@ -1,0 +1,171 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AV: verify_exact_schur_certificate_failure.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AV-sources.txt">Source map</a><h1>AV: verify_exact_schur_certificate_failure.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=0. Exact14-file NPT investigation and13 checksum payloads preserved; full source proof/finite verifier receipt available, primary fulltexts and October716-term certificate absent. Scientific proofs/checks SOURCE-REPORTED; no intake scientific replay or independent proof reconstruction. All-copy target unresolved; product-ray restriction and sufficient-method failure explicit. External correctness, formal verification and novelty unverified. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact audit of a FALSE sufficient tensor-certificate inequality.
+
+Python standard library only. All arithmetic uses fractions.Fraction.
+This proves a failure of a proposed co-Choi domination certificate, NOT a
+counterexample to Werner undistillability and NOT NPT bound entanglement.
+
+Run:
+    python verify_exact_schur_certificate_failure.py
+    python -O verify_exact_schur_certificate_failure.py --output receipt.json
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import argparse
+from fractions import Fraction as Q
+import json
+from pathlib import Path
+from typing import Callable
+
+Matrix = list[list[Q]]
+
+
+def zeros(rows: int, cols: int) -&gt; Matrix:
+    return [[Q(0) for _ in range(cols)] for _ in range(rows)]
+
+
+def eye(n: int) -&gt; Matrix:
+    return [[Q(i == j) for j in range(n)] for i in range(n)]
+
+
+def transpose(a: Matrix) -&gt; Matrix:
+    return [list(row) for row in zip(*a)]
+
+
+def matmul(a: Matrix, b: Matrix) -&gt; Matrix:
+    if len(a[0]) != len(b):
+        raise ValueError(&quot;Incompatible matrix dimensions&quot;)
+    return [[sum((a[i][k] * b[k][j] for k in range(len(b))), Q(0))
+             for j in range(len(b[0]))] for i in range(len(a))]
+
+
+def add(a: Matrix, b: Matrix, scale_b: Q = Q(1)) -&gt; Matrix:
+    if len(a) != len(b) or len(a[0]) != len(b[0]):
+        raise ValueError(&quot;Incompatible matrix dimensions&quot;)
+    return [[a[i][j] + scale_b * b[i][j] for j in range(len(a[0]))]
+            for i in range(len(a))]
+
+
+def outer(a: list[Q], b: list[Q]) -&gt; Matrix:
+    return [[x * y for y in b] for x in a]
+
+
+def reduce_two_qubits(c: Matrix) -&gt; Matrix:
+    &quot;&quot;&quot;Phi = (Tr(.) I_2 - id/2) tensor (Tr(.) I_2 - id/2).&quot;&quot;&quot;
+    if len(c) != 4 or any(len(row) != 4 for row in c):
+        raise ValueError(&quot;Expected a 4-by-4 matrix&quot;)
+    out = zeros(4, 4)
+    tr = sum((c[a][a] for a in range(4)), Q(0))
+    for i in range(2):
+        for j in range(2):
+            for k in range(2):
+                for l in range(2):
+                    value = c[2*i+j][2*k+l] / 4
+                    if i == k:
+                        value -= sum((c[2*a+j][2*a+l] for a in range(2)), Q(0)) / 2
+                    if j == l:
+                        value -= sum((c[2*i+a][2*k+a] for a in range(2)), Q(0)) / 2
+                    if i == k and j == l:
+                        value += tr
+                    out[2*i+j][2*k+l] = value
+    return out
+
+
+def cochoi(phi: Callable[[Matrix], Matrix], n: int) -&gt; Matrix:
+    &quot;&quot;&quot;Input-first convention: J_hat(phi) = sum E_ab tensor phi(E_ba).&quot;&quot;&quot;
+    out = zeros(n*n, n*n)
+    for a in range(n):
+        for b in range(n):
+            e = zeros(n, n)
+            e[b][a] = Q(1)
+            block = phi(e)
+            for i in range(n):
+                for j in range(n):
+                    out[n*a+i][n*b+j] = block[i][j]
+    return out
+
+
+def require_equal(actual: object, expected: object, name: str) -&gt; None:
+    # Deliberately not an assert: verification also runs under python -O.
+    if actual != expected:
+        raise ArithmeticError(f&quot;Exact verification failed: {name}&quot;)
+
+
+def quadratic(v: list[Q], a: Matrix) -&gt; Q:
+    return sum((v[i] * a[i][j] * v[j]
+                for i in range(len(v)) for j in range(len(v))), Q(0))
+
+
+def verify() -&gt; dict[str, object]:
+    u = list(map(Q, [1, 0, 0, 1]))
+    uu = outer(u, u)
+    a = reduce_two_qubits(uu)
+    a_inverse = add(eye(4), uu, Q(-1, 6))
+    require_equal(a, add(eye(4), uu, Q(1, 4)), &quot;A = I + uu*/4&quot;)
+    require_equal(matmul(a, a_inverse), eye(4), &quot;A A_inverse = I&quot;)
+    require_equal(matmul(a_inverse, a), eye(4), &quot;A_inverse A = I&quot;)
+
+    ell = [reduce_two_qubits(outer(eye(4)[j], u)) for j in range(4)]
+    r = cochoi(reduce_two_qubits, 4)
+    s = zeros(16, 16)
+    for i in range(4):
+        for j in range(4):
+            # M(E_ji) = ell_j A_inverse ell_i*.
+            block = matmul(matmul(ell[j], a_inverse), transpose(ell[i]))
+            for k in range(4):
+                for l in range(4):
+                    s[4*i+k][4*j+l] = block[k][l]
+    require_equal(r, transpose(r), &quot;R is symmetric&quot;)
+    require_equal(s, transpose(s), &quot;S is symmetric&quot;)
+
+    v = list(map(Q, [3, 0, 0, 1, 0, 0, 2, 0, 0, 2, 0, 0, 1, 0, 0, 3]))
+    vcol = [[x] for x in v]
+    rv, sv = matmul(r, vcol), matmul(s, vcol)
+    require_equal(sv, [[Q(-11, 9) * x[0]] for x in rv], &quot;S v = -11 R v / 9&quot;)
+    qr, qs = quadratic(v, r), quadratic(v, s)
+    require_equal(qr, Q(9), &quot;v* R v = 9&quot;)
+    require_equal(qs, Q(-11), &quot;v* S v = -11&quot;)
+    require_equal(quadratic(v, add(r, s)), Q(-2), &quot;v* (R+S) v = -2&quot;)
+
+    # Under the canonical tensor-factor permutation, the four-site co-Choi
+    # matrices are R tensor R and S tensor S. The displayed tensor vector
+    # has expectation qr^2 - qs^2; no floating eigensolver is involved.
+    tensor_value = qr*qr - qs*qs
+    require_equal(tensor_value, Q(-40), &quot;tensor-square expectation = -40&quot;)
+    norm_squared = sum((x*x for x in v), Q(0))
+    require_equal(norm_squared, Q(28), &quot;||v||^2 = 28&quot;)
+    require_equal(tensor_value / (norm_squared**2), Q(-5, 98),
+                  &quot;normalized tensor expectation = -5/98&quot;)
+
+    return {
+        &quot;status&quot;: &quot;EXACT_METHOD_CERTIFICATE_COUNTEREXAMPLE_PASS&quot;,
+        &quot;foundational_target_resolved&quot;: False,
+        &quot;arithmetic&quot;: &quot;Python standard-library fractions.Fraction; no tolerances&quot;,
+        &quot;reference_u&quot;: [int(x) for x in u],
+        &quot;witness_v&quot;: [int(x) for x in v],
+        &quot;v_R_v&quot;: str(qr),
+        &quot;v_S_v&quot;: str(qs),
+        &quot;v_R_plus_S_v&quot;: &quot;-2&quot;,
+        &quot;tensor_square_expectation&quot;: str(tensor_value),
+        &quot;normalized_tensor_square_expectation&quot;: &quot;-5/98&quot;,
+        &quot;scope&quot;: &quot;Failure of an entangled-reference co-Choi domination certificate only&quot;,
+        &quot;not_claimed&quot;: [&quot;NPT bound entanglement&quot;, &quot;Werner distillability counterexample&quot;,
+                        &quot;all-copy undistillability&quot;, &quot;historical novelty&quot;, &quot;formal proof assistant verification&quot;]
+    }
+
+
+def main() -&gt; None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(&quot;--output&quot;, type=Path, help=&quot;Optional path for an exact JSON receipt&quot;)
+    args = parser.parse_args()
+    result = verify()
+    rendered = json.dumps(result, indent=2) + &quot;\n&quot;
+    if args.output is not None:
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(rendered, encoding=&quot;utf-8&quot;)
+    print(rendered, end=&quot;&quot;)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/6dcc35828eb85b523478631734dc940f6e99c39b3fc512fe71f99bb083bbc228.py">Exact original</a></p></html>

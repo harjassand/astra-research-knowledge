@@ -71,6 +71,10 @@ def write_jsonl(name, rows):
 # These are identified proof-bearing documents. Presence does not assert full coverage,
 # validity, independent reconstruction, or that every cited external premise is available.
 PROOF_TEXT = {
+    'N304': [('updates/AV/package/INVESTIGATION.md', 17, 79)],
+    'N305': [('updates/AV/package/INVESTIGATION.md', 81, 153)],
+    'N306': [('updates/AV/package/INVESTIGATION.md', 155, 212)],
+
     'N298': [('updates/AU/package/space_simulation/HISTORY_INDEPENDENT_HF_SPACE_SIMULATION.md', 5, 182), ('updates/AU/package/space_simulation/DIMENSION_AND_BINARY_COMPILER_AUDIT.md', 13, 300)],
     'N299': [('updates/AU/package/space_simulation/HISTORY_INDEPENDENT_HF_SPACE_SIMULATION.md', 35, 170)],
     'N300': [('updates/AU/package/space_simulation/HISTORY_INDEPENDENT_HF_SPACE_SIMULATION.md', 59, 110)],
@@ -516,6 +520,18 @@ for n in range(298,304):
     ROWS[cid('N'+str(n))]['proof_availability']['unavailable_or_unclassified']='Full authored proof modules, separate audits and3 diagnostic scripts/result JSONs available. Full generated FO compiler was not supplied or executed. GKPS15 URL/DOI/section locators supplied, primary PDF bytes absent; imported lower-bound premises and proof completeness unclassified. N303 is an evidence/limitations record.'
 ROWS[cid('N302')]['requires_external_validation'].append({'target':cid('N285'),'scope':'Validate the separate binary2D exponential max-universe hard-pair lower bound and N286/N287 source premises before the HF corollary. Both new simulation stages require fixed program parameters, unchanged binary input size and peak-over-run cardinality; not unrestricted Turing bit space.','evidence':[card_ev('N302'),card_ev('N285'),card_ev('N286'),card_ev('N287')]})
 
+# AV NPT packet: preserve the existential target and exact failure scope.
+for owner,target,scope in [
+ ('N305','N304','The arbitrary-site product-ray argument applies only when ran(C) or ran(C*) contains a fully product vector. General complex rank-two support planes need not do so; no all-copy NPT theorem follows.'),
+ ('N306','N305','Exact entangled-reference co-Choi domination fails: two-site v*(R+S)v=-2, four-site v*(R tensor R-S tensor S)v=-40. This blocks the arbitrary-reference sufficient-certificate promotion only; the valid product-reference proof remains.'),
+ ('N306','N304','The negative exact certificate occurs for CP qubit reduction tensor powers, whose actual rank-two positivity holds. It is not a Werner distillability witness or NPT bound-entangled state.'),
+ ('N306','N224','A separate exact arbitrary-reference co-Choi tensor certificate fails in a CP qubit model. This is a contextual tensor-transfer obstruction, not a proof dependency or correction to the distinct factorial-spin/cross-copy statement in N224.')]:
+    ROWS[cid(target)]['material_updates'].append({'target':cid(owner),'source_card':cid(owner),'relation':'refines_with_scoped_AV_result_or_limit','relation_status':'source_supported_scoped_notice_not_correctness_promotion','scope':scope,'evidence':[card_ev(owner)],'whole_claim_invalidated':False})
+for n in range(304,308):
+    ROWS[cid('N'+str(n))]['status_authority']='AV exact9Oct2026 investigation, source manifest and rational audit receipt. Target explicitly unresolved; restricted proof and exact method-counterexample source-reported. No independent intake proof reconstruction, scientific replay, formal or external correctness/priority certification.'
+    ROWS[cid('N'+str(n))]['proof_availability']['unavailable_or_unclassified']='Full authored investigation, exact Fraction verifier/receipt, separate SymPy derivation and exploratory NumPy scripts/arrays supplied. Third-party primary papers/repository checkouts and the October716-term rational certificate absent. N304 locates reduction/elementary arguments, not a proof of its all-copy open obligation; N307 is a provenance/limitations record.'
+ROWS[cid('N304')]['requires_external_validation'].append({'target':'external:AV_Werner_finite_copy_sources','scope':'Verify the inherited rank-two criterion and precise July2-copy hypotheses. October pinned anonymous written3-copy candidate was read by the source but its full rational matrices and716 positive multipliers were not replayed or supplied. Neither finite-copy assertion yields all-copy undistillability.','evidence':[card_ev('N304'),card_ev('N307')]})
+
 # The focused branch correction supersedes the earlier unsupported impossibility gloss.
 # It neither refutes BLR's printed claim nor certifies the original hyperbolic candidate.
 state_ev = [evidence('state/2026-10-08-bowen-bernoulli-direct-finiteness/CORRECTED_AUDIT.md', 94, 110),
@@ -719,6 +735,11 @@ gate(32,'G-COUPLED-RADIAL-GAUSSIAN-SIMPLEX','Prove or falsify the stronger coupl
     'Give a uniform analytic comparison with exact pointwise sum1 and each Gaussian mass1/3, or a rigorously certified legal profile counterexample. A profile counterexample refutes the stronger relaxation, not automatically the real-partition conjecture. Independently acquire exact circular-Riesz and optimizer dimension-reduction theorem versions/interfaces before any full-conjecture implication. Near0/1 leading terms and finite3-shell numerics are insufficient; coefficientwise Hermite dominance and single-profile Jensen are false.',
     'The checkpoint supplies two restricted arguments and two failed-promotion counterexamples. The surviving radial inequality is unproved and could be false even if the original conjecture holds. No10/10 objective, external correctness or novelty clearance is established.',[card_ev('N292'),card_ev('N293'),card_ev('N294'),card_ev('N295'),card_ev('N296'),card_ev('N297')])
 
+gate(33,'G-ALL-COPY-NPT-UNDISTILLABILITY','Resolve the all-copy NPT target beyond product-ray supports',['N304','N305','N306','N307'],
+    'Does any finite-dimensional NPT state remain undistillable for every copy number; can the boundary qutrit candidate satisfy q_n(C)>=0 for all n and complex rank(C)<=2?',
+    'For a positive answer give one positive trace-one genuinely NPT state and a rigorous universal all-copy rank-two positivity proof with exact bipartition, complex supports and all imported assumptions checked. For the boundary qutrit candidate prove the displayed q_n inequality without rank-preserving partial-trace or arbitrary-reference co-Choi shortcuts. A valid distillation witness rejects that candidate only; negating the existential target requires a theorem covering every finite-dimensional NPT state. Audit any finite3-copy716-term source certificate separately without promoting it to all n; obtain external correctness and focused priority review.',
+    'Source reconstructs an arbitrary-site product-ray subclass and gives an exact sufficient-certificate counterexample in a CP qubit model. Neither resolves NPT bound entanglement; finite numerical minima, a three-copy source claim and tensor-closed PPT zero-key coherence do not supply the missing universal mechanism.',[card_ev('N304'),card_ev('N305'),card_ev('N306'),card_ev('N307')])
+
 write_jsonl('CURRENT_CLAIM_STATUS.jsonl', list(ROWS.values()))
 write_jsonl('OPEN_PROOF_GATES.jsonl', GATES)
 
@@ -726,6 +747,7 @@ priority_lines = ['# Current frontier', '',
     'Read this only for coordination. Workers start with `00_START_HERE.txt` and retrieve the relevant topic/card, its current-status row, scoped material updates, blockers and decisive proof ranges. `01_CORE.txt` is optional.', '',
     'This is a curated decision view of existing evidence, not a new research run. Priority means a supported next decision; it predicts neither correctness nor breakthrough value. Archived restart instructions do not authorize continuation.', '',
     'Source card status is immutable. A later claim can refine an older gap while remaining unverified. Proof availability, reported internal checks, external correctness and historical priority are separate. Unlisted relations and incomplete proof coverage remain UNKNOWN.', '',
+    'AV N304–307: NPT all-copy existential target remains unresolved; boundary-qutrit rank-two partial-trace obligation exact. Product-ray support subclass works for any finite sites, while an exact qubit co-Choi certificate fails at four sites with−40. Full proof/verifier/receipt/source scopes/probes/arrays preserved; no Werner distillability counterexample, all-copy theorem, primary3-copy certificate replay or external correctness/novelty certification.', '',
     'AU N298–303: fixed-BGS-term HF peak-state simulation independent of elapsed runtime, atom-safe quotient/GC/Card mechanisms and resettable binary2D compiler internally claimed. Conditional exponential transfer retains N285–287 lower-bound premises, binary n>=2 input and fixed-program costs. Full addendum/audits/negative controls/3 semantic suites preserved; no full FO generator execution or external/formal/novelty certification.', '',
     'AT N292–297: source-reconstructed shellwise-balanced all-correlation sector optimality and three-slab instability; Hermite-level dominance and single-profile radial concavity fail. Coupled radial(L) remains a stronger unproved sufficient simplex gate; imported dimension reduction and unlocated KLS priority claims require primary-source review. Exact checkpoint preserved; no foundational breakthrough/external correctness/novelty established.', '',
     'AS N276–291: exact specified PPT cubes plus filtered neighborhoods and scoped no-go/UNKNOWN rotations; Clifford common factor2, general common-frame gate open; conditional enlarged-group Bernoulli repair; restricted log-contact/winding/K1 costs. First record supplies fixed-model interpretation state-size/support/HF candidate, all-copy central log-entropy order with coefficient gap, exact finite determinant obstruction and any-pair Gaussian EB control. Two full captures and original Ultra ZIP preserved; 10/10 objective, external correctness/formal certification/novelty remain unestablished.', '',

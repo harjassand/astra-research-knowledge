@@ -1,6 +1,6 @@
 # Astra Research Knowledge
 
-373 scoped research cards, full supplied A–I research documents, J/K result summaries, and 19,873 scientific source pages. Claims retain their assumptions, dependencies, counterexamples and scientific status. Publication is not proof validation or model-weight training.
+377 scoped research cards, full supplied A–I research documents, J/K result summaries, and 19,894 scientific source pages. Claims retain their assumptions, dependencies, counterexamples and scientific status. Publication is not proof validation or model-weight training.
 
 Start with [00_START_HERE.txt](00_START_HERE.txt); [01_CORE.txt](01_CORE.txt) is optional broad orientation, then [result cards](web/llms.txt) and the [paged source library](web/library.txt). The bootstrap is 278 o200k tokens; broad scientific context is loaded on demand. The complete linked new J/K research notes and reproducibility packages were not supplied; their absence is explicit.
 
@@ -130,6 +130,10 @@ Added AT: N292–297: all-correlation sector optimality for shellwise-balanced p
 
 
 Added AU: N298–303: history-independent fixed-BGS-term HF simulation with max interpreted universe polynomial in native peak hereditary size, not elapsed runtime; native-binding footprint, cardinality-driven ordinal reserve and transitive garbage collection; atom-safe saturated quotient constructor with exact stored closure; resettable binary2D incidence compiler across fixed intermediate dimensions/arities. Conditional exponential HF/state lower-bound transfer retains N285–287 premises and unchanged binary input size. Full14-file addendum, authored13-payload manifest, separate audits and3 diagnostic scripts/results preserved. Simulation gate internally claimed closed only in precise model; no general bit-space/PvsNP theorem, full generator execution, external correctness or historical novelty certification. [Sources](web/AU-sources.txt);[scopes](web/AU-reports.txt);[archive/availability](web/AU-package.txt).
+
+
+
+Added AV: N304–307: exact boundary-qutrit all-copy rank-two obligation remains open; any-site endpoint positivity for support planes containing a fully product ray; exact entangled-reference co-Choi method failure with9/−11 and four-site−40(−5/98 normalized), while actual qubit positivity holds. Full14-file proof/source/finite-receipt/probe/array packet preserved. July2-copy and October3-copy source scopes, unexecuted716-term candidate certificate, PPT-zero-key and automata word-length transfer limits explicit. No NPT bound-entanglement resolution, external correctness/novelty clearance or intake scientific replay. [Sources](web/AV-sources.txt);[scopes](web/AV-reports.txt);[archive/availability](web/AV-package.txt).
 
 <!-- CURRENT DECISION LAYER -->
 Active frontier: frontier/PRIORITIES.md
