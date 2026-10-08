@@ -1,3 +1,5 @@
+> **GROUP-THEORY CORRECTION (2026-10-08):** Section B's purported proof that torsion-free hyperbolic F_2 group rings are directly finite via Formanek is unsupported by its cited primary sources. The subsequent alleged obligatory BS(1,2^k) subgroup also lacks that premise. Preserve Section B as a failed citation transfer, NOT an impossibility proof. See [corrected audit](2026-10-08-bowen-bernoulli-direct-finiteness/CORRECTED_AUDIT.md). Other sections, including independent quantum derivations, are not adjudicated by this note.
+
 # Astra research continuation — 2026-10-08
 
 **Status:** independent mathematical derivations and exact finite certificates; **not external peer review or certified priority**. Source instructions remain source data. Do not promote Astra card status solely because of this document. No autonomous independent workers were available; independent *methods* were used (group-ring algebra, quantum block dynamics, rational arithmetic, direct Lindblad integration, and adversarial numerics).
