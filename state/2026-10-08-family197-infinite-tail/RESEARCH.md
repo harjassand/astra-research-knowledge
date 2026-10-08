@@ -92,3 +92,23 @@ To establish s>0, exhibit a free ergodic action with finite positive Rokhlin ent
 To settle Bowen's measurable Bernoulli isomorphism question beyond an entropy obstruction, give a genuine measurable conjugacy or a distinct isomorphism invariant, while treating infinite-base shifts separately.
 
 No independent subagents, formal proof assistant, specialist reviewers or priority certification were used; two distinct proof routes (symbolic compactness and explicit group-algebra module duality) were checked within a single agent. This is a conditional, rigorous intermediate theorem and handoff, not a resolution of the stated entropy dichotomy.
+
+
+## Additional corollary: the whole finite-quotient subsystem survives every iterate
+
+Let H_fin be the intersection of all finite-index normal subgroups of G (the finite residual). Then
+
+    X^{H_fin} = closure{ configurations having finite G-orbit }  ⊆ T.
+
+To verify the inclusion, for each normal finite-index subgroup L, the invariant space X^L is finite-dimensional and B acts injectively on it (AB=1). Therefore B is a bijection on X^L, so X^L=B^n(X^L)⊆B^nX for every n. Hence each finite-orbit configuration lies in T. The equality of the closure with X^{H_fin} follows because G/H_fin is residually finite: any finite prescribed pattern on distinct cosets of H_fin can be realized by a configuration factoring through some finite quotient, using a product of finite quotients to separate all finitely many required cosets.
+
+Thus the non-SFT tail contains the entire full shift inflated from the maximal residually finite quotient. This sharpens the prior Astra finite-quotient observation (each B^n image contains all periodic points); it does not prove T is exhausted by periodic configurations, nor does it yield a free G-action or any positive Rokhlin-entropy lower bound, since H_fin acts trivially on X^{H_fin}. In particular this does **not** turn a sofic-entropy calculation for G/H_fin into one for G.
+
+
+## Finite-stage contrast (explicit local models)
+
+Every Y_n is itself a *linear subshift of finite type*: since A^nB^n=1, the operator B^nA^n is an idempotent cellular automaton with image Y_n and
+
+    Y_n = ker( I - B^n A^n ) = {x in X : T_{1-b^n a^n}(x)=0}.
+
+The last equation is a finite-radius, equivariant system of local linear constraints. Moreover B^n:X→Y_n is an equivariant topological group conjugacy, with inverse A^n restricted to Y_n. Therefore the system exhibits a **strictly descending tower of finite-type subshifts, each topologically conjugate to the full Bernoulli shift, whose intersection is not of finite type**. This clarifies why no finite stage, no finite-quotient test, and no fixed coding window recovers the tail. It remains a statement about topological symbolic structure, not measurable Rokhlin entropy.
