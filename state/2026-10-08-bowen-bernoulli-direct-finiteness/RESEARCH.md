@@ -1,3 +1,5 @@
+> **CORRECTED AUDIT (2026-10-08):** This archival investigation contains an erroneous characteristic-p all-fields Formanek impossibility claim and misses Seward's Corollary 7.7 (POS iff positive h_sup, including infinite entropy). Its algebraic splitting and support-size entropy estimates remain valid. See [CORRECTED_AUDIT.md](CORRECTED_AUDIT.md), which supersedes those two claims and proves the conditional G x Thompson V zero-POS result.
+
 # Bowen's direct-finiteness / Bernoulli-isomorphism question — research handoff
 Date: 2026-10-08 (Brisbane)
 Status: Exact algebraic statements proved from the explicit hypothesis ab=1 != ba; entropy assertions are rigorous conditional corollaries of named Seward theorems. OpenAI family 197 source theorem itself not independently validated here. This record is NOT an announcement of a resolved Bernoulli isomorphism problem and carries no novelty certification.
