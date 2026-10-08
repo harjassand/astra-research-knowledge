@@ -116,6 +116,25 @@ So relative entropy grows as [d(d-1)/2]log r - Sum_j log(j!)+o(1), while global 
 6. Equality rigidity/uniqueness for generic d,r has NOT been classified. Do not extrapolate the rank<=d rectangular immanant inequality to arbitrary rank.
 7. No inference to a practical quantum preparation advantage, cryptographic secrecy, high entanglement depth or error-resilience. Preparing/detecting these highly symmetric global subspaces can require substantial resources.
 
+## Further EXACT operational corollary: optimal zero-false-negative singlet test and fidelity
+
+For an arbitrary fully separable sigma, tr(P_inv sigma)<=p. Thus the binary global projector measurement {P_inv,I-P_inv} accepts Omega with probability 1 and accepts any fully separable adversary with probability at most p. The bound is SHARP (sigma_opt attains it), so p is exactly the optimal type-II error for the zero-type-I test P_inv. A POVM effect E with tr(E Omega)=1 must act as identity on supp(Omega); positivity implies E>=P_inv, hence cannot improve the worst-case separable false-positive probability.
+
+Likewise, if F is SQUARED Uhlmann fidelity, monotonicity of fidelity under binary measurement gives F(Omega,sigma)<=tr(P_inv sigma)<=p for all SEP sigma. The explicit commuting sigma_opt satisfies F(Omega,sigma_opt)=p. Thus
+
+    max_(sigma in SEP) F(Omega,sigma)=p;
+
+the fidelity-defined logarithmic/geometric entanglement measures equal -log p and 1-p, respectively. This statement concerns the fidelity-based measure, NOT the convex-roof geometric measure. It is a single-copy theorem and does NOT assert multiplicativity across copies held jointly by laboratories.
+
+## Strengthened historical-priority caution
+
+Zhu, Chen and Hayashi, "Additivity and non-additivity of multipartite entanglement measures" (2010), https://arxiv.org/abs/1002.2511 , previously derived one- and two-copy entanglement measures for antisymmetric projector states and explicit geometric-measure nonadditivity. Therefore nonadditivity of antisymmetric-state geometric/relative entanglement measures is established prior art and MUST NOT be presented as a discovery here. Their result concerns different tensor and antisymmetric-projector contracts in its original one- and two-copy theorems. Rigorous comparison of their "generalized antisymmetric states" to the full maximally mixed SU(d)-singlet projector family (r^d) remains REQUIRED before claiming historical novelty for the exact formula here.
+
+Rico, Grinko, Krebs and Zaw, Phys. Rev. Lett. 137 100203 (September 4 2026), https://doi.org/10.1103/nvk2-h8d5 , already connect Schur–Weyl isotypic measurements, multipartite entanglement structure and immanant inequalities; their abstract establishes fixed orders three/four and general entanglement witnesses. The present arbitrary-(d,r) coefficient bound may overlap with results in its supplement; an abstract-only comparison is NOT adequate for novelty certification.
+
+Neither the current coefficient proof nor the previous SU(d)-marginal threshold solves Lieb's full permanental-dominance conjecture, which remains the higher-impact open gate. General rectangular immanants at arbitrary PSD rank are OUTSIDE the proof's domain.
+
+
 ## Historical novelty audit (limited, not decisive)
 
 Relevant known math: Hadamard determinant bound, Cauchy–Binet, eigenvalue AM–GM, Schur–Weyl duality, hook-length formula and geometric measure/robustness of multipartite entanglement are all established ingredients. The precise full family of optimum entanglement quantities and normalized rectangular immanant inequality was not located in a targeted October 2026 literature scan; this is **NOT an exhaustive priority search**. Particularly relevant:
