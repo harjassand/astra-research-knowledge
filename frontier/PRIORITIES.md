@@ -24,4 +24,4 @@ Material corrections: N135 → N160 is a full-proof candidate sharp identical-un
 
 Exact pass conditions and immutable source hashes/line ranges are in `OPEN_PROOF_GATES.jsonl`. One row per card is in `CURRENT_CLAIM_STATUS.jsonl`; never preload the whole status file. Retrieve the relevant card row or sidecar through the repository retrieval interface.
 
-Other historical restarts remain in `state/` and source archives. This dashboard selects 11 concrete gates; it does not exhaustively rank every field or independently reconstruct all 243 cards. Candidate supersession does not externally validate a gate.
+Other historical restarts remain in `state/` and source archives. This dashboard selects 11 concrete gates; it does not exhaustively rank every field or independently reconstruct all 244 cards. Candidate supersession does not externally validate a gate.

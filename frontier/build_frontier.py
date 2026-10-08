@@ -71,6 +71,7 @@ def write_jsonl(name, rows):
 # These are identified proof-bearing documents. Presence does not assert full coverage,
 # validity, independent reconstruction, or that every cited external premise is available.
 PROOF_TEXT = {
+    'N174': [('updates/AH/package/state/2026-10-08-family197-infinite-tail/RESEARCH.md', 97, 114)],
     'N165': [('updates/AG/package/state/2026-10-08-bowen-bernoulli-direct-finiteness/CORRECTED_AUDIT.md', 94, 110)],
     'N166': [('updates/AG/package/state/2026-10-08-bowen-bernoulli-direct-finiteness/CORRECTED_AUDIT.md', 11, 81)],
     'N167': [('updates/AG/package/state/2026-10-08-bowen-bernoulli-direct-finiteness/CORRECTED_AUDIT.md', 83, 93)],
@@ -190,6 +191,11 @@ relation('N136', 'depends_on', 'N131',
 relation('N136', 'depends_on', 'N137',
     'The candidate finite-time sharp law is asserted for t>=the N137 sufficient T_sep in the same ideal bath model.',
     [card_ev('N136', 5, 5)])
+
+relation('N174', 'supersedes', 'N170',
+    'Pinned branch followup adds the finite-stage full-shift-conjugate linear SFT tower and inclusion of the full shift inflated from the maximal residually finite quotient in the non-SFT tail. Original tail deduction remains valid; no entropy or measurable-conjugacy resolution, no claim that the quotient subsystem exhausts the tail.',
+    [evidence('updates/AH/package/state/2026-10-08-family197-infinite-tail/RESEARCH.md',97,114)],
+    component='additional finite-stage and finite-quotient tail structure; original theorem retained')
 
 # The focused branch correction supersedes the earlier unsupported impossibility gloss.
 # It neither refutes BLR's printed claim nor certifies the original hyperbolic candidate.

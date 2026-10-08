@@ -1,6 +1,6 @@
 # Astra Research Knowledge
 
-243 scoped research cards, full supplied A–I research documents, J/K result summaries, and 18,432 scientific source pages. Claims retain their assumptions, dependencies, counterexamples and scientific status. Publication is not proof validation or model-weight training.
+244 scoped research cards, full supplied A–I research documents, J/K result summaries, and 18,437 scientific source pages. Claims retain their assumptions, dependencies, counterexamples and scientific status. Publication is not proof validation or model-weight training.
 
 Start with [00_START_HERE.txt](00_START_HERE.txt); [01_CORE.txt](01_CORE.txt) is optional broad orientation, then [result cards](web/llms.txt) and the [paged source library](web/library.txt). The bootstrap is 278 o200k tokens; broad scientific context is loaded on demand. The complete linked new J/K research notes and reproducibility packages were not supplied; their absence is explicit.
 
@@ -72,6 +72,10 @@ Added AF: N160–164 candidate sharp identical-unital thermal-noise boundary tr(
 
 
 Added AG: N165–173 six-branch reconciliation: five missing branches merged, one already incorporated; exact proof/checker/history snapshots retained. Corrects unsupported all-char Formanek impossibility and Seward infinite-only caveat; conditional Haar/rank and GxV zeroPOS, support/sparse entropy/coding/microstate/Wold-tail obstructions, exact stopped-path/first-passage identities, all-d uniform logvaluation absorber conditional on OA149. Original entropy/conjugacy and external proof/priority gates remain open; no intake scientific replay. [Sources](web/AG-sources.txt);[scopes](web/AG-reports.txt);[archive/availability](web/AG-package.txt).
+
+
+
+Added AH: N174 pinned family197 branch followup: every finite-stage image is a full-shift-conjugate linear SFT, strict infinite intersection nonSFT; tail contains inflated fullshift from maximal residuallyfinite quotient. Exact amended source/correction preserved; no entropy/conjugacy resolution or external validation. [Sources](web/AH-sources.txt);[scopes](web/AH-reports.txt);[archive/availability](web/AH-package.txt).
 
 <!-- CURRENT DECISION LAYER -->
 Active frontier: frontier/PRIORITIES.md
