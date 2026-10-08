@@ -71,6 +71,25 @@ def write_jsonl(name, rows):
 # These are identified proof-bearing documents. Presence does not assert full coverage,
 # validity, independent reconstruction, or that every cited external premise is available.
 PROOF_TEXT = {
+    'N246': [('updates/AP/package/pit/RESEARCH_STATE.md', 1, None)],
+    'N247': [('updates/AP/package/pit/RESEARCH_STATE.md', 1, None)],
+    'N248': [('updates/AP/package/pit/RESEARCH_STATE.md', 1, None)],
+    'N249': [('updates/AP/package/pit/RESEARCH_STATE.md', 1, None)],
+    'N250': [('updates/AP/package/pit/RESEARCH_STATE.md', 1, None)],
+    'N251': [('updates/AP/package/reports/02_RELATIVE_BERNOULLI_SPLITTING.txt', 1, None)],
+    'N252': [('updates/AP/package/reports/06_FINITE_POWER_EXTRACTION.txt', 1, None)],
+    'N253': [('updates/AP/package/reports/06_FINITE_POWER_EXTRACTION.txt', 1, None)],
+    'N254': [('updates/AP/package/reports/03_TRACK_A_COCYCLE.txt', 1, None)],
+    'N255': [('updates/AP/package/reports/03_TRACK_A_COCYCLE.txt', 1, None)],
+    'N256': [('updates/AP/package/reports/03_TRACK_A_COCYCLE.txt', 1, None)],
+    'N257': [('updates/AP/package/reports/04_TRACK_B_NONCOLLAPSE.txt', 1, None)],
+    'N258': [('updates/AP/package/reports/04_TRACK_B_NONCOLLAPSE.txt', 1, None)],
+    'N259': [('updates/AP/package/reports/05_RANK_TOPOLOGY_BARRIERS.txt', 1, None)],
+    'N260': [('updates/AP/package/reports/05_RANK_TOPOLOGY_BARRIERS.txt', 1, None)],
+    'N261': [('updates/AP/package/reports/05_RANK_TOPOLOGY_BARRIERS.txt', 1, None)],
+    'N262': [('updates/AP/package/branches/research/2026-10-08-independent-geometry-audit/RESEARCH_REPORT.md', 1, None)],
+    'N263': [('updates/AP/package/branches/state/2026-10-08-steklov-kyfan-growth-budget.md', 1, None)],
+
     'N227': [('updates/AO/package/proofs/chemistry/ORDER5_FROZEN.md', 1, None), ('updates/AO/package/proofs/chemistry/ORDER5_EXACT_RATE_CLASSIFICATION.md', 1, None), ('updates/AO/package/proofs/rate_phase_blind/report.md', 1, None)],
     'N228': [('updates/AO/package/proofs/chem_explosion_blind/phase2/no_pure_cubic_nonexplosion.md', 1, None), ('updates/AO/package/proofs/chem_explosion_blind/phase2/both_pure_cubic_nonexplosion.md', 1, None), ('updates/AO/package/proofs/cubic_one_pure_blind/proof_v1.md', 1, None), ('updates/AO/package/proofs/integration/two_species_cubic_composition_scope_v1.md', 1, None)],
     'N229': [('updates/AO/package/proofs/chemistry/ORDER4_NONEXPLOSIVE_NEARMISS.md', 1, None)],
@@ -349,6 +368,30 @@ for n in range(227,246):
     ROWS[cid('N'+str(n))]['proof_availability']['unavailable_or_unclassified']='Authored technical proofs/audits/code/results available; primary full-paper bytes excluded from distributable ZIP, versions/hashes/read scopes retained. Completeness of all imported proofs and subclaims unclassified.'
 ROWS[cid('N245')]['proof_availability']['available_evidence_sources'] += [evidence('updates/AO/package/'+p,scope='authoritative checkpoint metadata and reported review/replay scope, not proof certification') for p in ['REPORT.md','CLAIM_LEDGER.json','PROVENANCE_AND_REPRODUCTION.md','PACKAGE_MANIFEST.json','verification/REPLAY_SUMMARY.json','process/resource_usage.json']]
 
+# AP six foundational reports, independently pinned missing branch capture.
+relation('N253','supersedes','N251',
+    'The later finite-power coloring/right-inverse argument obtains arbitrary finite-entropy Bernoulli direct factors of X and infinite weak Pinsker entropy without the earlier inhomogeneous-extension relative-isomorphism application. It neither validates nor refutes the earlier K-squared extraction claim. Residual cancellation and Bernoulli conjugacy remain unproved; group-ring torsion-free premises conditional.',
+    [evidence('updates/AP/package/reports/06_FINITE_POWER_EXTRACTION.txt')],component='alternative proof route for X splitting and weak Pinsker conclusion only')
+relation('N263','supersedes','N210',
+    'The variable-angular-measure birth-degree proof permits bounded time variation of smoothly precompact polar angular metrics with convergent area, retaining an O(p) measure-derivative correction. Same limsup coefficient and new liminf/birth-degree organization in every stated dimension; no general Ricci-only result. A convergent scalar f/r does not alone bound the derivative of its rescaled angular metric, so the fixed-area proof and general Theorem B require separate interface checks.',
+    [evidence('updates/AP/package/branches/state/2026-10-08-steklov-kyfan-growth-budget.md')],component='polar sufficient assumptions and additional birth-degree/liminf bound, existence unverified')
+for owner,target,scope in [
+ ('N253','N166','Adds conditional infinite weak Pinsker direct-product extraction, not a change to the strict finite supremal Rokhlin upper or a proof of the original entropy sign. Weak Pinsker and Rokhlin entropy are distinct invariants.'),
+ ('N254','N174','Adds infinite mixing residual tail and cyclic Bernoulli restrictions, not a G-Bernoulli tail or an entropy separator.'),
+ ('N256','N170','Canonical tail projections are iid at a coordinate and linear shears stay one-half apart in measure; no naive convergent linear Hilbert-hotel limit. A different nonlinear measurable conjugacy is not excluded.'),
+ ('N262','N210','Time-averaged variable-area capacity removes the scalar rf-prime/f limit by exact integrated endpoint cancellation, under slowly varying smoothly precompact angular geometry. Historically novel status unverified.'),
+ ('N263','N240','Parallel all-dimensional Steklov/birth-degree organization; N240 broader attributed published three-dimensional energy-Gram corollary and priority downgrade remain current. No chronological novelty promotion.'),
+ ('N259','N65','Rank-two faithful linear models block rectangular-separation-only transfers; the original finite-field permutation construction is retained.'),
+ ('N260','N65','Characteristic-zero inner rank blocks the naive low-rank lift, without establishing a unitary-microstate obstruction.'),
+ ('N261','N65','Conditional L2 homology and classical embedding barriers narrow the Singer route; no counterexample or source-geometry certification.')]:
+    ROWS[cid(target)]['material_updates'].append({'target':cid(owner),'source_card':cid(owner),'relation':'refines_scoped_extension_or_transfer_obstruction','relation_status':'source_supported_scoped_notice_not_correctness_promotion','scope':scope,'evidence':[card_ev(owner)],'whole_claim_invalidated':False})
+for n in range(246,265):
+    ROWS[cid('N'+str(n))]['status_authority']='AP immutable six pasted reports, original PIT authored archive and captured Git blobs; explicit source-ledger mapping. Complete arguments are source-reported and premises remain conditional. No intake scientific replay, independent proof reconstruction, formal/external correctness or priority certification; merge is preservation only.'
+    ROWS[cid('N'+str(n))]['proof_availability']['unavailable_or_unclassified']='Identified written proofs in reports available, plus full PIT verifier/fixtures/archive and geometry proof/code. Other linked sandbox checkpoints and primary-paper copies absent. All imported premise completeness and relative-isomorphism application unclassified.'
+ROWS[cid('N251')]['requires_external_validation'].append({'target':'external:relative_isomorphism_to_G_conjugacy','scope':'Independently check the precise Hoff Lemma3.3.7/Thouvenot orbit-equivalence-relation to G-equivariant homogeneous Bernoulli extension interface. Later finite-power proof avoids this interface; not a validation of K-squared extraction.','evidence':[card_ev('N251'),card_ev('N252')]})
+for n in [251,252,253,254,255,256]:
+    ROWS[cid('N'+str(n))]['requires_external_validation'].append({'target':cid('N165'),'scope':'Conditional on an actual torsion-free F2 group-ring one-sided inverse/witness; published Lean torsion-bearing scope does not prove the companion torsion-free claim. Do not import disputed positive-characteristic citation unconditionally.','evidence':[card_ev('N165'),card_ev('N252')]})
+
 # The focused branch correction supersedes the earlier unsupported impossibility gloss.
 # It neither refutes BLR's printed claim nor certifies the original hyperbolic candidate.
 state_ev = [evidence('state/2026-10-08-bowen-bernoulli-direct-finiteness/CORRECTED_AUDIT.md', 94, 110),
@@ -439,7 +482,7 @@ gate(10, 'G-UNITAL-NOISE-BOUNDED-SCORES', 'Make the three-axis unital-noise sepa
     'Full AF proof/code available; source-reported diagnostics do not emit bounded scores or a useful finite-N threshold. The independent filter has exp[-t sqrt(N)/2+O(1)] herald cost and does not give unfiltered distance by itself.',
     [evidence('updates/AF/package/THEOREM_AND_PROOF.md',317,324),evidence('updates/AF/package/THEOREM_AND_PROOF.md',405,423),evidence('updates/AF/package/RESEARCH_STATE.md',73,81)])
 
-gate(11, 'G-ORIGINAL-FAMILY197-ENTROPY', 'Decide original family-197 entropy before Bernoulli classification', ['N166','N167','N168','N169','N170'],
+gate(11, 'G-ORIGINAL-FAMILY197-ENTROPY', 'Decide original family-197 entropy before Bernoulli classification', ['N166','N167','N168','N169','N170','N253','N254','N257'],
     'Can the original family-197 group be proved to have h_sup=0 or >0 under an independently checked witness?',
     'Acquire actual witness/group-word operations and a rank-density-to-zero sequence, or construct an actual arbitrarily-small-entropy generating measurable partition, or a nonsofic-applicable positive entropy lower bound. State the separate measurable conjugacy/invariant gate. Product G times Thompson V does not answer original G.',
     'Branches add concrete support, coding, finite-model and infinite-tail obstructions but do not decide original entropy. Corrected Corollary 7.7 removes the spurious infinite-only loophole; equality of all Bernoulli entropy still does not imply isomorphism.',
@@ -477,7 +520,7 @@ gate(17, 'G-DIOPHANTINE-KINETIC-COMPILER', 'Acquire an arithmetic-preserving pos
     'The abstract convex-flow reduction does not implement chemistry or robust physical computation; adding a positive clock floor destroys the arithmetic stationary interface.',
     [evidence('updates/AK/package/state/2026-10-08-convex-gradient-diophantine/RESEARCH_STATE.md',105,None),evidence('updates/AK/package/state/2026-10-08-convex-gradient-diophantine/KINETIC_REALIZATION_GATE.md',22,43)])
 
-gate(18, 'G-STEKLOV-UNIFORM-COLLAR-REVIEW', 'Review polar capacity, published-method attribution and matching geometry', ['N210','N211','N240','N175'],
+gate(18, 'G-STEKLOV-UNIFORM-COLLAR-REVIEW', 'Review polar capacity, published-method attribution and matching geometry', ['N210','N211','N240','N262','N263','N175'],
     'Does the broader published energy-Gram route give the stated3D upper, and do inherited matching metrics meet the compact positive polar-link class?',
     'Independently reconstruct uniform quadratic-form and outer-norm comparison, precompact-family Weyl control, boundary measure evolution, trace independence and determinant integration at fixed immutable versions. Verify N175 separately before matching sharpness; compare precise earlier dimension bounds. No no-foliation extension is implied.',
     'N240 attributes a broader3D energy-Gram upper to Li-Wang machinery and removes slow variation. Old higher-dimensional/collar statements retained; exact primary source and countable matching still require independent specialist review, not finite capacity algebra.',
@@ -520,6 +563,19 @@ gate(25,'G-CRITICAL-GIBBS-LOCAL-REVIEW','Review the exact critical Gibbs local w
     'The sharp r~sqrtN window is an exact-model candidate; a separable rare-sector mixture defeats replacing it with matching means/pairs or a chi-square lower. No ALLSEP entanglement conclusion.',
     [evidence('updates/AO/package/proofs/curie_weiss/CRITICAL_PROOF_FROZEN.md',5,280),evidence('updates/AO/package/proofs/critical_quantitative_audit/INDEPENDENT_PROOF.md',1,316)])
 
+gate(26,'G-CIRCUIT-LOGARITHMIC-CONTACT','Decide circuit-size-sensitive logarithmic contact',['N246','N247','N248','N249','N250'],
+    'Is there a uniform explicit polynomial contact bound B(n,s,D) for every nonzero admitted small commutative circuit, or a small-circuit counterfamily?',
+    'Prove the size/degree/field/constant/evaluation contracts and a polynomial contact bound without expanding exponential derivative closure, or construct a uniform polynomial-size circuit family with superpolynomial contact. Four finite fixtures, large linear-state dimension or the prior small-derivative theorem do not settle this. Keep exact rational generator costs separate from black-box evaluation.',
+    'The sufficient reduction is supplied, hypothesis unproved; direct nonlinear contact is not blocked by faithful linear-realization lower bounds.',[card_ev('N250'),card_ev('N249')])
+gate(27,'G-DEFECT-BERNOULLICITY-OR-COCYCLE','Decide a residual Bernoullicity or cocycle-stabilization bridge',['N251','N252','N253','N254','N255','N256','N257','N258','N165','N166'],
+    'Can the explicit finite defect power be proved Bernoulli, or can a stabilized Bernoulli insertion preserve the original twisted extension cocycle?',
+    'Validate the actual torsion-free algebraic witness and the coloring/right-inverse proof, then prove the independent generating-Bernoulli property of K-power/X-times-residual, or exhibit exact measurable displacement lift/cocycle identity with a legal residual automorphism. Finite XOR feasibility, almost-cocycle convergence, infinite weak Pinsker entropy, mutual factors and equal ordinary invariants do not imply conjugacy. Earlier two-defect relative-isomorphism application requires separate exact-source review.',
+    'A finite-power exact direct-product candidate is preserved, but unequal-entropy Bernoulli conjugacy and original supremal Rokhlin entropy sign both remain unresolved.',[card_ev('N252'),card_ev('N255'),card_ev('N256'),card_ev('N165')])
+gate(28,'G-RANK-OR-MANIFOLD-TRANSFER','Acquire a bridge beyond rank and PL thickening obstructions',['N259','N260','N261','N65','N165'],
+    'Is there an additional unitary-microstate obstruction or an alternative compact aspherical five-manifold realizing the required group?',
+    'For approximation, supply structure beyond rectangular-word separation without an impossible characteristic-zero lift. For Singer, realize G-times-F2 in a compact aspherical five-manifold or supply a different above-middle homology mechanism, validating source geometry and the exact published reflection theorem. Canonical graph-product spines fail classical local link embeddings. Source rank obstructions and conditional hyperbolic five-manifold deduction are not these endpoints.',
+    'Both routes need genuinely new mathematical input; do not treat an explicit obstruction, existing theorem application or repository integration as a historic discovery.',[card_ev('N259'),card_ev('N260'),card_ev('N261')])
+
 write_jsonl('CURRENT_CLAIM_STATUS.jsonl', list(ROWS.values()))
 write_jsonl('OPEN_PROOF_GATES.jsonl', GATES)
 
@@ -527,6 +583,7 @@ priority_lines = ['# Current frontier', '',
     'Read this only for coordination. Workers start with `00_START_HERE.txt` and retrieve the relevant topic/card, its current-status row, scoped material updates, blockers and decisive proof ranges. `01_CORE.txt` is optional.', '',
     'This is a curated decision view of existing evidence, not a new research run. Priority means a supported next decision; it predicts neither correctness nor breakthrough value. Archived restart instructions do not authorize continuation.', '',
     'Source card status is immutable. A later claim can refine an older gap while remaining unverified. Proof availability, reported internal checks, external correctness and historical priority are separate. Unlisted relations and incomplete proof coverage remain UNKNOWN.', '',
+    'AP six foundational reports plus two formerly missing branches: N246–264 preserve exact PIT representation/lift barriers and prior-art downgrade, conditional finite-power Bernoulli extraction with residual/cocycle and invariant gates, rank/topology transfer obstructions, averaged polar capacity and variable-area birth-degree budgets. Original PIT packet/code retained; other sandbox links unavailable. No foundational endpoint, scientific replay or external correctness/priority upgrade. Old AO programme remains paused.', '',
     'AO checkpoint is user-reported PAUSED: N227–245 preserve26 exact ledger claims, strongest chemical order-five equality/cubic exclusion, collective concentration and narrower charged certification, critical square-root Gibbs marginals. Next source-recommended mathematical gate is two-species order4; no research was resumed. N240 broadens the3D polar upper by attributed published energy-Gram machinery, and N242 makes the actual sampler-law obstacle concrete. Original proofs/audits and negative routes retained; all remain externally unverified.', '',
     'AM/AN: N213–226 include linear PPT decomposition-rank obstructions and a finite-reference non-CP positive-map candidate; N220 refines N213 only within its own ensemble. N223 adds grouped-cut distillability; N224 refutes naive cross-copy overlap multiplicativity without changing the single-copy law. Physical Gaussian channels can have EB squares; no composition or fixed-all-power breakthrough follows. Full authored proofs and original ZIPs retained; external correctness and priority unresolved.', '',
     'Late branch additions AL: N210/N211 uniform Steklov capacity for slow polar ends, independently of N175 existence; geometric matching conditional. N212 retains the balanced Lamperti proof and adds explicitly inherited unequal-rate phases and direct structural reconstruction. All10 frozen tips incorporated; prior source versions retained.', '',

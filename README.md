@@ -1,6 +1,6 @@
 # Astra Research Knowledge
 
-315 scoped research cards, full supplied A–I research documents, J/K result summaries, and 19,373 scientific source pages. Claims retain their assumptions, dependencies, counterexamples and scientific status. Publication is not proof validation or model-weight training.
+334 scoped research cards, full supplied A–I research documents, J/K result summaries, and 19,416 scientific source pages. Claims retain their assumptions, dependencies, counterexamples and scientific status. Publication is not proof validation or model-weight training.
 
 Start with [00_START_HERE.txt](00_START_HERE.txt); [01_CORE.txt](01_CORE.txt) is optional broad orientation, then [result cards](web/llms.txt) and the [paged source library](web/library.txt). The bootstrap is 278 o200k tokens; broad scientific context is loaded on demand. The complete linked new J/K research notes and reproducibility packages were not supplied; their absence is explicit.
 
@@ -102,6 +102,14 @@ Added AN: N219–226: indecomposable non-CP positive maps break entanglement wit
 
 
 Added AO: N227–245: exact strongly-endotactic order-five rate phase including equality, universal two-species cubic nonexplosion and unresolved order-four minimum; all-direction concentration to centered Petz/KL, fixed-d Schur residual tails, sharp white-Schur coefficient and charged ALLSEP certification/calibration; critical Gibbs square-root local crossover and exact counterexamples. Also preserves attributed broader polar upper, conditional property-T envelope, ideal-vs-dyadic wire mismatch, noisy-parity acquisition costs and matroid duplicates/failures. All26 source claims mapped to19 scoped records, original597-file checkpoint retained. Programme paused;23 diagnostic replays source-reported, no intake scientific replay or external/formal correctness/priority certification. [Sources](web/AO-sources.txt);[scopes](web/AO-reports.txt);[archive/availability](web/AO-package.txt).
+
+
+
+Added AP: N246–264: logarithmic derivative/Hankel/branch/linear-ODE realization invariant, approximation-resistant commutative lift barriers, attributed prior small-derivative hitting sets and unproved general circuit-contact gate; conditional finite-defect Bernoulli extraction with explicit coloring/right inverse, residual Bernoullicity/cocycle and noncollapse obstructions; characteristic-zero rank and classical Singer-thickening transfer barriers. Six original reports, original PIT packet and two newly merged geometry branches preserved, with variable-area averaged capacity and birth-degree budgets. No foundational endpoint, scientific replay, external correctness or priority established. [Sources](web/AP-sources.txt);[scopes](web/AP-reports.txt);[archive/availability](web/AP-package.txt).
+
+
+
+
 
 <!-- CURRENT DECISION LAYER -->
 Active frontier: frontier/PRIORITIES.md

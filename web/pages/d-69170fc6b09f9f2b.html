@@ -1,0 +1,286 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AP: pit/verify.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AP-sources.txt">Source map</a><h1>AP: pit/verify.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Six exact pasted reports and original8-file PIT ZIP available with three immutable branch proof/code blobs. Derived capture, not one atomic authored checkpoint. Other sandbox links and external primary fulltexts absent. Bernoulli torsion-free witness conditional; earlier two-defect relative-isomorphism application unresolved, later finite-power construction avoids it. Merge and retrieval checks do not validate mathematics. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact finite checks for the logarithmic PIT investigation.
+
+Python &gt;= 3.10; standard library only. This checks finite certificates, not
+all-parameter theorems or historical novelty. Run beside contact_examples.json:
+    python verify.py --output verification_results.json
+No network, randomness, floating point, or external theorem prover is used.
+&quot;&quot;&quot;
+from __future__ import annotations
+import argparse
+from fractions import Fraction as F
+from itertools import product, permutations
+from math import comb, factorial
+from pathlib import Path
+import json
+import sys
+
+Poly = dict[tuple[int, ...], F]
+
+
+def rank(rows: list[list[F | int]]) -&gt; int:
+    if not rows:
+        return 0
+    a = [[F(x) for x in row] for row in rows]
+    cols = len(a[0])
+    if any(len(row) != cols for row in a):
+        raise ValueError(&#x27;Ragged matrix&#x27;)
+    r = 0
+    for c in range(cols):
+        pivot = next((j for j in range(r, len(a)) if a[j][c]), None)
+        if pivot is None:
+            continue
+        a[r], a[pivot] = a[pivot], a[r]
+        z = a[r][c]
+        a[r] = [x/z for x in a[r]]
+        for j in range(r+1, len(a)):
+            z = a[j][c]
+            if z:
+                for k in range(c, cols):
+                    a[j][k] -= z*a[r][k]
+        r += 1
+        if r == len(a):
+            break
+    return r
+
+
+def mul(a: list[F], b: list[F], L: int) -&gt; list[F]:
+    out = [F(0)]*L
+    for i, ai in enumerate(a[:L]):
+        if ai:
+            for j, bj in enumerate(b[:L-i]):
+                if bj:
+                    out[i+j] += ai*bj
+    return out
+
+
+def logs(n: int, L: int) -&gt; list[list[F]]:
+    return [[F(0)]+[F((-1)**(k-1), k*i**k) for k in range(1,L)]
+            for i in range(1,n+1)]
+
+
+def jet(poly: Poly, xs: list[list[F]], L: int) -&gt; list[F]:
+    n = len(xs)
+    maxes = [max((e[i] for e in poly), default=0) for i in range(n)]
+    powers = []
+    for i in range(n):
+        arr = [[F(1)]+[F(0)]*(L-1)]
+        for k in range(maxes[i]):
+            arr.append(mul(arr[-1], xs[i], L))
+        powers.append(arr)
+    ans = [F(0)]*L
+    for exponents, coefficient in poly.items():
+        value = [F(1)]+[F(0)]*(L-1)
+        for i, e in enumerate(exponents):
+            value = mul(value, powers[i][e], L)
+        ans = [a+coefficient*b for a,b in zip(ans,value)]
+    return ans
+
+
+def ord0(a: list[F]) -&gt; int | None:
+    return next((i for i,x in enumerate(a) if x), None)
+
+
+def diff(p: Poly, i: int) -&gt; Poly:
+    out: Poly = {}
+    for exponents,c in p.items():
+        if exponents[i]:
+            e = list(exponents)
+            e[i] -= 1
+            out[tuple(e)] = c*exponents[i]
+    return out
+
+
+def derivative_dimension(p: Poly) -&gt; int:
+    if not p:
+        return 0
+    n = len(next(iter(p)))
+    derivatives: list[Poly] = []
+    stack = [p]
+    seen = set()
+    while stack:
+        q = stack.pop()
+        signature = tuple(sorted(q.items()))
+        if not q or signature in seen:
+            continue
+        seen.add(signature)
+        derivatives.append(q)
+        stack.extend(diff(q,i) for i in range(n))
+    monomials = sorted({e for q in derivatives for e in q})
+    return rank([[q.get(e,F(0)) for e in monomials] for q in derivatives])
+
+
+def eval_poly(p: Poly, values: list[F]) -&gt; F:
+    ans = F(0)
+    for exponents,c in p.items():
+        v = c
+        for x,e in zip(values,exponents):
+            v *= x**e
+        ans += v
+    return ans
+
+
+def volterra(word: tuple[int,...], L: int) -&gt; list[F]:
+    a = [F(1)]+[F(0)]*(L-1)
+    for i in reversed(word):
+        kernel = [F((-1)**j, i**(j+1)) for j in range(L)]
+        integrand = mul(a,kernel,L)
+        a = [F(0)]+[integrand[k-1]/k for k in range(1,L)]
+    return a
+
+
+def run() -&gt; dict:
+    results: dict = {&#x27;arithmetic&#x27;:&#x27;exact integers and fractions&#x27;,
+                     &#x27;scope&#x27;:&#x27;finite checks only; proofs are in RESEARCH_STATE.md&#x27;,
+                     &#x27;python_version&#x27;:sys.version.split()[0]}
+    # Hankel diagonal certificates for symmetrization and sorted lifts.
+    certificates=[]
+    for n in range(1,9):
+        full = (1&lt;&lt;n)-1
+        checked=0
+        for S in range(1&lt;&lt;n):
+            for T in range(1&lt;&lt;n):
+                complement = full ^ T
+                actual = ((S &amp; complement)==0 and (S | complement)==full)
+                assert actual == (S==T)
+                checked += 1
+        certificates.append({&#x27;n&#x27;:n,&#x27;diagonal_minor_size&#x27;:1&lt;&lt;n,&#x27;entries_checked&#x27;:checked})
+    results[&#x27;subset_hankel_certificates&#x27;] = certificates
+    # Full injective-word coefficient flattenings; omitted noninjective rows are zero.
+    cuts=[]
+    for n in range(1,7):
+        alphabet=tuple(range(n))
+        for k in range(n+1):
+            rows=list(permutations(alphabet,k))
+            cols=list(permutations(alphabet,n-k))
+            M=[[int(len(set(u+v))==n) for v in cols] for u in rows]
+            r=rank(M)
+            assert r == comb(n,k)
+            # Every nonzero block is a k! by (n-k)! all-ones block.
+            # This independently confirms the squared singular values via M M^T.
+            block_product = factorial(k)*factorial(n-k)
+            if n &lt;= 4:
+                gram=[[sum(M[i][j]*M[h][j] for j in range(len(cols)))
+                       for h in range(len(rows))] for i in range(len(rows))]
+                for i in range(len(rows)):
+                    for h in range(len(rows)):
+                        square=sum(gram[i][j]*gram[j][h] for j in range(len(rows)))
+                        assert square == block_product*gram[i][h]
+            cuts.append({&#x27;n&#x27;:n,&#x27;k&#x27;:k,&#x27;rank&#x27;:r,
+                         &#x27;normalized_nonzero_singular_value_squared&#x27;:
+                         str(F(block_product,factorial(n)**2))})
+    results[&#x27;coefficient_cut_ranks&#x27;] = cuts
+    # Translation orbit of products: boolean shifts, with period scaled to 1.
+    translations=[]
+    for n in range(1,7):
+        masks=range(1&lt;&lt;n)
+        full=(1&lt;&lt;n)-1
+        M=[[int(((full ^ e) &amp; ~shift)==0) for e in masks] for shift in masks]
+        r=rank(M)
+        assert r==1&lt;&lt;n
+        translations.append({&#x27;n&#x27;:n,&#x27;translation_span_rank&#x27;:r})
+    # Powers with repeated exponents: independent finite-difference grid.
+    for ds in [(2,), (2,2), (2,3), (1,2,1)]:
+        exps=list(product(*(range(d+1) for d in ds)))
+        M=[]
+        for shift in exps:
+            row=[]
+            for e in exps:
+                c=1
+                for d,a,b in zip(ds,shift,e):
+                    c*=comb(d,b)*a**(d-b)
+                row.append(c)
+            M.append(row)
+        r=rank(M)
+        assert r==len(exps)
+        translations.append({&#x27;exponents&#x27;:list(ds),&#x27;translation_span_rank&#x27;:r})
+    results[&#x27;monodromy_polynomial_models&#x27;]=translations
+    # Shuffle identity and explicit commutator signal.
+    shuffle=[]
+    for n in range(1,6):
+        L=2*n+4
+        target=jet({(1,)*n:F(1)},logs(n,L),L)
+        lhs=[F(0)]*L
+        for word in permutations(range(1,n+1)):
+            lhs=[x+y for x,y in zip(lhs,volterra(word,L))]
+        assert lhs==target
+        shuffle.append({&#x27;n&#x27;:n,&#x27;checked_coefficients&#x27;:L})
+    comm=[a-b for a,b in zip(volterra((1,2),7),volterra((2,1),7))]
+    assert ord0(comm)==3 and comm[3]==F(-1,24)
+    results[&#x27;shuffle_checks&#x27;]=shuffle
+    results[&#x27;commutator&#x27;]={&#x27;order&#x27;:3,&#x27;leading_coefficient&#x27;:str(comm[3])}
+    # Contact examples were discovered with SymPy, replayed here without SymPy.
+    examples=json.loads((Path(__file__).with_name(&#x27;contact_examples.json&#x27;)).read_text())
+    contacts=[]
+    for case in examples:
+        n=case[&#x27;n&#x27;]
+        p={tuple(t[&#x27;exponents&#x27;]):F(t[&#x27;coefficient&#x27;]) for t in case[&#x27;terms&#x27;]}
+        L=(1&lt;&lt;n)+4
+        j=jet(p,logs(n,L),L)
+        order=ord0(j)
+        assert order == case[&#x27;order&#x27;] == (1&lt;&lt;n)-1
+        contacts.append({&#x27;n&#x27;:n,&#x27;order&#x27;:order,&#x27;leading_coefficient&#x27;:str(j[order]),
+                         &#x27;derivative_dimension&#x27;:derivative_dimension(p),
+                         &#x27;verified_coefficients&#x27;:L})
+    results[&#x27;high_contact_examples&#x27;]=contacts
+    # Degree/rank boundaries and nonmonomial polynomial fixtures.
+    fixtures=[]
+    for n in range(1,5):
+        fixtures.append((f&#x27;squarefree_product_{n}&#x27;, {(1,)*n:F(1)}))
+    for d in range(0,8):
+        fixtures.append((f&#x27;univariate_power_{d}&#x27;, {(d,):F(1)}))
+    fixtures += [
+      (&#x27;quadratic_sum&#x27;, {(2,0):F(1),(0,2):F(1)}),
+      (&#x27;square_linear_form&#x27;, {(2,0):F(1),(1,1):F(2),(0,2):F(1)}),
+      (&#x27;inhomogeneous&#x27;, {(2,1):F(2),(1,2):F(-3),(0,0):F(7)}),
+      (&#x27;linear_cancellation&#x27;, {(1,0):F(1),(0,1):F(-2)}),
+      (&#x27;cubic_difference&#x27;, {(3,0):F(1),(0,3):F(-8)}),
+      (&#x27;bilinear_sum&#x27;, {(1,1,0):F(1),(1,0,1):F(1),(0,1,1):F(1)}),
+    ]
+    hitting=[]
+    for name,p in fixtures:
+        n=len(next(iter(p)))
+        D=max(sum(e) for e in p)
+        r=derivative_dimension(p)
+        assert D+1&lt;=r
+        L=(n-1)*comb(r,2)+r
+        js=logs(n,L)
+        j=jet(p,js,L)
+        order=ord0(j)
+        assert order is not None and order&lt;L
+        bound=D*(L-1)
+        witness=None
+        for t in range(bound+1):
+            values=[sum(c*F(t)**k for k,c in enumerate(a)) for a in js]
+            value=eval_poly(p,values)
+            if value:
+                witness={&#x27;t&#x27;:t,&#x27;value&#x27;:str(value)}
+                break
+        assert witness is not None
+        hitting.append({&#x27;name&#x27;:name,&#x27;n&#x27;:n,&#x27;degree&#x27;:D,&#x27;derivative_dimension&#x27;:r,
+                        &#x27;jet_length&#x27;:L,&#x27;order&#x27;:order,&#x27;hitting_set_size_bound&#x27;:bound+1,
+                        &#x27;witness&#x27;:witness})
+    results[&#x27;logarithmic_generator_fixtures&#x27;]=hitting
+    results[&#x27;result&#x27;]=&#x27;ALL CHECKS PASSED&#x27;
+    results[&#x27;no_formal_prover_run&#x27;]=True
+    return results
+
+
+def main() -&gt; None:
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(&#x27;--output&#x27;,type=Path,default=Path(&#x27;verification_results.json&#x27;))
+    args=parser.parse_args()
+    results=run()
+    args.output.write_text(json.dumps(results,indent=2)+&#x27;\n&#x27;,encoding=&#x27;utf-8&#x27;)
+    print(results[&#x27;result&#x27;])
+    print(&#x27;Hankel certificates:&#x27;,len(results[&#x27;subset_hankel_certificates&#x27;]))
+    print(&#x27;Coefficient cut matrices:&#x27;,len(results[&#x27;coefficient_cut_ranks&#x27;]))
+    print(&#x27;Translation models:&#x27;,len(results[&#x27;monodromy_polynomial_models&#x27;]))
+    print(&#x27;Shuffle identities:&#x27;,len(results[&#x27;shuffle_checks&#x27;]))
+    print(&#x27;Contact examples:&#x27;,len(results[&#x27;high_contact_examples&#x27;]))
+    print(&#x27;Generator fixtures:&#x27;,len(results[&#x27;logarithmic_generator_fixtures&#x27;]))
+    print(&#x27;Results:&#x27;,args.output.resolve())
+
+if __name__==&#x27;__main__&#x27;:
+    main()
+</pre><p><a href="../assets/a71fe1e9d5024e2bc1a5ca59fa0895f79828543d12a0e02587a6571691ab58a1.py">Exact original</a></p></html>
