@@ -1,0 +1,121 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AU: space_simulation/check_dimension_binary_compiler.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AU-sources.txt">Source map</a><h1>AU: space_simulation/check_dimension_binary_compiler.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=0. Separate exact14-file authored addendum; original AS first archive remains unchanged. Main proof and final independent audit are current source authority; blind reconstruction is explicitly provisional and companion-only historical HF prerequisites are resolved by the separate main module. All scientific audits/checks SOURCE-REPORTED; scripts archived as data, no scientific replay or independent intake proof reconstruction. Fixed HF term syntax, unary/binary input n&gt;=2, peak-over-run hereditary cardinality, fixed programs and precise quotient conventions required. GKPS15 URL/DOI/section locators supplied, primary PDF bytes absent. General proof/external correctness/formal verification/historical priority unverified. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact semantic checks of the two quotient phases; not FO-syntax verification.&quot;&quot;&quot;
+from itertools import product
+from pathlib import Path
+import json
+
+
+def quotient(vertices, equalities, unary, edges):
+    parent = {x: x for x in vertices}
+    def find(x):
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+    for x, y in equalities:
+        x, y = find(x), find(y)
+        if x != y:
+            parent[y] = x
+    image = {x: find(x) for x in vertices}
+    out = set(image.values())
+    return (out, {p: {image[x] for x in xs} for p, xs in unary.items()},
+            {p: {(image[x], image[y]) for x, y in es} for p, es in edges.items()}, image)
+
+
+def run_case(n, seed, relation):
+    # Raw representatives V, binary relation candidates J, and two permanent controls.
+    vs = [(&#x27;v&#x27;, i) for i in range(n)]
+    js = [(&#x27;j&#x27;, i, j) for i, j in relation]
+    controls = [(&#x27;control&#x27;, 0), (&#x27;control&#x27;, 1)]
+    vertices = set(vs + js + controls)
+    unary = {&#x27;D&#x27;: set(vs), &#x27;J&#x27;: set(js), &#x27;M0&#x27;: {controls[0]}, &#x27;M1&#x27;: {controls[1]}}
+    edges = {&#x27;P0&#x27;: {((&#x27;j&#x27;, i, j), (&#x27;v&#x27;, i)) for i, j in relation},
+             &#x27;P1&#x27;: {((&#x27;j&#x27;, i, j), (&#x27;v&#x27;, j)) for i, j in relation}}
+    c_nodes, c_unary, c_edges, c_map = quotient(vertices,
+        [((&#x27;v&#x27;, i), (&#x27;v&#x27;, j)) for i, j in seed], unary, edges)
+    target = {p: {} for p in c_edges}
+    for p, es in c_edges.items():
+        for j, d in es:
+            target[p].setdefault(j, set()).add(d)
+    for j in c_unary[&#x27;J&#x27;]:
+        assert len(target[&#x27;P0&#x27;][j]) == len(target[&#x27;P1&#x27;][j]) == 1
+    dedup = [(j, k) for j in c_unary[&#x27;J&#x27;] for k in c_unary[&#x27;J&#x27;]
+             if all(target[p][j] == target[p][k] for p in target)]
+    d_nodes, d_unary, d_edges, d_map = quotient(c_nodes, dedup, c_unary, c_edges)
+    # Independently calculate undirected reachability of the arbitrary seed.
+    reach = [[i == j or (i, j) in seed or (j, i) in seed for j in range(n)] for i in range(n)]
+    for k in range(n):
+        for i in range(n):
+            for j in range(n):
+                reach[i][j] |= reach[i][k] and reach[k][j]
+    cls = {i: min(j for j in range(n) if reach[i][j]) for i in range(n)}
+    logical_names = {d_map[c_map[(&#x27;v&#x27;, i)]]: cls[i] for i in range(n)}
+    dtarget = {p: {j: d for j, d in es} for p, es in d_edges.items()}
+    actual = {(logical_names[dtarget[&#x27;P0&#x27;][j]], logical_names[dtarget[&#x27;P1&#x27;][j]]) for j in d_unary[&#x27;J&#x27;]}
+    expected = {(cls[i], cls[j]) for i, j in relation}
+    assert actual == expected
+    assert len(d_unary[&#x27;J&#x27;]) == len(expected), &#x27;duplicate incidences survived&#x27;
+    assert len(d_unary[&#x27;D&#x27;]) == len(set(cls.values()))
+    assert len(d_nodes) == len(set(cls.values())) + len(expected) + 2
+    assert len(d_unary[&#x27;M0&#x27;]) == len(d_unary[&#x27;M1&#x27;]) == 1
+    assert not (d_unary[&#x27;D&#x27;] &amp; (d_unary[&#x27;M0&#x27;] | d_unary[&#x27;M1&#x27;]))
+    return len(c_nodes), len(d_nodes), len(set(cls.values()))
+
+
+def subsets(xs):
+    return [tuple(x for i, x in enumerate(xs) if bits &amp; (1 &lt;&lt; i)) for bits in range(1 &lt;&lt; len(xs))]
+
+
+def main():
+    cases = 0
+    logical_counts = set()
+    max_shrink = 0
+    for n in range(4):
+        pairs = list(product(range(n), repeat=2))
+        all_subsets = subsets(pairs)
+        for seed in all_subsets:
+            for relation in all_subsets:
+                c, d, logical = run_case(n, seed, relation)
+                cases += 1
+                logical_counts.add(logical)
+                max_shrink = max(max_shrink, c-d)
+    # Specific all-nine-candidates-to-one case, with nonsymmetric/nontransitive seed.
+    c, d, logical = run_case(3, ((0, 1), (1, 2)), tuple(product(range(3), repeat=2)))
+    assert (c, d, logical) == (12, 4, 1)
+    # Two tags first make the complete repeated-coordinate product disjoint from old diagonals.
+    tuple_cases = 0
+    for n in range(6):
+        marker = (&#x27;marker&#x27;, 0)
+        domain = [(&#x27;atom&#x27;, i) for i in range(n)]
+        old = set(domain + [marker, (&#x27;marker&#x27;, 1)])
+        first = {(x, marker) for x in domain}
+        diagonals = {(x, x) for x in old}
+        assert not first &amp; diagonals
+        assert len(first) == n
+        # Treat the new tagged vertices as distinct objects in the next state.
+        t1 = [(&#x27;T1&#x27;, i) for i in range(n)]
+        next_old = set(domain + t1 + [marker, (&#x27;marker&#x27;, 1)])
+        second = {(t1[i], domain[j]) for i in range(n) for j in range(n)}
+        assert not second &amp; {(x, x) for x in next_old}
+        assert len(second) == n*n
+        tuple_cases += 1
+    results = {
+        &#x27;status&#x27;: &#x27;passed&#x27;,
+        &#x27;exhaustive_cases&#x27;: cases,
+        &#x27;representative_domain_sizes&#x27;: [0, 1, 2, 3],
+        &#x27;logical_output_domain_sizes_tested&#x27;: sorted(logical_counts),
+        &#x27;all_directed_equality_seeds_including_loops&#x27;: True,
+        &#x27;all_noncongruent_binary_relation_candidate_subsets&#x27;: True,
+        &#x27;permanent_control_vertices_per_case&#x27;: 2,
+        &#x27;maximum_incidence_dedup_shrink&#x27;: max_shrink,
+        &#x27;nine_candidates_to_one_incidence&#x27;: {&#x27;phase_c_size&#x27;: c, &#x27;phase_d_size&#x27;: d},
+        &#x27;tagged_product_cases&#x27;: tuple_cases,
+        &#x27;qualification&#x27;: &#x27;Semantic finite checks only; not formal proof or generated FO syntax verification.&#x27;
+    }
+    path = Path(__file__).with_name(&#x27;dimension_binary_compiler_test_results.json&#x27;)
+    path.write_text(json.dumps(results, indent=2) + &#x27;\n&#x27;)
+    print(json.dumps(results, indent=2))
+
+if __name__ == &#x27;__main__&#x27;:
+    main()
+</pre><p><a href="../assets/a7c6246c83b537af1db131ecb8ca5488687e602720b552920133ed25a6824894.py">Exact original</a></p></html>

@@ -1,0 +1,149 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AU: space_simulation/check_space_simulation.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AU-sources.txt">Source map</a><h1>AU: space_simulation/check_space_simulation.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Separate exact14-file authored addendum; original AS first archive remains unchanged. Main proof and final independent audit are current source authority; blind reconstruction is explicitly provisional and companion-only historical HF prerequisites are resolved by the separate main module. All scientific audits/checks SOURCE-REPORTED; scripts archived as data, no scientific replay or independent intake proof reconstruction. Fixed HF term syntax, unary/binary input n&gt;=2, peak-over-run hereditary cardinality, fixed programs and precise quotient conventions required. GKPS15 URL/DOI/section locators supplied, primary PDF bytes absent. General proof/external correctness/formal verification/historical priority unverified. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact finite falsification controls for HF representation/GC/Card mechanisms.
+Not an asymptotic certificate and not a full syntactic FO-compiler verifier.
+&quot;&quot;&quot;
+from itertools import combinations
+import json, random
+from pathlib import Path
+
+class HF:
+    def __init__(self, n):
+        self.atoms=set(range(n)); self.mem={i:None for i in range(n)}; self.canon={}; self.n=n
+        self.zero=self.make(()); self.one=self.make((self.zero,)); self.A=self.make(self.atoms)
+    def make(self, members):
+        key=frozenset(members)
+        if key not in self.canon:
+            self.canon[key]=len(self.mem); self.mem[self.canon[key]]=key
+        return self.canon[key]
+    def members(self,x): return self.mem[x] if self.mem[x] is not None else frozenset()
+    def cl(self, roots):
+        seen=set(); todo=list(roots)
+        while todo:
+            x=todo.pop()
+            if x in seen: continue
+            seen.add(x); todo.extend(self.members(x))
+        return seen
+    def base(self): return self.atoms|{self.zero,self.one,self.A}
+    def C(self,U): return {(x,y) for y in U for x in self.cl([y]) if x in U}
+    def E(self,U): return {(x,y) for y in U for x in self.members(y) if x in U}
+
+def add_batch(h,U,rows):
+    # One descriptor for each old object and each parameter row, including repeats.
+    D=[(&#x27;old&#x27;,x) for x in sorted(U)]+[(&#x27;new&#x27;,i) for i in range(len(rows))]
+    den={d:(d[1] if d[0]==&#x27;old&#x27; else h.make(rows[d[1]])) for d in D}
+    def eq(d,e):
+        if d[0]==e[0]==&#x27;old&#x27;: return d[1]==e[1]
+        if d[0]==e[0]==&#x27;new&#x27;: return rows[d[1]]==rows[e[1]]
+        if d[0]==&#x27;old&#x27;: d,e=e,d
+        return e[1] not in h.atoms and rows[d[1]]==h.members(e[1])
+    eq_tests=0
+    for d in D:
+        for e in D:
+            assert eq(d,e)==(den[d]==den[e]); eq_tests+=1
+    oldE=h.E(U); oldC=h.C(U)
+    rawE=set(); rawC={(d,d) for d in D}
+    for d in D:
+        for e in D:
+            if d[0]==&#x27;old&#x27; and e[0]==&#x27;old&#x27;:
+                if (d[1],e[1]) in oldE: rawE.add((d,e))
+                if (d[1],e[1]) in oldC: rawC.add((d,e))
+            elif d[0]==&#x27;old&#x27; and e[0]==&#x27;new&#x27;:
+                if d[1] in rows[e[1]]: rawE.add((d,e))
+                if any((d[1],z) in oldC for z in rows[e[1]]): rawC.add((d,e))
+    # Quotient image equals saturation followed by quotient; no representatives chosen.
+    newU=set(den.values())
+    E={(den[d],den[e]) for d,e in rawE}; C={(den[d],den[e]) for d,e in rawC}
+    assert E==h.E(newU)
+    assert C==h.C(newU)
+    assert h.cl(newU)==newU
+    assert len(newU)&lt;=len(U)+len(rows)
+    return newU, eq_tests
+
+def all_subsets(U):
+    U=tuple(sorted(U))
+    return [frozenset(U[i] for i in range(len(U)) if mask&gt;&gt;i&amp;1) for mask in range(1&lt;&lt;len(U))]
+
+def main():
+    rng=random.Random(2432015); stats={&#x27;constructor_batches&#x27;:0,&#x27;descriptor_equality_pairs&#x27;:0,&#x27;gc_cases&#x27;:0}
+    for n in (1,2,3):
+        h=HF(n); U=h.base()
+        rows=all_subsets(U)
+        U2,c=add_batch(h,U,rows+rows[:3]); stats[&#x27;constructor_batches&#x27;]+=1; stats[&#x27;descriptor_equality_pairs&#x27;]+=c
+        # Every possible singleton current root is a GC case.
+        C=h.C(U2)
+        for root in U2:
+            kept=h.base()|h.cl([root])
+            assert h.cl(kept)==kept
+            assert {(x,y) for x,y in C if x in kept and y in kept}==h.C(kept)
+            stats[&#x27;gc_cases&#x27;]+=1
+    # Random batches exercise old/new collisions and deeply nested existing sets.
+    for trial in range(300):
+        h=HF(2); U=h.base()
+        for j in range(rng.randrange(1,6)):
+            row=frozenset(x for x in sorted(U) if rng.randrange(3)==0)
+            U.add(h.make(row))
+        rows=[frozenset(x for x in sorted(U) if rng.randrange(2)) for _ in range(rng.randrange(0,15))]
+        rows.extend([frozenset(),frozenset(),frozenset(h.atoms),frozenset([h.zero])])
+        U2,c=add_batch(h,U,rows); stats[&#x27;constructor_batches&#x27;]+=1; stats[&#x27;descriptor_equality_pairs&#x27;]+=c
+        for _ in range(4):
+            root=rng.choice(sorted(U2)); kept=h.base()|h.cl([root]); C=h.C(U2)
+            assert {(x,y) for x,y in C if x in kept and y in kept}==h.C(kept)
+            stats[&#x27;gc_cases&#x27;]+=1
+    # Dynamic reserve, all target sizes in parallel at a frozen Card phase.
+    reserve_cases=0; reserve_growth=0
+    for trial in range(200):
+        h=HF(3); ords=[h.zero,h.one]; top=1; U=h.base()
+        for step in range(30):
+            sizes=[rng.randrange(31) for _ in range(rng.randrange(6))]
+            # Build target sets from a disjoint collection of pure singleton chains.
+            elems=[]; obj=h.A
+            while len(elems)&lt;max(sizes,default=0):
+                obj=h.make([obj]); elems.append(obj)
+            args=[h.make(elems[:k]) for k in sizes]; U |= h.cl(args)
+            oldtop=top
+            while not all(any(len(h.members(a))==len(h.members(o)) for o in ords) for a in args):
+                new=h.make(ords); assert h.members(new)==frozenset(ords)
+                ords.append(new); U.add(new); top+=1; reserve_growth+=1
+            assert top==max([oldtop]+sizes)
+            assert len(ords)==top+1
+            for a,k in zip(args,sizes):
+                matches=[o for o in ords if len(h.members(a))==len(h.members(o))]
+                assert matches==[ords[k]]
+            # GC keeps the reserve and one current root; no elapsed-time counter.
+            root=args[0] if args else h.one; U=h.base()|h.cl([root])|set(ords)
+            assert h.cl(U)==U; reserve_cases+=1
+    stats[&#x27;reserve_phases&#x27;]=reserve_cases; stats[&#x27;reserve_extensions&#x27;]=reserve_growth
+    # Long ordered-input binary counter trace: all subsets, tiny current closure.
+    traces=[]
+    for n in range(2,11):
+        h=HF(n); base=h.base(); U=set(base); history=set(base); max_gc=len(U); max_native=0
+        for bits in range(1&lt;&lt;n):
+            root=h.make(a for a in range(n) if bits&gt;&gt;a&amp;1)
+            U.add(root); history.add(root); max_gc=max(max_gc,len(U)); max_native=max(max_native,len(h.cl([root])))
+            U=base|h.cl([root]); assert len(U)&lt;=n+4
+        assert max_gc&lt;=n+5; assert len(history)==(1&lt;&lt;n)+n+1
+        traces.append({&#x27;n&#x27;:n,&#x27;states&#x27;:1&lt;&lt;n,&#x27;max_native_inclusive_tc&#x27;:max_native,&#x27;max_gc_representation&#x27;:max_gc,&#x27;history_preserving_representation&#x27;:len(history)})
+    stats[&#x27;binary_counter_traces&#x27;]=traces
+    # Deliberate failure controls.
+    h=HF(2); z=h.zero; a=h.make([z]); b=h.make([a]); U=h.cl([b]); D={z,b}
+    stale=((z,b) in h.C(U))
+    actual_restricted_E={(x,y) for x,y in h.E(U) if x in D and y in D}
+    assert stale and not actual_restricted_E
+    assert h.members(0)==h.members(z) and 0!=z  # atom-safe merge is necessary
+    descriptor_count=7; actual_single_value_count=1
+    assert descriptor_count!=actual_single_value_count
+    # Cardinality of all ordered input pairs can exceed the native final state&#x27;s TC.
+    pair_controls=[]
+    for n in (2,3,5):
+        h=HF(n)
+        def pair(a,b): return h.make([h.make([a]),h.make([a,b])])
+        target=h.make(pair(a,b) for a in h.atoms for b in h.atoms)
+        assert len(h.members(target))==n*n
+        native_final_tc=len(h.cl([h.one]))
+        assert len(h.members(target))&gt;native_final_tc
+        pair_controls.append({&#x27;n&#x27;:n,&#x27;Card_argument_size&#x27;:n*n,&#x27;final_native_inclusive_tc&#x27;:native_final_tc})
+    stats[&#x27;negative_controls&#x27;]={&#x27;nontransitive_gc_stale_closure_detected&#x27;:True,&#x27;atom_empty_extensional_collision_detected&#x27;:True,&#x27;descriptor_count_mismatch_detected&#x27;:True,&#x27;Card_reserve_not_linear_in_native_tc&#x27;:pair_controls}
+    stats[&#x27;all_checks_passed&#x27;]=True
+    out=Path(__file__).with_name(&#x27;space_simulation_test_results.json&#x27;); out.write_text(json.dumps(stats,indent=2)+&#x27;\n&#x27;); print(json.dumps(stats,indent=2))
+if __name__==&#x27;__main__&#x27;: main()
+</pre><p><a href="../assets/d06e1f51fd33c8c166c4e8b0fb25090cc0af3cb603faf984266e5b2eddb6c640.py">Exact original</a></p></html>

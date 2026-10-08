@@ -1,6 +1,6 @@
 # Astra Research Knowledge
 
-367 scoped research cards, full supplied A–I research documents, J/K result summaries, and 19,850 scientific source pages. Claims retain their assumptions, dependencies, counterexamples and scientific status. Publication is not proof validation or model-weight training.
+373 scoped research cards, full supplied A–I research documents, J/K result summaries, and 19,873 scientific source pages. Claims retain their assumptions, dependencies, counterexamples and scientific status. Publication is not proof validation or model-weight training.
 
 Start with [00_START_HERE.txt](00_START_HERE.txt); [01_CORE.txt](01_CORE.txt) is optional broad orientation, then [result cards](web/llms.txt) and the [paged source library](web/library.txt). The bootstrap is 278 o200k tokens; broad scientific context is loaded on demand. The complete linked new J/K research notes and reproducibility packages were not supplied; their absence is explicit.
 
@@ -126,6 +126,10 @@ Added AS: N276–291: exact original21-dimensional PPT cube certificate and filt
 
 
 Added AT: N292–297: all-correlation sector optimality for shellwise-balanced planar Gaussian partitions; exact balanced perturbations make three slabs unstable at every positive correlation; level-two Hermite dominance and single-profile radial concavity shortcuts fail. Coupled radial(L) remains an unproved stronger sufficient simplex gate, with imported dimension reduction unclassified. Exact checkpoint and pin/version/screening state preserved; claimed October KLS resolutions lack primary locators, not validated or promoted. Full written arguments supplied; no scientific code/results/audit receipts or primary fulltexts. Foundational objective unachieved; external correctness/novelty unresolved. [Sources](web/AT-sources.txt);[scopes](web/AT-reports.txt);[archive/availability](web/AT-package.txt).
+
+
+
+Added AU: N298–303: history-independent fixed-BGS-term HF simulation with max interpreted universe polynomial in native peak hereditary size, not elapsed runtime; native-binding footprint, cardinality-driven ordinal reserve and transitive garbage collection; atom-safe saturated quotient constructor with exact stored closure; resettable binary2D incidence compiler across fixed intermediate dimensions/arities. Conditional exponential HF/state lower-bound transfer retains N285–287 premises and unchanged binary input size. Full14-file addendum, authored13-payload manifest, separate audits and3 diagnostic scripts/results preserved. Simulation gate internally claimed closed only in precise model; no general bit-space/PvsNP theorem, full generator execution, external correctness or historical novelty certification. [Sources](web/AU-sources.txt);[scopes](web/AU-reports.txt);[archive/availability](web/AU-package.txt).
 
 <!-- CURRENT DECISION LAYER -->
 Active frontier: frontier/PRIORITIES.md
