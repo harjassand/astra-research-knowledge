@@ -66,7 +66,7 @@ Then necessarily
 
 For the OpenAI parity witness, b=a^*, so ell=k. This is a fully explicit positive forbidden-accuracy gap in finite permutation microstates, once the concrete support sizes are acquired. It does NOT depend on n.
 
-**Proof.** Over F_2 let A,B,C be the n-by-n sums of the permutation matrices of sigma(s), with s ranging respectively over the supports of a,b,c. If two permutations disagree on at most delta*n inputs, the difference of their permutation matrices has rank at most delta*n: restrict to the columns indexed by those inputs (choose a consistent matrix convention). By rank subadditivity and (i,ii),
+**Proof.** Over F_2 let A,B,C be the n-by-n sums of the permutation matrices of sigma(s), with s ranging respectively over the supports of a,b,c. Fix the convention P_p e_i=e_{p(i)}, so P_p P_q=P_(p composed with q). If two permutations disagree on at most delta*n inputs, the difference of their permutation matrices has rank at most delta*n: all other columns are identical. By rank subadditivity and (i,ii),
 
     rank(AB-I) <= (k*ell+1)*delta*n,
     rank(AC)   <= k*m*delta*n.
@@ -76,7 +76,7 @@ Indeed, after replacing each matrix product P_sigma(s)P_sigma(t) by P_sigma(st),
     rank(C) <= rank(AC)+nullity(A)
             <= (k*ell+k*m+1)*delta*n.                    (UPPER)
 
-For all but at most (m-1)*delta*n row indices i, the position (i,sigma(u_0)(i)) receives a single 1 from u_0 and none of the other m-1 permutation matrices. Consequently C has at least [1-(m-1)*delta]*n distinct nonzero columns, provided the bracket is positive. Every row of C has at most m nonzeros. Choose rank(C) independent rows spanning its row space. Every nonzero column of C must be nonzero in at least one of these basis rows; therefore the number of nonzero columns is at most m*rank(C). It follows that
+For all but at most (m-1)*delta*n input indices i, the matrix position (sigma(u_0)(i),i) receives a single 1 from u_0 and none of the other m-1 permutation matrices. Thus at least [1-(m-1)*delta]*n distinct C-columns are nonzero, provided the bracket is positive. Every row of C has at most m nonzeros. Choose rank(C) independent rows spanning its row space. Every nonzero column of C must be nonzero in at least one of these basis rows; therefore the number of nonzero columns is at most m*rank(C). It follows that
 
     rank(C) >= [1-(m-1)*delta]*n/m.                       (LOWER)
 
