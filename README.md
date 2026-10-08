@@ -1,6 +1,6 @@
 # Astra Research Knowledge
 
-391 scoped research cards, full supplied A–I research documents, J/K result summaries, and 20,515 scientific source pages. Claims retain their assumptions, dependencies, counterexamples and scientific status. Publication is not proof validation or model-weight training.
+399 scoped research cards, full supplied A–I research documents, J/K result summaries, and 20,553 scientific source pages. Claims retain their assumptions, dependencies, counterexamples and scientific status. Publication is not proof validation or model-weight training.
 
 Start with [00_START_HERE.txt](00_START_HERE.txt); [01_CORE.txt](01_CORE.txt) is optional broad orientation, then [result cards](web/llms.txt) and the [paged source library](web/library.txt). The bootstrap is 278 o200k tokens; broad scientific context is loaded on demand. The complete linked new J/K research notes and reproducibility packages were not supplied; their absence is explicit.
 
@@ -138,6 +138,10 @@ Added AV: N304–307: exact boundary-qutrit all-copy rank-two obligation remains
 
 
 Added AW: N308–321: sharp common C2 EB comparators for all defining-O(d) self-compatible channels and products of arbitrary unital self-compatible qubits, including nonnormal channels. All-weight spin1 support/certificate, explicit18/21-atom full-covariant qutrit designs, positive tensor/adjoint-sandwich closures, all-spin cloner/spin3/2/USp families; exact scalar-allocation, naive-product, nontracial-output and unbiased-moment obstructions with scoped repairs. General finiteC and all-spin/all-weight gates remain open. All21 native claims mapped, historicalcheckpoint01 retained, original603-member checkpoint02 ZIP unchanged;600 authored manifest payloads plus3 separately hashed root members. Internal reconstruction/exact checks source-reported; no intake scientific replay or correctness/priority/capability promotion. [Sources](web/AW-sources.txt);[scopes](web/AW-reports.txt);[archive/availability](web/AW-package.txt).
+
+
+
+Added AX: N322–329: finite-support Card-ASM sparse-graph polynomial peak-HF bridge; conditional polynomial-space noncapture with original-grid qualitative and additionally imported expander exponential scales. Degree-only mu(log alpha)<=2degree(alpha) via independently reconstructed moving-center interpolation, entrywise integral norm ledger and charged impractical parameter schedule; general exponent2 and supplementary2d/r remain unproved, Pell defeats generic norm shortcut. Fixed-dimensional quadratic symplectic integer-fixed-point undecidability with a supplied rational fixed point on every input, complete cubic-Hamiltonian shear proof and all-ring affine-scheme retract. Classical ingredients and current final audits credited; exact26-file second record and separate full pasted proof captured. Internal proof/finite checks source-reported, no intake scientific replay, external correctness/priority or capability promotion. [Sources](web/AX-sources.txt);[scopes](web/AX-reports.txt);[archive/availability](web/AX-package.txt).
 
 <!-- CURRENT DECISION LAYER -->
 Active frontier: frontier/PRIORITIES.md

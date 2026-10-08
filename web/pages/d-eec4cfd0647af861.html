@@ -1,0 +1,148 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AX: number_theory_bridges/check_algebraic_log_ledger.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AX-sources.txt">Source map</a><h1>AX: number_theory_bridges/check_algebraic_log_ledger.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Derived lossless archive preserves26 supplied second-record files plus separate full symplectic proof and3 intake metadata files. All25 authored SHA256SUMS payloads and18 released provenance hashes checked; original blind-draft fingerprints differ from editorial release hashes. Current README/final audit verdicts govern historical pending notes. Moving-center interpolation is reported internally reconstructed, not a remaining unproved lemma. Counting lower bounds remain imported conditional premises; general logarithm exponent2 and matched2d/r remain open. Source internal proofs/finite checks reported; no formal/kernel verification or scientific replay at intake, external correctness/priority unverified. Primary full-paper bytes and a full ASM syntax generator are absent. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Exact, finite checks of the algebraic-log determinant ledger.
+
+These fixtures do not prove moving-center interpolation or asymptotic
+irrationality bounds. They test actual nonzero full-row minors, denominator
+clearing, all algebraic conjugates through the norm, and rational parameter
+inequalities. Written independently here; no source scripts executed.
+&quot;&quot;&quot;
+from __future__ import annotations
+import json
+import math
+from fractions import Fraction
+from pathlib import Path
+import sympy as S
+from sympy.polys.matrices import DomainMatrix
+
+BASE=Path(__file__).resolve().parent
+t,z=S.symbols(&#x27;t z&#x27;)
+
+def matrix_fixture(name, root, b, q, p, H=5, w0=1, w1=2, v0=2,
+                   theta=S.Rational(1,2), K=2, F0=6):
+    F=S.QQ.algebraic_field(root)
+    a=root
+    v1=w1/theta
+    T=math.ceil(S.Rational(F0*w1,v0))
+    G=sum(S.Rational((-1)**(k+1),k)*t**k for k in range(1,T))
+    L=S.ilcm(*range(1,T)) if T&gt;2 else S.Integer(1)
+    D=L**(H//w1)
+    cols=[(h,g) for g in range(H//w1+1)
+          for h in range((H-w1*g)//w0+1)]
+    rows=[(j,s,be) for j in range(K)
+          for be in range(math.ceil(H/v1))
+          for s in range(math.ceil((H-v1*be)/v0))
+          if v0*s+v1*be&lt;H]
+    raw=[];cleared=[]
+    for j,s,be in rows:
+        rr=[];cc=[]
+        for h,g in cols:
+            if be&gt;g:
+                val=S.Integer(0)
+            else:
+                coeff=S.expand((1+t)**h*(j*S.Rational(p,q)+G)**(g-be)).coeff(t,s)
+                val=S.expand(a**(j*h)*S.binomial(g,be)*coeff)
+            rr.append(val)
+            cv=S.simplify(D*b**((K-1)*h)*S.Rational(q)**(g-be)*val)
+            cc.append(cv)
+            # Membership in Z[b*a], checked by reduction in its power basis.
+            beta=b*a
+            Fb=S.QQ.algebraic_field(beta)
+            coordinate_coefficients=Fb.from_sympy(cv).to_list()
+            assert all(c.denominator==1 for c in coordinate_coefficients), (name,j,s,be,h,g,cv)
+        raw.append(rr);cleared.append(cc)
+    RM=S.Matrix(raw); CM=S.Matrix(cleared)
+    domain=DomainMatrix.from_Matrix(RM).convert_to(F)
+    _,pivots=domain.rref()
+    assert len(pivots)==len(rows),(name,len(rows),len(pivots))
+    indices=list(pivots)
+    minor=domain.extract(list(range(len(rows))),indices)
+    de=F.to_sympy(minor.det())
+    cminor=DomainMatrix.from_Matrix(CM[:,indices]).convert_to(F)
+    cde=S.simplify(F.to_sympy(cminor.det()))
+    SS=D**len(rows)
+    for index in indices:
+        h,g=cols[index];SS*=b**((K-1)*h)*S.Rational(q)**g
+    for _,_,be in rows:SS*=S.Rational(q)**(-be)
+    assert F.from_sympy(cde-SS*de)==F.zero
+    # Norm via the exact resultant of the algebraic minimal polynomial.
+    mpoly=S.Poly(S.minpoly(a,z),z).monic()
+    cpoly=S.Poly.from_list([S.Rational(c) for c in F.from_sympy(cde).to_list()],z)
+    upoly=S.Poly.from_list([S.Rational(c) for c in F.from_sympy(de).to_list()],z)
+    # The algebraic field generator is exactly a for these expressions.
+    nn=S.resultant(mpoly.as_expr(),cpoly.as_expr(),z)
+    nu=S.resultant(mpoly.as_expr(),upoly.as_expr(),z)
+    assert nn!=0 and nn.is_Integer
+    assert S.simplify(nn-SS**mpoly.degree()*nu)==0
+    return dict(name=name,alpha=str(a),minimal_polynomial=str(mpoly.as_expr()),
+                b=b,q=q,p=p,H=H,weights=[w0,w1,v0,str(v1)],K=K,
+                rows=len(rows),columns=len(cols),rank=len(pivots),
+                selected_columns=[cols[i] for i in indices],truncation=T,
+                lcm=int(L),entry_denominator_D=int(D),scaling=str(SS),
+                unscaled_determinant=str(S.simplify(de)),
+                scaled_determinant=str(cde),scaled_norm=str(nn),
+                unscaled_norm=str(nu),all_scaled_entries_in_Z_balpha=True,
+                exact_norm_and_scaling_identities=True)
+
+def rational_parameters(d,nu):
+    nu=Fraction(nu)
+    beta=(Fraction(1,2)+1-Fraction(d,1)/nu)/2
+    delta=min(Fraction(1,4),(2*beta-1)/(2*beta*beta))
+    theta=1-delta; A=1-beta*delta
+    C=(A/theta+1/A)/2
+    B=(A+min(1/C,C*theta))/2
+    gap0=nu*(A-theta)-d*(1-theta)
+    eta=gap0/(4*nu*A)
+    gap=nu*(A*(1-eta)-theta)-d*(1-theta)
+    assert 0&lt;theta&lt;A&lt;B&lt;1 and C&gt;1
+    assert B&lt;1/C and B&lt;C*theta&lt;1 and gap&gt;0 and A*A&lt;theta
+    return {k:str(v) for k,v in dict(d=d,nu=nu,beta=beta,delta=delta,
+                theta=theta,A=A,B=B,C=C,eta=eta,gap=gap,
+                K_over_w0_base=C*B,v0_growth_base=C*theta/B,
+                collision_growth_base=B/A).items()}
+
+def bad_norm_shortcut():
+    u=1+S.sqrt(2)
+    records=[]
+    for n in range(1,9):
+        v=S.expand((S.sqrt(2)-1)**n)
+        norm=S.simplify(v*v.xreplace({S.sqrt(2):-S.sqrt(2)}))
+        assert abs(norm)==1
+        records.append(dict(n=n,value=str(v),norm=str(norm),absolute_value=float(v.evalf())))
+    return records
+
+def rational_power_jet_valuations():
+    records=[]
+    for p,q in [(2,7),(4,9),(3,10),(7,12)]:
+        for s in range(1,10):
+            coeff=S.prod(S.Rational(p,q)-j for j in range(s))/S.factorial(s)
+            for ell,exp in S.factorint(q).items():
+                def val(n):
+                    n=abs(int(n));r=0
+                    while n and n%ell==0:n//=ell;r+=1
+                    return r
+                actual=val(S.numer(coeff))-val(S.denom(coeff))
+                expected=-s*exp-val(S.factorial(s))
+                assert actual==expected
+                records.append(dict(p=p,q=q,s=s,prime=int(ell),valuation=int(actual)))
+    return records
+
+if __name__==&#x27;__main__&#x27;:
+    out={
+        &#x27;scope&#x27;:&#x27;Finite exact algebraic ledger checks; not asymptotic theorem verification&#x27;,
+        &#x27;fixtures&#x27;:[
+            matrix_fixture(&#x27;nonintegral_shared_denominator_prime&#x27;,(1+S.sqrt(2))/3,3,9,2),
+            matrix_fixture(&#x27;nonintegral_negative_conjugate&#x27;,S.sqrt(2)/2,2,7,4),
+            matrix_fixture(&#x27;unit_with_small_negative_conjugate&#x27;,1+S.sqrt(2),1,7,6),
+            matrix_fixture(&#x27;nonintegral_two_real_conjugates&#x27;,(1+S.sqrt(5))/2,2,9,4),
+            matrix_fixture(&#x27;cubic_with_nonreal_conjugates&#x27;,S.real_root(2,3),1,11,2),
+        ],
+        &#x27;rational_parameter_checks&#x27;:[rational_parameters(d,Fraction(2*d)+eps)
+             for d in [1,2,3,10] for eps in [Fraction(1),Fraction(1,10),Fraction(1,100)]],
+        &#x27;false_integral_modulus_shortcut&#x27;:bad_norm_shortcut(),
+        &#x27;rational_power_jet_valuations&#x27;:rational_power_jet_valuations(),
+    }
+    dst=BASE/&#x27;algebraic_log_exact_checks.json&#x27;
+    dst.write_text(json.dumps(out,indent=2,default=int))
+    print(json.dumps({&#x27;path&#x27;:str(dst),&#x27;fixture_ranks&#x27;:[(r[&#x27;name&#x27;],r[&#x27;rank&#x27;]) for r in out[&#x27;fixtures&#x27;]],
+           &#x27;parameter_schedules_checked&#x27;:len(out[&#x27;rational_parameter_checks&#x27;]),
+           &#x27;power_jet_valuations_checked&#x27;:len(out[&#x27;rational_power_jet_valuations&#x27;])},indent=2))
+</pre><p><a href="../assets/c7bb9ade6e8fc214f9e15ca40612db836f7c658019a35833ab01964be8b3ee03.py">Exact original</a></p></html>

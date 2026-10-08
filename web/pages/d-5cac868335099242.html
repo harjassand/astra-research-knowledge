@@ -1,0 +1,145 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AX: novelty_and_consequences/check_asm_graph_updates.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AX-sources.txt">Source map</a><h1>AX: novelty_and_consequences/check_asm_graph_updates.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Derived lossless archive preserves26 supplied second-record files plus separate full symplectic proof and3 intake metadata files. All25 authored SHA256SUMS payloads and18 released provenance hashes checked; original blind-draft fingerprints differ from editorial release hashes. Current README/final audit verdicts govern historical pending notes. Moving-center interpolation is reported internally reconstructed, not a remaining unproved lemma. Counting lower bounds remain imported conditional premises; general logarithm exponent2 and matched2d/r remain open. Source internal proofs/finite checks reported; no formal/kernel verification or scientific replay at intake, external correctness/priority unverified. Primary full-paper bytes and a full ASM syntax generator are absent. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact finite HF-code tests for the ASM graph bridge; not BGS syntax execution.&quot;&quot;&quot;
+from itertools import product, combinations
+from pathlib import Path
+import json
+
+ZERO = frozenset()
+ONE = frozenset([ZERO])
+TWO = frozenset([ZERO, ONE])
+A, B = &#x27;atom-a&#x27;, &#x27;atom-b&#x27;
+
+def pair(a,b):
+    return frozenset([frozenset([a]),frozenset([a,b])])
+def mem(x):
+    return x if isinstance(x,frozenset) else frozenset()
+def union(x):
+    return frozenset(y for z in mem(x) for y in mem(z))
+def unique(x):
+    return next(iter(x)) if isinstance(x,frozenset) and len(x)==1 else ZERO
+def fst(p):
+    # The intersection is bounded by Union(p), as in the term construction.
+    return unique(frozenset(x for x in union(p) if all(x in mem(y) for y in mem(p))))
+def snd(p):
+    a=fst(p)
+    difference=frozenset(x for x in union(p) if x!=a)
+    return unique(difference) if difference else a
+
+def tuple_code(t):
+    out=ZERO
+    for a in reversed(t): out=pair(a,out)
+    return out
+
+def closure(roots):
+    todo=list(roots); seen=set()
+    while todo:
+        x=todo.pop()
+        if x not in seen:
+            seen.add(x); todo.extend(mem(x))
+    return seen
+
+# Source functions are sparse dicts. Graph representation contains only HF objects.
+ARITIES=(0,1,2)
+TAGS=(ZERO,ONE,TWO)
+def encode(state):
+    graphs=[]
+    for f in range(3):
+        g=frozenset(pair(tuple_code(k),v) for k,v in state[f].items() if v!=ZERO)
+        graphs.append(pair(TAGS[f],g))
+    return frozenset(graphs)
+def graph(root,f):
+    return unique(frozenset(snd(e) for e in root if fst(e)==TAGS[f]))
+def lookup(root,f,key):
+    return unique(frozenset(snd(e) for e in graph(root,f) if fst(e)==tuple_code(key)))
+def upd_code(f,key,val): return pair(TAGS[f],pair(tuple_code(key),val))
+def encode_updates(updates): return frozenset(upd_code(*u) for u in updates)
+def source_apply(state,updates):
+    bykey={}
+    for f,k,v in updates:
+        if (f,k) in bykey and bykey[f,k]!=v:
+            return tuple(dict(g) for g in state),True
+        bykey[f,k]=v
+    result=tuple(dict(g) for g in state)
+    for (f,k),v in bykey.items():
+        if v==ZERO: result[f].pop(k,None)
+        else: result[f][k]=v
+    return result,False
+
+def graph_apply(root,U):
+    def f(u): return fst(u)
+    def k(u): return fst(snd(u))
+    def v(u): return snd(snd(u))
+    clash=any(f(u)==f(w) and k(u)==k(w) and v(u)!=v(w) for u in U for w in U)
+    if clash: return root,True
+    out=[]
+    for fi in range(3):
+        updates=frozenset(u for u in U if f(u)==TAGS[fi])
+        old=frozenset(e for e in graph(root,fi) if not any(k(u)==fst(e) for u in updates))
+        new=frozenset(pair(k(u),v(u)) for u in updates if v(u)!=ZERO)
+        out.append(pair(TAGS[fi],old|new))
+    return frozenset(out),False
+
+stats={&#x27;pair_projection_cases&#x27;:0,&#x27;state_update_cases&#x27;:0,&#x27;clash_cases&#x27;:0,&#x27;lookup_cases&#x27;:0,&#x27;roundtrip_states&#x27;:0}
+objects=(ZERO,ONE,TWO,A,B,frozenset([A,B]),pair(A,A),pair(A,ZERO))
+for a,b in product(objects,repeat=2):
+    p=pair(a,b)
+    assert fst(p)==a and snd(p)==b
+    stats[&#x27;pair_projection_cases&#x27;]+=1
+assert len({pair(a,b) for a,b in product(objects,repeat=2)})==len(objects)**2
+
+keys=((),(A,),(B,),(A,A),(A,B),(B,A),(B,B))
+locs=((0,()),(1,(A,)),(1,(B,)),(2,(A,A)),(2,(A,B)))
+values=(ZERO,ONE,A,frozenset([A,B]))
+# All sparse states over three locations (including nullary and a binary location).
+oldlocs=(locs[0],locs[1],locs[4])
+updates=[(f,k,v) for f,k in locs for v in values]
+batches=[()]+[(u,) for u in updates]+list(combinations(updates,2))
+for vals in product(values,repeat=len(oldlocs)):
+    state=tuple({} for _ in range(3))
+    for (f,k),v in zip(oldlocs,vals):
+        if v!=ZERO: state[f][k]=v
+    root=encode(state)
+    stats[&#x27;roundtrip_states&#x27;]+=1
+    for f,k in locs:
+        assert lookup(root,f,k)==state[f].get(k,ZERO)
+        stats[&#x27;lookup_cases&#x27;]+=1
+    for batch in batches:
+        expected,clash=source_apply(state,batch)
+        got,gclash=graph_apply(root,encode_updates(batch))
+        assert clash==gclash and got==encode(expected)
+        if clash: assert got==root
+        stats[&#x27;state_update_cases&#x27;]+=1
+        stats[&#x27;clash_cases&#x27;]+=int(clash)
+# Repeated identical update is idempotent, including deletions.
+state=({():A},{(A,):B},{(A,B):ONE})
+for u in updates:
+    assert graph_apply(encode(state),encode_updates([u,u]))==graph_apply(encode(state),encode_updates([u]))
+# All graph predicates/lookups are evaluated before updates: source swap, not sequential copy.
+swap=((1,(A,),A),(1,(B,),B))
+state=({}, {(A,):B,(B,):A}, {})
+new,clash=graph_apply(encode(state),encode_updates(swap))
+assert not clash and lookup(new,1,(A,))==A and lookup(new,1,(B,))==B
+# History independence after a long path of write/delete cycles.
+root=encode(({}, {}, {})); initial=root; peak=0
+for i in range(2000):
+    v=objects[i%len(objects)]
+    root,_=graph_apply(root,encode_updates([(1,(A,),v)]))
+    peak=max(peak,len(closure([root,A,B,ZERO,ONE])))
+    root,_=graph_apply(root,encode_updates([(1,(A,),ZERO)]))
+    assert root==initial
+stats[&#x27;write_delete_cycles&#x27;]=2000
+stats[&#x27;peak_coded_closure_in_cycles&#x27;]=peak
+# Guard convention: only exactly ONE is true, never generic nonemptiness.
+assert [(x==ONE) for x in (ZERO,ONE,TWO,A,frozenset([A]))]==[False,True,False,False,False]
+# Card&#x27;s von Neumann return and atom default match source extension.
+def ordinal(n):
+    out=ZERO
+    for _ in range(n): out=frozenset(set(out)|{out})
+    return out
+for x in objects:
+    c=ordinal(len(mem(x)))
+    assert len(c)==len(mem(x))
+stats[&#x27;all_checks_passed&#x27;]=True
+Path(__file__).with_name(&#x27;asm_graph_update_results.json&#x27;).write_text(json.dumps(stats,indent=2)+&#x27;\n&#x27;)
+print(json.dumps(stats,indent=2))
+</pre><p><a href="../assets/7f11de93c4c30c25add4ab899509879f9210fd72bdb0101504904106274b6dcd.py">Exact original</a></p></html>
