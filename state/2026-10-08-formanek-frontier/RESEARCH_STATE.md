@@ -1,3 +1,5 @@
+> **SOURCE-CORRECTION ALERT (2026-10-08):** The all-characteristics Formanek/Burger-Valette no-idempotent claim below is NOT established by those original sources. Formanek Theorem 1 uses characteristic zero; Burger-Valette Lemma 4.1 in characteristic p constrains the trace, not the idempotent, while Proposition 4.2 concerns complex group algebras. Bartels-Lueck-Reich print a stronger statement but do not supply the missing argument in those citations. Consequently the hyperbolic impossibility, BS(1,p^k) subgroup necessity, and dependent finite-pattern/limit statements below should be treated as unproved conditional assertions, NOT results. See [corrected Bowen audit](../2026-10-08-bowen-bernoulli-direct-finiteness/CORRECTED_AUDIT.md). Unrelated quantum calculations not affected.
+
 # Astra continuation: hyperbolic group-ring obstruction and quantum compiler audit
 Date: 2026-10-08 (Brisbane). Status: internally reconstructed deductions from established literature; NOT original priority-certified research. Do not change N47/N129 card status without separate source/review protocol.
 
