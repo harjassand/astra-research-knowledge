@@ -1,0 +1,331 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c4_quantum_lift/cycle8_dissipative_compiler/dissipative_sandwich_replay.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c4_quantum_lift/cycle8_dissipative_compiler/dissipative_sandwich_replay.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact d=4 replay of a dissipative, non-HS-selfadjoint bistochastic sandwich.
+
+Core: the two-site CNOT-dressed product broadcaster from cycle 7.
+Noise: Lambda=(Ad_H o (3/4 Id + 1/4 Ad_Z)) tensor Id, represented by a
+two-term weighted Kraus list. Lambda is CPTP, unital, dissipative and is not
+HS self-adjoint. We form Phi=Lambda* Phi0 Lambda and pull back the canonical
+core EB instrument through Lambda*.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import itertools
+import json
+from pathlib import Path
+
+import sympy as sp
+from sympy import I, Matrix, Rational, eye, zeros, kronecker_product
+
+
+OUT = Path(__file__).resolve().parent
+I2 = eye(2)
+I4 = eye(4)
+PAULI = {
+    &quot;I&quot;: I2,
+    &quot;X&quot;: Matrix([[0, 1], [1, 0]]),
+    &quot;Y&quot;: Matrix([[0, -I], [I, 0]]),
+    &quot;Z&quot;: Matrix([[1, 0], [0, -1]]),
+}
+LABELS = [a + b for a, b in itertools.product(&quot;IXYZ&quot;, repeat=2)]
+BASIS = [kronecker_product(PAULI[a], PAULI[b]) for a, b in itertools.product(&quot;IXYZ&quot;, repeat=2)]
+# Exact rational-entry SU(2) unitary with quaternion coordinates
+# (1/3,2/3,2/3,0); its Bloch rotation mixes the dephasing axis with others.
+V = Rational(1, 3) * I2 + Rational(2, 3) * I * PAULI[&quot;X&quot;] + Rational(2, 3) * I * PAULI[&quot;Y&quot;]
+U = Matrix([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0]])
+SWAP4 = Matrix(16, 16, lambda r, c: int((r % 4) * 4 + r // 4 == c))
+
+
+def clean(a):
+    return a.applyfunc(lambda x: sp.cancel(sp.simplify(sp.expand_complex(x))))
+
+
+def matrix_json(a):
+    a = clean(a)
+    return [[str(a[i, j]) for j in range(a.cols)] for i in range(a.rows)]
+
+
+def regroup_interleaved_to_receivers():
+    p = zeros(16, 16)
+    for a1, b1, a2, b2 in itertools.product(range(2), repeat=4):
+        old = ((a1 * 2 + b1) * 2 + a2) * 2 + b2
+        new = ((a1 * 2 + a2) * 2 + b1) * 2 + b2
+        p[new, old] = 1
+    return p
+
+
+def ptrace_right(y, d=4):
+    return clean(Matrix(d, d, lambda i, k: sum(y[i * d + j, k * d + j] for j in range(d))))
+
+
+def ptrace_left(y, d=4):
+    return clean(Matrix(d, d, lambda j, l: sum(y[i * d + j, i * d + l] for i in range(d))))
+
+
+def ptm(channel, basis=BASIS, d=4):
+    return clean(Matrix(len(basis), len(basis), lambda i, j: sp.simplify(sp.trace(basis[i] * channel(basis[j])) / d)))
+
+
+def local_core_kraus():
+    k0, k1 = zeros(4, 2), zeros(4, 2)
+    k0[0, 0] = 1
+    k1[3, 1] = 1
+    a0, a1 = zeros(4, 2), zeros(4, 2)
+    a0[0, 0], a0[1, 1], a0[2, 1] = 2, 1, 1
+    a1[1, 0], a1[2, 0], a1[3, 1] = 1, 1, 2
+    return [
+        (Rational(9, 10), k0),
+        (Rational(9, 10), k1),
+        (Rational(1, 60), a0),
+        (Rational(1, 60), a1),
+    ]
+
+
+def core_broadcaster_kraus():
+    perm = regroup_interleaved_to_receivers()
+    out_unitary = kronecker_product(U, U)
+    result = []
+    for (w1, k1), (w2, k2) in itertools.product(local_core_kraus(), repeat=2):
+        k = out_unitary * perm * kronecker_product(k1, k2) * U.H
+        result.append((w1 * w2, clean(k)))
+    return result
+
+
+def core_b(x, ks):
+    return clean(sum((w * k * x * k.H for w, k in ks), zeros(16, 16)))
+
+
+def core_left(x, ks):
+    return ptrace_right(core_b(x, ks), 4)
+
+
+def core_right(x, ks):
+    return ptrace_left(core_b(x, ks), 4)
+
+
+def core_eb_ensemble():
+    p0 = Matrix([[1, 0], [0, 0]])
+    p1 = Matrix([[0, 0], [0, 1]])
+    local = [
+        (Rational(14, 15) * p0, p0),
+        (Rational(14, 15) * p1, p1),
+        (Rational(1, 15) * I2, Rational(1, 2) * I2),
+    ]
+    return [
+        (clean(U * kronecker_product(m1, m2) * U.H), clean(U * kronecker_product(s1, s2) * U.H))
+        for (m1, s1), (m2, s2) in itertools.product(local, repeat=2)
+    ]
+
+
+def apply_ensemble(x, ensemble):
+    return clean(sum((sp.trace(m * x) * s for m, s in ensemble), zeros(4, 4)))
+
+
+def lambda_kraus():
+    # Lambda(X) = 3/4 V X V* + 1/4 V Z X Z V* on site 1, identity on site 2.
+    z = PAULI[&quot;Z&quot;]
+    return [
+        (Rational(3, 4), kronecker_product(V, I2)),
+        (Rational(1, 4), kronecker_product(V * z, I2)),
+    ]
+
+
+def apply_channel(x, kraus, adjoint=False):
+    if not adjoint:
+        return clean(sum((w * k * x * k.H for w, k in kraus), zeros(x.rows, x.cols)))
+    return clean(sum((w * k.H * x * k for w, k in kraus), zeros(x.rows, x.cols)))
+
+
+def exact_psd_ldl(a):
+    &quot;&quot;&quot;Exact rational PSD test by symmetric pivoted Schur complements.&quot;&quot;&quot;
+    a = clean(a)
+    n = a.rows
+    if a != a.H:
+        return False, []
+    m = [[sp.Rational(a[i, j]) for j in range(n)] for i in range(n)]
+    pivots = []
+    k = 0
+    while k &lt; n:
+        if any(m[i][i] &lt; 0 for i in range(k, n)):
+            return False, pivots
+        positive = next((i for i in range(k, n) if m[i][i] &gt; 0), None)
+        if positive is None:
+            if any(m[i][j] != 0 for i in range(k, n) for j in range(k, n)):
+                return False, pivots
+            return True, pivots
+        if positive != k:
+            m[k], m[positive] = m[positive], m[k]
+            for row in m:
+                row[k], row[positive] = row[positive], row[k]
+        d = m[k][k]
+        pivots.append(str(d))
+        for i in range(k + 1, n):
+            for j in range(k + 1, n):
+                m[i][j] = sp.cancel(m[i][j] - m[i][k] * m[k][j] / d)
+        k += 1
+    return True, pivots
+
+
+def main():
+    assert clean(V * V.H) == I2 and clean(V.H * V) == I2
+    core_ks = core_broadcaster_kraus()
+    # Exact core broadcaster validity and equal marginals.
+    core_completeness = clean(sum((w * k.H * k for w, k in core_ks), zeros(4, 4)))
+    assert core_completeness == I4
+    core_swap = zeros(16, 16)
+    for a in range(4):
+        for b in range(4):
+            core_swap[b * 4 + a, a * 4 + b] = 1
+    core_swap_symmetric = all(clean(core_swap * k - k) == zeros(16, 4) for _, k in core_ks)
+    assert core_swap_symmetric
+    phi0 = ptm(lambda x: core_left(x, core_ks))
+    phi0_right = ptm(lambda x: core_right(x, core_ks))
+    assert phi0 == phi0_right
+    assert core_left(I4, core_ks) == I4
+    psi0_ensemble = core_eb_ensemble()
+    psi0 = ptm(lambda x: apply_ensemble(x, psi0_ensemble))
+    assert phi0 == phi0.T and psi0 == psi0.T
+
+    # Exact bistochastic, dissipative, non-self-adjoint Lambda.
+    lk = lambda_kraus()
+    tp_lambda = clean(sum((w * k.H * k for w, k in lk), zeros(4, 4)))
+    unital_lambda = clean(sum((w * k * k.H for w, k in lk), zeros(4, 4)))
+    assert tp_lambda == I4 and unital_lambda == I4
+    r_lambda = ptm(lambda x: apply_channel(x, lk))
+    r_lambda_star = ptm(lambda x: apply_channel(x, lk, adjoint=True))
+    assert r_lambda_star == r_lambda.T
+    assert r_lambda != r_lambda.T
+    contraction_defect = clean(eye(16) - r_lambda.T * r_lambda)
+    lambda_contraction_ok, lambda_pivots = exact_psd_ldl(contraction_defect)
+    assert lambda_contraction_ok
+
+    # Actual 128-term composed Kraus descriptor for B&#x27;=(Lambda* tensor Lambda*) B0 Lambda.
+    composed = []
+    for (wi, li), (wl, ll), (wr, lr), (wo, lo) in itertools.product(lk, lk, core_ks, lk):
+        # `wi` is the input Lambda Kraus; wl,wo are the two output Lambda* Kraus.
+        k = kronecker_product(ll.H, lo.H) * lr * li
+        composed.append((wi * wl * wr * wo, clean(k)))
+    # Kraus order above has 2*2*16*2=128 entries, but the product iteration
+    # includes the output-left, input, core, output-right roles as documented.
+    assert len(composed) == 128
+    bprime_completeness = clean(sum((w * k.H * k for w, k in composed), zeros(4, 4)))
+    assert bprime_completeness == I4
+
+    r_phi = clean(r_lambda.T * phi0 * r_lambda)
+    r_psi = clean(r_lambda.T * psi0 * r_lambda)
+    assert r_phi == r_phi.T and r_psi == r_psi.T
+    assert r_phi[0, 0] == 1 and r_phi[0, 1:] == zeros(1, 15) and r_phi[1:, 0] == zeros(15, 1)
+    assert r_psi[0, 0] == 1 and r_psi[0, 1:] == zeros(1, 15) and r_psi[1:, 0] == zeros(15, 1)
+
+    # The lifted canonical instrument has the same nine outcomes; verify all
+    # effect/state normalizations exactly after applying Lambda*.
+    pulled = []
+    for m, state in psi0_ensemble:
+        mp = apply_channel(m, lk, adjoint=True)
+        sprep = apply_channel(state, lk, adjoint=True)
+        assert clean(mp - mp.H) == zeros(4, 4)
+        assert clean(sprep - sprep.H) == zeros(4, 4)
+        assert sp.simplify(sp.trace(sprep)) == 1
+        assert clean(sprep - mp / sp.trace(mp)) == zeros(4, 4)
+        pulled.append((mp, sprep))
+    pulled_effect_sum = clean(sum((m for m, _ in pulled), zeros(4, 4)))
+    pulled_prep_sum = clean(sum((sp.trace(m) * s for m, s in pulled), zeros(4, 4)))
+    assert pulled_effect_sum == I4 and pulled_prep_sum == I4
+    r_psi_from_instrument = ptm(lambda x: apply_ensemble(x, pulled))
+    assert r_psi_from_instrument == r_psi
+
+    # Direct output marginal checks use the explicit physical composition:
+    # Lambda input, B0, then Lambda* on both outputs. On the marginal, the
+    # traced-side Lambda* disappears because it is TP.
+    phi_left = r_lambda.T * phi0 * r_lambda
+    phi_right = r_lambda.T * phi0_right * r_lambda
+    assert phi_left == phi_right == r_phi
+
+    core_slack = clean(2 * (eye(16) - phi0) - (eye(16) - psi0))
+    core_ok, core_pivots = exact_psd_ldl(core_slack)
+    assert core_ok
+    final_slack = clean(2 * (eye(16) - r_phi) - (eye(16) - r_psi))
+    final_from_decomposition = clean(contraction_defect + r_lambda.T * core_slack * r_lambda)
+    assert final_slack == final_from_decomposition
+    final_ok, final_pivots = exact_psd_ldl(final_slack)
+    assert final_ok
+
+    offdiag_phi = sum(1 for i in range(16) for j in range(16) if i != j and r_phi[i, j] != 0)
+    offdiag_psi = sum(1 for i in range(16) for j in range(16) if i != j and r_psi[i, j] != 0)
+    assert offdiag_phi &gt; 0 and offdiag_psi &gt; 0
+
+    record = {
+        &quot;status&quot;: &quot;EXACT_DISSIPATIVE_SANDWICH_REPLAY&quot;,
+        &quot;dimension&quot;: 4,
+        &quot;pauli_basis_order&quot;: LABELS,
+        &quot;core&quot;: {
+            &quot;broadcaster&quot;: &quot;Two-site CNOT dressing of the product of B1=(9/10)BZ+(1/10)BU local qubit symmetric broadcasters.&quot;,
+            &quot;core_kraus_count&quot;: len(core_ks),
+            &quot;core_kraus_completeness&quot;: matrix_json(core_completeness),
+            &quot;core_output_is_swap_symmetric&quot;: core_swap_symmetric,
+            &quot;marginal_transfer&quot;: matrix_json(phi0),
+            &quot;canonical_EB_outcomes&quot;: len(psi0_ensemble),
+            &quot;EB_transfer&quot;: matrix_json(psi0),
+            &quot;exact_core_factor2_slack_psd&quot;: core_ok,
+        },
+        &quot;dissipative_lambda&quot;: {
+            &quot;definition&quot;: &quot;Lambda=(Ad_V o (3/4 Id + 1/4 Ad_Z)) tensor Id on two qubits, V=I/3+(2i/3)X+(2i/3)Y is an exact rational-entry SU(2) unitary&quot;,
+            &quot;weighted_kraus&quot;: [
+                {&quot;weight&quot;: str(w), &quot;matrix&quot;: matrix_json(k)} for w, k in lk
+            ],
+            &quot;weighted_Kraus_TP_sum&quot;: matrix_json(tp_lambda),
+            &quot;weighted_Kraus_unital_sum&quot;: matrix_json(unital_lambda),
+            &quot;PTM&quot;: matrix_json(r_lambda),
+            &quot;HS_adjoint_PTM&quot;: matrix_json(r_lambda_star),
+            &quot;not_HS_selfadjoint&quot;: r_lambda != r_lambda.T,
+            &quot;contraction_defect_I_minus_LambdaStarLambda_PSD&quot;: lambda_contraction_ok,
+        },
+        &quot;sandwiched_output&quot;: {
+            &quot;definition&quot;: &quot;Phi=Lambda* Phi0 Lambda; Psi=Lambda* Psi0 Lambda&quot;,
+            &quot;explicit_composed_broadcaster_Kraus_count&quot;: len(composed),
+            &quot;composed_broadcaster_Kraus_TP_sum&quot;: matrix_json(bprime_completeness),
+            &quot;two_marginal_transfer_matrices_equal&quot;: phi_left == phi_right,
+            &quot;Phi_transfer&quot;: matrix_json(r_phi),
+            &quot;Psi_transfer&quot;: matrix_json(r_psi),
+            &quot;Phi_HS_selfadjoint&quot;: r_phi == r_phi.T,
+            &quot;Psi_HS_selfadjoint&quot;: r_psi == r_psi.T,
+            &quot;Phi_unital_and_TP&quot;: r_phi[0, 0] == 1 and r_phi[0, 1:] == zeros(1, 15) and r_phi[1:, 0] == zeros(15, 1),
+            &quot;Phi_is_not_diagonal_in_the_core_Pauli_basis&quot;: offdiag_phi &gt; 0,
+            &quot;Psi_is_not_diagonal_in_the_core_Pauli_basis&quot;: offdiag_psi &gt; 0,
+        },
+        &quot;pulled_back_canonical_instrument&quot;: {
+            &quot;outcome_count&quot;: len(pulled),
+            &quot;effects_sum&quot;: matrix_json(pulled_effect_sum),
+            &quot;trace_weighted_preparation_sum&quot;: matrix_json(pulled_prep_sum),
+            &quot;all_preparations_trace_one&quot;: True,
+            &quot;preparation_equals_effect_over_trace_for_each_outcome&quot;: True,
+            &quot;effects_and_preparations&quot;: [
+                {&quot;effect&quot;: matrix_json(m), &quot;prepared_state&quot;: matrix_json(s)} for m, s in pulled
+            ],
+        },
+        &quot;operator_order_certificate&quot;: {
+            &quot;constant&quot;: 2,
+            &quot;core_slack_PSD&quot;: core_ok,
+            &quot;Lambda_contraction_defect_PSD&quot;: lambda_contraction_ok,
+            &quot;identity&quot;: &quot;2(I-Phi)-(I-Psi)=(I-Lambda*Lambda)+Lambda*[2(I-Phi0)-(I-Psi0)]Lambda&quot;,
+            &quot;final_slack_matrix&quot;: matrix_json(final_slack),
+            &quot;exact_pivoted_LDL_PSD&quot;: final_ok,
+            &quot;LDL_positive_pivots&quot;: final_pivots,
+            &quot;all_16_Hermitian_modes_covered&quot;: True,
+        },
+        &quot;scope_boundary&quot;: &quot;This is a finite exact example of a non-selfadjoint dissipative bistochastic sandwich of an interacting self-compatible core. The general theorem requires supplied exact bistochastic Lambda and a core comparator; it does not synthesize either input structure from an arbitrary channel.&quot;,
+    }
+    path = OUT / &quot;DISSIPATIVE_SANDWICH_REPLAY.json&quot;
+    path.write_text(json.dumps(record, indent=2) + &quot;\n&quot;)
+    print(json.dumps({
+        &quot;status&quot;: record[&quot;status&quot;], &quot;dimension&quot;: 4,
+        &quot;composed_broadcaster_kraus&quot;: len(composed), &quot;eb_outcomes&quot;: len(pulled),
+        &quot;offdiag_phi&quot;: offdiag_phi, &quot;offdiag_psi&quot;: offdiag_psi,
+        &quot;final_order_psd&quot;: final_ok, &quot;final_positive_pivots&quot;: len(final_pivots),
+        &quot;file&quot;: str(path),
+    }, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/52a9638fe9462ba2cf2ceaa3a727ba1944b92339147a9228f034a99364ff88a3.py">Exact original</a></p></html>

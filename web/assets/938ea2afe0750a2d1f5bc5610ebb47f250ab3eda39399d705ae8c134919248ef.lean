@@ -1,0 +1,17 @@
+import PlateauPrinciples
+
+set_option pp.all true
+
+#check N33Dynamics.absolutelyContinuous_increment_ge
+#print N33Dynamics.absolutelyContinuous_increment_ge
+#print axioms N33Dynamics.absolutelyContinuous_increment_ge
+#check N33Dynamics.absolutelyContinuous_superlevel_forward_invariant
+#print N33Dynamics.absolutelyContinuous_superlevel_forward_invariant
+#print axioms N33Dynamics.absolutelyContinuous_superlevel_forward_invariant
+#check N33Dynamics.absolutelyContinuous_hits_level
+#check N33Dynamics.absolutelyContinuous_hits_level_of_duration_ge
+#check N33Dynamics.absolutelyContinuous_hits_level_by_range
+#print N33Dynamics.absolutelyContinuous_hits_level
+#print axioms N33Dynamics.absolutelyContinuous_hits_level
+#print axioms N33Dynamics.absolutelyContinuous_hits_level_of_duration_ge
+#print axioms N33Dynamics.absolutelyContinuous_hits_level_by_range

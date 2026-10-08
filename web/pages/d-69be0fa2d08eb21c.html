@@ -1,0 +1,406 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c5_quantum_dimension_obstruction/cycle9_spin9_mixed/spin9_fullstar_blocks.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c5_quantum_dimension_obstruction/cycle9_spin9_mixed/spin9_fullstar_blocks.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>import sympy as sp
+from itertools import combinations
+from math import gcd
+import json
+from pathlib import Path
+
+I = sp.I
+
+def pauli_mul_word(a,b):
+    phase=0; out=[]
+    tab={(&#x27;I&#x27;,&#x27;I&#x27;):(0,&#x27;I&#x27;),(&#x27;I&#x27;,&#x27;X&#x27;):(0,&#x27;X&#x27;),(&#x27;I&#x27;,&#x27;Y&#x27;):(0,&#x27;Y&#x27;),(&#x27;I&#x27;,&#x27;Z&#x27;):(0,&#x27;Z&#x27;),
+         (&#x27;X&#x27;,&#x27;I&#x27;):(0,&#x27;X&#x27;),(&#x27;Y&#x27;,&#x27;I&#x27;):(0,&#x27;Y&#x27;),(&#x27;Z&#x27;,&#x27;I&#x27;):(0,&#x27;Z&#x27;),(&#x27;X&#x27;,&#x27;X&#x27;):(0,&#x27;I&#x27;),
+         (&#x27;Y&#x27;,&#x27;Y&#x27;):(0,&#x27;I&#x27;),(&#x27;Z&#x27;,&#x27;Z&#x27;):(0,&#x27;I&#x27;),(&#x27;X&#x27;,&#x27;Y&#x27;):(1,&#x27;Z&#x27;),(&#x27;Y&#x27;,&#x27;X&#x27;):(3,&#x27;Z&#x27;),
+         (&#x27;Y&#x27;,&#x27;Z&#x27;):(1,&#x27;X&#x27;),(&#x27;Z&#x27;,&#x27;Y&#x27;):(3,&#x27;X&#x27;),(&#x27;Z&#x27;,&#x27;X&#x27;):(1,&#x27;Y&#x27;),(&#x27;X&#x27;,&#x27;Z&#x27;):(3,&#x27;Y&#x27;)}
+    for x,y in zip(a,b):
+        p,z=tab[x,y]; phase=(phase+p)%4; out.append(z)
+    return phase,tuple(out)
+
+def gamma_words(n=4):
+    out=[]
+    for k in range(n):
+        pre=(&#x27;Z&#x27;,)*k; suf=(&#x27;I&#x27;,)*(n-k-1)
+        out.append(pre+(&#x27;X&#x27;,)+suf); out.append(pre+(&#x27;Y&#x27;,)+suf)
+    out.append((&#x27;Z&#x27;,)*n)
+    return out
+
+GAM=gamma_words()
+def e_basis(k):
+    # E_A=i^(k(k-1)/2) Gamma_{a1}...Gamma_{ak}, Hermitian.
+    for A in combinations(range(9),k):
+        ph=0; w=(&#x27;I&#x27;,)*4
+        for a in A:
+            p,w=pauli_mul_word(w,GAM[a]); ph=(ph+p)%4
+        ph=(ph+k*(k-1)//2)%4
+        yield A,ph,w
+
+def apply_word(word,bits):
+    # word order qubit 0..3; 0-based bits
+    out=bits; phase=1
+    for q,p in enumerate(word):
+        bit=(bits&gt;&gt;q)&amp;1
+        if p==&#x27;X&#x27;: out ^= (1&lt;&lt;q)
+        elif p==&#x27;Y&#x27;: out ^= (1&lt;&lt;q); phase *= I*(1 if bit==0 else -1)
+        elif p==&#x27;Z&#x27;: phase *= (1 if bit==0 else -1)
+    return out,sp.simplify(phase)
+
+def triple_apply(term,idx):
+    # term is (phase, words by factor)
+    ph=term[0]; out=0
+    for f,w in enumerate(term[1]):
+        b=(idx&gt;&gt;(4*f))&amp;15
+        bo,p=apply_word(w,b); ph*=p
+        out |= bo &lt;&lt; (4*f)
+    return out,sp.simplify(ph)
+
+def h_terms():
+    out={k:[] for k in range(1,5)}
+    for k in range(1,5):
+        for A,ph,w in e_basis(k):
+            # E_A^T has the same scalar and gains (-1) for each Y under transpose.
+            pt=(ph+2*(w.count(&#x27;Y&#x27;)%2))%4
+            # Coefficient multiplying Pauli words for E_A^T tensor E_A.
+            c=I**(pt+ph)
+            assert sp.simplify(c).is_real
+            # two receiver terms
+            out[k].append((sp.simplify(c),(w,w,(&#x27;I&#x27;,)*4)))
+            out[k].append((sp.simplify(c),(w,(&#x27;I&#x27;,)*4,w)))
+    return out
+
+HT=h_terms()
+
+def c_action(q,bits,create=True):
+    # JW c_q^dag maps 0-&gt;1; c_q maps 1-&gt;0.
+    bit=(bits&gt;&gt;q)&amp;1
+    if create and bit: return None
+    if not create and not bit: return None
+    phase=(-1)**sum((bits&gt;&gt;j)&amp;1 for j in range(q))
+    out=bits^(1&lt;&lt;q)
+    return out,sp.Integer(phase)
+
+def simple_action(alpha, bits, dual=False):
+    # Single-spinor action for alpha=(i,i+1) difference, or i=3 short root.
+    if alpha==3:
+        # For the B4 spinor, E_{e4}=(Gamma_7-i Gamma_8)Gamma_9/2
+        # is bare local raising on the fourth qubit (the JW prefix cancels).
+        bit=(bits&gt;&gt;3)&amp;1
+        if not dual:
+            return None if bit else (bits^(1&lt;&lt;3),sp.Integer(1))
+        return None if not bit else (bits^(1&lt;&lt;3),sp.Integer(-1))
+    i=alpha
+    # E_{e_i-e_{i+1}} = c_i^dagger c_{i+1}; apply annihilate j then create i
+    if not dual:
+        a=c_action(i+1,bits,False)
+        if a is None:return None
+        b=c_action(i,a[0],True)
+        if b is None:return None
+        return b[0],sp.Integer(a[1]*b[1])
+    # negative transpose: reverse every nonzero matrix edge with negative coefficient
+    # Find primal preimage by reversing target state transitions: ref input has bit i=1,j=0.
+    if ((bits&gt;&gt;i)&amp;1)==0 or ((bits&gt;&gt;(i+1))&amp;1)==1:return None
+    src=bits^(1&lt;&lt;i)^(1&lt;&lt;(i+1))
+    forward=simple_action(alpha,src,False)
+    assert forward is not None and forward[0]==bits
+    return src,-forward[1]
+
+def weight2(idx):
+    # U* x U x U: doubled weight = -h(ref)+h(b1)+h(b2), h=2bit-1.
+    ans=[]
+    for q in range(4):
+        br=(idx&gt;&gt;q)&amp;1; b1=(idx&gt;&gt;(4+q))&amp;1; b2=(idx&gt;&gt;(8+q))&amp;1
+        ans.append((1-2*br)+(2*b1-1)+(2*b2-1))
+    return tuple(ans)
+
+def target(r):
+    return tuple(3 if i&lt;r else 1 for i in range(4))
+
+def make_highest(r):
+    wt=target(r)
+    states=[x for x in range(4096) if weight2(x)==wt]
+    pos={x:i for i,x in enumerate(states)}
+    rows=[]
+    for a in range(4):
+        destwt=list(wt)
+        if a&lt;3: destwt[a]+=2; destwt[a+1]-=2
+        else: destwt[3]+=2
+        destwt=tuple(destwt)
+        dest=[x for x in range(4096) if weight2(x)==destwt]
+        dpos={x:i for i,x in enumerate(dest)}
+        M=sp.zeros(len(dest),len(states))
+        for col,x in enumerate(states):
+            # reference dual + outputs primal
+            for f in range(3):
+                b=(x&gt;&gt;(4*f))&amp;15
+                ans=simple_action(a,b,dual=(f==0))
+                if ans is not None:
+                    y,p=ans
+                    z=(x&amp;~(15&lt;&lt;(4*f))) | (y&lt;&lt;(4*f))
+                    if z in dpos: M[dpos[z],col]+=p
+        rows.append(M)
+    stacked=sp.Matrix.vstack(*rows)
+    ker=stacked.nullspace()
+    N=sp.Matrix.hstack(*ker)
+    return states,N,stacked
+
+def act_h(k, states, vec):
+    # vec indexed by highest-weight computational states, return full sparse dict
+    out={}
+    for col,x in enumerate(states):
+        cv=vec[col]
+        if cv==0: continue
+        for term in HT[k]:
+            y,p=triple_apply(term,x)
+            out[y]=out.get(y,0)+cv*p
+    return {x:sp.simplify(v) for x,v in out.items() if sp.simplify(v)!=0}
+
+def act_swap(states,vec):
+    out={}
+    for col,x in enumerate(states):
+        cv=vec[col]
+        if cv==0: continue
+        # output factors 1 and 2 swap four-bit blocks
+        y=(x&amp;15)|(((x&gt;&gt;8)&amp;15)&lt;&lt;4)|(((x&gt;&gt;4)&amp;15)&lt;&lt;8)
+        out[y]=out.get(y,0)+cv
+    return out
+
+def coeff_matrix(states,N,act):
+    # N has one column per basis vector, with coordinates on states. act(j)-&gt;full dict.
+    # solve coefficients using pivot rows of N
+    piv=[]
+    for rr in range(N.rows):
+        trial=piv+[rr]
+        if N[trial,:].rank()&gt;len(piv): piv.append(rr)
+        if len(piv)==N.cols: break
+    assert len(piv)==N.cols
+    P=N[piv,:]
+    Pinv=P.inv()
+    A=sp.zeros(N.cols,N.cols)
+    statepos={x:i for i,x in enumerate(states)}
+    for j in range(N.cols):
+        out=act([N[i,j] for i in range(N.rows)])
+        vals=sp.Matrix([out.get(states[i],0) for i in piv])
+        A[:,j]=Pinv*vals
+        # verify all rows using full support, including outside the highest weight (should preserve)
+        for x,v in out.items():
+            if x not in statepos: assert sp.simplify(v)==0, (&#x27;outside target&#x27;,x,v)
+        predicted=N*A[:,j]
+        for i,x in enumerate(states):
+            assert sp.simplify(predicted[i]-out.get(x,0))==0, (&#x27;preservation failed&#x27;,j,i)
+    return A
+
+def restrict_subspace(A,T):
+    # coordinate matrix on invariant range(T)
+    piv=[]
+    for rr in range(T.rows):
+        trial=piv+[rr]
+        if T[trial,:].rank()&gt;len(piv): piv.append(rr)
+        if len(piv)==T.cols: break
+    P=T[piv,:]
+    return P.inv()*(A*T)[piv,:]
+
+def gram_schmidt_orthonormal(G):
+    n=G.rows
+    E=sp.zeros(n,n)
+    for j in range(n):
+        v=sp.eye(n)[:,j]
+        for i in range(j):
+            vi=E[:,i]
+            v=v-vi*(vi.T*G*v)[0]
+        norm=sp.simplify((v.T*G*v)[0])
+        E[:,j]=v/sp.sqrt(norm)
+    return E
+
+VERTICES = [
+    sp.Matrix([1, 0, 0, 14]),
+    sp.Matrix([0, 1, 7, 7]),
+    sp.Matrix([1, 4, 4, 6]),
+]
+TRACE_COEFF = sp.Matrix([9, 36, 84, 126])
+
+
+def primitive_ray(v):
+    den = sp.ilcm(*(q.q for q in v))
+    z = [int(q * den) for q in v]
+    common = 0
+    for q in z:
+        common = gcd(common, abs(q))
+    return tuple(q // common for q in z)
+
+
+def support_cone_rays(winner):
+    # alpha &gt;= 0 and (v_winner-v_other).alpha &gt;= 0.
+    rows = [sp.eye(4).row(j) for j in range(4)]
+    rows.extend((VERTICES[winner] - VERTICES[j]).T
+                for j in range(3) if j != winner)
+    rays = set()
+    for active in combinations(range(len(rows)), 3):
+        M = sp.Matrix.vstack(*(sp.Matrix(rows[j]) for j in active))
+        if M.rank() != 3:
+            continue
+        ker = M.nullspace()
+        if len(ker) != 1:
+            continue
+        q = ker[0]
+        if all((row*q)[0] &gt;= 0 for row in rows):
+            pass
+        elif all((row*(-q))[0] &gt;= 0 for row in rows):
+            q = -q
+        else:
+            continue
+        rays.add(primitive_ray(q))
+    return rays
+
+
+def principal_minors(M):
+    out = []
+    for size in range(1, M.rows + 1):
+        for inds in combinations(range(M.rows), size):
+            det = sp.simplify(M.extract(inds, inds).det())
+            out.append((inds, det))
+    return out
+
+
+def main():
+    # On the highest-weight space of each T_r, the invariant Hamiltonian is a
+    # (5-r)-by-(5-r) multiplicity matrix.  Resolve the output swap first.
+    blocks = {}
+    irreducible_dims = [16, 128, 432, 768, 672]
+    swap_dims = {}
+    total_dimension = 0
+    for r in range(5):
+        states, N, _ = make_highest(r)
+        if N.cols != 5-r:
+            raise AssertionError((r, len(states), N.cols))
+        H = [coeff_matrix(states, N, lambda v, k=k: act_h(k, states, v))
+             for k in range(1, 5)]
+        S = coeff_matrix(states, N, lambda v: act_swap(states, v))
+        G = N.T*N
+        if S*S != sp.eye(N.cols):
+            raise AssertionError((&quot;swap involution&quot;, r, S))
+        if sum(irreducible_dims[r]*(5-r) for r in range(5)) != 4096:
+            raise AssertionError(&quot;Spin(9) triple decomposition dimensions&quot;)
+        total_dimension += irreducible_dims[r]*(5-r)
+        for eps in (1, -1):
+            vecs = (S-eps*sp.eye(N.cols)).nullspace()
+            if not vecs:
+                continue
+            T = sp.Matrix.hstack(*vecs)
+            A = [restrict_subspace(q, T) for q in H]
+            Gp = T.T*G*T
+            E = gram_schmidt_orthonormal(Gp)
+            # Exact orthonormal coordinates; every resulting matrix is real
+            # symmetric because the physical H_k is Hermitian.
+            Ao = [sp.simplify(E.T*Gp*q*E) for q in A]
+            for q in Ao:
+                if q != q.T or any(z.is_real is False for z in q):
+                    raise AssertionError((&quot;not real symmetric&quot;, r, eps, q))
+            if sp.simplify(E.T*Gp*E-sp.eye(T.cols)) != sp.zeros(T.cols):
+                raise AssertionError((&quot;orthonormalization&quot;, r, eps))
+            blocks[(r, eps)] = Ao
+            swap_dims[(r, eps)] = T.cols
+        print(f&quot;T_{r}: dim={irreducible_dims[r]}, multiplicity={5-r}, &quot;
+              f&quot;swap(+/-)=({swap_dims.get((r,1),0)}/{swap_dims.get((r,-1),0)})&quot;,
+              flush=True)
+        for eps in (1, -1):
+            if (r, eps) in blocks:
+                print(f&quot;  swap {eps:+d}&quot;)
+                for k, q in enumerate(blocks[(r, eps)], 1):
+                    print(f&quot;    H{k}={q}&quot;)
+
+    if total_dimension != 4096:
+        raise AssertionError((&quot;dimension&quot;, total_dimension))
+    sym_dim = sum(irreducible_dims[r]*swap_dims.get((r,1),0) for r in range(5))
+    anti_dim = sum(irreducible_dims[r]*swap_dims.get((r,-1),0) for r in range(5))
+    if (sym_dim, anti_dim) != (2176, 1920):
+        raise AssertionError((&quot;swap dimensions&quot;, sym_dim, anti_dim))
+
+    # Independently enumerate the three support cones&#x27; extreme rays.
+    rays_by_cone = [support_cone_rays(j) for j in range(3)]
+    union = set().union(*rays_by_cone)
+    expected_union = {
+        (1,0,0,0),(0,1,0,0),(0,0,1,0),(0,0,0,1),
+        (0,0,1,1),(0,2,0,1),(0,7,5,6),(7,0,2,1),
+        (0,1,1,0),(3,0,1,0),
+    }
+    if union != expected_union:
+        raise AssertionError((&quot;support cone rays&quot;, [sorted(x) for x in rays_by_cone],
+                              sorted(union), sorted(expected_union)))
+    if tuple(map(len, rays_by_cone)) != (6, 6, 7):
+        raise AssertionError((&quot;per-cone ray counts&quot;, tuple(map(len, rays_by_cone))))
+    for j, cone in enumerate(rays_by_cone):
+        print(f&quot;support cone L{j} rays: {sorted(cone)}&quot;, flush=True)
+
+    # The orbit calculation supplies S_can=max_i v_i.alpha as a symbolic
+    # input.  At each ray, certify Tr(Q)+S_can-H_Q &gt;= 0 in every irreducible
+    # and both output-swap signs by all exact principal minors.
+    ray_records = []
+    for ray in sorted(union):
+        alpha = sp.Matrix(ray)
+        scores = [(v.T*alpha)[0] for v in VERTICES]
+        S_can = max(scores)
+        bound = (TRACE_COEFF.T*alpha)[0] + S_can
+        record = {&quot;ray&quot;: list(ray), &quot;support_values&quot;: [str(q) for q in scores],
+                  &quot;support&quot;: str(S_can), &quot;bound&quot;: str(bound), &quot;blocks&quot;: []}
+        for key, mats in blocks.items():
+            Hmix = sp.zeros(mats[0].rows)
+            for ak, mat in zip(alpha, mats):
+                Hmix += ak*mat
+            gap = sp.simplify(bound*sp.eye(Hmix.rows)-Hmix)
+            mins = principal_minors(gap)
+            bad = [(inds, val) for inds, val in mins if val.is_nonnegative is False]
+            if bad:
+                print(&quot;EXACT_VIOLATION&quot;, ray, key, &quot;bound&quot;, bound, &quot;gap&quot;, gap,
+                      &quot;negative_minors&quot;, bad)
+                raise AssertionError((&quot;ray PSD failure&quot;, ray, key, bad))
+            if any(val.is_nonnegative is None for _, val in mins):
+                raise AssertionError((&quot;undecided principal minor&quot;, ray, key, mins))
+            record[&quot;blocks&quot;].append({
+                &quot;r&quot;: key[0], &quot;swap_sign&quot;: key[1],
+                &quot;gap_matrix&quot;: [[str(sp.simplify(gap[i,j])) for j in range(gap.cols)]
+                               for i in range(gap.rows)],
+                &quot;principal_minors&quot;: [
+                    {&quot;indices_0_based&quot;: list(inds), &quot;determinant&quot;: str(val)}
+                    for inds, val in mins
+                ],
+            })
+        print(f&quot;ray {ray}: exact PSD in all {len(blocks)} swap/isotypic blocks; &quot;
+              f&quot;support={S_can}, bound={bound}&quot;, flush=True)
+        ray_records.append(record)
+
+    # Full-isotropic normalization check: H=sum_{k=1}^4 H_k has top 270.
+    isotropic_max = sp.S(0)
+    for key, mats in blocks.items():
+        Hmix = sum(mats, sp.zeros(mats[0].rows))
+        roots = Hmix.eigenvals()
+        largest = max(roots)
+        isotropic_max = max(isotropic_max, largest)
+    if isotropic_max != 270:
+        raise AssertionError((&quot;isotropic normalization&quot;, isotropic_max))
+    output = Path(__file__).with_name(&quot;spin9_fullstar_certificate.json&quot;)
+    data = {
+        &quot;status&quot;: &quot;PASS&quot;,
+        &quot;scope&quot;: &quot;Spin(9) invariant Q=sum_{k=1}^4 alpha_k Pi_k, alpha_k&gt;=0&quot;,
+        &quot;normalization&quot;: &quot;tau=Tr/16; Hermitian form basis T_A=i^(k(k-1)/2) Gamma_A&quot;,
+        &quot;irreducible_dims&quot;: irreducible_dims,
+        &quot;swap_multiplicities&quot;: {f&quot;{r},{eps:+d}&quot;: n for (r,eps), n in swap_dims.items()},
+        &quot;blocks&quot;: {
+            f&quot;{r},{eps:+d}&quot;: [
+                [[str(sp.simplify(M[i,j])) for j in range(M.cols)]
+                 for i in range(M.rows)] for M in mats
+            ] for (r,eps), mats in blocks.items()
+        },
+        &quot;support_vertices&quot;: [[int(x) for x in v] for v in VERTICES],
+        &quot;trace_coefficients&quot;: [int(x) for x in TRACE_COEFF],
+        &quot;support_cone_rays&quot;: [[list(ray) for ray in sorted(cone)] for cone in rays_by_cone],
+        &quot;ray_psd_certificates&quot;: ray_records,
+        &quot;full_isotropic_star_max&quot;: str(isotropic_max),
+        &quot;full_dimension&quot;: total_dimension,
+        &quot;swap_sector_dimensions&quot;: {&quot;symmetric&quot;: sym_dim, &quot;antisymmetric&quot;: anti_dim},
+    }
+    output.write_text(json.dumps(data, indent=2) + &quot;\n&quot;)
+    print(f&quot;exact matrix/principal-minor certificate saved: {output}&quot;)
+    print(&quot;CERTIFICATE PASS: exact cone rays; exact all-block PSD; &quot;
+          &quot;full isotropic top=270; both swap signs retained.&quot;)
+
+if __name__==&#x27;__main__&#x27;: main()
+</pre><p><a href="../assets/9bcea4a194c5b2b07aea346b31ac27f7a66eecdb2324e1b9dee9613f7e5748f5.py">Exact original</a></p></html>

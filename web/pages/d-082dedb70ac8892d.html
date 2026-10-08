@@ -1,0 +1,67 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/materials_energy/mechanical_metamaterials/scripts/ssh_edge_penalty.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/materials_energy/mechanical_metamaterials/scripts/ssh_edge_penalty.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Finite diagnostic for a boundary-penalized mechanical SSH chain.&quot;&quot;&quot;
+import json
+import numpy as np
+
+N = 40
+KAPPAS = [1e-5, 1e-4, 1e-3, 1e-2]
+GAP = (1.0 - 0.4) ** 2
+
+
+def run(q1, q2):
+    C = np.zeros((N - 1, N), dtype=float)
+    for i in range(N - 1):
+        C[i, i] = q1
+        C[i, i + 1] = q2
+    H0 = C.T @ C
+
+    ratio = q1 / q2
+    if abs(ratio) &lt;= 1:
+        u = (-ratio) ** np.arange(N, dtype=float)
+    else:
+        u = (-1.0 / ratio) ** np.arange(N - 1, -1, -1, dtype=float)
+    u /= np.linalg.norm(u)
+    p0 = u[0] ** 2 + u[-1] ** 2
+    e_left = np.zeros(N)
+    e_right = np.zeros(N)
+    e_left[0] = 1.0
+    e_right[-1] = 1.0
+    P = np.outer(e_left, e_left) + np.outer(e_right, e_right)
+
+    results = []
+    for kappa in KAPPAS:
+        vals, vecs = np.linalg.eigh(H0 + kappa * P)
+        low_vec = vecs[:, 0]
+        c_left = float(e_left @ np.linalg.solve(H0 + kappa * P, e_left))
+        c_right = float(e_right @ np.linalg.solve(H0 + kappa * P, e_right))
+        results.append({
+            &quot;kappa&quot;: kappa,
+            &quot;lambda1&quot;: float(vals[0]),
+            &quot;lambda1_over_kappa&quot;: float(vals[0] / kappa),
+            &quot;predicted_slope&quot;: float(p0),
+            &quot;slope_relative_error&quot;: float(abs(vals[0] / kappa - p0) / p0),
+            &quot;lambda2&quot;: float(vals[1]),
+            &quot;lambda2_minus_gap&quot;: float(vals[1] - GAP),
+            &quot;abs_mode_overlap&quot;: float(abs(low_vec @ u)),
+            &quot;davis_kahan_bound_2k_over_gap&quot;: float(2 * kappa / GAP),
+            &quot;left_stiffness&quot;: float(1.0 / c_left),
+            &quot;right_stiffness&quot;: float(1.0 / c_right),
+            &quot;right_over_left_stiffness&quot;: float(c_left / c_right),
+        })
+    return {
+        &quot;q1&quot;: q1,
+        &quot;q2&quot;: q2,
+        &quot;winding_regime&quot;: &quot;q2&gt;q1; left soft mode&quot; if q2 &gt; q1 else &quot;q1&gt;q2; right soft mode&quot;,
+        &quot;null_mode_endpoint_weights&quot;: {&quot;left&quot;: float(u[0] ** 2), &quot;right&quot;: float(u[-1] ** 2)},
+        &quot;penalty_overlap&quot;: float(p0),
+        &quot;ideal_nonzero_gap_lower_bound&quot;: GAP,
+        &quot;results&quot;: results,
+    }
+
+
+out = {
+    &quot;N&quot;: N,
+    &quot;penalty&quot;: &quot;kappa at both endpoints&quot;,
+    &quot;cases&quot;: [run(0.4, 1.0), run(1.0, 0.4)],
+}
+print(json.dumps(out, indent=2))
+</pre><p><a href="../assets/4f146287498df9b040bf7180874b7c0b14e22ff2eb7c5dcb1b5e29e449e66e3e.py">Exact original</a></p></html>

@@ -1,0 +1,78 @@
+CYCLE 3 LEAD RESULT — A RANK-FREE FINITE-HORIZON KL CERTIFICATE FROM ONE PATH
+Date: 2026-10-08
+Status: INTERNALLY-PROVED-CANDIDATE; novelty and external verification UNKNOWN.
+
+THEOREM AND INTERFACE
+
+Let (Y_t)_{t in Z} be a stationary process on a finite alphabet A, |A|=a. Define its absolute-regularity envelope by
+
+  beta(s) = sup_t E[ || Law(Y_{t+s:infinity} | Y_{-infinity:t})
+                         - Law(Y_{t+s:infinity}) ||_TV ].
+
+No hidden-state labels, resets, interventions, conditional-probability calls, queried Hankel entries, rank, singular-value gap, or predictive-feature dictionary are supplied. The result does not require an HMM; it applies in particular to a noisy finite-state HMM whenever an envelope beta(s) is known. The envelope is an explicit supplied premise and its acquisition from this same path is not solved here.
+
+Fix context length L>=1 and prediction horizon H>=1. Put C_t=Y_{t-L+1:t}, V_t=Y_{t+1:t+H}, c=a^L, v=a^H, and K=cv. A training algorithm sees Y_1:n and returns any data-dependent conditional distribution q_S(v|c), one for every c in A^L, with q_S(v|c)>=xi>0. The returned predictor may be an arbitrary selected or truncated representation evaluated on the raw L-symbol context; there is no restriction to a prelisted representation class. The risk below is evaluated on a fresh stationary context/future block from the population law, independent of the training path; it is not the conditional continuation risk after the terminal training history. Define
+
+  R(q_S) = E_C[ KL( Law(V_t|C_t) || q_S(.|C_t) ) ].
+
+From the same trajectory, leave a gap of g>=0 symbols after training and collect M validation blocks, each consisting of L+H consecutive symbols, with g unused symbols between successive blocks. Let p be the stationary law of (C_t,V_t), and let p_hat be its empirical distribution over K cells. Let
+
+  r = min{1, sqrt( ((K+1) ln 2 + ln(1/delta))/(2M) )},
+  omega_K^+(r) = sup_{0<=d<=r} [h_2(d)+d ln K],
+
+where h_2 is binary entropy in nats, and interpret omega_1=0. Define
+
+  R_hat(q_S) = sum_{c:p_hat(c)>0} p_hat(c)
+                         KL(p_hat(.|c) || q_S(.|c)),
+  U(q_S) = min{ ln(1/xi), R_hat(q_S) + r ln(1/xi) + 2 omega_K^+(r) }.
+
+Then, with probability at least 1-delta-M beta(g+1),
+
+  R(q_S) <= U(q_S).
+
+This is an honest post-selection certificate for one selected predictor: selection uses only the training prefix; the validation segment is a later portion of the same raw trajectory. No exact rank is selected or certified. The statement certifies the chosen finite-context/future-horizon loss, not all-history risk or an infinite-horizon KL.
+
+PROOF
+
+1. Coupling the validation blocks. Let B=L+H. Each validation block is a random variable Z_i=(C_i,V_i) with stationary marginal p. Its first symbol is separated from the preceding observed block or training segment by g+1 indices. By the definition of beta, conditional on all earlier symbols, its law differs in expected TV from p by at most beta(g+1). Couple it maximally to an independent draw Z_i^*~p. Applying this successively, including the first validation block conditional on Y_1:n, couples the entire validation vector to M iid p draws independent of the training prefix with probability of any mismatch at most M beta(g+1). This also applies when q_S is randomized, by including its random seed in the training sigma-field.
+
+2. Finite-alphabet confidence set. For the iid coupled draws, TV(p_hat,p)=sup_{E subset A^L x A^H}|p_hat(E)-p(E)|. For each E, the indicators are iid Bernoulli, and Hoeffding gives probability at most 2 exp(-2M r^2) that the absolute difference exceeds r. A union bound over at most 2^K events gives failure at most 2^(K+1) exp(-2M r^2)<=delta for the displayed r<1. If the uncapped expression is >=1, TV<=1 deterministically. Therefore TV(p_hat,p)<=r except with probability delta+M beta(g+1), and the event is valid jointly with the training-selected q_S.
+
+3. Risk continuity. For any joint law u on C x V and any conditional q(v|c)>=xi,
+
+  R_u(q) = -H_u(V|C) + E_u[-ln q(V|C)].
+
+If d=TV(p,p_hat), the expectation term changes by at most d ln(1/xi), since -ln q lies in [0,ln(1/xi)]. For distributions on an m-point alphabet at TV distance d, a maximal coupling gives |H(P)-H(Q)|<=h_2(d)+d ln m: condition on whether the coupled variables disagree, then the conditional entropy is at most ln m on disagreement. Apply this once to the joint law on K cells and once to the context marginal on c cells. Since c<=K, |H_p(V|C)-H_p_hat(V|C)|<=2[h_2(d)+d ln K]. Thus R_p(q)<=R_p_hat(q)+d ln(1/xi)+2[h_2(d)+d ln K]. Replacing this continuity modulus by its monotone upper envelope omega_K^+(r)=sup_{0<=d<=r}(h_2(d)+d ln K), the displayed bound follows whenever d<=r. Also R_p(q)<=ln(1/xi), yielding the outer minimum. For r<=1/2, omega_K^+(r)=h_2(r)+r ln K.
+
+COSTS AND WHAT THE RESULT DOES NOT CLAIM
+
+The raw-symbol requirement is
+
+  T >= n + g + M(L+H) + (M-1)g.
+
+To achieve target TV radius r0<1, the elementary confidence bound needs
+M >= ((K+1)ln2+ln(1/delta))/(2 r0^2), and the mixing/coupling failure term is M beta(g+1). Thus the no-gap/no-rank feature is paid for by exponential dependence K=a^(L+H), plus the temporal gap needed to make M validation windows effectively independent. For a hidden chain with an acquired/supplied contraction envelope, beta can be upper bounded from the hidden-chain contraction; that derivation and cost must be stated for the specific HMM. This theorem does not estimate beta from the path.
+
+Counts are integers and p_hat is rational. Storage is O(K log(M+1)) bits for the table plus the predictor q. Each validation block costs L+H observed symbols; naive table updates cost O(M(L+H)), and certificate evaluation costs O(K v) arithmetic if every conditional vector is enumerated. Certified logarithms and a rational upper rounding of U are required for a bit-level implementation; with coordinate precision 2^-b, use outward-rounded intervals and increase U by the certified log-evaluation error. No SVD or inverse is required.
+
+The strongest equally informed baseline retains all T raw symbols. Given the same split and random seed, it can replay the selection algorithm and compute exactly the same certificate and predictions. Therefore this theorem claims no trajectory-sample advantage for representation discovery. A representation may reduce later storage or prediction arithmetic only after those resources are separately priced.
+
+FAILURES / RESTART GATES
+
+- With no known mixing envelope, M beta(g+1) cannot be bounded from this theorem. A data-selected representation can pass a finite holdout while a slow hidden regime occurs just after it; the unknown_basis_discovery and one_stream_certificate leaf results test this boundary.
+- No uniform guarantee is given as L or H grows. K=a^(L+H) is exponential, and the confidence radius becomes vacuous unless M is comparably large.
+- The risk is averaged over the stationary distribution of the finite L-symbol context. It does not certify every finite history, and rare histories can have arbitrarily poor conditional forecasts while contributing little stationary mass.
+- The result certifies q only if q is a normalized conditional distribution with a declared positive floor xi. Signed SVD/WFA operators must first be converted to such a predictor; this theorem does not validate that conversion.
+- The observed process need not be an HMM. Conversely, finite hidden-state size alone does not give a uniform beta envelope when transitions can approach reducibility.
+- No rank, state-count, latent parameter, or feature-selection accuracy is claimed. This is a predictive-loss certificate, not latent identification.
+- Novelty and priority remain UNKNOWN; the bound is an elementary coupling, finite-alphabet concentration and entropy-continuity construction pending external review.
+
+PRIMARY-SOURCE / PRIOR-ART BOUNDARY
+
+- Hsu, Kakade, Zhang, “A Spectral Algorithm for Learning Hidden Markov Models,” arXiv:0811.4413v6 (2012), https://arxiv.org/abs/0811.4413. Their theorem is raw-observation HMM learning under quantitative singular separation; it does not establish this rank-free post-selection certificate.
+- Balle and Maillard, “Spectral Learning from a Single Trajectory under Finite-State Policies,” ICML/PMLR 70 (2017), https://proceedings.mlr.press/v70/balle17a.html. Their spectral methods use a finite Hankel basis and concentration depending on the process mixing coefficients; the present result certifies a chosen predictor directly in finite-horizon KL and does not recover a basis.
+- Han, Jana, Wu, “Optimal prediction of Markov chains with and without spectral gap conditions,” NeurIPS 34 (2021), https://proceedings.neurips.cc/paper/2021/file/5d69dc892ba6e79fda0c6a1e286f24c5-Paper.pdf. Their next-state Markov minimax rates use a universal-compression/redundancy route or spectral-gap premises. This result is only a finite-block holdout certificate under an explicit beta envelope, not a general hidden-Markov minimax theorem or universal predictor.
+
+Read ledger: primary pages/PDFs opened 2026-10-08; local Cycle-2 `spectral_source_reconstruction/RESULT.txt`, `rank_free_stop/RESULT.txt`, and `gap_precision_lower/RESULT.txt` used only to avoid repeating their singular-gap, rank-stopping, and rare-witness claims. No source-derived claim is treated as external validation of this theorem.
+
+Finite diagnostic: `work/programmes/acquisition_learning/cycle3/lead_beta_certificate/verify_certificate.py` checked the deterministic entropy-continuity inequality on 11,025 rational binary-context/binary-future cases. It does not check the coupling proof or replace the analytic argument.

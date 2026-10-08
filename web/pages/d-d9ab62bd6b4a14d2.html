@@ -1,0 +1,274 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/cycle9_canonical_kinetics/recognize_common_factor.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/cycle9_canonical_kinetics/recognize_common_factor.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;FPT exact checker for channels with one common positive rational modifier.
+
+Input rates are
+    rho_e(x) = c_e * x**source_e * prod(A_j(x)) / prod(Q_j(x)),
+where every A_j and Q_j is a finite sparse generalized polynomial with
+strictly positive rational coefficients and is shared by all channels. Factors
+are kept factored. The common positive scalar cancels from the source-order
+test (and from trajectories up to a positive time change).
+
+The decision enumerates the 3-way signs of channel projections and solves the
+resulting exact rational LPs using SymPy&#x27;s rational simplex implementation.
+The theoretical branch count is m*3**(m-1). A REFUTED direction is replayed
+with Fraction arithmetic; budget exhaustion or solver trouble returns UNKNOWN.
+&quot;&quot;&quot;
+from __future__ import annotations
+import argparse
+import itertools
+import json
+import signal
+import sys
+import time
+from fractions import Fraction as F
+from pathlib import Path
+from typing import Any
+
+try:
+    import sympy
+    from sympy import Rational
+    from sympy.solvers.simplex import linprog, InfeasibleLPError
+except ImportError:  # pragma: no cover
+    sympy = None
+    Rational = None
+    linprog = None
+    InfeasibleLPError = Exception
+
+Vector = dict[int, F]
+
+
+def frac(raw: Any) -&gt; F:
+    if isinstance(raw, bool):
+        raise ValueError(&quot;boolean is not a rational number&quot;)
+    return F(str(raw))
+
+
+def parse_vector(raw: Any, dimension: int, label: str) -&gt; Vector:
+    if isinstance(raw, dict):
+        pairs = raw.items()
+    elif isinstance(raw, list):
+        if len(raw) != dimension:
+            raise ValueError(f&quot;{label} dense vector must have dimension {dimension}&quot;)
+        pairs = enumerate(raw)
+    else:
+        raise ValueError(f&quot;{label} must be a dense list or sparse index:value object&quot;)
+    out: Vector = {}
+    for raw_i, raw_v in pairs:
+        try:
+            i = int(raw_i)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f&quot;{label} coordinate index is not an integer&quot;) from exc
+        if str(i) != str(raw_i) and not isinstance(raw_i, int):
+            raise ValueError(f&quot;{label} coordinate index is not canonical integer text&quot;)
+        if i &lt; 0 or i &gt;= dimension:
+            raise ValueError(f&quot;{label} coordinate {i} is outside [0,{dimension})&quot;)
+        value = frac(raw_v)
+        if value:
+            out[i] = out.get(i, F(0)) + value
+    return {i: v for i, v in out.items() if v}
+
+
+def parse_terms(raw: Any, dimension: int, label: str):
+    if not isinstance(raw, list) or not raw:
+        raise ValueError(f&quot;{label} must be a nonempty positive support&quot;)
+    terms = []
+    for j, item in enumerate(raw):
+        if isinstance(item, dict) and &quot;exp&quot; in item:
+            exp = parse_vector(item[&quot;exp&quot;], dimension, f&quot;{label}[{j}].exp&quot;)
+            coef = frac(item.get(&quot;coef&quot;, &quot;1&quot;))
+        else:
+            exp = parse_vector(item, dimension, f&quot;{label}[{j}]&quot;)
+            coef = F(1)
+        if coef &lt;= 0:
+            raise ValueError(f&quot;{label}[{j}] coefficient must be strictly positive&quot;)
+        terms.append((exp, coef))
+    # Duplicate exponents aggregate to a positive coefficient and stay present.
+    combined: dict[tuple[tuple[int, F], ...], F] = {}
+    for exp, coef in terms:
+        key = tuple(sorted(exp.items()))
+        combined[key] = combined.get(key, F(0)) + coef
+    return tuple((dict(key), coef) for key, coef in sorted(combined.items()))
+
+
+def parse_network(data: Any):
+    if not isinstance(data, dict):
+        raise ValueError(&quot;input must be a JSON object&quot;)
+    dimension = data.get(&quot;dimension&quot;)
+    if not isinstance(dimension, int) or isinstance(dimension, bool) or dimension &lt; 1:
+        raise ValueError(&quot;dimension must be a positive integer&quot;)
+    edges_raw = data.get(&quot;edges&quot;)
+    if not isinstance(edges_raw, list) or not edges_raw:
+        raise ValueError(&quot;edges must be a nonempty list&quot;)
+    common = data.get(&quot;common_multiplier&quot;, {})
+    if not isinstance(common, dict):
+        raise ValueError(&quot;common_multiplier must be an object&quot;)
+    num_factors = []
+    den_factors = []
+    for role, dest in ((&quot;numerator_factors&quot;, num_factors), (&quot;denominator_factors&quot;, den_factors)):
+        factors = common.get(role, [])
+        if not isinstance(factors, list):
+            raise ValueError(f&quot;common_multiplier.{role} must be a list&quot;)
+        for i, factor in enumerate(factors):
+            if not isinstance(factor, dict):
+                raise ValueError(f&quot;{role}[{i}] must be an object&quot;)
+            dest.append(parse_terms(factor.get(&quot;terms&quot;), dimension, f&quot;{role}[{i}].terms&quot;))
+    edges = []
+    for j, raw in enumerate(edges_raw):
+        if not isinstance(raw, dict):
+            raise ValueError(f&quot;edges[{j}] must be an object&quot;)
+        name = str(raw.get(&quot;name&quot;, f&quot;e{j}&quot;))
+        nu = parse_vector(raw.get(&quot;nu&quot;), dimension, f&quot;{name}.nu&quot;)
+        source = parse_vector(raw.get(&quot;source&quot;), dimension, f&quot;{name}.source&quot;)
+        coef = frac(raw.get(&quot;coef&quot;, &quot;1&quot;))
+        if coef &lt;= 0:
+            raise ValueError(f&quot;{name}.coef must be strictly positive&quot;)
+        edges.append({&quot;name&quot;:name,&quot;nu&quot;:nu,&quot;source&quot;:source,&quot;coef&quot;:coef})
+    return edges, dimension, num_factors, den_factors
+
+
+def dot(a: Vector, b: Vector) -&gt; F:
+    if len(a) &gt; len(b):
+        a, b = b, a
+    return sum((v*b.get(i,F(0)) for i,v in a.items()),F(0))
+
+
+def verify_counterdirection(edges, r: Vector, dimension: int):
+    rows=[]
+    for e in edges:
+        drift=dot(e[&quot;nu&quot;],r)
+        source=dot(e[&quot;source&quot;],r)
+        if drift:
+            rows.append({&quot;name&quot;:e[&quot;name&quot;],&quot;drift&quot;:drift,&quot;source_score&quot;:source})
+    if not rows:
+        return None
+    bottom=min(x[&quot;source_score&quot;] for x in rows)
+    bad=[x[&quot;name&quot;] for x in rows if x[&quot;source_score&quot;]==bottom and x[&quot;drift&quot;]&lt;0]
+    if not bad:
+        return None
+    return {&quot;r_min_orientation&quot;:[str(r.get(i,F(0))) for i in range(dimension)],
+            &quot;w_max_orientation&quot;:[str(-r.get(i,F(0))) for i in range(dimension)],
+            &quot;minimum_active_source_score&quot;:str(bottom),
+            &quot;negative_top_ties&quot;:bad,
+            &quot;active&quot;:[{&quot;name&quot;:x[&quot;name&quot;],&quot;r_dot_nu&quot;:str(x[&quot;drift&quot;]),
+                       &quot;source_score&quot;:str(x[&quot;source_score&quot;]),
+                       &quot;minimum_tied&quot;:x[&quot;source_score&quot;]==bottom} for x in rows]}
+
+
+def to_sympy(x: F):
+    return Rational(x.numerator,x.denominator)
+
+
+def solve_branch(edges, dimension, signs, bad_index, coord_ids):
+    &quot;&quot;&quot;Exact LP for one active-sign branch and one negative top source.&quot;&quot;&quot;
+    index={coord:i for i,coord in enumerate(coord_ids)}
+    n=len(coord_ids)
+    width=2*n  # r = r_plus - r_minus, all LP variables nonnegative.
+    A=[]; b=[]; Aeq=[]; beq=[]
+    def row_for(v: Vector):
+        row=[F(0)]*width
+        for coord,value in v.items():
+            j=index.get(coord)
+            if j is not None:
+                row[j]+=value
+                row[n+j]-=value
+        return row
+    for i,(edge,sigma) in enumerate(zip(edges,signs)):
+        row=row_for(edge[&quot;nu&quot;])
+        if sigma==0:
+            Aeq.append([to_sympy(x) for x in row]); beq.append(Rational(0))
+        elif sigma==1:
+            A.append([to_sympy(-x) for x in row]); b.append(Rational(-1))
+        else:  # sigma = -1
+            A.append([to_sympy(x) for x in row]); b.append(Rational(-1))
+    for j in range(len(edges)):
+        if signs[j]==0:
+            continue  # neutral channels are deleted before source minimization.
+        diff={}
+        for coord,value in edges[bad_index][&quot;source&quot;].items():
+            diff[coord]=diff.get(coord,F(0))+value
+        for coord,value in edges[j][&quot;source&quot;].items():
+            diff[coord]=diff.get(coord,F(0))-value
+        row=row_for(diff)  # r.(y_bad-y_j) &lt;= 0
+        A.append([to_sympy(x) for x in row]); b.append(Rational(0))
+    if width==0:
+        return None
+    objective=[Rational(0)]*width
+    try:
+        value, point=linprog(objective, A=A or None, b=b or None,
+                             A_eq=Aeq or None, b_eq=beq or None)
+    except InfeasibleLPError:
+        return None
+    r={coord:F(point[j])-F(point[n+j]) for j,coord in enumerate(coord_ids)}
+    return {i:v for i,v in r.items() if v}
+
+
+class BudgetExpired(Exception):
+    pass
+
+
+def recognize(edges, dimension, *, max_lps=None, timeout_seconds=None):
+    if sympy is None:
+        return {&quot;status&quot;:&quot;UNKNOWN&quot;,&quot;reason&quot;:&quot;SymPy exact rational LP backend is unavailable&quot;,&quot;lp_checks&quot;:0}
+    coord_ids=sorted({i for e in edges for v in (e[&quot;nu&quot;],e[&quot;source&quot;]) for i in v})
+    started=time.monotonic(); checks=0
+    def run_lp(signs,bad):
+        nonlocal checks
+        if max_lps is not None and checks&gt;=max_lps:
+            raise BudgetExpired(&quot;LP-query budget exhausted&quot;)
+        if timeout_seconds is not None and time.monotonic()-started&gt;=timeout_seconds:
+            raise BudgetExpired(&quot;wall-clock budget exhausted&quot;)
+        checks+=1
+        return solve_branch(edges,dimension,signs,bad,coord_ids)
+    m=len(edges)
+    try:
+        # Candidate edge e is known negative, so enumerate only signs of m-1 others.
+        for e in range(m):
+            other=[j for j in range(m) if j!=e]
+            for rest in itertools.product((-1,0,1),repeat=m-1):
+                signs=[0]*m; signs[e]=-1
+                for j,sigma in zip(other,rest): signs[j]=sigma
+                r=run_lp(signs,e)
+                if r is not None:
+                    witness=verify_counterdirection(edges,r,dimension)
+                    if witness is None:
+                        return {&quot;status&quot;:&quot;UNKNOWN&quot;,&quot;reason&quot;:&quot;exact LP witness failed Fraction replay&quot;,&quot;lp_checks&quot;:checks}
+                    return {&quot;status&quot;:&quot;REFUTED&quot;,&quot;reason&quot;:&quot;negative active channel ties at the minimum active source score&quot;,
+                            &quot;lp_checks&quot;:checks,&quot;witness&quot;:witness}
+    except BudgetExpired as exc:
+        return {&quot;status&quot;:&quot;UNKNOWN&quot;,&quot;reason&quot;:str(exc),&quot;lp_checks&quot;:checks}
+    except Exception as exc:
+        return {&quot;status&quot;:&quot;UNKNOWN&quot;,&quot;reason&quot;:f&quot;exact LP backend failure: {type(exc).__name__}: {exc}&quot;,&quot;lp_checks&quot;:checks}
+    return {&quot;status&quot;:&quot;CERTIFIED&quot;,&quot;lp_checks&quot;:checks,
+            &quot;backend&quot;:f&quot;SymPy {sympy.__version__} exact rational simplex&quot;,
+            &quot;trust_basis&quot;:&quot;every sign/candidate LP was exactly infeasible; no proof objects are emitted&quot;,
+            &quot;branch_bound&quot;:f&quot;{m}*3**({m}-1)&quot;,
+            &quot;meaning&quot;:&quot;every active minimum-source channel points strictly inward in r=-w orientation&quot;}
+
+
+def main(argv=None):
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(&quot;input&quot;,type=Path)
+    parser.add_argument(&quot;--max-lps&quot;,type=int,default=None,help=&quot;LP query budget; exhaustion returns UNKNOWN&quot;)
+    parser.add_argument(&quot;--timeout-seconds&quot;,type=float,default=None,help=&quot;wall budget checked between LP calls&quot;)
+    args=parser.parse_args(argv)
+    if args.max_lps is not None and args.max_lps&lt;0: parser.error(&quot;--max-lps must be nonnegative&quot;)
+    if args.timeout_seconds is not None and args.timeout_seconds&lt;0: parser.error(&quot;--timeout-seconds must be nonnegative&quot;)
+    try:
+        edges,d,num_factors,den_factors=parse_network(json.loads(args.input.read_text()))
+    except (OSError,json.JSONDecodeError,KeyError,TypeError,ValueError,ZeroDivisionError) as exc:
+        print(json.dumps({&quot;status&quot;:&quot;INVALID_INPUT&quot;,&quot;reason&quot;:str(exc)},indent=2)); return 2
+    if sympy is None:
+        result={&quot;status&quot;:&quot;UNKNOWN&quot;,&quot;reason&quot;:&quot;SymPy exact rational LP backend is unavailable&quot;,&quot;lp_checks&quot;:0}
+    else:
+        result=recognize(edges,d,max_lps=args.max_lps,timeout_seconds=args.timeout_seconds)
+    result.update({&quot;input&quot;:str(args.input),&quot;dimension&quot;:d,&quot;channels&quot;:len(edges),
+                   &quot;effective_LP_coordinates&quot;:len({i for e in edges for v in (e[&quot;nu&quot;],e[&quot;source&quot;]) for i in v}),
+                   &quot;shared_numerator_factors&quot;:sum(len(f) for f in num_factors),
+                   &quot;shared_denominator_factors&quot;:sum(len(f) for f in den_factors),
+                   &quot;common_factors_validated_but_not_expanded&quot;:True})
+    print(json.dumps(result,indent=2,sort_keys=True))
+    return {&quot;CERTIFIED&quot;:0,&quot;REFUTED&quot;:1,&quot;UNKNOWN&quot;:3}.get(result[&quot;status&quot;],2)
+
+if __name__==&quot;__main__&quot;:
+    raise SystemExit(main())
+</pre><p><a href="../assets/d8e7701691fea19536ef1a9732dd2d0985db0b266fe4e2dc723b37adfe4c92fd.py">Exact original</a></p></html>

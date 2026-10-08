@@ -1,0 +1,265 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c5_glycolysis_control_hostile/FULL_GROWTH_AUDIT.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c5_glycolysis_control_hostile/FULL_GROWTH_AUDIT.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Independent Fraction-arithmetic audit of the PLOS 2021 full-growth tube.
+
+No imports from the C4 candidate calculator.  The source equations are
+transcribed from sources/plos_2021_S1_Model.cellml.  The program audits both
+the proposed S=(F:[1.8,2.2], A:[.3,1.5], Pi&gt;=1, A+Pi&lt;=14) and the viable-profit
+sub-tube S+=(F:[1.8,2.2], A:[.5,1.5], Pi&gt;=2, A+Pi&lt;=14), under reference
+genotype and actual-flux feedback.  It is a conditional model calculation.
+&quot;&quot;&quot;
+
+from fractions import Fraction as Q
+import json
+from pathlib import Path
+
+
+VU = VL = KATP = PV_MAX = Q(10)
+KP = Q(&quot;0.3&quot;)
+KMG = KMATP = Q(&quot;0.1&quot;)
+KIATP = Q(3)
+ATOT = Q(5)
+KMF = Q(1)
+KMADP = Q(&quot;0.1&quot;)
+KMP = Q(2)
+KVAC = Q(250)
+VATPER = Q(5)
+VATPM = Q(0)
+VATPRB = Q(&quot;12.7&quot;)
+VATPRI = Q(&quot;0.46&quot;)
+TAUG = Q(90)
+TAUD = Q(420)
+EPS = Q(&quot;0.17&quot;)
+FLO, FHI = Q(&quot;1.8&quot;), Q(&quot;2.2&quot;)
+ALO_OLD, ALO = Q(&quot;0.3&quot;), Q(&quot;0.5&quot;)
+AHI = Q(&quot;1.5&quot;)
+PLO_OLD, PLO = Q(1), Q(2)
+SUMHI = Q(14)
+G_UPPER = Q(7, 693)  # ln(2)&lt;0.7 and max vatpg=10 mM/min on A&lt;=1.5
+
+
+def vlo(f, a, p, vl=VL):
+    d = ATOT - a
+    return vl * f / (KMF + f) * d / (KMADP + d) * p / (KMP + p)
+
+
+def capacity(a, vu=VU):
+    return vu * a / (KMATP + a * (1 + a / KIATP))
+
+
+def pivac_from_total(ptot, kvac=KVAC):
+    return PV_MAX / (1 + (ptot / kvac) ** 4)
+
+
+def display(x):
+    return {&quot;fraction&quot;: f&quot;{x.numerator}/{x.denominator}&quot;, &quot;decimal&quot;: float(x)}
+
+
+def glucose_for_flux(u, a):
+    c = capacity(a)
+    if not (0 &lt; u &lt; c):
+        raise ValueError((u, c))
+    return KMG * u / (c - u)
+
+
+def main():
+    # CellML source-derived growth and health signs.
+    vatpgrb = VATPRB - VATPER - VATPM  # 7.7
+    vatpgri = VATPRI - VATPER - VATPM  # -4.54
+    ug_denominator = TAUG * vatpgrb   # 693
+    ud = 1 / (TAUD * vatpgri)         # negative by construction
+    h_coefficient = -ud               # positive, 5/9534 per flux unit
+
+    # Reference genotype has the same fourth-power numerator and denominator.
+    ref_sum4 = Q(10)**4 + Q(10)**4 + Q(10)**4 + Q(&quot;0.3&quot;)**4
+    vatpe_reference = VATPER * ref_sum4 / ref_sum4
+
+    # Distinct source Table 2 IC genotype, evaluated through the CellML cost.
+    ic = tuple(map(Q, (&quot;10.92211&quot;, &quot;5.65143&quot;, &quot;4.82003&quot;, &quot;2.07099&quot;)))
+    vatpe_ic = VATPER * sum((x**4 for x in ic), Q(0)) / ref_sum4
+    ic_profit_threshold = vatpe_ic / ic[2]
+
+    # Whole-tube bound used by the growth/dilution proof.
+    ptot_max = SUMHI + 2 * FHI
+    pv_min = pivac_from_total(ptot_max)
+
+    # Original C4 candidate S, to reproduce its key face and lag figures.
+    f_lower_old = (2 - FLO - EPS) - FLO * G_UPPER
+    f_upper = 2 - FHI + EPS
+    l_f_old = (VL * KMF / (KMF + FLO)**2
+               * (ATOT - ALO_OLD) / (KMADP + ATOT - ALO_OLD)
+               * (SUMHI - ALO_OLD) / (KMP + SUMHI - ALO_OLD))
+
+    # Viable-profit sub-tube S+: A&gt;=0.5 ensures vatpg=10A-5&gt;=0 at reference
+    # genotype, and Pi&gt;=2 is the stronger phosphate floor requested for audit.
+    a_lower = (2 * vlo(FLO, ALO, PLO) + 2 * (FLO - 2)
+               - 2 * EPS - KATP * ALO)
+    a_upper = (2 * vlo(FHI, AHI, SUMHI - AHI)
+               + 2 * (FHI - 2) + 2 * EPS - KATP * AHI)
+    # At Pi=2 use independently worst-case L, ATP, phosphate exchange and
+    # growth dilution bounds.  This intentionally sacrifices sharpness.
+    pi_lower = (-2 * vlo(FHI, ALO, PLO) + KATP * ALO
+                + KP * (pv_min - PLO) - PLO * G_UPPER)
+    sum_upper = (2 * (FHI - 2) + 2 * EPS
+                 + KP * (PV_MAX - (SUMHI - AHI)))
+
+    # Static external-glucose inversion on S+.
+    l_min = vlo(FLO, AHI, PLO)
+    l_max = vlo(FHI, ALO, SUMHI - ALO)
+    u_min = l_min - (FHI - 2) - EPS
+    u_max = l_max + (FHI - 2) + EPS
+    # C&#x27;(A) has the sign of .1-A^2/3; its minimum on [.5,1.5] is at an endpoint.
+    c_min = min(capacity(ALO), capacity(AHI))
+    saturation_gap = c_min - u_max
+    glucose_max = KMG * u_max / saturation_gap
+
+    # Shared-culture glucose no-go still holds on S+.
+    x_low = (FLO, ALO, SUMHI - ALO)       # vatpg=0, so g=0
+    x_high = (FHI, AHI, PLO)               # generous g&lt;=G_UPPER
+    l_low = vlo(*x_low)
+    l_high = vlo(*x_high)
+    uptake_ratio = capacity(AHI) / capacity(ALO)
+    common_u_high_min = uptake_ratio * l_low
+    common_u_high_max = l_high + FHI * G_UPPER
+
+    # F-only stale measurement certificate.  It assumes current exact A/P,
+    # exact parameters, and instantaneous flux inversion/actuation.
+    l_f_new = (VL * KMF / (KMF + FLO)**2
+               * (ATOT - ALO) / (KMADP + ATOT - ALO)
+               * (SUMHI - ALO) / (KMP + SUMHI - ALO))
+    f_speed = max(FHI - 2 + EPS + FHI * G_UPPER,
+                  2 - FLO + EPS)
+    delay_gain_old = (1 + l_f_old) * f_speed
+    delay_old = EPS / delay_gain_old
+    delay_gain_new = (1 + l_f_new) * f_speed
+    delay_new = EPS / delay_gain_new
+
+    # Health reserve: for P&gt;=2 and .3&lt;=A&lt;=.5, A-dot is bounded below by its
+    # minimum at A=.5, F=1.8, Pi=2, e=+.17.  Health loss is then bounded over
+    # the finite crossing time from A=.3 to .5.
+    a_rise_min = a_lower
+    crossing_time = (Q(&quot;0.5&quot;) - ALO_OLD) / a_rise_min
+    max_health_decay = h_coefficient * Q(2)  # max deficit at A=.3: vatpg=-2
+    h_loss = crossing_time * max_health_decay
+
+    # Source starts are distinct.  2014 Fig.4 varies Pi=10.4/9.4 in a
+    # three-state core model; 2021 CellML defaults are F=2,A=1,Pi=10.4,H=Hmax
+    # and comments that Pi=7 gives imbalanced dynamics.  Flux inversion at
+    # F=2,e=0 gives U=L and hence these external glucose settings.
+    source_starts = {}
+    for label, pi0 in ((&quot;2014_Fig4_imbalanced_start&quot;, Q(&quot;9.4&quot;)),
+                       (&quot;2021_CellML_imbalanced_comment&quot;, Q(7)),
+                       (&quot;2021_CellML_default_balanced&quot;, Q(&quot;10.4&quot;))):
+        u0 = vlo(Q(2), Q(1), pi0)
+        source_starts[label] = {
+            &quot;metabolite_triple_F_A_P&quot;: [&quot;2&quot;, &quot;1&quot;, str(pi0)],
+            &quot;zero_error_external_glucose_mM&quot;: display(glucose_for_flux(u0, Q(1))),
+        }
+
+    assert vatpe_reference == Q(5)
+    assert vatpgri == Q(&quot;-4.54&quot;) and ud &lt; 0 and h_coefficient &gt; 0
+    assert f_lower_old == Q(13, 1100) and f_upper == Q(-3, 100)
+    assert a_lower &gt; 0 and a_upper &lt; 0 and pi_lower &gt; 0 and sum_upper &lt; 0
+    assert u_min &gt; 0 and saturation_gap &gt; 0
+    assert common_u_high_min &gt; common_u_high_max
+    assert h_loss &lt; 1
+
+    data = {
+        &quot;status&quot;: &quot;independent exact-rational model audit; not biological validation&quot;,
+        &quot;source_file&quot;: &quot;work/agents/c4_rational_applications/sources/plos_2021_S1_Model.cellml&quot;,
+        &quot;controller&quot;: &quot;U=L-(F-2)+e, |e|&lt;=0.17 mM/min, actual upper flux&quot;,
+        &quot;reference_genotype&quot;: {
+            &quot;Vmaxup&quot;: &quot;10&quot;, &quot;Vmaxlo&quot;: &quot;10&quot;, &quot;katp&quot;: &quot;10&quot;, &quot;kp&quot;: &quot;0.3&quot;,
+            &quot;vatpe_from_CellML_fourth_power_cost&quot;: display(vatpe_reference),
+            &quot;vatpg&quot;: &quot;10*A-5 mM/min&quot;,
+            &quot;g_rule&quot;: &quot;g=ug*vatpg only when H&gt;=Hmax and vatpg&gt;0; otherwise g=0&quot;,
+            &quot;ug&quot;: &quot;ln(2)/693 per (mM/min)&quot;,
+            &quot;g_upper_on_A_le_1p5&quot;: display(G_UPPER),
+        },
+        &quot;health_and_dilution_sign_audit&quot;: {
+            &quot;vatpgri=vatpri-(vatper+vatpm)&quot;: display(vatpgri),
+            &quot;ud=1/(taud*vatpgri)&quot;: display(ud),
+            &quot;Hdot_when_vatpg_le_0&quot;: &quot;-ud*vatpg=(5/9534)*(10*A-5), negative for A&lt;0.5&quot;,
+            &quot;Hdot_when_positive_surplus_and_H_below_Hmax&quot;: &quot;ug*vatpg &gt;= 0&quot;,
+            &quot;Hdot_when_positive_surplus_and_H_at_or_above_Hmax&quot;: &quot;0&quot;,
+            &quot;Vdot&quot;: &quot;g*V; g is never negative&quot;,
+            &quot;metabolite_dilution&quot;: &quot;-F*g, -A*g, -Pi*g (all nonpositive)&quot;,
+            &quot;small_H_counterexample_in_original_S&quot;: {
+                &quot;state&quot;: &quot;F=1.8,A=0.3,Pi=2,H=epsilon_H&gt;0; e=0&quot;,
+                &quot;vatpg&quot;: &quot;-2 mM/min&quot;,
+                &quot;Hdot&quot;: display(-Q(10, 9534)),
+                &quot;conclusion&quot;: &quot;for sufficiently small positive H the source H=0 death boundary is reached while the metabolite state remains locally inside the tube; the original S alone is not an all-H viability certificate&quot;,
+            },
+            &quot;Hmax_reserve_transient_for_Pi_ge_2&quot;: {
+                &quot;A_dot_lower_on_0p3_to_0p5&quot;: display(a_rise_min),
+                &quot;time_to_A_0p5_upper_min&quot;: display(crossing_time),
+                &quot;max_health_loss_bound_from_H0_equals_Hmax&quot;: display(h_loss),
+                &quot;H_lower_bound_if_Hmax_1&quot;: display(1 - h_loss),
+                &quot;assumptions&quot;: &quot;reference genotype, Pi&gt;=2, state starts within the full certified metabolic tube, feedback error&lt;=0.17, H0=Hmax; after A&gt;=0.5 H cannot decline&quot;,
+            },
+        },
+        &quot;facet_bounds_for_H_safe_subtube_Splus&quot;: {
+            &quot;Splus&quot;: &quot;1.8&lt;=F&lt;=2.2, 0.5&lt;=A&lt;=1.5, Pi&gt;=2, A+Pi&lt;=14&quot;,
+            &quot;F_lower_minimum&quot;: display(f_lower_old),
+            &quot;F_upper_maximum&quot;: display(f_upper),
+            &quot;ATP_lower_minimum&quot;: display(a_lower),
+            &quot;ATP_upper_maximum_ignoring_helpful_dilution&quot;: display(a_upper),
+            &quot;Pi_lower_minimum_conservative&quot;: display(pi_lower),
+            &quot;A_plus_Pi_upper_maximum_ignoring_helpful_dilution&quot;: display(sum_upper),
+            &quot;whole_tube_Pivac_lower&quot;: display(pv_min),
+            &quot;growth_profit_on_Splus&quot;: &quot;vatpg=10*A-5&gt;=0; therefore Hdot&gt;=0 for 0&lt;=H&lt;=Hmax and H cannot fall to zero from H0&gt;0&quot;,
+            &quot;initial_failure_mapping&quot;: &quot;(F,A,Pi)=(2,1,9.4) and (2,1,7) both lie in Splus; 2021 CellML adds H=Hmax and V=3.35e-15 L, and assumes feedback is active from glucose-onset&quot;,
+        },
+        &quot;static_glucose_inversion_on_Splus&quot;: {
+            &quot;command_lower&quot;: display(u_min),
+            &quot;command_upper&quot;: display(u_max),
+            &quot;minimum_saturation_capacity&quot;: display(c_min),
+            &quot;uniform_saturation_gap&quot;: display(saturation_gap),
+            &quot;conservative_G_upper_mM&quot;: display(glucose_max),
+        },
+        &quot;shared_glucose_no_go_on_Splus&quot;: {
+            &quot;low_F_state&quot;: [str(x) for x in x_low],
+            &quot;high_F_state&quot;: [str(x) for x in x_high],
+            &quot;common_input_Uhigh_over_Ulow&quot;: display(uptake_ratio),
+            &quot;low_face_requires_Ulow_at_least&quot;: display(l_low),
+            &quot;therefore_Uhigh_at_least&quot;: display(common_u_high_min),
+            &quot;high_face_allows_Uhigh_at_most_even_using_gmax&quot;: display(common_u_high_max),
+            &quot;strict_conflict&quot;: common_u_high_min &gt; common_u_high_max,
+        },
+        &quot;delay_audit&quot;: {
+            &quot;original_S_Lipschitz_dL_dF&quot;: display(l_f_old),
+            &quot;Splus_Lipschitz_dL_dF&quot;: display(l_f_new),
+            &quot;sup_abs_Fdot_given_total_flux_error_le_0p17&quot;: display(f_speed),
+            &quot;original_S_flux_error_gain_per_min_delay&quot;: display(delay_gain_old),
+            &quot;original_S_sufficient_delay_seconds&quot;: float(delay_old * 60),
+            &quot;Splus_sufficient_delay_seconds&quot;: float(delay_new * 60),
+            &quot;validity&quot;: &quot;conditional first-exit/bootstrapped bound when the F sample age is tau, A/P are current, exact parameters and glucose inversion are known, and actuator dynamics/additional flux errors are zero; otherwise remaining error budget is below 0.17 and tau must shrink proportionally&quot;,
+        },
+        &quot;genotype_boundary&quot;: {
+            &quot;IC_Table2_genotype&quot;: {
+                &quot;Vmaxup&quot;: str(ic[0]), &quot;Vmaxlo&quot;: str(ic[1]),
+                &quot;katp&quot;: str(ic[2]), &quot;kp&quot;: str(ic[3]),
+                &quot;CellML_fourth_power_vatpe&quot;: display(vatpe_ic),
+                &quot;ATP_threshold_for_nonnegative_vatpg&quot;: display(ic_profit_threshold),
+                &quot;published_rounded_cost&quot;: &quot;2.63 mM/min&quot;,
+            },
+            &quot;scope&quot;: &quot;The Splus H-nondepletion argument and all face numbers above are for the source-reference genotype, not the distinct IC Table 2 genotype.&quot;,
+            &quot;effective_kp_boundary_for_sum_face_at_delta_0p17&quot;: display(Q(&quot;0.296&quot;)),
+            &quot;reference_kp&quot;: display(KP),
+            &quot;downward_fraction_to_boundary&quot;: display((KP - Q(&quot;0.296&quot;)) / KP),
+        },
+        &quot;source_failure_scope&quot;: {
+            &quot;2014_Science_Fig4&quot;: &quot;generalized three-metabolite core model; panels differ only in initial Pi 10.4 vs 9.4 mM; no H or cell-volume state&quot;,
+            &quot;2021_PLOS_CellML&quot;: &quot;expanded FBP/ATP/Pi plus glucose, H and volume; defaults (F,A,Pi)=(2,1,10.4), H=Hmax=1; source comment says lowering Pi, e.g. to 7, produces imbalanced dynamics&quot;,
+            &quot;certificate_covers&quot;: &quot;the mapped 2014 metabolite triple under the 2021 expanded equations after immediate feedback is applied, and directly includes the 2021 Pi=7 example state; it does not prove recovery from an already developed high-FBP/low-ATP/low-Pi collapsed state&quot;,
+            &quot;starts&quot;: source_starts,
+        },
+    }
+
+    out = Path(__file__).with_name(&quot;FULL_GROWTH_AUDIT.json&quot;)
+    out.write_text(json.dumps(data, indent=2) + &quot;\n&quot;)
+    print(json.dumps(data, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/bf2eede51374a04c6f3c3879670fda6b6e05edc7282205811d0993079f7fbe0a.py">Exact original</a></p></html>

@@ -1,0 +1,206 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/sol_hidden_renewal/check.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/sol_hidden_renewal/check.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact independent checks for the projected q=2 row-urn hardness chain.&quot;&quot;&quot;
+from collections import Counter, defaultdict
+from fractions import Fraction as F
+from itertools import product
+from math import comb, factorial
+from pathlib import Path
+import json
+
+
+def paths(word):
+    m = len(word)
+    for bits in product((0, 1), repeat=m + 1):
+        counts = Counter((bits[t], bits[t + 1], gap) for t, gap in enumerate(word))
+        weight = 1
+        for c in counts.values():
+            weight *= factorial(c)
+        r = sum(bit == 0 for bit in bits[:-1])
+        yield weight, r, bits[-1]
+
+
+def evidence(word):
+    m = len(word)
+    return sum((F(w, factorial(r) * factorial(m - r)) for w, r, _ in paths(word)), F(0))
+
+
+def unweighted(word):
+    return sum(w for w, _, _ in paths(word))
+
+
+def padded_evidence(word, ell):
+    m = len(word)
+    return sum((F(2 * w * comb(m + 2 * ell - 1, (r if end == 0 else m - r) + ell),
+                  factorial(m + ell)) for w, r, end in paths(word)), F(0))
+
+
+def recover_unweighted(word):
+    m = len(word)
+    leading = F(0)
+    for ell in range(1, m + 2):
+        z = padded_evidence(word, ell)
+        normalized = z * F(factorial(m + ell), 2 * comb(m + 2 * ell - 1, ell))
+        D = 1
+        for h in range(1, m + 1):
+            D *= ell + h
+        lagrange_denom = (-1) ** (m + 1 - ell) * factorial(ell - 1) * factorial(m + 1 - ell)
+        leading += normalized * F(D, lagrange_denom)
+    assert leading.denominator == 1
+    return int(leading)
+
+
+def euler_edges(edges, directed=False, start=0):
+    adjacency = defaultdict(list)
+    for k, (u, v) in enumerate(edges):
+        adjacency[u].append((k, v))
+        if not directed:
+            adjacency[v].append((k, u))
+    used = set()
+    stack = [(start, None)]
+    vertices = []
+    edge_order = []
+    while stack:
+        at, _ = stack[-1]
+        while adjacency[at] and adjacency[at][-1][0] in used:
+            adjacency[at].pop()
+        if adjacency[at]:
+            edge, nxt = adjacency[at].pop()
+            used.add(edge)
+            stack.append((nxt, edge))
+        else:
+            at, incoming = stack.pop()
+            vertices.append(at)
+            if incoming is not None:
+                edge_order.append(incoming)
+    assert len(used) == len(edges)
+    vertices.reverse()
+    edge_order.reverse()
+    assert len(vertices) == len(edges) + 1 and vertices[0] == vertices[-1]
+    return vertices, edge_order
+
+
+def medial_word(H, root):
+    &quot;&quot;&quot;Construct an even-degree interaction graph&#x27;s directed medial Euler word.&quot;&quot;&quot;
+    degree = Counter(v for e in H for v in e)
+    assert all(d % 2 == 0 for d in degree.values())
+    visits, tour = euler_edges(H, start=H[0][0])
+    oriented = [None] * len(H)
+    for t, e in enumerate(tour):
+        oriented[e] = (visits[t], visits[t + 1])
+    incoming = defaultdict(list)
+    outgoing = defaultdict(list)
+    for e, (u, v) in enumerate(oriented):
+        outgoing[u].append(e)
+        incoming[v].append(e)
+    F_edges = []
+    owners = []
+    for v in degree:
+        assert len(incoming[v]) == len(outgoing[v])
+        order = [e for pair in zip(outgoing[v], incoming[v]) for e in pair]
+        for t, e in enumerate(order):
+            f = order[(t + 1) % len(order)]
+            if oriented[e][1] == v:
+                F_edges.append((e, f))
+            else:
+                F_edges.append((f, e))
+            owners.append(v)
+    F_visits, F_tour = euler_edges(F_edges, directed=True, start=0)
+    cut = next(e for e in F_tour if owners[e] == root)
+    at = F_tour.index(cut)
+    rotate = F_tour[at + 1:] + F_tour[:at + 1]
+    word = tuple(F_edges[e][0] + 1 for e in rotate)
+    assert len(word) == 2 * len(H)
+    assert all(c == 2 for c in Counter(word).values())
+    assert owners[rotate[-1]] == root
+    return word
+
+
+def spin_partition(H, pinned=None, matrix=((5, 1), (1, 1))):
+    vertices = sorted(set(v for e in H for v in e))
+    total = 0
+    for bits in product((0, 1), repeat=len(vertices)):
+        state = dict(zip(vertices, bits))
+        if pinned is not None and state[pinned] != 0:
+            continue
+        weight = 1
+        for u, v in H:
+            weight *= matrix[state[u]][state[v]]
+        total += weight
+    return total
+
+
+def main():
+    transform_checks = 0
+    for s in product((0, 1), repeat=4):
+        value = sum((-1) ** sum(a * b for a, b in zip(s, x)) *
+                    (1 + int(x[0] == x[2] and x[1] == x[3]))
+                    for x in product((0, 1), repeat=4))
+        expected = 4 * int(s == (0, 0, 0, 0)) + int(s[0] == s[2] and s[1] == s[3])
+        assert value == 4 * expected
+        transform_checks += 1
+
+    padding_checks = interpolation_checks = 0
+    for word in [(1,), (1, 1), (1, 2, 1, 2), (1, 2, 2, 1), (1, 1, 1), (1, 2, 3, 1)]:
+        for ell in range(1, 5):
+            padded = word + tuple(range(max(word) + 1, max(word) + 1 + ell))
+            assert evidence(padded) == padded_evidence(word, ell)
+            padding_checks += 1
+        assert recover_unweighted(word) == unweighted(word)
+        interpolation_checks += 1
+
+    medial_checks = []
+    graphs = [
+        ([(0, 1)] * 2, 0),
+        ([(0, 1)] * 4, 1),
+        ([(0, 1), (1, 2), (2, 0)], 0),
+        ([(0, 1), (1, 2), (2, 0)] * 2, 2),
+        ([(0, 1)] * 2 + [(1, 2)] * 2, 1),
+        ([(0, 1)] * 2 + [(1, 2)] * 2 + [(2, 3)] * 2, 0),
+    ]
+    for H, root in graphs:
+        word = medial_word(H, root)
+        W = unweighted(word)
+        pinned = spin_partition(H, pinned=root)
+        assert W == 2 * pinned
+        assert recover_unweighted(word) == W
+        interpolation_checks += 1
+        medial_checks.append({&quot;edges&quot;:len(H),&quot;vertices&quot;:len(set(v for e in H for v in e)),
+                              &quot;root&quot;:root,&quot;word&quot;:word,&quot;W&quot;:W,&quot;pinned_partition&quot;:pinned})
+
+    # Recover a full source partition from two pinned auxiliary-root values.
+    source_graphs = [[(0, 1)], [(0, 1), (1, 2)], [(0, 1), (1, 2), (2, 0)]]
+    pin_checks = 0
+    for G in source_graphs:
+        H = G + G
+        root = 0
+        aux = max(v for e in H for v in e) + 1
+        B = []
+        for t in (1, 2):
+            augmented = H + [(root, aux)] * (2 * t)
+            word = medial_word(augmented, aux)
+            W = unweighted(word)
+            value = spin_partition(augmented, pinned=aux)
+            assert W == 2 * value
+            B.append(value)
+        recovered = F(26 * B[0] - B[1], 25)
+        assert recovered.denominator == 1
+        expected = spin_partition(G, matrix=((25, 1), (1, 1)))
+        assert recovered == expected == spin_partition(H)
+        pin_checks += 1
+
+    result = {
+        &quot;status&quot;:&quot;PASS&quot;, &quot;arithmetic&quot;:&quot;exact integers/Fraction&quot;,
+        &quot;tensor_transform_checks&quot;:transform_checks,
+        &quot;padding_formula_checks&quot;:padding_checks,
+        &quot;leading_coefficient_recoveries&quot;:interpolation_checks,
+        &quot;medial_graph_checks&quot;:medial_checks,
+        &quot;two_pinned_value_recoveries&quot;:pin_checks,
+        &quot;scope&quot;:&quot;Finite tests of reduction identities; all-input proof is separate; no approximation or predictor impossibility claim.&quot;
+    }
+    Path(__file__).with_name(&quot;CHECKS.json&quot;).write_text(json.dumps(result,indent=2)+&quot;\n&quot;)
+    print(json.dumps(result,indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/1c8f9a9ed196d746bf7b5bd8afabf4607c72f0d5fd37a050e86330373ea98913.py">Exact original</a></p></html>

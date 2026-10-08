@@ -1,0 +1,83 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c5_quantum_dimension_obstruction/cycle10_spin11_probe/spin11_outer_support_check.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c5_quantum_dimension_obstruction/cycle10_spin11_probe/spin11_outer_support_check.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Exact star-gap check against a universal pure-moment outer support bound.&quot;&quot;&quot;
+import json
+from itertools import combinations
+from pathlib import Path
+import sympy as sp
+
+HERE=Path(__file__).parent
+D=json.loads((HERE/&#x27;spin11_fullstar_blocks.json&#x27;).read_text())
+VERT=[sp.Matrix(v) for v in D[&#x27;pure_moment_outer_vertices_not_claimed_attainable&#x27;]]
+TRACE=sp.Matrix(D[&#x27;trace_coefficients&#x27;])
+
+def prim(q):
+    den=sp.ilcm(*(x.q for x in q)); z=[int(x*den) for x in q]
+    from math import gcd
+    g=0
+    for x in z:g=gcd(g,abs(x))
+    return tuple(x//g for x in z)
+
+def rays(w):
+    rows=[sp.eye(5).row(i) for i in range(5)]
+    rows += [(VERT[w]-VERT[j]).T for j in range(len(VERT)) if j!=w]
+    out=set()
+    for inds in combinations(range(len(rows)),4):
+        M=sp.Matrix.vstack(*(sp.Matrix(rows[i]) for i in inds))
+        if M.rank()!=4:continue
+        ker=M.nullspace()
+        if len(ker)!=1:continue
+        q=ker[0]
+        if all((row*q)[0]&gt;=0 for row in rows):pass
+        elif all((row*(-q))[0]&gt;=0 for row in rows):q=-q
+        else:continue
+        out.add(prim(q))
+    return out
+
+def mat(vals):return sp.Matrix([[sp.Rational(x) for x in row] for row in vals])
+
+def main():
+    cones=[rays(i) for i in range(len(VERT))]
+    allr=set().union(*cones)
+    records=[]; failures=[]; unknown=[]
+    for ray in sorted(allr):
+        a=sp.Matrix(ray); scores=[(v.T*a)[0] for v in VERT]; sup=max(scores); bound=(TRACE.T*a)[0]+sup
+        rec={&#x27;ray&#x27;:list(ray),&#x27;winner_values&#x27;:[str(x) for x in scores],&#x27;outer_support&#x27;:str(sup),&#x27;bound&#x27;:str(bound),&#x27;blocks&#x27;:[]}
+        for key,obj in D[&#x27;blocks&#x27;].items():
+            G=mat(obj[&#x27;gram&#x27;]); Bs=[mat(x) for x in obj[&#x27;bilinear_H&#x27;]]
+            H=sum((a[k]*Bs[k] for k in range(5)),sp.zeros(G.rows))
+            gap=sp.simplify(bound*G-H)
+            mins=[]
+            for n in range(1,gap.rows+1):
+                for ix in combinations(range(gap.rows),n):
+                    val=sp.factor(gap.extract(ix,ix).det())
+                    mins.append((ix,val))
+            bad=[(ix,v) for ix,v in mins if v.is_negative is True]
+            undec=[(ix,v) for ix,v in mins if v.is_nonnegative is None]
+            if bad:failures.append({&#x27;ray&#x27;:ray,&#x27;block&#x27;:key,&#x27;negative_minors&#x27;:[(list(ix),str(v)) for ix,v in bad]})
+            if undec:unknown.append({&#x27;ray&#x27;:ray,&#x27;block&#x27;:key,&#x27;undecided_minors&#x27;:[(list(ix),str(v)) for ix,v in undec]})
+            rec[&#x27;blocks&#x27;].append({&#x27;block&#x27;:key,&#x27;gap&#x27;:[[str(sp.factor(gap[i,j])) for j in range(gap.cols)] for i in range(gap.rows)],
+                                 &#x27;all_principal_minors_nonnegative&#x27;:not bad and not undec})
+        records.append(rec)
+        print(f&#x27;ray {ray}: winner support {sup}, bound {bound}, blocks={len(rec[&quot;blocks&quot;])}; &#x27;+(&#x27;FAIL&#x27; if any(x[&#x27;ray&#x27;]==ray for x in failures) else &#x27;PASS/UNDECIDED&#x27;),flush=True)
+    # Isotropic normalization by exact PSD at the universal identity-weight bound d^2+d-2=1054.
+    iso_fail=[]
+    for key,obj in D[&#x27;blocks&#x27;].items():
+        G=mat(obj[&#x27;gram&#x27;]); Bs=[mat(x) for x in obj[&#x27;bilinear_H&#x27;]]
+        gap=sp.simplify(1054*G-sum(Bs,sp.zeros(G.rows)))
+        bad=[]
+        for n in range(1,gap.rows+1):
+            for ix in combinations(range(gap.rows),n):
+                val=sp.factor(gap.extract(ix,ix).det())
+                if val.is_negative is True:bad.append((ix,str(val)))
+                elif val.is_nonnegative is None:bad.append((ix,&#x27;UNDECIDED &#x27;+str(val)))
+        if bad:iso_fail.append({&#x27;block&#x27;:key,&#x27;bad&#x27;:bad})
+    output={&#x27;status&#x27;:&#x27;PASS&#x27; if not failures and not unknown and not iso_fail else (&#x27;VIOLATION&#x27; if failures else &#x27;INCOMPLETE&#x27;),
+            &#x27;support_scope&#x27;:&#x27;valid universal outer bound for full-domain canonical EB: pure moments satisfy s1&lt;=1, s2&lt;=5, 0&lt;=s3,s4,s5&lt;=31, sum s_k=31; vertices are outer-polytope vertices, not asserted attainable&#x27;,
+            &#x27;outer_vertices&#x27;:D[&#x27;pure_moment_outer_vertices_not_claimed_attainable&#x27;],&#x27;trace_coefficients&#x27;:D[&#x27;trace_coefficients&#x27;],
+            &#x27;cone_ray_counts&#x27;:[len(x) for x in cones],&#x27;cone_rays&#x27;:[sorted([list(v) for v in x]) for x in cones],
+            &#x27;distinct_rays&#x27;:len(allr),&#x27;ray_certificates&#x27;:records,&#x27;failures&#x27;:failures,&#x27;unknown&#x27;:unknown,
+            &#x27;isotropic_bound&#x27;:1054,&#x27;isotropic_failures&#x27;:iso_fail}
+    (HERE/&#x27;spin11_outer_support_check.json&#x27;).write_text(json.dumps(output,indent=2)+&#x27;\n&#x27;)
+    print(&#x27;ray counts&#x27;,list(map(len,cones)),&#x27;distinct&#x27;,len(allr),&#x27;status&#x27;,output[&#x27;status&#x27;],flush=True)
+
+if __name__==&#x27;__main__&#x27;: main()
+</pre><p><a href="../assets/1c90a86f0be3d723183a438d24b22a577b89150c722045efed4281b4a33b21e8.py">Exact original</a></p></html>

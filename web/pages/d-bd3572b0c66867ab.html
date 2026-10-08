@@ -1,0 +1,333 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c9_rna_design/pulse_order.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c9_rna_design/pulse_order.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Finite-state pulse-order witness for a reversible cotranscriptional switch.
+
+The model has three conformations 0 &lt;-&gt; 1 &lt;-&gt; 2.  Input A raises the
+conductance of edge 0--1 from epsilon to k; input B raises edge 1--2 from
+epsilon to k.  Each fixed-input generator is symmetric, so both have exactly
+the same uniform equilibrium distribution.  The observable is occupancy of
+state 2 after equal-duration A/B pulses.
+
+Only Python&#x27;s standard library is required.  Matrix exponentials are applied
+to row vectors by CTMC uniformization; the returned Poisson-tail bound is
+reported as a numerical diagnostic, not as a biological error bound.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import json
+import math
+from pathlib import Path
+from typing import Sequence
+
+Vector = list[float]
+Matrix = list[list[float]]
+
+
+def zeros(n: int) -&gt; Matrix:
+    return [[0.0 for _ in range(n)] for _ in range(n)]
+
+
+def eye(n: int) -&gt; Matrix:
+    out = zeros(n)
+    for i in range(n):
+        out[i][i] = 1.0
+    return out
+
+
+def matmul(a: Matrix, b: Matrix) -&gt; Matrix:
+    n, m, p = len(a), len(b), len(b[0])
+    return [[sum(a[i][k] * b[k][j] for k in range(m)) for j in range(p)] for i in range(n)]
+
+
+def rowmul(row: Vector, a: Matrix) -&gt; Vector:
+    return [sum(row[i] * a[i][j] for i in range(len(row))) for j in range(len(a[0]))]
+
+
+def add_scaled(dst: Vector, src: Vector, scale: float) -&gt; None:
+    for i in range(len(dst)):
+        dst[i] += scale * src[i]
+
+
+def generator(k: float, eps: float, strong_edge: int) -&gt; Matrix:
+    &quot;&quot;&quot;Return a symmetric row generator; strong_edge is 0 (A) or 1 (B).&quot;&quot;&quot;
+    rates = [eps, eps]
+    rates[strong_edge] = k
+    q = zeros(3)
+    for i, rate in enumerate(rates):
+        q[i][i + 1] = rate
+        q[i + 1][i] = rate
+        q[i][i] -= rate
+        q[i + 1][i + 1] -= rate
+    return q
+
+
+def exp_action(row: Vector, q: Matrix, t: float) -&gt; tuple[Vector, float]:
+    &quot;&quot;&quot;Apply exp(tQ) to a row vector by uniformization; return omitted tail.&quot;&quot;&quot;
+    if t &lt; 0:
+        raise ValueError(&quot;duration must be nonnegative&quot;)
+    rate = max(-q[i][i] for i in range(len(q)))
+    if t == 0 or rate == 0:
+        return row[:], 0.0
+    x = rate * t
+    p = eye(len(q))
+    for i in range(len(q)):
+        for j in range(len(q)):
+            p[i][j] += q[i][j] / rate
+    nmax = int(x + 16.0 * math.sqrt(x + 1.0) + 100.0)
+    weight = math.exp(-x)
+    power_row = row[:]
+    result = [0.0] * len(row)
+    weight_sum = 0.0
+    for n in range(nmax + 1):
+        add_scaled(result, power_row, weight)
+        weight_sum += weight
+        power_row = rowmul(power_row, p)
+        weight *= x / (n + 1.0)
+    return result, max(0.0, 1.0 - weight_sum)
+
+
+def pulse_order(k: float, eps: float, tau_a: float, tau_b: float) -&gt; dict[str, float]:
+    qa = generator(k, eps, 0)
+    qb = generator(k, eps, 1)
+    e0 = [1.0, 0.0, 0.0]
+    ab_mid, tail_a1 = exp_action(e0, qa, tau_a)
+    ab_end, tail_b2 = exp_action(ab_mid, qb, tau_b)
+    ba_mid, tail_b1 = exp_action(e0, qb, tau_b)
+    ba_end, tail_a2 = exp_action(ba_mid, qa, tau_a)
+    p_ab, p_ba = ab_end[2], ba_end[2]
+    return {
+        &quot;p_state2_AB&quot;: p_ab,
+        &quot;p_state2_BA&quot;: p_ba,
+        &quot;order_contrast&quot;: p_ab - p_ba,
+        &quot;uniformization_tail_bound&quot;: max(tail_a1, tail_b2, tail_b1, tail_a2),
+    }
+
+
+def max_exit(q: Matrix) -&gt; float:
+    return max(-q[i][i] for i in range(len(q)))
+
+
+def commutator_projection(k: float, eps: float) -&gt; float:
+    qa = generator(k, eps, 0)
+    qb = generator(k, eps, 1)
+    qab, qba = matmul(qa, qb), matmul(qb, qa)
+    return qab[0][2] - qba[0][2]
+
+
+def pulse_kernel(k: float, eps: float, t: float) -&gt; float:
+    &quot;&quot;&quot;Closed-form scalar for the exact mirrored-pulse commutator identity.&quot;&quot;&quot;
+    s = k + eps
+    rho = math.sqrt(k * k - k * eps + eps * eps)
+    lam_minus, lam_plus = s - rho, s + rho
+    return (math.exp(-lam_minus * t) - math.exp(-lam_plus * t)) / (2.0 * rho)
+
+
+def exact_order_contrast(k: float, eps: float, tau_a: float, tau_b: float) -&gt; float:
+    &quot;&quot;&quot;Exact formula for state-2 contrast under mirrored edge conductances.&quot;&quot;&quot;
+    return (k * k - eps * eps) * pulse_kernel(k, eps, tau_a) * pulse_kernel(k, eps, tau_b)
+
+
+def exact_state_exchange(k: float, eps: float, tau_a: float, tau_b: float) -&gt; Vector:
+    &quot;&quot;&quot;AB-minus-BA distribution: exactly (0,-Delta,+Delta) in this model.&quot;&quot;&quot;
+    d = exact_order_contrast(k, eps, tau_a, tau_b)
+    return [0.0, -d, d]
+
+
+def exact_output_contrast(k: float, eps: float, tau_a: float, tau_b: float,
+                          output_given_state: Sequence[float]) -&gt; float:
+    &quot;&quot;&quot;Order contrast for any common state-conditional output probability.&quot;&quot;&quot;
+    if len(output_given_state) != 3:
+        raise ValueError(&quot;output_given_state must have one value per RNA state&quot;)
+    d = exact_order_contrast(k, eps, tau_a, tau_b)
+    return d * (output_given_state[2] - output_given_state[1])
+
+
+def optimal_pulse_width(k: float, eps: float) -&gt; float:
+    &quot;&quot;&quot;Peak of h(t); eps=0 is the monotone limiting case (+infinity).&quot;&quot;&quot;
+    if eps == 0.0:
+        return math.inf
+    s = k + eps
+    rho = math.sqrt(k * k - k * eps + eps * eps)
+    return math.log((s + rho) / (s - rho)) / (2.0 * rho)
+
+
+def triangle_generator(g01: float, g12: float, g02: float) -&gt; Matrix:
+    &quot;&quot;&quot;Common post-pulse symmetric generator, including a possible shortcut.&quot;&quot;&quot;
+    q = zeros(3)
+    for i, j, rate in ((0, 1, g01), (1, 2, g12), (0, 2, g02)):
+        q[i][j] = q[j][i] = rate
+        q[i][i] -= rate
+        q[j][j] -= rate
+    return q
+
+
+def delayed_readout_contrast(k: float, eps: float, tau_a: float, tau_b: float,
+                             q_common: Matrix, delay: float) -&gt; float:
+    &quot;&quot;&quot;State-2 contrast after common post-pulse dynamics for a stated delay.&quot;&quot;&quot;
+    qa, qb = generator(k, eps, 0), generator(k, eps, 1)
+    e0 = [1.0, 0.0, 0.0]
+    ab, _ = exp_action(e0, qa, tau_a)
+    ab, _ = exp_action(ab, qb, tau_b)
+    ba, _ = exp_action(e0, qb, tau_b)
+    ba, _ = exp_action(ba, qa, tau_a)
+    ab, _ = exp_action(ab, q_common, delay)
+    ba, _ = exp_action(ba, q_common, delay)
+    return ab[2] - ba[2]
+
+
+def main() -&gt; None:
+    # The finite positive-leak fixture keeps each pulse generator irreducible
+    # and has the same equilibrium pi=(1/3,1/3,1/3) in both pulse states.
+    k, eps, tau = 1.0, 0.02, 1.0
+    observed = pulse_order(k, eps, tau, tau)
+    ideal = 0.25 * (1.0 - math.exp(-2.0 * k * tau)) ** 2
+    leak_bound = ideal - 4.0 * eps * tau
+    timing_eta = 0.05
+    robust_bound = (
+        0.25 * (1.0 - math.exp(-2.0 * k * (tau - timing_eta))) ** 2
+        - 4.0 * eps * (tau + timing_eta)
+    )
+    h_jitter_min = min(pulse_kernel(k, eps, tau - timing_eta),
+                       pulse_kernel(k, eps, tau + timing_eta))
+    exact_jitter_bound = (k * k - eps * eps) * h_jitter_min**2
+    sign_detection_pairs_95 = math.ceil(2.0 * math.log(20.0) / exact_jitter_bound**2)
+    half_margin_pairs_95 = math.ceil(8.0 * math.log(40.0) / exact_jitter_bound**2)
+    readout_states = [0.1, 0.25, 0.8]
+    small_t = 1e-5
+    small = pulse_order(k, eps, small_t, small_t)[&quot;order_contrast&quot;] / small_t**2
+    comm = commutator_projection(k, eps)
+
+    # A coarse pulse-width sweep is included to expose the finite-rate
+    # operating window; each point is a model calculation, not data.
+    sweep = []
+    for j in range(1, 301):
+        t = j / 50.0
+        sweep.append((pulse_order(k, eps, t, t)[&quot;order_contrast&quot;], t))
+    peak, peak_tau = max(sweep)
+    plateau_long = pulse_order(k, eps, 30.0, 30.0)[&quot;order_contrast&quot;]
+
+    # Exact-formula checks across symmetric, asymmetric and reversed-rate
+    # fixtures. These compare two independent implementations: uniformization
+    # and the closed-form commutator identity.
+    formula_checks = []
+    for kk, ee, ta, tb in (
+        (1.0, 0.02, 0.2, 1.7),
+        (1.0, 0.4, 1.3, 0.6),
+        (0.5, 0.8, 0.9, 1.1),
+        (1.0, 1.0, 0.7, 2.0),
+    ):
+        numeric = pulse_order(kk, ee, ta, tb)[&quot;order_contrast&quot;]
+        analytic = exact_order_contrast(kk, ee, ta, tb)
+        qa, qb = generator(kk, ee, 0), generator(kk, ee, 1)
+        ab, _ = exp_action([1.0, 0.0, 0.0], qa, ta)
+        ab, _ = exp_action(ab, qb, tb)
+        ba, _ = exp_action([1.0, 0.0, 0.0], qb, tb)
+        ba, _ = exp_action(ba, qa, ta)
+        state_delta = [ab[i] - ba[i] for i in range(3)]
+        err = abs(numeric - analytic)
+        formula_checks.append({&quot;k&quot;: kk, &quot;eps&quot;: ee, &quot;tau_a&quot;: ta, &quot;tau_b&quot;: tb,
+                               &quot;numeric&quot;: numeric, &quot;analytic&quot;: analytic,
+                               &quot;absolute_error&quot;: err,
+                               &quot;state_distribution_difference&quot;: state_delta,
+                               &quot;max_state_exchange_error&quot;: max(abs(state_delta[i] - exact_state_exchange(kk, ee, ta, tb)[i]) for i in range(3))})
+        if err &gt; 2e-12:
+            raise AssertionError(&quot;uniformization and exact pulse formula disagree&quot;)
+        if max(abs(state_delta[i] - exact_state_exchange(kk, ee, ta, tb)[i]) for i in range(3)) &gt; 2e-12:
+            raise AssertionError(&quot;pulse order is not an exact state-1/state-2 mass exchange&quot;)
+
+    # With an at-most pulse-time budget and equal time costs, strict log-
+    # concavity makes the optimal symmetric width min(B/2,t_peak).
+    time_budget = 4.0
+    time_peak = optimal_pulse_width(k, eps)
+    width_star = min(time_budget / 2.0, time_peak)
+    budget_optimum = exact_order_contrast(k, eps, width_star, width_star)
+
+    # A common, reversible but non-nearest-neighbor post-pulse evolution can
+    # reverse the state-2 scalar readout after a delay. This is a numerical
+    # counterexample to unqualified timing-alignment robustness.
+    q_shortcut = triangle_generator(g01=0.01, g12=1.0, g02=0.1)
+    immediate = pulse_order(k, eps, tau, tau)[&quot;order_contrast&quot;]
+    delayed = delayed_readout_contrast(k, eps, tau, tau, q_shortcut, 10.0)
+    if not (immediate &gt; 0.0 and delayed &lt; 0.0):
+        raise AssertionError(&quot;delayed-readout sign-reversal fixture failed&quot;)
+
+    result = {
+        &quot;model&quot;: {
+            &quot;states&quot;: [&quot;0&quot;, &quot;1&quot;, &quot;2&quot;],
+            &quot;input_A_strong_edge&quot;: &quot;0&lt;-&gt;1&quot;,
+            &quot;input_B_strong_edge&quot;: &quot;1&lt;-&gt;2&quot;,
+            &quot;strong_rate_per_s&quot;: k,
+            &quot;cross_talk_rate_per_s&quot;: eps,
+            &quot;fixed_input_stationary_distribution&quot;: [1 / 3, 1 / 3, 1 / 3],
+            &quot;equilibrium_is_shared&quot;: True,
+        },
+        &quot;equal_pulse_fixture&quot;: {&quot;duration_s&quot;: tau, **observed},
+        &quot;ideal_zero_leak_exact_contrast&quot;: ideal,
+        &quot;positive_leak_contrast_lower_bound&quot;: leak_bound,
+        &quot;duration_error_bound&quot;: {
+            &quot;per_pulse_absolute_error_s&quot;: timing_eta,
+            &quot;coarse_zero_leak_comparison_bound&quot;: robust_bound,
+            &quot;exact_positive_leak_contrast_lower_bound&quot;: exact_jitter_bound,
+            &quot;scope&quot;: &quot;bounded independent pulse-duration errors in this exact mirrored model; pulse start alignment, intervening evolution and output latency remain separate&quot;,
+        },
+        &quot;paired_binary_assay_cost&quot;: {
+            &quot;robust_expected_contrast_lower_bound&quot;: exact_jitter_bound,
+            &quot;independent_AB_BA_pairs_for_95pct_one_sided_sign_detection&quot;: sign_detection_pairs_95,
+            &quot;independent_AB_BA_pairs_for_95pct_two_sided_half_margin&quot;: half_margin_pairs_95,
+            &quot;assumption&quot;: &quot;each independent pair is two condition-level Bernoulli runs; this is not a molecule count when molecules share a reaction batch&quot;,
+        },
+        &quot;small_pulse_check&quot;: {
+            &quot;contrast_over_tau_squared_at_tau_1e-5&quot;: small,
+            &quot;commutator_projection_exact&quot;: comm,
+        },
+        &quot;exact_formula&quot;: {
+            &quot;rho&quot;: math.sqrt(k * k - k * eps + eps * eps),
+            &quot;lambda_minus&quot;: k + eps - math.sqrt(k * k - k * eps + eps * eps),
+            &quot;lambda_plus&quot;: k + eps + math.sqrt(k * k - k * eps + eps * eps),
+            &quot;pulse_kernel_at_fixture&quot;: pulse_kernel(k, eps, tau),
+            &quot;exact_contrast_at_fixture&quot;: exact_order_contrast(k, eps, tau, tau),
+            &quot;checks_against_uniformization&quot;: formula_checks,
+            &quot;state_exchange_identity&quot;: &quot;p_AB-p_BA=(0,-Delta,+Delta)&quot;,
+            &quot;generic_common_readout_identity&quot;: &quot;Delta_output=Delta*(r_2-r_1) for state-conditional output probabilities r_i&quot;,
+            &quot;readout_example&quot;: {
+                &quot;state_conditional_output_probabilities&quot;: readout_states,
+                &quot;predicted_AB_minus_BA_output&quot;: exact_output_contrast(k, eps, tau, tau, readout_states),
+            },
+            &quot;formula_scope&quot;: &quot;mirrored symmetric edge rates, state-0 start, state-2 immediate readout; exact all positive pulse durations&quot;,
+        },
+        &quot;time_budget_design&quot;: {
+            &quot;at_most_total_pulse_time_s&quot;: time_budget,
+            &quot;equal_cost_optimal_width_s&quot;: width_star,
+            &quot;individual_pulse_peak_width_s&quot;: time_peak,
+            &quot;predicted_contrast&quot;: budget_optimum,
+            &quot;derivation&quot;: &quot;log h(t) is strictly concave; equal durations maximize at fixed sum, and unused time is optimal beyond the single-pulse peak&quot;,
+            &quot;scope&quot;: &quot;actuator-on time only; excludes initialization, buffer exchange, transcription, assay, and biochemical actuator work&quot;,
+        },
+        &quot;duration_sweep&quot;: {
+            &quot;grid_step_s&quot;: 0.02,
+            &quot;max_contrast_on_grid&quot;: peak,
+            &quot;duration_at_grid_max_s&quot;: peak_tau,
+            &quot;contrast_at_30s&quot;: plateau_long,
+            &quot;interpretation&quot;: &quot;finite-input-rate noncommutativity has an operating window; both generators mix to the same uniform equilibrium at long durations&quot;,
+        },
+        &quot;post_pulse_delay_counterexample&quot;: {
+            &quot;common_symmetric_generator_edges_per_s&quot;: {&quot;0&lt;-&gt;1&quot;: 0.01, &quot;1&lt;-&gt;2&quot;: 1.0, &quot;0&lt;-&gt;2&quot;: 0.1},
+            &quot;delay_s&quot;: 10.0,
+            &quot;immediate_state2_contrast&quot;: immediate,
+            &quot;delayed_state2_contrast&quot;: delayed,
+            &quot;scope&quot;: &quot;a finite CTMC numerical counterexample; same common reversible post-pulse dynamics in both arms, but one-state readout sign reverses&quot;,
+        },
+        &quot;numerical_scope&quot;: &quot;uniformization finite-sum calculations with explicit Poisson-tail truncation diagnostic; model parameters are illustrative, not fitted biological rates&quot;,
+    }
+    if observed[&quot;order_contrast&quot;] &lt;= robust_bound:
+        raise AssertionError(&quot;computed contrast failed the conservative leakage bound&quot;)
+    if abs(small - comm) &gt; 2e-4:
+        raise AssertionError(&quot;small-time commutator expansion failed&quot;)
+    out = Path(__file__).with_name(&quot;pulse_order_results.json&quot;)
+    out.write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+    print(json.dumps(result, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/f93a272a7ce758af25c3e61cd8b544fe658360dca2c3497e02cbcb3090521135.py">Exact original</a></p></html>

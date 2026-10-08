@@ -1,0 +1,63 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/systems_metabolism/calculations/verify_facet_local.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/systems_metabolism/calculations/verify_facet_local.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact-rational audit of the facet-local N35 worked example.&quot;&quot;&quot;
+from fractions import Fraction as F
+from math import exp
+import json
+from pathlib import Path
+import sys
+
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+from facet_local_calculation import certificate  # noqa: E402
+
+# Deterministic inward margins over the declared rate interval [0.9, 1.1].
+margin_checks = {
+    &quot;A_lower&quot;: F(9, 10) - F(11, 10) * F(11, 20) ** 2 - F(14, 25),
+    &quot;A_upper&quot;: F(9, 10) * F(39, 20) ** 2 - F(11, 10) - F(23, 10),
+    &quot;B_lower&quot;: F(9, 10) - F(11, 10) * F(11, 20) - F(29, 100),
+    &quot;B_upper&quot;: F(9, 10) * F(39, 20) - F(11, 10) - F(13, 20),
+}
+assert all(v &gt; 0 for v in margin_checks.values())
+assert margin_checks == {
+    &quot;A_lower&quot;: F(29, 4000),
+    &quot;A_upper&quot;: F(89, 4000),
+    &quot;B_lower&quot;: F(1, 200),
+    &quot;B_upper&quot;: F(1, 200),
+}
+
+global_box = certificate(local=False)
+local_box = certificate(local=True)
+assert global_box[&quot;V0&quot;] == 8
+assert local_box[&quot;V0&quot;] == 3
+assert global_box[&quot;Lambda&quot;] == local_box[&quot;Lambda&quot;] == &quot;44/5&quot;
+
+def exact_c(result):
+    return min(F(row[&quot;c_i&quot;]) for row in result[&quot;facets&quot;])
+
+c_global = exact_c(global_box)
+c_local = exact_c(local_box)
+assert c_global == F(29, 39600)
+assert c_local == F(29, 20460)
+assert c_local / c_global == F(660, 341)
+
+local_20k = next(row for row in local_box[&quot;volume_summaries&quot;] if row[&quot;V&quot;] == 20_000)
+assert abs(local_20k[&quot;exit_bound&quot;] - 0.00082237319966648) &lt; 1e-15
+assert abs(local_20k[&quot;independent_200_replicates_at_least_3_exits_tail&quot;] - 0.00064719201416255) &lt; 1e-14
+same_horizon = next(row for row in global_box[&quot;common_horizon_comparison&quot;] if row[&quot;V&quot;] == 20_000)
+assert same_horizon[&quot;global_box_bound_at_same_T&quot;] &gt; 700
+assert abs(same_horizon[&quot;refined_bound_at_same_T&quot;] - local_20k[&quot;exit_bound&quot;]) &lt; 1e-15
+
+print(json.dumps({
+    &quot;status&quot;: &quot;finite exact-rational certificate arithmetic plus floating exponential diagnostics&quot;,
+    &quot;deterministic_margin_surpluses&quot;: {k: str(v) for k, v in margin_checks.items()},
+    &quot;V0_global&quot;: global_box[&quot;V0&quot;],
+    &quot;V0_facet_local&quot;: local_box[&quot;V0&quot;],
+    &quot;Lambda&quot;: global_box[&quot;Lambda&quot;],
+    &quot;c_global&quot;: str(c_global),
+    &quot;c_local&quot;: str(c_local),
+    &quot;c_ratio_local_over_global&quot;: str(c_local / c_global),
+    &quot;V20000_local_exit_bound&quot;: local_20k[&quot;exit_bound&quot;],
+    &quot;V20000_200_replicates_3plus_tail&quot;: local_20k[&quot;independent_200_replicates_at_least_3_exits_tail&quot;],
+    &quot;V20000_global_bound_at_local_horizon&quot;: same_horizon[&quot;global_box_bound_at_same_T&quot;],
+}, indent=2))
+</pre><p><a href="../assets/447462a178e267c8b9ca2ae61c4d6e2051c5b7889de1a2ae5cdbe66b4330dbef.py">Exact original</a></p></html>

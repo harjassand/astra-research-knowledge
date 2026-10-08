@@ -1,0 +1,359 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/mathematics_algorithms/proofs/sparse_bipartite_rounding.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/mathematics_algorithms/proofs/sparse_bipartite_rounding.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Exact support-compressed cycle rounding for bipartite PM marginals.
+
+This is a proof-of-concept compiler.  Its signing routine is deliberately an
+injected primitive; Li&#x27;s 99-signing theorem is source-reported, not
+implemented here.  All other operations use exact ``Fraction`` arithmetic.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from fractions import Fraction
+from math import isqrt
+from typing import Callable, Sequence
+
+Edge = tuple[int, int]
+Vec = tuple[Fraction, ...]
+Signer = Callable[[Sequence[Vec]], Sequence[int]]
+
+
+@dataclass(frozen=True)
+class Atom:
+    numerator: tuple[int, ...]
+    weight: Fraction
+    bound: Fraction
+    scales: tuple[tuple[int, int], ...]
+
+
+def _vertices(nl: int, e: Edge) -&gt; tuple[int, int]:
+    return e[0], nl + e[1]
+
+
+def _cycle(nv: int, nl: int, edges: Sequence[Edge], active: Sequence[int]):
+    &quot;&quot;&quot;Return one simple cycle in edge-ID order, or None.&quot;&quot;&quot;
+    adj: list[list[tuple[int, int]]] = [[] for _ in range(nv)]
+    for eid in active:
+        u, v = _vertices(nl, edges[eid])
+        adj[u].append((eid, v))
+        adj[v].append((eid, u))
+    state = [0] * nv
+    parent = [-1] * nv
+    parent_edge = [-1] * nv
+    for root in range(nv):
+        if state[root]:
+            continue
+        state[root] = 1
+        stack = [(root, 0)]
+        while stack:
+            u, i = stack[-1]
+            if i == len(adj[u]):
+                state[u] = 2
+                stack.pop()
+                continue
+            eid, v = adj[u][i]
+            stack[-1] = (u, i + 1)
+            if eid == parent_edge[u]:
+                continue
+            if state[v] == 0:
+                state[v] = 1
+                parent[v], parent_edge[v] = u, eid
+                stack.append((v, 0))
+            elif state[v] == 1:
+                path = []
+                z = u
+                while z != v:
+                    if z &lt; 0 or parent[z] &lt; 0:
+                        raise ArithmeticError(&quot;DFS back edge did not close&quot;)
+                    path.append(parent_edge[z])
+                    z = parent[z]
+                return tuple(list(reversed(path)) + [eid])
+    return None
+
+
+def _null_vector(points: Sequence[Vec]) -&gt; list[Fraction]:
+    &quot;&quot;&quot;Find a nonzero rational affine dependence among &gt; d+1 points in Q^d.&quot;&quot;&quot;
+    k = len(points)
+    d = len(points[0]) if points else 0
+    a = [[Fraction(1) for _ in range(k)]]
+    a.extend([[points[j][i] for j in range(k)] for i in range(d)])
+    pivot_cols: list[int] = []
+    row = 0
+    for col in range(k):
+        pivot = next((r for r in range(row, len(a)) if a[r][col]), None)
+        if pivot is None:
+            continue
+        a[row], a[pivot] = a[pivot], a[row]
+        q = a[row][col]
+        a[row] = [v / q for v in a[row]]
+        for r in range(len(a)):
+            if r != row and a[r][col]:
+                q = a[r][col]
+                a[r] = [u - q * v for u, v in zip(a[r], a[row])]
+        pivot_cols.append(col)
+        row += 1
+        if row == len(a):
+            break
+    free = next((j for j in range(k) if j not in pivot_cols), None)
+    if free is None:
+        raise ArithmeticError(&quot;no affine dependence despite excess support&quot;)
+    lam = [Fraction(0)] * k
+    lam[free] = Fraction(1)
+    for r, col in reversed(list(enumerate(pivot_cols))):
+        lam[col] = -sum((a[r][j] * lam[j] for j in range(k) if j != col), Fraction(0))
+    if not any(lam) or sum(lam, Fraction(0)) != 0:
+        raise ArithmeticError(&quot;invalid affine dependence&quot;)
+    return lam
+
+
+def _compress(
+    candidates: list[tuple[Vec, Fraction, object]], target: Vec
+) -&gt; list[tuple[Vec, Fraction, object]]:
+    &quot;&quot;&quot;Compress a feasible rational law to &lt;=d+1 existing atoms, exactly.&quot;&quot;&quot;
+    d = len(target)
+    if any(len(point) != d for point, _, _ in candidates):
+        raise ValueError(&quot;candidate and target dimensions differ&quot;)
+    candidates = [(v, w, tag) for v, w, tag in candidates if w &gt; 0]
+    if sum((w for _, w, _ in candidates), Fraction(0)) != 1:
+        raise ArithmeticError(&quot;candidate weights do not sum to one&quot;)
+    for j in range(d):
+        if sum((w * v[j] for v, w, _ in candidates), Fraction(0)) != target[j]:
+            raise ArithmeticError(&quot;candidate law does not have the requested mean&quot;)
+    while len(candidates) &gt; d + 1:
+        pts = [v for v, _, _ in candidates]
+        lam = _null_vector(pts)
+        step = min(
+            w / z
+            for (_, w, _), z in zip(candidates, lam)
+            if z &gt; 0
+        )
+        updated = []
+        for (v, w, tag), z in zip(candidates, lam):
+            new_weight = w - step * z
+            if new_weight &gt; 0:
+                updated.append((v, new_weight, tag))
+        candidates = updated
+    if sum((w for _, w, _ in candidates), Fraction(0)) != 1:
+        raise ArithmeticError(&quot;compression changed total mass&quot;)
+    for j in range(d):
+        if sum((w * v[j] for v, w, _ in candidates), Fraction(0)) != target[j]:
+            raise ArithmeticError(&quot;compression changed the barycenter&quot;)
+    return candidates
+
+
+def _ceil_norm(v: Vec) -&gt; int:
+    q = sum((x * x for x in v), Fraction(0))
+    if q == 0:
+        return 0
+    u = isqrt(q.numerator // q.denominator)
+    return u if u * u * q.denominator == q.numerator else u + 1
+
+
+def _residual_endpoint_round(
+    nl: int,
+    nr: int,
+    edges: Sequence[Edge],
+    x: Vec,
+    level: int,
+) -&gt; list[tuple[tuple[int, ...], Fraction]]:
+    &quot;&quot;&quot;Return a support-&lt;=m+1 law of 2^level b-matchings with mean x.&quot;&quot;&quot;
+    m = len(edges)
+    q = 1 &lt;&lt; level
+    floors = tuple((q * z).numerator // (q * z).denominator for z in x)
+    start = tuple(q * z - f for z, f in zip(x, floors))
+    law: list[tuple[Vec, Fraction, object]] = [(start, Fraction(1), None)]
+    for _ in range(m):
+        max_fractional = max(
+            (sum(0 &lt; z &lt; 1 for z in point) for point, _, _ in law),
+            default=0,
+        )
+        if max_fractional == 0:
+            break
+        branches = []
+        for point, weight, _ in law:
+            active = [e for e, z in enumerate(point) if 0 &lt; z &lt; 1]
+            if not active:
+                branches.append((point, weight, None))
+                continue
+            cyc = _cycle(nl + nr, nl, edges, active)
+            if cyc is None or len(cyc) % 2:
+                raise ArithmeticError(&quot;integer residual degrees require an even cycle&quot;)
+            direction = tuple(1 if i % 2 == 0 else -1 for i in range(len(cyc)))
+            lo = max((-point[e] if s &gt; 0 else point[e] - 1) for e, s in zip(cyc, direction))
+            hi = min((1 - point[e] if s &gt; 0 else point[e]) for e, s in zip(cyc, direction))
+            if not lo &lt; 0 &lt; hi:
+                raise ArithmeticError(&quot;cycle has no two-sided feasible interval&quot;)
+            p_lo = hi / (hi - lo)
+            for step, prob in ((lo, p_lo), (hi, 1 - p_lo)):
+                nxt = list(point)
+                for e, s in zip(cyc, direction):
+                    nxt[e] += step * s
+                nxt = tuple(nxt)
+                if any(not 0 &lt;= z &lt;= 1 for z in nxt):
+                    raise ArithmeticError(&quot;endpoint branch left the unit cube&quot;)
+                if sum(0 &lt; z &lt; 1 for z in nxt) &gt;= sum(0 &lt; z &lt; 1 for z in point):
+                    raise ArithmeticError(&quot;endpoint branch failed to freeze an edge&quot;)
+                branches.append((nxt, weight * prob, None))
+        law = _compress(branches, start)
+    if any(any(0 &lt; z &lt; 1 for z in point) for point, _, _ in law):
+        raise ArithmeticError(&quot;residual rounding exceeded |E| rounds&quot;)
+    out = []
+    for point, weight, _ in law:
+        if any(z not in (0, 1) for z in point):
+            raise ArithmeticError(&quot;nonintegral residual endpoint&quot;)
+        y = tuple(f + int(z) for f, z in zip(floors, point))
+        out.append((y, weight))
+    return out
+
+
+def _cycles_of_eulerian_support(nl: int, nr: int, edges: Sequence[Edge], active: Sequence[int]):
+    remaining = set(active)
+    cycles = []
+    while remaining:
+        cyc = _cycle(nl + nr, nl, edges, sorted(remaining))
+        if cyc is None or len(cyc) % 2:
+            raise ArithmeticError(&quot;odd support graph is not bipartite Eulerian&quot;)
+        cycles.append(cyc)
+        remaining.difference_update(cyc)
+    return cycles
+
+
+def sparse_bipartite_matching_law(
+    nl: int,
+    nr: int,
+    edges: Sequence[Edge],
+    marginals: Sequence[Fraction],
+    feature_columns: Sequence[Sequence[Fraction]],
+    level: int,
+    signer: Signer,
+) -&gt; tuple[Atom, ...]:
+    &quot;&quot;&quot;Compile a rational PM point into &lt;=m+1 exact-marginal safe atoms.
+
+    Preconditions: bipartite graph, nl=nr, feasible rational PM marginals,
+    rational feature columns of Euclidean norm &lt;=1, and a signer satisfying
+    the &lt;99 Li guarantee on rational unit columns.  No optimization or
+    matching-polytope oracle is used.
+    &quot;&quot;&quot;
+    if nl != nr or nl &lt; 1 or level &lt; 0:
+        raise ValueError(&quot;need equal nonempty shores and nonnegative level&quot;)
+    m = len(edges)
+    if len(marginals) != m or len(feature_columns) != m:
+        raise ValueError(&quot;edge, marginal, and feature counts differ&quot;)
+    x = tuple(Fraction(z) for z in marginals)
+    A = tuple(tuple(Fraction(z) for z in col) for col in feature_columns)
+    d = len(A[0]) if A else 0
+    if any(len(col) != d for col in A):
+        raise ValueError(&quot;feature columns must have a common dimension&quot;)
+    if any(sum((z * z for z in col), Fraction(0)) &gt; 1 for col in A):
+        raise ValueError(&quot;feature columns must have Euclidean norm &lt;=1&quot;)
+    deg = [Fraction(0)] * (nl + nr)
+    for (l, r), z in zip(edges, x):
+        if not (0 &lt;= l &lt; nl and 0 &lt;= r &lt; nr) or not 0 &lt;= z &lt;= 1:
+            raise ValueError(&quot;invalid actual edge or marginal&quot;)
+        deg[l] += z
+        deg[nl + r] += z
+    if any(z != 1 for z in deg):
+        raise ValueError(&quot;marginals must satisfy the bipartite PM degree equations&quot;)
+
+    q = 1 &lt;&lt; level
+    initial = _residual_endpoint_round(nl, nr, edges, x, level)
+    law = [Atom(y, w, Fraction(m, q), ()) for y, w in initial]
+    for t in range(level, 0, -1):
+        candidates = []
+        for atom in law:
+            odd = [e for e, z in enumerate(atom.numerator) if z % 2]
+            if not odd:
+                half = tuple(z // 2 for z in atom.numerator)
+                candidates.append((tuple(Fraction(z, 1 &lt;&lt; (t - 1)) for z in half), atom.weight,
+                                   Atom(half, atom.weight, atom.bound, atom.scales + ((t, 0),))))
+                continue
+            cycles = _cycles_of_eulerian_support(nl, nr, edges, odd)
+            cycle_vectors = []
+            directions = []
+            for cyc in cycles:
+                delta = [0] * m
+                for i, e in enumerate(cyc):
+                    delta[e] = 1 if i % 2 == 0 else -1
+                directions.append(tuple(delta))
+                cycle_vectors.append(tuple(
+                    sum((delta[e] * A[e][j] for e in range(m)), Fraction(0))
+                    for j in range(d)
+                ))
+            scale = max((_ceil_norm(v) for v in cycle_vectors), default=0)
+            if scale == 0:
+                signs = (1,) * len(cycles)
+            else:
+                normalized = tuple(tuple(z / scale for z in v) for v in cycle_vectors)
+                signs = tuple(signer(normalized))
+                if len(signs) != len(cycles) or any(s not in (-1, 1) for s in signs):
+                    raise ValueError(&quot;signer returned an invalid sign vector&quot;)
+                signed = tuple(
+                    sum((s * v[j] for s, v in zip(signs, cycle_vectors)), Fraction(0))
+                    for j in range(d)
+                )
+                if any(abs(z) &gt;= 99 * scale for z in signed):
+                    raise ValueError(&quot;signer failed the strict &lt;99 guarantee&quot;)
+            signed_direction = tuple(
+                sum((s * delta[e] for s, delta in zip(signs, directions)), 0)
+                for e in range(m)
+            )
+            for orientation in (-1, 1):
+                updated = tuple(
+                    (z + orientation * dlt) // 2
+                    for z, dlt in zip(atom.numerator, signed_direction)
+                )
+                if any((z + orientation * dlt) % 2 for z, dlt in zip(atom.numerator, signed_direction)):
+                    raise ArithmeticError(&quot;odd-edge perturbation did not become even&quot;)
+                if any(z &lt; 0 for z in updated):
+                    raise ArithmeticError(&quot;antipodal cycle branch left the feasible cone&quot;)
+                next_bound = atom.bound + Fraction(99 * scale, 1 &lt;&lt; t)
+                child = Atom(updated, atom.weight / 2, next_bound,
+                             atom.scales + ((t, scale),))
+                candidates.append((tuple(Fraction(z, 1 &lt;&lt; (t - 1)) for z in updated),
+                                   atom.weight / 2, child))
+        compressed = _compress(candidates, x)
+        law = [tag for _, _, tag in compressed]
+        # The target weights returned by compression replace, rather than
+        # recursively enumerate, the branch weights stored in each tag.
+        law = [Atom(a.numerator, w, a.bound, a.scales) for (_, w, _), a in zip(compressed, law)]
+
+    final = []
+    for atom in law:
+        y = atom.numerator
+        if any(z not in (0, 1) for z in y):
+            raise ArithmeticError(&quot;final state is not a perfect matching&quot;)
+        # Verify every degree and compute the exact feature error.
+        dcheck = [0] * (nl + nr)
+        for (l, r), z in zip(edges, y):
+            dcheck[l] += z
+            dcheck[nl + r] += z
+        if any(z != 1 for z in dcheck):
+            raise ArithmeticError(&quot;final state violates matching degrees&quot;)
+        error = tuple(
+            sum((A[e][j] * (y[e] - x[e]) for e in range(m)), Fraction(0))
+            for j in range(d)
+        )
+        actual_error = max((abs(z) for z in error), default=Fraction(0))
+        if actual_error &gt; atom.bound:
+            raise ArithmeticError(&quot;atom exceeded its charged cycle bound&quot;)
+        final.append((y, atom.weight, atom.bound, atom.scales))
+    if len(final) &gt; m + 1:
+        raise ArithmeticError(&quot;support compression exceeded |E|+1&quot;)
+    if sum((w for _, w, _, _ in final), Fraction(0)) != 1:
+        raise ArithmeticError(&quot;final law does not have unit mass&quot;)
+    for e in range(m):
+        if sum((w * y[e] for y, w, _, _ in final), Fraction(0)) != x[e]:
+            raise ArithmeticError(&quot;final law failed an exact edge marginal&quot;)
+    # Merge repeated matching incidence vectors so the returned list is the
+    # actual support, rather than a list with repeated copies of one atom.
+    merged: dict[tuple[int, ...], tuple[Fraction, Fraction, tuple[tuple[int, int], ...]]] = {}
+    for y, w, b, s in final:
+        if y in merged:
+            old_w, old_b, old_s = merged[y]
+            if b &gt; old_b:
+                merged[y] = (old_w + w, b, s)
+            else:
+                merged[y] = (old_w + w, old_b, old_s)
+        else:
+            merged[y] = (w, b, s)
+    return tuple(Atom(y, w, b, s) for y, (w, b, s) in merged.items())
+</pre><p><a href="../assets/2b7255d1978bbdeff34830026a109a77398df603ff941747407862895a830aa9.py">Exact original</a></p></html>

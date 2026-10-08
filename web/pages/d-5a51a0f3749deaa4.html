@@ -1,0 +1,126 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c8_affine_global_audit/REPORT.md</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c8_affine_global_audit/REPORT.md</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre># Independent source-to-Lean audit: affine approximation theorem
+
+## Finding
+
+The public declaration `N33Affine.exists_full_affine_family` matches the
+arbitrary-tolerance **lemma** in `work/agents/permanence_hostile/OA149/affine.tex`
+(lines 28–47) on the load-bearing quantifiers and conclusion. I found no hidden
+slice oracle, local-neighborhood premise, tolerance regularity, or restriction
+on the approximating sequence in the public statement. The lower-dimensional
+slice oracle is constructed inside the induction from its induction hypothesis.
+The final theorem is an affine lemma result only; it does not establish the
+later permanence theorem.
+
+There is one scope boundary in the source file: lines 288–309 also state and
+prove a separate uniform-in-`h` activity corollary. The exported Lean theorem is
+the sequential lemma, not a separate formalized corollary. The corollary follows
+from this sequential lemma by the source&#x27;s compactness/finiteness contradiction,
+but that implication is not exported here as a Lean declaration. Therefore the
+formalization claim should be phrased as the affine lemma, not as a formalization
+of every statement in `affine.tex`.
+
+## Interface mapping
+
+The elaborated theorem has this public form (the audit output records `#check`):
+
+```lean
+∀ (m : Nat) (a b : Real) (E : (Fin m → Real) → Real),
+  a ≤ b →
+  (∀ r, InCube a b r → 0 &lt; E r) →
+  ∃ F : BoxFamily m a b,
+    FamilyLittleOAt F a ∧ FullApproximation a b E F.family
+```
+
+`BoxFamily` packages a finite, nonempty indexed family and a coordinatewise
+`[a,b]` bound on each slope. `value` is the finite dot-product sum
+`Σ_i slope_i * Real.rpow h (p i)` plus the bump. On positive `h`, `Real.rpow`
+is the ordinary real power used in the source&#x27;s `X_h(p)`. `Active` is weak
+comparison (`≤`) against every family label, so ties are retained.
+`LittleO f α` is `Tendsto (fun h =&gt; f h / Real.rpow h α)` from the positive
+neighborhood of zero to zero, exactly encoding `f(h)=o(h^α)` as `h→0+`.
+`FullApproximation` only constrains the limiting `p` to the cube; `pSeq` is an
+unrestricted function-valued sequence. Its conclusion is
+`∀ i, |p i - slope i| &lt; E slope`, the coordinatewise form equivalent to the
+source&#x27;s strict infinity-norm inequality on finite `Fin m`.
+
+The theorem is slightly stronger than the source lemma at the interface level:
+it also handles `m=0` and `a=b`, and requires only eventual weak activity rather
+than activity at every sequence index. `E` is represented by a total real-valued
+function, but positivity is assumed only at cube points. Every occurrence of
+`E` in the conclusion is at a cube slope; the lower-dimensional restriction is
+shown positive by lifting into the original cube. Thus no positivity outside
+the cube is assumed. No continuity, measurability, or computability of `E` is
+present.
+
+## Composition traced against the source proof
+
+The recursive `OracleHyp` at `GlobalAffineComposition.lean:30–40` is a local
+function obtained from the strong induction hypothesis. The exported theorem
+does not accept `SliceOracle`, `LocalWindowData`, a pre-proved local guarantee,
+or any custom axiom as input.
+
+The source&#x27;s fixed-minimum stage and its raised-coordinate comparisons are
+carried through `SliceFamily`, `StageLocalEstimate`, and `StageLocalCompose`.
+`StageArchive`/`StageCertificate` retain each stage&#x27;s labels in the common
+terminal finite family. `BadNeighborhood` then turns the exact-slice local
+bound into an open minimum-coordinate neighborhood by a closed active-limit
+bad set inside the compact cube; its only use of `E` in the bad set is the fixed
+scalar at the fixed label slope. This does not assume continuity of offsets or
+of `E`.
+
+The outer proof constructs the local open cover, prunes it by choosing a
+minimum-cardinality finite subcover, and orders the retained centers
+(`AffineInduction.lean:57–111`; `GlobalAffineComposition.lean:43–101`). The
+`N33FiniteGlue.exists_cover_gluing_data` contract matches the source geometry:
+the retained intervals are symmetric, centered in `[a,b]`, positive-radius,
+cover `[a,b]`, and no retained open interval is contained in another. It gives
+strictly ordered cuts in the proper adjacent intersections and strict outer
+containment of `a,b`. The composition passes those exact hypotheses and uses
+the resulting cuts for the tagged union.
+
+`GluePlacement.shiftedUnion` uses the source&#x27;s bump
+`c_j(h) - Σ_{ℓ&lt;j} h^(q_ℓ)`. `active_minimum_in_slab` compares a global weakly
+active tag with the neighboring baseline labels; the strict power gaps put the
+limiting minimum in that tag&#x27;s closed cut slab. The finite-glue inheritance
+lemma turns the closed slab into strict membership in the local open window
+(both cut endpoints lie strictly inside the adjacent windows), and cancels the
+common shift to recover local weak activity. Finally, each local bump is
+`o(h^(center+radius))`, every internal cut exponent exceeds its center and thus
+`a`, and finite sums/subtractions preserve the required global `o(h^a)` bound.
+No approximant-range condition is introduced at any of these steps.
+
+I found no mismatch in the requested finite-cover or active-label gluing
+contract: the actual proof uses the noncontainment/center-order hypotheses to
+make both endpoint sequences ordered, excludes gaps via the cover, chooses a
+cut in each proper consecutive intersection, and routes the active label into
+its local neighborhood. Weak all-ties comparisons are preserved throughout.
+
+## Verification record
+
+- Source: `work/agents/permanence_hostile/OA149/affine.tex` (SHA-256
+  `28b8628ce97517025e22d1ac18eabbef39d0b4384f3aa7bad0463b3025d8bec0`).
+- Public theorem source SHA-256:
+  `188e86466b02d646f82f4b25fd0a1bd4b47b4b4e9bc0c6af0d07da670130f5c8`.
+- The recorded `GlobalAffineComposition.compile.log` is empty, and the sibling
+  formalization report records Lean 4.28 compile exit 0. The recorded
+  `GlobalAffineAudit.log` checks the exact theorem and reports only
+  `[propext, Classical.choice, Quot.sound]` for the theorem, local-window
+  constructor, and interval-cover constructor. These are standard Lean/Mathlib
+  axioms; no `sorryAx` or custom axiom is reported.
+- The repaired `SliceFamily.lean` source explicitly writes
+  `Filter.atTop`; the public interface does not have the earlier accidental
+  implicit arbitrary-filter binder described in the repair record.
+- SHA-256 fingerprints for the exact imported source chain inspected (including
+  the standalone glue and bad-neighborhood modules) are saved in
+  `SOURCE_HASHES.txt`.
+- A fresh source recheck was started in this audit task using the cached Lean
+  4.28 environment and task-local search paths, then terminated at the parent
+  request to avoid build overlap. No fresh recheck result is claimed here. See
+  `recheck_status.txt` and `compile_record.txt`. The previously recorded
+  compiled module and its API/axiom output remain the compile evidence used
+  above.
+
+The audit is source correspondence review, not a proof of the ODE/permanence
+claims later in the manuscript, an external review, or a novelty/priority
+assessment.
+</pre><p><a href="../assets/0deb9a8bd746ec9dcdb7e609ef6f817638af1af7a587fd539312bc9e0396d2fa.md">Exact original</a></p></html>

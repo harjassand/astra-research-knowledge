@@ -1,0 +1,71 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/cell_control/analysis/endpoint_aliasing.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/cell_control/analysis/endpoint_aliasing.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Reproduce the exact two-state endpoint-aliasing design calculation.&quot;&quot;&quot;
+import json
+import math
+
+
+T = 1.0
+alpha = 0.05
+q = 0.5 * (1.0 - math.exp(-2.0 * T))
+
+
+def arm_from_endpoint(name, endpoint, total_rate, horizon=T):
+    a = endpoint * total_rate / (1.0 - math.exp(-total_rate * horizon))
+    b = total_rate - a
+    occupancy = (a / total_rate) * (
+        horizon - (1.0 - math.exp(-total_rate * horizon)) / total_rate
+    )
+    return {
+        &quot;name&quot;: name,
+        &quot;a&quot;: a,
+        &quot;b&quot;: b,
+        &quot;lambda&quot;: total_rate,
+        &quot;endpoint&quot;: a / total_rate * (1.0 - math.exp(-total_rate * horizon)),
+        &quot;occupancy&quot;: occupancy,
+    }
+
+
+u_fast = arm_from_endpoint(&quot;U_fast&quot;, q, 2.0)
+u_slow = arm_from_endpoint(&quot;U_slow&quot;, q, 1.0)
+v = arm_from_endpoint(&quot;V&quot;, 0.42, 2.0)
+
+# p(t) = c(1-exp(-lambda*t)); solve the derivative of p_fast-p_slow.
+c_fast = u_fast[&quot;a&quot;] / u_fast[&quot;lambda&quot;]
+c_slow = u_slow[&quot;a&quot;] / u_slow[&quot;lambda&quot;]
+lambda_fast = u_fast[&quot;lambda&quot;]
+lambda_slow = u_slow[&quot;lambda&quot;]
+ratio = c_slow * lambda_slow / (c_fast * lambda_fast)
+t_star = -math.log(ratio) / (lambda_fast - lambda_slow)
+
+
+def target_fraction(arm, time):
+    return arm[&quot;a&quot;] / arm[&quot;lambda&quot;] * (1.0 - math.exp(-arm[&quot;lambda&quot;] * time))
+
+
+p_fast = target_fraction(u_fast, t_star)
+p_slow = target_fraction(u_slow, t_star)
+delta = abs(p_fast - p_slow)
+gap_world_1 = u_fast[&quot;occupancy&quot;] - v[&quot;occupancy&quot;]
+gap_world_2 = v[&quot;occupancy&quot;] - u_slow[&quot;occupancy&quot;]
+choice_u = gap_world_1 / (gap_world_1 + gap_world_2)
+regret = gap_world_1 * gap_world_2 / (gap_world_1 + gap_world_2)
+founders = math.ceil(2.0 * math.log(1.0 / alpha) / (delta * delta))
+
+result = {
+    &quot;model&quot;: &quot;A&lt;-&gt;B CTMC, constant rates, start in A, no birth/death or classification error&quot;,
+    &quot;horizon&quot;: T,
+    &quot;arms&quot;: [u_fast, u_slow, v],
+    &quot;optimal_intermediate_time_for_U_world_separation&quot;: t_star,
+    &quot;midpoint_fraction_U_fast&quot;: p_fast,
+    &quot;midpoint_fraction_U_slow&quot;: p_slow,
+    &quot;midpoint_separation&quot;: delta,
+    &quot;world_1_occupancy_gap_U_over_V&quot;: gap_world_1,
+    &quot;world_2_occupancy_gap_V_over_U&quot;: gap_world_2,
+    &quot;endpoint_only_minimax_regret&quot;: regret,
+    &quot;minimax_policy_probability_choose_U&quot;: choice_u,
+    &quot;alpha&quot;: alpha,
+    &quot;independent_founders_per_arm_for_midpoint_test_Hoeffding&quot;: founders,
+}
+
+print(json.dumps(result, indent=2))
+</pre><p><a href="../assets/032b2c1670cddf63e4cdddd17afe32e273d733334180ea257737002b57a7602d.py">Exact original</a></p></html>

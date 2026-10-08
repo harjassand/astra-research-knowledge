@@ -1,0 +1,211 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c4_quantum_lift/cycle7_replay/finite_depth_dressed_compiler.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c4_quantum_lift/cycle7_replay/finite_depth_dressed_compiler.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact two-site entangling-circuit dressed broadcaster/comparator replay.
+
+Starting from the local rational symmetric broadcaster B_1, form
+  B&#x27; = (Ad_U tensor Ad_U) o (B_1 tensor B_1) o Ad_{U*}
+with U=CNOT.  The all-L extension is valid for any supplied unitary circuit U;
+the finite exact replay verifies a nonproduct, entangling two-site instance.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import itertools
+import json
+from pathlib import Path
+
+import sympy as sp
+from sympy import I, Matrix, Rational, eye, zeros, kronecker_product
+
+
+OUT = Path(__file__).resolve().parent
+I2 = eye(2)
+I4 = eye(4)
+X = Matrix([[0, 1], [1, 0]])
+Y = Matrix([[0, -I], [I, 0]])
+Z = Matrix([[1, 0], [0, -1]])
+PAULI = {&quot;I&quot;: I2, &quot;X&quot;: X, &quot;Y&quot;: Y, &quot;Z&quot;: Z}
+THETA = Rational(9, 10)
+
+
+def clean(a):
+    return a.applyfunc(lambda x: sp.simplify(sp.expand_complex(x)))
+
+
+def matrix_json(a):
+    a = clean(a)
+    return [[str(a[i, j]) for j in range(a.cols)] for i in range(a.rows)]
+
+
+def regroup_interleaved_to_receivers():
+    # Old output bit order is A1,B1,A2,B2; new order is A1,A2,B1,B2.
+    p = zeros(16, 16)
+    for a1, b1, a2, b2 in itertools.product(range(2), repeat=4):
+        old = ((a1 * 2 + b1) * 2 + a2) * 2 + b2
+        new = ((a1 * 2 + a2) * 2 + b1) * 2 + b2
+        p[new, old] = 1
+    return p
+
+
+def swap_receivers():
+    s = zeros(16, 16)
+    for a in range(4):
+        for b in range(4):
+            s[b * 4 + a, a * 4 + b] = 1
+    return s
+
+
+def local_b_kraus():
+    k0, k1 = zeros(4, 2), zeros(4, 2)
+    k0[0, 0] = 1
+    k1[3, 1] = 1
+    a0, a1 = zeros(4, 2), zeros(4, 2)
+    a0[0, 0], a0[1, 1], a0[2, 1] = 2, 1, 1
+    a1[1, 0], a1[2, 0], a1[3, 1] = 1, 1, 2
+    return [
+        (THETA, k0), (THETA, k1),
+        ((1 - THETA) / 6, a0), ((1 - THETA) / 6, a1),
+    ]
+
+
+def ptrace_right(y, d=4):
+    return clean(Matrix(d, d, lambda i, k: sum(y[i * d + j, k * d + j] for j in range(d))))
+
+
+def ptm(channel, basis, d):
+    return Matrix(len(basis), len(basis), lambda i, j: sp.simplify(sp.trace(basis[i] * channel(basis[j])) / d))
+
+
+def product_ensemble():
+    p0 = Matrix([[1, 0], [0, 0]])
+    p1 = Matrix([[0, 0], [0, 1]])
+    local = [
+        (Rational(14, 15) * p0, p0),
+        (Rational(14, 15) * p1, p1),
+        (Rational(1, 15) * I2, Rational(1, 2) * I2),
+    ]
+    return [
+        (kronecker_product(m1, m2), kronecker_product(s1, s2))
+        for (m1, s1), (m2, s2) in itertools.product(local, repeat=2)
+    ]
+
+
+def main():
+    U = Matrix([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0]])  # CNOT
+    regroup = regroup_interleaved_to_receivers()
+    global_kraus = []
+    for (w1, k1), (w2, k2) in itertools.product(local_b_kraus(), repeat=2):
+        k = kronecker_product(k1, k2)
+        k = regroup * k
+        k = kronecker_product(U, U) * k * U.H
+        global_kraus.append((sp.Rational(w1 * w2), clean(k)))
+
+    completeness = clean(sum((w * k.H * k for w, k in global_kraus), zeros(4, 4)))
+    assert completeness == I4
+    swap = swap_receivers()
+    assert all(clean(swap * k - k) == zeros(16, 4) for _, k in global_kraus)
+
+    def bprime(x):
+        y = zeros(16, 16)
+        for w, k in global_kraus:
+            y += w * k * x * k.H
+        return clean(y)
+
+    def phi(x):
+        return ptrace_right(bprime(x), 4)
+
+    assert phi(I4) == I4
+
+    basis = [kronecker_product(PAULI[a], PAULI[b]) for a, b in itertools.product(&quot;IXYZ&quot;, repeat=2)]
+    labels = [a + b for a, b in itertools.product(&quot;IXYZ&quot;, repeat=2)]
+    phi_transfer = clean(ptm(phi, basis, 4))
+    assert all(phi_transfer[i, j] == 0 for i in range(16) for j in range(16) if i != j)
+
+    # The comparator is the product canonical instrument dressed by the same U.
+    ensemble = []
+    for m, state in product_ensemble():
+        ensemble.append((clean(U * m * U.H), clean(U * state * U.H)))
+    assert all(all(v &gt;= 0 for v in sp.Matrix(m).eigenvals().keys()) for m, _ in ensemble)
+    assert all(all(v &gt;= 0 for v in sp.Matrix(state).eigenvals().keys()) for _, state in ensemble)
+    sum_effects = clean(sum((m for m, _ in ensemble), zeros(4, 4)))
+    sum_preparations = clean(sum((sp.trace(m) * state for m, state in ensemble), zeros(4, 4)))
+    assert sum_effects == I4 and sum_preparations == I4
+
+    def psi(x):
+        return clean(sum((sp.trace(m * x) * state for m, state in ensemble), zeros(4, 4)))
+
+    assert psi(I4) == I4
+
+    psi_transfer = clean(ptm(psi, basis, 4))
+    assert all(psi_transfer[i, j] == 0 for i in range(16) for j in range(16) if i != j)
+    phi_eigs = [sp.Rational(phi_transfer[i, i]) for i in range(16)]
+    psi_eigs = [sp.Rational(psi_transfer[i, i]) for i in range(16)]
+    slack = [sp.simplify(2 * (1 - lam) - (1 - mu)) for lam, mu in zip(phi_eigs, psi_eigs)]
+    assert all(x &gt;= 0 for x in slack)
+
+    # Exact nonproduct witness: CNOT^*=CNOT maps X_control to X_control X_target,
+    # X_target to itself, and X_control X_target to X_control.  Thus transfer
+    # values cannot factor as a tensor product of one-site transfers.
+    value_xi = phi_transfer[labels.index(&quot;XI&quot;), labels.index(&quot;XI&quot;)]
+    value_ix = phi_transfer[labels.index(&quot;IX&quot;), labels.index(&quot;IX&quot;)]
+    value_xx = phi_transfer[labels.index(&quot;XX&quot;), labels.index(&quot;XX&quot;)]
+    assert value_xi == Rational(1, 225)
+    assert value_ix == Rational(1, 15)
+    assert value_xx == Rational(1, 15)
+    assert value_xx != value_xi * value_ix
+
+    record = {
+        &quot;status&quot;: &quot;EXACT_FINITE_DEPTH_DRESSED_COMPILER&quot;,
+        &quot;sites&quot;: 2,
+        &quot;global_dimension&quot;: 4,
+        &quot;input_broadcaster&quot;: &quot;B&#x27;=(Ad_U tensor Ad_U) o (B_1 tensor B_1) o Ad_{U*}, B_1=(9/10)B_Z+(1/10)B_U, U=CNOT&quot;,
+        &quot;supplied_circuit&quot;: {&quot;gate_list&quot;: [&quot;CNOT(control=site_1,target=site_2)&quot;], &quot;unitary_matrix&quot;: matrix_json(U)},
+        &quot;broadcaster_checks&quot;: {
+            &quot;exact_global_kraus_completeness&quot;: [[str(completeness[i, j]) for j in range(4)] for i in range(4)],
+            &quot;every_global_kraus_range_is_swap_symmetric&quot;: True,
+            &quot;marginal_transfer_diagonal&quot;: True,
+            &quot;marginal_pauli_word_eigenvalues&quot;: {labels[i]: str(phi_eigs[i]) for i in range(16)},
+        },
+        &quot;nonproduct_witness&quot;: {
+            &quot;transfer_XI&quot;: str(value_xi), &quot;transfer_IX&quot;: str(value_ix), &quot;transfer_XX&quot;: str(value_xx),
+            &quot;product_factor_would_require&quot;: str(value_xi * value_ix),
+            &quot;conclusion&quot;: &quot;The dressed marginal is not a tensor product of one-site channels.&quot;,
+        },
+        &quot;comparator&quot;: {
+            &quot;definition&quot;: &quot;Psi&#x27;=Ad_U o (Psi_1 tensor Psi_1) o Ad_{U*}, Psi_1=(14/15)Delta_Z+(1/15)Depolarizing&quot;,
+            &quot;canonical_outcome_count&quot;: 9,
+            &quot;canonical_effects_and_prepared_states&quot;: [
+                {&quot;effect&quot;: matrix_json(m), &quot;prepared_state&quot;: matrix_json(state)}
+                for m, state in ensemble
+            ],
+            &quot;canonical_effect_sum&quot;: [[str(sum_effects[i, j]) for j in range(4)] for i in range(4)],
+            &quot;trace_weighted_preparation_sum&quot;: [[str(sum_preparations[i, j]) for j in range(4)] for i in range(4)],
+            &quot;pauli_word_eigenvalues&quot;: {labels[i]: str(psi_eigs[i]) for i in range(16)},
+        },
+        &quot;all_mode_order_check&quot;: {
+            &quot;number_of_pauli_modes&quot;: 16,
+            &quot;exact_slacks_2G_minus_deficit&quot;: {labels[i]: str(slack[i]) for i in range(16)},
+            &quot;conclusion&quot;: &quot;I-Psi&#x27; &lt;= 2(I-Phi&#x27;) on every Hermitian operator.&quot;,
+            &quot;sharpness_witness&quot;: &quot;The CNOT-dressed target-site Z mode Z tensor Z attains equality.&quot;,
+        },
+        &quot;general_circuit_theorem&quot;: {
+            &quot;input_class&quot;: &quot;Any supplied L-site product of local symmetric broadcasters B_i, dressed as B_U=(Ad_U tensor Ad_U) o (tensor_i B_i) o Ad_{U*} by a supplied unitary circuit U.&quot;,
+            &quot;output&quot;: &quot;Psi_U=Ad_U o (tensor_i Psi_i) o Ad_{U*}, where each Psi_i is the local canonical EB comparator.&quot;,
+            &quot;proof&quot;: &quot;The product all-mode inequality is conjugated by the Hilbert-Schmidt unitary Ad_U; EB, TP, unitality and self-adjointness are preserved. The output broadcaster remains swap-symmetric because the same U is applied to each receiver.&quot;,
+            &quot;implementation_cost&quot;: &quot;O(LD) gates/operations for a depth-D bounded-range circuit plus L local three-outcome instruments; input/output circuit descriptions are supplied succinctly.&quot;,
+            &quot;instrument_representation&quot;: &quot;Apply U* to input, use the product local measurement, prepare the local product state, then apply U. A flat POVM has 3^L outcomes and is not materialized.&quot;,
+        },
+        &quot;scope_boundary&quot;: &quot;Exact for unitary-circuit-dressed product broadcasters. This is a structured correlated/interacting family, not a compiler for arbitrary interacting or bounded-treewidth broadcasters.&quot;,
+    }
+    path = OUT / &quot;FINITE_DEPTH_DRESSED_COMPARATOR.json&quot;
+    path.write_text(json.dumps(record, indent=2) + &quot;\n&quot;)
+    print(json.dumps({
+        &quot;status&quot;: record[&quot;status&quot;], &quot;dimension&quot;: 4, &quot;local_depth&quot;: 1,
+        &quot;outcomes&quot;: 9, &quot;all_modes&quot;: 16, &quot;min_slack&quot;: str(min(slack)),
+        &quot;nonproduct_witness&quot;: [str(value_xi), str(value_ix), str(value_xx)],
+        &quot;file&quot;: str(path),
+    }, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/ded5fbec7867fb2d4bc53f0e863b7c0317312584eec48b7a035ad46e114a69de.py">Exact original</a></p></html>

@@ -1,0 +1,60 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c4_biological_information/cycle7_resource_coupled_programming/code/test_robust_state_dp.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c4_biological_information/cycle7_resource_coupled_programming/code/test_robust_state_dp.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Finite model checks only; no biological data are represented here.&quot;&quot;&quot;
+
+import unittest
+
+from robust_state_dp import robust_open_loop_value, robust_state_feedback_plan
+
+
+class StateProgramChecks(unittest.TestCase):
+    def setUp(self):
+        # Toy memory system: M writes state 1; F yields suppression only in
+        # state 1. Each action consumes one distinct nutrient unit.
+        self.outcomes = {}
+        for t in range(2):
+            for state in (0, 1):
+                for action in (&quot;M&quot;, &quot;F&quot;):
+                    key = (t, state, action)
+                    next_state = 1 if action == &quot;M&quot; else state
+                    cost = (1.0, 0.0) if action == &quot;M&quot; else (0.0, 1.0)
+                    reward = 1.0 if action == &quot;F&quot; and state == 1 else 0.0
+                    self.outcomes[key] = ((next_state, cost, reward),)
+
+    def test_same_occupation_different_order(self):
+        mf = robust_open_loop_value(0, (&quot;M&quot;, &quot;F&quot;), self.outcomes, (1.0, 1.0))
+        fm = robust_open_loop_value(0, (&quot;F&quot;, &quot;M&quot;), self.outcomes, (1.0, 1.0))
+        self.assertEqual(mf, 1.0)
+        self.assertEqual(fm, 0.0)
+
+    def test_dp_finds_stateful_schedule(self):
+        result = robust_state_feedback_plan(
+            0,
+            ((&quot;M&quot;, &quot;F&quot;), (&quot;M&quot;, &quot;F&quot;)),
+            self.outcomes,
+            (1.0, 1.0),
+        )
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertEqual(result.suppression_lower, 1.0)
+        self.assertIn((0, 0, (1.0, 1.0), &quot;M&quot;), result.policy)
+        self.assertIn((1, 1, (0.0, 1.0), &quot;F&quot;), result.policy)
+
+    def test_unresolved_write_uncertainty_is_worst_case(self):
+        uncertain = dict(self.outcomes)
+        uncertain[(0, 0, &quot;M&quot;)] = (
+            (0, (1.0, 0.0), 0.0),
+            (1, (1.0, 0.0), 0.0),
+        )
+        result = robust_state_feedback_plan(
+            0,
+            ((&quot;M&quot;, &quot;F&quot;), (&quot;M&quot;, &quot;F&quot;)),
+            uncertain,
+            (1.0, 1.0),
+        )
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertEqual(result.suppression_lower, 0.0)
+
+
+if __name__ == &quot;__main__&quot;:
+    unittest.main()
+</pre><p><a href="../assets/75bc5f5c1fd71d63e737d91d142b126499a4d3a2a2bba123c855cc44b53cea71.py">Exact original</a></p></html>

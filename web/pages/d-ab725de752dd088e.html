@@ -1,0 +1,119 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/reaction_dynamics/cycle4/leaves/uniform_mixing/rational_fixture.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/reaction_dynamics/cycle4/leaves/uniform_mixing/rational_fixture.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact rational fixture for the uniform mixing certificate.
+
+Run from the repository root with:
+    python3 -B outputs/research/reaction_dynamics/cycle4/leaves/uniform_mixing/rational_fixture.py
+
+This checks the displayed rational inequalities and constants. The analytic
+proof in PROOF.txt supplies the all-state argument; this script is a fixture
+reproducer, not a substitute for that proof.
+&quot;&quot;&quot;
+
+from fractions import Fraction as Q
+from math import factorial
+R = Q(6, 5)
+c = Q(1, 10)
+
+
+def g(m: int) -&gt; Q:
+    &quot;&quot;&quot;Uniform upper envelope of p(R-1)R^m-q(1-R^-1)mR^m+u m.&quot;&quot;&quot;
+    return Q(2, 5) * R**m - Q(m, 6) * R**m + 2 * m
+
+
+def w_one(m: int) -&gt; Q:
+    &quot;&quot;&quot;max over the [1,2] box of LV+cV at a=1, substrate count m.&quot;&quot;&quot;
+    return 2 + 2 * (R**m - 1) + g(m) + c * (1 + R**m)
+
+
+def w_ge_two(a: int, m: int) -&gt; Q:
+    &quot;&quot;&quot;max over the box of LV+cV at a&gt;=2 and substrate count m.&quot;&quot;&quot;
+    return 2 - a + a * g(m) - a * (a - 1) * m + c * (a + R**m)
+
+
+# The high-substrate tail estimate uses f(m)=g(m)/R^m. For m&gt;=5,
+# (m+1)/R^(m+1) &lt;= m/R^m, so f is strictly decreasing.
+f25 = Q(2, 5) - Q(25, 6) + Q(50, 1) / R**25
+assert R == Q(6, 5)
+assert f25 == Q(-230465642630552213999, 71075720074824253440)
+assert f25 &lt;= -3
+
+# Exact maximization of LV+cV over all a&gt;=0 on the low substrate set m&lt;=24.
+# For a&gt;=2 and m&gt;=1 this is a concave quadratic in a, so checking the two
+# integers bracketing its rational vertex (and a=2) is exhaustive. At m=0
+# the expression is decreasing in a&gt;=2.
+low_candidates = []
+for m in range(25):
+    if m == 0:
+        candidates = {2}
+    else:
+        linear = -1 + g(m) + m + c
+        vertex = linear / (2 * m)
+        below = vertex.numerator // vertex.denominator
+        candidates = {2, max(2, below), max(2, below + 1)}
+    low_candidates.append((w_one(m), 1, m))
+    low_candidates.extend((w_ge_two(a, m), a, m) for a in candidates)
+low_max, low_a, low_b = max(low_candidates)
+assert (low_max, low_a, low_b) == (
+    Q(369138966157, 12207031250), 1, 14
+)
+C = low_max
+# On a=0, LV+cV = alpha(1-R^m)+(1/5)R^m &lt;= 1/5 uniformly for alpha in [1,2].
+assert Q(1, 5) &lt; C
+# For m&gt;=25, g(m)&lt;=-3R^m and the catalyst-death boundary correction gives
+# LV&lt;=2-aR^m&lt;=2-(a+R^m)/2=2-V/2. Since C&gt;2, this is below C-cV.
+assert C &gt; 2
+
+# Common finite skeleton drift set D={V&lt;d}, with V(a,m)=a+R^m for a&gt;=1
+# and V(0,m)=2R^m. The slightly conservative floor/ceil bounds are intentional.
+d = 2 * C / c + 4
+A_C = d.numerator // d.denominator
+B_C = 0
+while R ** (B_C + 1) &lt; d:
+    B_C += 1
+assert (A_C, B_C) == (608, 35)
+assert R**B_C &lt; d &lt;= R ** (B_C + 1)
+L_C = A_C + B_C
+A_path = A_C
+assert (L_C, A_path) == (643, 608)
+
+# Maximum total exit rate on every state of every clearing path. The channels
+# are alpha; delta*a; p*a; (q+u)*a*m; and v*(a)_2*m, with every upper endpoint 2.
+Lambda = (
+    2
+    + 4 * A_path
+    + 4 * A_path * B_C
+    + 2 * B_C * A_path * (A_path - 1)
+)
+assert Lambda == 25921474
+
+T = 1 / (2 * C + Lambda)
+lam = 1 / (1 + c * T)
+b = C * T
+lam_out = lam + b / d
+assert T &gt; 0 and T &lt;= 1 / (2 * C)
+assert Lambda * T &lt; 1
+assert d &gt; 2 * C * (1 + c * T) / c
+assert lam_out &lt; 1
+
+# rho*=1. Since T&lt;1, (T^ell)/ell! decreases in ell, so the rational
+# minorization is exactly eta=T^L/(3 L!). Leave it factored to avoid a huge
+# decimal rendering; it is positive and less than 1/3.
+assert T &lt; 1
+assert L_C == 643
+eta = T**L_C / (3 * factorial(L_C))
+assert 0 &lt; eta &lt; Q(1, 3)
+
+print(&quot;R =&quot;, R)
+print(&quot;c =&quot;, c)
+print(&quot;C =&quot;, C)
+print(&quot;low max LV+cV =&quot;, low_max, &quot;at (a,m) =&quot;, (low_a, low_b))
+print(&quot;d =&quot;, d)
+print(&quot;A_C, B_C, L_C, A_path =&quot;, A_C, B_C, L_C, A_path)
+print(&quot;Lambda =&quot;, Lambda)
+print(&quot;T =&quot;, T)
+print(&quot;lambda =&quot;, lam)
+print(&quot;b =&quot;, b)
+print(&quot;lambda_hat = lambda+b/d =&quot;, lam_out)
+print(&quot;Lambda*T &lt; 1:&quot;, Lambda * T &lt; 1)
+print(&quot;eta = T^643/(3*643!) (exact positive rational, factored)&quot;)
+</pre><p><a href="../assets/17079a83514a36a80ecab4bca5160fa50539418c43a9e2333b6d977a9a83f01f.py">Exact original</a></p></html>

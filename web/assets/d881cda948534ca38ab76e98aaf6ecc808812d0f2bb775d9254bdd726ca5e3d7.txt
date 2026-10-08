@@ -1,0 +1,106 @@
+# Cycle 4: small-dimension Choi SDP screen
+
+## Result and status
+
+The unrestricted finite Choi formulations and the d=2,3 solver runs completed. The exact complete-MUB controls reproduce
+\[
+ (b_2,e_{\rm EB})=(1/6,1/3)\quad(d=2),\qquad (1/4,1/2)\quad(d=3).
+\]
+The first pair is an exact, finite counterexample to the stronger proposed estimate \(e_{\rm EB}\le 2b_2\): two rational qubit pure states have a certified full-domain EB lower bound above \(0.039\), while an explicit physical symmetric broadcaster has error below \(0.0155\). This refutes that linear factor-2 claim only. Both errors go to zero when the pair coalesces, so this is no obstruction to a dimension-fixed qualitative implication \(b_2\to0\Rightarrow e_{\rm EB}\to0\), nor an asymptotic result.
+
+No general bounded-Holevo simulation theorem or asymptotic counterexample follows from these finite screens. The random-family SDP outputs are exploratory solver values, not certified bounds. On qutrits, the PPT EB program is only a lower relaxation; the fixed-MUB-POVM decoder is a feasible upper bound, and the two do not generally meet.
+
+## Artifacts and rerun
+
+- Formulations and runnable code: [`small_dimension_sdp.py`](small_dimension_sdp.py).
+- Complete solver output, states, seeds, statuses and runtime record: [`small_dimension_search.json`](small_dimension_search.json).
+- This interpretation and exact certificates: `small_dimension_sdp.txt`.
+- Local runtime used: Python in `/tmp/cycle4-sdp-venv`, CVXPY 1.9.3, NumPy 2.5.3, Clarabel 0.11.1 (SciPy 1.18.1, SCS 3.3.1 installed as well). Re-run with `/tmp/cycle4-sdp-venv/bin/python outputs/research/classicality/cycle4/small_dimension_sdp.py --search`. The full run completed in roughly tens of seconds on this machine. Dependencies were installed into `/tmp`; no remote compute or external service was used.
+
+This is a small-instance investigation, not a verified SDP certificate pipeline: Clarabel's `optimal` status and tolerances are reported but no rational dual/primal rounding, interval arithmetic, or independently checked dual certificate is supplied. Exact claims below are proved algebraically and do not rely on those solver statuses.
+
+## Mathematical interfaces encoded
+
+For a physical broadcaster \(\mathcal B:A\to A_1A_2\), the code uses the unnormalised Choi matrix
+\[
+ J_{A_1A_2R}=\sum_{ij}\mathcal B(|i\rangle\langle j|)\otimes|i\rangle\langle j|,
+\]
+with tensor order `(out1,out2,input)`. The constraints are \(J\succeq0\), \(\operatorname{Tr}_{A_1A_2}J=I_R\), and invariance under swapping output factors. Swap averaging is WLOG for the shared worst marginal error: it makes the two marginals equal and convexity of trace distance cannot increase the maximum over inputs. This retains an actual CPTP map to both receivers; it is not a relaxation to an arbitrary marginal channel. The marginal formula in the implementation is
+\[
+ (\Phi(\rho))_{aa'}=\sum_{b,i,j}J_{abi,a'bj}\rho_{ij}.
+\]
+
+For either optimisation, each error matrix is represented as \(\Delta_k=P_k-Q_k\), \(P_k,Q_k\succeq0\), \(\operatorname{Tr}(P_k+Q_k)\le2t\), and the SDP minimises one common \(t\). This epigraph is exact because \(\|\Delta_k\|_1=\min_{P-Q=\Delta,\,P,Q\succeq0}\operatorname{Tr}(P+Q)\).
+
+For EB reconstruction, `eb_ppt_sdp` optimises one full-domain channel Choi matrix \(K_{AR}\): \(K\succeq0\), \(\operatorname{Tr}_A K=I_R\), and \(K^{T_A}\succeq0\). For qubits, PPT is equivalent to separability in \(2\times2\), so this is exactly the EB optimisation. For qutrits it is only an outer relaxation and gives a lower bound on the EB optimum. `eb_fixed_povm_sdp` fixes one POVM \((M_y)\), optimises density-matrix preparations \(\sigma_y\), and implements \(\Psi(\rho)=\sum_y\operatorname{Tr}(M_y\rho)\sigma_y\). Every feasible point is a genuine EB channel defined on the entire input space, so its value is an upper bound on the unrestricted EB optimum. For the MUB test, \(M_y=P_y/(d+1)\).
+
+The Choi convention was cross-checked against the action \(\Lambda(\rho)=\operatorname{Tr}_R[J(I\otimes\rho^T)]\); the component contraction is \(\sum_{ij}J_{ai,a'j}\rho_{ij}\). In particular, the input density matrix indices are used as \(\rho_{ij}\), not conjugated or transposed a second time.
+
+## Exact complete-MUB controls
+
+Use all \(d(d+1)\) states in a complete set of mutually unbiased bases in prime dimension \(d=2,3\). They form a projective 2-design:
+\[
+ \mathbb E_\psi[\rho_\psi\otimes\rho_\psi^T]
+ =\frac{I+d|\Omega\rangle\langle\Omega|}{d(d+1)},
+ \qquad |\Omega\rangle=d^{-1/2}\sum_i|ii\rangle.
+\]
+For a symmetric broadcaster Choi matrix of trace \(d\), put
+\(P_{R1}=|\Omega\rangle\langle\Omega|_{R A_1}\otimes I_{A_2}\) and analogously \(P_{R2}\). These projections satisfy \(\|P_{R1}P_{R2}\|=1/d\); hence \(P_{R1}+P_{R2}\preceq(1+1/d)I\). Symmetry gives \(s=\operatorname{Tr}(JP_{R1})=\operatorname{Tr}(JP_{R2})\le(d+1)/2\). The mean pure-state fidelity is \((1+s)/(d+1)\), at most \((d+3)/(2(d+1))\). Since \(T(\sigma,|\psi\rangle\langle\psi|)\ge1-\langle\psi|\sigma|\psi\rangle\), this proves
+\[
+ b_2\ge\frac{d-1}{2(d+1)}.
+\]
+The physical universal cloner
+\[
+ \mathcal B(\rho)=\frac{2}{d+1}P_{\rm sym}(\rho\otimes I)P_{\rm sym}
+\]
+is CPTP, output symmetric, and has marginal \(\Phi(\rho)=\lambda\rho+(1-\lambda)\operatorname{Tr}(\rho)I/d\) with \(\lambda=(d+2)/(2(d+1))\). Its pure-state trace error attains this lower bound.
+
+For any EB channel, \(J/d\) is separable across output/input, so \(\operatorname{Tr}(J|\Omega\rangle\langle\Omega|)\le1\), because every product state has overlap at most \(1/d\) with \(|\Omega\rangle\). The same design identity gives mean fidelity at most \(2/(d+1)\), and therefore \(e_{\rm EB}\ge(d-1)/(d+1)\). The full-domain Haar measure-and-prepare channel \(\Psi(\rho)=(\rho+\operatorname{Tr}(\rho)I)/(d+1)\) attains it. Its MUB discretisation with effects \(P_y/(d+1)\) is exact by the 2-design identity. Hence the exact values stated above. The d=2 PPT SDP and d=3 PPT lower relaxation, and the fixed-MUB POVM upper program, numerically reproduce these controls to solver tolerance.
+
+## Exact rational qubit pair: factor-2 obstruction
+
+Take
+\[
+ \rho_0=|0\rangle\langle0|,\qquad
+ \rho_1=\frac1{101}\begin{pmatrix}100&10\\10&1\end{pmatrix}
+ =|{(10,1)}/{\sqrt{101}}\rangle\langle{(10,1)}/{\sqrt{101}}|.
+\]
+These are rational rank-one projectors. After a common unitary, they are \(\rho_\pm=(I\pm S X+C Z)/2\), where \(S=1/\sqrt{101}\), \(C=10/\sqrt{101}\). Twirling a candidate EB channel by the conjugation that swaps the pair and by complex conjugation preserves EB and cannot increase its worst error. The twirled affine Bloch map has form \((x,y,z)\mapsto(ax,by,cz+u)\) and normalised Choi state
+\[
+ \widehat J=\tfrac14(I\otimes I+uZ\otimes I+aX\otimes X-bY\otimes Y+cZ\otimes Z).
+\]
+EB implies PPT. Positivity and the relevant two-by-two principal minors of \(\widehat J\), followed by the same minors after partial transpose, give
+\[
+ (a+b)^2+u^2\le(1+c)^2,\quad(a-b)^2+u^2\le(1-c)^2,\\
+ (a+b)^2+u^2\le(1-c)^2,\quad(a-b)^2+u^2\le(1+c)^2.
+\]
+Thus both \(|a+b|\) and \(|a-b|\) are at most \(1-|c|\). Since their maximum is \(|a|+|b|\), this gives \((|a|+|b|)^2+u^2\le(1-|c|)^2\), and in particular \(a^2+u^2\le(1-|c|)^2\).
+For either signal, \(2T=\sqrt{S^2(1-a)^2+(C(1-c)-u)^2}\). Write \(R=1-|c|\), \(K=\sqrt{9S^2+1}\), and use \(\sqrt{x^2+y^2}\ge(3x+y)/\sqrt{10}\) together with \(3Sa+u\le K R\). If \(c\ge0\), then \(1-c=R\), giving \(2T\ge[3S+R(C-K)]/\sqrt{10}\); if \(c\le0\), then \(1-c=2-R\), giving \(2T\ge[3S+2C-R(C+K)]/\sqrt{10}\). In each case the right side is minimised on \(0\le R\le1\) at \(R=1\), so
+\[
+ e_{\rm EB}\ge\frac{13-\sqrt{110}}{2\sqrt{1010}}>\frac5{128}>0.039.
+\]
+
+For a physical broadcaster, first rotate to the symmetric pair above, and apply the isometry \(|0\rangle\mapsto|00\rangle\), \(|1\rangle\mapsto(|01\rangle+|10\rangle)/\sqrt2\). Each marginal has tangent Bloch shrinkage \(1/\sqrt2\) and axial map \(z\mapsto(z+1)/2\). This yields
+\[
+ b_2\le T_B=\sqrt{\frac{(1-1/\sqrt2)^2}{4\cdot101}+\frac{(1-10/\sqrt{101})^2}{16}}<0.0155,
+\]
+where this is the same as \(\frac12\sqrt{S^2(1-1/\sqrt2)^2+(1-C)^2/4}\); the single-radical display makes the diagonal contribution \((1-C)^2/16\) explicit. For the strict last bound, \(2T_B=\sqrt{S^2(1-1/\sqrt2)^2+(1-C)^2/4}\); use \(1-1/\sqrt2<0.3\), \(S<0.1\), and \(1-C<1/200\) to get \((2T_B)^2<9/10000+1/160000=0.00090625<0.031^2\). Consequently \(e_{\rm EB}>0.039>0.031>2b_2\). This is a mathematical certificate, independent of the floating point optimisation. A full-domain EB dephasing channel in the pair's bisector basis has error at most \(S/2=1/(2\sqrt{101})\), so the EB error is also explicitly small. As the second state approaches the first (for example the integer pair \((p,1)\) with \(p\to\infty\)), that EB error upper bound tends to zero, as does the physical broadcaster upper bound. Thus this witness rejects a universal constant 2, not qualitative continuity at fixed dimension.
+
+## Finite screens and their limits
+
+The exact 2- and 3-dimensional MUB state sets contain six and twelve inputs. Random screens draw pure states from normalised Gaussian-integer vectors with components in \(\{-1,0,1\}+i\{-1,0,1\}\); their exact projectors have rational real/imaginary entries, although the JSON serialises those entries as doubles. Five-state qubit families had full traceless affine rank 3; three 10-state qutrit sets had rank 8. For these, the code solved the unrestricted physical broadcast SDP, PPT EB relaxation and one fixed-MUB-measurement EB upper SDP. The observed PPT-lower-to-broadcast ratios in these random screens were around 1.75–1.97 (qubit) and 1.75–1.79 (qutrit). This is not an exhaustive search, and the qutrit quantity is only a relaxation lower bound. No random run is used to assert a theorem or a counterexample. The JSON also contains a seven-pair qubit rational sweep; those numerical optima are not the proof of the exact factor-2 witness above.
+
+The d=2 PPT equality is rigorous at the cone level by the 2x2 PPT-separability theorem, but a floating solver output by itself is not an exact optimum certificate. The d=3 PPT constraint is necessary but not sufficient for separability, so it can overstate how hard the EB reconstruction problem is. A fixed POVM is just one measurement choice and cannot certify an unrestricted optimum. Random finite families do not address arbitrary state families, arbitrary multiplicities, tensor powers, or dimension-uniform bounds. In particular, none of these calculations establishes an approximate Markov condition from small broadcast marginal error. There is no general quantum-conditioning or recoverability step here; conditional mutual information is not interchangeable with classical conditioning in the noncommutative setting.
+
+## Cost, provenance, and source boundary
+
+This was a local finite computation plus elementary exact inequalities. CVXPY/Clarabel packages were installed under `/tmp/cycle4-sdp-venv`; no dataset, model, remote compute, GPU or external account was used. Solver tolerance was \(10^{-7}\) for Clarabel (the code also exposes SCS at \(10^{-7}\)); statuses and values are in the JSON. The exact MUB and pair arguments above are written out so their validity does not depend on numerical tolerances.
+
+Background source boundary: R. F. Werner, “Optimal cloning of pure states,” arXiv:quant-ph/9804001, is relevant prior art for universal cloning; M. Keyl and R. F. Werner, “Optimal cloning of pure states, testing single clones,” arXiv:quant-ph/9807010, gives the single-clone overlap perspective. M. Horodecki, P. Horodecki and R. Horodecki, “Separability of mixed states: necessary and sufficient conditions,” arXiv:quant-ph/9605038, supplies the 2x2 (and 2x3) PPT-separability fact. The finite calculations do not establish novelty or priority, and the general asymptotic broadcast-to-EB question remains outside the evidence here.
+
+## Exact status ledger
+
+- **Proved:** output-swap reduction for the physical two-output minimax SDP; complete-MUB control values in d=2,3; exact rational qubit pair satisfies \(e_{\rm EB}>2b_2\).
+- **Solved numerically, not certified as floating optimisation:** the listed unrestricted Choi SDPs and random screens.
+- **Exact cone interpretation:** qubit PPT EB optimum equals true EB optimum; qutrit PPT optimum is only a lower bound.
+- **Unknown:** whether small broadcastability implies a same-domain EB simulation with a modulus tending to zero under the target programme's full assumptions; whether a bounded-Holevo/common-reconstruction theorem holds; any dimension-uniform or collective-correlation conclusion.

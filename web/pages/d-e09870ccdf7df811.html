@@ -1,0 +1,38 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c7_immunology_discrimination/code/adaptive_threshold_scan.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c7_immunology_discrimination/code/adaptive_threshold_scan.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Tune the adaptive mmax threshold over the same known dose prior.&quot;&quot;&quot;
+import json
+from pathlib import Path
+
+from model_audit import run_pairs
+
+
+def main():
+    pairs = 1500
+    seed = 190827
+    cases = [(&quot;normal&quot;, 30.0), (&quot;uniform_wide&quot;, 0.0), (&quot;uniform_low&quot;, 0.0)]
+    mcs = [20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0]
+    rows = []
+    for di, (distribution, sigma) in enumerate(cases):
+        for ci, mc in enumerate(mcs):
+            rows.append(run_pairs(&quot;mmax&quot;, distribution, sigma, pairs,
+                                  seed + di * 10000 + ci * 31, mc, beta=5.0, f0=800.0))
+    payload = {&quot;pairs_per_candidate&quot;: pairs, &quot;dose_prior_known_to_controller&quot;: True,
+               &quot;fixed_F0_pN&quot;: 800, &quot;beta&quot;: 5,
+               &quot;mc_grid&quot;: mcs, &quot;results&quot;: rows}
+    out = Path(__file__).with_name(&quot;adaptive_threshold_scan_results.json&quot;)
+    out.write_text(json.dumps(payload, indent=2) + &quot;\n&quot;)
+    for distribution, sigma in cases:
+        rr = [r for r in rows if r[&quot;distribution&quot;] == distribution and r[&quot;sigma&quot;] == sigma]
+        best = max(rr, key=lambda r: r[&quot;auc_random_tie&quot;])
+        print({&quot;case&quot;: (distribution, sigma), &quot;best_auc&quot;: best[&quot;auc_random_tie&quot;],
+               &quot;mc&quot;: best[&quot;control&quot;], &quot;time_s&quot;: best[&quot;mean_time_low_Eb_s&quot;],
+               &quot;work_proxy&quot;: best[&quot;mean_force_barrier_work_low_Eb_pN_nm&quot;],
+               &quot;censor&quot;: best[&quot;tmax_censor_low_Eb&quot;],
+               &quot;all&quot;: [(r[&quot;control&quot;], round(r[&quot;auc_random_tie&quot;], 3),
+                        round(r[&quot;mean_time_low_Eb_s&quot;]),
+                        round(r[&quot;tmax_censor_low_Eb&quot;], 3)) for r in rr]})
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/bbd51aa06d743b813246dc8d8f07f269a1bde163f778ee443a5ad076d76b2446.py">Exact original</a></p></html>

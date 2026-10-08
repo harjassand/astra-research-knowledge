@@ -1,0 +1,100 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/molecular_cadence_falsifier/scope_counterexamples.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/molecular_cadence_falsifier/scope_counterexamples.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Two explicit boundaries for the ideal integer-count cadence result.&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import json
+import math
+from pathlib import Path
+
+K0 = (1, 1, 4, 0)
+K1 = (0, 4, 1, 1)
+
+
+def gamma_mixed_pmf(mu: float, rates: tuple[int, ...], shape: int = 10) -&gt; list[float]:
+    &quot;&quot;&quot;PMF when a fresh hidden Gamma(shape, rate=shape) activity multiplies
+    every channel rate in each observation interval.
+
+    Its PGF is [1-(mu/shape) sum_j k_j(z^j-1)]^(-shape).
+    &quot;&quot;&quot;
+    a0 = 1.0 + 6.0 * mu / shape
+    nmax = math.ceil(200.0 * mu + 100.0)
+    p = [0.0] * (nmax + 1)
+    p[0] = a0 ** (-shape)
+    for n in range(1, nmax + 1):
+        p[n] = (mu / (a0 * n)) * sum(
+            rates[j - 1] * (n / shape + j * (1.0 - 1.0 / shape)) * p[n - j]
+            for j in range(1, 5)
+            if n &gt;= j
+        )
+    return p
+
+
+def parity_row(mu: float, bins: int) -&gt; dict[str, float | int]:
+    # An odd-mark event flips parity. Independent even marks are invisible.
+    p0_odd = -math.expm1(-10.0 * mu) / 2.0
+    p1_odd = -math.expm1(-2.0 * mu) / 2.0
+    one_bin_tv = abs(p0_odd - p1_odd)
+    return {
+        &quot;mu&quot;: mu,
+        &quot;bins&quot;: bins,
+        &quot;P0_odd&quot;: p0_odd,
+        &quot;P1_odd&quot;: p1_odd,
+        &quot;one_bin_TV&quot;: one_bin_tv,
+        &quot;product_TV_coupling_upper&quot;: min(1.0, bins * one_bin_tv),
+        &quot;asymptotic_product_TV_upper&quot;: bins * 0.5 * math.exp(-2.0 * mu),
+    }
+
+
+def main() -&gt; None:
+    gamma_rows = []
+    for mu in (8.0, 16.0, 32.0, 64.0, 128.0, 256.0, 512.0):
+        p0 = gamma_mixed_pmf(mu, K0)
+        p1 = gamma_mixed_pmf(mu, K1)
+        tv = 0.5 * math.fsum(abs(a - b) for a, b in zip(p0, p1))
+        gamma_rows.append({
+            &quot;mu&quot;: mu,
+            &quot;truncated_mass_model0&quot;: math.fsum(p0),
+            &quot;truncated_mass_model1&quot;: math.fsum(p1),
+            &quot;TV&quot;: tv,
+            &quot;mu_squared_times_TV&quot;: mu * mu * tv,
+            &quot;model0_increment_1&quot;: p0[1],
+            &quot;model1_increment_1&quot;: p1[1],
+        })
+
+    parity_rows = [parity_row(float(m), m) for m in (2, 4, 8, 16, 32, 64)]
+    result = {
+        &quot;gamma_interval_activity&quot;: {
+            &quot;activity_law&quot;: &quot;fresh independent Gamma(shape=10, rate=10), mean 1, once per measurement bin&quot;,
+            &quot;rates_model0&quot;: list(K0),
+            &quot;rates_model1&quot;: list(K1),
+            &quot;moment_effect&quot;: &quot;unconditional first and second cumulants agree; third-cumulant difference remains 6*mu, but count variance is order mu^2&quot;,
+            &quot;candidate_local_limit&quot;: {
+                &quot;limiting_density&quot;: &quot;Y=15*A, A~Gamma(10,10)&quot;,
+                &quot;g_definition&quot;: &quot;g(y)=(y/15)f_Y(y)&quot;,
+                &quot;J_integral&quot;: &quot;integral (g&#x27;&#x27;&#x27;(y))^2/f_Y(y) dy = 8/3645&quot;,
+                &quot;normalized_hellinger_affinity_loss&quot;: &quot;1-affinity ~ J/(8*mu^4) = 1/(3645*mu^4)&quot;,
+                &quot;reverse_KL&quot;: &quot;D(P1||P0) ~ J/(2*mu^4) = 4/(3645*mu^4)&quot;,
+                &quot;fixed_T_cadence_boundary&quot;: &quot;Delta order V^(-4/5), under this reset-per-bin latent environment&quot;,
+            },
+            &quot;finite_TV_recurrence_rows&quot;: gamma_rows,
+            &quot;scope&quot;: &quot;The random activity is refreshed independently each bin; this is a Cox/state-nuisance countermodel, outside the homogeneous compound-Poisson premise.&quot;,
+        },
+        &quot;parity_only_readout&quot;: {
+            &quot;exact_model&quot;: &quot;same homogeneous compound-Poisson process; sensor reports only cumulative count modulo 2&quot;,
+            &quot;odd_increment_probabilities&quot;: {
+                &quot;model0&quot;: &quot;(1-exp(-10*mu))/2&quot;,
+                &quot;model1&quot;: &quot;(1-exp(-2*mu))/2&quot;,
+            },
+            &quot;finite_rows&quot;: parity_rows,
+            &quot;scope&quot;: &quot;Data processing cannot improve information; the parity channel loses the polynomial third-cumulant signal and its product TV tends to zero at polynomial critical cadence.&quot;,
+        },
+    }
+    out = Path(__file__).with_name(&quot;scope_counterexample_results.json&quot;)
+    out.write_text(json.dumps(result, indent=2) + &quot;\n&quot;, encoding=&quot;utf-8&quot;)
+    print(json.dumps(result, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/8a218205122289c8d037560759b4281de7c4bc0805ef721bcf7579847b7cf7e1.py">Exact original</a></p></html>

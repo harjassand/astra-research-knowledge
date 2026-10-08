@@ -1,0 +1,194 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/spin_statistical/cycle2/leaves/leaf01_local_critical_limit/audit_root_repulsive_exact.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/spin_statistical/cycle2/leaves/leaf01_local_critical_limit/audit_root_repulsive_exact.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Exact small-chain sanity check for the three audited claims in PROOF.txt.
+
+L=4 (three open sites), rational independent occupations in the sine modes.
+This is an exact finite DPP/free-fermion check, not an asymptotic proof or a
+parameter-matched positive-beta Gibbs fixture.  SymPy keeps the sine basis
+algebraic; only reported sign margins are evaluated numerically at 50 digits.
+&quot;&quot;&quot;
+
+from itertools import combinations
+import sympy as sp
+
+
+L = 4
+N = L - 1
+J = sp.Integer(1)
+f = [sp.Rational(1, 2), sp.Rational(1, 3), sp.Rational(1, 4)]
+R_VALUES = (1, 2)
+
+
+def subsets(n, m):
+    return list(combinations(range(n), m))
+
+
+def mask_of(xs):
+    return sum(1 &lt;&lt; x for x in xs)
+
+
+def det_submatrix(A, rows, cols=None):
+    if cols is None:
+        cols = rows
+    return sp.simplify(A.extract(list(rows), list(cols)).det())
+
+
+Phi = sp.Matrix(
+    N,
+    N,
+    lambda i, k: sp.sqrt(sp.Rational(2, L))
+    * sp.sin(sp.pi * (i + 1) * (k + 1) / L),
+)
+assert sp.simplify(Phi.T * Phi - sp.eye(N)) == sp.zeros(N)
+
+# The product Bernoulli distribution over mode Slater determinants.
+mode_sets = [S for m in range(N + 1) for S in subsets(N, m)]
+weights = {}
+for S in mode_sets:
+    weights[S] = sp.prod(f[k] if k in S else 1 - f[k] for k in range(N))
+assert sp.simplify(sum(weights.values()) - 1) == 0
+
+site_sets = [X for m in range(N + 1) for X in subsets(N, m)]
+prob_site = {X: sp.Integer(0) for X in site_sets}
+rho = sp.zeros(2**N)
+for S in mode_sets:
+    m = len(S)
+    Xs = subsets(N, m)
+    amps = {
+        X: (sp.Integer(1) if m == 0 else sp.simplify(Phi.extract(list(X), list(S)).det()))
+        for X in Xs
+    }
+    for X in Xs:
+        prob_site[X] += sp.simplify(weights[S] * amps[X] ** 2)
+    for X in Xs:
+        for Y in Xs:
+            rho[mask_of(X), mask_of(Y)] += weights[S] * amps[X] * amps[Y]
+assert sp.simplify(sum(prob_site.values()) - 1) == 0
+assert sp.simplify(sp.trace(rho) - 1) == 0
+
+C = sp.simplify(Phi * sp.diag(*f) * Phi.T)
+C0 = sum(f)
+C2 = sum((k + 1) ** 2 * f[k] for k in range(N))
+
+# Check the pointwise sine-wedge factor with the certified rational pi upper
+# bound and the finite version of the double-sum inequality.
+for k in range(N):
+    for ell in range(k + 1, N):
+        for r in range(1, N):
+            for i in range(N - r):
+                wedge = sp.simplify(
+                    Phi[i, k] * Phi[i + r, ell]
+                    - Phi[i + r, k] * Phi[i, ell]
+                )
+                wedge_bound = (
+                    2 * sp.Rational(22, 7) * r * ((k + 1) + (ell + 1)) / L**2
+                )
+                assert sp.N(wedge_bound**2 - wedge**2, 50) &gt;= 0
+double_sum = sum(
+    f[k] * f[ell] * ((k + 1) + (ell + 1)) ** 2
+    for k in range(N)
+    for ell in range(k + 1, N)
+)
+assert sp.simplify(2 * C0 * C2 - double_sum) &gt;= 0
+
+# Exact occupation-basis Hamiltonian K=dGamma(h), M, and the free-state
+# commutation/kinetic order used by the proof.
+dim = 2**N
+K = sp.zeros(dim)
+M = sp.zeros(dim)
+for mask in range(dim):
+    m = mask.bit_count()
+    M[mask, mask] = m
+    K[mask, mask] = 4 * J * m
+    for i in range(N - 1):
+        if ((mask &gt;&gt; i) &amp; 1) != ((mask &gt;&gt; (i + 1)) &amp; 1):
+            target = mask ^ (1 &lt;&lt; i) ^ (1 &lt;&lt; (i + 1))
+            K[mask, target] += -2 * J
+assert sp.simplify(rho * K - K * rho) == sp.zeros(dim)
+assert (8 * J * M - K).is_positive_semidefinite
+
+results = []
+for R in R_VALUES:
+    pairs = [(i, j) for i in range(N) for j in range(i + 1, N) if j - i &lt;= R]
+
+    def forbidden(X):
+        return any(i in X and j in X for i, j in pairs)
+
+    pair_probabilities = {}
+    for i, j in pairs:
+        det2 = det_submatrix(C, (i, j))
+        direct2 = sum(prob_site[X] for X in site_sets if i in X and j in X)
+        assert sp.simplify(det2 - direct2) == 0
+        pair_probabilities[i, j] = det2
+
+        for z in range(N):
+            if z in (i, j):
+                continue
+            det3 = det_submatrix(C, (i, j, z))
+            direct3 = sum(
+                prob_site[X] for X in site_sets if i in X and j in X and z in X
+            )
+            assert sp.simplify(det3 - direct3) == 0
+            schur_gap = sp.simplify(det2 * C[z, z] - det3)
+            assert sp.N(schur_gap, 50) &gt;= 0
+
+    delta = sp.simplify(sum(prob_site[X] for X in site_sets if forbidden(X)))
+    pair_sum = sp.simplify(sum(pair_probabilities.values()))
+    qM = sp.simplify(
+        sum(len(X) * prob_site[X] for X in site_sets if forbidden(X))
+    )
+    assert sp.N(pair_sum - delta, 50) &gt;= 0
+
+    # Check the weighted union bound and the pairwise sine estimate using
+    # 22/7 &gt; pi (so this is a slightly looser certified rational envelope).
+    weighted_pair_sum = sp.Integer(0)
+    for (i, j), p2 in pair_probabilities.items():
+        weighted_pair_sum += len((i, j)) * p2
+        for z in range(N):
+            if z not in (i, j):
+                weighted_pair_sum += sum(
+                    prob_site[X]
+                    for X in site_sets
+                    if i in X and j in X and z in X
+                )
+    assert sp.simplify(weighted_pair_sum - sum(
+        len(X) * prob_site[X]
+        for X in site_sets
+        for i, j in pairs
+        if i in X and j in X
+    )) == 0
+    assert sp.N((2 + C0) * pair_sum - weighted_pair_sum, 50) &gt;= 0
+
+    sum_r2 = sum(r * r for r in range(1, min(R, N - 1) + 1))
+    # pi &lt; 22/7; this verifies the finite pair bound with a certified
+    # rational enlargement of its stated pi^2 constant.
+    a_upper = sp.Rational(8) * sp.Rational(22, 7) ** 2 * C0 * C2 * sum_r2 / L**3
+    assert sp.N(a_upper - pair_sum, 50) &gt;= 0
+
+    Qdiag = [int(forbidden(X)) for X in [
+        tuple(i for i in range(N) if (mask &gt;&gt; i) &amp; 1) for mask in range(dim)
+    ]]
+    Q = sp.diag(*Qdiag)
+    P = sp.eye(dim) - Q
+    delta_matrix = sp.simplify(sp.trace(rho * Q))
+    qM_matrix = sp.simplify(sp.trace(rho * M * Q))
+    assert sp.simplify(delta_matrix - delta) == 0
+    assert sp.simplify(qM_matrix - qM) == 0
+    p = 1 - delta_matrix
+    sigma = P * rho * P / p
+    EK = sp.simplify(sp.trace(rho * K))
+    lhs = sp.simplify(sp.trace(sigma * K) - EK)
+    rhs = sp.simplify((delta_matrix * EK + 8 * J * qM_matrix) / p)
+    assert sp.N(rhs - lhs, 50) &gt;= 0
+
+    results.append(
+        f&quot;R={R}: exact delta={delta}; exact forbidden-pair sum={pair_sum}; &quot;
+        f&quot;exact qM={qM}; exact sum_pair E[M n_i n_j]={weighted_pair_sum}; &quot;
+        f&quot;(2+C0)*pair_sum-qM={sp.simplify((2+C0)*pair_sum-qM)}; &quot;
+        f&quot;(22/7)-enlarged a_L-pair_sum={sp.simplify(a_upper-pair_sum)}; &quot;
+        f&quot;kinetic RHS-LHS={sp.simplify(rhs-lhs)}&quot;
+    )
+
+print(f&quot;PASS: L={L}, N={N}, f={f}; exact sine orthogonality, DPP pair/triple identities, [rho,K]=0, and K&lt;=8JM.&quot;)
+for line in results:
+    print(line)
+print(&quot;Finite check uses exact algebraic matrix identities; displayed inequality margins are evaluated at 50 digits.&quot;)
+</pre><p><a href="../assets/8672684a28d257794f76dc3b518cbcdb6b495a16c6e2aeb50e0825e5d9e2d7a3.py">Exact original</a></p></html>

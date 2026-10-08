@@ -1,0 +1,120 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/engineering_control/energy_feedback/CYCLE2_ADDENDUM.md</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/engineering_control/energy_feedback/CYCLE2_ADDENDUM.md</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre># Cycle 2 addendum: a costed finite-volume stochastic relay
+
+## Result and scope
+
+This is an implementable two-mode mass-action relay with an exact finite-state expression for deadline-qualified safe guard attainment and a reproducible numerical value. It is not a probability-one periodic guarantee. For every positive fixed deadline, a no-reaction trajectory has positive probability and misses the next guard. Event-triggered switching with no deadline reaches each next guard almost surely if the finite copy-number chain is left unconstrained, but imposing a proper safety band gives a positive per-leg failure probability, so infinitely many safe cycles succeed with probability zero.
+
+The result is conditional on exact observation of every molecule transition, calibrated rates, and the cost parameters below. The illustrative energy numbers are not hardware measurements. The theorem is ordinary finite-state CTMC reachability; no novelty claim is made.
+
+## Program
+
+Let $n=Z_A\in\{0,\ldots,100\}$, $Z_B=100-n$, and $x=n/100$. Each mode has two first-order mass-action reactions:
+
+| Mode | $B\to A$ rate constant | $A\to B$ rate constant | Concentration drift | Equilibrium |
+|---|---:|---:|---|---:|
+| $H$ | 2 | 1 | $2-3x$ | $2/3$ |
+| $L$ | 1 | 2 | $1-3x$ | $1/3$ |
+
+The exact copy-number intensities are
+$$
+\lambda_H^+(n)=2(100-n),\qquad \lambda_H^-(n)=n,
+$$
+and
+$$
+\lambda_L^+(n)=100-n,\qquad \lambda_L^-(n)=2n.
+$$
+The shared setpoint band is $[0.45,0.55]$, with guards $n_-=45$ and $n_+=55$. The safety band is $10\le n\le90$.
+
+Start in $H$ at $n=45$. Observe every molecular transition and hold $H$ until the first hit of $55$, then charge one successful mode switch and enter $L$. Hold $L$ until the first hit of $45$, then switch back to $H$. A one-second timer applies to each leg: if the target is not safely hit by the deadline, fault-stop. A hit of the unsafe boundary also fault-stops. Thus mode switching itself is event-triggered at the target, and the timer is only a failure deadline.
+
+For an $H$ leg, let $\tau_{55}$ and $\tau_{10}$ be the first hitting times of 55 and 10. The 44 transient states are $11,\ldots,54$. The subgenerator has
+$$
+(Q_H)_{n,n+1}=\lambda_H^+(n),\quad (Q_H)_{n,n-1}=\lambda_H^-(n),\quad
+(Q_H)_{n,n}=-(\lambda_H^+(n)+\lambda_H^-(n)),
+$$
+with off-diagonal entries retained only when the destination is transient. Let $q_G$ have its only nonzero entry $(q_G)_{54}=\lambda_H^+(54)=92$. Then the per-leg deadline success probability is exactly
+$$
+p_H(t)=\Pr_{45}\{\tau_{55}\le t,\ \tau_{55}&lt;\tau_{10}\}
+=e_{45}^{\mathsf T}\int_0^t e^{Q_Hs}q_G\,ds.
+$$
+The reflection $n\mapsto100-n$ maps the $L$ leg from 55 to 45 onto this $H$ leg, so $p_L(t)=p_H(t)$. At each singleton guard the strong Markov property restarts the process from a fixed state. Hence $M$ alternating legs all hit safely by their per-leg deadlines with probability exactly $p_H(t)^M$.
+
+For $t=1$ second, uniformization with $\Omega=200\,\mathrm{s}^{-1}$ gives the floating evaluation
+$$
+p_H(1)=0.9999720896127573.
+$$
+The included script sums Poisson terms through index 450. Its omitted mass is at most $5.4805307045\times10^{-51}$ by a Poisson Chernoff bound. This is a truncation bound only; the decimal is not interval-certified against floating-point roundoff. The corresponding 20-leg floating estimate is $0.9994419402384092$.
+
+## What cannot be guaranteed
+
+At the start of an $H$ leg, $n=45$ and the total reaction intensity is $2(55)+45=155\,\mathrm{s}^{-1}$. The no-reaction event over any fixed $t&gt;0$ has probability $e^{-155t}&gt;0$ and leaves the system outside the target guard $n=55$. Therefore
+$$
+\Pr_{45}(\tau_{55}\le t)\le1-e^{-155t}&lt;1.
+$$
+At the start of the reflected $L$ leg the same total intensity applies. No finite fixed period can guarantee a target guard on every cycle with probability one. A fixed-rate scheduler cannot eliminate this event unless it changes the plant&#x27;s transition law or invokes an additional non-chemical state reset.
+
+Without a deadline and without enforcing the outer safety band, each mode is an irreducible finite birth-death chain, so its next guard is reached almost surely. With safety boundaries 10 and 90 enforced, exact gambler&#x27;s ruin gives
+$$
+p_\infty=\Pr_{45}(\tau_{55}&lt;\tau_{10})
+=\frac{31093519817410066218136533805526688768}
+{31093519817410066218136534504523754857}
+=1-\frac{698997066089}{31093519817410066218136534504523754857}.
+$$
+The reflected leg has the same probability. Thus $M$ safe unbounded-wait legs succeed with probability $p_\infty^M$, not one. Because $p_\infty&lt;1$, indefinitely many safe legs eventually fault-stop almost surely.
+
+## Energy accounting
+
+Use $P_s=20$ mW for sensing, $P_c=5$ mW for controller/clock holding power, and $P_m=100$ mW for active mode-hold power. Charge $E_{\rm obs}=1$ mJ and $E_{\rm cpu}=0.2$ mJ for each observed transition, $E_+=0.5$ mJ per birth, $E_-=0.2$ mJ per death, and $E_{\rm sw}=50$ mJ per successful switch. These terms represent distinct continuously powered versus per-event charges.
+
+For transient occupancy
+$$
+o_n(t)=\mathbb E_{45}\left[\int_0^{\min(t,\tau_{10},\tau_{55})}
+\mathbf 1\{N_s=n\}\,ds\right],
+$$
+the $H$-leg expected cost, up to target hit, unsafe hit, or deadline, is
+$$
+C_H(t)=(P_s+P_c+P_m)\sum_n o_n(t)
++\sum_n o_n(t)\left[(E_{\rm obs}+E_{\rm cpu})(\lambda_H^+(n)+\lambda_H^-(n))
++E_+\lambda_H^+(n)+E_-\lambda_H^-(n)\right]
++E_{\rm sw}p_H(t).
+$$
+This occupancy charges holding power through the entire active leg, including the time up to target absorption or the deadline. It also charges each transition out of a transient state, including the absorbing target or unsafe-boundary transition. The switch term is exactly $E_{\rm sw}$ times the probability of a successful safe target hit, $p_H(t)$; a failed, timed-out, or unsafe leg pays no successful-switch charge. If fault shutdown costs $E_f$, add $E_f(1-p_H(t))$ when every failure is fault-stopped.
+
+For $M$ legs, let $C_j$ and $p_j$ denote the one-leg expected cost and safe hit probability for the corresponding mode, including the successful-switch charge and any specified failure shutdown charge. Expected total energy through the first failed leg or completion is
+$$
+\mathbb E[C_{\rm total}]
+=C_1+p_1C_2+p_1p_2C_3+\cdots+
+\left(\prod_{i=1}^{M-1}p_i\right)C_M.
+$$
+The probabilities are the same in the reflected two-mode relay. Costs need not be equal: when $E_+\ne E_-$, reflection swaps expected birth and death counts. The script accounts for this asymmetry. In the unbounded-wait one-leg resolvent, exact rational expectations are:
+$$
+\mathbb E[T]=0.18942271777417605\ {\rm s},\quad
+\mathbb E[N_{\rm birth,H}]=19.29484785161174,\quad
+\mathbb E[N_{\rm death,H}]=9.294847851611737.
+$$
+These expectations stop at hit of 10 or 55. With the example costs, an attempted $H$ leg costs $0.1194918680617684$ J in expectation; the reflected $L$ leg has a different value because the per-birth and per-death prices differ. The exact rational components and alternating 20-leg expected cost are printed by the script. These infinite-wait figures do not include a fault-shutdown fee.
+
+For the one-second deadline, floating-point integrated uniformization gives mean active duration $0.18942041145$ s, $H$-leg expected births/deaths $19.2946225458/9.29472987225$, and $H/L$ attempted-leg costs $0.11948963606/0.11648966826$ J. The $H$ switch charge is $0.04999860448$ J, equal to $p_H(1)E_{\rm sw}$. Through 20 legs, stopping at first failure or completion, expected energy is $2.35916787051$ J before any fault-shutdown fee. These finite-deadline cost numerics are also floating-point; the script reports Poisson truncation bounds but does not certify roundoff.
+
+Run:
+
+~~~sh
+python3 work/agents/engineering_control/energy_feedback/cycle2_relay.py
+~~~
+
+It uses only the Python standard library. The gambler&#x27;s-ruin probability and resolvent duration/event-count/cost expectations use exact rational arithmetic. The one-second deadline probability is floating-point uniformization, with the truncation-versus-roundoff limitation stated in the output. The run used for this addendum is preserved in work/agents/engineering_control/energy_feedback/cycle2_relay_output.json.
+
+The controller requires a calibrated mode-specific birth/death law and a transition-resolved count stream $(t_j,n_j)$ so it can identify each molecule event and enforce target/fault guards. At the one-second deadline, the calculated expected telemetry is about 28.5894 molecular transitions per attempted leg; each event is charged in the energy ledger. These rates and sensing assumptions are inputs, not inferred from the example. One-leg probability uniformization uses a sparse tridiagonal 44-state transient chain and 451 Poisson terms at $\Omega t=200$, or $O(44\cdot451)$ sparse state updates. The exact no-deadline gambler&#x27;s-ruin probability and tridiagonal resolvent use $O(44)$ rational operations (with arbitrary-precision fraction bit costs). Occupancy/cost evaluation additionally forms a finite Poisson table through index 2000.
+
+One local full-script reproduction on Python 3.14.3, arm64 Apple M4 took 0.29 s wall time (0.19 s user time). This is a single host-specific timing, not a portable benchmark or controller-latency guarantee. Runtime monitoring and event-sensing costs are charged in the energy ledger; the separate directed-box certificate&#x27;s large-horizon thinning upper bound is infeasible and was not simulated.
+
+## Comparator, prior-art boundary, and falsifier
+
+Under the interface specified above, the controller must hold each fixed mode until its first target hit, switch immediately, and fault-stop at the stated unsafe boundary or one-second timeout. This leaves a singleton admissible policy set; there is no nontrivial CTMDP optimization to perform. The strongest quantitative comparator is therefore exact finite-state CTMC first-hit reachability and reward evaluation, which is the one-leg subgenerator/occupancy-kernel calculation plus strong-Markov recursion used by the script. A per-leg deadline resets at a random guard-entry time and is a continuous clock, so the report does not claim the whole reset-clock process is a homogeneous finite-state CTMDP. If mode/rate choices or optional/delayed guard switching are added, the action set changes and must be specified before solving a matching timed CTMDP or Markov-renewal control problem. Baier, Hermanns, Katoen, and Haverkort give a primary-source uniform CTMDP reachability algorithm for such a separately defined optimization problem [paper PDF](https://ris.utwente.nl/ws/portalfiles/portal/282323676/Baier2005efficient.pdf). The exact interface and falsifier are recorded in the [comparator audit](CYCLE2_COMPARATOR.md).
+
+Prior-art boundary: Anand, Jagtap, and Zamani&#x27;s 2021 barrier-certificate paper explicitly defines mode-switch intensities $\lambda_{mm&#x27;}(x)$ that are bounded Lipschitz functions of the continuous state in its multiple-barrier theorem [primary manuscript](https://arxiv.org/html/2109.12420v1), Theorem III.4. Thus the source is not limited to fixed-rate Poisson resets. Its mode process uses state-dependent CTMC switching, while its continuous state is a diffusion; it does not establish this finite-volume chemical birth-death relay or guard-triggered stopping-time controller. A 2026 Automatica paper&#x27;s publisher abstract describes instantaneous jumps with inter-jump times constrained by jump parameters and a sampling period [publisher page](https://doi.org/10.1016/j.automatica.2026.113082); the available abstract does not establish state-dependent CTMC mode intensities, so no such claim is made here.
+
+Falsifier: calibrate a $V=100$ cell and record each $A/B$ transition, guard time, deadline, unsafe hit, switch, sensor/processor power, active hold power, and event work. A claimed probability-one fixed-deadline guard guarantee is contradicted by a no-reaction leg, whose model probability is exactly $e^{-155t}$. The timed reachability prediction is contradicted if empirical hit-before-unsafe rates fall below the subgenerator value outside a preregistered confidence interval. The energy claim is contradicted if per-leg energy exceeds the stated occupancy/event accounting after calibrated measurement uncertainty and any declared fault-shutdown charge are included.
+
+Evidence status: internally reconstructed finite-state construction plus reproduced finite computation; illustrative, unmeasured cost parameters; no external proof review or novelty assessment.
+</pre><p><a href="../assets/4bab53ef115a4a0ba5fce2f4ef0805ff5f494a756d37f4013e2c95167fec4efa.md">Exact original</a></p></html>

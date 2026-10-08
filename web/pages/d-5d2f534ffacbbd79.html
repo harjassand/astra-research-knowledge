@@ -1,0 +1,332 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/combinatorics_optimization/cycle3/classical_types_audit/audit_classical_multiplicity_smallN.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/combinatorics_optimization/cycle3/classical_types_audit/audit_classical_multiplicity_smallN.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact bounded checks for classical_types/RESULT.txt Sections 5--6.
+
+Standard library only. Fractions are used for root coordinates, determinants,
+Casimirs, Weyl dimensions, and cutoff inequalities. This is a finite
+diagnostic, not a proof checker.
+&quot;&quot;&quot;
+
+from fractions import Fraction as F
+from itertools import product as cartesian, permutations
+from math import ceil
+
+
+def dynkin_to_coords(kind, a):
+    l = len(a)
+    if kind == &quot;B&quot;:
+        return [F(sum(a[i:l - 1])) + F(a[-1], 2) for i in range(l - 1)] + [F(a[-1], 2)]
+    if kind == &quot;C&quot;:
+        return [F(sum(a[i:])) for i in range(l)]
+    if kind == &quot;D&quot;:
+        return [F(sum(a[i:l - 2])) + F(a[-2] + a[-1], 2) for i in range(l - 2)] + [
+            F(a[-2] + a[-1], 2), F(a[-1] - a[-2], 2)
+        ]
+    raise ValueError(kind)
+
+
+def rho_coords(kind, l):
+    if kind == &quot;B&quot;:
+        return [F(2 * (l - i) - 1, 2) for i in range(l)]
+    if kind == &quot;C&quot;:
+        return [F(l - i) for i in range(l)]
+    if kind == &quot;D&quot;:
+        return [F(l - i - 1) for i in range(l)]
+    raise ValueError(kind)
+
+
+def simple_coroot_pairings(kind, x):
+    l = len(x)
+    if kind in (&quot;B&quot;, &quot;C&quot;):
+        values = [x[i] - x[i + 1] for i in range(l - 1)]
+        values.append(2 * x[-1] if kind == &quot;B&quot; else x[-1])
+        return values
+    if kind == &quot;D&quot;:
+        return [x[i] - x[i + 1] for i in range(l - 1)] + [x[-2] + x[-1]]
+    raise ValueError(kind)
+
+
+def zero(l):
+    return tuple(F(0) for _ in range(l))
+
+
+def add_root(roots, coords):
+    roots.add(tuple(F(x) for x in coords))
+
+
+def adjoint_roots(kind, l):
+    roots = set()
+    if kind == &quot;B&quot;:
+        for i in range(l):
+            for sign in (-1, 1):
+                v = [0] * l
+                v[i] = sign
+                add_root(roots, v)
+    if kind == &quot;C&quot;:
+        for i in range(l):
+            for sign in (-1, 1):
+                v = [0] * l
+                v[i] = 2 * sign
+                add_root(roots, v)
+    for i in range(l):
+        for j in range(i + 1, l):
+            for si, sj in cartesian((-1, 1), repeat=2):
+                v = [0] * l
+                v[i], v[j] = si, sj
+                add_root(roots, v)
+    return roots
+
+
+def positive_roots(kind, l):
+    roots = []
+    if kind in (&quot;B&quot;, &quot;C&quot;):
+        for i in range(l):
+            v = [0] * l
+            v[i] = 1 if kind == &quot;B&quot; else 2
+            roots.append(tuple(map(F, v)))
+    for i in range(l):
+        for j in range(i + 1, l):
+            minus, plus = [0] * l, [0] * l
+            minus[i], minus[j] = 1, -1
+            plus[i], plus[j] = 1, 1
+            roots.extend((tuple(map(F, minus)), tuple(map(F, plus))))
+    return roots
+
+
+def dot(x, y):
+    return sum((a * b for a, b in zip(x, y)), F(0))
+
+
+def determinant(matrix):
+    a = [[F(x) for x in row] for row in matrix]
+    n = len(a)
+    out = F(1)
+    for k in range(n):
+        pivot = next((i for i in range(k, n) if a[i][k]), None)
+        if pivot is None:
+            return F(0)
+        if pivot != k:
+            a[k], a[pivot] = a[pivot], a[k]
+            out = -out
+        x = a[k][k]
+        out *= x
+        for i in range(k + 1, n):
+            if a[i][k]:
+                factor = a[i][k] / x
+                for j in range(k + 1, n):
+                    a[i][j] -= factor * a[k][j]
+                a[i][k] = F(0)
+    return out
+
+
+def prod_exact(values):
+    out = F(1)
+    for value in values:
+        out *= value
+    return out
+
+
+def frame_matrix(kind, z):
+    l = len(z)
+    if kind in (&quot;B&quot;, &quot;C&quot;):
+        return [[z[i] ** (2 * j + 1) for j in range(l)] for i in range(l)]
+    return [
+        [z[i] ** (2 * j + 1) for j in range(l - 1)]
+        + [prod_exact(z[k] for k in range(l) if k != i)]
+        for i in range(l)
+    ]
+
+
+def frame_determinant(kind, z):
+    l = len(z)
+    out = prod_exact(z) if kind in (&quot;B&quot;, &quot;C&quot;) else F((-1) ** (l - 1))
+    for i in range(l):
+        for j in range(i + 1, l):
+            out *= z[j] ** 2 - z[i] ** 2
+    return out
+
+
+def weyl_dimension(kind, lam):
+    l = len(lam)
+    rho = rho_coords(kind, l)
+    top = [a + b for a, b in zip(lam, rho)]
+    dim = F(1)
+    for root in positive_roots(kind, l):
+        numerator = dot(top, root)
+        denominator = dot(rho, root)
+        assert numerator &gt; 0 and denominator &gt; 0
+        dim *= numerator / denominator
+    assert dim.denominator == 1, (kind, lam, dim)
+    return dim.numerator
+
+
+def weyl_casimir(kind, lam):
+    return dot(lam, [a + 2 * b for a, b in zip(lam, rho_coords(kind, len(lam)))])
+
+
+def weight_lattice_sigma(kind, l):
+    if kind == &quot;C&quot;:
+        return F(1)
+    return min(F(1), F(l, 4))
+
+
+def permutation_sign(p):
+    inv = sum(p[i] &gt; p[j] for i in range(len(p)) for j in range(i + 1, len(p)))
+    return -1 if inv % 2 else 1
+
+
+def adjoint_multiplicity(kind, lam):
+    l = len(lam)
+    alpha = [x + y for x, y in zip(lam, rho_coords(kind, l))]
+    roots = adjoint_roots(kind, l)
+    total = 0
+    for p in permutations(range(l)):
+        p_sign = permutation_sign(p)
+        for signs in cartesian((-1, 1), repeat=l):
+            if kind == &quot;D&quot; and prod_exact(signs) != 1:
+                continue
+            w_alpha = tuple(F(signs[i]) * alpha[p[i]] for i in range(l))
+            delta = tuple(w_alpha[i] - alpha[i] for i in range(l))
+            sign = p_sign * prod_exact(signs)
+            if delta == zero(l):
+                total += l * sign
+            elif delta in roots:
+                total += sign
+    return total
+
+
+def max_adjoint_shift(kind, l):
+    roots = adjoint_roots(kind, l)
+    return max(
+        abs(v)
+        for mu in roots
+        for v in simple_coroot_pairings(kind, mu)
+    )
+
+
+def check_root_conventions(kind, l, a):
+    lam = dynkin_to_coords(kind, a)
+    rho = rho_coords(kind, l)
+    assert simple_coroot_pairings(kind, lam) == [F(x) for x in a]
+    assert simple_coroot_pairings(kind, rho) == [F(1)] * l
+    roots = adjoint_roots(kind, l)
+    expected = {&quot;B&quot;: 2 * l * l, &quot;C&quot;: 2 * l * l, &quot;D&quot;: 2 * l * (l - 1)}[kind]
+    assert len(roots) == expected
+    assert max_adjoint_shift(kind, l) == 2
+    det = determinant(frame_matrix(kind, lam))
+    assert det == frame_determinant(kind, lam) != 0, (kind, l, a, lam, det)
+    return lam
+
+
+def check_weyl_multiplicity(kind, l, base_labels, N):
+    labels = tuple(N * x for x in base_labels)
+    lam = dynkin_to_coords(kind, labels)
+    observed = adjoint_multiplicity(kind, lam)
+    assert observed == l, (kind, l, base_labels, N, observed)
+    return observed
+
+
+def check_cutoff(kind, l, base_labels, n_cut):
+    lam = dynkin_to_coords(kind, base_labels)
+    m_shift = max_adjoint_shift(kind, l)
+    delta = min(base_labels)
+    n_dom = max(1, ceil(F(m_shift, delta)))
+    assert n_cut &gt;= n_dom
+    dmax = weyl_dimension(kind, [n_cut * x for x in lam])
+    sigma = weight_lattice_sigma(kind, l)
+    assert weyl_casimir(kind, lam) &gt;= sigma
+    checked = 0
+    for N in range(1, n_cut):
+        d = weyl_dimension(kind, [N * x for x in lam])
+        assert d &lt;= dmax
+        reset_ratio = F(n_cut * n_cut * dmax, N * N * d)
+        assert reset_ratio &gt;= 1
+        checked += 1
+    return checked
+
+
+def main():
+    root_cases = 0
+    d_zero_cases = 0
+    d_spin_cases = 0
+    for kind, ranks in ((&quot;B&quot;, range(1, 7)), (&quot;C&quot;, range(1, 7)), (&quot;D&quot;, range(3, 7))):
+        for l in ranks:
+            for a in cartesian((1, 2, 3), repeat=l):
+                lam = check_root_conventions(kind, l, a)
+                root_cases += 1
+                if kind == &quot;D&quot; and lam[-1] == 0:
+                    d_zero_cases += 1
+                    odd_only = [[lam[i] ** (2 * j + 1) for j in range(l)] for i in range(l)]
+                    assert determinant(odd_only) == 0
+                if kind == &quot;D&quot; and (a[-1] - a[-2]) % 2:
+                    d_spin_cases += 1
+
+    multiplicity_cases = 0
+    spin_multiplicity_cases = 0
+    for kind, ranks in ((&quot;B&quot;, range(1, 6)), (&quot;C&quot;, range(1, 6)), (&quot;D&quot;, range(3, 6))):
+        for l in ranks:
+            m_shift = max_adjoint_shift(kind, l)
+            for base in cartesian((1, 2), repeat=l):
+                n_dom = max(1, ceil(F(m_shift, min(base))))
+                for N in (n_dom, n_dom + 1):
+                    check_weyl_multiplicity(kind, l, base, N)
+                    multiplicity_cases += 1
+            if kind == &quot;D&quot;:
+                for base in ([1] * (l - 1) + [2], [1] * (l - 2) + [2, 1]):
+                    assert (base[-1] - base[-2]) % 2
+                    for N in (2, 3):
+                        check_weyl_multiplicity(kind, l, base, N)
+                        spin_multiplicity_cases += 1
+
+    casimir_cases = 0
+    dimension_cases = 0
+    reset_cases = 0
+    min_casimir = {}
+    for kind, ranks in ((&quot;B&quot;, range(1, 7)), (&quot;C&quot;, range(1, 7)), (&quot;D&quot;, range(3, 7))):
+        for l in ranks:
+            sigma = weight_lattice_sigma(kind, l)
+            values = []
+            for a in cartesian(range(4), repeat=l):
+                if not any(a):
+                    continue
+                lam = dynkin_to_coords(kind, a)
+                c2 = weyl_casimir(kind, lam)
+                assert c2 &gt;= sigma, (kind, l, a, c2, sigma)
+                d = weyl_dimension(kind, lam)
+                assert d &gt;= 2
+                values.append(c2)
+                casimir_cases += 1
+                dimension_cases += 1
+            min_casimir[(kind, l)] = min(values)
+
+            bases = [[1] * l]
+            if kind == &quot;D&quot;:
+                bases += [[1] * (l - 1) + [2], [1] * (l - 2) + [2, 1]]
+            for base in bases:
+                n_dom = max(1, ceil(F(max_adjoint_shift(kind, l), min(base))))
+                reset_cases += check_cutoff(kind, l, base, n_dom + 3)
+
+    assert weyl_dimension(&quot;B&quot;, dynkin_to_coords(&quot;B&quot;, (1, 1))) == 16
+    assert weyl_dimension(&quot;B&quot;, dynkin_to_coords(&quot;B&quot;, (0, 1))) == 4
+    assert weyl_casimir(&quot;B&quot;, dynkin_to_coords(&quot;B&quot;, (1, 1))) == F(15, 2)
+    assert weyl_casimir(&quot;B&quot;, dynkin_to_coords(&quot;B&quot;, (0, 1))) == F(5, 2)
+    assert weyl_dimension(&quot;D&quot;, dynkin_to_coords(&quot;D&quot;, (1, 1, 1))) == 64
+    assert weyl_casimir(&quot;D&quot;, dynkin_to_coords(&quot;D&quot;, (1, 1, 1))) == 15
+    assert weyl_dimension(&quot;D&quot;, dynkin_to_coords(&quot;D&quot;, (0, 0, 1))) == 4
+    assert weyl_dimension(&quot;D&quot;, dynkin_to_coords(&quot;D&quot;, (0, 1, 0))) == 4
+    assert weyl_casimir(&quot;D&quot;, dynkin_to_coords(&quot;D&quot;, (0, 0, 1))) == F(15, 4)
+    assert weyl_casimir(&quot;D&quot;, dynkin_to_coords(&quot;D&quot;, (0, 1, 0))) == F(15, 4)
+
+    print(&quot;exact checks passed&quot;)
+    print(f&quot;root/Pfaffian frame points, B1..B6 C1..C6 D3..D6, labels 1..3: {root_cases}&quot;)
+    print(f&quot;D regular zero-coordinate cases: {d_zero_cases}; D half-integral spin cases: {d_spin_cases}&quot;)
+    print(f&quot;deep Weyl-alternant multiplicity cases (B1..B5 C1..C5 D3..D5): {multiplicity_cases}&quot;)
+    print(f&quot;additional D half-spin alternant cases at N=2,3: {spin_multiplicity_cases}&quot;)
+    print(f&quot;Casimir and Weyl-dimension points (labels 0..3 excluding zero): {casimir_cases}; {dimension_cases}&quot;)
+    print(f&quot;exact small-cutoff reset comparisons: {reset_cases}&quot;)
+    print(&quot;minimum sampled Casimir by type/rank:&quot;, &quot;, &quot;.join(
+        f&quot;{kind}{l}:{value}&quot; for (kind, l), value in min_casimir.items()))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/184972edd281822353f340ab106a950b316af46a62c33aeea032a25452b47322.py">Exact original</a></p></html>

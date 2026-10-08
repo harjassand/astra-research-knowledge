@@ -1,0 +1,144 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c12_spin_uniform/spin15_rational_seed.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c12_spin_uniform/spin15_rational_seed.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact Clifford-moment replay for a rational Spin(15) pure-spinor seed.&quot;&quot;&quot;
+from __future__ import annotations
+
+from itertools import combinations
+from fractions import Fraction
+from math import comb
+from pathlib import Path
+import hashlib
+import json
+
+
+NQ = 7
+DIM = 1 &lt;&lt; NQ
+REAL = [-1,-6,2,-3,0,-2,10,-11,14,8,-7,0,1,-3,-3,-6,-2,-7,9,4,-4,-3,12,4,8,0,-1,2,-3,6,8,2,-4,8,0,9,7,6,16,1,-13,-6,-6,5,6,-5,1,-5,8,-2,-5,-13,-3,8,-7,-3,-6,-2,1,-4,0,1,-3,3,2,6,0,-6,-12,4,6,-4,12,-10,-5,4,3,-3,-7,2,-2,6,5,0,-1,-8,2,0,-2,0,-15,-5,7,-4,4,5,2,-7,-2,-5,-3,0,9,12,9,0,3,-1,1,-5,8,-6,9,-7,5,9,1,1,2,3,-1,6,-4,-3,11,5,2,4]
+IMAG = [6,-4,-10,-12,11,-3,-6,-4,7,-1,-3,1,8,-7,-9,8,9,0,-4,11,3,1,-4,-7,-2,-9,3,6,8,4,10,3,3,-6,4,10,0,-6,-1,2,13,1,-9,-5,-5,11,-4,-9,8,-4,0,-7,5,-7,-3,4,-10,-4,-11,1,-5,2,-10,7,4,1,1,-4,8,-3,-2,1,-2,12,-3,-15,13,0,1,6,7,-1,-2,-7,-8,5,1,3,-4,-7,-3,1,-9,5,1,-3,-13,-3,-5,-9,1,5,8,6,0,9,5,-2,0,9,-1,-6,-8,-3,1,-8,5,-5,7,0,3,-4,-6,2,8,-6,-6,20]
+
+PAULI_PRODUCT = {
+    (&#x27;I&#x27;,&#x27;I&#x27;):(0,&#x27;I&#x27;),(&#x27;I&#x27;,&#x27;X&#x27;):(0,&#x27;X&#x27;),(&#x27;I&#x27;,&#x27;Y&#x27;):(0,&#x27;Y&#x27;),(&#x27;I&#x27;,&#x27;Z&#x27;):(0,&#x27;Z&#x27;),
+    (&#x27;X&#x27;,&#x27;I&#x27;):(0,&#x27;X&#x27;),(&#x27;Y&#x27;,&#x27;I&#x27;):(0,&#x27;Y&#x27;),(&#x27;Z&#x27;,&#x27;I&#x27;):(0,&#x27;Z&#x27;),
+    (&#x27;X&#x27;,&#x27;X&#x27;):(0,&#x27;I&#x27;),(&#x27;Y&#x27;,&#x27;Y&#x27;):(0,&#x27;I&#x27;),(&#x27;Z&#x27;,&#x27;Z&#x27;):(0,&#x27;I&#x27;),
+    (&#x27;X&#x27;,&#x27;Y&#x27;):(1,&#x27;Z&#x27;),(&#x27;Y&#x27;,&#x27;X&#x27;):(3,&#x27;Z&#x27;),(&#x27;Y&#x27;,&#x27;Z&#x27;):(1,&#x27;X&#x27;),
+    (&#x27;Z&#x27;,&#x27;Y&#x27;):(3,&#x27;X&#x27;),(&#x27;Z&#x27;,&#x27;X&#x27;):(1,&#x27;Y&#x27;),(&#x27;X&#x27;,&#x27;Z&#x27;):(3,&#x27;Y&#x27;),
+}
+
+
+def gamma_words():
+    out = []
+    for q in range(NQ):
+        out.extend(((&#x27;Z&#x27;,)*q + (&#x27;X&#x27;,) + (&#x27;I&#x27;,)*(NQ-q-1),
+                    (&#x27;Z&#x27;,)*q + (&#x27;Y&#x27;,) + (&#x27;I&#x27;,)*(NQ-q-1)))
+    out.append((&#x27;Z&#x27;,)*NQ)
+    return out
+
+
+def apply(word, basis):
+    target = basis
+    phase = 0
+    for q, p in enumerate(word):
+        bit = (basis &gt;&gt; q) &amp; 1
+        if p in (&#x27;X&#x27;,&#x27;Y&#x27;):
+            target ^= 1 &lt;&lt; q
+        if p == &#x27;Y&#x27;:
+            phase += 1 if bit == 0 else 3
+        elif p == &#x27;Z&#x27; and bit:
+            phase += 2
+    return target, phase % 4
+
+
+def real_expectation_numerator(word, phase, norm_sq):
+    total = 0
+    for basis in range(DIM):
+        target, local_phase = apply(word, basis)
+        p = (phase + local_phase) % 4
+        xr, yi = REAL[target], IMAG[target]
+        xb, yb = REAL[basis], IMAG[basis]
+        product_re = xr*xb + yi*yb
+        product_im = xr*yb - yi*xb
+        if p == 0:
+            total += product_re
+        elif p == 1:
+            total -= product_im
+        elif p == 2:
+            total -= product_re
+        else:
+            total += product_im
+    return total
+
+
+def moment_numerators():
+    gam = gamma_words()
+    moments = []
+    for k in range(1, NQ+1):
+        score_num = 0
+        for A in combinations(range(2*NQ+1), k):
+            phase = 0
+            word = (&#x27;I&#x27;,)*NQ
+            for a in A:
+                p = 0
+                out = []
+                for x, y in zip(word, gam[a]):
+                    q, z = PAULI_PRODUCT[x, y]
+                    p = (p + q) % 4
+                    out.append(z)
+                phase = (phase + p) % 4
+                word = tuple(out)
+            phase = (phase + k*(k-1)//2) % 4
+            num = real_expectation_numerator(word, phase, 1)
+            score_num += num*num
+        moments.append(Fraction(score_num, 1))
+    return moments
+
+
+def main():
+    if len(REAL) != DIM or len(IMAG) != DIM:
+        raise AssertionError(&#x27;state coordinate count&#x27;)
+    norm_sq = sum(x*x+y*y for x,y in zip(REAL, IMAG))
+    score_nums = []
+    gam = gamma_words()
+    for k in range(1, NQ+1):
+        score_num = 0
+        for A in combinations(range(2*NQ+1), k):
+            phase = 0
+            word = (&#x27;I&#x27;,)*NQ
+            for a in A:
+                p = 0
+                out = []
+                for x, y in zip(word, gam[a]):
+                    q, z = PAULI_PRODUCT[x, y]
+                    p = (p + q) % 4
+                    out.append(z)
+                phase = (phase + p) % 4
+                word = tuple(out)
+            phase = (phase + k*(k-1)//2) % 4
+            num = real_expectation_numerator(word, phase, norm_sq)
+            score_num += num*num
+        score_nums.append(score_num)
+    moments = [Fraction(v, norm_sq*norm_sq) for v in score_nums]
+    if sum(moments) != DIM - 1:
+        raise AssertionError((&#x27;Parseval failed&#x27;, sum(moments), DIM-1))
+    support_56 = moments[4] + moments[5]
+    result = {
+        &#x27;status&#x27;: &#x27;EXACT_ATTAINED_PURE_SEED&#x27;,
+        &#x27;group&#x27;: &#x27;Spin(15)&#x27;,
+        &#x27;spinor_dimension&#x27;: DIM,
+        &#x27;state&#x27;: {&#x27;real_numerators&#x27;: REAL, &#x27;imag_numerators&#x27;: IMAG,
+                  &#x27;common_amplitude_denominator&#x27;: norm_sq},
+        &#x27;grade_moments&#x27;: [str(x) for x in moments],
+        &#x27;parseval_sum&#x27;: str(sum(moments)),
+        &#x27;support_grade5_plus_grade6&#x27;: str(support_56),
+        &#x27;support_grade5_plus_grade6_decimal&#x27;: float(support_56),
+        &#x27;seed_family_support_grade5_plus_grade6&#x27;: 62,
+        &#x27;r0_star_required_support_for_alpha_e5_plus_e6&#x27;: 63.0768180146715,
+        &#x27;sha256_state_coordinates&#x27;: hashlib.sha256((str(REAL)+str(IMAG)+str(norm_sq)).encode()).hexdigest(),
+        &#x27;scope&#x27;: &#x27;One attained pure-spinor support value; not a support maximum or a full factor-two proof.&#x27;,
+    }
+    out = Path(__file__).with_name(&#x27;spin15_rational_seed_certificate.json&#x27;)
+    out.write_text(json.dumps(result, indent=2) + &#x27;\n&#x27;)
+    print(json.dumps(result, indent=2))
+
+
+if __name__ == &#x27;__main__&#x27;:
+    main()
+</pre><p><a href="../assets/e385b657d1c30daa9a8f5fde04f17c062285a54030adfb688c6992aa762f4676.py">Exact original</a></p></html>

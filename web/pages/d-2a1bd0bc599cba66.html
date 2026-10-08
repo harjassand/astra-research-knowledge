@@ -1,0 +1,71 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c9_noncommutative_dirichlet/checks/check_product_haar_failure.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c9_noncommutative_dirichlet/checks/check_product_haar_failure.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Replay two exact fixed-POVM failures recorded in PROOF_AND_GATE.md.
+
+Python 3 + NumPy. These reject only the named fixed measurements, not the
+channel-adaptive universal EB-comparison claim.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import math
+import sys
+from pathlib import Path
+
+import numpy as np
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import verify_stinespring_compression as fixtures  # noqa: E402
+
+
+def cloner_product_haar_score(order: int = 256) -&gt; float:
+    &quot;&quot;&quot;Fisher/canonical score on Z for independent Haar POVMs on both clones.&quot;&quot;&quot;
+    kraus = fixtures.cloner_kraus()
+    b = lambda x: sum(k @ x @ k.conj().T for k in kraus)
+    ident = np.eye(2, dtype=complex)
+    z = np.diag([1.0, -1.0]).astype(complex)
+    p_sym = np.zeros((4, 4), dtype=complex)
+    p_sym[0, 0] = p_sym[3, 3] = 1.0
+    p_sym[1, 1] = p_sym[2, 2] = 0.5
+    p_sym[1, 2] = p_sym[2, 1] = 0.5
+    target = np.diag([1.0, 0.0, 0.0, -1.0]).astype(complex) / 3
+    assert np.allclose(b(ident / 2), p_sym / 3, atol=1e-12)
+    assert np.allclose(b(z / 2), target, atol=1e-12)
+
+    # Haar averaging over the common orientation at fixed u=n.m gives
+    # E[(n_z+m_z)^2 | u] = 2(1+u)/3, hence the reduced integral below.
+    nodes, weights = np.polynomial.legendre.leggauss(order)
+    integral = np.dot(weights, (1.0 + nodes) / (3.0 + nodes))
+    return (4.0 / 9.0) * float(integral)
+
+
+def dephasing_symmetric_coherent_score(order: int = 256) -&gt; float:
+    &quot;&quot;&quot;Score for 3|psi psi&gt;&lt;psi psi| on a copying Z-dephasing broadcaster.&quot;&quot;&quot;
+    nodes, weights = np.polynomial.legendre.leggauss(order)
+    x = (nodes + 1.0) / 2.0
+    # |psi_0|^2 is uniform on [0,1] for a Haar-random qubit pure state.
+    integrand = (2.0 * x - 1.0) ** 2 / (x**2 + (1.0 - x) ** 2)
+    integral = 0.5 * float(np.dot(weights, integrand))
+    return 1.5 * integral
+
+
+def main() -&gt; None:
+    product_score = cloner_product_haar_score()
+    product_exact = (4.0 / 9.0) * (2.0 - 2.0 * math.log(2.0))
+    assert abs(product_score - product_exact) &lt; 1e-12
+    assert product_score &lt; 1.0 / 3.0
+
+    coherent_score = dephasing_symmetric_coherent_score()
+    coherent_exact = 3.0 - 3.0 * math.pi / 4.0
+    assert abs(coherent_score - coherent_exact) &lt; 1e-12
+    assert coherent_score &lt; 1.0
+
+    print(f&quot;cloner + independent product-Haar score: {product_score:.12f}&quot;)
+    print(f&quot;cloner target eigenvalue:                {1.0 / 3.0:.12f}&quot;)
+    print(f&quot;dephasing + symmetric coherent score:    {coherent_score:.12f}&quot;)
+    print(f&quot;dephasing target eigenvalue:              {1.0:.12f}&quot;)
+    print(&quot;Both failures are for the fixed POVMs only.&quot;)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/397a567c7698041e3b195fa2790947ef36338c3ea0b92f3d75caa179b5e03af7.py">Exact original</a></p></html>

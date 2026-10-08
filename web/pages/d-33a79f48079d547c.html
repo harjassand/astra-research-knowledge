@@ -1,0 +1,280 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/cycle9_canonical_kinetics/replay_canonical.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/cycle9_canonical_kinetics/replay_canonical.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact local regression for canonical rational-kinetics certificates.&quot;&quot;&quot;
+from __future__ import annotations
+import itertools
+import json
+import subprocess
+import sys
+import tempfile
+from fractions import Fraction as F
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent
+sys.path.insert(0, str(ROOT))
+from recognize_reversible_modules import certify
+from compile_alternative_substrates import compile_model
+
+
+def load(name):
+    return json.loads((ROOT / &quot;fixtures&quot; / name).read_text())
+
+
+def parse_v(v):
+    return {int(i): F(str(x)) for i, x in v.items() if F(str(x))}
+
+
+def dot(a, b):
+    return sum((x * b.get(i, F(0)) for i, x in a.items()), F(0))
+
+
+def expanded_pairs(data):
+    d = data[&quot;dimension&quot;]
+    out = []
+    for i, mod in enumerate(data[&quot;modules&quot;]):
+        choices = []
+        for factor in mod.get(&quot;shared_numerator_factors&quot;, []):
+            terms = []
+            for term in factor[&quot;terms&quot;]:
+                terms.append((parse_v(term[&quot;exp&quot;]), F(str(term.get(&quot;coef&quot;, &quot;1&quot;)))))
+            choices.append(terms)
+        for j, other in enumerate(data[&quot;modules&quot;]):
+            if i == j:
+                continue
+            for factor in other[&quot;denominator_factors&quot;]:
+                terms = []
+                for term in factor[&quot;terms&quot;]:
+                    exp = parse_v(term[&quot;exp&quot;])
+                    terms.append((exp, F(str(term.get(&quot;coef&quot;, &quot;1&quot;)))))
+                choices.append(terms)
+        tuples = itertools.product(*choices) if choices else [()]
+        alpha, beta = parse_v(mod[&quot;source&quot;]), parse_v(mod[&quot;target&quot;])
+        for tup in tuples:
+            gamma, qcoef = {}, F(1)
+            for exp, coef in tup:
+                qcoef *= coef
+                for k, x in exp.items():
+                    gamma[k] = gamma.get(k, F(0)) + x
+            for src, dst, rate, label in (
+                (alpha, beta, F(str(mod[&quot;k_forward&quot;])), &quot;forward&quot;),
+                (beta, alpha, F(str(mod[&quot;k_reverse&quot;])), &quot;reverse&quot;),
+            ):
+                shifted_src = {k: src.get(k, F(0)) + gamma.get(k, F(0)) for k in set(src) | set(gamma)}
+                shifted_dst = {k: dst.get(k, F(0)) + gamma.get(k, F(0)) for k in set(dst) | set(gamma)}
+                nu = {k: shifted_dst.get(k, F(0)) - shifted_src.get(k, F(0)) for k in set(shifted_src) | set(shifted_dst)}
+                out.append({&quot;name&quot;: f&quot;{mod[&#x27;name&#x27;]}:{label}&quot;,
+                            &quot;source&quot;: {k: x for k, x in shifted_src.items() if x},
+                            &quot;nu&quot;: {k: x for k, x in nu.items() if x},
+                            &quot;coef&quot;: rate * qcoef})
+    return out
+
+
+def direct_properties(edges, w):
+    active = [e for e in edges if dot(e[&quot;nu&quot;], w)]
+    if not active:
+        weak_ok = True
+    else:
+        top = max(dot(e[&quot;source&quot;], w) for e in active)
+        weak_ok = all(dot(e[&quot;nu&quot;], w) &lt; 0 for e in active if dot(e[&quot;source&quot;], w) == top)
+    all_top = max((dot(e[&quot;source&quot;], w) for e in edges), default=F(0))
+    strong_ok = any(dot(e[&quot;source&quot;], w) == all_top and dot(e[&quot;nu&quot;], w) &lt; 0 for e in edges) \
+        if any(dot(e[&quot;nu&quot;], w) for e in edges) else True
+    return weak_ok, strong_ok
+
+
+def module_denominator_height(module, w):
+    total = F(0)
+    for factor in module[&quot;denominator_factors&quot;]:
+        total += max(dot(parse_v(term[&quot;exp&quot;]), w) for term in factor[&quot;terms&quot;])
+    return total
+
+
+def module_numerator_height(module, w):
+    total = F(0)
+    for factor in module.get(&quot;shared_numerator_factors&quot;, []):
+        total += max(dot(parse_v(term[&quot;exp&quot;]), w) for term in factor[&quot;terms&quot;])
+    return total
+
+
+def check_source_lift_identity(data, lifted, directions):
+    for wlist in directions:
+        w = {i: x for i, x in enumerate(wlist) if x}
+        dh = sum((module_denominator_height(m, w) for m in data[&quot;modules&quot;]), F(0))
+        for m in data[&quot;modules&quot;]:
+            qh = module_denominator_height(m, w)
+            for orient, source in ((&quot;forward&quot;, parse_v(m[&quot;source&quot;])),
+                                   (&quot;reverse&quot;, parse_v(m[&quot;target&quot;]))):
+                original_tau = dot(source, w) + module_numerator_height(m, w) - qh
+                group = [e for e in lifted if e[&quot;name&quot;] == f&quot;{m[&#x27;name&#x27;]}:{orient}&quot;]
+                lifted_height = max(dot(e[&quot;source&quot;], w) for e in group)
+                assert lifted_height == dh + original_tau
+
+
+def main():
+    cm = load(&quot;liebermeister_cm_AplusB_rev_2C.json&quot;)
+    result = certify(cm)
+    assert result[&quot;status&quot;] == &quot;CERTIFIED&quot;
+    assert result[&quot;strong_endotactic_status&quot;] == &quot;CERTIFIED&quot;
+    assert result[&quot;lifted_pair_count_upper_bound_without_expansion&quot;] == &quot;2&quot;
+    pairs = expanded_pairs(cm)
+    assert len(pairs) == 2
+    # In 3D, w not orthogonal to (-1,-1,2); test representative directions
+    # with exact ties and neutral source edges retained for the strong check.
+    for w in ([F(1), F(0), F(0)], [F(0), F(1), F(0)],
+              [F(0), F(0), F(1)], [F(1), F(1), F(1)],
+              [F(1), F(1), F(0)]):
+        vec = {i: x for i, x in enumerate(w) if x}
+        weak, strong = direct_properties(pairs, vec)
+        assert weak and strong
+    print(&quot;PASS: primary-source common-modular reversible A+B&lt;-&gt;2C fixture receives exact weak and strong certificates&quot;)
+
+    collision = load(&quot;cross_module_collision_bound.json&quot;)
+    collision_result = certify(collision)
+    assert collision_result[&quot;expanded_rate_box_for_N33&quot;][&quot;kappa_lower_bound&quot;] == &quot;1&quot;
+    assert collision_result[&quot;expanded_rate_box_for_N33&quot;][&quot;K_upper_bound&quot;] == &quot;2&quot;
+    collision_edges = expanded_pairs(collision)
+    merged_coefficients = {}
+    for edge in collision_edges:
+        key = (tuple(sorted(parse_v(edge[&quot;source&quot;]).items())),
+               tuple(sorted(parse_v(edge[&quot;nu&quot;]).items())))
+        merged_coefficients[key] = merged_coefficients.get(key, F(0)) + F(edge[&quot;coef&quot;])
+    assert merged_coefficients[((), ((0, F(1)),))] == 2
+    assert merged_coefficients[(((0, F(1)),), ((0, F(-1)),))] == 2
+    assert max(merged_coefficients.values()) &lt;= F(collision_result[&quot;expanded_rate_box_for_N33&quot;][&quot;K_upper_bound&quot;])
+    print(&quot;PASS: two identical unit modules aggregate to coefficient 2 and merged simple-graph K=2&quot;)
+
+    try:
+        certify(load(&quot;self_loop_rejected.json&quot;))
+    except ValueError as exc:
+        assert &quot;distinct endpoints&quot; in str(exc)
+    else:
+        raise AssertionError(&quot;self-loop/rank-zero input must be rejected by the schema&quot;)
+    print(&quot;PASS: nonempty schema rejects self-loops; rank zero is not an accepted case&quot;)
+
+    try:
+        certify(load(&quot;json_float_rejected.json&quot;))
+    except ValueError as exc:
+        assert &quot;JSON floats are rejected&quot; in str(exc)
+    else:
+        raise AssertionError(&quot;inexact JSON floating-point coefficients must be rejected&quot;)
+    try:
+        certify(load(&quot;scientific_rational_rejected.json&quot;))
+    except ValueError as exc:
+        assert &quot;without exponents&quot; in str(exc)
+    else:
+        raise AssertionError(&quot;scientific notation must not bypass charged rational bit length&quot;)
+    print(&quot;PASS: rational input rejects JSON floats and succinct scientific-exponent strings&quot;)
+
+    large_rational = load(&quot;large_rational_5001_digits.json&quot;)
+    large_expected = large_rational[&quot;modules&quot;][0][&quot;k_forward&quot;]
+    large_result = certify(large_rational)
+    large_bound = large_result[&quot;expanded_rate_box_for_N33&quot;][&quot;K_upper_bound&quot;]
+    assert len(large_expected) == 5001 and large_bound == large_expected
+    assert json.loads(json.dumps(large_result))[&quot;expanded_rate_box_for_N33&quot;][&quot;K_upper_bound&quot;] == large_expected
+    print(&quot;PASS: 5,001-digit exact rational input and output round-trip without float or truncation&quot;)
+
+    # Reproduce the large tuple-count case as a generated valid-schema fixture:
+    # explicit factors are charged input, but no expanded product support is built.
+    factor_count = 15000
+    one_plus_x = {&quot;terms&quot;: [{&quot;exp&quot;: {}}, {&quot;exp&quot;: {&quot;0&quot;: &quot;1&quot;}}]}
+    huge_count_input = {
+        &quot;schema&quot;: &quot;paired-reversible-rational-modules-v1&quot;,
+        &quot;dimension&quot;: 2,
+        &quot;modules&quot;: [
+            {&quot;name&quot;: &quot;many-denominator-factors&quot;, &quot;source&quot;: {}, &quot;target&quot;: {&quot;0&quot;: &quot;1&quot;},
+             &quot;k_forward&quot;: &quot;1&quot;, &quot;k_reverse&quot;: &quot;1&quot;,
+             &quot;denominator_factors&quot;: [one_plus_x for _ in range(factor_count)]},
+            {&quot;name&quot;: &quot;second-module&quot;, &quot;source&quot;: {&quot;1&quot;: &quot;1&quot;}, &quot;target&quot;: {},
+             &quot;k_forward&quot;: &quot;1&quot;, &quot;k_reverse&quot;: &quot;1&quot;,
+             &quot;denominator_factors&quot;: [{&quot;terms&quot;: [{&quot;exp&quot;: {}}]}]},
+        ],
+    }
+    huge_count_result = certify(huge_count_input)
+    exact_power = 1 &lt;&lt; factor_count
+    assert huge_count_result[&quot;per_module_rate_boxes&quot;][1][&quot;nonexpanded_pair_tuple_upper_bound&quot;] == str(exact_power)
+    assert huge_count_result[&quot;lifted_pair_count_upper_bound_without_expansion&quot;] == str(2 + 2 * exact_power)
+    assert json.loads(json.dumps(huge_count_result))[&quot;lifted_pair_count_upper_bound_without_expansion&quot;] == str(2 + 2 * exact_power)
+    with tempfile.TemporaryDirectory(prefix=&quot;cycle10-large-count-&quot;) as tmp:
+        generated_path = Path(tmp) / &quot;large_tuple_count.json&quot;
+        generated_path.write_text(json.dumps(huge_count_input))
+        cli = subprocess.run(
+            [sys.executable, str(ROOT / &quot;recognize_reversible_modules.py&quot;), str(generated_path)],
+            capture_output=True, text=True, check=False)
+        assert cli.returncode == 0, cli.stderr
+        cli_result = json.loads(cli.stdout)
+        assert cli_result[&quot;lifted_pair_count_upper_bound_without_expansion&quot;] == str(2 + 2 * exact_power)
+        assert cli_result[&quot;per_module_rate_boxes&quot;][1][&quot;nonexpanded_pair_tuple_upper_bound&quot;] == str(exact_power)
+    print(&quot;PASS: generated 15,000-factor CLI input reports exact 2^15000 tuple counts without expansion&quot;)
+
+    # A positive common activation factor with no constant term is allowed in
+    # the numerator and a nonsingular factor in the denominator.
+    activated = json.loads(json.dumps(cm))
+    activated[&quot;modules&quot;][0][&quot;shared_numerator_factors&quot;] = [
+        {&quot;terms&quot;: [{&quot;exp&quot;: {&quot;0&quot;: &quot;1&quot;}, &quot;coef&quot;: &quot;2&quot;}, {&quot;exp&quot;: {}, &quot;coef&quot;: &quot;1&quot;}]}
+    ]
+    activated[&quot;modules&quot;][0][&quot;denominator_factors&quot;].append(
+        {&quot;terms&quot;: [{&quot;exp&quot;: {}, &quot;coef&quot;: &quot;1&quot;}, {&quot;exp&quot;: {&quot;1&quot;: &quot;1&quot;}, &quot;coef&quot;: &quot;3&quot;}]}
+    )
+    activated_result = certify(activated)
+    assert activated_result[&quot;status&quot;] == &quot;CERTIFIED&quot; and activated_result[&quot;strong_endotactic_status&quot;] == &quot;CERTIFIED&quot;
+    activated_lift = expanded_pairs(activated)
+    check_source_lift_identity(
+        activated, activated_lift,
+        [list(map(F, vec)) for vec in itertools.product((-1, 0, 1), repeat=3)],
+    )
+    print(&quot;PASS: shared positive rational activation numerator/denominator factors preserve the paired certificate&quot;)
+
+    boundary = load(&quot;weak_not_strong_distinct_linkage_spans.json&quot;)
+    boundary_result = certify(boundary)
+    assert boundary_result[&quot;status&quot;] == &quot;CERTIFIED&quot;
+    assert boundary_result[&quot;strong_endotactic_status&quot;] == &quot;UNKNOWN&quot;
+    lifted = expanded_pairs(boundary)
+    check_source_lift_identity(
+        boundary, lifted,
+        [list(map(F, vec)) for vec in itertools.product((-1, 0, 1), repeat=3)],
+    )
+    w = {0: F(1), 2: F(-1)}
+    weak, strong = direct_properties(lifted, w)
+    assert weak and not strong
+    print(&quot;PASS: 27 exact directions preserve source heights/ties under distinct-denominator clearing; weak but not standard-strong witness replays&quot;)
+
+    # This stays a compact input while the conceptual common-denominator lift
+    # has hundreds of millions of labelled edges; certification must not build it.
+    R = 24
+    stress = {&quot;schema&quot;: &quot;paired-reversible-rational-modules-v1&quot;, &quot;dimension&quot;: 2*R, &quot;modules&quot;: []}
+    for i in range(R):
+        stress[&quot;modules&quot;].append({
+            &quot;name&quot;: f&quot;S{i}&lt;-&gt;P{i}&quot;, &quot;source&quot;: {str(i): &quot;1&quot;},
+            &quot;target&quot;: {str(R+i): &quot;1&quot;}, &quot;k_forward&quot;: &quot;1&quot;, &quot;k_reverse&quot;: &quot;1&quot;,
+            &quot;denominator_factors&quot;: [{&quot;terms&quot;: [
+                {&quot;exp&quot;: {}, &quot;coef&quot;: &quot;1&quot;}, {&quot;exp&quot;: {str(i): &quot;1&quot;}, &quot;coef&quot;: &quot;1&quot;}
+            ]}],
+        })
+    compact = certify(stress)
+    expected_lift = 2 * R * (2 ** (R-1))
+    assert compact[&quot;status&quot;] == &quot;CERTIFIED&quot;
+    assert compact[&quot;lifted_pair_count_upper_bound_without_expansion&quot;] == str(expected_lift)
+    print(f&quot;PASS: {R}-module factorized input is certified without expansion (lift upper bound {expected_lift:,} edges)&quot;)
+
+    alt = load(&quot;schnell_mendoza_three_alternative_substrates.json&quot;)
+    network, cert, decay = compile_model(alt)
+    assert cert[&quot;status&quot;] == &quot;REFUTED&quot; and decay is not None
+    assert [x[&quot;minimum_exponential_decay_rate&quot;] for x in decay[&quot;substrate_bounds&quot;]] == [&quot;4/15&quot;, &quot;2/5&quot;, &quot;16/45&quot;]
+    assert [x[&quot;Eq38_enzyme_scale_ratio&quot;] for x in decay[&quot;QSSA_regime_diagnostic&quot;][&quot;ratios&quot;]] == [&quot;1/3&quot;, &quot;1/6&quot;, &quot;2/9&quot;]
+    assert decay[&quot;QSSA_regime_diagnostic&quot;][&quot;maximum_Eq38_enzyme_scale_ratio&quot;] == &quot;1/3&quot;
+    assert len(network[&quot;edges&quot;]) == 3
+    r = {0: F(1)}
+    active = []
+    for edge in network[&quot;edges&quot;]:
+        nu, source = parse_v(edge[&quot;nu&quot;]), parse_v(edge[&quot;source&quot;])
+        drift = dot(nu, r)
+        if drift:
+            active.append((edge[&quot;name&quot;], drift, dot(source, r)))
+    assert len(active) == 1 and active[0][0] == &quot;S1-&gt;P1&quot;
+    min_score = min(row[2] for row in active)
+    assert any(score == min_score and drift &lt; 0 for _, drift, score in active)
+    print(&quot;PASS: Schnell-Mendoza reduced law yields exact witness/decay bounds; synthetic fixture max Eq. 38 ratio 1/3 is not QSSA-regime evidence&quot;)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/79a3399099bcd9e0230aef4b2fe3a15bee622a3c336f90e4406b920820c13877.py">Exact original</a></p></html>

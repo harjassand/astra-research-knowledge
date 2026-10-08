@@ -1,0 +1,88 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/programmable_biology/circuit_reliability/cost_matched_counterexample.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/programmable_biology/circuit_reliability/cost_matched_counterexample.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Reproduce the exact-law comparison used in FINAL_REPORT.md.
+
+The regulated finite-cap birth-death chain has rates
+    n -&gt; n+1 at a (M-n), and n -&gt; n-1 at gamma*n.
+Its stationary law is Binomial(M, a/(a+gamma)).
+
+The comparator has constant attempted birth rate b when n&lt;M, the same cap M,
+and the same per-molecule loss gamma. Choose b so its stationary mean matches
+the regulated chain. Its stationary law is a truncated Poisson. Both chains
+then have the same mean accepted production rate, gamma*E[N].
+&quot;&quot;&quot;
+
+from decimal import Decimal, getcontext
+from math import comb, factorial
+
+
+getcontext().prec = 50
+
+
+def z(q: Decimal, maximum: int) -&gt; Decimal:
+    return sum((q**k / Decimal(factorial(k)) for k in range(maximum + 1)), Decimal(0))
+
+
+def truncated_poisson_mean(q: Decimal, maximum: int) -&gt; Decimal:
+    return q * z(q, maximum - 1) / z(q, maximum)
+
+
+def binomial_cdf_below(m: int, p: Decimal, threshold: int) -&gt; Decimal:
+    return sum(
+        (Decimal(comb(m, k)) * p**k * (Decimal(1) - p) ** (m - k)
+         for k in range(threshold)),
+        Decimal(0),
+    )
+
+
+def truncated_poisson_cdf_below(q: Decimal, m: int, threshold: int) -&gt; Decimal:
+    return sum((q**k / Decimal(factorial(k)) for k in range(threshold)), Decimal(0)) / z(q, m)
+
+
+def truncated_poisson_variance(q: Decimal, m: int, mean: Decimal) -&gt; Decimal:
+    second = sum(
+        (Decimal(k * k) * q**k / Decimal(factorial(k)) for k in range(m + 1)),
+        Decimal(0),
+    ) / z(q, m)
+    return second - mean * mean
+
+
+def main() -&gt; None:
+    m = 10
+    a = Decimal(1)
+    gamma = Decimal(1)
+    p = a / (a + gamma)
+    target_mean = Decimal(m) * p
+
+    low, high = Decimal(0), Decimal(100)
+    for _ in range(220):
+        mid = (low + high) / 2
+        if truncated_poisson_mean(mid, m) &lt; target_mean:
+            low = mid
+        else:
+            high = mid
+    q = (low + high) / 2
+
+    feedback_dropout = (Decimal(1) - p) ** m
+    feedback_low_tail = binomial_cdf_below(m, p, 5)
+    constitutive_dropout = Decimal(1) / z(q, m)
+    constitutive_low_tail = truncated_poisson_cdf_below(q, m, 5)
+    feedback_variance = Decimal(m) * p * (Decimal(1) - p)
+    constitutive_variance = truncated_poisson_variance(q, m, target_mean)
+
+    print(f&quot;M={m}, a={a}, gamma={gamma}, p={p}&quot;)
+    print(f&quot;matched_mean={target_mean}&quot;)
+    print(f&quot;constant_attempt_rate_b={q * gamma}&quot;)
+    print(f&quot;constant_mean_check={truncated_poisson_mean(q, m)}&quot;)
+    print(f&quot;feedback_mean_accepted_births={gamma * target_mean}&quot;)
+    print(f&quot;constant_mean_accepted_births={gamma * truncated_poisson_mean(q, m)}&quot;)
+    print(f&quot;feedback_dropout_P_N0={feedback_dropout}&quot;)
+    print(f&quot;constant_dropout_P_N0={constitutive_dropout}&quot;)
+    print(f&quot;feedback_P_N_lt_5={feedback_low_tail}&quot;)
+    print(f&quot;constant_P_N_lt_5={constitutive_low_tail}&quot;)
+    print(f&quot;feedback_variance={feedback_variance}&quot;)
+    print(f&quot;constant_variance={constitutive_variance}&quot;)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/4b41983885161f93724e7a3dcc029a7280db42552cffb6001ee25f8c35fb60b2.py">Exact original</a></p></html>

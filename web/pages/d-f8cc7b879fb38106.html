@@ -1,0 +1,264 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c9_skull_wave_hostile/code/replay_model.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c9_skull_wave_hostile/code/replay_model.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Independent NumPy replay of the released SkullWave forward-difference run.
+
+The only inputs are parameter/initial-condition/discretization definitions
+transcribed from Tissue_model_simulator.nb.  No Mathematica kernel is needed.
+Run from the workspace root:
+    python3 work/agents/c9_skull_wave_hostile/code/replay_model.py
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import csv
+import json
+import math
+from pathlib import Path
+import time
+
+import numpy as np
+
+ROOT = Path(__file__).resolve().parents[4]
+SOURCE = ROOT / &quot;work/agents/c8_morphogenesis_control/cycle9/deeper_attack/source_data&quot;
+OUT = ROOT / &quot;work/agents/c9_skull_wave_hostile/results&quot;
+
+
+def tridiagonal_solve(lower: float, diagonal: np.ndarray, upper: float,
+                      rhs: np.ndarray) -&gt; np.ndarray:
+    &quot;&quot;&quot;Thomas solve for constant off-diagonals and a general diagonal.&quot;&quot;&quot;
+    n = rhs.size
+    c = np.empty(n - 1, dtype=float)
+    d = np.empty(n, dtype=float)
+    piv = diagonal[0]
+    c[0] = upper / piv
+    d[0] = rhs[0] / piv
+    for i in range(1, n):
+        piv = diagonal[i] - lower * c[i - 1]
+        if i &lt; n - 1:
+            c[i] = upper / piv
+        d[i] = (rhs[i] - lower * d[i - 1]) / piv
+    x = np.empty(n, dtype=float)
+    x[-1] = d[-1]
+    for i in range(n - 2, -1, -1):
+        x[i] = d[i] - c[i] * x[i + 1]
+    return x
+
+
+def source_matrix(path: Path) -&gt; np.ndarray:
+    return np.asarray([[float(z) for z in row] for row in csv.reader(path.open())])
+
+
+def run_full(eta_pa_s: float = 1.0e3, alpha_input: float = 3.5e-6,
+             nx: int = 200, tmax: float = 8.0, nt: int = 100,
+             alpha_stress_scale: float = 1.0,
+             profile_width: float = 375.0) -&gt; dict:
+    # SI Table S1 uses 10^4 Pa s; the published Notebook&#x27;s `params` cell
+    # instead uses 10^3 Pa s.  alpha_stress_scale=1 reproduces that Notebook:
+    # its alpha is multiplied by E in kg/(um h^2), without division by 12.96.
+    L = 1500.0
+    dx = 2.0 * L / nx
+    dt = tmax / nt
+    x = np.linspace(-L, L, nx + 1)
+    rhoA, rhoB = 0.0067, 0.0077
+    rhoh = 0.001
+    tau = 10.0
+    D = 15.0
+    pa_to_new = 1.0 / (1.0e6 * (1.0 / 3600.0) ** 2)  # 12.96
+    sec_to_hr = 1.0 / 3600.0
+    EA = 30.0 * pa_to_new
+    EB = 1000.0 * pa_to_new
+    gapE = EB - EA
+    eta = eta_pa_s * pa_to_new * sec_to_hr
+    gamma = 0.8e3 * pa_to_new * sec_to_hr  # source parameter cell
+
+    rho = rhoB - 0.0005 * (1.0 + np.tanh(x / profile_width))
+    phi = 0.5 * (1.0 - np.tanh(x / profile_width))
+    rho_left, rho_right = float(rho[0]), float(rho[-1])
+    phi_left, phi_right = float(phi[0]), float(phi[-1])
+    rho[0], rho[-1] = rho_left, rho_right
+    phi[0], phi[-1] = phi_left, phi_right
+
+    nint = nx - 1
+    off = eta / dx**2
+    diag = np.full(nint, -2.0 * off - gamma)
+    vel_hist = np.zeros((nt + 1, nx + 1), dtype=float)
+    rho_hist = np.empty((nt + 1, nx + 1), dtype=float)
+    phi_hist = np.empty((nt + 1, nx + 1), dtype=float)
+    rho_hist[0], phi_hist[0] = rho, phi
+
+    for m in range(nt):
+        drho = (rho[2:] - rho[:-2]) / (2.0 * dx)
+        dphi = (phi[2:] - phi[:-2]) / (2.0 * dx)
+        E = EA + gapE * phi[1:-1]
+        force_per_rho = E * drho / rho[1:-1] + np.log(rho[1:-1] / rhoh) * gapE * dphi
+        v_interior = tridiagonal_solve(off, diag, off, force_per_rho)
+        v = np.zeros(nx + 1)
+        v[1:-1] = v_interior
+
+        # Exactly the expanded product rule in the Notebook&#x27;s centered
+        # discretization of rho_t + rho v_x + v rho_x.
+        dv = (v[2:] - v[:-2]) / (2.0 * dx)
+        growth_A = (rhoA - rho[1:-1]) / (rhoA * tau)
+        growth_B = (rhoB - rho[1:-1]) / (rhoB * tau)
+        growth = growth_A * (1.0 - phi[1:-1]) + growth_B * phi[1:-1]
+        rho_rhs = -rho[1:-1] * dv - v[1:-1] * drho + growth * rho[1:-1]
+
+        d2phi = (phi[2:] - 2.0 * phi[1:-1] + phi[:-2]) / dx**2
+        f_diff = D * (drho / rho[1:-1] * dphi + d2phi)
+        adv = -v[1:-1] * dphi
+        delta_k = growth_B - growth_A
+        stiff = alpha_input * alpha_stress_scale * gapE
+        reaction = (delta_k + stiff) * phi[1:-1] * (1.0 - phi[1:-1])
+        phi_rhs = adv + f_diff + reaction
+
+        rho_next = rho.copy()
+        phi_next = phi.copy()
+        rho_next[1:-1] += dt * rho_rhs
+        phi_next[1:-1] += dt * phi_rhs
+        rho_next[0], rho_next[-1] = rho_left, rho_right
+        phi_next[0], phi_next[-1] = phi_left, phi_right
+        if not np.all(np.isfinite(rho_next)) or not np.all(np.isfinite(phi_next)):
+            raise FloatingPointError(f&quot;nonfinite at time step {m}&quot;)
+        rho, phi = rho_next, phi_next
+        vel_hist[m] = v
+        rho_hist[m + 1], phi_hist[m + 1] = rho, phi
+    # The final velocity is evaluated from the final rho/phi, matching the
+    # source loop&#x27;s final Solve-for-V iteration.
+    drho = (rho[2:] - rho[:-2]) / (2.0 * dx)
+    dphi = (phi[2:] - phi[:-2]) / (2.0 * dx)
+    E = EA + gapE * phi[1:-1]
+    force_per_rho = E * drho / rho[1:-1] + np.log(rho[1:-1] / rhoh) * gapE * dphi
+    vel_hist[-1, 1:-1] = tridiagonal_solve(off, diag, off, force_per_rho)
+
+    return {&quot;x&quot;: x, &quot;rho&quot;: rho_hist, &quot;phi&quot;: phi_hist, &quot;v&quot;: vel_hist,
+            &quot;dx&quot;: dx, &quot;dt&quot;: dt, &quot;D&quot;: D, &quot;EA&quot;: EA, &quot;EB&quot;: EB,
+            &quot;alpha_input&quot;: alpha_input, &quot;eta_pa_s&quot;: eta_pa_s,
+            &quot;eta_internal&quot;: eta, &quot;gamma_internal&quot;: gamma,
+            &quot;stress_scale&quot;: alpha_stress_scale,
+            &quot;profile_width&quot;: profile_width}
+
+
+def compare_full(run: dict) -&gt; dict:
+    comparisons = {}
+    for field in (&quot;rho&quot;, &quot;phi&quot;, &quot;v&quot;):
+        saved = source_matrix(SOURCE / f&quot;best_model_data_{field}_1.csv&quot;)
+        ours = run[field]
+        # Saved rows are time x position, while the Mathematica arrays are
+        # position x time.  Published matrices contain 101 time rows.
+        if saved.shape == ours.shape[::-1]:
+            saved = saved.T
+        if saved.shape != ours.shape:
+            comparisons[field] = {&quot;shape_saved&quot;: saved.shape,
+                                  &quot;shape_replay&quot;: ours.shape}
+            continue
+        d = np.abs(saved - ours)
+        comparisons[field] = {&quot;max_abs&quot;: float(np.max(d)),
+                              &quot;mean_abs&quot;: float(np.mean(d)),
+                              &quot;at&quot;: [int(i) for i in np.unravel_index(np.argmax(d), d.shape)]}
+    return comparisons
+
+
+def level_position(x: np.ndarray, y: np.ndarray, level: float = 0.5) -&gt; float:
+    # First crossing from &gt; level to &lt;= level, linearly interpolated.
+    idx = np.where((y[:-1] &gt;= level) &amp; (y[1:] &lt;= level))[0]
+    if idx.size == 0:
+        return float(&quot;nan&quot;)
+    i = int(idx[0])
+    return float(x[i] + (level - y[i]) * (x[i + 1] - x[i]) / (y[i + 1] - y[i]))
+
+
+def scalar_kpp(D: float, r: float, width: float = 375.0,
+               L: float = 1500.0, dx: float = 1.0, dt: float = 0.002,
+               tmax: float = 8.0) -&gt; dict:
+    &quot;&quot;&quot;Explicit finite-difference scalar FKPP on the released tanh initial state.&quot;&quot;&quot;
+    x = np.arange(-L, L + 0.5 * dx, dx)
+    phi = 0.5 * (1.0 - np.tanh(x / width))
+    phi[0], phi[-1] = 0.5 * (1.0 - math.tanh(-L / width)), 0.5 * (1.0 - math.tanh(L / width))
+    left, right = phi[0], phi[-1]
+    n = round(tmax / dt)
+    record = []
+    for m in range(n + 1):
+        if m % max(1, round(0.2 / dt)) == 0 or m == n:
+            record.append((m * dt, level_position(x, phi)))
+        if m == n:
+            break
+        d2 = (phi[2:] - 2.0 * phi[1:-1] + phi[:-2]) / dx**2
+        rhs = D * d2 + r * phi[1:-1] * (1.0 - phi[1:-1])
+        phi[1:-1] += dt * rhs
+        phi[0], phi[-1] = left, right
+    return {&quot;D&quot;: D, &quot;r&quot;: r, &quot;width&quot;: width, &quot;lambda_tail&quot;: 2.0 / width,
+            &quot;lambda_star&quot;: math.sqrt(r / D),
+            &quot;c_min_steep_KPP&quot;: 2.0 * math.sqrt(D * r),
+            &quot;c_tail_linear_dispersion&quot;: D * (2.0 / width) + r / (2.0 / width),
+            &quot;positions&quot;: record}
+
+
+def main() -&gt; None:
+    started = time.perf_counter()
+    OUT.mkdir(parents=True, exist_ok=True)
+    replay = run_full()
+    obs = compare_full(replay)
+    # An exactly reduced scalar PDE is a deliberate counterexample to using
+    # the minimum KPP speed as the realized front speed for arbitrary starts.
+    r = replay[&quot;alpha_input&quot;] * (replay[&quot;EB&quot;] - replay[&quot;EA&quot;])
+    scalar = scalar_kpp(D=replay[&quot;D&quot;], r=r)
+    # Parameter sensitivity is a diagnostic, not an alternative fit.  The
+    # physical-pressure interpretation of alpha would require alpha/12.96
+    # after E is converted to kg/(um h^2).  The table also prints eta=10^4 Pa s
+    # while the executable parameter cell uses 10^3 Pa s.
+    def model_metrics(z: dict) -&gt; dict:
+        positions = np.array([level_position(z[&quot;x&quot;], row) for row in z[&quot;phi&quot;]])
+        times = np.arange(positions.size) * z[&quot;dt&quot;]
+        use = (times &gt;= 0.0) &amp; (times &lt;= 6.0)
+        slope = float(np.polyfit(times[use], positions[use], 1)[0])
+        front_v = []
+        for j, pos in enumerate(positions):
+            idx = int(np.clip(np.searchsorted(z[&quot;x&quot;], pos), 1, len(z[&quot;x&quot;]) - 1))
+            frac = (pos - z[&quot;x&quot;][idx - 1]) / (z[&quot;x&quot;][idx] - z[&quot;x&quot;][idx - 1])
+            front_v.append(float((1 - frac) * z[&quot;v&quot;][j, idx - 1] + frac * z[&quot;v&quot;][j, idx]))
+        return {&quot;x_half_6h_um&quot;: float(positions[75]),
+                &quot;x_half_8h_um&quot;: float(positions[-1]),
+                &quot;OLS_front_speed_0_6_um_per_h&quot;: slope,
+                &quot;v_at_x0_t0_um_per_h&quot;: float(z[&quot;v&quot;][0, 100]),
+                &quot;v_at_x0_t6_um_per_h&quot;: float(z[&quot;v&quot;][75, 100]),
+                &quot;v_at_phi_half_t0_um_per_h&quot;: front_v[0],
+                &quot;v_at_phi_half_t6_um_per_h&quot;: front_v[75]}
+
+    scenarios = {}
+    for name, kwargs in {
+        &quot;released_notebook&quot;: {},
+        &quot;table_eta_1e4&quot;: {&quot;eta_pa_s&quot;: 1.0e4},
+        &quot;alpha_converted_if_table_alpha_is_per_Pa_per_h&quot;: {
+            &quot;alpha_stress_scale&quot;: 1.0 / 12.96},
+        &quot;both_table_eta_and_physical_alpha_conversion&quot;: {
+            &quot;eta_pa_s&quot;: 1.0e4, &quot;alpha_stress_scale&quot;: 1.0 / 12.96},
+    }.items():
+        z = run_full(**kwargs)
+        scenarios[name] = {&quot;parameters&quot;: {k: z[k] for k in (
+            &quot;eta_pa_s&quot;, &quot;eta_internal&quot;, &quot;alpha_input&quot;, &quot;stress_scale&quot;,
+            &quot;profile_width&quot;)}, &quot;metrics&quot;: model_metrics(z)}
+    # The released full-model profile translation number is parsed from its
+    # published parameter CSV (input data, not re-fit here).
+    summary = {
+        &quot;runtime&quot;: {&quot;numpy&quot;: np.__version__, &quot;scipy&quot;: &quot;not used&quot;, &quot;wall_time_s&quot;: None},
+        &quot;replay&quot;: {&quot;parameters&quot;: {k: v for k, v in replay.items()
+                                   if k not in (&quot;x&quot;, &quot;rho&quot;, &quot;phi&quot;, &quot;v&quot;)},
+                   &quot;comparison_to_saved_source_arrays&quot;: obs,
+                   &quot;metrics&quot;: model_metrics(replay),
+                   &quot;phi_half_positions_um&quot;: [level_position(replay[&quot;x&quot;], row)
+                                              for row in replay[&quot;phi&quot;]]},
+        &quot;sensitivity_scenarios&quot;: scenarios,
+        &quot;scalar_kpp_counterexample&quot;: scalar,
+        &quot;source_model_transcription&quot;: {
+            &quot;parameters&quot;: &quot;Notebook final executable parameter cell, In[513], source lines ~150-202&quot;,
+            &quot;full_pde&quot;: &quot;PDEsys output Out[520], including expanded force balance&quot;,
+            &quot;scheme&quot;: &quot;pdeDiscretized1 centered spatial differences + forward time, In[534], loop In[575]&quot;,
+            &quot;mesh&quot;: &quot;L=1500, Nx=200, tmax=8, T=100; saved evaluation reports dx=15, dt=.08&quot;
+        }
+    }
+    summary[&quot;runtime&quot;][&quot;wall_time_s&quot;] = time.perf_counter() - started
+    (OUT / &quot;replay_summary.json&quot;).write_text(json.dumps(summary, indent=2, allow_nan=False) + &quot;\n&quot;)
+    print(json.dumps(summary, indent=2, allow_nan=False))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/a5d00f699b523b111b7a644c9fcbf10c976c6d7b14a3a21f1b17fbff14cadc0b.py">Exact original</a></p></html>

@@ -1,0 +1,384 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c8_implicit_rational_geometry/recognize_sparse_rational.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c8_implicit_rational_geometry/recognize_sparse_rational.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact bounded recognizer for positive sparse rational-rate endotacticity.
+
+The search is formulated directly in sparse support data. It never expands a
+common denominator or a Minkowski sum. For each candidate outward channel e,
+Z3 decides the existential QF-LRA formula
+
+    w.nu_e &gt; 0 and, for every f, w.nu_f != 0 -&gt; tau_e(w) &gt;= tau_f(w),
+
+where tau_f = max_{a in P_f} w.a - max_{b in Q_f} w.b. The formula keeps all
+exact ties and removes neutral channels before the comparison. SAT models are
+rechecked with Python Fraction arithmetic. UNSAT is exact for Z3&#x27;s rational
+linear-arithmetic decision procedure; the solver/version is included in the
+output. A wall-clock or check budget yields UNKNOWN, never CERTIFIED.
+
+Input JSON:
+  {&quot;edges&quot;:[{&quot;name&quot;:&quot;e&quot;,&quot;nu&quot;:[&quot;1&quot;,&quot;0&quot;],
+    &quot;P&quot;:[{&quot;exp&quot;:[&quot;0&quot;,&quot;0&quot;],&quot;coef&quot;:&quot;2&quot;}],
+    &quot;Q&quot;:[{&quot;exp&quot;:[&quot;0&quot;,&quot;0&quot;],&quot;coef&quot;:&quot;1&quot;}]}]}
+
+For convenience, a support term may be given as just an exponent vector; its
+coefficient is then 1. Exponents and jumps are exact rational strings. All
+coefficients must be positive rationals. Real/rational exponents are accepted
+because x^alpha is positive and well-defined for x&gt;0.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+import time
+from dataclasses import dataclass
+from fractions import Fraction as F
+from pathlib import Path
+from typing import Any, Sequence
+
+try:
+    import z3
+except ImportError:  # pragma: no cover - exercised on minimal installations
+    z3 = None
+
+
+Vector = tuple[F, ...]
+
+
+@dataclass(frozen=True)
+class Term:
+    exponent: Vector
+    coefficient: F
+
+
+@dataclass(frozen=True)
+class Edge:
+    name: str
+    nu: Vector
+    P: tuple[Term, ...]
+    Q: tuple[Term, ...]
+
+
+def frac(raw: Any) -&gt; F:
+    if isinstance(raw, bool):
+        raise ValueError(&quot;booleans are not rational numbers&quot;)
+    return F(str(raw))
+
+
+def parse_vector(raw: Any, where: str) -&gt; Vector:
+    if not isinstance(raw, list) or not raw:
+        raise ValueError(f&quot;{where} must be a nonempty vector&quot;)
+    return tuple(frac(x) for x in raw)
+
+
+def parse_terms(raw: Any, where: str) -&gt; tuple[Term, ...]:
+    if not isinstance(raw, list) or not raw:
+        raise ValueError(f&quot;{where} support must be a nonempty list&quot;)
+    terms: list[Term] = []
+    for j, item in enumerate(raw):
+        if isinstance(item, dict):
+            if &quot;exp&quot; not in item:
+                raise ValueError(f&quot;{where}[{j}] is missing exp&quot;)
+            exponent = parse_vector(item[&quot;exp&quot;], f&quot;{where}[{j}].exp&quot;)
+            coefficient = frac(item.get(&quot;coef&quot;, &quot;1&quot;))
+        else:
+            exponent = parse_vector(item, f&quot;{where}[{j}]&quot;)
+            coefficient = F(1)
+        if coefficient &lt;= 0:
+            raise ValueError(f&quot;{where}[{j}] coefficient must be strictly positive&quot;)
+        terms.append(Term(exponent, coefficient))
+    dims = {len(t.exponent) for t in terms}
+    if len(dims) != 1:
+        raise ValueError(f&quot;{where} has inconsistent exponent dimensions&quot;)
+    # Aggregate repeated support points. Positivity makes their sum nonzero.
+    aggregate: dict[Vector, F] = {}
+    for t in terms:
+        aggregate[t.exponent] = aggregate.get(t.exponent, F(0)) + t.coefficient
+    return tuple(Term(exp, coefficient) for exp, coefficient in sorted(aggregate.items()))
+
+
+def parse_network(data: Any) -&gt; tuple[list[Edge], int]:
+    if not isinstance(data, dict) or not isinstance(data.get(&quot;edges&quot;), list) or not data[&quot;edges&quot;]:
+        raise ValueError(&quot;input must contain a nonempty edges list&quot;)
+    edges: list[Edge] = []
+    for j, raw in enumerate(data[&quot;edges&quot;]):
+        if not isinstance(raw, dict):
+            raise ValueError(f&quot;edges[{j}] must be an object&quot;)
+        name = str(raw.get(&quot;name&quot;, f&quot;e{j}&quot;))
+        nu = parse_vector(raw.get(&quot;nu&quot;), f&quot;{name}.nu&quot;)
+        P = parse_terms(raw.get(&quot;P&quot;), f&quot;{name}.P&quot;)
+        Q = parse_terms(raw.get(&quot;Q&quot;), f&quot;{name}.Q&quot;)
+        if any(len(t.exponent) != len(nu) for t in (*P, *Q)):
+            raise ValueError(f&quot;{name}: jump and support dimensions differ&quot;)
+        edges.append(Edge(name, nu, P, Q))
+    d = len(edges[0].nu)
+    if any(len(e.nu) != d for e in edges):
+        raise ValueError(&quot;all reaction vectors must have the same dimension&quot;)
+    return edges, d
+
+
+def dot_fraction(a: Sequence[F], b: Sequence[F]) -&gt; F:
+    return sum((x * y for x, y in zip(a, b)), F(0))
+
+
+def exact_failure(edges: Sequence[Edge], w: Vector) -&gt; dict[str, Any] | None:
+    &quot;&quot;&quot;Return a verified outward top-tie witness, or None.&quot;&quot;&quot;
+    rows: list[dict[str, Any]] = []
+    for edge in edges:
+        drift = dot_fraction(edge.nu, w)
+        if drift == 0:
+            continue  # neutral channels are excluded before finding the top
+        hp = max(dot_fraction(t.exponent, w) for t in edge.P)
+        hq = max(dot_fraction(t.exponent, w) for t in edge.Q)
+        rows.append({&quot;name&quot;: edge.name, &quot;drift&quot;: drift, &quot;tau&quot;: hp - hq})
+    if not rows:
+        return None
+    top = max(row[&quot;tau&quot;] for row in rows)
+    bad = [row[&quot;name&quot;] for row in rows if row[&quot;tau&quot;] == top and row[&quot;drift&quot;] &gt; 0]
+    if not bad:
+        return None
+    return {
+        &quot;direction&quot;: [str(x) for x in w],
+        &quot;top_tau&quot;: str(top),
+        &quot;outward_top_ties&quot;: bad,
+        &quot;active&quot;: [
+            {&quot;name&quot;: row[&quot;name&quot;], &quot;w_dot_nu&quot;: str(row[&quot;drift&quot;]),
+             &quot;tau&quot;: str(row[&quot;tau&quot;]), &quot;top_tied&quot;: row[&quot;tau&quot;] == top}
+            for row in rows
+        ],
+    }
+
+
+def exact_strong_failure(edges: Sequence[Edge], w: Vector) -&gt; dict[str, Any] | None:
+    &quot;&quot;&quot;Check failure of the strong inward-at-global-source-maximum clause.&quot;&quot;&quot;
+    rows = []
+    for edge in edges:
+        drift = dot_fraction(edge.nu, w)
+        hp = max(dot_fraction(t.exponent, w) for t in edge.P)
+        hq = max(dot_fraction(t.exponent, w) for t in edge.Q)
+        rows.append({&quot;name&quot;: edge.name, &quot;drift&quot;: drift, &quot;tau&quot;: hp - hq})
+    if not any(row[&quot;drift&quot;] != 0 for row in rows):
+        return None
+    top = max(row[&quot;tau&quot;] for row in rows)  # neutral channels are included here
+    top_rows = [row for row in rows if row[&quot;tau&quot;] == top]
+    if any(row[&quot;drift&quot;] &lt; 0 for row in top_rows):
+        return None
+    return {
+        &quot;direction&quot;: [str(x) for x in w],
+        &quot;top_all_source_tau&quot;: str(top),
+        &quot;top_channels&quot;: [
+            {&quot;name&quot;: row[&quot;name&quot;], &quot;w_dot_nu&quot;: str(row[&quot;drift&quot;]),
+             &quot;neutral&quot;: row[&quot;drift&quot;] == 0}
+            for row in top_rows
+        ],
+        &quot;active_channel_count&quot;: sum(row[&quot;drift&quot;] != 0 for row in rows),
+    }
+
+
+def z3_rational(x: F):
+    return z3.RealVal(f&quot;{x.numerator}/{x.denominator}&quot;)
+
+
+def z3_dot(vector: Sequence[F], variables: Sequence[Any]):
+    return z3.Sum([z3_rational(a) * v for a, v in zip(vector, variables)])
+
+
+def z3_max(expressions: Sequence[Any]):
+    out = expressions[0]
+    for expression in expressions[1:]:
+        out = z3.If(out &gt;= expression, out, expression)
+    return out
+
+
+def model_fraction(value: Any) -&gt; F:
+    value = z3.simplify(value)
+    if not z3.is_rational_value(value):
+        raise ValueError(f&quot;solver returned a non-rational Real model value: {value}&quot;)
+    return F(value.numerator_as_long(), value.denominator_as_long())
+
+
+def formula_for_outward_edge(edges: Sequence[Edge], dimension: int, bad_index: int):
+    w = [z3.Real(f&quot;w_{i}&quot;) for i in range(dimension)]
+    projected = [z3_dot(edge.nu, w) for edge in edges]
+    tau = []
+    for edge in edges:
+        hp = z3_max([z3_dot(term.exponent, w) for term in edge.P])
+        hq = z3_max([z3_dot(term.exponent, w) for term in edge.Q])
+        tau.append(hp - hq)
+    constraints = [projected[bad_index] &gt; 0]
+    for j in range(len(edges)):
+        constraints.append(z3.Implies(projected[j] != 0, tau[bad_index] &gt;= tau[j]))
+    return w, z3.And(*constraints)
+
+
+def formula_for_strong_failure(edges: Sequence[Edge], dimension: int):
+    &quot;&quot;&quot;A direction with an active edge but no inward edge at global max source.&quot;&quot;&quot;
+    w = [z3.Real(f&quot;sw_{i}&quot;) for i in range(dimension)]
+    projected = [z3_dot(edge.nu, w) for edge in edges]
+    tau = []
+    for edge in edges:
+        hp = z3_max([z3_dot(term.exponent, w) for term in edge.P])
+        hq = z3_max([z3_dot(term.exponent, w) for term in edge.Q])
+        tau.append(hp - hq)
+    top_all = z3_max(tau)
+    constraints = [z3.Or(*[value != 0 for value in projected])]
+    constraints.extend(z3.Implies(tau[i] == top_all, projected[i] &gt;= 0)
+                       for i in range(len(edges)))
+    return w, z3.And(*constraints)
+
+
+def recognize(edges: Sequence[Edge], dimension: int, *, property_name: str,
+              timeout_ms: int | None, max_checks: int | None,
+              rlimit: int | None) -&gt; dict[str, Any]:
+    if z3 is None:
+        return {&quot;status&quot;: &quot;UNKNOWN&quot;, &quot;reason&quot;: &quot;z3-solver Python package is unavailable&quot;,
+                &quot;checks_completed&quot;: 0}
+    started = time.monotonic()
+    unsat_edges: list[str] = []
+    checks = 0
+    for i, edge in enumerate(edges):
+        if max_checks is not None and checks &gt;= max_checks:
+            return {&quot;status&quot;: &quot;UNKNOWN&quot;, &quot;reason&quot;: &quot;check budget exhausted&quot;,
+                    &quot;checks_completed&quot;: checks, &quot;unsat_candidates&quot;: unsat_edges,
+                    &quot;requested_property&quot;: property_name}
+        remaining_ms = None
+        if timeout_ms is not None:
+            remaining_ms = timeout_ms - int(1000 * (time.monotonic() - started))
+            if remaining_ms &lt;= 0:
+                return {&quot;status&quot;: &quot;UNKNOWN&quot;, &quot;reason&quot;: &quot;wall-clock budget exhausted&quot;,
+                        &quot;checks_completed&quot;: checks, &quot;unsat_candidates&quot;: unsat_edges,
+                        &quot;requested_property&quot;: property_name}
+        w, formula = formula_for_outward_edge(edges, dimension, i)
+        solver = z3.Solver()
+        if remaining_ms is not None:
+            solver.set(timeout=remaining_ms)
+        if rlimit is not None:
+            solver.set(rlimit=rlimit)
+        solver.add(formula)
+        result = solver.check()
+        checks += 1
+        if result == z3.sat:
+            model = solver.model()
+            try:
+                witness = tuple(model_fraction(model.eval(variable, model_completion=True))
+                                for variable in w)
+            except ValueError as exc:
+                return {&quot;status&quot;: &quot;UNKNOWN&quot;, &quot;reason&quot;: str(exc),
+                        &quot;checks_completed&quot;: checks, &quot;candidate_edge&quot;: edge.name,
+                        &quot;requested_property&quot;: property_name}
+            verified = exact_failure(edges, witness)
+            if verified is None:
+                return {&quot;status&quot;: &quot;UNKNOWN&quot;,
+                        &quot;reason&quot;: &quot;SAT model failed independent exact Fraction validation&quot;,
+                        &quot;checks_completed&quot;: checks, &quot;candidate_edge&quot;: edge.name,
+                        &quot;requested_property&quot;: property_name,
+                        &quot;candidate_direction&quot;: [str(x) for x in witness]}
+            return {&quot;status&quot;: &quot;REFUTED&quot;, &quot;checks_completed&quot;: checks,
+                    &quot;candidate_edge&quot;: edge.name, &quot;witness&quot;: verified,
+                    &quot;requested_property&quot;: property_name,
+                    &quot;reason&quot;: &quot;an outward channel is tied at the maximum active source score&quot;}
+        if result == z3.unknown:
+            return {&quot;status&quot;: &quot;UNKNOWN&quot;, &quot;reason&quot;: solver.reason_unknown(),
+                    &quot;checks_completed&quot;: checks, &quot;unsat_candidates&quot;: unsat_edges,
+                    &quot;requested_property&quot;: property_name}
+        unsat_edges.append(edge.name)
+
+    # Endotacticity is one clause of strong endotacticity. Only after it passes
+    # do we ask whether every non-orthogonal direction has an inward arrow at
+    # the global (all-channel, including neutral) source maximum.
+    if property_name == &quot;strong&quot;:
+        if max_checks is not None and checks &gt;= max_checks:
+            return {&quot;status&quot;: &quot;UNKNOWN&quot;, &quot;reason&quot;: &quot;check budget exhausted before strong-source query&quot;,
+                    &quot;checks_completed&quot;: checks, &quot;unsat_candidates&quot;: unsat_edges,
+                    &quot;requested_property&quot;: property_name}
+        remaining_ms = None
+        if timeout_ms is not None:
+            remaining_ms = timeout_ms - int(1000 * (time.monotonic() - started))
+            if remaining_ms &lt;= 0:
+                return {&quot;status&quot;: &quot;UNKNOWN&quot;, &quot;reason&quot;: &quot;wall-clock budget exhausted before strong-source query&quot;,
+                        &quot;checks_completed&quot;: checks, &quot;unsat_candidates&quot;: unsat_edges,
+                        &quot;requested_property&quot;: property_name}
+        w, formula = formula_for_strong_failure(edges, dimension)
+        solver = z3.Solver()
+        if remaining_ms is not None:
+            solver.set(timeout=remaining_ms)
+        if rlimit is not None:
+            solver.set(rlimit=rlimit)
+        solver.add(formula)
+        result = solver.check()
+        checks += 1
+        if result == z3.sat:
+            model = solver.model()
+            try:
+                witness = tuple(model_fraction(model.eval(variable, model_completion=True))
+                                for variable in w)
+            except ValueError as exc:
+                return {&quot;status&quot;: &quot;UNKNOWN&quot;, &quot;reason&quot;: str(exc),
+                        &quot;checks_completed&quot;: checks, &quot;requested_property&quot;: property_name}
+            verified = exact_strong_failure(edges, witness)
+            if verified is None:
+                return {&quot;status&quot;: &quot;UNKNOWN&quot;,
+                        &quot;reason&quot;: &quot;strong SAT model failed independent exact Fraction validation&quot;,
+                        &quot;checks_completed&quot;: checks, &quot;requested_property&quot;: property_name,
+                        &quot;candidate_direction&quot;: [str(x) for x in witness]}
+            return {&quot;status&quot;: &quot;REFUTED&quot;, &quot;checks_completed&quot;: checks,
+                    &quot;requested_property&quot;: property_name,
+                    &quot;reason&quot;: &quot;no inward channel is present at the global all-source maximum&quot;,
+                    &quot;witness&quot;: verified}
+        if result == z3.unknown:
+            return {&quot;status&quot;: &quot;UNKNOWN&quot;, &quot;reason&quot;: solver.reason_unknown(),
+                    &quot;checks_completed&quot;: checks, &quot;unsat_candidates&quot;: unsat_edges,
+                    &quot;requested_property&quot;: property_name}
+        return {&quot;status&quot;: &quot;CERTIFIED&quot;, &quot;checks_completed&quot;: checks,
+                &quot;requested_property&quot;: property_name,
+                &quot;solver&quot;: f&quot;Z3 {z3.get_version_string()}&quot;,
+                &quot;exact_theory&quot;: &quot;quantifier-free linear real arithmetic with exact rationals and ITE&quot;,
+                &quot;trust_basis&quot;: &quot;exact Z3 UNSAT answers; no separately checked proof object is emitted&quot;,
+                &quot;unsat_candidates&quot;: unsat_edges,
+                &quot;meaning&quot;: &quot;endotacticity holds and every non-orthogonal direction has an inward arrow at its global all-source maximum&quot;}
+    return {&quot;status&quot;: &quot;CERTIFIED&quot;, &quot;checks_completed&quot;: checks,
+            &quot;requested_property&quot;: property_name,
+            &quot;solver&quot;: f&quot;Z3 {z3.get_version_string()}&quot;,
+            &quot;exact_theory&quot;: &quot;quantifier-free linear real arithmetic with exact rationals and ITE&quot;,
+            &quot;trust_basis&quot;: &quot;exact Z3 UNSAT answers; no separately checked proof object is emitted&quot;,
+            &quot;unsat_candidates&quot;: unsat_edges,
+            &quot;meaning&quot;: &quot;no direction has an outward active channel tied at the maximum active tropical order&quot;}
+
+
+def main(argv: list[str]) -&gt; int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(&quot;input&quot;, type=Path)
+    parser.add_argument(&quot;--property&quot;, choices=(&quot;endotactic&quot;, &quot;strong&quot;), default=&quot;endotactic&quot;,
+                        help=&quot;check essential-source endotacticity or standard strong endotacticity of the positive lift&quot;)
+    parser.add_argument(&quot;--timeout-ms&quot;, type=int, default=None,
+                        help=&quot;total wall-clock budget across channel queries; expiration returns UNKNOWN&quot;)
+    parser.add_argument(&quot;--max-checks&quot;, type=int, default=None,
+                        help=&quot;maximum per-channel exact solver queries; exhaustion returns UNKNOWN&quot;)
+    parser.add_argument(&quot;--rlimit&quot;, type=int, default=None,
+                        help=&quot;Z3 resource limit for each query; exhaustion returns UNKNOWN&quot;)
+    args = parser.parse_args(argv[1:])
+    if args.timeout_ms is not None and args.timeout_ms &lt; 0:
+        parser.error(&quot;--timeout-ms must be nonnegative&quot;)
+    if args.max_checks is not None and args.max_checks &lt; 0:
+        parser.error(&quot;--max-checks must be nonnegative&quot;)
+    if args.rlimit is not None and args.rlimit &lt; 0:
+        parser.error(&quot;--rlimit must be nonnegative&quot;)
+    try:
+        data = json.loads(args.input.read_text())
+        edges, dimension = parse_network(data)
+    except (OSError, json.JSONDecodeError, KeyError, TypeError, ValueError, ZeroDivisionError) as exc:
+        print(json.dumps({&quot;status&quot;: &quot;INVALID_INPUT&quot;, &quot;reason&quot;: str(exc)}, indent=2))
+        return 2
+    result = recognize(edges, dimension, property_name=args.property,
+                       timeout_ms=args.timeout_ms,
+                       max_checks=args.max_checks, rlimit=args.rlimit)
+    result[&quot;input&quot;] = str(args.input)
+    result[&quot;dimension&quot;] = dimension
+    result[&quot;channels&quot;] = len(edges)
+    result[&quot;support_terms&quot;] = sum(len(e.P) + len(e.Q) for e in edges)
+    print(json.dumps(result, indent=2, sort_keys=True))
+    return {&quot;CERTIFIED&quot;: 0, &quot;REFUTED&quot;: 1, &quot;UNKNOWN&quot;: 3}.get(result[&quot;status&quot;], 2)
+
+
+if __name__ == &quot;__main__&quot;:
+    raise SystemExit(main(sys.argv))
+</pre><p><a href="../assets/5293d23951a98d63d7b74e3539d4bbdea1843ee33bb04965a7acf16a860c6187.py">Exact original</a></p></html>

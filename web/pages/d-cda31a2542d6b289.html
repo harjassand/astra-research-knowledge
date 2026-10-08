@@ -1,0 +1,86 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/programmable_biology/circuit_reliability/observation_cost_threshold.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/programmable_biology/circuit_reliability/observation_cost_threshold.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Reproduce the sensing-cost crossover for the M=10 illustrative model.
+
+The exact state-feedback rule lambda_n = M-n is assumed to read the exact
+count immediately after every protein birth/death. With gamma=1, its total
+state-transition intensity is lambda_n+n=M in every state, so its read rate
+is M per unit time. Each read is charged c in protein-completion-equivalent
+resource units.
+
+The no-sensor comparator spends the same total resource on constant attempted
+protein production. Its stationary law is truncated Poisson. This is a
+finite-model accounting calculation, not an experimentally calibrated cost.
+&quot;&quot;&quot;
+
+from decimal import Decimal, getcontext
+from math import comb, factorial
+
+getcontext().prec = 50
+
+M = 10
+GAMMA = Decimal(1)
+FEEDBACK_TAIL = Decimal(193) / Decimal(512)
+
+
+def z(q: Decimal, top: int) -&gt; Decimal:
+    return sum((q**j / Decimal(factorial(j)) for j in range(top + 1)), Decimal(0))
+
+
+def truncated_mean(q: Decimal) -&gt; Decimal:
+    return q * z(q, M - 1) / z(q, M)
+
+
+def truncated_tail_below_5(q: Decimal) -&gt; Decimal:
+    return z(q, 4) / z(q, M)
+
+
+def solve_increasing(fn, target: Decimal, lo: Decimal, hi: Decimal) -&gt; Decimal:
+    for _ in range(220):
+        mid = (lo + hi) / 2
+        if fn(mid) &lt; target:
+            lo = mid
+        else:
+            hi = mid
+    return (lo + hi) / 2
+
+
+def solve_decreasing(fn, target: Decimal, lo: Decimal, hi: Decimal) -&gt; Decimal:
+    for _ in range(220):
+        mid = (lo + hi) / 2
+        if fn(mid) &gt; target:
+            lo = mid
+        else:
+            hi = mid
+    return (lo + hi) / 2
+
+
+def main() -&gt; None:
+    q_same_mean = solve_increasing(truncated_mean, Decimal(5), Decimal(0), Decimal(10))
+    q_cross = solve_decreasing(truncated_tail_below_5, FEEDBACK_TAIL, Decimal(5), Decimal(6))
+    mean_cross = truncated_mean(q_cross)
+    c_cross = (mean_cross - Decimal(5)) / Decimal(M)
+    c_example = Decimal(&quot;0.03&quot;)
+    mean_example = Decimal(5) + Decimal(M) * c_example
+    q_example = solve_increasing(truncated_mean, mean_example, Decimal(0), Decimal(10))
+
+    feedback_dropout = Decimal(1) / Decimal(2**M)
+    feedback_obs_rate = Decimal(M)
+    assert sum(Decimal(comb(M, k)) for k in range(5)) / Decimal(2**M) == FEEDBACK_TAIL
+
+    print(f&quot;feedback_mean_births=5&quot;)
+    print(f&quot;feedback_exact_event_sensor_reads_per_time={feedback_obs_rate}&quot;)
+    print(f&quot;feedback_P_N_lt_5={FEEDBACK_TAIL}&quot;)
+    print(f&quot;feedback_P_N_eq_0={feedback_dropout}&quot;)
+    print(f&quot;constant_same_mean_q={q_same_mean}&quot;)
+    print(f&quot;constant_same_mean_P_N_lt_5={truncated_tail_below_5(q_same_mean)}&quot;)
+    print(f&quot;crossing_q={q_cross}&quot;)
+    print(f&quot;crossing_mean_births={mean_cross}&quot;)
+    print(f&quot;crossing_sensor_cost_per_read={c_cross}&quot;)
+    print(f&quot;at_c_0.03_total_resource={mean_example}&quot;)
+    print(f&quot;at_c_0.03_constant_q={q_example}&quot;)
+    print(f&quot;at_c_0.03_constant_P_N_lt_5={truncated_tail_below_5(q_example)}&quot;)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/2b6bd3ec746a3ce2e7a5cf993cace06686e7ee4153e4398587486242f505ef39.py">Exact original</a></p></html>

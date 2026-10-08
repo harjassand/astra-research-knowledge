@@ -1,0 +1,119 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/sol_classicality/SPIN2_CERTIFICATE.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/sol_classicality/SPIN2_CERTIFICATE.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Exact c=2 star certificates for every spin-2 SU(2)-covariant channel.
+
+No numerical optimization or floating eigenvalues are used. All positive
+polar rays of three explicit seed orbits are enumerated rationally; the
+corresponding star upper bounds have exact positive-semidefinite LDL
+certificates in every irreducible total-spin block. Requires SymPy.
+&quot;&quot;&quot;
+import itertools, math, json
+from functools import reduce
+from pathlib import Path
+import sympy as s
+from sympy.physics.wigner import clebsch_gordan as cg
+
+def zero(M):
+    assert M.applyfunc(s.simplify) == s.zeros(*M.shape)
+
+I=s.eye(5);j=s.Integer(2);ms=[j-k for k in range(5)]
+Ts=[];Ws=[]
+for ell in range(1,5):
+    tensors=[]
+    for q in range(-ell,ell+1):
+        T=s.Matrix([[s.sqrt(5)*(-1)**int(j-m2)*cg(j,j,s.Integer(ell),m1,-m2,s.Integer(q)) for m2 in ms] for m1 in ms])
+        tensors.append(T)
+    assert all(s.simplify(s.trace(T.T*T)/5-1)==0 for T in tensors)
+    W=sum((s.kronecker_product(T.T,s.kronecker_product(T.T,I)+s.kronecker_product(I,T.T)) for T in tensors),s.zeros(125))
+    W=W.applyfunc(s.simplify);zero(W-W.T)
+    Ts.append(tensors);Ws.append(W)
+
+# The unitary part of spin time reversal turns the input Choi transpose
+# into the ordinary covariant SU(2) action. It is not an antiunitary map.
+U=s.zeros(5)
+for k in range(5):U[4-k,k]=(-1)**k
+UU=s.kronecker_product(U,I,I)
+Ws=[(UU*W*UU.T).applyfunc(s.simplify) for W in Ws]
+
+# Three actual pure seeds. C is the cyclic spinor with zero magnetization.
+seeds=[s.Matrix([1,0,0,0,0]),s.Matrix([0,0,1,0,0]),s.Matrix([1,0,0,s.sqrt(2),0])/s.sqrt(3)]
+captures=[]
+for psi in seeds:
+    cap=[]
+    for tensors in Ts:
+        # Sum |&lt;T_q&gt;|^2 equals capture in a Hermitian orthonormal basis.
+        cap.append(s.simplify(sum(abs((psi.T*T*psi)[0])**2 for T in tensors)))
+    captures.append(s.Matrix(cap))
+expected=[s.Matrix([2,s.Rational(10,7),s.Rational(1,2),s.Rational(1,14)]),s.Matrix([0,s.Rational(10,7),0,s.Rational(18,7)]),s.Matrix([0,0,s.Rational(5,2),s.Rational(3,2)])]
+assert captures==expected
+
+# In the positive weight orthant, partition into the cones where each
+# seed has the greatest capture. A pointed four-dimensional polyhedral
+# cone has extreme rays at three independent active inequalities.
+rays={}
+for p,v in enumerate(captures):
+    constraints=[s.eye(4).row(k) for k in range(4)]+[(v-vv).T for vv in captures if vv!=v]
+    for cs in itertools.combinations(constraints,3):
+        ns=s.Matrix.vstack(*cs).nullspace()
+        if len(ns)!=1:continue
+        for w in [ns[0],-ns[0]]:
+            if any((c*w)[0]&lt;0 for c in constraints):continue
+            denom=s.ilcm(*[a.q for a in w]);iw=[int(a*denom) for a in w]
+            g=reduce(math.gcd,iw);key=tuple(a//g for a in iw)
+            rays.setdefault(key,set()).add(p)
+expected_rays={(0,0,0,1),(0,0,1,0),(0,0,3,7),(0,1,0,0),(0,7,5,0),(0,8,5,1),(1,0,0,0),(1,0,1,0),(5,0,0,4),(8,0,3,7)}
+assert set(rays)==expected_rays
+
+# Exact highest-weight coupled basis: couple outputs A,B to L and then
+# input R with L to total spin F. Rotational invariance gives identical
+# matrices in all 2F+1 magnetic copies. The polynomial/exact residual
+# checks below certify the particular basis and star transcription.
+blocks=[]
+for F in range(7):
+    Ls=[L for L in range(5) if abs(L-2)&lt;=F&lt;=L+2]
+    C=s.zeros(125,len(Ls))
+    for col,L in enumerate(Ls):
+        for rr,r in enumerate(ms):
+            for aa,a in enumerate(ms):
+                for bb,b in enumerate(ms):
+                    ml=a+b
+                    C[(rr*5+aa)*5+bb,col]=cg(j,j,s.Integer(L),a,b,ml)*cg(j,s.Integer(L),s.Integer(F),r,ml,s.Integer(F))
+    zero(C.T*C-s.eye(len(Ls)))
+    Ks=[]
+    for W in Ws:
+        K=(C.T*W*C).applyfunc(s.simplify)
+        zero(K-K.T);zero(W*C-C*K)
+        Ks.append(K)
+    blocks.append({&#x27;F&#x27;:F,&#x27;Ls&#x27;:Ls,&#x27;Ks&#x27;:Ks})
+assert sum((2*b[&#x27;F&#x27;]+1)*len(b[&#x27;Ls&#x27;]) for b in blocks)==125
+
+def psd_ldl(Q):
+    &quot;&quot;&quot;Exact pivoted-free PSD decomposition; a zero pivot has a zero row.&quot;&quot;&quot;
+    n=Q.rows;L=s.eye(n);ds=[]
+    for k in range(n):
+        dk=s.simplify(Q[k,k]-sum(L[k,h]**2*ds[h] for h in range(k)))
+        assert dk.is_nonnegative is True,(&#x27;bad pivot&#x27;,k,dk)
+        ds.append(dk)
+        for i in range(k+1,n):
+            res=s.simplify(Q[i,k]-sum(L[i,h]*ds[h]*L[k,h] for h in range(k)))
+            if dk==0:
+                assert res==0,(&#x27;zero pivot nonzero row&#x27;,k,i,res)
+                L[i,k]=0
+            else:L[i,k]=s.simplify(res/dk)
+    zero(Q-L*s.diag(*ds)*L.T)
+    return [str(v) for v in ds]
+
+certs=[]
+for w,phases in sorted(rays.items()):
+    V=sum((2*ell+1)*wi for ell,wi in enumerate(w,1))
+    cap=max((v.T*s.Matrix(w))[0] for v in captures);bound=s.simplify(V+cap)
+    row={&#x27;w&#x27;:w,&#x27;maximizing_phases&#x27;:sorted(phases),&#x27;V&#x27;:V,&#x27;C_seed&#x27;:str(cap),&#x27;bound&#x27;:str(bound),&#x27;blocks&#x27;:[]}
+    for b in blocks:
+        K=sum((wi*Ki for wi,Ki in zip(w,b[&#x27;Ks&#x27;])),s.zeros(len(b[&#x27;Ls&#x27;])))
+        pivots=psd_ldl(bound*s.eye(K.rows)-K)
+        row[&#x27;blocks&#x27;].append({&#x27;F&#x27;:b[&#x27;F&#x27;],&#x27;output_spins_L&#x27;:b[&#x27;Ls&#x27;],&#x27;exact_LDL_pivots&#x27;:pivots})
+    certs.append(row)
+    print(&#x27;PASS ray&#x27;,w,&#x27;bound&#x27;,bound,flush=True)
+
+result={&#x27;status&#x27;:&#x27;EXACT-CERTIFICATES-PASSED&#x27;,&#x27;scope&#x27;:&#x27;All spin-2 SU(2)-covariant selfcompatible channels; c2 candidate, external/priority UNKNOWN&#x27;,&#x27;sympy_version&#x27;:s.__version__,&#x27;seed_captures&#x27;:[[str(a) for a in v] for v in captures],&#x27;irreducible_block_dimension&#x27;:125,&#x27;rays&#x27;:certs}
+Path(__file__).with_suffix(&#x27;.json&#x27;).write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+print(&#x27;All exact spin-2 ray certificates passed.&#x27;,flush=True)
+</pre><p><a href="../assets/f2243dc522add5c10b38c4c6bd6d46802098f010c062d91f64cfb3adf7f721c9.py">Exact original</a></p></html>

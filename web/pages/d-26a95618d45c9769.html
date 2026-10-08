@@ -1,0 +1,149 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c8_implicit_rational_geometry/verify_sparse_rational_counterdirection.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c8_implicit_rational_geometry/verify_sparse_rational_counterdirection.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Independently check a rational outward top-tie direction.
+
+Usage: verify_sparse_rational_counterdirection.py NETWORK.json DIRECTION.json
+
+NETWORK.json uses the same `edges` format as recognize_sparse_rational.py.
+DIRECTION.json is either a vector such as [&quot;1&quot;, &quot;-2/3&quot;] or an object with a
+`direction` field (the witness subobject printed by the recognizer).
+
+This verifier uses only Python&#x27;s standard-library Fraction arithmetic. Exit 0
+means REFUTED with a fully checked exact witness; exit 1 means this direction
+does not refute the property; exit 2 means malformed input.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import json
+import argparse
+import sys
+from fractions import Fraction as F
+from pathlib import Path
+from typing import Any, Sequence
+
+
+def rational(value: Any) -&gt; F:
+    if isinstance(value, bool):
+        raise ValueError(&quot;boolean is not a rational number&quot;)
+    return F(str(value))
+
+
+def vector(raw: Any, label: str) -&gt; tuple[F, ...]:
+    if not isinstance(raw, list) or not raw:
+        raise ValueError(f&quot;{label} must be a nonempty rational vector&quot;)
+    return tuple(rational(x) for x in raw)
+
+
+def terms(raw: Any, label: str, d: int) -&gt; tuple[tuple[F, ...], ...]:
+    if not isinstance(raw, list) or not raw:
+        raise ValueError(f&quot;{label} must be a nonempty support&quot;)
+    out = []
+    for j, item in enumerate(raw):
+        if isinstance(item, dict):
+            exp = vector(item.get(&quot;exp&quot;), f&quot;{label}[{j}].exp&quot;)
+            coef = rational(item.get(&quot;coef&quot;, &quot;1&quot;))
+        else:
+            exp = vector(item, f&quot;{label}[{j}]&quot;)
+            coef = F(1)
+        if len(exp) != d or coef &lt;= 0:
+            raise ValueError(f&quot;{label}[{j}] has a wrong dimension or nonpositive coefficient&quot;)
+        out.append(exp)
+    return tuple(out)
+
+
+def dot(a: Sequence[F], b: Sequence[F]) -&gt; F:
+    return sum((x * y for x, y in zip(a, b)), F(0))
+
+
+def main(argv: list[str]) -&gt; int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(&quot;network&quot;, type=Path)
+    parser.add_argument(&quot;direction&quot;, type=Path)
+    parser.add_argument(&quot;--property&quot;, choices=(&quot;endotactic&quot;, &quot;strong&quot;), default=&quot;endotactic&quot;)
+    args = parser.parse_args(argv[1:])
+    try:
+        network = json.loads(args.network.read_text())
+        raw_direction = json.loads(args.direction.read_text())
+        if isinstance(raw_direction, dict):
+            raw_direction = raw_direction[&quot;direction&quot;]
+        w = vector(raw_direction, &quot;direction&quot;)
+        if not isinstance(network, dict) or not isinstance(network.get(&quot;edges&quot;), list) or not network[&quot;edges&quot;]:
+            raise ValueError(&quot;network must contain a nonempty edges list&quot;)
+        parsed = []
+        for i, edge in enumerate(network[&quot;edges&quot;]):
+            name = str(edge.get(&quot;name&quot;, f&quot;e{i}&quot;))
+            nu = vector(edge[&quot;nu&quot;], f&quot;{name}.nu&quot;)
+            if len(nu) != len(w):
+                raise ValueError(f&quot;{name} has a different dimension&quot;)
+            P = terms(edge[&quot;P&quot;], f&quot;{name}.P&quot;, len(w))
+            Q = terms(edge[&quot;Q&quot;], f&quot;{name}.Q&quot;, len(w))
+            parsed.append((name, nu, P, Q))
+    except (OSError, json.JSONDecodeError, KeyError, TypeError, ValueError, ZeroDivisionError) as exc:
+        print(json.dumps({&quot;status&quot;: &quot;INVALID_INPUT&quot;, &quot;reason&quot;: str(exc)}, indent=2))
+        return 2
+
+    active = []
+    all_rows = []
+    for name, nu, P, Q in parsed:
+        drift = dot(nu, w)
+        tau = max(dot(a, w) for a in P) - max(dot(b, w) for b in Q)
+        row = {&quot;name&quot;: name, &quot;w_dot_nu&quot;: drift, &quot;tau&quot;: tau}
+        all_rows.append(row)
+        if drift != 0:
+            active.append(row)
+    if not active:
+        print(json.dumps({&quot;status&quot;: &quot;NOT_A_COUNTERDIRECTION&quot;, &quot;reason&quot;: &quot;all channels are neutral&quot;}, indent=2))
+        return 1
+    top_active = max(row[&quot;tau&quot;] for row in active)
+    active_outward = [row[&quot;name&quot;] for row in active
+                      if row[&quot;tau&quot;] == top_active and row[&quot;w_dot_nu&quot;] &gt; 0]
+    top_all = max(row[&quot;tau&quot;] for row in all_rows)
+    no_inward_global_top = not any(row[&quot;tau&quot;] == top_all and row[&quot;w_dot_nu&quot;] &lt; 0
+                                   for row in all_rows)
+    if args.property == &quot;endotactic&quot;:
+        refuted = bool(active_outward)
+        reason = &quot;outward active channel is tied at the maximum active score&quot;
+        top = top_active
+        relevant = active
+        bad = active_outward
+    elif active_outward:
+        refuted = True
+        reason = &quot;the endotactic condition fails&quot;
+        top = top_active
+        relevant = active
+        bad = active_outward
+    else:
+        refuted = no_inward_global_top
+        reason = &quot;no inward channel occurs at the global all-source maximum&quot;
+        top = top_all
+        relevant = all_rows
+        bad = [row[&quot;name&quot;] for row in relevant
+               if row[&quot;tau&quot;] == top and row[&quot;w_dot_nu&quot;] &gt;= 0] if refuted else []
+    result = {
+        &quot;status&quot;: &quot;REFUTED&quot; if refuted else &quot;NOT_A_COUNTERDIRECTION&quot;,
+        &quot;property&quot;: args.property,
+        &quot;reason&quot;: reason if refuted else &quot;the supplied direction does not refute the property&quot;,
+        &quot;direction&quot;: [str(x) for x in w],
+        &quot;tested_top_tau&quot;: str(top),
+        &quot;outward_or_neutral_top_channels&quot;: bad,
+        &quot;active_top_tau&quot;: str(top_active),
+        &quot;active_outward_top_channels&quot;: active_outward,
+        &quot;global_all_source_top_tau&quot;: str(top_all),
+        &quot;active_channels&quot;: [
+            {&quot;name&quot;: row[&quot;name&quot;], &quot;w_dot_nu&quot;: str(row[&quot;w_dot_nu&quot;]),
+             &quot;tau&quot;: str(row[&quot;tau&quot;]), &quot;top_active_tied&quot;: row[&quot;tau&quot;] == top_active}
+            for row in active
+        ],
+        &quot;all_channels&quot;: [
+            {&quot;name&quot;: row[&quot;name&quot;], &quot;w_dot_nu&quot;: str(row[&quot;w_dot_nu&quot;]),
+             &quot;tau&quot;: str(row[&quot;tau&quot;]), &quot;global_top_tied&quot;: row[&quot;tau&quot;] == top_all}
+            for row in all_rows
+        ],
+    }
+    print(json.dumps(result, indent=2))
+    return 0 if refuted else 1
+
+
+if __name__ == &quot;__main__&quot;:
+    raise SystemExit(main(sys.argv))
+</pre><p><a href="../assets/1f44fd7af3cc932cb64434b3a138db0cc219c84a41670656522aa0a614ab3c14.py">Exact original</a></p></html>

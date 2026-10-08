@@ -1,0 +1,3 @@
+import N33Affine.B2GluePlacement
+#print axioms N33Affine.GluePlacement.active_minimum_in_slab
+#print axioms N33Affine.GluePlacement.shifted_value_sub_baseline

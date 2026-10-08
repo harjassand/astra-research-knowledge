@@ -1,0 +1,113 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/cell_control/cell_lineage_graph/cycle3_hidden_control_check.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/cell_control/cell_lineage_graph/cycle3_hidden_control_check.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact arithmetic checks for the Cycle 3 hidden-type control witness.&quot;&quot;&quot;
+
+from fractions import Fraction as F
+from math import ceil, exp, isclose, log
+
+prior = {&quot;H1&quot;: F(4, 5), &quot;H2&quot;: F(1, 5)}
+plus = {
+    &quot;H1&quot;: {&quot;A&quot;: (F(3), F(1)), &quot;B&quot;: (F(1), F(3))},
+    &quot;H2&quot;: {&quot;A&quot;: (F(1), F(3)), &quot;B&quot;: (F(3), F(1))},
+}
+minus = {
+    h: {a: (u, r) for a, (r, u) in actions.items()}
+    for h, actions in plus.items()
+}
+
+
+def p_regen(rates):
+    r, u = rates
+    return r / (r + u)
+
+
+def clone_success(model, action):
+    # One shared founder type, two conditionally independent daughters;
+    # at infinite horizon, safe reach is the event that both daughters are R.
+    return sum(prior[h] * p_regen(model[h][action]) ** 2 for h in prior)
+
+
+def clone_harm(model, action):
+    return 1 - clone_success(model, action)
+
+
+def observed_report_probability(model, h, action, sensitivity, false_positive):
+    r, u = model[h][action]
+    return (sensitivity * r + false_positive * u) / (r + u)
+
+
+def clone_report_success(model, action, sensitivity, false_positive):
+    return sum(
+        prior[h]
+        * observed_report_probability(model, h, action, sensitivity, false_positive) ** 2
+        for h in prior
+    )
+
+
+def finite_clone_success(model, action, t):
+    c = 1 - exp(-4 * t)
+    e = exp(-4 * t)
+    return sum(
+        float(prior[h]) * ((e + c * float(p_regen(model[h][action]))) ** 2 - e**2)
+        for h in prior
+    )
+
+
+def finite_clone_harm(model, action, t):
+    c = 1 - exp(-4 * t)
+    return sum(
+        float(prior[h]) * (1 - (1 - c * float(1 - p_regen(model[h][action]))) ** 2)
+        for h in prior
+    )
+
+
+sens_plus, fp_plus = F(9, 10), F(1, 10)
+sens_minus, fp_minus = F(1, 10), F(9, 10)
+for h in prior:
+    for action in (&quot;A&quot;, &quot;B&quot;):
+        assert observed_report_probability(plus, h, action, sens_plus, fp_plus) == observed_report_probability(
+            minus, h, action, sens_minus, fp_minus
+        )
+
+assert clone_success(plus, &quot;A&quot;) == F(37, 80)   # 0.4625
+assert clone_success(plus, &quot;B&quot;) == F(13, 80)   # 0.1625
+assert clone_success(minus, &quot;A&quot;) == F(13, 80)
+assert clone_success(minus, &quot;B&quot;) == F(37, 80)
+assert clone_harm(plus, &quot;A&quot;) == F(43, 80)      # 0.5375
+assert clone_harm(plus, &quot;B&quot;) == F(67, 80)      # 0.8375
+assert clone_report_success(plus, &quot;A&quot;, sens_plus, fp_plus) == F(41, 100)
+assert clone_report_success(plus, &quot;B&quot;, sens_plus, fp_plus) == F(17, 100)
+assert clone_report_success(minus, &quot;A&quot;, sens_minus, fp_minus) == F(41, 100)
+assert clone_report_success(minus, &quot;B&quot;, sens_minus, fp_minus) == F(17, 100)
+assert isclose(finite_clone_success(plus, &quot;A&quot;, 1), 0.46908741463240694)
+assert isclose(finite_clone_success(plus, &quot;B&quot;, 1), 0.1691880534207777)
+assert isclose(finite_clone_harm(plus, &quot;A&quot;, 1), 0.5305771227396905)
+assert isclose(finite_clone_harm(plus, &quot;B&quot;, 1), 0.8304764839513198)
+
+alpha = 0.05
+gap = 0.30
+n_direct = ceil(log(1 / alpha) / gap**2)
+observed_clone_gap = float(F(41, 100) - F(17, 100))
+n_noisy = ceil(log(1 / alpha) / observed_clone_gap**2)
+h = 0.05
+n_selector = ceil(log(4 * 2 / alpha) / (2 * h**2))
+assert n_direct == 34
+assert n_noisy == 53
+assert n_selector == 1016
+
+print({
+    &quot;success_plus_A&quot;: str(clone_success(plus, &quot;A&quot;)),
+    &quot;success_plus_B&quot;: str(clone_success(plus, &quot;B&quot;)),
+    &quot;success_minus_A&quot;: str(clone_success(minus, &quot;A&quot;)),
+    &quot;success_minus_B&quot;: str(clone_success(minus, &quot;B&quot;)),
+    &quot;harm_plus_A&quot;: str(clone_harm(plus, &quot;A&quot;)),
+    &quot;harm_plus_B&quot;: str(clone_harm(plus, &quot;B&quot;)),
+    &quot;reporter_clone_success_plus_A&quot;: str(clone_report_success(plus, &quot;A&quot;, sens_plus, fp_plus)),
+    &quot;reporter_clone_success_plus_B&quot;: str(clone_report_success(plus, &quot;B&quot;, sens_plus, fp_plus)),
+    &quot;finite_T1_success_plus_A&quot;: finite_clone_success(plus, &quot;A&quot;, 1),
+    &quot;finite_T1_success_plus_B&quot;: finite_clone_success(plus, &quot;B&quot;, 1),
+    &quot;ranking_n_per_action_direct_gap_0.30_alpha_0.05&quot;: n_direct,
+    &quot;ranking_n_per_action_known_sensitivity_0.9_fp_0.1&quot;: n_noisy,
+    &quot;selector_n_per_action_m2_h0.05_alpha0.05&quot;: n_selector,
+    &quot;status&quot;: &quot;internal exact finite diagnostic; not biological validation&quot;,
+})
+</pre><p><a href="../assets/c6d144d4f423ba72593f8f3c21f4ded5e3b0d84193307a15a1597146e115b70b.py">Exact original</a></p></html>

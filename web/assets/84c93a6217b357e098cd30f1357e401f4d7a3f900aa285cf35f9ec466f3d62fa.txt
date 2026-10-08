@@ -1,0 +1,118 @@
+ADAPTIVE BASIS ACQUISITION FROM PREFIX QUERIES
+Date: 2026-10-08
+Status: conditional finite-horizon theorem; exact-query result; no novelty/priority claim.
+
+Finding
+
+There is a genuine entry-adaptive route to discover the finite Hankel rank and an observable basis without receiving a feature basis or a full block: treat the finite prefix Hankel block as a low-rank matrix and use adaptive column-space completion. The route is due in its matrix core to Krishnamurthy and Singh (2013); the process-specific additions here are the prefix-word query reduction, finite-shift realization, independent stopping check, and charged comparisons.
+
+The theorem does not remove all rank information. It needs a known upper bound R on the unknown rank r, plus a known column-space incoherence bound μ0 and a witness horizon L. It does not need the exact rank or any basis. If no nontrivial rank cap is available, the safe cap R=N makes its sample panel full-block-sized. Exact rational answers do not need a singular-value gap. A gap enters only for noisy/trajectory rank estimation; a two-state lower bound below shows why.
+
+1. Oracle and finite witness promise
+
+Let Σ be a fixed finite alphabet, q=|Σ|≥2. The process is a law on infinite symbol streams. For a word w, let f(w)=Pr[X1...X|w|=w], and f(ε)=1. The legal exact prefix-query oracle accepts one word w and returns the reduced rational f(w). It provides no rank, conditional-law, state, feature, equivalence, or counterexample answer. A query can be made adaptively after earlier answers. Assume all queried values have finite rational encodings. The theorem only queries words of length at most 2L+1.
+
+The infinite Hankel matrix is H[u,v]=f(uv). Assume it has finite rank r, equivalently f(w)=α A_w β for some finite-dimensional linear representation. Set W=Σ^{≤L}, N=|W|=(q^(L+1)-1)/(q-1), and H_L=H[W,W].
+
+The finite witness promise C_L is rank(H_L)=rank(H)=r. It says the words in W span all row and column predictive directions. This promise is not certified from an arbitrary finite transcript. It may follow from an independently known dimension cap and sufficiently large L, but the result treats it explicitly.
+
+Rank is unknown, but assume a cap 1≤r≤R≤N is supplied. Assume column-space incoherence
+  μ(U)=(N/r) max_{u∈W} ||P_U e_u||² ≤ μ0,
+where U=col(H_L). This is a promise about the unknown subspace, not a supplied basis. It allows an arbitrary row space. The adaptive matrix-completion source gives the needed subspace-detection bound under this one-sided incoherence assumption; its proof uses a random row panel and exact residual tests.
+
+2. Adaptive acquisition and stopping
+
+Let δ∈(0,1). Split the failure budget as δt=δ/2 for acquisition and δv=δ/2 for validation. Define
+  mt = ceil(36 R^(3/2) μ0 log(10 R²/δt)),
+  mv = ceil(36 R^(3/2) μ0 log(8 R/δv)).
+If either panel length is at least N, querying every row is the fallback and the query saving disappears. Otherwise draw independent multisets Ωt and Ωv of mt and mv row words uniformly with replacement from W. Cache repeated word answers.
+
+Acquisition pass:
+- Start with no basis columns B and no pivot-row set P.
+- Process every suffix index s∈W in a fixed order. Query c_s[u]=f(us) only for u∈Ωt.
+- If the sampled restriction c_s[Ωt] is outside span(B[Ωt,:]), query the full column c_s∈Q^N and append it to B. A row in Ωt with nonzero residual extends P while preserving a nonsingular pivot matrix B[P,:].
+- If the sampled restriction is in the span, solve for its coordinates using B[P,:]. Keep the column implicit; do not materialize the completed N×N matrix.
+Every appended column is an actual column of H_L, so B⊆U. No false expansion can occur in exact arithmetic.
+
+The Krishnamurthy–Singh matrix theorem, specialized to an N×N rank-r matrix with μ(U)≤μ0, says the random-row sequential test finds every independent column with probability at least 1−δt when m is at least 36 r^(3/2) μ0 log(2r/ε), up to the stated union bound over at most r basis expansions. Taking ε=δt/(5R) gives the mt above and failure at most δt. The exact-rank output is the number d of fully queried basis columns; on the success event d=r. The algorithm was not given r or its basis.
+
+Independent stopping check:
+- After the training pass, freeze B and draw Ωv independently.
+- Test every nonbasis column using its mv sampled entries and the exact restricted-span test.
+- If all pass, stop with the learned model. If any fails, query the full H_L and use exact elimination as a deterministic fallback.
+
+Why the check certifies stopping: conditioned on the training transcript, B is fixed and B⊆U. If B≠U, some fixed column c_s of H_L lies outside B because the columns span U. Apply the source's subspace-detection lemma to that column and independent Ωv. With mv as above, its sampled residual is nonzero except with probability at most δv. Since validation checks every column, accepting a deficient B is at most δv likely. If B=U, every validation residual is exactly zero. Thus the no-fallback output has rank r and, under C_L, is an all-future realization with probability at least 1−δv; the no-fallback efficient path occurs with probability at least 1−δt. A validation failure takes the full-block branch. This is a randomized certificate under the incoherence and C_L promises, not a deterministic certificate from partial cells alone.
+
+3. Constructing the predictive realization
+
+Write the d=r fully observed basis columns as B=H_L[:,S], where S is their suffix-word index set. The pivot rows P chosen during basis expansion give X=B[P,:]=H[P,S] invertible. Thus S consists of actual suffixes and P of actual prefixes, both in W. Query
+  Y_a = (f(p a s))_(p∈P,s∈S),   a∈Σ,
+and the r readout values f(p), p∈P. The α readout H[ε,S] is already in the fully observed basis columns. Set
+  A_a = X^(-1) Y_a,
+  α = H[ε,S],
+  β = X^(-1) (f(p))_(p∈P).
+Then f(w)=α A_w β for every word w.
+
+For proof, factor the infinite Hankel matrix as H[u,v]=F_u C_v. C_L and the selected nonsingular minor imply that F_P and C_S are invertible and the selected row/column coordinates span the full predictive spaces. In the coordinates induced by C_S,
+  X^(-1)Y_a = C_S^(-1) A_a C_S,
+  α = F_ε C_S,
+  β = C_S^(-1)β_original.
+Multiplication cancels the coordinate changes. The basis columns and their pivots are acquired from entries; only q r²+r additional scalar word queries are needed for shifts and β. All queried words have length at most 2L+1.
+
+The basis-supplied oracle is a strictly stronger interface: if it supplies certified P,S and completeness, the learner needs only X, {Y_a}, α, and the r entries H[P,ε]. That is at most (q+1)r²+2r exact scalar entries and O(qr³) field operations. Our learner pays for basis discovery.
+
+4. Query, arithmetic, and bit costs
+
+Use b for the maximum numerator or denominator bit length of any exact oracle value queried, for words of length at most 2L+1. Matrix-cell counts charge each requested H[u,s] separately; distinct-word counts cache repeated concatenations.
+
+On the successful no-fallback path:
+  Q_cells ≤ N mt + rN + mv(N−r) + q r² + r.
+The first term scans all suffix columns on the training panel; the second fully observes at most r independent columns; the third validates nonbasis columns; the last two obtain shifts and β. Repeated rows/cells or equal concatenated words can lower the number of oracle calls. The number of distinct words is at most Q_cells and at most M=|Σ^{≤2L+1}|=(q^(2L+2)-1)/(q−1). The dense-block cap is N²+q r²+r; use the smaller of that and the panel count. Efficient discovery requires mt+mv+r≪N, which in turn requires a useful R^(3/2) μ0 log(R/δ)≪N. With R=N the stated panel saturates the block. These are query counts, not trajectory counts.
+
+For comparison, direct dense exact spectral/rank revelation queries N² cells for H_L, then (at most) q r² shifts if it only needs the selected minor; H[P,ε] is already in H_L. Its exact elimination costs O(N³) field operations; a floating SVD costs O(N³) arithmetic operations, followed by O(qr³) realization arithmetic. A conventional full shifted-block spectral implementation may instead query q additional N² cells and spend O(qN²r) in shift projection. By contrast, the acquired-basis procedure does not materialize H_L: its exact field-operation count is
+  O(N(mt+mv)r + N r² + q r³)
+for restricted-span tests, basis/pivot updates, validation, and realization. If the user asks for the completed dense matrix as output, add O(N²r) arithmetic and O(N²) storage; that is the output cost in the source's matrix-completion runtime bound O(N²r+r³m).
+
+Worst-case query cost with the fallback is N²+q r²+r cells. The probability of no fallback is at least 1−δt; conditional on an accepted no-fallback stop, false rank completion is at most δv. On trajectory-only access, one length-(2L+1) path supplies many prefix indicators together and cannot be selectively re-queried as individual cells. Both adaptive and full-block estimators then see the same raw trajectory batch; the cell-query saving above does not imply a trajectory-sample saving.
+
+Bit accounting:
+- The oracle transcript costs at most O(b Q_cells) bits on the successful path, excluding query-word names; the requested words add at most O(L Q_cells log q) bits if explicitly transmitted.
+- The basis stores rN rational entries, costing O(rNb) bits.
+- Each d×d rational solve can be done by fraction-free elimination. Clearing the d² input denominators and bounding determinants gives intermediate/coefficient bit length O(d³ b+d log d). This is a coarse worst-case bound.
+- The final q transition matrices and two readouts have at most O((q r²+2r)(r³ b+r log r)) output bits. The temporary per-column coordinate vector uses O(r(r³b+r log r)) bits and need not be retained for all N columns.
+- The field-operation counts above are not bit-operation counts. Multiplying them by the cost of arithmetic on O(R³b+R log R)-bit integers gives a direct conservative bit-time bound. Rational outputs can be large even when the rank is small.
+
+No singular gap is needed for this exact-rational route: zero residual and exact rank are algebraic decisions. If oracle answers are approximate or trajectories are sampled, exact equality is unavailable. A finite-block rank estimate then needs at least a separation condition such as σ_r(H_L)≥γ with σ_(r+1)=0, plus entry error small enough that Nη≤γ/4 for a full-table estimate. For adaptive noisy residual tests, γ alone is insufficient: an individual outside-span column may have arbitrarily small distance to the current span. A robust noisy version must also charge a minimum off-span witness margin and a conditioning bound for the sampled basis restriction. We do not claim a noisy matrix-completion theorem here.
+
+5. Lower bounds and boundaries
+
+No witness horizon: run any finite adaptive prefix-query algorithm on the deterministic all-zero stream. Let m be the maximum queried word length. Choose T>m and compare the same transcript with the finite-state clock stream 0^T111... . Every query agrees, yet the continuation after history 0^T differs. Both processes have finite Hankel rank, with rank allowed to grow with T. Therefore no finite prefix transcript can certify every future prediction without a finite witness-horizon/dimension promise or an equivalence/counterexample oracle. An apparent rank plateau is not a stopping certificate.
+
+No gap for noisy samples: let P0 be iid fair bits. Let Pδ first draw Z uniformly from {−1,+1}, then emit iid bits with Pr[1|Z]=1/2+Zδ. Pδ has rank 2 while P0 has rank 1. On W_1={ε,0,1}, the nonzero singular values of H_1 are 3/2 and 2δ², so γ=2δ². Length-two probabilities are 1/4+δ² for 00 and 11 and 1/4−δ² for 01 and 10; P0 assigns 1/4 to each. The KL divergence of one independent length-two trajectory is 8δ^4+O(δ^8). Le Cam/Pinsker therefore requires Ω(δ^−4)=Ω(γ^−2) trajectories for constant-error rank discrimination. An additive-η prefix answer for f(00) cannot distinguish the pair if η≥δ². This lower bound applies to noisy/sample access; one exact query to f(00) distinguishes every δ>0, so it does not apply to the exact oracle theorem.
+
+Why incoherence and the rank cap remain load-bearing: Krishnamurthy–Singh give a rank-one matrix supported on one entry as an adaptive-sampling obstruction: every cell may have to be inspected without structural information. The process/Hankel restriction means that arbitrary-matrix impossibility should not be silently presented as a Hankel lower bound. A valid finite-process hidden-trigger family still gives a direct prefix-query lower bound: choose an unknown z∈{0,1}^L; emit iid fair bits for the first L positions, then emit 1 deterministically if the first L bits equal z, and otherwise remain fair. Against the fair-coin process, queries of length at most L agree, and any longer query can distinguish at most the one z given by its first L symbols. Under uniform z, Q adaptive queries hit it with probability at most Q/2^L. Thus Ω(2^L)=Ω(N) word queries are necessary for constant-probability discovery in this family. The process has a finite clock/matcher realization; its predictive difference is localized around a rare trigger history and its ancestors, which suggests a high-coherence obstruction for uniform row panels. I have not computed the exact μ(U) for this embedding, so use it only for the stated Ω(N) word-query lower bound. This lower bound does not match N² and is not a proof that every Hankel learner needs a full block.
+
+With no useful rank cap, set R=N in the theorem. The required panel is at least the full row set, so this particular certified adaptive guarantee provides no sub-full-block savings. The output dimension is discovered, but the sub-full-block acquisition guarantee is not rank-blind. Removing the cap while retaining an honest stopping probability is unresolved here.
+
+6. Apples-to-apples comparisons
+
+Exact prefix-entry oracle:
+- Adaptive acquisition: discovers r and the word basis from a random row panel, with Q_cells as above; no basis is input.
+- Full-block spectral: receives the full H_L table (N² cells) and exact SVD/elimination; it may use the same q r² shift entries after pivot selection. Given the same complete table, both produce equivalent minimal realizations. On the adaptive partial table, a conventional full-block SVD has no full matrix to decompose; the adaptive method's gain is in which oracle entries it acquires, not a stronger algebraic output guarantee.
+- Basis-supplied: gets certified P,S and C_L, and pays only (q+1)r²+2r scalar entries. This oracle has removed the discovery cost and is not a fair baseline for unknown-basis acquisition.
+
+Trajectory oracle:
+If both methods receive the same n iid length-(2L+1) trajectories, each can compute the same prefix-frequency table. The full-block spectral method may threshold its SVD; the adaptive method may select pivots from those data, but neither can save sample collection through entry adaptivity. A comparison that gives only one learner extra trajectories or a more accurate oracle is not matched-information.
+
+7. Primary-source checks and status
+
+- Krishnamurthy and Singh, “Low-Rank Matrix and Tensor Completion via Adaptive Sampling,” arXiv:1304.4672 (2013), Corollary 3 and Lemma 7: exact sequential column-space discovery from a uniform row panel, one-sided column-space incoherence, expected O(N r^(3/2) μ0 log(r/δ)+rN) observations and O(N²r+r³m) runtime if the completed dense matrix is materialized. Their algorithm uses the rank in setting m; substituting a declared upper cap R preserves the bound by monotonicity. It does not give a rank-free confidence schedule.
+  https://arxiv.org/abs/1304.4672
+- Fliess, “Séries rationnelles positives et processus stochastiques” (1975), is the classical finite-Hankel-rank / rational-process representation source; the pivot-minor realization is the algebraic step used above.
+  https://www.numdam.org/item/AIHPB_1975__11_1_1_0/
+- Hsu, Kakade, and Zhang, “A Spectral Algorithm for Learning Hidden Markov Models,” is a useful sample-based spectral comparator, but its standard theorem estimates observable tables from trajectories and assumes rank/singular-value conditions; it does not supply this adaptive prefix-entry basis acquisition or infinite-horizon stop rule.
+  https://arxiv.org/abs/0811.4413
+- Kaznatcheev and Panangaden’s active weighted-automata model uses membership and counterexample/equivalence queries. That extra teacher channel can refute an inadequate finite basis and changes the interface.
+  https://arxiv.org/abs/2011.10498
+
+Decision: this is a conditional, genuinely adaptive finite-block basis-acquisition theorem with an independent probabilistic stop check and fully charged costs. The exact rank is discovered rather than given. A useful upper rank cap, incoherence bound, and finite witness horizon are still supplied promises. No unrestricted prefix-only rank-free result or novelty/priority claim is supported.

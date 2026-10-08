@@ -1,0 +1,326 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c5_quantum_dimension_obstruction/cycle11_basis_partition/stabilizer_readout.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c5_quantum_dimension_obstruction/cycle11_basis_partition/stabilizer_readout.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact Spin(9) orbit-basis partition and four-qubit stabilizer readout.
+
+This independently reconstructs the even-sign seed bases, maps their
+stabilizers to the Pauli/Jordan-Wigner realization, and synthesizes exact
+Clifford preparation circuits by a finite BFS over 4-qubit stabilizer states.
+It uses SymPy only for the exact 16x16 representation-intertwiner check.
+&quot;&quot;&quot;
+from collections import deque
+from importlib.util import spec_from_file_location, module_from_spec
+from pathlib import Path
+import json
+import sys
+
+HERE = Path(__file__).resolve().parent
+ROOT = HERE.parents[3]
+FC_PATH = ROOT / &quot;work/agents/c5_quantum_dimension_obstruction/cycle10_finite_compiler/finite_compiler.py&quot;
+JW_PATH = ROOT / &quot;work/agents/c5_quantum_dimension_obstruction/cycle9_spin9_mixed/spin9_fullstar_blocks.py&quot;
+
+def load_module(path, name):
+    spec = spec_from_file_location(name, path)
+    mod = module_from_spec(spec)
+    sys.modules[name] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+FC = load_module(FC_PATH, &quot;spin9_finite_compiler_cycle11&quot;)
+JW = load_module(JW_PATH, &quot;spin9_jw_words_cycle11&quot;)
+
+NQ = 4
+MASK = (1 &lt;&lt; NQ) - 1
+
+def identity(n=16):
+    return [[int(i == j) for j in range(n)] for i in range(n)]
+
+def matmul(a, b):
+    return [[sum(a[i][k] * b[k][j] for k in range(len(b)))
+             for j in range(len(b[0]))] for i in range(len(a))]
+
+def axes_for_even_sign_mask(mask):
+    axes = [i for i in range(1, 9) if (mask &gt;&gt; (i - 1)) &amp; 1]
+    if len(axes) &amp; 1:
+        axes = [0] + axes
+    return axes
+
+def oct_lift(mask, gammas):
+    m = identity()
+    for a in axes_for_even_sign_mask(mask):
+        m = matmul(m, gammas[a])
+    return m
+
+def alpha_for_seed(m, y_index):
+    if y_index is None:
+        if not all(m[r][0] == 0 for r in range(1, 16)):
+            return None
+        a = m[0][0]
+        if a not in (-1, 1):
+            return None
+        return a
+    x0, y0 = m[0][0], m[0][y_index]
+    xy, yy = m[y_index][0], m[y_index][y_index]
+    if not all(m[r][0] == 0 and m[r][y_index] == 0
+               for r in range(16) if r not in (0, y_index)):
+        return None
+    if x0 * yy - xy * y0 != 1:
+        return None
+    # M(x+i y)=(x0+i*y0)(x+i*y), so alpha is one of 1,-1,i,-i.
+    if (x0, y0) not in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+        return None
+    if x0 == 1: return 1
+    if x0 == -1: return -1
+    if y0 == 1: return 1j
+    return -1j
+
+def phase_exponent(alpha):
+    return {1: 0, 1j: 1, -1: 2, -1j: 3}[alpha]
+
+def word_to_pauli(word, coefficient_phase):
+    x = z = ny = 0
+    for q, letter in enumerate(word):
+        if letter in &quot;XY&quot;: x |= 1 &lt;&lt; q
+        if letter in &quot;YZ&quot;: z |= 1 &lt;&lt; q
+        if letter == &quot;Y&quot;: ny += 1
+    # Standard Y=iXZ on each overlapping site.
+    return ((coefficient_phase + ny) % 4, x, z)
+
+def jw_lift_word(mask):
+    phase = 0
+    word = (&quot;I&quot;,) * NQ
+    for a in axes_for_even_sign_mask(mask):
+        dp, word = JW.pauli_mul_word(word, JW.GAM[a])
+        phase = (phase + dp) % 4
+    return word_to_pauli(word, phase)
+
+def mul_pauli(a, b):
+    p, x, z = a
+    q, u, v = b
+    return ((p + q + 2 * ((z &amp; u).bit_count() % 2)) % 4,
+            x ^ u, z ^ v)
+
+def commutes(a, b):
+    return (((a[1] &amp; b[2]).bit_count() + (a[2] &amp; b[1]).bit_count()) % 2) == 0
+
+def seed_stabilizers(y_index):
+    oct_gammas = FC.gamma_model()
+    stab = []
+    for mask in range(256):
+        m = oct_lift(mask, oct_gammas)
+        alpha = alpha_for_seed(m, y_index)
+        if alpha is None:
+            continue
+        p, x, z = jw_lift_word(mask)
+        p = (p - phase_exponent(alpha)) % 4
+        assert (p &amp; 1) == ((x &amp; z).bit_count() &amp; 1), (mask, (p, x, z))
+        stab.append((p, x, z))
+    assert len(stab) == 16, (y_index, len(stab))
+    assert len(set(stab)) == 16
+    assert all(commutes(a, b) for i, a in enumerate(stab) for b in stab[i + 1:])
+    assert (0, 0, 0) in stab
+    # Closure under multiplication certifies that this is the complete ray stabilizer.
+    st = set(stab)
+    assert all(mul_pauli(a, b) in st for a in st for b in st)
+    return tuple(sorted(st))
+
+def canonical_group(gens):
+    group = {(0, 0, 0)}
+    frontier = [(0, 0, 0)]
+    while frontier:
+        a = frontier.pop()
+        for g in gens:
+            b = mul_pauli(a, g)
+            if b not in group:
+                group.add(b)
+                frontier.append(b)
+    return tuple(sorted(group))
+
+def conjugate(pauli, gate):
+    p, x, z = pauli
+    name, a, b = gate
+    if name == &quot;H&quot;:
+        bit = 1 &lt;&lt; a
+        xa, za = bool(x &amp; bit), bool(z &amp; bit)
+        if xa and za:
+            p = (p + 2) % 4
+        if xa != za:
+            x ^= bit; z ^= bit
+        return (p, x, z)
+    if name == &quot;S&quot;:
+        bit = 1 &lt;&lt; a
+        if x &amp; bit:
+            p = (p + 1) % 4
+            z ^= bit
+        return (p, x, z)
+    if name == &quot;SDG&quot;:
+        bit = 1 &lt;&lt; a
+        if x &amp; bit:
+            p = (p - 1) % 4
+            z ^= bit
+        return (p, x, z)
+    if name == &quot;X&quot;:
+        if z &amp; (1 &lt;&lt; a):
+            p = (p + 2) % 4
+        return (p, x, z)
+    if name == &quot;CNOT&quot;:
+        ctrl, target = a, b
+        xc, xt = (x &gt;&gt; ctrl) &amp; 1, (x &gt;&gt; target) &amp; 1
+        zc, zt = (z &gt;&gt; ctrl) &amp; 1, (z &gt;&gt; target) &amp; 1
+        if xc: x ^= 1 &lt;&lt; target
+        if zt: z ^= 1 &lt;&lt; ctrl
+        return (p, x, z)
+    raise ValueError(gate)
+
+def apply_gate(group, gate):
+    return tuple(sorted(conjugate(p, gate) for p in group))
+
+def gates():
+    out = []
+    for q in range(NQ):
+        out += [(&quot;H&quot;, q, None), (&quot;S&quot;, q, None), (&quot;SDG&quot;, q, None), (&quot;X&quot;, q, None)]
+    for c in range(NQ):
+        for t in range(NQ):
+            if c != t:
+                out.append((&quot;CNOT&quot;, c, t))
+    return out
+
+def bfs_preparation(target):
+    initial_gens = [(0, 0, 1 &lt;&lt; q) for q in range(NQ)]
+    start = canonical_group(initial_gens)
+    if start == target:
+        return []
+    gate_list = gates()
+    pred = {start: None}
+    queue = deque([start])
+    while queue:
+        state = queue.popleft()
+        for gate in gate_list:
+            nxt = apply_gate(state, gate)
+            if nxt in pred:
+                continue
+            pred[nxt] = (state, gate)
+            if nxt == target:
+                path = []
+                cur = nxt
+                while pred[cur] is not None:
+                    prev, g = pred[cur]
+                    path.append(g)
+                    cur = prev
+                path.reverse()
+                return path
+            queue.append(nxt)
+    raise RuntimeError(f&quot;unreachable stabilizer state; searched {len(pred)} states&quot;)
+
+def inverse_gate(g):
+    name, a, b = g
+    return ({&quot;S&quot;: &quot;SDG&quot;, &quot;SDG&quot;: &quot;S&quot;}.get(name, name), a, b)
+
+def circuit_counts(circuit):
+    return {g: sum(1 for c in circuit if c[0] == g)
+            for g in (&quot;H&quot;, &quot;S&quot;, &quot;SDG&quot;, &quot;X&quot;, &quot;CNOT&quot;)}
+
+def matrix_pauli(word):
+    import sympy as sp
+    p = {&quot;I&quot;: sp.eye(2), &quot;X&quot;: sp.Matrix([[0,1],[1,0]]),
+         &quot;Y&quot;: sp.Matrix([[0,-sp.I],[sp.I,0]]), &quot;Z&quot;: sp.diag(1,-1)}
+    out = sp.Matrix([[1]])
+    # q=0 is the least-significant computational bit.
+    for letter in reversed(word):
+        out = sp.kronecker_product(out, p[letter])
+    return out
+
+def intertwiner_audit():
+    import sympy as sp
+    oct_g = [sp.Matrix(row) for row in FC.gamma_model()]
+    jw_g = [matrix_pauli(word) for word in JW.GAM]
+    # A nonzero solution W intertwines the two irreducible Cl_9 modules.
+    vars = sp.symbols(&quot;w0:256&quot;)
+    W = sp.Matrix(16, 16, vars)
+    eqs = []
+    for a in range(9):
+        eqs += list(W * oct_g[a] - jw_g[a] * W)
+    A, _ = sp.linear_eq_to_matrix(eqs, vars)
+    ns = A.nullspace()
+    assert len(ns) == 1, len(ns)
+    W = sp.Matrix(16,16,ns[0])
+    gram = sp.simplify(W.H * W)
+    scalar = gram[0,0]
+    assert scalar != 0 and gram == scalar * sp.eye(16)
+    # The JW volume product and oct volume product have the same positive sign.
+    vo = sp.eye(16); vj = sp.eye(16)
+    for a in range(9): vo = vo * oct_g[a]; vj = vj * jw_g[a]
+    assert vo == sp.eye(16) and vj == sp.eye(16)
+    assert sum(v != 0 for v in W) == 32 and scalar == 2
+    return {&quot;nullity&quot;: len(ns), &quot;gram_scalar&quot;: str(scalar),
+            &quot;entries_gaussian_integer&quot;: all(v in (0,1,-1,sp.I,-sp.I) for v in W),
+            &quot;nonzero_entries&quot;: sum(v != 0 for v in W),
+            &quot;intertwiner_matrix&quot;: [[str(W[i,j]) for j in range(16)] for i in range(16)],
+            &quot;unitarity_scale&quot;: &quot;1/sqrt(2)&quot;,
+            &quot;same_positive_volume_element&quot;: True,
+            &quot;unitary_is_clifford&quot;: &quot;not asserted; it is a fixed exact representation change&quot;,
+            &quot;runtime_convention&quot;: &quot;Pauli/Jordan-Wigner representation is used directly for the four-qubit circuit&quot;
+            }
+
+def reflection_paulis():
+    records = []
+    max_weight = 0
+    for a in range(9):
+        for b in range(a + 1, 9):
+            ph, word = JW.pauli_mul_word(JW.GAM[a], JW.GAM[b])
+            # pauli_mul_word writes the product as i^ph times a tensor-product
+            # Pauli word, so multiplying by i leaves a real sign.
+            residual = (ph + 1) % 4
+            assert residual in (0,2), (a,b,ph,word,residual)
+            weight = sum(ch != &quot;I&quot; for ch in word)
+            assert weight &lt;= 4
+            max_weight = max(max_weight, weight)
+            records.append({&quot;axes&quot;: [a,b], &quot;pauli_word&quot;: &quot;&quot;.join(word),
+                            &quot;sign&quot;: 1 if residual == 0 else -1,
+                            &quot;weight&quot;: weight})
+    assert len(records) == 36
+    return {&quot;count&quot;: len(records), &quot;all_are_signed_hermitian_pauli_words&quot;: True,
+            &quot;max_weight&quot;: max_weight, &quot;records&quot;: records,
+            &quot;reflection_identity&quot;: &quot;R_ab=Gamma_a exp(i*pi*P_ab/4)=(Gamma_a-Gamma_b)/sqrt(2)&quot;,
+            &quot;per_reflection_synthesis&quot;: &quot;at most 2(weight-1) CNOT, one Rz(pi/2), local Clifford basis changes and Gamma_a Pauli word&quot;}
+
+
+def main():
+    target = {
+        &quot;v_R&quot;: (None, 9, 144),
+        &quot;v_H&quot;: (8, 72, 1152),
+        &quot;v_V&quot;: (1, 63, 1008),
+    }
+    results = {}
+    for label, (y, basis_count, orbit_size) in target.items():
+        stab = seed_stabilizers(y)
+        circuit = bfs_preparation(stab)
+        state = canonical_group([(0,0,1&lt;&lt;q) for q in range(NQ)])
+        for gate in circuit:
+            state = apply_gate(state, gate)
+        assert state == stab
+        diagonalizer = [inverse_gate(g) for g in reversed(circuit)]
+        measured = stab
+        for gate in diagonalizer:
+            measured = apply_gate(measured, gate)
+        assert measured == canonical_group([(0,0,1&lt;&lt;q) for q in range(NQ)])
+        results[label] = {
+            &quot;basis_count&quot;: basis_count,
+            &quot;orbit_size&quot;: orbit_size,
+            &quot;even_sign_seed_stabilizer_order&quot;: len(stab),
+            &quot;stabilizer_paulis&quot;: [list(x) for x in stab],
+            &quot;preparation_clifford&quot;: [list(x) for x in circuit],
+            &quot;preparation_gate_counts&quot;: circuit_counts(circuit),
+            &quot;measurement_diagonalizer&quot;: [list(x) for x in diagonalizer],
+            &quot;measurement_gate_counts&quot;: circuit_counts(diagonalizer),
+            &quot;per_basis_outcome_bits&quot;: 4,
+            &quot;uniform_basis_index_bits_information&quot;: f&quot;log2({basis_count})&quot;,
+            &quot;finite_effect_weight&quot;: f&quot;1/{basis_count}&quot;,
+        }
+        assert orbit_size == 16 * basis_count
+    out = {&quot;representation_intertwiner&quot;: intertwiner_audit(),
+           &quot;reflection_paulis&quot;: reflection_paulis(), &quot;seeds&quot;: results}
+    (HERE / &quot;STABILIZER_READOUT_CERTIFICATE.json&quot;).write_text(json.dumps(out, indent=2) + &quot;\n&quot;)
+    print(json.dumps(out, indent=2))
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/7c39018196a41841e38ff942e6a92abe94bd39e4057b06b3fccad00595b59394.py">Exact original</a></p></html>

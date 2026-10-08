@@ -1,0 +1,300 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c4_biological_information/cycle5_cell_programming/code/shared_exposure_compiler.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c4_biological_information/cycle5_cell_programming/code/shared_exposure_compiler.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact small-instance models and design compiler for recombinase branching.
+
+The statistical functions implement the explicit conditional-independence
+model Q_F = integral product_i Bernoulli(p_i(a)) dF(a).  They do not assert
+that Bxb1 modules in a real cell satisfy that model.  The tree compiler is a
+separate idealized architecture: each active node resolves a competing race,
+then only its selected child is enabled.  Unresolved nodes remain an explicit
+outcome so finite exposure is not silently treated as successful fate choice.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import heapq
+import itertools
+import math
+from collections.abc import Callable, Iterable, Mapping, Sequence
+
+
+def total_variation(p: Sequence[float], q: Sequence[float]) -&gt; float:
+    if len(p) != len(q):
+        raise ValueError(&quot;Probability vectors must have the same length&quot;)
+    return 0.5 * sum(abs(float(a) - float(b)) for a, b in zip(p, q))
+
+
+def parallel_fate_law(
+    activities: Sequence[float],
+    weights: Sequence[float],
+    response_functions: Sequence[Callable[[float], float]],
+) -&gt; dict[tuple[int, ...], float]:
+    &quot;&quot;&quot;Evaluate a finite-support shared-exposure mixture of product laws.&quot;&quot;&quot;
+    if len(activities) != len(weights) or not activities:
+        raise ValueError(&quot;Activities and weights must have the same nonzero length&quot;)
+    if any(a &lt; 0 for a in activities) or any(w &lt; 0 for w in weights):
+        raise ValueError(&quot;Activity and mixture weights must be nonnegative&quot;)
+    if not math.isclose(sum(weights), 1.0, rel_tol=0, abs_tol=1e-12):
+        raise ValueError(&quot;Mixture weights must sum to one&quot;)
+    if not response_functions:
+        raise ValueError(&quot;At least one module is required&quot;)
+
+    law = {bits: 0.0 for bits in itertools.product((0, 1), repeat=len(response_functions))}
+    for activity, weight in zip(activities, weights):
+        ps = [float(fn(activity)) for fn in response_functions]
+        if any(not 0.0 &lt;= p &lt;= 1.0 for p in ps):
+            raise ValueError(&quot;Response probabilities must lie in [0, 1]&quot;)
+        for bits in law:
+            prob = weight
+            for bit, p in zip(bits, ps):
+                prob *= p if bit else 1.0 - p
+            law[bits] += prob
+    return law
+
+
+def hazard_response(rate: float) -&gt; Callable[[float], float]:
+    &quot;&quot;&quot;First-order activation response p(a)=1-exp(-rate*a).&quot;&quot;&quot;
+    if rate &lt; 0:
+        raise ValueError(&quot;Rate must be nonnegative&quot;)
+    return lambda activity: -math.expm1(-rate * activity)
+
+
+def product_of_marginals(law: Mapping[tuple[int, ...], float]) -&gt; dict[tuple[int, ...], float]:
+    &quot;&quot;&quot;Independent-bit law with the supplied law&#x27;s one-bit marginals.&quot;&quot;&quot;
+    if not law:
+        raise ValueError(&quot;Law cannot be empty&quot;)
+    m = len(next(iter(law)))
+    if any(len(bits) != m for bits in law):
+        raise ValueError(&quot;All states must have equal dimension&quot;)
+    marginals = [sum(q for bits, q in law.items() if bits[i]) for i in range(m)]
+    result: dict[tuple[int, ...], float] = {}
+    for bits in itertools.product((0, 1), repeat=m):
+        prob = 1.0
+        for bit, p in zip(bits, marginals):
+            prob *= p if bit else 1.0 - p
+        result[bits] = prob
+    return result
+
+
+def dkw_full_law_sample_bound(
+    a_max: float,
+    sum_lipschitz: float,
+    epsilon_tv: float,
+    delta: float,
+) -&gt; int:
+    &quot;&quot;&quot;Sufficient iid measured-activity sample size for TV &lt;= epsilon.
+
+    Assumes exact response curves, activity measured without error, and
+    iid cells. DKW plus the 1-D W1 bound gives
+    n &gt;= (a_max*sum_i L_i)^2 log(2/delta)/(2 epsilon_tv^2).
+    &quot;&quot;&quot;
+    if a_max &lt; 0 or sum_lipschitz &lt; 0 or epsilon_tv &lt;= 0 or not 0 &lt; delta &lt; 1:
+        raise ValueError(&quot;Invalid DKW bound inputs&quot;)
+    bound = (a_max * sum_lipschitz) ** 2 * math.log(2.0 / delta) / (2.0 * epsilon_tv**2)
+    return math.ceil(bound)
+
+
+def response_rate_error_bound(
+    a_max: float,
+    rates: Sequence[float],
+    rate_errors: Sequence[float],
+    exposure_w1_error: float = 0.0,
+) -&gt; float:
+    &quot;&quot;&quot;TV bound for first-order hazards with rate and exposure-law errors.
+
+    Since |d(1-exp(-k a))/dk| &lt;= a_max and each hazard response is
+    k-Lipschitz in a, product-law telescoping gives the displayed bound.
+    &quot;&quot;&quot;
+    if (a_max &lt; 0 or exposure_w1_error &lt; 0 or len(rates) != len(rate_errors)
+            or any(k &lt; 0 for k in rates) or any(e &lt; 0 for e in rate_errors)):
+        raise ValueError(&quot;Errors and a_max must be nonnegative&quot;)
+    return a_max * sum(rate_errors) + sum(rates) * exposure_w1_error
+
+
+def one_hot_pairwise_obstruction(m: int) -&gt; tuple[float, float]:
+    &quot;&quot;&quot;Return (target joint, parallel lower bound) for equal one-hot fates.
+
+    Valid when p_i(a) and p_j(a) are both nondecreasing functions of the
+    same scalar activity and modules are conditionally independent.
+    &quot;&quot;&quot;
+    if m &lt; 2:
+        raise ValueError(&quot;At least two one-hot fates are required&quot;)
+    marginal = 1.0 / m
+    return 0.0, marginal * marginal
+
+
+def competing_race_probabilities(k_left: float, k_right: float, integrated_activity: float) -&gt; dict[str, float]:
+    &quot;&quot;&quot;Cause probabilities for hazards k_left*u(t), k_right*u(t).
+
+    integrated_activity is A(T)=integral_0^T u(t)dt.  The left:right ratio,
+    conditional on a reaction by T, is dose-invariant; finite-dose failures
+    are returned explicitly as unresolved.
+    &quot;&quot;&quot;
+    if k_left &lt;= 0 or k_right &lt;= 0 or integrated_activity &lt; 0:
+        raise ValueError(&quot;Rates must be positive and integrated activity nonnegative&quot;)
+    total_rate = k_left + k_right
+    event_probability = -math.expm1(-total_rate * integrated_activity)
+    q_left = k_left / total_rate
+    return {
+        &quot;left&quot;: q_left * event_probability,
+        &quot;right&quot;: (1.0 - q_left) * event_probability,
+        &quot;unresolved&quot;: 1.0 - event_probability,
+        &quot;left_given_event&quot;: q_left,
+    }
+
+
+def rare_target_assay_n_for_detection(probability: float, confidence: float) -&gt; int:
+    &quot;&quot;&quot;Minimum iid cells to see a fate at least once with stated confidence.&quot;&quot;&quot;
+    if not 0.0 &lt; probability &lt;= 1.0 or not 0.0 &lt; confidence &lt; 1.0:
+        raise ValueError(&quot;Probability and confidence must lie in (0, 1)&quot;)
+    if probability == 1.0:
+        return 1
+    return math.ceil(math.log1p(-confidence) / math.log1p(-probability))
+
+
+def rare_target_assay_n_for_relative_error(
+    probability: float, relative_error: float, delta: float
+) -&gt; int:
+    &quot;&quot;&quot;Chernoff sufficient n for relative error of a rare fate probability.&quot;&quot;&quot;
+    if (not 0.0 &lt; probability &lt;= 1.0 or not 0.0 &lt; relative_error &lt;= 1.0
+            or not 0.0 &lt; delta &lt; 1.0):
+        raise ValueError(&quot;Invalid rare-target bound inputs&quot;)
+    return math.ceil(3.0 * math.log(2.0 / delta) / (probability * relative_error**2))
+
+
+def compile_huffman_tree(probabilities: Mapping[str, float]) -&gt; tuple[dict, float]:
+    &quot;&quot;&quot;Compile a target categorical law to a minimum-mean-depth binary tree.&quot;&quot;&quot;
+    if not probabilities or any(p &lt;= 0 for p in probabilities.values()):
+        raise ValueError(&quot;All listed fate probabilities must be positive&quot;)
+    if not math.isclose(sum(probabilities.values()), 1.0, rel_tol=0, abs_tol=1e-12):
+        raise ValueError(&quot;Fate probabilities must sum to one&quot;)
+
+    heap: list[tuple[float, int, dict]] = []
+    next_id = 0
+    for fate, p in sorted(probabilities.items()):
+        heap.append((p, next_id, {&quot;fate&quot;: fate, &quot;mass&quot;: p}))
+        next_id += 1
+    heapq.heapify(heap)
+    if len(heap) == 1:
+        return heap[0][2], 0.0
+    while len(heap) &gt; 1:
+        p0, _, left = heapq.heappop(heap)
+        p1, _, right = heapq.heappop(heap)
+        mass = p0 + p1
+        node = {
+            &quot;mass&quot;: mass,
+            &quot;left&quot;: left,
+            &quot;right&quot;: right,
+            &quot;left_probability&quot;: p0 / mass,
+            &quot;right_probability&quot;: p1 / mass,
+        }
+        heapq.heappush(heap, (mass, next_id, node))
+        next_id += 1
+    root = heap[0][2]
+    depths: dict[str, int] = {}
+
+    def walk(node: dict, depth: int) -&gt; None:
+        if &quot;fate&quot; in node:
+            depths[node[&quot;fate&quot;]] = depth
+            node[&quot;depth&quot;] = depth
+            return
+        node[&quot;depth&quot;] = depth
+        walk(node[&quot;left&quot;], depth + 1)
+        walk(node[&quot;right&quot;], depth + 1)
+
+    walk(root, 0)
+    mean_depth = sum(probabilities[fate] * depths[fate] for fate in probabilities)
+    return root, mean_depth
+
+
+def tree_leaf_probabilities(tree: Mapping, resolved_only: bool = False) -&gt; dict[str, float]:
+    &quot;&quot;&quot;Return ideal leaf law; if resolved_only, condition away unresolved mass.&quot;&quot;&quot;
+    out: dict[str, float] = {}
+
+    def walk(node: Mapping, mass: float) -&gt; None:
+        if &quot;fate&quot; in node:
+            out[str(node[&quot;fate&quot;])] = out.get(str(node[&quot;fate&quot;]), 0.0) + mass
+            return
+        if &quot;left&quot; not in node or &quot;right&quot; not in node:
+            out[&quot;UNRESOLVED&quot;] = out.get(&quot;UNRESOLVED&quot;, 0.0) + mass
+            return
+        event_probability = float(node.get(&quot;event_probability&quot;, 1.0))
+        if not 0.0 &lt;= event_probability &lt;= 1.0:
+            raise ValueError(&quot;event_probability must lie in [0, 1]&quot;)
+        unresolved = mass * (1.0 - event_probability)
+        if unresolved &gt; 0.0:
+            out[&quot;UNRESOLVED&quot;] = out.get(&quot;UNRESOLVED&quot;, 0.0) + unresolved
+        pl = float(node[&quot;left_probability&quot;])
+        pr = float(node[&quot;right_probability&quot;])
+        if not math.isclose(pl + pr, 1.0, rel_tol=0, abs_tol=1e-12):
+            raise ValueError(&quot;Conditional branch probabilities must sum to one&quot;)
+        walk(node[&quot;left&quot;], mass * event_probability * pl)
+        walk(node[&quot;right&quot;], mass * event_probability * pr)
+
+    walk(tree, 1.0)
+    if resolved_only:
+        mass = sum(v for k, v in out.items() if k != &quot;UNRESOLVED&quot;)
+        if mass == 0:
+            return {}
+        return {k: v / mass for k, v in out.items() if k != &quot;UNRESOLVED&quot;}
+    return out
+
+
+def tree_node_count(tree: Mapping) -&gt; int:
+    if &quot;fate&quot; in tree:
+        return 0
+    return 1 + tree_node_count(tree[&quot;left&quot;]) + tree_node_count(tree[&quot;right&quot;])
+
+
+def run_self_tests() -&gt; dict[str, object]:
+    # Shared exposure can produce an exponentially different high-order fate.
+    law = parallel_fate_law([0.0, 1.0], [0.9, 0.1], [lambda a: 0.99 if a else 0.0] * 10)
+    all_on = law[(1,) * 10]
+    marginals = [sum(q for bits, q in law.items() if bits[i]) for i in range(10)]
+    product_all_on = math.prod(marginals)
+    assert math.isclose(sum(law.values()), 1.0, abs_tol=1e-12)
+    assert math.isclose(all_on / product_all_on, 1e9, rel_tol=1e-8)
+
+    # First-order hazard special case is the same mixture implementation.
+    hazard = parallel_fate_law([0.25, 1.0], [0.4, 0.6], [hazard_response(0.7), hazard_response(1.2)])
+    assert math.isclose(sum(hazard.values()), 1.0, abs_tol=1e-12)
+    assert all(v &gt;= 0 for v in hazard.values())
+
+    target = {f&quot;fate_{i}&quot;: 0.1 for i in range(10)}
+    tree, mean_depth = compile_huffman_tree(target)
+    leaves = tree_leaf_probabilities(tree)
+    assert tree_node_count(tree) == 9
+    assert max(abs(leaves[k] - target[k]) for k in target) &lt; 1e-12
+    assert math.isclose(mean_depth, 3.4, abs_tol=1e-12)
+    target_joint, parallel_lower = one_hot_pairwise_obstruction(10)
+    assert target_joint == 0 and math.isclose(parallel_lower, 0.01, abs_tol=1e-15)
+    races = [competing_race_probabilities(1.0, 3.0, a) for a in (0.01, 0.2, 5.0)]
+    assert all(math.isclose(race[&quot;left_given_event&quot;], 0.25, abs_tol=1e-15) for race in races)
+    assert all(math.isclose(r[&quot;left&quot;] + r[&quot;right&quot;] + r[&quot;unresolved&quot;], 1.0, abs_tol=1e-12)
+               for r in races)
+
+    # Failure is retained as an explicit mass; a tree need not resolve every cell.
+    failure_tree = {&quot;mass&quot;: 1.0, &quot;left_probability&quot;: 0.4,
+                    &quot;right_probability&quot;: 0.6, &quot;event_probability&quot;: 0.8,
+                    &quot;left&quot;: {&quot;fate&quot;: &quot;A&quot;}, &quot;right&quot;: {&quot;fate&quot;: &quot;B&quot;}}
+    failure_law = tree_leaf_probabilities(failure_tree)
+    assert failure_law == {&quot;UNRESOLVED&quot;: 0.19999999999999996, &quot;A&quot;: 0.32000000000000006,
+                           &quot;B&quot;: 0.48}
+    return {
+        &quot;tests&quot;: 7,
+        &quot;shared_exposure_all_on&quot;: all_on,
+        &quot;product_marginal_all_on&quot;: product_all_on,
+        &quot;underprediction_factor&quot;: all_on / product_all_on,
+        &quot;huffman_leaf_count&quot;: len(leaves),
+        &quot;huffman_internal_nodes&quot;: tree_node_count(tree),
+        &quot;huffman_mean_depth&quot;: mean_depth,
+        &quot;one_hot_pairwise_gap&quot;: parallel_lower - target_joint,
+        &quot;dkw_example_n&quot;: dkw_full_law_sample_bound(1.0, 10.0, 0.05, 0.05),
+        &quot;rare_target_detection_n_at_1e-3_95pct&quot;: rare_target_assay_n_for_detection(0.001, 0.95),
+    }
+
+
+if __name__ == &quot;__main__&quot;:
+    import json
+
+    print(json.dumps(run_self_tests(), indent=2))
+</pre><p><a href="../assets/4cd513fcfb608fecd2ea5420e0f46f115cd06b80b3263699b7c97a334a6d612a.py">Exact original</a></p></html>

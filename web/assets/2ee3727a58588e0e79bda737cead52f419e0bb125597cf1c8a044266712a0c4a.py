@@ -1,0 +1,108 @@
+"""Exact d=5 full-support nonuniform Weyl weight control.
+
+Q has one Weyl cosine/sine pair of weight 1 and the other eleven pairs of
+weight 1/2. The script verifies the exact charge-block star characteristic
+polynomial and the root interval used in D5_NONUNIFORM_WEIGHT_CONTROL.md.
+The support value S_5(Q)=3 is proved analytically in that note.
+
+Run from the repository root with SymPy 1.14 or compatible.
+"""
+from __future__ import annotations
+
+import sympy as sp
+from sympy.matrices import zeros, eye, kronecker_product
+from sympy.polys.domains import QQ
+from sympy.polys.matrices import DomainMatrix
+
+
+D = 5
+z = sp.exp(2 * sp.pi * sp.I / D)
+X, Z = zeros(D), zeros(D)
+for j in range(D):
+    X[(j + 1) % D, j] = 1
+    Z[j, j] = z**j
+I = eye(D)
+
+# Two reps (g and 2g) on each of the five finite-slope lines, then vertical.
+reps: list[tuple[int, int]] = []
+for slope in range(D):
+    reps.extend([(1, slope), (2, (2 * slope) % D)])
+reps.extend([(0, 1), (0, 2)])
+weights = [sp.Rational(1, 2)] * 12
+weights[0] = sp.Integer(1)
+
+
+def weyl(a: int, b: int):
+    # 2^{-1}=3 mod 5; W_g W_h=omega^{-S(g,h)/2}W_(g+h).
+    return z ** ((3 * a * b) % D) * X**a * Z**b
+
+
+def main() -> None:
+    H = zeros(D**3)
+    for weight, (a, b) in zip(weights, reps):
+        W = weyl(a, b)
+        Wd = W.conjugate().T
+        pair_star = (
+            kronecker_product(W.T, Wd, I)
+            + kronecker_product(Wd.T, W, I)
+            + kronecker_product(W.T, I, Wd)
+            + kronecker_product(Wd.T, I, W)
+        )
+        H += weight * pair_star
+
+    # Charge q=a+b-r for U_(0,1)=bar(Z) tensor Z tensor Z.
+    indices = [25 * r + 5 * a + b
+               for r in range(D) for a in range(D) for b in range(D)
+               if (a + b - r) % D == 0]
+    block = H.extract(indices, indices)
+    assert len(indices) == 25
+    K = QQ.cyclotomic_field(D)
+    coeffs = DomainMatrix.from_Matrix(block).convert_to(K).charpoly()
+
+    sqrt5 = 1 + 2 * (z + z**4)
+    x = sp.symbols("x")
+    expected = (
+        (x + sp.Rational(3, 2))**8
+        * (x + (1 + sqrt5)/4)**2
+        * (x - 7 + 9*(1 + sqrt5)/4)
+        * (x - (19 + 9*sqrt5)/4)
+        * (x + (1 - sqrt5)/4)**2
+        * (x + (3 + sqrt5)/2)**4
+        * (x + (3 - sqrt5)/2)**4
+        * (x**3 - sp.Rational(31, 2)*x**2 + sp.Rational(17, 4)*x + 4)
+    )
+    radical_expected = (
+        (x + sp.Rational(3, 2))**8
+        * (x + (1 + sp.sqrt(5))/4)**2
+        * (x - 7 + 9*(1 + sp.sqrt(5))/4)
+        * (x - (19 + 9*sp.sqrt(5))/4)
+        * (x + (1 - sp.sqrt(5))/4)**2
+        * (x + (3 + sp.sqrt(5))/2)**4
+        * (x + (3 - sp.sqrt(5))/2)**4
+        * (x**3 - sp.Rational(31, 2)*x**2 + sp.Rational(17, 4)*x + 4)
+    )
+    expected_coeffs = [K.from_sympy(c) for c in
+                       sp.Poly(sp.expand(expected), x, extension=z).all_coeffs()]
+    assert coeffs == expected_coeffs
+
+    cubic = x**3 - sp.Rational(31, 2)*x**2 + sp.Rational(17, 4)*x + 4
+    assert cubic.subs(x, 15) == -sp.Rational(179, 4)
+    assert cubic.subs(x, 16) == 200
+    assert sp.diff(cubic, x).subs(x, 15) == sp.Rational(857, 4)
+    assert sp.diff(cubic, x, 2).subs(x, 15) == 59
+    # All linear roots are below 10; for the largest, 9*sqrt(5)<21 follows
+    # by squaring 405<441. The cubic is increasing on [15,infinity).
+    assert 9**2 * 5 < 21**2
+
+    print("weights", weights)
+    print("selected_extra_pair", reps[0])
+    print("block_dimension", len(indices))
+    print("exact_block_charpoly_Qsqrt5", radical_expected)
+    print("exact_full_charpoly_is_block_charpoly_to_power_5", True)
+    print("lambda_max_is_unique_cubic_root_in_(15,16)", True)
+    print("trace_HS_Q", 2 * sum(weights))
+    print("lambda_max_minus_trace_is_in_(2,3)", True)
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,67 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/mathematics_algorithms/children/constructive_rounding/centered_k22_scalar_rounding.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/mathematics_algorithms/children/constructive_rounding/centered_k22_scalar_rounding.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Exact feature rounding for centered disjoint K_{2,2} matching polytopes.
+
+Input weights are rational scalars a_i in [-1, 1].  The feature row assigns
+value +a_i/2 to each edge of the diagonal matching in block i and -a_i/2 to
+each edge of the off-diagonal matching.  The returned two perfect matchings,
+with probability 1/2 each, have exact edge marginals 1/2 and feature error at
+most max_i |a_i| &lt;= 1 in every atom.
+&quot;&quot;&quot;
+
+from dataclasses import dataclass
+from fractions import Fraction
+from typing import Sequence
+
+
+Edge = tuple[int, int, int]  # (component, left endpoint, right endpoint)
+Matching = tuple[Edge, ...]
+
+
+@dataclass(frozen=True)
+class RoundingLaw:
+    probabilities: tuple[Fraction, Fraction]
+    matchings: tuple[Matching, Matching]
+    signs: tuple[int, ...]
+    feature_error: Fraction
+
+
+def _matching(signs: Sequence[int]) -&gt; Matching:
+    edges: list[Edge] = []
+    for i, sign in enumerate(signs):
+        if sign == 1:
+            edges.extend(((i, 0, 0), (i, 1, 1)))
+        elif sign == -1:
+            edges.extend(((i, 0, 1), (i, 1, 0)))
+        else:
+            raise ValueError(&quot;signs must be +1 or -1&quot;)
+    return tuple(edges)
+
+
+def round_centered_k22_scalar(weights: Sequence[Fraction]) -&gt; RoundingLaw:
+    &quot;&quot;&quot;Return a two-atom exact-marginal law with scalar feature error at most 1.
+
+    The two-bin greedy signing maintains the absolute load difference at most
+    the largest weight seen so far.  All calculations use exact fractions.
+    &quot;&quot;&quot;
+    exact = tuple(Fraction(a) for a in weights)
+    if any(abs(a) &gt; 1 for a in exact):
+        raise ValueError(&quot;each feature weight must lie in [-1, 1]&quot;)
+
+    loads = [Fraction(0), Fraction(0)]
+    signs: list[int] = []
+    for a in exact:
+        side = 0 if loads[0] &lt;= loads[1] else 1
+        orientation = 1 if side == 0 else -1
+        loads[side] += abs(a)
+        signs.append(orientation * (1 if a &gt;= 0 else -1))
+
+    sigma = tuple(signs)
+    antipode = tuple(-s for s in sigma)
+    error = abs(sum((s * a for s, a in zip(sigma, exact)), Fraction(0)))
+    law = RoundingLaw(
+        probabilities=(Fraction(1, 2), Fraction(1, 2)),
+        matchings=(_matching(sigma), _matching(antipode)),
+        signs=sigma,
+        feature_error=error,
+    )
+    return law
+</pre><p><a href="../assets/f0f65bd8e2191d1588ab57c1f3b0fbdfe39515d681e2ff8e187564fc62dad3f3.py">Exact original</a></p></html>

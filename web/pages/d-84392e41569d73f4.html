@@ -1,0 +1,104 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/reaction_dynamics/cycle3/leaves/exponential_foster_outside_gain/validate_exact.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/reaction_dynamics/cycle3/leaves/exponential_foster_outside_gain/validate_exact.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Small exact-rational validation for the cycle-3 Foster witness.
+
+This is finite checking only.  The all-state drift and nonexplosion claims
+are proved analytically in REPORT.txt.
+&quot;&quot;&quot;
+
+from fractions import Fraction as Q
+
+
+R = Q(6, 5)
+
+
+def g(m: int) -&gt; Q:
+    return R**m * (Q(1, 5) - Q(m, 3)) + m
+
+
+def value(a: int, b1: int, b2: int) -&gt; Q:
+    return Q(a) + R**b1 + R**b2 + 3 * (a == 0)
+
+
+def formula_drift(a: int, b1: int, b2: int) -&gt; Q:
+    return (
+        1 - a
+        + a * (g(b1) + g(b2))
+        - 2 * a * (a - 1) * (b1 + b2)
+        - 3 * (a == 0)
+        + 3 * (a == 1)
+    )
+
+
+def direct_drift(a: int, b1: int, b2: int) -&gt; Q:
+    &quot;&quot;&quot;Generator applied to V by explicit state changes and propensities.&quot;&quot;&quot;
+    x = (a, b1, b2)
+    transitions = [
+        (Q(1), (a + 1, b1, b2)),                    # 0 -&gt; A
+        (Q(a), (a - 1, b1, b2)),                    # A -&gt; 0
+        (Q(a), (a, b1 + 1, b2)),                    # A -&gt; A+B1
+        (Q(2 * a * b1), (a, b1 - 1, b2)),           # A+B1 -&gt; A
+        (Q(a * b1), (a + 1, b1, b2)),               # A+B1 -&gt; 2A+B1
+        (Q(2 * a * (a - 1) * b1), (a - 1, b1, b2)), # 2A+B1 -&gt; A+B1
+        (Q(a), (a, b1, b2 + 1)),                    # A -&gt; A+B2
+        (Q(2 * a * b2), (a, b1, b2 - 1)),           # A+B2 -&gt; A
+        (Q(a * b2), (a + 1, b1, b2)),               # A+B2 -&gt; 2A+B2
+        (Q(2 * a * (a - 1) * b2), (a - 1, b1, b2)), # 2A+B2 -&gt; A+B2
+    ]
+    total = Q(0)
+    for rate, y in transitions:
+        if rate:
+            total += rate * (value(*y) - value(*x))
+    return total
+
+
+def main() -&gt; None:
+    values = [g(m) for m in range(10)]
+    assert max(values) == Q(5156, 3125)
+    assert values.index(max(values)) == 4
+    assert g(10) == Q(-459022174, 48828125)
+    assert g(10) &lt; -9
+
+    # Verify the exact difference formula over a finite diagnostic range;
+    # monotonicity for every m&gt;=10 follows from the displayed coefficient.
+    for m in range(101):
+        delta = g(m + 1) - g(m)
+        exact_delta = 1 - Q(5 * m + 27, 75) * R**m
+        assert delta == exact_delta
+        if m &gt;= 10:
+            bound = 1 - Q(77, 75) * R**m
+            assert delta &lt;= bound &lt; 0
+
+    # Independently compare the displayed drift identity to the reaction
+    # generator over a finite box, including reaction boundaries.
+    for a in range(16):
+        for b1 in range(16):
+            for b2 in range(16):
+                assert direct_drift(a, b1, b2) == formula_drift(a, b1, b2)
+
+    # Exact finite witness: outside F = {1&lt;=a&lt;=3, b1,b2&lt;=9}, the drift is
+    # &lt;= -1 on this diagnostic box.  The analytical proof extends globally.
+    checked = 0
+    max_outside = None
+    for a in range(31):
+        for b1 in range(26):
+            for b2 in range(26):
+                inside = 1 &lt;= a &lt;= 3 and b1 &lt;= 9 and b2 &lt;= 9
+                if not inside:
+                    lv = formula_drift(a, b1, b2)
+                    assert lv &lt;= -1, (a, b1, b2, lv)
+                    max_outside = lv if max_outside is None else max(max_outside, lv)
+                    checked += 1
+    assert checked == 31 * 26 * 26 - 3 * 10 * 10
+    assert max_outside == Q(-7, 5)
+
+    # LP contradiction is an exact implication, not an optimization result:
+    # 2w_i&gt;lambda for both i implies w1+w2&gt;lambda, contrary to lambda&gt;w1+w2.
+    print(&quot;PASS: Fraction-exact g values, difference identity, LP contradiction&quot;)
+    print(&quot;PASS: direct generator equals formula on 16^3 boundary-inclusive states&quot;)
+    print(f&quot;PASS: LV&lt;=-1 on {checked} exact grid states outside F; grid maximum={max_outside}&quot;)
+    print(&quot;Scope: these finite checks do not replace the all-state proof in REPORT.txt&quot;)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/9432790790f1cd8305a74a04a882c7fed13e2daf281c0c3d98a65b6892dec76e.py">Exact original</a></p></html>

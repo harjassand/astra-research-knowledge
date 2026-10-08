@@ -1,0 +1,55 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/measurement_inverse/dark_count_identifiability_check.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/measurement_inverse/dark_count_identifiability_check.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Finite exact-arithmetic diagnostic for the Cycle 3 dark-count lemma.
+
+The all-POVM proof is algebraic. This small Pauli POVM fixture checks that the
+probability vectors sum to one, the nuisance backgrounds stay nonnegative and
+bounded, the illuminated means match exactly, and the stated blank KL upper
+bound holds numerically for one orthogonal pair.
+&quot;&quot;&quot;
+
+from fractions import Fraction as F
+from math import log, sqrt
+
+
+def kl_poisson(u: float, v: float) -&gt; float:
+    return u * log(u / v) - u + v
+
+
+S = F(10, 1)
+r = F(1, 160)  # r*S = 1/16
+# Four-outcome qubit POVM { (I+X)/4, (I-X)/4, (I+Z)/4, (I-Z)/4 }
+# evaluated on |0&gt; and |1&gt;.
+p_x = (F(1, 4), F(1, 4), F(1, 2), F(0))
+p_y = (F(1, 4), F(1, 4), F(0), F(1, 2))
+assert sum(p_x) == sum(p_y) == 1
+assert sum(v * v for v in p_x) &lt;= 1
+assert sum(v * v for v in p_y) &lt;= 1
+
+beta_x = tuple(S * (2 - p) for p in p_x)
+beta_y = tuple(S * (2 - p) for p in p_y)
+signal_x = tuple(S * p for p in p_x)
+signal_y = tuple(S * p for p in p_y)
+illum_x = tuple(a + b for a, b in zip(signal_x, beta_x))
+illum_y = tuple(a + b for a, b in zip(signal_y, beta_y))
+assert illum_x == illum_y == (2 * S,) * 4
+assert all(S &lt;= b &lt;= 2 * S for b in beta_x + beta_y)
+
+blank_kl = sum(
+    kl_poisson(float(r * a), float(r * b)) for a, b in zip(beta_x, beta_y)
+)
+tv_bound = sqrt(blank_kl / 2)
+assert blank_kl &lt;= float(2 * r * S) + 1e-14
+assert tv_bound &lt;= 0.25 + 1e-14
+
+print({
+    &quot;p_x&quot;: [str(v) for v in p_x],
+    &quot;p_y&quot;: [str(v) for v in p_y],
+    &quot;signal_laws_equal&quot;: illum_x == illum_y,
+    &quot;background_bounds&quot;: [str(min(beta_x + beta_y)), str(max(beta_x + beta_y))],
+    &quot;blank_kl&quot;: blank_kl,
+    &quot;analytic_kl_upper&quot;: float(2 * r * S),
+    &quot;pinsker_tv_upper_from_numeric_kl&quot;: tv_bound,
+    &quot;mean_test_error_lower&quot;: (1 - tv_bound) / 2,
+    &quot;analytic_tv_upper&quot;: 0.25,
+    &quot;analytic_average_test_error_lower&quot;: 0.375,
+})
+</pre><p><a href="../assets/0d6009970aab02432c74a82dfad561fea77b421547a81378bb68da790587c9e8.py">Exact original</a></p></html>

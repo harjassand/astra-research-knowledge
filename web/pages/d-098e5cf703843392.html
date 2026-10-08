@@ -1,0 +1,182 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/reaction_dynamics/cycle3/evidence/verify_certificate.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/reaction_dynamics/cycle3/evidence/verify_certificate.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Small independent checker for certificate_compiler.py output.
+
+This file deliberately contains no Fourier--Motzkin/LP code. It rebuilds the
+original rational rows from the input JSON and checks only the claimed
+witness or Gordan multiplier identities.
+&quot;&quot;&quot;
+
+import hashlib
+import json
+import sys
+from fractions import Fraction
+from pathlib import Path
+
+
+def rational(value, where):
+    if isinstance(value, bool) or not isinstance(value, (str, int)):
+        raise ValueError(f&quot;{where}: expected integer or rational string&quot;)
+    try:
+        return Fraction(str(value))
+    except (ValueError, ZeroDivisionError) as exc:
+        raise ValueError(f&quot;{where}: invalid rational&quot;) from exc
+
+
+def qstr(value):
+    return str(value.numerator) if value.denominator == 1 else f&quot;{value.numerator}/{value.denominator}&quot;
+
+
+def interval(value, where):
+    if isinstance(value, list):
+        if len(value) != 2:
+            raise ValueError(f&quot;{where}: interval must have two endpoints&quot;)
+        lo, hi = rational(value[0], where + &quot;.lo&quot;), rational(value[1], where + &quot;.hi&quot;)
+    else:
+        lo = hi = rational(value, where)
+    if lo &lt;= 0 or lo &gt; hi:
+        raise ValueError(f&quot;{where}: require 0 &lt; lower &lt;= upper&quot;)
+    return lo, hi
+
+
+def make_rows(raw):
+    if not isinstance(raw, dict):
+        raise ValueError(&quot;input root must be an object&quot;)
+    k = raw.get(&quot;k&quot;)
+    if not isinstance(k, list) or not k or not isinstance(k[0], list) or not k[0]:
+        raise ValueError(&quot;k must be a nonempty matrix&quot;)
+    r, s = len(k), len(k[0])
+    for j, row in enumerate(k):
+        if not isinstance(row, list) or len(row) != s:
+            raise ValueError(&quot;k must be rectangular&quot;)
+        if any(isinstance(v, bool) or not isinstance(v, int) or v &lt; 1 for v in row):
+            raise ValueError(f&quot;k[{j}] must contain integers &gt;= 1&quot;)
+    rates = raw.get(&quot;rates&quot;)
+    if not isinstance(rates, dict) or set(rates) != {&quot;alpha&quot;, &quot;delta&quot;, &quot;p&quot;, &quot;q&quot;, &quot;u&quot;, &quot;v&quot;}:
+        raise ValueError(&quot;rates must contain exactly alpha, delta, p, q, u, v&quot;)
+
+    def vec(name):
+        arr = rates[name]
+        if not isinstance(arr, list) or len(arr) != r:
+            raise ValueError(f&quot;rates.{name} must have length {r}&quot;)
+        return [interval(x, f&quot;rates.{name}[{j}]&quot;) for j, x in enumerate(arr)]
+
+    def mat(name):
+        arr = rates[name]
+        if not isinstance(arr, list) or len(arr) != r:
+            raise ValueError(f&quot;rates.{name} must be {r}x{s}&quot;)
+        out = []
+        for j, row in enumerate(arr):
+            if not isinstance(row, list) or len(row) != s:
+                raise ValueError(f&quot;rates.{name}[{j}] must have length {s}&quot;)
+            out.append([interval(x, f&quot;rates.{name}[{j}][{i}]&quot;) for i, x in enumerate(row)])
+        return out
+
+    alpha, delta = vec(&quot;alpha&quot;), vec(&quot;delta&quot;)
+    p, q, u, v = mat(&quot;p&quot;), mat(&quot;q&quot;), mat(&quot;u&quot;), mat(&quot;v&quot;)
+    n = r + s
+    names, rows = [], []
+
+    def add(name, terms):
+        row = [Fraction(0) for _ in range(n)]
+        for index, value in terms.items():
+            row[index] += value
+        names.append(name)
+        rows.append(tuple(row))
+
+    for j in range(r):
+        add(f&quot;lambda_positive[{j}]&quot;, {j: Fraction(1)})
+    for i in range(s):
+        add(f&quot;w_positive[{i}]&quot;, {r + i: Fraction(1)})
+    for j in range(r):
+        terms = {j: delta[j][0]}
+        for i in range(s):
+            terms[r + i] = -p[j][i][1]
+        add(f&quot;gamma[{j}]&quot;, terms)
+    for j in range(r):
+        for i in range(s):
+            add(f&quot;eta[{j},{i}]&quot;, {j: -k[j][i] * u[j][i][1], r + i: q[j][i][0]})
+    return r, s, alpha, names, rows
+
+
+def verify(raw, cert):
+    r, s, alpha, names, rows = make_rows(raw)
+    canonical = json.dumps(raw, sort_keys=True, separators=(&quot;,&quot;, &quot;:&quot;), ensure_ascii=False)
+    digest = hashlib.sha256(canonical.encode(&quot;utf-8&quot;)).hexdigest()
+    if cert.get(&quot;format&quot;) != &quot;reaction-dynamics-foster-lp-certificate-v1&quot;:
+        raise ValueError(&quot;unknown certificate format&quot;)
+    if cert.get(&quot;input_sha256_canonical_json&quot;) != digest:
+        raise ValueError(&quot;certificate input hash mismatch&quot;)
+    if cert.get(&quot;dimensions&quot;) != {&quot;r&quot;: r, &quot;s&quot;: s, &quot;variables&quot;: r + s, &quot;strict_rows&quot;: len(rows)}:
+        raise ValueError(&quot;certificate dimensions mismatch&quot;)
+
+    if cert.get(&quot;status&quot;) == &quot;feasible&quot;:
+        witness = cert.get(&quot;witness&quot;)
+        if not isinstance(witness, dict):
+            raise ValueError(&quot;missing witness&quot;)
+        lam = [rational(x, &quot;lambda&quot;) for x in witness.get(&quot;lambda&quot;, [])]
+        w = [rational(x, &quot;w&quot;) for x in witness.get(&quot;w&quot;, [])]
+        if len(lam) != r or len(w) != s:
+            raise ValueError(&quot;witness dimension mismatch&quot;)
+        z = lam + w
+        vals = [sum((a * x for a, x in zip(row, z)), Fraction(0)) for row in rows]
+        if any(value &lt;= 0 for value in vals):
+            raise ValueError(&quot;strict LP inequality failed&quot;)
+        recomputed_slacks = [{&quot;name&quot;: name, &quot;slack&quot;: qstr(value)} for name, value in zip(names, vals)]
+        if cert.get(&quot;strict_slacks&quot;) != recomputed_slacks:
+            raise ValueError(&quot;strict slack listing mismatch&quot;)
+        K, rho = rational(witness.get(&quot;K&quot;), &quot;K&quot;), rational(witness.get(&quot;rho&quot;), &quot;rho&quot;)
+        if rho &lt;= 0 or any(K &lt;= x for x in lam):
+            raise ValueError(&quot;K&gt;max(lambda) and rho&gt;0 are required&quot;)
+        weighted_low = sum((a[0] * (K - x) for a, x in zip(alpha, lam)), Fraction(0))
+        if weighted_low &lt;= rho:
+            raise ValueError(&quot;robust boundary inequality fails&quot;)
+        boundary = {
+            &quot;K_minus_lambda&quot;: [qstr(K - x) for x in lam],
+            &quot;uniform_lower_bound_sum_alpha_times_K_minus_lambda&quot;: qstr(weighted_low),
+            &quot;rho&quot;: qstr(rho),
+            &quot;uniform_strict_margin&quot;: qstr(weighted_low - rho),
+        }
+        if cert.get(&quot;boundary_check&quot;) != boundary:
+            raise ValueError(&quot;boundary check listing mismatch&quot;)
+        return {&quot;verified&quot;: True, &quot;status&quot;: &quot;feasible&quot;, &quot;strict_rows_checked&quot;: len(rows),
+                &quot;K&quot;: qstr(K), &quot;rho&quot;: qstr(rho)}
+
+    if cert.get(&quot;status&quot;) == &quot;infeasible&quot;:
+        proof = cert.get(&quot;gordan_farkas&quot;)
+        if not isinstance(proof, dict) or not isinstance(proof.get(&quot;multipliers&quot;), dict):
+            raise ValueError(&quot;missing Farkas multiplier map&quot;)
+        multipliers = proof[&quot;multipliers&quot;]
+        if set(multipliers) != set(names):
+            raise ValueError(&quot;multiplier labels mismatch&quot;)
+        y = [rational(multipliers[name], &quot;multiplier&quot;) for name in names]
+        if any(x &lt; 0 for x in y) or not any(x &gt; 0 for x in y):
+            raise ValueError(&quot;multipliers must be nonnegative and nonzero&quot;)
+        n = r + s
+        residual = [sum((y[t] * rows[t][j] for t in range(len(rows))), Fraction(0)) for j in range(n)]
+        if any(x != 0 for x in residual):
+            raise ValueError(&quot;Farkas normals do not cancel&quot;)
+        total = sum(y, Fraction(0))
+        if rational(proof.get(&quot;sum_multipliers&quot;), &quot;sum_multipliers&quot;) != total:
+            raise ValueError(&quot;multiplier total mismatch&quot;)
+        return {&quot;verified&quot;: True, &quot;status&quot;: &quot;infeasible&quot;, &quot;strict_rows_checked&quot;: len(rows),
+                &quot;nonzero_multipliers&quot;: sum(x &gt; 0 for x in y), &quot;sum_multipliers&quot;: qstr(total)}
+    raise ValueError(&quot;certificate status must be feasible or infeasible&quot;)
+
+
+def main(argv):
+    if len(argv) != 3:
+        print(&quot;usage: verify_certificate.py INPUT.json CERTIFICATE.json&quot;, file=sys.stderr)
+        return 2
+    try:
+        raw = json.loads(Path(argv[1]).read_text(encoding=&quot;utf-8&quot;))
+        cert = json.loads(Path(argv[2]).read_text(encoding=&quot;utf-8&quot;))
+        print(json.dumps(verify(raw, cert), sort_keys=True))
+        return 0
+    except Exception as exc:
+        print(f&quot;verify_certificate: {type(exc).__name__}: {exc}&quot;, file=sys.stderr)
+        return 2
+
+
+if __name__ == &quot;__main__&quot;:
+    raise SystemExit(main(sys.argv))
+</pre><p><a href="../assets/931623074900a17758f31d7cbaf208b19537f8eff424330337d3159ec234f775.py">Exact original</a></p></html>

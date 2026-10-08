@@ -1,0 +1,65 @@
+"""Exact parameter retuning of the p=1 construction in arXiv:2610.06533v1.
+
+This reuses the paper's filter lemma and Proposition 4.8. Exact rational and
+integer checks verify the substitutions, not the paper's full proof.
+"""
+
+from fractions import Fraction as Q
+from math import factorial
+
+
+K = 256
+gamma = 2
+k = 64
+d = K * (K - 1)
+u = Q(11343, 10000)
+C2 = Q(50) * (Q(128, 127) * (u + 1 / u) / 2) ** 2
+delta = Q(1, 2**56)
+m = 718_330
+N = 48 * m - 14
+
+assert K == 2 * gamma * k
+assert d == 65_280
+assert C2 == Q(1673186059967846432, 32425249917515625)
+assert N == 34_479_826
+
+# For alpha = 2^(4d+3) u^(-2m), this strict integer comparison proves
+# alpha < 2^-65. Since 257 < 2^9, the average-filter loss is < delta.
+trace_exponent = 4 * d + 68
+assert u.numerator ** (2 * m) > (2**trace_exponent) * u.denominator ** (2 * m)
+assert 257 * Q(1, 2**65) < delta
+
+# The Bell perturbation uses epsilon=K^2 delta=2^-40. The source's entropy
+# bound is controlled by 2 epsilon log(K)+h_b(epsilon) < 41*2^-40.
+epsilon = K**2 * delta
+assert delta < Q(1, K**2)
+assert epsilon == Q(1, 2**40)
+xexp = Q(7, 10)
+assert sum((xexp**j / factorial(j) for j in range(6)), Q(0)) > 2
+
+# log(2)=2*atanh(1/3): use 12 positive terms for a rational lower bound.
+log2_lower = 2 * sum(
+    (Q(1, 3 ** (2 * j + 1) * (2 * j + 1)) for j in range(12)), Q(0)
+)
+
+# For x=1+C^2/K, bound log(x) above with four atanh terms and the geometric
+# remainder 2*z^(2N+1)/((2N+1)(1-z^2)), z=(x-1)/(x+1).
+x = 1 + C2 / K
+z = (x - 1) / (x + 1)
+logx_upper = 2 * sum(
+    (z ** (2 * j + 1) / (2 * j + 1) for j in range(4)), Q(0)
+) + 2 * z**9 / (9 * (1 - z**2))
+
+# At gamma=2 and K=256, the fixed part of Proposition 4.8 is
+# (17/32) log(2) - 2 log(1+C^2/K).
+gap_lower = Q(17, 32) * log2_lower - 2 * logx_upper - Q(41, 2**40)
+assert gap_lower > Q(1, 1024)
+
+source_N = 37_608_898
+assert source_N - N == 3_129_072
+
+print("PASS: source-conditional compressed parameter certificate")
+print(f"D={K}, d={d}, m={m}, input qubits N={N}")
+print(f"C^2={C2}, delta=2^-56, epsilon=2^-40")
+print(f"exact rational lower bound on gap = {float(gap_lower):.12f} nats")
+print(f"input exponent reduction = {source_N - N} qubits ({100*(source_N-N)/source_N:.4f}%)")

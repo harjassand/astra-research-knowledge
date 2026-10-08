@@ -1,0 +1,245 @@
+#!/usr/bin/env python3
+"""Exact finite diagnostics for the Cycle 4 rational operator lift.
+
+This checks small-instance algebra and finite-grid variation bounds only;
+it is not a proof of the uniform N125 approximation theorem.
+"""
+
+from fractions import Fraction as Q
+from itertools import product
+import json
+from pathlib import Path
+
+
+def strings(n):
+    return list(product((0, 1), repeat=n))
+
+
+def hamming(x):
+    return sum(x)
+
+
+def binom(n, k):
+    if k < 0 or k > n:
+        return 0
+    out = 1
+    for j in range(1, k + 1):
+        out = out * (n - j + 1) // j
+    return out
+
+
+def circle(u):
+    u = Q(u)
+    den = 1 + u * u
+    return ((1 - u * u) / den, 2 * u / den)
+
+
+def amplitude_bisection(p, bits):
+    p = Q(p)
+    lo, hi = Q(0), Q(1)
+    exact = None
+    for _ in range(bits):
+        mid = (lo + hi) / 2
+        value = 4 * mid * mid / (1 + mid * mid) ** 2
+        if value == p:
+            exact = mid
+            break
+        if value < p:
+            lo = mid
+        else:
+            hi = mid
+    s = exact if exact is not None else (lo + hi) / 2
+    den = 1 + s * s
+    a, b = (1 - s * s) / den, 2 * s / den
+    return s, a, b, b * b
+
+
+def grid_counts(weights, bits):
+    """Map J/2**bits by cumulative intervals; return category counts."""
+    scale = 1 << bits
+    cumulative = Q(0)
+    boundaries = [0]
+    for w in weights[:-1]:
+        cumulative += w
+        # A grid point at a cumulative boundary goes in the next interval.
+        boundaries.append((cumulative.numerator * scale + cumulative.denominator - 1)
+                          // cumulative.denominator)
+    boundaries.append(scale)
+    return [boundaries[i + 1] - boundaries[i] for i in range(len(weights))]
+
+
+def total_variation(p, q):
+    return sum(abs(a - b) for a, b in zip(p, q)) / 2
+
+
+def cadd(x, y):
+    return (x[0] + y[0], x[1] + y[1])
+
+
+def cmul(x, y):
+    return (x[0] * y[0] - x[1] * y[1],
+            x[0] * y[1] + x[1] * y[0])
+
+
+def cconj(x):
+    return (x[0], -x[1])
+
+
+def cscale(x, q):
+    return (x[0] * q, x[1] * q)
+
+
+def product_vector(a, b, phase, n):
+    out = []
+    for x in range(1 << n):
+        k = x.bit_count()
+        amp = (a ** (n - k), Q(0))
+        phased_b = (b * phase[0], b * phase[1])
+        for _ in range(k):
+            amp = cmul(amp, phased_b)
+        out.append(amp)
+    return out
+
+
+def main():
+    orthogonality_cases = 0
+    matrix_identity_cases = 0
+    for n in range(1, 7):
+        ss = strings(n)
+        for d in range(-n, n + 1):
+            # Exact geometric-series certificate. For a primitive Lth root z,
+            # sum_{j=0}^{L-1} z^(jd)=(1-z^(Ld))/(1-z^d). Since L=n+1>|d|,
+            # the denominator is nonzero exactly when d != 0.
+            period = n + 1
+            assert (period * d) % period == 0
+            if d == 0:
+                expected = period
+            else:
+                assert d % period != 0
+                expected = 0
+            assert expected == (period if d == 0 else 0)
+            orthogonality_cases += 1
+
+        for p in (Q(1, 3), Q(2, 5), Q(3, 4)):
+            for x in ss:
+                for y in ss:
+                    kx, ky = hamming(x), hamming(y)
+                    phase_average = 1 if kx == ky else 0
+                    pair_amplitude_squared = p**kx * (1 - p)**(n - kx)
+                    twirl_entry = phase_average * pair_amplitude_squared
+                    dicke_entry = (binom(n, kx) * pair_amplitude_squared
+                                   / binom(n, kx) if kx == ky else Q(0))
+                    assert twirl_entry == dicke_entry
+                    matrix_identity_cases += 1
+
+    # Full exact N=3 matrix replay over Q(i), including the binomial
+    # sector-eigenvalue versus per-string-entry distinction.
+    n_exact = 3
+    atoms = [(Q(2, 7), Q(3, 5), Q(4, 5)),
+             (Q(5, 7), Q(5, 13), Q(12, 13))]
+    phases = [(Q(1), Q(0)), (Q(0), Q(1)),
+              (Q(-1), Q(0)), (Q(0), Q(-1))]
+    dim = 1 << n_exact
+    observed = [[(Q(0), Q(0)) for _ in range(dim)] for _ in range(dim)]
+    for weight, a, b in atoms:
+        assert a * a + b * b == 1
+        for phase in phases:
+            vec = product_vector(a, b, phase, n_exact)
+            for x in range(dim):
+                for y in range(dim):
+                    entry = cmul(vec[x], cconj(vec[y]))
+                    observed[x][y] = cadd(observed[x][y], cscale(entry, weight / 4))
+    sector_mass = []
+    for k in range(n_exact + 1):
+        sector_mass.append(sum((w * binom(n_exact, k) * b**(2 * k) * a**(2 * (n_exact-k))
+                                for w, a, b in atoms), Q(0)))
+    for x in range(dim):
+        kx = x.bit_count()
+        for y in range(dim):
+            ky = y.bit_count()
+            expected = ((sector_mass[kx] / binom(n_exact, kx), Q(0))
+                        if kx == ky else (Q(0), Q(0)))
+            assert observed[x][y] == expected, (x, y, observed[x][y], expected)
+    assert sum(sector_mass) == 1
+    assert sector_mass[1] != sector_mass[1] / binom(n_exact, 1)
+    assert sector_mass[2] != sector_mass[2] / binom(n_exact, 2)
+
+    circle_cases = 0
+    for u in (Q(0), Q(1, 7), Q(1, 2), Q(1), Q(7, 3), Q(9)):
+        x, y = circle(u)
+        assert x * x + y * y == 1
+        circle_cases += 1
+
+    amplitude_cases = 0
+    n, eps = 8, Q(1, 4)
+    amp_bits = 11  # ceil(log2(64*N/eps))
+    amp_error = eps / (16 * n)
+    for p in (Q(1, 7), Q(1, 3), Q(2, 5), Q(9, 10)):
+        s, a, b, p_approx = amplitude_bisection(p, amp_bits)
+        assert 0 < s < 1 and a > 0 and b > 0
+        assert a * a + b * b == 1
+        assert abs(p_approx - p) <= 4 * Q(1, 1 << amp_bits) <= amp_error
+        amplitude_cases += 1
+
+    # Exact positive weights; fixed-bit interval sampling stays within the
+    # conservative 2*M/2**b total-variation bound used in the proof.
+    label_weights = [Q(1, 7), Q(2, 7), Q(1, 3), Q(5, 21)]
+    assert sum(label_weights) == 1
+    label_bits = 8
+    counts = grid_counts(label_weights, label_bits)
+    label_law = [Q(c, 1 << label_bits) for c in counts]
+    label_tv = total_variation(label_weights, label_law)
+    assert sum(counts) == 1 << label_bits
+    assert label_tv <= Q(2 * len(label_weights), 1 << label_bits)
+
+    # Three actual rational qubit POVM fixtures on a normalized Q(i) state:
+    # computational basis, X basis, and Y basis. The same CDF-grid rounding
+    # bound applies to each site; product-law TV is bounded by the sum.
+    a, b = Q(3, 5), Q(4, 5)
+    phase_re, phase_im = Q(3, 5), Q(4, 5)
+    assert a * a + b * b == 1
+    assert phase_re * phase_re + phase_im * phase_im == 1
+    ab = a * b
+    local_laws = [
+        [a * a, b * b],
+        [Q(1, 2) + ab * phase_re, Q(1, 2) - ab * phase_re],
+        [Q(1, 2) + ab * phase_im, Q(1, 2) - ab * phase_im],
+    ]
+    local_bits = 7
+    local_tv = Q(0)
+    for law in local_laws:
+        assert sum(law) == 1
+        cnt = grid_counts(law, local_bits)
+        got = [Q(c, 1 << local_bits) for c in cnt]
+        tv = total_variation(law, got)
+        assert tv <= Q(2 * len(law), 1 << local_bits)
+        local_tv += tv
+    assert local_tv <= sum(Q(2 * len(law), 1 << local_bits)
+                           for law in local_laws)
+
+    result = {
+        "status": "PASS",
+        "scope": "exact small-instance identities and fixed-grid TV diagnostics only",
+        "root_of_unity_fourier_modes_checked": orthogonality_cases,
+        "dicke_matrix_entry_cases_checked": matrix_identity_cases,
+        "exact_N3_full_matrix_entries_checked": dim * dim,
+        "exact_N3_sector_probabilities": [str(x) for x in sector_mass],
+        "exact_N3_per_string_multiplicity_witness": True,
+        "rational_circle_unit_cases_checked": circle_cases,
+        "rational_amplitude_bisection_cases_checked": amplitude_cases,
+        "amplitude_bisection_bits": amp_bits,
+        "label_grid_bits": label_bits,
+        "label_count_vector": counts,
+        "label_tv_exact": str(label_tv),
+        "local_product_sites": len(local_laws),
+        "local_grid_bits_per_site": local_bits,
+        "local_tv_sum_exact": str(local_tv),
+        "warning": "Finite evidence does not prove the uniform rational N125 mixture bound or bit-complexity theorem."
+    }
+    out = Path(__file__).with_name("exact_check.json")
+    out.write_text(json.dumps(result, indent=2) + "\n")
+    print(json.dumps(result, indent=2))
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,169 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/cell_control/cell_observation_design/endpoint_alias_sensing.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/cell_control/cell_observation_design/endpoint_alias_sensing.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Design a single intermediate snapshot for an endpoint-aliased two-state CTMC.
+
+The script constructs two strictly positive-rate CTMCs with the same terminal
+state-1 probability, but different integrated state-1 occupancy. It then picks
+the intermediate observation time minimizing the Hoeffding sample bound for
+deciding which of two interventions has the larger occupancy. The time grid is
+searched exhaustively, so the reported optimum is grid-relative.
+
+Observation model: known sensitivity Se and specificity Sp, equal across arms
+and times. Per-founder assay cost is constant unless --time-cost-weight is set;
+then cost is 1 + weight * t/T. The independent unit is a founder lineage, not a
+descendant cell. No division, death, censoring, batch effects, or interference
+are represented here.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import argparse
+import json
+import math
+from dataclasses import asdict, dataclass
+
+
+@dataclass(frozen=True)
+class Rates:
+    alpha: float  # state 0 -&gt; state 1
+    beta: float   # state 1 -&gt; state 0
+
+    @property
+    def speed(self) -&gt; float:
+        return self.alpha + self.beta
+
+    @property
+    def stationary_state1(self) -&gt; float:
+        return self.alpha / self.speed
+
+    def p1(self, t: float) -&gt; float:
+        return self.stationary_state1 * (-math.expm1(-self.speed * t))
+
+    def occupancy(self, horizon: float) -&gt; float:
+        lam = self.speed
+        return self.stationary_state1 * (
+            horizon - (-math.expm1(-lam * horizon)) / lam
+        )
+
+
+def same_terminal_rates(horizon: float, terminal_probability: float, speed: float) -&gt; Rates:
+    &quot;&quot;&quot;Return positive rates at the requested total speed and endpoint mass.&quot;&quot;&quot;
+    transition_mass = -math.expm1(-speed * horizon)
+    alpha = speed * terminal_probability / transition_mass
+    beta = speed - alpha
+    if not (0.0 &lt; terminal_probability &lt; 1.0 and alpha &gt; 0.0 and beta &gt; 0.0):
+        raise ValueError(&quot;The chosen speed must give strictly positive alpha and beta&quot;)
+    return Rates(alpha=alpha, beta=beta)
+
+
+def observed_probability(p: float, sensitivity: float, specificity: float) -&gt; float:
+    # P(reported 1) = false-positive rate + Youden index * P(true state 1).
+    return (1.0 - specificity) + (sensitivity + specificity - 1.0) * p
+
+
+def main() -&gt; None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(&quot;--horizon&quot;, type=float, default=1.0)
+    parser.add_argument(&quot;--terminal-probability&quot;, type=float, default=0.5)
+    parser.add_argument(&quot;--slow-speed-times-horizon&quot;, type=float, default=0.7)
+    parser.add_argument(&quot;--fast-speed-times-horizon&quot;, type=float, default=10.0)
+    parser.add_argument(&quot;--delta&quot;, type=float, default=0.05)
+    parser.add_argument(&quot;--sensitivity&quot;, type=float, default=1.0)
+    parser.add_argument(&quot;--specificity&quot;, type=float, default=1.0)
+    parser.add_argument(&quot;--grid-size&quot;, type=int, default=20000)
+    parser.add_argument(&quot;--time-cost-weight&quot;, type=float, default=0.0)
+    args = parser.parse_args()
+
+    if args.horizon &lt;= 0 or args.grid_size &lt; 2:
+        raise ValueError(&quot;horizon must be positive and grid-size at least 2&quot;)
+    if not (0.0 &lt; args.delta &lt; 1.0):
+        raise ValueError(&quot;delta must lie strictly between 0 and 1&quot;)
+    if not (0.0 &lt;= args.sensitivity &lt;= 1.0 and 0.0 &lt;= args.specificity &lt;= 1.0):
+        raise ValueError(&quot;sensitivity and specificity must be probabilities&quot;)
+    if args.time_cost_weight &lt; 0.0:
+        raise ValueError(&quot;time-cost-weight must be nonnegative&quot;)
+    if args.sensitivity + args.specificity &lt;= 1.0:
+        raise ValueError(&quot;The calibrated reporter must have positive Youden index&quot;)
+
+    slow = same_terminal_rates(
+        args.horizon,
+        args.terminal_probability,
+        args.slow_speed_times_horizon / args.horizon,
+    )
+    fast = same_terminal_rates(
+        args.horizon,
+        args.terminal_probability,
+        args.fast_speed_times_horizon / args.horizon,
+    )
+
+    best = None
+    for i in range(1, args.grid_size):
+        tau = args.horizon * i / args.grid_size
+        q_slow = observed_probability(slow.p1(tau), args.sensitivity, args.specificity)
+        q_fast = observed_probability(fast.p1(tau), args.sensitivity, args.specificity)
+        gap = abs(q_fast - q_slow)
+        if gap &lt;= 0.0:
+            continue
+        n_per_arm = math.ceil(math.log(1.0 / args.delta) / (gap * gap))
+        per_founder_cost = 1.0 + args.time_cost_weight * tau / args.horizon
+        total_cost = 2.0 * n_per_arm * per_founder_cost
+        # Primary objective is total cost; among equal-cost grid points retain
+        # the larger separation (smaller actual error bound), then the earlier time.
+        candidate = (total_cost, -gap, tau, n_per_arm, q_fast, q_slow, per_founder_cost)
+        if best is None or candidate &lt; best:
+            best = candidate
+
+    if best is None:
+        raise ValueError(&quot;No informative observation time exists for this reporter&quot;)
+
+    total_cost, neg_gap, tau, n_per_arm, q_fast, q_slow, per_founder_cost = best
+    gap = -neg_gap
+    result = {
+        &quot;scope&quot;: &quot;two specified worlds that swap fast and slow CTMCs across arms&quot;,
+        &quot;horizon&quot;: args.horizon,
+        &quot;terminal_probability_target&quot;: args.terminal_probability,
+        &quot;slow_rates&quot;: asdict(slow),
+        &quot;fast_rates&quot;: asdict(fast),
+        &quot;terminal_probabilities&quot;: {
+            &quot;slow&quot;: slow.p1(args.horizon),
+            &quot;fast&quot;: fast.p1(args.horizon),
+        },
+        &quot;integrated_state1_occupancy&quot;: {
+            &quot;slow&quot;: slow.occupancy(args.horizon),
+            &quot;fast&quot;: fast.occupancy(args.horizon),
+            &quot;gap&quot;: fast.occupancy(args.horizon) - slow.occupancy(args.horizon),
+            &quot;minimax_regret_lower_bound&quot;: (
+                fast.occupancy(args.horizon) - slow.occupancy(args.horizon)
+            ) / 2.0,
+        },
+        &quot;reporter&quot;: {
+            &quot;sensitivity&quot;: args.sensitivity,
+            &quot;specificity&quot;: args.specificity,
+            &quot;youden_index&quot;: args.sensitivity + args.specificity - 1.0,
+        },
+        &quot;chosen_intermediate_time&quot;: tau,
+        &quot;chosen_intermediate_time_fraction&quot;: tau / args.horizon,
+        &quot;reported_state1_probabilities_at_chosen_time&quot;: {
+            &quot;slow&quot;: q_slow,
+            &quot;fast&quot;: q_fast,
+        },
+        &quot;reported_probability_gap&quot;: gap,
+        &quot;per_arm_founder_lineages_for_error_at_most_delta&quot;: n_per_arm,
+        &quot;total_founder_lineages_across_two_arms&quot;: 2 * n_per_arm,
+        &quot;hoeffding_error_bound&quot;: math.exp(-n_per_arm * gap * gap),
+        &quot;assumed_per_founder_cost&quot;: per_founder_cost,
+        &quot;total_intermediate_assay_cost_units&quot;: total_cost,
+        &quot;grid_size&quot;: args.grid_size,
+        &quot;cost_model&quot;: &quot;per founder = 1 + time_cost_weight * tau/horizon&quot;,
+        &quot;limitations&quot;: [
+            &quot;grid optimum only; continuous optimum not certified&quot;,
+            &quot;assumes independent randomized founder lineages&quot;,
+            &quot;assumes the supplied CTMC alternatives and known nondifferential reporter error&quot;,
+            &quot;does not model division, death, censoring, batch effects, or interference&quot;,
+        ],
+    }
+    print(json.dumps(result, indent=2, sort_keys=True))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/4fd8cf1d21c73ea469214f360e52ec4c9d87de461d2bd3b2db1da8cc58e118fe.py">Exact original</a></p></html>

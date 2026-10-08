@@ -1,0 +1,112 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/weyl_compatible_lift/scripts/weyl_sdp.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/weyl_compatible_lift/scripts/weyl_sdp.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Finite-field Weyl-channel self-compatibility SDP from Haapasalo (2019).&quot;&quot;&quot;
+from __future__ import annotations
+
+import numpy as np
+import cvxpy as cp
+
+
+def phase_space(d: int):
+    points = [(a, b) for a in range(d) for b in range(d)]
+    index = {v: i for i, v in enumerate(points)}
+    return points, index
+
+
+def symplectic(x, y, d):
+    return (x[0] * y[1] - x[1] * y[0]) % d
+
+
+def data(d: int):
+    points, index = phase_space(d)
+    n = d * d
+    # F[m,n,r] = exp(2 pi i S(m-n,r)/d), the kernel in Haapasalo,
+    # Corollary 2, equation (22).
+    F = np.empty((n, n, n), dtype=complex)
+    for i, m in enumerate(points):
+        for j, z in enumerate(points):
+            delta = ((m[0] - z[0]) % d, (m[1] - z[1]) % d)
+            for k, r in enumerate(points):
+                F[i, j, k] = np.exp(2j * np.pi * symplectic(delta, r, d) / d)
+    # Character table of the random-Weyl channel&#x27;s action on Weyl modes.
+    C = np.empty((n, n), dtype=complex)
+    for ix, x in enumerate(points):
+        for ir, r in enumerate(points):
+            C[ix, ir] = np.exp(2j * np.pi * symplectic(x, r, d) / d)
+    return points, index, F, C
+
+
+def compatibility_sdp(d: int, solver=&quot;SCS&quot;, eps=2e-7, max_iters=200000,
+                      hs_positive=False):
+    &quot;&quot;&quot;Build an SDP for self-adjoint self-compatible Weyl channels.
+
+    Variables are q (the Weyl error law) and X=diag(sqrt(q))*beta*diag(sqrt(q)),
+    where beta is the unit-diagonal positive kernel in Corollary 2. Thus X &gt;= 0,
+    diag(X)=q, and the compatibility equation is affine in X. Requiring q=q&#x27;
+    gives self-compatibility. q[-r]=q[r] and all Fourier modes &gt;=0 impose the
+    self-adjoint subclass; set hs_positive=True to additionally require every
+    Weyl eigenvalue nonnegative.
+    &quot;&quot;&quot;
+    points, index, F, C = data(d)
+    n = d * d
+    X = cp.Variable((n, n), hermitian=True)
+    q = cp.Variable(n)
+    lam = cp.Variable(n)
+    constraints = [X &gt;&gt; 0, q &gt;= 0, cp.diag(X) == q, cp.sum(q) == 1]
+    compat = []
+    for r in range(n):
+        compat.append(cp.real(cp.sum(cp.multiply(F[:, :, r], X))) / (d * d))
+    constraints += [q == cp.hstack(compat)]
+    for i, r in enumerate(points):
+        minus = ((-r[0]) % d, (-r[1]) % d)
+        constraints.append(q[i] == q[index[minus]])
+    constraints += [lam == cp.real(C @ q), lam[index[(0, 0)]] == 1]
+    if hs_positive:
+        constraints += [lam &gt;= 0]
+    direction_parameter = cp.Parameter(n)
+    problem = cp.Problem(cp.Maximize(direction_parameter @ lam), constraints)
+
+    def solve(direction, extra=(), warm_start=True):
+        &quot;&quot;&quot;Maximize a real linear combination of lambda over compatible maps.&quot;&quot;&quot;
+        direction_parameter.value = np.asarray(direction, dtype=float)
+        if extra:
+            # Used only for fixed-channel feasibility fixtures; no objective sweep.
+            fixed_problem = cp.Problem(problem.objective, constraints + list(extra))
+            fixed_problem.solve(solver=solver, eps=eps, max_iters=max_iters,
+                                warm_start=warm_start, verbose=False)
+            result = fixed_problem
+        else:
+            problem.solve(solver=solver, eps=eps, max_iters=max_iters,
+                          warm_start=warm_start, verbose=False)
+            result = problem
+        if result.status not in (cp.OPTIMAL, cp.OPTIMAL_INACCURATE):
+            raise RuntimeError(f&quot;solver status {result.status}&quot;)
+        return {
+            &quot;status&quot;: result.status,
+            &quot;value&quot;: float(result.value),
+            &quot;q&quot;: np.array(q.value).reshape(-1),
+            &quot;lambda&quot;: np.array(lam.value).reshape(-1),
+            &quot;X&quot;: np.array(X.value),
+            &quot;solver_stats&quot;: {
+                &quot;name&quot;: solver,
+                &quot;num_iters&quot;: getattr(result.solver_stats, &quot;num_iters&quot;, None),
+                &quot;solve_time&quot;: getattr(result.solver_stats, &quot;solve_time&quot;, None),
+            },
+        }
+
+    return points, index, q, lam, solve
+
+
+def line_system(d: int):
+    &quot;&quot;&quot;Return the d+1 projective lines as indices of nonzero Weyl labels.&quot;&quot;&quot;
+    points, index = phase_space(d)
+    lines = []
+    for slope in range(d):
+        lines.append([index[(a, slope * a % d)] for a in range(1, d)])
+    lines.append([index[(0, b)] for b in range(1, d)])
+    return lines
+
+
+def line_cover(lambdas, lines):
+    peaks = [max(float(lambdas[i]) for i in line) for line in lines]
+    contributions = [max(0.0, 2 * peak - 1) for peak in peaks]
+    return float(sum(contributions)), peaks, contributions
+</pre><p><a href="../assets/f3a7a144ce323854aca0a7ebd189a5e384de96d05a1b88037842cb7344e3431b.py">Exact original</a></p></html>

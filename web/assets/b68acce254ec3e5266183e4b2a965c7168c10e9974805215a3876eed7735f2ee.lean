@@ -1,0 +1,17 @@
+import Mathlib
+#check isCompact_Icc.elim_finite_subcover
+#check Finset.exists_min_image
+#check Finset.card_erase_lt_of_mem
+#check Finset.card_erase_of_mem
+#check Finset.erase_subset
+#check Finset.mem_powerset_self
+#check Finset.mem_powerset.mp
+#check Fintype.card_pos_iff
+#check Fintype.card_pos
+#check Fintype.orderIsoFinOfCardEq
+#check Finset.univ_nonempty_iff
+#check Finset.exists_min_image
+#check Fin.ext
+#check Finset.mem_erase
+#check Finset.card_pos
+#check Finset.card_pos_iff

@@ -1,0 +1,85 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c12_immune_dynamics/analysis/density_switching_lag.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c12_immune_dynamics/analysis/density_switching_lag.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Conditional-mean lag check for the macrophage preprint&#x27;s two-state model.
+
+This is a deterministic-size mean-field calculation, not a Gillespie replay or
+a biological inference. Rates are taken from the public GitHub scripts.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import json
+import math
+
+
+def hill_on_rate(n_cells: float, minimum: float, maximum: float, half: float, hill: float) -&gt; float:
+    return minimum + (maximum - minimum) * n_cells**hill / (half**hill + n_cells**hill)
+
+
+def integrate(case: dict[str, float], dt_h: float = 0.001) -&gt; dict[str, float | str]:
+    lam = math.log(2.0) / 14.4
+    time_h = 0.0
+    p_on = case[&quot;p0&quot;]
+    while time_h &lt; case[&quot;time_h&quot;]:
+        step = min(dt_h, case[&quot;time_h&quot;] - time_h)
+        n_cells = math.exp(lam * time_h)
+        kon = hill_on_rate(
+            n_cells,
+            case[&quot;kmin&quot;],
+            case[&quot;kmax&quot;],
+            case[&quot;K&quot;],
+            case[&quot;hill&quot;],
+        )
+        r = kon + case[&quot;koff&quot;]
+        q = kon / r
+        # Exact update for rates frozen over this short time step.
+        p_on = q + (p_on - q) * math.exp(-r * step)
+        time_h += step
+
+    n_cells = math.exp(lam * case[&quot;time_h&quot;])
+    kon_end = hill_on_rate(
+        n_cells,
+        case[&quot;kmin&quot;],
+        case[&quot;kmax&quot;],
+        case[&quot;K&quot;],
+        case[&quot;hill&quot;],
+    )
+    q_end = kon_end / (kon_end + case[&quot;koff&quot;])
+    return {
+        &quot;case&quot;: case[&quot;name&quot;],
+        &quot;lambda_per_hour&quot;: lam,
+        &quot;final_time_h&quot;: case[&quot;time_h&quot;],
+        &quot;deterministic_final_N&quot;: n_cells,
+        &quot;p_on_mean_at_final_time&quot;: p_on,
+        &quot;instantaneous_equilibrium_at_final_N&quot;: q_end,
+        &quot;lag_q_minus_p&quot;: q_end - p_on,
+        &quot;initial_q&quot;: case[&quot;kmin&quot;] / (case[&quot;kmin&quot;] + case[&quot;koff&quot;]),
+    }
+
+
+CASES = [
+    {
+        &quot;name&quot;: &quot;fixed-kmax public diagnostic&quot;,
+        &quot;kmin&quot;: 0.001622386,
+        &quot;kmax&quot;: 0.01707356,
+        &quot;K&quot;: 2**6.4,
+        &quot;hill&quot;: 3.0,
+        &quot;koff&quot;: 0.02277356,
+        &quot;p0&quot;: 0.075,
+        &quot;time_h&quot;: 144.0,
+    },
+    {
+        &quot;name&quot;: &quot;Beta-kmax mean-parameter plug-in (not Beta expectation)&quot;,
+        &quot;kmin&quot;: 0.000672175,
+        &quot;kmax&quot;: (0.379920291 / (0.379920291 + 1.180804238)) * 0.151922586,
+        &quot;K&quot;: 77.412515570,
+        &quot;hill&quot;: 8.648981295,
+        &quot;koff&quot;: 0.028,
+        &quot;p0&quot;: 0.003,
+        &quot;time_h&quot;: 144.0,
+    },
+]
+
+
+if __name__ == &quot;__main__&quot;:
+    print(json.dumps([integrate(case) for case in CASES], indent=2))
+</pre><p><a href="../assets/e420dba8b9845d876d08965c6fb97fa06fca08a066629bb787b3593ed9060a3e.py">Exact original</a></p></html>

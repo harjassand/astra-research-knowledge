@@ -1,0 +1,153 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/engineering_control/mode_switching_safety/check_example.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/engineering_control/mode_switching_safety/check_example.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact rational audit for the two-mode mass-action witness in proof.md.
+
+This checks the algebraic drift representation, rate envelope, collar lower
+bounds, and the common-interval obstruction. It does not check the stochastic
+martingale theorem or establish novelty.
+&quot;&quot;&quot;
+
+from fractions import Fraction as F
+from math import comb
+import json
+
+
+def poly_from_roots(roots):
+    &quot;&quot;&quot;Low-to-high coefficients of -prod(x-r).&quot;&quot;&quot;
+    coeffs = [F(1)]
+    for root in roots:
+        updated = [F(0)] * (len(coeffs) + 1)
+        for i, coeff in enumerate(coeffs):
+            updated[i] -= root * coeff
+            updated[i + 1] += coeff
+        coeffs = updated
+    return [-coeff for coeff in coeffs]
+
+
+def bernstein_coefficients(power, degree):
+    &quot;&quot;&quot;Return beta_i in p(x)=sum_i beta_i*C(n,i)x^i(1-x)^(n-i).&quot;&quot;&quot;
+    return [
+        sum(power[k] * F(comb(i, k), comb(degree, k)) for k in range(i + 1))
+        for i in range(degree + 1)
+    ]
+
+
+def bernstein_to_power(beta, degree):
+    power = [F(0)] * (degree + 1)
+    for i, value in enumerate(beta):
+        for offset in range(degree - i + 1):
+            k = i + offset
+            power[k] += (
+                value
+                * comb(degree, i)
+                * comb(degree - i, offset)
+                * ((-1) ** offset)
+            )
+    return power
+
+
+roots = [
+    (F(3, 10), F(13, 20), F(19, 20)),
+    (F(1, 20), F(7, 20), F(4, 5)),
+]
+drifts = [poly_from_roots(r) for r in roots]
+betas = [bernstein_coefficients(p, 3) for p in drifts]
+assert all(bernstein_to_power(b, 3) == p for p, b in zip(drifts, betas))
+assert all((b[0] &gt; 0 and b[1] &lt; 0 and b[2] &gt; 0 and b[3] &lt; 0) for b in betas)
+
+rates = [[abs(bi) * comb(3, i) for i, bi in enumerate(b)] for b in betas]
+assert max(max(row) for row in rates) == F(567, 1000)
+assert max(max(row) for row in rates) &lt; F(3, 5)
+
+# Factorwise exact lower bounds for |f_j| on the four one-sided collars.
+collar_lower_bounds = [
+    F(9, 100) * F(44, 100) * F(74, 100),
+    F(1, 5) * F(7, 50) * F(11, 25),
+    F(11, 25) * F(7, 50) * F(3, 10),
+    F(21, 25) * F(27, 50) * F(9, 100),
+]
+assert min(collar_lower_bounds) == F(1232, 100000)
+assert min(collar_lower_bounds) &gt; F(1, 100)
+
+# Any common interval Q in [1/10,9/10] containing Q1 and Q2 has upper
+# endpoint 9/10, where mode 1 points strictly outward.
+def eval_poly(coeffs, x):
+    return sum(coeff * x**i for i, coeff in enumerate(coeffs))
+
+
+outward_drift_at_safe_upper = eval_poly(drifts[0], F(9, 10))
+assert outward_drift_at_safe_upper == F(3, 400)
+common_right_endpoint_intervals = [
+    (F(501, 1000), F(13, 20), eval_poly(drifts[0], F(11, 20)), eval_poly(drifts[1], F(11, 20))),
+    (F(13, 20), F(4, 5), eval_poly(drifts[0], F(3, 4)), eval_poly(drifts[1], F(3, 4))),
+    (F(4, 5), F(9, 10), eval_poly(drifts[0], F(17, 20)), eval_poly(drifts[1], F(17, 20))),
+]
+assert common_right_endpoint_intervals[0][2] &lt; 0 &lt; common_right_endpoint_intervals[0][3]
+assert common_right_endpoint_intervals[1][2] &gt; 0 and common_right_endpoint_intervals[1][3] &gt; 0
+assert common_right_endpoint_intervals[2][2] &gt; 0 &gt; common_right_endpoint_intervals[2][3]
+
+# Generic finite-volume theorem constants for both modes.
+K = F(3, 5)
+E_sum = F(8)
+D = K * E_sum
+B = K * 4
+Lambda = K * 4
+gamma = F(1, 100)
+ell = F(1, 100)
+mu = gamma / 2
+theta = min(F(1), mu / (3 * B))
+c = theta * ell
+V0 = (2 * D / gamma).__ceil__()
+d_guard = F(9, 1000)
+initial_exponent = theta * d_guard
+C = 2 * 2 * Lambda
+
+# Large-volume first-jump exit probability when mode 2 starts exactly on its
+# lower facet x=49/100. Here b and d are deterministic concentration hazards.
+x_boundary = F(49, 100)
+y_boundary = 1 - x_boundary
+k0, k1, k2, k3 = rates[1]
+birth_boundary = k0 * y_boundary**3 + k2 * x_boundary**2 * y_boundary
+death_boundary = k1 * x_boundary * y_boundary**2 + k3 * x_boundary**3
+zero_margin_first_exit_probability = death_boundary / (birth_boundary + death_boundary)
+assert zero_margin_first_exit_probability == F(677803, 1603606)
+
+result = {
+    &quot;drift_power_coefficients_low_to_high&quot;: [[str(c) for c in p] for p in drifts],
+    &quot;drift_bernstein_coefficients&quot;: [[str(c) for c in b] for b in betas],
+    &quot;mode_reaction_rates_in_order_up0_down1_up2_down3&quot;: [
+        [str(c) for c in row] for row in rates
+    ],
+    &quot;max_rate&quot;: str(max(max(row) for row in rates)),
+    &quot;collar_abs_drift_lower_bounds&quot;: [str(x) for x in collar_lower_bounds],
+    &quot;mode1_drift_at_safe_upper_9_10&quot;: str(outward_drift_at_safe_upper),
+    &quot;common_interval_right_endpoint_sign_partition&quot;: [
+        {
+            &quot;interval&quot;: [str(lo), str(hi)],
+            &quot;mode1_sign_at_interior_witness&quot;: str(mode1_sign),
+            &quot;mode2_sign_at_interior_witness&quot;: str(mode2_sign),
+        }
+        for lo, hi, mode1_sign, mode2_sign in common_right_endpoint_intervals
+    ],
+    &quot;zero_margin_mode2_first_jump_exit_probability_limit&quot;: str(
+        zero_margin_first_exit_probability
+    ),
+    &quot;generic_certificate_constants&quot;: {
+        &quot;D&quot;: str(D),
+        &quot;B&quot;: str(B),
+        &quot;Lambda&quot;: str(Lambda),
+        &quot;gamma&quot;: str(gamma),
+        &quot;ell&quot;: str(ell),
+        &quot;theta&quot;: str(theta),
+        &quot;c&quot;: str(c),
+        &quot;V0&quot;: V0,
+        &quot;guard_gap_d&quot;: str(d_guard),
+        &quot;theta_times_guard_gap&quot;: str(initial_exponent),
+        &quot;C_2mLambda&quot;: str(C),
+    },
+    &quot;risk_bound_for_N_segments&quot;: (
+        &quot;2*N*exp(-V/160000) + (48/5)*V*T*exp(-V/144000)&quot;
+    ),
+    &quot;scope&quot;: &quot;exact arithmetic only; no stochastic proof or novelty validation&quot;,
+}
+print(json.dumps(result, indent=2))
+</pre><p><a href="../assets/61adbdaa3f9a917cf9dedca237966971b703a7a45f9d11a97f4f064b8c290247.py">Exact original</a></p></html>

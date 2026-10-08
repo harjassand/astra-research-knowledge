@@ -1,0 +1,288 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/cycle9_canonical_kinetics/recognize_reversible_modules.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/cycle9_canonical_kinetics/recognize_reversible_modules.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact expansion-free certifier for paired reversible rational modules.
+
+Module r has endpoints alpha_r &lt;-&gt; beta_r, positive channel coefficients
+c+ and c-, and shared positive numerator factors A_r and denominator Q_r for
+both directions. Q_r is a product of sparse positive polynomial factors
+(constant terms required); A_r is another positive factor product and may
+have no constant term. Different modules may have different factors.
+
+The product D=prod_r Q_r is never expanded. The proof pairs each term of
+D/Q_r with its forward and reverse reaction, making the conceptual lifted
+diagram weakly reversible. See COMMON_FACTOR_PROOF.md.
+&quot;&quot;&quot;
+from __future__ import annotations
+import argparse
+import json
+import re
+import sys
+from fractions import Fraction as F
+from pathlib import Path
+from typing import Any
+
+_INTEGER_TEXT = re.compile(r&quot;[+-]?[0-9]+\Z&quot;)
+_DECIMAL_TEXT = re.compile(r&quot;[+-]?(?:[0-9]+\.[0-9]+|\.[0-9]+)\Z&quot;)
+
+
+# This CLI consumes explicitly supplied exact rational strings and reports
+# exact decimal summaries. Python 3.11+ otherwise rejects conversions beyond
+# a process-wide 4,300-digit default. The input itself charges these digits;
+# keep the arithmetic exact instead of truncating or round-tripping through
+# floating point. This is a standalone local compiler, not an exposed service.
+if hasattr(sys, &quot;set_int_max_str_digits&quot;):
+    sys.set_int_max_str_digits(0)
+
+
+def frac(raw: Any, label: str) -&gt; F:
+    if isinstance(raw, bool):
+        raise ValueError(f&quot;{label}: Boolean is not a rational&quot;)
+    if isinstance(raw, int):
+        return F(raw)
+    if not isinstance(raw, str):
+        raise ValueError(f&quot;{label}: use an exact JSON integer or rational string; JSON floats are rejected&quot;)
+    if &quot;/&quot; in raw:
+        parts = raw.split(&quot;/&quot;)
+        valid = len(parts) == 2 and all(_INTEGER_TEXT.fullmatch(part) for part in parts)
+    else:
+        valid = bool(_INTEGER_TEXT.fullmatch(raw) or _DECIMAL_TEXT.fullmatch(raw))
+    if not valid:
+        raise ValueError(
+            f&quot;{label}: exact rational strings must be integers, integer ratios, or finite decimals without exponents&quot;
+        )
+    try:
+        return F(raw)
+    except (ValueError, ZeroDivisionError) as exc:
+        raise ValueError(f&quot;{label}: expected exact rational, got {raw!r}&quot;) from exc
+
+
+def qstr(x: F) -&gt; str:
+    return str(x.numerator) if x.denominator == 1 else f&quot;{x.numerator}/{x.denominator}&quot;
+
+
+Vector = dict[int, F]
+
+
+def parse_vector(raw: Any, dimension: int, label: str) -&gt; Vector:
+    if not isinstance(raw, dict):
+        raise ValueError(f&quot;{label} must be a sparse coordinate:value object&quot;)
+    out: Vector = {}
+    for key, value in raw.items():
+        try:
+            i = int(key)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f&quot;{label} coordinate index must be an integer&quot;) from exc
+        if str(i) != str(key) or not 0 &lt;= i &lt; dimension:
+            raise ValueError(f&quot;{label} coordinate {key!r} is not canonical in [0,{dimension})&quot;)
+        x = frac(value, f&quot;{label}[{i}]&quot;)
+        if x:
+            out[i] = out.get(i, F(0)) + x
+    return {i: x for i, x in out.items() if x}
+
+
+def parse_factors(raw: Any, dimension: int, label: str, *, require_constant: bool):
+    if not isinstance(raw, list):
+        raise ValueError(f&quot;{label} must be a list of positive polynomial factors&quot;)
+    if require_constant and not raw:
+        raise ValueError(f&quot;{label} must contain at least one denominator factor&quot;)
+    parsed = []
+    constant = True
+    factor_min_product = F(1)
+    factor_sum_product = F(1)
+    term_tuple_count = 1
+    for k, factor in enumerate(raw):
+        if not isinstance(factor, dict) or not isinstance(factor.get(&quot;terms&quot;), list) or not factor[&quot;terms&quot;]:
+            raise ValueError(f&quot;{label}[{k}].terms must be a nonempty list&quot;)
+        terms = []
+        for j, item in enumerate(factor[&quot;terms&quot;]):
+            if not isinstance(item, dict) or &quot;exp&quot; not in item:
+                raise ValueError(f&quot;{label}[{k}].terms[{j}] needs exp and optional coef&quot;)
+            exponent = parse_vector(item[&quot;exp&quot;], dimension, f&quot;{label}[{k}].terms[{j}].exp&quot;)
+            if any(a &lt; 0 for a in exponent.values()):
+                raise ValueError(f&quot;{label} exponents must be nonnegative&quot;)
+            coefficient = frac(item.get(&quot;coef&quot;, &quot;1&quot;), f&quot;{label}[{k}].terms[{j}].coef&quot;)
+            if coefficient &lt;= 0:
+                raise ValueError(f&quot;{label} coefficients must be strictly positive&quot;)
+            terms.append((exponent, coefficient))
+        factor_has_constant = any(not exponent for exponent, _ in terms)
+        constant = constant and factor_has_constant
+        coeffs = [coefficient for _, coefficient in terms]
+        factor_min_product *= min(coeffs)
+        factor_sum_product *= sum(coeffs, F(0))
+        term_tuple_count *= len(terms)
+        parsed.append(terms)
+    if require_constant and not constant:
+        raise ValueError(f&quot;{label} must have a positive constant term (all factors need one)&quot;)
+    return parsed, factor_min_product, factor_sum_product, term_tuple_count
+
+
+def rank_at_most_one(vectors: list[Vector]) -&gt; bool:
+    pivot = next((v for v in vectors if v), None)
+    if pivot is None:
+        return True
+    p = min(pivot)
+    pv = pivot[p]
+    for v in vectors:
+        if not v:
+            continue
+        # v = lambda*pivot, with lambda fixed by coordinate p; check without
+        # constructing lambda*pivot over absent sparse coordinates.
+        vv = v.get(p, F(0))
+        for i in set(pivot) | set(v):
+            if v.get(i, F(0)) * pv != vv * pivot.get(i, F(0)):
+                return False
+    return True
+
+
+def parse_network(data: Any):
+    if not isinstance(data, dict) or data.get(&quot;schema&quot;) != &quot;paired-reversible-rational-modules-v1&quot;:
+        raise ValueError(&quot;schema must be paired-reversible-rational-modules-v1&quot;)
+    dimension = data.get(&quot;dimension&quot;)
+    if not isinstance(dimension, int) or isinstance(dimension, bool) or dimension &lt; 1:
+        raise ValueError(&quot;dimension must be a positive integer&quot;)
+    raw_modules = data.get(&quot;modules&quot;)
+    if not isinstance(raw_modules, list) or not raw_modules:
+        raise ValueError(&quot;modules must be a nonempty list&quot;)
+    modules = []
+    for i, raw in enumerate(raw_modules):
+        if not isinstance(raw, dict):
+            raise ValueError(f&quot;modules[{i}] must be an object&quot;)
+        name = str(raw.get(&quot;name&quot;, f&quot;module{i}&quot;))
+        source = parse_vector(raw.get(&quot;source&quot;), dimension, f&quot;{name}.source&quot;)
+        target = parse_vector(raw.get(&quot;target&quot;), dimension, f&quot;{name}.target&quot;)
+        if any(x &lt; 0 for x in source.values()) or any(x &lt; 0 for x in target.values()):
+            raise ValueError(f&quot;{name}: endpoints must be nonnegative complexes&quot;)
+        if source == target:
+            raise ValueError(f&quot;{name}: reversible module must have distinct endpoints&quot;)
+        kf = frac(raw.get(&quot;k_forward&quot;), f&quot;{name}.k_forward&quot;)
+        kr = frac(raw.get(&quot;k_reverse&quot;), f&quot;{name}.k_reverse&quot;)
+        if kf &lt;= 0 or kr &lt;= 0:
+            raise ValueError(f&quot;{name}: both directional coefficients must be positive&quot;)
+        factors, fmin, fsum, tuples = parse_factors(
+            raw.get(&quot;denominator_factors&quot;), dimension, f&quot;{name}.denominator_factors&quot;,
+            require_constant=True)
+        numerator_factors, amin, asum, a_tuples = parse_factors(
+            raw.get(&quot;shared_numerator_factors&quot;, []), dimension,
+            f&quot;{name}.shared_numerator_factors&quot;, require_constant=False)
+        nu = {}
+        for coord in set(source) | set(target):
+            z = target.get(coord, F(0)) - source.get(coord, F(0))
+            if z:
+                nu[coord] = z
+        modules.append({&quot;name&quot;: name, &quot;source&quot;: source, &quot;target&quot;: target,
+                        &quot;kf&quot;: kf, &quot;kr&quot;: kr, &quot;fmin&quot;: fmin, &quot;fsum&quot;: fsum,
+                        &quot;tuple_count&quot;: tuples, &quot;nu&quot;: nu, &quot;factors&quot;: factors,
+                        &quot;numerator_factors&quot;: numerator_factors,
+                        &quot;amin&quot;: amin, &quot;asum&quot;: asum, &quot;a_tuples&quot;: a_tuples})
+    return dimension, modules
+
+
+def denominator_token_count(module) -&gt; int:
+    return sum(len(factor) for factor in module[&quot;factors&quot;])
+
+
+def certify(data: Any):
+    dimension, modules = parse_network(data)
+    nus = [m[&quot;nu&quot;] for m in modules]
+    # The parser requires a nonempty module list and distinct endpoints, so
+    # every accepted module jump is nonzero and the total rank is at least 1.
+    # The helper remains defined on all-zero lists, but that case is outside
+    # this schema and cannot trigger a certificate here.
+    if not nus or any(not nu for nu in nus):
+        raise AssertionError(&quot;parser invariant broken: expected nonempty non-self-loop modules&quot;)
+    rank_one = rank_at_most_one(nus)
+    lifted_pair_upper = 0
+    global_kappa = None
+    global_K = F(0)
+    module_support_bounds = []
+    for i, module in enumerate(modules):
+        others_min = F(1)
+        others_sum = F(1)
+        pair_count = module[&quot;a_tuples&quot;]
+        for j, other in enumerate(modules):
+            if i == j:
+                continue
+            others_min *= other[&quot;fmin&quot;]
+            others_sum *= other[&quot;fsum&quot;]
+            pair_count *= other[&quot;tuple_count&quot;]
+        lifted_pair_upper += 2 * pair_count
+        local_min = min(module[&quot;kf&quot;], module[&quot;kr&quot;]) * module[&quot;amin&quot;] * others_min
+        local_max = max(module[&quot;kf&quot;], module[&quot;kr&quot;]) * module[&quot;asum&quot;] * others_sum
+        global_kappa = local_min if global_kappa is None else min(global_kappa, local_min)
+        # Each local_max bounds the sum of all tuple coefficients contributed
+        # by this module to any one directed edge. Add across modules because
+        # the public simple-graph convention merges coincident directions.
+        global_K += local_max
+        module_support_bounds.append({
+            &quot;module&quot;: module[&quot;name&quot;],
+            &quot;nonexpanded_pair_tuple_upper_bound&quot;: str(pair_count),
+            &quot;module_directional_edge_contribution_lower_bound&quot;: qstr(local_min),
+            &quot;module_directional_edge_contribution_upper_bound&quot;: qstr(local_max),
+        })
+    rank = &quot;exactly_one&quot; if rank_one else &quot;greater_than_one&quot;
+    return {
+        &quot;status&quot;: &quot;CERTIFIED&quot;,
+        &quot;property&quot;: &quot;ordinary essential-source endotacticity&quot;,
+        &quot;dimension&quot;: dimension,
+        &quot;module_count&quot;: len(modules),
+        &quot;input_denominator_term_count&quot;: sum(denominator_token_count(m) for m in modules),
+        &quot;input_shared_numerator_term_count&quot;: sum(
+            sum(len(factor) for factor in m[&quot;numerator_factors&quot;]) for m in modules),
+        &quot;lifted_pair_count_upper_bound_without_expansion&quot;: str(lifted_pair_upper),
+        &quot;decision_method&quot;: &quot;paired reverse-edge proof; no direction LPs, fan cells, denominator products, or support Minkowski sums are built&quot;,
+        &quot;endotactic_proof&quot;: &quot;For each denominator-term tuple and each reversible module, clearing the other denominators creates two opposite edges with the same shift. If an active edge at an essential maximum pointed outward, its paired reverse edge would have strictly higher source score; hence every active top edge points inward. Neutral pairs are both removed, and tied top edges are checked individually.&quot;,
+        &quot;strong_endotactic_status&quot;: &quot;CERTIFIED&quot; if rank_one else &quot;UNKNOWN&quot;,
+        &quot;stoichiometric_rank_gate&quot;: rank,
+        &quot;strong_proof_or_reason&quot;: (
+            &quot;The accepted schema has nonempty modules and rejects self-loops, so its stoichiometric rank is at least one. Since the exact rank gate passes, every lifted reaction vector lies on one line; for w not orthogonal to it, a globally maximal endpoint has a reverse-paired edge pointing inward.&quot;
+            if rank_one else
+            &quot;Weak reversibility alone does not imply strong endotacticity for several linkage classes with different stoichiometric spans. No strong verdict is inferred.&quot;
+        ),
+        &quot;expanded_rate_box_for_N33&quot;: {
+            &quot;kappa_lower_bound&quot;: qstr(global_kappa),
+            &quot;K_upper_bound&quot;: qstr(global_K),
+            &quot;coefficient_convention&quot;: &quot;simple directed reactions; coincident same-direction labeled term edges are summed&quot;,
+            &quot;proof&quot;: &quot;For each module r, the product of its shared-numerator factor sums and every other denominator&#x27;s factor sums bounds above the total tuple coefficient contributed by r to any one directed edge. Summing these modulewise bounds covers collisions across modules. The global lower bound is safe because every merged edge contains at least one tuple contribution.&quot;,
+            &quot;gate&quot;: &quot;CONDITIONAL_ON_N33_CANDIDATE&quot;,
+            &quot;meaning&quot;: &quot;The N33 permanence candidate applies to the finite lifted endotactic power-law diagram with these fixed coefficients, if its source theorem and common-class hypotheses are validated. It is not a new proof of N33.&quot;
+        },
+        &quot;strong_permanence_gate&quot;: (
+            &quot;PRIOR_STRONG_ENDOTACTIC_PERMANENCE_AFTER_TIME_CHANGE&quot;
+            if rank_one else &quot;NOT_ESTABLISHED_BY_THIS_STRONG_GATE&quot;
+        ),
+        &quot;time_change&quot;: &quot;F(x)=G(x)/D(x), D=product_r Q_r&gt;0. If the G-trajectory is y(s), the original clock is t(s)=integral_0^s D(y(u))du. On the eventual compact positive set supplied by a permanence theorem, D has positive finite bounds, so t(s) tends to infinity and permanence transfers.&quot;,
+        &quot;per_module_rate_boxes&quot;: module_support_bounds,
+        &quot;cost&quot;: {
+            &quot;input&quot;: &quot;L bits across sparse endpoints, positive factor supports, and rational coefficients&quot;,
+            &quot;recognition&quot;: &quot;polynomial in L; sparse exact arithmetic and a collinearity check&quot;,
+            &quot;expanded_lift_size&quot;: &quot;may be exponential and is reported only by an exact tuple-count upper bound&quot;,
+            &quot;acquisition&quot;: &quot;all support factors and positivity promises are supplied; no experimental parameter acquisition is inferred&quot;,
+        },
+    }
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument(&quot;input&quot;, type=Path)
+    ap.add_argument(&quot;--property&quot;, choices=(&quot;endotactic&quot;, &quot;strong&quot;), default=&quot;endotactic&quot;)
+    args = ap.parse_args(argv)
+    try:
+        data = json.loads(args.input.read_text())
+        result = certify(data)
+    except (OSError, json.JSONDecodeError, TypeError, ValueError, ZeroDivisionError, RecursionError) as exc:
+        print(json.dumps({&quot;status&quot;: &quot;INVALID_INPUT&quot;, &quot;reason&quot;: str(exc)}, indent=2))
+        return 2
+    if args.property == &quot;strong&quot; and result[&quot;strong_endotactic_status&quot;] != &quot;CERTIFIED&quot;:
+        result[&quot;status&quot;] = &quot;UNKNOWN&quot;
+        result[&quot;property&quot;] = &quot;standard strong endotacticity (global all-source maximum, neutral edges retained)&quot;
+    result[&quot;input&quot;] = str(args.input)
+    print(json.dumps(result, indent=2, sort_keys=True))
+    if result[&quot;status&quot;] == &quot;CERTIFIED&quot;:
+        return 0
+    if result[&quot;status&quot;] == &quot;UNKNOWN&quot;:
+        return 3
+    return 2
+
+
+if __name__ == &quot;__main__&quot;:
+    raise SystemExit(main())
+</pre><p><a href="../assets/e95ee2265472a93433fcbbdb8db0375ddbf66af745c80bd9e949aaf4e031633d.py">Exact original</a></p></html>

@@ -1,0 +1,362 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/engineering_control/energy_feedback/cycle2_relay.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/engineering_control/energy_feedback/cycle2_relay.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Reproduce the finite-volume guarded-relay calculations in CYCLE2_ADDENDUM.md.
+
+Uses only Python&#x27;s standard library. Exact gambler&#x27;s-ruin and infinite-wait
+resolvent quantities use fractions.Fraction. Timed probability, occupancy,
+and reward values use floating-point uniformization; Poisson bounds control
+series truncation but do not certify floating-point roundoff.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import json
+import math
+from fractions import Fraction as F
+
+V = 100
+LOWER_SAFE = 10
+UPPER_GUARD = 55
+START_H = 45
+TRANSIENT = tuple(range(LOWER_SAFE + 1, UPPER_GUARD))
+OMEGA = 200
+DEADLINE = 1.0
+
+
+def rates_h(n: int) -&gt; tuple[F, F]:
+    &quot;&quot;&quot;(birth, death) molecule-event rates in mode H.&quot;&quot;&quot;
+    return F(2 * (V - n)), F(n)
+
+
+def fmt_fraction(value: F) -&gt; str:
+    return str(value.numerator) if value.denominator == 1 else f&quot;{value.numerator}/{value.denominator}&quot;
+
+
+def solve_tridiagonal(lower: list[F], diagonal: list[F], upper: list[F], rhs: list[F]) -&gt; list[F]:
+    &quot;&quot;&quot;Exact Thomas algorithm; lower[0] and upper[-1] are ignored.&quot;&quot;&quot;
+    n = len(diagonal)
+    assert n and len(lower) == len(diagonal) == len(upper) == len(rhs)
+    cprime = [F(0)] * n
+    dprime = [F(0)] * n
+    denominator = diagonal[0]
+    assert denominator != 0
+    cprime[0] = upper[0] / denominator
+    dprime[0] = rhs[0] / denominator
+    for i in range(1, n):
+        denominator = diagonal[i] - lower[i] * cprime[i - 1]
+        assert denominator != 0
+        cprime[i] = upper[i] / denominator if i &lt; n - 1 else F(0)
+        dprime[i] = (rhs[i] - lower[i] * dprime[i - 1]) / denominator
+    solution = [F(0)] * n
+    solution[-1] = dprime[-1]
+    for i in range(n - 2, -1, -1):
+        solution[i] = dprime[i] - cprime[i] * solution[i + 1]
+    return solution
+
+
+def resolvent_expectation(reward) -&gt; F:
+    &quot;&quot;&quot;Return E_45[int_0^T reward(N_s) ds], T=hit{10,55}.&quot;&quot;&quot;
+    lower, diagonal, upper, rhs = [], [], [], []
+    for n in TRANSIENT:
+        birth, death = rates_h(n)
+        lower.append(-death)
+        diagonal.append(birth + death)
+        upper.append(-birth)
+        rhs.append(F(reward(n)))
+    values = solve_tridiagonal(lower, diagonal, upper, rhs)
+    return values[START_H - TRANSIENT[0]]
+
+
+def safe_target_probability_exact() -&gt; F:
+    &quot;&quot;&quot;Birth-death scale-function/gambler&#x27;s-ruin probability, exactly.&quot;&quot;&quot;
+    # Harmonic increments d_m = h(m)-h(m-1) obey d_(n+1)=mu_n/lambda_n*d_n.
+    increment = F(1)
+    increments = {LOWER_SAFE + 1: increment}
+    for n in range(LOWER_SAFE + 1, UPPER_GUARD):
+        birth, death = rates_h(n)
+        increment *= death / birth
+        increments[n + 1] = increment
+    numerator = sum((increments[m] for m in range(LOWER_SAFE + 1, START_H + 1)), F(0))
+    denominator = sum((increments[m] for m in range(LOWER_SAFE + 1, UPPER_GUARD + 1)), F(0))
+    return numerator / denominator
+
+
+def uniformization_probability(t: float) -&gt; dict:
+    &quot;&quot;&quot;Floating-point P(hit 55 by t before 10) via full-chain uniformization.&quot;&quot;&quot;
+    # Keep n=10 and n=55 as absorbing states. These are the 44 transient
+    # states plus both absorbing states: 46 coordinates total.
+    states = tuple(range(LOWER_SAFE, UPPER_GUARD + 1))
+    index = {n: i for i, n in enumerate(states)}
+    p = [0.0] * len(states)
+    p[index[START_H]] = 1.0
+    mean = OMEGA * t
+    # This is deliberately wider than needed at mean 200; the omitted right
+    # tail starts at K+1. The bound below is for P(Poisson(mean)&gt;K).
+    K = int(mean + 12 * math.sqrt(mean + 1) + 80)
+    weight = math.exp(-mean)
+    probability = 0.0
+    for k in range(K + 1):
+        probability += weight * p[index[UPPER_GUARD]]
+        if k == K:
+            break
+        q = [0.0] * len(states)
+        q[index[LOWER_SAFE]] = p[index[LOWER_SAFE]]
+        q[index[UPPER_GUARD]] = p[index[UPPER_GUARD]]
+        for n in TRANSIENT:
+            i = index[n]
+            birth, death = rates_h(n)
+            birth_p = float(birth / OMEGA)
+            death_p = float(death / OMEGA)
+            stay_p = 1.0 - birth_p - death_p
+            q[index[n + 1]] += p[i] * birth_p
+            q[index[n - 1]] += p[i] * death_p
+            q[i] += p[i] * stay_p
+        p = q
+        weight *= mean / (k + 1)
+    # For X~Poisson(mean), P(X&gt;=K+1) &lt;= exp(-mean+(K+1)(1+ln(mean/(K+1))))
+    # when K+1 &gt; mean. This controls truncation only, not float roundoff.
+    cutoff = K + 1
+    tail_bound = math.exp(-mean + cutoff * (1.0 + math.log(mean / cutoff)))
+    return {
+        &quot;probability_float_truncated&quot;: probability,
+        &quot;poisson_mean&quot;: mean,
+        &quot;uniformization_rate_per_second&quot;: OMEGA,
+        &quot;last_included_poisson_index&quot;: K,
+        &quot;first_omitted_poisson_index&quot;: cutoff,
+        &quot;omitted_poisson_mass_chernoff_upper_bound&quot;: tail_bound,
+        &quot;roundoff_certified&quot;: False,
+    }
+
+
+def uniformization_occupancy(t: float, P_hold: F, E_obs: F, E_cpu: F,
+                             E_birth: F, E_death: F, E_sw: F) -&gt; dict:
+    &quot;&quot;&quot;One-leg deadline occupancy/cost, with a truncation bound, in float.
+
+    The transient embedded chain is substochastic: moves into 10 or 55 leave
+    its 44 coordinates. Uniformization gives
+      o(t) = sum_k P(Poisson(Omega*t)&gt;k)/Omega * e_45^T P^k.
+    The Poisson weights are evaluated by a backward tail sum. Both this
+    evaluation and the matrix recursion use binary64, so roundoff is not
+    certified; the reported bounds cover only omitted series terms.
+    &quot;&quot;&quot;
+    mean = OMEGA * t
+    K = int(mean + 12 * math.sqrt(mean + 1) + 80)
+    # A finite table suffices to evaluate weights through K. The remaining
+    # tail above MAX_POISSON is itself bounded and negligible at this scale.
+    max_poisson = max(2000, K + 500)
+    pmf = [math.exp(-mean + k * math.log(mean) - math.lgamma(k + 1))
+           for k in range(max_poisson + 1)]
+    tail_ge = [0.0] * (max_poisson + 2)
+    for k in range(max_poisson, -1, -1):
+        tail_ge[k] = tail_ge[k + 1] + pmf[k]
+
+    p = [0.0] * len(TRANSIENT)
+    p[START_H - TRANSIENT[0]] = 1.0
+    occupancy = [0.0] * len(TRANSIENT)
+    for k in range(K + 1):
+        occupancy_weight = tail_ge[k + 1] / OMEGA
+        for i, mass in enumerate(p):
+            occupancy[i] += occupancy_weight * mass
+        if k == K:
+            break
+        q = [0.0] * len(TRANSIENT)
+        for n in TRANSIENT:
+            i = n - TRANSIENT[0]
+            birth, death = rates_h(n)
+            bp, dp = float(birth / OMEGA), float(death / OMEGA)
+            q[i] += p[i] * (1.0 - bp - dp)
+            if n + 1 in TRANSIENT:
+                q[i + 1] += p[i] * bp
+            if n - 1 in TRANSIENT:
+                q[i - 1] += p[i] * dp
+        p = q
+
+    probability_result = uniformization_probability(t)
+    p_hit = probability_result[&quot;probability_float_truncated&quot;]
+    births = sum(occupancy[i] * float(rates_h(n)[0]) for i, n in enumerate(TRANSIENT))
+    deaths = sum(occupancy[i] * float(rates_h(n)[1]) for i, n in enumerate(TRANSIENT))
+    elapsed = sum(occupancy)
+    observed_events = births + deaths
+    H_chemical_cost = float(E_birth) * births + float(E_death) * deaths
+    L_chemical_cost = float(E_birth) * deaths + float(E_death) * births
+    common_non_switch = float(P_hold) * elapsed + float(E_obs + E_cpu) * observed_events
+    H_cost = common_non_switch + H_chemical_cost + float(E_sw) * p_hit
+    L_cost = common_non_switch + L_chemical_cost + float(E_sw) * p_hit
+
+    # If X~Poisson(mean), omitted occupancy coefficients after k=K sum to
+    # sum_{m=K+2}^inf P(X&gt;=m). A geometric tail-ratio bound gives this &lt;=
+    # P(X&gt;=K+1)/(1-mean/(K+3)); use the Chernoff bound for the numerator.
+    cutoff = K + 1
+    poisson_tail = math.exp(-mean + cutoff * (1.0 + math.log(mean / cutoff)))
+    occupancy_tail_bound = poisson_tail / (1.0 - mean / (K + 3)) / OMEGA
+    max_rate_cost = max(
+        float((E_obs + E_cpu) * sum(rates_h(n)) + E_birth * rates_h(n)[0] + E_death * rates_h(n)[1])
+        for n in TRANSIENT
+    )
+    max_reflected_rate_cost = max(
+        float((E_obs + E_cpu) * sum(rates_h(n)) + E_birth * rates_h(n)[1] + E_death * rates_h(n)[0])
+        for n in TRANSIENT
+    )
+    cost_tail_bound = (float(P_hold) + max(max_rate_cost, max_reflected_rate_cost)) * occupancy_tail_bound
+    cost_tail_bound += float(E_sw) * poisson_tail
+    # The PMF table omits X&gt;max_poisson. Bound this omitted weight separately.
+    table_tail_cut = max_poisson + 1
+    table_poisson_tail = math.exp(-mean + table_tail_cut * (1.0 + math.log(mean / table_tail_cut)))
+    if table_poisson_tail &gt; 0.0:
+        # Each required upper-tail weight can be off by at most this mass.
+        # Summed over k&lt;=K and divided by Omega gives a conservative addition.
+        table_occupancy_error = (K + 1) * table_poisson_tail / OMEGA
+        occupancy_tail_bound += table_occupancy_error
+        cost_tail_bound += (float(P_hold) + max(max_rate_cost, max_reflected_rate_cost)) * table_occupancy_error
+
+    return {
+        &quot;deadline_seconds&quot;: t,
+        &quot;transient_expected_occupation_seconds_sum&quot;: elapsed,
+        &quot;H_expected_birth_events_before_stop&quot;: births,
+        &quot;H_expected_death_events_before_stop&quot;: deaths,
+        &quot;expected_observed_events_before_stop&quot;: observed_events,
+        &quot;H_expected_cost_joules&quot;: H_cost,
+        &quot;L_expected_cost_joules&quot;: L_cost,
+        &quot;switch_cost_included_as_Esw_times_p_hit&quot;: True,
+        &quot;H_and_L_switch_charge_joules&quot;: float(E_sw) * p_hit,
+        &quot;holding_power_included_through_absorption_or_deadline&quot;: True,
+        &quot;per_leg_success_probability_float_truncated&quot;: p_hit,
+        &quot;per_leg_probability_poisson_truncation_bound&quot;: poisson_tail,
+        &quot;occupancy_L1_poisson_truncation_bound_seconds&quot;: occupancy_tail_bound,
+        &quot;per_leg_cost_poisson_truncation_bound_joules&quot;: cost_tail_bound,
+        &quot;roundoff_certified&quot;: False,
+    }
+
+
+def main() -&gt; None:
+    p_hit = safe_target_probability_exact()
+    expected_time = resolvent_expectation(lambda _n: F(1))
+    expected_births = resolvent_expectation(lambda n: rates_h(n)[0])
+    expected_deaths = resolvent_expectation(lambda n: rates_h(n)[1])
+    timed = uniformization_probability(DEADLINE)
+    timed_M_survival = timed[&quot;probability_float_truncated&quot;]**20
+    timed_M_tail_bound = 20 * timed[&quot;omitted_poisson_mass_chernoff_upper_bound&quot;]
+
+    # Example costs in SI units. P_m is active mode-hold power; E_sw is an
+    # additional instantaneous switch charge, so these are distinct terms.
+    P_s, P_c, P_m = F(20, 1000), F(5, 1000), F(100, 1000)  # watts
+    E_obs, E_cpu = F(1, 1000), F(2, 10000)  # joules per observed event
+    E_birth, E_death, E_sw = F(5, 10000), F(2, 10000), F(5, 100)  # joules
+    timed_costs = uniformization_occupancy(
+        DEADLINE, P_s + P_c + P_m, E_obs, E_cpu, E_birth, E_death, E_sw
+    )
+    holding_cost = expected_time * (P_s + P_c + P_m)
+    observe_process_cost = (E_obs + E_cpu) * (expected_births + expected_deaths)
+    switch_cost = E_sw * p_hit
+
+    def expected_leg_cost(births: F, deaths: F) -&gt; tuple[F, F, F, F]:
+        reaction_cost = E_birth * births + E_death * deaths
+        return holding_cost, observe_process_cost, reaction_cost, holding_cost + observe_process_cost + reaction_cost + switch_cost
+
+    h_cost_parts = expected_leg_cost(expected_births, expected_deaths)
+    # Under n -&gt; 100-n reflection, an L birth is an H death and vice versa.
+    l_cost_parts = expected_leg_cost(expected_deaths, expected_births)
+    h_total, l_total = h_cost_parts[-1], l_cost_parts[-1]
+    legs = 20
+    alternating_expected_total = F(0)
+    continuation_probability = F(1)
+    for leg in range(legs):
+        alternating_expected_total += continuation_probability * (h_total if leg % 2 == 0 else l_total)
+        continuation_probability *= p_hit
+    timed_alternating_expected_total = 0.0
+    timed_continuation = 1.0
+    for leg in range(legs):
+        timed_alternating_expected_total += timed_continuation * (
+            timed_costs[&quot;H_expected_cost_joules&quot;] if leg % 2 == 0 else timed_costs[&quot;L_expected_cost_joules&quot;]
+        )
+        timed_continuation *= timed_costs[&quot;per_leg_success_probability_float_truncated&quot;]
+
+    result = {
+        &quot;model&quot;: {
+            &quot;volume&quot;: V,
+            &quot;mode_H_birth_rate&quot;: &quot;2*(100-n)&quot;,
+            &quot;mode_H_death_rate&quot;: &quot;n&quot;,
+            &quot;safe_lower_absorbing_state&quot;: LOWER_SAFE,
+            &quot;target_upper_absorbing_state&quot;: UPPER_GUARD,
+            &quot;start_state&quot;: START_H,
+            &quot;transient_state_count&quot;: len(TRANSIENT),
+        },
+        &quot;exact_infinite_wait_until_target_or_safe_exit&quot;: {
+            &quot;safe_target_probability&quot;: fmt_fraction(p_hit),
+            &quot;safe_exit_probability&quot;: fmt_fraction(1 - p_hit),
+            &quot;expected_duration_seconds&quot;: fmt_fraction(expected_time),
+            &quot;expected_birth_events&quot;: fmt_fraction(expected_births),
+            &quot;expected_death_events&quot;: fmt_fraction(expected_deaths),
+            &quot;expected_total_events&quot;: fmt_fraction(expected_births + expected_deaths),
+            &quot;reflected_L_expected_birth_events&quot;: fmt_fraction(expected_deaths),
+            &quot;reflected_L_expected_death_events&quot;: fmt_fraction(expected_births),
+        },
+        &quot;twenty_leg_no_deadline_relay&quot;: {
+            &quot;all_legs_success_probability_formula&quot;: &quot;p_infinity^20 using the exact p_infinity fraction above&quot;,
+            &quot;at_least_one_leg_failure_probability_float&quot;: float(1 - p_hit**legs),
+            &quot;success_probability_float_note&quot;: &quot;The exact success probability rounds to 1.0 in binary64 because its complement is about 4.50e-25; use the exact fraction or failure complement.&quot;,
+            &quot;expected_total_energy_until_first_failed_leg_or_20_successes_joules_float&quot;: float(alternating_expected_total),
+            &quot;expected_total_energy_computed_with_exact_fraction_intermediates&quot;: True,
+            &quot;leg_order&quot;: &quot;H,L,H,L,...&quot;,
+            &quot;note&quot;: &quot;Per-leg expected costs differ because the illustrative birth and death event charges differ; continuation probability is p_hit after each leg.&quot;,
+        },
+        &quot;one_second_deadline&quot;: timed,
+        &quot;twenty_legs_one_second_per_leg&quot;: {
+            &quot;success_probability_float_truncated&quot;: timed_M_survival,
+            &quot;propagated_poisson_truncation_error_upper_bound&quot;: timed_M_tail_bound,
+            &quot;roundoff_certified&quot;: False,
+            &quot;note&quot;: &quot;M=20 times the one-leg absolute tail bound is valid by |a^M-b^M|&lt;=M|a-b| for a,b in [0,1]; floating-point roundoff remains unbounded here.&quot;,
+        },
+        &quot;one_second_deadline_expected_cost_and_occupancy&quot;: timed_costs,
+        &quot;twenty_legs_one_second_per_leg_expected_cost&quot;: {
+            &quot;expected_energy_until_first_failed_leg_or_20_successes_joules_float&quot;: timed_alternating_expected_total,
+            &quot;failure_shutdown_cost_included&quot;: False,
+            &quot;uses_H_L_asymmetric_costs&quot;: True,
+            &quot;roundoff_certified&quot;: False,
+        },
+        &quot;illustrative_unbounded_leg_expected_cost&quot;: {
+            &quot;units&quot;: &quot;joules&quot;,
+            &quot;holding_power_watts&quot;: {
+                &quot;sensor&quot;: float(P_s),
+                &quot;controller_clock&quot;: float(P_c),
+                &quot;active_mode_hold&quot;: float(P_m),
+                &quot;combined&quot;: float(P_s + P_c + P_m),
+            },
+            &quot;H_leg_cost_exact&quot;: {
+                &quot;holding&quot;: fmt_fraction(h_cost_parts[0]),
+                &quot;observed_and_processed_events&quot;: fmt_fraction(h_cost_parts[1]),
+                &quot;chemical_birth_death_events&quot;: fmt_fraction(h_cost_parts[2]),
+                &quot;successful_switch&quot;: fmt_fraction(switch_cost),
+                &quot;total&quot;: fmt_fraction(h_total),
+                &quot;total_float&quot;: float(h_total),
+            },
+            &quot;L_leg_cost_exact&quot;: {
+                &quot;holding&quot;: fmt_fraction(l_cost_parts[0]),
+                &quot;observed_and_processed_events&quot;: fmt_fraction(l_cost_parts[1]),
+                &quot;chemical_birth_death_events&quot;: fmt_fraction(l_cost_parts[2]),
+                &quot;successful_switch&quot;: fmt_fraction(switch_cost),
+                &quot;total&quot;: fmt_fraction(l_total),
+                &quot;total_float&quot;: float(l_total),
+            },
+            &quot;switch_charge_exact&quot;: fmt_fraction(switch_cost),
+            &quot;switch_charge_rule&quot;: &quot;E_sw * p_hit for the mode&#x27;s target-before-unsafe hit by its deadline; failed/unsafe legs incur no successful-switch charge&quot;,
+            &quot;scope&quot;: &quot;No deadline; each leg stops at target or unsafe boundary. No fault-shutdown fee is included.&quot;,
+        },
+        &quot;finite_deadline_cost_identity&quot;: (
+            &quot;For deadline t, transient occupancy o_n(t)=E[time spent in transient state n before min(t,tau_10,tau_55)]. &quot;
+            &quot;Charge (P_s+P_c+P_m)*sum_n o_n plus rate-weighted event costs using the same o_n; &quot;
+            &quot;charge E_sw*p_H(t), where p_H(t)=P(tau_55&lt;=t,tau_55&lt;tau_10). &quot;
+            &quot;This occupancy includes holding power through target hit, unsafe hit, or the deadline. &quot;
+            &quot;If fault shutdown costs E_fault, add E_fault*(1-p_H(t)) when every non-success is fault-stopped.&quot;
+        ),
+        &quot;limitations&quot;: [
+            &quot;One-second probability is floating-point uniformization; its Poisson-tail bound excludes floating-point roundoff.&quot;,
+            &quot;Example energy parameters are illustrative, not measured hardware values.&quot;,
+            &quot;The infinite-wait expected cost is for one attempted H-leg and is not an infinite-horizon safe-operating guarantee.&quot;,
+        ],
+    }
+    print(json.dumps(result, indent=2, sort_keys=True))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/8afbd65ba8137aca146829e7d4ce3c119668ab9b67125f29cd4fa62ce780c592.py">Exact original</a></p></html>

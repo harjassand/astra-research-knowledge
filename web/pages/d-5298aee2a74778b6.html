@@ -1,0 +1,64 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c9_protein_evolvability/censor_analysis/test_count_model.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c9_protein_evolvability/censor_analysis/test_count_model.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Small synthetic checks for the JUN conditional-count likelihood.&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import importlib.util
+import math
+from pathlib import Path
+
+
+HERE = Path(__file__).resolve().parent
+SPEC = importlib.util.spec_from_file_location(&quot;jun_count_model&quot;, HERE / &quot;jun_count_model.py&quot;)
+JUN = importlib.util.module_from_spec(SPEC)
+assert SPEC.loader is not None
+SPEC.loader.exec_module(JUN)
+
+
+def pair_row(input_count, output_count):
+    row = {}
+    for r in range(1, 7):
+        row[f&quot;count_e{r}_s0&quot;] = str(input_count)
+        row[f&quot;count_e{r}_s1&quot;] = str(output_count)
+    return row
+
+
+def wt_row(input_count, output_count):
+    return pair_row(input_count, output_count)
+
+
+def main():
+    # Equal matched input counts and 2:1 outputs give the exact conditional
+    # binomial MLE log(2), which the two-sided profile interval must contain.
+    variant = pair_row(1000, 2000)
+    wildtype = wt_row(1000, 1000)
+    fit = JUN.fit_profile(variant, wildtype)
+    assert fit is not None and fit[&quot;n_reps&quot;] == 6
+    assert abs(fit[&quot;estimate&quot;] - math.log(2.0)) &lt; 1e-9, fit
+    assert fit[&quot;lower95&quot;] &lt; math.log(2.0) &lt; fit[&quot;upper95&quot;], fit
+
+    # Zero mutant outputs are retained as data: they produce a one-sided
+    # likelihood bound instead of a pseudocount estimate or an empty result.
+    zero_variant = pair_row(1000, 0)
+    zero_fit = JUN.fit_profile(zero_variant, wildtype)
+    assert zero_fit is not None and zero_fit[&quot;n_reps&quot;] == 6
+    assert zero_fit[&quot;estimate&quot;] == -math.inf
+    assert zero_fit[&quot;lower95&quot;] == -math.inf
+    assert math.isfinite(zero_fit[&quot;upper95&quot;]) and zero_fit[&quot;upper95&quot;] &lt; 0.0
+
+    # An input-zero replicate has no defined offset and is excluded only for
+    # that replicate; the remaining five observations still estimate delta.
+    missing = pair_row(0, 2000)
+    for r in range(2, 7):
+        missing[f&quot;count_e{r}_s0&quot;] = &quot;1000&quot;
+        missing[f&quot;count_e{r}_s1&quot;] = &quot;2000&quot;
+    missing_wt = wt_row(1000, 1000)
+    omitted = JUN.fit_profile(missing, missing_wt)
+    assert omitted is not None and omitted[&quot;n_reps&quot;] == 5
+    assert abs(omitted[&quot;estimate&quot;] - math.log(2.0)) &lt; 1e-9, omitted
+    print(&quot;PASS: exact log-odds MLE, zero-output one-sided bound, input-zero omission&quot;)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/74a8c6da6fcc91889988cd2f6014b7695a0d14edbd39ebdb46698c0986f21a85.py">Exact original</a></p></html>

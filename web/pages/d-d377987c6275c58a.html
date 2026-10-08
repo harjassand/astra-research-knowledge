@@ -1,0 +1,114 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/engineering_control/robust_acquisition/FINAL_REPORT.md</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/engineering_control/robust_acquisition/FINAL_REPORT.md</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre># Robust control with acquired dynamics: interim research report
+
+## Verdict
+
+The strongest current comparator I found is the May 2026 constrained adaptive LQR result of Hutchinson, Jiang, and Alizadeh. It proves per-time chance-constraint satisfaction and high-probability \(\widetilde O(\sqrt T)\) regret for unknown linear dynamics, but assumes a known, strictly feasible stable zero-input controller and full-rank Gaussian process noise \(W\succeq\sigma I\). A separate September 2026 robust adaptive discrete-time CBF result proves invariance for bounded disturbances and a set-valued parameter estimator, but takes a valid parameterized barrier and a true-parameter-containing uncertainty set as supplied and does not guarantee that data acquisition shrinks the set or improves the task objective.
+
+The useful gap is the interface between safety and excitation. The CBF result explicitly does not require persistent excitation or parameter convergence; the LQR result already injects control noise, but its theorem still assumes full-rank process noise. I derived an exact covariance lemma showing when input dither can replace missing process-noise rank for the regressor. This is a conditional bridge lemma, not yet a regret theorem or a novelty claim. Full-rank process noise also drives the LQR paper&#x27;s one-step covariance-tracking contraction, so replacing it in the complete proof requires a block-horizon analysis, not just a least-squares substitution.
+
+## Exact interfaces and comparators
+
+The 2026 constrained-LQR paper studies
+
+\[
+x_{t+1}=A_*x_t+B_*u_t+w_t,\qquad w_t\sim\mathcal N(0,W),
+\]
+
+with full-state observations, unknown \(A_*,B_*\), known quadratic cost, and linear chance constraints \(\Pr(\alpha_j^Tz_t\le\beta)\ge1-\delta\) at every step, where \(z_t=(x_t,u_t)\). Its benchmark is the best strongly stable linear controller for the true plant satisfying those same chance constraints. The theorem gives high-probability \(\widetilde O(\sqrt T)\) regret and per-step chance feasibility. Supplied assumptions include: a known zero-input policy that is strongly stable and strictly feasible with margin \(\epsilon&gt;0\); known positive-definite disturbance covariance \(W\succeq\sigma I\); and a known norm bound on \([A_*\ B_*]\). The algorithm uses least-squares estimates, a covariance SDP, a safe-scaled optimistic covariance, delayed model updates, and randomized input excitation. Its stated constants and initialization length are polynomial in \(\sigma^{-1}\) and \(\epsilon^{-1}\); it charges the initial exploration phase and repeated SDP/least-squares updates, but gives no physical actuator-energy or experiment-hardware accounting. This contract is chance safety under Gaussian noise, not worst-case safety for every disturbance.
+
+The current robust-CBF comparator (arXiv v3, September 2026) studies a compact state domain and input-affine dynamics with unknown constant linearly parameterized drift, bounded polytope disturbances, and a compact prior parameter polytope. It assumes a known valid robust-adaptive discrete-time barrier, an estimator whose set estimate always contains the true parameter, and bounded estimate increments. Its theorem gives sequential robust invariance of time-varying safe sets. It does not require persistent excitation, and explicitly leaves estimator convergence and excitation outside its scope. It is a safety certificate, not a learning-performance result: the barrier, uncertainty family, disturbance set, and set-containment property are supplied. Computing and maintaining the uncertainty set is an acquisition/runtime cost; the paper&#x27;s modular theorem does not provide a general sample-complexity bound for it.
+
+These comparators have different disturbance and safety contracts. The candidate below narrows to the chance-constrained stochastic LQR interface of the first paper, while using the second paper to identify the separate robust-safety/acquisition gap.
+
+## Conditional bridge lemma: safe dither can supply state-regressor rank
+
+Let the known baseline controller be \(u_t=K_0x_t+e_t\), with independent, zero-mean Gaussian dither \(e_t\sim\mathcal N(0,U)\) and process noise \(w_t\sim\mathcal N(0,W)\), independent over time and of the dither. Put \(F=A+BK_0\), assume \(F\) is Schur stable, and start at \(x_0=0\). The stationary state covariance is
+
+\[
+P_\infty=\sum_{k\ge0}F^k(W+BUB^T)(F^k)^T,
+\]
+
+and, for \(z_t=(x_t,u_t)\), the stationary regressor covariance is
+
+\[
+\Gamma_\infty=
+\begin{bmatrix}I\\K_0\end{bmatrix}P_\infty
+\begin{bmatrix}I\\K_0\end{bmatrix}^{T}
++\begin{bmatrix}0&amp;0\\0&amp;U\end{bmatrix}.
+\]
+
+For \(U\succ0\), \(\Gamma_\infty\succ0\) exactly when \(P_\infty\succ0\). The latter holds exactly when the pair
+
+\[
+\left(F,\ [W^{1/2}\; BU^{1/2}]\right)
+\]
+
+is controllable. Thus the full-rank process-noise condition \(W\succeq\sigma I\) is sufficient but not necessary for full-rank regression: missing state directions can be filled by safely injected input noise through the plant&#x27;s controllable subspace.
+
+For one-sided linear Gaussian chance constraints \(\alpha_j^Tz_t\le\beta\), with \(\beta&gt;0\), the exact stationary condition is
+
+\[
+\alpha_j^T\Gamma_\infty\alpha_j\le
+\frac{\beta^2}{\Phi^{-1}(1-\delta)^2}.
+\]
+
+If the zero-dither baseline is strictly feasible, choose \(U=\eta I\). Define
+
+\[
+H=\sum_{k\ge0}F^kBB^T(F^k)^T,\quad
+M_j=\alpha_j^T\left(
+\begin{bmatrix}I\\K_0\end{bmatrix}H
+\begin{bmatrix}I\\K_0\end{bmatrix}^T+
+\begin{bmatrix}0&amp;0\\0&amp;I\end{bmatrix}\right)\alpha_j,
+\]
+
+and baseline slack
+
+\[
+m_j=\frac{\beta^2}{\Phi^{-1}(1-\delta)^2}
+-\alpha_j^T\Gamma_\infty(0)\alpha_j&gt;0.
+\]
+
+Then any \(0&lt;\eta\le\min_{j:M_j&gt;0}m_j/M_j\) preserves the stationary chance constraints. With \(x_0=0\), the finite-time covariance is bounded above by the stationary covariance, so the same bound ensures every-time chance feasibility. Dither&#x27;s expected control energy per step is \(\operatorname{tr}(U)=m\eta\); its duration and precision costs are additional.
+
+### Exact finite-dimensional fixture
+
+Take \(n=2,m=1,A=0,B=(0,1)^T,K_0=0\), and \(W=\operatorname{diag}(1,0)\). With scalar dither variance \(U=\eta&gt;0\),
+
+\[
+P_\infty=\operatorname{diag}(1,\eta),\qquad
+\Gamma_\infty=\operatorname{diag}(1,\eta,\eta)
+\]
+
+for features \((x_1,x_2,u)\). The process noise is rank one, yet the regressor covariance is full rank. If the state and input constraints are coordinatewise Gaussian chance constraints and their thresholds leave positive slack over the baseline variance, sufficiently small \(\eta\) is safe by the exact formula above.
+
+Bounded check: substitute this \(F=0\) fixture directly into the Lyapunov sum and covariance formula. The output is \(P_\infty=\operatorname{diag}(1,\eta)\), \(\Gamma_\infty=\operatorname{diag}(1,\eta,\eta)\), and eigenvalues \(1,\eta,\eta\). The falsifier was a zero eigenvalue for any \(\eta&gt;0\), which does not occur. This is exact arithmetic for one fixture; it does not validate adaptive least-squares concentration or the general regret theorem.
+
+The proof and a counter-boundary are in [proofs/safe_dither_covariance.md](proofs/safe_dither_covariance.md).
+
+For the covariance-tracking step in the current LQR proof, there is also a block-mixing lemma. If a fixed closed loop has stationary covariance \(P=FPF^T+Q\), \(P\preceq\nu I\), and its \(L\)-step Gramian \(\sum_{k=0}^{L-1}F^kQ(F^T)^k\succeq\mu I\), then
+
+\[
+F^LP(F^T)^L\preceq(1-\mu/\nu)P.
+\]
+
+The time-varying version pays the target-covariance drift and model residual inside that \(L\)-step block. This supplies the exact static replacement for the comparator&#x27;s one-step \(W\succeq\sigma I\) contraction. The remaining proof obligation is to certify a uniform block Gramian for its changing, estimated, safety-scaled policy.
+
+## What this does and does not establish
+
+This removes a structural excitation restriction at the regressor-covariance level, conditional on a known stabilizing baseline, a positive safety margin, and a lower bound on the joint controllability Gramian. It gives an exact safety-versus-dither budget and exposes the appropriate conditioning parameter for identification. The 2026 LQR theorem also uses \(\sigma\) in its covariance-tracking constants \((\widetilde\kappa,\widetilde\gamma)\), where \(\widetilde\gamma\) sets a one-step mixing rate. A singular-noise extension must replace that stepwise lower bound with a multi-step reachable-covariance bound and recheck the delay, phase-length, and every-time safety arguments.
+
+It does not yet establish a confidence-set concentration theorem for the adaptive, changing-policy trajectory, a safe adaptive-LQR algorithm with \(\widetilde O(\sqrt T)\) regret for singular \(W\), or a robust hard-constraint result. A supplied lower bound on the controllability Gramian is a substantive prior. If it is not supplied, an online procedure needs a safe stopping rule that returns `UNKNOWN` when the data fail to certify excitation. The covariance and block-contraction lemmas are classical controllability/Gramian algebra; the claimed novelty of their integration with the 2026 safe covariance-SDP result is unverified.
+
+## Next decisive gate
+
+Rework the 2026 initialization and least-squares confidence argument with singular \(W\), replacing the full-rank lower eigenvalue by a supplied or safely acquired lower bound on the finite-horizon Gramian generated by \((F,[W^{1/2},B])\). Verify that the paper&#x27;s dither radius, which is already chosen from the safety slack, supplies enough rank without changing the per-time chance-constraint proof. Then either prove a theorem with explicit dependence on the controllability margin and experiment duration, or construct an instance where safe covariance exploration cannot make the regressor Gramian full rank despite that condition.
+
+## Primary sources
+
+- Hutchinson, Jiang, and Alizadeh, *Rate-Optimal Regret for the Safe Learning-based Control of the Constrained Linear Quadratic Regulator*, arXiv:2604.22158v2 (2026): https://arxiv.org/abs/2604.22158 . Sections 2.1–3.2 and Theorem 1 / full Theorem 2 specify the interface, assumptions, covariance-SDP, and regret/safety result.
+- Liu, Alan, Shi, and De Schutter, *Robust Adaptive Discrete-Time Control Barrier Certificate*, arXiv:2508.08153v3 (2026): https://arxiv.org/abs/2508.08153 . Sections 2–4, Theorem 2, and Remark 4.2 specify the robust bounded-disturbance interface and the explicit no-PE boundary.
+- Li, Das, Shamma, and Li, *Safe Adaptive Learning-based Control for Constrained Linear Quadratic Regulators with Regret Guarantees*, arXiv:2111.00411 (2021): https://arxiv.org/abs/2111.00411 . This is the earlier single-trajectory robust-constraint comparator; its reported multidimensional regret is \(\widetilde O(T^{2/3})\), a different disturbance/safety interface from the 2026 chance-constrained theorem.
+
+No external review or priority search specific to singular-noise safe LQR was completed. No experimental result was run. Status: a rigorously derived conditional covariance/safety lemma; theorem integration and novelty remain open.
+</pre><p><a href="../assets/8350f00c5b4b5eab637195fe45da873d96c41ff99f517142416582eb383ad133.md">Exact original</a></p></html>

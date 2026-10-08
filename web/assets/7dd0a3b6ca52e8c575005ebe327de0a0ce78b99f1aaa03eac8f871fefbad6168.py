@@ -1,0 +1,81 @@
+"""Exact finite diagnostics for rate_box_extension.txt.
+
+These checks exercise the written generator-envelope and finite-ball constants
+on one-pair rational fixtures. They are not a proof of the quantified theorem.
+Run with Python 3; only fractions/math from the standard library are used.
+"""
+from fractions import Fraction as F
+from math import prod
+
+
+def falling(n: int, q: int) -> int:
+    return prod(range(n - q + 1, n + 1)) if n >= q else 0
+
+
+def exact_g(m: int, A: F, H: F) -> F:
+    if A <= 0:
+        return F(0)
+    if H == 0:
+        raise ValueError("this fixture uses the H>0 cutoff case")
+    N = m + 1
+    while H * prod(N - h for h in range(1, m + 1)) < A:
+        N += 1
+    return max(
+        [F(0)]
+        + [A * n - H * falling(n, m + 1) for n in range(N)]
+    )
+
+
+# One pair, w=z=1. Every endpoint is rational; condition (4) holds by H>0.
+alpha_plus_hi = F(2)
+alpha_minus_lo, alpha_minus_hi = F(4), F(5)
+beta_plus_lo, beta_plus_hi = F(1), F(4)
+beta_minus_lo, beta_minus_hi = F(3), F(5)
+gamma_plus_lo, gamma_plus_hi = F(1, 2), F(1)
+gamma_minus_lo, gamma_minus_hi = F(1, 2), F(1)
+
+for m in range(1, 6):
+    A = m * gamma_plus_hi - beta_minus_lo
+    H = m * gamma_minus_lo
+    G = exact_g(m, A, H)
+    C0 = alpha_plus_hi
+    D = beta_plus_hi - alpha_minus_lo
+    C_A = max(F(0), D)
+    C_B = G
+    C = max(C0, C_A, C_B)
+
+    # Check the exact endpoint generator against C(1+V) on a finite grid.
+    for a in range(13):
+        for b in range(13):
+            lv = (
+                alpha_plus_hi - alpha_minus_lo * a
+                + a * beta_plus_hi - a * b * beta_minus_lo
+                + m * b * (gamma_plus_hi * a
+                           - gamma_minus_lo * falling(a, m + 1))
+            )
+            assert lv <= C * (1 + a + b), (m, a, b, lv, C)
+
+    # q-bound uses beta+ at order A_R, beta-/gamma+ at A_R B_R.
+    for R in (F(1, 2), F(3), F(8)):
+        A_R = int(R)  # w_min=1; floor of a nonnegative rational
+        B_R = int(R)  # z_min=1
+        Lambda = (
+            alpha_plus_hi
+            + A_R * (alpha_minus_hi + beta_plus_hi)
+            + A_R * B_R * (beta_minus_hi + gamma_plus_hi)
+            + B_R * gamma_minus_hi * falling(A_R, m + 1)
+        )
+        for a in range(A_R + 1):
+            for b in range(B_R + 1):
+                if a + b > R:
+                    continue
+                q = (
+                    alpha_plus_hi + alpha_minus_hi * a
+                    + beta_plus_hi * a + beta_minus_hi * a * b
+                    + gamma_plus_hi * a * b
+                    + gamma_minus_hi * falling(a, m + 1) * b
+                )
+                assert q <= Lambda, (m, R, a, b, q, Lambda)
+
+print("PASS: exact rational drift and finite-ball rate checks for m=1..5")
+print("Scope: one-pair finite fixtures only; theorem proof is in the report.")

@@ -1,0 +1,126 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/molecular_cadence_falsifier/exact_law_audit.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/molecular_cadence_falsifier/exact_law_audit.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Finite audit of two endpoint-increment compound-Poisson laws.
+
+Pure Python, no simulation and no external packages.  The recursion is exact
+for the probability-generating-function coefficients; floating point is used
+only for evaluating the Poisson exponential and the displayed divergences.
+The support hole at increment 1 is handled explicitly.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import json
+import math
+from pathlib import Path
+
+
+K0 = (1, 1, 4, 0)
+K1 = (0, 4, 1, 1)
+
+
+def pmf(mu: float, rates: tuple[int, ...]) -&gt; list[float]:
+    &quot;&quot;&quot;Return p(0),...,p(N), where N leaves a tiny Chernoff tail.&quot;&quot;&quot;
+    mean = 15.0 * mu
+    variance = 41.0 * mu
+    nmax = math.ceil(mean + 22.0 * math.sqrt(variance) + 100.0)
+    p = [0.0] * (nmax + 1)
+    p[0] = math.exp(-6.0 * mu)
+    # If G(z)=exp(mu sum_j k_j(z^j-1)), then n p_n is
+    # mu sum_j j k_j p_{n-j}.
+    for n in range(1, nmax + 1):
+        p[n] = (mu / n) * sum(
+            j * rates[j - 1] * p[n - j]
+            for j in range(1, 5)
+            if n &gt;= j
+        )
+    return p
+
+
+def chernoff_tail(mu: float, rates: tuple[int, ...], nmax: int) -&gt; float:
+    &quot;&quot;&quot;Optimized exponential upper bound for P(X &gt; nmax).&quot;&quot;&quot;
+    target = nmax + 1
+
+    def derivative(s: float) -&gt; float:
+        return mu * sum(j * rates[j - 1] * math.exp(j * s) for j in range(1, 5)) - target
+
+    lo, hi = 0.0, 1.0
+    while derivative(hi) &lt; 0.0:
+        hi *= 2.0
+    for _ in range(100):
+        mid = (lo + hi) / 2.0
+        if derivative(mid) &lt; 0.0:
+            lo = mid
+        else:
+            hi = mid
+    s = (lo + hi) / 2.0
+    log_bound = mu * sum(rates[j - 1] * (math.exp(j * s) - 1.0) for j in range(1, 5)) - s * target
+    return min(1.0, math.exp(log_bound))
+
+
+def compare(mu: float) -&gt; dict[str, float | int]:
+    p0 = pmf(mu, K0)
+    p1 = pmf(mu, K1)
+    nmax = min(len(p0), len(p1)) - 1
+    tv = 0.5 * sum(abs(p0[i] - p1[i]) for i in range(nmax + 1))
+    affinity = sum(math.sqrt(p0[i] * p1[i]) for i in range(nmax + 1))
+    h2 = 1.0 - affinity  # normalized squared Hellinger distance
+    kl_1_0 = sum(
+        p1[i] * math.log(p1[i] / p0[i])
+        for i in range(nmax + 1)
+        if p1[i] &gt; 0.0
+    )
+    return {
+        &quot;mu&quot;: mu,
+        &quot;nmax&quot;: nmax,
+        &quot;sum_p0&quot;: sum(p0),
+        &quot;sum_p1&quot;: sum(p1),
+        &quot;chernoff_tail_p0&quot;: chernoff_tail(mu, K0, nmax),
+        &quot;chernoff_tail_p1&quot;: chernoff_tail(mu, K1, nmax),
+        &quot;tv&quot;: tv,
+        &quot;hellinger_squared&quot;: h2,
+        &quot;kl_p1_to_p0&quot;: kl_1_0,
+        &quot;mu_times_kl_p1_to_p0&quot;: mu * kl_1_0,
+        &quot;mu_times_h2&quot;: mu * h2,
+        &quot;sqrt_mu_times_tv&quot;: math.sqrt(mu) * tv,
+        &quot;p0_increment_1&quot;: mu * math.exp(-6.0 * mu),
+        &quot;p1_increment_1&quot;: 0.0,
+    }
+
+
+def main() -&gt; None:
+    mus = (1.0, 2.0, 4.0, 8.0, 12.0, 16.0, 24.0, 32.0, 40.0, 48.0, 56.0)
+    rows = [compare(mu) for mu in mus]
+    # Fixed T=1 and critical sequence V=m^2, Delta=1/m, mu=m, n=m.
+    critical = []
+    for m in (4, 8, 16, 32, 48):
+        row = compare(float(m))
+        critical.append({
+            &quot;T&quot;: 1.0,
+            &quot;V&quot;: m * m,
+            &quot;Delta&quot;: 1.0 / m,
+            &quot;mu&quot;: float(m),
+            &quot;bins&quot;: m,
+            &quot;total_KL_P1_to_P0&quot;: m * float(row[&quot;kl_p1_to_p0&quot;]),
+            &quot;limiting_total_KL_constant&quot;: 3.0 / (41.0**3),
+        })
+    result = {
+        &quot;method&quot;: &quot;PGF coefficient recurrence plus optimized Chernoff truncation bound&quot;,
+        &quot;rates_h0&quot;: list(K0),
+        &quot;rates_h1&quot;: list(K1),
+        &quot;predicted_limits&quot;: {
+            &quot;mu_KL_P1_to_P0&quot;: 3.0 / (41.0**3),
+            &quot;mu_Hellinger_squared&quot;: 0.75 / (41.0**3),
+            &quot;sqrt_mu_TV&quot;: (1.0 / math.sqrt(2.0 * math.pi)) * (1.0 + 4.0 * math.exp(-1.5)) / (41.0**1.5),
+        },
+        &quot;rows&quot;: rows,
+        &quot;critical_cadence_T1&quot;: critical,
+        &quot;directed_KL_P0_to_P1&quot;: &quot;infinity, since P0(X=1)=mu*exp(-6*mu)&gt;0 and P1(X=1)=0&quot;,
+    }
+    out = Path(__file__).with_name(&quot;exact_law_results.json&quot;)
+    out.write_text(json.dumps(result, indent=2) + &quot;\n&quot;, encoding=&quot;utf-8&quot;)
+    print(json.dumps(result, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/8ba97be66ef1dcc516b73b6f2f782c96ce32264b534787b5d1f672cd8a516840.py">Exact original</a></p></html>

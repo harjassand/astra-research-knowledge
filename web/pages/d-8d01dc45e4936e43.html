@@ -1,0 +1,104 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/reaction_dynamics/cycle3/leaves/exponential_foster_outside_gain/validate_sparse.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/reaction_dynamics/cycle3/leaves/exponential_foster_outside_gain/validate_sparse.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact finite generator check for one sparse-support instance.
+
+This verifies the support-switch terms on a finite box only; the analytic
+mixed-escape argument is in SPARSE_EXTENSION.txt.
+&quot;&quot;&quot;
+
+from fractions import Fraction as Q
+
+R = Q(6, 5)
+EPS = Q(1)
+K = Q(2)
+EDGES = ((0, 0), (1, 0), (1, 1))
+NEIGHBORS = ((0, 1), (1,))
+
+
+def inactive(a, i):
+    return all(a[j] == 0 for j in NEIGHBORS[i])
+
+
+def value(a1, a2, b1, b2):
+    a = (a1, a2)
+    bs = (b1, b2)
+    return (
+        Q(a1 + a2)
+        + sum(R**bs[i] * (1 + EPS * inactive(a, i)) for i in range(2))
+        + K * (a1 + a2 == 0)
+    )
+
+
+def formula_drift(a1, a2, b1, b2):
+    a = (a1, a2)
+    bs = (b1, b2)
+    out = Q(2 - a1 - a2)
+    for j, i in EDGES:
+        b = bs[i]
+        out += a[j] * (Q(1, 5) - Q(b, 3)) * R**b + a[j] * b
+        out -= 2 * a[j] * (a[j] - 1) * b
+
+    # K L 1_{A=0}, with alpha_1=alpha_2=delta_1=delta_2=1.
+    out += -2 * K * (a1 + a2 == 0)
+    out += K * (a1 == 1 and a2 == 0)
+    out += K * (a1 == 0 and a2 == 1)
+
+    # Support-dependent substrate-weight switches, epsilon_i=1.
+    out += R**b1 * (
+        -2 * inactive(a, 0)
+        + (a1 == 1 and a2 == 0)
+        + (a1 == 0 and a2 == 1)
+    )
+    out += R**b2 * (-inactive(a, 1) + (a2 == 1))
+    return out
+
+
+def direct_drift(a1, a2, b1, b2):
+    a = (a1, a2)
+    bs = (b1, b2)
+    transitions = []
+    for j in range(2):
+        aa = list(a)
+        aa[j] += 1
+        transitions.append((Q(1), (*aa, *bs)))
+        if a[j]:
+            aa = list(a)
+            aa[j] -= 1
+            transitions.append((Q(a[j]), (*aa, *bs)))
+    for j, i in EDGES:
+        # A_j -&gt; A_j+B_i
+        bb = list(bs)
+        bb[i] += 1
+        transitions.append((Q(a[j]), (*a, *bb)))
+        if bs[i]:
+            bb = list(bs)
+            bb[i] -= 1
+            transitions.append((Q(2 * a[j] * bs[i]), (*a, *bb)))
+            aa = list(a)
+            aa[j] += 1
+            transitions.append((Q(a[j] * bs[i]), (*aa, *bs)))
+            if a[j] &gt;= 2:
+                aa = list(a)
+                aa[j] -= 1
+                transitions.append((Q(2 * a[j] * (a[j] - 1) * bs[i]), (*aa, *bs)))
+    x = (a1, a2, b1, b2)
+    return sum((rate * (value(*y) - value(*x)) for rate, y in transitions), Q(0))
+
+
+def main():
+    count = 0
+    for a1 in range(8):
+        for a2 in range(8):
+            for b1 in range(8):
+                for b2 in range(8):
+                    direct = direct_drift(a1, a2, b1, b2)
+                    formula = formula_drift(a1, a2, b1, b2)
+                    assert direct == formula, (a1, a2, b1, b2, direct, formula)
+                    count += 1
+    print(f&quot;PASS: sparse support-switch generator identity on {count} exact states&quot;)
+    print(&quot;Fixture: E={(A1,B1),(A2,B1),(A2,B2)}, alpha=delta=p=1, q=v=2, u=1, k=1&quot;)
+    print(&quot;Scope: finite generator validation only; the all-state sparse claim is separate&quot;)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/7bb81039c8069a25efd5d66af571ff666f61f19bdaaade2a606fe1b76ddaacb3.py">Exact original</a></p></html>

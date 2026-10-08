@@ -1,0 +1,51 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/sol_classicality/SPIN2_CUBATURE_CHECK.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/sol_classicality/SPIN2_CUBATURE_CHECK.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Floating transcription check of the analytically exact 405-point orbits.
+This does not replace the exact star proof and is labelled FINITE-EVIDENCE.
+Requires NumPy and SymPy. Exact rational selection uses SPIN2_SELECTOR.py.
+&quot;&quot;&quot;
+from pathlib import Path
+from fractions import Fraction
+import json, platform
+import numpy as np
+from sympy import S
+from sympy.physics.wigner import clebsch_gordan
+from SPIN2_SELECTOR import VERTICES,select,strings
+
+d=5;j=2;m=np.arange(2,-3,-1);Jp=np.zeros((d,d),complex)
+for k in range(1,d):Jp[k-1,k]=np.sqrt((j-m[k])*(j+m[k]+1))
+Jy=(Jp-Jp.T)/2j;e,V=np.linalg.eigh(Jy)
+nodes,weights=np.polynomial.legendre.leggauss(5);N=9
+seeds=[np.array([1,0,0,0,0],complex),np.array([0,0,1,0,0],complex),np.array([1,0,0,np.sqrt(2),0],complex)/np.sqrt(3)]
+ts=[]
+for ell in range(1,5):
+    tensors=[]
+    for q in range(-ell,ell+1):
+        tensors.append(np.array([[np.sqrt(5)*(-1)**(2-m2)*complex(clebsch_gordan(S(2),S(2),S(ell),S(m1),S(-m2),S(q))) for m2 in m] for m1 in m]))
+    ts.append(tensors)
+rows=[];sms=[]
+for p,psi in enumerate(seeds):
+    sm=np.zeros((25,25),complex);povm=np.zeros((5,5),complex);choi=np.zeros_like(sm);count=0
+    for a in range(N):
+        Ua=np.diag(np.exp(-1j*(2*np.pi*a/N)*m))
+        for c in range(N):
+            Uc=np.diag(np.exp(-1j*(2*np.pi*c/N)*m))
+            for node,weight in zip(nodes,weights):
+                Ub=(V*np.exp(-1j*np.arccos(node)*e))@V.conj().T
+                v=Ua@Ub@Uc@psi;P=np.outer(v,v.conj());wt=weight/(2*N*N)
+                pv=P.reshape(-1);sm+=5*wt*np.outer(pv,pv.conj());povm+=5*wt*P;choi+=5*wt*np.kron(P.T,P);count+=1
+    errors=[]
+    for ell,tensors in enumerate(ts):
+        mu=float(VERTICES[p][ell])
+        for T in tensors:errors.append(float(np.linalg.norm((sm@T.reshape(-1)).reshape(5,5)-mu*T)))
+    row={&#x27;seed&#x27;:&#x27;FNC&#x27;[p],&#x27;outcomes&#x27;:count,&#x27;povm_sum_error&#x27;:float(np.linalg.norm(povm-np.eye(5))),&#x27;max_multipole_error&#x27;:max(errors),&#x27;min_choi_eigenvalue&#x27;:float(np.linalg.eigvalsh(choi)[0])}
+    assert count==405 and row[&#x27;povm_sum_error&#x27;]&lt;1e-11 and row[&#x27;max_multipole_error&#x27;]&lt;1e-11 and row[&#x27;min_choi_eigenvalue&#x27;]&gt;-1e-11
+    rows.append(row);sms.append(sm)
+
+selected=select([Fraction(7,12)]*4)
+mix=sum(float(w)*sm for w,sm in zip(selected[&#x27;weights&#x27;],sms))
+traces=np.outer(np.eye(5).reshape(-1),np.eye(5).reshape(-1))/5
+expected=(np.eye(25)+5*traces)/6
+mixerr=float(np.linalg.norm(mix-expected));assert mixerr&lt;1e-11
+result={&#x27;status&#x27;:&#x27;FINITE-EVIDENCE&#x27;,&#x27;scope&#x27;:&#x27;Finite orbit cubature transcription only; analytic/exact proofs separate&#x27;,&#x27;python&#x27;:platform.python_version(),&#x27;numpy_version&#x27;:np.__version__,&#x27;rows&#x27;:rows,&#x27;cloner_selector&#x27;:strings(selected),&#x27;cloner_depolarizing_superoperator_error&#x27;:mixerr}
+Path(__file__).with_suffix(&#x27;.json&#x27;).write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+print(json.dumps(result,indent=2))
+</pre><p><a href="../assets/9ddef46e7f0d7ccea8566103f7a9b1ba07498ff78044cf4f9593af64611e0ce6.py">Exact original</a></p></html>

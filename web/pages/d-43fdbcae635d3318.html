@@ -1,0 +1,86 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/materials_energy/thermoelectric/pareto_probe.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/materials_energy/thermoelectric/pareto_probe.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Grid probe of bounded transport-distribution moment optimization.
+
+This finite discretization is diagnostic only; the interval theorem is proved
+separately in FINAL_REPORT.md and no material is claimed to realize the profile.
+&quot;&quot;&quot;
+from __future__ import annotations
+import json
+import math
+
+
+def cumulative_moments(xmin=-1.0, xmax=15.0, dx=0.02):
+    n = round((xmax - xmin) / dx)
+    xs = [xmin + i * dx for i in range(n + 1)]
+    vals = [[], [], []]
+    for x in xs:
+        # Stable logistic derivative -f&#x27;(x)=1/(4 cosh^2(x/2)).
+        w = 0.25 / (math.cosh(x / 2.0) ** 2)
+        vals[0].append(w)
+        vals[1].append(x * w)
+        vals[2].append(x * x * w)
+    pref = [[0.0] for _ in range(3)]
+    for k in range(3):
+        for i in range(n):
+            pref[k].append(pref[k][-1] + 0.5 * dx * (vals[k][i] + vals[k][i + 1]))
+    return xs, pref
+
+
+def optimize_for_ratio(ratio, pf_floor=None):
+    xs, pref = cumulative_moments()
+    best_zt = {&quot;zt&quot;: -1.0}
+    best_pf = {&quot;pf&quot;: -1.0}
+    # The report&#x27;s equal-first-two-moments argument reduces the exact model
+    # frontier to intervals. This grid probes endpoint optimization only.
+    n = len(xs)
+    for i in range(n - 1):
+        A0 = pref[0][i]
+        B0 = pref[1][i]
+        C0 = pref[2][i]
+        for j in range(i + 1, n):
+            A = pref[0][j] - A0
+            B = pref[1][j] - B0
+            if B &lt;= 0 or A &lt;= 0:
+                continue
+            C = pref[2][j] - C0
+            pf = B * B / A
+            if pf &gt; best_pf[&quot;pf&quot;]:
+                den_pf = A * (C + ratio) - B * B
+                zt_pf = B * B / den_pf if den_pf &gt; 0 else 0.0
+                best_pf = {&quot;lo&quot;: xs[i], &quot;hi&quot;: xs[j], &quot;pf&quot;: pf,
+                           &quot;zt_at_this_profile&quot;: zt_pf}
+            if pf_floor is not None and pf + 1e-10 &lt; pf_floor:
+                continue
+            den = A * (C + ratio) - B * B
+            if den &lt;= 0:
+                continue
+            zt = B * B / den
+            if zt &gt; best_zt[&quot;zt&quot;]:
+                best_zt = {&quot;lo&quot;: xs[i], &quot;hi&quot;: xs[j], &quot;pf&quot;: pf, &quot;zt&quot;: zt}
+    return {&quot;pf_max_on_grid&quot;: best_pf, &quot;best_interval&quot;: best_zt}
+
+
+def attach_linear_response_efficiency(case):
+    for item in (case[&quot;pf_max_on_grid&quot;], case[&quot;best_interval&quot;]):
+        zt = item.get(&quot;zt&quot;, item.get(&quot;zt_at_this_profile&quot;))
+        root = math.sqrt(1.0 + zt)
+        item[&quot;eta_over_carnot_linear_response&quot;] = (root - 1.0) / (root + 1.0)
+
+
+def main():
+    result = {&quot;status&quot;: &quot;finite grid diagnostic only; not proof or material validation&quot;,
+              &quot;transport_cap_normalized_to_one&quot;: True,
+              &quot;energy_grid&quot;: {&quot;min&quot;: -1.0, &quot;max&quot;: 15.0, &quot;step&quot;: 0.02},
+              &quot;cases&quot;: []}
+    for a in (0.1, 1.0, 10.0):
+        unconstrained = optimize_for_ratio(a)
+        constrained = optimize_for_ratio(a, 1.23)
+        attach_linear_response_efficiency(unconstrained)
+        attach_linear_response_efficiency(constrained)
+        result[&quot;cases&quot;].append({&quot;lattice_ratio_a&quot;: a,
+                                &quot;ZT_unconstrained&quot;: unconstrained,
+                                &quot;ZT_with_PF_floor_1.23&quot;: constrained})
+    print(json.dumps(result, indent=2))
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/3fbf62a83df50f1475022d08b6ae8102ff9443b1cae63dd16fe440a0feba9a7d.py">Exact original</a></p></html>

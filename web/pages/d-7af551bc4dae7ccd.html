@@ -1,0 +1,99 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c11_spin11_star_hostile/independent_seed_replay.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c11_spin11_star_hostile/independent_seed_replay.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Seed-moment replay from bit-mask Clifford algebra, independent of candidate code.&quot;&quot;&quot;
+from itertools import combinations
+from pathlib import Path
+import json
+import sympy as sp
+
+NQ = 5
+ND = 2*NQ + 1
+I = sp.I
+
+
+def mul(a, b):
+    &quot;&quot;&quot;Multiply i^p X^x Z^z labels; local Y is i X Z.&quot;&quot;&quot;
+    p, x, z = a
+    q, u, v = b
+    sign = (z &amp; u).bit_count() % 2
+    return ((p + q + 2*sign) % 4, x ^ u, z ^ v)
+
+
+def gammas():
+    out = []
+    for q in range(NQ):
+        prefix = (1 &lt;&lt; q) - 1
+        out.append((0, 1 &lt;&lt; q, prefix))       # Z_0 ... Z_(q-1) X_q
+        out.append((1, 1 &lt;&lt; q, prefix | (1 &lt;&lt; q)))  # Z_0 ... Z_(q-1) Y_q
+    out.append((0, 0, (1 &lt;&lt; NQ)-1))
+    return out
+
+
+GAMMA = gammas()
+
+
+def clifford_basis(k):
+    for subset in combinations(range(ND), k):
+        word = (0, 0, 0)
+        for j in subset:
+            word = mul(word, GAMMA[j])
+        p, x, z = word
+        yield subset, ((p + k*(k-1)//2) % 4, x, z)
+
+
+def expect(word, support):
+    phase, x, z = word
+    amp = sp.Integer(1)/len(support)
+    value = 0
+    for src in support:
+        dst = src ^ x
+        if dst in support:
+            sign = -1 if (z &amp; src).bit_count() % 2 else 1
+            value += amp * (I**phase) * sign
+    value = sp.simplify(value)
+    if sp.im(value) != 0:
+        raise AssertionError((word, support, value))
+    return sp.re(value)
+
+
+def moments(support):
+    scores = []
+    for k in range(1, 6):
+        score = sum(expect(word, support)**2 for _, word in clifford_basis(k))
+        scores.append(sp.factor(score))
+    if sum(scores) != 31:
+        raise AssertionError((support, scores))
+    return scores
+
+
+def main():
+    supports = {
+        &quot;coherent_basis_state&quot;: (0,),
+        &quot;two_weight_hamming_3&quot;: (0, 7),
+        &quot;two_weight_hamming_4&quot;: (0, 15),
+        &quot;two_weight_hamming_5&quot;: (0, 31),
+    }
+    expected = {
+        &quot;coherent_basis_state&quot;: [1, 5, 5, 10, 10],
+        &quot;two_weight_hamming_3&quot;: [0, 2, 7, 8, 14],
+        &quot;two_weight_hamming_4&quot;: [1, 1, 1, 14, 14],
+        &quot;two_weight_hamming_5&quot;: [0, 0, 5, 10, 16],
+    }
+    results = {}
+    for name, support in supports.items():
+        got = [int(x) for x in moments(support)]
+        if got != expected[name]:
+            raise AssertionError((name, got, expected[name]))
+        results[name] = got
+    out = {
+        &quot;status&quot;: &quot;PASS&quot;,
+        &quot;method&quot;: &quot;standalone bit-mask Clifford multiplication with P=i^p X^x Z^z; no candidate Python module imported&quot;,
+        &quot;number_of_clifford_words&quot;: sum(len(list(combinations(range(ND), k))) for k in range(1, 6)),
+        &quot;seed_moments&quot;: results,
+        &quot;canonical_orbit_channel_reason&quot;: &quot;The spinor representation is irreducible, so Haar average of each rank-one projector is I/32. Each seed therefore gives a full-domain orbit POVM with effects 32 P_g dg and prepares P_g; its covariant transfer on irreducible grade k is the seed moment s_k/C(11,k).&quot;,
+    }
+    Path(__file__).with_name(&quot;independent_seed_replay.json&quot;).write_text(json.dumps(out, indent=2) + &quot;\n&quot;)
+    print(&quot;PASS: four exact seed moment vectors replayed from independent bit-mask algebra over 1023 words.&quot;)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/36aaf274e46c221cddbae8221a125f54597216572f17c22122a4fa2d49d57a67.py">Exact original</a></p></html>

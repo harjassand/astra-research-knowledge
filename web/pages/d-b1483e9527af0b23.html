@@ -1,0 +1,274 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c4_rational_hostile/formalization/project/N33Affine/AffineInduction.lean</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c4_rational_hostile/formalization/project/N33Affine/AffineInduction.lean</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>import N33Affine.StageLocalCompose
+import N33Affine.StageCertificate
+import BadNeighborhood
+import N33FiniteGlue
+import N33Affine.NextTypeAsymptotic
+import N33Affine.B2GluePlacement
+
+noncomputable section
+
+open Filter Topology Set
+
+namespace N33Affine
+
+def FullApproximation {m : ℕ} (a b : ℝ) (E : (Fin m → ℝ) → ℝ)
+    (family : FiniteFamily m) : Prop :=
+  ∀ (j : family.Index) (hSeq : ℕ → ℝ)
+      (pSeq : ℕ → Fin m → ℝ) (p : Fin m → ℝ),
+    Tendsto hSeq atTop (𝓝[&gt;] 0) →
+    Tendsto pSeq atTop (𝓝 p) →
+    InCube a b p →
+    (∀ᶠ n in atTop, Active family.label j (hSeq n) (pSeq n)) →
+    ∀ i, |p i - (family.label j).slope i| &lt; E (family.label j).slope
+
+structure LocalWindowData {m : ℕ} (a b : ℝ)
+    (E : (Fin m → ℝ) → ℝ) (t : ℝ) where
+  family : BoxFamily m a b
+  radius : ℝ
+  radius_pos : 0 &lt; radius
+  gamma : ℝ
+  center_lt_gamma : t &lt; gamma
+  window_lt_gamma : t + radius &lt; gamma
+  slope_floor : ∀ j i, t ≤ (family.family.label j).slope i
+  has_baseline : ∃ j, family.family.label j = baselineLabel t
+  offsets_small : ∀ j, LittleO (family.family.label j).bump gamma
+  neighborhood : ∀ (j : family.family.Index)
+      (hSeq : ℕ → ℝ) (pSeq : ℕ → Fin m → ℝ) (p : Fin m → ℝ) (s : ℝ),
+    Tendsto hSeq atTop (𝓝[&gt;] 0) →
+    Tendsto pSeq atTop (𝓝 p) → InCube a b p → AtMinSlice p s →
+    t - radius &lt; s → s &lt; t + radius →
+    (∀ᶠ n in atTop, Active family.family.label j (hSeq n) (pSeq n)) →
+    ∀ i, |p i - (family.family.label j).slope i| &lt;
+      E (family.family.label j).slope
+
+def IntervalCoverBy {a b : ℝ} (r : Set.Icc a b → ℝ)
+    (S : Finset (Set.Icc a b)) : Prop :=
+  ∀ x, a ≤ x → x ≤ b →
+    ∃ t ∈ S, x ∈ Set.Ioo ((t : ℝ) - r t) ((t : ℝ) + r t)
+
+def IntervalCoverPruned {a b : ℝ} (r : Set.Icc a b → ℝ)
+    (S : Finset (Set.Icc a b)) : Prop :=
+  ∀ t ∈ S, ∀ u ∈ S, t ≠ u →
+    ¬ Set.Ioo ((t : ℝ) - r t) ((t : ℝ) + r t) ⊆
+      Set.Ioo ((u : ℝ) - r u) ((u : ℝ) + r u)
+
+/-- Compactness followed by a minimum-cardinality choice removes every
+contained interval without changing the cover. -/
+theorem exists_finite_pruned_interval_cover
+    {a b : ℝ} (hab : a ≤ b) (r : Set.Icc a b → ℝ)
+    (hr : ∀ t, 0 &lt; r t) :
+    ∃ S : Finset (Set.Icc a b), IntervalCoverBy r S ∧ IntervalCoverPruned r S := by
+  classical
+  let U : Set.Icc a b → Set ℝ := fun t =&gt;
+    Set.Ioo ((t : ℝ) - r t) ((t : ℝ) + r t)
+  have hopen : ∀ t, IsOpen (U t) := fun _ =&gt; isOpen_Ioo
+  have hcover : Set.Icc a b ⊆ ⋃ t, U t := by
+    intro x hx
+    let t : Set.Icc a b := ⟨x, hx⟩
+    have hmem : (x : ℝ) ∈ U t := by
+      simp only [U, Set.mem_Ioo]
+      constructor &lt;;&gt; dsimp &lt;;&gt; linarith [hr t]
+    exact Set.mem_iUnion.mpr ⟨t, hmem⟩
+  obtain ⟨S, hS⟩ := isCompact_Icc.elim_finite_subcover U hopen hcover
+  have hS_cover : IntervalCoverBy r S := by
+    intro x hax hxb
+    have hx : x ∈ Set.Icc a b := ⟨hax, hxb⟩
+    obtain ⟨t, htS, hxt⟩ := Set.mem_iUnion₂.mp (hS hx)
+    exact ⟨t, htS, by simpa [U] using hxt⟩
+  obtain ⟨t0, ht0S, _⟩ := hS_cover a le_rfl hab
+  let Candidates := S.powerset.filter (IntervalCoverBy r)
+  have hSC : S ∈ Candidates := by
+    exact Finset.mem_filter.mpr ⟨Finset.mem_powerset_self S, hS_cover⟩
+  have hCandidates : Candidates.Nonempty := ⟨S, hSC⟩
+  obtain ⟨A, hAC, hA_min⟩ := Finset.exists_min_image Candidates Finset.card hCandidates
+  have hA_mem := Finset.mem_filter.mp hAC
+  have hAS : A ⊆ S := Finset.mem_powerset.mp hA_mem.1
+  have hA_cover : IntervalCoverBy r A := hA_mem.2
+  have hA_nonempty : A.Nonempty := by
+    obtain ⟨t, htA, _⟩ := hA_cover a le_rfl hab
+    exact ⟨t, htA⟩
+  have hpruned : IntervalCoverPruned r A := by
+    intro t htA u huA htu hsub
+    have htu_val : (t : ℝ) ≠ (u : ℝ) := by
+      intro heq
+      apply htu
+      exact Subtype.ext heq
+    have hcover_erase : IntervalCoverBy r (A.erase t) := by
+      intro x hax hxb
+      obtain ⟨v, hvA, hxv⟩ := hA_cover x hax hxb
+      by_cases hvt : v = t
+      · subst v
+        refine ⟨u, Finset.mem_erase.mpr ⟨htu.symm, huA⟩, ?_⟩
+        exact hsub hxv
+      · exact ⟨v, Finset.mem_erase.mpr ⟨hvt, hvA⟩, hxv⟩
+    have hErase_subset : A.erase t ⊆ S := Finset.erase_subset _ _ |&gt;.trans hAS
+    have hErase_candidate : A.erase t ∈ Candidates := by
+      exact Finset.mem_filter.mpr
+        ⟨Finset.mem_powerset.mpr hErase_subset, hcover_erase⟩
+    have hMin := hA_min (A.erase t) hErase_candidate
+    have hlt := Finset.card_erase_lt_of_mem htA
+    omega
+  exact ⟨A, hA_cover, hpruned⟩
+
+/-- The lower-dimensional full approximation theorem supplies exactly the
+slice input needed by the raised-coordinate induction. -/
+noncomputable def sliceOracle_of_lower_dimensions
+    {m : ℕ} {a b t : ℝ} {E : (Fin m → ℝ) → ℝ}
+    (hat : a ≤ t) (htb : t ≤ b) (OracleHyp :
+      ∀ k, 0 &lt; k → k &lt; m → ∀ β, β &lt; b →
+        ∀ E₀ : (Fin k → ℝ) → ℝ,
+          (∀ s, InCube β b s → 0 &lt; E₀ s) →
+          ∃ F : BoxFamily k β b,
+            FamilyLittleOAt F β ∧ FullApproximation β b E₀ F.family)
+    (hE : ∀ r, InCube a b r → 0 &lt; E r) :
+    SliceOracle m a b t E := by
+  refine ⟨?_⟩
+  intro k hkpos hkm β hβt hβb
+  refine ⟨?_⟩
+  intro e
+  let E₀ : (Fin k → ℝ) → ℝ := restrictedTolerance E t e
+  have hE₀ : ∀ s, InCube β b s → 0 &lt; E₀ s := by
+    intro s hs
+    apply hE (liftPoint t e s)
+    exact liftPoint_in_original_box e s hat htb (le_of_lt hβt) hs
+  let hExist := OracleHyp k hkpos hkm β hβb E₀ hE₀
+  let F : BoxFamily k β b := Classical.choose hExist
+  have hSpec : FamilyLittleOAt F β ∧ FullApproximation β b E₀ F.family :=
+    Classical.choose_spec hExist
+  have hLittleO := hSpec.1
+  have hApprox := hSpec.2
+  refine {
+    family := F.family
+    slope_box := ?_
+    littleO := hLittleO
+    approx := ?_ }
+  · intro j i
+    exact F.slope_box j i
+  · change ∀ (j : F.family.Index) (hSeq : ℕ → ℝ)
+      (pSeq : ℕ → Fin k → ℝ) (p : Fin k → ℝ),
+      Tendsto hSeq atTop (nhdsWithin 0 (Set.Ioi 0)) →
+      Tendsto pSeq atTop (nhds p) → InCube β b p →
+      (∀ᶠ n in atTop, Active F.family.label j (hSeq n) (pSeq n)) →
+      ∀ i, |p i - (F.family.label j).slope i| &lt; E₀ (F.family.label j).slope
+    intro j hSeq pSeq p hh hp hpCube hactive
+    exact hApprox j hSeq pSeq p hh hp hpCube hactive
+
+/-- Each minimum-coordinate slice has a finite family valid on an open
+neighborhood. The strict power gap is retained so its offsets survive the
+later finite gluing shifts. -/
+theorem exists_local_window_of_lower_dimensions
+    {m : ℕ} {a b t : ℝ} {E : (Fin m → ℝ) → ℝ}
+    (hm : 0 &lt; m) (hat : a ≤ t) (htb : t ≤ b)
+    (OracleHyp : ∀ k, 0 &lt; k → k &lt; m → ∀ β, β &lt; b →
+      ∀ E₀ : (Fin k → ℝ) → ℝ,
+        (∀ s, InCube β b s → 0 &lt; E₀ s) →
+        ∃ F : BoxFamily k β b,
+          FamilyLittleOAt F β ∧ FullApproximation β b E₀ F.family)
+    (hE : ∀ r, InCube a b r → 0 &lt; E r) :
+    Nonempty (LocalWindowData a b E t) := by
+  classical
+  by_cases htbEq : t = b
+  · subst b
+    let F : BoxFamily m a t := baseBoxFamily (m := m) hat le_rfl
+    let slope0 : Fin m → ℝ := fun _ =&gt; t
+    have hE0 : 0 &lt; E slope0 := by
+      apply hE slope0
+      intro i
+      exact ⟨hat, le_rfl⟩
+    let rho := min (1 / 2 : ℝ) (E slope0 / 2)
+    have hrho : 0 &lt; rho := lt_min (by norm_num) (by linarith)
+    have hrhoE : rho &lt; E slope0 := by
+      dsimp [rho]
+      linarith [min_le_right (1 / 2 : ℝ) (E slope0 / 2)]
+    refine ⟨{
+      family := F
+      radius := rho
+      radius_pos := hrho
+      gamma := t + 1
+      center_lt_gamma := by linarith
+      window_lt_gamma := by
+        have hrhoHalf : rho ≤ (1 / 2 : ℝ) := min_le_left _ _
+        linarith
+      slope_floor := ?_
+      has_baseline := ?_
+      offsets_small := ?_
+      neighborhood := ?_ }⟩
+    · intro j i
+      rfl
+    · exact baseBoxFamily_has_baseline (m := m) hat le_rfl
+    · intro j
+      exact littleO_zero_bump (t + 1)
+    · intro j hSeq pSeq p s hh hp hpCube hslice hslo hshi hactive
+      obtain ⟨i0, hi0⟩ := hslice.2
+      have hsUpper : s ≤ t := by
+        rw [← hi0]
+        exact (hpCube i0).2
+      intro i
+      have hpiLo : t - rho &lt; p i := lt_of_lt_of_le hslo (hslice.1 i)
+      have hpiHi : p i ≤ t := (hpCube i).2
+      have habs : |p i - t| = t - p i := by
+        rw [abs_of_nonpos (sub_nonpos.mpr hpiHi)]
+        ring
+      have hdiff : t - p i &lt; rho := by linarith
+      have hbound : t - p i &lt; E slope0 := lt_trans hdiff hrhoE
+      have hslope : (F.family.label j).slope = slope0 := by
+        cases j
+        rfl
+      rw [hslope]
+      simpa [slope0, habs] using hbound
+  · have htbStrict : t &lt; b := lt_of_le_of_ne htb htbEq
+    let Oracle := sliceOracle_of_lower_dimensions hat htb OracleHyp hE
+    obtain ⟨upperFinal, F, gamma, H, hFloor, hBase, htGamma,
+      hSmall, hArchive⟩ := exists_complete_stage_family_with_certificate
+        hm hat htb htbStrict Oracle hE
+    obtain ⟨A⟩ := hArchive
+    have hSlice : ∀ j, LocalApproximation a b t E F.family.label j := by
+      intro j hSeq pSeq p hh hp hpCube hpMin hactive
+      exact initial_stage_archive_local_approximation hm hat htb htbStrict
+        Oracle hE A hSeq pSeq p hh hp hpCube hpMin j hactive
+    obtain ⟨radius0, hradius0, hnotBad0⟩ :=
+      BadNeighborhood.exists_minimum_coordinate_radius hm a b t E
+        F.family.label hSlice
+    let rho := min radius0 ((gamma - t) / 2)
+    have hrho : 0 &lt; rho := lt_min hradius0 (by linarith)
+    have hrhoGamma : t + rho &lt; gamma := by
+      have hrhoLe : rho ≤ (gamma - t) / 2 := min_le_right _ _
+      linarith
+    have hNeighborhood : ∀ (j : F.family.Index)
+        (hSeq : ℕ → ℝ) (pSeq : ℕ → Fin m → ℝ) (p : Fin m → ℝ) (s : ℝ),
+      Tendsto hSeq atTop (𝓝[&gt;] 0) → Tendsto pSeq atTop (𝓝 p) →
+      InCube a b p → AtMinSlice p s → t - rho &lt; s → s &lt; t + rho →
+      (∀ᶠ n in atTop, Active F.family.label j (hSeq n) (pSeq n)) →
+      ∀ i, |p i - (F.family.label j).slope i| &lt; E (F.family.label j).slope := by
+      intro j hSeq pSeq p s hh hp hpCube hslice hslo hshi hactive
+      have hMinEq : BadNeighborhood.minCoordinate hm p = s :=
+        (BadNeighborhood.atMinSlice_iff_minCoordinate_eq hm p s).mp hslice
+      have hnear0 : |BadNeighborhood.minCoordinate hm p - t| &lt; radius0 := by
+        rw [hMinEq, abs_lt]
+        exact ⟨by
+          have hrhoLe : rho ≤ radius0 := min_le_left _ _
+          linarith, by
+          have hrhoLe : rho ≤ radius0 := min_le_left _ _
+          linarith⟩
+      have hnotBad := hnotBad0 p hpCube hnear0
+      have hactiveLimit : BadNeighborhood.ActiveLimit a b F.family.label j p :=
+        ⟨hpCube, hSeq, pSeq, hh, hp, hactive⟩
+      intro i
+      by_contra hbad
+      have hbadCoord : E (F.family.label j).slope ≤
+          |p i - (F.family.label j).slope i| := le_of_not_gt hbad
+      exact hnotBad ⟨j, i, hactiveLimit, hbadCoord⟩
+    refine ⟨{
+      family := F
+      radius := rho
+      radius_pos := hrho
+      gamma := gamma
+      center_lt_gamma := htGamma
+      window_lt_gamma := hrhoGamma
+      slope_floor := hFloor
+      has_baseline := hBase
+      offsets_small := hSmall
+      neighborhood := hNeighborhood }⟩
+
+end N33Affine
+</pre><p><a href="../assets/60a4da94d3e4cd641178f9bcd3c86234715fbbee760fa6ddd95634d62936c113.lean">Exact original</a></p></html>

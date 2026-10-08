@@ -1,0 +1,296 @@
+"""Finite diagnostics, not a validation of the infinite-dimensional theorem.
+Run: python3 outputs/research/sol_xy_critical/checks.py
+Requires NumPy, no SciPy. Output is checks.json beside this script.
+"""
+import json
+import math
+from pathlib import Path
+import numpy as np
+
+TOL = 2e-9
+
+
+def trnorm(x):
+    return float(np.linalg.svd(x, compute_uv=False).sum())
+
+
+def psqrt(x):
+    w, v = np.linalg.eigh((x + x.conj().T) / 2)
+    return (v * np.sqrt(np.maximum(w, 0))) @ v.conj().T
+
+
+def root_fidelity_affinity(rho, sig):
+    x = psqrt(rho) @ psqrt(sig)
+    return trnorm(x), float(np.trace(x).real)
+
+
+def gibbs(h):
+    w, v = np.linalg.eigh(h)
+    p = np.exp(-(w - w.min()))
+    return (v * (p / p.sum())) @ v.conj().T
+
+
+def fermicov(h):
+    w, v = np.linalg.eigh(h)
+    t = np.exp(-np.abs(w))
+    p = np.where(w >= 0, t / (1 + t), 1 / (1 + t))
+    return (v * p) @ v.conj().T, w
+
+
+def finite_matrices(L, J, tau, lam, kap):
+    k = np.arange(1, L, dtype=float)
+    q = np.pi * k / L
+    phi = np.sqrt(2 / L) * np.sin(np.outer(k, q))
+    shift = np.diag(np.ones(L - 2), 1)
+    b = phi.T @ (shift - shift.T) @ phi
+    bformula = np.zeros_like(b)
+    for i in range(L - 1):
+        for j in range(L - 1):
+            if (i + j) % 2:
+                bformula[i, j] = (-4 / L * np.sin(q[i]) * np.sin(q[j])
+                                 / (np.cos(q[i]) - np.cos(q[j])))
+    a = 4 * tau * J * L**2 * (1 - np.cos(q)) - tau * lam
+    K = -2 * tau * J * kap * L * b
+    h = np.block([[np.diag(a), K], [-K, -np.diag(a)]])
+    return a, K, h, b, bformula, phi
+
+
+def fermion_ops(n):
+    z = np.diag([1., -1.])
+    c = np.array([[0., 1.], [0., 0.]])
+    I = np.eye(2)
+    ans = []
+    for j in range(n):
+        op = np.array([[1.]])
+        for k in range(n):
+            op = np.kron(op, z if k < j else c if k == j else I)
+        ans.append(op)
+    return ans
+
+
+def exact_quad(a, K):
+    n = len(a)
+    cs = fermion_ops(n)
+    H = np.zeros((2**n, 2**n), dtype=complex)
+    if np.ndim(a) == 1:
+        for i in range(n):
+            H += a[i] * (cs[i].T @ cs[i])
+    else:
+        for i in range(n):
+            for j in range(n):
+                H += a[i, j] * (cs[i].T @ cs[j])
+    for i in range(n):
+        for j in range(i + 1, n):
+            pair = cs[i].T @ cs[j].T
+            H += K[i, j] * pair + K[i, j].conjugate() * pair.T
+    return H, cs
+
+
+def exact_spin(n, J, gamma, field):
+    X = np.array([[0., 1.], [1., 0.]])
+    Y = np.array([[0., -1j], [1j, 0.]])
+    Z = np.diag([1., -1.])
+    I = np.eye(2)
+    ops = []
+    for A in (X, Y, Z):
+        row = []
+        for i in range(n):
+            M = np.array([[1.]])
+            for j in range(n):
+                M = np.kron(M, A if i == j else I)
+            row.append(M)
+        ops.append(row)
+    H = np.zeros((2**n, 2**n), complex)
+    for i in range(n - 1):
+        H -= J * ((1 + gamma) * (ops[0][i] @ ops[0][i+1])
+                  + (1 - gamma) * (ops[1][i] @ ops[1][i+1]))
+    for i in range(n):
+        H += field * (np.eye(2**n) - ops[2][i]) / 2
+    return H
+
+
+def continuum_matrix(m, J, tau, lam, kap):
+    ks = np.arange(1, m + 1)
+    a = 2 * tau * J * np.pi**2 * ks**2 - tau * lam
+    K = np.zeros((m, m))
+    for i in range(m):
+        for j in range(m):
+            if (i + j) % 2:
+                K[i, j] = -16 * tau * J * kap * ks[i] * ks[j] / (ks[i]**2 - ks[j]**2)
+    return a, K, np.block([[np.diag(a), K], [-K, -np.diag(a)]])
+
+
+def extract_low(C, n, m):
+    ix = list(range(m)) + list(range(n, n + m))
+    return C[np.ix_(ix, ix)]
+
+
+report = {"scope": "finite numerical evidence only; infinite proof is analytic", "checks": {}}
+
+# The finite exact spin Hamiltonian is an independent convention oracle.
+exact_cases = []
+max_cov_error = 0.
+max_spectrum_error = 0.
+max_ground_error = 0.
+for n in range(1, 7):
+    L = n + 1
+    for lam, kap in ((-.8, -.6), (.8, .6), (0., 0.)):
+        J, tau = .7, .11
+        a, K, h, b, bf, phi = finite_matrices(L, J, tau, lam, kap)
+        C, ev = fermicov(h)
+        beta = tau * L**2
+        Hs = beta * exact_spin(n, J, kap/L, 4*J-lam/L**2)
+        rho = gibbs(Hs)
+        cs = fermion_ops(n)
+        ds = [sum(phi[i, k]*cs[i] for i in range(n)) for k in range(n)]
+        q = np.array([np.trace(rho @ d.T @ d).real for d in ds])
+        qe = float(np.max(np.abs(q - np.diag(C[:n, :n]))))
+        if n > 1:
+            anom = np.trace(rho @ ds[1] @ ds[0])
+            qe = max(qe, float(abs(anom - C[0, n+1])))
+        Eq, _ = exact_quad(a, K)
+        se = float(np.max(np.abs(np.linalg.eigvalsh(Eq)-np.linalg.eigvalsh(Hs))))
+        e0 = .5 * (a.sum() - np.sort(ev)[n:].sum())
+        ge = abs(float(np.linalg.eigvalsh(Hs)[0]) - e0)
+        max_cov_error = max(max_cov_error, qe)
+        max_spectrum_error = max(max_spectrum_error, se)
+        max_ground_error = max(max_ground_error, ge)
+        assert qe < TOL and se < TOL and ge < TOL
+        exact_cases.append({"N": n, "lambda": lam, "kappa": kap,
+                            "cov_error": qe, "spectrum_error": se})
+report["checks"]["exact_spin_vs_bdg"] = {"cases": exact_cases,
+    "max_cov_error": max_cov_error, "max_spectrum_error": max_spectrum_error,
+    "max_ground_energy_error": max_ground_error}
+
+kernel_errors = []
+for L in range(3, 65):
+    a, K, h, b, bf, phi = finite_matrices(L, 1., .13, 0., .4)
+    q = np.pi * np.arange(1, L) / L
+    norm2 = (K*K).sum(axis=0)
+    exact = 16*.13**2*.4**2*L**2*np.sin(q)**2*(1-2/L)
+    err = float(np.max(abs(norm2-exact)))
+    kerr = float(np.max(abs(b-bf)))
+    assert err < 1e-8 and kerr < 1e-10
+    kernel_errors.append((L, err, kerr))
+report["checks"]["kernel_and_column_norm"] = {"case_count": len(kernel_errors),
+    "max_norm_error": max(x[1] for x in kernel_errors),
+    "max_kernel_error": max(x[2] for x in kernel_errors)}
+
+tail_cases = []
+for L in (17, 33, 65, 129):
+    for lam, kap in ((-2., -.8), (2., .8), (0., 0.)):
+        tau, J = .07, 1.
+        a, K, h, _, _, _ = finite_matrices(L, J, tau, lam, kap)
+        C, ev = fermicov(h)
+        q = np.diag(C[:L-1, :L-1]).real
+        k = np.arange(1, L)
+        bound = 4*(K*K).sum(axis=0)/(a*a)+np.exp(-a/2)
+        valid = a > 0
+        assert np.all(q[valid] <= bound[valid] + TOL)
+        for M in (2, 4, 8):
+            t = float(q[M:].sum())
+            bnd = 4*np.pi**2*kap**2/M + sum(math.exp(-2*tau*J*k*k) for k in range(M+1, 1000))
+            assert t <= bnd + TOL
+            tail_cases.append({"L":L,"lambda":lam,"kappa":kap,"M":M,
+                               "occupation_tail":t,"proved_bound":bnd})
+report["checks"]["residual_and_occupation_tails"] = tail_cases
+
+# Truncated CONTINUUM reference is explicitly finite evidence, not the limit.
+J, tau, lam, kap, m = 1., .07, .3, .6, 3
+_, _, href = continuum_matrix(256, J, tau, lam, kap)
+Cref, _ = fermicov(href)
+Cref_low = extract_low(Cref, 256, m)
+conv = []
+for L in (17, 33, 65, 129, 257):
+    a, K, h, _, _, _ = finite_matrices(L, J, tau, lam, kap)
+    C, ev = fermicov(h)
+    err = float(np.linalg.norm(extract_low(C, L-1, m)-Cref_low))
+    E0 = .5*(a.sum()-np.sort(ev)[L-1:].sum())
+    conv.append({"L":L,"low_cov_Frobenius_error_vs_Galerkin256":err,
+                 "E0_scaled":float(E0),"E0_per_mode":float(E0/(L-1)),
+                 "lambda0_UV_scale_reference":-tau*J*kap*kap})
+assert conv[-1]["low_cov_Frobenius_error_vs_Galerkin256"] < conv[0]["low_cov_Frobenius_error_vs_Galerkin256"]
+report["checks"]["finite_low_block_convergence_diagnostic"] = conv
+
+# Test the number-MGF bound on generic complex mixed Gaussian states.
+rng = np.random.default_rng(41721)
+mgf_cases = []
+for n in range(2, 7):
+    for trial in range(3):
+        R = rng.normal(size=(n,n)) + 1j*rng.normal(size=(n,n))
+        a = (R+R.conj().T)/2 + np.eye(n)*(trial-1)
+        R = (rng.normal(size=(n,n)) + 1j*rng.normal(size=(n,n))) *.25
+        K = R-R.T
+        H, _ = exact_quad(a, K)
+        rho = gibbs(H)
+        ns = np.array([j.bit_count() for j in range(2**n)])
+        probs = np.diag(rho).real
+        mu = float(probs@ns)
+        for s in (.2, .7, 1.3):
+            logmgf = math.log(float(probs@np.exp(s*ns)))
+            bnd = mu*math.expm1(2*s)
+            assert logmgf <= bnd + TOL
+            mgf_cases.append({"N":n,"trial":trial,"s":s,"mu":mu,
+                              "log_mgf":logmgf,"proved_log_bound":bnd})
+report["checks"]["generic_complex_gaussian_number_mgf"] = mgf_cases
+n, mu, s = 10, .5, .5
+mgf_nongauss = 1-mu/n+mu/n*math.exp(s*n)
+assert math.log(mgf_nongauss) > mu*math.expm1(2*s)
+report["checks"]["nongaussian_mean_only_counterexample"] = {
+    "N":n,"mean":mu,"s":s,"log_mgf":math.log(mgf_nongauss),
+    "gaussian_log_bound":mu*math.expm1(2*s),"status":"bound fails as required"}
+
+# Finite selected-family EB witnesses, and genuine random measure/prepare tests.
+eb_cases = []
+for n in range(2, 7):
+    J, tau, kap, L = 1., .025, .25, n+1
+    a, K, h, *_ = finite_matrices(L, J, tau, 0., kap)
+    H, cs = exact_quad(a, K)
+    rho = gibbs(np.diag([sum(a[k] for k in range(n) if j&(1<<(n-1-k))) for j in range(2**n)]))
+    sig = gibbs(H)
+    F, A = root_fidelity_affinity(rho, sig)
+    gap = F-A
+    assert gap > 0
+    comm = trnorm(rho@sig-sig@rho)
+    assert gap + TOL >= comm**2/128
+    ns = np.array([j.bit_count() for j in range(2**n)])
+    p = np.diag(rho).real
+    q = np.diag(sig).real
+    # Common measure in the number basis, followed by random pure preparation.
+    eta = []
+    for j in range(2**n):
+        v = rng.normal(size=2**n)+1j*rng.normal(size=2**n)
+        v /= np.linalg.norm(v)
+        eta.append(np.outer(v,v.conj()))
+    Trho = sum(p[j]*eta[j] for j in range(2**n))
+    Tsig = sum(q[j]*eta[j] for j in range(2**n))
+    _, Aout = root_fidelity_affinity(Trho,Tsig)
+    assert Aout + TOL >= F
+    eb_cases.append({"N":n,"root_fidelity":F,"affinity":A,"gap":gap,
+        "EB_full_trace_norm_floor":gap**2/4,"commutator_norm":comm,
+        "random_EB_output_affinity":Aout})
+report["checks"]["finite_EB_witnesses"] = eb_cases
+
+# Check local-response second remainder against finite continuum Galerkin BdG.
+response_cases = []
+J, tau, m = 1., .025, 160
+d1,d2=2*tau*J*np.pi**2,8*tau*J*np.pi**2
+p1,p2=1/(1+math.exp(d1)),1/(1+math.exp(d2))
+c0=16/(15*np.pi**2)*(1-p1-p2)
+for kap in (.01,.05,.1,.25,-.1):
+    _, _, h = continuum_matrix(m,J,tau,0.,kap)
+    C,_=fermicov(h)
+    w=float(C[0,m+1])
+    rem=abs(w+c0*kap)
+    assert rem <= tau*J*kap**2 + TOL
+    response_cases.append({"kappa":kap,"pair_coherence":w,"derivative":-c0,
+                           "remainder":rem,"proved_bound":tau*J*kap**2})
+report["checks"]["finite_Galerkin_local_response"] = response_cases
+
+report["status"]="ALL FINITE CHECKS PASSED; no external theorem validation"
+out=Path(__file__).with_name("checks.json")
+out.write_text(json.dumps(report,indent=2)+"\n")
+print(json.dumps({"status":report["status"],"output":str(out),
+                  "exact_spin_cases":len(exact_cases),"kernel_cases":len(kernel_errors),
+                  "tail_cases":len(tail_cases),"MGF_cases":len(mgf_cases),
+                  "EB_cases":len(eb_cases),"response_cases":len(response_cases)},indent=2))

@@ -1,0 +1,74 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/sol_endotactic_affine/affine_fixture.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/sol_endotactic_affine/affine_fixture.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact sufficient-inequality certificate for one scalar activity family.
+
+This checks the rational inequalities in RESULT.txt section 5. It uses no
+sampled state/scale grid, floating-point roots, or simulated trajectories.
+The general all-dimensional affine theorem is not implemented here.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+import json
+from pathlib import Path
+
+
+def qstr(q):
+    return str(q.numerator) if q.denominator == 1 else f&quot;{q.numerator}/{q.denominator}&quot;
+
+
+def main():
+    slopes = [F(-1), F(-3, 5), F(0), F(3, 5), F(1)]
+    cuts = [F(-3, 4), F(-2, 5), F(2, 5), F(3, 4)]
+    max_transition_shift = F(1, 20)
+    increments = [b - a for a, b in zip(slopes, slopes[1:])]
+    cutoff_base = min(increments)
+    cutoff = cutoff_base ** 20
+    assert all(F(0) &lt; d &lt; F(1) for d in increments)
+    assert all(q &gt; -1 for q in cuts)
+    assert all(a &lt; b for a, b in zip(cuts, cuts[1:]))
+    assert all(b - a &gt; max_transition_shift for a, b in zip(cuts, cuts[1:]))
+    assert all(cut.denominator &lt;= 20 and (cut * 20).denominator == 1 for cut in cuts)
+
+    # For h &lt;= min(increments)^20, h^(1/20) &lt;= every increment.
+    # Therefore adjacent equality h^eta=increment gives 0&lt;eta&lt;=1/20.
+    # Ordered adjacent thresholds q_j-eta_j certify the lower envelope.
+    lower = [F(-1)] + [q - max_transition_shift for q in cuts]
+    upper = cuts + [F(1)]
+    records = []
+    for index, (slope, lo, hi) in enumerate(zip(slopes, lower, upper)):
+        tolerance = F(1, 2) if slope == 0 else abs(slope) / 2
+        error = max(abs(lo - slope), abs(hi - slope))
+        assert lo &lt;= hi
+        assert error &lt; tolerance
+        records.append({
+            &quot;label&quot;: index,
+            &quot;slope&quot;: qstr(slope),
+            &quot;negative_offset_exponents&quot;: [qstr(q) for q in cuts[:index]],
+            &quot;activity_exponent_range_containing_all_ties&quot;: [qstr(lo), qstr(hi)],
+            &quot;tolerance&quot;: qstr(tolerance),
+            &quot;maximum_error_bound&quot;: qstr(error),
+            &quot;strict_slack&quot;: qstr(tolerance - error),
+        })
+    output = {
+        &quot;status&quot;: &quot;CERTIFIED_EXACT_SUFFICIENT_INEQUALITIES&quot;,
+        &quot;scope&quot;: &quot;scalar fixed-family activity for every -1&lt;=p&lt;=1 and 0&lt;h&lt;=cutoff&quot;,
+        &quot;proof_location&quot;: &quot;RESULT.txt section 5&quot;,
+        &quot;general_compiler&quot;: False,
+        &quot;input_tolerance&quot;: &quot;E(0)=1/2; E(r)=abs(r)/2 otherwise&quot;,
+        &quot;cutoff&quot;: qstr(cutoff),
+        &quot;cutoff_form&quot;: &quot;(2/5)^20&quot;,
+        &quot;max_transition_shift&quot;: qstr(max_transition_shift),
+        &quot;puiseux_substitution&quot;: &quot;h=z^20, 0&lt;z&lt;=2/5&quot;,
+        &quot;laurent_exponents&quot;: [int(q * 20) for q in cuts],
+        &quot;labels&quot;: records,
+        &quot;minimum_strict_slack&quot;: qstr(min(F(r[&quot;strict_slack&quot;]) for r in records)),
+        &quot;sampling_used&quot;: False,
+    }
+    path = Path(__file__).with_name(&quot;affine_fixture.json&quot;)
+    path.write_text(json.dumps(output, indent=2) + &quot;\n&quot;)
+    print(json.dumps({&quot;status&quot;: output[&quot;status&quot;], &quot;labels&quot;: len(slopes),
+                      &quot;minimum_strict_slack&quot;: output[&quot;minimum_strict_slack&quot;],
+                      &quot;cutoff_form&quot;: output[&quot;cutoff_form&quot;], &quot;output&quot;: str(path)}))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/3de90f1ebb6065f289be608aa5c9fd51a3dffd1911bdea10e392b4d4c7f27d55.py">Exact original</a></p></html>

@@ -1,0 +1,68 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c4_rational_hostile/formalization/FEASIBILITY.md</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c4_rational_hostile/formalization/FEASIBILITY.md</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre># Feasibility: kernel-checking the affine approximation lemma
+
+&gt; **Status update (2026-10-08): superseded by a completed Lean 4.28 formalization.** A task-local project with the matching cached Mathlib build was found, the exact arbitrary-positive-tolerance affine lemma was proved in `project/N33Affine/GlobalAffineComposition.lean`, and the `Filter.atTop` source-contract defect was repaired. See `FORMALIZATION_REPORT.md`, `repair/FILTER_ATTOP_REPAIR.md`, and `project/GlobalAffineAudit.log`. The body below records the earlier feasibility assessment and is retained as historical context; its statement that no project was initialized is no longer current.
+
+## Assessment
+
+The exact affine approximation lemma is formalizable in Lean with mathlib. I found no dependence on an unformalizable principle: the argument uses finite induction, real-power asymptotics, compactness of a finite-dimensional cube, finite interval covers, and classical choice. Its existential finite family can use noncomputable choices; the resulting proof remains kernel checked.
+
+The formalization is feasible on the local machine, but this workspace is not ready to build it as-is. The active repository has no Lean source, `lakefile.lean`, or `lean-toolchain`. The `lean` and `lake` commands resolve to elan shims. Installed toolchains include Lean 4.28.0 and 4.31.0, and matching mathlib source checkouts exist under other local projects. For example, `/Users/harjas/Documents/Codex/2026-07-15/i-want-you-to-look-at/work/cdc-lean/.lake/packages/mathlib` declares Lean 4.31.0, matching an installed compiler; its source files exist, but the checked `.lake/build/lib/lean/Mathlib` output directory does not. The current repository has no configured mathlib dependency. The mathlib cache contains 54,553 `.ltar` archives, but I did not verify that a complete cache set matches a selected checkout or that compiled `.olean` files are present. A local mathlib source tree and compiler are evidence of available ingredients, not a built project.
+
+One compatibility hazard: a local unrelated project pins Lean 4.34.1, while the installed list includes 4.34.0 but not 4.34.1. Invoking `lean --version` through elan attempted to download 4.34.1; the parent stopped that process, and no new toolchain was installed. A safe formalization should explicitly use the installed 4.31.0 toolchain and its matching local mathlib checkout, or select another verified matching pair. No Lean/Lake command was used for this note after that resolution attempt.
+
+Thus the blocker is project setup/build compatibility and proof-engineering time, not a known mathematical or kernel limitation. The local source/toolchain pair makes a no-install path plausible, but it still needs a task-local Lake configuration and either a matching local cache/build or a carefully reused existing build. I did not initialize a project, unpack caches, or compile any Lean file.
+
+## Exact theorem interface
+
+The following is a compile-oriented signature schema, not a checked Lean declaration. Use coordinatewise predicates instead of choosing a particular `PiLp` norm API.
+
+```lean
+def InCube (a b : ℝ) (p : Fin m → ℝ) : Prop :=
+  ∀ i, a ≤ p i ∧ p i ≤ b
+
+def ScalePoint (h : ℝ) (p : Fin m → ℝ) : Fin m → ℝ :=
+  fun i =&gt; Real.rpow h (p i)
+
+def AffineValue (N m : ℕ) (r : Fin N → Fin m → ℝ)
+    (bump : Fin N → ℝ → ℝ) (j : Fin N) (h : ℝ)
+    (p : Fin m → ℝ) : ℝ :=
+  (∑ i : Fin m, r j i * ScalePoint h p i) + bump j h
+
+def Active (N m : ℕ) (r : Fin N → Fin m → ℝ)
+    (bump : Fin N → ℝ → ℝ) (j : Fin N) (h : ℝ)
+    (p : Fin m → ℝ) : Prop :=
+  ∀ k : Fin N, AffineValue N m r bump j h p ≤
+    AffineValue N m r bump k h p
+
+theorem exists_affine_approximation
+    (m : ℕ) (hm : 0 &lt; m) (a b : ℝ) (hab : a &lt; b)
+    (E : (Fin m → ℝ) → ℝ)
+    (hE : ∀ r, InCube a b r → 0 &lt; E r) :
+    ∃ (N : ℕ) (hN : 0 &lt; N)
+      (r : Fin N → Fin m → ℝ) (bump : Fin N → ℝ → ℝ),
+      (∀ j i, a ≤ r j i ∧ r j i ≤ b) ∧
+      (∀ j, Tendsto
+        (fun h : ℝ =&gt; bump j h / Real.rpow h a)
+        (nhdsWithin 0 (Set.Ioi 0)) (nhds 0)) ∧
+      (∀ (j : Fin N) (hSeq : ℕ → ℝ)
+         (pSeq : ℕ → Fin m → ℝ) (p : Fin m → ℝ),
+        Tendsto hSeq atTop (nhdsWithin 0 (Set.Ioi 0)) →
+        Tendsto pSeq atTop (nhds p) →
+        InCube a b p →
+        (∀ᶠ n in atTop, Active N m r bump j (hSeq n) (pSeq n)) →
+        ∀ i, |p i - r j i| &lt; E (r j))
+```
+
+The family size `N`, all slopes, and all offset functions are chosen once, before the sequence. The slopes are fixed real vectors in the cube. Offsets are total functions for Lean convenience, but only their behavior as `h → 0+` is constrained. The approximating `pSeq n` values are deliberately unrestricted; only their limit `p` is in the cube. Activity is eventual, equivalent to dropping a finite prefix of a sequence. It uses a non-strict comparison against every label, so every minimizer at a tie is included. The tolerance `E` is arbitrary except for pointwise positivity on the cube; no continuity assumption appears.
+
+## Hardest proof obligations and interfaces
+
+1. **Varying-exponent scale separation.** Prove the exact sequence lemmas: if `hₙ → 0+`, `pₙ → p`, and `p &gt; q`, then `Real.rpow hₙ pₙ / Real.rpow hₙ q → 0`; if `p &lt; q`, the ratio tends to `atTop`. A robust proof fixes a positive gap `δ`, eventually bounds `pₙ-q ≥ δ` or `q-pₙ ≥ δ`, and compares with `hₙ^δ` or its reciprocal. This must allow negative `a,b,p,q` and does not assume `pₙ` is inside the cube. The `Real.rpow` positivity, order-in-exponent for bases in `(0,1)`, and limit-to-zero interfaces are the main API details to settle first.
+2. **Slice-family induction.** Encode the local family at a minimum-coordinate slice `μ(p)=t`, grouped by the number of raised coordinates. Reindexing the restriction to a `k`-element coordinate set and lifting slopes back to `Fin m` is substantial dependent finite-set bookkeeping. The induction must preserve offsets `o(h^β)` and the whole lower-dimensional sequential property when approximants approach cube faces from outside.
+3. **Arbitrary tolerance choices.** At each stage, only finitely many earlier slopes are present. Use positivity of their individual `E(r)` values to choose a real `β` strictly between `t` and the next endpoint and below all required tolerance gaps. This is a finite-minimum argument; `E` must remain completely discontinuous/opaque.
+4. **Closed active-limit sets.** Define `A_j` as cube points `p` realized as limits of arbitrary outside-cube sequences at which fixed label `j` is active while `hₙ→0+`. Prove closedness by the source&#x27;s diagonal selection: for `z_k∈A_j` with `z_k→z`, choose one active realizing pair with `h_k&lt;1/k` and coordinate distance below `1/k`. Then `z∈A_j`. For fixed `j`, `E(r_j)` is one positive scalar, so the bad subset cut out by `∃i, |p_i-r_{j,i}|≥E(r_j)` is closed. The finite union over labels is compact. Excluding the slice and minimizing the continuous function `|min_i p_i-t|` supplies the neighborhood radius. No continuity of `E` is needed.
+5. **Finite interval cover and gluing.** From the neighborhoods `I_t`, extract a finite subcover of `[a,b]`, discard contained intervals, order centers, prove endpoint monotonicity and overlap, then choose cuts `q_j` in the stated open intersections. This is a separate elementary but moderately long finite-order argument. The global family is the tagged finite union of local families with offsets shifted by `-∑_{ℓ&lt;j} h^{q_ℓ}`.
+6. **Offset asymptotics and activity comparisons.** Establish closure of little-o under finite sums and show `h^q=o(h^a)` for `q&gt;a`; lift offsets `-h^β+d(h)` with `d=o(h^β)`; shrink each neighborhood so local offsets are `o(h^{t+ρ})`; and show a common shift preserves within-family activity. The upper/lower cut contradictions use the varying-exponent separation above and weak active inequalities. All comparisons must retain fixed-label, all-ties semantics.
+
+The local-slice induction and interval gluing are the largest proof developments. The asymptotic and compactness statements are standard but need reusable abstractions to keep the main induction legible. A sound decomposition is: (i) real-power separation lemmas; (ii) a `LocalFamily` predicate and induction; (iii) a compact bad-limit/neighborhood lemma; (iv) a finite interval gluing theorem; and (v) the final family packaging above. Prove the full arbitrary-`E` interface directly; finite grids, continuous tolerances, fixed dimensions, rational exponents, or bounded approximating sequences would be weaker substitutes.
+</pre><p><a href="../assets/bd1b6872084ad9de84e88c2556fc3e384156ea46c0666b21c48c5989bae9eb4e.md">Exact original</a></p></html>

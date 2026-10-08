@@ -1,0 +1,237 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/sol_ground_xxz/check.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/sol_ground_xxz/check.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Scoped finite algebra for the ground-energy candidate; no limit oracle.&quot;&quot;&quot;
+from fractions import Fraction as F
+from itertools import combinations
+from pathlib import Path
+import json
+import math
+import random
+import numpy as np
+
+HERE = Path(__file__).resolve().parent
+
+
+def occupation(x, i):
+    return (x &gt;&gt; i) &amp; 1
+
+
+def edges(s):
+    out = []
+    for x in range(1 &lt;&lt; s):
+        for i in range(s - 1):
+            if occupation(x, i) and not occupation(x, i + 1):
+                out.append((x, x ^ (3 &lt;&lt; i), i))
+    return out
+
+
+def kinetic(v, s):
+    return 2 * sum((v[x] - v[y]) ** 2 for x, y, _ in edges(s)) + 2 * sum(
+        (occupation(x, 0) + occupation(x, s - 1)) * v[x] ** 2
+        for x in range(1 &lt;&lt; s)
+    )
+
+
+def project(v, s, u):
+    mask = sum(1 &lt;&lt; i for i in u)
+    groups = {}
+    for x in range(1 &lt;&lt; s):
+        key = (x &amp; ~mask, (x &amp; mask).bit_count())
+        groups.setdefault(key, []).append(x)
+    p = [F(0)] * len(v)
+    for xs in groups.values():
+        val = sum(v[x] for x in xs) / len(xs)
+        for x in xs:
+            p[x] = val
+    return p
+
+
+def swap(x, i, j):
+    return x ^ ((1 &lt;&lt; i) | (1 &lt;&lt; j)) if occupation(x, i) != occupation(x, j) else x
+
+
+def swap_form(v, i, j):
+    return sum(v[x] * (v[x] - v[swap(x, i, j)]) for x in range(len(v)))
+
+
+def forward(x, s, a):
+    # Cells start at physical i=0,...,S. Array bits encode physical1,...,S;
+    # the first window therefore starts at bit index -1, a zero ghost.
+    return [F(sum(occupation(x, j) for j in range(max(i, 0), min(i + a, s))), a)
+            for i in range(-1, s)]
+
+
+counts = {
+    &quot;one_block_compression&quot;: 0,
+    &quot;two_block_hypergeometric&quot;: 0,
+    &quot;complete_graph_form_fixtures&quot;: 0,
+    &quot;moving_particle_form_fixtures&quot;: 0,
+    &quot;ground_quotient_configurations&quot;: 0,
+    &quot;ground_form_identities&quot;: 0,
+    &quot;IMS_identities&quot;: 0,
+    &quot;forward_hop_L1&quot;: 0,
+    &quot;softmax_entropy&quot;: 0,
+    &quot;weak_law_raw_L1_controls&quot;: 0,
+    &quot;continuum_diagnostic&quot;: 0,
+}
+max_residual = 0.0
+
+# Exact block compression on arbitrary rational vectors, including outside sites.
+for s in range(2, 9):
+    v = [F(((x * 13 + s * 7) % 23) - 9, 7) for x in range(1 &lt;&lt; s)]
+    for ell in range(2, s + 1):
+        for start in range(s - ell + 1):
+            u = tuple(range(start, start + ell))
+            p = project(v, s, u)
+            left = sum(p[x] ** 2 * occupation(x, start) * occupation(x, start + 1)
+                       for x in range(1 &lt;&lt; s))
+            right = sum(p[x] ** 2 * F(k * (k - 1), ell * (ell - 1))
+                        for x in range(1 &lt;&lt; s)
+                        for k in [sum(occupation(x, i) for i in u)])
+            assert left == right
+            qnorm = sum((v[x] - p[x]) ** 2 for x in range(1 &lt;&lt; s))
+            complete = sum(swap_form(v, i, j) for i, j in combinations(u, 2))
+            assert complete &gt;= ell * qnorm
+            counts[&quot;one_block_compression&quot;] += 1
+            counts[&quot;complete_graph_form_fixtures&quot;] += 1
+    for i, j in combinations(range(s), 2):
+        lhs = swap_form(v, i, j)
+        rhs = 4 * (j - i) * sum(swap_form(v, k, k + 1) for k in range(i, j))
+        assert lhs &lt;= rhs
+        counts[&quot;moving_particle_form_fixtures&quot;] += 1
+
+# Hypergeometric identity for all total counts in two equal-sized blocks.
+for ell in range(1, 9):
+    for k in range(2 * ell + 1):
+        total = math.comb(2 * ell, k)
+        variance = sum(F(math.comb(ell, h) * math.comb(ell, k - h), total)
+                       * F((2 * h - k) ** 2, ell ** 2)
+                       for h in range(max(0, k - ell), min(ell, k) + 1))
+        p = F(k, 2 * ell)
+        assert variance == 4 * p * (1 - p) / (2 * ell - 1)
+        assert variance &lt;= F(1, 2 * ell - 1)
+        counts[&quot;two_block_hypergeometric&quot;] += 1
+
+# Exact positive ground quotient and form identity for J=1, all number sectors.
+for s in range(1, 9):
+    z = [F(3 * i + 5, i + 3) for i in range(s)]
+    f = [math.prod(z[i] for i in range(s) if occupation(x, i))
+         for x in range(1 &lt;&lt; s)]
+    v = [F((x * 7 + 3) % 19 + 1, 11) for x in range(1 &lt;&lt; s)]
+    adj = [[] for _ in f]
+    for x, y, _ in edges(s):
+        adj[x].append(y)
+        adj[y].append(x)
+    quotient = []
+    for x in range(1 &lt;&lt; s):
+        b = occupation(x, 0) + occupation(x, s - 1)
+        graph = 2 * sum(1 - f[y] / f[x] for y in adj[x]) + 2 * b
+        local = 2 * b
+        for i in range(s - 1):
+            ni, nj = occupation(x, i), occupation(x, i + 1)
+            local += 2 * (ni * (1 - nj) * (1 - z[i + 1] / z[i])
+                          + nj * (1 - ni) * (1 - z[i] / z[i + 1]))
+        assert graph == local
+        quotient.append(local)
+        counts[&quot;ground_quotient_configurations&quot;] += 1
+    potential = sum(v[x] ** 2 * quotient[x] for x in range(1 &lt;&lt; s))
+    residual = 2 * sum(f[x] * f[y] * (v[x] / f[x] - v[y] / f[y]) ** 2
+                       for x, y, _ in edges(s))
+    assert kinetic(v, s) == potential + residual
+    assert residual &gt;= 0
+    counts[&quot;ground_form_identities&quot;] += 1
+
+    # A rational stereographic two-component diagonal partition of unity.
+    a = max(1, s // 2)
+    t = [sum(r ** 2 for r in forward(x, s, a)) / (s + 1) for x in range(1 &lt;&lt; s)]
+    c0 = [(1 - q ** 2) / (1 + q ** 2) for q in t]
+    c1 = [2 * q / (1 + q ** 2) for q in t]
+    assert all(c0[x] ** 2 + c1[x] ** 2 == 1 for x in range(1 &lt;&lt; s))
+    u0, u1 = ([v[x] * c[x] for x in range(1 &lt;&lt; s)] for c in (c0, c1))
+    defect = 2 * sum(v[x] * v[y] * ((c0[x] - c0[y]) ** 2
+                                    + (c1[x] - c1[y]) ** 2)
+                     for x, y, _ in edges(s))
+    assert kinetic(u0, s) + kinetic(u1, s) == kinetic(v, s) + defect
+    assert defect &gt;= 0
+    counts[&quot;IMS_identities&quot;] += 1
+
+    for a in range(1, s + 1):
+        for x, y, _ in edges(s):
+            rx, ry = forward(x, s, a), forward(y, s, a)
+            changed = sum(rx[i] != ry[i] for i in range(s + 1))
+            l1 = sum(abs(rx[i] - ry[i]) for i in range(s + 1)) / (s + 1)
+            assert changed &lt;= 2
+            assert l1 &lt;= F(2, a * (s + 1))
+            counts[&quot;forward_hop_L1&quot;] += 1
+
+rng = random.Random(29417)
+for k in (1, 2, 3, 7, 19):
+    for m in (0.1, 1.0, 7.0, 30.0):
+        for _ in range(25):
+            values = [rng.uniform(-9, 12) for _ in range(k)]
+            top = max(values)
+            q = [math.exp(m * (v - top)) for v in values]
+            p = [z / sum(q) for z in q]
+            mean = sum(z * v for z, v in zip(p, values))
+            assert mean + math.log(k) / m &gt;= top - 2e-12
+            counts[&quot;softmax_entropy&quot;] += 1
+
+# Weak empirical convergence does not imply raw step-density L1 convergence.
+for p in (F(1, 4), F(1, 2), F(3, 4)):
+    exact_expected_l1 = p * (1 - p) + (1 - p) * p
+    assert exact_expected_l1 == 2 * p * (1 - p) &gt; 0
+    for l in (10, 100, 1000):
+        empirical_variance = p * (1 - p) / l
+        assert empirical_variance &lt; exact_expected_l1
+        counts[&quot;weak_law_raw_L1_controls&quot;] += 1
+
+# Finite continuum diagnostics for product recovery and positive test fields.
+grid = np.linspace(0.0, 1.0, 40001)
+diagnostics = []
+for amp in (0.8, 1.9, 2.9):
+    theta = amp * np.sin(math.pi * grid)
+    rho = np.sin(theta / 2) ** 2
+    for kappa, lam in ((0.0, 0.0), (7.0, 12.0), (13.0, -3.0)):
+        target = amp ** 2 * math.pi ** 2 / 4 - kappa * np.trapezoid(rho ** 2, grid) - lam * np.trapezoid(rho, grid)
+        errs = []
+        for l in (32, 64, 128, 256, 512, 1024):
+            th = amp * np.sin(math.pi * np.arange(l + 1) / l)
+            pr = np.sin(th[1:l] / 2) ** 2
+            d = l * np.sum(1 - np.cos(np.diff(th)))
+            energy = d - kappa * np.sum(pr[:-1] * pr[1:]) / l - lam * np.sum(pr) / l
+            errs.append(abs(float(energy) - target))
+            counts[&quot;continuum_diagnostic&quot;] += 1
+        assert errs[-1] &lt; 2e-4
+        diagnostics.append({&quot;amplitude&quot;: amp, &quot;kappa&quot;: kappa, &quot;lambda&quot;: lam,
+                            &quot;L&quot;: [32, 64, 128, 256, 512, 1024], &quot;errors&quot;: errs})
+    ph = np.sin(2 * math.pi * grid)
+    php = 2 * math.pi * np.cos(2 * math.pi * grid)
+    dual = 2 * (-np.trapezoid(rho * php, grid) - np.trapezoid(rho * (1 - rho) * ph ** 2, grid))
+    target_kinetic = amp ** 2 * math.pi ** 2 / 4
+    assert dual &lt;= target_kinetic + 1e-10
+    dual_errs = []
+    for l in (32, 64, 128, 256, 512, 1024):
+        x = np.arange(1, l) / l
+        pr = np.sin(amp * np.sin(math.pi * x) / 2) ** 2
+        h = (1 - np.cos(2 * math.pi * x)) / (2 * math.pi)
+        dh = np.diff(h)
+        q = 2 * np.sum(pr[:-1] * (1 - pr[1:]) * (-np.expm1(dh))
+                       + pr[1:] * (1 - pr[:-1]) * (-np.expm1(-dh)))
+        q += 2 * (pr[0] + pr[-1])
+        dual_errs.append(abs(float(l * q) - dual))
+        counts[&quot;continuum_diagnostic&quot;] += 1
+    assert dual_errs[-1] &lt; 0.09
+    diagnostics.append({&quot;amplitude&quot;: amp, &quot;test_field&quot;: &quot;sin(2pi x)&quot;,
+                        &quot;dual&quot;: float(dual), &quot;kinetic&quot;: target_kinetic,
+                        &quot;errors&quot;: dual_errs})
+
+result = {&quot;status&quot;: &quot;PASS&quot;, &quot;date&quot;: &quot;2026-10-08&quot;, &quot;J&quot;: 1,
+          &quot;counts&quot;: counts, &quot;largest_Hilbert_dimension&quot;: 256,
+          &quot;exact_tests&quot;: &quot;Fraction arithmetic; all asserted identities exactly equal&quot;,
+          &quot;numerical_tests&quot;: &quot;NumPy continuum diagnostics and stable softmax inequality&quot;,
+          &quot;numpy_version&quot;: np.__version__, &quot;diagnostics&quot;: diagnostics,
+          &quot;limits_not_tested&quot;: [&quot;all-size static replacement&quot;, &quot;random-profile Fisher liminf&quot;,
+                                &quot;ground-energy asymptotic theorem&quot;, &quot;external validation&quot;, &quot;novelty&quot;]}
+(HERE / &quot;CHECKS.json&quot;).write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+print(json.dumps({&quot;status&quot;: result[&quot;status&quot;], &quot;counts&quot;: counts,
+                  &quot;largest_Hilbert_dimension&quot;: result[&quot;largest_Hilbert_dimension&quot;]}, indent=2))
+</pre><p><a href="../assets/2fd90f55eb8ac3ba747c2bfdbcd23f582601766f1d453ccc8755fcf71b648c93.py">Exact original</a></p></html>

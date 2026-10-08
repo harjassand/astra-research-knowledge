@@ -1,0 +1,56 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/root_checks/check_ground_xxz_spectrum.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/root_checks/check_ground_xxz_spectrum.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Independent finite-spectrum/continuum-trial diagnostic, not an asymptotic proof.&quot;&quot;&quot;
+from pathlib import Path
+import json,time
+import numpy as np
+from scipy.sparse import coo_matrix
+from scipy.sparse.linalg import eigsh
+from scipy.linalg import eigh
+from scipy.optimize import minimize
+out=Path(__file__).with_name(&#x27;ground_xxz_spectrum.json&#x27;)
+J=1.; cases=[(5.,18.),(0.,25.),(20.,18.)]; grid=256
+x=np.arange(1,grid)/grid; dx=1/grid
+trials={}
+for kap,lam in cases:
+ def fg(t):
+  z=np.r_[0,t,0]; rho=np.sin(t/2)**2
+  f=J/2*np.sum(np.diff(z)**2)/dx-dx*np.sum(kap*rho**2+lam*rho)
+  g=J*(2*t-z[:-2]-z[2:])/dx-dx*(2*kap*rho+lam)*np.sin(t)/2
+  return f,g
+ fits=[minimize(fg,A*np.sin(np.pi*x),jac=True,bounds=[(0,np.pi)]*len(x),method=&#x27;L-BFGS-B&#x27;,options={&#x27;ftol&#x27;:1e-14,&#x27;gtol&#x27;:1e-9,&#x27;maxiter&#x27;:8000}) for A in [0.,.3,1.,2.,3.1]]
+ best=min(fits,key=lambda r:r.fun)
+ trials[(kap,lam)]={&#x27;theta&#x27;:best.x,&#x27;grid_trial_energy&#x27;:float(best.fun),&#x27;optimizer_success&#x27;:bool(best.success),&#x27;grid&#x27;:grid,&#x27;starts&#x27;:len(fits)}
+rows=[];start=time.time()
+for L in [6,8,10,12,14]:
+ S=L-1;dim=1&lt;&lt;S; idx=np.arange(dim,dtype=np.int64)
+ bits=((idx[:,None]&gt;&gt;np.arange(S))&amp;1).astype(float)
+ number=bits.sum(axis=1); contact=(bits[:,:-1]*bits[:,1:]).sum(axis=1)
+ diag=2*J*(bits[:,0]+bits[:,-1]); ii=[];jj=[];vv=[]
+ for k in range(S-1):
+  eligible=idx[bits[:,k]!=bits[:,k+1]];diag[eligible]+=2*J
+  ii.extend(eligible.tolist());jj.extend((eligible^((1&lt;&lt;k)|(1&lt;&lt;(k+1)))).tolist());vv.extend([-2*J]*len(eligible))
+ for kap,lam in cases:
+  d=diag-(kap*contact+lam*number)/L**2
+  H=coo_matrix((np.r_[vv,d],(np.r_[ii,idx],np.r_[jj,idx])),shape=(dim,dim)).tocsr()
+  # Full-space Lanczos missed the exactly disconnected vacuum in the initial run.
+  # Resolve each conserved-number block and include all one-dimensional sectors exactly.
+  sectors=[]
+  for m in range(S+1):
+   inds=np.flatnonzero(number==m); block=H[inds][:,inds]
+   if len(inds)==1:
+    E=float(block[0,0]);v=np.ones(1)
+   elif len(inds)&lt;=128:
+    vals,vecs=eigh(block.toarray(),subset_by_index=(0,0));E=float(vals[0]);v=vecs[:,0]
+   else:
+    vals,vecs=eigsh(block,k=1,which=&#x27;SA&#x27;,tol=1e-11,maxiter=50000,v0=np.ones(len(inds)));E=float(vals[0]);v=vecs[:,0]
+   if v.sum()&lt;0:v=-v
+   residual=float(np.linalg.norm(block@v-E*v))
+   sectors.append({&#x27;m&#x27;:m,&#x27;energy&#x27;:E,&#x27;residual&#x27;:residual,&#x27;min_ground_component&#x27;:float(v.min()),&#x27;dimension&#x27;:len(inds)})
+  winning=min(sectors,key=lambda z:z[&#x27;energy&#x27;]);E=winning[&#x27;energy&#x27;];res=winning[&#x27;residual&#x27;]
+  t=trials[(kap,lam)]; theta=np.interp(np.arange(1,L)/L,np.r_[0,x,1],np.r_[0,t[&#x27;theta&#x27;],0]);rho=np.sin(theta/2)**2
+  coherent=J*np.sum(1-np.cos(np.diff(theta)))+2*J*(rho[0]+rho[-1])-(kap*np.sum(rho[:-1]*rho[1:])+lam*np.sum(rho))/L**2
+  rows.append({&#x27;L&#x27;:L,&#x27;kappa&#x27;:kap,&#x27;lambda&#x27;:lam,&#x27;L_times_lowest_ritz&#x27;:L*E,&#x27;ritz_residual&#x27;:res,&#x27;mean_N_over_L&#x27;:winning[&#x27;m&#x27;]/L,&#x27;L_times_coherent_trial&#x27;:float(L*coherent),&#x27;continuum_grid_trial&#x27;:t[&#x27;grid_trial_energy&#x27;],&#x27;variational_order_pass&#x27;:bool(E&lt;=coherent+1e-8),&#x27;sectors&#x27;:sectors})
+  print(json.dumps({k:v for k,v in rows[-1].items() if k!=&#x27;sectors&#x27;}),flush=True)
+record={&#x27;scope&#x27;:&#x27;Independent finite number-block sparse/dense diagonalization including exact vacuum and full sectors and continuum discretized trial optimization. Ritz values/residuals are numerical diagnostics, not certified lowest-eigenvalue bounds; continuum local optimization is a trial upper, not certified global minimization. No asymptotic proof or novelty validation.&#x27;,&#x27;J&#x27;:J,&#x27;rows&#x27;:rows,&#x27;max_ritz_residual&#x27;:max(r[&#x27;ritz_residual&#x27;] for r in rows),&#x27;all_variational_orders_pass&#x27;:all(r[&#x27;variational_order_pass&#x27;] for r in rows),&#x27;elapsed_seconds&#x27;:time.time()-start,&#x27;continuum_trials&#x27;:[{k:v for k,v in trials[c].items() if k!=&#x27;theta&#x27;}|{&#x27;kappa&#x27;:c[0],&#x27;lambda&#x27;:c[1]} for c in cases]}
+out.write_text(json.dumps(record,indent=2)+&#x27;\n&#x27;)
+print(&#x27;Saved&#x27;,out,flush=True)
+</pre><p><a href="../assets/f0739924977a23e38f8abaccad89202ddae30e2dcb63422b6fcabdd437c9e986.py">Exact original</a></p></html>

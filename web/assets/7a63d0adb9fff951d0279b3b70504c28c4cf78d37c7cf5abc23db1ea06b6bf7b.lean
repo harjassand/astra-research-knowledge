@@ -1,0 +1,16 @@
+import FiniteMinimum
+
+set_option pp.all true
+
+#check N33Dynamics.active_branch_derivative_eq
+#print N33Dynamics.active_branch_derivative_eq
+#print axioms N33Dynamics.active_branch_derivative_eq
+#check N33Dynamics.exists_active_branch_with_derivative
+#print N33Dynamics.exists_active_branch_with_derivative
+#print axioms N33Dynamics.exists_active_branch_with_derivative
+#check N33Dynamics.finite_minimum_active_derivative_eq
+#print N33Dynamics.finite_minimum_active_derivative_eq
+#print axioms N33Dynamics.finite_minimum_active_derivative_eq
+#check N33Dynamics.finite_minimum_has_active_derivative
+#print N33Dynamics.finite_minimum_has_active_derivative
+#print axioms N33Dynamics.finite_minimum_has_active_derivative

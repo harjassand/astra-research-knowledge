@@ -1,0 +1,257 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c11_spin_uniform/obstruction/spin13_fullstar_blocks.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c11_spin_uniform/obstruction/spin13_fullstar_blocks.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Exact Spin(13), d=64 full-star highest-weight extractor.
+
+The resulting star blocks are exact. Support vertices in this file are *not*
+claimed to be canonical-EB attainable; the script computes swap-resolved
+isotypic blocks and an all-positive-dual outer-bound diagnostic separately.
+It never forms a dense 262144-by-262144 star matrix.
+&quot;&quot;&quot;
+import sympy as sp
+from itertools import combinations
+from math import comb
+import json
+from pathlib import Path
+import time
+
+I=sp.I; NQ=6; DIM=1&lt;&lt;NQ; FULL=DIM**3
+START=time.perf_counter()
+
+def pmul(a,b):
+    phase=0; out=[]
+    tab={(&#x27;I&#x27;,&#x27;I&#x27;):(0,&#x27;I&#x27;),(&#x27;I&#x27;,&#x27;X&#x27;):(0,&#x27;X&#x27;),(&#x27;I&#x27;,&#x27;Y&#x27;):(0,&#x27;Y&#x27;),(&#x27;I&#x27;,&#x27;Z&#x27;):(0,&#x27;Z&#x27;),
+    (&#x27;X&#x27;,&#x27;I&#x27;):(0,&#x27;X&#x27;),(&#x27;Y&#x27;,&#x27;I&#x27;):(0,&#x27;Y&#x27;),(&#x27;Z&#x27;,&#x27;I&#x27;):(0,&#x27;Z&#x27;),(&#x27;X&#x27;,&#x27;X&#x27;):(0,&#x27;I&#x27;),(&#x27;Y&#x27;,&#x27;Y&#x27;):(0,&#x27;I&#x27;),(&#x27;Z&#x27;,&#x27;Z&#x27;):(0,&#x27;I&#x27;),
+    (&#x27;X&#x27;,&#x27;Y&#x27;):(1,&#x27;Z&#x27;),(&#x27;Y&#x27;,&#x27;X&#x27;):(3,&#x27;Z&#x27;),(&#x27;Y&#x27;,&#x27;Z&#x27;):(1,&#x27;X&#x27;),(&#x27;Z&#x27;,&#x27;Y&#x27;):(3,&#x27;X&#x27;),(&#x27;Z&#x27;,&#x27;X&#x27;):(1,&#x27;Y&#x27;),(&#x27;X&#x27;,&#x27;Z&#x27;):(3,&#x27;Y&#x27;)}
+    for x,y in zip(a,b):
+        p,z=tab[x,y]; phase=(phase+p)%4; out.append(z)
+    return phase,tuple(out)
+
+def gamma_words():
+    out=[]
+    for k in range(NQ):
+        pre=(&#x27;Z&#x27;,)*k; suf=(&#x27;I&#x27;,)*(NQ-k-1)
+        out.extend((pre+(&#x27;X&#x27;,)+suf,pre+(&#x27;Y&#x27;,)+suf))
+    out.append((&#x27;Z&#x27;,)*NQ)
+    return out
+GAM=gamma_words()
+
+def e_basis(k):
+    for A in combinations(range(2*NQ+1),k):
+        ph=0; w=(&#x27;I&#x27;,)*NQ
+        for a in A:
+            p,w=pmul(w,GAM[a]); ph=(ph+p)%4
+        ph=(ph+k*(k-1)//2)%4
+        yield A,ph,w
+
+def apply_word(w,bits):
+    out=bits; phase=0
+    for q,p in enumerate(w):
+        bit=(bits&gt;&gt;q)&amp;1
+        if p==&#x27;X&#x27;: out ^= 1&lt;&lt;q
+        elif p==&#x27;Y&#x27;: out ^= 1&lt;&lt;q; phase += 1 if bit==0 else 3
+        elif p==&#x27;Z&#x27; and bit: phase += 2
+    return out,phase%4
+
+def triple_apply(term,idx):
+    coeff,words=term; out=idx; phase=(0 if coeff==1 else 2)
+    for f,(flip,phases) in enumerate(words):
+        b=(idx&gt;&gt;(NQ*f))&amp;(DIM-1)
+        phase+=phases[b]
+        out ^= flip &lt;&lt; (NQ*f)
+    phase%=4
+    if phase not in (0,2): raise AssertionError((&#x27;nonreal star action&#x27;,term,idx,phase))
+    return out,(1 if phase==0 else -1)
+
+def h_terms():
+    out={k:[] for k in range(1,NQ+1)}
+    for k in out:
+        for A,ph,w in e_basis(k):
+            pt=(ph+2*(w.count(&#x27;Y&#x27;)%2))%4
+            c=I**(pt+ph)
+            c=sp.simplify(c)
+            if c not in (1,-1): raise AssertionError((&#x27;bad transpose coefficient&#x27;,A,c))
+            c=int(c)
+            out[k].append((c,(w,w,(&#x27;I&#x27;,)*NQ)))
+            out[k].append((c,(w,(&#x27;I&#x27;,)*NQ,w)))
+    return out
+HT=h_terms()
+
+def encode_word(w):
+    flip=0; yz=0; ny=0
+    for q,p in enumerate(w):
+        if p in (&#x27;X&#x27;,&#x27;Y&#x27;): flip |= 1&lt;&lt;q
+        if p in (&#x27;Y&#x27;,&#x27;Z&#x27;): yz |= 1&lt;&lt;q
+        if p==&#x27;Y&#x27;: ny += 1
+    phases=tuple((ny+2*(yz &amp; bits).bit_count())%4 for bits in range(DIM))
+    return flip,phases
+
+HT={k:[(c,tuple(encode_word(w) for w in words)) for c,words in terms]
+    for k,terms in HT.items()}
+
+def c_action(q,bits,create=True):
+    bit=(bits&gt;&gt;q)&amp;1
+    if create and bit: return None
+    if not create and not bit: return None
+    sign=(-1)**sum((bits&gt;&gt;j)&amp;1 for j in range(q))
+    return bits^(1&lt;&lt;q),sign
+
+def simple_action(alpha,bits,dual=False):
+    if alpha==NQ-1:
+        bit=(bits&gt;&gt;(NQ-1))&amp;1
+        if not dual: return None if bit else (bits^(1&lt;&lt;(NQ-1)),1)
+        return None if not bit else (bits^(1&lt;&lt;(NQ-1)),-1)
+    i=alpha
+    if not dual:
+        a=c_action(i+1,bits,False)
+        if a is None:return None
+        b=c_action(i,a[0],True)
+        if b is None:return None
+        return b[0],a[1]*b[1]
+    if ((bits&gt;&gt;i)&amp;1)==0 or ((bits&gt;&gt;(i+1))&amp;1)==1:return None
+    src=bits^(1&lt;&lt;i)^(1&lt;&lt;(i+1))
+    fwd=simple_action(alpha,src,False)
+    assert fwd is not None and fwd[0]==bits
+    return src,-fwd[1]
+
+def weight2(idx):
+    ans=[]
+    for q in range(NQ):
+        br=(idx&gt;&gt;(NQ*0+q))&amp;1; b1=(idx&gt;&gt;(NQ+q))&amp;1; b2=(idx&gt;&gt;(2*NQ+q))&amp;1
+        ans.append((1-2*br)+(2*b1-1)+(2*b2-1))
+    return tuple(ans)
+
+def target(r): return tuple(3 if i&lt;r else 1 for i in range(NQ))
+
+def make_highest(r):
+    wt=target(r); states=[x for x in range(FULL) if weight2(x)==wt]
+    rows=[]
+    for a in range(NQ):
+        destwt=list(wt)
+        if a&lt;NQ-1: destwt[a]+=2; destwt[a+1]-=2
+        else: destwt[a]+=2
+        destwt=tuple(destwt)
+        dest=[x for x in range(FULL) if weight2(x)==destwt]
+        dpos={x:i for i,x in enumerate(dest)}
+        M=sp.zeros(len(dest),len(states))
+        for col,x in enumerate(states):
+            for f in range(3):
+                b=(x&gt;&gt;(NQ*f))&amp;(DIM-1)
+                ans=simple_action(a,b,dual=(f==0))
+                if ans is not None:
+                    y,p=ans; z=(x&amp;~((DIM-1)&lt;&lt;(NQ*f))) | (y&lt;&lt;(NQ*f))
+                    if z in dpos: M[dpos[z],col]+=p
+        rows.append(M)
+    stacked=sp.Matrix.vstack(*rows)
+    ker=stacked.nullspace()
+    return states,sp.Matrix.hstack(*ker),stacked
+
+def act_h(k,states,vec):
+    out={}
+    for col,x in enumerate(states):
+        cv=vec[col]
+        if cv==0: continue
+        for term in HT[k]:
+            y,p=triple_apply(term,x)
+            out[y]=out.get(y,0)+cv*p
+    return {x:sp.simplify(v) for x,v in out.items() if sp.simplify(v)!=0}
+
+def act_swap(states,vec):
+    out={}
+    for col,x in enumerate(states):
+        cv=vec[col]
+        if cv==0: continue
+        y=(x&amp;((DIM-1)))|(((x&gt;&gt;(2*NQ))&amp;(DIM-1))&lt;&lt;NQ)|(((x&gt;&gt;NQ)&amp;(DIM-1))&lt;&lt;(2*NQ))
+        out[y]=out.get(y,0)+cv
+    return out
+
+def pivot_rows(N):
+    piv=[]
+    for rr in range(N.rows):
+        if N[piv+[rr],:].rank()&gt;len(piv): piv.append(rr)
+        if len(piv)==N.cols: break
+    if len(piv)!=N.cols: raise AssertionError(&#x27;failed pivot rows&#x27;)
+    return piv
+
+def coeff_matrix(states,N,act):
+    piv=pivot_rows(N); Pinv=N[piv,:].inv(); pos={x:i for i,x in enumerate(states)}
+    A=sp.zeros(N.cols,N.cols)
+    for j in range(N.cols):
+        out=act([N[i,j] for i in range(N.rows)])
+        for x,v in out.items():
+            if x not in pos: raise AssertionError((&#x27;outside HW states&#x27;,x,v))
+        vals=sp.Matrix([out.get(states[i],0) for i in piv])
+        A[:,j]=Pinv*vals
+        if N*A[:,j] != sp.Matrix([out.get(x,0) for x in states]):
+            raise AssertionError((&#x27;invariant subspace failure&#x27;,j))
+    return A
+
+def restrict_subspace(A,T):
+    piv=pivot_rows(T)
+    return T[piv,:].inv()*(A*T)[piv,:]
+
+def gram_psd_minors(M):
+    out=[]
+    for sz in range(1,M.rows+1):
+        for inds in combinations(range(M.rows),sz):
+            det=sp.factor(M.extract(inds,inds).det())
+            out.append((inds,det))
+    return out
+
+def irreducible_dim(r): return DIM*(comb(2*NQ+1,r)-comb(2*NQ+1,r-1) if r else 1)
+
+def main():
+    blocks={}; grams={}; swap_dims={}; dims=[]
+    for r in range(NQ+1):
+        t0=time.perf_counter()
+        states,N,_=make_highest(r); expected=NQ+1-r
+        if N.cols!=expected: raise AssertionError((&#x27;HW multiplicity&#x27;,r,len(states),N.cols,expected))
+        print(f&#x27;r={r} source_states={len(states)} kernel={N.cols} highest_seconds={time.perf_counter()-t0:.3f} elapsed={time.perf_counter()-START:.3f}&#x27;,flush=True)
+        H=[]
+        for k in range(1,NQ+1):
+            tk=time.perf_counter()
+            H.append(coeff_matrix(states,N,lambda v,k=k:act_h(k,states,v)))
+            print(f&#x27;  r={r} grade={k} words={comb(2*NQ+1,k)} seconds={time.perf_counter()-tk:.3f} elapsed={time.perf_counter()-START:.3f}&#x27;,flush=True)
+        S=coeff_matrix(states,N,lambda v:act_swap(states,v)); G=N.T*N
+        if S*S!=sp.eye(N.cols): raise AssertionError((&#x27;swap involution&#x27;,r,S))
+        dim=irreducible_dim(r); dims.append(dim)
+        for eps in (1,-1):
+            vv=(S-eps*sp.eye(N.cols)).nullspace()
+            if not vv: continue
+            T=sp.Matrix.hstack(*vv); At=[restrict_subspace(a,T) for a in H]; Gt=T.T*G*T
+            # Hermiticity is expressed in the exact Gram form.
+            Bs=[sp.simplify(Gt*a) for a in At]
+            if any(B!=B.T for B in Bs): raise AssertionError((&#x27;non-Hermitian Gram block&#x27;,r,eps,Bs))
+            blocks[(r,eps)]=Bs; grams[(r,eps)]=Gt; swap_dims[(r,eps)]=T.cols
+        print(f&#x27;r={r} dim(T_r)={dim} m={expected} swap(+/-)=({swap_dims.get((r,1),0)}/{swap_dims.get((r,-1),0)})&#x27;,flush=True)
+        for eps in (1,-1):
+            if (r,eps) in blocks: print(&#x27; &#x27;,eps,&#x27;H gram blocks=&#x27;,blocks[(r,eps)],&#x27;G=&#x27;,grams[(r,eps)],flush=True)
+    total=sum((NQ+1-r)*dims[r] for r in range(NQ+1))
+    if total!=FULL: raise AssertionError((&#x27;dimension sum&#x27;,total,FULL))
+    swap_total={eps:sum(dims[r]*swap_dims.get((r,eps),0) for r in range(NQ+1)) for eps in (1,-1)}
+    if sum(swap_total.values())!=FULL: raise AssertionError((&#x27;swap dimension total&#x27;,swap_total))
+    # Rigorous pure-state outer support: s1&lt;=1 by Clifford-vector anticommutation;
+    # s2&lt;=6 by SO(13) skew-normal form and ||(sigma_i)||_1&lt;=sqrt(6)||(sigma_i)||_2;
+    # s3,...,s6&lt;=63 by Parseval. All moments are nonnegative and sum to 63.
+    # Vertices of this capped-simplex outer polytope are listed below; not claimed attainable.
+    support_vertices=[]
+    for j in range(2,6):
+        for rem,pre in ((63,[]),(62,[(0,1)]),(57,[(1,6)]),(56,[(0,1),(1,6)])):
+            v=[0]*6
+            for i,x in pre:v[i]=x
+            v[j]=rem; support_vertices.append(v)
+    trace=[comb(13,k) for k in range(1,7)]
+    data={&#x27;status&#x27;:&#x27;EXTRACTION_PASS&#x27;,&#x27;scope&#x27;:&#x27;Spin(13) d=64 exact full ordinary-tensor star; no pure-orbit support asserted&#x27;,
+          &#x27;normalization&#x27;:&#x27;tau=Tr/64; T_A=i^(k(k-1)/2) Gamma_A, grades k=0..6&#x27;,
+          &#x27;highest_weight_coordinates&#x27;:&#x27;lambda_r=(3/2 repeated r, 1/2 repeated 6-r), r=0..6&#x27;,
+          &#x27;irreducible_dimensions&#x27;:dims,&#x27;multiplicities&#x27;:[NQ+1-r for r in range(NQ+1)],
+          &#x27;swap_multiplicities&#x27;:{f&#x27;{r},{eps:+d}&#x27;:n for (r,eps),n in swap_dims.items()},
+          &#x27;swap_sector_dimensions&#x27;:{str(eps):swap_total[eps] for eps in (1,-1)},&#x27;full_dimension&#x27;:total,
+          &#x27;full_triple_dimension_charged&#x27;:FULL,&#x27;elapsed_seconds&#x27;:round(time.perf_counter()-START,3),
+          &#x27;trace_coefficients&#x27;:trace,&#x27;pure_moment_outer_vertices_not_claimed_attainable&#x27;:support_vertices,
+          &#x27;blocks&#x27;:{f&#x27;{r},{eps:+d}&#x27;:{&#x27;gram&#x27;:[[str(grams[(r,eps)][i,j]) for j in range(grams[(r,eps)].cols)] for i in range(grams[(r,eps)].rows)],
+                    &#x27;bilinear_H&#x27;:[ [[str(B[i,j]) for j in range(B.cols)] for i in range(B.rows)] for B in mats]}
+                    for (r,eps),mats in blocks.items()}}
+    Path(__file__).with_name(&#x27;spin13_fullstar_blocks.json&#x27;).write_text(json.dumps(data,indent=2)+&#x27;\n&#x27;)
+    print(&#x27;TOTAL&#x27;,total,&#x27;swap&#x27;,swap_total,&#x27;trace&#x27;,trace,flush=True)
+    print(&#x27;CERTIFICATE EXTRACTION PASS elapsed_seconds&#x27;,round(time.perf_counter()-START,3),flush=True)
+
+if __name__==&#x27;__main__&#x27;:main()
+</pre><p><a href="../assets/3fcc2971b18a595f8402a97a8a4fb29d617909651917b0231ea860a5d681ee8b.py">Exact original</a></p></html>

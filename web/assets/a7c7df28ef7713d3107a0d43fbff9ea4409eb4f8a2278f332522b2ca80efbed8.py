@@ -1,0 +1,261 @@
+"""Finite classical determinant and quantum PBW-frame diagnostics.
+
+NumPy only. B2 regular carrier is a direct vector-spinor tensor component;
+D3 is the SO6 vector realization of an independently built SU4 irrep.
+No theorem/novelty/optimizer validation is claimed.
+"""
+import importlib.util
+import itertools
+import json
+import math
+import pathlib
+from fractions import Fraction
+
+import numpy as np
+
+ROOT = pathlib.Path(__file__).resolve().parent
+spec = importlib.util.spec_from_file_location(
+    "sum_checks", ROOT.parent / "regular_su_m" / "verify_regular_su_m.py")
+sum_checks = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(sum_checks)
+old = sum_checks.old
+
+
+def close(a, b, tolerance=3e-9):
+    err = float(np.max(np.abs(np.asarray(a) - np.asarray(b))))
+    if err > tolerance:
+        raise AssertionError((err, a, b))
+    return err
+
+
+def parity(sequence):
+    return (-1) ** sum(sequence[i] > sequence[j]
+                       for i in range(len(sequence)) for j in range(i + 1, len(sequence)))
+
+
+def matchings(indices):
+    if not indices:
+        yield 1, []
+    else:
+        i = indices[0]
+        for position, j in enumerate(indices[1:], 1):
+            rest = indices[1:position] + indices[position + 1:]
+            for sign, tail in matchings(rest):
+                yield (-1) ** (position + 1) * sign, [(i, j)] + tail
+
+
+def pfaffian(a):
+    return sum(sign * math.prod(a[i, j] for i, j in edges)
+               for sign, edges in matchings(list(range(a.shape[0]))))
+
+
+def exact_determinants():
+    count = 0
+    for rank in range(1, 7):
+        for shift in range(1, 5):
+            z = [Fraction(rank - i + shift, shift + 1) for i in range(rank)]
+            m = [[x ** (2 * j - 1) for j in range(1, rank + 1)] for x in z]
+            expected = math.prod(z)
+            for i in range(rank):
+                for j in range(i + 1, rank):
+                    expected *= z[j] ** 2 - z[i] ** 2
+            assert sum_checks.determinant_fraction(m) == expected != 0
+            count += 1
+    for rank in range(3, 7):
+        for shift in range(1, 5):
+            for last in [Fraction(0), Fraction(-1, shift + 1)]:
+                z = [Fraction(rank - i + shift, shift + 1) for i in range(rank - 1)] + [last]
+                m = [[x ** (2 * j - 1) for j in range(1, rank)]
+                     + [math.prod(z[:i] + z[i + 1:])] for i, x in enumerate(z)]
+                expected = Fraction((-1) ** (rank - 1))
+                for i in range(rank):
+                    for j in range(i + 1, rank):
+                        expected *= z[j] ** 2 - z[i] ** 2
+                assert sum_checks.determinant_fraction(m) == expected != 0
+                if not last:
+                    odd = [[x ** (2 * j - 1) for j in range(1, rank + 1)] for x in z]
+                    assert sum_checks.determinant_fraction(odd) == 0
+                count += 1
+    return count
+
+
+def b2_carrier(regular=True):
+    pairs = list(itertools.combinations(range(5), 2))
+    fund = []
+    for i, j in pairs:
+        a = np.zeros((5, 5), complex)
+        a[i, j], a[j, i] = 1j, -1j
+        fund.append(a)
+    sx = np.array([[0, 1], [1, 0]], complex)
+    sy = np.array([[0, -1j], [1j, 0]], complex)
+    sz = np.diag([1., -1.])
+    gamma = [np.kron(sx, np.eye(2)), np.kron(sy, np.eye(2)),
+             np.kron(sz, sx), np.kron(sz, sy), np.kron(sz, sz)]
+    spin = [.5j * gamma[i] @ gamma[j] for i, j in pairs]
+    if regular:
+        full = [np.kron(t, np.eye(4)) + np.kron(np.eye(5), s) for t, s in zip(fund, spin)]
+        casimir = sum(t @ t for t in full)
+        vals, vecs = np.linalg.eigh(casimir)
+        basis = vecs[:, np.abs(vals - vals[-1]) < 1e-9]
+        assert basis.shape == (20, 16)
+        ts = [basis.conj().T @ t @ basis for t in full]
+    else:
+        ts = spin
+    h = 1.7 * ts[pairs.index((0, 1))] + .6 * ts[pairs.index((2, 3))]
+    _, vecs = np.linalg.eigh(h)
+    psi = vecs[:, -1]
+    return fund, ts, psi
+
+
+def d3_carrier():
+    su_fund = old.generators(4)
+    pairs = list(itertools.combinations(range(4), 2))
+    star = np.zeros((6, 6))
+    for col, beta in enumerate(pairs):
+        complement = tuple(i for i in range(4) if i not in beta)
+        star[pairs.index(complement), col] = parity(beta + complement)
+    assert np.array_equal(star, star.T)
+    vals, vecs = np.linalg.eigh(star)
+    w = vecs * np.where(vals > 0, 1., 1j)
+    close(w.T @ star @ w, np.eye(6))
+    fund = [math.sqrt(2) * w.conj().T @ sum_checks.wedge_lift(t, 2) @ w for t in su_fund]
+    ts, psi, ambient = sum_checks.product_highest_component([1, 1, 1])
+    ts = [math.sqrt(2) * t for t in ts]
+    assert ts[0].shape[0] == 64
+    return fund, ts, psi
+
+
+def cubic_coefficients(fund):
+    q = len(fund)
+    coeff = np.zeros((q, q, q, q))
+    for i, j, k in itertools.product(range(q), repeat=3):
+        sym = sum(fund[a] @ fund[b] @ fund[c]
+                  for a, b, c in itertools.permutations((i, j, k))) / 6
+        for a in range(q):
+            value = np.trace(fund[a] @ sym) / 2
+            assert abs(value.imag) < 1e-10
+            coeff[a, i, j, k] = value.real
+    return coeff
+
+
+def pfaffian_gradient_coefficients(fund):
+    """Degree-two Pfaffian gradient, valid for this rank-three control."""
+    q, n = len(fund), fund[0].shape[0]
+    assert n == 6
+    skew_coeff = np.array([-1j * t for t in fund])
+    assert np.max(np.abs(skew_coeff.imag)) < 1e-10
+    skew_coeff = skew_coeff.real
+    coeff = np.zeros((q, q, q))
+    for sign, edges in matchings(list(range(n))):
+        edge_vectors = [skew_coeff[:, i, j] for i, j in edges]
+        for index in range(3):
+            others = [j for j in range(3) if j != index]
+            coeff += sign * np.einsum('a,b,c->abc', edge_vectors[index],
+                                     edge_vectors[others[0]], edge_vectors[others[1]])
+    return (coeff + coeff.transpose(0, 2, 1)) / 2
+
+
+def polynomial_quantum(coeff, ts):
+    q, degree = len(ts), coeff.ndim - 1
+    result = [np.zeros_like(ts[0]) for _ in range(q)]
+    for word in itertools.product(range(q), repeat=degree):
+        product = np.eye(ts[0].shape[0], dtype=complex)
+        for index in word:
+            product = product @ ts[index]
+        for a in range(q):
+            result[a] += coeff[(a,) + word] * product
+    return result
+
+
+def polynomial_value(coeff, means):
+    q, degree = len(means), coeff.ndim - 1
+    return np.array([sum(coeff[(a,) + word] * math.prod(means[i] for i in word)
+                         for word in itertools.product(range(q), repeat=degree))
+                     for a in range(q)])
+
+
+def case(name, fund, ts, psi, regular, use_pf):
+    q, dimension = len(ts), ts[0].shape[0]
+    means = np.array([float(np.vdot(psi, t @ psi).real) for t in ts])
+    xi = sum(mu * t for mu, t in zip(means, fund))
+    coeffs = [np.eye(q), cubic_coefficients(fund)]
+    if use_pf:
+        coeffs.append(pfaffian_gradient_coefficients(fund))
+    y = [polynomial_quantum(coeff, ts) for coeff in coeffs]
+    symbols = [polynomial_value(coeff, means) for coeff in coeffs]
+    checks = dict(fundamental_metric=close(
+        np.array([[np.trace(a @ b) / 2 for b in fund] for a in fund]), np.eye(q)),
+        Hermitian_frame=max(close(t, t.conj().T) for group in y for t in group),
+        degree_one=close(y[0], ts),
+        classical_cubic=close(sum(mu * t for mu, t in zip(symbols[1], fund)), xi @ xi @ xi))
+    if use_pf:
+        checks['fundamental_SO_real_form'] = max(close(t.T, -t) for t in fund)
+        checks['regular_zero_coordinate_Pfaffian'] = close(pfaffian(-1j * xi), 0.)
+        assert np.linalg.norm(symbols[-1]) > 1.
+    f = np.array([[[float((-1j * np.trace((fund[a] @ fund[b] - fund[b] @ fund[a])
+                                          @ fund[k]) / 2).real) for k in range(q)]
+                   for b in range(q)] for a in range(q)])
+    checks['covariance'] = max(close(ts[a] @ group[b] - group[b] @ ts[a],
+        1j * sum(f[a, b, k] * group[k] for k in range(q)))
+        for group in y for a in range(q) for b in range(q))
+    c_n = float(np.trace(sum(t @ t for t in ts)).real) / dimension
+    checks['scalar_casimir'] = close(sum(t @ t for t in ts), c_n * np.eye(dimension))
+    beta = c_n - np.linalg.norm(means) ** 2
+    checks['highest_variance'] = close(sum(np.linalg.norm(t @ psi - mu * psi) ** 2
+                                          for t, mu in zip(ts, means)), beta)
+    p = len(y)
+    gram, err = np.zeros((p, p)), 0.
+    for s in range(p):
+        for t in range(p):
+            block = np.array([[np.trace(u @ v) / dimension for v in y[t]] for u in y[s]])
+            gram[s, t] = float(np.trace(block).real) / q
+            err = max(err, close(block, gram[s, t] * np.eye(q)))
+            z = sum((u @ v + v @ u) / 2 for u, v in zip(y[s], y[t]))
+            err = max(err, close(z, q * gram[s, t] * np.eye(dimension)))
+            err = max(err, close(np.vdot(psi, z @ psi), q * gram[s, t]))
+    checks['central_Gram'] = err
+    eigenvalues = np.linalg.eigvalsh(gram)
+    if regular:
+        assert eigenvalues[0] > 1e-8
+    else:
+        assert eigenvalues[0] < 1e-8
+    h = np.array(symbols) @ np.array(symbols).T
+    expected_h_det = 144. if use_pf else 2.25 if regular else 0.
+    checks['classical_Gram_determinant'] = close(np.linalg.det(h), expected_h_det)
+    if use_pf:
+        checks['Pfaffian_nonzero_gradient_at_zero'] = close(h[-1, -1], 4.)
+    energy_samples = 0
+    rng = np.random.default_rng(3271 + dimension)
+    for _ in range(4):
+        a = rng.normal(size=(dimension, dimension)) + 1j * rng.normal(size=(dimension, dimension))
+        a /= np.linalg.norm(a)
+        e = old.energy(a, ts)
+        for coeff, group in zip(coeffs, y):
+            degree = coeff.ndim - 1
+            l_s_squared = sum(np.sum(np.abs(coeff[index])) ** 2 for index in range(q))
+            constant = l_s_squared * degree ** 2 * c_n ** (degree - 1)
+            assert old.energy(a, group) <= constant * e + 1e-8
+            energy_samples += 1
+    return dict(name=name, dimension=dimension, adjoint_dimension=q,
+                regular=regular, C2=c_n, highest_variance=beta,
+                defining_mean_spectrum=np.linalg.eigvalsh(xi).tolist(),
+                normalized_Gram=gram.tolist(), Gram_eigenvalues=eigenvalues.tolist(),
+                classical_Gram=h.tolist(), polynomial_energy_samples=energy_samples,
+                residuals=checks)
+
+
+def main():
+    cases = [case('B2 rho regular vector-spinor component', *b2_carrier(), True, False),
+             case('B2 spinor wall control', *b2_carrier(False), False, False),
+             case('D3 rho regular zero Cartan coordinate', *d3_carrier(), True, True)]
+    result = dict(status='FINITE-EVIDENCE', proof_validation=False, theorem_file='RESULT.txt',
+                  exact_gradient_determinants=exact_determinants(), carrier_cases=cases,
+                  dependencies=['Python standard library', 'NumPy'],
+                  max_matrix_residual=max(max(c['residuals'].values()) for c in cases))
+    (ROOT / 'CHECKS.json').write_text(json.dumps(result, indent=2) + '\n')
+    print(json.dumps(dict(status='passed', exact_determinants=result['exact_gradient_determinants'],
+                         carrier_cases=len(cases), max_residual=result['max_matrix_residual'])))
+
+
+if __name__ == '__main__':
+    main()

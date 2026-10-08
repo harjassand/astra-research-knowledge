@@ -1,0 +1,140 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c6_aging_rejuvenation/paired_damage_invariant.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c6_aging_rejuvenation/paired_damage_invariant.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Exact-model calculations for paired-sister damage partition/repair separation.
+
+This is an algebraic demonstration under the assumptions in FINAL_REPORT.md.
+It does not fit or validate the biological model.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import json
+import math
+from pathlib import Path
+
+
+def logistic(x: float) -&gt; float:
+    if x &gt;= 0:
+        e = math.exp(-x)
+        return 1.0 / (1.0 + e)
+    e = math.exp(x)
+    return e / (1.0 + e)
+
+
+def signal_pair(
+    p: float,
+    k1: float,
+    k2: float,
+    t: float,
+    common_gain: float = 1.0,
+    eta1: float = 1.0,
+    eta2: float = 1.0,
+) -&gt; tuple[float, float]:
+    &quot;&quot;&quot;Return positive sister-channel signals for unit total post-division load.&quot;&quot;&quot;
+    return (
+        common_gain * eta1 * p * math.exp(-k1 * t),
+        common_gain * eta2 * (1.0 - p) * math.exp(-k2 * t),
+    )
+
+
+def recover_from_two_times(
+    t1: float, y11: float, y21: float, t2: float, y12: float, y22: float
+) -&gt; dict[str, float]:
+    &quot;&quot;&quot;Recover p and k2-k1 from two physical-channel sister ratios.&quot;&quot;&quot;
+    if not (0.0 &lt; t1 &lt; t2 and min(y11, y21, y12, y22) &gt; 0):
+        raise ValueError(&quot;times must be positive and ordered; signals must be positive&quot;)
+    ell1 = math.log(y11 / y21)
+    ell2 = math.log(y12 / y22)
+    dk = (ell2 - ell1) / (t2 - t1)
+    theta = ell1 - dk * t1
+    return {&quot;p&quot;: logistic(theta), &quot;logit_p&quot;: theta, &quot;k2_minus_k1&quot;: dk}
+
+
+def main() -&gt; None:
+    # Same one-time sister ratio from partition or repair.
+    t_obs = 1.0
+    target_ratio = 2.0
+    partition_only = signal_pair(p=2 / 3, k1=0.0, k2=0.0, t=t_obs)
+    repair_only = signal_pair(p=0.5, k1=0.0, k2=math.log(2.0), t=t_obs)
+
+    # At two times, the ideal common-gain physical channel recovers both terms.
+    p_true, k1_true, k2_true = 0.73, 0.12, 0.48
+    t1, t2 = 0.04, 0.18
+    pair1 = signal_pair(p_true, k1_true, k2_true, t1, common_gain=3.2)
+    pair2 = signal_pair(p_true, k1_true, k2_true, t2, common_gain=0.7)
+    recovered = recover_from_two_times(t1, *pair1, t2, *pair2)
+
+    # A sister-specific reporter factor alone can create a focus ratio.
+    sensor_physical = signal_pair(0.5, 0.0, 0.0, t_obs)
+    sensor_focus = signal_pair(0.5, 0.0, 0.0, t_obs, eta1=2.0, eta2=1.0)
+
+    # Delayed-first-read partition error if |k2-k1| &lt;= K.
+    K, delay = 0.08, 0.5
+    delay_error_bound = math.tanh(K * delay / 4.0)
+
+    # Hoeffding sign-test budget for independent pair scores in [-1,1].
+    alpha, target_effect = 0.05, 0.20
+    n_pairs_per_arm = math.ceil(4.0 * math.log(2.0 / alpha) / target_effect**2)
+    illustrative_q_div = 0.006
+
+    result = {
+        &quot;status&quot;: &quot;finite algebraic/model check only&quot;,
+        &quot;one_time_alias&quot;: {
+            &quot;time&quot;: t_obs,
+            &quot;target_ratio&quot;: target_ratio,
+            &quot;partition_model&quot;: {
+                &quot;p&quot;: 2 / 3,
+                &quot;k1&quot;: 0.0,
+                &quot;k2&quot;: 0.0,
+                &quot;observed_ratio&quot;: partition_only[0] / partition_only[1],
+            },
+            &quot;repair_model&quot;: {
+                &quot;p&quot;: 0.5,
+                &quot;k1&quot;: 0.0,
+                &quot;k2&quot;: math.log(2.0),
+                &quot;observed_ratio&quot;: repair_only[0] / repair_only[1],
+            },
+        },
+        &quot;two_time_recovery&quot;: {
+            &quot;true&quot;: {&quot;p&quot;: p_true, &quot;k2_minus_k1&quot;: k2_true - k1_true},
+            &quot;recovered&quot;: recovered,
+            &quot;physical_pairs&quot;: [list(pair1), list(pair2)],
+            &quot;common_gains&quot;: [3.2, 0.7],
+        },
+        &quot;sensor_confounding&quot;: {
+            &quot;physical_ratio&quot;: sensor_physical[0] / sensor_physical[1],
+            &quot;focus_ratio_if_eta1_eta2_is_2&quot;: sensor_focus[0] / sensor_focus[1],
+        },
+        &quot;delayed_read&quot;: {
+            &quot;differential_repair_bound_per_time&quot;: K,
+            &quot;delay&quot;: delay,
+            &quot;absolute_partition_fraction_error_bound&quot;: delay_error_bound,
+        },
+        &quot;sample_budget&quot;: {
+            &quot;alpha&quot;: alpha,
+            &quot;minimum_mean_difference&quot;: target_effect,
+            &quot;informative_pairs_per_arm&quot;: n_pairs_per_arm,
+            &quot;conditional_event_yield_per_random_division&quot;: illustrative_q_div,
+            &quot;random_divisions_per_arm_in_expectation&quot;: math.ceil(
+                n_pairs_per_arm / illustrative_q_div
+            ),
+            &quot;yield_note&quot;: (
+                &quot;q_div is an explicitly assumed event yield, not inferred from &quot;
+                &quot;the reported instantaneous 2C-like cell prevalence.&quot;
+            ),
+        },
+        &quot;limitations&quot;: [
+            &quot;constant exponential repair over the fitted window&quot;,
+            &quot;positive background-subtracted signals&quot;,
+            &quot;shared multiplicative gain within a sister pair&quot;,
+            &quot;no unmodeled sister-specific lesion creation&quot;,
+            &quot;informative death/tracking loss requires a joint competing-risk model&quot;,
+            &quot;physical lesion assay and pair identity must be acquired&quot;,
+        ],
+    }
+    out = Path(__file__).with_name(&quot;CHECK_RUN.json&quot;)
+    out.write_text(json.dumps(result, indent=2) + &quot;\n&quot;, encoding=&quot;utf-8&quot;)
+    print(json.dumps(result, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/9935eea35aeaf1914f1ccb431fe9b97e8207828b8404e366a28b44949739e5fc.py">Exact original</a></p></html>

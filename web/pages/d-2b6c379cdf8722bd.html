@@ -1,0 +1,211 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/cancer_evolution/cycle2_schedule_algorithm.md</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/cancer_evolution/cycle2_schedule_algorithm.md</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre># Cycle 2: finite-action robust lineage-risk schedule selection
+
+## Verdict
+
+The model admits a global, dose-minimal schedule search that controls an upper bound on the probability that any resistant lineage reaches a chosen establishment size. With synthetic five-block inputs, a one-block early cytoreductive pulse followed by four holidays meets a 4% bound at minimum dose, while a full-horizon midpoint plug-in optimizer chooses no drug and fails the same bound at adverse rate endpoints.
+
+This is a conditional model calculation, not a biological result. It does not identify a new control principle or remove a genuine control-theory bottleneck. Foo and Michor already model resistance under general time-varying dosing schedules with nonhomogeneous multitype birth-death processes and optimize schedules against resistance/progression outcomes. The narrow distinction left here is the use of simultaneous rate uncertainty sets in a robust objective; that is a standard robust-optimization extension and is not established as novel. Patil et al. (2026) is close recent prior art for multi-strike timing and rescue-lineage risk. The empirical bottleneck is acquiring sufficiently narrow, simultaneous, treatment-specific rate regions at a cost that still leaves a useful schedule.
+
+## Interface and assumptions
+
+The finite open-loop interface is a horizon of H blocks, block width Δ, and finite action library A. At block j the selected action a_j fixes a rate vector from a simultaneous confidence set Θ. For each action a, the rates are:
+
+- g_S(a): upper-bounded net growth rate of the sensitive source population;
+- η(a): resistant-founder production per sensitive-cell-time;
+- β_R(a): per-cell birth rate of one resistant lineage;
+- δ_R(a): per-cell death rate of one resistant lineage;
+- c_D(a): drug-dose cost per block.
+
+Founder events occur with predictable intensity at most \(\eta(a)S(t)\), and each seed then evolves independently under the resistant-lineage rates. This requires a measured founder-event process, not merely a net tumor-growth curve.
+
+The rate units are inverse time. A general implementation may add pharmacokinetic state, toxicity, or a measured action cost; each such state or uncertainty source must be acquired and charged. If the source rate is actually a mutation probability per mitosis, the interface must instead estimate the action-specific product of division rate and per-division mutation probability (or model those two quantities separately).
+
+For a schedule a_0,...,a_{H−1}, the sensitive source is bounded in expectation by
+
+$$
+\bar S_j = S_0\exp\!\left(\Delta\sum_{i&lt;j} g_S^+(a_i)\right),\qquad
+\mathbb E[S(j\Delta+u)]\leq \bar S_j e^{g_S^+(a_j)u}.
+$$
+
+This requires a linear per-capita drift upper bound; density dependence, spatial structure, drug carry-over, or untracked source states need extra state/rate bounds. It is not a pathwise upper envelope for a branching sensitive population.
+
+A resistant lineage has count r∈{0,...,M}, with 0 (extinction) and M (establishment) absorbing. Under action a its row generator Q_a has
+
+$$
+(Q_a)_{r,r+1}=r\beta_R(a),\quad
+(Q_a)_{r,r-1}=r\delta_R(a),\quad
+(Q_a)_{r,r}=-r(\beta_R(a)+\delta_R(a)),\quad 1\leq r&lt;M.
+$$
+
+Distinct lineages branch independently, do not compete, and do not change state except through these birth/death events. Any already-present resistant clone is represented by its count at time zero. The endpoint is explicitly “some lineage reaches M during the finite horizon,” not clinical relapse, cure, or permanent extinction.
+
+The uncertainty set must cover every relevant rate vector simultaneously with stated confidence. A componentwise rectangular outer confidence set is convenient and conservative. Marginal intervals without familywise correction do not give the advertised coverage. If the rate region is correlated, retaining its joint shape can improve the bound; an outer box remains valid if it contains the whole joint region.
+
+## First-moment risk bound and robust endpoints
+
+Let F_H(r)=1{r=M}. For a fixed schedule, compute backwards
+
+$$
+F_j=e^{Q_{a_j}\Delta}F_{j+1}.
+$$
+
+Thus F_j(r) is the probability that one lineage with r cells at block j reaches M by the horizon. If a seed arrives u time-units into block j, its success probability is
+
+$$
+p_j(u)=\left[e^{Q_{a_j}(\Delta-u)}F_{j+1}\right]_1.
+$$
+
+The expected number of successful new founders is bounded by
+
+$$
+\Lambda_U =
+\sum_{j=0}^{H-1}\eta^+(a_j)\bar S_j
+\left[\int_0^\Delta e^{g_S^+(a_j)u}p_j(u)\,du\right].
+$$
+
+Linearity of expectation and the union bound give
+
+$$
+\Pr(\text{at least one new lineage reaches }M)\leq \min(1,\Lambda_U).
+$$
+
+This first-moment bound does not require mutation arrivals to be Poisson after averaging over a stochastic sensitive population. For known pre-existing lineage counts n_r, add \(\sum_{r=1}^{M-1} n_rF_0(r)\) to the upper bound. If lineage identity or counts are uncertain, use a worst-case bound over the measured initial-state set.
+
+For the linear birth-death process, establishment by a fixed horizon is increasing in initial lineage size and birth rate and decreasing in death rate. A monotone coupling couples all births of a lower-birth process to a subset of births in the higher-birth process, and all deaths in the lower-death process to a subset of deaths in the higher-death process. The success event “hit M by time T” is increasing under this coupling. The sensitive source term is increasing in g_S and η. Therefore the rectangular worst case is the componentwise corner
+
+$$
+g_S=g_S^+,\quad \eta=\eta^+,\quad \beta_R=\beta_R^+,\quad \delta_R=\delta_R^-.
+$$
+
+This endpoint claim depends on the stated branching model and a simultaneous outer set. It does not follow for interacting clones, drug-dependent transitions omitted from Q, or a confidence set that misses the true rates.
+
+## Dose-minimal backward dynamic program
+
+The schedule objective can be optimized exactly relative to the bound without pretending that a one-step derivative ranks whole schedules. Define the per-sensitive-cell future risk coefficient G_j by G_H=0 and
+
+$$
+K(a,F)=\eta^+(a)\int_0^\Delta e^{g_S^+(a)u}
+   [e^{Q_a(\Delta-u)}F]_1\,du,
+$$
+
+$$
+G_j=K(a_j,F_{j+1})+e^{g_S^+(a_j)\Delta}G_{j+1}.
+$$
+
+At the start of the treatment, \(\Lambda_U=S_0G_0\), plus any pre-existing-lineage term. A suffix label at boundary j is \((F_j,G_j,C_j)\), where C_j is the remaining dose/assay cost. Initialize the terminal set with \((F_H,G_H,C_H)=(1_{\{M\}},0,0)\). For each action a and each label \((F,G,C)\) at j+1, generate
+
+$$
+F&#x27;=e^{Q_a\Delta}F,\quad
+G&#x27;=K(a,F)+e^{g_S^+(a)\Delta}G,\quad
+C&#x27;=c_D(a)\Delta+C.
+$$
+
+Keep the Pareto frontier: discard a label only when another has no larger cost and componentwise no larger F and G. These inequalities are preserved when prepending any action because transition matrices and K have nonnegative entries. At j=0 choose the lowest-cost label satisfying the risk limit, any mean-burden constraint, and toxicity limits. With no useful pruning this has the same exponential worst-case growth as enumerating \(|A|^H\) schedules; no polynomial-time claim is made. For very small horizons direct exhaustive enumeration is simpler.
+
+An on-treatment observation can be added as an action with observation cost c_obs and a stochastic measurement update to the rate set/state. The finite closed-loop version is a chance-constrained robust MDP: include sensitive count, resistant-lineage histogram, PK/toxicity state, and the current observation or belief state; impose a cap B or another finite representation. For a risk budget b, choose continuation budgets b_y and actions such that
+
+$$
+\sup_{\theta\in\Theta}\left[
+P_a^\theta(x,\mathcal F)+
+\sum_{y\notin\mathcal F}P_a^\theta(x,y)b_y
+\right]\leq b,
+$$
+
+then minimize drug, assay, and toxicity costs over those choices. A stagewise-rectangular adversary is conservative if the patient’s true rates are static; a less conservative fixed-parameter version must optimize the full policy risk over one shared θ. Assay latency, false-negative clone detection, and the cost of acquiring each rate interval belong in the state/action model.
+
+## Synthetic finite calculation
+
+The executable demonstration is [robust_schedule_demo.py](robust_schedule_demo.py). It uses H=5 daily blocks, Δ=1, S_0=10, M=4, no pre-existing resistant clone, two actions H (holiday) and D (drug), and ε=0.04. Every input rate is synthetic and stated in the script. Its adverse endpoints are:
+
+| Action | g_S interval | η interval | β_R interval | δ_R interval | dose units |
+|---|---:|---:|---:|---:|---:|
+| H | [0.25, 0.35] | [0.02, 0.03] | [0.15, 0.20] | [0.40, 0.45] | 0 |
+| D | [−0.50, −0.40] | [0.02, 0.03] | [0.40, 0.45] | [0.50, 0.55] | 1 |
+
+The midpoint comparator uses (0.30,0.025,0.175,0.425) for H and (−0.45,0.025,0.425,0.525) for D. In this fixture drug rapidly contracts the sensitive source but makes each resistant lineage less subcritical during that block; this creates a non-monotone schedule problem rather than a generic “more drug is better” example.
+
+At N=100 midpoint subintervals per block, the computed first-moment bounds are:
+
+| Schedule | Dose | Midpoint-rate bound | Adverse-endpoint bound | Upper mean S at horizon |
+|---|---:|---:|---:|---:|
+| HHHHH | 0 | 0.026836 | 0.053385 | 57.546 |
+| DHHHH | 1 | 0.017504 | 0.032852 | 27.183 |
+| HDHHH | 1 | 0.031448 | 0.055062 | 27.183 |
+| DDHHH | 2 | 0.022519 | 0.037280 | 12.840 |
+| DDDDD | 5 | 0.053516 | 0.081171 | 1.353 |
+
+Exhaustive evaluation of all 32 words gives DHHHH as the unique minimum-dose schedule satisfying the adverse-endpoint bound. The other one-drug schedules have bounds HHDHH=0.081088, HHHDH=0.107530, and HHHHD=0.122799. The full-horizon midpoint optimizer uses the same library and exact same lineage-bound objective at interval midpoints; its unique dose-minimal choice is HHHHH, whose adverse-endpoint bound is 0.053385. A weaker one-step expected-drift rule also selects H at each step when R=0, but it is not the principal comparison.
+
+This is a quantitative model prediction only: under the declared synthetic rate box and threshold, the selected schedule has a first-moment risk bound about 3.3%, compared with 5.3% for no drug, at one dose block. It does not predict a clinical response. No tumor data, patient-derived organoid rates, confidence regions, or treatment effects were fitted.
+
+### Numerical error scope
+
+The risk integrand in block j is \(f_j(u)=\eta S_j e^{g u}p_j(u)\). On the absorbing birth-death chain, \(0\leq p_j\leq1\), \(|p&#x27;_j|\leq\|Q_a\|_\infty\), and \(|p&#x27;&#x27;_j|\leq\|Q_a\|_\infty^2\). Therefore
+
+$$
+\sup_{0\leq u\leq\Delta}|f_j&#x27;&#x27;(u)|
+\leq \eta S_j e^{\max(g,0)\Delta}
+\cdot (|g|+\|Q_a\|_\infty)^2,\qquad
+\|Q_a\|_\infty=2(M-1)(\beta_R+\delta_R).
+$$
+
+The composite midpoint-rule error for that block with N subintervals is at most \(\sup|f_j&#x27;&#x27;|\Delta^3/(24N^2)\). Evaluating this bound over the 32 robust schedules at N=100 gives a maximum integration error of \(3.904\times10^{-4}\); for DHHHH the bound is \(1.818\times10^{-4}\), and for HHHHH it is \(3.141\times10^{-4}\). The one-dose alternatives’ lower brackets remain above 0.04, while DHHHH’s upper bracket remains below 0.04. Thus the quadrature approximation separates the schedule decision in this toy.
+
+Uniformization computes each matrix exponential by summing a Poisson series. Here the maximum uniformization mean over one block is 2.85. The loop includes through k=83; the omitted Poisson tail is bounded by
+
+$$
+\Pr(\operatorname{Pois}(2.85)\geq84)
+\leq e^{-2.85}\left(\frac{e\,2.85}{84}\right)^{84}
+&lt;6.5\times10^{-89}
+$$
+
+per exponential. These are binary64 calculations, not outward-rounded interval arithmetic, so the numerical result remains a finite approximate computation rather than a formal machine-checked global-optimality proof.
+
+Independent convergence runs for the robust calculation gave:
+
+| Midpoints per block N | DHHHH bound | HHHHH bound | Robust optimizer |
+|---:|---:|---:|---|
+| 10 | 0.032846725 | 0.053386402 | DHHHH |
+| 100 | 0.032852204 | 0.053385386 | DHHHH |
+| 1000 | 0.032852259 | 0.053385376 | DHHHH |
+
+The midpoint-rate optimizer remained HHHHH for all three resolutions (bound 0.026835932, 0.026835509, and 0.026835504).
+
+## Cost accounting
+
+The schedule search minimizes dose units only after the rate region is available. The full acquisition/control/observation cost is
+
+$$
+C_{\rm total}=C_{\rm acquire}(\Theta)
++\sum_j c_D(a_j)\Delta
++\sum_k c_{\rm obs}(o_k)
++C_{\rm toxicity}.
+$$
+
+The numerical fixture assigns one dose unit to each D block and no action-time assays; thus DHHHH costs one dose unit, and both point-estimate and robust comparisons use the same rate-information input. The intervals themselves were supplied synthetic inputs, not acquired data; the fixture cannot claim that calibration is free. In a prospective assay, measuring η alone with zero observed resistance events in two prespecified drug conditions requires, under an externally fixed exposure and Poisson event-count model with familywise 95% coverage, at least \(E=\log(2/0.05)/0.03\approx123\) sensitive-cell-days per condition to put a one-sided upper bound at 0.03 per cell-day. That is about 246 sensitive-cell-days before estimating birth/death rates, sensitive net growth, drug exposure, clone-detection error, or the other conditions. If the actual at-risk cell-time is random and correlated with the event process, this simple Poisson interval is not automatically exact; use a counting-process likelihood with validated coverage. If resistance is generated per mitosis, use fixed division opportunities and a binomial mutation-rate interval instead. These exposure counts are a prospective lower-bound illustration, not an experiment performed here.
+
+The clinical/experimental DP charges each assay via c_obs and its latency; a decision using a low-cost single-drug course but requiring extensive barcode and birth/death profiling can lose on total resources. The necessary next experiment must measure these costs and the rates together rather than treating the robust intervals as a free oracle.
+
+## Prior art and novelty boundary
+
+- Foo and Michor (2010), [“Evolution of resistance to anti-cancer therapy during general dosing schedules”](https://doi.org/10.1016/j.jtbi.2009.11.022), explicitly study time-varying dosing and pharmacokinetics with nonhomogeneous multitype birth-death dynamics, estimate resistance risk and resistant-clone moments, and optimize schedules under tolerated-dose constraints. This is direct prior art against claiming that a global schedule optimizer based on resistant-lineage risk is new.
+- Patil, Ahmed, Viossat, and Noble (2026), [“Preventing evolutionary rescue in cancer using two-strike therapy”](https://doi.org/10.1093/genetics/iyaf255), derive rescue/extinction probabilities from expected rescue-mutant supply and establishment probabilities, then study optimal second-strike timing and drug efficacy. Their article uses deterministic mean trajectories for part of the analysis and validates against stochastic simulations. It substantially preempts a claim that a finite schedule should be selected by balancing source burden against resistant-lineage establishment. It does not, on the inspected article, supply the simultaneous interval-robust dose-minimum algorithm here; that remaining difference is incremental.
+- Gluzman, Scott, and Vladimirsky (2020), [“Optimizing adaptive cancer therapy: dynamic programming and evolutionary game theory”](https://doi.org/10.1098/rspb.2019.2454), already use dynamic programming/HJB to optimize drug use and recovery objectives.
+- Giles and Newton (2026), [“Reinforcement learning for chemotherapy scheduling in a stochastic tumor evolution model”](https://doi.org/10.1103/cbkw-5s4b), use a finite action space and finite-state Markov model to optimize chemotherapy schedules under stochastic resistance and partial observation.
+
+The 2026 two-strike paper does not formally prove the robust interval-DP result false or identical; it does preempt the motivating risk decomposition and schedule-timing idea. The pointwise robust extension is mathematically routine. Do not present the fixture as a new cancer treatment strategy.
+
+## Attack, falsifier, and next gate
+
+The bound fails as a biological predictor if the measured resistant lineages are not independent linear birth-death processes, if the threshold M is not linked prospectively to a relapse endpoint, if a hidden clone has a different founder hazard, if sensitive growth is density-dependent outside the modeled envelope, if resistance acquisition is bursty/per-division but fitted as constant cell-time hazard, or if the rate confidence set misses true action-specific hazards. It can also be non-informative: no schedule may satisfy ε once the rate box and measurement error are honestly widened.
+
+The discriminating test is an organoid/barcode experiment with a preregistered action library and threshold M. On training cultures, acquire simultaneous confidence regions for sensitive birth/death or net-growth, resistance-founder supply, and resistant birth/death under each action; measure the absolute sensitive source, barcode state, PK/exposure, assay latency, and toxicity proxy. Freeze the robust schedule and its \(\Lambda_U\) before unblinding independent held-out cultures. Compare against the strongest equally informed plug-in controller: full-horizon schedule optimization on the same library using interval midpoints and the same lineage-risk calculation; also include continuous maximally tolerated treatment, the best fixed schedule, and a prespecified tumor-nadir/two-strike policy at equal assay and exposure cost.
+
+The quantitative falsifier is a one-sided exact binomial lower confidence limit for held-out lineage-establishment frequency greater than the frozen robust upper bound, with the training coverage and holdout test error budgets accounted for jointly. The operational claim of useful robustness also fails if the robust plan cannot meet ε, uses more total assay/dose/toxicity cost than the equally informed comparator at equal or worse held-out risk, or changes materially under small defensible widening of the rate set.
+
+The next gate is not another optimizer. It is evidence that any relevant tumor/organoid admits an identifiable and affordable simultaneous action-specific rate region. No dataset satisfying that interface was located or used here. The Astra prior was checked per the workspace mandate, but its scoped index did not surface a cancer-specific card applicable to this control question; Astra supplied workflow constraints, not biological evidence.
+
+## Provenance and status
+
+The controller equations are an internal reconstruction conditional on the stated model. Endpoint monotonicity follows by coupling in that model. The schedule table and convergence values are finite internally executed computations; no external code or experiment validated them. The literature claims above are source-reported from the linked primary articles. Nature-level rate validity, acquisition feasibility, external priority, and clinical utility remain UNKNOWN.
+</pre><p><a href="../assets/cb062c90dae9b87a2d5e3e50f29ab34b0371998f4964c2d646e8111d223f632f.md">Exact original</a></p></html>

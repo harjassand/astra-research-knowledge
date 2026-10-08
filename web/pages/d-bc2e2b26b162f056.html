@@ -1,0 +1,80 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/materials_energy/manybody_certification/local_gibbs_fixture.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/materials_energy/manybody_certification/local_gibbs_fixture.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Finite exact-diagonalization benchmark for CYCLE2_REPORT.md.&quot;&quot;&quot;
+
+import json
+import numpy as np
+
+
+I = np.eye(2, dtype=complex)
+X = np.array([[0, 1], [1, 0]], dtype=complex)
+Y = np.array([[0, -1j], [1j, 0]], dtype=complex)
+Z = np.diag([1, -1]).astype(complex)
+N = 4
+
+
+def one_site(site, matrix):
+    factors = [I] * N
+    factors[site] = matrix
+    result = factors[0]
+    for factor in factors[1:]:
+        result = np.kron(result, factor)
+    return result
+
+
+def two_site(site1, site2, matrix1, matrix2):
+    factors = [I] * N
+    factors[site1] = matrix1
+    factors[site2] = matrix2
+    result = factors[0]
+    for factor in factors[1:]:
+        result = np.kron(result, factor)
+    return result
+
+
+H_plus = np.zeros((2**N, 2**N), dtype=complex)
+for u, v in ((0, 1), (1, 2), (2, 3)):
+    H_plus += (
+        two_site(u, v, X, X)
+        + two_site(u, v, Y, Y)
+        + 0.5 * two_site(u, v, Z, Z)
+    )
+
+b = [0.25] * N
+c = [0.1, -0.15, 0.2, -0.1]
+for site in range(N):
+    H_plus += b[site] * one_site(site, X) + c[site] * one_site(site, Z)
+
+beta = 0.7
+eigenvalues, eigenvectors = np.linalg.eigh(H_plus)
+weights = np.exp(beta * eigenvalues)
+rho = (eigenvectors * weights) @ eigenvectors.conj().T / weights.sum()
+
+# Trace out sites 3 and 2; tensor axes are row-0..row-3, col-0..col-3.
+tensor = rho.reshape((2,) * 8)
+tensor = np.trace(tensor, axis1=3, axis2=7)
+tensor = np.trace(tensor, axis1=2, axis2=5)
+rho_12 = tensor.reshape((4, 4))
+
+xx_12 = np.kron(X, X)
+purity_12 = float(np.trace(rho_12 @ rho_12).real)
+expectation_xx_12 = float(np.trace(xx_12 @ rho_12).real)
+C = 3 * 3 + sum(bi + abs(ci) for bi, ci in zip(b, c))
+
+print(
+    json.dumps(
+        {
+            &quot;system&quot;: &quot;four-site path&quot;,
+            &quot;alpha_edges&quot;: [1, 1, 1],
+            &quot;gamma_edges&quot;: [0.5, 0.5, 0.5],
+            &quot;b&quot;: b,
+            &quot;c&quot;: c,
+            &quot;beta&quot;: beta,
+            &quot;C&quot;: C,
+            &quot;trace_rho_12&quot;: float(np.trace(rho_12).real),
+            &quot;expectation_X1X2&quot;: expectation_xx_12,
+            &quot;purity_q2&quot;: purity_12,
+            &quot;rho_12_eigenvalues&quot;: np.linalg.eigvalsh(rho_12).tolist(),
+        },
+        indent=2,
+    )
+)
+</pre><p><a href="../assets/78c574886eb1be366c878fac567e74a86cf446bb317b4de073efba73b88414bb.py">Exact original</a></p></html>

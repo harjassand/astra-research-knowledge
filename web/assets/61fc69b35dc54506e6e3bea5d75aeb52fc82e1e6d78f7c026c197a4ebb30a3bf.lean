@@ -1,0 +1,312 @@
+import Mathlib.Analysis.SpecialFunctions.Pow.Real
+import Mathlib.Analysis.SpecialFunctions.Pow.Continuity
+import N33Affine.AffineCore
+import N33Affine.SliceFamily
+import N33Affine.B2Mechanism
+
+noncomputable section
+
+open Filter Topology Set
+
+namespace N33Affine
+
+/- Given activity against a finite full family, a same-embedding copy of the
+lower family, and a flat baseline, this is the exact lower-dimensional
+inheritance step. It keeps the sequence approximants unrestricted. -/
+theorem stage_local_approximation_of_off_bounds
+    {m k : ℕ} {a b t β : ℝ} {E : (Fin m → ℝ) → ℝ}
+    (S : SliceSystem m k t β b E) (e : Fin k ↪ Fin m)
+    (Ffinal : FiniteFamily m)
+    (map : (S.input e).family.Index ↪ Ffinal.Index)
+    (hmap : ∀ j, Ffinal.label (map j) =
+      liftLabel t β e ((S.input e).family.label j))
+    (j : (S.input e).family.Index) (jbase : Ffinal.Index)
+    (hbase : Ffinal.label jbase = baselineLabel t)
+    (hβt : t < β)
+    (hSeq : ℕ → ℝ) (pSeq : ℕ → Fin m → ℝ) (p : Fin m → ℝ)
+    (hh : Tendsto hSeq atTop (nhdsWithin 0 (Set.Ioi 0)))
+    (hp : Tendsto pSeq atTop (nhds p))
+    (hpCube : InCube a b p)
+    (hactive : ∀ᶠ n in atTop, Active Ffinal.label (map j) (hSeq n) (pSeq n))
+    (hOff : ∀ i, i ∉ raisedCoords e →
+      |p i - (liftLabel t β e ((S.input e).family.label j)).slope i| <
+        E ((liftLabel t β e ((S.input e).family.label j)).slope)) :
+    ∀ i, |p i - (liftLabel t β e ((S.input e).family.label j)).slope i| <
+      E ((liftLabel t β e ((S.input e).family.label j)).slope) := by
+  intro i
+  by_cases hi : i ∈ raisedCoords e
+  · obtain ⟨u, hu, rfl⟩ := Finset.mem_map.mp hi
+    have hbaseActive : ∀ᶠ n in atTop,
+        value (liftLabel t β e ((S.input e).family.label j)) (hSeq n) (pSeq n) ≤
+          value (baselineLabel t) (hSeq n) (pSeq n) := by
+      filter_upwards [hactive] with n hn
+      simpa only [hmap j, hbase] using hn jbase
+    have hRaised := active_lift_forces_raised_limits t β b e
+      ((S.input e).family.label j) hβt ((S.input e).slope_box j)
+      ((S.input e).littleO j) hh hp hbaseActive
+    have hlocalActive' : ∀ᶠ n in atTop,
+        Active (S.input e).family.label j (hSeq n) (fun v => pSeq n (e v)) := by
+      have hLift : ∀ᶠ n in atTop,
+          Active (fun j' => liftLabel t β e ((S.input e).family.label j'))
+            j (hSeq n) (pSeq n) := by
+        filter_upwards [hactive] with n hn
+        intro j'
+        calc
+          value (liftLabel t β e ((S.input e).family.label j)) (hSeq n) (pSeq n) =
+              value (Ffinal.label (map j)) (hSeq n) (pSeq n) := by rw [hmap j]
+          _ ≤ value (Ffinal.label (map j')) (hSeq n) (pSeq n) := hn (map j')
+          _ = value (liftLabel t β e ((S.input e).family.label j')) (hSeq n) (pSeq n) := by
+            rw [hmap j']
+      filter_upwards [hLift] with n hn
+      exact (active_liftLabel_iff t β (hSeq n) e
+        (S.input e).family.label j (pSeq n)).mp hn
+    have hpRestricted : Tendsto (fun n v => pSeq n (e v)) atTop
+        (nhds (fun v => p (e v))) := by
+      have hcont : Continuous (fun x : (Fin m → ℝ) => fun v : Fin k => x (e v)) :=
+        continuous_pi fun v => continuous_apply (e v)
+      exact hcont.continuousAt.tendsto.comp hp
+    have hcubeRestricted : InCube β b (fun v => p (e v)) := by
+      intro v
+      exact ⟨hRaised v, (hpCube (e v)).2⟩
+    have happrox := (S.input e).approx j hSeq
+      (fun n v => pSeq n (e v)) (fun v => p (e v)) hh hpRestricted
+      hcubeRestricted hlocalActive'
+    simpa only [lifted_slope_on] using happrox u
+  · exact hOff i hi
+
+/- A next-type family excludes an unraised limiting coordinate above the
+next threshold. The supplied maps preserve every next-type competitor, so the
+argument retains weak activity against all labels and all ties. -/
+theorem stage_off_coordinate_le_next_threshold
+    {m k : ℕ} {b t β q : ℝ} {E : (Fin m → ℝ) → ℝ}
+    (S : SliceSystem m k t β b E) (Snext : SliceSystem m (k + 1) t q b E)
+    (e : Fin k ↪ Fin m)
+    (Ffinal : FiniteFamily m)
+    (map : (S.input e).family.Index ↪ Ffinal.Index)
+    (hmap : ∀ j, Ffinal.label (map j) =
+      liftLabel t β e ((S.input e).family.label j))
+    (nextMap : ∀ f : Fin (k + 1) ↪ Fin m,
+      (Snext.input f).family.Index ↪ Ffinal.Index)
+    (hnextMap : ∀ (f : Fin (k + 1) ↪ Fin m) (j),
+      Ffinal.label (nextMap f j) =
+        liftLabel t q f ((Snext.input f).family.label j))
+    (j : (S.input e).family.Index) (qβ : q < β) (tq : t < q)
+    (hSeq : ℕ → ℝ) (pSeq : ℕ → Fin m → ℝ) (p : Fin m → ℝ)
+    (hh : Tendsto hSeq atTop (nhdsWithin 0 (Set.Ioi 0)))
+    (hp : Tendsto pSeq atTop (nhds p))
+    (hactive : ∀ᶠ n in atTop, Active Ffinal.label (map j) (hSeq n) (pSeq n))
+    (hRaised : ∀ i, β ≤ p (e i))
+    {r : Fin m} (hr : r ∉ raisedCoords e) : p r ≤ q := by
+  by_contra hnot
+  have hrq : q < p r := lt_of_not_ge hnot
+  let eNext := extendEmbedding e r hr
+  let Fnext := Snext.input eNext
+  obtain ⟨jnext⟩ := Fnext.family.nonempty
+  have hactiveNext : ∀ᶠ n in atTop,
+      value (liftLabel t β e ((S.input e).family.label j)) (hSeq n) (pSeq n) ≤
+        value (liftLabel t q eNext (Fnext.family.label jnext)) (hSeq n) (pSeq n) := by
+    filter_upwards [hactive] with n hn
+    have hle := hn (nextMap eNext jnext)
+    rw [hmap j, hnextMap eNext jnext] at hle
+    exact hle
+  have hsupport : ∀ i : Fin (k + 1), q < p (eNext i) := by
+    refine Fin.lastCases ?_ (fun i => ?_)
+    · simpa [eNext] using hrq
+    · have hpi := hRaised i
+      simpa [eNext] using lt_of_lt_of_le qβ hpi
+  exact no_active_lift_with_next_above t q β b qβ tq e eNext
+    (S.input e) j (Snext.input eNext) jnext hsupport hh hp hactiveNext
+
+private theorem stage_active_raised_limits
+    {m k : ℕ} {b t β : ℝ} {E : (Fin m → ℝ) → ℝ}
+    (S : SliceSystem m k t β b E) (e : Fin k ↪ Fin m)
+    (Ffinal : FiniteFamily m)
+    (map : (S.input e).family.Index ↪ Ffinal.Index)
+    (hmap : ∀ j, Ffinal.label (map j) =
+      liftLabel t β e ((S.input e).family.label j))
+    (j : (S.input e).family.Index) (jbase : Ffinal.Index)
+    (hbase : Ffinal.label jbase = baselineLabel t)
+    (hβt : t < β)
+    (hSeq : ℕ → ℝ) (pSeq : ℕ → Fin m → ℝ) (p : Fin m → ℝ)
+    (hh : Tendsto hSeq atTop (nhdsWithin 0 (Set.Ioi 0)))
+    (hp : Tendsto pSeq atTop (nhds p))
+    (hactive : ∀ᶠ n in atTop, Active Ffinal.label (map j) (hSeq n) (pSeq n)) :
+    ∀ i, β ≤ p (e i) := by
+  have hbaseActive : ∀ᶠ n in atTop,
+      value (liftLabel t β e ((S.input e).family.label j)) (hSeq n) (pSeq n) ≤
+        value (baselineLabel t) (hSeq n) (pSeq n) := by
+    filter_upwards [hactive] with n hn
+    simpa only [hmap j, hbase] using hn jbase
+  exact active_lift_forces_raised_limits t β b e
+    ((S.input e).family.label j) hβt ((S.input e).slope_box j)
+    ((S.input e).littleO j) hh hp hbaseActive
+
+private lemma stage_finset_sum_mul_div {ι : Type*} [Fintype ι]
+    (a b : ι → ℝ) (d : ℝ) :
+    (∑ i, a i * b i) / d = ∑ i, a i * (b i / d) := by
+  classical
+  rw [div_eq_mul_inv, Finset.sum_mul]
+  apply Finset.sum_congr rfl
+  intro i hi
+  ring
+
+theorem no_baseline_activity_when_all_exponents_above
+    {m k : ℕ} {t β : ℝ} {hSeq : ℕ → ℝ}
+    {pSeq : ℕ → Fin m → ℝ} {p : Fin m → ℝ}
+    (e : Fin k ↪ Fin m) (ℓ : Label k)
+    (hh : Tendsto hSeq atTop (nhdsWithin 0 (Set.Ioi 0)))
+    (hp : Tendsto pSeq atTop (nhds p))
+    (hbump : LittleO ℓ.bump β)
+    (hsupport : ∀ i, β < p (e i))
+    (hactive : ∀ᶠ n in atTop,
+      value (baselineLabel t) (hSeq n) (pSeq n) ≤
+        value (liftLabel t β e ℓ) (hSeq n) (pSeq n)) : False := by
+  have hpCoord : ∀ i : Fin k,
+      Tendsto (fun n => pSeq n (e i)) atTop (nhds (p (e i))) := by
+    intro i
+    simpa using ((continuous_apply (e i)).tendsto p).comp hp
+  have hsmall := NextTypeAsymptotic.finite_rpow_sum_add_littleO_tendsto_zero
+    (h := hSeq) (q := β) (p := fun i n => pSeq n (e i))
+    (p₀ := fun i => p (e i))
+    (c := fun i => ℓ.slope i - t) (d := ℓ.bump)
+    hh hpCoord hsupport hbump
+  have hnorm : Tendsto
+      (fun n => (value (liftLabel t β e ℓ) (hSeq n) (pSeq n) -
+        value (baselineLabel t) (hSeq n) (pSeq n)) /
+          Real.rpow (hSeq n) β) atTop (nhds (-1)) := by
+    have hpos : ∀ᶠ n in atTop, 0 < hSeq n := by
+      exact hh.eventually
+        (show ∀ᶠ x in nhdsWithin 0 (Set.Ioi 0), 0 < x from self_mem_nhdsWithin)
+    have heq : (fun n =>
+        (value (liftLabel t β e ℓ) (hSeq n) (pSeq n) -
+          value (baselineLabel t) (hSeq n) (pSeq n)) /
+            Real.rpow (hSeq n) β) =ᶠ[atTop]
+        (fun n =>
+          (∑ i : Fin k, (ℓ.slope i - t) *
+            (Real.rpow (hSeq n) (pSeq n (e i)) / Real.rpow (hSeq n) β)) +
+            ℓ.bump (hSeq n) / Real.rpow (hSeq n) β - 1) := by
+      filter_upwards [hpos] with n hn
+      have hden : Real.rpow (hSeq n) β ≠ 0 :=
+        (Real.rpow_pos_of_pos hn β).ne'
+      rw [value_liftLabel_sub_baseline, sub_div, add_div,
+        stage_finset_sum_mul_div, div_self hden]
+    have h := hsmall.sub_const (1 : ℝ)
+    have h' := h.congr' heq.symm
+    simpa using h'
+  have hbelow : ∀ᶠ n in atTop,
+      (value (liftLabel t β e ℓ) (hSeq n) (pSeq n) -
+        value (baselineLabel t) (hSeq n) (pSeq n)) /
+          Real.rpow (hSeq n) β < -1 / 2 :=
+    (tendsto_order.1 hnorm).2 (-1 / 2) (by norm_num)
+  have hpos : ∀ᶠ n in atTop, 0 < hSeq n := by
+    exact hh.eventually
+      (show ∀ᶠ x in nhdsWithin 0 (Set.Ioi 0), 0 < x from self_mem_nhdsWithin)
+  have hnonneg : ∀ᶠ n in atTop,
+      0 ≤ (value (liftLabel t β e ℓ) (hSeq n) (pSeq n) -
+        value (baselineLabel t) (hSeq n) (pSeq n)) /
+          Real.rpow (hSeq n) β := by
+    filter_upwards [hactive, hpos] with n hact hn
+    exact div_nonneg (sub_nonneg.mpr hact) (Real.rpow_pos_of_pos hn β).le
+  obtain ⟨n, hn⟩ := (hbelow.and hnonneg).exists
+  have hlt0 :
+      (value (liftLabel t β e ℓ) (hSeq n) (pSeq n) -
+        value (baselineLabel t) (hSeq n) (pSeq n)) /
+        Real.rpow (hSeq n) β < 0 := by
+    exact lt_trans hn.1 (by norm_num)
+  exact (not_lt_of_ge hn.2) hlt0
+
+theorem stage_local_approximation_of_next_stage
+    {m k : ℕ} {a b t β q : ℝ} {E : (Fin m → ℝ) → ℝ}
+    (S : SliceSystem m k t β b E) (Snext : SliceSystem m (k + 1) t q b E)
+    (e : Fin k ↪ Fin m)
+    (Ffinal : FiniteFamily m)
+    (map : (S.input e).family.Index ↪ Ffinal.Index)
+    (hmap : ∀ j, Ffinal.label (map j) =
+      liftLabel t β e ((S.input e).family.label j))
+    (nextMap : ∀ f : Fin (k + 1) ↪ Fin m,
+      (Snext.input f).family.Index ↪ Ffinal.Index)
+    (hnextMap : ∀ (f : Fin (k + 1) ↪ Fin m) (j),
+      Ffinal.label (nextMap f j) =
+        liftLabel t q f ((Snext.input f).family.label j))
+    (j : (S.input e).family.Index) (jbase : Ffinal.Index)
+    (hbase : Ffinal.label jbase = baselineLabel t)
+    (qβ : q < β) (tq : t < q)
+    (hqmargin : q - t <
+      E ((liftLabel t β e ((S.input e).family.label j)).slope))
+    (hSeq : ℕ → ℝ) (pSeq : ℕ → Fin m → ℝ) (p : Fin m → ℝ)
+    (hh : Tendsto hSeq atTop (nhdsWithin 0 (Set.Ioi 0)))
+    (hp : Tendsto pSeq atTop (nhds p))
+    (hpCube : InCube a b p) (hpMin : AtMinSlice p t)
+    (hactive : ∀ᶠ n in atTop, Active Ffinal.label (map j) (hSeq n) (pSeq n)) :
+    ∀ i, |p i - (liftLabel t β e ((S.input e).family.label j)).slope i| <
+      E ((liftLabel t β e ((S.input e).family.label j)).slope) := by
+  let ℓ := (S.input e).family.label j
+  have hRaised := stage_active_raised_limits S e Ffinal map hmap j jbase
+    hbase (lt_trans tq qβ) hSeq pSeq p hh hp hactive
+  have hOff : ∀ i, i ∉ raisedCoords e →
+      |p i - (liftLabel t β e ℓ).slope i| < E ((liftLabel t β e ℓ).slope) := by
+    intro i hi
+    have hple := stage_off_coordinate_le_next_threshold S Snext e Ffinal
+      map hmap nextMap hnextMap j qβ tq hSeq pSeq p hh hp hactive hRaised hi
+    have hpt := hpMin.1 i
+    have habs : |p i - t| = p i - t := abs_of_nonneg (sub_nonneg.mpr hpt)
+    have hbound : |p i - t| < E ((liftLabel t β e ℓ).slope) := by
+      rw [habs]
+      exact lt_of_le_of_lt (sub_le_sub_right hple t) hqmargin
+    have hflat := lifted_slope_off t β e ℓ i (by
+      intro u hui
+      exact hi (Finset.mem_map.mpr ⟨u, Finset.mem_univ u, hui⟩))
+    simpa [hflat] using hbound
+  simpa [ℓ] using (stage_local_approximation_of_off_bounds S e Ffinal map hmap j jbase
+    hbase (lt_trans tq qβ) hSeq pSeq p hh hp hpCube hactive hOff)
+
+theorem stage_local_approximation_of_terminal_stage
+    {m k : ℕ} {a b t β : ℝ} {E : (Fin m → ℝ) → ℝ}
+    (S : SliceSystem m k t β b E) (e : Fin k ↪ Fin m)
+    (Ffinal : FiniteFamily m)
+    (map : (S.input e).family.Index ↪ Ffinal.Index)
+    (hmap : ∀ j, Ffinal.label (map j) =
+      liftLabel t β e ((S.input e).family.label j))
+    (j : (S.input e).family.Index) (jbase : Ffinal.Index)
+    (hbase : Ffinal.label jbase = baselineLabel t)
+    (hβt : t < β) (hkm : k + 1 = m)
+    (hE : 0 < E ((liftLabel t β e ((S.input e).family.label j)).slope))
+    (hSeq : ℕ → ℝ) (pSeq : ℕ → Fin m → ℝ) (p : Fin m → ℝ)
+    (hh : Tendsto hSeq atTop (nhdsWithin 0 (Set.Ioi 0)))
+    (hp : Tendsto pSeq atTop (nhds p))
+    (hpCube : InCube a b p) (hpMin : AtMinSlice p t)
+    (hactive : ∀ᶠ n in atTop, Active Ffinal.label (map j) (hSeq n) (pSeq n)) :
+    ∀ i, |p i - (liftLabel t β e ((S.input e).family.label j)).slope i| <
+      E ((liftLabel t β e ((S.input e).family.label j)).slope) := by
+  let ℓ := (S.input e).family.label j
+  have hRaised := stage_active_raised_limits S e Ffinal map hmap j jbase
+    hbase hβt hSeq pSeq p hh hp hactive
+  have hOff : ∀ i, i ∉ raisedCoords e →
+      |p i - (liftLabel t β e ℓ).slope i| < E ((liftLabel t β e ℓ).slope) := by
+    intro i hi
+    obtain ⟨jmin, hjmin⟩ := hpMin.2
+    have hjminOff : jmin ∉ raisedCoords e := by
+      intro hj
+      obtain ⟨u, -, hu⟩ := Finset.mem_map.mp hj
+      have := hRaised u
+      have hpj : β ≤ p jmin := by simpa [hu] using this
+      linarith [hjmin]
+    have hRaisedCard : (raisedCoords e).card = k := by
+      rw [raisedCoords, Finset.card_map, Finset.card_univ, Fintype.card_fin]
+    have hComplCard : (raisedCoords e)ᶜ.card = 1 := by
+      rw [Finset.card_compl, hRaisedCard, Fintype.card_fin, ← hkm]
+      omega
+    obtain ⟨r0, hr0⟩ := Finset.card_eq_one.mp hComplCard
+    have hiMem : i ∈ (raisedCoords e)ᶜ := Finset.mem_compl.mpr hi
+    have hjMem : jmin ∈ (raisedCoords e)ᶜ := Finset.mem_compl.mpr hjminOff
+    have hiEq : i = r0 := by simpa [hr0] using hiMem
+    have hjEq : jmin = r0 := by simpa [hr0] using hjMem
+    have hpit : p i = t := by rw [hiEq, ← hjEq]; exact hjmin
+    have hflat := lifted_slope_off t β e ℓ i (by
+      intro u hui
+      exact hi (Finset.mem_map.mpr ⟨u, Finset.mem_univ u, hui⟩))
+    simpa [hpit, hflat] using hE
+  simpa [ℓ] using (stage_local_approximation_of_off_bounds S e Ffinal map hmap j jbase
+    hbase hβt hSeq pSeq p hh hp hpCube hactive hOff)
+
+end N33Affine

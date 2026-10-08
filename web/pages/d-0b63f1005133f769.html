@@ -1,0 +1,69 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c12_spin_uniform/r0_augmented_seed_check_n7.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c12_spin_uniform/r0_augmented_seed_check_n7.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact Spin(15) r=0 check using the original seeds plus one attained state.&quot;&quot;&quot;
+from __future__ import annotations
+
+from itertools import combinations
+from pathlib import Path
+import json
+import sympy as sp
+
+import r0_seed_cone_probe as base
+
+
+def main():
+    n = 7
+    cert_path = Path(__file__).with_name(&#x27;spin15_rational_seed_certificate.json&#x27;)
+    cert = json.loads(cert_path.read_text())
+    vertices = [
+        sp.Matrix([base.moment(n, h, k) for k in range(1, n + 1)])
+        for h in range(n + 1)
+    ]
+    vertices.append(sp.Matrix([sp.Rational(x) for x in cert[&#x27;grade_moments&#x27;]]))
+    cones = base.support_cones(vertices, n)
+    rays = sorted(set().union(*(r for _, r in cones)))
+    F = base.recoupling(n)
+    Ds = [base.grade_diagonal(n, k) for k in range(1, n + 1)]
+    trace = sp.Matrix([sp.binomial(2 * n + 1, k) for k in range(1, n + 1)])
+    failures = []
+    checks = 0
+    minors = 0
+    for ray in rays:
+        alpha = sp.Matrix(ray)
+        support_values = [v.dot(alpha) for v in vertices]
+        support = max(support_values)
+        winners = [j for j, x in enumerate(support_values) if x == support]
+        bound = trace.dot(alpha) + support
+        D = sum((alpha[k] * Ds[k] for k in range(n)), sp.zeros(n + 1))
+        H = sp.simplify(D + F * D * F)
+        gap = sp.simplify(bound * sp.eye(n + 1) - H)
+        ok, checked, witness = base.psd_principal_minors(gap)
+        checks += 1
+        minors += checked
+        if not ok:
+            failures.append({
+                &#x27;ray&#x27;: list(ray),
+                &#x27;winner_indices&#x27;: winners,
+                &#x27;seed_support&#x27;: str(support),
+                &#x27;trace&#x27;: str(trace.dot(alpha)),
+                &#x27;bound&#x27;: str(bound),
+                &#x27;witness&#x27;: witness,
+            })
+    result = {
+        &#x27;status&#x27;: &#x27;PASS_EXACT_R0_AUGMENTED_SEEDS&#x27; if not failures else &#x27;FAIL_EXACT_R0_AUGMENTED_SEEDS&#x27;,
+        &#x27;n&#x27;: n,
+        &#x27;attained_seed_count&#x27;: len(vertices),
+        &#x27;support_cone_ray_counts&#x27;: [len(r) for _, r in cones],
+        &#x27;distinct_rays&#x27;: len(rays),
+        &#x27;ray_block_checks&#x27;: checks,
+        &#x27;principal_minor_checks&#x27;: minors,
+        &#x27;failures&#x27;: failures,
+        &#x27;scope&#x27;: &#x27;Exact r=0 block only; support lower bounded by nine explicitly attained pure spinors; no all-r or all-n claim.&#x27;,
+    }
+    out = Path(__file__).with_name(&#x27;r0_augmented_seed_check_n7.json&#x27;)
+    out.write_text(json.dumps(result, indent=2) + &#x27;\n&#x27;)
+    print(json.dumps(result, indent=2))
+
+
+if __name__ == &#x27;__main__&#x27;:
+    main()
+</pre><p><a href="../assets/5efe54101c15c9a6ffd0c5e649ebd25dd8e0461e8b87599528da23d4e47680d1.py">Exact original</a></p></html>

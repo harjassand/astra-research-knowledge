@@ -1,0 +1,191 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c4_rational_applications/cycle8_private_fuel_leakage/stoichiometric_gate.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c4_rational_applications/cycle8_private_fuel_leakage/stoichiometric_gate.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact carbon bounds and transfer thresholds for the CDT-1/GH1-1 route.
+
+The measured 5 mM U-13C12-cellobiose pulse in the Miller et al. source is an
+initial substrate concentration, not a measured uptake or secretion flux.
+All outputs below are therefore stoichiometric limits or symbolic assay gates,
+not estimates of actual T-cell leakage.
+&quot;&quot;&quot;
+
+from fractions import Fraction
+import json
+
+
+def max_lactate_mM(cellobiose_feed_mM, uptake_fraction=Fraction(1),
+                   lactate_branch_fraction=Fraction(1)):
+    &quot;&quot;&quot;Upper lactate concentration (mM) for batch feed and stated fractions.
+
+    One cellobiose yields two C6 glucose units; full conversion to lactate
+    yields four C3 lactate molecules.  Fractions refer to substrate consumed
+    and carbon routed to lactate, respectively.
+    &quot;&quot;&quot;
+    feed = Fraction(cellobiose_feed_mM)
+    uptake = Fraction(uptake_fraction)
+    branch = Fraction(lactate_branch_fraction)
+    if feed &lt; 0 or not (0 &lt;= uptake &lt;= 1) or not (0 &lt;= branch &lt;= 1):
+        raise ValueError(&quot;feed must be nonnegative and fractions in [0, 1]&quot;)
+    return 4 * feed * uptake * branch
+
+
+def tumor_glucose_equivalent_flux(q_cellobiose_per_effector_h,
+                                  effector_to_target_ratio,
+                                  lactate_export_fraction,
+                                  target_capture_fraction):
+    &quot;&quot;&quot;Tumor-available glucose equivalents per target per hour.
+
+    q is mol cellobiose / effector / h.  Two C6 glucose equivalents are
+    available per cellobiose.  This is a carbon-equivalent comparison; it does
+    not claim equal ATP yield from lactate and glucose.
+    &quot;&quot;&quot;
+    q = Fraction(q_cellobiose_per_effector_h)
+    ratio = Fraction(effector_to_target_ratio)
+    export = Fraction(lactate_export_fraction)
+    capture = Fraction(target_capture_fraction)
+    if min(q, ratio) &lt; 0 or not (0 &lt;= export &lt;= 1) or not (0 &lt;= capture &lt;= 1):
+        raise ValueError(&quot;flux/ratio must be nonnegative and fractions in [0, 1]&quot;)
+    return 2 * q * ratio * export * capture
+
+
+def required_export_fraction(target_deficit_glucose_eq_per_target_h,
+                             q_cellobiose_per_effector_h,
+                             effector_to_target_ratio,
+                             target_capture_fraction):
+    &quot;&quot;&quot;Required cellobiose-carbon-to-lactate fraction for a target flux gate.&quot;&quot;&quot;
+    deficit = Fraction(target_deficit_glucose_eq_per_target_h)
+    q = Fraction(q_cellobiose_per_effector_h)
+    ratio = Fraction(effector_to_target_ratio)
+    capture = Fraction(target_capture_fraction)
+    if deficit &lt; 0 or min(q, ratio) &lt; 0 or not (0 &lt;= capture &lt;= 1):
+        raise ValueError(&quot;deficit/flux/ratio must be nonnegative; capture in [0, 1]&quot;)
+    capacity = 2 * q * ratio * capture
+    if capacity == 0:
+        return None
+    return deficit / capacity
+
+
+
+
+def tracer_mass_mg(cellobiose_mM, sample_volume_mL, labeled_sample_count,
+                   molecular_weight_g_mol=Fraction(35421, 100)):
+    &quot;&quot;&quot;Nominal U-13C12-cellobiose mass required for a batch of tracer samples.&quot;&quot;&quot;
+    concentration = Fraction(cellobiose_mM)
+    volume = Fraction(sample_volume_mL)
+    count = Fraction(labeled_sample_count)
+    molecular_weight = Fraction(molecular_weight_g_mol)
+    if min(concentration, volume, count, molecular_weight) &lt; 0:
+        raise ValueError(&quot;concentration, volume, count, and molecular weight must be nonnegative&quot;)
+    # mM * g/mol = mg/L; mL to L contributes the factor 1/1000.
+    return concentration * molecular_weight * volume * count / 1000
+
+
+def target_available_fraction(lactate_export_fraction, target_capture_fraction):
+    &quot;&quot;&quot;Share of consumed carbon reaching targets through the lactate branch.&quot;&quot;&quot;
+    export = Fraction(lactate_export_fraction)
+    capture = Fraction(target_capture_fraction)
+    if not (0 &lt;= export &lt;= 1) or not (0 &lt;= capture &lt;= 1):
+        raise ValueError(&quot;export and capture fractions must be in [0, 1]&quot;)
+    return export * capture
+
+
+def interface_completion(cellobiose_mM, target_available_share):
+    &quot;&quot;&quot;Stoichiometric completion for any interface share in [0, 1].
+
+    Choose lactate export fraction equal to the requested share and target
+    capture equal to one. This is an outer-interface witness, not a fit to the
+    source&#x27;s full intracellular isotope measurements or T-cell kinetics.
+    &quot;&quot;&quot;
+    amount = Fraction(cellobiose_mM)
+    share = Fraction(target_available_share)
+    if amount &lt; 0 or not (0 &lt;= share &lt;= 1):
+        raise ValueError(&quot;feed must be nonnegative and share must be in [0, 1]&quot;)
+    carbon = 12 * amount
+    return {
+        &quot;cellobiose_feed_mM&quot;: amount,
+        &quot;carbon_input_mM&quot;: carbon,
+        &quot;lactate_export_fraction&quot;: share,
+        &quot;target_capture_fraction&quot;: Fraction(1),
+        &quot;target_available_carbon_mM&quot;: carbon * share,
+        &quot;other_carbon_mM&quot;: carbon * (1 - share),
+        &quot;lactate_export_mM&quot;: 4 * amount * share,
+    }
+
+
+def carbon_partition(cellobiose_mM, public_fraction):
+    &quot;&quot;&quot;Atom-balance split: public lactate carbon vs other carbon.&quot;&quot;&quot;
+    amount = Fraction(cellobiose_mM)
+    public = Fraction(public_fraction)
+    if amount &lt; 0 or not (0 &lt;= public &lt;= 1):
+        raise ValueError(&quot;cellobiose must be nonnegative; fraction in [0, 1]&quot;)
+    total_c = 12 * amount
+    return {
+        &quot;input_carbon_mM&quot;: total_c,
+        &quot;public_lactate_carbon_mM&quot;: total_c * public,
+        &quot;other_carbon_mM&quot;: total_c * (1 - public),
+        &quot;lactate_mM&quot;: 4 * amount * public,
+    }
+
+
+def main():
+    feed = Fraction(5)
+    assert max_lactate_mM(feed) == 20
+    assert max_lactate_mM(feed, Fraction(1), Fraction(1, 4)) == 5
+    no_leak = carbon_partition(feed, Fraction(0))
+    all_lactate = carbon_partition(feed, Fraction(1))
+    zero_transfer = target_available_fraction(Fraction(0), Fraction(1))
+    maximal_transfer = target_available_fraction(Fraction(1), Fraction(1))
+    zero_completion = interface_completion(feed, Fraction(0))
+    maximal_completion = interface_completion(feed, Fraction(1))
+    tracer_200uL_mg = tracer_mass_mg(Fraction(5), Fraction(1, 5), 120)
+    tracer_1mL_mg = tracer_mass_mg(Fraction(5), Fraction(1), 120)
+    assert no_leak[&quot;public_lactate_carbon_mM&quot;] == 0
+    assert all_lactate[&quot;other_carbon_mM&quot;] == 0
+    assert (no_leak[&quot;input_carbon_mM&quot;] == all_lactate[&quot;input_carbon_mM&quot;] == 60)
+    assert (zero_transfer, maximal_transfer) == (Fraction(0), Fraction(1))
+    result = {
+        &quot;status&quot;: &quot;stoichiometric ceiling only; no actual leak inferred&quot;,
+        &quot;source_pulse_cellobiose_mM&quot;: str(feed),
+        &quot;source_pulse_duration_h&quot;: 16,
+        &quot;carbon_atoms_input_mM&quot;: str(12 * feed),
+        &quot;glucose_equivalents_max_mM&quot;: str(2 * feed),
+        &quot;lactate_max_if_all_consumed_and_fermented_mM&quot;: str(
+            max_lactate_mM(feed)
+        ),
+        &quot;target_available_fraction_outer_envelope_from_reported_measurement_interface&quot;:
+            {&quot;lower&quot;: &quot;0&quot;, &quot;upper&quot;: &quot;1&quot;, &quot;supremum&quot;: &quot;1&quot;},
+        &quot;envelope_scope&quot;: (
+            &quot;Stoichiometric measurement-interface no-go; endpoints are not &quot;
+            &quot;claimed to fit every intracellular isotope peak exactly.&quot;
+        ),
+        &quot;missing_quantities&quot;: [
+            &quot;total cellobiose uptake in coculture&quot;,
+            &quot;species-resolved extracellular labeled-carbon balance&quot;,
+            &quot;target capture/use of secreted products&quot;,
+        ],
+        &quot;proton_symport_stoichiometry&quot;: &quot;1 H+ imported per cellobiose (source-reported)&quot;,
+        &quot;illustrative_acquisition_budget&quot;: {
+            &quot;media_sample_count&quot;: 240,
+            &quot;tracer_fed_sample_count&quot;: 120,
+            &quot;labeled_cellobiose_molecular_weight_g_mol&quot;: &quot;354.21&quot;,
+            &quot;nominal_tracer_mass_mg_at_200uL_per_tracer_sample&quot;: str(tracer_200uL_mg),
+            &quot;nominal_tracer_mass_mg_at_1mL_per_tracer_sample&quot;: str(tracer_1mL_mg),
+            &quot;excludes&quot;: [&quot;standards&quot;, &quot;dead volume&quot;, &quot;pilot losses&quot;, &quot;repeats&quot;],
+            &quot;vendor_price&quot;: &quot;quote-only&quot;,
+        },
+        &quot;example_fraction_for_5mM_lactate&quot;: str(Fraction(5, 20)),
+        &quot;example_fraction_for_10mM_lactate&quot;: str(Fraction(10, 20)),
+        &quot;examples_are_not_empirical_thresholds&quot;: True,
+        &quot;measurement_interface_completion_witnesses_not_full_isotope_fits&quot;: {
+            &quot;zero_transfer&quot;: {k: str(v) for k, v in zero_completion.items()},
+            &quot;upper_limit&quot;: {k: str(v) for k, v in maximal_completion.items()},
+            &quot;target_available_fraction_endpoints&quot;: {
+                &quot;zero&quot;: str(zero_transfer),
+                &quot;upper_limit&quot;: str(maximal_transfer),
+            },
+        },
+    }
+    print(json.dumps(result, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/698c69d326b567f39e104f22788f2fa319649d190250e15a0c4ba1984cafd724.py">Exact original</a></p></html>

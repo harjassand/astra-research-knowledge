@@ -1,0 +1,309 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/acquisition_learning/cycle2/adaptive_trajectory_design/RESULT.md</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/acquisition_learning/cycle2/adaptive_trajectory_design/RESULT.md</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre># Feedback acquisition of an observable predictive model in a controlled HMM
+
+**Cycle 2 leaf. Status: theorem proved for the explicit finite family; general
+unknown-basis acquisition remains UNKNOWN.** The construction uses only ordinary
+binary observations from actual reset trajectories. It has no state-label,
+membership-query, conditional-distribution, or state-clamping interface.
+
+## Finding and boundary
+
+For a two-state controlled HMM, selecting the action after seeing the first
+noisy output increases the information in each complete two-symbol trajectory
+about a task-relevant observable prediction table. The policy that copies the
+first observation into the action is Blackwell-optimal among feedback
+policies and has per-trajectory KL divergence `K(d)`. Every action selected
+before the current episode&#x27;s first observation, even with full use and
+retention of prior raw data, induces the same less informative context-mixture
+experiment, with per-trajectory KL divergence
+`K_F = (K(d)+K(ell))/2 &lt; K(d)`. The exact finite-sample minimax risks are
+displayed below; their asymptotic error exponents are also strictly separated.
+
+The transfer claim is conditional on the specified model class: the four
+observable one-step predictions lie on a known one-dimensional affine family,
+and the data identify its unknown sign. If the off-diagonal predictions are
+free parameters, the feedback policy never selects those contexts and cannot
+identify them. Thus this is not an unknown-rank or unknown-dictionary theorem;
+it is a raw-trajectory active-design theorem for a known controlled-HMM
+family whose hidden states and state basis are never given to the learner.
+
+## Process and legal interface
+
+Fix known rationals `epsilon` and `gamma` with `0 &lt; epsilon &lt; 1/2` and
+`0 &lt; gamma &lt;= 1/2`. The only unknown is `theta in {+1,-1}`. Each episode starts
+with a charged reset and fresh hidden state `S0 ~ Uniform{0,1}`. The learner
+observes
+
+```text
+Y0 = S0 xor N0,       N0 ~ Bernoulli(epsilon),
+```
+
+then chooses one action `A in {0,1}`. The controlled transition and second
+emission are
+
+```text
+P_theta(S1=1 | S0=s,A=a) = 1/2 + theta*gamma/2 * 1{a=s},
+Y1 = S1 xor N1,       N1 ~ Bernoulli(epsilon),
+```
+
+with fresh independent `N1`. Every transition and emission probability is
+strictly between zero and one. The controller observes only
+`(Y0,A,Y1)`; `S0,S1` are never revealed. Episodes reset independently. A
+feedback policy chooses `A` after observing current `Y0`. A pre-observation
+policy may be randomized and may use all earlier episode records, but must
+choose the current `A` before seeing current `Y0`. It receives the same raw
+symbols, action log, reset schedule, and model-class description as feedback.
+Both can use the full retained trajectory data in their estimators.
+
+There is no blank token, pulse/erasure response, oracle query, or hidden-state
+intervention. Each episode is exactly one reset, two observed bits, one action,
+and one recorded action bit. The shared public model description includes
+`epsilon`, `gamma`, the alphabets, and the transition/emission rule; it does
+not include a state trajectory or a state-space coordinate basis.
+
+## Observable target and downstream transfer
+
+Let `lambda = gamma*(1-2*epsilon)`, `d=lambda*(1-epsilon)`, and
+`ell=lambda*epsilon`, so `0 &lt; ell &lt; d &lt;= 1/2`. For every visible first symbol
+`y` and forced action `a`, define the observable controlled prediction
+
+```text
+psi_theta(y,a) = P_theta(Y1=1 | Y0=y, do(A=a))
+               = 1/2 + theta*lambda/2 * (1-epsilon if a=y else epsilon).
+```
+
+This is a four-cell next-observation model, not a hidden-state estimate. In
+vector form it is `psi_theta = (1/2)*1 + theta*v`, with
+`v[y,a] = lambda/2 * ((1-epsilon)1{a=y} + epsilon*1{a!=y})`. The table is
+learned by deciding which of its two endpoints is the true predictive model.
+After training, it predicts the next symbol for all four `(y,a)` contexts,
+including the mismatched contexts not selected by the acquisition policy
+`A=Y0`.
+
+Use loss
+
+```text
+L(phat,theta) = 1{ max_(y,a) TV(Bernoulli(phat[y,a]),
+                                 Bernoulli(psi_theta(y,a))) &gt; d/3 }.
+```
+
+The max-cell-TV distance between `psi_+` and `psi_-` is `d`; their radius
+`d/3` balls are disjoint. Therefore any successful table estimator induces a
+correct test of `theta`, and a correct sign estimate outputs a successful
+table. The prediction problem and binary identification have the same
+minimax error.
+
+## Theorem: feedback versus pre-observation action design
+
+For `x in (0,1)`, set
+
+```text
+K(x) = x*log((1+x)/(1-x)),
+b(x) = sqrt(1-x^2),
+C_A = -log b(d),
+C_F = -log((b(d)+b(ell))/2).
+```
+
+For each episode, the full observable transcript likelihood, conditional on
+the controller&#x27;s action kernel `pi`, is
+
+```text
+P_theta(y0,a,y1 | h)
+ = (1/2) pi(a|h,y0) * (1 + theta*x(y0,a)*(2*y1-1))/2,
+x(y0,a) = d if a=y0, and ell otherwise.
+```
+
+Here `h` is the preceding raw history; under a pre-observation action kernel
+the action factor is `pi(a|h)`. This is the likelihood after summing over both
+hidden states.
+
+For `N` episodes, let `P_theta^pi` denote the complete law of the raw records,
+including actions. Then:
+
+1. **Best feedback information rate.** Every feedback policy satisfies
+   `D_KL(P_+^pi || P_-^pi) &lt;= N K(d)`. The policy `A_i=Y0_i` attains equality.
+   More strongly, its experiment Blackwell-dominates every feedback policy:
+   a low-signal response with strength `ell` is obtained by independently
+   flipping a high-signal response with probability
+   `(1-ell/d)/2`. Hence its full-data optimal sign test is minimax over all
+   feedback policies. Its exact risk is
+
+   ```text
+   R_N^A = 1/2 * sum_(z in {-1,+1}^N)
+                  min{ product_i (1+z_i*d)/2,
+                       product_i (1-z_i*d)/2 }.
+   ```
+
+   This is the symmetric binomial testing error for `N` independent
+   `Bernoulli((1+d)/2)` signs. In particular,
+   `R_N^A &lt;= (1/2)*exp(-N*C_A) &lt;= exp(-N*d^2/2)`, so an odd
+   `N &gt;= 2*d^(-2)*log(1/delta)` suffices for loss probability at most
+   `delta`.
+
+2. **Best pre-observation policy and full-data comparator.** Every policy
+   choosing each action before the current `Y0` (including randomized
+   schedules and policies adapting between episodes) induces the same
+   parameter-relevant iid observations: a fair context bit `M=1{A=Y0}` and a
+   response sign `Z=2Y1-1` with
+   `P_theta(Z=z|M)= (1+theta*z*x_M)/2`, where `x_1=d`, `x_0=ell`.
+   All action/observation logs are retained; they add no further information
+   because current `Y0` is fresh and the pre-action kernel is common to both
+   hypotheses. Thus the exact minimax full-data risk for every such policy is
+
+   ```text
+   R_N^F = 1/2 * sum_(m in {0,1}^N, z in {-1,+1}^N)
+                  min{ product_i (1/2)*(1+z_i*x_(m_i))/2,
+                       product_i (1/2)*(1-z_i*x_(m_i))/2 }.
+   ```
+
+   The fixed schedule `A_i=0` attains this experiment, so this is the best
+   pre-observation risk even against a full-data estimator. Its exact
+   per-episode KL is `K_F`, and its Bhattacharyya coefficient is
+   `(b(d)+b(ell))/2`; therefore
+   `R_N^F &lt;= (1/2)*exp(-N*C_F)`. For `0&lt;delta&lt;1/2`, the optimal episode
+   counts obey
+
+   ```text
+   N_A*(delta) = min{N : R_N^A &lt;= delta},
+   N_F*(delta) = min{N : R_N^F &lt;= delta},
+   N_A*(delta) &gt;= kl(1-delta || delta)/K(d),
+   N_F*(delta) &gt;= kl(1-delta || delta)/K_F,
+   N_A*(delta) &lt;= least odd N &gt;= 2*d^(-2)*log(1/delta),
+   N_F*(delta) &lt;= ceil(log(1/(2*delta))/C_F).
+   ```
+
+   `N_A*` ranges over all feedback policies and all estimators; `N_F*` ranges
+   over all pre-observation action policies and all estimators. The risk
+   formulas are exact and use the full trajectory likelihood, not a
+   compressed-statistic baseline.
+
+3. **Strict rate separation.** Since `d&gt;ell`, `K(d)&gt;K_F` and `C_A&gt;C_F`.
+   At fixed `epsilon,gamma`, both minimax sample complexities are
+   `Theta(log(1/delta))`, with strictly different per-trajectory KL and
+   Chernoff information. For `d,ell&lt;=1/2`, writing `S=d^2+ell^2`,
+
+   ```text
+   2x^2 &lt;= K(x) &lt;= (8/3)x^2,
+   S &lt;= K_F &lt;= (4/3)S,
+   S/4 &lt;= C_F &lt;= (2/3)S.
+   ```
+
+   By the iid binary-testing error-exponent theorem, the two exact risks have
+   exponents `C_A` and `C_F`. Thus the fixed-confidence rate scales as
+   `1/d^2` for feedback and `1/(d^2+ell^2)` for the pre-observation design,
+   up to universal constants in the small-signal regime. The exact KL ratio is
+   `K(d)/K_F = 2K(d)/(K(d)+K(ell)) &gt; 1`.
+
+### Proof
+
+Given `Y0=y`, Bayes&#x27; rule gives
+`P(S0=y|Y0=y)=1-epsilon` and
+`P(S0!=y|Y0=y)=epsilon`. The action matches the more likely hidden state
+exactly when `a=y`. Summing the transition and second-emission probabilities
+therefore gives
+`P_theta(Y1=1|Y0=y,A=a)=1/2+theta*lambda*w/2`, where `w` equals
+`1-epsilon` on a match and `epsilon` otherwise. This proves the displayed
+observable target and transcript likelihood.
+
+For a fixed context with signal `x`, the conditional laws of `Y1` under the
+two signs are Bernoulli `(1+x)/2` and Bernoulli `(1-x)/2`. Direct substitution
+gives KL `K(x)`, total variation `x`, and Bhattacharyya coefficient
+`b(x)=sqrt(1-x^2)`. Since `K` is strictly increasing on `(0,1)`, any
+history-dependent feedback kernel has conditional episode KL at most `K(d)`;
+the action and `Y0` kernels themselves are identical under both hypotheses.
+The chain rule gives the adaptive upper bound `N K(d)`, and `A=Y0` attains
+it with independent high-signal signs.
+
+For a pre-observation action, `Y0` is a fresh fair bit independent of the
+history and current action. Thus `M=1{A=Y0}` is a fresh fair bit even when the
+action kernel depends on earlier records. Conditional on `M`, the response
+sign has signal `d` or `ell`; the action kernel itself is the same under both
+hypotheses. The complete raw record is therefore a parameter-independent
+causal encoding of iid `(M,Z)` observations plus policy randomness. Every
+pre-observation policy has the same exact testing risk `R_N^F` and KL
+`N K_F`. For a fixed action, averaging the two context-specific
+Bhattacharyya coefficients gives `(b(d)+b(ell))/2`; independence across
+resets makes the `N`-episode coefficient its `N`th power. The equal-prior
+likelihood-ratio test has equal errors because flipping every `Y1` bit
+exchanges the hypotheses while preserving context/action data. Its error is
+at most half the coefficient.
+
+For feedback Blackwell dominance, the policy may first generate its `Y0`
+and action from the same parameter-independent kernels. If it selects a
+mismatched action, independently flip a high-signal response sign with
+probability `(1-ell/d)/2`; otherwise keep it. This produces exactly the
+required conditional response law for that policy, episode by episode, so
+the complete lower-information transcript is simulable from the
+`A=Y0` experiment and independent random bits. The best feedback experiment
+therefore has exact risk `R_N^A`. Finally, since each pair of one-episode
+laws has full support and is invariant under the sign-flip symmetry, the
+standard iid binary-testing exponent equals the negative log of its
+Bhattacharyya coefficient. This gives `C_A` and `C_F`.
+
+If an estimator succeeds under both signs with error at most `delta`, its
+success event defines a test whose two errors are at most `delta`. Data
+processing for relative entropy gives
+`D_KL(P_+||P_-) &gt;= kl(1-delta||delta)`, proving both lower bounds. For the
+adaptive upper bound, `A=Y0` makes `Z_i=2Y1_i-1` iid with mean `theta*d`.
+The sign of their sum has error at most `exp(-N*d^2/2)` by Hoeffding; odd `N`
+avoids ties. The fixed-design upper bound follows from the likelihood-ratio
+Chernoff bound above. Finally, `d&gt;ell` implies both strict information
+inequalities. The elementary displayed quadratic bounds follow from
+`2x &lt;= log((1+x)/(1-x)) &lt;= (8/3)x` and
+`x^2/2 &lt;= -log(1-x^2)/2 &lt;= 2x^2/3` for `0&lt;x&lt;=1/2`; applying
+`sqrt(1-x^2)&lt;=1-x^2/2` and `sqrt(1-x^2)&gt;=1-x^2` gives the bounds for `C_F`.
+
+## Why the transfer boundary matters
+
+The positive family ties the low-signal and high-signal cells through the
+single coefficient `theta`. This lets `A=Y0` fit a model that predicts the
+unqueried action-observation pairs. If that tying is removed, transfer is
+impossible under this acquisition rule. For example, at `epsilon=1/4`, replace
+the transition by
+
+```text
+P(S1=1 | S0=s,A=a)
+ = 1/2 + (alpha*1{a=s} + beta*1{a!=s})/2,
+```
+
+where `alpha,beta` are unknown and have absolute value at most `3/5`.
+The two parameter points `(alpha,beta)=(0,0)` and
+`(alpha,beta)=(1/5,-3/5)` both give the same diagonal training kernel when
+`A=Y0`, since `(3/4)alpha+(1/4)beta=0` at both points. Their off-diagonal
+prediction coefficients differ: `(1/4)alpha+(3/4)beta` is `0` versus
+`-2/5`, so `P(Y1=1|Y0=y,do(A!=y))` differs by `1/10`. All transition
+probabilities remain in `[1/5,4/5]`. Thus no amount of diagonal-only raw
+trajectory data can certify off-diagonal predictions in this enlarged class.
+The theorem&#x27;s transfer is class-conditional, not a claim that active data
+discover an arbitrary observable basis.
+
+## Runnable evidence
+
+The checker enumerates the hidden paths with exact rational arithmetic,
+forms the raw observable trajectory laws, and verifies the predictive
+formula, total-variation separation, KL values, and Bhattacharyya
+coefficients for the representative parameters
+`epsilon=1/4, gamma=1/2` (`lambda=1/4, d=3/16, ell=1/16`). Run:
+
+```text
+python3 work/programmes/acquisition_learning/cycle2/adaptive_trajectory_design/check.py
+```
+
+The resulting output is saved as `fixture.txt`. This is finite arithmetic
+evidence for the formulas, not an independent proof or external validation.
+
+## Prior art and claim status
+
+Controlled active design for partially observed Markov systems and active
+learning for HMMs are established topics. Predictive-state representations
+also motivate targets defined directly by observable action-conditioned
+predictions. The exact class, transcript laws, and feedback/open-loop
+information comparison here are derived in this leaf. This small construction
+does not establish novelty or a general unknown-HMM result. Primary-source
+details and scope notes are in `SOURCES.md`; exact resource counts are in
+`COST_LEDGER.md`.
+
+**Claim labels:** `PROVED-INTERNALLY` for the theorem above under its exact
+assumptions; `FINITE-EVIDENCE` for the script; `UNKNOWN` for priority,
+external review, unknown-rank/unknown-basis acquisition, unknown
+`epsilon,gamma`, and transfer outside the stated family.
+</pre><p><a href="../assets/311b3f59e4c29df75be1c9cf32f7af043e7cb8acc92fd65e0e22c39ada355345.md">Exact original</a></p></html>

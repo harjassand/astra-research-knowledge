@@ -1,0 +1,425 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c9_reaction_selectivity/kinetic_commitment_gate.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c9_reaction_selectivity/kinetic_commitment_gate.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact static selectivity/throughput gates for reversible-SET branch networks.
+
+Model boundary: each channel i is fed at rate alpha_i * D, where
+alpha_i = k_ET,i [S_i]; its radical intermediate is lost either to product at
+first-order rate c_i or by back electron transfer at pseudo-first-order rate
+b_i A. D and A are the reduced and oxidized catalyst concentrations. This is
+an exact QSS model for the declared two-state network, not a fit to the Nature
+reaction or a claim that a multi-step pathway has a single measured c_i.
+
+All arithmetic in the certificate uses fractions. Rates, concentrations, and
+the linear catalyst-pool constraint D + A = C_total must be supplied in
+consistent units.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import json
+from fractions import Fraction as F
+from typing import Iterable
+
+
+def as_fraction(value: str | int | F) -&gt; F:
+    return value if isinstance(value, F) else F(value)
+
+
+def flux_weight(alpha: F, c: F, b: F, acceptor: F) -&gt; F:
+    &quot;&quot;&quot;Product flux divided by reduced catalyst D: alpha*c/(c+b*A).&quot;&quot;&quot;
+    if alpha &lt;= 0 or c &lt;= 0 or b &lt;= 0 or acceptor &lt; 0:
+        raise ValueError(&quot;alpha, c, b must be positive and A must be nonnegative&quot;)
+    return alpha * c / (c + b * acceptor)
+
+
+def target_fraction(
+    alpha_target: F,
+    c_target: F,
+    b_target: F,
+    alpha_side: F,
+    c_side: F,
+    b_side: F,
+    acceptor: F,
+) -&gt; F:
+    &quot;&quot;&quot;Target-product fraction for two competing channels.&quot;&quot;&quot;
+    target = flux_weight(alpha_target, c_target, b_target, acceptor)
+    side = flux_weight(alpha_side, c_side, b_side, acceptor)
+    return target / (target + side)
+
+
+def maximum_target_fraction(
+    alpha_target: F,
+    c_target: F,
+    b_target: F,
+    alpha_side: F,
+    c_side: F,
+    b_side: F,
+) -&gt; F:
+    &quot;&quot;&quot;Limiting target fraction as A -&gt; infinity (fixed D for selectivity).&quot;&quot;&quot;
+    target = alpha_target * c_target / b_target
+    side = alpha_side * c_side / b_side
+    return target / (target + side)
+
+
+def minimum_acceptor(
+    alpha_target: F,
+    c_target: F,
+    b_target: F,
+    alpha_side: F,
+    c_side: F,
+    b_side: F,
+    desired_fraction: F,
+) -&gt; F | None:
+    &quot;&quot;&quot;Smallest finite A meeting a selectivity floor, if it is reachable.
+
+    Requires target kinetic commitment q_target=c_target/b_target to be at
+    least that of the competing side channel. Returns None if the desired
+    fraction exceeds the large-A limit; returns 0 if already satisfied at A=0.
+    &quot;&quot;&quot;
+    if not (0 &lt; desired_fraction &lt; 1):
+        raise ValueError(&quot;desired_fraction must lie strictly between zero and one&quot;)
+    rho = desired_fraction / (1 - desired_fraction)
+    zero_acceptor_odds = alpha_target / alpha_side
+    if zero_acceptor_odds &gt;= rho:
+        return F(0)
+    ceiling = maximum_target_fraction(
+        alpha_target, c_target, b_target, alpha_side, c_side, b_side
+    )
+    if desired_fraction &gt;= ceiling:
+        return None
+    denominator = alpha_target * c_target * b_side - rho * c_side * b_target
+    numerator = c_target * c_side * (rho - zero_acceptor_odds)
+    if denominator &lt;= 0:
+        return None
+    result = numerator / denominator
+    if result &lt; 0:
+        raise AssertionError(&quot;positive target above its zero-A ratio yielded A &lt; 0&quot;)
+    return result
+
+
+def target_throughput(
+    alpha_target: F,
+    c_target: F,
+    b_target: F,
+    acceptor: F,
+    catalyst_total: F,
+) -&gt; F:
+    &quot;&quot;&quot;Target product flux for D=C_total-A; zero if A exceeds pool size.&quot;&quot;&quot;
+    if catalyst_total &lt; 0 or acceptor &lt; 0:
+        raise ValueError(&quot;concentrations must be nonnegative&quot;)
+    if acceptor &gt; catalyst_total:
+        return F(0)
+    donor = catalyst_total - acceptor
+    return donor * flux_weight(alpha_target, c_target, b_target, acceptor)
+
+
+def minimum_commitment_rate_ratio(g: F, beta: F, target_odds: F) -&gt; F | None:
+    &quot;&quot;&quot;Minimum u=c_target/c_easy at fixed common BET exposure.
+
+    Here g=(kET_target[S_target])/(kET_easy[S_easy]) and
+    beta=(kBET[A])/c_easy. The product odds are
+        R = g*u*(1+beta)/(u+beta).
+    None means the requested odds exceed the u -&gt; infinity ceiling.
+    &quot;&quot;&quot;
+    if g &lt;= 0 or beta &lt; 0 or target_odds &lt;= 0:
+        raise ValueError(&quot;g and target_odds must be positive; beta nonnegative&quot;)
+    denominator = g * (1 + beta) - target_odds
+    if denominator &lt;= 0:
+        return None
+    return target_odds * beta / denominator
+
+
+def robust_multichannel_gate(
+    channels: list[dict[str, F]],
+    target_index: int,
+    catalyst_pool: F,
+    desired_fraction: F,
+    bisection_steps: int = 80,
+) -&gt; dict[str, object]:
+    &quot;&quot;&quot;Certified rational bracket for a robust N-channel static design.
+
+    Each channel supplies rectangular intervals for alpha=k_ET[S] and
+    q=c/b (productive commitment concentration): alpha_lo/hi and q_lo/hi.
+    For a given A the robust lower bound uses the target&#x27;s lower values and
+    every competitor&#x27;s upper values. A monotone threshold is certified only
+    when q_target_lo &gt;= max(q_competitor_hi); otherwise the result is UNKNOWN.
+    &quot;&quot;&quot;
+    if len(channels) &lt; 2 or not (0 &lt;= target_index &lt; len(channels)):
+        raise ValueError(&quot;need at least two channels and a valid target index&quot;)
+    if catalyst_pool &lt; 0 or not (0 &lt; desired_fraction &lt; 1) or bisection_steps &lt; 1:
+        raise ValueError(&quot;invalid pool, selectivity floor, or bisection count&quot;)
+    for ch in channels:
+        if not (0 &lt; ch[&quot;alpha_lo&quot;] &lt;= ch[&quot;alpha_hi&quot;]):
+            raise ValueError(&quot;alpha intervals must be positive and ordered&quot;)
+        if not (0 &lt; ch[&quot;q_lo&quot;] &lt;= ch[&quot;q_hi&quot;]):
+            raise ValueError(&quot;q intervals must be positive and ordered&quot;)
+
+    target = channels[target_index]
+    competitors = [ch for i, ch in enumerate(channels) if i != target_index]
+    if target[&quot;q_lo&quot;] &lt; max(ch[&quot;q_hi&quot;] for ch in competitors):
+        return {&quot;status&quot;: &quot;UNKNOWN&quot;, &quot;reason&quot;: &quot;robust commitment ordering is not certified&quot;}
+
+    def lower_share(acceptor: F) -&gt; F:
+        good = target[&quot;alpha_lo&quot;] * target[&quot;q_lo&quot;] / (acceptor + target[&quot;q_lo&quot;])
+        bad = sum(
+            (ch[&quot;alpha_hi&quot;] * ch[&quot;q_hi&quot;] / (acceptor + ch[&quot;q_hi&quot;])
+             for ch in competitors),
+            F(0),
+        )
+        return good / (good + bad)
+
+    asymptotic = (
+        target[&quot;alpha_lo&quot;] * target[&quot;q_lo&quot;]
+        / (target[&quot;alpha_lo&quot;] * target[&quot;q_lo&quot;]
+           + sum((ch[&quot;alpha_hi&quot;] * ch[&quot;q_hi&quot;] for ch in competitors), F(0)))
+    )
+    if lower_share(F(0)) &gt;= desired_fraction:
+        donor = catalyst_pool
+        target_flux_lower = target[&quot;alpha_lo&quot;] * donor
+        return {
+            &quot;status&quot;: &quot;CERTIFIED_BRACKET&quot;,
+            &quot;acceptor_root_bracket&quot;: [F(0), F(0)],
+            &quot;lower_share_at_low&quot;: lower_share(F(0)),
+            &quot;lower_share_at_high&quot;: lower_share(F(0)),
+            &quot;robust_high_A_ceiling&quot;: asymptotic,
+            &quot;conservative_setpoint_A&quot;: F(0),
+            &quot;donor_at_setpoint&quot;: donor,
+            &quot;target_flux_lower_bound&quot;: target_flux_lower,
+            &quot;target_SET_attempts_per_product_upper_bound&quot;: F(1),
+            &quot;bisection_steps&quot;: 0,
+        }
+    if desired_fraction &gt;= asymptotic:
+        return {
+            &quot;status&quot;: &quot;REFUTED&quot;,
+            &quot;reason&quot;: &quot;selectivity floor reaches or exceeds the robust infinite-A ceiling&quot;,
+            &quot;robust_high_A_ceiling&quot;: asymptotic,
+        }
+
+    low, high = F(0), catalyst_pool
+    if lower_share(low) &gt;= desired_fraction:
+        high = low
+    elif lower_share(high) &lt; desired_fraction:
+        return {
+            &quot;status&quot;: &quot;REFUTED&quot;,
+            &quot;reason&quot;: &quot;selectivity floor is not reached before the finite catalyst pool is exhausted&quot;,
+            &quot;robust_share_at_pool&quot;: lower_share(catalyst_pool),
+            &quot;robust_high_A_ceiling&quot;: asymptotic,
+        }
+    else:
+        for _ in range(bisection_steps):
+            mid = (low + high) / 2
+            if lower_share(mid) &gt;= desired_fraction:
+                high = mid
+            else:
+                low = mid
+
+    # Choose the upper rational endpoint for a conservative implementable
+    # setpoint; its selectivity is verified directly by exact arithmetic.
+    acceptor_setpoint = high
+    donor = catalyst_pool - acceptor_setpoint
+    target_flux_lower = (
+        donor * target[&quot;alpha_lo&quot;] * target[&quot;q_lo&quot;]
+        / (acceptor_setpoint + target[&quot;q_lo&quot;])
+    )
+    return {
+        &quot;status&quot;: &quot;CERTIFIED_BRACKET&quot;,
+        &quot;acceptor_root_bracket&quot;: [low, high],
+        &quot;lower_share_at_low&quot;: lower_share(low),
+        &quot;lower_share_at_high&quot;: lower_share(high),
+        &quot;robust_high_A_ceiling&quot;: asymptotic,
+        &quot;conservative_setpoint_A&quot;: acceptor_setpoint,
+        &quot;donor_at_setpoint&quot;: donor,
+        &quot;target_flux_lower_bound&quot;: target_flux_lower,
+        &quot;target_SET_attempts_per_product_upper_bound&quot;: 1 + acceptor_setpoint / target[&quot;q_lo&quot;],
+        &quot;bisection_steps&quot;: bisection_steps,
+    }
+
+
+def exact_certificate() -&gt; dict[str, object]:
+    # SI Figure S2.18&#x27;s fit label and its later discussion give 4e9 for Ket-1;
+    # the same figure caption inconsistently says 3e10. The caption-consistent
+    # source ratio is not silently used: both values are exposed here.
+    alpha_hard_over_easy = F(4, 30)  # equal substrate concentrations
+    ratios = {
+        str(p): F(p, 1 - p) / alpha_hard_over_easy
+        for p in (F(7, 10), F(9, 10), F(19, 20))
+    }
+    # SI&#x27;s Fig. 5c illustration: kdiff=1e10 M^-1s^-1, [A]=5.6e-5 M,
+    # and competing sink k2=1e3 s^-1, hence beta=kdiff[A]/k2=560.
+    beta_illustration = F(560)
+    finite_beta_gates = {}
+    for g_name, g in ((&quot;SI_ideal_equal_forward&quot;, F(1)), (&quot;caption_consistent_measured_ratio&quot;, alpha_hard_over_easy)):
+        finite_beta_gates[g_name] = {}
+        for p, label in ((F(9, 10), &quot;90% target share&quot;), (F(10, 11), &quot;10:1 product odds&quot;)):
+            rho = p / (1 - p)
+            u = minimum_commitment_rate_ratio(g, beta_illustration, rho)
+            if u is None:
+                raise AssertionError(&quot;finite-beta example should be feasible&quot;)
+            target_commitment = u / (beta_illustration + u)
+            side_commitment = F(1, 1 + beta_illustration)
+            finite_beta_gates[g_name][label] = {
+                &quot;minimum_u&quot;: str(u),
+                &quot;target_commitment_per_SET_attempt&quot;: str(target_commitment),
+                &quot;target_SET_attempts_per_product&quot;: str(1 / target_commitment),
+                &quot;side_commitment_per_SET_attempt&quot;: str(side_commitment),
+                &quot;side_SET_attempts_per_product&quot;: str(1 / side_commitment),
+                &quot;selectivity_check&quot;: str(
+                    (g * u * (1 + beta_illustration) / (u + beta_illustration))
+                    / (1 + g * u * (1 + beta_illustration) / (u + beta_illustration))
+                ),
+            }
+    # Constructed exact witness for the static setpoint result. These are not
+    # measured chemical parameters; they only exercise the theorem/checker.
+    params = {
+        &quot;alpha_target&quot;: F(2, 15),
+        &quot;c_target&quot;: F(1),
+        &quot;b_target&quot;: F(10_000),
+        &quot;alpha_side&quot;: F(1),
+        &quot;c_side&quot;: F(1),
+        &quot;b_side&quot;: F(1_000_000),
+        &quot;pool&quot;: F(1, 1000),  # 1 mM in matching concentration units
+        &quot;floor&quot;: F(9, 10),
+    }
+    a_star = minimum_acceptor(
+        params[&quot;alpha_target&quot;], params[&quot;c_target&quot;], params[&quot;b_target&quot;],
+        params[&quot;alpha_side&quot;], params[&quot;c_side&quot;], params[&quot;b_side&quot;],
+        params[&quot;floor&quot;],
+    )
+    feasible = a_star is not None and a_star &lt;= params[&quot;pool&quot;]
+    if not feasible or a_star is None:
+        raise AssertionError(&quot;constructed witness should meet the 90% floor&quot;)
+    got = target_fraction(
+        params[&quot;alpha_target&quot;], params[&quot;c_target&quot;], params[&quot;b_target&quot;],
+        params[&quot;alpha_side&quot;], params[&quot;c_side&quot;], params[&quot;b_side&quot;], a_star,
+    )
+    if got != params[&quot;floor&quot;]:
+        raise AssertionError(f&quot;threshold equality failed: {got} != {params[&#x27;floor&#x27;]}&quot;)
+    rate_at_threshold = target_throughput(
+        params[&quot;alpha_target&quot;], params[&quot;c_target&quot;], params[&quot;b_target&quot;],
+        a_star, params[&quot;pool&quot;],
+    )
+    # A larger A decreases target throughput when the catalyst pool is fixed.
+    a_larger = (a_star + params[&quot;pool&quot;]) / 2
+    if a_larger &lt;= a_star or target_throughput(
+        params[&quot;alpha_target&quot;], params[&quot;c_target&quot;], params[&quot;b_target&quot;],
+        a_larger, params[&quot;pool&quot;],
+    ) &gt;= rate_at_threshold:
+        raise AssertionError(&quot;target flux must decrease beyond the minimum-A setpoint&quot;)
+    # Exact monotonicity witness for q_target &gt; q_side.
+    test_points = [F(0), F(1, 1_000_000), F(1, 1000), F(1, 100), F(1, 10)]
+    values = [
+        target_fraction(
+            params[&quot;alpha_target&quot;], params[&quot;c_target&quot;], params[&quot;b_target&quot;],
+            params[&quot;alpha_side&quot;], params[&quot;c_side&quot;], params[&quot;b_side&quot;], a,
+        )
+        for a in test_points
+    ]
+    if values != sorted(values):
+        raise AssertionError(&quot;target fraction did not increase on the exact witness&quot;)
+    # If the high-A commitment ceiling is below the target, no A can achieve it.
+    impossible = minimum_acceptor(
+        F(2, 15), F(1), F(1), F(1), F(1), F(1), F(4, 5)
+    )
+    if impossible is not None:
+        raise AssertionError(&quot;an 80% target above its high-A ceiling must be rejected&quot;)
+    if minimum_commitment_rate_ratio(F(2, 15), beta_illustration, F(9)) != F(25200, 329):
+        raise AssertionError(&quot;finite-beta unequal-SET 90% gate changed&quot;)
+    if minimum_commitment_rate_ratio(F(2, 15), beta_illustration, F(10)) != F(7000, 81):
+        raise AssertionError(&quot;finite-beta unequal-SET 10:1 gate changed&quot;)
+
+    # Three-channel rectangular-uncertainty design. The target has a certified
+    # larger c/b commitment scale than either side channel; exact bisection
+    # finds a conservative A setpoint under a finite catalyst pool.
+    multi = robust_multichannel_gate(
+        [
+            {&quot;alpha_lo&quot;: F(10), &quot;alpha_hi&quot;: F(12), &quot;q_lo&quot;: F(1, 100), &quot;q_hi&quot;: F(1, 50)},
+            {&quot;alpha_lo&quot;: F(1, 2), &quot;alpha_hi&quot;: F(1), &quot;q_lo&quot;: F(1, 1000), &quot;q_hi&quot;: F(1, 1000)},
+            {&quot;alpha_lo&quot;: F(1, 2), &quot;alpha_hi&quot;: F(1), &quot;q_lo&quot;: F(1, 500), &quot;q_hi&quot;: F(3, 1000)},
+        ],
+        target_index=0,
+        catalyst_pool=F(1, 10),
+        desired_fraction=F(9, 10),
+        bisection_steps=40,
+    )
+    if multi[&quot;status&quot;] != &quot;CERTIFIED_BRACKET&quot;:
+        raise AssertionError(f&quot;expected a certified multichannel setpoint: {multi}&quot;)
+    if multi[&quot;lower_share_at_high&quot;] &lt; F(9, 10):
+        raise AssertionError(&quot;multichannel upper endpoint failed the exact robust share floor&quot;)
+    if multi[&quot;lower_share_at_low&quot;] &gt;= F(9, 10):
+        raise AssertionError(&quot;multichannel lower endpoint should remain below the root&quot;)
+    unordered = robust_multichannel_gate(
+        [
+            {&quot;alpha_lo&quot;: F(1), &quot;alpha_hi&quot;: F(2), &quot;q_lo&quot;: F(1), &quot;q_hi&quot;: F(3)},
+            {&quot;alpha_lo&quot;: F(1), &quot;alpha_hi&quot;: F(2), &quot;q_lo&quot;: F(2), &quot;q_hi&quot;: F(4)},
+        ],
+        target_index=0,
+        catalyst_pool=F(1),
+        desired_fraction=F(1, 2),
+        bisection_steps=10,
+    )
+    if unordered[&quot;status&quot;] != &quot;UNKNOWN&quot;:
+        raise AssertionError(&quot;unverified commitment ordering must return UNKNOWN&quot;)
+    constant_share = robust_multichannel_gate(
+        [
+            {&quot;alpha_lo&quot;: F(1), &quot;alpha_hi&quot;: F(1), &quot;q_lo&quot;: F(1), &quot;q_hi&quot;: F(1)},
+            {&quot;alpha_lo&quot;: F(1), &quot;alpha_hi&quot;: F(1), &quot;q_lo&quot;: F(1), &quot;q_hi&quot;: F(1)},
+        ],
+        target_index=0,
+        catalyst_pool=F(1),
+        desired_fraction=F(1, 2),
+        bisection_steps=10,
+    )
+    if constant_share[&quot;status&quot;] != &quot;CERTIFIED_BRACKET&quot; or constant_share[&quot;conservative_setpoint_A&quot;] != F(0):
+        raise AssertionError(&quot;a floor met at zero acceptor must remain feasible at the asymptotic ceiling&quot;)
+
+    return {
+        &quot;source_input&quot;: {
+            &quot;kET_hard_over_easy&quot;: &quot;2/15&quot;,
+            &quot;basis&quot;: &quot;equal substrate concentration; Figure S2.18 plot label / later SI note&quot;,
+            &quot;figure_caption_conflict&quot;: &quot;caption says 3e10 for Ket-1; plot label says 4e9&quot;,
+        },
+        &quot;required_commitment_ratio_q_hard_over_q_easy&quot;: {
+            str(p): str(v) for p, v in ratios.items()
+        },
+        &quot;finite_acceptor_model_gate&quot;: {
+            &quot;beta&quot;: str(beta_illustration),
+            &quot;definition&quot;: &quot;beta = k_diff*[A]/k2 = 560 from the SI Figure 5c settings (S97); illustrative, not fitted to Ket-1&quot;,
+            &quot;minimum_chemical_rate_ratio_u&quot;: finite_beta_gates,
+        },
+        &quot;interpretation&quot;: {
+            &quot;70% hard product&quot;: &quot;q_hard/q_easy &gt;= 17.5 in the high-A limit&quot;,
+            &quot;90% hard product&quot;: &quot;q_hard/q_easy &gt;= 67.5 in the high-A limit&quot;,
+            &quot;95% hard product&quot;: &quot;q_hard/q_easy &gt;= 142.5 in the high-A limit&quot;,
+            &quot;observed 70:7 A:B odds&quot;: &quot;q_hard/q_easy &gt;= 75 in the high-A limit&quot;,
+            &quot;status&quot;: &quot;conditional thresholds, not measured q values or a fit&quot;,
+        },
+        &quot;constructed_exact_setpoint_witness&quot;: {
+            &quot;A_min&quot;: str(a_star),
+            &quot;pool&quot;: str(params[&quot;pool&quot;]),
+            &quot;selectivity_at_A_min&quot;: str(got),
+            &quot;target_flux_at_A_min&quot;: str(rate_at_threshold),
+            &quot;selectivity_samples&quot;: [str(x) for x in values],
+            &quot;unreachable_example&quot;: impossible is None,
+            &quot;parameters_status&quot;: &quot;constructed mathematical witness only&quot;,
+        },
+        &quot;robust_three_channel_interval_witness&quot;: {
+            key: str(value) if isinstance(value, F) else (
+                [str(x) for x in value] if isinstance(value, list) else value
+            )
+            for key, value in multi.items()
+        },
+        &quot;checks&quot;: [
+            &quot;exact rational 70/90/95-percent kinetic-commitment thresholds&quot;,
+            &quot;exact threshold equality at the calculated A_min&quot;,
+            &quot;exact monotonicity samples for the constructed q_target&gt;q_side witness&quot;,
+            &quot;exact impossibility rejection above the high-A selectivity ceiling&quot;,
+            &quot;fixed-pool target-throughput decreases beyond the minimum feasible A&quot;,
+            &quot;exact finite-BET commitment-rate gates for both measured and ideal equal-SET branches&quot;,
+            &quot;exact rational bisection bracket for an interval-robust three-channel setpoint&quot;,
+            &quot;UNKNOWN returned when target commitment ordering is not established&quot;,
+        ],
+    }
+
+
+if __name__ == &quot;__main__&quot;:
+    print(json.dumps(exact_certificate(), indent=2))
+</pre><p><a href="../assets/125811b75387a28e72be87d0ab3bfcb08f9aca40d0c297c156dcf4c27ffcfcc8.py">Exact original</a></p></html>

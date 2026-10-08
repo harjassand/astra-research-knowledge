@@ -1,0 +1,247 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c9_noncommutative_dirichlet/checks/verify_stinespring_compression.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c9_noncommutative_dirichlet/checks/verify_stinespring_compression.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Finite numerical replay of the Stinespring-compression identities.
+
+The proof in ../PROOF_AND_GATE.md is exact.  This script only checks its
+matrix identities on three supplied two-output channels: a universal qubit
+cloner, a mixed X/Z rank-one measure-and-prepare broadcaster, and a classical
+swap broadcaster whose self-adjoint marginal has a -1 HS eigenvalue.
+
+Requires Python 3 and NumPy.  It does not certify the general theorem or the
+unresolved all-frame measurement step.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import math
+import numpy as np
+
+
+def hs2(a: np.ndarray, d: int) -&gt; float:
+    return float(np.trace(a.conj().T @ a).real / d)
+
+
+def kron_channel(kraus: list[np.ndarray], output_dim: int):
+    &quot;&quot;&quot;Return Gamma(X)=sum K* X K and a Stinespring isometry for Gamma.&quot;&quot;&quot;
+    d = kraus[0].shape[1]
+    v = np.vstack(kraus)  # environment-major; pi(X)=I_env tensor X
+    assert np.allclose(v.conj().T @ v, np.eye(d), atol=1e-12)
+    env_dim = len(kraus)
+
+    def gamma(x: np.ndarray) -&gt; np.ndarray:
+        return sum(k.conj().T @ x @ k for k in kraus)
+
+    return gamma, v, env_dim, d
+
+
+def cloner_kraus() -&gt; list[np.ndarray]:
+    &quot;&quot;&quot;Kraus operators of the symmetric 1-&gt;2 universal qubit cloner.&quot;&quot;&quot;
+    s = math.sqrt
+    # Rows are the two-qubit output basis 00,01,10,11; columns are input 0,1.
+    # The two slices are the environment basis 0,1 of the standard isometry.
+    w0 = np.zeros((4, 2), dtype=complex)
+    w1 = np.zeros((4, 2), dtype=complex)
+    w0[1, 0] = s(1 / 6)
+    w0[2, 0] = s(1 / 6)
+    w0[3, 1] = s(2 / 3)
+    w1[0, 0] = s(2 / 3)
+    w1[1, 1] = s(1 / 6)
+    w1[2, 1] = s(1 / 6)
+    return [w0, w1]
+
+
+def ket(label: str) -&gt; np.ndarray:
+    if label == &quot;0&quot;:
+        return np.array([1, 0], dtype=complex)
+    if label == &quot;1&quot;:
+        return np.array([0, 1], dtype=complex)
+    if label == &quot;+&quot;:
+        return np.array([1, 1], dtype=complex) / math.sqrt(2)
+    if label == &quot;-&quot;:
+        return np.array([1, -1], dtype=complex) / math.sqrt(2)
+    raise ValueError(label)
+
+
+def mixed_xz_kraus(eps: float = 0.37) -&gt; list[np.ndarray]:
+    &quot;&quot;&quot;Symmetric broadcaster for eps*Delta_X+(1-eps)*Delta_Z.&quot;&quot;&quot;
+    result = []
+    for label, weight in [(&quot;+&quot;, eps), (&quot;-&quot;, eps), (&quot;0&quot;, 1 - eps), (&quot;1&quot;, 1 - eps)]:
+        psi = ket(label)
+        result.append(math.sqrt(weight) * np.outer(np.kron(psi, psi), psi.conj()))
+    return result
+
+
+def swap_kraus() -&gt; list[np.ndarray]:
+    &quot;&quot;&quot;Symmetric broadcaster for dephasing followed by a classical bit swap.&quot;&quot;&quot;
+    result = []
+    for j in (0, 1):
+        inp = ket(str(j))
+        out = ket(str(1 - j))
+        result.append(np.outer(np.kron(out, out), inp.conj()))
+    return result
+
+
+def random_contraction(rng: np.random.Generator, d: int) -&gt; np.ndarray:
+    z = rng.normal(size=(d, d)) + 1j * rng.normal(size=(d, d))
+    a = (z + z.conj().T) / 2
+    return a / max(1.0, float(np.linalg.norm(a, ord=2)))
+
+
+def random_complex_contraction(rng: np.random.Generator, d: int) -&gt; np.ndarray:
+    z = rng.normal(size=(d, d)) + 1j * rng.normal(size=(d, d))
+    return z / max(1.0, float(np.linalg.norm(z, ord=2)))
+
+
+def check_channel(
+    name: str,
+    kraus: list[np.ndarray],
+    seed: int,
+    expected_pauli_eigenvalues: tuple[float, float, float],
+) -&gt; None:
+    d = kraus[0].shape[1]
+    out_dim = int(round(math.sqrt(kraus[0].shape[0])))
+    assert out_dim * out_dim == kraus[0].shape[0]
+    gamma, v, env_dim, _ = kron_channel(kraus, out_dim * out_dim)
+    ident = np.eye(d, dtype=complex)
+    eye_out = np.eye(out_dim, dtype=complex)
+
+    def phi(a: np.ndarray) -&gt; np.ndarray:
+        return gamma(np.kron(a, eye_out))
+
+    def phi_second(a: np.ndarray) -&gt; np.ndarray:
+        return gamma(np.kron(eye_out, a))
+
+    # Confirm the two marginals coincide and the marginal is unital/TP.
+    assert np.allclose(phi(ident), ident, atol=1e-11)
+    assert np.allclose(phi_second(ident), ident, atol=1e-11)
+    rng = np.random.default_rng(seed)
+    for _ in range(12):
+        a = random_contraction(rng, d)
+        assert np.allclose(phi(a), phi_second(a), atol=1e-11)
+        b = random_contraction(rng, d)
+        lhs = float(np.trace(a @ phi(b)).real / d)
+        rhs = float(np.trace(phi(a) @ b).real / d)
+        assert abs(lhs - rhs) &lt; 1e-11
+
+    # The three fixtures are qubit channels; retain an explicit spectrum
+    # audit, including the legal negative eigenvalue in the swap example.
+    paulis = (
+        np.array([[0, 1], [1, 0]], dtype=complex),
+        np.array([[0, -1j], [1j, 0]], dtype=complex),
+        np.diag([1.0, -1.0]).astype(complex),
+    )
+    observed = tuple(
+        float(np.trace(p @ phi(p)).real / np.trace(p @ p).real)
+        for p in paulis
+    )
+    assert np.allclose(observed, expected_pauli_eigenvalues, atol=1e-11)
+
+    vproj = v @ v.conj().T
+    eye_stinespring = np.eye(env_dim * out_dim * out_dim, dtype=complex)
+
+    def defect_data(x: np.ndarray):
+        pi_x = np.kron(np.eye(env_dim, dtype=complex), x)
+        kx = (eye_stinespring - vproj) @ pi_x @ v
+        defect = gamma(x @ x) - gamma(x) @ gamma(x)
+        return kx, defect
+
+    max_compression_residual = 0.0
+    max_commutator_residual = 0.0
+    max_energy_ratio_violation = 0.0
+    max_displacement_violation = 0.0
+    max_multiplicativity_violation = 0.0
+
+    for _ in range(200):
+        a = random_contraction(rng, d)
+        b = random_contraction(rng, d)
+        x = np.kron(a, eye_out)
+        y = np.kron(eye_out, b)
+        kx, dx = defect_data(x)
+        ky, dy = defect_data(y)
+        phi_a = phi(a)
+        phi_b = phi(b)
+
+        # Exact Stinespring identities, up to floating point arithmetic.
+        max_compression_residual = max(
+            max_compression_residual,
+            math.sqrt(hs2(dx - kx.conj().T @ kx, d)),
+            math.sqrt(hs2(dy - ky.conj().T @ ky, d)),
+        )
+        comm_rhs = -kx.conj().T @ ky + ky.conj().T @ kx
+        max_commutator_residual = max(
+            max_commutator_residual,
+            math.sqrt(hs2((phi_a @ phi_b - phi_b @ phi_a) - comm_rhs, d)),
+        )
+
+        ea = float(np.trace(a @ (a - phi_a)).real / d)
+        eb = float(np.trace(b @ (b - phi_b)).real / d)
+        ea = max(0.0, ea)
+        eb = max(0.0, eb)
+        lhs = math.sqrt(hs2(a @ b - b @ a, d))
+        rhs = 3 * math.sqrt(2) * (
+            np.linalg.norm(a, 2) * math.sqrt(eb)
+            + np.linalg.norm(b, 2) * math.sqrt(ea)
+        )
+        max_energy_ratio_violation = max(max_energy_ratio_violation, lhs - rhs)
+
+        da = math.sqrt(hs2(a - phi_a, d))
+        max_displacement_violation = max(max_displacement_violation, da - math.sqrt(2 * ea))
+
+        # Arbitrary-complex-input L2 approximate multiplicativity (7).
+        ca = random_complex_contraction(rng, d)
+        cb = random_complex_contraction(rng, d)
+        eca = float(np.trace(ca.conj().T @ (ca - phi(ca))).real / d)
+        ecb = float(np.trace(cb.conj().T @ (cb - phi(cb))).real / d)
+        eca = max(0.0, eca)
+        ecb = max(0.0, ecb)
+        mult_defect = phi(ca @ cb) - phi(ca) @ phi(cb)
+        mult_lhs = math.sqrt(hs2(mult_defect, d))
+        mult_rhs = min(
+            np.linalg.norm(ca, 2) * math.sqrt(2 * ecb),
+            np.linalg.norm(cb, 2) * math.sqrt(2 * eca),
+        )
+        max_multiplicativity_violation = max(
+            max_multiplicativity_violation, mult_lhs - mult_rhs
+        )
+
+        # The two Schwarz defects have the tracial marginal values used in the proof.
+        delta_a = float(np.trace(dx).real / d)
+        delta_b = float(np.trace(dy).real / d)
+        da_expected = float(np.trace(a @ a - phi_a @ phi_a).real / d)
+        db_expected = float(np.trace(b @ b - phi_b @ phi_b).real / d)
+        assert abs(delta_a - da_expected) &lt; 1e-10
+        assert abs(delta_b - db_expected) &lt; 1e-10
+        assert delta_a &lt;= 2 * ea + 1e-10
+        assert delta_b &lt;= 2 * eb + 1e-10
+
+    assert max_compression_residual &lt; 1e-10
+    assert max_commutator_residual &lt; 1e-10
+    assert max_energy_ratio_violation &lt; 1e-10
+    assert max_displacement_violation &lt; 1e-10
+    assert max_multiplicativity_violation &lt; 1e-10
+    print(
+        f&quot;{name}: 200 trials; compression={max_compression_residual:.2e}; &quot;
+        f&quot;commutator={max_commutator_residual:.2e}; &quot;
+        f&quot;energy-bound slack min={-max_energy_ratio_violation:.3e}; &quot;
+        f&quot;displacement-bound slack min={-max_displacement_violation:.3e}; &quot;
+        f&quot;multiplicativity-bound slack min={-max_multiplicativity_violation:.3e}&quot;
+    )
+
+
+def main() -&gt; None:
+    check_channel(
+        &quot;universal-qubit-cloner&quot;, cloner_kraus(), seed=20261008,
+        expected_pauli_eigenvalues=(2 / 3, 2 / 3, 2 / 3),
+    )
+    check_channel(
+        &quot;mixed-XZ-EB&quot;, mixed_xz_kraus(), seed=20261009,
+        expected_pauli_eigenvalues=(0.37, 0.0, 0.63),
+    )
+    check_channel(
+        &quot;negative-spectrum-swap&quot;, swap_kraus(), seed=20261010,
+        expected_pauli_eigenvalues=(0.0, 0.0, -1.0),
+    )
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/2ee01af9587afc3e32eddc5e960a636dce4327c643bf8844711d45bfcc28b946.py">Exact original</a></p></html>

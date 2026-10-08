@@ -1,0 +1,55 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/chemistry_dynamic_catalysis/crosscheck_rk4.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/chemistry_dynamic_catalysis/crosscheck_rk4.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre># Independent time-domain RK4 cross-check of the closed-form matrix-exponential witness.
+from math import exp
+EDGES = [(0,1),(1,2),(2,0)]
+def phases(A, delta):
+    Es = [[0.,-A,0.],[0.,0.,-A],[-A,0.,0.]]
+    Bs = [[0.,delta,delta],[delta,0.,delta],[delta,delta,0.]]
+    return Es,Bs
+def rates(E,B):
+    out=[]
+    for e,(i,j) in enumerate(EDGES):
+        out.append((i,j,exp(-(B[e]-E[i])),exp(-(B[e]-E[j]))))
+    return out
+def step_rk4(y, rs, h):
+    def rhs(y):
+        d=[0.]*6
+        p=y[:3]
+        for e,(i,j,kij,kji) in enumerate(rs):
+            je=kij*p[i]-kji*p[j]
+            d[i]-=je; d[j]+=je
+            d[3+e]=je
+        return d
+    k1=rhs(y)
+    k2=rhs([y[i]+h*k1[i]/2 for i in range(6)])
+    k3=rhs([y[i]+h*k2[i]/2 for i in range(6)])
+    k4=rhs([y[i]+h*k3[i] for i in range(6)])
+    return [y[i]+h*(k1[i]+2*k2[i]+2*k3[i]+k4[i])/6 for i in range(6)]
+def cycle(p,A,delta,tau,steps):
+    Es,Bs=phases(A,delta)
+    Work=0.; flux=[0.]*3
+    Eprev=Es[-1]
+    for E,B in zip(Es,Bs):
+        Work+=sum(p[i]*(E[i]-Eprev[i]) for i in range(3))
+        y=p+[0.]*3
+        rs=rates(E,B)
+        h=tau/steps
+        for _ in range(steps): y=step_rk4(y,rs,h)
+        p=y[:3]
+        flux=[flux[i]+y[3+i] for i in range(3)]
+        Eprev=E
+    return p,flux,Work
+if __name__==&#x27;__main__&#x27;:
+    A=4.; tau=1.; delta=.01
+    p=[1/3]*3
+    for n in range(1000):
+        pn,F,W=cycle(p,A,delta,tau,1000)
+        err=sum(abs(pn[i]-p[i]) for i in range(3))
+        p=pn
+        if err&lt;1e-14: break
+    print(&#x27;RK4 cycles to periodicity:&#x27;,n+1,&#x27;closure L1:&#x27;,err)
+    print(&#x27;RK4 p_start:&#x27;,p)
+    print(&#x27;RK4 edge fluxes:&#x27;,F)
+    print(&#x27;RK4 cycle current:&#x27;,sum(F)/3)
+    print(&#x27;RK4 state-energy work kBT/cycle:&#x27;,W)
+    print(&#x27;RK4 work/current kBT/product:&#x27;,W/(sum(F)/3))
+</pre><p><a href="../assets/87022073862e9f52239da4a4dd4460437c2a7bea134ae3a20c54b7810297eb01.py">Exact original</a></p></html>

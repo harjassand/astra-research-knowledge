@@ -1,0 +1,126 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c5_quantum_dimension_obstruction/cycle6_dual_star/clifford_star_m11.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c5_quantum_dimension_obstruction/cycle6_dual_star/clifford_star_m11.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Memory-lean exact Pauli-word certificate for the m=11 Clifford star.&quot;&quot;&quot;
+
+import sympy as sp
+
+
+def gamma_strings(n):
+    strings = []
+    for k in range(n):
+        strings.append(&quot;Z&quot; * k + &quot;X&quot; + &quot;I&quot; * (n - k - 1))
+        strings.append(&quot;Z&quot; * k + &quot;Y&quot; + &quot;I&quot; * (n - k - 1))
+    strings.append(&quot;Z&quot; * n)
+    return strings
+
+
+def word_data(word):
+    &quot;&quot;&quot;Encode tensor Pauli word as X^x Z^z and its Gaussian-integer phase.&quot;&quot;&quot;
+    length = len(word)
+    xmask = zmask = ny = 0
+    for axis, symbol in enumerate(word):
+        bit = 1 &lt;&lt; (length - axis - 1)
+        if symbol in &quot;XY&quot;:
+            xmask |= bit
+        if symbol in &quot;YZ&quot;:
+            zmask |= bit
+        ny += symbol == &quot;Y&quot;
+    phase = ((1, 0), (0, 1), (-1, 0), (0, -1))[ny % 4]
+    return xmask | (zmask &lt;&lt; length), phase
+
+
+def add_term(target, key, value):
+    old = target.get(key, (0, 0))
+    new = old[0] + value[0], old[1] + value[1]
+    if new == (0, 0):
+        target.pop(key, None)
+    else:
+        target[key] = new
+
+
+def star_terms(n):
+    length = 3 * n
+    terms = {}
+    for gamma in gamma_strings(n):
+        transpose_sign = (-1) ** gamma.count(&quot;Y&quot;)
+        for word in (gamma + gamma + &quot;I&quot; * n, gamma + &quot;I&quot; * n + gamma):
+            key, phase = word_data(word)
+            add_term(terms, key, (transpose_sign * phase[0], transpose_sign * phase[1]))
+    assert len(terms) == 2 * (2 * n + 1)
+    assert all(imag == 0 for _, imag in terms.values())
+    return terms, length
+
+
+def multiply(left, right, length):
+    low_mask = (1 &lt;&lt; length) - 1
+    out = {}
+    for key_a, coeff_a in left.items():
+        x_a = key_a &amp; low_mask
+        z_a = key_a &gt;&gt; length
+        for key_b, coeff_b in right.items():
+            x_b = key_b &amp; low_mask
+            z_b = key_b &gt;&gt; length
+            sign = -1 if ((z_a &amp; x_b).bit_count() &amp; 1) else 1
+            key = (x_a ^ x_b) | ((z_a ^ z_b) &lt;&lt; length)
+            re = coeff_a[0] * coeff_b[0] - coeff_a[1] * coeff_b[1]
+            im = coeff_a[0] * coeff_b[1] + coeff_a[1] * coeff_b[0]
+            add_term(out, key, (sign * re, sign * im))
+    return out
+
+
+def main():
+    m, n = 11, 5
+    dimension = 2 ** n
+    h, length = star_terms(n)
+    x = sp.Symbol(&quot;x&quot;)
+    p = sp.Poly(
+        x
+        * (x - 12)
+        * (x - 8)
+        * (x - 6)
+        * (x - 4)
+        * (x + 2)
+        * (x + 6)
+        * (x + 10)
+        * (x**2 - 128)
+        * (x**2 - 84)
+        * (x**2 - 80)
+        * (x**2 - 48)
+        * (x**2 - 20),
+        x,
+    )
+    roots = sp.solve(p.as_expr(), x)
+    assert all(sp.im(root).simplify() == 0 for root in roots)
+    assert max(roots) == 12
+    assert sp.gcd(p, p.diff()).degree() == 0
+    quotient = p.exquo(sp.Poly(x - 12, x))
+    q = sp.Poly(quotient.as_expr() / quotient.eval(12), x)
+
+    power = {0: (1, 0)}
+    p_residual = {}
+    q_identity_coefficient = sp.Rational(0)
+    for degree in range(p.degree() + 1):
+        p_coefficient = int(p.nth(degree))
+        q_coefficient = q.nth(degree)
+        if p_coefficient:
+            for key, coeff in power.items():
+                add_term(
+                    p_residual,
+                    key,
+                    (p_coefficient * coeff[0], p_coefficient * coeff[1]),
+                )
+        q_identity_coefficient += q_coefficient * power.get(0, (0, 0))[0]
+        print(f&quot;degree {degree}: Pauli support {len(power)}&quot;)
+        if degree &lt; p.degree():
+            power = multiply(power, h, length)
+
+    assert p_residual == {}, f&quot;p(H) has {len(p_residual)} residual Pauli words&quot;
+    top_multiplicity = sp.Integer(2 ** (3 * n)) * q_identity_coefficient
+    assert top_multiplicity.is_Integer and top_multiplicity &gt; 0
+    print(&quot;exact p_11(H_11)=0; all roots real and at most 12&quot;)
+    print(&quot;exact multiplicity of eigenvalue 12:&quot;, top_multiplicity)
+    print(&quot;three-factor Choi dimension:&quot;, dimension**3)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/4a1760f44d45a818ae10f9d935357db8978303aa7fcb973c33a47bc95774fd16.py">Exact original</a></p></html>

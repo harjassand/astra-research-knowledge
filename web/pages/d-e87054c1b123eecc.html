@@ -1,0 +1,255 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c12_evolution_control/scripts/appold_bulk_alias.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c12_evolution_control/scripts/appold_bulk_alias.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Reconstruct a matched-bulk / divergent-clone example from Appold et al. data.
+
+This is a descriptive, finite-data audit. It implements the final published
+clone eligibility and escape definitions stated in the Methods of Appold et
+al. (2026), rather than the 10/60-um defaults in an older checked-in figure
+script. It uses only Python&#x27;s standard library.
+
+Run from any directory:
+    python3 work/agents/c12_evolution_control/scripts/appold_bulk_alias.py
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import csv
+import hashlib
+import json
+import math
+from pathlib import Path
+from typing import Any
+
+
+FRAMES_PER_HOUR = 2.0
+UM_PER_PIXEL = 8.648
+FIRST_DETECTION_FRAME_MIN = 12.5 * FRAMES_PER_HOUR
+FIRST_DETECTION_FRAME_MAX = 100.0 * FRAMES_PER_HOUR
+ELIGIBLE_BAND_UM = (17.0, 500.0)
+MIN_CONSECUTIVE_FRAMES = 3
+BREACH_UM = 20.0
+RETREAT_UM = 80.0
+CHECKPOINT_FRAME = 145
+RATE_START_FRAME = 141
+FOLLOWUP_END_FRAME = 251
+ADAPTIVE_PULSE_FRAMES = ((37, 61), (110, 141), (189, 284))
+
+
+def _source_dir() -&gt; Path:
+    agent_dir = Path(__file__).resolve().parents[1]
+    return agent_dir.parent / &quot;c11_evolution_control&quot; / &quot;sources&quot; / &quot;Appold_figuredata&quot; / &quot;adaptive_therapy&quot;
+
+
+def read_colony(path: Path) -&gt; list[dict[str, str]]:
+    with path.open(newline=&quot;&quot;, encoding=&quot;utf-8-sig&quot;) as f:
+        rows = list(csv.DictReader(f))
+    required = {&quot;frame&quot;, &quot;particle&quot;, &quot;distance_to_edge&quot;, &quot;colony_area&quot;}
+    if not rows or not required.issubset(rows[0]):
+        raise ValueError(f&quot;{path}: missing required columns {sorted(required)}&quot;)
+    return rows
+
+
+def longest_consecutive_run(frames: list[int]) -&gt; int:
+    best = run = 0
+    previous: int | None = None
+    for frame in sorted(set(frames)):
+        run = run + 1 if previous is not None and frame == previous + 1 else 1
+        best = max(best, run)
+        previous = frame
+    return best
+
+
+def reconstruct(name: str, path: Path) -&gt; dict[str, Any]:
+    rows = read_colony(path)
+    by_frame: dict[int, list[dict[str, str]]] = {}
+    by_particle: dict[str, list[tuple[int, float]]] = {}
+    for row in rows:
+        frame = int(row[&quot;frame&quot;])
+        distance_um = float(row[&quot;distance_to_edge&quot;]) * UM_PER_PIXEL
+        by_frame.setdefault(frame, []).append(row)
+        by_particle.setdefault(row[&quot;particle&quot;], []).append((frame, distance_um))
+
+    def frame_area(frame: int) -&gt; float:
+        values = {float(row[&quot;colony_area&quot;]) for row in by_frame[frame]}
+        if len(values) != 1:
+            raise ValueError(f&quot;{name}, frame {frame}: inconsistent colony_area values {values}&quot;)
+        return values.pop()
+
+    def min_front_um(frame: int) -&gt; tuple[str, float]:
+        pairs = [
+            (row[&quot;particle&quot;], float(row[&quot;distance_to_edge&quot;]) * UM_PER_PIXEL)
+            for row in by_frame[frame]
+        ]
+        return min(pairs, key=lambda pair: pair[1])
+
+    eligible: list[tuple[str, list[tuple[int, float]]]] = []
+    for particle, observations in by_particle.items():
+        observations.sort()
+        first_frame = observations[0][0]
+        if not (FIRST_DETECTION_FRAME_MIN &lt;= first_frame &lt;= FIRST_DETECTION_FRAME_MAX):
+            continue
+        if not any(ELIGIBLE_BAND_UM[0] &lt;= d &lt;= ELIGIBLE_BAND_UM[1] for _, d in observations):
+            continue
+        if longest_consecutive_run([frame for frame, _ in observations]) &lt; MIN_CONSECUTIVE_FRAMES:
+            continue
+        eligible.append((particle, observations))
+
+    breaches: list[dict[str, Any]] = []
+    escapes: list[dict[str, Any]] = []
+    for particle, observations in eligible:
+        breach_observations = [(frame, d) for frame, d in observations if d &lt;= BREACH_UM]
+        if not breach_observations:
+            continue
+        breach_frame, breach_distance = breach_observations[0]
+        post = [(frame, d) for frame, d in observations if frame &gt; breach_frame]
+        retreat_frames = [frame for frame, d in post if d &gt; RETREAT_UM]
+        retreated = bool(retreat_frames)
+        event = {
+            &quot;particle&quot;: particle,
+            &quot;first_breach_frame&quot;: breach_frame,
+            &quot;first_breach_time_h&quot;: breach_frame / FRAMES_PER_HOUR,
+            &quot;distance_at_first_breach_um&quot;: breach_distance,
+            &quot;observed_through_frame&quot;: observations[-1][0],
+            &quot;observed_through_time_h&quot;: observations[-1][0] / FRAMES_PER_HOUR,
+            &quot;followup_hours_after_first_breach&quot;: (observations[-1][0] - breach_frame) / FRAMES_PER_HOUR,
+            &quot;subsequent_retreat_beyond_80um&quot;: retreated,
+            &quot;first_retreat_beyond_80um_frame&quot;: retreat_frames[0] if retreat_frames else None,
+            &quot;first_retreat_beyond_80um_time_h&quot;: (
+                retreat_frames[0] / FRAMES_PER_HOUR if retreat_frames else None
+            ),
+        }
+        breaches.append(event)
+        if not retreated:
+            escapes.append(event)
+
+    if RATE_START_FRAME not in by_frame or CHECKPOINT_FRAME not in by_frame:
+        raise ValueError(f&quot;{name}: missing checkpoint frames {RATE_START_FRAME}/{CHECKPOINT_FRAME}&quot;)
+    area_start = frame_area(RATE_START_FRAME)
+    area_checkpoint = frame_area(CHECKPOINT_FRAME)
+    elapsed_h = (CHECKPOINT_FRAME - RATE_START_FRAME) / FRAMES_PER_HOUR
+    log_area_rate = math.log(area_checkpoint / area_start) / elapsed_h
+    closest_particle, closest_um = min_front_um(CHECKPOINT_FRAME)
+
+    breaches_after_checkpoint = [e for e in breaches if e[&quot;first_breach_frame&quot;] &gt; CHECKPOINT_FRAME]
+    escapes_after_checkpoint = [e for e in escapes if e[&quot;first_breach_frame&quot;] &gt; CHECKPOINT_FRAME]
+    return {
+        &quot;colony&quot;: name,
+        &quot;source_file&quot;: str(path),
+        &quot;source_sha256&quot;: hashlib.sha256(path.read_bytes()).hexdigest(),
+        &quot;rows&quot;: len(rows),
+        &quot;last_frame&quot;: max(by_frame),
+        &quot;eligible_track_count&quot;: len(eligible),
+        &quot;eligible_breach_count&quot;: len(breaches),
+        &quot;eligible_escape_count_through_observed_horizon&quot;: len(escapes),
+        &quot;eligible_breaches&quot;: breaches,
+        &quot;eligible_escapes&quot;: escapes,
+        &quot;checkpoint&quot;: {
+            &quot;frame&quot;: CHECKPOINT_FRAME,
+            &quot;time_h&quot;: CHECKPOINT_FRAME / FRAMES_PER_HOUR,
+            &quot;colony_area_px2&quot;: area_checkpoint,
+            &quot;log_area_rate_per_h_over_2h_before_checkpoint&quot;: log_area_rate,
+            &quot;nearest_tracked_clone_particle&quot;: closest_particle,
+            &quot;nearest_tracked_clone_clearance_um&quot;: closest_um,
+            &quot;eligible_breaches_in_followup&quot;: breaches_after_checkpoint,
+            &quot;eligible_escapes_in_followup&quot;: escapes_after_checkpoint,
+        },
+    }
+
+
+def main() -&gt; None:
+    source_dir = _source_dir()
+    p2 = reconstruct(&quot;P2&quot;, source_dir / &quot;clone_data_fusion_resolved_P2.csv&quot;)
+    p3 = reconstruct(&quot;P3&quot;, source_dir / &quot;clone_data_fusion_resolved_P3.csv&quot;)
+    all_colonies = [
+        reconstruct(f&quot;P{i}&quot;, source_dir / f&quot;clone_data_fusion_resolved_P{i}.csv&quot;)
+        for i in range(1, 9)
+    ]
+    timing_events: list[dict[str, Any]] = []
+    for colony in all_colonies:
+        for event in colony[&quot;eligible_breaches&quot;]:
+            frame = event[&quot;first_breach_frame&quot;]
+            treatment_interval = next(
+                (span for span in ADAPTIVE_PULSE_FRAMES if span[0] &lt;= frame &lt;= span[1]),
+                None,
+            )
+            previous_ends = [end for _, end in ADAPTIVE_PULSE_FRAMES if end &lt; frame]
+            later_starts = [start for start, _ in ADAPTIVE_PULSE_FRAMES if start &gt; frame]
+            previous_end = max(previous_ends) if previous_ends else None
+            next_start = min(later_starts) if later_starts else None
+            timing_events.append({
+                &quot;colony&quot;: colony[&quot;colony&quot;],
+                **event,
+                &quot;treatment_phase_at_first_breach&quot;: &quot;on&quot; if treatment_interval else &quot;off&quot;,
+                &quot;pulse_interval_containing_breach_frames&quot;: list(treatment_interval) if treatment_interval else None,
+                &quot;hours_since_previous_pulse_end&quot;: (
+                    (frame - previous_end) / FRAMES_PER_HOUR if previous_end is not None else None
+                ),
+                &quot;hours_until_next_pulse_start&quot;: (
+                    (next_start - frame) / FRAMES_PER_HOUR if next_start is not None else None
+                ),
+                &quot;hours_from_next_pulse_start_to_first_retreat_beyond_80um&quot;: (
+                    (event[&quot;first_retreat_beyond_80um_frame&quot;] - next_start) / FRAMES_PER_HOUR
+                    if next_start is not None and event[&quot;first_retreat_beyond_80um_frame&quot;] is not None
+                    else None
+                ),
+            })
+    a2 = p2[&quot;checkpoint&quot;][&quot;colony_area_px2&quot;]
+    a3 = p3[&quot;checkpoint&quot;][&quot;colony_area_px2&quot;]
+    g2 = p2[&quot;checkpoint&quot;][&quot;log_area_rate_per_h_over_2h_before_checkpoint&quot;]
+    g3 = p3[&quot;checkpoint&quot;][&quot;log_area_rate_per_h_over_2h_before_checkpoint&quot;]
+    d2 = p2[&quot;checkpoint&quot;][&quot;nearest_tracked_clone_clearance_um&quot;]
+    d3 = p3[&quot;checkpoint&quot;][&quot;nearest_tracked_clone_clearance_um&quot;]
+    if d2 &lt;= 0 or d3 &lt;= 0:
+        raise ValueError(&quot;Expected positive checkpoint clone-front clearances&quot;)
+
+    result = {
+        &quot;title&quot;: &quot;Descriptive matched-bulk / divergent-clone audit&quot;,
+        &quot;source_article&quot;: &quot;https://doi.org/10.1038/s41559-026-03178-z&quot;,
+        &quot;source_data_note&quot;: &quot;Published Appold figure-data CSVs; final article Methods eligibility and escape criteria implemented here.&quot;,
+        &quot;parameters&quot;: {
+            &quot;frames_per_hour&quot;: FRAMES_PER_HOUR,
+            &quot;micrometres_per_pixel&quot;: UM_PER_PIXEL,
+            &quot;eligible_first_detection_hours&quot;: [12.5, 100.0],
+            &quot;eligible_clearance_band_um_at_least_once&quot;: list(ELIGIBLE_BAND_UM),
+            &quot;minimum_consecutive_frames&quot;: MIN_CONSECUTIVE_FRAMES,
+            &quot;breach_um&quot;: BREACH_UM,
+            &quot;retreat_beyond_um_for_confinement&quot;: RETREAT_UM,
+            &quot;checkpoint_frame&quot;: CHECKPOINT_FRAME,
+            &quot;growth_rate_window_frames&quot;: [RATE_START_FRAME, CHECKPOINT_FRAME],
+        },
+        &quot;colonies&quot;: [p2, p3],
+        &quot;all_eight_colony_contact_timing_screen&quot;: {
+            &quot;adaptive_pulse_frames_from_source_figure_code&quot;: [list(span) for span in ADAPTIVE_PULSE_FRAMES],
+            &quot;eligible_track_counts_P1_to_P8&quot;: [colony[&quot;eligible_track_count&quot;] for colony in all_colonies],
+            &quot;eligible_first_breach_count&quot;: len(timing_events),
+            &quot;source_defined_escape_count_through_observed_horizon&quot;: sum(
+                not event[&quot;subsequent_retreat_beyond_80um&quot;] for event in timing_events
+            ),
+            &quot;breach_then_retreat_count_through_observed_horizon&quot;: sum(
+                event[&quot;subsequent_retreat_beyond_80um&quot;] for event in timing_events
+            ),
+            &quot;events&quot;: timing_events,
+            &quot;interpretation&quot;: &quot;The two post-frame-145 breach events have different recorded fates and different timing relative to the next shared pulse; this is a post-hoc pattern, not an estimated rescue-latency law or causal effect.&quot;,
+        },
+        &quot;pair_comparison&quot;: {
+            &quot;area_px2_absolute_difference_pct_of_P3&quot;: abs(a2 - a3) / a3 * 100.0,
+            &quot;area_px2_absolute_difference_pct_of_mean&quot;: abs(a2 - a3) / ((a2 + a3) / 2.0) * 100.0,
+            &quot;log_area_rate_per_h_absolute_difference_pct_of_P3&quot;: abs(g2 - g3) / abs(g3) * 100.0,
+            &quot;clearance_ratio_P3_over_P2&quot;: d3 / d2,
+            &quot;interpretation&quot;: &quot;One post-hoc pair with similar bulk area/rate and different clone-front clearance and eligible escape histories; descriptive only.&quot;,
+        },
+        &quot;limitations&quot;: [
+            &quot;Two selected colonies do not estimate predictive accuracy, risk, or policy value.&quot;,
+            &quot;The data share a treatment protocol; this does not identify a causal effect of using clone clearance to steer treatment.&quot;,
+            &quot;No cancer or patient-level transfer is tested.&quot;,
+        ],
+    }
+    out = Path(__file__).resolve().parents[1] / &quot;outputs&quot; / &quot;appold_bulk_alias.json&quot;
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(result, indent=2) + &quot;\n&quot;, encoding=&quot;utf-8&quot;)
+    print(json.dumps(result, indent=2))
+    print(f&quot;Wrote {out}&quot;)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/2dae21eb6085f1422e11ab2a82699b34ef87048fa6c7d6e07735833a854124ef.py">Exact original</a></p></html>

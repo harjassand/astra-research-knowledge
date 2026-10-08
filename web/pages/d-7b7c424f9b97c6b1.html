@@ -1,0 +1,69 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c5_quantum_almost_abelian/cycle8_marginal_gate/legal_sdp/d5_twirled_marginal_diagnostic.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c5_quantum_almost_abelian/cycle8_marginal_gate/legal_sdp/d5_twirled_marginal_diagnostic.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Numerical diagnostic: twirl a top star eigenstate for the d=5 dual Q.
+This is finite floating evidence only; exact algebraic computation is separate.
+&quot;&quot;&quot;
+import numpy as np
+D=5
+w=np.exp(2j*np.pi/D)
+X=np.roll(np.eye(D,dtype=complex),1,axis=0)
+Z=np.diag([w**j for j in range(D)])
+def W(a,b):
+    return (w**((3*a*b)%D))*np.linalg.matrix_power(X,a)@np.linalg.matrix_power(Z,b)
+S=[(0,2),(1,0),(1,1),(2,4),(2,1),(2,3)]
+I=np.eye(D,dtype=complex)
+H=np.zeros((D**3,D**3),complex)
+for a,b in S:
+    U=W(a,b); Ud=U.conj().T
+    H += np.kron(np.kron(U.T,Ud),I)+np.kron(np.kron(Ud.T,U),I)
+    H += np.kron(np.kron(U.T,I),Ud)+np.kron(np.kron(Ud.T,I),U)
+H=(H+H.conj().T)/2
+vals,vecs=np.linalg.eigh(H)
+psi=vecs[:,-1]
+rho=np.outer(psi,psi.conj())
+# Twirl over the 25 Weyl displacements, conjugating all three factors.
+rhot=np.zeros_like(rho)
+for a in range(D):
+  for b in range(D):
+    U=W(a,b)
+    V=np.kron(np.kron(U.conj(),U),U)
+    rhot += V@rho@V.conj().T/ D**2
+# Parity and output swap average.
+P=np.zeros((D,D),complex)
+for j in range(D): P[(-j)%D,j]=1
+Vpar=np.kron(np.kron(P.conj(),P),P)
+Tswap=np.zeros((D**3,D**3),complex)
+for r in range(D):
+ for a in range(D):
+  for b in range(D):
+   ix=(r*D+a)*D+b; jx=(r*D+b)*D+a
+   Tswap[jx,ix]=1
+rhot=(rhot+Vpar@rhot@Vpar.conj().T+Tswap@rhot@Tswap.conj().T+Vpar@Tswap@rhot@Tswap.conj().T@Vpar.conj().T)/4
+# Partial trace B from RAB.
+tensor=rhot.reshape(D,D,D,D,D,D) # r,a,b,r&#x27;,a&#x27;,b&#x27;
+rhoRA=np.einsum(&#x27;rab r a b -&gt;&#x27;,[]) if False else np.einsum(&#x27;ra b r2a b -&gt;&#x27;,[]) if False else None
+# explicit correct einsum: preserve r,a,rp,ap and trace b=bp
+rhoRA=np.einsum(&#x27;rabscb-&gt;rasc&#x27;,tensor) # tensor labels r a b s c d ; this string typo guard follows
+# Reshape rho_RA as J_{r a,s c}; normalized Choi J=(id⊗Phi)(|Omega&gt;&lt;Omega|).
+Smat=np.zeros((D*D,D*D),complex)
+for i in range(D):
+ for j in range(D):
+  block=D*rhoRA[i,:,j,:]
+  for a in range(D):
+   for c in range(D):
+    Smat[a*D+c,i*D+j]=block[a,c]
+# Hilbert-Schmidt superoperator eigenvalues and Weyl transfer coefficients.
+print(&#x27;lambda_max(H)&#x27;, vals[-1], &#x27;trace(Q)&#x27;, 12, &#x27;star dual difference&#x27;, vals[-1]-12)
+print(&#x27;marginals trace&#x27;, np.trace(rhoRA), &#x27;marginal unital residual&#x27;, np.linalg.norm(np.einsum(&#x27;ra sa-&gt;rs&#x27;,rhoRA)-I/D))
+print(&#x27;Choi hermiticity&#x27;,np.linalg.norm(rhoRA-rhoRA.conj().transpose(2,3,0,1)))
+print(&#x27;superoperator HS selfadjoint residual&#x27;,np.linalg.norm(Smat-Smat.conj().T))
+print(&#x27;superoperator positive min eigenvalue&#x27;,np.linalg.eigvalsh((Smat+Smat.conj().T)/2).min())
+lam=[]
+for a in range(D):
+ for b in range(D):
+  if (a,b)==(0,0): continue
+  U=W(a,b)
+  image=(Smat@U.reshape(-1)).reshape(D,D)
+  lam.append(np.trace(U.conj().T@image)/D)
+print(&#x27;transfer min/max&#x27;, min(l.real for l in lam),max(l.real for l in lam),&#x27;max imaginary&#x27;,max(abs(l.imag) for l in lam))
+print(&#x27;distinct transfer values&#x27;,sorted({round(l.real,9) for l in lam}))
+print(&#x27;trace rhoRA^2&#x27;,np.trace(rhoRA@rhoRA).real)
+</pre><p><a href="../assets/b78fa9d7306287efddea5212139621da7ecd6a3f073c0ef48ffddf915a8d7e55.py">Exact original</a></p></html>

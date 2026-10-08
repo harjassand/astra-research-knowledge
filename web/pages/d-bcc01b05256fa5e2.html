@@ -1,0 +1,140 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/sol_general_rounding/pauli_screen.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/sol_general_rounding/pauli_screen.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Finite Pauli-cloner/stabilizer-design diagnostic, not a universal proof.
+
+Requires numpy, scipy (scipy only for adaptive mode).
+Examples:
+  python pauli_screen.py --qubits 2 --mode subsets
+  python pauli_screen.py --qubits 2 --mode random --count 15000 --seed 144
+  python pauli_screen.py --qubits 3 --mode random --count 12000 --seed 294042
+  python pauli_screen.py --qubits 3 --mode adaptive --count 200 --seed 435625
+
+All reported support lower bounds are STABILIZER designs, not exact h1.
+Even a positive gap would require a global h1 upper certificate.
+&quot;&quot;&quot;
+import argparse
+import itertools
+import json
+from pathlib import Path
+import time
+import numpy as np
+
+
+def interface(n):
+    d, nn = 2**n, 4**n
+    sp = lambda a, b: (((a % d) &amp; (b // d)).bit_count()
+                       + ((a // d) &amp; (b % d)).bit_count()) % 2
+    ops = []
+    for v in range(1, nn):
+        xx = np.zeros((nn, nn))
+        xx[np.arange(nn), np.arange(nn)^v] = 1
+        ops.append(np.diag([(-1)**sp(u, v) for u in range(nn)])+xx)
+    # Enumerate maximal isotropic label subspaces for n&lt;=3.
+    lines = set()
+    for generators in itertools.combinations(range(1, nn), n):
+        if any(sp(a, b) for a, b in itertools.combinations(generators, 2)):
+            continue
+        span = {0}
+        for a in generators:
+            span |= {b ^ a for b in tuple(span)}
+        if len(span) == d:
+            lines.add(tuple(sorted(span-{0})))
+    lineidx = np.array(sorted(lines), dtype=int)-1
+    lmat = np.zeros((len(lines), nn-1))
+    for i, line in enumerate(lineidx):
+        lmat[i, line] = 1
+    return np.array(ops), lineidx, lmat
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument(&#x27;--qubits&#x27;, type=int, choices=[1, 2, 3], default=2)
+    ap.add_argument(&#x27;--mode&#x27;, choices=[&#x27;subsets&#x27;, &#x27;random&#x27;, &#x27;adaptive&#x27;], default=&#x27;random&#x27;)
+    ap.add_argument(&#x27;--count&#x27;, type=int, default=1000)
+    ap.add_argument(&#x27;--seed&#x27;, type=int, default=144)
+    ap.add_argument(&#x27;--iterations&#x27;, type=int, default=12)
+    ap.add_argument(&#x27;--output&#x27;, type=Path)
+    args = ap.parse_args()
+    if args.mode == &#x27;subsets&#x27; and args.qubits != 2:
+        ap.error(&#x27;Exhaustive support enumeration is restricted to two qubits.&#x27;)
+    start = time.monotonic()
+    ops, lineidx, lmat = interface(args.qubits)
+    size = len(ops)
+    rng = np.random.default_rng(args.seed)
+    candidates = []
+    bestgap = -float(&#x27;inf&#x27;)
+    evaluated = 0
+    if args.mode == &#x27;adaptive&#x27;:
+        from scipy.optimize import linprog
+        for run in range(args.count):
+            q = rng.exponential(size=size)
+            q /= np.max(lmat@q)
+            for iteration in range(args.iterations):
+                val, vec = np.linalg.eigh(np.einsum(&#x27;v,vij-&gt;ij&#x27;, q, ops))
+                a = vec[:, -1]
+                r = np.einsum(&#x27;i,vij,j-&gt;v&#x27;, a, ops, a)-1
+                lp = linprog(-r, A_ub=lmat, b_ub=np.ones(len(lmat)),
+                             bounds=(0, None), method=&#x27;highs&#x27;)
+                if not lp.success:
+                    raise RuntimeError(lp.message)
+                q = lp.x
+                gap = -lp.fun-1
+                evaluated += 1
+                bestgap = max(bestgap, float(gap))
+                if gap &gt; 1e-7:
+                    candidates.append({&#x27;gap_against_stabilizer_lower&#x27;: float(gap),
+                                       &#x27;q&#x27;: q.tolist(), &#x27;a&#x27;: a.tolist(),
+                                       &#x27;run&#x27;: run, &#x27;iteration&#x27;: iteration})
+                    break
+    else:
+        count = 2**size-1 if args.mode == &#x27;subsets&#x27; else args.count
+        for it in range(count):
+            if args.mode == &#x27;subsets&#x27;:
+                bits = it+1
+                q = np.array([(bits &gt;&gt; j) &amp; 1 for j in range(size)], float)
+            elif args.qubits == 2:
+                if it % 3 == 0:
+                    q = rng.exponential(size=size)
+                elif it % 3 == 1:
+                    q = np.maximum(0, rng.normal(size=size))
+                else:
+                    q = 10**rng.uniform(-3, 0, size=size)
+            else:
+                if it % 4 == 0:
+                    q = rng.exponential(size=size)
+                elif it % 4 == 1:
+                    q = (rng.random(size) &lt; rng.uniform(.08, .6)).astype(float)
+                elif it % 4 == 2:
+                    q = 10**rng.uniform(-3, 0, size=size)
+                else:
+                    q = np.maximum(0, rng.normal(size=size))
+            if not q.any():
+                continue
+            if args.mode != &#x27;subsets&#x27;:
+                q /= q.sum()
+            excess = np.linalg.eigvalsh(np.einsum(&#x27;v,vij-&gt;ij&#x27;, q, ops))[-1]-q.sum()
+            lower = np.max(q[lineidx].sum(axis=1))
+            gap = float(excess-lower)
+            bestgap = max(bestgap, gap)
+            evaluated += 1
+            if gap &gt; 1e-7:
+                candidates.append({&#x27;gap_against_stabilizer_lower&#x27;: gap,
+                                   &#x27;cloner_excess&#x27;: float(excess),
+                                   &#x27;stabilizer_design_lower&#x27;: float(lower),
+                                   &#x27;q&#x27;: q.tolist(), &#x27;iteration&#x27;: it})
+    candidates.sort(key=lambda a: -a[&#x27;gap_against_stabilizer_lower&#x27;])
+    out = {&#x27;status&#x27;: &#x27;FINITE_NUMERICAL_SCREEN_ONLY&#x27;,
+           &#x27;warning&#x27;: &#x27;Stabilizer support is a lower bound on h1; no exact theorem or counterexample.&#x27;,
+           &#x27;dimension&#x27;: 2**args.qubits, &#x27;qubits&#x27;: args.qubits,
+           &#x27;mode&#x27;: args.mode, &#x27;seed&#x27;: args.seed, &#x27;requested_count&#x27;: args.count,
+           &#x27;evaluated&#x27;: evaluated, &#x27;Lagrangian_designs&#x27;: len(lineidx),
+           &#x27;threshold&#x27;: 1e-7, &#x27;best_gap_against_stabilizer_lower&#x27;: bestgap,
+           &#x27;candidate_count&#x27;: len(candidates), &#x27;candidates&#x27;: candidates[:100],
+           &#x27;elapsed_seconds&#x27;: time.monotonic()-start}
+    target = args.output or Path(__file__).with_name(
+        f&#x27;pauli_screen_n{args.qubits}_{args.mode}.json&#x27;)
+    target.write_text(json.dumps(out, indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({k: v for k, v in out.items() if k != &#x27;candidates&#x27;}, indent=2))
+
+
+if __name__ == &#x27;__main__&#x27;:
+    main()
+</pre><p><a href="../assets/76a91c821d7139b8f59d75aea51def0dce04b9448db4b159bd4a8ec1aaf1371a.py">Exact original</a></p></html>

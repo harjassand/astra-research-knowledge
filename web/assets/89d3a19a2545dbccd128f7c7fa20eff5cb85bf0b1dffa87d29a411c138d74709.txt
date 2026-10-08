@@ -1,0 +1,227 @@
+MODEWISE-PRECONDITIONED CONDITIONAL GAUSSIAN SAMPLER
+Date: 8 October 2026
+Status: internally proved candidate; exact-rational fixture checked; sibling-leaf adversarial audit found no fatal gap; external review and priority open
+
+1. Extension target
+===================
+
+The PC-16/PC-17 sampler uses a single scalar variance b for all m positive-
+count herald modes. Replace that scalar covariance by a rational
+mode-diagonal preconditioner
+
+    D0 = direct_sum_(j in H_+) b_j I_2,   b_j>0 rational,
+
+and assume a supplied rational relative Loewner certificate
+
+    0 < s_- <= s_+,       s_- D0 <= S <= s_+ D0.                 (MW)
+
+The scales b_j may differ by an arbitrarily large factor. The certificate
+controls the covariance after standardizing each positive-count herald mode
+by its own variance; it permits heterogeneous local energies and nonzero
+cross-mode correlations. It is stronger than positivity of S and does not
+cover arbitrary cross-mode condition number.
+
+Use the PC-16 interface and conventions: C is a rational strictly positive
+centered P covariance, H is a PNR herald with target counts k_j, H_+ contains
+the m positive-count modes, kappa=sum_j k_j is charged numerically, U is the
+unheralded output set, and
+
+    C°=(C^(-1)+P_H)^(-1),
+    S=(C°)_(H_+,H_+),
+    K=(C°)_(U,H_+)S^(-1),
+    V=(C°)_(U,U)-KSK^T.
+
+All matrices and certificate checks are rational. The common zero-count
+herald exponential has already been integrated into C°. The positive-core
+likelihood is
+
+    W(x)=prod_(j in H_+)(||x_j||^2/2)^(k_j)/k_j!,
+    pi(x)=phi_S(x)W(x)/Z_S.
+
+2. Exact-real theorem
+=====================
+
+Let K0=m+kappa and rho=s_+/s_-. For m>0 use
+
+    q(x)=phi_(s_+ D0)(x) W(x)/Z_q,
+    Z_q=prod_(j in H_+)(s_+ b_j)^(k_j),
+    Delta=S^(-1)-(s_+ D0)^(-1).
+
+By (MW), Delta is positive semidefinite. The target/proposal ratio is a
+constant times exp(-x^T Delta x/2), so accepting a q draw with probability
+
+    a(x)=exp(-x^T Delta x/2)
+
+produces pi exactly. The unknown constant, Z_S, and physical herald mass are
+not needed by the accept coin.
+
+To bound the acceptance, whiten with Y=D0^(-1/2)X and
+S'=D0^(-1/2) S D0^(-1/2). This is an analysis change of variables only;
+the input certificate itself is checked using rational PSD tests. The
+eigenvalues of S' lie in [s_-,s_+], and
+
+    Delta'=D0^(1/2) Delta D0^(1/2)=S'^(-1)-s_+^(-1)I >=0,
+    ||Delta'|| <= s_-^(-1)-s_+^(-1).
+
+Under q, each Y_j has a uniform phase and
+||Y_j||^2/2 distributed as Gamma(k_j+1, scale s_+), independently across
+modes. Hence E_q||Y||^2=2s_+ K0. Jensen gives
+
+    alpha=E_q a(X)
+      >= exp[-s_+ K0(s_-^(-1)-s_+^(-1))]
+       = exp[-K0(rho-1)].
+
+Thus the exact-real expected number of proposals is at most
+exp[K0(rho-1)]. A computable dyadic envelope is
+
+    Lambda=2^ceil(2 K0(rho-1)),
+
+because ln(2)>1/2, so alpha>=1/Lambda. The cost depends on the numeric
+heterogeneity/correlation parameter K0(rho-1), not on d, the number of
+zero-target herald modes, the number of output modes, or 1/p_H. For positive
+heralds, m<=kappa and K0<=2kappa. The finite sampler is polynomial in Lambda;
+in particular, polynomial-in-L bit time follows when numeric kappa, Lambda,
+the output-rate cap, and accuracy costs are polynomially bounded.
+
+The PC-16 certificate is recovered by taking D0=bI,
+s_-=1-eps, s_+=1+eps. Then
+
+    K0(rho-1)=2 K0 eps/(1-eps)
+             =2(1+eps)eps K0/(1-eps^2),
+
+which is exactly the PC-16 Jensen exponent. Therefore this extension does
+not weaken the existing scalar-certificate bound.
+
+3. Finite-bit implementation and explicit costs
+================================================
+
+The PC-17 finite-bit construction carries over with modewise radial scales.
+For clarity, the changed proposal and core-coupling parameters are listed
+here; the conditional-output Gaussian, normal-CDF, and Poisson routines are
+the same as PC-17, with the revised output cap below.
+
+Let b_max=max_j b_j and J=ceil(log_2(256 Lambda/delta)). In whitened
+coordinates the proposal has
+
+    T_Y=8 s_+(K0+J),
+    P_q(||Y||^2>T_Y)<=delta/(256 Lambda).
+
+The finite proposal in original coordinates is clipped to
+[-B_X,B_X]^(2m), where
+
+    B_X=ceil(sqrt(b_max T_Y)).
+
+Let
+
+    Lbar_Delta=1+sum_(i,j)|Delta_ij| >= sqrt(||Delta||/e),
+    K_* >= ||K||_2,
+    tau=delta/[512 Lambda(1+Lbar_Delta+K_*)],
+    zeta=delta/[256 Lambda K0],
+    eta_e=tau^2/[128 s_+ b_max K0].
+
+Use dyadic uniforms with mesh
+
+    h <= min(zeta/2, zeta eta_e/4),
+    2(22/7)h <= tau/[32(B_X+1)].
+
+The latter makes the coupled phase-angle error at most tau/[32(B_X+1)].
+Approximate each -ln(U_mid) to absolute error eta_e/2 and project the numerical value onto
+[0,infinity) before summation; this cannot increase the absolute error.
+The uniform-cell log error is at most 2h/zeta, so the total exponential
+error is at most eta_e. The squared-radius error for mode j is at most
+
+    2 s_+ b_j (k_j+1) eta_e.
+
+Summing radial errors in Euclidean norm gives at most
+sqrt(2 s_+ b_max K0 eta_e)=tau/8. Approximate each original-coordinate mode
+radius R_j=||X_j|| to absolute error tau/(32 ceil(sqrt(m))); their combined Euclidean error is at most
+tau/32. Evaluate sine and cosine to absolute error at most
+tau/[32(B_X+1)]. On the proposal-tail complement, the phase-angle
+contribution is at most tau/32 because the total core norm is at most B_X;
+the sine/cosine contribution is at most
+sqrt(2)B_X tau/[32(B_X+1)]<tau/16. These radial, square-root, phase, and
+trigonometric contributions sum to less than tau/4. Clipping is
+nonexpansive and leaves the exact core inside the box on that event. The
+resulting bad-distance probability is at most
+delta/(128 Lambda), exactly as in PC-17.
+
+The acceptance function has Euclidean Lipschitz constant
+sqrt(||Delta||/e)<=Lbar_Delta. Approximate exp(-x^T Delta x/2) to additive
+delta/(512 Lambda) and use a dyadic acceptance coin with mesh at most the
+same. The one-trial disagreement is at most delta/(64 Lambda); its finite
+success probability is at least 1/(2 Lambda). The normalized rejection
+coupling therefore gives accepted-core Euclidean error tau except with
+probability at most delta/16. The finite uncapped expected proposal count
+is at most 2 Lambda; the exact-real count is at most Lambda. A cap
+
+    N=ceil(4 Lambda ceil(log_2(2/xi)))
+
+makes timeout probability at most xi/2.
+
+For output modes, factor V=R diag(v)R^T by exact rational LDL and approximate
+sqrt(v_i) to absolute precision as in PC-17. Define
+
+    r=2|U|, cr=ceil(sqrt(r)), Rz=2ceil(log_2(512r/delta)),
+    L_*>=sqrt(tr V),
+    gamma_L=delta/[512(1+cr Rz)],
+    gamma_Z=delta/[512(1+L_*+gamma_L)].
+
+Use the PC-17 rational Taylor/Machin inverse-normal routine and Poisson
+Hellinger coupling. Its finite output amplitude has total rate at most
+
+    M_out=1/2[K_* ceil(sqrt(2m)) B_X
+                 +(L_*+gamma_L) cr(Rz+1)]^2.
+
+The Poisson cutoff is Q=ceil(16(M_out+ceil(log_2(64/delta)))). Thus bit time
+and random-bit use are polynomial in d, rational input length L, numeric
+kappa, Lambda, M_out, delta^(-1), log(xi^(-1)), and exact certificate/LDL
+bit lengths. b_max and s_+ enter core precision and coordinate magnitudes
+only through their rational bit lengths; the algorithm does not iterate
+proportionally to their numeric values. Polynomiality in L alone still
+requires numeric kappa, Lambda, M_out, and delta^(-1) polynomially bounded.
+No p_H or log(1/p_H) is used by the conditional sampler. Physical
+repeat-until-herald generation still costs 1/p_H.
+
+4. Output-energy bound
+======================
+
+Since the accepted-core density is q(x)a(x)/alpha and a<=1,
+
+    E_pi ||D0^(-1/2) X||^2 <= 2 s_+ K0 Lambda.
+
+Regression gives X_U|X=x~N(Kx,V). Therefore the conditional expected total
+output photon count obeys the explicit rational bound
+
+    E[N_U|H]
+      <= mu_* = [tr(V)+2 s_+ K0 Lambda tr(K D0 K^T)]/2.
+
+This conditional mean-energy bound is distinct from M_out, the deterministic
+finite-bit cap used to bound Poisson inversion work.
+
+5. Scope and falsifiers
+=======================
+
+This is a sampler for a centered, rational, strictly positive-P Gaussian
+with a supplied relative diagonal-scale certificate for the tilted
+positive-count herald covariance. It handles arbitrary heterogeneity among
+the local scalar quadrature scales b_j and standardized inter-mode
+correlations certified by (MW); it does not cover arbitrary anisotropic
+S at polynomial cost. A simple candidate D0 is obtained from the rational
+per-mode average variance
+
+    b_j=(S_(2j,2j)+S_(2j+1,2j+1))/2,
+
+provided the exact rational sandwich (MW) passes. Certificate acquisition
+and validation are charged; a failed certificate gives no sampler claim.
+
+The claim fails if the likelihood tilt has a different sign, the proposal
+normalizer is not the product shown, the whitened precision gap is not PSD,
+the Gamma radial law is mis-scaled, or the finite output coupling loses a
+factor depending on 1/p_H. A rational fixture verifies one heteroskedastic
+two-herald covariance and the acceptance/Jensen and output-energy identities,
+but this is finite evidence only. A distinct sibling-leaf adversarial review
+found no fatal gap; see `conditional_gaussian_modewise_audit.txt`. The
+derivation and this audit are internal checks, not external validation or
+priority review. The all-zero herald uses the PC-17
+exact Gaussian tilt with no rejection. Extension to displaced/non-positive-P
+or general anisotropic covariances remains open.

@@ -1,0 +1,106 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c12_cellstate_control/code/quantify_rescue.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c12_cellstate_control/code/quantify_rescue.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Recompute descriptive Fig. 5p rescue quantities from the official source data.
+
+Raw replicate values are transcribed from MOESM11_ESM.xlsx, worksheet &quot;Figure 5&quot;,
+section &quot;Fig. 5p&quot;. This script intentionally uses only the Python standard library.
+It does not recompute or reinterpret the paper&#x27;s inferential tests.
+&quot;&quot;&quot;
+import json
+import math
+from pathlib import Path
+
+RAW = {
+    &quot;control&quot;: [5090507, 4984949, 5184033, 5051615],
+    &quot;clodronate&quot;: [2372806, 2428438, 2020320, 2135245],
+    &quot;clodronate_plus_CXCL16&quot;: [2825187, 2585301, 2660136, 2759337],
+    &quot;clodronate_plus_CXCL10&quot;: [3049799, 2950718, 2467810, 2959881],
+    &quot;clodronate_plus_CXCL16_CXCL10&quot;: [3071035, 3367325, 3052521, 3219973],
+    &quot;clodronate_plus_IGF1&quot;: [4341047, 4180586, 4233750, 4115784],
+    &quot;clodronate_plus_CCL2&quot;: [4476359, 4413795, 4315991, 4567152],
+    &quot;clodronate_plus_IGF1_CCL2&quot;: [5162374, 5018172, 5275341, 5163110],
+    &quot;clodronate_plus_all_four&quot;: [4968874, 4996545, 5150520, 4971834],
+}
+
+
+def summary(xs):
+    mean = sum(xs) / len(xs)
+    sd = math.sqrt(sum((x - mean) ** 2 for x in xs) / (len(xs) - 1))
+    return {&quot;n&quot;: len(xs), &quot;mean&quot;: mean, &quot;sd&quot;: sd, &quot;sem&quot;: sd / math.sqrt(len(xs))}
+
+
+summaries = {key: summary(vals) for key, vals in RAW.items()}
+baseline = summaries[&quot;clodronate&quot;][&quot;mean&quot;]
+control = summaries[&quot;control&quot;][&quot;mean&quot;]
+denominator = control - baseline
+for key, row in summaries.items():
+    row[&quot;ratio_to_control_mean&quot;] = row[&quot;mean&quot;] / control
+    row[&quot;fraction_of_control_minus_clodronate_gap&quot;] = (row[&quot;mean&quot;] - baseline) / denominator
+
+
+def fractional_response(key):
+    return summaries[key][&quot;fraction_of_control_minus_clodronate_gap&quot;]
+
+
+def bliss_independent_ceiling(single_a, single_b):
+    &quot;&quot;&quot;Bliss independent-action benchmark on normalized marker-gap recovery.&quot;&quot;&quot;
+    a, b = fractional_response(single_a), fractional_response(single_b)
+    return 1 - (1 - a) * (1 - b)
+
+
+pair_igf_ccl = fractional_response(&quot;clodronate_plus_IGF1_CCL2&quot;)
+pair_cxcl = fractional_response(&quot;clodronate_plus_CXCL16_CXCL10&quot;)
+bliss_igf_ccl = bliss_independent_ceiling(&quot;clodronate_plus_IGF1&quot;, &quot;clodronate_plus_CCL2&quot;)
+bliss_cxcl = bliss_independent_ceiling(&quot;clodronate_plus_CXCL16&quot;, &quot;clodronate_plus_CXCL10&quot;)
+
+out = {
+    &quot;source&quot;: {
+        &quot;article_doi&quot;: &quot;10.1038/s41467-026-72331-w&quot;,
+        &quot;supplement&quot;: &quot;41467_2026_72331_MOESM11_ESM.xlsx&quot;,
+        &quot;worksheet&quot;: &quot;Figure 5&quot;,
+        &quot;section&quot;: &quot;Fig. 5p&quot;,
+        &quot;analysis&quot;: &quot;descriptive group means; no inferential tests recomputed&quot;,
+    },
+    &quot;groups&quot;: summaries,
+    &quot;derived&quot;: {
+        &quot;control_minus_clodronate_mean_gap&quot;: denominator,
+        &quot;combo_minus_clodronate_mean&quot;: summaries[&quot;clodronate_plus_IGF1_CCL2&quot;][&quot;mean&quot;] - baseline,
+        &quot;combo_minus_IGF1_only_mean&quot;: summaries[&quot;clodronate_plus_IGF1_CCL2&quot;][&quot;mean&quot;] - summaries[&quot;clodronate_plus_IGF1&quot;][&quot;mean&quot;],
+        &quot;combo_minus_CCL2_only_mean&quot;: summaries[&quot;clodronate_plus_IGF1_CCL2&quot;][&quot;mean&quot;] - summaries[&quot;clodronate_plus_CCL2&quot;][&quot;mean&quot;],
+        &quot;combo_minus_all_four_mean&quot;: summaries[&quot;clodronate_plus_IGF1_CCL2&quot;][&quot;mean&quot;] - summaries[&quot;clodronate_plus_all_four&quot;][&quot;mean&quot;],
+    },
+    &quot;fractional_rescue_interaction_bounds&quot;: {
+        &quot;definition&quot;: &quot;e=(mean MFI minus clodronate mean)/(control mean minus clodronate mean); Bliss=1-(1-eA)(1-eB)&quot;,
+        &quot;conditional_assumptions&quot;: [
+            &quot;each single-agent fractional response is nondecreasing with dose&quot;,
+            &quot;fractional marker-gap recovery is treated as a bounded effect scale&quot;,
+            &quot;Bliss independent-action is the null model, not a biological law&quot;,
+        ],
+        &quot;IGF1_plus_CCL2&quot;: {
+            &quot;single_agent_full_dose_effects&quot;: {
+                &quot;IGF1_5ng&quot;: fractional_response(&quot;clodronate_plus_IGF1&quot;),
+                &quot;CCL2_100ng&quot;: fractional_response(&quot;clodronate_plus_CCL2&quot;),
+            },
+            &quot;full_dose_Bliss_upper_bound_for_half_dose_pair&quot;: bliss_igf_ccl,
+            &quot;observed_half_dose_pair_effect_uncapped&quot;: pair_igf_ccl,
+            &quot;observed_half_dose_pair_effect_capped_at_control&quot;: min(1, pair_igf_ccl),
+            &quot;observed_minus_Bliss_surplus_uncapped&quot;: pair_igf_ccl - bliss_igf_ccl,
+            &quot;observed_minus_Bliss_surplus_capped&quot;: min(1, pair_igf_ccl) - bliss_igf_ccl,
+            &quot;pair_dose_each_factor&quot;: {&quot;IGF1_ng&quot;: 2.5, &quot;CCL2_ng&quot;: 50},
+        },
+        &quot;CXCL16_plus_CXCL10&quot;: {
+            &quot;single_agent_full_dose_effects&quot;: {
+                &quot;CXCL16_100ng&quot;: fractional_response(&quot;clodronate_plus_CXCL16&quot;),
+                &quot;CXCL10_100ng&quot;: fractional_response(&quot;clodronate_plus_CXCL10&quot;),
+            },
+            &quot;full_dose_Bliss_upper_bound_for_half_dose_pair&quot;: bliss_cxcl,
+            &quot;observed_half_dose_pair_effect&quot;: pair_cxcl,
+            &quot;observed_minus_Bliss_surplus&quot;: pair_cxcl - bliss_cxcl,
+            &quot;pair_dose_each_factor_ng&quot;: 50,
+        },
+    },
+}
+path = Path(__file__).resolve().parents[1] / &quot;proofs&quot; / &quot;rescue_quantification.json&quot;
+path.write_text(json.dumps(out, indent=2) + &quot;\n&quot;)
+print(path)
+print(json.dumps(out[&quot;derived&quot;], indent=2))
+</pre><p><a href="../assets/34a7d0e2e02021737b37cf378a8d989c14962048dee6d17a5ce995a91c88a5ef.py">Exact original</a></p></html>

@@ -1,0 +1,156 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c9_gene_regulatory_dynamics/code/sign_law.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c9_gene_regulatory_dynamics/code/sign_law.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact algebraic check and illustrative sign/conditioning calculations.
+
+No biological data are loaded. All numbers are synthetic model inputs.
+&quot;&quot;&quot;
+from __future__ import annotations
+import json
+from math import isclose
+from itertools import product
+
+
+def response_ratio(loop_gain: float, target_gain: float, feedback_gain: float) -&gt; float:
+    if loop_gain &lt; 0 or target_gain &lt;= 0 or feedback_gain &lt; 0:
+        raise ValueError(&quot;Require L&gt;=0, r_g&gt;0 and r_f&gt;=0&quot;)
+    return target_gain * (1.0 + loop_gain) / (1.0 + loop_gain * feedback_gain)
+
+
+def estimate_loop_gain(q: float, feedback_gain: float) -&gt; float:
+    denom = q * feedback_gain - 1.0
+    if abs(denom) &lt; 1e-12:
+        raise ValueError(&quot;ill-conditioned/singular q*r_f=1 interface&quot;)
+    value = (1.0 - q) / denom
+    if value &lt; 0:
+        raise ValueError(&quot;incompatible with positive loop gain&quot;)
+    return value
+
+
+def derivative_abs(q: float, feedback_gain: float) -&gt; float:
+    return abs(1.0 - feedback_gain) / abs(q * feedback_gain - 1.0) ** 2
+
+
+def robust_classify(
+    loop_gain: tuple[float, float],
+    target_gain: tuple[float, float],
+    feedback_gain: tuple[float, float],
+    input_area_ratio: tuple[float, float] = (1.0, 1.0),
+    margin: float = 0.0,
+) -&gt; dict[str, float | str]:
+    &quot;&quot;&quot;Return a certified sign only when every uncertainty corner clears it.&quot;&quot;&quot;
+    for name, interval in ((&quot;L&quot;, loop_gain), (&quot;r_g&quot;, target_gain), (&quot;r_f&quot;, feedback_gain), (&quot;r_u&quot;, input_area_ratio)):
+        if len(interval) != 2 or interval[0] &gt; interval[1]:
+            raise ValueError(f&quot;invalid {name} interval&quot;)
+    if loop_gain[0] &lt; 0 or feedback_gain[0] &lt; 0 or target_gain[0] &lt;= 0 or input_area_ratio[0] &lt;= 0:
+        raise ValueError(&quot;invalid physical interval&quot;)
+    values = [ru * response_ratio(L, rg, rf)
+              for L, rg, rf, ru in product(loop_gain, target_gain, feedback_gain, input_area_ratio)]
+    lower, upper = min(values), max(values)
+    if lower &gt; 1.0 + margin:
+        status = &quot;CERTIFIED_PRIMING&quot;
+    elif upper &lt; 1.0 - margin:
+        status = &quot;CERTIFIED_TOLERANCE&quot;
+    else:
+        status = &quot;UNKNOWN&quot;
+    return {&quot;status&quot;: status, &quot;lower_ratio&quot;: lower, &quot;upper_ratio&quot;: upper}
+
+
+def simulate_auc(a_f: float, a_g: float, schedule: str, dt: float = 0.01) -&gt; dict[str, float]:
+    &quot;&quot;&quot;RK4 integration of the stated linearized model, in synthetic min units.&quot;&quot;&quot;
+    lam, dm, dp = 1.0, 0.5, 0.2
+    gamma, km, kp = 0.4, 1.0, 1.0
+    b, kg, dg = 1.0, 1.0, 0.3
+    horizon = 200.0
+    n = round(horizon / dt)
+    state = [0.0, 0.0, 0.0, 0.0]  # x, m, z, y
+    integrals = [0.0, 0.0, 0.0, 0.0]
+
+    def u(t: float) -&gt; float:
+        if schedule == &quot;one_pulse&quot;:
+            return 1.0 if 0.0 &lt;= t &lt; 6.0 else 0.0
+        if schedule == &quot;four_spaced_pulses&quot;:
+            return 1.0 if any(s &lt;= t &lt; s + 1.5 for s in (0.0, 20.0, 40.0, 60.0)) else 0.0
+        raise ValueError(schedule)
+
+    def rhs(t: float, q: list[float]) -&gt; list[float]:
+        x, m, z, y = q
+        return [b * u(t) - lam * x - gamma * z,
+                km * a_f * x - dm * m,
+                kp * m - dp * z,
+                kg * a_g * x - dg * y]
+
+    for j in range(n):
+        t = j * dt
+        k1 = rhs(t, state)
+        k2 = rhs(t + dt / 2, [v + dt * w / 2 for v, w in zip(state, k1)])
+        k3 = rhs(t + dt / 2, [v + dt * w / 2 for v, w in zip(state, k2)])
+        k4 = rhs(t + dt, [v + dt * w for v, w in zip(state, k3)])
+        nxt = [v + dt * (w1 + 2*w2 + 2*w3 + w4) / 6
+               for v, w1, w2, w3, w4 in zip(state, k1, k2, k3, k4)]
+        for j_state in range(4):
+            integrals[j_state] += dt * (state[j_state] + nxt[j_state]) / 2
+        state = nxt
+    return {&quot;auc_x&quot;: integrals[0], &quot;auc_y&quot;: integrals[3], &quot;terminal_state_norm&quot;: max(abs(v) for v in state)}
+
+
+def main() -&gt; None:
+    L, rg, rf = 4.0, 1.5, 2.0
+    R = response_ratio(L, rg, rf)
+    q = (1.0 + L) / (1.0 + L * rf)
+    recovered = estimate_loop_gain(q, rf)
+    sens = derivative_abs(q, rf)
+    assert isclose(R, 5.0 / 6.0, rel_tol=1e-14)
+    assert isclose(q, 5.0 / 9.0, rel_tol=1e-14)
+    assert isclose(recovered, L, rel_tol=1e-14)
+    assert isclose(sens, 81.0, rel_tol=1e-14)
+    no_feedback_enhancer_change = response_ratio(L, rg, 1.0)
+    assert isclose(no_feedback_enhancer_change, 1.5)
+    schedules = {}
+    for pulse_schedule in (&quot;one_pulse&quot;, &quot;four_spaced_pulses&quot;):
+        naive = simulate_auc(a_f=1.0, a_g=1.0, schedule=pulse_schedule)
+        primed = simulate_auc(a_f=2.0, a_g=rg, schedule=pulse_schedule)
+        numerical_ratio = primed[&quot;auc_y&quot;] / naive[&quot;auc_y&quot;]
+        assert abs(numerical_ratio - R) &lt; 2e-5
+        schedules[pulse_schedule] = {
+            &quot;naive_auc_x&quot;: naive[&quot;auc_x&quot;],
+            &quot;naive_auc_y&quot;: naive[&quot;auc_y&quot;],
+            &quot;primed_auc_x&quot;: primed[&quot;auc_x&quot;],
+            &quot;primed_auc_y&quot;: primed[&quot;auc_y&quot;],
+            &quot;observed_model_ratio&quot;: numerical_ratio,
+            &quot;tail_residual_max&quot;: max(naive[&quot;terminal_state_norm&quot;], primed[&quot;terminal_state_norm&quot;])
+        }
+    pulse_shape_naive_ratio = schedules[&quot;four_spaced_pulses&quot;][&quot;naive_auc_y&quot;] / schedules[&quot;one_pulse&quot;][&quot;naive_auc_y&quot;]
+    robust_tolerance = robust_classify((4.0, 5.0), (1.4, 1.6), (2.0, 2.2), (0.98, 1.02), margin=0.05)
+    robust_unknown = robust_classify((1.0, 6.0), (0.8, 1.6), (0.8, 2.2), (0.98, 1.02), margin=0.05)
+    assert robust_tolerance[&quot;status&quot;] == &quot;CERTIFIED_TOLERANCE&quot;
+    assert robust_unknown[&quot;status&quot;] == &quot;UNKNOWN&quot;
+    result = {
+        &quot;status&quot;: &quot;synthetic_algebraic_check_only&quot;,
+        &quot;inputs&quot;: {&quot;L&quot;: L, &quot;r_g&quot;: rg, &quot;r_f&quot;: rf},
+        &quot;target_AUC_ratio&quot;: R,
+        &quot;classification&quot;: &quot;tolerance&quot; if R &lt; 1 else &quot;priming&quot; if R &gt; 1 else &quot;neutral&quot;,
+        &quot;RelA_AUC_ratio_q&quot;: q,
+        &quot;recovered_L&quot;: recovered,
+        &quot;abs_dL_dq&quot;: sens,
+        &quot;target_only_gain_when_feedback_held_fixed&quot;: no_feedback_enhancer_change,
+        &quot;rk4_model_audit&quot;: {
+            &quot;status&quot;: &quot;finite_synthetic_ode_replay&quot;,
+            &quot;step_minutes&quot;: 0.01,
+            &quot;horizon_minutes&quot;: 200.0,
+            &quot;equal_input_area&quot;: 6.0,
+            &quot;schedules&quot;: schedules,
+            &quot;LTI_AUC_ratio_four_spaced_over_one_pulse&quot;: pulse_shape_naive_ratio,
+            &quot;interpretation&quot;: &quot;The model law is schedule-independent for fully captured AUC; it cannot explain the published equal-area pulse-train enhancement without nonlinear/state-dependent or finite-window terms.&quot;
+        },
+        &quot;robust_decision_examples&quot;: {
+            &quot;synthetic_interval_certified_tolerance&quot;: robust_tolerance,
+            &quot;synthetic_overlap_returns_unknown&quot;: robust_unknown,
+            &quot;meaning&quot;: &quot;Worst-case uncertainty is taken over all gain and matched-input interval corners; these synthetic intervals are not acquired biology.&quot;
+        },
+        &quot;costs_not_included&quot;: [&quot;cells&quot;, &quot;perturbation calibration&quot;, &quot;reporters&quot;, &quot;RNA half-life&quot;, &quot;culture replication&quot;, &quot;chromatin assay&quot;]
+    }
+    print(json.dumps(result, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/2f59cf754aba102b4eb34a39c5fdef1b3c47bb2f4e8035af0570d60fae28c93b.py">Exact original</a></p></html>

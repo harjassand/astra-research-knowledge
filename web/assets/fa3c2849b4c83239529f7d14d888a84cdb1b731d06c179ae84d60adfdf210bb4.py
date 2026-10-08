@@ -1,0 +1,208 @@
+#!/usr/bin/env python3
+"""Exact degree-five design and 18-outcome spin-1 EB compiler checks."""
+
+from itertools import product
+
+import sympy as sp
+
+
+def spin_one():
+    jz = sp.diag(1, 0, -1)
+    jp = sp.sqrt(2) * sp.Matrix([[0, 1, 0], [0, 0, 1], [0, 0, 0]])
+    jm = jp.T
+    jx = (jp + jm) / 2
+    jy = (jp - jm) / (2 * sp.I)
+    return (jx, jy, jz)
+
+
+def sphere_moment(indices):
+    degree = len(indices)
+    if degree == 0:
+        return sp.Integer(1)
+    if degree % 2:
+        return sp.Integer(0)
+    if degree == 2:
+        return sp.Rational(1, 3) if indices[0] == indices[1] else sp.Integer(0)
+    if degree == 4:
+        i, j, k, ell = indices
+        numerator = (
+            int(i == j and k == ell)
+            + int(i == k and j == ell)
+            + int(i == ell and j == k)
+        )
+        return sp.Rational(numerator, 15)
+    raise ValueError(f"unexpected polynomial degree {degree}")
+
+
+def icosahedral_moment(indices):
+    """Exact normalized moment for the 12 vertices in the stated coordinates.
+
+    Before normalization, the three coordinate patterns are cyclic placements
+    of (0, +/-1, +/-phi). Sign averaging kills odd exponents. Even moments
+    involve only norm^2=(5+sqrt(5))/2, so no nested radicals are introduced.
+    """
+    degree = len(indices)
+    if degree == 0:
+        return sp.Integer(1)
+    if degree % 2:
+        return sp.Integer(0)  # antipodal vertex pairs
+    phi = (1 + sp.sqrt(5)) / 2
+    norm_sq = (5 + sp.sqrt(5)) / 2
+    exponents = [indices.count(axis) for axis in range(3)]
+    # (zero coordinate, coordinate carrying 1, coordinate carrying phi)
+    patterns = ((0, 1, 2), (2, 0, 1), (1, 2, 0))
+    total = 0
+    for zero_axis, one_axis, phi_axis in patterns:
+        if exponents[zero_axis] != 0:
+            continue
+        if exponents[one_axis] % 2 or exponents[phi_axis] % 2:
+            continue
+        total += 4 * phi**exponents[phi_axis] / norm_sq ** (degree // 2)
+    return sp.simplify(total / 12)
+
+
+def polynomial_average(expression, coordinates, moment):
+    polynomial = sp.Poly(sp.expand(expression), *coordinates)
+    total = 0
+    for powers, coefficient in polynomial.terms():
+        indices = [axis for axis, count in enumerate(powers) for _ in range(count)]
+        total += coefficient * moment(indices)
+    return sp.simplify(total)
+
+
+def matrix_average(matrix, coordinates, moment):
+    return matrix.applyfunc(lambda entry: polynomial_average(entry, coordinates, moment))
+
+
+def verify_design_moments():
+    for degree in range(6):
+        for indices in product(range(3), repeat=degree):
+            assert sp.simplify(
+                icosahedral_moment(indices) - sphere_moment(indices)
+            ) == 0
+
+
+def vec(matrix):
+    return sp.Matrix([matrix[r, c] for c in range(matrix.cols) for r in range(matrix.rows)])
+
+
+def superoperator(action):
+    columns = []
+    for c in range(3):
+        for r in range(3):
+            basis = sp.zeros(3)
+            basis[r, c] = 1
+            columns.append(vec(action(basis)))
+    return sp.Matrix.hstack(*columns)
+
+
+def main():
+    verify_design_moments()
+    identity = sp.eye(3)
+    spins = spin_one()
+    jx, jy, jz = spins
+    assert sp.simplify(jx * jy - jy * jx - sp.I * jz) == sp.zeros(3)
+    assert sp.simplify(jy * jz - jz * jy - sp.I * jx) == sp.zeros(3)
+    assert sp.simplify(jz * jx - jx * jz - sp.I * jy) == sp.zeros(3)
+
+    coordinates = sp.symbols("nx ny nz")
+    radius2 = sum(c**2 for c in coordinates)
+    jn = sum((coordinates[k] * spins[k] for k in range(3)), sp.zeros(3))
+    # Spin-1 covariance and the su(2) identities give J_n^3=|n|^2 J_n.
+    assert sp.simplify(sp.expand(jn**3 - radius2 * jn)) == sp.zeros(3)
+    p_symbolic = (jn**2 + jn) / 2
+    n_symbolic = identity - jn**2
+    # On the unit sphere these are idempotents with trace one, hence rank-one.
+    p2_minus_p = sp.expand(p_symbolic**2 - p_symbolic)
+    n2_minus_n = sp.expand(n_symbolic**2 - n_symbolic)
+    # Reduce polynomial entries modulo radius2=1 via the J_n^3 identity above.
+    assert sp.simplify(sp.trace(jn)) == 0
+    assert sp.simplify(sp.trace(jn**2) - 2 * radius2) == 0
+    assert sp.simplify(sp.trace(p_symbolic) - radius2) == 0
+    assert sp.simplify(sp.trace(n_symbolic) - (3 - 2 * radius2)) == 0
+    # Exact normal forms obtained from J_n^3=radius2 J_n show that both
+    # idempotence defects have a factor radius2-1.
+    assert sp.simplify(
+        p2_minus_p - (radius2 - 1) * (jn**2 + 2 * jn) / 4
+    ) == sp.zeros(3)
+    assert sp.simplify(n2_minus_n - (radius2 - 1) * jn**2) == sp.zeros(3)
+
+    # The twelve coherent effects P_v/4 and the six combined nematic-axis
+    # effects N_a/2. Antipodal invariance makes the 12-vertex N sum equal the
+    # 6-axis sum after combining each pair.
+    p_vertex_mean = matrix_average(p_symbolic, coordinates, icosahedral_moment)
+    n_vertex_mean = matrix_average(n_symbolic, coordinates, icosahedral_moment)
+    assert sp.simplify(3 * p_vertex_mean - identity) == sp.zeros(3)
+    assert sp.simplify(3 * n_vertex_mean - identity) == sp.zeros(3)
+    s = sp.symbols("s", real=True)
+    assert sp.simplify(s * 3 * p_vertex_mean + (1 - s) * 3 * n_vertex_mean - identity) == sp.zeros(3)
+
+    coherent_haar = matrix_average(
+        sp.kronecker_product(p_symbolic.T, p_symbolic), coordinates, sphere_moment
+    )
+    nematic_haar = matrix_average(
+        sp.kronecker_product(n_symbolic.T, n_symbolic), coordinates, sphere_moment
+    )
+    coherent_discrete = matrix_average(
+        sp.kronecker_product(p_symbolic.T, p_symbolic), coordinates, icosahedral_moment
+    )
+    nematic_discrete = matrix_average(
+        sp.kronecker_product(n_symbolic.T, n_symbolic), coordinates, icosahedral_moment
+    )
+    assert sp.simplify(coherent_discrete - coherent_haar) == sp.zeros(9)
+    assert sp.simplify(nematic_discrete - nematic_haar) == sp.zeros(9)
+
+    def coherent_action(x):
+        return matrix_average(3 * sp.trace(p_symbolic * x) * p_symbolic, coordinates, sphere_moment)
+
+    def nematic_action(x):
+        return matrix_average(3 * sp.trace(n_symbolic * x) * n_symbolic, coordinates, sphere_moment)
+
+    phi_coh = superoperator(coherent_action)
+    phi_nem = superoperator(nematic_action)
+    assert phi_coh.eigenvals() == {
+        sp.Integer(1): 1,
+        sp.Rational(1, 2): 3,
+        sp.Rational(1, 10): 5,
+    }
+    assert phi_nem.eigenvals() == {
+        sp.Integer(1): 1,
+        sp.Integer(0): 3,
+        sp.Rational(2, 5): 5,
+    }
+    super_id = sp.eye(9)
+    projectors = [
+        (phi_coh - sp.Rational(1, 2) * super_id)
+        * (phi_coh - sp.Rational(1, 10) * super_id)
+        / sp.Rational(9, 20),
+        (phi_coh - super_id)
+        * (phi_coh - sp.Rational(1, 10) * super_id)
+        / -sp.Rational(1, 5),
+        (phi_coh - super_id)
+        * (phi_coh - sp.Rational(1, 2) * super_id)
+        / sp.Rational(9, 25),
+    ]
+    assert sp.simplify(sum(projectors, sp.zeros(9)) - super_id) == sp.zeros(9)
+    assert [sp.trace(projector) for projector in projectors] == [1, 3, 5]
+    assert sp.simplify(phi_nem * projectors[0] - projectors[0]) == sp.zeros(9)
+    assert sp.simplify(phi_nem * projectors[1]) == sp.zeros(9)
+    assert sp.simplify(
+        phi_nem * projectors[2] - sp.Rational(2, 5) * projectors[2]
+    ) == sp.zeros(9)
+    phi_mix = s * phi_coh + (1 - s) * phi_nem
+    assert sp.simplify(phi_mix * projectors[0] - projectors[0]) == sp.zeros(9)
+    assert sp.simplify(phi_mix * projectors[1] - s / 2 * projectors[1]) == sp.zeros(9)
+    assert sp.simplify(
+        phi_mix * projectors[2]
+        - (sp.Rational(2, 5) - 3 * s / 10) * projectors[2]
+    ) == sp.zeros(9)
+
+    print("icosahedral vertex moments through degree 5 equal sphere moments: PASS")
+    print("spin-1 coherent and nematic pure-projector identities: PASS")
+    print("12 coherent plus 6 nematic POVM effects normalize exactly: PASS")
+    print("exact 9x9 normalized Choi equality for both branches: PASS")
+    print("mixture sector transfer (1, s/2, 2/5-3s/10): PASS")
+
+
+if __name__ == "__main__":
+    main()

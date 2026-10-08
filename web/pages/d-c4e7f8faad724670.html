@@ -1,0 +1,193 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/acquisition_learning/cycle2/adaptive_policy_frontier/REPORT.txt</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/acquisition_learning/cycle2/adaptive_policy_frontier/REPORT.txt</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>ADAPTIVE ACTION-POLICY FRONTIER FOR A RANK-4 CONTROLLED HMM
+Cycle 2 | 2026-10-08
+
+Finding and scope
+-----------------
+There is a four-state controlled HMM for which a sequential action policy
+identifies the current predictive state exactly in two observations, while
+every fixed open-loop schedule needs three observations, even when the fixed
+learner receives and uses the entire raw trajectory. This is an exact,
+finite, noiseless minimax separation. The process has predictive/Hankel rank
+4. The acquisition target is the current hidden predictive state of a known
+controlled HMM, not its transition/emission parameters and not an arbitrary
+unknown-rank realization. The broader adaptive-acquisition question remains
+UNKNOWN.
+
+System and interface
+--------------------
+There is a single hidden mode S in {h1,h2,h3,h4}. It is drawn once from the
+uniform initial distribution and remains fixed under every control. The
+alphabet of real actions is A={A,B,C}; the observation alphabet is {0,1}.
+The known deterministic emission table is:
+
+             action A   action B   action C
+    h1           0          0          0
+    h2           0          1          0
+    h3           1          0          0
+    h4           1          0          1
+
+Formally, P(S_{t+1}=j | S_t=i, A_t=a)=1{i=j} and
+P(Y_t=b_i(a) | S_t=i, A_t=a)=1. The learner knows this HMM and the prior, but
+not the realized S. The task starts with one reset R; the reset is charged,
+draws/sets the initial hidden mode for this task, and produces no observation.
+The target mode stays fixed for the entire task. A new reset starts a new
+instance and cannot provide data about the prior instance whose predictive
+state is the task target. Within-task restart is therefore not a free way to
+extend a trajectory.
+
+At each time t, the learner chooses an action A_t and observes the raw bit
+Y_t. An adaptive policy may choose A_t as a function of the earlier action-
+observation history. A fixed schedule commits to its full action sequence
+before seeing observations. The exact objective is to output the realized
+predictive state (equivalently, the exact vector of future action-conditional
+predictions) with zero error for every initial mode. This is state acquisition
+in a known model, not membership-query access: actions are controls applied
+to one ongoing hidden process, and evidence is the resulting raw trajectory.
+
+Predictive rank and semantic equivalence
+----------------------------------------
+Let z_t=(a_t,y_t) and define the scalar joint-string series
+
+    F(z_1...z_T) = (1/4) sum_{i=1}^4 prod_{t=1}^T 1{y_t=b_i(a_t)}.
+
+This is the trajectory likelihood under the supplied uniform initial prior;
+actions are prescribed inputs, not random variables. The series has a
+four-state linear realization, so its Hankel rank is at most 4. For each i,
+let u_i be the length-three joint trace produced by action sequence ABC in
+mode h_i. Since the four table rows are distinct, the Hankel submatrix
+
+    [ F(u_i u_j) ]_{i,j=1}^4 = (1/4) I_4.
+
+Thus the rank is exactly 4. The current predictive state is one of the four
+distinct future-behavior rows indexed by h_i. Model identity is semantic:
+permuting hidden-state names leaves F unchanged, and any invertible change of
+basis in a linear realization that preserves F is equivalent. No raw
+transition-matrix syntax is part of the objective.
+
+Exact likelihoods and adaptive policy
+--------------------------------------
+For any fixed action sequence a_{1:q}, the full raw-data likelihood is
+
+    P_i(Y_{1:q}=y_{1:q} | a_{1:q}, R)
+      = prod_{t=1}^q 1{y_t=b_i(a_t)}.
+
+This is the likelihood used by the strongest fixed-schedule baseline; it
+retains every observation, rather than compressing to a statistic or using a
+weak state estimator.
+
+Use the policy: choose A first; after y_1=0 choose B, and after y_1=1 choose
+C. Its joint action/observation likelihood under mode h_i is
+
+    P_i(a_1,y_1,a_2,y_2 | pi,R)
+      = 1{a_1=A} 1{y_1=b_i(A)}
+        1{a_2=(B if y_1=0 else C)} 1{y_2=b_i(a_2)}.
+
+The four supported transcripts are:
+
+    mode   actions   observations
+    h1       AB          00
+    h2       AB          01
+    h3       AC          10
+    h4       AC          11
+
+Each has likelihood 1 under its own mode and 0 under the other three. Hence
+two observations suffice. One observation has only two possible outcomes,
+so any one-action policy has at most two transcript classes and cannot
+identify four modes. Therefore the exact adaptive minimax action count is 2.
+
+Every fixed schedule and full-data lower bound
+----------------------------------------------
+For a fixed schedule, the action sequence is independent of the observations.
+The full-data output signature is just the vector of table entries for its
+actions. Up to reordering, the distinct two-action choices have these
+collisions:
+
+    fixed actions   signatures in mode order (h1,h2,h3,h4)   collision
+       AB                     00, 01, 10, 10                   h3=h4
+       AC                     00, 00, 10, 11                   h1=h2
+       BC                     00, 10, 00, 01                   h1=h3
+       AA                     00, 00, 11, 11                   h1=h2
+       BB                     00, 11, 00, 00                   h1=h3
+       CC                     00, 00, 00, 11                   h1=h2
+
+These exhaust every ordered two-action schedule after accounting for
+permutation of action positions. For each schedule, at least two modes induce
+identical distributions on the *entire* observed trajectory. Any decoder,
+including a randomized minimax or Bayes-optimal decoder with the full model
+and full data, has conditional error at least 1/2 on one member of that
+indistinguishable pair. Thus no fixed schedule of two actions can exactly
+acquire the state.
+
+The three-action fixed schedule ABC produces signatures
+000, 010, 100, 101 for h1,h2,h3,h4, respectively. They are unique, so three
+actions suffice. The exact fixed-schedule minimax action count is therefore
+3. This is a strict adaptive advantage, 2 versus 3, under the same process,
+same reset, same scalar observations, same exact target, and same full-data
+decoder capability.
+
+Costs: actions, resets, observations, and output
+-----------------------------------------------
+Both methods use exactly one charged initial reset. No extra reset is needed;
+a later reset is a new task instance and cannot add information about the
+current mode. Let c_R be the reset-operation cost, c_A the cost per action
+symbol, and c_Y the cost per observed bit. Then
+
+    adaptive: c_R + 2 c_A + 2 c_Y,
+    fixed:    c_R + 3 c_A + 3 c_Y.
+
+With unit symbol costs, adaptive uses (R,A,Y)=(1,2,2), while the best fixed
+design uses (1,3,3). The adaptive learner receives a two-bit signature and
+the fixed learner a three-bit signature; each identifies one of four
+predictive states, whose canonical index takes 2 bits to store. If commands
+are sent to a remote process, A,B,C need 2 bits each. Charging the initial
+reset command as one 2-bit symbol, adaptive requests use 6 bits and fixed
+requests 8 bits; observation traffic is 2 versus 3 bits. Computation is a
+constant-size table lookup in both cases. The reset charge is identical and
+does not drive the separation.
+
+Runnable exact check
+--------------------
+`verify.py` enumerates all 3^2 fixed schedules, confirms every two-action
+full-data signature collides, checks the adaptive transcripts, verifies the
+ABC fixed upper bound, and evaluates the 4x4 Hankel minor exactly.
+
+    python3 outputs/research/acquisition_learning/cycle2/adaptive_policy_frontier/verify.py
+
+The captured output is in `fixture.txt`. The finite script is a direct exact
+check of this four-state design, not evidence for a general adaptive-query
+theorem.
+
+Source ledger and boundary
+--------------------------
+- Littman, Sutton, and Singh, “Predictive Representations of State,” NeurIPS
+  14 (2002), https://proceedings.neurips.cc/paper/2001/file/1e4d36177d71bbb3558e43af9577d70e-Paper.pdf.
+  It represents controlled-system state with action-conditional future
+  predictions. This supplies the predictive-state framing; it does not give
+  the finite minimax separation proved here.
+- Carlyle and Paz, “Realizations by Stochastic Finite Automata,” Journal of
+  Computer and System Sciences 5(1), 26–40 (1971),
+  https://doi.org/10.1016/S0022-0000(71)80005-3. It connects finite Hankel
+  rank to finite-state realizations. The rank-4 statement above is proved
+  directly by a finite minor.
+- Hsu, Kakade, and Zhang, “A Spectral Algorithm for Learning Hidden Markov
+  Models,” Journal of Computer and System Sciences 78(5), 1460–1480 (2012),
+  https://doi.org/10.1016/j.jcss.2011.12.025; preprint
+  https://arxiv.org/abs/0811.4413. Its full-data HMM learning setting and
+  rank/separation assumptions are useful context, but it does not analyze
+  adaptive action policies or this state-identification objective.
+- Angluin, “Learning Regular Sets from Queries and Counterexamples,”
+  Information and Computation 75(2), 87–106 (1987),
+  https://doi.org/10.1016/0890-5401(87)90052-6. This is an interface contrast
+  only: it supplies membership/equivalence queries, whereas the present task
+  obtains raw emissions from controlled trajectories and no teacher witness.
+
+Status: UNKNOWN for the broader cycle-2 problem of adaptive acquisition of
+unknown-rank predictive models from raw trajectories. The finite rank-4,
+known-kernel state-acquisition separation is an INTERNALLY-PROVED-CANDIDATE;
+the script is FINITE-EVIDENCE for implementation. It neither discovers an
+unknown Hankel basis nor proves an advantage for noisy, parameter-unknown,
+or arbitrary controlled HMMs. The next falsifier is a matched design in which
+the strongest fixed schedule uses all raw trajectory data and is allowed the
+same reset budget; that comparison is already built into this finite result,
+but must be redone for any broader class.
+</pre><p><a href="../assets/3dc793ed5c3d22138354b68e4b7c4581cbbcb1125a9c32f9d4ce92fde517d189.txt">Exact original</a></p></html>

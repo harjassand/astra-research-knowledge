@@ -1,0 +1,208 @@
+#!/usr/bin/env python3
+"""Exact finite check for noncovariant compatible channels and EB designs.
+
+Needs SymPy.  At d=3 it verifies actual CPTP two-output broadcasters for
+computational-basis dephasing and a non-EB noncovariant mixture of dephasing
+with the universal cloner.  It also checks the fixed-Haar failure and the
+channel-dependent factor-two EB design for the mixture.  The formulas work
+for every d>=2; this is a finite transcription check, not the proof of the
+all-d formulas in noncovariant_designs.txt.
+"""
+
+import sympy as sp
+
+
+def make_maps(d):
+    d2 = d * d
+    identity = sp.eye(d2)
+    swap = sp.zeros(d2)
+    for a in range(d):
+        for b in range(d):
+            swap[a * d + b, b * d + a] = 1
+    p_sym = (identity + swap) / 2
+
+    def dephase(x):
+        return sp.diag(*[x[i, i] for i in range(d)])
+
+    def dephase_broadcast(x):
+        out = sp.zeros(d2)
+        for i in range(d):
+            out[i * d + i, i * d + i] = x[i, i]
+        return out
+
+    def cloner_broadcast(x):
+        return sp.Rational(2, d + 1) * p_sym * sp.kronecker_product(x, sp.eye(d)) * p_sym
+
+    def cloner(x):
+        # Partial trace of the symmetric 1->2 cloner.  The explicit joint map
+        # is used separately to check the actual extension.
+        lam = sp.Rational(d + 2, 2 * (d + 1))
+        return lam * x + sp.trace(x) * sp.eye(d) / (2 * (d + 1))
+
+    def haar_eb(x):
+        return (x + sp.trace(x) * sp.eye(d)) / (d + 1)
+
+    def partial_output(y, keep_a):
+        out = sp.zeros(d)
+        for i in range(d):
+            for ip in range(d):
+                if keep_a:
+                    out[i, ip] = sum(y[i * d + b, ip * d + b] for b in range(d))
+                else:
+                    out[i, ip] = sum(y[a * d + i, a * d + ip] for a in range(d))
+        return out
+
+    return {
+        "swap": swap,
+        "dephase": dephase,
+        "dephase_broadcast": dephase_broadcast,
+        "cloner_broadcast": cloner_broadcast,
+        "cloner": cloner,
+        "haar_eb": haar_eb,
+        "partial_output": partial_output,
+    }
+
+
+def superoperator(channel, d):
+    columns = []
+    for i in range(d):
+        for j in range(d):
+            e = sp.zeros(d)
+            e[i, j] = 1
+            columns.append(sp.Matrix(list(channel(e))))
+    return sp.Matrix.hstack(*columns)
+
+
+def normalized_choi(joint, d):
+    d2 = d * d
+    omega = sp.zeros(d**3)
+    for r in range(d):
+        for rp in range(d):
+            e = sp.zeros(d)
+            e[r, rp] = 1
+            y = joint(e)
+            for a in range(d):
+                for b in range(d):
+                    for ap in range(d):
+                        for bp in range(d):
+                            omega[r * d2 + a * d + b, rp * d2 + ap * d + bp] = y[
+                                a * d + b, ap * d + bp
+                            ] / d
+    return omega
+
+
+def marginal_choi_b(omega, d):
+    """Trace B from an RAB Choi state, returning the RA Choi state."""
+    out = sp.zeros(d * d)
+    for r in range(d):
+        for a in range(d):
+            for rp in range(d):
+                for ap in range(d):
+                    out[r * d + a, rp * d + ap] = sum(
+                        omega[r * d * d + a * d + b,
+                              rp * d * d + ap * d + b]
+                        for b in range(d)
+                    )
+    return out
+
+
+def maximally_entangled_overlap(omega_ra, d):
+    return sp.simplify(
+        sum(omega_ra[r * d + r, rp * d + rp] for r in range(d) for rp in range(d)) / d
+    )
+
+
+def main():
+    d = 3
+    maps = make_maps(d)
+    delta = maps["dephase"]
+    jd = maps["dephase_broadcast"]
+    jc = maps["cloner_broadcast"]
+    phi_c = maps["cloner"]
+    haar = maps["haar_eb"]
+    partial = maps["partial_output"]
+    swap = maps["swap"]
+
+    # Both physical maps are CPTP, output-symmetric, and their two marginal
+    # channels agree exactly with the displayed formulas.
+    for joint, marginal in [(jd, delta), (jc, phi_c)]:
+        for i in range(d):
+            for j in range(d):
+                e = sp.zeros(d)
+                e[i, j] = 1
+                y = joint(e)
+                assert sp.trace(y) == sp.trace(e)
+                assert swap * y * swap == y
+                assert partial(y, True) == marginal(e)
+                assert partial(y, False) == marginal(e)
+
+    omega_d = normalized_choi(jd, d)
+    omega_c = normalized_choi(jc, d)
+    assert sp.trace(omega_d) == 1
+    assert sp.trace(omega_c) == 1
+    assert omega_d.is_positive_semidefinite is True
+    assert omega_c.is_positive_semidefinite is True
+
+    # A fixed Haar/orbit EB comparator cannot serve all noncovariant
+    # broadcasters.  Computational-basis dephasing fixes this diagonal
+    # traceless witness exactly, while Haar measure/prepare shrinks it.
+    a = sp.diag(1, -1, 0)
+    assert delta(a) == a
+    assert haar(a) == a / (d + 1)
+    assert (a - delta(a)) == sp.zeros(d)
+    assert (a - haar(a)) != sp.zeros(d)
+
+    # A channel-dependent, non-orbit design repairs this example exactly:
+    # the basis design is Delta itself, an EB channel and actual broadcaster.
+    s_delta = superoperator(delta, d)
+    defect_delta = sp.eye(d * d) - s_delta
+    assert defect_delta.is_positive_semidefinite is True
+    assert (sp.eye(d * d) - s_delta) - defect_delta == sp.zeros(d * d)
+
+    # Mix two actual broadcasters.  The mixture is noncovariant and non-EB,
+    # but the mixture of their EB designs still gives the factor-two lift.
+    phi_mix = lambda x: (phi_c(x) + delta(x)) / 2
+    j_mix = lambda x: (jc(x) + jd(x)) / 2
+    psi_mix = lambda x: (haar(x) + delta(x)) / 2
+    for i in range(d):
+        for j in range(d):
+            e = sp.zeros(d)
+            e[i, j] = 1
+            y = j_mix(e)
+            assert sp.trace(y) == sp.trace(e)
+            assert swap * y * swap == y
+            assert partial(y, True) == phi_mix(e)
+            assert partial(y, False) == phi_mix(e)
+
+    omega_mix = (omega_c + omega_d) / 2
+    omega_ra = marginal_choi_b(omega_mix, d)
+    f_mix = maximally_entangled_overlap(omega_ra, d)
+    assert f_mix > sp.Rational(1, d)  # entanglement witness: Phi_mix is not EB
+
+    s_phi = superoperator(phi_mix, d)
+    s_psi = superoperator(psi_mix, d)
+    c2_slack = sp.eye(d * d) - 2 * s_phi + s_psi
+    assert c2_slack == c2_slack.T
+    assert c2_slack.is_positive_semidefinite is True
+
+    # The mixture is genuinely noncovariant: diagonal and off-diagonal
+    # traceless directions have different multipliers.
+    a_off = sp.zeros(d)
+    a_off[0, 1] = 1
+    a_diag = sp.diag(1, -1, 0)
+    ratio_off = sp.simplify(phi_mix(a_off)[0, 1])
+    ratio_diag = sp.simplify(phi_mix(a_diag)[0, 0])
+    assert ratio_off != ratio_diag
+
+    print("status=EXACT_FINITE_NONCOVARIANT_CHECK")
+    print("d=3 dephasing broadcaster: CPTP, symmetric, both marginals Delta")
+    print("fixed Haar comparator fails on diag(1,-1,0): exact zero channel loss, positive EB loss")
+    print("channel-dependent basis design Delta: exact C=1")
+    print("mixture broadcaster: noncovariant, non-EB; mixture EB design satisfies C=2")
+    print("mixture Choi overlap with maximally entangled state=", f_mix)
+    print("mixture diagonal/off-diagonal multipliers=", ratio_diag, ratio_off)
+    print("scope=does not refute a channel-dependent dimension-free selector")
+
+
+if __name__ == "__main__":
+    main()

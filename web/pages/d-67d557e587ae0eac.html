@@ -1,0 +1,793 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c12_permanence_compose/formalization/WeightedDrift.lean</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c12_permanence_compose/formalization/WeightedDrift.lean</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>import N33Affine.UniformActivity
+
+/-!
+Formalization of the finite weighted essential-source drift estimate.
+
+The affine activity input is imported from the checked `N33Affine` package.
+This module keeps edge labels, source ties, and arbitrary real complexes
+explicit.  In particular, the source-tier condition is imposed on every
+edge at every tied essential source.
+-/
+
+noncomputable section
+
+open Finset
+
+namespace WeightedDrift
+
+abbrev Vec (d : ℕ) := Fin d → ℝ
+
+def dot {d : ℕ} (u v : Vec d) : ℝ := ∑ i, u i * v i
+
+def l1 {d : ℕ} (v : Vec d) : ℝ := ∑ i, |v i|
+
+def unitVector {d : ℕ} (i : Fin d) : Vec d := Pi.single i 1
+
+/-- A finite labelled diagram. Every edge has an arbitrary real source and
+target vector; labels are retained, so repeated reactions remain separate. -/
+structure ReactionDiagram (d m : ℕ) where
+  source : Fin m → Vec d
+  target : Fin m → Vec d
+
+def reactionVector {d m : ℕ} (D : ReactionDiagram d m) (e : Fin m) : Vec d :=
+  D.target e - D.source e
+
+/-- The comparison directions used by the manuscript: coordinate vectors,
+nonzero reaction vectors, and every ordered source difference. -/
+abbrev ComparisonIndex (d m : ℕ) := Fin d ⊕ (Fin m ⊕ (Fin m × Fin m))
+
+def comparisonVector {d m : ℕ} (D : ReactionDiagram d m) : ComparisonIndex d m → Vec d
+  | Sum.inl i =&gt; unitVector i
+  | Sum.inr (Sum.inl e) =&gt; reactionVector D e
+  | Sum.inr (Sum.inr (e, f)) =&gt; D.source e - D.source f
+
+def projectedReaction {d m : ℕ} (D : ReactionDiagram d m)
+    (q : Vec d) (e : Fin m) : ℝ := dot q (reactionVector D e)
+
+def projectedSource {d m : ℕ} (D : ReactionDiagram d m)
+    (q : Vec d) (e : Fin m) : ℝ := dot q (D.source e)
+
+/-- Membership in the manuscript&#x27;s `R_q`. -/
+def InR {d m : ℕ} (D : ReactionDiagram d m) (q : Vec d) (e : Fin m) : Prop :=
+  projectedReaction D q e ≠ 0
+
+/-- An essential reaction sourced on the essential support: it lies in `R_q`
+and its source is maximal among sources of edges in `R_q`. The universal
+comparison retains every source tie. `InR` alone records essential-reaction
+membership; this predicate adds the support condition used by endotacticity. -/
+def EssentialEdge {d m : ℕ} (D : ReactionDiagram d m)
+    (q : Vec d) (e : Fin m) : Prop :=
+  InR D q e ∧ ∀ f, InR D q f → projectedSource D q f ≤ projectedSource D q e
+
+/-- Exact all-directions, essential-source endotacticity. -/
+def AllEndotactic {d m : ℕ} (D : ReactionDiagram d m) : Prop :=
+  ∀ q e, EssentialEdge D q e → projectedReaction D q e &lt; 0
+
+/-- Characteristic-function description of the orthogonal complement of the
+real span of the reaction vectors. -/
+def StoichPerp {d m : ℕ} (D : ReactionDiagram d m) (r : Vec d) : Prop :=
+  ∀ e, projectedReaction D r e = 0
+
+def scalePoint {d : ℕ} (h : ℝ) (p : Vec d) : Vec d :=
+  fun i =&gt; Real.rpow h (p i)
+
+/-- Positive-domain real power-law monomial, including negative exponents. -/
+def monomial {d : ℕ} (x y : Vec d) : ℝ :=
+  ∏ i, Real.rpow (x i) (y i)
+
+def reactionField {d m : ℕ} (D : ReactionDiagram d m)
+    (k : Fin m → ℝ) (x : Vec d) : Vec d :=
+  ∑ e, (k e * monomial x (D.source e)) • reactionVector D e
+
+/-- The total reaction-vector coefficient budget. -/
+def reactionBudget {d m : ℕ} (D : ReactionDiagram d m) : ℝ :=
+  ∑ e, l1 (reactionVector D e)
+
+/-- Finite source `l1` budget. Using a sum instead of a maximum makes the
+empty-edge case definitional and still bounds every individual source norm. -/
+def sourceBudget {d m : ℕ} (D : ReactionDiagram d m) : ℝ :=
+  ∑ e, l1 (D.source e)
+
+def inExponentBox {d : ℕ} (p : Vec d) : Prop :=
+  N33Affine.InCube (-1) 1 p
+
+/-- Indexing the finite comparison list keeps duplicate vectors harmless and
+does not suppress distinct source or edge labels. -/
+def pointMarginTerm {d m : ℕ} (D : ReactionDiagram d m)
+    (r : Vec d) (z : ComparisonIndex d m) : ℝ :=
+  if dot r (comparisonVector D z) = 0 then 0
+  else (2 * l1 (comparisonVector D z)) / |dot r (comparisonVector D z)|
+
+def pointMarginDenom {d m : ℕ} (D : ReactionDiagram d m) (r : Vec d) : ℝ :=
+  2 + ∑ z, pointMarginTerm D r z
+
+/-- Pointwise positive tolerance supplied to `exists_full_affine_family`.
+For each nonzero comparison product it is at most `|r·v|/(2||v||₁)`. -/
+def pointTolerance {d m : ℕ} (D : ReactionDiagram d m) (r : Vec d) : ℝ :=
+  1 / pointMarginDenom D r
+
+def slopeMarginTerm {d m : ℕ} (D : ReactionDiagram d m)
+    (F : N33Affine.BoxFamily d (-1) 1)
+    (z : F.family.Index × ComparisonIndex d m) : ℝ :=
+  let r := (F.family.label z.1).slope
+  let v := comparisonVector D z.2
+  if dot r v = 0 then 0 else 2 / |dot r v|
+
+def slopeMarginDenom {d m : ℕ} (D : ReactionDiagram d m)
+    (F : N33Affine.BoxFamily d (-1) 1) : ℝ :=
+  2 + ∑ z : F.family.Index × ComparisonIndex d m, slopeMarginTerm D F z
+
+/-- A positive finite margin uniform over every active label and every
+comparison vector. It is a convenient conservative variant of the finite
+minimum in the manuscript. -/
+def slopeMargin {d m : ℕ} (D : ReactionDiagram d m)
+    (F : N33Affine.BoxFamily d (-1) 1) : ℝ :=
+  1 / slopeMarginDenom D F
+
+/-- Uniform sign stability for all active labels at all points of the exponent
+box. This is the explicit bridge consumed by the drift theorem. -/
+def ActivityMargin {d m : ℕ} (D : ReactionDiagram d m)
+    (F : N33Affine.BoxFamily d (-1) 1) (hAct : ℝ) : Prop :=
+  ∀ h p, 0 &lt; h → h &lt; hAct → inExponentBox p →
+    ∀ j, N33Affine.Active F.family.label j h p →
+    ∀ z : ComparisonIndex d m,
+      dot (F.family.label j).slope (comparisonVector D z) ≠ 0 →
+      |dot p (comparisonVector D z) -
+        dot (F.family.label j).slope (comparisonVector D z)| ≤
+        |dot (F.family.label j).slope (comparisonVector D z)| / 2
+
+lemma l1_nonneg {d : ℕ} (v : Vec d) : 0 ≤ l1 v :=
+  Finset.sum_nonneg fun i hi =&gt; abs_nonneg (v i)
+
+lemma dot_neg_left {d : ℕ} (r v : Vec d) : dot (-r) v = -dot r v := by
+  unfold dot
+  simp [Finset.sum_neg_distrib]
+
+lemma dot_sub_right {d : ℕ} (r u v : Vec d) :
+    dot r (u - v) = dot r u - dot r v := by
+  unfold dot
+  simp [Pi.sub_apply, mul_sub, Finset.sum_sub_distrib]
+
+lemma reactionBudget_nonneg {d m : ℕ} (D : ReactionDiagram d m) :
+    0 ≤ reactionBudget D := by
+  unfold reactionBudget
+  exact Finset.sum_nonneg fun e he =&gt; l1_nonneg _
+
+lemma sourceBudget_nonneg {d m : ℕ} (D : ReactionDiagram d m) :
+    0 ≤ sourceBudget D := by
+  unfold sourceBudget
+  exact Finset.sum_nonneg fun e he =&gt; l1_nonneg _
+
+lemma source_l1_le_budget {d m : ℕ} (D : ReactionDiagram d m) (e : Fin m) :
+    l1 (D.source e) ≤ sourceBudget D := by
+  classical
+  unfold sourceBudget
+  exact Finset.single_le_sum (fun e he =&gt; l1_nonneg _) (Finset.mem_univ e)
+
+lemma dot_abs_le_l1_of_box {d : ℕ} (r v : Vec d)
+    (hr : ∀ i, -1 ≤ r i ∧ r i ≤ 1) : |dot r v| ≤ l1 v := by
+  unfold dot l1
+  calc
+    |∑ i, r i * v i| ≤ ∑ i, |r i * v i| := Finset.abs_sum_le_sum_abs _ _
+    _ = ∑ i, |r i| * |v i| := by simp_rw [abs_mul]
+    _ ≤ ∑ i, |v i| := by
+      apply Finset.sum_le_sum
+      intro i hi
+      have hri : |r i| ≤ 1 := abs_le.mpr (hr i)
+      calc
+        |r i| * |v i| ≤ 1 * |v i| :=
+          mul_le_mul_of_nonneg_right hri (abs_nonneg _)
+        _ = |v i| := by ring
+
+lemma dot_le_l1_of_box {d : ℕ} (p v : Vec d)
+    (hp : ∀ i, -1 ≤ p i ∧ p i ≤ 1) : dot p v ≤ l1 v := by
+  have habs := dot_abs_le_l1_of_box p v hp
+  exact le_trans (le_abs_self _) habs
+
+lemma monomial_pos {d : ℕ} (x y : Vec d) (hx : ∀ i, 0 &lt; x i) :
+    0 &lt; monomial x y := by
+  unfold monomial
+  exact Finset.prod_pos fun i hi =&gt; Real.rpow_pos_of_pos (hx i) (y i)
+
+lemma monomial_scalePoint {d : ℕ} (h : ℝ) (hh : 0 &lt; h)
+    (p y : Vec d) : monomial (scalePoint h p) y = Real.rpow h (dot p y) := by
+  unfold monomial scalePoint dot
+  calc
+    ∏ i, Real.rpow (Real.rpow h (p i)) (y i) =
+        ∏ i, Real.rpow h (p i * y i) := by
+      apply Finset.prod_congr rfl
+      intro i hi
+      exact (Real.rpow_mul (le_of_lt hh) (p i) (y i)).symm
+    _ = Real.rpow h (∑ i, p i * y i) :=
+      (Real.rpow_sum_of_pos hh (fun i =&gt; p i * y i) Finset.univ).symm
+
+lemma dot_reactionField {d m : ℕ} (D : ReactionDiagram d m)
+    (r : Vec d) (k : Fin m → ℝ) (x : Vec d) :
+    dot r (reactionField D k x) =
+      ∑ e, (k e * monomial x (D.source e)) * projectedReaction D r e := by
+  classical
+  unfold dot reactionField projectedReaction
+  simp only [Finset.sum_apply, Pi.smul_apply, smul_eq_mul]
+  calc
+    (∑ i, r i * ∑ e, (k e * monomial x (D.source e)) *
+        (D.target e i - D.source e i)) =
+      ∑ i, ∑ e, (k e * monomial x (D.source e)) *
+        (r i * (D.target e i - D.source e i)) := by
+      apply Finset.sum_congr rfl
+      intro i hi
+      rw [Finset.mul_sum]
+      apply Finset.sum_congr rfl
+      intro e he
+      ring
+    _ = ∑ e, ∑ i, (k e * monomial x (D.source e)) *
+        (r i * (D.target e i - D.source e i)) := Finset.sum_comm
+    _ = ∑ e, (k e * monomial x (D.source e)) *
+        ∑ i, r i * (D.target e i - D.source e i) := by
+      apply Finset.sum_congr rfl
+      intro e he
+      rw [Finset.mul_sum]
+    _ = ∑ e, (k e * monomial x (D.source e)) *
+        dot r (reactionVector D e) := by
+      apply Finset.sum_congr rfl
+      intro e he
+      simp only [dot, reactionVector, Pi.sub_apply]
+
+theorem exists_minimum_reacting_edge {d m : ℕ}
+    (D : ReactionDiagram d m) (r : Vec d)
+    (hnotPerp : ¬ StoichPerp D r) :
+    ∃ e, projectedReaction D r e ≠ 0 ∧
+      ∀ f, projectedReaction D r f ≠ 0 →
+        projectedSource D r e ≤ projectedSource D r f := by
+  classical
+  let activeEdges : Finset (Fin m) :=
+    Finset.univ.filter fun e =&gt; projectedReaction D r e ≠ 0
+  have hactive : activeEdges.Nonempty := by
+    by_contra hEmpty
+    have hsetEmpty : activeEdges = ∅ := Finset.not_nonempty_iff_eq_empty.mp hEmpty
+    apply hnotPerp
+    intro e
+    by_contra hne
+    have he : e ∈ activeEdges := by
+      simp [activeEdges, hne]
+    simpa [hsetEmpty] using he
+  obtain ⟨e, he, hmin⟩ :=
+    Finset.exists_min_image activeEdges (projectedSource D r) hactive
+  refine ⟨e, (Finset.mem_filter.mp he).2, ?_⟩
+  intro f hf
+  exact hmin f (Finset.mem_filter.mpr ⟨Finset.mem_univ f, hf⟩)
+
+lemma minimum_tier_projected_positive {d m : ℕ}
+    (D : ReactionDiagram d m) (hEndo : AllEndotactic D)
+    (r : Vec d) (e : Fin m)
+    (he : projectedReaction D r e ≠ 0)
+    (hmin : ∀ f, projectedReaction D r f ≠ 0 →
+      projectedSource D r e ≤ projectedSource D r f) :
+    0 &lt; projectedReaction D r e := by
+  have hEssential : EssentialEdge D (-r) e := by
+    constructor
+    · change projectedReaction D (-r) e ≠ 0
+      simpa [projectedReaction, dot_neg_left] using he
+    · intro f hf
+      have hf&#x27; : projectedReaction D r f ≠ 0 := by
+        change projectedReaction D (-r) f ≠ 0 at hf
+        simpa [projectedReaction, dot_neg_left] using hf
+      have hsource := hmin f hf&#x27;
+      change dot (-r) (D.source f) ≤ dot (-r) (D.source e)
+      rw [dot_neg_left, dot_neg_left]
+      exact neg_le_neg hsource
+  have hdir := hEndo (-r) e hEssential
+  change dot (-r) (reactionVector D e) &lt; 0 at hdir
+  rw [dot_neg_left] at hdir
+  change -projectedReaction D r e &lt; 0 at hdir
+  linarith
+
+lemma negative_edge_source_above_minimum {d m : ℕ}
+    (D : ReactionDiagram d m) (hEndo : AllEndotactic D)
+    (r : Vec d) (eStar e : Fin m)
+    (hMin : ∀ f, projectedReaction D r f ≠ 0 →
+      projectedSource D r eStar ≤ projectedSource D r f)
+    (hNegative : projectedReaction D r e &lt; 0) :
+    projectedSource D r eStar &lt; projectedSource D r e := by
+  have hNonzero : projectedReaction D r e ≠ 0 := ne_of_lt hNegative
+  have hle := hMin e hNonzero
+  by_contra hnot
+  have heq : projectedSource D r e = projectedSource D r eStar :=
+    le_antisymm (le_of_not_gt hnot) hle
+  have hMinE : ∀ f, projectedReaction D r f ≠ 0 →
+      projectedSource D r e ≤ projectedSource D r f := by
+    intro f hf
+    rw [heq]
+    exact hMin f hf
+  have hPositive := minimum_tier_projected_positive D hEndo r e hNonzero hMinE
+  linarith
+
+lemma source_l1_budget_ge (d m : ℕ) (D : ReactionDiagram d m)
+    (e : Fin m) : l1 (D.source e) ≤ sourceBudget D :=
+  source_l1_le_budget D e
+
+lemma source_dot_le_budget {d m : ℕ} (D : ReactionDiagram d m)
+    (p y : Vec d) (hp : ∀ i, -1 ≤ p i ∧ p i ≤ 1)
+    (hy : l1 y ≤ sourceBudget D) : dot p y ≤ sourceBudget D := by
+  exact (dot_le_l1_of_box p y hp).trans hy
+
+lemma pointMarginTerm_nonneg {d m : ℕ} (D : ReactionDiagram d m)
+    (r : Vec d) (z : ComparisonIndex d m) : 0 ≤ pointMarginTerm D r z := by
+  unfold pointMarginTerm
+  split_ifs with h
+  · norm_num
+  · exact div_nonneg (mul_nonneg (by norm_num) (l1_nonneg _)) (abs_nonneg _)
+
+lemma pointMarginDenom_pos {d m : ℕ} (D : ReactionDiagram d m)
+    (r : Vec d) : 0 &lt; pointMarginDenom D r := by
+  unfold pointMarginDenom
+  have hs : 0 ≤ ∑ z : ComparisonIndex d m, pointMarginTerm D r z :=
+    Finset.sum_nonneg fun z hz =&gt; pointMarginTerm_nonneg D r z
+  linarith
+
+lemma pointTolerance_pos {d m : ℕ} (D : ReactionDiagram d m)
+    (r : Vec d) : 0 &lt; pointTolerance D r := by
+  unfold pointTolerance
+  exact one_div_pos.mpr (pointMarginDenom_pos D r)
+
+lemma pointTolerance_mul_l1_le {d m : ℕ} (D : ReactionDiagram d m)
+    (r : Vec d) (z : ComparisonIndex d m)
+    (hz : dot r (comparisonVector D z) ≠ 0) :
+    pointTolerance D r * l1 (comparisonVector D z) ≤
+      |dot r (comparisonVector D z)| / 2 := by
+  let v := comparisonVector D z
+  have habs : 0 &lt; |dot r v| := abs_pos.mpr hz
+  have hsingle := Finset.single_le_sum
+    (s := (Finset.univ : Finset (ComparisonIndex d m)))
+    (f := pointMarginTerm D r)
+    (fun j hj =&gt; pointMarginTerm_nonneg D r j) (Finset.mem_univ z)
+  have hterm : (2 * l1 v) / |dot r v| ≤ pointMarginDenom D r := by
+    have hzterm : pointMarginTerm D r z ≤
+        ∑ j : ComparisonIndex d m, pointMarginTerm D r j := hsingle
+    rw [pointMarginTerm, if_neg hz] at hzterm
+    dsimp [pointMarginDenom]
+    linarith
+  have hcross : 2 * l1 v ≤ pointMarginDenom D r * |dot r v| :=
+    (div_le_iff₀ habs).mp hterm
+  have hden : 0 &lt; pointMarginDenom D r := pointMarginDenom_pos D r
+  calc
+    pointTolerance D r * l1 v =
+        (2 * l1 v) / (2 * pointMarginDenom D r) := by
+      unfold pointTolerance
+      field_simp [ne_of_gt hden]
+      &lt;;&gt; ring
+    _ ≤ (pointMarginDenom D r * |dot r v|) /
+        (2 * pointMarginDenom D r) :=
+      div_le_div_of_nonneg_right hcross (by positivity)
+    _ = |dot r v| / 2 := by
+      field_simp [ne_of_gt hden]
+      &lt;;&gt; ring
+
+lemma slopeMarginTerm_nonneg {d m : ℕ} (D : ReactionDiagram d m)
+    (F : N33Affine.BoxFamily d (-1) 1)
+    (z : F.family.Index × ComparisonIndex d m) : 0 ≤ slopeMarginTerm D F z := by
+  dsimp [slopeMarginTerm]
+  split_ifs with h
+  · norm_num
+  · positivity
+
+lemma slopeMarginDenom_pos {d m : ℕ} (D : ReactionDiagram d m)
+    (F : N33Affine.BoxFamily d (-1) 1) : 0 &lt; slopeMarginDenom D F := by
+  unfold slopeMarginDenom
+  have hs : 0 ≤ ∑ z : F.family.Index × ComparisonIndex d m,
+      slopeMarginTerm D F z :=
+    Finset.sum_nonneg fun z hz =&gt; slopeMarginTerm_nonneg D F z
+  linarith
+
+lemma slopeMargin_pos {d m : ℕ} (D : ReactionDiagram d m)
+    (F : N33Affine.BoxFamily d (-1) 1) : 0 &lt; slopeMargin D F := by
+  unfold slopeMargin
+  exact one_div_pos.mpr (slopeMarginDenom_pos D F)
+
+lemma slopeMargin_le_half_abs {d m : ℕ} (D : ReactionDiagram d m)
+    (F : N33Affine.BoxFamily d (-1) 1)
+    (j : F.family.Index) (z : ComparisonIndex d m)
+    (hz : dot (F.family.label j).slope (comparisonVector D z) ≠ 0) :
+    slopeMargin D F ≤
+      |dot (F.family.label j).slope (comparisonVector D z)| / 2 := by
+  let v := comparisonVector D z
+  let r := (F.family.label j).slope
+  have habs : 0 &lt; |dot r v| := abs_pos.mpr hz
+  have hsingle := Finset.single_le_sum
+    (s := (Finset.univ : Finset (F.family.Index × ComparisonIndex d m)))
+    (f := slopeMarginTerm D F)
+    (fun t ht =&gt; slopeMarginTerm_nonneg D F t) (Finset.mem_univ (j, z))
+  have hterm : 2 / |dot r v| ≤ slopeMarginDenom D F := by
+    have hzterm : slopeMarginTerm D F (j, z) ≤
+        ∑ t : F.family.Index × ComparisonIndex d m, slopeMarginTerm D F t := hsingle
+    rw [slopeMarginTerm, if_neg hz] at hzterm
+    dsimp [slopeMarginDenom]
+    linarith
+  have hcross : 2 ≤ slopeMarginDenom D F * |dot r v| :=
+    (div_le_iff₀ habs).mp hterm
+  have hden : 0 &lt; slopeMarginDenom D F := slopeMarginDenom_pos D F
+  calc
+    slopeMargin D F = 2 / (2 * slopeMarginDenom D F) := by
+      unfold slopeMargin
+      field_simp [ne_of_gt hden]
+      &lt;;&gt; ring
+    _ ≤ (slopeMarginDenom D F * |dot r v|) /
+        (2 * slopeMarginDenom D F) :=
+      div_le_div_of_nonneg_right hcross (by positivity)
+    _ = |dot r v| / 2 := by
+      field_simp [ne_of_gt hden]
+      &lt;;&gt; ring
+
+lemma monomial_source_ratio_bound {d m : ℕ}
+    (D : ReactionDiagram d m) (F : N33Affine.BoxFamily d (-1) 1)
+    (hAct h H : ℝ) (p : Vec d) (j : F.family.Index)
+    (e f : Fin m) (hp : inExponentBox p)
+    (hactive : N33Affine.Active F.family.label j h p)
+    (hActivity : ActivityMargin D F hAct)
+    (hh : 0 &lt; h) (hhAct : h &lt; hAct) (hActLtOne&#x27; : hAct &lt; 1)
+    (hGap : 0 &lt; dot (F.family.label j).slope (D.source e - D.source f))
+    (hHbound : H = slopeMargin D F) :
+    monomial (scalePoint h p) (D.source e) ≤
+      Real.rpow h H * monomial (scalePoint h p) (D.source f) := by
+  let r := (F.family.label j).slope
+  let z : ComparisonIndex d m := Sum.inr (Sum.inr (e, f))
+  have hz : dot r (comparisonVector D z) ≠ 0 := by
+    simpa [z, comparisonVector] using (ne_of_gt hGap)
+  have herr := hActivity h p hh hhAct hp j hactive z hz
+  have hfinite := slopeMargin_le_half_abs D F j z hz
+  have hfinite&#x27; : H ≤ |dot r (comparisonVector D z)| / 2 := by
+    rw [hHbound]
+    exact hfinite
+  have hhalf : |dot r (comparisonVector D z)| =
+      dot r (D.source e - D.source f) := by
+    rw [comparisonVector]
+    exact abs_of_pos hGap
+  rw [hhalf] at herr hfinite&#x27;
+  have hlow := (abs_le.mp herr).1
+  have hlow&#x27; :
+      -(dot r (D.source e - D.source f) / 2) ≤
+        dot p (D.source e - D.source f) - dot r (D.source e - D.source f) := by
+    simpa [z, comparisonVector, r] using hlow
+  have hpdot : H ≤ dot p (D.source e - D.source f) := by
+    linarith
+  have hpdiff : H ≤ dot p (D.source e) - dot p (D.source f) := by
+    simpa [dot_sub_right] using hpdot
+  have hbase : h ≤ 1 := le_of_lt (lt_trans hhAct hActLtOne&#x27;)
+  have hpow : Real.rpow h (dot p (D.source e) - dot p (D.source f)) ≤
+      Real.rpow h H :=
+    Real.rpow_le_rpow_of_exponent_ge hh hbase hpdiff
+  have hratio :
+      monomial (scalePoint h p) (D.source e) /
+        monomial (scalePoint h p) (D.source f) ≤ Real.rpow h H := by
+    calc
+      _ = Real.rpow h (dot p (D.source e) - dot p (D.source f)) := by
+        rw [monomial_scalePoint h hh, monomial_scalePoint h hh]
+        exact (Real.rpow_sub hh (dot p (D.source e))
+          (dot p (D.source f))).symm
+      _ ≤ Real.rpow h H := hpow
+  have hmonoPos : 0 &lt; monomial (scalePoint h p) (D.source f) :=
+    monomial_pos _ _ (fun i =&gt; Real.rpow_pos_of_pos hh (p i))
+  exact (div_le_iff₀ hmonoPos).mp hratio
+
+lemma dot_coordinate_error_le {d : ℕ} (p r v : Vec d) (E : ℝ)
+    (hcoord : ∀ i, |p i - r i| &lt; E) :
+    |dot p v - dot r v| ≤ E * l1 v := by
+  have hsum : dot p v - dot r v = ∑ i, (p i - r i) * v i := by
+    unfold dot
+    rw [← Finset.sum_sub_distrib]
+    apply Finset.sum_congr rfl
+    intro i hi
+    ring
+  rw [hsum]
+  calc
+    |∑ i, (p i - r i) * v i| ≤ ∑ i, |(p i - r i) * v i| :=
+      Finset.abs_sum_le_sum_abs _ _
+    _ ≤ ∑ i, E * |v i| := by
+      apply Finset.sum_le_sum
+      intro i hi
+      rw [abs_mul]
+      exact mul_le_mul_of_nonneg_right (le_of_lt (hcoord i)) (abs_nonneg _)
+    _ = E * l1 v := by
+      unfold l1
+      rw [← Finset.mul_sum]
+
+theorem exists_activity_margin {d m : ℕ}
+    (D : ReactionDiagram d m) (F : N33Affine.BoxFamily d (-1) 1)
+    (hFull : N33Affine.FullApproximation (-1) 1 (pointTolerance D) F.family) :
+    ∃ hAct, 0 &lt; hAct ∧ hAct &lt; 1 ∧ ActivityMargin D F hAct := by
+  obtain ⟨hAct, hAct_pos, hAct_lt, hcut⟩ :=
+    N33Affine.exists_uniform_activity_cutoff (F := F) hFull
+  refine ⟨hAct, hAct_pos, hAct_lt, ?_⟩
+  intro h p hh hsmall hp j hj z hz
+  have hcoord : ∀ i, |p i - (F.family.label j).slope i| &lt;
+      pointTolerance D (F.family.label j).slope :=
+    hcut h hh hsmall p hp j hj
+  have herr := dot_coordinate_error_le p (F.family.label j).slope
+    (comparisonVector D z) (pointTolerance D (F.family.label j).slope) hcoord
+  exact le_trans herr (pointTolerance_mul_l1_le D (F.family.label j).slope z hz)
+
+theorem projected_drift_eq_zero_of_perp {d m : ℕ}
+    (D : ReactionDiagram d m) (r : Vec d)
+    (k : Fin m → ℝ) (x : Vec d)
+    (hperp : StoichPerp D r) :
+    dot r (reactionField D k x) = 0 := by
+  rw [dot_reactionField]
+  apply Finset.sum_eq_zero
+  intro e he
+  rw [hperp e]
+  ring
+
+theorem projected_drift_nonneg_of_perp {d m : ℕ}
+    (D : ReactionDiagram d m) (r : Vec d)
+    (k : Fin m → ℝ) (x : Vec d)
+    (hperp : StoichPerp D r) :
+    0 ≤ dot r (reactionField D k x) := by
+  rw [projected_drift_eq_zero_of_perp D r k x hperp]
+
+theorem weighted_drift_strict {d m : ℕ}
+    (D : ReactionDiagram d m) (hEndo : AllEndotactic D)
+    (F : N33Affine.BoxFamily d (-1) 1) (hAct : ℝ)
+    (hActLtOne : hAct &lt; 1) (hActivity : ActivityMargin D F hAct)
+    (h : ℝ) (hh : 0 &lt; h) (hhAct : h &lt; hAct)
+    (p : Vec d) (hp : inExponentBox p)
+    (j : F.family.Index) (hactive : N33Affine.Active F.family.label j h p)
+    (κ K : ℝ) (hκ : 0 &lt; κ) (hκK : κ ≤ K)
+    (k : Fin m → ℝ) (hk : ∀ e, κ ≤ k e ∧ k e ≤ K)
+    (hsmall : K * reactionBudget D * Real.rpow h (slopeMargin D F) ≤
+      κ * slopeMargin D F)
+    (hnotPerp : ¬ StoichPerp D (F.family.label j).slope) :
+    κ * slopeMargin D F * Real.rpow h (sourceBudget D) ≤
+      dot (F.family.label j).slope
+        (reactionField D k (scalePoint h p)) := by
+  classical
+  let r := (F.family.label j).slope
+  let H := slopeMargin D F
+  let L := reactionBudget D
+  let M := sourceBudget D
+  let x := scalePoint h p
+  let eStarExists := exists_minimum_reacting_edge D r hnotPerp
+  obtain ⟨eStar, hStarNonzero, hMin⟩ := eStarExists
+  have hHpos : 0 &lt; H := by
+    dsimp [H]
+    exact slopeMargin_pos D F
+  have hKpos : 0 &lt; K := lt_of_lt_of_le hκ hκK
+  have hLnonneg : 0 ≤ L := by dsimp [L]; exact reactionBudget_nonneg D
+  have hMnonneg : 0 ≤ M := by dsimp [M]; exact sourceBudget_nonneg D
+  have hStarPos : 0 &lt; projectedReaction D r eStar :=
+    minimum_tier_projected_positive D hEndo r eStar hStarNonzero hMin
+  let zStar : ComparisonIndex d m := Sum.inr (Sum.inl eStar)
+  have hzStar : dot r (comparisonVector D zStar) ≠ 0 := by
+    simpa [zStar, r, projectedReaction, comparisonVector] using hStarNonzero
+  have hStarMargin := slopeMargin_le_half_abs D F j zStar hzStar
+  have hStarCoeff : 2 * H ≤ projectedReaction D r eStar := by
+    have hStarMargin&#x27; : H ≤ |dot r (comparisonVector D zStar)| / 2 := by
+      change slopeMargin D F ≤ _
+      exact hStarMargin
+    have hStarDot : 0 &lt; dot r (comparisonVector D zStar) := by
+      simpa [zStar, r, comparisonVector, projectedReaction] using hStarPos
+    rw [abs_of_pos hStarDot] at hStarMargin&#x27;
+    have hStarEq : dot r (comparisonVector D zStar) =
+        projectedReaction D r eStar := by
+      simp [zStar, r, comparisonVector, projectedReaction]
+    rw [hStarEq] at hStarMargin&#x27;
+    linarith
+  have hStarMonoPos : 0 &lt; monomial x (D.source eStar) := by
+    dsimp [x]
+    exact monomial_pos _ _ (fun i =&gt; Real.rpow_pos_of_pos hh (p i))
+  have hpCoord : ∀ i, -1 ≤ p i ∧ p i ≤ 1 := by
+    change ∀ i, -1 ≤ p i ∧ p i ≤ 1 at hp
+    exact hp
+  have hrCoord : ∀ i, -1 ≤ r i ∧ r i ≤ 1 := by
+    change ∀ i, -1 ≤ r i ∧ r i ≤ 1
+    simpa [r] using F.slope_box j
+  have hpowPos : 0 &lt; Real.rpow h H := Real.rpow_pos_of_pos hh H
+  have hsmall&#x27; : K * L * Real.rpow h H ≤ κ * H := by
+    simpa [L, H] using hsmall
+  have hcoef : κ * H ≤ 2 * κ * H - K * L * Real.rpow h H := by
+    nlinarith [hsmall&#x27;]
+  have hmonoStarFloor : Real.rpow h M ≤ monomial x (D.source eStar) := by
+    have hexp : dot p (D.source eStar) ≤ M := by
+      apply source_dot_le_budget D p (D.source eStar) hpCoord
+      exact source_l1_le_budget D eStar
+    have hbase : h ≤ 1 := le_of_lt (lt_trans hhAct hActLtOne)
+    have hpow := Real.rpow_le_rpow_of_exponent_ge hh hbase hexp
+    simpa [x, monomial_scalePoint h hh] using hpow
+  have hmonoPos : ∀ e : Fin m, 0 &lt; monomial x (D.source e) := by
+    intro e
+    dsimp [x]
+    exact monomial_pos _ _ (fun i =&gt; Real.rpow_pos_of_pos hh (p i))
+  have htermBound :
+      ∀ e : Fin m,
+        (if e = eStar then κ * monomial x (D.source eStar) * (2 * H) else 0) -
+          K * l1 (reactionVector D e) * Real.rpow h H * monomial x (D.source eStar) ≤
+        (k e * monomial x (D.source e)) * projectedReaction D r e := by
+    intro e
+    by_cases he : e = eStar
+    · subst e
+      simp
+      have hRateLow := (hk eStar).1
+      have hStarRateProduct :
+          κ * monomial x (D.source eStar) * (2 * H) ≤
+            (k eStar * monomial x (D.source eStar)) *
+              projectedReaction D r eStar := by
+        calc
+          κ * monomial x (D.source eStar) * (2 * H) ≤
+              (k eStar * monomial x (D.source eStar)) * (2 * H) := by
+            have hkm := mul_le_mul_of_nonneg_right hRateLow (le_of_lt hStarMonoPos)
+            calc
+              κ * monomial x (D.source eStar) * (2 * H) =
+                  (κ * monomial x (D.source eStar)) * (2 * H) := by ring
+              _ ≤ (k eStar * monomial x (D.source eStar)) * (2 * H) :=
+                mul_le_mul_of_nonneg_right hkm (by positivity)
+          _ ≤ (k eStar * monomial x (D.source eStar)) *
+                projectedReaction D r eStar :=
+            mul_le_mul_of_nonneg_left hStarCoeff
+              (mul_nonneg (le_of_lt (lt_of_lt_of_le hκ (hk eStar).1))
+                (le_of_lt hStarMonoPos))
+      have hloss : 0 ≤
+          K * l1 (reactionVector D eStar) * Real.rpow h H *
+            monomial x (D.source eStar) := by
+        apply mul_nonneg
+        · apply mul_nonneg
+          · exact mul_nonneg hKpos.le (l1_nonneg _)
+          · exact hpowPos.le
+        · exact hStarMonoPos.le
+      exact hStarRateProduct.trans (le_add_of_nonneg_right hloss)
+    · simp [he]
+      by_cases hneg : projectedReaction D r e &lt; 0
+      · have hsource := negative_edge_source_above_minimum
+          D hEndo r eStar e hMin hneg
+        have hGap : 0 &lt; dot r (D.source e - D.source eStar) := by
+          have hsource&#x27; : dot r (D.source eStar) &lt; dot r (D.source e) := by
+            simpa [projectedSource] using hsource
+          rw [dot_sub_right]
+          exact sub_pos.mpr hsource&#x27;
+        have hmono := monomial_source_ratio_bound D F hAct h H p j e eStar
+          hp hactive hActivity hh hhAct hActLtOne hGap rfl
+        have hqAbs : |projectedReaction D r e| ≤ l1 (reactionVector D e) :=
+          dot_abs_le_l1_of_box r (reactionVector D e) hrCoord
+        have hcoeffBound :
+            monomial x (D.source e) * |projectedReaction D r e| ≤
+              (Real.rpow h H * monomial x (D.source eStar)) *
+                l1 (reactionVector D e) := by
+          calc
+            monomial x (D.source e) * |projectedReaction D r e| ≤
+                (Real.rpow h H * monomial x (D.source eStar)) *
+                  |projectedReaction D r e| :=
+              mul_le_mul_of_nonneg_right hmono (abs_nonneg _)
+            _ ≤ (Real.rpow h H * monomial x (D.source eStar)) *
+                  l1 (reactionVector D e) :=
+              mul_le_mul_of_nonneg_left hqAbs
+                (mul_nonneg hpowPos.le hStarMonoPos.le)
+        have hprod :
+            (k e * monomial x (D.source e)) * |projectedReaction D r e| ≤
+              K * (Real.rpow h H * monomial x (D.source eStar)) *
+                l1 (reactionVector D e) := by
+          calc
+            (k e * monomial x (D.source e)) * |projectedReaction D r e| =
+                k e * (monomial x (D.source e) *
+                  |projectedReaction D r e|) := by ring
+            _ ≤ K * (monomial x (D.source e) *
+                  |projectedReaction D r e|) :=
+              mul_le_mul_of_nonneg_right (hk e).2
+                (mul_nonneg (hmonoPos e).le (abs_nonneg _))
+            _ ≤ K * ((Real.rpow h H * monomial x (D.source eStar)) *
+                  l1 (reactionVector D e)) :=
+              mul_le_mul_of_nonneg_left hcoeffBound hKpos.le
+            _ = K * (Real.rpow h H * monomial x (D.source eStar)) *
+                  l1 (reactionVector D e) := by ring
+        have hprod&#x27; :
+            (k e * monomial x (D.source e)) * |projectedReaction D r e| ≤
+              K * l1 (reactionVector D e) * Real.rpow h H *
+                monomial x (D.source eStar) := by
+          calc
+            _ ≤ K * (Real.rpow h H * monomial x (D.source eStar)) *
+                l1 (reactionVector D e) := hprod
+            _ = K * l1 (reactionVector D e) * Real.rpow h H *
+                monomial x (D.source eStar) := by ring
+        have htermEq :
+            (k e * monomial x (D.source e)) * projectedReaction D r e =
+              -((k e * monomial x (D.source e)) *
+                |projectedReaction D r e|) := by
+          rw [abs_of_neg hneg]
+          ring
+        rw [htermEq]
+        have hnegBound := neg_le_neg hprod&#x27;
+        exact hnegBound
+      · have hqnonneg : 0 ≤ projectedReaction D r e := le_of_not_gt hneg
+        have htermNonneg : 0 ≤
+            (k e * monomial x (D.source e)) * projectedReaction D r e := by
+          exact mul_nonneg
+            (mul_nonneg (le_trans (le_of_lt hκ) (hk e).1)
+              (le_of_lt (hmonoPos e)))
+            hqnonneg
+        have hloss : 0 ≤
+            K * l1 (reactionVector D e) * Real.rpow h H *
+              monomial x (D.source eStar) := by
+          apply mul_nonneg
+          · apply mul_nonneg
+            · exact mul_nonneg hKpos.le (l1_nonneg _)
+            · exact hpowPos.le
+          · exact hStarMonoPos.le
+        have hleft :
+            -(K * l1 (reactionVector D e) * Real.rpow h H *
+              monomial x (D.source eStar)) ≤ 0 := neg_nonpos.mpr hloss
+        exact hleft.trans htermNonneg
+  have hsum := Finset.sum_le_sum (s := (Finset.univ : Finset (Fin m)))
+    (fun e he =&gt; htermBound e)
+  have hsumSimplified :
+      (Finset.univ.sum (fun e : Fin m =&gt;
+        (if e = eStar then κ * monomial x (D.source eStar) * (2 * H) else 0) -
+          (K * l1 (reactionVector D e) * Real.rpow h H *
+            monomial x (D.source eStar)))) =
+        κ * monomial x (D.source eStar) * (2 * H) -
+          K * L * Real.rpow h H * monomial x (D.source eStar) := by
+    rw [Finset.sum_sub_distrib]
+    have hreward :
+        Finset.univ.sum (fun e : Fin m =&gt;
+          if e = eStar then κ * monomial x (D.source eStar) * (2 * H) else 0) =
+          κ * monomial x (D.source eStar) * (2 * H) := by
+      simp [Finset.sum_ite_eq&#x27;]
+    have hloss :
+        Finset.univ.sum (fun e : Fin m =&gt;
+          K * l1 (reactionVector D e) * Real.rpow h H *
+            monomial x (D.source eStar)) =
+          K * L * Real.rpow h H * monomial x (D.source eStar) := by
+      calc
+        _ = ∑ e : Fin m,
+            l1 (reactionVector D e) *
+              (K * Real.rpow h H * monomial x (D.source eStar)) := by
+          apply Finset.sum_congr rfl
+          intro e he
+          ring
+        _ = Finset.univ.sum (fun e : Fin m =&gt; l1 (reactionVector D e)) *
+            (K * Real.rpow h H * monomial x (D.source eStar)) := by
+          simpa using
+            (Finset.sum_mul (Finset.univ : Finset (Fin m))
+              (fun e : Fin m =&gt; l1 (reactionVector D e))
+              (K * Real.rpow h H * monomial x (D.source eStar))).symm
+        _ = K * L * Real.rpow h H * monomial x (D.source eStar) := by
+          dsimp [L, reactionBudget]
+          ring
+    rw [hreward, hloss]
+  have hfield : dot r (reactionField D k x) =
+      ∑ e : Fin m, (k e * monomial x (D.source e)) *
+        projectedReaction D r e := dot_reactionField D r k x
+  have hsumLower :
+      κ * monomial x (D.source eStar) * (2 * H) -
+        K * L * Real.rpow h H * monomial x (D.source eStar) ≤
+      dot r (reactionField D k x) := by
+    calc
+      _ = ∑ e : Fin m,
+          ((if e = eStar then κ * monomial x (D.source eStar) * (2 * H) else 0) -
+            (K * l1 (reactionVector D e) * Real.rpow h H *
+              monomial x (D.source eStar))) := by
+        simpa using hsumSimplified.symm
+      _ ≤ ∑ e : Fin m,
+          (k e * monomial x (D.source e)) * projectedReaction D r e := hsum
+      _ = dot r (reactionField D k x) := hfield.symm
+  have hpreFloor : κ * H * monomial x (D.source eStar) ≤
+      dot r (reactionField D k x) := by
+    have hproduct :
+        κ * H * monomial x (D.source eStar) ≤
+          κ * monomial x (D.source eStar) * (2 * H) -
+            K * L * Real.rpow h H * monomial x (D.source eStar) := by
+      have hmult := mul_le_mul_of_nonneg_right hcoef (le_of_lt hStarMonoPos)
+      nlinarith [hmult]
+    exact hproduct.trans hsumLower
+  have hfloor : κ * H * Real.rpow h M ≤
+      κ * H * monomial x (D.source eStar) := by
+    exact mul_le_mul_of_nonneg_left hmonoStarFloor
+      (mul_nonneg (le_of_lt hκ) hHpos.le)
+  have hfinal := hfloor.trans hpreFloor
+  simpa [r, H, M, x] using hfinal
+
+/- Keep the kernel signature and axiom audit replayable with the module. -/
+#check weighted_drift_strict
+#print axioms weighted_drift_strict
+#check projected_drift_nonneg_of_perp
+#print axioms projected_drift_nonneg_of_perp
+#check exists_activity_margin
+#print axioms exists_activity_margin
+
+end WeightedDrift
+</pre><p><a href="../assets/eebe4a64c45f5d2388f4f5dd3bb2f9269fe28486d4360e0311d6c35db49f35f0.lean">Exact original</a></p></html>

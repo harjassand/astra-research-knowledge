@@ -1,0 +1,110 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c8_genome_engineering/proof/COPY_INVARIANT_TAGWISE_CONTRAST.md</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c8_genome_engineering/proof/COPY_INVARIANT_TAGWISE_CONTRAST.md</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre># Copy cancellation: exact invariant, failure mode, and scope
+
+## Corrected statistic
+
+The earlier pooled-count statistic is withdrawn. The corrected HAC120 and HAC465 estimates use raw mapped PC counts *per position code*, take a phase/reference fold for each code, and only then contrast equal-weight means over source-defined D1/D2 and D3/D4 domains. They do not pool counts before normalizing by DNA copy number.
+
+For marker `m` in `{CENP-A, H3K9me3}`, phase `p` in `{COL, CR3}`, tag `i`, and THYM reference `0`, write the count expectation as
+
+\[
+\mu_{m,p,i}=s_{m,p}\,b_{m,i}\,c_{p,i}\,\theta_{m,p,i}.
+\]
+
+Here `s` is every marker/phase-wide multiplicative factor (library depth, antibody recovery, qPCR recovery, sequencing scale); `b` is stable tag-specific read/fragment bias; `c` is the number/weight of physical copies contributing reads for that code; and `theta` is the mark occupancy/recovery per copy. This factorization is a model assumption. Counts are noisy observations of `mu`.
+
+Define the phase log fold at a tag by
+
+\[
+z_{m,p,i}=\log_2(\mu_{m,p,i}/\mu_{m,0,i}).
+\]
+
+If `b_{m,i}` is stable, it cancels exactly. If the physical copy weight is phase-invariant (`c_{p,i}=c_{0,i}`), it also cancels exactly. The remaining expression is
+
+\[
+z_{m,p,i}=\log_2(s_{m,p}/s_{m,0})+\log_2(\theta_{m,p,i}/\theta_{m,0,i}).
+\]
+
+For fixed D1/D2 tag sets `A,B`, define
+
+\[
+\Delta_{m,p}=\frac1{|A|}\sum_{i\in A} z_{m,p,i}
+-\frac1{|B|}\sum_{j\in B} z_{m,p,j}.
+\]
+
+The coefficient sum is `+1−1=0`; hence the marker/phase global factor `log2(s_{m,p}/s_{m,0})` cancels even when qPCR recovery differs between phase samples. The reported interaction is
+
+\[
+\log_2\Phi_p=\Delta_{H3K9me3,p}-\Delta_{CENP-A,p}.
+\]
+
+This is a dimensionless, equal-tag-weight, two-domain *shape interaction*. It is not an absolute per-cell occupancy ratio, a same-cell joint state, a functional-centromere score, or a retention rate.
+
+The implemented estimator uses `log2(count_phase_i/count_THYM_i)`. Using each paper-style profile `R_{m,p,i}=(ChIP_{m,p,i}/sum_i ChIP_{m,p,i})/(GD_i/sum_i GD_i)` gives the same `Delta` when the same genomic-DNA denominator is used in both phase folds: `GD_i` cancels tagwise, and the two within-library totals cancel in D1-minus-D2. A single DNA library is therefore unnecessary for this exact tagwise phase contrast, but is necessary for estimating cross-tag copy-normalized level. A condition-specific structural change remains a separate ambiguity.
+
+## Why raw pooled cross-odds do not have this invariant
+
+The invalid aggregate is
+
+\[
+\Phi^{pool}=\frac{ (\sum_{i\in A} c_i h_i)/(\sum_{j\in B}c_j h_j)}
+{ (\sum_{i\in A} c_i a_i)/(\sum_{j\in B}c_j a_j)},
+\]
+
+where `h,a` are per-copy H3K9me3 and CENP-A occupancies. The copy weights stay inside each sum and generally do not factor out. The script carries a concrete adversarial witness: D1 copies `(1,10)`, per-copy CENP-A `(1,epsilon)`, per-copy H3K9me3 `(epsilon,1)`, and D2 one-copy unit values `1`, with `epsilon=0.001`. Then pooled `Phi=9.90198`, while the equal-tag mean per-copy H/C ratio-of-means is exactly `1`. This is not sampling noise; it is a deterministic composition bias.
+
+Raw pooled values are retained in `sources/derived/spatial_phase_summary.json` only as a clearly named invalid-audit comparison: HAC120 gives 1.999 (COL) and 1.444 (CR3), while HAC465 gives 1.176 and 1.600. Their numerical proximity in some cells is accidental and supplies no cancellation proof.
+
+## Numerical reconstruction
+
+The code is `code/phase_allocation_metric.py`; it reads one PC-sequencing count table per marker/phase in GSE287042 for HAC120 and HAC465, maps main Fig. 3B D1/D2 and Supplementary Fig. S3 D3/D4, and retains only codes occurring once in the partial supplementary contigs. It yields:
+
+| HAC domain pair | Phase vs THYM | CENP-A `Delta` | H3K9me3 `Delta` | `log2(Phi)` | `Phi` | 95% read-count-only interval |
+|---|---|---:|---:|---:|---:|---:|
+| HAC120 D1−D2 | COL | −0.32458 | +0.66634 | +0.99092 | 1.98745 | [1.827, 2.162] |
+| HAC120 D1−D2 | CR3 | −0.34457 | +0.21462 | +0.55919 | 1.47345 | [1.361, 1.596] |
+| HAC465 D3−D4 | COL | +0.05726 | +0.28476 | +0.22750 | 1.17080 | [1.013, 1.353] |
+| HAC465 D3−D4 | CR3 | +0.04666 | +0.97587 | +0.92921 | 1.90423 | [1.638, 2.213] |
+
+Intervals use a delta-method Poisson/multinomial read-sampling approximation. They omit biological-replicate, clone-mixture, phase-purity, assembly, and copy-structure uncertainty. The PC-sequencing dataset has one library per marker-condition; the paper&#x27;s separate ChIP-qPCR has `n=3`, but those replicates are not three independent PC count profiles. The sign is positive in both clone/domain pairs, but log2(Phi) decreases COL→CR3 in HAC120 and increases in HAC465. This defeats a clone-independent “same relaxation law” reading of the contrast.
+
+The equal-tag mean&#x27;s sign is not driven by any one included HAC120 barcode: deleting any single retained tag yields `log2(Phi)` in `[0.884,1.075]` for COL and `[0.387,0.666]` for CR3. HAC465 leave-one-tag ranges are `[0.131,0.301]` for COL and `[0.780,1.038]` for CR3. This is a bounded leave-one-tag diagnostic only; it cannot bound omitted copies or clone selection.
+
+## Exact copy-mismatch bound
+
+When copies change, let `rho_{m,i}=c_{p,i}/c_{0,i}`. For one marker,
+
+\[
+\widehat\Delta_{m,p}=\Delta^{occupancy}_{m,p}
++\left(\overline{\log_2\rho_m}_{A}-\overline{\log_2\rho_m}_{B}\right).
+\]
+
+For the H3K9me3-minus-CENP-A interaction, the copy bias is
+
+\[
+B_{copy}=\left(\overline{\log_2\rho_H-\log_2\rho_C}_{A}
+-\overline{\log_2\rho_H-\log_2\rho_C}_{B}\right).
+\]
+
+Therefore copy changes cancel in `Phi` if both marker aliquots share exactly the same tagwise phase/reference copy ratios, even if copy weights differ between D1 and D2. If instead every tag satisfies `|log2(rho_H/rho_C)|&lt;=epsilon`, then `|B_copy|&lt;=2 epsilon`. Under that assumption alone the COL sign remains positive only while `epsilon &lt; 0.495` log2 (about a 1.41-fold maximum H-vs-CA aliquot copy mismatch per tag when using the point estimate; 0.435 log2/1.35-fold if protecting the read-count-only 95% lower limit). For CR3 the corresponding thresholds are `0.280` log2/1.21-fold at the point estimate and `0.222` log2/1.17-fold at the count-only lower limit. No assay in these files establishes those mismatch bounds; arbitrary phase-specific structure/aliquot mismatch can erase or reverse the biological interpretation.
+
+## Assembly and selection limits
+
+The supplementary HAC120 contigs contain 88 position-code hits, and HAC465 contigs 123 hits, rather than a complete physical assembly of all designed tags. The source intervals retain 12 D1/8 D2 tags for HAC120 and 23 D3/8 D4 tags for HAC465 that are single-hit in the assembled fragments. This removes known duplicate mappings, not hidden copies: a code can still represent multiple copies in an unassembled fragment, and ChIP counts from repeated copies collapse to one PC count. If those copies have phase-varying mark states, a tag-level fold is a copy-weighted mixture and does not identify per-copy dynamics. The reported claim is conditional on copy-state invariance or shared copy mixtures across marker aliquots.
+
+The ChIP samples are bulk, separately harvested aliquots after thymidine/colcemid manipulations. A changing fraction of HAC-positive clones with distinct structures, cell-cycle purity, or mark states can change the pooled per-tag profile without a within-cell transition. A common HAC-positive fraction that multiplies every code equally cancels; a code-specific mixture change does not. The public PC tables do not resolve that selection/mixture component.
+
+## Source boundary and missing dynamic lemma
+
+The source article reports 2-kb synthetic position codes, two CENP-A-dense regions, a metaphase COL sample, and a 3-h post-colcemid-release CR3 sample; it reports ChIP-qPCR triplicates separately from PC-sequencing profiles. These establish a high-resolution, source-reported phase-associated map. The current observations do not measure per-bin replication completion time, same-cell H3K9me3/CENP-A co-occupancy, a time trajectory of the same lineage, kinetochore multiplicity, or structural loss.
+
+Consequently, a nonlinear local spread/reload law (diffusion coefficient, nonlinear threshold, front velocity, edge reflection, replication-age lag, or return-map Jacobian) is not identified by these snapshots. For any proposed coupling `D` and any smooth interpolation `x(t)` between cross-sectional endpoints, the model `x_dot = D L x + r(t)` reproduces the same endpoints by setting `r(t)=x_dot−D Lx`; with unmeasured recruitment/replication forcing, the data do not distinguish zero spatial coupling from a propagating front. This is an explicit non-identifiability statement, not a biological discovery.
+
+The missing lemma for a threshold/intervention claim is a causal, spatially resolved transition law connecting local replication age, CENP-A/HJURP/KAT7 reload, H3K9 state, and subsequent CENP-C/KNL1 domain number/segregation after controlling structure and clone composition. Until that is measured, any proposed lag-triggered recruitment or domain-spacing threshold remains a testable model, not a validated stability principle.
+
+## Sources
+
+- Ohzeki et al. (2026), *Nucleic Acids Research* 54(12):gkag597, [DOI 10.1093/nar/gkag597](https://doi.org/10.1093/nar/gkag597), [full text](https://pmc.ncbi.nlm.nih.gov/articles/PMC13314379/), [GSE287040](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE287040), [GSE287042](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE287042). Figure 5C and Supplementary Fig. S2 describe the PC-based relative profiles; Figure 5B gives ChIP-qPCR triplicates.
+- Carty et al. (2026), *Nature Structural &amp; Molecular Biology*, [DOI 10.1038/s41594-025-01706-2](https://doi.org/10.1038/s41594-025-01706-2). H3K9me3 boundary loss is associated with CENP-A drift/expansion and new CENP-A/CENP-C domains in specific human alpha-satellite arrays; this is a long-term boundary prior, not the kinetic law missing above.
+- Giunta et al. (2021), *PNAS* 118:e2015634118, [DOI 10.1073/pnas.2015634118](https://doi.org/10.1073/pnas.2015634118). CENP-A loss and centromeric replication stress/structural instability are an independent failure axis, so chromatin marks alone cannot certify chromosome retention.
+- Erliandri et al. (2014), *Nucleic Acids Research* 42(18):11502–11516, [DOI 10.1093/nar/gku835](https://doi.org/10.1093/nar/gku835), [full text](https://pmc.ncbi.nlm.nih.gov/articles/PMC4191410/). In endogenous alpha-satellite, origins can fire in repeats; in the tested alphoid-tetO HAC, initiation was suppressed within the alpha-satellite array and localized to transcriptionally active Bsr inserts. The important prior is context dependence, not a universal replication-origin rule for the distinct 2026 barcoded HAC.
+</pre><p><a href="../assets/2dcb4118380693a9ffe47d85e834213fed115a2b6b0f335ee7543f5881e1cf97.md">Exact original</a></p></html>

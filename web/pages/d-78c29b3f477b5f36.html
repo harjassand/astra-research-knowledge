@@ -1,0 +1,188 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/cell_control/cell_observation_design/cycle3_hidden_word.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/cell_control/cell_observation_design/cycle3_hidden_word.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Finite checks for hidden-emission discrimination of the C2 cycle alias.
+
+NumPy-only. The reporter is deliberately not identity: its emission matrix is
+unknown to the proposed test, but a full-column-rank lower bound is assumed.
+Each independent unit is one lineage/founder with repeated observations.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import itertools
+import json
+import math
+
+import numpy as np
+
+from cycle2_rate_separation import cycle_generator, expm
+
+
+def pair_law(Q: np.ndarray, E: np.ndarray, pi: np.ndarray, tau: float) -&gt; np.ndarray:
+    &quot;&quot;&quot;J[a,b]=Pr(Y0=a,Y1=b)=E diag(pi) P(tau)^T E^T.&quot;&quot;&quot;
+    P = expm(Q * tau)
+    return E @ np.diag(pi) @ P.T @ E.T
+
+
+def triple_law(
+    Q: np.ndarray,
+    E: np.ndarray,
+    pi0: np.ndarray,
+    tau1: float,
+    tau2: float,
+    scale2: float = 1.0,
+) -&gt; np.ndarray:
+    &quot;&quot;&quot;Three emissions with transitions exp(Q*tau1), exp(scale2*Q*tau2).&quot;&quot;&quot;
+    P1 = expm(Q * tau1)
+    P2 = expm(Q * (scale2 * tau2))
+    K = len(pi0)
+    m = E.shape[0]
+    T = np.zeros((m, m, m))
+    for i in range(K):
+        for j in range(K):
+            for k in range(K):
+                weight = pi0[i] * P1[j, i] * P2[k, j]
+                T += weight * np.einsum(&quot;a,b,c-&gt;abc&quot;, E[:, i], E[:, j], E[:, k])
+    return T
+
+
+def cp_view_factors(Q: np.ndarray, E: np.ndarray, pi0: np.ndarray, tau1: float, tau2: float, u: float):
+    &quot;&quot;&quot;Return left/middle/right conditional emission factors around X_1.&quot;&quot;&quot;
+    P1 = expm(Q * tau1)
+    P2 = expm(Q * (u * tau2))
+    pi1 = P1 @ pi0
+    left = E @ np.diag(pi0) @ P1.T @ np.diag(1.0 / pi1)
+    middle = E
+    right = E @ P2
+    return left, middle, right, pi1
+
+
+def l1_empirical_bound(sample_alphabet_size: int, gap: float, delta: float) -&gt; int:
+    &quot;&quot;&quot;Weissman-style L1 bound, for nearest-set testing with separation gap.
+
+    A nearest-set classifier is correct if empirical L1 error &lt; gap/2. The
+    bound Pr(||P_hat-P||_1 &gt;= eps) &lt;= (2^L-2) exp(-n eps^2/2) is applied at
+    eps=gap/2. For the pair-asymmetry classifier below we use eps=gamma/4.
+    &quot;&quot;&quot;
+    return math.ceil(8.0 / (gap * gap) * math.log((2**sample_alphabet_size - 2) / delta))
+
+
+def cycle_for_d(s: float, d: float, tau: float) -&gt; np.ndarray:
+    return cycle_generator((s + d) / 2.0, (s - d) / 2.0)
+
+
+def main() -&gt; None:
+    K = 3
+    tau = 1.0
+    s = 10.0
+    d_alias = 4.0 * math.pi / (math.sqrt(3.0) * tau)
+    Q_rev = cycle_for_d(s, 0.0, tau)
+    Q_nonrev = cycle_for_d(s, d_alias, tau)
+    pi = np.full(K, 1.0 / K)
+
+    # This unknown-to-the-classifier but full-rank shared reporter is used only
+    # for a transparent numerical run; the theorem is stated through kappa.
+    E = 0.8 * np.eye(K) + 0.2 * np.ones((K, K)) / K
+    kappa = float(np.linalg.svd(E, compute_uv=False)[-1])
+
+    P_alias_rev = expm(Q_rev * tau)
+    P_alias_nonrev = expm(Q_nonrev * tau)
+    J_tau_rev = pair_law(Q_rev, E, pi, tau)
+    J_tau_nonrev = pair_law(Q_nonrev, E, pi, tau)
+
+    # Choose the shorter second lag/rate scale to reveal the orientation.
+    a = 1.5 * s * tau
+    u_opt = math.atan(2.0 * math.pi / a) / (2.0 * math.pi)
+    P_u_rev = expm(Q_rev * (u_opt * tau))
+    P_u_nonrev = expm(Q_nonrev * (u_opt * tau))
+    J_u_rev = pair_law(Q_rev, E, pi, u_opt * tau)
+    J_u_nonrev = pair_law(Q_nonrev, E, pi, u_opt * tau)
+
+    skew_rev = float(np.linalg.norm(J_u_rev - J_u_rev.T, &quot;fro&quot;))
+    skew_nonrev = float(np.linalg.norm(J_u_nonrev - J_u_nonrev.T, &quot;fro&quot;))
+    p_min = float(np.min(P_alias_rev))
+    skew_hidden_bound = (2.0 * math.sqrt(2.0) / 3.0) * math.exp(-a * u_opt) * abs(
+        math.sin(2.0 * math.pi * u_opt)
+    )
+    gamma_lower = kappa * kappa * skew_hidden_bound
+    delta = 0.05
+    n_pairs = math.ceil(32.0 / (gamma_lower * gamma_lower) * math.log((2**(K * K) - 2) / delta))
+
+    # A no-go: a rank-one reporter erases all state information under every word.
+    E_rank_one = np.tile(np.array([[0.7], [0.3]]), (1, K))
+    J_rank_one_rev = pair_law(Q_rev, E_rank_one, pi, u_opt * tau)
+    J_rank_one_nonrev = pair_law(Q_nonrev, E_rank_one, pi, u_opt * tau)
+    T_rank_one_rev = triple_law(Q_rev, E_rank_one, pi, tau, u_opt * tau)
+    T_rank_one_nonrev = triple_law(Q_nonrev, E_rank_one, pi, tau, u_opt * tau)
+
+    # Generic three-observation realization uses two short, incommensurate gaps.
+    h1 = 0.05 * tau
+    h2 = math.sqrt(2.0) * h1
+    left, middle, right, pi1 = cp_view_factors(Q_nonrev, E, pi, h1, h2, 1.0)
+    triple_rev = triple_law(Q_rev, E, pi, h1, h2)
+    triple_nonrev = triple_law(Q_nonrev, E, pi, h1, h2)
+
+    # Label-invariant check: no latent-state permutation conjugates the two Qs.
+    permutation_gap = math.inf
+    for perm in itertools.permutations(range(K)):
+        S = np.eye(K)[:, perm]
+        permutation_gap = min(permutation_gap, float(np.linalg.norm(Q_rev - S.T @ Q_nonrev @ S, &quot;fro&quot;)))
+
+    result = {
+        &quot;pair_alias_hidden_outputs_at_original_tau&quot;: {
+            &quot;tau&quot;: tau,
+            &quot;max_abs_hidden_transition_difference&quot;: float(np.max(np.abs(P_alias_rev - P_alias_nonrev))),
+            &quot;max_abs_observed_pair_law_difference&quot;: float(np.max(np.abs(J_tau_rev - J_tau_nonrev))),
+            &quot;one_read_marginal_depends_on&quot;: &quot;E*pi only; it contains no transition/rate factor&quot;,
+        },
+        &quot;minimal_two_read_time_reversal_word&quot;: {
+            &quot;reads_per_independent_lineage&quot;: 2,
+            &quot;one_transition_interval&quot;: u_opt * tau,
+            &quot;known_rate_scale_if_used&quot;: u_opt,
+            &quot;emission_matrix_is_unknown_to_test&quot;: True,
+            &quot;reporter_min_singular_value_in_finite_example&quot;: kappa,
+            &quot;common_stationary_initial_distribution&quot;: pi.tolist(),
+            &quot;observed_pair_law_rev_skew_frobenius&quot;: skew_rev,
+            &quot;observed_pair_law_nonrev_skew_frobenius&quot;: skew_nonrev,
+            &quot;hidden_skew_lower_bound&quot;: skew_hidden_bound,
+            &quot;observed_skew_lower_bound_gamma&quot;: gamma_lower,
+            &quot;endpoint_alias_pmin&quot;: p_min,
+            &quot;independent_paired_lineages_for_delta_0_05_bound&quot;: n_pairs,
+            &quot;sample_cost&quot;: {
+                &quot;lineages&quot;: n_pairs,
+                &quot;reporter_reads&quot;: 2 * n_pairs,
+                &quot;controlled_intervals&quot;: n_pairs,
+                &quot;lineage_tracking_cost&quot;: &quot;charge one independent tracked lineage per pair; no descendants counted as replicates&quot;,
+                &quot;excluded&quot;: &quot;culture, reporter calibration or singular-value certification, dose/timing calibration, and pre-equilibration costs are external supplied costs&quot;,
+            },
+        },
+        &quot;rank_deficient_emission_no_go&quot;: {
+            &quot;emission_rank&quot;: int(np.linalg.matrix_rank(E_rank_one)),
+            &quot;pair_law_difference_any_test&quot;: float(np.max(np.abs(J_rank_one_rev - J_rank_one_nonrev))),
+            &quot;triple_law_difference_any_test&quot;: float(np.max(np.abs(T_rank_one_rev - T_rank_one_nonrev))),
+            &quot;claim&quot;: &quot;Identical emission columns make the entire observation process independent of hidden rates under every action/sampling word.&quot;,
+        },
+        &quot;generic_three_view_realization&quot;: {
+            &quot;reads_per_independent_lineage&quot;: 3,
+            &quot;action_or_gap_word&quot;: [h1, h2],
+            &quot;gap_ratio&quot;: h2 / h1,
+            &quot;gap_ratio_is_irrational_by_design&quot;: True,
+            &quot;left_factor_min_singular_value&quot;: float(np.linalg.svd(left, compute_uv=False)[-1]),
+            &quot;middle_factor_min_singular_value&quot;: float(np.linalg.svd(middle, compute_uv=False)[-1]),
+            &quot;right_factor_min_singular_value&quot;: float(np.linalg.svd(right, compute_uv=False)[-1]),
+            &quot;triple_law_l1_difference_under_shared_reporter&quot;: float(np.abs(triple_rev - triple_nonrev).sum()),
+            &quot;min_rate_generator_frobenius_gap_over_state_permutations&quot;: permutation_gap,
+            &quot;free_parameters_K3_three_emissions&quot;: {
+                &quot;emission_matrix&quot;: K * (K - 1),
+                &quot;initial_distribution&quot;: K - 1,
+                &quot;generator_off_diagonal_rates&quot;: K * (K - 1),
+                &quot;total&quot;: K * (K - 1) + (K - 1) + K * (K - 1),
+                &quot;known_dose_multiplier&quot;: 0,
+            },
+        },
+    }
+    print(json.dumps(result, indent=2, sort_keys=True))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/7f0a59b93255b478b5c653a454f9f8b5115710ba709a498ee9f164e3765ca2a1.py">Exact original</a></p></html>

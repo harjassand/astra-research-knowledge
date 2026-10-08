@@ -1,0 +1,114 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/acquisition_learning/leaves/causal_controlled_hmm_frontier.txt</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/acquisition_learning/leaves/causal_controlled_hmm_frontier.txt</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>CAUSAL CONTROL IN A PARTIALLY OBSERVED HMM: AN ACTIVE/PASSIVE FRONTIER
+Research leaf | 2026-10-08
+
+Finding
+-------
+For a finite controlled HMM, an active experiment and a randomized action-assignment experiment are exactly the same statistical experiment when their conditional action laws match on every logged observable history, their episode resets and measurements match, and action labels are retained. The latent state can remain completely hidden and the reset law can remain unknown. Every estimator, predictive target, and minimax risk then has the same distribution under both designs. This proves equivalence without identifying a single hidden-state parameter.
+
+“Same action counts” is weaker than this condition. In a controlled HMM, action order changes the hidden-state distribution and can change how informative later actions are. A four-state example below has equal per-episode support and counts under both designs, but an adaptive fixed order has twice the one-episode total-variation separation of a uniformly randomized order. A separate hidden-confounding example shows that logged support and counts alone do not identify intervention effects when actions depend on latent state.
+
+1. Fully specified process and legal interface
+-----------------------------------------------
+Let the unknown environment parameter be theta=(rho,{T_a}_{a in A},O), with finite latent states S={1,...,K}, finite action set A, finite observations Y, and finite episode horizon H. At the start of each episode the oracle resets
+
+  S_0 ~ rho,
+
+where the same unknown rho is used for every episode. The experimenter cannot choose S_0, inspect it, or request a state-specific reset. At time t, the experimenter receives Y_t, chooses an action A_t, and the environment draws
+
+  S_{t+1} ~ T_{A_t}(. | S_t),
+  Y_{t+1} ~ O(. | S_{t+1}).
+
+The emission law O and reset law rho do not depend on action. Only the transition kernel does. The learner sees and records the action and observation histories but never sees S_t. The transition matrices, emissions, and reset law are all unknown. No reward or side channel is returned. The oracle supports N independent episodes and H action decisions per episode. Its reset operation is the environment&#x27;s ordinary restart, not a latent-state clamp.
+
+An active policy is a sequence of stochastic kernels pi_t(a | D_{&lt;r}, h_{r,t}), where h_{r,t}=(Y_{r,0},A_{r,0},...,A_{r,t-1},Y_{r,t}) is the current visible history and D_{&lt;r} is all logged data from completed episodes. Thus actions can adapt to prior observations and episodes, but never to an unobserved state. A randomized assignment design is defined by the same kind of kernels. “Matched assignment” below means the kernels agree at every observable history, not just that their marginal action counts agree.
+
+The target can be any functional psi(theta), including the controlled predictive-law vector
+
+  psi(theta) = { P_theta(Y_{0:H}=y_{0:H} | do(A_{0:H-1}=a_{0:H-1})) }
+
+over a specified finite set of action words. The theorem compares information about any such target. It does not assert that rho, O, or the hidden transition matrices are identifiable; latent-state permutations and other nonidentifiabilities may remain.
+
+2. Exact equivalence theorem and minimax consequence
+----------------------------------------------------
+Theorem. Fix any parameter class Theta of finite controlled HMMs as above. Let pi be an active policy and q a randomized assignment design. If (i) q_t(. | D_{&lt;r},h)=pi_t(. | D_{&lt;r},h) for every reachable logged history, (ii) they use the same reset schedule, horizon, observation schedule, and stopping rule, and (iii) action labels are logged, then for every theta in Theta,
+
+  Law_theta^pi(D) = Law_theta^q(D).
+
+Proof. Conditional on a complete latent path s_{0:H}, observation path y_{0:H}, and selected actions a_{0:H-1}, the joint path factor is
+
+  rho(s_0) O(y_0|s_0)
+  product_{t=0}^{H-1} [ kappa_t(a_t|D_{&lt;r},h_t)
+                         T_{a_t}(s_{t+1}|s_t) O(y_{t+1}|s_{t+1}) ],
+
+where kappa is the policy&#x27;s action kernel. Under pi and q every factor is identical by assumption. Multiplying over episodes, including the dependence on earlier logged data, preserves equality. Summing over all hidden paths gives equality of the observable transcript laws. This argument requires no state observation, known reset distribution, invertible emission matrix, or parameter-identifiability assumption. ∎
+
+For any estimator d(D), any loss L(d(D),psi(theta)), and any theta, the risk is therefore equal under pi and q. If the active and matched-randomized design classes contain the same conditional action kernels, then
+
+  inf_{pi in Pi_active} sup_{theta in Theta} Risk_theta(pi)
+  = inf_{q in Pi_matched} sup_{theta in Theta} Risk_theta(q).
+
+This is an experiment-equivalence result, not an active-learning impossibility theorem. It says that changing who flips the action-selection coin cannot improve information if the distribution of the action at every observable decision point is unchanged. Active design can help relative to a narrower passive baseline that cannot reproduce the useful assignment kernel.
+
+3. Cost accounting
+------------------
+Let c_R be the cost of one environment reset; c_A(a) the cost of issuing action a (including the selection/assignment event); and c_Y the cost of measuring one observation. For N episodes of horizon H, every policy incurs
+
+  C = N c_R + sum_{r=1}^N sum_{t=0}^{H-1} c_A(A_{r,t})
+      + N(H+1)c_Y.
+
+The matched assignment theorem gives equality of the full cost distributions and hence equality of expected costs whenever costs depend only on these logged events. If generating randomized assignments has an extra cost c_rand, add it to that design; if computing an adaptive active decision has cost c_dec, add that too. A passive data archive may make collection costs sunk for the learner, but a total-cost comparison must still charge the original action, reset, and measurement events to the data-producing process. Do not compare an active experiment&#x27;s acquisition cost with a passive archive priced at zero without stating that accounting boundary.
+
+If actions are selected by an external randomizer and the learner only receives records, charge the randomizer&#x27;s action-setting cost in the experiment cost. If it is genuinely pre-existing data and the task is explicitly learner-side cost only, report the sunk-cost view separately. Reset distributions are identical in this theorem; the cost c_R is not optional merely because the latent start state is hidden.
+
+4. Failure boundary: counts do not determine information
+---------------------------------------------------------
+Here is a finite controlled HMM in which action order matters although every episode contains one A and one B. The four hidden states are {0,1,2,3}. The reset law is fixed but undisclosed to the learner:
+
+  rho(0)=1-gamma, rho(3)=gamma, with 0&lt;gamma&lt;=1/2.
+
+The learner cannot set or observe the reset state. Each observation is a noisy binary sensor read, with
+
+  P(Y=1 | S in {0,1,3}) = 1/4,
+  P(Y=1 | S=2)          = 3/4.
+
+Thus no observation directly reveals S. Action B has transitions 0-&gt;1, 1-&gt;1, 2-&gt;2, 3-&gt;3. There are two possible unknown models theta in {0,1}; action A_theta has transitions 0-&gt;0, 2-&gt;2, 3-&gt;3, and from state 1 moves to state 2 with probability theta and stays at 1 otherwise. Actions affect only transition kernels.
+
+Compare the fixed order AB with BA, with one occurrence of each action:
+
+* AB carries no information about theta. From reset state 0, A leaves the state at 0 and B moves it to 1; from reset state 3, both actions leave it at 3. All observations have Bernoulli(1/4) law under either theta.
+* BA is informative. From state 0, B moves to 1 and then A_theta moves to 2 exactly when theta=1. From state 3, both actions leave it at 3. The final observation is Bernoulli(1/4) for theta=0 and Bernoulli(1/4+(1-gamma)/2) for theta=1; the earlier observations have the same law under both models.
+
+With action order recorded, one BA episode therefore has total-variation distance (1-gamma)/2 between the observable transcript laws under theta=0 and theta=1. A passive design that independently chooses AB or BA with probability 1/2, while using exactly one A and one B in every episode, has total-variation distance (1-gamma)/4: the schedule label is observed, and only the BA half is informative. For equal prior probabilities on theta, the optimal one-episode testing error is respectively 1/2-(1-gamma)/4 versus 1/2-(1-gamma)/8. Both designs pay the same per-episode cost
+
+  c_R + c_A(A) + c_A(B) + 3 c_Y.
+
+This is a strict information difference at equal support, equal counts, equal reset/measurement/action cost. It is not a contradiction of the theorem: the action-assignment laws over ordered histories differ. A randomized assignment that always chooses BA has the same law and risk as the active BA policy.
+
+5. Failure boundary: action support can be confounded
+------------------------------------------------------
+Even a logged passive action sequence with both values present may fail to identify intervention effects if treatment assignment depends on hidden state. Let S_0 be an unobserved bit with a common reset law; for this witness it is fair, but the learner receives no state label and has no state-specific reset option. Let the behavior rule set A_0=S_0. Observations are noisy BSC(e) reads of the hidden state, with 0&lt;e&lt;1/2. Compare two transition models:
+
+  Model I:  T_a(s&#x27;|s) = BSC(q)(s&#x27;|s), independent of a.
+  Model II: T_a(s&#x27;|s) = BSC(q)(s&#x27;|a), independent of s.
+
+Take 0&lt;q&lt;1/2. Under the logged behavior A_0=S_0, both models generate exactly the same joint law: S_1 is a BSC(q) perturbation of S_0, and the same noisy observations are emitted. Both action values occur with probability 1/2. But under do(A_0=a), Model I&#x27;s S_1 remains a noisy copy of the unknown fair S_0, while Model II&#x27;s S_1 is a noisy copy of a. The interventional observation laws differ. Hence action support and marginal allocation alone do not repair hidden-state confounding. A sequentially randomized assignment independent of the latent state conditional on the recorded history avoids this particular confounding condition; a natural behavior policy need not.
+
+6. Literature and relation to this result
+-----------------------------------------
+* Thorbergsson and Hooker, “Experimental design for Partially Observed Markov Decision Processes” (2012, arXiv:1209.4019), study an unobserved Markov chain whose transition probabilities depend on selected controls and unknown parameters. They choose controls adaptively from observations to maximize partial-observation Fisher information. This is direct precedent for active experimental design in a POMDP; their optimal-design objective is different from the exact matched-policy equivalence proved here. https://arxiv.org/abs/1209.4019
+* Singh, James, and Rudary, “Predictive State Representations: A New Theory for Modeling Dynamical Systems” (UAI 2004), define controlled-system predictions through observable action-observation tests. That is a conservative predictive target when hidden-state parameterizations are not identifiable. https://faculty.cc.gatech.edu/~isbell/reading/papers/uai2004psr.pdf
+* Murphy, “Optimal Dynamic Treatment Regimes” (JRSS B 65(2), 2003), discusses sequential randomization and the requirement that action/treatment patterns have support when using longitudinal observational data to recover regime effects. The present POMDP theorem is a direct likelihood argument under randomized logged actions; it does not import clinical assumptions or the G-computation theorem. https://academic.oup.com/jrsssb/article/65/2/331/7092852
+* Hsu, Kakade, and Zhang, “A Spectral Algorithm for Learning Hidden Markov Models” (JCSS 78(5), 2012; arXiv:0811.4413), prove passive HMM prediction learning under rank/separation conditions. Their result concerns the observable law of a passive HMM, not the effect of transition actions that are absent or confounded in the data. https://arxiv.org/abs/0811.4413
+
+Claim ledger
+------------
+Proved: exact equality of the observable experiment laws whenever conditional action kernels, logging, reset, and measurement schedules match; equality of all decision risks and matched-class minimax risks follows immediately.
+
+Proved by explicit finite examples: equal marginal action counts do not ensure equivalent information when action order differs; latent-state-dependent action assignment can leave two different intervention models observationally equivalent despite positive support for each action.
+
+Not proved: a general active advantage over the broad class of randomized policies; identifiability or efficient acquisition of (rho,O,{T_a}) from arbitrary partial observations; optimal sample complexity for any latent parameter; transfer to action assignments correlated with hidden states; equivalence under only expected action counts when sequence order/adaptation differs.
+
+Research implication
+--------------------
+Interventions are an acquisition advantage only relative to a passive data source whose action policy lacks the useful support, order, or sequential randomization. If a passive randomized data source matches the full observable-history-conditioned assignment policy and the costed interaction schedule, it supplies exactly the same information. Any claimed active-learning gain must therefore name the passive policy class and compare ordered action-policy distributions, not just action marginals or action counts.
+</pre><p><a href="../assets/930ade379eaea2c06302992a833273d74bc6759e1a389ae2c4f35d214070b02b.txt">Exact original</a></p></html>

@@ -1,0 +1,47 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/engineering_control/energy_feedback/CYCLE2_COMPARATOR.md</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/engineering_control/energy_feedback/CYCLE2_COMPARATOR.md</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre># Cycle 2 comparator audit
+
+## Verdict
+
+Under the relay as written, an optimized controller with the same action set is not a substantive comparator: the legal policy is unique. The finite-volume calculation already evaluates the strongest equally informed policy allowed by that interface, so an optimizer can only reproduce it. This does not establish optimality among controllers that may change rates, choose a different switch time, or continue after the first guard hit.
+
+## Exact policy interface
+
+The state is the observed integer copy number $n\in\{0,\ldots,100\}$ and the active mode. Each leg starts at its fixed guard and has its own one-second deadline:
+
+| Leg phase | Reachable transient states | Only permitted action | Automatic event | Failure event |
+|---|---|---|---|---|
+| $H$ from $n=45$ | $11,\ldots,54$ | Hold the fixed $H$ propensities; observe every molecular jump | The reaction jump $54\to55$ switches immediately to $L$ and resets the leg timer | Jump $11\to10$ or one-second timer expiration |
+| $L$ from $n=55$ | $46,\ldots,89$ | Hold the fixed $L$ propensities; observe every molecular jump | The reaction jump $46\to45$ switches immediately to $H$ and resets the leg timer | Jump $89\to90$ or one-second timer expiration |
+
+The controller has no choice of reaction rate, no alternate mode at an interior state, no pre-guard switch, no optional delay after a guard hit, and no state reset. Continuous sensing is required only to identify molecule transitions; the policy does not branch on observations except for the deterministic guard/fault rules. With the fixed reaction law and immediate guard rule, the admissible policy class contains exactly one policy (up to null sets).
+
+Thus the finite-state MDP/CTMDP action set at every transient state is a singleton. The state-dependent birth/death propensities are plant transition rates, not controller-selected actions. Replacing this singleton-action process by a CTMDP optimization cannot improve or worsen either the hit probability or expected cost.
+
+## Why the one-leg algorithm is the exact comparator
+
+For an $H$ leg, use the 44-state transient generator $Q_H$ on $11,\ldots,54$, absorbing exits at 10 and 55, and a deterministic one-second horizon. The target probability is
+$$
+p_H(1)=e_{45}^{\mathsf T}\int_0^1 e^{Q_Hs}q_{55}\,ds.
+$$
+Expected transient occupation is
+$$
+o_H(1)=e_{45}^{\mathsf T}\int_0^1 e^{Q_Hs}\,ds.
+$$
+Rate-weighting this occupation gives expected observed transitions and chemical births/deaths, including the absorbing jump. Holding cost is $(P_s+P_c+P_m)\sum_n o_{H,n}(1)$, and successful switching costs exactly $E_{\rm sw}p_H(1)$. The reflected $L$ leg has the same success probability and occupation duration, but its birth/death event-energy charges swap. All pieces are computed by the runnable uniformization and exact-resolvent script at [cycle2_relay.py](/Users/harjas/Documents/Codex/2026-10-08/use-the-astra-research-knowledge-repository-2/work/agents/engineering_control/energy_feedback/cycle2_relay.py); its captured one-second values are in [cycle2_relay_output.json](/Users/harjas/Documents/Codex/2026-10-08/use-the-astra-research-knowledge-repository-2/work/agents/engineering_control/energy_feedback/cycle2_relay_output.json).
+
+At a successful guard entry, the process restarts from a known singleton with the opposite mode and a fresh deadline. Therefore for $M$ legs, the exact policy&#x27;s success probability is $\prod_{j=1}^M p_j$, and its expected cost through first failure or completion is
+$$
+C_1+p_1C_2+p_1p_2C_3+\cdots+\left(\prod_{j=1}^{M-1}p_j\right)C_M.
+$$
+For 20 one-second legs and the illustrative ledger, uniformization gives per-leg costs of $0.11948963606$ J for $H$ and $0.11648966826$ J for $L$, including the successful-switch charge but no shutdown charge. Expected energy through the first failed leg or 20 successes is $2.35916787051$ J. These timed quantities are floating-point evaluations; Poisson truncation is bounded in the JSON output, while floating-point roundoff is not certified. The underlying continuous-time state space is finite, but a per-leg deadline that resets on random guard-entry times is a continuous clock; segmentwise recursion avoids pretending the entire reset-clock controller is a finite-state homogeneous CTMDP.
+
+The standard uniform-CTMDP literature supplies algorithms for optimizing time-bounded reachability over scheduler choices; for example, Baier et al. treat uniform CTMDPs and history-dependent schedulers [primary paper](https://ris.utwente.nl/ws/portalfiles/portal/282323676/Baier2005efficient.pdf). Such optimization has no effect here because the legal action sets are singletons. The citation is a comparison point, not a claim that a free time-dependent scheduler matches this guard-triggered interface.
+
+## Cost ledger and falsifier
+
+The evaluated costs are: (1) sensor, controller/clock, and active-mode holding power through hit, unsafe exit, or timeout; (2) sensing and processing energy for each observed molecular event; (3) per-birth and per-death reaction energy; and (4) $E_{\rm sw}$ only when the target-safe transition actually occurs. Any fault-shutdown energy is zero in the reported example and must be added as $E_f(1-p_j)$ if measured. The numerical parameters are illustrative, not measured.
+
+The singleton-policy verdict is falsified if the actual interface allows at least two distinct actions under the stated rules, such as choosing $H$ versus $L$ at the same state, changing reaction rates, delaying a switch while in the guard, or choosing whether to fault-stop. The quantitative evaluation is falsified by calibrated transition-resolved data outside a preregistered confidence interval for timed hit probability, occupancy/event counts, or cost.
+
+If optional waiting in a guard core, rate modulation, or alternate mode selection is intended, that is a different interface and needs an explicit action set, switching-time convention, and failure semantics before a CTMDP optimum is well-defined. No result here claims optimality in that expanded class or novelty.
+</pre><p><a href="../assets/f00bc4ab4ca0734ea87b964e0445878915bc85b5e53479dd8ae391ed09fd09e3.md">Exact original</a></p></html>

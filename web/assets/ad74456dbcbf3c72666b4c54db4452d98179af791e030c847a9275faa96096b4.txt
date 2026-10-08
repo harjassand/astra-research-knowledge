@@ -1,0 +1,134 @@
+CYCLE 2 RESULT — ACTIVE VS PRECOMMITTED ACQUISITION IN A FOUR-STATE CONTROLLED HMM
+
+Status: proved for the finite family and interfaces below; not a theorem about general unknown HMMs. All hidden states remain latent. The intervention changes a transition probability and never clamps or labels a state.
+
+1. Result at a glance
+
+There is a four-state episodic controlled HMM with a noisy observable cue, noisy output channel, and one physical action per reset episode for which the exact fixed-sample minimax prediction risks are
+  R*_active(n) = R_n(a_A, eta),
+  R*_precommitted(n) = R_n(a_O, eta),
+where a_A > a_O are explicit token-observation rates and R_n is given in Section 5. The precommitted baseline receives the same raw cues and outputs, uses the same number of resets and pulses, and can match the active policy's action marginals and action-count distribution.
+
+At 95% confidence with the numerical parameters below, the minimax sample counts are 3 active episodes versus 7 precommitted episodes. Each episode costs one reset, one pulse, and two observed symbols. With unit cost for each, total costs are 12 versus 28. At the same three-episode budget, the exact minimax failure risks are 0.03417651 and 0.141. This is a strict, constant-factor finite-sample advantage for observable-cue feedback in this specified class.
+
+2. HMM family and interface
+
+The hidden state space is S = {(m,g): m,g in {0,1}}. At each episode reset, draw M uniformly from {0,1} and set the initial hidden state to S0=(M,0). The episode has this order:
+
+  (i) Emit the cue C in {0,1} with
+      P(C=c | M=m) = 1-epsilon if c=m, and epsilon otherwise.
+  (ii) After observing C, choose A in {0,1}, unless using the precommitted interface defined below.
+  (iii) Apply the controlled transition from (M,0) to (M,G), where
+      P(G=1 | M=m,A=a) = q_H if a=m, and q_L if a!=m.
+      G is otherwise unobserved.
+  (iv) Emit Y in {0,1,blank}. Let theta in {0,1} be the only unknown model parameter. For g in {0,1},
+      P(Y=blank | G=g) = 1-e_g,
+      P(Y=theta | G=g) = e_g(1-eta),
+      P(Y=1-theta | G=g) = e_g eta.
+
+Each completed episode is followed by a full reset: the next M is fresh and uniform, independent of the entire preceding history, and the next initial state is (M,0). A query is one such complete episode, including one action pulse. There is no within-episode second action and no stopping or aborting after seeing C. Stopping is allowed only between episodes. The transition remains stochastic: 0<q_L<q_H<1. Every emission symbol has positive probability in both gate states when 0<e_g<1 and 0<eta<1. The cue is noisy when 0<epsilon<1/2, and eta is constrained to 0<eta<1/2. Thus neither C nor Y labels a hidden state, and neither action nor observation clamps a hidden state.
+
+The adaptive interface observes the current C before choosing A, and may use the full observable history. The precommitted interface chooses A_t before seeing the current episode's C_t; it may randomize, choose a deterministic schedule, and use all earlier observable episodes to choose later actions. In both cases the learner then receives the raw tuple (C_t,A_t,Y_t). There are no state labels, conditional-distribution oracles, or hidden-state access.
+
+For a fixed-sample comparison, every policy receives exactly n reset episodes and makes exactly n pulses. The active rule A_t=C_t has A_t iid uniform because C_t is iid uniform. A passive policy that precommits iid uniform actions has exactly the same action distribution, including the action-count distribution. Both incur the same per-episode cost. More generally, every fixed or randomized precommitted action schedule has one pulse per episode and cannot correlate A_t with the fresh M_t.
+
+3. Raw sequence likelihood and information in the data
+
+Write rho_epsilon(c|m) for the cue channel and
+  q_{m,a} = q_H when a=m, q_L otherwise,
+  b_theta(y|g) for the emission probabilities in Section 2.
+For an observable history h before episode t and an adaptive action kernel pi(a|h,c), the exact one-episode likelihood is
+  P_theta(c,a,y | h)
+    = (1/2) sum_{m=0}^1 rho_epsilon(c|m) pi(a|h,c)
+        sum_{g=0}^1 Bern(q_{m,a})(g) b_theta(y|g).
+Here Bern(q)(1)=q and Bern(q)(0)=1-q. For a precommitted policy replace pi(a|h,c) by pi(a|h). For a policy with internal randomization, pi is its actual observable-history kernel. The likelihood of n raw episodes is the product of these conditional likelihoods over t, with h equal to the preceding raw tuples. This expression explicitly sums out both hidden variables M and G.
+
+Let T=1{Y != blank}. Conditional on a given cue and action, the token probability is
+  a_match = e_0 + (e_1-e_0)[(1-epsilon)q_H + epsilon q_L] if A=C,
+  a_mismatch = e_0 + (e_1-e_0)[(1-epsilon)q_L + epsilon q_H] if A!=C.
+The cue is uniform, and its posterior satisfies P(M=C|C)=1-epsilon. Thus a_match>a_mismatch. Under the active rule A=C, T is Bernoulli with rate
+  a_A = e_0 + (e_1-e_0)[(1-epsilon)q_H + epsilon q_L].
+Under any precommitted policy, conditional on the past and the chosen A_t, C_t is fresh uniform and M_t is fresh uniform. Averaging over C_t gives
+  a_O = (a_match+a_mismatch)/2
+      = e_0 + (e_1-e_0)(q_H+q_L)/2.
+Consequently the token indicator has conditional hazard a_O at every precommitted episode, even if the schedule depends on past data. It is iid Bernoulli(a_O). In the adaptive class, every action rule has conditional token hazard at most a_A; choosing A=C attains it. Any less informative action rule can be simulated by taking the A=C experiment and thinning its tokens, since the token hazard it requests is at most a_A and the token sign channel is unchanged.
+
+The occurrence or absence of a token and the cue/action choices carry no direct information about theta. Each token sign is an independent binary-symmetric-channel observation of theta with crossover eta. In particular, for either interface the likelihood ratio of the full raw data reduces to
+  log(P_theta=0(data)/P_theta=1(data))
+     = (N_0-N_1) log((1-eta)/eta),
+where N_i counts the observed tokens equal to i. Cue, action, hidden-gate mixture, and token/no-token factors are not discarded from the raw likelihood; they cancel in this likelihood ratio because their conditional probabilities do not depend on theta. An action kernel that reacts to past outputs also cancels as the same kernel under both models.
+
+4. Prediction target and loss
+
+The target is the next-episode predictive law under the specified adaptive policy pi*(A=C), on the observable triple (C,A,Y). For theta=0,1 this law Q_theta has
+  Q_theta(C=c,A=c,Y=blank) = (1/2)(1-a_A),
+  Q_theta(C=c,A=c,Y=theta) = (1/2)a_A(1-eta),
+  Q_theta(C=c,A=c,Y=1-theta) = (1/2)a_A eta,
+for c in {0,1}; it assigns zero mass to A!=C. Its total-variation separation is
+  D = TV(Q_0,Q_1) = a_A(1-2 eta) > 0.
+The loss is the indicator that the predicted law Qhat is farther than D/3 in TV from the true Q_theta. The two D/3 balls are disjoint. Any successful predictor therefore induces a correct test of theta, and a correct test can output Qhat=Q_theta. The minimax prediction failure probability is exactly the minimax binary-testing error, not merely bounded by it.
+
+5. Exact minimax risk and query counts
+
+For k token signs, let
+  r_0(eta) = 1/2,
+  r_k(eta) = sum_{j>k/2} binom(k,j) eta^j (1-eta)^(k-j)
+             + (1/2) 1{k even} binom(k,k/2)
+                         eta^(k/2)(1-eta)^(k/2),   k>=1.
+This is the symmetric majority-test error, with a fair tie break. For token probability a define
+  R_n(a,eta) = sum_{k=0}^n binom(n,k) a^k(1-a)^(n-k) r_k(eta).
+Conditional on K=k, the tokens are k iid BSC(eta) signs; token locations, cues, actions, and blanks are ancillary to theta. Under the symmetric two-point model, majority is Bayes-optimal for the uniform prior and has equal error under both theta values, so its Bayes risk equals its worst-case risk. The uniform-prior Bayes risk lower-bounds every estimator's worst-case error. Hence R_n is the exact minimax error.
+
+The active A=C policy attains R_n(a_A,eta). No adaptive policy can do better: each episode's token hazard is at most a_A, and an iid rate-a_A token stream can simulate any lower-rate adaptive stream by thinning after the policy selects its action. R_n decreases when tokens are added, so the maximum-rate experiment is minimax optimal. For the precommitted class, each episode has hazard exactly a_O after marginalizing its fresh cue and context; its raw-data likelihood ratio contains only the token signs. Every precommitted policy therefore has exact risk R_n(a_O,eta), including randomized and history-dependent schedules.
+
+Thus, for fixed worst-case episode/query budget n,
+  R*_active(n)=R_n(a_A,eta),
+  R*_precommitted(n)=R_n(a_O,eta),
+and at confidence 1-alpha the exact minimax sample counts are
+  n*_active(alpha)=min{n: R_n(a_A,eta)<=alpha},
+  n*_precommitted(alpha)=min{n: R_n(a_O,eta)<=alpha}.
+These are reset counts and pulse counts as well as trajectory counts.
+
+6. Strict numerical comparison with all costs charged
+
+Take
+  epsilon=0.01, q_H=0.99, q_L=0.01,
+  e_0=0.01, e_1=0.99, eta=0.10.
+All cue, transition, and emission probabilities are strictly inside their required ranges. The numbers are
+  a_match = a_A = 0.970596,
+  a_mismatch = 0.029404,
+  a_O = 0.5,
+  D = TV(Q_0,Q_1) = 0.7764768,
+  prediction radius D/3 = 0.2588256.
+
+Using the exact finite sum in Section 5:
+  R_2(a_A,0.1) = 0.1003458380864 > 0.05,
+  R_3(a_A,0.1) = 0.03417651088059315 < 0.05,
+  R_6(a_O,0.1) = 0.05687375 > 0.05,
+  R_7(a_O,0.1) = 0.0429875625 < 0.05.
+Since R_n is nonincreasing in n, the exact 95%-confidence fixed-sample minimax counts are 3 and 7. At the same three-reset, three-pulse budget, the precommitted risk is R_3(0.5,0.1)=0.141, compared with active risk 0.03417651.
+
+Cost accounting: one reset costs 1, one pulse costs 1, and observing each of C and Y costs 1. Thus one complete episode costs c=4; the action is recorded and incurs no additional charge beyond its pulse. The exact fixed-budget costs for 95% confidence are 3c=12 active and 7c=28 precommitted, with reset/action/symbol counts (3,3,6) and (7,7,14), respectively. If symbol observations are uncharged, the same count comparison gives 6 versus 14; the strict advantage does not depend on that convention.
+
+7. What this establishes and what remains UNKNOWN
+
+Established: a strict active acquisition gain over the best randomized, history-dependent, or deterministic precommitted schedule for this four-state, one-transition-per-reset controlled HMM family and this raw-data prediction target. The gain persists with hidden states, noisy cue, noisy sign emissions, stochastic action-dependent transitions, and matched reset/action/symbol costs. It comes from correlating the action with a fresh noisy cue, which increases the chance of a sign-bearing emission from a_O to a_A.
+
+Not established: a general active-learning theorem for arbitrary HMMs; a gain when all transition/emission parameters are unknown; benefits from repeated within-episode feedback; or any novelty/priority claim. The calculation assumes the learner knows epsilon, q_H, q_L, e_0, e_1, eta and only theta is unknown. It also assumes each query begins with an independent reset, the cue arrives before the active pulse, the episode cannot be aborted after the cue, and action/reset/measurement costs are equal for both arms. If epsilon=1/2 or q_H=q_L, then a_A=a_O and the acquisition advantage vanishes. If eta=1/2, D=0 and theta is not identifiable from these emissions. If M persists across episodes, passive actions may become correlated with inferred M through history, and the exact passive frontier above no longer applies. If the passive interface is allowed to choose A after seeing the current C, it is the active interface by definition.
+
+Novelty remains UNKNOWN. This is a finite construction and direct proof, not an exhaustive literature search or expert review. The literature below provides context for HMM active-query and conditional-sampling interfaces, but does not certify novelty of this particular construction.
+
+8. Source and prior-card notes
+
+Primary literature:
+- Brigham Anderson and Andrew W. Moore, “Active Learning for Hidden Markov Models: Objective Functions and Algorithms,” ICML 2005, pp. 9–16. The paper studies query selection for HMM learning/state/path estimation and provides algorithmic/empirical results. Its query interface is not the reset/action-cost comparison proved here. ACM DOI: https://doi.org/10.1145/1102351.1102353 ; author PDF: https://www.cs.cmu.edu/~brigham/papers/icml2005.pdf
+- Sham M. Kakade, Akshay Krishnamurthy, Gaurav Mahajan, and Cyril Zhang, “Learning Hidden Markov Models Using Conditional Samples,” COLT 2023, PMLR 195, pp. 2014–2066. It studies an interactive oracle for exact conditional probabilities or samples from HMM conditional distributions; that is distinct from the raw controlled trajectories used here. Primary paper: https://proceedings.mlr.press/v195/mahajan23a.html ; PDF: https://proceedings.mlr.press/v195/mahajan23a/mahajan23a.pdf
+
+Relevant local prior cards, used as interface/scope cautions rather than proof premises:
+- work/astra_prior/cards/N25-acquisition-interface-tests.txt: actual-path risk does not certify arbitrary spliced queries; charge the actual acquisition interface and distinguish conditional sampling from passive data.
+- work/astra_prior/cards/N13-passive-parity-boundary.txt: a hidden-matrix oracle is not passive data; compare methods with the same acquired information. The present proof specifies its raw trajectory information and equal action/reset budget explicitly.
+
+Reproducibility:
+- work/programmes/acquisition_learning/cycle2/active_hmm/verify_exact_risk.py recomputes the exact risk values using rational arithmetic. It is a finite arithmetic check of the displayed closed-form risk, not a substitute for the proof above.
+- Work-product status: derivation and arithmetic were internally checked; external mathematical review and novelty review remain UNKNOWN.
+

@@ -1,0 +1,404 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c4_rational_hostile/formalization/project/N33Affine/B2Mechanism.lean</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c4_rational_hostile/formalization/project/N33Affine/B2Mechanism.lean</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>import Mathlib.Analysis.SpecialFunctions.Pow.Real
+import Mathlib.Analysis.SpecialFunctions.Pow.Continuity
+import Mathlib.Algebra.BigOperators.Group.Finset.Basic
+import N33Affine.AffineCore
+import N33Affine.SliceFamily
+import N33Affine.NextTypeAsymptotic
+
+noncomputable section
+
+open Filter Topology Set
+open scoped BigOperators
+
+namespace N33Affine
+
+/- The coordinates raised by an embedding. -/
+def raisedCoords {m k : ℕ} (e : Fin k ↪ Fin m) : Finset (Fin m) :=
+  Finset.univ.map e
+
+def baselineLabel {m : ℕ} (t : ℝ) : Label m :=
+  ⟨fun _ =&gt; t, fun _ =&gt; 0⟩
+
+/-- Add one previously unraised coordinate to an embedding. -/
+def extendEmbedding {m k : ℕ} (e : Fin k ↪ Fin m) (j : Fin m)
+    (hj : j ∉ raisedCoords e) : Fin (k + 1) ↪ Fin m where
+  toFun i := if hi : i.val &lt; k then e ⟨i.val, hi⟩ else j
+  inj&#x27; := by
+    intro x y hxy
+    by_cases hx : x.val &lt; k &lt;;&gt; by_cases hy : y.val &lt; k
+    · have hxy&#x27; : e ⟨x.val, hx⟩ = e ⟨y.val, hy⟩ := by
+        simpa [hx, hy] using hxy
+      have hev : (⟨x.val, hx⟩ : Fin k) = ⟨y.val, hy⟩ := e.injective hxy&#x27;
+      have hv : x.val = y.val := congrArg (fun z : Fin k =&gt; z.val) hev
+      exact Fin.ext hv
+    · have hmem : j ∈ raisedCoords e := by
+        apply Finset.mem_map.mpr
+        refine ⟨⟨x.val, hx⟩, Finset.mem_univ _, ?_⟩
+        simpa [hx, hy] using hxy
+      exact False.elim (hj hmem)
+    · have hmem : j ∈ raisedCoords e := by
+        apply Finset.mem_map.mpr
+        refine ⟨⟨y.val, hy⟩, Finset.mem_univ _, ?_⟩
+        simpa [hx, hy] using hxy.symm
+      exact False.elim (hj hmem)
+    · have hxv : x.val = k := by omega
+      have hyv : y.val = k := by omega
+      exact Fin.ext (by omega)
+
+@[simp] lemma extendEmbedding_castSucc {m k : ℕ} (e : Fin k ↪ Fin m)
+    (j : Fin m) (hj : j ∉ raisedCoords e) (i : Fin k) :
+    extendEmbedding e j hj (Fin.castSucc i) = e i := by
+  apply Fin.ext
+  simp [extendEmbedding, Fin.val_castSucc, i.isLt]
+
+@[simp] lemma extendEmbedding_last {m k : ℕ} (e : Fin k ↪ Fin m)
+    (j : Fin m) (hj : j ∉ raisedCoords e) :
+    extendEmbedding e j hj (Fin.last k) = j := by
+  simp [extendEmbedding]
+
+lemma liftPoint_eq_t_of_not_mem_raisedCoords {m k : ℕ} (t : ℝ)
+    (e : Fin k ↪ Fin m) (s : Fin k → ℝ) {j : Fin m}
+    (hj : j ∉ raisedCoords e) : liftPoint t e s j = t := by
+  apply liftPoint_eq_off
+  intro i h
+  exact hj (Finset.mem_map.mpr ⟨i, Finset.mem_univ i, h⟩)
+
+lemma sum_liftPoint_rpow {m k : ℕ} (t h : ℝ) (e : Fin k ↪ Fin m)
+    (s : Fin k → ℝ) (p : Fin m → ℝ) :
+    (∑ j : Fin m, liftPoint t e s j * Real.rpow h (p j)) =
+      (∑ i : Fin k, s i * Real.rpow h (p (e i))) +
+        t * (∑ j ∈ (raisedCoords e)ᶜ, Real.rpow h (p j)) := by
+  classical
+  rw [← Finset.sum_add_sum_compl (raisedCoords e)
+    (fun j : Fin m =&gt; liftPoint t e s j * Real.rpow h (p j))]
+  have hleft :
+      (∑ j ∈ raisedCoords e, liftPoint t e s j * Real.rpow h (p j)) =
+        ∑ i : Fin k, s i * Real.rpow h (p (e i)) := by
+    change (∑ j ∈ Finset.univ.map e,
+      liftPoint t e s j * Real.rpow h (p j)) = _
+    rw [Finset.sum_map]
+    simp [liftPoint_eq_on]
+  have hright :
+      (∑ j ∈ (raisedCoords e)ᶜ, liftPoint t e s j * Real.rpow h (p j)) =
+        t * (∑ j ∈ (raisedCoords e)ᶜ, Real.rpow h (p j)) := by
+    rw [Finset.mul_sum]
+    apply Finset.sum_congr rfl
+    intro j hj
+    have hj&#x27; : j ∉ raisedCoords e := by simpa using hj
+    rw [liftPoint_eq_t_of_not_mem_raisedCoords t e s hj&#x27;]
+  rw [hleft, hright]
+
+lemma value_liftLabel_decomposition {m k : ℕ} (t β h : ℝ)
+    (e : Fin k ↪ Fin m) (ℓ : Label k) (p : Fin m → ℝ) :
+    value (liftLabel t β e ℓ) h p =
+      value ℓ h (fun i =&gt; p (e i)) +
+        t * (∑ j ∈ (raisedCoords e)ᶜ, Real.rpow h (p j)) - Real.rpow h β := by
+  unfold value liftLabel
+  rw [sum_liftPoint_rpow]
+  ring
+
+lemma value_baseline_decomposition {m k : ℕ} (t h : ℝ)
+    (e : Fin k ↪ Fin m) (p : Fin m → ℝ) :
+    value (baselineLabel t) h p =
+      t * (∑ i : Fin k, Real.rpow h (p (e i))) +
+        t * (∑ j ∈ (raisedCoords e)ᶜ, Real.rpow h (p j)) := by
+  classical
+  unfold value baselineLabel
+  have hsum :
+      (∑ j : Fin m, Real.rpow h (p j)) =
+        (∑ i : Fin k, Real.rpow h (p (e i))) +
+          (∑ j ∈ (raisedCoords e)ᶜ, Real.rpow h (p j)) := by
+    rw [← Finset.sum_add_sum_compl (raisedCoords e) (fun j : Fin m =&gt; Real.rpow h (p j))]
+    change (∑ j ∈ Finset.univ.map e, Real.rpow h (p j)) + _ = _
+    rw [Finset.sum_map]
+  calc
+    (∑ j : Fin m, t * Real.rpow h (p j)) + 0 =
+        t * (∑ j : Fin m, Real.rpow h (p j)) := by simp [Finset.mul_sum]
+    _ = t * (∑ i : Fin k, Real.rpow h (p (e i))) +
+        t * (∑ j ∈ (raisedCoords e)ᶜ, Real.rpow h (p j)) := by rw [hsum, mul_add]
+
+lemma value_liftLabel_sub_baseline {m k : ℕ} (t β h : ℝ)
+    (e : Fin k ↪ Fin m) (ℓ : Label k) (p : Fin m → ℝ) :
+    value (liftLabel t β e ℓ) h p - value (baselineLabel t) h p =
+      (∑ i : Fin k, (ℓ.slope i - t) * Real.rpow h (p (e i))) +
+        ℓ.bump h - Real.rpow h β := by
+  rw [value_liftLabel_decomposition, value_baseline_decomposition]
+  unfold value
+  rw [Finset.mul_sum]
+  have hsub :
+      (∑ i : Fin k, ℓ.slope i * Real.rpow h (p (e i))) -
+          (∑ i : Fin k, t * Real.rpow h (p (e i))) =
+        ∑ i : Fin k, (ℓ.slope i - t) * Real.rpow h (p (e i)) := by
+    rw [← Finset.sum_sub_distrib]
+    apply Finset.sum_congr rfl
+    intro i hi
+    ring
+  have hmul :
+      t * (∑ i : Fin k, Real.rpow h (p (e i))) =
+        ∑ i : Fin k, t * Real.rpow h (p (e i)) := by
+    rw [Finset.mul_sum]
+  rw [hmul]
+  linear_combination hsub
+
+lemma active_liftLabel_iff {m k : ℕ} {ι : Type*} (t β h : ℝ)
+    (e : Fin k ↪ Fin m) (F : ι → Label k) (j : ι) (p : Fin m → ℝ) :
+    Active (fun i =&gt; liftLabel t β e (F i)) j h p ↔
+      Active F j h (fun u =&gt; p (e u)) := by
+  constructor
+  · intro hActive j&#x27;
+    have hle := hActive j&#x27;
+    rw [value_liftLabel_decomposition, value_liftLabel_decomposition] at hle
+    linarith
+  · intro hActive j&#x27;
+    have hle := hActive j&#x27;
+    rw [value_liftLabel_decomposition, value_liftLabel_decomposition]
+    linarith
+
+/-- The other strict side of varying-exponent scale separation.  This is the
+at-top counterpart to `NextTypeAsymptotic.rpow_ratio_tendsto_zero_of_lt`. -/
+theorem rpow_ratio_tendsto_atTop_of_lt_local
+    {hSeq pSeq : ℕ → ℝ} {p₀ q : ℝ}
+    (hh : Tendsto hSeq atTop (nhdsWithin 0 (Set.Ioi 0)))
+    (hp : Tendsto pSeq atTop (nhds p₀)) (hpq : p₀ &lt; q) :
+    Tendsto (fun n =&gt; Real.rpow (hSeq n) (pSeq n) / Real.rpow (hSeq n) q)
+      atTop atTop := by
+  let d : ℝ := (q - p₀) / 2
+  have hd : 0 &lt; d := by dsimp [d]; linarith
+  have hpos : ∀ᶠ n in atTop, 0 &lt; hSeq n := by
+    exact hh.eventually (show ∀ᶠ x in nhdsWithin 0 (Set.Ioi 0), 0 &lt; x from self_mem_nhdsWithin)
+  have hone : ∀ᶠ n in atTop, hSeq n &lt; 1 := by
+    have hbase0 : Tendsto hSeq atTop (nhds 0) := hh.mono_right nhdsWithin_le_nhds
+    exact (tendsto_order.1 hbase0).2 1 (by norm_num)
+  have hgap : ∀ᶠ n in atTop, pSeq n - q ≤ -d := by
+    filter_upwards
+      [(tendsto_order.1 hp).2 (p₀ + d) (by dsimp [d]; linarith)] with n hn
+    dsimp [d] at hn ⊢
+    linarith
+  have hpowTop : Tendsto (fun n =&gt; Real.rpow (hSeq n) (-d)) atTop atTop :=
+    (tendsto_rpow_neg_nhdsGT_zero (neg_lt_zero.mpr hd)).comp hh
+  apply tendsto_atTop_mono&#x27; atTop ?_ hpowTop
+  filter_upwards [hpos, hone, hgap] with n hn0 hn1 hngap
+  calc
+    Real.rpow (hSeq n) (-d) ≤ Real.rpow (hSeq n) (pSeq n - q) :=
+      Real.rpow_le_rpow_of_exponent_ge hn0 (le_of_lt hn1) hngap
+    _ = Real.rpow (hSeq n) (pSeq n) / Real.rpow (hSeq n) q :=
+      Real.rpow_sub hn0 (pSeq n) q
+
+lemma no_eventually_littleO_competition
+    {hSeq pSeq : ℕ → ℝ} {p₀ q c : ℝ} {bump : ℝ → ℝ}
+    (hh : Tendsto hSeq atTop (nhdsWithin 0 (Set.Ioi 0)))
+    (hp : Tendsto pSeq atTop (nhds p₀)) (hpq : p₀ &lt; q) (hc : 0 &lt; c)
+    (hbump : LittleO bump q) :
+    ¬ (∀ᶠ n in atTop,
+      c * Real.rpow (hSeq n) (pSeq n) + bump (hSeq n) ≤ Real.rpow (hSeq n) q) := by
+  intro hineq
+  let ratio : ℕ → ℝ := fun n =&gt; Real.rpow (hSeq n) (pSeq n) / Real.rpow (hSeq n) q
+  let bumpRatio : ℕ → ℝ := fun n =&gt; bump (hSeq n) / Real.rpow (hSeq n) q
+  have hratio : Tendsto ratio atTop atTop := by
+    dsimp [ratio]
+    exact rpow_ratio_tendsto_atTop_of_lt_local hh hp hpq
+  have hbumpSeq : Tendsto bumpRatio atTop (nhds 0) := by
+    dsimp [bumpRatio]
+    exact hbump.comp hh
+  have hratioLarge : ∀ᶠ n in atTop, 2 / c &lt; ratio n :=
+    hratio.eventually_gt_atTop (2 / c)
+  have hbumpLower : ∀ᶠ n in atTop, -1 &lt; bumpRatio n :=
+    (tendsto_order.1 hbumpSeq).1 (-1) (by norm_num)
+  have hpos : ∀ᶠ n in atTop, 0 &lt; hSeq n := by
+    exact hh.eventually
+      (show ∀ᶠ h in nhdsWithin 0 (Set.Ioi 0), 0 &lt; h from self_mem_nhdsWithin)
+  have hdenpos : ∀ᶠ n in atTop, 0 &lt; Real.rpow (hSeq n) q := by
+    filter_upwards [hpos] with n hn
+    exact Real.rpow_pos_of_pos hn q
+  have hnormalized :
+      ∀ᶠ n in atTop,
+        (c * Real.rpow (hSeq n) (pSeq n) + bump (hSeq n)) /
+          Real.rpow (hSeq n) q ≤ 1 := by
+    filter_upwards [hineq, hdenpos] with n hn hden
+    calc
+      (c * Real.rpow (hSeq n) (pSeq n) + bump (hSeq n)) /
+          Real.rpow (hSeq n) q ≤ Real.rpow (hSeq n) q / Real.rpow (hSeq n) q :=
+        div_le_div_of_nonneg_right hn hden.le
+      _ = 1 := div_self hden.ne&#x27;
+  have hdecomp (n : ℕ) :
+      (c * Real.rpow (hSeq n) (pSeq n) + bump (hSeq n)) /
+          Real.rpow (hSeq n) q = c * ratio n + bumpRatio n := by
+    dsimp [ratio, bumpRatio]
+    rw [add_div, mul_div_assoc]
+  have hnormalized&#x27; : ∀ᶠ n in atTop, c * ratio n + bumpRatio n ≤ 1 := by
+    filter_upwards [hnormalized] with n hn
+    simpa only [hdecomp n] using hn
+  have hlarge : ∀ᶠ n in atTop, 2 &lt; c * ratio n := by
+    filter_upwards [hratioLarge] with n hn
+    have hmul := mul_lt_mul_of_pos_left hn hc
+    have hcancel : c * (2 / c) = 2 := by field_simp [ne_of_gt hc]
+    rw [hcancel] at hmul
+    exact hmul
+  have hsum : ∀ᶠ n in atTop, 1 &lt; c * ratio n + bumpRatio n := by
+    filter_upwards [hlarge, hbumpLower] with n hn₁ hn₂
+    linarith
+  obtain ⟨n, hn⟩ := (hsum.and hnormalized&#x27;).exists
+  exact (not_lt_of_ge hn.2) hn.1
+
+/-- The baseline comparison forces every raised limiting exponent to stay at or
+above its recursively chosen threshold.  The sequence points themselves are
+unrestricted; only the limit exponent vector is used. -/
+theorem active_lift_forces_raised_limits {m k : ℕ}
+    {hSeq : ℕ → ℝ} {pSeq : ℕ → Fin m → ℝ} {p : Fin m → ℝ}
+    (t β b : ℝ) (e : Fin k ↪ Fin m) (ℓ : Label k)
+    (hβt : t &lt; β) (hbox : ∀ i, β ≤ ℓ.slope i ∧ ℓ.slope i ≤ b)
+    (hbump : LittleO ℓ.bump β)
+    (hh : Tendsto hSeq atTop (nhdsWithin 0 (Set.Ioi 0)))
+    (hp : Tendsto pSeq atTop (nhds p))
+    (hactive : ∀ᶠ n in atTop,
+      value (liftLabel t β e ℓ) (hSeq n) (pSeq n) ≤
+        value (baselineLabel t) (hSeq n) (pSeq n)) :
+    ∀ i, β ≤ p (e i) := by
+  intro i
+  by_contra hnot
+  have hpi_lt : p (e i) &lt; β := lt_of_not_ge hnot
+  have hc : 0 &lt; ℓ.slope i - t := by linarith [(hbox i).1]
+  have hcoord : Tendsto (fun n =&gt; pSeq n (e i)) atTop (nhds (p (e i))) := by
+    simpa using ((continuous_apply (e i)).tendsto p).comp hp
+  have hcontr := no_eventually_littleO_competition hh hcoord hpi_lt hc hbump
+  apply hcontr
+  have hpos : ∀ᶠ n in atTop, 0 &lt; hSeq n := by
+    exact hh.eventually
+      (show ∀ᶠ h in nhdsWithin 0 (Set.Ioi 0), 0 &lt; h from self_mem_nhdsWithin)
+  filter_upwards [hactive, hpos] with n hact hnpos
+  have hdiff :
+      (∑ j : Fin k, (ℓ.slope j - t) * Real.rpow (hSeq n) (pSeq n (e j))) +
+          ℓ.bump (hSeq n) - Real.rpow (hSeq n) β ≤ 0 := by
+    have hle := sub_nonpos.mpr hact
+    rw [value_liftLabel_sub_baseline] at hle
+    exact hle
+  have hsingle := Finset.single_le_sum
+    (f := fun j : Fin k =&gt; (ℓ.slope j - t) * Real.rpow (hSeq n) (pSeq n (e j)))
+    (fun j _ =&gt; mul_nonneg (sub_nonneg.mpr (le_trans (hβt.le) (hbox j).1))
+      (Real.rpow_pos_of_pos hnpos _).le)
+    (Finset.mem_univ i)
+  have htarget := hdiff
+  linarith
+
+private lemma finset_sum_mul_div {ι : Type*} [Fintype ι]
+    (a b : ι → ℝ) (d : ℝ) :
+    (∑ i, a i * b i) / d = ∑ i, a i * (b i / d) := by
+  classical
+  rw [div_eq_mul_inv, Finset.sum_mul]
+  apply Finset.sum_congr rfl
+  intro i hi
+  ring
+
+/-- If a next-type lifted competitor has every limiting raised exponent strictly
+above its offset exponent, it eventually undercuts any active lower-type lift.
+This is the second load-bearing B2 comparison. -/
+theorem no_active_lift_with_next_above {m k : ℕ}
+    {hSeq : ℕ → ℝ} {pSeq : ℕ → Fin m → ℝ} {p : Fin m → ℝ}
+    (t q β b : ℝ) (hqβ : q &lt; β) (htq : t &lt; q)
+    (e : Fin k ↪ Fin m) (eNext : Fin (k + 1) ↪ Fin m)
+    {E₀ : (Fin k → ℝ) → ℝ} {E₁ : (Fin (k + 1) → ℝ) → ℝ}
+    (F : SliceInput k β b E₀) (j : F.family.Index)
+    (Fnext : SliceInput (k + 1) q b E₁) (jnext : Fnext.family.Index)
+    (hsupport : ∀ i, q &lt; p (eNext i))
+    (hh : Tendsto hSeq atTop (nhdsWithin 0 (Set.Ioi 0)))
+    (hp : Tendsto pSeq atTop (nhds p))
+    (hactive : ∀ᶠ n in atTop,
+      value (liftLabel t β e (F.family.label j)) (hSeq n) (pSeq n) ≤
+        value (liftLabel t q eNext (Fnext.family.label jnext))
+          (hSeq n) (pSeq n)) : False := by
+  let ℓ := F.family.label j
+  let ℓnext := Fnext.family.label jnext
+  have hgap : LittleO (fun x =&gt; ℓ.bump x - Real.rpow x β) q := by
+    exact littleO_sub (littleO_lower_exponent (F.littleO j) hqβ)
+      (littleO_rpow_of_lt hqβ)
+  have hgapSeq : Tendsto
+      (fun n =&gt; (ℓ.bump (hSeq n) - Real.rpow (hSeq n) β) /
+        Real.rpow (hSeq n) q) atTop (nhds 0) := hgap.comp hh
+  have hgapAbove : ∀ᶠ n in atTop,
+      -1 / 2 &lt; (ℓ.bump (hSeq n) - Real.rpow (hSeq n) β) /
+        Real.rpow (hSeq n) q :=
+    (tendsto_order.1 hgapSeq).1 (-1 / 2) (by norm_num)
+  have hpCoord : ∀ i : Fin (k + 1),
+      Tendsto (fun n =&gt; pSeq n (eNext i)) atTop (nhds (p (eNext i))) := by
+    intro i
+    simpa using ((continuous_apply (eNext i)).tendsto p).comp hp
+  have hsmall := NextTypeAsymptotic.finite_rpow_sum_add_littleO_tendsto_zero
+    (h := hSeq) (q := q)
+    (p := fun i n =&gt; pSeq n (eNext i))
+    (p₀ := fun i =&gt; p (eNext i))
+    (c := fun i =&gt; ℓnext.slope i - t) (d := ℓnext.bump)
+    hh hpCoord hsupport (Fnext.littleO jnext)
+  have hcompNormLim : Tendsto
+      (fun n =&gt; (value (liftLabel t q eNext ℓnext) (hSeq n) (pSeq n) -
+        value (baselineLabel t) (hSeq n) (pSeq n)) /
+          Real.rpow (hSeq n) q) atTop (nhds (-1)) := by
+    have hpos : ∀ᶠ n in atTop, 0 &lt; hSeq n := by
+      exact hh.eventually
+        (show ∀ᶠ x in nhdsWithin 0 (Set.Ioi 0), 0 &lt; x from self_mem_nhdsWithin)
+    have heq :
+        (fun n =&gt; (value (liftLabel t q eNext ℓnext) (hSeq n) (pSeq n) -
+          value (baselineLabel t) (hSeq n) (pSeq n)) /
+            Real.rpow (hSeq n) q) =ᶠ[atTop]
+          (fun n =&gt;
+            (∑ i : Fin (k + 1), (ℓnext.slope i - t) *
+              (Real.rpow (hSeq n) (pSeq n (eNext i)) /
+                Real.rpow (hSeq n) q)) +
+              ℓnext.bump (hSeq n) / Real.rpow (hSeq n) q - 1) := by
+      filter_upwards [hpos] with n hn
+      have hden : Real.rpow (hSeq n) q ≠ 0 :=
+        (Real.rpow_pos_of_pos hn q).ne&#x27;
+      rw [value_liftLabel_sub_baseline, sub_div, add_div,
+        finset_sum_mul_div, div_self hden]
+    have h := hsmall.sub_const (1 : ℝ)
+    have h&#x27; := h.congr&#x27; heq.symm
+    simpa using h&#x27;
+  have hcompBelow : ∀ᶠ n in atTop,
+      (value (liftLabel t q eNext ℓnext) (hSeq n) (pSeq n) -
+        value (baselineLabel t) (hSeq n) (pSeq n)) /
+          Real.rpow (hSeq n) q &lt; -1 / 2 :=
+    (tendsto_order.1 hcompNormLim).2 (-1 / 2) (by norm_num)
+  have hpos : ∀ᶠ n in atTop, 0 &lt; hSeq n := by
+    exact hh.eventually
+      (show ∀ᶠ x in nhdsWithin 0 (Set.Ioi 0), 0 &lt; x from self_mem_nhdsWithin)
+  have hsourceAbove : ∀ᶠ n in atTop,
+      -1 / 2 &lt; (value (liftLabel t β e ℓ) (hSeq n) (pSeq n) -
+        value (baselineLabel t) (hSeq n) (pSeq n)) /
+          Real.rpow (hSeq n) q := by
+    filter_upwards [hgapAbove, hpos] with n hg hn
+    have hsumNonneg :
+        0 ≤ ∑ i : Fin k, (ℓ.slope i - t) *
+          Real.rpow (hSeq n) (pSeq n (e i)) := by
+      apply Finset.sum_nonneg
+      intro i hi
+      apply mul_nonneg
+      · have hboxi : β ≤ ℓ.slope i := by simpa [ℓ] using (F.slope_box j i).1
+        exact sub_nonneg.mpr (le_trans htq.le (le_trans hqβ.le hboxi))
+      · exact (Real.rpow_pos_of_pos hn _).le
+    have hsourceEq := value_liftLabel_sub_baseline t β (hSeq n) e ℓ (pSeq n)
+    have hden : 0 &lt; Real.rpow (hSeq n) q := Real.rpow_pos_of_pos hn q
+    have hle :
+        (ℓ.bump (hSeq n) - Real.rpow (hSeq n) β) /
+            Real.rpow (hSeq n) q ≤
+          (value (liftLabel t β e ℓ) (hSeq n) (pSeq n) -
+            value (baselineLabel t) (hSeq n) (pSeq n)) /
+              Real.rpow (hSeq n) q := by
+      rw [hsourceEq]
+      apply div_le_div_of_nonneg_right _ hden.le
+      linarith
+    exact lt_of_lt_of_le hg hle
+  have horder : ∀ᶠ n in atTop,
+      (value (liftLabel t β e ℓ) (hSeq n) (pSeq n) -
+        value (baselineLabel t) (hSeq n) (pSeq n)) /
+          Real.rpow (hSeq n) q ≤
+      (value (liftLabel t q eNext ℓnext) (hSeq n) (pSeq n) -
+        value (baselineLabel t) (hSeq n) (pSeq n)) /
+          Real.rpow (hSeq n) q := by
+    filter_upwards [hactive, hpos] with n hact hn
+    have hden : 0 ≤ Real.rpow (hSeq n) q :=
+      (Real.rpow_pos_of_pos hn q).le
+    exact div_le_div_of_nonneg_right (sub_le_sub_right hact _) hden
+  obtain ⟨n, hn⟩ := ((horder.and hsourceAbove).and hcompBelow).exists
+  exact (not_lt_of_ge hn.1.1) (lt_trans hn.2 hn.1.2)
+
+end N33Affine
+</pre><p><a href="../assets/9965dae2a4073c20a2c6c5e49778c30cc43507f417367d40eea47ec2b6b9fb30.lean">Exact original</a></p></html>

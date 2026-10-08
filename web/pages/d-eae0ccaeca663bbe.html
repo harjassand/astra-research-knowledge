@@ -1,0 +1,312 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/classicality/cycle4/small_dimension_sdp.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/classicality/cycle4/small_dimension_sdp.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Small-dimension Choi SDPs for pair broadcasting and EB reconstruction.
+
+Ordering conventions and validity boundaries are documented in
+small_dimension_sdp.txt. Requires cvxpy plus Clarabel/SCS. The d=2 PPT
+program is exact by 2x2 PPT=separability; for d=3 PPT and symmetric-extension
+programs are outer relaxations for the EB minimum and hence only lower bounds.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import argparse
+import json
+import math
+from pathlib import Path
+
+import cvxpy as cp
+import numpy as np
+
+
+def solve_problem(problem: cp.Problem, solver: str):
+    if solver.upper() == &quot;SCS&quot;:
+        return problem.solve(solver=&quot;SCS&quot;, eps=1e-7, max_iters=200_000,
+                             verbose=False)
+    return problem.solve(solver=solver, tol_gap_abs=1e-7, tol_feas=1e-7,
+                         tol_gap_rel=1e-7, max_iter=2000, verbose=False)
+
+
+def pure_state(vector: list[complex]) -&gt; np.ndarray:
+    v = np.asarray(vector, dtype=complex)
+    v = v / np.linalg.norm(v)
+    return np.outer(v, v.conj())
+
+
+def prime_mub_states(d: int) -&gt; list[np.ndarray]:
+    &quot;&quot;&quot;Complete prime-dimensional MUBs for d=2 or 3.&quot;&quot;&quot;
+    if d not in (2, 3):
+        raise ValueError(&quot;this fixture generator supports prime d=2,3&quot;)
+    states = []
+    for a in range(d):
+        e = np.zeros(d, dtype=complex)
+        e[a] = 1
+        states.append(pure_state(e))
+    if d == 2:
+        states += [pure_state([1, 1]), pure_state([1, -1]),
+                   pure_state([1, 1j]), pure_state([1, -1j])]
+        return states
+    w = np.exp(2j * np.pi / d)
+    for b in range(d):
+        for a in range(d):
+            v = np.asarray([w ** ((b * x * x + a * x) % d) for x in range(d)])
+            states.append(pure_state(v))
+    return states
+
+
+def rational_gaussian_state(vector: list[complex]) -&gt; np.ndarray:
+    &quot;&quot;&quot;Pure projector from Gaussian-integer amplitudes; entries are rational Gaussian.&quot;&quot;&quot;
+    v = np.asarray(vector, dtype=complex)
+    norm2 = int(round(float(np.vdot(v, v).real)))
+    if norm2 &lt;= 0 or abs(np.vdot(v, v).real - norm2) &gt; 1e-10:
+        raise ValueError(&quot;vector must have integer squared norm&quot;)
+    return np.outer(v, v.conj()) / norm2
+
+
+def idx2(a: int, i: int, din: int) -&gt; int:
+    return a * din + i
+
+
+def idx3(a: int, b: int, i: int, d: int) -&gt; int:
+    return (a * d + b) * d + i
+
+
+def partial_output_from_broadcaster(J, rho: np.ndarray, d: int):
+    &quot;&quot;&quot;Marginal output map from J[(A,B),input] in row-major tensor order.&quot;&quot;&quot;
+    rows = []
+    for a in range(d):
+        row = []
+        for ap in range(d):
+            terms = [
+                J[idx3(a, b, i, d), idx3(ap, b, ip, d)] * rho[i, ip]
+                for b in range(d)
+                for i in range(d)
+                for ip in range(d)
+            ]
+            row.append(sum(terms))
+        rows.append(row)
+    return cp.bmat(rows)
+
+
+def partial_output_from_channel(J, rho: np.ndarray, d: int):
+    &quot;&quot;&quot;Channel output from J[output,input], with Lambda(rho)=Tr_in J(I tensor rho^T).&quot;&quot;&quot;
+    rows = []
+    for a in range(d):
+        row = []
+        for ap in range(d):
+            terms = [J[idx2(a, i, d), idx2(ap, ip, d)] * rho[i, ip]
+                     for i in range(d) for ip in range(d)]
+            row.append(sum(terms))
+        rows.append(row)
+    return cp.bmat(rows)
+
+
+def trace_norm_epigraph(delta, t, constraints, d: int, tag: str):
+    p = cp.Variable((d, d), hermitian=True, name=f&quot;P_{tag}&quot;)
+    q = cp.Variable((d, d), hermitian=True, name=f&quot;Q_{tag}&quot;)
+    constraints += [p &gt;&gt; 0, q &gt;&gt; 0, delta == p - q, cp.real(cp.trace(p + q)) &lt;= 2 * t]
+
+
+def broadcast_sdp(states: list[np.ndarray], solver: str = &quot;CLARABEL&quot;) -&gt; dict:
+    &quot;&quot;&quot;Exact convex program for min worst marginal trace distance over a physical pair broadcaster.
+
+    Output swap symmetry is WLOG: averaging any broadcaster with its output swap
+    makes equal marginals, and convexity of trace distance cannot increase the
+    worst error when the target is the same on both outputs.
+    &quot;&quot;&quot;
+    d = states[0].shape[0]
+    J = cp.Variable((d**3, d**3), hermitian=True, name=&quot;J_broadcast&quot;)
+    t = cp.Variable(nonneg=True, name=&quot;broadcast_error&quot;)
+    constraints = [J &gt;&gt; 0]
+
+    # Swap the two output tensor factors in (out1,out2,input) ordering.
+    P = np.zeros((d**3, d**3))
+    for a in range(d):
+        for b in range(d):
+            for i in range(d):
+                P[idx3(b, a, i, d), idx3(a, b, i, d)] = 1
+    constraints += [P @ J @ P.T == J]
+
+    # Trace preservation: Tr_out1,out2 J = I_input.
+    for i in range(d):
+        for ip in range(d):
+            terms = [J[idx3(a, b, i, d), idx3(a, b, ip, d)]
+                     for a in range(d) for b in range(d)]
+            constraints += [sum(terms) == (1 if i == ip else 0)]
+
+    for r, rho in enumerate(states):
+        out = partial_output_from_broadcaster(J, rho, d)
+        trace_norm_epigraph(out - rho, t, constraints, d, f&quot;b{r}&quot;)
+
+    problem = cp.Problem(cp.Minimize(t), constraints)
+    value = solve_problem(problem, solver)
+    return {&quot;status&quot;: problem.status, &quot;value&quot;: float(value), &quot;solver&quot;: solver,
+            &quot;primal_residual&quot;: getattr(problem.solver_stats, &quot;extra_stats&quot;, None)}
+
+
+def partial_transpose_output(J, d: int):
+    rows = []
+    for a in range(d):
+        for i in range(d):
+            row = []
+            for ap in range(d):
+                for ip in range(d):
+                    row.append(J[idx2(ap, i, d), idx2(a, ip, d)])
+            rows.append(row)
+    return cp.bmat(rows)
+
+
+def eb_ppt_sdp(states: list[np.ndarray], solver: str = &quot;CLARABEL&quot;) -&gt; dict:
+    &quot;&quot;&quot;PPT-Choi outer relaxation for the minimum full-domain EB error.
+
+    Exact for d=2. For d=3 the optimum is a lower bound on e_EB, since PPT
+    need not imply separability on 3x3.
+    &quot;&quot;&quot;
+    d = states[0].shape[0]
+    J = cp.Variable((d**2, d**2), hermitian=True, name=&quot;J_EB_relaxation&quot;)
+    t = cp.Variable(nonneg=True, name=&quot;eb_error&quot;)
+    constraints = [J &gt;&gt; 0, partial_transpose_output(J, d) &gt;&gt; 0]
+    for i in range(d):
+        for ip in range(d):
+            constraints += [sum(J[idx2(a, i, d), idx2(a, ip, d)]
+                                 for a in range(d)) == (1 if i == ip else 0)]
+    for r, rho in enumerate(states):
+        out = partial_output_from_channel(J, rho, d)
+        trace_norm_epigraph(out - rho, t, constraints, d, f&quot;e{r}&quot;)
+    problem = cp.Problem(cp.Minimize(t), constraints)
+    value = solve_problem(problem, solver)
+    return {&quot;status&quot;: problem.status, &quot;value&quot;: float(value), &quot;solver&quot;: solver,
+            &quot;interpretation&quot;: &quot;exact e_EB for d=2; PPT lower bound for d=3&quot;,
+            &quot;primal_residual&quot;: getattr(problem.solver_stats, &quot;extra_stats&quot;, None)}
+
+
+def eb_fixed_povm_sdp(states: list[np.ndarray], effects: list[np.ndarray],
+                      solver: str = &quot;CLARABEL&quot;) -&gt; dict:
+    &quot;&quot;&quot;Exact SDP over preparations for one supplied POVM; every feasible map is EB.
+
+    This is a full-domain EB decoder, but it is only an upper bound on e_EB
+    unless a separate argument proves the POVM is globally optimal.
+    &quot;&quot;&quot;
+    d = states[0].shape[0]
+    if not np.allclose(sum(effects), np.eye(d), atol=1e-9):
+        raise ValueError(&quot;effects must sum to the identity&quot;)
+    preparations = [cp.Variable((d, d), hermitian=True, name=f&quot;sigma_{y}&quot;)
+                    for y in range(len(effects))]
+    t = cp.Variable(nonneg=True, name=&quot;fixed_povm_eb_error&quot;)
+    constraints = []
+    for sigma in preparations:
+        constraints += [sigma &gt;&gt; 0, cp.real(cp.trace(sigma)) == 1]
+    for r, rho in enumerate(states):
+        out = cp.bmat([
+            [sum(float(np.trace(effect @ rho).real) * sigma[a, ap]
+                 for effect, sigma in zip(effects, preparations))
+             for ap in range(d)]
+            for a in range(d)
+        ])
+        trace_norm_epigraph(out - rho, t, constraints, d, f&quot;fixed{r}&quot;)
+    problem = cp.Problem(cp.Minimize(t), constraints)
+    value = solve_problem(problem, solver)
+    return {&quot;status&quot;: problem.status, &quot;value&quot;: float(value), &quot;solver&quot;: solver,
+            &quot;interpretation&quot;: &quot;feasible full-domain EB decoder from a fixed POVM; upper bound on e_EB&quot;}
+
+
+def random_gaussian_projectors(d: int, count: int, seed: int) -&gt; list[np.ndarray]:
+    rng = np.random.default_rng(seed)
+    states = []
+    seen = set()
+    while len(states) &lt; count:
+        re = rng.integers(-1, 2, size=d)
+        im = rng.integers(-1, 2, size=d)
+        v = re + 1j * im
+        if np.all(v == 0):
+            continue
+        key = tuple(np.round((np.outer(v, v.conj()) / np.vdot(v, v)).reshape(-1), 10))
+        if key in seen:
+            continue
+        seen.add(key)
+        states.append(rational_gaussian_state(list(v)))
+    return states
+
+
+def traceless_affine_rank(states: list[np.ndarray]) -&gt; int:
+    d = states[0].shape[0]
+    rows = [rho - np.eye(d) / d for rho in states]
+    real_features = np.asarray([np.concatenate([x.real.ravel(), x.imag.ravel()]) for x in rows])
+    return int(np.linalg.matrix_rank(real_features, tol=1e-9))
+
+
+def exact_binary_pair_receipt() -&gt; dict:
+    &quot;&quot;&quot;Algebraic bounds for rho0=|0&gt;&lt;0| and rho1=|10,1&gt;&lt;10,1|.&quot;&quot;&quot;
+    S = 1 / math.sqrt(101)
+    C = 10 / math.sqrt(101)
+    eb_lower = (13 - math.sqrt(110)) / (2 * math.sqrt(1010))
+    eb_upper = S / 2  # dephase in the bisector basis and prepare its eigenstates
+    broadcast_upper = 0.5 * math.sqrt(
+        (1 - 1 / math.sqrt(2)) ** 2 * S**2 + 0.25 * (1 - C) ** 2
+    )  # symmetric one-excitation isometry, after a unitary rotation
+    return {
+        &quot;states_exact&quot;: [&quot;[[1,0],[0,0]]&quot;, &quot;[[100/101,10/101],[10/101,1/101]]&quot;],
+        &quot;eb_lower_exact&quot;: &quot;(13-sqrt(110))/(2*sqrt(1010))&quot;,
+        &quot;eb_upper_exact&quot;: &quot;1/(2*sqrt(101))&quot;,
+        &quot;broadcast_upper_exact&quot;: &quot;sqrt((1-1/sqrt(2))^2/(4*101) + (1-10/sqrt(101))^2/16)&quot;,
+        &quot;eb_lower_numeric&quot;: eb_lower,
+        &quot;eb_upper_numeric&quot;: eb_upper,
+        &quot;broadcast_upper_numeric&quot;: broadcast_upper,
+        &quot;certified_separation&quot;: &quot;e_EB &gt; 39/1000 &gt; 31/1000 &gt; 2*b_2&quot;,
+        &quot;scope&quot;: &quot;fixed d=2 finite-family counterexample to the proposed linear bound e_EB&lt;=2*b_2; both errors still vanish in the coalescing-state limit&quot;,
+    }
+
+
+def main() -&gt; None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(&quot;--search&quot;, action=&quot;store_true&quot;, help=&quot;run small random rational-state screens&quot;)
+    parser.add_argument(&quot;--solver&quot;, default=&quot;CLARABEL&quot;)
+    args = parser.parse_args()
+    results = {&quot;runtime&quot;: {&quot;cvxpy&quot;: cp.__version__, &quot;numpy&quot;: np.__version__,
+                           &quot;solver&quot;: args.solver},
+               &quot;fixtures&quot;: {}, &quot;binary_pair_exact&quot;: exact_binary_pair_receipt(),
+               &quot;search&quot;: []}
+    for d in (2, 3):
+        states = prime_mub_states(d)
+        effects = [rho / (d + 1) for rho in states]
+        results[&quot;fixtures&quot;][str(d)] = {
+            &quot;state_count&quot;: len(states),
+            &quot;exact_b2&quot;: f&quot;{d-1}/{2*(d+1)}&quot;,
+            &quot;exact_e_EB&quot;: f&quot;{d-1}/{d+1}&quot;,
+            &quot;broadcast&quot;: broadcast_sdp(states, args.solver),
+            &quot;eb_ppt&quot;: eb_ppt_sdp(states, args.solver),
+            &quot;eb_fixed_mub_povm&quot;: eb_fixed_povm_sdp(states, effects, args.solver),
+        }
+    if args.search:
+        for p, q in ((10, 1), (4, 1), (2, 1), (1, 1), (1, 2), (1, 4), (1, 10)):
+            states = [rational_gaussian_state([1, 0]),
+                      rational_gaussian_state([p, q])]
+            b = broadcast_sdp(states, args.solver)
+            e = eb_ppt_sdp(states, args.solver)
+            results[&quot;search&quot;].append({
+                &quot;kind&quot;: &quot;qubit-two-state-rational-sweep&quot;, &quot;d&quot;: 2,
+                &quot;pair&quot;: [p, q], &quot;b2&quot;: b, &quot;eb_exact&quot;: e,
+                &quot;ratio_eb_over_b2&quot;: e[&quot;value&quot;] / b[&quot;value&quot;] if b[&quot;value&quot;] &gt; 1e-9 else None,
+                &quot;states&quot;: [[[[float(x.real), float(x.imag)] for x in row]
+                            for row in rho] for rho in states],
+            })
+        for d, count, seed_count in ((2, 5, 5), (2, 7, 5), (3, 5, 5), (3, 10, 3)):
+            for seed in range(seed_count):
+                states = random_gaussian_projectors(d, count, seed + 100 * d)
+                b = broadcast_sdp(states, args.solver)
+                e = eb_ppt_sdp(states, args.solver)
+                effects = [rho / (d + 1) for rho in prime_mub_states(d)]
+                e_upper = eb_fixed_povm_sdp(states, effects, args.solver)
+                results[&quot;search&quot;].append({
+                    &quot;d&quot;: d, &quot;count&quot;: count, &quot;seed&quot;: seed + 100 * d,
+                    &quot;traceless_affine_rank&quot;: traceless_affine_rank(states),
+                    &quot;b2&quot;: b, &quot;eb_ppt_lower&quot;: e,
+                    &quot;eb_mub_povm_upper&quot;: e_upper,
+                    &quot;ratio_lower&quot;: e[&quot;value&quot;] / b[&quot;value&quot;] if b[&quot;value&quot;] &gt; 1e-9 else None,
+                    &quot;states&quot;: [[[[float(x.real), float(x.imag)] for x in row]
+                                for row in rho] for rho in states],
+                })
+    print(json.dumps(results, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/515ad2b470b659f30336505f7bf7fc995a23eac3943d6bf7464bb295ce490aaa.py">Exact original</a></p></html>

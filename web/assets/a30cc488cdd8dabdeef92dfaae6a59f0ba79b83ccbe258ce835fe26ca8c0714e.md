@@ -1,0 +1,20 @@
+# DENet time-course audit — source register
+
+## Primary sources
+
+1. Song, C. et al. “Navigating high-order protein fitness landscapes via deep learning on directed evolution trajectories.” *PNAS* 123(22), e2520561123 (2026). [DOI: 10.1073/pnas.2520561123](https://doi.org/10.1073/pnas.2520561123). The primary article page states DENet’s headline claims, links the public code, supplementary information and data, and identifies GSE315318 as the GEO series. The article abstract also reports separate candidate screening; this local audit addresses the released trajectory-derived score tables only.
+2. GEO Series GSE315318, “Navigating high-order protein mutational landscapes via deep learning on directed evolution trajectories.” [GEO record](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE315318). Contains eight samples: KRAS days 5/9/12/14 and MEK1 days 5/7/10/15, plus the 870 KB `GSE315318_RAW.tar` of variant tables.
+3. Song et al., DENet public code and data repository. [GitHub](https://github.com/Maxwell-downtown/DENet), checked out at commit `aaf6b086d369d2e7d6641f0e97c560411db0f630`. The [README](https://github.com/Maxwell-downtown/DENet/blob/aaf6b086d369d2e7d6641f0e97c560411db0f630/README.md) documents training on `KRAS_DE.tsv` / `MEK1_DE.tsv`, comparison against MSA/no co-mutation, and generation of co-mutation inputs from enriched variants across DE snapshots. `DENet/starter.py` defaults to `[0.7,0.1,0.2]`; `DENet/data.py` randomly shuffles and partitions rows when no external test TSV is supplied.
+4. Song, G. (2026). “DENet datasets and auxiliary files for ‘Navigating high-order protein fitness landscapes via deep learning on directed evolution trajectories’.” [Figshare dataset, DOI: 10.6084/m9.figshare.29519300.v1](https://doi.org/10.6084/m9.figshare.29519300.v1). Public score tables and auxiliary files corresponding to the code repository.
+
+## Local provenance and checks
+
+- GEO raw archive: `work/agents/c9_protein_evolvability/sources/GSE315318_RAW.tar` — SHA-256 `33cd33ff98f648341cf4767845e74f33026beb066bb1b0b1f0784a7d6396cb17`.
+- `KRAS_DE.tsv` — SHA-256 `194ba9b4f56dc392d570963cef5c4c846c732d16fde782a00781375f77d45244`.
+- `MEK1_DE.tsv` — SHA-256 `3047e3a39dd535d19bea9582e038fdc39c5541baa2f544af33e6a0a147872692`.
+- All eight GEO genotype tables were crosswalked to integer counts from `DENet_paper/Data/DE_experiments/`; all genotype sets matched and the MEK1 counts matched exactly.
+- Reproducible script: [denet_timecourse_audit.py](denet_timecourse_audit.py). Numeric output: [denet_metrics.txt](denet_metrics.txt). It uses Python 3 and NumPy; it does not retrain DENet.
+
+## Interpretive limit
+
+The exact KRAS and MEK1 identities in `REPORT.md` are reconstructed from the public count and score tables, not claimed by the paper’s abstract. The result establishes that the released training targets are trajectory-derived enrichment/count statistics. It does not determine the validity of distinct experimental candidate assays described in the full article, nor does it establish that DENet cannot predict independent molecular function when evaluated on such labels.

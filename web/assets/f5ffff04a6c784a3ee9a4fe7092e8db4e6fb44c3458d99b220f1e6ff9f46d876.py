@@ -1,0 +1,368 @@
+#!/usr/bin/env python3
+"""Exact finite diagnostics for the renewal bond construction.
+
+The Ising FPRAS is a published subroutine, not implemented by this checker.
+These tests compare separate hidden-path, bond-component, and Fourier graphs.
+"""
+from collections import Counter, defaultdict
+from fractions import Fraction as F
+from itertools import product, permutations
+from math import comb, factorial
+from pathlib import Path
+import json
+
+
+class UF:
+    def __init__(self, n):
+        self.p = list(range(n))
+
+    def root(self, x):
+        while self.p[x] != x:
+            x = self.p[x]
+        return x
+
+    def union(self, x, y):
+        a, b = self.root(x), self.root(y)
+        self.p[a] = b
+
+    def components(self):
+        d = defaultdict(list)
+        for x in range(len(self.p)):
+            d[self.root(x)].append(x)
+        return tuple(tuple(v) for v in d.values())
+
+
+def groups(word):
+    occ = defaultdict(list)
+    for t, g in enumerate(word, 1):
+        occ[g].append(t)
+    assert all(len(v) <= 2 for v in occ.values())
+    pairs = tuple(tuple(v) for v in occ.values() if len(v) == 2)
+    singles = tuple(v[0] for v in occ.values() if len(v) == 1)
+    return pairs, singles
+
+
+def components(word, sigma):
+    pairs, _ = groups(word)
+    uf = UF(len(word) + 1)
+    for (a, b), bit in zip(pairs, sigma):
+        if bit:
+            uf.union(a - 1, b - 1)
+            uf.union(a, b)
+    return uf.components()
+
+
+def bond_mass(word, sigma):
+    """Independent component-size subset DP for B, U and correction g."""
+    m = len(word)
+    comps = components(word, sigma)
+    return component_mass(m, comps)
+
+
+def component_mass(m, comps):
+    d = [1] + [0] * m
+    for block in comps:
+        size = sum(v < m for v in block)
+        e = [0] * (m + 1)
+        for r, count in enumerate(d):
+            e[r] += count
+            if r + size <= m:
+                e[r + size] += count
+        d = e
+    U = 2 ** len(comps)
+    B = sum((F(d[r], factorial(r) * factorial(m - r))
+             for r in range(m + 1)), F(0))
+    central = comb(m, m // 2)
+    g = sum(d[r] * comb(m, r) for r in range(m + 1)) / F(U * central)
+    assert B == F(central, factorial(m)) * U * g
+    return B, U, g
+
+
+def permutation_components(pi):
+    m = len(pi)
+    uf = UF(m + 1)
+    for t, at in enumerate(pi):
+        uf.union(t, at)
+        uf.union(t + 1, at + 1)
+    return uf.components()
+
+
+def cycles_on(vertices):
+    """Each full cycle once, fixing its first element."""
+    first, *tail = vertices
+    for order in permutations(tail):
+        cycle = (first,) + order
+        yield {x: cycle[(i + 1) % len(cycle)] for i, x in enumerate(cycle)}
+
+
+def single_label_type_dp(m):
+    """Independent polynomial DP for the one-label factorial evidence."""
+    d = {(0, 0, 0, 0, 0, 0): 1, (1, 1, 0, 0, 0, 0): 1}
+    for _ in range(m):
+        e = defaultdict(int)
+        for (start, end, *cs), ways in d.items():
+            for nxt in (0, 1):
+                ct = cs[:]
+                ct[2 * end + nxt] += 1
+                e[(start, nxt, *ct)] += ways
+        d = e
+    W, Z = 0, F(0)
+    fs = [factorial(k) for k in range(m + 1)]
+    for (_, _, c00, c01, c10, c11), ways in d.items():
+        a = ways * fs[c00] * fs[c01] * fs[c10] * fs[c11]
+        W += a
+        Z += F(a, fs[c00 + c01] * fs[c10 + c11])
+    return W, Z
+
+
+def hidden_path_values(word):
+    """Direct factorial definition, with no bond formula."""
+    m = len(word)
+    W, Z = 0, F(0)
+    for u in product((0, 1), repeat=m + 1):
+        counts = Counter((u[t], u[t + 1], gap)
+                         for t, gap in enumerate(word))
+        a = 1
+        for c in counts.values():
+            a *= factorial(c)
+        r = sum(x == 0 for x in u[:-1])
+        W += a
+        Z += F(a, factorial(r) * factorial(m - r))
+    return W, Z
+
+
+def conditional_hidden_partition(word, status):
+    """Expand only free bond terms, directly in the original hidden spins."""
+    pairs, _ = groups(word)
+    W = 0
+    for u in product((0, 1), repeat=len(word) + 1):
+        a = 1
+        for (s, t), state in zip(pairs, status):
+            equal = int(u[s - 1] == u[t - 1] and u[s] == u[t])
+            a *= 1 + equal if state == -1 else (equal if state == 1 else 1)
+        W += a
+    return W
+
+
+def fourier_graph(word, status):
+    """Ferromagnetic graph from Hadamard pair-wirings and pins."""
+    pairs, singles = groups(word)
+    m = len(word)
+    uf = UF(m + 1)
+    for a, b in pairs:
+        uf.union(a - 1, b - 1)
+        uf.union(a, b)
+    roots = tuple({uf.root(t) for t in range(m + 1)})
+    pins = {uf.root(0), uf.root(m)}
+    for t in singles:
+        pins.update((uf.root(t - 1), uf.root(t)))
+    edges = []
+    const = 2 ** (1 + len(singles))
+    for (a, b), state in zip(pairs, status):
+        u, v = uf.root(a - 1), uf.root(a)
+        if state == -1:
+            edges.append((u, v))
+        elif state == 0:
+            const *= 4
+            pins.update((u, v))
+    return roots, pins, edges, const
+
+
+def fourier_partition(word, status, diagonal=5):
+    roots, pins, edges, const = fourier_graph(word, status)
+    free = tuple(v for v in roots if v not in pins)
+    out = 0
+    for bits in product((0, 1), repeat=len(free)):
+        spins = {p: 0 for p in pins}
+        spins.update(zip(free, bits))
+        a = 1
+        for u, v in edges:
+            if spins[u] == spins[v] == 0:
+                a *= diagonal
+        out += a
+    return const * out
+
+
+def ghost_partition(word, status, r):
+    """Separate exact zero-field Ising triangle construction, for rational r."""
+    roots, pins, edges, const = fourier_graph(word, status)
+    ghost = -1
+    vertices = (ghost,) + tuple(v for v in roots if v not in pins)
+    H = []
+    for u, v in edges:
+        u = ghost if u in pins else u
+        v = ghost if v in pins else v
+        H.extend(((u, v), (u, ghost), (v, ghost)))
+    value = F(0)
+    for bits in product((-1, 1), repeat=len(vertices)):
+        spins = dict(zip(vertices, bits))
+        a = F(1)
+        for u, v in H:
+            a *= r if spins[u] == spins[v] else 1 / r
+        value += a
+    return const * r ** len(edges) * value / 2
+
+
+def pair_words(m):
+    """Canonical set partitions whose blocks all have size one or two."""
+    def visit(w, counts):
+        if len(w) == m:
+            yield tuple(w)
+            return
+        for j, c in enumerate(counts):
+            if c == 1:
+                counts[j] = 2
+                yield from visit(w + [j + 1], counts)
+                counts[j] = 1
+        yield from visit(w + [len(counts) + 1], counts + [1])
+    yield from visit([], [])
+
+
+def potential_graph_audit(word):
+    pairs, _ = groups(word)
+    owner = defaultdict(set)
+    adjacency = defaultdict(set)
+    for k, (a, b) in enumerate(pairs):
+        for edge in ((a - 1, b - 1), (a, b)):
+            e = tuple(sorted(edge))
+            owner[e].add(k)
+            adjacency[e[0]].add(e[1])
+            adjacency[e[1]].add(e[0])
+    assert all(len(v) <= 2 for v in adjacency.values())
+    shared = 0
+    for (u, v), owners in owner.items():
+        if len(owners) > 1:
+            shared += 1
+            assert adjacency[u] == {v} and adjacency[v] == {u}
+    return shared
+
+
+def run():
+    stats = Counter()
+    minima = []
+    for m in range(1, 8):
+        min_mean = F(1)
+        for word in pair_words(m):
+            stats['words'] += 1
+            stats['shared_edges'] += potential_graph_audit(word)
+            pairs, _ = groups(word)
+            vals = {s: bond_mass(word, s)
+                    for s in product((0, 1), repeat=len(pairs))}
+            W = sum(U for _, U, _ in vals.values())
+            Z = sum((B for B, _, _ in vals.values()), F(0))
+            assert (W, Z) == hidden_path_values(word)
+            stats['path_bond_identities'] += 1
+            mean = Z / (F(comb(m, m // 2), factorial(m)) * W)
+            min_mean = min(min_mean, mean)
+            assert mean >= F(1, 1024 * (m + 1) ** 3)
+            for sigma, (B, U, g) in vals.items():
+                comps = components(word, sigma)
+                max_origin = max(sum(v < m for v in c) for c in comps)
+                assert 0 < g <= 1
+                assert g >= F(1, 2 ** max_origin * (m + 1))
+                assert (2 ** (m + 1) * comb(m, m // 2)) % g.denominator == 0
+                stats['correction_bounds'] += 1
+                for k, bit in enumerate(sigma):
+                    if not bit:
+                        other = sigma[:k] + (1,) + sigma[k + 1:]
+                        assert vals[other][1] <= U <= 4 * vals[other][1]
+                        stats['conditional_edge_ratios'] += 1
+                for tau, (_, V, _) in vals.items():
+                    meet = tuple(x & y for x, y in zip(sigma, tau))
+                    join = tuple(x | y for x, y in zip(sigma, tau))
+                    assert vals[meet][1] * vals[join][1] >= U * V
+                    stats['unweighted_fkg_pairs'] += 1
+            # Direct tail bound for each positive path length >=2.
+            for L in range(2, m + 1):
+                bad = sum(U for s, (_, U, _) in vals.items()
+                          if max(map(len, components(word, s))) >= L + 1)
+                # 2(m+1)*2^{-ceil(L/2)} is stronger than the displayed bound.
+                assert F(bad, W) <= F(2 * (m + 1), 2 ** ((L + 1) // 2))
+                stats['component_tail_bounds'] += 1
+            if m <= 6:
+                for status in product((-1, 0, 1), repeat=len(pairs)):
+                    assert fourier_partition(word, status) == conditional_hidden_partition(word, status)
+                    stats['conditional_fourier_identities'] += 1
+                    r = F(3, 2)
+                    assert fourier_partition(word, status, r ** 4) == ghost_partition(word, status, r)
+                    stats['rational_ghost_identities'] += 1
+        minima.append({'m': m, 'minimum_mean': str(min_mean)})
+
+    word = (1, 1, 2, 2)
+    counter = {''.join(map(str, s)): str(bond_mass(word, s)[0])
+               for s in product((0, 1), repeat=2)}
+    B00, B01, B10, B11 = (bond_mass(word, s)[0]
+                          for s in ((0, 0), (0, 1), (1, 0), (1, 1)))
+    assert B00 * B11 == F(35, 72)
+    assert B01 * B10 == F(25, 24)
+    assert B00 * B11 < B01 * B10
+    single_label = []
+    for m in range(1, 12):
+        W, Z = hidden_path_values((1,) * m)
+        mean = factorial(m) * Z / (comb(m, m // 2) * W)
+        upper = F(comb(m + 3, 3), comb(m, m // 2))
+        assert W >= 2 * factorial(m)
+        assert Z <= 2 * comb(m + 3, 3)
+        assert mean <= upper
+        assert (W, Z) == single_label_type_dp(m)
+        single_label.append({'m': m, 'W': W, 'Z': str(Z),
+                             'mean': str(mean), 'upper': str(upper)})
+
+    permutation_tests = []
+    for m in range(1, 8):
+        W, Z, second = 0, F(0), F(0)
+        for pi in permutations(range(m)):
+            B, U, g = component_mass(m, permutation_components(pi))
+            W += U
+            Z += B
+            second += U * g * g
+            stats['general_permutation_expansion_terms'] += 1
+        assert (W, Z) == single_label_type_dp(m)
+        mean = factorial(m) * Z / (comb(m, m // 2) * W)
+        relative_second = second / (W * mean * mean)
+        permutation_tests.append({'m': m, 'relative_second_moment': str(relative_second)})
+
+    two_cycle_tests = []
+    for k in range(3, 7):
+        m = 2 * k
+        C = comb(m, k)
+        total = 0
+        for cyc0 in cycles_on(tuple(range(k - 1))):
+            for cyc1 in cycles_on(tuple(range(k, m))):
+                pi = list(range(m))
+                for i, at in {**cyc0, **cyc1}.items():
+                    pi[i] = at
+                comps = permutation_components(pi)
+                assert len(comps) == 2
+                assert sorted(sum(v < m for v in c) for c in comps) == [k, k]
+                _, _, g = component_mass(m, comps)
+                assert g == F(1 + C, 2 * C)
+                total += 1
+        assert total == factorial(k - 2) * factorial(k - 1)
+        stats['two_cycle_variance_witnesses'] += total
+        two_cycle_tests.append({'m': m, 'witness_count': total})
+    variance_lower_bounds = []
+    for m in (20, 40, 80):
+        k = m // 2
+        W, Z = single_label_type_dp(m)
+        C = comb(m, k)
+        T = factorial(k - 2) * factorial(k - 1)
+        witness_lower = F(T * (1 + C) ** 2 * W, factorial(m) ** 2) / (Z * Z)
+        coarse_lower = F(C, 2 * k * k * (k - 1) * comb(m + 3, 3) ** 2)
+        assert witness_lower >= coarse_lower
+        variance_lower_bounds.append({'m': m, 'coarse_relative_second_lower': str(coarse_lower),
+                                     'exact_witness_relative_second_lower': str(witness_lower)})
+
+    report = {'status': 'PASS', 'scope': 'Exact finite identities only; no Ising FPRAS execution',
+              'counts': dict(stats), 'weighted_bond_fkg_counterexample': counter,
+              'restricted_minimum_correction_means': minima,
+              'unrestricted_single_label_correction': single_label,
+              'general_permutation_checks': permutation_tests,
+              'two_cycle_checks': two_cycle_tests,
+              'unrestricted_relative_second_lower_bounds': variance_lower_bounds}
+    Path(__file__).with_name('CHECKS.json').write_text(json.dumps(report, indent=2) + '\n')
+    print(json.dumps({'status': report['status'], 'counts': dict(stats)}, indent=2))
+
+
+if __name__ == '__main__':
+    run()

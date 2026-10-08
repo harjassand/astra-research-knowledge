@@ -1,0 +1,321 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/quantum_capability/evidence/exact_fixtures.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/quantum_capability/evidence/exact_fixtures.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact small fixtures for the N62 compressed-Gram and g(c) formulas.
+
+Requires SymPy. All matrix and eigenvalue identities below are exact. The
+fixtures are finite diagnostics only; they do not prove the general theorem.
+Run from any directory with:
+
+    python3 exact_fixtures.py
+
+The script writes fixtures.json beside itself.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+from itertools import product
+
+import sympy as sp
+
+
+X = sp.symbols(&quot;x&quot;)
+
+
+def kron_power(matrix: sp.Matrix, n: int) -&gt; sp.Matrix:
+    out = sp.Matrix([[1]])
+    for _ in range(n):
+        out = sp.kronecker_product(out, matrix)
+    return out
+
+
+def block_diag(*blocks: sp.Matrix) -&gt; sp.Matrix:
+    return sp.diag(*blocks)
+
+
+def energy_indices(local_energies: list[sp.Expr], n: int, ceiling: sp.Expr) -&gt; list[int]:
+    &quot;&quot;&quot;Indices of tensor basis states whose exact additive energy is &lt;= ceiling.&quot;&quot;&quot;
+    selected: list[int] = []
+    for index, word in enumerate(product(range(len(local_energies)), repeat=n)):
+        energy = sp.simplify(sum(local_energies[j] for j in word))
+        sign = sp.simplify(ceiling - energy).is_nonnegative
+        if sign is True:
+            selected.append(index)
+        elif sign is not False:
+            raise AssertionError(f&quot;could not decide exact cutoff comparison: {ceiling} vs {energy}&quot;)
+    return selected
+
+
+def compress(matrix: sp.Matrix, indices: list[int]) -&gt; sp.Matrix:
+    return matrix.extract(indices, indices)
+
+
+def eigenvalues_with_multiplicity(matrix: sp.Matrix) -&gt; dict[sp.Expr, int]:
+    return {sp.simplify(value): multiplicity for value, multiplicity in matrix.eigenvals().items()}
+
+
+def assert_is_minimum(matrix: sp.Matrix, candidate: sp.Expr) -&gt; None:
+    candidate = sp.simplify(candidate)
+    assert sp.simplify(matrix.charpoly(X).as_expr().subs(X, candidate)) == 0
+    for value in eigenvalues_with_multiplicity(matrix):
+        gap = sp.simplify(value - candidate)
+        assert gap.is_nonnegative is True or gap == 0, (value, candidate, gap)
+
+
+def assert_is_maximum(matrix: sp.Matrix, candidate: sp.Expr) -&gt; None:
+    candidate = sp.simplify(candidate)
+    assert sp.simplify(matrix.charpoly(X).as_expr().subs(X, candidate)) == 0
+    for value in eigenvalues_with_multiplicity(matrix):
+        gap = sp.simplify(candidate - value)
+        assert gap.is_nonnegative is True or gap == 0, (candidate, value, gap)
+
+
+def verify_reciprocal_characteristic_polynomials(gram: sp.Matrix, inverse_gram: sp.Matrix) -&gt; None:
+    &quot;&quot;&quot;Check that the compressed Gram spectra are exact reciprocals.&quot;&quot;&quot;
+    degree = gram.rows
+    gram_det = sp.factor(gram.det())
+    gram_poly = gram.charpoly(X).as_expr()
+    inverse_poly = inverse_gram.charpoly(X).as_expr()
+    reciprocal = sp.cancel((-1) ** degree * X**degree * gram_poly.subs(X, 1 / X) / gram_det)
+    assert sp.simplify(inverse_poly - reciprocal) == 0
+
+
+def verify_pair(
+    *,
+    name: str,
+    effect: sp.Matrix,
+    cholesky: sp.Matrix,
+    local_energies: list[sp.Expr],
+    n: int,
+    ceiling: sp.Expr,
+    expected_p: sp.Expr,
+) -&gt; dict[str, object]:
+    &quot;&quot;&quot;Directly compare p_n(Q) with ||B^tensor n P||^{-2} by exact spectra.&quot;&quot;&quot;
+    effect = effect.applyfunc(sp.simplify)
+    cholesky = cholesky.applyfunc(sp.simplify)
+    expected_p = sp.simplify(expected_p)
+    assert (effect - cholesky.T * cholesky).applyfunc(sp.simplify) == sp.zeros(effect.rows)
+
+    inverse = cholesky.inv().applyfunc(sp.simplify)
+    A = (inverse.T * inverse).applyfunc(sp.simplify)
+    indices = energy_indices(local_energies, n, ceiling)
+    assert indices, &quot;the ground vector must always be legal&quot;
+
+    gram = compress(kron_power(effect, n), indices).applyfunc(sp.simplify)
+    inverse_gram = compress(kron_power(A, n), indices).applyfunc(sp.simplify)
+    assert_is_minimum(gram, expected_p)
+    assert_is_maximum(inverse_gram, 1 / expected_p)
+    verify_reciprocal_characteristic_polynomials(gram, inverse_gram)
+
+    return {
+        &quot;case&quot;: name,
+        &quot;n&quot;: n,
+        &quot;Q&quot;: str(sp.simplify(ceiling)),
+        &quot;legal_dimension&quot;: len(indices),
+        &quot;p_n(Q)_exact&quot;: str(expected_p),
+        &quot;||B^tensor_n P||^2_exact&quot;: str(sp.simplify(1 / expected_p)),
+        &quot;reciprocal_spectra_exact&quot;: True,
+    }
+
+
+def assert_nonnegative(expr: sp.Expr) -&gt; None:
+    expr = sp.simplify(expr)
+    assert expr.is_nonnegative is True or expr == 0, expr
+
+
+def main() -&gt; None:
+    sqrt2 = sp.sqrt(2)
+
+    # A degenerate positive energy level H_+=I_2, with a rational non-diagonal
+    # effect block. The upper triangular factor is rational as well.
+    Tdeg_plus = sp.Matrix([[sp.Rational(1, 2), sp.Rational(1, 3)],
+                           [0, sp.Rational(1, 2)]])
+    Edeg_plus = (Tdeg_plus.T * Tdeg_plus).applyfunc(sp.simplify)
+    Tdeg = block_diag(sp.Matrix([[1]]), Tdeg_plus)
+    Edeg = (Tdeg.T * Tdeg).applyfunc(sp.simplify)
+    local_deg = [sp.Integer(0), sp.Integer(1), sp.Integer(1)]
+    lam_minus = sp.simplify((11 - 2 * sp.sqrt(10)) / 36)
+    lam_plus = sp.simplify((11 + 2 * sp.sqrt(10)) / 36)
+    assert Edeg_plus == sp.Matrix([[sp.Rational(1, 4), sp.Rational(1, 6)],
+                                   [sp.Rational(1, 6), sp.Rational(13, 36)]])
+    assert sp.simplify(Edeg_plus.charpoly(X).as_expr().subs(X, lam_minus)) == 0
+    assert sp.simplify(Edeg_plus.charpoly(X).as_expr().subs(X, lam_plus)) == 0
+    assert_is_minimum(Edeg_plus, lam_minus)
+    assert_is_maximum(Edeg_plus, lam_plus)
+    assert_nonnegative(1 - lam_plus)
+    Ldeg = sp.log(1 / lam_minus)
+
+    degenerate_rows = []
+    for n in (1, 2, 3):
+        for q in range(n + 1):
+            p = lam_minus**q
+            degenerate_rows.append(verify_pair(
+                name=&quot;degenerate_energy_block&quot;,
+                effect=Edeg,
+                cholesky=Tdeg,
+                local_energies=local_deg,
+                n=n,
+                ceiling=sp.Integer(q),
+                expected_p=p,
+            ))
+
+    # Rotate only within the exactly degenerate energy-1 eigenspace. This
+    # changes the displayed matrix while preserving the hard-support problem.
+    U = sp.Matrix([[sp.Rational(3, 5), -sp.Rational(4, 5)],
+                   [sp.Rational(4, 5), sp.Rational(3, 5)]])
+    assert U.T * U == sp.eye(2)
+    Edeg_plus_rot = (U.T * Edeg_plus * U).applyfunc(sp.simplify)
+    Edeg_rot = block_diag(sp.Matrix([[1]]), Edeg_plus_rot)
+    Tdeg_rot = Edeg_rot.cholesky().T.applyfunc(sp.simplify)
+    rotated_rows = []
+    for n, q in ((1, 1), (2, 1), (2, 2)):
+        rotated_rows.append(verify_pair(
+            name=&quot;degenerate_energy_block_rotated_basis&quot;,
+            effect=Edeg_rot,
+            cholesky=Tdeg_rot,
+            local_energies=local_deg,
+            n=n,
+            ceiling=sp.Integer(q),
+            expected_p=lam_minus**q,
+        ))
+    assert sp.simplify(Edeg_plus_rot.charpoly(X).as_expr() - Edeg_plus.charpoly(X).as_expr()) == 0
+
+    # N62&#x27;s source qutrit: H=diag(0,1,2), E=1 direct-sum E_+.
+    Tq_plus = sp.Matrix([[1 / sqrt2, sp.Rational(1, 2)],
+                         [0, 1 / sqrt2]])
+    Eq_plus = (Tq_plus.T * Tq_plus).applyfunc(sp.simplify)
+    Tq = block_diag(sp.Matrix([[1]]), Tq_plus)
+    Eq = (Tq.T * Tq).applyfunc(sp.simplify)
+    local_q = [sp.Integer(0), sp.Integer(1), sp.Integer(2)]
+    R = sp.simplify((1 + sp.sqrt(17)) / 2)
+    sH = sp.log(R)
+    h_star = sp.simplify((17 - sp.sqrt(17)) / 10)
+    qutrit_expected = {
+        0: sp.Integer(1),
+        1: sp.Rational(1, 2),
+        2: sp.Rational(1, 4),
+        3: sp.simplify((3 - sp.sqrt(5)) / 8),
+        4: sp.Rational(1, 16),
+    }
+    qutrit_rows = []
+    for q, p in qutrit_expected.items():
+        qutrit_rows.append(verify_pair(
+            name=&quot;N62_qutrit&quot;,
+            effect=Eq,
+            cholesky=Tq,
+            local_energies=local_q,
+            n=2,
+            ceiling=sp.Integer(q),
+            expected_p=p,
+        ))
+
+    # Exact top-space degeneracy at the threshold. The ground eigenvalue of
+    # the full tilt is 1; the excited block also has eigenvalue 1.
+    A_q = (Tq.inv().T * Tq.inv()).applyfunc(sp.simplify)
+    tilt_excited = sp.diag(R ** sp.Rational(-1, 2), R ** -1) * A_q[1:3, 1:3] * sp.diag(
+        R ** sp.Rational(-1, 2), R ** -1
+    )
+    assert sp.simplify((sp.eye(2) - tilt_excited).det()) == 0
+    other_tilt_eigenvalue = sp.simplify(tilt_excited.det())
+    assert_nonnegative(1 - other_tilt_eigenvalue)
+    assert sp.simplify(other_tilt_eigenvalue - 4 / R**3) == 0
+
+    # Exact g(c) checks in the source&#x27;s low-density branch and plateau.
+    # For 0&lt;=c&lt;=h_star, g(c)=c log R; for c&gt;=5/3, g(c)=log 4.
+    qutrit_g_rows = []
+    for n, c in ((1, sp.Rational(1, 2)), (2, sp.Rational(1, 2)),
+                 (2, sp.Integer(1)), (2, sp.Integer(2))):
+        ceiling = n * c
+        q = int(sp.floor(ceiling))
+        p = qutrit_expected[q]
+        if c &lt;= 1:  # 1 &lt; h_star, so these lie in the exact linear branch.
+            predicted = R ** (-n * c)
+            ng = n * c * sH
+            branch = &quot;c log(R)&quot;
+        else:
+            predicted = sp.Rational(1, 4) ** n
+            ng = n * sp.log(4)
+            branch = &quot;log(4) plateau&quot;
+        assert_nonnegative(p - predicted)
+        qutrit_g_rows.append({
+            &quot;n&quot;: n,
+            &quot;c&quot;: str(c),
+            &quot;Q=nc&quot;: str(ceiling),
+            &quot;exact_p&quot;: str(p),
+            &quot;exact_g_branch&quot;: branch,
+            &quot;exact_exp_minus_ng&quot;: str(sp.simplify(predicted)),
+            &quot;F_n_minus_ng_decimal&quot;: str(sp.N(-sp.log(p) - ng, 18)),
+            &quot;F_n_le_ng_exact&quot;: True,
+        })
+
+    # The degenerate-block g curve is closed form on the full half-line.
+    # At c=1/4 with n=2 the finite floor effect is visible; c=1/2 and c=1
+    # hit exact types.
+    degenerate_g_rows = []
+    for n, c in ((2, sp.Rational(1, 4)), (2, sp.Rational(1, 2)),
+                 (2, sp.Integer(1)), (2, sp.Rational(3, 2))):
+        q = min(n, int(sp.floor(n * c)))
+        p = lam_minus**q
+        g = sp.Min(c, 1) * Ldeg
+        predicted = lam_minus ** (n * sp.Min(c, 1))
+        assert_nonnegative(p - predicted)
+        degenerate_g_rows.append({
+            &quot;n&quot;: n,
+            &quot;c&quot;: str(c),
+            &quot;Q=nc&quot;: str(n * c),
+            &quot;exact_p&quot;: str(sp.simplify(p)),
+            &quot;exact_g&quot;: &quot;min(c,1)*log(1/lambda_minus)&quot;,
+            &quot;lambda_minus&quot;: str(lam_minus),
+            &quot;exact_exp_minus_ng&quot;: str(sp.simplify(predicted)),
+            &quot;F_n_minus_ng_decimal&quot;: str(sp.N(-sp.log(p) - n * g, 18)),
+            &quot;F_n_le_ng_exact&quot;: True,
+        })
+
+    payload = {
+        &quot;status&quot;: &quot;FINITE-EVIDENCE&quot;,
+        &quot;scope&quot;: &quot;Exact small matrices and selected exact g(c) branches only; not a proof of N62.&quot;,
+        &quot;source&quot;: &quot;N62 source d-073e71b6349e6f34, local archive work/astra_prior/web/pages/d-073e71b6349e6f34.html&quot;,
+        &quot;degenerate_energy&quot;: {
+            &quot;H_diagonal&quot;: [0, 1, 1],
+            &quot;E_plus&quot;: [[&quot;1/4&quot;, &quot;1/6&quot;], [&quot;1/6&quot;, &quot;13/36&quot;]],
+            &quot;E_plus_eigenvalues&quot;: [str(lam_minus), str(lam_plus)],
+            &quot;g(c)&quot;: &quot;min(c,1)*log(1/lambda_minus)&quot;,
+            &quot;exact_p_checks&quot;: degenerate_rows,
+            &quot;rotated_basis_checks&quot;: rotated_rows,
+            &quot;rotated_E_plus&quot;: [[str(v) for v in row] for row in Edeg_plus_rot.tolist()],
+            &quot;basis_rotation_preserves_characteristic_polynomial&quot;: True,
+            &quot;g_checks&quot;: degenerate_g_rows,
+        },
+        &quot;N62_qutrit&quot;: {
+            &quot;H_diagonal&quot;: [0, 1, 2],
+            &quot;E_plus&quot;: [[&quot;1/2&quot;, &quot;sqrt(2)/4&quot;], [&quot;sqrt(2)/4&quot;, &quot;3/4&quot;]],
+            &quot;R&quot;: str(R),
+            &quot;s_H&quot;: &quot;log(R)&quot;,
+            &quot;h_star&quot;: str(h_star),
+            &quot;p_2(Q)_for_Q_0_to_4&quot;: {str(q): str(p) for q, p in qutrit_expected.items()},
+            &quot;exact_p_checks&quot;: qutrit_rows,
+            &quot;tilted_top_space&quot;: {
+                &quot;ground_eigenvalue&quot;: &quot;1&quot;,
+                &quot;excited_eigenvalue&quot;: &quot;1&quot;,
+                &quot;other_excited_eigenvalue&quot;: str(other_tilt_eigenvalue),
+                &quot;top_eigenvalue_degeneracy_at_sH&quot;: 2,
+            },
+            &quot;g_checks&quot;: qutrit_g_rows,
+        },
+        &quot;identity_checked&quot;: &quot;charpoly(P E^tensor_n P) and charpoly(P A^tensor_n P) are reciprocal exactly; p is the first minimum eigenvalue, and inverse norm squared is the second maximum eigenvalue.&quot;,
+        &quot;limitations&quot;: [
+            &quot;Only dimensions 3 and tensor counts at most 3 for the degenerate fixture and 2 for the qutrit are checked.&quot;,
+            &quot;No general proof, novelty assessment, or external validation follows from these calculations.&quot;,
+            &quot;The qutrit g(c) assertion is checked on source-stated exact branches, not over the full intermediate interval.&quot;,
+        ],
+    }
+    path = Path(__file__).with_name(&quot;fixtures.json&quot;)
+    path.write_text(json.dumps(payload, indent=2) + &quot;\n&quot;, encoding=&quot;utf-8&quot;)
+    print(f&quot;wrote {path}&quot;)
+    print(f&quot;exact compressed-Gram cases: {len(degenerate_rows) + len(rotated_rows) + len(qutrit_rows)}&quot;)
+    print(&quot;all exact assertions passed&quot;)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/55d81dae543e1fbff8ed1a6609ba60ad7c7f7ad2a5751577ab5aa447159bb3ee.py">Exact original</a></p></html>

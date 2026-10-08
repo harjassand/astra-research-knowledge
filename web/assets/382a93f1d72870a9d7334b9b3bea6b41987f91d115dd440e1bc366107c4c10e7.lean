@@ -1,0 +1,11 @@
+import TrajectoryDrift
+
+#print axioms N33Dynamics.exists_affine_family_with_activity
+#print axioms N33Dynamics.exists_box_log_coordinates
+#print axioms N33Dynamics.active_slope_coordinate_ge_margin
+#print axioms N33Dynamics.active_slope_eq_zero_at_inner_representative
+#print axioms N33Dynamics.reactionAffineEnvelope_le_inner_representative
+#print axioms N33Dynamics.active_slope_not_perp_below_plateau
+#print axioms N33Dynamics.reactionEnvelope_derivative_nonneg_ae
+#print axioms N33Dynamics.reactionEnvelope_derivative_ge_margin_below_ae
+#print axioms N33Dynamics.reactionEnvelope_enters_plateau_by_range

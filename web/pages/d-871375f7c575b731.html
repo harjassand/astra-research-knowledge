@@ -1,0 +1,125 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/spin_statistical/cycle2/leaves/leaf05_runtime_reproduction/root_entropy_pinning_audit.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/spin_statistical/cycle2/leaves/leaf05_runtime_reproduction/root_entropy_pinning_audit.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Finite-dimensional diagnostic for Sections 3-4 of PROOF.txt.
+
+This is numerical evidence only; the report gives the separate general proof.
+Uses real symmetric matrices so the construction is reproducible with NumPy.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import numpy as np
+
+
+def entropy(a: np.ndarray) -&gt; float:
+    vals = np.linalg.eigvalsh((a + a.T) / 2)
+    vals = np.clip(vals, 0.0, None)
+    vals = vals[vals &gt; 1e-14]
+    return float(-np.sum(vals * np.log(vals)))
+
+
+def log_partition(h: np.ndarray, beta: float) -&gt; float:
+    vals = np.linalg.eigvalsh((h + h.T) / 2)
+    x = -beta * vals
+    m = float(np.max(x))
+    return m + float(np.log(np.exp(x - m).sum()))
+
+
+def gibbs(h: np.ndarray, beta: float) -&gt; np.ndarray:
+    vals, vecs = np.linalg.eigh((h + h.T) / 2)
+    x = -beta * vals
+    x -= np.max(x)
+    weights = np.exp(x)
+    return (vecs * (weights / weights.sum())) @ vecs.T
+
+
+def trace_norm(a: np.ndarray) -&gt; float:
+    return float(np.sum(np.abs(np.linalg.eigvalsh((a + a.T) / 2))))
+
+
+def trial(rng: np.random.Generator, d: int, r: int, beta: float) -&gt; dict[str, float]:
+    raw = rng.normal(size=(d, d))
+    h0 = (raw + raw.T) / 2
+    rho0 = gibbs(h0, beta)
+    pmat = np.diag([1.0] * r + [0.0] * (d - r))
+    qmat = np.eye(d) - pmat
+    p = float(np.trace(rho0 @ pmat))
+    delta = 1.0 - p
+    if not (1e-8 &lt; p &lt; 1.0 - 1e-8):
+        raise RuntimeError(&quot;degenerate conditioning probability in finite diagnostic&quot;)
+    sigma = pmat @ rho0 @ pmat / p
+    omega = qmat @ rho0 @ qmat / delta
+    pinched = pmat @ rho0 @ pmat + qmat @ rho0 @ qmat
+    hdelta = -delta * np.log(delta) - p * np.log(p)
+
+    # A positive penalty supported entirely on the rejected subspace.
+    x = rng.normal(size=(d, d))
+    b = x.T @ x
+    w = qmat @ b @ qmat
+    rho_w = gibbs(h0 + w, beta)
+    logz0 = log_partition(h0, beta)
+    logzw = log_partition(h0 + w, beta)
+    d_rel = -entropy(sigma) + beta * float(np.trace(sigma @ h0)) + logzw
+    variational_rhs = entropy(rho0) - entropy(sigma) + beta * (
+        float(np.trace(sigma @ h0)) - float(np.trace(rho0 @ h0))
+    )
+
+    t_cond = trace_norm(sigma - rho0)
+    t_pinsker = trace_norm(sigma - rho_w)
+    t_target = trace_norm(rho0 - rho_w)
+    return {
+        &quot;pinching_entropy_gain&quot;: entropy(pinched) - entropy(rho0),
+        &quot;entropy_block_identity_residual&quot;: entropy(pinched)
+        - (hdelta + p * entropy(sigma) + delta * entropy(omega)),
+        &quot;claimed_entropy_bound_slack&quot;: (hdelta + delta * np.log(d)) / p
+        - (entropy(rho0) - entropy(sigma)),
+        &quot;conditioning_gentle_slack&quot;: 2 * np.sqrt(delta) - t_cond,
+        &quot;penalty_annihilation_norm&quot;: float(np.linalg.norm(w @ sigma, ord=&quot;fro&quot;)),
+        &quot;partition_order_slack&quot;: logz0 - logzw,
+        &quot;gibbs_variational_slack&quot;: variational_rhs - d_rel,
+        &quot;relative_entropy&quot;: d_rel,
+        &quot;quantum_pinsker_slack&quot;: np.sqrt(max(0.0, 2 * d_rel)) - t_pinsker,
+        &quot;final_trace_norm_slack&quot;: 2 * np.sqrt(delta) + np.sqrt(max(0.0, 2 * d_rel)) - t_target,
+    }
+
+
+def main() -&gt; None:
+    rng = np.random.default_rng(20261008)
+    rows = [trial(rng, d, r, beta=0.7) for d in range(2, 9) for r in range(1, d) for _ in range(8)]
+    keys = list(rows[0])
+    summary = {
+        &quot;status&quot;: &quot;FINITE_NUMERICAL_DIAGNOSTIC_ONLY&quot;,
+        &quot;seed&quot;: 20261008,
+        &quot;trials&quot;: len(rows),
+        &quot;dimensions&quot;: [2, 8],
+        &quot;matrix_family&quot;: &quot;random real symmetric H0; W=Q X^T X Q; beta=0.7&quot;,
+        &quot;maxima&quot;: {key: max(row[key] for row in rows) for key in keys},
+        &quot;minima&quot;: {key: min(row[key] for row in rows) for key in keys},
+        &quot;tolerances&quot;: {
+            &quot;entropy_and_variational_violations&quot;: 2e-10,
+            &quot;trace_bound_violations&quot;: 2e-9,
+            &quot;penalty_annihilation_frobenius&quot;: 2e-12,
+        },
+    }
+    summary[&quot;checks_pass&quot;] = bool(
+        summary[&quot;minima&quot;][&quot;pinching_entropy_gain&quot;] &gt;= -2e-10
+        and summary[&quot;maxima&quot;][&quot;entropy_block_identity_residual&quot;] &lt;= 2e-10
+        and summary[&quot;minima&quot;][&quot;claimed_entropy_bound_slack&quot;] &gt;= -2e-10
+        and summary[&quot;minima&quot;][&quot;conditioning_gentle_slack&quot;] &gt;= -2e-9
+        and summary[&quot;maxima&quot;][&quot;penalty_annihilation_norm&quot;] &lt;= 2e-12
+        and summary[&quot;minima&quot;][&quot;partition_order_slack&quot;] &gt;= -2e-10
+        and summary[&quot;minima&quot;][&quot;gibbs_variational_slack&quot;] &gt;= -2e-10
+        and summary[&quot;minima&quot;][&quot;quantum_pinsker_slack&quot;] &gt;= -2e-9
+        and summary[&quot;minima&quot;][&quot;final_trace_norm_slack&quot;] &gt;= -2e-9
+    )
+    out = Path(__file__).with_suffix(&quot;.json&quot;)
+    out.write_text(json.dumps(summary, indent=2, sort_keys=True) + &quot;\n&quot;)
+    print(json.dumps(summary, indent=2, sort_keys=True))
+    if not summary[&quot;checks_pass&quot;]:
+        raise SystemExit(1)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/5146ff3ffd0625b243258a47245bf55efbcd3d0ff0f3b66f15531e69c6f66385.py">Exact original</a></p></html>

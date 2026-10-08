@@ -1,0 +1,124 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c5_catalysis_energy/cycle7_intervention_topology/certify_intervention.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c5_catalysis_energy/cycle7_intervention_topology/certify_intervention.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Fail-closed isotope-inventory certificate for a CO-dimer alternative.
+
+This checker consumes measured confidence bounds; it never supplies chemistry
+parameters, detection limits, isotope fractions, or missing pool estimates.
+All quantities use mol of molecules or mol of carbon atoms as named in the
+input schema. One labeled carbon atom can contribute to at most one final
+acetate molecule, so the molar inequality is dimensionally consistent.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import argparse
+import json
+from decimal import Decimal, InvalidOperation
+from pathlib import Path
+from typing import Any
+
+
+BOUND_FIELDS = (
+    &quot;old_13c_non_ch2_co_eligible_atoms_upper_mol&quot;,
+    &quot;old_13c_ch2_to_reactive_co_atoms_upper_mol&quot;,
+    &quot;13c_feed_or_impurity_atoms_upper_mol&quot;,
+    &quot;background_and_cross_talk_atoms_upper_mol&quot;,
+)
+REQUIRED_VALIDATIONS = (
+    &quot;co_accessible_bound_complete&quot;,
+    &quot;ch2_isotope_assignment_validated&quot;,
+    &quot;ketene_label_followthrough_validated&quot;,
+    &quot;other_pre_reduced_c1_sources_bounded&quot;,
+)
+
+
+def _number(value: Any, name: str) -&gt; Decimal:
+    if value is None or isinstance(value, bool):
+        raise ValueError(f&quot;missing numeric measurement bound: {name}&quot;)
+    try:
+        result = Decimal(str(value))
+    except (InvalidOperation, ValueError) as exc:
+        raise ValueError(f&quot;invalid decimal measurement bound: {name}&quot;) from exc
+    if not result.is_finite() or result &lt; 0:
+        raise ValueError(f&quot;bound must be finite and nonnegative: {name}&quot;)
+    return result
+
+
+def assess(data: dict[str, Any]) -&gt; dict[str, Any]:
+    &quot;&quot;&quot;Return a conservative decision from measured interval endpoints.&quot;&quot;&quot;
+    validations = data.get(&quot;validation&quot;, {})
+    missing_validations = [
+        field for field in REQUIRED_VALIDATIONS if validations.get(field) is not True
+    ]
+
+    try:
+        if data.get(&quot;units&quot;) != &quot;mol&quot;:
+            raise ValueError(&quot;units must be &#x27;mol&#x27; for both molecule and atom amounts&quot;)
+        observation = data.get(&quot;observed&quot;, {})
+        y_lower = _number(
+            observation.get(&quot;methyl_13c_acetate_lower_mol&quot;),
+            &quot;methyl_13c_acetate_lower_mol&quot;,
+        )
+        bounds = data.get(&quot;upper_bounds&quot;, {})
+        values = {field: _number(bounds.get(field), field) for field in BOUND_FIELDS}
+    except ValueError as exc:
+        return {
+            &quot;decision&quot;: &quot;UNKNOWN&quot;,
+            &quot;reason&quot;: str(exc),
+            &quot;missing_validation_flags&quot;: missing_validations,
+        }
+
+    if validations.get(&quot;co_accessible_bound_complete&quot;) is not True:
+        return {
+            &quot;decision&quot;: &quot;UNKNOWN&quot;,
+            &quot;reason&quot;: &quot;the upper bound must include every unique old-label atom that could enter active CO during the collection window&quot;,
+            &quot;missing_validation_flags&quot;: missing_validations,
+        }
+
+    dimer_budget = sum(values.values(), Decimal(0))
+    if y_lower &lt;= dimer_budget:
+        return {
+            &quot;decision&quot;: &quot;NO_SEPARATION&quot;,
+            &quot;reason&quot;: &quot;the measured labeled-acetate lower bound does not exceed the conservative all-CO label budget; this does not establish the dimer route&quot;,
+            &quot;methyl_13c_acetate_lower_mol&quot;: str(y_lower),
+            &quot;all_co_label_budget_upper_mol&quot;: str(dimer_budget),
+            &quot;budget_terms_mol&quot;: {key: str(value) for key, value in values.items()},
+            &quot;missing_validation_flags&quot;: missing_validations,
+        }
+
+    if missing_validations:
+        return {
+            &quot;decision&quot;: &quot;DIMER_ONLY_REFUTED_OTHER_ROUTE_UNRESOLVED&quot;,
+            &quot;reason&quot;: &quot;the label mass balance excludes a CO-CO-only C-C step, but the route-specific CH2-to-ketene link or alternative C1 pools are not fully validated&quot;,
+            &quot;methyl_13c_acetate_lower_mol&quot;: str(y_lower),
+            &quot;all_co_label_budget_upper_mol&quot;: str(dimer_budget),
+            &quot;budget_terms_mol&quot;: {key: str(value) for key, value in values.items()},
+            &quot;missing_validation_flags&quot;: missing_validations,
+        }
+
+    return {
+        &quot;decision&quot;: &quot;DIRECT_CH2_SUPPORTED_WITHIN_REGISTERED_NETWORK&quot;,
+        &quot;reason&quot;: &quot;the measured product label exceeds the complete CO-accessible label budget, and CH2-to-ketene follow-through is validated with other reduced-C1 sources bounded&quot;,
+        &quot;methyl_13c_acetate_lower_mol&quot;: str(y_lower),
+        &quot;all_co_label_budget_upper_mol&quot;: str(dimer_budget),
+        &quot;budget_terms_mol&quot;: {key: str(value) for key, value in values.items()},
+        &quot;missing_validation_flags&quot;: [],
+        &quot;scope&quot;: &quot;conditional on the registered candidate network and validity of supplied measurement bounds&quot;,
+    }
+
+
+def main() -&gt; None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(&quot;input_json&quot;, type=Path, help=&quot;measured interval bounds in the documented schema&quot;)
+    args = parser.parse_args()
+    try:
+        data = json.loads(args.input_json.read_text())
+    except (OSError, json.JSONDecodeError) as exc:
+        print(json.dumps({&quot;decision&quot;: &quot;UNKNOWN&quot;, &quot;reason&quot;: str(exc)}, indent=2))
+        raise SystemExit(2)
+    result = assess(data)
+    print(json.dumps(result, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/35fe7b5fc72e8151cc064b8d3d6a7eb05cc7d3a9a398d832a2ed438f9ab9054b.py">Exact original</a></p></html>

@@ -1,0 +1,266 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/cell_control/cell_metastability/cycle3_controlled_hidden_memory.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/cell_control/cell_metastability/cycle3_controlled_hidden_memory.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact finite-state audit of CLE-matched, pulse-order-observable hidden memory.
+
+States for the observable reduction are (H,P) in Z_3 x Z_2. Column generators
+use Q[destination,source]. X is a four-species count vector in N^4 and P is
+sum_i X_i mod 2. A/B pulses have Poisson burst events at rate lambda=2r; their
+mask stoichiometries have identical jump moments through order 3 at every x,h,
+but differ at the fourth-order joint inclusion.
+&quot;&quot;&quot;
+from __future__ import annotations
+import itertools, json, math
+from pathlib import Path
+import numpy as np
+
+
+def expm(A: np.ndarray) -&gt; np.ndarray:
+    &quot;&quot;&quot;NumPy-only scaling/squaring Taylor exponential for tiny matrices.&quot;&quot;&quot;
+    A = np.asarray(A, float)
+    norm1 = float(np.linalg.norm(A, 1))
+    s = max(0, int(math.ceil(math.log2(norm1 / 0.5)))) if norm1 &gt; 0.5 else 0
+    X = A / (2**s)
+    term = np.eye(A.shape[0]); total = term.copy()
+    for k in range(1, 300):
+        term = term @ X / k
+        total += term
+        if np.linalg.norm(term, 1) &lt;= 2e-16 * max(1., np.linalg.norm(total, 1)):
+            break
+    else:
+        raise ArithmeticError(&#x27;Taylor exponential did not converge&#x27;)
+    for _ in range(s): total = total @ total
+    return total
+
+
+
+def uniformization(Q: np.ndarray, t: float, tol: float=1e-15) -&gt; np.ndarray:
+    &quot;&quot;&quot;Independent CTMC exponential check via Poisson uniformization.&quot;&quot;&quot;
+    Q=np.asarray(Q,float); nu=float(max(-np.diag(Q)))
+    if nu==0 or t==0: return np.eye(Q.shape[0])
+    mu=nu*t; R=np.eye(Q.shape[0])+Q/nu
+    w=math.exp(-mu); power=np.eye(Q.shape[0]); total=w*power; cdf=w; k=0
+    while True:
+        next_w=w*mu/(k+1)
+        # Geometric upper bound on the remaining Poisson mass.
+        ratio=mu/(k+2)
+        tail_bound=next_w/(1-ratio) if ratio&lt;1 else math.inf
+        if tail_bound&lt;tol: break
+        k+=1; w=next_w; power=power@R; total+=w*power; cdf+=w
+        if k&gt;10000: raise ArithmeticError(&#x27;uniformization failed to converge&#x27;)
+    return total
+
+def idx(h: int, p: int) -&gt; int: return 2*(h % 3) + (p % 2)
+
+
+def generator(kappa: float, r: float, active_h: int | None) -&gt; np.ndarray:
+    &quot;&quot;&quot;H clockwise cycle at kappa; parity toggles at r in active_h only.&quot;&quot;&quot;
+    Q = np.zeros((6,6), float)
+    for h in range(3):
+        for p in range(2):
+            s = idx(h,p)
+            d = idx((h+1)%3,p)
+            Q[d,s] += kappa; Q[s,s] -= kappa
+            if active_h == h:
+                d = idx(h,1-p)
+                Q[d,s] += r; Q[s,s] -= r
+    return Q
+
+
+def endpoint_law(order: str, tau: float, kappa: float, r: float,
+                 model: str, gap: float=0.) -&gt; np.ndarray:
+    &quot;&quot;&quot;2x2 law of (P after first, P after second) from P0=0, H0~Unif.&quot;&quot;&quot;
+    active = {&#x27;plus&#x27;: {&#x27;A&#x27;:0,&#x27;B&#x27;:0}, &#x27;minus&#x27;: {&#x27;A&#x27;:0,&#x27;B&#x27;:2}}[model]
+    mu = np.zeros(6); mu[[idx(h,0) for h in range(3)]] = 1/3
+    first, second = order
+    K1 = expm(generator(kappa,r,active[first])*tau)
+    K0 = expm(generator(kappa,0.,None)*gap) if gap else np.eye(6)
+    K2 = expm(generator(kappa,r,active[second])*tau)
+    D = []
+    for p in range(2):
+        Dp = np.zeros((6,6))
+        for h in range(3): Dp[idx(h,p),idx(h,p)] = 1.
+        D.append(Dp)
+    out = np.zeros((2,2))
+    z = K1 @ mu
+    for p1 in range(2):
+        mid = K2 @ K0 @ D[p1] @ z
+        for p2 in range(2): out[p1,p2] = np.sum(D[p2] @ mid)
+    return out
+
+
+def increment_law_from_endpoints(E: np.ndarray) -&gt; np.ndarray:
+    &quot;&quot;&quot;J[u,v], where u=P1 xor P0=P1 and v=P2 xor P1.&quot;&quot;&quot;
+    J = np.zeros((2,2))
+    for u in range(2):
+        for v in range(2): J[u,v] = E[u,u^v]
+    return J
+
+
+def noisy_endpoint_law(E: np.ndarray, eps: float) -&gt; np.ndarray:
+    &quot;&quot;&quot;Distribution of two independent noisy parity snapshots (Y1,Y2).&quot;&quot;&quot;
+    Y = np.zeros((2,2))
+    for p1,p2,y1,y2 in itertools.product(range(2), repeat=4):
+        e1 = (1-eps) if y1==p1 else eps
+        e2 = (1-eps) if y2==p2 else eps
+        Y[y1,y2] += E[p1,p2]*e1*e2
+    return Y
+
+
+def tv(P: np.ndarray, Q: np.ndarray) -&gt; float:
+    return float(.5*np.abs(P-Q).sum())
+
+
+def bernoulli_kl(p: float, q: float) -&gt; float:
+    p=min(max(p,1e-300),1-1e-16); q=min(max(q,1e-300),1-1e-16)
+    return p*math.log(p/q)+(1-p)*math.log((1-p)/(1-q))
+
+
+def mask_moment_audit() -&gt; dict:
+    masks = list(itertools.product((0,1), repeat=4))
+    ind = masks
+    even = [m for m in masks if sum(m)%2==0]
+    def inclusion(kernel, subset): return sum(all(m[i] for i in subset) for m in kernel)/len(kernel)
+    checks = {}
+    for k in range(4):
+        vals_i=[]; vals_e=[]
+        for subset in itertools.combinations(range(4),k):
+            vals_i.append(inclusion(ind,subset)); vals_e.append(inclusion(even,subset))
+        checks[str(k)] = {&#x27;ind_values&#x27;: sorted(set(vals_i)), &#x27;even_values&#x27;:sorted(set(vals_e)), &#x27;equal&#x27;: all(a==b for a,b in zip(vals_i,vals_e))}
+    return checks
+
+
+def main() -&gt; None:
+    # Exact laws, both pulse orders, a finite grid in unknown switching rate.
+    tau=0.38; r=1.0; eps=0.08
+    ks=[0.,.05,.1,.2,.4,.8,1.5,3.,6.]
+    rows=[]
+    for k in ks:
+        for order in [&#x27;AB&#x27;,&#x27;BA&#x27;]:
+            Em=endpoint_law(order,tau,k,r,&#x27;minus&#x27;)
+            Ep=endpoint_law(order,tau,k,r,&#x27;plus&#x27;)
+            Jm=increment_law_from_endpoints(Em); Jp=increment_law_from_endpoints(Ep)
+            Ym=noisy_endpoint_law(Em,eps); Yp=noisy_endpoint_law(Ep,eps)
+            rows.append({&#x27;kappa&#x27;:k,&#x27;order&#x27;:order,&#x27;J_plus&#x27;:Jp.tolist(),&#x27;J_minus&#x27;:Jm.tolist(),
+                         &#x27;latent_J11_gap&#x27;:float(Jp[1,1]-Jm[1,1]),
+                         &#x27;endpoint_TV_noiseless&#x27;:tv(Em,Ep),&#x27;endpoint_TV_noisy&#x27;:tv(Ym,Yp),
+                         &#x27;both_observed_increment_event_gap&#x27;:float(Yp[1,0]-Ym[1,0])})
+    # Continuous-parameter certificate on the unknown hidden switching rate κ∈[0,3].
+    # Each noisy event probability is 4*tau-Lipschitz in κ: Duhamel gives
+    # ||d exp(tQκ)/dκ||_1 &lt;= 2t, and there are two pulse kernels.
+    cert_h=1e-4
+    cert_ks=np.linspace(0.,3.,int(round(3./cert_h))+1)
+    cert_p={name:[] for name in [&#x27;plus&#x27;,&#x27;minus&#x27;]}
+    for k in cert_ks:
+        for name in cert_p:
+            E=endpoint_law(&#x27;AB&#x27;,tau,float(k),r,name)
+            cert_p[name].append(float(noisy_endpoint_law(E,eps)[1,0]))
+    Lk=4*tau
+    min_plus_grid=min(cert_p[&#x27;plus&#x27;]); argmin_plus=cert_ks[int(np.argmin(cert_p[&#x27;plus&#x27;]))]
+    max_minus_grid=max(cert_p[&#x27;minus&#x27;]); argmax_minus=cert_ks[int(np.argmax(cert_p[&#x27;minus&#x27;]))]
+    plus_lower=min_plus_grid-Lk*cert_h/2
+    minus_upper=max_minus_grid+Lk*cert_h/2
+    certified_gap=plus_lower-minus_upper
+    delta=.05
+    n_hoeffding=math.ceil(2*math.log(1/delta)/(certified_gap**2))
+    # Debit bounded pulse-timing, pulse-rate, and reporter-calibration error.
+    eta_tau=1e-5; eta_r=1e-4; eta_eps=1e-4
+    rmax=r+eta_r; taumax=tau+eta_tau
+    nuisance_debit=2*(3.+rmax)*(2*eta_tau)+2*taumax*(2*eta_r)+2*eta_eps
+    robust_gap=certified_gap-2*nuisance_debit
+    robust_threshold=(plus_lower+minus_upper)/2
+    n_robust=math.ceil(2*math.log(1/delta)/(robust_gap**2))
+    cert={&#x27;kappa_interval&#x27;:[0.,3.],&#x27;grid_step&#x27;:cert_h,&#x27;grid_points&#x27;:len(cert_ks),
+      &#x27;per_model_lipschitz_bound_in_kappa&#x27;:Lk,&#x27;plus_min_grid&#x27;:min_plus_grid,&#x27;plus_argmin_grid&#x27;:float(argmin_plus),
+      &#x27;plus_continuous_lower_bound_nominal&#x27;:plus_lower,&#x27;minus_max_grid&#x27;:max_minus_grid,
+      &#x27;minus_argmax_grid&#x27;:float(argmax_minus),&#x27;minus_continuous_upper_bound_nominal&#x27;:minus_upper,
+      &#x27;nominal_continuous_range_gap_lower_bound&#x27;:certified_gap,&#x27;nominal_threshold_midpoint&#x27;:(plus_lower+minus_upper)/2,
+      &#x27;bounded_control_and_reporter_uncertainty&#x27;:{&#x27;duration_abs_each&#x27;:eta_tau,&#x27;r_abs_each_action&#x27;:eta_r,&#x27;epsilon_abs&#x27;:eta_eps,
+        &#x27;per_model_probability_debit&#x27;:nuisance_debit,&#x27;robust_plus_lower&#x27;:plus_lower-nuisance_debit,
+        &#x27;robust_minus_upper&#x27;:minus_upper+nuisance_debit,&#x27;robust_gap_lower_bound&#x27;:robust_gap,
+        &#x27;robust_threshold_midpoint&#x27;:robust_threshold},
+      &#x27;nominal_one_sided_hoeffding_n_for_delta_0_05&#x27;:n_hoeffding,
+      &#x27;robust_one_sided_hoeffding_n_for_delta_0_05&#x27;:n_robust,
+      &#x27;n_suffices_for_each_unknown_mechanism&#x27;:&#x27;ceil(2 log(1/delta)/gap^2) independent AB wells; one binary event per well; robust_n includes the stated actuation and reporter uncertainty debits&#x27;}
+    # Fixed-sample synthetic Bernoulli acquisitions at an interior unknown rate.
+    synthetic_n=n_robust
+    synthetic_threshold=robust_threshold
+    synthetic_runs=[]
+    for model,seed in [(&#x27;plus&#x27;,20261008),(&#x27;minus&#x27;,20261008)]:
+        pz=float(noisy_endpoint_law(endpoint_law(&#x27;AB&#x27;,tau,1.,r,model),eps)[1,0])
+        count=int(np.random.default_rng(seed).binomial(synthetic_n,pz))
+        synthetic_runs.append({&#x27;true_model&#x27;:model,&#x27;kappa&#x27;:1.,&#x27;seed&#x27;:seed,&#x27;wells&#x27;:synthetic_n,
+          &#x27;event_probability&#x27;:pz,&#x27;event_count&#x27;:count,&#x27;observed_frequency&#x27;:count/synthetic_n,
+          &#x27;threshold&#x27;:synthetic_threshold,&#x27;decision&#x27;:&#x27;plus&#x27; if count/synthetic_n&gt;synthetic_threshold else &#x27;minus&#x27;})
+    finite_cost_ledger={&#x27;independent_wells_per_classifier&#x27;:synthetic_n,&#x27;nominal_wells_without_control_uncertainty&#x27;:n_hoeffding,
+      &#x27;A_pulses&#x27;:synthetic_n,&#x27;B_pulses&#x27;:synthetic_n,&#x27;endpoint_snapshots&#x27;:2*synthetic_n,
+      &#x27;commanded_duration_each&#x27;:tau,&#x27;actual_duration_abs_tolerance_each&#x27;:eta_tau,
+      &#x27;nominal_command_rate_each&#x27;:2*r,&#x27;rate_abs_tolerance_parameter_r_each&#x27;:eta_r,&#x27;epsilon_abs_tolerance&#x27;:eta_eps,
+      &#x27;worst_case_event_opportunities_per_action_per_well&#x27;:2*rmax*taumax,
+      &#x27;worst_case_total_event_opportunities_expected_per_well&#x27;:4*rmax*taumax,
+      &#x27;worst_case_total_event_opportunities_expected_across_wells&#x27;:synthetic_n*4*rmax*taumax,
+      &#x27;symbolic_total_cost&#x27;:&#x27;N*(c_culture+c_verified_start+2*c_snapshot+lambda_max*(tauA_max+tauB_max)*c_dose_per_event+c_handling)+C_reporter_calibration+C_actuation_calibration&#x27;}
+    fast_tv=[]
+    for k in [3.,6.,10.,30.,100.]:
+        Yp=noisy_endpoint_law(endpoint_law(&#x27;AB&#x27;,tau,k,r,&#x27;plus&#x27;),eps)
+        Ym=noisy_endpoint_law(endpoint_law(&#x27;AB&#x27;,tau,k,r,&#x27;minus&#x27;),eps)
+        fast_tv.append({&#x27;kappa&#x27;:k,&#x27;observable_TV&#x27;:tv(Yp,Ym)})
+    # κ=0 closed form test and pulse-order symmetry test.
+    q=(1-math.exp(-2*r*tau))/2
+    kp0=endpoint_law(&#x27;AB&#x27;,tau,0.,r,&#x27;plus&#x27;)
+    km0=endpoint_law(&#x27;AB&#x27;,tau,0.,r,&#x27;minus&#x27;)
+    assert abs(increment_law_from_endpoints(kp0)[1,1]-q*q/3)&lt;1e-13
+    assert abs(increment_law_from_endpoints(km0)[1,1])&lt;1e-13
+    # Independent uniformization check for all pulse kernels used in the certificate.
+    uniformization_checks=[]
+    for k in [0.,.4,3.]:
+        for model in [&#x27;plus&#x27;,&#x27;minus&#x27;]:
+            active={&#x27;plus&#x27;:{&#x27;A&#x27;:0,&#x27;B&#x27;:0},&#x27;minus&#x27;:{&#x27;A&#x27;:0,&#x27;B&#x27;:2}}[model]
+            for action in [&#x27;A&#x27;,&#x27;B&#x27;]:
+                Q=generator(k,r,active[action])
+                err=float(np.max(np.abs(expm(Q*tau)-uniformization(Q,tau))))
+                uniformization_checks.append({&#x27;kappa&#x27;:k,&#x27;model&#x27;:model,&#x27;action&#x27;:action,&#x27;sup_error&#x27;:err})
+    # Same single-action law and same-action words are exactly aliased after hiding H.
+    same_word_checks=[]
+    for k in [0.,.1,.4,1.,3.]:
+        for word in [&#x27;AA&#x27;,&#x27;BB&#x27;]:
+            a=endpoint_law(word,tau,k,r,&#x27;plus&#x27;); b=endpoint_law(word,tau,k,r,&#x27;minus&#x27;)
+            same_word_checks.append({&#x27;kappa&#x27;:k,&#x27;word&#x27;:word,&#x27;sup_error&#x27;:float(np.max(np.abs(a-b)))})
+    # At all k, plus is invariant to reversing the equal-duration pulse order.
+    sym=[]
+    for k in ks:
+        a=endpoint_law(&#x27;AB&#x27;,tau,k,r,&#x27;plus&#x27;); b=endpoint_law(&#x27;BA&#x27;,tau,k,r,&#x27;plus&#x27;)
+        sym.append(float(np.max(np.abs(a-b))))
+    # For strict observable equivalence of all one-letter laws, compare
+    # endpoint distribution under A vs B for each model (uniform hidden phase).
+    solo={}
+    for model in [&#x27;plus&#x27;,&#x27;minus&#x27;]:
+        active={&#x27;plus&#x27;:{&#x27;A&#x27;:0,&#x27;B&#x27;:0},&#x27;minus&#x27;:{&#x27;A&#x27;:0,&#x27;B&#x27;:2}}[model]
+        for action in [&#x27;A&#x27;,&#x27;B&#x27;]:
+            mu=np.zeros(6); mu[[idx(h,0) for h in range(3)]]=1/3
+            K=expm(generator(.37,r,active[action])*tau)
+            p=K@mu
+            solo[(model,action)]=[sum(p[idx(h,z)] for h in range(3)) for z in range(2)]
+    # equality A-only and B-only across models is exact at the parity-marginal level;
+    # with hidden H observed it is false, hence H is explicitly unobserved.
+    solo_gaps={a:abs(solo[(&#x27;plus&#x27;,a)][1]-solo[(&#x27;minus&#x27;,a)][1]) for a in [&#x27;A&#x27;,&#x27;B&#x27;]}
+    result={&#x27;model&#x27;:&#x27;4 binary markers X, hidden H in Z3, observed parity only&#x27;,
+      &#x27;parameters&#x27;:{&#x27;tau_each_pulse&#x27;:tau,&#x27;r&#x27;:r,&#x27;lambda&#x27;:2*r,&#x27;snapshot_error_epsilon&#x27;:eps,&#x27;kappa_grid&#x27;:ks},
+      &#x27;definitions&#x27;:{&#x27;initial_H&#x27;:&#x27;uniform on 0,1,2&#x27;,&#x27;initial_X&#x27;:&#x27;(0,0,0,0) in N^4; each event adds its mask stoichiometry&#x27;,&#x27;P&#x27;:&#x27;sum_i X_i mod 2&#x27;,&#x27;U&#x27;:&#x27;P after first pulse xor P before first pulse&#x27;,&#x27;V&#x27;:&#x27;P after second pulse xor P before second pulse&#x27;},
+      &#x27;mask_moment_audit&#x27;:mask_moment_audit(),&#x27;kappa_zero_q&#x27;:q,&#x27;kappa_zero_Jplus&#x27;:increment_law_from_endpoints(kp0).tolist(),
+      &#x27;kappa_zero_Jminus&#x27;:increment_law_from_endpoints(km0).tolist(),&#x27;rows&#x27;:rows,&#x27;continuous_unknown_kappa_certificate&#x27;:cert,&#x27;fast_switching_observable_TV&#x27;:fast_tv,&#x27;uniformization_independent_checks&#x27;:uniformization_checks,&#x27;same_action_word_cross_model_checks&#x27;:same_word_checks,&#x27;synthetic_finite_sample_runs&#x27;:synthetic_runs,&#x27;finite_cost_ledger&#x27;:finite_cost_ledger,
+      &#x27;Mplus_AB_BA_endpoint_supnorm_by_kappa&#x27;:sym,&#x27;one_letter_parity_flip_probabilities&#x27;:{f&#x27;{m}_{a}&#x27;:v[1] for (m,a),v in solo.items()},
+      &#x27;one_letter_cross_model_flip_gaps&#x27;:solo_gaps,
+      &#x27;generator_orientation&#x27;:&#x27;destination row, source column; columns sum to zero&#x27;,
+      &#x27;noisy_observation&#x27;:&#x27;Y1=P1 xor iid Bernoulli(epsilon), Y2=P2 xor iid Bernoulli(epsilon); initial P0=0 is known exactly, and estimated increments are Uhat=Y1, Vhat=Y1 xor Y2; independent replicate unit per pulse word&#x27;}
+    path=Path(__file__).with_name(&#x27;CYCLE3_MODEL_OUTPUT.json&#x27;)
+    path.write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({k:result[k] for k in [&#x27;kappa_zero_q&#x27;,&#x27;kappa_zero_Jplus&#x27;,&#x27;kappa_zero_Jminus&#x27;,&#x27;Mplus_AB_BA_endpoint_supnorm_by_kappa&#x27;,&#x27;one_letter_cross_model_flip_gaps&#x27;]},indent=2))
+    print(&#x27;certificate&#x27;,json.dumps(cert,indent=2))
+    print(&#x27;fast switching TV&#x27;,fast_tv)
+    print(&#x27;uniformization max error&#x27;,max(x[&#x27;sup_error&#x27;] for x in uniformization_checks))
+    print(&#x27;same-action max cross-model error&#x27;,max(x[&#x27;sup_error&#x27;] for x in same_word_checks))
+    print(&#x27;synthetic finite runs&#x27;,synthetic_runs)
+    print(&#x27;cost ledger&#x27;,finite_cost_ledger)
+    for row in rows: print(row[&#x27;kappa&#x27;],row[&#x27;order&#x27;],&#x27;latent increment J11 gap&#x27;,row[&#x27;latent_J11_gap&#x27;],&#x27;TVnoise&#x27;,row[&#x27;endpoint_TV_noisy&#x27;],&#x27;observed both-increment event gap&#x27;,row[&#x27;both_observed_increment_event_gap&#x27;])
+
+if __name__==&#x27;__main__&#x27;: main()
+</pre><p><a href="../assets/a0ae1c6665dc2285bf12ed4a573a5ebaa2245ce32bf7e752c73ccbbd67f5d13b.py">Exact original</a></p></html>

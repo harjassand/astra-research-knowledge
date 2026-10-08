@@ -1,0 +1,94 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/algebra_complexity/cycle5/mask_algorithms/RESULT.md</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/algebra_complexity/cycle5/mask_algorithms/RESULT.md</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre># Cycle 5 mask-algorithms leaf — exact boundary for pair-local sharing
+
+**Status: scoped theorem proved; arbitrary-mask target remains UNKNOWN.** I prove an exact multiplication-count lower bound for a precise shared-encoding model. It shows that caching arbitrary linear forms of individual input rows and columns cannot beat independent selected dot products if every multiplication gate remains attached to one output pair. The result does not cover mixed-row/mixed-column products, and the exact (2\times2) Strassen witness shows why that exclusion matters.
+
+## Interface and model
+
+Let \(F\) be any field, \(X=(x_{ik})\in F^{N\times D}\), \(Y=(y_{kj})\in F^{D\times N}\), and let a supplied mask \(W\subseteq[N]\times[N]\) contain \(m\) distinct pairs. The required outputs are
+\[
+z_{ij}=\sum_{k=1}^{D}x_{ik}y_{kj}\qquad ((i,j)\in W).
+\]
+
+The **pair-local bilinear circuit model** is defined as follows.
+
+* Linear preprocessing and linear output decoding are unrestricted and may be shared. A multiplication gate must multiply a linear form supported on one row of \(X\) by a linear form supported on one column of \(Y\):
+  \[
+  g=\Bigl(\sum_k a_kx_{ik}\Bigr)\Bigl(\sum_\ell b_\ell y_{\ell j}\Bigr)
+  \]
+  for one pair \((i,j)\). The coefficient vectors and forms may be reused wherever compatible.
+* The circuit exactly produces each \(z_{ij}\) as a linear combination of its product-gate values. The charged quantity in the theorem is the number of scalar multiplication gates. This is a bilinear-circuit model; products whose factors mix multiple rows or multiple columns are excluded.
+
+This grants free linear preprocessing/decoding, so the lower bound below is specifically about multiplication gates and cannot be blamed on an encoding or decoder charge.
+
+## Theorem and proof
+
+**Theorem.** In the pair-local model, the minimum number of multiplication gates required to compute the outputs indexed by \(W\) is exactly
+\[
+R_{\rm pair}(W)=mD.
+\]
+
+**Proof.** For each pair \((i,j)\), let \(\mathcal B_{ij}\) be the vector space spanned by the bilinear monomials \(x_{ik}y_{\ell j}\), \(k,\ell\in[D]\). These spaces have disjoint monomial bases for distinct ordered pairs \((i,j)\). A product gate assigned to \((i,j)\) contributes to \(\mathcal B_{ij}\) a coefficient matrix \(ab^{\mathsf T}\), which has rank at most one.
+
+Fix a requested output \(z_{ij}\). Project its decoded polynomial onto \(\mathcal B_{ij}\). Product gates assigned to other pairs have no monomials in this space and disappear under the projection. The target projection has coefficient matrix \(I_D\), whose rank is \(D\). If \(r_{ij}\) pair-local gates are assigned to \((i,j)\), then
+\[
+D=\operatorname{rank}(I_D)
+\le \sum_{g\text{ assigned to }(i,j)}\operatorname{rank}(M_g)
+\le r_{ij}.
+\]
+Thus every requested pair requires at least \(D\) gates. Gate sets assigned to different pairs are disjoint, so the total is at least \(mD\). Conversely, computing each requested dot product with its \(D\) coordinate products uses exactly \(mD\) multiplication gates. This proves equality. The argument uses only linear algebra and holds over every field. \(\square\)
+
+The key quantifier is per ordered row/column pair. Shared bases such as Fourier-like or arbitrary dense linear bases within each row and column are allowed; a product gate combining two rows or two columns is not.
+
+## Consequence at the selective-product target
+
+For \(D=N^{1/4}\), every supplied mask of size \(m\) has exact pair-local multiplication complexity \(mN^{1/4}\). Therefore:
+
+* If \(m=\Theta(N^{15/8})\), including balanced-degree masks in the L04 hard-mask family, the model requires \(\Theta(N^{17/8})\) multiplications. It cannot give a strict subquadratic algorithm at that density.
+* If \(m\le N^{7/4-\eta}\) for fixed \(\eta&gt;0\), direct pair-local evaluation uses at most \(N^{2-\eta}\) multiplications. The theorem shows no multiplication-count saving over that baseline within the model.
+* At \(m=\Theta(N^{7/4})\), the direct multiplication count is \(\Theta(N^2)\).
+
+This is a model-specific refinement of the baseline in leaf 15: leaf 15, lines 55–56, already gives the \(O(mD)\) direct construction; the present proof establishes its optimality for pair-local products. It does **not** establish \(mD\) as a lower bound for arbitrary bilinear circuits.
+
+## Exact escape witness: why the model boundary matters
+
+For \(D=2\) and \(W=[2]\times[2]\), pair-local multiplication needs \(mD=8\) products. The following seven Strassen products compute all four outputs, so they mix row/column support and are outside the theorem&#x27;s model:
+\[
+\begin{array}{ll}
+p_1=(a_{11}+a_{22})(b_{11}+b_{22}),&amp;p_2=(a_{21}+a_{22})b_{11},\\
+p_3=a_{11}(b_{12}-b_{22}),&amp;p_4=a_{22}(b_{21}-b_{11}),\\
+p_5=(a_{11}+a_{12})b_{22},&amp;p_6=(a_{21}-a_{11})(b_{11}+b_{12}),\\
+p_7=(a_{12}-a_{22})(b_{21}+b_{22}),&amp;\\
+c_{11}=p_1+p_4-p_5+p_7,&amp;c_{12}=p_3+p_5,\\
+c_{21}=p_2+p_4,&amp;c_{22}=p_1-p_2+p_3+p_6.
+\end{array}
+\]
+Expanding gives \(c_{ij}=\sum_{k=1}^2a_{ik}b_{kj}\) for all four pairs. The exact-integer expansion check is in [check_strassen_witness.py](check_strassen_witness.py), with recorded result in [exact_check.json](exact_check.json). This finite witness refutes any attempted extension of the \(mD\) lower bound to unrestricted bilinear circuits. It is a model-boundary check, not a selective-mask speedup at the target aspect ratio.
+
+## Cost ledger and information boundary
+
+For the direct upper bound, reading the dense inputs costs \(O(ND)\) scalar reads (or \(O(NDB)\) input bits for signed entries of magnitude at most \(2^B\)). A supplied edge-list mask costs \(2m\lceil\log_2N\rceil+O(m)\) bits; reading, validating, and routing it costs \(O(m\operatorname{polylog}N)\) word/bit operations with ordinary indexed representations. Direct arithmetic uses exactly \(mD\) integer multiplications and \(m(D-1)\) additions. Each answer has at most \(2B+\lceil\log_2D\rceil+O(1)\) bits, so writing values and optional coordinate labels costs \(O(m(B+\log D+\log N))\) bits. With multiplication bit-cost \(\mathcal M(B+\log D)\), arithmetic bit work is
+\[
+O\!\left(mD\,\mathcal M(B+\log D)+mD(B+\log D)\right),
+\]
+in addition to input, mask, and output I/O. For \(B=O(\log N)\) and maximum legal \(m\), this is \(N^{17/8}\operatorname{polylog}N\), not subquadratic. The lower bound itself is an arithmetic multiplication-gate count and says nothing about coefficient bit lengths of circuits outside this model.
+
+The mask is **supplied**. No mask-family discovery or circuit acquisition is part of this theorem. The theorem grants linear forms and output decoding without charging their description or construction, making the multiplication lower bound stronger within the stated model. It does not make mask-dependent mixed circuits available for free.
+
+## Relationship to inherited evidence and source/version boundary
+
+* **L04** (`work/astra_prior/cards/L04-block-cover-obstruction.txt:3-4`) states that some legal masks force \(\Omega(N^2)\) cost for independently charged complete-block covers and expressly allows shared output-local arithmetic. The detailed scope in leaf 15, lines 88–100, says the block-cover argument is not a lower bound for general arithmetic circuits. This result uses a different, pair-local bilinear model; its \(mD\) bound must not be attributed to L04.
+* **N12** (`work/astra_prior/cards/N12-selective-tensor-barrier.txt:5`) states that its fixed-mask tensor-power exponent and failed complete-array certificate do not decide the uniform arbitrary-mask target; shared mask-local circuits remain allowed. This leaf does not close that gap.
+* **Leaf 15** (`outputs/research/algebra_complexity/leaf15/RESULT.txt:55-56`) supplies the matched \(O(mD)\) direct algorithm but no lower bound on the unrestricted problem. Its scope says direct degree/edge-count bounds are upper bounds only (lines 64–74).
+* **Cycle 4** (`outputs/research/algebra_complexity/cycle4/structured_mask/result.md:52-75,103-110`) records the exact Strassen identities and the primary reference Volker Strassen, “Gaussian elimination is not optimal,” *Numerische Mathematik* 13 (1969), 354–356, [DOI](https://doi.org/10.1007/BF02165411). The seven-product witness is source-reported in that prior artifact and independently expanded by the local exact checker here. The result here relies only on the displayed identities.
+* **N59** (`work/astra_prior/cards/N59-matrix-profile-barrier.txt:5-8`) is a numerical-profile countermodel, not a tensor lower bound; it is not used. **N79** concerns degree/smoothness determinant bounds and is outside this problem, so it is not used.
+
+The L04/N12 cards are source-derived and unreviewed at their recorded versions. The theorem in this leaf is an internal proof from the stated model, not externally reviewed or a novelty/priority claim. No inference from a changing matrix-multiplication exponent is needed.
+
+## Falsifier, status, and restart
+
+**Falsifier for the scoped theorem:** an exact pair-local circuit with fewer than \(mD\) multiplication gates. The coefficient-matrix rank proof rules this out; the exact two-by-two check confirms the contrasting seven-product mixed-support witness.
+
+**Status:** `SCOPED_THEOREM_PROVED; ARBITRARY_MASK_TARGET_UNKNOWN`. No new algorithm or general lower bound for the L04/N12 target is established. The theorem only rules out a particular proposed sharing mechanism: reuse arbitrary row-local and column-local linear encodings while keeping every product tied to one output pair.
+
+**Next decisive gate:** define and analyze a genuinely mixed-support circuit model where product gates may combine multiple rows or columns, while charging mask-specific circuit acquisition, all product gates, all output combinations, coefficient heights/precision, input access, mask processing, and output writing. A result in that model must either (i) give a uniform subquadratic algorithm for an explicit mask family not reducible to an already-covered product-mask/union-of-rectangles argument, or (ii) prove a lower bound for a family with the L04 density and degree profile. The present theorem is not evidence for either outcome.
+</pre><p><a href="../assets/20ef1fdbdf456fbae1a17d555eff4e9d74c5b7b0fd39fb937370b36a556774b8.md">Exact original</a></p></html>

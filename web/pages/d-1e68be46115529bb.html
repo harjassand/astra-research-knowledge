@@ -1,0 +1,324 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c8_photochemistry_sign_hostile/proof/sign_audit.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c8_photochemistry_sign_hostile/proof/sign_audit.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Independent numerical audit of the published six-species photocycle.
+
+The rates, species ordering, branch equations, initial concentrations, and RF
+schedule are transcribed from the primary sources cited in SOURCES.md.  The
+script uses only Python&#x27;s standard library.  Concentrations are micromolar,
+time is seconds, and the bimolecular constants are converted to µM^-1 s^-1.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+from dataclasses import dataclass
+import json
+import math
+from pathlib import Path
+
+
+@dataclass(frozen=True)
+class Rates:
+    label: str
+    lis_ref: float
+    ksr: float
+    ktr: float
+    kisc: float
+    kred: float
+    kox: float
+    kdis: float
+
+    def light_rate(self, i520: float) -&gt; float:
+        # The code&#x27;s 1652 s^-1 reference corresponds to 1.7 W cm^-2.
+        return self.lis_ref * i520 / 1.7
+
+    def a(self, i520: float) -&gt; float:
+        return self.kisc * self.light_rate(i520) / (self.ksr + self.kisc)
+
+
+TABLE1 = Rates(&quot;JACS Table 1 converted&quot;, 1652.0, 2.5e8, 224.0, 1.85e5,
+               50.0, 3375e-6, 5000.0)
+REPO = Rates(&quot;authors MATLAB repository default&quot;, 1652.0, 2.5e8, 224.0,
+             185497.528691897, 50.5406, 0.003675, 5000.0)
+
+Y0 = (50.0, 0.0, 0.0, 20.0, 330.0, 0.0)  # G,T,R,F,H,Q in µM
+BETA0 = 0.68
+DBETA_PER_MT = 0.117
+
+
+def rhs(y: tuple[float, ...], beta: float, p: Rates, i520: float) -&gt; tuple[float, ...]:
+    g, t, r, f, h, q = y
+    a = p.a(i520)
+    u = beta * p.kred * h * t
+    v = p.kox * f * r
+    w = p.kdis * q * q
+    return (
+        -a * g + (p.ktr + (1.0 - beta) * p.kred * h) * t + v,
+        a * g - p.ktr * t - p.kred * h * t,
+        u - v,
+        -v + w,
+        -u + w,
+        u - 2.0 * w + v,
+    )
+
+
+def rk4_step(y: tuple[float, ...], beta: float, p: Rates, i520: float,
+             dt: float) -&gt; tuple[float, ...]:
+    k1 = rhs(y, beta, p, i520)
+    y2 = tuple(x + 0.5 * dt * k for x, k in zip(y, k1))
+    k2 = rhs(y2, beta, p, i520)
+    y3 = tuple(x + 0.5 * dt * k for x, k in zip(y, k2))
+    k3 = rhs(y3, beta, p, i520)
+    y4 = tuple(x + dt * k for x, k in zip(y, k3))
+    k4 = rhs(y4, beta, p, i520)
+    return tuple(x + dt * (a + 2*b + 2*c + d) / 6.0
+                 for x, a, b, c, d in zip(y, k1, k2, k3, k4))
+
+
+def state_from_q(q: float, beta: float, p: Rates, i520: float):
+    c = p.kdis / p.kox
+    disc = math.sqrt((q - 40.0)**2 + 8.0 * c * q*q)
+    f = (40.0 - q + disc) / 4.0
+    r = 2.0 * f + q - 40.0
+    h = 350.0 - f - q
+    a = p.a(i520)
+    C = p.ktr + p.kred * h
+    Am = 50.0 - r
+    g = Am * C / (a + C)
+    t = Am * a / (a + C)
+    beta_q = p.kdis * q*q * (a + C) / (a * p.kred * h * Am)
+    return (g, t, r, f, h, q), beta_q
+
+
+def steady(beta: float, p: Rates, i520: float):
+    # Find a physical root on the small-Q branch used by the reported fit.
+    lo, hi = 1e-12, 0.0383
+    blo = state_from_q(lo, beta, p, i520)[1]
+    bhi = state_from_q(hi, beta, p, i520)[1]
+    if not (blo &lt; beta &lt; bhi):
+        raise ValueError(f&quot;failed root bracket: beta range {blo}, {bhi}&quot;)
+    for _ in range(100):
+        mid = (lo + hi) / 2.0
+        _, bm = state_from_q(mid, beta, p, i520)
+        if bm &lt; beta:
+            lo = mid
+        else:
+            hi = mid
+    q = (lo + hi) / 2.0
+    y, _ = state_from_q(q, beta, p, i520)
+    err = max(abs(z) for z in rhs(y, beta, p, i520))
+    return y, err
+
+
+def rf_is_on(t: float) -&gt; bool:
+    return 0.0 &lt;= t &lt; 5.0 or 10.0 &lt;= t &lt; 15.0
+
+
+def pulse_beta(t: float, beta_off: float, beta_on: float) -&gt; float:
+    # Fig. 2G / Supplementary Data Fig. 6: RF on for 0-5 and 10-15 s.
+    return beta_on if rf_is_on(t) else beta_off
+
+
+def invariant_values(y):
+    g, t, r, f, h, q = y
+    return (g+t+r, f+h+q, g+t+2*f+q)
+
+
+def simulate_pair(y_pulse, y_control, p: Rates, i520: float, beta_low: float,
+                  beta_high: float, duration: float, dt: float):
+    n = round(duration / dt)
+    if abs(n * dt - duration) &gt; 1e-10:
+        raise ValueError(&quot;dt must divide duration&quot;)
+    yp, yc = tuple(y_pulse), tuple(y_control)
+    rows = []
+    sample_stride = round(0.1 / dt)
+    for j in range(n + 1):
+        t = j * dt
+        if j % sample_stride == 0:
+            dG = yp[0] - yc[0]
+            dR = yp[2] - yc[2]
+            invp = invariant_values(yp)
+            invc = invariant_values(yc)
+            rows.append({&quot;t&quot;: t, &quot;G_pulse&quot;: yp[0], &quot;G_control&quot;: yc[0],
+                         &quot;R_pulse&quot;: yp[2], &quot;R_control&quot;: yc[2],
+                         &quot;dG&quot;: dG, &quot;dR&quot;: dR,
+                         &quot;rho_critical&quot;: (-dG / dR if dR &gt; 1e-15 else None),
+                         &quot;rf_on&quot;: rf_is_on(t),
+                         &quot;invariant_error_inf&quot;: max(abs(invp[0]-50.0), abs(invp[1]-350.0),
+                                                     abs(invp[2]-90.0), abs(invc[0]-50.0),
+                                                     abs(invc[1]-350.0), abs(invc[2]-90.0)),
+                         &quot;min_species&quot;: min(min(yp), min(yc))})
+        if j == n:
+            break
+        beta = pulse_beta(t + dt/2.0, beta_low, beta_high)
+        yp = rk4_step(yp, beta, p, i520, dt)
+        yc = rk4_step(yc, beta_low, p, i520, dt)
+    return rows
+
+
+def extrema(rows, predicate, key):
+    xs = [r[key] for r in rows if predicate(r) and r[key] is not None]
+    if not xs:
+        return None
+    return {&quot;min&quot;: min(xs), &quot;max&quot;: max(xs)}
+
+
+def observable_fractional_changes(g0: float, r0: float, dg: float, dr: float):
+    out = {}
+    for rho in (0.0, 0.5, 1.0, 2.0, 10.0):
+        out[str(rho)] = (dg + rho * dr) / (g0 + rho * r0)
+    # Limit as the detector becomes radical-only; any positive constant
+    # background lowers this bound.
+    out[&quot;rho_infinity&quot;] = dr / r0 if r0 &gt; 0 else None
+    return out
+
+
+def run():
+    result = {
+        &quot;source_parameter_conventions&quot;: {
+            &quot;table1&quot;: &quot;kred=5e7 M^-1 s^-1 = 50 µM^-1 s^-1; kox=3375 M^-1 s^-1 = 0.003375 µM^-1 s^-1; kdis=5e9 M^-1 s^-1 = 5000 µM^-1 s^-1&quot;,
+            &quot;repository&quot;: &quot;MFE_kinetic_model.m default vector transcribed exactly&quot;,
+            &quot;beta_law&quot;: &quot;beta_sep = 0.68 + 0.117*B1_mT, with B1=0.3 mT giving 0.7151&quot;,
+            &quot;observable_family&quot;: &quot;Fdet = G + rho*R + constant; rho=0 is source&#x27;s nonfluorescent-radical map&quot;,
+            &quot;initial_state&quot;: list(Y0),
+            &quot;invariants_initial&quot;: {&quot;M=G+T+R&quot;: 50.0, &quot;L=F+H+Q&quot;: 350.0,
+                                    &quot;I=G+T+2F+Q&quot;: 90.0},
+        },
+        &quot;steady&quot;: [],
+        &quot;transient_from_source_initial_conditions&quot;: [],
+        &quot;transient_from_low_beta_photostationary_state&quot;: [],
+        &quot;complement_counterexample&quot;: [],
+    }
+    for p in (TABLE1, REPO):
+        for i520 in (0.5, 1.7, 3.8):
+            low, e0 = steady(BETA0, p, i520)
+            high, e1 = steady(BETA0 + DBETA_PER_MT * 0.3, p, i520)
+            lower_sep, ecomp = steady(BETA0 - DBETA_PER_MT * 0.3, p, i520)
+            complement_beta_low, ec0 = steady(1.0 - BETA0, p, i520)
+            complement_beta_high, ec1 = steady(1.0 - (BETA0 + DBETA_PER_MT*0.3), p, i520)
+            dG = high[0] - low[0]
+            dR = high[2] - low[2]
+            result[&quot;steady&quot;].append({
+                &quot;rates&quot;: p.label, &quot;I520_W_cm2&quot;: i520,
+                &quot;a_s-1&quot;: p.a(i520), &quot;beta_low&quot;: BETA0,
+                &quot;beta_high_B1_0.3mT&quot;: BETA0 + DBETA_PER_MT * 0.3,
+                &quot;low_state_G_T_R_F_H_Q_uM&quot;: low,
+                &quot;high_state_G_T_R_F_H_Q_uM&quot;: high,
+                &quot;delta_G_uM&quot;: dG, &quot;delta_R_uM&quot;: dR,
+                &quot;rho_threshold_for_positive_steady_signal&quot;: -dG/dR,
+                &quot;delta_G_over_G_percent&quot;: 100*dG/low[0],
+                &quot;no_background_fixed_emissivity_fractional_changes&quot;:
+                    observable_fractional_changes(low[0], low[2], dG, dR),
+                &quot;radical_only_limit_percent&quot;: 100*dR/low[2],
+                &quot;low_root_rhs_inf_norm&quot;: e0, &quot;high_root_rhs_inf_norm&quot;: e1,
+                &quot;initial_Gdot_change_at_equilibrium_uM_s&quot;: -(
+                    DBETA_PER_MT * 0.3 * p.kred * low[4] * low[1]),
+            })
+            result[&quot;complement_counterexample&quot;].append({
+                &quot;rates&quot;: p.label, &quot;I520_W_cm2&quot;: i520,
+                &quot;same_beta_i_with_slope_reversed&quot;: {
+                    &quot;beta_sep_off&quot;: BETA0,
+                    &quot;beta_sep_RF_on&quot;: BETA0 - DBETA_PER_MT*0.3,
+                    &quot;delta_G_uM&quot;: lower_sep[0] - low[0],
+                    &quot;delta_G_over_G_percent&quot;: 100*(lower_sep[0]-low[0])/low[0],
+                    &quot;states_off_G_R_uM&quot;: [low[0], low[2]],
+                    &quot;states_RF_on_G_R_uM&quot;: [lower_sep[0], lower_sep[2]],
+                    &quot;rhs_residuals_inf&quot;: [e0, ecomp],
+                },
+                &quot;Nature_beta_reinterpreted_as_recombination_fraction&quot;: {
+                    &quot;beta_recomb_off&quot;: BETA0,
+                    &quot;beta_recomb_RF_on&quot;: BETA0 + DBETA_PER_MT*0.3,
+                    &quot;implied_beta_sep_off&quot;: 1.0-BETA0,
+                    &quot;implied_beta_sep_RF_on&quot;: 1.0-(BETA0+DBETA_PER_MT*0.3),
+                    &quot;delta_G_uM&quot;: complement_beta_high[0]-complement_beta_low[0],
+                    &quot;delta_G_over_G_percent&quot;:
+                        100*(complement_beta_high[0]-complement_beta_low[0])/complement_beta_low[0],
+                    &quot;states_off_G_R_uM&quot;: [complement_beta_low[0], complement_beta_low[2]],
+                    &quot;states_RF_on_G_R_uM&quot;: [complement_beta_high[0], complement_beta_high[2]],
+                    &quot;rhs_residuals_inf&quot;: [ec0, ec1],
+                },
+            })
+
+            # The endpoint and time-domain checks use low/high illumination
+            # plus the repository&#x27;s exact defaults at the higher intensity.
+            dynamic_case = ((p == TABLE1 and i520 in (0.5, 3.8))
+                            or (p == REPO and i520 == 3.8))
+            if dynamic_case:
+                # The exact S8 initial condition and published 0-5/10-15 s RF train.
+                trans = simulate_pair(Y0, Y0, p, i520, BETA0,
+                                      BETA0 + DBETA_PER_MT*0.3, 20.0, 1e-4)
+                on = lambda row: row[&quot;rf_on&quot;] and row[&quot;t&quot;] &lt;= 5.0
+                result[&quot;transient_from_source_initial_conditions&quot;].append({
+                    &quot;rates&quot;: p.label, &quot;I520_W_cm2&quot;: i520,
+                    &quot;dt_s&quot;: 1e-4, &quot;first_pulse_delta_G_extrema_uM&quot;: extrema(trans, on, &quot;dG&quot;),
+                    &quot;sampled_invariant_error_inf_uM&quot;: max(r[&quot;invariant_error_inf&quot;] for r in trans),
+                    &quot;minimum_sampled_species_uM&quot;: min(r[&quot;min_species&quot;] for r in trans),
+                    &quot;first_pulse_delta_R_extrema_uM&quot;: extrema(trans, on, &quot;dR&quot;),
+                    &quot;first_pulse_rho_threshold_extrema&quot;: extrema(trans, on, &quot;rho_critical&quot;),
+                    &quot;radical_only_fractional_delta_extrema&quot;: extrema(
+                        [dict(r, radical_only=(r[&quot;dR&quot;]/r[&quot;R_control&quot;] if r[&quot;R_control&quot;]&gt;0 else None))
+                         for r in trans], on, &quot;radical_only&quot;),
+                    &quot;max_on_pulse_fractional_change_by_rho&quot;: {
+                        str(rho): max((r[&quot;dG&quot;]+rho*r[&quot;dR&quot;])/(r[&quot;G_control&quot;]+rho*r[&quot;R_control&quot;])
+                                      for r in trans if on(r))
+                        for rho in (0.0, 0.5, 1.0, 2.0, 10.0)
+                    },
+                    &quot;samples_s&quot;: [next(r for r in trans if abs(r[&quot;t&quot;]-t)&lt;1e-10)
+                                  for t in (0.1, 1.0, 2.5, 5.0)],
+                })
+
+                # Same RF pulse after equilibration under green light at beta_i.
+                trans_eq = simulate_pair(low, low, p, i520, BETA0,
+                                         BETA0 + DBETA_PER_MT*0.3, 20.0, 1e-4)
+                on_eq = lambda row: row[&quot;rf_on&quot;] and row[&quot;t&quot;] &lt;= 5.0
+                result[&quot;transient_from_low_beta_photostationary_state&quot;].append({
+                    &quot;rates&quot;: p.label, &quot;I520_W_cm2&quot;: i520,
+                    &quot;dt_s&quot;: 1e-4, &quot;first_pulse_delta_G_extrema_uM&quot;: extrema(trans_eq, on_eq, &quot;dG&quot;),
+                    &quot;sampled_invariant_error_inf_uM&quot;: max(r[&quot;invariant_error_inf&quot;] for r in trans_eq),
+                    &quot;minimum_sampled_species_uM&quot;: min(r[&quot;min_species&quot;] for r in trans_eq),
+                    &quot;first_pulse_delta_R_extrema_uM&quot;: extrema(trans_eq, on_eq, &quot;dR&quot;),
+                    &quot;first_pulse_rho_threshold_extrema&quot;: extrema(trans_eq, on_eq, &quot;rho_critical&quot;),
+                    &quot;radical_only_fractional_delta_extrema&quot;: extrema(
+                        [dict(r, radical_only=(r[&quot;dR&quot;]/r[&quot;R_control&quot;] if r[&quot;R_control&quot;]&gt;0 else None))
+                         for r in trans_eq], on_eq, &quot;radical_only&quot;),
+                    &quot;max_on_pulse_fractional_change_by_rho&quot;: {
+                        str(rho): max((r[&quot;dG&quot;]+rho*r[&quot;dR&quot;])/(r[&quot;G_control&quot;]+rho*r[&quot;R_control&quot;])
+                                      for r in trans_eq if on_eq(r))
+                        for rho in (0.0, 0.5, 1.0, 2.0, 10.0)
+                    },
+                    &quot;samples_s&quot;: [next(r for r in trans_eq if abs(r[&quot;t&quot;]-t)&lt;1e-10)
+                                  for t in (0.1, 1.0, 2.5, 5.0)],
+                })
+
+                if p == TABLE1 and i520 == 3.8:
+                    # Rescue checks: (i) same separation-fraction baseline,
+                    # corrected sign of its RF change; (ii) Nature&#x27;s numeric
+                    # parameter relabelled as the recombination fraction.
+                    alternatives = [
+                        (&quot;same beta_i, negative separation-fraction increment&quot;,
+                         BETA0, BETA0 - DBETA_PER_MT*0.3),
+                        (&quot;Nature beta interpreted as recombination fraction&quot;,
+                         1.0-BETA0, 1.0-(BETA0+DBETA_PER_MT*0.3)),
+                    ]
+                    for label, beta_off_alt, beta_on_alt in alternatives:
+                        alt = simulate_pair(Y0, Y0, p, i520, beta_off_alt,
+                                            beta_on_alt, 5.0, 1e-4)
+                        s5 = next(r for r in alt if abs(r[&quot;t&quot;]-5.0)&lt;1e-10)
+                        result[&quot;complement_counterexample&quot;].append({
+                            &quot;rates&quot;: p.label, &quot;I520_W_cm2&quot;: i520, &quot;mapping&quot;: label,
+                            &quot;beta_sep_off&quot;: beta_off_alt, &quot;beta_sep_on&quot;: beta_on_alt,
+                            &quot;at_t5_G_control_uM&quot;: s5[&quot;G_control&quot;],
+                            &quot;at_t5_G_RF_uM&quot;: s5[&quot;G_pulse&quot;],
+                            &quot;at_t5_delta_G_uM&quot;: s5[&quot;dG&quot;],
+                            &quot;at_t5_fractional_delta_G&quot;: s5[&quot;dG&quot;]/s5[&quot;G_control&quot;],
+                            &quot;at_t5_R_control_uM&quot;: s5[&quot;R_control&quot;],
+                            &quot;at_t5_R_RF_uM&quot;: s5[&quot;R_pulse&quot;],
+                            &quot;at_t5_fractional_delta_R&quot;: s5[&quot;dR&quot;]/s5[&quot;R_control&quot;],
+                        })
+    out = Path(__file__).with_name(&quot;sign_audit_results.json&quot;)
+    out.write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+    print(out)
+    print(json.dumps({k: result[k] for k in (&quot;steady&quot;, &quot;transient_from_source_initial_conditions&quot;,
+                                              &quot;transient_from_low_beta_photostationary_state&quot;)}, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    run()
+</pre><p><a href="../assets/99bd9a2b21cf205aad3372b3df9cf80962b49f87d68ceaa850bb63566ae3f692.py">Exact original</a></p></html>

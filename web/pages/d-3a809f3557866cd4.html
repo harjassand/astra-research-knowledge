@@ -1,0 +1,189 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/sol_collision_precision/evidence/check_precision.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/sol_collision_precision/evidence/check_precision.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Finite conventions and critical asymptotics. No theorem certification.&quot;&quot;&quot;
+from fractions import Fraction as F
+from math import comb, exp, expm1, erfc, lgamma, log, sqrt
+from pathlib import Path
+import json
+
+
+def z(q, length):
+    return sum((q**k for k in range(length + 1)), F(0))
+
+
+def schur_exact(n, r):
+    a, b = (1 + r) / 2, (1 - r) / 2
+    ans = {}
+    for length in range(n % 2, n + 1, 2):
+        k = (n - length) // 2
+        multiplicity = comb(n, k) - (comb(n, k - 1) if k else 0)
+        ans[length] = multiplicity * (a * b)**k * sum(
+            (a**(length - s) * b**s for s in range(length + 1)), F(0)
+        )
+    assert sum(ans.values(), F(0)) == 1
+    return ans
+
+
+def g_exact(q, length):
+    zz = z(q, length)
+    t = F(length + 1) / zz
+    purity_effect = z(q*q, length) / zz
+    diagonal_bound = t * z(q, 2 * length) / (2 * length + 1)
+    return t, purity_effect - diagonal_bound
+
+
+def posterior_radius_exact(q, length):
+    if length == 0:
+        return F(0)
+    j = F(length, 2)
+    moment = sum(((j-k)*q**k for k in range(length+1)), F(0))/z(q,length)
+    assert 0 &lt;= moment &lt;= j
+    return moment/(j+1)
+
+
+def schur_float(n, r):
+    &quot;&quot;&quot;Use the binomial form; n up to 65536 only, one light CPU process.&quot;&quot;&quot;
+    a, b = (1 + r) / 2, (1 - r) / 2
+    beta = log(a / b)
+    ans = {}
+    for length in range(n % 2, n + 1, 2):
+        k = (n - length) // 2
+        lp = (lgamma(n+1) - lgamma(k+1) - lgamma(n-k+1)
+              + (n-k)*log(a) + k*log(b))
+        prefactor = 2*(length+1)/(n+length+2) * a/r
+        ans[length] = prefactor * (-expm1(-beta*(length+1))) * exp(lp)
+    mass = sum(ans.values())
+    assert abs(mass-1) &lt; 2e-9, (n, r, mass)
+    return {length: p/mass for length, p in ans.items()}
+
+
+def g_float(q, length):
+    beta = -log(q)
+    denominator = -expm1(-beta*(length+1))
+    t = (length+1)*(1-q)/denominator
+    purity_effect = (1+exp(-beta*(length+1)))/(1+q)
+    diagonal_bound = ((length+1)/(2*length+1)
+                      * (-expm1(-beta*(2*length+1)))/denominator)
+    return t, purity_effect-diagonal_bound
+
+
+def posterior_radius_float(q, length):
+    if length == 0:
+        return 0.0
+    beta = -log(q)
+    occupied = q/(1-q)-(length+1)*exp(-beta*(length+1))/(-expm1(-beta*(length+1)))
+    return (length/2-occupied)/(length/2+1)
+
+
+def normal_tail(x):
+    return erfc(x/sqrt(2))/2
+
+
+def critical_tail(c):
+    return 3*exp(4*c*c)*normal_tail(3*c)-normal_tail(c)
+
+
+def run():
+    fixtures = 0
+    max_bound_violation = 0.0
+    rank_fixtures = 0
+    proper_fixtures = 0
+    mlr_fixtures = 0
+    for n in range(1, 19):
+        for r in (F(1, 8), F(1, 4), F(1, 2)):
+            probs = schur_exact(n, r)
+            q = (1-r)/(1+r)
+            aa = sum((p*q**(length+1) for length,p in probs.items()), F(0))
+            kap = n*float(r)**2
+            lower = exp(-(8/3)*(kap+sqrt(3*kap)+float(r)))
+            upper = min(1.0, 2*exp(-kap/8))
+            assert lower &lt;= float(aa)+1e-14 &lt;= upper+1e-14
+            fixtures += 1
+            for length in probs:
+                tt, gg = g_exact(q, length)
+                aa_l = posterior_radius_exact(q, length)
+                assert gg &gt;= 0
+                assert gg &gt;= r/2-F(1, 2*(2*length+1))
+                assert tt &gt;= 1
+                assert tt*z(q,2*length)/(2*length+1) &lt;= 1
+                for output_length in range(0, 11):
+                    aa_k = posterior_radius_exact(q, output_length)
+                    assert aa_k*aa_l-aa_k*aa_k/2 &lt;= aa_l*aa_l/2
+                    proper_fixtures += 1
+                    total = length+output_length
+                    biggest = z(q,total)/((total+1)*z(q,length))
+                    for spin in range(abs(length-output_length), total+1, 2):
+                        eigen = q**((total-spin)//2)*z(q,spin)/((spin+1)*z(q,length))
+                        assert eigen &lt;= biggest
+                for keep in range(1, length+2):
+                    omitted = (q**keep-q**(length+1))/(1-q**(length+1))
+                    direct = sum((q**k/z(q,length) for k in range(keep,length+1)), F(0))
+                    assert omitted == direct
+                    rank_fixtures += 1
+            radius_max = max(posterior_radius_exact(q,length) for length in probs)
+            sharp_score = sum((p*posterior_radius_exact(q,length)**2/length
+                               for length,p in probs.items() if length),F(0))/radius_max
+            if n == 1:
+                assert sharp_score == r/3
+
+    for n in range(1,19):
+        radii = (F(0),F(1,16),F(1,8),F(1,4),F(1,2))
+        laws = [schur_exact(n,r) for r in radii]
+        lengths = sorted(laws[0])
+        for low,high in zip(laws,laws[1:]):
+            ratios = [high[length]/low[length] for length in lengths]
+            assert all(x&lt;=y for x,y in zip(ratios,ratios[1:]))
+            for cutoff in lengths:
+                assert sum(high[length] for length in lengths if length&gt;cutoff) &gt;= sum(
+                    low[length] for length in lengths if length&gt;cutoff)
+                mlr_fixtures += 1
+
+    critical = []
+    for c in (0.5, 1.0, 2.0, 3.0):
+        limiting = critical_tail(c)
+        assert limiting &gt; 0
+        for n in (256, 1024, 4096, 16384, 65536):
+            r = c/sqrt(n)
+            q = (1-r)/(1+r)
+            beta = -log(q)
+            probs = schur_float(n,r)
+            aa = sum(p*exp(-beta*(length+1)) for length,p in probs.items())
+            cutoff = min(n, int(n*r+2*sqrt(n*log(1/r)))+1)
+            retained = [(length,p) for length,p in probs.items() if length&lt;=cutoff]
+            tail = sum(p for length,p in probs.items() if length&gt;cutoff)
+            normalization = max(g_float(q,length)[0] for length,p in retained)
+            numerator = sum(p*g_float(q,length)[0]*g_float(q,length)[1]
+                            for length,p in retained)
+            bound = max(0.0, (2/3)*(numerator/normalization-tail))
+            radii = {length:posterior_radius_float(q,length) for length in probs}
+            sharp_bound = sum(p*radii[length]**2/length for length,p in probs.items() if length)
+            sharp_bound /= max(radii.values())
+            assert sharp_bound &gt; 0
+            critical.append({&quot;n&quot;:n,&quot;c&quot;:c,&quot;r&quot;:r,&quot;A_n&quot;:aa,&quot;A_limit&quot;:limiting,
+                             &quot;canonical_tail_difference&quot;:aa-limiting,
+                             &quot;cutoff&quot;:cutoff,&quot;omitted_sector_mass&quot;:tail,
+                             &quot;master_EB_error_lower&quot;:bound,
+                             &quot;bound_over_r&quot;:bound/r,
+                             &quot;bound_over_r_div_sqrt_log&quot;:bound*sqrt(log(1/r))/r,
+                             &quot;sharp_proper_score_EB_lower&quot;:sharp_bound,
+                             &quot;sharp_bound_over_r&quot;:sharp_bound/r})
+
+    result = {&quot;status&quot;:&quot;FINITE-EVIDENCE only; scalar identities and asymptotics&quot;,
+              &quot;exact_schur_fixtures&quot;:fixtures,&quot;exact_Fock_cutoff_fixtures&quot;:rank_fixtures,
+              &quot;exact_proper_score_fixtures&quot;:proper_fixtures,
+              &quot;exact_radius_MLR_tail_fixtures&quot;:mlr_fixtures,
+              &quot;single_qubit_exact_EB_bound&quot;:&quot;r/3, passed&quot;,
+              &quot;exact_twirl_eigenvalue_order&quot;:&quot;passed&quot;,
+              &quot;exact_master_scalar_inequalities&quot;:&quot;passed&quot;,
+              &quot;critical_fixtures&quot;:critical}
+    destination = Path(__file__).with_name(&#x27;precision_checks.json&#x27;)
+    destination.write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({&quot;exact_schur_fixtures&quot;:fixtures,
+                      &quot;exact_Fock_cutoff_fixtures&quot;:rank_fixtures,
+                      &quot;exact_proper_score_fixtures&quot;:proper_fixtures,
+                      &quot;exact_radius_MLR_tail_fixtures&quot;:mlr_fixtures,
+                      &quot;critical_fixtures&quot;:len(critical),&quot;output&quot;:str(destination)},indent=2))
+
+
+if __name__ == &#x27;__main__&#x27;:
+    run()
+</pre><p><a href="../assets/ec0d85ae941fdcc6c71abd614d7d66d025f4bb45dae872f2614c919e17393a1d.py">Exact original</a></p></html>

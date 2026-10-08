@@ -1,0 +1,150 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/algebra_complexity/cycle3/permanent_invariant/evidence/check_hessian_ceiling.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/algebra_complexity/cycle3/permanent_invariant/evidence/check_hessian_ceiling.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact small checks for the zero-Hessian-rank permanent audit.
+
+This is finite arithmetic evidence, not a proof of the uniform formulas in
+RESULT.txt. All ranks below are computed over Q by exact Gaussian elimination.
+&quot;&quot;&quot;
+from fractions import Fraction as Q
+import json
+
+
+def permanent(a):
+    n = len(a)
+    if n == 0:
+        return Q(1)
+    dp = [Q(0)] * (1 &lt;&lt; n)
+    dp[0] = Q(1)
+    for mask in range(1 &lt;&lt; n):
+        i = mask.bit_count()
+        if i == n or not dp[mask]:
+            continue
+        for j in range(n):
+            if not (mask &gt;&gt; j) &amp; 1:
+                dp[mask | (1 &lt;&lt; j)] += dp[mask] * a[i][j]
+    return dp[-1]
+
+
+def exact_rank(matrix):
+    a = [[Q(x) for x in row] for row in matrix]
+    if not a:
+        return 0
+    rows, cols = len(a), len(a[0])
+    rank = 0
+    for col in range(cols):
+        pivot = next((i for i in range(rank, rows) if a[i][col]), None)
+        if pivot is None:
+            continue
+        a[rank], a[pivot] = a[pivot], a[rank]
+        z = a[rank][col]
+        a[rank] = [x / z for x in a[rank]]
+        for i in range(rows):
+            if i != rank and a[i][col]:
+                z = a[i][col]
+                a[i] = [x - z * y for x, y in zip(a[i], a[rank])]
+        rank += 1
+        if rank == rows:
+            break
+    return rank
+
+
+def permanent_hessian_at(a):
+    n = len(a)
+    h = [[Q(0) for _ in range(n * n)] for _ in range(n * n)]
+    for i in range(n):
+        for j in range(n):
+            u = i * n + j
+            for k in range(n):
+                for ell in range(n):
+                    v = k * n + ell
+                    if i == k or j == ell:
+                        continue
+                    rows = [x for x in range(n) if x not in (i, k)]
+                    cols = [x for x in range(n) if x not in (j, ell)]
+                    minor = [[a[x][y] for y in cols] for x in rows]
+                    h[u][v] = permanent(minor)
+    return h
+
+
+def det_hessian_at_identity_rank(r):
+    # D^2 det(I)[E_ij,E_kl] = tr(E_ij)tr(E_kl)-tr(E_ij E_kl).
+    h = [[0] * (r * r) for _ in range(r * r)]
+    for i in range(r):
+        for j in range(r):
+            u = i * r + j
+            for k in range(r):
+                for ell in range(r):
+                    v = k * r + ell
+                    h[u][v] = int(i == j and k == ell) - int(j == k and i == ell)
+    return exact_rank(h)
+
+
+def det_zero_hessian_rank_r_minus_1(r):
+    # Hessian of the quadratic Taylor term z_rr*sum_{i&lt;r}z_ii-
+    # sum_{i&lt;r}z_ir*z_ri at diag(I_{r-1},0).
+    h = [[0] * (r * r) for _ in range(r * r)]
+    last = (r - 1) * r + (r - 1)
+    for i in range(r - 1):
+        diagonal = i * r + i
+        h[last][diagonal] = h[diagonal][last] = 1
+        upper = i * r + (r - 1)
+        lower = (r - 1) * r + i
+        h[upper][lower] = h[lower][upper] = -1
+    return exact_rank(h)
+
+
+def det_zero_hessian_rank_r_minus_2(r):
+    # The quadratic Taylor term is the determinant on the bottom 2x2 block.
+    h = [[0] * (r * r) for _ in range(r * r)]
+    i, j = r - 2, r - 1
+    a, b, c, d = i * r + i, i * r + j, j * r + i, j * r + j
+    h[a][d] = h[d][a] = 1
+    h[b][c] = h[c][b] = -1
+    return exact_rank(h)
+
+
+def main():
+    permanent_cases = []
+    for n in range(2, 9):
+        a = [[Q(1) for _ in range(n)] for _ in range(n)]
+        a[0][n - 1] = -(n - 1)
+        h = permanent_hessian_at(a)
+        permanent_cases.append({
+            &quot;order&quot;: n,
+            &quot;witness_permanent&quot;: str(permanent(a)),
+            &quot;hessian_rank_over_Q&quot;: exact_rank(h),
+            &quot;variable_count&quot;: n * n,
+            &quot;full_rank&quot;: exact_rank(h) == n * n,
+        })
+
+    determinant_cases = []
+    for r in range(2, 9):
+        rank_at_corank_one = det_zero_hessian_rank_r_minus_1(r)
+        rank_at_corank_two = det_zero_hessian_rank_r_minus_2(r)
+        rank_at_identity = det_hessian_at_identity_rank(r)
+        determinant_cases.append({
+            &quot;size&quot;: r,
+            &quot;rank_at_zero_corank_1&quot;: rank_at_corank_one,
+            &quot;bound_2r&quot;: 2 * r,
+            &quot;rank_at_zero_corank_2&quot;: rank_at_corank_two,
+            &quot;rank_at_nonzero_identity&quot;: rank_at_identity,
+            &quot;variable_count&quot;: r * r,
+            &quot;checks_pass&quot;: rank_at_corank_one == 2 * r
+                and rank_at_corank_two == 4
+                and rank_at_identity == r * r,
+        })
+
+    result = {
+        &quot;status&quot;: &quot;PASS&quot; if all(c[&quot;full_rank&quot;] for c in permanent_cases)
+            and all(c[&quot;checks_pass&quot;] for c in determinant_cases) else &quot;FAIL&quot;,
+        &quot;arithmetic&quot;: &quot;exact Fraction Gaussian elimination over Q&quot;,
+        &quot;permanent_witness&quot;: &quot;first row (1,...,1,-(m-1)); all remaining rows all ones&quot;,
+        &quot;permanent_cases&quot;: permanent_cases,
+        &quot;determinant_cases&quot;: determinant_cases,
+        &quot;scope&quot;: &quot;Finite exact checks only; the uniform Hessian identities are proved in RESULT.txt.&quot;,
+    }
+    print(json.dumps(result, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/066069f399eb86ac41f8d3df571edfef8868477c699f8bd8cfeddf464ca66293.py">Exact original</a></p></html>

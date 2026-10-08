@@ -1,0 +1,66 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/materials_energy/disorder_homogenization/scripts/check_stripe_coupon_bound.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/materials_energy/disorder_homogenization/scripts/check_stripe_coupon_bound.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exhaustive finite-pixel check of the laminate coupon-law calculation.
+
+This checks one discrete analogue only; it is not a proof of the continuum
+homogenization formula or the general total-variation theorem.
+&quot;&quot;&quot;
+
+from collections import Counter
+from fractions import Fraction
+import json
+
+
+def patch_law(period: int, stripe_width: int, coupon_width: int, vertical: bool):
+    law = Counter()
+    for phase in range(period):
+        patch = []
+        for y in range(coupon_width):
+            row = []
+            for x in range(coupon_width):
+                coordinate = x if vertical else y
+                row.append((coordinate + phase) % period &lt; stripe_width)
+            patch.append(tuple(row))
+        law[tuple(patch)] += Fraction(1, period)
+    return law
+
+
+def total_variation(p, q):
+    keys = set(p) | set(q)
+    return sum(abs(p.get(key, 0) - q.get(key, 0)) for key in keys) / 2
+
+
+def main():
+    cases = []
+    for stripe_width, coupon_width in [(6, 1), (7, 3), (11, 5), (16, 8)]:
+        period = 2 * stripe_width
+        vertical = patch_law(period, stripe_width, coupon_width, True)
+        horizontal = patch_law(period, stripe_width, coupon_width, False)
+        tv = total_variation(vertical, horizontal)
+        bound = Fraction(coupon_width - 1, stripe_width)
+        assert tv == bound, (stripe_width, coupon_width, tv, bound)
+        cases.append({
+            &quot;stripe_width_L&quot;: stripe_width,
+            &quot;coupon_width_w&quot;: coupon_width,
+            &quot;period&quot;: period,
+            &quot;enumerated_patch_states_vertical&quot;: len(vertical),
+            &quot;enumerated_patch_states_horizontal&quot;: len(horizontal),
+            &quot;exact_discrete_TV&quot;: str(tv),
+            &quot;bound_(w-1)/L&quot;: str(bound),
+        })
+
+    K = 100
+    H = Fraction(2 * K, K + 1)
+    M = Fraction(K + 1, 2)
+    cases_summary = {
+        &quot;contrast_K&quot;: K,
+        &quot;harmonic_mean_H&quot;: str(H),
+        &quot;arithmetic_mean_M&quot;: str(M),
+        &quot;directional_gap&quot;: str(M - H),
+        &quot;directional_ratio&quot;: str(M / H),
+    }
+    print(json.dumps({&quot;scope&quot;: &quot;finite discrete phase enumeration only&quot;, &quot;cases&quot;: cases, &quot;K100_laminate_arithmetic&quot;: cases_summary}, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/87bb36d6947e9047b201aaf30ebc8481476b863813d99ef27d6660ea78283b5b.py">Exact original</a></p></html>

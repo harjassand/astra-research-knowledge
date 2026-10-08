@@ -1,0 +1,66 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/quantum_physics/fresh_mechanism/finite_channel_check.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/quantum_physics/fresh_mechanism/finite_channel_check.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Finite precision Choi-rank diagnostic for transverse-noise sensing channel.
+
+This is a numerical cross-check of the trajectory-span proof in REPORT.md,
+not a proof of full rank or a verification of the cited papers.
+&quot;&quot;&quot;
+import mpmath as mp
+
+
+def kron(a, b):
+    out = mp.matrix(a.rows * b.rows, a.cols * b.cols)
+    for i in range(a.rows):
+        for j in range(a.cols):
+            for k in range(b.rows):
+                for ell in range(b.cols):
+                    out[i * b.rows + k, j * b.cols + ell] = a[i, j] * b[k, ell]
+    return out
+
+
+def channel_choi(omega, gamma, tau, dps=70):
+    mp.mp.dps = dps
+    I = mp.eye(2)
+    X = mp.matrix([[0, 1], [1, 0]])
+    Z = mp.matrix([[1, 0], [0, -1]])
+    eye4 = mp.eye(4)
+    # vec(A rho B) = (B^T kron A) vec(rho), column-major convention.
+    L = (-1j * omega) * (kron(I, Z) - kron(Z.T, I))
+    L += gamma * (kron(X.T, X) - eye4)
+    S = mp.expm(tau * L)
+
+    J = mp.matrix(4, 4)
+    for i in range(2):
+        for j in range(2):
+            # vec(|i&gt;&lt;j|) has its one at row i + 2*j.
+            e = mp.matrix(4, 1)
+            e[i + 2 * j] = 1
+            outvec = S * e
+            out = mp.matrix(2, 2)
+            for k in range(2):
+                for ell in range(2):
+                    out[k, ell] = outvec[k + 2 * ell]
+            for k in range(2):
+                for ell in range(2):
+                    J[2 * i + k, 2 * j + ell] = out[k, ell]
+    J = (J + J.H) / 2
+    return J
+
+
+if __name__ == &quot;__main__&quot;:
+    mp.mp.dps = 80
+    gamma, tau = mp.mpf(&quot;0.1&quot;), mp.mpf(&quot;0.1&quot;)
+    for omega in (mp.mpf(&quot;3&quot;), mp.mpf(&quot;0.1&quot;), mp.mpf(&quot;0&quot;)):
+        J = channel_choi(omega, gamma, tau)
+        # Realification of a Hermitian matrix duplicates each eigenvalue.
+        R = mp.matrix(8, 8)
+        for i in range(4):
+            for j in range(4):
+                R[i, j] = mp.re(J[i, j])
+                R[i, j + 4] = -mp.im(J[i, j])
+                R[i + 4, j] = mp.im(J[i, j])
+                R[i + 4, j + 4] = mp.re(J[i, j])
+        vals = mp.eigsy(R, eigvals_only=True)
+        vals = vals[::2]
+        print(f&quot;omega={omega}, gamma={gamma}, tau={tau}&quot;)
+        print(&quot;normalized-Choi eigenvalues:&quot;)
+        print(&quot; &quot;.join(mp.nstr(x / 2, 15) for x in vals))
+</pre><p><a href="../assets/56fa0828e5cc71331437ad3421f1f5dcc4457b80d42b37e27890cdc7f4aeb985.py">Exact original</a></p></html>

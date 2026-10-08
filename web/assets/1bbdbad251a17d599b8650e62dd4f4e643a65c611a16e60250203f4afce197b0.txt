@@ -1,0 +1,188 @@
+CYCLE 3 — FULL-FUTURE LOSS GATE
+Status: proved chain-rule gate; internally verified counterexamples; novelty and independent proof review not assessed.
+
+Scope
+=====
+
+This note studies a rank-free causal predictor learned from one raw, noisy observation path. It does not use a finite-state alias/witness theorem. The target loss is logarithmic predictive loss, so the one-step task risk is stationary expected conditional KL. The main positive statement is exact: under stationary initialization, H-step conditional joint KL is H times the one-step risk, and discounted cumulative conditional KL is the one-step risk divided by 1-gamma. A fixed short-horizon bound is not uniform in gamma, and stationary average risk does not certify a rare chosen history. Startup/filter mismatch and a same-data full-path baseline are charged explicitly.
+
+Definitions and interface
+=========================
+
+Let P be a stationary process on finite alphabet A, with two-sided history sigma-fields F_t=sigma(Y_s:s<=t). For a fixed training path D, freeze the learned predictor q_D. It may be a finite-state transducer with internal state S_t updated causally from observed symbols; no rank, hidden-state label, or conditional-query oracle is supplied. Put C_t=F_t joined with sigma(S_t). If S_t is a deterministic function of the observed past, C_t=F_t; otherwise we explicitly include its initialization in the conditioning context. Write
+
+  p_t(a) = P(Y_(t+1)=a | F_t)
+  q_(D,t)(a) = q_D(a | C_t).
+
+The stationary one-step risk is
+
+  r(D) = E_P [ KL(p_0 || q_(D,0)) ],
+
+where the raw history and predictor filter are jointly initialized from their stationary law under P. Predictor randomization, if any, is independent of future observations conditional on F_t, so conditioning on C_t does not alter p_t. For q_D(a|...) >= eta > 0, each per-step KL lies in [0,B], with B=log(1/eta). In the HMM specialization below, if every emission probability is at least mu, then p_t(a)>=mu for every a and every observed past.
+
+The predictor induces a proper conditional law on every finite continuation:
+
+  Q_D(y_1...y_H | C_0) = product_(k=1)^H q_(D,k-1)(y_k),
+
+where the filter state in each factor is advanced using the displayed prefix y_1...y_(k-1). Thus q is evaluated on the actual candidate prefix when computing a likelihood; no hidden state is exposed.
+
+Theorem 1: stationary risk transfers exactly
+===========================================
+
+For every H>=1,
+
+  E_P [ KL( P(Y_1...Y_H | C_0) || Q_D(Y_1...Y_H | C_0) ) ] = H r(D).       (1)
+
+For gamma in [0,1), define discounted future predictive KL by the sum of the expected local conditional KLs,
+
+  R_gamma(D) = sum_(k>=1) gamma^(k-1)
+                E_P [ KL(p_(k-1) || q_(D,k-1)) ].
+
+Then
+
+  R_gamma(D) = r(D)/(1-gamma),                                           (2)
+
+and the first H discounted terms and omitted tail are exactly
+
+  R_gamma,<=H = r(D)(1-gamma^H)/(1-gamma),
+  R_gamma,>H  = r(D) gamma^H/(1-gamma).                                 (3)
+
+These identities are conditional on the training path D: after D is fixed, the same predictor is evaluated on a stationary population path, and the predictor's initial filter is stationary. The predictor can have arbitrary finite or infinite internal representation; no rank enters. The proof allows arbitrary history dependence in P and q.
+
+Proof. By the conditional chain rule for relative entropy,
+
+  KL(P(Y_1...Y_H|C_0) || Q_D(Y_1...Y_H|C_0))
+    = sum_(k=1)^H E_P[ KL(p_(k-1) || q_(D,k-1)) | C_0 ].
+
+Taking expectation over C_0 gives a sum of H unconditional one-step risks. Stationarity of P and shift-equivariant stationary initialization of the predictor filter make every summand r(D); this proves (1). The same stationarity makes the kth summand in R_gamma equal r(D); summing the geometric series proves (2) and (3). This is a finite-block KL identity, not a claim that the unweighted infinite-path KL is finite: if r(D)>0, the H-block KL in (1) diverges linearly as H grows. QED.
+
+Consequences. To guarantee discounted loss at most epsilon it is necessary and sufficient, under these assumptions, that r(D)<=epsilon(1-gamma). A certificate with error tolerance independent of gamma cannot establish this. If a finite H-block certificate reports the actual stationary joint KL K_H, then r=K_H/H and (2) converts it exactly; if it only certifies K_H<=epsilon_H, the resulting bound is epsilon_H/[H(1-gamma)]. The horizon required to make the discounted tail at most zeta is the least H with gamma^H r/(1-gamma)<=zeta. For gamma close to one this is order (1/(1-gamma)) log(r/[zeta(1-gamma)]) when the logarithm is positive.
+
+Filter initialization and same-path evaluation
+==============================================
+
+The stationary initialization in Theorem 1 is a real condition. It can be met by initializing q's filter from a two-sided stationary history in the population definition, or operationally by feeding it a sufficiently long observed burn-in and charging that many raw symbols. For a predictor whose state is a deterministic function of the last b raw symbols, b burn-in symbols determine its state exactly. For a recurrent filter, the burn-in must include a certified filter-forgetting bound.
+
+Here is the exact correction for a nonstationary start. Let Xi_k be the risk-relevant context at prediction step k (including the true conditional law, raw history suffix, and learner filter), let nu_* be its stationary law, and let nu_k^init be its law under the deployed initialization. Put Delta_k=TV(nu_k^init,nu_*). Since g(Xi)=KL(p||q) is in [0,B],
+
+  E_init[KL_k] <= r(D) + B Delta_k.
+
+Consequently,
+
+  K_H^init <= H r(D) + B sum_(k=0)^(H-1) Delta_k,                       (4)
+  R_gamma^init <= r(D)/(1-gamma)
+                   + B sum_(k>=0) gamma^k Delta_k.                     (5)
+
+If a supplied or verified forgetting certificate gives Delta_k<=C theta^k, theta<1, the startup surcharge is at most BC/(1-gamma theta). This explicitly charges filter initialization; it is not silently absorbed into stationary risk. Hidden-chain mixing alone does not automatically certify forgetting of an arbitrary learned filter or of the true Bayesian filter after conditioning on a long observation history. If the needed Delta_k or filter-stability constant is unknown, (4)–(5), rather than a guessed mixing substitution, are the valid gate.
+
+For a stationary m-state HMM with row transition matrix T satisfying T_ij>=tau, the Dobrushin coefficient is
+
+  delta(T) = max_(i,j) TV(T(i,.),T(j,.)) <= 1-m tau.
+
+This follows because every pair of rows has overlap at least m tau. Hence hidden-state distributions contract by delta(T)^g after g transitions, and a raw future block after a gap of g symbols is within delta(T)^g in TV of its stationary law. A training path of n symbols followed by a gap g and a burn-in b therefore costs n+g+b raw symbols before scored predictions. The gap controls hidden-state startup; b and the separate Delta_k bound control filter/history startup. No claim is made that delta(T) alone controls all conditional filters.
+
+If the same path is used immediately for both training and evaluation, q_D is correlated with the evaluation history. Then (1) is not an identity with a single unconditional r(D); the exact chain-rule quantity is the sum of the D- and time-dependent conditional risks:
+
+  KL(P(Y_1...Y_H|D) || Q_D(Y_1...Y_H|D))
+    = sum_(k=1)^H E[ KL(p_(k-1)||q_(D,k-1)) | D ].
+
+Replacing these terms by H r(D) requires an independent stationary continuation, a mixing gap plus filter-forgetting correction, or a uniform-in-history guarantee. This is why training on one path and then reporting only its same-path fit is not a population certificate.
+
+Likelihood floors, rare histories, state and data costs
+=======================================================
+
+Assume the true HMM has m states, alphabet size A, transition floor tau, and emission floor mu. Its hidden-chain contraction is at most 1-m tau. The output process is stationary after stationary hidden initialization. Every length-L output word w has
+
+  P(Y_(t-L+1)...Y_t=w) >= mu^L,                                       (6)
+
+because each conditional symbol probability is a mixture of emission probabilities all at least mu. This is a support floor, not a claim that histories are equally likely. If q has answer floor eta, then each local KL is at most B=log(1/eta). The state and parameter costs are explicit: an unrestricted m-state HMM with an arbitrary initial law has m^2+mA-m-1 free probabilities (transition rows, emission rows, initial law); rational parameters with B0-bit numerators/denominators need O(B0(m^2+mA)) description bits. The theorem itself does not require the learner to know m or a predictive rank.
+
+Let W be a length-L history and let K_H(W) be the conditional expected H-step joint KL given W, under stationary initialization of the remaining context/filter. By (1), E[K_H(W)]=H r(D), and K_H(W)>=0. Therefore for any history w of positive mass,
+
+  K_H(w) <= H r(D)/P(W=w) <= H r(D) mu^(-L).                          (7)
+
+Similarly, for conditional discounted risk R_gamma(W),
+
+  R_gamma(w) <= r(D)/((1-gamma)P(W=w))
+               <= r(D) mu^(-L)/(1-gamma).                             (8)
+
+These are the precise rare-history costs. Average risk can be tiny while a chosen history has constant loss; a uniform-history claim needs the factor mu^(-L), which is exponential in history length. Without a likelihood floor, a zero-probability or arbitrarily rare context has no finite uniform guarantee from stationary average risk.
+
+One-path observation budget and the same-data full-path baseline
+================================================================
+
+Training data are one raw stationary path D=Y_1...Y_n, with n observed symbols and one start. Any rank-free learner produces q_D from these same n symbols. The same-data full-path baseline is the best predictor in its stated model class fit to all of D; for empirical log loss it is the full-path maximum-likelihood/prequential fit, not a shorter-prefix or representation-supplied comparator. It sees exactly the same observations and starts. For a general HMM class, population comparison additionally needs a complexity/estimation theorem; none follows from the chain rule alone.
+
+The one-state example below gives an exact full-path baseline. More generally, for an HMM with transition floor tau, a path gap g gives hidden mixing error at most (1-m tau)^g; empirical concentration for history-dependent scores also depends on the history length, likelihood floor, predictor complexity, and filter forgetting. The relevant path cost is therefore n symbols for acquisition, plus any explicitly charged gap/burn-in, not an uncharged conditional sample.
+
+Counterexample A: no fixed short horizon controls discounted future uniformly
+==============================================================================
+
+For delta in (0,1/4], let the true source be the one-hidden-state HMM P=Bernoulli(1/2), and let the one-state predictor q_delta=Bernoulli(1/2+delta). This is a raw noisy process: each observed bit is a fresh emission. The state cap is one for both source and predictor, alphabet size is two, hidden transition is [1] (Dobrushin coefficient zero, mixing time zero), true symbol floor is 1/2, and q's output floor is at least 1/4. The only history has probability one, so no rare-history or filter-start issue is involved. If delta=2^(-B0), the predictor description is B0+O(1) bits.
+
+Here q_delta is a possible frozen output of the rank-free learner on its n-symbol training path; the statement is a certificate counterexample, not a lower bound saying every learner must output q_delta. The same-data full-path MLE below shows the available raw-data comparator.
+
+The one-step risk is exactly
+
+  d(delta) = KL(Ber(1/2)||Ber(1/2+delta))
+           = -(1/2) log(1-4 delta^2).
+
+Thus the H-step conditional joint KL is H d(delta). Fix any finite certificate horizon H and tolerance epsilon>0. Choose B0 sufficiently large that H d(delta)<=epsilon. Now take the rational discount gamma=1-2 delta^2. Since
+
+  2 delta^2 <= d(delta) <= 2 delta^2/(1-4 delta^2),
+
+the discounted infinite-future risk is
+
+  d(delta)/(1-gamma) = d(delta)/(2 delta^2) in [1, 1/(1-4 delta^2)].
+
+It stays at least one while the fixed-H certificate tends to zero. Therefore no bound depending only on a fixed H and a fixed short-horizon tolerance can control discounted future loss uniformly over gamma approaching one, even for a one-state, perfectly mixing source with fixed likelihood floors. This does not contradict (2): the necessary factor 1/(1-gamma) is exactly the missing scale. A certificate that returns r numerically and also supplies gamma can apply (2); a short-H threshold treated as a horizon-free guarantee cannot.
+
+Full-path baseline and sample cost for Counterexample A. Given the same n-bit path, the categorical MLE is p_hat=clip(mean(Y_1...Y_n),[1/4,3/4]); it is the full-data maximum-likelihood Bernoulli predictor. On the true fair source, chi-square domination and q(1-q)>=3/16 give
+
+  E KL(Ber(1/2)||Ber(p_hat))
+    <= (16/3) E[(p_hat-1/2)^2] <= 4/(3n).
+
+Its expected discounted risk is at most 4/[3n(1-gamma)], using no extra samples. At gamma=1-2 delta^2, n>=2/[3 epsilon delta^2] suffices for expected discounted risk <=epsilon. Conversely, to distinguish the two raw-path models Ber(1/2) and Ber(1/2+delta) with each error <=alpha, the full n-symbol transcript has KL n d(delta), so data processing implies
+
+  n >= kl(1-alpha||alpha)/d(delta).
+
+Hoeffding thresholding gives n>=2 delta^(-2) log(1/alpha) as a sufficient upper bound for one-sided error alpha. Thus, at fixed confidence and discounted target, the same-data full-path baseline uses O(delta^(-2)) symbols and model identification has an Omega(delta^(-2)) lower bound; the obstruction is the horizon/discount conversion, not lack of a longer observation alphabet or a hidden-state representation.
+
+Counterexample B: a rare history defeats a uniform-history certificate
+=======================================================================
+
+Let the true source again be one-state iid fair bits, with fixed emission floor 1/2 and zero mixing time. Fix a binary word w of length L. A causal finite-state predictor stores the longest suffix of past bits that is a prefix of w (a prefix automaton with at most L+1 states). It predicts the true Bernoulli(1/2) law at every state except the state corresponding to seeing w as the last L bits; there it predicts Bernoulli(3/4). The predictor answer floor is 1/4. The history state has stationary mass exactly 2^(-L). Its one-step stationary risk is
+
+  r = 2^(-L) d0,       d0=KL(Ber(1/2)||Ber(3/4))=(1/2)log(4/3).
+
+Every stationary H-step average joint KL is H 2^(-L) d0, which goes to zero for fixed H as L grows. Yet conditioned on history w the next-step KL is exactly d0, independent of L. This witnesses the factor P(w)^(-1) in (7) with a hidden-state cap of one, predictor-state cap L+1, fixed true likelihood floor, and predictor likelihood floor 1/4. The predictor rule has O(L) bits (the word and the finite prefix automaton).
+
+The same raw path cannot cheaply evaluate this history-specific failure when it is absent from the sample. In n iid fair bits there are at most n-L+1 candidate starting positions, so by the union bound
+
+  P(training path contains w) <= (n-L+1) 2^(-L).
+
+For probability at least 1/2 of even one occurrence, this implies the necessary budget n>=2^(L-1)+L-1. A simple sufficient budget is obtained from disjoint blocks of length L+1: each block has probability 2^(-L) of beginning with w, so M>=2^L log(1/alpha) such blocks give one hit with probability at least 1-alpha, at raw-symbol cost (L+1)M. Estimating an unknown conditional row needs additional continuation samples after hits; this note makes no stronger minimax claim for overlapping contexts. A full-path baseline has all n symbols, but no procedure can report an empirically supported conditional estimate for a context the full path never visits. This is a support cost, not a representation advantage.
+
+Claim gate and UNKNOWN
+=====================
+
+PROVED:
+- For any fixed rank-free causal predictor with a stationary filter on a stationary source, H-step expected conditional joint KL is exactly H times stationary one-step KL; discounted local KL is exactly r/(1-gamma).
+- A nonstationary filter start adds the explicit B-weighted total-variation transient (4)–(5). History dependence is handled by the KL chain rule; a chosen-history bound pays inverse history mass.
+- A fixed short-horizon tolerance has no gamma-uniform implication for discounted loss. Counterexample A has hidden state one, transition floor one, emission floor 1/2, mixing zero, and no rare history. Counterexample B isolates exponentially rare contexts at fixed source floor.
+- For the Bernoulli control, the same n-symbol full-path MLE achieves expected discounted risk O(1/[n(1-gamma)]), with matching-order raw-path testing lower bound in delta.
+
+UNKNOWN / NOT CLAIMED:
+- A uniform finite-sample guarantee for a rank-free learner trained and evaluated on the same dependent path when its filter is data-dependent; this needs a complexity, holdout/gap, or stability argument.
+- A filter-forgetting rate derived solely from hidden-chain mixing for every learned recurrent predictor and every posterior history; the theorem exposes the required Delta_k or forgetting certificate rather than assuming one.
+- Any advantage over the same-data full-path baseline for general finite-state HMMs. The chain rule transfers risk but does not acquire a representation, certify rare conditional rows, or bound computation.
+- The optimal joint dependence on hidden-state cap m, transition/emission floors, path length n, context length L, predictor state cap, and model bit length for general HMM acquisition.
+
+Primary-source audit
+====================
+
+- S. Kullback and R. A. Leibler, “On Information and Sufficiency,” Annals of Mathematical Statistics 22(1), 79–86 (1951), https://doi.org/10.1214/aoms/1177729694. Primary source for the relative-entropy framework. The conditional chain rule used in Theorem 1 is also expanded directly in the proof.
+- R. L. Dobrushin, “Central Limit Theorem for Nonstationary Markov Chains. I,” Theory of Probability and its Applications 1(1), 65–80 (1956), https://doi.org/10.1137/1101006. Primary source on contraction/mixing of Markov chains; the particular floor-to-Dobrushin inequality here is derived from row overlap.
+- W. Hoeffding, “Probability Inequalities for Sums of Bounded Random Variables,” Journal of the American Statistical Association 58(301), 13–30 (1963), https://doi.org/10.1080/01621459.1963.10500830. Primary source for the simple sample upper bound.
+
+The cited papers support standard KL and mixing/concentration context; none is cited as proving this task's combined result. The chain-rule identity, startup correction, rare-history bound, and both examples are derived in this note. No full-text theorem audit or external proof review was completed.

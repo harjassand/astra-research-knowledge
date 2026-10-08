@@ -1,0 +1,218 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c5_catalysis_energy/cycle7b_dynamic_chemistry/source_calcs.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c5_catalysis_energy/cycle7b_dynamic_chemistry/source_calcs.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Reproduce source-calibrated calculations for cycle7b.
+
+Run from any directory.  It reads the 500 K coverage row from the public
+Materials Cloud source-data archive if that archive is present beside this
+file.  Other source parameters are transcribed explicitly below; this is not a
+microkinetic solver and does not create missing barriers or measurements.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import csv
+import io
+import json
+import math
+import zipfile
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+RAW = HERE / &quot;raw&quot;
+KB_EV_K = 8.617333262145e-5
+R_J_MOL_K = 8.31446261815324
+NA = 6.02214076e23
+EV_J = 1.602176634e-19
+
+
+def source_coverages(archive: Path = RAW / &quot;Source File.zip&quot;) -&gt; tuple[float, float]:
+    &quot;&quot;&quot;Return (theta_H2*, theta_H*) from the published automated MKM output.&quot;&quot;&quot;
+    internal = (
+        &quot;Source File/Main Figures/Fig 4/Fig 4c/Automated Reactions/500/coverage.dat&quot;
+    )
+    with zipfile.ZipFile(archive) as zf:
+        raw = zf.read(internal).decode(&quot;utf-8-sig&quot;)
+    lines = raw.splitlines()
+    header = [field.strip() for field in lines[0].split(&quot;\t&quot;)]
+    rows = csv.DictReader(io.StringIO(&quot;\n&quot;.join(lines[1:])), fieldnames=header, delimiter=&quot;\t&quot;)
+    row = next(r for r in rows if float(r[&quot;Temperature&quot;]) == 500.0)
+    return float(row[&quot;H2*&quot;]), float(row[&quot;H*&quot;])
+
+
+def h2_transfer_calculation() -&gt; dict:
+    theta_h2, theta_h = source_coverages()
+    rho = theta_h2 / theta_h
+    kbt = KB_EV_K * 500.0
+    # (molecular-H2-assisted barrier, atomic-H-assisted barrier), eV at 500 K.
+    pairs = {
+        &quot;CO2_to_COOH&quot;: (0.61, 1.43),
+        &quot;CO2_to_HCOO&quot;: (0.18, 0.64),
+        &quot;HCOOH_to_H2COOH&quot;: (0.54, 0.91),
+        &quot;CH3O_to_CH3OH&quot;: (0.44, 1.06),
+    }
+    result = {}
+    for name, (barrier_h2, barrier_h) in pairs.items():
+        delta = barrier_h - barrier_h2
+        threshold = math.exp(-delta / kbt)
+        # Mean-field TST ratio, with the same substrate coverage and equal
+        # prefactors/site molecularities. A prefactor ratio multiplies this.
+        result[name] = {
+            &quot;barrier_h2_eV&quot;: barrier_h2,
+            &quot;barrier_atomic_h_eV&quot;: barrier_h,
+            &quot;delta_barrier_eV&quot;: delta,
+            &quot;coverage_ratio_h2_over_h&quot;: rho,
+            &quot;equal_prefactor_crossover_coverage_ratio&quot;: threshold,
+            &quot;molecular_to_atomic_rate_ratio&quot;: rho / threshold,
+        }
+    # A reported mean absolute error is not a per-edge confidence interval;
+    # this is just the Arrhenius amplification scale for a 0.13 eV error.
+    return {
+        &quot;temperature_K&quot;: 500.0,
+        &quot;kBT_eV&quot;: kbt,
+        &quot;theta_H2_star&quot;: theta_h2,
+        &quot;theta_H_star&quot;: theta_h,
+        &quot;theta_H2_over_theta_H&quot;: rho,
+        &quot;route_pairs&quot;: result,
+        &quot;rate_factor_for_0p13_eV_barrier_shift&quot;: math.exp(0.13 / kbt),
+        &quot;rate_ratio_factor_for_opposite_0p13_eV_errors_in_competing_barriers&quot;: math.exp(0.26 / kbt),
+        &quot;assumptions&quot;: [
+            &quot;The path-specific substrate coverage cancels.&quot;,
+            &quot;Equal transition-state prefactors and equal effective site molecularities.&quot;,
+            &quot;Published MKM coverages are model outputs, not measured coverages.&quot;,
+            &quot;Published DFT free-energy barriers are used as transcribed; no missing barrier is imputed.&quot;,
+        ],
+    }
+
+
+def dynamic_activation_calculation() -&gt; dict:
+    # The 2025 article reports 360 mL/min, 3 H2:1 CO2, 2.0 MPa, 300 C,
+    # 452 m/s gas-jet speed, and about 0.34 W kinetic power. 22.414 L/mol is
+    # used conditionally as the STP molar volume; this reproduces the reported
+    # jet power closely and is therefore a transparent basis reconstruction.
+    flow_L_min = 0.360
+    molar_volume_L_mol = 22.414
+    n_dot = flow_L_min / molar_volume_L_mol / 60.0
+    m_h2_g_mol = 2.01588
+    m_co2_g_mol = 44.0095
+    mean_molar_mass_kg_mol = (3.0 * m_h2_g_mol + m_co2_g_mol) / 4.0 / 1000.0
+    mass_dot = n_dot * mean_molar_mass_kg_mol
+    gas_speed_m_s = 452.0
+    kinetic_power_W = 0.5 * mass_dot * gas_speed_m_s**2
+
+    p_ratio = 20.0  # 2.0 MPa relative to 0.1 MPa
+    t_ambient_K = 298.15
+    compression_W = n_dot * R_J_MOL_K * t_ambient_K * math.log(p_ratio)
+    cp_h2 = 28.836  # J mol^-1 K^-1 near 298 K; ideal-gas estimate
+    cp_co2 = 37.135
+    cp_mix = (3.0 * cp_h2 + cp_co2) / 4.0
+    t_reactor_K = 573.15
+    sensible_heat_W = n_dot * cp_mix * (t_reactor_K - t_ambient_K)
+
+    methanol_mw_g_mol = 32.04186
+    dar_sty_g_h_gcat = 0.660
+    fbr_sty_g_h_gcat = 0.100
+    dar_rate_mol_s_gcat = dar_sty_g_h_gcat / methanol_mw_g_mol / 3600.0
+    fbr_rate_mol_s_gcat = fbr_sty_g_h_gcat / methanol_mw_g_mol / 3600.0
+    delta_rate = dar_rate_mol_s_gcat - fbr_rate_mol_s_gcat
+
+    # Reconstruct the source&#x27;s nanoscale impact-energy argument.
+    diameter_nm = 20.0
+    length_nm = 100.0
+    density_g_cm3 = 4.0
+    cu_mass_fraction = 0.40
+    particle_speed_m_s = 75.0
+    cu_molar_mass_g_mol = 63.546
+    particle_energy_source_eV = 1840.0
+    particle_energy_recomputed_eV = (
+        0.5
+        * (density_g_cm3 * math.pi * (diameter_nm / 2.0) ** 2 * length_nm * 1e-21 / 1000.0)
+        * particle_speed_m_s**2
+        / EV_J
+    )
+    particle_volume_cm3 = math.pi * (diameter_nm / 2.0) ** 2 * length_nm * 1e-21
+    particle_mass_g = density_g_cm3 * particle_volume_cm3
+    cu_atoms_geometry = (
+        particle_mass_g * cu_mass_fraction / cu_molar_mass_g_mol * NA
+    )
+    cu_atoms_reported = 13000.0
+    affected_fraction = 1.0 / 3.0
+    absorbed_fraction = 0.5
+    e_per_affected_source = (
+        particle_energy_source_eV * absorbed_fraction
+        / (cu_atoms_geometry * affected_fraction)
+    )
+    e_per_affected_formula = (
+        particle_energy_recomputed_eV * absorbed_fraction
+        / (cu_atoms_geometry * affected_fraction)
+    )
+    excess_state_eV_per_atom = 0.17
+    max_affected_atoms_source_energy = (
+        particle_energy_source_eV * absorbed_fraction / excess_state_eV_per_atom
+    )
+    required_affected_fraction_source_energy = (
+        max_affected_atoms_source_energy / cu_atoms_geometry
+    )
+
+    return {
+        &quot;basis&quot;: {
+            &quot;flow_mL_min&quot;: flow_L_min * 1000.0,
+            &quot;assumed_molar_volume_L_mol&quot;: molar_volume_L_mol,
+            &quot;feed_ratio_H2_CO2&quot;: &quot;3:1&quot;,
+            &quot;pressure_ratio&quot;: p_ratio,
+            &quot;temperature_in_K&quot;: t_ambient_K,
+            &quot;temperature_out_K&quot;: t_reactor_K,
+            &quot;gas_speed_m_s&quot;: gas_speed_m_s,
+        },
+        &quot;flow_and_power&quot;: {
+            &quot;molar_flow_mol_s&quot;: n_dot,
+            &quot;mean_molar_mass_kg_mol&quot;: mean_molar_mass_kg_mol,
+            &quot;mass_flow_kg_s&quot;: mass_dot,
+            &quot;kinetic_power_reconstructed_W&quot;: kinetic_power_W,
+            &quot;reported_kinetic_power_W&quot;: 0.34,
+            &quot;ideal_reversible_isothermal_compression_from_1bar_W&quot;: compression_W,
+            &quot;ideal_sensible_heating_from_298K_to_573K_W&quot;: sensible_heat_W,
+            &quot;warning&quot;: &quot;Kinetic jet power is drawn from the pressurized gas stream; do not add it again to compressor work as an independent actuator load.&quot;,
+        },
+        &quot;reported_STY_and_specific_energy_scales&quot;: {
+            &quot;DAR_methanol_rate_mol_s_gcat&quot;: dar_rate_mol_s_gcat,
+            &quot;FBR_methanol_rate_mol_s_gcat&quot;: fbr_rate_mol_s_gcat,
+            &quot;DAR_to_FBR_STY_ratio&quot;: dar_sty_g_h_gcat / fbr_sty_g_h_gcat,
+            &quot;kinetic_stream_energy_per_DAR_mol_J_mol&quot;: kinetic_power_W / dar_rate_mol_s_gcat,
+            &quot;kinetic_stream_energy_per_incremental_mol_J_mol&quot;: kinetic_power_W / delta_rate,
+            &quot;ideal_compression_work_per_DAR_mol_J_mol&quot;: compression_W / dar_rate_mol_s_gcat,
+            &quot;ideal_heating_duty_per_DAR_mol_J_mol&quot;: sensible_heat_W / dar_rate_mol_s_gcat,
+        },
+        &quot;source_particle_energy_argument&quot;: {
+            &quot;geometry_diameter_nm&quot;: diameter_nm,
+            &quot;geometry_length_nm&quot;: length_nm,
+            &quot;particle_impact_speed_m_s&quot;: particle_speed_m_s,
+            &quot;density_g_cm3&quot;: density_g_cm3,
+            &quot;cu_mass_fraction&quot;: cu_mass_fraction,
+            &quot;calculated_Cu_atoms_from_stated_geometry&quot;: cu_atoms_geometry,
+            &quot;Cu_atoms_reported_by_source&quot;: cu_atoms_reported,
+            &quot;geometry_to_reported_atom_count_ratio&quot;: cu_atoms_geometry / cu_atoms_reported,
+            &quot;source_reported_particle_kinetic_energy_eV&quot;: particle_energy_source_eV,
+            &quot;particle_kinetic_energy_from_stated_geometry_eV&quot;: particle_energy_recomputed_eV,
+            &quot;source_energy_per_affected_Cu_eV_using_geometry_count&quot;: e_per_affected_source,
+            &quot;formula_energy_per_affected_Cu_eV_using_geometry_count&quot;: e_per_affected_formula,
+            &quot;DFT_excess_energy_eV_per_Cu_atom&quot;: excess_state_eV_per_atom,
+            &quot;maximum_affected_Cu_atoms_at_half_source_energy&quot;: max_affected_atoms_source_energy,
+            &quot;maximum_affected_fraction_at_half_source_energy&quot;: required_affected_fraction_source_energy,
+            &quot;assumptions&quot;: [
+                &quot;Cylinder geometry with diameter 20 nm and length 100 nm.&quot;,
+                &quot;Density 4 g cm^-3 and 40 wt% Cu, as stated in the SI.&quot;,
+                &quot;Half of the particle kinetic energy is absorbed and one third of Cu atoms are affected, as stated in the SI.&quot;,
+                &quot;The 0.17 eV/atom DFT difference is compared as though it were a stored energetic cost; this is not a measured free energy.&quot;,
+            ],
+        },
+    }
+
+
+def main() -&gt; None:
+    print(json.dumps({
+        &quot;molecular_H2_path_test&quot;: h2_transfer_calculation(),
+        &quot;dynamic_activation_energy_audit&quot;: dynamic_activation_calculation(),
+    }, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/77ff20cdcf22845b8876adb261d7ec899d1ddef68b13938b118e877cb2d67d63.py">Exact original</a></p></html>

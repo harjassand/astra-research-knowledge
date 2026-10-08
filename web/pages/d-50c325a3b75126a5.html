@@ -1,0 +1,205 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c11_spin_uniform/obstruction/spin13_seed_star_check.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c11_spin_uniform/obstruction/spin13_seed_star_check.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Exact support-cone checks for the Spin(13) extracted star blocks.
+
+Checks the five attained seed lower support, and separately uses a valid
+full-domain canonical-EB moment outer bound to search for a strict obstruction.
+All calculations are in the reduced ordinary-tensor blocks from the extractor.
+&quot;&quot;&quot;
+from itertools import combinations, product
+from functools import reduce
+from math import gcd, comb
+from pathlib import Path
+import json
+import sympy as sp
+
+HERE=Path(__file__).parent
+STAR=json.loads((HERE/&#x27;spin13_fullstar_blocks.json&#x27;).read_text())
+SEEDS=json.loads((HERE/&#x27;spin13_pair_support_certificate.json&#x27;).read_text())[&#x27;attained_seed_moments_grades1_to6&#x27;]
+SEED_NAMES=list(SEEDS)
+SEED_V=[sp.Matrix(SEEDS[name]) for name in SEED_NAMES]
+D=64
+N=6
+TRACE=sp.Matrix(STAR[&#x27;trace_coefficients&#x27;])
+
+
+def mat(obj):
+    return sp.Matrix([[sp.Rational(x) for x in row] for row in obj])
+
+
+def primitive(q):
+    den=sp.ilcm(*[x.q for x in q])
+    vals=[int(x*den) for x in q]
+    g=reduce(gcd,(abs(x) for x in vals),0)
+    return tuple(x//g for x in vals)
+
+
+def extreme_rays(rows):
+    rays=set()
+    for inds in combinations(range(len(rows)),N-1):
+        M=sp.Matrix.vstack(*(rows[i] for i in inds))
+        if M.rank()!=N-1:
+            continue
+        ker=M.nullspace()
+        if len(ker)!=1:
+            continue
+        q=ker[0]
+        for sign in (1,-1):
+            v=sign*q
+            if all((row*v)[0]&gt;=0 for row in rows):
+                rays.add(primitive(list(v)))
+                break
+    return rays
+
+
+def support_cones(vertices):
+    out=[]
+    for i,v in enumerate(vertices):
+        rows=[sp.eye(N).row(j) for j in range(N)]
+        rows += [(v-w).T for j,w in enumerate(vertices) if j!=i]
+        out.append((i,extreme_rays(rows)))
+    return out
+
+
+def principal_minors_psd(G):
+    undec=[]; negative=[]; checked=0; cert=[]
+    for size in range(1,G.rows+1):
+        for inds in combinations(range(G.rows),size):
+            det=sp.factor(G.extract(inds,inds).det()); checked+=1
+            cert.append({&#x27;indices&#x27;:list(inds),&#x27;determinant&#x27;:str(det)})
+            if det.is_negative is True:
+                negative.append((inds,det))
+            elif det.is_nonnegative is not True:
+                undec.append((inds,det))
+    return not negative and not undec,checked,negative,undec,cert
+
+
+def witness(G,H,bound):
+    &quot;&quot;&quot;Find a small integer direction with x^T(H-bound*G)x&gt;0.&quot;&quot;&quot;
+    for radius in (1,2,3,4):
+        for vals in product(range(-radius,radius+1),repeat=G.rows):
+            if not any(vals):
+                continue
+            x=sp.Matrix(vals)
+            den=(x.T*G*x)[0]
+            num=(x.T*(H-bound*G)*x)[0]
+            if den&gt;0 and num&gt;0:
+                return {&#x27;x&#x27;:list(vals),&#x27;rayleigh&#x27;:str(sp.factor(num/den)),
+                        &#x27;numerator_over_gram&#x27;:str(sp.factor(num)),&#x27;gram_norm&#x27;:str(sp.factor(den))}
+    return None
+
+
+def seed_lower_test():
+    cones=support_cones(SEED_V)
+    union=set().union(*(r for _,r in cones))
+    records=[]; failures=[]; undecided=[]; minors=0
+    for ray in sorted(union):
+        a=sp.Matrix(ray)
+        vals=[(v.T*a)[0] for v in SEED_V]
+        sup=max(vals); winners=[SEED_NAMES[i] for i,x in enumerate(vals) if x==sup]
+        bound=(TRACE.T*a)[0]+sup
+        blocks=[]
+        for key,obj in STAR[&#x27;blocks&#x27;].items():
+            G=mat(obj[&#x27;gram&#x27;]); Bs=[mat(x) for x in obj[&#x27;bilinear_H&#x27;]]
+            H=sum((a[k]*Bs[k] for k in range(N)),sp.zeros(G.rows))
+            gap=sp.simplify(bound*G-H)
+            ok,n,bad,unk,cert=principal_minors_psd(gap); minors+=n
+            blocks.append({&#x27;block&#x27;:key,&#x27;order&#x27;:G.rows,&#x27;psd&#x27;:ok,&#x27;principal_minors&#x27;:cert})
+            if bad: failures.append({&#x27;ray&#x27;:list(ray),&#x27;winners&#x27;:winners,&#x27;block&#x27;:key,
+                                     &#x27;negative_minors&#x27;:[(list(ix),str(v)) for ix,v in bad]})
+            if unk: undecided.append({&#x27;ray&#x27;:list(ray),&#x27;winners&#x27;:winners,&#x27;block&#x27;:key,
+                                      &#x27;undecided_minors&#x27;:[(list(ix),str(v)) for ix,v in unk]})
+        records.append({&#x27;ray&#x27;:list(ray),&#x27;seed_support&#x27;:str(sup),&#x27;winner_seeds&#x27;:winners,
+                        &#x27;trace&#x27;:str((TRACE.T*a)[0]),&#x27;support_bound&#x27;:str(bound),&#x27;blocks&#x27;:blocks})
+    return {&#x27;cone_ray_counts&#x27;:[len(r) for _,r in cones],&#x27;distinct_rays&#x27;:len(union),
+            &#x27;rays&#x27;:records,&#x27;minor_checks&#x27;:minors,&#x27;failures&#x27;:failures,&#x27;undecided&#x27;:undecided}
+
+
+def outer_vertices():
+    # s1&lt;=1, s2&lt;=6, nonnegative s3..s6, total sum=63.
+    vs=[]
+    for j in range(2,6):
+        for rem,s1,s2 in ((63,0,0),(62,1,0),(57,0,6),(56,1,6)):
+            v=[0]*6; v[0]=s1; v[1]=s2; v[j]=rem; vs.append(sp.Matrix(v))
+    return vs
+
+
+def upper_test_on_seed_rays(seed_result):
+    # A single strict violation of this valid outer support is decisive. Search
+    # every attained-support ray from the preceding complete cone enumeration.
+    uv=outer_vertices(); rays=sorted({tuple(x[&#x27;ray&#x27;]) for x in seed_result[&#x27;rays&#x27;]})
+    checked=[]; violations=[]; minors=0
+    for ray in rays:
+        a=sp.Matrix(ray); scores=[(v.T*a)[0] for v in uv]; sup=max(scores)
+        bound=(TRACE.T*a)[0]+sup
+        for key,obj in STAR[&#x27;blocks&#x27;].items():
+            G=mat(obj[&#x27;gram&#x27;]); Bs=[mat(x) for x in obj[&#x27;bilinear_H&#x27;]]
+            H=sum((a[k]*Bs[k] for k in range(N)),sp.zeros(G.rows))
+            gap=sp.simplify(bound*G-H)
+            ok,n,bad,unk,_=principal_minors_psd(gap); minors+=n
+            if not ok:
+                xw=witness(G,H,bound)
+                rec={&#x27;ray&#x27;:list(ray),&#x27;outer_support&#x27;:str(sup),&#x27;trace&#x27;:str((TRACE.T*a)[0]),
+                     &#x27;support_bound&#x27;:str(bound),&#x27;block&#x27;:key,&#x27;gap_psd&#x27;:False,
+                     &#x27;negative_minors&#x27;:[(list(ix),str(v)) for ix,v in bad],
+                     &#x27;undecided_minors&#x27;:[(list(ix),str(v)) for ix,v in unk],
+                     &#x27;positive_rayleigh_witness&#x27;:xw}
+                violations.append(rec)
+            checked.append({&#x27;ray&#x27;:list(ray),&#x27;block&#x27;:key,&#x27;gap_psd&#x27;:ok})
+    return {&#x27;candidate_ray_count&#x27;:len(rays),&#x27;block_ray_checks&#x27;:len(checked),
+            &#x27;principal_minor_checks&#x27;:minors,&#x27;violations&#x27;:violations,&#x27;checks&#x27;:checked}
+
+
+def exact_axis_checks():
+    # Grade-1 exact support is 1 by Clifford anticommutation. Isotropic support
+    # is 63 by Parseval. These checks anchor the normalization of the star.
+    out={}
+    for name,a in ((&#x27;grade1&#x27;,[1,0,0,0,0,0]),(&#x27;isotropic&#x27;,[1]*6)):
+        a=sp.Matrix(a)
+        sup=sp.Integer(1) if name==&#x27;grade1&#x27; else sp.Integer(63)
+        bound=(TRACE.T*a)[0]+sup
+        bad=[]; unknown=[]; count=0
+        for key,obj in STAR[&#x27;blocks&#x27;].items():
+            G=mat(obj[&#x27;gram&#x27;]); Bs=[mat(x) for x in obj[&#x27;bilinear_H&#x27;]]
+            H=sum((a[k]*Bs[k] for k in range(N)),sp.zeros(G.rows))
+            ok,n,neg,unk,_=principal_minors_psd(sp.simplify(bound*G-H)); count+=n
+            if neg: bad.append({&#x27;block&#x27;:key,&#x27;negative&#x27;:[(list(ix),str(v)) for ix,v in neg]})
+            if unk: unknown.append({&#x27;block&#x27;:key,&#x27;undecided&#x27;:[(list(ix),str(v)) for ix,v in unk]})
+        out[name]={&#x27;support&#x27;:str(sup),&#x27;trace&#x27;:str((TRACE.T*a)[0]),&#x27;bound&#x27;:str(bound),
+                   &#x27;all_blocks_psd&#x27;:not bad and not unknown,&#x27;principal_minor_checks&#x27;:count,
+                   &#x27;failures&#x27;:bad,&#x27;undecided&#x27;:unknown}
+    return out
+
+
+def gram_checks():
+    records=[]
+    for key,obj in STAR[&#x27;blocks&#x27;].items():
+        G=mat(obj[&#x27;gram&#x27;])
+        leading=[sp.factor(G[:j,:j].det()) for j in range(1,G.rows+1)]
+        if not all(x.is_positive is True for x in leading):
+            raise AssertionError((&#x27;non-positive Gram metric&#x27;,key,leading))
+        records.append({&#x27;block&#x27;:key,&#x27;order&#x27;:G.rows,&#x27;leading_principal_minors&#x27;:[str(x) for x in leading]})
+    return records
+
+
+def main():
+    lower=seed_lower_test()
+    upper=upper_test_on_seed_rays(lower)
+    axes=exact_axis_checks()
+    gram=gram_checks()
+    result={&#x27;seed_support_test&#x27;:lower,&#x27;valid_outer_support_search_on_seed_cone_rays&#x27;:upper,
+            &#x27;axis_normalization_checks&#x27;:axes,&#x27;positive_gram_metric_checks&#x27;:gram,
+            &#x27;status&#x27;:(&#x27;STRICT_GLOBAL_OBSTRUCTION_FOUND&#x27; if upper[&#x27;violations&#x27;] else
+                      &#x27;SEED_LOWER_BOUND_PASSES&#x27; if not lower[&#x27;failures&#x27;] and not lower[&#x27;undecided&#x27;] else
+                      &#x27;NO_DECISIVE_COUNTEREXAMPLE&#x27;)}
+    out=HERE/&#x27;spin13_seed_star_check.json&#x27;
+    out.write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+    print(&#x27;seed rays&#x27;,lower[&#x27;cone_ray_counts&#x27;],&#x27;distinct&#x27;,lower[&#x27;distinct_rays&#x27;],
+          &#x27;lower failures&#x27;,len(lower[&#x27;failures&#x27;]),&#x27;undecided&#x27;,len(lower[&#x27;undecided&#x27;]),
+          &#x27;principal minors&#x27;,lower[&#x27;minor_checks&#x27;])
+    print(&#x27;outer search rays&#x27;,upper[&#x27;candidate_ray_count&#x27;],&#x27;block checks&#x27;,upper[&#x27;block_ray_checks&#x27;],
+          &#x27;strict violations&#x27;,len(upper[&#x27;violations&#x27;]))
+    print(&#x27;axis checks&#x27;,axes)
+    print(&#x27;STATUS&#x27;,result[&#x27;status&#x27;])
+
+
+if __name__==&#x27;__main__&#x27;:main()
+</pre><p><a href="../assets/79236dd00e3e1228645e67974694bfc8b8a9fba33ec233641c67febe023f21e5.py">Exact original</a></p></html>

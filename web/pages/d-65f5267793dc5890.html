@@ -1,0 +1,81 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/engineering_control/rare_event_safety/safety_costs.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/engineering_control/rare_event_safety/safety_costs.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Cost calculator for the Astra N35 example and a black-box rare-risk audit.&quot;&quot;&quot;
+
+import argparse
+import json
+import math
+
+
+def n35_exit_bound(volume: int, horizon: float) -&gt; float:
+    &quot;&quot;&quot;Equation (7): two-species finite-volume exit bound, clipped at one.&quot;&quot;&quot;
+    if volume &lt;= 0 or horizon &lt; 0:
+        raise ValueError(&quot;volume must be positive and horizon nonnegative&quot;)
+    a = 2.0 * math.exp(-3.0 * volume / 25.0)
+    b = (108.0 / 35.0) * volume * horizon * math.exp(-3.0 * volume / 200.0)
+    return min(1.0, a + b)
+
+
+def n35_max_horizon(volume: int, risk: float) -&gt; float:
+    &quot;&quot;&quot;Largest T certified by equation (7) for the supplied risk threshold.&quot;&quot;&quot;
+    if volume &lt;= 0 or not 0.0 &lt; risk &lt; 1.0:
+        raise ValueError(&quot;volume must be positive and risk must lie in (0, 1)&quot;)
+    initial = 2.0 * math.exp(-3.0 * volume / 25.0)
+    if risk &lt;= initial:
+        return 0.0
+    return (risk - initial) * (35.0 / (108.0 * volume)) * math.exp(3.0 * volume / 200.0)
+
+
+def zero_failure_episodes(alpha: float, risk: float) -&gt; int:
+    &quot;&quot;&quot;One-sided exact-binomial zero-failure sample threshold.&quot;&quot;&quot;
+    if not 0.0 &lt; alpha &lt; 1.0 or not 0.0 &lt; risk &lt; 1.0:
+        raise ValueError(&quot;alpha and risk must lie in (0, 1)&quot;)
+    return math.ceil(math.log(alpha) / math.log1p(-risk))
+
+
+def main() -&gt; None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(&quot;--volume&quot;, type=int, default=3000)
+    parser.add_argument(&quot;--risk&quot;, type=float, default=1e-6)
+    parser.add_argument(&quot;--confidence-failure&quot;, type=float, default=0.05)
+    parser.add_argument(&quot;--horizon-steps&quot;, type=int, default=1_000_000)
+    args = parser.parse_args()
+
+    t_max = n35_max_horizon(args.volume, args.risk)
+    episodes = zero_failure_episodes(args.confidence_failure, args.risk)
+    per_step_risk = -math.expm1(math.log1p(-args.risk) / args.horizon_steps)
+    transition_exposures = math.ceil(
+        math.log(args.confidence_failure) / math.log1p(-per_step_risk)
+    )
+    activity_bound = 2.5 * args.volume
+    report = {
+        &quot;interface&quot;: {
+            &quot;n35&quot;: &quot;supplied integer reaction model and strict inward certificate&quot;,
+            &quot;black_box&quot;: &quot;frozen feedback policy; independent reset trajectories; event-only lower bound&quot;,
+        },
+        &quot;n35&quot;: {
+            &quot;volume&quot;: args.volume,
+            &quot;risk_target&quot;: args.risk,
+            &quot;max_certified_horizon_rate_time&quot;: t_max,
+            &quot;bound_at_max_horizon&quot;: n35_exit_bound(args.volume, t_max),
+            &quot;expected_thinning_candidates_upper_bound&quot;: activity_bound * t_max,
+            &quot;bound_at_exponential_horizon&quot;: n35_exit_bound(
+                args.volume, math.exp(3.0 * args.volume / 400.0)
+            ),
+            &quot;exponential_horizon&quot;: math.exp(3.0 * args.volume / 400.0),
+        },
+        &quot;black_box_zero_failure&quot;: {
+            &quot;confidence&quot;: 1.0 - args.confidence_failure,
+            &quot;horizon_steps&quot;: args.horizon_steps,
+            &quot;trajectory_risk_target&quot;: args.risk,
+            &quot;required_independent_episodes&quot;: episodes,
+            &quot;transition_evaluations&quot;: episodes * args.horizon_steps,
+            &quot;per_step_hazard_threshold&quot;: per_step_risk,
+            &quot;required_independent_transition_exposures&quot;: transition_exposures,
+        },
+    }
+    print(json.dumps(report, indent=2, sort_keys=True))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/f757583d75cfdcaca951dced34be3dac1e2f63354271c6a935a3a4339354e028.py">Exact original</a></p></html>

@@ -1,0 +1,131 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/spectral_geometry/su3_regular/filter_construction_check.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/spectral_geometry/su3_regular/filter_construction_check.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact finite checks for filter_construction.txt.
+
+Only Python integers and fractions are used. This checks identities on sample
+GT branching data; the uniform theorem is proved in the accompanying text.
+&quot;&quot;&quot;
+
+from fractions import Fraction
+
+
+def dimension(a, b):
+    return (a + 1) * (b + 1) * (a + b + 2) // 2
+
+
+def layer_size(a, b, t):
+    &quot;&quot;&quot;GT multiplicity of E_11 eigenvalue t, for the whole valid range.&quot;&quot;&quot;
+    lo = max(0, t - b)
+    hi = min(a, t)
+    return sum(a + t - 2 * x + 1 for x in range(lo, hi + 1))
+
+
+def branch_casimir_weight(a, b, t):
+    &quot;&quot;&quot;Exact upward crossing weight from the U(3)/U(2) Casimir split.&quot;&quot;&quot;
+    c3 = (a + b) * (a + b + 2) + b * b
+    total = a + 2 * b
+    lo = max(0, t - b)
+    hi = min(a, t)
+    result = Fraction(0)
+    for x in range(lo, hi + 1):
+        y = t - x
+        u = a + b - x
+        v = b - y
+        branch_dim = u - v + 1
+        c2 = u * (u + 1) + v * (v - 1)
+        gamma = Fraction(c3 - t * t - c2 - 3 * t + total, 2)
+        result += branch_dim * gamma
+    return result
+
+
+def closed_weight(a, b, t):
+    return Fraction((a + 1) * (t + 1) * (t + 2) * (a + 2 * b - 2 * t), 2)
+
+
+def cumulative_low_layers(a, r):
+    return (a + 1) * (r + 1) * (r + 2) // 2
+
+
+def check_case(N, a, b, Q):
+    assert N &gt;= 16 and N &lt;= a &lt;= 2 * N and N &lt;= b &lt;= 2 * N
+    D = dimension(a, b)
+    assert 1 &lt;= Q &lt;= D // 512
+
+    # The GT branching dimensions sum to the Weyl dimension formula.
+    assert sum(layer_size(a, b, t) for t in range(a + b + 1)) == D
+
+    # Compare exact Casimir traces with the closed crossing conductance.
+    for t in range(min(a, b) + 1):
+        assert branch_casimir_weight(a, b, t) == closed_weight(a, b, t)
+        assert layer_size(a, b, t) == (a + 1) * (t + 1)
+
+    M = N // 2
+    R = next(r for r in range(M + 1) if cumulative_low_layers(a, r) &gt;= Q)
+    assert R &lt; M
+    nullity = cumulative_low_layers(a, R)
+    assert nullity &gt;= Q
+
+    rho = sum(
+        (1 / closed_weight(a, b, t) for t in range(R, M)),
+        Fraction(0),
+    )
+    alpha = []
+    for t in range(a + b + 1):
+        if t &lt;= R:
+            value = Fraction(1)
+        elif t &lt; M:
+            value = sum(
+                (1 / closed_weight(a, b, j) for j in range(t, M)),
+                Fraction(0),
+            ) / rho
+        else:
+            value = Fraction(0)
+        alpha.append(value)
+
+    # X=I-A is nonnegative; its zeros are precisely the layers &lt;=R.
+    x_values = [1 - value for value in alpha]
+    assert all(value &gt;= 0 for value in x_values)
+    counted_nullity = sum(
+        layer_size(a, b, t)
+        for t, value in enumerate(x_values)
+        if value == 0
+    )
+    rank = sum(
+        layer_size(a, b, t)
+        for t, value in enumerate(x_values)
+        if value &gt; 0
+    )
+    assert counted_nullity == nullity
+    assert rank == D - nullity &lt;= D - Q
+
+    energy = sum(
+        closed_weight(a, b, t) * (alpha[t] - alpha[t + 1]) ** 2
+        for t in range(M)
+    )
+    assert energy == 1 / rho
+
+    norm2 = sum(
+        layer_size(a, b, t) * x_values[t] ** 2
+        for t in range(a + b + 1)
+    )
+    assert norm2 &gt;= Fraction(3 * D, 4)
+
+    return D, R, nullity, rank, rho, energy, norm2
+
+
+def main():
+    cases = [
+        (16, 16, 16, 1),
+        (24, 24, 24, dimension(24, 24) // 512),
+        (40, 80, 40, dimension(80, 40) // 512),
+    ]
+    for case in cases:
+        D, R, nullity, rank, rho, energy, norm2 = check_case(*case)
+        print(
+            f&quot;OK N,a,b,Q={case}; D={D}; R={R}; nullity={nullity}; &quot;
+            f&quot;rank={rank}; exact energy={energy}; exact norm^2={norm2}&quot;
+        )
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/f3fcc82389a0224372e41be17203b59b4a3060015366829270a3d15ed482b2fc.py">Exact original</a></p></html>

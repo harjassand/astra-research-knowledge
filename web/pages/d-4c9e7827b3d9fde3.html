@@ -1,0 +1,233 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c4_rational_applications/full_growth_control_audit.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c4_rational_applications/full_growth_control_audit.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact-rational facet and shared-actuator audit for the PLOS source model.
+
+This checks the source-reference genotype, full health-gated growth/dilution,
+the feedback tube S, and a two-cell common-glucose impossibility witness.
+It is a model certificate, not a biological validation.  Only the displayed
+bound ln(2)&lt;7/10 uses a standard elementary real inequality; the rest is exact
+Fraction arithmetic from the decimal source parameters.
+&quot;&quot;&quot;
+
+from fractions import Fraction as Q
+from itertools import product
+import json
+from pathlib import Path
+
+
+# Source-reference genotype and Table 1 kinetics (concentrations in mM,
+# rates in mM/min, first-order constants in 1/min).
+VU = VL = KATP = PV_MAX = Q(10)
+KP = Q(&quot;0.3&quot;)
+KMG = KMATP = Q(&quot;0.1&quot;)
+KIATP = Q(3)
+ATOT = Q(5)
+KMF = Q(1)
+KMADP = Q(&quot;0.1&quot;)
+KMP = Q(2)
+KVAC = Q(250)
+VATPER = Q(5)
+VATPRB = Q(&quot;12.7&quot;)
+TAUG = Q(90)
+EPS = Q(&quot;0.17&quot;)
+FLO, FHI = Q(&quot;1.8&quot;), Q(&quot;2.2&quot;)
+ALO, AHI = Q(&quot;0.5&quot;), Q(&quot;1.5&quot;)
+PLO, SUMHI = Q(2), Q(14)
+
+# At the source reference genotype, CellML&#x27;s n=4 cost ratio equals 5 exactly.
+# ug = ln(2)/(90*(12.7-5)) = ln(2)/693.  Since ln(2)&lt;0.7,
+# g &lt;= 10 ln(2)/693 &lt; 7/693 on A&lt;=1.5 in S.
+G_UPPER = Q(7, 693)
+
+
+def vlo(f, a, p):
+    d = ATOT - a
+    return VL * f * d * p / ((KMF + f) * (KMADP + d) * (KMP + p))
+
+
+def uptake_capacity(a):
+    return VU * a / (KMATP + a * (1 + a / KIATP))
+
+
+def p_vac(f, a, p):
+    ptotal = p + 2 * f + a
+    return PV_MAX / (1 + (ptotal / KVAC) ** 4)
+
+
+def show(x):
+    return {&quot;fraction&quot;: f&quot;{x.numerator}/{x.denominator}&quot;, &quot;decimal&quot;: float(x)}
+
+
+def main():
+    # Whole-tube vacuolar lower bound from Ptot&lt;=14+2*2.2=18.4.
+    ptotal_max = SUMHI + 2 * FHI
+    pv_min = PV_MAX / (1 + (ptotal_max / KVAC) ** 4)
+
+    # Full-source derivatives under actual-flux feedback
+    # U=L-(F-2)+e, |e|&lt;=0.17:
+    # Fdot=2-F+e-F*g
+    # Adot=2L+2(F-2)-2e-10A-A*g
+    # Pdot=-2L+10A+kp(Pv-P)-P*g
+    # (A+P)dot=2(F-2)-2e+kp(Pv-P)-(A+P)*g.
+    # At A=0.5 ATPase equals expression cost, so g=0 exactly. For A&gt;0.5,
+    # the source health law has nonnegative Hdot.
+    f_lower = (Q(2) - FLO - EPS) - FLO * G_UPPER
+    f_upper = Q(2) - FHI + EPS  # maximum uses g=0
+    a_lower = (2 * vlo(FLO, ALO, PLO) + 2 * (FLO - 2)
+               - 2 * EPS - KATP * ALO)
+    a_upper = (2 * vlo(FHI, AHI, SUMHI - AHI) + 2 * (FHI - 2)
+               + 2 * EPS - KATP * AHI)  # dilution only improves this face
+    pi_lower = (-2 * vlo(FHI, ALO, PLO) + KATP * ALO
+                + KP * (pv_min - PLO) - PLO * G_UPPER)
+    sum_upper = (2 * (FHI - 2) + 2 * EPS
+                 + KP * (PV_MAX - (SUMHI - AHI)))
+
+    # Static inversion exists over the full tube.  Use independent extrema,
+    # which are conservative but easy to verify exactly.
+    l_min = vlo(FLO, AHI, PLO)
+    l_max = vlo(FHI, ALO, SUMHI - ALO)
+    u_min = l_min - (FHI - 2) - EPS
+    u_max = l_max + (FHI - 2) + EPS
+    # C&#x27;(A) has sign 0.1-A^2/3, so its minimum on [.5,1.5]
+    # occurs at one of the two endpoints.
+    cu_min = min(uptake_capacity(ALO), uptake_capacity(AHI))
+    saturation_gap = cu_min - u_max
+    glucose_max = KMG * u_max / saturation_gap
+
+    # Simultaneous opposite F faces under a shared extracellular glucose G.
+    # At x_low, A=0.5 gives g=0 and inwardness needs U_low&gt;=L_low.
+    # At x_high, U_high&lt;=L_high+F_high*g_max.
+    x_low = (FLO, ALO, SUMHI - ALO)
+    x_high = (FHI, AHI, PLO)
+    l_low = vlo(*x_low)
+    l_high = vlo(*x_high)
+    c_low, c_high = uptake_capacity(ALO), uptake_capacity(AHI)
+    ratio = c_high / c_low
+    common_u_high_lower = ratio * l_low
+    high_face_u_upper = l_high + FHI * G_UPPER
+
+    # A low-ATP phosphate boundary outside S on which glucose has no direct
+    # authority: at A=0, U=0 for every finite G and growth is off.
+    pi_stress_state = (Q(200), Q(0), Q(&quot;0.05&quot;))
+    f_stress, a_stress, p_stress = pi_stress_state
+    l_stress = vlo(f_stress, a_stress, p_stress)
+    pv_stress = p_vac(f_stress, a_stress, p_stress)
+    pi_stress_margin = (-2 * l_stress + KATP * a_stress
+                        + KP * (pv_stress - p_stress))
+
+    # Verify the CellML fourth-power expression cost away from the reference
+    # genotype too; the imbalanced-cell parameter is not a fixed rounded 2.63.
+    ref_cost_sum = sum(x ** 4 for x in
+                       (Q(10), Q(10), Q(10), Q(&quot;0.3&quot;)))
+    ic_base = tuple(map(Q, (&quot;10.92211&quot;, &quot;5.65143&quot;, &quot;4.82003&quot;, &quot;2.07099&quot;)))
+    def expression_cost(theta):
+        return VATPER * sum(x ** 4 for x in theta) / ref_cost_sum
+    ic_cost = expression_cost(ic_base)
+    corner_costs = []
+    for signs in product((-1, 1), repeat=4):
+        theta = tuple(x * (1 + Q(&quot;0.1&quot;) * sign)
+                      for x, sign in zip(ic_base, signs))
+        corner_costs.append(expression_cost(theta))
+
+    # Sensing delay certificate for F-only stale state, with A/P and all other
+    # parameters/actuation exact.  |e_delay| &lt;= (1+sup dL/dF)*sup|Fdot|*tau.
+    l_f_bound = (VL / (1 + FLO) ** 2
+                 * (ATOT - ALO) / (KMADP + ATOT - ALO)
+                 * (SUMHI - ALO) / (KMP + SUMHI - ALO))
+    f_speed_bound = max(FHI - 2 + EPS + FHI * G_UPPER,
+                        2 - FLO + EPS)
+    delay_gain = (1 + l_f_bound) * f_speed_bound
+    delay_max = EPS / delay_gain
+
+    # Sum-face parameter boundary: with |e|&lt;=eps, source kp must satisfy
+    # 0.4+2 eps - 2.5 kp &lt;= 0; at eps=.17 this means kp&gt;=.296.
+    # The required condition is kp &gt;= (0.4+2eps)/(2.5), where
+    # 0.4=2(Fhi-2) and 2.5=14-Ahi-Pvmax.
+    kp_required = (Q(&quot;0.4&quot;) + 2 * EPS) / (SUMHI - AHI - PV_MAX)
+    assert kp_required == Q(&quot;0.296&quot;)
+
+    data = {
+        &quot;model&quot;: &quot;PLOS 2021 CellML source-reference genotype, full H-gated growth/dilution&quot;,
+        &quot;source_parameter_facts&quot;: {
+            &quot;enzyme_expression_cost_vatpe&quot;: &quot;5 exactly at source reference genotype (CellML n=4 formula)&quot;,
+            &quot;IC_Table_2_vatpe_exact&quot;: show(ic_cost),
+            &quot;IC_Table_2_vatpe_pm10_corner_range&quot;: [show(min(corner_costs)), show(max(corner_costs))],
+            &quot;PLOS_2021_CellML_default_F_A_P_mM&quot;: [&quot;2&quot;, &quot;1&quot;, &quot;10.4&quot;],
+            &quot;cross_source_2014_failure_reconstruction_F_A_P_mM&quot;: [&quot;2&quot;, &quot;1&quot;, &quot;9.4&quot;],
+            &quot;growth_law&quot;: &quot;g=0 unless H&gt;=Hmax and 10*A-5&gt;0; otherwise g=(ln 2/693)*(10*A-5)&quot;,
+            &quot;health_law_on_tube&quot;: &quot;A&gt;=0.5 implies 10*A-5&gt;=0; Hdot=0 at equality and Hdot&gt;=0 above it&quot;,
+            &quot;growth_upper_on_S&quot;: &quot;g &lt; 7/693 per min using ln(2)&lt;0.7&quot;,
+            &quot;feedback_error_bound_mM_per_min&quot;: show(EPS),
+            &quot;feedback&quot;: &quot;U=L-(F-2)+e&quot;,
+        },
+        &quot;full_growth_face_upper_lower_bounds_mM_per_min&quot;: {
+            &quot;F=1.8_minimum_strictly_above&quot;: show(f_lower),
+            &quot;F=2.2_maximum&quot;: show(f_upper),
+            &quot;A=0.5_minimum&quot;: show(a_lower),
+            &quot;A=1.5_maximum_ignoring_helpful_dilution&quot;: show(a_upper),
+            &quot;P=2_minimum&quot;: show(pi_lower),
+            &quot;A_plus_P=14_maximum_ignoring_helpful_dilution&quot;: show(sum_upper),
+            &quot;whole_tube_Pvac_lower_bound&quot;: show(pv_min),
+        },
+        &quot;inverse_glucose_feasibility&quot;: {
+            &quot;lower_flux_command_bound&quot;: show(u_min),
+            &quot;upper_flux_command_bound&quot;: show(u_max),
+            &quot;minimum_uptake_saturation_capacity&quot;: show(cu_min),
+            &quot;uniform_saturation_gap&quot;: show(saturation_gap),
+            &quot;conservative_G_upper_mM&quot;: show(glucose_max),
+            &quot;published_failure_start_G_at_e_zero_mM&quot;: show(
+                KMG * vlo(Q(2), Q(1), Q(&quot;9.4&quot;)) /
+                (uptake_capacity(Q(1)) - vlo(Q(2), Q(1), Q(&quot;9.4&quot;)))
+            ),
+        },
+        &quot;shared_glucose_impossibility&quot;: {
+            &quot;low_F_cell_state_F_A_P&quot;: list(map(str, x_low)),
+            &quot;high_F_cell_state_F_A_P&quot;: list(map(str, x_high)),
+            &quot;lower_face_requires_U_low_at_least&quot;: show(l_low),
+            &quot;common_G_implies_U_high_over_U_low&quot;: show(ratio),
+            &quot;therefore_U_high_at_least&quot;: show(common_u_high_lower),
+            &quot;upper_face_allows_U_high_at_most&quot;: show(high_face_u_upper),
+            &quot;strict_conflict&quot;: common_u_high_lower &gt; high_face_u_upper,
+        },
+        &quot;uncontrollable_low_ATP_Pi_face&quot;: {
+            &quot;state_F_A_P&quot;: list(map(str, pi_stress_state)),
+            &quot;vacuolar_Pi&quot;: show(pv_stress),
+            &quot;lower_flux&quot;: show(l_stress),
+            &quot;Pi_derivative_for_every_G&quot;: show(pi_stress_margin),
+            &quot;interpretation&quot;: &quot;At ATP=0 the source uptake U is zero for every glucose concentration; ATPase expression demand exceeds ATP production, so growth is off. With fixed F=200 and P=0.05, Pi is decreasing for all glucose commands. For fixed A=0,P=0.05 the margin decreases with F because L increases and Pvac decreases, so every F&gt;=200 has the same outward-face obstruction.&quot;,
+        },
+        &quot;finite_bandwidth_bound&quot;: {
+            &quot;assumptions&quot;: &quot;only F is delayed; A and P are current; exact source parameters and zero feed/estimation error otherwise&quot;,
+            &quot;sup_dL_dF_on_tube&quot;: show(l_f_bound),
+            &quot;sup_abs_Fdot_on_tube&quot;: show(f_speed_bound),
+            &quot;e_delay_per_minute_of_delay&quot;: show(delay_gain),
+            &quot;sufficient_F_measurement_to_actuation_delay_minutes&quot;: show(delay_max),
+            &quot;sufficient_delay_seconds&quot;: float(delay_max * 60),
+            &quot;general_budget&quot;: &quot;(1+sup|dL/dF|)*sup|Fdot|*tau + other_flux_error &lt;= 0.17 mM/min&quot;,
+        },
+        &quot;parameter_boundary&quot;: {
+            &quot;minimum_effective_kp_for_sum_face_at_delta_0p17&quot;: show(kp_required),
+            &quot;source_kp&quot;: show(KP),
+            &quot;nominal_sum_face_margin_before_growth&quot;: show(-sum_upper),
+            &quot;kp_uncertainty_note&quot;: &quot;No measured interval is supplied; a 1.33% downward shift from source kp=0.3 reaches the boundary.&quot;,
+        },
+        &quot;scope&quot;: &quot;Exact source-model facet calculations and a two-cell common-input counterexample. No biological validation, arbitrary-basin recovery, or robust measured parameter confidence set.&quot;,
+    }
+
+    assert f_lower &gt; 0 and f_upper &lt; 0
+    assert a_lower &gt; 0 and a_upper &lt; 0 and pi_lower &gt; 0 and sum_upper &lt; 0
+    assert KATP * ALO == VATPER and KATP * AHI &gt; VATPER
+    assert FLO &lt;= Q(2) &lt;= FHI and ALO &lt;= Q(1) &lt;= AHI and PLO &lt;= Q(&quot;9.4&quot;)
+    assert Q(1) + Q(&quot;9.4&quot;) &lt;= SUMHI
+    assert u_min &gt; 0 and saturation_gap &gt; 0
+    assert common_u_high_lower &gt; high_face_u_upper
+    assert pi_stress_margin &lt; 0
+    assert KP &gt; kp_required
+
+    out = Path(__file__).with_name(&quot;full_growth_control_certificate.json&quot;)
+    out.write_text(json.dumps(data, indent=2) + &quot;\n&quot;)
+    print(json.dumps(data, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/b284cfc0cb2b2af58fd85133a290a67c34e6a69684f0a5e43003b5bb40cdf766.py">Exact original</a></p></html>

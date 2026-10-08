@@ -1,0 +1,227 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c4_quantum_lift/cycle7_replay/heterogeneous_product_compiler.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c4_quantum_lift/cycle7_replay/heterogeneous_product_compiler.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact heterogeneous local-broadcaster compiler certificate.
+
+The input is a list of qubit broadcasters
+  B_i = theta_i B_{Z,n_i} + (1-theta_i) B_U,
+where theta_i are rational in [1/4,1], n_i is one of X,Y,Z, B_{Z,n_i}
+copies the n_i eigenbasis, and B_U is the universal symmetric cloner.
+The output is the product of the local three-outcome EB instruments.  The
+script validates a finite heterogeneous instance exactly; the all-L proof is
+the product lemma recorded in the accompanying certificate/report.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import argparse
+import itertools
+import json
+from fractions import Fraction as Q
+from pathlib import Path
+
+import sympy as sp
+from sympy import I, Matrix, Rational, eye, zeros, sqrt, kronecker_product
+
+
+OUT = Path(__file__).resolve().parent
+I2 = eye(2)
+SWAP = Matrix([[1, 0, 0, 0], [0, 0, 1, 0], [0, 1, 0, 0], [0, 0, 0, 1]])
+PAULI = {
+    &quot;X&quot;: Matrix([[0, 1], [1, 0]]),
+    &quot;Y&quot;: Matrix([[0, -I], [I, 0]]),
+    &quot;Z&quot;: Matrix([[1, 0], [0, -1]]),
+}
+H = Matrix([[1, 1], [1, -1]]) / sqrt(2)
+S = Matrix([[1, 0], [0, I]])
+TO_AXIS = {&quot;Z&quot;: I2, &quot;X&quot;: H, &quot;Y&quot;: S * H}
+
+
+def symq(q: Q):
+    return Rational(q.numerator, q.denominator)
+
+
+def clean(a):
+    return a.applyfunc(lambda x: sp.simplify(sp.expand_complex(x)))
+
+
+def matrix_json(a):
+    return [[str(clean(a)[i, j]) for j in range(a.cols)] for i in range(a.rows)]
+
+
+def ptrace_right(y):
+    return clean(Matrix(2, 2, lambda i, k: sum(y[2 * i + j, 2 * k + j] for j in range(2))))
+
+
+def rotate_kraus(k, axis):
+    u = TO_AXIS[axis]
+    return clean(kronecker_product(u, u) * k * u.H)
+
+
+def local_broadcaster_kraus(theta, axis):
+    # B_Z Kraus matrices |00&gt;&lt;0| and |11&gt;&lt;1|.
+    k0, k1 = zeros(4, 2), zeros(4, 2)
+    k0[0, 0] = 1
+    k1[3, 1] = 1
+    # Universal cloner Kraus numerators; physical matrices are A_j/sqrt(6).
+    a0, a1 = zeros(4, 2), zeros(4, 2)
+    a0[0, 0], a0[1, 1], a0[2, 1] = 2, 1, 1
+    a1[1, 0], a1[2, 0], a1[3, 1] = 1, 1, 2
+    return [
+        (theta, rotate_kraus(k0, axis)),
+        (theta, rotate_kraus(k1, axis)),
+        ((1 - theta) / 6, a0),
+        ((1 - theta) / 6, a1),
+    ]
+
+
+def local_phi(kraus, x):
+    y = zeros(4, 4)
+    for weight, k in kraus:
+        y += symq(weight) * k * x * k.H
+    return ptrace_right(clean(y))
+
+
+def local_ptm(kraus, basis):
+    return Matrix(4, 4, lambda i, j: sp.simplify(sp.trace(basis[i] * local_phi(kraus, basis[j])) / 2))
+
+
+def eb_instrument(theta, axis):
+    p_plus = clean((I2 + PAULI[axis]) / 2)
+    p_minus = clean((I2 - PAULI[axis]) / 2)
+    alpha = (1 + 2 * theta) / 3
+    effects = [(alpha, p_plus), (alpha, p_minus), (1 - alpha, I2)]
+    states = [p_plus, p_minus, Rational(1, 2) * I2]
+    # Return (coefficient, effect), state; coefficients remain rational.
+    weighted_effects = [(symq(weight) * effect, state) for (weight, effect), state in zip(effects, states)]
+    return alpha, weighted_effects
+
+
+def ptm_from_ensemble(ensemble, basis):
+    def apply(x):
+        return clean(sum((sp.trace(m * x) * state for m, state in ensemble), zeros(2, 2)))
+    return Matrix(4, 4, lambda i, j: sp.simplify(sp.trace(basis[i] * apply(basis[j])) / 2))
+
+
+def parse_theta_list(raw):
+    vals = [Q(s) for s in raw.split(&quot;,&quot;)]
+    assert vals and all(Q(1, 4) &lt;= t &lt;= 1 for t in vals)
+    return vals
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(&quot;--theta&quot;, default=&quot;1/4,1/3,1/2,2/3,3/4,9/10,1&quot;)
+    parser.add_argument(&quot;--axes&quot;, default=&quot;Z,X,Y,Z,X,Y,Z&quot;)
+    args = parser.parse_args()
+    thetas = parse_theta_list(args.theta)
+    axes = list(args.axes.split(&quot;,&quot;))
+    assert len(axes) == len(thetas) and all(a in TO_AXIS for a in axes)
+    L = len(thetas)
+
+    sites = []
+    exact_categories = []
+    local_tests = []
+    for i, (theta, axis) in enumerate(zip(thetas, axes)):
+        kraus = local_broadcaster_kraus(theta, axis)
+        # Exact TP, with Kraus weights left rational; all ranges are symmetric.
+        completeness = clean(sum((symq(w) * k.H * k for w, k in kraus), zeros(2, 2)))
+        assert completeness == I2
+        assert all(clean(SWAP * k - k) == zeros(4, 2) for _, k in kraus)
+        n = PAULI[axis]
+        tangents = [p for key, p in PAULI.items() if key != axis]
+        basis = [I2, n, tangents[0], tangents[1]]
+        phi_ptm = local_ptm(kraus, basis)
+        lam_perp = 2 * (1 - symq(theta)) / 3
+        lam_parallel = (2 + symq(theta)) / 3
+        expected_phi = Matrix.diag(1, lam_parallel, lam_perp, lam_perp)
+        assert clean(phi_ptm) == expected_phi
+
+        alpha, ensemble = eb_instrument(theta, axis)
+        sum_effects = clean(sum((m for m, _ in ensemble), zeros(2, 2)))
+        sum_prepared = clean(sum((sp.trace(m) * state for m, state in ensemble), zeros(2, 2)))
+        assert sum_effects == I2 and sum_prepared == I2
+        psi_ptm = ptm_from_ensemble(ensemble, basis)
+        assert clean(psi_ptm) == Matrix.diag(1, alpha, 0, 0)
+        assert alpha == 2 * lam_parallel - 1
+        assert lam_perp &lt;= Rational(1, 2)
+
+        local_tests.append({
+            &quot;site&quot;: i,
+            &quot;theta&quot;: f&quot;{theta.numerator}/{theta.denominator}&quot;,
+            &quot;axis&quot;: axis,
+            &quot;phi_ptm_I_parallel_transverse_transverse&quot;: [str(x) for x in expected_phi.diagonal()],
+            &quot;psi_ptm_I_parallel_transverse_transverse&quot;: [&quot;1&quot;, str(alpha), &quot;0&quot;, &quot;0&quot;],
+            &quot;local_factor2_checked_exactly&quot;: True,
+            &quot;broadcaster_kraus_completeness&quot;: matrix_json(completeness),
+            &quot;every_kraus_range_in_symmetric_subspace&quot;: True,
+            &quot;eb_effect_sum&quot;: matrix_json(sum_effects),
+            &quot;eb_trace_weighted_preparation_sum&quot;: matrix_json(sum_prepared),
+        })
+        sites.append({
+            &quot;theta&quot;: f&quot;{theta.numerator}/{theta.denominator}&quot;,
+            &quot;axis&quot;: axis,
+            &quot;alpha&quot;: str(alpha),
+        })
+        exact_categories.append((
+            (Q(1), Q(lam_parallel), Q(lam_perp)),
+            (Q(1), Q(alpha), Q(0)),
+        ))
+
+    # Finite exact instance check over the 3^L distinct local spectral types.
+    # A transverse label has multiplicity two, so this covers all 4^L basis
+    # elements up to eigenvalue degeneracy, not merely selected observables.
+    checked = 0
+    minimum_slack = None
+    for word in itertools.product(range(3), repeat=L):
+        lam = Q(1)
+        mu = Q(1)
+        for i, symbol in enumerate(word):
+            lam *= exact_categories[i][0][symbol]
+            mu *= exact_categories[i][1][symbol]
+        slack = 2 * (1 - lam) - (1 - mu)
+        assert slack &gt;= 0
+        minimum_slack = slack if minimum_slack is None else min(minimum_slack, slack)
+        checked += 1
+
+    record = {
+        &quot;status&quot;: &quot;EXACT_HETEROGENEOUS_PRODUCT_COMPILER&quot;,
+        &quot;sites&quot;: L,
+        &quot;global_dimension&quot;: str(2**L),
+        &quot;input_representation&quot;: &quot;site list of rational theta_i in [1/4,1] and Pauli axes X/Y/Z; each factor is theta_i times the rotated basis-copy broadcaster plus (1-theta_i) times the universal symmetric cloner&quot;,
+        &quot;local_sites&quot;: sites,
+        &quot;local_exact_checks&quot;: local_tests,
+        &quot;finite_instance_all_mode_check&quot;: {
+            &quot;spectral_type_words_checked&quot;: checked,
+            &quot;basis_coverage&quot;: &quot;All 4^L tensor eigenoperators are covered; each transverse category represents two orthogonal local modes with the same eigenvalue pair.&quot;,
+            &quot;minimum_exact_slack&quot;: f&quot;{minimum_slack.numerator}/{minimum_slack.denominator}&quot;,
+        },
+        &quot;compiler_output&quot;: {
+            &quot;local_alpha_formula&quot;: &quot;alpha_i=(1+2 theta_i)/3&quot;,
+            &quot;local_EB_map&quot;: &quot;Psi_i=alpha_i Delta_{axis_i}+(1-alpha_i) Depolarizing&quot;,
+            &quot;canonical_instrument&quot;: &quot;effects alpha_i P_{i,+}, alpha_i P_{i,-}, (1-alpha_i)I; preparations P_{i,+}, P_{i,-}, I/2&quot;,
+            &quot;global_map&quot;: &quot;Psi= tensor_i Psi_i&quot;,
+            &quot;representation_cost&quot;: &quot;O(L) local rational records plus total rational bit length; each site applies a 3-outcome local instrument&quot;,
+            &quot;flat_outcome_count&quot;: str(3**L),
+            &quot;no_independent_marginal_sampling&quot;: &quot;For an entangled input, implement the product POVM physically or by sequential conditional measurements; product outcome marginals are not independent.&quot;,
+        },
+        &quot;all_L_proof&quot;: {
+            &quot;transverse_case&quot;: &quot;Any transverse factor has lambda_i=2(1-theta_i)/3&lt;=1/2 and mu_i=0; all other lambda factors are at most 1, so lambda_word&lt;=1/2 and mu_word=0.&quot;,
+            &quot;parallel_case&quot;: &quot;For the k active parallel sites, mu_i=2 lambda_i-1 in [0,1]. The inequality product_i(1+mu_i)&lt;=2^(k-1)(1+product_i mu_i), proved by induction, implies product_i mu_i&gt;=2 product_i lambda_i-1.&quot;,
+            &quot;identity_case&quot;: &quot;All identity factors have lambda=mu=1 and zero slack.&quot;,
+            &quot;conclusion&quot;: &quot;I-Psi &lt;= 2(I-Phi) on the full Hermitian space for every L, with equality on a single-site parallel mode tensored with identities.&quot;,
+        },
+        &quot;scope_boundary&quot;: &quot;Exact for this supplied heterogeneous tensor product family; does not address interacting/bounded-treewidth broadcasters or arbitrary dense self-compatible channels.&quot;,
+    }
+    path = OUT / &quot;HETEROGENEOUS_PRODUCT_COMPARATOR.json&quot;
+    path.write_text(json.dumps(record, indent=2) + &quot;\n&quot;)
+    print(json.dumps({
+        &quot;status&quot;: record[&quot;status&quot;], &quot;sites&quot;: L, &quot;dimension&quot;: str(2**L),
+        &quot;axes&quot;: args.axes, &quot;theta&quot;: args.theta,
+        &quot;spectral_type_words_checked&quot;: checked,
+        &quot;minimum_slack&quot;: record[&quot;finite_instance_all_mode_check&quot;][&quot;minimum_exact_slack&quot;],
+        &quot;descriptor&quot;: str(path),
+    }, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/4fdce15c43db54e1fca3a4215c64a25b8b90f2877c571b9f81ccb2f7412fd900.py">Exact original</a></p></html>

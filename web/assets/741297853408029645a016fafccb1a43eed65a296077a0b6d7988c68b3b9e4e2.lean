@@ -1,0 +1,7 @@
+import N33Affine.GlobalAffineComposition
+set_option pp.all true
+#print N33Affine.exists_full_affine_family
+#check N33Affine.exists_full_affine_family
+#print axioms N33Affine.exists_full_affine_family
+#print axioms N33Affine.exists_local_window_of_lower_dimensions
+#print axioms N33Affine.exists_finite_pruned_interval_cover

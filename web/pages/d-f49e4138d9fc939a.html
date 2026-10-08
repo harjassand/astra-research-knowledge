@@ -1,0 +1,204 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c4_hidden_acquisition/robust_cluster/robust_cluster_certificate.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c4_hidden_acquisition/robust_cluster/robust_cluster_certificate.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact small-instance certificate for robust radius-cluster recovery.
+
+The input is an N x M JSON array of frequency vectors. Decimal JSON numbers
+are converted to rational numbers, so all squared-distance comparisons and
+the strict-gap stopping certificate are exact. The exhaustive search is
+exponential and is intended as a transparent verifier for small instances,
+not a scalable clustering implementation.
+
+Model-free inputs: known K and the calibrated outlier budget b. The search
+does not take E, kappa, r, labels, or cluster centers as input.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import argparse
+import json
+from decimal import Decimal
+from fractions import Fraction
+from itertools import combinations
+from typing import Iterable, Iterator, Sequence
+
+Vector = tuple[Fraction, ...]
+Partition = tuple[tuple[int, ...], ...]
+
+
+def as_fraction(x: object) -&gt; Fraction:
+    if isinstance(x, Decimal):
+        return Fraction(x)
+    if isinstance(x, int):
+        return Fraction(x)
+    if isinstance(x, float):
+        return Fraction(str(x))
+    raise TypeError(f&quot;coordinate must be a JSON number, got {type(x).__name__}&quot;)
+
+
+def squared_distance(x: Vector, y: Vector) -&gt; Fraction:
+    return sum(((a - b) ** 2 for a, b in zip(x, y)), Fraction(0))
+
+
+def partitions_of_size_at_least(items: Sequence[int], k: int, minimum: int) -&gt; Iterator[Partition]:
+    &quot;&quot;&quot;Yield each unordered k-partition once, with every block &gt;= minimum.&quot;&quot;&quot;
+    blocks: list[list[int]] = []
+
+    def visit(pos: int) -&gt; Iterator[Partition]:
+        left = len(items) - pos
+        if pos == len(items):
+            if len(blocks) == k and all(len(block) &gt;= minimum for block in blocks):
+                yield tuple(tuple(block) for block in blocks)
+            return
+        if len(blocks) &gt; k or len(blocks) + left &lt; k:
+            return
+
+        item = items[pos]
+        # Place in an existing block; this canonical recursion avoids block
+        # permutations because the first item always starts block zero.
+        for j in range(len(blocks)):
+            blocks[j].append(item)
+            yield from visit(pos + 1)
+            blocks[j].pop()
+
+        if len(blocks) &lt; k:
+            blocks.append([item])
+            yield from visit(pos + 1)
+            blocks.pop()
+
+    yield from visit(0)
+
+
+def canonical_partition(partition: Partition) -&gt; Partition:
+    return tuple(sorted((tuple(sorted(block)) for block in partition), key=lambda block: block[0]))
+
+
+def gap_certificate(points: Sequence[Vector], partition: Partition) -&gt; tuple[Fraction, Fraction, Fraction] | None:
+    &quot;&quot;&quot;Return (max within squared distance, min cross squared distance, gap).&quot;&quot;&quot;
+    within = Fraction(0)
+    cross: Fraction | None = None
+    for i, block in enumerate(partition):
+        for a, b in combinations(block, 2):
+            within = max(within, squared_distance(points[a], points[b]))
+        for other in partition[i + 1 :]:
+            for a in block:
+                for b in other:
+                    d2 = squared_distance(points[a], points[b])
+                    cross = d2 if cross is None else min(cross, d2)
+    if cross is None:
+        return None
+    gap = cross - within
+    if gap &lt;= 0:
+        return None
+    return within, cross, gap
+
+
+def certify(points: Sequence[Vector], k: int, bad_budget: int) -&gt; dict[str, object]:
+    n = len(points)
+    if not points or any(len(x) != len(points[0]) for x in points):
+        raise ValueError(&quot;points must be a nonempty rectangular array&quot;)
+    if not 1 &lt;= k &lt;= n or bad_budget &lt; 0 or bad_budget &gt;= n:
+        raise ValueError(&quot;require 1 &lt;= K &lt;= N and 0 &lt;= bad_budget &lt; N&quot;)
+
+    witnesses: dict[tuple[tuple[int, ...], Partition], tuple[Fraction, Fraction, Fraction]] = {}
+    indices = tuple(range(n))
+    for drop_count in range(bad_budget + 1):
+        for dropped in combinations(indices, drop_count):
+            dropped_set = set(dropped)
+            kept = tuple(i for i in indices if i not in dropped_set)
+            if len(kept) &lt; k * (bad_budget + 1):
+                continue
+            for part in partitions_of_size_at_least(kept, k, bad_budget + 1):
+                part = canonical_partition(part)
+                cert = gap_certificate(points, part)
+                if cert is not None:
+                    witnesses[(tuple(dropped), part)] = cert
+
+    if len(witnesses) != 1:
+        return {
+            &quot;status&quot;: &quot;UNKNOWN&quot;,
+            &quot;reason&quot;: &quot;no strict-gap witness or more than one distinct outlier/partition witness&quot;,
+            &quot;N&quot;: n,
+            &quot;K&quot;: k,
+            &quot;bad_budget&quot;: bad_budget,
+            &quot;feasible_witness_count&quot;: len(witnesses),
+        }
+
+    (dropped, part), (within2, cross2, gap2) = next(iter(witnesses.items()))
+    labels = [-1] * n
+    centers: list[list[str]] = []
+    for state, block in enumerate(part):
+        for i in block:
+            labels[i] = state
+        center = [
+            sum((points[i][j] for i in block), Fraction(0)) / len(block)
+            for j in range(len(points[0]))
+        ]
+        centers.append([str(x) for x in center])
+
+    return {
+        &quot;status&quot;: &quot;CERTIFIED&quot;,
+        &quot;N&quot;: n,
+        &quot;K&quot;: k,
+        &quot;bad_budget&quot;: bad_budget,
+        &quot;dropped_indices&quot;: list(dropped),
+        &quot;labels_up_to_permutation&quot;: labels,
+        &quot;cluster_indices&quot;: [list(block) for block in part],
+        &quot;center_means_exact_rational&quot;: centers,
+        &quot;max_within_squared_distance&quot;: str(within2),
+        &quot;min_between_squared_distance&quot;: str(cross2),
+        &quot;strict_squared_gap&quot;: str(gap2),
+        &quot;feasible_witness_count&quot;: 1,
+        &quot;certificate&quot;: &quot;unique exhaustive partition/outlier witness; max within squared distance &lt; min cross squared distance&quot;,
+    }
+
+
+def self_test() -&gt; None:
+    # Two tight clusters and one arbitrary outlier; the strict-gap witness
+    # uniquely identifies the two cores without supplying centers or labels.
+    raw = [
+        [&quot;0.1&quot;, &quot;0&quot;],
+        [&quot;-0.1&quot;, &quot;0&quot;],
+        [&quot;9.9&quot;, &quot;0&quot;],
+        [&quot;10.1&quot;, &quot;0&quot;],
+        [&quot;50&quot;, &quot;50&quot;],
+    ]
+    points = [tuple(Fraction(Decimal(x)) for x in row) for row in raw]
+    result = certify(points, k=2, bad_budget=1)
+    assert result[&quot;status&quot;] == &quot;CERTIFIED&quot;, result
+    assert sorted(tuple(x) for x in result[&quot;cluster_indices&quot;]) == [(0, 1), (2, 3)]
+    assert result[&quot;dropped_indices&quot;] == [4]
+
+    # This data have no strict-gap decomposition at the requested K and budget.
+    ambiguous = [
+        (Fraction(0),),
+        (Fraction(1),),
+        (Fraction(2),),
+        (Fraction(3),),
+    ]
+    abstained = certify(ambiguous, k=2, bad_budget=1)
+    assert abstained[&quot;status&quot;] == &quot;UNKNOWN&quot;, abstained
+    print(json.dumps({&quot;separated_example&quot;: result, &quot;ambiguous_example&quot;: abstained}, indent=2))
+
+
+def main() -&gt; None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(&quot;--points&quot;, help=&quot;JSON file containing an N x M array&quot;)
+    parser.add_argument(&quot;--states&quot;, type=int, help=&quot;known number K of hidden states&quot;)
+    parser.add_argument(&quot;--bad-budget&quot;, type=int, help=&quot;known upper bound b on contaminated points&quot;)
+    parser.add_argument(&quot;--self-test&quot;, action=&quot;store_true&quot;)
+    args = parser.parse_args()
+
+    if args.self_test:
+        self_test()
+        return
+    if not args.points or args.states is None or args.bad_budget is None:
+        parser.error(&quot;provide --points, --states, and --bad-budget, or use --self-test&quot;)
+
+    with open(args.points, &quot;r&quot;, encoding=&quot;utf-8&quot;) as f:
+        raw = json.load(f, parse_float=Decimal, parse_int=Decimal)
+    points = [tuple(as_fraction(x) for x in row) for row in raw]
+    print(json.dumps(certify(points, args.states, args.bad_budget), indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/1b2fd7a0e41da46f1ea5e52d512c0e5621a77628ac9a2555e7f15c2e078dd25a.py">Exact original</a></p></html>

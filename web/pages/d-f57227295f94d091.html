@@ -1,0 +1,257 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/chemistry_dynamic_catalysis/adaptive_cle_pair.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/chemistry_dynamic_catalysis/adaptive_cle_pair.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Exact-rational audit of a two-stage adaptive CLE-alias CRN witness.
+
+Run from the workspace root with Python 3. This checks coefficient identities,
+per-feed mark probabilities, the best fixed two-pulse schedule, and the
+Bayes-optimal adaptive schedule for the stated two-action menu. It is a finite
+model calculation, not a chemical experiment or a proof of physical feasibility.
+&quot;&quot;&quot;
+
+from fractions import Fraction as F
+from itertools import product
+
+
+ALPHA = (F(1), F(-3), F(3), F(-1))
+YIELDS = (1, 2, 3, 4)
+TOTAL_RATE = F(9)
+
+# eps and positive slack s define the matched moment family
+#   r_k = eps*|alpha_k| + s_k,
+#   kappa^A_k = r_k + eps*alpha_k,
+#   kappa^B_k = r_k - eps*alpha_k.
+# Both actions have sum(s)=9-8*eps, so both total rates are exactly 9.
+ACTION_SPECS = (
+    (F(1, 2), tuple(F(n, 1000) for n in (121, 1347, 5, 3527))),
+    (F(1), tuple(F(n, 1000) for n in (166, 417, 405, 12))),
+)
+
+
+def dot(a, b):
+    return sum(x * y for x, y in zip(a, b))
+
+
+def outer(a, b):
+    return tuple(tuple(x * y for y in b) for x in a)
+
+
+def add_matrices(a, b):
+    return tuple(tuple(x + y for x, y in zip(ra, rb)) for ra, rb in zip(a, b))
+
+
+def scale_matrix(c, a):
+    return tuple(tuple(c * x for x in row) for row in a)
+
+
+def channel_rates(eps, slack):
+    base = tuple(eps * abs(a) + s for a, s in zip(ALPHA, slack))
+    rates_a = tuple(r + eps * a for r, a in zip(base, ALPHA))
+    rates_b = tuple(r - eps * a for r, a in zip(base, ALPHA))
+    assert min(rates_a) &gt; 0 and min(rates_b) &gt; 0
+    assert sum(rates_a) == TOTAL_RATE == sum(rates_b)
+    return base, rates_a, rates_b
+
+
+def moments(rates, order):
+    return sum(rate * F(k) ** order for rate, k in zip(rates, YIELDS))
+
+
+def mark_probabilities(rates):
+    return tuple(rate / TOTAL_RATE for rate in rates)
+
+
+def source_coefficients(rates, b, u):
+    drift = tuple(sum(rate * (bb + k * uu) for rate, k in zip(rates, YIELDS)) for bb, uu in zip(b, u))
+    covariance = tuple(
+        tuple(
+            sum(
+                rate * (b[i] + k * u[i]) * (b[j] + k * u[j])
+                for rate, k in zip(rates, YIELDS)
+            )
+            for j in range(len(b))
+        )
+        for i in range(len(b))
+    )
+    return drift, covariance
+
+
+def path_error(action0, action1):
+    &quot;&quot;&quot;Equal-prior Bayes error of a fixed two-action schedule.&quot;&quot;&quot;
+    pa0, pb0 = ACTIONS[action0][0:2]
+    pa1, pb1 = ACTIONS[action1][0:2]
+    return F(1, 2) * sum(
+        min(pa0[x] * pa1[y], pb0[x] * pb1[y])
+        for x in range(4)
+        for y in range(4)
+    )
+
+
+def adaptive_error(first_action):
+    &quot;&quot;&quot;Exact Bayes DP for one first pulse and one posterior-adaptive pulse.&quot;&quot;&quot;
+    pa0, pb0 = ACTIONS[first_action][0:2]
+    value = F(0)
+    policy = []
+    contributions = []
+    for first_mark in range(4):
+        per_action = []
+        for second_action in range(2):
+            pa1, pb1 = ACTIONS[second_action][0:2]
+            weighted_risk = F(1, 2) * sum(
+                min(pa0[first_mark] * pa1[y], pb0[first_mark] * pb1[y])
+                for y in range(4)
+            )
+            per_action.append(weighted_risk)
+        chosen = min(range(2), key=lambda a: per_action[a])
+        policy.append(chosen)
+        contributions.append(tuple(per_action))
+        value += per_action[chosen]
+    return value, tuple(policy), tuple(contributions)
+
+
+def classify_errors(first_action, second_policy):
+    &quot;&quot;&quot;Type-I/type-II errors for an action policy plus terminal exact LRT.&quot;&quot;&quot;
+    pa0, pb0 = ACTIONS[first_action][0:2]
+    err_a = F(0)
+    err_b = F(0)
+    ties = F(0)
+    for x in range(4):
+        action = second_policy(x)
+        pa1, pb1 = ACTIONS[action][0:2]
+        for y in range(4):
+            p_a = pa0[x] * pa1[y]
+            p_b = pb0[x] * pb1[y]
+            if p_a &lt; p_b:
+                err_a += p_a
+            elif p_a &gt; p_b:
+                err_b += p_b
+            else:
+                ties += F(1, 2) * (p_a + p_b)
+    return err_a, err_b, ties
+
+
+def apply_uniform_replacement_noise(probabilities, rho):
+    &quot;&quot;&quot;With probability rho replace a true label by a uniform random label.&quot;&quot;&quot;
+    mean = sum(probabilities) / 4
+    return tuple((1 - rho) * p + rho * mean for p in probabilities)
+
+
+def risks_with_known_noise(rho):
+    noisy_actions = [
+        (
+            apply_uniform_replacement_noise(action[0], rho),
+            apply_uniform_replacement_noise(action[1], rho),
+        )
+        for action in ACTIONS
+    ]
+    fixed = {}
+    for i, j in product(range(2), repeat=2):
+        pa0, pb0 = noisy_actions[i]
+        pa1, pb1 = noisy_actions[j]
+        fixed[(i, j)] = F(1, 2) * sum(
+            min(pa0[x] * pa1[y], pb0[x] * pb1[y])
+            for x in range(4)
+            for y in range(4)
+        )
+    adaptive = {}
+    for first in range(2):
+        pa0, pb0 = noisy_actions[first]
+        value = F(0)
+        policy = []
+        for x in range(4):
+            costs = []
+            for second in range(2):
+                pa1, pb1 = noisy_actions[second]
+                costs.append(F(1, 2) * sum(
+                    min(pa0[x] * pa1[y], pb0[x] * pb1[y])
+                    for y in range(4)
+                ))
+            chosen = min(range(2), key=lambda a: costs[a])
+            value += costs[chosen]
+            policy.append(chosen)
+        adaptive[first] = (value, tuple(policy))
+    return fixed, adaptive
+
+
+def main():
+    global ACTIONS
+    ACTIONS = []
+    for eps, slack in ACTION_SPECS:
+        base, rates_a, rates_b = channel_rates(eps, slack)
+        ACTIONS.append((mark_probabilities(rates_a), mark_probabilities(rates_b), base, rates_a, rates_b, eps))
+
+    # alpha annihilates the zeroth, first and second power moments.
+    assert tuple(sum(a * F(k) ** j for a, k in zip(ALPHA, YIELDS)) for j in range(3)) == (0, 0, 0)
+    assert sum(a * F(k) ** 3 for a, k in zip(ALPHA, YIELDS)) == -6
+
+    # One local source has coordinates (C_i,C_{i+1},F_a,U,L), with
+    # nu_k=b+k*u=(-1,+1,-1,4-k,k). These identities are sourcewise and thus
+    # remain true after summing sources or multiplying by C_i F_a(t).
+    b = (-1, 1, -1, 4, 0)
+    u = (0, 0, 0, -1, 1)
+    for action in ACTIONS:
+        rates_a, rates_b = action[3], action[4]
+        assert tuple(moments(rates_a, j) for j in range(3)) == tuple(moments(rates_b, j) for j in range(3))
+        assert source_coefficients(rates_a, b, u) == source_coefficients(rates_b, b, u)
+        assert moments(rates_a, 3) - moments(rates_b, 3) == -12 * action[5]
+
+    fixed = {(i, j): path_error(i, j) for i, j in product(range(2), repeat=2)}
+    adaptive = {i: adaptive_error(i) for i in range(2)}
+    best_fixed = min(fixed, key=fixed.get)
+    best_adaptive_first = min(adaptive, key=lambda i: adaptive[i][0])
+    best_fixed_error = fixed[best_fixed]
+    best_adaptive_error, second_policy, policy_contributions = adaptive[best_adaptive_first]
+
+    assert best_fixed == (1, 1)
+    assert best_fixed_error == F(193, 4050)
+    assert best_adaptive_first == 1
+    assert second_policy == (1, 0, 1, 0)
+    assert best_adaptive_error == F(1309, 32400)
+    assert best_fixed_error - best_adaptive_error == F(47, 6480)
+
+    err_a, err_b, ties = classify_errors(best_adaptive_first, lambda k: second_policy[k])
+    assert ties == 0
+    assert err_a == F(1192643, 27000000)
+    assert err_b == F(2967071, 81000000)
+    assert (err_a + err_b) / 2 == best_adaptive_error
+
+    # Equal-prior probability that the adaptive second pulse is action 0.
+    p_first_a, p_first_b = ACTIONS[1][0:2]
+    p_second_zero = F(1, 2) * sum(p_first_a[k] + p_first_b[k] for k in (1, 3))
+    assert p_second_zero == F(4429, 9000)
+
+    # The same dynamic program remains strictly better under a known 5% and
+    # 10% uniform-label replacement channel; the advantage vanishes by 20%
+    # replacement for this two-action witness.
+    noisy_5_fixed, noisy_5_adaptive = risks_with_known_noise(F(1, 20))
+    noisy_10_fixed, noisy_10_adaptive = risks_with_known_noise(F(1, 10))
+    noisy_20_fixed, noisy_20_adaptive = risks_with_known_noise(F(1, 5))
+    assert min(noisy_5_adaptive.values())[0] &lt; min(noisy_5_fixed.values())
+    assert min(noisy_10_adaptive.values())[0] &lt; min(noisy_10_fixed.values())
+    assert min(noisy_20_adaptive.values())[0] == min(noisy_20_fixed.values())
+
+    print(&quot;alpha moments j=0,1,2,3:&quot;, tuple(sum(a * F(k) ** j for a, k in zip(ALPHA, YIELDS)) for j in range(4)))
+    for i, action in enumerate(ACTIONS):
+        pa, pb, base, rates_a, rates_b, eps = action
+        print(f&quot;action {i}: eps={eps}; base={base}; A rates={rates_a}; B rates={rates_b}&quot;)
+        print(f&quot;  A/B mark probabilities={pa} / {pb}&quot;)
+        print(f&quot;  M0,M1,M2,M3 A={tuple(moments(rates_a,j) for j in range(4))}&quot;)
+        print(f&quot;  M0,M1,M2,M3 B={tuple(moments(rates_b,j) for j in range(4))}&quot;)
+    print(&quot;fixed schedule Bayes risks:&quot;, fixed)
+    print(&quot;best fixed schedule/error:&quot;, best_fixed, best_fixed_error, float(best_fixed_error))
+    print(&quot;adaptive first action, second policy by marks k=1..4:&quot;, best_adaptive_first, second_policy)
+    print(&quot;adaptive Bayes error:&quot;, best_adaptive_error, float(best_adaptive_error))
+    print(&quot;adaptive type errors A/B and tie mass:&quot;, err_a, err_b, ties)
+    print(&quot;error reduction, relative to best fixed:&quot;, best_fixed_error-best_adaptive_error, F(best_fixed_error-best_adaptive_error,best_fixed_error))
+    print(&quot;P(second action 0 | prior 1/2):&quot;, p_second_zero, float(p_second_zero))
+    print(&quot;risk contributions by first mark, actions 0/1:&quot;, policy_contributions)
+    for rho, fixed_risks, adaptive_risks in (
+        (F(1, 20), noisy_5_fixed, noisy_5_adaptive),
+        (F(1, 10), noisy_10_fixed, noisy_10_adaptive),
+        (F(1, 5), noisy_20_fixed, noisy_20_adaptive),
+    ):
+        best_static = min(fixed_risks.values())
+        best_adaptive = min(v[0] for v in adaptive_risks.values())
+        print(f&quot;known uniform-replacement rho={rho}: fixed={best_static}; adaptive={best_adaptive}&quot;)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/ff0bb0a3a653f030f73cc035dba7e84f5f09e1f582dcb7535f0ba12857c9ac5e.py">Exact original</a></p></html>

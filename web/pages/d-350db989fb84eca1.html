@@ -1,0 +1,548 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c12_spin_compiler/verify_compiler.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c12_spin_compiler/verify_compiler.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact Spin(9) circuit audit and finite-sampling spot checks for cycle 12.
+
+This script independently reconstructs the listed JW readout circuits and an
+exact Clifford+Toffoli synthesis of the fixed octonion/JW intertwiner.  It
+also checks the parity-corrected Fisher--Yates map on small groups.  The
+all-n proof is in FINAL_REPORT.md; finite checks here are not its proof.
+&quot;&quot;&quot;
+
+from collections import Counter
+from fractions import Fraction
+from importlib.util import module_from_spec, spec_from_file_location
+from itertools import combinations, product
+from math import ceil, comb, log2
+from pathlib import Path
+import json
+import sys
+
+import sympy as sp
+
+ROOT = Path(__file__).resolve().parents[3]
+OLD = ROOT / &quot;work/agents/c5_quantum_dimension_obstruction&quot;
+READOUT_DIR = OLD / &quot;cycle11_basis_partition&quot;
+CERT = json.loads((READOUT_DIR / &quot;STABILIZER_READOUT_CERTIFICATE.json&quot;).read_text())
+FINITE_CERT = json.loads((OLD / &quot;cycle10_finite_compiler/FINITE_CERTIFICATE.json&quot;).read_text())
+BASIS_CERT = json.loads((READOUT_DIR / &quot;BASIS_CERTIFICATE.json&quot;).read_text())
+
+I2 = sp.eye(2)
+X2 = sp.Matrix([[0, 1], [1, 0]])
+Y2 = sp.Matrix([[0, -sp.I], [sp.I, 0]])
+Z2 = sp.diag(1, -1)
+H2 = sp.Matrix([[1, 1], [1, -1]]) / sp.sqrt(2)
+S2 = sp.diag(1, sp.I)
+SDG2 = sp.diag(1, -sp.I)
+T2 = sp.diag(1, sp.exp(sp.I * sp.pi / 4))
+TDG2 = T2.H
+ONE_Q_PAULI = {&quot;I&quot;: I2, &quot;X&quot;: X2, &quot;Y&quot;: Y2, &quot;Z&quot;: Z2}
+
+
+def load_module(path, name):
+    spec = spec_from_file_location(name, path)
+    mod = module_from_spec(spec)
+    sys.modules[name] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+
+FC = load_module(OLD / &quot;cycle10_finite_compiler/finite_compiler.py&quot;, &quot;c12_fc&quot;)
+JW = load_module(OLD / &quot;cycle9_spin9_mixed/spin9_fullstar_blocks.py&quot;, &quot;c12_jw&quot;)
+
+
+def pauli_word_matrix(word):
+    out = sp.Matrix([[1]])
+    # The stored word order is q0,...,q(n-1); q0 is the least significant bit.
+    for letter in reversed(word):
+        out = sp.kronecker_product(out, ONE_Q_PAULI[letter])
+    return out
+
+
+def exact_w_matrix():
+    cv = {&quot;0&quot;: 0, &quot;1&quot;: 1, &quot;-1&quot;: -1, &quot;I&quot;: sp.I, &quot;-I&quot;: -sp.I}
+    return sp.Matrix([[cv[x] for x in row]
+                      for row in CERT[&quot;representation_intertwiner&quot;][&quot;intertwiner_matrix&quot;]])
+
+
+def check_intertwiner_and_clifford_status():
+    W = exact_w_matrix()
+    oct_gammas = [sp.Matrix(rows) for rows in FC.gamma_model()]
+    jw_gammas = [pauli_word_matrix(word) for word in JW.GAM]
+    for a in range(9):
+        assert W * oct_gammas[a] == jw_gammas[a] * W
+    assert W.H * W == 2 * sp.eye(16)
+    U = W / sp.sqrt(2)
+    assert U.H * U == sp.eye(16)
+
+    # A Clifford unitary must send every Pauli generator to one signed Pauli.
+    # Exact expansion of U X_0 U* supplies a decisive non-Clifford witness.
+    image = sp.simplify(U * pauli_word_matrix(&quot;XIII&quot;) * U.H)
+    expansion = []
+    for letters in product(&quot;IXYZ&quot;, repeat=4):
+        word = &quot;&quot;.join(letters)
+        coefficient = sp.simplify(sp.trace(pauli_word_matrix(word) * image) / 16)
+        if coefficient:
+            expansion.append((str(coefficient), word))
+    assert expansion == [(&quot;1/2&quot;, &quot;XXXY&quot;), (&quot;-1/2&quot;, &quot;XXYX&quot;),
+                         (&quot;1/2&quot;, &quot;XYXX&quot;), (&quot;-1/2&quot;, &quot;XYYY&quot;)]
+    assert sp.simplify(sum((sp.sympify(c) * pauli_word_matrix(w)
+                            for c, w in expansion), sp.zeros(16)) - image) == sp.zeros(16)
+    return U, expansion
+
+
+def one_qubit_gate(name):
+    return {&quot;H&quot;: H2, &quot;S&quot;: S2, &quot;SDG&quot;: SDG2, &quot;X&quot;: X2,
+            &quot;Y&quot;: Y2, &quot;Z&quot;: Z2}[name]
+
+
+def gate_matrix(gate, nq=4):
+    name, a, b = gate
+    dim = 1 &lt;&lt; nq
+    if name in (&quot;H&quot;, &quot;S&quot;, &quot;SDG&quot;, &quot;T&quot;, &quot;TDG&quot;, &quot;X&quot;, &quot;Y&quot;, &quot;Z&quot;):
+        M = {&quot;T&quot;: T2, &quot;TDG&quot;: TDG2}[name] if name in (&quot;T&quot;, &quot;TDG&quot;) else one_qubit_gate(name)
+        out = sp.zeros(dim)
+        for col in range(dim):
+            source = (col &gt;&gt; a) &amp; 1
+            for target in (0, 1):
+                row = (col &amp; ~(1 &lt;&lt; a)) | (target &lt;&lt; a)
+                out[row, col] = M[target, source]
+        return out
+    if name == &quot;CNOT&quot;:
+        out = sp.zeros(dim)
+        for col in range(dim):
+            row = col ^ ((1 &lt;&lt; b) if (col &gt;&gt; a) &amp; 1 else 0)
+            out[row, col] = 1
+        return out
+    if name == &quot;CZ&quot;:
+        out = sp.eye(dim)
+        for state in range(dim):
+            if ((state &gt;&gt; a) &amp; 1) and ((state &gt;&gt; b) &amp; 1):
+                out[state, state] = -1
+        return out
+    raise ValueError(gate)
+
+
+def circuit_unitary(gates):
+    U = sp.eye(16)
+    for gate in gates:
+        U = gate_matrix(gate) * U
+    return U
+
+
+def pauli_tuple_matrix(record, nq=4):
+    phase, x, z = record
+    out = sp.Integer(1) * sp.eye(1)
+    for q in reversed(range(nq)):
+        local = I2
+        if (x &gt;&gt; q) &amp; 1:
+            local = local * X2
+        if (z &gt;&gt; q) &amp; 1:
+            local = local * Z2
+        out = sp.kronecker_product(out, local)
+    return sp.simplify((sp.I ** phase) * out)
+
+
+def check_seed_diagonalizers():
+    results = {}
+    # Build the complete computational-Z group without relying on the source tableau routine.
+    zgroup = set()
+    for mask in range(16):
+        zgroup.add(sp.ImmutableMatrix(pauli_tuple_matrix((0, 0, mask))))
+    for name, item in CERT[&quot;seeds&quot;].items():
+        target = {sp.ImmutableMatrix(pauli_tuple_matrix(tuple(p)))
+                  for p in item[&quot;stabilizer_paulis&quot;]}
+        C = circuit_unitary([tuple(g) for g in item[&quot;preparation_clifford&quot;]])
+        D = circuit_unitary([tuple(g) for g in item[&quot;measurement_diagonalizer&quot;]])
+        assert sp.simplify(D - C.H) == sp.zeros(16)
+        mapped = {sp.ImmutableMatrix(sp.simplify(C * M * C.H)) for M in zgroup}
+        assert mapped == target
+        pulled_back = {sp.ImmutableMatrix(sp.simplify(D * M * D.H)) for M in target}
+        assert pulled_back == zgroup
+        results[name] = {
+            &quot;preparation_gates&quot;: item[&quot;preparation_clifford&quot;],
+            &quot;measurement_gates&quot;: item[&quot;measurement_diagonalizer&quot;],
+            &quot;verified_full_stabilizer_group_order&quot;: len(mapped),
+        }
+    return results
+
+
+def _even_sign_actions(gammas):
+    &quot;&quot;&quot;Return the 256 exact signed-monomial D+ actions on R^9.&quot;&quot;&quot;
+    identity = FC.zero_matrix(16)
+    for i in range(16):
+        identity[i][i] = 1
+    actions = []
+    for mask in range(256):
+        axes = [i for i in range(1, 9) if (mask &gt;&gt; (i - 1)) &amp; 1]
+        if len(axes) &amp; 1:
+            axes = [0] + axes
+        matrix = identity
+        for axis in axes:
+            matrix = FC.matmul(matrix, gammas[axis])
+        rows, signs = [], []
+        for row in matrix:
+            sources = [j for j, value in enumerate(row) if value]
+            assert len(sources) == 1
+            j = sources[0]
+            assert abs(row[j]) == 1
+            rows.append(j)
+            signs.append(row[j])
+        actions.append((rows, signs))
+    assert len(actions) == 256
+    return actions
+
+
+def _frame_key(frame):
+    a, b, denominator = frame
+    return (FC.real_projector_key(a, denominator) if b is None else
+            FC.balanced_projector_key(a, b, denominator))
+
+
+def _orthogonal_frames(first, second):
+    a, b, _ = first
+    x, y, _ = second
+    if b is None:
+        return sum(a[i] * x[i] for i in range(16)) == 0
+    real = sum(a[i] * x[i] + b[i] * y[i] for i in range(16))
+    imag = sum(a[i] * y[i] - b[i] * x[i] for i in range(16))
+    return real == 0 and imag == 0
+
+
+def _permutation_compose(p, q):
+    return tuple(p[q[i]] for i in range(9))
+
+
+def _left_cosets(permutations, subgroup):
+    remaining = set(permutations)
+    representatives = []
+    while remaining:
+        representative = min(remaining)
+        coset = {_permutation_compose(representative, h) for h in subgroup}
+        assert coset &lt;= remaining
+        representatives.append(representative)
+        remaining.difference_update(coset)
+    assert len(representatives) * len(subgroup) == len(permutations)
+    return representatives
+
+
+def check_spin9_basis_partitions_and_channel_data():
+    &quot;&quot;&quot;Rebuild the 9/63/72 PGL(2,8) D+-basis partitions exactly.&quot;&quot;&quot;
+    perms = FC.projective_permutations()
+    assert len(perms) == 504
+    assert all(FC.permutation_parity(p) == 0 for p in perms)
+    pgl_layers = {}
+    for k in range(1, 5):
+        sizes = FC.subset_orbit_sizes(perms, k)
+        assert sizes == [comb(9, k)]
+        pgl_layers[str(k)] = sizes
+
+    gammas = FC.gamma_model()
+    signs = _even_sign_actions(gammas)
+    identity = FC.zero_matrix(16)
+    for i in range(16):
+        identity[i][i] = 1
+    lifts, lifts_by_perm = [], {}
+    for p in sorted(perms):
+        matrix, denominator = FC.spin_lift_of_permutation(p, gammas, identity)
+        lifts.append((p, matrix, denominator))
+        lifts_by_perm[p] = (matrix, denominator)
+
+    expected = {&quot;v_R&quot;: (None, (1, 0, 0, 14), 9, 144, 56),
+                &quot;v_V&quot;: (1, (1, 4, 4, 6), 63, 1008, 8),
+                &quot;v_H&quot;: (8, (0, 1, 7, 7), 72, 1152, 7)}
+    summaries = {}
+    for label, (y_index, expected_moments, nbases, nrays, horder) in expected.items():
+        x0 = [int(i == 0) for i in range(16)]
+        y0 = None if y_index is None else [int(i == y_index) for i in range(16)]
+
+        # Independent exact Clifford-monomial moment calculation in JW coordinates.
+        psi = circuit_unitary([tuple(g) for g in CERT[&quot;seeds&quot;][label][&quot;preparation_clifford&quot;]]) * sp.eye(16)[:, 0]
+        jw_gammas = [pauli_word_matrix(word) for word in JW.GAM]
+        moments = []
+        for k in range(1, 5):
+            total = sp.Integer(0)
+            for axes in combinations(range(9), k):
+                monomial = sp.eye(16)
+                for axis in axes:
+                    monomial = monomial * jw_gammas[axis]
+                value = sp.simplify((psi.H * monomial * psi)[0])
+                total += sp.simplify(value * sp.conjugate(value))
+            moments.append(int(total))
+        assert tuple(moments) == expected_moments
+        assert tuple(moments) == tuple(FINITE_CERT[&quot;seeds&quot;][label][&quot;moment_vector&quot;])
+
+        full, frames = {}, {}
+        sign_basis = set()
+        for pi, matrix, denominator in lifts:
+            col_a = [matrix[i][0] for i in range(16)]
+            col_b = None if y_index is None else [matrix[i][y_index] for i in range(16)]
+            for action in signs:
+                a = FC.apply_monomial(action, col_a)
+                b = None if col_b is None else FC.apply_monomial(action, col_b)
+                frame = (a, b, denominator)
+                key = _frame_key(frame)
+                full[key] = frame
+                frames[key] = frame
+                if pi == tuple(range(9)):
+                    sign_basis.add(key)
+
+        assert len(sign_basis) == 16
+        assert len(full) == nrays == nbases * 16
+        ray_stabilizer = set()
+        for pi, matrix, denominator in lifts:
+            col_a = [matrix[i][0] for i in range(16)]
+            col_b = None if y_index is None else [matrix[i][y_index] for i in range(16)]
+            if _frame_key((col_a, col_b, denominator)) in sign_basis:
+                ray_stabilizer.add(pi)
+        assert len(ray_stabilizer) == horder
+        assert all(_permutation_compose(a, b) in ray_stabilizer
+                   for a in ray_stabilizer for b in ray_stabilizer)
+        reps = _left_cosets(perms, ray_stabilizer)
+        assert len(reps) == nbases
+
+        blocks = []
+        for pi in reps:
+            matrix, denominator = lifts_by_perm[pi]
+            col_a = [matrix[i][0] for i in range(16)]
+            col_b = None if y_index is None else [matrix[i][y_index] for i in range(16)]
+            block = set()
+            for action in signs:
+                a = FC.apply_monomial(action, col_a)
+                b = None if col_b is None else FC.apply_monomial(action, col_b)
+                block.add(_frame_key((a, b, denominator)))
+            assert len(block) == 16
+            block_frames = [frames[key] for key in block]
+            assert all(_orthogonal_frames(block_frames[i], block_frames[j])
+                       for i in range(16) for j in range(i + 1, 16))
+            for frame in block_frames:
+                a, b, den = frame
+                norm_numerator = sum(x * x for x in a)
+                if b is None:
+                    assert norm_numerator == den * den
+                else:
+                    norm_numerator += sum(x * x for x in b)
+                    assert norm_numerator == 2 * den * den
+            blocks.append(block)
+
+        union = set().union(*blocks)
+        assert union == set(full)
+        assert sum(len(block) for block in blocks) == len(union)
+        effect_weight = Fraction(1, nbases)
+        assert effect_weight == Fraction(16, nrays)
+        summaries[label] = {
+            &quot;permutation_count&quot;: len(perms),
+            &quot;Dplus_sign_actions&quot;: len(signs),
+            &quot;seed_moments_direct&quot;: moments,
+            &quot;basis_count&quot;: nbases,
+            &quot;projectors&quot;: nrays,
+            &quot;basis_coset_stabilizer&quot;: horder,
+            &quot;disjoint_complete_partition&quot;: True,
+            &quot;orthonormality_verified_per_basis&quot;: True,
+            &quot;effect_weight&quot;: str(effect_weight),
+            &quot;effect_weight_equals_16_over_N&quot;: True,
+        }
+    return {&quot;PGL_subset_orbit_sizes_k1_to_4&quot;: pgl_layers,
+            &quot;seeds&quot;: summaries}
+
+
+def diagonal_gate(nq, conditions, phase):
+    &quot;&quot;&quot;Return a diagonal matrix with phase on basis strings meeting conditions.&quot;&quot;&quot;
+    out = sp.eye(1 &lt;&lt; nq)
+    for state in range(1 &lt;&lt; nq):
+        if all(((state &gt;&gt; q) &amp; 1) == bit for q, bit in conditions):
+            out[state, state] = phase
+    return out
+
+
+def ccz_parity_circuit(a, b, c):
+    &quot;&quot;&quot;Exact CCZ from 7 T/T-dagger phases and 10 CNOTs, no ancilla.
+
+    The phase identity is 4abc = a+b+c-(a xor b)-(a xor c)-
+    (b xor c)+(a xor b xor c), for bits a,b,c.
+    &quot;&quot;&quot;
+    gates = [(&quot;T&quot;, a, None), (&quot;T&quot;, b, None), (&quot;T&quot;, c, None)]
+    for control, target in ((a, b), (a, c), (b, c)):
+        gates.extend([(&quot;CNOT&quot;, control, target), (&quot;TDG&quot;, target, None),
+                      (&quot;CNOT&quot;, control, target)])
+    gates.extend([(&quot;CNOT&quot;, a, c), (&quot;CNOT&quot;, b, c), (&quot;T&quot;, c, None),
+                  (&quot;CNOT&quot;, b, c), (&quot;CNOT&quot;, a, c)])
+    return gates
+
+
+def single_on_nq(M, q, nq=4):
+    dim = 1 &lt;&lt; nq
+    out = sp.zeros(dim)
+    for col in range(dim):
+        source = (col &gt;&gt; q) &amp; 1
+        for target in (0, 1):
+            row = (col &amp; ~(1 &lt;&lt; q)) | (target &lt;&lt; q)
+            out[row, col] = M[target, source]
+    return out
+
+
+def cnot_nq(control, target, nq=4):
+    out = sp.zeros(1 &lt;&lt; nq)
+    for col in range(1 &lt;&lt; nq):
+        row = col ^ ((1 &lt;&lt; target) if ((col &gt;&gt; control) &amp; 1) else 0)
+        out[row, col] = 1
+    return out
+
+
+def check_exact_w_synthesis(U):
+    &quot;&quot;&quot;Verify U=P Q and expand Q&#x27;s open controls exactly in Clifford+T.&quot;&quot;&quot;
+    # Q&#x27;s control bits are q1=a, q2=b; q0 is the block target.
+    z0 = single_on_nq(Z2, 0)
+    z2 = single_on_nq(Z2, 2)
+    h0 = single_on_nq(H2, 0)
+    sdg0 = single_on_nq(SDG2, 0)
+    cz12 = diagonal_gate(4, [(1, 1), (2, 1)], -1)
+    cz10 = diagonal_gate(4, [(1, 1), (0, 1)], -1)
+    ccz = circuit_unitary(ccz_parity_circuit(1, 2, 0))
+    assert sp.simplify(ccz - diagonal_gate(4, [(1, 1), (2, 1), (0, 1)], -1)) == sp.zeros(16)
+    neg_ccz_gates = [(&quot;X&quot;, 1, None), (&quot;X&quot;, 2, None)]
+    neg_ccz_gates += ccz_parity_circuit(1, 2, 0)
+    neg_ccz_gates += [(&quot;X&quot;, 2, None), (&quot;X&quot;, 1, None)]
+    qseq = neg_ccz_gates + [
+        (&quot;SDG&quot;, 0, None), (&quot;H&quot;, 0, None), (&quot;CZ&quot;, 1, 0),
+        (&quot;Z&quot;, 0, None), (&quot;CZ&quot;, 1, 2), (&quot;Z&quot;, 2, None),
+    ]
+    Q = (-sp.I) * circuit_unitary(qseq)
+    ccz_negative = diagonal_gate(4, [(1, 0), (2, 0), (0, 1)], -1)
+    Q_reference = (-sp.I) * z2 * cz12 * z0 * cz10 * h0 * sdg0 * ccz_negative
+    assert sp.simplify(Q - Q_reference) == sp.zeros(16)
+
+    # The block structure in U has columns (2t,2t+1) and rows (r,15-r).
+    # Q acts within (2t,2t+1); P sends them to the row pair.
+    Q_from_blocks = sp.zeros(16)
+    row_pairs = []
+    for t in range(8):
+        cols = [2 * t, 2 * t + 1]
+        support_rows = [r for r in range(16)
+                        if any(exact_w_matrix()[r, c] != 0 for c in cols)]
+        assert len(support_rows) == 2
+        lo = next(r for r in support_rows if r &lt; 8)
+        hi = next(r for r in support_rows if r &gt;= 8)
+        assert hi == 15 - lo
+        row_pairs.append((lo, hi))
+        block = sp.Matrix([[U[lo, cols[0]], U[lo, cols[1]]],
+                           [U[hi, cols[0]], U[hi, cols[1]]]])
+        for i in range(2):
+            for j in range(2):
+                Q_from_blocks[2 * t + i, 2 * t + j] = block[i, j]
+    assert sp.simplify(Q - Q_from_blocks) == sp.zeros(16)
+
+    def affine_index(x):
+        b, a, c, d = ((x &gt;&gt; q) &amp; 1 for q in range(4))
+        y = (b ^ a ^ c ^ d, 1 ^ a ^ b, 1 ^ b ^ c, b)
+        return sum(y[q] &lt;&lt; q for q in range(4))
+
+    P = sp.zeros(16)
+    for x in range(16):
+        P[affine_index(x), x] = 1
+    seq = [(&quot;CNOT&quot;, 0, 1), (&quot;CNOT&quot;, 0, 2), (&quot;CNOT&quot;, 1, 3),
+           (&quot;CNOT&quot;, 2, 3), (&quot;CNOT&quot;, 3, 0), (&quot;CNOT&quot;, 0, 3),
+           (&quot;X&quot;, 1, None), (&quot;X&quot;, 2, None)]
+    P_from_gates = circuit_unitary(seq)
+    assert P_from_gates == P
+    assert sp.simplify(P * Q - U) == sp.zeros(16)
+
+    # Verify the three distinct one-qubit blocks and their control partition.
+    block_signatures = []
+    for t in range(8):
+        lo, hi = row_pairs[t]
+        block_signatures.append(tuple(str(U[r, c]) for r in (lo, hi)
+                                       for c in (2 * t, 2 * t + 1)))
+    assert block_signatures[0] == block_signatures[4]
+    assert block_signatures[1] == block_signatures[3] == block_signatures[5] == block_signatures[7]
+    assert block_signatures[2] == block_signatures[6]
+    return {
+        &quot;basis_pair_row_map&quot;: row_pairs,
+        &quot;affine_output_bits&quot;: [&quot;q0^q1^q2^q3&quot;, &quot;1^q0^q1&quot;, &quot;1^q0^q2&quot;, &quot;q0&quot;],
+        &quot;affine_gate_sequence&quot;: [list(g) for g in seq],
+        &quot;controlled_block_factorization&quot;: &quot;(-i Z2 CZ12)(Z0 CZ10) H0 S0^dagger CCZ(controls q1=q2=0,target q0)&quot;,
+        &quot;negative_control_CCZ_expansion&quot;: {
+            &quot;control_toggle_sequence&quot;: [&quot;X1 X2&quot;, &quot;CCZ(q1,q2;q0)&quot;, &quot;X2 X1&quot;],
+            &quot;CCZ_phase_identity&quot;: &quot;4abc=a+b+c-(a xor b)-(a xor c)-(b xor c)+(a xor b xor c)&quot;,
+            &quot;CCZ_CNOT_count&quot;: 10,
+            &quot;CCZ_T_count&quot;: 7,
+            &quot;CCZ_ancillas&quot;: 0,
+            &quot;CCZ_exact_matrix_verified&quot;: True,
+        },
+        &quot;block_partition&quot;: {&quot;q1q2=00&quot;: &quot;B0&quot;, &quot;q1=1&quot;: &quot;B1&quot;, &quot;q1q2=01&quot;: &quot;B2&quot;},
+        &quot;verified_exact_matrix_equality&quot;: &quot;P Q = W/sqrt(2)&quot;,
+        &quot;gate_model_count&quot;: {
+            &quot;CNOT_with_CZ_decomposed&quot;: 18, &quot;T_or_Tdg&quot;: 7,
+            &quot;X&quot;: 6, &quot;H&quot;: 5, &quot;Sdg&quot;: 1, &quot;Z&quot;: 2,
+            &quot;global_phase&quot;: &quot;-i (irrelevant to the channel)&quot;,
+            &quot;ancillas&quot;: 0,
+        },
+    }
+
+
+def parity(permutation):
+    return sum(permutation[i] &gt; permutation[j]
+               for i in range(len(permutation))
+               for j in range(i + 1, len(permutation))) &amp; 1
+
+
+def fisher_yates_outcomes(m):
+    counts = Counter()
+    ranges = [range(k) for k in range(m, 1, -1)]
+    for choices in product(*ranges):
+        p = list(range(m))
+        for k, j in zip(range(m, 1, -1), choices):
+            p[k - 1], p[j] = p[j], p[k - 1]
+        if parity(p):
+            # Compose on the left with the fixed transposition (0 1).
+            p = [1 if x == 0 else 0 if x == 1 else x for x in p]
+        counts[tuple(p)] += 1
+    return counts
+
+
+def check_uniform_sampler():
+    out = {}
+    for m in (3, 5, 6):
+        counts = fisher_yates_outcomes(m)
+        # all values in a dict are equal; independently count even permutations
+        # to verify support cardinality m!/2.
+        assert all(parity(p) == 0 for p in counts)
+        expected = 1
+        import math
+        for k in range(2, m + 1):
+            expected *= k
+        assert len(counts) == expected // 2
+        assert set(counts.values()) == {2}
+        out[str(m)] = {&quot;even_permutations&quot;: len(counts), &quot;preimages_each&quot;: 2}
+    m = 9
+    bit_cost = sum((Fraction(ceil(log2(k)) * (1 &lt;&lt; ceil(log2(k))), k)
+                    for k in range(2, m + 1)), Fraction(0))
+    out[&quot;m=9_expected_fair_bits&quot;] = {&quot;exact&quot;: str(bit_cost), &quot;decimal&quot;: float(bit_cost)}
+    return out
+
+
+def main():
+    U, witness = check_intertwiner_and_clifford_status()
+    circuits = check_seed_diagonalizers()
+    finite_basis_audit = check_spin9_basis_partitions_and_channel_data()
+    synthesis = check_exact_w_synthesis(U)
+    sampler = check_uniform_sampler()
+    output = {
+        &quot;status&quot;: &quot;exact internal matrix/tableau and sampler checks passed&quot;,
+        &quot;intertwiner&quot;: {
+            &quot;WdagW&quot;: &quot;2 I_16&quot;, &quot;U=W/sqrt(2)&quot;: &quot;unitary and intertwines the two listed Cl_9 models&quot;,
+            &quot;U_is_JW_Pauli_Clifford&quot;: False,
+            &quot;exact_nonClifford_witness_U_X0_Udag_Pauli_expansion&quot;: witness,
+        },
+        &quot;seed_readouts&quot;: circuits,
+        &quot;finite_spin9_basis_and_channel_audit&quot;: finite_basis_audit,
+        &quot;W_exact_synthesis&quot;: synthesis,
+        &quot;parity_corrected_sampler&quot;: sampler,
+        &quot;scope&quot;: &quot;Spin(9) finite checks only; all-n result is the algebraic proof in FINAL_REPORT.md&quot;,
+    }
+    out = Path(__file__).with_name(&quot;VERIFICATION.json&quot;)
+    out.write_text(json.dumps(output, indent=2) + &quot;\n&quot;)
+    print(json.dumps(output, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/17d786ebdfcebfffbe6f0b1afa280c2d8da7c5b572c577ad515600e8305ac669.py">Exact original</a></p></html>

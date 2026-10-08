@@ -1,0 +1,400 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/acquisition_learning/leaves/adaptive_hankel_acquisition.txt</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/acquisition_learning/leaves/adaptive_hankel_acquisition.txt</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>ADAPTIVE HANKEL ENTRY ACQUISITION: CONDITIONAL UNKNOWN-RANK CUR WITH A VALIDATION STOP
+8 October 2026
+
+STATUS
+
+CONDITIONAL RESULT. A finite Hankel block of rank r can be reconstructed and
+its unsupplied rank recovered from queried rows/columns, without first
+observing all p*q entries, under (i) bounded left/right leverage, (ii) a
+nonzero singular gap that remains visible in the sampled cross, (iii) a
+residual-leverage condition for validation, and (iv) enough entry precision.
+The stopping rule is a high-confidence statistical certificate under those
+premises. The result is an application of matrix Chernoff, CUR, Weyl, Wedin,
+and Hoeffding, not a novelty claim. Sparse entry count does not automatically
+mean fewer process samples: it depends on the oracle contract and on the
+small sampled-core gap.
+
+The result uses an ENTRY-ONLY word-event oracle, defined below. Against the
+previous raw-reset-path oracle, each path reveals all prefix-word indicators;
+then sparse CUR can reduce computation or storage but cannot reduce the
+trajectory/sample information available to a full-block baseline. This
+interface boundary is central.
+
+1. TARGET AND ORACLE
+
+Let the alphabet Sigma have size a&gt;=2. For prefix depth k and suffix depth
+ell, use all words of the indicated lengths at most those depths:
+
+  p = sum_(i=0)^k a^i,       q = sum_(j=0)^ell a^j,
+  L = k+ell,                 D_L = sum_(h=0)^L a^h.
+
+For a process P on infinite strings, f(w) is the probability a fresh episode
+begins with word w, and H[u,v]=f(uv), for u in the prefix set and v in the
+suffix set. The population block H is p-by-q and has exact rank r&gt;=1; write
+H=U Sigma_H V^T and lambda=sigma_r(H)&gt;0. Rank r is not supplied to the
+algorithm. This conclusion identifies the rank of this finite block. It
+identifies the process&#x27;s full Hankel rank only if the selected prefix/suffix
+sets are complete for the process.
+
+The oracle accepts a chosen word w and returns a fresh Bernoulli bit
+1{episode begins with w}; it reveals no other symbols. Each bit consumes an
+independent reset episode and at most |w|&lt;=L generated symbols. The algorithm
+may ask for repeats of w. Training estimates for equal concatenated words
+are cached and reused at every Hankel cell, preserving the Hankel constraint;
+validation always uses fresh independent episodes.
+
+At phase j, if at most Q_j selected word values are estimated from their
+cumulative first n_j responses and rounded to b_j fractional bits, then with probability
+1-delta_(e,j) all queried values satisfy
+
+  |fhat(w)-f(w)| &lt;= eta(n_j,b_j,Q_j,delta_(e,j))
+    := sqrt(log(2Q_j/delta_(e,j))/(2n_j)) + 2^(-b_j-1).
+
+The bound remains valid for adaptive word choice by conditioning on the
+previous transcript; use a deterministic upper bound such as D_L for Q_j.
+If a word was already queried, add responses only until its cumulative count
+reaches n_j. Since precision/stopping are also adaptive, spend
+delta_(e,j)=delta_e*2^(-j-1) across phases and union bound the resulting
+intervals. It induces operator-norm error at most Frobenius error:
+e_C&lt;=sqrt(p*s_C)*eta, e_R&lt;=sqrt(s_R*q)*eta, and
+e_W&lt;=sqrt(s_R*s_C)*eta for sampled columns C, rows R, and core W.
+
+2. ADAPTIVE PIVOT/CUR PROCEDURE
+
+The algorithm has no rank or singular-gap input. It doubles the number of
+uniform row and column draws, with replacement, and estimates selected full
+rows and columns. When a dimension is exhausted it enumerates that side. At
+each phase it forms the noisy core W_hat, obtains certified singular values,
+and uses the cutoff
+
+  r_hat = #{j: estimated_sigma_j(W_hat) &gt; 2 epsilon_W},
+  epsilon_W = sqrt(s_R*s_C)*eta_c + zeta_W.
+
+Here zeta_W is the absolute singular-value/core-decomposition accuracy
+certified by the numerical routine. The candidate is retained in factorized
+CUR form using the rank-r_hat core truncation.
+
+Fix the requested error target epsilon_v; the validation threshold remains
+3 epsilon_v at every phase. Choose each phase&#x27;s sample counts and fractional
+precision before its fresh draws, and spend the failure budget as specified
+below. Each phase draws m_j fresh uniform validation cells from [p]x[q]. It estimates
+the corresponding word probability using an independent batch and compares
+it to the factorized candidate. A residual larger than 3 epsilon_v is a
+witness. The algorithm adds a fresh witness row and column only if the
+augmented-core singular-value intervals certify an additional direction;
+otherwise it increases precision or the uniform skeleton. It stops only when
+(a) the validation residuals are all at most 3 epsilon_v, (b) the detected
+core has a positive certified lower singular bound kappa_L, (c) the
+rank-t conditional CUR error-propagation bound computed with kappa_L is at
+most epsilon_v, and (d) the validation radii have been certified. If the
+budget is exhausted before those conditions pass, it returns UNKNOWN.
+
+The data-dependent lower bound used by (b)-(c) is
+  kappa_L = estimated_sigma_(r_hat)(W_hat) - epsilon_W.
+On a correctly detected rank-r core this is a lower bound on both
+sigma_r(W) and the smallest singular value of the returned rank-r core
+truncation. Replacing kappa by kappa_L in the error formula below gives an
+observable, conservative stop check. Under kappa&gt;=4 epsilon_W,
+kappa_L&gt;=kappa-2 epsilon_W&gt;=kappa/2. An underfit core may also pass this
+numerical check, but the independent residual validation rejects it except
+with the stated small probability.
+
+If an exact rank-t core W is already present, a nonzero Schur pivot
+
+  H[i,j] - H[i,J] W^+ H[I,j]
+
+implies that adding a new row i and a new column j raises the augmented core rank. If the
+augmented core still had rank t, W would span its row and column spaces and
+the displayed residual would have to vanish. With noisy data, a pivot is
+committed only when the rank increase is certified by singular-value
+intervals. Under a sequential pivot-gap promise each committed pivot raises
+the certified rank, so there are at most r committed pivots; without that
+promise the algorithm can still use the doubling schedule, but the stated
+worst-case query bound must include the number of attempted pivots.
+
+Because sample sizes are increased adaptively, each phase uses failure
+spending delta_(e,j)=delta_e*2^(-j-1) for training intervals and
+delta_(v,j)=delta_v*2^(-j-1) for validation. Thus a data-dependent stop does
+not reuse a fixed-n Hoeffding bound after optional stopping; all phase
+intervals are simultaneously valid by a union bound.
+
+3. CONDITIONAL UNKNOWN-RANK THEOREM
+
+Define left/right coherence
+
+  mu_U = (p/r) max_i ||U[i,:]||_2^2,
+  mu_V = (q/r) max_j ||V[j,:]||_2^2.
+
+For s_R independent uniform row draws with replacement, matrix Chernoff
+gives
+
+  Pr{sigma_min(S_R^T U)^2 &lt; s_R/(2p)}
+     &lt;= r exp(-s_R/(8 mu_U r)),
+
+and the analogous column bound. Consequently the geometric schedule reaches a
+row/column cross spanning both singular spaces with probability at least
+1-delta_s once
+
+  s_R &gt;= 8 mu_U r log(4r/delta_s),
+  s_C &gt;= 8 mu_V r log(4r/delta_s).
+
+If the required number reaches p or q, querying all rows or columns gives
+the exact span but also observes the full p-by-q block. On the sparse branch,
+the cross-core gap obeys
+
+  sigma_r(W) &gt;= kappa := lambda sqrt(s_R*s_C)/(2 sqrt(pq)).
+
+Assume at the successful phase:
+
+* the finite block H has rank r and gap lambda=sigma_r(H)&gt;0;
+* the displayed coherence sample bounds hold (with failure delta_s);
+* epsilon_W &lt;= kappa/4, where epsilon_W includes statistical entry error
+  sqrt(s_R*s_C)*eta_c and certified numerical SVD error zeta_W;
+* a selected-rank candidate&#x27;s numerical evaluation error is included in
+  epsilon_v, and the CUR propagation bound below is at most epsilon_v;
+* for every rank-t candidate Hhat_t, t&lt;r, the residual satisfies
+
+    max_(i,j) |(H-Hhat_t)[i,j]|^2
+       &lt;= mu_res ||H-Hhat_t||_F^2/(pq).
+
+  The algorithm is given an upper bound on mu_res to choose validation
+  sample sizes. This residual-leverage premise is separate from the
+  left/right coherence and need not follow from it.
+
+Then the 2*epsilon_W core cutoff returns exactly r with probability at least
+1-delta_s-delta_e. For the correctly detected core, let M=sqrt(pq),
+C0=M sqrt(s_C), R0=M sqrt(s_R), and let e_C,e_R be the sampling/rounding
+operator error bounds. If the numerical rank-r core truncation What_r
+satisfies ||What_r-W||&lt;=2 epsilon_W, Wedin&#x27;s same-rank pseudoinverse bound
+and the exact CUR identity give
+
+  ||Chat What_r^+ Rhat - H||_op &lt;= E_CUR,
+
+  E_CUR := 2 e_C(R0+e_R)/kappa
+         + 8 C0 epsilon_W(R0+e_R)/kappa^2
+         + C0 e_R/kappa
+         + zeta_CUR.
+
+Here zeta_CUR bounds certified matrix-product/evaluation error. Sufficient
+precision conditions for E_CUR&lt;=epsilon_v are
+
+  e_C &lt;= epsilon_v*kappa/(16 R0),
+  e_R &lt;= epsilon_v*kappa/(8 C0),
+  epsilon_W &lt;= min{kappa/4, epsilon_v*kappa^2/(64 C0 R0)},
+  zeta_CUR &lt;= epsilon_v/8.
+
+This is a finite-block matrix result. The CUR candidate need not itself obey
+the Hankel equal-split identities or define a positive/stochastic
+realization. For a word w represented by several block cells, averaging the
+candidate cell predictions preserves the same entrywise error bound when
+each queried cell lies in the block; it does not certify process
+compatibility.
+
+For a common per-word radius eta_c it is sufficient that
+
+  eta_c &lt;= min{
+    epsilon_v*kappa/(16 M sqrt(p*s_R*s_C)),
+    epsilon_v*kappa/( 8 M sqrt(q*s_R*s_C)),
+    epsilon_v*kappa^2/(128 M^2 s_R*s_C)
+  },
+  zeta_W &lt;= min{kappa/8,
+                 epsilon_v*kappa^2/(128 M^2 sqrt(s_R*s_C))}.
+
+The third bound allocates half the permitted epsilon_W to entry error and
+half to core arithmetic. These constants imply the stated E_CUR bound. The
+algorithm uses the observed lower bound kappa_L in its run-time version and
+refines precision until the certificate passes. To guarantee that the
+stronger run-time certificate using kappa_L&lt;=kappa also passes from a
+fixed-budget analysis, it is sufficient to tighten the four precision
+conditions to
+
+  e_C &lt;= epsilon_v*kappa/(32 R0),
+  e_R &lt;= epsilon_v*kappa/(16 C0),
+  epsilon_W &lt;= min{kappa/4, epsilon_v*kappa^2/(256 C0 R0)},
+  zeta_CUR &lt;= epsilon_v/8.
+
+Under kappa_L&gt;=kappa/2 these give E_CUR&lt;=epsilon_v using kappa_L in the
+displayed bound. The corresponding common-radius entry conditions replace
+the denominators 16, 8, 128 above by 32, 16, 512, respectively; the numerical
+core budget becomes zeta_W&lt;=min{kappa/8,
+epsilon_v*kappa^2/(512 M^2 sqrt(s_R*s_C))}. The theorem&#x27;s sample bound uses
+the true kappa only as an analysis parameter; the algorithm stops using the
+observable kappa_L.
+
+For the stopping guarantee, require
+
+  epsilon_v &lt;= lambda/(8 sqrt(2pq)),
+  validation probability/evaluation error combined &lt;= epsilon_v,
+  m_j &gt;= 2 mu_res log(1/delta_(v,j))
+
+with delta_(v,j)=delta_v*2^(-j-1). At an underfit candidate of rank t&lt;r,
+Eckart--Young gives ||H-Hhat_t||_F&gt;=lambda. If Y is the squared residual at
+a uniform cell, then E[Y]=||H-Hhat_t||_F^2/(pq) and
+Y&lt;=mu_res E[Y]. Hence Pr{Y&gt;=E[Y]/2}&gt;=1/(2mu_res): a validation batch finds
+a cell with residual at least lambda/sqrt(2pq), except with probability
+delta_(v,j). Its measured residual is at least 7 epsilon_v, above the
+3 epsilon_v threshold. At the correct rank, E_CUR&lt;=epsilon_v and total
+validation/evaluation error &lt;=epsilon_v, so every measured residual is at
+most 2 epsilon_v and the test passes. Summing the phase failure spending
+gives false-acceptance probability at most delta_v.
+
+Thus, conditional on the coherence, gap, precision, and residual-leverage
+premises, the adaptive rule stops with r_hat=r and operator error at most
+epsilon_v with probability at least 1-delta_s-delta_e-delta_v. No exact rank
+or numeric gap is given to the algorithm. The gap is necessary in the
+sample/precision bound and may be learned only through the data-dependent
+intervals.
+
+4. QUERY, SAMPLE, PRECISION, AND ARITHMETIC COSTS
+
+At phase j, for a target per-word radius eta_* and a fixed upper bound Q_j
+(at most D_L), it suffices to take
+
+  b_j &gt;= ceil(log2(1/eta_*)),
+  n_j &gt;= ceil(2 eta_*^(-2) log(2Q_j/delta_(e,j)))
+
+independent event samples per word cumulatively; previously queried words
+receive only enough new responses to reach n_j. Use the eta_c bound above
+for training; use eta_v/2 for validation estimation and spend delta_(v,j)
+across rounds. Every event sample costs at most L generated symbols. If validation uses J
+phases, then
+
+  m_j = ceil(2 mu_res log(2^(j+1)/delta_v)),
+  N_events &lt;= n_c Q_train + sum_(j=0)^(J-1) m_j n_(v,j).
+
+Let v be the row/column pivot additions. The training cell-slot bound is
+
+  Q_cells &lt;= p(s_C+v) + q(s_R+v),
+  Q_train &lt;= min(D_L,Q_cells),
+
+because equal concatenated words are cached. With rank-increment-certified
+pivots, v&lt;=r; otherwise v is bounded by the number of attempted pivots and
+must be charged. Under moderate coherence the final skeleton sizes are
+O(mu_U r log(r/delta_s)) rows and O(mu_V r log(r/delta_s)) columns, so the
+distinct-cell count is approximately p*s_C+q*s_R rather than pq. This
+advantage disappears when a side is exhausted or highly coherent.
+
+The sample/precision term can still be severe: kappa scales as
+lambda*sqrt(s_R*s_C/(pq)), and the certified CUR error includes
+epsilon_W/kappa^2. Thus fewer distinct queries may require many more samples
+per queried word. The result proves a conditional query reduction, not a
+universal trajectory reduction.
+
+There are two relevant passive baselines:
+
+* Under the same entry-only oracle, a complete passive block needs the D_L
+  distinct word values (some of the pq cells share a concatenated word).
+  At the same per-word precision n, its information cost is n*D_L Bernoulli
+  responses, versus n_c*Q_train plus validation responses for CUR. CUR wins
+  response count only if its tighter conditioning-driven precision does not
+  outweigh the saved word queries. Full-block passive SVD costs
+  O(pq*min(p,q)) arithmetic and O(pq) storage.
+* Under the raw reset-path oracle used in the preceding leaf, one trajectory
+  supplies every indicator for words of length at most L. The full-block
+  passive spectral method estimates all D_L values from the same N paths.
+  Adaptive CUR on those same observations cannot claim fewer trajectories or
+  less information cost; its possible gains are streaming computation,
+  memory, or avoiding materialization of the block. If a full p-by-q output
+  is required, writing it already costs Omega(pq).
+
+For an exact-rank objective, the matched passive control is a single full
+block SVD with the same entry confidence radius and singular cutoff. For a
+prediction objective, a stronger competent control uses the full-block SVD
+once to form all nested truncations t=0,...,min(p,q), then selects among
+them on independent held-out trajectories, breaking ties toward smaller t.
+It receives the same event/path observations and can favor a lower predictive
+rank when an algebraic direction contributes little over the finite horizon.
+Comparisons should report both exact-rank recovery and held-out prediction;
+CUR&#x27;s algebraic rank result is not itself a predictive advantage.
+
+CUR arithmetic on the selected data uses an SVD of the s_R-by-s_C core,
+O(s_R*s_C*min(s_R,s_C)) operations. Keeping C,W^+,R factored uses
+O(p*s_C+q*s_R+s_R*s_C) memory. One held-out prediction costs
+O(s_R*s_C), hence validation costs O(s_R*s_C*sum_j m_j). Materializing the
+full matrix is optional and would cost O(pq) output writes. These are
+real-arithmetic counts. Numerical routines must separately certify zeta_W
+and zeta_CUR; interval precision is refined to meet those absolute operator
+norm budgets. Under a backward-stable interval linear algebra kernel, a
+conservative guard-bit scale is
+
+  P_num = O(log2(((1+C0)(1+R0)(1+kappa^(-1))^2)/zeta_num)
+            + log2(p+q+s_R+s_C)),
+
+where zeta_num=min(zeta_W,zeta_CUR) and implementation constants must be
+verified for the chosen kernel. Each word estimate is represented with b
+fractional bits and a count needing ceil(log2(n+1)) bits; a queried word ID
+uses O(L log a) bits. Total generated symbols are at most L*N_events.
+
+5. LOWER BOUNDS WHEN GAP OR COHERENCE FAILS
+
+Gap failure, with a genuine process. Let P0 be iid Bernoulli(1/4). Let Pe
+choose once per reset episode iid Bernoulli(1/4) with probability 1-e and
+iid Bernoulli(3/4) with probability e. P0 has Hankel rank one. The mixture
+has rank two: its {empty,1} block has determinant e(1-e)/4 and second
+singular value at most e/4. For every queried word, the Bernoulli event mean
+changes by at most e. Any B adaptive scalar samples have transcript total
+variation at most B*e by sequential coupling, so Le Cam gives testing error
+at least (1-B*e)/2. With e=1/(10B), the error is at least 0.45. The bound
+also holds for B full reset episodes because each path law is an e-mixture.
+This rules out uniform finite-sample exact-rank recovery without a positive
+gap or another separation promise.
+
+Coherence failure, general matrix oracle. Hide a uniform location (i,j) and
+present the exact rank-one matrix e_i e_j^T. Its left/right coherences are
+mu_U=p and mu_V=q. Until the spike is queried, all responses are zero; after
+Q distinct adaptive queries, success is at most (Q+1)/(pq). Therefore
+success 1-delta requires Q &gt;= (1-delta)pq-1. This is a lower bound for
+general low-rank matrix recovery, not for every Hankel-process subclass.
+
+There is a valid process example showing uniform row/column CUR itself can
+fail under high coherence. For the deterministic all-zero stream over an
+alphabet with at least two symbols, H is the rank-one outer product of the
+indicator vectors of zero-only prefixes and zero-only suffixes. Its support
+has (k+1) rows and (ell+1) columns, so mu_U=p/(k+1) and mu_V=q/(ell+1).
+Uniform sampling misses a support row or column with probability
+
+  1 - [1-(1-(k+1)/p)^s_R][1-(1-(ell+1)/q)^s_C].
+
+The sampled core is zero on that event. A structure-aware adaptive method
+can target the empty/zero words, so this example falsifies uniform sampling
+only; it does not prove a lower bound for all process-aware adaptivity.
+
+6. PRIOR ART AND OPEN BOUNDARY
+
+Tropp supplies the matrix Chernoff tail used for row/column subspace capture.
+Chen, Bhojanapalli, Sanghavi, and Ward establish leverage-based low-rank
+completion and a two-phase route when leverage is not known. Drineas,
+Mahoney, and Muthukrishnan&#x27;s CUR approximation algorithms take rank k as
+input; this construction supplies an unknown-rank core cutoff and an
+independent residual validation test. Wedin supplies same-rank pseudoinverse
+stability. Krishnamurthy and Singh discuss the adaptive single-hidden-entry
+obstruction for generic matrix sampling.
+
+The previous leaf, `spectral_unknown_rank.txt`, proves full-block singular
+thresholding under a singular margin and gives the same rare-mixture
+no-uniformity witness. This leaf adds only a conditional entry-only adaptive
+CUR path. Universal acquisition from the raw trajectory interface,
+process-valid lower bounds for all adaptive algorithms when coherence fails,
+stable transition/realization recovery, and gains against retained-trajectory
+prediction remain unresolved. The residual-leverage premise and small-core
+gap can make the result vacuous or expensive; status remains CONDITIONAL,
+not a completed general acquisition theorem.
+
+PRIMARY SOURCES
+
+1. Joel A. Tropp, “User-Friendly Tail Bounds for Sums of Random Matrices,”
+   Foundations of Computational Mathematics 12 (2012), 389–434.
+   https://arxiv.org/abs/1004.4389
+2. Yudong Chen, Srinadh Bhojanapalli, Sujay Sanghavi, and Rachel Ward,
+   “Completing Any Low-rank Matrix, Provably.”
+   https://arxiv.org/abs/1306.2979
+3. Petros Drineas, Michael W. Mahoney, and S. Muthukrishnan,
+   “Relative-Error CUR Matrix Decompositions.”
+   https://arxiv.org/abs/0708.3696
+4. Per-Åke Wedin, “Perturbation Theory for Pseudo-Inverses,” BIT 13 (1973),
+   217–232. https://doi.org/10.1007/BF01933494
+5. Akshay Krishnamurthy and Aarti Singh, “Low-Rank Matrix and Tensor
+   Completion via Adaptive Sampling,” NeurIPS 26 (2013).
+   https://proceedings.neurips.cc/paper/2013/hash/2050e03ca119580f74cca14cc6e97462-Abstract.html
+   https://arxiv.org/abs/1304.4672
+</pre><p><a href="../assets/0e35bc2f434fa9c3814ca31562c2aaf3519c7eae2ab407d116d33d131ab05517.txt">Exact original</a></p></html>

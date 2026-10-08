@@ -1,0 +1,232 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/spectral_geometry/su_m_profile/finite_falsification.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/spectral_geometry/su_m_profile/finite_falsification.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact finite SU(4)/SU(5) falsification diagnostics for spectral profiles.
+
+Uses the adjacent exact_lr_search.py integer LR-tableau and zero-weight
+tableau routines. The tested stable window C2(nu)&lt;(1+min_i a_i)^2 is an
+explicit diagnostic hypothesis, not an imported theorem. All arithmetic in
+the checks is integer/Fraction exact.
+&quot;&quot;&quot;
+
+from fractions import Fraction
+from itertools import product
+
+from exact_lr_search import (
+    canonical_partition,
+    casimir,
+    dimension,
+    end_decomposition,
+    zero_weight_multiplicity,
+)
+
+
+CASES = (
+    (4, (1, 1, 1)),
+    (4, (2, 2, 2)),
+    (4, (1, 2, 1)),
+    (5, (1, 1, 1, 1)),
+    (5, (2, 2, 2, 2)),
+    (5, (3, 3, 3, 3)),
+    (5, (2, 1, 2, 1)),
+)
+
+
+def candidate_labels_below(m: int, cutoff: Fraction):
+    &quot;&quot;&quot;Enumerate all dominant labels with C2&lt;cutoff using a safe norm cap.
+
+    For type A, &lt;omega_i,omega_j&gt; &gt;= 0 and ||omega_i||^2 &gt;= (m-1)/m.
+    Hence C2(sum a_i omega_i) &gt;= (m-1)/(2m) * a_i^2 for every i.
+    &quot;&quot;&quot;
+    if cutoff &lt;= 0:
+        return
+    max_coordinate = 0
+    while Fraction(m - 1, 2 * m) * (max_coordinate + 1) ** 2 &lt; cutoff:
+        max_coordinate += 1
+    for labels in product(range(max_coordinate + 1), repeat=m - 1):
+        if casimir(canonical_partition(labels)) &lt; cutoff:
+            yield labels
+
+
+def check_normalization(m: int):
+    fundamental = (1,) + (0,) * (m - 2)
+    adjoint = (1,) + (0,) * (m - 3) + (1,)
+    cf = casimir(canonical_partition(fundamental))
+    ca = casimir(canonical_partition(adjoint))
+    assert cf == Fraction(m * m - 1, 2 * m), (m, cf)
+    assert ca == m, (m, ca)
+    assert dimension(canonical_partition(adjoint)) == m * m - 1
+    return cf, ca
+
+
+def analyze(m: int, labels: tuple[int, ...]):
+    lam, dual, decomposition, witnesses = end_decomposition(labels)
+    carrier_dim = dimension(lam)
+    total_dim = sum(
+        mult * dimension(canonical_partition(nu))
+        for nu, mult in decomposition.items()
+    )
+    assert total_dim == carrier_dim**2
+    assert decomposition.get((0,) * (m - 1), 0) == 1
+    adjoint = (1,) + (0,) * (m - 3) + (1,)
+    assert decomposition.get(adjoint, 0) == m - 1
+
+    # Empirical stable-window diagnostic. Include absent nu in the comparison:
+    # their End multiplicity is exactly zero.
+    delta = min(labels) + 1
+    cutoff = Fraction(delta * delta)
+    tested = []
+    discrepancies = []
+    for nu in candidate_labels_below(m, cutoff):
+        c = casimir(canonical_partition(nu))
+        actual = decomposition.get(nu, 0)
+        zero = zero_weight_multiplicity(canonical_partition(nu))
+        tested.append((nu, c, actual, zero))
+        if actual != zero:
+            discrepancies.append((nu, c, actual, zero))
+
+    # Find the first supported output where equality with zero-weight
+    # multiplicity ceases. This locates an exact finite boundary beyond the
+    # candidate window; only support labels are scanned here.
+    first_output_mismatch = None
+    compared_outputs = 0
+    for nu, actual in sorted(
+        decomposition.items(),
+        key=lambda item: (casimir(canonical_partition(item[0])), item[0]),
+    ):
+        zero = zero_weight_multiplicity(canonical_partition(nu))
+        compared_outputs += 1
+        if actual != zero:
+            first_output_mismatch = (
+                nu, casimir(canonical_partition(nu)), actual, zero
+            )
+            break
+    assert first_output_mismatch is not None
+    assert first_output_mismatch[1] &gt; cutoff
+
+    # Exact Casimir shell masses and right-continuous D(T).
+    shell_mass = {}
+    for nu, mult in decomposition.items():
+        part = canonical_partition(nu)
+        c = casimir(part)
+        shell_mass[c] = shell_mass.get(c, 0) + mult * dimension(part)
+    levels = sorted(shell_mass)
+    positive_levels = [c for c in levels if c &gt; 0]
+    assert positive_levels and positive_levels[0] == m
+    assert shell_mass[Fraction(m)] == (m - 1) * (m * m - 1)
+    cumulative = 0
+    shell_rows = []
+    # Continuous-T suprema can be evaluated at shell-entry points because D
+    # is a right-continuous step function and each denominator is increasing.
+    # Remove the trivial shell for the unshifted T^p ratio: otherwise
+    # sup_{T&gt;0} D(T)/T^p is infinite on 0&lt;T&lt;m (D(T)=1 there).
+    max_Dplus_over_T_pow_p = None
+    max_Dplus_ratio_at = None
+    max_Dplus_over_1_plus_T_pow_p = Fraction(0)
+    max_Dplus_shifted_ratio_at = None
+    max_D_over_1_plus_T_pow_p = Fraction(1)  # attained at T=0
+    max_D_shifted_ratio_at = Fraction(0)
+    p = m * (m - 1) // 2
+    for c in levels:
+        cumulative += shell_mass[c]
+        shell_rows.append((c, shell_mass[c], cumulative))
+        if c &gt; 0:
+            Dplus = cumulative - 1
+            ratio = Fraction(Dplus, 1) / c**p
+            if max_Dplus_over_T_pow_p is None or ratio &gt; max_Dplus_over_T_pow_p:
+                max_Dplus_over_T_pow_p, max_Dplus_ratio_at = ratio, c
+            shifted_plus_ratio = Fraction(Dplus, 1) / (1 + c) ** p
+            if shifted_plus_ratio &gt; max_Dplus_over_1_plus_T_pow_p:
+                max_Dplus_over_1_plus_T_pow_p = shifted_plus_ratio
+                max_Dplus_shifted_ratio_at = c
+            shifted_total_ratio = Fraction(cumulative, 1) / (1 + c) ** p
+            if shifted_total_ratio &gt; max_D_over_1_plus_T_pow_p:
+                max_D_over_1_plus_T_pow_p = shifted_total_ratio
+                max_D_shifted_ratio_at = c
+    # This is the finite-carrier C=1 shell-count test stated in the receipt.
+    assert max_D_over_1_plus_T_pow_p == 1, (m, labels, max_D_over_1_plus_T_pow_p)
+    assert cumulative == carrier_dim**2
+
+    # Selected exact cumulative values at the adjoint and candidate cutoff.
+    def D(t):
+        return sum(mass for c, mass in shell_mass.items() if c &lt;= t)
+
+    stable_last = max((c for c in levels if c &lt; cutoff), default=Fraction(-1))
+    key_T = sorted({Fraction(0), Fraction(m), stable_last, cutoff})
+    key_D = [(t, D(t)) for t in key_T]
+    head_shells = shell_rows[: min(12, len(shell_rows))]
+
+    return {
+        &quot;m&quot;: m,
+        &quot;labels&quot;: labels,
+        &quot;dual_partition&quot;: dual,
+        &quot;carrier_dim&quot;: carrier_dim,
+        &quot;output_irreps&quot;: len(decomposition),
+        &quot;decomposition_dimension_sum&quot;: total_dim,
+        &quot;delta&quot;: delta,
+        &quot;stable_cutoff&quot;: cutoff,
+        &quot;stable_candidates&quot;: len(tested),
+        &quot;stable_discrepancies&quot;: discrepancies,
+        &quot;stable_zero_weight_positive&quot;: sum(1 for row in tested if row[3] &gt; 0),
+        &quot;stable_end_positive&quot;: sum(1 for row in tested if row[2] &gt; 0),
+        &quot;stable_examples&quot;: tested,
+        &quot;first_output_mismatch&quot;: first_output_mismatch,
+        &quot;outputs_compared_to_first_mismatch&quot;: compared_outputs,
+        &quot;shell_levels&quot;: len(levels),
+        &quot;first_positive_shell&quot;: (positive_levels[0], shell_mass[positive_levels[0]]),
+        &quot;D_key&quot;: key_D,
+        &quot;first_shells&quot;: head_shells,
+        &quot;last_shell&quot;: shell_rows[-1],
+        &quot;max_Dplus_over_T_pow_p_for_T_positive&quot;: max_Dplus_over_T_pow_p,
+        &quot;max_Dplus_ratio_at&quot;: max_Dplus_ratio_at,
+        &quot;max_Dplus_over_1_plus_T_pow_p_for_T_positive&quot;: max_Dplus_over_1_plus_T_pow_p,
+        &quot;max_Dplus_shifted_ratio_at&quot;: max_Dplus_shifted_ratio_at,
+        &quot;max_D_over_1_plus_T_pow_p_for_T_nonnegative&quot;: max_D_over_1_plus_T_pow_p,
+        &quot;max_D_shifted_ratio_at&quot;: max_D_shifted_ratio_at,
+        &quot;p&quot;: p,
+    }
+
+
+def main():
+    for m in (4, 5):
+        cf, ca = check_normalization(m)
+        print(f&quot;SU({m}) normalization: C2(fund)={cf}; C2(adj)={ca}; dim(adj)={m*m-1}&quot;)
+    for m, labels in CASES:
+        result = analyze(m, labels)
+        print(
+            f&quot;SU({m}) lambda={labels}: d={result[&#x27;carrier_dim&#x27;]}, &quot;
+            f&quot;End irreps={result[&#x27;output_irreps&#x27;]}, &quot;
+            f&quot;sum mult*dim={result[&#x27;decomposition_dimension_sum&#x27;]}, &quot;
+            f&quot;Delta={result[&#x27;delta&#x27;]}, tested C2&lt;Delta^2={result[&#x27;stable_cutoff&#x27;]}: &quot;
+            f&quot;{result[&#x27;stable_candidates&#x27;]} weights, &quot;
+            f&quot;positive zero-weight={result[&#x27;stable_zero_weight_positive&#x27;]}, &quot;
+            f&quot;positive End={result[&#x27;stable_end_positive&#x27;]}, &quot;
+            f&quot;discrepancies={len(result[&#x27;stable_discrepancies&#x27;])}&quot;
+        )
+        if result[&quot;stable_discrepancies&quot;]:
+            print(&quot;  FIRST STABLE-WINDOW DISCREPANCY:&quot;, result[&quot;stable_discrepancies&quot;][0])
+        print(
+            f&quot;  first supported mismatch with zero-weight multiplicity after &quot;
+            f&quot;{result[&#x27;outputs_compared_to_first_mismatch&#x27;]} outputs: &quot;
+            f&quot;{result[&#x27;first_output_mismatch&#x27;]}&quot;
+        )
+        print(
+            f&quot;  p={result[&#x27;p&#x27;]}, distinct Casimir shells={result[&#x27;shell_levels&#x27;]}, &quot;
+            f&quot;first positive shell={result[&#x27;first_positive_shell&#x27;]}, &quot;
+            f&quot;key D(T)={result[&#x27;D_key&#x27;]}, &quot;
+            f&quot;max exact (D(T)-1)/T^p for T&gt;0=&quot;
+            f&quot;{result[&#x27;max_Dplus_over_T_pow_p_for_T_positive&#x27;]} &quot;
+            f&quot;at T={result[&#x27;max_Dplus_ratio_at&#x27;]}; &quot;
+            f&quot;max D(T)/(1+T)^p for T&gt;=0=&quot;
+            f&quot;{result[&#x27;max_D_over_1_plus_T_pow_p_for_T_nonnegative&#x27;]} &quot;
+            f&quot;at T={result[&#x27;max_D_shifted_ratio_at&#x27;]}; &quot;
+            f&quot;max (D(T)-1)/(1+T)^p for T&gt;0=&quot;
+            f&quot;{result[&#x27;max_Dplus_over_1_plus_T_pow_p_for_T_positive&#x27;]} &quot;
+            f&quot;at T={result[&#x27;max_Dplus_shifted_ratio_at&#x27;]}&quot;
+        )
+        print(&quot;  first shells (C2, shell mass, cumulative D):&quot;, result[&quot;first_shells&quot;])
+        print(&quot;  final shell (C2, mass, cumulative D):&quot;, result[&quot;last_shell&quot;])
+        assert not result[&quot;stable_discrepancies&quot;]
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/4701bf5d1dbded2b2d2d34459cc50e94ba221632ac64e6fcfda01ac3a58dffed.py">Exact original</a></p></html>

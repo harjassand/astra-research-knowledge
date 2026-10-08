@@ -1,0 +1,115 @@
+"""Estimate field-induced sample entropy from paired heat-capacity curves.
+
+The paired difference cancels a field-invariant background on a common
+temperature grid. It measures the total field-induced sample entropy, including
+coupled lattice terms; it does not identify spin-only entropy.
+"""
+
+import numpy as np
+
+
+def integrate_field_difference(temperature_K, cp_H, cp_H0):
+    temperature = np.asarray(temperature_K, dtype=float)
+    cp_H = np.asarray(cp_H, dtype=float)
+    cp_H0 = np.asarray(cp_H0, dtype=float)
+    if temperature.ndim != 1 or cp_H.shape != temperature.shape or cp_H0.shape != temperature.shape:
+        raise ValueError("temperature and both heat-capacity curves must be aligned 1D arrays")
+    if len(temperature) < 2 or np.any(np.diff(temperature) <= 0) or np.any(temperature <= 0):
+        raise ValueError("temperature must be positive and strictly increasing")
+    integrand = (cp_H - cp_H0) / temperature
+    increments = 0.5 * (integrand[1:] + integrand[:-1]) * np.diff(temperature)
+    entropy_difference = np.concatenate(([0.0], np.cumsum(increments)))
+    return entropy_difference
+
+
+def trapezoid_operator(temperature_K):
+    """Return W such that W @ (Cp_H-Cp_H0) is cumulative ΔS(T)."""
+    temperature = np.asarray(temperature_K, dtype=float)
+    if temperature.ndim != 1 or len(temperature) < 2:
+        raise ValueError("temperature must be a 1D grid with at least two points")
+    if np.any(np.diff(temperature) <= 0) or np.any(temperature <= 0):
+        raise ValueError("temperature must be positive and strictly increasing")
+    operator = np.zeros((len(temperature), len(temperature)), dtype=float)
+    for k in range(1, len(temperature)):
+        operator[k] = operator[k - 1]
+        step = temperature[k] - temperature[k - 1]
+        operator[k, k - 1] += 0.5 * step / temperature[k - 1]
+        operator[k, k] += 0.5 * step / temperature[k]
+    return operator
+
+
+def propagate_entropy_covariance(
+    temperature_K, covariance_H, covariance_H0, cross_covariance=None
+):
+    """Propagate paired Cp covariance through the cumulative trapezoid rule.
+
+    ``cross_covariance[i,j]`` is Cov(Cp_H[i], Cp_H0[j]). Pass the full paired
+    covariance when common-mode drift or shared calibration creates correlation.
+    """
+    operator = trapezoid_operator(temperature_K)
+    shape = operator.shape
+    covariance_H = np.asarray(covariance_H, dtype=float)
+    covariance_H0 = np.asarray(covariance_H0, dtype=float)
+    if covariance_H.shape != shape or covariance_H0.shape != shape:
+        raise ValueError("each heat-capacity covariance must be an n-by-n matrix")
+    if cross_covariance is None:
+        cross = np.zeros(shape, dtype=float)
+    else:
+        cross = np.asarray(cross_covariance, dtype=float)
+        if cross.shape != shape:
+            raise ValueError("cross-covariance must be an n-by-n matrix")
+    difference_covariance = covariance_H + covariance_H0 - cross - cross.T
+    entropy_covariance = operator @ difference_covariance @ operator.T
+    return 0.5 * (entropy_covariance + entropy_covariance.T)
+
+
+def synthetic_background_cancellation_check():
+    errors = []
+    for point_count in (251, 501, 1001, 2001):
+        temperature = np.linspace(80.0, 300.0, point_count)
+        background = 2.0e-9 + 5.0e-12 * temperature + 0.1e-9 * np.sin(temperature / 55.0)
+        entropy_H0 = 0.4e-10 * np.tanh((temperature - 155.0) / 17.0)
+        entropy_difference_true = 0.8e-10 * np.tanh((temperature - 132.0) / 8.0)
+        cp_mag_H0 = temperature * np.gradient(entropy_H0, temperature, edge_order=2)
+        cp_field_difference = temperature * np.gradient(entropy_difference_true, temperature, edge_order=2)
+        cp_H0 = background + cp_mag_H0
+        cp_H = background + cp_mag_H0 + cp_field_difference
+        estimate = integrate_field_difference(temperature, cp_H, cp_H0)
+        expected = entropy_difference_true - entropy_difference_true[0]
+        maximum_error = float(np.max(np.abs(estimate - expected)))
+        scale = float(np.ptp(expected))
+        assert maximum_error < 2.0e-3 * scale
+        errors.append((point_count, maximum_error))
+    ratios = [errors[i][1] / errors[i + 1][1] for i in range(len(errors) - 1)]
+    assert all(3.8 < ratio < 4.2 for ratio in ratios)
+
+    # Confirm the full linear covariance propagation against Monte Carlo.
+    rng = np.random.default_rng(1108)
+    temperature = np.linspace(100.0, 180.0, 9)
+    sigma = np.linspace(0.8e-12, 1.2e-12, len(temperature))
+    cp_cov = np.diag(sigma**2)
+    cross_cov = 0.35 * cp_cov
+    predicted = propagate_entropy_covariance(
+        temperature, cp_cov, cp_cov, cross_cov
+    )
+    draws = rng.multivariate_normal(np.zeros(len(temperature)), cp_cov, size=30000)
+    draws0 = 0.35 * draws + np.sqrt(1.0 - 0.35**2) * rng.multivariate_normal(
+        np.zeros(len(temperature)), cp_cov, size=30000
+    )
+    W = trapezoid_operator(temperature)
+    simulated = (draws - draws0) @ W.T
+    empirical = np.cov(simulated, rowvar=False)
+    relative_covariance_error = float(
+        np.linalg.norm(empirical - predicted) / np.linalg.norm(predicted)
+    )
+    assert relative_covariance_error < 0.04
+    return errors, ratios, relative_covariance_error
+
+
+if __name__ == "__main__":
+    errors, ratios, covariance_error = synthetic_background_cancellation_check()
+    print({
+        "synthetic_errors_by_grid": errors,
+        "successive_error_ratios": ratios,
+        "relative_covariance_error_vs_monte_carlo": covariance_error,
+    })

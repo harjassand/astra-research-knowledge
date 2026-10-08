@@ -1,0 +1,105 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c9_aging_control/code/analyze_sereda2026_source.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c9_aging_control/code/analyze_sereda2026_source.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Descriptive reanalysis of Sereda et al. (2026), Fig. 4 source data.
+
+The spreadsheet reports field-level values pooled over three independent
+experiments for Fig. 4h. This script reproduces the descriptive means and
+rescue fraction only; it does not treat fields as independent animals or
+recompute inferential statistics.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import hashlib
+import json
+import sys
+from pathlib import Path
+from statistics import mean
+
+from openpyxl import load_workbook
+
+
+def vals(sheet, column: int, rows: range) -&gt; list[float]:
+    return [float(sheet.cell(row, column).value) for row in rows
+            if sheet.cell(row, column).value is not None]
+
+
+def main() -&gt; None:
+    source = Path(sys.argv[1] if len(sys.argv) &gt; 1 else
+                  &quot;work/agents/c9_aging_control/sources/sereda2026_source_fig4.xlsx&quot;)
+    raw = source.read_bytes()
+    wb = load_workbook(source, data_only=True, read_only=True)
+    sheet = wb[&quot;Fig. 4&quot;]
+
+    # Fig. 4e: three independently repeated observations per cell. Columns
+    # C:E are untreated control fibroblasts and F:H are palbociclib-senescent
+    # control fibroblasts; rows 126/127 are control/CMA-deficient macrophages.
+    f4e = {
+        &quot;WT macrophage, untreated fibroblast&quot;: vals(sheet, 3, range(126, 127))
+        + vals(sheet, 4, range(126, 127)) + vals(sheet, 5, range(126, 127)),
+        &quot;WT macrophage, senescent fibroblast&quot;: vals(sheet, 6, range(126, 127))
+        + vals(sheet, 7, range(126, 127)) + vals(sheet, 8, range(126, 127)),
+        &quot;CMA-KO macrophage, untreated fibroblast&quot;: vals(sheet, 3, range(127, 128))
+        + vals(sheet, 4, range(127, 128)) + vals(sheet, 5, range(127, 128)),
+        &quot;CMA-KO macrophage, senescent fibroblast&quot;: vals(sheet, 6, range(127, 128))
+        + vals(sheet, 7, range(127, 128)) + vals(sheet, 8, range(127, 128)),
+    }
+    means4e = {k: mean(v) for k, v in f4e.items()}
+
+    # Fig. 4h: bead-uptake fluorescence from 10/11 fields per group across
+    # three independent experiments. Columns B/C are control/CMA-KO senescent
+    # fibroblast secretome without CMA activator; D/E are the matched CA arms.
+    f4h = {
+        &quot;control secretome, no CA&quot;: vals(sheet, 2, range(173, 184)),
+        &quot;CMA-KO secretome, no CA&quot;: vals(sheet, 3, range(173, 184)),
+        &quot;control secretome, CA&quot;: vals(sheet, 4, range(173, 184)),
+        &quot;CMA-KO secretome, CA&quot;: vals(sheet, 5, range(173, 184)),
+    }
+    means4h = {k: mean(v) for k, v in f4h.items()}
+    baseline = means4h[&quot;control secretome, no CA&quot;]
+    inhibited = means4h[&quot;CMA-KO secretome, no CA&quot;]
+    rescued = means4h[&quot;CMA-KO secretome, CA&quot;]
+    gap = baseline - inhibited
+
+    out = {
+        &quot;source&quot;: {
+            &quot;citation&quot;: &quot;Sereda et al., Nature Aging (2026), DOI 10.1038/s43587-026-01240-w, Fig. 4 source data&quot;,
+            &quot;source_data_sha256&quot;: hashlib.sha256(raw).hexdigest(),
+            &quot;file&quot;: str(source),
+        },
+        &quot;fig4e_apoptotic_corpse_efferocytosis&quot;: {
+            &quot;units&quot;: &quot;source-reported percent efferocytosis&quot;,
+            &quot;raw_values&quot;: f4e,
+            &quot;means&quot;: means4e,
+            &quot;WT_to_KO_ratio_untreated_fibroblasts&quot;: means4e[&quot;WT macrophage, untreated fibroblast&quot;] / means4e[&quot;CMA-KO macrophage, untreated fibroblast&quot;],
+            &quot;WT_to_KO_ratio_senescent_fibroblasts&quot;: means4e[&quot;WT macrophage, senescent fibroblast&quot;] / means4e[&quot;CMA-KO macrophage, senescent fibroblast&quot;],
+            &quot;relative_fibroblast_state_change_with_WT_macrophage&quot;: (means4e[&quot;WT macrophage, senescent fibroblast&quot;] - means4e[&quot;WT macrophage, untreated fibroblast&quot;]) / means4e[&quot;WT macrophage, untreated fibroblast&quot;],
+            &quot;relative_fibroblast_state_change_with_KO_macrophage&quot;: (means4e[&quot;CMA-KO macrophage, senescent fibroblast&quot;] - means4e[&quot;CMA-KO macrophage, untreated fibroblast&quot;]) / means4e[&quot;CMA-KO macrophage, untreated fibroblast&quot;],
+            &quot;source_anova_percent_total_variation&quot;: {
+                &quot;macrophage_genotype&quot;: 98.22,
+                &quot;fibroblast_state&quot;: 0.8562,
+                &quot;interaction&quot;: 0.7214,
+            },
+            &quot;replication_unit&quot;: &quot;n=3 independent experiments; descriptive group means only&quot;,
+        },
+        &quot;fig4h_bead_uptake_fluorescence&quot;: {
+            &quot;units&quot;: &quot;source-reported FITC-IgG fluorescence, not direct senescent-cell clearance&quot;,
+            &quot;raw_field_values&quot;: f4h,
+            &quot;means&quot;: means4h,
+            &quot;rescue_fraction_of_no_CA_secretome_gap&quot;: (rescued - inhibited) / gap,
+            &quot;remaining_fraction_of_no_CA_secretome_gap_after_CA&quot;: (baseline - rescued) / gap,
+            &quot;field_counts&quot;: {k: len(v) for k, v in f4h.items()},
+            &quot;replication_unit&quot;: &quot;10/11 fields per group nested in three independent experiments; no field-level CI is reported here&quot;,
+        },
+        &quot;limits&quot;: [
+            &quot;Fig. 4e measures efferocytosis of staurosporine-killed targets, not clearance of living senescent cells.&quot;,
+            &quot;Fig. 4h measures macrophage uptake of IgG-coated beads after secretome exposure, not target-cell fate.&quot;,
+            &quot;Fields are nested within experiments; field counts are not treated as independent biological replicates.&quot;,
+            &quot;No in-vivo per-cell CMA activity, senescent-cell birth flux, macrophage survival flux, or clearance hazard is inferred.&quot;,
+        ],
+    }
+    print(json.dumps(out, indent=2, sort_keys=True))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/cedefee3ec243e73d0564132aefcce0d03feb36a019670361baeb0c5bc26ecd0.py">Exact original</a></p></html>

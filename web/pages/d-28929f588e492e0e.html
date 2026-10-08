@@ -1,0 +1,76 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/measurement_inverse/design_synthesis_check.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/measurement_inverse/design_synthesis_check.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Finite checks for the all-d weighted 2-design phase-retrieval construction.
+
+For odd prime p &gt;= d, take the Sidon subset S={(x,x^2):0&lt;=x&lt;d} of G=F_p^2.
+The Bodmann--Haas construction has p^2+d points.  This script verifies the
+weighted complex-projective 2-design moment numerically for small dimensions.
+It is a finite diagnostic, not a proof or a statistical/exposure guarantee.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import numpy as np
+
+
+def is_prime(n: int) -&gt; bool:
+    return n &gt;= 2 and all(n % q for q in range(2, int(n**0.5) + 1))
+
+
+def next_odd_prime_at_least(d: int) -&gt; int:
+    p = max(3, d)
+    while not is_prime(p):
+        p += 1
+    return p
+
+
+def swap_operator(d: int) -&gt; np.ndarray:
+    f = np.zeros((d * d, d * d), dtype=complex)
+    for i in range(d):
+        for j in range(d):
+            f[i * d + j, j * d + i] = 1
+    return f
+
+
+def check_dimension(d: int) -&gt; tuple[int, float, float]:
+    p = next_odd_prime_at_least(d)
+    points = [(x, (x * x) % p) for x in range(d)]
+    vecs: list[np.ndarray] = []
+    probs: list[float] = []
+
+    # Character vectors, one for each character of F_p^2.
+    for a in range(p):
+        for b in range(p):
+            u = np.array(
+                [np.exp(2j * np.pi * (a * x + b * y) / p) / np.sqrt(d)
+                 for x, y in points],
+                dtype=complex,
+            )
+            vecs.append(u)
+            probs.append(d / (p * p * (d + 1)))
+
+    # Coordinate vectors, one for each point of S.
+    for j in range(d):
+        u = np.zeros(d, dtype=complex)
+        u[j] = 1
+        vecs.append(u)
+        probs.append(1 / (d * (d + 1)))
+
+    moment = np.zeros((d * d, d * d), dtype=complex)
+    for u, prob in zip(vecs, probs):
+        pi = np.outer(u, u.conj())
+        pi2 = np.kron(pi, pi)
+        moment += prob * pi2
+
+    target = (np.eye(d * d) + swap_operator(d)) / (d * (d + 1))
+    # Row scaling ||a_j||^4 = prob makes these the phase-retrieval weights.
+    row_weighted_moment = sum(
+        prob * np.kron(np.outer(u, u.conj()), np.outer(u, u.conj()))
+        for u, prob in zip(vecs, probs)
+    )
+    return len(vecs), float(np.max(np.abs(moment - target))), float(np.max(np.abs(row_weighted_moment - target)))
+
+
+if __name__ == &quot;__main__&quot;:
+    for d in range(2, 11):
+        m, moment_err, scaled_err = check_dimension(d)
+        print(f&quot;d={d:2d} m={m:4d} moment_error={moment_err:.3e} scaled_error={scaled_err:.3e}&quot;)
+</pre><p><a href="../assets/573598f16d71bee74a7ecf42ce7b285014ed640596d3435c8fd25b51348fc088.py">Exact original</a></p></html>

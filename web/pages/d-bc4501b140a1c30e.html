@@ -1,0 +1,200 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/algebra_complexity/cycle5/consumer_gate/verify_mpo_postselection.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/algebra_complexity/cycle5/consumer_gate/verify_mpo_postselection.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact rational fixtures for the symmetric MPO and rare-herald filter.
+
+The N=4 dense-matrix replay checks the count-pair MPO entry rule against an
+independently assembled Dicke-projector mixture, then applies the explicit
+prefix-zero/CNOT Kraus map. The N=20 fixture uses exact combinatorial sector
+counts and a bond-2 CNOT decomposition to exhibit an exponentially small
+nonzero event. These checks do not implement a generic MPO contractor or
+validate the Cycle-3 mixture theorem.
+&quot;&quot;&quot;
+
+from fractions import Fraction as F
+from math import comb
+
+
+def tv(p, q):
+    return sum((abs(x - y) for x, y in zip(p, q)), F(0)) / 2
+
+
+def normalized(v):
+    z = sum(v, F(0))
+    assert z &gt; 0
+    return [x / z for x in v]
+
+
+def dicke_mixture_matrix(weights, n):
+    &quot;&quot;&quot;Dense exact matrix for sum_k weights[k] |D_k&gt;&lt;D_k|.&quot;&quot;&quot;
+    dim = 1 &lt;&lt; n
+    out = [[F(0) for _ in range(dim)] for _ in range(dim)]
+    for k, weight in enumerate(weights):
+        denom = comb(n, k)
+        strings = [x for x in range(dim) if x.bit_count() == k]
+        for x in strings:
+            for y in strings:
+                out[x][y] += weight / denom
+    return out
+
+
+def count_pair_mpo_entry(q, x, y, n):
+    &quot;&quot;&quot;Run the deterministic (ket-count,bra-count) MPO automaton.&quot;&quot;&quot;
+    a = b = 0
+    for i in range(n):
+        shift = n - 1 - i
+        a += (x &gt;&gt; shift) &amp; 1
+        b += (y &gt;&gt; shift) &amp; 1
+    return q[a] / comb(n, a) if a == b else F(0)
+
+
+def cnot_output(x, n):
+    &quot;&quot;&quot;CNOT on the last pair, with the penultimate bit as control.&quot;&quot;&quot;
+    control = (x &gt;&gt; 1) &amp; 1
+    target = x &amp; 1
+    if control:
+        target ^= 1
+    return (x &amp; ~0b11) | (control &lt;&lt; 1) | target
+
+
+def mpo_rank_and_n4_replay():
+    # The CNOT operator has Schmidt rank two across its control/target cut.
+    # Reshape K[o0 o1,i0 i1] into rows (o0,i0), columns (o1,i1).
+    cnot = [[0 for _ in range(4)] for _ in range(4)]
+    for x in range(4):
+        cnot[cnot_output(x, 2)][x] = 1
+    reshaped = [[cnot[(o0 &lt;&lt; 1) | o1][(i0 &lt;&lt; 1) | i1]
+                 for o1, i1 in ((0, 0), (0, 1), (1, 0), (1, 1))]
+                for o0, i0 in ((0, 0), (0, 1), (1, 0), (1, 1))]
+    nonzero_rows = [row for row in reshaped if any(row)]
+    assert len(nonzero_rows) == 2 and nonzero_rows[0] != nonzero_rows[1]
+    # Exact rank by checking the explicit two-term operator-Schmidt form:
+    # |0&gt;&lt;0| tensor I + |1&gt;&lt;1| tensor X.
+    assert cnot[0][0] == cnot[1][1] == cnot[2][3] == cnot[3][2] == 1
+    # Verify the two-term decomposition entrywise to establish rank &lt;= 2.
+    for o0 in range(2):
+        for i0 in range(2):
+            for o1 in range(2):
+                for i1 in range(2):
+                    lhs = cnot[(o0 &lt;&lt; 1) | o1][(i0 &lt;&lt; 1) | i1]
+                    rhs = ((int(o0 == i0 == 0) * int(o1 == i1)) +
+                           (int(o0 == i0 == 1) * int(o1 == (i1 ^ 1))))
+                    assert lhs == rhs
+
+    n = 4
+    f = [F(2**(k - n)) for k in range(n + 1)]
+    g = [w * (F(17, 16) if k % 2 else F(15, 16))
+         for k, w in enumerate(f)]
+    q = normalized(g)
+    dense = dicke_mixture_matrix(q, n)
+    dim = 1 &lt;&lt; n
+    # K = CNOT_(n-1,n) (|0&gt;&lt;0|^(tensor n-2) tensor I tensor I).
+    K = [[F(0) for _ in range(dim)] for _ in range(dim)]
+    for x in range(dim):
+        if (x &gt;&gt; 2) == 0:
+            K[cnot_output(x, n)][x] = F(1)
+    for x in range(dim):
+        for y in range(dim):
+            effect_xy = sum((K[z][x] * K[z][y] for z in range(dim)), F(0))
+            assert effect_xy == (F(1) if x == y and (x &gt;&gt; 2) == 0 else F(0))
+    out = [[sum((K[a][x] * dense[x][y] * K[b][y]
+                 for x in range(dim) for y in range(dim)), F(0))
+            for b in range(dim)] for a in range(dim)]
+    for x in range(dim):
+        for y in range(dim):
+            assert dense[x][y] == count_pair_mpo_entry(q, x, y, n)
+    actual_masses = [out[x][x] for x in range(dim)]
+    expected = [F(0) for _ in range(dim)]
+    for x in range(dim):
+        tail = cnot_output(x, n) &amp; 0b11
+        # Prefix-zero support leaves only output strings with zero prefix.
+        if (x &gt;&gt; 2) == 0:
+            expected[(x &amp; ~0b11) | tail] += q[x.bit_count()] / comb(n, x.bit_count())
+    assert actual_masses == expected
+    assert sum(actual_masses, F(0)) == sum(
+        (q[k] * F(comb(2, k), comb(n, k)) for k in range(3)), F(0))
+
+    # A pair-singlet projector annihilates the entire symmetric sector; this
+    # gives an exact zero-event control for the same rational input.
+    Kzero = [[F(0) for _ in range(dim)] for _ in range(dim)]
+    for x in range(dim):
+        prefix = x &amp; ~0b11
+        tail = x &amp; 0b11
+        for row_tail in range(4):
+            # P_-=(I-SWAP)/2 on the final two sites.
+            swap_tail = ((tail &amp; 1) &lt;&lt; 1) | ((tail &gt;&gt; 1) &amp; 1)
+            value = (F(1, 2) if row_tail == tail else F(0)) - (
+                F(1, 2) if row_tail == swap_tail else F(0))
+            Kzero[prefix | row_tail][x] = value
+    zero_output = [[sum((Kzero[a][x] * dense[x][y] * Kzero[b][y]
+                         for x in range(dim) for y in range(dim)), F(0))
+                    for b in range(dim)] for a in range(dim)]
+    assert all(value == 0 for row in zero_output for value in row)
+    for a in range(dim):
+        for b in range(dim):
+            square = sum((Kzero[a][x] * Kzero[x][b] for x in range(dim)), F(0))
+            assert square == Kzero[a][b]
+    return n, sum((dense[x][x] for x in range(dim)), F(0)), sum(actual_masses, F(0)), True
+
+
+def rare_bond2_cnot_filter_fixture():
+    n = 20
+    delta = F(1, 16)
+    # Positive rational sector weights with O(n)-bit descriptions.
+    f = [F(1, 1 &lt;&lt; (n - k)) for k in range(n + 1)]
+    g = [w * (1 + (delta if k % 2 else -delta))
+         for k, w in enumerate(f)]
+
+    # K = CNOT_(n-1,n) (|0&gt;&lt;0|^(tensor n-2) tensor I tensor I).
+    # The prefix projector is a product MPO. CNOT has operator-Schmidt rank
+    # two, so K has bond two. Its effect K^T K is the prefix-zero projector.
+    # Only k=0,1,2 survive; the tail bit outcomes are 00, 01/11, 10.
+    def masses(weights):
+        return [weights[0], weights[1] / n,
+                weights[2] / comb(n, 2), weights[1] / n]
+
+    rho_z, sigma_z = sum(f, F(0)), sum(g, F(0))
+    p_success = sum(masses(f), F(0)) / rho_z
+    q_success = sum(masses(g), F(0)) / sigma_z
+    assert 0 &lt; p_success &lt; F(1, 1 &lt;&lt; n)
+    assert q_success &gt; 0
+
+    p_out = normalized(masses(f))
+    q_out = normalized(masses(g))
+    L = (1 + delta) / (1 - delta)
+    bound = L * L - 1
+    assert tv(p_out, q_out) &lt;= bound
+
+    # Finite-bit conditional CDF: b-bit floors on the four-category CDF
+    # give the checked 2K/2^b total-variation upper bound.
+    gamma = F(1, 1000)
+    b = 0
+    while F(2 * len(q_out), 1 &lt;&lt; b) &gt; gamma / 4:
+        b += 1
+    rounded_cdf = []
+    cdf = F(0)
+    previous = 0
+    for probability in q_out[:-1]:
+        cdf += probability
+        scaled = cdf * (1 &lt;&lt; b)
+        point = scaled.numerator // scaled.denominator
+        rounded_cdf.append(point - previous)
+        previous = point
+    rounded_cdf.append((1 &lt;&lt; b) - previous)
+    sampled = [F(count, 1 &lt;&lt; b) for count in rounded_cdf]
+    rounding_error = tv(sampled, q_out)
+    assert rounding_error &lt;= F(2 * len(q_out), 1 &lt;&lt; b) &lt;= gamma / 4
+    return p_success, q_success, tv(p_out, q_out), bound, b, rounding_error
+
+
+if __name__ == &quot;__main__&quot;:
+    n4, trace, success, zero_event = mpo_rank_and_n4_replay()
+    p, q, d, bound, b, rounderr = rare_bond2_cnot_filter_fixture()
+    print(&quot;dense Dicke/count-pair MPO replay: N=&quot;, n4,
+          &quot;trace=&quot;, trace, &quot;success=&quot;, success,
+          &quot;exact symmetric-sector zero event:&quot;, zero_event)
+    print(&quot;bond-2 CNOT filter success mass &lt; 2^-20:&quot;, p &lt; F(1, 1 &lt;&lt; 20),
+          &quot;input success numerator bits:&quot;, p.numerator.bit_length(),
+          &quot;denominator bits:&quot;, p.denominator.bit_length())
+    print(&quot;approx success mass positive:&quot;, q &gt; 0)
+    print(&quot;4-outcome conditional TV / Loewner bound:&quot;, d, bound)
+    print(&quot;finite-bit CDF bits / rounding error:&quot;, b, rounderr)
+</pre><p><a href="../assets/f96cfd0af0ae1f777ed32ca654582bf6c2abea91babff759b360054005ba1864.py">Exact original</a></p></html>

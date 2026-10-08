@@ -1,0 +1,143 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/sol_attractive_critical/energy_checks.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/sol_attractive_critical/energy_checks.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Finite diagnostics for the public Gram-normalized decoder.
+Run: OPENBLAS_NUM_THREADS=1 python3 outputs/research/sol_attractive_critical/energy_checks.py
+NumPy only; finite evidence, not infinite validity/priority.
+&quot;&quot;&quot;
+import itertools
+import json
+import math
+from pathlib import Path
+import numpy as np
+
+J, TAU, GPLUS, TOL = 1., .11, 2., 8e-9
+
+
+def sector(S,m):
+    cfg=list(itertools.combinations(range(1,S+1),m))
+    ix={x:i for i,x in enumerate(cfg)}
+    h=np.zeros((len(cfg),len(cfg)))
+    w=np.zeros(len(cfg))
+    for i,x in enumerate(cfg):
+        xs=set(x)
+        h[i,i]=2*J*((1 in xs)+(S in xs))
+        w[i]=sum(v+1 in xs for v in x)
+        for v in x:
+            for dest in (v-1,v+1):
+                if 1&lt;=dest&lt;=S and dest not in xs:
+                    y=tuple(sorted((xs-{v})|{dest}))
+                    h[i,i]+=2*J
+                    h[i,ix[y]]-=2*J
+    return cfg,h,np.diag(w)
+
+
+def axis_apply(a,matrix,axis):
+    return np.moveaxis(np.tensordot(matrix,a,axes=(1,axis)),0,axis)
+
+
+errs, gram_margins, kinetic_margins, contact_margins, recovery_margins=[],[],[],[],[]
+energy_margins=[]
+cases=0
+for S in range(2,9):
+    L=S+1
+    for m in range(1,min(3,S)+1):
+        cfg,h,w=sector(S,m)
+        n=S-m+1
+        labeled=list(itertools.product(range(1,n+1),repeat=m))
+        lidx={z:i for i,z in enumerate(labeled)}
+        cidx={x:i for i,x in enumerate(cfg)}
+        K=np.zeros((n**m,len(cfg)))
+        for i,z in enumerate(labeled):
+            y=sorted(z)
+            x=tuple(y[j]+j for j in range(m))
+            K[i,cidx[x]]=1/math.sqrt(math.factorial(m))
+        grid=np.arange(1,n+1)
+        phi=np.sqrt(2/(n+1))*np.sin(np.pi*np.outer(grid,grid)/(n+1))
+        for M in sorted(set((1,min(2,n)))):
+            modecfg=list(itertools.combinations_with_replacement(range(1,M+1),m))
+            Ji=np.zeros((n**m,len(modecfg)))
+            for j,k in enumerate(modecfg):
+                perms=set(itertools.permutations(k))
+                for z in perms:
+                    Ji[lidx[z],j]=1/math.sqrt(len(perms))
+            jt=Ji.reshape((n,)*m+(len(modecfg),))
+            for i in range(m):
+                jt=axis_apply(jt,phi,i)
+            Jm=jt.reshape(Ji.shape)
+            A=np.zeros((len(cfg),len(modecfg)))
+            for i,x in enumerate(cfg):
+                y=tuple(x[j]-j for j in range(m))
+                A[i,:]=math.sqrt(math.factorial(m))*Jm[lidx[y],:]
+            G=A.T@A
+            B=K.T@Jm
+            gv,ge=np.linalg.eigh(G)
+            V=A@(ge*(gv**-.5))@ge.T
+            ident=np.eye(len(modecfg))
+            errs.extend((float(np.max(abs(K@A-Jm))),float(np.max(abs(A.T@B-ident))),
+                         float(np.max(abs(V.T@V-ident))),float(np.max(abs(Jm.T@Jm-ident)))))
+            eta=(math.factorial(m)-1)*m*(m-1)*M/(n+1)
+            gram_margins.append(eta-float(np.linalg.eigvalsh(G-ident)[-1]))
+            olddiff=np.linalg.norm(V-B,2)
+            recovery_margins.append(math.sqrt(eta)+eta/2-float(olddiff))
+            mode_energy=np.diag([sum(4*J*(1-math.cos(math.pi*k/(n+1))) for k in ks)
+                                for ks in modecfg])
+            kinetic_margins.append(float(np.linalg.eigvalsh(math.factorial(m)*mode_energy-A.T@h@A)[0]))
+            c_bound=math.factorial(m)*m*(m-1)*M/(n+1)
+            contact_margins.append(float(np.linalg.eigvalsh(c_bound*ident-A.T@w@A)[0]))
+            e_bound=math.factorial(m)*(2*J*math.pi**2*m*M*M*L*L/(n+1)**2
+                          +GPLUS*L*m*(m-1)*M/(n+1))
+            energy_margins.append(e_bound-float(np.linalg.eigvalsh(L*L*V.T@(h+GPLUS/L*w)@V)[-1]))
+            cases+=1
+assert max(errs)&lt;=TOL
+assert min(gram_margins)&gt;=-TOL
+assert min(kinetic_margins)&gt;=-TOL
+assert min(contact_margins)&gt;=-TOL
+assert min(recovery_margins)&gt;=-TOL
+assert min(energy_margins)&gt;=-TOL
+
+# Explicit repeated two-plane amplification, including the attenuation
+# that makes an integer number of ordinary reflections deterministic.
+amp=[]
+for m in range(1,11):
+    theta=math.asin(1/math.sqrt(math.factorial(m)))
+    q=math.ceil(math.pi/(4*theta)-.5)
+    tp=math.pi/(4*q+2)
+    assert tp&lt;=theta+TOL
+    vec=np.array([math.sin(tp),math.cos(tp)])
+    reflection=2*np.outer(vec,vec)-np.eye(2)
+    grover=reflection@np.diag([-1.,1.])
+    got=np.linalg.matrix_power(grover,q)@vec
+    error=float(np.linalg.norm(got-np.array([1.,0.])))
+    assert error&lt;=TOL
+    amp.append({&quot;m&quot;:m,&quot;q&quot;:q,&quot;success_amplitude_error&quot;:error})
+
+# Check the stabilizer identity used by the linear-N Gram setup formula.
+stabilizer=0
+for m in range(1,6):
+    perms=list(itertools.permutations(range(m)))
+    for z in itertools.product(range(1,4),repeat=m):
+        left=math.prod(math.factorial(z.count(v)) for v in set(z))
+        right=sum(all(z[i]==z[p[i]] for i in range(m)) for p in perms)
+        assert left==right
+        stabilizer+=1
+
+# Exactly normalized smooth recovery for m=2,M=1: unlike K^* it has no
+# fixed contact jump and its critical output energy has a finite limit.
+smooth=[]
+g=.4
+for L in (17,33,65,129,257):
+    n=L-2
+    f=np.sqrt(2/(n+1))*np.sin(np.pi*np.arange(1,n+1)/(n+1))
+    s=float((f**4).sum())
+    eps=4*J*(1-math.cos(math.pi/(n+1)))
+    e=TAU*L*L*(2*eps+g/L*2*s)/(1+s)
+    smooth.append({&quot;L&quot;:L,&quot;decoded_positive_critical_energy&quot;:e,
+                   &quot;limit&quot;:TAU*(4*J*math.pi**2+3*g)})
+
+out={&quot;status&quot;:&quot;FINITE-EVIDENCE&quot;,&quot;all_checks_passed&quot;:True,&quot;S_range&quot;:[2,8],
+     &quot;mode_sector_cases&quot;:cases,&quot;max_isometry_inverse_error&quot;:max(errs),
+     &quot;min_Gram_bound_margin&quot;:min(gram_margins),&quot;min_kinetic_margin&quot;:min(kinetic_margins),
+     &quot;min_contact_margin&quot;:min(contact_margins),&quot;min_recovery_norm_margin&quot;:min(recovery_margins),
+     &quot;min_energy_margin&quot;:min(energy_margins),&quot;amplification&quot;:amp,
+     &quot;stabilizer_configurations&quot;:stabilizer,&quot;smooth_energy_recovery&quot;:smooth}
+Path(__file__).with_suffix(&quot;.json&quot;).write_text(json.dumps(out,indent=2)+&quot;\n&quot;)
+print(json.dumps(out,indent=2))
+</pre><p><a href="../assets/38dd489679659ec028008ec0ef64de278fc3f5c603e5eb95c160e3dcf264fee1.py">Exact original</a></p></html>

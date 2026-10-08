@@ -1,0 +1,321 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/cell_control/cell_observation_design/cycle2_rate_separation.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/cell_control/cell_observation_design/cycle2_rate_separation.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Executable checks/design bounds for one-lag phenotype/growth inference.
+
+Uses NumPy only. The observed endpoint matrix is reconstructed columnwise as
+M[:, i] = (N_i(tau)/N_i(0)) * p_i(tau). Independent experimental units are
+replicate wells/inoculations, never descendant cells within one well.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import json
+import math
+from typing import Iterable, Sequence
+
+import numpy as np
+
+
+def expm(A: np.ndarray) -&gt; np.ndarray:
+    &quot;&quot;&quot;Scaling-and-squaring Taylor exponential for the small audit matrices.&quot;&quot;&quot;
+    A = np.asarray(A, dtype=float)
+    n = A.shape[0]
+    norm1 = float(np.linalg.norm(A, 1))
+    squarings = max(0, int(math.ceil(math.log2(norm1 / 0.5)))) if norm1 &gt; 0.5 else 0
+    X = A / (2**squarings)
+    term = np.eye(n)
+    total = term.copy()
+    for k in range(1, 300):
+        term = term @ X / k
+        total += term
+        if np.linalg.norm(term, 1) &lt;= 2e-16 * max(1.0, np.linalg.norm(total, 1)):
+            break
+    else:
+        raise ArithmeticError(&quot;Taylor exponential did not converge&quot;)
+    for _ in range(squarings):
+        total = total @ total
+    return total
+
+
+def log_near_identity(M: np.ndarray, tol: float = 2e-16) -&gt; np.ndarray:
+    &quot;&quot;&quot;Power-series log, valid when ||M-I||_1 &lt; 1.&quot;&quot;&quot;
+    M = np.asarray(M, dtype=float)
+    X = M - np.eye(M.shape[0])
+    if np.linalg.norm(X, 1) &gt;= 1:
+        raise ValueError(&quot;log series requires ||M-I||_1 &lt; 1&quot;)
+    total = np.zeros_like(M)
+    power = X.copy()
+    for k in range(1, 10000):
+        term = power / k
+        total += term if k % 2 else -term
+        if np.linalg.norm(term, 1) &lt;= tol * max(1.0, np.linalg.norm(total, 1)):
+            break
+        power = power @ X
+    else:
+        raise ArithmeticError(&quot;Taylor logarithm did not converge&quot;)
+    return total
+
+
+def cycle_generator(u: float, v: float) -&gt; np.ndarray:
+    &quot;&quot;&quot;Three-state clockwise/counterclockwise generator; columns are sources.&quot;&quot;&quot;
+    Q = np.zeros((3, 3), dtype=float)
+    for i in range(3):
+        Q[(i + 1) % 3, i] = u
+        Q[(i - 1) % 3, i] = v
+        Q[i, i] = -(u + v)
+    return Q
+
+
+def generator_from_edges(K: int, edges: Iterable[tuple[int, int, float]]) -&gt; np.ndarray:
+    &quot;&quot;&quot;Construct column-generator Q from (source, destination, rate) edges.&quot;&quot;&quot;
+    Q = np.zeros((K, K), dtype=float)
+    for source, dest, rate in edges:
+        if source == dest or rate &lt; 0:
+            raise ValueError(&quot;edges must be off-diagonal with nonnegative rate&quot;)
+        Q[dest, source] += rate
+        Q[source, source] -= rate
+    return Q
+
+
+def rate_bias_certificate(B: float, tau: float) -&gt; dict[str, float]:
+    &quot;&quot;&quot;First-order endpoint estimator bias under ||A||_1 &lt;= B.&quot;&quot;&quot;
+    remainder = math.expm1(B * tau) - B * tau
+    return {
+        &quot;B_tau&quot;: B * tau,
+        &quot;matrix_remainder_bound&quot;: remainder,
+        &quot;coordinate_rate_bias_bound&quot;: remainder / tau,
+        &quot;small_tau_leading_bound&quot;: 0.5 * B * B * tau,
+    }
+
+
+def hoeffding_plan(
+    K: int,
+    tau: float,
+    B: float,
+    rate_error: float,
+    delta: float,
+    coordinate_bound: float,
+    actions: int = 1,
+    culture_cost: float = 0.0,
+    pure_start_cost: float = 0.0,
+    fraction_panel_cost: float = 0.0,
+    absolute_count_cost: float = 0.0,
+    calibration_cost: float = 0.0,
+) -&gt; dict[str, float | int | str]:
+    &quot;&quot;&quot;Plan independent replicate wells for a sup-norm q error guarantee.
+
+    Assumption: each normalized count coordinate Y=N_j(tau)/N(0) is an
+    independent, unbiased observation in [0, coordinate_bound]. If an assay
+    clips counts, its clipping bias must be added separately.
+    &quot;&quot;&quot;
+    rem = math.expm1(B * tau) - B * tau
+    allowed_mean_error = tau * rate_error - rem
+    if allowed_mean_error &lt;= 0:
+        return {
+            &quot;status&quot;: &quot;INFEASIBLE_AT_TAU&quot;,
+            &quot;reason&quot;: &quot;finite-tau truncation already exceeds target rate error&quot;,
+            &quot;remainder_rate_bound&quot;: rem / tau,
+        }
+    log_factor = math.log(2 * actions * K * K / delta)
+    n = math.ceil(coordinate_bound**2 * log_factor / (2 * allowed_mean_error**2))
+    units = actions * K * n
+    per_well = culture_cost + pure_start_cost + fraction_panel_cost + absolute_count_cost
+    return {
+        &quot;status&quot;: &quot;OK&quot;,
+        &quot;replicate_wells_per_action_per_pure_start&quot;: n,
+        &quot;number_of_actions&quot;: actions,
+        &quot;number_of_pure_starts&quot;: K,
+        &quot;total_independent_wells&quot;: units,
+        &quot;max_coordinate_mean_error&quot;: allowed_mean_error,
+        &quot;finite_tau_rate_bias_bound&quot;: rem / tau,
+        &quot;total_cost&quot;: units * per_well + calibration_cost,
+        &quot;cost_accounting&quot;: (
+            &quot;K pure starts x n independent wells x actions; each well charged for &quot;
+            &quot;culture, pure-start sorting/verification, all-state fraction panel, &quot;
+            &quot;and absolute count; calibration charged once&quot;
+        ),
+    }
+
+
+def choose_tau_on_grid(
+    candidate_times: Sequence[float],
+    **plan_kwargs: object,
+) -&gt; dict[str, object]:
+    &quot;&quot;&quot;Choose the least-cost admissible single read time on a supplied grid.&quot;&quot;&quot;
+    feasible: list[tuple[float, dict[str, object]]] = []
+    failures = 0
+    for tau in candidate_times:
+        plan = hoeffding_plan(tau=float(tau), **plan_kwargs)  # type: ignore[arg-type]
+        if plan[&quot;status&quot;] == &quot;OK&quot;:
+            feasible.append((float(tau), plan))
+        else:
+            failures += 1
+    if not feasible:
+        return {&quot;status&quot;: &quot;UNKNOWN&quot;, &quot;reason&quot;: &quot;no candidate time meets the bias budget&quot;}
+    tau, plan = min(feasible, key=lambda item: float(item[1][&quot;total_cost&quot;]))
+    return {
+        &quot;status&quot;: &quot;OK&quot;,
+        &quot;selected_tau&quot;: tau,
+        &quot;grid_size&quot;: len(candidate_times),
+        &quot;infeasible_grid_points&quot;: failures,
+        &quot;plan&quot;: plan,
+    }
+
+
+def absorbing_generator(Q: np.ndarray, target: Sequence[int], unsafe: Sequence[int]) -&gt; np.ndarray:
+    &quot;&quot;&quot;Make target and unsafe states absorbing for a first-hit reach-avoid event.&quot;&quot;&quot;
+    Qa = np.asarray(Q, dtype=float).copy()
+    for state in set(target) | set(unsafe):
+        Qa[:, state] = 0.0
+    return Qa
+
+
+def reach_avoid_value(
+    Q: np.ndarray,
+    target: Sequence[int],
+    unsafe: Sequence[int],
+    initial: Sequence[float],
+    horizon: float,
+) -&gt; float:
+    Qa = absorbing_generator(Q, target, unsafe)
+    mass = expm(Qa * horizon) @ np.asarray(initial, dtype=float)
+    return float(np.sum(mass[list(target)]))
+
+
+def robust_reach_avoid(
+    action_generators: dict[str, np.ndarray],
+    coordinate_radius: float,
+    target: Sequence[int],
+    unsafe: Sequence[int],
+    initial: Sequence[float],
+    horizon: float,
+) -&gt; dict[str, object]:
+    &quot;&quot;&quot;Certified box-confidence bounds and a finite-action maximin choice.
+
+    Every off-diagonal rate in an action&#x27;s confidence set lies within
+    coordinate_radius of its center and is nonnegative. Duhamel&#x27;s formula and
+    Markov-semigroup contraction give |V(Q)-V(Qhat)| &lt;=
+    horizon * 2(K-1) * coordinate_radius.
+    &quot;&quot;&quot;
+    K = next(iter(action_generators.values())).shape[0]
+    radius = min(1.0, horizon * 2 * (K - 1) * coordinate_radius)
+    intervals: dict[str, dict[str, float]] = {}
+    for name, Q in action_generators.items():
+        center = reach_avoid_value(Q, target, unsafe, initial, horizon)
+        intervals[name] = {
+            &quot;center&quot;: center,
+            &quot;lower&quot;: max(0.0, center - radius),
+            &quot;upper&quot;: min(1.0, center + radius),
+        }
+    choice = max(intervals, key=lambda name: intervals[name][&quot;lower&quot;])
+    unique = all(
+        intervals[choice][&quot;lower&quot;] &gt; intervals[name][&quot;upper&quot;]
+        for name in intervals
+        if name != choice
+    )
+    return {
+        &quot;action_intervals&quot;: intervals,
+        &quot;maximin_action&quot;: choice,
+        &quot;robustly_unique_best&quot;: unique,
+        &quot;reach_target_threshold_0_5_certified&quot;: intervals[choice][&quot;lower&quot;] &gt;= 0.5,
+        &quot;lipschitz_radius&quot;: radius,
+    }
+
+
+def main() -&gt; None:
+    tau = 1.0
+    s = 10.0
+    d0 = 0.0
+    d1 = d0 + 4 * math.pi / (math.sqrt(3) * tau)
+    u0, v0 = (s + d0) / 2, (s - d0) / 2
+    u1, v1 = (s + d1) / 2, (s - d1) / 2
+    Q0, Q1 = cycle_generator(u0, v0), cycle_generator(u1, v1)
+    M0, M1 = expm(Q0 * tau), expm(Q1 * tau)
+
+    # Missing-pure-start counterexample: state 2 is unreachable from starts 0,1.
+    Qa = generator_from_edges(3, [(0, 1, 0.3), (1, 0, 0.2), (2, 0, 0.7)])
+    Qb = generator_from_edges(3, [(0, 1, 0.3), (1, 0, 0.2), (2, 0, 4.7)])
+    Ma, Mb = expm(Qa * 0.6), expm(Qb * 0.6)
+
+    # Short-time first-order estimator and its deterministic remainder bound.
+    tau_short = 0.01
+    Mshort = expm(Q0 * tau_short)
+    qhat = (Mshort - np.eye(3)) / tau_short
+    B = float(np.linalg.norm(Q0, 1))
+    bias = rate_bias_certificate(B, tau_short)
+    offdiag_error = max(
+        abs(qhat[j, i] - Q0[j, i]) for i in range(3) for j in range(3) if i != j
+    )
+
+    # Principal-log reconstruction in the near-identity regime.
+    A = Q0 + np.diag([0.2, -0.1, 0.05])
+    tau_log = 0.01
+    Mlog = expm(A * tau_log)
+    Ahat = log_near_identity(Mlog) / tau_log
+
+    # Finite action robust reach-avoid illustration: state 2 is target, 1 unsafe.
+    action_Q = {
+        &quot;A&quot;: generator_from_edges(3, [(0, 1, 0.10), (0, 2, 0.50)]),
+        &quot;B&quot;: generator_from_edges(3, [(0, 1, 0.40), (0, 2, 0.90)]),
+    }
+    robust = robust_reach_avoid(
+        action_Q,
+        coordinate_radius=0.04,
+        target=[2],
+        unsafe=[1],
+        initial=[1.0, 0.0, 0.0],
+        horizon=1.0,
+    )
+
+    plan = choose_tau_on_grid(
+        candidate_times=np.linspace(0.005, 0.2, 100),
+        K=3,
+        B=2.0,
+        rate_error=0.4,
+        delta=0.05,
+        coordinate_bound=1.5,
+        actions=2,
+        culture_cost=2.0,
+        pure_start_cost=0.5,
+        fraction_panel_cost=1.0,
+        absolute_count_cost=0.5,
+        calibration_cost=5.0,
+    )
+
+    result = {
+        &quot;three_state_alias&quot;: {
+            &quot;tau&quot;: tau,
+            &quot;rates_1_clockwise_counterclockwise&quot;: [u0, v0],
+            &quot;rates_2_clockwise_counterclockwise&quot;: [u1, v1],
+            &quot;all_rates_positive&quot;: bool(min(u0, v0, u1, v1) &gt; 0),
+            &quot;max_abs_endpoint_matrix_difference&quot;: float(np.max(np.abs(M0 - M1))),
+            &quot;max_abs_generator_difference&quot;: float(np.max(np.abs(Q0 - Q1))),
+        },
+        &quot;two_pure_starts_not_sufficient_without_reachability&quot;: {
+            &quot;tau&quot;: 0.6,
+            &quot;max_abs_observed_column_difference_starts_0_1&quot;: float(
+                np.max(np.abs(Ma[:, :2] - Mb[:, :2]))
+            ),
+            &quot;unobserved_source_2_outgoing_rate_change&quot;: 4.0,
+        },
+        &quot;finite_tau_first_order&quot;: {
+            &quot;tau&quot;: tau_short,
+            &quot;B&quot;: B,
+            &quot;actual_max_offdiag_rate_error&quot;: offdiag_error,
+            **bias,
+            &quot;bound_holds&quot;: bool(offdiag_error &lt;= bias[&quot;coordinate_rate_bias_bound&quot;] + 1e-12),
+        },
+        &quot;near_identity_log&quot;: {
+            &quot;tau&quot;: tau_log,
+            &quot;B&quot;: float(np.linalg.norm(A, 1)),
+            &quot;B_tau_less_log_2&quot;: bool(np.linalg.norm(A, 1) * tau_log &lt; math.log(2)),
+            &quot;max_abs_A_reconstruction_error&quot;: float(np.max(np.abs(Ahat - A))),
+        },
+        &quot;finite_action_robust_reach_avoid&quot;: robust,
+        &quot;sampling_and_cost_plan&quot;: plan,
+    }
+    print(json.dumps(result, indent=2, sort_keys=True))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/ce52ae55fb29c1309ce9f2c398caa06448ebdfb5fb8fbf3ba52540785dbb2384.py">Exact original</a></p></html>

@@ -1,0 +1,75 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c11_engineering_metrology/acoustic_mechanics/FINAL_REPORT.md</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c11_engineering_metrology/acoustic_mechanics/FINAL_REPORT.md</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre># Two-colour dispersion gas barometry
+
+**Verdict.** Retain as a strong, genuinely measured 2025 metrology result. Yang, Stone and Egan demonstrate that two synchronous optical colours can identify gas pressure while treating pressure-driven cavity-length change as an unknown shared nuisance. The paper reports a helium optical-pressure realization with combined standard uncertainty `5.7 × 10^-6 p`. I independently reconstructed the local identifiability argument and checked its readout-noise scale against the paper&#x27;s reported statistical component. This is source-reported experimental evidence plus a bounded internal calculation, not an independent raw-data replay, priority clearance, or external validation.
+
+## Measurement contract and source mechanism
+
+The primary source is Yang, Stone &amp; Egan, [“Demonstration of dispersion gas barometry,” *Physical Review Applied* 23, 064041 (2025)](https://doi.org/10.1103/z9zz-lqzh). Its NIST-hosted record gives the 17 June 2025 publication date and reports the 5.7 ppm combined standard uncertainty and the two-colour helium measurement. The associated public data package is [NIST dataset 10.18434/mds2-3695](https://doi.org/10.18434/mds2-3695); its metadata says it contains the two-colour data and the authors’ `plotHelium.py`/`plotGases.py` analysis scripts. I read the primary paper and its supplement, including Eqs. (3)–(9), Supplement Eqs. (S9)–(S12), and the uncertainty table. The NIST data download endpoint timed out during this pass, so the archived data and authors’ scripts were not replayed.
+
+The helium setup uses a 15 cm Fabry–Perot cavity with mirrors coated for both 632.9919 nm (473.611873 THz) and 1542.3912 nm (194.368624 THz). Two lasers interrogate the same gas-filled cavity synchronously; their references share a frequency-comb/GPS-disciplined time base, and two counters record the resonance changes. The study collects 100 pressure/temperature/two-refractivity quadruplets per gas over 0.05–0.5 MPa. The gas is helium, and its optical dispersion and virial properties are supplied from ab-initio calculations; gas temperature is measured with a capsule standard platinum resistance thermometer and corrected from ITS-90 to thermodynamic temperature.
+
+At one colour, the first-order measurement has the form
+
+```text
+z_i = a_i p + d,
+a_i = 3 A_R(nu_i)/(2 R T),
+d = -kappa p,
+```
+
+where `z_i` is the signed fractional resonance-frequency change, `p` is pressure, and `d` is the unknown common cavity-length contribution. One equation cannot distinguish pressure from the deformation nuisance. With two colours of the *same fill*, dispersion makes `a_blue != a_red`, while geometric length change remains common. The local system is
+
+```text
+             [ a_red   1 ] [ p ]   [ z_red ]
+             [ a_blue  1 ] [ d ] = [ z_blue].
+```
+
+Its determinant is `a_red - a_blue`; pressure is identifiable exactly when the working gas has nonzero dispersion across the selected colours. The explicit first-order estimator is
+
+```text
+p_hat = (z_blue - z_red)/(a_blue - a_red),
+d_hat = (a_blue*z_red - a_red*z_blue)/(a_blue - a_red).
+```
+
+The article implements a more exact nonlinear form. For each wavelength it computes refractivity from the measured resonance shift, free spectral range, integer mode change and Gouy phase, retaining the unknown change `Delta L` in the cavity length (Supplement Eq. S12). It equates that refractivity to the pressure expansion `A p + B p^2 + C p^3` derived from the equation of state and Lorentz–Lorenz relation (main Eqs. 8–9), then solves the two simultaneous equations for optical pressure and `Delta L`. It estimates length change directly; it does not first impose a glass-compressibility model. A coarse pressure estimate is still needed to select the integer mode branch: the supplement says it need only be within ±3.2 kPa. Once that integer is identified, the optical pressure estimate is independent of the pressure-scale accuracy of the coarse input.
+
+This is a structural observability improvement. The optical pressure depends on a small *difference* of two refractivity slopes, while the much larger common length change is absorbed as a nuisance parameter. For the paper&#x27;s frequencies, the dispersion signal is about 0.46% of the leading refractivity slope, so the problem is identifiable but noise-sensitive.
+
+## Quantitative acquisition check
+
+The reproducible calculation is in [acquisition_check.py](acquisition_check.py). Using the paper&#x27;s helium `A2 = 1.332465 × 10^-4 cm^3 mol^-1`, the two stated frequencies, and `T = 303 K`, the first-order pressure-slope difference is `1.480 × 10^-12 Pa^-1`, consistent with the paper&#x27;s rounded `1.5 × 10^-12 Pa^-1`. At 250 kPa this gives a differential signal of `3.70 × 10^-7`.
+
+Treating the paper&#x27;s `&lt;200 Hz` resonance-change precision conservatively as independent 200 Hz standard deviation in each colour gives combined fractional-signal noise
+
+```text
+sqrt((200 Hz/194.368624 THz)^2 + (200 Hz/473.611873 THz)^2)
+= 1.112 × 10^-12.
+```
+
+Dividing by the 250 kPa differential signal predicts `3.006 ppm` statistical pressure uncertainty, matching the paper&#x27;s reported `3.0 ppm` statistical contribution. The same calculation predicts about 15.0 ppm at 50 kPa and 1.50 ppm at 500 kPa, consistent with the paper&#x27;s observation that the lower-pressure points are noisier. This check verifies the conditioning and reported scale under an explicit independent-channel noise assumption; it does not replace replay of the archived observations.
+
+An additional nuisance audit follows directly from the estimator. If the colour-dependent cavity term differs by `delta_kappa`, the relative pressure bias is `delta_kappa/(a_blue-a_red)`. To stay below the reported 5.7 ppm total standard uncertainty at the selected frequencies, the *unmodelled differential* coefficient must be below `8.44 × 10^-18 Pa^-1`, equivalent to about 0.32 pm differential length shift at 250 kPa over 15 cm. This is a design requirement derived here, not a failure observed in the paper. The supplement does specifically bound the difference in the helium-diffusion trend between the two frequencies to less than `10^-4` and budgets diffusion&#x27;s contribution to optical-pressure uncertainty at 0.6 ppm.
+
+The estimator suggests a straightforward acquisition design rule: maximize `|a_blue-a_red|/sqrt(sigma_red^2+sigma_blue^2)` over the available laser and coating bands, while modeling higher dispersion terms and mirror-phase effects. Keeping the red colour fixed and moving the blue channel from 473.6 to 750 THz would increase the first-order dispersion sensitivity by about 2.81× if the absolute frequency noise stayed the same. The paper itself notes an approximately threefold signal increase at 750 THz. That gain costs a new high-reflectivity coating band, another well-referenced laser path, and proof that wavelength-dependent mirror-phase changes remain controlled.
+
+## Experimental costs, assumptions, and limits
+
+The demonstration is not a low-cost sensor insertion. It requires a dual-band 15 cm cavity, two phase-coherent optical references and synchronous counters, measured free spectral range and Gouy phase, a temperature standard, a helium purity/gas-handling chain, and an initial pressure estimate accurate enough to choose the integer mode difference. The reported resonance-shift precision is limited by cavity lock-point fluctuations. The new chamber reduces its gas volume eightfold; after a 0.1 MPa pressure change it takes about 650 s to reduce temperature gradients to 0.1 mK, and the mean cavity-temperature excursion is below 5 mK. Each gas has 100 quadruplets over 0.05–0.5 MPa. No monetary, labour, or energy cost is reported.
+
+The 5.7 ppm helium result combines about 4.0 ppm from theoretical helium dispersion, 2.5 ppm from thermodynamic-temperature measurement, 3.0 ppm statistical uncertainty, and smaller contributions. Therefore this result transfers pressure traceability from force/area to helium dispersion and temperature; it does not eliminate accurate physics inputs. The authors use mechanical pressure generation in the comparison experiment and only need that pressure estimate within ±3.2 kPa to select the integer branch. Results for neon, argon and nitrogen transfer the helium optical scale and cavity distortion estimate; the paper describes these as semiprimary routes. Do not promote those results to direct, theory-free primary measurements.
+
+The shared-length assumption is the decisive physical premise. With the gas dispersion known, a third simultaneous colour makes the two-unknown shared-length fit overdetermined and gives a residual check. If one also fits a wavelength-dependent nuisance, three colours can identify its coefficient only after specifying its spectral form; a fourth colour is then needed for a residual degree of freedom. An experiment should compare the three pairwise pressure estimates under deliberate pressure, temperature and fill-history perturbations; disagreement beyond the full covariance budget would falsify the common-mode model. An added coating band and its mirror-phase model are real fabrication and calibration costs.
+
+The [multi-colour extension](MULTICOLOUR_EXTENSION.md) derives the covariance-aware GLS estimator and exact identifiability condition for a declared nuisance basis. It also records a sharp limit: a spectral error parallel to the pressure-response vector aliases pressure exactly, so extra colours cannot eliminate the helium-dispersion theory uncertainty. A hypothetical 750 THz third channel gives 0.638 ppm readout uncertainty at 250 kPa only under synthetic same-200-Hz, independent-channel assumptions; it is not an instrument prediction until coating, covariance, and dispersion-model errors are measured.
+
+## Prior-art boundary and competing result
+
+Optical refractometry for realizing pressure is established prior art. Ricker et al., [“Towards Photonic based Pascal Realization as a Primary Pressure Standard” (2018)](https://doi.org/10.1088/1742-6596/1065/16/162018), describes fixed- and variable-length optical cavities and identifies glass deformation and helium diffusion as limitations. Egan et al., [“Measured relationship between thermodynamic pressure and refractivity for six candidate gases in laser barometry” (2019)](https://doi.org/10.1116/1.5092185), explicitly proposes a two-gas calibration that treats distortion as a shared unknown. The 2025 advance is consequently not “pressure from light” or “two unknowns solved with two equations”; it is an experimental same-gas, same-fill, synchronous two-frequency realization that uses dispersion to separate pressure from a common cavity-length nuisance and reaches 5.7 ppm. Silander et al.&#x27;s [2022 mirror-penetration study](https://doi.org/10.1364/OE.463285) and the 2024 zero-thermal-expansion approach address related cavity systematics, but neither is the same dispersion-based identification mechanism.
+
+A newer competitor, Nie et al., [“Field-Deployable Pressure Standard Based on a Compact Dual-Cavity Refractometer” (arXiv:2609.11964, 2026)](https://arxiv.org/abs/2609.11964), reports a 5 cm fused-silica dual cavity, 3.4 ppm repeatability and about 10.6 ppm relative uncertainty at 100 kPa. It is an unrefereed preprint and calibrates its deformation coefficient against a piston gauge, so it demonstrates compactness/repeatability rather than an independent pressure scale. Field transport itself is also established: a [2024 four-NMI transportable Fabry–Perot comparison](https://doi.org/10.3390/s24010007) and a [2025 NIST portable FLOC report](https://doi.org/10.1016/j.measen.2024.101676) predate it. I therefore do not treat the 2026 compact gauge as a stronger observability result than the 2025 same-fill dispersion method.
+
+## Claim status and decisive next gate
+
+The physical measurement and reported uncertainty are source-reported. The matrix identifiability statement, local noise formula, and numerical 3.006 ppm check are internally reconstructed here. The source&#x27;s raw data were not replayed because the public archive endpoint timed out; the paper&#x27;s result remains the source&#x27;s result. Priority is not cleared, and there is no independent laboratory replication in this audit.
+
+The next decisive test is an independent three-colour run on a second cavity material with enough pressure/temperature/fill-history variation to test the shared-length assumption and chromatic coating response. Predeclare pairwise pressure agreement against a helium-dispersion uncertainty budget, record the frequency-error covariance rather than assuming independence, and retain the coarse mode-branch pressure cost. A result failing the `0.32 pm` equivalent differential-nuisance target at 250 kPa would invalidate extension of the 5.7 ppm claim to that instrument even if the two-colour fit has a small residual.
+</pre><p><a href="../assets/dbfa599a750e83bfd8b286e7fe6eeebd5a0e8fd8abd8a1de34ca3602e3c9fee1.md">Exact original</a></p></html>

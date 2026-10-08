@@ -1,0 +1,55 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/reaction_dynamics/cycle2/evidence/ray_three_step.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/reaction_dynamics/cycle2/evidence/ray_three_step.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact symbolic path calculation for the translated order-5 fixture.
+
+Requires SymPy. The fourth coordinate D stays equal to 3; hence every
+falling-factorial propensity has the common catalyst factor (3)_3=6.
+&quot;&quot;&quot;
+
+import sympy as sp
+
+n = sp.symbols(&quot;n&quot;, positive=True, integer=True)
+
+# State is (A-n, B, C); D=3. Rate constants are (1,1,2,1,1).
+reactions = (
+    ((0, 1, 0), lambda a, b, c: 6 * a),
+    ((0, -1, 1), lambda a, b, c: 6 * a * b if b &gt;= 1 else 0),
+    ((-1, 0, 0), lambda a, b, c: 12 * a * c if c &gt;= 1 else 0),
+    ((0, 2, -1), lambda a, b, c: 6 * c if c &gt;= 1 else 0),
+    ((1, -2, 0), lambda a, b, c: 6 * b * (b - 1) if b &gt;= 2 else 0),
+)
+
+
+def expected_A_increment(k):
+    states = {(0, 1, 0): sp.Integer(1)}
+    for _ in range(k):
+        next_states = {}
+        for (a_off, b, c), probability in states.items():
+            a = n + a_off
+            rates = [rate(a, b, c) for _, rate in reactions]
+            total = sum(rates)
+            for (jump, _), rate in zip(reactions, rates):
+                if rate == 0:
+                    continue
+                nxt = (a_off + jump[0], b + jump[1], c + jump[2])
+                if min(nxt[1:]) &lt; 0:
+                    continue
+                next_states[nxt] = next_states.get(nxt, 0) + probability * rate / total
+        states = next_states
+    assert sp.simplify(sum(states.values()) - 1) == 0
+    return sp.factor(sum(probability * state[0]
+                         for state, probability in states.items())), states
+
+
+if __name__ == &quot;__main__&quot;:
+    drift1 = sp.simplify(6 * n * (2 * sp.log(2) - 1))
+    count_drift1 = 6 * n
+    drift3, endpoint_law = expected_A_increment(3)
+    print(&quot;one-step entropy generator:&quot;, drift1)
+    print(&quot;one-step total-count generator:&quot;, count_drift1)
+    print(&quot;three-step E[Delta A]:&quot;, drift3)
+    print(&quot;limit E[Delta A]:&quot;, sp.limit(drift3, n, sp.oo))
+    print(&quot;three-step endpoint states:&quot;, len(endpoint_law))
+    # On (n,1,0,3): p(r1)=1/2; after r1, p(r2)-&gt;2/3;
+    # after r2, p(r3)-&gt;1/2 because kappa_3=2.
+    print(&quot;r1,r2,r3 path probability limit:&quot;, sp.Rational(1, 6))
+</pre><p><a href="../assets/26af90a37232b270737e1360afed9d406c0cb0c493273aa4cb6379870b2479fe.py">Exact original</a></p></html>

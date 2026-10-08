@@ -1,0 +1,110 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/algebra_complexity/cycle5/mask_algorithms/check_strassen_witness.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/algebra_complexity/cycle5/mask_algorithms/check_strassen_witness.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact polynomial expansion for the 2x2 Strassen escape witness.
+
+Uses integer coefficient dictionaries, so the check is exact over Z and has
+no dependency on a symbolic-algebra package.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+Poly = dict[tuple[str, ...], int]
+
+
+def var(name: str) -&gt; Poly:
+    return {(name,): 1}
+
+
+def add(*polys: Poly) -&gt; Poly:
+    out: Poly = {}
+    for poly in polys:
+        for monomial, coefficient in poly.items():
+            out[monomial] = out.get(monomial, 0) + coefficient
+    return {monomial: coefficient for monomial, coefficient in out.items() if coefficient}
+
+
+def neg(poly: Poly) -&gt; Poly:
+    return {monomial: -coefficient for monomial, coefficient in poly.items()}
+
+
+def sub(left: Poly, right: Poly) -&gt; Poly:
+    return add(left, neg(right))
+
+
+def mul(left: Poly, right: Poly) -&gt; Poly:
+    out: Poly = {}
+    for lm, lc in left.items():
+        for rm, rc in right.items():
+            monomial = tuple(sorted(lm + rm))
+            out[monomial] = out.get(monomial, 0) + lc * rc
+    return {monomial: coefficient for monomial, coefficient in out.items() if coefficient}
+
+
+def same(actual: Poly, expected: Poly) -&gt; bool:
+    return actual == expected
+
+
+def main() -&gt; None:
+    a11, a12, a21, a22 = map(var, (&quot;a11&quot;, &quot;a12&quot;, &quot;a21&quot;, &quot;a22&quot;))
+    b11, b12, b21, b22 = map(var, (&quot;b11&quot;, &quot;b12&quot;, &quot;b21&quot;, &quot;b22&quot;))
+
+    p1 = mul(add(a11, a22), add(b11, b22))
+    p2 = mul(add(a21, a22), b11)
+    p3 = mul(a11, sub(b12, b22))
+    p4 = mul(a22, sub(b21, b11))
+    p5 = mul(add(a11, a12), b22)
+    p6 = mul(sub(a21, a11), add(b11, b12))
+    p7 = mul(sub(a12, a22), add(b21, b22))
+
+    outputs = {
+        &quot;c11&quot;: add(p1, p4, neg(p5), p7),
+        &quot;c12&quot;: add(p3, p5),
+        &quot;c21&quot;: add(p2, p4),
+        &quot;c22&quot;: add(p1, neg(p2), p3, p6),
+    }
+    targets = {
+        &quot;c11&quot;: add(mul(a11, b11), mul(a12, b21)),
+        &quot;c12&quot;: add(mul(a11, b12), mul(a12, b22)),
+        &quot;c21&quot;: add(mul(a21, b11), mul(a22, b21)),
+        &quot;c22&quot;: add(mul(a21, b12), mul(a22, b22)),
+    }
+    assert all(same(outputs[name], targets[name]) for name in outputs)
+
+    # Row supports on the X side and column supports on the Y side of each
+    # Strassen factor. A gate is pair-local exactly when both sets are singletons.
+    support = {
+        &quot;p1&quot;: ({1, 2}, {1, 2}),
+        &quot;p2&quot;: ({2}, {1}),
+        &quot;p3&quot;: ({1}, {2}),
+        &quot;p4&quot;: ({2}, {1}),
+        &quot;p5&quot;: ({1}, {2}),
+        &quot;p6&quot;: ({1, 2}, {1, 2}),
+        &quot;p7&quot;: ({1, 2}, {1, 2}),
+    }
+    local_products = sorted(
+        name for name, (rows, columns) in support.items()
+        if len(rows) == 1 and len(columns) == 1
+    )
+    mixed_products = sorted(set(support) - set(local_products))
+    assert local_products == [&quot;p2&quot;, &quot;p3&quot;, &quot;p4&quot;, &quot;p5&quot;]
+    assert mixed_products == [&quot;p1&quot;, &quot;p6&quot;, &quot;p7&quot;]
+
+    result = {
+        &quot;status&quot;: &quot;PASS&quot;,
+        &quot;coefficient_domain&quot;: &quot;Z&quot;,
+        &quot;outputs_checked&quot;: sorted(outputs),
+        &quot;products_in_strassen_witness&quot;: 7,
+        &quot;pair_local_strassen_products&quot;: local_products,
+        &quot;mixed_support_strassen_products&quot;: mixed_products,
+        &quot;pair_local_product_count_for_m4_D2&quot;: 8,
+        &quot;scope&quot;: &quot;finite exact identity check only; does not prove arbitrary-mask claims&quot;,
+    }
+    path = Path(__file__).with_name(&quot;exact_check.json&quot;)
+    path.write_text(json.dumps(result, indent=2) + &quot;\n&quot;, encoding=&quot;utf-8&quot;)
+    print(json.dumps(result, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/00860c4af55edad1a652855c4cff01a61bf06bfc2a32a14e09a6857c575f3cf1.py">Exact original</a></p></html>

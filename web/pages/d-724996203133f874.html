@@ -1,0 +1,314 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c7_immunology_discrimination/code/model_audit.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c7_immunology_discrimination/code/model_audit.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Independent Gillespie audit of the published adaptive-MPR model.
+
+The implementation follows the APS Supplemental Material reactions S10-S15,
+the adaptive force law Eq. (3), and the public repository&#x27;s stopping rules.
+It records force-assisted barrier lowering as a model-level energetic proxy,
+not as ATP consumption or experimentally calibrated mechanical work.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import argparse
+import json
+import math
+from dataclasses import asdict, dataclass
+from pathlib import Path
+from typing import Callable
+
+import numpy as np
+
+
+K0 = 1126.92
+EA = 12.6
+EB_LOW = 13.3
+EPS_E = 0.5
+KON = 0.05
+XA_NM = 1.5
+XB_NM = 2.0
+KBT_PN_NM = 1.380649e-23 * 310.2 / 1e-21
+TMIN = 1.0
+TMAX = 1800.0
+
+
+def exact_hit_probability(l0: int, mc: int, eb: float = EB_LOW) -&gt; float:
+    &quot;&quot;&quot;P_1(hit mc before 0) for the preforce m birth-death chain.
+
+    This is exact for the step-force (beta=infinity) idealization with no
+    minimum-contact restart.  The m-marginal rates are lambda_m=(L0-m)kon
+    and mu_m=m*(ka0+kb0).
+    &quot;&quot;&quot;
+    if l0 &lt; mc or mc &lt; 1:
+        return 0.0
+    q0 = K0 * math.exp(-EA) + K0 * math.exp(-eb)
+    prod = 1.0
+    denom = 1.0
+    for j in range(1, mc):
+        prod *= j * q0 / ((l0 - j) * KON)
+        denom += prod
+    return 1.0 / denom
+
+
+def force_t(t: float, tc: float, beta: float, f0: float) -&gt; float:
+    if math.isinf(beta):
+        return 0.0 if t &lt; tc else f0
+    tb = t**beta
+    tcb = tc**beta
+    return f0 * tb / (tb + tcb) if tb + tcb else 0.0
+
+
+def force_m(mmax: int, mc: float, beta: float, f0: float) -&gt; float:
+    if math.isinf(beta):
+        return 0.0 if mmax &lt; mc else f0
+    mb = float(mmax) ** beta
+    mcb = float(mc) ** beta
+    return f0 * mb / (mb + mcb) if mb + mcb else 0.0
+
+
+@dataclass
+class Trajectory:
+    score: int
+    duration_s: float
+    max_cluster: int
+    force_work_proxy_pN_nm: float
+    rupture_events: int
+    hit_threshold: bool
+    tmax_censored: bool
+    emergency_terminated: bool
+
+
+def simulate_one(
+    l0: int,
+    eb: float,
+    policy: str,
+    control: float,
+    beta: float,
+    f0: float,
+    rng: np.random.Generator,
+    tmin: float = TMIN,
+    tmax: float = TMAX,
+) -&gt; Trajectory:
+    &quot;&quot;&quot;One cluster extraction trajectory, following public Gillespie code.
+
+    policy is &#x27;mmax&#x27; or &#x27;time&#x27;. control is mc (mmax policy) or tc seconds.
+    The energetic proxy adds f*x for each force-biased bond rupture, where
+    f=F/m is per-bond load and x is the Bell distance for that interface.
+    &quot;&quot;&quot;
+    if l0 &lt; 1:
+        return Trajectory(0, 0.0, 0, 0.0, 0, False, False, False)
+    m, n, mmax, t = 1, 0, 1, 0.0
+    # Initial BCR binding is drawn separately in the published implementation.
+    t += -math.log(max(rng.random(), np.finfo(float).tiny)) / (l0 * KON)
+    work = 0.0
+    ruptures = 0
+    reached = False
+    censored = False
+    emergency = False
+    steps = 0
+    while m != 0 or t &lt; tmin:
+        steps += 1
+        if steps &gt; 2_000_000:
+            raise RuntimeError(&quot;trajectory step limit exceeded&quot;)
+        if policy == &quot;mmax&quot;:
+            f = force_m(mmax, control, beta, f0)
+            reached = reached or (mmax &gt;= control)
+        elif policy == &quot;time&quot;:
+            f = force_t(t, control, beta, f0)
+        else:
+            raise ValueError(policy)
+
+        if m == 0:
+            # Reproduce public code&#x27;s tmin restart: one ligand binds, either
+            # newly tethered or via rebinding of an extracted BCR-Ag complex.
+            rate_rebind = n * KON
+            rate_new = (l0 - n) * KON
+            total = rate_rebind + rate_new
+            if total &lt;= 0:
+                break
+            if rng.random() &lt; rate_rebind / total:
+                n -= 1
+            m = 1
+            mmax = max(mmax, m)
+            t += -math.log(max(rng.random(), np.finfo(float).tiny)) / total
+            if t &gt;= tmax:
+                break
+            continue
+
+        per_bond = f / m
+        if per_bond &gt; 1517.5:
+            m = 0
+            emergency = True
+            break
+        # Clip only against floating-point overflow; this branch lies far
+        # above the published parameter range used here.
+        log_ka = math.log(K0) - EA + per_bond * XA_NM / KBT_PN_NM
+        log_kb = math.log(K0) - eb + per_bond * XB_NM / KBT_PN_NM
+        ka = math.exp(min(log_ka, 700.0))
+        kb = math.exp(min(log_kb, 700.0))
+        r1 = m * ka
+        r2 = m * kb
+        r3 = n * KON
+        r4 = (l0 - m - n) * KON
+        rates = (r1, r2, r3, r4)
+        total = sum(rates)
+        if total &lt;= 0:
+            break
+        dt = -math.log(max(rng.random(), np.finfo(float).tiny)) / total
+        if t + dt &gt; tmax:
+            t = tmax
+            m = 0
+            censored = True
+            break
+        t += dt
+        z = rng.random() * total
+        if z &lt; r1:
+            # Ag-tether interface ruptures; antigen is extracted.
+            work += per_bond * XA_NM
+            ruptures += 1
+            m -= 1
+            n += 1
+        elif z &lt; r1 + r2:
+            # BCR-Ag interface ruptures; antigen remains tethered.
+            work += per_bond * XB_NM
+            ruptures += 1
+            m -= 1
+        elif z &lt; r1 + r2 + r3:
+            m += 1
+            n -= 1
+        else:
+            m += 1
+        mmax = max(mmax, m)
+
+    return Trajectory(int(n), float(t), int(mmax), float(work), ruptures,
+                      reached, censored, emergency)
+
+
+def sample_l0(rng: np.random.Generator, distribution: str, sigma: float, mean: float = 100.0) -&gt; int:
+    if distribution == &quot;normal&quot;:
+        return max(5, int(round(rng.normal(mean, sigma))))
+    if distribution == &quot;uniform_wide&quot;:
+        return int(rng.integers(5, 196))
+    if distribution == &quot;uniform_low&quot;:
+        return int(rng.integers(5, 61))
+    if distribution == &quot;lognormal_cv50&quot;:
+        # Parameters yield the requested mean and CV=.5 before rounding.
+        s2 = math.log(1.0 + 0.5**2)
+        mu = math.log(mean) - s2 / 2
+        return max(1, int(round(rng.lognormal(mu, math.sqrt(s2)))) )
+    raise ValueError(distribution)
+
+
+def run_pairs(
+    policy: str,
+    distribution: str,
+    sigma: float,
+    pairs: int,
+    seed: int,
+    control: float,
+    beta: float = 5.0,
+    f0: float = 800.0,
+) -&gt; dict:
+    rng = np.random.default_rng(seed)
+    wins = ties = strict_wins = 0
+    scores_low, scores_high = [], []
+    doses_low, doses_high = [], []
+    times_low, times_high = [], []
+    works_low, works_high = [], []
+    threshold_low = threshold_high = 0
+    censored_low = censored_high = 0
+    for _ in range(pairs):
+        l_low = sample_l0(rng, distribution, sigma)
+        l_high = sample_l0(rng, distribution, sigma)
+        low = simulate_one(l_low, EB_LOW, policy, control, beta, f0, rng)
+        high = simulate_one(l_high, EB_LOW + EPS_E, policy, control, beta, f0, rng)
+        scores_low.append(low.score)
+        scores_high.append(high.score)
+        doses_low.append(l_low)
+        doses_high.append(l_high)
+        times_low.append(low.duration_s)
+        times_high.append(high.duration_s)
+        works_low.append(low.force_work_proxy_pN_nm)
+        works_high.append(high.force_work_proxy_pN_nm)
+        threshold_low += int(low.hit_threshold)
+        threshold_high += int(high.hit_threshold)
+        censored_low += int(low.tmax_censored)
+        censored_high += int(high.tmax_censored)
+        if high.score &gt; low.score:
+            strict_wins += 1
+            wins += 1
+        elif high.score == low.score:
+            ties += 1
+            wins += 0.5
+
+    return {
+        &quot;policy&quot;: policy,
+        &quot;distribution&quot;: distribution,
+        &quot;sigma&quot;: sigma,
+        &quot;pairs&quot;: pairs,
+        &quot;seed&quot;: seed,
+        &quot;control&quot;: control,
+        &quot;beta&quot;: beta,
+        &quot;f0_pN&quot;: f0,
+        &quot;epsilon_Eb_kBT&quot;: EPS_E,
+        &quot;auc_random_tie&quot;: wins / pairs,
+        &quot;strict_win_probability&quot;: strict_wins / pairs,
+        &quot;tie_probability&quot;: ties / pairs,
+        &quot;mean_dose_low_Eb&quot;: float(np.mean(doses_low)),
+        &quot;mean_dose_high_Eb&quot;: float(np.mean(doses_high)),
+        &quot;mean_score_low_Eb&quot;: float(np.mean(scores_low)),
+        &quot;mean_score_high_Eb&quot;: float(np.mean(scores_high)),
+        &quot;mean_time_low_Eb_s&quot;: float(np.mean(times_low)),
+        &quot;mean_time_high_Eb_s&quot;: float(np.mean(times_high)),
+        &quot;mean_force_barrier_work_low_Eb_pN_nm&quot;: float(np.mean(works_low)),
+        &quot;mean_force_barrier_work_high_Eb_pN_nm&quot;: float(np.mean(works_high)),
+        &quot;threshold_hit_low_Eb&quot;: threshold_low / pairs,
+        &quot;threshold_hit_high_Eb&quot;: threshold_high / pairs,
+        &quot;tmax_censor_low_Eb&quot;: censored_low / pairs,
+        &quot;tmax_censor_high_Eb&quot;: censored_high / pairs,
+    }
+
+
+def main() -&gt; None:
+    p = argparse.ArgumentParser()
+    p.add_argument(&quot;--pairs&quot;, type=int, default=2500)
+    p.add_argument(&quot;--seed&quot;, type=int, default=74129)
+    p.add_argument(&quot;--out&quot;, type=Path, default=Path(__file__).with_name(&quot;model_audit_results.json&quot;))
+    args = p.parse_args()
+
+    cases = [
+        (&quot;normal&quot;, 0.0),
+        (&quot;normal&quot;, 10.0),
+        (&quot;normal&quot;, 20.0),
+        (&quot;normal&quot;, 30.0),
+        (&quot;uniform_wide&quot;, 0.0),
+        (&quot;uniform_low&quot;, 0.0),
+        (&quot;lognormal_cv50&quot;, 0.0),
+    ]
+    rows = []
+    for idx, (dist, sigma) in enumerate(cases):
+        for policy, control in ((&quot;mmax&quot;, 60.0), (&quot;time&quot;, 60.0)):
+            rows.append(run_pairs(policy, dist, sigma, args.pairs, args.seed + idx * 101 + int(policy == &quot;time&quot;), control))
+    exact = {str(l): exact_hit_probability(l, 60) for l in (5, 20, 40, 50, 59, 60, 65, 70, 100, 130, 160, 195, 250)}
+    payload = {
+        &quot;source_parameters&quot;: {
+            &quot;k0_s-1&quot;: K0, &quot;Ea_kBT&quot;: EA, &quot;Eb_low_kBT&quot;: EB_LOW,
+            &quot;kon_s-1&quot;: KON, &quot;mc&quot;: 60, &quot;beta&quot;: 5, &quot;F0_pN&quot;: 800,
+            &quot;xa_nm&quot;: XA_NM, &quot;xb_nm&quot;: XB_NM, &quot;kBT_pN_nm&quot;: KBT_PN_NM,
+            &quot;tmin_s&quot;: TMIN, &quot;tmax_s&quot;: TMAX,
+        },
+        &quot;step_force_exact_hit_probability_beta_inf&quot;: exact,
+        &quot;results&quot;: rows,
+    }
+    args.out.write_text(json.dumps(payload, indent=2) + &quot;\n&quot;)
+    for r in rows:
+        print(r[&quot;policy&quot;], r[&quot;distribution&quot;], r[&quot;sigma&quot;],
+              f&quot;auc={r[&#x27;auc_random_tie&#x27;]:.4f}&quot;,
+              f&quot;strict={r[&#x27;strict_win_probability&#x27;]:.4f}&quot;,
+              f&quot;ties={r[&#x27;tie_probability&#x27;]:.4f}&quot;,
+              f&quot;censor={r[&#x27;tmax_censor_low_Eb&#x27;]:.3f}&quot;,
+              f&quot;time={r[&#x27;mean_time_low_Eb_s&#x27;]:.2f}s&quot;,
+              f&quot;work={r[&#x27;mean_force_barrier_work_low_Eb_pN_nm&#x27;]:.2f} pN nm&quot;)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/a005ce7fdf98f18a512123eeb8c3752aa615652cb1bc8e5621d9a14a55fcc8bc.py">Exact original</a></p></html>

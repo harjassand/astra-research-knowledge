@@ -1,0 +1,192 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/sol_xy_critical/cycle2/checks.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/sol_xy_critical/cycle2/checks.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Small finite diagnostics for sol_xy_critical cycle 2 (not proof checks).&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import itertools
+import json
+import math
+from pathlib import Path
+
+import numpy as np
+
+
+def configs(n_sites: int, particles: int):
+    return list(itertools.combinations(range(n_sites), particles))
+
+
+def sector_matrix(L: int, particles: int, interaction: float, J: float = 1.0,
+                  lam: float = 0.0) -&gt; np.ndarray:
+    &quot;&quot;&quot;Physical open-chain matrix; L=N_sites+1, hopping coefficient -2J.&quot;&quot;&quot;
+    n_sites = L - 1
+    basis = configs(n_sites, particles)
+    index = {xs: j for j, xs in enumerate(basis)}
+    H = np.zeros((len(basis), len(basis)), dtype=float)
+    for col, xs in enumerate(basis):
+        occ = set(xs)
+        adjacent = sum(1 for i in range(n_sites - 1)
+                       if i in occ and i + 1 in occ)
+        H[col, col] = (4.0 * J - lam / L**2) * particles + interaction * adjacent
+        for i in range(n_sites - 1):
+            if (i in occ) == (i + 1 in occ):
+                continue
+            moved = set(occ)
+            if i in moved:
+                moved.remove(i)
+                moved.add(i + 1)
+            else:
+                moved.remove(i + 1)
+                moved.add(i)
+            row = index[tuple(sorted(moved))]
+            H[row, col] += -2.0 * J
+    return H
+
+
+def scaled_sector_traces(L: int, particles: int, interaction: float,
+                         tau: float = 0.7, J: float = 1.0,
+                         lam: float = 0.2):
+    H0 = sector_matrix(L, particles, 0.0, J, lam)
+    Ha = sector_matrix(L, particles, interaction, J, lam)
+    n_sites = L - 1
+    hard_basis = [xs for xs in configs(n_sites, particles)
+                  if all(xs[j + 1] - xs[j] &gt;= 2
+                         for j in range(particles - 1))]
+    if hard_basis:
+        full_basis = configs(n_sites, particles)
+        full_index = {xs: j for j, xs in enumerate(full_basis)}
+        ix = [full_index[xs] for xs in hard_basis]
+        Hhc = H0[np.ix_(ix, ix)]
+        zhc = float(np.exp(-tau * L**2 * np.linalg.eigvalsh(Hhc)).sum())
+    else:
+        zhc = 0.0
+    z0 = float(np.exp(-tau * L**2 * np.linalg.eigvalsh(H0)).sum())
+    za = float(np.exp(-tau * L**2 * np.linalg.eigvalsh(Ha)).sum())
+    return z0, za, zhc
+
+
+def hardrod_formula(L: int, particles: int, tau: float = 0.7,
+                    J: float = 1.0, lam: float = 0.2) -&gt; float:
+    n_compressed = L - particles
+    if particles == 0:
+        return 1.0
+    if n_compressed &lt; particles:
+        return 0.0
+    energies = [4.0 * tau * J * L**2
+                * (1.0 - math.cos(math.pi * k / (n_compressed + 1)))
+                - tau * lam for k in range(1, n_compressed + 1)]
+    return float(sum(math.exp(-sum(energies[k - 1] for k in ks))
+                     for ks in itertools.combinations(range(1, n_compressed + 1),
+                                                      particles)))
+
+
+def scattering_residual(a: float, K: float, q: float, J: float = 1.0) -&gt; float:
+    A = 4.0 * J * math.cos(K / 2.0)
+    delta = math.atan2(-a * math.sin(q), A + a * math.cos(q))
+    phi = lambda r: math.sin(q * r + delta)
+    E = -2.0 * A * math.cos(q)
+    return abs(E * phi(1) - a * phi(1) + A * phi(2))
+
+
+def born_w(L: int, k: int = 1, ell: int = 2) -&gt; float:
+    def phi(mode: int, site: int) -&gt; float:
+        return math.sqrt(2.0 / L) * math.sin(math.pi * mode * site / L)
+    return sum((phi(k, i) * phi(ell, i + 1)
+                - phi(ell, i) * phi(k, i + 1)) ** 2
+               for i in range(1, L - 1))
+
+
+def critical_graph_matrix(L: int, particles: int, J: float = 1.0) -&gt; np.ndarray:
+    &quot;&quot;&quot;Killed SSEP graph Laplacian for Hcrit in the m-particle sector.&quot;&quot;&quot;
+    n_sites = L - 1
+    basis = configs(n_sites, particles)
+    index = {xs: j for j, xs in enumerate(basis)}
+    H = np.zeros((len(basis), len(basis)), dtype=float)
+    for col, xs in enumerate(basis):
+        occ = set(xs)
+        for i in range(n_sites - 1):
+            if (i in occ) == (i + 1 in occ):
+                continue
+            moved = set(occ)
+            if i in moved:
+                moved.remove(i)
+                moved.add(i + 1)
+            else:
+                moved.remove(i + 1)
+                moved.add(i)
+            row = index[tuple(sorted(moved))]
+            H[col, col] += 2.0 * J
+            H[row, col] -= 2.0 * J
+        H[col, col] += 2.0 * J * (int(0 in occ) + int(n_sites - 1 in occ))
+    return H
+
+
+def main() -&gt; None:
+    traces = []
+    max_order_violation = 0.0
+    max_squeeze_error = 0.0
+    for L in range(4, 9):
+        for m in range(0, min(L - 1, 4) + 1):
+            z0, za, zhc = scaled_sector_traces(L, m, interaction=1.3 * L)
+            max_order_violation = max(max_order_violation, za - z0, zhc - za)
+            max_squeeze_error = max(max_squeeze_error,
+                                    abs(zhc - hardrod_formula(L, m)))
+            traces.append({&quot;L&quot;: L, &quot;m&quot;: m, &quot;z_free&quot;: z0,
+                           &quot;z_repulsive&quot;: za, &quot;z_hardrod&quot;: zhc})
+
+    born = []
+    for L in (16, 32, 64, 128):
+        born.append({&quot;L&quot;: L, &quot;L3_W_12&quot;: L**3 * born_w(L)})
+
+    scattering = []
+    for a, K, q in ((0.0, 0.3, 0.2), (3.0, 0.2, 0.4), (100.0, 0.1, 0.25)):
+        scattering.append({&quot;a&quot;: a, &quot;K&quot;: K, &quot;q&quot;: q,
+                           &quot;boundary_residual&quot;: scattering_residual(a, K, q)})
+
+    max_ssep_error = 0.0
+    run_bound_violations = 0
+    high_density_trace_violations = 0
+    tau, J, gmin = 0.7, 1.0, 0.9
+    for L in range(3, 9):
+        n_sites = L - 1
+        for m in range(n_sites + 1):
+            Hcrit = sector_matrix(L, m, interaction=-4.0 * J, J=J)
+            Hgraph = critical_graph_matrix(L, m, J)
+            max_ssep_error = max(max_ssep_error,
+                                  float(np.max(np.abs(Hcrit - Hgraph))))
+            for xs in configs(n_sites, m):
+                occ = set(xs)
+                W = sum(1 for i in range(n_sites - 1)
+                        if i in occ and i + 1 in occ)
+                runs = sum(1 for i in xs
+                           if i == 0 or i - 1 not in occ)
+                run_bound_violations += int(
+                    W != m - runs or W &lt; max(0, 2 * m - L))
+            if m &gt; L / 2:
+                Hres = sector_matrix(L, m, interaction=-4.0 * J + gmin / L,
+                                     J=J)
+                z = float(np.exp(-tau * L**2 * np.linalg.eigvalsh(Hres)).sum())
+                rhs = (math.comb(n_sites, m)
+                       * math.exp(-tau * gmin * L * max(0, 2 * m - L)))
+                high_density_trace_violations += int(z &gt; rhs * (1.0 + 1e-10))
+
+    result = {
+        &quot;scope&quot;: &quot;finite diagnostics only; no theorem validation&quot;,
+        &quot;sector_partition_order_max_positive_violation&quot;: max(0.0, max_order_violation),
+        &quot;hardrod_squeeze_max_trace_error&quot;: max_squeeze_error,
+        &quot;two_particle_born_limit_target&quot;: 5.0 * math.pi**2,
+        &quot;two_particle_born_values&quot;: born,
+        &quot;scattering_boundary_residuals&quot;: scattering,
+        &quot;critical_ssep_max_matrix_error&quot;: max_ssep_error,
+        &quot;run_count_bound_violations&quot;: run_bound_violations,
+        &quot;high_density_trace_bound_violations&quot;: high_density_trace_violations,
+        &quot;sector_samples&quot;: traces,
+    }
+    out = Path(__file__).with_name(&quot;checks.json&quot;)
+    out.write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+    print(json.dumps({k: v for k, v in result.items()
+                      if k != &quot;sector_samples&quot;}, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/b9c3129fb9a73421762d9e1dde4d5b835f88147d8b211ebd4418ac120c926cca.py">Exact original</a></p></html>

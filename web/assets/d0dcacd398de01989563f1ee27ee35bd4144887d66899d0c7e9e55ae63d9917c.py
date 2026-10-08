@@ -1,0 +1,155 @@
+"""Exact finite character/crossover diagnostics; no optimal-wall conclusion."""
+import importlib.util
+import itertools
+import json
+import math
+import pathlib
+from collections import Counter
+from fractions import Fraction
+
+import numpy as np
+
+ROOT = pathlib.Path(__file__).resolve().parent
+spec = importlib.util.spec_from_file_location(
+    'su3_checks', ROOT.parent / 'regular_su3' / 'verify_regular_su3.py')
+c = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(c)
+
+
+def close(a, b, tolerance=3e-8):
+    err = float(np.max(np.abs(np.asarray(a) - np.asarray(b))))
+    if err > tolerance:
+        raise AssertionError((err, a, b))
+    return err
+
+
+def add_weights(a, b):
+    return tuple(x + y for x, y in zip(a, b))
+
+
+def multiply(left, right):
+    result = Counter()
+    for a, va in left.items():
+        for b, vb in right.items():
+            result[add_weights(a, b)] += va * vb
+    return result
+
+
+def symmetric_character(n, negative=False):
+    sign = -1 if negative else 1
+    return Counter(tuple(sign * (alpha[i] - alpha[2]) for i in range(2))
+                   for alpha in c.old.occupations(n, 3))
+
+
+def harmonic_character(a, b):
+    result = multiply(symmetric_character(a), symmetric_character(b, True))
+    if a and b:
+        lower = multiply(symmetric_character(a - 1), symmetric_character(b - 1, True))
+        result.subtract(lower)
+    assert all(value >= 0 for value in result.values())
+    return +result
+
+
+def character_equalities():
+    ad = harmonic_character(1, 1)
+    basis_weights = list(ad.elements())
+    assert len(basis_weights) == 8
+    decompositions = {1: [(1, 1)], 2: [(2, 2), (1, 1), (0, 0)],
+                      3: [(3, 3), (2, 2), (3, 0), (0, 3), (1, 1), (0, 0)]}
+    records = []
+    for degree, labels in decompositions.items():
+        actual = Counter(tuple(sum(basis_weights[i][j] for i in indices) for j in range(2))
+                         for indices in itertools.combinations_with_replacement(range(8), degree))
+        expected = Counter()
+        for a, b in labels:
+            expected.update(harmonic_character(a, b))
+        assert actual == expected
+        assert sum(actual.values()) == math.comb(7 + degree, degree)
+        records.append(dict(degree=degree, dimension=sum(actual.values()),
+                            irreducibles=labels, Laurent_monomials=len(actual)))
+    return records
+
+
+def fraction_parameters():
+    count = 0
+    for a in range(2, 5001):
+        c2, c3 = Fraction((a + 2) ** 2, 3), Fraction((a - 1) * (a + 2) * (a + 5), 9)
+        alpha = c3 / c2
+        delta = c2 * (c2 / 3 + Fraction(1, 4)) - c3 ** 2 / c2
+        assert alpha == Fraction(a + 2, 3) - Fraction(3, a + 2)
+        assert delta == Fraction(3 * a * (a + 4), 4)
+        cs = delta / a ** 2
+        assert Fraction(3, 4) <= cs <= Fraction(9, 4)
+        assert Fraction(1, 4) <= alpha / a <= Fraction(1, 2)
+        if a >= 144:
+            # Square-root sqrt3 is a common positive factor here.
+            assert Fraction(3, 256 * a) - Fraction(27, 32 * a ** 2) >= Fraction(3, 512 * a)
+        count += 1
+    return count
+
+
+def carrier_case(a, b):
+    ts, ambient = c.harmonic_carrier(a, b)
+    n, dimension = max(a, b), ts[0].shape[0]
+    c2 = (a * a + a * b + b * b + 3 * a + 3 * b) / 3
+    c3 = (a - b) * (2 * a + b + 3) * (a + 2 * b + 3) / 18
+    alpha = c3 / c2
+    delta = c2 * (c2 / 3 + .25) - c3 * c3 / c2
+    cs = delta / n ** 2
+    ds = [sum(c.d_symbol[k, i, j] * ts[i] @ ts[j]
+              for i in range(8) for j in range(8)) for k in range(8)]
+    ss = [(u - alpha * t) / n for u, t in zip(ds, ts)]
+    residuals = {}
+    residuals['universal_vector_identity'] = max(close(sum(
+        t @ (d @ db - db @ d) - (d @ db - db @ d) @ t
+        for t, d in zip(ts, ds)), (c2 + .75) * tb) for tb, db in zip(ts, ds))
+    residuals['mixed_adjoint_block'] = max(close(sum(
+        t @ (s @ sb - sb @ s) - (s @ sb - sb @ s) @ t
+        for t, s in zip(ts, ss)), 3 * cs / c2 * tb - 6 * alpha / n * sb)
+        for tb, sb in zip(ts, ss))
+    sb = ss[0]
+    vals = np.linalg.eigvalsh(sb)
+    shift = -vals[0]
+    f = sb + shift * np.eye(dimension)
+    rank = int(np.count_nonzero(vals - vals[0] > 1e-8))
+    assert 0 < rank < dimension
+    norm = float(np.linalg.norm(f) ** 2)
+    et, es = c.old.energy(f, ts), c.old.energy(f, ss)
+    cross = sum(float(np.trace((s @ f - f @ s).conj().T @ (t @ f - f @ t)).real)
+                for t, s in zip(ts, ss))
+    residuals['filter_energy'] = close(et, 3 * dimension * cs / 8)
+    residuals['cross_ratio'] = close(cross / et, -2 * alpha / n)
+    residuals['filter_norm'] = close(norm / dimension, cs / 8 + shift ** 2)
+    assert 1 / 3 - 1e-9 <= et / norm <= 3 + 1e-9
+    u, v = et / (dimension * c2), cross / (dimension * cs)
+    linear_output = (u * ts[0] + v * ss[0]) / n
+    linear_trace_norm = float(np.sum(np.abs(np.linalg.eigvalsh(linear_output)))) / dimension
+    return dict(a=a, b=b, N=n, dimension=dimension, ambient_dimension=ambient,
+                alpha_over_N=alpha / n, C_S=cs, filter_rank=rank,
+                filter_norm_over_d=norm / dimension, normalized_energy=et / norm,
+                mixed_to_Casimir_ratio=cross / et,
+                normalized_second_energy_to_Casimir=es / et * c2 / cs,
+                normalized_linear_output_trace_norm=linear_trace_norm,
+                N_times_linear_norm=n * linear_trace_norm,
+                residuals=residuals)
+
+
+def main():
+    cases = [carrier_case(a, b) for a, b in
+             [(1, 1), (2, 1), (3, 1), (5, 1), (8, 1), (2, 2), (3, 2), (1, 3)]]
+    result = dict(status='FINITE-EVIDENCE', proof_validation=False,
+                  optimal_wall_law='UNKNOWN', theorem_file='GENERIC_FILTER_OBSTRUCTION.txt',
+                  exact_PBW_characters=character_equalities(),
+                  exact_fraction_parameter_cases=fraction_parameters(), carrier_cases=cases,
+                  max_matrix_residual=max(max(case['residuals'].values()) for case in cases),
+                  dependencies=['Python standard library', 'NumPy'])
+    (ROOT / 'CHECKS.json').write_text(json.dumps(result, indent=2) + '\n')
+    print(json.dumps(dict(status='passed', carrier_cases=len(cases),
+                         character_equalities=len(result['exact_PBW_characters']),
+                         Fraction_cases=result['exact_fraction_parameter_cases'],
+                         max_residual=result['max_matrix_residual'],
+                         optimal_wall_law=result['optimal_wall_law'])))
+
+
+if __name__ == '__main__':
+    main()

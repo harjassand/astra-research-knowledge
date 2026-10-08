@@ -1,0 +1,111 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c11_engineering_metrology/sthm_design/optimal_reference_design.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c11_engineering_metrology/sthm_design/optimal_reference_design.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Local D/G-optimal reference design for Y=c+a*k/(b+k).
+
+This is a conditional design calculator. It assumes exact certified k values,
+one stable probe epoch, and homoscedastic independent voltage errors. It does
+not fit the source authors&#x27; AFM data or certify a real tip/sample interface.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import json
+import math
+from pathlib import Path
+
+import numpy as np
+
+
+def gradient(k: float, a: float, b: float) -&gt; np.ndarray:
+    z = k / (b + k)
+    return np.array([z, -(a / b) * z * (1.0 - z), 1.0], dtype=float)
+
+
+def transformed_midpoint(k_lo: float, k_hi: float, b: float) -&gt; float:
+    &quot;&quot;&quot;Conductivity whose z=k/(b+k) is midway between endpoint z values.&quot;&quot;&quot;
+    if not (0 &lt; k_lo &lt; k_hi and b &gt; 0):
+        raise ValueError(&quot;require 0 &lt; k_lo &lt; k_hi and b &gt; 0&quot;)
+    return (b * (k_lo + k_hi) + 2 * k_lo * k_hi) / (2 * b + k_lo + k_hi)
+
+
+def mean_information(ks: np.ndarray, a: float, b: float) -&gt; np.ndarray:
+    jac = np.vstack([gradient(float(k), a, b) for k in ks])
+    return jac.T @ jac / len(ks)
+
+
+def leverage(k: float, info: np.ndarray, a: float, b: float) -&gt; float:
+    g = gradient(k, a, b)
+    return float(g @ np.linalg.solve(info, g))
+
+
+def inverse_sd(k: float, design_info: np.ndarray, n: int,
+               sigma_ref_y: float, sigma_unknown_y: float,
+               a: float, b: float) -&gt; float:
+    curve_var = sigma_ref_y**2 * leverage(k, design_info, a, b) / n
+    total_y_var = sigma_unknown_y**2 + curve_var
+    slope = a * b / (b + k) ** 2
+    return math.sqrt(total_y_var) / slope
+
+
+def run() -&gt; dict:
+    # Published dataset-3 local fit and published approximate useful range.
+    a, b, c = 0.8245, 0.1892, -0.7128
+    k_lo, k_hi = 0.1, 10.0
+    n = 6
+    k_mid = transformed_midpoint(k_lo, k_hi, b)
+
+    d_opt_ks = np.array([k_lo, k_mid, k_hi] * 2, dtype=float)
+    log_uniform_ks = np.geomspace(k_lo, k_hi, n)
+    d_info = mean_information(d_opt_ks, a, b)
+    base_info = mean_information(log_uniform_ks, a, b)
+
+    grid = np.geomspace(k_lo, k_hi, 10001)
+    d_lev = np.array([leverage(float(k), d_info, a, b) for k in grid])
+    base_lev = np.array([leverage(float(k), base_info, a, b) for k in grid])
+    det_ratio = float(np.linalg.det(d_info) / np.linalg.det(base_info))
+
+    # Sensitivity illustration only; sigma is in the paper&#x27;s voltage-difference units.
+    sigma_y = 1e-3
+    inverse_examples = {
+        f&quot;{k:g}&quot;: inverse_sd(k, d_info, n, sigma_y, sigma_y, a, b)
+        for k in (k_lo, k_mid, 1.0, k_hi)
+    }
+    response = lambda k: c + a * k / (b + k)
+
+    return {
+        &quot;model&quot;: &quot;Y=c+a*k/(b+k)&quot;,
+        &quot;nominal_parameters_source_dataset3&quot;: {&quot;a&quot;: a, &quot;b&quot;: b, &quot;c&quot;: c},
+        &quot;design_domain_W_mK&quot;: [k_lo, k_hi],
+        &quot;n_reference_measurements&quot;: n,
+        &quot;d_optimal_support_W_mK&quot;: [k_lo, k_mid, k_hi],
+        &quot;d_optimal_replicates&quot;: [2, 2, 2],
+        &quot;log_uniform_comparator_W_mK&quot;: log_uniform_ks.tolist(),
+        &quot;local_information_determinant_ratio_Dopt_to_log_uniform&quot;: det_ratio,
+        &quot;max_response_leverage_Dopt&quot;: float(d_lev.max()),
+        &quot;max_response_leverage_log_uniform&quot;: float(base_lev.max()),
+        &quot;sharp_theorem_bound&quot;: 3.0,
+        &quot;nominal_voltage_response_at_support&quot;: [response(float(k)) for k in (k_lo, k_mid, k_hi)],
+        &quot;inverse_sd_W_mK_if_sigma_ref_and_unknown_each_1e-3&quot;: inverse_examples,
+        &quot;assumptions&quot;: [
+            &quot;correct rational calibration law&quot;,
+            &quot;single stable probe/electronics epoch&quot;,
+            &quot;exact reference conductivities&quot;,
+            &quot;independent homoscedastic reference-voltage errors&quot;,
+            &quot;local Fisher/delta-method uncertainty only&quot;,
+        ],
+        &quot;not_validated&quot;: [
+            &quot;real material standard availability at k_mid&quot;,
+            &quot;errors-in-variables shifts from certificate uncertainty&quot;,
+            &quot;shared reference and drift covariance&quot;,
+            &quot;probe-apex changes and calibration-model misspecification&quot;,
+        ],
+    }
+
+
+if __name__ == &quot;__main__&quot;:
+    result = run()
+    out = Path(__file__).with_name(&quot;design_check.json&quot;)
+    out.write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+    print(json.dumps(result, indent=2))
+    assert result[&quot;max_response_leverage_Dopt&quot;] &lt;= 3.0 + 1e-10
+    assert result[&quot;max_response_leverage_Dopt&quot;] &gt;= 3.0 - 1e-8
+    assert result[&quot;local_information_determinant_ratio_Dopt_to_log_uniform&quot;] &gt; 1.0
+</pre><p><a href="../assets/f7b970876c2989edf86a3823b8109adb5986edb5f268c3ad6cec4f9f709906ae.py">Exact original</a></p></html>

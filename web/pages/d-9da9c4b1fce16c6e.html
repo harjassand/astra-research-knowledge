@@ -1,0 +1,181 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c9_channel_variance/cycle10/legal_counterexample/scan_broadcast_sdp.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c9_channel_variance/cycle10/legal_counterexample/scan_broadcast_sdp.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>&quot;&quot;&quot;SDP screen for non-Weyl rank&gt;=3 frames; numerical search only, not evidence.&quot;&quot;&quot;
+from __future__ import annotations
+import cvxpy as cp
+import numpy as np
+
+
+def hermitian_basis(d):
+    out = [np.eye(d, dtype=complex) / np.sqrt(d)]
+    # Diagonal traceless basis, Gram-Schmidt in exact pattern.
+    for k in range(1, d):
+        v = np.zeros(d)
+        v[:k] = 1
+        v[k] = -k
+        v = v / np.sqrt(k * (k + 1))
+        out.append(np.diag(v).astype(complex))
+    for i in range(d):
+        for j in range(i + 1, d):
+            a = np.zeros((d,d), complex)
+            a[i,j] = a[j,i] = 1 / np.sqrt(2)
+            out.append(a)
+            b = np.zeros((d,d), complex)
+            b[i,j] = -1j / np.sqrt(2)
+            b[j,i] = 1j / np.sqrt(2)
+            out.append(b)
+    assert len(out) == d*d
+    return out
+
+
+def coefficients(basis, A):
+    return np.array([np.trace(F.conj().T @ A).real for F in basis])
+
+
+def frame_projector(basis, mats):
+    U = np.array([coefficients(basis, A) for A in mats])
+    # Orthonormalize in ordinary HS norm, keep the same subspace.
+    q, r = np.linalg.qr(U.T)
+    rank = np.linalg.matrix_rank(r, tol=1e-8)
+    return q[:,:rank], rank
+
+
+def cartan(basis, d, U=None):
+    if U is None:
+        U = np.eye(d)
+    diag = []
+    for k in range(1,d):
+        v = np.zeros(d)
+        v[:k] = 1
+        v[k] = -k
+        v = v / np.sqrt(k*(k+1))
+        diag.append(U @ np.diag(v) @ U.conj().T)
+    return diag
+
+
+def frame_list(d):
+    b = hermitian_basis(d)
+    I = np.eye(d)
+    frames = {&quot;full_traceless&quot;: b[1:]}
+    if d == 3:
+        w = np.exp(2j*np.pi/3)
+        F = np.array([[w**(j*k) for k in range(3)] for j in range(3)],complex)/np.sqrt(3)
+        frames[&quot;two_MUB_cartans&quot;] = cartan(b,d) + cartan(b,d,F)
+        # Spin-one vector observables J_x,J_y,J_z (spin-1 irrep).
+        Jz=np.diag([1,0,-1]).astype(complex)
+        Jp=np.array([[0,np.sqrt(2),0],[0,0,np.sqrt(2)],[0,0,0]],complex)
+        Jm=Jp.conj().T
+        Jx=(Jp+Jm)/2
+        Jy=(Jp-Jm)/(2j)
+        frames[&quot;spin1_vector&quot;]=[Jx,Jy,Jz]
+        # Complete embedded qubit Bloch subspace on levels 0,1.
+        X=np.array([[0,1],[1,0]],complex)
+        Y=np.array([[0,-1j],[1j,0]],complex)
+        Z=np.diag([1,-1]).astype(complex)
+        for name,A2 in zip(&quot;XYZ&quot;,[X,Y,Z]):
+            A=np.zeros((3,3),complex); A[:2,:2]=A2
+            frames.setdefault(&quot;embedded_qubit_bloch&quot;,[]).append(A)
+        # Three noncommuting adjacent coherences and a diagonal contrast.
+        frames[&quot;adjacent_coherences&quot;]=[frames[&quot;embedded_qubit_bloch&quot;][0],
+             np.array([[0,0,0],[0,0,1],[0,1,0]],complex),
+             np.array([[0,0,0],[0,0,-1j],[0,1j,0]],complex)]
+    if d == 4:
+        w=np.exp(2j*np.pi/4)
+        F=np.array([[w**(j*k) for k in range(4)] for j in range(4)],complex)/2
+        frames[&quot;two_MUB_cartans&quot;] = cartan(b,d)+cartan(b,d,F)
+    return b, frames
+
+
+def partial_trace_expr(J,d,keep):
+    # J acts on R,A,B, each d-dimensional; return the partial trace over omitted factors.
+    dims=(d,d,d)
+    keep=tuple(keep)
+    kout=int(np.prod([dims[k] for k in keep]))
+    rows=[]
+    for oi in range(kout):
+        outidx=[]; z=oi
+        for k in reversed(keep):
+            outidx.append(z%d); z//=d
+        outidx=tuple(reversed(outidx))
+        row=[]
+        for oj in range(kout):
+            outj=[]; z=oj
+            for k in reversed(keep):
+                outj.append(z%d); z//=d
+            outj=tuple(reversed(outj))
+            val=0
+            for traceidx in np.ndindex(*(dims[k] for k in range(3) if k not in keep)):
+                ii=[None]*3; jj=[None]*3
+                p=0
+                for k in range(3):
+                    if k in keep:
+                        q=keep.index(k); ii[k]=outidx[q]; jj[k]=outj[q]
+                    else:
+                        ii[k]=jj[k]=traceidx[p]; p+=1
+                def lin(ix): return (ix[0]*d+ix[1])*d+ix[2]
+                val=val+J[lin(ii),lin(jj)]
+            row.append(val)
+        rows.append(row)
+    return cp.bmat(rows)
+
+
+def run(d, frame_name, mats):
+    basis, _ = frame_list(d)
+    U, rank = frame_projector(basis, mats)
+    n=d**3
+    # It is enough to optimize over real Choi matrices here: each listed Q is
+    # invariant under entrywise conjugation, so average a feasible broadcaster
+    # with its conjugate without changing feasibility or the objective.
+    J=cp.Variable((n,n), symmetric=True)
+    constraints=[J &gt;&gt; 0]
+    # Symmetry of the two output systems A,B.
+    perm=[]
+    for r in range(d):
+        for a in range(d):
+            for b in range(d):
+                perm.append((r*d+a)*d+b)
+    # swap sends (r,a,b) -&gt; (r,b,a)
+    S=np.zeros((n,n))
+    for r in range(d):
+        for a in range(d):
+            for b in range(d):
+                S[(r*d+b)*d+a,(r*d+a)*d+b]=1
+    constraints += [S@J@S.T == J]
+    J_RA=partial_trace_expr(J,d,(0,1))
+    J_R=partial_trace_expr(J,d,(0,))
+    J_A=partial_trace_expr(J,d,(1,))
+    Id=np.eye(d)/d
+    constraints += [J_R == Id, J_A == Id]
+    # Vectorized real linear map from J_RA to the Hermitian-basis transfer R.
+    # R[b,a] = d Tr((Fa.T tensor Fb) J_RA); J_RA is real by conjugation twirl.
+    n2=d*d
+    L=np.zeros((n2*n2,n2*n2))
+    for a,Fa in enumerate(basis):
+        for b,Fb in enumerate(basis):
+            W=np.kron(Fa.T,Fb)
+            row=b+a*n2
+            for p in range(n2):
+                for q in range(n2):
+                    L[row,q+p*n2]=d*W[p,q].real
+    R=cp.reshape(L @ cp.vec(J_RA,order=&quot;F&quot;),(n2,n2),order=&quot;F&quot;)
+    constraints += [R == R.T, R &gt;&gt; 0]
+    # U columns specify a tau-orthonormal frame A_i=sqrt(d)*sum_a U[a,i] F_a.
+    obj=2*cp.trace(U.T @ R @ U)-rank
+    prob=cp.Problem(cp.Maximize(obj),constraints)
+    try:
+        prob.solve(solver=&quot;CLARABEL&quot;,tol_gap_abs=1e-8,tol_feas=1e-8,tol_gap_rel=1e-8,max_iter=300)
+    except cp.error.SolverError:
+        prob.solve(solver=&quot;SCS&quot;,eps=2e-6,max_iters=30000,verbose=False)
+    print(f&quot;d={d} frame={frame_name} rank={rank} status={prob.status} max_h={prob.value}&quot;)
+    if J.value is not None:
+        j=np.array(J.value)
+        rv=np.array(R.value)
+        print(&quot;  min_eig_J&quot;,np.linalg.eigvalsh((j+j.conj().T)/2).min(),
+              &quot;swap&quot;,np.max(np.abs(S@j@S.T-j)),&quot;R_eig&quot;,np.linalg.eigvalsh(rv).min(),
+              &quot;marg&quot;,max(np.max(np.abs(np.array(x.value)-Id)) for x in [J_R,J_A]))
+        print(&quot;  eig_selected&quot;,np.linalg.eigvalsh(U.T@rv@U))
+
+
+if __name__ == &#x27;__main__&#x27;:
+    d=3
+    _, frames=frame_list(d)
+    run(d,&quot;adjacent_coherences&quot;,frames[&quot;adjacent_coherences&quot;])
+</pre><p><a href="../assets/d62ec31d25a64879ce9e532ca3320bc1acce76f77c2fa5d0ff7896dba5c830c4.py">Exact original</a></p></html>

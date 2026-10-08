@@ -1,0 +1,550 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/memory_information/evidence/decoder_implementation_costs/finite_binned_codec.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/memory_information/evidence/decoder_implementation_costs/finite_binned_codec.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact finite-binned decoder evidence for the N66 regular-sensor codec.
+
+This is a finite interface: an eight-bit input bin per coordinate is mapped
+to a short archive label and then to an eight-bit output bin. All transition
+probabilities and reported TV certificates are exact Fractions. The example
+does not claim TV closeness to an unbinned continuous law.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import argparse
+import bisect
+import hashlib
+import json
+import math
+import random
+import struct
+from fractions import Fraction as Q
+from math import ceil, isqrt, log2
+from typing import Callable, Iterable, Sequence
+
+
+def ceil_sqrt_fraction(x: Q) -&gt; int:
+    if x &lt;= 0:
+        return 0
+    q = isqrt(x.numerator // x.denominator)
+    return q if q * q * x.denominator == x.numerator else q + 1
+
+
+def make_nodes(j_count: int, family: str) -&gt; list[Q]:
+    if family == &quot;graded&quot;:
+        # x_j = -1 + 6(j/J)^2 - 4(j/J)^3, all nodes rational.
+        return [
+            Q(-1) + Q(6 * j * j, j_count * j_count)
+            - Q(4 * j**3, j_count**3)
+            for j in range(j_count + 1)
+        ]
+    if family == &quot;uniform&quot;:
+        return [Q(-1) + Q(2 * j, j_count) for j in range(j_count + 1)]
+    raise ValueError(f&quot;unknown node family: {family}&quot;)
+
+
+def integrate_hat(a: Q, b: Q, nodes: Sequence[Q], label: int) -&gt; Q:
+    &quot;&quot;&quot;Exact integral of a nodal linear hat over [a,b].&quot;&quot;&quot;
+    total = Q(0)
+    for i, (left, right) in enumerate(zip(nodes, nodes[1:])):
+        lo = max(a, left)
+        hi = min(b, right)
+        if lo &gt;= hi:
+            continue
+        gap = right - left
+        if label == i:
+            value_lo = (right - lo) / gap
+            value_hi = (right - hi) / gap
+        elif label == i + 1:
+            value_lo = (lo - left) / gap
+            value_hi = (hi - left) / gap
+        else:
+            continue
+        # The hat is linear on this segment, so the trapezoid rule is exact.
+        total += (value_lo + value_hi) * (hi - lo) / 2
+    return total
+
+
+def make_bins(k_count: int) -&gt; list[tuple[Q, Q]]:
+    return [
+        (Q(-1) + Q(2 * k, k_count), Q(-1) + Q(2 * (k + 1), k_count))
+        for k in range(k_count)
+    ]
+
+
+def make_transitions(
+    k_count: int, j_count: int, family: str
+) -&gt; tuple[list[list[Q]], list[list[Q]], list[Q]]:
+    &quot;&quot;&quot;Return encoder A[input_bin,label], decoder B[label,output_bin].&quot;&quot;&quot;
+    nodes = make_nodes(j_count, family)
+    bins = make_bins(k_count)
+    labels = j_count + 1
+
+    # Uniform-reference probability of each hat within the given input bin.
+    # Since every input bin has reference mass 1/K, A[k,j] = K int phi_j dmu.
+    encoder = [
+        [Q(k_count, 2) * integrate_hat(a, b, nodes, j) for j in range(labels)]
+        for a, b in bins
+    ]
+    hat_masses = [Q(1, 2) * integrate_hat(Q(-1), Q(1), nodes, j) for j in range(labels)]
+    decoder = [
+        [Q(1, 2) * integrate_hat(a, b, nodes, j) / hat_masses[j] for a, b in bins]
+        for j in range(labels)
+    ]
+    assert all(sum(row, Q(0)) == 1 for row in encoder)
+    assert all(sum(row, Q(0)) == 1 for row in decoder)
+    assert sum(hat_masses, Q(0)) == 1
+    return encoder, decoder, nodes
+
+
+def h_antiderivative(x: Q) -&gt; Q:
+    # h(x)=x/3+x^3/6, so H(x)=x^2/6+x^4/24.
+    return x * x / 6 + x**4 / 24
+
+
+def signal_slope(k_count: int) -&gt; list[Q]:
+    &quot;&quot;&quot;s[k] such that P_theta(bin k)=1/K + theta*s[k].&quot;&quot;&quot;
+    return [
+        (h_antiderivative(b) - h_antiderivative(a)) / 2
+        for a, b in make_bins(k_count)
+    ]
+
+
+def tv_from_signed_masses(left: Sequence[Q], right: Sequence[Q]) -&gt; Q:
+    return sum((abs(a - b) for a, b in zip(left, right)), Q(0)) / 2
+
+
+def apply_kernel_to_slope(slope: Sequence[Q], encoder: Sequence[Sequence[Q]],
+                          decoder: Sequence[Sequence[Q]]) -&gt; list[Q]:
+    label_slope = [
+        sum((slope[k] * encoder[k][j] for k in range(len(encoder))), Q(0))
+        for j in range(len(decoder))
+    ]
+    return [
+        sum((label_slope[j] * decoder[j][k] for j in range(len(decoder))), Q(0))
+        for k in range(len(decoder[0]))
+    ]
+
+
+def apply_reference(encoder: Sequence[Sequence[Q]],
+                    decoder: Sequence[Sequence[Q]]) -&gt; list[Q]:
+    k_count = len(encoder)
+    return apply_kernel_to_slope([Q(1, k_count)] * k_count, encoder, decoder)
+
+
+def integer_row(probabilities: Sequence[Q]) -&gt; tuple[list[int], list[int], int]:
+    support = [i for i, p in enumerate(probabilities) if p]
+    common = math.lcm(*(probabilities[i].denominator for i in support))
+    weights = [probabilities[i].numerator * (common // probabilities[i].denominator)
+               for i in support]
+    assert sum(weights) == common
+    cumulative: list[int] = []
+    running = 0
+    for weight in weights:
+        running += weight
+        cumulative.append(running)
+    return support, cumulative, common
+
+
+def compile_rows(rows: Sequence[Sequence[Q]]) -&gt; list[tuple[list[int], list[int], int]]:
+    return [integer_row(row) for row in rows]
+
+
+def sample_row(row: tuple[list[int], list[int], int],
+               randbelow: Callable[[int], int]) -&gt; int:
+    support, cumulative, total = row
+    draw = randbelow(total)
+    return support[bisect.bisect_right(cumulative, draw)]
+
+
+def pack_mixed_radix(labels: Sequence[int], radices: Sequence[int]) -&gt; tuple[bytes, int]:
+    if len(labels) != len(radices):
+        raise ValueError(&quot;label and radix counts differ&quot;)
+    rank = 0
+    for label, radix in zip(labels, radices):
+        if radix &lt;= 0 or label &lt; 0 or label &gt;= radix:
+            raise ValueError(&quot;label is outside its mixed-radix digit range&quot;)
+        rank = rank * radix + label
+    state_count = math.prod(radices)
+    bit_count = max(1, (state_count - 1).bit_length())
+    byte_count = (bit_count + 7) // 8
+    return rank.to_bytes(byte_count, &quot;big&quot;), bit_count
+
+
+def unpack_mixed_digit(packed: bytes, bit_count: int,
+                       radices: Sequence[int], slot: int) -&gt; int:
+    if not 0 &lt;= slot &lt; len(radices):
+        raise IndexError(slot)
+    value = int.from_bytes(packed, &quot;big&quot;)
+    padding = len(packed) * 8 - bit_count
+    rank = value &gt;&gt; padding
+    suffix = math.prod(radices[slot + 1:])
+    return (rank // suffix) % radices[slot]
+
+
+def encode_vector(input_bins: Sequence[int], active_modes: Sequence[int],
+                  encoder_by_mode: dict[int, list], radices: Sequence[int],
+                  randbelow: Callable[[int], int]) -&gt; tuple[bytes, int]:
+    labels = [
+        sample_row(encoder_by_mode[mode][input_bins[mode - 1]], randbelow)
+        for mode in active_modes
+    ]
+    return pack_mixed_radix(labels, radices)
+
+
+def decode_coordinate(packed: bytes, bit_count: int, mode: int,
+                      active_modes: Sequence[int], radices: Sequence[int],
+                      decoder_by_mode: dict[int, list], k_count: int,
+                      randbelow: Callable[[int], int]) -&gt; int:
+    if mode not in active_modes:
+        return randbelow(k_count)
+    slot = active_modes.index(mode)
+    label = unpack_mixed_digit(packed, bit_count, radices, slot)
+    return sample_row(decoder_by_mode[mode][label], randbelow)
+
+
+def decode_vector(packed: bytes, bit_count: int, dimension: int,
+                  active_modes: Sequence[int], radices: Sequence[int],
+                  decoder_by_mode: dict[int, list], k_count: int,
+                  randbelow: Callable[[int], int]) -&gt; list[int]:
+    return [
+        decode_coordinate(packed, bit_count, mode, active_modes, radices,
+                          decoder_by_mode, k_count, randbelow)
+        for mode in range(1, dimension + 1)
+    ]
+
+
+def varint_bytes(n: int) -&gt; int:
+    &quot;&quot;&quot;Bytes in the standard unsigned base-128 variable-length encoding.&quot;&quot;&quot;
+    if n == 0:
+        return 1
+    return (n.bit_length() + 6) // 7
+
+
+def encode_varint(n: int) -&gt; bytes:
+    if n &lt; 0:
+        raise ValueError(&quot;unsigned varint cannot encode a negative integer&quot;)
+    out = bytearray()
+    while n &gt;= 0x80:
+        out.append((n &amp; 0x7F) | 0x80)
+        n &gt;&gt;= 7
+    out.append(n)
+    return bytes(out)
+
+
+def decode_varint(data: bytes, offset: int) -&gt; tuple[int, int]:
+    value = 0
+    shift = 0
+    while True:
+        byte = data[offset]
+        offset += 1
+        value |= (byte &amp; 0x7F) &lt;&lt; shift
+        if byte &lt; 0x80:
+            return value, offset
+        shift += 7
+
+
+def serialize_rows(rows: Sequence[tuple[list[int], list[int], int]],
+                   id_count: int) -&gt; bytes:
+    id_bytes = max(1, (max(0, id_count - 1).bit_length() + 7) // 8)
+    body = bytearray()
+    offsets = [0]
+    for support, cumulative, _ in rows:
+        for output_id, value in zip(support, cumulative):
+            body.extend(output_id.to_bytes(id_bytes, &quot;big&quot;))
+            body.extend(encode_varint(value))
+        offsets.append(len(body))
+    header = b&quot;&quot;.join(struct.pack(&quot;&gt;I&quot;, offset) for offset in offsets)
+    return header + bytes(body)
+
+
+def parse_rows(data: bytes, row_count: int, id_count: int
+               ) -&gt; list[tuple[list[int], list[int], int]]:
+    id_bytes = max(1, (max(0, id_count - 1).bit_length() + 7) // 8)
+    header_bytes = 4 * (row_count + 1)
+    offsets = [struct.unpack_from(&quot;&gt;I&quot;, data, 4 * i)[0]
+               for i in range(row_count + 1)]
+    body = data[header_bytes:]
+    result = []
+    for row_index in range(row_count):
+        pos, stop = offsets[row_index], offsets[row_index + 1]
+        support: list[int] = []
+        cumulative: list[int] = []
+        while pos &lt; stop:
+            output_id = int.from_bytes(body[pos:pos + id_bytes], &quot;big&quot;)
+            pos += id_bytes
+            value, pos = decode_varint(body, pos)
+            support.append(output_id)
+            cumulative.append(value)
+        if pos != stop or not cumulative:
+            raise ValueError(&quot;malformed sparse probability row&quot;)
+        result.append((support, cumulative, cumulative[-1]))
+    if offsets[0] != 0 or offsets[-1] != len(body):
+        raise ValueError(&quot;malformed row-offset table&quot;)
+    return result
+
+
+def table_storage(rows: Sequence[tuple[list[int], list[int], int]],
+                  id_count: int) -&gt; dict[str, int]:
+    # Declared wire layout: (row_count+1) uint32 offsets, then each supported
+    # output ID in the minimum whole-byte width, followed by its cumulative
+    # weight as an unsigned base-128 varint. The final cumulative weight is
+    # the row denominator; no separate denominator field is stored.
+    id_bytes = max(1, (max(0, id_count - 1).bit_length() + 7) // 8)
+    entries = sum(len(row[0]) for row in rows)
+    payload = 4 * (len(rows) + 1)
+    payload += sum(
+        id_bytes * len(cumulative) + sum(varint_bytes(v) for v in cumulative)
+        for _, cumulative, _ in rows
+    )
+    return {
+        &quot;rows&quot;: len(rows),
+        &quot;nonzero_entries&quot;: entries,
+        &quot;max_support&quot;: max((len(row[0]) for row in rows), default=0),
+        &quot;id_bytes_per_entry&quot;: id_bytes,
+        &quot;payload_bytes&quot;: payload,
+        &quot;payload_bits&quot;: 8 * payload,
+        &quot;max_denominator_bits&quot;: max((row[2].bit_length() for row in rows), default=0),
+        &quot;max_draw_bits&quot;: max((max(0, (row[2] - 1).bit_length()) for row in rows), default=0),
+    }
+
+
+def codec_summary(k_count: int, j_count: int, family: str) -&gt; dict:
+    encoder, decoder, nodes = make_transitions(k_count, j_count, family)
+    slope = signal_slope(k_count)
+    slope_out = apply_kernel_to_slope(slope, encoder, decoder)
+    reference_out = apply_reference(encoder, decoder)
+    assert reference_out == [Q(1, k_count)] * k_count
+    archive_slope_tv = tv_from_signed_masses(slope_out, slope)
+    inactive_slope_tv = tv_from_signed_masses(slope, [Q(0)] * k_count)
+    compiled_encoder = compile_rows(encoder)
+    compiled_decoder = compile_rows(decoder)
+    encoder_bytes = serialize_rows(compiled_encoder, j_count + 1)
+    decoder_bytes = serialize_rows(compiled_decoder, k_count)
+    assert parse_rows(encoder_bytes, k_count, j_count + 1) == compiled_encoder
+    assert parse_rows(decoder_bytes, j_count + 1, k_count) == compiled_decoder
+    assert len(encoder_bytes) == table_storage(compiled_encoder, j_count + 1)[&quot;payload_bytes&quot;]
+    assert len(decoder_bytes) == table_storage(compiled_decoder, k_count)[&quot;payload_bytes&quot;]
+    encoder_stats = table_storage(compiled_encoder, j_count + 1)
+    decoder_stats = table_storage(compiled_decoder, k_count)
+
+    # Exercise the actual table lookup path with deterministic PRNG draws.
+    rng = random.Random(0xA57A + j_count + (0 if family == &quot;graded&quot; else 1))
+    one_encoded = sample_row(compiled_encoder[k_count // 2], rng.randrange)
+    one_decoded = sample_row(compiled_decoder[one_encoded], rng.randrange)
+
+    return {
+        &quot;family&quot;: family,
+        &quot;J&quot;: j_count,
+        &quot;labels&quot;: j_count + 1,
+        &quot;fixed_label_bits&quot;: (j_count + 1 - 1).bit_length(),
+        &quot;ideal_label_bits&quot;: math.log2(j_count + 1),
+        &quot;max_node_denominator_bits&quot;: max(node.denominator.bit_length() for node in nodes),
+        &quot;encoder_table&quot;: {
+            **encoder_stats,
+            &quot;serialized_bytes&quot;: len(encoder_bytes),
+            &quot;serialized_sha256&quot;: hashlib.sha256(encoder_bytes).hexdigest(),
+        },
+        &quot;decoder_table&quot;: {
+            **decoder_stats,
+            &quot;serialized_bytes&quot;: len(decoder_bytes),
+            &quot;serialized_sha256&quot;: hashlib.sha256(decoder_bytes).hexdigest(),
+        },
+        &quot;offline_compiler_segment_intersection_checks&quot;: (2 * k_count * (j_count + 1) + j_count + 1) * j_count,
+        &quot;encoder_cdf_comparison_upper&quot;: math.ceil(math.log2(encoder_stats[&quot;max_support&quot;] + 1)),
+        &quot;decoder_cdf_comparison_upper&quot;: math.ceil(math.log2(decoder_stats[&quot;max_support&quot;] + 1)),
+        &quot;encoder_expected_rng_bits_upper_per_draw&quot;: 2 * encoder_stats[&quot;max_draw_bits&quot;],
+        &quot;decoder_expected_rng_bits_upper_per_draw&quot;: 2 * decoder_stats[&quot;max_draw_bits&quot;],
+        &quot;max_expected_rng_bit_bound_per_exact_draw&quot;: 2 * max(
+            (max(0, (row[2] - 1).bit_length()) for row in compiled_encoder + compiled_decoder),
+            default=0,
+        ),
+        &quot;coordinate_codec_tv_slope&quot;: str(archive_slope_tv),
+        &quot;coordinate_codec_tv_slope_decimal&quot;: float(archive_slope_tv),
+        &quot;coordinate_reference_tv_exact&quot;: str(tv_from_signed_masses(reference_out, [Q(1, k_count)] * k_count)),
+        &quot;inactive_reference_decoder_tv_slope&quot;: str(inactive_slope_tv),
+        &quot;sample_path&quot;: {&quot;input_bin&quot;: k_count // 2, &quot;label&quot;: one_encoded, &quot;output_bin&quot;: one_decoded},
+    }
+
+
+def main() -&gt; None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(&quot;--output&quot;, help=&quot;write JSON certificate to this path&quot;)
+    args = parser.parse_args()
+
+    k_count = 256
+    epsilon = Q(1, 10)
+    radii = [Q(1, 2**i) for i in range(1, 9)]
+
+    # For rho=1/2, h=x/3+x^3/6: m=M=1/2, L=0, c=1/3,
+    # H1=5/6, H2=1. N66 gives C0=215/24, C1=25/4 and
+    # C*=.5 exp(1/8) sqrt(C0^2+C1^2) &lt; (4/7)*11 &lt; 7.
+    c0 = Q(215, 24)
+    c1 = Q(25, 4)
+    assert c0 * c0 + c1 * c1 &lt; 121
+    c_star_upper = 7
+
+    active = [(i, r) for i, r in enumerate(radii, start=1) if r &gt; epsilon]
+    inactive = [(i, r) for i, r in enumerate(radii, start=1) if r &lt;= epsilon]
+    mode_specs = []
+    for i, r in active:
+        j_count = ceil_sqrt_fraction(Q(2 * c_star_upper) * r / epsilon)
+        mode_specs.append((i, r, j_count))
+
+    results = {&quot;graded&quot;: [], &quot;uniform&quot;: []}
+    for family in results:
+        for i, r, j_count in mode_specs:
+            record = codec_summary(k_count, j_count, family)
+            record[&quot;mode_i&quot;] = i
+            record[&quot;radius_r&quot;] = str(r)
+            record[&quot;input_bits&quot;] = k_count.bit_length() - 1
+            record[&quot;output_bits&quot;] = k_count.bit_length() - 1
+            results[family].append(record)
+
+    sigma = Q(results[&quot;graded&quot;][0][&quot;inactive_reference_decoder_tv_slope&quot;])
+    # Archive reference preservation is exact for both compilers. Since the
+    # family is affine in theta and coordinates are independent, TV tensorizes
+    # by a hybrid bound. Cauchy-Schwarz uses sum_i v_i^2 &lt;= 1.
+    global_bounds = {}
+    for family in results:
+        active_sq = sum(
+            (r * Q(record[&quot;coordinate_codec_tv_slope&quot;])) ** 2
+            for (_, r, _), record in zip(mode_specs, results[family])
+        )
+        inactive_sq = sum((r * sigma) ** 2 for _, r in inactive)
+        bound_sq = active_sq + inactive_sq
+        global_bounds[family] = {
+            &quot;squared_rational&quot;: str(bound_sq),
+            &quot;tv_bound_decimal&quot;: math.sqrt(float(bound_sq)),
+            &quot;meets_epsilon&quot;: bound_sq &lt;= epsilon * epsilon,
+        }
+
+    labels = [j + 1 for _, _, j in mode_specs]
+    ideal_archive_bits = sum(math.log2(size) for size in labels)
+    mixed_radix_bits = (math.prod(labels) - 1).bit_length()
+    field_archive_bits = sum((size - 1).bit_length() for size in labels)
+    total_public_bytes = {
+        family: sum(r[&quot;encoder_table&quot;][&quot;payload_bytes&quot;] + r[&quot;decoder_table&quot;][&quot;payload_bytes&quot;]
+                    for r in results[family])
+        for family in results
+    }
+    graded_encoder_rng_bound = sum(
+        record[&quot;encoder_expected_rng_bits_upper_per_draw&quot;] for record in results[&quot;graded&quot;]
+    )
+    graded_decoder_rng_bound = sum(
+        record[&quot;decoder_expected_rng_bits_upper_per_draw&quot;] for record in results[&quot;graded&quot;]
+    )
+    inactive_output_rng_bits = len(inactive) * (k_count.bit_length() - 1)
+    compiler_checks_per_family = sum(
+        record[&quot;offline_compiler_segment_intersection_checks&quot;] for record in results[&quot;graded&quot;]
+    )
+
+    # Exercise the full encode/store/post-storage-query/decode path on the
+    # compiled graded tables. A fixed PRNG seed makes this path replayable;
+    # only the exact rational transition matrices are the certificate.
+    graded_encoder_by_mode: dict[int, list] = {}
+    graded_decoder_by_mode: dict[int, list] = {}
+    for i, _, j_count in mode_specs:
+        encoder, decoder, _ = make_transitions(k_count, j_count, &quot;graded&quot;)
+        enc_raw = serialize_rows(compile_rows(encoder), j_count + 1)
+        dec_raw = serialize_rows(compile_rows(decoder), k_count)
+        graded_encoder_by_mode[i] = parse_rows(enc_raw, k_count, j_count + 1)
+        graded_decoder_by_mode[i] = parse_rows(dec_raw, j_count + 1, k_count)
+    active_modes = [i for i, _, _ in mode_specs]
+    radices = [j_count + 1 for _, _, j_count in mode_specs]
+    demo_rng = random.Random(0xDEC0DE)
+    demo_input = [k_count // 2] * len(radii)
+    demo_archive, demo_archive_bits = encode_vector(
+        demo_input, active_modes, graded_encoder_by_mode, radices, demo_rng.randrange
+    )
+    demo_query = decode_coordinate(
+        demo_archive, demo_archive_bits, 2, active_modes, radices,
+        graded_decoder_by_mode, k_count, demo_rng.randrange
+    )
+    demo_output = decode_vector(
+        demo_archive, demo_archive_bits, len(radii), active_modes, radices,
+        graded_decoder_by_mode, k_count, demo_rng.randrange
+    )
+
+    output = {
+        &quot;status&quot;: &quot;exact finite-binned executable certificate; not continuous-output TV validation&quot;,
+        &quot;contract&quot;: {
+            &quot;model&quot;: &quot;8 independent regular affine sensors with diagonal inverse radii r_i=2^-i&quot;,
+            &quot;dimension&quot;: len(radii),
+            &quot;reference&quot;: &quot;independent Uniform[-1,1] coordinates&quot;,
+            &quot;score&quot;: &quot;h(x)=x/3+x^3/6; C2, mean zero, |h|&lt;=1/2, h&#x27;&gt;=1/3&quot;,
+            &quot;parameter&quot;: &quot;sum_i v_i^2&lt;=1; density dP_v/dmu=product_i(1+r_i v_i h(x_i))&quot;,
+            &quot;observation&quot;: f&quot;each source coordinate is supplied as one of {k_count} exact equal-width bins ({k_count.bit_length()-1} bits)&quot;,
+            &quot;target&quot;: &quot;fresh vector of output-bin indices; total variation is measured on the finite product alphabet&quot;,
+            &quot;encoder&quot;: &quot;knows the input bins and public reference tables, not v; no parameter-dependent state&quot;,
+            &quot;query&quot;: &quot;one coordinate may be selected after archive formation; its label and decoder row are read directly&quot;,
+            &quot;error&quot;: &quot;sup over the declared ellipsoid of finite-alphabet product TV&quot;,
+            &quot;epsilon&quot;: str(epsilon),
+            &quot;radii&quot;: [str(r) for r in radii],
+            &quot;active_modes&quot;: [i for i, _, _ in mode_specs],
+            &quot;inactive_modes&quot;: [i for i, _ in inactive],
+            &quot;J_by_active_mode&quot;: {str(i): j for i, _, j in mode_specs},
+        },
+        &quot;theorem_constant&quot;: {
+            &quot;C0&quot;: str(c0),
+            &quot;C1&quot;: str(c1),
+            &quot;certified_upper_for_Cstar&quot;: c_star_upper,
+            &quot;J_rule&quot;: &quot;ceil(sqrt(2*7*r_i/epsilon)) for r_i&gt;epsilon&quot;,
+        },
+        &quot;archive&quot;: {
+            &quot;label_counts&quot;: labels,
+            &quot;ideal_bits&quot;: ideal_archive_bits,
+            &quot;mixed_radix_payload_bits&quot;: mixed_radix_bits,
+            &quot;concatenated_field_bits&quot;: field_archive_bits,
+            &quot;byte_aligned_archive_bytes&quot;: (mixed_radix_bits + 7) // 8,
+            &quot;byte_aligned_archive_allocated_bits&quot;: 8 * ((mixed_radix_bits + 7) // 8),
+            &quot;archive_layout&quot;: &quot;mixed-radix rank z=(((j1*L2)+j2)*L3+...), stored in the minimum fixed-length bit string; unused rank values are invalid; inactive coordinates need no stored state&quot;,
+            &quot;product_total_if_packed_as_mixed_radix&quot;: math.prod(labels),
+            &quot;public_transition_table_bytes_in_declared_layout&quot;: total_public_bytes,
+            &quot;public_transition_table_layout&quot;: &quot;per-row uint32 offsets; each sparse entry is an output ID plus cumulative unsigned base-128 integer; the final cumulative integer is the denominator&quot;,
+            &quot;input_bits_per_vector&quot;: len(radii) * (k_count.bit_length() - 1),
+            &quot;output_bits_per_vector&quot;: len(radii) * (k_count.bit_length() - 1),
+        },
+        &quot;runtime_costs&quot;: {
+            &quot;graded_offline_compiler_segment_intersection_checks&quot;: compiler_checks_per_family,
+            &quot;graded_table_generation&quot;: &quot;exact Fraction arithmetic; O(K*J_i^2) with this deliberately simple full-segment integration loop; sparse stored tables have O(K+J_i) nonzero entries per coordinate&quot;,
+            &quot;encoder&quot;: &quot;direct input-bin row lookup; at most 2 binary-search comparisons because encoder row support &lt;=3; one exact randbelow draw per active coordinate&quot;,
+            &quot;decoder_active&quot;: &quot;one mixed-radix digit extraction and table-row lookup; at most 8 binary-search comparisons in this instance; one exact randbelow draw per active coordinate&quot;,
+            &quot;decoder_inactive&quot;: &quot;one exact randbelow(256), exactly 8 fair random bits per reference output bin&quot;,
+            &quot;active_encoder_expected_rng_bits_upper_per_vector&quot;: graded_encoder_rng_bound,
+            &quot;active_decoder_expected_rng_bits_upper_per_vector&quot;: graded_decoder_rng_bound,
+            &quot;inactive_decoder_rng_bits_per_vector&quot;: inactive_output_rng_bits,
+            &quot;all_encode_and_fresh_vector_decode_expected_rng_bits_upper&quot;: graded_encoder_rng_bound + graded_decoder_rng_bound + inactive_output_rng_bits,
+            &quot;mode_2_post_storage_query_expected_rng_bits_upper&quot;: next(r[&quot;decoder_expected_rng_bits_upper_per_draw&quot;] for r in results[&quot;graded&quot;] if r[&quot;mode_i&quot;] == 2),
+            &quot;mode_2_post_storage_query_cdf_comparisons_upper&quot;: next(r[&quot;decoder_cdf_comparison_upper&quot;] for r in results[&quot;graded&quot;] if r[&quot;mode_i&quot;] == 2),
+            &quot;mixed_radix_digit_extraction&quot;: &quot;two integer quotient/remainder operations on the 9-bit rank; one-byte query table row ID&quot;,
+            &quot;random_bit_bound&quot;: &quot;randbelow(W) via fair-bit rejection, b=ceil(log2 W)=(W-1).bit_length, uses &lt;2b expected bits; worst-case has no finite bound&quot;,
+        },
+        &quot;costs_by_mode&quot;: {family: records for family, records in results.items()},
+        &quot;product_tv_certificate&quot;: global_bounds,
+        &quot;replayed_full_codec_path&quot;: {
+            &quot;input_bins&quot;: demo_input,
+            &quot;archive_hex&quot;: demo_archive.hex(),
+            &quot;archive_payload_bits&quot;: demo_archive_bits,
+            &quot;mode_2_post_storage_query_bin&quot;: demo_query,
+            &quot;fresh_output_vector_bins&quot;: demo_output,
+            &quot;randomness&quot;: &quot;deterministic Python PRNG for replay only; exact ideal sampler uses randbelow(total) with fair-bit rejection&quot;,
+        },
+        &quot;falsifier&quot;: &quot;Any failed exact row-normalization/reference-preservation assertion or product_tv_certificate.meets_epsilon=false falsifies this finite-binned certificate. A comparison reversal (uniform bound &lt;= graded bound) falsifies only the example-specific practical advantage, not N66.&quot;,
+        &quot;limitations&quot;: [
+            &quot;The bins define the source and target contract; this does not establish unbinned continuous-law TV error.&quot;,
+            &quot;The example supplies the exact uniform reference, cubic score, inverse radii, and binning. Acquiring an unknown density/operator is outside the contract.&quot;,
+            &quot;The public table byte counts include transition tables only; runtime/library, model metadata, RNG state, and calibration data are separate.&quot;,
+            &quot;Uniform hats share the exact finite input/output alphabet, model, reference, archive label count, and randomness interface; they are an equally informed baseline, not a dimension-free theorem candidate.&quot;,
+        ],
+    }
+    assert all(v[&quot;meets_epsilon&quot;] for v in global_bounds.values())
+
+    text = json.dumps(output, indent=2, sort_keys=True)
+    if args.output:
+        with open(args.output, &quot;w&quot;, encoding=&quot;utf-8&quot;) as f:
+            f.write(text + &quot;\n&quot;)
+    print(text)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/5e4de779ddbd36b65cfba8d90c9630b146e5864d92d9843b50559fd0cc3e1f98.py">Exact original</a></p></html>

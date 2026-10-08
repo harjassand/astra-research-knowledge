@@ -1,0 +1,257 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c4_lean_bad_neighborhood/BadNeighborhood.lean</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c4_lean_bad_neighborhood/BadNeighborhood.lean</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>import N33Affine.AffineCore
+
+open Filter Topology Set
+
+namespace N33Affine.BadNeighborhood
+
+open N33Affine
+
+variable {m : ℕ}
+
+private def Cube (a b : ℝ) : Set (Fin m → ℝ) :=
+  {p | InCube a b p}
+
+/-- The active-limit set of one fixed label.  The approximating points are arbitrary
+`Fin m → ℝ`; only their limit is required to lie in the cube. -/
+def ActiveLimit {ι : Type*} (a b : ℝ) (family : ι → Label m) (j : ι)
+    (p : Fin m → ℝ) : Prop :=
+  InCube a b p ∧
+    ∃ hSeq : ℕ → ℝ, ∃ pSeq : ℕ → Fin m → ℝ,
+      Tendsto hSeq atTop (𝓝[&gt;] 0) ∧
+      Tendsto pSeq atTop (𝓝 p) ∧
+      (∀ᶠ n in atTop, Active family j (hSeq n) (pSeq n))
+
+/-- A point is bad for label `j` if at least one coordinate misses its fixed tolerance. -/
+def BadFor {ι : Type*} (a b : ℝ) (E : (Fin m → ℝ) → ℝ)
+    (family : ι → Label m) (j : ι) (i : Fin m) : Set (Fin m → ℝ) :=
+  {p | ActiveLimit a b family j p ∧
+    E (family j).slope ≤ |p i - (family j).slope i|}
+
+/-- The finite union over labels and coordinates of the fixed-tolerance bad sets. -/
+def BadLimitSet {ι : Type*} (a b : ℝ) (E : (Fin m → ℝ) → ℝ)
+    (family : ι → Label m) : Set (Fin m → ℝ) :=
+  {p | ∃ j, ∃ i, ActiveLimit a b family j p ∧
+    E (family j).slope ≤ |p i - (family j).slope i|}
+
+private lemma cube_isClosed (a b : ℝ) : IsClosed (Cube (m := m) a b) := by
+  convert isClosed_Icc (a := fun _ : Fin m =&gt; a) (b := fun _ : Fin m =&gt; b) using 1
+  ext p
+  simp only [Cube, InCube, Set.mem_Icc, Pi.le_def]
+  constructor
+  · intro hp
+    exact ⟨fun i =&gt; (hp i).1, fun i =&gt; (hp i).2⟩
+  · rintro ⟨hl, hu⟩ i
+    exact ⟨hl i, hu i⟩
+
+private lemma cube_isCompact (a b : ℝ) : IsCompact (Cube (m := m) a b) := by
+  convert isCompact_Icc (a := fun _ : Fin m =&gt; a) (b := fun _ : Fin m =&gt; b) using 1
+  ext p
+  simp only [Cube, InCube, Set.mem_Icc, Pi.le_def]
+  constructor
+  · intro hp
+    exact ⟨fun i =&gt; (hp i).1, fun i =&gt; (hp i).2⟩
+  · rintro ⟨hl, hu⟩ i
+    exact ⟨hl i, hu i⟩
+
+/-- The active-limit set is closed.  The diagonal picks one genuinely active term
+from each realizing sequence, with scale and point errors below `1/(n+1)`. -/
+theorem activeLimit_isClosed {ι : Type*} (a b : ℝ) (family : ι → Label m) (j : ι) :
+    IsClosed {p | ActiveLimit a b family j p} := by
+  classical
+  apply IsSeqClosed.isClosed
+  intro zSeq z hz hzTendsto
+  have hCube : InCube a b z := by
+    have hzMem : z ∈ Cube (m := m) a b :=
+      (cube_isClosed (m := m) a b).mem_of_tendsto hzTendsto
+        (Filter.Eventually.of_forall fun n =&gt; (hz n).1)
+    exact hzMem
+  have hWitness : ∀ k, ∃ hSeq : ℕ → ℝ, ∃ pSeq : ℕ → Fin m → ℝ,
+      Tendsto hSeq atTop (𝓝[&gt;] 0) ∧
+      Tendsto pSeq atTop (𝓝 (zSeq k)) ∧
+      (∀ᶠ n in atTop, Active family j (hSeq n) (pSeq n)) :=
+    fun k =&gt; (hz k).2
+  choose hSeq pSeq hTendsto pTendsto hActive using hWitness
+  let ε : ℕ → ℝ := fun n =&gt; 1 / ((n : ℝ) + 1)
+  have hεTendsto : Tendsto ε atTop (𝓝 0) := by
+    simpa [ε] using (tendsto_one_div_add_atTop_nhds_zero_nat (𝕜 := ℝ))
+  have hSelect : ∀ k, ∃ n,
+      0 &lt; hSeq k n ∧ hSeq k n &lt; ε k ∧
+      dist (pSeq k n) (zSeq k) &lt; ε k ∧
+      Active family j (hSeq k n) (pSeq k n) := by
+    intro k
+    have hWithin := (tendsto_nhdsWithin_iff.mp (hTendsto k))
+    have hPos : ∀ᶠ n in atTop, 0 &lt; hSeq k n := by
+      simpa using hWithin.2
+    have hSmall : ∀ᶠ n in atTop, hSeq k n &lt; ε k :=
+      (tendsto_order.1 hWithin.1).2 (ε k) (by dsimp [ε]; positivity)
+    have hNear : ∀ᶠ n in atTop, dist (pSeq k n) (zSeq k) &lt; ε k := by
+      filter_upwards [(pTendsto k).eventually
+        (Metric.ball_mem_nhds (zSeq k) (ε := ε k) (by dsimp [ε]; positivity))]
+        with n hn
+      simpa [Metric.mem_ball] using hn
+    have hAll : ∀ᶠ n in atTop,
+        0 &lt; hSeq k n ∧ hSeq k n &lt; ε k ∧
+          dist (pSeq k n) (zSeq k) &lt; ε k ∧
+          Active family j (hSeq k n) (pSeq k n) := by
+      filter_upwards [hPos, hSmall, hNear, hActive k] with n hnPos hnSmall hnNear hnActive
+      exact ⟨hnPos, hnSmall, hnNear, hnActive⟩
+    obtain ⟨n, hn⟩ := hAll.exists
+    exact ⟨n, hn⟩
+  choose index indexPos indexSmall indexNear indexActive using hSelect
+  let hDiag : ℕ → ℝ := fun n =&gt; hSeq n (index n)
+  let pDiag : ℕ → Fin m → ℝ := fun n =&gt; pSeq n (index n)
+  have hDiagPos : ∀ n, 0 &lt; hDiag n := indexPos
+  have hDiagSmall : ∀ n, hDiag n &lt; ε n := indexSmall
+  have hDiagTendsto : Tendsto hDiag atTop (𝓝 0) := by
+    apply tendsto_of_tendsto_of_tendsto_of_le_of_le
+      tendsto_const_nhds hεTendsto
+    · exact fun n =&gt; (hDiagPos n).le
+    · exact fun n =&gt; (hDiagSmall n).le
+  have hDiagWithin : Tendsto hDiag atTop (𝓝[&gt;] 0) :=
+    tendsto_nhdsWithin_iff.mpr ⟨hDiagTendsto,
+      Filter.Eventually.of_forall fun n =&gt; hDiagPos n⟩
+  have pDiagTendsto : Tendsto pDiag atTop (𝓝 z) := by
+    apply (tendsto_iff_dist_tendsto_zero).2
+    have hZDist : Tendsto (fun n =&gt; dist (zSeq n) z) atTop (𝓝 0) :=
+      (tendsto_iff_dist_tendsto_zero).1 hzTendsto
+    have hUpper : Tendsto (fun n =&gt; ε n + dist (zSeq n) z) atTop (𝓝 0) :=
+      by simpa using hεTendsto.add hZDist
+    apply tendsto_of_tendsto_of_tendsto_of_le_of_le tendsto_const_nhds hUpper
+    · exact fun n =&gt; dist_nonneg
+    · intro n
+      calc
+        dist (pDiag n) z ≤ dist (pDiag n) (zSeq n) + dist (zSeq n) z := dist_triangle _ _ _
+        _ ≤ ε n + dist (zSeq n) z := add_le_add (indexNear n).le le_rfl
+  refine ⟨hCube, hDiag, pDiag, hDiagWithin, pDiagTendsto, ?_⟩
+  exact Filter.Eventually.of_forall indexActive
+
+noncomputable def minCoordinate (hm : 0 &lt; m) (p : Fin m → ℝ) : ℝ :=
+  Finset.univ.inf&#x27; (Finset.univ_nonempty_iff.mpr ⟨⟨0, hm⟩⟩) p
+
+lemma minCoordinate_le (hm : 0 &lt; m) (p : Fin m → ℝ) (i : Fin m) :
+    minCoordinate hm p ≤ p i :=
+  Finset.inf&#x27;_le _ (Finset.mem_univ i)
+
+lemma le_minCoordinate (hm : 0 &lt; m) (p : Fin m → ℝ) (x : ℝ)
+    (hx : ∀ i, x ≤ p i) : x ≤ minCoordinate hm p := by
+  apply Finset.le_inf&#x27; _ _
+  intro i hi
+  exact hx i
+
+lemma exists_coordinate_eq_minCoordinate (hm : 0 &lt; m) (p : Fin m → ℝ) :
+    ∃ i, p i = minCoordinate hm p := by
+  obtain ⟨i, hi, hEq⟩ := Finset.exists_mem_eq_inf&#x27;
+    (s := Finset.univ) (Finset.univ_nonempty_iff.mpr ⟨⟨0, hm⟩⟩) p
+  exact ⟨i, hEq.symm⟩
+
+lemma atMinSlice_iff_minCoordinate_eq (hm : 0 &lt; m) (p : Fin m → ℝ) (t : ℝ) :
+    AtMinSlice p t ↔ minCoordinate hm p = t := by
+  constructor
+  · rintro ⟨hLower, ⟨i, hi⟩⟩
+    apply le_antisymm
+    · calc
+        minCoordinate hm p ≤ p i := minCoordinate_le hm p i
+        _ = t := hi
+    · exact le_minCoordinate hm p t hLower
+  · intro hMin
+    constructor
+    · intro i
+      rw [← hMin]
+      exact minCoordinate_le hm p i
+    · obtain ⟨i, hi⟩ := exists_coordinate_eq_minCoordinate hm p
+      exact ⟨i, by rw [hi, hMin]⟩
+
+/-- The local sequential activity bound excludes the finite bad-limit union
+from the prescribed minimum-coordinate slice. -/
+theorem badLimitSet_excludes_slice {ι : Type*} [Finite ι]
+    (a b t : ℝ) (E : (Fin m → ℝ) → ℝ) (family : ι → Label m)
+    (hSlice : ∀ j, LocalApproximation a b t E family j) :
+    ∀ p, AtMinSlice p t → p ∉ BadLimitSet a b E family := by
+  intro p hAtMin hBad
+  rcases hBad with ⟨j, i, hActiveLimit, hBadCoord⟩
+  rcases hActiveLimit with ⟨hpCube, hSeq, pSeq, hSeqTendsto, hpSeqTendsto, hActive⟩
+  have hBound :=
+    hSlice j hSeq pSeq p hSeqTendsto hpSeqTendsto hpCube hAtMin hActive i
+  exact (not_le_of_gt hBound) hBadCoord
+
+/-- For one coordinate, bad limits form a closed set: the tolerance is the fixed
+scalar `E (family j).slope`, so no regularity of `E` is used. -/
+theorem badFor_isClosed {ι : Type*} (a b : ℝ) (E : (Fin m → ℝ) → ℝ)
+    (family : ι → Label m) (j : ι) (i : Fin m) :
+    IsClosed (BadFor a b E family j i) := by
+  have hContinuous : Continuous (fun p : Fin m → ℝ =&gt;
+      |p i - (family j).slope i|) :=
+    continuous_abs.comp ((continuous_apply i).sub continuous_const)
+  change IsClosed ({p | ActiveLimit a b family j p} ∩
+    {p | E (family j).slope ≤ |p i - (family j).slope i|})
+  exact (activeLimit_isClosed a b family j).inter
+    (isClosed_Ici.preimage hContinuous)
+
+theorem badLimitSet_isClosed {ι : Type*} [Finite ι] (a b : ℝ)
+    (E : (Fin m → ℝ) → ℝ) (family : ι → Label m) :
+    IsClosed (BadLimitSet a b E family) := by
+  classical
+  rw [show BadLimitSet a b E family =
+      ⋃ j, ⋃ i, BadFor a b E family j i by
+    ext p
+    simp [BadLimitSet, BadFor]]
+  apply isClosed_iUnion_of_finite
+  intro j
+  apply isClosed_iUnion_of_finite
+  intro i
+  exact badFor_isClosed a b E family j i
+
+/-- The closed bad-limit union is a compact subset of the exponent cube. -/
+theorem badLimitSet_isCompact {ι : Type*} [Finite ι] (a b : ℝ)
+    (E : (Fin m → ℝ) → ℝ) (family : ι → Label m) :
+    IsCompact (BadLimitSet a b E family) := by
+  have hSubset : BadLimitSet a b E family ⊆ Cube (m := m) a b := by
+    intro p hp
+    rcases hp with ⟨j, i, hActiveLimit, _⟩
+    exact hActiveLimit.1
+  exact (cube_isCompact a b).of_isClosed_subset
+    (badLimitSet_isClosed a b E family) hSubset
+
+noncomputable def minCoordinateContinuous (hm : 0 &lt; m) :
+    Continuous (minCoordinate (m := m) hm) := by
+  unfold minCoordinate
+  exact Continuous.finset_inf&#x27;_apply
+    (Finset.univ_nonempty_iff.mpr ⟨⟨0, hm⟩⟩)
+    (fun i _ =&gt; continuous_apply i)
+
+/-- A compact bad-limit set disjoint from the minimum-coordinate slice has a
+positive open-neighborhood radius in the minimum coordinate.  In the application,
+compactness comes from the exponent cube and slice exclusion comes from the local
+affine activity guarantee. -/
+theorem exists_minimum_coordinate_radius {ι : Type*} [Finite ι]
+    (hm : 0 &lt; m) (a b t : ℝ) (E : (Fin m → ℝ) → ℝ)
+    (family : ι → Label m)
+    (hSlice : ∀ j, LocalApproximation a b t E family j) :
+    ∃ ρ : ℝ, 0 &lt; ρ ∧
+      ∀ p, InCube a b p →
+        |minCoordinate hm p - t| &lt; ρ →
+        p ∉ BadLimitSet a b E family := by
+  classical
+  let bad := BadLimitSet a b E family
+  have hBadCompact : IsCompact bad := by
+    simpa [bad] using badLimitSet_isCompact a b E family
+  have hAway : ∀ p ∈ bad,
+      0 &lt; |minCoordinate hm p - t| := by
+    intro p hp
+    have hNe : minCoordinate hm p ≠ t := by
+      intro hMin
+      exact badLimitSet_excludes_slice a b t E family hSlice p
+        ((atMinSlice_iff_minCoordinate_eq hm p t).2 hMin) hp
+    exact abs_pos.mpr (sub_ne_zero.mpr hNe)
+  have hDistanceContinuous : Continuous (fun p : Fin m → ℝ =&gt;
+      |minCoordinate hm p - t|) :=
+    continuous_abs.comp ((minCoordinateContinuous hm).sub continuous_const)
+  obtain ⟨ρ, hρ, hρle⟩ :=
+    hBadCompact.exists_forall_le&#x27; hDistanceContinuous.continuousOn hAway
+  refine ⟨ρ, hρ, ?_⟩
+  intro p hpCube hpNear hpBad
+  have hLower := hρle p hpBad
+  linarith
+
+end N33Affine.BadNeighborhood
+</pre><p><a href="../assets/86eb9c94ca62922a2bea6cdb1c3e225257a2f5a7c08a51b6614216f0ea8cf922.lean">Exact original</a></p></html>

@@ -1,0 +1,331 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/acquisition_learning/cycle3/positivity_operator/RESULT.txt</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/acquisition_learning/cycle3/positivity_operator/RESULT.txt</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>Cycle 3 — positivity and observable operators
+Status: internally proved construction and baseline bound; source scope checked; no novelty claim
+Date: 2026-10-08
+
+Question and interface
+----------------------
+The loss is cumulative predictive KL on a fresh length-T raw path,
+
+  L_T(P,Q) = D(P_{1:T} || Q_{1:T})
+           = sum_{t=1}^T E_{X_{&lt;t}~P} D(P(X_t|X_{&lt;t}) || Q(X_t|X_{&lt;t})),
+
+with natural logarithms (nats). For a learned model Q, risk also averages over
+the raw training path(s). The principal negative result below is stronger than
+a finite-sample result: it uses the exact population Hankel block. Therefore
+sampling error from one dependent path cannot repair it.
+
+The counterexample concerns rank-one stochastic observable/operator outputs
+(one predictive state), including a rank-one SVD truncation followed by any
+simplex calibration that leaves one state. It does not rule out calibrated
+models with more states, arbitrary history-dependent predictors, or predictors
+given a suitable rare-mode dictionary. The positive result is a rank-free
+simplex smoothing theorem on the full finite path space; its path-space size is
+exponential in T, and with one training path its bound is correspondingly
+vacuous. No useful polynomial-in-T, no-gap, one-path risk guarantee is proved.
+
+1. A positive-emission HMM whose rank-one SVD truncation is stochastic but
+   has constant cumulative task KL
+----------------------------------------------------------------------------
+
+For rational 0 &lt; q &lt;= 0.1, let the hidden state Z be sampled once with
+P(Z=1)=q and P(Z=0)=1-q, and then held fixed: the transition matrix is I_2.
+Given Z=0, observations are iid Bernoulli(1/4); given Z=1, observations are iid
+Bernoulli(3/4). Here Bernoulli(p) means probability p of symbol 1. Every
+emission probability is at least 1/4, so the observation process has full
+support. The length-T law is
+
+  P_{q,T} = (1-q) Ber(1/4)^{tensor T} + q Ber(3/4)^{tensor T}.
+
+This is a two-hidden-state, finite-alphabet noisy HMM. Its two states remain
+perfectly persistent. All calculations below are exact except the explicitly
+marked floating-point diagnostic.
+
+Population Hankel block and SVD output. Use prefix and suffix lists
+P=S={epsilon,0,1}, ordered as written. Put v_p=(1,1-p,p)^T. For the infinite
+stationary process law (equivalently, the consistent string-probability
+function), this 3-by-3 Hankel block is
+
+  H_q = (1-q) v_{1/4} v_{1/4}^T + q v_{3/4} v_{3/4}^T.
+
+It is entrywise positive, positive semidefinite, and rank two for every q&gt;0.
+The second singular value is the optimal Frobenius error among rank-one
+approximations (Eckart–Young). Comparing with the particular rank-one matrix
+(1-q)v_{1/4}v_{1/4}^T gives
+
+  sigma_2(H_q) &lt;= q ||v_{3/4}v_{3/4}^T||_F
+               = q ||v_{3/4}||_2^2 = 13q/8.                 (1)
+
+Thus the unweighted population residual goes to zero linearly in q, with no
+uniform singular-value gap. A hard rank-one truncation, or soft thresholding
+that thresholds away sigma_2, drops the rare mode.
+
+There is no positivity failure to blame in this example. The top singular
+vector u can be chosen strictly positive by Perron–Frobenius, since H_q has
+strictly positive entries. Both v vectors satisfy v_0+v_1=v_epsilon, so their
+span lies in that same plane and u_0+u_1=u_epsilon. Consequently
+
+  r_0 = u_0/u_epsilon &gt; 0,  r_1 = u_1/u_epsilon &gt; 0,  r_0+r_1=1,
+
+and the normalized truncated block H_{q,1}/(H_{q,1})_{epsilon,epsilon}
+equals the rank-one Hankel block of the iid Bernoulli(r_1) process. The actual
+rank-one SVD truncation is therefore a valid one-state stochastic predictor.
+For q=10^-4, direct double-precision diagonalization gives singular values
+1.62495385, 4.61505415e-5, and approximately 0; r_1=0.2500423095. The exact
+bound (1) is 0.0001625. This numeric calculation is a diagnostic only; the
+proof uses (1), positivity, and the span identity, not a numerical eigensolver.
+
+Loss lower bound. Every one-state stationary stochastic predictor is iid
+Ber(r). Its best possible r under P_{q,T} is the marginal probability of 1,
+
+  p_* = (1-q)/4 + 3q/4 = 1/4 + q/2,
+
+because cross-entropy against Ber(r) depends only on the one-symbol marginals.
+In particular, any calibrated one-state predictor, including the SVD output,
+has loss at least L_T(P_{q,T}, Ber(p_*)^{tensor T}).
+
+Set T=ceil(1/q), and let E be the event that the path contains at least 0.7T
+ones. Hoeffding&#x27;s inequality gives
+
+  P_{Ber(3/4)^T}(E) &gt;= 1-exp(-T/200),
+  P_{Ber(1/4)^T}(E) &lt;= exp(-0.405T).
+
+Since q&lt;=0.1, p_*&lt;=0.3, so
+
+  s := P_{q,T}(E) &gt;= q(1-exp(-T/200)),
+  s &lt;= q+exp(-0.405T),
+  t := P_{Ber(p_*)^T}(E) &lt;= exp(-0.32T).
+
+Data processing to the indicator of E and the binary-KL inequality
+d(s||t) &gt;= s log(1/t)-h(s), where h is binary entropy, yield the explicit
+lower bound
+
+  L_T &gt;= 0.32 T q(1-exp(-T/200)) - h(q+exp(-0.405T)),             (2)
+
+for the stated range (the entropy argument is below 1/2 here). At q=10^-4,
+T=10,000, (2) is 0.3189789 nats or larger. As q decreases with T=ceil(1/q),
+the bound tends to 0.32 nats. Thus the rank-one SVD residual is O(q), while
+the sequence-level predictive KL stays bounded away from zero on a horizon
+T=Theta(1/q). By the chain rule, some expected conditional-prediction error
+must accumulate to this amount. This is a cumulative-KL statement; dividing
+by T gives a per-step lower bound of order q, not a constant.
+
+The mechanism is a rare but persistent latent component. The unweighted
+Hankel norm prices its mass at O(q). The path task lets that component persist
+for 1/q observations, and an event test identifies it. A rank-one predictor
+cannot carry a separate posterior state for that component. Simplex
+projection, positive clipping, or additive smoothing of the one-state symbol
+probabilities cannot overcome (2): every output that is still one-state iid
+obeys the same lower bound. A larger state space or a procedure that preserves
+the rare component can evade this particular approximation barrier.
+
+Positive-transition variant. If strict positivity of transitions is required,
+replace I_2 by
+
+  T_rho = [[1-rho,rho],[rho,1-rho]],  rho=q^3,
+
+and retain initial distribution (1-q,q) and the same emissions. Couple this
+chain to the static-state model using the same initial state and emissions.
+Over T steps, the paths disagree with probability at most (T-1)rho. Each
+entry in the 3-by-3 Hankel block uses at most two emissions, so each entry
+changes by at most rho and ||H_{q,rho}-H_q||_F &lt;= 3rho. By Eckart–Young and
+the triangle inequality,
+
+  sigma_2(H_{q,rho}) &lt;= 13q/8 + 3q^3.                             (3)
+
+The event probability and average one-symbol marginal change by at most
+T rho. If pbar is the average one-symbol marginal of the perturbed process,
+then pbar&lt;=0.3 for q=10^-4,T=10,000. For its best iid predictor, the same
+data-processing argument gives
+
+  L_T &gt;= 0.32T[q(1-exp(-T/200))-T rho]
+         - h(q+exp(-0.405T)+T rho).
+
+At q=10^-4 and T=10,000 this is greater than 0.3189 nats, while (3) is at
+most 0.000162500003. This variant has all transition and emission
+probabilities positive, full hidden transition rank, and full-rank two-column
+emission matrix. It shows the issue is not solely an absorbing-state
+pathology.
+
+2. One raw path and what it can establish
+-----------------------------------------
+
+The population calculation above is an oracle-level obstruction: even perfect
+knowledge of this finite block and an exact SVD does not make rank-one
+truncation task-safe. For learning from one length-T raw path, there is also a
+simple process-identification limitation. The total variation distance between
+the length-T path laws P_{q,T} and P_{0,T}=Ber(1/4)^{tensor T} is at most q,
+because P_{q,T}=(1-q)P_{0,T}+q Ber(3/4)^{tensor T}. Hence any test from one
+path has sum of its two errors at least 1-q, so its maximum error is at least
+(1-q)/2. For N independent paths, the corresponding TV distance is at most
+1-(1-q)^N &lt;= Nq.
+
+This is an identification statement, not a lower bound on risk for every
+expressive predictor under one-sided KL: P_q itself is close to P_0 in the
+reverse KL direction when q is small. It does establish that a one-path
+procedure cannot uniformly recover the hidden rank or rare mixture weight
+with high probability when Nq is small. More importantly for this task, the
+population rank-one risk counterexample needs no sampling argument at all.
+Empirical overlapping triples from one path are dependent; the independent
+triple concentration used by standard spectral guarantees cannot be imported
+without an additional mixing analysis. In the persistent/near-persistent
+family above, the relevant mixing time is at least on the scale 1/rho.
+
+3. What simplex calibration can guarantee: full-path smoothing, at
+   exponential horizon cost
+-------------------------------------------------------------------
+
+Here is a rank-free guarantee with no gap or dictionary, but it keeps the
+entire length-T path as the modeled outcome. It requires N independent,
+complete raw trajectories from the same length-T distribution P over an
+alphabet Sigma of size a; it is not a claim that one dependent path supplies
+N independent examples. Write K=a^T and let C_w be the number of training
+paths equal to w. Use the add-one full-path distribution
+
+  Q_plus(w) = (C_w+1)/(N+K),   w in Sigma^T.
+
+This is a full-support simplex point. It is a proper sequential predictor: if
+h is a prefix with r symbols left, and C_h counts training paths extending h,
+then
+
+  Q_plus(x|h) = (C_{hx}+a^(r-1))/(C_h+a^r).
+
+These conditional probabilities are positive and sum to one. Their product
+is exactly Q_plus(w), so the same full-path KL bound is the cumulative
+predictive-KL bound.
+
+Theorem (proved here). For every distribution P on Sigma^T,
+
+  E_training D(P||Q_plus) &lt;= (K-1)/(N+1).                         (4)
+
+Proof. The elementary inequality log z &lt;= z-1 gives
+D(P||Q_plus) &lt;= sum_w p_w^2/Q_plus(w)-1. For C_w~Binomial(N,p_w),
+
+  E[1/(C_w+1)] = (1-(1-p_w)^(N+1))/((N+1)p_w)
+
+for p_w&gt;0. Therefore
+
+  E D(P||Q_plus)
+   &lt;= (N+K)/(N+1) sum_w p_w[1-(1-p_w)^(N+1)] - 1
+   &lt;= (N+K)/(N+1)-1 = (K-1)/(N+1).
+
+Terms with p_w=0 contribute zero. This proves (4). The proof uses no hidden
+state count, singular gap, emission margin, or basis/dictionary.
+
+The bound is meaningful at epsilon only when N is on the order of
+a^T/epsilon. Sparse storage can retain only the observed path-prefix trie,
+with at most NT nodes; the pseudocount uses K=a^T, represented in O(T log a)
+bits. Each stored count needs O(log N) bits; answering a conditional query
+uses O(T) prefix lookups and integer arithmetic with O(T log a+log N)-bit
+quantities. Dense path storage instead uses K counters. The raw input itself
+is NT symbols or NT ceil(log2 a) bits under a fixed-width coding. With one
+training path, N=1 and (4) becomes (a^T-1)/2, which is formally valid but
+useless for growing T. Thus simplex smoothing does give a rank-free risk
+bound under an explicit independent-full-path sampling condition, while it
+does not provide an efficient one-path low-rank guarantee.
+
+Full raw-path likelihood comparison. The multinomial full-path MLE from the
+same N paths is Q_MLE(w)=C_w/N. It maximizes the complete-path likelihood and
+fits empirical frequencies exactly. It is not a safe held-out KL predictor:
+if P has at least two positive-mass paths, then every supported w has
+0&lt;p_w&lt;1, and the event C_w=0 has probability (1-p_w)^N&gt;0, making
+D(P||Q_MLE)=infinity. On one training path it assigns probability one to
+that path and zero to every other path. Any in-sample likelihood score is
+therefore a memorization score, not a predictive-risk guarantee. Add-one
+smoothing repairs support at the exponential path-space price in (4). The
+comparison is fair in data access: both use the same N complete raw paths;
+for the stipulated one-path case set N=1. Neither result licenses treating
+overlapping substrings of the single path as independent without a dependence
+bound.
+
+4. Primary-source boundary and exact comparison
+------------------------------------------------
+
+SOURCE-REPORTED — Hsu, Kakade, and Zhang, “A Spectral Algorithm for Learning
+Hidden Markov Models,” arXiv:0811.4413 (2012 version), Section 2.3 Condition 1
+requires the initial hidden-state distribution to be strictly positive and
+the observation and transition matrices to have full column rank. Sections
+3.1–3.2 define observable parameters from one-, two-, and three-observation
+marginals and prove that these reconstruct all string probabilities when the
+rank/invertibility condition holds. Their LearnHMM algorithm (Section 4.1,
+Figure 1) takes the state count m and N independent observation triples,
+estimates P1, P2,1, P3,x,1, takes the m leading left singular vectors of the
+pair matrix, and forms observable operators. The paper notes that independent
+triples simplify analysis and that longer sequences/single long paths would
+need mixing-aware concentration. Theorem 6 gives joint-probability L1 error;
+Theorem 7 gives expected one-step conditional KL at every time, under
+Condition 1 plus Condition 3, with sample size depending on alpha, gamma,
+sigma_m(O), sigma_m(P2,1), and an observation-mass term. Condition 3 requires
+every entry of every observation operator A_x to be at least alpha&gt;0; the
+authors explicitly note their estimator does not itself ensure probabilities
+are in [0,1], and their KL guarantee requires nonzero predictions. These are
+not a rank-free, no-gap theorem. For T=I_2 in the construction, Condition 3
+fails (off-diagonal entries of A_x are zero). For T_rho, alpha=rho/4=q^3/4,
+so the source theorem&#x27;s stated sample bound deteriorates rapidly as q shrinks.
+The pair matrix also approaches rank one as q tends to zero. There is no
+contradiction: the source retains the supplied m=2 representation and its
+theorem charges the margins; our negative statement concerns rank-one
+truncation and the absence of a uniform margin.
+
+SOURCE-REPORTED — Balle and Mohri, “Spectral Learning of General Weighted
+Automata via Constrained Matrix Completion,” NeurIPS 2012, Section 3, takes a
+basis B, regularization tau, and desired output state count n; the output is
+a WFA computing a real-valued function. It is not by itself a stochastic
+simplex or positivity guarantee. Its setting and losses differ from the
+cumulative predictive-KL guarantee proved here for the full-path smoother.
+
+OUR DERIVATION — Equations (1)–(3), event bound (2), TV identification bound,
+and add-one theorem (4) are derived in this record. No prior theorem is being
+claimed for the specific constants or construction. The precise conclusion is:
+unweighted population Hankel residual O(q) does not control cumulative
+predictive KL for rank-one stochastic truncation at horizon Theta(1/q), even
+with strictly positive emissions; full-path simplex smoothing has a
+rank-free expected bound but exponential path-space dependence.
+
+5. Costs, precision, failures, and UNKNOWNs
+-------------------------------------------
+
+Construction cost: the population block is 3x3 and can be formed with nine
+rational probabilities. For q=10^-4, entries have denominator dividing
+16*10^4; the exact SVD uses algebraic singular values/vectors. Proving
+stochasticity does not require approximating the eigenvector. The displayed
+eigenvalues and r_1 are a double-precision check only. No certified
+floating-point interval or implementation of an empirical SVD estimator was
+run. The positive-transition extension changes exact entries by rational
+amounts when q is rational.
+
+Query/sample cost: an exact population Hankel block is stronger information
+than one raw path and already exhibits the truncation failure. For the raw
+path full-simplex bound, storing N trajectories costs O(NT log a) input bits;
+sparse prefix counts cost O(NT(log N+log a)) bits up to representation
+overheads, and one prediction costs O(T) lookups plus arithmetic on
+O(log N+T log a)-bit integers. Achieving expected full-path KL epsilon from
+(4) requires N &gt;= (a^T-1)/epsilon - 1. At N=1 the guarantee is not useful.
+
+Failures/limits: (i) the constant KL lower bound is for cumulative path KL,
+not horizon-averaged per-step KL; (ii) it applies to one-state stationary
+stochastic predictors and this rare-persistent HMM family, not all
+history-dependent or multi-state calibrated predictors; (iii) the TV
+identification statement alone is not a one-sided-KL risk lower bound; (iv)
+the full-path smoothing theorem assumes independent complete trajectories,
+and does not turn a single dependent path into independent examples; (v) no
+finite-sample concentration for Hankel estimates from the stipulated single
+path is proved here.
+
+UNKNOWN: whether one can obtain a nontrivial polynomial-in-T rank-free
+observable-operator predictive-KL guarantee from one raw path without a
+supplied dictionary, uniform singular gap, or transition/mixing lower bound;
+whether a particular higher-rank stochastic projection can preserve rare
+persistent modes with finite-sample guarantees in this interface; and whether
+the explicit separation is new or significant in the literature. No novelty
+or priority claim is made.
+
+References (primary sources)
+---------------------------
+
+1. D. Hsu, S. M. Kakade, T. Zhang. “A Spectral Algorithm for Learning Hidden
+   Markov Models.” arXiv:0811.4413, 2012 version.
+   https://arxiv.org/abs/0811.4413
+2. B. Balle, M. Mohri. “Spectral Learning of General Weighted Automata via
+   Constrained Matrix Completion.” NeurIPS 2012, pp. 2168–2176.
+   https://papers.neurips.cc/paper/4697-spectral-learning-of-general-weighted-automata-via-constrained-matrix-completion.pdf
+</pre><p><a href="../assets/f4f80d10588f352ee84450b10c2a2973710cfbb81026945a380e45782245adea.txt">Exact original</a></p></html>

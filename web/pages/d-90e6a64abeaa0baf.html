@@ -1,0 +1,93 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/reaction_dynamics/cycle2/evidence/validate_wr_escape_candidate.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/reaction_dynamics/cycle2/evidence/validate_wr_escape_candidate.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact finite checks for the Cycle 2 weakly reversible escape-path audit.&quot;&quot;&quot;
+
+from fractions import Fraction
+
+
+# Reaction order:
+# 0: 2A+C -&gt; 4A+B+C
+# 1: 4A+B+C -&gt; 6A+4B+C
+# 2: 6A+4B+C -&gt; 3A+C
+# 3: 3A+C -&gt; 2A+C, rate constant 2
+# 4: 3C -&gt; 4C
+# 5: 4C -&gt; 3C
+DELTAS = ((2, 1, 0), (2, 3, 0), (-3, -4, 0), (-1, 0, 0), (0, 0, 1), (0, 0, -1))
+
+
+def falling(n, m):
+    if n &lt; m:
+        return 0
+    out = 1
+    for j in range(m):
+        out *= n - j
+    return out
+
+
+def rates(x):
+    a, b, c = x
+    return (
+        falling(a, 2) * c,
+        falling(a, 4) * b * c,
+        falling(a, 6) * falling(b, 4) * c,
+        2 * falling(a, 3) * c,
+        falling(c, 3),
+        falling(c, 4),
+    )
+
+
+def fire(x, reaction):
+    assert rates(x)[reaction] &gt; 0, (x, reaction, rates(x))
+    return tuple(v + dv for v, dv in zip(x, DELTAS[reaction]))
+
+
+def explicit_path_to(a_target, b_target, c_target):
+    &quot;&quot;&quot;Construct a path from (2,0,3) to any (a&gt;=2,b&gt;=0,c&gt;=3).&quot;&quot;&quot;
+    assert a_target &gt;= 2 and b_target &gt;= 0 and c_target &gt;= 3
+    x = (2, 0, 3)
+    for _ in range(c_target - 3):
+        x = fire(x, 4)
+    for _ in range(b_target):
+        x = fire(x, 0)
+
+    if x[0] &lt; a_target:
+        loops = (a_target - x[0] + 4) // 5
+        for _ in range(loops):
+            for _ in range(4):
+                x = fire(x, 0)
+            x = fire(x, 2)
+    while x[0] &gt; a_target:
+        x = fire(x, 3)
+    assert x == (a_target, b_target, c_target), x
+    return x
+
+
+def main():
+    for a in range(2, 20):
+        for b in range(0, 12):
+            for c in range(3, 9):
+                assert explicit_path_to(a, b, c) == (a, b, c)
+
+    for n in range(3, 60):
+        base = (n, 0, 3)
+        r = rates(base)
+        assert r[1] == 0 and r[2] == 0 and r[5] == 0
+        p_continue = Fraction(r[0], sum(r))
+        assert p_continue == Fraction((n * (n - 1)), (n * (n - 1)) * (2 * n - 3) + 2)
+        assert p_continue &lt;= Fraction(1, 2 * n - 3)
+
+        u = (n + 2, 1, 3)
+        v = (n + 4, 4, 3)
+        assert fire(base, 0) == u
+        assert fire(u, 1) == v
+        assert fire(v, 2) == (n + 1, 0, 3)
+        q0, q1, q2 = sum(rates(base)), sum(rates(u)), sum(rates(v))
+        assert q0 &gt;= 6 * falling(n, 3)
+        assert q1 &gt;= 3 * falling(n + 2, 4)
+        assert q2 &gt;= 72 * falling(n + 4, 6)
+
+    print(&quot;exact checks passed: full-rank candidate class paths, intended three-step increments, base-state escape probability bound, and physical-rate lower bounds&quot;)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/742b66b04d2866305d12667851abd0136b3d00da9f6fb994adbbe916693ae5f6.py">Exact original</a></p></html>

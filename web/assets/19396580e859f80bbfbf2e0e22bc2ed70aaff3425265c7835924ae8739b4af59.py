@@ -1,0 +1,296 @@
+#!/usr/bin/env python3
+"""Reproduce the conditional Fourier-linear-response and PDE finite check.
+
+Requires Python 3 and NumPy only. No biological data are loaded. The PDE uses a
+periodic domain and Fourier differentiation; RK4 is used only for the finite
+numerical check, not for the analytic derivative printed below.
+"""
+
+from __future__ import annotations
+
+import cmath
+import json
+import math
+from typing import Any
+
+import numpy as np
+
+
+def linear_response(
+    *, diffusion: float, drift: float, growth_mean: float, horizon: float, wave_number: float
+) -> float:
+    """Return F(T) where d(mean(R+ - R-))/dg at g=0 equals j1*F(T)."""
+    a = diffusion * wave_number**2
+    b = drift * wave_number
+    z = complex(a, -b)
+    if abs(z) < 1e-14:
+        # With no spatial transport, H(t)=t.
+        r = growth_mean
+        if abs(r) < 1e-14:
+            return horizon**2 / 2.0
+        return (math.exp(r * horizon) * (r * horizon - 1.0) + 1.0) / r**2
+
+    r = growth_mean
+    first = horizon if abs(r) < 1e-14 else math.expm1(r * horizon) / r
+    second_den = complex(r, 0.0) - z
+    if abs(second_den) < 1e-14:
+        second = horizon
+    else:
+        second = (cmath.exp(second_den * horizon) - 1.0) / second_den
+    return ((first - second) / z).real
+
+
+def simulate_difference(
+    *,
+    diffusion: float,
+    drift: float,
+    growth_mean: float,
+    growth_amplitude: float,
+    source_amplitude: float,
+    horizon: float,
+    wave_number: float,
+    grid_size: int,
+    max_step: float,
+) -> tuple[float, int, float]:
+    """Solve W_t=D W_xx+v W_x+(r0+g cos(kx))W+2*j1*cos(kx), W(0)=0."""
+    length = 2.0 * math.pi / wave_number
+    x = np.arange(grid_size, dtype=float) * (length / grid_size)
+    freq = 2.0 * math.pi * np.fft.fftfreq(grid_size, d=length / grid_size)
+    cosine = np.cos(wave_number * x)
+    n_steps = math.ceil(horizon / max_step)
+    dt = horizon / n_steps
+
+    def rhs(w: np.ndarray) -> np.ndarray:
+        spatial = np.fft.ifft(
+            (-diffusion * freq**2 + 1j * drift * freq) * np.fft.fft(w)
+        ).real
+        return (
+            spatial
+            + (growth_mean + growth_amplitude * cosine) * w
+            + 2.0 * source_amplitude * cosine
+        )
+
+    w = np.zeros(grid_size, dtype=float)
+    for _ in range(n_steps):
+        k1 = rhs(w)
+        k2 = rhs(w + 0.5 * dt * k1)
+        k3 = rhs(w + 0.5 * dt * k2)
+        k4 = rhs(w + dt * k3)
+        w += (dt / 6.0) * (k1 + 2.0 * k2 + 2.0 * k3 + k4)
+    return float(w.mean()), n_steps, dt
+
+
+def optimize_wave_number(
+    *,
+    diffusion: float,
+    drift: float,
+    growth_mean: float,
+    horizon: float,
+    lower: float = 0.05,
+    upper: float = 10.0,
+) -> tuple[float, float]:
+    """Numerically minimize the linear-response kernel on a declared k interval."""
+    grid = np.linspace(lower, upper, 10001)
+    values = np.array(
+        [
+            linear_response(
+                diffusion=diffusion,
+                drift=drift,
+                growth_mean=growth_mean,
+                horizon=horizon,
+                wave_number=float(k),
+            )
+            for k in grid
+        ]
+    )
+    i = int(np.argmin(values))
+    lo = float(grid[max(0, i - 1)])
+    hi = float(grid[min(len(grid) - 1, i + 1)])
+    phi = (math.sqrt(5.0) - 1.0) / 2.0
+    x1 = hi - phi * (hi - lo)
+    x2 = lo + phi * (hi - lo)
+
+    def objective(k: float) -> float:
+        return linear_response(
+            diffusion=diffusion,
+            drift=drift,
+            growth_mean=growth_mean,
+            horizon=horizon,
+            wave_number=k,
+        )
+
+    y1, y2 = objective(x1), objective(x2)
+    for _ in range(80):
+        if y1 < y2:
+            hi, x2, y2 = x2, x1, y1
+            x1 = hi - phi * (hi - lo)
+            y1 = objective(x1)
+        else:
+            lo, x1, y1 = x1, x2, y2
+            x2 = lo + phi * (hi - lo)
+            y2 = objective(x2)
+    k_star = 0.5 * (lo + hi)
+    return k_star, objective(k_star)
+
+
+def main() -> None:
+    params: dict[str, Any] = {
+        "diffusion": 0.1,
+        "drift": 1.0,
+        "growth_mean": 1.0,
+        "growth_amplitude": 0.01,
+        "source_amplitude": 1.0,
+        "horizon": 1.5 * math.pi,
+        "wave_number": 1.0,
+    }
+    F = linear_response(
+        diffusion=params["diffusion"],
+        drift=params["drift"],
+        growth_mean=params["growth_mean"],
+        horizon=params["horizon"],
+        wave_number=params["wave_number"],
+    )
+    # The linear-response phase contrast starts positive and crosses zero
+    # later for this drift-dominated fixture.
+    t_lo, t_hi = 4.0, 4.5
+    for _ in range(70):
+        t_mid = 0.5 * (t_lo + t_hi)
+        f_mid = linear_response(
+            diffusion=0.1,
+            drift=1.0,
+            growth_mean=1.0,
+            horizon=t_mid,
+            wave_number=1.0,
+        )
+        if f_mid > 0:
+            t_lo = t_mid
+        else:
+            t_hi = t_mid
+    t_star_linear = 0.5 * (t_lo + t_hi)
+
+    def finite_difference_at_time(t: float, n: int = 64, step: float = 0.001) -> float:
+        value, _, _ = simulate_difference(
+            diffusion=0.1,
+            drift=1.0,
+            growth_mean=1.0,
+            growth_amplitude=0.01,
+            source_amplitude=1.0,
+            horizon=t,
+            wave_number=1.0,
+            grid_size=n,
+            max_step=step,
+        )
+        return value
+
+    t_lo, t_hi = 4.25, 4.35
+    f_lo = finite_difference_at_time(t_lo)
+    for _ in range(16):
+        t_mid = 0.5 * (t_lo + t_hi)
+        f_mid = finite_difference_at_time(t_mid)
+        if f_mid * f_lo > 0:
+            t_lo, f_lo = t_mid, f_mid
+        else:
+            t_hi = t_mid
+    t_star_finite = 0.5 * (t_lo + t_hi)
+    temporal_root_checks = []
+    for n, step in ((64, 0.001), (128, 0.0005)):
+        temporal_root_checks.append(
+            {
+                "grid_size": n,
+                "mean_difference_at_finite_g_root_estimate": finite_difference_at_time(
+                    t_star_finite, n=n, step=step
+                ),
+            }
+        )
+    check = []
+    for n in (32, 64, 128):
+        mean_difference, steps, used_dt = simulate_difference(
+            **params, grid_size=n, max_step=0.001
+        )
+        check.append(
+            {
+                "grid_size": n,
+                "steps": steps,
+                "dt": used_dt,
+                "mean_R_aligned_minus_opposed": mean_difference,
+                "mean_difference_div_growth_amplitude": mean_difference
+                / params["growth_amplitude"],
+            }
+        )
+    k_star, f_star = optimize_wave_number(
+        diffusion=0.1,
+        drift=1.0,
+        growth_mean=1.0,
+        horizon=1.5 * math.pi,
+        lower=0.05,
+        upper=10.0,
+    )
+    optimum_checks = []
+    for n, max_step in ((64, 0.001), (128, 0.0005)):
+        mean_difference, steps, used_dt = simulate_difference(
+            diffusion=0.1,
+            drift=1.0,
+            growth_mean=1.0,
+            growth_amplitude=0.01,
+            source_amplitude=1.0,
+            horizon=1.5 * math.pi,
+            wave_number=k_star,
+            grid_size=n,
+            max_step=max_step,
+        )
+        optimum_checks.append(
+            {
+                "grid_size": n,
+                "steps": steps,
+                "dt": used_dt,
+                "mean_R_aligned_minus_opposed": mean_difference,
+            }
+        )
+    # Linear-response crossover in a=D*k^2 for b=r0=k=v=1, T=3*pi/2.
+    lo, hi = 0.1, 0.2
+    for _ in range(80):
+        mid = 0.5 * (lo + hi)
+        f_mid = linear_response(
+            diffusion=mid,
+            drift=1.0,
+            growth_mean=1.0,
+            horizon=1.5 * math.pi,
+            wave_number=1.0,
+        )
+        if f_mid < 0:
+            lo = mid
+        else:
+            hi = mid
+    print(
+        json.dumps(
+            {
+                "status": "conditional-model-computation-only",
+                "units": "dimensionless; k=v=r0=1 in the fixture",
+                "parameters": params,
+                "analytic_linear_response_F": F,
+                "temporal_sign_reversal": {
+                    "linear_response_root_T": t_star_linear,
+                    "finite_g_0p01_root_estimate_T": t_star_finite,
+                    "finite_g_root_grid_checks": temporal_root_checks,
+                    "early_and_late_spot_checks_g_0p01": {
+                        "T_4p0": finite_difference_at_time(4.0),
+                        "T_4p3": finite_difference_at_time(4.3),
+                        "T_4p35": finite_difference_at_time(4.35),
+                    },
+                },
+                "finite_amplitude_fourier_RK4_checks": check,
+                "linear_response_minimum_over_k_interval_0p05_to_10": {
+                    "wave_number": k_star,
+                    "F": f_star,
+                    "finite_g_0p01_checks": optimum_checks,
+                },
+                "linear_response_diffusion_crossover_D_at_k1": 0.5 * (lo + hi),
+                "interpretation": "negative aligned-minus-opposed mean is a model result, not biological evidence",
+            },
+            indent=2,
+        )
+    )
+
+
+if __name__ == "__main__":
+    main()

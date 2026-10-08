@@ -1,0 +1,58 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/engineering_control/CYCLE2_REPORT.md</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/engineering_control/CYCLE2_REPORT.md</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre># Cycle 2 — directed graph safety with guarded switching
+
+## Result
+
+I reconstructed a finite-volume finite-horizon safety theorem for molecular reaction networks on a directed compartment graph, with heterogeneous site volumes and mode-specific boxes. The key addition is a directed-flux lower bound on each box-face drift. A fail-closed supervisor accepts a mode request only when the state is still in the source box and lies inside the target mode&#x27;s guard core. The proof restarts a mode-specific exponential potential at each accepted switch and charges one initial-buffer term per segment.
+
+This is an actual conditional theorem and an exact runnable fixture, not a proposal for a future solver. Two independent internal audits found no fatal generator/stopping gap under the stated assumptions; no external proof review or full priority search has established novelty. Current general switched/multiple-barrier work is close.
+
+## Load-bearing formula
+
+With \(x_i=Z_i/(V\alpha_i)\) and one-molecule directed transfer \(i\to k\) at rate \(V c_{ik}x_i\), the migration drift at site i is
+
+\[
+m_i(x)=\frac{\sum_k c_{ki}x_k-x_i\sum_k c_{ik}}{\alpha_i}.
+\]
+
+For sitewise box bounds \(a_i\le x_i\le b_i\), the inward migration margin on a lower-face collar \(x_i\in[a_i,a_i+\ell]\) is
+
+\[
+\frac{\sum_k c_{ki}a_k-(a_i+\ell)\sum_kc_{ik}}{\alpha_i},
+\]
+
+and on the upper collar \(x_i\in[b_i-\ell,b_i]\) it is
+
+\[
+\frac{(b_i-\ell)\sum_kc_{ik}-\sum_kc_{ki}b_k}{\alpha_i}.
+\]
+
+The incoming and outgoing bounds remain separate. Detailed balance is not required. These are coordinate-face formulas; a non-coordinate facet needs its own exact optimization over the box and collar.
+
+The full theorem, including mass-action factorial correction, quadratic variation, total activity, stopping rules, guard semantics, and proof, is in [PROOF.md](directed_guarded_switching/PROOF.md). The fixture-specific exact-rational verifier and output are [verify_certificate.py](directed_guarded_switching/verify_certificate.py) and [check.json](directed_guarded_switching/check.json).
+
+## Exact obstruction and controlled switch
+
+The fixture uses three sites with \(\alpha=(1,2,3)\), directed ring \(1\to2\to3\to1\) with coefficient \(1/1000\), and two one-species cubic mass-action modes. The safe cube is \([0.1,0.9]^3\); mode boxes are \([0.2,0.6]^3\) and \([0.4,0.9]^3\); the target guard is \([0.45,0.55]^3\). Exact degree-three Bernstein coefficients check every reaction collar for the listed fixed singleton rate choices; arbitrary predictable modulation over the full \([0,K]\) envelopes is not certified unless it independently preserves those same margins. The reference supervisor accepts the initial mode-1 to mode-2 request at \((1/2,1/2,1/2)\), rejects a request outside the guard, and rejects measurement uncertainty that consumes the guard.
+
+There cannot be a shared invariant polytope covering that guard inside the safe cube. The equal-concentration diagonal is invariant because the directed cycle is balanced, even though its edges are one-way. On that slice the modes reduce to \(f_1(x)=-(x-0.3)(x-0.65)(x-0.95)\) and \(f_2(x)=-(x-0.05)(x-0.35)(x-0.8)\). A common invariant interval containing \([0.45,0.55]\) would require both lower-endpoint drifts nonnegative, which forces \(a\le0.3\) and \(a\ge0.35\); its upper endpoint would require \(b\le0.65\) and \(b\ge0.8\). This excludes the shared strict-inward-polytope premise used in the N35 baseline for the fixture.
+
+## Quantitative guarantee and cost
+
+The exact certificate constants are \(V_0=1005\), \(c_*=131/26174250\), \(\min_q\theta_q=262/523485\), and \(\max_j\Lambda_j=7572/625\). At \(V=20{,}000{,}000\), at most two mode segments, and \(T=e^{c_*V/2}\approx5.4461\times10^{21}\), the theorem gives an upper bound about \(5.34\times10^{-13}\). The rational constants are exact; the displayed decimal evaluates exponentials with ordinary floating point, so it is not a directed-rounding numerical certificate.
+
+For this three-site degree-three fixture, offline exact-rational checking takes \(O(|I|(|R|+|E|))\) arithmetic operations; an online switch decision requires six interval comparisons and three site readings. With measurement error \(\delta_x&lt;0.01\), a nonempty shrunken guard remains. At the displayed horizon, rate-\(V\Lambda\) thinning permits at most \(1.32\times10^{30}\) candidate events. This is not a feasible simulation. Sensing, rate calibration, switch energy, turnover work, control hardware, and delay are not assigned free values: the report gives symbolic charges, and physical measurements remain absent.
+
+### Executable guarded mode relay and timing limit
+
+To instantiate actual controlled switching and expose the missing runtime guarantee, the energy-feedback lane added a separate finite-state birth/death relay in [CYCLE2_ADDENDUM.md](energy_feedback/CYCLE2_ADDENDUM.md). At volume \(V=100\), mode H has \(\lambda^+(n)=2(100-n),\lambda^-(n)=n\); mode L has the reflected rates. Starting at \(n=45\), run H until the first visit to 55, switch, run L until the first return to 45, and repeat, with safe abort boundaries 10 and 90. The guards lie strictly within the safe band. For a one-second deadline, the exact subgenerator/uniformization formula gives per-leg success \(p_H(1)=0.9999720896127573\) (floating evaluation; truncation tail below \(5.5\times10^{-51}\) before rounding) and 20-leg success \(p_H(1)^{20}\approx0.99944194\). The exact no-deadline safe-leg probability is \(1-2.2480474073\times10^{-26}\); repeated infinite cycling still exits the proper finite safe band almost surely.
+
+The hard limitation is exact: from \(n=45\), the event rate is 155 s\(^{-1}\), so no event for one second has probability \(e^{-155}&gt;0\); the target guard cannot be reached by a fixed deadline with probability one. Event-triggered waiting instead yields almost-sure target hits only if the outer safety abort is removed. The relay therefore supplies a real mode-switch program with finite-horizon risk, not deterministic periodic operation. Its expected per-leg resource formula charges sensor, controller/clock, mode-actuator holding power, event observation/computation, reaction work, and switch energy; a declared sample scale totals about 0.119492 J per attempted leg, and is not a measured device result. Under the stated immediate-switch interface there is no free policy choice: the admissible action set is a singleton, so a CTMDP optimizer constrained to the same actions can only tie the fixed-policy CTMC. The quantitative baseline is exact one-leg first-hit/occupancy kernels with strong-Markov recursion; because each deadline resets at a random guard hit, we do not model the whole process as a homogeneous finite-state CTMDP. If mode/rate selection or optional switching is added, that defines a different problem; Baier et al. provide a uniform-CTMDP reachability algorithm for such a separately specified action set (DOI: 10.1016/j.tcs.2005.07.022). The cost, data, and runtime ledger is in the [relay addendum](energy_feedback/CYCLE2_ADDENDUM.md), and the action-set audit is in [CYCLE2_COMPARATOR.md](energy_feedback/CYCLE2_COMPARATOR.md). The relay formulas and limits remain separate from the generic directed-face theorem.
+
+## Comparator and novelty boundary
+
+The local N35 source-corpus theorem handles finite-volume mass-action jumps under a supplied common strict-inward polytope and bounded predictable rates. This fixture rules out such a common polytope. Our mode restart uses a guarded switch count and directed-box margins.
+
+However, the switching and hybrid-safety mechanisms have close prior art. Anand–Jagtap–Zamani&#x27;s multiple-barrier theorem explicitly covers bounded Lipschitz state-dependent mode-transition intensities coupled to mode-specific barriers, for a diffusion state in each mode ([primary manuscript](https://arxiv.org/html/2109.12420v1), Theorem III.4; published at CDC 2019). Wisniewski–Bujorianu–Sloth&#x27;s p-safety framework explicitly includes spontaneous and guard-forced jumps in PDMPs ([IEEE TAC DOI](https://doi.org/10.1109/TAC.2020.2972789)); a fixed finite-volume CTMC is within this broad process class. Their result analyzes a specified process using occupation-measure optimization, rather than presenting the particular finite-volume constants here. Zaker et al. give compositional safety-controller synthesis for stochastic hybrid interconnections ([Automatica DOI](https://doi.org/10.1016/j.automatica.2026.113082), [primary preprint](https://arxiv.org/abs/2409.10018)). Exact equivalence and whether these general methods subsume or improve this interface-specific bound remain unresolved. The candidate is a narrow specialization with novelty UNKNOWN, not a new barrier method. For the relay itself, exact augmented-state CTMDP reachability is the strongest finite-state comparator, and no controller improvement over that solver is claimed.
+
+The full primary-source ledger and exact unresolved overlap are in [SOURCES.md](directed_guarded_switching/SOURCES.md). Machine-readable statements and status are in [CLAIMS_CYCLE2.json](CLAIMS_CYCLE2.json).
+</pre><p><a href="../assets/e81c260a675fd1a353083be901e7ab56b67cce6a2e0ea260d0a7f027ce0d7292.md">Exact original</a></p></html>

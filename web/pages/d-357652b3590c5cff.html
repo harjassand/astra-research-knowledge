@@ -1,0 +1,84 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/molecular_cadence_theorem/generic_k_falsifier.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/molecular_cadence_theorem/generic_k_falsifier.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Finite recurrence check of the proposed first-differing-cumulant law.
+
+This independent k=3 pair is formed from the fourth finite-difference
+contrast (1,-4,6,-4,1) on marks 1,...,5, split into positive and negative
+parts and with a common mark-1 baseline added to make both supports span one.
+All reported probabilities are floating-point Panjer-recursion values; this
+is a falsification diagnostic, not interval-certified evidence.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import json
+import math
+from pathlib import Path
+
+# Scale the positive/negative parts by 2/3 so the total rate is 6, matching
+# the original pair&#x27;s event scale and keeping this finite audit well-scaled.
+RATES = (
+    (4 / 3, 0, 4, 0, 2 / 3),
+    (2 / 3, 8 / 3, 0, 8 / 3, 0),
+)
+MU_VALUES = (10, 20, 30)
+K = 3
+
+
+def cumulants(rates: tuple[float, ...], order: int) -&gt; list[float]:
+    return [math.fsum(rate * mark**r for mark, rate in enumerate(rates, 1))
+            for r in range(1, order + 1)]
+
+
+def pmf(mu: float, rates: tuple[float, ...], cutoff: int) -&gt; list[float]:
+    q = [0.0] * (cutoff + 1)
+    q[0] = 1.0
+    for m in range(1, cutoff + 1):
+        q[m] = (mu / m) * math.fsum(
+            mark * rates[mark - 1] * q[m - mark]
+            for mark in range(1, min(len(rates), m) + 1)
+            if rates[mark - 1]
+        )
+    return [math.exp(-mu * math.fsum(rates)) * value for value in q]
+
+
+def main() -&gt; None:
+    moms = [cumulants(rates, K + 1) for rates in RATES]
+    m2 = moms[0][1]
+    delta = moms[1][K] - moms[0][K]
+    # For first differing cumulant k+1, H^2 ~ C_H / mu^(k-1).
+    c_h = delta**2 / (4 * math.factorial(K + 1) * m2 ** (K + 1))
+    rows = []
+    for mu in MU_VALUES:
+        mean = mu * moms[0][0]
+        cutoff = math.ceil(mean + 20 * math.sqrt(mu * m2) + 200)
+        p0, p1 = (pmf(mu, rates, cutoff) for rates in RATES)
+        h2 = math.fsum((math.sqrt(a) - math.sqrt(b)) ** 2
+                       for a, b in zip(p0, p1))
+        rows.append({
+            &quot;mu&quot;: mu,
+            &quot;cutoff&quot;: cutoff,
+            &quot;mass0&quot;: math.fsum(p0),
+            &quot;mass1&quot;: math.fsum(p1),
+            &quot;H2_truncated&quot;: h2,
+            &quot;mu_power_k_minus_1_times_H2&quot;: mu ** (K - 1) * h2,
+            &quot;predicted_constant&quot;: c_h,
+            &quot;ratio_to_predicted&quot;: mu ** (K - 1) * h2 / c_h,
+        })
+    result = {
+        &quot;k&quot;: K,
+        &quot;rates&quot;: {&quot;model0&quot;: RATES[0], &quot;model1&quot;: RATES[1]},
+        &quot;cumulant_sums&quot;: {&quot;model0&quot;: moms[0], &quot;model1&quot;: moms[1]},
+        &quot;common_second_cumulant&quot;: m2,
+        &quot;first_difference_delta&quot;: delta,
+        &quot;predicted_H2_constant&quot;: c_h,
+        &quot;rows&quot;: rows,
+        &quot;scope&quot;: &quot;finite floating-point Panjer recurrence with truncation; a k=3 falsifier diagnostic, not a proof or interval certificate&quot;,
+    }
+    out = Path(__file__).with_name(&quot;generic_k_falsifier.json&quot;)
+    out.write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+    print(json.dumps(result, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/ad1d722f002380110cd58f66db6eeb8f258047f1087b47d2df07f1ec5c9b7b67.py">Exact original</a></p></html>

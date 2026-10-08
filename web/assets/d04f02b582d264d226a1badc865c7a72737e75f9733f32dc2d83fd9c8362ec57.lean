@@ -1,0 +1,9 @@
+import AffineCore
+open Set
+#check Set.Ioo_subset_Ioo
+#check Set.Ioo_subset_Ioo_iff
+#check Set.Ioo_subset_iff
+#check Set.Ioo_subset_Ioo_right
+#check Set.Ioo_subset_Ioo_left
+#check Set.Ioo_subset_Icc
+#check Set.Ioo_subset_Ioo_iff

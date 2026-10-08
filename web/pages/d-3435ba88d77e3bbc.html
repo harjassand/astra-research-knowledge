@@ -1,0 +1,314 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c12_cellinteraction_hostile/code/hostile_audit.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c12_cellinteraction_hostile/code/hostile_audit.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Read-only hostile audit of the Fig. 5p K15-GFP combination claim.
+
+Reads the official MOESM11 workbook in read-only mode. It does not edit or
+export the source workbook. It checks the extracted means, derives the
+linear-gap Bliss ceiling and covariance-aware delta-method uncertainty, and
+constructs explicit alternative response-scale models.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import hashlib
+import json
+import math
+import random
+from pathlib import Path
+from statistics import mean, stdev
+
+import openpyxl
+
+
+HERE = Path(__file__).resolve().parents[1]
+SOURCE = HERE.parent / &quot;c12_cellstate_control&quot; / &quot;sources&quot; / &quot;41467_2026_72331_MOESM11_ESM.xlsx&quot;
+ROWS = {
+    &quot;control&quot;: 55,
+    &quot;clodronate&quot;: 56,
+    &quot;CXCL16&quot;: 57,
+    &quot;CXCL10&quot;: 58,
+    &quot;CXCL16_CXCL10&quot;: 59,
+    &quot;IGF1&quot;: 60,
+    &quot;CCL2&quot;: 61,
+    &quot;IGF1_CCL2&quot;: 62,
+    &quot;all_four&quot;: 63,
+}
+
+
+def summarize(xs: list[float]) -&gt; dict[str, float | int]:
+    return {
+        &quot;n&quot;: len(xs),
+        &quot;mean&quot;: mean(xs),
+        &quot;sd&quot;: stdev(xs),
+        &quot;sem&quot;: stdev(xs) / math.sqrt(len(xs)),
+    }
+
+
+def sample_mean_variance(xs: list[float]) -&gt; float:
+    return stdev(xs) ** 2 / len(xs)
+
+
+def bliss_delta(means: dict[str, float], pair: str, a: str, b: str) -&gt; float:
+    u, ell = means[&quot;control&quot;], means[&quot;clodronate&quot;]
+    d = u - ell
+    return (means[pair] - u) / d + ((u - means[a]) * (u - means[b])) / d**2
+
+
+def raw_bliss_excess(means: dict[str, float]) -&gt; tuple[float, dict[str, float]]:
+    &quot;&quot;&quot;MFI above the linear-gap full-dose Bliss ceiling, in MFI units.&quot;&quot;&quot;
+    u, ell = means[&quot;control&quot;], means[&quot;clodronate&quot;]
+    i, c, m = means[&quot;IGF1&quot;], means[&quot;CCL2&quot;], means[&quot;IGF1_CCL2&quot;]
+    d = u - ell
+    p = (u - i) * (u - c)
+    excess = m - u + p / d
+    grad = {
+        &quot;IGF1_CCL2&quot;: 1.0,
+        &quot;control&quot;: -1.0 + (2 * u - i - c) / d - p / d**2,
+        &quot;clodronate&quot;: p / d**2,
+        &quot;IGF1&quot;: -(u - c) / d,
+        &quot;CCL2&quot;: -(u - i) / d,
+    }
+    return excess, grad
+
+
+def pair_difference(means: dict[str, float]) -&gt; tuple[float, dict[str, float]]:
+    &quot;&quot;&quot;IGF1+CCL2 minus CXCL16+CXCL10 Bliss excess, with shared baselines.&quot;&quot;&quot;
+    u, ell = means[&quot;control&quot;], means[&quot;clodronate&quot;]
+    d = u - ell
+
+    def local(pair: str, a: str, b: str) -&gt; tuple[float, dict[str, float]]:
+        m, x, y = means[pair], means[a], means[b]
+        p = (u - x) * (u - y)
+        delta = (m - u) / d + p / d**2
+        grad = {
+            pair: 1 / d,
+            &quot;control&quot;: (ell - m + 2 * u - x - y) / d**2 - 2 * p / d**3,
+            &quot;clodronate&quot;: (m - u) / d**2 + 2 * p / d**3,
+            a: -(u - y) / d**2,
+            b: -(u - x) / d**2,
+        }
+        return delta, grad
+
+    delta_a, grad_a = local(&quot;IGF1_CCL2&quot;, &quot;IGF1&quot;, &quot;CCL2&quot;)
+    delta_b, grad_b = local(&quot;CXCL16_CXCL10&quot;, &quot;CXCL16&quot;, &quot;CXCL10&quot;)
+    grad = dict(grad_a)
+    for key, value in grad_b.items():
+        grad[key] = grad.get(key, 0.0) - value
+    return delta_a - delta_b, grad
+
+
+def main() -&gt; None:
+    digest = hashlib.sha256(SOURCE.read_bytes()).hexdigest()
+    wb = openpyxl.load_workbook(SOURCE, read_only=True, data_only=True)
+    ws = wb[&quot;Figure 5&quot;]
+
+    groups: dict[str, list[float]] = {}
+    labels: dict[str, list[object]] = {}
+    source_p: dict[str, float | None] = {}
+    for name, row in ROWS.items():
+        groups[name] = [float(ws.cell(row, col).value) for col in range(3, 7)]
+        labels[name] = [ws.cell(row, col).value for col in range(1, 3)]
+        p = ws.cell(row, 7).value
+        source_p[name] = None if p is None else float(p)
+
+    summaries = {name: summarize(xs) for name, xs in groups.items()}
+    means = {name: float(row[&quot;mean&quot;]) for name, row in summaries.items()}
+    u, ell = means[&quot;control&quot;], means[&quot;clodronate&quot;]
+    d = u - ell
+    e = {name: (m - ell) / d for name, m in means.items()}
+    bliss = 1 - (1 - e[&quot;IGF1&quot;]) * (1 - e[&quot;CCL2&quot;])
+    bliss_cx = 1 - (1 - e[&quot;CXCL16&quot;]) * (1 - e[&quot;CXCL10&quot;])
+    raw_excess, gradient = raw_bliss_excess(means)
+    variance_components = {
+        name: gradient[name] ** 2 * sample_mean_variance(groups[name])
+        for name in gradient
+    }
+    variance = sum(variance_components.values())
+    se = math.sqrt(variance)
+    satt_df = variance**2 / sum(x**2 / 3 for x in variance_components.values())
+
+    pair_diff, pair_grad = pair_difference(means)
+    pair_variance_components = {
+        name: pair_grad[name] ** 2 * sample_mean_variance(groups[name])
+        for name in pair_grad
+    }
+    pair_variance = sum(pair_variance_components.values())
+    pair_se = math.sqrt(pair_variance)
+    pair_satt_df = pair_variance**2 / sum(x**2 / 3 for x in pair_variance_components.values())
+
+    # The two endpoints are bounded by different chosen ceilings. The first
+    # holds the observed vehicle control to be the full-response reference.
+    log_means = {name: mean([math.log(x) for x in xs]) for name, xs in groups.items()}
+    sqrt_means = {name: mean([math.sqrt(x) for x in xs]) for name, xs in groups.items()}
+    transformed = {}
+    for scale, vals in ((&quot;log&quot;, log_means), (&quot;sqrt&quot;, sqrt_means)):
+        ee = {
+            name: (value - vals[&quot;clodronate&quot;])
+            / (vals[&quot;control&quot;] - vals[&quot;clodronate&quot;])
+            for name, value in vals.items()
+        }
+        b = 1 - (1 - ee[&quot;IGF1&quot;]) * (1 - ee[&quot;CCL2&quot;])
+        transformed[scale] = {
+            &quot;single_effects&quot;: {&quot;IGF1&quot;: ee[&quot;IGF1&quot;], &quot;CCL2&quot;: ee[&quot;CCL2&quot;]},
+            &quot;combo_effect_uncapped&quot;: ee[&quot;IGF1_CCL2&quot;],
+            &quot;full_dose_bliss_ceiling&quot;: b,
+            &quot;capped_surplus&quot;: min(1.0, ee[&quot;IGF1_CCL2&quot;]) - b,
+        }
+
+    # A distinct monotone bounded response gauge. Its upper asymptote is 1,
+    # whereas the observed control maps to 1-exp(-1), so it is deliberately
+    # not the control-gap normalization used above.
+    h = lambda y: 1 - math.exp(-(y - ell) / d)
+    h_i, h_c, h_pair = h(means[&quot;IGF1&quot;]), h(means[&quot;CCL2&quot;]), h(means[&quot;IGF1_CCL2&quot;])
+    h_bliss = 1 - (1 - h_i) * (1 - h_c)
+
+    # Exact additive-MFI construction: both half-dose increments are below
+    # the observed full-dose increments, but sum to the combination increment.
+    half_i = 1_000_000.0
+    half_c = means[&quot;IGF1_CCL2&quot;] - ell - half_i
+    full_i = means[&quot;IGF1&quot;] - ell
+    full_c = means[&quot;CCL2&quot;] - ell
+
+    # Empirical, group-wise bootstrap is shown as a finite-sample sensitivity
+    # only; four observations per arm cannot make it a population guarantee.
+    rng = random.Random(20261008)
+    boot_n = 300_000
+    boot_r: list[float] = []
+    boot_cap: list[float] = []
+    combo_above_control = 0
+    for _ in range(boot_n):
+        bm = {
+            name: mean(rng.choices(xs, k=len(xs)))
+            for name, xs in groups.items()
+        }
+        bd = bm[&quot;control&quot;] - bm[&quot;clodronate&quot;]
+        if bd &lt;= 0:
+            continue
+        bp = (bm[&quot;control&quot;] - bm[&quot;IGF1&quot;]) * (bm[&quot;control&quot;] - bm[&quot;CCL2&quot;])
+        boot_r.append(bm[&quot;IGF1_CCL2&quot;] - bm[&quot;control&quot;] + bp / bd)
+        b_effect = (bm[&quot;IGF1_CCL2&quot;] - bm[&quot;clodronate&quot;]) / bd
+        b_full = 1 - ((bm[&quot;control&quot;] - bm[&quot;IGF1&quot;]) / bd) * ((bm[&quot;control&quot;] - bm[&quot;CCL2&quot;]) / bd)
+        boot_cap.append(min(1.0, b_effect) - b_full)
+        combo_above_control += bm[&quot;IGF1_CCL2&quot;] &gt; bm[&quot;control&quot;]
+
+    def quantiles(xs: list[float]) -&gt; list[float]:
+        ordered = sorted(xs)
+        return [ordered[int(len(ordered) * q)] for q in (0.025, 0.5, 0.975)]
+
+    out = {
+        &quot;source&quot;: {
+            &quot;sha256&quot;: digest,
+            &quot;path&quot;: str(SOURCE),
+            &quot;worksheet&quot;: &quot;Figure 5&quot;,
+            &quot;fig5p_rows&quot;: ROWS,
+            &quot;replicate_columns&quot;: &quot;C:F&quot;,
+            &quot;pvalue_column&quot;: &quot;G&quot;,
+            &quot;labels_by_row&quot;: labels,
+            &quot;source_pvalues&quot;: source_p,
+            &quot;pvalue_note&quot;: &quot;Stored p-values are not labeled with contrast target in the workbook.&quot;,
+            &quot;sample_ids_present&quot;: False,
+        },
+        &quot;groups&quot;: groups,
+        &quot;summaries&quot;: summaries,
+        &quot;linear_gap&quot;: {
+            &quot;gap_control_minus_clodronate&quot;: d,
+            &quot;effects_from_group_means&quot;: e,
+            &quot;IGF1_CCL2_full_dose_bliss_ceiling&quot;: bliss,
+            &quot;IGF1_CCL2_combo_uncapped&quot;: e[&quot;IGF1_CCL2&quot;],
+            &quot;IGF1_CCL2_combo_capped&quot;: min(1.0, e[&quot;IGF1_CCL2&quot;]),
+            &quot;IGF1_CCL2_capped_surplus&quot;: min(1.0, e[&quot;IGF1_CCL2&quot;]) - bliss,
+            &quot;IGF1_CCL2_uncapped_surplus&quot;: e[&quot;IGF1_CCL2&quot;] - bliss,
+            &quot;IGF1_CCL2_raw_Bliss_ceiling_MFI&quot;: means[&quot;control&quot;] - (means[&quot;control&quot;] - means[&quot;IGF1&quot;]) * (means[&quot;control&quot;] - means[&quot;CCL2&quot;]) / d,
+            &quot;IGF1_CCL2_raw_excess_MFI&quot;: raw_excess,
+            &quot;CXCL16_CXCL10_full_dose_bliss_ceiling&quot;: bliss_cx,
+            &quot;CXCL16_CXCL10_combo_effect&quot;: e[&quot;CXCL16_CXCL10&quot;],
+            &quot;CXCL16_CXCL10_uncapped_surplus&quot;: bliss_delta(means, &quot;CXCL16_CXCL10&quot;, &quot;CXCL16&quot;, &quot;CXCL10&quot;),
+        },
+        &quot;delta_method_for_raw_excess&quot;: {
+            &quot;estimand&quot;: &quot;combo MFI minus full-dose linear-gap Bliss ceiling&quot;,
+            &quot;gradient&quot;: gradient,
+            &quot;variance_components&quot;: variance_components,
+            &quot;se&quot;: se,
+            &quot;satterthwaite_df&quot;: satt_df,
+            &quot;t_statistic&quot;: raw_excess / se,
+            &quot;normal_95_interval&quot;: [raw_excess - 1.96 * se, raw_excess + 1.96 * se],
+            &quot;t_critical_975_df5_0924&quot;: 2.556617,
+            &quot;approx_t_95_interval&quot;: [raw_excess - 2.556617 * se, raw_excess + 2.556617 * se],
+            &quot;approx_two_sided_p&quot;: 0.006554298,
+            &quot;assumptions&quot;: [
+                &quot;independent, approximately normal biological-replicate means by arm&quot;,
+                &quot;delta-method linearization of a ratio-derived ceiling at n=4/arm&quot;,
+                &quot;no within-animal/eye clustering; workbook IDs are absent&quot;,
+            ],
+        },
+        &quot;delta_method_pair_specificity&quot;: {
+            &quot;estimand&quot;: &quot;IGF1+CCL2 linear-gap Bliss excess minus CXCL16+CXCL10 linear-gap Bliss excess&quot;,
+            &quot;estimate&quot;: pair_diff,
+            &quot;gradient&quot;: pair_grad,
+            &quot;variance_components&quot;: pair_variance_components,
+            &quot;se&quot;: pair_se,
+            &quot;satterthwaite_df&quot;: pair_satt_df,
+            &quot;t_statistic&quot;: pair_diff / pair_se,
+            &quot;normal_95_interval&quot;: [pair_diff - 1.96 * pair_se, pair_diff + 1.96 * pair_se],
+            &quot;approx_two_sided_p&quot;: 0.07525587,
+            &quot;assumptions&quot;: [
+                &quot;independent, approximately normal biological-replicate means by arm&quot;,
+                &quot;delta-method propagation with the same control and clodronate baseline means&quot;,
+                &quot;no within-animal/eye clustering; workbook IDs are absent&quot;,
+            ],
+        },
+        &quot;bootstrap_sensitivity&quot;: {
+            &quot;method&quot;: &quot;group-wise empirical resampling of 4 values within each arm&quot;,
+            &quot;seed&quot;: 20261008,
+            &quot;draws&quot;: boot_n,
+            &quot;raw_excess_mfi_quantiles_2_5_50_97_5&quot;: quantiles(boot_r),
+            &quot;capped_surplus_quantiles_2_5_50_97_5&quot;: quantiles(boot_cap),
+            &quot;fraction_resampled_combo_mean_above_control&quot;: combo_above_control / len(boot_r),
+            &quot;fraction_raw_excess_positive&quot;: sum(x &gt; 0 for x in boot_r) / len(boot_r),
+            &quot;warning&quot;: &quot;Empirical bootstrap with n=4/arm is a descriptive sensitivity, not a reliable tail or population guarantee.&quot;,
+        },
+        &quot;scale_attacks&quot;: {
+            &quot;common_affine_invariance&quot;: &quot;e is invariant to one common Y&#x27;=aY+b, a&gt;0.&quot;,
+            &quot;log_mean_of_replicates_control_anchored&quot;: transformed[&quot;log&quot;],
+            &quot;sqrt_mean_of_replicates_control_anchored&quot;: transformed[&quot;sqrt&quot;],
+            &quot;bounded_saturating_alternative&quot;: {
+                &quot;function&quot;: &quot;h(y)=1-exp(-(y-L)/(U-L)); h(L)=0, h(infinity)=1&quot;,
+                &quot;h_control&quot;: h(u),
+                &quot;h_full_dose_IGF1&quot;: h_i,
+                &quot;h_full_dose_CCL2&quot;: h_c,
+                &quot;h_combo&quot;: h_pair,
+                &quot;bliss_ceiling&quot;: h_bliss,
+                &quot;combo_minus_bliss&quot;: h_pair - h_bliss,
+                &quot;limitation&quot;: &quot;The asymptotic maximum is not the observed control; this is an exact scale-dependence counterexample, not an empirically selected response model.&quot;,
+            },
+        },
+        &quot;additive_mfi_counterexample&quot;: {
+            &quot;half_dose_IGF1_increment&quot;: half_i,
+            &quot;full_dose_IGF1_increment&quot;: full_i,
+            &quot;half_dose_CCL2_increment&quot;: half_c,
+            &quot;full_dose_CCL2_increment&quot;: full_c,
+            &quot;clodronate_mean_plus_half_dose_increments&quot;: ell + half_i + half_c,
+            &quot;observed_combo_mean&quot;: means[&quot;IGF1_CCL2&quot;],
+            &quot;both_half_increments_below_full_dose&quot;: half_i &lt;= full_i and half_c &lt;= full_c,
+            &quot;claim&quot;: &quot;Piecewise-linear nondecreasing monotherapy curves can assign these unobserved half-dose increments; additive increments in raw MFI then reproduce the combination mean exactly.&quot;,
+        },
+    }
+    outpath = HERE / &quot;hostile_audit_results.json&quot;
+    outpath.write_text(json.dumps(out, indent=2) + &quot;\n&quot;)
+    print(outpath)
+    print(json.dumps({
+        &quot;source_sha256&quot;: digest,
+        &quot;raw_excess_mfi&quot;: raw_excess,
+        &quot;delta_se&quot;: se,
+        &quot;delta_df&quot;: satt_df,
+        &quot;approx_t_ci&quot;: out[&quot;delta_method_for_raw_excess&quot;][&quot;approx_t_95_interval&quot;],
+        &quot;bootstrap_quantiles&quot;: out[&quot;bootstrap_sensitivity&quot;][&quot;raw_excess_mfi_quantiles_2_5_50_97_5&quot;],
+        &quot;saturating_scale_excess&quot;: h_pair - h_bliss,
+        &quot;additive_fit&quot;: ell + half_i + half_c,
+        &quot;pair_specificity_estimate&quot;: pair_diff,
+        &quot;pair_specificity_se&quot;: pair_se,
+        &quot;pair_specificity_df&quot;: pair_satt_df,
+    }, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/08c4fe73118630ca0e34da00d1ff2e0ca5855099920d32a561164591b41c90d4.py">Exact original</a></p></html>

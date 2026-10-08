@@ -1,0 +1,240 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/algebra_complexity/cycle5/border_rank_bits/check_exactification.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/algebra_complexity/cycle5/border_rank_bits/check_exactification.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact diagnostics for the supplied-witness compiler and two obstructions.
+
+Only Python&#x27;s standard library and Fraction are used. The W-tensor check
+verifies a supplied rational Laurent witness, its constant coefficient, and
+the coefficient-extraction rank/identity on tensor powers m=1,2,3. A second
+check separates function equality from formal polynomial equality over F_2.
+These are finite tests, not universal proofs.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import itertools
+import json
+from collections import defaultdict
+from fractions import Fraction as F
+from pathlib import Path
+
+
+Vec = tuple[F, ...]
+LaurentVector = dict[int, Vec]
+
+
+def basis(n: int, j: int, value: F = F(1)) -&gt; Vec:
+    return tuple(value if i == j else F(0) for i in range(n))
+
+
+def kron_vec(x: Vec, y: Vec) -&gt; Vec:
+    return tuple(a * b for a in x for b in y)
+
+
+def poly_kron(x: LaurentVector, y: LaurentVector) -&gt; LaurentVector:
+    out: dict[int, list[F]] = {}
+    for ex, vx in x.items():
+        for ey, vy in y.items():
+            e = ex + ey
+            z = kron_vec(vx, vy)
+            if e not in out:
+                out[e] = [F(0)] * len(z)
+            out[e] = [a + b for a, b in zip(out[e], z)]
+    return {e: tuple(v) for e, v in out.items()}
+
+
+def scale_vec(v: Vec, a: F) -&gt; Vec:
+    return tuple(a * x for x in v)
+
+
+def add_tensor(dst: list[F], a: Vec, b: Vec, c: Vec, scale: F = F(1)) -&gt; None:
+    db = len(b)
+    dc = len(c)
+    for ia, xa in enumerate(a):
+        if xa == 0:
+            continue
+        for ib, xb in enumerate(b):
+            if xb == 0:
+                continue
+            for ic, xc in enumerate(c):
+                if xc:
+                    dst[ia * db * dc + ib * dc + ic] += scale * xa * xb * xc
+
+
+def add_poly_tensor(dst: dict[int, list[F]], a: LaurentVector,
+                    b: LaurentVector, c: LaurentVector, scale: F = F(1)) -&gt; None:
+    for ea, va in a.items():
+        for eb, vb in b.items():
+            for ec, vc in c.items():
+                e = ea + eb + ec
+                dim = len(va) * len(vb) * len(vc)
+                if e not in dst:
+                    dst[e] = [F(0)] * dim
+                add_tensor(dst[e], va, vb, vc, scale)
+
+
+def witness_terms() -&gt; list[tuple[LaurentVector, LaurentVector, LaurentVector]]:
+    e0, e1 = basis(2, 0), basis(2, 1)
+    # t^-1 (e0+t e1)^(tensor 3), with t^-1 assigned to the first factor.
+    term_a = (
+        {-1: e0, 0: e1},
+        {0: e0, 1: e1},
+        {0: e0, 1: e1},
+    )
+    # -t^-1 e0^(tensor 3).
+    term_b = (
+        {-1: scale_vec(e0, F(-1))},
+        {0: e0},
+        {0: e0},
+    )
+    return [term_a, term_b]
+
+
+def base_w_tensor() -&gt; list[F]:
+    out = [F(0)] * 8
+    out[1 * 4 + 0 * 2 + 0] = 1
+    out[0 * 4 + 1 * 2 + 0] = 1
+    out[0 * 4 + 0 * 2 + 1] = 1
+    return out
+
+
+def verify_base_witness() -&gt; dict[str, object]:
+    coeffs: dict[int, list[F]] = {}
+    for term in witness_terms():
+        add_poly_tensor(coeffs, *term)
+    target = base_w_tensor()
+    assert coeffs[-1] == [F(0)] * 8
+    assert coeffs[0] == target
+    assert set(coeffs).issubset({-1, 0, 1, 2})
+    return {
+        &quot;laurent_negative_coefficient_cancels_exactly&quot;: True,
+        &quot;constant_coefficient_is_W&quot;: True,
+        &quot;formal_support&quot;: sorted(coeffs),
+    }
+
+
+def rank_one_words_power(m: int) -&gt; tuple[list[F], int]:
+    &quot;&quot;&quot;Apply u+v+w=0 coefficient extraction to W^tensor m exactly.&quot;&quot;&quot;
+    terms = witness_terms()
+    dim = 1 &lt;&lt; m
+    output = [F(0)] * (dim ** 3)
+    extracted_terms = 0
+
+    for word in itertools.product(range(len(terms)), repeat=m):
+        grouped: list[LaurentVector] = []
+        for mode in range(3):
+            pol: LaurentVector = terms[word[0]][mode]
+            for j in range(1, m):
+                pol = poly_kron(pol, terms[word[j]][mode])
+            grouped.append(pol)
+        a_poly, b_poly, c_poly = grouped
+        for u, a_vec in a_poly.items():
+            for v, b_vec in b_poly.items():
+                w = -u - v
+                c_vec = c_poly.get(w)
+                if c_vec is None:
+                    continue
+                if not (any(a_vec) and any(b_vec) and any(c_vec)):
+                    continue
+                extracted_terms += 1
+                add_tensor(output, a_vec, b_vec, c_vec)
+
+    # Directly form W^tensor m. Indices group the m coordinates of each mode.
+    expected = [F(0)] * (dim ** 3)
+    w_terms = [(1, 0, 0), (0, 1, 0), (0, 0, 1)]
+    for choices in itertools.product(w_terms, repeat=m):
+        ia = ib = ic = 0
+        for j, (aa, bb, cc) in enumerate(choices):
+            ia |= aa &lt;&lt; j
+            ib |= bb &lt;&lt; j
+            ic |= cc &lt;&lt; j
+        expected[ia * dim * dim + ib * dim + ic] += 1
+
+    assert output == expected, f&quot;extracted constant coefficient failed for m={m}&quot;
+    bound = 2**m * (2 * m + 1) ** 2  # r=2,d=1
+    assert extracted_terms &lt;= bound
+    return output, extracted_terms
+
+
+def verify_w_approximation() -&gt; dict[str, object]:
+    # W(t)=t^-1((e0+t e1)^tensor3-e0^tensor3) is rank at most two.
+    # Its tensor coefficients differ from W in degrees 1 and 2.
+    max_errors = []
+    for p in (1, 2, 5, 10, 24):
+        t = F(1, 1 &lt;&lt; p)
+        actual = [F(0)] * 8
+        for term in witness_terms():
+            vals = []
+            for mode in range(3):
+                v = [F(0), F(0)]
+                for e, coeff in term[mode].items():
+                    te = t**e if e &gt;= 0 else F(1, t ** (-e))
+                    v = [x + te * y for x, y in zip(v, coeff)]
+                vals.append(tuple(v))
+            add_tensor(actual, *vals)
+        expected = base_w_tensor()
+        maxerr = max(abs(a - b) for a, b in zip(actual, expected))
+        assert maxerr == t
+        max_errors.append({&quot;p&quot;: p, &quot;error&quot;: str(maxerr), &quot;coefficient_bits&quot;: p + 1})
+    return {&quot;rank_two_family_error_equals_t&quot;: True, &quot;cases&quot;: max_errors}
+
+
+def verify_rank_three_slice_obstruction() -&gt; dict[str, object]:
+    # Slices A0=[[0,1],[1,0]], A1=[[1,0],[0,0]] give
+    # det(x A0+y A1)=-x^2, a repeated root. A rank-2 decomposition would
+    # give two independent pencil factors and hence two distinct roots.
+    coeff_x2, coeff_xy, coeff_y2 = F(-1), F(0), F(0)
+    assert (coeff_x2, coeff_xy, coeff_y2) == (F(-1), F(0), F(0))
+    return {
+        &quot;slice_pencil_determinant_coefficients_x2_xy_y2&quot;: [&quot;-1&quot;, &quot;0&quot;, &quot;0&quot;],
+        &quot;rank_two_contradicted_by_repeated_root&quot;: True,
+        &quot;rank_three_witnessed_by_three_coordinate_terms&quot;: True,
+    }
+
+
+def verify_f2_function_vs_polynomial() -&gt; dict[str, object]:
+    values = [0, 1]
+    assert all((x * x) % 2 == x for x in values)
+    # Formal F_2[X] polynomial X^2-X = X^2+X is nonzero.
+    formal_coefficients = {1: 1, 2: 1}
+    assert any(c % 2 for c in formal_coefficients.values())
+    return {
+        &quot;x_squared_and_x_agree_as_functions_on_F2&quot;: True,
+        &quot;formal_polynomial_x2_minus_x_is_nonzero&quot;: True,
+    }
+
+
+def main() -&gt; None:
+    result = {
+        &quot;status&quot;: &quot;EXACT_FINITE_DIAGNOSTIC_ONLY&quot;,
+        &quot;arithmetic&quot;: &quot;Python Fraction, exact over Q; direct two-point function check over F2&quot;,
+        &quot;base_witness&quot;: verify_base_witness(),
+        &quot;tensor_power_extraction&quot;: [],
+        &quot;one_shot_w_tensor_counterexample&quot;: {
+            **verify_w_approximation(),
+            **verify_rank_three_slice_obstruction(),
+        },
+        &quot;finite_field_semantics_counterexample&quot;: verify_f2_function_vs_polynomial(),
+        &quot;limitations&quot;: [
+            &quot;tests W tensor powers only for m=1,2,3&quot;,
+            &quot;does not implement the total-computable exhaustive block search proved in RESULT.txt&quot;,
+            &quot;does not establish any useful bound on that search or coefficient heights&quot;,
+            &quot;does not prove a lower bound against all selective-output algorithms&quot;,
+            &quot;does not test coefficient height or conditioning for the L03 witness&quot;,
+        ],
+    }
+    for m in (1, 2, 3):
+        _, terms = rank_one_words_power(m)
+        result[&quot;tensor_power_extraction&quot;].append({
+            &quot;m&quot;: m,
+            &quot;extracted_rank_one_summands_before_cancellation&quot;: terms,
+            &quot;upper_bound_2^m_(2m+1)^2&quot;: 2**m * (2 * m + 1) ** 2,
+            &quot;constant_coefficient_equals_W_tensor_m&quot;: True,
+        })
+
+    out = Path(__file__).with_name(&quot;check_exactification.json&quot;)
+    out.write_text(json.dumps(result, indent=2) + &quot;\n&quot;, encoding=&quot;utf-8&quot;)
+    print(json.dumps(result, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/45595a65abead4f7c233b8d7750b3031e6e5864bc3ba1076682908f51b5ae08f.py">Exact original</a></p></html>

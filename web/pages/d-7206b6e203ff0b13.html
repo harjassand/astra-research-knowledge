@@ -1,0 +1,66 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/learning_acquisition/children/exact_noisy_oracles/CYCLE2_REPORT.md</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/learning_acquisition/children/exact_noisy_oracles/CYCLE2_REPORT.md</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre># Cycle 2: numerical compilation at the exact/noisy oracle boundary
+
+## Result and scope
+
+For a rational recognizable series with a *supplied* bounded-height realization, every response to a jointly strictly upper-triangular rational matrix query has an explicit common denominator bound. This gives a deterministic rounded-exact compiler: `2 h_*+2` fractional bits suffice to reconstruct each exact entry, after charging integer range, all returned entries, rational query descriptions, reconstruction time, and the learner&#x27;s own adaptive query-generation cost. It does not give a polynomial-sample Gaussian compiler: the direct uniform averaging method is sufficient at `O(σ² Q_*^4)` samples per scalar entry, and the separate scaled-word testing family below gives a genuine `Θ(Q^4)` lower bound for a particular coefficient-resolution problem. The lower bound comes from the Gaussian KL/excitation interface, not from rational denominator separation alone.
+
+These are internal theorems for the stated rational subclass and channel contracts. They neither validate L01&#x27;s universal exact learner nor settle priority. The prior-art correction and pinned-source caveats are in [the first-cycle boundary audit](FINAL_REPORT.md); the formulas and proofs are in [the proof sheet](COMPILER_PROOF.md).
+
+## Rational-response compiler
+
+Let `f(w)=λᵀA_{w₁}⋯A_{w_k}γ` be a rational minimal realization of dimension `r≤m` over an `n`-symbol alphabet, with `f(ε)=0`. Suppose every reduced realization numerator and denominator is at most `2^H` in magnitude. Let each query be a rational tuple `X_1,…,X_n` of dimension `D`, jointly strictly upper triangular, with each reduced entry numerator and denominator at most `2^B`. Let `q_λ,q_γ,q_A,q_X` be products of the denominators of all entries in the respective parameter blocks. Then
+
+`h_* := ceil(log₂(q_λ q_γ (q_A q_X)^(D−1))) ≤ 2rH +(D−1)(nr²H+nD²B)`.
+
+Writing `S=Σ_i A_i⊗X_i`, strict triangularity gives `S^D=0` and
+
+`f(X)=(λᵀ⊗I_D)(I+S+⋯+S^(D−1))(γ⊗I_D)`.
+
+Every output denominator divides `Q_*=q_λq_γ(q_Aq_X)^(D−1)`. The response magnitude is at most `2^hmag`, where
+
+`hmag = ceil(2H+log₂(rD)+(D−1)(H+B+log₂(nrD)))`.
+
+Thus an exact dense response has `D²` entries and at most `O(D²(h_*+hmag+1))` rational payload bits.
+
+For a rounded-exact service, define `p` to be the number of binary places after the radix point, with nearest-grid absolute error at most `2^(−p−1)`. The condition `p≥2h_*+2` puts every returned value within `1/(2Q_*²)` of its exact rational. Bounded-denominator rational reconstruction by continued fractions then uniquely recovers every entry. Per query: one call, dimension `D`, `D²` returned entries, query-description length `L_X=O(nD²(B+1))` in dense encoding, and `D²(p+hmag+O(1))` returned bits. Schoolbook continued fractions cost `O(D²(p+hmag+h_*)²)` bit operations and `O(D²(p+hmag+h_*))` working bits. An adaptive exact learner is simulated transcript-for-transcript if it computes each next rational query from the already reconstructed history; its own query generation and arithmetic are additional costs. No height/dimension/query-length bound is inferred by the compiler.
+
+An optional local evaluator, when the realization is available rather than hidden, forms `S` in `O(nr²D²)` rational operations and evaluates the nilpotent sum using `D−1` dense `(rD)×(rD)` multiplications, `O(r³D⁴)` rational operations. Intermediate bit lengths are `O(D(h_A+h_X+H+B+log(nrD))+h_λ+h_γ)`, with `h_A≤nr²H`, `h_X≤nD²B`, `h_λ,h_γ≤rH`. This is a local arithmetic bound, not an acquisition guarantee.
+
+For at most `T` adaptive exact queries of dimension at most `D`, use each round&#x27;s actual `h_*` (or the uniform maximum) and reconstruct before issuing the next query. This makes the transcript simulation deterministic under the stated rounding guarantee; no union bound is needed.
+
+## Gaussian channel: sufficient compiler and separate lower bounds
+
+Suppose each scalar response is observed with independent `N(0,σ²)` noise and query repetition is allowed. A uniform compiler can estimate each response entry to `ε=1/(4Q_*²)`. Repeating each exact-learner query
+
+`s ≥ 32 σ² Q_*^4 ln(4TD²/δ)`
+
+times makes every entrywise sample mean accurate to `ε` with probability at least `1−δ/2` over `T D²` entries; continued fractions then reproduce the exact adaptive transcript. **This is a sufficient worst-case simulation cost, not a necessary cost inferred from denominator separation.** For an ideal real Gaussian channel no finite output-bit count exists. For a digital adapter, quantize each sample at spacing `η=1/(4Q_*²)`, clip at
+
+`R=2^hmag + σ sqrt(2 ln(4N/δ))`, `N=T s D²`,
+
+and encode each clipped sample in `b_G=ceil(log₂(2+2R/η))` bits. Clipping fails with probability at most `δ/2`; averaging plus quantization error is at most `3/(8Q_*²)`, so reconstruction succeeds with total failure at most `δ`. Per simulated query the complete cost is `s` calls of dimension `D`, `sD²` scalar samples/returned entries, `sD²b_G` returned bits, and `sD` total query dimension. Query descriptions cost `sL_X` bits if retransmitted, or `L_X` plus protocol overhead if cached. Accumulation takes `O(sD²b_G)` bit operations and reconstruction `O(D²(b_G+h_*+hmag)²)`. A per-call excitation cap `Σ_iX_iᵀX_i⪯EI` is paid on every repeat: cumulative excitation opportunity is `sE`; repetition is not free. Multiply by `T` for totals.
+
+Two independent lower bounds explain why the stochastic cost can be large.
+
+1. For `f_w(u)=1[u=w]`, `w∈[n]^d`, minimal Hankel rank is `d+1`, with an acyclic `0/1` realization. Under the per-call excitation cap and adaptive Gaussian observations, the reconstructed energy/KL proof gives
+
+   `C₀ := E₀ Σ_t D_t ≥ 2σ² a^(−2)(n/E)^d kl(1−δ,δ)`
+
+   for testing zero against every scaled target `a f_w`, `a≠0`. Since each full response has `D_t²≥D_t` entries, returned-entry/sample cost obeys the same lower bound. The `a^−2` factor follows by multiplying every hidden-word mean by `a`; the `(n/E)^d` factor follows from `Σ_w||X_w||_F²≤D E^d` and the adaptive KL chain rule. This is a source-card-scoped internal reconstruction, not an external verification of N25.
+
+2. To obtain a direct `Q^4` lower bound without confusing it with the sufficient averaging bound, fix one word `w` and compare `g_0=(1/q)f_w` against `g_1=(1/(q+1))f_w`. Both are rational rank-`d+1` series of entry height `H=ceil(log₂(q+1))`. An integer, strictly upper-triangular dimension-`d+1` query places a unit edge at each position of `w`, obeys `Σ_iX_iᵀX_i⪯I`, and returns the coefficient as its `(1,d+1)` entry. The exact response gap is `Δ=1/[q(q+1)]`; the denominators of this distinguishing response are at most `Q=q+1`. For any adaptive Gaussian strategy, `||X_w||_F²≤D E^d`, so the KL chain rule under `g_0` and binary data processing imply
+
+   `E_{g0} Σ_t D_t ≥ 2σ²q²(q+1)² E^(−d) kl(1−δ,δ)`.
+
+   At `E=1`, this is `Θ(σ²Q^4)` for fixed `δ`, with at least as many returned scalar entries. Here the quartic order is established by an actual same-class two-target testing lower bound; it is not deduced from denominator separation. The learner may use any admissible adaptive query, not just the explicit exact query.
+
+For fixed-point rounding with grid spacing `2^(−b)`, the hidden-word pair `0,f_w` also gives a direct information-loss bound: if `C₀=E₀Σ_tD_t`, then
+
+`C₀ ≥ (1−2δ)2^(−2b−2)(n/E)^d`.
+
+Along the null transcript, total word-output energy below `2^(−2b−2)` forces every entry to round to zero and prevents transcript divergence; Markov plus the word-energy lemma proves the inequality. This is a fixed absolute-grid statement and does not cover floating point with unbounded exponent.
+
+## Prior-art and evidence status
+
+Bounded-denominator rational reconstruction via continued fractions is classical; the local contribution is the explicit denominator calculation for this nilpotent recognizable-series evaluation and its charged adaptive transcript ledger. Weighted-automaton exact/noisy learning and adaptive Gaussian matrix sensing are established neighboring fields. The hidden-word and amplitude-pair arguments are scoped interface lower bounds; no novelty or priority claim is made. The prior-art pointers and unverified L01/N25 source-artifact paths are recorded in [the first-cycle report](FINAL_REPORT.md). Status: internally derived/ reconstructed candidate; the Astra cards remain source-reported and unreviewed, and no formal verification, external proof review, or physical numerical acquisition test was done.
+</pre><p><a href="../assets/0dc4189d292448110ed9fc0e6c9b36dd997d1f2752bc980fbcb4a819d6cc9207.md">Exact original</a></p></html>

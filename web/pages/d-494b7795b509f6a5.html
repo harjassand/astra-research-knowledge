@@ -1,0 +1,93 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/memory_information/evidence/finite_rank_boundary/pure_cutoff.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/memory_information/evidence/finite_rank_boundary/pure_cutoff.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact rational checks for the rank-one pure-qubit cutoff construction.
+
+This is finite evidence only.  The proof in finite_rank_boundary.txt uses the
+same factorial-moment inequality for arbitrary n and R.
+&quot;&quot;&quot;
+
+from fractions import Fraction
+from math import comb, factorial
+import argparse
+import json
+
+
+def binomial_tail(n: int, p: Fraction, m: int) -&gt; Fraction:
+    &quot;&quot;&quot;P[Bin(n,p) &gt;= m], computed exactly.&quot;&quot;&quot;
+    if m &gt; n:
+        return Fraction(0)
+    q = 1 - p
+    return sum(
+        (Fraction(comb(n, k)) * p**k * q ** (n - k) for k in range(m, n + 1)),
+        Fraction(0),
+    )
+
+
+def cutoff_m(r: Fraction, eps: Fraction) -&gt; int:
+    &quot;&quot;&quot;Smallest m&gt;=1 with r^(2m)/m! &lt;= eps^2/4, exactly.&quot;&quot;&quot;
+    r2 = r * r
+    m = 1
+    while r2**m / factorial(m) &gt; eps * eps / 4:
+        m += 1
+    return m
+
+
+def check_case(n: int, b: int, r: Fraction) -&gt; dict[str, object]:
+    &quot;&quot;&quot;Check the cutoff/tail/error inequalities for eps=2^-b.&quot;&quot;&quot;
+    eps = Fraction(1, 2**b)
+    m = cutoff_m(r, eps)
+    # Exact Dicke truncation is used only if the cutoff is below the full
+    # symmetric-space dimension.  Otherwise the exact n+1-dimensional archive
+    # is cheaper.
+    memory_dimension = min(n + 1, m + 1)
+    if m &lt;= n:
+        p = r * r / (n + r * r)
+        tail = binomial_tail(n, p, m)
+        factorial_bound = r ** (2 * m) / factorial(m)
+        assert tail &lt;= factorial_bound
+        assert factorial_bound &lt;= eps * eps / 4
+        assert tail &lt;= eps * eps / 4
+        # The trace-distance bound is sqrt(tail)+tail.  For eps&lt;=1, the
+        # displayed tail premise implies this is &lt;= 3 eps/4 &lt;= eps.
+        output = {
+            &quot;n&quot;: n,
+            &quot;epsilon&quot;: str(eps),
+            &quot;radius&quot;: str(r),
+            &quot;tail_start_m&quot;: m,
+            &quot;archive_dimension&quot;: memory_dimension,
+            &quot;binomial_tail_exact&quot;: str(tail),
+            &quot;factorial_moment_bound_exact&quot;: str(factorial_bound),
+            &quot;tail_le_epsilon_squared_over_4&quot;: True,
+            &quot;trace_distance_bound_le_epsilon&quot;: True,
+        }
+    else:
+        output = {
+            &quot;n&quot;: n,
+            &quot;epsilon&quot;: str(eps),
+            &quot;radius&quot;: str(r),
+            &quot;tail_start_m&quot;: m,
+            &quot;archive_dimension&quot;: memory_dimension,
+            &quot;exact_symmetric_archive&quot;: True,
+            &quot;trace_distance&quot;: &quot;0&quot;,
+            &quot;trace_distance_bound_le_epsilon&quot;: True,
+        }
+    return output
+
+
+def main() -&gt; None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(&quot;--radius&quot;, default=&quot;1&quot;, help=&quot;nonnegative rational radius&quot;)
+    parser.add_argument(&quot;--n&quot;, nargs=&quot;+&quot;, type=int, default=[1, 2, 4, 8, 16, 64, 256])
+    parser.add_argument(&quot;--bits&quot;, nargs=&quot;+&quot;, type=int, default=[2, 4, 8, 16, 32])
+    args = parser.parse_args()
+    radius = Fraction(args.radius)
+    if radius &lt;= 0:
+        raise SystemExit(&quot;radius must be positive&quot;)
+    if any(n &lt; 1 for n in args.n) or any(b &lt; 1 for b in args.bits):
+        raise SystemExit(&quot;n and precision bits must be positive&quot;)
+    rows = [check_case(n, b, radius) for n in args.n for b in args.bits]
+    print(json.dumps(rows, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/b07240890eeb1b87d65eb58dc98ab0b9c173674bd2291476ff3296f9b232599c.py">Exact original</a></p></html>

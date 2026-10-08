@@ -1,0 +1,17 @@
+import FiniteMinimumCaratheodory
+
+open MeasureTheory
+
+#check N33Dynamics.affineBranchAlong
+#check N33Dynamics.affineMinimumAlong
+#check N33Dynamics.affineMinimumAlong_absolutelyContinuous
+#check N33Dynamics.affineMinimumAlong_active_derivative_eq
+#check N33Dynamics.affineMinimumAlong_ae_common_differentiable
+#check N33Dynamics.affineMinimumAlong_ae_active_derivative_eq
+#check N33Dynamics.affineMinimumAlong_ae_drift_lower_bound
+
+#print axioms N33Dynamics.affineMinimumAlong_absolutelyContinuous
+#print axioms N33Dynamics.affineMinimumAlong_active_derivative_eq
+#print axioms N33Dynamics.affineMinimumAlong_ae_common_differentiable
+#print axioms N33Dynamics.affineMinimumAlong_ae_active_derivative_eq
+#print axioms N33Dynamics.affineMinimumAlong_ae_drift_lower_bound

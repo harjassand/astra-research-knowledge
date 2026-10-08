@@ -1,0 +1,108 @@
+"""Exact small-instance replay for the symmetric-power Petz broadcaster.
+
+Uses occupation bases and the actual symmetric block-split isometry, then checks
+that (dim H_s / dim H_2s) T^*T has the claimed coherent-harmonic eigenvalues.
+This is a finite normalization check, not the all-m, all-s proof.
+Requires SymPy for exact square-root arithmetic.
+"""
+from itertools import product
+from math import comb, factorial
+
+from sympy import Matrix, Rational, eye, kronecker_product, simplify, sqrt, zeros
+
+
+def occupations(m, total):
+    out = []
+    def rec(prefix, left, slots):
+        if slots == 1:
+            out.append(tuple(prefix + [left]))
+            return
+        for x in range(left + 1):
+            rec(prefix + [x], left - x, slots - 1)
+    rec([], total, m)
+    return out
+
+
+def split_isometry(m, s):
+    source = occupations(m, 2 * s)
+    target = occupations(m, s)
+    target_index = {x: i for i, x in enumerate(target)}
+    v = zeros(len(target) ** 2, len(source))
+    den = comb(2 * s, s)
+    for col, counts in enumerate(source):
+        for left in product(*(range(x + 1) for x in counts)):
+            if sum(left) != s:
+                continue
+            right = tuple(counts[i] - left[i] for i in range(m))
+            weight = sqrt(Rational(
+                prod_values(comb(counts[i], left[i]) for i in range(m)), den
+            ))
+            row = target_index[tuple(left)] * len(target) + target_index[right]
+            v[row, col] = weight
+    return v, source, target
+
+
+def prod_values(values):
+    result = 1
+    for value in values:
+        result *= value
+    return result
+
+
+def highest_weight_operator(m, n, ell, basis):
+    index = {state: i for i, state in enumerate(basis)}
+    op = zeros(len(basis), len(basis))
+    for col, state in enumerate(basis):
+        if state[-1] < ell:
+            continue
+        out = list(state)
+        out[-1] -= ell
+        out[0] += ell
+        coefficient_sq = prod_values(state[-1] - q for q in range(ell))
+        coefficient_sq *= prod_values(state[0] + q + 1 for q in range(ell))
+        op[index[tuple(out)], col] = sqrt(coefficient_sq)
+    return op
+
+
+def partial_trace_second(y, d):
+    out = zeros(d, d)
+    for i in range(d):
+        for j in range(d):
+            out[i, j] = sum(y[i * d + a, j * d + a] for a in range(d))
+    return out
+
+
+def run_case(m, s):
+    v, source, target = split_isometry(m, s)
+    d2, d1 = len(source), len(target)
+    assert v.T * v == eye(d2)
+    assert simplify(partial_trace_second(v * v.T, d1) -
+                    Rational(d2, d1) * eye(d1)) == zeros(d1, d1)
+    t_identity = partial_trace_second(v * eye(d2) * v.T, d1)
+    assert simplify(t_identity - Rational(d2, d1) * eye(d1)) == zeros(d1, d1)
+
+    for ell in range(1, 2 * s + 1):
+        x = highest_weight_operator(m, 2 * s, ell, source)
+        y = partial_trace_second(v * x * v.T, d1)
+        tstar_y = v.T * kronecker_product(y, eye(d1)) * v
+        phi_x = simplify(Rational(d1, d2) * tstar_y)
+        if ell <= s:
+            mu_s = prod_values(Rational(s - q, s + m + q) for q in range(ell))
+            mu_2s = prod_values(Rational(2 * s - q, 2 * s + m + q) for q in range(ell))
+            expected = simplify(mu_s / mu_2s)
+        else:
+            expected = 0
+        assert simplify(phi_x - expected * x) == zeros(d2, d2), (m, s, ell)
+    return 2 * s + 1
+
+
+def main():
+    checks = 0
+    for m, s in ((2, 1), (2, 2), (3, 1), (3, 2), (4, 1), (4, 2)):
+        checks += run_case(m, s)
+    print(f"PASS: exact occupation-basis split/Petz spectrum in {checks} nonconstant mode checks")
+    print("FINITE-EVIDENCE only; the all-m, all-s formulas are proved in weight_wall_attack.txt.")
+
+
+if __name__ == '__main__':
+    main()

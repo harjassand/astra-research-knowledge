@@ -1,0 +1,86 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/materials_energy/thermoelectric/robust_pareto_probe.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/materials_energy/thermoelectric/robust_pareto_probe.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Finite illustration of the conditional robust boxcar theorem.
+
+The uncertainty radii below are hypothetical stress-test inputs, not
+measurements or typical material uncertainties. The exact robust reduction is proved in
+CYCLE2_REPORT.md; this script only enumerates interval endpoints on a finite
+grid and compares nominal vs worst-corner objectives for the same center data.
+&quot;&quot;&quot;
+from __future__ import annotations
+import json
+import math
+
+from pareto_probe import cumulative_moments
+
+
+def enumerate_profiles(ratio: float, radii: dict[str, float], pf_floor: float):
+    xs, pref = cumulative_moments()
+    nominal = {&quot;zt_center&quot;: -math.inf}
+    nominal_robust_pf = {&quot;zt_center&quot;: -math.inf}
+    robust = {&quot;zt_lower&quot;: -math.inf}
+    n = len(xs)
+    for i in range(n - 1):
+        A0, B0, C0 = (pref[k][i] for k in range(3))
+        for j in range(i + 1, n):
+            A = pref[0][j] - A0
+            B = pref[1][j] - B0
+            C = pref[2][j] - C0
+            if A &lt;= 0 or B &lt;= 0:
+                continue
+            pf = B * B / A
+            z_nom_den = A * (C + ratio) - B * B
+            if z_nom_den &lt;= 0:
+                continue
+            z_nom = B * B / z_nom_den
+
+            # Design-invariant absolute uncertainty radii. The box-corner
+            # formula below is exact for this assumed rectangle.
+            A_hi = A + radii[&quot;A&quot;]
+            B_lo = B - radii[&quot;B&quot;]
+            C_hi = C + radii[&quot;C&quot;]
+            a_hi = ratio + radii[&quot;a&quot;]
+            if A_hi &lt;= 0 or a_hi &lt;= 0:
+                continue
+            pf_lo = B_lo * B_lo / A_hi if B_lo &gt; 0 else 0.0
+            den = A_hi * (C_hi + a_hi) - B_lo * B_lo if B_lo &gt; 0 else math.inf
+            z_lo = B_lo * B_lo / den if B_lo &gt; 0 and den &gt; 0 else 0.0
+            if pf + 1e-12 &gt;= pf_floor and z_nom &gt; nominal[&quot;zt_center&quot;]:
+                nominal = {&quot;lo&quot;: xs[i], &quot;hi&quot;: xs[j], &quot;pf_center&quot;: pf,
+                           &quot;zt_center&quot;: z_nom, &quot;pf_lower&quot;: pf_lo,
+                           &quot;zt_lower&quot;: z_lo}
+            if pf_lo + 1e-12 &gt;= pf_floor and z_nom &gt; nominal_robust_pf[&quot;zt_center&quot;]:
+                nominal_robust_pf = {&quot;lo&quot;: xs[i], &quot;hi&quot;: xs[j],
+                                     &quot;pf_center&quot;: pf, &quot;pf_lower&quot;: pf_lo,
+                                     &quot;zt_center&quot;: z_nom,
+                                     &quot;zt_lower&quot;: z_lo}
+            if pf_lo + 1e-12 &lt; pf_floor or den &lt;= 0:
+                continue
+            if z_lo &gt; robust[&quot;zt_lower&quot;]:
+                robust = {&quot;lo&quot;: xs[i], &quot;hi&quot;: xs[j], &quot;pf_lower&quot;: pf_lo,
+                          &quot;zt_lower&quot;: z_lo, &quot;pf_center&quot;: pf,
+                          &quot;zt_center&quot;: z_nom}
+    return {&quot;nominal_optimum_same_center_data&quot;: nominal,
+            &quot;center_ZT_optimum_subject_to_same_robust_PF_floor&quot;: nominal_robust_pf,
+            &quot;robust_optimum_same_center_data&quot;: robust}
+
+
+def main():
+    radii = {&quot;A&quot;: 0.01, &quot;B&quot;: 0.01, &quot;C&quot;: 0.02, &quot;a&quot;: 0.02}
+    result = {
+        &quot;status&quot;: &quot;finite grid illustration only; no material or typical-error claim&quot;,
+        &quot;model&quot;: &quot;same absolute interval radii at every candidate; independent rectangular box; center a=0.1&quot;,
+        &quot;absolute_uncertainty_radii&quot;: radii,
+        &quot;robust_normalized_PF_floor&quot;: 1.0,
+        &quot;energy_grid&quot;: {&quot;min&quot;: -1.0, &quot;max&quot;: 15.0, &quot;step&quot;: 0.02},
+        &quot;case&quot;: enumerate_profiles(0.1, radii, 1.0),
+        &quot;notes&quot;: [
+            &quot;Center-data nominal optimum and robust optimum use identical center moments and the same stated interval widths.&quot;,
+            &quot;Robust values are analytical worst corners for the assumed rectangle, evaluated only on the finite endpoint grid.&quot;,
+            &quot;No confidence level, measurement covariance, acquisition cost, fabrication route, or sample was supplied.&quot;
+        ]
+    }
+    print(json.dumps(result, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/19dd2be1050ee6a75734bfdc3b734d7e85926ad9e4146829c01d4d1aa4e69d36.py">Exact original</a></p></html>

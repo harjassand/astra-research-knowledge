@@ -1,0 +1,118 @@
+Matched active/passive acquisition in a two-state HMM
+====================================================
+
+Verdict
+-------
+
+There is an exact statistical separation for a deliberately small, fully specified controlled-HMM interface. For the same one-step predictive target and the same noisy output channel, passive data costs Θ(1/(p²δ²)) observations, whereas adaptive hidden-state clamps cost Θ(1/δ²) observations and interventions. The factor p² comes from dilution: passively, the informative hidden state occurs with probability p, so its emission bias is multiplied by p. The active interface forces that state before emission. This is a result about the supplied intervention right, not a general teacher-free HMM learner or a result under ordinary history-conditional sampling.
+
+Model and information interfaces
+-------------------------------
+
+Fix known p in (0, 1/2], signal Δ₀ in (0, 1/4], and known observation-flip probability η in [0, 1/2). The unknown model index is θ ∈ {−1,+1}. Let δ=(1−2η)Δ₀, so 0<δ≤1/4. The learner knows p, Δ₀, and η, and must learn only θ.
+
+The hidden state S_t ∈ {0,1} has initial law Bernoulli(p) and natural transition matrix
+
+                 [ 1−p   p ]
+             T = [ 1−p   p ].
+
+Thus each next state is a fresh Bernoulli(p) draw, independent of the previous state. Given S_t, first emit an unobserved bit X_t: it is fair when S_t=0, and Bernoulli(1/2+θΔ₀) when S_t=1. The learner sees only Y_t=X_t XOR E_t, where E_t is an independent Bernoulli(η) flip. It never sees S_t or X_t. The observed emissions are genuinely noisy even at η=0 because X_t is random; η gives an additional explicit observation-noise parameter. Under state 1,
+
+             Pθ* = Law(Y_t | do(S_t=1)) = Bernoulli(1/2+θδ).
+
+There are two access modes. Passive access returns Y_t under the natural HMM, with no state labels and no control. An active query may instead clamp the hidden state to 1 for that emission, observe the same Y_t channel, and then continue. The choice between a natural query and a clamp may depend on all earlier observations. A clamp costs one intervention unit; every observed symbol costs one sample unit. A reset-to-state-0 implementation may charge r≥0 extra units per query, equally in both modes. No reset service is needed in the stated HMM: T itself refreshes the hidden state independently every step. Taking r=0 is the native-stream model.
+
+The passive one-symbol law is the mixture
+
+             Pθ⁰ = (1−p) Bernoulli(1/2) + p Bernoulli(1/2+θδ)
+                 = Bernoulli(1/2+pθδ).
+
+The active clamp returns a sample from Pθ*. Conditional on a chosen action and the past, the next output has exactly its stated law; no state information is delivered by either oracle. In a reset-episode implementation, reset to S=0 and the natural transition are applied before each passive emission; the clamp replaces that transition for an active emission. Reset counts add r equally. The one-step laws and bounds below are unchanged.
+
+Prediction target and theorem
+-----------------------------
+
+The learner outputs a distribution Q̂ for the next noisy output when the hidden state is clamped to 1. It succeeds if
+
+             TV(Q̂, Pθ*) ≤ δ/2
+
+with probability at least 2/3 for each θ. The two target laws are 2δ apart in total variation, so their δ/2 balls are disjoint. Nearest-target decoding therefore turns any successful predictor into a test of θ with both error probabilities at most 1/3; conversely, a correct test outputs the exact target law. The prediction task and the two-point testing task have the same success event up to this decoding.
+
+Let C_pass*(p,δ,r) be the infimum worst-case expected total cost among passive procedures meeting this guarantee. Let C_act*(p,δ,r) be the corresponding infimum over active adaptive procedures that may choose at each query between passive sampling and clamping S=1. Costs per query are 1+r for passive and 2+r for a clamp (one output, one intervention, and the common reset charge). Then
+
+       (1+r)/(72 p²δ²) ≤ C_pass* ≤ (1+r) ln(3)/(4 p²δ²),
+
+       (2+r)/(72 δ²)    ≤ C_act*  ≤ (2+r) ln(3)/(4 δ²).
+
+In particular both minimax costs have the displayed matching parameter dependence. For p≤1/16, even the conservative constants imply
+
+       C_pass* / C_act* ≥ 1/(36 ln(3) p²) ≥ 6.4,
+
+for every r≥0. As p decreases, the separation grows as p⁻². If only output samples and intervention counts are reported, the upper-bound active procedure uses the same Θ(δ⁻²) number of each; passive needs Θ((pδ)⁻²) output symbols and no interventions.
+
+Proof
+-----
+
+For 0<a≤1/4, set
+
+       d(a) = KL(Bernoulli(1/2+a) || Bernoulli(1/2−a))
+            = 2a ln((1+2a)/(1−2a)).
+
+Since ln((1+x)/(1−x))=2 artanh(x), and x≤1/2 gives x≤artanh(x)≤2x, we have
+
+       8a² ≤ d(a) ≤ 16a²,
+       ℓ(a):=ln((1+2a)/(1−2a)) ≤ ln(3).
+
+Lower bounds, including adaptive stopping. A valid predictor yields a test with both errors ≤1/3. The event “decide θ=+1” then has probability gap at least 1/3 under the two hypotheses, so the stopped transcript laws have TV at least 1/3. Pinsker’s inequality gives KL at least 2/9.
+
+Under passive access each observed symbol is an independent Bernoulli sample with bias ±pδ. For any sequential stopping rule τ, the likelihood chain rule gives
+
+       KL(Transcript+ || Transcript−) = E+[τ] d(pδ).
+
+Thus E+[τ]≥(2/9)/d(pδ)≥1/(72p²δ²). Multiplying by the common per-query cost 1+r proves the passive lower bound. This argument allows randomized tests and data-dependent stopping.
+
+For an active adaptive policy, write u_t=0 for a natural sample and u_t=1 for a state-1 clamp. Given the past, its action distribution is the same under both hypotheses; only the output contributes likelihood. The conditional output bias is ±a(u_t), where a(0)=pδ and a(1)=δ. The stopped KL is therefore
+
+       E+ [ Σ_{t≤τ} d(a(u_t)) ].
+
+The per-cost best action is the clamp. Indeed d(a)=4a artanh(2a), and artanh(x)/x is increasing, so d(δ)/d(pδ)≥p⁻²≥4. Since (2+r)/(1+r)≤2, this implies
+
+       d(a(u)) ≤ [d(δ)/(2+r)] (1+r+u),   u∈{0,1}.
+
+If C=Σ_{t≤τ}(1+r+u_t), the transcript KL is at most E+[C] d(δ)/(2+r). It must be at least 2/9, and d(δ)≤16δ², giving E+[C]≥(2+r)/(72δ²). This lower bound covers any adaptive mixture of passive and forced queries, not only a policy that always intervenes.
+
+Upper bounds by adaptive likelihood-ratio sampling. For samples with bias ±a, let L_n be the log likelihood ratio of θ=+1 against θ=−1. Each output adds +ℓ(a) when Y=1 and −ℓ(a) when Y=0. Stop at the first n with |L_n|≥ln(3), then output the sign of L_n. The likelihood-ratio martingale bounds each error probability by exp(−ln(3))=1/3. Under θ=+1, the drift of L is d(a), and the overshoot above the upper boundary is at most ℓ(a); hence Wald’s identity gives
+
+       E+[τ] ≤ (ln(3)+ℓ(a))/d(a) ≤ ln(3)/(4a²).
+
+The symmetric bound holds under θ=−1. Use a=pδ for passive sampling and multiply by 1+r. For active access, clamp S=1 before every requested output, use a=δ, and multiply by 2+r. The stopping decision is adaptive: the procedure requests another sample/intervention only while the accumulated evidence has not crossed a boundary. This proves both upper bounds.
+
+What the result establishes and does not establish
+---------------------------------------------------
+
+The active samples carry more information per output because the action sets the hidden state to the target state. The noisy observation channel is identical in both modes; the improvement is not obtained by removing emission noise. The minimax lower bound also shows that adaptively mixing natural and forced observations cannot beat the stated active total-cost order under this cost model.
+
+The clamp is a strong, explicit service. It does not follow from seeing more passive data, knowing the HMM equations, or choosing an observed history. In this particular rank-one-transition HMM, future observations are independent of every observed history, so a conditional-sample oracle that only chooses an observed prefix still returns the passive mixture. This leaf does not prove a general active-learning theorem for arbitrary HMMs, a teacher-free hidden-state discovery procedure, or a benefit from acquired representations when an equally informed direct solver is available.
+
+Primary-literature alignment
+----------------------------
+
+Anderson and Moore, “Active Learning for Hidden Markov Models: Objective Functions and Algorithms,” ICML 2005, define HMM active-learning tasks around selecting queryable hidden labels/positions and discuss value-of-information objectives, including clamping query variables. That supports making the query/intervention interface explicit; it is not the same as a service that forces the generative hidden state to a selected value. [Paper PDF](https://www.cs.cmu.edu/~brigham/papers/icml2005.pdf).
+
+Mahajan, Kakade, Krishnamurthy, and Zhang, “Learning Hidden Markov Models Using Conditional Samples,” COLT 2023, define an oracle that takes a visible history h and returns a future sequence sampled from P[·|h]. They state that their interactive access addresses computational hardness rather than statistical sample complexity. The present state-clamp oracle is stronger and changes the one-symbol law; it must not be silently identified with their conditional-sample model. [PMLR paper](https://proceedings.mlr.press/v195/mahajan23a.html) · [PDF](https://proceedings.mlr.press/v195/mahajan23a/mahajan23a.pdf).
+
+Relevant local prior cards
+--------------------------
+
+* `work/astra_prior/cards/N25-acquisition-interface-tests.txt`, line 5: the four-state HMM spliced-query counterexample distinguishes actual-path prediction from artificial prefix/suffix queries; the card also records that history-conditional samples and passive acquisition are separate interfaces. The present proof uses no spliced queries and charges a real state clamp.
+* `work/astra_prior/cards/N13-passive-parity-boundary.txt`, line 5: a hidden full-matrix oracle is not passive data, and an equally informed direct algebraic solver can match acquired features. This note accordingly attributes the gain to the additional intervention information, not to learned representation or general intelligence.
+
+These cards are scoped local context, not premises of the proof. The proof above is reconstructed directly from the two Bernoulli laws.
+
+Source ledger
+-------------
+
+* Primary HMM access models: Anderson–Moore (2005), PDF pp. 1–3; Mahajan et al. (2023), PDF pp. 1–4 (HMM/conditional-sample definitions and stated guarantees).
+* Local route: `work/astra_prior/00_START_HERE.txt` → `work/astra_prior/topics/acquisition.txt` → cards N13 and N25. The cards are locally marked source-derived/unreviewed; they are used as boundary reminders only.
+* Historical HMM memory used for scope: `/Users/harjas/.codex/memories/MEMORY.md`, lines 689–720: arbitrary-HMM teacher-free recurrence synthesis remains unresolved; scoped obstructions do not establish general impossibility.
+

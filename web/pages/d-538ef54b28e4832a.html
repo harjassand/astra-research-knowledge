@@ -1,0 +1,111 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/measurement_inverse/self_calibration/REPORT.md</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/measurement_inverse/self_calibration/REPORT.md</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre># Blind self-calibration: exact interface, known threshold, and scope
+
+## Verdict
+
+This is a clean, implementable self-calibration problem, but it is not a new identifiability result. The natural complex-gain model is the subspace case of blind gain-and-phase calibration (BGPC). Li, Lee, and Bresler already prove the generic sample threshold
+
+\[
+K\geq \left\lceil\frac{m-1}{m-r}\right\rceil
+\]
+
+for `m` sensors, supplied subspace dimension `r&lt;m`, and `K` snapshots, up to one unavoidable complex scale. Their theorem identifies this with the degrees-of-freedom lower bound. The explicit nullspace test below is a convenient deterministic implementation and yields an elementary gap-dependent perturbation bound. That bound is a standard singular-vector perturbation argument and does not, by itself, add a novelty claim or a uniform stability guarantee. The established noisy BGPC literature gives stronger stable recovery results under random sensing assumptions.
+
+## Interface and gauge
+
+For one calibration window, the supplied matrix `A ∈ C^{m×r}` has full column rank and stays fixed. The unknown complex sensor gains satisfy `g_i≠0` and also stay fixed across the window. Snapshot coefficients `S=[s_1,…,s_K] ∈ C^{r×K}` are unrestricted and unknown. The measurements are
+
+\[
+Y=D_g AS+E,\qquad D_g=\operatorname{diag}(g),
+\]
+
+where `E` is additive measurement error. Each snapshot costs `m` complex sensor readings. The input `A` is supplied; `g` and `S` are acquired. No distribution, sparsity, or known pilot values are supplied for `S`.
+
+For every nonzero complex `c`, `(g/c,cS)` gives the same noiseless `Y`. Thus data alone cannot determine absolute gain and signal scale or their common phase. The output is a projective pair unless an external scalar convention is supplied, such as a known reference gain `g_1`. This is the only gauge in the generic theorem. If `A` were also unknown, additional row-scaling ambiguities would arise and this analysis would not apply.
+
+The constant-gain window is essential. It models gains and phases that are static over a block, including blockwise drift when each block is treated separately. If gains vary independently at every snapshot, the relevant block length is `K=1`; the generic threshold then allows only `r=1`. For `r≥2`, one snapshot per independent gain vector is underdetermined. A smooth or low-dimensional drift law would be a different model and needs its own identifiability analysis.
+
+## Exact deterministic rank test
+
+Let `B ∈ C^{m×(m-r)}` have orthonormal columns spanning `ker(A*)`. For `Y=[y_1,…,y_K]`, define
+
+\[
+\mathcal C_Y h=
+\begin{bmatrix}
+B^*\operatorname{diag}(y_1)h\\
+\vdots\\
+B^*\operatorname{diag}(y_K)h
+\end{bmatrix}
+\in\mathbb C^{K(m-r)}.
+\]
+
+In the noiseless case, `h_0=g^{\odot-1}` lies in `ker(C_Y)`, since `diag(y_k)h_0=As_k` and `B* A=0`.
+
+**Lemma.** For fixed full-column-rank `A`, noiseless `Y=D_gAS`, and nonzero gain entries, `(g,S)` is identifiable from `Y` up to the common complex scaling if and only if
+
+\[
+\ker(\mathcal C_Y)=\operatorname{span}\{g^{\odot-1}\},
+\quad\text{equivalently}\quad
+\operatorname{rank}(\mathcal C_Y)=m-1.
+\]
+
+Consequently, `K(m-r)≥m−1` is necessary. This count is not sufficient for every fixed `A,S`; the rank condition is the exact instance-wise test.
+
+**Proof.** Any alternative solution `(g&#x27;,S&#x27;)` gives `h&#x27;=g&#x27;^{\odot-1}` with `B*diag(y_k)h&#x27;=B*As&#x27;_k=0` for every `k`, so `h&#x27;∈ker(C_Y)`. If the kernel is one-dimensional, `h&#x27;=c h_0`, and hence `g&#x27;=g/c`. Substituting into the measurement equation and using injectivity of `A` gives `S&#x27;=cS`. Conversely, if the kernel has dimension at least two, choose `v` outside `span(h_0)`. For sufficiently small nonzero `t`, all entries of `h_t=h_0+tv` remain nonzero. Since `C_Y h_t=0`, each column of `diag(h_t)Y` lies in `ker(B*)=range(A)`, so there is an `S_t` with `Y=D_{1/h_t}AS_t`. This solution is not in the original scaling orbit. The row count of `C_Y` proves the necessary inequality. ∎
+
+The generic threshold is stronger than that row-count observation: for almost all `A,g,S`, rank is `m−1` once `K≥ceil((m−1)/(m−r))`; the published theorem states this for `K≤r`. For `K&gt;r`, a generic set of `r` columns can be retained and the same result applied. Nongeneric snapshots, zero sensor outputs across the whole block, or a poorly conditioned instance can fail even above the count threshold.
+
+## Stability of the direct nullspace procedure
+
+Build `C_{Y+E}` from observed data and take its unit right singular vector `h_hat` for the smallest singular value. Suppose the noiseless `C_Y` has rank `m−1`, let
+
+\[
+\gamma=\sigma_{m-1}(\mathcal C_Y)&gt;0,
+\qquad \delta=\|E\|_F&lt;\gamma/2.
+\]
+
+Then
+
+\[
+\sin\angle(h_{\rm hat},h_0)\leq \frac{2\delta}{\gamma}.
+\]
+
+Indeed, the perturbation map obeys `||C_E||_2≤||E||_F`: for any unit `v`, sum `||B*diag(e_k)v||_2²≤sum||e_k||_∞²≤||E||_F²`. The minimum singular value of `C_{Y+E}` is at most `δ`, by testing `h_0`; therefore `||C_Y h_hat||_2≤2δ`. On `h_0^⊥`, `C_Y` expands by at least `γ`, which yields the displayed angle bound.
+
+This is a projective estimate. Converting it to coordinatewise gains requires a non-small reference coordinate (or another gauge anchor) and gains bounded away from zero. After fixing scale, recover
+
+\[
+\widehat S=A^\dagger\operatorname{diag}(\widehat h)(Y+E).
+\]
+
+For an anchored reciprocal-gain estimate, its coefficient error satisfies
+
+\[
+\|\widehat S-S\|_F\leq \|A^\dagger\|_2\left(
+\|\widehat h-h_0\|_\infty\|Y\|_F+
+\|\widehat h\|_\infty\|E\|_F\right).
+\]
+
+The key limitation is the gap `γ`: generic identifiability says only `γ&gt;0`, not that `γ` is bounded below uniformly. The claim is therefore a local deterministic conditioning law, not a distribution-free noise guarantee. Li, Lee, and Bresler&#x27;s 2017 result already provides high-probability noisy recovery for random measurement matrices and adversarial signals/noise in a specified regime, so the elementary SVD bound is not a replacement for that theory.
+
+## Implementable procedure and information-matched baseline
+
+For each constant-gain block:
+
+1. Compute an orthonormal basis `B` of `ker(A*)` by QR or SVD.
+2. For every snapshot `y_k`, form the block `B*diag(y_k)` and stack these blocks into `C_Y`.
+3. Compute the smallest right singular vector of the stacked matrix. Inspect `σ_{m-1}(C_Y)`; a small gap means gain recovery will be noise-sensitive.
+4. Either return the gains and coefficients up to the global complex scale, or fix that scale with one known reference-gain datum.
+5. Set `g_hat=1/h_hat` after the gauge fix, then recover coefficients by least squares with `A†`.
+
+The self-calibrated branch uses `mK` complex readings for `K` unknown-scene snapshots. If absolute amplitude and phase are required, add one complex reference-gain datum, giving `mK+1`. The externally calibrated comparator receives the same `A`, observes one known pilot vector `p` with all `p_i≠0`, and obtains `g_i=y_i^{pilot}/p_i`; a pilot known in absolute complex units fixes the common gauge itself. It then recovers each scene coefficient with ordinary calibrated least squares. That branch uses `mK` scene readings plus `m` pilot readings, giving `m(K+1)`. Thus, for the same `K` scenes and absolute output, the external pilot costs `m−1` more scalar readings after the self branch&#x27;s one reference datum is charged. Charge one dedicated pilot snapshot per constant-gain block, or amortize that cost over the actual number of scenes before comparing. If the pilot is known only up to a common scale, charge an additional reference datum for both branches. Self-calibration can reuse unknown scenes, but this fact alone is not a performance advantage: it needs the generic snapshot threshold and depends on `γ`, while the known-pilot baseline has direct gain estimates.
+
+This comparison leaves out pilot-source setup time, source-model uncertainty, hardware saturation, and memory/CPU costs. They must be measured separately for an application-level cost claim. No such experiment was run here.
+
+## Prior-art and Astra retrieval
+
+- Li, Lee, and Bresler, [“Optimal Sample Complexity for Blind Gain and Phase Calibration”](https://arxiv.org/abs/1512.07293), arXiv:1512.07293. The subspace model is `Y=diag(λ)AX`; Theorem 2.1 gives generic identifiability up to scaling when `n&gt;m` and `N≥(n−1)/(n−m)` (with `N≤m`), and identifies the threshold as optimal against a degrees-of-freedom lower bound. The paper explicitly leaves stability open in that work.
+- Li, Lee, and Bresler, [“Blind Gain and Phase Calibration via Sparse Spectral Methods”](https://arxiv.org/abs/1712.00111), arXiv:1712.00111. This gives power-iteration recovery and perturbation/error guarantees for BGPC, including the subspace case under random measurement matrices; its assumptions and high-probability regime are narrower than a fixed arbitrary `A` with only the rank condition.
+- The pinned Astra tree is `8ede33c2f09a8abe07b430892b3ac4bb71c27c83`. I selectively fetched and Git-blob-hash-checked `N66-regular-sensor-spectral-archives` (`9428298dcfe3b7b15e62f81293d7104376cb559d`) and `N25-acquisition-interface-tests` (`6bf4f1a5efb71b48d521d0d191d0f92f8b1a586d`). N66 studies archival of observations from known regular non-Gaussian sensor distributions and explicitly keeps unknown calibration outside scope; N25 concerns noisy matrix-query excitation and does not treat sensor-gain calibration. These cards do not supply a competing self-calibration theorem.
+
+No new novelty or priority claim is supported by this route. The instance-wise rank criterion, linear-SVD implementation, and gap perturbation proof are retained as a transparent reconstruction; the generic threshold is established BGPC prior art.
+</pre><p><a href="../assets/a762e6aacc9a276229cafeaa81dd423183e63ba3a339c4147132cf3fc9fab664.md">Exact original</a></p></html>

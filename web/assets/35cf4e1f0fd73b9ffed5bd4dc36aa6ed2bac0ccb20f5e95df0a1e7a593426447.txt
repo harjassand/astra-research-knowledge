@@ -1,0 +1,175 @@
+Equal-information transfer: a criterion, an algebraic instance, and a limit
+Date: 2026-10-08
+Status: scoped result; no novelty claim for the data structure.
+
+1. Interface and criterion
+
+Let E be the complete source transcript available at the start of transfer,
+including every source answer and every failed acquisition query that the
+learner used. Let S = phi(E) be the retained structure. A later workload is
+an online sequence X = (x_1,...,x_m). The transfer algorithm and its baseline
+must receive the same E, the same x_i as each task arrives, have the same
+correctness requirement, and use the same query and arithmetic primitives.
+Any randomness or external hint used by phi is part of E or is separately
+charged. Thus S contains no information unavailable to the baseline; it is a
+representation computed from E.
+
+Fix a cost model before evaluating the workload. In particular, name the
+source-oracle calls and reads, acquisition computation, verification and
+failed searches, writes, retained-space requirement, and per-task reads,
+queries, and computation. Either report these as a resource vector or state
+fixed prices that turn them into one scalar. Do not infer a total-cost win
+from one component alone.
+
+Proposition (amortized-transfer criterion). Define A(E -> S) as the one-time acquisition charge relative to a baseline
+that retains E. It includes all extra source calls/reads, computation,
+verification, failed branches, writes, and the incremental retained-space
+charge for S in place of E. Let u_S(x_i) be all per-task reuse costs for the
+structure, and u_R(x_i) the cost of the named raw-retaining/relearning
+baseline: it keeps E, but reconstructs the useful derived structure for each
+task and does not carry a derived cache between tasks. Both are exact and use
+the same target input. With a predeclared scalar cost, transfer has a strict
+net advantage against this baseline exactly when
+
+    transfer wins on this workload  iff
+    A(E -> S) + sum_i u_S(x_i) < sum_i u_R(x_i).
+
+Proof. Add the acquisition charge once and the reuse charge once per target;
+compare that sum with the baseline's per-target sum. The uniform threshold
+below follows by rearranging. No statistical or computational assumption is
+hidden in this accounting step.
+
+This accounting criterion is meaningful as a transfer result only if the
+mechanism also changes a later complexity measure: for example, the worst-case
+number of source-data probes or arithmetic operations per target is lower
+for S than for R. In the uniform case with per-task costs u_S = l and
+u_R = b, and one-time overhead A, the exact break-even condition is
+
+    b > l  and  m > A/(b-l).
+
+For a resource vector, state the per-task query/operation improvement and the
+one-time space/acquisition cost separately; a scalar break-even point depends
+on the stated prices. A shorter description is neither necessary nor
+sufficient. A lower wall-clock time is not a complexity result unless it is
+paired with matched inputs, measured operations/queries, and the acquisition
+and reuse charges.
+
+Simulation limit. If a stronger retaining baseline may run phi once on E,
+keep S with the same space budget, and reuse it, it can copy the transfer
+algorithm's entire execution. Its cost is exactly A plus the transfer reuse
+cost (or lower if it has a better encoder). Therefore no strict advantage is
+possible against the unrestricted best equal-information retainer. A positive
+claim must name the narrower retaining/relearning policy or a real constraint
+such as a memory cap, a preprocessing deadline, or a query budget. This is
+not an information gain: it is a preprocessing/query tradeoff under stated
+resource constraints.
+
+2. Finite-field polynomial evaluation
+
+This small algebraic instance makes both the query-complexity change and its
+price explicit. Take F = GF(2^k), q = 2^k, and an unknown polynomial p of
+degree at most d, represented in the source transcript by its d+1
+coefficients. The source transcript therefore contains n = (d+1)k bits.
+Each later task supplies x in F and requests the exact value p(x). Assume
+d < 2^(k/3), as in the lower bound cited below.
+
+Transfer structure: before target tasks arrive, build the complete table
+T[x] = p(x) for every x in F. Read the n source bits once, evaluate p at all
+q points by Horner's rule, and write the q field outputs. This costs at most
+2qd field operations, qk table-bit writes, and n source-bit reads. It
+retains qk bits. A later task reads the k-bit table entry, so its query cost
+is k bit probes; the common cost of receiving x and returning a k-bit answer
+is omitted on both sides.
+
+Matched raw-retaining/relearning baseline: retain the n coefficient bits,
+with no source-dependent redundant index, and answer each online target from
+that representation. Gál and Miltersen's Theorem 2 gives, for this
+polynomial-evaluation problem, (r+1)t >= n/3 for a representation of n+r
+bits and a query scheme using t bit probes. With the raw n-bit
+representation (r=0), every exact query scheme therefore uses at least
+n/3 probes in the worst case. This is a lower bound for the baseline's
+query model, not a claim about its wall-clock time. The transfer table uses
+more space, and that difference is charged below.
+
+For d > 2, the later worst-case query-probe reduction is at least
+
+    n/3 - k = k(d-2)/3 > 0.
+
+Here is one explicit scalarization. Charge alpha per field operation, beta
+per bit read/probe/write, and gamma per retained bit of capacity. Relative to
+retaining the n-bit source record, the table's one-time incremental charge is
+
+    A = beta*n + 2*alpha*q*d + beta*(q*k + 2*q*d*k)
+        + gamma*(q*k - n).
+
+The first term pays to read the source record; the second pays for the stated
+Horner arithmetic; the q*k term initializes the output table, and the
+2*q*d*k term charges one field-cell read and write for each of the q*d
+Horner updates; the final accumulator is the table, so no separate copy is
+assumed. The last term pays its extra retained capacity. Reuse costs at most
+beta*k per later query. Under a workload protocol in which the raw baseline
+incurs at least its worst-case beta*n/3 probes on every target, a sufficient
+break-even condition, even granting it zero arithmetic cost beyond those
+probes, is
+
+    m * beta*(n/3 - k) > A.
+
+If this fails, the table can still have a query-complexity advantage while
+losing on the chosen total-cost measure. The break-even formula is exact for
+the named baseline and the actual workload costs. Gál and Miltersen's bound
+is a worst-case single-query bound; by itself it does not show that every
+query in a fixed sequence for one fixed p costs n/3 probes. A total-cost claim
+for such a sequence must establish the sum of its baseline query costs (or
+state an adversarial/distributional workload model that supplies that bound).
+This note does not promote the single-query lower bound into a sequence lower
+bound.
+
+The example is deliberately scoped. If the retaining baseline is allowed the
+same extra space and may preprocess once, it can build T itself and exactly
+match the transfer scheme. If it is memory-limited to n bits, the table is
+infeasible. The advantage above is therefore precisely a classical
+preprocessing-versus-query tradeoff against the specified raw-retaining
+baseline; the polynomial coefficients and table contain equal information.
+
+3. What this rules out
+
+Shorter code or a shorter model description does not imply a later query or
+operation reduction. A one-off 100-operation encoder that saves one
+operation per task is a net loss for any workload of at most 100 tasks, even
+though every later task runs faster. Similarly, faster elapsed time alone
+does not isolate acquisition: compilation, caching, machine load, or a
+different primitive implementation may change latency without changing the
+query/computation complexity. Require the explicit per-task complexity
+change and the break-even inequality above.
+
+The matching-cache simulation also blocks an overclaim: if a raw-retaining
+baseline can cache ordinary examples, previous answers, or the derived
+structure, its result must be included. A claimed advantage against a
+baseline that is forbidden to retain information the learner retains is not
+equal-information transfer.
+
+4. Prior evidence and literature scope
+
+Prior local acquisition comparisons support these controls. The remembered
+A-to-B comparison reported a 348.64 ms median versus 343.93 ms for a
+retaining source-expression enumerator; removing the acquired artifact raised
+the total to 422.63 ms, while the prototype remained 1.37% slower and missed
+its frozen 10% gate (MEMORY.md:2578-2584). A separate parity transfer had
+target endpoints 19,759 versus 31,480, but shared acquisition reduced the
+end-to-end saving to about 3.6% (MEMORY.md:3151). A cached-choice comparator
+also exactly matched a 153-request trace in a separate diagnostic
+(MEMORY.md:2879). These are memory-derived prior results, not measurements
+repeated for this note.
+
+Primary literature: Anna Gál and Peter Bro Miltersen, “The Cell Probe
+Complexity of Succinct Data Structures,” ICALP 2003; full text in Dagstuhl
+Seminar Proceedings 06111 (2006), Theorem 2. The paper formulates polynomial
+evaluation as preprocessing a representation and charging the query by bits
+probed, and proves the raw/low-redundancy query lower bound used above.
+https://doi.org/10.1007/3-540-45061-0_28
+https://drops.dagstuhl.de/opus/volltexte/2006/606/pdf/06111.GalAnna.Paper.606.pdf
+
+Novelty status: the table, the cell-probe model, and the preprocessing/query
+tradeoff are established data-structure ideas. This note makes no novelty
+claim for them. Its criterion is an explicit accounting gate for acquisition
+claims, with the scope and matched-cache limitation stated above.

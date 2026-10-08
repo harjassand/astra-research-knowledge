@@ -1,0 +1,119 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c5_quantum_dimension_obstruction/cycle9_spin9_mixed/enumerate_support_cone_rays.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c5_quantum_dimension_obstruction/cycle9_spin9_mixed/enumerate_support_cone_rays.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact polyhedral audit for the candidate Spin(9) EB support triangle.
+
+This checks the ten extreme rays listed in SPIN9_SUPPORT_POLYTOPE.md. It
+does not evaluate any star Hamiltonian or prove the quantum inequality.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+from itertools import combinations
+from math import gcd
+
+import sympy as sp
+
+
+VERTICES = [
+    sp.Matrix([1, 0, 0, 14]),
+    sp.Matrix([0, 1, 7, 7]),
+    sp.Matrix([1, 4, 4, 6]),
+]
+EXPECTED = {
+    (0, 0): {
+        (0, 0, 0, 1),
+        (0, 0, 1, 1),
+        (0, 2, 0, 1),
+        (0, 7, 5, 6),
+        (1, 0, 0, 0),
+        (7, 0, 2, 1),
+    },
+    (0, 1): {
+        (0, 0, 1, 0),
+        (0, 0, 1, 1),
+        (0, 1, 1, 0),
+        (0, 7, 5, 6),
+        (3, 0, 1, 0),
+        (7, 0, 2, 1),
+    },
+    (0, 2): {
+        (0, 1, 0, 0),
+        (0, 1, 1, 0),
+        (0, 2, 0, 1),
+        (0, 7, 5, 6),
+        (1, 0, 0, 0),
+        (3, 0, 1, 0),
+        (7, 0, 2, 1),
+    },
+}
+
+
+def primitive_integer_ray(v: sp.Matrix) -&gt; tuple[int, ...]:
+    denominator_lcm = sp.ilcm(*(entry.q for entry in v))
+    entries = [int(entry * denominator_lcm) for entry in v]
+    common = 0
+    for entry in entries:
+        common = gcd(common, abs(entry))
+    return tuple(entry // common for entry in entries)
+
+
+def cone_rays(winner: int) -&gt; set[tuple[int, ...]]:
+    # Row constraints are alpha_j &gt;= 0 and (v_winner-v_other)·alpha &gt;= 0.
+    rows = [sp.eye(4).row(j) for j in range(4)]
+    rows.extend(
+        (VERTICES[winner] - VERTICES[other]).T
+        for other in range(3)
+        if other != winner
+    )
+    rays: set[tuple[int, ...]] = set()
+    # A pointed full-dimensional cone in R^4 has each extreme ray on at least
+    # three independent active facets. Enumerate all rank-three triples.
+    for active in combinations(range(len(rows)), 3):
+        matrix = sp.Matrix.vstack(*(sp.Matrix(rows[index]) for index in active))
+        if matrix.rank() != 3:
+            continue
+        kernel = matrix.nullspace()
+        if len(kernel) != 1:
+            continue
+        candidate = kernel[0]
+        if all((row * candidate)[0] &gt;= 0 for row in rows):
+            pass
+        elif all((row * (-candidate))[0] &gt;= 0 for row in rows):
+            candidate = -candidate
+        else:
+            continue
+        rays.add(primitive_integer_ray(candidate))
+    return rays
+
+
+def main() -&gt; None:
+    all_rays: set[tuple[int, ...]] = set()
+    for winner in range(3):
+        rays = cone_rays(winner)
+        expected = EXPECTED[(0, winner)]
+        if rays != expected:
+            raise AssertionError(
+                f&quot;winner {winner}: got {sorted(rays)}, expected {sorted(expected)}&quot;
+            )
+        for ray in rays:
+            alpha = sp.Matrix(ray)
+            values = [int((vertex.T * alpha)[0]) for vertex in VERTICES]
+            if values[winner] != max(values):
+                raise AssertionError((winner, ray, values))
+        all_rays.update(rays)
+
+    expected_union = set().union(*EXPECTED.values())
+    if all_rays != expected_union or len(all_rays) != 10:
+        raise AssertionError((sorted(all_rays), sorted(expected_union)))
+
+    print(&quot;exact support-cone ray audit: PASS&quot;)
+    for winner in range(3):
+        print(f&quot;L{winner} cone rays ({len(EXPECTED[(0, winner)])}):&quot;)
+        for ray in sorted(EXPECTED[(0, winner)]):
+            print(&quot; &quot;, ray)
+    print(f&quot;distinct union ({len(all_rays)}): {sorted(all_rays)}&quot;)
+    print(&quot;scope: candidate support-polytope geometry only; no star PSD checks&quot;)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/b18e434c153ea5d2ce2aa06ddb3680accd64cbe4fb7b625d4ae92bbc0003e15c.py">Exact original</a></p></html>

@@ -1,0 +1,71 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/measurement_inverse/nonlinear_inverse/mub_deletion_sanity.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/measurement_inverse/nonlinear_inverse/mub_deletion_sanity.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Finite d=3 check of the complete-MUB deletion formulas in CYCLE2_REPORT.md.
+
+This verifies one explicit instance only; the prime-power family proof is algebraic.
+&quot;&quot;&quot;
+import numpy as np
+
+
+def complete_mub_prime(p):
+    omega = np.exp(2j * np.pi / p)
+    shift = np.zeros((p, p), dtype=complex)
+    for k in range(p):
+        shift[(k + 1) % p, k] = 1
+    phase = np.diag([omega**k for k in range(p)])
+    bases = [np.eye(p, dtype=complex)]
+    for a in range(p):
+        _, vectors = np.linalg.eig(shift @ np.linalg.matrix_power(phase, a))
+        vectors = vectors / np.linalg.norm(vectors, axis=0, keepdims=True)
+        bases.append(vectors)
+    return bases
+
+
+d = 3
+bases = complete_mub_prime(d)
+projectors = [np.outer(b[:, k], b[:, k].conj()) for b in bases for k in range(d)]
+m0 = len(projectors)
+N = d * (d + 1) // 2
+P_sym = np.zeros((d * d, d * d), dtype=complex)
+for i in range(d):
+    for j in range(d):
+        P_sym[i * d + j, i * d + j] += 0.5
+        P_sym[i * d + j, j * d + i] += 0.5
+F0 = P_sym / N
+Ffull = sum(np.kron(P, P) for P in projectors) / m0
+w = bases[0][:, 0]
+P_w = np.outer(w, w.conj())
+kept = projectors[1:]
+Fprime = sum(np.kron(P, P) for P in kept) / (m0 - 1)
+
+# Quartic maximum witness: x is orthogonal to the deleted basis vector.
+x = bases[0][:, 1]
+qprime_x = sum(abs(np.vdot(b[:, k], x)) ** 4 for b in bases for k in range(d) if not np.allclose(b[:, k], w))
+
+# Lower-constant witness (the source formula minimizes this over orthogonal u,v).
+e = bases[0][:, 1]
+u, v = (w + e) / np.sqrt(2), (w - e) / np.sqrt(2)
+full_lower_sq = sum(np.real(np.vdot(u, P @ v)) ** 2 for P in projectors)
+removed_sq = np.real(np.vdot(u, P_w @ v)) ** 2
+kept_lower_sq = full_lower_sq - removed_sq
+
+# Real span of Hermitian measurement projectors; rank d^2 means informationally complete.
+coords = np.stack([np.concatenate([P.real.ravel(), P.imag.ravel()]) for P in kept])
+span_rank = np.linalg.matrix_rank(coords, tol=1e-9)
+expected_sq_error = (1 - 1 / N) / (m0 - 1) ** 2
+actual_sq_error = np.linalg.norm(Fprime - F0, &quot;fro&quot;) ** 2
+
+print(f&quot;d={d}, m_full={m0}, m_deleted={m0-1}&quot;)
+print(f&quot;full_moment_max_abs_error={np.max(np.abs(Ffull-F0)):.3e}&quot;)
+print(f&quot;deleted_moment_sq_error={actual_sq_error:.12g}, formula={expected_sq_error:.12g}&quot;)
+print(f&quot;deleted_relative_moment_error={np.linalg.norm(Fprime-F0,&#x27;fro&#x27;)/np.linalg.norm(F0,&#x27;fro&#x27;):.12g}&quot;)
+print(f&quot;qprime_witness={qprime_x:.12g} (theoretical max 2)&quot;)
+print(f&quot;lower_full={full_lower_sq:.12g}, removed={removed_sq:.12g}, kept_witness={kept_lower_sq:.12g}&quot;)
+print(f&quot;retained_Hermitian_span_rank={span_rank}, expected={d*d}&quot;)
+
+assert np.max(np.abs(Ffull - F0)) &lt; 1e-12
+assert abs(actual_sq_error - expected_sq_error) &lt; 1e-12
+assert abs(qprime_x - 2) &lt; 1e-12
+assert abs(full_lower_sq - 0.5) &lt; 1e-12
+assert abs(removed_sq - 0.25) &lt; 1e-12
+assert abs(kept_lower_sq - 0.25) &lt; 1e-12
+assert span_rank == d * d
+</pre><p><a href="../assets/31e5250526864efa2584d274bb901a6684fc6ff9b1b9ec2ef96fc33b91f67769.py">Exact original</a></p></html>

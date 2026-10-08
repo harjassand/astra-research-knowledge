@@ -1,0 +1,171 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/molecular_cadence_theorem/exact_cp_audit.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/molecular_cadence_theorem/exact_cp_audit.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Compound-Poisson PMF and information audit using a log-domain recurrence.
+
+The recurrence is Panjer&#x27;s recursion for a compound Poisson law with
+integer marks.  This implementation stores log coefficients q_n in
+exp(mu * sum_j k_j z^j), avoiding exp(6 mu) overflow in an unscaled table.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import json
+import math
+from pathlib import Path
+
+RATES = ((1, 1, 4, 0), (0, 4, 1, 1))
+M2 = 41
+M3 = (117, 123)
+M4 = (341, 401)
+M6 = (2981, 5081)
+
+
+def max_count(mu: float) -&gt; int:
+    # More than 20 standard deviations beyond the shared mean, with a
+    # 100-count cushion for the small-mu rows.
+    return math.ceil(15 * mu + 20 * math.sqrt(41 * mu) + 100)
+
+
+def logsumexp(values: list[float]) -&gt; float:
+    top = max(values)
+    if top == -math.inf:
+        return top
+    return top + math.log(math.fsum(math.exp(value - top) for value in values))
+
+
+def panjer_log_coefficients(mu: float, rates: tuple[int, ...], cutoff: int) -&gt; list[float]:
+    logq = [-math.inf] * (cutoff + 1)
+    logq[0] = 0.0
+    for n in range(1, cutoff + 1):
+        terms = [
+            math.log(j * rates[j - 1]) + logq[n - j]
+            for j in range(1, min(len(rates), n) + 1)
+            if rates[j - 1] and logq[n - j] &gt; -math.inf
+        ]
+        if terms:
+            logq[n] = math.log(mu / n) + logsumexp(terms)
+    return logq
+
+
+def kl_remainder(log_ratio: float) -&gt; float:
+    &quot;&quot;&quot;Return exp(d)*d-exp(d)+1 stably; this is nonnegative for real d.&quot;&quot;&quot;
+    if not math.isfinite(log_ratio):
+        return 1.0  # The only nonfinite ratio here is P1=0&lt;P0.
+    if abs(log_ratio) &lt; 0.1:
+        return math.fsum(
+            (order - 1) * log_ratio**order / math.factorial(order)
+            for order in range(2, 14)
+        )
+    return 1.0 + (log_ratio - 1.0) * math.exp(log_ratio)
+
+
+def kl_weighted(p0: float, p1: float, log_ratio: float) -&gt; float:
+    if not math.isfinite(log_ratio):
+        return p0
+    if abs(log_ratio) &lt; 0.1:
+        return p0 * kl_remainder(log_ratio)
+    return p0 + p1 * (log_ratio - 1.0)
+
+
+def log_tail_chernoff(mu: float, rates: tuple[int, ...], threshold: int) -&gt; float:
+    &quot;&quot;&quot;Log Chernoff upper bound P(S &gt;= threshold), optimized over t&gt;=0.&quot;&quot;&quot;
+    target = threshold / mu
+
+    def derivative(t: float) -&gt; float:
+        return math.fsum(j * rates[j - 1] * math.exp(j * t)
+                         for j in range(1, len(rates) + 1))
+
+    lo, hi = 0.0, 1.0
+    while derivative(hi) &lt; target:
+        hi *= 2
+    for _ in range(80):
+        mid = (lo + hi) / 2
+        if derivative(mid) &lt; target:
+            lo = mid
+        else:
+            hi = mid
+    t = (lo + hi) / 2
+    cumulant = math.fsum(rates[j - 1] * (math.exp(j * t) - 1)
+                         for j in range(1, len(rates) + 1))
+    return mu * cumulant - t * threshold
+
+
+def audit(mu: float) -&gt; dict[str, float | int]:
+    cutoff = max_count(mu)
+    logqs = [panjer_log_coefficients(mu, rates, cutoff) for rates in RATES]
+    logps = [[value - 6 * mu for value in row] for row in logqs]
+    probs = [[math.exp(value) if value &gt; -745 else 0.0 for value in row]
+             for row in logps]
+    p0, p1 = probs
+
+    affinity = math.fsum(math.sqrt(a) * math.sqrt(b) for a, b in zip(p0, p1))
+    h2 = math.fsum((math.sqrt(a) - math.sqrt(b)) ** 2 for a, b in zip(p0, p1))
+    d10 = math.fsum(
+        kl_weighted(p0[n], p1[n], logqs[1][n] - logqs[0][n])
+        for n in range(cutoff + 1)
+        if p0[n] &gt; 0 or p1[n] &gt; 0
+    )
+    tails = [math.exp(log_tail_chernoff(mu, rates, cutoff + 1)) for rates in RATES]
+    affinity_upper = affinity + math.sqrt(tails[0] * tails[1])
+    variance_u = [
+        6
+        + 9 * M4[b] / (M2**2 * mu)
+        + 9 * M3[b] ** 2 / (M2**3 * mu)
+        + M6[b] / (M2**3 * mu**2)
+        for b in range(2)
+    ]
+    delta_mean = 6 / (M2**1.5 * math.sqrt(mu))
+    finite_tests = []
+    for lam in (1, 10, 100, 124_288):
+        n = round(lam * mu)
+        a_lower_n = affinity**n
+        a_upper_n = affinity_upper**n
+        tv_upper = math.sqrt(max(0.0, 1 - a_lower_n**2))
+        finite_tests.append({
+            &quot;n_over_mu_approx&quot;: n / mu,
+            &quot;increments_n&quot;: n,
+            &quot;equal_prior_error_lower_from_affinity&quot;: (1 - tv_upper) / 2,
+            &quot;equal_prior_error_upper_from_affinity&quot;: min(0.5, a_upper_n / 2),
+            &quot;score_test_typeI_plus_typeII_Chebyshev_upper&quot;: min(
+                2.0,
+                4 * (variance_u[0] + variance_u[1]) / (n * delta_mean**2),
+            ),
+        })
+    return {
+        &quot;mu&quot;: mu,
+        &quot;cutoff&quot;: cutoff,
+        &quot;mass0_truncated&quot;: math.fsum(p0),
+        &quot;mass1_truncated&quot;: math.fsum(p1),
+        &quot;chernoff_tail0&quot;: tails[0],
+        &quot;chernoff_tail1&quot;: tails[1],
+        &quot;affinity_truncated&quot;: affinity,
+        &quot;H2_truncated&quot;: h2,
+        &quot;mu_H2_truncated&quot;: mu * h2,
+        &quot;KL_1_to_0_truncated&quot;: d10,
+        &quot;mu_KL_1_to_0_truncated&quot;: mu * d10,
+        &quot;target_mu_H2&quot;: 3 / (2 * 41**3),
+        &quot;target_mu_KL&quot;: 3 / 41**3,
+        &quot;finite_test_bounds&quot;: finite_tests,
+    }
+
+
+def main() -&gt; None:
+    rows = [audit(mu) for mu in (1, 2, 5, 10, 20, 40, 80, 100, 250, 1000)]
+    output = {
+        &quot;rates&quot;: {&quot;model0&quot;: RATES[0], &quot;model1&quot;: RATES[1]},
+        &quot;recurrence&quot;: &quot;logq[0]=0; logq[n]=log(mu/n)+logsumexp_j(log(j*k_j)+logq[n-j]); logp[n]=logq[n]-6*mu&quot;,
+        &quot;support_check&quot;: {
+            &quot;p0_at_one&quot;: &quot;mu*exp(-6*mu)&quot;,
+            &quot;p1_at_one&quot;: 0,
+            &quot;KL_0_to_1&quot;: &quot;infinity for every mu&gt;0&quot;,
+        },
+        &quot;rows&quot;: rows,
+        &quot;scope&quot;: &quot;finite floating-point recurrence with explicit Chernoff truncation bounds; this is diagnostic evidence, not the asymptotic proof&quot;,
+    }
+    out = Path(__file__).with_name(&quot;exact_cp_audit.json&quot;)
+    out.write_text(json.dumps(output, indent=2) + &quot;\n&quot;)
+    print(json.dumps(output, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/ab9ea16b5a978555f9bd9e05261e44f512042f0862f0e7b31d89d5a0505114c9.py">Exact original</a></p></html>

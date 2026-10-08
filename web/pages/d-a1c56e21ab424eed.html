@@ -1,0 +1,124 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/acquisition_learning/leaves/active_passive_hmm_controlled.txt</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/acquisition_learning/leaves/active_passive_hmm_controlled.txt</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>Controlled transition acquisition without state clamping
+========================================================
+
+Verdict
+-------
+
+The previous state-clamp example can be replaced by a physical pulse that changes only the probability of entering a latent state. The learner receives emissions and never receives state labels or a state-setting operation. In the model below, an excitation pulse raises the chance of an informative hidden state from p to q; the state remains stochastic and hidden.
+
+There is an exact cost advantage over the uncontrolled passive stream whenever the increased reveal rate justifies the pulse cost. There is also an exact no-adaptivity theorem: once a controller is given the same randomized action allocation, choosing later actions from earlier observations cannot improve prediction. Before the first informative output, every observation is the same erasure symbol, so the entire action schedule can be sampled in advance. This is a scoped erasure-channel result; sign-flip noise or state-persistent dynamics can invalidate the equivalence.
+
+Controlled HMM and access
+------------------------
+
+Let the hidden state be S_t ∈ {0,1}, with unknown sign θ ∈ {−1,+1}. The known transition probabilities satisfy 0&lt;p&lt;q&lt;1. There are two known physical controls:
+
+* idle, u=0, with q_0=p;
+* excitation, u=1, with q_1=q&gt;p.
+
+After the control is applied and before the emission, the hidden transition is
+
+       P(S_t=1 | S_{t−1}=s, u_t=u) = q_u,
+       P(S_t=0 | S_{t−1}=s, u_t=u) = 1−q_u,   for both s∈{0,1}.
+
+Equivalently, each controlled transition matrix has both rows equal to (1−q_u,q_u). The excitation pulse changes a latent transition probability; it does not set S_t to a known value. The current state is never returned to the learner. The initial S_0 can be arbitrary because the first controlled transition has the stated law for either prior state. This rank-one transition also refreshes the state each step, so an external reset is unnecessary. If the physical implementation uses a common reset of cost r≥0 per observation, charge it in both modes as specified below.
+
+The observation alphabet is {⊥,+,−}. In state j∈{0,1}, an erasure channel emits the token θ with known probability e_j and emits ⊥ otherwise, where 0&lt;e_0&lt;e_1&lt;1. The learner observes only the emitted token, never a state label or the state variable S_t. For either output with positive probability under a fixed θ, both states have positive likelihood, so neither output identifies the current state. A θ token does identify the model sign; before the first sign, the entire observed history consists only of ⊥ symbols.
+
+Under an action with transition probability q_u, one observation is therefore
+
+       Pθ^u(Y=θ) = (1−q_u)e_0 + q_u e_1
+                    = e_0 + q_u(e_1−e_0) =: a_u,
+       Pθ^u(Y=⊥) = 1−a_u,
+       Pθ^u(Y=−θ) = 0.
+
+The posterior state remains non-degenerate after either emission: P(S_t=1|Y=θ,u)=q_u e_1/a_u∈(0,1), and P(S_t=1|Y=⊥,u)=q_u(1−e_1)/(1−a_u)∈(0,1). Thus neither output reveals the hidden state.
+
+Observations are conditionally independent across steps given the chosen controls. The passive stream uses only idle, with reveal rate a_0=e_0+p(e_1−e_0). An active controller may choose idle or excitation before each emission, including choices based on prior outputs.
+
+Prediction target and cost convention
+-------------------------------------
+
+The target is the next-emission law under idle:
+
+       Pθ^0(θ)=a_0,     Pθ^0(⊥)=1−a_0.
+
+The two target laws have total variation distance a_0. The learner must output a law Q̂ satisfying TV(Q̂,Pθ^0)≤a_0/3 with probability at least 2/3 for each θ. Since the two radius-a_0/3 balls are disjoint, this is equivalent to testing θ with both errors at most 1/3: a successful predictor is decoded by its nearest target law, and a correct sign test returns the exact target.
+
+Each emitted symbol costs one sample unit. An idle query costs c_0=1+r. An excitation query costs c_1=1+r+κ, where κ&gt;0 is the explicit physical action cost. The active controller may mix actions and stop adaptively. Query cost counts both symbols and action/reset overhead, so an arbitrarily long output batch is not free. With a precommitted action list u_1,…,u_n, no-sign probability is exactly Π_i(1−a_{u_i}); a fair guess at the end has each error equal to half this probability. Hence the fixed-budget prediction guarantee holds exactly when this product is at most 2/3. In passive mode, the smallest fixed sample budget is ⌈ln(2/3)/ln(1−a_0)⌉.
+
+Exact minimax expected-cost theorem
+----------------------------------
+
+Let C_pass^* be the minimum worst-case expected cost with idle-only passive access. Let C_act^* be the minimum worst-case expected cost when the controller can choose either action. With randomized prediction permitted,
+
+       C_pass^* = (1+r)/(3a_0),
+
+       C_act^* = 1 / (3 λ),
+       λ = max { a_0/(1+r), a_1/(1+r+κ) },
+       a_1 = e_0+q(e_1−e_0).
+
+Thus excitation is strictly worthwhile exactly when
+
+       a_1/(1+r+κ) &gt; a_0/(1+r),
+
+or equivalently (e_0+q(e_1−e_0))(1+r)&gt;(e_0+p(e_1−e_0))(1+r+κ). In that case
+
+       C_act^*/C_pass^* = a_0(1+r+κ)/(a_1(1+r)) &lt; 1.
+
+For example, with p=1/64, q=1/2, e_0=1/1024, e_1=1/2, r=0, and κ=1, passive minimax expected cost is 65536/1725≈37.99, while the best controlled cost is 4096/1539≈2.66, a factor greater than 14 after charging the excitation. Both hidden states can produce both emissions, so the token does not expose the state.
+
+The corresponding optimal expected number of emitted symbols is 1/(3a_0) for passive access and 1/(3a_*) for a single chosen action u*, where a_*=a_{u*} maximizes a_u/c_u. If u*=1, the number of excitation pulses equals the number of emitted symbols. These expectation bounds are exact because the controller may randomize its stopping rule; fixed, non-random query budgets obey the product criterion above.
+
+Proof of the cost theorem
+-------------------------
+
+Call an output informative if it is + or −. Once it occurs, θ is known exactly and the learner can output Pθ^0. If it never occurs, the transcript is independent of θ, so any randomized test has sum of its two error probabilities at least the probability of no informative output. Both errors at most 1/3 therefore require
+
+       P(informative output before stopping) ≥ 1/3.                 (1)
+
+On a query with action u, conditional on the history and on the query being reached before any sign, the reveal probability is a_u and the cost is c_u. Define λ=max_u a_u/c_u. The events “the first sign occurs at query t” are disjoint, and each has probability a_{u_t} times the probability that query t is reached. Summing over t gives, for any randomized adaptive policy,
+
+       P(first sign) = E[ Σ_{queried t} a_{u_t} ]
+                    ≤ λ E[ Σ_{queried t} c_{u_t} ]
+                    = λ E[C].
+
+Together with (1), every policy costs at least 1/(3λ) in the worst case. For passive access there is only action 0, so λ=a_0/(1+r), yielding the passive formula.
+
+For achievability, choose an action u* attaining λ and use it until either a sign appears or the controller stops and makes a fair random guess. Let a=a_{u*} and c=c_{u*}. The controller can randomize its stopping rule so that the probability of a sign is exactly 1/3. If a≥1/3, query once with probability 1/(3a). If a&lt;1/3, query once and, after each ⊥, continue with probability
+
+       γ = (1−3a)/(1−a).
+
+The probability of eventually seeing a sign is the geometric sum
+
+       a + (1−a)γa + ((1−a)γ)^2a + ··· = 1/3,
+
+and the expected query count is 1/[1−(1−a)γ]=1/(3a). A fair guess on the no-sign event has error (1−1/3)/2=1/3 under either θ. Expected cost is c/(3a)=1/(3λ), attaining the lower bound. The same construction with only idle proves the passive equality.
+
+No advantage from adaptive action choice under matched allocation
+------------------------------------------------------------------
+
+Here the matched passive comparator means an outcome-blind schedule with the same randomized allocation of idle and excitation actions, the same action rights, and the same costs; it commits before observing Y. Consider any adaptive controller and follow its hypothetical history in which every output is ⊥. Before a sign occurs, that is the only possible observation history. The controller&#x27;s actions and stopping decisions along this path depend only on elapsed time and private randomness, not on θ or on any informative data. Sample that private randomness and the resulting action schedule before data collection. Execute this precommitted randomized schedule until a sign occurs or the schedule stops, then make the same decision as the adaptive controller.
+
+The precommitted policy has exactly the same law of action counts, observation transcripts, success, and realized cost as the adaptive policy. After a sign, both policies stop because θ is already known. Therefore no adaptive policy beats the best non-adaptive randomized schedule with the same action allocation. In particular, the optimum above is achieved by one action with the best reveal-per-cost ratio; adaptive allocation among idle and excitation is unnecessary. This is an exact equivalence for the stated channel, not a comparison based only on KL or a finite-sample approximation.
+
+The strict factor-16 example is against the uncontrolled passive baseline, which has no excitation right. Against the strongest matched non-adaptive controller with the same physical action options and allocation, the adaptive controller has no advantage. This separates the value of a changed transition law from any claim that feedback itself learned a better representation.
+
+Failure conditions and scope
+----------------------------
+
+* The exact no-adaptivity proof uses a one-sided erasure channel: before a θ-token appears, every output is the same ⊥. If tokens can be flipped to the wrong sign, pre-token observations can carry partial evidence and the action schedule may benefit from posterior feedback.
+* The rank-one transition is essential to the simple query law. With state persistence, action effects depend on the current hidden-state posterior; an adaptive controller may have a real scheduling advantage, and these formulas no longer apply.
+* p, q, e_0, e_1, r, and κ are known. Unknown transition calibration, action failures, or an action that changes emissions as well as transitions require a different identification analysis.
+* If a_1/(1+r+κ)≤a_0/(1+r), excitation is not cost-effective. The active optimum then equals the passive optimum; extra action capability alone gives no gain.
+* The reported target is prediction of the idle one-step law. It is not general HMM parameter recovery, multi-step trajectory prediction, or teacher-free hidden-state discovery.
+
+HMM literature and local prior context
+--------------------------------------
+
+Anderson and Moore, “Active Learning for Hidden Markov Models: Objective Functions and Algorithms,” ICML 2005, formulate active selection of queryable hidden labels/positions and discuss value-of-information objectives. Mahajan, Kakade, Krishnamurthy, and Zhang, “Learning Hidden Markov Models Using Conditional Samples,” COLT 2023, use an oracle that conditions on a visible history and returns a future sample. Both make the access interface central; neither supplies the transition-pulse theorem above. The pulse here changes the HMM transition probability, while the state remains latent. [Anderson–Moore PDF](https://www.cs.cmu.edu/~brigham/papers/icml2005.pdf) · [Mahajan et al., PMLR](https://proceedings.mlr.press/v195/mahajan23a.html) · [Mahajan et al., PDF](https://proceedings.mlr.press/v195/mahajan23a/mahajan23a.pdf).
+
+Two local cards are relevant as scope checks. `work/astra_prior/cards/N25-acquisition-interface-tests.txt`, line 5, warns that actual-path predictive risk does not certify artificial spliced conditional queries and distinguishes conditional-sample access from passive acquisition. `work/astra_prior/cards/N13-passive-parity-boundary.txt`, line 5, distinguishes a hidden full-matrix oracle from passive data and calls for an equally informed direct comparator. Here the transition action is an explicit supplied right, the comparator gets the same action allocation, and the proof does not use spliced histories. These cards are local context, not premises.
+
+Source ledger: the primary HMM interfaces above were read in Anderson–Moore (2005), PDF pp. 1–3, and Mahajan et al. (2023), PDF pp. 1–4. Local retrieval followed `work/astra_prior/00_START_HERE.txt` → `work/astra_prior/topics/acquisition.txt` → cards N13 and N25. The theorem and exact cost optimization are derived here.
+</pre><p><a href="../assets/d641d5f27a8c94ef5a97b5f4cdc3869fd05c22a0a25ed75abb9bc56d5e09bc61.txt">Exact original</a></p></html>

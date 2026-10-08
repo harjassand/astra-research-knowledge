@@ -1,0 +1,246 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c7_materials_dynamic_design/code/audit_sources.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c7_materials_dynamic_design/code/audit_sources.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Recompute scoped source-data checks for the Ji et al. 2026 battery paper.
+
+Uses only the Python standard library and the publisher-provided XLSX files
+stored in ../sources. It does not establish that the phase-field model matches
+real cells; it checks unit conversions, source-data transforms, and the stated
+conditional Sand-column bound.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import hashlib
+import json
+import math
+import re
+import sys
+import zipfile
+from pathlib import Path
+from xml.etree import ElementTree as ET
+
+ROOT = Path(__file__).resolve().parents[1]
+SOURCES = ROOT / &quot;sources&quot;
+RESULTS = ROOT / &quot;results&quot; / &quot;source_audit.json&quot;
+FARADAY = 96485.33212  # C mol^-1
+
+NS = {
+    &quot;m&quot;: &quot;http://schemas.openxmlformats.org/spreadsheetml/2006/main&quot;,
+    &quot;r&quot;: &quot;http://schemas.openxmlformats.org/officeDocument/2006/relationships&quot;,
+    &quot;p&quot;: &quot;http://schemas.openxmlformats.org/package/2006/relationships&quot;,
+}
+
+
+def _col_index(cell_ref: str) -&gt; int:
+    letters = re.match(r&quot;[A-Z]+&quot;, cell_ref).group(0)
+    out = 0
+    for ch in letters:
+        out = out * 26 + ord(ch) - ord(&quot;A&quot;) + 1
+    return out - 1
+
+
+def read_xlsx_sheet(path: Path, requested: str) -&gt; list[list[object]]:
+    &quot;&quot;&quot;Read a basic numeric/string worksheet without third-party packages.&quot;&quot;&quot;
+    with zipfile.ZipFile(path) as zf:
+        workbook = ET.fromstring(zf.read(&quot;xl/workbook.xml&quot;))
+        relroot = ET.fromstring(zf.read(&quot;xl/_rels/workbook.xml.rels&quot;))
+        rels = {rel.attrib[&quot;Id&quot;]: rel.attrib[&quot;Target&quot;]
+                for rel in relroot.findall(&quot;p:Relationship&quot;, NS)}
+        sheets = workbook.find(&quot;m:sheets&quot;, NS)
+        target = None
+        for sheet in sheets.findall(&quot;m:sheet&quot;, NS):
+            if sheet.attrib[&quot;name&quot;] == requested:
+                target = rels[sheet.attrib[&quot;{&quot; + NS[&quot;r&quot;] + &quot;}id&quot;]]
+                break
+        if target is None:
+            raise KeyError(f&quot;No sheet {requested!r} in {path.name}&quot;)
+        target = target.lstrip(&quot;/&quot;)
+        if not target.startswith(&quot;xl/&quot;):
+            target = &quot;xl/&quot; + target
+        shared: list[str] = []
+        if &quot;xl/sharedStrings.xml&quot; in zf.namelist():
+            ss = ET.fromstring(zf.read(&quot;xl/sharedStrings.xml&quot;))
+            for si in ss.findall(&quot;m:si&quot;, NS):
+                shared.append(&quot;&quot;.join(t.text or &quot;&quot; for t in si.findall(&quot;.//m:t&quot;, NS)))
+        root = ET.fromstring(zf.read(target))
+        rows: list[list[object]] = []
+        for row in root.findall(&quot;.//m:sheetData/m:row&quot;, NS):
+            cells: dict[int, object] = {}
+            for cell in row.findall(&quot;m:c&quot;, NS):
+                idx = _col_index(cell.attrib[&quot;r&quot;])
+                typ = cell.attrib.get(&quot;t&quot;)
+                v = cell.find(&quot;m:v&quot;, NS)
+                if typ == &quot;inlineStr&quot;:
+                    value = &quot;&quot;.join(t.text or &quot;&quot; for t in cell.findall(&quot;.//m:t&quot;, NS))
+                elif v is None or v.text is None:
+                    value = None
+                elif typ == &quot;s&quot;:
+                    value = shared[int(v.text)]
+                elif typ in (&quot;str&quot;, &quot;e&quot;):
+                    value = v.text
+                else:
+                    try:
+                        value = float(v.text)
+                    except ValueError:
+                        value = v.text
+                cells[idx] = value
+            width = max(cells, default=-1) + 1
+            values: list[object] = [None] * width
+            for idx, value in cells.items():
+                values[idx] = value
+            rows.append(values)
+        return rows
+
+
+def ols(xs: list[float], ys: list[float]) -&gt; dict[str, float]:
+    n = len(xs)
+    xm, ym = sum(xs) / n, sum(ys) / n
+    sxx = sum((x - xm) ** 2 for x in xs)
+    sxy = sum((x - xm) * (y - ym) for x, y in zip(xs, ys))
+    slope = sxy / sxx
+    intercept = ym - slope * xm
+    sst = sum((y - ym) ** 2 for y in ys)
+    sse = sum((y - (intercept + slope * x)) ** 2 for x, y in zip(xs, ys))
+    slope0 = sum(x * y for x, y in zip(xs, ys)) / sum(x * x for x in xs)
+    sse0 = sum((y - slope0 * x) ** 2 for x, y in zip(xs, ys))
+    return {
+        &quot;n&quot;: n,
+        &quot;slope_per_mA_cm2&quot;: slope,
+        &quot;intercept_s_minus_half&quot;: intercept,
+        &quot;r_squared_with_intercept&quot;: 1.0 - sse / sst,
+        &quot;slope_through_origin_per_mA_cm2&quot;: slope0,
+        &quot;r_squared_origin_fit_vs_mean&quot;: 1.0 - sse0 / sst,
+        &quot;vsc_from_free_slope_SI_A2_s_m4&quot;: 1.0 / (slope / 10.0) ** 2,
+        &quot;vsc_from_origin_slope_SI_A2_s_m4&quot;: 1.0 / (slope0 / 10.0) ** 2,
+    }
+
+
+def sha256(path: Path) -&gt; str:
+    h = hashlib.sha256()
+    with path.open(&quot;rb&quot;) as f:
+        for block in iter(lambda: f.read(1024 * 1024), b&quot;&quot;):
+            h.update(block)
+    return h.hexdigest()
+
+
+def nearest(points: list[tuple[float, float]], target: float) -&gt; tuple[float, float]:
+    return min(points, key=lambda point: abs(point[0] - target))
+
+
+def main() -&gt; int:
+    f2 = read_xlsx_sheet(SOURCES / &quot;ji2026_source_data_fig2.xlsx&quot;, &quot;Fig2f&quot;)
+    # Row 1 is group headings; row 2 contains the variable labels.
+    raw_lmgl = [(float(r[0]), float(r[1])) for r in f2[2:]
+                if len(r) &gt; 1 and isinstance(r[0], (int, float))
+                and isinstance(r[1], (int, float)) and r[1] &gt; 0]
+    raw_limg = [(float(r[2]), float(r[3])) for r in f2[2:]
+                if len(r) &gt; 3 and isinstance(r[2], (int, float))
+                and isinstance(r[3], (int, float)) and r[3] &gt; 0]
+    fits = {}
+    for name, data in ((&quot;LiMgLa&quot;, raw_lmgl), (&quot;LiMg&quot;, raw_limg)):
+        xs = [j for j, _ in data]
+        ys = [1.0 / math.sqrt(hours * 3600.0) for _, hours in data]
+        fit = ols(xs, ys)
+        fit[&quot;raw_j_time_mA_cm2_h&quot;] = [[j, t] for j, t in data]
+        fits[name] = fit
+
+    # Publisher source-data columns E:F and G:H duplicate t^(-1/2) in SI seconds.
+    transform_errors = {&quot;LiMgLa&quot;: [], &quot;LiMg&quot;: []}
+    for row in f2[2:]:
+        if len(row) &gt;= 8 and isinstance(row[0], (int, float)) and isinstance(row[1], (int, float)):
+            transform_errors[&quot;LiMgLa&quot;].append(abs(1 / math.sqrt(row[1] * 3600) - row[5]))
+        if len(row) &gt;= 8 and isinstance(row[2], (int, float)) and isinstance(row[3], (int, float)):
+            transform_errors[&quot;LiMg&quot;].append(abs(1 / math.sqrt(row[3] * 3600) - row[7]))
+
+    # Independent dimensional reconstruction of Supplementary Table 3.
+    table3 = {
+        &quot;LiMetal&quot;: {&quot;D_cm2_s&quot;: 5.6e-11, &quot;c0_mol_m3&quot;: 7.64e4, &quot;reported_VSC&quot;: 2.39e5},
+        &quot;LiMg&quot;: {&quot;D_cm2_s&quot;: 3.4e-11, &quot;c0_mol_m3&quot;: 7.45e4, &quot;reported_VSC&quot;: 1.42e5},
+        &quot;LiMgLa&quot;: {&quot;D_cm2_s&quot;: 3.5e-10, &quot;c0_mol_m3&quot;: 7.45e4, &quot;reported_VSC&quot;: 1.46e6},
+    }
+    for row in table3.values():
+        row[&quot;computed_VSC_SI&quot;] = (math.pi * row[&quot;D_cm2_s&quot;] * 1e-4
+                                  * row[&quot;c0_mol_m3&quot;] ** 2 * FARADAY ** 2 / 4.0)
+        row[&quot;reported_over_computed&quot;] = row[&quot;reported_VSC&quot;] / row[&quot;computed_VSC_SI&quot;]
+
+    f4 = read_xlsx_sheet(SOURCES / &quot;ji2026_source_data_fig4.xlsx&quot;, &quot;Fig4f&quot;)
+    current_points = [(float(r[2]), float(r[3])) for r in f4[2:]
+                      if len(r) &gt; 3 and isinstance(r[2], (int, float))
+                      and isinstance(r[3], (int, float))]
+    model_amp = {}
+    for target in (1.10, 1.50, 1.94, 2.10):
+        cap, eff_current = nearest(current_points, target)
+        kappa = eff_current / 1.0  # source case is imposed 1.0 mA cm^-2
+        model_amp[str(target)] = {
+            &quot;nearest_capacity_mAh_cm2&quot;: cap,
+            &quot;source_model_effective_current_mA_cm2&quot;: eff_current,
+            &quot;model_amplification_kappa&quot;: kappa,
+            &quot;model_active_fraction_proxy_1_over_kappa&quot;: 1.0 / kappa,
+            &quot;sufficient_global_current_multiplier_1_over_kappa2&quot;: 1.0 / kappa ** 2,
+        }
+
+    # 1 (mA cm^-2)*(mAh cm^-2) = 3.6e5 A^2 s m^-4.
+    target_q, global_j = 1.1, 2.2
+    vsc_estimates = {
+        &quot;Table3_reported&quot;: table3[&quot;LiMgLa&quot;][&quot;reported_VSC&quot;],
+        &quot;Table3_recalculated_from_rounded_D_c0&quot;: table3[&quot;LiMgLa&quot;][&quot;computed_VSC_SI&quot;],
+        &quot;Fig2f_free_intercept_slope_transform&quot;: fits[&quot;LiMgLa&quot;][&quot;vsc_from_free_slope_SI_A2_s_m4&quot;],
+        &quot;Fig2f_origin_constrained_slope_transform&quot;: fits[&quot;LiMgLa&quot;][&quot;vsc_from_origin_slope_SI_A2_s_m4&quot;],
+    }
+    bound_estimates = {}
+    for name, vsc_si in vsc_estimates.items():
+        vsc_units = vsc_si / 360000.0
+        kappa_limit = math.sqrt(vsc_units / (global_j * target_q))
+        bound_estimates[name] = {
+            &quot;vsc_mA2_h_cm_minus4&quot;: vsc_units,
+            &quot;kappa_limit_for_target&quot;: kappa_limit,
+            &quot;uniform_contact_fraction_minimum&quot;: 1.0 / kappa_limit,
+        }
+    checks = {
+        &quot;LiMgLa_raw_point_count_is_8&quot;: len(raw_lmgl) == 8,
+        &quot;LiMg_raw_point_count_is_3&quot;: len(raw_limg) == 3,
+        &quot;LiMgLa_publisher_transform_matches_raw_times&quot;: max(transform_errors[&quot;LiMgLa&quot;]) &lt; 1e-12,
+        &quot;Table3_LiMgLa_VSC_recalculates_within_3pct&quot;: abs(table3[&quot;LiMgLa&quot;][&quot;reported_over_computed&quot;] - 1.0) &lt; 0.03,
+        &quot;nominal_to_local_flux_bound_is_squared&quot;: math.isclose(
+            bound_estimates[&quot;Table3_reported&quot;][&quot;kappa_limit_for_target&quot;] ** 2
+            * global_j * target_q,
+            bound_estimates[&quot;Table3_reported&quot;][&quot;vsc_mA2_h_cm_minus4&quot;],
+            rel_tol=1e-12,
+        ),
+    }
+    if not all(checks.values()):
+        raise AssertionError({k: v for k, v in checks.items() if not v})
+    result = {
+        &quot;scope&quot;: &quot;internal arithmetic/source-data check only; no physical validation&quot;,
+        &quot;formula&quot;: {
+            &quot;Sand&quot;: &quot;tau^(-1/2)=2*j/(sqrt(pi*D)*c0*F)&quot;,
+            &quot;VSC&quot;: &quot;pi*D*c0^2*F^2/4 = j^2*tau&quot;,
+            &quot;conditional_spatial_bound&quot;: &quot;kappa^2*jbar*Q &lt; VSC&quot;,
+            &quot;units_conversion&quot;: &quot;1 (mA cm^-2)(mAh cm^-2) = 360000 A^2 s m^-4&quot;,
+        },
+        &quot;raw_data_linear_fits&quot;: fits,
+        &quot;publisher_transform_max_abs_error_s_minus_half&quot;: {
+            k: max(v) for k, v in transform_errors.items()
+        },
+        &quot;supplementary_table3_recalculation&quot;: table3,
+        &quot;phase_field_source_data_effective_current&quot;: model_amp,
+        &quot;conditional_example&quot;: {
+            &quot;target_Q_mAh_cm2&quot;: target_q,
+            &quot;average_j_mA_cm2&quot;: global_j,
+            &quot;source_reported_pair&quot;: &quot;2.2 mA cm^-2 / 1.1 mAh cm^-2&quot;,
+            &quot;bounds_by_VSC_estimator&quot;: bound_estimates,
+            &quot;scope&quot;: &quot;conditional independent-column comparison; not a cell-performance forecast&quot;,
+        },
+        &quot;finite_checks_passed&quot;: checks,
+        &quot;sha256&quot;: {
+            p.name: sha256(p) for p in sorted(SOURCES.iterdir())
+            if p.is_file() and p.suffix.lower() in {&quot;.pdf&quot;, &quot;.xlsx&quot;}
+        },
+    }
+    RESULTS.parent.mkdir(parents=True, exist_ok=True)
+    RESULTS.write_text(json.dumps(result, indent=2, sort_keys=True) + &quot;\n&quot;)
+    print(json.dumps(result, indent=2, sort_keys=True))
+    return 0
+
+
+if __name__ == &quot;__main__&quot;:
+    sys.exit(main())
+</pre><p><a href="../assets/ccb590f3c1c67852b066178fe684dd8f4835c8f3b60363a25121dfbd112fd3fa.py">Exact original</a></p></html>

@@ -1,0 +1,133 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c11_spin11_star_hostile/independent_support_replay.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c11_spin11_star_hostile/independent_support_replay.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Independent polyhedral-ray and exact PSD replay for the four-seed star bound.&quot;&quot;&quot;
+from itertools import combinations
+from pathlib import Path
+from math import gcd
+import json
+import sympy as sp
+
+ROOT = Path(__file__).resolve().parents[3]
+HERE = Path(__file__).resolve().parent
+SRC = ROOT / &quot;work/agents/c5_quantum_dimension_obstruction/cycle10_spin11_probe&quot;
+BLOCKS = json.loads((SRC / &quot;spin11_fullstar_blocks.json&quot;).read_text())
+SEEDS = [sp.Matrix(v) for v in [
+    (1, 5, 5, 10, 10), (0, 2, 7, 8, 14),
+    (1, 1, 1, 14, 14), (0, 0, 5, 10, 16),
+]]
+TRACE = sp.Matrix([11, 55, 165, 330, 462])
+
+
+def primitive(vector):
+    den = sp.ilcm(*(entry.q for entry in vector))
+    ints = [int(entry*den) for entry in vector]
+    common = 0
+    for entry in ints:
+        common = gcd(common, abs(entry))
+    return tuple(entry//common for entry in ints)
+
+
+def ray_set(vertex):
+    # Inequalities describe the normal cone where this seed maximizes: alpha&gt;=0
+    # and (seed_vertex-seed_j)·alpha&gt;=0. Enumerate independent rank-four faces.
+    normals = [sp.eye(5).row(i) for i in range(5)]
+    normals.extend((SEEDS[vertex]-SEEDS[j]).T
+                   for j in range(len(SEEDS)) if j != vertex)
+    rays = set()
+    for active in combinations(normals, 4):
+        matrix = sp.Matrix.vstack(*active)
+        if matrix.rank() != 4:
+            continue
+        null = matrix.nullspace()
+        if len(null) != 1:
+            continue
+        direction = null[0]
+        signs = [(normal*direction)[0] for normal in normals]
+        if all(x &gt;= 0 for x in signs):
+            pass
+        elif all(x &lt;= 0 for x in signs):
+            direction = -direction
+            if not all((normal*direction)[0] &gt;= 0 for normal in normals):
+                continue
+        else:
+            continue
+        rays.add(primitive(direction))
+    return rays
+
+
+def ratmat(raw):
+    return sp.Matrix([[sp.Rational(x) for x in row] for row in raw])
+
+
+def principal_minors_nonnegative(matrix):
+    values = []
+    for size in range(1, matrix.rows+1):
+        for indices in combinations(range(matrix.rows), size):
+            determinant = sp.factor(matrix.extract(indices, indices).det())
+            values.append(determinant)
+            if determinant.is_nonnegative is not True:
+                return False, values
+    return True, values
+
+
+def main():
+    cones = [ray_set(i) for i in range(len(SEEDS))]
+    rays = sorted(set().union(*cones))
+    ray_records = []
+    minor_count = 0
+    block_count = 0
+    for ray in rays:
+        alpha = sp.Matrix(ray)
+        score = max((seed.T*alpha)[0] for seed in SEEDS)
+        cap = (TRACE.T*alpha)[0] + score
+        per_block = []
+        for key, data in BLOCKS[&quot;blocks&quot;].items():
+            gram = ratmat(data[&quot;gram&quot;])
+            hs = [ratmat(b) for b in data[&quot;bilinear_H&quot;]]
+            star = sum((alpha[k]*hs[k] for k in range(5)), sp.zeros(gram.rows))
+            gap = sp.simplify(cap*gram-star)
+            psd, minors = principal_minors_nonnegative(gap)
+            minor_count += len(minors)
+            block_count += 1
+            if not psd:
+                raise AssertionError((ray, key, gap, minors))
+            per_block.append({&quot;block&quot;: key, &quot;order&quot;: gap.rows,
+                              &quot;principal_minor_count&quot;: len(minors), &quot;psd&quot;: psd})
+        ray_records.append({&quot;ray&quot;: ray, &quot;support&quot;: str(score), &quot;cap&quot;: str(cap),
+                            &quot;blocks&quot;: per_block})
+
+    iso_block_results = []
+    alpha = sp.ones(5, 1)
+    for key, data in BLOCKS[&quot;blocks&quot;].items():
+        gram = ratmat(data[&quot;gram&quot;])
+        hs = [ratmat(b) for b in data[&quot;bilinear_H&quot;]]
+        star = sum(hs, sp.zeros(gram.rows))
+        gap = 1054*gram-star
+        psd, _ = principal_minors_nonnegative(gap)
+        det = sp.factor(gap.det())
+        iso_block_results.append({&quot;block&quot;: key, &quot;order&quot;: gap.rows,
+                                  &quot;gap_psd&quot;: psd, &quot;det_gap&quot;: str(det)})
+        if not psd:
+            raise AssertionError((&quot;isotropic gap&quot;, key, gap))
+    has_top = any(record[&quot;det_gap&quot;] == &quot;0&quot; for record in iso_block_results)
+    if not has_top:
+        raise AssertionError(&quot;1054 cap has no singular block; exact top not certified&quot;)
+
+    result = {
+        &quot;status&quot;: &quot;PASS&quot;,
+        &quot;scope&quot;: &quot;four-seed support-cone ray coverage and exact PSD of reported reduced star gaps&quot;,
+        &quot;ray_counts_per_seed_cone&quot;: [len(cone) for cone in cones],
+        &quot;distinct_rays&quot;: len(rays),
+        &quot;block_ray_checks&quot;: block_count,
+        &quot;principal_minor_checks&quot;: minor_count,
+        &quot;isotropic_1054&quot;: {&quot;all_gaps_psd&quot;: True, &quot;at_least_one_singular&quot;: has_top,
+                           &quot;blocks&quot;: iso_block_results},
+        &quot;rays&quot;: ray_records,
+        &quot;limits&quot;: &quot;This reuses the candidate&#x27;s exact reduced block matrices; independent ray enumeration and PSD/minor replay do not independently reconstruct the 32768-dimensional representation or star blocks.&quot;
+    }
+    (HERE / &quot;independent_support_replay.json&quot;).write_text(json.dumps(result, indent=2)+&quot;\n&quot;)
+    print(f&quot;PASS: cone sizes {[len(c) for c in cones]}, {len(rays)} distinct rays, &quot;
+          f&quot;{block_count} block-ray checks, {minor_count} principal minors; isotropic top 1054.&quot;)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/1514f6e25fdcb9895c443af1012c9632a60f3066203f82e0e648664deb3c41f3.py">Exact original</a></p></html>

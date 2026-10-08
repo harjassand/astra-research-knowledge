@@ -1,0 +1,153 @@
+#!/usr/bin/env python3
+"""Exact SU(3) adjoint multiplicity-block fixtures.
+
+Conventions: color basis |a>, a=1,...,8; Gell-Mann lambda_a with
+Tr(lambda_a lambda_b)=2 delta_ab; f,d as in the accompanying note.
+"""
+import sympy as s
+
+I = s.I
+sqrt = s.sqrt
+
+z = s.zeros(3)
+gm = [None,
+      s.Matrix([[0,1,0],[1,0,0],[0,0,0]]),
+      s.Matrix([[0,-I,0],[I,0,0],[0,0,0]]),
+      s.Matrix([[0,0,1],[0,0,0],[1,0,0]]),
+      s.Matrix([[0,0,-I],[0,0,0],[I,0,0]]),
+      s.Matrix([[0,0,0],[0,0,1],[0,1,0]]),
+      s.Matrix([[0,0,0],[0,0,-I],[0,I,0]]),
+      s.Matrix([[1,0,0],[0,-1,0],[0,0,0]]),
+      s.Matrix([[1,0,0],[0,1,0],[0,0,-2]]) / sqrt(3)]
+
+f = s.MutableDenseNDimArray.zeros(8,8,8)
+d = s.MutableDenseNDimArray.zeros(8,8,8)
+for a in range(8):
+    for b in range(8):
+        comm = gm[a+1]*gm[b+1]-gm[b+1]*gm[a+1]
+        anti = gm[a+1]*gm[b+1]+gm[b+1]*gm[a+1]
+        for c in range(8):
+            f[a,b,c] = s.simplify(s.trace(comm*gm[c+1])/(4*I))
+            d[a,b,c] = s.simplify(s.trace(anti*gm[c+1])/4)
+
+def idx(a,b):
+    return 8*a+b
+
+P1 = s.zeros(64)
+Ps = s.zeros(64)
+Pa = s.zeros(64)
+Swap = s.zeros(64)
+for a in range(8):
+    for b in range(8):
+        Swap[idx(a,b),idx(b,a)] = 1
+        for c in range(8):
+            for e in range(8):
+                P1[idx(a,b),idx(c,e)] = s.Rational(1,8)*int(a==b)*int(c==e)
+# Correct four-index projector entries: sum_x d_{abx} d_{cdx}.
+for a in range(8):
+    for b in range(8):
+        for c in range(8):
+            for e in range(8):
+                ds = sum(d[a,b,x]*d[c,e,x] for x in range(8))*s.Rational(3,5)
+                fs = sum(f[a,b,x]*f[c,e,x] for x in range(8))*s.Rational(1,3)
+                Ps[idx(a,b),idx(c,e)] = s.simplify(ds)
+                Pa[idx(a,b),idx(c,e)] = s.simplify(fs)
+P27 = (s.eye(64)+Swap)/2-P1-Ps
+P10 = (s.eye(64)-Swap)/2-Pa
+
+def tr2_projector(P):
+    """Return reduced one-body operator Tr_2 P, exact 8x8."""
+    return s.Matrix(8,8,lambda a,c: sum(P[idx(a,b),idx(c,b)] for b in range(8)))
+
+def marginal_superoperator(P, rank):
+    """Matrix for the marginal of Gamma(X)=4/r P[(X tensor I)+(I tensor X)]P."""
+    K=s.zeros(64)
+    fac=s.Rational(4,rank)
+    for a in range(8):
+      for c in range(8):
+       for u in range(8):
+        for w in range(8):
+         # Input acts on the first output factor: X tensor I.
+         v1=sum(P[idx(a,b),idx(u,t)]*P[idx(w,t),idx(c,b)]
+                for b in range(8) for t in range(8))
+         # Input acts on the second factor: I tensor X.
+         v2=sum(P[idx(a,b),idx(t,u)]*P[idx(t,w),idx(c,b)]
+                for b in range(8) for t in range(8))
+         v=v1+v2
+         K[8*a+c,8*u+w]=s.simplify(fac*v)
+    return K
+
+def B_s(e):
+    return s.Matrix(8,8,lambda a,c: sqrt(s.Rational(24,5))*d[a,c,e])
+
+def B_a(e):
+    return s.Matrix(8,8,lambda a,c: I*sqrt(s.Rational(8,3))*f[a,c,e])
+
+def hs_tau(X,Y):
+    return s.simplify(s.trace(X.conjugate().T*Y)/8)
+
+def mode_block(P,rank,e=0,K=None):
+    if K is None:
+        K=marginal_superoperator(P,rank)
+    out=[]
+    for Bu in (B_s(e),B_a(e)):
+      x=s.Matrix(64,1,list(Bu))
+      y=K*x
+      Y=s.Matrix(8,8,lambda a,c:y[8*a+c])
+      out.append(Y)
+    Bs=(B_s(e),B_a(e))
+    return s.Matrix(2,2,lambda v,u: hs_tau(Bs[v],out[u]))
+
+def full_adjoint_mode_matrix(K):
+    """Exact 16x16 transfer block, copy-major then adjoint-index-major."""
+    mats=[B_s(e) for e in range(8)]+[B_a(e) for e in range(8)]
+    M=s.zeros(16)
+    for u in range(2):
+      for e in range(8):
+        Bu=mats[8*u+e]
+        y=K*s.Matrix(64,1,list(Bu))
+        Y=s.Matrix(8,8,lambda a,c:y[8*a+c])
+        for v in range(2):
+          for fidx in range(8):
+            row=8*v+fidx
+            M[row,8*u+e]=hs_tau(mats[row],Y)
+    return M
+
+if __name__ == '__main__':
+    projectors=[('1',P1,1),('8s',Ps,8),('27',P27,27),
+                ('8a',Pa,8),('10+10bar',P10,20)]
+    for name,P,rank in projectors:
+        assert P*P==P, name+' is not a projector'
+        assert P==P.T, name+' is not symmetric'
+        assert P.trace()==rank, name+' has wrong rank'
+    for i,(_,P,_) in enumerate(projectors):
+        for _,Q,_ in projectors[i+1:]:
+            assert P*Q==s.zeros(64), 'projectors not orthogonal'
+    projector_sum=s.zeros(64)
+    for _,P,_ in projectors:
+        projector_sum += P
+    assert projector_sum==s.eye(64)
+    print('trace reductions')
+    for name,P,rank in projectors:
+        red=tr2_projector(P)
+        assert red == s.eye(8)*s.Rational(rank,8)
+        print(name, 'rank',rank,'reduction',(rank,8))
+        if name in ('8s','27'):
+            K=marginal_superoperator(P,rank)
+            M=mode_block(P,rank,K=K)
+            full=full_adjoint_mode_matrix(K)
+            assert full==s.kronecker_product(M,s.eye(8))
+            print('  adjoint multiplicity block =',M)
+    # Exact seed orbit moment Gram matrices. q_{u,e}=tau(B_{u,e} |psi><psi|).
+    for label,psi in [
+        ('basis-1',s.Matrix([1,0,0,0,0,0,0,0])),
+        ('complex-12',(s.Matrix([1,I,0,0,0,0,0,0])/sqrt(2))),
+        ('generic-123',(s.Matrix([1,I,1,0,0,0,0,0])/sqrt(3))),
+    ]:
+        rho=psi*psi.conjugate().T
+        q=[]
+        for family in (B_s,B_a):
+            q.append(s.Matrix([hs_tau(family(e),rho) for e in range(8)]))
+        Gram=s.Matrix(2,2,lambda v,u: s.simplify(8*(q[v].dot(q[u]))))
+        print(label,'q norms/cross=',[[s.simplify(q[v].dot(q[u])) for u in range(2)] for v in range(2)])
+        print('  EB orbit adjoint block =',Gram,' rank=',Gram.rank())

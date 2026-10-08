@@ -1,0 +1,197 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/memory_information/evidence/finite_n_schur_weyl/check_finite_n_schur_weyl.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/memory_information/evidence/finite_n_schur_weyl/check_finite_n_schur_weyl.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact rational fixtures for finite-n Schur-Weyl memory boundaries.
+
+This script checks algebraic identities and selected exact examples only.  It
+does not prove a uniform memory theorem, the HCIZ comparison, or the
+entanglement-breaking lower bound quoted from the source report.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+from fractions import Fraction as F
+from itertools import combinations
+import json
+import math
+from pathlib import Path
+
+
+def collision_product(n: int, p: list[F]) -&gt; F:
+    &quot;&quot;&quot;B_n(p)=product_{i&lt;j}(1+n(p_i-p_j)^2), exactly.&quot;&quot;&quot;
+    out = F(1)
+    for i, j in combinations(range(len(p)), 2):
+        out *= 1 + n * (p[i] - p[j]) ** 2
+    return out
+
+
+def schur_multiplicity(n: int, k: int) -&gt; int:
+    &quot;&quot;&quot;dim S^(n-k,k) = C(n,k)-C(n,k-1), with C(n,-1)=0.&quot;&quot;&quot;
+    return math.comb(n, k) - (math.comb(n, k - 1) if k else 0)
+
+
+def qubit_joint_schur_excitation(n: int, p: F) -&gt; dict[tuple[int, int], F]:
+    &quot;&quot;&quot;Joint law of Schur defect k and within-spin excitation ell.
+
+    For diag(1-p,p)^tensor n, t=n-2k and
+    Pr(k,ell)=m_(n,k)(1-p)^(n-k-ell) p^(k+ell).
+    &quot;&quot;&quot;
+    out: dict[tuple[int, int], F] = {}
+    for k in range(n // 2 + 1):
+        t = n - 2 * k
+        m = schur_multiplicity(n, k)
+        for ell in range(t + 1):
+            out[(k, ell)] = F(m) * (1 - p) ** (n - k - ell) * p ** (k + ell)
+    return out
+
+
+def binomial(n: int, x: int, p: F) -&gt; F:
+    return F(math.comb(n, x)) * p**x * (1 - p) ** (n - x)
+
+
+def local_pure_torus_spectrum(n: int, s: F) -&gt; list[F]:
+    &quot;&quot;&quot;Exact spectrum of the phase-averaged local pure-qubit cap.
+
+    Each input is ((|0&gt;+sqrt(s/n)e^{i theta}|1&gt;)/sqrt(1+s/n))^tensor n.
+    &quot;&quot;&quot;
+    return [F(math.comb(n, k)) * (s / n) ** k / (1 + s / n) ** n
+            for k in range(n + 1)]
+
+
+def main() -&gt; None:
+    # Partial qutrit collision: n=m^4; gaps are 2/m^3 and 3/m-1/m^3.
+    # Thus one pair is below n^-1/2 while the other two are resolved at
+    # scale n^-1/4.  Every entry and B_n is an exact rational.
+    partial = []
+    for m in (8, 16, 32, 64, 128):
+        n = m**4
+        p = [F(1, 3) + F(1, m) + F(1, m**3),
+             F(1, 3) + F(1, m) - F(1, m**3),
+             F(1, 3) - F(2, m)]
+        assert sum(p, F(0)) == 1 and p[0] &gt;= p[1] &gt;= p[2] &gt; 0
+        b = collision_product(n, p)
+        closed = (1 + F(4, m**2)) * (9*m**2 + 7 + F(1, m**2)) * (9*m**2 - 5 + F(1, m**2))
+        assert b == closed
+        partial.append({
+            &quot;m&quot;: m,
+            &quot;n&quot;: n,
+            &quot;spectrum&quot;: [str(x) for x in p],
+            &quot;pair_gaps&quot;: [str(p[0] - p[1]), str(p[1] - p[2]), str(p[0] - p[2])],
+            &quot;B_n_exact&quot;: str(b),
+            &quot;log2_B_over_log2_n&quot;: math.log2(float(b)) / math.log2(n),
+            &quot;asymptotic_exponent&quot;: &quot;1&quot;,
+        })
+
+    # Critical qubit gaps: n=k^2 and p_+-p_-=1/k, so B_n=2 exactly.
+    critical = []
+    for k in (2, 4, 8, 16, 32, 64):
+        n = k**2
+        gap = F(1, k)
+        p = [F(1, 2) + gap / 2, F(1, 2) - gap / 2]
+        b = collision_product(n, p)
+        assert b == 2
+        critical.append({&quot;k&quot;: k, &quot;n&quot;: n, &quot;gap&quot;: str(gap), &quot;B_n_exact&quot;: str(b)})
+
+    # Fixed nontracial qutrit orbit: a pairwise N39 bound has a positive
+    # limiting EB floor.  The arithmetic here evaluates its displayed
+    # expression; it does not prove that source theorem.
+    p_fixed = [F(1, 2), F(1, 3), F(1, 6)]
+    n_fixed = 1024
+    w = p_fixed[0] + p_fixed[2]
+    gap = p_fixed[0] - p_fixed[2]
+    delta = gap / w
+    kappa = F(n_fixed) * gap**2 / w
+    eb_displayed = delta / 20 - F(2) / kappa
+    fixed_nontracial = {
+        &quot;n&quot;: n_fixed,
+        &quot;spectrum&quot;: [str(x) for x in p_fixed],
+        &quot;B_n_exact&quot;: str(collision_product(n_fixed, p_fixed)),
+        &quot;pair&quot;: [0, 2],
+        &quot;w_exact&quot;: str(w),
+        &quot;delta_exact&quot;: str(delta),
+        &quot;kappa_exact&quot;: str(kappa),
+        &quot;N39_displayed_lower_bound_exact&quot;: str(eb_displayed),
+        &quot;N39_displayed_lower_bound_decimal&quot;: float(eb_displayed),
+        &quot;scope&quot;: &quot;evaluation of source formula only; not an independent proof&quot;,
+    }
+    assert kappa &gt;= 64 and eb_displayed &gt; 0
+
+    # Pure rank boundary: B_n=n+1 for the full pure-state orbit, while a
+    # fixed local cap has an excitation spectrum approaching a fixed Poisson
+    # law.  This is a mismatch of interfaces, not a contradiction: the full
+    # orbit and local cap are different parameter sets.
+    rank_boundary = []
+    for n in (8, 16, 64, 256, 1024):
+        b = collision_product(n, [F(1), F(0)])
+        spectrum = local_pure_torus_spectrum(n, F(1, 4))
+        assert b == n + 1
+        assert sum(spectrum, F(0)) == 1
+        top4 = sorted(spectrum, reverse=True)[:4]
+        rank_boundary.append({
+            &quot;n&quot;: n,
+            &quot;full_pure_orbit_B_n&quot;: str(b),
+            &quot;local_cap_s&quot;: &quot;1/4&quot;,
+            &quot;local_cap_top4_average_eigenmass_exact&quot;: str(sum(top4, F(0))),
+            &quot;local_cap_top4_average_eigenmass_decimal&quot;: float(sum(top4, F(0))),
+            &quot;local_cap_spectrum_sum_exact&quot;: &quot;1&quot;,
+        })
+
+    # Rank-changing qubit: with unknown lambda=1/2 and small eigenvalue
+    # lambda/n, B_n is still order n although the N23 branch law is order
+    # h_epsilon.  Check the finite Schur joint law and the exact binomial
+    # coupling k+ell ~ Bin(n,p) for many rational instances.
+    schur_cases = []
+    for n in range(1, 17):
+        for lam in (F(0), F(1, 2), F(1)):
+            if n &lt; 4 * lam:
+                continue
+            p_small = lam / n
+            joint = qubit_joint_schur_excitation(n, p_small)
+            assert sum(joint.values(), F(0)) == 1
+            for x in range(n + 1):
+                actual = sum((mass for (k, ell), mass in joint.items() if k + ell == x), F(0))
+                assert actual == binomial(n, x, p_small), (n, lam, x)
+            schur_cases.append({&quot;n&quot;: n, &quot;lambda&quot;: str(lam), &quot;p&quot;: str(p_small), &quot;joint_sum&quot;: &quot;1&quot;,
+                                &quot;binomial_coupling&quot;: &quot;exact&quot;})
+
+    lam = F(1, 2)
+    rank_change = []
+    for n in (8, 16, 64, 256, 1024):
+        p_small = lam / n
+        b = collision_product(n, [1 - p_small, p_small])
+        closed = n - 1 + F(1, n)
+        assert b == closed
+        rank_change.append({&quot;n&quot;: n, &quot;lambda&quot;: &quot;1/2&quot;, &quot;B_n_exact&quot;: str(b),
+                            &quot;closed_form&quot;: str(closed)})
+
+    out = {
+        &quot;status&quot;: &quot;PASS: exact rational identities and finite fixtures; source theorems remain source-scoped&quot;,
+        &quot;partial_qutrit_gap_sequence&quot;: partial,
+        &quot;critical_qubit_sequence&quot;: critical,
+        &quot;fixed_nontracial_qutrit&quot;: fixed_nontracial,
+        &quot;pure_rank_boundary&quot;: rank_boundary,
+        &quot;rank_changing_qubit_B_n&quot;: rank_change,
+        &quot;exact_qubit_schur_binomial_cases&quot;: len(schur_cases),
+        &quot;schur_cases&quot;: schur_cases,
+        &quot;scope&quot;: [
+            &quot;Does not establish the HCIZ comparison or the B_n memory theorem.&quot;,
+            &quot;Does not prove the N39 entanglement-breaking lower bound.&quot;,
+            &quot;Does not prove finite-n optimal total dimension for N23.&quot;,
+            &quot;Exact rational checks are convention checks, not external validation.&quot;,
+        ],
+    }
+    path = Path(__file__).with_name(&quot;finite_n_schur_weyl_checks.json&quot;)
+    path.write_text(json.dumps(out, indent=2) + &quot;\n&quot;)
+    print(json.dumps({
+        &quot;status&quot;: out[&quot;status&quot;],
+        &quot;partial_qutrit_exponents&quot;: [round(x[&quot;log2_B_over_log2_n&quot;], 6) for x in partial],
+        &quot;critical_B&quot;: [x[&quot;B_n_exact&quot;] for x in critical],
+        &quot;fixed_nontracial_EB_bound&quot;: fixed_nontracial[&quot;N39_displayed_lower_bound_exact&quot;],
+        &quot;pure_rank_boundary_B&quot;: [x[&quot;full_pure_orbit_B_n&quot;] for x in rank_boundary],
+        &quot;rank_changing_B&quot;: [x[&quot;B_n_exact&quot;] for x in rank_change],
+        &quot;exact_schur_cases&quot;: len(schur_cases),
+        &quot;output&quot;: str(path),
+    }, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/3af3742c097f28697b78d1f215f40c2439256a65c07bc5db6baefe2cf74f739b.py">Exact original</a></p></html>

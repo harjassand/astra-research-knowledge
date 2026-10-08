@@ -1,0 +1,116 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/learning_acquisition/children/robust_active_shift/REPORT.md</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/learning_acquisition/children/robust_active_shift/REPORT.md</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre># Robust adaptive acquisition under distribution shift
+
+**Finding.** A known total-variation (TV) radius on the *joint* example distribution gives a clean, nonvacuous target-risk guarantee for any learned acquisition policy: its target risk is at most its source risk plus the radius. This guarantee applies to adaptive feature policies and to ordinary predictors alike. Adaptivity can still strictly improve the guarantee when the feature/label structure rewards conditional feature choice. I give a finite Boolean witness below, with a matched fixed-feature robust baseline. The TV promise alone does not create that advantage; the useful structure must be supplied or learned from labeled source data.
+
+This is an internally derived, elementary finite theorem and witness, not a novelty or priority claim. Primary literature confirms the surrounding domain-adaptation boundary and the stronger assumptions used in positive active-learning results.
+
+## Interface and assumptions
+
+An example is $W=(X,Y)$, with $X=(Z_0,A,B)\in\{0,1\}^3$ and $Y\in\{0,1\}$. The coordinate is named $Z_0$ to avoid overloading the example variable. The source law is $P$; the unknown deployment law $Q$ obeys the supplied promise
+
+\[
+  d_{TV}(P,Q):=\sup_E |P(E)-Q(E)|\le \rho,
+\]
+
+where TV is on the full joint $(X,Y)$, not only on feature marginals. A feature-acquisition policy sees feature values sequentially and predicts $Y$; its loss is the resulting 0–1 error. No target examples or target labels are available in the construction. The numeric radius $\rho$ is an externally supplied, valid upper bound; this report does not estimate or certify it.
+
+For any fixed (possibly randomized) policy $\pi$, let $L_\pi(X,Y)\in[0,1]$ be its expected prediction loss over its internal coins. The TV variational characterization gives
+
+\[
+  |R_Q(\pi)-R_P(\pi)|\le d_{TV}(P,Q)\le\rho,
+  \qquad
+  \sup_{Q:d_{TV}(P,Q)\le\rho}R_Q(\pi)\le R_P(\pi)+\rho.
+\]
+
+Conditioning on the training sample makes this apply to a data-dependent output policy as well. If query cost $C_\pi(X)\in[0,c_{\max}]$, the same argument yields
+$|\mathbb E_Q C_\pi-\mathbb E_P C_\pi|\le c_{\max}\rho$.
+
+This is a guarantee, but it is uniform: the divergence term does not reward adaptivity. For a finite class $\Pi$ of $M$ policies, empirical risk minimization on $n$ iid, fully labeled source examples gives, with probability at least $1-\alpha$,
+
+\[
+  \sup_{Q:d_{TV}(P,Q)\le\rho}R_Q(\widehat\pi)
+  \le \min_{\pi\in\Pi}R_P(\pi)
+       +2\sqrt{\frac{\log(2M/\alpha)}{2n}}+\rho.
+\]
+
+This follows from a two-sided Hoeffding union bound over the $M$ policy losses and ERM. The robust ERM baseline over the same policy class uses the same objective to within this common additive shift term; the theorem does not establish an advantage over a baseline allowed the same adaptive policy class and data.
+
+## A finite adaptive-feature separation
+
+Let the source draw $Z_0,A,B\stackrel{iid}{\sim}\mathrm{Bernoulli}(1/2)$ and set
+
+\[
+  Y=f^*(Z_0,A,B)=
+  \begin{cases}A,&amp;Z_0=0,\\ B,&amp;Z_0=1.\end{cases}
+\]
+
+The learner is not told $f^*$. Its finite adaptive policy class consists of all pairs of Boolean maps $g_0,g_1:\{0,1\}\to\{0,1\}$. Policy $\pi_g$ first queries $Z_0$, then queries $A$ if $Z_0=0$ and $B$ if $Z_0=1$, and returns $g_{Z_0}$ of the selected bit. There are $M=4\cdot4=16$ policies; every one uses exactly two feature queries at deployment. The truth $f^*$ is in the class (both maps are identity).
+
+Given $n$ iid labeled source examples, each with all three feature bits visible, choose empirical risk minimizer $\widehat\pi$ over these 16 policies. Since $f^*$ is in the class and has zero source error, $\widehat\pi$ has zero empirical error. A one-sided Hoeffding bound and union bound give
+
+\[
+  R_P(\widehat\pi)\le
+  \epsilon_n:=\sqrt{\frac{\log(16/\alpha)}{2n}}
+\quad\text{with probability at least }1-\alpha,
+\]
+
+and therefore
+
+\[
+  \sup_{Q:d_{TV}(P,Q)\le\rho}R_Q(\widehat\pi)\le\epsilon_n+\rho.
+\]
+
+At $n=2000,\alpha=0.05,\rho=0.1$, $\epsilon_n\approx0.03798$, so the robust target-risk bound is at most $0.138$ (rounded upward). This is a finite-confidence statement, not an empirical result.
+
+**Matched robust baseline.** A nonadaptive feature policy must choose one fixed subset $S\subseteq\{Z_0,A,B\}$, $|S|\le2$, then predict from only $X_S$. Even if it knows $P$, $f^*$, and has unlimited computation, its Bayes risk under $P$ is at least $1/4$:
+
+- With $\{Z_0,A\}$, examples with $Z_0=1$ require the unseen fair bit $B$, giving error $1/2\cdot1/2=1/4$; $\{Z_0,B\}$ is symmetric.
+- With $\{A,B\}$, the output is known when $A=B$; when $A\ne B$, $Z_0$ is an unseen fair bit and the Bayes error is $1/2$. Since $P(A\ne B)=1/2$, risk is $1/4$.
+- Smaller subsets cannot improve on their two-feature supersets.
+
+Because $P$ itself belongs to the TV ball, every such static policy has robust risk at least $1/4$. This lower bound holds even for an oracle static learner that knows $P$ and $f^*$, so the finite-sample static ERM on the same data cannot do better. A concrete robust static rule is to query only $A$ and predict $A$: its source risk is $1/4$, and reallocating $\rho$ mass from its correct event to its error event shows its worst-case risk is exactly $1/4+\rho$ for $\rho\le3/4$ (equal to $0.35$ at $\rho=0.1$). Thus the adaptive learner&#x27;s high-probability robust bound $0.138$ is below even the static-oracle lower bound $0.25$.
+
+This comparison holds at a deployment cap of two feature reads per example. It is a feature-acquisition result, not a label-query saving: both learners receive the same $n$ source labels and full source feature triples. The best static rule can query only $A$ (cost one); the adaptive rule spends two reads for its lower error. If the objective adds $\lambda$ per feature read, the adaptive upper bound is below this concrete static rule&#x27;s robust risk-plus-cost when $\epsilon_n+\lambda&lt;1/4$. The separation is conditional on this branch-structured task class; it is not a universal advantage of active acquisition.
+
+## What is supplied and what is learned
+
+The learner must know the feature schema and use a candidate class that contains the branch-conditioned acquisition rule. It learns which two branch maps $g_0,g_1$ fit the labels from source examples; it does not need to know $P$, $Q$, or a density ratio. The TV radius $\rho$ must be supplied as a valid bound. With only a marginal feature-distance promise, no analogous result follows without an assumption on $P(Y\mid X)$: take a one-point feature space, let the source label always be 0 and the target label always be 1. Then $d_{TV}(P_X,Q_X)=0$, yet every source-perfect predictor has target error 1. Covariate-shift weighting instead requires label-conditional invariance and support/overlap; direct target-label acquisition can relax some of that but introduces target-query costs and its own identifiability/sample-complexity assumptions.
+
+For acquisition itself, the witness&#x27;s adaptive selection rule is known from the policy class. The labels and the selected branch maps are learned. If the branch structure is wrong or $f^*\notin\Pi$, the general finite-class guarantee is only relative to the best member of $\Pi$; it cannot promise small absolute target error. An estimated rather than supplied $\rho$ requires an additional statistical procedure and confidence allowance. Estimating high-dimensional TV from finite data is not included and is generally the main deployment blocker for this distribution-free version.
+
+## Full resource and precision ledger
+
+For the concrete $n=2000$ run described above (one training sample; no software artifact or numerical experiment was run):
+
+| Resource | Adaptive learner | Static robust baseline |
+|---|---:|---:|
+| Source labeled examples | 2,000 | Same 2,000 |
+| Source feature values acquired/stored | 6,000 bits if all triples are measured | Same data |
+| Source labels acquired/stored | 2,000 bits | Same data |
+| Target unlabeled examples / target labels | 0 / 0 | 0 / 0 |
+| Deployment feature reads | Exactly 2/example | At most 2/example; best-risk fixed rule uses 1 |
+| Policy candidates / selection work | 16 / at most 32,000 loss evaluations | Arbitrary predictor allowed; lower bound holds even with unlimited compute |
+| Extra optimization/solver/weight-estimation calls | 0 | 0 |
+| Stored model | Four truth-table bits (two 1-bit-input Boolean maps) | Chosen subset plus predictor table |
+| Arithmetic precision | Feature, label, ERM, and table lookup exact on bits; ρ=1/10 is assumed exact | Exact Boolean inputs |
+| Statistical certificate precision | ε = √(log(320)/4000); reported as 0.038 upward-rounded | Baseline lower bound is exact |
+
+If feature acquisition is charged during training rather than provided in the source table, all three source feature bits are measured for each of 2,000 examples (6,000 reads), plus 2,000 label queries. The deployment count is separate. No target-side query is hidden in the bound. At deployment the adaptive policy uses two bit queries and a constant-time branch/table lookup per example. The count $16n$ covers arithmetic loss evaluations; caching each source triple prevents rescanning/querying the sensor for each candidate. Input storage is $4n=8{,}000$ bits, or the learner can stream the data with 16 counters plus the selected four-bit policy. The confidence term is a theorem expression; the displayed decimal is rounded upward. No finite-precision numerical solver is used.
+
+## Primary-literature check
+
+1. Ben-David, Blitzer, Crammer, Kulesza, Pereira, and Vaughan, [“A Theory of Learning from Different Domains”](https://link.springer.com/article/10.1007/s10994-009-5152-4), *Machine Learning* 79 (2010), 151–175. The paper gives target-error bounds using source error, an $H\Delta H$-type domain discrepancy, and the error of a best common hypothesis. This is the established comparison framework; the TV transfer lemma here is the direct bounded-loss specialization using joint TV.
+2. Ben-David, Lu, Luu, and Pal, [“Impossibility Theorems for Domain Adaptation”](https://proceedings.mlr.press/v9/david10a.html), AISTATS/PMLR 9 (2010), 129–136. Their formal no-go result says covariate shift alone does not suffice for unlabeled-target adaptation absent additional similarity or a common low-error classifier; their indistinguishability result warns against treating unlabeled reweighting as a universal fix.
+3. Sugiyama, Krauledat, and Müller, [“Covariate Shift Adaptation by Importance Weighted Cross Validation”](https://www.jmlr.org/papers/volume8/sugiyama07a/sugiyama07a.pdf), *JMLR* 8 (2007), 985–1005. Their analysis explicitly assumes the test/train density ratio known for the theoretical section, and notes that active design itself creates covariate shift. This is relevant to the known-versus-estimated boundary and acquisition accounting.
+4. Zhao, Liu, Anandkumar, and Yue, [“Active Learning under Label Shift”](https://proceedings.mlr.press/v130/zhao21b.html), AISTATS/PMLR 130 (2021), 3412–3420. MALLS proves generalization and label-complexity bounds under label shift $P_T(X\mid Y)=P_S(X\mid Y)$, with a finite label space. Its method estimates importance weights using a black-box predictor/confusion matrix and target unlabeled data, and uses $\lambda n$ labeled holdout examples for weight estimation in its streaming algorithm; the theorem&#x27;s constants depend on confusion-matrix conditioning, shift magnitudes, and disagreement complexity. This is a concrete positive active-label result under materially stronger, explicit structure, and it charges a real calibration-query budget.
+
+These sources are primary papers (publisher proceedings/journal records and paper PDFs). The literature check is scoped; it is not a comprehensive search for priority or a proof that the finite feature witness is new.
+
+## Status and falsifiers
+
+- **Derived and checked in this report:** bounded-loss TV transfer; finite-class ERM bound; adaptive-vs-static Boolean risk calculations; source/target cost ledger.
+- **Primary-literature verified:** the assumptions and scope above for Ben-David et al., Sugiyama et al., and MALLS.
+- **Not established:** novelty, a practical method for certifying a TV radius in high dimension, a guarantee from an input-marginal divergence alone, or a universal advantage of adaptivity over policies with equal access.
+- **Falsifier for the positive witness:** any arithmetic error in the conditional Bayes-risk calculations or an acquisition interface that permits static policies to condition the feature subset on the current $Z_0$ value. The latter would make the baseline adaptive by definition and remove the separation.
+- **Next decisive experiment is not needed for the mathematical separation.** To turn this into a practical claim, one would need a real observable divergence certificate, charge its target data/compute, and compare against an adaptive robust ERM with the same feature-access interface.
+</pre><p><a href="../assets/a5ac11bcb40328f4d3ba3a3deaee94d7d06bb76ab9cdf307b722b50523222a41.md">Exact original</a></p></html>

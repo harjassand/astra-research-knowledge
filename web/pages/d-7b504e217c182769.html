@@ -1,0 +1,97 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/continuum_physics/boson_dimension/check_form_identity.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/continuum_physics/boson_dimension/check_form_identity.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact finite check of the labeled-coordinate graph commutator/counting lemma.
+
+This checks only the algebraic graph identity and the endpoint shell/count
+used in RESULT.txt. It is finite evidence, not a proof of the Wick or trace
+estimates and not a proof of the theorem.
+&quot;&quot;&quot;
+
+from itertools import product
+import json
+
+
+def site_coords(L):
+    return list(product(range(L), repeat=2))
+
+
+def close(a, b, R):
+    return max(abs(a[0] - b[0]), abs(a[1] - b[1])) &lt;= R
+
+
+def allowed(z, coords, R):
+    return all(not close(coords[z[i]], coords[z[j]], R)
+               for i in range(len(z)) for j in range(i + 1, len(z)))
+
+
+def neighbors(z, coords, L):
+    out = []
+    for i, site in enumerate(z):
+        x, y = coords[site]
+        for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            xx, yy = x + dx, y + dy
+            if 0 &lt;= xx &lt; L and 0 &lt;= yy &lt; L:
+                target = coords.index((xx, yy))
+                zz = list(z)
+                zz[i] = target
+                out.append(tuple(zz))
+    return out
+
+
+def run_case(L, m, R):
+    coords = site_coords(L)
+    configs = list(product(range(L * L), repeat=m)) if m else [()]
+    P = {z: allowed(z, coords, R) for z in configs}
+    shell = {z: not allowed(z, coords, R + 1) for z in configs}
+    max_cross = 0
+    edge_checks = 0
+    diagonal_checks = 0
+    for z in configs:
+        # Any diagonal part of K cancels identically in the double
+        # commutator; include the actual d=2 labeled-sector diagonal here.
+        fz = int(P[z])
+        k_zz = 4 * m  # J=1, two-dimensional Dirichlet one-body diagonal.
+        double_comm_zz = 2 * fz * k_zz * fz - fz * fz * k_zz - k_zz * fz * fz
+        assert double_comm_zz == 0
+        diagonal_checks += 1
+        nb = neighbors(z, coords, L)
+        cross = [w for w in nb if P[z] != P[w]]
+        max_cross = max(max_cross, len(cross))
+        assert len(cross) &lt;= 4 * m
+        if cross:
+            assert shell[z]
+        for w in nb:
+            # K_uv=-1 for a coordinate hop. Verify
+            # P K P = (P^2 K + K P^2)/2 + [P,[K,P]]/2.
+            k_uv = -1
+            lhs = int(P[z]) * k_uv * int(P[w])
+            double_comm_uv = -k_uv * (int(P[z]) - int(P[w])) ** 2
+            rhs = ((int(P[z]) + int(P[w])) * k_uv + double_comm_uv) / 2
+            assert lhs == rhs
+            if P[z] != P[w]:
+                assert shell[w]
+            edge_checks += 1
+    return {
+        &quot;L&quot;: L,
+        &quot;d&quot;: 2,
+        &quot;m&quot;: m,
+        &quot;R&quot;: R,
+        &quot;configurations&quot;: len(configs),
+        &quot;directed_coordinate_edges&quot;: edge_checks,
+        &quot;diagonal_commutator_checks&quot;: diagonal_checks,
+        &quot;max_crossing_degree&quot;: max_cross,
+        &quot;crossing_degree_bound&quot;: 4 * m,
+        &quot;status&quot;: &quot;PASS&quot;,
+    }
+
+
+def main():
+    records = [run_case(L, m, R)
+               for L in range(2, 5)
+               for m in range(0, 4)
+               for R in range(0, 2)]
+    print(json.dumps({&quot;cases&quot;: len(records), &quot;records&quot;: records}, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/3b53c1ad5408fecfa6ced2854d4535e477af8ebf15a9588696f078247cf370f6.py">Exact original</a></p></html>

@@ -1,0 +1,5 @@
+import NextTypeAsymptotic
+
+#print axioms N33Affine.NextTypeAsymptotic.rpow_ratio_tendsto_zero_of_lt
+#print axioms N33Affine.NextTypeAsymptotic.littleO_comp_tendsto_zero
+#print axioms N33Affine.NextTypeAsymptotic.finite_rpow_sum_add_littleO_tendsto_zero

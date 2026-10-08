@@ -1,0 +1,223 @@
+#!/usr/bin/env python3
+"""Exact finite certificate for the spin-1 cloner marginal and star spectrum."""
+
+from itertools import product
+from math import comb
+
+import sympy as sp
+
+
+def dicke_basis(n):
+    columns = []
+    for excitations in range(n + 1):
+        vector = sp.zeros(2**n, 1)
+        for bits in product((0, 1), repeat=n):
+            if sum(bits) == excitations:
+                index = 0
+                for bit in bits:
+                    index = 2 * index + bit
+                vector[index] = 1 / sp.sqrt(comb(n, excitations))
+        columns.append(vector)
+    return sp.Matrix.hstack(*columns)
+
+
+def vec(matrix):
+    return sp.Matrix([matrix[a, b] for b in range(3) for a in range(3)])
+
+
+def unvec(vector):
+    return sp.Matrix(3, 3, lambda a, b: vector[a + 3 * b])
+
+
+def superoperator_from_action(action):
+    columns = []
+    for b in range(3):
+        for a in range(3):
+            matrix = sp.zeros(3, 3)
+            matrix[a, b] = 1
+            columns.append(vec(action(matrix)))
+    return sp.Matrix.hstack(*columns)
+
+
+def double_commutator_projectors():
+    jz = sp.diag(1, 0, -1)
+    jp = sp.sqrt(2) * sp.Matrix([[0, 1, 0], [0, 0, 1], [0, 0, 0]])
+    jm = jp.T
+    jx = (jp + jm) / 2
+    jy = (jp - jm) / (2 * sp.I)
+    spins = (jx, jy, jz)
+
+    def casimir_action(x):
+        return sum(
+            (j * (j * x - x * j) - (j * x - x * j) * j for j in spins),
+            sp.zeros(3, 3),
+        )
+
+    casimir = superoperator_from_action(casimir_action)
+    identity = sp.eye(9)
+    p1 = casimir * (6 * identity - casimir) / 8
+    p2 = casimir * (casimir - 2 * identity) / 24
+    p0 = identity - p1 - p2
+    assert p1 * p1 == p1
+    assert p2 * p2 == p2
+    assert p0 * p0 == p0
+    assert (p0 * p1).is_zero_matrix and (p0 * p2).is_zero_matrix
+    assert (p1 * p2).is_zero_matrix
+    assert (p0.trace(), p1.trace(), p2.trace()) == (1, 3, 5)
+    return spins, p0, p1, p2
+
+
+def cloner_marginal_superoperator():
+    w2 = dicke_basis(2)
+    w4 = dicke_basis(4)
+    p4 = w4 * w4.T
+    identity_4 = sp.eye(4)
+    result = sp.zeros(9, 9)
+
+    for a in range(3):
+        for b in range(3):
+            matrix_unit = sp.zeros(3, 3)
+            matrix_unit[a, b] = 1
+            embedded = w2 * matrix_unit * w2.T
+            full = sp.Rational(3, 5) * p4 * sp.kronecker_product(embedded, identity_4) * p4
+            reduced = sp.zeros(4, 4)
+            for x in range(4):
+                for y in range(4):
+                    for traced in range(4):
+                        reduced[x, y] += full[4 * x + traced, 4 * y + traced]
+            output = sp.simplify(w2.T * reduced * w2)
+            column = a + 3 * b
+            for c in range(3):
+                for d in range(3):
+                    result[c + 3 * d, column] = output[c, d]
+    return result
+
+
+def normalized_choi(superoperator):
+    result = sp.zeros(9, 9)
+    for a in range(3):
+        for b in range(3):
+            matrix_unit = sp.zeros(3, 3)
+            matrix_unit[a, b] = 1
+            reference_unit = sp.zeros(3, 3)
+            reference_unit[a, b] = 1
+            result += sp.kronecker_product(
+                reference_unit,
+                unvec(superoperator * vec(matrix_unit)),
+            )
+    return sp.simplify(result / 3)
+
+
+def star_matrices(p1, p2):
+    k1 = 9 * normalized_choi(p1)
+    k2 = 9 * normalized_choi(p2)
+    assert k1 == k1.H
+    assert k2 == k2.H
+
+    swap = sp.zeros(27, 27)
+    for a, b, c in product(range(3), repeat=3):
+        source = (a * 3 + b) * 3 + c
+        target = (a * 3 + c) * 3 + b
+        swap[target, source] = 1
+
+    h1_half = sp.kronecker_product(k1, sp.eye(3))
+    h2_half = sp.kronecker_product(k2, sp.eye(3))
+    h1 = h1_half + swap * h1_half * swap
+    h2 = h2_half + swap * h2_half * swap
+    return h1, h2
+
+
+def swap_parity_bases():
+    """Orthonormal bases for R⊗Sym²(B) and R⊗Alt²(B), with dim 18 and 9."""
+    symmetric, antisymmetric = [], []
+    for reference in range(3):
+        for a in range(3):
+            vector = sp.zeros(27, 1)
+            vector[(reference * 3 + a) * 3 + a] = 1
+            symmetric.append(vector)
+        for a in range(3):
+            for b in range(a + 1, 3):
+                plus = sp.zeros(27, 1)
+                plus[(reference * 3 + a) * 3 + b] = 1 / sp.sqrt(2)
+                plus[(reference * 3 + b) * 3 + a] = 1 / sp.sqrt(2)
+                symmetric.append(plus)
+
+                minus = sp.zeros(27, 1)
+                minus[(reference * 3 + a) * 3 + b] = 1 / sp.sqrt(2)
+                minus[(reference * 3 + b) * 3 + a] = -1 / sp.sqrt(2)
+                antisymmetric.append(minus)
+    return sp.Matrix.hstack(*symmetric), sp.Matrix.hstack(*antisymmetric)
+
+
+def main():
+    _, p0, p1, p2 = double_commutator_projectors()
+    channel = cloner_marginal_superoperator()
+    identity = sp.eye(3)
+    identity_vector = vec(identity)
+    trace_row = sp.Matrix([[1 if a == b else 0 for b in range(3) for a in range(3)]])
+
+    assert channel * identity_vector == identity_vector
+    assert trace_row * channel == trace_row
+    assert channel == channel.H
+    assert channel == p0 + sp.Rational(3, 4) * p1 + sp.Rational(7, 20) * p2
+    assert channel.eigenvals() == {sp.Integer(1): 1, sp.Rational(3, 4): 3, sp.Rational(7, 20): 5}
+
+    h1, h2 = star_matrices(p1, p2)
+    # Matrix.charpoly creates a generic symbol with the requested name; use
+    # generic symbols here so the exact polynomial comparison is literal.
+    x, t = sp.symbols("x t")
+    actual = sp.factor((h1 + t * h2).charpoly(x).as_expr())
+    expected = (
+        (-5 * t + 2 * x - 3) ** 3
+        * (-t + x + 3) ** 7
+        * (t + 2 * x + 3) ** 5
+        * (5 * t + x - 3)
+        * (7 * t + 2 * x - 3) ** 5
+        * (-40 * t**2 - 7 * t * x + 2 * x**2 - 9 * x) ** 3
+        / 65536
+    )
+    assert sp.simplify(actual - expected) == 0
+
+    # Compatibility requires invariance under output swap, not support on the
+    # Bose-symmetric subspace. Check both swap sectors of the full 27-space.
+    w_plus, w_minus = swap_parity_bases()
+    assert w_plus.T * w_plus == sp.eye(18)
+    assert w_minus.T * w_minus == sp.eye(9)
+    assert w_plus.T * w_minus == sp.zeros(18, 9)
+    h = h1 + t * h2
+    plus_poly = sp.factor(
+        (x * sp.eye(18) - w_plus.T * h * w_plus).det(method="domain-ge")
+    )
+    minus_poly = sp.factor(
+        (x * sp.eye(9) - w_minus.T * h * w_minus).det(method="domain-ge")
+    )
+    expected_plus = (
+        (-t + x + 3) ** 7
+        * (7 * t + 2 * x - 3) ** 5
+        * (-40 * t**2 - 7 * t * x + 2 * x**2 - 9 * x) ** 3
+        / 256
+    )
+    expected_minus = (
+        (-5 * t + 2 * x - 3) ** 3
+        * (t + 2 * x + 3) ** 5
+        * (5 * t + x - 3)
+        / 256
+    )
+    assert sp.simplify(plus_poly - expected_plus) == 0
+    assert sp.simplify(minus_poly - expected_minus) == 0
+    assert sp.simplify(plus_poly * minus_poly - actual) == 0
+    radicand = 369 * t**2 + 126 * t + 81
+    assert sp.simplify((9 + 15 * t) ** 2 - radicand - 144 * t * (1 - t)) == 0
+    assert sp.simplify((3 + 21 * t) ** 2 - radicand - 72 * (t**2 - 1)) == 0
+
+    print("spin-1 cloner transfer eigenvalues:", channel.eigenvals())
+    print("projector ranks:", p0.trace(), p1.trace(), p2.trace())
+    print("star characteristic polynomial:")
+    print(actual)
+    print("swap-sector dimensions: symmetric=18, antisymmetric=9")
+    print("exact swap-sector factorization: PASS")
+    print("exact factor-two scalar certificates: PASS")
+
+
+if __name__ == "__main__":
+    main()

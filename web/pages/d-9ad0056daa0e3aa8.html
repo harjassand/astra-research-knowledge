@@ -1,0 +1,169 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c8_distributed_scientific_control/proof/FINITE_SENSOR_TREE_CAPACITY.md</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c8_distributed_scientific_control/proof/FINITE_SENSOR_TREE_CAPACITY.md</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre># Finite sensor-tree capacity: exact recursion, certificate, and boundary
+
+## Status and scope
+
+This note separates three claims that should not be conflated.
+
+1. **Finite max-ray capacity recursion:** a direct mathematical result for a finite rooted tree with known q=4 Potts edge channels and selected q-symmetric sensors. It is exact over the real numbers; the accompanying integer implementation returns conservative rational lower bounds.
+2. **Bayes-performance conversion:** conditional on the Astra-derived heterogeneous-edge four-state posterior-cone/flow theorem recorded in `mechanism_attack/N49_SOURCE_PROOF_AND_HOSTILE_AUDIT.md`. The OpenAI/math N49 manuscript itself proves only homogeneous edge parameter `lambda` and bounded outdegree. The conversion is a source-dependent candidate, not an externally validated theorem.
+3. **Sensor selection:** the budget DP is optimal for maximizing the capacity certificate, not for maximizing actual Bayes MAP accuracy. An exact two-portfolio counterexample below proves those objectives can rank designs differently.
+
+The useful output is a computable finite certificate and design proxy. It does not establish novel BP, optimal Bayes sensor placement, actuator safety, or a physical network advantage.
+
+## Finite model
+
+Let `T` be a finite rooted tree with root `rho`, four-state root prior uniform, and known edge channels
+
+`P_lambda(j|i) = lambda*1{i=j} + (1-lambda)/4`, with `0 &lt;= lambda &lt;= 1`.
+
+A selectable sensor `s` at node `v` has cost `c_s` and an independent channel `P_rho_s` from the node state to a four-valued report. The sensor is modeled as an extra edge `(v,s)` followed by perfect observation of its child spin. Several sensors at one node are represented by parallel sensor leaves. Sensors with `rho=0` contain no state information; `rho=1` are perfect. Edges with `lambda=0` disconnect downstream sensors from the root and contribute zero.
+
+For a flow `theta` from the root to selected sensor leaves, conserve mass at every nonsensor interior vertex and allow it to terminate at sensor leaves. Set `R_rho=1`, and multiply `R` by `lambda_e^2` across every ordinary or sensor edge. Its worst-path energy is
+
+`V(theta) = max_sensor_path sum_(e=(v,w)) (1-lambda_e^4)*(theta_e/R_w)^2`.
+
+Define the finite capacity `Cap(T,S) = sup{|theta| : V(theta) &lt;= 1}`. If no selected sensor is reachable through positive channels, capacity is zero. If there is a perfect sensor path with all transfer parameters equal to one, capacity is infinite; any finite mass on that route has zero energy.
+
+## Backward scalar recursion
+
+For each subtree rooted at `v`, let `Gamma_v` be the minimum possible maximum additional path energy when one unit of flow enters `v`; set `Gamma=0` at a perfectly observed terminal and `Gamma=+infinity` if no selected sensor is reachable. For an ordinary child branch `e=(v,w)`, one unit sent down it incurs the first-edge increment
+
+`a_e = R_w^(-2) - R_v^(-2) = (1-lambda_e^4)/R_w^2`
+
+plus the child-subtree energy `Gamma_w`. For a sensor branch with reliability `rho_s`, use the same formula with `R_s=R_v*rho_s^2` and terminal `Gamma_s=0`.
+
+If branch `i` has cost coefficient `c_i=a_i+Gamma_i` and receives flow fraction `x_i`, then `sum_i x_i=1` and its worst path cost is `c_i*x_i^2`. The minimax split equalizes active branch costs: `x_i = c_i^(-1/2)/sum_j c_j^(-1/2)`. Therefore
+
+`Gamma_v = (sum_i (a_i+Gamma_i)^(-1/2))^(-2)`.
+
+Normalize `S_v = 1/(R_v*sqrt(Gamma_v))`. Algebra using `R_w=R_v*lambda_e^2` gives the local series transform
+
+`Phi_lambda(S) = lambda^2*S / sqrt(1+(1-lambda^4)*S^2)`.
+
+The sensor-edge contribution simplifies to
+
+`g(rho) = rho^2 / sqrt(1-rho^4)`.
+
+Thus the exact recursion is
+
+`S_v = sum_(ordinary child w) Phi_lambda_e(S_w) + sum_(selected local sensor s) g(rho_s)`.
+
+Conventions: `Phi_0(S)=0`; `Phi_1(S)=S`; `Phi_lambda(+infinity)=lambda^2/sqrt(1-lambda^4)` for `lambda&lt;1` and `+infinity` for `lambda=1`; `g(0)=0`, `g(1)=+infinity`. At the root, `S_rho=Cap(T,S)`.
+
+The finite minimax proof needs no compactness argument for infinite flows. It is just the finite branch equalization above, applied recursively. Local sensor observations at interior nodes are ordinary extra branches in this recursion.
+
+## Budgeted certificate design
+
+Suppose each node has a finite menu of sensor options with positive integer costs and fixed supplied reliabilities. For total integer budget `B`, compute `S_v[k]`, the largest certificate strength available in the subtree of `v` at cost at most `k`:
+
+`S_v[k] = max_(local choice and child budgets summing &lt;=k) [sum_s g(rho_s) + sum_w Phi_lambda_e(S_w[k_w])]`.
+
+The transforms are monotone, so maximizing each child certificate before applying `Phi` is valid. Local knapsack plus tree-child convolution gives `O(B*sum_v menu_size(v) + B^2*|E|)` scalar operations, with pseudo-polynomial dependence on the cost budget. If costs are arbitrary rationals, scaling them to integers can inflate `B`; that is charged. This solves **certificate-optimal placement** exactly in real arithmetic. It does not solve Bayes-optimal placement.
+
+### Downward-rounded exact integer implementation
+
+`code/finite_tree_capacity.py` includes a conservative fixed-scale version. Choose integer scale `Q`; store `L` to mean certified lower bound `S &gt;= L/Q`. For rational `lambda=a/b` in lowest terms and child lower bound `L/Q`,
+
+`Q*Phi_lambda(L/Q) = Q*a^2*L / sqrt(b^4*Q^2 + (b^4-a^4)*L^2)`.
+
+The exact integer
+
+`floor(Q*Phi_lambda(L/Q)) = isqrt(floor(N^2/D))`,
+
+where `N=Q*a^2*L` and `D=b^4*Q^2+(b^4-a^4)*L^2`. Likewise,
+
+`floor(Q*g(a/b)) = isqrt(floor((Q*a^2)^2/(b^4-a^4)))`.
+
+These formulas use only integer arithmetic, and monotonicity of `Phi` and `g` makes every recursion step a lower bound. Summing lower contributions at a common scale and maximizing over budget choices preserves certification. `None` represents infinity in the code; a perfect deterministic route permits arbitrary finite mass, while finite-cost states are ordinary integers. A rational lower strength `b` can be converted to an explicit expected-TV lower bound below. The bit cost is governed by the chosen `Q`, rational input bit lengths, and the resulting integer bit lengths; no fixed word-size implementation is claimed.
+
+## Conditional finite-depth Bayes guarantee
+
+Assume the weighted heterogeneous q=4 flow theorem in the internal N49 proof packet, including its posterior-cone dependency and universal local constant `C=460`. For any positive flow mass `b` with max path energy at most one, its sufficiency proof constructs a degradation at every finite observation depth. With
+
+`eta = 0.01/sqrt(b^2+2)`,
+
+the source-derived relative information-loss bound is at most
+
+`14*eta*sqrt(b^2+2) + 7*C*eta^2*(b^2+2) = 0.14+0.322=0.462 &lt; 1/2`.
+
+Also `eta*sqrt(b^2+1) &lt;= .01`, so the proof&#x27;s leaf channels remain legal. From its `E TV &gt;= m/8` conversion and `m_root &gt;= eta*b/2`,
+
+`E TV(p_root,uniform) &gt;= b/(1600*sqrt(b^2+2))`.
+
+For four-class MAP, `max_i p_i - 1/4 &gt;= TV(p,uniform)/3`; hence
+
+`P(MAP correct)-1/4 &gt;= b/(4800*sqrt(b^2+2))`.
+
+These are expectation bounds, not per-episode posterior bounds. They hold uniformly over finite depths for the conditional weighted-flow theorem. The number is intentionally displayed: for the fixture `b=0.49234806`, it gives `E TV &gt;= 2.0549e-4` and MAP advantage at least `6.8497e-5`. This is a weak but positive certificate. It is not a calibrated prediction for a physical sensor network.
+
+For a finite sensor placement with unequal sensor depths, attach each noisy sensor edge and extend its observed report down a deterministic `lambda=1` chain to a shared level `N` at least as deep as every report. The level-`N` boundary then contains exactly the sensor reports (plus deterministic copies); its max-ray capacity is the finite `S_root` computed above. The conditional theorem supplies the stated guarantee for that full report experiment. For every deeper level, deterministic copies carry the same record. This construction does **not** assert that the level-`n` spin census of an unaugmented physical tree, at an arbitrary `n` before all sensors, equals the full sensor record.
+
+If the finite DP returns a conservative `b=L/Q`, use this `b`; since the displayed function is increasing, the lower bound remains valid. The capacity recursion by itself is a finite mathematical result. The Bayes conversion must be labeled **conditional candidate** because the heterogeneous weighted-flow iff is in the Astra proof page, whereas the pinned OpenAI/math N49 paper proves common `lambda` and a uniform degree bound.
+
+### Regular-tree finite-depth formula
+
+For a `d`-ary tree with a perfect observation at every depth-`n` leaf and homogeneous edge parameter `lambda`,
+
+`S_n=+infinity`, `S_k=d*Phi_lambda(S_(k+1))`.
+
+Let `q=d^2*lambda^4` and `c=1-lambda^4`. Inverting the recurrence gives
+
+`1/S_0^2 = c*sum_(j=1)^n q^(-j)`.
+
+Therefore `S_0 -&gt; sqrt((q-1)/c)&gt;0` when `d*lambda^2&gt;1`; at the critical boundary `d*lambda^2=1`, `S_0=1/sqrt(n*c)`; and below it `S_0 -&gt;0`. The threshold is the familiar Kesten–Stigum boundary for this q=4 ferromagnetic model; the value here is an exact finite capacity calculation, not a new threshold theorem.
+
+## True Bayes inference and a design counterexample
+
+For a realized sensor report `y_v`, set local likelihood `q_v(i)=P(y_v|sigma_v=i)` (or `1` if no sensor). Exact upward messages are
+
+`ell_v(j)=q_v(j)*product_child m_(w-&gt;v)(j)`,
+
+`m_(v-&gt;p)(i)=lambda*ell_v(i)+(1-lambda)*sum_j ell_v(j)/4`.
+
+Normalize at the root and choose an argmax; ties are Bayes-optimal, with any fixed or randomized tie rule. This is standard tree sum-product/BP and costs `O(|E|)` four-vector updates for one sample. With rational supplied channels and observation likelihoods, exact arithmetic can be used; bit sizes grow with the total input description. A distributed realization sends four likelihood scalars (or three normalized log-ratios) per edge per sample; `b` fixed bits per ratio costs `3b|E|` payload bits, plus headers/retries. The q=4 capacity paper does not prove fixed-precision error propagation, latency robustness, or packet-loss tolerance.
+
+The capacity-optimal DP cannot be described as Bayes-optimal. Exact counterexample, all sensors colocated at the root and independent conditional on the root:
+
+| Cost-2 design | Capacity strength | Exact MAP success |
+|---|---:|---:|
+| One `P_0.7` sensor | `g(.7)=0.5621055` | `31/40 = 0.775` |
+| Two `P_0.6` sensors | `2g(.6)=0.7717436` | `7/10 = 0.700` |
+
+For the two moderate sensors, matching outputs have total probability `0.52` and posterior MAP probability `49/52`, contributing `.49`; distinct outputs have probability `.48` and posterior maximum `7/16`, contributing `.21`. Total success is `.70`. The capacity DP chooses the two moderate sensors, although their exact Bayes performance is worse than one strong sensor. This refutes any inference that certificate-optimal acquisition is Bayes-optimal, even in the smallest symmetric fixture.
+
+For an actually Bayes-optimal design on a finite candidate menu, one can enumerate every cost-feasible subset and exactly evaluate its finite outcome law with BP; this is finite but can be exponential in the number of sensors/outcomes. No polynomial-time exact Bayes design algorithm or submodularity guarantee is established here. Do not assume MAP reward is submodular.
+
+## Calibration, supplied inputs, and resource ledger
+
+The clean algorithm takes the full tree, every edge parameter, every offered sensor channel, and integer sensor cost menu as supplied. It does not learn topology, edge dynamics, calibration labels, or a general confusion matrix for free.
+
+For an unknown q-symmetric edge channel, collect `N_e` independent labeled parent/child pairs. If `p_hat` is the fraction of matches, `lambda_hat=(4*p_hat-1)/3`. For confidence allocation `alpha_e`, Hoeffding gives the one-sided lower bound
+
+`lambda_e^- = max(0, (4*(p_hat - sqrt(log(1/alpha_e)/(2N_e))) - 1)/3)`
+
+with probability at least `1-alpha_e`. Use a union bound with `sum_e alpha_e + sum_s alpha_s &lt;= alpha_cal`. Sensors require known injected states and their own `N_s`; otherwise reliability is not identified under the stated interface. The symmetry of the q-ary Potts form is an additional model assumption and must be separately checked from the full confusion table. Given certified lower reliability bounds, evaluating the finite certificate at those lower channels is conservative because `Phi` and `g` are monotone. Calibration cost is at least `sum_e N_e + sum_s N_s` labeled trials, then converted to instrument time/energy by measured per-trial rates. Channel parameters remain supplied if no calibration budget is included.
+
+As a planning scale, a sufficient condition for `lambda_e^- &gt;= lambda_e/2` with probability `1-alpha_e` is
+
+`N_e &gt;= 128*log(1/alpha_e)/(9*lambda_e^2)`.
+
+This follows by requiring the Hoeffding radius at most `3*lambda_e/16`, so the one-sided estimator loses at most half the true parameter. For 1,000 independently calibrated edges, equal union allocation `alpha_e=.05/1000`, and a planning floor `lambda_e&gt;=.8`, this conservative rule requires 221 labeled transitions per edge, 221,000 transitions total, before sensor calibration or model validation. A supplied common-channel assumption can reduce calibration count only if it is physically justified and tested; it cannot be assumed to avoid edge costs in a heterogeneous network.
+
+Per held-out episode, charge each sensor&#x27;s acquisition energy/time, every transmitted local report, `O(|E|)` BP updates, and one upward message per edge. For finite-precision messages, compare against centralized exact BP at the same calibrated model and quantify posterior/MAP changes over a measured channel range; no theorem here protects fixed-precision or asynchronous execution. For acquisition planning, separately report sensor budget, calibration trials/confidence, communication payload, arithmetic/bit cost, and latency. A capacity budget DP is a proxy objective only.
+
+## Primary prior art and novelty boundary
+
+- The pinned [OpenAI/math N49 capacity manuscript](https://github.com/openai/math/blob/adc7f1241b42e322a6451854ab7e4b4c146bf78a/preprints/A-Capacity-Criterion-for-Four-State-Potts-Reconstruction-on-Trees/build/main.tex) states a constant `lambda` and bounded outdegree. It explicitly imports the moment-saving input from its [four-state Potts companion](https://github.com/openai/math/blob/adc7f1241b42e322a6451854ab7e4b4c146bf78a/preprints/The-Reconstruction-Threshold-for-the-Ferromagnetic-Four-State-Potts-Model/build/sections/03-cone.tex).
+- Pemantle–Peres, [“The Critical Ising Model on Trees, Concave Recursions and Nonlinear Capacity”](https://arxiv.org/abs/math/0503137), already develops tree nonlinear-capacity recursions and `L^3` capacity criteria for plus-boundary Ising. N49 cites their `p=3` recursion as the deterministic capacity tool. The scalar finite recursion here should therefore be treated as a direct computational form of established tree-capacity machinery, not an algorithmic novelty claim.
+- Kschischang–Frey–Loeliger, [“Factor Graphs and the Sum-Product Algorithm”](https://doi.org/10.1109/18.910572), establishes sum-product on cycle-free factor graphs; exact upward BP is standard.
+- Tay, Tsitsiklis &amp; Win, [“Bayesian Detection in Bounded Height Tree Networks”](https://dspace.mit.edu/entities/publication/ebcbe0de-57d3-4f8f-9de0-fcdd9ea72b14), studies distributed resource-constrained detection with progressively compressed messages and derives error-exponent/design results in its own bounded-height/compression model. It is relevant prior work for sensor-tree resource design.
+- Mossel, Sly &amp; Sohn, [“Exact Phase Transitions for Stochastic Block Models and Reconstruction on Trees”](https://projecteuclid.org/journals/annals-of-probability/volume-53/issue-3/Exact-phase-transitions-for-stochastic-block-models-and-reconstruction-on/10.1214/24-AOP1723.full), gives q=3,4 tree-reconstruction/assortative-SBM threshold results under its Galton–Watson hypotheses, not the arbitrary deterministic tree/channel-heterogeneous statement.
+
+Conditional substantive capital is the q=4 posterior-cone mechanism and the internal heterogeneous weighted-flow equivalence. The finite DP is an explicit corollary/computational proxy. Exact source certificate replay has been done by the sibling hostile auditor only for the small rational checker; two longer product polynomial traversals remain only source-reported in this task. Neither external mathematical review nor priority review was performed.
+
+## Decisive controlled test
+
+Use a four-mode broadcast emulator or instrument hierarchy. Pre-register a finite nonregular tree, its complete adjacency list, common or edge-specific channel model, and sensor menu. Randomize balanced root classes; acquire independent labeled calibration pairs; freeze lower-confidence reliability bounds and the selected design before held-out episodes. Compare: no-data chance (`25%`), best single sensor, census/majority, capacity-optimal sensor placement, exact centralized BP, and distributed BP at the target precision. Hold sensor cost and calibration trials fixed across policies. Measure root MAP accuracy, `E TV`, calibration error, bytes, latency, sensor energy, and edge loss. Use exact enumeration for tiny networks and held-out Monte Carlo with confidence intervals for larger ones.
+
+A useful stress family is bounded-degree nonregular trees near `d*lambda^2=1`, where a scalar average-degree test is insufficient. The discriminating prediction is not that the capacity proxy beats exact Bayes (it cannot); it is that an explicit positive capacity witness and the conditional cone theorem yield a held-out advantage floor independent of depth. A miss of the correctly computed floor under verified Potts channels falsifies the theorem/interface or its implementation. A successful finite test does not establish the infinite-depth criterion. Real-loop safety/control, correlated/common-cause failures, unknown topology, general channels, adaptive actuation, and finite-bit BP remain outside the claim.
+</pre><p><a href="../assets/9726a4cb415f4f506c93b3ea8253d88ca81b7d9e761d4ab67d773de69028d3bc.md">Exact original</a></p></html>

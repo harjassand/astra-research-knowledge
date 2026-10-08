@@ -1,0 +1,155 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/sol_collision_precision/evidence/check_cold_rank_profile.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/sol_collision_precision/evidence/check_cold_rank_profile.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>&quot;&quot;&quot;New rank-deficit conventions only; not a uniform or external proof.
+
+Exact CP2 radial Berezin Gram energies are evaluated independently of the
+Casimir comparison. Small nonnormal matrices check the right-kernel Green
+normalization. Importing earlier helper definitions does not rerun old tests.
+&quot;&quot;&quot;
+import importlib.util
+import json
+import math
+from fractions import Fraction
+from pathlib import Path
+
+import numpy as np
+
+
+def dimension(m):
+    return (m + 1) * (m + 2) // 2
+
+
+def radial_gram(m):
+    d = dimension(m)
+    return [[Fraction(2 * d * math.comb(m, n) * math.comb(m, t)
+                      * math.factorial(n + t + 1)
+                      * math.factorial(2 * m - n - t),
+                      math.factorial(2 * m + 2))
+             for t in range(m + 1)] for n in range(m + 1)]
+
+
+def cap(m, q):
+    k = 0
+    while (k + 2) * (k + 3) // 2 &lt;= q:
+        k += 1
+    return [Fraction(max(k + 1 - n, 0), k + 1)
+            for n in range(m + 1)], &#x27;cap&#x27;
+
+
+def filter_for(m, q):
+    d = dimension(m)
+    h = d - q
+    if q * 2 &lt;= d or m &lt; 8 or 128 * h &gt; m * m:
+        return cap(m, q)
+    r = math.isqrt(2 * h)
+    if r * r &lt; 2 * h:
+        r += 1
+    b = 2 * r
+    assert b * 2 &lt;= m
+    terms = [Fraction(1, (m - n) * (n + 1) * (n + 2))
+             for n in range(r - 1, b)]
+    resistance = sum(terms, Fraction(0))
+    f = [Fraction(0) for n in range(m + 1)]
+    for n in range(r, b):
+        f[n] = sum(terms[:n - r + 1], Fraction(0)) / resistance
+    for n in range(b, m + 1):
+        f[n] = Fraction(1)
+    return f, &#x27;resistance&#x27;
+
+
+def radial_cases():
+    cases = []
+    for m in (1, 2, 4, 8, 16, 32):
+        d = dimension(m)
+        gram = radial_gram(m)
+        # Complete for the smallest two carriers, selected disparate ranks
+        # otherwise. The near-full fixtures are new to this evidence file.
+        budgets = (set(range(1, d)) if m &lt;= 2 else
+                   {1, 2, d // 4, d // 2, d // 2 + 1,
+                    d - 1, d - 2, d - 3, d - 8})
+        for q in sorted(x for x in budgets if 1 &lt;= x &lt; d):
+            f, mode = filter_for(m, q)
+            rank = sum(x != 0 for x in f)
+            assert rank &lt;= q
+            norm = sum(Fraction(n + 1) * f[n] ** 2
+                       for n in range(m + 1))
+            symbol_energy = sum(gram[n][t] * f[n] * f[t]
+                                for n in range(m + 1)
+                                for t in range(m + 1))
+            energy = norm - symbol_energy
+            cas = sum(Fraction((m - n) * (n + 1) * (n + 2))
+                      * (f[n + 1] - f[n]) ** 2 for n in range(m))
+            assert 0 &lt;= energy &lt;= cas / m
+            error = float(energy / norm)
+            profile = math.sqrt(1 / q - 1 / d)
+            assert error &lt;= 64 * profile
+            cases.append({&#x27;m&#x27;: m, &#x27;d&#x27;: d, &#x27;Q&#x27;: q, &#x27;actual_rank&#x27;: rank,
+                          &#x27;mode&#x27;: mode, &#x27;exact_energy&#x27;: str(energy),
+                          &#x27;exact_norm&#x27;: str(norm), &#x27;pure_error&#x27;: error,
+                          &#x27;error_over_profile&#x27;: error / profile})
+    return cases
+
+
+def kernel_cases():
+    helper = Path(__file__).with_name(&#x27;check_cold_carrier.py&#x27;)
+    spec = importlib.util.spec_from_file_location(&#x27;cold_helpers&#x27;, helper)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    rng = np.random.default_rng(81179)
+    cases = []
+    c0 = 1 - math.exp(-1)
+    g0 = 4 / c0 * (1 + 11 * math.sqrt(2) / 3)
+    for m in (1, 2, 3, 4):
+        _, _, shells = module.representation(m)
+        d = dimension(m)
+        a = [1 - math.factorial(m) * math.factorial(m + 2) /
+             (math.factorial(m - ell) * math.factorial(m + ell + 2))
+             for ell in range(m + 1)]
+        for h in sorted({1, 2, max(1, d // 4), (d - 1) // 2}):
+            if h * 2 &gt;= d:
+                continue
+            z = rng.normal(size=(d, h)) + 1j * rng.normal(size=(d, h))
+            v, _ = np.linalg.qr(z)
+            p = v @ v.conj().T
+            aa = ((rng.normal(size=(d, d)) +
+                   1j * rng.normal(size=(d, d))) @ (np.eye(d) - p))
+            aa /= np.linalg.norm(aa, &#x27;fro&#x27;)
+            assert np.linalg.norm(aa @ p, &#x27;fro&#x27;) &lt; 1e-12
+            flatp, flata = p.ravel(order=&#x27;F&#x27;), aa.ravel(order=&#x27;F&#x27;)
+            mass = [float(np.vdot(flatp, pi @ flatp).real) for pi in shells]
+            amass = [float(np.vdot(flata, pi @ flata).real) for pi in shells]
+            for ell in range(m + 1):
+                assert mass[ell] &lt;= h * h * (ell + 1) ** 3 / d + 1e-11
+            green = sum(mass[ell] / a[ell] for ell in range(1, m + 1))
+            energy = sum(amass[ell] * a[ell] for ell in range(1, m + 1))
+            master = 1 / (d * green / (h * h) + (m + 3) / 3)
+            assert energy &gt;= master - 1e-11
+            assert green &lt;= g0 * h ** 1.5 + 1e-11
+            cases.append({&#x27;m&#x27;: m, &#x27;d&#x27;: d, &#x27;h&#x27;: h,
+                          &#x27;green&#x27;: green, &#x27;Berezin_energy&#x27;: energy,
+                          &#x27;master_lower&#x27;: master,
+                          &#x27;kernel_residual&#x27;: float(np.linalg.norm(aa @ p))})
+    return cases
+
+
+def main():
+    radial = radial_cases()
+    kernel = kernel_cases()
+    result = {&#x27;status&#x27;: &#x27;FINITE-EVIDENCE&#x27;,
+              &#x27;scope&#x27;: &#x27;New exact radial Berezin rank-deficit energies and &#x27;
+                       &#x27;small nonnormal right-kernel Green conventions only&#x27;,
+              &#x27;radial_fixture_count&#x27;: len(radial),
+              &#x27;right_kernel_fixture_count&#x27;: len(kernel),
+              &#x27;maximum_filter_error_over_profile&#x27;:
+                  max(x[&#x27;error_over_profile&#x27;] for x in radial),
+              &#x27;radial_fixtures&#x27;: radial, &#x27;right_kernel_fixtures&#x27;: kernel,
+              &#x27;old_tests_rerun&#x27;: False,
+              &#x27;uniform_or_external_validation&#x27;: False}
+    Path(__file__).with_suffix(&#x27;.json&#x27;).write_text(
+        json.dumps(result, indent=2) + &#x27;\n&#x27;)
+    print(json.dumps({k: v for k, v in result.items()
+                      if k not in (&#x27;radial_fixtures&#x27;, &#x27;right_kernel_fixtures&#x27;)},
+                     indent=2))
+
+
+if __name__ == &#x27;__main__&#x27;:
+    main()
+</pre><p><a href="../assets/273bb8741107eb21d9001cb652b2f44ecdac19bdb68a159c254ea8c74962df7c.py">Exact original</a></p></html>

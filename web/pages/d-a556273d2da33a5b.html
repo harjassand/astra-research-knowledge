@@ -1,0 +1,271 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c8_genome_engineering/code/phase_allocation_metric.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c8_genome_engineering/code/phase_allocation_metric.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Tagwise phase contrasts for two barcoded-HAC lines in GSE287042.
+
+The previous implementation pooled D1/D2 counts before taking H3K9me3:CENP-A
+odds. That statistic does not cancel within-domain copy weights. This version
+first forms a phase/reference fold for each position code, then contrasts the
+mean log fold over D1 and D2. Stable tag-specific copy number and sequencing
+bias cancel tagwise; marker/phase-wide scale factors cancel because the D1 and
+D2 coefficients sum to zero. The retained tags are single-hit only in the
+available *partial* supplementary assembly, so all biological interpretations
+remain conditional on phase-invariant structure and stable population mixture.
+
+Run from repository root:
+  python3 work/agents/c8_genome_engineering/code/phase_allocation_metric.py
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import csv
+import gzip
+import glob
+import json
+import math
+from collections import Counter
+from pathlib import Path
+
+ROOT = Path(&quot;work/agents/c8_genome_engineering&quot;)
+RAW = ROOT / &quot;sources/raw/GSE287042&quot;
+MAP = ROOT / &quot;sources/derived/assembled_pc_positions.tsv&quot;
+OUT = ROOT / &quot;sources/derived&quot;
+LN2 = math.log(2.0)
+
+
+def read_counts(hac: str, condition: str, marker: str) -&gt; dict[str, int]:
+    matches = glob.glob(str(RAW / f&quot;*{hac}_ChIP_{condition}_{marker}.txt.gz&quot;))
+    if len(matches) != 1:
+        raise ValueError(f&quot;Expected one file for {hac}/{condition}/{marker}, found {matches}&quot;)
+    counts: dict[str, int] = {}
+    with gzip.open(matches[0], &quot;rt&quot;) as fh:
+        for line in fh:
+            fields = line.rstrip(&quot;\n&quot;).split(&quot;\t&quot;)
+            if fields[0].startswith(&quot;T&quot;):
+                counts[fields[0]] = int(fields[2])
+    return counts
+
+
+def log2_fold(x: int, ref: int) -&gt; float:
+    if x &lt;= 0 or ref &lt;= 0:
+        raise ValueError(&quot;Selected single-hit tags must have positive counts in all phases&quot;)
+    return math.log2(x / ref)
+
+
+def domain_interaction(
+    phase_counts: dict[str, int],
+    ref_counts: dict[str, int],
+    d1: list[str],
+    d2: list[str],
+) -&gt; tuple[float, float, list[dict[str, float | str]]]:
+    &quot;&quot;&quot;Return D1-D2 mean log2 fold and Poisson read-sampling SE.
+
+    Coefficients are +1/|D1| on D1, -1/|D2| on D2. For independent Poisson
+    read counts (or the multinomial delta approximation; coefficients sum to
+    zero), Var(log2 fold) is sum_i a_i^2(1/x_i+1/x0_i)/(ln 2)^2. This is only
+    technical count uncertainty, not biological-replicate uncertainty.
+    &quot;&quot;&quot;
+    coeff = {code: 1.0 / len(d1) for code in d1}
+    coeff.update({code: -1.0 / len(d2) for code in d2})
+    by_code = []
+    estimate = 0.0
+    var = 0.0
+    for code, a in coeff.items():
+        x, x0 = phase_counts.get(code, 0), ref_counts.get(code, 0)
+        fold = log2_fold(x, x0)
+        estimate += a * fold
+        var += a * a * (1.0 / x + 1.0 / x0) / LN2**2
+        by_code.append({&quot;code&quot;: code, &quot;log2_fold&quot;: fold, &quot;coefficient&quot;: a})
+    return estimate, math.sqrt(var), by_code
+
+
+def pooled_naive_phi(
+    phase: str,
+    counts: dict[tuple[str, str], dict[str, int]],
+    d1: list[str],
+    d2: list[str],
+) -&gt; float:
+    &quot;&quot;&quot;Reproduce the old raw-sum statistic, explicitly for audit only.&quot;&quot;&quot;
+    def odds(marker: str, condition: str) -&gt; float:
+        c = counts[(marker, condition)]
+        return sum(c[x] for x in d1) / sum(c[x] for x in d2)
+
+    h = odds(&quot;K9T&quot;, phase) / odds(&quot;K9T&quot;, &quot;THYM&quot;)
+    ca = odds(&quot;CA&quot;, phase) / odds(&quot;CA&quot;, &quot;THYM&quot;)
+    return h / ca
+
+
+def log2_phi_for_sets(
+    phase: str,
+    counts: dict[tuple[str, str], dict[str, int]],
+    d1: list[str],
+    d2: list[str],
+) -&gt; float:
+    ca, _, _ = domain_interaction(counts[(&quot;CA&quot;, phase)], counts[(&quot;CA&quot;, &quot;THYM&quot;)], d1, d2)
+    h, _, _ = domain_interaction(counts[(&quot;K9T&quot;, phase)], counts[(&quot;K9T&quot;, &quot;THYM&quot;)], d1, d2)
+    return h - ca
+
+
+def copy_weight_counterexample(epsilon: float = 0.001) -&gt; dict[str, float]:
+    # Two D1 tags have true copy weights (1,10), with per-copy H/C
+    # occupancies reversed. D2 is a one-tag reference with all values 1.
+    copies = (1.0, 10.0)
+    c_occ = (1.0, epsilon)
+    h_occ = (epsilon, 1.0)
+    raw_h = sum(c * z for c, z in zip(copies, h_occ))
+    raw_c = sum(c * z for c, z in zip(copies, c_occ))
+    raw_phi = (raw_h / raw_c) / (1.0 / 1.0)
+    per_copy_h = sum(z for z in h_occ) / len(h_occ)
+    per_copy_c = sum(z for z in c_occ) / len(c_occ)
+    corrected_phi = (per_copy_h / per_copy_c) / (1.0 / 1.0)
+    return {
+        &quot;epsilon&quot;: epsilon,
+        &quot;raw_sum_phi&quot;: raw_phi,
+        &quot;per_copy_mean_occupancy_phi&quot;: corrected_phi,
+    }
+
+
+def main() -&gt; None:
+    pos = list(csv.DictReader(MAP.open(), delimiter=&quot;\t&quot;))
+    # Source-defined intervals from main Fig. 3B/Fig. 5C and Supplementary
+    # Fig. S3/S5. Codes seen more than once in the partial assembly are dropped.
+    domain_specs = {
+        &quot;HAC120&quot;: {
+            &quot;a&quot;: &quot;D1&quot;, &quot;codes_a&quot;: list(range(69, 85)),
+            &quot;b&quot;: &quot;D2&quot;, &quot;codes_b&quot;: list(range(110, 126)),
+            &quot;map_source&quot;: &quot;main Fig. 3B and Fig. 5C&quot;,
+        },
+        &quot;HAC465&quot;: {
+            &quot;a&quot;: &quot;D3&quot;, &quot;codes_a&quot;: [*range(25, 52), 90, 91, 92, 93],
+            &quot;b&quot;: &quot;D4&quot;, &quot;codes_b&quot;: [87, 69, 70, 71, 73, 74, 75, 76, 77, 78, 79],
+            &quot;map_source&quot;: &quot;Supplementary Fig. S3 and S5&quot;,
+        },
+    }
+    phases = (&quot;THYM&quot;, &quot;COL&quot;, &quot;CR3&quot;)
+    markers = (&quot;CA&quot;, &quot;K9T&quot;)
+
+    summaries = []
+    tag_rows = []
+    domain_summary = {}
+    for hac, spec in domain_specs.items():
+        hits = Counter(row[&quot;code&quot;] for row in pos if row[&quot;hac&quot;] == hac)
+        da = [f&quot;T{i:03d}&quot; for i in spec[&quot;codes_a&quot;] if hits[f&quot;T{i:03d}&quot;] == 1]
+        db = [f&quot;T{i:03d}&quot; for i in spec[&quot;codes_b&quot;] if hits[f&quot;T{i:03d}&quot;] == 1]
+        if len(da) &lt; 2 or len(db) &lt; 2:
+            raise ValueError(f&quot;Need at least two singleton tags in each domain for {hac}&quot;)
+        counts = {(m, p): read_counts(hac, p, m) for m in markers for p in phases}
+        domain_summary[hac] = {
+            f&quot;{spec[&#x27;a&#x27;]}_single_hit_assembled_tags&quot;: da,
+            f&quot;{spec[&#x27;b&#x27;]}_single_hit_assembled_tags&quot;: db,
+            &quot;source_domain_map&quot;: spec[&quot;map_source&quot;],
+        }
+        for phase in (&quot;COL&quot;, &quot;CR3&quot;):
+            effects = {}
+            for marker in markers:
+                effect, se, details = domain_interaction(
+                    counts[(marker, phase)], counts[(marker, &quot;THYM&quot;)], da, db
+                )
+                effects[marker] = (effect, se)
+                for item in details:
+                    code = str(item[&quot;code&quot;])
+                    tag_rows.append({
+                        &quot;HAC&quot;: hac,
+                        &quot;condition_vs_THYM&quot;: phase,
+                        &quot;marker&quot;: &quot;CENP-A&quot; if marker == &quot;CA&quot; else &quot;H3K9me3&quot;,
+                        &quot;code&quot;: code,
+                        &quot;domain&quot;: spec[&quot;a&quot;] if code in da else spec[&quot;b&quot;],
+                        &quot;mapped_reads_phase&quot;: counts[(marker, phase)][code],
+                        &quot;mapped_reads_THYM&quot;: counts[(marker, &quot;THYM&quot;)][code],
+                        &quot;log2_tagwise_fold&quot;: f&quot;{float(item[&#x27;log2_fold&#x27;]):.10g}&quot;,
+                        &quot;domain_contrast_coefficient&quot;: f&quot;{float(item[&#x27;coefficient&#x27;]):.10g}&quot;,
+                    })
+            # Phi is an interaction of tagwise domain contrasts. It is a
+            # compositional shape statistic, not an occupancy ratio or stability.
+            log2_phi = effects[&quot;K9T&quot;][0] - effects[&quot;CA&quot;][0]
+            se_log2_phi = math.sqrt(effects[&quot;K9T&quot;][1] ** 2 + effects[&quot;CA&quot;][1] ** 2)
+            lo = 2 ** (log2_phi - 1.96 * se_log2_phi)
+            hi = 2 ** (log2_phi + 1.96 * se_log2_phi)
+            loo = []
+            for domain, tags in ((spec[&quot;a&quot;], da), (spec[&quot;b&quot;], db)):
+                for tag in tags:
+                    da_minus, db_minus = da.copy(), db.copy()
+                    (da_minus if domain == spec[&quot;a&quot;] else db_minus).remove(tag)
+                    loo.append({
+                        &quot;removed_domain&quot;: domain,
+                        &quot;removed_code&quot;: tag,
+                        &quot;log2_Phi&quot;: log2_phi_for_sets(phase, counts, da_minus, db_minus),
+                    })
+            loo_values = [float(x[&quot;log2_Phi&quot;]) for x in loo]
+            lower95_log2_phi = log2_phi - 1.96 * se_log2_phi
+            summaries.append({
+                &quot;HAC&quot;: hac,
+                &quot;domain_a&quot;: spec[&quot;a&quot;],
+                &quot;domain_b&quot;: spec[&quot;b&quot;],
+                &quot;condition_vs_THYM&quot;: phase,
+                &quot;CENP_A_domain_a_minus_b_log2_fold&quot;: effects[&quot;CA&quot;][0],
+                &quot;CENP_A_read_count_only_SE_log2&quot;: effects[&quot;CA&quot;][1],
+                &quot;H3K9me3_domain_a_minus_b_log2_fold&quot;: effects[&quot;K9T&quot;][0],
+                &quot;H3K9me3_read_count_only_SE_log2&quot;: effects[&quot;K9T&quot;][1],
+                &quot;log2_Phi_tagwise_interaction&quot;: log2_phi,
+                &quot;Phi_tagwise_interaction&quot;: 2**log2_phi,
+                &quot;Phi_read_count_only_95pct_interval&quot;: [lo, hi],
+                &quot;read_count_only_95pct_interval_scope&quot;: &quot;Poisson/delta read-sampling only; not biological replicate uncertainty&quot;,
+                &quot;old_pooled_raw_sum_Phi_invalid_for_copy_cancellation&quot;: pooled_naive_phi(phase, counts, da, db),
+                &quot;leave_one_tag_out_log2_Phi_range&quot;: [min(loo_values), max(loo_values)],
+                &quot;leave_one_tag_out&quot;: loo,
+                &quot;conditional_copy_mismatch_bound&quot;: {
+                    &quot;assumption&quot;: &quot;for every retained tag, |log2(copy_ratio_H3K9me3/copy_ratio_CENP-A)| &lt;= epsilon between phase aliquot and THYM aliquot&quot;,
+                    &quot;bias_bound_abs_log2_Phi&quot;: &quot;2*epsilon&quot;,
+                    &quot;epsilon_max_for_positive_point_estimate_log2&quot;: log2_phi / 2,
+                    &quot;epsilon_max_for_positive_read_count_only_95pct_lower_limit_log2&quot;: lower95_log2_phi / 2,
+                    &quot;max_per_tag_marker_mismatch_fold_point&quot;: 2 ** (log2_phi / 2),
+                    &quot;max_per_tag_marker_mismatch_fold_read_count_only_95pct&quot;: 2 ** (lower95_log2_phi / 2),
+                    &quot;status&quot;: &quot;sensitivity threshold only; no source assay bounds epsilon&quot;,
+                },
+            })
+
+    # An audit witness requested by the reviewer: unequal copy weights alone
+    # can create an apparent tenfold pooled contrast although mean per-copy
+    # H/C occupancy is exactly 1.
+    counter = copy_weight_counterexample()
+    assert abs(counter[&quot;per_copy_mean_occupancy_phi&quot;] - 1.0) &lt; 1e-12
+    assert counter[&quot;raw_sum_phi&quot;] &gt; 9.0
+
+    summary = {
+        &quot;source&quot;: {
+            &quot;paper&quot;: &quot;Ohzeki et al., Nucleic Acids Research 54(12), gkag597 (2026)&quot;,
+            &quot;doi&quot;: &quot;10.1093/nar/gkag597&quot;,
+            &quot;data&quot;: &quot;GEO GSE287040/GSE287042; HAC120 and HAC465 PC ChIP idxstats tables&quot;,
+        },
+        &quot;domains&quot;: domain_summary,
+        &quot;tagwise_phase_contrasts&quot;: summaries,
+        &quot;counterexample_to_pooled_copy_cancellation&quot;: counter,
+        &quot;interpretation&quot;: {
+            &quot;valid_invariant&quot;: &quot;For each tag i, log(Y_m,p,i/Y_m,0,i) cancels stable b_mi and stable copy c_i. The D1-minus-D2 mean cancels each marker/phase-wide multiplicative factor because coefficients sum to zero. A H3K9me3-minus-CENP-A interaction then cancels common tagwise copy changes if both marker aliquots represent the same phase/reference copy mixture.&quot;,
+            &quot;unestablished_assumptions&quot;: [
+                &quot;Position-code copy number and physical structure are invariant across the compared phase aliquots, or copy shifts are the same for both marker aliquots.&quot;,
+                &quot;Each tag mapped once in partial supplementary contigs is truly single-copy in the complete HAC; omitted or unresolved repeat copies do not contribute.&quot;,
+                &quot;Condition aliquots contain comparable HAC-bearing clone mixtures; phase-specific selection or cell-mixture shifts do not alter per-tag copy-weighted state.&quot;,
+                &quot;Per-tag library/antibody/fragment-recovery bias is stable across compared phases within marker; marker-specific global recovery may vary but cancels in D1-D2.&quot;,
+            ],
+            &quot;not_identified&quot;: [
+                &quot;absolute per-cell CENP-A or H3K9me3 occupancy (GEO PC tables omit qPCR recovery multiplier)&quot;,
+                &quot;same-cell joint CENP-A/H3K9 state, local replication time, causal invasion/reload rates, lineages, functional kinetochore multiplicity, structural loss, or long-term retention hazard&quot;,
+            ],
+        },
+    }
+    OUT.mkdir(parents=True, exist_ok=True)
+    with (OUT / &quot;tagwise_phase_effects.tsv&quot;).open(&quot;w&quot;, newline=&quot;&quot;) as fh:
+        writer = csv.DictWriter(fh, fieldnames=list(tag_rows[0]), delimiter=&quot;\t&quot;)
+        writer.writeheader()
+        writer.writerows(tag_rows)
+    (OUT / &quot;spatial_phase_summary.json&quot;).write_text(json.dumps(summary, indent=2) + &quot;\n&quot;)
+    # Keep a plain TSV of inferentially useful summaries; columns explicitly
+    # separate read-count uncertainty from biological uncertainty.
+    with (OUT / &quot;spatial_phase_contrasts.tsv&quot;).open(&quot;w&quot;, newline=&quot;&quot;) as fh:
+        writer = csv.DictWriter(fh, fieldnames=list(summaries[0]), delimiter=&quot;\t&quot;)
+        writer.writeheader()
+        writer.writerows(summaries)
+    print(json.dumps(summary, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/f19d1370ae4d52e98c28e632f24694d12f57cd5e325b93a221ecfcd4283f7a27.py">Exact original</a></p></html>

@@ -1,0 +1,138 @@
+# Leaf 15 — degree-class upper bound for selective matrix multiplication
+
+## Result and interface
+
+Let $X\in\mathbb Z^{N\times D}$, $Y\in\mathbb Z^{D\times N}$, and let a supplied set $W\subseteq[N]\times[N]$ specify the requested outputs $(XY)_{ij}=\sum_{k=1}^D X_{ik}Y_{kj}$. Write $m=|W|$, row degrees $d_i=|\{j:(i,j)\in W\}|$, and column degrees $e_j=|\{i:(i,j)\in W\}|$. No support promise is made about values of $XY$. Arithmetic bounds are over a fixed field; integer bit costs are charged separately.
+
+The theorem below gives a general dyadic degree-class/tile upper bound. It shares input encodings between output tiles and decodes only requested coordinates. The bound is conditional on an acquired bilinear decomposition and its final output maps. Degree maxima control how many tiles are active, but do not alone control the decomposition's multiplication and output-decoding costs.
+
+## Degree-class, shared-encoding upper bound
+
+Partition nonisolated rows into dyadic classes
+$$I_a=\{i:2^{a-1}<d_i\le2^a\},$$
+and columns into
+$$J_b=\{j:2^{b-1}<e_j\le2^b\}.$$
+Write $n_a=|I_a|$, $v_b=|J_b|$, $m_{ab}=|W\cap(I_a\times J_b)|$, and let $\delta_a=2^a$, $\epsilon_b=2^b$. For each nonempty class pair choose block widths $s,t$ and partition its vertices into blocks of sizes at most $s,t$. Fix an exact bilinear decomposition for the $s\times D$ by $D\times t$ product:
+$$
+(XY)_{uv}=\sum_{q=1}^{r} C_q[u,v]\,L_q(X)R_q(Y),
+$$
+where $L_q,R_q$ are linear forms and $C_q\in\mathbb F^{s\times t}$. Blocks smaller than $s,t$ can be padded with zero rows and columns.
+
+For an active tile $P=A\times B$, let $S_P=W\cap P$ in local coordinates, and define
+$$Q(S_P)=\{q:\ C_q[u,v]\ne0\text{ for some }(u,v)\in S_P\}.$$
+Let $\mathrm{Dec}_{\mathcal D}(S_P)$ be the arithmetic cost of decoding from products $p_q=L_q(X_A)R_q(Y_B)$, $q\in Q(S_P)$, to only the outputs in $S_P$. This charge includes coefficient multiplications, additions, and output combinations. A simple decoder costs at most the number of nonzero coefficients of the $C_q$ on $S_P$, up to an additive $O(|S_P|)$; shared partial sums may reduce it.
+
+For a row block $A$, set
+$$U_A=\bigcup_{B:A\times B\text{ active}}Q(S_{A\times B}),$$
+and define $V_B$ symmetrically. Let $\mathrm{Enc}_L(U_A)$ and $\mathrm{Enc}_R(V_B)$ be the gate counts to compute those left and right forms once from the corresponding input block, including any sharing among forms. Then
+$$
+T_{\rm arith}\le \sum_{a,b}\left[
+\sum_A\mathrm{Enc}_L(U_A)+\sum_B\mathrm{Enc}_R(V_B)
++\sum_{P\text{ active}}\bigl(|Q(S_P)|+\mathrm{Dec}_{\mathcal D}(S_P)\bigr)
+\right].\tag{A}
+$$
+The sums are over blocks in that class pair. If the same block is used with different class-pair decompositions, charge each distinct encoding; identical forms can be cached and charged once. Add the cost $P_{ab}$ to acquire/read each distinct decomposition and its coefficient description. A supplied uniform table may share that acquisition cost.
+
+The number $q_{ab}$ of active tiles in a class pair obeys the degree-only bound
+$$
+q_{ab}\le \min\left\{m_{ab},
+\left\lceil\frac{n_a}{s}\right\rceil\left\lceil\frac{v_b}{t}\right\rceil,
+\left\lceil\frac{n_a}{s}\right\rceil s\delta_a,
+\left\lceil\frac{v_b}{t}\right\rceil t\epsilon_b
+\right\}.\tag{B}
+$$
+Indeed, each active tile contains a mask edge, and the number of tiles is at most the product of the row- and column-block counts. A fixed row block contains at most $s\delta_a$ edges into $J_b$; each active column block requires at least one such edge, giving the third term after summing over row blocks. The fourth term follows symmetrically. This holds for every vertex ordering and block partition.
+
+A coarser numerical bound follows by letting $r_{ab}$ be the rank, $A_{ab},B_{ab}$ the costs of forming all left/right forms once per block, and
+$$\kappa_{ab}=\max_{u,v}|\{q:C_q[u,v]\ne0\}|.$$
+Then
+$$
+T_{\rm arith}\le\sum_{a,b}\left[
+\left\lceil\frac{n_a}{s}\right\rceil A_{ab}
++\left\lceil\frac{v_b}{t}\right\rceil B_{ab}
++q_{ab}r_{ab}+m_{ab}\kappa_{ab}+P_{ab}
+\right].\tag{C}
+$$
+The $m_{ab}\kappa_{ab}$ term explicitly charges coordinatewise output combinations; it is not hidden in rank. Formula (A) is sharper when the mask lets us prune products or share decoder sums. With $s=t=1$, the one-output dot-product decomposition has no input-encoding gates, rank $D$, and at most $D$ terms per output, recovering $O(mD)$ field operations.
+
+### Proof of (A)
+
+For each row block compute each left form in $U_A$ once, and do the symmetric operation for each column block. For every active tile, compute only products indexed by $Q(S_P)$. An omitted term has zero coefficient at every requested coordinate in that tile. Decode only the outputs in $S_P$. The bilinear identity therefore gives each requested value exactly, with the gate count in (A). Each pair in $W$ belongs to one class pair and one tile, so it is output once. This shares input forms across neighboring tiles while keeping output work local.
+
+The mask-processing cost is charged separately. Reading a supplied edge list, counting degrees, bucketing vertices, and routing edges to tiles costs $O(N+m\operatorname{polylog}N)$ word/bit operations for $O(\log N)$-bit indices (for example, by sorting or radix indexing). The list occupies $2m\lceil\log_2 N\rceil+O(m)$ bits. Writing values and optional repeated coordinates is charged by their bit lengths below; when entries have $O(\log N)$ bits, this is $O(m)$ words.
+
+## Maximum-degree regimes of the direct algorithm
+
+The direct selected-dot algorithm costs $O(mD)$ field operations, and
+$$m=\sum_i d_i=\sum_j e_j\le N\min(\Delta_L,\Delta_R),$$
+where $\Delta_L=\max_i d_i$ and $\Delta_R=\max_j e_j$. Thus
+$$T_0=O\!\left(ND\min(\Delta_L,\Delta_R)\right).$$
+At $D=N^{1/4}$, it is $O(N^{2-\eta})$ whenever $m=O(N^{7/4-\eta})$. A sufficient maximum-degree condition is $\min(\Delta_L,\Delta_R)=O(N^{3/4-\eta})$; in particular, this holds if both maxima are at most that value. At the boundary $\min(\Delta_L,\Delta_R)=\Theta(N^{3/4})$, this direct bound is $O(N^2)$; above it the direct bound alone does not give a saving. These thresholds apply to this operation count, not to all algorithms. A large maximum degree can coexist with small $m$ (a star has $\Delta=N$ and $m=O(N)$), so the edge-count condition is sharper.
+
+If $m=\Theta(N^{15/8})$, both sides have average degree $\Theta(N^{7/8})$, and each maximum degree is at least that large. The direct bound is then $\Theta(N^{17/8})$. Thus the sufficient direct subquadratic range $\min(\Delta_L,\Delta_R)=O(N^{3/4-\eta})$ does not reach masks at the permitted maximum cardinality, whose average degree is $N^{7/8}$.
+
+An equally informed full-product comparator is also insufficient: the earlier selective-output audit records $N^{2+o(1)}$ arithmetic at this aspect ratio, and writing all $N^2$ entries already costs $N^2$ outputs. Filtering after that computation cannot meet a strict $O(N^{2-\eta})$ target. This is inherited from the prior report rather than re-derived here.
+
+## L04 audit: independently charged complete-block covers
+
+The L04 argument sets $\rho=N^{-1/8}$, $D=N^{1/4}$, and includes each possible mask edge independently with probability $p=\rho/2$. With positive probability, simultaneously: $|W|=\Theta(\rho N^2)$ and $|W|\le\rho N^2$; all row and column degrees are $\Theta(\rho N)=\Theta(N^{7/8})$; and, for every pair of row/column sets $R,C$,
+$$
+e_W(R,C)\le \rho|R||C|+C_0(|R|+|C|)\log N,\qquad C_0=6/\log2.
+$$
+For the rectangle event, if $E\sim\mathrm{Bin}(|R||C|,p)$, exponential Markov at $\lambda=\log2$ gives
+$$
+\Pr[E\ge2p|R||C|+C_0(|R|+|C|)\log N]\le N^{-6(|R|+|C|)}.
+$$
+There are at most $N^{|R|+|C|}$ choices of sets of those sizes; summing over positive sizes gives failure probability tending to zero. Chernoff bounds give the size and degree events, so they intersect.
+
+A complete block has row set $R$, column set $C$, and inner set $K$ with sizes $s,t,d$, where $d\le D$. Charge it $c=\max\{st,sd,td\}$. It covers at most $e_W(R,C)d$ requested $(i,j,k)$ contributions. The rectangle bound gives
+$$
+e_W(R,C)d\le \rho std+C_0d(s+t)\log N
+\le(\rho D+2C_0\log N)c,
+$$
+using $c\ge st,sd,td$. Covering all $mD$ contributions therefore requires
+$$
+\sum_{\rm blocks}c\ge\frac{mD}{\rho D+2C_0\log N}
+=\Omega(m/\rho)=\Omega(N^2).
+$$
+The hard masks may have every row and column degree $\Theta(N^{7/8})$.
+
+Audit boundary: this is an $\Omega(N^2)$ obstruction for overlapping, mask-dependent complete rectangular blocks with independent charge $c$, even allowing arbitrary inner-coordinate subsets and ideal block multiplication attaining the flattening charge. It does not lower-bound (A) when encodings or products are shared across tiles, inputs are mixed by mask-dependent linear maps, the circuit is rewritten from the mask, or output combinations cross blocks. It is not a lower bound for general arithmetic circuits.
+
+## N12 audit: tensor-rank gains and remaining interface gaps
+
+1. The fixed-mask calculation gives $\lambda(T_{W,D})\le N^{1445/744}=N^{2-43/744}$, conditional on its cited all-field exponent and dual bound. The limit is asymptotic rank as tensor-power length tends to infinity while that finite $W,D$ remain fixed. It does not provide an acquired one-shot decomposition uniform over a changing arbitrary mask, nor coefficient-height or integer bit bounds. A Cartesian-power family after acquiring one finite base witness is a separate structured interface.
+
+2. The complete-array ten-term certificate is correctly unable to reach the target by parameter tuning within its own charge. At mask exponent $\kappa=1/2$, the entropy term is $q(\theta)=[-\theta\ln\theta-(1-\theta)\ln(1-\theta)+\theta\ln9]/\ln4$. It increases up to $\theta=9/10$ and then decreases, while both $q(1/4)>1/2$ and $q(1)>1/2$; hence the required $q(\theta)<1/2$ forces $\theta<1/4$. Tail decay requires $c>10(1-\theta)$, hence $c>15/2$. The function
+$$E(c)=\frac{c\ln10-(c-1)\ln3-\tfrac12(c\ln c-(c-1)\ln(c-1))}{\ln4}$$
+has derivative $E'(c)=[\ln(10/3)-\tfrac12\ln(c/(c-1))]/\ln4>0$ there, and $E(15/2)>6$ (the source records the exact integer certificate $4\cdot10^{30}\cdot13^{13}>4^{24}\cdot3^{26}\cdot15^{15}$). Since $ND^{E(c)}=N^{1+E(c)/4}$ here, the encoding term would need $E(c)\le4-4\eta<4$. This rejects that certificate's optimization, not all shared-output circuits.
+
+3. The small-library theorem rules out another restricted transfer. For $m=\lfloor N^{15/8}\rfloor$, $D=N^{1/4}$, a library of $K_N$ fully evaluated masked kernels, each costing $O(N^{2-\eta})$, cannot cover every mask through row/column coordinate copies or aliases if $\log K_N=o(m\log N)$. This remains true with arbitrary scaling, arbitrary linear output decoding, and shared arithmetic inside each source kernel. More precisely, a source graph $H$ has $h$ edges and $U,V$ nonisolated vertices, and its fully evaluated cost is charged at least $C\gtrsim\max\{h,UD,VD\}$. The specialization uses only coordinate aliases $A_{uk}=a_uX_{f(u),k}$ and $B_{kv}=b_vY_{k,g(v)}$, with indices possibly mapped to zero. Each source output is a scaled copy of a target dot-product polynomial on one pair in $E=\{(f(u),g(v)):(u,v)\in H\}$; distinct target-pair polynomials are linearly independent, so linear output decoding cannot produce a pair outside $E$. Thus one assignment covers at most $\binom{h}{m}$ masks, and at most $(N+1)^{U+V}=(N+1)^{O(C/D)}$ assignments are available. The source count is at most
+$$K_N(N+1)^{O(C/D)}\binom{\lfloor C\rfloor}{m},\qquad C=O(N^{2-\eta}),$$
+whereas there are $\binom{N^2}{m}$ masks. The ratio is exponentially small because its logarithm includes $m(\eta\log N-O(1))$, while the assignment term has logarithm $O(N^{7/4-\eta}\log N)=o(m\log N)$. Uniformly random exact-$m$ masks have every row/column degree $\Theta(N^{7/8})$ with probability $1-o(1)$ by hypergeometric Chernoff and a union bound. Hence an uncovered balanced-degree mask exists. The theorem leaves mask-dependent circuit rewriting and genuinely mixed linear input maps open; it is not a lower bound against algorithms that cheaply generate a mask-specific circuit.
+
+4. N12's output-incidence test rejects specified recursive rank kernels followed only by pruning leaves whose output support misses $W$. If the nonzero rank-one terms have output support sizes $s_\ell$, the worst-mask retained-product exponent at density $N^{-\sigma+o(1)}$ is
+$$
+\Psi(\sigma)=\max_\gamma\left[
+\frac{H(\gamma)}{\log q}
++\min\left\{0,\frac{\sum_\ell\gamma_\ell\log s_\ell}{\log q}-\sigma\right\}
+\right]
+=\min_{0\le z\le1}\left[\log_q\left(\sum_\ell s_\ell^z\right)-z\sigma\right].
+$$
+This follows by counting tensor-power leaf types; a uniformly random exact mask hits a support of size $S$ with probability at least $(1-e^{-1})\min\{\rho S,1\}$. At $\sigma=1/8$, $\Psi\ge2$ means leaf pruning alone cannot produce a fixed subquadratic saving. The source's $q=16,d=2,r=448$ blocked-Strassen fixture has 320 supports of size 2 and 128 of size 1; the uniform-law support exponent is $5/28>1/8$, so almost all leaves survive and the product count has exponent $\log_{16}448>2$. This rejects that fixture/procedure, not every optimized kernel. Computing $s_\ell$ requires the final output maps after coefficient extraction, field descent, and composition.
+
+## Mask, output, arithmetic, and bit ledger
+
+If input entries have at most $B$ magnitude bits, reading $X,Y$ costs $O(NDB)$ bits. The edge-list mask costs $2m\lceil\log_2N\rceil+O(m)$ bits. Each answer has at most $2B+\lceil\log_2D\rceil+O(1)$ bits, so writing values and optional repeated coordinate labels costs $O(m(B+\log D+\log N))$ bits. The direct algorithm uses $mD$ integer multiplications and $m(D-1)$ additions; with multiplication cost $\mathcal M(B)$, its bit work is $O(mD\,\mathcal M(B+\log D))$, plus input/output and mask processing.
+
+For a rational bilinear decomposition, let $H$ bound the bit length of a supplied common denominator $\Lambda$ and all integer coefficient numerators after clearing $\Lambda$ across its forms and output maps. Integerized forms have $O(B+H+\log(sD+tD))$-bit values; products and a decoder summing at most $r$ terms have
+$$B_*=O(B+H+\log r+\log(sD+tD))$$
+bits up to a fixed factor. The final common-denominator division is exact because the decoded outputs equal integer matrix-product entries. A conservative conversion of (A) to bit time is $O(T_{\rm arith}\mathcal M(B_*))$, plus coefficient-description/acquisition, mask indexing, input/output I/O, and storage traffic. For a number-field decomposition, charge the field-degree arithmetic factor and exact coordinate heights. An arithmetic rank theorem supplies no uniform $H$, field degree, or acquisition bound; each is needed for an $N$-only bit bound.
+
+When $B=O(\log N)$, the largest legal mask and its values/coordinates have $O(N^{15/8}\log N)$ bits. This fits in $O(N^{2-\eta})$ for every fixed $0<\eta<1/8$; at $\eta=1/8$ the logarithm would exceed the budget. Representation fits below the requested exponent but does not supply the missing arithmetic circuit.
+
+## Status, falsifier, and next gate
+
+Status of (A)–(C) and the direct degree thresholds: INTERNALLY-PROVED-CANDIDATE; their proofs are elementary and scoped. L04 and N12 remain source-derived/unreviewed in the immutable prior. This audit reconstructs the relevant arguments and strengthens the degree observation, but establishes neither external validation nor novelty. The arbitrary-mask selective target remains UNKNOWN: no general $O(N^{2-\eta})$ algorithm or general arithmetic-circuit lower bound is established.
+
+A decisive positive falsifier of this open conclusion is a uniform, exact, mask-specialized circuit generator for every supplied $W$, with preprocessing, mask acquisition, shared encodings, arithmetic, output combinations, coefficient/field heights, and output writing all within $O(N^{2-\eta})$ for $D=N^{1/4}$ and $|W|\le N^{15/8}$. The concrete next gate is to acquire final exact maps for a genuinely mask-dependent mixed encoding, make (A) subquadratic uniformly over all dyadic class/tile masks, and supply a polylogarithmic coefficient-bit ledger. A subquadratic cover for one L04 mask would falsify that restricted obstruction, not solve the general target.

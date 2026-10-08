@@ -1,0 +1,8 @@
+import RaisedCoordinateContradiction
+
+#print axioms rpow_ratio_tendsto_zero_of_lt
+#print axioms rpow_ratio_tendsto_atTop_of_lt
+#print axioms no_eventually_le_of_rpow_ratio_atTop
+#check @rpow_ratio_tendsto_zero_of_lt
+#check @rpow_ratio_tendsto_atTop_of_lt
+#check @no_eventually_le_of_rpow_ratio_atTop

@@ -1,0 +1,83 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c9_energy_materials/code/parallel_path_budget.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c9_energy_materials/code/parallel_path_budget.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact rational min-knapsack threshold for edge-disjoint parallel corridors.&quot;&quot;&quot;
+from __future__ import annotations
+
+from fractions import Fraction
+from itertools import combinations
+from math import lcm
+
+
+def lcm_many(values: list[int]) -&gt; int:
+    out = 1
+    for x in values:
+        out = lcm(out, x)
+    return out
+
+
+def exact_budget(g: list[Fraction], c: list[Fraction], target: Fraction) -&gt; dict:
+    if len(g) != len(c) or not g:
+        raise ValueError(&quot;conductance and cost lists must be equal-length and nonempty&quot;)
+    total = sum(g, Fraction(0))
+    if not (0 &lt; target &lt;= total) or any(x &lt;= 0 for x in g + c):
+        raise ValueError(&quot;require positive conductances/costs and 0 &lt; target &lt;= total&quot;)
+
+    deficit = total - target
+    scale_g = lcm_many([x.denominator for x in g] + [deficit.denominator])
+    weights = [int(scale_g * x) for x in g]
+    strict_threshold = int(scale_g * deficit) + 1  # all inputs are rational
+
+    scale_c = lcm_many([x.denominator for x in c])
+    costs = [int(scale_c * x) for x in c]
+
+    # dp[x] is the least cost to delete routes with total lost conductance &gt;= x.
+    inf = sum(costs) + 1
+    dp = [0] + [inf] * strict_threshold
+    for w, v in zip(weights, costs):
+        for x in range(strict_threshold, -1, -1):
+            if dp[x] &lt; inf:
+                y = min(strict_threshold, x + w)
+                dp[y] = min(dp[y], dp[x] + v)
+
+    dynamic_answer = Fraction(dp[strict_threshold], scale_c)
+    qualifying = []
+    for r in range(len(g) + 1):
+        for ids in combinations(range(len(g)), r):
+            lost = sum((g[i] for i in ids), Fraction(0))
+            cost = sum((c[i] for i in ids), Fraction(0))
+            if lost &gt; deficit:
+                qualifying.append((cost, ids, lost))
+    brute_answer, ids, lost = min(qualifying)
+    assert dynamic_answer == brute_answer
+    remaining = total - lost
+    assert remaining &lt; target
+
+    return {
+        &quot;conductances&quot;: [str(x) for x in g],
+        &quot;occlusion_costs&quot;: [str(x) for x in c],
+        &quot;target&quot;: str(target),
+        &quot;intact_total&quot;: str(total),
+        &quot;strict_lost_conductance_threshold&quot;: str(deficit),
+        &quot;exact_minimum_occlusion_cost&quot;: str(dynamic_answer),
+        &quot;minimizing_destroyed_corridors_zero_indexed&quot;: list(ids),
+        &quot;lost_conductance&quot;: str(lost),
+        &quot;post_damage_conductance&quot;: str(remaining),
+        &quot;algorithm&quot;: &quot;exact 0/1 dynamic program after clearing rational denominators&quot;,
+        &quot;cost&quot;: f&quot;O(m W) time, O(W) memory, W=floor(L_g*(G0-G*))+1; pseudo-polynomial, not polynomial in input bit length&quot;,
+        &quot;independent_bruteforce_agreement&quot;: True,
+        &quot;scope&quot;: &quot;exact parallel edge-disjoint corridor model only; not material validation&quot;,
+    }
+
+
+if __name__ == &quot;__main__&quot;:
+    from json import dumps
+    from pathlib import Path
+
+    result = exact_budget(
+        [Fraction(3, 5), Fraction(3, 5), Fraction(3, 5)],
+        [Fraction(1), Fraction(1), Fraction(100)],
+        Fraction(7, 10),
+    )
+    serialized = dumps(result, indent=2) + &quot;\n&quot;
+    Path(__file__).with_name(&quot;parallel_path_budget_output.json&quot;).write_text(serialized)
+    print(serialized, end=&quot;&quot;)
+</pre><p><a href="../assets/7dc216e787684b4da3a00c90152ff0ea853abe086335e59658bbd5d0bfa6cd78.py">Exact original</a></p></html>

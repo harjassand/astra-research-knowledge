@@ -1,0 +1,11 @@
+import N33Affine.B2Mechanism
+#check Finset.card_sdiff_of_subset
+#check Finset.card_univ
+#check Finset.card_map
+#check Finset.map
+#check Finset.mem_map
+#check Finset.card_image_of_injective
+#check Finset.card_compl
+#check Finset.card_eq_one
+#check Finset.subset_univ
+#check N33Affine.coordImage_card

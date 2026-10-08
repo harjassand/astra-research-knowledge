@@ -1,0 +1,296 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/photonic_complexity/conditional_gaussian_rejection_proof.txt</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/photonic_complexity/conditional_gaussian_rejection_proof.txt</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>Conditional Gaussian-count sampler by inflated isotropic P proposal
+Date: 8 October 2026
+Status: exact-real sampler theorem is internally proved candidate; finite-bit implementation has an explicit error/cost schedule under standard rational interval primitives
+
+Interface and assumptions
+=========================
+
+There are d optical modes and a supplied centered Gaussian state with a strictly
+positive Gaussian P representation. After loss, let x in R^(2d) be its coherent
+quadrature vector, with
+
+    x ~ N(0, t A),   t&gt;0,   A=A^T&gt;0.
+
+Assume A is rational and has a supplied rational certificate
+
+    (1-eps_bar) I &lt;= A &lt;= (1+eps_bar) I,
+    0 &lt;= eps_bar &lt;= 1/4.
+
+In particular c=1+eps_bar is rational and cI-A is positive semidefinite. A
+binary or general PNR herald specifies k_j&gt;=0 photons in each of s herald modes;
+write kappa=sum_j k_j. The other d-s modes form the output count record. The
+target herald probability is positive (automatic here for t&gt;0 and A&gt;0).
+The numerical value kappa is charged, not just its binary description length.
+
+For coherent quadratures x_j=(q_j,p_j), a PNR outcome n in mode j has
+likelihood
+
+    L_n(x_j)=exp(-||x_j||^2/2) (||x_j||^2/2)^n/n!.
+
+Thus the conditional latent density on all modes is the Gaussian prior density
+times L_H(x)=prod_{j in H}L_{k_j}(x_j), normalized by the actual herald mass.
+Given the latent x, unheralded counts are independent Poisson random variables
+with means ||x_j||^2/2. This is a positive-P mixture identity, not a truncation
+of the Gaussian Fock expansion.
+
+Exact proposal and rejection rule
+=================================
+
+Use the inflated isotropic Gaussian proposal prior
+
+    x ~ N(0, c t I_(2d)),    c=1+eps_bar,
+
+conditioned on the same herald. This proposal posterior is explicit and
+factorizes by mode. For a heralded mode j, its phase is uniform and its radius
+squared has Gamma distribution
+
+    ||x_j||^2 ~ Gamma(shape k_j+1, scale 2ct/(1+ct));
+
+for an unheralded mode, the phase is uniform and
+
+    ||x_j||^2 ~ Gamma(shape 1, scale 2ct).
+
+Equivalently, after y=x/sqrt(t), the scales are 2c/(1+ct) and 2c. These are
+integer-shape gamma variables, samplable as sums of k_j+1 (or one) exponential
+variables. The proposal herald probability is known exactly:
+
+    q_H = (ct)^kappa/(1+ct)^(kappa+s).
+
+Let f_A and f_c be the unconditioned Gaussian densities in y coordinates for
+N(0,A) and N(0,cI), respectively. Since A&lt;=cI,
+
+    f_A(y)/f_c(y) = M exp(-y^T D y/2),
+    M = c^d / sqrt(det A),
+    D = A^(-1) - c^(-1)I &gt;= 0.
+
+The determinant term M is a valid global upper bound on this density ratio.
+After drawing y from the explicit proposal posterior conditioned on H, accept
+with probability
+
+    a(y)=exp(-y^T D y/2) in [0,1].
+
+Then draw the remaining modes&#x27; Poisson counts using the accepted coherent
+amplitudes. The accepted latent density is exactly
+
+    f_c(y)L_H(y) a(y) / (q_H E[a|H])
+       = f_A(y)L_H(y)/p_H,
+
+so the resulting count vector has exactly the requested conditional law. No
+oracle for p_H, q_H, or det(A) is needed by the accept/reject step; D is the
+only covariance-derived matrix evaluated there. The determinant appears only
+in the proof of the envelope.
+
+Rare-herald-free overhead bound
+===============================
+
+Write Y=y under the proposal posterior. The squared radii remain independent
+gamma variables, so
+
+    E||Y||^2
+       = 2c(d-s) + 2c(s+kappa)/(1+ct)
+       &lt;= 2c(d+kappa).
+
+The covariance certificate gives eigenvalues of A in [1-eps_bar,1+eps_bar].
+Therefore
+
+    ||D|| &lt;= 1/(1-eps_bar)-1/(1+eps_bar)
+          = 2 eps_bar/(1-eps_bar^2).
+
+For the proposal acceptance probability alpha=E exp(-Y^T D Y/2), Jensen
+and D&gt;=0 yield
+
+    alpha &gt;= exp(-||D|| E||Y||^2/2)
+           &gt;= exp(-C (d+kappa) eps_bar)
+
+for an absolute constant C, since c&lt;=5/4. Direct normalization also gives
+
+    alpha = p_H/(M q_H),
+    E[proposal trials] = M q_H/p_H
+                       &lt;= exp(C (d+kappa) eps_bar).
+
+The bound has no inverse-p_H factor. The expected proposal count is polynomial
+in L when (d+kappa)eps_bar=O(log L). A polynomial-time implementation also
+requires numeric kappa (for the Gamma draws) and the requested output-count
+scale to be polynomially bounded; the finite-bit statement below charges both
+explicitly. Otherwise the rejection overhead or per-proposal work can be
+exponential. Numerical d, kappa, expected output count, and all matrix bit
+lengths remain separately charged.
+
+Application to N81 weak-Gaussian noise
+======================================
+
+For N81&#x27;s detector-plane source B with ||B||&lt;=g, add isotropic displacement
+noise nu before uniform loss eta. Its post-loss P covariance is
+
+    C = t(I+E), t=eta nu, ||E||&lt;=eps_bar:=g/((1-g)nu).
+
+When eps_bar&lt;=1/4, use c=1+eps_bar. The covariance and c are rational for the
+N81 rational B, nu=R^(-a) (fixed integer a&gt;=1), and eta=1/R; the inequality
+cI-A&gt;=0 follows from the analytic norm bound and is a certificate that can be
+checked by exact rational LDL arithmetic. N81 has d=Theta(R), kappa=h=O(R),
+g&lt;=2^(-ell), ell&gt;=R. Hence
+
+    (d+kappa)eps_bar = O(R^(a+1) 2^(-ell)) = o(1).
+
+The exact conditional sampler above has expected proposal count 1+o(1) on these
+noisy instances, regardless of their rare herald mass. This is stronger than
+the output-TV-to-vacuum observation as an algorithmic statement for the N81
+family, but still says nothing about arbitrary full-rank Gaussian inputs.
+For the noise-only reference, the binary herald mass is
+
+    p_ref = t^h/(1+t)^(2h+h0),  t=eta nu=R^(-(a+1)),
+
+and the actual N81 herald mass is p_H=p_ref exp(O(d eps_bar)); hence
+log(1/p_H)=O(R log R), even though p_H itself is exponentially small. The
+added input mean photon number is O(d nu)=O(R^(1-a)) and the post-loss total
+mean is O(eta d nu)=O(R^(-a)); the pre-noise squeezed-source contribution is
+O(d g^2). Under the reference posterior, the unheralded standardized norm
+S_U has E[S_U^2]=O(d^2), so its output count mean is O(t d). The target
+posterior density ratio r has E[r^2]&lt;=exp(O(d eps_bar)) and normalization
+E[r]&gt;=exp(-O(d eps_bar)); Cauchy-Schwarz therefore gives
+E_target[S_U]=E_ref[r S_U]/E_ref[r]=O(d) when d eps_bar=o(1). Thus the full
+unheralded output mean remains O(t d)=O(R^(-a)) (and the two retained modes
+alone have mean O(t)). These energy statements are separate from the TV-to-
+vacuum statement.
+The N81 source/compiler reduction remains conditional. Under this specified
+all-mode noise, the retained law is vacuum-like and its encoded constant-TV
+amplification is erased; subleading probabilities may still encode
+information.
+
+Finite-bit implementation and costs
+====================================
+
+The exact-real identity above uses continuous gamma radii/phases and an exact
+Bernoulli coin. It is not itself a Turing-machine sampler. Here is a separate
+finite-bit approximation statement. Let eps_out in (0,1) be the requested TV
+error and xi in (0,1) the allowed timeout probability. Choose a dyadic upper
+bound Lambda &gt;= exp(C(d+kappa)eps_bar), of bit length O((d+kappa)eps_bar+1).
+Then the exact acceptance probability obeys alpha&gt;=1/Lambda. Put
+
+    rho = eps_out/(C0 Lambda),
+    K = (d-s) + sum_(j in H)(k_j+1) = d+kappa,
+    T = 4c[K log 2 + log(8/rho)].
+
+The proposal&#x27;s total squared radius is a sum of K independent exponential
+variables, each scaled by at most 2c. Its mgf therefore gives
+
+    Pr[||Y||^2&gt;T] &lt;= 2^K exp(-T/(4c)) &lt;= rho/8.
+
+To realize the gamma draws, generate K dyadic uniforms, apply -log, sum the
+appropriate groups, and take square roots; generate d dyadic phases and
+evaluate sine/cosine by rational interval arithmetic. For a coupling proof,
+discard the event that any of the K uniforms is below zeta=rho/(16K), whose
+probability is at most rho/16. Use a dyadic grid of mesh at most zeta*delta_e/4
+and evaluate each logarithm to absolute error delta_e, where
+
+    delta_e &lt;= delta_y^2/(64cK),
+    delta_phase &lt;= delta_y/(8 sqrt(T)),
+    delta_y = rho/[C1(1+sqrt(eps_bar)+sqrt(t))].
+
+On the remaining event, the squared radii differ in total by O(cK delta_e),
+and the phase error on the T-ball contributes O(sqrt(T)delta_phase), hence
+the coupled vector error is at most delta_y after increasing fixed constants.
+Project the dyadic vector onto the closed radius-sqrt(T) ball using an
+interval approximation to the radial scale; metric projection is nonexpansive,
+so this preserves the coupling error up to the extra interval precision.
+The required random-bit precision is
+O(log(K/rho)+log(K/delta_y)+log(T/delta_y)); rational interval evaluation of
+log, square root, sine, and cosine is polynomial in these bit lengths and in
+the input bit length. The bad-uniform and radius-tail probabilities together
+are O(rho).
+
+The acceptance function has global Lipschitz constant at most sqrt(||D||/e),
+because ||grad exp(-y^T D y/2)||&lt;=sqrt(||D||/e). Since ||D||&lt;=2eps_bar/(1-eps_bar^2), its change under the coupled latent error is O(sqrt(eps_bar)delta_y). Evaluate the acceptance exponential to additive error rho by rational interval arithmetic; if u=y^T D y/2 &gt;= log(2/rho), replace exp(-u) by zero, which adds at most rho/2 error. The output product-Poisson kernel changes in TV by at most sqrt(t/2) times the latent Euclidean error, by the exact Poisson Hellinger affinity and the classical Fuchs-van de Graaf bound. For dyadic y, the Poisson rates are rational. On ||y||^2&lt;=T the total output mean is at most M_out=tT/2. Truncate the total count at Q=O(M_out+log(1/rho)) using a Poisson Chernoff bound, and use rational interval inversion for each rate with total CDF error O(rho). The one-attempt unnormalized accepted-output measure then differs from the ideal one by O(rho).
+
+After normalization by alpha&gt;=Lambda^(-1), the per-success output law has TV error O(rho Lambda)&lt;=eps_out/C0. Cap the number of attempts at N=ceil(C2 Lambda log(2/xi)); the timeout probability is at most xi/2 after constants are enlarged. On timeout return a fixed count vector, adding at most xi/2 to TV. Thus the finite-bit output law is within eps_out+xi of the target, with worst-case time polynomial in
+
+    L, d, numeric kappa, M_out, eps_out^(-1), log(xi^(-1)), Lambda,
+
+where L includes the exact rational covariance, noise/loss parameters, and
+certificates. In particular, this is polynomial in L when
+(d+kappa)eps_bar=O(log L), numeric kappa and M_out=tT/2 are polynomially
+bounded in L, eps_out^(-1) and log(xi^(-1)) are polynomially bounded, and the
+certificate/input bit lengths are included in L. The stated runtime is
+polynomial in these charged parameters; it is not asserted polynomial in the
+binary length of an arbitrarily large herald count, because the gamma
+implementation uses O(d+kappa) exponential variates. N81 has binary heralds
+with kappa=h&lt;=d=Theta(R), t=R^(-(a+1)), and polynomial M_out, so that
+distinction causes no blowup there. The algorithm does not use log(1/p_H), and
+the physical expected number of attempts to
+obtain a herald remains 1/p_H if one insists on generating the optical event
+instead of simulating its conditional law.
+
+Covariance preprocessing is also charged. The theorem takes a rational
+certificate (1-eps_bar)I&lt;=A&lt;=cI as supplied and validates both PSD differences
+by exact rational LDL/fraction-free elimination in polynomial bit time. It
+computes D=A^(-1)-c^(-1)I by rational elimination, again with polynomial bit
+complexity in d and L. If no useful small eps_bar is supplied, the theorem gives
+no small rejection cost. For N81, A is formed from the rational B, nu, and eta;
+the analytic bound eps_bar=g/((1-g)nu) supplies the interval, and exact LDL
+checks cI-A&gt;=0. Computing A, c, and these checks costs poly(d,L). Finding a
+tight certificate for an arbitrary covariance is preprocessing, not free
+oracle access.
+
+Scope and falsifiers
+====================
+
+This sampler allows arbitrary real phase correlations in the centered
+positive-P covariance A; it uses no entrywise positivity of a Bargmann kernel.
+It requires an isotropic domination certificate cI&gt;=A and binary/arbitrary
+finite PNR herald counts represented numerically. It does not cover displaced
+Gaussian states as written (the proposal mean would need to match and dominate
+the displacement), non-positive-P inputs, or nonisotropic proposal baselines.
+
+Falsifiers are: a nonpositive D despite cI&gt;=A; an error in the gamma posterior
+or density ratio; a value of alpha below the Jensen bound; or a finite-bit
+implementation whose coupled proposal/acceptance/count errors exceed the stated
+budget. Independent review remains needed. The mathematical sampler is a
+family-specific result; no generic complexity collapse or hardness conclusion
+follows.
+
+Primary-literature comparison (checked 8 October 2026)
+======================================================
+
+Rahimi-Keshari, Ralph, and Caves, &quot;Sufficient Conditions for Efficient
+Classical Simulation of Quantum Optics,&quot; arXiv:1511.06526 (2015; PRX 2016),
+develops positive-quasiprobability sufficient conditions for sampling complete
+output distributions and analyzes loss/noise thresholds in boson-sampling
+models. It is the closest phase-space baseline, but the checked theorem/abstract
+does not give an event-conditioned runtime bound independent of a specified
+rare herald mass.
+
+Quesada et al., &quot;Simulating realistic non-Gaussian state preparation,&quot; arXiv:
+1905.07011 (2019), explicitly compute the conditional output state&#x27;s Fock
+matrix elements and the herald probability using loop hafnians, then study
+particular Fock/cat/cubic-phase heralding schemes with loss. The paper gives a
+direct conditional-state calculation baseline, but not the present polynomial
+conditional count sampler; its displayed matrix-element costs grow
+exponentially with modes/photon occupations.
+
+Quesada and Arrazola, &quot;Exact simulation of Gaussian Boson Sampling in
+polynomial space and exponential time,&quot; arXiv:1908.08068 (2019; PRR 2020),
+explicitly samples sequentially from Gaussian marginal probabilities by
+conditional-probability ratios, with time O(m N^3 2^N) after N detected
+photons, and includes displaced/threshold variants. By direct inference from their chain rule, putting
+the specified herald modes first, fixing their supplied counts, and sampling
+remaining modes with p(H,o_&lt;j,n)/p(H,o_&lt;j) gives a conditional adaptation.
+This handles a rare herald without necessarily paying 1/p_H, but remains
+exponential in total detected photons
+(including the fixed herald count and sampled output counts). It is a stronger
+baseline than full-law rejection and narrows the present capability claim to
+the near-isotropic positive-P regime where the cost becomes polynomial.
+
+Oh et al., &quot;Classical algorithm for simulating experimental Gaussian boson
+sampling,&quot; arXiv:2306.03709 (2023; Nature Physics 2024), gives a tensor-network
+approximation for lossy experimental GBS whose accuracy improves with runtime.
+Its discussion identifies postselected GBS state preparation as a possible
+application, but the algorithm analyzed is for full lossy output distributions
+and it does not state a sampler for a specified exponentially rare PNR herald.
+
+These comparisons are source-scope observations, not an exhaustive priority
+search and not a novelty claim. The Quesada-Arrazola conditional-chain
+adaptation should be independently checked for bit precision and truncation
+under a fixed rare event. The candidate advance is the explicit near-isotropic
+Gaussian-P posterior sampler with polynomial rather than exponential photon-
+count dependence when (d+kappa)eps_bar=O(log L).
+</pre><p><a href="../assets/52d68a3d6aa75c7fdb6734ffe4c62c39286825acb3abc354c55944e62e32fab8.txt">Exact original</a></p></html>

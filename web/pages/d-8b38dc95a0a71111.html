@@ -1,0 +1,96 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/weyl_compatible_lift/scripts/line_cover_search.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/weyl_compatible_lift/scripts/line_cover_search.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Search the exact Weyl compatibility SDP for a maximal-abelian-line cover.
+
+For each line L, B(q)=max_{choice in {empty} union (L\\{0})}
+sum_L (2 lambda_choice - 1), so maximizing B over compatible channels is the
+finite maximum of linear SDP objectives. Exhaustive mode is exact at the
+combinatorial level; solver outputs remain numerical diagnostics.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import argparse
+import itertools
+import json
+import time
+import numpy as np
+from weyl_sdp import compatibility_sdp, line_system, line_cover
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument(&quot;--d&quot;, type=int, required=True)
+    ap.add_argument(&quot;--samples&quot;, type=int, default=1000)
+    ap.add_argument(&quot;--exhaustive&quot;, action=&quot;store_true&quot;)
+    ap.add_argument(&quot;--seed&quot;, type=int, default=20261008)
+    ap.add_argument(&quot;--out&quot;, type=str, required=True)
+    ap.add_argument(&quot;--eps&quot;, type=float, default=2e-7)
+    ap.add_argument(&quot;--hs-positive&quot;, action=&quot;store_true&quot;,
+                    help=&quot;restrict to nonnegative Weyl superoperator spectrum&quot;)
+    args = ap.parse_args()
+
+    d = args.d
+    points, index, qv, lamv, solve = compatibility_sdp(
+        d, eps=args.eps, hs_positive=args.hs_positive)
+    lines = line_system(d)
+    n = d * d
+    if args.exhaustive:
+        choices = [None, *range(1, d)]
+        selections = itertools.product(choices, repeat=d + 1)
+    else:
+        rng = np.random.default_rng(args.seed)
+        def random_selections():
+            for _ in range(args.samples):
+                yield tuple(None if rng.random() &lt; 0.30 else int(rng.integers(1, d))
+                            for _ in range(d + 1))
+        selections = random_selections()
+
+    started = time.time()
+    best = {&quot;value&quot;: -float(&quot;inf&quot;)}
+    count = 0
+    for sel in selections:
+        direction = np.zeros(n)
+        active = 0
+        for line, k in zip(lines, sel):
+            if k is not None:
+                direction[line[k - 1]] += 2.0
+                active += 1
+        result = solve(direction)
+        value = result[&quot;value&quot;] - active
+        count += 1
+        if value &gt; best[&quot;value&quot;]:
+            budget, peaks, terms = line_cover(result[&quot;lambda&quot;], lines)
+            best = {
+                &quot;value&quot;: value,
+                &quot;budget_at_optimizer&quot;: budget,
+                &quot;peaks&quot;: peaks,
+                &quot;terms&quot;: terms,
+                &quot;selection&quot;: sel,
+                &quot;q&quot;: result[&quot;q&quot;].tolist(),
+                &quot;lambda&quot;: result[&quot;lambda&quot;].tolist(),
+                &quot;sdp_objective&quot;: result[&quot;value&quot;],
+                &quot;solver_status&quot;: result[&quot;status&quot;],
+                &quot;solver_stats&quot;: result[&quot;solver_stats&quot;],
+            }
+    payload = {
+        &quot;dimension&quot;: d,
+        &quot;domain&quot;: (&quot;HS-positive, HS-self-adjoint, unital CPTP Weyl-covariant self-compatible maps&quot;
+                   if args.hs_positive else
+                   &quot;HS-self-adjoint, unital CPTP Weyl-covariant self-compatible maps; spectrum may be negative&quot;),
+        &quot;selection_search&quot;: &quot;exhaustive&quot; if args.exhaustive else &quot;random-selections&quot;,
+        &quot;selection_count&quot;: count,
+        &quot;seed&quot;: None if args.exhaustive else args.seed,
+        &quot;objective&quot;: &quot;max_q sum_lines max(0, max_{x in line}(2 lambda_x - 1))&quot;,
+        &quot;best&quot;: best,
+        &quot;wall_seconds&quot;: time.time() - started,
+        &quot;solver&quot;: &quot;SCS&quot;,
+        &quot;solver_eps&quot;: args.eps,
+        &quot;caveat&quot;: &quot;Finite floating-point SDP search; not a proof or rational certificate.&quot;,
+    }
+    with open(args.out, &quot;w&quot;) as f:
+        json.dump(payload, f, indent=2)
+        f.write(&quot;\n&quot;)
+    print(json.dumps({k: payload[k] for k in (&quot;dimension&quot;, &quot;selection_search&quot;, &quot;selection_count&quot;, &quot;best&quot;, &quot;wall_seconds&quot;)}, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/ca2ea205562b45586983743a4dbf268d033bd9e36dad9da5463122bdb0ab0669.py">Exact original</a></p></html>

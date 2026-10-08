@@ -1,0 +1,145 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c4_biological_information/cycle7_resource_coupled_programming/code/robust_state_dp.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c4_biological_information/cycle7_resource_coupled_programming/code/robust_state_dp.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Robust finite-state nutrient-program compiler.
+
+Arithmetic only: each row&#x27;s fixed charged upper nutrient cost and its set of
+possible next-state/lower-suppression outcomes must be measured from the
+declared construct/context interface.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from functools import lru_cache
+from math import inf
+from typing import Hashable, Mapping, Sequence
+
+State = Hashable
+Action = Hashable
+Budget = tuple[float, ...]
+Outcome = tuple[State, Budget, float]
+
+
+def _row_cost(outcomes: Sequence[Outcome], budget_dimensions: int) -&gt; Budget:
+    costs = {cost for _, cost, _ in outcomes}
+    if len(costs) != 1:
+        raise ValueError(&quot;charge one known upper cost vector per state/action row&quot;)
+    cost = next(iter(costs))
+    if len(cost) != budget_dimensions:
+        raise ValueError(&quot;each cost vector must match the budget dimension&quot;)
+    return cost
+
+
+@dataclass(frozen=True)
+class DynamicPlan:
+    suppression_lower: float
+    policy: tuple[tuple[int, State, Budget, Action], ...]
+
+
+def robust_open_loop_value(
+    initial_state: State,
+    action_sequence: Sequence[Action],
+    outcomes: Mapping[tuple[int, State, Action], Sequence[Outcome]],
+    budget: Budget,
+) -&gt; float:
+    &quot;&quot;&quot;Evaluate a fixed action sequence against all possible row outcomes.&quot;&quot;&quot;
+    if not budget:
+        raise ValueError(&quot;at least one resource budget is required&quot;)
+    if any(b &lt; 0 for b in budget):
+        raise ValueError(&quot;budgets must be nonnegative&quot;)
+
+    def visit(t: int, x: State, remaining: Budget) -&gt; float:
+        if t == len(action_sequence):
+            return 0.0
+        a = action_sequence[t]
+        key = (t, x, a)
+        if key not in outcomes or not outcomes[key]:
+            raise ValueError(f&quot;missing nonempty joint outcome set for {key!r}&quot;)
+        c = _row_cost(outcomes[key], len(budget))
+        if any(ci &gt; bi + 1e-12 for ci, bi in zip(c, remaining)):
+            return -inf
+        return min(
+            r + visit(t + 1, x2, tuple(max(0.0, bi - ci) for bi, ci in zip(remaining, c)))
+            for x2, _, r in outcomes[key]
+        )
+
+    return visit(0, initial_state, budget)
+
+
+def robust_state_feedback_plan(
+    initial_state: State,
+    actions_by_stage: Sequence[Sequence[Action]],
+    outcomes: Mapping[tuple[int, State, Action], Sequence[Outcome]],
+    budget: Budget,
+) -&gt; DynamicPlan | None:
+    &quot;&quot;&quot;Choose actions from the observed state bin to maximize worst-case sum.
+
+    This policy is implementable only when the state bin is observable at each
+    decision. Destructive assays on sister aliquots do not qualify as live,
+    per-cell feedback; use robust_open_loop_value for open-loop schedules.
+    &quot;&quot;&quot;
+    if not budget:
+        raise ValueError(&quot;at least one resource budget is required&quot;)
+    if any(b &lt; 0 for b in budget):
+        raise ValueError(&quot;budgets must be nonnegative&quot;)
+
+    @lru_cache(maxsize=None)
+    def value(t: int, x: State, remaining: Budget) -&gt; float:
+        if t == len(actions_by_stage):
+            return 0.0
+        best = -inf
+        for action in actions_by_stage[t]:
+            key = (t, x, action)
+            if key not in outcomes or not outcomes[key]:
+                continue
+            c = _row_cost(outcomes[key], len(budget))
+            if any(ci &gt; bi + 1e-12 for ci, bi in zip(c, remaining)):
+                continue
+            candidate = min(
+                r + value(t + 1, x2, tuple(max(0.0, bi - ci) for bi, ci in zip(remaining, c)))
+                for x2, _, r in outcomes[key]
+            )
+            best = max(best, candidate)
+        return best
+
+    optimum = value(0, initial_state, budget)
+    if optimum == -inf:
+        return None
+
+    policy: dict[tuple[int, State, Budget], Action] = {}
+
+    def recover(t: int, x: State, remaining: Budget) -&gt; None:
+        if t == len(actions_by_stage):
+            return
+        target_value = value(t, x, remaining)
+        for action in actions_by_stage[t]:
+            key = (t, x, action)
+            if key not in outcomes or not outcomes[key]:
+                continue
+            c = _row_cost(outcomes[key], len(budget))
+            if any(ci &gt; bi + 1e-12 for ci, bi in zip(c, remaining)):
+                continue
+            candidate = min(
+                r + value(t + 1, x2, tuple(max(0.0, bi - ci) for bi, ci in zip(remaining, c)))
+                for x2, _, r in outcomes[key]
+            )
+            if abs(candidate - target_value) &lt;= 1e-12:
+                policy[(t, x, remaining)] = action
+                for x2, _, _ in outcomes[key]:
+                    recover(t + 1, x2, tuple(max(0.0, bi - ci) for bi, ci in zip(remaining, c)))
+                return
+        raise RuntimeError(&quot;could not recover an optimal policy&quot;)
+
+    recover(0, initial_state, budget)
+    entries = tuple((t, x, remaining, a) for (t, x, remaining), a in sorted(
+        policy.items(), key=lambda item: (item[0][0], repr(item[0][1]), item[0][2])
+    ))
+    return DynamicPlan(optimum, entries)
+
+
+def required_log_suppression(target_fraction: float) -&gt; float:
+    &quot;&quot;&quot;Log reduction required to reach a target fraction in (0, 1).&quot;&quot;&quot;
+    from math import log
+
+    if not 0 &lt; target_fraction &lt; 1:
+        raise ValueError(&quot;target_fraction must lie in (0, 1)&quot;)
+    return log(1.0 / target_fraction)
+</pre><p><a href="../assets/d741b387cf6431a44212405edd8c062f8eed4010191a189ca1944a6f01c8d00b.py">Exact original</a></p></html>

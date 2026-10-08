@@ -1,0 +1,96 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c6_aging_rejuvenation/panagopoulos_table_check.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c6_aging_rejuvenation/panagopoulos_table_check.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Reproduce the released ED8i 53BP1 3x2 category contrast.
+
+Uses only Python&#x27;s standard library and the preserved publisher workbook at
+`data/panagopoulos_2025_source_data.xlsx`. This is a test of the aggregate
+released table only; rows are treated as independent for Pearson&#x27;s statistic.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import json
+import math
+import sys
+from pathlib import Path
+from xml.etree import ElementTree as ET
+from zipfile import ZipFile
+
+HERE = Path(__file__).resolve().parent
+WORKBOOK = HERE / &quot;data&quot; / &quot;panagopoulos_2025_source_data.xlsx&quot;
+NS = {&quot;m&quot;: &quot;http://schemas.openxmlformats.org/spreadsheetml/2006/main&quot;}
+REL_NS = &quot;http://schemas.openxmlformats.org/officeDocument/2006/relationships&quot;
+PKG_REL_NS = &quot;http://schemas.openxmlformats.org/package/2006/relationships&quot;
+
+
+def read_ed8i_53bp1(path: Path) -&gt; list[list[int]]:
+    with ZipFile(path) as book:
+        workbook = ET.fromstring(book.read(&quot;xl/workbook.xml&quot;))
+        rels = ET.fromstring(book.read(&quot;xl/_rels/workbook.xml.rels&quot;))
+        targets = {r.attrib[&quot;Id&quot;]: r.attrib[&quot;Target&quot;] for r in rels.findall(f&quot;{{{PKG_REL_NS}}}Relationship&quot;)}
+        sheet_path = None
+        for sheet in workbook.find(&quot;m:sheets&quot;, NS):
+            if sheet.attrib[&quot;name&quot;] == &quot;ED8i&quot;:
+                rid = sheet.attrib[f&quot;{{{REL_NS}}}id&quot;]
+                target = targets[rid]
+                sheet_path = target if target.startswith(&quot;xl/&quot;) else f&quot;xl/{target}&quot;
+                break
+        if sheet_path is None:
+            raise ValueError(&quot;ED8i worksheet is absent&quot;)
+
+        shared = ET.fromstring(book.read(&quot;xl/sharedStrings.xml&quot;))
+        strings = [&quot;&quot;.join(item.itertext()) for item in shared]
+        ws = ET.fromstring(book.read(sheet_path))
+        cells: dict[str, str] = {}
+        for cell in ws.findall(&quot;.//m:c&quot;, NS):
+            value = cell.find(&quot;m:v&quot;, NS)
+            if value is None:
+                cells[cell.attrib[&quot;r&quot;]] = &quot;&quot;
+            elif cell.attrib.get(&quot;t&quot;) == &quot;s&quot;:
+                cells[cell.attrib[&quot;r&quot;]] = strings[int(value.text)]
+            else:
+                cells[cell.attrib[&quot;r&quot;]] = value.text or &quot;&quot;
+
+    if [cells.get(f&quot;A{r}&quot;) for r in range(3, 6)] != [&quot;High&quot;, &quot;Medium&quot;, &quot;Low&quot;]:
+        raise ValueError(&quot;ED8i rows do not match expected High/Medium/Low categories&quot;)
+    # Columns B/C are the 53BP1 UT/4-Gy counts, rows 3–5 are High/Medium/Low.
+    return [[int(cells[f&quot;{col}{row}&quot;]) for col in (&quot;B&quot;, &quot;C&quot;)] for row in range(3, 6)]
+
+
+def pearson_3x2(table: list[list[int]]) -&gt; tuple[float, float, float, int]:
+    row_totals = [sum(row) for row in table]
+    col_totals = [sum(table[r][c] for r in range(3)) for c in range(2)]
+    total = sum(row_totals)
+    statistic = 0.0
+    for r in range(3):
+        for c in range(2):
+            expected = row_totals[r] * col_totals[c] / total
+            statistic += (table[r][c] - expected) ** 2 / expected
+    # For df=2, chi-square survival function is exp(-x/2).
+    p_value = math.exp(-statistic / 2)
+    cramers_v = math.sqrt(statistic / total)
+    return statistic, p_value, cramers_v, total
+
+
+def main() -&gt; None:
+    table = read_ed8i_53bp1(WORKBOOK)
+    expected = [[1, 7], [9, 28], [22, 19]]
+    if table != expected:
+        raise AssertionError(f&quot;released counts changed: {table!r}&quot;)
+    statistic, p_value, v, total = pearson_3x2(table)
+    result = {
+        &quot;source_sheet&quot;: &quot;ED8i&quot;,
+        &quot;category_order&quot;: [&quot;High&quot;, &quot;Medium&quot;, &quot;Low&quot;],
+        &quot;condition_order&quot;: [&quot;UT&quot;, &quot;4 Gy&quot;],
+        &quot;counts&quot;: table,
+        &quot;pearson_chi_square&quot;: statistic,
+        &quot;degrees_of_freedom&quot;: 2,
+        &quot;N&quot;: total,
+        &quot;p_value_df2&quot;: p_value,
+        &quot;cramers_v&quot;: v,
+        &quot;scope_limit&quot;: &quot;aggregate released categories only; no pair IDs, continuous measurements, event times, or replicate labels&quot;,
+    }
+    print(json.dumps(result, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/c547ad2c7e9fb2491e9ab7ca270abcd5c58387c5cdc44752421238f6145a25ba.py">Exact original</a></p></html>

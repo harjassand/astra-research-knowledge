@@ -1,0 +1,101 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/cancer_evolution/cycle3_moment_match_check.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/cancer_evolution/cycle3_moment_match_check.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact arithmetic checks for cycle-3 cancer hidden-state examples.
+
+These are mathematical constructions, not fitted biological parameters.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+import json
+
+
+def moments(outcomes, coord=0, order=1):
+    return sum(p * (pair[coord] ** order) for pair, p in outcomes)
+
+
+def mean_cov_pair(outcomes):
+    ex = [sum(p * pair[i] for pair, p in outcomes) for i in (0, 1)]
+    exx = [[sum(p * pair[i] * pair[j] for pair, p in outcomes)
+            for j in (0, 1)] for i in (0, 1)]
+    cov = [[exx[i][j] - ex[i] * ex[j] for j in (0, 1)]
+           for i in (0, 1)]
+    return ex, cov
+
+
+# A parent with 100 ecDNA copies has 200 copies available after replication.
+# Daughter labels are randomized; both kernels conserve the total of 200.
+ec_a = [((60, 140), F(1, 32)), ((140, 60), F(1, 32)),
+        ((100, 100), F(15, 16))]
+ec_b = [((90, 110), F(1, 2)), ((110, 90), F(1, 2))]
+
+ec_results = {}
+for name, law in ((&quot;A&quot;, ec_a), (&quot;B&quot;, ec_b)):
+    mean, covariance = mean_cov_pair(law)
+    # For K &lt;= 90, L is the number of low-copy daughters from one mitosis.
+    low_count = sum(p * sum(k &lt;= 90 for k in pair) for pair, p in law)
+    any_low = sum(p for pair, p in law if any(k &lt;= 90 for k in pair))
+    # Independent establishment probability q=1/2 for each low-copy daughter.
+    q_est = sum(p * (1 - F(1, 2) ** sum(k &lt;= 90 for k in pair))
+                for pair, p in law)
+    variance = moments(law, 0, 2) - mean[0] ** 2
+    fourth_central = sum(p * (pair[0] - mean[0]) ** 4 for pair, p in law)
+    fourth_cumulant = fourth_central - 3 * variance ** 2
+    tail_one_daughter = sum(p for pair, p in law if pair[0] &lt;= 90)
+    ec_results[name] = {
+        &quot;mean_pair&quot;: [str(x) for x in mean],
+        &quot;cov_pair&quot;: [[str(x) for x in row] for row in covariance],
+        &quot;marginal_variance&quot;: str(variance),
+        &quot;marginal_fourth_cumulant&quot;: str(fourth_cumulant),
+        &quot;expected_low_daughters_per_mitosis&quot;: str(low_count),
+        &quot;probability_any_low_daughter&quot;: str(any_low),
+        &quot;establishment_probability_per_mitosis_q_half&quot;: str(q_est),
+        &quot;randomly_labeled_daughter_low_tail&quot;: str(tail_one_daughter),
+    }
+
+# Exact binomial operating characteristics for a random daughter call.
+def binom_tail(n, p, k):
+    if p == 0:
+        return F(1) if k == 0 else F(0)
+    if p == 1:
+        return F(1)
+    ans = F(0)
+    for j in range(k, n + 1):
+        ans += F(__import__(&quot;math&quot;).comb(n, j)) * p**j * (1-p)**(n-j)
+    return ans
+
+
+# 95% sensitivity and 99% specificity for the binary &quot;daughter &lt;=90&quot; call.
+sens, spec = F(95, 100), F(99, 100)
+p0 = sens * F(1, 32) + (1 - spec) * F(31, 32)
+p1 = sens * F(1, 2) + (1 - spec) * F(1, 2)
+n, cutoff = 6, 2
+test = {
+    &quot;sensitivity&quot;: str(sens),
+    &quot;specificity&quot;: str(spec),
+    &quot;observed_rate_A&quot;: str(p0),
+    &quot;observed_rate_B&quot;: str(p1),
+    &quot;n_independent_divisions&quot;: n,
+    &quot;reject_B_if_count_at_least&quot;: cutoff,
+    &quot;type_I_A&quot;: str(binom_tail(n, p0, cutoff)),
+    &quot;power_B&quot;: str(binom_tail(n, p1, cutoff)),
+}
+
+# A PGCC burst comparison with equal mean K=4, post-burst q_R=1/2,
+# and competing burst/death probabilities both 1/2.
+pgcc_a_h = F(1, 2) ** 4
+pgcc_b_h = F(3, 4) + F(1, 4) * F(1, 2) ** 16
+pgcc = {
+    &quot;law_A_h_q&quot;: str(pgcc_a_h),
+    &quot;law_A_p_establish&quot;: str(F(1, 2) * (1 - pgcc_a_h)),
+    &quot;law_B_h_q&quot;: str(pgcc_b_h),
+    &quot;law_B_p_establish&quot;: str(F(1, 2) * (1 - pgcc_b_h)),
+    &quot;risk_ratio_A_over_B&quot;: str((F(1, 2) * (1-pgcc_a_h)) /
+                                (F(1, 2) * (1-pgcc_b_h))),
+}
+
+result = {
+    &quot;status&quot;: &quot;exact finite construction; not biologically fitted&quot;,
+    &quot;ecDNA_partition&quot;: ec_results,
+    &quot;idealized_binomial_test&quot;: test,
+    &quot;PGCC_equal_mean_burst_law&quot;: pgcc,
+}
+print(json.dumps(result, indent=2))
+</pre><p><a href="../assets/7c93ee68e80567d97bce9e4f2f3f6e746f3b28b96494641bdb7c49b408dba020.py">Exact original</a></p></html>

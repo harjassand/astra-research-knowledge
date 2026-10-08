@@ -1,0 +1,101 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/reaction_dynamics/cycle4/leaves/switch_boundary/verify_variants.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/reaction_dynamics/cycle4/leaves/switch_boundary/verify_variants.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact finite checks of the switch-boundary counterexample identities.
+
+The all-state counterexamples are proved algebraically in AUDIT.txt. This
+script only checks direct-generator values on selected exact states.
+&quot;&quot;&quot;
+
+from fractions import Fraction as F
+
+
+def generator(a, b, alpha, delta, p, q, u, v, lam, R, eps, K, k=1):
+    &quot;&quot;&quot;Two catalysts, one substrate; only A_1 is adjacent to B.&quot;&quot;&quot;
+
+    def value(aa, bb):
+        local_inactive = aa[0] == 0
+        all_inactive = aa[0] + aa[1] == 0
+        return (
+            lam[0] * aa[0]
+            + lam[1] * aa[1]
+            + R**bb * (1 + eps * local_inactive)
+            + K * all_inactive
+        )
+
+    out = F(0)
+    for j in range(2):
+        aa = list(a)
+        aa[j] += 1
+        out += alpha[j] * (value(aa, b) - value(a, b))
+        if a[j] &gt; 0:
+            aa = list(a)
+            aa[j] -= 1
+            out += delta[j] * a[j] * (value(aa, b) - value(a, b))
+
+    out += p * a[0] * (value(a, b + 1) - value(a, b))
+    if b &gt; 0:
+        out += q * a[0] * b * (value(a, b - 1) - value(a, b))
+
+        aa = list(a)
+        aa[0] += k
+        out += u * a[0] * b * (value(aa, b) - value(a, b))
+
+        if a[0] &gt;= k + 1:
+            falling = 1
+            for r in range(k + 1):
+                falling *= a[0] - r
+            aa = list(a)
+            aa[0] -= k
+            out += v * falling * b * (value(aa, b) - value(a, b))
+    return out
+
+
+def main():
+    lam = (F(1), F(1))
+    R, eps, K = F(3, 2), F(1), F(3)
+
+    # q=0: equation (2), with alpha=delta=p=u=v=1 on the active edge.
+    for n in (1, 2, 5, 10):
+        got = generator(
+            (1, 0), n, (F(1), F(0)), (F(1), F(0)),
+            F(1), F(0), F(1), F(1), lam, R, eps, K,
+        )
+        expected = K + (F(1, 2) + 1) * R**n + n
+        assert got == expected
+
+    # Missing local immigration alpha_1=0 gives LV=K on (0,1,n).
+    got = generator(
+        (0, 1), 7, (F(0), F(1)), (F(1), F(1)),
+        F(1), F(1), F(1), F(1), lam, R, eps, K,
+    )
+    assert got == K
+
+    # Removing epsilon on the same sparse support gives LV=lambda_1+K.
+    got = generator(
+        (0, 1), 7, (F(1), F(1)), (F(1), F(1)),
+        F(1), F(1), F(1), F(1), lam, R, F(0), K,
+    )
+    assert got == lam[0] + K
+
+    # v=0 example (5); for R=3/2 the exact linear coefficient is 17/10.
+    for n in (2, 5, 12):
+        got = generator(
+            (n, 0), 1, (F(1), F(0)), (F(1), F(0)),
+            F(1), F(1, 10), F(2), F(0), lam, R, eps, K,
+        )
+        assert got == 1 + F(17, 10) * n
+
+    # delta=0 gives H+p(R-1)a on (a,0).
+    for n in (2, 10):
+        got = generator(
+            (n, 0), 0, (F(1), F(0)), (F(0), F(0)),
+            F(1), F(1), F(1), F(1), lam, R, eps, K,
+        )
+        assert got == 1 + F(1, 2) * n
+
+    print(&quot;PASS: exact direct-generator checks for missing q, alpha, epsilon, v, delta&quot;)
+    print(&quot;Scope: selected rational states only; unbounded claims are algebraic in AUDIT.txt&quot;)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/0037e072a9ae7686115956eddf701fe19d0232889268effea45db0a3ae5fba57.py">Exact original</a></p></html>

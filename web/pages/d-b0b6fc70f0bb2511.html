@@ -1,0 +1,237 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/acquisition_learning/leaves/conditional_history_access_cost.txt</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/acquisition_learning/leaves/conditional_history_access_cost.txt</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>THE COST OF CONDITIONAL HISTORY ACCESS
+Status: exact finite-HMM calculations and testing bounds for the stated interfaces.
+
+Setup and target
+----------------
+Fix a prefix length T &gt;= 1, a survival parameter q in (0,1), and an emission
+contrast delta in (0,1/2). Let h = 1^T and p = q^T. The two models H_+ and H_-
+are identical except for a Bernoulli emission reached only after h. Conditional
+on h, the next bit has probability 1/2+delta under H_+ and 1/2-delta under
+H_-. Thus the target conditional laws have TV distance 2 delta. The history
+has positive probability p under both models.
+
+An explicit time-homogeneous HMM has hidden states A_1,...,A_T,
+D_1,...,D_T,G,F,R. Its initial distribution is
+
+  Pr(A_1)=q,  Pr(D_1)=1-q.
+
+For t&lt;T, A_t transitions to A_{t+1} with probability q and to D_{t+1} with
+probability 1-q; D_t transitions to D_{t+1} with probability 1. Each A_t
+emits the symbol 1, and each D_t emits 0. From A_T transition to G; from D_T
+transition to F. State G emits Bernoulli(1/2+delta) in H_+ and
+Bernoulli(1/2-delta) in H_-. State F emits 0. Both G and F then transition to
+R; R emits fair bits and transitions to itself. All state emissions are
+conditionally independent given the hidden path. The two HMMs have 2T+3
+states and differ only in the emission law at G.
+
+The observed prefix h occurs exactly when the hidden path stays in the A
+states, so Pr(h)=q times q^(T-1)=p=q^T. Every other length-T prefix leaves
+the process in the D path and has the same continuation under both models.
+Writing b_+ = 1/2+delta and b_- = 1/2-delta,
+
+  Pr_+(h,1)=p b_+,       Pr_-(h,1)=p b_-,
+  Pr_+(h,0)=p(1-b_+),    Pr_-(h,0)=p(1-b_-).
+
+The complete length-(T+1) laws therefore differ only on the witness history.
+This example is deliberately simple and the witness h is known to the learner;
+it isolates access cost from the separate problem of discovering which
+history is predictive.
+
+(i) Passive episodes: witness probability and generation cost
+-------------------------------------------------------------
+One passive episode is a reset followed by T+1 observations. Its witness
+indicator W = 1{X_1:T=h} is Bernoulli(p) under both models. Conditional on W=1,
+X_{T+1} is Bernoulli(b_+) or Bernoulli(b_-); conditional on W=0, the whole
+episode law is identical under H_+ and H_-.
+
+The exact one-episode divergences are
+
+  TV(P_+^episode, P_-^episode) = 2 p delta,
+  KL(P_+^episode || P_-^episode) = p d(delta),
+  d(delta) = 2 delta log((1+2 delta)/(1-2 delta)) nats.
+
+For n independent passive episodes, the KL is exactly n p d(delta). For any
+test whose two error probabilities are at most alpha &lt; 1/2, data processing
+through the test output gives
+
+  n &gt;= kl(1-alpha || alpha) / (p d(delta)),
+  kl(1-alpha || alpha) = (1-2 alpha) log((1-alpha)/alpha).
+
+As delta -&gt; 0, d(delta)=8 delta^2+O(delta^4). Hence for fixed alpha the
+passive episode requirement is Omega(1/(p delta^2)); as alpha -&gt; 0 the lower
+bound is Omega(log(1/alpha)/(p delta^2)). Since p=q^T, this is exponential in
+T for any fixed q&lt;1. The lower bound holds even though h is known in advance.
+
+The history-generation cost is also exact. The number of independent episodes
+until the first witness is geometric with mean 1/p and variance
+(1-p)/p^2. The number N_k of episodes until k witness continuations is
+negative-binomial with
+
+  E[N_k]=k/p,       Var(N_k)=k(1-p)/p^2.
+
+Thus collecting k useful continuation observations costs k/p episodes in
+expectation, or (T+1)k/p emitted symbols when each full episode is charged.
+If the sampler can stop an attempt as soon as it observes the first 0, the
+expected symbol cost is smaller and can be computed exactly. A failed attempt
+whose first zero occurs at position t has probability (1-q)q^(t-1) and costs
+t symbols; a successful attempt costs T+1 symbols. The expected cost to obtain
+k successful witnesses under this early-stop policy is
+
+  k(T+1) + k(1-q)/p * sum_{t=1}^T t q^(t-1).
+
+For fixed q=1/2 and large T, this is k(T+1)+k*2^(T+1), still exponential
+in T. Reset or restart costs, if any, add k(1-p)/p times the cost per failed
+attempt. The full-episode symbol cost above applies when episodes cannot be
+censored early.
+For a fixed budget n, the witness count K is Binomial(n,p) and
+Pr(K=0)=(1-p)^n; obtaining at least one witness with probability 1-beta
+requires exactly n &gt;= log(beta)/log(1-p), rounded up. More generally,
+Pr(N_k &lt;= n)=Pr(Binomial(n,p) &gt;= k), which gives the exact high-probability
+generation cost. A convenient sufficient budget is
+
+  n &gt;= (2 k + 8 log(1/beta))/p,
+
+by the Chernoff lower-tail bound.
+
+An exact finite-sample testing expression is available. Let e_m(delta) be the
+optimal equal-prior error after m informative continuation bits:
+
+  e_m(delta) = (1/2) sum_{j=0}^m C(m,j) min{
+       b_+^j b_-^(m-j), b_-^j b_+^(m-j) }.
+
+The likelihood-ratio test is majority vote, randomized on ties. With n passive
+episodes, the optimal equal-prior error is exactly
+
+  R_n = sum_{m=0}^n C(n,m) p^m (1-p)^(n-m) e_m(delta).
+
+Consequently n_passive(alpha)=min{n:R_n&lt;=alpha} is the exact episode count
+for this test. The preceding KL bound gives its sharp rare-event and
+small-contrast order.
+
+For high-confidence asymptotics, let rho=sqrt(1-4 delta^2), the
+Bhattacharyya coefficient of the two conditional Bernoulli laws. The
+Chernoff information per passive episode is exactly
+
+  C_passive(p,delta) = -log(1-p+p rho).
+
+Thus the optimal equal-prior error exponent is C_passive, and
+n_passive(alpha) is asymptotic to log(1/alpha)/C_passive as alpha tends to
+zero. For small p, C_passive = p(1-rho)+O(p^2); for small delta,
+1-rho = 2 delta^2+O(delta^4). This recovers the 1/p penalty at the sharp
+small-contrast/high-confidence exponent level.
+
+(ii) Conditional-sample oracle: the witness cost is omitted
+-----------------------------------------------------------
+Define O_cond(h) to return an independent draw from
+Law(X_{T+1} | X_1:T=h), on every call, for any specified h with positive
+probability. A call must at least receive the T-symbol history h (unless a
+reusable handle is supplied) and returns one Bernoulli sample. The sample is
+Bernoulli(b_+) under H_+ and Bernoulli(b_-) under H_-. After m calls, the exact
+optimal error is e_m(delta), and the KL is
+m d(delta). Therefore the exact query requirement at error alpha is
+
+  m_cond(alpha)=min{m:e_m(delta)&lt;=alpha},
+
+with the necessary bound m &gt;= kl(1-alpha||alpha)/d(delta). A majority test and
+Hoeffding give the sufficient bound
+
+  m &gt;= log(1/alpha)/(2 delta^2).
+
+The Chernoff information per conditional sample is
+
+  C_cond(delta) = -(1/2) log(1-4 delta^2),
+
+so the optimal error exponent is C_cond. Hence, as alpha tends to zero,
+m_cond(alpha) is asymptotic to log(1/alpha)/C_cond(delta). For small delta,
+C_cond=2 delta^2+O(delta^4), so conditional sampling costs
+Theta(delta^-2 log(1/alpha)), with no factor 1/p. The asymptotic ratio of
+passive to conditional sample counts is C_cond/C_passive, which is
+approximately 1/p when delta is small. Relative to passive episodes, the
+oracle has omitted the cost of generating the witness history and its
+probability mass.
+
+At fixed error and delta=1/4, one conditional sample already gives 3/4
+success. For alpha=0.1, the exact formula gives m_cond=7: e_6=53/512&gt;0.1,
+whereas e_7=289/4096&lt;0.1. This constant query count is independent of T even
+when p=q^T is exponentially small.
+
+This interface is a teacher if the learner may name h before h appears in its
+own data and the oracle returns the continuation without charging for the
+history&#x27;s probability or generation. It supplies a counterfactual
+history-conditioned observation that passive P-sampling almost never sees.
+If a policy must first observe h before it may call O_cond(h), the expected
+waiting cost k/p for k conditional draws remains and the oracle adds no such
+free access. The history must satisfy P(h)&gt;0; conditioning on an off-support
+history is undefined and is not licensed by this construction.
+
+(iii) Full law-evaluation oracle: exact ratios expose the conditional
+---------------------------------------------------------------------
+Define O_law(x) to return the exact joint probability of any requested
+observation string x. The query string (h,1) has T+1 symbols. Since p=q^T is
+known in this construction, one query at x=(h,1) returns
+p(1/2+delta) or p(1/2-delta); a single exact answer
+distinguishes the models. If p is not known, two queries, O_law(h) and
+O_law(h,1), recover
+
+  Pr(X_{T+1}=1 | h) = O_law(h,1) / O_law(h).
+
+Thus exact law evaluation takes one query here (or two when the denominator is
+unknown), independent of p, but this charges neither sampling nor the
+precision needed to return a tiny joint probability. With additive error eta
+on O_law(h,1) and known p, distinguishing the two models by this one answer
+requires eta &lt; p delta. A binary fixed-point answer therefore needs more than
+For truncation error at most 2^-b, it suffices to take
+b &gt; log_2(1/(p delta)) fractional bits. For p=q^T this is T log_2(1/q) plus
+log_2(1/delta) bits, up to rounding convention. If the law evaluator itself
+estimates probabilities by sampling, or reports only additive accuracy much
+larger than p delta, this constant-query conclusion no longer applies; the
+rare-event cost returns.
+
+Comparison and accounting boundary
+-----------------------------------
+
+Interface                         Informative access cost
+--------------------------------  -----------------------------------------
+Passive length-(T+1) episodes      n &gt;= kl(1-alpha||alpha)/(q^T d(delta));
+                                   expected k/q^T episodes for k witnesses
+Conditional samples at h           m &gt;= kl(1-alpha||alpha)/d(delta) calls;
+                                   no q^-T cost if h can be named freely;
+                                   each call specifies T history symbols
+Exact full-law evaluation          1 query if q^T known, else 2 exact queries;
+                                   input has T+1 symbols; precision resolves
+                                   q^T delta
+
+For q=1/2 and delta=1/4, the conditional continuation gap is 1/2 and
+p=2^-T. At alpha=0.1, the passive episode-count lower bound is
+
+  n &gt;= [0.8 log 9 / (0.5 log 3)] 2^T ~= 3.20 * 2^T episodes,
+
+whereas seven conditional samples suffice. Collecting seven passive witnesses
+takes 7*2^T episodes in expectation. This costs 7(T+1)2^T emitted symbols
+when episodes run to completion, or 7(T+1)+7*2^(T+1) expected symbols with
+early stopping at the first zero. One exact full-law query returns a joint
+probability separated by 2p delta=2^(-T-1),
+so the query-count advantage hides an exponentially small probability scale
+in its numeric answer.
+
+Conclusion: conditional sampling does not merely repackage passive samples.
+When the user can submit an arbitrary on-support prefix and receive a
+continuation without paying for history generation, it supplies the missing
+history-conditioned evidence. A fair comparison must charge either the
+history&#x27;s probability (passive episode generation), the query mechanism that
+conditions on it, or the exact probability precision / computation of the
+full-law evaluator. The lower bounds here are for this explicit HMM family;
+they are not a general impossibility theorem for learning predictive state.
+
+Primary references
+------------------
+The HMM-specific calculations are proved above. These primary sources support
+the HMM convention and the classical simple-hypothesis testing exponent:
+
+1. L. R. Rabiner, “A Tutorial on Hidden Markov Models and Selected
+   Applications in Speech Recognition,” Proceedings of the IEEE 77(2),
+   257-286 (1989). https://doi.org/10.1109/5.18626
+2. H. Chernoff, “A Measure of Asymptotic Efficiency for Tests of a Hypothesis
+   Based on the Sum of Observations,” The Annals of Mathematical Statistics
+   23(4), 493-507 (1952). https://doi.org/10.1214/aoms/1177729330
+</pre><p><a href="../assets/7ed6b7aed59a8171d53d85786c2c064a02e292572cfec50ec48c1602aef7cd2a.txt">Exact original</a></p></html>

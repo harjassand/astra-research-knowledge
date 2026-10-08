@@ -1,0 +1,117 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/reaction_dynamics/verify_core_claims.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/reaction_dynamics/verify_core_claims.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact finite checks for the N76 Foster obstruction and N77 class escape core.
+
+Uses only Python&#x27;s standard library. This script checks rational factorial
+ratios and finite-state flux identities. It is evidence for the displayed
+algebra, not a proof of the asymptotic claims or a general recurrence theorem.
+&quot;&quot;&quot;
+from fractions import Fraction
+from math import factorial, log
+
+
+def falling(x: int, order: int) -&gt; int:
+    out = 1
+    for j in range(order):
+        out *= x - j
+    return out
+
+
+def prop(x: tuple[int, ...], source: tuple[int, ...]) -&gt; int:
+    out = 1
+    for value, order in zip(x, source):
+        if value &lt; order:
+            return 0
+        out *= falling(value, order)
+    return out
+
+
+def factorial_potential_factor(x: tuple[int, int]) -&gt; int:
+    complexes = ((2, 0), (1, 1), (0, 0), (1, 0))
+    available = [
+        factorial(x[0] - a) * factorial(x[1] - b)
+        for a, b in complexes
+        if x[0] &gt;= a and x[1] &gt;= b
+    ]
+    return min(available)
+
+
+# Network: 2A &lt;-&gt; A+B, 0 &lt;-&gt; A, with rates 1, 3, 1, 1.
+sources = ((2, 0), (1, 1), (0, 0), (1, 0))
+products = ((1, 1), (2, 0), (1, 0), (0, 0))
+rate_constants = (1, 3, 1, 1)
+for n in range(4, 41):
+    state = (2 * n, n)
+    base = factorial_potential_factor(state)
+    expected = (
+        Fraction(n + 1, 2 * n - 2),
+        Fraction(2 * n - 1, n),
+        Fraction(2 * n - 1, 1),
+        Fraction(1, 2 * n - 2),
+    )
+    observed = []
+    for source, product in zip(sources, products):
+        after = tuple(x - y + z for x, y, z in zip(state, source, product))
+        observed.append(Fraction(factorial_potential_factor(after), base))
+    assert tuple(observed) == expected, (n, observed, expected)
+
+# Independently check the generator formula at a large n. The exact
+# factorial ratios above are the primary finite checks; this numeric line
+# merely confirms positive drift on a large sample, not its asymptotics.
+n = 10000
+terms = (
+    2 * n * (2 * n - 1) * log((n + 1) / (2 * n - 2)),
+    6 * n * n * log((2 * n - 1) / n),
+    log(2 * n - 1),
+    -2 * n * log(2 * n - 2),
+)
+lf = sum(terms)
+assert lf &gt; 0
+
+# Three-reaction N77 core: 2C -&gt; A+B+C -&gt; 3A+2B -&gt; 2C.
+core_sources = ((0, 0, 2), (1, 1, 1), (3, 2, 0))
+core_products = ((1, 1, 1), (3, 2, 0), (0, 0, 2))
+for n in range(0, 41):
+    states = ((n, 0, 2), (n + 1, 1, 1), (n + 3, 2, 0))
+    rates = (2, n + 1, 2 * (n + 1) * (n + 2) * (n + 3))
+    poisson_weights = tuple(
+        Fraction(1, factorial(a) * factorial(b) * factorial(c))
+        for a, b, c in states
+    )
+    fluxes = tuple(w * rate for w, rate in zip(poisson_weights, rates))
+    assert fluxes == (Fraction(1, factorial(n)),) * 3, (n, fluxes)
+    for phase, state in enumerate(states):
+        enabled = []
+        for i, (source, product) in enumerate(zip(core_sources, core_products)):
+            rate = prop(state, source)
+            if rate:
+                target = tuple(x - y + z for x, y, z in zip(state, source, product))
+                enabled.append((i, target, rate))
+        assert enabled == [(phase, states[(phase + 1) % 3], rates[phase])]
+    assert min(s[0] for s in states) == n
+
+# N50 exact unbounded-class certificate for 0 &lt;-&gt; A, rates in [1,4].
+# q=4, z_P=1/4, eta=1/4, a=1/2, p=0, c=1, and
+# F_z(x)=min{0, x-2z^2, (1/2)z^-2-x}.
+# The interval is Q_z=[2z^2,(1/2)z^-2]. For every 0&lt;z&lt;=1/4:
+#   2z^2 &gt;= z^2 and (1/2)z^-2 &lt;= z^-2 (condition B);
+#   z &gt;= 2z^2 and z^-1 &lt;= (1/2)z^-2 (condition C), both from z&lt;=1/2;
+#   at c=1, 1-2z^2 &gt;= 7/8 and (1/2)z^-2-1 &gt;= 7 (condition A).
+# At the lower active facet x&lt;=2z^2, k_birth-k_death*x &gt;= 1-8z^2 &gt;= 1/2.
+# At the upper active facet x&gt;=(1/2)z^-2,
+# k_death*x-k_birth &gt;= (1/2)z^-2-4 &gt;= 4 &gt;= 1/2 (condition D).
+z_endpoint = Fraction(1, 4)
+assert 2 * z_endpoint**2 &gt;= z_endpoint**2
+assert Fraction(1, 2) * z_endpoint**-2 &lt;= z_endpoint**-2
+assert z_endpoint &gt;= 2 * z_endpoint**2
+assert z_endpoint**-1 &lt;= Fraction(1, 2) * z_endpoint**-2
+assert 1 - 2 * z_endpoint**2 &gt;= Fraction(7, 8)
+assert Fraction(1, 2) * z_endpoint**-2 - 1 &gt;= 7
+assert 1 - 8 * z_endpoint**2 &gt;= Fraction(1, 2)
+assert Fraction(1, 2) * z_endpoint**-2 - 4 &gt;= 4
+
+print(
+    &quot;PASS: N76 exact factorial ratios for n=4..40; N77 exact transition and &quot;
+    &quot;Poisson-flux identities for n=0..40; N50 0&lt;-&gt;A endpoint inequalities; &quot;
+    &quot;sample N76 LF(2n,n)&gt;0 at n=10000.&quot;
+)
+</pre><p><a href="../assets/d95c2e190d930449629cc4d4ec7792152f6a116a6a5548afe97c0c9672645933.py">Exact original</a></p></html>

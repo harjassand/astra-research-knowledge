@@ -1,0 +1,85 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c5_quantum_dimension_obstruction/cycle10_mixed_representations/naimark_upper_bound.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c5_quantum_dimension_obstruction/cycle10_mixed_representations/naimark_upper_bound.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Arithmetic for a conservative generic Givens/Naimark readout bound.
+
+This is cost accounting, not an optimized gate compiler.  It assumes a
+16-column isometry into M=2**b label states; arbitrary U(2) Givens gates are
+implemented with Gray-code CNOT conjugations, a multi-control decomposition
+using clean Toffoli ancillas, and at most ten arbitrary one-qubit rotations.
+Each exact Toffoli is charged as 6 CNOT + 7 T.  A final 16 computational-state
+phase corrections are separately charged.  The isometry formula and exact
+frame checks live in cycle10_finite_compiler/.
+&quot;&quot;&quot;
+
+from math import ceil, log2
+from pathlib import Path
+import json
+
+
+def costs(label_bits: int, d: int = 16, phase_corrections: int = 16):
+    M = 1 &lt;&lt; label_bits
+    givens = d * (M - 1) - d * (d - 1) // 2
+    cnot_per_givens = 14 * label_bits - 24
+    toffoli_per_givens = 2 * (label_bits - 2)
+    cnot_per_phase = 12 * (label_bits - 1)
+    toffoli_per_phase = 2 * (label_bits - 1)
+    arbitrary_rotations = 10 * givens + phase_corrections
+    toffolis = givens * toffoli_per_givens + phase_corrections * toffoli_per_phase
+    cnots = givens * cnot_per_givens + phase_corrections * cnot_per_phase
+    assert cnots == (toffolis * 6 + givens * 2 + phase_corrections * 0 +
+                     givens * 2 * (label_bits - 1))
+    return {
+        &quot;label_bits&quot;: label_bits,
+        &quot;padded_outcomes&quot;: M,
+        &quot;givens_upper_bound&quot;: givens,
+        &quot;phase_corrections&quot;: phase_corrections,
+        &quot;cnot_upper_bound&quot;: cnots,
+        &quot;toffoli_upper_bound&quot;: toffolis,
+        &quot;t_from_exact_toffolis_only&quot;: 7 * toffolis,
+        &quot;arbitrary_one_qubit_rotations&quot;: arbitrary_rotations,
+        &quot;clean_workspace_qubits&quot;: label_bits - 1,
+    }
+
+
+def accuracy_bits(rotation_count: int, epsilon: float = 1e-3):
+    &quot;&quot;&quot;If each rotation has operator error &lt;=2^-p, bound product error by eps.&quot;&quot;&quot;
+    return ceil(log2(rotation_count / epsilon))
+
+
+def main():
+    rows = {name: costs(bits) for name, bits in ((&quot;v_H&quot;, 11), (&quot;v_V&quot;, 10), (&quot;v_R&quot;, 8))}
+    expected = {
+        &quot;v_H&quot;: (32632, 4244080, 587696, 4113872, 326336, 10),
+        &quot;v_V&quot;: (16248, 1886496, 260256, 1821792, 162496, 9),
+        &quot;v_R&quot;: (3960, 349824, 47744, 334208, 39616, 7),
+    }
+    for name, row in rows.items():
+        got = (row[&quot;givens_upper_bound&quot;], row[&quot;cnot_upper_bound&quot;],
+               row[&quot;toffoli_upper_bound&quot;], row[&quot;t_from_exact_toffolis_only&quot;],
+               row[&quot;arbitrary_one_qubit_rotations&quot;], row[&quot;clean_workspace_qubits&quot;])
+        assert got == expected[name], (name, got, expected[name])
+        row[&quot;operator_error_budget&quot;] = &quot;epsilon=1e-3 total; each arbitrary rotation &lt;= epsilon/count&quot;
+        row[&quot;binary_accuracy_bits_at_epsilon_1e-3&quot;] = accuracy_bits(
+            row[&quot;arbitrary_one_qubit_rotations&quot;])
+    assert [rows[x][&quot;binary_accuracy_bits_at_epsilon_1e-3&quot;]
+            for x in (&quot;v_H&quot;, &quot;v_V&quot;, &quot;v_R&quot;)] == [29, 28, 26]
+    result = {
+        &quot;status&quot;: &quot;PASS_ARITHMETIC_ONLY&quot;,
+        &quot;scope&quot;: &quot;generic Naimark/Givens upper-bound arithmetic; not an optimized or emitted readout circuit&quot;,
+        &quot;assumptions&quot;: [
+            &quot;d=16 input isometry columns, padded label dimension M=2^b&quot;,
+            &quot;G=d(M-1)-d(d-1)/2 two-level U(2) operations suffice, plus d phase corrections&quot;,
+            &quot;each two-level U(2) on b wires costs at most 14b-24 CNOTs and 2(b-2) Toffolis&quot;,
+            &quot;each residual basis-state phase costs 12(b-1) CNOTs and 2(b-1) Toffolis&quot;,
+            &quot;each Toffoli is charged as 6 CNOT and 7 T; arbitrary rotations are not T-synthesized&quot;,
+            &quot;operator product error is bounded by the sum of individual rotation errors&quot;
+        ],
+        &quot;rows&quot;: rows,
+    }
+    target = Path(__file__).with_name(&quot;NAIMARK_UPPER_BOUND.json&quot;)
+    target.write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+    print(json.dumps(result, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/1f157e838f3f90d5343f1638f92f0b0be7ffcb22157c84dfcc221aff5ad45327.py">Exact original</a></p></html>

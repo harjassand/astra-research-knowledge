@@ -1,0 +1,214 @@
+#!/usr/bin/env python3
+"""Exact finite diagnostics for the mixed-cofactor toggle theorem fixture."""
+from fractions import Fraction as F
+from itertools import product
+
+
+alpha = F(2)
+delta = p = q = F(1)
+gamma_c = gamma_d = F(1)
+mu_c = mu_d = F(1, 100)
+eta = (F(1), F(2))
+zeta = (F(1), F(1))
+nu = ((2, 1), (1, 2))
+weights = (F(1), F(1))
+epsilon = F(1, 100)
+R = F(11, 10)
+K = F(1)
+
+
+def falling(n, k):
+    if n < k:
+        return 0
+    out = 1
+    for j in range(k):
+        out *= n - j
+    return out
+
+
+def phi(c, orders):
+    out = 1
+    for n, k in zip(c, orders):
+        out *= falling(n, k)
+    return out
+
+
+def q_e(c):
+    return sum((zeta[j] * phi(c, nu[j]) for j in range(2)), F(0))
+
+
+def e_e(c):
+    return sum((eta[j] * phi(c, nu[j]) for j in range(2)), F(0))
+
+
+def g(a, Q):
+    x = 1 + Q
+    return F(x, x + a)
+
+
+def potential(state):
+    a, c, d, b = state
+    Q = q_e((c, d))
+    W = R**b
+    return (F(1) + weights[0] * c + weights[1] * d
+            + F(a, 1 + Q) + W * (1 + epsilon * g(a, Q))
+            + K * (a + c + d == 0))
+
+
+def channels(state):
+    a, c, d, b = state
+    cc = (c, d)
+    rates = [
+        (alpha, (1, 0, 0, 0)),
+        (delta * a, (-1, 0, 0, 0)),
+        (gamma_c, (0, 1, 0, 0)),
+        (mu_c * c, (0, -1, 0, 0)),
+        (gamma_d, (0, 0, 1, 0)),
+        (mu_d * d, (0, 0, -1, 0)),
+        (p * a, (0, 0, 0, 1)),
+        (q * a * b, (0, 0, 0, -1)),
+    ]
+    for j in range(2):
+        rate = phi(cc, nu[j])
+        rates.append((eta[j] * a * rate, (-1, 0, 0, 0)))
+        rates.append((zeta[j] * rate, (1, 0, 0, 0)))
+    return [(rate, jump) for rate, jump in rates if rate]
+
+
+def direct_generator(state):
+    v = F(0)
+    for rate, jump in channels(state):
+        nxt = tuple(x + dx for x, dx in zip(state, jump))
+        assert min(nxt) >= 0
+        v += rate * (potential(nxt) - potential(state))
+    return v
+
+
+def formula_generator(state):
+    a, c, d, b = state
+    cs = (c, d)
+    Q = q_e(cs)
+    E = e_e(cs)
+    u = F(1, 1 + Q)
+    H = F(0)
+    cdeath = F(0)
+    cimm_u = F(0)
+    g_catalyst = F(0)
+    for i, (ci, mu, gamma) in enumerate(((c, mu_c, gamma_c), (d, mu_d, gamma_d))):
+        cp = list(cs)
+        cp[i] += 1
+        Qp = q_e(tuple(cp))
+        cimm_u += gamma * (F(1, 1 + Qp) - u)
+        g_catalyst += gamma * (g(a, Qp) - g(a, Q))
+        if ci:
+            cm = list(cs)
+            cm[i] -= 1
+            Qm = q_e(tuple(cm))
+            H += mu * ci * (F(1, 1 + Qm) - u)
+            cdeath += mu * ci
+            g_catalyst += mu * ci * (g(a, Qm) - g(a, Q))
+
+    # The A-weight and catalyst-weight pieces are grouped exactly.
+    L_au = u * (alpha + Q - (delta + E) * a) + a * H + a * cimm_u
+    c_weight = gamma_c + gamma_d - mu_c * c - mu_d * d
+
+    # Exact generator of g(a,Q) under all A/C reactions, excluding B.
+    Lg = alpha * (g(a + 1, Q) - g(a, Q))
+    if a:
+        Lg += delta * a * (g(a - 1, Q) - g(a, Q))
+        Lg += a * E * (g(a - 1, Q) - g(a, Q))
+    Lg += Q * (g(a + 1, Q) - g(a, Q))
+    Lg += g_catalyst
+
+    dR = 1 - 1 / R
+    G = (p * (R - 1) - q * dR * b) * R**b
+    b_piece = a * (1 + epsilon * g(a, Q)) * G
+
+    # K times the all-zero indicator, checked as its own component.
+    zero_piece = F(0)
+    for rate, jump in channels(state):
+        nxt = tuple(x + dx for x, dx in zip(state, jump))
+        zero_piece += rate * K * (F(sum(nxt[:3]) == 0) - F(sum(state[:3]) == 0))
+
+    # At the origin, the full C immigration increment includes the C weight;
+    # that jump is absent from the grouped c_weight expression above only if
+    # one replaces the indicator component, so use the exact full correction.
+    boundary = F(0)
+    if a + c + d == 0:
+        for rate, jump in channels(state):
+            nxt = tuple(x + dx for x, dx in zip(state, jump))
+            if jump[0] == 1:  # A immigration
+                boundary += rate * (-K)
+            elif jump[1] == 1 or jump[2] == 1:  # C immigration
+                boundary += rate * (-K)
+    # `zero_piece` already includes the indicator, so boundary is only a
+    # diagnostic split marker and is not added a second time.
+    del boundary
+    return L_au + c_weight + b_piece + epsilon * R**b * Lg + zero_piece
+
+
+def H_value(c):
+    Q = q_e(c)
+    out = F(0)
+    for i, (ci, mu) in enumerate(((c[0], mu_c), (c[1], mu_d))):
+        if ci:
+            cm = list(c)
+            cm[i] -= 1
+            Qm = q_e(tuple(cm))
+            out += mu * ci * (Q - Qm) / ((1 + Qm) * (1 + Q))
+    return out
+
+
+def main():
+    rho = min(eta[j] / zeta[j] for j in range(2))
+    Lambda = max(eta[j] / zeta[j] for j in range(2))
+    H0 = mu_c * 3 + mu_d * 3
+    kappa = min(delta, rho) - H0
+    tau = min(alpha / 2, F(1))
+    C1 = delta / 2 + 2 * Lambda + gamma_c + gamma_d
+    dR = 1 - 1 / R
+    gs = []
+    for n in range(20):
+        G = (p * (R - 1) - q * dR * n) * R**n
+        gs.append(max(G, F(0)))
+    gplus = max(gs)
+    N = 3
+
+    assert rho == 1 and Lambda == 2
+    assert H0 == F(3, 50) and kappa == F(47, 50)
+    assert tau == 1 and C1 == F(13, 2)
+    assert gplus == F(1, 10)
+    assert p * (R - 1) <= q * dR * N / 2
+    assert q * dR * N / 2 >= epsilon * C1 + epsilon * tau / 2
+    low = (1 + epsilon) * gplus + 2 * epsilon * Lambda * R ** (N - 1)
+    assert low == F(747, 5000) and low < kappa / 2
+
+    checked = 0
+    worst_formula_gap = F(0)
+    worst_drift_slack = None
+    for a, c, d, b in product(range(9), range(10), range(10), range(8)):
+        state = (a, c, d, b)
+        l_direct = direct_generator(state)
+        l_formula = formula_generator(state)
+        gap = abs(l_direct - l_formula)
+        worst_formula_gap = max(worst_formula_gap, gap)
+        assert gap == 0, (state, l_direct, l_formula)
+        assert H_value((c, d)) <= H0, (state, H_value((c, d)), H0)
+        # The displayed fixture constants follow from the analytic proof;
+        # this finite check is only a diagnostic replay.
+        V = potential(state)
+        slack = F(7) - F(1, 250) * V - l_direct
+        worst_drift_slack = slack if worst_drift_slack is None else min(worst_drift_slack, slack)
+        assert slack >= 0, (state, slack)
+        checked += 1
+
+    print("PASS direct generator equals closed form on", checked, "states")
+    print("PASS exact H(c)<=H0 on tested catalyst box; H0=", H0)
+    print("PASS exact rational Foster fixture inequality LV<=7-V/250 on tested box")
+    print("PASS certificate: kappa=", kappa, "g_+=", gplus, "N=", N, "low=", low)
+    print("worst generator identity gap=", worst_formula_gap)
+    print("minimum finite-grid drift slack=", worst_drift_slack)
+
+
+if __name__ == "__main__":
+    main()

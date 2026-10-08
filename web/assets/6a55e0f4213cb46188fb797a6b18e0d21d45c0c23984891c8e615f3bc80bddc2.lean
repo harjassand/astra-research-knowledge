@@ -1,0 +1,12 @@
+import Mathlib
+open Filter
+#check Filter.Tendsto.const_mul
+#check Filter.Tendsto.mul_const
+#check Filter.Tendsto.finset_sum
+#check tendsto_finset_sum
+#check Filter.Tendsto.sum
+#check tendsto_atTop_mono'
+#check Finset.sum_nonneg
+#check Finset.sum_le_sum
+#check div_le_iff₀
+#check Real.rpow_pos_of_pos

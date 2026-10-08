@@ -1,0 +1,595 @@
+import Mathlib.Analysis.SpecialFunctions.Pow.Real
+import Mathlib.Analysis.SpecialFunctions.Pow.Continuity
+import Mathlib.Algebra.BigOperators.Group.Finset.Basic
+import N33Affine.AffineCore
+
+noncomputable section
+
+open scoped BigOperators
+
+namespace N33Affine
+
+/- A finite family of already constructed slope vectors. -/
+structure SlopeFamily (m : ℕ) where
+  Index : Type
+  fintype : Fintype Index
+  slope : Index → (Fin m → ℝ)
+
+attribute [instance] SlopeFamily.fintype
+
+/- A positive gap can be chosen below all values on any finite set,
+including the empty set. -/
+lemma exists_pos_lt_all_finset {α : Type*} (S : Finset α) (E : α → ℝ)
+    (hE : ∀ x ∈ S, 0 < E x) :
+    ∃ δ : ℝ, 0 < δ ∧ ∀ x ∈ S, δ < E x := by
+  classical
+  induction S using Finset.induction_on with
+  | empty =>
+      exact ⟨1, by norm_num, by simp⟩
+  | @insert x S hx ih =>
+      obtain ⟨δ, hδ, hδS⟩ := ih (by
+        intro y hy
+        exact hE y (Finset.mem_insert_of_mem hy))
+      refine ⟨min δ (E x / 2), lt_min hδ (half_pos (hE x (Finset.mem_insert_self x S))), ?_⟩
+      intro y hy
+      rcases Finset.mem_insert.mp hy with hxy | hyS
+      · subst y
+        exact lt_of_le_of_lt (min_le_right _ _) (by linarith [hE x (Finset.mem_insert_self x S)])
+      · exact lt_of_le_of_lt (min_le_left _ _) (hδS y hyS)
+
+/- Pick the next threshold below the interval ceiling and all old-label
+tolerance margins. The `prev` argument is the prior threshold when present;
+the caller uses `b` for the first stage. -/
+lemma exists_next_threshold {m : ℕ} (S : Finset (Fin m → ℝ))
+    (E : (Fin m → ℝ) → ℝ) (t upper : ℝ)
+    (hTu : t < upper) (hE : ∀ r ∈ S, 0 < E r) :
+    ∃ β : ℝ, t < β ∧ β < upper ∧ ∀ r ∈ S, β - t < E r := by
+  obtain ⟨δ, hδ, hδE⟩ := exists_pos_lt_all_finset S E hE
+  let gap := min ((upper - t) / 2) (δ / 2)
+  have hgap : 0 < gap := lt_min (by linarith) (by linarith)
+  have hgap_upper : gap ≤ (upper - t) / 2 := min_le_left _ _
+  refine ⟨t + gap, by linarith, by linarith, ?_⟩
+  intro r hr
+  have hgδ : gap < δ := lt_of_le_of_lt (min_le_right _ _) (by linarith)
+  linarith [hδE r hr]
+
+/- Finite family package. The explicit `Fintype` field permits genuinely
+dependent label types, such as a sigma over coordinate embeddings. -/
+structure FiniteFamily (m : ℕ) where
+  Index : Type
+  fintype : Fintype Index
+  nonempty : Nonempty Index
+  label : Index → Label m
+
+attribute [instance] FiniteFamily.fintype
+
+structure BoxFamily (m : ℕ) (a b : ℝ) where
+  family : FiniteFamily m
+  slope_box : ∀ j, InCube a b (family.label j).slope
+
+def slopeSet {m : ℕ} {a b : ℝ} (F : BoxFamily m a b) : Finset (Fin m → ℝ) :=
+  Finset.univ.image fun j => (F.family.label j).slope
+
+lemma tolerance_pos_of_mem_slopeSet {m : ℕ} {a b : ℝ}
+    (F : BoxFamily m a b) (E : (Fin m → ℝ) → ℝ)
+    (hE : ∀ r, InCube a b r → 0 < E r) {r : Fin m → ℝ}
+    (hr : r ∈ slopeSet F) : 0 < E r := by
+  classical
+  rcases Finset.mem_image.mp hr with ⟨j, hj, rfl⟩
+  exact hE _ (F.slope_box j)
+
+def appendBoxFamily {m : ℕ} {a b : ℝ} (F G : BoxFamily m a b) : BoxFamily m a b := by
+  classical
+  refine ⟨⟨F.family.Index ⊕ G.family.Index, inferInstance, ?_, ?_⟩, ?_⟩
+  · exact F.family.nonempty.elim (fun j => ⟨Sum.inl j⟩)
+  · intro j
+    cases j with
+    | inl j => exact F.family.label j
+    | inr j => exact G.family.label j
+  · intro j
+    cases j with
+    | inl j => exact F.slope_box j
+    | inr j => exact G.slope_box j
+
+/- Extending a k-coordinate exponent vector by t along an embedding.
+Every coordinate outside the image receives exactly t. -/
+def liftPoint {m k : ℕ} (t : ℝ) (e : Fin k ↪ Fin m)
+    (s : Fin k → ℝ) (j : Fin m) : ℝ := by
+  classical
+  exact if h : ∃ i, e i = j then s (Classical.choose h) else t
+
+lemma liftPoint_eq_on {m k : ℕ} (t : ℝ) (e : Fin k ↪ Fin m)
+    (s : Fin k → ℝ) (i : Fin k) : liftPoint t e s (e i) = s i := by
+  classical
+  unfold liftPoint
+  split_ifs with h
+  · have hc : Classical.choose h = i := by
+      apply e.injective
+      exact Classical.choose_spec h
+    simp
+  · exact False.elim (h ⟨i, rfl⟩)
+
+lemma liftPoint_eq_off {m k : ℕ} (t : ℝ) (e : Fin k ↪ Fin m)
+    (s : Fin k → ℝ) (j : Fin m) (hj : ∀ i, e i ≠ j) :
+    liftPoint t e s j = t := by
+  classical
+  unfold liftPoint
+  split_ifs with h
+  · obtain ⟨i, hi⟩ := h
+    exact False.elim (hj i hi)
+  · rfl
+
+lemma liftPoint_inCube {m k : ℕ} (a b t : ℝ) (e : Fin k ↪ Fin m)
+    (s : Fin k → ℝ) (ha : a ≤ t) (ht : t ≤ b)
+    (hs : ∀ i, a ≤ s i ∧ s i ≤ b) : InCube a b (liftPoint t e s) := by
+  intro j
+  classical
+  by_cases h : ∃ i, e i = j
+  · obtain ⟨i, rfl⟩ := h
+    rw [liftPoint_eq_on]
+    exact hs i
+  · rw [liftPoint_eq_off]
+    · exact ⟨ha, ht⟩
+    · intro i hi
+      exact h ⟨i, hi⟩
+
+def liftLabel {m k : ℕ} (t β : ℝ) (e : Fin k ↪ Fin m)
+    (ℓ : Label k) : Label m :=
+  ⟨liftPoint t e ℓ.slope, fun h => ℓ.bump h - Real.rpow h β⟩
+
+lemma lifted_slope_on {m k : ℕ} (t β : ℝ) (e : Fin k ↪ Fin m)
+    (ℓ : Label k) (i : Fin k) :
+    (liftLabel t β e ℓ).slope (e i) = ℓ.slope i := by
+  exact liftPoint_eq_on t e ℓ.slope i
+
+lemma lifted_slope_off {m k : ℕ} (t β : ℝ) (e : Fin k ↪ Fin m)
+    (ℓ : Label k) (j : Fin m) (hj : ∀ i, e i ≠ j) :
+    (liftLabel t β e ℓ).slope j = t := by
+  exact liftPoint_eq_off t e ℓ.slope j hj
+
+lemma littleO_rpow_of_lt {α β : ℝ} (hαβ : α < β) :
+    LittleO (fun h => Real.rpow h β) α := by
+  change Filter.Tendsto
+    (fun h : ℝ => Real.rpow h β / Real.rpow h α)
+    (nhdsWithin 0 (Set.Ioi 0)) (nhds 0)
+  have hgap : 0 < β - α := sub_pos.mpr hαβ
+  have hcont : ContinuousAt (fun h : ℝ => Real.rpow h (β - α)) 0 :=
+    Real.continuousAt_rpow_const 0 (β - α) (Or.inr hgap.le)
+  have hlim : Filter.Tendsto (fun h : ℝ => Real.rpow h (β - α))
+      (nhdsWithin 0 (Set.Ioi 0)) (nhds 0) := by
+    simpa [Real.zero_rpow hgap.ne'] using
+      (hcont.continuousWithinAt (s := Set.Ioi 0)).tendsto
+  have hEq : (fun h : ℝ => Real.rpow h β / Real.rpow h α) =ᶠ[nhdsWithin 0 (Set.Ioi 0)]
+      (fun h => Real.rpow h (β - α)) := by
+    filter_upwards [self_mem_nhdsWithin] with h hh
+    exact (Real.rpow_sub hh β α).symm
+  exact hlim.congr' hEq.symm
+
+lemma littleO_lower_exponent {f : ℝ → ℝ} {α β : ℝ}
+    (hf : LittleO f β) (hαβ : α < β) : LittleO f α := by
+  change Filter.Tendsto (fun h => f h / Real.rpow h α)
+    (nhdsWithin 0 (Set.Ioi 0)) (nhds 0)
+  have hpow : LittleO (fun h => Real.rpow h β) α := littleO_rpow_of_lt hαβ
+  have hratioEq : (fun h : ℝ => f h / Real.rpow h α) =ᶠ[nhdsWithin 0 (Set.Ioi 0)]
+      (fun h => (f h / Real.rpow h β) *
+        (Real.rpow h β / Real.rpow h α)) := by
+    filter_upwards [self_mem_nhdsWithin] with h hh
+    have hβ : Real.rpow h β ≠ 0 := (Real.rpow_pos_of_pos hh β).ne'
+    have hα : Real.rpow h α ≠ 0 := (Real.rpow_pos_of_pos hh α).ne'
+    field_simp
+  have hprod : Filter.Tendsto
+      (fun h : ℝ => (f h / Real.rpow h β) *
+        (Real.rpow h β / Real.rpow h α))
+      (nhdsWithin 0 (Set.Ioi 0)) (nhds 0) := by
+    simpa using (hf.mul hpow)
+  exact hprod.congr' hratioEq.symm
+
+lemma littleO_sub {f g : ℝ → ℝ} {α : ℝ}
+    (hf : LittleO f α) (hg : LittleO g α) :
+    LittleO (fun h => f h - g h) α := by
+  change Filter.Tendsto (fun h => (f h - g h) / Real.rpow h α)
+    (nhdsWithin 0 (Set.Ioi 0)) (nhds 0)
+  have hEq : (fun h : ℝ => (f h - g h) / Real.rpow h α) =ᶠ[nhdsWithin 0 (Set.Ioi 0)]
+      (fun h => f h / Real.rpow h α - g h / Real.rpow h α) := by
+    filter_upwards [self_mem_nhdsWithin] with h hh
+    have hα : Real.rpow h α ≠ 0 := (Real.rpow_pos_of_pos hh α).ne'
+    field_simp
+  simpa using (hf.sub hg).congr' hEq.symm
+
+lemma lifted_bump_littleO_for {m k : ℕ} {t β : ℝ}
+    (hβt : t < β) (e : Fin k ↪ Fin m) (ℓ : Label k)
+    (hℓ : LittleO ℓ.bump β) :
+    LittleO (liftLabel t β e ℓ).bump t := by
+  exact littleO_sub (littleO_lower_exponent hℓ hβt)
+    (littleO_rpow_of_lt hβt)
+
+/- A lower-dimensional family attached to a raised coordinate embedding.
+It supplies the induction theorem's output data at a chosen β. -/
+structure SliceInput (k : ℕ) (β b : ℝ)
+    (E : (Fin k → ℝ) → ℝ) where
+  family : FiniteFamily k
+  slope_box : ∀ j i, β ≤ (family.label j).slope i ∧
+    (family.label j).slope i ≤ b
+  littleO : ∀ j, LittleO (family.label j).bump β
+  approx : ∀ (j : family.Index) (hSeq : ℕ → ℝ)
+      (pSeq : ℕ → Fin k → ℝ) (p : Fin k → ℝ),
+      Filter.Tendsto hSeq Filter.atTop (nhdsWithin 0 (Set.Ioi 0)) →
+      Filter.Tendsto pSeq Filter.atTop (nhds p) →
+      InCube β b p →
+      (∀ᶠ n in Filter.atTop, Active family.label j (hSeq n) (pSeq n)) →
+      ∀ i, |p i - (family.label j).slope i| < E (family.label j).slope
+
+def restrictedTolerance {m k : ℕ} (E : (Fin m → ℝ) → ℝ) (t : ℝ)
+    (e : Fin k ↪ Fin m) (s : Fin k → ℝ) : ℝ :=
+  E (liftPoint t e s)
+
+structure SliceSystem (m k : ℕ) (t β b : ℝ)
+    (E : (Fin m → ℝ) → ℝ) where
+  input : ∀ e : Fin k ↪ Fin m,
+    SliceInput k β b (restrictedTolerance E t e)
+
+def canonicalEmbedding {k m : ℕ} (hkm : k ≤ m) : Fin k ↪ Fin m where
+  toFun i := ⟨i.val, by omega⟩
+  inj' := by
+    intro i j hij
+    have hv : i.val = j.val := congrArg (fun z : Fin m => z.val) hij
+    exact Fin.ext hv
+
+lemma embedding_nonempty {k m : ℕ} (hkm : k ≤ m) : Nonempty (Fin k ↪ Fin m) :=
+  ⟨canonicalEmbedding hkm⟩
+
+def coordImage {k m : ℕ} (e : Fin k ↪ Fin m) : Finset (Fin m) :=
+  Finset.univ.image e
+
+lemma coordImage_card {k m : ℕ} (e : Fin k ↪ Fin m) :
+    (coordImage e).card = k := by
+  classical
+  rw [coordImage, Finset.card_image_of_injective _ e.injective, Finset.card_univ,
+    Fintype.card_fin]
+
+lemma exists_embedding_for_coordSet {k m : ℕ} (U : Finset (Fin m))
+    (hU : U.card = k) : ∃ e : Fin k ↪ Fin m, coordImage e = U := by
+  classical
+  let f : U ≃ Fin k := U.equivFinOfCardEq hU
+  let e : Fin k ↪ Fin m :=
+    ⟨fun i => (f.symm i).val, by
+      intro i j hij
+      apply f.symm.injective
+      exact Subtype.ext hij⟩
+  refine ⟨e, ?_⟩
+  ext x
+  constructor
+  · intro hx
+    rcases Finset.mem_image.mp hx with ⟨i, -, rfl⟩
+    exact (f.symm i).property
+  · intro hx
+    refine Finset.mem_image.mpr ⟨f ⟨x, hx⟩, Finset.mem_univ _, ?_⟩
+    change (f.symm (f ⟨x, hx⟩)).val = x
+    simp
+
+lemma liftPoint_in_original_box {m k : ℕ} {a b t β : ℝ}
+    (e : Fin k ↪ Fin m) (s : Fin k → ℝ)
+    (hat : a ≤ t) (htb : t ≤ b) (htβ : t ≤ β)
+    (hs : ∀ i, β ≤ s i ∧ s i ≤ b) :
+    InCube a b (liftPoint t e s) := by
+  apply liftPoint_inCube a b t e s hat htb
+  intro i
+  exact ⟨le_trans (le_trans hat htβ) (hs i).1, (hs i).2⟩
+
+def stageLabel {m k : ℕ} {t β b : ℝ} {E : (Fin m → ℝ) → ℝ}
+    (S : SliceSystem m k t β b E) (e : Fin k ↪ Fin m)
+    (j : (S.input e).family.Index) : Label m :=
+  liftLabel t β e ((S.input e).family.label j)
+
+noncomputable def stageFamily {m k : ℕ} {a b t β : ℝ}
+    {E : (Fin m → ℝ) → ℝ} (S : SliceSystem m k t β b E)
+    (hkm : k ≤ m) (hat : a ≤ t) (htb : t ≤ b) (htβ : t ≤ β) :
+    BoxFamily m a b := by
+  classical
+  letI : Fintype (Fin k ↪ Fin m) := Fintype.ofFinite (Fin k ↪ Fin m)
+  refine ⟨⟨(Σ e : Fin k ↪ Fin m, (S.input e).family.Index), inferInstance,
+    ?_, fun x => stageLabel S x.1 x.2⟩, ?_⟩
+  · obtain ⟨e⟩ := embedding_nonempty hkm
+    obtain ⟨j⟩ := (S.input e).family.nonempty
+    exact ⟨⟨e, j⟩⟩
+  · intro x
+    apply liftPoint_in_original_box (a := a) (b := b) (t := t) (β := β)
+      x.1 ((S.input x.1).family.label x.2).slope hat htb htβ
+    exact (S.input x.1).slope_box x.2
+
+lemma stageFamily_littleO {m k : ℕ} {a b t β : ℝ}
+    {E : (Fin m → ℝ) → ℝ} (S : SliceSystem m k t β b E)
+    (hkm : k ≤ m) (hat : a ≤ t) (htb : t ≤ b) (htβ : t < β) :
+    ∀ x, LittleO ((stageFamily S hkm hat htb (le_of_lt htβ)).family.label x).bump t := by
+  intro x
+  exact lifted_bump_littleO_for htβ x.1
+    ((S.input x.1).family.label x.2) ((S.input x.1).littleO x.2)
+
+def baseBoxFamily {m : ℕ} {a b t : ℝ} (hat : a ≤ t) (htb : t ≤ b) :
+    BoxFamily m a b := by
+  classical
+  refine ⟨⟨PUnit, inferInstance, ⟨PUnit.unit⟩,
+    fun _ => ⟨(fun _ => t), fun _ => 0⟩⟩, ?_⟩
+  intro _ i
+  exact ⟨hat, htb⟩
+
+def FamilyLittleOAt {m : ℕ} {a b : ℝ} (F : BoxFamily m a b) (t : ℝ) : Prop :=
+  ∀ j, LittleO (F.family.label j).bump t
+
+lemma littleO_zero_bump (t : ℝ) : LittleO (fun _ : ℝ => (0 : ℝ)) t := by
+  change Filter.Tendsto (fun h : ℝ => 0 / Real.rpow h t)
+    (nhdsWithin 0 (Set.Ioi 0)) (nhds 0)
+  have hEq : (fun h : ℝ => 0 / Real.rpow h t) =ᶠ[nhdsWithin 0 (Set.Ioi 0)]
+      (fun _ : ℝ => (0 : ℝ)) := by
+    filter_upwards [self_mem_nhdsWithin] with h hh
+    simp
+  exact tendsto_const_nhds.congr' hEq.symm
+
+lemma append_family_littleO_at {m : ℕ} {a b t : ℝ}
+    (F G : BoxFamily m a b) (hF : FamilyLittleOAt F t)
+    (hG : FamilyLittleOAt G t) : FamilyLittleOAt (appendBoxFamily F G) t := by
+  intro j
+  cases j with
+  | inl j => exact hF j
+  | inr j => exact hG j
+
+structure SliceOracle (m : ℕ) (a b t : ℝ)
+    (E : (Fin m → ℝ) → ℝ) where
+  provide : ∀ (k : ℕ), 0 < k → k < m → ∀ (β : ℝ), t < β → β < b →
+    SliceSystem m k t β b E
+
+def nextBoxFamily {m : ℕ} {a b t : ℝ} {E : (Fin m → ℝ) → ℝ}
+    (hat : a ≤ t) (htb : t ≤ b) (Oracle : SliceOracle m a b t E)
+    (F : BoxFamily m a b) (k : ℕ) (hkpos : 0 < k) (hkm : k < m)
+    (upper : ℝ) (hupperB : upper ≤ b) (β : ℝ)
+    (hβt : t < β) (hβupper : β < upper) : BoxFamily m a b :=
+  appendBoxFamily F (stageFamily
+    (Oracle.provide k hkpos hkm β hβt (lt_of_lt_of_le hβupper hupperB))
+    (Nat.le_of_lt hkm) hat htb (le_of_lt hβt))
+
+inductive StageHistory (m : ℕ) (a b t : ℝ)
+    (E : (Fin m → ℝ) → ℝ) (hat : a ≤ t) (htb : t ≤ b)
+    (Oracle : SliceOracle m a b t E) :
+    ℕ → ℝ → BoxFamily m a b → Prop
+  | done {upper F} : StageHistory m a b t E hat htb Oracle m upper F
+  | step {k upper F} (hkpos : 0 < k) (hkm : k < m) (hupper : t < upper)
+    (hupperB : upper ≤ b) (β : ℝ) (hβt : t < β) (hβupper : β < upper)
+    (hmargin : ∀ r ∈ slopeSet F, β - t < E r)
+      (tail : StageHistory m a b t E hat htb Oracle (k + 1) β
+        (nextBoxFamily hat htb Oracle F k hkpos hkm upper hupperB β hβt hβupper)) :
+      StageHistory m a b t E hat htb Oracle k upper F
+
+def stageIndex {m k : ℕ} {a b t β : ℝ} {E : (Fin m → ℝ) → ℝ}
+    (S : SliceSystem m k t β b E) (hkm : k ≤ m)
+    (hat : a ≤ t) (htb : t ≤ b) (htβ : t ≤ β)
+    (e : Fin k ↪ Fin m) :
+    (S.input e).family.Index ↪ (stageFamily S hkm hat htb htβ).family.Index := by
+  refine ⟨fun j => ⟨e, j⟩, ?_⟩
+  intro x y hxy
+  cases hxy
+  rfl
+
+@[simp] lemma stageIndex_label {m k : ℕ} {a b t β : ℝ}
+    {E : (Fin m → ℝ) → ℝ} (S : SliceSystem m k t β b E)
+    (hkm : k ≤ m) (hat : a ≤ t) (htb : t ≤ b) (htβ : t ≤ β)
+    (e : Fin k ↪ Fin m) (j : (S.input e).family.Index) :
+    (stageFamily S hkm hat htb htβ).family.label (stageIndex S hkm hat htb htβ e j) =
+      liftLabel t β e ((S.input e).family.label j) := rfl
+
+def appendRightIndex {m : ℕ} {a b : ℝ} (F G : BoxFamily m a b) :
+    G.family.Index ↪ (appendBoxFamily F G).family.Index :=
+  ⟨Sum.inr, by intro x y h; exact Sum.inr.inj h⟩
+
+@[simp] lemma appendRightIndex_label {m : ℕ} {a b : ℝ}
+    (F G : BoxFamily m a b) (j : G.family.Index) :
+    (appendBoxFamily F G).family.label (appendRightIndex F G j) = G.family.label j := rfl
+
+def appendLeftIndex {m : ℕ} {a b : ℝ} (F G : BoxFamily m a b) :
+    F.family.Index ↪ (appendBoxFamily F G).family.Index :=
+  ⟨Sum.inl, by intro x y h; exact Sum.inl.inj h⟩
+
+@[simp] lemma appendLeftIndex_label {m : ℕ} {a b : ℝ}
+    (F G : BoxFamily m a b) (j : F.family.Index) :
+    (appendBoxFamily F G).family.label (appendLeftIndex F G j) = F.family.label j := rfl
+
+theorem exists_stage_history {m : ℕ} {a b t : ℝ}
+    {E : (Fin m → ℝ) → ℝ} (hat : a ≤ t) (htb : t ≤ b)
+    (Oracle : SliceOracle m a b t E)
+    (hE : ∀ r, InCube a b r → 0 < E r)
+    (k : ℕ) (hkle : k ≤ m) (hkpos : 0 < k) (upper : ℝ) (F : BoxFamily m a b)
+    (hupper : t < upper) (hupperB : upper ≤ b) :
+    StageHistory m a b t E hat htb Oracle k upper F := by
+  have aux : ∀ n k, k ≤ m → 0 < k → ∀ upper (F : BoxFamily m a b), m - k = n →
+      t < upper → upper ≤ b →
+      StageHistory m a b t E hat htb Oracle k upper F := by
+    intro n
+    induction n using Nat.strong_induction_on with
+    | h n ih =>
+        intro k hkle hkpos upper F hdiff hupper hupperB
+        by_cases hkm : k < m
+        · obtain ⟨β, hβt, hβupper, hmargin⟩ :=
+            exists_next_threshold (slopeSet F) E t upper hupper
+              (by
+                intro r hr
+                exact tolerance_pos_of_mem_slopeSet F E hE hr)
+          let S := Oracle.provide k hkpos hkm β hβt
+            (lt_of_lt_of_le hβupper hupperB)
+          let G := stageFamily S (Nat.le_of_lt hkm) hat htb (le_of_lt hβt)
+          have hnext : m - (k + 1) < n := by omega
+          have htail := ih (m - (k + 1)) hnext (k + 1) (by omega)
+            (Nat.succ_pos k) β
+            (appendBoxFamily F G) (by omega) hβt
+            (le_trans (le_of_lt hβupper) hupperB)
+          exact StageHistory.step hkpos hkm hupper hupperB
+            β hβt hβupper hmargin htail
+        · have hkeq : k = m := by omega
+          subst k
+          exact StageHistory.done
+  exact aux (m - k) k hkle hkpos upper F rfl hupper hupperB
+
+theorem exists_initial_stage_history {m : ℕ} {a b t : ℝ}
+    {E : (Fin m → ℝ) → ℝ} (hm : 0 < m)
+    (hat : a ≤ t) (htb : t ≤ b) (htb_strict : t < b)
+    (Oracle : SliceOracle m a b t E)
+    (hE : ∀ r, InCube a b r → 0 < E r) :
+    StageHistory m a b t E hat htb Oracle 1 b (baseBoxFamily hat htb) := by
+  apply exists_stage_history hat htb Oracle hE 1 (by omega) (by omega) b
+    (baseBoxFamily hat htb) htb_strict le_rfl
+
+theorem StageHistory.exists_terminal_with_littleO {m : ℕ} {a b t : ℝ}
+    {E : (Fin m → ℝ) → ℝ} {hat : a ≤ t} {htb : t ≤ b}
+    {Oracle : SliceOracle m a b t E} {k : ℕ} {upper : ℝ}
+    {F : BoxFamily m a b} (H : StageHistory m a b t E hat htb Oracle k upper F)
+    (hF : FamilyLittleOAt F t) :
+    ∃ upperFinal Ffinal,
+      StageHistory m a b t E hat htb Oracle m upperFinal Ffinal ∧
+      FamilyLittleOAt Ffinal t := by
+  induction H with
+  | @done upper F => exact ⟨upper, F, StageHistory.done, hF⟩
+  | @step k upper F hkpos hkm hupper hupperB β hβt hβupper hmargin tail ih =>
+      let S := Oracle.provide k hkpos hkm β hβt
+        (lt_of_lt_of_le hβupper hupperB)
+      have hStage : FamilyLittleOAt
+          (stageFamily S (Nat.le_of_lt hkm) hat htb (le_of_lt hβt)) t :=
+        stageFamily_littleO S (Nat.le_of_lt hkm) hat htb hβt
+      have hApp : FamilyLittleOAt
+          (appendBoxFamily F
+            (stageFamily S (Nat.le_of_lt hkm) hat htb (le_of_lt hβt))) t :=
+        append_family_littleO_at F _ hF hStage
+      exact ih hApp
+
+theorem StageHistory.exists_terminal_with_littleO_and_current_map
+    {m : ℕ} {a b t : ℝ} {E : (Fin m → ℝ) → ℝ}
+    {hat : a ≤ t} {htb : t ≤ b} {Oracle : SliceOracle m a b t E}
+    {k : ℕ} {upper : ℝ} {F : BoxFamily m a b}
+    (H : StageHistory m a b t E hat htb Oracle k upper F)
+    (hF : FamilyLittleOAt F t) :
+    ∃ upperFinal Ffinal,
+      StageHistory m a b t E hat htb Oracle m upperFinal Ffinal ∧
+      FamilyLittleOAt Ffinal t ∧
+      ∃ e : F.family.Index ↪ Ffinal.family.Index,
+        ∀ j, Ffinal.family.label (e j) = F.family.label j := by
+  induction H with
+  | @done upper F =>
+      refine ⟨upper, F, StageHistory.done, hF, ?_⟩
+      exact ⟨Function.Embedding.refl _, fun _ => rfl⟩
+  | @step k upper F hkpos hkm hupper hupperB β hβt hβupper hmargin tail ih =>
+      let S := Oracle.provide k hkpos hkm β hβt
+        (lt_of_lt_of_le hβupper hupperB)
+      let G := stageFamily S (Nat.le_of_lt hkm) hat htb (le_of_lt hβt)
+      have hStage : FamilyLittleOAt G t :=
+        stageFamily_littleO S (Nat.le_of_lt hkm) hat htb hβt
+      have hApp : FamilyLittleOAt (appendBoxFamily F G) t :=
+        append_family_littleO_at F G hF hStage
+      obtain ⟨u, Ffinal, hfinal, hfinalSmall, ⟨eTail, heTail⟩⟩ := ih hApp
+      refine ⟨u, Ffinal, hfinal, hfinalSmall, ?_⟩
+      let eFinal : F.family.Index ↪ Ffinal.family.Index :=
+        ⟨fun j => eTail (appendLeftIndex F G j), by
+          intro x y hxy
+          apply (appendLeftIndex F G).injective
+          apply eTail.injective
+          exact hxy⟩
+      refine ⟨eFinal, ?_⟩
+      intro j
+      calc
+        Ffinal.family.label (eFinal j) = (appendBoxFamily F G).family.label
+            (appendLeftIndex F G j) := heTail (appendLeftIndex F G j)
+        _ = F.family.label j := appendLeftIndex_label F G j
+
+theorem exists_step_stage_embedding_to_terminal
+    {m : ℕ} {a b t : ℝ} {E : (Fin m → ℝ) → ℝ}
+    {hat : a ≤ t} {htb : t ≤ b} {Oracle : SliceOracle m a b t E}
+    {k : ℕ} {upper : ℝ} {F : BoxFamily m a b}
+    (hkpos : 0 < k) (hkm : k < m) (hupper : t < upper)
+    (hupperB : upper ≤ b) (β : ℝ) (hβt : t < β) (hβupper : β < upper)
+    (hmargin : ∀ r ∈ slopeSet F, β - t < E r)
+    (tail : StageHistory m a b t E hat htb Oracle (k + 1) β
+      (nextBoxFamily hat htb Oracle F k hkpos hkm upper hupperB β hβt hβupper))
+    (hF : FamilyLittleOAt F t) :
+    ∃ upperFinal Ffinal,
+      StageHistory m a b t E hat htb Oracle m upperFinal Ffinal ∧
+      FamilyLittleOAt Ffinal t ∧
+      ∃ e : (stageFamily (Oracle.provide k hkpos hkm β hβt
+          (lt_of_lt_of_le hβupper hupperB)) (Nat.le_of_lt hkm) hat htb
+          (le_of_lt hβt)).family.Index ↪ Ffinal.family.Index,
+        ∀ j, Ffinal.family.label (e j) =
+          (stageFamily (Oracle.provide k hkpos hkm β hβt
+            (lt_of_lt_of_le hβupper hupperB)) (Nat.le_of_lt hkm) hat htb
+            (le_of_lt hβt)).family.label j := by
+  let S := Oracle.provide k hkpos hkm β hβt (lt_of_lt_of_le hβupper hupperB)
+  let G := stageFamily S (Nat.le_of_lt hkm) hat htb (le_of_lt hβt)
+  have hG : FamilyLittleOAt G t := stageFamily_littleO S (Nat.le_of_lt hkm) hat htb hβt
+  have hApp : FamilyLittleOAt (appendBoxFamily F G) t :=
+    append_family_littleO_at F G hF hG
+  obtain ⟨u, Ffinal, hfinal, hsmall, ⟨eTail, heTail⟩⟩ :=
+    tail.exists_terminal_with_littleO_and_current_map hApp
+  refine ⟨u, Ffinal, hfinal, hsmall, ?_⟩
+  let eFinal : G.family.Index ↪ Ffinal.family.Index :=
+    ⟨fun j => eTail (appendRightIndex F G j), by
+      intro x y hxy
+      apply (appendRightIndex F G).injective
+      apply eTail.injective
+      exact hxy⟩
+  refine ⟨eFinal, ?_⟩
+  intro j
+  calc
+    Ffinal.family.label (eFinal j) = (appendBoxFamily F G).family.label
+        (appendRightIndex F G j) := heTail (appendRightIndex F G j)
+    _ = G.family.label j := appendRightIndex_label F G j
+
+theorem exists_step_lower_label_embedding_to_terminal
+    {m k : ℕ} {a b t : ℝ} {E : (Fin m → ℝ) → ℝ}
+    {hat : a ≤ t} {htb : t ≤ b} {Oracle : SliceOracle m a b t E}
+    {upper : ℝ} {F : BoxFamily m a b}
+    (hkpos : 0 < k) (hkm : k < m) (hupper : t < upper)
+    (hupperB : upper ≤ b) (β : ℝ) (hβt : t < β) (hβupper : β < upper)
+    (hmargin : ∀ r ∈ slopeSet F, β - t < E r)
+    (tail : StageHistory m a b t E hat htb Oracle (k + 1) β
+      (nextBoxFamily hat htb Oracle F k hkpos hkm upper hupperB β hβt hβupper))
+    (hF : FamilyLittleOAt F t) (e : Fin k ↪ Fin m) :
+    ∃ upperFinal Ffinal,
+      StageHistory m a b t E hat htb Oracle m upperFinal Ffinal ∧
+      FamilyLittleOAt Ffinal t ∧
+      ∃ emb : ((Oracle.provide k hkpos hkm β hβt
+          (lt_of_lt_of_le hβupper hupperB)).input e).family.Index ↪ Ffinal.family.Index,
+        ∀ j, Ffinal.family.label (emb j) =
+          liftLabel t β e
+            (((Oracle.provide k hkpos hkm β hβt
+                (lt_of_lt_of_le hβupper hupperB)).input e).family.label j) := by
+  let S := Oracle.provide k hkpos hkm β hβt (lt_of_lt_of_le hβupper hupperB)
+  let hkm' := Nat.le_of_lt hkm
+  obtain ⟨u, Ffinal, hfinal, hsmall, ⟨eStage, heStage⟩⟩ :=
+    exists_step_stage_embedding_to_terminal hkpos hkm hupper hupperB β hβt hβupper
+      hmargin tail hF
+  refine ⟨u, Ffinal, hfinal, hsmall, ?_⟩
+  let eLocal : (S.input e).family.Index ↪ Ffinal.family.Index :=
+    ⟨fun j => eStage (stageIndex S hkm' hat htb (le_of_lt hβt) e j), by
+      intro x y hxy
+      apply (stageIndex S hkm' hat htb (le_of_lt hβt) e).injective
+      apply eStage.injective
+      exact hxy⟩
+  refine ⟨eLocal, ?_⟩
+  intro j
+  calc
+    Ffinal.family.label (eLocal j) =
+        (stageFamily S hkm' hat htb (le_of_lt hβt)).family.label
+          (stageIndex S hkm' hat htb (le_of_lt hβt) e j) :=
+      heStage (stageIndex S hkm' hat htb (le_of_lt hβt) e j)
+    _ = liftLabel t β e ((S.input e).family.label j) := stageIndex_label S hkm' hat htb
+      (le_of_lt hβt) e j
+
+theorem exists_complete_stage_family {m : ℕ} {a b t : ℝ}
+    {E : (Fin m → ℝ) → ℝ} (hm : 0 < m)
+    (hat : a ≤ t) (htb : t ≤ b) (htb_strict : t < b)
+    (Oracle : SliceOracle m a b t E)
+    (hE : ∀ r, InCube a b r → 0 < E r) :
+    ∃ upperFinal, ∃ F : BoxFamily m a b,
+      StageHistory m a b t E hat htb Oracle m upperFinal F ∧
+      FamilyLittleOAt F t := by
+  have H := exists_initial_stage_history hm hat htb htb_strict Oracle hE
+  have hbase : FamilyLittleOAt (baseBoxFamily (m := m) hat htb) t := by
+    intro j
+    exact littleO_zero_bump t
+  exact H.exists_terminal_with_littleO hbase
+
+end N33Affine

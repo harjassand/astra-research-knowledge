@@ -1,0 +1,163 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c8_implicit_rational_geometry/child_hardness/replay_reduction.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c8_implicit_rational_geometry/child_hardness/replay_reduction.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact Fraction replay for the sparse-positive-rate 3SAT reduction.
+
+This checks support orders and the essential-source neutral/tie rule at a
+supplied rational direction. The bounded UNSAT grid is a diagnostic only; the
+all-direction implication is proved in HARDNESS.md.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from fractions import Fraction
+from itertools import product
+from typing import Iterable, Sequence
+
+
+Vector = tuple[int, ...]
+Direction = tuple[Fraction, ...]
+
+
+@dataclass(frozen=True)
+class Channel:
+    name: str
+    nu: Vector
+    p_support: tuple[Vector, ...]
+    q_support: tuple[Vector, ...]
+
+
+def add(*vectors: Vector) -&gt; Vector:
+    if not vectors:
+        return ()
+    return tuple(sum(v[i] for v in vectors) for i in range(len(vectors[0])))
+
+
+def unit(dimension: int, index: int, scale: int = 1) -&gt; Vector:
+    return tuple(scale if i == index else 0 for i in range(dimension))
+
+
+def dot(a: Sequence[int], b: Sequence[Fraction]) -&gt; Fraction:
+    return sum((Fraction(x) * y for x, y in zip(a, b)), Fraction(0))
+
+
+def build_instance(n: int, clauses: Sequence[Sequence[int]]) -&gt; list[Channel]:
+    &quot;&quot;&quot;Build channels; literals are signed one-based variable indices.&quot;&quot;&quot;
+    if n &lt; 1:
+        raise ValueError(&quot;n must be positive&quot;)
+    d = n + 1
+    zidx = n
+    zero = (0,) * d
+    ez = unit(d, zidx)
+    channels: list[Channel] = [Channel(&quot;target&quot;, ez, (zero,), (zero,))]
+
+    for i in range(n):
+        ei = unit(d, i)
+        # P=u_i*z; Q=u_i^2+1. These supports yield tau=z-|u_i|.
+        channels.append(Channel(f&quot;variable[{i + 1}]&quot;, unit(d, zidx, -2),
+                                (add(ez, ei),),
+                                (unit(d, i, 2), zero)))
+
+    for j, clause in enumerate(clauses, start=1):
+        if len(clause) != 3:
+            raise ValueError(&quot;the replay fixture expects 3-literal clauses&quot;)
+        indices = [abs(lit) - 1 for lit in clause]
+        if any(i &lt; 0 or i &gt;= n for i in indices):
+            raise ValueError(&quot;literal index outside 1..n&quot;)
+        if len(set(indices)) != 3:
+            raise ValueError(&quot;each clause must use three distinct variables&quot;)
+        base = add(*(unit(d, i) for i in indices))
+        p_exp = add(base, ez)
+        q_exps = tuple(add(base, unit(d, abs(lit) - 1,
+                                            1 if lit &gt; 0 else -1))
+                         for lit in clause)
+        nu = add(*(unit(d, abs(lit) - 1, 1 if lit &gt; 0 else -1)
+                   for lit in clause), unit(d, zidx, -3))
+        channels.append(Channel(f&quot;clause[{j}]&quot;, nu, (p_exp,), q_exps))
+
+    for i in range(n):
+        ei = unit(d, i)
+        channels.append(Channel(f&quot;guard_plus[{i + 1}]&quot;, unit(d, i, -1),
+                                (ei,), (unit(d, zidx, 2),)))
+        channels.append(Channel(f&quot;guard_minus[{i + 1}]&quot;, ei,
+                                (zero,), (add(ei, unit(d, zidx, 2)),)))
+    return channels
+
+
+def evaluate(channels: Sequence[Channel], direction: Iterable[int | Fraction]):
+    w = tuple(Fraction(x) for x in direction)
+    if not channels or any(len(c.nu) != len(w) for c in channels):
+        raise ValueError(&quot;dimension mismatch&quot;)
+    rows = []
+    for c in channels:
+        drift = dot(c.nu, w)
+        tau = max(dot(a, w) for a in c.p_support) - max(
+            dot(b, w) for b in c.q_support)
+        rows.append({&quot;name&quot;: c.name, &quot;drift&quot;: drift, &quot;tau&quot;: tau,
+                     &quot;active&quot;: drift != 0})
+    active = [r for r in rows if r[&quot;active&quot;]]
+    if not active:
+        return {&quot;direction&quot;: w, &quot;vacuous&quot;: True, &quot;top&quot;: None,
+                &quot;maximizers&quot;: [], &quot;outward_top&quot;: [], &quot;rows&quot;: rows}
+    top = max(r[&quot;tau&quot;] for r in active)
+    maximizers = [r[&quot;name&quot;] for r in active if r[&quot;tau&quot;] == top]
+    outward_top = [r[&quot;name&quot;] for r in active
+                   if r[&quot;tau&quot;] == top and r[&quot;drift&quot;] &gt; 0]
+    return {&quot;direction&quot;: w, &quot;vacuous&quot;: False, &quot;top&quot;: top,
+            &quot;maximizers&quot;: maximizers, &quot;outward_top&quot;: outward_top,
+            &quot;rows&quot;: rows}
+
+
+def all_3clauses(n: int) -&gt; list[tuple[int, int, int]]:
+    &quot;&quot;&quot;All sign patterns of the one clause over variables 1,2,3.&quot;&quot;&quot;
+    if n != 3:
+        raise ValueError(&quot;the UNSAT fixture uses three variables&quot;)
+    return [tuple(sign * variable for variable, sign in enumerate(signs, start=1))
+            for signs in product((1, -1), repeat=3)]
+
+
+def finite_grid_diagnostic(channels: Sequence[Channel], radius: int = 2):
+    d = len(channels[0].nu)
+    seen = 0
+    witnesses = []
+    for coordinates in product(range(-radius, radius + 1), repeat=d):
+        if all(x == 0 for x in coordinates):
+            continue
+        seen += 1
+        result = evaluate(channels, coordinates)
+        if result[&quot;outward_top&quot;]:
+            witnesses.append((coordinates, result[&quot;outward_top&quot;]))
+    return seen, witnesses
+
+
+def main() -&gt; None:
+    sat = build_instance(3, [(1, 2, 3)])
+    sat_result = evaluate(sat, (1, 1, -1, 1))
+    assert sat_result[&quot;top&quot;] == 0
+    assert &quot;target&quot; in sat_result[&quot;outward_top&quot;]
+    assert &quot;variable[1]&quot; in sat_result[&quot;maximizers&quot;]
+    assert &quot;clause[1]&quot; in sat_result[&quot;maximizers&quot;]
+    assert &quot;guard_plus[1]&quot; not in sat_result[&quot;maximizers&quot;]
+
+    unsat = build_instance(3, all_3clauses(3))
+    count, witnesses = finite_grid_diagnostic(unsat, radius=2)
+    assert not witnesses
+
+    # Check the zero-z guard slice at a direction where all literal channels
+    # are active: the largest guard order is attained by an inward guard.
+    zero_z = evaluate(unsat, (2, -1, 1, 0))
+    assert zero_z[&quot;top&quot;] == 2
+    assert not zero_z[&quot;outward_top&quot;]
+
+    print(&quot;PASS: exact Fraction supports, orders, neutral exclusion, and ties&quot;)
+    print(f&quot;SAT witness: top={sat_result[&#x27;top&#x27;]}, &quot;
+          f&quot;maximizers={sat_result[&#x27;maximizers&#x27;]}, &quot;
+          f&quot;outward_top={sat_result[&#x27;outward_top&#x27;]}&quot;)
+    print(f&quot;UNSAT fixture: no outward-top witness on {count} nonzero integer &quot;
+          &quot;directions in [-2,2]^4 (finite diagnostic only)&quot;)
+    print(f&quot;z=0 guard check: top={zero_z[&#x27;top&#x27;]}, &quot;
+          f&quot;maximizers={zero_z[&#x27;maximizers&#x27;]}&quot;)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/dd9eadad8e4d8cb714801d36e1870c2019320d946ea59478097f60ac2847018e.py">Exact original</a></p></html>

@@ -1,0 +1,172 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/quantum_capability/cycle4/quantitative_tensor_gate/evidence/rough_gate.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/quantum_capability/cycle4/quantitative_tensor_gate/evidence/rough_gate.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Reproduce cycle4&#x27;s finite Haar-existence gate and entropy arithmetic.
+
+This is a Decimal arithmetic diagnostic. It does not generate Haar matrices
+or produce a finite seed. The source-constant extraction is recorded in
+CONSTANT_AUDIT.txt; this script checks its numerical consequences.
+&quot;&quot;&quot;
+
+from decimal import Decimal, getcontext
+
+
+getcontext().prec = 60
+D = Decimal
+
+K = 260
+d = 65
+k = 2
+ball1 = 1 + 2 * d * k
+coeff_n = 2 * ball1
+C = D(50).sqrt()
+score_slack = D(&quot;0.165&quot;)
+bell_entropy_tolerance = D(&quot;0.001&quot;)
+score_e = score_slack / (D(6) * D(ball1 + 1) * C)
+net_radius = score_slack / (D(2) * D(K))
+net_log_size = D(K * K - 1) * (D(1) + D(2) / net_radius).ln()
+
+# Exact fibre counts in the r=2 free quotient.
+fibre_size_1 = K * K // 2 - K
+fibre_size_2 = K * K // 4
+assert fibre_size_1 + 2 * fibre_size_2 + K == K * K
+assert 1 + fibre_size_1 + fibre_size_2 == 50441
+
+def entropy_from_fibres():
+    terms = [
+        (1, K),
+        (fibre_size_2, 2),
+        (fibre_size_1, 1),
+    ]
+    return -sum(
+        D(count) * (D(size) / D(K * K)) * (D(size) / D(K * K)).ln()
+        for count, size in terms
+    )
+
+
+bell_entropy = entropy_from_fibres()
+minimum_entropy_free = -((D(K) + C * C) / D(K * K)).ln()
+minimum_entropy_slack = -((D(K) + (C + score_slack) ** 2) / D(K * K)).ln()
+free_gap = D(2) * minimum_entropy_free - bell_entropy
+slack_gap = D(2) * minimum_entropy_slack - bell_entropy
+gap_after_bell_tolerance = slack_gap - bell_entropy_tolerance
+assert free_gap &gt; D(&quot;0.011&quot;)
+assert slack_gap &gt; D(&quot;0.001&quot;)
+
+# Audenaert: h_2(T) + T ln(D-1) &lt;= tolerance for D=K^2.
+out_dim = K * K
+lo, hi = D(0), D(&quot;0.001&quot;)
+for _ in range(300):
+    t = (lo + hi) / 2
+    h2 = -(t * t.ln() + (D(1) - t) * (D(1) - t).ln())
+    bound = h2 + t * D(out_dim - 1).ln()
+    if bound &gt; bell_entropy_tolerance:
+        hi = t
+    else:
+        lo = t
+trace_distance_tolerance = lo
+# Each Bell matrix entry is K^-2 times a normalized word trace. If all raw
+# traces are within delta, every entry is within delta/K^2; hence
+# ||Delta||_F&lt;=delta and T=||Delta||_1/2&lt;=K*delta/2.
+entry_trace_tolerance = D(2) * trace_distance_tolerance / D(K)
+
+# Meckes product-Haar one-sided tail, then a union bound over the score net.
+conc_N = (
+    D(2)
+    + D(96 * d * k)
+    * (net_log_size + D(3).ln())
+    / (score_e / D(2)) ** 2
+)
+
+# Bordenave-Collins Lemma 9.3 extended via Theorem 5.1&#x27;s ell_0 condition:
+# with N=n_prefactor*p^power, allocate half of
+# log(1+e/2) to the known factor and half to the extracted c_E&lt;=780 factor.
+# The source&#x27;s Theorem 1.1 selects power 16d+80, but its Theorem 5.1
+# moment estimate directly permits every even p up to the ell_0 gate
+# 12d+56. Reconstruct that stronger range with the exact leading factor
+# N_prefactor=(2*(2d)^(7/2))^4=16*(2d)^14.
+power = 12 * d + 56
+n_prefactor = 16 * (2 * d) ** 14
+n_prefactor_D = D(n_prefactor)
+known_log_budget = (D(1) + score_e / D(2)).ln() / D(2)
+def known_log_r(p):
+    return (
+        D(3) * D(2 * coeff_n).ln()
+        + D(3) * n_prefactor_D.ln()
+        + (D(3 * power) + D(9)) * p.ln()
+    ) / p
+
+lo_p, hi_p = D(1), D(&quot;1e16&quot;)
+for _ in range(300):
+    mid_p = (lo_p + hi_p) / 2
+    if known_log_r(mid_p) &gt; known_log_budget:
+        lo_p = mid_p
+    else:
+        hi_p = mid_p
+p_root = hi_p
+p_even = int(p_root.to_integral_value(rounding=&quot;ROUND_CEILING&quot;))
+if p_even % 2:
+    p_even += 1
+p = D(p_even)
+assert known_log_r(p) &lt;= known_log_budget
+log2_p = p.ln() / D(2).ln()
+log2_N = D(power) * log2_p + n_prefactor_D.ln() / D(2).ln()
+input_qubits_per_use = D(k) * log2_N
+two_use_qubits = D(2) * input_qubits_per_use
+flagged_input_qubits_per_use = input_qubits_per_use + D(1)
+flagged_two_use_qubits = D(2) * flagged_input_qubits_per_use
+c0 = D(780)
+ln_N = D(power) * p.ln() + n_prefactor_D.ln()
+# The complete hidden factor is (1+c0/sqrt(N))^2. Since ln(1+x)&lt;=x,
+# it suffices to verify 2*c0/sqrt(N)&lt;=known_log_budget.
+hidden_upper_ln = (D(2) * c0).ln() - ln_N / D(2)
+assert hidden_upper_ln &lt;= known_log_budget.ln()
+assert known_log_r(p) &lt;= known_log_budget
+
+# Optional Bell trace-convergence diagnostic. The exact product-conjugate
+# quotient-Gram majorization proves the entropy bound at every finite N, so
+# this trace threshold is not part of the existence theorem.
+bell_log_failure_budget = (D(24) * D(K**4)).ln()
+bell_trace_N_sq_rhs = D(3072) * bell_log_failure_budget / entry_trace_tolerance**2
+bell_trace_N = int((D(1) + (D(1) + bell_trace_N_sq_rhs).sqrt()).to_integral_value(rounding=&quot;ROUND_CEILING&quot;))
+bell_mean_N = int((D(2) / entry_trace_tolerance).sqrt().to_integral_value(rounding=&quot;ROUND_CEILING&quot;))
+bell_gate_N = max(bell_trace_N, bell_mean_N)
+
+# Check the source hypotheses at the selected d=65 point.
+ln_N = D(power) * p.ln() + n_prefactor_D.ln()
+assert ln_N &gt;= D(70) * D(d).ln()  # N &gt;= d^70
+assert p.ln() &lt;= ln_N / D(power)  # p &lt;= N^(1/(12d+56))
+ell0_lhs = D(2).ln() + D(&quot;3.5&quot;) * D(2 * d).ln() + D(3 * d + 14) * p.ln()
+assert ell0_lhs == ln_N / D(4)  # Theorem 5.1 ell_0 gate, equality by N0 choice
+assert (
+    D(4 * d + 16) * p.ln() + D(d**4).ln()
+    &lt;= ln_N / D(2)
+)  # displayed second-moment simplification
+assert D(2).ln() + D(&quot;3.5&quot;) * p.ln() &lt;= D(2) * ln_N  # q&lt;=p in Theorem 11
+# The concentration threshold is negligible relative to the p-range scale.
+assert log2_N &gt; conc_N.ln() / D(2).ln()
+
+print(f&quot;K={K}, d={d}, k={k}, |B1|={ball1}, coefficient dimension={coeff_n}&quot;)
+print(f&quot;Bell fibre counts: size K: 1; size 2: {fibre_size_2}; size 1: {fibre_size_1}&quot;)
+print(f&quot;H_B={bell_entropy}&quot;)
+print(f&quot;C={C}&quot;)
+print(f&quot;free gap={free_gap}&quot;)
+print(f&quot;score-slack gap={slack_gap}&quot;)
+print(f&quot;gap after optional 0.001-nat Bell continuity debit={gap_after_bell_tolerance}&quot;)
+print(f&quot;eta={net_radius}&quot;)
+print(f&quot;log net size&lt;={net_log_size}&quot;)
+print(f&quot;e={score_e}&quot;)
+print(f&quot;concentration N threshold≈{conc_N}; log2≈{conc_N.ln()/D(2).ln()}&quot;)
+print(&quot;source gates: N&gt;=d^70, p&lt;=N^(1/(12d+56)), ell0 equality, second-moment and Theorem 11 path-count bounds all pass&quot;)
+print(f&quot;even p≈{p_even}; log2 p≈{log2_p}&quot;)
+print(f&quot;N_prefactor={n_prefactor}; N=N_prefactor*p^{power}&quot;)
+print(f&quot;log2 N≈{log2_N}&quot;)
+print(f&quot;extracted c0 upper bound={c0}; log2(2*c0/sqrt(N))={hidden_upper_ln/D(2).ln()}&quot;)
+print(f&quot;input qubits/use≈{input_qubits_per_use}&quot;)
+print(f&quot;two-use witness qubits≈{two_use_qubits}&quot;)
+print(f&quot;flagged input qubits/use≈{flagged_input_qubits_per_use}&quot;)
+print(f&quot;flagged two-use witness qubits≈{flagged_two_use_qubits}&quot;)
+print(f&quot;Audenaert trace distance T&lt;={trace_distance_tolerance}&quot;)
+print(f&quot;sufficient entrywise length-4 trace tolerance&lt;={entry_trace_tolerance}&quot;)
+print(f&quot;finite Bell trace N threshold={bell_gate_N}; log2≈{D(bell_gate_N).ln()/D(2).ln()}&quot;)
+print(f&quot;score event probability &gt;= 2/3 at N=n_prefactor*p^{power}; exact product-conjugate Bell entropy bound needs no trace event&quot;)
+print(&quot;optional finite Bell trace-approximation diagnostic is not used in the theorem&quot;)
+</pre><p><a href="../assets/6b964ce679e95bcf48fe095cf554e20e42fb645a33b8fc3cf0475bbb355b65a5.py">Exact original</a></p></html>

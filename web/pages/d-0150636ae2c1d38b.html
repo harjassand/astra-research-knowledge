@@ -1,0 +1,95 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c12_spin_uniform/check_n6_r_ge1_termwise.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c12_spin_uniform/check_n6_r_ge1_termwise.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact principal-minor replay of H_{k,r} &lt;= C(13,k) I for Spin(13), r&gt;=1.
+
+Reads the inherited sparse highest-weight extraction.  It does not rebuild the
+262144-dimensional star matrix and it says nothing about general n.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+from itertools import combinations
+from math import comb
+from pathlib import Path
+import json
+import sympy as sp
+
+HERE = Path(__file__).parent
+SOURCE = (HERE.parent / &quot;c11_spin_uniform&quot; / &quot;obstruction&quot; /
+          &quot;spin13_fullstar_blocks.json&quot;)
+
+
+def matrix(rows):
+    return sp.Matrix([[sp.Rational(x) for x in row] for row in rows])
+
+
+def check_psd_by_principal_minors(M):
+    checked = 0
+    failures = []
+    undecided = []
+    cert = []
+    for size in range(1, M.rows + 1):
+        for inds in combinations(range(M.rows), size):
+            det = sp.factor(M.extract(inds, inds).det())
+            checked += 1
+            cert.append({&quot;indices_zero_based&quot;: list(inds), &quot;determinant&quot;: str(det)})
+            if det.is_negative is True:
+                failures.append({&quot;indices_zero_based&quot;: list(inds), &quot;determinant&quot;: str(det)})
+            elif det.is_nonnegative is not True:
+                undecided.append({&quot;indices_zero_based&quot;: list(inds), &quot;determinant&quot;: str(det)})
+    return not failures and not undecided, checked, failures, undecided, cert
+
+
+def main():
+    source = json.loads(SOURCE.read_text())
+    records = []
+    total_minors = 0
+    total_blocks = 0
+    for key, block in source[&quot;blocks&quot;].items():
+        r = int(key.split(&quot;,&quot;)[0])
+        if r == 0:
+            continue
+        G = matrix(block[&quot;gram&quot;])
+        for k, raw in enumerate(block[&quot;bilinear_H&quot;], start=1):
+            B = matrix(raw)
+            degree = comb(13, k)
+            gap = degree * G - B
+            ok, count, failures, undecided, cert = check_psd_by_principal_minors(gap)
+            total_minors += count
+            total_blocks += 1
+            records.append({
+                &quot;block&quot;: key,
+                &quot;r&quot;: r,
+                &quot;swap&quot;: int(key.split(&quot;,&quot;)[1]),
+                &quot;grade&quot;: k,
+                &quot;degree&quot;: degree,
+                &quot;order&quot;: G.rows,
+                &quot;psd_by_all_exact_principal_minors&quot;: ok,
+                &quot;principal_minor_count&quot;: count,
+                &quot;failures&quot;: failures,
+                &quot;undecided&quot;: undecided,
+                &quot;certificate&quot;: cert,
+            })
+    result = {
+        &quot;status&quot;: &quot;FINITE_EXACT_PASS&quot; if all(x[&quot;psd_by_all_exact_principal_minors&quot;] for x in records) else &quot;FINITE_FAILURE&quot;,
+        &quot;dimension&quot;: 64,
+        &quot;group&quot;: &quot;Spin(13)&quot;,
+        &quot;n&quot;: 6,
+        &quot;scope&quot;: &quot;Exact reduced-star termwise inequalities H_{k,r} &lt;= C(13,k) I for every extracted r&gt;=1 block and grade k=1..6 only.&quot;,
+        &quot;excluded_r0&quot;: &quot;r=0 is the distinct unresolved spinor block and is intentionally excluded.&quot;,
+        &quot;input&quot;: str(SOURCE),
+        &quot;reduced_grade_block_count&quot;: total_blocks,
+        &quot;principal_minor_count&quot;: total_minors,
+        &quot;checks&quot;: records,
+        &quot;limitation&quot;: &quot;Finite exact arithmetic on supplied internally reconstructed Spin(13) blocks; not an all-n proof, not an independent extraction audit, and not a proof of the mixed common-comparator theorem.&quot;,
+    }
+    out = HERE / &quot;spin13_r_ge1_termwise_certificate.json&quot;
+    out.write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+    print(result[&quot;status&quot;], &quot;blocks&quot;, total_blocks, &quot;principal minors&quot;, total_minors)
+    for rec in records:
+        if not rec[&quot;psd_by_all_exact_principal_minors&quot;]:
+            print(&quot;FAIL&quot;, rec[&quot;block&quot;], &quot;grade&quot;, rec[&quot;grade&quot;], rec[&quot;failures&quot;][:1], rec[&quot;undecided&quot;][:1])
+    print(&quot;certificate&quot;, out)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/24b4569f0aef565955bf730acd304d300dcaaf633dc9c1910261e47fab760868.py">Exact original</a></p></html>

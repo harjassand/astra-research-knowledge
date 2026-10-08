@@ -1,0 +1,142 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/algebra_complexity/cycle4/operator_lift_independent/check_exact_twirl.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/algebra_complexity/cycle4/operator_lift_independent/check_exact_twirl.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact N=3 test of the Dicke phase-twirl identity over Q(i).
+
+This diagnostic uses Fraction arithmetic only.  It checks the full 8x8
+computational-basis density matrix for a two-atom rational product ensemble,
+then compares it entrywise with the Dicke-sector formula.  It is an exact
+small-instance check, not a proof of the all-N identity or of Cycle 3&#x27;s
+uniform scalar approximation theorem.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import json
+from dataclasses import dataclass
+from fractions import Fraction
+from math import comb
+from pathlib import Path
+
+
+@dataclass(frozen=True)
+class GQ:
+    re: Fraction = Fraction(0)
+    im: Fraction = Fraction(0)
+
+    def __add__(self, other: &quot;GQ&quot;) -&gt; &quot;GQ&quot;:
+        return GQ(self.re + other.re, self.im + other.im)
+
+    def __sub__(self, other: &quot;GQ&quot;) -&gt; &quot;GQ&quot;:
+        return GQ(self.re - other.re, self.im - other.im)
+
+    def __mul__(self, other: &quot;GQ&quot;) -&gt; &quot;GQ&quot;:
+        return GQ(self.re * other.re - self.im * other.im,
+                  self.re * other.im + self.im * other.re)
+
+    def conjugate(self) -&gt; &quot;GQ&quot;:
+        return GQ(self.re, -self.im)
+
+    def scale(self, scalar: Fraction) -&gt; &quot;GQ&quot;:
+        return GQ(self.re * scalar, self.im * scalar)
+
+
+ZERO = GQ()
+ONE = GQ(Fraction(1))
+I = GQ(Fraction(0), Fraction(1))
+
+
+def product_vector(a: Fraction, b: Fraction, phase: GQ, n: int) -&gt; list[GQ]:
+    &quot;&quot;&quot;Computational vector for (a|0&gt; + b phase |1&gt;)^tensor n.&quot;&quot;&quot;
+    phased_b = GQ(b) * phase
+    out = []
+    for x in range(1 &lt;&lt; n):
+        k = x.bit_count()
+        amp = GQ(a ** (n - k))
+        for _ in range(k):
+            amp = amp * phased_b
+        out.append(amp)
+    return out
+
+
+def fraction_text(x: Fraction) -&gt; str:
+    return str(x.numerator) if x.denominator == 1 else f&quot;{x.numerator}/{x.denominator}&quot;
+
+
+def main() -&gt; None:
+    n = 3
+    # Rational Pythagorean pairs: a^2+b^2=1 exactly.
+    atoms = [
+        (Fraction(2, 7), Fraction(3, 5), Fraction(4, 5)),
+        (Fraction(5, 7), Fraction(5, 13), Fraction(12, 13)),
+    ]
+    phases = [ONE, I, GQ(Fraction(-1)), GQ(Fraction(0), Fraction(-1))]
+    dim = 1 &lt;&lt; n
+    observed = [[ZERO for _ in range(dim)] for _ in range(dim)]
+
+    for atom_weight, a, b in atoms:
+        assert a * a + b * b == 1
+        for phase in phases:
+            v = product_vector(a, b, phase, n)
+            label_weight = atom_weight / len(phases)
+            for x in range(dim):
+                for y in range(dim):
+                    observed[x][y] = observed[x][y] + (v[x] * v[y].conjugate()).scale(label_weight)
+
+    sector_mass: list[Fraction] = []
+    for k in range(n + 1):
+        mass = sum((w * comb(n, k) * (b * b) ** k * (a * a) ** (n - k)
+                    for w, a, b in atoms), Fraction(0))
+        sector_mass.append(mass)
+
+    expected = [[ZERO for _ in range(dim)] for _ in range(dim)]
+    for x in range(dim):
+        kx = x.bit_count()
+        for y in range(dim):
+            if y.bit_count() == kx:
+                entry = sector_mass[kx] / comb(n, kx)
+                expected[x][y] = GQ(entry)
+
+    assert observed == expected, &quot;exact phase-twirl matrix does not match Dicke formula&quot;
+    assert sum(sector_mass, Fraction(0)) == 1, &quot;sector probabilities do not normalize&quot;
+    assert all(mass &gt; 0 for mass in sector_mass), &quot;a Dicke sector has zero weight&quot;
+
+    # The per-string diagonal is the Dicke eigenvalue divided by the sector
+    # multiplicity.  This explicitly catches the common binomial-factor error.
+    per_string = [sector_mass[k] / comb(n, k) for k in range(n + 1)]
+    assert per_string[1] != sector_mass[1]
+    assert per_string[2] != sector_mass[2]
+    for x in range(dim):
+        k = x.bit_count()
+        assert observed[x][x].re == per_string[k]
+        assert observed[x][x].im == 0
+
+    result = {
+        &quot;status&quot;: &quot;EXACT_FINITE_DIAGNOSTIC_ONLY&quot;,
+        &quot;arithmetic&quot;: &quot;fractions.Fraction over Q(i), no floating point&quot;,
+        &quot;N&quot;: n,
+        &quot;phase_order&quot;: n + 1,
+        &quot;atom_weights&quot;: [fraction_text(w) for w, _, _ in atoms],
+        &quot;atom_amplitudes&quot;: [
+            {&quot;a&quot;: fraction_text(a), &quot;b&quot;: fraction_text(b), &quot;p=b^2&quot;: fraction_text(b * b)}
+            for _, a, b in atoms
+        ],
+        &quot;sector_probabilities&quot;: [fraction_text(x) for x in sector_mass],
+        &quot;per_string_diagonal_by_weight&quot;: [fraction_text(x) for x in per_string],
+        &quot;full_8_by_8_matrix_matches_exact_Dicke_formula&quot;: True,
+        &quot;normalization_exact&quot;: True,
+        &quot;all_sector_weights_strictly_positive&quot;: True,
+        &quot;binomial_multiplicity_mismatch_witnessed&quot;: True,
+        &quot;limitations&quot;: [
+            &quot;tests only N=3 and a hand-chosen two-atom rational mixture&quot;,
+            &quot;does not establish the Cycle 3 scalar approximation theorem&quot;,
+            &quot;does not test the approximate rational phase construction for general N&quot;,
+            &quot;does not expand or time a 2^N-dimensional output&quot;
+        ]
+    }
+    out = Path(__file__).with_name(&quot;check_exact_twirl.json&quot;)
+    out.write_text(json.dumps(result, indent=2) + &quot;\n&quot;, encoding=&quot;utf-8&quot;)
+    print(json.dumps(result, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/b99522ad057dd918e3278e8d4a7cb3a3f77fda29e22bd5d8b22ed1d5fbcee7ec.py">Exact original</a></p></html>

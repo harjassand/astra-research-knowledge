@@ -1,0 +1,319 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/spectral_geometry/su_m_profile/exact_lr_search.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/spectral_geometry/su_m_profile/exact_lr_search.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact type-A SU(m) LR and zero-weight multiplicity routines.
+
+All multiplicities are counted by integer tableau enumeration. No numerical
+character package or floating-point tensor decomposition is used.
+&quot;&quot;&quot;
+
+from fractions import Fraction
+from functools import lru_cache
+from itertools import product
+
+
+def partitions(total, length, ceiling=None):
+    if length == 0:
+        if total == 0:
+            yield ()
+        return
+    if ceiling is None:
+        ceiling = total
+    for first in range(min(ceiling, total), -1, -1):
+        for tail in partitions(total - first, length - 1, first):
+            yield (first,) + tail
+
+
+@lru_cache(maxsize=None)
+def tableau_count(shape, inner, content, lattice_word):
+    &quot;&quot;&quot;Count SSYT of shape/inner and content, optionally LR-lattice word.&quot;&quot;&quot;
+    m = len(shape)
+    if len(inner) != m or len(content) != m:
+        raise ValueError(&quot;shape, inner, and content must have equal length&quot;)
+    if any(shape[i] &lt; inner[i] for i in range(m)):
+        return 0
+    if sum(shape[i] - inner[i] for i in range(m)) != sum(content):
+        return 0
+
+    # Standard LR reading order: right to left within each row, top to bottom.
+    cells = tuple(
+        (row, col)
+        for row in range(m)
+        for col in range(shape[row] - 1, inner[row] - 1, -1)
+    )
+    counts = [0] * m
+    filled = {}
+    ways = 0
+
+    def recurse(position):
+        nonlocal ways
+        if position == len(cells):
+            ways += 1
+            return
+        row, col = cells[position]
+        right_value = filled.get((row, col + 1))
+        above_value = filled.get((row - 1, col))
+        for value in range(1, m + 1):
+            i = value - 1
+            if counts[i] &gt;= content[i]:
+                continue
+            if right_value is not None and value &gt; right_value:
+                continue  # rows are weakly increasing left to right
+            if above_value is not None and value &lt;= above_value:
+                continue  # columns are strictly increasing top to bottom
+            counts[i] += 1
+            if lattice_word and value &gt; 1 and counts[i] &gt; counts[i - 1]:
+                counts[i] -= 1
+                continue
+            filled[(row, col)] = value
+            recurse(position + 1)
+            del filled[(row, col)]
+            counts[i] -= 1
+
+    recurse(0)
+    return ways
+
+
+def lr_coefficient(lam, mu, gamma):
+    if any(gamma[i] &lt; lam[i] for i in range(len(lam))):
+        return 0
+    return tableau_count(gamma, lam, mu, True)
+
+
+def canonical_partition(dynkin):
+    m = len(dynkin) + 1
+    return tuple(sum(dynkin[i:]) for i in range(m - 1)) + (0,)
+
+
+def dual_partition(lam):
+    return tuple(lam[0] - lam[-1 - i] for i in range(len(lam)))
+
+
+def dynkin_from_partition(partition):
+    return tuple(partition[i] - partition[i + 1] for i in range(len(partition) - 1))
+
+
+def dimension(partition):
+    m = len(partition)
+    value = Fraction(1)
+    for i in range(m):
+        for j in range(i + 1, m):
+            value *= Fraction(partition[i] - partition[j] + j - i, j - i)
+    assert value.denominator == 1
+    return value.numerator
+
+
+def casimir(partition):
+    &quot;&quot;&quot;SU(m) quadratic Casimir for Tr_fund(T_a T_b)=delta_ab/2.&quot;&quot;&quot;
+    m = len(partition)
+    total = sum(partition)
+    gl_scalar = sum(
+        partition[i] * (partition[i] + m + 1 - 2 * (i + 1))
+        for i in range(m)
+    )
+    return Fraction(gl_scalar, 2) - Fraction(total * total, 2 * m)
+
+
+@lru_cache(maxsize=None)
+def zero_weight_multiplicity(partition):
+    m = len(partition)
+    total = sum(partition)
+    if total % m:
+        return 0
+    q = total // m
+    return tableau_count(partition, (0,) * m, (q,) * m, False)
+
+
+def end_decomposition(dynkin):
+    &quot;&quot;&quot;Decompose V_lambda tensor V_lambda^* by the GL(m) LR rule.&quot;&quot;&quot;
+    lam = canonical_partition(dynkin)
+    mu = dual_partition(lam)
+    total_size = sum(lam) + sum(mu)
+    m = len(lam)
+    decomposition = {}
+    lr_witnesses = {}
+    for gamma in partitions(total_size, m):
+        if any(gamma[i] &lt; lam[i] for i in range(m)):
+            continue
+        coefficient = lr_coefficient(lam, mu, gamma)
+        if not coefficient:
+            continue
+        delta = tuple(gamma[i] - gamma[-1] for i in range(m))
+        nu = dynkin_from_partition(delta)
+        decomposition[nu] = decomposition.get(nu, 0) + coefficient
+        lr_witnesses[nu] = (gamma, coefficient)
+    return lam, mu, decomposition, lr_witnesses
+
+
+def cumulative_profile(decomposition, m, T):
+    return sum(
+        multiplicity * dimension(canonical_partition(nu))
+        for nu, multiplicity in decomposition.items()
+        if casimir(canonical_partition(nu)) &lt;= T
+    )
+
+
+def low_rank_profile_integral(decomposition, m, carrier_dim, q):
+    &quot;&quot;&quot;Exact integral int [1-q D(T)/d]_+ dT from the finite step profile.&quot;&quot;&quot;
+    masses = {}
+    for nu, multiplicity in decomposition.items():
+        delta = canonical_partition(nu)
+        c = casimir(delta)
+        masses[c] = masses.get(c, 0) + multiplicity * dimension(delta)
+    thresholds = sorted(masses)
+    cumulative = 0
+    left = Fraction(0)
+    integral = Fraction(0)
+    for threshold in thresholds:
+        value = Fraction(1) - Fraction(q * cumulative, carrier_dim)
+        if value &lt;= 0:
+            break
+        integral += (threshold - left) * value
+        cumulative += masses[threshold]
+        left = threshold
+    return integral
+
+
+def near_full_green_profile(decomposition, m, carrier_dim, k):
+    &quot;&quot;&quot;Exact profile proxy int min(1,k D_+(t)/d) t^-2 dt.&quot;&quot;&quot;
+    masses = {}
+    for nu, multiplicity in decomposition.items():
+        delta = canonical_partition(nu)
+        c = casimir(delta)
+        if c &gt; 0:
+            masses[c] = masses.get(c, 0) + multiplicity * dimension(delta)
+    thresholds = sorted(masses)
+    if not thresholds:
+        return Fraction(0)
+    cumulative = 0
+    left = thresholds[0]
+    result = Fraction(0)
+    for threshold in thresholds[1:]:
+        cumulative += masses[left]
+        height = min(Fraction(1), Fraction(k * cumulative, carrier_dim))
+        result += height * (Fraction(1, left) - Fraction(1, threshold))
+        left = threshold
+    cumulative += masses[left]
+    height = min(Fraction(1), Fraction(k * cumulative, carrier_dim))
+    result += height / left  # exact saturated tail to infinity
+    return result
+
+
+def search_dimension(m, max_label):
+    label_tuples = list(product(range(max_label + 1), repeat=m - 1))
+    failures = []
+    compared = 0
+    equality_count = 0
+    maximum_ratio = Fraction(0)
+    maximum_record = None
+    maximum_nontrivial_ratio = Fraction(0)
+    maximum_nontrivial_record = None
+    maximum_regular_ratio = Fraction(0)
+    maximum_regular_record = None
+    regular_count = 0
+    boundary_count = 0
+    profile_rows = []
+
+    for labels in label_tuples:
+        lam, mu, decomposition, witnesses = end_decomposition(labels)
+        carrier_dim = dimension(lam)
+        if all(x &gt; 0 for x in labels):
+            regular_count += 1
+        elif any(x &gt; 0 for x in labels):
+            boundary_count += 1
+
+        reconstructed_dim2 = sum(
+            multiplicity * dimension(canonical_partition(nu))
+            for nu, multiplicity in decomposition.items()
+        )
+        if reconstructed_dim2 != carrier_dim * carrier_dim:
+            raise AssertionError(
+                f&quot;dimension sum failed for SU({m}), lambda={labels}: &quot;
+                f&quot;{reconstructed_dim2} != {carrier_dim**2}&quot;
+            )
+
+        for nu, multiplicity in decomposition.items():
+            delta = canonical_partition(nu)
+            zero = zero_weight_multiplicity(delta)
+            compared += 1
+            if multiplicity &gt; zero:
+                failures.append(
+                    {
+                        &quot;lambda&quot;: labels,
+                        &quot;nu&quot;: nu,
+                        &quot;multiplicity&quot;: multiplicity,
+                        &quot;zero_weight&quot;: zero,
+                        &quot;gamma_witness&quot;: witnesses[nu][0],
+                    }
+                )
+            if multiplicity == zero:
+                equality_count += 1
+            ratio = Fraction(multiplicity, max(1, zero))
+            if ratio &gt; maximum_ratio:
+                maximum_ratio = ratio
+                maximum_record = (labels, nu, multiplicity, zero)
+            if any(nu) and ratio &gt; maximum_nontrivial_ratio:
+                maximum_nontrivial_ratio = ratio
+                maximum_nontrivial_record = (labels, nu, multiplicity, zero)
+            if all(x &gt; 0 for x in labels) and any(nu) and ratio &gt; maximum_regular_ratio:
+                maximum_regular_ratio = ratio
+                maximum_regular_record = (labels, nu, multiplicity, zero)
+
+        # Record exact step-profile diagnostics along the regular ray.
+        if all(x == labels[0] and x &gt; 0 for x in labels):
+            delta_min = min(labels) + 1
+            p = m * (m - 1) // 2
+            T = Fraction(delta_min * delta_min, 2)
+            if T &gt;= 1:
+                profile_rows.append(
+                    (labels[0], carrier_dim, T,
+                     cumulative_profile(decomposition, m, T), p,
+                     low_rank_profile_integral(decomposition, m, carrier_dim, 1),
+                     near_full_green_profile(decomposition, m, carrier_dim, 1))
+                )
+
+    failures.sort(key=lambda z: (sum(z[&quot;lambda&quot;]), z[&quot;lambda&quot;], z[&quot;nu&quot;]))
+    return {
+        &quot;m&quot;: m,
+        &quot;max_label&quot;: max_label,
+        &quot;lambda_count&quot;: len(label_tuples),
+        &quot;regular_count&quot;: regular_count,
+        &quot;boundary_count&quot;: boundary_count,
+        &quot;comparisons&quot;: compared,
+        &quot;equalities&quot;: equality_count,
+        &quot;max_ratio&quot;: maximum_ratio,
+        &quot;max_record&quot;: maximum_record,
+        &quot;max_nontrivial_ratio&quot;: maximum_nontrivial_ratio,
+        &quot;max_nontrivial_record&quot;: maximum_nontrivial_record,
+        &quot;max_regular_ratio&quot;: maximum_regular_ratio,
+        &quot;max_regular_record&quot;: maximum_regular_record,
+        &quot;failures&quot;: failures,
+        &quot;profile_rows&quot;: profile_rows,
+    }
+
+
+def main():
+    # Finite search boxes: all labels 0..12 for SU(3), 0..4 for SU(4).
+    for m, bound in ((3, 12), (4, 4)):
+        result = search_dimension(m, bound)
+        print(
+            f&quot;SU({m}) labels 0..{bound}: lambda_count={result[&#x27;lambda_count&#x27;]}, &quot;
+            f&quot;regular={result[&#x27;regular_count&#x27;]}, boundary={result[&#x27;boundary_count&#x27;]}, &quot;
+            f&quot;output comparisons={result[&#x27;comparisons&#x27;]}, &quot;
+            f&quot;equality cases={result[&#x27;equalities&#x27;]}, &quot;
+            f&quot;max multiplicity/zero-weight={result[&#x27;max_ratio&#x27;]} &quot;
+            f&quot;at {result[&#x27;max_record&#x27;]}; max nontrivial ratio=&quot;
+            f&quot;{result[&#x27;max_nontrivial_ratio&#x27;]} at {result[&#x27;max_nontrivial_record&#x27;]}; &quot;
+            f&quot;max regular ratio={result[&#x27;max_regular_ratio&#x27;]} &quot;
+            f&quot;at {result[&#x27;max_regular_record&#x27;]}&quot;
+        )
+        if result[&quot;failures&quot;]:
+            print(&quot;FIRST COUNTEREXAMPLE:&quot;, result[&quot;failures&quot;][0])
+        else:
+            print(&quot;No counterexample in this finite search box.&quot;)
+        print(&quot;regular-ray profile diagnostics (label, d, T, D(T), p, Phi_1, S_1):&quot;)
+        for row in result[&quot;profile_rows&quot;]:
+            print(&quot;  &quot;, row)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/fd66ef5b4a88e6a94acdd4de748908882f09bcd9fc6c7ae3b45a92570668a2d6.py">Exact original</a></p></html>

@@ -1,0 +1,77 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c5_catalysis_energy/isotopomer_model.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c5_catalysis_energy/isotopomer_model.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Historical ideal isotope-bookkeeping fixture for acetate carbon maps.
+
+Inputs are measured 13C fractions of the reacting precursor pools, not bulk
+feed fractions unless the experiment independently verifies that equivalence.
+Tuple keys are (methyl-13C, carboxyl-13C).
+
+The executable example at the bottom uses invented 0.20/0.80 fractions. It is
+only an arithmetic fixture, not a Cu-Fe measurement or prediction. See
+transient_identifiability.py for the source-independent exact overlap result.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+from collections.abc import Mapping
+
+Label = tuple[int, int]
+
+
+def direct_co_ch2(x_co_carbonyl: float, x_ch2_methyl: float) -&gt; dict[Label, float]:
+    &quot;&quot;&quot;CO supplies the acetate carboxyl C; CH2 supplies the methyl C.&quot;&quot;&quot;
+    x_c = _fraction(x_co_carbonyl, &quot;x_co_carbonyl&quot;)
+    x_m = _fraction(x_ch2_methyl, &quot;x_ch2_methyl&quot;)
+    return {
+        (1, 1): x_m * x_c,
+        (1, 0): x_m * (1.0 - x_c),
+        (0, 1): (1.0 - x_m) * x_c,
+        (0, 0): (1.0 - x_m) * (1.0 - x_c),
+    }
+
+
+def co_dimer_then_hydrogenate(
+    x_site_a: float, x_site_b: float, alpha_a_to_methyl: float
+) -&gt; dict[Label, float]:
+    &quot;&quot;&quot;Two site-specific CO pools couple; alpha assigns site A to methyl.&quot;&quot;&quot;
+    x_a = _fraction(x_site_a, &quot;x_site_a&quot;)
+    x_b = _fraction(x_site_b, &quot;x_site_b&quot;)
+    alpha = _fraction(alpha_a_to_methyl, &quot;alpha_a_to_methyl&quot;)
+    return {
+        (1, 1): x_a * x_b,
+        (0, 0): (1.0 - x_a) * (1.0 - x_b),
+        (1, 0): alpha * x_a * (1.0 - x_b) + (1.0 - alpha) * x_b * (1.0 - x_a),
+        (0, 1): alpha * (1.0 - x_a) * x_b + (1.0 - alpha) * (1.0 - x_b) * x_a,
+    }
+
+
+def mass_only(probabilities: Mapping[Label, float]) -&gt; dict[int, float]:
+    &quot;&quot;&quot;Collapse positional isotopomers to the count of 13C atoms.&quot;&quot;&quot;
+    result = {0: 0.0, 1: 0.0, 2: 0.0}
+    for (methyl, carboxyl), probability in probabilities.items():
+        result[methyl + carboxyl] += probability
+    return result
+
+
+def total_variation(a: Mapping[Label, float], b: Mapping[Label, float]) -&gt; float:
+    &quot;&quot;&quot;Position-resolved TV distance between predicted isotopomer laws.&quot;&quot;&quot;
+    return 0.5 * sum(abs(a.get(z, 0.0) - b.get(z, 0.0)) for z in set(a) | set(b))
+
+
+def _fraction(value: float, name: str) -&gt; float:
+    if not 0.0 &lt;= value &lt;= 1.0:
+        raise ValueError(f&quot;{name} must lie in [0, 1]&quot;)
+    return float(value)
+
+
+if __name__ == &quot;__main__&quot;:
+    # Synthetic illustration only: these are not published or measured pool
+    # enrichments and cannot serve as a Cu-Fe pathway prediction.
+    print(&quot;SYNTHETIC ARITHMETIC FIXTURE ONLY; not Cu-Fe data or prediction&quot;)
+    direct = direct_co_ch2(x_co_carbonyl=0.20, x_ch2_methyl=0.80)
+    dimer = co_dimer_then_hydrogenate(x_site_a=0.20, x_site_b=0.80, alpha_a_to_methyl=1.0)
+    print(&quot;direct CO* + CH2*:&quot;, direct)
+    print(&quot;CO* dimer then asymmetric hydrogenation:&quot;, dimer)
+    print(&quot;mass-only direct:&quot;, mass_only(direct))
+    print(&quot;mass-only dimer:&quot;, mass_only(dimer))
+    print(&quot;position-resolved TV:&quot;, total_variation(direct, dimer))
+</pre><p><a href="../assets/a213fc4ab5fec358a65800eddb4fd32e497eb171548e30320071bf156107a314.py">Exact original</a></p></html>

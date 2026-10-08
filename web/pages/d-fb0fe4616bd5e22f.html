@@ -1,0 +1,88 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/systems_metabolism/chemostat_control/reproduce_chemostat.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/systems_metabolism/chemostat_control/reproduce_chemostat.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Fixed-step RK4 invasion-rate reproduction for Hofbauer–Schreiber&#x27;s periodic chemostat.&quot;&quot;&quot;
+from __future__ import annotations
+import itertools, json, math
+from pathlib import Path
+
+D0, omega, R0 = 0.4675, 0.2, 11.0
+alpha = (1.0, 0.7, 0.64)
+beta = (1.0, 0.3, 0.2)
+period = 2*math.pi/omega
+
+def monod(R, i):
+    return alpha[i]*R/(beta[i]+R)
+
+def rhs(y, t, amp, residents):
+    R=y[0]
+    X=y[1:1+len(residents)]
+    D=D0+amp*math.cos(omega*t)
+    f=[monod(R,i) for i in range(3)]
+    dR=(R0-R)*D-sum(f[i]*x for i,x in zip(residents,X))
+    dx=[x*(f[i]-D) for i,x in zip(residents,X)]
+    dq=[f[i]-D for i in range(3)]
+    return [dR,*dx,*dq]
+
+def rk4_step(y,t,h,amp,residents):
+    k1=rhs(y,t,amp,residents)
+    k2=rhs([a+h*b/2 for a,b in zip(y,k1)],t+h/2,amp,residents)
+    k3=rhs([a+h*b/2 for a,b in zip(y,k2)],t+h/2,amp,residents)
+    k4=rhs([a+h*b for a,b in zip(y,k3)],t+h,amp,residents)
+    return [a+h*(b+2*c+2*d+e)/6 for a,b,c,d,e in zip(y,k1,k2,k3,k4)]
+
+def cycle(y, amp, residents, nstep):
+    h=period/nstep
+    z=list(y)
+    for k in range(nstep):
+        z=rk4_step(z,k*h,h,amp,residents)
+    return z
+
+def face_orbit(amp,residents,nstep=240,max_cycles=500):
+    requested=tuple(residents)
+    residents=requested
+    y=[R0]+[0.25 for _ in residents]
+    hist=[]
+    # Find the attracting periodic state on this face.
+    for n in range(max_cycles):
+        z=cycle(y,amp,residents,nstep)
+        dist=max(abs(z[i]-y[i]) for i in range(1+len(residents)))
+        y=z[:1+len(residents)]
+        hist.append(dist)
+        if dist&lt;2e-10 and n&gt;10:
+            break
+    # Assess resident support after convergence.
+    support=tuple(i for i,x in zip(residents,y[1:]) if x&gt;1e-7)
+    if support != residents:
+        # Refit the reduced support from the reached state.
+        idx=[residents.index(i) for i in support]
+        y=[y[0]]+[y[1+j] for j in idx]
+        residents=support
+        for n2 in range(max_cycles):
+            z=cycle(y,amp,residents,nstep)
+            dist=max(abs(z[i]-y[i]) for i in range(1+len(residents)))
+            y=z[:1+len(residents)]
+            if dist&lt;2e-10 and n2&gt;10: break
+    # One period from the converged resident state gives the average per-capita rates.
+    z=cycle(y+[0.0,0.0,0.0],amp,residents,nstep)
+    lam=[v/period for v in z[1+len(residents):]]
+    return {&quot;requested_face&quot;:list(requested),&quot;support&quot;:list(support),&quot;state0&quot;:y,&quot;periodic_residual&quot;:hist[-1] if hist else None,&quot;cycles&quot;:len(hist),&quot;lambda&quot;:lam}
+
+def all_faces(amp,nstep):
+    out=[]
+    for k in range(4):
+        for S in itertools.combinations(range(3),k):
+            row=face_orbit(amp,S,nstep=nstep)
+            row[&quot;amp&quot;]=amp;row[&quot;nstep_per_period&quot;]=nstep
+            out.append(row)
+    return out
+
+if __name__==&#x27;__main__&#x27;:
+    allout=[]
+    for a in (0.2,0.275,0.3,0.325):
+        allout.extend(all_faces(a,240))
+    p=Path(__file__).with_name(&#x27;invasion_rates_rk4.json&#x27;)
+    p.write_text(json.dumps(allout,indent=2))
+    for r in allout:
+        ss=&#x27;&#x27;.join(str(i+1) for i in r[&#x27;support&#x27;]) or &#x27;∅&#x27;
+        print(f&quot;a={r[&#x27;amp&#x27;]:.3f} requested={r[&#x27;requested_face&#x27;]} support={ss} cycles={r[&#x27;cycles&#x27;]} resid={r[&#x27;periodic_residual&#x27;]:.2e} lambda=&quot;+&#x27;,&#x27;.join(f&#x27;{x:+.7e}&#x27; for x in r[&#x27;lambda&#x27;]))
+    print(&#x27;wrote&#x27;,p)
+</pre><p><a href="../assets/0d1ecfec2a37f856dd7a350be456760205004ff79c3c9e8791668903c2804a1c.py">Exact original</a></p></html>

@@ -1,0 +1,94 @@
+"""Small exact checks accompanying the games/Hamiltonians research note.
+
+Uses only Python's standard library. These finite checks validate arithmetic
+fixtures; they do not replace the analytic proofs recorded in RESULT.txt.
+Run: python3 verify_exact_checks.py
+"""
+
+from fractions import Fraction as F
+from math import comb, isqrt
+
+
+def ceil_sqrt(n: int) -> int:
+    q = isqrt(n)
+    return q if q * q == n else q + 1
+
+
+def chebyshev_fraction(n: int, x: F) -> F:
+    """Evaluate T_n(x) by the exact three-term recurrence."""
+    if n == 0:
+        return F(1)
+    if n == 1:
+        return x
+    t0, t1 = F(1), x
+    for _ in range(2, n + 1):
+        t0, t1 = t1, 2 * x * t1 - t0
+    return t1
+
+
+def check_n26_sharpness() -> int:
+    cases = 0
+    L = F(5, 4)
+    for t in range(1, 9):
+        for r in range(t + 1):
+            for eta in (F(0), L / 3, L):
+                values = []
+                for hamming_weight in range(t + 1):
+                    miss = F(comb(t - hamming_weight, r), comb(t, r)) if r <= t - hamming_weight else F(0)
+                    values.append(eta + (L - eta) * (1 - miss))
+                bound = eta + F(r, t) * (L - eta)
+                assert values[0] == eta
+                assert values[1] == bound
+                assert all(v >= bound for v in values[1:])
+                cases += t + 1
+    return cases
+
+
+def check_t4_signed_polynomial() -> None:
+    values = [F(3, 5) * s - F(3, 10) * comb(s, 2) for s in range(5)]
+    assert values == [F(0), F(3, 5), F(9, 10), F(9, 10), F(3, 5)]
+    # p(s)=3s/4-3s^2/20 is concave, with its maximum at s=5/2.
+    maximum = F(3, 4) * F(5, 2) - F(3, 20) * F(25, 4)
+    assert maximum == F(15, 16)
+    positive_budget_lower_bound = F(3, 5) * 4 / 2
+    coefficient_l1 = 4 * F(3, 5) + 6 * F(3, 10)
+    assert positive_budget_lower_bound == F(6, 5)
+    assert coefficient_l1 == F(21, 5)
+
+
+def check_chebyshev_boolean_fixtures() -> int:
+    cases = 0
+    for t in range(4, 21):
+        d = ceil_sqrt(t - 1)
+        a = F(t + 1, t - 1)
+        denom = chebyshev_fraction(d, a)
+        for weight in range(t + 1):
+            z = F(t + 1 - 2 * weight, t - 1)
+            value = 1 - (chebyshev_fraction(d, z) / denom) ** 2
+            assert 0 <= value <= 1
+            if weight:
+                assert value >= F(3, 4)
+            cases += 1
+    return cases
+
+
+def check_erasure_and_repetition_arithmetic() -> None:
+    # Exact UERASE(3/4,1/15) acceptance comparison.
+    assert 4 * (15 - 2) ** 2 > 3 * 15**2
+    # (2-sqrt(3))/4 > 1/15, checked by the equivalent positive square.
+    assert F(3) < F(676, 225)
+    # Connected-support coefficient after v=5/8, delta=3/8, sigma>1/15.
+    coefficient = F(1, 15) * F(3, 8) ** 3 / 1024
+    assert coefficient == F(27, 7_864_320)
+    # 1+ln((2^a+1)2^a) <= 2a+2 follows from ln 2 < 1 and 2^a+1<=2^(a+1).
+
+
+if __name__ == "__main__":
+    n26_cases = check_n26_sharpness()
+    check_t4_signed_polynomial()
+    cheb_cases = check_chebyshev_boolean_fixtures()
+    check_erasure_and_repetition_arithmetic()
+    print(f"PASS: {n26_cases} exact positive-budget fixtures")
+    print("PASS: rational t=4 signed-polynomial witness and budget arithmetic")
+    print(f"PASS: {cheb_cases} exact Boolean Chebyshev fixtures")
+    print("PASS: exact erasure-certificate and repetition-constant arithmetic")

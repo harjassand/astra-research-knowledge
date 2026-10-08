@@ -1,0 +1,313 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/mathematics_algorithms/children/combinatorial_algebra/check_leaf_repair.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/mathematics_algorithms/children/combinatorial_algebra/check_leaf_repair.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Finite checks of the pinned ordered-matrix construction for h=1,2.
+
+These checks validate the literal pattern/host indexing and one old/new copy.
+They do not prove the universal distance or copy-location assertions.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+
+S = 64
+
+
+def make_modes(h: int):
+    modes = []
+    for i in range(1, h + 1):
+        modes.extend(
+            [
+                (&quot;V+&quot;, i, None),
+                (&quot;V-&quot;, i, None),
+                (&quot;W+&quot;, i, 0),
+                (&quot;W+&quot;, i, 1),
+                (&quot;W-&quot;, i, 0),
+                (&quot;W-&quot;, i, 1),
+            ]
+        )
+    return modes
+
+
+def make_pattern():
+    anchor = [[0] * S for _ in range(S)]
+    for u in range(S):
+        for v in range(S):
+            if 32 &lt;= u &lt; 64 and 59 &lt;= v &lt; 64:
+                a = u - 32
+                bit = v - 59
+                anchor[u][v] = (a &gt;&gt; (4 - bit)) &amp; 1
+            else:
+                anchor[u][v] = int(u != v)
+    e1 = [int(i == 0) for i in range(S)]
+    e2 = [int(i == 1) for i in range(S)]
+    pattern = [anchor[i] + [e1[i], e2[i]] for i in range(S)]
+    pattern.append(e1 + [1, 0])
+    pattern.append(e2 + [1, 1])
+    return anchor, pattern
+
+
+def build_axis(h: int, m: int, is_row: bool):
+    modes = make_modes(h)
+    groups = {}
+    labels = []
+    for mode in modes:
+        groups[mode] = []
+        for u in range(S):
+            block = list(range(len(labels), len(labels) + m))
+            labels.extend(block)
+            groups[mode].append(block)
+
+    blocks = {}
+
+    def add_block(sign: str, depth: int, p: int):
+        size = m &gt;&gt; depth
+        block = list(range(len(labels), len(labels) + size))
+        labels.extend(block)
+        blocks[(sign, depth, p)] = block
+
+    def visit(depth: int, p: int):
+        if depth == h:
+            leaf = [len(labels)]
+            labels.append(leaf[0])
+            blocks[(&quot;+&quot;, depth, p)] = leaf
+            blocks[(&quot;-&quot;, depth, p)] = leaf
+            return
+        if is_row:
+            add_block(&quot;-&quot;, depth, p)
+            visit(depth + 1, 2 * p)
+            visit(depth + 1, 2 * p + 1)
+            add_block(&quot;+&quot;, depth, p)
+        else:
+            add_block(&quot;+&quot;, depth, p)
+            visit(depth + 1, 2 * p)
+            visit(depth + 1, 2 * p + 1)
+            add_block(&quot;-&quot;, depth, p)
+
+    visit(0, 0)
+    if is_row:
+        dummy = list(range(len(labels), len(labels) + m))
+        labels.extend(dummy)
+    else:
+        # The dummy column block precedes all variable columns.
+        # Rebuild the column axis with its dummy in the required position.
+        anchor_len = len(modes) * S * m
+        variable_labels = labels[anchor_len:]
+        labels = labels[:anchor_len]
+        dummy = list(range(len(labels), len(labels) + m))
+        labels.extend(dummy)
+        offset = len(labels) - len(variable_labels)
+        labels.extend(range(offset, offset + len(variable_labels)))
+        blocks = {key: [x + m for x in value] for key, value in blocks.items()}
+    return labels, groups, blocks, dummy
+
+
+def union_blocks(blocks, sign: str, depth: int, nodes):
+    return {x for p in nodes for x in blocks[(sign, depth, p)]}
+
+
+def make_roles(h: int, rblocks, cblocks, rstar, cstar):
+    row_roles = {}
+    col_roles = {}
+    for mode in make_modes(h):
+        kind, i, d = mode
+        if kind == &quot;V+&quot;:
+            r1 = union_blocks(rblocks, &quot;+&quot;, i, range(1 &lt;&lt; i))
+            r2 = union_blocks(rblocks, &quot;+&quot;, i - 1, range(1 &lt;&lt; (i - 1)))
+            c1 = set(cstar)
+            c2 = union_blocks(cblocks, &quot;+&quot;, i - 1, range(1 &lt;&lt; (i - 1)))
+        elif kind == &quot;V-&quot;:
+            r1 = union_blocks(rblocks, &quot;-&quot;, i - 1, range(1 &lt;&lt; (i - 1)))
+            r2 = union_blocks(rblocks, &quot;-&quot;, i, range(1 &lt;&lt; i))
+            c1 = set(cstar)
+            c2 = union_blocks(cblocks, &quot;-&quot;, i - 1, range(1 &lt;&lt; (i - 1)))
+        elif kind == &quot;W+&quot;:
+            nodes = [p for p in range(1 &lt;&lt; i) if p % 2 == d]
+            r1 = union_blocks(rblocks, &quot;+&quot;, i, nodes)
+            r2 = set(rstar)
+            c1 = union_blocks(cblocks, &quot;+&quot;, i - 1, range(1 &lt;&lt; (i - 1)))
+            c2 = union_blocks(cblocks, &quot;+&quot;, i, nodes)
+        else:
+            nodes = [p for p in range(1 &lt;&lt; i) if p % 2 == d]
+            r1 = union_blocks(rblocks, &quot;-&quot;, i, nodes)
+            r2 = set(rstar)
+            c1 = union_blocks(cblocks, &quot;-&quot;, i, nodes)
+            c2 = union_blocks(cblocks, &quot;-&quot;, i - 1, range(1 &lt;&lt; (i - 1)))
+        assert not (r1 &amp; r2)
+        assert not (c1 &amp; c2)
+        row_roles[(mode, 1)] = r1
+        row_roles[(mode, 2)] = r2
+        col_roles[(mode, 1)] = c1
+        col_roles[(mode, 2)] = c2
+    return row_roles, col_roles
+
+
+def build_host(h: int):
+    m = 1 &lt;&lt; h
+    modes = make_modes(h)
+    anchor, pattern = make_pattern()
+    rlabels, rgroups, rblocks, rstar = build_axis(h, m, True)
+    clabels, cgroups, cblocks, cstar = build_axis(h, m, False)
+    assert len(rlabels) == len(clabels)
+    n = len(rlabels)
+    expected = (6 * h * S + 2 * h + 2) * m
+    assert n == expected
+
+    matrix = [bytearray(n) for _ in range(n)]
+    row_anchor = {}
+    col_anchor = {}
+    for mode in modes:
+        for u in range(S):
+            for r in rgroups[mode][u]:
+                row_anchor[r] = (mode, u)
+            for c in cgroups[mode][u]:
+                col_anchor[c] = (mode, u)
+
+    # Anchor-by-anchor entries.
+    for mode in modes:
+        for u in range(S):
+            for v in range(S):
+                value = anchor[u][v]
+                for r in rgroups[mode][u]:
+                    for c in cgroups[mode][v]:
+                        matrix[r][c] = value
+
+    row_roles, col_roles = make_roles(h, rblocks, cblocks, rstar, cstar)
+
+    # Non-anchor rows against anchor columns, and conversely.
+    for mode in modes:
+        for role in (1, 2):
+            for r in row_roles[(mode, role)]:
+                for u in range(S):
+                    if u == role - 1:
+                        for c in cgroups[mode][u]:
+                            matrix[r][c] = 1
+        for role in (1, 2):
+            for c in col_roles[(mode, role)]:
+                for u in range(S):
+                    if u == role - 1:
+                        for r in rgroups[mode][u]:
+                            matrix[r][c] = 1
+
+    # A dummy position has value one against every non-anchor position.
+    nonanchor_rows = [r for r in range(n) if r not in row_anchor]
+    nonanchor_cols = [c for c in range(n) if c not in col_anchor]
+    for r in rstar:
+        for c in nonanchor_cols:
+            matrix[r][c] = 1
+    for r in nonanchor_rows:
+        for c in cstar:
+            matrix[r][c] = 1
+
+    # Variable-variable entries from the four rules in the source paper.
+    row_info = {}
+    col_info = {}
+    for (sign, depth, p), block in rblocks.items():
+        for r in block:
+            row_info.setdefault(r, []).append((sign, depth, p))
+    for (sign, depth, p), block in cblocks.items():
+        for c in block:
+            col_info.setdefault(c, []).append((sign, depth, p))
+
+    for r, row_names in row_info.items():
+        for c, col_names in col_info.items():
+            values = []
+            for rs, rd, rp in row_names:
+                for cs, cd, cp in col_names:
+                    if rs == cs == &quot;+&quot; and rd == cd:
+                        values.append(int(rp &lt;= cp))
+                    if rs == cs == &quot;-&quot; and rd == cd and rd &lt; h:
+                        values.append(int(rp &lt; cp))
+                    if rs == cs == &quot;+&quot; and rd == cd + 1:
+                        values.append(int(rp // 2 &lt;= cp))
+                    if rs == cs == &quot;-&quot; and rd == cd + 1:
+                        values.append(int(rp // 2 &lt; cp))
+            assert len(set(values)) &lt;= 1, (r, c, row_names, col_names, values)
+            if values:
+                matrix[r][c] = values[0]
+
+    return {
+        &quot;h&quot;: h,
+        &quot;m&quot;: m,
+        &quot;n&quot;: n,
+        &quot;modes&quot;: modes,
+        &quot;pattern&quot;: pattern,
+        &quot;matrix&quot;: matrix,
+        &quot;row_groups&quot;: rgroups,
+        &quot;col_groups&quot;: cgroups,
+        &quot;row_blocks&quot;: rblocks,
+        &quot;col_blocks&quot;: cblocks,
+        &quot;row_dummy&quot;: rstar,
+        &quot;col_dummy&quot;: cstar,
+    }
+
+
+def is_copy(matrix, rows, cols, pattern):
+    if len(rows) != len(pattern) or len(cols) != len(pattern):
+        return False
+    if any(a &gt;= b for a, b in zip(rows, rows[1:])):
+        return False
+    if any(a &gt;= b for a, b in zip(cols, cols[1:])):
+        return False
+    return all(matrix[r][c] == pattern[i][j] for i, r in enumerate(rows) for j, c in enumerate(cols))
+
+
+def copy_positions(data, mode, body_rows, body_cols):
+    ar = [group[0] for group in data[&quot;row_groups&quot;][mode]]
+    ac = [group[0] for group in data[&quot;col_groups&quot;][mode]]
+    return ar + list(body_rows), ac + list(body_cols)
+
+
+def check(h: int):
+    data = build_host(h)
+    p = 0
+    d = p % 2
+    parent = p // 2
+    leaf_r_plus = data[&quot;row_blocks&quot;][(&quot;+&quot;, h, p)][0]
+    leaf_r_minus = data[&quot;row_blocks&quot;][(&quot;-&quot;, h, p)][0]
+    leaf_c_plus = data[&quot;col_blocks&quot;][(&quot;+&quot;, h, p)][0]
+    leaf_c_minus = data[&quot;col_blocks&quot;][(&quot;-&quot;, h, p)][0]
+    parent_c_plus = data[&quot;col_blocks&quot;][(&quot;+&quot;, h - 1, parent)][0]
+    parent_c_minus = data[&quot;col_blocks&quot;][(&quot;-&quot;, h - 1, parent)][0]
+    dummy_r = data[&quot;row_dummy&quot;][0]
+    mode_w_minus = (&quot;W-&quot;, h, d)
+    mode_w_plus = (&quot;W+&quot;, h, d)
+
+    old_rows, old_cols = copy_positions(
+        data, mode_w_minus, [leaf_r_minus, dummy_r], [leaf_c_minus, parent_c_minus]
+    )
+    assert is_copy(data[&quot;matrix&quot;], old_rows, old_cols, data[&quot;pattern&quot;])
+
+    leaf_diagonal = [
+        (data[&quot;row_blocks&quot;][(&quot;+&quot;, h, q)][0], data[&quot;col_blocks&quot;][(&quot;+&quot;, h, q)][0])
+        for q in range(1 &lt;&lt; h)
+    ]
+    assert len(leaf_diagonal) == data[&quot;m&quot;]
+    for r, c in leaf_diagonal:
+        data[&quot;matrix&quot;][r][c] = 0
+    assert not is_copy(data[&quot;matrix&quot;], old_rows, old_cols, data[&quot;pattern&quot;])
+
+    new_rows, new_cols = copy_positions(
+        data, mode_w_plus, [leaf_r_plus, dummy_r], [parent_c_plus, leaf_c_plus]
+    )
+    assert is_copy(data[&quot;matrix&quot;], new_rows, new_cols, data[&quot;pattern&quot;])
+    return {
+        &quot;h&quot;: h,
+        &quot;m&quot;: data[&quot;m&quot;],
+        &quot;n&quot;: data[&quot;n&quot;],
+        &quot;pattern_size&quot;: len(data[&quot;pattern&quot;]),
+        &quot;distance_parameter_epsilon&quot;: f&quot;1/{(6 * h * S + 2 * h + 2) ** 2}&quot;,
+        &quot;original_W_minus_copy_verified&quot;: True,
+        &quot;original_copy_broken_by_zeroing_leaf_diagonal&quot;: True,
+        &quot;new_W_plus_copy_created_by_same_edit&quot;: True,
+        &quot;leaf_diagonal_cells&quot;: len(leaf_diagonal),
+        &quot;universal_copy_location_or_distance_claim_checked&quot;: False,
+    }
+
+
+if __name__ == &quot;__main__&quot;:
+    results = [check(h) for h in (1, 2)]
+    out = Path(__file__).with_name(&quot;CHECK_RESULTS.json&quot;)
+    out.write_text(json.dumps({&quot;status&quot;: &quot;finite construction check only&quot;, &quot;results&quot;: results}, indent=2) + &quot;\n&quot;)
+    print(json.dumps({&quot;status&quot;: &quot;finite construction check only&quot;, &quot;results&quot;: results}, indent=2))
+</pre><p><a href="../assets/647cb53da6e446f9a2ffc6022e3a0cba6eb009cfd85203760a28e8ad711e67f1.py">Exact original</a></p></html>

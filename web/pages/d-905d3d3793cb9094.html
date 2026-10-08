@@ -1,0 +1,180 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c4_rational_applications/full_growth_diagnostics.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c4_rational_applications/full_growth_diagnostics.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Finite RK4 diagnostics for the full PLOS core model (including H and dilution).
+
+The source model is the PLOS 2021 S1 CellML file.  These runs are diagnostics,
+not validated numerics, a basin proof, or validation against living yeast.
+All concentrations are mM, time is min.  The IC genotype is Table 2.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from math import isfinite, log
+from typing import Callable
+
+
+@dataclass(frozen=True)
+class Params:
+    vu: float = 10.92211
+    vl: float = 5.65143
+    katp: float = 4.82003
+    kp: float = 2.07099
+    hmax: float = 1.0
+    kmg: float = 0.1
+    kma: float = 0.1
+    ki: float = 3.0
+    atot: float = 5.0
+    kmf: float = 1.0
+    kmd: float = 0.1
+    kmp: float = 2.0
+    pvmax: float = 10.0
+    kvac: float = 250.0
+    m: int = 4
+    vatpm: float = 0.0
+    taug: float = 90.0
+    taud: float = 420.0
+    vatprb: float = 12.7
+    vatpri: float = 0.46
+    vatper: float = 5.0
+    vu_ref: float = 10.0
+    vl_ref: float = 10.0
+    katp_ref: float = 10.0
+    kp_ref: float = 0.3
+
+    @property
+    def ug(self) -&gt; float:
+        return log(2.0) / (self.taug * (self.vatprb - self.vatper - self.vatpm))
+
+    @property
+    def ud(self) -&gt; float:
+        # vatpgri is negative; this sign makes H decrease when vatpg &lt; 0.
+        return 1.0 / (self.taud * (self.vatpri - self.vatper - self.vatpm))
+
+    @property
+    def vatpe(self) -&gt; float:
+        # CellML defines the enzyme-expression ATP cost from the fourth-power
+        # genotype/reference ratio.  The published IC value 2.63 is rounded.
+        reference = self.vu_ref**4 + self.vl_ref**4 + self.katp_ref**4 + self.kp_ref**4
+        genotype = self.vu**4 + self.vl**4 + self.katp**4 + self.kp**4
+        return self.vatper * genotype / reference
+
+
+def fluxes(y: tuple[float, float, float, float], glucose: float, p: Params):
+    f, a, pi, h = y
+    d = p.atot - a
+    vup = (p.vu * glucose * a / ((p.kmg + glucose) *
+            (p.kma + a * (1.0 + a / p.ki))))
+    vlo = (p.vl * f / (p.kmf + f) * d / (p.kmd + d) *
+           pi / (p.kmp + pi))
+    ptotal = pi + 2.0 * f + a
+    pivac = p.pvmax / (1.0 + (ptotal / p.kvac) ** p.m)
+    vp = p.kp * (pivac - pi)
+    vatp = p.katp * a
+    vatpg = vatp - p.vatpe - p.vatpm
+    mu = p.ug * vatpg if h &gt;= p.hmax and vatpg &gt; 0.0 else 0.0
+    return vup, vlo, vatp, vp, pivac, vatpg, mu
+
+
+def rhs(y: tuple[float, float, float, float], glucose: float, p: Params):
+    f, a, pi, h = y
+    vup, vlo, vatp, vp, _, vatpg, mu = fluxes(y, glucose, p)
+    if vatpg &lt;= 0.0:
+        hdot = -p.ud * vatpg
+    elif h &lt; p.hmax:
+        hdot = p.ug * vatpg
+    else:
+        hdot = 0.0
+    return (vup - vlo - mu * f,
+            -2.0 * vup + 4.0 * vlo - vatp - mu * a,
+            -2.0 * vlo + vatp + vp - mu * pi,
+            hdot)
+
+
+def _add(x, k, dt):
+    return tuple(a + dt * b for a, b in zip(x, k))
+
+
+def step(y, dt, glucose, p: Params):
+    k1 = rhs(y, glucose, p)
+    k2 = rhs(_add(y, k1, dt / 2), glucose, p)
+    k3 = rhs(_add(y, k2, dt / 2), glucose, p)
+    k4 = rhs(_add(y, k3, dt), glucose, p)
+    z = tuple(x + dt * (a + 2*b + 2*c + d) / 6
+              for x, a, b, c, d in zip(y, k1, k2, k3, k4))
+    # H is a bounded health reserve; a trajectory reaching H=0 has died.
+    return z[:3] + (min(p.hmax, max(0.0, z[3])),)
+
+
+def integrate(y0, policy: Callable[[float, tuple, Params], float],
+              horizon=500.0, dt=0.005, p=Params()):
+    y = tuple(y0)
+    switch = None
+    first_dead = None
+    for n in range(int(horizon / dt)):
+        t = n * dt
+        glucose = policy(t, y, p)
+        if not isfinite(glucose) or glucose &lt; 0:
+            raise ValueError((t, glucose))
+        if first_dead is None and y[3] &lt;= 0.0:
+            first_dead = t
+        y = step(y, dt, glucose, p)
+        if not all(isfinite(v) for v in y):
+            raise ArithmeticError((t, y))
+    return y, first_dead
+
+
+def off_then_fixed(threshold=5.0, restart=0.1):
+    def policy(t, y, p):
+        return 0.0 if y[0] &gt; threshold else restart
+    return policy
+
+
+def timed_off_then_fixed(off_time=80.0, restart=0.1):
+    def policy(t, y, p):
+        return 0.0 if t &lt; off_time else restart
+    return policy
+
+
+def fixed(glucose):
+    return lambda t, y, p: glucose
+
+
+def main():
+    initial = [(f, 0.02, 0.02, h)
+               for f in (5.0, 20.0, 100.0, 200.0, 300.0)
+               for h in (0.1, 0.5, 1.0)]
+    for label, policy in (
+        (&quot;F-trigger 5 -&gt; 0.1&quot;, off_then_fixed()),
+        (&quot;80-min open-loop off -&gt; 0.1&quot;, timed_off_then_fixed()),
+    ):
+        print(&quot;POLICY&quot;, label)
+        for y0 in initial:
+            y, dead = integrate(y0, policy, horizon=500.0, dt=0.005)
+            print(&quot; &quot;, y0, &quot;dead_at&quot;, dead, &quot;final&quot;, tuple(round(x, 6) for x in y))
+
+    print(&quot;FIXED-GLUCOSE GRID; initial FBP 300, ATP=Pi=0.02, H=Hmax&quot;)
+    for g in (0.005, 0.01, 0.02, 0.03, 0.05, 0.1, 0.15, 0.2, 0.5, 2.0):
+        y, dead = integrate((300.0, 0.02, 0.02, 1.0), fixed(g),
+                            horizon=500.0, dt=0.005)
+        print(&quot; &quot;, g, &quot;dead_at&quot;, dead, &quot;final&quot;, tuple(round(x, 6) for x in y))
+
+    print(&quot;±10% GENOTYPE CORNERS; 80-min open-loop off -&gt; 0.1&quot;)
+    base = Params()
+    for vu_sign in (-1, 1):
+        for vl_sign in (-1, 1):
+            for k_sign in (-1, 1):
+                for kp_sign in (-1, 1):
+                    p = Params(vu=base.vu * (1 + 0.1 * vu_sign),
+                               vl=base.vl * (1 + 0.1 * vl_sign),
+                               katp=base.katp * (1 + 0.1 * k_sign),
+                               kp=base.kp * (1 + 0.1 * kp_sign))
+                    y, dead = integrate((300.0, 0.02, 0.02, 1.0),
+                                        timed_off_then_fixed(),
+                                        horizon=500.0, dt=0.005, p=p)
+                    print(&quot; &quot;, vu_sign, vl_sign, k_sign, kp_sign,
+                          &quot;dead_at&quot;, dead, &quot;final&quot;, tuple(round(x, 5) for x in y))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/e7411bb4a97876e6bed8f8ad1d63683c9d340737b9244d71bed195d04dae31ac.py">Exact original</a></p></html>

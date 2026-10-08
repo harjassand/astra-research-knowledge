@@ -1,0 +1,91 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/photonic_complexity/verify_weight_gadget.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/photonic_complexity/verify_weight_gadget.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact finite sanity check of the simple weighted-edge PM gadget.
+
+For each W in the configured range, construct the bit-indexed DAG, form its
+bipartite L/R expansion, and count perfect matchings after consuming each
+subset of the two logical endpoint ports. This checks small instances only;
+the general signature proof is in RESULT.txt and the leaf derivation.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+
+def gadget_signature(weight: int) -&gt; tuple[int, int, int, int]:
+    if weight &lt; 1:
+        raise ValueError(&quot;weight must be positive&quot;)
+    k = weight.bit_length()
+    names = [&quot;s&quot;, &quot;t&quot;] + [f&quot;x{i}&quot; for i in range(k)]
+    arcs: list[tuple[str, str]] = []
+    for i in range(k):
+        arcs.append((f&quot;x{i}&quot;, &quot;t&quot;))
+        arcs.extend((f&quot;x{i}&quot;, f&quot;x{j}&quot;) for j in range(i))
+    for i in range(k):
+        if (weight &gt;&gt; i) &amp; 1:
+            arcs.append((&quot;s&quot;, f&quot;x{i}&quot;))
+
+    left = [f&quot;L:{name}&quot; for name in names]
+    right = [f&quot;R:{name}&quot; for name in names]
+    adjacency: dict[str, set[str]] = {u: set() for u in left}
+    for name in names:
+        adjacency[f&quot;L:{name}&quot;].add(f&quot;R:{name}&quot;)
+    for u, v in arcs:
+        adjacency[f&quot;L:{u}&quot;].add(f&quot;R:{v}&quot;)
+
+    # External left endpoint consumes L_t; external right endpoint consumes R_s.
+    def count(consumed: tuple[bool, bool]) -&gt; int:
+        left_remaining = left.copy()
+        right_remaining = right.copy()
+        if consumed[0]:
+            left_remaining.remove(&quot;L:t&quot;)
+        if consumed[1]:
+            right_remaining.remove(&quot;R:s&quot;)
+        if len(left_remaining) != len(right_remaining):
+            return 0
+        right_set = set(right_remaining)
+
+        def rec(index: int, available: set[str]) -&gt; int:
+            if index == len(left_remaining):
+                return 1
+            u = left_remaining[index]
+            return sum(
+                rec(index + 1, available - {v})
+                for v in adjacency[u] &amp; available
+            )
+
+        return rec(0, right_set)
+
+    return (
+        count((False, False)),
+        count((True, True)),
+        count((True, False)),
+        count((False, True)),
+    )
+
+
+def main() -&gt; None:
+    rows = []
+    for weight in range(1, 21):
+        observed = gadget_signature(weight)
+        expected = (1, weight, 0, 0)
+        rows.append({&quot;weight&quot;: weight, &quot;observed&quot;: list(observed), &quot;expected&quot;: list(expected)})
+        if observed != expected:
+            raise AssertionError(f&quot;weight {weight}: {observed} != {expected}&quot;)
+    result = {
+        &quot;check&quot;: &quot;finite exact matching enumeration&quot;,
+        &quot;weights&quot;: [1, 20],
+        &quot;all_signatures_match&quot;: True,
+        &quot;rows&quot;: rows,
+        &quot;status&quot;: &quot;FINITE-EVIDENCE&quot;,
+        &quot;limitation&quot;: &quot;This is a small-instance sanity check, not proof validation or OA113 validation.&quot;,
+    }
+    out = Path(__file__).with_name(&quot;weight_gadget_check.json&quot;)
+    out.write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+    print(json.dumps({&quot;all_signatures_match&quot;: True, &quot;instances&quot;: len(rows), &quot;output&quot;: out.name}))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/81f9d46dfdb609d9046b888892649f85a122dd3b734359bd3c83698245794311.py">Exact original</a></p></html>

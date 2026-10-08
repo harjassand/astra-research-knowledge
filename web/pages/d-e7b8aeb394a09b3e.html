@@ -1,0 +1,115 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c7_cancer_evolution_control/clustered_resistance_check.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c7_cancer_evolution_control/clustered_resistance_check.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact one-type branching counterexample for clustered resistance events.
+
+All biology-specific probabilities below are explicitly hypothetical. This is
+an executable identifiability counterexample, not a fit to a cancer dataset.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+import math
+
+
+@dataclass(frozen=True)
+class BranchingInputs:
+    divide_rate: float
+    death_rate: float
+    resistance_event_per_division: float
+    establishment_probability: float
+    founders: int
+
+
+def one_founder_escape_probability(x: BranchingInputs) -&gt; float:
+    &quot;&quot;&quot;Return P(eventual established resistance) from one persister founder.
+
+    A persister dies at rate d or divides at rate b. At each division, with
+    probability u it produces one resistant daughter and one persister
+    daughter; the resistant daughter establishes with probability q. Otherwise
+    it produces two persister daughters. A failed resistant daughter leaves
+    the persister daughter unaffected. Independent branching is assumed.
+
+    The no-escape probability p solves
+      p = [d + b ((1-u) p^2 + u (1-q) p)] / (b+d).
+    The returned value is the corresponding root y=1-p in [0,1].
+    &quot;&quot;&quot;
+    b, d, u, q = (
+        x.divide_rate,
+        x.death_rate,
+        x.resistance_event_per_division,
+        x.establishment_probability,
+    )
+    if b &lt; 0 or d &lt;= 0 or not (0 &lt;= u &lt;= 1) or not (0 &lt;= q &lt;= 1):
+        raise ValueError(&quot;rates must be nonnegative, d positive, and u,q in [0,1]&quot;)
+    if b + d == 0:
+        raise ValueError(&quot;at least one of division or death rates must be positive&quot;)
+    if b == 0 or u == 0 or q == 0:
+        return 0.0
+
+    # Substituting y=1-p gives a y^2 + A y - C = 0, with the positive root
+    # evaluated in a numerically stable form.
+    a = b * (1.0 - u)
+    A = d - b + b * u * (1.0 + q)
+    C = b * u * q
+    if a == 0.0:
+        # u=1: the equation is linear, A y = C; A is positive for d&gt;0.
+        return min(1.0, max(0.0, C / A))
+    disc = A * A + 4.0 * a * C
+    y = 2.0 * C / (A + math.sqrt(disc))
+    return min(1.0, max(0.0, y))
+
+
+def population_escape_probability(x: BranchingInputs) -&gt; float:
+    &quot;&quot;&quot;Risk of at least one established resistant lineage from x.founders.&quot;&quot;&quot;
+    if x.founders &lt; 0:
+        raise ValueError(&quot;founders must be a nonnegative integer&quot;)
+    y = one_founder_escape_probability(x)
+    return -math.expm1(x.founders * math.log1p(-y)) if y &lt; 1 else 1.0
+
+
+def divisions_for_95pct_detection(u: float, q: float) -&gt; int:
+    &quot;&quot;&quot;Fixed-exposure count for &gt;=95% chance of &gt;=1 established event.
+
+    This is a sampling lower bound under independent Bernoulli event trials;
+    it is separate from the random-exposure branching calculation above.
+    &quot;&quot;&quot;
+    if not (0 &lt; u &lt;= 1) or not (0 &lt; q &lt;= 1):
+        raise ValueError(&quot;u and q must be in (0,1]&quot;)
+    success = u * q
+    return math.ceil(math.log(0.05) / math.log1p(-success))
+
+
+def main() -&gt; None:
+    burst_rate = 0.20
+    per_locus_marginal = 0.01
+    q = 0.80
+    founders = 1000
+    common = dict(divide_rate=0.10, death_rate=0.20, establishment_probability=q, founders=founders)
+
+    # Both event laws have the same per-locus marginal (1%) and the same
+    # expected total single-nucleotide burden (2%) conditional on a burst.
+    pair_prob_clustered = per_locus_marginal
+    pair_prob_independent = per_locus_marginal**2
+    rows = [
+        (&quot;clustered&quot;, burst_rate * pair_prob_clustered),
+        (&quot;independent&quot;, burst_rate * pair_prob_independent),
+    ]
+
+    risks: dict[str, float] = {}
+    for name, u in rows:
+        x = BranchingInputs(resistance_event_per_division=u, **common)
+        one = one_founder_escape_probability(x)
+        risk = population_escape_probability(x)
+        risks[name] = risk
+        print(
+            f&quot;{name}: u={u:.8g}, one_founder_risk={one:.12g}, &quot;
+            f&quot;risk_{founders}_founders={risk:.12g}, &quot;
+            f&quot;divisions_for_95pct_established_event={divisions_for_95pct_detection(u, q)}&quot;
+        )
+
+    print(f&quot;risk_ratio_clustered_over_independent={risks[&#x27;clustered&#x27;] / risks[&#x27;independent&#x27;]:.8g}&quot;)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/acd22e3712498c0a7b39e7265a531613617bf1359ba9187281ccaba58be5df2b.py">Exact original</a></p></html>

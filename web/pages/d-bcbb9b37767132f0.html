@@ -1,0 +1,155 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c4_rational_hostile/formalization/project/N33Affine/StageEnvelopes.lean</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c4_rational_hostile/formalization/project/N33Affine/StageEnvelopes.lean</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>import Mathlib.Analysis.SpecialFunctions.Pow.Real
+import Mathlib.Analysis.SpecialFunctions.Pow.Continuity
+import N33Affine.AffineCore
+import N33Affine.SliceFamily
+import N33Affine.B2Mechanism
+
+noncomputable section
+
+open Filter Topology Set
+
+namespace N33Affine
+
+def FamilySlopesGe {m : ℕ} {a b : ℝ} (F : BoxFamily m a b) (t : ℝ) : Prop :=
+  ∀ j i, t ≤ (F.family.label j).slope i
+
+def FamilyHasFlatBaseline {m : ℕ} {a b t : ℝ} (F : BoxFamily m a b) : Prop :=
+  ∃ j, F.family.label j = baselineLabel t
+
+lemma stageFamily_slopes_ge {m k : ℕ} {a b t β : ℝ}
+    {E : (Fin m → ℝ) → ℝ} (S : SliceSystem m k t β b E)
+    (hkm : k ≤ m) (hat : a ≤ t) (htb : t ≤ b) (htβ : t ≤ β)
+    (j : (stageFamily S hkm hat htb htβ).family.Index) (i : Fin m) :
+    t ≤ ((stageFamily S hkm hat htb htβ).family.label j).slope i := by
+  rcases j with ⟨e, j⟩
+  change t ≤ (liftLabel t β e ((S.input e).family.label j)).slope i
+  by_cases hi : ∃ u, e u = i
+  · obtain ⟨u, rfl⟩ := hi
+    rw [lifted_slope_on]
+    exact le_trans htβ ((S.input e).slope_box j u).1
+  · have hoff : (liftLabel t β e ((S.input e).family.label j)).slope i = t :=
+      lifted_slope_off t β e ((S.input e).family.label j) i (by
+        intro u hui
+        exact hi ⟨u, hui⟩)
+    rw [hoff]
+
+lemma baseBoxFamily_slopes_ge {m : ℕ} {a b t : ℝ}
+    (hat : a ≤ t) (htb : t ≤ b) :
+    FamilySlopesGe (baseBoxFamily (m := m) hat htb) t := by
+  intro j i
+  rfl
+
+lemma baseBoxFamily_has_baseline {m : ℕ} {a b t : ℝ}
+    (hat : a ≤ t) (htb : t ≤ b) :
+    FamilyHasFlatBaseline (t := t) (baseBoxFamily (m := m) hat htb) := by
+  classical
+  refine ⟨PUnit.unit, ?_⟩
+  rfl
+
+lemma appendBoxFamily_slopes_ge {m : ℕ} {a b t : ℝ}
+    (F G : BoxFamily m a b)
+    (hF : FamilySlopesGe F t) (hG : FamilySlopesGe G t) :
+    FamilySlopesGe (appendBoxFamily F G) t := by
+  intro j i
+  cases j with
+  | inl j =&gt; exact hF j i
+  | inr j =&gt; exact hG j i
+
+lemma appendBoxFamily_has_baseline_left {m : ℕ} {a b t : ℝ}
+    (F G : BoxFamily m a b) (hF : FamilyHasFlatBaseline (t := t) F) :
+    FamilyHasFlatBaseline (t := t) (appendBoxFamily F G) := by
+  rcases hF with ⟨j, hj⟩
+  refine ⟨Sum.inl j, ?_⟩
+  change F.family.label j = baselineLabel t
+  exact hj
+
+lemma stageFamily_littleO_at_gamma {m k : ℕ} {a b t β γ : ℝ}
+    {E : (Fin m → ℝ) → ℝ} (S : SliceSystem m k t β b E)
+    (hkm : k ≤ m) (hat : a ≤ t) (htb : t ≤ b)
+    (htγ : t &lt; γ) (hγβ : γ &lt; β) :
+    FamilyLittleOAt (stageFamily S hkm hat htb (le_of_lt (lt_trans htγ hγβ))) γ := by
+  intro x
+  rcases x with ⟨e, j⟩
+  exact littleO_sub
+    (littleO_lower_exponent ((S.input e).littleO j) hγβ)
+    (littleO_rpow_of_lt hγβ)
+
+/-- A complete history preserves the flat baseline and slope floor. At the
+same time, its finitely many type thresholds yield a strict common power gap
+above `t` for every offset. -/
+theorem StageHistory.exists_terminal_with_envelopes
+    {m : ℕ} {a b t : ℝ} {E : (Fin m → ℝ) → ℝ}
+    {hat : a ≤ t} {htb : t ≤ b} {Oracle : SliceOracle m a b t E}
+    {k : ℕ} {upper : ℝ} {F : BoxFamily m a b}
+    (H : StageHistory m a b t E hat htb Oracle k upper F)
+    (hFloor : FamilySlopesGe F t)
+    (hBase : FamilyHasFlatBaseline (t := t) F)
+    (hSmall : ∃ γ, t &lt; γ ∧ FamilyLittleOAt F γ) :
+    ∃ upperFinal Ffinal γ,
+      StageHistory m a b t E hat htb Oracle m upperFinal Ffinal ∧
+      FamilySlopesGe Ffinal t ∧ FamilyHasFlatBaseline (t := t) Ffinal ∧
+      t &lt; γ ∧ FamilyLittleOAt Ffinal γ := by
+  induction H with
+  | @done upper F =&gt;
+      obtain ⟨γ, htγ, hγ⟩ := hSmall
+      exact ⟨upper, F, γ, StageHistory.done, hFloor, hBase, htγ, hγ⟩
+  | @step k upper F hkpos hkm hupper hupperB β hβt hβupper hmargin tail ih =&gt;
+      let S := Oracle.provide k hkpos hkm β hβt
+        (lt_of_lt_of_le hβupper hupperB)
+      let G := stageFamily S (Nat.le_of_lt hkm) hat htb (le_of_lt hβt)
+      have hGFloor : FamilySlopesGe G t := by
+        intro j i
+        exact stageFamily_slopes_ge S (Nat.le_of_lt hkm) hat htb
+          (le_of_lt hβt) j i
+      have hAppFloor : FamilySlopesGe (appendBoxFamily F G) t :=
+        appendBoxFamily_slopes_ge F G hFloor hGFloor
+      have hAppBase : FamilyHasFlatBaseline (t := t) (appendBoxFamily F G) :=
+        appendBoxFamily_has_baseline_left F G hBase
+      obtain ⟨γold, htγold, hOldSmall⟩ := hSmall
+      let γnew := (t + min γold β) / 2
+      have htγnew : t &lt; γnew := by
+        have hmin : t &lt; min γold β := lt_min_iff.mpr ⟨htγold, hβt⟩
+        dsimp [γnew]
+        linarith
+      have hγnewOld : γnew &lt; γold := by
+        have hmin : min γold β ≤ γold := min_le_left _ _
+        dsimp [γnew]
+        linarith
+      have hγnewβ : γnew &lt; β := by
+        have hmin : min γold β ≤ β := min_le_right _ _
+        dsimp [γnew]
+        linarith
+      have hOldSmall&#x27; : FamilyLittleOAt F γnew := by
+        intro j
+        exact littleO_lower_exponent (hOldSmall j) hγnewOld
+      have hGSmall : FamilyLittleOAt G γnew := by
+        exact stageFamily_littleO_at_gamma S (Nat.le_of_lt hkm)
+          hat htb htγnew hγnewβ
+      have hAppSmall : FamilyLittleOAt (appendBoxFamily F G) γnew :=
+        append_family_littleO_at F G hOldSmall&#x27; hGSmall
+      obtain ⟨upperFinal, Ffinal, γFinal, hFinal, hFinalFloor, hFinalBase,
+        htγFinal, hFinalSmall⟩ := ih hAppFloor hAppBase ⟨γnew, htγnew, hAppSmall⟩
+      exact ⟨upperFinal, Ffinal, γFinal, hFinal, hFinalFloor, hFinalBase,
+        htγFinal, hFinalSmall⟩
+
+theorem exists_complete_stage_family_with_envelopes
+    {m : ℕ} {a b t : ℝ} {E : (Fin m → ℝ) → ℝ}
+    (hm : 0 &lt; m) (hat : a ≤ t) (htb : t ≤ b) (htb_strict : t &lt; b)
+    (Oracle : SliceOracle m a b t E)
+    (hE : ∀ r, InCube a b r → 0 &lt; E r) :
+    ∃ (upperFinal : ℝ) (F : BoxFamily m a b) (γ : ℝ),
+      StageHistory m a b t E hat htb Oracle m upperFinal F ∧
+      FamilySlopesGe F t ∧ FamilyHasFlatBaseline (t := t) F ∧
+      t &lt; γ ∧ FamilyLittleOAt F γ := by
+  have H := exists_initial_stage_history hm hat htb htb_strict Oracle hE
+  have hbaseSmall : FamilyLittleOAt (baseBoxFamily (m := m) hat htb) (t + 1) := by
+    intro j
+    exact littleO_zero_bump (t + 1)
+  have hBase := baseBoxFamily_has_baseline (m := m) hat htb
+  have hFloor := baseBoxFamily_slopes_ge (m := m) hat htb
+  obtain ⟨u, F, γ, hFinal, hFloorF, hFlatF, htγ, hSmall⟩ :=
+    H.exists_terminal_with_envelopes hFloor hBase ⟨t + 1, by linarith, hbaseSmall⟩
+  exact ⟨u, F, γ, hFinal, hFloorF, hFlatF, htγ, hSmall⟩
+
+end N33Affine
+</pre><p><a href="../assets/92535875e7e067e9efc8f827cff2ebc227cc18802b6ba3c40c31c854569d0eb9.lean">Exact original</a></p></html>

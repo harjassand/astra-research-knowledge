@@ -1,0 +1,124 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/continuum_physics/attractive_archive_audit/check_k_comparison.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/continuum_physics/attractive_archive_audit/check_k_comparison.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Finite exact audit of K_m^* dGamma(h_n) K_m &lt;= Hcrit,m.
+
+Uses rational arithmetic and a symmetric-Schur test for positive
+semidefiniteness. This is finite evidence, not a proof for arbitrary L.
+&quot;&quot;&quot;
+
+from fractions import Fraction
+from itertools import combinations, product
+from math import factorial
+
+
+def psd_schur(a):
+    &quot;&quot;&quot;Exact PSD test for a rational symmetric matrix.&quot;&quot;&quot;
+    a = [[Fraction(x) for x in row] for row in a]
+    n = len(a)
+    while n:
+        neg = next((i for i in range(n) if a[i][i] &lt; 0), None)
+        if neg is not None:
+            return False
+        pivot = next((i for i in range(n) if a[i][i] &gt; 0), None)
+        if pivot is None:
+            return all(a[i][j] == 0 for i in range(n) for j in range(n))
+        if pivot:
+            a[0], a[pivot] = a[pivot], a[0]
+            for row in a:
+                row[0], row[pivot] = row[pivot], row[0]
+        p = a[0][0]
+        b = [[a[i][j] - a[i][0] * a[0][j] / p
+              for j in range(1, n)] for i in range(1, n)]
+        a = b
+        n -= 1
+    return True
+
+
+def one_body(n):
+    # h_n/(2J) = 2 I - adjacency(path_n), including n=1.
+    h = [[Fraction(2 if i == j else 0) for j in range(n)]
+         for i in range(n)]
+    for i in range(n - 1):
+        h[i][i + 1] = h[i + 1][i] = Fraction(-1)
+    return h
+
+
+def kronecker_sum_path(n, m):
+    cube = list(product(range(n), repeat=m))
+    ix = {z: i for i, z in enumerate(cube)}
+    h1 = one_body(n)
+    h = [[Fraction(0) for _ in cube] for _ in cube]
+    for z, iz in ix.items():
+        h[iz][iz] = sum(h1[z[k]][z[k]] for k in range(m))
+        for k in range(m):
+            for znew in (z[:k] + (z[k] - 1,) + z[k + 1:],
+                         z[:k] + (z[k] + 1,) + z[k + 1:]):
+                if znew in ix:
+                    h[iz][ix[znew]] += h1[z[k]][znew[k]]
+    return cube, h
+
+
+def physical_hcrit(L, m):
+    s = L - 1
+    configs = list(combinations(range(1, s + 1), m))
+    ix = {x: i for i, x in enumerate(configs)}
+    h = [[Fraction(0) for _ in configs] for _ in configs]
+    for x, i in ix.items():
+        neigh = set()
+        occupied = set(x)
+        for k, v in enumerate(x):
+            for w in (v - 1, v + 1):
+                if 1 &lt;= w &lt;= s and w not in occupied:
+                    y = list(x)
+                    y[k] = w
+                    neigh.add(tuple(sorted(y)))
+        h[i][i] = Fraction(len(neigh) + int(1 in occupied) + int(s in occupied))
+        for y in neigh:
+            if i &lt; ix[y]:
+                h[i][ix[y]] = h[ix[y]][i] = Fraction(-1)
+    return configs, h
+
+
+def check_sector(L, m):
+    n = L - m
+    configs, hcrit = physical_hcrit(L, m)
+    cube, hfree = kronecker_sum_path(n, m)
+    y_to_col = {tuple(xi - i for i, xi in enumerate(x)):
+                j for j, x in enumerate(configs)}
+    b = [[0 for _ in configs] for _ in cube]
+    for row, z in enumerate(cube):
+        y = tuple(sorted(zi + 1 for zi in z))
+        b[row][y_to_col[y]] = 1
+    denom = factorial(m)
+    khk = [[Fraction(0) for _ in configs] for _ in configs]
+    # K has entries B/sqrt(m!), so K^*H K = B^T H B/m!.
+    for u in range(len(cube)):
+        for v in range(len(cube)):
+            hv = hfree[u][v]
+            if hv:
+                for i in range(len(configs)):
+                    if b[u][i]:
+                        for j in range(len(configs)):
+                            if b[v][j]:
+                                khk[i][j] += hv * b[u][i] * b[v][j] / denom
+    diff = [[hcrit[i][j] - khk[i][j]
+             for j in range(len(configs))] for i in range(len(configs))]
+    return psd_schur(diff), len(configs)
+
+
+def main():
+    checked = 0
+    largest_sector = 0
+    for L in range(2, 9):
+        for m in range(1, L):
+            ok, dim = check_sector(L, m)
+            if not ok:
+                raise SystemExit(f&quot;FAIL: L={L}, m={m}, dim={dim}&quot;)
+            checked += 1
+            largest_sector = max(largest_sector, dim)
+    print({&quot;result&quot;: &quot;PASS&quot;, &quot;exact_sectors&quot;: checked,
+           &quot;L_range&quot;: [2, 8], &quot;largest_sector_dimension&quot;: largest_sector})
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/25dd8ef6bb67a8798268db62252d7ce3057afbdce8493a3df543f0170346674a.py">Exact original</a></p></html>

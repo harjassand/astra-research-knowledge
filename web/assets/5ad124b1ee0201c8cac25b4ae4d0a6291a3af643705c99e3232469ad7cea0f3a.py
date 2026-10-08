@@ -1,0 +1,85 @@
+#!/usr/bin/env python3
+"""Exact SymPy replay for the two multiplicity-one boundary formulas.
+
+Input is the literal CPV Eq.18 source diagonal formula for 1x1 blocks and
+the workspace source-to-L_S map. This is algebra replay, not external
+formal verification.
+"""
+import sympy as sp
+
+
+def source_diagonal(xi, lam, xib):
+    """Return the scalar CPV X,Y diagonal entries at source index j=1."""
+    xi = list(map(sp.sympify, xi))
+    x = [z - 1 - xib + sp.Rational(1, 2) for z in xi]
+    E = {k: sp.expand(sum(z**k for z in x)) for k in (1, 2, 3, 4)}
+    X = (-(sp.Rational(7, 2)*E[1]**3 - 18*E[1]*E[2] + 18*E[3])/108
+         - E[1]*(lam**2 + 2)/24)
+    Y = (sp.Rational(5, 2)*E[1]**4 + 32*E[1]*E[3]
+         + 6*(E[2]**2 - 3*E[1]**2*E[2] - 4*E[4])
+         + 6*E[2]*(lam**2 + 2) - 3*E[1]**2*(lam**2 - 2)
+         - sp.Rational(3, 2)*lam**4 + 6*lam**2 - 36)/288
+    return sp.factor(X), sp.factor(Y)
+
+
+def carrier(a, b):
+    N = a + b
+    C2 = (a*a + a*b + b*b + 3*a + 3*b)/3
+    C3 = (a-b)*(2*a+b+3)*(a+2*b+3)/18
+    alpha = sp.factor(C3/C2)
+    return N, C2, C3, alpha
+
+
+def mapped_K(a, b, p, q, X, Y):
+    N, C2, C3, alpha = carrier(a, b)
+    c = (p*p + p*q + q*q + 3*p + 3*q)/3
+    scalar = (-c*c/12 + (C2/3 + sp.Rational(1, 4) + alpha**2)*c
+              - sp.Rational(4, 3)*alpha*C3)
+    return sp.factor((-Y - 2*alpha*X + scalar)/N**2)
+
+
+# Family 1: output (0,3r), 0<=r<=min(b,a/3).
+a, b, r = sp.symbols("a b r", integer=True, nonnegative=True)
+N = a+b
+xi = [N+1-2*r, b+1, b+1-r, b-2*r, b-r, sp.Integer(0)]
+lam = N+2*r+3
+X, Y = source_diagonal(xi, lam, b-r)
+_, C2, C3, alpha = carrier(a, b)
+assert sp.factor(X + sp.Rational(2, 3)*C3) == 0
+assert sp.factor(Y - r*(r+1)*(-C2 + r*(r+1)/4-sp.Rational(1, 2))) == 0
+K = mapped_K(a, b, 0, 3*r, X, Y)
+target = r*(r+1)*(2*C2 + sp.Rational(5, 4) + 3*alpha**2-r*(r+1))/N**2
+assert sp.factor(K-target) == 0
+
+# Family 2: output (p,p+3b), with a=3b+2p+t, t>=0.
+p, t = sp.symbols("p t", integer=True, nonnegative=True)
+a2 = 3*b + 2*p + t
+N2 = a2+b
+xi2 = [a2-b+1-p, b+1, sp.Integer(1), -b-p, -p, sp.Integer(0)]
+lam2 = a2+3*b+p+3
+X2, Y2 = source_diagonal(xi2, lam2, sp.Integer(0))
+K2 = mapped_K(a2, b, p, p+3*b, X2, Y2)
+R = a2*a2 + a2*b + b*b + 3*N2
+P = (
+    568*b**5 + 1300*b**4*p + 665*b**4*t + 1519*b**4
+    + 1112*b**3*p**2 + 1143*b**3*p*t + 2981*b**3*p
+    + 291*b**3*t**2 + 1496*b**3*t + 1365*b**3
+    + 422*b**2*p**3 + 653*b**2*p**2*t + 2105*b**2*p**2
+    + 333*b**2*p*t**2 + 2125*b**2*p*t + 2190*b**2*p
+    + 56*b**2*t**3 + 537*b**2*t**2 + 1065*b**2*t + 414*b**2
+    + 60*b*p**4 + 124*b*p**3*t + 626*b*p**3
+    + 95*b*p**2*t**2 + 949*b*p**2*t + 1134*b*p**2
+    + 32*b*p*t**3 + 478*b*p*t**2 + 1122*b*p*t + 504*b*p
+    + 4*b*t**4 + 80*b*t**3 + 282*b*t**2 + 234*b*t
+    + 64*p**4 + 128*p**3*t + 192*p**3
+    + 96*p**2*t**2 + 288*p**2*t + 144*p**2
+    + 32*p*t**3 + 144*p*t**2 + 144*p*t
+    + 4*t**4 + 24*t**3 + 36*t**2
+)
+target2 = b*(a2+2)*(N2+1)*P/(4*N2**2*R**2)
+assert sp.factor(K2-target2) == 0
+assert all(c >= 0 for c in
+           sp.Poly(sp.expand(P-4*b*(b+p+t)**4), b, p, t).coeffs())
+
+print("PASS: exact CPV-to-L_S singleton formulas and coefficientwise bound")
+print("Scope: the two multiplicity-one boundary families only")

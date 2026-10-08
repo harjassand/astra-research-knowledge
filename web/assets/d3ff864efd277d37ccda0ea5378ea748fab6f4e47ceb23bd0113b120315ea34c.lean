@@ -1,0 +1,19 @@
+import N33Affine.AffineInduction
+import N33Affine.StageLocalCompose
+import N33Affine.SliceFamily
+import N33Affine.B2GluePlacement
+import N33FiniteGlue
+import BadNeighborhood
+set_option pp.all true
+#print N33Affine.SliceInput.approx
+#print N33Affine.exists_complete_stage_family_with_certificate
+#print N33Affine.initial_stage_archive_local_approximation
+#print N33Affine.exists_local_window_of_lower_dimensions
+#print N33Affine.Glue.active_label_inherits_local_guarantee
+#print N33Affine.GluePlacement.active_minimum_in_slab
+#check N33Affine.SliceInput.approx
+#check N33Affine.exists_complete_stage_family_with_certificate
+#check N33Affine.initial_stage_archive_local_approximation
+#check N33Affine.exists_local_window_of_lower_dimensions
+#check N33Affine.Glue.active_label_inherits_local_guarantee
+#check N33Affine.GluePlacement.active_minimum_in_slab

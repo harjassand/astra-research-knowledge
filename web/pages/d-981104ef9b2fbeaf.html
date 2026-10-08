@@ -1,0 +1,63 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/acquisition_learning/leaves/streaming_representation_acquisition.txt</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/acquisition_learning/leaves/streaming_representation_acquisition.txt</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>STREAMING REPRESENTATION ACQUISITION: AN OPTIMAL COMPACT PREDICTOR, AND THE RETENTION BOUNDARY
+
+Status: an exact one-pass construction, an information lower bound, and a no-separation theorem against the best stateful baseline. This proves a real compression relative to a literal stream log and a tight B-bit requirement for the task. It does not prove that a representation-acquiring learner beats a competent baseline with the same memory and computation budget: the best baseline can perform the same stream update and keep the same state.
+
+1. Interface and task sequence
+
+Fix d &gt;= 2, a repetition count r &gt;= 2, and an unknown parameter theta in {0,1}^d. A legal setup stream presents, in public order, r copies of each coordinate observation:
+
+  (e_1, theta_1), ..., (e_1, theta_1), (e_2, theta_2), ..., (e_d, theta_d),
+
+with each pair (e_i, theta_i) repeated r times. The learner sees each observation once, in sequence, and has no random-access replay of the stream. The source contract is that all r responses for a coordinate equal its fixed theta_i. There are q_setup = r d one-bit oracle responses; both candidate policies receive the same ordered observations. The coordinate e_i is part of the public schedule, so its identity need not be stored. The repeated copies allow an online consistency check; they do not establish that a source outside the stated contract will remain stable on future tasks.
+
+After setup, an arbitrary sequence of tasks arrives. Task t supplies x_t in {0,1}^d and asks for
+
+  f_theta(x_t) = sum_{i=1}^d theta_i x_{t,i} mod 2.
+
+The task inputs are supplied online and may be chosen adversarially after setup. The required predictor is exact for every theta and every x_t. This makes the construction predictive and reusable: one retained state answers any number T of later tasks.
+
+2. One-pass acquisition algorithm and resource bound
+
+Maintain a d-bit vector z, a log(d)-bit stream counter, and one comparison/parity bit. On the first observation for coordinate i, write its label into z_i. On each of the other r-1 observations for i, compare the label with z_i and flag any violation of the source contract. The representation is z = theta. For each task x_t, scan coordinates and update one parity accumulator by z_i AND x_{t,i}; output the accumulator.
+
+The algorithm uses at most B = d + ceil(log_2 d) + 2 live bits. With a bit-operation model that charges counter updates, setup work is O(r d log d) and each task costs O(d log d); total work for T tasks is O((r d + T d) log d). It makes q_setup = r d response queries and q_validation = 0 additional oracle calls under the exact source contract; repeated labels are checked during the already charged stream pass. If an additional statistical validation guarantee is demanded for an unknown or drifting source, that is a different interface and its query/work cost must be added. The predictor&#x27;s task error and setup failure are both zero on the stated contract.
+
+The literal log contains r d response bits (and may contain d-bit query vectors if the interface serializes them). The acquired state keeps d coefficient bits plus O(log d) control bits, so it reduces response-log storage by a factor r. The public schedule is supplied to both methods; it is not a hidden advantage. The useful point is that repeated raw events can be discarded after their consistency checks.
+
+3. Tight lower bound from INDEX
+
+The d coefficient bits cannot be compressed below d bits for exact future tasks. More generally, for constant error, every streaming algorithm for this task family needs Omega(d) persistent bits.
+
+Theorem. Under the interface in Section 1, there is a one-pass exact predictor using B = d + ceil(log_2 d) + 2 bits, q_setup = rd, q_validation = 0, O(rd log d) setup bit operations, and O(d log d) bit operations per future task. Conversely, deterministic exact prediction requires B &gt;= d; worst-case randomized prediction with error at most 1/3 requires B = Omega(d). The O(log d) overhead is for control state, so the representation&#x27;s persistent predictive content is optimal up to this overhead.
+
+Deterministic exact proof. Suppose two distinct parameters theta and theta&#x27; lead to the same post-setup state. Choose an index i with theta_i != theta&#x27;_i, and let the next task be x=e_i. Starting from the same state and receiving the same task, the algorithm must return the same bit on both histories, so it is wrong on at least one. Therefore all 2^d parameters must lead to distinct states, requiring at least 2^d states and B &gt;= d bits.
+
+Randomized bounded-error proof by communication reduction. Alice holds theta. She feeds the setup observations for theta through the alleged streaming algorithm and sends its post-setup state to Bob. Bob holds an index i in [d], supplies the task x=e_i, and reads the answer, which must be theta_i. This is a one-way randomized protocol for INDEX_d whose message length is the streaming memory B. The one-way randomized communication lower bound for INDEX is Omega(d), even with public randomness; hence B = Omega(d) for worst-case success probability at least 2/3. This is the standard streaming-to-communication reduction: the state after Alice&#x27;s prefix is precisely the message Bob needs to continue. See Kremer, Nisan, and Ron, “On Randomized One-Round Communication Complexity,” STOC 1995 / Computational Complexity 8 (1999), https://doi.org/10.1007/s000370050018.
+
+The lower bound applies to every algorithm with this interface, not only to methods labeled raw-retention or refit. The d-bit predictor is therefore optimal up to its O(log d) control overhead. No raw-history method can answer all future coordinate tasks with o(d) persistent bits.
+
+4. Matched best baseline and the no-separation theorem
+
+Define the competent baseline class to contain every one-pass state machine with the same input stream, task stream, B-bit state limit, and operation budget. Then no member of this class can be strictly dominated by “representation acquisition” merely because its state is called a representation. In this instance, the best baseline runs the exact update above: it stores the first response for each coordinate, checks the repeated responses, discards duplicates, and keeps z. It has the same B, setup work, query count, and task work as the proposed acquired predictor. Its predictions are identical for all theta and all task sequences. Thus the best baseline ties the learner exactly; a literal log is larger, but that is not the best baseline under B bits.
+
+General boundary theorem. Let A be any online learner that, from legal observations, updates an internal state s with at most B bits and at most C operations per stream item and later answers tasks from s. If a baseline has the same access rights, memory cap, and computation budget, and its policy class permits arbitrary state updates and caching, then the baseline can implement A&#x27;s same transition and output functions. It uses the same B bits and C operations, has the same answers and error, and incurs the same resource trace. Therefore the best baseline over this class has cost no greater than A. The proof is direct simulation: copy A&#x27;s transition function on each legal observation and its task-answer function on each task. A strict advantage is impossible unless the baseline is restricted, receives less information, has a different cost, or is subject to a different resource budget.
+
+What a raw-retention lower bound can say. A baseline required to preserve every response bit-for-bit needs at least r d bits for this stream, so it cannot obey B = d + O(log d) when r grows. A baseline required to postpone all processing until a later task also loses the opportunity to discard repeats during the pass. These are lower bounds for a literal raw logger or a no-preprocessing refitter. They do not lower-bound the best retaining baseline, which can compute z while retaining the stream and is exactly the acquired learner. Calling the literal logger “best” would assume away the operation under study.
+
+5. Resource and claim ledger
+
+- Equal information: both policies see the same ordered setup responses, the same task inputs, and the same future-query interface.
+- Acquisition: r d setup queries and O(r d log d) bit operations, including online duplicate checks and counter updates.
+- Representation: d coefficient bits plus O(log d) control; exact prediction for all tasks under the source promise.
+- Reuse: T tasks cost O(T d log d) bit operations and no new source queries.
+- Lower bound: Omega(d) persistent bits for any exact predictor, and Omega(d) for worst-case constant error by INDEX.
+- Raw-retention result: literal retention exceeds B for r d &gt; B; online deduplication fits and matches the representation exactly.
+- Validation limit: repeated-label consistency checks validate only the stated finite stream promise. They do not certify an arbitrary unknown function or future distribution.
+- Conclusion: compact acquisition beats literal raw storage, but does not beat an unrestricted, equally informed, B-bit baseline allowed to summarize and cache. This is a clean boundary result, not a positive acquisition-separation theorem.
+
+6. Primary literature context
+
+The lower-bound method is the standard one-way communication reduction for streaming states. Kremer, Nisan, and Ron establish the relevant randomized one-way communication result, including the Omega(d) lower bound for INDEX_d used here: https://doi.org/10.1007/s000370050018. The reduction in Section 3 is written out so the application to this exact prediction task is explicit. A related primary result by Ablayev develops one-way probabilistic communication lower bounds and their application to space complexity: ICALP 1993, pp. 241–252, https://doi.org/10.1007/3-540-56939-1_76.
+
+Alon, Matias, and Szegedy&#x27;s “The Space Complexity of Approximating the Frequency Moments” is a primary example of deriving streaming-space limits for compact summaries; it studies different functions and is context, not a theorem for this predictor: STOC 1996, pp. 20–29, https://doi.org/10.1145/237814.237823.
+</pre><p><a href="../assets/48596151036d73327661e0fd9cfdcee2c26a23b60eb07fe1c160d6bb74cf5122.txt">Exact original</a></p></html>

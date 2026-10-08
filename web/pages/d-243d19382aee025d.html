@@ -1,0 +1,100 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/learning_acquisition/children/teacher_free_hmm/CYCLE2_REPORT.md</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/learning_acquisition/children/teacher_free_hmm/CYCLE2_REPORT.md</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre># Cycle 2: acquiring a recurrent predictive state from persistent readouts
+
+**Result.** For a concrete O(d)-state process with a hidden parity bit that persists and is read out repeatedly with independent noise, passive trajectories acquire a two-coordinate predictive feature map. The learner first recovers the unknown parity mask from repeated readouts and a GF(2) system; it then deploys a one-bit parity recurrence that updates online without storing the observed history. Every bounded future task has a norm-bounded two-dimensional linear readout. The construction is teacher-free and does not assume the feature map or mask is supplied.
+
+This is a useful positive subclass and a boundary on the negative result in [the original report](FINAL_REPORT.md): persistence supplies independent measurements of the same latent bit. It does not make a claim about arbitrary finite-state processes. The direct majority/GF(2) decoder is the equal-data baseline and produces the same model at the same cost, so this is a feature-acquisition certificate, not an advantage claim. Historical novelty has not been cleared.
+
+## Process and acquired representation
+
+Let d≥1, let s∈GF(2)^d be unknown, and let η∈[0,1/2) be known rational with θ=1−2η≥β&gt;0. A reset episode of finite horizon H=d+R emits
+
+\[
+A_1,\ldots,A_d\stackrel{iid}{\sim}\mathrm{Bernoulli}(1/2),\qquad
+Z=s\cdot A\pmod 2,\qquad
+B_j=Z\oplus E_j,\quad E_j\stackrel{iid}{\sim}\mathrm{Bernoulli}(\eta),\quad 1\le j\le R.
+\]
+
+Write \(Y=(A_1,\ldots,A_d,B_1,\ldots,B_R)\) for the observed length-H trajectory.
+
+The input bits are fresh on each reset. The readout errors are independent **conditional on the same persistent Z**. A finite-state realization keeps a clock and running parity through the input phase, then retains the parity while emitting noisy readouts; an edge-to-state HMM lift has O(d) hidden states. The known process family contains no teacher, chosen-prefix access, hidden-state observation, or feature map.
+
+After acquisition, define the two-coordinate feature at any prefix h of length \(\ell\in\{0,\ldots,H\}\) by
+
+\[
+\phi_\ell(h)=e_{p_\ell},\qquad p_\ell=\sum_{i\le\min(\ell,d)}s_iA_i\pmod 2,\qquad e_0=(1,0)^\top,\ e_1=(0,1)^\top.
+\]
+
+After all inputs, p_t=Z and every readout leaves this feature unchanged. This is computed by an online update: on input A_i, swap the two coordinates iff s_iA_i=1; on a readout token, do nothing. The stream retains one parity bit plus an index t (O(log H) bits); the acquired model stores d mask bits. It never needs the complete prefix. The update schedule is time dependent through the learned mask bits, all of which are charged in the model.
+
+At each fixed cut \(\ell\) and for every future task g with 0≤g≤1, define
+
+\[
+w_{\ell,g}(p)=\mathbb E[g(Y_{\ell+1:H})\mid p_\ell=p],\qquad p\in\{0,1\},
+\]
+
+Since s and η are now known, these two expectations are taken under an explicit finite generative model. For every source history h at cut t,
+
+\[
+\mathbb E[g\mid h]=\phi_\ell(h)^\top w_{\ell,g},\qquad
+\|\phi_t(h)\|_2=1,\qquad \|w_{t,g}\|_2\le\sqrt2.
+\]
+
+The factorization is exact and simultaneous over every bounded future task: conditional futures depend on the observed history only through public phase ℓ and current parity p_ℓ. The feature state itself is acquired from samples; it is not a renamed teacher-supplied feature bank.
+
+For an efficiently evaluable task g, the readout can be approximated from the acquired model rather than queried from the source. At a fixed cut ℓ, generate M independent futures from each of the two parity states, evaluate g, and average. Hoeffding gives both coefficients within ρ with probability at least 1−δ when
+
+\[
+M\ge \left\lceil\frac{1}{2\rho^2}\log\frac{8}{\delta}\right\rceil.
+\]
+
+The cost for one cut/task pair is at most 2M generated futures, O(MH) sampler operations plus the cost of evaluating g on those futures, and O(H+workspace(g)) temporary bits if one future is streamed. The resulting prediction error is at most ρ on every history at that cut, hence MSE≤ρ². For J requested cut/task pairs, replace δ by δ/J in M and multiply the readout cost by J. This does not claim a finite uniform estimate for an uncountable task class; it gives an exact two-dimensional representation and a charged on-demand readout for each supplied evaluable task.
+
+## Acquisition guarantee and proof
+
+Choose
+
+\[
+N=d+\left\lceil\log_2(2/\delta)\right\rceil,
+\]
+
+and an odd integer
+
+\[
+R\ge\frac{2}{\beta^2}\log\frac{2N}{\delta}.
+\]
+
+Collect N independent reset episodes, each with d inputs and R readouts. For episode i, majority-decode the R readouts into \(\tilde Z_i\). Then solve the linear equations \(A_i\cdot s=\tilde Z_i\) over GF(2). If all majority labels are correct and the N×d input matrix has rank d, this returns the exact unknown s.
+
+For one episode, after multiplying each readout sign by the true sign of Z for analysis, the R independent signs have mean θ≥β. Hoeffding bounds the probability of an incorrect majority by \(e^{-R\beta^2/2}\le\delta/(2N)\). A union bound makes every decoded label correct with probability at least 1−δ/2. The A_i rows are independent and uniform; for each nonzero v, \(\Pr[A_iv=0\ \forall i]=2^{-N}\). Hence rank failure is at most \((2^d-1)2^{-N}&lt;\delta/2\). The mask, recurrence, and readout family are therefore acquired with probability at least 1−δ.
+
+All costs are explicit:
+
+- Source observations: \(N(d+R)=O((d+\log(1/\delta))[d+\beta^{-2}\log((d+\log(1/\delta))/\delta)])\) symbols.
+- Computation: O(NR) bit work to decode plus O(Nd²) conservative Gaussian-elimination work over GF(2). Incremental elimination stores O(d²) basis bits; stream buffers and counters add O(d+R) bits.
+- Deployed model: d mask bits and the rational η encoding (Lη bits). The online state is one parity bit and a position counter, with O(1) bit updates per token. Each readout probability takes O(1) rational operations on O(Lη)-bit parameters; a complete word probability uses O(H) rational operations and outputs O(HLη+d) bits. Its bit-time is O(H·Mul(HLη)), where Mul(b) denotes b-bit integer multiplication cost. Model storage is O(d+Lη+log H) bits.
+- Readout: for a supplied bounded evaluator g and one cut, 2M model continuations cost O(MH) Bernoulli draws plus 2M evaluations of g. For η=a/b, a Bernoulli draw uses k=ceil(log₂b) bits per rejection attempt, with acceptance probability at least 1/2 and expected O(Lη) bit cost. Capping at K=ceil(log₂(4MH/δ)) attempts makes the total sampler abort probability at most δ/2 over 2M futures of length at most H, with worst-case O(MH Lη log(MH/δ)) random-bit work. The displayed M makes the Monte Carlo coefficient error fail with probability at most δ/2; adding sampler failure gives total at most δ. Thus the charged readout cost is this sampler work plus 2M·time(g); no additional source observations or teacher calls are used.
+
+No held-out test is needed for the theorem because it assumes membership in this exact process class and the recovery proof already gives a finite-sample success probability. If a deployment wants a data certificate, freeze s and independently estimate each desired two-state readout; those extra samples should be charged separately.
+
+## Equally informed controls
+
+**Same passive data, direct decoder.** Give a baseline the same N raw trajectories, known d and β, and runtime. It can majority-decode each episode and solve the same GF(2) system. This is exactly the mask-recovery step above and outputs the same explicit generator/evaluator and recurrence with identical sample, runtime, and memory bounds. Therefore the feature acquisition has no demonstrated advantage over direct decoding; it demonstrates that after the latent coordinate is learned, an exact bounded recurrent feature realization follows.
+
+**Chosen-prefix conditional-sample control.** A conditional-sampling oracle can be queried at each length-d input prefix a=e_i. In response it returns the R future readouts, all noisy copies of s_i. Majority over these R bits recovers each s_i; d chosen-prefix queries and R≥2β⁻² log(2d/δ) make all coordinates correct except with probability δ. This costs d queries, dR returned readout symbols, and d² bits to specify the prefixes, then O(dR) majority work. The conditional oracle avoids random design and Gaussian elimination because it can force low-probability prefixes; that is a stronger interface and not a passive-data baseline. Under the source&#x27;s natural distribution, any one of these prefixes has probability 2^-d.
+
+**Fixed-feature control.** A two-state parity feature is not available to a fixed-map learner unless s is supplied. Crediting that map without charging the N(d+R) observations and recovery computation would erase the acquisition problem. Here the recovered mask is the concrete certificate that licenses the feature map.
+
+## Scope and relation to the general gap
+
+The persistent-readout assumption is load-bearing. Without independent repeated observations of the same Z, the majority step is unavailable; repeating one already-noisy label does not create more information. The theorem handles one finite-state subclass and is compatible with computational hardness for the one-shot noisy-parity process. It does not solve fresh-prefix feature acquisition for arbitrary HMMs, arbitrary low-rank laws, or A06&#x27;s KL-misspecified teacher service.
+
+This recurrence is a two-dimensional predictive-state representation with acquired update operators. PSR/spectral prior art already uses predictions of future tests as state coordinates. The concrete result here is the full interface-matched construction and the same-data control; no historical priority claim is made. The one-shot versus persistent-readout process distinction and a related direct decoder were also recorded in the pinned Astra N13 page (lines 97–140, 186–193); this report independently derives the recovery and recurrence bounds above and does not count that earlier page as external validation.
+
+## Source and evidence status
+
+- The recovery theorem follows directly from Hoeffding, a union bound, and the uniform random-matrix rank bound; no simulation evidence is required for its proof.
+- The finite-state realization and recurrence are explicit constructions above. Conversion constants depend on whether the chosen convention is edge-emitting or state-emitting; all are O(d).
+- The conditional-query comparator is consistent with the oracle definition in [Liu–Moitra, Definition 1.2 and Theorem 1.3](https://arxiv.org/html/2411.07536) and the earlier conditional-sample interface in [Mahajan et al., Definitions 3–4 and Theorem 2](https://proceedings.mlr.press/v195/mahajan23a/mahajan23a.pdf). These are stronger interfaces, not data controls for the passive algorithm.
+- No claim of novelty, arbitrary-HMM coverage, or advantage over the direct decoder is supported.
+- The original report&#x27;s inherited rare-prefix result remains unverified and is not used here.
+</pre><p><a href="../assets/c90e62a7d5a1e2a0d013f337974dd1100d4e36c8f30388b7c9d8a6f384b7fbbd.md">Exact original</a></p></html>

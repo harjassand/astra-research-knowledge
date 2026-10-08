@@ -1,0 +1,183 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/quantum_capability/cycle4/quantitative_tensor_gate/evidence/joint_parameter_search.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/quantum_capability/cycle4/quantitative_tensor_gate/evidence/joint_parameter_search.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Jointly screen d/slack and replay the selected r=2 finite gate.
+
+The d/r screen is a scalar parameter search, not a proof of source transfer.
+The selected (r,d,s) point is replayed with Decimal arithmetic, including the
+integer even-p threshold and all numerical source hypotheses used here.
+&quot;&quot;&quot;
+
+from decimal import Decimal as D, getcontext
+from math import ceil, log, log1p, sqrt
+
+getcontext().prec = 70
+LN2 = D(2).ln()
+
+
+def decimal_point(r: int, d: int, slack: D):
+    k = 2 * r * d
+    c2 = 16 * r * r - 7 * r
+    c = D(c2).sqrt()
+    b1 = 1 + k
+    h = (
+        D(2) * D(k).ln()
+        - D(k).ln() / D(k)
+        - D(r - 1) / D(r) * LN2
+    )
+    gap = (
+        D(2) * (-((D(k) + (c + slack) ** 2) / D(k) ** 2).ln())
+        - h
+    )
+
+    eta = slack / (D(2) * D(k))
+    e = slack / (D(6) * D(b1 + 1) * c)
+    net_log = D(k * k - 1) * (D(1) + D(2) / eta).ln()
+    conc_n = D(2) + D(96 * d * r) * (net_log + D(3).ln()) / (e / 2) ** 2
+
+    p_power = 12 * d + 56
+    n0 = 16 * (2 * d) ** 14
+    n0d = D(n0)
+    a = D(r * (r + 1)) / 2
+    budget = (D(1) + e / 2).ln() / 2
+    known_coeff = D(r + 1) * D(4 * b1).ln() + a * n0d.ln()
+    p_coeff = D(3) * a + a * D(p_power)
+
+    def known_log(p_int: int) -&gt; D:
+        p = D(p_int)
+        return (known_coeff + p_coeff * p.ln()) / p
+
+    # Find the least even p satisfying the decreasing-tail expectation gate.
+    lo, hi = 2, 4
+    while known_log(hi) &gt; budget:
+        lo, hi = hi, 2 * hi
+    while hi - lo &gt; 2:
+        mid = ((lo + hi) // 4) * 2
+        if mid &lt;= lo:
+            mid = lo + 2
+        if known_log(mid) &lt;= budget:
+            hi = mid
+        else:
+            lo = mid
+    p = hi
+    if p % 2:
+        p += 1
+    while known_log(p) &gt; budget:
+        p += 2
+    while p &gt; 2 and known_log(p - 2) &lt;= budget:
+        p -= 2
+
+    log2n = (n0d.ln() + D(p_power) * D(p).ln()) / LN2
+    ln_n = n0d.ln() + D(p_power) * D(p).ln()
+    hidden_log_upper = D(1560).ln() - ln_n / 2
+    conc_log2 = conc_n.ln() / LN2
+
+    # Source gates: ell_0 is tight at N=N0 p^(12d+56); its displayed
+    # d^4 p^(4d+16)&lt;=sqrt(N) consequence is checked independently.
+    second_lhs_log = D(d**4).ln() + D(4 * d + 16) * D(p).ln()
+    second_rhs_log = ln_n / 2
+    weingarten_gate_log_lhs = D(2).ln() + D(&quot;3.5&quot;) * D(p).ln()
+    weingarten_gate_log_rhs = D(2) * ln_n
+
+    return {
+        &quot;r&quot;: r,
+        &quot;d&quot;: d,
+        &quot;K&quot;: k,
+        &quot;C2&quot;: c2,
+        &quot;slack&quot;: slack,
+        &quot;gap&quot;: gap,
+        &quot;eta&quot;: eta,
+        &quot;e&quot;: e,
+        &quot;net_log&quot;: net_log,
+        &quot;conc_log2N&quot;: conc_log2,
+        &quot;p_power&quot;: p_power,
+        &quot;N0&quot;: n0,
+        &quot;p&quot;: p,
+        &quot;log2p&quot;: D(p).ln() / LN2,
+        &quot;log2N&quot;: log2n,
+        &quot;per_use_qubits&quot;: D(r) * log2n,
+        &quot;two_use_qubits&quot;: D(2 * r) * log2n,
+        &quot;known_log&quot;: known_log(p),
+        &quot;known_budget&quot;: budget,
+        &quot;hidden_log_upper&quot;: hidden_log_upper,
+        &quot;source_second_moment_margin_log&quot;: second_rhs_log - second_lhs_log,
+        &quot;weingarten_margin_log&quot;: weingarten_gate_log_rhs - weingarten_gate_log_lhs,
+        &quot;N_ge_d70_margin_log&quot;: ln_n - D(70) * D(d).ln(),
+    }
+
+
+def float_screen(r: int, d: int, target_gap: float):
+    k = 2 * r * d
+    c = sqrt(16 * r * r - 7 * r)
+    b1 = 1 + k
+
+    def gap(s):
+        return ((r - 1) / r) * log(2) + log(k) / k - 2 * log1p((c + s) ** 2 / k)
+
+    if gap(0.0) &lt;= target_gap:
+        return None
+    lo, hi = 0.0, 2 * c + 1
+    for _ in range(70):
+        mid = (lo + hi) / 2
+        if gap(mid) &gt;= target_gap:
+            lo = mid
+        else:
+            hi = mid
+
+    slack = lo
+    e = slack / (6 * (b1 + 1) * c)
+    p_power = 12 * d + 56
+    ln_n0 = log(16 * (2 * d) ** 14)
+    a = r * (r + 1) / 2
+    budget = log1p(e / 2) / 2
+    aa = (r + 1) * log(4 * b1) + a * ln_n0
+    bb = 3 * a + a * p_power
+
+    def known_log(p):
+        return (aa + bb * log(p)) / p
+
+    left, right = 2.0, 1e35
+    for _ in range(100):
+        mid = (left + right) / 2
+        if known_log(mid) &gt; budget:
+            left = mid
+        else:
+            right = mid
+    p = ceil(right / 2) * 2
+    log2n = (ln_n0 + p_power * log(p)) / log(2)
+    return {
+        &quot;r&quot;: r,
+        &quot;d&quot;: d,
+        &quot;gap0&quot;: gap(0.0),
+        &quot;slack_at_target&quot;: slack,
+        &quot;gap_at_target&quot;: gap(slack),
+        &quot;p_approx&quot;: p,
+        &quot;log2N_approx&quot;: log2n,
+        &quot;per_use_approx&quot;: r * log2n,
+    }
+
+
+if __name__ == &quot;__main__&quot;:
+    target = 0.001
+    r2 = [float_screen(2, d, target) for d in range(62, 151)]
+    r2 = [x for x in r2 if x is not None]
+    print(&quot;R=2 screen, d=62..150, target gap=0.001 nats&quot;)
+    for x in sorted(r2, key=lambda row: row[&quot;per_use_approx&quot;])[:5]:
+        print(x)
+
+    print(&quot;R=3..10 screen, d=2..400, target gap=0.001 nats&quot;)
+    for r in range(3, 11):
+        rows = [float_screen(r, d, target) for d in range(2, 401)]
+        rows = [x for x in rows if x is not None]
+        print(None if not rows else min(rows, key=lambda row: row[&quot;per_use_approx&quot;]))
+
+    chosen = decimal_point(2, 65, D(&quot;0.165&quot;))
+    print(&quot;Selected exact Decimal replay: r=2,d=65,s=0.165&quot;)
+    for key, value in chosen.items():
+        print(f&quot;{key}={value}&quot;)
+    assert chosen[&quot;gap&quot;] &gt; D(&quot;0.001&quot;)
+    assert chosen[&quot;known_log&quot;] &lt;= chosen[&quot;known_budget&quot;]
+    assert chosen[&quot;hidden_log_upper&quot;] &lt;= chosen[&quot;known_budget&quot;].ln()
+    assert chosen[&quot;conc_log2N&quot;] &lt; chosen[&quot;log2N&quot;]
+    assert chosen[&quot;source_second_moment_margin_log&quot;] &gt; 0
+    assert chosen[&quot;weingarten_margin_log&quot;] &gt; 0
+    assert chosen[&quot;N_ge_d70_margin_log&quot;] &gt; 0
+</pre><p><a href="../assets/20166111938925198d5c7d660d64ab270f7e350b528bb274f227f6ff48d3761b.py">Exact original</a></p></html>

@@ -1,0 +1,137 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/engineering_control/constrained_inverse_design/FINAL_REPORT.md</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/engineering_control/constrained_inverse_design/FINAL_REPORT.md</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre># Hard-feasibility inverse design: a shared phase-hull oracle
+
+**Workstream:** engineering control / materials and energy  
+**Status:** mathematical counterexample and interval rule reconstructed; application and priority unverified  
+**Scope:** maximize a target material property subject to an energy-above-hull limit and other hard constraints. This report does not claim a nature-level synthesizability guarantee.
+
+## Finding
+
+A hard stability constraint is not naturally a pointwise label on the proposed crystal. For a candidate at composition (c), its energy above hull depends on the best mixture of *all competing phases* at (c), including unproposed polymorphs. A new low-energy competitor can change the feasibility labels of many candidates at once. The expensive oracle is therefore a shared phase-energy service, not one independent feasibility query per proposed candidate.
+
+This gives an exact obstruction: with M unqueried possible competing polymorphs at one composition, an exact point-energy oracle cannot certify a candidate&#x27;s hull feasibility in fewer than M worst-case queries. With uniform decision error at most δ&lt;1/2, a randomized algorithm needs expected at least M(1−2δ) competitor queries in the all-zero world. Supplied complete phase data or sound lower bounds for every unseen competitor avoid the obstruction, but acquiring and validating them has a cost.
+
+A useful positive interface follows. If every phase energy has a valid interval, two linear programs give lower and upper bounds on a candidate&#x27;s competing-phase hull. These bounds yield robust `FEASIBLE`, `INFEASIBLE`, or `UNKNOWN` decisions, and a single queried phase updates the hull bounds for all candidate compositions. This is a route to cost-aware, hull-aware acquisition; it is not implemented or empirically validated here.
+
+## Exact task interface
+
+Let a proposed design (x) specify a composition, crystal structure, and any process variables needed for the downstream engineering objective. Let (\mathcal P) be the universe of candidate and competing phases; (c_y\in\mathbb Q^d) is the normalized elemental-composition vector of phase (y), and (E_y) is its relaxed formation energy per atom under a single declared DFT functional, pseudopotential, reference-energy convention, and numerical setup. A given phase energy is the result of structural relaxation, not an abstract free label.
+
+For (x\in\mathcal P), define the best competing-phase mixture while excluding (x):
+
+\[
+H^{-x}(c_x)=\min_{\lambda\ge0}\left\{\sum_{y\ne x}\lambda_yE_y:\sum_{y\ne x}\lambda_y=1,\quad\sum_{y\ne x}\lambda_yc_y=c_x\right\}.
+\]
+
+If no competing mixture exists, take (H^{-x}=+\infty). The energy-above-hull gap is
+\[
+\Delta_x=\max\{0,E_x-H^{-x}(c_x)\}.
+\]
+A representative hard-design problem is
+\[
+\max_{x\in\mathcal X} f(x)\quad\text{subject to}\quad \Delta_x\le\tau,\quad g_j(x)\le0\;(j=1,\ldots,J),
+\]
+where (f) could be capacity, conductivity, strength, or another application property; (g_j) includes hard composition, force-convergence, thermal, toxicity, cost, geometric, or process constraints; and τ is a declared metastability allowance. A (50\,\mathrm{meV/atom}) cutoff is used in recent materials-design work, but that numerical threshold is a modeling convention, not a universal synthesizability theorem.
+
+The query/action interface must distinguish:
+
+- **Supplied:** a versioned seed phase database, its structures, energies and calculation settings; candidate-generator weights or a fixed candidate pool; and any prior model or calibration data. A database hull is only the hull of its supplied phases.
+- **Acquired:** generated structures; failed or successful relaxations; low-fidelity interatomic-potential energies; high-fidelity DFT energies and forces; phase-competition energies; and objective-specific calculations such as hybrid-functional gaps, phonons, or diffusion barriers. Experimental synthesis and characterization are separate later acquisitions.
+- **Output:** a candidate with the objective evidence, a competing-phase mixture witness, hard-constraint margins, and a sound feasibility state. Return `UNKNOWN` when acquired information cannot support a decision. A (0\,\mathrm K) DFT hull result does not by itself establish kinetic accessibility, finite-temperature stability, or a reproducible synthesis route.
+- **Budget:** charge each generated structure and each evaluation. At minimum record (C_{\rm gen}), (C_{\rm MLIP}), (C_{\rm DFT}(n_{\rm atom},E_{\rm cut},k\text{-mesh},\text{SCF/relax tolerance})), (C_f), hull/LP runtime, surrogate fitting and acquisition-optimizer runtime, storage, and total CPU/GPU node-hours and energy. If an experiment is part of the target, charge synthesis/characterization separately. Equal iteration counts are not equal resource budgets.
+
+For an offline DFT search, querying an infeasible structure wastes compute but is not a physical safety violation. If the “hard” constraint means that an experiment or controller may never enter an unsafe state, safe Bayesian optimization needs a supplied safe seed and a sound reachable-safe-set rule; the ordinary unknown-constraint BO baseline below does not provide that guarantee.
+
+## Recent primary literature and informed controls
+
+The supplied full 12-page arXiv version 2 of Tahmassebpur et al., [“A geometric basis for materials families in inorganic solids”](https://arxiv.org/abs/2602.00254v2) (13 June 2026), is directly relevant. It defines formation energy at composition (c) as the minimum over locally stable atomic arrangements and notes that identifying it requires search over structures. From a Materials Project set, the authors retain one lowest-energy structure per composition, keep 51,068 compounds within (0.025\,\mathrm{eV/atom}) of the database hull, and fit a seven-facet max-affine model in 92 composition coordinates. Its random 80/20 split has reported test MAE (0.076\,\mathrm{eV/atom}). The method uses Adam for 1,600 epochs with batch size 512; the manuscript does not report a comparable end-to-end GPU time or the cost of acquiring the underlying Materials Project data. The authors also report that the seven-facet model captures trends in defects and elemental mixing, while stating that absolute defect-energy errors exceed DFT accuracy, that sparse composition regions blur facet assignments, and that finite-temperature entropy is absent.
+
+The seven-facet result is a promising representation prior, not a hard stability oracle. The (76\,\mathrm{meV/atom}) *mean* energy error is already larger than the (50\,\mathrm{meV/atom}) cutoff used in recent screening, and a random-record MAE is not a uniform or one-sided bound on any candidate or competing phase. It does not certify composition-family transfer, phase completeness, or the error of a candidate-minus-hull difference. The paper is an arXiv preprint in this source snapshot; its empirical claims remain source-reported here.
+
+For the strongest defensible point-label BO control, Hickman et al., [“Anubis: Bayesian optimization with unknown feasibility constraints for scientific experimentation”](https://doi.org/10.1039/D5DD00018A), use a variational GP classifier for binary feasibility and a GP regression surrogate for objective measurements. The paper compares feasibility-weighted, feasibility-interpolated, and feasibility-constrained acquisition rules; for highly constrained hybrid organic-inorganic perovskite design, it recommends the risk-averse constrained-acquisition setting FCA-0.8. It also reports that UCB performed at least as well as EI in its feasibility-aware benchmarks, and uses a genetic acquisition optimizer after SLSQP showed convergence issues. The paper explicitly does not count acquisition-optimizer overhead. This is a strong baseline for the **pointwise unknown-constraint** contract, but it assumes that a candidate&#x27;s feasibility label can be acquired as a label on that candidate. It does not price or model a shared, incomplete phase-hull oracle.
+
+Alvi et al., [“Deep Gaussian process-based cost-aware batch Bayesian optimization for complex materials design campaigns”](https://doi.org/10.1038/s41524-026-01981-7) (npj Computational Materials, 2026), are a current cost-allocation control: a deep-GP surrogate, heterotopic batch queries, and evaluation cost in an UCB extension are applied to refractory high-entropy alloys. Sinha et al.&#x27;s [September 2026 portfolio-based constrained multi-objective BO preprint](https://arxiv.org/abs/2609.19550) adaptively selects among conventional and feasibility-focused acquisitions and reports in-silico comparisons on five synthetic benchmarks and two materials case studies. These methods improve property/cost allocation or acquisition-policy selection; the cited summaries do not provide a complete-phase lower-bound guarantee. For the next empirical comparison, use the best reproducible combination of these cost-aware controls and Anubis-style risk control, with identical data, candidate generator, high-fidelity query budget, and measured node-hours.
+
+A complementary 2026 battery study, Park et al., [element-mapping BO for NASICON cathodes](https://doi.org/10.1038/s41524-026-01958-6), reports 16 preferred substitutions in 50 iterations using a Matérn-5/2 GP and UCB to target a voltage window of 2.5–4.3 V. Its score penalizes values outside the window and is zero inside it; this is target-window optimization, not a hard hull-feasibility guarantee. [InvDesFlow-AL](https://doi.org/10.1038/s41524-025-01830-z) combines DPA-2 relaxation, FormEGNN energy prediction, force-convergence rejection, and hull-based selection. It illustrates a multi-stage workflow but does not provide a cost ledger that makes candidate generation, relaxations, hull calls, and high-fidelity calculations comparable on equal total resources.
+
+## Quantitative result 1: stability conditioning under uniform energy error
+
+For a fixed finite competitor set and composition (c), write
+\[
+H_E(c)=\min_{\lambda\in\Lambda(c)}\lambda^TE,
+\]
+where every λ is a convex mixture. If (\lVert E-E&#x27;\rVert_\infty\le\epsilon), then for every feasible λ, |λᵀ(E-E&#x27;)|≤ε because its entries are nonnegative and sum to one. Taking minima in both directions gives
+\[
+|H_E(c)-H_{E&#x27;}(c)|\le\epsilon.
+\]
+The competing-hull gap (\Delta_x=\max(0,E_x-H^{-x}_E(c_x))) is therefore (2\epsilon)-stable:
+\[
+|\Delta_x(E)-\Delta_x(E&#x27;)|\le2\epsilon.
+\]
+Thus a uniform, simultaneous energy-error bound ε permits robust threshold classification only at margin greater than (2\epsilon). If an approximate gap is Δ-hat, `FEASIBLE` is certified when Δ-hat ≤ τ − 2ε; `INFEASIBLE` is certified when Δ-hat &gt; τ + 2ε. Near a facet switch, the identity of the supporting facet can change under arbitrarily small perturbations, but the hull value remains Lipschitz; acquisition should target gap uncertainty, not facet-identity stability.
+
+This bound needs a uniform error envelope over the candidate and all relevant competitors. It cannot be inferred from a test-set MAE of (76\,\mathrm{meV/atom}). A distribution-free Markov bound using that MAE is vacuous for a (50\,\mathrm{meV/atom}) per-candidate margin. Even under the stronger, unsupported simplification that (76\,\mathrm{meV}) were a uniform per-energy error, the induced gap error could be (152\,\mathrm{meV/atom}), three times the example threshold.
+
+## Quantitative result 2: hidden-polymorph query lower bound
+
+**Proposition (phase-oracle lower bound).** Fix a candidate (x) at composition (c_0=(1/2,1/2)), with known energy (E_x=0), and known endpoint phases at compositions ((1,0)) and ((0,1)), both with energy 0. Fix a threshold τ≥0 and η&gt;0. There are (M) possible competing polymorphs (z_1,\ldots,z_M), all at (c_0). The oracle returns the exact relaxed energy of one queried phase at cost (c_E); no sound lower bounds for unqueried (z_j) are supplied.
+
+Compare world (W_0), where every (E_{z_j}=0), with world (W_j), where (E_{z_j}=-(\tau+\eta)) and all other (z_k) have energy 0. In (W_0), (\Delta_x=0) and (x) is feasible. In (W_j), the competing hull at (c_0) is at most −(τ+η), so (\Delta_x\ge\tau+\eta) and (x) is infeasible.
+
+Any deterministic exact-query algorithm that must correctly decide feasibility in every world needs all (M) competitor queries in the worst case. If a randomized algorithm has error probability at most δ on (W_0) and each (W_j), for δ&lt;1/2, then its expected number of competitor queries on (W_0) is at least (M(1-2\delta)). Consequently, with equal per-phase cost, its expected phase-energy spend is at least (c_E M(1-2\delta)). This is a lower bound for deciding one candidate; if one phase participates in hulls for many target candidates, its acquisition cost is shared across all of them.
+
+**Proof.** In (W_0), let (F) be the event that the randomized algorithm outputs `FEASIBLE`; (\Pr(F)\ge1-\delta). For each (j), until the query to (z_j), the transcript in (W_j) is identical to the transcript in (W_0). Correctness in (W_j) therefore implies (\Pr(F\cap\{z_j\text{ is not queried in }W_0\})\le\delta); otherwise the algorithm would output the same false-feasible decision in (W_j). Hence (\Pr(z_j\text{ queried in }W_0)\ge\Pr(F)-\delta\ge1-2\delta). Summing over j gives the expected-query lower bound. For a deterministic algorithm with zero error, leaving any (z_j) unqueried makes (W_0) and (W_j) indistinguishable, so it cannot decide correctly in both.
+
+The proposition is an internal theorem about the declared exact-energy-oracle model. It does not apply if the full competing-phase hull is supplied, a certified lower bound rules out all unseen low-energy phases, a validated structure-search oracle supplies those bounds, or the output may remain `UNKNOWN`. Those are alternate information interfaces whose acquisition cost must be stated. It is not a claim that practical searches always require exhaustive structure enumeration.
+
+## Interval-hull algorithm sketch
+
+Suppose every phase y in the declared finite universe has simultaneous valid bounds (L_y\le E_y\le U_y). For a candidate x, solve two LPs over its competitors:
+\[
+H^-_x=\min_{\lambda\in\Lambda^{-x}(c_x)}\sum_{y\ne x}\lambda_yL_y,
+\qquad
+H^+_x=\min_{\lambda\in\Lambda^{-x}(c_x)}\sum_{y\ne x}\lambda_yU_y.
+\]
+Then (H^-_x\le H^{-x}_E(c_x)\le H^+_x). A sound robust decision is:
+
+- `FEASIBLE` if (U_x-H^-_x\le\tau);
+- `INFEASIBLE` if (L_x-H^+_x&gt;\tau);
+- `UNKNOWN` otherwise.
+
+These are sufficient interval conditions, not generally necessary. They are exact with respect to the supplied intervals and finite phase universe. For valid (1-\delta) simultaneous confidence coverage, the decision is valid with at least that coverage; pointwise marginal intervals need a joint-coverage correction. Every newly acquired phase-energy interval changes the LP for every composition it can support. This is the central structural difference from independent per-candidate constraint classifiers.
+
+A cost-aware follow-on policy would select among objective evaluations, candidate relaxations, and competing-phase evaluations by expected reduction in the best feasible objective bound per total query cost, while accounting for each phase query&#x27;s shared impact on the hull. If no candidate is robustly feasible yet, it can prioritize queries that shrink hull-gap intervals for promising candidates. This acquisition rule is only a specification here; no convergence or utility theorem is claimed.
+
+## Falsification and bounded next experiment
+
+The immediate falsifier is information-contract based: if an exact hard-feasibility label can be returned for the single proposed structure while its (M) possible competing polymorphs remain unqueried and no sound lower bounds/full hull are supplied, the proposition&#x27;s oracle model is wrong or the label is relying on hidden supplied information. Document that service and charge it.
+
+A discriminating materials experiment should use a phase family with multiple known polymorphs and deliberately withhold competing phases by prototype or chemical-system family. Use the same versioned seed database, candidate generator, target objective, and total DFT budget for:
+
+1. a strong pointwise control: Anubis-style variational-GP feasibility model with FCA-0.8 for the hard-risk setting, paired with current cost-aware batch DGP/UCB allocation (and optionally the recent portfolio policy); and
+2. a hull-aware control: calibrated energy intervals, shared hull LP bounds, and acquisition that charges each competitor query once and shares its value across designs.
+
+Report false-feasible rate at the declared τ, false-infeasible rate, number of `UNKNOWN` outputs, best target property among robustly feasible candidates, candidate relaxations and competitor relaxations separately, and wall-clock/CPU/GPU node-hours and energy. Calibrate intervals on a disjoint chemical-system/prototype holdout; random row splits are not an adequate transfer test. The positive control uses a supplied complete hull, with all phase-acquisition costs explicitly listed. A genuine hard synthesis or controller safety test is a separate later experiment.
+
+The hull-aware acquisition is useful only if it reduces false-feasible outputs or reaches equal confidence with fewer total DFT and resource costs than the strongest equal-information pointwise control. If it merely changes candidate rankings while all methods lack calibrated lower bounds, it does not solve hard feasibility.
+
+## Astra routing and evidence boundary
+
+I read the current [root mandate](../../../ROOT_MANDATE.txt), [Astra start file](../../../astra_prior/00_START_HERE.txt), [core](../../../astra_prior/01_CORE.txt), and [workflow](../../../astra_prior/RESEARCH_WORKFLOW.txt). The root mandate pins Astra to commit `8ede33c2f09a8abe07b430892b3ac4bb71c27c83`. The start/workflow files require an exact task interface, separation of supplied and acquired information, precise cost accounting, source read depth, blocker contrasts, a decisive proof, and an equally informed control (start lines 3–7; workflow lines 5–12). Core status language prevents retrieval, model agreement, or finite checks from upgrading claim status.
+
+The task-relevant Astra topic routes list `W-frontier-design-bridge`, `W-metric-acquisition`, `N17-methods-and-screening`, and `N25-acquisition-interface-tests`. I fetched these cards from the pinned commit and saved exact copies in `sources/`. `W-frontier-design-bridge` and `W-metric-acquisition` are explicitly report extracts rather than complete proofs; their loaded sections concern partition-matroid rounding and replica mixing, not material phase stability. N25 is a noisy matrix-query acquisition result and does not transfer to an exact DFT-energy or hull oracle. N17 supplies method/cost-accounting cautions but no materials theorem. Thus no Astra theorem is used as a premise or presented as a materials result. This is the correct source boundary under the static repository; the raw report proofs were not fetched.
+
+The decisive proof above is reconstructed directly from the stated oracle contract. It is stronger than a benchmark observation but deliberately narrow: it demonstrates a real global-information requirement, not a general impossibility for constrained BO. The source paper&#x27;s fitted facets, dataset metrics and DFT procedure are author-reported and not independently replayed here. No novelty/priority search beyond the targeted primary sources was completed.
+
+## Evidence, status, and next gate
+
+The next gate is not a larger benchmark count. It is to obtain a phase-complete held-out family with exact structure/energy provenance, build simultaneous calibrated energy intervals, and check whether the data&#x27;s energy representation supplies lower bounds on unacquired polymorphs. If it does, the hidden-phase lower bound is bypassed at that calibration cost, and the next question is whether hull-aware acquisition uses those bounds more efficiently. If it does not, the hard constraint remains `UNKNOWN` until the unsearched rival-space service is bounded. In either case, disclose MLIP/DFT approximation, static database coverage, and 0 K versus finite-temperature/kinetic limits separately.
+
+### Sources
+
+- Tahmassebpur et al., *A geometric basis for materials families in inorganic solids*, arXiv:2602.00254v2 (2026), [paper](https://arxiv.org/abs/2602.00254v2); local copy SHA-256 `4f592c55778ceef4b474e3aa982493523b076db4921853218f91e46b316b50ca`.
+- Hickman et al., *Anubis: Bayesian optimization with unknown feasibility constraints for scientific experimentation*, Digital Discovery 4 (2025), [DOI](https://doi.org/10.1039/D5DD00018A).
+- Alvi et al., *Deep Gaussian process-based cost-aware batch Bayesian optimization for complex materials design campaigns*, npj Computational Materials 12, 105 (2026), [DOI](https://doi.org/10.1038/s41524-026-01981-7).
+- Sinha et al., *Portfolio-Based Constrained Multi-Objective Bayesian Optimization for Materials Design*, arXiv:2609.19550 (17 September 2026), [preprint](https://arxiv.org/abs/2609.19550).
+- Park et al., *Element mapping-based Bayesian optimization framework enabling direct materials design: a case study on NASICON-type cathode materials*, npj Computational Materials 12, 92 (2026), [DOI](https://doi.org/10.1038/s41524-026-01958-6).
+- *InvDesFlow-AL: active learning-based workflow for inverse design of functional materials*, npj Computational Materials 11, 364 (2025), [DOI](https://doi.org/10.1038/s41524-025-01830-z).
+</pre><p><a href="../assets/c0722a8203a16af11f9cfab948bf3c742baff00ce2bb2b29df1efd29d54101b2.md">Exact original</a></p></html>

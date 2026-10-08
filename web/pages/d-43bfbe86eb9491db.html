@@ -1,0 +1,64 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c4_rational_applications/cell_trigger_corner_sweep.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c4_rational_applications/cell_trigger_corner_sweep.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Finite full-source RK4 stress sweep for an ideal cell-specific F trigger.
+
+This uses one independent G command per simulated cell, so it is not a shared
+culture actuator result. The +/-10% genotype corners are stress values, not
+measured confidence intervals. No validated numerical error bounds are used.
+&quot;&quot;&quot;
+
+from dataclasses import replace
+from itertools import product
+import json
+from pathlib import Path
+
+from full_growth_diagnostics import Params, integrate
+
+
+def f_trigger(threshold=5.0, restart=0.1):
+    return lambda t, y, p: 0.0 if y[0] &gt; threshold else restart
+
+
+def main():
+    base = Params()
+    records = []
+    for signs in product((-1, 1), repeat=4):
+        p = replace(base,
+                    vu=base.vu * (1 + 0.1 * signs[0]),
+                    vl=base.vl * (1 + 0.1 * signs[1]),
+                    katp=base.katp * (1 + 0.1 * signs[2]),
+                    kp=base.kp * (1 + 0.1 * signs[3]))
+        for f0 in (5.0, 20.0, 100.0, 300.0):
+            for h0 in (0.1, 1.0):
+                final, dead = integrate((f0, 0.02, 0.02, h0), f_trigger(),
+                                        horizon=300.0, dt=0.02, p=p)
+                balanced = final[0] &lt; 20 and final[1] &gt; 0.5 and final[2] &gt; 5
+                records.append({
+                    &quot;genotype_signs_vu_vl_katp_kp&quot;: signs,
+                    &quot;initial_F_ATP_Pi_H&quot;: [f0, 0.02, 0.02, h0],
+                    &quot;dead_by_300min&quot;: dead is not None,
+                    &quot;balanced_endpoint_F_lt20_A_gt0p5_Pi_gt5&quot;: balanced,
+                    &quot;final&quot;: list(final),
+                })
+    data = {
+        &quot;model&quot;: &quot;PLOS 2021 full health/dilution model; CellML fourth-power expression cost recomputed per genotype&quot;,
+        &quot;policy&quot;: &quot;cell-specific G=0 while F&gt;5 mM, then G=0.1 mM&quot;,
+        &quot;method&quot;: &quot;classical RK4 dt=0.02 min; horizon 300 min; no validated error bounds&quot;,
+        &quot;stress_set&quot;: &quot;all 16 +/-10% corners of IC Table 2 vu, vl, katp, kp; F0 in {5,20,100,300} mM; ATP=Pi=0.02 mM; H0 in {0.1,1}&quot;,
+        &quot;counts&quot;: {
+            &quot;runs&quot;: len(records),
+            &quot;deaths&quot;: sum(r[&quot;dead_by_300min&quot;] for r in records),
+            &quot;balanced_endpoints&quot;: sum(r[&quot;balanced_endpoint_F_lt20_A_gt0p5_Pi_gt5&quot;] for r in records),
+        },
+        &quot;first_failures&quot;: [r for r in records if r[&quot;dead_by_300min&quot;] or not r[&quot;balanced_endpoint_F_lt20_A_gt0p5_Pi_gt5&quot;]][:8],
+        &quot;scope&quot;: &quot;Finite numerical result for ideal independent per-cell control; not a theorem, validated numerics, naturally sampled states, or a realizable shared-glucose experiment.&quot;,
+        &quot;records&quot;: records,
+    }
+    path = Path(__file__).with_name(&quot;cell_trigger_corner_sweep.json&quot;)
+    path.write_text(json.dumps(data, indent=2) + &quot;\n&quot;)
+    print(json.dumps({k: v for k, v in data.items() if k not in (&quot;records&quot;, &quot;first_failures&quot;)}, indent=2))
+    print(&quot;first_failures&quot;, json.dumps(data[&quot;first_failures&quot;], indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/4e41f9f9b08a06a9c37b3fbb8df861ace341fe0b54120307ecb0407222b5f24a.py">Exact original</a></p></html>

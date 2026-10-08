@@ -1,0 +1,191 @@
+Cycle 3 leaf: exact compiler/checker for the weighted Foster inequalities
+Date: 2026-10-08
+Status: internally implemented and replayed on two exact fixtures. The result
+is certificate completeness for this finite strict LP, not a recurrence
+recognizer and not an independent re-proof of the Foster theorem.
+
+1. Interface and exact system
+-----------------------------
+Input: integers r,s>=1; integer matrix k_ji>=1; and positive rational rate
+data (or positive closed rational intervals) alpha_j,delta_j,p_ji,q_ji,
+u_ji,v_ji for the family in
+outputs/research/reaction_dynamics/cycle3/leaves/foster_multicatalyst.txt.
+The input is finite JSON. Each rate entry is either a rational string such
+as "5/7" (a singleton) or a two-element [lower,upper] array. Decimal floats,
+unbounded intervals, zero/negative endpoints, nonrectangular arrays, and
+unmodelled rate dependencies are rejected. The solver uses exact fractions;
+there is no floating-point tolerance.
+
+The decision problem is whether rational lambda_j,w_i>0 satisfy, robustly
+for every independent rate choice in the supplied box,
+
+  delta_j lambda_j - sum_i p_ji w_i > 0,
+  q_ji w_i - k_ji u_ji lambda_j > 0.
+
+Because lambda,w are positive, the exact worst endpoints are delta_j^-,
+p_ji^+,q_ji^-,u_ji^+. Thus the LP rows are
+
+  lambda_j > 0,
+  w_i > 0,
+  delta_j^- lambda_j - sum_i p_ji^+ w_i > 0,
+  q_ji^- w_i - k_ji u_ji^+ lambda_j > 0.                 (LP)
+
+For an independent interval box these endpoint reductions are both
+necessary and sufficient for one fixed weight vector to work uniformly over
+the box. They are only sufficient when the caller knows that rates are
+correlated but supplies their enclosing box instead of the dependency set.
+The alpha and v intervals are checked finite and strictly positive because
+they are assumptions of the reaction-family theorem; they do not enter the
+LP margins.
+
+2. Exact certificates and completeness proof
+---------------------------------------------
+Every row in (LP) has the homogeneous form a_t dot z > 0, with
+z=(lambda_1,...,lambda_r,w_1,...,w_s) and rational a_t. The compiler applies
+Fourier--Motzkin elimination in a fixed variable order. If a row has
+coefficient c>0 on the variable being eliminated and another has coefficient
+d<0, it emits
+
+                  (-d) row_c + c row_d,
+
+whose eliminated coefficient is zero and whose multipliers are positive.
+Rows with coefficient zero are retained. This is exact for strict rows:
+the positive-coefficient rows give strict lower bounds, the negative ones
+strict upper bounds, and every generated pair row asserts that its lower
+bound is strictly below its upper bound. If one sign is absent, the variable
+can be chosen sufficiently far in the unbounded direction. Equivalent rows
+that differ by a positive scalar are safely deduplicated.
+
+Each generated row also carries its exact nonnegative rational combination
+of original rows. If elimination produces a zero normal, that provenance is
+a Gordan/Farkas certificate y>=0, y!=0, A^T y=0. Since every original row
+requires a_t dot z>0, multiplying by y and summing would give 0>0. The
+checker validates these three identities directly. Conversely, if no zero
+normal occurs, reverse substitution computes the strict lower and upper
+bounds for each variable and chooses a rational interior point (midpoint,
+or one rational unit beyond a one-sided bound). Projected rows ensure each
+interval is nonempty. The checker independently reevaluates every original
+strict row. Rational input implies that every nonempty open feasible region
+contains a rational point. These two outcomes are exhaustive, so the
+unbounded exact algorithm returns a rational witness or a checkable
+infeasibility certificate whenever it completes; it does not use an LP
+solver status as proof.
+
+3. Boundary coefficient K
+-------------------------
+The Foster function uses the catalyst-zero indicator
+
+  V = sum_j lambda_j a_j + sum_i w_i b_i + K 1_{sum_j a_j=0},
+
+not a substrate-zero indicator. In the theorem's exact generator identity,
+the indicator contribution is
+
+  L 1_{A=0} = -(sum_j alpha_j) 1_{A=0} + sum_j delta_j 1_{a=e_j}.
+
+The two exceptional boundary types are A=0 and a=e_j (exactly one catalyst
+molecule). Their full drift treatment is in the cited Foster report; this
+compiler certifies its numeric small-gain hypotheses and K choice, not that
+symbolic drift identity again.
+
+After a feasible LP witness, set
+
+  K = max_j lambda_j + 1,
+  rho = (sum_j alpha_j^-)/2 > 0.
+
+Then K-lambda_j>=1 and
+
+  sum_j alpha_j (K-lambda_j)
+    >= sum_j alpha_j^- (K-lambda_j)
+    >= sum_j alpha_j^- = 2 rho > rho.
+
+As H=sum_j alpha_j lambda_j, this is exactly
+K sum_j alpha_j > H+rho, hence K>max{max_j lambda_j,(H+rho)/sum_j alpha_j}
+uniformly over the supplied alpha box. The certificate stores K, rho, all
+strict LP slacks, the exact lower boundary margin and an input hash. Its
+independent verifier recomputes each quantity.
+
+4. Reproducible fixtures
+------------------------
+Runnable standard-library Python code and generated certificates are under
+outputs/research/reaction_dynamics/cycle3/evidence/.
+
+Feasible interval-box fixture:
+  python3 certificate_compiler.py solve feasible_box_1x1.json -o feasible_box_1x1.cert.json
+  python3 verify_certificate.py feasible_box_1x1.json feasible_box_1x1.cert.json
+
+The returned rational witness is lambda=11/12,w=1,K=23/12,rho=1/2. For
+delta in [3,4], p in [1,3/2], q in [4,5], u in [1,3/2], the four exact row
+slacks are 11/12, 1, 5/4, 5/4. The alpha lower endpoint is 1 and the robust
+boundary margin is 1/2. K and rho therefore satisfy the boundary condition
+even when alpha is anywhere in [1,2]. The compiler's FM row counts are
+[4,1,0].
+
+Infeasible aggregate fixture:
+  python3 certificate_compiler.py solve infeasible_aggregate_1x2.json -o infeasible_aggregate_1x2.cert.json
+  python3 verify_certificate.py infeasible_aggregate_1x2.json infeasible_aggregate_1x2.cert.json
+
+Here delta=1, p_1i=1, q_1i=2, k_1i=u_1i=1. The emitted nonzero multipliers
+are 2 on gamma and 1 on each eta row. Their normal combination is exactly
+
+  2(lambda-w_1-w_2) + (2w_1-lambda) + (2w_2-lambda) = 0,
+
+contradicting the strict rows. This is aggregate LP infeasibility despite
+both pairwise products delta*q > p*k*u. The exact FM row counts are [6,4,1].
+It says only that this weighted Foster template's strict margins are
+infeasible; it does not imply transience, explosion or failure of recurrence.
+
+Both generated certificates verified with the separate
+`verify_certificate.py`, which contains no elimination code. It accepted a
+2x2 feasible fixture as well. A second harness accepted both original
+certificates and rejected a mutated feasible weight and a mutated Farkas
+multiplier. The infeasible fixture compiled in 0.09 seconds of
+reported local wall time in one single-process run; this is an illustration
+for a 3-variable/six-row instance, not a scale guarantee. For these fixtures
+all rational witness/Farkas entries have at most 5 numerator bits and 4
+denominator bits; the feasible output file is 921 bytes and the infeasible
+one 663 bytes (JSON formatting included). All arithmetic was exact.
+
+5. Checker and cost
+------------------
+The separate `verify_certificate.py` rebuilds all rows from the original JSON,
+checks canonical-input SHA-256 binding, parses rationals exactly, checks all
+strict slacks and the boundary inequality, or checks y>=0, y!=0 and A^T y=0.
+For a witness it uses O(M n) rational dot-product operations; for a Farkas
+certificate it uses O(M n), where n=r+s and M=2r+s+rs is the original row
+count. Verification work is polynomial in input/certificate bit length and
+these dimensions. The hash is an identity guard, not part of the proof.
+
+For the solver, at one elimination let P,N,Z be the numbers of positive,
+negative and zero rows for that variable. Before deduplication the next row
+count is at most Z+PN, hence at most M_t+M_t^2/4. Iterating this bound for
+n variables gives a double-exponential worst-case row bound in n; the
+implementation also stores a provenance vector of length M per row. Runtime
+and memory therefore can become prohibitive. If B_t bounds numerator and
+denominator bit lengths at stage t, one multiply-add followed by positive
+normalization has the conservative recurrence B_(t+1)<=8 B_t+O(1), hence
+exponential bit growth in n; Fraction gcd reductions often improve the
+observed size. These are finite upper bounds, not polynomial-time claims.
+No cap or approximate fallback is silently used: resource exhaustion can
+interrupt the run, in which case no certificate is claimed. The checker is
+the smaller trust base and can validate a supplied certificate without
+replaying elimination.
+
+6. Claim boundary and next experiment
+-------------------------------------
+The finite decision claim is: for rational independent interval data, this
+exact strict LP compiler is complete in the mathematical sense above, and
+its feasible/infeasible outputs have independently checkable rational
+certificates. It does not characterize recurrence of the network, search
+for other Foster functions, infer network instability from LP failure, or
+acquire unknown rates. It also does not re-establish the mass-action
+generator/Foster argument; that proof and its nonexplosion/positive
+recurrence conclusion are separately stated, conditionally on these margins,
+in outputs/research/reaction_dynamics/cycle3/leaves/foster_multicatalyst.txt.
+
+Next decisive experiment: compare this exact strict LP boundary against an
+independently constructed rate-specific invariant-law / classwise CTMC
+analysis on the infeasible 1x2 fixture, then perturb one q or p endpoint
+through the exact feasibility threshold. This would test whether LP failure
+here is merely a certificate-template gap (the current claim) or correlates
+with any actual recurrence transition. No such phase-boundary conclusion is
+currently available.

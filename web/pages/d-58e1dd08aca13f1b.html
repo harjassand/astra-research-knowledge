@@ -1,0 +1,130 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c12_morphogenesis_interface/inspect_source_workbook.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c12_morphogenesis_interface/inspect_source_workbook.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Read-only structural inventory for Dang et al. source-data workbook.
+
+This script never writes to the source workbook. It emits a compact JSON map of
+sheet names, dimensions, populated rows, formula counts, formats, and cell
+samples so the experimental record grain can be reconstructed before analysis.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+from pathlib import Path
+from typing import Any
+
+from openpyxl import load_workbook
+
+
+def json_value(value: Any) -&gt; Any:
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+    if hasattr(value, &quot;isoformat&quot;):
+        return value.isoformat()
+    return str(value)
+
+
+def inspect(path: Path) -&gt; dict[str, Any]:
+    raw = path.read_bytes()
+    wb = load_workbook(path, data_only=False, read_only=False)
+    result: dict[str, Any] = {
+        &quot;source_path&quot;: str(path.resolve()),
+        &quot;sha256&quot;: hashlib.sha256(raw).hexdigest(),
+        &quot;file_bytes&quot;: len(raw),
+        &quot;workbook_properties&quot;: {
+            &quot;creator&quot;: wb.properties.creator,
+            &quot;title&quot;: wb.properties.title,
+            &quot;subject&quot;: wb.properties.subject,
+            &quot;created&quot;: json_value(wb.properties.created),
+            &quot;modified&quot;: json_value(wb.properties.modified),
+            &quot;sheet_names&quot;: wb.sheetnames,
+        },
+        &quot;sheets&quot;: [],
+    }
+    for ws in wb.worksheets:
+        populated_rows = 0
+        sample_rows = []
+        nonempty_cells = 0
+        formula_count = 0
+        formats: dict[str, int] = {}
+        nonempty_columns: set[int] = set()
+        for row in ws.iter_rows():
+            cells = []
+            for cell in row:
+                value = cell.value
+                if value is None:
+                    continue
+                nonempty_cells += 1
+                nonempty_columns.add(cell.column)
+                formats[cell.number_format] = formats.get(cell.number_format, 0) + 1
+                entry = {
+                    &quot;cell&quot;: cell.coordinate,
+                    &quot;value&quot;: json_value(value),
+                    &quot;type&quot;: cell.data_type,
+                }
+                if cell.data_type == &quot;f&quot;:
+                    formula_count += 1
+                cells.append(entry)
+            if cells:
+                populated_rows += 1
+                if row[0].row &lt;= 12:
+                    # Keep the map compact for wide source matrices.
+                    sample_rows.append({
+                        &quot;row&quot;: row[0].row,
+                        &quot;cells&quot;: cells[:12] + (cells[-4:] if len(cells) &gt; 16 else cells[12:]),
+                    })
+        max_pop_row = max((r[&quot;row&quot;] for r in sample_rows), default=0)
+        # Recompute the last populated row from the worksheet extent and the
+        # nonempty-row counter is intentionally not a maximum-row proxy.
+        for row_num in range(ws.max_row, 0, -1):
+            if any(ws.cell(row_num, col).value is not None for col in range(1, ws.max_column + 1)):
+                max_pop_row = row_num
+                break
+        max_pop_col = max(nonempty_columns, default=0)
+        result[&quot;sheets&quot;].append({
+            &quot;name&quot;: ws.title,
+            &quot;state&quot;: ws.sheet_state,
+            &quot;declared_dimension&quot;: ws.calculate_dimension(),
+            &quot;max_row&quot;: ws.max_row,
+            &quot;max_column&quot;: ws.max_column,
+            &quot;populated_dimension&quot;: f&quot;A1:{ws.cell(max_pop_row, max_pop_col).coordinate if max_pop_row and max_pop_col else &#x27;A1&#x27;}&quot;,
+            &quot;nonempty_cells&quot;: nonempty_cells,
+            &quot;populated_row_count&quot;: populated_rows,
+            &quot;sample_rows&quot;: sample_rows,
+            &quot;formula_count&quot;: formula_count,
+            &quot;number_format_counts&quot;: formats,
+            &quot;merged_ranges&quot;: [str(x) for x in ws.merged_cells.ranges],
+            &quot;tables&quot;: [
+                {&quot;name&quot;: t.displayName, &quot;ref&quot;: t.ref}
+                for t in ws.tables.values()
+            ],
+            &quot;freeze_panes&quot;: str(ws.freeze_panes) if ws.freeze_panes else None,
+            &quot;auto_filter&quot;: ws.auto_filter.ref,
+        })
+    wb.close()
+    return result
+
+
+def main() -&gt; None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(&quot;workbook&quot;, type=Path)
+    parser.add_argument(&quot;--out&quot;, type=Path, required=True)
+    args = parser.parse_args()
+    result = inspect(args.workbook)
+    args.out.parent.mkdir(parents=True, exist_ok=True)
+    args.out.write_text(json.dumps(result, indent=2, ensure_ascii=False) + &quot;\n&quot;)
+    print(json.dumps({
+        &quot;sha256&quot;: result[&quot;sha256&quot;],
+        &quot;file_bytes&quot;: result[&quot;file_bytes&quot;],
+        &quot;sheets&quot;: [
+            {key: s[key] for key in (&quot;name&quot;, &quot;state&quot;, &quot;declared_dimension&quot;, &quot;max_row&quot;, &quot;max_column&quot;, &quot;nonempty_cells&quot;, &quot;populated_row_count&quot;, &quot;formula_count&quot;, &quot;number_format_counts&quot;)}
+            for s in result[&quot;sheets&quot;]
+        ],
+        &quot;map_path&quot;: str(args.out.resolve()),
+    }, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/1c8ac5241cba008b4747588089c5a6a3aff676456080d3265ff8738fc613ccc5.py">Exact original</a></p></html>

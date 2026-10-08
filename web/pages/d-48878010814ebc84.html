@@ -1,0 +1,299 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/games_hamiltonians/cycle2/bmvz_bjsw_seed_pair_test.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/games_hamiltonians/cycle2/bmvz_bjsw_seed_pair_test.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact, standard-library check of the BJSW seed pair and BMVZ singleton layer.
+
+The circuit matrices are evaluated in Q(sqrt(2)); the repeated violation-term
+row counts are computed from the exact support formula, without constructing
+the exponentially large 32**R by 32**R matrices.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import csv
+from itertools import product
+from dataclasses import dataclass
+from fractions import Fraction
+from math import isqrt
+from pathlib import Path
+
+
+@dataclass(frozen=True)
+class Qsqrt2:
+    &quot;&quot;&quot;a + b*sqrt(2), with exact rational coefficients.&quot;&quot;&quot;
+
+    a: Fraction = Fraction(0)
+    b: Fraction = Fraction(0)
+
+    def __add__(self, other: &quot;Qsqrt2&quot;) -&gt; &quot;Qsqrt2&quot;:
+        return Qsqrt2(self.a + other.a, self.b + other.b)
+
+    def __sub__(self, other: &quot;Qsqrt2&quot;) -&gt; &quot;Qsqrt2&quot;:
+        return Qsqrt2(self.a - other.a, self.b - other.b)
+
+    def __mul__(self, other: &quot;Qsqrt2&quot;) -&gt; &quot;Qsqrt2&quot;:
+        return Qsqrt2(
+            self.a * other.a + 2 * self.b * other.b,
+            self.a * other.b + self.b * other.a,
+        )
+
+    def __neg__(self) -&gt; &quot;Qsqrt2&quot;:
+        return Qsqrt2(-self.a, -self.b)
+
+    def __bool__(self) -&gt; bool:
+        return bool(self.a or self.b)
+
+
+ZERO = Qsqrt2()
+ONE = Qsqrt2(Fraction(1))
+HALF = Qsqrt2(Fraction(1, 2))
+SQRT2_OVER_2 = Qsqrt2(Fraction(0), Fraction(1, 2))
+
+
+def matmul(left: list[list[Qsqrt2]], right: list[list[Qsqrt2]]) -&gt; list[list[Qsqrt2]]:
+    rows, inner, cols = len(left), len(right), len(right[0])
+    return [
+        [
+            sum_q((left[i][k] * right[k][j] for k in range(inner)))
+            for j in range(cols)
+        ]
+        for i in range(rows)
+    ]
+
+
+def sum_q(values) -&gt; Qsqrt2:
+    total = ZERO
+    for value in values:
+        total = total + value
+    return total
+
+
+def identity(dim: int) -&gt; list[list[Qsqrt2]]:
+    return [[ONE if i == j else ZERO for j in range(dim)] for i in range(dim)]
+
+
+def one_qubit_gate(n: int, qubit: int, entries: list[list[Qsqrt2]]) -&gt; list[list[Qsqrt2]]:
+    dim = 1 &lt;&lt; n
+    result = [[ZERO for _ in range(dim)] for _ in range(dim)]
+    bit = 1 &lt;&lt; (n - 1 - qubit)
+    for col in range(dim):
+        input_bit = 1 if col &amp; bit else 0
+        base = col &amp; ~bit
+        for output_bit in (0, 1):
+            row = base | (bit if output_bit else 0)
+            result[row][col] = entries[output_bit][input_bit]
+    return result
+
+
+H = [[SQRT2_OVER_2, SQRT2_OVER_2], [SQRT2_OVER_2, -SQRT2_OVER_2]]
+Z = [[ONE, ZERO], [ZERO, -ONE]]
+X = [[ZERO, ONE], [ONE, ZERO]]
+
+
+def cnot(n: int, control: int, target: int) -&gt; list[list[Qsqrt2]]:
+    dim = 1 &lt;&lt; n
+    result = [[ZERO for _ in range(dim)] for _ in range(dim)]
+    control_bit = 1 &lt;&lt; (n - 1 - control)
+    target_bit = 1 &lt;&lt; (n - 1 - target)
+    for col in range(dim):
+        row = col ^ target_bit if col &amp; control_bit else col
+        result[row][col] = ONE
+    return result
+
+
+def cz(n: int, first: int, second: int) -&gt; list[list[Qsqrt2]]:
+    dim = 1 &lt;&lt; n
+    result = [[ZERO for _ in range(dim)] for _ in range(dim)]
+    first_bit = 1 &lt;&lt; (n - 1 - first)
+    second_bit = 1 &lt;&lt; (n - 1 - second)
+    for col in range(dim):
+        result[col][col] = -ONE if col &amp; first_bit and col &amp; second_bit else ONE
+    return result
+
+
+def q3_cliffords() -&gt; tuple[list[list[Qsqrt2]], list[list[Qsqrt2]]]:
+    # C_phi = ZH on q0, as in BJSW equation (6).
+    c_phi = matmul(one_qubit_gate(3, 0, Z), one_qubit_gate(3, 0, H))
+
+    # C_psi maps |000&gt; to (|000&gt;-|011&gt;-|101&gt;-|110&gt;)/2.
+    # Read right-to-left: H0 H1, CNOT(0-&gt;2), CNOT(1-&gt;2), Z0 Z1, CZ(0,1).
+    c_psi = identity(8)
+    for gate in (
+        one_qubit_gate(3, 0, H),
+        one_qubit_gate(3, 1, H),
+        cnot(3, 0, 2),
+        cnot(3, 1, 2),
+        one_qubit_gate(3, 1, Z),
+        one_qubit_gate(3, 0, Z),
+        cz(3, 0, 1),
+    ):
+        c_psi = matmul(gate, c_psi)
+    return c_phi, c_psi
+
+
+def column(matrix: list[list[Qsqrt2]], col: int) -&gt; list[Qsqrt2]:
+    return [matrix[row][col] for row in range(len(matrix))]
+
+
+def conjugate_transpose_real(matrix: list[list[Qsqrt2]]) -&gt; list[list[Qsqrt2]]:
+    # All gates above are real, so transpose is the adjoint.
+    return [list(row) for row in zip(*matrix)]
+
+
+def append_clock_suffix(matrix3: list[list[Qsqrt2]]) -&gt; list[list[Qsqrt2]]:
+    &quot;&quot;&quot;Extend a 3-qubit preparation by identity on |00&gt;, then X on q3 for |10&gt;.&quot;&quot;&quot;
+    result = [[ZERO for _ in range(32)] for _ in range(32)]
+    for clock in range(4):
+        for row in range(8):
+            for col in range(8):
+                result[row * 4 + clock][col * 4 + clock] = matrix3[row][col]
+    return matmul(one_qubit_gate(5, 3, X), result)
+
+
+def abs_squared(value: Qsqrt2) -&gt; Fraction:
+    # The tested W entries have either a=0 or b=0, so this is exact in Q(sqrt(2)).
+    return value.a * value.a + 2 * value.b * value.b
+
+
+def seed_data() -&gt; tuple[dict[int, int], dict[int, int]]:
+    &quot;&quot;&quot;Return basis-index -&gt; sign dictionaries for the 5-qubit seed kets.
+
+    Qubits are big-endian q0...q4. The common BJSW outer clock pattern is |10&gt;.
+    &quot;&quot;&quot;
+    phi5 = {0b00010: +1, 0b10010: -1}
+    psi5 = {
+        0b00010: +1,
+        0b01110: -1,
+        0b10110: -1,
+        0b11010: -1,
+    }
+    return phi5, psi5
+
+
+def local_projector_entry(signed_support: dict[int, int], x: int, y: int) -&gt; Fraction:
+    size = len(signed_support)
+    if x not in signed_support or y not in signed_support:
+        return Fraction(0)
+    return Fraction(signed_support[x] * signed_support[y], size)
+
+
+def amplified_entry(
+    signed_support: dict[int, int], x: tuple[int, ...], y: tuple[int, ...]
+) -&gt; Fraction:
+    &quot;&quot;&quot;Entry of I - (I-|v&gt;&lt;v|)^{tensor R} for R five-qubit blocks.&quot;&quot;&quot;
+    if len(x) != len(y):
+        raise ValueError(&quot;row and column must have the same number of blocks&quot;)
+    product = Fraction(1)
+    for xb, yb in zip(x, y):
+        delta = Fraction(int(xb == yb))
+        product *= delta - local_projector_entry(signed_support, xb, yb)
+    return Fraction(int(x == y)) - product
+
+
+def row_nnz_formula(signed_support: dict[int, int], x: tuple[int, ...]) -&gt; int:
+    # If xb is outside the seed support, the local factor forces yb=xb.
+    # If xb is in support, there are exactly |support| choices for yb.
+    support_size = len(signed_support)
+    active_blocks = sum(xb in signed_support for xb in x)
+    # When every block is outside support, the identity diagonal cancels the
+    # complement-projector diagonal exactly, so the entire row is zero.
+    return 0 if active_blocks == 0 else support_size**active_blocks
+
+
+def ceil_one_plus_sqrt_power(r: int) -&gt; int:
+    # ceil(1 + 2^(3r/2)), evaluated with integer arithmetic.
+    q_floor = isqrt(1 &lt;&lt; (3 * r))
+    q_is_integer = (q_floor * q_floor == (1 &lt;&lt; (3 * r)))
+    return q_floor + (1 if q_is_integer else 2)
+
+
+def main() -&gt; None:
+    c_phi, c_psi = q3_cliffords()
+    phi_target = [ZERO for _ in range(8)]
+    phi_target[0] = SQRT2_OVER_2
+    phi_target[4] = -SQRT2_OVER_2
+    psi_target = [ZERO for _ in range(8)]
+    psi_target[0] = HALF
+    psi_target[3] = -HALF
+    psi_target[5] = -HALF
+    psi_target[6] = -HALF
+    assert column(c_phi, 0) == phi_target
+    assert column(c_psi, 0) == psi_target
+
+    relative = matmul(conjugate_transpose_real(c_psi), c_phi)
+    assert all(abs_squared(entry) == Fraction(1, 8) for row in relative for entry in row)
+    mu_squared = max(abs_squared(entry) for row in relative for entry in row)
+    assert mu_squared == Fraction(1, 8)
+
+    c_phi5 = append_clock_suffix(c_phi)
+    c_psi5 = append_clock_suffix(c_psi)
+    relative5 = matmul(conjugate_transpose_real(c_psi5), c_phi5)
+    nonzero5 = [entry for row in relative5 for entry in row if entry]
+    assert len(nonzero5) == 256
+    assert all(abs_squared(entry) == Fraction(1, 8) for entry in nonzero5)
+    assert all(abs_squared(entry) == 0 for row in relative5 for entry in row if not entry)
+
+    phi5, psi5 = seed_data()
+    assert len(phi5) == 2 and len(psi5) == 4
+    assert set(phi5) &amp; set(psi5) == {0b00010}
+
+    # Exhaustively verify every local (R=1) row against the support formula.
+    for support in (phi5, psi5):
+        for x0 in range(32):
+            row_count = sum(
+                amplified_entry(support, (x0,), (y0,)) != 0 for y0 in range(32)
+            )
+            assert row_count == row_nnz_formula(support, (x0,))
+
+    # Exhaustively verify the exact row-union count of the two added terms for
+    # R=1,2. Base-family summands are identity on this ancilla and therefore
+    # cannot affect the off-diagonal columns counted here.
+    common = 0b00010
+    for r in (1, 2):
+        x = (common,) * r
+        full_added_row_count = 0
+        for y in product(range(32), repeat=r):
+            entry = (
+                amplified_entry(phi5, x, y) + amplified_entry(psi5, x, y)
+            ) / 4
+            full_added_row_count += entry != 0
+        assert full_added_row_count == 2**r + 4**r - 1
+
+    # All blocks in the seed support attain the maximum s**R row count.
+    table_rows = []
+    for r in (1, 2, 4, 8, 16, 32, 64, 128):
+        phi_max = row_nnz_formula(phi5, (0b00010,) * r)
+        psi_max = row_nnz_formula(psi5, (0b00010,) * r)
+        assert phi_max == 2**r
+        assert psi_max == 4**r
+        table_rows.append(
+            {
+                &quot;copies_R&quot;: r,
+                &quot;local_qubits&quot;: 5 * r,
+                &quot;phi_seed_support&quot;: len(phi5),
+                &quot;psi_seed_support&quot;: len(psi5),
+                &quot;phi_Q_max_row_nnz&quot;: phi_max,
+                &quot;psi_Q_max_row_nnz&quot;: psi_max,
+                &quot;augmented_full_output_row_lower_bound&quot;: phi_max + psi_max - 1,
+                &quot;relative_basis_mu&quot;: &quot;1/(2*sqrt(2))&quot;,
+                &quot;bare_two_branch_enforcer_row_lower_bound&quot;: ceil_one_plus_sqrt_power(r),
+                &quot;enforcer_bound_exact_form&quot;: f&quot;ceil(1+2^({3*r}/2))&quot;,
+            }
+        )
+
+    out = Path(__file__).with_name(&quot;bmvz_bjsw_seed_pair_table.csv&quot;)
+    with out.open(&quot;w&quot;, newline=&quot;&quot;, encoding=&quot;utf-8&quot;) as handle:
+        writer = csv.DictWriter(handle, fieldnames=list(table_rows[0]))
+        writer.writeheader()
+        writer.writerows(table_rows)
+
+    print(&quot;PASS: BJSW 3-qubit seed kets are exact Clifford images of |000&gt;.&quot;)
+    print(&quot;PASS: max relative-basis entry is exactly 1/(2*sqrt(2)); squared magnitude = 1/8.&quot;)
+    print(&quot;PASS: the five-qubit preparations with common |10&gt; suffix have 256 nonzero relative entries, all squared magnitude 1/8.&quot;)
+    print(&quot;PASS: all 32 local rows match the exact amplified-term support formula for each seed.&quot;)
+    print(&quot;PASS: the two 5-qubit seed supports intersect only at |00010&gt;, so the full-output row union is exact.&quot;)
+    print(&quot;PASS: exhaustive R=1,2 row scans give 2^R+4^R-1 nonzeros for the added pair sum.&quot;)
+    print(f&quot;Wrote {out}&quot;)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/9255f86b5bf72a1da222b31bad8259a937105fefaebd72be3bb713bfc440be51.py">Exact original</a></p></html>

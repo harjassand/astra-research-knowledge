@@ -1,0 +1,86 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c12_spin_uniform/certify_r0_seed_rescue_n7.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c12_spin_uniform/certify_r0_seed_rescue_n7.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact support-witness rescue for the n=7 alpha=e5+e6 seed-hull miss.&quot;&quot;&quot;
+from __future__ import annotations
+
+from itertools import combinations
+from math import comb
+from pathlib import Path
+import json
+import sys
+
+import sympy as sp
+
+HERE = Path(__file__).parent
+sys.path.insert(0, str(HERE))
+import r0_seed_cone_probe as base
+
+
+def main():
+    n = 7
+    alpha = [0, 0, 0, 0, 1, 1, 0]
+    F = base.recoupling(n)
+    D = sum((alpha[k - 1] * base.grade_diagonal(n, k)
+             for k in range(1, n + 1)), sp.zeros(n + 1))
+    H = sp.simplify(D + F * D * F)
+    trace = sum(comb(2 * n + 1, k) * alpha[k - 1]
+                for k in range(1, n + 1))
+
+    # The exact rational state is recorded and replayed in the companion JSON.
+    state = json.loads((HERE / &quot;spin15_rational_seed_certificate.json&quot;).read_text())
+    s = [sp.Rational(x) for x in state[&quot;grade_moments&quot;]]
+    attained = sum(alpha[k] * s[k] for k in range(n))
+    q = sp.Rational(80711, 10)
+    gap = sp.simplify(q * sp.eye(n + 1) - H)
+    minors = []
+    failures = []
+    undecided = []
+    for size in range(1, n + 2):
+        for indices in combinations(range(n + 1), size):
+            det = sp.factor(gap.extract(indices, indices).det())
+            minors.append({&quot;indices_zero_based&quot;: list(indices), &quot;determinant&quot;: str(det)})
+            if det.is_negative is True:
+                failures.append({&quot;indices_zero_based&quot;: list(indices), &quot;determinant&quot;: str(det)})
+            elif det.is_nonnegative is not True:
+                undecided.append({&quot;indices_zero_based&quot;: list(indices), &quot;determinant&quot;: str(det)})
+
+    result = {
+        &quot;status&quot;: &quot;EXACT_R0_DIRECTION_RESCUED&quot; if not failures and not undecided and attained &gt; q - trace else &quot;CHECK_FAILED&quot;,
+        &quot;group&quot;: &quot;Spin(15)&quot;,
+        &quot;n&quot;: n,
+        &quot;spinor_dimension&quot;: 2**n,
+        &quot;scope&quot;: &quot;One nonnegative grade ray alpha=e5+e6 in the exact r=0 block; proves this particular 8-seed hull failure is repaired by an attained pure-state support value.&quot;,
+        &quot;alpha_grades_1_to_7&quot;: alpha,
+        &quot;trace_term&quot;: str(trace),
+        &quot;r0_star_exact_upper_certificate&quot;: {
+            &quot;q&quot;: str(q),
+            &quot;claim&quot;: &quot;lambda_max(H_alpha,r0) &lt;= q&quot;,
+            &quot;method&quot;: &quot;all exact principal minors of q I - H are nonnegative&quot;,
+            &quot;principal_minor_count&quot;: len(minors),
+            &quot;negative_minors&quot;: failures,
+            &quot;undecided_minors&quot;: undecided,
+            &quot;principal_minors&quot;: minors,
+        },
+        &quot;attained_pure_seed&quot;: {
+            &quot;certificate_path&quot;: &quot;spin15_rational_seed_certificate.json&quot;,
+            &quot;grade5_plus_grade6&quot;: str(attained),
+            &quot;grade5_plus_grade6_decimal&quot;: float(attained),
+            &quot;strict_margin_over_star_excess_upper&quot;: str(sp.factor(attained - (q - trace))),
+            &quot;star_excess_upper&quot;: str(q - trace),
+        },
+        &quot;finite_seed_hull&quot;: {
+            &quot;eight_original_seed_support&quot;: 62,
+            &quot;seed_hull_star_gap_failure_determinant&quot;: &quot;-38153371047622852770144000&quot;,
+            &quot;source_path&quot;: &quot;r0_seed_cone_n7.json&quot;,
+        },
+        &quot;limitation&quot;: &quot;This closes one direction and one isotypic block only. It neither classifies full canonical support nor proves the all-r/all-n star inequality or provides a channel counterexample.&quot;,
+    }
+    out = HERE / &quot;r0_seed_rescue_n7.json&quot;
+    out.write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+    print(result[&quot;status&quot;], &quot;principal minors&quot;, len(minors),
+          &quot;exact margin&quot;, result[&quot;attained_pure_seed&quot;][&quot;strict_margin_over_star_excess_upper&quot;])
+    print(&quot;certificate&quot;, out)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/e156aa04930b1886c71a6b5a8e9a45a988545943027ad1db1385f6c0ac55624e.py">Exact original</a></p></html>

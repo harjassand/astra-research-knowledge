@@ -1,0 +1,94 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/cell_control/cell_controllability/cycle2/verify_finite_tau.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/cell_control/cell_controllability/cycle2/verify_finite_tau.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Dependency-free numerical spot check for the CYCLE2 secant bias bounds.
+
+This is a finite diagnostic of the stated linear mean-ODE model, not evidence
+that biological populations follow the model or that the bounds are novel.
+&quot;&quot;&quot;
+
+from math import log
+from random import Random
+
+
+def matvec(A, x):
+    return [sum(a * b for a, b in zip(row, x)) for row in A]
+
+
+def expm_action(A, t, x):
+    &quot;&quot;&quot;Return exp(t A)x by a convergent Taylor series for small capped t.&quot;&quot;&quot;
+    K = len(x)
+    term = x[:]
+    out = x[:]
+    for n in range(1, 200):
+        term = [v * t / n for v in matvec(A, term)]
+        out = [a + b for a, b in zip(out, term)]
+        if max(abs(v) for v in term) &lt; 1e-17:
+            return out
+    raise ArithmeticError(&quot;Taylor series did not converge to tolerance&quot;)
+
+
+def row_generator(offdiag):
+    K = len(offdiag)
+    return [[offdiag[i][j] if i != j else -sum(offdiag[i])
+             for j in range(K)] for i in range(K)]
+
+
+def transpose(A):
+    return [list(row) for row in zip(*A)]
+
+
+def check_one_case(Q, r, i, tau, Lambda, R):
+    K = len(r)
+    QT = transpose(Q)
+    A = [[QT[a][b] + (r[a] if a == b else 0.0)
+          for b in range(K)] for a in range(K)]
+    e_i = [1.0 if j == i else 0.0 for j in range(K)]
+    x = expm_action(A, tau, e_i)
+    N = sum(x)
+    p = [z / N for z in x]
+    qhat = [p[j] / tau for j in range(K) if j != i]
+    qtrue = [Q[i][j] for j in range(K) if j != i]
+    q_bias = max(abs(a - b) for a, b in zip(qhat, qtrue))
+    rhat = log(N) / tau
+    r_bias = abs(rhat - r[i])
+    Cq = (Lambda + R) * (2 * Lambda + 3 * R) * tau
+    Cr = R * (Lambda + R) * tau
+    if q_bias &gt; Cq + 5e-13 or r_bias &gt; Cr + 5e-13:
+        raise AssertionError((q_bias, Cq, r_bias, Cr))
+    return q_bias, Cq, r_bias, Cr
+
+
+def main():
+    rng = Random(20261008)
+    K = 4
+    Lambda = 0.3
+    R = 0.2
+    max_ratio_q = 0.0
+    max_ratio_r = 0.0
+    cases = 0
+    for _ in range(250):
+        off = [[0.0] * K for _ in range(K)]
+        for i in range(K):
+            raw = [rng.random() for j in range(K) if j != i]
+            total = sum(raw)
+            scale = rng.random() * Lambda / total if total else 0.0
+            k = 0
+            for j in range(K):
+                if j != i:
+                    off[i][j] = raw[k] * scale
+                    k += 1
+        Q = row_generator(off)
+        r = [rng.uniform(-R, R) for _ in range(K)]
+        tau = rng.uniform(1e-4, 0.25)
+        for i in range(K):
+            qb, Cq, rb, Cr = check_one_case(Q, r, i, tau, Lambda, R)
+            max_ratio_q = max(max_ratio_q, qb / Cq if Cq else 0.0)
+            max_ratio_r = max(max_ratio_r, rb / Cr if Cr else 0.0)
+            cases += 1
+    print(f&quot;checked {cases} pure-start/rate fixtures; caps Lambda={Lambda}, R={R}&quot;)
+    print(f&quot;max observed composition-bias / bound = {max_ratio_q:.6g}&quot;)
+    print(f&quot;max observed log-count-bias / bound = {max_ratio_r:.6g}&quot;)
+    print(&quot;PASS: no sampled fixture violated the analytic bounds&quot;)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/59af2ac505a928436fee2001de3fc634bc6cc9268360850322bea6aebf73ca16.py">Exact original</a></p></html>

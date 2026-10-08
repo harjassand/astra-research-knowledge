@@ -1,0 +1,112 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/spin_statistical/cycle2/leaf08-anisotropy-crossover/exact_scaling_replay.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/spin_statistical/cycle2/leaf08-anisotropy-crossover/exact_scaling_replay.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact symbolic replay for the open-XY anisotropy/detuning exponents.
+
+Requires SymPy. This checks the fixed-mode sine-kernel limit, the (1,2)
+coefficient, the adjacent-mode low-q asymptotic, and exponent comparisons.
+It does not numerically diagonalize a Gibbs state or prove state convergence
+outside the compact regime a&gt;=1,b&gt;=2.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import json
+from fractions import Fraction
+from pathlib import Path
+
+import sympy as sp
+
+
+def main() -&gt; None:
+    x, k, ell = sp.symbols(&quot;x k ell&quot;, positive=True)
+
+    # Since x=pi/L, L*B_{L,k,ell} is exactly this function of x.
+    L_times_B = -4 * sp.sin(k * x) * sp.sin(ell * x) / (
+        sp.cos(k * x) - sp.cos(ell * x)
+    )
+    generic_limit = sp.simplify(sp.limit(L_times_B, x, 0))
+    expected_generic = -8 * k * ell / (ell**2 - k**2)
+    assert sp.simplify(generic_limit - expected_generic) == 0
+
+    L_times_B_12 = sp.simplify(L_times_B.subs({k: 1, ell: 2}))
+    limit_12 = sp.simplify(sp.limit(L_times_B_12, x, 0))
+    assert limit_12 == sp.Rational(-16, 3)
+    # K_12=-2 tau J kappa L^(1-a) * (L B_12).
+    K12_prefactor = sp.simplify(-2 * limit_12)
+    assert K12_prefactor == sp.Rational(32, 3)
+
+    # For adjacent modes, first take q=pi/L -&gt; 0 at fixed k, then k -&gt; inf.
+    L_times_B_adj = -4 * sp.sin(k * x) * sp.sin((k + 1) * x) / (
+        sp.cos(k * x) - sp.cos((k + 1) * x)
+    )
+    fixed_k_adj = sp.simplify(sp.limit(L_times_B_adj, x, 0))
+    expected_fixed_k_adj = -8 * k * (k + 1) / (2 * k + 1)
+    assert sp.simplify(fixed_k_adj - expected_fixed_k_adj) == 0
+    large_k_ratio = sp.simplify(sp.limit(fixed_k_adj / k, k, sp.oo))
+    assert large_k_ratio == -4
+    # Therefore K_{k,k+1} ~ 8 tau J kappa L^(1-a) k for 1&lt;&lt;k&lt;&lt;L.
+
+    cases = []
+    for a_text, b_text in [
+        (&quot;3/2&quot;, &quot;2&quot;),
+        (&quot;1&quot;, &quot;2&quot;),
+        (&quot;1/2&quot;, &quot;2&quot;),
+        (&quot;1&quot;, &quot;5/2&quot;),
+        (&quot;3/4&quot;, &quot;3/2&quot;),
+        (&quot;1/2&quot;, &quot;3/2&quot;),
+    ]:
+        a = Fraction(a_text)
+        b = Fraction(b_text)
+        pair_power = 1 - a
+        detuning_power = 2 - b
+        fixed_pair_over_field_power = b - a - 1
+        shell_pair_over_kinetic_power = Fraction(1, 2) * b - a
+        cases.append(
+            {
+                &quot;a&quot;: str(a),
+                &quot;b&quot;: str(b),
+                &quot;scaled_pairing_power_fixed_modes&quot;: str(pair_power),
+                &quot;scaled_detuning_power_fixed_modes&quot;: str(detuning_power),
+                &quot;fixed_mode_pair_over_detuning_power&quot;: str(
+                    fixed_pair_over_field_power
+                ),
+                &quot;moving_shell_pair_over_kinetic_power_0_lt_b_lt_2&quot;: str(
+                    shell_pair_over_kinetic_power
+                ),
+            }
+        )
+
+    output = {
+        &quot;status&quot;: &quot;PASS&quot;,
+        &quot;scope&quot;: &quot;exact symbolic coefficient and exponent replay only&quot;,
+        &quot;identities&quot;: {
+            &quot;limit_LB_general_fixed_k_ell&quot;: str(generic_limit),
+            &quot;limit_LB_12&quot;: str(limit_12),
+            &quot;K12_leading_coefficient_of_tau_J_kappa_L_power&quot;: str(
+                K12_prefactor
+            ),
+            &quot;limit_LB_k_kplus1_fixed_k&quot;: str(fixed_k_adj),
+            &quot;large_k_limit_LB_adjacent_divided_by_k&quot;: str(large_k_ratio),
+            &quot;adjacent_K_asymptotic&quot;: (
+                &quot;8*tau*J*kappa*L^(1-a)*k for 1&lt;&lt;k&lt;&lt;L&quot;
+            ),
+            &quot;critical_effective_parameters&quot;: {
+                &quot;lambda_eff&quot;: &quot;lambda*L^(2-b)&quot;,
+                &quot;kappa_eff&quot;: &quot;kappa*L^(1-a)&quot;,
+            },
+            &quot;moving_shell&quot;: {
+                &quot;domain&quot;: &quot;0&lt;b&lt;2 and lambda&gt;0&quot;,
+                &quot;k_F_order&quot;: &quot;L^(1-b/2)&quot;,
+                &quot;pair_over_kinetic_order&quot;: &quot;L^(b/2-a)&quot;,
+            },
+        },
+        &quot;exponent_cases&quot;: cases,
+        &quot;state_level_limit_checked&quot;: False,
+    }
+    out_path = Path(__file__).with_name(&quot;exact_scaling_replay.json&quot;)
+    out_path.write_text(json.dumps(output, indent=2) + &quot;\n&quot;, encoding=&quot;utf-8&quot;)
+    print(json.dumps(output, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/bdeb1e3a867890d65bac8dbe2243a0338b8f2e605ac8fad81f48095c078b19cd.py">Exact original</a></p></html>

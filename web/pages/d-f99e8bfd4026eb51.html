@@ -1,0 +1,94 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/materials_energy/lead_reaction_diffusion/acquired_graph_demo.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/materials_energy/lead_reaction_diffusion/acquired_graph_demo.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Synthetic end-to-end assay-to-certificate arithmetic fixture (not material data).&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import json
+import math
+
+from certificate_checker import (
+    effective_face_margin,
+    poisson_rate_confidence_interval,
+    reaction_face_margin,
+)
+
+
+def main() -&gt; None:
+    # Synthetic pilot summaries: four adsorption/removal channels and one
+    # reciprocal-hop channel. The values are chosen for arithmetic checking;
+    # no trajectory or physical assay generated them.
+    delta, channel_delta = 0.05, 0.01  # P=5, Bonferroni allocation
+    reaction_ci = poisson_rate_confidence_interval(10_000, 10_000, channel_delta, 2.0)
+    hop_ci = poisson_rate_confidence_interval(10_000, 200_000, channel_delta, 0.2)
+    assert reaction_ci is not None and hop_ci is not None
+    rlo, rhi = reaction_ci
+    _, chi = hop_ci
+
+    lower, upper, collar = (0.5,), (1.5,), 0.25
+    reactions = [
+        {&quot;y&quot;: (0,), &quot;nu&quot;: (1,), &quot;k_lo&quot;: rlo, &quot;k_hi&quot;: rhi},
+        {&quot;y&quot;: (1,), &quot;nu&quot;: (-1,), &quot;k_lo&quot;: rlo, &quot;k_hi&quot;: rhi},
+    ]
+    alpha, face_data = (1.0, 3.0), []
+    for site_alpha in alpha:
+        low_rxn = reaction_face_margin(reactions, lower, upper, 0, collar, &quot;lower&quot;)
+        high_rxn = reaction_face_margin(reactions, lower, upper, 0, collar, &quot;upper&quot;)
+        low_eff = effective_face_margin(low_rxn, site_alpha, (chi,), collar)
+        high_eff = effective_face_margin(high_rxn, site_alpha, (chi,), collar)
+        face_data.append({
+            &quot;reaction_lower_margin&quot;: low_rxn,
+            &quot;reaction_upper_margin&quot;: high_rxn,
+            &quot;effective_lower_margin&quot;: low_eff,
+            &quot;effective_upper_margin&quot;: high_eff,
+        })
+
+    # PROOF.md constants for two sites, one species, birth/death reactions,
+    # one reciprocal edge, b=1.5, and gaps g=0.5 from x0=1.
+    effective = [z[k] for z in face_data for k in
+                 (&quot;effective_lower_margin&quot;, &quot;effective_upper_margin&quot;)]
+    face_gamma = [
+        min(face_data[i][&quot;effective_lower_margin&quot;], face_data[i][&quot;effective_upper_margin&quot;])
+        for i in range(2)
+    ]
+    bmax = 1.5
+    B_by_site = [
+        (rhi + rhi * bmax) / alpha[i] + 2 * bmax * chi / alpha[i] ** 2
+        for i in range(2)
+    ]
+    theta_by_site = [min(alpha[i], face_gamma[i] / (6 * B_by_site[i])) for i in range(2)]
+    c_star = min(theta_by_site[i] * collar for i in range(2))
+    c_zero = min(theta * 0.5 for theta in theta_by_site)
+    Lambda = sum(a * (rhi + rhi * bmax) for a in alpha) + 2 * chi * bmax
+    M, V = 4, 25_000
+    T = math.exp(c_star * V / 2)
+    initial_term = 2 * sum(math.exp(-theta * V * 0.5) for theta in theta_by_site)
+    jump_term = 2 * M * V * Lambda * T * math.exp(-c_star * V)
+    assert min(effective) &gt; 0
+    assert initial_term + jump_term &lt; 1e-4
+
+    out = {
+        &quot;synthetic_only&quot;: True,
+        &quot;calibration_delta&quot;: delta,
+        &quot;channel_delta&quot;: channel_delta,
+        &quot;reaction_ci&quot;: list(reaction_ci),
+        &quot;hop_ci&quot;: list(hop_ci),
+        &quot;pilot_counts&quot;: {&quot;four_reaction_channels&quot;: 40_000, &quot;hop_channel&quot;: 10_000},
+        &quot;integrated_exposures&quot;: {&quot;four_reaction_channels&quot;: 40_000, &quot;hop_channel&quot;: 200_000},
+        &quot;effective_face_data&quot;: face_data,
+        &quot;all_effective_margins_positive&quot;: min(effective) &gt; 0,
+        &quot;site_face_margin_minima&quot;: face_gamma,
+        &quot;theta_by_site&quot;: theta_by_site,
+        &quot;c_star&quot;: c_star,
+        &quot;c_zero&quot;: c_zero,
+        &quot;Lambda&quot;: Lambda,
+        &quot;V&quot;: V,
+        &quot;horizon&quot;: T,
+        &quot;operational_exit_bound&quot;: initial_term + jump_term,
+        &quot;operational_bound_terms&quot;: {&quot;initial&quot;: initial_term, &quot;jump&quot;: jump_term},
+        &quot;event_activity_envelope&quot;: V * Lambda * T,
+    }
+    print(json.dumps(out, indent=2, sort_keys=True))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/25026dd4877c2fed6a2aaf5b19c7257102d53df4e0136ea414b28d7a00536b83.py">Exact original</a></p></html>

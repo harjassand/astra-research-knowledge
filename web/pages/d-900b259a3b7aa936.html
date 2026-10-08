@@ -1,0 +1,339 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c8_morphogenesis_control/cycle9/deeper_attack/replay_tail_selection.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c8_morphogenesis_control/cycle9/deeper_attack/replay_tail_selection.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Replay tail-selection diagnostics from the released SkullWave output CSVs.
+
+This is an analysis of the authors&#x27; published model output, not a reimplementation
+or rerun of their coupled PDE solver.  It uses only NumPy and the source CSVs
+under source_data/.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import argparse
+import csv
+import csv
+import hashlib
+import json
+import math
+from pathlib import Path
+
+import numpy as np
+
+
+HERE = Path(__file__).resolve().parent
+DEFAULT_DATA = HERE / &quot;source_data&quot;
+
+
+def load_matrix(path: Path) -&gt; np.ndarray:
+    data = np.loadtxt(path, delimiter=&quot;,&quot;)
+    if data.ndim != 2 or not np.isfinite(data).all():
+        raise ValueError(f&quot;Expected a finite 2-D CSV matrix: {path}&quot;)
+    return data
+
+
+def sha256(path: Path) -&gt; str:
+    digest = hashlib.sha256()
+    with path.open(&quot;rb&quot;) as stream:
+        for chunk in iter(lambda: stream.read(1 &lt;&lt; 20), b&quot;&quot;):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def interp_at_x(grid: np.ndarray, values: np.ndarray, x: float) -&gt; float:
+    return float(np.interp(x, grid, values))
+
+
+def fit_speed(times: np.ndarray, front: np.ndarray, lower: float, upper: float) -&gt; float:
+    keep = (times &gt;= lower) &amp; (times &lt;= upper)
+    return float(np.polyfit(times[keep], front[keep], 1)[0])
+
+
+def main() -&gt; None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(&quot;--data&quot;, type=Path, default=DEFAULT_DATA)
+    parser.add_argument(&quot;--output&quot;, type=Path, help=&quot;Optional path for JSON results&quot;)
+    args = parser.parse_args()
+    data_dir = args.data.resolve()
+
+    names = {
+        &quot;phi&quot;: &quot;best_model_data_phi_1.csv&quot;,
+        &quot;velocity&quot;: &quot;best_model_data_V_1.csv&quot;,
+        &quot;density&quot;: &quot;best_model_data_rho_1.csv&quot;,
+        &quot;notebook_velocity_estimate&quot;: &quot;best_model_wave_velocity_est.csv&quot;,
+        &quot;parameters&quot;: &quot;best_model_data_parameters.csv&quot;,
+    }
+    paths = {key: data_dir / name for key, name in names.items()}
+    interface_path = data_dir / &quot;data_ex_vivo_videos_1_to_4_all_interfaces.csv&quot;
+    velocity_means_path = data_dir / &quot;Velocities_means.csv&quot;
+    phi = load_matrix(paths[&quot;phi&quot;])
+    velocity = load_matrix(paths[&quot;velocity&quot;])
+    density = load_matrix(paths[&quot;density&quot;])
+    if phi.shape != (201, 101) or velocity.shape != phi.shape or density.shape != phi.shape:
+        raise ValueError(f&quot;Unexpected array shapes: phi={phi.shape}, V={velocity.shape}, rho={density.shape}&quot;)
+
+    # The companion Rmd maps rows to x=-L+2L(X-1)/Nx; the notebook uses
+    # L=1500 um, Nx=200, T=100, tmax=8 h.
+    L, Nx, tmax, Nt = 1500.0, 200, 8.0, 100
+    x = np.linspace(-L, L, Nx + 1)
+    times = np.linspace(0.0, tmax, Nt + 1)
+    dx = float(x[1] - x[0])
+
+    # Track the phi=1/2 level continuously in x at each released time point.
+    front = np.empty(Nt + 1)
+    front_velocity = np.empty(Nt + 1)
+    front_density = np.empty(Nt + 1)
+    for j in range(Nt + 1):
+        profile = phi[:, j]
+        crossings = np.flatnonzero((profile[:-1] &gt;= 0.5) &amp; (profile[1:] &lt; 0.5))
+        if len(crossings) != 1:
+            raise ValueError(f&quot;Expected one descending phi=1/2 crossing at output {j}; found {len(crossings)}&quot;)
+        i = int(crossings[0])
+        fraction = (0.5 - profile[i]) / (profile[i + 1] - profile[i])
+        front[j] = x[i] + fraction * dx
+        front_velocity[j] = velocity[i, j] + fraction * (velocity[i + 1, j] - velocity[i, j])
+        front_density[j] = density[i, j] + fraction * (density[i + 1, j] - density[i, j])
+
+    density_gradient = np.gradient(density, x, axis=0, edge_order=2)
+    log_density_gradient = density_gradient / density
+    grad_at_front = np.array([
+        interp_at_x(x, log_density_gradient[:, j], front[j]) for j in range(Nt + 1)
+    ])
+
+    # Parameters copied from the published parameter CSV / notebook.  eO/eM
+    # are the converted model units used with time in hours and x in microns.
+    D = 15.0
+    alpha = 3.5e-6
+    eO, eM = 12960.0, 388.8
+    rhoA, rhoB, tau = 0.0067, 0.0077, 10.0
+    a_phi = 4.0
+    delta_E = eO - eM
+    delta_k_Ahead = (rhoB - rhoA) / (tau * rhoB)
+    r = delta_k_Ahead + alpha * delta_E
+    q0 = 2.0 * a_phi / L
+    q_star = math.sqrt(r / D)
+
+    # In the constant-leading-edge reduction, the composition equation is
+    # phi_t = D phi_xx + r phi(1-phi), after removing uniform material drift.
+    # Exponential initial tail q&lt;sqrt(r/D) selects Dq+r/q; a steep tail selects
+    # the pulled minimum 2sqrt(Dr). These are comparison baselines, not a theorem
+    # for the source&#x27;s fully coupled variable-density, variable-velocity PDE.
+    c_shallow = D * q0 + r / q0
+    c_pulled = 2.0 * math.sqrt(D * r)
+    front_speed_ols = fit_speed(times, front, 0.0, tmax)
+    front_speed_secant = float((front[-1] - front[0]) / (times[-1] - times[0]))
+    mean_velocity_integrated = float(np.trapezoid(front_velocity, times) / (times[-1] - times[0]))
+    mean_log_gradient_integrated = float(np.trapezoid(grad_at_front, times) / (times[-1] - times[0]))
+    relative_speed_adjusted = front_speed_secant - mean_velocity_integrated + D * mean_log_gradient_integrated
+    alpha_from_shallow_tail = (q0 * (relative_speed_adjusted - D * q0) - delta_k_Ahead) / delta_E
+    alpha_from_pulled_law = (relative_speed_adjusted**2 / (4.0 * D) - delta_k_Ahead) / delta_E
+
+    # Independent released experimental comparators: regress each explant&#x27;s
+    # front interface over the first six hours; use the authors&#x27; summarized
+    # single-cell velocity means as a separate cell-motion readout.
+    grouped_interfaces: dict[str, list[tuple[float, float]]] = {}
+    with interface_path.open(newline=&quot;&quot;, encoding=&quot;utf-8&quot;) as stream:
+        for row in csv.DictReader(stream):
+            t = float(row[&quot;time&quot;])
+            if 0.0 &lt;= t &lt;= 6.0:
+                grouped_interfaces.setdefault(row[&quot;data_set&quot;], []).append(
+                    (t, float(row[&quot;interface_height&quot;]))
+                )
+    experimental_front_slopes = []
+    for rows in grouped_interfaces.values():
+        if len(rows) &gt;= 3:
+            t, h = np.asarray(rows, dtype=float).T
+            experimental_front_slopes.append(float(np.polyfit(t, h, 1)[0]))
+    if len(experimental_front_slopes) &lt; 2:
+        raise ValueError(&quot;Need at least two released ex-vivo interface time series&quot;)
+    experimental_front_mean = float(np.mean(experimental_front_slopes))
+    experimental_front_sd = float(np.std(experimental_front_slopes, ddof=1))
+    cell_velocity_means = {}
+    with velocity_means_path.open(newline=&quot;&quot;, encoding=&quot;utf-8&quot;) as stream:
+        for row in csv.DictReader(stream):
+            cell_velocity_means[row[&quot;Location&quot;]] = {
+                &quot;mean_um_per_hr&quot;: float(row[&quot;V.mean.mean&quot;]),
+                &quot;between_track_sd_um_per_hr&quot;: float(row[&quot;V.mean.sd&quot;]),
+            }
+
+    # Reproduce the notebook&#x27;s profile-shift diagnostic exactly.  Its source
+    # uses Abs[Sum[phi_t-phi_shifted]], not Sum[Abs[...]], and the vp grid is
+    # expressed as grid cells per output-time index.
+    notebook_delta_steps = 30
+    notebook_t1_indices = (20, 50)  # Mathematica&#x27;s 1-based time-array indices
+    notebook_profile_shift = []
+    for shift_cells in range(16):  # vp = 0, 1/30, ..., 15/30
+        signed_mass_error = []
+        shape_l1_error = []
+        for t1_mathematica in notebook_t1_indices:
+            t0 = t1_mathematica - 1
+            t1 = t1_mathematica + notebook_delta_steps - 1
+            diff = phi[:Nx - shift_cells, t0] - phi[shift_cells:Nx, t1]
+            signed_mass_error.append(abs(float(np.sum(diff))))
+            shape_l1_error.append(float(np.sum(np.abs(diff))))
+        notebook_profile_shift.append({
+            &quot;shift_cells&quot;: shift_cells,
+            &quot;v_grid_per_output_step&quot;: shift_cells / notebook_delta_steps,
+            &quot;mean_abs_signed_mass_error&quot;: float(np.mean(signed_mass_error)),
+            &quot;mean_L1_shape_error&quot;: float(np.mean(shape_l1_error)),
+        })
+    min_signed = min(notebook_profile_shift, key=lambda item: item[&quot;mean_abs_signed_mass_error&quot;])
+    min_shape = min(notebook_profile_shift, key=lambda item: item[&quot;mean_L1_shape_error&quot;])
+    physical_notebook_interval = notebook_delta_steps * (tmax / Nt)
+    notebook_speed_step = dx / physical_notebook_interval
+    source_notebook_velocity = min_signed[&quot;shift_cells&quot;] * notebook_speed_step
+
+    # Reproduce the published Rmd&#x27;s different plotted-front estimator: strict
+    # phi&lt;0.5 row minimum, displacement relative to the first output, then an
+    # origin-constrained OLS fit against its literal T.all expression.
+    rmd_first_below_half = np.array([
+        int(np.flatnonzero(phi[:, j] &lt; 0.5)[0] + 1) for j in range(Nt + 1)
+    ])
+    rmd_displacement = (rmd_first_below_half - rmd_first_below_half[0]) * dx
+    # In R, seq(0:nT) uses the one-argument length form and returns 1:101;
+    # after subtracting one, this is the expected 0:100 time index.
+    rmd_times_literal = np.arange(Nt + 1, dtype=float) / Nt * tmax
+    rmd_origin_speed = float(np.dot(rmd_times_literal, rmd_displacement) / np.dot(rmd_times_literal, rmd_times_literal))
+    rmd_ordinary_speed = float(np.polyfit(rmd_times_literal, rmd_displacement, 1)[0])
+
+    alpha_aliases = []
+    for q in (q0, 0.01, 0.02):
+        r_alias = q * (relative_speed_adjusted - D * q)
+        alpha_alias = (r_alias - delta_k_Ahead) / delta_E
+        q_star_alias = math.sqrt(r_alias / D)
+        c_alias = D * q + r_alias / q
+        alpha_aliases.append({
+            &quot;q_per_um&quot;: q,
+            &quot;alpha_in_simulator_units&quot;: alpha_alias,
+            &quot;r_per_hr&quot;: r_alias,
+            &quot;qstar_per_um&quot;: q_star_alias,
+            &quot;is_shallow_tail&quot;: q &lt; q_star_alias,
+            &quot;reconstructed_relative_speed_um_per_hr&quot;: c_alias,
+        })
+    if any(item[&quot;alpha_in_simulator_units&quot;] &lt;= 0 or not item[&quot;is_shallow_tail&quot;] for item in alpha_aliases):
+        raise AssertionError(&quot;The displayed alpha/q speed aliases must be positive shallow-tail cases&quot;)
+    if not all(math.isclose(item[&quot;reconstructed_relative_speed_um_per_hr&quot;], relative_speed_adjusted, rel_tol=1e-12) for item in alpha_aliases):
+        raise AssertionError(&quot;The candidate (alpha,q) pairs failed to reconstruct the same speed&quot;)
+    if min_signed[&quot;shift_cells&quot;] != min_shape[&quot;shift_cells&quot;]:
+        raise AssertionError(&quot;The source-output L1 recheck no longer selects the same shift grid point&quot;)
+    exported_velocity_field = next(
+        (field for row in csv.reader(paths[&quot;notebook_velocity_estimate&quot;].open(newline=&quot;&quot;, encoding=&quot;utf-8&quot;))
+         for field in row if field.startswith(&quot;{&quot;) and &quot;18.75&quot; in field),
+        None,
+    )
+    if exported_velocity_field is None:
+        raise ValueError(&quot;Could not locate the notebook&#x27;s exported wave-velocity row&quot;)
+    exported_velocity_tokens = exported_velocity_field.strip(&quot;{}&quot;).split(&quot;,&quot;)
+    exported_notebook_velocity = float(exported_velocity_tokens[2])
+    if not math.isclose(source_notebook_velocity, exported_notebook_velocity, rel_tol=0.0, abs_tol=1e-12):
+        raise AssertionError(&quot;Replayed notebook speed does not match its exported estimate&quot;)
+
+    result = {
+        &quot;status&quot;: &quot;FINITE_REPLAY_OF_RELEASED_MODEL_OUTPUT_NOT_PDE_RERUN&quot;,
+        &quot;source_files&quot;: {
+            key: {&quot;name&quot;: paths[key].name, &quot;sha256&quot;: sha256(paths[key])}
+            for key in paths
+        } | {
+            &quot;ex_vivo_interfaces&quot;: {&quot;name&quot;: interface_path.name, &quot;sha256&quot;: sha256(interface_path)},
+            &quot;ex_vivo_cell_velocity_summary&quot;: {&quot;name&quot;: velocity_means_path.name, &quot;sha256&quot;: sha256(velocity_means_path)},
+        },
+        &quot;axes_and_resolution&quot;: {
+            &quot;source_mapping&quot;: &quot;x=-L+2L(X-1)/Nx from plot_results_with_data.Rmd&quot;,
+            &quot;x_min_um&quot;: -L,
+            &quot;x_max_um&quot;: L,
+            &quot;Nx&quot;: Nx,
+            &quot;dx_um&quot;: dx,
+            &quot;time_min_hr&quot;: 0.0,
+            &quot;time_max_hr&quot;: tmax,
+            &quot;Nt&quot;: Nt,
+            &quot;dt_output_hr&quot;: tmax / Nt,
+        },
+        &quot;released_phi_half_level&quot;: {
+            &quot;x_start_um&quot;: float(front[0]),
+            &quot;x_end_um&quot;: float(front[-1]),
+            &quot;ols_speed_0_to_8_um_per_hr&quot;: front_speed_ols,
+            &quot;secant_speed_0_to_8_um_per_hr&quot;: front_speed_secant,
+            &quot;mean_V_trapezoid_at_phi_half_um_per_hr&quot;: mean_velocity_integrated,
+            &quot;mean_dlogrho_dx_trapezoid_at_phi_half_per_um&quot;: mean_log_gradient_integrated,
+            &quot;ols_speed_2_to_8_um_per_hr&quot;: fit_speed(times, front, 2.0, 8.0),
+            &quot;rmd_literal_strict_phi_lt_half_through_origin_speed_um_per_hr&quot;: rmd_origin_speed,
+            &quot;rmd_literal_strict_phi_lt_half_unconstrained_speed_um_per_hr&quot;: rmd_ordinary_speed,
+            &quot;rmd_literal_time_vector_start_hr&quot;: float(rmd_times_literal[0]),
+            &quot;rmd_literal_time_vector_end_hr&quot;: float(rmd_times_literal[-1]),
+            &quot;mean_V_sampled_at_phi_half_um_per_hr&quot;: float(front_velocity.mean()),
+            &quot;mean_D_dlogrho_dx_um_per_hr&quot;: D * float(grad_at_front.mean()),
+            &quot;relative_speed_after_local_drift_adjustment_um_per_hr&quot;: relative_speed_adjusted,
+            &quot;mean_density_at_phi_half&quot;: float(front_density.mean()),
+            &quot;released_ex_vivo_interface_slopes_0_to_6_um_per_hr_by_dataset&quot;: experimental_front_slopes,
+            &quot;released_ex_vivo_interface_slope_mean_um_per_hr&quot;: experimental_front_mean,
+            &quot;released_ex_vivo_interface_slope_sample_sd_um_per_hr&quot;: experimental_front_sd,
+            &quot;model_front_speed_minus_ex_vivo_mean_um_per_hr&quot;: front_speed_secant - experimental_front_mean,
+            &quot;model_front_speed_in_ex_vivo_mean_plusminus_1sd&quot;: abs(front_speed_secant - experimental_front_mean) &lt;= experimental_front_sd,
+            &quot;released_ex_vivo_cell_velocity_summary_um_per_hr&quot;: cell_velocity_means,
+        },
+        &quot;notebook_profile_shift_diagnostic&quot;: {
+            &quot;source_method&quot;: &quot;Two profile pairs at Mathematica indices t1={20,50}, delta-index=30; candidate shifts 0..15 grid cells.&quot;,
+            &quot;source_metric_literal&quot;: &quot;Abs[Sum(phi(x,t)-phi(x+shift,t+delta_t),x)] then mean over the two windows.&quot;,
+            &quot;source_metric_minimizer_shift_cells&quot;: min_signed[&quot;shift_cells&quot;],
+            &quot;source_metric_minimum_mean_abs_signed_mass_error&quot;: min_signed[&quot;mean_abs_signed_mass_error&quot;],
+            &quot;source_metric_implied_speed_um_per_hr&quot;: source_notebook_velocity,
+            &quot;notebook_exported_source_velocity_um_per_hr&quot;: exported_notebook_velocity,
+            &quot;difference_phi_half_ols_minus_notebook_profile_shift_um_per_hr&quot;: front_speed_ols - source_notebook_velocity,
+            &quot;difference_phi_half_secant_minus_notebook_profile_shift_um_per_hr&quot;: front_speed_secant - source_notebook_velocity,
+            &quot;difference_rmd_through_origin_minus_notebook_profile_shift_um_per_hr&quot;: rmd_origin_speed - source_notebook_velocity,
+            &quot;L1_shape_error_minimizer_shift_cells&quot;: min_shape[&quot;shift_cells&quot;],
+            &quot;L1_shape_error_at_source_metric_minimizer&quot;: min_signed[&quot;mean_L1_shape_error&quot;],
+            &quot;L1_shape_error_minimum&quot;: min_shape[&quot;mean_L1_shape_error&quot;],
+            &quot;physical_time_between_profiles_hr&quot;: physical_notebook_interval,
+            &quot;coarse_speed_grid_step_um_per_hr&quot;: notebook_speed_step,
+            &quot;reported_notebook_deltavUnits&quot;: 0.5,
+            &quot;reported_deltavUnits_interpretation&quot;: &quot;The notebook calculates dx_um/30 output indices = 0.5; converting the 30 indices to 2.4 physical hours gives a velocity grid step of 6.25 um/hr.&quot;,
+            &quot;candidate_shift_curve&quot;: notebook_profile_shift,
+            &quot;metric_warning&quot;: &quot;The L1 minimizer happens to be the same grid point in this released output, but the notebook&#x27;s reported error 0.03728 is not an L1 shape mismatch; L1 at that shift is 0.41495.&quot;,
+        },
+        &quot;constant_leading_edge_reduction&quot;: {
+            &quot;D_um2_per_hr&quot;: D,
+            &quot;rho_A_c&quot;: rhoA,
+            &quot;rho_B_c&quot;: rhoB,
+            &quot;tau_hr&quot;: tau,
+            &quot;delta_k_at_A_homeostasis_per_hr&quot;: delta_k_Ahead,
+            &quot;alpha_in_simulator_model_units&quot;: alpha,
+            &quot;delta_E_model_units&quot;: delta_E,
+            &quot;alpha_delta_E_per_hr&quot;: alpha * delta_E,
+            &quot;r_per_hr&quot;: r,
+            &quot;initial_tail_q0_per_um&quot;: q0,
+            &quot;initial_tail_length_um&quot;: 1.0 / q0,
+            &quot;pulled_threshold_qstar_per_um&quot;: q_star,
+            &quot;pulled_threshold_length_um&quot;: 1.0 / q_star,
+            &quot;q0_over_qstar&quot;: q0 / q_star,
+            &quot;qstar_times_grid_dx&quot;: q_star * dx,
+            &quot;phi_at_plus_L_from_initial_tanh&quot;: 1.0 / (1.0 + math.exp(2.0 * a_phi)),
+            &quot;shallow_tail_speed_Dq_plus_r_over_q_um_per_hr&quot;: c_shallow,
+            &quot;pulled_minimum_speed_2sqrtDr_um_per_hr&quot;: c_pulled,
+            &quot;shallow_prediction_total_speed_using_mean_V_and_density_drift_um_per_hr&quot;: mean_velocity_integrated + c_shallow - D * mean_log_gradient_integrated,
+            &quot;relative_replay_minus_shallow_prediction_um_per_hr&quot;: relative_speed_adjusted - c_shallow,
+            &quot;alpha_inferred_if_shallow_tail_law_used&quot;: alpha_from_shallow_tail,
+            &quot;alpha_inferred_if_pulled_minimum_law_used&quot;: alpha_from_pulled_law,
+            &quot;pulled_alpha_inferred_over_source_alpha&quot;: alpha_from_pulled_law / alpha,
+            &quot;same_speed_alpha_q_counterexamples&quot;: alpha_aliases,
+        },
+        &quot;scope&quot;: [
+            &quot;The output matrices are the authors&#x27; released best_model simulation results; this script does not rerun the Mathematica finite-difference solver.&quot;,
+            &quot;The notebook&#x27;s separate profile-shift estimator uses only two windows and a coarse discrete speed grid; its signed-sum objective can cancel spatial shape errors.&quot;,
+            &quot;The Fisher tail-selection expressions assume constant D, constant leading-edge growth, a scalar KPP reaction, and uniform material advection; the full source PDE couples density and velocity to phenotype.&quot;,
+            &quot;The computed phi=1/2 line and V/rho samples are properties of the released finite simulation, not a direct estimate of in-vivo wave speed or a proof that nature is pulled or pushed.&quot;,
+            &quot;The source&#x27;s a_phi=4 initial tail is much shallower than q_star; q_star*dx is near one, so the released 15-um grid cannot resolve an intervention near the steep-tail threshold.&quot;,
+        ],
+        &quot;internal_checks&quot;: {
+            &quot;all_three_alpha_q_pairs_positive_and_shallow&quot;: True,
+            &quot;all_three_pairs_reconstruct_same_relative_speed_to_1e-12&quot;: True,
+            &quot;notebook_and_L1_shift_argmins_match_for_this_output&quot;: True,
+        },
+    }
+    rendered = json.dumps(result, indent=2, sort_keys=True)
+    if args.output:
+        args.output.write_text(rendered + &quot;\n&quot;, encoding=&quot;utf-8&quot;)
+    print(rendered)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/bc158f03e5a668418c88073c083be4f590d37470450ddc00c31af52ba12217bd.py">Exact original</a></p></html>

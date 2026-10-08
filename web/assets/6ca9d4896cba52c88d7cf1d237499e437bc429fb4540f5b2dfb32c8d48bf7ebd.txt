@@ -1,0 +1,193 @@
+SCALAR-ORACLE ADAPTIVITY SEPARATION: THRESHOLD IDENTIFICATION
+Research leaf | 2026-10-08
+
+Finding and scope
+-----------------
+For an unknown threshold classifier, exact adaptive acquisition takes
+ceil(log2 N) one-bit responses, whereas any fixed nonadaptive design needs
+N-1. With independent binary-symmetric noise, adaptive identification has a
+capacity/Fano lower bound of order log N, while every randomized fixed design
+has an adjacent-hypothesis KL lower bound of order N for fixed noise and
+confidence. The comparison uses the same scalar oracle and charges each
+response as one bit. This is the familiar ordered-search separation, recorded
+here as a concrete acquisition lower-bound control rather than a novelty claim.
+
+Interface and task
+------------------
+N>=2 is known. The learner knows only the class
+
+    f_theta(x) = 1{x >= theta},  theta in {1,...,N}, x in {1,...,N-1},
+
+and must acquire the exact predictor (equivalently output theta). The value
+theta and its table are not supplied. Each query returns the scalar bit
+f_theta(x). In the noisy interface the response is
+
+    Y = f_theta(x) XOR Z,   Z iid Bernoulli(epsilon), 0<epsilon<1/2,
+
+with known epsilon. We require max_theta P_theta[theta_hat != theta] <= delta,
+0<delta<1/2. Query count is the primary cost. Each response is exactly one
+bit at both noise settings, so q calls cost q response bits. If query addresses
+are sent to a remote oracle, each costs B=ceil(log2(N-1)) bits (B=0 when N=2);
+raw request/response traffic is q(B+1) bits. Computation and model storage are
+separate: the acquired parameter takes ceil(log2 N) bits, and binary search
+uses O(log N) local comparisons. The model/class description is supplied;
+the instance is not.
+
+Exact theorem and proof
+----------------------
+Adaptive minimax query complexity is exactly ceil(log2 N). A depth-q binary
+decision tree has at most 2^q leaves, so identifying N possible thresholds
+requires q>=ceil(log2 N). Querying a median boundary splits any remaining
+interval into parts of size at most ceil(m/2); recursively this identifies
+theta in ceil(log2 N) calls.
+
+For a fixed list of q locations, the response vector is monotone in theta and
+has at most q+1 distinct patterns: as theta increases, every queried label can
+only change from 1 to 0, once. Thus q+1>=N. Asking every boundary x=1,...,N-1
+achieves exact identification, so the nonadaptive minimax cost is N-1. For a
+randomized zero-error fixed design, each boundary j must be queried with
+probability one; otherwise theta=j and theta=j+1 are indistinguishable on the
+event that j is omitted. Hence the same N-1 worst-case lower bound holds.
+
+Noisy lower bounds
+------------------
+Let h2 be binary entropy in bits and C_epsilon=1-h2(epsilon). Under a uniform
+theta prior, a q-query adaptive transcript carries at most q*C_epsilon bits:
+conditioned on the past and the learner's private random seed, the next query
+location is already determined and its one-bit BSC response contributes at
+most the channel capacity. Fano's inequality and max error <=delta therefore
+give
+
+ q >= [log2 N - h2(delta) - delta*log2(N-1)] / C_epsilon.
+
+Take any fixed randomized nonadaptive query design and adjacent thresholds
+theta=j and theta=j+1. Their response laws differ only at coordinate x=j.
+Writing n_j for the number of repetitions there and
+
+ d_epsilon = KL(Ber(1-epsilon)||Ber(epsilon))
+            = (1-2 epsilon)*ln((1-epsilon)/epsilon),
+
+the transcript KL is E[n_j]*d_epsilon. The event {theta_hat=j} has probability
+at least 1-delta under j and at most delta under j+1, so data processing gives
+
+ E[n_j] >= kl(1-delta || delta)/d_epsilon.
+
+Summing over j=1,...,N-1 yields
+
+ q >= (N-1)*kl(1-delta || delta)/d_epsilon.
+
+This proof allows a randomized fixed schedule and repeated measurements; the
+schedule distribution is independent of theta. A separate total-variation
+argument gives E[n_j]>=1-2delta for every j, hence q>=(N-1)(1-2delta),
+including the noiseless endpoint where the KL expression becomes vacuous.
+For fixed epsilon<1/2 and fixed delta<1/2, the adaptive lower bound is
+Omega(log N) and the nonadaptive lower bound is Omega(N). Near epsilon=1/2,
+C_epsilon and d_epsilon are both Theta((1/2-epsilon)^2); response precision
+does not disappear into an uncharged real number.
+
+Matching fixed-design noisy upper bound
+----------------------------------------
+Repeat each of the N-1 boundaries r times and return the maximum-likelihood
+threshold. For candidates theta and theta' at distance d, their distributions
+differ at d boundaries. A Chernoff bound gives
+
+ P_theta[L(theta') >= L(theta)] <= exp(-r*d*J_epsilon),
+ J_epsilon = -ln(2*sqrt(epsilon*(1-epsilon))).
+
+There are at most two candidates at each distance, so the total error is at
+most 2z/(1-z), z=exp(-r*J_epsilon). Taking
+
+ r = ceil(ln(1+2/delta)/J_epsilon)
+
+makes max error at most delta, with q=(N-1)r one-bit responses. At epsilon=0,
+one response per boundary is exact. For fixed epsilon and delta this upper
+bound matches the nonadaptive Omega(N) dependence. Address transmissions add
+B bits per individual request in the stated raw interface.
+
+Adaptive noisy upper bound (simple, not optimal)
+------------------------------------------------
+Let L=ceil(log2 N) and g=1/2-epsilon. At each median boundary, repeat the
+query r=ceil(ln(L/delta)/(2g^2)) times and take a majority. Hoeffding bounds
+each majority error by exp(-2rg^2); a union bound over L stages gives failure
+at most delta. Thus q<=L*r=O(log N*log(L/delta)/g^2) responses. This is enough
+to preserve an exponential separation in N against fixed designs for fixed
+epsilon,delta. It is not the best noisy-search rate: Ben-Or--Hassidim and
+Dereniowski--Lukasiewicz--Uznanski give much sharper adaptive algorithms and
+information bounds for their stated ordered-search models. The latter paper
+reports, for a uniform target prior, expected query upper bound
+(log2 N + log2(1/delta) + 3)/I(epsilon), with I=1-h2(epsilon); that is a
+source-reported average-prior result, not used as a worst-case theorem here.
+
+Exhaustive fixture
+------------------
+The script at work/programmes/acquisition_learning/leaves/query_decision_lower_bound/verify.py
+enumerates fixed query sets and computes adaptive minimax depth by integer
+dynamic programming. It checked N=2,...,10 and replayed 363 adjacent noisy-KL
+identities over all fixed schedules of length <=4 at N=4, epsilon=1/5.
+Output:
+
+    N,adaptive_exact_depth,fixed_exact_queries
+    2,1,1
+    3,2,2
+    4,2,3
+    5,3,4
+    6,3,5
+    7,3,6
+    8,3,7
+    9,4,8
+    10,4,9
+    adjacent_noisy_KL_cases=363
+    PASS
+
+Literature, local read ledger, and status
+-----------------------------------------
+This is the ordered-threshold / binary-search separation. The proof is
+self-contained and independently specialized to the stated finite scalar
+interface; no novelty or priority claim is made.
+
+Primary sources checked:
+- Traub, Wasilkowski, Woźniakowski, “When Is Nonadaptive Information as
+  Powerful as Adaptive Information?” (1984), DOI
+  https://doi.org/10.1109/CDC.1984.272339 and author-hosted scan
+  https://mice.cs.columbia.edu/getTechreport.php?format=pdf&techreportID=966.
+  The paper frames adaptivity as problem dependent; its overview contrasts
+  balanced convex cases with nonlinear/unbalanced classes where adaptation
+  can help significantly.
+- Kadane, Wasilkowski, Woźniakowski, “On adaption with noisy information,”
+  Journal of Complexity 4(4), 257-276 (1988),
+  https://doi.org/10.1016/0885-064X(88)90010-6. Its abstract separates
+  Gaussian-noise settings where adaptation does not help from examples where
+  it can help.
+- Ben-Or and Hassidim, “The Bayesian Learner is Optimal for Noisy Binary
+  Search (and Pretty Good for Quantum as Well),” FOCS 2008, 221-230,
+  https://doi.org/10.1109/FOCS.2008.58; author preprint
+  https://arxiv.org/abs/quant-ph/0703231. This is direct prior art for noisy
+  ordered search and information-theoretic lower bounds.
+- Dereniowski, Łukasiewicz, Uznański, “Noisy (Binary) Searching: Simple,
+  Fast and Correct,” STACS 2025, https://doi.org/10.4230/LIPIcs.STACS.2025.29;
+  author preprint https://arxiv.org/abs/2107.05753 (v4, 2025-02-25).
+  The paper states independent comparison noise and sharpened expected and
+  worst-case query bounds.
+- Gal and Micchelli, “Optimal sequential and non-sequential procedures for
+  evaluating a functional,” Applicable Analysis 10(2), 105-120 (1980),
+  https://doi.org/10.1080/00036818008839292. Its result concerns a different
+  estimation family where sequential procedures do not improve convergence
+  rate; it is a useful warning against transferring this threshold result
+  to arbitrary predictive-model acquisition.
+
+Local immutable prior: work/astra_prior/00_START_HERE.txt and 01_CORE.txt
+were consulted. The closest acquisition entries are N68's single exact
+full-matrix-output query and N25's noisy matrix-output lower bound; those
+interfaces return matrix outputs / use total excitation and do not imply the
+pointwise threshold theorem. No direct threshold-query card was located in
+the targeted acquisition-topic retrieval. These are interface contrasts, not
+dependencies of the proof.
+
+Status: INTERNALLY-PROVED-CANDIDATE for the finite exact and noisy lower
+bounds and the simple upper constructions; FINITE-EVIDENCE for the exhaustive
+small fixture. Standard binary/noisy-search prior art is SOURCE-REPORTED.
+Open gates: no novelty/priority check beyond this targeted primary-source
+search; no extension to unknown class, continuous-valued regression, dense
+functionals, or unrestricted predictive-state acquisition; no nonuniform
+noise or adversarial corruption analysis. The lower bound depends on the
+point-query interface and exact-model identification objective.

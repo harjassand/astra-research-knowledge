@@ -1,0 +1,166 @@
+#!/usr/bin/env python3
+"""Exact Fraction checks for the d=2, r=2 higher-order-toggle theorem fixture."""
+from fractions import Fraction as F
+from itertools import product
+
+D = 2
+R = F(11, 10)
+EPS = K = F(1)
+ALPHA, DELTA = F(2), F(1)
+GAMMA = (F(1), F(1))
+MU = (F(1, 100), F(1, 100))
+ETA = (F(1), F(1))
+ZETA = (F(1), F(2))
+WEIGHT = (F(1), F(1))
+P = Q_RATE = F(1)
+
+
+def falling(n, d=D):
+    out = 1
+    for k in range(d):
+        out *= n-k
+    return max(out, 0)
+
+
+def q_and_e(c):
+    q = sum(ZETA[i]*falling(c[i]) for i in range(2))
+    e = sum(ETA[i]*falling(c[i]) for i in range(2))
+    return q, e
+
+
+def u(c):
+    q, _ = q_and_e(c)
+    return 1/(1+q)
+
+
+def inactive_terms(c):
+    q, _ = q_and_e(c)
+    h = F(0)
+    birth = F(0)
+    for i in range(2):
+        if c[i] > 0:
+            cm = list(c)
+            cm[i] -= 1
+            qm, _ = q_and_e(cm)
+            delta = q-qm
+            h += MU[i]*c[i]*delta/((1+qm)*(1+q))
+        cp = list(c)
+        cp[i] += 1
+        qp, _ = q_and_e(cp)
+        delta_plus = qp-q
+        birth += GAMMA[i]*delta_plus/((1+q)*(1+qp))
+    theta = (ALPHA+q)/(1+q)+birth-h
+    delta_a = F(0)
+    return theta, h, birth
+
+
+def kappa_a(c):
+    q, e = q_and_e(c)
+    _, h, _ = inactive_terms(c)
+    return (DELTA+e)/(1+q)-h
+
+
+def potential(x):
+    a, c1, c2, b = x
+    c = (c1, c2)
+    uc = u(c)
+    return (F(1)+sum(WEIGHT[i]*c[i] for i in range(2))+a*uc
+            +R**b*(1+EPS*int(a == 0)*uc)
+            +K*int(a+c1+c2 == 0))
+
+
+def channels(x):
+    a, c1, c2, b = x
+    c = (c1, c2)
+    out = [
+        ((1, 0, 0, 0), ALPHA),
+        ((-1, 0, 0, 0), DELTA*a),
+        ((0, 1, 0, 0), GAMMA[0]),
+        ((0, -1, 0, 0), MU[0]*c1),
+        ((0, 0, 1, 0), GAMMA[1]),
+        ((0, 0, -1, 0), MU[1]*c2),
+        ((0, 0, 0, 1), P*a),
+        ((0, 0, 0, -1), Q_RATE*a*b),
+    ]
+    for i in range(2):
+        vec = [0, 0, 0, 0]
+        vec[0] = -1
+        out.append((tuple(vec), ETA[i]*a*falling(c[i])))
+        vec = [0, 0, 0, 0]
+        vec[0] = 1
+        out.append((tuple(vec), ZETA[i]*falling(c[i])))
+    return out
+
+
+def direct_generator(x):
+    out = F(0)
+    for jump, rate in channels(x):
+        if not rate:
+            continue
+        y = tuple(xi+di for xi, di in zip(x, jump))
+        assert min(y) >= 0, (x, jump, rate)
+        out += rate*(potential(y)-potential(x))
+    return out
+
+
+def closed_form(x):
+    a, c1, c2, b = x
+    c = (c1, c2)
+    qc, ec = q_and_e(c)
+    uc = u(c)
+    _, h, birth = inactive_terms(c)
+    f = -ALPHA*uc-qc*uc-birth+h
+    total = sum(WEIGHT[i]*(GAMMA[i]-MU[i]*c[i]) for i in range(2))
+    total += uc*(ALPHA-DELTA*a+qc-a*ec)+a*(-birth+h)
+    total += a*(P*(R-1)*R**b-Q_RATE*(1-1/R)*b*R**b)
+    if a == 0:
+        total += EPS*R**b*f
+    elif a == 1:
+        total += EPS*R**b*uc*(DELTA+ec)
+    if a+c1+c2 == 0:
+        total -= K*(ALPHA+sum(GAMMA))
+    elif a == 1 and c1+c2 == 0:
+        total += K*DELTA
+    elif a == 0 and c1+c2 == 1:
+        total += K*sum(MU[i]*int(c[i] == 1) for i in range(2))
+    return total
+
+
+checked = 0
+for x in product(range(5), range(5), range(5), range(7)):
+    assert direct_generator(x) == closed_form(x), (x, direct_generator(x), closed_form(x))
+    checked += 1
+
+# Exact finite box for theta_*>0 and kappa_*>0. The analytic tail bound in
+# RESULT.txt covers max(c)>=64 for this explicit rational fixture.
+theta_min, theta_arg = None, None
+kappa_min, kappa_arg = None, None
+for c1, c2 in product(range(64), repeat=2):
+    c = (c1, c2)
+    theta, _, _ = inactive_terms(c)
+    ka = kappa_a(c)
+    if theta_min is None or theta < theta_min:
+        theta_min, theta_arg = theta, c
+    if kappa_min is None or ka < kappa_min:
+        kappa_min, kappa_arg = ka, c
+    assert theta > 0, ("theta", c, theta)
+    assert ka > 0, ("kappa_A", c, ka)
+
+g0 = P*(R-1)
+g1 = R*(P*(R-1)-Q_RATE*(1-1/R))
+assert g0 == F(1, 10) and g1 == F(1, 100)
+assert g0 > g1
+assert ZETA[0]/ETA[0] != ZETA[1]/ETA[1]
+C_D = F(2**(2*D))*max(MU)*max(ZETA)*D/min(ZETA)**2
+LAMBDA = min(DELTA, min(ETA[i]/ZETA[i] for i in range(2)))
+M0 = 64
+assert M0 >= 4*D
+assert min(ZETA)*(F(M0, 2)**D) >= 1
+assert 2*C_D/M0**D <= min(F(1, 4), LAMBDA/2)
+
+print(f"PASS: direct reaction-list generator equals closed form on {checked} states")
+print(f"PASS: exact margins on 64x64 box; min theta={theta_min} at {theta_arg}")
+print(f"PASS: exact margins on 64x64 box; min kappa_A={kappa_min} at {kappa_arg}")
+print(f"PASS: analytic tail certificate applies for max(c)>=64; C_d={C_D}")
+print("PASS: g_+(11/10)=1/10 and toggle activity ratios 1 and 2 conflict")
+print("Finite checker evidence only; all-state result uses the analytic proof and tail bound.")

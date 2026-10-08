@@ -1,0 +1,91 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c4_rational_applications/screen_wolf.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c4_rational_applications/screen_wolf.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact tropical witness search for the Wolf 2000 yeast glycolysis model.
+
+State coordinates augment ATP and NAD with their conserved complements ADP and
+NADH. Rational functions are split into positive gross channels. All arithmetic
+in the witness check is exact.
+&quot;&quot;&quot;
+
+from fractions import Fraction as F
+import random
+
+NAMES = (&quot;s1&quot;, &quot;at&quot;, &quot;adp&quot;, &quot;s2&quot;, &quot;s3&quot;, &quot;nad&quot;, &quot;nadh&quot;, &quot;s4&quot;, &quot;s5&quot;, &quot;s6&quot;, &quot;s6o&quot;)
+D = len(NAMES)
+unit = lambda i, c=1: tuple(F(c) if j == i else F(0) for j in range(D))
+
+def vec(**kw):
+    out = [F(0)] * D
+    for key, value in kw.items():
+        out[NAMES.index(key)] = F(value)
+    return tuple(out)
+
+def exp(**kw):
+    out = [F(0)] * D
+    for key, value in kw.items():
+        out[NAMES.index(key)] = F(value)
+    return tuple(out)
+
+def scale(a, c):
+    return tuple(F(c) * x for x in a)
+
+def dot(a, b):
+    return sum((x * y for x, y in zip(a, b)), F(0))
+
+edges = [
+    (&quot;v0_feed&quot;, vec(s1=1), [exp()], [exp()]),
+    (&quot;v1_hill&quot;, vec(s1=-1, at=-2, adp=2, s2=1),
+     [exp(s1=1, at=1)], [exp(), exp(at=4)]),
+    (&quot;v2&quot;, vec(s2=-1, s3=2), [exp(s2=1)], [exp()]),
+    (&quot;v3_forward&quot;, vec(s3=-1, nad=-1, nadh=1, s4=1, at=1, adp=-1),
+     [exp(s3=1, nad=1, adp=1)], [exp(adp=1), exp(nadh=1)]),
+    (&quot;v3_reverse&quot;, vec(s3=1, nad=1, nadh=-1, s4=-1, at=-1, adp=1),
+     [exp(s4=1, at=1, nadh=1)], [exp(adp=1), exp(nadh=1)]),
+    (&quot;v4&quot;, vec(s4=-1, s5=1, at=1, adp=-1),
+     [exp(s4=1, adp=1)], [exp()]),
+    (&quot;v5&quot;, vec(s5=-1, s6=1), [exp(s5=1)], [exp()]),
+    (&quot;v6&quot;, vec(s6=-1, nad=1, nadh=-1),
+     [exp(s6=1, nadh=1)], [exp()]),
+    (&quot;v7_atpase&quot;, vec(at=-1, adp=1), [exp(at=1)], [exp()]),
+    (&quot;v8&quot;, vec(s3=-1, nad=1, nadh=-1),
+     [exp(s3=1, nadh=1)], [exp()]),
+    (&quot;v9&quot;, vec(s6o=-1), [exp(s6o=1)], [exp()]),
+    (&quot;v10_export&quot;, vec(s6=-1, s6o=F(1, 10)),
+     [exp(s6=1)], [exp()]),
+    (&quot;v10_import&quot;, vec(s6=1, s6o=F(-1, 10)),
+     [exp(s6o=1)], [exp()]),
+]
+
+def tau(edge, w):
+    _, _, num, den = edge
+    return max(dot(a, w) for a in num) - max(dot(b, w) for b in den)
+
+def check(w):
+    vals = [(e[0], dot(e[1], w), tau(e, w)) for e in edges]
+    active = [item for item in vals if item[1] != 0]
+    if not active:
+        return None
+    top = max(item[2] for item in active)
+    bad = [item for item in active if item[2] == top and item[1] &gt; 0]
+    return (bad, vals) if bad else None
+
+def main():
+    rng = random.Random(20261008)
+    trials = 500_000
+    for t in range(1, trials + 1):
+        w = tuple(F(rng.randint(-8, 8)) for _ in range(D))
+        if all(x == 0 for x in w):
+            continue
+        result = check(w)
+        if result:
+            bad, vals = result
+            print(&quot;REFUTED exact witness&quot;, tuple(map(str, w)))
+            print(&quot;outward top channels:&quot;, bad)
+            print(&quot;all (channel, projected change, tropical order):&quot;)
+            for row in vals:
+                print(row)
+            return
+    print(f&quot;NO WITNESS in {trials} random integer directions; this is not a certificate&quot;)
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/72e12d783e1990b6b4b78ae360488e3e4f201be798962261aac448ceeec5e794.py">Exact original</a></p></html>

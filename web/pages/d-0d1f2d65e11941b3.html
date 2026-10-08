@@ -1,0 +1,189 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/spin_statistical/cycle2/evidence/free_canonical_dp_benchmark.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/spin_statistical/cycle2/evidence/free_canonical_dp_benchmark.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Finite diagnostic for a truncated free XX canonical-sector mode sampler.
+
+The mathematical truncation certificate is documented in RESULT.txt. This
+program uses Decimal to select/check the cutoff and double-precision log-DP
+for timed sampling, so it is a reproducible implementation diagnostic, not a
+machine-verified interval certificate or quantum-circuit execution.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+from decimal import Decimal, localcontext
+from itertools import combinations
+import json
+import math
+import platform
+import random
+import statistics
+import sys
+import time
+from pathlib import Path
+
+
+def log_canonical_tail_bound(m: int, cutoff: int, J: Decimal, tau: Decimal) -&gt; Decimal:
+    &quot;&quot;&quot;Log of a uniform upper bound on P(any occupied mode &gt; cutoff | M=m).
+
+    Put c=8*tau*J and w_k=exp(-tau*L^2 epsilon_k). Then
+      e_m(w) &gt;= prod_{k=1}^m w_k,
+      e_{m-1}(w excluding k) &lt;= (sum w)^(m-1)/(m-1)!,
+    and sum_{k&gt;cutoff} w_k &lt;= exp(-c(cutoff+1)^2)
+       * (1+1/(2c(cutoff+1))).
+    The remaining sum is bounded by exp(-c)(1+1/(2c)).
+    &quot;&quot;&quot;
+    if m &lt; 1 or cutoff &lt; m:
+        raise ValueError(&quot;require m&gt;=1 and cutoff&gt;=m&quot;)
+    c = Decimal(8) * tau * J
+    pi = Decimal(&quot;3.141592653589793238462643383279502884197169399375105820974944592307816406286&quot;)
+    sum_sq = Decimal(m * (m + 1) * (2 * m + 1)) / Decimal(6)
+    log_c_bound = -c + (Decimal(1) + Decimal(1) / (Decimal(2) * c)).ln()
+    k0 = Decimal(cutoff + 1)
+    log_tail_sum = -c * k0 * k0 + (Decimal(1) + Decimal(1) / (Decimal(2) * c * k0)).ln()
+    log_factorial = sum(Decimal(i).ln() for i in range(2, m))
+    return Decimal(2) * tau * J * pi * pi * sum_sq + Decimal(m - 1) * log_c_bound - log_factorial + log_tail_sum
+
+
+def choose_cutoff(m: int, J: Decimal, tau: Decimal, eta: Decimal) -&gt; tuple[int, Decimal]:
+    with localcontext() as ctx:
+        ctx.prec = 80
+        target = eta.ln()
+        for cutoff in range(m, 1_000_001):
+            bound = log_canonical_tail_bound(m, cutoff, J, tau)
+            if bound &lt;= target:
+                return cutoff, bound.exp()
+    raise RuntimeError(&quot;cutoff search exceeded one million modes&quot;)
+
+
+def log_add(a: float, b: float) -&gt; float:
+    if a == -math.inf:
+        return b
+    if b == -math.inf:
+        return a
+    if a &lt; b:
+        a, b = b, a
+    return a + math.log1p(math.exp(b - a))
+
+
+def log_weights(L: int, cutoff: int, J: float, tau: float) -&gt; list[float]:
+    &quot;&quot;&quot;Relative log weights; common exp(-tau*a_1) cancels at fixed m.&quot;&quot;&quot;
+    a = [8.0 * J * L * L * math.sin(math.pi * k / (2.0 * L)) ** 2
+         for k in range(1, cutoff + 1)]
+    return [-tau * (x - a[0]) for x in a]
+
+
+def suffix_log_dp(logw: list[float], m: int) -&gt; list[list[float]]:
+    K = len(logw)
+    E = [[-math.inf] * (m + 1) for _ in range(K + 1)]
+    for i in range(K + 1):
+        E[i][0] = 0.0
+    for i in range(K - 1, -1, -1):
+        max_j = min(m, K - i)
+        for j in range(1, max_j + 1):
+            E[i][j] = log_add(E[i + 1][j], logw[i] + E[i + 1][j - 1])
+    return E
+
+
+def sample_subset(logw: list[float], E: list[list[float]], m: int, rng: random.Random) -&gt; tuple[int, ...]:
+    chosen = []
+    remaining = m
+    K = len(logw)
+    for i in range(K):
+        if remaining == 0:
+            break
+        if K - i == remaining:
+            chosen.extend(range(i + 1, K + 1))
+            remaining = 0
+            break
+        lp = logw[i] + E[i + 1][remaining - 1] - E[i][remaining]
+        p = 0.0 if lp &lt; -745.0 else min(1.0, max(0.0, math.exp(lp)))
+        u = rng.getrandbits(53) * (2.0 ** -53)
+        if u &lt; p:
+            chosen.append(i + 1)
+            remaining -= 1
+    if remaining:
+        raise ArithmeticError(&quot;sampler ended with unfilled particle count&quot;)
+    return tuple(chosen)
+
+
+def exact_small_check() -&gt; dict:
+    L, K, m, J, tau = 14, 9, 3, 1.0, 0.4
+    lw = log_weights(L, K, J, tau)
+    E = suffix_log_dp(lw, m)
+    states = list(combinations(range(K), m))
+    raw = [math.exp(sum(lw[k] for k in s)) for s in states]
+    z = sum(raw)
+    expected = {tuple(k + 1 for k in s): v / z for s, v in zip(states, raw)}
+    # The recursion&#x27;s joint probabilities are computed directly from the
+    # conditional include/skip factors, independently of subset products.
+    max_abs = 0.0
+    for s in states:
+        chosen = set(s)
+        rem = m
+        prob = 1.0
+        for i in range(K):
+            if rem == 0:
+                break
+            if K - i == rem:
+                prob *= 1.0 if all(j in chosen for j in range(i, K)) else 0.0
+                rem = 0
+                break
+            lp = lw[i] + E[i + 1][rem - 1] - E[i][rem]
+            pin = math.exp(lp)
+            if i in chosen:
+                prob *= pin
+                rem -= 1
+            else:
+                prob *= (1.0 - pin)
+        key = tuple(k + 1 for k in s)
+        max_abs = max(max_abs, abs(prob - expected[key]))
+    return {&quot;states&quot;: len(states), &quot;max_subset_probability_abs_error&quot;: max_abs,
+            &quot;tolerance&quot;: 2e-13, &quot;pass&quot;: max_abs &lt; 2e-13}
+
+
+def main() -&gt; None:
+    Jd, taud, eta = Decimal(&quot;1&quot;), Decimal(&quot;1&quot;), Decimal(&quot;1e-8&quot;)
+    m = 8
+    cutoff, tail_bound = choose_cutoff(m, Jd, taud, eta)
+    L = 100_000
+    lw = log_weights(L, cutoff, float(Jd), float(taud))
+
+    dp_times = []
+    E = None
+    for _ in range(9):
+        t0 = time.perf_counter()
+        E = suffix_log_dp(lw, m)
+        dp_times.append(time.perf_counter() - t0)
+
+    samples = 2_000
+    checksum = 0
+    sample_times = []
+    for trial in range(9):
+        rng = random.Random(20261008 + trial)
+        t0 = time.perf_counter()
+        for _ in range(samples):
+            subset = sample_subset(lw, E, m, rng)
+            checksum += sum(subset)
+        sample_times.append(time.perf_counter() - t0)
+    dp_seconds = statistics.median(dp_times)
+    sample_seconds = statistics.median(sample_times)
+
+    check = exact_small_check()
+    result = {
+        &quot;status&quot;: &quot;PASS&quot; if check[&quot;pass&quot;] and tail_bound &lt;= eta else &quot;FAIL&quot;,
+        &quot;algorithm&quot;: &quot;suffix log elementary-symmetric-polynomial DP plus sequential fixed-size sampling&quot;,
+        &quot;complexity&quot;: {&quot;dp_operations&quot;: &quot;O(K m)&quot;, &quot;dp_memory&quot;: &quot;O(K m)&quot;, &quot;one_sample&quot;: &quot;O(K)&quot;},
+        &quot;input&quot;: {&quot;L&quot;: L, &quot;N_sites&quot;: L - 1, &quot;J&quot;: str(Jd), &quot;tau&quot;: str(taud), &quot;sector_m&quot;: m, &quot;target_tail_error&quot;: str(eta)},
+        &quot;truncation&quot;: {&quot;retained_low_modes_K&quot;: cutoff, &quot;analytic_union_bound_decimal&quot;: str(tail_bound), &quot;bound_below_target&quot;: tail_bound &lt;= eta, &quot;bound_formula&quot;: &quot;exp(2 tau J pi^2 sum_{i=1}^m i^2) C^(m-1)/(m-1)! * sum_{k&gt;K} exp(-8 tau J k^2), C=sum_{k&gt;=1} exp(-8 tau J k^2), with both sums upper-bounded by first-term-plus-integral bounds&quot;},
+        &quot;timing_seconds&quot;: {&quot;trials&quot;: 9, &quot;dp_build_median&quot;: dp_seconds, &quot;dp_build_min&quot;: min(dp_times), &quot;samples_2000_median&quot;: sample_seconds, &quot;samples_2000_min&quot;: min(sample_times), &quot;dp_plus_2000_samples_median&quot;: dp_seconds + sample_seconds, &quot;samples_per_second_at_median&quot;: samples / sample_seconds},
+        &quot;sample_checksum&quot;: checksum,
+        &quot;small_exact_enumeration&quot;: check,
+        &quot;runtime_environment&quot;: {&quot;python&quot;: sys.version.split()[0], &quot;platform&quot;: platform.platform()},
+        &quot;limitations&quot;: [&quot;No interval-certified exponential/trigonometric implementation.&quot;, &quot;No quantum gate synthesis or physical hardware execution.&quot;, &quot;Timing covers Python DP and classical subset sampling only; the N-qubit sine/Givens state-preparation circuit is not included.&quot;, &quot;This is not an advantage claim; a classical computer can use the same mode subset sampler.&quot;],
+    }
+    out = Path(__file__).with_suffix(&quot;.json&quot;)
+    out.write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+    print(json.dumps(result, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/b8dc6c7040b7eaa53d2a7fe53fa0739bc12d9beba1eca5faa70101c6f3af3eff.py">Exact original</a></p></html>

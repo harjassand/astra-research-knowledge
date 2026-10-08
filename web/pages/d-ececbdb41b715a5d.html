@@ -1,0 +1,123 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/fermionic_algorithms/cycle2/marginal_window/luna_berezin/checks.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/fermionic_algorithms/cycle2/marginal_window/luna_berezin/checks.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact algebraic checks for the marginal-window coherent-symbol note.
+
+Requires SymPy. Run from repository root:
+  python3 outputs/research/fermionic_algorithms/cycle2/marginal_window/luna_berezin/checks.py
+These checks are finite identities, not asymptotic evidence.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import sympy as sp
+
+
+def check_chain(L: int):
+    S = L - 1
+    # Samples theta(x)=2*pi*x*(1-x), a C^infinity Dirichlet profile.
+    theta = [2 * sp.pi * i * (L - i) / L**2 for i in range(1, L)]
+    # Keep c_i=cos(theta_i/2), s_i=sin(theta_i/2) as exact algebraic
+    # generators. Reduce identities modulo c_i^2+s_i^2=1, avoiding numerical
+    # trigonometric simplification.
+    c = sp.symbols(f&quot;c0:{S}&quot;)
+    s = sp.symbols(f&quot;s0:{S}&quot;)
+    variables = tuple(v for pair in zip(c, s) for v in pair)
+    relations = [c[i] ** 2 + s[i] ** 2 - 1 for i in range(S)]
+    ideal = sp.groebner(relations, *variables, order=&quot;lex&quot;)
+
+    def rem(expr):
+        return sp.expand(ideal.reduce(sp.expand(expr))[1])
+
+    amp = {}
+    for mask in range(1 &lt;&lt; S):
+        val = sp.Integer(1)
+        for i in range(S):
+            val *= s[i] if (mask &gt;&gt; i) &amp; 1 else c[i]
+        amp[mask] = sp.simplify(val)
+
+    norm = sp.simplify(sum(v * v for v in amp.values()))
+    N_direct = sp.Integer(0)
+    W_direct = sp.Integer(0)
+    H_diag = sp.Integer(0)
+    H_hop = sp.Integer(0)
+    for mask, v in amp.items():
+        occ = mask.bit_count()
+        pairs = sum(((mask &gt;&gt; i) &amp; 1) * ((mask &gt;&gt; (i + 1)) &amp; 1)
+                    for i in range(S - 1))
+        prob = v * v
+        N_direct += prob * occ
+        W_direct += prob * pairs
+        H_diag += prob * 4 * (occ - pairs)  # J=1
+        for i in range(S - 1):
+            if ((mask &gt;&gt; i) &amp; 1) and not ((mask &gt;&gt; (i + 1)) &amp; 1):
+                other = mask ^ (1 &lt;&lt; i) ^ (1 &lt;&lt; (i + 1))
+                H_hop += -4 * v * amp[other]  # two Hermitian matrix entries
+    H_direct = sp.simplify(H_diag + H_hop)
+
+    p = [s[i] ** 2 for i in range(S)]
+    N_product = sp.simplify(sum(p))
+    W_product = sp.simplify(sum(p[i] * p[i + 1] for i in range(S - 1)))
+    x = [2 * c[i] * s[i] for i in range(S)]
+    z = [c[i] ** 2 - s[i] ** 2 for i in range(S)]
+    H_spin = sp.simplify(
+        sum(1 - x[i] * x[i + 1] - z[i] * z[i + 1]
+            for i in range(S - 1))
+        + (1 - z[0]) + (1 - z[-1])
+    )
+
+    assert rem(norm - 1) == 0
+    assert rem(N_direct - N_product) == 0
+    assert rem(W_direct - W_product) == 0
+    assert rem(H_direct - H_spin) == 0
+    return {
+        &quot;L&quot;: L,
+        &quot;sites&quot;: S,
+        &quot;profile&quot;: &quot;theta(x)=2*pi*x*(1-x), J=1&quot;,
+        &quot;angle_samples&quot;: [str(v) for v in theta],
+        &quot;exact_method&quot;: &quot;polynomial reduction modulo c_i^2+s_i^2=1&quot;,
+        &quot;checks&quot;: [&quot;normalization&quot;, &quot;N&quot;, &quot;W&quot;, &quot;all hopping and diagonal terms&quot;, &quot;both endpoints&quot;],
+    }
+
+
+def check_spin_upper_symbols():
+    # Uniform sphere moments characterize the exact spin-1/2 resolution.
+    # P(n)=(I+n.sigma)/2, I=2 int P(n) d omega, E[n_a n_b]=delta_ab/3.
+    sigma_upper_factor = 3 * sp.Rational(1, 3)
+    bond_aligned = 1 - 9  # J(I-sigma_i.sigma_j), n_i.n_j=1
+    endpoint_down = 1 - 3 * (-1)
+    actual_aligned_bond = 1 - 1
+    actual_down_endpoint = 1 - (-1)
+    S = 3
+    critical_upper = (S - 1) * bond_aligned + 2 * endpoint_down
+    critical_covariant = (S - 1) * actual_aligned_bond + 2 * actual_down_endpoint
+    assert sigma_upper_factor == 1
+    assert critical_upper == -8
+    assert critical_covariant == 4
+    return {
+        &quot;resolution_moment_check&quot;: &quot;3*E[n_a^2]=1&quot;,
+        &quot;spin_1/2_upper_symbol_of_sigma&quot;: &quot;3*n_a&quot;,
+        &quot;S&quot;: S,
+        &quot;all_down_Hcrit_covariant_symbol_J1&quot;: critical_covariant,
+        &quot;all_down_Hcrit_contravariant_upper_symbol_J1&quot;: critical_upper,
+        &quot;difference&quot;: critical_covariant - critical_upper,
+    }
+
+
+def main():
+    out = {
+        &quot;status&quot;: &quot;FINITE-EXACT-ALGEBRAIC-CHECKS-PASS&quot;,
+        &quot;coherent_product_cases&quot;: [check_chain(L) for L in (4, 5, 6)],
+        &quot;Berezin_symbol_witness&quot;: check_spin_upper_symbols(),
+        &quot;limitations&quot;: (
+            &quot;Exact finite identities only; does not prove a speed-L free-energy &quot;
+            &quot;limit or a Berezin upper bound matching the profile functional.&quot;
+        ),
+    }
+    Path(__file__).with_suffix(&quot;.json&quot;).write_text(json.dumps(out, indent=2) + &quot;\n&quot;)
+    print(json.dumps(out, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/7fd45065b89705ecf28ca55c30a9209a2b99d087c23675833dd179c28460660d.py">Exact original</a></p></html>

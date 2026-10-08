@@ -1,0 +1,206 @@
+Passive HMM minimax: rare switching makes long-range prediction cost quadratic
+8 October 2026
+
+VERDICT
+
+There is an explicit, internally derived two-point minimax bound for passive
+long-range prediction. Even when the learner is told the model is one of two
+stationary, irreducible, two-state binary HMMs with fixed emission matrix and
+well-conditioned rank-two moments, predicting one binary observation L steps
+ahead from a three-symbol context with constant expected-TV accuracy requires
+Omega(L^2) independent length-three training episodes. A simple adjacent-pair
+test gives O(L^2) episodes for identifying which of these two models generated
+the data, so the two-point identification problem has the matching L^2 rate.
+
+The obstruction is slow switching. The two models have transition probabilities
+that differ by Theta(1/L); their observed length-three laws are only
+O(1/L)-separated, while their L-step endpoint forecast kernels differ by a
+fixed amount. Thus no horizon-free finite-sample guarantee holds for this
+prediction loss when a lower bound on the minimum transition probability (or an
+equivalent temporal-stability parameter) is not supplied. This does not refute
+finite-horizon learning with stated rank/margin assumptions, or a guarantee
+whose sample bound is allowed to depend on the forecast horizon and transition
+conditioning.
+
+INTERFACE AND LOSS
+
+The hidden state and observation alphabets are both {−1,+1}. A passive training
+call returns three consecutive observations from a fresh independent episode
+whose hidden chain starts in its stationary distribution. The learner receives
+n such length-three strings. At evaluation it receives a separate fresh
+three-symbol context H=(Y_1,Y_2,Y_3) and must return a Bernoulli law q(·|S,H)
+for the endpoint Y_{3+L}; the intermediate observations Y_4,...,Y_{L+2} are
+not revealed. Here S is all training data. There are no hidden-state labels,
+interventions, conditional-sample queries, or matrix-response queries.
+
+For model M_i, let K_i(·|H)=Law_i(Y_{3+L}|Y_{1:3}=H). The risk is
+
+  R_i(q) = E_{S,H under M_i}[ TV(q(·|S,H), K_i(·|H)) ].
+
+All computation is unrestricted in the lower bound. The predictor returns only
+two probabilities, so the forecast output itself has constant size. The
+statistical data bill is 3n training symbols plus the three context symbols;
+resets are counted as n+1 episode starts. A model description has O(log L)
+bits. This is an information-theoretic result for the declared reset/truncation
+interface; it is not a lower bound for a single uninterrupted stream or for an
+oracle that supplies longer trajectories at the same cost.
+
+TWO MODELS
+
+For a flip rate r in (0,1/2), let Z_t be a stationary symmetric two-state
+Markov chain with P(Z_{t+1}≠Z_t)=r and P(Z_1=+1)=P(Z_1=−1)=1/2. Given Z,
+observations are conditionally independent and P(Y_t=Z_t)=3/4. Define, for
+integer L≥100,
+
+  M_0: r_0 = 1/(8L),       M_1: r_1 = 1/(2L),
+  lambda_i = 1 - 2r_i.
+
+Both models are stationary and ergodic with the same initial distribution and
+the same emission matrix. Their entries are rational with O(log L)-bit
+descriptions. Both transition matrices are full rank; their smallest singular
+values are lambda_i≥1/2. The observation matrix has singular values 1 and 1/2.
+The two-state pair-probability matrix also has its smallest singular value
+bounded below by a positive constant (for this convention,
+sigma_2(P_{2,1})≥1/16). So the rank and usual second-order spectral separation
+do not collapse as L grows. The minimum entry of T_i diag(O_y), however, is
+r_i/4=Theta(1/L), the positivity/stochasticity parameter used in conditional
+prediction analyses.
+
+MINIMAX CLAIM
+
+Put c=(3/4−e^(−1))/8, a fixed positive constant. For every L≥100 and every
+predictor using n passive training episodes, if
+
+  n+1 ≤ c^2 L^2 / 18,
+
+then max_i R_i(q) ≥ c/4. Numerically c/4 is about 0.0119. Consequently, a
+uniform expected-TV risk smaller than c/4 on this two-model family needs
+n=Omega(L^2) training episodes.
+
+Proof details are in
+`work/programmes/acquisition_learning/leaves/passive_hmm_minimax/proof.md`.
+The key calculations are:
+
+1. With Y_t∈{−1,+1}, E[Y_t|Z_t]=Z_t/2, hence
+   E_i[Y_sY_t]=(1/4)lambda_i^(t−s).
+   Therefore
+   E_0[Y_3Y_(3+L)]−E_1[Y_3Y_(3+L)]
+      =(1/4)(lambda_0^L−lambda_1^L)
+      ≥(1/4)(3/4−e^(−1)).
+   Since a bounded [−1,1]-valued statistic's expectation gap is at most twice
+   total variation, the joint laws of (H,Y_(3+L)) are at least c apart.
+
+2. For any y∈{−1,+1}^3, the length-three probability is
+   p_r(y)=1/8[1+(lambda/4)(y_1y_2+y_2y_3)
+                 +(lambda^2/4)y_1y_3].
+   It is at least 1/32. Also |d p_r(y)/dr|≤1/4. Since
+   r_1−r_0=3/(8L), each word probability changes by at most 3/(32L), giving
+   chi^2(P_0^{(3)}||P_1^{(3)})≤9/(4L^2) and
+   KL(P_0^{(3)}||P_1^{(3)})≤9/(4L^2).
+   For the evaluation context alone, Pinsker gives
+   TV(P_0^H,P_1^H)≤3/(2 sqrt(2) L)≤c/4 for L≥100.
+
+3. Disintegrating the joint law shows
+   E_(H~P_0^H) TV(K_0(·|H),K_1(·|H)) ≥ c−TV(P_0^H,P_1^H) ≥3c/4.
+   The training data and test context together have KL at most
+   9(n+1)/(4L^2), hence TV at most sqrt(9(n+1)/(8L^2)). Under the displayed
+   sample condition this is at most c/4. The triangle inequality for the two
+   prediction losses then gives R_0+R_1≥c/2, so max_i R_i≥c/4.
+
+MATCHING RATE FOR THIS TWO-POINT FAMILY
+
+For identification, W=Y_1Y_2 has mean lambda_i/4. The means differ by
+3/(16L). A threshold test on the sample average of n independent W values,
+with Hoeffding's inequality, has error at most
+2 exp(−9n/(2048L^2)); n=O(L^2) suffices for success probability at least 2/3.
+Conversely, if a test succeeds with both errors at most 1/3, the two data laws
+must have TV at least 1/3 and KL at least 2/9. Since the KL of n length-three
+episodes is at most 9n/(4L^2), necessarily n≥8L^2/81. Choosing the identified
+model gives its exact endpoint predictor, so the same O(L^2) test upper bound
+solves prediction on this two-point family. This is a matching rate in L,
+though the constants in the prediction-risk lower bound are deliberately
+conservative.
+
+UNKNOWN HIDDEN STATE COUNT
+
+The number of states in a supplied representation is not identifiable even
+from infinite data: a one-state fair-emission HMM and a two-state HMM whose two
+states have identical fair emissions generate the same iid fair process, for
+any stationary hidden transition matrix. If “state count” means minimal
+observable/Hankel rank, population identifiability is possible under
+nondegeneracy, but uniform finite-sample exact rank selection still needs a
+quantitative margin. For example, compare the one-state iid fair model with a
+two-state stationary model having flip rate 1/4 and emissions
+P(Y=Z)=1/2+a. For a>0, the latter has nonzero lag-one covariance and minimal
+rank two; as a→0, every fixed-length observed law converges to iid fair.
+Thus any finite sample budget can be defeated by a small enough emission
+separation. This is consistent with HMM identifiability theorems that assume
+known state count and full-rank transition/emission families: population
+identifiability does not supply a uniform modulus of estimation.
+
+LITERATURE AND LOCAL CARDS
+
+* Hsu, Kakade, and Zhang, “A Spectral Algorithm for Learning Hidden Markov
+  Models,” JCSS 78 (2012), arXiv:0811.4413. Their learner takes m (state count)
+  as an input and uses independent observation triples. Their finite joint-law
+  bound depends polynomially on inverse singular values and scales quadratically
+  in the forecasted sequence length t; their uniform-in-time expected
+  conditional-KL theorem adds a positive stochasticity parameter alpha and
+  other filter-stability quantities. This is a positive finite-rate result
+  under declared margins, not a rank-agnostic uniform guarantee.
+  https://arxiv.org/abs/0811.4413
+* Gassiat, Cleynen, and Robin, “Finite state space non parametric Hidden Markov
+  Models are in general identifiable,” arXiv:1306.4657. For known k, full-rank
+  transition matrix and linearly independent emissions identify the parameters
+  up to label permutation from the population law of three observations.
+  https://arxiv.org/abs/1306.4657
+* Kakade, Krishnamurthy, Mahajan, and Zhang, “Learning Hidden Markov Models
+  Using Conditional Samples,” COLT 2023, arXiv:2302.14753. It distinguishes
+  passive iid observation-sequence samples from interactive conditional-probability
+  and conditional-sample oracles; the reported separation is computational and
+  cannot be substituted for our passive minimax statement.
+  https://arxiv.org/abs/2302.14753
+* Local card `work/astra_prior/cards/N13-passive-parity-boundary.txt` records a
+  scoped passive noisy-parity/HMM boundary and warns that hidden matrix access
+  is not passive data. Card `N25-acquisition-interface-tests.txt` warns that
+  artificially spliced prefix/suffix queries are not actual-path predictions.
+  Our lower bound uses a real stationary history-to-endpoint joint law and no
+  spliced query. These cards are prior context, not proof premises.
+* The inherited canonical HMM teacher-free recurrence target remains open;
+  prior work's spliced-rectangle obstruction rules out one fixed-rank shortcut,
+  not all prediction learners. This leaf attacks statistical long-horizon
+  sample cost instead of that recurrence-synthesis question.
+
+SUPPLIED REALIZATION CONTRAST AND COSTS
+
+If an exact observable-operator or positive HMM realization of rank r is
+supplied, the endpoint forecast after observed context h is an algebraic
+calculation. In the observable-operator convention
+f(w)=beta A_w alpha, with A_Sigma=sum_x A_x, it is
+
+  P(Y_(m+L)=y | h)
+    = beta A_y A_Sigma^(L−1) A_h alpha / (beta A_h alpha).
+
+For dense matrices, a fixed endpoint query can compute A_Sigma^(L−1) by
+O(log L) matrix multiplications (O(r^3 log L) arithmetic), then apply the
+context and endpoint matrices; iterating instead costs O(L r^2). This charges
+the supplied model's storage/bit length and arithmetic but no acquisition
+episodes. A full conditional table for all possible histories is a different
+output requirement. Passive acquisition must pay for enough observations to
+separate the models; a supplied realization has already paid that information
+cost elsewhere. Finite-precision rounding and model-validation costs remain
+separate in either interface.
+
+BOUNDARIES
+
+This result is for an L-step endpoint prediction under stationary reset
+sampling, with a three-symbol evaluation context and length-three training
+episodes. It does not show a fixed lower bound for one-step next-symbol
+prediction, nor a lower bound for one long uninterrupted training trajectory.
+It establishes no unconditional computational hardness and no general
+impossibility of teacher-free acquisition. It proves the specific quantitative
+claim above and the exact representational-count nonidentifiability.
+
+Evidence status: derivation is explicit and internally checked algebraically;
+no external proof review, code replay, or historical novelty/priority claim is
+made.

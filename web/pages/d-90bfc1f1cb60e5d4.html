@@ -1,0 +1,395 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c12_morphogenesis_interface/analyze_observable_interface.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c12_morphogenesis_interface/analyze_observable_interface.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Read-only source-data / model-observable interface audit.
+
+Reads the official source workbook and companion CSVs without modifying them,
+then replays two already-identified finite-PDE speed aliases at a modest grid.
+The outputs are intentionally scoped to source observables and conditional
+model predictions; the script does not fit biological parameters.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import csv
+import hashlib
+import importlib.util
+import json
+import math
+from collections import Counter, defaultdict
+from pathlib import Path
+from statistics import mean, stdev
+
+import numpy as np
+from openpyxl import load_workbook
+
+ROOT = Path(__file__).resolve().parents[3]
+ATTACK = ROOT / &quot;work/agents/c8_morphogenesis_control/cycle9/deeper_attack&quot;
+DATA = ATTACK / &quot;source_data&quot;
+BOOK = DATA / &quot;41467_2025_59164_MOESM10_ESM.xlsx&quot;
+OUT = Path(__file__).with_name(&quot;observable_interface_results.json&quot;)
+
+
+def sha256(path: Path) -&gt; str:
+    h = hashlib.sha256()
+    with path.open(&quot;rb&quot;) as f:
+        for chunk in iter(lambda: f.read(1 &lt;&lt; 20), b&quot;&quot;):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def load_csv(name: str) -&gt; list[dict[str, str]]:
+    with (DATA / name).open(newline=&quot;&quot;, encoding=&quot;utf-8-sig&quot;) as f:
+        return list(csv.DictReader(f))
+
+
+def by_video_velocity() -&gt; dict:
+    rows = load_csv(&quot;Velocities_all_videos.csv&quot;)
+    grouped: dict[tuple[int, str], list[float]] = defaultdict(list)
+    all_by_location: dict[str, list[float]] = defaultdict(list)
+    for row in rows:
+        video = int(float(row[&quot;Video&quot;]))
+        loc = row[&quot;Location&quot;]
+        value = float(row[&quot;Velocity&quot;])
+        grouped[(video, loc)].append(value)
+        all_by_location[loc].append(value)
+    videos = {}
+    for (video, loc), values in sorted(grouped.items()):
+        videos.setdefault(str(video), {})[loc] = {
+            &quot;n_cells&quot;: len(values), &quot;mean_speed_norm&quot;: mean(values),
+            &quot;within_cell_sd&quot;: stdev(values) if len(values) &gt; 1 else None,
+        }
+    location = {}
+    for loc, values in all_by_location.items():
+        m = mean(values)
+        byvid = [videos[str(v)][loc][&quot;mean_speed_norm&quot;] for v in sorted(map(int, {x[0] for x in grouped if x[1] == loc}))]
+        location[loc] = {
+            &quot;n_cells&quot;: len(values), &quot;mean_speed_norm&quot;: m,
+            &quot;within_cell_sd&quot;: stdev(values), &quot;per_video_means&quot;: byvid,
+            &quot;between_video_mean_sd&quot;: stdev(byvid) if len(byvid) &gt; 1 else None,
+            &quot;between_video_sem&quot;: stdev(byvid) / math.sqrt(len(byvid)) if len(byvid) &gt; 1 else None,
+            &quot;estimand&quot;: &quot;individual 2D endpoint-displacement norm over six hours per article Methods; not signed Eulerian x velocity&quot;,
+        }
+    return {&quot;source_rows&quot;: len(rows), &quot;by_video_location&quot;: videos, &quot;by_location&quot;: location}
+
+
+def source_track_summaries() -&gt; dict:
+    # Worksheet positions: field descriptions in rows 3:8, table header row 11,
+    # records rows 12:14263.
+    wb = load_workbook(BOOK, read_only=True, data_only=True)
+    ws = wb[&quot;Fig1H&quot;]
+    records = []
+    for row in ws.iter_rows(min_row=12, values_only=True):
+        if row[0] is None:
+            continue
+        cell, ti, x, y, video, loc = row[:6]
+        records.append((int(cell), int(ti), float(x), float(y), int(video), str(loc)))
+    tracks: dict[tuple[int, int, str], list[tuple[int, float, float]]] = defaultdict(list)
+    for cell, ti, x, y, video, loc in records:
+        tracks[(video, cell, loc)].append((ti, x, y))
+    by_group: dict[tuple[int, str], list[int]] = defaultdict(list)
+    npoints = []
+    time_max = 0
+    for (video, cell, loc), points in tracks.items():
+        by_group[(video, loc)].append(len(points))
+        npoints.append(len(points))
+        time_max = max(time_max, max(p[0] for p in points))
+    grp = {
+        f&quot;video_{video}|{loc}&quot;: {
+            &quot;n_tracks&quot;: len(lengths),
+            &quot;track_points_median&quot;: float(np.median(lengths)),
+            &quot;track_points_min&quot;: min(lengths), &quot;track_points_max&quot;: max(lengths),
+        }
+        for (video, loc), lengths in sorted(by_group.items())
+    }
+    # These records use raw X/Y coordinates; the sheet does not supply a length unit.
+    wb.close()
+
+    # Companion longitudinal mean-displacement table has an explicit micrometre label
+    # in the companion plotting Rmd, but keeps each video/location separate.
+    live = load_csv(&quot;data_ex_vivo_tracked_cells_all.csv&quot;)
+    live_groups: dict[tuple[str, str], list[tuple[float, float]]] = defaultdict(list)
+    for row in live:
+        live_groups[(row[&quot;data_set&quot;], row[&quot;location&quot;])].append(
+            (float(row[&quot;time&quot;]), float(row[&quot;mean_displacement&quot;]))
+        )
+    displacements = {}
+    for (dataset, loc), values in sorted(live_groups.items()):
+        ordered = sorted(values)
+        fit = np.polyfit([t for t, _ in ordered if t &lt;= 6], [x for t, x in ordered if t &lt;= 6], 1)
+        at6 = float(np.interp(6.0, [t for t, _ in ordered], [x for _, x in ordered]))
+        displacements.setdefault(dataset, {})[loc] = {
+            &quot;n_time_rows&quot;: len(ordered), &quot;time_min_hr&quot;: ordered[0][0],
+            &quot;time_max_hr&quot;: ordered[-1][0], &quot;x_displacement_at_6h_um&quot;: at6,
+            &quot;x_displacement_ols_slope_0_6h_um_per_h&quot;: float(fit[0]),
+        }
+    aggregate = {}
+    locations = sorted({loc for item in displacements.values() for loc in item})
+    for loc in locations:
+        pairs = [(dataset, item[loc][&quot;x_displacement_at_6h_um&quot;])
+                 for dataset, item in sorted(displacements.items()) if loc in item]
+        values = [x for _, x in pairs]
+        sd = stdev(values) if len(values) &gt; 1 else None
+        sem = sd / math.sqrt(len(values)) if sd is not None else None
+        # Four source experiments =&gt; t_(.975,3)=3.182. This interval is a
+        # descriptive video-level uncertainty summary, not a fitted-model test.
+        half = 3.182 * sem if sem is not None and len(values) == 4 else None
+        aggregate[loc] = {
+            &quot;n_independent_datasets&quot;: len(values), &quot;by_dataset_um&quot;: dict(pairs),
+            &quot;mean_x_displacement_at_6h_um&quot;: mean(values),
+            &quot;between_dataset_sd_um&quot;: sd, &quot;between_dataset_sem_um&quot;: sem,
+            &quot;descriptive_t95_ci_for_mean_um&quot;: [mean(values) - half, mean(values) + half] if half is not None else None,
+        }
+    return {
+        &quot;Fig1H&quot;: {
+            &quot;source_range&quot;: &quot;Fig1H!A1:F14263; title row 1; field descriptions A3:B8; header row 11; records rows 12:14263&quot;,
+            &quot;records&quot;: len(records), &quot;unique_tracks&quot;: len(tracks),
+            &quot;time_point_max_index&quot;: time_max,
+            &quot;time_step_from_sheet_metadata&quot;: &quot;10 min&quot;,
+            &quot;groups&quot;: grp,
+            &quot;unit_boundary&quot;: &quot;X/Y are raw source coordinates; worksheet gives no physical unit or scale calibration&quot;,
+        },
+        &quot;companion_x_displacement&quot;: {
+            &quot;source_csv&quot;: &quot;data_ex_vivo_tracked_cells_all.csv&quot;,
+            &quot;groups_by_dataset_location&quot;: displacements,
+            &quot;aggregate_at_6h_by_location&quot;: aggregate,
+            &quot;unit_provenance&quot;: &quot;plot_results_with_data.Rmd labels displacement in microns; time column in hours&quot;,
+        },
+    }
+
+
+def workbook_summaries() -&gt; dict:
+    wb = load_workbook(BOOK, read_only=True, data_only=True)
+    fig3b = wb[&quot;Fig3B&quot;]
+    rows3b = list(fig3b.iter_rows(min_row=13, values_only=True))
+    # The final merged Figure 3B export pools ex-vivo locations for this plotted
+    # series (location overwritten to &#x27;cells&#x27; in the author&#x27;s Rmd before export).
+    groups3b: dict[tuple[str, str], list[tuple[float, float, float]]] = defaultdict(list)
+    for r in rows3b:
+        if r[0] is None:
+            continue
+        _id, time, x, dataset, location, source, x_avg, x_sem = r[:8]
+        if str(time).upper() == &quot;NA&quot; or str(x_avg).upper() == &quot;NA&quot;:
+            continue
+        sem = None if str(x_sem).upper() == &quot;NA&quot; else float(x_sem)
+        groups3b[(str(_id), str(location))].append((float(time), float(x_avg), sem))
+    fig3b_summary = {}
+    for (identity, loc), vals in sorted(groups3b.items()):
+        at6 = [x for t, x, _ in vals if abs(t - 6.0) &lt; 1e-6]
+        fig3b_summary[f&quot;{identity}|{loc}&quot;] = {
+            &quot;n_rows&quot;: len(vals), &quot;x_avg_at_6h&quot;: at6[0] if at6 else None,
+            &quot;time_range_hr&quot;: [min(t for t, _, _ in vals), max(t for t, _, _ in vals)],
+        }
+    # Fig2D is average GFP intensity over pixel-indexed medial-lateral position.
+    fig2d = wb[&quot;Fig2D&quot;]
+    cols = fig2d.max_column - 2  # B:EEW = 3532 values; A is time, B onward profile
+    profiles = {}
+    for row in fig2d.iter_rows(min_row=5, max_row=41, min_col=1,
+                               max_col=fig2d.max_column, values_only=True):
+        time_i = row[0]
+        if time_i is None:
+            continue
+        vals = np.asarray(row[1:], dtype=float)
+        # Shape-only dynamic range and normalized 10--90% transition width in pixels.
+        # Use the global row min/max as a descriptive observable; no phi calibration is claimed.
+        lo, hi = float(np.min(vals)), float(np.max(vals))
+        frac = (vals - lo) / (hi - lo) if hi &gt; lo else np.zeros_like(vals)
+        target_lo, target_hi = 0.1, 0.9
+        ix_lo = int(np.argmin(np.abs(frac - target_lo)))
+        ix_hi = int(np.argmin(np.abs(frac - target_hi)))
+        profiles[str(int(time_i))] = {
+            &quot;n_pixels&quot;: len(vals), &quot;intensity_min&quot;: lo, &quot;intensity_max&quot;: hi,
+            &quot;intensity_range&quot;: hi - lo,
+            &quot;normalized_10_90_nearest_pixel_span&quot;: abs(ix_hi - ix_lo),
+        }
+    fig3c = wb[&quot;Fig3C&quot;]
+    fig3c_measured = {}
+    for row in fig3c.iter_rows(min_row=9, max_row=11, min_col=1, max_col=5, values_only=True):
+        loc, xmean, xsd, vmean, vsd = row
+        if loc is None:
+            continue
+        fig3c_measured[str(loc)] = {
+            &quot;mean_initial_x_coordinate_um&quot;: float(xmean),
+            &quot;sd_initial_x_coordinate_um&quot;: float(xsd),
+            &quot;mean_2d_speed_norm_um_per_h&quot;: float(vmean),
+            &quot;sd_cell_speed_norm_um_per_h&quot;: float(vsd),
+        }
+    wb.close()
+    return {
+        &quot;Fig3B&quot;: {
+            &quot;source_range&quot;: &quot;Fig3B!A1:H889; metadata rows 1:10; blank row 11; column header row 12; records rows 13:889&quot;,
+            &quot;groups&quot;: fig3b_summary,
+            &quot;source_code_boundary&quot;: &quot;companion Rmd final plotting table pools all ex-vivo locations into location=&#x27;cells&#x27;; model cell path retained only Bone Front&quot;,
+        },
+        &quot;Fig2D&quot;: {
+            &quot;source_range&quot;: &quot;Fig2D!A1:EEW41; title row 1; axis metadata row 3; profile header row 4; profile records rows 5:41&quot;,
+            &quot;profiles_by_time_index&quot;: profiles,
+            &quot;time_index&quot;: &quot;0..36; sheet labels index but gives no minute-per-index conversion&quot;,
+            &quot;unit_boundary&quot;: &quot;position is pixel index and intensity is GFP fluorescence; workbook does not supply pixel-to-um calibration or a fluorescence-to-phi calibration&quot;,
+        },
+        &quot;Fig3C&quot;: {
+            &quot;source_range&quot;: &quot;Fig3C!A1:E147; measured location summaries rows 9:11; model velocity profile header row 14 and data rows 15:147&quot;,
+            &quot;measured_cell_velocity_summaries&quot;: fig3c_measured,
+            &quot;unit_provenance&quot;: &quot;article Methods define measured speed as 2D endpoint displacement norm divided by six hours; model output V is signed 1D Eulerian velocity&quot;,
+        },
+    }
+
+
+def pde_aliases() -&gt; dict:
+    module_path = ATTACK / &quot;replay_coupled_fd.py&quot;
+    spec = importlib.util.spec_from_file_location(&quot;replay_coupled_fd&quot;, module_path)
+    mod = importlib.util.module_from_spec(spec)
+    assert spec and spec.loader
+    spec.loader.exec_module(mod)
+    x0s = (0.0, -200.0, -400.0)
+    results = {}
+    for name, steep, alpha in ((&quot;released&quot;, 4.0, 3.5e-6), (&quot;speed_alias&quot;, 8.0, 1.934e-6)):
+        sim = mod.run(nx=800, nt=3200, a_phi=steep, alpha=alpha, a_rho=steep, fast_solve=True)
+        x = sim[&quot;x&quot;]
+        t = sim[&quot;time&quot;]
+        phi, vel = sim[&quot;phi&quot;], sim[&quot;velocity&quot;]
+        dphi = np.gradient(phi, sim[&quot;dx_um&quot;], axis=0, edge_order=2)
+        v_b = vel - 15.0 * dphi / np.maximum(phi, 1e-10)
+        crossings = mod.front_crossings(x, phi, 0.5)
+        secant = float((crossings[-1] - crossings[0]) / (t[-1] - t[0]))
+        profiles = {}
+        for x0 in x0s:
+            ix = int(np.argmin(np.abs(x - x0)))
+            profiles[str(x0)] = {
+                &quot;grid_x_um&quot;: float(x[ix]),
+                &quot;phi_t0&quot;: float(phi[ix, 0]),
+                &quot;eulerian_V_initial_t0_um_per_h&quot;: float(vel[ix, 0]),
+                &quot;conditional_vB_initial_t0_um_per_h&quot;: float(v_b[ix, 0]),
+                &quot;eulerian_V_t1h_um_per_h&quot;: float(np.interp(1.0, t, vel[ix, :])),
+                &quot;conditional_vB_t1h_um_per_h&quot;: float(np.interp(1.0, t, v_b[ix, :])),
+                &quot;eulerian_V_mean_0_6h_um_per_h&quot;: float(np.trapezoid(vel[ix, t &lt;= 6], t[t &lt;= 6]) / 6.0),
+                &quot;conditional_vB_mean_0_6h_um_per_h&quot;: float(np.trapezoid(v_b[ix, t &lt;= 6], t[t &lt;= 6]) / 6.0),
+            }
+        # Characteristic paths under two distinct field-to-marker mappings:
+        # (i) source-plotted Eulerian field V; (ii) conditional B-species velocity.
+        def field_value(field: np.ndarray, xx: float, tt: float) -&gt; float:
+            xx = float(np.clip(xx, x[0], x[-1]))
+            tt = float(np.clip(tt, t[0], t[-1]))
+            ix = int(np.clip(np.searchsorted(x, xx) - 1, 0, len(x) - 2))
+            it = int(np.clip(np.searchsorted(t, tt) - 1, 0, len(t) - 2))
+            ax = (xx - x[ix]) / (x[ix + 1] - x[ix])
+            at = (tt - t[it]) / (t[it + 1] - t[it])
+            a = field[ix, it] * (1 - ax) + field[ix + 1, it] * ax
+            b = field[ix, it + 1] * (1 - ax) + field[ix + 1, it + 1] * ax
+            return float(a * (1 - at) + b * at)
+
+        paths = {&quot;V&quot;: {}, &quot;v_B_conditional&quot;: {}}
+        dt = float(t[1] - t[0])
+        steps = int(round(6.0 / dt))
+        for mapping, field in ((&quot;V&quot;, vel), (&quot;v_B_conditional&quot;, v_b)):
+            for xinit in x0s:
+                xx = xinit
+                for j in range(steps):
+                    tt = j * dt
+                    u0 = field_value(field, xx, tt)
+                    up = field_value(field, xx + dt * u0, tt + dt)
+                    xx += 0.5 * dt * (u0 + up)
+                paths[mapping][str(xinit)] = {
+                    &quot;x_displacement_0_6h_um&quot;: xx - xinit,
+                    &quot;mean_signed_x_speed_0_6h_um_per_h&quot;: (xx - xinit) / 6.0,
+                }
+        results[name] = {
+            &quot;a_rho&quot;: steep, &quot;a_phi&quot;: steep, &quot;alpha&quot;: alpha,
+            &quot;grid&quot;: {&quot;nx&quot;: sim[&quot;nx&quot;], &quot;nt&quot;: sim[&quot;nt&quot;], &quot;dx_um&quot;: sim[&quot;dx_um&quot;], &quot;dt_hr&quot;: sim[&quot;dt_hr&quot;]},
+            &quot;phi_half_front_secant_0_8h_um_per_h&quot;: secant,
+            &quot;three_location_model_profiles&quot;: profiles,
+            &quot;conditional_paths&quot;: paths,
+            &quot;mapping_formula&quot;: &quot;from the published phenotype PDE in conservative form, candidate osteoblast species velocity v_B = V - D*(partial_x phi)/phi, D=15 um^2/h; this is a conditional mapping, not an observed source-data equivalence&quot;,
+        }
+        del sim
+    # At fixed positions, profile distance between alternatives conditional on each mapping.
+    r = results[&quot;released&quot;][&quot;three_location_model_profiles&quot;]
+    a = results[&quot;speed_alias&quot;][&quot;three_location_model_profiles&quot;]
+    contrasts = {}
+    for x0 in map(str, x0s):
+        contrasts[x0] = {}
+        for key in (&quot;eulerian_V_initial_t0_um_per_h&quot;, &quot;conditional_vB_initial_t0_um_per_h&quot;, &quot;eulerian_V_t1h_um_per_h&quot;, &quot;conditional_vB_t1h_um_per_h&quot;, &quot;eulerian_V_mean_0_6h_um_per_h&quot;, &quot;conditional_vB_mean_0_6h_um_per_h&quot;):
+            contrasts[x0][key] = a[x0][key] - r[x0][key]
+    observed = source_track_summaries()[&quot;companion_x_displacement&quot;][&quot;aggregate_at_6h_by_location&quot;]
+    model_x0 = {&quot;Bone Front&quot;: &quot;0.0&quot;, &quot;In Bone&quot;: &quot;-200.0&quot;, &quot;Further In Bone&quot;: &quot;-400.0&quot;}
+    trajectory_match = {}
+    loc_order = [&quot;Bone Front&quot;, &quot;In Bone&quot;, &quot;Further In Bone&quot;]
+    m0 = np.asarray([results[&quot;released&quot;][&quot;conditional_paths&quot;][&quot;v_B_conditional&quot;][model_x0[loc]][&quot;x_displacement_0_6h_um&quot;] for loc in loc_order])
+    m1 = np.asarray([results[&quot;speed_alias&quot;][&quot;conditional_paths&quot;][&quot;v_B_conditional&quot;][model_x0[loc]][&quot;x_displacement_0_6h_um&quot;] for loc in loc_order])
+    delta = m1 - m0
+    unit_delta = delta / np.linalg.norm(delta)
+    dataset_ids = sorted(observed[loc_order[0]][&quot;by_dataset_um&quot;])
+    data_vectors = np.asarray([[observed[loc][&quot;by_dataset_um&quot;][dataset] for loc in loc_order] for dataset in dataset_ids])
+    discriminant_scores = data_vectors @ unit_delta
+    score_mean = float(np.mean(discriminant_scores))
+    score_sd = float(np.std(discriminant_scores, ddof=1))
+    score_sem = score_sd / math.sqrt(len(dataset_ids))
+    score_halfwidth = 3.182 * score_sem if len(dataset_ids) == 4 else None
+    model_score0 = float(unit_delta @ m0)
+    model_score1 = float(unit_delta @ m1)
+    for loc, x0 in model_x0.items():
+        exp = observed[loc]
+        released_pred = results[&quot;released&quot;][&quot;conditional_paths&quot;][&quot;v_B_conditional&quot;][x0][&quot;x_displacement_0_6h_um&quot;]
+        alias_pred = results[&quot;speed_alias&quot;][&quot;conditional_paths&quot;][&quot;v_B_conditional&quot;][x0][&quot;x_displacement_0_6h_um&quot;]
+        trajectory_match[loc] = {
+            &quot;empirical_four_video_mean_x_displacement_at_6h_um&quot;: exp[&quot;mean_x_displacement_at_6h_um&quot;],
+            &quot;empirical_between_video_sd_um&quot;: exp[&quot;between_dataset_sd_um&quot;],
+            &quot;empirical_descriptive_t95_ci_for_mean_um&quot;: exp[&quot;descriptive_t95_ci_for_mean_um&quot;],
+            &quot;released_pair_conditional_vB_prediction_um&quot;: released_pred,
+            &quot;speed_alias_conditional_vB_prediction_um&quot;: alias_pred,
+            &quot;alias_minus_released_prediction_um&quot;: alias_pred - released_pred,
+        }
+    return {
+        &quot;mesh_scope&quot;: &quot;Nx=800,Nt=3200; the previously documented Nx=3200,Nt=25600 run controls the high-resolution speed-match claim&quot;,
+        &quot;cases&quot;: results,
+        &quot;alias_minus_released_fixed_position_contrasts&quot;: contrasts,
+        &quot;conditional_comparison_to_four_video_x_displacements&quot;: {
+            &quot;mapping&quot;: &quot;compare 1D phenotype-material characteristic v_B=V−Dφ_x/φ, initialized at the three model positions used by the source Rmd, with measured signed x-projected mean cell displacement by source video/location&quot;,
+            &quot;independent_sample_unit&quot;: &quot;four ex-vivo datasets/videos; not individual cell counts or repeated time rows&quot;,
+            &quot;comparison&quot;: trajectory_match,
+            &quot;boundary&quot;: &quot;conditional observable map; not a new fit or validation claim; empirical trajectory is a location-level mean while the PDE path is deterministic&quot;,
+        },
+        &quot;named_pair_discriminating_projection&quot;: {
+            &quot;definition&quot;: &quot;u=(m_alias-m_released)/||m_alias-m_released|| across the three initial locations; each independent video contributes u dot its 3-location vector of 6h mean x displacements&quot;,
+            &quot;locations_order&quot;: loc_order,
+            &quot;released_model_vector_um&quot;: m0.tolist(),
+            &quot;speed_alias_model_vector_um&quot;: m1.tolist(),
+            &quot;unit_discriminant_direction&quot;: unit_delta.tolist(),
+            &quot;observed_video_scores_um&quot;: {dataset: float(score) for dataset, score in zip(dataset_ids, discriminant_scores)},
+            &quot;empirical_projected_mean_um&quot;: score_mean,
+            &quot;between_video_sd_um&quot;: score_sd,
+            &quot;n_independent_videos&quot;: len(dataset_ids),
+            &quot;descriptive_t95_ci_for_projected_mean_um&quot;: [score_mean - score_halfwidth, score_mean + score_halfwidth] if score_halfwidth is not None else None,
+            &quot;released_model_projected_value_um&quot;: model_score0,
+            &quot;speed_alias_projected_value_um&quot;: model_score1,
+            &quot;boundary&quot;: &quot;exploratory one-contrast comparison of this named model pair; t interval assumes four independent video-level values and does not cover model, mapping, or parameter uncertainty&quot;,
+        },
+    }
+
+
+def main() -&gt; None:
+    result = {
+        &quot;source&quot;: {
+            &quot;paper_doi&quot;: &quot;10.1038/s41467-025-59164-9&quot;,
+            &quot;repository_commit&quot;: &quot;b2cbb61097cdc25bfff1e0a89ba690a31c2a4adc&quot;,
+            &quot;workbook_path&quot;: str(BOOK.resolve()),
+            &quot;workbook_sha256&quot;: sha256(BOOK),
+            &quot;workbook_bytes&quot;: BOOK.stat().st_size,
+            &quot;source_data_csv_sha256&quot;: {n: sha256(DATA / n) for n in (
+                &quot;Velocities_all_videos.csv&quot;, &quot;data_ex_vivo_tracked_cells_all.csv&quot;,
+                &quot;data_ex_vivo_videos_1_to_4_all_interfaces.csv&quot;)},
+        },
+        &quot;velocity_observations&quot;: by_video_velocity(),
+        &quot;position_observations&quot;: source_track_summaries(),
+        &quot;workbook_summaries&quot;: workbook_summaries(),
+        &quot;pde_alias_observation_interface&quot;: pde_aliases(),
+    }
+    OUT.write_text(json.dumps(result, indent=2, ensure_ascii=False) + &quot;\n&quot;, encoding=&quot;utf-8&quot;)
+    print(json.dumps({
+        &quot;output&quot;: str(OUT.resolve()), &quot;workbook_sha256&quot;: result[&quot;source&quot;][&quot;workbook_sha256&quot;],
+        &quot;tracks&quot;: result[&quot;position_observations&quot;][&quot;Fig1H&quot;][&quot;unique_tracks&quot;],
+        &quot;velocity_n&quot;: result[&quot;velocity_observations&quot;][&quot;source_rows&quot;],
+        &quot;alias_contrasts&quot;: result[&quot;pde_alias_observation_interface&quot;][&quot;alias_minus_released_fixed_position_contrasts&quot;],
+    }, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/d7670b4a5d985ef3db4c81bdeecbdb839f5db87de7bb509297f042168568acad.py">Exact original</a></p></html>

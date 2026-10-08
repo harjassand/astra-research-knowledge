@@ -1,0 +1,242 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c7_biomolecular_nonequilibrium/molecular_automata_design.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c7_biomolecular_nonequilibrium/molecular_automata_design.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Finite-state design audit for the Kocka et al. protein-automata model.
+
+Only Python&#x27;s standard library is required.  The generator is enumerated exactly
+from the stated channels, while its linear systems are solved in binary64.
+For a rational-rate exact-arithmetic fixture see ``exact_rate_audit.py``.
+States are N-bit rings. Rule number
+uses the standard Wolfram convention f_r(p)=(r&gt;&gt;p)&amp;1, p=4*left+2*center+right.
+For every motif p with f_r(p) != center(p), one enzyme catalyses p -&gt; p^flip
+at kcat*exp(A)/(1+exp(A)); the same enzyme catalyses the reverse with rate
+kcat/(1+exp(A)). Independent spontaneous flips occur at k_spo per site.
+
+The program computes (i) exact one-error repair-vs-new-error races and (ii)
+exact mean first-passage time from the all-zero codeword to a majority-one
+readout. It also charges gross ATP hydrolysis and net chemical work using the
+enzyme-resolved reaction channels; spontaneous transitions consume no ATP.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import argparse
+import json
+import math
+from typing import Dict, Iterable, List, Sequence, Tuple
+
+
+def bit(state: int, site: int) -&gt; int:
+    return (state &gt;&gt; site) &amp; 1
+
+
+def motif(state: int, site: int, n: int) -&gt; int:
+    left = bit(state, (site - 1) % n)
+    center = bit(state, site)
+    right = bit(state, (site + 1) % n)
+    return 4 * left + 2 * center + right
+
+
+def rule_output(rule: int, p: int) -&gt; int:
+    return (rule &gt;&gt; p) &amp; 1
+
+
+def enzymes(rule: int) -&gt; Tuple[int, ...]:
+    return tuple(p for p in range(8) if rule_output(rule, p) != ((p &gt;&gt; 1) &amp; 1))
+
+
+def flip_center(p: int) -&gt; int:
+    return p ^ 2
+
+
+def outgoing(state: int, n: int, rule: int, kcat: float, affinity: float,
+             k_spo: float) -&gt; List[Tuple[int, float, float, float]]:
+    &quot;&quot;&quot;Return (next_state, total_rate, gross_hydrolysis_rate, reverse_rate).
+
+    Gross hydrolysis includes only forward enzymatic channel flux. Reverse
+    events are reported separately because they return one fuel molecule in
+    the idealized LDB reaction. Parallel spontaneous/enzyme channels are
+    aggregated only after their energy labels have been recorded.
+    &quot;&quot;&quot;
+    e = set(enzymes(rule))
+    fwd = kcat * math.exp(affinity) / (1.0 + math.exp(affinity))
+    rev = kcat / (1.0 + math.exp(affinity))
+    out: Dict[int, List[float]] = {}
+    for site in range(n):
+        p = motif(state, site, n)
+        q = flip_center(p)
+        nxt = state ^ (1 &lt;&lt; site)
+        # Enzyme p drives p -&gt; q; enzyme q catalyses its own reverse q -&gt; p.
+        h = fwd if p in e else 0.0
+        r = rev if q in e else 0.0
+        total = k_spo + h + r
+        if total == 0.0:
+            continue
+        slot = out.setdefault(nxt, [0.0, 0.0, 0.0])
+        slot[0] += total
+        slot[1] += h
+        slot[2] += r
+    return [(t, v[0], v[1], v[2]) for t, v in out.items()]
+
+
+def solve_linear(a: List[List[float]], b: List[float]) -&gt; List[float]:
+    &quot;&quot;&quot;Partial-pivot Gaussian elimination for the small transient systems.&quot;&quot;&quot;
+    n = len(b)
+    m = [row[:] + [b[i]] for i, row in enumerate(a)]
+    for col in range(n):
+        pivot = max(range(col, n), key=lambda row: abs(m[row][col]))
+        if abs(m[pivot][col]) &lt; 1e-14:
+            raise ArithmeticError(&quot;singular transient generator; check reachability&quot;)
+        if pivot != col:
+            m[col], m[pivot] = m[pivot], m[col]
+        scale = m[col][col]
+        for j in range(col, n + 1):
+            m[col][j] /= scale
+        for row in range(n):
+            if row == col:
+                continue
+            factor = m[row][col]
+            if factor != 0.0:
+                for j in range(col, n + 1):
+                    m[row][j] -= factor * m[col][j]
+    return [m[i][n] for i in range(n)]
+
+
+def scaled_residual(a: List[List[float]], x: Sequence[float],
+                    b: Sequence[float]) -&gt; float:
+    &quot;&quot;&quot;Return a diagnostic scaled infinity residual (not an interval proof).&quot;&quot;&quot;
+    worst = 0.0
+    for row, target in zip(a, b):
+        value = sum(coef * xi for coef, xi in zip(row, x))
+        scale = max(1.0, abs(target) + sum(abs(coef * xi)
+                                          for coef, xi in zip(row, x)))
+        worst = max(worst, abs(value - target) / scale)
+    return worst
+
+
+def first_passage_and_fuel(n: int, rule: int, kcat: float, affinity: float,
+                           k_spo: float) -&gt; dict:
+    &quot;&quot;&quot;Exact CTMC mean time/work to first wrong majority readout (odd N).&quot;&quot;&quot;
+    if n % 2 != 1:
+        raise ValueError(&quot;majority decoder fixture requires odd N&quot;)
+    cutoff = n // 2
+    safe = [s for s in range(1 &lt;&lt; n) if s.bit_count() &lt;= cutoff]
+    ix = {s: i for i, s in enumerate(safe)}
+    m = len(safe)
+    minus_q = [[0.0] * m for _ in range(m)]
+    gross_h = [0.0] * m
+    reverse = [0.0] * m
+    for state in safe:
+        i = ix[state]
+        for target, rate, hyd, rev in outgoing(state, n, rule, kcat, affinity, k_spo):
+            minus_q[i][i] += rate
+            if target in ix:
+                minus_q[i][ix[target]] -= rate
+            gross_h[i] += hyd
+            reverse[i] += rev
+    mean_t_vec = solve_linear(minus_q, [1.0] * m)
+    hydrolysis_vec = solve_linear(minus_q, gross_h)
+    reverse_vec = solve_linear(minus_q, reverse)
+    mean_t = mean_t_vec[ix[0]]
+    expected_hydrolysis = hydrolysis_vec[ix[0]]
+    expected_reverse = reverse_vec[ix[0]]
+    return {
+        &quot;mean_first_passage_to_wrong_majority&quot;: mean_t,
+        &quot;expected_ATP_hydrolyses_before_wrong_majority&quot;: expected_hydrolysis,
+        &quot;expected_reverse_fuel_returns_before_wrong_majority&quot;: expected_reverse,
+        &quot;expected_net_ATP_consumed&quot;: expected_hydrolysis - expected_reverse,
+        &quot;scaled_linear_residuals_binary64&quot;: {
+            &quot;mean_time&quot;: scaled_residual(minus_q, mean_t_vec, [1.0] * m),
+            &quot;gross_fuel&quot;: scaled_residual(minus_q, hydrolysis_vec, gross_h),
+            &quot;reverse_fuel&quot;: scaled_residual(minus_q, reverse_vec, reverse),
+        },
+        &quot;numerical_note&quot;: &quot;finite generator solved in binary64; residuals are diagnostics, not interval certificates&quot;,
+        &quot;transient_states&quot;: m,
+        &quot;enzyme_motifs&quot;: list(enzymes(rule)),
+        &quot;enzyme_species_count&quot;: len(enzymes(rule)),
+        &quot;per_species_kcat&quot;: kcat,
+        &quot;beta_delta_mu&quot;: affinity,
+        &quot;spontaneous_flip_rate_per_site&quot;: k_spo,
+    }
+
+
+def one_error_race(n: int, rule: int, kcat: float, affinity: float,
+                   k_spo: float) -&gt; dict:
+    &quot;&quot;&quot;Exact next-jump probability of clean correction from a one-bit error.&quot;&quot;&quot;
+    if n &lt; 4:
+        raise ValueError(&quot;use N&gt;=4 so the two neighbours are distinct&quot;)
+    state = 1  # one 1-bit on an otherwise all-zero ring
+    rates = {&quot;repair_to_codeword&quot;: 0.0, &quot;additional_error&quot;: 0.0,
+             &quot;other&quot;: 0.0, &quot;repair_hydrolysis&quot;: 0.0,
+             &quot;repair_reverse&quot;: 0.0}
+    for target, total, hyd, rev in outgoing(state, n, rule, kcat, affinity, k_spo):
+        weight = target.bit_count()
+        if target == 0:
+            rates[&quot;repair_to_codeword&quot;] += total
+            rates[&quot;repair_hydrolysis&quot;] += hyd
+            rates[&quot;repair_reverse&quot;] += rev
+        elif weight &gt; 1:
+            rates[&quot;additional_error&quot;] += total
+        else:
+            rates[&quot;other&quot;] += total
+    total = rates[&quot;repair_to_codeword&quot;] + rates[&quot;additional_error&quot;] + rates[&quot;other&quot;]
+    rates[&quot;total_outgoing_rate&quot;] = total
+    rates[&quot;clean_repair_probability_next_jump&quot;] = rates[&quot;repair_to_codeword&quot;] / total
+    return rates
+
+
+def symmetric_code_rules() -&gt; List[int]:
+    &quot;&quot;&quot;Rules whose 0^N/1^N are both fixed and which are bit-flip symmetric.&quot;&quot;&quot;
+    answer = []
+    for r in range(256):
+        f = [rule_output(r, p) for p in range(8)]
+        if f[0] == 0 and f[7] == 1 and all(f[p] == 1 - f[7 - p] for p in range(8)):
+            answer.append(r)
+    return answer
+
+
+def run(args: argparse.Namespace) -&gt; dict:
+    selected_rules = args.rules if args.rules else symmetric_code_rules()
+    reports = []
+    total_enzyme_capacity = args.total_enzyme_capacity
+    for rule in selected_rules:
+        m = len(enzymes(rule))
+        if m == 0:
+            continue
+        kcat = args.kcat if not total_enzyme_capacity else total_enzyme_capacity / m
+        reports.append({
+            &quot;rule&quot;: rule,
+            &quot;one_error_race&quot;: one_error_race(args.n, rule, kcat, args.affinity, args.k_spo),
+            &quot;majority_decoder&quot;: first_passage_and_fuel(args.n, rule, kcat, args.affinity, args.k_spo),
+        })
+    return {
+        &quot;model&quot;: &quot;binary N-ring; standard Wolfram local rule; local detailed balance; symmetric spontaneous flips&quot;,
+        &quot;N&quot;: args.n,
+        &quot;affinity_parameter&quot;: &quot;A=beta*Delta_mu&quot;,
+        &quot;dimensionless_affinity&quot;: args.affinity,
+        &quot;spontaneous_flip_rate_per_site&quot;: args.k_spo,
+        &quot;rate_normalization&quot;: &quot;fixed per-enzyme kcat&quot; if not total_enzyme_capacity else &quot;fixed sum of enzyme kcat capacities&quot;,
+        &quot;common_kcat_or_total_capacity&quot;: args.kcat if not total_enzyme_capacity else total_enzyme_capacity,
+        &quot;solver&quot;: &quot;partial-pivot Gaussian elimination in binary64&quot;,
+        &quot;rules&quot;: reports,
+    }
+
+
+def main() -&gt; None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(&quot;--n&quot;, type=int, default=7)
+    parser.add_argument(&quot;--affinity&quot;, type=float, default=5.0,
+                        help=&quot;dimensionless beta*Delta_mu&quot;)
+    parser.add_argument(&quot;--k-spo&quot;, type=float, default=0.001,
+                        help=&quot;spontaneous rate per site, relative to kcat units&quot;)
+    parser.add_argument(&quot;--kcat&quot;, type=float, default=1.0,
+                        help=&quot;per-species catalytic capacity unless total capacity set&quot;)
+    parser.add_argument(&quot;--total-enzyme-capacity&quot;, type=float, default=0.0,
+                        help=&quot;if positive, set per-species kcat = this value / enzyme count&quot;)
+    parser.add_argument(&quot;--rules&quot;, type=int, nargs=&quot;*&quot;, default=None,
+                        help=&quot;rule codes; default enumerates bit-symmetric 0/1 memory rules&quot;)
+    args = parser.parse_args()
+    print(json.dumps(run(args), indent=2, sort_keys=True))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/87a326e6bfeb3dc197351e64843109d1e3bb20c94af4acbdde44d216149a47b7.py">Exact original</a></p></html>

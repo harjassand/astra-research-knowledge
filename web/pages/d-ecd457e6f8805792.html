@@ -1,0 +1,130 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c4_rational_applications/shared_actuator_audit.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c4_rational_applications/shared_actuator_audit.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact rational feasibility checks for a shared glucose actuator.
+
+The two cells lie on opposing FBP faces of the previously studied safety
+box.  A common extracellular glucose concentration must satisfy both face
+conditions at once.  Fraction arithmetic makes the reported endpoints exact.
+The +/-10% ranges are a declared genotype-uncertainty stress box around the
+PLOS 2021 IC genotype; they are not measured confidence intervals.
+&quot;&quot;&quot;
+
+from fractions import Fraction as Q
+import json
+from pathlib import Path
+
+
+P = dict(
+    vu=Q(&quot;10.92211&quot;), vl=Q(&quot;5.65143&quot;), katp=Q(&quot;4.82003&quot;), kp=Q(&quot;2.07099&quot;),
+    kmg=Q(&quot;0.1&quot;), kma=Q(&quot;0.1&quot;), ki=Q(&quot;3&quot;), atot=Q(&quot;5&quot;),
+    kmf=Q(&quot;1&quot;), kmd=Q(&quot;0.1&quot;), kmp=Q(&quot;2&quot;), pvmax=Q(&quot;10&quot;), kvac=Q(&quot;250&quot;),
+)
+
+
+def upper_capacity(a, vu):
+    &quot;&quot;&quot;v_up saturation as external glucose tends to infinity.&quot;&quot;&quot;
+    return vu * a / (P[&quot;kma&quot;] + a * (1 + a / P[&quot;ki&quot;]))
+
+
+def lower_flux(f, a, pi, vl):
+    d = P[&quot;atot&quot;] - a
+    return (vl * f / (P[&quot;kmf&quot;] + f) * d / (P[&quot;kmd&quot;] + d) *
+            pi / (P[&quot;kmp&quot;] + pi))
+
+
+def glucose_for_flux(u, a, vu):
+    b = upper_capacity(a, vu)
+    if not (0 &lt;= u &lt; b):
+        raise ValueError((u, b))
+    return P[&quot;kmg&quot;] * u / (b - u)
+
+
+def source_parameter_pi_margin(f, pi, vl, kp, a=Q(0)):
+    d = P[&quot;atot&quot;] - a
+    t = pi + 2 * f + a
+    pv = P[&quot;pvmax&quot;] / (1 + (t / P[&quot;kvac&quot;]) ** 4)
+    L = lower_flux(f, a, pi, vl)
+    # Full-source Pi face derivative; at ATP=0 growth is zero because
+    # vatpg=katp*A-vatpe&lt;0.  The no-growth dilution term is therefore zero.
+    return kp * (pv - pi) - 2 * L
+
+
+def frac_text(x):
+    return {&quot;fraction&quot;: f&quot;{x.numerator}/{x.denominator}&quot;, &quot;decimal&quot;: float(x)}
+
+
+def main():
+    # Both states are within F in [1.8,2.2], ATP&gt;=0.3, Pi&gt;=1,
+    # ATP+Pi&lt;=14.  Growth is zero at ATP=0.3 for the source IC expression cost.
+    upper_cell = (Q(&quot;2.2&quot;), Q(&quot;0.3&quot;), Q(&quot;1&quot;))
+    lower_cell = (Q(&quot;1.8&quot;), Q(&quot;0.3&quot;), Q(&quot;10&quot;))
+
+    # Nominal exact-input interval.
+    f_hi, a_hi, pi_hi = upper_cell
+    L_hi = lower_flux(f_hi, a_hi, pi_hi, P[&quot;vl&quot;])
+    B_hi = upper_capacity(a_hi, P[&quot;vu&quot;])
+    G_hi_nom = glucose_for_flux(L_hi, a_hi, P[&quot;vu&quot;])
+
+    f_lo, a_lo, pi_lo = lower_cell
+    L_lo = lower_flux(f_lo, a_lo, pi_lo, P[&quot;vl&quot;])
+    B_lo = upper_capacity(a_lo, P[&quot;vu&quot;])
+    G_lo_nom = glucose_for_flux(L_lo, a_lo, P[&quot;vu&quot;])
+
+    # Robust simultaneous guarantee over +/-10% uncertainty in only the four
+    # genotype values; common Michaelis/Pi-store constants stay at Table 1.
+    L_hi_min = lower_flux(f_hi, a_hi, pi_hi, P[&quot;vl&quot;] * Q(&quot;0.9&quot;))
+    B_hi_max = upper_capacity(a_hi, P[&quot;vu&quot;] * Q(&quot;1.1&quot;))
+    G_hi_robust = glucose_for_flux(L_hi_min, a_hi, P[&quot;vu&quot;] * Q(&quot;1.1&quot;))
+
+    L_lo_max = lower_flux(f_lo, a_lo, pi_lo, P[&quot;vl&quot;] * Q(&quot;1.1&quot;))
+    B_lo_min = upper_capacity(a_lo, P[&quot;vu&quot;] * Q(&quot;0.9&quot;))
+    G_lo_robust = glucose_for_flux(L_lo_max, a_lo, P[&quot;vu&quot;] * Q(&quot;0.9&quot;))
+
+    # ATP-face condition at the lower-F cell: A&#x27;= -2U+4L-kA.  The
+    # uncertainty-worst admissible flux is 2 L_min - k_max A/2.
+    L_lo_min = lower_flux(f_lo, a_lo, pi_lo, P[&quot;vl&quot;] * Q(&quot;0.9&quot;))
+    u_atp_max = 2 * L_lo_min - P[&quot;katp&quot;] * Q(&quot;1.1&quot;) * a_lo / 2
+    G_atp_max = glucose_for_flux(u_atp_max, a_lo, P[&quot;vu&quot;] * Q(&quot;1.1&quot;))
+
+    # Pi-floor viability boundary with ATP=0 and Pi*=0.05 mM.
+    p_floor = Q(&quot;0.05&quot;)
+    pi_thresholds = {}
+    for f in (250, 300, 325, 350):
+        margin_ref = source_parameter_pi_margin(Q(f), p_floor, P[&quot;vl&quot;], P[&quot;kp&quot;])
+        margin_robust = source_parameter_pi_margin(
+            Q(f), p_floor, P[&quot;vl&quot;] * Q(&quot;1.1&quot;), P[&quot;kp&quot;] * Q(&quot;0.9&quot;))
+        pi_thresholds[str(f)] = {
+            &quot;nominal_margin&quot;: frac_text(margin_ref),
+            &quot;minus10kp_plus10vl_margin&quot;: frac_text(margin_robust),
+        }
+
+    data = {
+        &quot;model&quot;: &quot;PLOS 2021 core glycolysis, IC Table 2 genotype; Table 1 common kinetics&quot;,
+        &quot;units&quot;: {&quot;concentration&quot;: &quot;mM&quot;, &quot;time&quot;: &quot;min&quot;},
+        &quot;shared_actuator_conflict&quot;: {
+            &quot;high_FBP_face_state&quot;: list(map(str, upper_cell)),
+            &quot;low_FBP_face_state&quot;: list(map(str, lower_cell)),
+            &quot;nominal_upper_G_at_high_FBP&quot;: frac_text(G_hi_nom),
+            &quot;nominal_lower_G_at_low_FBP&quot;: frac_text(G_lo_nom),
+            &quot;robust_upper_G_at_high_FBP_pm10_genotype&quot;: frac_text(G_hi_robust),
+            &quot;robust_lower_G_at_low_FBP_pm10_genotype&quot;: frac_text(G_lo_robust),
+            &quot;robust_lower_face_ATP_upper_G&quot;: frac_text(G_atp_max),
+            &quot;robust_interval_empty&quot;: G_lo_robust &gt; G_hi_robust,
+            &quot;proof&quot;: &quot;At the FBP=2.2 state invariance requires G&lt;=G_hi; at the FBP=1.8 state it requires G&gt;=G_lo. These inequalities are incompatible even under exact kinetics, and remain incompatible over the declared +/-10% genotype box.&quot;,
+        },
+        &quot;uncontrollable_Pi_face&quot;: {
+            &quot;state_definition&quot;: &quot;ATP=0, Pi=0.05 mM, FBP=F; no growth because ATPase flux is below the IC expression cost.&quot;,
+            &quot;robust_parameter_range&quot;: &quot;vl in [0.9,1.1]*5.65143; kp in [0.9,1.1]*2.07099; other Table 1 kinetics fixed&quot;,
+            &quot;margins&quot;: pi_thresholds,
+            &quot;interpretation&quot;: &quot;Pi derivative is independent of glucose at ATP=0. If a margin is negative, no glucose policy can make that Pi floor inward at that state; it must first move the state (e.g. lower FBP or raise ATP).&quot;,
+        },
+        &quot;parameter_uncertainty_status&quot;: &quot;The +/-10% box is a stress-test assumption, not an experimental confidence set.&quot;,
+        &quot;arithmetic&quot;: &quot;All displayed endpoints and margins are computed with fractions from decimal source values; only decimal renderings are rounded.&quot;,
+    }
+    out = Path(__file__).with_name(&quot;shared_actuator_certificate.json&quot;)
+    out.write_text(json.dumps(data, indent=2) + &quot;\n&quot;)
+    print(json.dumps(data, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/2c39b1d759a10eac21a453c9183ef522ccd7bc7e4d3cc2b6e4a4c5352e3e3ef5.py">Exact original</a></p></html>

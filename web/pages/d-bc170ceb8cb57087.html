@@ -1,0 +1,57 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c7_immunology_discrimination/code/control_scan.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c7_immunology_discrimination/code/control_scan.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Optimize informed, time-only controls against the adaptive-mmax model.
+
+This is a finite Monte Carlo scan, not a proof of global controller optimality.
+The selection objective is tie-adjusted pairwise ranking AUC.  Candidate time
+controls are tuned with the same dose prior supplied to the adaptive policy.
+&quot;&quot;&quot;
+import json
+from pathlib import Path
+
+from model_audit import run_pairs
+
+
+def main():
+    pairs = 1000
+    seed = 221109
+    cases = [
+        (&quot;normal&quot;, 30.0),
+        (&quot;uniform_wide&quot;, 0.0),
+        (&quot;uniform_low&quot;, 0.0),
+    ]
+    controls = [(f0, tc) for f0 in (400.0, 600.0, 800.0) for tc in (15.0, 60.0, 240.0)]
+    rows = []
+    for di, (distribution, sigma) in enumerate(cases):
+        rows.append(run_pairs(&quot;mmax&quot;, distribution, sigma, pairs, seed + di * 1000, 60.0, beta=5.0, f0=800.0))
+        for ci, (f0, tc) in enumerate(controls):
+            rows.append(run_pairs(&quot;time&quot;, distribution, sigma, pairs,
+                                  seed + di * 1000 + ci + 10, tc, beta=5.0, f0=f0))
+    payload = {&quot;pairs_per_candidate&quot;: pairs, &quot;dose_prior_known_to_time_control&quot;: True,
+               &quot;parameter_grid&quot;: {&quot;F0_pN&quot;: [400, 600, 800], &quot;tc_s&quot;: [15, 60, 240]},
+               &quot;results&quot;: rows}
+    out = Path(__file__).with_name(&quot;control_scan_results.json&quot;)
+    out.write_text(json.dumps(payload, indent=2) + &quot;\n&quot;)
+    for distribution, sigma in cases:
+        rr = [r for r in rows if r[&quot;distribution&quot;] == distribution and r[&quot;sigma&quot;] == sigma]
+        adapt = next(r for r in rr if r[&quot;policy&quot;] == &quot;mmax&quot;)
+        time = [r for r in rr if r[&quot;policy&quot;] == &quot;time&quot;]
+        best = max(time, key=lambda r: r[&quot;auc_random_tie&quot;])
+        feasible = [r for r in time
+                    if r[&quot;mean_time_low_Eb_s&quot;] &lt;= adapt[&quot;mean_time_low_Eb_s&quot;] * 1.05
+                    and r[&quot;mean_force_barrier_work_low_Eb_pN_nm&quot;] &lt;= adapt[&quot;mean_force_barrier_work_low_Eb_pN_nm&quot;] * 1.05]
+        best_matched = max(feasible, key=lambda r: r[&quot;auc_random_tie&quot;]) if feasible else None
+        print({&quot;case&quot;: (distribution, sigma), &quot;adaptive_auc&quot;: adapt[&quot;auc_random_tie&quot;],
+               &quot;adaptive_time_s&quot;: adapt[&quot;mean_time_low_Eb_s&quot;],
+               &quot;adaptive_work_proxy&quot;: adapt[&quot;mean_force_barrier_work_low_Eb_pN_nm&quot;],
+               &quot;best_time_auc&quot;: best[&quot;auc_random_tie&quot;], &quot;best_time_F0&quot;: best[&quot;f0_pN&quot;],
+               &quot;best_time_tc&quot;: best[&quot;control&quot;], &quot;best_time_s&quot;: best[&quot;mean_time_low_Eb_s&quot;],
+               &quot;best_time_work_proxy&quot;: best[&quot;mean_force_barrier_work_low_Eb_pN_nm&quot;],
+               &quot;matched_best&quot;: None if best_matched is None else {
+                   &quot;auc&quot;: best_matched[&quot;auc_random_tie&quot;], &quot;F0&quot;: best_matched[&quot;f0_pN&quot;],
+                   &quot;tc&quot;: best_matched[&quot;control&quot;], &quot;time_s&quot;: best_matched[&quot;mean_time_low_Eb_s&quot;],
+                   &quot;work_proxy&quot;: best_matched[&quot;mean_force_barrier_work_low_Eb_pN_nm&quot;]}})
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/c4df6ec39b29b8725ee3ee1d580aeaae1d3fe52a51a9f692c3078007c155faab.py">Exact original</a></p></html>

@@ -1,0 +1,64 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c12_immune_dynamics/analysis/proximity_pair_bias.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c12_immune_dynamics/analysis/proximity_pair_bias.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Conditional sensitivity of sister-pair rate inference to pair purity.
+
+This computes the algebra in proof/proximity_pair_rate_bias.md. The example is
+synthetic; it is not an estimate for the macrophage preprint.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import json
+import math
+
+
+def u_from_or(f_on: float, odds_ratio: float) -&gt; float:
+    c = f_on * (1.0 - f_on)
+    if odds_ratio &lt; 1.0:
+        raise ValueError(&quot;odds_ratio &lt; 1 is outside the positive-association model&quot;)
+    if math.isclose(odds_ratio, 1.0):
+        return c
+    return (math.sqrt(1.0 + 4.0 * c * (odds_ratio - 1.0)) - 1.0) / (2.0 * (odds_ratio - 1.0))
+
+
+def or_from_u(f_on: float, u: float) -&gt; float:
+    c = f_on * (1.0 - f_on)
+    if not (0.0 &lt; u &lt;= c):
+        raise ValueError(&quot;u must lie in (0, f(1-f)]&quot;)
+    return ((f_on - u) * (1.0 - f_on - u)) / (u * u)
+
+
+def total_switch_rate(f_on: float, odds_ratio: float, birth_rate: float) -&gt; float:
+    c = f_on * (1.0 - f_on)
+    delta = odds_ratio - 1.0
+    if delta &lt;= 0.0:
+        return math.inf
+    return 2.0 * birth_rate / (math.sqrt(1.0 + 4.0 * c * delta) - 1.0)
+
+
+def correct_for_pair_purity(f_on: float, observed_or: float, purity: float, birth_rate: float) -&gt; dict[str, float]:
+    if not (0.0 &lt; purity &lt;= 1.0):
+        raise ValueError(&quot;purity must be in (0, 1]&quot;)
+    c = f_on * (1.0 - f_on)
+    u_obs = u_from_or(f_on, observed_or)
+    u_true = (u_obs - (1.0 - purity) * c) / purity
+    true_or = or_from_u(f_on, u_true)
+    return {
+        &quot;f_on&quot;: f_on,
+        &quot;observed_or&quot;: observed_or,
+        &quot;true_sister_fraction&quot;: purity,
+        &quot;observed_mixed_orientation_probability&quot;: u_obs,
+        &quot;corrected_sister_mixed_orientation_probability&quot;: u_true,
+        &quot;corrected_true_sister_or&quot;: true_or,
+        &quot;uncorrected_total_switch_rate&quot;: total_switch_rate(f_on, observed_or, birth_rate),
+        &quot;corrected_total_switch_rate&quot;: total_switch_rate(f_on, true_or, birth_rate),
+        &quot;uncorrected_over_corrected_rate_ratio&quot;: total_switch_rate(f_on, observed_or, birth_rate) / total_switch_rate(f_on, true_or, birth_rate),
+    }
+
+
+if __name__ == &quot;__main__&quot;:
+    lam = math.log(2.0) / 14.4
+    result = correct_for_pair_purity(f_on=0.5, observed_or=4.0, purity=0.5, birth_rate=lam)
+    assert math.isclose(result[&quot;corrected_true_sister_or&quot;], 25.0)
+    assert math.isclose(result[&quot;uncorrected_over_corrected_rate_ratio&quot;], 4.0)
+    print(json.dumps({&quot;synthetic_example_only&quot;: True, **result}, indent=2))
+</pre><p><a href="../assets/12f8e39bffa11056ccde875beb83a81f04adda2807e70fba8ef89ab2ac95712b.py">Exact original</a></p></html>

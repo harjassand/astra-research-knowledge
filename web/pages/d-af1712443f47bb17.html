@@ -1,0 +1,90 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/spin_statistical/cycle2/d_dimensional_fermion/evidence/benchmark_canonical_subset_dp.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/spin_statistical/cycle2/d_dimensional_fermion/evidence/benchmark_canonical_subset_dp.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Small float64 timing check for fixed-number free fermion subset sampling.&quot;&quot;&quot;
+from __future__ import annotations
+import json
+import math
+import platform
+import random
+import time
+from pathlib import Path
+
+
+def logaddexp(a: float, b: float) -&gt; float:
+    if a == -math.inf:
+        return b
+    if b == -math.inf:
+        return a
+    hi, lo = (a, b) if a &gt;= b else (b, a)
+    return hi + math.log1p(math.exp(lo - hi))
+
+
+def mode_energies(L: int, d: int, J: float):
+    import itertools
+    return [L * L * 4 * J * sum(1 - math.cos(math.pi * k / L) for k in ks)
+            for ks in itertools.product(range(1, L), repeat=d)]
+
+
+def build_suffix_log_esym(logw, tmax):
+    Q = len(logw)
+    D = [[-math.inf] * (tmax + 1) for _ in range(Q + 1)]
+    D[Q][0] = 0.0
+    for q in range(Q - 1, -1, -1):
+        D[q][0] = 0.0
+        for j in range(1, min(tmax, Q - q) + 1):
+            D[q][j] = logaddexp(D[q + 1][j], logw[q] + D[q + 1][j - 1])
+    return D
+
+
+def sample_subset(logw, D, t, rng):
+    Q = len(logw)
+    selected = []
+    j = t
+    for q in range(Q):
+        if j == 0:
+            break
+        remaining = Q - q
+        if remaining == j:
+            selected.extend(range(q, Q))
+            break
+        logp = logw[q] + D[q + 1][j - 1] - D[q][j]
+        p = min(1.0, max(0.0, math.exp(logp)))
+        if rng.random() &lt; p:
+            selected.append(q)
+            j -= 1
+    if j:
+        raise ArithmeticError(&quot;backtracking failed to return requested particle count&quot;)
+    return selected
+
+
+L, d, copies, J, tau, particle_count = 32, 2, 2, 1.0, 0.2, 12
+energies = mode_energies(L, d, J) * copies
+logw = [-tau * e for e in energies]
+start = time.perf_counter()
+D = build_suffix_log_esym(logw, particle_count)
+dp_seconds = time.perf_counter() - start
+rng = random.Random(20261008)
+samples = 100
+start = time.perf_counter()
+out = [sample_subset(logw, D, particle_count, rng) for _ in range(samples)]
+sample_seconds = time.perf_counter() - start
+assert all(len(x) == particle_count and len(set(x)) == particle_count for x in out)
+result = {
+    &quot;status&quot;: &quot;PASS&quot;,
+    &quot;scope&quot;: &quot;float64 log-domain canonical subset DP and backtracking only; no Givens/gate or physical preparation&quot;,
+    &quot;python&quot;: platform.python_version(),
+    &quot;L&quot;: L,
+    &quot;d&quot;: d,
+    &quot;copies&quot;: copies,
+    &quot;mode_slots_Q&quot;: len(logw),
+    &quot;particle_sector_T&quot;: particle_count,
+    &quot;DP_entries&quot;: (len(logw) + 1) * (particle_count + 1),
+    &quot;DP_build_seconds&quot;: dp_seconds,
+    &quot;sample_count&quot;: samples,
+    &quot;backtracking_seconds&quot;: sample_seconds,
+    &quot;seconds_per_sample&quot;: sample_seconds / samples,
+    &quot;finite_diagnostic_only&quot;: True,
+}
+outfile = Path(&quot;outputs/research/spin_statistical/cycle2/d_dimensional_fermion/evidence/canonical_subset_dp_benchmark.json&quot;)
+outfile.write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+print(json.dumps(result, indent=2))
+</pre><p><a href="../assets/18869db65a4a6b5bed762f62b75df7abe4b9442f18790c76ae1fb1a8a2e145ce.py">Exact original</a></p></html>

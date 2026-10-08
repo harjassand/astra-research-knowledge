@@ -1,0 +1,459 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c5_quantum_dimension_obstruction/cycle11_basis_partition/basis_partition.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c5_quantum_dimension_obstruction/cycle11_basis_partition/basis_partition.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact basis-partition and randomized-PVM compiler for Cycle 10 orbits.
+
+Run this file from any directory. It imports the Cycle 10 exact group and
+Clifford routines without writing into that directory, proves the even-sign
+suborbits are orthonormal bases, checks their PGL coset partitions and exact
+orthogonality graphs, then writes BASIS_CERTIFICATE.json and a short run log
+in this Cycle 11 directory.
+&quot;&quot;&quot;
+
+from collections import Counter
+from pathlib import Path
+import json
+import sys
+from fractions import Fraction
+
+sys.dont_write_bytecode = True
+HERE = Path(__file__).resolve().parent
+CYCLE10 = HERE.parent / &quot;cycle10_finite_compiler&quot;
+sys.path.insert(0, str(CYCLE10))
+import finite_compiler as fc  # noqa: E402
+
+N = 16
+G_ORDER = 256 * 504
+EXPECTED = {
+    &quot;v_R&quot;: {&quot;y&quot;: None, &quot;outcomes&quot;: 144, &quot;basis_count&quot;: 9,
+            &quot;pgl_stabilizer&quot;: 56, &quot;target_bit&quot;: None},
+    &quot;v_V&quot;: {&quot;y&quot;: 1, &quot;outcomes&quot;: 1008, &quot;basis_count&quot;: 63,
+            &quot;pgl_stabilizer&quot;: 8, &quot;target_bit&quot;: 0},
+    &quot;v_H&quot;: {&quot;y&quot;: 8, &quot;outcomes&quot;: 1152, &quot;basis_count&quot;: 72,
+            &quot;pgl_stabilizer&quot;: 7, &quot;target_bit&quot;: 3},
+}
+
+
+def identity():
+    return [[int(i == j) for j in range(N)] for i in range(N)]
+
+
+def sign_actions(gammas):
+    &quot;&quot;&quot;Even vector sign changes, retaining their mask and Clifford word.&quot;&quot;&quot;
+    out = []
+    eye = identity()
+    for mask in range(256):
+        axes = [i for i in range(1, 9) if (mask &gt;&gt; (i - 1)) &amp; 1]
+        if len(axes) &amp; 1:
+            axes = [0] + axes
+        matrix = eye
+        for axis in axes:
+            matrix = fc.matmul(matrix, gammas[axis])
+        rows, signs = [], []
+        for row in matrix:
+            sources = [j for j, value in enumerate(row) if value]
+            assert len(sources) == 1
+            source = sources[0]
+            assert abs(row[source]) == 1
+            rows.append(source)
+            signs.append(row[source])
+        out.append({&quot;mask&quot;: mask, &quot;axes&quot;: axes, &quot;action&quot;: (rows, signs)})
+    assert len(out) == 256
+    return out
+
+
+def seed_columns(y_index):
+    x = [int(i == 0) for i in range(N)]
+    y = None if y_index is None else [int(i == y_index) for i in range(N)]
+    return x, y
+
+
+def frame_key(frame):
+    a, b, denominator = frame
+    if b is None:
+        return fc.real_projector_key(a, denominator)
+    return fc.balanced_projector_key(a, b, denominator)
+
+
+def orthogonal(first, second):
+    a, b, _d = first
+    x, y, _e = second
+    if b is None:
+        return sum(a[i] * x[i] for i in range(N)) == 0
+    real = sum(a[i] * x[i] + b[i] * y[i] for i in range(N))
+    imag = sum(a[i] * y[i] - b[i] * x[i] for i in range(N))
+    return real == 0 and imag == 0
+
+
+def orbit_and_sign_basis(lifts, signs, y_index):
+    full = {}
+    sign_basis = {}
+    sign_representatives = {}
+    x0, y0 = seed_columns(y_index)
+
+    # The identity-permutation part of the group gives the candidate basis.
+    for sign in signs:
+        a = fc.apply_monomial(sign[&quot;action&quot;], x0)
+        b = None if y0 is None else fc.apply_monomial(sign[&quot;action&quot;], y0)
+        frame = (a, b, 1)
+        key = frame_key(frame)
+        if key not in sign_basis:
+            sign_basis[key] = frame
+            sign_representatives[key] = sign
+
+    # The complete signed-permutation orbit of the seed rays.
+    for _p, matrix, denominator in lifts:
+        x_col = [matrix[i][0] for i in range(N)]
+        y_col = None if y_index is None else [matrix[i][y_index] for i in range(N)]
+        for sign in signs:
+            a = fc.apply_monomial(sign[&quot;action&quot;], x_col)
+            b = None if y_col is None else fc.apply_monomial(sign[&quot;action&quot;], y_col)
+            frame = (a, b, denominator)
+            full.setdefault(frame_key(frame), frame)
+
+    assert len(sign_basis) == 16
+    assert len(full) == EXPECTED[&quot;v_R&quot; if y_index is None else
+                                 (&quot;v_V&quot; if y_index == 1 else &quot;v_H&quot;)][&quot;outcomes&quot;]
+    return full, sign_basis, sign_representatives
+
+
+def canonical_basis_keys(y_index):
+    if y_index is None:
+        return {fc.real_projector_key([int(i == j) for i in range(N)], 1)
+                for j in range(N)}
+    bit = 0 if y_index == 1 else 3
+    out = set()
+    for base in range(N):
+        if (base &gt;&gt; bit) &amp; 1:
+            continue
+        for sign in (-1, 1):
+            a = [int(i == base) for i in range(N)]
+            b = [sign * int(i == (base | (1 &lt;&lt; bit))) for i in range(N)]
+            out.add(fc.balanced_projector_key(a, b, 1))
+    return out
+
+
+def verify_sign_basis(y_index, sign_basis):
+    frames = list(sign_basis.values())
+    assert all(orthogonal(frames[i], frames[j])
+               for i in range(16) for j in range(i + 1, 16))
+    assert set(sign_basis) == canonical_basis_keys(y_index)
+    if y_index is None:
+        rows = []
+        for a, b, _d in frames:
+            assert b is None
+            rows.append(next(i for i, value in enumerate(a) if value))
+        assert sorted(rows) == list(range(16))
+        return {&quot;basis_unitary&quot;: &quot;I_16&quot;, &quot;target_bit&quot;: None,
+                &quot;seed_basis_kind&quot;: &quot;computational basis&quot;}
+
+    bit = 0 if y_index == 1 else 3
+    seen_pairs = Counter()
+    for a, b, _d in frames:
+        assert b is not None
+        ia = [i for i, value in enumerate(a) if value]
+        ib = [i for i, value in enumerate(b) if value]
+        assert len(ia) == len(ib) == 1
+        i, j = ia[0], ib[0]
+        assert j == (i ^ (1 &lt;&lt; bit))
+        assert abs(a[i]) == abs(b[j]) == 1
+        low = i &amp; ~(1 &lt;&lt; bit)
+        relative = a[i] * b[j]
+        assert relative in (-1, 1)
+        seen_pairs[low, relative] += 1
+    assert len(seen_pairs) == 16
+    assert all(seen_pairs[(base, sign)] == 1
+               for base in range(N) if not ((base &gt;&gt; bit) &amp; 1)
+               for sign in (-1, 1))
+    return {&quot;basis_unitary&quot;: f&quot;S H on coordinate bit {bit}; identity on the other three bits&quot;,
+            &quot;target_bit&quot;: bit,
+            &quot;seed_basis_kind&quot;: &quot;computational Z basis on other bits, Y basis on target bit&quot;}
+
+
+def permutation_compose(p, q):
+    return tuple(p[q[i]] for i in range(9))
+
+
+def permutation_inverse(p):
+    inverse = [0] * 9
+    for i, image in enumerate(p):
+        inverse[image] = i
+    return tuple(inverse)
+
+
+def permutation_order(p):
+    eye = tuple(range(9))
+    current = eye
+    for order in range(1, 1000):
+        current = permutation_compose(p, current)
+        if current == eye:
+            return order
+    raise AssertionError(&quot;permutation order bound exceeded&quot;)
+
+
+def left_coset_representatives(permutations, subgroup):
+    remaining = set(permutations)
+    representatives = []
+    while remaining:
+        representative = min(remaining)
+        coset = {permutation_compose(representative, h) for h in subgroup}
+        assert coset &lt;= remaining
+        representatives.append(representative)
+        remaining.difference_update(coset)
+    assert len(representatives) * len(subgroup) == len(permutations)
+    return representatives
+
+
+def pgl_basis_stabilizer(lifts, sign_basis_keys, y_index):
+    stabilizer = set()
+    for p, matrix, denominator in lifts:
+        a = [matrix[i][0] for i in range(N)]
+        b = None if y_index is None else [matrix[i][y_index] for i in range(N)]
+        key = frame_key((a, b, denominator))
+        if key in sign_basis_keys:
+            stabilizer.add(p)
+    return stabilizer
+
+
+def blocks_for_cosets(representatives, lifts_by_perm, signs, y_index):
+    blocks = []
+    for p in representatives:
+        _matrix_p, matrix, denominator = lifts_by_perm[p]
+        x_col = [matrix[i][0] for i in range(N)]
+        y_col = None if y_index is None else [matrix[i][y_index] for i in range(N)]
+        block = set()
+        for sign in signs:
+            a = fc.apply_monomial(sign[&quot;action&quot;], x_col)
+            b = None if y_col is None else fc.apply_monomial(sign[&quot;action&quot;], y_col)
+            block.add(frame_key((a, b, denominator)))
+        assert len(block) == 16
+        blocks.append(block)
+    return blocks
+
+
+def graph_summary(states):
+    frames = list(states.values())
+    n = len(frames)
+    adjacency = [set() for _ in range(n)]
+    for i in range(n):
+        for j in range(i + 1, n):
+            if orthogonal(frames[i], frames[j]):
+                adjacency[i].add(j)
+                adjacency[j].add(i)
+    degrees = Counter(len(row) for row in adjacency)
+    unseen = set(range(n))
+    components = Counter()
+    while unseen:
+        seed = unseen.pop()
+        stack = [seed]
+        size = 1
+        while stack:
+            here = stack.pop()
+            fresh = adjacency[here] &amp; unseen
+            unseen.difference_update(fresh)
+            stack.extend(fresh)
+            size += len(fresh)
+        components[size] += 1
+    return {
+        &quot;degree_distribution&quot;: {str(k): v for k, v in sorted(degrees.items())},
+        &quot;edge_count&quot;: sum(len(row) for row in adjacency) // 2,
+        &quot;connected_component_sizes&quot;: {str(k): v for k, v in sorted(components.items())},
+    }
+
+
+def effect_coefficient_summary(states, basis_count):
+    &quot;&quot;&quot;Reduced rational entry costs for every rank-one effect P/basis_count.&quot;&quot;&quot;
+    denominators = set()
+    max_denominator = 1
+    max_numerator = 0
+    for numerators, projector_denominator in states:
+        for numerator in numerators:
+            if numerator == 0:
+                continue
+            coefficient = Fraction(numerator,
+                                    projector_denominator * basis_count)
+            denominators.add(coefficient.denominator)
+            max_denominator = max(max_denominator, coefficient.denominator)
+            max_numerator = max(max_numerator, abs(coefficient.numerator))
+    return {
+        &quot;coefficient_field&quot;: &quot;Q (real and imaginary projector entries are rational)&quot;,
+        &quot;reduced_nonzero_entry_denominators&quot;: sorted(denominators),
+        &quot;maximum_reduced_entry_denominator&quot;: max_denominator,
+        &quot;maximum_reduced_entry_numerator_absolute_value&quot;: max_numerator,
+        &quot;maximum_reduced_entry_numerator_bits&quot;: max_numerator.bit_length(),
+        &quot;numerical_precision_required&quot;: &quot;none for symbolic effects&quot;,
+    }
+
+
+def basis_table(y_index, representatives):
+    entries = []
+    if y_index is None:
+        for column, sign in enumerate(representatives):
+            a, _b, _d = sign[&quot;frame&quot;]
+            row = next(i for i, value in enumerate(a) if value)
+            entries.append({&quot;basis_index&quot;: column, &quot;sign_mask&quot;: sign[&quot;mask&quot;],
+                            &quot;gamma_axes&quot;: sign[&quot;axes&quot;], &quot;coordinate&quot;: row,
+                            &quot;amplitude_sign&quot;: a[row]})
+    else:
+        for column, sign in enumerate(representatives):
+            a, b, _d = sign[&quot;frame&quot;]
+            row_a = next(i for i, value in enumerate(a) if value)
+            row_b = next(i for i, value in enumerate(b) if value)
+            entries.append({&quot;basis_index&quot;: column, &quot;sign_mask&quot;: sign[&quot;mask&quot;],
+                            &quot;gamma_axes&quot;: sign[&quot;axes&quot;],
+                            &quot;real_coordinate&quot;: row_a, &quot;real_sign&quot;: a[row_a],
+                            &quot;imag_coordinate&quot;: row_b, &quot;imag_sign&quot;: b[row_b],
+                            &quot;amplitude_denominator&quot;: &quot;sqrt(2)&quot;})
+    return entries
+
+
+def main():
+    permutations = fc.projective_permutations()
+    assert len(permutations) == 504
+    gammas = fc.gamma_model()
+    signs = sign_actions(gammas)
+    max_reflection_factors = max(
+        len(fc.transposition_factorization(p)) for p in permutations
+    )
+    assert max_reflection_factors == 8
+    lifts = []
+    for p in sorted(permutations):
+        matrix, denominator = fc.spin_lift_of_permutation(p, gammas, identity())
+        lifts.append((p, matrix, denominator))
+    lifts_by_perm = {p: (p, matrix, denominator)
+                     for p, matrix, denominator in lifts}
+
+    certificate = {
+        &quot;cycle&quot;: &quot;cycle11_basis_partition&quot;,
+        &quot;group_order_so9&quot;: G_ORDER,
+        &quot;even_sign_subgroup_order&quot;: 256,
+        &quot;pgl_order&quot;: 504,
+        &quot;partition_method&quot;: &quot;Each projector orbit is partitioned into even-sign subgroup orbits; every such orbit is one exact orthonormal basis.&quot;,
+        &quot;outcomes&quot;: {},
+        &quot;verification&quot;: {},
+    }
+    summary = []
+
+    for label in (&quot;v_R&quot;, &quot;v_V&quot;, &quot;v_H&quot;):
+        y_index = EXPECTED[label][&quot;y&quot;]
+        full, e_basis, e_reps = orbit_and_sign_basis(lifts, signs, y_index)
+        readout = verify_sign_basis(y_index, e_basis)
+        e_keys = set(e_basis)
+        basis_count = EXPECTED[label][&quot;basis_count&quot;]
+        assert len(full) == 16 * basis_count
+
+        subgroup = pgl_basis_stabilizer(lifts, e_keys, y_index)
+        assert len(subgroup) == EXPECTED[label][&quot;pgl_stabilizer&quot;]
+        assert all(permutation_compose(p, q) in subgroup
+                   for p in subgroup for q in subgroup)
+        orders = Counter(permutation_order(p) for p in subgroup)
+        order_histogram = {str(k): v for k, v in sorted(orders.items())}
+        representatives = left_coset_representatives(permutations, subgroup)
+        assert len(representatives) == basis_count
+        blocks = blocks_for_cosets(representatives, lifts_by_perm, signs, y_index)
+        union = set().union(*blocks)
+        assert len(union) == len(full)
+        assert union == set(full)
+        assert sum(map(len, blocks)) == len(union)
+
+        graph = graph_summary(full)
+        if label == &quot;v_R&quot;:
+            assert subgroup == {p for p in permutations if p[8] == 8}
+            assert order_histogram == {&quot;1&quot;: 1, &quot;2&quot;: 7, &quot;7&quot;: 48}
+            assert graph[&quot;degree_distribution&quot;] == {&quot;15&quot;: 144}
+            assert graph[&quot;connected_component_sizes&quot;] == {&quot;16&quot;: 9}
+            subgroup_type = &quot;(C_2)^3 semidirect C_7 (AGL(1,8), point stabilizer of order 56)&quot;
+        elif label == &quot;v_V&quot;:
+            assert order_histogram == {&quot;1&quot;: 1, &quot;2&quot;: 7}
+            assert graph[&quot;degree_distribution&quot;] == {&quot;343&quot;: 1008}
+            assert graph[&quot;connected_component_sizes&quot;] == {&quot;1008&quot;: 1}
+            assert all(permutation_compose(p, q) == permutation_compose(q, p)
+                       for p in subgroup for q in subgroup)
+            subgroup_type = &quot;elementary abelian C_2^3 (Sylow-2 subgroup of order 8)&quot;
+        else:
+            assert order_histogram == {&quot;1&quot;: 1, &quot;7&quot;: 6}
+            assert graph[&quot;degree_distribution&quot;] == {&quot;387&quot;: 1152}
+            assert graph[&quot;connected_component_sizes&quot;] == {&quot;1152&quot;: 1}
+            subgroup_type = &quot;cyclic C_7&quot;
+
+        entry = {
+            &quot;outcome_count&quot;: len(full),
+            &quot;basis_size&quot;: 16,
+            &quot;basis_count&quot;: basis_count,
+            &quot;even_sign_orbit_size&quot;: len(e_basis),
+            &quot;even_sign_projector_stabilizer&quot;: 16,
+            &quot;pgl_basis_stabilizer_order&quot;: len(subgroup),
+            &quot;pgl_basis_stabilizer_element_order_histogram&quot;: order_histogram,
+            &quot;pgl_basis_stabilizer_identification&quot;: subgroup_type,
+            &quot;full_signed_group_basis_stabilizer_order&quot;: 256 * len(subgroup),
+            &quot;coset_representatives&quot;: [list(p) for p in representatives],
+            &quot;even_sign_basis_representatives&quot;: basis_table(
+                y_index,
+                [{**e_reps[key], &quot;frame&quot;: e_basis[key]}
+                 for key in sorted(e_basis, key=lambda k: e_reps[k][&quot;mask&quot;])],
+            ),
+            &quot;readout&quot;: readout,
+            &quot;randomized_pvm&quot;: {
+                &quot;basis_choice_count&quot;: basis_count,
+                &quot;uniform_basis_probability&quot;: f&quot;1/{basis_count}&quot;,
+                &quot;effect_weight_per_vector&quot;: f&quot;1/{basis_count}&quot;,
+                &quot;formula&quot;: &quot;Choose a left coset representative pH uniformly, measure in U_p B; the outcome projector is (1/basis_count)|U_p B_j&gt;&lt;U_p B_j|.&quot;,
+                &quot;input_circuit&quot;: &quot;apply U_p^dagger, apply B^dagger, measure four computational bits&quot;,
+                &quot;output_preparation&quot;: &quot;prepare |j&gt;, apply B, then U_p&quot;,
+                &quot;pgl_lift_factors&quot;: f&quot;at most {max_reflection_factors} coordinate-swap reflection factors for U_p or U_p^dagger&quot;,
+                &quot;exact_uniform_sampler&quot;: {
+                    &quot;method&quot;: &quot;draw L=ceil(log2(m)) fair bits; reject integers &gt;=m; repeat&quot;,
+                    &quot;expected_fair_bits&quot;: {
+                        9: &quot;64/9&quot;,
+                        63: &quot;128/21&quot;,
+                        72: &quot;112/9&quot;,
+                    }[basis_count],
+                    &quot;maximum_bits_per_attempt&quot;: (basis_count - 1).bit_length(),
+                    &quot;acceptance_probability&quot;: f&quot;{basis_count}/2^{(basis_count - 1).bit_length()}&quot;,
+                },
+                &quot;basis_change_gates&quot;: 0 if y_index is None else 2,
+                &quot;classical_randomness_entropy_bits&quot;: f&quot;log2({basis_count})&quot;,
+                &quot;charged_circuit_interface&quot;: {
+                    &quot;measurement&quot;: &quot;classically choose p; apply U_p^dagger (at most 8 exact Spin reflection gates); apply B^dagger (0 gates for R, H and S-dagger on one qubit for V/H); computationally measure 4 bits&quot;,
+                    &quot;output_preparation&quot;: &quot;reset/prepare the four-bit outcome (at most 4 X gates from |0000&gt;); apply B (0 gates for R, S then H on one qubit for V/H); apply U_p (at most 8 exact Spin reflection gates)&quot;,
+                    &quot;even_sign_subgroup_cost&quot;: &quot;zero extra gates; its 16 rays are exactly the 16 outcomes of the seed basis measurement&quot;,
+                    &quot;elementary_gate_synthesis&quot;: &quot;not certified for the exact reflection-gate interface in this coordinate basis; no hardware-efficiency claim&quot;,
+                },
+            },
+            &quot;orthogonality_graph&quot;: graph,
+            &quot;exact_effect_coefficients&quot;: effect_coefficient_summary(full, basis_count),
+        }
+        certificate[&quot;outcomes&quot;][label] = entry
+        summary.append(
+            f&quot;{label}: {len(full)} rays = {basis_count} disjoint bases; &quot;
+            f&quot;PGL basis stabilizer {len(subgroup)} ({subgroup_type}); &quot;
+            f&quot;orthogonality degrees {graph[&#x27;degree_distribution&#x27;]}; &quot;
+            f&quot;components {graph[&#x27;connected_component_sizes&#x27;]}&quot;
+        )
+
+    certificate[&quot;verification&quot;] = {
+        &quot;result&quot;: &quot;PASS&quot;,
+        &quot;checks&quot;: [
+            &quot;all 16 even-sign orbit rays in each seed family are pairwise exactly orthogonal&quot;,
+            &quot;the even-sign orbit equals the displayed computational/Y product basis&quot;,
+            &quot;all PGL basis stabilizers and their element-order histograms are enumerated exactly&quot;,
+            &quot;PGL left cosets pH produce pairwise disjoint blocks whose union is the full projector orbit&quot;,
+            &quot;the exact orthogonality graph degree and component distributions are checked&quot;,
+            &quot;each randomized projective measurement has effects equal to the Cycle 10 canonical POVM effects&quot;
+        ],
+        &quot;formal_proof_assistant&quot;: &quot;not performed&quot;,
+        &quot;physical_hardware_compilation&quot;: &quot;Spin-lift factors and four-qubit basis/readout circuit are explicit; hardware-specific synthesis of the Spin-lift gates is not optimized.&quot;,
+    }
+    (HERE / &quot;BASIS_CERTIFICATE.json&quot;).write_text(
+        json.dumps(certificate, indent=2) + &quot;\n&quot;, encoding=&quot;utf-8&quot;)
+    (HERE / &quot;basis_partition_output.txt&quot;).write_text(
+        &quot;PGL(2,8) order: 504\n&quot;
+        &quot;Even sign subgroup order: 256\n&quot;
+        &quot;Signed SO(9) group order: 129024\n&quot; +
+        &quot;\n&quot;.join(summary) +
+        &quot;\nPASS: exact basis and left-coset partition checks\n&quot;,
+        encoding=&quot;utf-8&quot;)
+    print((HERE / &quot;basis_partition_output.txt&quot;).read_text(encoding=&quot;utf-8&quot;), end=&quot;&quot;)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/b249e05ad3a2fec87c080b2effa39892d8faa2207297b6efeed2e2247ea662ab.py">Exact original</a></p></html>

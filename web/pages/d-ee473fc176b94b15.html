@@ -1,0 +1,78 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c4_rational_applications/population_schedule_sweep.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c4_rational_applications/population_schedule_sweep.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Finite stress sweep for a shared culture glucose schedule.
+
+Tests a common input (zero glucose for a fixed duration, then 0.1 mM) in the
+full PLOS health/dilution model.  This is a finite RK4 diagnostic only.  The
+genotype +/-10% corners and initial-state grid are declared design stresses,
+not measured distributions or confidence intervals.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+from dataclasses import replace
+import itertools
+import json
+from pathlib import Path
+
+from full_growth_diagnostics import Params, integrate, timed_off_then_fixed
+
+
+def main():
+    base = Params()
+    records = []
+    for signs in itertools.product((-1, 1), repeat=4):
+        p = replace(base,
+                    vu=base.vu * (1 + 0.1 * signs[0]),
+                    vl=base.vl * (1 + 0.1 * signs[1]),
+                    katp=base.katp * (1 + 0.1 * signs[2]),
+                    kp=base.kp * (1 + 0.1 * signs[3]))
+        for f0 in (5.0, 20.0, 100.0, 300.0):
+            for h0 in (0.1, 1.0):
+                for off in (30.0, 35.0, 40.0):
+                    final, dead = integrate(
+                        (f0, 0.02, 0.02, h0),
+                        timed_off_then_fixed(off, 0.1),
+                        horizon=300.0, dt=0.02, p=p)
+                    balanced = final[0] &lt; 20.0 and final[1] &gt; 0.5 and final[2] &gt; 5.0
+                    records.append({
+                        &quot;genotype_signs_vu_vl_katp_kp&quot;: signs,
+                        &quot;initial_F_ATP_Pi_H&quot;: [f0, 0.02, 0.02, h0],
+                        &quot;off_min&quot;: off,
+                        &quot;dead_by_300min&quot;: dead is not None,
+                        &quot;balanced_endpoint_F_lt20_A_gt0p5_Pi_gt5&quot;: balanced,
+                        &quot;final&quot;: list(final),
+                    })
+    grouped = {}
+    for off in (30.0, 35.0, 40.0):
+        rs = [r for r in records if r[&quot;off_min&quot;] == off]
+        grouped[str(int(off))] = {
+            &quot;runs&quot;: len(rs),
+            &quot;deaths&quot;: sum(r[&quot;dead_by_300min&quot;] for r in rs),
+            &quot;balanced_endpoints&quot;: sum(r[&quot;balanced_endpoint_F_lt20_A_gt0p5_Pi_gt5&quot;] for r in rs),
+            &quot;first_failures&quot;: [r for r in rs if r[&quot;dead_by_300min&quot;] or not r[&quot;balanced_endpoint_F_lt20_A_gt0p5_Pi_gt5&quot;]][:4],
+        }
+    out = {
+        &quot;model&quot;: &quot;PLOS 2021 full health-and-dilution system; IC genotype Table 2&quot;,
+        &quot;method&quot;: &quot;classical RK4, dt=0.02 min, final time=300 min; no validated error bounds&quot;,
+        &quot;input&quot;: &quot;common external glucose G=0 for off_min, then fixed G=0.1 mM&quot;,
+        &quot;stress_set&quot;: {
+            &quot;initial_F_mM&quot;: [5.0, 20.0, 100.0, 300.0],
+            &quot;initial_ATP_Pi_mM&quot;: [0.02, 0.02],
+            &quot;initial_health&quot;: [0.1, 1.0],
+            &quot;genotype_parameters&quot;: &quot;all 16 corners of +/-10% around (vup,vlo,katp,kp) IC Table 2 values&quot;,
+            &quot;other_parameters&quot;: &quot;Table 1 point values&quot;,
+        },
+        &quot;endpoint_rule&quot;: &quot;Alive by 300 min, FBP&lt;20 mM, ATP&gt;0.5 mM, Pi&gt;5 mM&quot;,
+        &quot;grouped&quot;: grouped,
+        &quot;records&quot;: records,
+        &quot;evidence_scope&quot;: &quot;Finite numerical model sweep; not a theorem, wet-lab validation, or natural distribution estimate.&quot;,
+    }
+    path = Path(__file__).with_name(&quot;population_schedule_sweep.json&quot;)
+    path.write_text(json.dumps(out, indent=2) + &quot;\n&quot;)
+    print(json.dumps(grouped, indent=2))
+    print(&quot;wrote&quot;, path)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/b1f0180349e1b491e26bfa0f488416a9caeb4534ef51546925a1364baa3f96dc.py">Exact original</a></p></html>

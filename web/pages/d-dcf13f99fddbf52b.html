@@ -1,0 +1,153 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/biomolecular_design/ctmc_response.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/biomolecular_design/ctmc_response.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Exact response and finite diagnostics for the U &lt;-&gt; C &lt;-&gt; B RNA CTMC.
+
+This script implements the model formulas in CYCLE2_REPORT.md.  Its numerical
+checks are finite diagnostics; the all-dose/all-time ordering is established by
+the proof in the report, not by grid testing.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import math
+from typing import Mapping
+
+
+def p_bound(alpha: float, beta: float, kon: float, koff: float,
+            concentration: float, time: float) -&gt; float:
+    &quot;&quot;&quot;P(B at time) from initial U, with concentration in matching units.&quot;&quot;&quot;
+    if min(alpha, beta, kon, koff, concentration, time) &lt; 0:
+        raise ValueError(&quot;rates, concentration, and time must be nonnegative&quot;)
+    gamma = concentration * kon
+    if gamma == 0 or alpha == 0 or time == 0:
+        return 0.0
+
+    S = alpha + beta + gamma + koff
+    D = alpha * gamma + alpha * koff + beta * koff
+    if D == 0:
+        return 0.0
+    discriminant = max(0.0, S * S - 4.0 * D)
+    gap = math.sqrt(discriminant)
+    r_minus = (S - gap) / 2.0
+    r_plus = (S + gap) / 2.0
+    pi_bound = alpha * gamma / D
+
+    if gap &lt;= 1e-10 * max(1.0, S):
+        r = S / 2.0
+        return pi_bound * (1.0 - (1.0 + r * time) * math.exp(-r * time))
+
+    numerator = (r_plus * math.exp(-r_minus * time)
+                 - r_minus * math.exp(-r_plus * time))
+    return pi_bound * (1.0 - numerator / gap)
+
+
+def robustly_dominates(a: Mapping[str, float], b: Mapping[str, float]) -&gt; bool:
+    &quot;&quot;&quot;Sufficient rate order for all concentration/time response dominance.&quot;&quot;&quot;
+    return (a[&quot;alpha&quot;] &gt;= b[&quot;alpha&quot;]
+            and a[&quot;beta&quot;] &lt;= b[&quot;beta&quot;]
+            and a[&quot;kon&quot;] &gt;= b[&quot;kon&quot;]
+            and a[&quot;koff&quot;] &lt;= b[&quot;koff&quot;])
+
+
+def response_band(box: Mapping[str, tuple[float, float]],
+                  concentration: float, time: float) -&gt; tuple[float, float]:
+    &quot;&quot;&quot;Monotone-corner response interval for a rectangular rate confidence set.&quot;&quot;&quot;
+    lower = p_bound(box[&quot;alpha&quot;][0], box[&quot;beta&quot;][1], box[&quot;kon&quot;][0],
+                    box[&quot;koff&quot;][1], concentration, time)
+    upper = p_bound(box[&quot;alpha&quot;][1], box[&quot;beta&quot;][0], box[&quot;kon&quot;][1],
+                    box[&quot;koff&quot;][0], concentration, time)
+    return lower, upper
+
+
+def rk4_bound(alpha: float, beta: float, kon: float, koff: float,
+              concentration: float, time: float, steps: int = 20000) -&gt; float:
+    &quot;&quot;&quot;Independent RK4 solution of the forward equations for finite checks.&quot;&quot;&quot;
+    if time == 0:
+        return 0.0
+    gamma = concentration * kon
+    h = time / steps
+    state = (1.0, 0.0, 0.0)
+
+    def rhs(p: tuple[float, float, float]) -&gt; tuple[float, float, float]:
+        u, c_state, bound = p
+        return (-alpha * u + beta * c_state,
+                alpha * u - (beta + gamma) * c_state + koff * bound,
+                gamma * c_state - koff * bound)
+
+    def add(p: tuple[float, float, float],
+            q: tuple[float, float, float], scale: float) -&gt; tuple[float, float, float]:
+        return tuple(x + scale * y for x, y in zip(p, q))
+
+    for _ in range(steps):
+        k1 = rhs(state)
+        k2 = rhs(add(state, k1, h / 2.0))
+        k3 = rhs(add(state, k2, h / 2.0))
+        k4 = rhs(add(state, k3, h))
+        state = tuple(x + h * (a + 2 * b + 2 * c + d) / 6.0
+                      for x, a, b, c, d in zip(state, k1, k2, k3, k4))
+    return state[2]
+
+
+def first_crossing(a: Mapping[str, float], b: Mapping[str, float],
+                   concentration: float, lo: float, hi: float,
+                   iterations: int = 100) -&gt; float:
+    &quot;&quot;&quot;Bisection for a sign-changing response difference on [lo, hi].&quot;&quot;&quot;
+    def difference(t: float) -&gt; float:
+        return (p_bound(**a, concentration=concentration, time=t)
+                - p_bound(**b, concentration=concentration, time=t))
+
+    left_value = difference(lo)
+    right_value = difference(hi)
+    if left_value == 0:
+        return lo
+    if right_value == 0:
+        return hi
+    if left_value * right_value &gt; 0:
+        raise ValueError(&quot;interval does not bracket a crossing&quot;)
+    for _ in range(iterations):
+        mid = (lo + hi) / 2.0
+        mid_value = difference(mid)
+        if left_value * mid_value &lt;= 0:
+            hi = mid
+            right_value = mid_value
+        else:
+            lo = mid
+            left_value = mid_value
+    return (lo + hi) / 2.0
+
+
+def main() -&gt; None:
+    kon_pbuE = 2.6e5  # M^-1 s^-1; reported at 35 C
+    koff_pbuE = 0.15  # s^-1; reported at 35 C
+    favorable_a = {&quot;alpha&quot;: 2.0, &quot;beta&quot;: 0.5,
+                   &quot;kon&quot;: kon_pbuE, &quot;koff&quot;: koff_pbuE}
+    favorable_b = {&quot;alpha&quot;: 0.5, &quot;beta&quot;: 2.0,
+                   &quot;kon&quot;: kon_pbuE, &quot;koff&quot;: koff_pbuE}
+    assert robustly_dominates(favorable_a, favorable_b)
+    at_c = 10e-6
+    at_t = 2.0
+    p_a = p_bound(**favorable_a, concentration=at_c, time=at_t)
+    p_b = p_bound(**favorable_b, concentration=at_c, time=at_t)
+    print(f&quot;favorable example at 10 uM, 2 s: A={p_a:.6f}, B={p_b:.6f}, gap={p_a-p_b:.6f}&quot;)
+    assert abs(p_a - rk4_bound(**favorable_a, concentration=at_c, time=at_t)) &lt; 1e-9
+    assert abs(p_b - rk4_bound(**favorable_b, concentration=at_c, time=at_t)) &lt; 1e-9
+
+    # Finite diagnostic grid only; the proof covers the continuum.
+    for c in (0.0, 0.1e-6, 1e-6, 10e-6, 100e-6, 1e-3):
+        for t in (0.0, 0.01, 0.1, 0.5, 2.0, 10.0, 100.0):
+            assert p_bound(**favorable_a, concentration=c, time=t) + 1e-12 &gt;= p_bound(
+                **favorable_b, concentration=c, time=t)
+
+    crossing_a = {&quot;alpha&quot;: 1.0, &quot;beta&quot;: 1.0, &quot;kon&quot;: 2.0, &quot;koff&quot;: 10.0}
+    crossing_b = {&quot;alpha&quot;: 1.0, &quot;beta&quot;: 1.0, &quot;kon&quot;: 1.0, &quot;koff&quot;: 1.0}
+    crossing = first_crossing(crossing_a, crossing_b, 1.0, 0.1, 0.3)
+    print(f&quot;tradeoff example crossing at {crossing:.12f} s&quot;)
+    print(&quot;A(0.1), B(0.1):&quot;,
+          f&quot;{p_bound(**crossing_a, concentration=1.0, time=0.1):.8f}&quot;,
+          f&quot;{p_bound(**crossing_b, concentration=1.0, time=0.1):.8f}&quot;)
+    print(&quot;A(0.3), B(0.3):&quot;,
+          f&quot;{p_bound(**crossing_a, concentration=1.0, time=0.3):.8f}&quot;,
+          f&quot;{p_bound(**crossing_b, concentration=1.0, time=0.3):.8f}&quot;)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/3ae5ff6ac2ad6353c664cb4d303dd391b4ad5474049812f3b73fcd750d4b716e.py">Exact original</a></p></html>

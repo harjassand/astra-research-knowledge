@@ -1,0 +1,88 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c5_quantum_dimension_obstruction/cycle10_group_probe/pgl2f8_subset_orbits.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c5_quantum_dimension_obstruction/cycle10_group_probe/pgl2f8_subset_orbits.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Exact subset-orbit audit for PGL(2,8) on P^1(F_8).&quot;&quot;&quot;
+from itertools import combinations, product
+
+MODULUS = 0b1011  # x^3 + x + 1
+
+
+def add(a, b):
+    return a ^ b
+
+
+def mul(a, b):
+    z = 0
+    for i in range(3):
+        if (b &gt;&gt; i) &amp; 1:
+            z ^= a &lt;&lt; i
+    for k in range(4, 2, -1):
+        if (z &gt;&gt; k) &amp; 1:
+            z ^= MODULUS &lt;&lt; (k - 3)
+    return z
+
+
+def inv(a):
+    assert a
+    for b in range(1, 8):
+        if mul(a, b) == 1:
+            return b
+    raise AssertionError(a)
+
+
+def norm_projective_matrix(M):
+    for x in M:
+        if x:
+            z = inv(x)
+            return tuple(mul(y, z) for y in M)
+    raise AssertionError(&quot;zero matrix&quot;)
+
+
+def projective_group():
+    mats = set()
+    for a, b, c, d in product(range(8), repeat=4):
+        if add(mul(a, d), mul(b, c)) != 0:
+            mats.add(norm_projective_matrix((a, b, c, d)))
+    assert len(mats) == 504
+
+    # Point labels 0..7 are F_8 elements; 8 denotes infinity.
+    perms = set()
+    for a, b, c, d in mats:
+        image = []
+        for x in range(8):
+            numerator = add(mul(a, x), b)
+            denominator = add(mul(c, x), d)
+            image.append(8 if denominator == 0 else mul(numerator, inv(denominator)))
+        image.append(8 if c == 0 else mul(a, inv(c)))
+        assert sorted(image) == list(range(9))
+        perms.add(tuple(image))
+    assert len(perms) == 504
+    return sorted(perms)
+
+
+def orbit_sizes(perms, k):
+    all_sets = set(combinations(range(9), k))
+    sizes = []
+    reps = []
+    while all_sets:
+        seed = min(all_sets)
+        orb = {tuple(sorted(p[i] for i in seed)) for p in perms}
+        assert orb &lt;= all_sets
+        all_sets -= orb
+        sizes.append(len(orb))
+        reps.append(seed)
+    return sorted(zip(reps, sizes), key=lambda x: x[0])
+
+
+def main():
+    perms = projective_group()
+    print(&quot;PGL(2,8) order:&quot;, len(perms))
+    for k in range(1, 5):
+        orbs = orbit_sizes(perms, k)
+        print(f&quot;k={k}, C(9,k)={len(list(combinations(range(9), k)))}, &quot;
+              f&quot;orbits={len(orbs)}, sizes={[n for _, n in orbs]}, &quot;
+              f&quot;representatives={[r for r, _ in orbs]}&quot;)
+    assert [len(orbit_sizes(perms, k)) for k in range(1, 5)] == [1, 1, 1, 1]
+    print(&quot;PASS: exact field/group action; PGL(2,8) is 4-homogeneous on nine points&quot;)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/9c4db4a25af60f1a45029cbaed0d9d94f5ae5e1e2391806de84e1ead37fe3693.py">Exact original</a></p></html>

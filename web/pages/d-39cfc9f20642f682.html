@@ -1,0 +1,199 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/sol_semiclassical_memory/wall_su3/verify_uniform_principal.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/sol_semiclassical_memory/wall_su3/verify_uniform_principal.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Finite exact/dense evidence for the uniform principal-height upper.
+
+The weighted all-matrix lower remains unproved. This script checks
+character counts, explicit filters, inverse ranks and finite endpoints.
+&quot;&quot;&quot;
+import bisect
+import importlib.util
+import itertools
+import json
+import math
+import pathlib
+from fractions import Fraction as F
+
+import numpy as np
+
+ROOT = pathlib.Path(__file__).resolve().parent
+spec = importlib.util.spec_from_file_location(&#x27;joint&#x27;, ROOT / &#x27;verify_joint_height.py&#x27;)
+j = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(j)
+c = j.c
+
+
+def stable(t):
+    return (t + 2) ** 2 // 4 if t &gt;= 0 else 0
+
+
+def character(a, b):
+    n = a + b
+    result = []
+    shifts = [a + 1, b + 1, n + 2]
+    for t in range(2 * n + 1):
+        result.append(sum((-1) ** len(subset) * stable(t - sum(subset))
+                          for size in range(4)
+                          for subset in itertools.combinations(shifts, size)))
+    return result
+
+
+def exact_controls():
+    chars = shells = taper_norms = inverse_ranks = hole_ranks = endpoints = 0
+    for a in range(1, 97):
+        for b in range(1, a + 1):
+            n, B = a + b, b + 1
+            d = (a + 1) * B * (n + 2) // 2
+            g = character(a, b)
+            assert all(v &gt;= 0 for v in g) and sum(g) == d and g == g[::-1]
+            assert B * a * a &lt;= 2 * d &lt;= 8 * B * a * a
+            prefix = [0]
+            s1 = s2 = 0
+            for t in range(a):
+                assert g[t] == stable(t) - stable(t - B)
+                assert (t + 1) * min(t + 1, B) &lt;= 4 * g[t]
+                assert g[t] &lt;= (t + 1) * min(t + 1, B)
+                shells += 1
+                r = t + 1
+                prefix.append(prefix[-1] + g[t])
+                s1 += t * g[t]
+                s2 += t * t * g[t]
+                assert r * r * min(r, B) &lt;= 32 * prefix[-1]
+                assert prefix[-1] &lt;= r * r * min(r, B)
+                norm = r * r * prefix[-1] - 2 * r * s1 + s2
+                assert r ** 4 * min(r, B) &lt;= 1024 * norm
+                taper_norms += 1
+            assert 2 * prefix[-1] &lt;= d
+            for q in set([1, d // 2, prefix[-1], max(1, prefix[-1] - 1),
+                          min(d // 2, B ** 3), min(d // 2, B ** 3 + 1)]):
+                if not 1 &lt;= q &lt;= d // 2:
+                    continue
+                r = min(a, bisect.bisect_right(prefix, q) - 1)
+                assert r &gt;= 1 and prefix[r] &lt;= q
+                assert 8 * r ** 3 &gt;= q and 4 * B * r * r &gt;= q
+                inverse_ranks += 1
+            if a &gt;= 16:
+                maximum = a // 16
+                assert maximum &gt;= F(a, 32)
+                assert min(maximum, B) &gt;= F(B, 64)
+                assert prefix[maximum] * 2 ** 23 &gt;= d
+                for r in range(1, maximum + 1):
+                    assert 32 * prefix[2 * r] &lt;= d
+                    for k in set([prefix[r], prefix[r - 1] + 1]):
+                        h = r * min(r, B)
+                        assert h ** 3 &lt;= 64 ** 3 * k * k
+                        assert h * h &lt;= 64 ** 2 * B * k
+                        hole_ranks += 1
+                k = prefix[maximum]
+                assert n ** 3 * k * k * 2 ** 51 &gt;= d ** 3
+                assert n * n * B * k * 2 ** 34 &gt;= d * d
+                endpoints += 1
+            else:
+                assert d &lt;= 4096
+            chars += 1
+    return dict(exact_principal_characters=chars, exact_shell_comparisons=shells,
+                exact_taper_norm_bounds=taper_norms, exact_inverse_rank_cases=inverse_ranks,
+                exact_hole_rank_cases=hole_ranks, exact_fixed_fraction_endpoints=endpoints)
+
+
+def root_controls():
+    roots = tapers = holes = 0
+    for a, b in [(1, 1), (4, 1), (8, 1), (12, 2), (16, 1),
+                 (20, 3), (12, 8), (8, 8), (24, 4), (32, 1)]:
+        data = j.exact_roots(a, b)
+        n, B, cs, g = data[&#x27;N&#x27;], b + 1, data[&#x27;C_S&#x27;], data[&#x27;g&#x27;]
+        assert g == character(a, b)
+        for t in range(a + 1):
+            v = (t + 1) ** 2 * min(t + 1, B)
+            for i, k, step in j.POSITIVE_ROOTS:
+                assert data[&#x27;ordinary&#x27;][(i, k)][t] &lt;= 4 * n * v
+                assert data[&#x27;mixed&#x27;][(i, k)][t] ** 2 &lt;= 4 * cs * v * v
+                roots += 1
+        for r in range(1, a + 1):
+            profile = [F(max(r - t, 0)) for t in range(2 * n + 1)]
+            norm = sum(g[t] * p * p for t, p in enumerate(profile))
+            et = j.energy(profile, data, &#x27;ordinary&#x27;)
+            cross = j.energy(profile, data, &#x27;mixed&#x27;)
+            v = r ** 3 * min(r, B)
+            assert et &lt;= 24 * n * v
+            assert cross ** 2 &lt;= 144 * cs * v * v
+            assert et * r &lt;= 24576 * n * norm
+            assert (cross * r) ** 2 &lt;= 12288 ** 2 * cs * norm * norm
+            tapers += 1
+        for r in range(1, a // 16 + 1):
+            profile = [F(0) if t &lt; r else min(F(1), F(t - r + 1, r))
+                       for t in range(2 * n + 1)]
+            norm = sum(g[t] * p * p for t, p in enumerate(profile))
+            et = j.energy(profile, data, &#x27;ordinary&#x27;)
+            cross = j.energy(profile, data, &#x27;mixed&#x27;)
+            v = r * min(r, B)
+            assert norm &gt;= F(sum(g), 2)
+            assert et &lt;= 384 * n * v
+            assert cross ** 2 &lt;= 192 ** 2 * cs * v * v
+            holes += 1
+    return dict(exact_root_controls=roots, exact_extended_tapers=tapers,
+                exact_extended_holes=holes)
+
+
+def matrix_case(a, b):
+    ts, ambient = c.harmonic_carrier(a, b)
+    d = ts[0].shape[0]
+    n, c2, alpha, cs = j.casimirs(a, b)
+    ss = [(sum(c.d_symbol[k, i, l] * ts[i] @ ts[l]
+               for i in range(8) for l in range(8)) - float(alpha) * ts[k]) / n
+          for k in range(8)]
+    coeff = [2 * np.trace(t @ np.diag([1., 0., -1.])) for t in c.fundamental]
+    height = sum(w * t for w, t in zip(coeff, ts))
+    vals, basis = np.linalg.eigh(height)
+    data = j.exact_roots(a, b)
+    B, checks, controls = b + 1, [], []
+    profiles = []
+    for r in sorted(set([1, b, min(a, B), max(1, a // 2), a])):
+        profiles.append((&#x27;taper&#x27;, r, [F(max(r - t, 0)) for t in range(2 * n + 1)]))
+    for r in range(1, a // 16 + 1):
+        profiles.append((&#x27;hole&#x27;, r, [F(0) if t &lt; r else min(F(1), F(t - r + 1, r))
+                                     for t in range(2 * n + 1)]))
+    defects = np.rint(n - vals).astype(int)
+    for kind, r, profile in profiles:
+        filter_matrix = (basis * [float(profile[t]) for t in defects]) @ basis.conj().T
+        norm = float(np.linalg.norm(filter_matrix) ** 2)
+        et = c.old.energy(filter_matrix, ts)
+        cross = sum(np.trace((s @ filter_matrix - filter_matrix @ s).conj().T
+                            @ (t @ filter_matrix - filter_matrix @ t)).real
+                    for s, t in zip(ss, ts))
+        checks.append(j.residual(et, float(j.energy(profile, data, &#x27;ordinary&#x27;))))
+        checks.append(j.residual(cross, float(j.energy(profile, data, &#x27;mixed&#x27;))))
+        checks.append(j.residual(norm, float(sum(data[&#x27;g&#x27;][t] * p * p
+                                                for t, p in enumerate(profile)))))
+        rank = int(np.linalg.matrix_rank(filter_matrix, tol=1e-8))
+        assert rank == sum(data[&#x27;g&#x27;][t] for t, p in enumerate(profile) if p)
+        if kind == &#x27;taper&#x27;:
+            assert et &lt;= 24576 * n * norm / r + 1e-7
+            assert cross ** 2 &lt;= 12288 ** 2 * float(cs) * norm * norm / (r * r) + 1e-7
+        else:
+            assert norm &gt;= d / 2 - 1e-8
+            assert et &lt;= 384 * n * r * min(r, B) + 1e-7
+        controls.append(dict(kind=kind, R=r, rank=rank,
+                             E_T_over_norm=et / norm,
+                             E_TS_over_norm=cross / norm))
+    return dict(a=a, b=b, N=n, dimension=d, ambient_dimension=ambient,
+                controls=controls, max_relative_residual=max(checks))
+
+
+def main():
+    exact = exact_controls()
+    exact.update(root_controls())
+    cases = [matrix_case(a, b) for a, b in [(4, 1), (6, 1), (8, 1),
+                                          (4, 2), (6, 2), (4, 4), (16, 1)]]
+    result = dict(status=&#x27;FINITE-EVIDENCE&#x27;, proof_validation=False,
+                  theorem_file=&#x27;UNIFORM_PRINCIPAL_UPPER.txt&#x27;,
+                  weighted_all_matrix_lower=&#x27;UNPROVED&#x27;, optimal_wall_profile=&#x27;UNKNOWN&#x27;,
+                  exact_checks=exact, matrix_cases=cases,
+                  max_relative_residual=max(t[&#x27;max_relative_residual&#x27;] for t in cases),
+                  dependencies=[&#x27;Python standard library&#x27;, &#x27;NumPy&#x27;])
+    (ROOT / &#x27;UNIFORM_CHECKS.json&#x27;).write_text(json.dumps(result, indent=2) + &#x27;\n&#x27;)
+    print(json.dumps(dict(status=&#x27;passed&#x27;, matrix_cases=len(cases), **exact,
+                         max_relative_residual=result[&#x27;max_relative_residual&#x27;],
+                         weighted_all_matrix_lower=&#x27;UNPROVED&#x27;)))
+
+
+if __name__ == &#x27;__main__&#x27;:
+    main()
+</pre><p><a href="../assets/9b851854d33f2873a490b931bad26afa7aefc71fb9127cebdffcad56aaca7f77.py">Exact original</a></p></html>

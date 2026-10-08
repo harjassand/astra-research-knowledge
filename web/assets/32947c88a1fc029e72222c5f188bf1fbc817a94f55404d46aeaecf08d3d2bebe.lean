@@ -1,0 +1,10 @@
+import WeightedDrift
+
+#check WeightedDrift.weighted_drift_strict
+#print axioms WeightedDrift.weighted_drift_strict
+
+#check WeightedDrift.projected_drift_nonneg_of_perp
+#print axioms WeightedDrift.projected_drift_nonneg_of_perp
+
+#check WeightedDrift.exists_activity_margin
+#print axioms WeightedDrift.exists_activity_margin

@@ -1,0 +1,83 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c4_rational_applications/simulate_recovery.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c4_rational_applications/simulate_recovery.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Finite numerical diagnostics for glucose-off rescue in the PLOS core model.
+
+These RK4 trajectories are exploratory only. They do not establish reachability
+or validate the simplified model against yeast.
+&quot;&quot;&quot;
+
+from math import isfinite
+
+P = dict(vu=10.0, kmg=0.1, kma=0.1, ki=3.0, atot=5.0,
+         vl=10.0, kmf=1.0, kmd=0.1, kmp=2.0,
+         katp=10.0, kp=0.4, pvmax=10.0, kvac=250.0, m=4.0)
+
+
+def rates(y, glucose, p=P):
+    f, a, pi = y
+    d = p[&quot;atot&quot;] - a
+    vup = (p[&quot;vu&quot;] * glucose * a /
+           ((p[&quot;kmg&quot;] + glucose) *
+            (p[&quot;kma&quot;] + a * (1.0 + a / p[&quot;ki&quot;]))))
+    vlo = (p[&quot;vl&quot;] * f * d * pi /
+           ((p[&quot;kmf&quot;] + f) * (p[&quot;kmd&quot;] + d) * (p[&quot;kmp&quot;] + pi)))
+    ptotal = pi + 2.0 * f + a
+    pv = p[&quot;pvmax&quot;] / (1.0 + (ptotal / p[&quot;kvac&quot;]) ** p[&quot;m&quot;])
+    vp = p[&quot;kp&quot;] * (pv - pi)
+    return vup, vlo, vp, pv
+
+
+def rhs(y, glucose, p=P):
+    f, a, pi = y
+    vu, vl, vp, _ = rates(y, glucose, p)
+    return (vu - vl, -2 * vu + 4 * vl - p[&quot;katp&quot;] * a,
+            -2 * vl + p[&quot;katp&quot;] * a + vp)
+
+
+def add(x, k, dt):
+    return tuple(a + dt * b for a, b in zip(x, k))
+
+
+def step(y, dt, glucose, p=P):
+    k1 = rhs(y, glucose, p)
+    k2 = rhs(add(y, k1, dt / 2), glucose, p)
+    k3 = rhs(add(y, k2, dt / 2), glucose, p)
+    k4 = rhs(add(y, k3, dt), glucose, p)
+    return tuple(x + dt * (a + 2*b + 2*c + d) / 6
+                 for x, a, b, c, d in zip(y, k1, k2, k3, k4))
+
+
+def integrate(y0, glucose, horizon=420.0, dt=0.001, p=P):
+    y = tuple(y0)
+    reached = None
+    mins = list(y)
+    for n in range(int(horizon / dt)):
+        t = n * dt
+        if 1.8 &lt;= y[0] &lt;= 2.2 and y[1] &gt;= 0.3 and y[2] &gt;= 1.0 and y[1] + y[2] &lt;= 14:
+            reached = reached if reached is not None else t
+        y = step(y, dt, glucose, p)
+        if not all(isfinite(z) for z in y):
+            raise ArithmeticError((t, y))
+        mins = [min(a, b) for a, b in zip(mins, y)]
+    vu, vl, vp, pv = rates(y, glucose, p)
+    return y, mins, reached, (vu, vl, vp, pv)
+
+
+def main():
+    starts = [
+        (&quot;moderate&quot;, (20.0, 0.1, 0.1)),
+        (&quot;high_fbp_low_energy&quot;, (100.0, 0.02, 0.02)),
+        (&quot;low_carbon&quot;, (5.0, 0.1, 0.1)),
+        (&quot;near_target&quot;, (3.0, 0.1, 0.1)),
+        (&quot;high_atp_low_pi&quot;, (20.0, 0.5, 0.05)),
+    ]
+    for name, x0 in starts:
+        y, mins, reached, endrates = integrate(x0, glucose=0.0)
+        print(name, &quot;x0=&quot;, x0, &quot;reached_safe_at=&quot;, reached,
+              &quot;final=&quot;, tuple(round(z, 6) for z in y),
+              &quot;min=&quot;, tuple(round(z, 6) for z in mins),
+              &quot;final_rates=&quot;, tuple(round(z, 6) for z in endrates))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/37d19bc8b1ea98c3afe66fcabe9404ae928a22b77d5699880d92956067e0507a.py">Exact original</a></p></html>

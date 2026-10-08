@@ -1,0 +1,153 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/systems_metabolism/calculations/facet_local_calculation.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/systems_metabolism/calculations/facet_local_calculation.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact inputs and finite-volume bounds for a two-species CRN fixture.
+
+This computes the Astra N35 global-box certificate and the facet-local
+extension derived in proofs/facet_local_stochastic_safety.md. The rational
+drift/correction constants are exact; exponentials are evaluated as floats.
+&quot;&quot;&quot;
+
+from fractions import Fraction as F
+from math import ceil, comb, exp
+import json
+
+K = F(11, 10)
+ell = F(1, 20)
+VOLUME_TESTS = (10_000, 15_000, 18_000, 20_000)
+
+# Reactions: 0-&gt;A, 2A-&gt;A, 0-&gt;B, B-&gt;0.
+# Entries are source complexes and concentration jumps.
+REACTIONS = [
+    ((0, 0), (1, 0)),
+    ((2, 0), (-1, 0)),
+    ((0, 0), (0, 1)),
+    ((0, 1), (0, -1)),
+]
+FACETS = [
+    {&quot;name&quot;: &quot;A_lower&quot;, &quot;a&quot;: (1, 0), &quot;gamma&quot;: F(14, 25), &quot;U_layer&quot;: (F(11, 20), F(2))},
+    {&quot;name&quot;: &quot;A_upper&quot;, &quot;a&quot;: (-1, 0), &quot;gamma&quot;: F(23, 10), &quot;U_layer&quot;: (F(2), F(2))},
+    {&quot;name&quot;: &quot;B_lower&quot;, &quot;a&quot;: (0, 1), &quot;gamma&quot;: F(29, 100), &quot;U_layer&quot;: (F(2), F(11, 20))},
+    {&quot;name&quot;: &quot;B_upper&quot;, &quot;a&quot;: (0, -1), &quot;gamma&quot;: F(13, 20), &quot;U_layer&quot;: (F(2), F(2))},
+]
+U_GLOBAL = (F(2), F(2))
+INITIAL_GAPS = {f[&quot;name&quot;]: F(1, 2) for f in FACETS}
+
+
+def monomial(y, U):
+    z = F(1)
+    for yi, ui in zip(y, U):
+        z *= ui**yi
+    return z
+
+
+def factorial_error(y, U):
+    &quot;&quot;&quot;E_y(U)=sum_j binom(y_j,2) U_j^(y_j-1) prod_{l!=j} U_l^y_l.&quot;&quot;&quot;
+    out = F(0)
+    for j, yj in enumerate(y):
+        if yj &lt; 2:
+            continue
+        term = F(yj * (yj - 1), 2) * U[j] ** (yj - 1)
+        for l, yl in enumerate(y):
+            if l != j:
+                term *= U[l] ** yl
+        out += term
+    return out
+
+
+def dot(a, nu):
+    return sum((F(ai) * F(ni) for ai, ni in zip(a, nu)), F(0))
+
+
+def certificate(local=True):
+    data = []
+    for facet in FACETS:
+        U = facet[&quot;U_layer&quot;] if local else U_GLOBAL
+        proj = [dot(facet[&quot;a&quot;], nu) for _, nu in REACTIONS]
+        D = K * sum((abs(v) * factorial_error(y, U)
+                     for (y, _), v in zip(REACTIONS, proj)), F(0))
+        Q = K * sum((v * v * monomial(y, U)
+                     for (y, _), v in zip(REACTIONS, proj)), F(0))
+        J = max((abs(v) for v in proj), default=F(0))
+        mu = facet[&quot;gamma&quot;] / 2
+        theta = min(F(1, 1) / J, mu / (3 * Q))
+        V0 = ceil(2 * D / facet[&quot;gamma&quot;])
+        data.append({
+            &quot;name&quot;: facet[&quot;name&quot;],
+            &quot;U&quot;: [str(v) for v in U],
+            &quot;D&quot;: D,
+            &quot;gamma&quot;: facet[&quot;gamma&quot;],
+            &quot;mu&quot;: mu,
+            &quot;J&quot;: J,
+            &quot;Q&quot;: Q,
+            &quot;theta&quot;: theta,
+            &quot;V0&quot;: V0,
+            &quot;ell&quot;: ell,
+            &quot;c_i&quot;: theta * ell,
+        })
+
+    c = min(item[&quot;c_i&quot;] for item in data)
+    V0 = max(item[&quot;V0&quot;] for item in data)
+    Lambda = K * sum((monomial(y, U_GLOBAL) for y, _ in REACTIONS), F(0))
+    m = len(FACETS)
+    summaries = []
+    for V in VOLUME_TESTS:
+        T = exp(float(c * V / 4))
+        initial = sum(exp(-float(item[&quot;theta&quot;] * V * INITIAL_GAPS[item[&quot;name&quot;]]))
+                      for item in data)
+        excursion = 2 * m * V * float(Lambda) * T * exp(-float(c * V))
+        summaries.append({
+            &quot;V&quot;: V,
+            &quot;T_exp_cV_over_4&quot;: T,
+            &quot;initial_term&quot;: initial,
+            &quot;time_term&quot;: excursion,
+            &quot;exit_bound&quot;: initial + excursion,
+            &quot;candidate_rate_bound_per_time&quot;: V * float(Lambda),
+            &quot;thinning_candidates_bound&quot;: V * float(Lambda) * T,
+        })
+
+    replicate = next(item for item in summaries if item[&quot;V&quot;] == 20_000)
+    p = min(1.0, replicate[&quot;exit_bound&quot;])
+    n = 200
+    replicate[&quot;independent_200_replicates_at_least_3_exits_tail&quot;] = sum(
+        comb(n, k) * p**k * (1 - p)**(n - k) for k in range(3, n + 1)
+    )
+
+    # Compare both certificates at one shared, refined-certificate horizon.
+    # This avoids comparing the bounds only at different advertised horizons.
+    common = []
+    if not local:
+        refined = certificate(local=True)
+        for V in VOLUME_TESTS:
+            refined_row = next(row for row in refined[&quot;volume_summaries&quot;]
+                               if row[&quot;V&quot;] == V)
+            T_common = refined_row[&quot;T_exp_cV_over_4&quot;]
+            global_initial = sum(
+                exp(-float(item[&quot;theta&quot;] * V * INITIAL_GAPS[item[&quot;name&quot;]]))
+                for item in data
+            )
+            global_time = 2 * m * V * float(Lambda) * T_common * exp(-float(c * V))
+            common.append({
+                &quot;V&quot;: V,
+                &quot;T_refined_exp_cV_over_4&quot;: T_common,
+                &quot;global_box_bound_at_same_T&quot;: global_initial + global_time,
+                &quot;refined_bound_at_same_T&quot;: refined_row[&quot;exit_bound&quot;],
+            })
+
+    return {
+        &quot;scope&quot;: &quot;fixture only; no theorem or novelty status is implied by calculation&quot;,
+        &quot;kind&quot;: &quot;facet-local&quot; if local else &quot;Astra-N35-global-box&quot;,
+        &quot;U_global&quot;: [str(v) for v in U_GLOBAL],
+        &quot;K&quot;: str(K),
+        &quot;ell&quot;: str(ell),
+        &quot;Lambda&quot;: str(Lambda),
+        &quot;V0&quot;: V0,
+        &quot;facets&quot;: [{k: str(v) if isinstance(v, F) else v
+                     for k, v in item.items()} for item in data],
+        &quot;volume_summaries&quot;: summaries,
+        &quot;common_horizon_comparison&quot;: common,
+    }
+
+
+if __name__ == &quot;__main__&quot;:
+    print(json.dumps({&quot;global_box&quot;: certificate(local=False),
+                      &quot;facet_local&quot;: certificate(local=True)}, indent=2))
+</pre><p><a href="../assets/ca7eaa18dee1f987b21c7b73f64741bc9613b9213dee10aa9be60f8ef15cbf38.py">Exact original</a></p></html>

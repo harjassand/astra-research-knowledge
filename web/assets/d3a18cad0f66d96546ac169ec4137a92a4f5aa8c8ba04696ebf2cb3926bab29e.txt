@@ -1,0 +1,277 @@
+CONDITIONAL GAUSSIAN SAMPLER: HERALD EXPONENTIAL TILT AND POSITIVE-COUNT MARGINAL
+Date: 8 October 2026
+Status: exact-real identities root-audited as an internal proof candidate; finite-bit theorem written in full and pending parent audit; no external validation
+
+Purpose
+=======
+
+The already recorded isotropic-proposal sampler pays rejection exponent
+O((d+kappa) eps_bar). This variant first absorbs every herald's common
+Poisson exponential into a Gaussian covariance and integrates out all
+zero-count herald coordinates. The polynomial factor remains only on the
+m=h_+ positive-count modes. Its proposal overhead then depends on
+O((m+kappa) eps_eff)=O(kappa eps_eff), not on the total mode count, number of
+zero-target heralds, or number of unheralded outputs. The cost of matrix
+preprocessing and the output record still depends on the full instance size.
+
+Interface and conventions
+=========================
+
+Let X in R^(2d) be centered coherent quadratures for a strictly positive
+rational Gaussian P covariance C=C^T>0. For mode j, write X_j=(q_j,p_j).
+The coherent-state PNR likelihood is
+
+    L_n(X_j) = exp(-||X_j||^2/2) (||X_j||^2/2)^n/n!.
+
+Let H be the heralded mode set, with target k_j>=0 on each j in H. Set
+H_+={j in H:k_j>0}, m=|H_+|, and kappa=sum_(j in H) k_j. Let U be the
+unheralded output modes. Numerical kappa is charged, as in the previous
+sampler. All-zero heralds (kappa=0) are handled separately below.
+
+Exact likelihood factorization and Gaussian tilt
+================================================
+
+Let P_H be the orthogonal coordinate projector on the 2|H| real herald
+quadratures. The herald likelihood factors exactly as
+
+    prod_(j in H) L_(k_j)(X_j)
+      = exp(-X^T P_H X/2) W(X_+),
+    W(X_+) = prod_(j in H_+) (||X_j||^2/2)^(k_j)/k_j!.
+
+Define the rational tilted covariance
+
+    C° = (C^(-1)+P_H)^(-1),
+    z_H = det(I+C P_H)^(-1/2).
+
+Completing the Gaussian square gives the exact identity
+
+    phi_C(X) exp(-X^T P_H X/2) = z_H phi_(C°)(X).
+
+Here phi_C denotes the normalized centered Gaussian density. Let
+S=(C°)_(+,+), the 2m by 2m marginal covariance of the positive-count
+coordinates, and let Z_S=E_(N(0,S))[W]. Then the exact herald mass is
+
+    p_H = z_H Z_S.
+
+After conditioning on the herald, X_+ has density
+
+    pi_+(x) = phi_S(x) W(x)/Z_S.
+
+All zero-target herald coordinates and all other coordinates have now been
+integrated out of this marginal. Given X_+=x, the unheralded latent output
+coordinates have the ordinary Gaussian conditional law from C°:
+
+    X_U | X_+=x ~ N(Kx,V),
+    K = (C°)_(U,+) S^(-1),
+    V = (C°)_(U,U) - K S K^T.
+
+The herald polynomial W depends only on X_+, so it does not further change
+this conditional Gaussian. Given X_U, output counts are independent Poisson
+with means ||X_u||^2/2. Thus sampling pi_+, then this conditional Gaussian,
+then the Poisson counts is exactly the requested conditional count law.
+
+Reduced isotropic rejection sampler
+===================================
+
+Assume a supplied rational scalar b>0 and rational certificate
+
+    (1-eps) b I <= S <= (1+eps) b I,
+    0 <= eps <= 1/4.
+
+Set c=1+eps. For m>0, use the proposal
+
+    q(x) = phi_(c b I)(x) W(x) / Z_q,
+    Z_q = E_(N(0,cbI))[W] = (cb)^kappa.
+
+The proposal factorizes by positive-count mode: phase is uniform and
+||X_j||^2 is Gamma(shape k_j+1, scale 2cb). The exact rational normalizer
+Z_q follows from E[(||X_j||^2/2)^(k_j)/k_j!]=(cb)^(k_j).
+
+Since S<=cbI, put
+
+    D = S^(-1) - (cb)^(-1) I >= 0,
+    M = (cb)^m / sqrt(det S).
+
+Then phi_S(x)/phi_(cbI)(x)=M exp(-x^T D x/2). The target/proposal density
+ratio is
+
+    pi_+(x)/q(x) = M (Z_q/Z_S) exp(-x^T D x/2).
+
+The unknown prefactor is a valid envelope. Accept a q draw with probability
+exp(-x^T D x/2). The accepted density is proportional to
+phi_(cbI) W exp(-x^T D x/2)=M^(-1) phi_S W, hence is exactly pi_+. No p_H,
+Z_S, determinant, or envelope oracle is needed by the accept coin; only the
+rational matrix D is evaluated. The acceptance probability is
+
+    alpha = E_q exp(-X^T D X/2) = Z_S/(M Z_q).
+
+Under q, the m independent squared radii are Gamma(k_j+1, scale 2cb), so
+
+    E_q ||X||^2 = 2cb(m+kappa).
+
+The certificate yields ||D|| <= 2 eps/[b(1-eps^2)]. Jensen therefore gives
+
+    alpha >= exp(-2c eps (m+kappa)/(1-eps^2)),
+    E[proposal trials] <= exp(2c eps (m+kappa)/(1-eps^2)).
+
+Since m<=kappa whenever kappa>0 and c<=5/4, this is exp(O(kappa eps)).
+There is no dependence on d, |H|-m, |U|, or 1/p_H in the rejection exponent.
+These dimensions still enter covariance preprocessing, Gaussian output
+sampling, and writing the output record.
+
+All-zero heralds
+================
+
+If kappa=0, then H_+ is empty and W=1. There is no polynomially tilted
+positive-count marginal and no rejection step: the heralded full latent state
+is exactly N(0,C°). Sample its U marginal N(0,(C°)_(U,U)) and then sample
+independent Poisson outputs. This is exact even when the all-zero herald
+probability z_H is very small. The physical expected number of optical trials
+to obtain the herald remains 1/p_H if one insists on producing it optically.
+
+Why the covariance certificate is inherited after zero tilt
+============================================================
+
+This is a strict improvement over the previous global near-isotropy
+condition. Suppose the post-loss covariance is C=tA with rational t>0 and
+
+    (1-eps_bar) I <= A <= (1+eps_bar) I,
+    0<=eps_bar<=1/4.
+
+The herald principal block A_H inherits the same spectral interval. The
+herald marginal after the exponential tilt is
+
+    C°_(H,H) = (C_(H,H)^(-1)+I)^(-1)
+             = t(A_H^(-1)+tI)^(-1).
+
+Set b=t/(1+t). For an eigenvalue a of A_H, the corresponding eigenvalue of
+C°_(H,H)/b is
+
+    f_t(a) = (1+t)a/(1+ta),
+    f_t(a)-1 = (a-1)/(1+ta).
+
+It follows that every such eigenvalue lies in
+
+    [1-eps_eff,1+eps_eff],
+    eps_eff = eps_bar/[1+t(1-eps_bar)] <= eps_bar.
+
+The positive-coordinate principal block S/b inherits this enclosure by
+interlacing/Loewner restriction. Hence an exact rational near-isotropy
+certificate for S is available without any bound involving d eps_bar. The
+rejection exponent is O(kappa eps_eff), which can be logarithmic or smaller
+even when d eps_bar is large. More generally, the theorem only needs a
+certificate for S/b; no global near-isotropy assumption is necessary if that
+reduced certificate is supplied directly.
+
+Exact-bit preprocessing and the finite-bit theorem
+==================================================
+
+The matrices C°, S, K, and V are rational and can be computed by exact
+rational inverses and Schur complements. Their bit lengths are polynomial in
+d and input bit length L by fraction-free elimination bounds. Validate C>0,
+V>0, and both certificate differences by exact rational LDL or fraction-free
+elimination. For the inherited global certificate, b and eps_eff are
+rational; verify S/b-(1-eps_eff)I>=0 and (1+eps_eff)I-S/b>=0 directly. The
+positive core has dimension 2m, while computing K,V for a dense full output
+still costs polynomial time in d and L.
+
+The finite-bit conditional sampler is proved in
+`outputs/research/photonic_complexity/conditional_gaussian_finite_bit_theorem.txt`.
+It avoids the invalid shortcut of claiming TV approximation between a
+continuous Gaussian and its finite grid. Instead it couples dyadic latent
+draws to exact uniforms and normals in Euclidean norm, normalizes the
+rejection coupling using the explicit lower bound alpha>=1/Lambda, and passes
+amplitude error through the product-Poisson Hellinger bound
+TV(Pois_x,Pois_y)<=||x-y||/sqrt(2). The proof supplies fixed-bit proposal,
+acceptance, Gaussian, and Poisson routines; a deterministic attempt cap; an
+explicit output-rate bound M_out; and exact rational LDL/PSD checks. Runtime
+is polynomial in d,L,numeric kappa,Lambda,M_out,delta^(-1), and
+log(xi^(-1)); polynomiality in L alone additionally requires these numeric
+parameters to be polynomially bounded. Physical repeat-until-herald still
+costs 1/p_H.
+
+The proof applies both to the reduced near-isotropic certificate on S and to
+the inherited noise certificate
+
+    eps_eff = eps_bar/[1+t(1-eps_bar)] <= eps_bar.
+
+For N81, kappa,d=O(R), t=eta nu=R^(-(a+1)), and
+eps_bar=g/((1-g)nu) with exponentially small g. Thus
+kappa eps_eff=o(1), the dyadic Lambda is at most 2 eventually, and the finite sampler applies to the
+all-mode-noisy conditional law. Its explicit M_out is polynomial in R; the
+separate posterior comparison shows that law is TV-o(1) from vacuum. This
+makes the specified noisy conditional law efficiently sampleable and
+vacuum-like, but it neither changes ideal N81 hardness nor rules out
+subleading information in noisy probabilities.
+
+Output-energy cross-check. The target positive-core posterior obeys
+
+    E_pi||X_+||^2 <= 2cb(m+kappa) Lambda,
+
+since pi/q=a/alpha and alpha>=1/Lambda. Consequently the conditional expected
+output count is at most
+
+    mu_* = ( tr(V) + 2cb(m+kappa) Lambda ||K||_F^2 )/2.
+
+This mean-energy bound is distinct from the deterministic finite-bit cap
+M_out, which controls the Poisson inversion runtime. Both are explicit and
+may be numerically large.
+
+Exact rational diagnostic
+==========================
+
+`verify_conditional_gaussian_marginalization.py` uses a correlated rational
+three-mode covariance C=I+(J-I)/100. It sets one herald target to one, a
+second herald target to zero, and retains the third mode. Exact SymPy rational
+checks verify the zero-count Gaussian tilt, the identity
+(C_H^(-1)+I)^(-1) for the tilted herald marginal, the inherited scalar
+certificate b=1/2 and eps_eff=1/39, positive-proposal acceptance normalization,
+conditional output covariance reconstruction, and direct-versus-marginalized
+joint probabilities for output counts zero and one. A second pair of exact
+checks covers the kappa=0 all-zero herald with no rejection. The Jensen lower
+bound passes numerically at 80-digit precision. These are finite algebra
+fixtures, not theorem validation.
+
+Comparison with direct hafnian sampling and scope
+=================================================
+
+Quesada and Arrazola's exact Gaussian-boson sampler uses sequential conditional
+probability ratios from Gaussian marginals. Their paper states worst-case
+time O(m N^3 2^N) after N detected photons; by inference, fixing a herald as
+the initial prefix gives a direct conditional adaptation with no inherent
+1/p_H repetition, while retaining the exponential detected-photon cost.
+Quesada et al. compute Gaussian Fock matrix elements for heralded state
+preparation through loop hafnians, with costs depending on the occupations.
+The present route instead exploits the positive Gaussian-P mixture: it
+integrates the common herald exponent into a covariance update and samples the
+remaining positive-count radial polynomial by low-dimensional rejection.
+It is limited to centered strictly positive-P inputs and a near-isotropic
+positive-count tilted marginal (or the exact all-zero case). It does not
+supersede direct hafnian methods outside this cone, improve physical herald
+rates, establish hardness, or claim novelty/priority.
+
+Primary references checked 8 October 2026:
+
+* Quesada and Arrazola, “Exact simulation of Gaussian Boson Sampling in
+  polynomial space and exponential time,” arXiv:1908.08068v3,
+  https://arxiv.org/abs/1908.08068. The chain rule and O(m N^3 2^N) bound are
+  stated in Sections II.2-3; the special non-negative-kernel case is treated
+  separately.
+* Quesada et al., “Simulating realistic non-Gaussian state preparation,”
+  arXiv:1905.07011v2, https://arxiv.org/abs/1905.07011. The Gaussian Fock
+  matrix-element formula is given using loop hafnians; this is a direct
+  heralded-state calculation baseline, not this conditional count sampler.
+
+Falsifiers and audit priorities
+===============================
+
+The exact-real identities fail if the Gaussian exponent sign is reversed,
+the factorial normalizer in W is wrong, the all-zero modes fail to be
+absorbed by P_H, the positive-coordinate covariance is not the indicated
+principal block, or the accepted density differs from phi_S W/Z_S. The
+programme lead independently audited these identities. The complete
+finite-bit proof is in
+`outputs/research/photonic_complexity/conditional_gaussian_finite_bit_theorem.txt`;
+its key remaining audit points are the accepted-law coupling normalization,
+Gaussian inverse-CDF interval implementation, Poisson cutoff, and N81 norm
+bounds. No external proof review or priority claim is made.

@@ -1,0 +1,79 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c5_quantum_dimension_obstruction/cycle10_spin11_probe/spin11_seed_support_check.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c5_quantum_dimension_obstruction/cycle10_spin11_probe/spin11_seed_support_check.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Exact all-mixed star check using four explicitly attainable Spin(11) seeds.&quot;&quot;&quot;
+import json
+from itertools import combinations
+from pathlib import Path
+import sympy as sp
+from math import gcd
+HERE=Path(__file__).parent
+D=json.loads((HERE/&#x27;spin11_fullstar_blocks.json&#x27;).read_text())
+# Moments of |0^5&gt; and (|0^5&gt;+|1^h 0^(5-h)&gt;)/sqrt(2), h=3,4,5.
+# The h=1,2 two-weight seeds give the same vector as |0^5&gt;.
+SEEDS=[(1,5,5,10,10),(0,2,7,8,14),(1,1,1,14,14),(0,0,5,10,16)]
+VERT=[sp.Matrix(v) for v in SEEDS]
+TRACE=sp.Matrix(D[&#x27;trace_coefficients&#x27;])
+
+def prim(q):
+ den=sp.ilcm(*(x.q for x in q)); z=[int(x*den) for x in q]; g=0
+ for x in z:g=gcd(g,abs(x))
+ return tuple(x//g for x in z)
+
+def rays(w):
+ rows=[sp.eye(5).row(i) for i in range(5)]
+ rows += [(VERT[w]-VERT[j]).T for j in range(len(VERT)) if j!=w]
+ out=set()
+ for inds in combinations(range(len(rows)),4):
+  M=sp.Matrix.vstack(*(sp.Matrix(rows[i]) for i in inds))
+  if M.rank()!=4:continue
+  ker=M.nullspace()
+  if len(ker)!=1:continue
+  q=ker[0]
+  if all((row*q)[0]&gt;=0 for row in rows):pass
+  elif all((row*(-q))[0]&gt;=0 for row in rows):q=-q
+  else:continue
+  out.add(prim(q))
+ return out
+
+def mat(a):return sp.Matrix([[sp.Rational(x) for x in row] for row in a])
+
+def main():
+ cones=[rays(i) for i in range(len(VERT))]; allr=set().union(*cones)
+ failures=[];unknown=[]; records=[]
+ for ray in sorted(allr):
+  a=sp.Matrix(ray); scores=[(v.T*a)[0] for v in VERT]; support=max(scores); bound=(TRACE.T*a)[0]+support
+  rec={&#x27;ray&#x27;:list(ray),&#x27;seed_scores&#x27;:[str(x) for x in scores],&#x27;support&#x27;:str(support),&#x27;bound&#x27;:str(bound),&#x27;blocks&#x27;:[]}
+  for key,o in D[&#x27;blocks&#x27;].items():
+   G=mat(o[&#x27;gram&#x27;]); Bs=[mat(x) for x in o[&#x27;bilinear_H&#x27;]]
+   H=sum((a[k]*Bs[k] for k in range(5)),sp.zeros(G.rows)); gap=sp.simplify(bound*G-H)
+   mins=[]
+   for n in range(1,gap.rows+1):
+    for ix in combinations(range(gap.rows),n):
+     val=sp.factor(gap.extract(ix,ix).det());mins.append((ix,val))
+   neg=[(ix,v) for ix,v in mins if v.is_negative is True]
+   und=[(ix,v) for ix,v in mins if v.is_nonnegative is None]
+   if neg:failures.append({&#x27;ray&#x27;:ray,&#x27;block&#x27;:key,&#x27;negative_minors&#x27;:[(list(ix),str(v)) for ix,v in neg]})
+   if und:unknown.append({&#x27;ray&#x27;:ray,&#x27;block&#x27;:key,&#x27;undecided_minors&#x27;:[(list(ix),str(v)) for ix,v in und]})
+   rec[&#x27;blocks&#x27;].append({&#x27;block&#x27;:key,&#x27;gap&#x27;:[[str(sp.factor(gap[i,j])) for j in range(gap.cols)] for i in range(gap.rows)],&#x27;principal_minors&#x27;:[{&#x27;indices_0_based&#x27;:list(ix),&#x27;determinant&#x27;:str(val)} for ix,val in mins],&#x27;psd&#x27;:not neg and not und})
+  records.append(rec)
+  state=&#x27;FAIL&#x27; if any(x[&#x27;ray&#x27;]==ray for x in failures) else (&#x27;UNDECIDED&#x27; if any(x[&#x27;ray&#x27;]==ray for x in unknown) else &#x27;PASS&#x27;)
+  print(f&#x27;ray {ray}: support={support}, bound={bound}, blocks={len(rec[&quot;blocks&quot;])} {state}&#x27;,flush=True)
+ iso=[];x=sp.symbols(&#x27;x&#x27;)
+ for key,o in D[&#x27;blocks&#x27;].items():
+  G=mat(o[&#x27;gram&#x27;]); Bs=[mat(z) for z in o[&#x27;bilinear_H&#x27;]]; H=sum(Bs,sp.zeros(G.rows))
+  cp=sp.factor((x*G-H).det())
+  gap=1054*G-H
+  bad=[]
+  for n in range(1,gap.rows+1):
+   for ix in combinations(range(gap.rows),n):
+    q=sp.factor(gap.extract(ix,ix).det())
+    if q.is_negative is True or q.is_nonnegative is None:bad.append((ix,str(q)))
+  iso.append({&#x27;block&#x27;:key,&#x27;charpoly&#x27;:str(cp),&#x27;gap_1054_psd&#x27;:not bad,&#x27;bad_minors&#x27;:bad})
+ status=&#x27;PASS&#x27; if not failures and not unknown and all(x[&#x27;gap_1054_psd&#x27;] for x in iso) else (&#x27;FAIL&#x27; if failures else &#x27;INCOMPLETE&#x27;)
+ out={&#x27;status&#x27;:status,&#x27;scope&#x27;:&#x27;Spin(11) exact full-mixed star versus support of an attainable 4-seed canonical-EB subset&#x27;,
+      &#x27;seed_moments&#x27;:SEEDS,&#x27;trace_coefficients&#x27;:D[&#x27;trace_coefficients&#x27;],&#x27;cone_ray_counts&#x27;:[len(x) for x in cones],
+      &#x27;cone_rays&#x27;:[[list(x) for x in sorted(c)] for c in cones],&#x27;distinct_rays&#x27;:len(allr),&#x27;ray_certificates&#x27;:records,
+      &#x27;failures&#x27;:failures,&#x27;unknown&#x27;:unknown,&#x27;isotropic_top&#x27;:1054,&#x27;isotropic_blocks&#x27;:iso,&#x27;verification_costs&#x27;:{&#x27;full_triple_dimension&#x27;:32768,&#x27;isotypic_swap_blocks&#x27;:11,&#x27;cone_ray_checks&#x27;:len(allr)*11,&#x27;principal_minor_checks&#x27;:sum(len(b[&#x27;principal_minors&#x27;]) for rec in records for b in rec[&#x27;blocks&#x27;])}}
+ (HERE/&#x27;spin11_seed_support_certificate.json&#x27;).write_text(json.dumps(out,indent=2)+&#x27;\n&#x27;)
+ print(&#x27;cone ray counts&#x27;,list(map(len,cones)),&#x27;distinct&#x27;,len(allr),&#x27;block-ray checks&#x27;,len(allr)*11,&#x27;status&#x27;,status,flush=True)
+ if status==&#x27;PASS&#x27;:print(&#x27;CERTIFICATE PASS: all exact support-cone rays, all 11 swap/isotypic blocks, and isotropic top=1054.&#x27;,flush=True)
+if __name__==&#x27;__main__&#x27;:main()
+</pre><p><a href="../assets/aba692abc0b7fde73d14b9fd6f6a36d257d4e2ddbe712fadc4c344a2fdb66793.py">Exact original</a></p></html>

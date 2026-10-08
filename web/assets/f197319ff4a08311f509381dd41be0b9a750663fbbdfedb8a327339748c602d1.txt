@@ -1,0 +1,202 @@
+CYCLE3 RESULT: RISK-CERTIFIED PREDICTIVE STATE AGGREGATION FROM ONE RAW PATH
+Date: 8 October 2026
+Status: CONDITIONAL FINITE-SAMPLE THEOREM; internally derived; no external proof/novelty review
+
+1. RESULT AND INTERFACE
+
+We give a constructive risk-based truncation theorem for a fully observable finite Markov chain, a strict HMM subclass (the hidden state is the observed symbol and the emission is deterministic). From one stationary raw path, the method learns a partition of raw states into at most K groups and one next-state distribution per group. It chooses the partition by stationary-context next-state KL loss and returns a two-sided confidence interval for the selected model's true stationary-context KL risk.
+
+No feature dictionary, anchor states, rank, singular gap, predictive-row separation, or transition positivity is supplied. The learner knows the raw alphabet size d, output budget K, mixing upper bound tau, confidence levels, and a rational prediction-floor parameter lambda. The output is a risk approximation, not an assertion that states in a group are exactly predictively equivalent. Arbitrarily close, identical, and rare states are permitted; rare contexts receive their natural stationary risk weight.
+
+Observation contract: the only data are X_1,...,X_T from one stationary trajectory of the unknown finite-state Markov chain. No row-query oracle, reset, intervention, hidden label, or ability to choose contexts is available. Samples are selected adjacent pairs from the path, with all skipped symbols and mixing gaps charged. A separate validation pair set is reserved before clustering.
+
+2. PROCESS, MODEL CLASS, AND TASK RISK
+
+Let S={1,...,d}, d>=2. The unknown transition matrix is P, with row P_x=P(x,:); the unknown stationary context law is pi. Assume the stationary trajectory is absolutely regular with
+
+    beta(k) <= exp(-k/tau)  for all k>=1,
+
+using the total-variation convention for which Berbee coupling bounds a sequence of separated blocks by the sum of their beta coefficients. The known constant tau controls the sample spacing. The main theorem starts in stationarity.
+
+Fix a compression budget 1<=K<=d and a known rational lambda in (0,1]. A compressed next-state model is:
+
+    g:S -> {1,...,K}, with at most K nonempty groups;
+    q_c in Delta_d, and q_c(y)>=lambda/d for all c,y.
+
+The loss of the model is the stationary-context next-state KL risk
+
+    R(g,q) = sum_x pi_x D_KL(P_x || q_{g(x)}).
+
+This is the expected next-symbol log-loss regret relative to the true row predictor when contexts are drawn from stationarity. Define L=ln(d/lambda). Every model has 0<=R(g,q)<=L. The floor makes the risk finite even if P has zero entries. The comparator is
+
+    R^*_{K,lambda} = min_{g, q_c(y)>=lambda/d} R(g,q).
+
+For a fixed group C, without the floor its KL prototype is the stationary weighted row mean sum_{x in C} pi_x P_x / pi(C). With the floor, the best group prototype is the constrained minimizer of the same weighted cross-entropy over q_y>=lambda/d. Thus the optimization merges states by predictive row loss rather than by a supplied representation. This is KL/Bregman clustering with a stated output floor.
+
+No state-mass lower bound is assumed. If a raw alphabet state is never reached in stationarity, its weight in R is zero and its row is not identifiable from the trajectory; the task-risk criterion correctly ignores that row. This is different from exact transition-matrix recovery.
+
+3. TRAINING PROCEDURE
+
+For N_tr training pair blocks from the path, form the empirical pair law
+
+    mu_hat_tr(x,y) = (1/N_tr) sum_i 1{(X_{t_i},X_{t_i+1})=(x,y)}.
+
+Its context marginal is pi_hat_tr(x)=sum_y mu_hat_tr(x,y). For each partition g and each group C, set
+
+    mu_hat_tr(C,y) = sum_{x in C} mu_hat_tr(x,y),
+
+and choose q_hat_C to minimize
+
+    -sum_y mu_hat_tr(C,y) ln q(y)
+    subject to q in Delta_d and q(y)>=lambda/d.
+
+If the empirical group has zero mass, use the uniform row. The constrained solution is obtained by a water-filling projection of the pooled empirical next-state frequencies onto the floored simplex; it needs no state-specific row estimate and remains defined when a context was not observed.
+
+The empirical risk is
+
+    R_hat_tr(g,q) = sum_{x,y} mu_hat_tr(x,y)
+                     ln[ mu_hat_tr(x,y) / (pi_hat_tr(x) q_{g(x)}(y)) ],
+
+where zero terms are zero. Equivalently it is empirical conditional cross-entropy minus empirical H(Y|X). The entropy term does not depend on g or q. Enumerate all partitions into at most K groups, use the constrained empirical prototypes above, and select a minimum empirical-risk pair (g_hat,q_hat). Fix a deterministic tie rule. If certified numerical evaluation returns an empirical objective within xi_opt of the true empirical minimum, use that additive optimization tolerance in the theorem.
+
+This procedure discovers the state partition and prototypes from raw transition counts. It does not take pairwise row distances or feature coordinates as input, and it does not identify exact predictive equivalence classes.
+
+4. UNIFORM RISK DEVIATION AND ORACLE GUARANTEE
+
+For a probability vector p on m symbols, let
+
+    omega_m(e) = h_2(e/2) + (e/2) ln(m-1),
+
+where h_2(t)=-t ln t-(1-t)ln(1-t) is binary entropy in nats. For 0<=e<=1 this is the Fannes-Audenaert entropy continuity bound at L1 error e. Define
+
+    E_{d,lambda}(e) = (L e)/2 + omega_{d^2}(e) + omega_d(e).
+
+LEMMA (uniform pair-law to task-risk bound). If the empirical transition-pair law satisfies ||mu_hat-mu||_1<=e, then simultaneously for every partition g and every prototype family with q_c(y)>=lambda/d,
+
+    | R_hat_mu(g,q) - R(g,q) | <= E_{d,lambda}(e).
+
+Proof. Write mu(x,y)=pi_x P_x and
+
+    R(g,q) = C_mu(g,q) - H_mu(Y|X),
+    C_mu(g,q) = sum_{x,y} mu(x,y) [-ln q_{g(x)}(y)].
+
+The cross-entropy summand is in [0,L]. For two distributions at L1 distance e, expectation of any [0,L]-valued function changes by at most L times total variation, hence |C_mu-C_muhat|<=Le/2. Also
+
+    H_mu(Y|X)=H(mu_{XY})-H(pi).
+
+Marginalization contracts L1, so ||pi_hat-pi||_1<=e. Applying the classical Fannes-Audenaert continuity inequality to the d^2-symbol pair law and its d-symbol marginal gives entropy error at most omega_{d^2}(e)+omega_d(e). Add the bounds. The argument is uniform over (g,q); the data-dependent choice of partition/prototypes therefore causes no selection penalty. QED.
+
+THEOREM (risk-based truncation and certificate from one stationary trajectory). Fix d,K,lambda,tau and 0<delta<1. Split the retained pair indices in advance into training and validation sets. Let their empirical pair laws be mu_hat_tr and mu_hat_val. Choose N_tr,N_val so the iid categorical pair-law errors are at most e_tr,e_val with respective failure probabilities delta_tr,delta_val as specified in Section 5. Space all pair blocks by b defined there, and suppose
+
+    delta_tr + delta_val + delta_mix/2 <= delta.
+
+If the empirical clustering optimizer is within xi_opt of the training empirical minimum, then with probability at least 1-delta:
+
+    R(g_hat,q_hat) <= R^*_{K,lambda}
+                      + 2 E_{d,lambda}(e_tr) + xi_opt,
+
+and the independently computed validation estimate
+
+    R_hat_val = sum_{x,y} mu_hat_val(x,y)
+                ln[ mu_hat_val(x,y) / (pi_hat_val(x) q_hat_{g_hat(x)}(y)) ]
+
+certifies the actual selected model risk by
+
+    R(g_hat,q_hat) in [ max{0, R_hat_val-E_{d,lambda}(e_val)-xi_val},
+                        min{L, R_hat_val+E_{d,lambda}(e_val)+xi_val} ].
+
+Here xi_val is the certified absolute numerical error for computing the validation KL. No row-separation margin, rank gap, anchor, positive transition probability, or minimum stationary state mass is needed. If K=d, the class includes an independent floored predictor for each raw state; if K<d, the result certifies the risk of merging states under the learned K-group model.
+
+Proof of the oracle guarantee. On the training pair-law event, the lemma holds for every empirical candidate and for a population minimizer of R^*_{K,lambda}. Empirical minimization gives R_hat_tr(g_hat,q_hat)<=R_hat_tr(g*,q*)+xi_opt. Apply the lemma to both terms and rearrange to obtain R(g_hat,q_hat)<=R^*+2E+xi_opt.
+
+Proof of validation interval. Apply the same uniform lemma to mu_hat_val and the fixed (g_hat,q_hat). Add the certified log-evaluation error xi_val and intersect with the known interval [0,L]. The validation set is kept out of model selection; uniformity means the result also remains valid for an arbitrary training-selected model. QED.
+
+The theorem certifies approximate optimality among K-group models and gives a separate interval for the realized model's stationary-context KL risk. It does not say that the chosen partition is unique or that two states in one group have equal transition rows.
+
+5. EXACT SAMPLE AND RAW-TRAJECTORY COST
+
+For N independent categorical observations on an alphabet of size m, the Weissman et al. L1 inequality gives
+
+    Pr{||mu_hat-mu||_1>e} <= (2^m-2) exp(-N e^2/2).
+
+For transition pairs, m=d^2. A sufficient exact pair count for confidence 1-delta_j and target L1 error e_j is
+
+    N(e_j,delta_j) = ceil[ (2/e_j^2) (d^2 ln 2 + ln(1/delta_j)) ].
+
+Use N_tr=N(e_tr,delta_tr) and N_val=N(e_val,delta_val). These counts include every selected pair, not every word/query; each pair is one raw adjacent transition observation.
+
+For a single stationary beta-mixing path, let N_tot=N_tr+N_val and choose
+
+    b = 1 + ceil[ tau ln(2 N_tot / delta_mix) ].
+
+Retain pairs (X_{t_i},X_{t_i+1}) with t_i=1+(i-1)b. The gap from the end of one pair to the start of the next is b-1 indices. Berbee coupling gives a joint iid-pair realization with mismatch probability at most
+
+    (N_tot-1) beta(b-1) <= (N_tot-1) exp(-(b-1)/tau) <= delta_mix/2.
+
+Therefore the theorem's total failure probability is at most delta_tr+delta_val+delta_mix/2. The raw path length is
+
+    T = (N_tot-1)b + 2 raw state symbols.
+
+Every skipped intermediate symbol is charged in T. If the chain starts away from stationarity, a separate uniform total-variation burn-in bound must be supplied and its burn-in symbols added; the theorem itself assumes one stationary raw path. The selected-pair sample order is O(d^2 epsilon^{-2} log(1/delta)); the conservative one-stream symbol cost multiplies by O(tau log(N_tot/delta_mix)).
+
+No independence of overlapping adjacent pairs is assumed: the selected pair blocks are separated and coupled under the stated beta-mixing bound. Training/validation allocation is fixed before observing states.
+
+6. TRAINING, VALIDATION, AND NUMERICAL PRECISION
+
+Training objective. For a partition C_1,...,C_k, k<=K, the constrained empirical prototype solves a d-dimensional convex optimization per group. With rational lambda and integer transition counts, the water-filling solution is rational. The empirical risk contains logarithms of rational probabilities; zeros use the convention 0 ln 0=0.
+
+Global optimization. The number of unlabeled partitions is sum_{k=1}^K S(d,k)<=K^d, where S is a Stirling number of the second kind. Enumerating all partitions and optimizing each group prototype is a valid exact combinatorial algorithm; after the transition table is formed it uses at most O(K^d d^2) arithmetic operations up to a polynomial factor for water-filling and log evaluation. This may be exponential in d. No efficient global clustering algorithm is claimed.
+
+Certified logs. For training, evaluate candidate empirical risks using certified log intervals until a returned model is within xi_opt of the exact empirical minimum. For validation, compute R_hat_val to absolute error xi_val. Standard interval-log routines can reach these additive targets with precision polynomial in the rational input bit length and O(log(1/xi)) requested fractional bits; the integer range also accounts for log N_tr and log(d/lambda). Their arithmetic cost is charged. A numerical result without the interval certificate does not count as a risk certificate.
+
+Model and evidence code. A partition map needs at most d ceil(log2 K) bits. Each of up to K rational prototypes is specified by d integer counts and shared denominators/regularizer data, using O(Kd(log N_tr+log d+ell_lambda)) bits, where ell_lambda is the bit length of rational lambda. The certificate interval, confidence levels, K, lambda, tau, and decoder/version description are additional bits if not shared. The training/validation pair histogram occupies O(d^2 log(N_tot+1)) count bits; retaining the original path costs T ceil(log2 d) bits. The loss floor is encoded and is not free.
+
+Risk tolerance selection. For a requested oracle-excess budget eta_oracle, choose e_tr so 2E_{d,lambda}(e_tr)+xi_opt<=eta_oracle. For a requested certificate half-width eta_val, choose e_val so E_{d,lambda}(e_val)+xi_val<=eta_val. These implicit choices are finite and explicit because E is stated in closed form. As lambda decreases, L=ln(d/lambda) grows and the risk certificate requires more data or wider intervals.
+
+7. MATCHED FULL-COUNT / RETAINED-TRAJECTORY BASELINE
+
+The strongest same-data baseline retains all T raw symbols and forms the full count matrix from every one of the T-1 observed adjacent transitions, including the transitions omitted by our separated-pair proof construction. It can reserve a validation segment and issue the same risk certificate, or simulate our training partition and prototypes exactly by ignoring the extra observations. Therefore the baseline's information is at least as large, and it has no worse achievable risk at the same raw-path cost. No adaptive acquisition or sample advantage is claimed.
+
+The full-count baseline stores O(d^2 log T) transition-count bits and can output all d row predictors. The K-group method stores the same sufficient pair table for its sample but returns a shorter model when K<d; its certified KL risk quantifies the compression loss. At K=d, it reduces to per-state prediction with the chosen floor. A retained trajectory can replay all clusterings and all later tasks, so compression is an output/storage tradeoff rather than an information gain.
+
+8. WHY A POSITIVE LOSS FLOOR / VALIDATION BUFFER IS NEEDED
+
+The theorem does not need a predictive separation margin: its guarantee is risk-based and continuous in the observed pair law. It does need a finite-loss mechanism. Take the two-state iid Markov chain with every row P_x=(1-a,a), for any 0<a<1. This is a stationary Markov chain with beta(k)=0 for k>=1. With probability (1-a)^N, an N-pair empirical sample sees only next-state symbol 1. An unsmoothed empirical prototype assigns q(2)=0, while every true row has P_x(2)=a>0, so its KL risk is infinite. Thus an unsmoothed learner must return UNKNOWN/infinite risk on missing-support transcripts, assume a known positive support margin and pay to observe it, or use a floor such as lambda/d. The floor used here makes risk uniformly bounded and lets validation certify it.
+
+The held-out sample is an additional validation buffer, not a predictive-state margin. The global total-variation bound also permits a mathematically valid training-only confidence bound, but the separate validation block gives a direct audit of the actual selected model and is fully charged in T and N_val.
+
+9. ESTABLISHED RESULTS VERSUS THIS THEOREM
+
+Established: relative entropy is a Bregman divergence and admits centroid-based clustering; Banerjee et al. give a general Bregman clustering framework. Weissman et al. prove finite-alphabet empirical L1 deviation inequalities. Berbee's coupling and Yu's mixing empirical-process work provide the standard independent-block basis for beta-mixing observations. Fannes-Audenaert entropy continuity supplies the conditional-entropy perturbation.
+
+Derived here: the decomposition of stationary-context conditional KL into bounded pair-law cross-entropy minus conditional entropy; a uniform risk deviation that applies after adaptive selection of both a state partition and real-valued floored prototypes; the K-cluster oracle-excess bound; and a one-path exact cost/certificate under geometric beta mixing. The novelty/priority status is UNKNOWN; no source is claimed to prove this complete theorem and no external proof review was performed.
+
+10. UNKNOWN AND LIMITATIONS
+
+UNKNOWN-1: Optimality. The O(d^2/e^2) pair bound comes from full joint-law L1 estimation. It is a valid sufficient bound, not a minimax rate for this risk or model class. No matching lower bound is proved.
+
+UNKNOWN-2: Mixing constants. The guarantee assumes a known tau and stationary start. If beta decay is slower or tau is unknown, the stated exact trajectory cost is unavailable. More refined dependent-data concentration may reduce the conservative spacing factor.
+
+UNKNOWN-3: Computation. Global K-partition ERM is given by exhaustive enumeration. The result is an information/statistical theorem; it does not solve general KL clustering efficiently for growing d,K.
+
+UNKNOWN-4: Floor dependence. The risk is for floored predictors. It is not the risk of an unregularized model, and as lambda tends to zero the log-loss envelope diverges. Better support-specific bounds may avoid some of this cost.
+
+UNKNOWN-5: Model adequacy and task shift. The risk certificate concerns stationary contexts and the next-state distribution of this chain. It does not certify nonstationary contexts, controlled/action-dependent transitions, a hidden-state HMM, or a later task with a changed transition kernel.
+
+UNKNOWN-6: Representation. No exact predictive-state equivalence or minimal number of predictive states is identified. Different partitions can have equal risk; the output tie rule is conventional, not statistically identified. The theorem gives the chosen K-budget risk and an oracle comparison within that compressed class.
+
+UNKNOWN-7: Validation dependence. The uniform pair-law event is valid for any model, including data-selected ones. The split holdout is included for audit clarity; if the user chooses to reuse it for further tuning, a new validation buffer or a fresh uniform bound is required for an untouched final certificate.
+
+11. PRIMARY SOURCES
+
+[1] A. Banerjee, S. Merugu, I. S. Dhillon, and J. Ghosh, “Clustering with Bregman Divergences,” Journal of Machine Learning Research 6 (2005), 1705–1749. Relative entropy clustering/centroid framework; does not give this Markov-trajectory theorem. https://jmlr.csail.mit.edu/papers/v6/banerjee05b.html
+
+[2] T. Weissman, E. Ordentlich, G. Seroussi, S. Verdú, and M. J. Weinberger, “Inequalities for the L1 Deviation of the Empirical Distribution,” HP Labs Technical Report HPL-2003-97R1 (2003). Source of the finite-alphabet pair-histogram deviation bound. https://shiftleft.com/mirrors/www.hpl.hp.com/techreports/2003/HPL-2003-97R1.pdf
+
+[3] H. C. P. Berbee, “Random Walks with Stationary Increments and Renewal Theory,” Mathematical Centre Tracts 112 (1979). Original coupling context for absolutely regular sequences. https://ir.cwi.nl/pub/12694
+
+[4] B. Yu, “Rates of Convergence for Empirical Processes of Stationary Mixing Sequences,” Annals of Probability 22(1) (1994), 94–116, DOI 10.1214/aop/1176988849. Independent-block treatment of beta-mixing empirical processes. https://doi.org/10.1214/aop/1176988849
+
+[5] K. M. R. Audenaert, “A Sharp Continuity Estimate for the von Neumann Entropy,” Journal of Physics A: Mathematical and Theoretical 40 (2007), 8127–8136, DOI 10.1088/1751-8113/40/28/S18. Its commuting/classical special case is the entropy continuity inequality used here. https://arxiv.org/abs/quant-ph/0610146
+
+Source-status note: cited works establish ingredients and context; all risk, sample, validation, and cost claims specific to this finite-Markov setting are derived in this leaf and remain internally reviewed only.

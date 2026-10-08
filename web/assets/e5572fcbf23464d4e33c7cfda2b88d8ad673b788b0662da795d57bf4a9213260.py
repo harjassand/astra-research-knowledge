@@ -1,0 +1,183 @@
+"""Exact shell/cross/taper identities and independent tensor diagnostics.
+
+No optimal wall rank profile is inferred. Fraction arithmetic is used
+for every claimed finite recurrence and closed expression.
+"""
+import importlib.util
+import json
+import math
+import pathlib
+from fractions import Fraction as F
+
+import numpy as np
+
+ROOT = pathlib.Path(__file__).resolve().parent
+spec = importlib.util.spec_from_file_location(
+    'su3_checks', ROOT.parent / 'regular_su3' / 'verify_regular_su3.py')
+c = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(c)
+
+
+def parameters(a, b):
+    n = a + b
+    c2 = F(a * a + a * b + b * b + 3 * a + 3 * b, 3)
+    c3 = F((a - b) * (2 * a + b + 3) * (a + 2 * b + 3), 18)
+    delta = c2 * (c2 / 3 + F(1, 4)) - c3 * c3 / c2
+    return n, c2, c3 / c2, delta / n ** 2
+
+
+def ordinary_weight(a, b, r):
+    return F((b + 1) * (r + 1) * (r + 2) * (2 * a + b - 2 * r), 2)
+
+
+def mixed_weight(a, b, r):
+    n, c2, _, _ = parameters(a, b)
+    return F((b + 1) * (r + 1) * (r + 2) * b * (b + 2)
+             * (3 * a * (n + 1) - 2 * (2 * a + b + 3) * r), 12) / (n * c2)
+
+
+def shell_second_mean(a, b, r):
+    n, c2, _, _ = parameters(a, b)
+    return F(b * (b + 2) * (a * (n + 1) - (2 * a + b + 3) * r), 6) / (n * c2)
+
+
+def exact_checks():
+    shell_count = taper_count = coherent_count = 0
+    for a in range(1, 33):
+        for b in range(1, a + 1):
+            n, c2, alpha, cs = parameters(a, b)
+            charge = F(a + 2 * b, 3)
+            u3_casimir = n * (n + 2) + b ** 2
+            w_previous = c_previous = F(0)
+            for r in range(a + 1):
+                dimension = sum(b + r - 2 * t + 1 for t in range(min(r, b) + 1))
+                assert dimension == (b + 1) * (r + 1)
+                w, cross = ordinary_weight(a, b, r), mixed_weight(a, b, r)
+                assert w - w_previous == (2 * a + b - 3 * r) * dimension
+                d_mean = ((n - r) ** 2 + w_previous / dimension - F(u3_casimir, 3)
+                          + (F(3, 2) - 2 * charge) * (n - r - charge))
+                s_mean = (d_mean - alpha * (n - r - charge)) / n
+                assert s_mean == shell_second_mean(a, b, r)
+                assert cross - c_previous == 3 * dimension * s_mean
+                if 2 * r <= a:
+                    assert 0 <= cross <= 6 * cs / c2 * w
+                w_previous, c_previous = w, cross
+                shell_count += 1
+            for r in range(1, a // 2 + 1):
+                rank = sum((b + 1) * (t + 1) for t in range(r))
+                norm = sum((b + 1) * (t + 1) * (r - t) ** 2 for t in range(r))
+                energy = sum(ordinary_weight(a, b, t) for t in range(r))
+                cross = sum(mixed_weight(a, b, t) for t in range(r))
+                assert rank == (b + 1) * r * (r + 1) // 2
+                assert norm == F((b + 1) * r * (r + 1) ** 2 * (r + 2), 12)
+                assert energy / norm == F(4 * a + 2 * b - 3 * r + 3, r + 1)
+                assert 0 <= cross <= 6 * cs / c2 * energy
+                taper_count += 1
+    for a in range(41):
+        for b in range(41):
+            if not a + b:
+                continue
+            n, c2, alpha, cs = parameters(a, b)
+            ns, charge = [n, b, 0], F(a + 2 * b, 3)
+            ell = [ns[i] ** 2 + sum(ns[j] - ns[i] for j in range(i))
+                   + (F(3, 2) - 2 * charge) * ns[i] for i in range(3)]
+            mean_ell = sum(ell) / 3
+            ordinary = [F(t) - charge for t in ns]
+            second = [(ell[i] - mean_ell - alpha * ordinary[i]) / n for i in range(3)]
+            assert sum(t * t for t in ordinary) / 2 == c2 - n
+            cross = -sum(t * u for t, u in zip(ordinary, second))
+            assert cross == -F(a * b * (a - b) * (n + 1), 3) / (n * c2)
+            assert cross * cross <= 4 * cs
+            coherent_count += 1
+    return dict(exact_shell_cases=shell_count, exact_taper_cases=taper_count,
+                exact_coherent_cases=coherent_count)
+
+
+def residual(value, expected, tolerance=5e-9):
+    error = float(np.max(np.abs(np.asarray(value) - np.asarray(expected))))
+    scale = max(1., float(np.max(np.abs(np.asarray(expected)))))
+    if error / scale > tolerance:
+        raise AssertionError((error, scale, value, expected))
+    return error / scale
+
+
+def matrix_case(a, b):
+    ts, ambient = c.harmonic_carrier(a, b)
+    d = ts[0].shape[0]
+    n, c2, alpha, cs = parameters(a, b)
+    ds = [sum(c.d_symbol[k, i, j] * ts[i] @ ts[j]
+              for i in range(8) for j in range(8)) for k in range(8)]
+    ss = [(q - float(alpha) * t) / n for t, q in zip(ts, ds)]
+    z0 = np.diag([2 / 3, -1 / 3, -1 / 3])
+    z = [2 * np.trace(t @ z0) for t in c.fundamental]
+    t0, s0 = sum(t * w for t, w in zip(ts, z)), sum(s * w for s, w in zip(ss, z))
+    e11 = t0 + (a + 2 * b) / 3 * np.eye(d)
+    vals, basis = np.linalg.eigh(e11)
+    shells = []
+    for r in range(n + 1):
+        columns = basis[:, np.abs(vals - (n - r)) < 1e-8]
+        shells.append(columns @ columns.conj().T)
+    checks = [residual(sum(shells), np.eye(d))]
+    roots = []
+    for j in [1, 2]:
+        fundamental = np.zeros((3, 3), complex)
+        fundamental[0, j] = 1
+        coeff = [2 * np.trace(t @ fundamental) for t in c.fundamental]
+        roots.append((sum(t * w for t, w in zip(ts, coeff)),
+                      sum(s * w for s, w in zip(ss, coeff))))
+    for r in range(a + 1):
+        p = shells[r]
+        checks.append(residual(np.trace(p), (b + 1) * (r + 1)))
+        checks.append(residual(sum(np.trace(p @ t @ t.conj().T) for t, _ in roots),
+                               float(ordinary_weight(a, b, r))))
+        checks.append(residual(sum(np.trace(p @ s @ t.conj().T).real for t, s in roots),
+                               float(mixed_weight(a, b, r))))
+        checks.append(residual(np.trace(p @ s0),
+                               (b + 1) * (r + 1) * float(shell_second_mean(a, b, r))))
+    tapers = []
+    for r in range(1, a // 2 + 1):
+        f = sum((r - t) * shells[t] for t in range(r))
+        norm = float(np.linalg.norm(f) ** 2)
+        et = c.old.energy(f, ts)
+        cross = sum(np.trace((s @ f - f @ s).conj().T @ (t @ f - f @ t)).real
+                    for s, t in zip(ss, ts))
+        checks.append(residual(et, float(sum(ordinary_weight(a, b, t) for t in range(r)))))
+        checks.append(residual(cross, float(sum(mixed_weight(a, b, t) for t in range(r)))))
+        checks.append(residual(et / norm, F(4 * a + 2 * b - 3 * r + 3, r + 1)))
+        rank = int(np.linalg.matrix_rank(f, tol=1e-8))
+        assert rank == (b + 1) * r * (r + 1) // 2
+        tapers.append(dict(R=r, rank=rank, normalized_energy=et / norm,
+                           mixed_energy_over_energy=cross / et))
+    h_fund = np.diag([2., -.5, -1.5])
+    x = [2 * np.trace(t @ h_fund) for t in c.fundamental]
+    th = sum(t * w for t, w in zip(ts, x))
+    _, eigenvectors = np.linalg.eigh(th)
+    v = eigenvectors[:, -1]
+    p = v[:, None] @ v.conj()[None, :]
+    cross = sum(np.trace((s @ p - p @ s).conj().T @ (t @ p - p @ t)).real
+                for s, t in zip(ss, ts))
+    checks.append(residual(c.old.energy(p, ts), 2 * n))
+    checks.append(residual(cross, -F(a * b * (a - b) * (n + 1), 3) / (n * c2)))
+    return dict(a=a, b=b, N=n, dimension=d, ambient_dimension=ambient,
+                tapers=tapers, coherent_mixed_energy=cross,
+                max_relative_residual=max(checks))
+
+
+def main():
+    exact = exact_checks()
+    cases = [matrix_case(a, b) for a, b in [(1, 1), (2, 1), (3, 1), (5, 1),
+                                          (8, 1), (2, 2), (3, 2), (5, 2)]]
+    result = dict(status='FINITE-EVIDENCE', proof_validation=False,
+                  theorem_file='FIBER_PRESERVING_FILTERS.txt',
+                  optimal_wall_profile='UNKNOWN', exact_checks=exact,
+                  matrix_cases=cases,
+                  max_relative_residual=max(t['max_relative_residual'] for t in cases),
+                  dependencies=['Python standard library', 'NumPy'])
+    (ROOT / 'FIBER_CHECKS.json').write_text(json.dumps(result, indent=2) + '\n')
+    print(json.dumps(dict(status='passed', matrix_cases=len(cases), **exact,
+                         max_relative_residual=result['max_relative_residual'],
+                         optimal_wall_profile='UNKNOWN')))
+
+
+if __name__ == '__main__':
+    main()

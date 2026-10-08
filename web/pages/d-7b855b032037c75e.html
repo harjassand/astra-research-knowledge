@@ -1,0 +1,69 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/sol_history_gap/kernel_rigidity_fixture.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/sol_history_gap/kernel_rigidity_fixture.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Exact seed-kernel diagnostics; finite fixtures do not replace the proof.&quot;&quot;&quot;
+import json
+from pathlib import Path
+import sympy as sp
+
+
+def main():
+    dim = 32
+    phi = sp.zeros(dim, 1)
+    psi = sp.zeros(dim, 1)
+    # Big-endian five-wire convention, common clock suffix |10&gt;.
+    phi[2], phi[18] = 1/sp.sqrt(2), -1/sp.sqrt(2)
+    for three, sign in [(0, 1), (3, -1), (5, -1), (6, -1)]:
+        psi[4*three+2] = sp.Rational(sign, 2)
+    cc = sp.simplify((phi.adjoint()*psi)[0])
+    assert cc == 1/sp.sqrt(8)
+    pphi, ppsi = phi*phi.adjoint(), psi*psi.adjoint()
+    jj = sp.simplify((pphi+ppsi-cc*(phi*psi.adjoint()+psi*phi.adjoint()))/(1-cc**2))
+    ss = sp.eye(dim)-jj
+    assert jj == jj.adjoint() and ss == ss.adjoint()
+    assert jj*jj == jj and ss*ss == ss
+    assert jj.rank() == 2 and ss.rank() == 30
+    assert all(v.is_Rational for v in ss)
+    xx = sp.kronecker_product(sp.Matrix([[0, 1], [1, 0]]), sp.eye(16))
+    zz = sp.kronecker_product(sp.diag(1, -1), sp.diag(1, -1),
+                              sp.diag(1, -1), sp.eye(4))
+    assert xx*zz == -zz*xx
+    expected = [-1, 0, -cc, 0, 1, cc]
+    observed = [sp.simplify((v.adjoint()*op*w)[0]) for v, op, w in
+                [(phi, xx, phi), (psi, xx, psi), (psi, xx, phi),
+                 (phi, zz, phi), (psi, zz, psi), (psi, zz, phi)]]
+    assert observed == expected
+    assert sp.trace(jj*xx) == -sp.Rational(6, 7)
+    assert sp.trace(jj*zz) == sp.Rational(6, 7)
+    assert sp.trace(ss*xx) == sp.Rational(6, 7)
+    assert sp.trace(ss*zz) == -sp.Rational(6, 7)
+    seed_zero = sp.zeros(dim, 1)
+    seed_zero[0] = 1
+    assert pphi*seed_zero == sp.zeros(dim, 1)
+    assert ppsi*seed_zero == sp.zeros(dim, 1)
+    assert ss*seed_zero == seed_zero
+    pzero = sp.zeros(dim)
+    pzero[0, 0] = 1
+    data_zero = sp.zeros(dim, 1)
+    data_zero[16] = 1  # |10000&gt;
+    assert pzero*data_zero == sp.zeros(dim, 1)
+    full = []
+    for tt in [1, 2, 4, 16]:
+        coeff = sp.Rational(31, 32)**tt*sp.Rational(3, 112)*sp.Rational(15, 16)**(tt-1)
+        assert coeff &gt; 0
+        full.append({&quot;T&quot;: tt, &quot;logical_qubits&quot;: 10*tt,
+                     &quot;full_kernel_rank&quot;: str(31**tt*30**tt),
+                     &quot;L_X_coefficient&quot;: str(coeff), &quot;L_Z_coefficient&quot;: str(-coeff),
+                     &quot;method&quot;: &quot;Proved tensor formulas; dense full matrix not allocated&quot;})
+    out = {&quot;status&quot;: &quot;EXACT_SEED_KERNEL_FIXTURE_PASSED&quot;,
+           &quot;seed_span_rank&quot;: 2, &quot;seed_kernel_rank&quot;: 30,
+           &quot;overlap_square&quot;: &quot;1/8&quot;, &quot;Tr_S_X&quot;: &quot;6/7&quot;, &quot;Tr_S_ZZZ&quot;: &quot;-6/7&quot;,
+           &quot;full_instance&quot;: &quot;All three singleton colors, weights 1/2,1/4,1/4&quot;,
+           &quot;full_kernel_formula&quot;: &quot;(I-P0)^tensor T tensor S^tensor T&quot;,
+           &quot;instances&quot;: full,
+           &quot;scope&quot;: &quot;Finite exact diagnostics; theorem and generator membership are analytic&quot;}
+    path = Path(__file__).with_suffix(&quot;.json&quot;)
+    path.write_text(json.dumps(out, indent=2)+&quot;\n&quot;)
+    print(json.dumps(out, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/41ce1ea9ec0aa8f2ce8912ae78f15ba86bcf9468154f4fcf135ff2b0125fcc50.py">Exact original</a></p></html>

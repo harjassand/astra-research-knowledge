@@ -1,0 +1,137 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/measurement_inverse/microscopy_heterogeneity/stratified_sampling.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/measurement_inverse/microscopy_heterogeneity/stratified_sampling.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Costed finite-population comparison of uniform and stratified FOV sampling.
+
+Each stratum h contains M_h distinct, equal-cost FOV locations, K_h of which
+would yield a detectable target-positive call under one fixed resolution,
+exposure, spectral panel, and analysis threshold. Sampling is without
+replacement. The scout/calibration cost is charged separately from confirmatory
+high-resolution fields.
+
+This is a transparent design calculation, not a biological data model.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from fractions import Fraction
+from math import comb
+
+
+def miss_fraction(population: int, positives: int, draws: int) -&gt; Fraction:
+    &quot;&quot;&quot;Exact miss probability under simple random sampling without replacement.&quot;&quot;&quot;
+    if not (0 &lt;= positives &lt;= population):
+        raise ValueError(&quot;positives must lie between zero and population&quot;)
+    if not (0 &lt;= draws &lt;= population):
+        raise ValueError(&quot;draws must lie between zero and population&quot;)
+    if draws &gt; population - positives:
+        return Fraction(0, 1)
+    return Fraction(comb(population - positives, draws), comb(population, draws))
+
+
+@dataclass(frozen=True)
+class Stratum:
+    name: str
+    population: int
+    detectable_positive: int
+    field_cost: int = 1
+
+
+def miss_probability(strata: list[Stratum], allocation: list[int]) -&gt; Fraction:
+    if len(strata) != len(allocation):
+        raise ValueError(&quot;one allocation count is required per stratum&quot;)
+    result = Fraction(1, 1)
+    for stratum, draws in zip(strata, allocation):
+        result *= miss_fraction(stratum.population, stratum.detectable_positive, draws)
+    return result
+
+
+def best_allocation(
+    strata: list[Stratum], field_budget: int, min_per_stratum: int = 0
+) -&gt; tuple[list[int], Fraction]:
+    &quot;&quot;&quot;Exhaustive integer allocation for a small number of strata.
+
+    The objective is exact probability of at least one detectable hit, under
+    independent simple-random samples within strata. Dynamic programming can
+    replace this enumerator for many strata or large budgets.
+    &quot;&quot;&quot;
+    if min_per_stratum &lt; 0:
+        raise ValueError(&quot;min_per_stratum must be nonnegative&quot;)
+    if any(s.field_cost &lt;= 0 for s in strata):
+        raise ValueError(&quot;field costs must be positive&quot;)
+    if min_per_stratum and any(s.population &lt; min_per_stratum for s in strata):
+        raise ValueError(&quot;a stratum is too small for its minimum allocation&quot;)
+
+    best: tuple[Fraction, list[int]] | None = None
+
+    def visit(i: int, remaining: int, prefix: list[int]) -&gt; None:
+        nonlocal best
+        if i == len(strata):
+            if remaining != 0:
+                return
+            miss = miss_probability(strata, prefix)
+            if best is None or miss &lt; best[0]:
+                best = (miss, prefix.copy())
+            return
+
+        s = strata[i]
+        lo = min_per_stratum
+        hi = min(s.population, remaining // s.field_cost)
+        for n in range(lo, hi + 1):
+            visit(i + 1, remaining - n * s.field_cost, prefix + [n])
+
+    visit(0, field_budget, [])
+    if best is None:
+        raise ValueError(&quot;field budget cannot satisfy allocation constraints exactly&quot;)
+    return best[1], best[0]
+
+
+def fmt_probability(value: Fraction) -&gt; str:
+    return f&quot;{float(value):.6f}&quot;
+
+
+def main() -&gt; None:
+    # Illustrative calibration: 1,000 equal-cost candidate FOVs. A validated
+    # coarse proxy partitions them into a 100-FOV high-risk stratum and a
+    # 900-FOV lower-risk stratum. Positive counts refer to FOVs detectable by
+    # the specified high-resolution assay, including its resolution/noise/
+    # classification threshold.
+    strata = [
+        Stratum(&quot;high-risk&quot;, population=100, detectable_positive=10),
+        Stratum(&quot;lower-risk&quot;, population=900, detectable_positive=1),
+    ]
+    scout_cost = 8  # high-resolution-FOV equivalents, including analysis
+    total_cost = 28
+    confirmatory_budget = total_cost - scout_cost
+
+    uniform_n = total_cost  # no scout; all spend goes to high-resolution FOVs
+    uniform_miss = miss_fraction(1000, 11, uniform_n)
+    uniform20_miss = miss_fraction(1000, 11, confirmatory_budget)
+
+    allocation, adaptive_miss = best_allocation(
+        strata, field_budget=confirmatory_budget, min_per_stratum=1
+    )
+
+    print(&quot;Illustrative finite-population result (not biological evidence)&quot;)
+    print(f&quot;total budget: {total_cost} high-resolution-FOV equivalents&quot;)
+    print(f&quot;scout + calibration + analysis charge: {scout_cost}&quot;)
+    print(f&quot;confirmatory high-resolution budget: {confirmatory_budget}&quot;)
+    print(
+        &quot;uniform, equal total cost: &quot;
+        f&quot;n={uniform_n}, detection={fmt_probability(1 - uniform_miss)}, &quot;
+        f&quot;miss={fmt_probability(uniform_miss)}&quot;
+    )
+    print(
+        &quot;uniform, same number of confirmatory FOVs: &quot;
+        f&quot;n={confirmatory_budget}, detection={fmt_probability(1 - uniform20_miss)}, &quot;
+        f&quot;miss={fmt_probability(uniform20_miss)}&quot;
+    )
+    print(
+        &quot;stratified, exact best allocation with &gt;=1 FOV/stratum: &quot;
+        f&quot;n={allocation}, detection={fmt_probability(1 - adaptive_miss)}, &quot;
+        f&quot;miss={fmt_probability(adaptive_miss)}&quot;
+    )
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/ff7ef4d61a8d15309ca4c08a00869d3bfa35a717b60716aa3e6ca61ffc555ada.py">Exact original</a></p></html>

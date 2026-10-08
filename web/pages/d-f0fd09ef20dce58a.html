@@ -1,0 +1,57 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/systems_metabolism/chemostat_control/threshold_bisection.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/systems_metabolism/chemostat_control/threshold_bisection.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Finite-step bisection for two resident-cycle invasion sign changes.
+
+This is a numerical diagnostic, not interval validation. It inherits the
+fixed-step RK4 implementation and resident-orbit convergence criterion from
+reproduce_chemostat.py.
+&quot;&quot;&quot;
+import json
+from pathlib import Path
+from reproduce_chemostat import face_orbit
+
+NSTEP = 960
+MAX_ITER = 28
+TARGETS = [
+    {&quot;name&quot;: &quot;lambda3_on_12&quot;, &quot;residents&quot;: (0, 1), &quot;missing&quot;: 2,
+     &quot;lo&quot;: 0.300, &quot;hi&quot;: 0.325},
+    {&quot;name&quot;: &quot;lambda2_on_13&quot;, &quot;residents&quot;: (0, 2), &quot;missing&quot;: 1,
+     &quot;lo&quot;: 0.275, &quot;hi&quot;: 0.300},
+]
+
+def rate(amp, residents, missing):
+    row = face_orbit(amp, residents, nstep=NSTEP)
+    return row[&quot;lambda&quot;][missing], row
+
+results = []
+for target in TARGETS:
+    lo, hi = target[&quot;lo&quot;], target[&quot;hi&quot;]
+    flo, left = rate(lo, target[&quot;residents&quot;], target[&quot;missing&quot;])
+    fhi, right = rate(hi, target[&quot;residents&quot;], target[&quot;missing&quot;])
+    if flo * fhi &gt;= 0:
+        raise ValueError(f&quot;Root not bracketed: {target[&#x27;name&#x27;]} {flo} {fhi}&quot;)
+    history = []
+    for _ in range(MAX_ITER):
+        mid = (lo + hi) / 2
+        fm, row = rate(mid, target[&quot;residents&quot;], target[&quot;missing&quot;])
+        history.append({&quot;amp&quot;: mid, &quot;rate&quot;: fm, &quot;cycles&quot;: row[&quot;cycles&quot;],
+                        &quot;periodic_residual&quot;: row[&quot;periodic_residual&quot;]})
+        if flo * fm &lt;= 0:
+            hi, fhi, right = mid, fm, row
+        else:
+            lo, flo, left = mid, fm, row
+    results.append({
+        &quot;name&quot;: target[&quot;name&quot;],
+        &quot;nstep_per_period&quot;: NSTEP,
+        &quot;iterations&quot;: MAX_ITER,
+        &quot;bracket&quot;: [lo, hi],
+        &quot;endpoint_rates&quot;: [flo, fhi],
+        &quot;estimate&quot;: (lo + hi) / 2,
+        &quot;history&quot;: history,
+    })
+    print(target[&quot;name&quot;], &quot;bracket&quot;, lo, hi, &quot;rates&quot;, flo, fhi,
+          &quot;estimate&quot;, (lo + hi) / 2, flush=True)
+
+out = Path(__file__).with_name(&quot;threshold_bisection.json&quot;)
+out.write_text(json.dumps(results, indent=2) + &quot;\n&quot;)
+print(&quot;wrote&quot;, out)
+</pre><p><a href="../assets/c0fe028634cb6743e6a2da437ae5e3c790f9ed21e5b009f62557bcf56272fb8a.py">Exact original</a></p></html>

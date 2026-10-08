@@ -1,0 +1,580 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c4_lean_finite_glue/N33FiniteGlue.lean</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c4_lean_finite_glue/N33FiniteGlue.lean</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>import Mathlib
+import N33Affine.AffineCore
+import N33Affine.SliceFamily
+
+open Filter Set
+
+noncomputable section
+
+namespace N33Affine.Glue
+
+variable {N m : ℕ}
+
+/-- Left endpoint of the symmetric open interval centered at `c i`. -/
+def leftEnd (c r : Fin N → ℝ) (i : Fin N) : ℝ := c i - r i
+
+/-- Right endpoint of the symmetric open interval centered at `c i`. -/
+def rightEnd (c r : Fin N → ℝ) (i : Fin N) : ℝ := c i + r i
+
+/-- The source&#x27;s deletion of contained intervals, stated through the equivalent
+endpoint criterion for inclusion of nonempty open intervals. -/
+def Pruned (c r : Fin N → ℝ) : Prop :=
+  ∀ i j : Fin N, i ≠ j →
+    ¬ (Set.Ioo (leftEnd c r i) (rightEnd c r i) ⊆
+       Set.Ioo (leftEnd c r j) (rightEnd c r j))
+
+theorem leftEnd_strict_of_pruned
+    (c r : Fin N → ℝ)
+    (hc : ∀ i j : Fin N, i.val &lt; j.val → c i &lt; c j)
+    (hr : ∀ i : Fin N, 0 &lt; r i)
+    (hpruned : Pruned c r)
+    (i j : Fin N) (hij : i.val &lt; j.val) :
+    leftEnd c r i &lt; leftEnd c r j := by
+  by_contra hnot
+  have hji : leftEnd c r j ≤ leftEnd c r i := le_of_not_gt hnot
+  have hR : rightEnd c r i &lt; rightEnd c r j := by
+    dsimp [leftEnd, rightEnd] at hji ⊢
+    linarith [hc i j hij]
+  have hInc : Set.Ioo (leftEnd c r i) (rightEnd c r i) ⊆
+      Set.Ioo (leftEnd c r j) (rightEnd c r j) :=
+    (Set.Ioo_subset_Ioo_iff (show leftEnd c r i &lt; rightEnd c r i by
+      dsimp [leftEnd, rightEnd]
+      linarith [hr i])).2 ⟨hji, hR.le⟩
+  have hne : i ≠ j := by
+    intro heq
+    have : i.val = j.val := congrArg Fin.val heq
+    omega
+  exact hpruned i j hne hInc
+
+theorem rightEnd_strict_of_pruned
+    (c r : Fin N → ℝ)
+    (hc : ∀ i j : Fin N, i.val &lt; j.val → c i &lt; c j)
+    (hr : ∀ i : Fin N, 0 &lt; r i)
+    (hpruned : Pruned c r)
+    (i j : Fin N) (hij : i.val &lt; j.val) :
+    rightEnd c r i &lt; rightEnd c r j := by
+  by_contra hnot
+  have hji : rightEnd c r j ≤ rightEnd c r i := le_of_not_gt hnot
+  have hL : leftEnd c r i &lt; leftEnd c r j := by
+    dsimp [leftEnd, rightEnd] at hji ⊢
+    linarith [hc i j hij]
+  have hInc : Set.Ioo (leftEnd c r j) (rightEnd c r j) ⊆
+      Set.Ioo (leftEnd c r i) (rightEnd c r i) :=
+    (Set.Ioo_subset_Ioo_iff (show leftEnd c r j &lt; rightEnd c r j by
+      dsimp [leftEnd, rightEnd]
+      linarith [hr j])).2 ⟨hL.le, hji⟩
+  have hne : j ≠ i := by
+    intro heq
+    have : j.val = i.val := congrArg Fin.val heq
+    omega
+  exact hpruned j i hne hInc
+
+theorem leftEnd_mono_of_pruned
+    (c r : Fin N → ℝ)
+    (hc : ∀ i j : Fin N, i.val &lt; j.val → c i &lt; c j)
+    (hr : ∀ i : Fin N, 0 &lt; r i)
+    (hpruned : Pruned c r)
+    (i j : Fin N) (hij : i.val ≤ j.val) :
+    leftEnd c r i ≤ leftEnd c r j := by
+  by_cases heq : i = j
+  · simp [heq]
+  · have hij&#x27; : i.val &lt; j.val := lt_of_le_of_ne hij (by
+      intro hval
+      exact heq (Fin.ext hval))
+    exact (leftEnd_strict_of_pruned c r hc hr hpruned i j hij&#x27;).le
+
+theorem rightEnd_mono_of_pruned
+    (c r : Fin N → ℝ)
+    (hc : ∀ i j : Fin N, i.val &lt; j.val → c i &lt; c j)
+    (hr : ∀ i : Fin N, 0 &lt; r i)
+    (hpruned : Pruned c r)
+    (i j : Fin N) (hij : i.val ≤ j.val) :
+    rightEnd c r i ≤ rightEnd c r j := by
+  by_cases heq : i = j
+  · simp [heq]
+  · have hij&#x27; : i.val &lt; j.val := lt_of_le_of_ne hij (by
+      intro hval
+      exact heq (Fin.ext hval))
+    exact (rightEnd_strict_of_pruned c r hc hr hpruned i j hij&#x27;).le
+
+/-- Consecutive intervals of a cover cannot have a gap.  The witness point is
+the right endpoint of the earlier interval; strict endpoint order shows that
+no earlier or later interval covers it. -/
+theorem consecutive_overlap
+    (a b : ℝ) (c r : Fin N → ℝ)
+    (hcbox : ∀ i, a ≤ c i ∧ c i ≤ b)
+    (hc : ∀ i j : Fin N, i.val &lt; j.val → c i &lt; c j)
+    (hr : ∀ i : Fin N, 0 &lt; r i)
+    (hpruned : Pruned c r)
+    (hcover : ∀ x, a ≤ x → x ≤ b →
+      ∃ i : Fin N, leftEnd c r i &lt; x ∧ x &lt; rightEnd c r i)
+    (i j : Fin N) (hij : i.val + 1 = j.val) :
+    leftEnd c r j &lt; rightEnd c r i := by
+  by_contra hnot
+  have hgap : rightEnd c r i ≤ leftEnd c r j := le_of_not_gt hnot
+  have ha : a &lt; rightEnd c r i := by
+    dsimp [rightEnd]
+    linarith [hcbox i, hr i]
+  have hb : rightEnd c r i &lt; b := by
+    have hj : leftEnd c r j &lt; c j := by
+      dsimp [leftEnd]
+      linarith [hr j]
+    calc
+      rightEnd c r i ≤ leftEnd c r j := hgap
+      _ &lt; c j := hj
+      _ ≤ b := (hcbox j).2
+  obtain ⟨k, hleft, hright⟩ := hcover (rightEnd c r i) ha.le hb.le
+  by_cases hki : k.val ≤ i.val
+  · have hrmono := rightEnd_mono_of_pruned c r hc hr hpruned k i hki
+    linarith
+  · have hjk : j.val ≤ k.val := by omega
+    have hlmono := leftEnd_mono_of_pruned c r hc hr hpruned j k hjk
+    linarith
+
+/-- A total cut function; the value outside the valid interior-cut range is
+irrelevant. -/
+def intervalCut (N : ℕ) (c r : Fin N → ℝ) (k : ℕ) : ℝ :=
+  if hk : k + 1 &lt; N then
+    let i : Fin N := ⟨k, by omega⟩
+    let j : Fin N := ⟨k + 1, hk⟩
+    (max (c i) (leftEnd c r j) + min (c j) (rightEnd c r i)) / 2
+  else 0
+
+theorem intervalCut_bounds
+    (N : ℕ) (c r : Fin N → ℝ) (k : ℕ)
+    (hk : k + 1 &lt; N)
+    (hc : ∀ i j : Fin N, i.val &lt; j.val → c i &lt; c j)
+    (hr : ∀ i : Fin N, 0 &lt; r i)
+    (hoverlap : leftEnd c r ⟨k + 1, hk⟩ &lt; rightEnd c r ⟨k, by omega⟩) :
+    c ⟨k, by omega⟩ &lt; intervalCut N c r k ∧
+      leftEnd c r ⟨k + 1, hk⟩ &lt; intervalCut N c r k ∧
+      intervalCut N c r k &lt; c ⟨k + 1, hk⟩ ∧
+      intervalCut N c r k &lt; rightEnd c r ⟨k, by omega⟩ := by
+  let i : Fin N := ⟨k, by omega⟩
+  let j : Fin N := ⟨k + 1, hk⟩
+  have hci : c i &lt; c j := hc i j (by simp [i, j])
+  have hri : c i &lt; rightEnd c r i := by
+    dsimp [rightEnd]
+    linarith [hr i]
+  have hlj : leftEnd c r j &lt; c j := by
+    dsimp [leftEnd]
+    linarith [hr j]
+  have hlohi : max (c i) (leftEnd c r j) &lt;
+      min (c j) (rightEnd c r i) := by
+    apply max_lt_iff.mpr
+    constructor
+    · exact lt_min_iff.mpr ⟨hci, hri⟩
+    · exact lt_min_iff.mpr ⟨hlj, hoverlap⟩
+  have hlo : max (c i) (leftEnd c r j) &lt; intervalCut N c r k := by
+    rw [intervalCut, dif_pos hk]
+    dsimp [i, j]
+    linarith
+  have hhi : intervalCut N c r k &lt; min (c j) (rightEnd c r i) := by
+    rw [intervalCut, dif_pos hk]
+    dsimp [i, j]
+    linarith
+  refine ⟨lt_of_le_of_lt (le_max_left _ _) hlo,
+    lt_of_le_of_lt (le_max_right _ _) hlo, ?_, ?_⟩
+  · exact lt_of_lt_of_le hhi (min_le_left _ _)
+  · exact lt_of_lt_of_le hhi (min_le_right _ _)
+
+/-- The finite-cover geometry used in the source proof.  Its hypotheses encode
+the retained, noncontained intervals in center order; the witness cuts are
+strictly increasing and lie in the proper consecutive intersections. -/
+theorem exists_ordered_cuts
+    (a b : ℝ) (N : ℕ)
+    (c r : Fin N → ℝ)
+    (hcbox : ∀ i, a ≤ c i ∧ c i ≤ b)
+    (hr : ∀ i, 0 &lt; r i)
+    (hc : ∀ i j : Fin N, i.val &lt; j.val → c i &lt; c j)
+    (hpruned : Pruned c r)
+    (hcover : ∀ x, a ≤ x → x ≤ b →
+      ∃ i : Fin N, leftEnd c r i &lt; x ∧ x &lt; rightEnd c r i) :
+    ∃ q : ℕ → ℝ,
+      (∀ k (hk : k + 1 &lt; N),
+        c ⟨k, by omega⟩ &lt; q k ∧
+        leftEnd c r ⟨k + 1, hk⟩ &lt; q k ∧
+        q k &lt; c ⟨k + 1, hk⟩ ∧
+        q k &lt; rightEnd c r ⟨k, by omega⟩) ∧
+      (∀ i j, i &lt; j → j + 1 &lt; N → q i &lt; q j) := by
+  have hL := leftEnd_strict_of_pruned c r hc hr hpruned
+  have hR := rightEnd_strict_of_pruned c r hc hr hpruned
+  let q : ℕ → ℝ := intervalCut N c r
+  have hOverlap : ∀ k (hk : k + 1 &lt; N),
+      leftEnd c r ⟨k + 1, hk⟩ &lt; rightEnd c r ⟨k, by omega⟩ := by
+    intro k hk
+    exact consecutive_overlap a b c r hcbox hc hr hpruned hcover
+      ⟨k, by omega⟩ ⟨k + 1, hk⟩ (by simp)
+  refine ⟨q, ?_, ?_⟩
+  · intro k hk
+    exact intervalCut_bounds N c r k hk hc hr (hOverlap k hk)
+  · intro i j hij hjN
+    have hqI : q i &lt; c ⟨i + 1, by omega⟩ :=
+      (intervalCut_bounds N c r i (by omega) hc hr (hOverlap i (by omega))).2.2.1
+    have hcIJ : c ⟨i + 1, by omega⟩ ≤ c ⟨j, by omega⟩ := by
+      by_cases hEq : i + 1 = j
+      · subst j
+        rfl
+      · have hltNat : i + 1 &lt; j := by omega
+        have hlt : (⟨i + 1, by omega⟩ : Fin N).val &lt;
+            (⟨j, by omega⟩ : Fin N).val := by simpa using hltNat
+        exact (hc ⟨i + 1, by omega⟩ ⟨j, by omega⟩ hlt).le
+    have hqJ : c ⟨j, by omega⟩ &lt; q j :=
+      (intervalCut_bounds N c r j (by omega) hc hr (hOverlap j (by omega))).1
+    exact lt_trans (lt_of_lt_of_le hqI hcIJ) hqJ
+
+/-- The common prefix shift assigned to the family with index `j`. -/
+def shiftPrefix (q : ℕ → ℝ) (j : Fin N) (h : ℝ) : ℝ :=
+  Finset.sum (Finset.range j.val) (fun k =&gt; Real.rpow h (q k))
+
+/-- Tag each local label by its cover interval and apply the source&#x27;s common
+prefix shift to every bump in that interval&#x27;s family. -/
+def shiftedLabel {ι : Fin N → Type*}
+    (labels : ∀ j, ι j → N33Affine.Label m)
+    (q : ℕ → ℝ) (j : Fin N) (k : ι j) : N33Affine.Label m where
+  slope := (labels j k).slope
+  bump := fun h =&gt; (labels j k).bump h - shiftPrefix q j h
+
+def taggedLabels {ι : Fin N → Type*}
+    (labels : ∀ j, ι j → N33Affine.Label m)
+    (q : ℕ → ℝ) (x : Σ j, ι j) : N33Affine.Label m :=
+  shiftedLabel labels q x.1 x.2
+
+theorem value_shiftedLabel
+    {ι : Fin N → Type*}
+    (labels : ∀ j, ι j → N33Affine.Label m)
+    (q : ℕ → ℝ) (j : Fin N) (k : ι j) (h : ℝ) (p : Fin m → ℝ) :
+    N33Affine.value (shiftedLabel labels q j k) h p =
+      N33Affine.value (labels j k) h p - shiftPrefix q j h := by
+  simp [N33Affine.value, shiftedLabel, shiftPrefix]
+  ring
+
+theorem shiftPrefix_succ
+    (q : ℕ → ℝ) (k : ℕ) (hk : k + 1 &lt; N) (h : ℝ) :
+    shiftPrefix q ⟨k + 1, hk⟩ h =
+      shiftPrefix q ⟨k, Nat.lt_trans (Nat.lt_succ_self k) hk⟩ h +
+        Real.rpow h (q k) := by
+  have hk0 : k &lt; N := Nat.lt_trans (Nat.lt_succ_self k) hk
+  let i : Fin N := ⟨k, hk0⟩
+  let j : Fin N := ⟨k + 1, hk⟩
+  change shiftPrefix q j h = shiftPrefix q i h + Real.rpow h (q k)
+  simp [shiftPrefix, i, j, Finset.sum_range_succ]
+
+/-- Weak global activity against the tagged union implies weak activity in the
+label&#x27;s own local family.  The shift cancels exactly, including at ties. -/
+theorem active_restricts_to_local
+    {ι : Fin N → Type*}
+    (labels : ∀ j, ι j → N33Affine.Label m)
+    (q : ℕ → ℝ) (j : Fin N) (k : ι j) (h : ℝ) (p : Fin m → ℝ)
+    (hactive : N33Affine.Active (taggedLabels labels q) ⟨j, k⟩ h p) :
+    N33Affine.Active (labels j) k h p := by
+  intro k&#x27;
+  have hcomp := hactive ⟨j, k&#x27;⟩
+  change N33Affine.value (shiftedLabel labels q j k) h p ≤
+    N33Affine.value (shiftedLabel labels q j k&#x27;) h p at hcomp
+  rw [value_shiftedLabel labels q j k h p,
+    value_shiftedLabel labels q j k&#x27; h p] at hcomp
+  exact (sub_le_sub_iff_right (shiftPrefix q j h)).mp hcomp
+
+/-- Local sequential guarantees can be inherited by the tagged union once an
+independent slab argument locates the limiting minimum in the family window.
+This interface deliberately keeps approximating exponent vectors unrestricted. -/
+def LocalNeighborhoodGuarantee
+    {ι : Fin N → Type*} (a b : ℝ)
+    (E : (Fin m → ℝ) → ℝ)
+    (labels : ∀ j, ι j → N33Affine.Label m)
+    (lo hi : Fin N → ℝ) : Prop :=
+  ∀ (j : Fin N) (k : ι j) (hSeq : ℕ → ℝ)
+      (pSeq : ℕ → Fin m → ℝ) (p : Fin m → ℝ) (s : ℝ),
+    Tendsto hSeq atTop (nhdsWithin 0 (Ioi 0)) →
+    Tendsto pSeq atTop (nhds p) →
+    N33Affine.InCube a b p →
+    N33Affine.AtMinSlice p s →
+    lo j &lt; s → s &lt; hi j →
+    (∀ᶠ n in atTop, N33Affine.Active (labels j) k (hSeq n) (pSeq n)) →
+    ∀ i, |p i - (labels j k).slope i| &lt; E (labels j k).slope
+
+/-- Exact inheritance step for the final glue: weak activity selects every tied
+global minimizer, the shared prefix shift cancels within its tag, and a closed
+cut slab lies strictly inside that tag&#x27;s local neighborhood. -/
+theorem active_label_inherits_local_guarantee
+    {ι : Fin N → Type*} (a b : ℝ)
+    (E : (Fin m → ℝ) → ℝ)
+    (labels : ∀ j, ι j → N33Affine.Label m)
+    (q : ℕ → ℝ) (lo hi : Fin N → ℝ)
+    (hLocal : LocalNeighborhoodGuarantee a b E labels lo hi)
+    (j : Fin N) (k : ι j)
+    (hSeq : ℕ → ℝ) (pSeq : ℕ → Fin m → ℝ) (p : Fin m → ℝ) (s : ℝ)
+    (hSeqT : Tendsto hSeq atTop (nhdsWithin 0 (Ioi 0)))
+    (hpT : Tendsto pSeq atTop (nhds p))
+    (hpCube : N33Affine.InCube a b p)
+    (hslice : N33Affine.AtMinSlice p s)
+    (hslabLower : lo j &lt; s) (hslabUpper : s &lt; hi j)
+    (hactive : ∀ᶠ n in atTop,
+      N33Affine.Active (taggedLabels labels q) ⟨j, k⟩ (hSeq n) (pSeq n)) :
+    ∀ i, |p i - (labels j k).slope i| &lt; E (labels j k).slope := by
+  apply hLocal j k hSeq pSeq p s hSeqT hpT hpCube hslice hslabLower hslabUpper
+  filter_upwards [hactive] with n hn
+  exact active_restricts_to_local labels q j k (hSeq n) (pSeq n) hn
+
+/-- The finite tagged union of the local families, with each local bump shifted
+by the common prefix prescribed in the source proof. -/
+noncomputable def gluedFamily
+    (families : Fin N → N33Affine.FiniteFamily m)
+    (q : ℕ → ℝ) (hN : 0 &lt; N) : N33Affine.FiniteFamily m := by
+  classical
+  refine ⟨(Σ j : Fin N, (families j).Index), inferInstance, ?_,
+    taggedLabels (fun j k =&gt; (families j).label k) q⟩
+  let j : Fin N := ⟨0, hN⟩
+  obtain ⟨k⟩ := (families j).nonempty
+  exact ⟨⟨j, k⟩⟩
+
+theorem gluedFamily_active_restricts
+    (families : Fin N → N33Affine.FiniteFamily m)
+    (q : ℕ → ℝ) (hN : 0 &lt; N) (j : Fin N) (k : (families j).Index) (h : ℝ)
+    (p : Fin m → ℝ)
+    (hactive : N33Affine.Active (gluedFamily families q hN).label ⟨j, k⟩ h p) :
+    N33Affine.Active (families j).label k h p :=
+  active_restricts_to_local (fun j k =&gt; (families j).label k) q j k h p hactive
+
+/-- Finite sums of little-o offsets stay little-o at the same scale. -/
+theorem littleO_add {f g : ℝ → ℝ} {α : ℝ}
+    (hf : N33Affine.LittleO f α) (hg : N33Affine.LittleO g α) :
+    N33Affine.LittleO (fun h =&gt; f h + g h) α := by
+  change Tendsto (fun h =&gt; (f h + g h) / Real.rpow h α)
+    (nhdsWithin 0 (Ioi 0)) (nhds 0)
+  have hEq : (fun h : ℝ =&gt; (f h + g h) / Real.rpow h α) =ᶠ[nhdsWithin 0 (Ioi 0)]
+      (fun h =&gt; f h / Real.rpow h α + g h / Real.rpow h α) := by
+    filter_upwards [self_mem_nhdsWithin] with h hh
+    have hα : Real.rpow h α ≠ 0 := (Real.rpow_pos_of_pos hh α).ne&#x27;
+    field_simp
+  simpa using (hf.add hg).congr&#x27; hEq.symm
+
+theorem littleO_finset_sum {ι : Type*} (s : Finset ι)
+    (f : ι → ℝ → ℝ) (α : ℝ)
+    (hf : ∀ i ∈ s, N33Affine.LittleO (f i) α) :
+    N33Affine.LittleO (fun h =&gt; Finset.sum s (fun i =&gt; f i h)) α := by
+  classical
+  induction s using Finset.induction_on with
+  | empty =&gt;
+      change Tendsto (fun h =&gt; 0 / Real.rpow h α) (nhdsWithin 0 (Ioi 0)) (nhds 0)
+      simp
+  | @insert i s his ih =&gt;
+      have hsum := littleO_add (hf i (Finset.mem_insert_self i s))
+        (ih (by
+          intro j hj
+          exact hf j (Finset.mem_insert_of_mem hj)))
+      simpa [Finset.sum_insert, his] using hsum
+
+theorem shifted_bump_littleO
+    {ι : Fin N → Type*}
+    (labels : ∀ j, ι j → N33Affine.Label m)
+    (q : ℕ → ℝ) (j : Fin N) (k : ι j)
+    {a α : ℝ}
+    (hα : a &lt; α)
+    (hlocal : N33Affine.LittleO (labels j k).bump α)
+    (hcuts : ∀ l ∈ Finset.range j.val, a &lt; q l) :
+    N33Affine.LittleO (shiftedLabel labels q j k).bump a := by
+  have hlocal&#x27; := N33Affine.littleO_lower_exponent hlocal hα
+  have hshift : N33Affine.LittleO (shiftPrefix q j) a := by
+    unfold shiftPrefix
+    apply littleO_finset_sum
+    intro l hl
+    exact N33Affine.littleO_rpow_of_lt (hcuts l hl)
+  exact N33Affine.littleO_sub hlocal&#x27; hshift
+
+theorem gluedFamily_bump_littleO
+    (families : Fin N → N33Affine.FiniteFamily m)
+    (q : ℕ → ℝ) (hN : 0 &lt; N) (j : Fin N) (k : (families j).Index)
+    {a α : ℝ} (hα : a &lt; α)
+    (hlocal : N33Affine.LittleO ((families j).label k).bump α)
+    (hcuts : ∀ l ∈ Finset.range j.val, a &lt; q l) :
+    N33Affine.LittleO ((gluedFamily families q hN).label ⟨j, k⟩).bump a := by
+  simpa [gluedFamily, taggedLabels] using
+    (shifted_bump_littleO (fun j k =&gt; (families j).label k) q j k hα hlocal hcuts)
+
+theorem gluedFamily_offsets_littleO_of_cover
+    (a b : ℝ) (N : ℕ) (hN : 0 &lt; N)
+    (c r : Fin N → ℝ) (families : Fin N → N33Affine.FiniteFamily m)
+    (q : ℕ → ℝ)
+    (hcbox : ∀ j, a ≤ c j ∧ c j ≤ b)
+    (hr : ∀ j, 0 &lt; r j)
+    (hcuts : ∀ k (hk : k + 1 &lt; N),
+      c ⟨k, by omega⟩ &lt; q k ∧
+      leftEnd c r ⟨k + 1, hk⟩ &lt; q k ∧
+      q k &lt; c ⟨k + 1, hk⟩ ∧
+      q k &lt; rightEnd c r ⟨k, by omega⟩)
+    (hlocal : ∀ j k,
+      N33Affine.LittleO ((families j).label k).bump (c j + r j)) :
+    ∀ j k, N33Affine.LittleO ((gluedFamily families q hN).label ⟨j, k⟩).bump a := by
+  intro j k
+  apply gluedFamily_bump_littleO families q hN j k
+    (a := a) (α := c j + r j) ?_ (hlocal j k) ?_
+  · have hcenter := (hcbox j).1
+    linarith [hr j]
+  · intro l hl
+    have hlj : l &lt; j.val := Finset.mem_range.mp hl
+    have hlSucc : l + 1 ≤ j.val := Nat.succ_le_of_lt hlj
+    have hNcut : l + 1 &lt; N := lt_of_le_of_lt hlSucc j.isLt
+    have hcut := (hcuts l hNcut).1
+    exact lt_of_le_of_lt (hcbox ⟨l, by omega⟩).1 hcut
+
+/-- Closed slabs assigned by adjacent cuts to each ordered local family. -/
+def slabLower (a : ℝ) (q : ℕ → ℝ) (j : Fin N) : ℝ :=
+  if j.val = 0 then a else q (j.val - 1)
+
+def slabUpper (b : ℝ) (q : ℕ → ℝ) (j : Fin N) : ℝ :=
+  if j.val + 1 &lt; N then q j.val else b
+
+theorem cover_boundary_bounds
+    (a b : ℝ) (hN : 0 &lt; N) (c r : Fin N → ℝ)
+    (hcbox : ∀ i, a ≤ c i ∧ c i ≤ b)
+    (hc : ∀ i j : Fin N, i.val &lt; j.val → c i &lt; c j)
+    (hr : ∀ i : Fin N, 0 &lt; r i)
+    (hpruned : Pruned c r)
+    (hcover : ∀ x, a ≤ x → x ≤ b →
+      ∃ i : Fin N, leftEnd c r i &lt; x ∧ x &lt; rightEnd c r i) :
+    leftEnd c r ⟨0, hN⟩ &lt; a ∧
+      b &lt; rightEnd c r ⟨N - 1, by omega⟩ := by
+  have hab : a ≤ b := le_trans (hcbox ⟨0, hN⟩).1 (hcbox ⟨0, hN⟩).2
+  obtain ⟨i, hLi, hRi⟩ := hcover a le_rfl hab
+  have hFirst : leftEnd c r ⟨0, hN⟩ ≤ leftEnd c r i :=
+    leftEnd_mono_of_pruned c r hc hr hpruned ⟨0, hN⟩ i (Nat.zero_le i.val)
+  have hlastBound : N - 1 &lt; N := by omega
+  let last : Fin N := ⟨N - 1, hlastBound⟩
+  obtain ⟨j, hLj, hRj⟩ := hcover b hab le_rfl
+  have hjle : j.val ≤ N - 1 := by change j.val ≤ N - 1; omega
+  have hLast : rightEnd c r j ≤ rightEnd c r last :=
+    rightEnd_mono_of_pruned c r hc hr hpruned j last hjle
+  exact ⟨lt_of_le_of_lt hFirst hLi, lt_of_lt_of_le hRj hLast⟩
+
+theorem exists_cover_gluing_data
+    (a b : ℝ) (N : ℕ) (hN : 0 &lt; N)
+    (c r : Fin N → ℝ)
+    (hcbox : ∀ i, a ≤ c i ∧ c i ≤ b)
+    (hr : ∀ i, 0 &lt; r i)
+    (hc : ∀ i j : Fin N, i.val &lt; j.val → c i &lt; c j)
+    (hpruned : Pruned c r)
+    (hcover : ∀ x, a ≤ x → x ≤ b →
+      ∃ i : Fin N, leftEnd c r i &lt; x ∧ x &lt; rightEnd c r i) :
+    ∃ q : ℕ → ℝ,
+      (∀ k (hk : k + 1 &lt; N),
+        c ⟨k, by omega⟩ &lt; q k ∧
+        leftEnd c r ⟨k + 1, hk⟩ &lt; q k ∧
+        q k &lt; c ⟨k + 1, hk⟩ ∧
+        q k &lt; rightEnd c r ⟨k, by omega⟩) ∧
+      (∀ i j, i &lt; j → j + 1 &lt; N → q i &lt; q j) ∧
+      leftEnd c r ⟨0, hN⟩ &lt; a ∧
+      b &lt; rightEnd c r ⟨N - 1, by omega⟩ := by
+  obtain ⟨q, hcuts, hstrict⟩ :=
+    exists_ordered_cuts a b N c r hcbox hr hc hpruned hcover
+  obtain ⟨hfirst, hlast⟩ := cover_boundary_bounds a b hN c r hcbox hc hr hpruned hcover
+  exact ⟨q, hcuts, hstrict, hfirst, hlast⟩
+
+theorem cut_slab_inside_local_interval
+    (a b : ℝ) (hN : 0 &lt; N) (c r : Fin N → ℝ) (q : ℕ → ℝ)
+    (hfirst : leftEnd c r ⟨0, hN⟩ &lt; a)
+    (hlast : b &lt; rightEnd c r ⟨N - 1, by omega⟩)
+    (hcuts : ∀ k (hk : k + 1 &lt; N),
+      c ⟨k, by omega⟩ &lt; q k ∧
+      leftEnd c r ⟨k + 1, hk⟩ &lt; q k ∧
+      q k &lt; c ⟨k + 1, hk⟩ ∧
+      q k &lt; rightEnd c r ⟨k, by omega⟩)
+    (j : Fin N) (s : ℝ)
+    (hsLo : slabLower a q j ≤ s)
+    (hsHi : s ≤ slabUpper b q j) :
+    leftEnd c r j &lt; s ∧ s &lt; rightEnd c r j := by
+  constructor
+  · by_cases hj0 : j.val = 0
+    · have hj : j = ⟨0, hN⟩ := Fin.ext hj0
+      rw [hj] at hsLo ⊢
+      simpa [slabLower, hj0] using lt_of_lt_of_le hfirst hsLo
+    · let k := j.val - 1
+      have hk : k + 1 &lt; N := by dsimp [k]; omega
+      have hkval : k + 1 = j.val := by dsimp [k]; omega
+      have hj : (⟨k + 1, hk⟩ : Fin N) = j := Fin.ext hkval
+      have hcut := (hcuts k hk).2.1
+      rw [hj] at hcut
+      have hsLo&#x27; : q k ≤ s := by simpa [slabLower, hj0, k] using hsLo
+      exact lt_of_lt_of_le hcut hsLo&#x27;
+  · by_cases hjlast : j.val + 1 &lt; N
+    · have hcut := (hcuts j.val hjlast).2.2.2
+      have hsHi&#x27; : s ≤ q j.val := by simpa [slabUpper, hjlast] using hsHi
+      exact lt_of_le_of_lt hsHi&#x27; hcut
+    · have hjval : j.val = N - 1 := by
+        have hge : N ≤ j.val + 1 := le_of_not_gt hjlast
+        omega
+      have hj : j = ⟨N - 1, by omega⟩ := Fin.ext hjval
+      have hsHi&#x27; : s ≤ b := by simpa [slabUpper, hjlast] using hsHi
+      rw [hj]
+      exact lt_of_le_of_lt hsHi&#x27; hlast
+
+/-- Applying the local neighborhood property to a label in its assigned closed
+cut slab. The cut endpoints themselves are safe because each cut lies strictly
+inside both neighboring open neighborhoods. -/
+theorem active_label_inherits_from_cut_slab
+    {ι : Fin N → Type*} (a b : ℝ)
+    (E : (Fin m → ℝ) → ℝ)
+    (labels : ∀ j, ι j → N33Affine.Label m)
+    (q : ℕ → ℝ) (c r : Fin N → ℝ)
+    (hN : 0 &lt; N)
+    (hfirst : leftEnd c r ⟨0, hN⟩ &lt; a)
+    (hlast : b &lt; rightEnd c r ⟨N - 1, by omega⟩)
+    (hcuts : ∀ k (hk : k + 1 &lt; N),
+      c ⟨k, by omega⟩ &lt; q k ∧
+      leftEnd c r ⟨k + 1, hk⟩ &lt; q k ∧
+      q k &lt; c ⟨k + 1, hk⟩ ∧
+      q k &lt; rightEnd c r ⟨k, by omega⟩)
+    (hLocal : LocalNeighborhoodGuarantee a b E labels
+      (leftEnd c r) (rightEnd c r))
+    (j : Fin N) (k : ι j)
+    (hSeq : ℕ → ℝ) (pSeq : ℕ → Fin m → ℝ) (p : Fin m → ℝ) (s : ℝ)
+    (hSeqT : Tendsto hSeq atTop (nhdsWithin 0 (Ioi 0)))
+    (hpT : Tendsto pSeq atTop (nhds p))
+    (hpCube : N33Affine.InCube a b p)
+    (hslice : N33Affine.AtMinSlice p s)
+    (hsLo : slabLower a q j ≤ s)
+    (hsHi : s ≤ slabUpper b q j)
+    (hactive : ∀ᶠ n in atTop,
+      N33Affine.Active (taggedLabels labels q) ⟨j, k⟩ (hSeq n) (pSeq n)) :
+    ∀ i, |p i - (labels j k).slope i| &lt; E (labels j k).slope := by
+  have hinside := cut_slab_inside_local_interval a b hN c r q
+    hfirst hlast hcuts j s hsLo hsHi
+  exact active_label_inherits_local_guarantee a b E labels q
+    (leftEnd c r) (rightEnd c r) hLocal j k hSeq pSeq p s
+    hSeqT hpT hpCube hslice hinside.1 hinside.2 hactive
+
+theorem finite_family_active_label_inherits_from_cut_slab
+    (a b : ℝ) (E : (Fin m → ℝ) → ℝ)
+    (families : Fin N → N33Affine.FiniteFamily m)
+    (q : ℕ → ℝ) (c r : Fin N → ℝ) (hN : 0 &lt; N)
+    (hfirst : leftEnd c r ⟨0, hN⟩ &lt; a)
+    (hlast : b &lt; rightEnd c r ⟨N - 1, by omega⟩)
+    (hcuts : ∀ k (hk : k + 1 &lt; N),
+      c ⟨k, by omega⟩ &lt; q k ∧
+      leftEnd c r ⟨k + 1, hk⟩ &lt; q k ∧
+      q k &lt; c ⟨k + 1, hk⟩ ∧
+      q k &lt; rightEnd c r ⟨k, by omega⟩)
+    (hLocal : LocalNeighborhoodGuarantee a b E
+      (fun j k =&gt; (families j).label k) (leftEnd c r) (rightEnd c r))
+    (j : Fin N) (k : (families j).Index)
+    (hSeq : ℕ → ℝ) (pSeq : ℕ → Fin m → ℝ) (p : Fin m → ℝ) (s : ℝ)
+    (hSeqT : Tendsto hSeq atTop (nhdsWithin 0 (Ioi 0)))
+    (hpT : Tendsto pSeq atTop (nhds p))
+    (hpCube : N33Affine.InCube a b p)
+    (hslice : N33Affine.AtMinSlice p s)
+    (hsLo : slabLower a q j ≤ s)
+    (hsHi : s ≤ slabUpper b q j)
+    (hactive : ∀ᶠ n in atTop,
+      N33Affine.Active (gluedFamily families q hN).label ⟨j, k⟩
+        (hSeq n) (pSeq n)) :
+    ∀ i, |p i - ((families j).label k).slope i| &lt;
+      E ((families j).label k).slope := by
+  exact active_label_inherits_from_cut_slab a b E
+    (fun j k =&gt; (families j).label k) q c r hN hfirst hlast hcuts hLocal
+    j k hSeq pSeq p s hSeqT hpT hpCube hslice hsLo hsHi hactive
+
+end N33Affine.Glue
+
+end
+</pre><p><a href="../assets/bf807feb585879c69653f1385bd58559244505f024f0d92d1de166596a03d438.lean">Exact original</a></p></html>

@@ -1,0 +1,102 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/weyl_compatible_lift/scripts/eb_decomposition.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/weyl_compatible_lift/scripts/eb_decomposition.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Find a finite EB Weyl comparator as a mixture of twirled product Choi states.&quot;&quot;&quot;
+from __future__ import annotations
+
+import argparse
+import json
+import numpy as np
+from scipy.optimize import linprog
+
+from weyl_sdp import phase_space, symplectic
+
+
+def product_twirled_features(psi: np.ndarray, d: int):
+    &quot;&quot;&quot;Return Bell weights and Weyl multipliers of Twirl(|psi&gt;&lt;psi|⊗|psi*&gt;&lt;psi*|).&quot;&quot;&quot;
+    points, _ = phase_space(d)
+    omega = np.exp(2j * np.pi / d)
+    bells = []
+    for a, b in points:
+        U = np.zeros((d, d), dtype=complex)
+        for j in range(d):
+            U[(j + a) % d, j] = omega ** (b * j)
+        ket = np.zeros(d * d, dtype=complex)
+        for i in range(d):
+            ket[i * d:(i + 1) * d] = U[:, i] / np.sqrt(d)
+        bells.append(ket)
+    bell_matrix = np.asarray(bells)
+    product = np.kron(psi, psi.conjugate())
+    q = np.abs(bell_matrix.conj() @ product) ** 2
+    C = np.array([[np.exp(2j * np.pi * symplectic(x, z, d) / d)
+                   for z in points] for x in points])
+    lam = C @ q
+    return q, lam
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument(&quot;--candidate&quot;, required=True)
+    ap.add_argument(&quot;--out&quot;, required=True)
+    ap.add_argument(&quot;--d&quot;, type=int, default=5)
+    ap.add_argument(&quot;--seed&quot;, type=int, default=20261009)
+    ap.add_argument(&quot;--dictionary-size&quot;, type=int, default=5000)
+    args = ap.parse_args()
+    d = args.d
+    source = json.load(open(args.candidate))
+    target_channel = source[&quot;best&quot;][&quot;lambda&quot;]
+    t = np.maximum(2 * np.asarray(target_channel) - 1, 0)
+    active = np.flatnonzero(t[1:] &gt; 1e-10) + 1
+
+    rng = np.random.default_rng(args.seed)
+    states, feature_cols, bell_cols = [], [], []
+    for _ in range(args.dictionary_size):
+        psi = rng.normal(size=d) + 1j * rng.normal(size=d)
+        psi /= np.linalg.norm(psi)
+        q, lam = product_twirled_features(psi, d)
+        if np.max(np.abs(lam.imag)) &gt; 1e-8 or np.min(lam.real) &lt; -1e-8:
+            continue
+        states.append(psi)
+        feature_cols.append(lam.real)
+        bell_cols.append(q)
+    F = np.asarray(feature_cols).T
+    Q = np.asarray(bell_cols).T
+    lp = linprog(c=np.ones(F.shape[1]), A_ub=-F[active], b_ub=-t[active],
+                 bounds=(0, None), method=&quot;highs&quot;)
+    if not lp.success:
+        raise RuntimeError(lp.message)
+    support = np.flatnonzero(lp.x &gt; 1e-8)
+    weights = lp.x[support]
+    weights = weights / np.sum(weights)
+    mu = F[:, support] @ weights
+    bell_q = Q[:, support] @ weights
+    payload = {
+        &quot;dimension&quot;: d,
+        &quot;construction&quot;: &quot;convex mixture of Weyl twirls of product Choi states |psi_j&gt;&lt;psi_j| tensor |conj(psi_j)&gt;&lt;conj(psi_j)|&quot;,
+        &quot;channel_target_lambda&quot;: target_channel,
+        &quot;clipped_lower_bounds_t&quot;: t.tolist(),
+        &quot;dictionary&quot;: {&quot;seed&quot;: args.seed, &quot;sampled_product_states&quot;: args.dictionary_size,
+                       &quot;solver&quot;: &quot;SciPy HiGHS linear programming&quot;},
+        &quot;weights_normalized_to_sum_one&quot;: weights.tolist(),
+        &quot;product_kets&quot;: [[[float(z.real), float(z.imag)] for z in states[i]]
+                         for i in support],
+        &quot;comparator_lambda&quot;: mu.tolist(),
+        &quot;comparator_bell_probabilities&quot;: bell_q.tolist(),
+        &quot;active_modes&quot;: active.tolist(),
+        &quot;minimum_active_slack&quot;: float(np.min(mu[active] - t[active])),
+        &quot;minimum_all_mode_value&quot;: float(np.min(mu[1:])),
+        &quot;weight_sum&quot;: float(np.sum(weights)),
+        &quot;support_size&quot;: int(len(support)),
+        &quot;candidate_state_indices&quot;: support.tolist(),
+        &quot;scope&quot;: &quot;finite floating-point construction; each summand is exactly separable by construction, inequalities have numerical margin&quot;,
+    }
+    with open(args.out, &quot;w&quot;) as f:
+        json.dump(payload, f, indent=2)
+        f.write(&quot;\n&quot;)
+    print(json.dumps({k: payload[k] for k in (
+        &quot;weight_sum&quot;, &quot;support_size&quot;, &quot;active_modes&quot;, &quot;minimum_active_slack&quot;,
+        &quot;minimum_all_mode_value&quot;, &quot;weights_normalized_to_sum_one&quot;,
+        &quot;comparator_lambda&quot;, &quot;comparator_bell_probabilities&quot;)}, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+
+</pre><p><a href="../assets/cf3d8fda7132c226f3acee4059d48f34c00e68e0595309b8f746d915432bd1fe.py">Exact original</a></p></html>

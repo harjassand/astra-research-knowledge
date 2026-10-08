@@ -1,0 +1,118 @@
+Raw-trajectory concentration for an empirical finite Hankel block
+Cycle 2 research note | 2026-10-08
+
+Status
+======
+
+PROVED HERE: an iid-trajectory, matrix-valued sampling model; exact within-path covariance; finite-sample Frobenius and operator-norm concentration; conditional validity after training-only basis selection and fresh holdout validation; a finite-state rank corollary under an explicit singular-value gap; and a two-point finite-HMM lower bound of order gap^{-2} for fixed-block estimation/rank testing.
+
+STANDARD INPUT: the probability inequalities are applications of bounded differences (McDiarmid, 1989) and rectangular matrix Bernstein (Tropp, 2012). This note does not claim a new general concentration inequality. The derived application and cost comparison are internal mathematical work, not external validation.
+
+NOT ESTABLISHED: recovery of the full hidden-state count without a complete witness block and a margin; global process identification from one finite block; a minimax rate for every HMM class; or priority/novelty of this application. The lower bound is for a concrete two-point subfamily and a fixed 2-by-2 block.
+
+1. Interface and exact sample object
+====================================
+
+Let the observed alphabet be Sigma, |Sigma|=a>=2. Each independent reset episode emits X_1,...,X_T from an unknown law P_T on Sigma^T. The reset-episode law is the only sampling interface. No cell oracle, matrix-output oracle, or ability to request a probability is assumed. Let k,l be nonnegative integers with L=k+l<=T. Let U=Sigma^{<=k}, V=Sigma^{<=l}, p=|U|=sum_{i=0}^k a^i, q=|V|=sum_{j=0}^l a^j. For a word w of length at most L, define f(w)=P(X_1...X_|w|=w), with f(empty)=1. The finite Hankel block is H in R^{p x q}, H[u,v]=f(uv).
+
+One episode x=(x_1,...,x_T) produces the whole matrix
+
+  Y(x)[u,v] = 1{(x_1,...,x_|u|+|v|)=uv}.
+
+Thus E[Y]=H and Hhat_N=N^{-1} sum_{i=1}^N Y(X_i) is the empirical block. The matrices Y(X_i) are iid across episodes. Their cells are not independent. For each pair of lengths (i,j) in {0,...,k} x {0,...,l}, exactly one cell of that length-pair subblock is 1. Hence, for every episode of length at least L,
+
+  ||Y||_F^2 = m,     m=(k+1)(l+1),     ||Y||_op <= sqrt(m).
+
+When the same concatenated word has multiple row/column splits, those cells are duplicate indicators. For cells c=(u,v), c'=(u',v'), write w=uv and w'=u'v'. Their exact covariance is
+
+  Cov(Y_c,Y_c') = 1{w is a prefix of w' or w' is a prefix of w} f(longer(w,w')) - f(w)f(w'),
+
+where the compatible case uses the longer word (and if w=w', either word). If neither is a prefix of the other, the product event is impossible and its expectation is zero. This formula includes identical indicators at different splits. It is the dependence model; no independent-cell approximation is made.
+
+Writing C=Cov(vec(Y)), a (pq)-by-(pq) matrix, gives tr(C)=E||Y-H||_F^2=m-||H||_F^2 <= m. The rectangular matrix-variance operators are
+
+  V_L=E[(Y-H)(Y-H)^*] <= E[YY^*],
+  V_R=E[(Y-H)^*(Y-H)] <= E[Y^*Y],
+
+and satisfy ||V_L||,||V_R||<=m because ||Y||_op^2<=m. These identities expose the covariance cost: storing dense C takes (pq)^2 scalar slots; forming empirical outer products naively costs O(Nm^2) sparse updates per sample (and dense storage O((pq)^2)). The theorem below does not estimate C, V_L, or V_R. It uses only the deterministic bound m.
+
+2. Nonasymptotic concentration theorem
+======================================
+
+Theorem 1 (one-batch raw-trajectory concentration). For N independent reset episodes of length at least L, for every delta in (0,1), with probability at least 1-delta,
+
+  ||Hhat_N-H||_F <= sqrt(v_F/N) + sqrt(2m log(1/delta)/N),
+
+where v_F=tr(C)=m-||H||_F^2 <= m. In particular, the same right-hand side bounds operator error because ||A||_op<=||A||_F. A distribution-free sufficient sample size for Frobenius and operator error at most epsilon is
+
+  N >= (sqrt(m)+sqrt(2m log(1/delta)))^2 / epsilon^2.
+
+This is O(m log(1/delta)/epsilon^2); constants are explicit in the displayed expression. If the variance v_F is known or otherwise bounded, replace m under the first square root by v_F.
+
+Proof. Regard Y-H as a random vector in the pq-dimensional Hilbert space with Frobenius norm. Independence across episodes and zero mean imply
+
+  E||Hhat-H||_F^2 = E||Y-H||_F^2/N = v_F/N,
+
+so Jensen gives E||Hhat-H||_F<=sqrt(v_F/N). Replacing one episode changes this function by at most ||Y-Y'||_F/N<=2sqrt(m)/N. McDiarmid's bounded-difference inequality therefore gives an upper-tail increment sqrt(2m log(1/delta)/N). The operator conclusion follows from norm domination. This proof models each trajectory as one whole matrix sample and makes no assumption about cellwise independence. McDiarmid's original bounded-differences result is the scalar concentration input [McDiarmid, 1989](https://doi.org/10.1017/CBO9781107359949.008).
+
+The same interface also permits a spectral matrix-Bernstein bound. Put Z_i=Y_i-H. Then ||Z_i||_op<=2sqrt(m), and both matrix variance sums have norm at most Nm. Applying rectangular matrix Bernstein to the independent Z_i, for x=log((p+q)/delta), yields with probability at least 1-delta
+
+  ||Hhat-H||_op <= sqrt(2m x/N) + (4 sqrt(m) x)/(3N).
+
+This is the standard rectangular Bernstein inequality with row/column dimension factor p+q and variance max(||sum E Z_i Z_i^*||,||sum E Z_i^* Z_i||); see Theorem 1.6 in Tropp [User-Friendly Tail Bounds for Sums of Random Matrices](https://arxiv.org/abs/1004.4389), published in Foundations of Computational Mathematics 12 (2012), 389-434. The Frobenius route avoids a dimension logarithm and controls both norms, while the matrix route can be sharper for operator error when the covariance directions are favorable. Neither needs cells to be independent.
+
+Corollary (finite-block rank under a supplied gap). Suppose the unknown process is an HMM with at most r hidden states. With initial row alpha and symbol transition/emission matrices A_y, f(w)=alpha A_{w_1}...A_{w_|w|} 1. Therefore the fixed block factors as H[u,v]=(alpha A_u)(A_v 1), and rank(H)<=r. For a specified block whose true rank is r0 and whose smallest nonzero singular value is at least gamma, if an event gives ||Hhat-H||_op<=epsilon and a numerical SVD returns every singular value to additive error at most tau, then rank is recoverable by thresholding at gamma/2 whenever epsilon+tau<gamma/2. Weyl's inequality proves this: estimated nonzero singular values exceed gamma/2 and estimated zero singular values stay below gamma/2. This certifies the rank of this block only. A full hidden-state-count claim additionally requires that the chosen finite block is a complete rank witness/minimal realization; that condition is not inferred from the concentration theorem.
+
+3. Validity after adaptive basis selection
+==========================================
+
+Training/holdout protocol. Use N_tr reset episodes to choose any data-dependent row set I, column set J, candidate CUR factors, threshold, or other basis. Conditional on the training transcript, these choices are fixed. Draw a fresh independent validation batch of N_val episodes. The matrices Y_i restricted to I x J remain iid conditional on the training transcript, E[Y_i[I,J]|training]=H[I,J], and ||Y_i[I,J]||_F<=sqrt(m). Theorem 1 therefore applies conditionally, with the same distribution-free m (or a smaller certified bound), and hence unconditionally. This gives a valid error bar for the selected block even when selection among many candidate bases used the entire training sample.
+
+For validating a fixed training-selected approximation A to the full block, form Hhat_val from the holdout and report d_hat=||Hhat_val-A|| in either Frobenius or operator norm. On the concentration event,
+
+  |d_hat-||H-A||| <= ||Hhat_val-H|| <= epsilon_val.
+
+This is a valid residual interval because A is measurable with respect to training, not validation. It requires construction of the full holdout block if the norm is a full-block norm; merely evaluating I x J validates only that subblock.
+
+If the algorithm changes its basis after inspecting validation, that same holdout cannot be reused for a fresh conditional guarantee. Use a new independent batch per adaptive phase. For phase j=1,2,... allocate delta_j=delta/[j(j+1)] (whose sum is delta) and use a fresh batch after the phase-j candidate is fixed. Conditional application plus a union bound gives simultaneous validity at all tested phases with probability at least 1-delta. A confidence sequence could replace this split-batch construction, but would require an explicitly proved time-uniform bound; none is claimed here. A single fixed holdout also supports arbitrary post-selection within a finite candidate family only if one pays a uniform-over-candidates bound or uses a separate holdout per final selected candidate.
+
+These guarantees certify empirical approximation error, not basis completeness, conditioning, a CUR theorem's coherence/residual assumptions, or rank of the infinite process. Those must be supplied or separately established.
+
+4. A finite-state lower bound and rate interpretation
+=====================================================
+
+Take as the unknown model class all binary-output reset HMMs with at most five hidden states and arbitrary initial, transition, and emission probabilities. For the lower bound, restrict to this explicit two-point subfamily. P_0 is the one-state fair-coin source. For 0<delta<=1/4, P_delta has hidden states +1,-1,+2,-2,F. It starts equally likely in +1 or -1; transitions are +1->+2, -1->-2, +2->F, -2->F, F->F. Emissions in +1,+2 are Bernoulli(1/2+delta), emissions in -1,-2 are Bernoulli(1/2-delta), and F emits a fair bit. Thus only the first two outputs depend on the initial hidden sign; all later outputs are independent fair bits.
+
+Use U=V={empty,0}, so k=l=1 and
+
+  H_0 = [[1, 1/2], [1/2, 1/4]],
+  H_delta = [[1, 1/2], [1/2, 1/4+delta^2]].
+
+The null block has rank 1, while det(H_delta)=delta^2 and H_delta has rank 2. The Frobenius and operator distance is delta^2. Since its largest eigenvalue is between 1 and 1.3125, its second singular value gamma_delta=delta^2/sigma_1 is between (16/21)delta^2 and delta^2; in particular it is Theta(delta^2).
+
+The first-two-symbol law under P_delta assigns 1/4+delta^2 to 00 and 11, and 1/4-delta^2 to 01 and 10; under P_0 it is uniform. Its chi-squared divergence from P_0 is 16delta^4, so KL(P_delta||P_0)<=16delta^4. The remaining T-2 symbols have the same fair independent law under both models, so the length-T trajectory KL is still at most 16delta^4. For N episodes, KL<=16Ndelta^4, hence Pinsker gives TV<=sqrt(8Ndelta^4). If N<=1/(128delta^4), TV<=1/4. Le Cam's two-point bound then makes the average error of any test at least (1-TV)/2>=3/8.
+
+Consequently, with success probability at least 2/3, no method can uniformly (i) distinguish rank 1 from rank 2 on this subfamily, or (ii) estimate this 2-by-2 H block in Frobenius/operator norm to error <delta^2/3, using fewer than c delta^{-4}=Omega(gamma_delta^{-2}) trajectories for a universal constant c. The balls of radius delta^2/3 around H_0 and H_delta are disjoint, so an estimator at that accuracy gives a test. This lower bound matches the epsilon^{-2} dependence of Theorem 1 for this fixed block, up to confidence/log factors and constants; it also shows why exact rank recovery cannot be uniform without a positive margin. It does not prove optimality of the m factor or of the dimension/log terms for general blocks.
+
+5. Resource ledger and baseline comparison
+===========================================
+
+Define D_L=sum_{t=0}^L a^t=(a^{L+1}-1)/(a-1), the number of distinct prefix words whose probabilities are used. The H block has p q cells, with p=sum_{i=0}^k a^i and q=sum_{j=0}^l a^j. The full length-T path space has a^T possible strings and a^T-1 unconstrained probabilities. This estimator does not enumerate or estimate that entire distribution: it estimates only D_L prefix probabilities. If L=T, both D_L and pq are exponential in T (for fixed a, each is Theta(a^T)); if L<T, the target block scales with L while an untruncated episode still costs T symbols. Where the interface permits stopping after L, do so.
+
+Raw trajectories (the actual interface):
+* Statistical sample count: N episodes as in Theorem 1, independent of p q under the conservative Frobenius bound except through m=(k+1)(l+1). Each episode simultaneously contributes all its prefix indicators; there is no additional cell-sampling factor.
+* Observation/communication: N resets and N T symbols if complete length-T episodes are delivered, or N L symbols if episodes can be legally truncated at L. This is N T ceil(log2 a) symbol bits before protocol overhead. Storing raw data costs the same order. Streaming sufficient counts instead uses D_L counters of ceil(log2(N+1)) bits plus a shared denominator N and word/index storage; processing a path requires O(L) prefix-counter updates. The complete path space a^T is not allocated.
+* Matrix construction and SVD: dense Hhat can be materialized by looking up the D_L counts for each of p q cells in O(pq) cell writes and O(pq) storage. A standard dense SVD costs O(pq min(p,q)) arithmetic and O(pq) matrix/workspace storage. Numerical rank certification must allocate SVD error tau as in the corollary. An iterative or matrix-free method may change compute/storage but needs its own certified error and access-cost analysis.
+* Exact and finite precision: each empirical entry is exactly C_w/N, where C_w is an integer prefix count. Store the D_L integers and common N for exact empirical values (about D_L log2(N+1)+log2(N+1) bits, plus word keys); dense rational materialization duplicates these values across splits. If each of p q cells is separately rounded to b fractional bits with absolute rounding error <=2^{-b-1}, the resulting dense Frobenius error is at most sqrt(pq)2^{-b-1}. To keep this <=epsilon_round, it suffices that b>=ceil(log2(sqrt(pq)/(2epsilon_round))). Allocate epsilon_round from the total error budget. Certified SVD arithmetic adds guard precision sufficient for tau; it is not free and depends on the required gap gamma and conditioning.
+* Covariance: exact cell covariances are given in Section 1; the theorem avoids storing them by using m. If a covariance-adaptive method is proposed, report whether it estimates only p-by-p and q-by-q variance matrices or full C, and charge their computation, storage, and finite-sample estimation error.
+
+Separately queried scalar empirical entries (a distinct, weaker information interface):
+Suppose a query chooses one word w and returns one Bernoulli observation of 1{prefix=w} from a fresh episode. To cover all D_L distinct words with simultaneous entry error <=eta, Hoeffding plus a union bound suffices with n=ceil((2 eta^2)^{-1} log(2D_L/delta)) fresh observations per word, for D_L n observations total; episodes for word w need |w| symbols. For a deterministic Frobenius guarantee from uniform entry errors choose eta=epsilon/sqrt(pq), giving O(D_L p q epsilon^{-2} log(D_L/delta)) scalar observations, with corresponding word-length-weighted symbol cost. This is a sufficient uniform-entry strategy, not asserted minimax for an optimally allocated entry-query design. If repeated cells spelling the same word are naively queried separately, the cost rises to p q times n; caching the unique word estimate is the fair scalar baseline. An exact-probability scalar oracle would instead use D_L oracle calls plus output precision, but it is strictly stronger than the reset-trajectory interface and is not a sample-equivalent baseline.
+
+Full empirical-block SVD (the natural raw-data baseline):
+This baseline uses N whole trajectories and therefore N independent samples for the fixed full L-block target. It updates prefix counts in O(NL), materializes all p q entries in O(pq), and performs the dense SVD at O(pq min(p,q)) arithmetic / O(pq) matrix storage. A trajectory causes only L+1 distinct prefix-counter increments even though its matrix Y contains m split-cell ones; duplicate splits share the same word count. A basis method using the same raw-trajectory interface receives all these indicators too, so querying fewer cells does not by itself establish a sample-information advantage; it may save downstream materialization, SVD work, or stored entries. This comparison does not rule out fewer episodes from a different estimator using additional HMM structure. A selected shorter subblock could be observed with shorter episodes, but that is a different target and guarantee. Conversely, the baseline SVD of the stacked trajectory-feature matrix [vec(Y_i)] is not an SVD of Hhat: it targets an empirical second moment/covariance, not the mean Hankel block. Keep those objectives separate.
+
+6. Assessment
+=============
+
+The core theorem is a straightforward but exact matrix-valued application of bounded differences; the operator variant is standard matrix Bernstein. The substantive correction is to count one whole path as one dependent matrix observation and expose the exact covariance and resource interface. For a fixed finite block, the lower bound supplies a concrete unknown-HMM rate obstruction at the singular-gap scale. The empirical result supports acquisition of a reusable finite block only when one charges the block's explicit dimension, retained precision, validation sample split, dense SVD, and residual validation. It does not establish a cheap reusable model: for long horizons, p q and D_L grow exponentially, and for small gaps the required path count grows as gap^{-2}. No external novelty or general acquisition advantage is established.

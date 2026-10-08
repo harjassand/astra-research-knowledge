@@ -1,0 +1,181 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/acquisition_learning/cycle2/noisy_realization/PROOF.txt</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/acquisition_learning/cycle2/noisy_realization/PROOF.txt</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>CYCLE 2 — NOISY HANKEL REALIZATION FROM RAW HMM SEQUENCES
+8 October 2026
+Status: internally proved, conditional finite-horizon theorem; exact HMM positivity recovery remains open.
+
+SCOPE AND CLAIM
+
+This leaf constructs a minimal real weighted-automaton realization of the observable word-probability series of a finite hidden Markov model from independent raw sequence samples. The hidden-state count is bounded above by a supplied integer R, but the observable Hankel rank r is not supplied. The construction uses a universal prefix/suffix basis through length R−1 and a singular-value noise cutoff. It does not use exact matrix-entry access, a supplied hitting list, or N51.
+
+The main positive result is finite and conditional: a rank margin larger than the sampling and numerical error permits exact selection of r and stable recovery of an equivalent r-dimensional WFA, with the error growing polynomially in the block size and inverse margin. The main negative result is that the resulting SVD-coordinate WFA is generally signed. Linear normalization identities can be checked; entrywise nonnegativity and an HMM parameterization are not invariant under the recovered coordinate gauge.
+
+1. CLASS, INTERFACE, AND COSTED TARGET
+
+Let Σ be an alphabet of size q≥2. A reset episode returns an independent string X_1…X_T from one fixed HMM initial law. The HMM has m hidden states, m≤R, row-stochastic transition P, emission probabilities E_{i,a}, and an initial row distribution π (πP=π may be imposed for the stationary subclass). Write D_a=diag(E_{1,a},…,E_{m,a}) and M_a=D_aP. For w=a_1…a_k, define
+
+  p(w)=Pr[X_1…X_k=w]=π M_{a_1}…M_{a_k} 1_m,     p(ε)=1.
+
+The last P in M_a is harmless because P1=1. Therefore p is a real weighted-automaton series of dimension at most m. Its infinite Hankel matrix is H_p[u,v]=p(uv); its rank r is the minimal real WFA dimension and satisfies 1≤r≤m≤R. In general r can be smaller than m. This leaf recovers the observable series, not the number or coordinates of the original hidden states.
+
+Acquisition interface: N independent reset episodes, each of horizon T=2R−1. The learner sees all T symbols in each episode. There are no conditional-history, hidden-state, transition-table, or exact Hankel-entry queries.
+
+Let
+  U=V=Σ^{≤R−1},   M=|U|=Σ_{j=0}^{R−1}q^j,
+  W=Σ_{j=0}^{2R−1}q^j.
+The finite Hankel block H∈R^{M×M} has entries H[u,v]=p(uv). For each a∈Σ define the shifted block H_a[u,v]=p(uav). H needs word probabilities only through length 2R−2; every H_a needs them through length 2R−1. One raw episode can contribute an indicator for every prefix word, so the method does not request N separate samples per matrix entry.
+
+2. FINITE WITNESS HORIZON AND COMPLETENESS
+
+Take a minimal real WFA p(w)=αA_wβ of dimension r. Define reachable row spaces
+  L_k=span{αA_u: |u|≤k}.
+Since p(ε)=αβ=1, L_0 has dimension one. If L_{k+1}=L_k, then L_k is invariant under every A_a and no longer word can add a reachable direction. Minimality says the eventual reachable span has dimension r. Thus it grows strictly until dimension r, requiring at most r−1 increases; words of length at most r−1 span it. Applying the same argument to the observable column spaces span{A_vβ: |v|≤k} shows that words of length at most r−1 span the observable space.
+
+Since r≤R, U and V contain complete reachable and observable sets. The chosen block H has rank exactly r, not merely rank at most r. This proves the finite witness horizon. It is a universal basis: it has M=(q^R−1)/(q−1) rows and columns, exponential in the hidden-state cap R.
+
+3. RAW-TRAJECTORY ESTIMATORS AND UNKNOWN-RANK CUTOFF
+
+For every word w with |w|≤T, estimate
+  p̂(w)=N^{-1} Σ_{i=1}^N 1{the first |w| symbols of episode i equal w}.
+For w=ε, the empty-word probability is exactly one. The indicators for a fixed w are independent across reset episodes, even though different words’ indicators from the same episode are dependent. A union bound and Hoeffding give, with probability at least 1−δ,
+  max_{|w|≤T}|p̂(w)−p(w)| ≤ e_N,
+  e_N=sqrt(log(2W/δ)/(2N)).
+Use the same p̂(w) wherever a word occurs in a Hankel or shifted block; this keeps each empirical block Hankel-consistent. Entrywise error at most e_N implies operator-norm error at most M e_N for H and every H_a, by the Frobenius bound.
+
+Optional finite-precision encoding: if each frequency is rounded to b fractional bits, add ρ_b=2^{−(b+1)} to e_N. Counts can instead be retained exactly as integers in {0,…,N}; their representation costs ceil(log₂(N+1)) bits per count, with denominator N shared. Model the certified backward error of the numerical SVD/matrix computations by an additional absolute operator error ν on each block. Set
+  η=M(e_N+ρ_b)+ν.
+The numeric precision contract is explicit: the matrix factors, singular-value intervals, and shifted-block computations must have certified backward error at most ν. A concrete library-specific bit-complexity proof is not supplied here.
+
+Compute the SVD of Ĥ and let σ̂_j be its singular values. Set
+  r̂=#{j: σ̂_j&gt;2η}.
+This threshold depends on the noise radius, not on r. Let γ=σ_r(H), the least nonzero singular value. On the concentration and numerical-certification event, Weyl’s inequality gives
+  σ̂_r≥γ−η,   σ̂_{r+1}≤η.
+Consequently, if γ≥4η, then σ̂_r≥3η&gt;2η and σ̂_{r+1}≤η&lt;2η, so r̂=r. In particular, exact rank is selected without supplying it to the algorithm.
+
+A simple sufficient class promise is γ≥γ_0&gt;0 together with η≤γ_0/8. With exact count frequencies and ν≤γ_0/32, it suffices to take
+  N≥512 M² γ_0^{-2} log(2W/δ).
+If frequencies are rounded, b≥ceil(log₂(16M/γ_0)) makes Mρ_b≤γ_0/32. If the certified computation error is ν≤2^{-t}, then t≥ceil(log₂(32/γ_0)) suffices for ν≤γ_0/32. These settings imply η≤3γ_0/32&lt;γ_0/8. The constants are conservative; no minimax-optimal sample rate is claimed.
+
+No uniform finite-sample exact-rank guarantee is possible when the rank margin may vanish. Let P_0 be iid Bernoulli(1/4). Let P_θ be iid Bernoulli(θ), and define
+  P_α=(1−α)P_{1/4}+αP_{3/4},
+where a latent component is chosen once at the start of each reset episode. P_α is a two-hidden-state HMM with identity hidden transition; P_0 has Hankel rank one. On rows/columns {ε,1}, P_α has block
+  [[1, μ],[μ, ν]],   μ=1/4+α/2,   ν=1/16+α/2.
+Its determinant is α(1−α)/4&gt;0, so its rank is two and its smaller singular value is at most α/4. A length-T episode under P_α is the mixture (1−α)P_0+αP_{3/4}, hence its total-variation distance from P_0 is at most α for every T. The N-episode product laws have distance at most Nα. Le Cam’s two-point bound therefore makes the error of any rank-one-versus-rank-two test at least (1−Nα)/2. Taking α=1/(10N) leaves error at least 0.45, no matter how large T is. This is a statistical obstruction, not a numerical SVD limitation.
+
+4. EXACT HANKEL REALIZATION AND NOISY SHIFT RECOVERY
+
+Let H=UΣVᵀ be a thin rank-r SVD. The columns of U and V span the finite reachable and observable subspaces. Define
+  B=HV=UΣ,
+  α_* = H[ε,:]V,
+  β_* = B^+H[:,ε],
+  A_{a,*}=B^+H_aV.
+Then p(w)=α_*A_{a_1,*}…A_{a_k,*}β_* for every word w. To see why, factor the exact block as H[u,v]=x_u y_v with x_u=αA_u and y_v=A_vβ. Completeness makes both finite factor matrices full rank r. Each H_a has entries x_u A_a y_v. SVD changes the two factors by invertible coordinate maps, so the displayed operators are one minimal WFA realization in a balanced SVD gauge. This is exact shift recovery from the complete finite witness block.
+
+For noisy recovery, truncate Ĥ to rank r after the cutoff and call the result H̃; use its top right singular vectors V̂. The discarded singular value is at most η, so
+  ||H̃−H||₂≤2η.
+Define
+  B̂=H̃V̂,  α̂=H̃[ε,:]V̂,
+  β̂=B̂^+H̃[:,ε],  Â_a=B̂^+Ĥ_aV̂.
+The same truncated factors, row/column vectors, and raw shifted blocks define the returned WFA. It need not be exactly Hankel-consistent beyond the fitted block.
+
+Here is an explicit conservative stability estimate. Write M=|U| and γ=σ_r(H); assume η≤γ/8 and M≥γ (the latter follows because H is M×M with entries in [0,1]). Wedin’s singular-subspace bound gives an orthogonal alignment Q with
+  ||V̂Q−V||₂≤4η/γ.
+Compare the aligned realization (α̂Q, QᵀÂ_aQ, Qᵀβ̂) with (α_*,A_{a,*},β_*). Since ||H||₂,||H_a||₂≤M,
+  d_B=||H̃V̂Q−HV||₂≤2η+4Mη/γ≤6Mη/γ.
+The least singular values of B and B̂ are at least γ and γ−η respectively; both are at least γ/2, and their norms are at most 2M. Writing a full-column-rank pseudoinverse as (BᵀB)^{-1}Bᵀ and comparing the two Gram inverses gives
+  ||B̂^+−B^+||₂≤32 M² γ^{-4} d_B.
+Substitution into the formulas above yields
+  ||α̂Q−α_*||₂ ≤ 2η+4 sqrt(M) η/γ,
+  ||Qᵀβ̂−β_*||₂ ≤ 192 M^{7/2}η/γ^5 + 4η/γ,
+  max_a ||QᵀÂ_aQ−A_{a,*}||₂
+      ≤ 192 M^4 η/γ^5 + 10 Mη/γ².
+The large exponents are deliberate conservative bounds from the pseudoinverse/Gram comparison; sharper bounds are possible. This proves stability only in a matched coordinate gauge. Without a singular margin, a complete basis, or certified arithmetic, these estimates do not apply.
+
+For a finite word w of length ℓ, let K=max(1,max_a||A_{a,*}||₂,max_a||QᵀÂ_aQ||₂). A telescoping product bound gives, for ℓ≥1,
+  |(α̂Q)(QᵀÂ_wQ)(Qᵀβ̂)−α_*A_{*,w}β_*|
+ ≤ δ_α K^ℓ||β̂||
+   + ||α_*|| ℓ K^{ℓ−1}δ_A||β̂||
+   + ||α_*||K^ℓδ_β,
+where Â_w is the product in the original estimated gauge, so QᵀÂ_wQ denotes the aligned word product, and δ_α, δ_A, δ_β are the displayed parameter-error bounds. For ℓ=0, use |(α̂Q)(Qᵀβ̂)−α_*β_*|≤δ_α||β_*||+(||α_*||+δ_α)δ_β. Thus this gives a finite-horizon prediction result, with explicit K^ℓ amplification. Rank recovery alone gives no long-horizon stability or contraction. The spectral-learning literature likewise flags exponential accumulation for general WFA operators; special HMM subclasses can obtain stronger prediction guarantees from additional assumptions.
+
+5. NORMALIZATION VALIDATION DOES NOT GIVE POSITIVITY
+
+For the exact HMM series, consistency of raw probabilities gives p(ε)=1 and
+  p(u)=Σ_{a∈Σ}p(ua).
+In a complete rank-r factorization, the reachable row matrix has full column rank. Therefore these equalities imply the coordinate-invariant linear identities
+  α_*β_*=1,      (Σ_a A_{a,*})β_*=β_*.
+They can be checked approximately on the learned model. For example, if δ_α, δ_β, and δ_A bound the errors above, and A_max=max_a||A_{a,*}||₂, then
+  |α̂β̂−1|≤δ_α||β_*||+(||α_*||+δ_α)δ_β,
+  ||Σ_a Â_a β̂−β̂||
+     ≤qδ_A(||β_*||+δ_β)+(qA_max+1)δ_β.
+The residuals are meaningful validation quantities for mass normalization.
+
+Entrywise nonnegativity is different: it is not invariant under a WFA similarity transform. Consider a stationary two-state HMM with
+  P=[[4/5,1/5],[3/10,7/10]],  π=(3/5,2/5),
+and deterministic emissions 0 from state 1 and 1 from state 2. Its emission operators are
+  M_0=[[4/5,1/5],[0,0]],  M_1=[[0,0],[3/10,7/10]].
+Use S=[[1,1],[1,−1]]. The equivalent realization has α&#x27;=πS=(1,1/5), β&#x27;=S^{-1}1=(1,0)ᵀ, and
+  M&#x27;_1=S^{-1}M_1S=[[1/2,−1/5],[−1/2,1/5]].
+It computes exactly the same sequence probabilities, and still obeys
+  (M&#x27;_0+M&#x27;_1)β&#x27;=β&#x27;,  α&#x27;β&#x27;=1,
+but it has negative entries. Thus a valid predictive WFA need not be a nonnegative HMM realization. Directly checking positivity of SVD-coordinate matrices can reject a valid HMM.
+
+A second finite diagnostic, recorded in evidence/signed_svd_diagnostic.py and signed_svd_diagnostic.txt, uses the complete depth-one prefix/suffix block of this same HMM: the numerical rank-two SVD realization has negative entries in its symbol-1 matrix. This diagnostic is reproducibility evidence, not part of the proof.
+
+Finding a similarity transform that makes every learned operator nonnegative with the appropriate stochastic constraints is a separate positive-realization problem. This leaf does not solve it. Nor can this learner recover a particular original HMM state labeling or a unique hidden transition/emission table: hidden-state permutations and nonminimal state splittings preserve the observable series. The exact output target is the minimal real WFA / predictive-series equivalence class.
+
+6. SAMPLE, PRECISION, MEMORY, AND COMPUTATION LEDGER
+
+Let T=2R−1, M=Σ_{j=0}^{R−1}q^j, and W=Σ_{j=0}^{2R−1}q^j.
+
+Information and symbols:
+- Independent reset episodes: N.
+- Observed symbols: NT, or NT ceil(log₂q) bits for fixed-width symbols.
+- The sufficient N bound above is O(M² γ_0^{-2} log(W/δ)); hence for fixed q it is O(q^{2R}γ_0^{-2} R log q + q^{2R}γ_0^{-2}log(1/δ)).
+- This is a sufficient bound from coordinatewise Hoeffding plus Frobenius control. The leaf does not claim M² is necessary. The mixture lower bound only proves that no uniform exact-rank guarantee is possible as the margin tends to zero.
+
+Probability and model bits:
+- Exact prefix counts: at most W counters, each ceil(log₂(N+1)) bits, plus the shared denominator and word keys. Explicit keys cost O(WT log q) bits; implicit trie/index encodings avoid storing each key separately. The counter storage is O(W log N) bits.
+- If rounded probabilities are used, b fractional bits per entry and M2^{−b−1} added to the block-error budget.
+- Certified numerical SVD/matrix work requires absolute operator backward error ν; t-bit working precision must satisfy 2^{−t}≤ν, plus guard bits for the dimensions and coefficient magnitudes. The formulas give ||A_a||≤M/γ, ||α||≤sqrt(M), ||β||≤sqrt(M)/γ. Storing the returned q matrices and two vectors to t fractional bits costs O((qr²+r)t) bits, plus integer range bits O(log(M/γ)).
+- A fully certified implementation-specific bit running-time bound for the SVD routine is not supplied; numerical residual ν is charged as an explicit premise.
+
+Arithmetic:
+- Parsing each episode and incrementing all its prefix counters costs O(NT) symbol operations with incremental prefix indexing.
+- The block has M² entries, and q shift blocks have qM² entries. Storing all dense blocks costs O(qM²) numerical scalars at the chosen working precision; the raw count table has W entries.
+- Dense SVD arithmetic is O(M³). Forming the q matrices from rank-r factors costs O(q(M²r+Mr²)); lower-order α/β work is O(Mr).
+- Since M=Θ(q^R), storage and computation are exponential in the supplied hidden-state cap R. The SVD cost is Θ(q^{3R}) for fixed q, before bit-operation factors. The query horizon itself is only 2R−1.
+- Prediction over a word of length ℓ costs O(ℓr²) dense matrix-vector products after model construction.
+
+7. EQUALLY INFORMED RAW-DATA CONTROLS
+
+Full sequence likelihood. On the same N length-T strings, a constrained HMM likelihood estimator maximizes
+  Σ_i log p_θ(X^{(i)}_{1:T})
+over m≤R, stochastic P, stochastic emissions E, and an initial distribution. It uses the complete raw trajectories and enforces nonnegative probabilities by construction. It is a stronger statistical control than looking only at Hankel singular values, since it can optimize the exact sequence likelihood and avoids uniform entrywise estimation as an intermediate step. The optimization is nonconvex, latent-state labels are nonidentifiable, and no global optimization or finite-sample rate is claimed here. EM/Baum–Welch is a local heuristic, not a theorem-backed replacement for global MLE. Under identifiable, well-conditioned subclasses, likelihood methods may be more statistically efficient; this leaf proves no advantage over them.
+
+Hsu–Kakade–Zhang’s raw-triple spectral HMM learner is a more efficient spectral control on a narrower class. It estimates P_1, P_{2,1}, and P_{3,x,1} from independent observation triples, SVDs a q×q pair-probability matrix, and constructs an observable-operator representation. Their theorem assumes π&gt;0 and full column rank of both the emission and transition matrices, with quantitative singular-value margins. For target sequence length t and joint-probability error ε, their Theorem 6 uses ε_0=σ_m(O)σ_m(P_{2,1})ε/(4t√m) and gives
+  N ≥ C (t²/ε²) [ m/(σ_m(O)²σ_m(P_{2,1})⁴)
+       + m n_0(ε_0)/(σ_m(O)²σ_m(P_{2,1})²) ] log(1/δ),
+where n_0 is the number of significant observation symbols at the required mass level. Their sample bound need not enumerate all q³ triple cells, although their dense q×q SVD costs O(q³) arithmetic. Their algorithm takes m as an input (the authors suggest cross-validation in practice, not an exact unknown-rank theorem), and it targets an observable WFA rather than the original hidden parameter tables. Its paper explicitly notes that the learned operator model need not keep every probability in [0,1]. Therefore it is not a same-class dominance result, but on the overlapping full-rank/margin subclass it is substantially more efficient than enumerating all q^{2R} word probabilities.
+
+Balle–Mohri’s general-WFA spectral method uses a supplied basis and desired state count n, and proves stability/generalization for a constrained matrix-completion plus spectral pipeline under bounded labels and a light length-tail assumption. Its perturbation analysis is relevant to our shift recovery, but the paper does not supply the unknown-rank raw-reset theorem here: the model order n is an input, and the data are labeled strings drawn from a possibly unrelated distribution. Ho–Kalman is the classical deterministic finite-Markov-parameter realization analogue, not a statistical HMM learning guarantee. Exact source findings and gaps are recorded in SOURCES.txt.
+
+8. CLAIM STATUS AND GAPS
+
+PROVED HERE, under the stated finite-HMM cap, reset sampling, complete finite block, singular margin, and certified numerical backward-error conditions:
+1. Words through length R−1 on both sides form a complete Hankel block for any process of rank r≤R.
+2. Independent raw episodes estimate the block and shifts with the stated uniform concentration and matrix error.
+3. The threshold 2η recovers unknown rank r when γ≥4η.
+4. Exact Hankel factorization recovers an equivalent minimal real WFA; a Wedin/pseudoinverse argument gives the stated conservative finite-block parameter stability bounds.
+5. Normalization identities follow from probability consistency.
+6. Entrywise positivity of the spectral-coordinate model is false in general, witnessed by an exact two-state HMM similarity.
+
+NOT ESTABLISHED:
+- Any polynomial-in-R acquisition/computation guarantee: the universal complete basis is exponential.
+- Rank selection without a singular-value margin; an explicit two-HMM lower bound refutes uniform finite-sample selection.
+- A polynomial procedure to find a positive/stochastic gauge or recover the original HMM parameters.
+- Unbounded-horizon prediction stability from finite rank and σ_r(H) alone.
+- Optimal sample complexity or an advantage over full-sequence likelihood or the Hsu–Kakade–Zhang full-rank spectral method.
+- A concrete certified floating-point SVD implementation and its bit-operation runtime.
+- Any novelty, priority, or external validation claim.
+
+The intended result is a bounded, finite-horizon teacher-free predictive realization theorem, not arbitrary-HMM synthesis.
+</pre><p><a href="../assets/9d6d6a6e0d2bd77c8d242e6396e974cbe78e64f30ce2dce49652bc5e2022cdec.txt">Exact original</a></p></html>

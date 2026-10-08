@@ -1,0 +1,34 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c8_photochemistry_sign_hostile/proof/convergence_check.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c8_photochemistry_sign_hostile/proof/convergence_check.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Step-halving check for the 5 s RF pulse endpoints in the sign audit.&quot;&quot;&quot;
+import json
+from pathlib import Path
+import runpy
+
+model = runpy.run_path(str(Path(__file__).with_name(&quot;sign_audit.py&quot;)), run_name=&quot;sign_check_import&quot;)
+P = model[&quot;TABLE1&quot;]
+Y0 = model[&quot;Y0&quot;]
+simulate = model[&quot;simulate_pair&quot;]
+
+cases = [
+    (&quot;literal positive separation-fraction increment&quot;, 0.68, 0.7151),
+    (&quot;same baseline with corrected negative separation-fraction increment&quot;, 0.68, 0.6449),
+]
+out = []
+for label, beta_off, beta_on in cases:
+    for dt in (1e-4, 5e-5, 2.5e-5):
+        rows = simulate(Y0, Y0, P, 3.8, beta_off, beta_on, 5.0, dt)
+        end = rows[-1]
+        out.append({&quot;mapping&quot;: label, &quot;dt_s&quot;: dt, &quot;t5_G_control_uM&quot;: end[&quot;G_control&quot;],
+                    &quot;t5_G_RF_uM&quot;: end[&quot;G_pulse&quot;], &quot;t5_delta_G_uM&quot;: end[&quot;dG&quot;],
+                    &quot;t5_delta_G_over_G&quot;: end[&quot;dG&quot;]/end[&quot;G_control&quot;],
+                    &quot;sampled_invariant_error_inf_uM&quot;:
+                        max(r[&quot;invariant_error_inf&quot;] for r in rows),
+                    &quot;minimum_sampled_species_uM&quot;: min(r[&quot;min_species&quot;] for r in rows)})
+    vals = [r[&quot;t5_delta_G_over_G&quot;] for r in out if r[&quot;mapping&quot;] == label]
+    out[-1][&quot;max_abs_change_under_step_halving&quot;] = max(abs(vals[i]-vals[i-1])
+                                                        for i in range(1, len(vals)))
+
+path = Path(__file__).with_name(&quot;convergence_check.json&quot;)
+path.write_text(json.dumps(out, indent=2) + &quot;\n&quot;)
+print(json.dumps(out, indent=2))
+</pre><p><a href="../assets/0c6676d724504c81c8fca8927f33b3407b4b703dd1b868574a1ad8f9c10aba95.py">Exact original</a></p></html>

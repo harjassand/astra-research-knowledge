@@ -1,0 +1,180 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/cycle9_canonical_kinetics/compile_alternative_substrates.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/cycle9_canonical_kinetics/compile_alternative_substrates.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Compile a shared-enzyme alternative-substrate MM/QSSA module exactly.
+
+The source law is v_i = kcat_i E_total (S_i/Km_i) /
+(1 + sum_j S_j/Km_j), with paired flux -v_i on S_i and +v_i on P_i.
+The compiler emits the sparse positive-rational interface used by
+recognize_common_factor.py, together with a closed-form exact refutation
+witness and a model-level substrate-extinction bound.
+&quot;&quot;&quot;
+from __future__ import annotations
+import argparse
+import json
+from fractions import Fraction as F
+from pathlib import Path
+from typing import Any
+
+
+def q(raw: Any, label: str) -&gt; F:
+    if isinstance(raw, bool):
+        raise ValueError(f&quot;{label}: Boolean is not a rational&quot;)
+    try:
+        return F(str(raw))
+    except (ValueError, ZeroDivisionError) as exc:
+        raise ValueError(f&quot;{label}: expected an exact rational, got {raw!r}&quot;) from exc
+
+
+def text(x: F) -&gt; str:
+    return str(x.numerator) if x.denominator == 1 else f&quot;{x.numerator}/{x.denominator}&quot;
+
+
+def compile_model(model: Any):
+    if not isinstance(model, dict) or model.get(&quot;schema&quot;) != &quot;alternative-substrates-qssa-v1&quot;:
+        raise ValueError(&quot;schema must be alternative-substrates-qssa-v1&quot;)
+    enzyme_total = q(model.get(&quot;enzyme_total&quot;), &quot;enzyme_total&quot;)
+    if enzyme_total &lt;= 0:
+        raise ValueError(&quot;enzyme_total must be strictly positive&quot;)
+    channels = model.get(&quot;channels&quot;)
+    if not isinstance(channels, list) or not channels:
+        raise ValueError(&quot;channels must be a nonempty list&quot;)
+    names = []
+    for i, item in enumerate(channels):
+        if not isinstance(item, dict):
+            raise ValueError(f&quot;channels[{i}] must be an object&quot;)
+        s, p = item.get(&quot;substrate&quot;), item.get(&quot;product&quot;)
+        if not isinstance(s, str) or not s or not isinstance(p, str) or not p:
+            raise ValueError(f&quot;channels[{i}] requires nonempty substrate and product names&quot;)
+        if s == p:
+            raise ValueError(f&quot;channels[{i}] substrate and product must differ&quot;)
+        names.extend((s, p))
+        km, kcat = q(item.get(&quot;Km&quot;), f&quot;channels[{i}].Km&quot;), q(item.get(&quot;kcat&quot;), f&quot;channels[{i}].kcat&quot;)
+        if km &lt;= 0 or kcat &lt;= 0:
+            raise ValueError(f&quot;channels[{i}] Km and kcat must be strictly positive&quot;)
+        item[&quot;_Km&quot;] = km
+        item[&quot;_kcat&quot;] = kcat
+    if len(set(names)) != len(names):
+        raise ValueError(&quot;each substrate/product name must occur in exactly one channel&quot;)
+    substrates = [item[&quot;substrate&quot;] for item in channels]
+    products = [item[&quot;product&quot;] for item in channels]
+    species = substrates + products
+    index = {name: i for i, name in enumerate(species)}
+    d = len(species)
+    q_terms = [{&quot;exp&quot;: {}, &quot;coef&quot;: &quot;1&quot;}]
+    edges = []
+    for i, item in enumerate(channels):
+        s_i, p_i = index[item[&quot;substrate&quot;]], index[item[&quot;product&quot;]]
+        q_terms.append({&quot;exp&quot;: {str(s_i): &quot;1&quot;}, &quot;coef&quot;: text(1 / item[&quot;_Km&quot;])})
+        edges.append({
+            &quot;name&quot;: f&quot;{item[&#x27;substrate&#x27;]}-&gt;{item[&#x27;product&#x27;]}&quot;,
+            &quot;nu&quot;: {str(s_i): &quot;-1&quot;, str(p_i): &quot;1&quot;},
+            &quot;source&quot;: {str(s_i): &quot;1&quot;},
+            &quot;coef&quot;: text(enzyme_total * item[&quot;_kcat&quot;] / item[&quot;_Km&quot;]),
+        })
+    network = {
+        &quot;dimension&quot;: d,
+        &quot;species_order&quot;: species,
+        &quot;rate_semantics&quot;: &quot;rho_i = kcat_i*enzyme_total*(S_i/Km_i)/(1+sum_j S_j/Km_j)&quot;,
+        &quot;common_multiplier&quot;: {&quot;denominator_factors&quot;: [{&quot;terms&quot;: q_terms}]},
+        &quot;edges&quot;: edges,
+    }
+    init = model.get(&quot;initial_state&quot;)
+    bound = None
+    if init is not None:
+        if not isinstance(init, dict):
+            raise ValueError(&quot;initial_state must map every species name to a positive rational&quot;)
+        vals = {}
+        for name in species:
+            if name not in init:
+                raise ValueError(f&quot;initial_state missing {name}&quot;)
+            value = q(init[name], f&quot;initial_state.{name}&quot;)
+            if value &lt;= 0:
+                raise ValueError(f&quot;initial_state.{name} must be positive&quot;)
+            vals[name] = value
+        occupancy_at_initial_state = F(1) + sum(
+            (vals[item[&quot;substrate&quot;]] / item[&quot;_Km&quot;] for item in channels), F(0))
+        qssa_ratios = [
+            {
+                &quot;channel&quot;: item[&quot;substrate&quot;],
+                &quot;Eq38_enzyme_scale_ratio&quot;: text(
+                    enzyme_total / (item[&quot;_Km&quot;] * occupancy_at_initial_state)),
+            }
+            for item in channels
+        ]
+        max_qssa_ratio = max(
+            (F(row[&quot;Eq38_enzyme_scale_ratio&quot;]) for row in qssa_ratios), default=F(0))
+        qmax = F(1)
+        for item in channels:
+            total = vals[item[&quot;substrate&quot;]] + vals[item[&quot;product&quot;]]
+            qmax += total / item[&quot;_Km&quot;]
+        decays = []
+        for item in channels:
+            rate = enzyme_total * item[&quot;_kcat&quot;] / item[&quot;_Km&quot;] / qmax
+            decays.append({
+                &quot;substrate&quot;: item[&quot;substrate&quot;],
+                &quot;initial&quot;: text(vals[item[&quot;substrate&quot;]]),
+                &quot;total_pair&quot;: text(vals[item[&quot;substrate&quot;]] + vals[item[&quot;product&quot;]]),
+                &quot;minimum_exponential_decay_rate&quot;: text(rate),
+                &quot;bound&quot;: f&quot;{text(vals[item[&#x27;substrate&#x27;]])}*exp(-({text(rate)})*t)&quot;,
+            })
+        bound = {
+            &quot;Q_upper_bound&quot;: text(qmax),
+            &quot;pair_totals_invariant&quot;: True,
+            &quot;substrate_bounds&quot;: decays,
+            &quot;QSSA_regime_diagnostic&quot;: {
+                &quot;ratios&quot;: qssa_ratios,
+                &quot;maximum_Eq38_enzyme_scale_ratio&quot;: text(max_qssa_ratio),
+                &quot;interpretation&quot;: (
+                    &quot;This is a diagnostic of the Eq. 38 enzyme-to-scaled-substrate smallness term at the supplied initial state, not a complete QSSA validity certificate. A value not much smaller than 1 is no evidence for the QSSA regime.&quot;
+                ),
+            },
+            &quot;proof&quot;: &quot;Q(t)&lt;=Qmax by S_i+P_i conservation and nonnegativity; dS_i/dt=-(kcat_i*E_total/Km_i)S_i/Q(t)&lt;=-lambda_i*S_i, then Gronwall.&quot;,
+        }
+    # Remove parser-only cached Fraction fields so the original object stays JSON-safe.
+    for item in channels:
+        item.pop(&quot;_Km&quot;, None)
+        item.pop(&quot;_kcat&quot;, None)
+    witness_r = [&quot;0&quot;] * d
+    witness_r[0] = &quot;1&quot;
+    certificate = {
+        &quot;status&quot;: &quot;REFUTED&quot;,
+        &quot;property&quot;: &quot;weak essential-source/endotactic condition&quot;,
+        &quot;direction_r_min_orientation&quot;: witness_r,
+        &quot;direction_w_max_orientation&quot;: [text(-q(x, &quot;witness&quot;)) for x in witness_r],
+        &quot;active_channels&quot;: [edges[0][&quot;name&quot;]],
+        &quot;active_projected_jump&quot;: &quot;-1&quot;,
+        &quot;active_source_score&quot;: &quot;1&quot;,
+        &quot;proof&quot;: &quot;Choose r with r_S1=1 and all other coordinates 0 (equivalently w=-r). Only the first irreversible substrate-transfer channel is active; it is negative in the minimum-source orientation and is therefore a violating top channel. This is independent of all strictly positive coefficients and of the shared positive denominator.&quot;,
+    }
+    return network, certificate, bound
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument(&quot;input&quot;, type=Path)
+    ap.add_argument(&quot;--output&quot;, type=Path, default=None, help=&quot;write compiled network JSON&quot;)
+    args = ap.parse_args(argv)
+    try:
+        model = json.loads(args.input.read_text())
+        network, certificate, bound = compile_model(model)
+    except (OSError, json.JSONDecodeError, TypeError, ValueError, ZeroDivisionError) as exc:
+        print(json.dumps({&quot;status&quot;: &quot;INVALID_INPUT&quot;, &quot;reason&quot;: str(exc)}, indent=2))
+        return 2
+    if args.output:
+        args.output.write_text(json.dumps(network, indent=2, sort_keys=True) + &quot;\n&quot;)
+    result = {
+        &quot;status&quot;: certificate[&quot;status&quot;],
+        &quot;source_model&quot;: str(args.input),
+        &quot;channels&quot;: len(network[&quot;edges&quot;]),
+        &quot;dimension&quot;: network[&quot;dimension&quot;],
+        &quot;compiled_network&quot;: str(args.output) if args.output else None,
+        &quot;certificate&quot;: certificate,
+        &quot;model_extinction_bound&quot;: bound,
+        &quot;scope&quot;: &quot;exact for the stated positive-rational shared-enzyme QSSA law; biological applicability inherits the source QSSA condition and is not a claim about the unreduced enzyme-complex ODE&quot;,
+    }
+    print(json.dumps(result, indent=2, sort_keys=True))
+    return 1
+
+
+if __name__ == &quot;__main__&quot;:
+    raise SystemExit(main())
+</pre><p><a href="../assets/dde440a7aef5c849f3e9e0e71a03f75b296ff27de9b271361816810f2ecdb362.py">Exact original</a></p></html>

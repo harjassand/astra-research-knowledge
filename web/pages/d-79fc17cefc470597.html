@@ -1,0 +1,66 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c7_immunology_discrimination/code/time_policy_sweep.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c7_immunology_discrimination/code/time_policy_sweep.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Prior-informed grid search plus fresh validation of time-only force schedules.&quot;&quot;&quot;
+from __future__ import annotations
+import json, math, sys
+from pathlib import Path
+import numpy as np
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from model_audit import EB_LOW, EPS_E, sample_l0, simulate_one
+
+
+CASES = [(&quot;normal_sigma30&quot;, &quot;normal&quot;, 30.0, 60.0),
+         (&quot;uniform_5_195&quot;, &quot;uniform_wide&quot;, 0.0, 50.0),
+         (&quot;uniform_5_60&quot;, &quot;uniform_low&quot;, 0.0, 30.0)]
+F0_GRID = [200.0, 400.0, 600.0, 800.0, 1000.0]
+TC_GRID = [5.0, 15.0, 30.0, 60.0, 120.0, 240.0, 480.0]
+
+
+def evaluate(policy, control, f0, dist, sigma, pairs, seed):
+    rng = np.random.default_rng(seed)
+    outcomes=[]; times=[]; proxy=[]; censored=0
+    for _ in range(pairs):
+        l1=sample_l0(rng,dist,sigma); l2=sample_l0(rng,dist,sigma)
+        a=simulate_one(l1,EB_LOW,policy,control,5.0,f0,rng)
+        b=simulate_one(l2,EB_LOW+EPS_E,policy,control,5.0,f0,rng)
+        outcomes.append(1.0 if b.score&gt;a.score else 0.5 if b.score==a.score else 0.0)
+        times.extend([a.duration_s,b.duration_s]); proxy.extend([a.force_work_proxy_pN_nm,b.force_work_proxy_pN_nm])
+        censored += int(a.tmax_censored)+int(b.tmax_censored)
+    auc=float(np.mean(outcomes)); sd=float(np.std(outcomes,ddof=1))
+    return {&quot;policy&quot;:policy,&quot;control&quot;:control,&quot;f0_pN&quot;:f0,&quot;pairs&quot;:pairs,&quot;seed&quot;:seed,
+            &quot;auc&quot;:auc,&quot;auc_95pct_normal&quot;:[max(0,auc-1.96*sd/math.sqrt(pairs)),min(1,auc+1.96*sd/math.sqrt(pairs))],
+            &quot;mean_duration_s&quot;:float(np.mean(times)),&quot;mean_barrier_proxy_pN_nm&quot;:float(np.mean(proxy)),
+            &quot;trajectory_censor_fraction&quot;:censored/(2*pairs)}
+
+
+def main():
+    scan_pairs=600; validation_pairs=4000
+    out={&quot;dose_prior_known_to_time_controller&quot;:True,
+         &quot;scan_grid&quot;:{&quot;tc_s&quot;:TC_GRID,&quot;F0_pN&quot;:F0_GRID},
+         &quot;screen_pairs_per_setting&quot;:scan_pairs,
+         &quot;validation_pairs_per_candidate&quot;:validation_pairs,
+         &quot;results&quot;:[]}
+    for ci,(name,dist,sigma,mc) in enumerate(CASES):
+        screened=[]
+        for fi,f0 in enumerate(F0_GRID):
+            for ti,tc in enumerate(TC_GRID):
+                seed=100000+ci*10000+fi*100+ti
+                screened.append(evaluate(&quot;time&quot;,tc,f0,dist,sigma,scan_pairs,seed))
+        screened.sort(key=lambda x:x[&quot;auc&quot;],reverse=True)
+        # Validate the two leading schedules on disjoint random streams.
+        validated=[]
+        for j,candidate in enumerate(screened[:2]):
+            validated.append(evaluate(&quot;time&quot;,candidate[&quot;control&quot;],candidate[&quot;f0_pN&quot;],dist,sigma,
+                                      validation_pairs,200000+ci*100+j))
+        # Fresh reference run for the prior-scan adaptive threshold.
+        adaptive=evaluate(&quot;mmax&quot;,mc,800.0,dist,sigma,validation_pairs,300000+ci)
+        out[&quot;results&quot;].append({&quot;case&quot;:name,&quot;distribution&quot;:dist,&quot;sigma&quot;:sigma,&quot;adaptive_mc_from_separate_scan&quot;:mc,
+                               &quot;top_screened&quot;:screened[:5],&quot;validated_time_top2&quot;:validated,&quot;adaptive_fresh&quot;:adaptive})
+        print(name,&quot;screen tops&quot;,[(x[&quot;control&quot;],x[&quot;f0_pN&quot;],round(x[&quot;auc&quot;],3)) for x in screened[:3]])
+        print(&quot;validated&quot;,[(x[&quot;control&quot;],x[&quot;f0_pN&quot;],round(x[&quot;auc&quot;],4),round(x[&quot;mean_duration_s&quot;],1),round(x[&quot;trajectory_censor_fraction&quot;],3)) for x in validated])
+        print(&quot;adaptive&quot;,round(adaptive[&quot;auc&quot;],4),&quot;duration&quot;,round(adaptive[&quot;mean_duration_s&quot;],1),&quot;censor&quot;,round(adaptive[&quot;trajectory_censor_fraction&quot;],3))
+    p=Path(__file__).with_name(&quot;time_policy_sweep_results.json&quot;)
+    p.write_text(json.dumps(out,indent=2)+&quot;\n&quot;)
+    print(p)
+
+if __name__==&quot;__main__&quot;:main()
+</pre><p><a href="../assets/b0176470f6af957ff8f349d8e04e0eda1ee6605e5443ced80eb7b4d2fc170fb0.py">Exact original</a></p></html>

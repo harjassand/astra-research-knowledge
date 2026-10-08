@@ -1,0 +1,79 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/sol_general_rounding/qutrit_sdp_search.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/sol_general_rounding/qutrit_sdp_search.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>import numpy as np
+import cvxpy as cp
+import json
+from pathlib import Path
+
+def frame(d):
+    aa=[]
+    for i in range(d):
+        for j in range(i+1,d):
+            a=np.zeros((d,d),complex); a[i,j]=a[j,i]=np.sqrt(d/2);aa.append(a)
+            a=np.zeros((d,d),complex);a[i,j]=-1j*np.sqrt(d/2);a[j,i]=1j*np.sqrt(d/2);aa.append(a)
+    for k in range(1,d):
+        v=np.zeros(d);v[:k]=1;v[k]=-k
+        aa.append(np.diag(v*np.sqrt(d/(k*(k+1)))))
+    assert np.max(np.abs(np.array([[np.trace(a@b)/d for b in aa] for a in aa])-np.eye(d*d-1)))&lt;1e-10
+    return aa
+
+def swap_outputs(d):
+    s=np.zeros((d**3,d**3))
+    for r in range(d):
+        for a in range(d):
+            for b in range(d):s[(r*d+b)*d+a,(r*d+a)*d+b]=1
+    return s
+
+def partials(omega,d):
+    ra=cp.partial_trace(omega,[d,d,d],axis=2)
+    rb=cp.partial_trace(omega,[d,d,d],axis=1)
+    return [cp.partial_trace(ra,[d,d],axis=1),cp.partial_trace(ra,[d,d],axis=0),cp.partial_trace(rb,[d,d],axis=0)]
+
+def setup(d):
+    aa=frame(d);n=len(aa);eye=np.eye(d)
+    omega=cp.Variable((d**3,d**3),hermitian=True)
+    t=cp.bmat([[cp.reshape(cp.real(cp.trace(omega@np.kron(a.T,np.kron(b,eye)))),(1,1),order=&#x27;C&#x27;) for b in aa] for a in aa])
+    wpar=cp.Parameter((d**3,d**3),hermitian=True)
+    constraints=[omega&gt;&gt;0]+[m==eye/d for m in partials(omega,d)]
+    sw=swap_outputs(d)
+    constraints += [omega==sw@omega@sw.T,t==t.T,t&gt;&gt;0]
+    broad=cp.Problem(cp.Maximize(cp.real(cp.trace(omega@wpar))-1),constraints)
+    sym=[]
+    for i in range(d):
+        for j in range(i,d):
+            v=np.zeros(d*d)
+            if i==j:v[i*d+j]=1
+            else:v[i*d+j]=v[j*d+i]=1/np.sqrt(2)
+            sym.append(v)
+    u=np.array(sym).T
+    x=cp.Variable((len(sym),len(sym)),hermitian=True)
+    sigma=u@x@u.T
+    kpar=cp.Parameter((d*d,d*d),hermitian=True)
+    moment=cp.Problem(cp.Maximize(cp.real(cp.trace(sigma@kpar))),[x&gt;&gt;0,cp.partial_trace(sigma,[d,d],axis=0)==eye/d,cp.partial_transpose(sigma,[d,d],axis=1)&gt;&gt;0])
+    return aa,omega,t,wpar,broad,sigma,kpar,moment
+
+def main():
+    d=3;aa,omega,t,wpar,broad,sigma,kpar,moment=setup(d);n=len(aa)
+    pair=[(np.kron(a.T,np.kron(b,np.eye(d))+np.kron(np.eye(d),b)),np.kron(a,b)) for a in aa for b in aa]
+    rng=np.random.default_rng(842017)
+    cases=[]
+    for rank in [8,2,3,4,5,6,7,8]:
+        for attempt in range(2):
+            if len(cases)==0:q=np.eye(n)/n
+            else:
+                v=rng.normal(size=(n,rank));q=v@v.T;q/=np.trace(q)
+            w=sum(q.flat[i]*p[0] for i,p in enumerate(pair))
+            k=sum(q.flat[i]*p[1] for i,p in enumerate(pair))
+            wpar.value=w;kpar.value=k
+            broad.solve(solver=&#x27;SCS&#x27;,eps=1e-6,max_iters=20000,warm_start=True)
+            moment.solve(solver=&#x27;SCS&#x27;,eps=1e-6,max_iters=20000,warm_start=True)
+            cr={&#x27;rank&#x27;:rank,&#x27;attempt&#x27;:attempt,&#x27;broadcaster_status&#x27;:broad.status,&#x27;h1_upper_status&#x27;:moment.status,&#x27;compatible_objective&#x27;:float(broad.value),&#x27;bosonic_ppt_upper&#x27;:float(moment.value),&#x27;candidate_gap&#x27;:float(broad.value-moment.value),&#x27;q&#x27;:q.tolist(),&#x27;phi_eigenvalues&#x27;:np.linalg.eigvalsh((t.value+t.value.T)/2).tolist(),&#x27;omega_min_eigenvalue&#x27;:float(np.linalg.eigvalsh(omega.value)[0])}
+            cases.append(cr)
+            print(json.dumps({a:cr[a] for a in [&#x27;rank&#x27;,&#x27;attempt&#x27;,&#x27;compatible_objective&#x27;,&#x27;bosonic_ppt_upper&#x27;,&#x27;candidate_gap&#x27;,&#x27;broadcaster_status&#x27;]}),flush=True)
+            if cr[&#x27;candidate_gap&#x27;]&gt;1e-4:
+                np.savez(Path(__file__).with_name(&#x27;candidate.npz&#x27;),q=q,omega=omega.value,sigma=sigma.value,t=t.value)
+                break
+        else:continue
+        break
+    out=Path(__file__).with_name(&#x27;qutrit_sdp_search.json&#x27;);out.write_text(json.dumps({&#x27;dimension&#x27;:d,&#x27;status&#x27;:&#x27;FINITE_NUMERICAL_SCREEN_ONLY&#x27;,&#x27;cases&#x27;:cases},indent=2)+&#x27;\n&#x27;)
+
+if __name__==&#x27;__main__&#x27;:main()
+</pre><p><a href="../assets/024afb7ad3744e822c4c7e2eed058b2665f79f6893c71614f9d810bcee9755f2.py">Exact original</a></p></html>

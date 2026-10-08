@@ -1,0 +1,165 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/sol_attractive_critical/checks.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/sol_attractive_critical/checks.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Small finite diagnostics for the attractive-resonance tail proof.
+
+Run: OPENBLAS_NUM_THREADS=1 python3 outputs/research/sol_attractive_critical/checks.py
+Requires NumPy only. These tests do not establish any infinite limit or novelty.
+&quot;&quot;&quot;
+import itertools
+import json
+import math
+from pathlib import Path
+import numpy as np
+
+TOL = 3e-9
+J, TAU, B = 1.0, 0.11, 0.7
+ALPHA = 0.5
+GMIN = 0.03
+C = 1 + 2 * sum(math.exp(-4 * J * TAU * k*k) for k in range(1, 100))
+C_COERC = min(GMIN / 96, J / 72)
+A = math.e * C * math.exp(TAU * (B + C_COERC))
+
+
+def sector(S, m):
+    configs = list(itertools.combinations(range(S), m))
+    index = {x: i for i, x in enumerate(configs)}
+    hn = np.zeros((len(configs), len(configs)))
+    end = np.zeros(len(configs))
+    contact = np.zeros(len(configs))
+    for k, x in enumerate(configs):
+        xs = set(x)
+        end[k] = (0 in xs) + (S-1 in xs)
+        contact[k] = sum(i+1 in xs for i in x if i+1 &lt; S)
+        for i in x:
+            for j in (i-1, i+1):
+                if 0 &lt;= j &lt; S and j not in xs:
+                    y = tuple(sorted((xs-{i}) | {j}))
+                    hn[k, k] += 2 * J
+                    hn[k, index[y]] -= 2 * J
+    return configs, hn, hn + np.diag(2*J*end), np.diag(contact)
+
+
+def heat(h, t):
+    ev, vec = np.linalg.eigh(h)
+    return (vec * np.exp(-t * ev)) @ vec.T
+
+
+def embedded(S, terms):
+    out = np.array([[1.]])
+    for i in range(S):
+        out = np.kron(out, terms.get(i, np.eye(2)))
+    return out
+
+
+def independent_spin(S):
+    x = np.array([[0., 1.], [1., 0.]])
+    y = np.array([[0., -1j], [1j, 0.]])
+    z = np.diag([1., -1.])
+    n = np.diag([0., 1.])
+    h = np.zeros((2**S, 2**S), complex)
+    for i in range(S-1):
+        h += J * (np.eye(2**S) - embedded(S, {i:x, i+1:x})
+                  - embedded(S, {i:y, i+1:y})
+                  - embedded(S, {i:z, i+1:z}))
+    h += J*(np.eye(2**S)-embedded(S, {0:z}))
+    h += J*(np.eye(2**S)-embedded(S, {S-1:z}))
+    w = sum((embedded(S, {i:n, i+1:n}) for i in range(S-1)),
+            np.zeros_like(h))
+    return h, w
+
+
+out = {&quot;status&quot;: &quot;FINITE-EVIDENCE&quot;, &quot;tolerance&quot;: TOL,
+       &quot;public_constants&quot;: {&quot;J&quot;:J,&quot;tau&quot;:TAU,&quot;B&quot;:B,&quot;g_min&quot;:GMIN,
+                            &quot;alpha&quot;:ALPHA,&quot;c&quot;:C_COERC,&quot;C&quot;:C,&quot;A&quot;:A}}
+
+spin_err = []
+for S in range(1, 7):
+    hs, ws = independent_spin(S)
+    for m in range(S+1):
+        cfg, hn, hc, w = sector(S, m)
+        ids = [sum(1 &lt;&lt; (S-1-i) for i in x) for x in cfg]
+        spin_err.append(float(np.max(np.abs(hs[np.ix_(ids,ids)]-hc))))
+        spin_err.append(float(np.max(np.abs(ws[np.ix_(ids,ids)]-w))))
+assert max(spin_err) &lt;= TOL
+out[&quot;independent_spin_vs_graph&quot;] = {&quot;sector_cases&quot;:27,
+    &quot;S_range&quot;:[1,6],&quot;max_error&quot;:max(spin_err)}
+
+local_margin = []
+for ell in range(2, 10):
+    for n in range(2, ell+1):
+        _, hn, _, w = sector(ell, n)
+        for a in (0.02, 0.7, 5.0):
+            lower = n * min(a/(8*ell), J*(1-ALPHA)/ell**2)
+            local_margin.append(float(np.linalg.eigvalsh((1-ALPHA)*hn+a*w)[0]-lower))
+assert min(local_margin) &gt;= -TOL
+out[&quot;conditional_particle_robin_local_exclusion&quot;] = {
+    &quot;cases&quot;:len(local_margin),&quot;ell_range&quot;:[2,9],&quot;min_margin&quot;:min(local_margin)}
+
+coerc_margin, partition_log_margin, trace_log_margin, correlation_margin = [], [], [], []
+for S in range(1, 11):
+    L = S+1
+    t = ALPHA*TAU*L**2
+    _, h1, _, _ = sector(S, 1)
+    p = heat(h1, t)
+    for m in range(S+1):
+        cfg, hn, hc, w = sector(S, m)
+        evn, vn = np.linalg.eigh(hn)
+        trace = float(np.exp(-t*evn).sum())
+        trace_log_margin.append(m*math.log(math.e*C)-math.log(trace))
+        diagonal = ((vn**2)*np.exp(-t*evn)).sum(axis=1)
+        for i, x in enumerate(cfg):
+            bound = math.prod(float(p[j, list(x)].sum()) for j in x)
+            correlation_margin.append(bound-float(diagonal[i]))
+        for g in (GMIN, 0.4, 2.0, 12.0):
+            h = hc + g/L*w
+            if m &gt;= 2:
+                c_g = min(g/96, J/72)
+                coerc_margin.append(float(np.linalg.eigvalsh(h-ALPHA*hc)[0]
+                                          -c_g*m*m/(L*L)))
+            ev = np.linalg.eigvalsh(h)
+            logz = float(np.log(np.exp(-TAU*L*L*ev).sum()) + TAU*B*m)
+            logbound = m*math.log(A)-TAU*C_COERC*m*m
+            partition_log_margin.append(logbound-logz)
+assert min(coerc_margin) &gt;= -TOL
+assert min(partition_log_margin) &gt;= -TOL
+assert min(trace_log_margin) &gt;= -TOL
+assert min(correlation_margin) &gt;= -TOL
+out[&quot;retained_kinetic_coercivity&quot;] = {&quot;cases&quot;:len(coerc_margin),
+    &quot;S_range&quot;:[1,10],&quot;g_values&quot;:[GMIN,0.4,2.0,12.0],&quot;min_margin&quot;:min(coerc_margin)}
+out[&quot;all_sector_partition_bound&quot;] = {&quot;cases&quot;:len(partition_log_margin),
+    &quot;S_range&quot;:[1,10],&quot;min_log_margin&quot;:min(partition_log_margin)}
+out[&quot;sector_heat_trace&quot;] = {&quot;cases&quot;:len(trace_log_margin),
+    &quot;min_log_margin&quot;:min(trace_log_margin)}
+out[&quot;individual_return_probability_product&quot;] = {
+    &quot;cases&quot;:len(correlation_margin),&quot;min_margin&quot;:min(correlation_margin)}
+
+# Check the supersolution generator identity for every selected set, using
+# independent pointwise algebra for random one-site values.
+rng = np.random.default_rng(91027)
+identity_error = []
+for S in range(2, 9):
+    for trial in range(4):
+        u = rng.uniform(0.05, 0.95, S)
+        du = np.zeros(S)
+        for i in range(S-1):
+            du[i] += 2*J*(u[i+1]-u[i])
+            du[i+1] += 2*J*(u[i]-u[i+1])
+        for k in range(1, S+1):
+            cfg, hn, _, _ = sector(S, k)
+            f = np.array([math.prod(u[i] for i in x) for x in cfg])
+            df = np.array([sum(du[i]*math.prod(u[j] for j in x if j != i)
+                               for i in x) for x in cfg])
+            target = []
+            for x in cfg:
+                xs = set(x)
+                target.append(sum(2*J*(u[i]-u[i+1])**2
+                                  * math.prod(u[j] for j in x if j not in (i,i+1))
+                                  for i in range(S-1) if i in xs and i+1 in xs))
+            identity_error.extend(abs(df+hn@f-np.array(target)))
+assert max(identity_error) &lt;= TOL
+out[&quot;occupation_moment_supersolution_identity&quot;] = {
+    &quot;pointwise_cases&quot;:len(identity_error),&quot;S_range&quot;:[2,8],
+    &quot;max_error&quot;:float(max(identity_error))}
+
+out[&quot;all_checks_passed&quot;] = True
+Path(__file__).with_suffix(&quot;.json&quot;).write_text(json.dumps(out, indent=2)+&quot;\n&quot;)
+print(json.dumps(out, indent=2))
+</pre><p><a href="../assets/c19738c98192f3dbd125ee4285ca46113d1d61486a1321594565a3260471111b.py">Exact original</a></p></html>

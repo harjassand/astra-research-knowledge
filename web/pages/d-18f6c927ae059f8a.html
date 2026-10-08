@@ -1,0 +1,132 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c11_engineering_metrology/acoustic_mechanics/multicolor_diagnostic.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c11_engineering_metrology/acoustic_mechanics/multicolor_diagnostic.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>&quot;&quot;&quot;GLS estimator and lack-of-fit diagnostic for multi-colour dispersion barometry.
+
+This is a model-level design check using the first-order helium slopes reported
+by Yang, Stone &amp; Egan (2025). It is not a replay of their instrument data.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import json
+from math import sqrt
+from pathlib import Path
+
+import numpy as np
+
+R = 8.31446261815324
+T = 303.0
+A_EPS_CM3_MOL = 0.51725408
+A2_CM3_MOL = 1.332465e-4
+CM3_TO_M3 = 1e-6
+FREQUENCIES_HZ = np.array([194.368624e12, 473.611873e12, 750.0e12])
+SIGMA_F_HZ = 200.0
+
+
+def pressure_slopes(frequencies_hz: np.ndarray) -&gt; np.ndarray:
+    x = frequencies_hz / 1e14
+    ar_m3_mol = (A_EPS_CM3_MOL + A2_CM3_MOL * x**2) * CM3_TO_M3
+    return 3.0 * ar_m3_mol / (2.0 * R * T)
+
+
+def gls_fit(z: np.ndarray, a: np.ndarray, covariance: np.ndarray,
+            nuisance: np.ndarray | None = None) -&gt; dict[str, np.ndarray | float | int]:
+    &quot;&quot;&quot;Fit z = p*a + nuisance@theta using generalized least squares.&quot;&quot;&quot;
+    if nuisance is None:
+        nuisance = np.ones((len(a), 1))
+    design = np.column_stack((a, nuisance))
+    precision = np.linalg.inv(covariance)
+    information = design.T @ precision @ design
+    rank = int(np.linalg.matrix_rank(design))
+    if rank != design.shape[1]:
+        raise ValueError(&quot;pressure and nuisance coefficients are not identifiable&quot;)
+    coefficient_covariance = np.linalg.inv(information)
+    theta = coefficient_covariance @ design.T @ precision @ z
+    residual = z - design @ theta
+    chi2 = float(residual.T @ precision @ residual)
+    return {
+        &quot;theta&quot;: theta,
+        &quot;coefficient_covariance&quot;: coefficient_covariance,
+        &quot;residual&quot;: residual,
+        &quot;chi2&quot;: chi2,
+        &quot;degrees_of_freedom&quot;: len(a) - rank,
+        &quot;design_rank&quot;: rank,
+    }
+
+
+def main() -&gt; None:
+    a = pressure_slopes(FREQUENCIES_HZ)
+    # Frequency-change noise is converted to the dimensionless fractional
+    # resonance coordinate separately in each colour.
+    sigma_z = SIGMA_F_HZ / FREQUENCIES_HZ
+    covariance = np.diag(sigma_z**2)
+    p_true = 250e3
+    d_true = -1e-11 * p_true  # illustrative shared deformation, not source fit
+    z = a * p_true + d_true
+
+    fit = gls_fit(z, a, covariance)
+    theta = np.asarray(fit[&quot;theta&quot;])
+    fit_cov = np.asarray(fit[&quot;coefficient_covariance&quot;])
+    p_se = sqrt(float(fit_cov[0, 0]))
+
+    # Exact third-colour contrast against the first-two-colour estimate.
+    q = (a[2] - a[0]) / (a[1] - a[0])
+    contrast = np.array([q - 1.0, -q, 1.0])
+    contrast_sigma = sqrt(float(contrast @ covariance @ contrast))
+    contrast_source = float(contrast @ z)
+
+    # A 2e-12 dimensionless offset on the third channel is synthetic. It
+    # demonstrates the residual test&#x27;s sensitivity to one non-collinear error.
+    injected_chromatic = np.array([0.0, 0.0, 2e-12])
+    bad_fit = gls_fit(z + injected_chromatic, a, covariance)
+    bad_contrast = float(contrast @ (z + injected_chromatic))
+    bad_fit_se = sqrt(float(np.asarray(bad_fit[&quot;coefficient_covariance&quot;])[0, 0]))
+
+    # An error parallel to the pressure-response vector is exactly aliased with
+    # pressure for any number of wavelengths; the residual is identically zero.
+    eta = 5.7e-6
+    aliased_z = a * p_true * (1.0 + eta) + d_true
+    alias_fit = gls_fit(aliased_z, a, covariance)
+    alias_residual_norm = float(np.linalg.norm(np.asarray(alias_fit[&quot;residual&quot;])))
+
+    result = {
+        &quot;frequencies_Hz&quot;: FREQUENCIES_HZ.tolist(),
+        &quot;pressure_slopes_Pa-1&quot;: a.tolist(),
+        &quot;assumptions&quot;: {
+            &quot;temperature_K&quot;: T,
+            &quot;per_colour_frequency_noise_Hz&quot;: SIGMA_F_HZ,
+            &quot;noise_covariance&quot;: &quot;independent diagonal; design illustration only&quot;,
+            &quot;shared_deformation_slope_Pa-1&quot;: -1e-11,
+        },
+        &quot;common_mode_fit&quot;: {
+            &quot;pressure_Pa&quot;: float(theta[0]),
+            &quot;pressure_standard_error_Pa&quot;: p_se,
+            &quot;relative_pressure_standard_error_ppm_at_250kPa&quot;: p_se / p_true * 1e6,
+            &quot;chi2&quot;: float(fit[&quot;chi2&quot;]),
+            &quot;degrees_of_freedom&quot;: int(fit[&quot;degrees_of_freedom&quot;]),
+        },
+        &quot;third_colour_lack_of_fit&quot;: {
+            &quot;contrast_weights&quot;: contrast.tolist(),
+            &quot;contrast_sigma&quot;: contrast_sigma,
+            &quot;common_mode_contrast&quot;: contrast_source,
+            &quot;synthetic_third_colour_offset&quot;: 2e-12,
+            &quot;synthetic_offset_z_score&quot;: bad_contrast / contrast_sigma,
+            &quot;synthetic_offset_pressure_bias_ppm&quot;: (float(np.asarray(bad_fit[&quot;theta&quot;])[0]) / p_true - 1.0) * 1e6,
+        },
+        &quot;exact_alias_counterexample&quot;: {
+            &quot;parallel_dispersion_scale_error_eta&quot;: eta,
+            &quot;fitted_pressure_bias_ppm&quot;: (float(np.asarray(alias_fit[&quot;theta&quot;])[0]) / p_true - 1.0) * 1e6,
+            &quot;residual_norm&quot;: alias_residual_norm,
+        },
+        &quot;status&quot;: &quot;finite model calculation; no raw source data replay or device validation&quot;,
+    }
+    out = Path(__file__).with_name(&quot;multicolor_design_check.json&quot;)
+    out.write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+    assert abs(float(theta[0]) - p_true) &lt; 1e-6
+    assert int(fit[&quot;degrees_of_freedom&quot;]) == 1
+    assert abs((float(np.asarray(alias_fit[&quot;theta&quot;])[0]) / p_true - 1.0) - eta) &lt; 1e-10
+    assert alias_residual_norm &lt; 1e-12
+    print(json.dumps(result, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/c619026e6d8a50e0df7b4f463816b9ba71b064d21b4e96873a16f1ec4d96a900.py">Exact original</a></p></html>

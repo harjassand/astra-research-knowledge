@@ -1,0 +1,260 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/algebra_complexity/cycle3/fermionic_reverse/evidence/check_universal_pfaffian_quadrature.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/algebra_complexity/cycle3/fermionic_reverse/evidence/check_universal_pfaffian_quadrature.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact finite replay for the universal Pfaffian-quadrature theorem.
+
+Uses only the Python standard library. It checks every pairing at n=6,
+enumerates the associated half-sector Z exactly, verifies the block
+Pfaffian-square expectation, and checks that the forced even Walsh
+characters uniquely determine all 2^(n-1) quotient-class masses.
+
+This is finite evidence; the all-even-n lower bound is proved in RESULT.md.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+from fractions import Fraction
+from itertools import combinations, product
+import json
+import math
+
+
+def pairings(items: tuple[int, ...]):
+    if not items:
+        yield ()
+        return
+    first = items[0]
+    for j in range(1, len(items)):
+        second = items[j]
+        rest = items[1:j] + items[j + 1 :]
+        for tail in pairings(rest):
+            yield ((first, second),) + tail
+
+
+def determinant(matrix: list[list[Fraction]]) -&gt; Fraction:
+    a = [row[:] for row in matrix]
+    n = len(a)
+    sign = 1
+    value = Fraction(1)
+    for col in range(n):
+        pivot = next((r for r in range(col, n) if a[r][col]), None)
+        if pivot is None:
+            return Fraction(0)
+        if pivot != col:
+            a[col], a[pivot] = a[pivot], a[col]
+            sign = -sign
+        p = a[col][col]
+        value *= p
+        for r in range(col + 1, n):
+            if a[r][col]:
+                factor = a[r][col] / p
+                for c in range(col + 1, n):
+                    a[r][c] -= factor * a[col][c]
+                a[r][col] = Fraction(0)
+    return sign * value
+
+
+def make_matrix(n: int, matching: tuple[tuple[int, int], ...],
+                weights: tuple[tuple[Fraction, Fraction], ...]):
+    a = [[Fraction(0) for _ in range(n)] for _ in range(n)]
+    for (u, v), (x, y) in zip(matching, weights):
+        a[u][v] = x
+        a[v][u] = y
+    return a
+
+
+def half_sector_z(a: list[list[Fraction]]) -&gt; Fraction:
+    n = len(a)
+    k = n // 2
+    total = Fraction(0)
+    universe = set(range(n))
+    for rows in combinations(range(n), k):
+        row_set = set(rows)
+        cols = tuple(sorted(universe - row_set))
+        minor = [[a[i][j] for j in cols] for i in rows]
+        d = determinant(minor)
+        total += d * d
+    return total
+
+
+def sign_vectors(n: int):
+    for bits in product((1, -1), repeat=n):
+        yield bits
+
+
+def block_pfaffian_square(sigma: tuple[int, ...],
+                           matching: tuple[tuple[int, int], ...],
+                           weights: tuple[tuple[Fraction, Fraction], ...]):
+    value = Fraction(1)
+    for (u, v), (a, b) in zip(matching, weights):
+        value *= (sigma[u] * a - sigma[v] * b) ** 2
+    return value
+
+
+def union_mask(matching: tuple[tuple[int, int], ...], selected: int) -&gt; int:
+    mask = 0
+    for j, (u, v) in enumerate(matching):
+        if (selected &gt;&gt; j) &amp; 1:
+            mask |= (1 &lt;&lt; u) | (1 &lt;&lt; v)
+    return mask
+
+
+def even_nonzero_masks(n: int) -&gt; set[int]:
+    return {mask for mask in range(1, 1 &lt;&lt; n)
+            if mask.bit_count() % 2 == 0}
+
+
+def quotient_char_matrix(n: int):
+    # One representative per global-sign class: coordinate 0 is +1.
+    reps = [
+        tuple(1 if ((bits &gt;&gt; i) &amp; 1) == 0 else -1 for i in range(n))
+        for bits in range(1 &lt;&lt; (n - 1))
+    ]
+    masks = [0] + sorted(even_nonzero_masks(n))
+    matrix = []
+    for mask in masks:
+        row = []
+        for sigma in reps:
+            value = 1
+            for i in range(n):
+                if (mask &gt;&gt; i) &amp; 1:
+                    value *= sigma[i]
+            row.append(Fraction(value))
+        matrix.append(row)
+    return masks, reps, matrix
+
+
+def rank(matrix: list[list[Fraction]]) -&gt; int:
+    a = [row[:] for row in matrix]
+    rows = len(a)
+    cols = len(a[0]) if rows else 0
+    r = 0
+    for c in range(cols):
+        pivot = next((i for i in range(r, rows) if a[i][c]), None)
+        if pivot is None:
+            continue
+        a[r], a[pivot] = a[pivot], a[r]
+        p = a[r][c]
+        a[r] = [x / p for x in a[r]]
+        for i in range(rows):
+            if i != r and a[i][c]:
+                f = a[i][c]
+                a[i] = [x - f * y for x, y in zip(a[i], a[r])]
+        r += 1
+        if r == rows:
+            break
+    return r
+
+
+def main() -&gt; None:
+    n = 6
+    all_pairings = list(pairings(tuple(range(n))))
+    assert len(all_pairings) == 15
+    weights = (
+        (Fraction(1), Fraction(2, 3)),
+        (Fraction(3, 5), Fraction(4, 7)),
+        (Fraction(5, 8), Fraction(7, 9)),
+    )
+
+    target_checks = []
+    for matching in all_pairings:
+        a = make_matrix(n, matching, weights)
+        z = half_sector_z(a)
+        product_formula = Fraction(1)
+        for x, y in weights:
+            product_formula *= x * x + y * y
+        assert z == product_formula
+
+        average = sum(
+            (block_pfaffian_square(sigma, matching, weights)
+             for sigma in sign_vectors(n)),
+            Fraction(0),
+        ) / (1 &lt;&lt; n)
+        assert average == z
+        quotient_average = sum(
+            (block_pfaffian_square(sigma, matching, weights)
+             for sigma in sign_vectors(n) if sigma[0] == 1),
+            Fraction(0),
+        ) / (1 &lt;&lt; (n - 1))
+        assert quotient_average == z
+
+        # The normalized sample factors are exactly 1-gamma_i*sigma_u*sigma_v.
+        normalized_values = []
+        for sigma in sign_vectors(n):
+            sample = block_pfaffian_square(sigma, matching, weights) / z
+            expanded = Fraction(1)
+            for (u, v), (x, y) in zip(matching, weights):
+                gamma = 2 * x * y / (x * x + y * y)
+                expanded *= 1 - gamma * sigma[u] * sigma[v]
+            assert sample == expanded
+            normalized_values.append(sample)
+        assert sum(normalized_values, Fraction(0)) / (1 &lt;&lt; n) == 1
+
+        target_checks.append({
+            &quot;pairing&quot;: [[u + 1, v + 1] for u, v in matching],
+            &quot;Z_half&quot;: str(z),
+            &quot;uniform_pfaffian_square_mean&quot;: str(average),
+            &quot;quotient_representative_mean&quot;: str(quotient_average),
+        })
+
+    forced_masks: set[int] = set()
+    for matching in all_pairings:
+        for selected in range(1, 1 &lt;&lt; (n // 2)):
+            forced_masks.add(union_mask(matching, selected))
+    expected_masks = even_nonzero_masks(n)
+    assert forced_masks == expected_masks
+
+    coverage_counts = []
+    for sigma in sign_vectors(n):
+        covered = sum(
+            all(sigma[u] != sigma[v] for u, v in matching)
+            for matching in all_pairings
+        )
+        balanced = sum(1 for x in sigma if x == 1) == n // 2
+        assert covered == (math.factorial(n // 2) if balanced else 0)
+        coverage_counts.append(covered)
+    pairing_cover_lower_bound = math.ceil(
+        len(all_pairings) / math.factorial(n // 2)
+    )
+    assert pairing_cover_lower_bound == math.ceil(
+        math.comb(n, n // 2) / (1 &lt;&lt; (n // 2))
+    )
+
+    masks, reps, char_matrix = quotient_char_matrix(n)
+    char_rank = rank(char_matrix)
+    assert len(reps) == (1 &lt;&lt; (n - 1))
+    assert len(masks) == (1 &lt;&lt; (n - 1))
+    assert char_rank == (1 &lt;&lt; (n - 1))
+    # The unique normalized solution to the Fourier constraints is uniform.
+    uniform_mass = Fraction(1, len(reps))
+    for mask in masks[1:]:
+        moment = sum(
+            (char_matrix[masks.index(mask)][j] * uniform_mass
+             for j in range(len(reps))),
+            Fraction(0),
+        )
+        assert moment == 0
+
+    receipt = {
+        &quot;status&quot;: &quot;PASS&quot;,
+        &quot;n&quot;: n,
+        &quot;k&quot;: n // 2,
+        &quot;pairing_count&quot;: len(all_pairings),
+        &quot;pairing_family_checks&quot;: target_checks,
+        &quot;nontrivial_even_characters&quot;: len(expected_masks),
+        &quot;characters_forced_by_pairing_families&quot;: len(forced_masks),
+        &quot;quotient_classes&quot;: len(reps),
+        &quot;quotient_walsh_matrix_rank&quot;: char_rank,
+        &quot;minimum_exact_universal_quadrature_atoms&quot;: 1 &lt;&lt; (n - 1),
+        &quot;balanced_sign_pairing_coverage&quot;: math.factorial(n // 2),
+        &quot;unbalanced_sign_pairing_coverage&quot;: 0,
+        &quot;relative_error_below_one_support_lower_bound&quot;: pairing_cover_lower_bound,
+        &quot;scope&quot;: (
+            &quot;Finite exact check at n=6 only. The proof covers all even n; &quot;
+            &quot;the approximate bound is only for a fixed atom support.&quot;
+        ),
+    }
+    print(json.dumps(receipt, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/9c9e1e855af5967279ec9300f59cd8c4c71c7f60e52d66b62109270657bc2ebd.py">Exact original</a></p></html>

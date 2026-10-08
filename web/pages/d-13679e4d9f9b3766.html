@@ -1,0 +1,88 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c12_immune_dynamics/analysis/pair_rate_interface_audit.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c12_immune_dynamics/analysis/pair_rate_interface_audit.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Audit the public CD36 rate-calculation input interface.
+
+Requires openpyxl (available in the Codex bundled Python runtime). This reads
+only the two small source workbooks selectively extracted by HTTP byte ranges;
+it does not download the 2.5-GB archive.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import json
+import math
+import statistics
+from pathlib import Path
+
+from openpyxl import load_workbook
+
+
+ROOT = Path(__file__).resolve().parents[1]
+DATA = ROOT / &quot;data&quot;
+
+
+def infer_rates(f_on: float, odds_ratio: float, birth_rate: float) -&gt; dict[str, float]:
+    c = f_on * (1.0 - f_on)
+    m = 2.0 * birth_rate / (math.sqrt(1.0 + 4.0 * c * (odds_ratio - 1.0)) - 1.0)
+    return {&quot;f_on&quot;: f_on, &quot;k_on&quot;: f_on * m, &quot;k_off&quot;: (1.0 - f_on) * m, &quot;k_sum&quot;: m, &quot;memory_time_h&quot;: 1.0 / m}
+
+
+def main() -&gt; None:
+    frac_wb = load_workbook(DATA / &quot;IL1 and CD36 fractions repository.xlsx&quot;, read_only=True, data_only=True)
+    ws = frac_wb[&quot;Cd36 fractions&quot;]
+    clone_rows = []
+    for n_log2, fraction in ws.iter_rows(min_row=2, min_col=1, max_col=2, values_only=True):
+        if isinstance(n_log2, (int, float)) and isinstance(fraction, (int, float)):
+            clone_rows.append((float(n_log2), min(max(float(fraction), 1e-4), 1.0 - 1e-4)))
+    f_clone_unweighted = statistics.mean(f for _, f in clone_rows)
+    f_clone_cell_weighted = sum((2.0**n) * f for n, f in clone_rows) / sum(2.0**n for n, _ in clone_rows)
+
+    pair_wb = load_workbook(DATA / &quot;odds_ratio_CD36_tnfa_il1b.xlsx&quot;, read_only=True, data_only=True)
+    pair_ws = pair_wb[&quot;Sheet1&quot;]
+    plate_rows = []
+    for row in pair_ws.iter_rows(min_row=2, values_only=True):
+        for start in (8, 16):
+            if row[start] is None or row[start + 1] != &quot;per_cd36_intensity_80_mean&quot; or row[start + 2] != &quot;Mock&quot;:
+                continue
+            plate, on_on, off_off, mixed = int(row[start]), int(row[start + 3]), int(row[start + 4]), int(row[start + 5])
+            pairs = on_on + off_off + mixed
+            f_pair = (2 * on_on + mixed) / (2 * pairs)
+            odds_ratio = 4 * on_on * off_off / (mixed * mixed)
+            plate_rows.append({&quot;plate&quot;: plate, &quot;on_on&quot;: on_on, &quot;off_off&quot;: off_off, &quot;mixed&quot;: mixed,
+                               &quot;pairs&quot;: pairs, &quot;paired_cell_marginal&quot;: f_pair, &quot;odds_ratio&quot;: odds_ratio})
+
+    a = sum(r[&quot;on_on&quot;] for r in plate_rows)
+    b = sum(r[&quot;off_off&quot;] for r in plate_rows)
+    c = sum(r[&quot;mixed&quot;] for r in plate_rows)
+    pairs = a + b + c
+    f_pair_aggregate = (2 * a + c) / (2 * pairs)
+    or_aggregate = 4 * a * b / (c * c)
+    birth_rate = math.log(2.0) / 14.4
+    result = {
+        &quot;source_input&quot;: {
+            &quot;fraction_workbook_sheet&quot;: &quot;Cd36 fractions&quot;,
+            &quot;numeric_clone_rows&quot;: len(clone_rows),
+            &quot;R_script_fraction_source&quot;: &quot;mean(clone-level FractionON), clamped to [1e-4, 1-1e-4]&quot;,
+            &quot;pair_workbook_dataset&quot;: &quot;per_cd36_intensity_80_mean / Mock (the dataset5 selection in the Rmd)&quot;,
+            &quot;pair_counts&quot;: {&quot;ON_ON&quot;: a, &quot;OFF_OFF&quot;: b, &quot;mixed&quot;: c, &quot;pairs&quot;: pairs},
+            &quot;birth_rate_per_hour&quot;: birth_rate,
+        },
+        &quot;plate_rows&quot;: plate_rows,
+        &quot;fraction_comparison&quot;: {
+            &quot;R_script_unweighted_clone_fraction&quot;: f_clone_unweighted,
+            &quot;cell_size_weighted_clone_fraction_diagnostic&quot;: f_clone_cell_weighted,
+            &quot;paired_cell_marginal_same_pair_table&quot;: f_pair_aggregate,
+            &quot;difference_script_minus_paired_marginal&quot;: f_clone_unweighted - f_pair_aggregate,
+        },
+        &quot;same_OR_rate_inversion&quot;: {
+            &quot;OR&quot;: or_aggregate,
+            &quot;using_R_script_clone_mean&quot;: infer_rates(f_clone_unweighted, or_aggregate, birth_rate),
+            &quot;using_pair_table_marginal&quot;: infer_rates(f_pair_aggregate, or_aggregate, birth_rate),
+            &quot;warning&quot;: &quot;This isolates the f-input mismatch algebraically. It is not a replay of the paper&#x27;s full bootstrap or proof that the authors used this exact script version for every reported parameter.&quot;
+        },
+    }
+    print(json.dumps(result, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/4111bd1e09961f50b742db17c64c99b13e7be4f27363316b8cf5c0ee6353e608.py">Exact original</a></p></html>

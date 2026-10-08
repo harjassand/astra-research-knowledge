@@ -1,0 +1,179 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c5_quantum_dimension_obstruction/cycle6_dual_star/clifford_star.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c5_quantum_dimension_obstruction/cycle6_dual_star/clifford_star.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact Pauli-word certificates for Clifford-vector star energies.
+
+For m=2n+1, use the irreducible Hermitian Clifford generators on n qubits and
+H=Sum_i Gamma_i^T (x) Gamma_i (x) I + Gamma_i^T (x) I (x) Gamma_i.
+The script proves p(H)=0 by exact Pauli multiplication. Since H is Hermitian,
+the real roots of p bound its spectrum, giving an exact full-star upper bound.
+&quot;&quot;&quot;
+
+import sympy as sp
+
+
+PAULI_PRODUCT = {
+    (&quot;I&quot;, &quot;I&quot;): (0, &quot;I&quot;), (&quot;I&quot;, &quot;X&quot;): (0, &quot;X&quot;),
+    (&quot;I&quot;, &quot;Y&quot;): (0, &quot;Y&quot;), (&quot;I&quot;, &quot;Z&quot;): (0, &quot;Z&quot;),
+    (&quot;X&quot;, &quot;I&quot;): (0, &quot;X&quot;), (&quot;Y&quot;, &quot;I&quot;): (0, &quot;Y&quot;),
+    (&quot;Z&quot;, &quot;I&quot;): (0, &quot;Z&quot;), (&quot;X&quot;, &quot;X&quot;): (0, &quot;I&quot;),
+    (&quot;Y&quot;, &quot;Y&quot;): (0, &quot;I&quot;), (&quot;Z&quot;, &quot;Z&quot;): (0, &quot;I&quot;),
+    (&quot;X&quot;, &quot;Y&quot;): (1, &quot;Z&quot;), (&quot;Y&quot;, &quot;X&quot;): (3, &quot;Z&quot;),
+    (&quot;Y&quot;, &quot;Z&quot;): (1, &quot;X&quot;), (&quot;Z&quot;, &quot;Y&quot;): (3, &quot;X&quot;),
+    (&quot;Z&quot;, &quot;X&quot;): (1, &quot;Y&quot;), (&quot;X&quot;, &quot;Z&quot;): (3, &quot;Y&quot;),
+}
+
+
+def multiply_words(left, right):
+    phase = 0
+    out = []
+    for a, b in zip(left, right):
+        local_phase, symbol = PAULI_PRODUCT[a, b]
+        phase = (phase + local_phase) % 4
+        out.append(symbol)
+    return phase, tuple(out)
+
+
+def gaussian_product(a, b):
+    return a[0] * b[0] - a[1] * b[1], a[0] * b[1] + a[1] * b[0]
+
+
+def phase_product(a, phase):
+    if phase == 0:
+        return a
+    if phase == 1:
+        return -a[1], a[0]
+    if phase == 2:
+        return -a[0], -a[1]
+    return a[1], -a[0]
+
+
+def add_term(poly, word, coefficient):
+    old = poly.get(word, (0, 0))
+    new_value = old[0] + coefficient[0], old[1] + coefficient[1]
+    if new_value == (0, 0):
+        poly.pop(word, None)
+    else:
+        poly[word] = new_value
+
+
+def multiply_pauli_sums(left, right):
+    out = {}
+    for a, ca in left.items():
+        for b, cb in right.items():
+            phase, word = multiply_words(a, b)
+            add_term(out, word, phase_product(gaussian_product(ca, cb), phase))
+    return out
+
+
+def gamma_words(n):
+    &quot;&quot;&quot;Return m=2n+1 Hermitian Jordan-Wigner gamma words and signs.&quot;&quot;&quot;
+    words = []
+    for k in range(n):
+        prefix = (&quot;Z&quot;,) * k
+        suffix = (&quot;I&quot;,) * (n - k - 1)
+        words.append((1, prefix + (&quot;X&quot;,) + suffix))
+        words.append((1, prefix + (&quot;Y&quot;,) + suffix))
+    words.append((1, (&quot;Z&quot;,) * n))
+    return words
+
+
+def star_hamiltonian(n):
+    &quot;&quot;&quot;Pauli-word expansion on reference and two output spinors.&quot;&quot;&quot;
+    m = 2 * n + 1
+    out = {}
+    for sign, gamma in gamma_words(n):
+        transpose_sign = (-1) ** gamma.count(&quot;Y&quot;)
+        reference = gamma
+        output = gamma
+        a_word = reference + output + (&quot;I&quot;,) * n
+        b_word = reference + (&quot;I&quot;,) * n + output
+        coefficient = (sign * transpose_sign, 0)
+        add_term(out, a_word, coefficient)
+        add_term(out, b_word, coefficient)
+    assert len(out) == 2 * m
+    return out
+
+
+def polynomial_for_m(m):
+    x = sp.Symbol(&quot;x&quot;)
+    if m == 3:
+        return sp.Poly(x * (x - 4) * (x + 2), x)
+    if m == 5:
+        return sp.Poly(x * (x - 6) * (x - 2) * (x + 4) * (x**2 - 20), x)
+    if m == 7:
+        return sp.Poly(
+            x
+            * (x - 8)
+            * (x - 4)
+            * (x + 2)
+            * (x**2 - 36)
+            * (x**2 - 48)
+            * (x**2 - 20),
+            x,
+        )
+    if m == 9:
+        return sp.Poly(
+            x
+            * (x - 10)
+            * (x - 6)
+            * (x - 2)
+            * (x + 4)
+            * (x + 6)
+            * (x + 8)
+            * (x**2 - 84)
+            * (x**2 - 48)
+            * (x**2 - 20),
+            x,
+        )
+    raise ValueError(&quot;certificate is provided for m=3,5,7,9&quot;)
+
+
+def annihilator_certificate(m):
+    n = (m - 1) // 2
+    h = star_hamiltonian(n)
+    p = polynomial_for_m(m)
+    powers = [{(&quot;I&quot;,) * (3 * n): (1, 0)}]
+    accumulator = {}
+    for degree in range(p.degree() + 1):
+        if degree:
+            powers.append(multiply_pauli_sums(powers[-1], h))
+        coefficient = p.nth(degree)
+        if coefficient:
+            assert coefficient.is_Integer
+            coefficient = int(coefficient)
+            for word, value in powers[-1].items():
+                add_term(
+                    accumulator,
+                    word,
+                    (coefficient * value[0], coefficient * value[1]),
+                )
+        print(f&quot;m={m}: computed H^{degree}, Pauli support={len(powers[-1])}&quot;)
+    assert accumulator == {}, f&quot;nonzero residual Pauli terms: {len(accumulator)}&quot;
+    # The explicit factorization below has only real roots and largest root
+    # m+1, so Hermiticity gives lambda_max(H) &lt;= m+1 exactly.
+    roots = sp.solve(p.as_expr(), p.gen)
+    assert all(sp.im(root).simplify() == 0 for root in roots)
+    assert max(roots) == m + 1
+    assert sp.gcd(p, p.diff()).degree() == 0
+    x = p.gen
+    quotient = p.exquo(sp.Poly(x - (m + 1), x))
+    projector_poly = sp.Poly(quotient.as_expr() / quotient.eval(m + 1), x)
+    identity = (&quot;I&quot;,) * (3 * n)
+    projector_identity = sum(
+        projector_poly.nth(degree) * powers[degree].get(identity, (0, 0))[0]
+        for degree in range(projector_poly.degree() + 1)
+    )
+    multiplicity = sp.Integer(2 ** (3 * n)) * projector_identity
+    assert multiplicity.is_Integer and multiplicity &gt; 0
+    print(f&quot;m={m}: exact identity p(H)=0; real-root spectral upper bound={m+1}&quot;)
+    print(f&quot;  exact multiplicity of top eigenvalue {m+1}: {multiplicity}&quot;)
+    print(&quot;  annihilator:&quot;, sp.factor(p.as_expr()))
+
+
+def main():
+    for m in (3, 5, 7, 9):
+        annihilator_certificate(m)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/4783654d34d019bf723ed408eaa6a8688645944cb6f77369a15a9291e0eb37eb.py">Exact original</a></p></html>

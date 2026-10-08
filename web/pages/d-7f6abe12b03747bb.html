@@ -1,0 +1,93 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c9_frontier_transfer/children/constructive_margin_compiler/RESULT.md</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c9_frontier_transfer/children/constructive_margin_compiler/RESULT.md</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre># Constructive margin compiler audit
+
+Status: **conditional fixed-family compiler proved; end-to-end family compiler open**. This is a source-grounded derivation, not a Lean implementation or external validation.
+
+## Sources and scope
+
+Read `work/agents/permanence_hostile/OA149/affine.tex`, `trapping.tex`, and the files/reports under `work/agents/c4_rational_hostile/formalization/dynamics/` relevant to affine activity and drift, especially `WeightedDrift.lean`. The dynamics source imports `N33Affine.UniformActivity`, but that implementation is not present under the allowed dynamics directory, so its offset representation and any effective content could not be audited here. No shared Lean files were edited and no build was run.
+
+## Exact data-derived quantities
+
+For rational complexes and targets, every comparison vector in `WeightedDrift.lean` is rational. At a rational slope `r`, all dot products, `l1` norms, and the defined tolerance
+
+`pointTolerance(D,r) = 1 / (2 + Σ_z pointMarginTerm(D,r,z))`
+
+are computable rationals by exact arithmetic; zero dot products are omitted exactly. The source variant `min(1/2, min_nonzero |r·v|/(2||v||_1))` is rational as well. Once a finite rational slope family `F` is supplied, `slopeMargin(D,F)` is also an exact positive rational. `reactionBudget` and `sourceBudget` are rational for rational input. Thus the sign and drift constants do not require numerical exp/log evaluation.
+
+## Conditional exact cutoff algorithm for a fixed family
+
+Assume an explicit finite family has rational slopes and offsets of the form
+
+`b_j(h) = Σ_α c_(j,α) h^(q_(j,α))`,
+
+with rational coefficients and rational exponents. Fix the rational box `[a,b]^d` and use the rational data-derived tolerance `E(r_j)`. There is an exact finite procedure deciding whether any bad active point occurs for arbitrarily small `h`; when none does, it returns a positive rational uniform activity cutoff.
+
+For each label `j`, coordinate `i`, and bad side, encode activity and failure of the desired coordinate bound. Put `x_i=h^(p_i)`. For fixed `h`, this maps `[a,b]^d` bijectively to the box `x_i∈[h^b,h^a]`, so it introduces no approximation and no logarithm. Activity is the finite set of linear inequalities
+
+`(r_j-r_k)·x + b_j(h)-b_k(h) ≤ 0` for every `k`.
+
+The two bad sides are respectively `x_i≤h^(r_(j,i)+E(r_j))` and `x_i≥h^(r_(j,i)-E(r_j))`. These are equivalent to exponent error at least `E(r_j)` because `0&lt;h&lt;1`.
+
+Take `N` to be the lcm of the denominators of `a,b`, all offset exponents, and all `r_(j,i)±E(r_j)`, and write `h=u^N`. Choose an integer `M` large enough that multiplying each inequality by `u^M` and setting `y=u^M x` makes every exponent nonnegative. The bad-event set is now a bounded polytope in `y` with a constant rational constraint matrix and sparse-polynomial rational right-hand sides in `u`.
+
+Enumerate every `d`-row subset with nonsingular constraint matrix `A_B`. Its candidate vertex is `y_B(u)=A_B^(-1)c_B(u)`. For every row, the residual `c_s(u)-A_s y_B(u)` is a sparse rational polynomial. Its sign for all sufficiently small positive `u` is exactly the sign of its lowest-degree nonzero coefficient. A basis is eventually feasible iff every residual is eventually nonnegative. A bounded nonempty polytope has a vertex, including in lower dimension, so this finite basis enumeration decides eventual feasibility without QE or a real-exp oracle.
+
+For a nonzero residual `R(u)=a_k u^k+Σ_(l&gt;k) a_l u^l`, its sign is fixed whenever
+
+`0&lt;u&lt;min(1/2, |a_k|/(2Σ_(l&gt;k)|a_l|))`,
+
+with the tail term omitted if the sum is zero. This is an exact rational root bound. If no basis for any bad event is eventually feasible, take the minimum of these bounds for each basis&#x27;s first eventually negative residual, then the minimum over all bases and bad events. This gives rational `u0&gt;0`; `hAct=u0^N` is rational and excludes every bad active point for all `0&lt;h&lt;hAct`. If some basis is eventually feasible, its vertex witnesses bad active points for all sufficiently small `h`, so no such cutoff exists for this candidate family.
+
+This procedure is conditional on having the family and its explicit power offsets. It does not use an oracle for arbitrary `E`: it evaluates only the stated rational formula at finitely many rational slopes.
+
+Exact pseudocode for the cutoff step is:
+
+```text
+u0 := 1/2
+for each (label, coordinate, bad side):
+    build its rational parametric-polytope rows
+    for each d-row subset B with det(A_B) != 0:
+        yB := inverse(A_B) * rhs_B(u)
+        residuals := rhs_s(u) - A_s*yB for every row s
+        if every residual is identically zero or has positive first
+           nonzero coefficient:
+            return NO_CUTOFF  # bad points exist for every sufficiently small u
+        choose a residual with negative first nonzero coefficient
+        compute its rational sign-stability bound delta_B
+        u0 := min(u0, delta_B)
+return hAct = u0^N
+```
+
+The `NO_CUTOFF` branch is sound because that basis is feasible for all small `u`, not just along a sequence. Conversely, if no basis takes that branch, every possible vertex basis is infeasible below the common `u0`, so every bad-event polytope is empty there.
+
+## Bit and numerical cost
+
+Let `s` be the number of rows in one bad-event polytope and `d` its dimension. The procedure examines at most `binom(s,d)` bases per bad event, with `2 d |F|` bad events. Each basis uses exact rational linear algebra; residuals are linear combinations of the input sparse offset polynomials because `A_B` is constant. Sparse exponents must be stored in binary: their numeric degree may be exponential in the input bit length after taking `N`, while the number of monomials stays bounded by the input support. No floating-point sign decision or conditioning estimate is needed.
+
+`u0^N` is an exact rational, but writing its numerator and denominator in ordinary expanded binary can cost `Θ(N·bitlen(u0))` bits. That output cost must be included; a compact power-node representation is smaller but is not a conventional rational literal. Rational Gaussian elimination, polynomial coefficient additions, and the exact tail bounds have their ordinary bit costs and can grow with the number of rows and rational denominators. Basis enumeration is combinatorial/exponential in dimension and constraint count; this is a finite certifier, not a polynomial-time claim.
+
+Given rational `H=slopeMargin(D,F)&gt;0`, `L=reactionBudget(D)`, and rational `κ,K&gt;0`, the formal drift condition is `K L h^H ≤ κ H`. If `L=0` it is automatic. Otherwise write `H=A/B` in lowest terms and choose a dyadic `h_d=2^-T&lt;1` by exact search until
+
+`2^(-T A) ≤ (κ H/(K L))^B`.
+
+This is equivalent to the real-power inequality and uses integer/rational comparisons only. Search terminates; the output denominator has `T+1` bits, so a large `T` is charged explicitly. `min(hAct,h_d)` is a rational activity-and-drift scale. This does not compute the separate class-dependent conditions in `trapping.tex`, which use `log(c)/log(h)` and the individual real rate constants; those need their own exact input representation and bounds.
+
+## Where the end-to-end compiler remains open
+
+`affine.tex` constructs fixed-minimum families recursively, then invokes compactness to obtain each radius `ρ_t`, takes a finite subcover of `[a,b]`, and chooses overlapping cuts `q_j`. The proof permits rational choices for the strict `β_k` and cuts once the relevant families/intervals are known, and its displayed offsets are built from powers. But it does not give an effective modulus for `ρ_t` or a finite rational-center cover. For arbitrary positive `E`, those choices cannot be computed from point evaluations, and the task expressly forbids treating arbitrary `E` as an oracle. The network tolerance is more structured, but the source proof does not establish that its compact-cover/cut construction can be replaced by a terminating rational algorithm from that structure.
+
+An arrangement-aware rational construction or a proof that a search over rational candidate families must terminate is still needed. A proposed search can validate each explicit candidate with the parametric-polytope procedure above, but termination requires a proof that some rational finite-power candidate passes. The original lemma alone, as written, is not that proof. This is a non-effectivity of the available construction, not a proof that an end-to-end compiler is impossible.
+
+## Claim ledger and next gate
+
+- **Established:** rational data give exact point tolerances and, after a finite rational family is fixed, exact positive slope/drift margins.
+- **Established conditionally:** a fixed rational finite-power family has a decidable eventual bad-activity test and an explicit rational cutoff by exact parametric LP basis enumeration.
+- **Open:** a terminating compiler from rational reaction data alone to the family, its rational cuts, and hence its `hAct`. The compact-cover stage and the imported `N33Affine.UniformActivity` implementation are the gates.
+- **Next decisive gate:** formalize the fixed-family parametric-polytope theorem and separately construct a rational finite-cover compiler for this specific hyperplane-derived tolerance, with explicit size/bit bounds. Only then can the rational `hAct` and downstream drift scale be claimed data-derived.
+
+## Failed/limited approaches
+
+- Directly reading `ρ_t` or the finite subcover out of compactness gives existence only, not an algorithm or a complexity bound.
+- Searching rational centers and checking their intervals is not enough unless one proves those rational-centered intervals cover; density by itself does not imply coverage when radii can shrink discontinuously.
+- Replacing exact signs of `r·v` or polynomial residuals by floating-point tests loses the zero cases that the tolerance definition explicitly omits and gives no certified cutoff. Exact rationals avoid numerical conditioning altogether.
+</pre><p><a href="../assets/9865608e7c485c8c8bb9585e950858a3694f098d077f15c864838f715ff6ba3c.md">Exact original</a></p></html>

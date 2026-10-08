@@ -1,0 +1,266 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/stochastic_endotactic_falsifier/check_endotactic_explosion.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/stochastic_endotactic_falsifier/check_endotactic_explosion.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Exact finite checks for the strongly-endotactic explosion witness.
+
+The infinite-product and explosion proof is in FINAL_REPORT.md. This script
+checks its finite algebra over exact rationals; it does not numerically
+simulate an explosive process.
+&quot;&quot;&quot;
+
+from fractions import Fraction
+from functools import cmp_to_key
+from math import gcd
+from pathlib import Path
+import json
+
+
+# Coordinates are (A, B). Reactions are listed as source, target, name.
+REACTIONS = [
+    ((0, 0), (2, 0), &quot;r0&quot;),       # 0 -&gt; 2A
+    ((2, 0), (4, 1), &quot;r1&quot;),       # 2A -&gt; 4A+B
+    ((4, 1), (6, 4), &quot;r2&quot;),       # 4A+B -&gt; 6A+4B
+    ((6, 4), (3, 0), &quot;r3&quot;),       # 6A+4B -&gt; 3A
+]
+SOURCES = [source for source, _, _ in REACTIONS]
+STOICH = [(target[0] - source[0], target[1] - source[1])
+          for source, target, _ in REACTIONS]
+
+
+def falling(n: int, k: int) -&gt; int:
+    if n &lt; k:
+        return 0
+    out = 1
+    for j in range(k):
+        out *= n - j
+    return out
+
+
+def scaled_rates(n: int, V=Fraction(1), rates=None):
+    &quot;&quot;&quot;Three desired/total rates along one pump cycle at level n.
+
+    Standard volume scaling is lambda_r^V(z) = k_r V^(1-|y|)
+    product_i (z_i)_(y_i). Rate order is (r0,r1,r2,r3).
+    &quot;&quot;&quot;
+    if rates is None:
+        rates = (Fraction(1),) * 4
+    k0, k1, k2, k3 = map(Fraction, rates)
+    V = Fraction(V)
+
+    # State (n,0): r1 is the desired next reaction; r0 competes.
+    q0 = k0 * V
+    q1 = k1 * falling(n, 2) / V
+    stage1 = (q1, q0 + q1)
+
+    # State (n+2,1): r2 is desired; r0 and r1 compete.
+    a = n + 2
+    q0 = k0 * V
+    q1 = k1 * falling(a, 2) / V
+    q2 = k2 * falling(a, 4) / V**4
+    stage2 = (q2, q0 + q1 + q2)
+
+    # State (n+4,4): r3 is desired; all earlier sources compete.
+    a = n + 4
+    q0 = k0 * V
+    q1 = k1 * falling(a, 2) / V
+    q2 = k2 * falling(a, 4) * falling(4, 1) / V**4
+    q3 = k3 * falling(a, 6) * falling(4, 4) / V**9
+    stage3 = (q3, q0 + q1 + q2 + q3)
+    return stage1, stage2, stage3
+
+
+def cycle_success(n: int, V=Fraction(1), rates=None) -&gt; Fraction:
+    return Fraction(1) * __import__(&quot;functools&quot;).reduce(
+        lambda x, pair: x * pair[0] / pair[1], scaled_rates(n, V, rates), Fraction(1)
+    )
+
+
+def exact_prefix_probability(N: int, V=Fraction(1), rates=None) -&gt; Fraction:
+    &quot;&quot;&quot;Probability of following all prescribed cycles n=3,...,N-1.&quot;&quot;&quot;
+    p = Fraction(1)
+    for n in range(3, N):
+        p *= cycle_success(n, V, rates)
+    return p
+
+
+def unit_rate_tail_competition_bound(N: int) -&gt; Fraction:
+    &quot;&quot;&quot;Exact sum of competitor/desired ratios for all n &gt;= N, V=k=1.&quot;&quot;&quot;
+    # q1_n = 1/(n)_2.
+    q1 = Fraction(1, N - 1)
+
+    # q2_n = 1/(n)_2 + 1/(n+2)_4.
+    q2 = Fraction(1, N - 1) + Fraction(1, 3 * (N + 1) * N * (N - 1))
+
+    # q3_n = 1/[6(n+4)_2] + 1/[24(n+4)_4] + 1/[24(n+4)_6].
+    q3 = (
+        Fraction(1, 6 * (N + 3))
+        + Fraction(1, 72 * (N + 3) * (N + 2) * (N + 1))
+        + Fraction(1, 120 * (N + 3) * (N + 2) * (N + 1) * N * (N - 1))
+    )
+    return q1 + q2 + q3
+
+
+def normalize_ray(v):
+    x, y = v
+    g = gcd(abs(x), abs(y))
+    assert g &gt; 0
+    x, y = x // g, y // g
+    # Keep oriented rays; do not identify v and -v.
+    return (x, y)
+
+
+def half(v):
+    x, y = v
+    return 0 if (y &gt; 0 or (y == 0 and x &gt; 0)) else 1
+
+
+def compare_angle(a, b):
+    ha, hb = half(a), half(b)
+    if ha != hb:
+        return -1 if ha &lt; hb else 1
+    cross = a[0] * b[1] - a[1] * b[0]
+    if cross:
+        return -1 if cross &gt; 0 else 1
+    return 0
+
+
+def exact_sweep_directions():
+    &quot;&quot;&quot;All ray boundaries where source maxima or reaction signs can change.&quot;&quot;&quot;
+    rays = set()
+
+    def add_line_normal(v):
+        x, y = v
+        normal = normalize_ray((y, -x))
+        rays.add(normal)
+        rays.add((-normal[0], -normal[1]))
+
+    for i, y in enumerate(SOURCES):
+        for z in SOURCES[i + 1 :]:
+            add_line_normal((z[0] - y[0], z[1] - y[1]))
+    for v in STOICH:
+        add_line_normal(v)
+
+    ordered = sorted(rays, key=cmp_to_key(compare_angle))
+    return ordered
+
+
+def strong_endotactic_sweep():
+    &quot;&quot;&quot;Check the strong-endotactic sign conditions on all cells and rays.
+
+    Source order and reaction-dot signs can change only at the enumerated
+    exact rational directions. Rank(S)=2, so every nonzero w is admissible.
+    &quot;&quot;&quot;
+    directions = exact_sweep_directions()
+    candidates = list(directions)
+    for i, a in enumerate(directions):
+        b = directions[(i + 1) % len(directions)]
+        # The arrangement has nonparallel lines, so each open angular gap is
+        # strictly less than pi; a+b is an exact rational interior direction.
+        assert a[0] * b[1] - a[1] * b[0] &gt; 0
+        w = (a[0] + b[0], a[1] + b[1])
+        assert w != (0, 0)
+        candidates.append(w)
+
+    for w in candidates:
+        dots = [w[0] * v[0] + w[1] * v[1] for v in STOICH]
+        values = [w[0] * y[0] + w[1] * y[1] for y in SOURCES]
+        top = max(values)
+        active = [i for i, value in enumerate(values) if value == top]
+        active_edges = [i for i, (source, _, _) in enumerate(REACTIONS)
+                        if source in [SOURCES[j] for j in active]]
+        assert active_edges
+        assert all(dots[i] &lt;= 0 for i in active_edges), (w, active, dots)
+        assert any(dots[i] &lt; 0 for i in active_edges), (w, active, dots)
+    return len(candidates)
+
+
+def class_macro_checks():
+    v0, v1, v2, v3 = STOICH
+    # Net pump r1,r2,r3 raises A by one and preserves B.
+    assert tuple(sum(v[i] for v in (v1, v2, v3)) for i in range(2)) == (1, 0)
+    # Exact decrement macro: r1 + 9 r2 + 7 r3 lowers A by one, preserves B.
+    assert tuple(v1[i] + 9 * v2[i] + 7 * v3[i] for i in range(2)) == (-1, 0)
+    # All products have A-count &gt;= 2; on A&gt;=3 no reaction can leave A&gt;=3.
+    assert min(target[0] for _, target, _ in REACTIONS) == 2
+    assert all(target[0] &gt;= 3 for _, target, _ in REACTIONS[1:])
+
+
+def conditional_time_bound(V=Fraction(1), rates=None) -&gt; Fraction:
+    &quot;&quot;&quot;Upper bound on route time conditional on following every chosen jump.&quot;&quot;&quot;
+    if rates is None:
+        rates = (Fraction(1),) * 4
+    _, k1, k2, k3 = map(Fraction, rates)
+    V = Fraction(V)
+    # Exact telescoping sums for n &gt;= 3 under standard volume scaling.
+    return V / (2 * k1) + V**4 / (72 * k2) + V**9 / (86400 * k3)
+
+
+def main():
+    class_macro_checks()
+    sweep_cells = strong_endotactic_sweep()
+    N = 100
+    prefix = exact_prefix_probability(N)
+    tail = unit_rate_tail_competition_bound(N)
+    assert 0 &lt; tail &lt; 1
+    # For p=1/(1+q), log p &gt;= -q, so the infinite product tail is &gt;= e^-Q
+    # and e^-Q &gt;= 1-Q for 0&lt;=Q&lt;=1. This is an exact rational lower bound.
+    lower = prefix * (1 - tail)
+    time_bound = conditional_time_bound()
+    assert time_bound == Fraction(44401, 86400)
+
+    # Standard volume scaling keeps the finite-level path probabilities
+    # positive at arbitrary fixed integer volume. Check a rational example.
+    V = Fraction(7, 3)
+    assert all(0 &lt; p &lt; 1 for p in (
+        stage[0] / stage[1] for stage in scaled_rates(3, V)
+    ))
+
+    T = 2 * time_bound
+    capped_hit_lb = lower / 2
+    # For count cap M&gt;=107, choose N=M-7. All route states through (N,0)
+    # have A+B&lt;=M, so blocking outward reactions preserves this route.
+    assert N + 7 == 107
+    assert T == Fraction(44401, 43200)
+
+    payload = {
+        &quot;schema_version&quot;: 1,
+        &quot;scope&quot;: &quot;exact finite checks; infinite-product proof is in FINAL_REPORT.md&quot;,
+        &quot;strong_endotactic_sweep_candidates&quot;: sweep_cells,
+        &quot;volume_one_unit_rate_route&quot;: {
+            &quot;start&quot;: [3, 0],
+            &quot;level_N&quot;: N,
+            &quot;prefix_probability_exact&quot;: f&quot;{prefix.numerator}/{prefix.denominator}&quot;,
+            &quot;tail_competitor_sum_exact&quot;: f&quot;{tail.numerator}/{tail.denominator}&quot;,
+            &quot;infinite_success_probability_lower_exact&quot;: f&quot;{lower.numerator}/{lower.denominator}&quot;,
+            &quot;infinite_success_probability_lower_decimal&quot;: float(lower),
+            &quot;conditional_time_mean_upper_exact&quot;: f&quot;{time_bound.numerator}/{time_bound.denominator}&quot;,
+            &quot;time_horizon_2S_exact&quot;: f&quot;{T.numerator}/{T.denominator}&quot;,
+            &quot;hard_total_count_cap_for_N&quot;: N + 7,
+            &quot;capped_chain_hit_by_2S_probability_lower_exact&quot;: f&quot;{capped_hit_lb.numerator}/{capped_hit_lb.denominator}&quot;,
+            &quot;capped_chain_hit_by_2S_probability_lower_decimal&quot;: float(capped_hit_lb),
+        },
+        &quot;volume_scaled_rational_fixture&quot;: {
+            &quot;V&quot;: &quot;7/3&quot;,
+            &quot;level_n&quot;: 3,
+            &quot;rates&quot;: [&quot;1&quot;, &quot;1&quot;, &quot;1&quot;, &quot;1&quot;],
+            &quot;stage_probabilities_exact&quot;: [
+                f&quot;{prob.numerator}/{prob.denominator}&quot;
+                for stage in scaled_rates(3, Fraction(7, 3))
+                for prob in [stage[0] / stage[1]]
+            ],
+            &quot;note&quot;: &quot;all propensities and transition probabilities are positive rationals&quot;,
+        },
+    }
+    out_path = Path(__file__).with_name(&quot;CHECK_OUTPUT.json&quot;)
+    out_path.write_text(json.dumps(payload, indent=2) + &quot;\n&quot;)
+
+    print(f&quot;exact strong-endotactic sweep candidates checked: {sweep_cells}&quot;)
+    print(f&quot;exact prefix probability through level {N}: {float(prefix):.12f}&quot;)
+    print(f&quot;exact tail sum bound from level {N}: {float(tail):.12g}&quot;)
+    print(f&quot;certified rational lower bound on infinite success probability: {float(lower):.12f}&quot;)
+    print(f&quot;conditional explosion-time expectation upper bound: {time_bound} = {float(time_bound):.12f}&quot;)
+    print(f&quot;hard-cap hit-by-2S probability lower bound: {float(capped_hit_lb):.12f}&quot;)
+    print(&quot;rational volume-scaled stage propensities checked at V=7/3, level n=3&quot;)
+    print(f&quot;wrote {out_path}&quot;)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/83afad6fb5874b802a194fd537ec2348f28348814e5a0ea65195a9b6c342cd2b.py">Exact original</a></p></html>

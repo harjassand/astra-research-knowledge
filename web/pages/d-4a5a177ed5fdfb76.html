@@ -1,0 +1,82 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/weyl_compatible_lift/scripts/reconstruct_sdp_primal.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/weyl_compatible_lift/scripts/reconstruct_sdp_primal.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Rebuild and audit one selected d=5 compatibility-kernel primal point.&quot;&quot;&quot;
+from __future__ import annotations
+
+import argparse
+import json
+import numpy as np
+from weyl_sdp import compatibility_sdp, line_system, line_cover, data
+
+
+def encode_complex(a):
+    return [[[float(z.real), float(z.imag)] for z in row] for row in a]
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument(&quot;--candidate&quot;, required=True)
+    ap.add_argument(&quot;--out&quot;, required=True)
+    ap.add_argument(&quot;--eps&quot;, type=float, default=1e-9)
+    ap.add_argument(&quot;--mix-depolarizing&quot;, type=float, default=0.01)
+    args = ap.parse_args()
+    source = json.load(open(args.candidate))
+    d = source[&quot;dimension&quot;]
+    selection = source[&quot;best&quot;][&quot;selection&quot;]
+    points, index, qv, lamv, solve = compatibility_sdp(d, eps=args.eps,
+                                                       max_iters=400000)
+    lines = line_system(d)
+    direction = np.zeros(d*d)
+    active = 0
+    for line, k in zip(lines, selection):
+        if k is not None:
+            direction[line[k-1]] += 2
+            active += 1
+    raw = solve(direction)
+    X0, q0, lam0 = raw[&quot;X&quot;], raw[&quot;q&quot;], raw[&quot;lambda&quot;]
+    a = args.mix_depolarizing
+    q = (1-a)*q0 + a/(d*d)
+    X = (1-a)*X0 + a*np.eye(d*d)/(d*d)
+    lam = np.real(data(d)[3] @ q)
+    F = data(d)[2]
+    q_compat = np.array([np.real(np.sum(F[:,:,r]*X))/(d*d)
+                         for r in range(d*d)])
+    beta = X / np.sqrt(np.outer(q, q))
+    cover, peaks, terms = line_cover(lam, lines)
+    payload = {
+        &quot;dimension&quot;: d,
+        &quot;selection&quot;: selection,
+        &quot;solver&quot;: raw[&quot;solver_stats&quot;],
+        &quot;solver_status&quot;: raw[&quot;status&quot;],
+        &quot;mix_with_depolarizing_fraction&quot;: a,
+        &quot;q&quot;: q.tolist(),
+        &quot;lambda&quot;: lam.tolist(),
+        &quot;line_cover_budget&quot;: cover,
+        &quot;line_peaks&quot;: peaks,
+        &quot;line_terms&quot;: terms,
+        &quot;X_real_imag&quot;: encode_complex(X),
+        &quot;beta_real_imag&quot;: encode_complex(beta),
+        &quot;diagnostics&quot;: {
+            &quot;q_min&quot;: float(q.min()),
+            &quot;q_sum_error&quot;: float(abs(q.sum()-1)),
+            &quot;diag_X_q_max_error&quot;: float(np.max(np.abs(np.diag(X).real-q))),
+            &quot;compatibility_qprime_q_max_error&quot;: float(np.max(np.abs(q_compat-q))),
+            &quot;X_hermitian_max_error&quot;: float(np.max(np.abs(X-X.conj().T))),
+            &quot;X_min_eigenvalue&quot;: float(np.linalg.eigvalsh((X+X.conj().T)/2).min()),
+            &quot;beta_diag_max_error&quot;: float(np.max(np.abs(np.diag(beta)-1))),
+            &quot;beta_min_eigenvalue&quot;: float(np.linalg.eigvalsh((beta+beta.conj().T)/2).min()),
+            &quot;lambda_min&quot;: float(lam.min()),
+            &quot;target_clipped_sum&quot;: float(np.maximum(2*lam-1,0)[1:].sum()),
+        },
+        &quot;scope&quot;: &quot;floating-point primal reconstruction and residual audit; no exact algebraic/rational certificate&quot;,
+    }
+    with open(args.out, &quot;w&quot;) as f:
+        json.dump(payload, f, indent=2)
+        f.write(&quot;\n&quot;)
+    print(json.dumps({k: payload[k] for k in (
+        &quot;line_cover_budget&quot;, &quot;line_peaks&quot;, &quot;line_terms&quot;, &quot;diagnostics&quot;,
+        &quot;solver_status&quot;, &quot;solver&quot;)}, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+
+</pre><p><a href="../assets/ef2bbe4f7c305cf96a8652be25ab9cf98445cb31a882bfb87848c05311f5aeaa.py">Exact original</a></p></html>

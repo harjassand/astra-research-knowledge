@@ -1,0 +1,106 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/sol_attractive_critical/thermal_checks.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/sol_attractive_critical/thermal_checks.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Finite Galerkin diagnostics and scalar certificate arithmetic.
+No numerical case certifies the continuum heat kernel, trace or priority.
+Run: OPENBLAS_NUM_THREADS=1 python3 outputs/research/sol_attractive_critical/thermal_checks.py
+&quot;&quot;&quot;
+import itertools
+import json
+import math
+from pathlib import Path
+import numpy as np
+
+TOL=4e-9
+J=1.
+
+
+def model(K):
+    pairs=list(itertools.combinations_with_replacement(range(1,K+1),2))
+    Q=8*K+1
+    phi=np.sqrt(2)*np.sin(np.pi*np.outer(np.arange(1,K+1),(np.arange(Q)+.5)/Q))
+    v=np.array([phi[k-1]*phi[l-1]*(1 if k==l else np.sqrt(2)) for k,l in pairs])
+    contact=2*v@v.T/Q
+    energy=np.array([2*np.pi**2*(k*k+l*l) for k,l in pairs])
+    return pairs,energy,contact
+
+
+def heat(matrix,t):
+    w,v=np.linalg.eigh(matrix)
+    return (v*np.exp(-t*w))@v.T
+
+
+remainder_ratios=[]
+comm_margins=[]
+cases=0
+for K in (3,5,8,12):
+    pairs,e,B=model(K)
+    for theta in (.005,.01,.02):
+        w=np.exp(-theta*e)
+        H0=np.diag(w)
+        dd=np.zeros((len(e),)*2)
+        for i in range(len(e)):
+            for j in range(len(e)):
+                dd[i,j]=theta*w[i] if abs(e[j]-e[i])&lt;1e-8 else (w[i]-w[j])/(e[j]-e[i])
+        D=B*dd
+        d1=2/(3*math.sqrt(math.pi))*math.sqrt(theta)
+        d2=theta/6
+        assert np.linalg.norm(D,2)&lt;=d1+TOL
+        for a,b in ((.1,.2),(.1,.7),(.3,.9)):
+            Ta=heat(np.diag(e)+a*B,theta)
+            Tb=heat(np.diag(e)+b*B,theta)
+            Ea=Ta-H0+a*D
+            Eb=Tb-H0+b*D
+            ratios=[np.linalg.norm(Ea,2)/(a*a*d2),
+                    np.linalg.norm(Eb,2)/(b*b*d2),
+                    np.linalg.norm(Eb-Ea,2)/((b*b-a*a)*d2),
+                    np.linalg.norm(a*Eb-b*Ea,2)/(a*b*(b-a)*d2)]
+            remainder_ratios.extend(float(x) for x in ratios)
+            # Finite Galerkin projection does not preserve the continuum
+            # pointwise heat-kernel order. These inequalities are sampled
+            # diagnostics only, not the positive-kernel argument&#x27;s proof.
+            assert max(ratios)&lt;=1+TOL
+            e0,e1=4*math.pi**2,20*math.pi**2
+            q0=math.exp(-theta*e0)
+            lead=math.sqrt(2)*(q0-math.exp(-theta*e1))**2/(e1-e0)
+            ell=lead-2*q0*(a+b)*d2-2*d1*a*b*d2-2*a*a*(a+b)*d2*d2
+            comm=np.linalg.norm(Ta@Tb-Tb@Ta,2)
+            comm_margins.append(float(comm-(b-a)*ell))
+            assert comm_margins[-1]&gt;=-TOL
+            cases+=1
+
+# Conservative finite decimal enclosures used by the analytic certificate.
+assert 9.8696&lt;=math.pi**2&lt;=9.8697
+assert math.sqrt(2)&gt;=1.4142
+assert .6738&lt;=math.exp(-.01*4*math.pi**2)&lt;=.6739
+assert .1388&lt;=math.exp(-.01*20*math.pi**2)&lt;=.1390
+wlower=1.4142*(.6738-.1390)**2/(16*9.8697)
+d1,d2=.0377,.001667
+ell_pair=wlower-2*.6739*.8*d2-2*d1*.07*d2-2*.01*.8*d2*d2
+ell_local=wlower-2*.6739*.3*d2-2*d1*.02*d2-2*.01*.3*d2*d2
+assert ell_pair&gt;=.00075
+assert ell_local&gt;=.0018
+q_upper=[.6739,.2062,.02864,.001807,.00005173]
+for k,q in enumerate(q_upper,start=1):
+    assert math.exp(-.04*math.pi**2*k*k)&lt;q
+q6=math.exp(-.04*9.8696*36)
+ratio=math.exp(-.04*9.8696*13)
+tail=q6/(1-ratio)/(1-q6)
+assert tail&lt;.00000068
+Sbar=math.prod(1/(1-q) for q in q_upper)*math.exp(.00000068)
+assert Sbar&lt;4
+one_floor=((.6*.00075/4)**4)/256
+cd=.0018**2/(8*16)
+many_floor=math.exp(-217*.01/2)*(-math.expm1(-cd*.01))**2/4
+assert one_floor&gt;6e-19
+assert many_floor&gt;5e-21
+
+out={&quot;status&quot;:&quot;FINITE-EVIDENCE&quot;,&quot;all_checks_passed&quot;:True,
+     &quot;Galerkin_response_cases&quot;:cases,
+     &quot;max_finite_remainder_over_bound&quot;:max(remainder_ratios),
+     &quot;min_thermal_commutator_margin&quot;:min(comm_margins),
+     &quot;free_grand_partition_upper&quot;:Sbar,
+     &quot;one_copy_full_trace_EB_certificate&quot;:one_floor,
+     &quot;every_n_full_trace_EB_certificate&quot;:many_floor,
+     &quot;certificate_local_response_margin&quot;:ell_local,
+     &quot;limitation&quot;:&quot;Finite Galerkin algebra and scalar rounding diagnostics; continuum positivity, form limits and tensor theorem require the analytic proof.&quot;}
+Path(__file__).with_suffix(&#x27;.json&#x27;).write_text(json.dumps(out,indent=2)+&#x27;\n&#x27;)
+print(json.dumps(out,indent=2))
+</pre><p><a href="../assets/c444ed03f1526434885a223cebb020ddabba6bdbca906b37e4cc996f30c4011c.py">Exact original</a></p></html>

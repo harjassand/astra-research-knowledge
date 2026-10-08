@@ -1,0 +1,77 @@
+#!/usr/bin/env python3
+"""Exact finite diagnostics for the older additive/N125 route and a generic
+rare-postselection obstruction; the direct-weight proof has its own verifier.
+
+These checks validate the printed finite identities on rational fixtures. They
+are not a proof of the general lemmas or of the Cycle-3 mixture theorem.
+"""
+
+from fractions import Fraction as F
+
+
+def tv(p, q):
+    assert len(p) == len(q)
+    return sum((abs(a - b) for a, b in zip(p, q)), F(0)) / 2
+
+
+def normalized(weights):
+    z = sum(weights, F(0))
+    assert z > 0
+    return [w / z for w in weights]
+
+
+def positive_sector_fixture():
+    f = [F(1), F(2), F(3)]
+    delta = F(1, 4)
+    ratios = [F(3, 4), F(5, 4), F(1)]
+    g = [a * b for a, b in zip(f, ratios)]
+    h = [[F(1), F(2)], [F(3), F(1)], [F(2), F(4)]]
+    p = normalized([f[k] * h[k][t] for k in range(3) for t in range(2)])
+    q = normalized([g[k] * h[k][t] for k in range(3) for t in range(2)])
+    assert all((1 - delta) * f[k] <= g[k] <= (1 + delta) * f[k]
+               for k in range(3))
+    distance = tv(p, q)
+    assert distance <= delta / (1 - delta)
+    return distance, delta / (1 - delta)
+
+
+def grid_bit_fixture():
+    # Exact verification that b=ceil(log2(16K/gamma)) implies the stated
+    # conservative 2K/2^b <= gamma/8 bound.
+    k, gamma = 7, F(1, 100)
+    b = 0
+    while (1 << b) * gamma < 16 * k:
+        b += 1
+    assert F(2 * k, 1 << b) <= gamma / 8
+    return b, F(2 * k, 1 << b), gamma / 8
+
+
+def postselection_witness():
+    eta = F(1, 10)
+    rho = [1 - eta, eta, F(0), F(0)]  # |00>, |10>, |01>, |11>
+    sigma = [1 - eta, F(0), F(0), eta]
+    assert tv(rho, sigma) == eta
+    herald_rho, herald_sigma = rho[1], sigma[1] + sigma[3]
+    assert herald_rho == herald_sigma == eta
+    conditioned_rho = [F(1), F(0)]  # retained second qubit: |0>
+    conditioned_sigma = [F(0), F(1)]  # retained second qubit: |1>
+    assert tv(conditioned_rho, conditioned_sigma) == 1
+    return eta, herald_rho
+
+
+def rare_event_condition_impossible():
+    # For N>=2, 10N-10/N+40 log(64/epsilon) exceeds N whenever
+    # 0<epsilon<=1: its log term is positive and 9N-10/N>0.
+    for n in range(2, 10000):
+        assert 9 * n - F(10, n) > 0
+
+
+if __name__ == "__main__":
+    d, bound = positive_sector_fixture()
+    b, grid_bound, requested = grid_bit_fixture()
+    eta, herald = postselection_witness()
+    rare_event_condition_impossible()
+    print("positive-sector fixture TV:", d, "bound:", bound)
+    print("CDF-grid bits:", b, "bound:", grid_bound, "target:", requested)
+    print("postselection input TV/herald mass/conditioned TV:", eta, herald, 1)
+    print("rare-event truncation-parameter incompatibility: symbolic inequality checked")

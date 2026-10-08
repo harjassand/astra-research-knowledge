@@ -1,0 +1,8 @@
+import BadNeighborhood
+
+#print axioms N33Affine.BadNeighborhood.activeLimit_isClosed
+#print axioms N33Affine.BadNeighborhood.badFor_isClosed
+#print axioms N33Affine.BadNeighborhood.badLimitSet_isClosed
+#print axioms N33Affine.BadNeighborhood.badLimitSet_isCompact
+#print axioms N33Affine.BadNeighborhood.badLimitSet_excludes_slice
+#print axioms N33Affine.BadNeighborhood.exists_minimum_coordinate_radius

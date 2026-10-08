@@ -1,0 +1,177 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c4_quantum_lift/cycle7_replay/structured_product_compiler.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c4_quantum_lift/cycle7_replay/structured_product_compiler.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Succinct sharp-factor-2 EB comparator for repeated local qubit broadcasters.
+
+This emits a local product-instrument representation.  It intentionally does
+not flatten the global 3^L POVM outcome strings into an exponential table.
+The all-Pauli-mode operator proof is symbolic in L and is recorded alongside
+the concrete output descriptor.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+from pathlib import Path
+
+import sympy as sp
+from sympy import I, Matrix, Rational, eye, zeros
+
+
+OUT = Path(__file__).resolve().parent
+I2 = eye(2)
+X = Matrix([[0, 1], [1, 0]])
+Y = Matrix([[0, -I], [I, 0]])
+Z = Matrix([[1, 0], [0, -1]])
+PAULI = [X, Y, Z]
+
+
+def exact(x):
+    return sp.cancel(sp.expand_complex(x))
+
+
+def matrix_json(a):
+    return [[str(exact(a[i,j])) for j in range(a.cols)] for i in range(a.rows)]
+
+
+def local_channel(ensemble, a):
+    return exact(sum((sp.trace(m*a)*s for m,s in ensemble), zeros(2,2)))
+
+
+def local_ptm(ensemble):
+    basis = [I2, X, Y, Z]
+    return Matrix(4,4,lambda i,j: exact(sp.trace(basis[i]*local_channel(ensemble,basis[j]))/2))
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(&quot;--sites&quot;, type=int, default=64)
+    args = parser.parse_args()
+    L = args.sites
+    assert L &gt;= 1
+
+    p0 = Matrix([[1,0],[0,0]])
+    p1 = Matrix([[0,0],[0,1]])
+    local_ensemble = [
+        (Rational(14,15)*p0, p0),
+        (Rational(14,15)*p1, p1),
+        (Rational(1,15)*I2, Rational(1,2)*I2),
+    ]
+    total_effect = exact(sum((m for m,_ in local_ensemble),zeros(2,2)))
+    total_preparation = exact(sum((sp.trace(m)*s for m,s in local_ensemble),zeros(2,2)))
+    assert total_effect == I2
+    assert total_preparation == I2
+    assert local_ptm(local_ensemble) == Matrix.diag(1,0,0,Rational(14,15))
+    for m,s in local_ensemble:
+        assert m == m.H and s == s.H
+        assert all(sp.re(v).is_nonnegative for v in m.eigenvals().keys())
+        assert all(sp.re(v).is_nonnegative for v in s.eigenvals().keys())
+        assert sp.trace(s) == 1
+
+    # One-site exact broadcaster: B=(9/10) B_Z+(1/10) B_universal-cloner.
+    # Its marginal has eigenvalues (1/15,1/15,29/30).  The product of L
+    # supplied local broadcasters is represented by the repeated tensor
+    # network below; no global d^6 Liouville matrix is expanded.
+    local_phi = Matrix.diag(1, Rational(1,15), Rational(1,15), Rational(29,30))
+    local_psi = local_ptm(local_ensemble)
+    assert local_psi[0,0] == 1
+    assert [local_psi[i,i] for i in range(1,4)] == [0,0,Rational(14,15)]
+
+    # Symbolic all-mode proof certificate.
+    # At every site, labels I,X,Y,Z have (lambda,mu)=(1,1),(1/15,0),
+    # (1/15,0),(29/30,14/15).  If any X/Y occurs, lambda_word&lt;=1/15 and
+    # mu_word=0, so 1-mu&lt;=2(1-lambda) with margin &gt;=13/15.  Otherwise, if
+    # k&gt;=1 Zs occur, the margin is 1+(14/15)^k-2(29/30)^k &gt;=0 by the
+    # product lemma below.  The all-I mode has zero slack.
+    proof = {
+        &quot;mode_alphabet&quot;: {
+            &quot;I&quot;: {&quot;lambda&quot;: &quot;1&quot;, &quot;mu&quot;: &quot;1&quot;},
+            &quot;X&quot;: {&quot;lambda&quot;: &quot;1/15&quot;, &quot;mu&quot;: &quot;0&quot;},
+            &quot;Y&quot;: {&quot;lambda&quot;: &quot;1/15&quot;, &quot;mu&quot;: &quot;0&quot;},
+            &quot;Z&quot;: {&quot;lambda&quot;: &quot;29/30&quot;, &quot;mu&quot;: &quot;14/15&quot;},
+        },
+        &quot;all_mode_cases&quot;: [
+            {
+                &quot;case&quot;: &quot;at least one X or Y&quot;,
+                &quot;lambda_word_upper_bound&quot;: &quot;1/15&quot;,
+                &quot;mu_word&quot;: &quot;0&quot;,
+                &quot;slack_2G_minus_comparator_deficit_lower_bound&quot;: &quot;13/15&quot;,
+            },
+            {
+                &quot;case&quot;: &quot;only I and Z, with k&gt;=1 Z factors&quot;,
+                &quot;lambda_word&quot;: &quot;(29/30)^k&quot;,
+                &quot;mu_word&quot;: &quot;(14/15)^k&quot;,
+                &quot;slack&quot;: &quot;1+(14/15)^k-2*(29/30)^k &gt;= 0&quot;,
+                &quot;proof&quot;: &quot;Set x=14/15=2*(29/30)-1. For x_i in [0,1], product(1+x_i)&lt;=2^(k-1)*(1+product x_i); induction uses (1+p)(1+y)&lt;=2(1+py), equivalent to (1-p)(1-y)&gt;=0.&quot;,
+            },
+            {
+                &quot;case&quot;: &quot;all I&quot;,
+                &quot;lambda_word&quot;: &quot;1&quot;,
+                &quot;mu_word&quot;: &quot;1&quot;,
+                &quot;slack&quot;: &quot;0&quot;,
+            },
+        ],
+        &quot;operator_conclusion&quot;: &quot;I-Psi_L &lt;= 2*(I-Phi_L) on the full Hermitian operator space, not only a selected observable set.&quot;,
+        &quot;sharpness_witness&quot;: &quot;A Pauli string with Z on one site and I elsewhere attains equality.&quot;,
+    }
+
+    # The normalized tracial near-fixed consequence follows from the exact
+    # all-mode order, canonical EB positivity/contraction, and Cauchy--Schwarz.
+    state_consequence = {
+        &quot;promise&quot;: &quot;H=H*, tau(H)=0, ||H||_infinity&lt;=1/2, and ||Phi_L(H)-H||_(1,tau)&lt;=r uniformly over the promised family&quot;,
+        &quot;conclusion&quot;: &quot;ordinary physical half-trace error 1/2||Psi_L(rho_H)-rho_H||_1 &lt;= sqrt(r)/2 for rho_H=(I+H)/2^L&quot;,
+        &quot;derivation&quot;: &quot;||(I-Psi_L)H||_(2,tau)^2 &lt;= &lt;H,(I-Psi_L)H&gt;_tau &lt;= 2&lt;H,(I-Phi_L)H&gt;_tau &lt;= r; then ||.||_(1,tau)&lt;=||.||_(2,tau) and physical half-trace error is 1/2||Psi_L(H)-H||_(1,tau).&quot;,
+        &quot;dimension_or_family_size_dependence&quot;: &quot;none, under this supplied product-channel structure&quot;,
+    }
+
+    record = {
+        &quot;status&quot;: &quot;EXACT_STRUCTURED_COMPILER&quot;,
+        &quot;sites&quot;: L,
+        &quot;global_dimension&quot;: str(2**L),
+        &quot;local_broadcaster&quot;: {
+            &quot;definition&quot;: &quot;B_1=(9/10) B_Z+(1/10) B_U; B_Z copies the computational-basis label; B_U is the symmetric universal 1-to-2 qubit cloner&quot;,
+            &quot;local_marginal_ptm_XYZ&quot;: [&quot;1/15&quot;, &quot;1/15&quot;, &quot;29/30&quot;],
+            &quot;product_extension&quot;: &quot;tensor product of local B_1 maps with output pairs regrouped into two L-qubit receivers; both marginals Phi_1^tensor_L&quot;,
+            &quot;input_encoding&quot;: &quot;one local rational 16x4 Liouville descriptor plus site count L; no expanded global d^6 matrix&quot;,
+            &quot;input_descriptor_file&quot;: &quot;INPUT_BROADCASTER_LIOUVILLE.json&quot;,
+            &quot;input_size_scaling&quot;: &quot;O(1+log L) bits for the homogeneous repeated factor, or O(L) for explicit heterogeneous local descriptors&quot;,
+        },
+        &quot;local_EB_instrument&quot;: {
+            &quot;formula&quot;: &quot;Psi_1=(14/15) Delta_Z+(1/15) Depolarizing&quot;,
+            &quot;effects&quot;: [matrix_json(m) for m,_ in local_ensemble],
+            &quot;prepared_states&quot;: [matrix_json(s) for _,s in local_ensemble],
+            &quot;local_ptm_I_X_Y_Z&quot;: [str(local_psi[i,i]) for i in range(4)],
+            &quot;global_output_representation&quot;: &quot;tensor product of the local three-outcome measure-and-prepare instrument; do not flatten the 3^L outcome strings&quot;,
+            &quot;global_outcome_count_if_flattened&quot;: str(3**L),
+            &quot;deployment_cost&quot;: &quot;O(L) local 3-outcome measurements and local preparations; classical outcomes may be correlated for entangled inputs and are generated by the physical sequential/local measurement, not by independent outcome sampling&quot;,
+        },
+        &quot;all_mode_operator_certificate&quot;: proof,
+        &quot;dimension_free_family_consequence&quot;: state_consequence,
+        &quot;scope_boundary&quot;: &quot;This is an exact compiler for a supplied product/tensor-factorized broadcaster family. It does not compile arbitrary dense self-compatible channels or settle the arbitrary-channel conjecture.&quot;,
+    }
+    local_input = OUT / &quot;INPUT_BROADCASTER_LIOUVILLE.json&quot;
+    if local_input.exists():
+        record[&quot;local_broadcaster&quot;][&quot;input_descriptor_sha256&quot;] = hashlib.sha256(local_input.read_bytes()).hexdigest()
+    payload = json.dumps(record, indent=2) + &quot;\n&quot;
+    path = OUT / &quot;STRUCTURED_PRODUCT_COMPARATOR.json&quot;
+    path.write_text(payload)
+    record[&quot;descriptor_sha256&quot;] = hashlib.sha256(payload.encode()).hexdigest()
+    summary = json.dumps(record, indent=2) + &quot;\n&quot;
+    # Store the hash-bearing final record, whose hash field identifies the
+    # hashless canonical payload just written above.
+    path.write_text(summary)
+    print(json.dumps({
+        &quot;status&quot;: record[&quot;status&quot;],
+        &quot;sites&quot;: L,
+        &quot;dimension&quot;: str(2**L),
+        &quot;flat_outcomes&quot;: str(3**L),
+        &quot;local_effects&quot;: 3,
+        &quot;full_mode_certificate&quot;: &quot;symbolic product cases&quot;,
+        &quot;file&quot;: str(path),
+        &quot;descriptor_sha256&quot;: record[&quot;descriptor_sha256&quot;],
+    }, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/87d9cc5975dfd098181736ec8a58f86c1c1daa11d60537c168c60e5f2a364566.py">Exact original</a></p></html>

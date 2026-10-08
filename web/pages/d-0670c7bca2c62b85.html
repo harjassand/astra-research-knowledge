@@ -1,0 +1,164 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/algebra_complexity/cycle4/common_bases_zk/evidence/check_coeff_encoding.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/algebra_complexity/cycle4/common_bases_zk/evidence/check_coeff_encoding.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact small-instance replay for the cycle-4 coefficient/interface note.&quot;&quot;&quot;
+from fractions import Fraction as Q
+from itertools import combinations, product
+import json
+from pathlib import Path
+
+
+def det(mat):
+    a = [[Q(x) for x in row] for row in mat]
+    n = len(a)
+    if n == 0:
+        return Q(1)
+    out = Q(1)
+    for j in range(n):
+        pivot = next((i for i in range(j, n) if a[i][j]), None)
+        if pivot is None:
+            return Q(0)
+        if pivot != j:
+            a[j], a[pivot] = a[pivot], a[j]
+            out = -out
+        p = a[j][j]
+        out *= p
+        for i in range(j + 1, n):
+            q = a[i][j] / p
+            for c in range(j + 1, n):
+                a[i][c] -= q * a[j][c]
+            a[i][j] = 0
+    return out
+
+
+def minor(A, I, J):
+    return det([[A[i][j] for j in J] for i in I])
+
+
+def target(A, k):
+    n = len(A)
+    ans = Q(0)
+    for I in combinations(range(n), k):
+        for J in combinations(range(n), k):
+            if set(I).isdisjoint(J):
+                ans += minor(A, I, J) ** 2
+    return ans
+
+
+def coefficient(A, k):
+    &quot;&quot;&quot;Compute [x^U] by summing the two explicit set measures.&quot;&quot;&quot;
+    n = len(A)
+    ans = Q(0)
+    for rowmask in range(1 &lt;&lt; n):
+        I = tuple(i for i in range(n) if (rowmask &gt;&gt; i) &amp; 1)
+        for colmask in range(1 &lt;&lt; n):
+            J = tuple(i for i in range(n) if (colmask &gt;&gt; i) &amp; 1)
+            if len(I) != k or len(J) != k:
+                continue
+            # nu(U\S)=1 iff each site retains at least one of its two tokens.
+            if not all(((rowmask &gt;&gt; i) &amp; 1) + ((colmask &gt;&gt; i) &amp; 1) &lt;= 1 for i in range(n)):
+                continue
+            ans += minor(A, I, J) ** 2
+    return ans
+
+
+def hessian_witness(A, k, order, v):
+    &quot;&quot;&quot;Return F, grad.F.v, v&#x27;Hv and v&#x27; Hess(log F) v at all-ones.&quot;&quot;&quot;
+    n = len(A)
+    monomials = []
+    for I in combinations(range(n), k):
+        for J in combinations(range(n), k):
+            c = minor(A, I, J) ** 2
+            if c:
+                exponents = [0] * (2 * n)
+                for i in I:
+                    exponents[order.index((&quot;r&quot;, i))] = 1
+                for j in J:
+                    exponents[order.index((&quot;c&quot;, j))] = 1
+                monomials.append((c, exponents))
+    F = sum(c for c, _ in monomials)
+    grad = [sum(c for c, e in monomials if e[i]) for i in range(2 * n)]
+    hv = Q(0)
+    for c, e in monomials:
+        # For a squarefree monomial, v&#x27;Hv contributes c*((v.e)^2-sum(v_i^2 e_i)).
+        ve = sum(v[i] * e[i] for i in range(2 * n))
+        hv += c * (ve * ve - sum(v[i] * v[i] * e[i] for i in range(2 * n)))
+    gv = sum(grad[i] * v[i] for i in range(2 * n))
+    log_hess_quad = hv / F - (gv / F) ** 2
+    return F, gv, hv, log_hess_quad
+
+
+def as_json(x):
+    return str(x) if isinstance(x, Q) else x
+
+
+def main():
+    swap = [[Q(0), Q(1)], [Q(1), Q(0)]]
+    diag = [[Q(1), Q(0)], [Q(0), Q(1)]]
+    fixtures = [
+        (&quot;swap_2x2&quot;, swap, 1),
+        (&quot;identity_2x2&quot;, diag, 1),
+        (&quot;rational_2x2&quot;, [[Q(1, 2), Q(2, 3)], [Q(-3, 5), Q(7, 4)]], 1),
+        (&quot;rational_3x3_k1&quot;, [[Q(1, 2), Q(0), Q(-1)], [Q(2), Q(1, 3), Q(0)], [Q(0), Q(4, 5), Q(2, 3)]], 1),
+        (&quot;rational_3x3_k2&quot;, [[Q(1, 2), Q(0), Q(-1)], [Q(2), Q(1, 3), Q(0)], [Q(0), Q(4, 5), Q(2, 3)]], 2),
+    ]
+    comparisons = []
+    for name, A, k in fixtures:
+        z, c = target(A, k), coefficient(A, k)
+        assert z == c, (name, z, c)
+        comparisons.append({&quot;name&quot;: name, &quot;target&quot;: as_json(z), &quot;coefficient&quot;: as_json(c), &quot;equal&quot;: True})
+
+    # Exhaust all 2x2 matrices over {-1,0,1} for the nontrivial sector k=1.
+    exhaustive = 0
+    for entries in product((-1, 0, 1), repeat=4):
+        A = [[Q(entries[0]), Q(entries[1])], [Q(entries[2]), Q(entries[3])]]
+        assert target(A, 1) == coefficient(A, 1)
+        exhaustive += 1
+
+    order = [(&quot;r&quot;, 0), (&quot;r&quot;, 1), (&quot;c&quot;, 0), (&quot;c&quot;, 1)]
+    v = [1, -1, -1, 1]
+    F, gv, hv, qlog = hessian_witness(swap, 1, order, v)
+    assert (F, gv, hv, qlog) == (Q(2), Q(0), Q(4), Q(2))
+    assert target(diag, 1) == 0
+
+    # Gram complete-pair selector x1*x2+x3*x4, with the correct permuted witness.
+    pair_selector = [[Q(1), Q(0)], [Q(0), Q(1)]]
+    pair_order = [(&quot;r&quot;, 0), (&quot;c&quot;, 0), (&quot;r&quot;, 1), (&quot;c&quot;, 1)]
+    pair_v = [1, 1, -1, -1]
+    pF, pg, ph, pq = hessian_witness(pair_selector, 1, pair_order, pair_v)
+    assert (pF, pg, ph, pq) == (Q(2), Q(0), Q(4), Q(2))
+
+    # Local h=x+y+xy at x=y=1: Hessian(log h) has diagonal -4/9, off-diagonal -1/9.
+    local_hessian = [[Q(-4, 9), Q(-1, 9)], [Q(-1, 9), Q(-4, 9)]]
+    assert local_hessian[0][0] &lt; 0
+    assert local_hessian[0][0] * local_hessian[1][1] - local_hessian[0][1] ** 2 &gt; 0
+
+    receipt = {
+        &quot;status&quot;: &quot;PASS&quot;,
+        &quot;scope&quot;: &quot;exact finite diagnostics only; the general identities and Hessian formulas are proved in RESULT.md&quot;,
+        &quot;fixture_comparisons&quot;: comparisons,
+        &quot;exhaustive_2x2_matrices_over_minus1_0_1&quot;: exhaustive,
+        &quot;swap_log_hessian_witness&quot;: {
+            &quot;F_at_ones&quot;: as_json(F),
+            &quot;grad_dot_v&quot;: as_json(gv),
+            &quot;v_H_v&quot;: as_json(hv),
+            &quot;v_H_logF_v&quot;: as_json(qlog),
+            &quot;conclusion&quot;: &quot;positive; violates log-concavity&quot;,
+        },
+        &quot;identity_2x2_k1_target_zero_with_positive_factor_support&quot;: as_json(target(diag, 1)),
+        &quot;complete_pair_selector_log_hessian_witness&quot;: {
+            &quot;F_at_ones&quot;: as_json(pF),
+            &quot;grad_dot_v&quot;: as_json(pg),
+            &quot;v_H_v&quot;: as_json(ph),
+            &quot;v_H_logF_v&quot;: as_json(pq),
+            &quot;conclusion&quot;: &quot;positive; violates log-concavity&quot;,
+        },
+        &quot;local_selector_hessian_log_at_ones&quot;: [[as_json(x) for x in row] for row in local_hessian],
+        &quot;local_selector_hessian_negative_definite_at_ones&quot;: True,
+    }
+    out = Path(__file__).with_name(&quot;receipt.json&quot;)
+    out.write_text(json.dumps(receipt, indent=2) + &quot;\n&quot;)
+    print(json.dumps(receipt, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/d398adc8a827ed48ca5c036744bc7009713e2dc0d2344c7ec6b53415eb0cda79.py">Exact original</a></p></html>

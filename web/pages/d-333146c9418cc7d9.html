@@ -1,0 +1,281 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/engineering_control/directed_guarded_switching/verify_certificate.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/engineering_control/directed_guarded_switching/verify_certificate.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact rational verifier for the three-site directed guarded-switching fixture.
+
+This checks rate-polynomial identities, strict directed-flux face margins,
+finite-volume constants, the nonexistence of a common one-dimensional diagonal
+certificate inside the safe cube, and a rounded risk-bound example. It is a
+fixture verifier, not a general stochastic safety proof.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import json
+import math
+from fractions import Fraction as F
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parent
+ALPHAS = (F(1), F(2), F(3))
+CYCLE_RATE = F(1, 1000)
+SITES = len(ALPHAS)
+ELL = F(1, 100)
+SAFE = (F(1, 10), F(9, 10))
+GUARD = (F(9, 20), F(11, 20))
+INITIAL = F(1, 2)
+
+# (reactant order, concentration jump, exact rate coefficient)
+MODES = {
+    &quot;mode_1&quot;: {
+        &quot;box&quot;: (F(1, 5), F(3, 5)),
+        &quot;reactions&quot;: ((0, 1, F(741, 4000)),
+                      (2, 1, F(19, 10)),
+                      (1, -1, F(439, 400)),
+                      (3, -1, F(1))),
+        &quot;reaction_margins&quot;: {&quot;lower&quot;: F(3663, 125000),
+                             &quot;upper&quot;: F(21, 4000)},
+    },
+    &quot;mode_2&quot;: {
+        &quot;box&quot;: (F(2, 5), F(9, 10)),
+        &quot;reactions&quot;: ((0, 1, F(7, 500)),
+                      (2, 1, F(6, 5)),
+                      (1, -1, F(27, 80)),
+                      (3, -1, F(1))),
+        &quot;reaction_margins&quot;: {&quot;lower&quot;: F(7, 1000),
+                             &quot;upper&quot;: F(5103, 125000)},
+    },
+}
+
+
+def monomial(x: F, order: int) -&gt; F:
+    return x**order
+
+
+def factorial_error_bound(order: int, upper: F) -&gt; F:
+    if order &lt; 2:
+        return F(0)
+    # For one species E_y(U) = binom(y,2) U^(y-1).
+    return F(order * (order - 1), 2) * upper ** (order - 1)
+
+
+def ceil_fraction(x: F) -&gt; int:
+    return (x.numerator + x.denominator - 1) // x.denominator
+
+
+def fmt(x: F) -&gt; str:
+    return str(x.numerator) if x.denominator == 1 else f&quot;{x.numerator}/{x.denominator}&quot;
+
+
+def reaction_drift(mode: dict, x: F) -&gt; F:
+    return sum((k * monomial(x, y) * nu for y, nu, k in mode[&quot;reactions&quot;]), F(0))
+
+
+def reaction_coefficients(mode: dict) -&gt; list[F]:
+    coeffs = [F(0)] * 4
+    for y, nu, k in mode[&quot;reactions&quot;]:
+        coeffs[y] += nu * k
+    return coeffs
+
+
+def bernstein_coefficients_on_interval(coeffs: list[F], lo: F, hi: F) -&gt; list[F]:
+    &quot;&quot;&quot;Return exact degree-d Bernstein coefficients after x=lo+(hi-lo)t.&quot;&quot;&quot;
+    degree = len(coeffs) - 1
+    width = hi - lo
+    power = [F(0)] * (degree + 1)
+    for k in range(degree + 1):
+        power[k] = sum((coeffs[j] * math.comb(j, k) * lo ** (j - k) * width**k
+                        for j in range(k, degree + 1)), F(0))
+    return [sum((power[k] * F(math.comb(i, k), math.comb(degree, k))
+                 for k in range(i + 1)), F(0)) for i in range(degree + 1)]
+
+
+def face_data(mode_name: str, mode: dict, site: int, side: str) -&gt; dict:
+    low, high = mode[&quot;box&quot;]
+    U = high
+    alpha = ALPHAS[site]
+    gamma_rxn = mode[&quot;reaction_margins&quot;][side]
+    if side == &quot;lower&quot;:
+        migration = -(ELL * CYCLE_RATE) / alpha
+        collar = (low, low + ELL)
+        pcoeff = reaction_coefficients(mode)
+    else:
+        migration = -(ELL * CYCLE_RATE) / alpha
+        collar = (high - ELL, high)
+        pcoeff = [-z for z in reaction_coefficients(mode)]
+    pcoeff[0] -= gamma_rxn
+    bernstein = bernstein_coefficients_on_interval(pcoeff, *collar)
+    assert all(z &gt;= 0 for z in bernstein), (mode_name, site, side, bernstein)
+    margin = gamma_rxn + migration
+    assert margin &gt; 0
+
+    D = sum((k * abs(nu) * factorial_error_bound(y, U)
+             for y, nu, k in mode[&quot;reactions&quot;]), F(0)) / alpha
+    reaction_B = sum((k * nu * nu * U**y for y, nu, k in mode[&quot;reactions&quot;]), F(0)) / alpha
+    # The directed cycle has one incoming and one outgoing edge at every site.
+    hopping_B = U * (2 * CYCLE_RATE) / (alpha * alpha)
+    B = reaction_B + hopping_B
+    J = F(1, 1) / alpha  # reactions and transfers all move one molecule at a site
+    mu = margin / 2
+    theta = min(F(1, 1) / J, mu / (3 * B))
+    assert theta &gt; 0 and B &gt; 0 and J &gt; 0
+    return {
+        &quot;mode&quot;: mode_name,
+        &quot;site_1based&quot;: site + 1,
+        &quot;side&quot;: side,
+        &quot;reaction_margin&quot;: fmt(gamma_rxn),
+        &quot;migration_margin&quot;: fmt(migration),
+        &quot;effective_margin&quot;: fmt(margin),
+        &quot;factorial_correction_D&quot;: fmt(D),
+        &quot;jump_bound_J&quot;: fmt(J),
+        &quot;quadratic_bound_B&quot;: fmt(B),
+        &quot;theta&quot;: fmt(theta),
+        &quot;collar_width&quot;: fmt(ELL),
+        &quot;initial_guard_gap&quot;: fmt(F(1, 20)),
+        &quot;reaction_margin_bernstein_coefficients&quot;: [fmt(z) for z in bernstein],
+        &quot;V0_face&quot;: ceil_fraction(2 * D / margin),
+    }, (margin, D, J, B, theta)
+
+
+def mode_constants(name: str, mode: dict) -&gt; dict:
+    low, high = mode[&quot;box&quot;]
+    rows = []
+    raw = []
+    for i in range(SITES):
+        for side in (&quot;lower&quot;, &quot;upper&quot;):
+            row, constants = face_data(name, mode, i, side)
+            rows.append(row)
+            raw.append(constants)
+    V0 = max(1, *(ceil_fraction(2 * D / margin) for margin, D, _J, _B, _theta in raw))
+    theta_min = min(theta for _margin, _D, _J, _B, theta in raw)
+    c_star = theta_min * ELL
+    activity_reaction = sum((alpha * sum((k * high**y for y, _nu, k in mode[&quot;reactions&quot;]), F(0))
+                             for alpha in ALPHAS), F(0))
+    activity_hop = SITES * CYCLE_RATE * high
+    Lambda = activity_reaction + activity_hop
+    return {
+        &quot;V0&quot;: V0,
+        &quot;theta_min&quot;: fmt(theta_min),
+        &quot;c_star&quot;: fmt(c_star),
+        &quot;Lambda&quot;: fmt(Lambda),
+        &quot;face_constants&quot;: rows,
+    }, raw
+
+
+def accept_switch(current_mode: str, target_mode: str, measured: tuple[F, ...], error: F = F(0)) -&gt; bool:
+    &quot;&quot;&quot;Fail-closed supervisor: require source-box and robust target-core membership.&quot;&quot;&quot;
+    if current_mode not in MODES or target_mode not in MODES or current_mode == target_mode:
+        return False
+    if len(measured) != SITES or error &lt; 0:
+        return False
+    src_lo, src_hi = MODES[current_mode][&quot;box&quot;]
+    dst_lo, dst_hi = MODES[target_mode][&quot;box&quot;]
+    d = F(1, 20)
+    g_lo, g_hi = GUARD
+    for y in measured:
+        true_lo, true_hi = y - error, y + error
+        if true_lo &lt; src_lo or true_hi &gt; src_hi:
+            return False
+        if true_lo &lt; dst_lo + d or true_hi &gt; dst_hi - d:
+            return False
+        if true_lo &lt; g_lo or true_hi &gt; g_hi:
+            return False
+    return True
+
+
+def no_common_interval_inside_safe_cube() -&gt; dict:
+    &quot;&quot;&quot;Prove incompatible endpoint signs on the diagonal slice.
+
+    On the diagonal x_1=x_2=x_3, balanced directed circulation vanishes and
+    each mode reduces to its scalar reaction drift. Any common invariant set
+    containing the guard intersects that diagonal in [a,b] with
+    a&lt;=9/20, b&gt;=11/20, and [a,b] subset [1/10,9/10].
+    &quot;&quot;&quot;
+    # mode 1 lower inwardness with a&lt;=.45 forces a&lt;=.3; mode 2 lower
+    # inwardness with a in [.1,.45] forces a&gt;=.35.
+    a_mode1_possible = (SAFE[0], F(3, 10))
+    a_mode2_possible = (F(7, 20), GUARD[0])
+    lower_intersection_nonempty = max(a_mode1_possible[0], a_mode2_possible[0]) &lt;= min(
+        a_mode1_possible[1], a_mode2_possible[1])
+    # Upper face signs likewise conflict: mode 1 requires b&lt;=.65 in safe S,
+    # while mode 2 requires b&gt;=.8, with b&gt;=.55.
+    b_mode1_possible = (GUARD[1], F(13, 20))
+    b_mode2_possible = (F(4, 5), SAFE[1])
+    upper_intersection_nonempty = max(b_mode1_possible[0], b_mode2_possible[0]) &lt;= min(
+        b_mode1_possible[1], b_mode2_possible[1])
+    assert not lower_intersection_nonempty
+    assert not upper_intersection_nonempty
+    return {
+        &quot;balanced_cycle_preserves_diagonal&quot;: True,
+        &quot;mode_1_scalar_roots&quot;: [&quot;3/10&quot;, &quot;13/20&quot;, &quot;19/20&quot;],
+        &quot;mode_2_scalar_roots&quot;: [&quot;1/20&quot;, &quot;7/20&quot;, &quot;4/5&quot;],
+        &quot;common_lower_inward_endpoint_exists&quot;: lower_intersection_nonempty,
+        &quot;common_upper_inward_endpoint_exists&quot;: upper_intersection_nonempty,
+        &quot;conclusion&quot;: &quot;no common inward interval on the diagonal inside the safe cube containing the guard&quot;,
+    }
+
+
+def main() -&gt; None:
+    output = {
+        &quot;fixture&quot;: &quot;3-site heterogeneous-volume one-way directed cycle; two guarded local CRN modes&quot;,
+        &quot;alpha&quot;: [fmt(x) for x in ALPHAS],
+        &quot;directed_edges&quot;: [
+            {&quot;source&quot;: 1, &quot;target&quot;: 2, &quot;coefficient&quot;: fmt(CYCLE_RATE)},
+            {&quot;source&quot;: 2, &quot;target&quot;: 3, &quot;coefficient&quot;: fmt(CYCLE_RATE)},
+            {&quot;source&quot;: 3, &quot;target&quot;: 1, &quot;coefficient&quot;: fmt(CYCLE_RATE)},
+        ],
+        &quot;safe_interval&quot;: [fmt(x) for x in SAFE],
+        &quot;guard_interval&quot;: [fmt(x) for x in GUARD],
+        &quot;initial_uniform_concentration&quot;: fmt(INITIAL),
+        &quot;common_certificate_obstruction&quot;: no_common_interval_inside_safe_cube(),
+        &quot;supervisor_checks&quot;: {
+            &quot;initial_guard_switch_mode_1_to_2&quot;: accept_switch(&quot;mode_1&quot;, &quot;mode_2&quot;, (INITIAL,) * SITES),
+            &quot;reject_outside_guard&quot;: not accept_switch(&quot;mode_1&quot;, &quot;mode_2&quot;, (F(3, 5),) * SITES),
+            &quot;reject_measurement_error_that_consumes_guard&quot;: not accept_switch(&quot;mode_1&quot;, &quot;mode_2&quot;, (INITIAL,) * SITES, F(1, 10)),
+        },
+        &quot;modes&quot;: {},
+    }
+    V0 = 1
+    c_star = None
+    lambda_max = F(0)
+    face_count = 2 * SITES
+    for name, mode in MODES.items():
+        constants, _raw = mode_constants(name, mode)
+        V0 = max(V0, constants[&quot;V0&quot;])
+        c_here = F(constants[&quot;c_star&quot;])
+        c_star = c_here if c_star is None else min(c_star, c_here)
+        lambda_max = max(lambda_max, F(constants[&quot;Lambda&quot;]))
+        output[&quot;modes&quot;][name] = constants
+
+    # Choose a lattice-compatible volume and a finite exponential horizon.
+    # α_i V/2 is integral for every site when V is even.
+    V = 20_000_000
+    assert V &gt;= V0 and V % 2 == 0
+    segment_cap = 2  # initial segment plus at most one accepted switch
+    c_float = float(c_star)
+    T = math.exp(c_float * V / 2)
+    guard_gap = F(1, 20)
+    theta_global = min(F(face[&quot;theta&quot;]) for mode_data in output[&quot;modes&quot;].values()
+                       for face in mode_data[&quot;face_constants&quot;])
+    initial_term = segment_cap * face_count * math.exp(-float(theta_global * guard_gap * V))
+    generator_term = 2 * face_count * float(lambda_max) * V * T * math.exp(-c_float * V)
+    assert all(output[&quot;supervisor_checks&quot;].values())
+    output[&quot;risk_example&quot;] = {
+        &quot;volume_V&quot;: V,
+        &quot;minimum_volume_V0&quot;: V0,
+        &quot;switch_segments_including_initial&quot;: segment_cap,
+        &quot;horizon_T&quot;: T,
+        &quot;T_definition&quot;: &quot;exp(c_star*V/2)&quot;,
+        &quot;c_star&quot;: fmt(c_star),
+        &quot;theta_global&quot;: fmt(theta_global),
+        &quot;risk_bound_initial_term&quot;: initial_term,
+        &quot;risk_bound_generator_term&quot;: generator_term,
+        &quot;risk_bound_total&quot;: initial_term + generator_term,
+        &quot;upper_bound_on_expected_candidate_events&quot;: float(lambda_max) * V * T,
+        &quot;exact_probability_certification&quot;: &quot;formula uses exact rational margins; printed exponentials rounded with Python math.exp, not directed interval arithmetic&quot;,
+    }
+    print(json.dumps(output, indent=2, sort_keys=True))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/b13a550923a56041f748ea547951d02d2ed467c45d24a6bc713f1eeb9e21211c.py">Exact original</a></p></html>

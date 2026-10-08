@@ -1,0 +1,201 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/cell_control/cell_metastability/pulse_policy.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/cell_control/cell_metastability/pulse_policy.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Design a first-order action-matched pulse from a measured kernel.
+
+This module implements only the finite-dimensional pulse-allocation step.
+The stochastic model, action path, kernel, observation-noise law, and actuator
+calibration must be acquired separately. It does not certify biological
+validity or the Freidlin--Wentzell approximation.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import math
+from typing import Any, Sequence
+
+
+def _trapz(values: Sequence[float], times: Sequence[float]) -&gt; float:
+    if len(values) != len(times) or len(values) &lt; 2:
+        raise ValueError(&quot;values and times must have the same length &gt;= 2&quot;)
+    out = 0.0
+    for i in range(len(values) - 1):
+        dt = times[i + 1] - times[i]
+        if dt &lt;= 0:
+            raise ValueError(&quot;times must be strictly increasing&quot;)
+        out += 0.5 * dt * (values[i] + values[i + 1])
+    return out
+
+
+def design_matched_pulse(
+    times: Sequence[float],
+    kernel_estimate: Sequence[float],
+    *,
+    observation_sigma: float,
+    observations_per_bin: int,
+    observation_alpha: float,
+    dose_energy: float,
+    required_action_decrease: float,
+    actuator_gain_sigma: float,
+    actuator_z: float,
+    timing_jitter_sigma: float = 0.0,
+    max_amplitude: float | None = None,
+    endpoint_sensitivity: float | None = None,
+    endpoint_specificity: float | None = None,
+    endpoint_delta: float | None = None,
+    endpoint_alpha: float = 0.05,
+) -&gt; dict[str, Any]:
+    &quot;&quot;&quot;Return a lower-kernel positive pulse and acquisition-cost estimates.
+
+    The action kernel is assumed nonnegative only where its lower confidence
+    bound is positive; bins with uncertain sign receive no dose. Confidence
+    uses a union bound over bins and sub-Gaussian per-cell measurement noise.
+    Multiplicative actuator error is debited with a one-sided normal quantile.
+    Timing jitter uses a small-jitter expected-gain expansion; callers should
+    replace it by direct convolution when jitter is not small. That timing
+    adjustment is not a confidence bound.
+    &quot;&quot;&quot;
+    if len(times) != len(kernel_estimate) or len(times) &lt; 2:
+        raise ValueError(&quot;times and kernel_estimate must have the same length &gt;= 2&quot;)
+    if observations_per_bin &lt; 1 or observation_sigma &lt; 0:
+        raise ValueError(&quot;invalid observation model&quot;)
+    if not 0 &lt; observation_alpha &lt; 1:
+        raise ValueError(&quot;observation_alpha must lie in (0,1)&quot;)
+    if dose_energy &lt; 0 or required_action_decrease &lt; 0:
+        raise ValueError(&quot;dose_energy and required_action_decrease must be nonnegative&quot;)
+
+    bins = len(times)
+    point_error = observation_sigma * math.sqrt(
+        2.0 * math.log(2.0 * bins / observation_alpha) / observations_per_bin
+    )
+    lower_kernel = [max(0.0, float(k) - point_error) for k in kernel_estimate]
+    lower_norm = math.sqrt(_trapz([k * k for k in lower_kernel], times))
+    if max_amplitude is not None and max_amplitude &lt; 0:
+        raise ValueError(&quot;max_amplitude must be nonnegative&quot;)
+    if lower_norm == 0.0:
+        pulse = [0.0] * bins
+        nominal_gain = 0.0
+    else:
+        scale = math.sqrt(dose_energy) / lower_norm
+        pulse = [scale * k for k in lower_kernel]
+        if max_amplitude is not None:
+            def capped_waveform(lam: float) -&gt; list[float]:
+                return [min(max_amplitude, lam * k) for k in lower_kernel]
+
+            if max(pulse) &gt; max_amplitude:
+                max_energy = _trapz(
+                    [max_amplitude**2 if k &gt; 0 else 0.0 for k in lower_kernel],
+                    times,
+                )
+                energy_target = min(dose_energy, max_energy)
+                # Monotone KKT water-filling for u=min(u_max,lambda*kappa).
+                if energy_target &lt;= 0:
+                    pulse = [0.0] * bins
+                else:
+                    lo, hi = 0.0, max(1.0, scale)
+                    while _trapz([u * u for u in capped_waveform(hi)], times) &lt; energy_target:
+                        hi *= 2.0
+                    for _ in range(80):
+                        lam = 0.5 * (lo + hi)
+                        candidate = capped_waveform(lam)
+                        if _trapz([u * u for u in candidate], times) &lt; energy_target:
+                            lo = lam
+                        else:
+                            hi = lam
+                    pulse = capped_waveform(hi)
+        nominal_gain = _trapz(
+            [u * k for u, k in zip(pulse, lower_kernel)], times
+        )
+
+    actuator_gain_factor = 1.0 - actuator_z * actuator_gain_sigma
+    if actuator_gain_factor &lt; 0:
+        actuator_gain_factor = 0.0
+
+    # Estimate ||kappa&#x27;||_2^2 by centered finite differences for the local
+    # small-jitter approximation to the pulse/kernel autocorrelation.
+    if bins &gt;= 3:
+        derivative = []
+        for i in range(bins):
+            if i == 0:
+                derivative.append((lower_kernel[1] - lower_kernel[0]) / (times[1] - times[0]))
+            elif i == bins - 1:
+                derivative.append((lower_kernel[-1] - lower_kernel[-2]) / (times[-1] - times[-2]))
+            else:
+                derivative.append((lower_kernel[i + 1] - lower_kernel[i - 1]) / (times[i + 1] - times[i - 1]))
+        derivative_norm2 = _trapz([d * d for d in derivative], times)
+    else:
+        derivative_norm2 = 0.0
+    timing_factor = 1.0
+    if lower_norm &gt; 0:
+        timing_factor = max(
+            0.0,
+            1.0
+            - timing_jitter_sigma**2
+            * derivative_norm2
+            / (2.0 * lower_norm**2),
+        )
+    adjusted_gain = nominal_gain * actuator_gain_factor * timing_factor
+    required_mean_gain = math.inf
+    if actuator_gain_factor &gt; 0 and timing_factor &gt; 0:
+        required_mean_gain = required_action_decrease / (
+            actuator_gain_factor * timing_factor
+        )
+
+    def energy_for_gain(target_gain: float) -&gt; float:
+        if target_gain &lt;= 0:
+            return 0.0
+        if lower_norm == 0:
+            return math.inf
+        if max_amplitude is None:
+            return (target_gain / lower_norm) ** 2
+        window = times[-1] - times[0]
+        maximum_gain = max_amplitude * _trapz(lower_kernel, times)
+        if target_gain &gt; maximum_gain:
+            return math.inf
+        lo, hi = 0.0, 1.0
+        def gain_at(lam: float) -&gt; float:
+            candidate = [min(max_amplitude, lam * k) for k in lower_kernel]
+            return _trapz([u * k for u, k in zip(candidate, lower_kernel)], times)
+        while gain_at(hi) &lt; target_gain:
+            hi *= 2.0
+        for _ in range(80):
+            lam = 0.5 * (lo + hi)
+            if gain_at(lam) &lt; target_gain:
+                lo = lam
+            else:
+                hi = lam
+        candidate = [min(max_amplitude, hi * k) for k in lower_kernel]
+        return _trapz([u * u for u in candidate], times)
+
+    required_energy = energy_for_gain(required_action_decrease)
+    adjusted_required_energy = energy_for_gain(required_mean_gain)
+
+    result: dict[str, Any] = {
+        &quot;pulse&quot;: pulse,
+        &quot;lower_kernel&quot;: lower_kernel,
+        &quot;pointwise_observation_error&quot;: point_error,
+        &quot;simultaneous_kernel_confidence&quot;: 1.0 - observation_alpha,
+        &quot;lineage_observations&quot;: observations_per_bin * bins,
+        &quot;lower_kernel_l2_norm&quot;: lower_norm,
+        &quot;nominal_action_decrease_at_requested_energy&quot;: nominal_gain,
+        &quot;actuator_gain_lower_factor&quot;: actuator_gain_factor,
+        &quot;timing_jitter_small_noise_factor&quot;: timing_factor,
+        &quot;action_decrease_after_amplitude_lcb_and_mean_timing_adjustment&quot;: adjusted_gain,
+        &quot;required_energy_for_action_decrease_nominal&quot;: required_energy,
+        &quot;required_energy_after_amplitude_lcb_and_mean_timing_adjustment&quot;: adjusted_required_energy,
+    }
+
+    if endpoint_sensitivity is not None or endpoint_specificity is not None or endpoint_delta is not None:
+        if endpoint_sensitivity is None or endpoint_specificity is None or endpoint_delta is None:
+            raise ValueError(&quot;supply sensitivity, specificity, and endpoint_delta together&quot;)
+        margin = endpoint_sensitivity + endpoint_specificity - 1.0
+        if margin &lt;= 0 or not 0 &lt; endpoint_alpha &lt; 1 or endpoint_delta &lt;= 0:
+            raise ValueError(&quot;invalid endpoint assay parameters&quot;)
+        result[&quot;endpoint_cells_for_precision&quot;] = math.ceil(
+            math.log(2.0 / endpoint_alpha)
+            / (2.0 * margin**2 * endpoint_delta**2)
+        )
+        result[&quot;endpoint_probability_half_width_bound&quot;] = math.sqrt(
+            math.log(2.0 / endpoint_alpha)
+            / (2.0 * result[&quot;endpoint_cells_for_precision&quot;])
+        ) / margin
+
+    return result
+</pre><p><a href="../assets/77387a5420ce98e8d7c0b4108c4925206c78e609c2d3a47ce1ce2413f0cf9218.py">Exact original</a></p></html>

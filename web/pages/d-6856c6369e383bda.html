@@ -1,0 +1,55 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/sol_ground_xxz/general_diagonal_check.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/sol_ground_xxz/general_diagonal_check.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact finite hypergeometric/Bernoulli controls for the fixed-range corollary.&quot;&quot;&quot;
+from fractions import Fraction as F
+from itertools import product
+from pathlib import Path
+import json
+import math
+
+
+def falling(n, k):
+    return math.prod(n - i for i in range(k)) if n &gt;= k else 0
+
+
+fixtures = 0
+word_coefficients = 0
+max_tv = F(0)
+for r in range(1, 6):
+    words = list(product((0, 1), repeat=r))
+    table = {z: F(((sum((i + 1) * (2 * bit - 1) for i, bit in enumerate(z)) ** 2
+                     + 7 * sum(z)) % 31) - 15, 7) for z in words}
+    bound_m = max(abs(v) for v in table.values())
+    for ell in range(r, 17):
+        for k in range(ell + 1):
+            p = F(k, ell)
+            probs = {}
+            iid = {}
+            for z in words:
+                h = sum(z)
+                a = F(falling(k, h) * falling(ell - k, r - h), falling(ell, r))
+                b = F(math.comb(ell - r, k - h), math.comb(ell, k)) if 0 &lt;= k - h &lt;= ell - r else F(0)
+                assert a == b
+                probs[z] = a
+                iid[z] = p ** h * (1 - p) ** (r - h)
+                word_coefficients += 1
+            assert sum(probs.values()) == sum(iid.values()) == 1
+            tv = sum(abs(probs[z] - iid[z]) for z in words) / 2
+            assert tv &lt;= F(r * (r - 1), 2 * ell)
+            max_tv = max(max_tv, tv)
+            exact_potential = sum(table[z] * probs[z] for z in words)
+            bernoulli_potential = sum(table[z] * iid[z] for z in words)
+            assert abs(exact_potential - bernoulli_potential) &lt;= bound_m * F(r * (r - 1), ell)
+            fixtures += 1
+
+result = {&quot;status&quot;: &quot;PASS&quot;, &quot;date&quot;: &quot;2026-10-08&quot;, &quot;range_r&quot;: [1, 5],
+          &quot;block_ell&quot;: [1, 16], &quot;count_K&quot;: &quot;ALL feasible K&quot;, &quot;fixtures&quot;: fixtures,
+          &quot;word_coefficients&quot;: word_coefficients,
+          &quot;max_total_variation&quot;: str(max_tv), &quot;arithmetic&quot;: &quot;exact Fraction&quot;,
+          &quot;tested&quot;: [&quot;hypergeometric compression coefficient&quot;, &quot;normalization&quot;,
+                     &quot;collision total-variation bound&quot;, &quot;bounded table potential error&quot;],
+          &quot;not_tested&quot;: [&quot;all-L replacement limit&quot;, &quot;ground/free-energy theorem&quot;,
+                         &quot;external validation or novelty&quot;]}
+here = Path(__file__).resolve().parent
+(here / &quot;GENERAL_DIAGONAL_CHECKS.json&quot;).write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+print(json.dumps(result, indent=2))
+</pre><p><a href="../assets/793f49e093049e2897174d087848c18c7d5243e5814d479ececd042a279bf90f.py">Exact original</a></p></html>

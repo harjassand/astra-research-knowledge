@@ -1,0 +1,296 @@
+CYCLE 4 — POLYNOMIAL RAW-PATH PREDICTION FOR STATIONARY RENEWALS
+Date: 2026-10-08
+Status: strong internally audited candidate; external correctness and novelty UNKNOWN
+
+VERDICT
+
+The broad goal—discovering and certifying an efficient predictive structure
+from arbitrary noisy finite-state observations—remains open. This cycle found
+a narrower, consequential target with a concrete construction: exact
+polynomial-time terminal prediction from one raw path for the full
+stationary finite-mean binary renewal class, with no mean/tail/mixing
+promise, reset, or renewal oracle. The candidate matches the source-reported
+minimax expected conditional-KL rate n^{-1/2}. A separate row-urn argument
+extends it to fixed finite *observed* event marks with arbitrary gap/mark
+dependence. This is prediction under a supplied renewal-class contract; it
+does not discover that the source is a renewal process or reconstruct its
+kernel, and it is not a general HMM/state-acquisition theorem.
+
+The binary construction is fully described with proofs and executable exact
+checks in `renewal_integer_code/RESULT.txt` and
+`outputs/research/root_renewal_prediction/PROOF.txt`. The observed-mark
+extension, including the independent lead and Luna audits, is in
+`marked_renewal_extension/RESULT.txt`; Sol's full proof/compiler packet is at
+`outputs/research/sol_marked_renewal/`. The focused source comparison is in
+`renewal_novelty_check/RESULT.txt`. No novelty, firstness, or external proof
+validation is claimed.
+
+1. EXACT INTERFACE
+
+Binary case: the input is one stationary path X_1,...,X_n where 1 marks a
+renewal. Inter-renewal gaps have an arbitrary unknown law on positive
+integers with finite but unbounded mean. The learner predicts X_{n+1} under
+source-expected terminal conditional KL. It receives no resets, gap labels
+beyond visible events, support cutoff, mean, context dictionary, hidden state,
+or conditional-probability query.
+
+Observed-mark case: a fixed supplied q is known. Symbols are 0 (no event) or
+one of q *observed* event marks. After mark i, the next positive gap g and
+destination mark d have unknown joint law p_i(g,d). A stationary version has
+finite weighted mean under a stationary distribution pi of the embedded
+mark chain. Reducibility, periods, zero transitions, and arbitrarily large
+finite means are allowed. Hidden marks/times, mixtures of distinct kernels,
+or arbitrary HMM emissions are outside the theorem.
+
+In both cases the target is the actual next symbol following the same raw
+training path. This is not fresh independent-history risk, worst-context TV,
+high-confidence certification, cumulative loss, or a multi-step forecast.
+
+2. BINARY TYPE-FIRST CODE AND PREDICTOR
+
+For horizon N=n+1, every nonzero word has a multiset C=(c_j) of completed
+positive gaps, span S=sum j c_j<=N-1, and R=sum c_j. There are exactly
+(N-S)R!/product_j c_j! strings of that type. Add a separate allzero type;
+choose uniformly among this type and the integer partitions C of spans
+S<N, then choose uniformly inside the selected type. Writing
+K_N=1+sum_{S<N}p(S), the resulting full-support block distribution is
+
+  Q_N(0^N)=1/K_N,
+  Q_N(x)=product_j c_j!/[K_N(N-S)R!] for x with at least one 1.
+
+For a stationary renewal word, the exact likelihood is an equilibrium
+first-residual factor, the product of completed-gap probabilities, and a
+right-censoring factor. The boundary factors are at most one and the
+multinomial probability of the completed gap type is at most one, giving
+P_N(x)/Q_N(x)<=K_N N. The partition generating function implies
+log K_N=O(sqrt(N)), uniformly without a source tail or mean bound. A direct
+prefix DP compiles exact Q_N marginals. Sharing its marked coefficient tables
+over all suffixes gives O(n^3) integer coefficient/summand updates; exact
+integer/rational bit costs are polynomial. The detailed formula, common
+denominators, prefix code, and checker evidence are in the binary result.
+
+Apply the stationary reverse-suffix compression-to-prediction reduction to
+the *same fixed* Q_N: average its n conditional predictions on the n
+suffixes of the observed path. The renewal countdown state can be clipped at
+n+2 values without losing information about an (n+1)-symbol block. Thus
+
+  sup_mu E_mu KL(P_mu(X_{n+1}|X_1^n)||qhat_n(.|X_1^n))
+       <= O(n^{-1/2}).
+
+Han–Jiang–Wu (2024) report the matching minimax lower order Theta(n^{-1/2})
+for this stationary finite-mean renewal interface. Accordingly the candidate
+has the optimal rate order, but not a sharp constant or a claim of external
+proof. Their paper states that an efficient exact-rate renewal predictor is
+unclear; whether this construction resolves that stated computational gap is
+a priority question, not an internally settled claim.
+
+The horizon-indexed Q_N need not be projectively consistent. Every suffix
+conditional in the predictor is a marginal of this one Q_N. Replacing it by
+a separately normalized Q_t changes the argument and is not done.
+
+3. FIXED FINITE OBSERVED-MARK EXTENSION
+
+For q fixed, Sol's row-urn code chooses a uniform q^2-coloured transition
+count pool of total gap span S<N, an anchor uniform on {1,...,N-S}, and a
+starting mark uniform on [q]. Each visit draws an outgoing (destination,gap)
+item without replacement from that mark's row. It stops as soon as the
+*current* row empties, even if other rows retain unused counts. A distinct
+allzero option is necessary and included. This defines a proper block
+distribution without Euler-trail/connectivity normalization. The exact
+target pool gives
+
+  P_N(x)/Q_N(x) <= q K_N N,
+  log K_N <= log 2 + 2q sqrt(2N).
+
+For a raw prefix, ordered observed urn draws give a product of local falling
+factorials divided by falling factorials of row totals. The remaining
+current-row probability of no event in b observed zeros is 1 if that row is
+empty, and otherwise the fraction of remaining row items with gap strictly
+greater than b. A DP over total span and q row totals, plus one additive
+marked tail moment, sums all pools exactly. Grouped denominators divide N!,
+so the exact prefix marginals are integer-scaled. The conservative compiler
+cost is O(q^2 N^{q+3}) integer updates per marginal and
+O_q(n^{q+6}log^2(n+2)) bit operations for the full fixed-q predictor. The
+same capped countdown argument gives the explicit bound
+
+  [log 2 + 2q sqrt(2(n+1)) + log q + log(n+1)
+       + log(q(n+1)+1)]/n,
+
+which is O_q(n^{-1/2}). The binary subclass and KL coarsening transfer the
+source-reported lower bound, hence fixed-q minimax order Theta_q(n^{-1/2}).
+No uniform q-dependence is proved. This is a class-specific universal
+predictor, not hidden mark discovery or source-parameter estimation.
+
+4. HORIZON-FREE ONLINE PREDICTION
+
+An existing Luna follow-up wraps the binary construction as a causal
+anytime predictor. After observing a prefix of current length t, it runs
+the t-specific fixed-horizon suffix-average predictor based on Q_{t+1}; it
+does not need a final horizon T. For every t, the same-path terminal risk is
+
+  [pi sqrt(2t/3) + 2 log(t+1) + log 2 + log(t+2)]/t <= 8/sqrt(t).
+
+Multiplying these online conditional outputs (with a fair initial X_1 code)
+defines a new projective sequential law and gives expected cumulative
+sequence KL at most log 2+16 sqrt(T). This is a valid anytime law even though
+the fixed-block family Q_N is not projective: the follow-up explicitly checks
+Q_2(X_1=1)=1/2 but Q_3(X_1=1)=17/30. At every time it recomputes from the
+current prefix with that horizon's Q_{t+1}; no marginal identity between
+different Q_N is used.
+
+This closes horizon-free online output at polynomial cost, not compact-state
+acquisition. The algorithm retains the full raw prefix, recomputes at each
+time, and has O(t^3) coefficient updates per output; the conservative
+schoolbook bit-time bound is O(t^9 log^2(t+2)). Recomputing through T costs
+O(T^4) coefficient updates. The projective sequential law has an expected
+cumulative-KL bound, not pointwise likelihood-ratio domination. Full proof,
+costs and finite checks (516 output equalities and 114 projectivity checks
+through length 6) are in `renewal_anytime/RESULT.txt`.
+
+5. EXACT ARITHMETIC IMPLEMENTATION CONSEQUENCE
+
+An N!-scaled implementation preserves the same fixed-horizon Q_N and every
+prediction and risk statement above. For nonzero-suffix marginals, the
+per-suffix common denominator products are replaced by integer sums over
+(N!)^2, using F_q | N! and each slack V_beta | N!. The unchanged all-zero
+branch still uses Fraction arithmetic, and the final suffix average still
+has large exact outputs.
+
+On the alternating length-120 history, median time over three runs fell from
+1.362 s to 0.399 s (3.41x); the largest transient marginal integer fell from
+10,234 to 1,367 bits. Traced peak memory changed only 2.8%, and final output
+components still reached 20,519 bits. The all-zero history showed no useful
+gain. Both implementations have the same O(n^3) coefficient/summand updates;
+these measurements are for a narrow implementation comparison, not an
+asymptotic runtime improvement. Exact equivalence passed for 1,022 histories
+of lengths 1–9 and 40 fixtures through length 20 (8,774 suffix comparisons).
+Full method, costs, benchmark rows and the independent literal-formula
+comparison are in `renewal_integer_code/nfactorial/RESULT.txt` and
+`renewal_integer_code/nfactorial/benchmark.json`.
+
+6. FIXED-HORIZON HIGH-PROBABILITY TERMINAL RISK
+
+Let R_n(mu,X^n) be the conditional KL divergence between the true law of
+X_{n+1} given the same observed path and an arbitrary full-path predictor's
+output. For every n >= 40,000 and every possibly randomized predictor, there
+is a stationary finite-support renewal law (allowed to depend on n) such that
+
+  P_mu{R_n(mu,X^n) >= (log(2)-1/2)/(18 sqrt(n))} >= 1/160.
+
+The construction adapts the balanced-support posterior-ambiguity prior in
+HJW Appendix E. It keeps the equilibrium initial wait and terminal survival
+factors in the path likelihood, and forces the target gap to be absent from
+all observed complete gaps on the ambiguity event. An exact Fraction checker
+passes four small exhaustive instances; the all-n argument is analytic and
+has not received external review. The type-first predictor has the matching
+fixed-confidence upper order B_n/delta by Markov's inequality, so for each
+fixed delta < 1/160 the minimax same-path terminal conditional-risk quantile
+is Theta_delta(n^(-1/2)). This is a per-horizon minimax result: its lower-bound
+source changes with n. It is not an independent-history statement, a
+time-uniform confidence sequence, or a constant-probability lower bound for
+the realized one-step log score. Full definitions, proof, costs, exact
+diagnostics and limitations are in `renewal_terminal_tail/RESULT.txt`.
+
+7. VALIDATION, BASELINES, AND PRIOR ART
+
+Binary finite checks: the root exact checker reports, through N=9, 2,035
+prefix equalities, 1,013 conditional normalizations and 5,110 stationary
+likelihood-ratio fixtures. The predictor checker covers 510 histories and
+3,586 suffix conditionals through n=8; the shared suffix-DP check covers
+1,538 conditionals through n=7; fixed-horizon code round trips were checked
+through length 10. These are finite diagnostics, not all-N proof or external
+validation.
+
+Observed-mark tests: Sol's independent enumerator and DP pass 3,099 exact
+prefix equalities, 1,157 categorical normalizations, and 6,578 pointwise
+stationary regret checks over q=1,N<=8; q=2,N<=6; q=3,N<=4. The lead reran
+that checker. A sibling Luna independently rederived the prefix and
+denominator formulas and matched the global-allzero implementation on 424
+prefix equalities and 178 normalizations over q=1,N<=6 and q=2,N<=4. Root
+also independently read the proof and reported no flaw. These internal
+reviews preserve the candidate status; no proof assistant or external expert
+has validated it.
+
+The strongest statistical baseline is Han–Jiang–Wu's finite-block NML
+construction: it reaches the minimax order but its exact renewal marginal is
+not supplied as polynomial-time computable. A polynomial context-tree
+control exists. Garivier's primary 2006 thesis, Theorem 22 at printed p.85,
+was visually checked: CTW renewal redundancy is Theta(sqrt(n) log n), giving
+a derived O(log(n)/sqrt(n)) terminal risk under the HJW suffix conversion.
+Theorem 23's n^{2/3}log n gap-chain result concerns a Markov chain on
+unbounded interarrival-time values, not the fixed finite observed-mark
+kernel. This is a logarithmic-factor control, not a lower bound against all
+predictors or priority evidence.
+
+A full-data learner retaining the same path can compute or emulate the
+predictor; no information-theoretic advantage over that equally informed
+baseline is claimed. The candidate's contribution, if the proof and priority
+survive, is an explicit efficient code/marginal compiler for a narrowly
+specified process class.
+
+8. WHAT IS AND IS NOT CLOSED
+
+Internally closed: the binary type-first normalization and redundancy proof;
+the exact prefix formulas and shared O(n^3) suffix DP; the fixed-q observed-
+mark row-urn normalization, pointwise domination, prefix DP, N! denominator
+and capped-countdown conversion. Root and an independent Luna found no flaw
+in the row-urn proof, with finite exact checks as recorded above.
+
+Not closed: external proof validation; a comprehensive current prior-art or
+priority search; asymptotically improved implementation; compact-state or
+sublinear-memory anytime prediction; hidden event-mark exact compilation;
+arbitrary HMM structural acquisition; source reconstruction; or a
+field-breaking claim. The fixed-n high-probability section closes only the
+stated same-path quantile bracket; sharp delta dependence, independent-history
+risk, and one-source time-uniform tails remain unknown. The current work does
+not remove the general rank/conditioning/mixing and representation acquisition
+gates documented in Cycles 2-3.
+
+For hidden finite event marks, Sol has an internally proved candidate that
+the exact projected-code prefix/full-block function is #P-hard for q=2. The
+reduction uses O(m) code queries with explicit raw horizons N=O(|G|^2), and
+the #P membership statement is scoped to unary N or N bounded by the explicit
+trajectory size. A focused independent Luna audit reconstructed the
+full-span extraction, padding/Vandermonde interpolation, Hadamard transform,
+Eulerian medial construction, pinned-root recovery, and use of the cited
+bounded-degree counting theorem; it found no fatal gap. The audit also
+isolates the encoding caveat: arbitrary binary-encoded N with a short prefix
+does not support the claimed polynomial output length, but the hardness
+queries use explicit trajectories with N=|x|. The result does not establish
+hardness of the suffix-averaged terminal predictor, every optimal predictor,
+or relative approximation. Internal audit is not external proof validation.
+See `outputs/research/sol_hidden_renewal/RESULT.txt` and
+`outputs/research/acquisition_learning/cycle4/hidden_renewal_audit/RESULT.txt`.
+
+The N!-denominator implementation and its measured scaling, the fixed-n
+high-probability terminal-risk lower bound, and the horizon-free theorem are
+banked above. The online theorem leaves compact-state update open. Sol's
+hidden-mark compiler has a focused independent audit with no fatal gap found;
+keep exact compiler hardness separate from the observed-mark theorem and from
+statistical prediction hardness.
+
+The status of every claim remains explicit in `CLAIMS.json`. Current source
+and prior reads are in `READ_LEDGER.txt`; the current reused-worker roster and
+follow-up assignments are in `dispatch.json`.
+
+9. RESTRICTED BOND FPRAS AUDITS AND FIXED-q CONSEQUENCE
+
+Three reused existing Luna leaves completed independent audits of the
+q=2, full-span, multiplicity-at-most-two hidden row-urn likelihood FPRAS:
+the degree-two equality graph/correction tail, the conditional tensor and
+Ising reduction, and the complete cost/interface ledger. They found no fatal
+gap in the scoped derivation. Their artifacts and caveats are in
+`bond_fpras_audit/`; the printed JS93 theorem is exact-real, so the finite-bit
+rational simulation remains an internal repair, not an executable FPRAS.
+
+The same pair-bond mechanism has an internally reconstructed fixed-q
+extension: for every fixed q>=2, the full-span binary likelihood is relatively
+approximable in polynomial bit time when every gap label occurs at most twice.
+The pair tensor is [[q^2+1,1],[1,1]]; collapsing the q-1 nonzero Fourier
+states gives positive ghost fields, and the q-color multinomial correction
+has an inverse-polynomial mean for fixed q. The coarse arithmetic exponent
+grows with q. Finite exact checks cover q=2,3 on short words. This does not
+cover growing q, multiplicity >=3, censored prefixes, suffix prediction or
+source reconstruction, and no novelty/priority claim is made. Full proof,
+independent derivation, checker and claim ledger are in
+`fixed_q_pair_bond_fpras/`.

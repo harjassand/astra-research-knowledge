@@ -1,0 +1,410 @@
+INDEPENDENT AUDIT: CONDITIONAL HADAMARD TRANSFORM AND THE ISING FPRAS
+2026-10-08
+
+Scope and verdict
+=================
+
+I independently reconstructed Sections 3 and 5 of
+outputs/research/sol_bond_renewal/RESULT.txt and checked the imported result
+against Jerrum and Sinclair's primary author PDF and the 1993 SIAM journal
+record. The conditional Fourier-tensor identity, common-ghost reduction, and
+the conditional-sampling/importance-sampling ratios are algebraically valid
+for the stated q=2, full-span, maximum gap-multiplicity two family. The
+resulting zero-field Ising instances fit the interaction class in JS93 after
+contracting all same-spin pins, deleting Ising self-loops as constants, and
+adding parallel couplings. The annealing path stays at positive field
+parameter mu >= 1/v, so the published sampler applies.
+
+The paper itself is explicitly in an exact-real-arithmetic model. It is not,
+by citation alone, a bit-complexity FPRAS. The report's rationalization and
+finite-kernel simulation repair is sound in principle; below I give an
+explicit schedule and the coupling argument needed to make that claim
+auditable. One qualification should remain explicit: JS93's sampler runtime
+depends polynomially on mu^{-1}; it is uniform in edge activities, not in mu.
+The report's schedule mu >= 1/v is what makes this dependence polynomial.
+This audit verifies the imported theorem/application and the displayed
+identities; it is not external proof review, a practical implementation, or a
+novelty/priority determination. No finite test is used as proof.
+
+The scope remains the report's restricted one: a full-span q=2 block with
+each positive gap label occurring at most twice. Nothing here extends the
+tensor construction or the row correction to arbitrary multiplicity or a
+censored prefix.
+
+1. Conditional Fourier graph, from the tensors
+================================================
+
+Write delta(x,y)=1[x=y], and let
+
+  T = 2^{-1/2} [[1,1],[1,-1]].
+
+For a two-port equality tensor,
+
+  sum_{x,y} T[a,x] T[c,y] delta(x,y)
+    = sum_x T[a,x]T[c,x] = delta(a,c),
+
+because T is orthogonal. Thus an internal equality wire is unchanged by
+applying T at both ends. The all-ones one-port vector maps to
+T(1,1)^T = sqrt(2) e_0. Consequently an all-ones tensor on k ports maps to
+2^{k/2} times the tensor pinning all transformed ports to 0.
+
+For a doubled label, denote its two start ports by A,C and its two end ports
+by B,D. Its free tensor is
+
+  F_free(A,C,B,D) = 1 + delta(A,C) delta(B,D).
+
+The first term is the identity permutation; the second is the swap. Transform
+all four ports. The constant term is the all-ones four-port tensor and maps
+to 4*1[A=B=C=D=0]. The product of the two equality tensors is invariant,
+giving
+
+  Fhat_free = 4*1[A=B=C=D=0] + delta(A,C)delta(B,D).
+
+The forced-identity tensor is 1, so its transform is
+4*1[A=B=C=D=0]. The forced-swap tensor is
+delta(A,C)delta(B,D), so it is unchanged. These are exactly the three
+tensors stated in the report. The two equalities should be wired for every
+doubled label, including forced labels. A free label adds, in addition, an
+interaction between its start-wire component and end-wire component; a
+forced identity pins both components to 0 and contributes 4; a forced swap
+adds no interaction. Contracting adjacent word ports is legitimate because
+the identity contraction is preserved by T^T T=I.
+
+For a free label, let s,t in {0,1} be the spins on the start and end wire
+components. The transformed local factor is 5 when s=t=0, 1 when s=t=1,
+and 1 when s!=t. Thus the interaction matrix is
+
+  M = [[5,1],[1,1]].
+
+A singleton gap has an all-ones two-port tensor; it pins both endpoints to 0
+and contributes 2. Each of the two word-end all-ones vectors contributes
+sqrt(2), hence together contribute 2 and pin their wire components. If
+G_h is the graph of wire components and free-label interactions for partial
+bond assignment h, with all specified pins set to 0, then
+
+  W_h = 2^{1 + (# singleton labels) + 2 (# forced identities)}
+        Z_M(G_h; pins=0),
+
+where W_h is the sum of U(sigma) over all completions sigma of h. This
+identity also covers a component pinned by several sources: all pins have
+the same value, so they impose one consistent condition. Positivity follows
+independently from either side: each constant hidden path satisfies all
+selected equalities, and every free tensor has positive entries.
+
+2. Conditional law and the estimator ratios
+=============================================
+
+Let L be the number of doubled labels and let
+
+  U(sigma) = sum_u product_{j=1}^L
+                  1[the swap equalities for j hold under u] ,
+  W = sum_sigma U(sigma),  mu_U(sigma)=U(sigma)/W.
+
+For partial assignment h on some labels, define
+
+  W_h = sum_{sigma extending h} U(sigma).
+
+Then W_h=W_{h0}+W_{h1}, and the exact self-reduction law is
+
+  Pr_{mu_U}[sigma_j=1 | h] = W_{h1}/(W_{h0}+W_{h1}).
+
+Both branch weights are positive. For fixed assignments of all other
+labels, selecting j=1 adds at most two binary equality edges to the
+hidden-path constraint graph. Each such edge reduces its number of
+components by at most one, so its number of satisfying assignments drops by
+at most a factor 2 per edge. Summing over the other label assignments gives
+W_{h0}/4 <= W_{h1} <= W_{h0}; hence this particular branch probability is
+in [1/5,1/2]. This lower bound is a useful conditioning check, although the
+FPRAS call itself estimates W_h without inverse-W_h dependence.
+
+For the row-weighted correction in the report, let B(sigma) be the summed
+row-factorial-denominator mass, let
+
+  C_m = binom(m,floor(m/2))/m!,
+  g(sigma) = B(sigma)/(U(sigma) C_m).
+
+Since sum_sigma B(sigma)=Z(w), direct cancellation gives
+
+  E_{mu_U}[g]
+    = (1/W) sum_sigma U(sigma) B(sigma)/(U(sigma)C_m)
+    = Z(w)/(W C_m),
+  Z(w) = W C_m E_{mu_U}[g].
+
+This is the estimator ratio used by the outer FPRAS. It is distinct from the
+Ising annealing ratios below. In particular, the conditional graph FPRAS is
+used for W_h branch ratios to sample mu_U; it does not by itself estimate
+the row-weighted evidence Z(w).
+
+3. Common-ghost Ising identity, including pins and loops
+========================================================
+
+Map bit 0 to spin +1 and bit 1 to spin -1. For rational r>1 define
+
+  M_r = [[r^4,1],[1,1]],
+  M_r(s,t) = r^{1+s+t+st},  s,t in {+1,-1}.
+
+At r=5^{1/4}, this equals M exactly. Let G have e free-interaction edges,
+counting parallel edges with multiplicity, and let all pinned vertices be
+specified +1. For every edge vw of G add in H the three zero-field Ising
+interactions vw, v*, and w*, with the same coupling J=log(r)>0; * is one
+common ghost site. Each Ising edge contributes r^{s_x s_y}. If v,w are
+unpinned and s_*=+1, the triangle contributes
+
+  r^{s_v s_w + s_v + s_w};
+
+multiplication by the outside factor r gives M_r(s_v,s_w). If v or w is
+pinned, identify that vertex with *. Under s_*=+1 the same formula still
+holds with its pinned spin +1. If both endpoints are pinned, all triangle
+edges become loops and their product, including the outside r, is r^4, as
+required.
+
+For each fixed assignment with s_*=+1, the product over triangles is
+r^e times the corresponding M_r weight. In the zero-field graph H, global
+spin flip is a weight-preserving bijection between configurations with
+s_*=+1 and s_*=-1. Therefore, before deleting loops,
+
+  Z_{M_r}(G; pins=+1) = r^e Z_Ising(H; B=0)/2.
+
+This is an exact partition identity, not an appeal to an Ising sampler with a
+hard or nonuniform field. It depends essentially on all pins agreeing. H is
+an unrestricted graph: it may be disconnected and have isolated sites.
+After triangle construction, remove each Ising self-loop: since
+s_i^2=1, a loop of multiplicity t contributes the known constant r^t.
+Let ell be the total number of loop copies removed. If H_simple denotes the
+resulting loop-free graph, the exact formula is
+
+  Z_{M_r}(G; pins=+1) = r^{e+ell} Z_Ising(H_simple; B=0)/2.
+
+Merge parallel non-loop edges of multiplicity t into one pair coupling
+t log r. Do this after the triangle construction. In particular, an original
+self-interaction vw with v=w produces one loop and two v* edges; deleting
+the loop but retaining/merging the v* edges is necessary and gives the
+correct spin-dependent factor. An original loop is not simply an ignorable
+constant before ghost expansion. The resulting pair-interaction matrix has
+nonnegative couplings, so it is ferromagnetic. The common ghost adds one
+site and at most three edges per original interaction; the site and edge
+counts are O(m).
+
+For rational r and merged multiplicity t, the inputs needed by the
+high-temperature JS algorithm are exact rationals:
+
+  lambda_t = tanh(t log r) = (r^{2t}-1)/(r^{2t}+1),
+  cosh(t log r) = (r^t+r^{-t})/2.
+
+Thus no logarithm needs to be evaluated in the bit implementation. Since
+t<=e=O(m) and r has O(log(e/rho)) bits below, these rational numbers have
+polynomial bit length. Zero-interaction pairs are omitted; the theorem's
+input is equivalently the symmetric matrix with these nonnegative pair
+couplings. Self-loops and multiple edges therefore cause no interface
+mismatch after the stated exact simplifications.
+
+4. What JS93 proves and why this instance is in its class
+=========================================================
+
+Primary source: Mark Jerrum and Alistair Sinclair, “Polynomial-Time
+Approximation Algorithms for the Ising Model,” SIAM Journal on Computing
+22(5), 1087–1116 (1993), DOI 10.1137/0222066. The author-hosted PDF is
+https://people.eecs.berkeley.edu/~sinclair/ising.pdf; the publisher record is
+https://doi.org/10.1137/0222066.
+
+The paper's Ising input is an arbitrary symmetric pair-interaction matrix
+with every coupling nonnegative, a uniform external field B, and beta>0.
+There is no planarity, degree, or connectedness restriction. Theorem 5 gives
+an FPRAS for the partition function. The theorem is being invoked only at
+B=0. The ghost reduction has no fields at all; the exact pins were removed
+by vertex identification and a global-flip factor of 2. Thus no theorem for
+nonuniform fields or infinite field is being assumed.
+
+The paper explicitly says (printed p.8; author PDF p.9/10 depending on
+cover-page counting) that it ignores inexact-computer-arithmetic errors and
+uses a model where real arithmetic is exact and arithmetic operations and
+standard functions such as exp cost unit time. Theorem 5 alone therefore
+does not establish polynomial BIT time. This is a genuine interface caveat,
+not a graph-class failure.
+
+For the bit repair, Theorem 2's subgraph-world generator takes edge
+activities lambda_e in [0,1), a field activity mu in (0,1], and a target
+variation distance delta. If E_H is the number of positive pair edges and
+v the number of sites, its stated runtime is
+
+  O(E_H^2 mu^{-8} (log(delta^{-1}) + E_H)).
+
+The conductance statement behind this is Phi >= mu^4/(4 E_H). Starting from
+the empty subgraph, its stationary probability is at least 2^{-E_H}, since
+every subgraph weight is at most 1. These are uniform in the lambda_e, but
+not in mu. Theorem 5's annealing path uses only mu>=1/v, so this dependence
+is polynomial for H_h. The report's phrase “uniformly in the edge
+activities” is correct if read this way; it should not be read as saying
+uniform in the external-field activity down to zero.
+
+5. Independent reconstruction of the JS estimator schedule
+===========================================================
+
+For H with v sites and pair-edge activities lambda_e, the high-temperature
+expansion at field activity mu is
+
+  Z_0(mu) = sum_{X subseteq E_H} mu^{o(X)} product_{e in X} lambda_e,
+
+where o(X) is the number of odd-degree sites. The spin partition function is
+
+  Z_Ising(H;B) = (2 cosh(beta B))^v
+                 product_e cosh(beta J_e) * Z_0(tanh(beta B)).
+
+At zero field, the target is 2^v product_e cosh(J_e) Z_0(0), with J_e=t log r
+after merging. The value Z_0(1)=product_e(1+lambda_e) is exact. Set
+
+  mu_j=(v-j)/v,  j=0,...,v.
+
+For j<v, under
+
+  pi_{mu_j}(X) = mu_j^{o(X)} product_e lambda_e / Z_0(mu_j),
+
+the observable
+
+  f_j(X) = (mu_{j+1}/mu_j)^{o(X)}
+
+has expectation exactly
+
+  E_{pi_{mu_j}} f_j = Z_0(mu_{j+1})/Z_0(mu_j).
+
+For the last step mu_v=0, define f_{v-1}(X)=1[o(X)=0], which is exactly the
+0^0=1 convention and gives Z_0(0)/Z_0(1/v). Every f_j is in [0,1]. The JS
+step-size lemma bounds each ratio below by 1/10 when the adjacent mu values
+differ by at most 1/v. Hence each stage can be estimated by a bounded
+sample mean with polynomial sample count; the product of the v estimated
+ratios estimates Z_0(0). In Theorem 5's stated allocation, each stage has
+relative error O(eta/v), failure O(1/v), and its sampler variation input is
+eta/(160v), for desired Ising accuracy eta. Repeating the whole FPRAS by a
+median amplifies its fixed 3/4 success probability to 1-gamma with
+O(log(gamma^{-1})) repetitions. The source's ratio convention is
+asymmetric, 1/(1+eta) <= estimate/target <= 1+eta; it implies the symmetric
+interval [1-eta,1+eta] used below.
+
+6. Explicit rational approximation and finite-randomness schedule
+=================================================================
+
+Fix one conditional W_h call with requested relative error rho in (0,1), and
+let e be its number of free interaction edges, with parallel copies counted.
+If e=0, compute the partition exactly. Otherwise choose a dyadic rational
+r>1 by rational bisection of x^4=5 so that
+
+  |r^4/5 - 1| <= rho/(16 e).
+
+This uses O(log(e/rho)) bits. The inequality is checkable by rational
+arithmetic. Since rho/(16e)<=1/16, |log(1+x)|<=2|x| here, so
+|log(r^4/5)|<=rho/(8e). Each configuration weight in the e-edge M_r
+partition differs from its M weight by (r^4/5)^a for an integer 0<=a<=e.
+Thus its ratio, and the partition ratio, lie in [exp(-rho/8),exp(rho/8)].
+
+Run JS93 on H_h with internal accuracy eta=rho/8 and requested failure
+probability gamma. Its rational prefactors are 2^{b(h)}, r^{e+ell}/2, 2^v,
+and the product of (r^t+r^{-t})/2; they have polynomial bit length. Combining
+the edge approximation and an Ising estimate in [1-eta,1+eta] gives an
+overall W_h estimate in [1-rho,1+rho]: for the upper side,
+
+  log( exp(rho/8)(1+rho/8) ) <= rho/4 <= log(1+rho),
+
+and for the lower side,
+
+  log( exp(-rho/8)(1-rho/8) ) >= -rho/8-rho/7 > -rho
+                                                    >= log(1-rho).
+
+All these estimates are conservative.
+
+To make each JS generator a fixed worst-case number of finite-bit steps,
+take its requested stationary-law variation tolerance to be
+
+  tau = eta/(160 v),
+
+as in the published Theorem 5 schedule. For a stage with mu>=1/v and
+E_H>=1, use an integer upper bound
+
+  T = ceil(16 E_H^2 v^8 (L + E_H)),
+  L = ceil(log_2(2/tau)).
+
+The paper's conductance/mixing bound gives exact-chain TV at most tau/2 at
+this T (enlarging T by an absolute factor, if required by the log-base
+conversion, is harmless). At a state X, toggling edge e changes o(X) by
+Delta in {-2,0,2}; the Metropolis acceptance ratio is formed from
+lambda_e*mu^Delta or its reciprocal, then truncated at 1. These are
+rational computations of polynomial bit length because lambda_e is the
+rational above, mu>=1/v is rational, and |Delta|<=2.
+
+At every step implement the uniform edge choice by dividing 2^b equally as
+possible among E_H categories and use b fresh bits; its total-variation
+error from uniform is at most E_H/2^b. Implement a rational acceptance
+probability p as floor(2^b p)/2^b using b fresh bits; its absolute error is
+less than 2^{-b}. Choose
+
+  b = ceil(log_2(4 E_H T/tau)).
+
+Then both errors are at most tau/(4T), so the one-step transition kernels
+are within tau/(2T) in total variation, uniformly over current states.
+The standard stepwise coupling/telescoping inequality bounds the output-law
+difference between the ideal and rounded T-step chains by at most tau/2.
+Together with the ideal mixing error tau/2, the rounded generator's law is
+within tau of pi_mu. This uses a fixed O(b) random bits per action, not an
+unbounded rejection sampler. Exact rational-to-dyadic rounding uses integer
+arithmetic on polynomial-bit numbers. Thus each generator call has
+worst-case polynomial bit cost. The theorem's samples are freshly
+regenerated from the empty state with independent random bits, so the
+sample-mean concentration argument applies to independent outputs from
+their common approximate law.
+
+Because 0<=f_j<=1, a generator law within tau changes E f_j by at most tau.
+The true ratio is at least 1/10, so tau=eta/(160v) gives a bias much smaller
+than the per-stage relative error O(eta/v). A polynomial sample count, for
+example O(eta^{-2} v^2 log(v/gamma)) per stage using a bounded-variable
+Chernoff/Bernstein bound, controls sampling fluctuations; confidence
+amplification and union bounds over the v stages are polynomial. The
+remaining exact arithmetic has polynomial length: f_j is a rational power
+with exponent at most v (or a zero/one indicator at the last step), and the
+products/averages and rational prefactors have polynomial-bit numerators
+and denominators. Since v,E_H=O(m), the complete conditional partition
+estimate has polynomial bit complexity in m, rho^{-1}, and log(gamma^{-1}).
+
+7. Audit findings / qualifications
+===================================
+
+1. Fourier transform: verified by orthogonality and the all-ones transform.
+   The factor 2^{1+singletons+2 forced-identities} and the M=[[5,1],[1,1]]
+   interaction are correct. The wire graph is the fully wired Fourier graph,
+   not the selected-edge correction graph from the report's next section.
+2. Conditional ratios: W_h is a sum over all completions, the exact next-bit
+   law is W_{h1}/(W_{h0}+W_{h1}), and the evidence identity is
+   Z=W C_m E_{mu_U}g. The JS partition estimator is a separate telescoping
+   product of high-temperature ratios.
+3. Ghost: the common-ghost identity is exact for same-sign pins. It eliminates
+   fields from the instance passed to JS93. Self-loops must be removed only
+   after triangle expansion; original G self-loops can leave ghost-parallel
+   edges that carry a field after conditioning and must be retained.
+4. Theorem interface: arbitrary nonnegative pair couplings and B=0 satisfy
+   JS93. No planarity or degree condition is missing. The paper's native
+   guarantee uses exact real arithmetic, so the finite-bit argument is
+   additional work, not part of the cited theorem.
+5. Precision schedule: with rational r, rational lambda/cosh factors, a
+   positive-mu annealing path, and the explicit per-step kernel approximation
+   above, the published mixing argument can be realized with fixed finite
+   randomness and polynomial bit arithmetic. The report's finite-bit repair
+   is therefore sound as a theorem-level construction, though it is not an
+   implementation benchmark. State the sampler's mu^{-8} dependence when
+   summarizing it.
+6. Proof and novelty status: the identities above are independently
+   reconstructed algebraic proofs; the FPRAS is an imported JS93 theorem
+   plus the rational/finite-kernel repair. The report's finite checks are
+   diagnostics only. The search/evidence here does not establish novelty or
+   priority for the conditional transform/application.
+
+Sources
+=======
+
+- Jerrum and Sinclair, 1993 SIAM Journal on Computing article and DOI record:
+  https://doi.org/10.1137/0222066
+- Jerrum and Sinclair, author-hosted full text (same work; revised preprint):
+  https://people.eecs.berkeley.edu/~sinclair/ising.pdf
+  Relevant source locations: model/high-temperature expansion, printed
+  pp. 5-6; exact-real computation convention, printed p. 8; generator
+  Theorem 2 and FPRAS Theorem 5, printed pp. 9 and 12-13; conductance and
+  mixing proof, printed pp. 18-20. The paper identifies Theorem 5 as an
+  FPRAS for arbitrary ferromagnetic Ising systems and gives the above
+  subgraph-world sampler bound.

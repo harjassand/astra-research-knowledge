@@ -1,0 +1,316 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/cell_control/cell_aging_memory/cycle3_model.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/cell_control/cell_aging_memory/cycle3_model.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Finite-state controlled-jump witness: same CLE (b,A), different pulse words.
+
+This is a model check, not a biological model.  State is (x,m), x in {0,...,4}
+and a hidden two-level memory coordinate m in {0,1}.  Actions are passive 0,
+prime P, neutral-load L, and challenge B.  The two hypotheses are sigma=+1/-1.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import json
+from math import exp, log, sqrt
+from pathlib import Path
+
+import numpy as np
+
+
+ROOT = Path(__file__).resolve().parent
+X_STATES = range(5)
+M_STATES = range(2)
+STATES = [(x, m) for x in X_STATES for m in M_STATES]
+IDX = {s: i for i, s in enumerate(STATES)}
+JUMPS = (-2, -1, 1, 2)
+H = np.array([1.0, -2.0, 2.0, -1.0])
+H_X = np.array([1.0, -2.0, 0.0, 2.0, -1.0])
+
+
+def expm_generator(Q: np.ndarray, duration: float, tol: float = 1e-14) -&gt; np.ndarray:
+    &quot;&quot;&quot;Uniformization matrix exponential for a finite-state CTMC generator.&quot;&quot;&quot;
+    rate = float(np.max(-np.diag(Q)))
+    if rate == 0.0 or duration == 0.0:
+        return np.eye(Q.shape[0])
+    mean = rate * duration
+    if mean &gt; 500:
+        raise ValueError(&quot;uniformization helper is intended for bounded pulse durations&quot;)
+    P = np.eye(Q.shape[0]) + Q / rate
+    term = np.eye(Q.shape[0])
+    weight = exp(-mean)
+    total = weight * term
+    cdf = weight
+    k = 0
+    while 1.0 - cdf &gt; tol:
+        k += 1
+        term = term @ P
+        weight *= mean / k
+        total += weight * term
+        cdf += weight
+        if k &gt; 10000:
+            raise ArithmeticError(&quot;uniformization did not converge&quot;)
+    return total
+
+
+def add_rate(Q: np.ndarray, source: tuple[int, int], target: tuple[int, int], rate: float) -&gt; None:
+    i, j = IDX[source], IDX[target]
+    Q[i, j] += rate
+    Q[i, i] -= rate
+
+
+def generators(
+    sigma: int,
+    *,
+    lam: float,
+    mu: float,
+    delta: float,
+    a: float,
+    ell: float,
+    c: tuple[float, float, float, float],
+    epsilon: float,
+) -&gt; dict[str, np.ndarray]:
+    &quot;&quot;&quot;Return row-generator matrices for 0/P/L/B under one sign hypothesis.&quot;&quot;&quot;
+    if not np.isclose(a, ell, rtol=0.0, atol=1e-12):
+        raise ValueError(&quot;the closed-form difference-in-differences assumes matched P/L loading rates&quot;)
+    q0 = np.zeros((len(STATES), len(STATES)))
+    qp = np.zeros_like(q0)
+    ql = np.zeros_like(q0)
+    qb = np.zeros_like(q0)
+
+    # Common passive birth/death and common memory washout. Bound X to [0,4].
+    for x, m in STATES:
+        if x &lt; 4:
+            add_rate(q0, (x, m), (x + 1, m), lam)
+        if x &gt; 0:
+            add_rate(q0, (x, m), (x - 1, m), mu * x)
+        if m == 1:
+            add_rate(q0, (x, m), (x, 0), delta)
+
+    # Matched pulses: same unknown rate, same X displacement, different memory bit.
+    add_rate(qp, (0, 0), (2, 1), a)
+    add_rate(ql, (0, 0), (2, 0), ell)
+
+    # At m=0 B is the common reference channel; at m=1 it has a null-moment
+    # perturbation.  Rate order matches JUMPS and H.
+    for m in (0, 1):
+        for jump, base, hval in zip(JUMPS, c, H):
+            rate = base + (sigma * epsilon * hval if m == 1 else 0.0)
+            if rate &lt;= 0:
+                raise ValueError(&quot;all controlled reaction rates must be positive&quot;)
+            add_rate(qb, (2, m), (2 + jump, m), rate)
+
+    return {&quot;0&quot;: q0, &quot;P&quot;: qp, &quot;L&quot;: ql, &quot;B&quot;: qb}
+
+
+def moments(Q: np.ndarray) -&gt; tuple[np.ndarray, np.ndarray]:
+    &quot;&quot;&quot;Kramers-Moyal first and second jump-moment fields for the full (x,m).&quot;&quot;&quot;
+    b = np.zeros((len(STATES), 2))
+    A = np.zeros((len(STATES), 2, 2))
+    for i, (x, m) in enumerate(STATES):
+        for j, (xp, mp) in enumerate(STATES):
+            if i == j or Q[i, j] &lt;= 0:
+                continue
+            dv = np.array([xp - x, mp - m], dtype=float)
+            b[i] += Q[i, j] * dv
+            A[i] += Q[i, j] * np.outer(dv, dv)
+    return b, A
+
+
+def confusion(eta: float) -&gt; np.ndarray:
+    &quot;&quot;&quot;Symmetric five-category X-readout channel; eta is total error mass.&quot;&quot;&quot;
+    C = np.full((5, 5), eta / 4.0)
+    np.fill_diagonal(C, 1.0 - eta)
+    return C
+
+
+def run_example() -&gt; dict:
+    # Rates are dimensionless example values. c is intentionally asymmetric;
+    # the neutral-load arm cancels its unknown score projection h.c.
+    pars = {
+        &quot;lam&quot;: 0.7,
+        &quot;mu&quot;: 0.15,
+        &quot;delta&quot;: 0.08,
+        &quot;a&quot;: 3.0,
+        &quot;ell&quot;: 3.0,
+        &quot;c&quot;: (1.2, 0.8, 1.1, 0.9),
+        &quot;epsilon&quot;: 0.1,
+        &quot;tau_pulse&quot;: 0.2,
+        &quot;tau_b&quot;: 0.25,
+        &quot;eta&quot;: 0.2,
+    }
+    initial_q0 = 1.0
+    q_plus = generators(+1, **{k: v for k, v in pars.items() if k not in (&quot;tau_pulse&quot;, &quot;tau_b&quot;, &quot;eta&quot;)})
+    q_minus = generators(-1, **{k: v for k, v in pars.items() if k not in (&quot;tau_pulse&quot;, &quot;tau_b&quot;, &quot;eta&quot;)})
+
+    # Check exact actionwise equality numerically over every full state.
+    max_b_diff = 0.0
+    max_A_diff = 0.0
+    action_moment_differences: dict[str, dict[str, float]] = {}
+    for u in (&quot;0&quot;, &quot;P&quot;, &quot;L&quot;, &quot;B&quot;):
+        bp, ap = moments(q_plus[u])
+        bm, am = moments(q_minus[u])
+        db, da = float(np.max(np.abs(bp - bm))), float(np.max(np.abs(ap - am)))
+        action_moment_differences[u] = {&quot;max_abs_b_difference&quot;: db, &quot;max_abs_A_difference&quot;: da}
+        max_b_diff, max_A_diff = max(max_b_diff, db), max(max_A_diff, da)
+
+    # The moment-null direction and the first differing local jump moment.
+    v = np.array(JUMPS, dtype=float)
+    null_checks = {
+        &quot;sum_h&quot;: float(np.sum(H)),
+        &quot;h_dot_v&quot;: float(H @ v),
+        &quot;h_dot_v2&quot;: float(H @ (v**2)),
+        &quot;h_dot_v3&quot;: float(H @ (v**3)),
+    }
+    third_moment_gap = 2 * pars[&quot;epsilon&quot;] * null_checks[&quot;h_dot_v3&quot;]
+
+    # P/L then B, alongside their no-B controls. Start at the calibrated state (0,0).
+    e0 = np.zeros(len(STATES))
+    e0[IDX[(0, 0)]] = initial_q0
+    e0[IDX[(0, 1)]] = 1.0 - initial_q0
+    T = pars[&quot;tau_pulse&quot;]
+    TB = pars[&quot;tau_b&quot;]
+    Cx = confusion(pars[&quot;eta&quot;])
+    out: dict[str, dict] = {}
+    for sig, q in ((+1, q_plus), (-1, q_minus)):
+        eP = e0 @ expm_generator(q[&quot;P&quot;], T)
+        eL = e0 @ expm_generator(q[&quot;L&quot;], T)
+        ePB = eP @ expm_generator(q[&quot;B&quot;], TB)
+        eLB = eL @ expm_generator(q[&quot;B&quot;], TB)
+        # Passive no-pulse paths are shared, and single P/L/B from (0,0) agree.
+        eB = e0 @ expm_generator(q[&quot;B&quot;], TB)
+        # Reversing the two-pulse word makes B act at X=0, where it is inactive.
+        eBP_order = e0 @ expm_generator(q[&quot;B&quot;], TB) @ expm_generator(q[&quot;P&quot;], T)
+
+        def x_marg(p: np.ndarray) -&gt; np.ndarray:
+            ans = np.zeros(5)
+            for i, (x, m) in enumerate(STATES):
+                ans[x] += p[i]
+            return ans
+
+        pP, pL, pPB, pLB, pB, pBP_order = map(
+            x_marg, (eP, eL, ePB, eLB, eB, eBP_order)
+        )
+        # Raw score h(Yx); symmetric confusion contracts the zero-sum contrast by kappa.
+        def score(p_x: np.ndarray) -&gt; float:
+            return float((p_x @ Cx) @ H_X)
+
+        gap = (score(pPB) - score(pP)) - (score(pLB) - score(pL))
+        lam_total = sum(pars[&quot;c&quot;])
+        r = 1.0 - exp(-pars[&quot;a&quot;] * T)
+        s = 1.0 - exp(-lam_total * TB)
+        kappa = 1.0 - 5.0 * pars[&quot;eta&quot;] / 4.0
+        predicted_gap = initial_q0 * sig * 10.0 * kappa * r * s * pars[&quot;epsilon&quot;] / lam_total
+        out[str(sig)] = {
+            &quot;p_B_from_00_x&quot;: pB.tolist(),
+            &quot;p_P_x&quot;: pP.tolist(),
+            &quot;p_L_x&quot;: pL.tolist(),
+            &quot;p_PB_x&quot;: pPB.tolist(),
+            &quot;p_LB_x&quot;: pLB.tolist(),
+            &quot;p_BP_order_x&quot;: pBP_order.tolist(),
+            &quot;difference_in_differences_observed_score&quot;: gap,
+            &quot;predicted_score_gap&quot;: predicted_gap,
+            &quot;formula_abs_error&quot;: abs(gap - predicted_gap),
+        }
+
+    pb_difference = np.array(out[&quot;1&quot;][&quot;p_PB_x&quot;]) - np.array(out[&quot;-1&quot;][&quot;p_PB_x&quot;])
+    bp_difference = np.array(out[&quot;1&quot;][&quot;p_BP_order_x&quot;]) - np.array(out[&quot;-1&quot;][&quot;p_BP_order_x&quot;])
+    pb_tv_raw = 0.5 * float(np.sum(np.abs(pb_difference)))
+    pb_tv_reported = 0.5 * float(np.sum(np.abs(pb_difference @ Cx)))
+    bp_tv_raw = 0.5 * float(np.sum(np.abs(bp_difference)))
+    lam_total_order = sum(pars[&quot;c&quot;])
+    r_order = 1.0 - exp(-pars[&quot;a&quot;] * T)
+    s_order = 1.0 - exp(-lam_total_order * TB)
+    k_order = 1.0 - 5.0 * pars[&quot;eta&quot;] / 4.0
+    order_tv_check = {
+        &quot;PB_raw_tv&quot;: pb_tv_raw,
+        &quot;PB_raw_tv_predicted&quot;: 6.0 * initial_q0 * r_order * s_order * pars[&quot;epsilon&quot;] / lam_total_order,
+        &quot;PB_reported_tv&quot;: pb_tv_reported,
+        &quot;PB_reported_tv_predicted&quot;: 6.0 * initial_q0 * r_order * s_order * pars[&quot;epsilon&quot;] * k_order / lam_total_order,
+        &quot;BP_raw_tv&quot;: bp_tv_raw,
+        &quot;scope&quot;: &quot;endpoint X-law comparison between H+ and H-; B then P is inactive on X0=0&quot;,
+    }
+
+    # Sample-cost illustration from Hoeffding for four independent arms, each n founders.
+    r = 1.0 - exp(-pars[&quot;a&quot;] * T)
+    lam_total = sum(pars[&quot;c&quot;])
+    s = 1.0 - exp(-lam_total * TB)
+    kappa = 1.0 - 5.0 * pars[&quot;eta&quot;] / 4.0
+    d_obs = 10.0 * kappa * r * s * pars[&quot;epsilon&quot;] / lam_total
+    alpha = 0.05
+    n_per_arm = int(np.ceil(32.0 * log(1 / alpha) / d_obs**2))
+
+    # Unknown initial memory occupancy scales the exact DID.  Verify the factor
+    # for a nontrivial mixture supported on X=0, without revealing M to the X reporter.
+    q0_check = 0.4
+    e0_mix = np.zeros(len(STATES))
+    e0_mix[IDX[(0, 0)]] = q0_check
+    e0_mix[IDX[(0, 1)]] = 1.0 - q0_check
+    mixture_gaps: dict[str, dict[str, float]] = {}
+    for sig, q in ((+1, q_plus), (-1, q_minus)):
+        eP = e0_mix @ expm_generator(q[&quot;P&quot;], T)
+        eL = e0_mix @ expm_generator(q[&quot;L&quot;], T)
+        ePB = eP @ expm_generator(q[&quot;B&quot;], TB)
+        eLB = eL @ expm_generator(q[&quot;B&quot;], TB)
+
+        def mixture_x_marg(p: np.ndarray) -&gt; np.ndarray:
+            ans = np.zeros(5)
+            for i, (x, m) in enumerate(STATES):
+                ans[x] += p[i]
+            return ans
+
+        gap = (
+            score(mixture_x_marg(ePB)) - score(mixture_x_marg(eP))
+            - score(mixture_x_marg(eLB)) + score(mixture_x_marg(eL))
+        )
+        pred = q0_check * sig * 10.0 * kappa * r * s * pars[&quot;epsilon&quot;] / lam_total
+        mixture_gaps[str(sig)] = {
+            &quot;q0&quot;: q0_check,
+            &quot;observed_score_gap&quot;: gap,
+            &quot;predicted_score_gap&quot;: pred,
+            &quot;formula_abs_error&quot;: abs(gap - pred),
+        }
+
+    return {
+        &quot;status&quot;: &quot;finite_model_check_only&quot;,
+        &quot;state_space&quot;: STATES,
+        &quot;actions&quot;: [&quot;passive&quot;, &quot;prime_P&quot;, &quot;neutral_load_L&quot;, &quot;challenge_B&quot;],
+        &quot;parameters&quot;: {k: list(v) if isinstance(v, tuple) else v for k, v in pars.items()},
+        &quot;initial_distribution&quot;: {
+            &quot;support&quot;: [[0, 0], [0, 1]],
+            &quot;q0&quot;: initial_q0,
+            &quot;interpretation&quot;: &quot;P(M0=0 | X0=0); X reporter does not observe M&quot;,
+        },
+        &quot;null_moment_checks&quot;: null_checks,
+        &quot;third_jump_moment_gap_plus_minus&quot;: third_moment_gap,
+        &quot;actionwise_moment_differences&quot;: action_moment_differences,
+        &quot;max_abs_full_state_b_difference&quot;: max_b_diff,
+        &quot;max_abs_full_state_A_difference&quot;: max_A_diff,
+        &quot;hypothesis_outputs&quot;: out,
+        &quot;pulse_order_tv_check&quot;: order_tv_check,
+        &quot;finite_sample_example&quot;: {
+            &quot;raw_score_range&quot;: [-2, 2],
+            &quot;order_contrast_gap_abs&quot;: d_obs,
+            &quot;family_error_target_for_four_arm_test&quot;: alpha,
+            &quot;hoeffding_founders_per_arm_sufficient&quot;: n_per_arm,
+            &quot;total_four_arm_founders&quot;: 4 * n_per_arm,
+            &quot;calibration_and_passive_controls_additional&quot;: True,
+        },
+        &quot;emission_channel&quot;: {
+            &quot;eta_total_error&quot;: pars[&quot;eta&quot;],
+            &quot;contrast_eigenvalue_kappa&quot;: kappa,
+            &quot;rank&quot;: int(np.linalg.matrix_rank(Cx)),
+            &quot;condition_number&quot;: float(np.linalg.cond(Cx)),
+        },
+        &quot;unknown_initial_memory_mixture_check&quot;: {
+            &quot;baseline_support&quot;: [[0, 0], [0, 1]],
+            &quot;q0&quot;: q0_check,
+            &quot;hypothesis_outputs&quot;: mixture_gaps,
+            &quot;scope&quot;: &quot;finite diagnostic for q0 scaling; memory bit is hidden from the X reporter&quot;,
+        },
+    }
+
+
+if __name__ == &quot;__main__&quot;:
+    result = run_example()
+    outfile = ROOT / &quot;CYCLE3_RUN.json&quot;
+    outfile.write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+    print(json.dumps(result, indent=2))
+</pre><p><a href="../assets/9d7491f7c42af0e2111e67c4e429c53eacb157c03a14bb2ce1042f66da08fa4e.py">Exact original</a></p></html>

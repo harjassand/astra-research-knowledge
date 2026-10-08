@@ -1,0 +1,147 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c11_spin_uniform/obstruction/spin13_pair_support.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c11_spin_uniform/obstruction/spin13_pair_support.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Exact pair-spectrum and explicit-seed replay for Spin(13), d=64.
+
+This avoids the triple-spinor finitecompiler. It computes pair eigenvalues by
+Clifford conjugation and moments for five explicit computational-basis seeds.
+It does not certify the full mixed-grade star inequality.
+&quot;&quot;&quot;
+from itertools import combinations
+from math import comb
+from pathlib import Path
+import json
+import sympy as sp
+
+N = 6
+M = 2 * N + 1
+D = 1 &lt;&lt; N
+
+
+def pair_eigen(k, ell):
+    &quot;&quot;&quot;Eigenvalue of C_k on Clifford grade ell in S* tensor S.
+
+    With column vectorization, C_k=sum_{|A|=k} T_A^T tensor T_A acts as
+    X -&gt; sum_A T_A X T_A. For a k-blade A and ell-blade B, conjugation has
+    sign (-1)^(k*ell-|A intersect B|).
+    &quot;&quot;&quot;
+    return sum(((-1) ** (k * ell - r)) * comb(ell, r) * comb(M - ell, k - r)
+               for r in range(max(0, k + ell - M), min(k, ell) + 1))
+
+
+def pmul(a, b):
+    tab = {(&#x27;I&#x27;,&#x27;I&#x27;):(0,&#x27;I&#x27;),(&#x27;I&#x27;,&#x27;X&#x27;):(0,&#x27;X&#x27;),(&#x27;I&#x27;,&#x27;Y&#x27;):(0,&#x27;Y&#x27;),(&#x27;I&#x27;,&#x27;Z&#x27;):(0,&#x27;Z&#x27;),
+           (&#x27;X&#x27;,&#x27;I&#x27;):(0,&#x27;X&#x27;),(&#x27;Y&#x27;,&#x27;I&#x27;):(0,&#x27;Y&#x27;),(&#x27;Z&#x27;,&#x27;I&#x27;):(0,&#x27;Z&#x27;),(&#x27;X&#x27;,&#x27;X&#x27;):(0,&#x27;I&#x27;),
+           (&#x27;Y&#x27;,&#x27;Y&#x27;):(0,&#x27;I&#x27;),(&#x27;Z&#x27;,&#x27;Z&#x27;):(0,&#x27;I&#x27;),(&#x27;X&#x27;,&#x27;Y&#x27;):(1,&#x27;Z&#x27;),(&#x27;Y&#x27;,&#x27;X&#x27;):(3,&#x27;Z&#x27;),
+           (&#x27;Y&#x27;,&#x27;Z&#x27;):(1,&#x27;X&#x27;),(&#x27;Z&#x27;,&#x27;Y&#x27;):(3,&#x27;X&#x27;),(&#x27;Z&#x27;,&#x27;X&#x27;):(1,&#x27;Y&#x27;),(&#x27;X&#x27;,&#x27;Z&#x27;):(3,&#x27;Y&#x27;)}
+    phase = 0
+    out = []
+    for x, y in zip(a, b):
+        q, z = tab[x, y]
+        phase = (phase + q) % 4
+        out.append(z)
+    return phase, tuple(out)
+
+
+def gamma_words():
+    out = []
+    for q in range(N):
+        pre, suf = (&#x27;Z&#x27;,) * q, (&#x27;I&#x27;,) * (N - q - 1)
+        out.extend((pre + (&#x27;X&#x27;,) + suf, pre + (&#x27;Y&#x27;,) + suf))
+    out.append((&#x27;Z&#x27;,) * N)
+    return out
+
+
+GAM = gamma_words()
+
+
+def clifford_words(k):
+    for A in combinations(range(M), k):
+        phase = 0
+        word = (&#x27;I&#x27;,) * N
+        for a in A:
+            q, word = pmul(word, GAM[a])
+            phase = (phase + q) % 4
+        phase = (phase + k * (k - 1) // 2) % 4
+        yield A, phase, word
+
+
+def apply_word(word, bits):
+    out, phase = bits, 0
+    for q, p in enumerate(word):
+        bit = (bits &gt;&gt; q) &amp; 1
+        if p == &#x27;X&#x27;:
+            out ^= 1 &lt;&lt; q
+        elif p == &#x27;Y&#x27;:
+            out ^= 1 &lt;&lt; q
+            phase += 1 if bit == 0 else 3
+        elif p == &#x27;Z&#x27; and bit:
+            phase += 2
+    return out, phase % 4
+
+
+def seed_moments(a, b=None):
+    &quot;&quot;&quot;Moments sum_{|A|=k}|&lt;psi,T_A psi&gt;|^2 for |a&gt; or (|a&gt;+|b&gt;)/sqrt(2).&quot;&quot;&quot;
+    amplitudes = {a: 1} if b is None else {a: 1, b: 1}
+    denominator = len(amplitudes)
+    result = []
+    for k in range(1, N + 1):
+        score = sp.Integer(0)
+        for _A, phase, word in clifford_words(k):
+            expectation = sp.Integer(0)
+            for source, amplitude in amplitudes.items():
+                target, q = apply_word(word, source)
+                if target in amplitudes:
+                    expectation += sp.I ** (phase + q) * amplitudes[target] * amplitude / denominator
+            expectation = sp.simplify(expectation)
+            if expectation.is_real is not True:
+                raise AssertionError((&#x27;nonreal expectation&#x27;, k, _A, expectation))
+            score += expectation ** 2
+        result.append(int(sp.factor(score)))
+    if sum(result) != D - 1:
+        raise AssertionError((&#x27;Parseval&#x27;, result, sum(result)))
+    return tuple(result)
+
+
+def main():
+    seeds = {&#x27;basis_0&#x27;: seed_moments(0)}
+    for h in range(3, N + 1):
+        seeds[f&#x27;two_weight_{h}&#x27;] = seed_moments(0, (1 &lt;&lt; h) - 1)
+
+    pair = [[pair_eigen(k, ell) for ell in range(N + 1)] for k in range(1, N + 1)]
+    trace_coefficients = [comb(M, k) for k in range(1, N + 1)]
+    if [row[0] for row in pair] != trace_coefficients:
+        raise AssertionError((&#x27;singlet eigenvalues&#x27;, pair))
+    if [sum(pair[k - 1][ell] for k in range(1, N + 1)) for ell in range(1, N + 1)] != [-1] * N:
+        raise AssertionError((&#x27;full traceless basis normalization&#x27;, pair))
+
+    c0 = trace_coefficients[0]
+    b = max(pair[0][1:])
+    coarse_star_bound = sp.Rational(c0 + b) + sp.Rational(c0 - b, D)
+    e1_trace_plus_exact_support = sp.Integer(c0 + 1)
+    result = {
+        &#x27;status&#x27;: &#x27;COARSE_BOUND_INSUFFICIENT&#x27;,
+        &#x27;scope&#x27;: &#x27;Spin(13), d=64. Exact pair spectrum and five attained seed moment vectors; no exact triple-star or all-seed support calculation.&#x27;,
+        &#x27;pair_eigenvalues_rows_k_columns_ell0_to_6&#x27;: pair,
+        &#x27;trace_coefficients&#x27;: trace_coefficients,
+        &#x27;attained_seed_moments_grades1_to6&#x27;: {name: list(v) for name, v in seeds.items()},
+        &#x27;e1_control&#x27;: {
+            &#x27;c0&#x27;: c0,
+            &#x27;nontrivial_pair_eigenvalues&#x27;: pair[0][1:],
+            &#x27;b_max_nontrivial_eigenvalue&#x27;: b,
+            &#x27;coarse_star_upper_bound&#x27;: str(coarse_star_bound),
+            &#x27;trace_plus_exact_canonical_support&#x27;: str(e1_trace_plus_exact_support),
+            &#x27;coarse_bound_gap&#x27;: str(sp.factor(coarse_star_bound - e1_trace_plus_exact_support)),
+            &#x27;interpretation&#x27;: &#x27;The pair-singlet compression is too weak already for the vector-grade equality control; this is a failed sufficient bound, not a star violation.&#x27;
+        },
+        &#x27;pair_formula&#x27;: &#x27;c_{k,ell}=sum_{r=max(0,k+ell-13)}^{min(k,ell)} (-1)^(k*ell-r) binom(ell,r) binom(13-ell,k-r)&#x27;,
+        &#x27;coarse_bound_formula&#x27;: &#x27;If c0&gt;=b=max_{ell&gt;=1} c_ell(alpha), then lambda_max(H_alpha)&lt;=c0+b+(c0-b)/64, by C_alpha&lt;=b I+(c0-b)P0 and lambda_max(P0_RB+P0_RC)=1+1/64.&#x27;,
+        &#x27;seed_cost&#x27;: &#x27;Five seeds; 4095 nonidentity Clifford words replayed per seed using exact integer/rational arithmetic.&#x27;
+    }
+    Path(__file__).with_name(&#x27;spin13_pair_support_certificate.json&#x27;).write_text(json.dumps(result, indent=2) + &#x27;\n&#x27;)
+    print(&#x27;pair eigenvalue table:&#x27;, pair)
+    print(&#x27;seed moments:&#x27;, seeds)
+    print(&#x27;e1 control:&#x27;, result[&#x27;e1_control&#x27;])
+    print(&#x27;CERTIFICATE WRITTEN: exact pair spectrum and seed replay; star bound remains insufficient&#x27;)
+
+
+if __name__ == &#x27;__main__&#x27;:
+    main()
+</pre><p><a href="../assets/0b45db1d5b18c42df79ae28dc087a8e650d3e07e65fe6f44b66199f2e1d3cd8a.py">Exact original</a></p></html>

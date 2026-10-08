@@ -1,0 +1,423 @@
+CYCLE 3 LEAF: SINGULAR-BOUNDARY HMM PREDICTION
+Date: 8 October 2026
+Status: exact scoped theorem proved; broader arbitrary-HMM theorem is prior art, not claimed as new
+
+CLAIM AND SCOPE
+===============
+
+This leaf gives an explicit raw-stream Krichevsky–Trofimov (KT) predictor for
+the observable-Markov subfamily of HMMs. Its cumulative expected stationary-
+history next-symbol KL risk matches the minimax Markov-source redundancy to
+leading order, even when hidden realizations are nonidentifiable and the
+observable Hankel rank can collapse. The predictor uses one stationary raw
+trajectory, no hidden-state labels, no reset, and no mixing or singular-value
+margin. Its main guarantee is a cumulative/random-time risk guarantee; it does
+not prove a terminal-time bound for this estimator.
+
+The requested broader terminal-time result for arbitrary finite-state HMMs is
+already proved in primary literature: Han, Jiang, and Wu (COLT 2024) give a
+matching minimax terminal next-symbol KL rate, with no mixing, rank, or
+identifiability assumptions, using a raw-observation universal-compression
+predictor and dynamic programming. That theorem is the controlling prior-art
+comparison here. This leaf does not claim to have independently re-proved
+their full theorem or to have discovered a new general-HMM rate.
+
+1. LEGAL INTERFACE AND WHAT IS ACQUIRED
+=======================================
+
+Alphabet: Sigma=[A], A>=2. Hidden-state cap: D>=A+1, supplied. The learner is
+given only the structural promise that the *observable law* is a stationary
+order-one Markov chain. Its transition matrix P is unknown. The underlying
+HMM state count, transition matrix, emission matrix, state labels, and any
+state-splitting weights are not supplied. Only one raw trajectory
+X_1,...,X_T is available; there are no hidden-state observations, scalar
+queries, resets, or independent episodes.
+
+For transparent mixing accounting one may further restrict P to the supplied
+Doeblin subclass P_ij>=eta/A for a known 0<eta<1. Then the observable
+Dobrushin coefficient is at most 1-eta and beta(r)<= (1-eta)^r. The theorem
+below does not use eta: the same upper bound holds for every stationary
+observable Markov chain, including reducible chains with a chosen stationary
+law. Thus the mixing-time multiplier in this online cumulative-risk bound is
+exactly absent. On the Doeblin subclass it remains absent, and the lower
+bound below still holds for every fixed eta<1 because a full-dimensional open
+neighborhood of the uniform transition matrix lies inside the subclass.
+
+The target at time t is the true full-history conditional law. Under the
+observable-Markov promise,
+
+  P(X_(t+1) in . | X_1,...,X_t) = P_(X_t,.)
+  and also P(X_(t+1) in . | X_s, s<=t) = P_(X_t,.) .
+
+For an online predictor p_t(.|X_1:t), define the cumulative stationary-history
+next-symbol KL risk
+
+  R_T(P,p) = E_P sum_(t=1)^(T-1)
+               KL(P_(X_t,.) || p_t(.|X_1:t)).                      (1)
+
+Equivalently, choose U uniformly from {1,...,T-1}, independently of the
+stationary path, and evaluate the expected one-step KL of the predictor that
+has seen X_1:U. Its random-time risk is R_T/(T-1). This is not the risk of a
+single frozen model evaluated after the final training time.
+
+Acquired: an observable transition predictor, sufficient for the stated
+order-one task. Given: the alphabet, state cap, order-one observable-law
+promise, and (optionally) eta. Not acquired: hidden states, hidden transition
+or emission parameters, a minimal HMM, or a predictor for HMMs whose output is
+not order one.
+
+2. THEOREM: EXACT ONLINE KT RISK AND MINIMAX RATE
+================================================
+
+For every t and pair i,j, let
+
+  N_ij(t) = sum_(s<t) 1{X_s=i, X_(s+1)=j},
+  N_i(t)  = sum_j N_ij(t),
+  p_t(j|i) = (N_ij(t)+1/2)/(N_i(t)+A/2).                          (2)
+
+The predictor outputs p_t(.|X_t). It is a rational function of integer
+transition counts, and is defined even when a context or transition has not
+yet been seen.
+
+Theorem 1 (one-stream observable-Markov acquisition). There is a universal
+constant C such that, for every A>=2, every T>=2, every stationary A-symbol
+Markov chain P, and the predictor (2),
+
+  sup_P R_T(P,p)
+    <= [A(A-1)/2] log(T+1) + C A^2 log(A+1).                      (3)
+
+All logs in this report are natural unless a source explicitly uses bits.
+For fixed A, the minimax cumulative risk over stationary order-one Markov
+sources satisfies
+
+  inf_(all sequential predictors q) sup_P R_T(P,q)
+     = [A(A-1)/2] log T + O_A(1),                                 (4)
+
+so (2) matches the leading minimax rate. The lower bound also holds on the
+known-eta Doeblin subclass for any fixed eta<1. In particular, the random-time
+average risk is O(A^2 log T/T), and its fixed-A minimax order is
+Theta(log T/T).
+
+The rate has no dependence on D once D>=A+1, because the task's observable
+transition law has A(A-1) free coordinates. D only enters the condition that
+the singular hidden realization described below is allowed. There is no
+mixing or filter-stability multiplier. The statement is cumulative/average
+online risk, not terminal-time risk.
+
+Proof of the upper bound. Conditional on X_1, the predictor induces a proper
+probability assignment Q_KT on X_2:T:
+
+  Q_KT(x_2:T | x_1) = product_(t=1)^(T-1) p_t(x_(t+1)|x_t).
+
+For each current symbol i, collect in order the successor symbols seen after
+visits to i. The row factors of Q_KT are independent Dirichlet-(1/2,...,1/2)
+mixtures. If that row has counts n_1,...,n_A and m=sum_j n_j, its mixture
+probability is
+
+  Q_i = Gamma(A/2)/Gamma(m+A/2) * product_j Gamma(n_j+1/2)/Gamma(1/2).
+
+The standard KT/multinomial regret inequality, obtained by applying Stirling
+bounds to these Gamma factors, gives uniformly over every row distribution
+P_i and every row sequence
+
+  log [product_j P_ij^(n_j) / Q_i]
+       <= (A-1)/2 log(m+1) + C_0 A log(A+1),                      (5)
+
+for a universal C_0. This inequality is pointwise in the row sequence; it
+uses no independence assumption about the order in which the context rows are
+visited. Summing (5) over A rows and using m<=T-1 proves the deterministic
+sequence bound
+
+  log [product_(t=1)^(T-1) P_(x_t,x_(t+1)) /
+       Q_KT(x_2:T|x_1)]
+       <= [A(A-1)/2] log(T+1) + C A^2 log(A+1).                   (6)
+
+For the stochastic risk, condition on the observed prefix at each time. The
+Markov property gives
+
+  E[ log(P_(X_t,X_(t+1))/p_t(X_(t+1)|X_1:t)) | X_1:t ]
+      = KL(P_(X_t,.) || p_t(.|X_1:t)).
+
+Therefore
+
+  R_T(P,p) = D(P_(X_2:T|X_1) || Q_KT(.|X_1))
+            = E_P log [P(X_2:T|X_1)/Q_KT(X_2:T|X_1)].             (7)
+
+Taking expectations in (6) proves (3). Equation (6) is a *pathwise code
+regret* bound. Equation (7) is the separate expected conditional-KL identity;
+(6) is not a pathwise bound on the random sum of conditional KL values.
+
+Proof status of the lower bound. The minimax cumulative risk in (4) is the
+minimax redundancy of order-one Markov sources, up to the O_A(1) initial-
+symbol convention. Jacquet and Szpankowski prove the worst-case minimax
+redundancy leading term [A(A-1)/2] log_2 T for an A-symbol order-one Markov
+source. Converting bits to nats gives the coefficient in (4). The same
+leading lower bound holds when P_ij>=eta/A for fixed eta<1: the row-simplex
+parameter space then contains an open neighborhood of P_ij=1/A, the
+stationary distribution is smooth there, and the per-transition Fisher
+information is positive definite in the A(A-1) free row coordinates.
+Standard smooth-family minimax redundancy lower bounds apply on that open
+subfamily. This is an observable-law lower bound; hidden-state recovery is
+not part of the loss.
+
+Failure probability. The theorem is an expected-risk minimax statement and
+has no confidence parameter delta. The deterministic code-regret inequality
+(6) fails with probability zero. If a high-probability statement about the
+random conditional-KL sum K_T=sum_t KL(P_(X_t,.)||p_t) is desired, (3) and
+Markov's inequality give only the valid but crude bound
+
+  Pr{K_T > ([A(A-1)/2]log(T+1)+C A^2 log(A+1))/delta} <= delta.    (8)
+
+No sharp high-probability bound for K_T is claimed here.
+
+3. SINGULAR HMM REALIZATIONS AND IDENTIFIABILITY TEST
+=====================================================
+
+For any A-symbol transition matrix P and any hidden cap D>=A+1, partition
+the D hidden states into nonempty groups G_1,...,G_A, with at least one group
+having two states. Give every state s in G_i deterministic emission i. Let
+w_(j,s')>0 for s' in G_j sum to one within each group, and define
+
+  P_hidden(s,s') = P_ij w_(j,s')  when s in G_i, s' in G_j.       (9)
+
+The output process is exactly the Markov chain P. The hidden states within a
+group have identical emissions and identical transition rows. Their split
+weights and labels are invisible in the output. The emission operator has
+duplicate rows and is rank-deficient as a D-row hidden-state map. If P is
+positive and each w is positive, this realization is irreducible; if P has a
+Doeblin floor, the hidden chain inherits the same common-overlap contraction
+because each P row is passed through the same within-group weights.
+
+Concrete identifiable/nonidentifiable pair. Let
+
+  P = [[3/4, 1/4], [1/4, 3/4]],   pi=(1/2,1/2).
+
+Model I has two hidden states, identity emissions, and transition matrix P.
+Since its stationary symbol masses are positive, its observable pair law
+recovers each row P_(i,.) as P(X_(t+1)|X_t=i). Model II has four states
+(i,b), i,b in {0,1}, emits i,
+and transitions from (i,b) to (j,b') with probability P_ij/2. Both models
+give every output string x_1:T exactly probability
+
+  (1/2) product_(t=1)^(T-1) P_(x_t,x_(t+1)).
+
+Model II's four hidden states are not identifiable: b and its transition
+splitting are unobservable, and its emission rows are duplicated. The KT
+predictor acquires the same observable transition law from either source; it
+does not claim to reconstruct which hidden realization generated it. The
+exact rational checker in work/programmes/acquisition_learning/cycle3/
+singular_boundary_prediction/verify_exact.py verified this identity for all
+126 binary strings of lengths 1 through 6. The analytic identity follows by
+summing the independent split-bit choices in (9).
+
+There is also an exact Hankel-collapse point inside the same Doeblin family:
+P_ij=1/A gives an iid uniform output process with Hankel rank one. For
+A=2, the matrices
+
+  P_rho = [[(1+rho)/2, (1-rho)/2],
+           [(1-rho)/2, (1+rho)/2]],  0<=rho<1-eta,
+
+all obey P_ij>=eta/2, while the nonstationary eigenvalue/singular direction
+has magnitude rho and tends to zero. Thus the theorem does not hide a
+positive observable Hankel gap behind its mixing statement. The hidden
+duplicated realization also has exact null directions.
+
+4. SHARP SCOPE FAILURE FOR THE ORDER-ONE CONSTRUCTION
+=====================================================
+
+The order-one KT guarantee relies on the observable-Markov promise. It is
+not a universal HMM predictor. Here is a concrete mixing, singular-emission
+counterexample.
+
+Let the hidden state be S_t=(X_(t-1),X_t) in {0,1}^2, with deterministic
+emission X_t equal to the second coordinate. From (a,b), transition to (b,c)
+with probability
+
+  Pr(c|a,b) = [1 + lambda (-1)^(a+b+c)]/2,   0<lambda<1.          (10)
+
+The uniform distribution on four hidden pairs is stationary: for each target
+(b,c), the probabilities arriving from (0,b) and (1,b) sum to one. Hence
+every observed pair (a,b) has mass 1/4, so the one-step observable table is
+identical to iid fair bits. But the triple law is
+
+  Pr(X_(t-1:t+1)=(a,b,c))
+      = [1+lambda(-1)^(a+b+c)]/8,
+
+and conditioning on the full two-symbol history gives (10), not 1/2. Its
+full-history KL from the one-symbol/iid prediction is the positive constant
+
+  d(lambda) = ((1+lambda)/2) log(1+lambda)
+            + ((1-lambda)/2) log(1-lambda) > 0.                   (11)
+
+The hidden chain is mixing: every specified two-step transition has
+probability at least ((1-lambda)/2)^2, so its two-step kernel has a Doeblin
+minorization. Its emission rows are duplicated (rank 2 rather than 4).
+Consequently pair-law acquisition alone cannot solve full-history HMM
+prediction, even in a positive/mixing example with no emission-rank gap.
+The finite exact checker verified stationarity, pair marginals, and the triple
+formula for lambda=1/3. This is a limitation of the order-one KT leaf, not an
+impossibility for learners using the complete path; Han–Jiang–Wu's HMM result
+below covers terminal full-history prediction in expectation.
+
+5. STRONGER PRIMARY-SOURCE CONTROL: ARBITRARY FINITE-STATE HMMS
+==============================================================
+
+Han, Jiang, and Wu define the target from one stationary observed path
+X_1,...,X_n over an alphabet of size A and predict X_(n+1) given the full
+observed history. Their HMM has k hidden states and unknown transition and
+emission matrices. They explicitly impose no full-rank, identifiability,
+mixing, emission-floor, or filter-stability condition; parameter
+nonidentifiability is noted in their model definition.
+
+Their Theorem 1.1 proves, for n>=C k(k+A),
+
+  Risk_HMM(n,k,A) <= C [ (kA/n) log(n/(kA))
+                         + (k^2/n) log(n/k^2) ],                (12)
+
+and proves the matching lower bound with C^{-1} in the regimes either
+A>=k and n>=kA, or k,A>=2 and n>=k^C. In particular for fixed k,A>=2 the
+minimax terminal risk is Theta(log n/n). The upper estimator runs in
+n^{O(k^2+kA)} time. There is no mixing/filter term and no positive singular
+gap. The two terms separately charge emission and transition complexity.
+
+The paper's construction is raw-data-only. It puts an add-one KT mixture on
+each hidden transition row and each hidden emission row, starts the hidden
+sequence uniformly, and sums out the latent path to form an observable
+probability assignment Q_X. A pointwise joint-path regret bound gives
+observable redundancy O(k^2 log(n/k^2)+kA log(n/(kA))). A suffix-average
+predictor converts this sequence redundancy to terminal prediction risk;
+its memory term is at most log k/n because
+sum_t I(X_(n-t);X_(n+1)|X_(n-t+1:n)) <= I(Z_1;X_(n+1)) <= log k.
+For the lower bound the authors reduce prediction risk to redundancy of
+subclasses and use mutual-information priors; the overcomplete binary case
+uses an explicit transition-estimation reduction. These are the paper's
+proof mechanisms, not a new proof claim by this leaf.
+
+At most D states, unknown actual state count. The fixed-k result adapts by
+forming Q_mix=(1/D) sum_(k=1)^D Q_k. For a true k-state source,
+Q_mix(x_1:n+1)>=Q_k(x_1:n+1)/D, so sequence redundancy adds log D. In the
+suffix-average conversion the hidden-memory term is at most log D. Thus the
+source theorem yields its oracle upper bound plus 2 log D/n for unknown
+k<=D, with the computational cost sum_(k<=D)n^{O(k^2+kA)}. The exact-k=D
+subclass gives the corresponding lower bound whenever its stated regime
+holds. This is a simple count-mixture adaptation, not an inferred state
+rank.
+
+Pathwise versus expected risk. The paper first bounds pointwise sequence
+redundancy for a universal code, then uses a separate expected-risk
+reduction and a suffix-memory term to obtain terminal risk. A pointwise code
+ratio bound is not itself a pathwise bound on conditional KL. The order-one
+proof above instead has an exact chain-rule identity for *cumulative online*
+risk; it does not convert that result to risk of the final frozen predictor.
+
+6. SAME-DATA FULL-LIKELIHOOD CONTROL
+===================================
+
+Order-one class. The strongest equal-information baseline receives the same
+entire raw string. The row-wise full likelihood is
+
+  L_ML(P;x_1:T)=product_(i,j) P_ij^(N_ij).
+
+Its MLE rows are N_ij/N_i, but unsmoothed MLE can assign zero to an unseen
+symbol and have infinite test KL. The KT mixture (2) is a proper, smoothed
+full-likelihood code on exactly the same transition counts. The normalized
+maximum-likelihood (NML) distribution is minimax for pathwise regret; the
+minimax-redundancy results cited below show that no sequential predictor can
+improve the leading [A(A-1)/2] log T cumulative KL term. A raw-path retainer
+can reproduce every count and the same predictor. The KT representation
+provides no additional information advantage; it may trade storage and
+computation against retaining the full string.
+
+Arbitrary HMM class. Han–Jiang–Wu's DP mixture also sees the full raw path and
+matches the same-data minimax lower bound. A full-HMM maximum-likelihood
+routine is not an information-stronger baseline: it receives the same path,
+and the universal code is a regularized full-sequence likelihood. No strict
+advantage over a learner retaining the full trajectory is established.
+
+7. PRECISION, FAILURE, AND RESOURCE LEDGER
+==========================================
+
+For (2), each output coordinate is the exact rational
+(2N_ij+1)/(2N_i+A). Numerator and denominator need O(log(T+A)) bits. Store A^2
+counts using O(A^2 log(T+1)) bits; update one transition in O(1) integer
+operations and produce a row in O(A) arithmetic operations. Input storage if
+retained is T ceil(log2 A) bits. A final full transition table takes
+O(A^2 log(T+A)) bits. Emitting a full A-entry row at each time costs
+O(T A log(T+A)) output bits. Exact arithmetic has no quantization failure.
+
+If each emitted coordinate is rounded to a common dyadic grid with
+coordinatewise error at most 2^-b and the row is renormalized by largest
+remainders, then the KT floor is at least 1/(2T+A). For
+2^-b<=1/[2(2T+A)], the one-step KL change is at most
+2(2T+A)2^-b. Thus b>=ceil(log_2(2(2T+A)/epsilon)) makes the per-step added
+KL at most epsilon; to keep total cumulative added KL <=epsilon, use
+b>=ceil(log_2(2T(2T+A)/epsilon)). This assumes exact counts and a
+simplex-preserving rounding rule.
+
+The arbitrary-HMM DP from Han–Jiang–Wu uses rational add-one probabilities.
+For a suffix of length at most n, each emitted-symbol predictive coordinate
+is at least 1/(A+n), since each KT emission row has that floor and marginal-
+izing hidden states preserves it. If the exact rational output is rounded
+coordinatewise by at most 2^-b, then 2^-b<=1/[2(A+n)] gives at most
+2(A+n)2^-b extra one-step KL. A b=O(log((A+n)/epsilon)) dyadic precision
+therefore suffices for epsilon additive terminal risk. Their paper states
+arithmetic-time n^{O(k^2+kA)}; a conservative exact-bit implementation can
+use sufficient-statistic arrays with entries <=n and common rising-factorial
+denominators of O(k n log(n+k+A)) bits, plus integer path counts of
+O(n log(k+1)) bits. This bit-width accounting is derived here; it is not a
+reported implementation benchmark.
+
+No statistical confidence failure delta is needed for these expected-risk
+claims. The order-one pathwise code regret holds for every finite string. For
+the random conditional-KL sum, only the expectation bound and the explicitly
+crude Markov tail (8) are claimed. The Han–Jiang–Wu minimax theorem is also an
+expected risk theorem, not a high-probability guarantee.
+
+8. PRIMARY SOURCES, NOVELTY BOUNDARY, AND UNKNOWNS
+=================================================
+
+Primary sources:
+
+1. Y. Han, T. Jiang, Y. Wu, “Prediction from compression for models with
+   infinite memory, with applications to hidden Markov and renewal
+   processes,” COLT 2024, PMLR 247, 2270–2307,
+   https://proceedings.mlr.press/v247/han24a.html.
+   Theorem 1.1 and Sections 2–4 give the arbitrary-HMM terminal predictor,
+   rank-free matching rate, dynamic-programming implementation, and lower
+   bound. This is the strongest directly relevant prior-art control.
+2. P. Jacquet and W. Szpankowski, “Markov Types and Minimax Redundancy for
+   Markov Sources,” IEEE Transactions on Information Theory 50(7),
+   1393–1402 (2004), DOI: https://doi.org/10.1109/TIT.2004.830765.
+   Their order-r formula specializes at r=1 to leading redundancy
+   [A(A-1)/2] log_2 T for alphabet size A.
+3. R. Krichevsky and V. Trofimov, “The Performance of Universal Encoding,”
+   IEEE Transactions on Information Theory 27(2), 199–207 (1981),
+   DOI: https://doi.org/10.1109/TIT.1981.1056331. The half-count categorical
+   mixture is the classical row code used in (2) and in the HMM construction.
+
+Novelty boundary. The general bounded-state HMM task in the parent prompt is
+already solved in expected terminal KL up to universal constants by Han et
+al. under a strictly broader class than this leaf's observable-Markov
+subclass. The order-one leaf adds an elementary exact row-code proof, a
+singular/nonidentifiable HMM embedding, and a scope counterexample; it is not
+a new all-HMM theorem or a priority claim.
+
+UNKNOWN / not established here:
+* no new derivation of Han et al.'s complete DP proof or their cryptographic
+  lower bounds; the cited result is mapped, not independently reviewed;
+* no terminal-time guarantee for the order-one online KT predictor outside
+  the Doeblin subset, and no claim that its cumulative result transfers to a
+  final frozen predictor;
+* no high-probability stationary-risk interval for either estimator;
+* no hidden-parameter, minimal-state, or predictive-rank recovery;
+* no extension of the row-table estimator to arbitrary HMMs; the parity
+  witness shows why its one-symbol context is insufficient;
+* no uniform constants in A for the fixed-A minimax asymptotic remainder;
+* no independently benchmarked bit-complexity implementation of the HMM DP.
+
+Finite diagnostics. `work/programmes/acquisition_learning/cycle3/
+singular_boundary_prediction/verify_exact.py` uses exact rational arithmetic
+to verify KT normalization on 16 short prefix cases, 126 output-law equalities
+for the duplicated-HMM pair, and the stationary/pair/triple formulas for the
+binary parity HMM. The test is supporting finite evidence only; the proofs
+above carry the claims.

@@ -1,0 +1,79 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/spectral_geometry/wall_lower/adversarial/finite_spectrum_check.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/spectral_geometry/wall_lower/adversarial/finite_spectrum_check.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Small floating-point audit of the proposed weighted wall count.
+
+This is intentionally diagnostic, not a proof of a uniform spectral bound.
+It constructs the carriers through the local contraction-kernel checker,
+forms L_w on HS(V), and prints D_w(x/N^2) for x&lt;=N.
+&quot;&quot;&quot;
+import importlib.util
+import json
+import math
+from pathlib import Path
+
+import numpy as np
+
+
+ROOT = Path(__file__).resolve().parents[5]
+CHECKER = ROOT / &quot;outputs/research/sol_semiclassical_memory/regular_su3/verify_regular_su3.py&quot;
+spec = importlib.util.spec_from_file_location(&quot;regular_su3_checker&quot;, CHECKER)
+su3 = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(su3)
+
+
+def spectrum_case(a: int, b: int) -&gt; dict:
+    ts, _ambient = su3.harmonic_carrier(a, b)
+    d = ts[0].shape[0]
+    n = a + b
+    B = b + 1
+    C2 = (a * a + a * b + b * b + 3 * a + 3 * b) / 3
+    C3 = (a - b) * (2 * a + b + 3) * (a + 2 * b + 3) / 18
+    alpha = C3 / C2
+    C_S = (C2 * (C2 / 3 + 0.25) - C3 * C3 / C2) / n**2
+    D_ops = [
+        sum(su3.d_symbol[k, i, j] * ts[i] @ ts[j]
+            for i in range(8) for j in range(8))
+        for k in range(8)
+    ]
+    ss = [(D_ops[k] - alpha * ts[k]) / n for k in range(8)]
+
+    # For column-major vectorization, vec([G,A])=(I kron G-G^T kron I)vec(A).
+    eye = np.eye(d)
+    L_w = np.zeros((d * d, d * d), dtype=complex)
+    for T_A, S_A in zip(ts, ss):
+        ad_T = np.kron(eye, T_A) - np.kron(T_A.T, eye)
+        ad_S = np.kron(eye, S_A) - np.kron(S_A.T, eye)
+        L_w += ad_T @ ad_T / n**2
+        L_w += ad_S @ ad_S / (n * math.sqrt(C_S))
+    eigenvalues = np.linalg.eigvalsh(L_w)
+
+    records = []
+    for x in range(1, n + 1):
+        t = x / n**2
+        count = int(np.count_nonzero(eigenvalues &lt;= t + 1e-9)) - 1
+        denominator = d * ((n * n / B) * t * t + n**3 * t**3)
+        records.append({
+            &quot;x&quot;: x,
+            &quot;D_w_minus_1&quot;: count,
+            &quot;ratio_to_H_rhs_without_C&quot;: count / denominator if denominator else 0.0,
+        })
+
+    return {
+        &quot;a&quot;: a,
+        &quot;b&quot;: b,
+        &quot;N&quot;: n,
+        &quot;B&quot;: B,
+        &quot;d&quot;: d,
+        &quot;gap&quot;: float(eigenvalues[1]),
+        &quot;records_at_t=x_over_N2&quot;: records,
+    }
+
+
+def main() -&gt; None:
+    # These intentionally small carriers are outside H&#x27;s large-b scope.
+    cases = [(2, 1), (3, 1), (4, 1), (2, 2), (3, 2)]
+    print(json.dumps({&quot;status&quot;: &quot;finite-diagnostic-only&quot;,
+                      &quot;cases&quot;: [spectrum_case(a, b) for a, b in cases]}, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/7f2b7818abba70cedbc703eaf6b0c70d80ed05bd75f9d6d0bb53310fbc526937.py">Exact original</a></p></html>

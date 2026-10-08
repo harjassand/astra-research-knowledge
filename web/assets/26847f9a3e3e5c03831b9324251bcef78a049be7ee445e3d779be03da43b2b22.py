@@ -1,0 +1,164 @@
+#!/usr/bin/env python3
+"""Exact small checks for examples in RESULT.txt; not a proof of the theorem."""
+
+from fractions import Fraction as F
+from itertools import product
+
+
+def rank(matrix):
+    a = [list(map(F, row)) for row in matrix]
+    rows, cols = len(a), len(a[0])
+    pivot_row = 0
+    for col in range(cols):
+        pivot = next((r for r in range(pivot_row, rows) if a[r][col]), None)
+        if pivot is None:
+            continue
+        a[pivot_row], a[pivot] = a[pivot], a[pivot_row]
+        scale = a[pivot_row][col]
+        a[pivot_row] = [x / scale for x in a[pivot_row]]
+        for r in range(rows):
+            if r != pivot_row and a[r][col]:
+                scale = a[r][col]
+                a[r] = [x - scale * y for x, y in zip(a[r], a[pivot_row])]
+        pivot_row += 1
+        if pivot_row == rows:
+            break
+    return pivot_row
+
+
+def markov_gap_matrix(theta):
+    half = F(1, 2)
+    quarter = F(1, 4)
+    return [
+        [F(1), half, half],
+        [half, quarter + theta / 2, quarter - theta / 2],
+        [half, quarter - theta / 2, quarter + theta / 2],
+    ]
+
+
+def det3(a):
+    return (
+        a[0][0] * (a[1][1] * a[2][2] - a[1][2] * a[2][1])
+        - a[0][1] * (a[1][0] * a[2][2] - a[1][2] * a[2][0])
+        + a[0][2] * (a[1][0] * a[2][1] - a[1][1] * a[2][0])
+    )
+
+
+def parity_transition(m, rho):
+    states = list(product((0, 1), repeat=m))
+    index = {s: i for i, s in enumerate(states)}
+    p = [[F(0) for _ in states] for _ in states]
+    for s in states:
+        parity_sign = -1 if sum(s) % 2 else 1
+        p1 = F(1, 2) + rho * parity_sign
+        for bit, prob in ((0, 1 - p1), (1, p1)):
+            target = s[1:] + (bit,)
+            p[index[s]][index[target]] += prob
+    return states, p
+
+
+def output_word_probabilities(m, rho, length):
+    states, transition = parity_transition(m, rho)
+    # The stationary context distribution is uniform. Track exact mass on
+    # (current context, emitted suffix) pairs for a bounded finite check.
+    dist = {(s, ()): F(1, len(states)) for s in states}
+    for _ in range(length):
+        nxt = {}
+        for (s, out), mass in dist.items():
+            parity_sign = -1 if sum(s) % 2 else 1
+            p1 = F(1, 2) + rho * parity_sign
+            for bit, prob in ((0, 1 - p1), (1, p1)):
+                target = s[1:] + (bit,)
+                key = (target, out + (bit,))
+                nxt[key] = nxt.get(key, F(0)) + mass * prob
+        dist = nxt
+    result = {}
+    for (state, word), mass in dist.items():
+        result[word] = result.get(word, F(0)) + mass
+    return result
+
+
+def check_gap_example():
+    for theta in (F(0), F(1, 8), F(1, 4)):
+        h = markov_gap_matrix(theta)
+        assert det3(h) == 0
+        # The antisymmetric symbol direction has eigenvalue theta.
+        v = [F(0), F(1), F(-1)]
+        hv = [sum(h[i][j] * v[j] for j in range(3)) for i in range(3)]
+        assert hv == [theta * x for x in v]
+        assert rank(h) == (1 if theta == 0 else 2)
+        # Trace and second elementary symmetric coefficient identify the
+        # remaining eigenvalues 3/2 and 0 exactly.
+        trace = sum(h[i][i] for i in range(3))
+        pair_sum = (
+            h[0][0] * h[1][1] - h[0][1] * h[1][0]
+            + h[0][0] * h[2][2] - h[0][2] * h[2][0]
+            + h[1][1] * h[2][2] - h[1][2] * h[2][1]
+        )
+        assert trace == F(3, 2) + theta
+        assert pair_sum == F(3, 2) * theta
+
+
+def check_parity_witness():
+    rho = F(1, 8)
+    for m in range(1, 5):
+        states, p = parity_transition(m, rho)
+        assert all(sum(row) == 1 for row in p)
+        assert all(sum(p[i][j] for i in range(len(states))) == 1
+                   for j in range(len(states)))
+        law_m = output_word_probabilities(m, rho, m)
+        assert all(prob == F(1, 2**m) for prob in law_m.values())
+        w = (0,) * m
+        law_m1 = output_word_probabilities(m, rho, m + 1)
+        assert law_m1[w + (1,)] == F(1, 2**m) * (F(1, 2) + rho)
+        assert law_m1[w + (1,)] != F(1, 2 ** (m + 1))
+
+
+def check_rare_history_example():
+    epsilon = F(1, 8)
+    pi1 = epsilon / (F(1, 2) + epsilon)
+    assert pi1 == F(1, 5)
+    pi0 = 1 - pi1
+    h = [
+        [F(1), pi0, pi1],
+        [pi0, pi0 * (1 - epsilon), pi0 * epsilon],
+        [pi1, pi1 / 2, pi1 / 2],
+    ]
+    assert rank(h) == 2
+    # P(no 1 in T symbols) = (1-pi_1)(1-epsilon)^(T-1).
+    for t in range(1, 8):
+        no_one = (1 - pi1) * (1 - epsilon) ** (t - 1)
+        assert 1 - no_one <= pi1 + (t - 1) * epsilon
+
+
+def check_nonmixing_mixture():
+    h = [
+        [F(1), F(9, 10), F(1, 10)],
+        [F(9, 10), F(9, 10), F(0)],
+        [F(1, 10), F(0), F(1, 10)],
+    ]
+    assert rank(h) == 2
+    trace = sum(h[i][i] for i in range(3))
+    pair_sum = (
+        h[0][0] * h[1][1] - h[0][1] * h[1][0]
+        + h[0][0] * h[2][2] - h[0][2] * h[2][0]
+        + h[1][1] * h[2][2] - h[1][2] * h[2][1]
+    )
+    assert trace == 2
+    assert pair_sum == F(27, 100)
+    assert det3(h) == 0
+    # The mixture's path mass outside the all-zero path is exactly 1/10
+    # at every finite horizon, hence its TV distance from P0 is 1/10.
+    assert F(9, 10) + F(1, 10) == 1
+
+
+def main():
+    check_gap_example()
+    check_parity_witness()
+    check_rare_history_example()
+    check_nonmixing_mixture()
+    print("exact small-example checks passed")
+
+
+if __name__ == "__main__":
+    main()

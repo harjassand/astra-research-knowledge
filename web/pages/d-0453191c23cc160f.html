@@ -1,0 +1,137 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/quantum_capability/cycle3/product_vector/evidence/verify_product_vector_pauli.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/quantum_capability/cycle3/product_vector/evidence/verify_product_vector_pauli.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Small exact checks for the cycle-3 product-vector / Pauli-Sidon note.
+
+This is finite arithmetic evidence only; the all-K endpoint proof is in
+DERIVATION.txt. No channel matrices or input-state optimization are done.
+&quot;&quot;&quot;
+from collections import Counter
+from fractions import Fraction
+from math import comb, log, sqrt
+
+
+def gf8_mul(a: int, b: int) -&gt; int:
+    &quot;&quot;&quot;Multiply in GF(8)=F2[z]/(z^3+z+1), represented by three bits.&quot;&quot;&quot;
+    out = 0
+    while b:
+        if b &amp; 1:
+            out ^= a
+        b &gt;&gt;= 1
+        a &lt;&lt;= 1
+        if a &amp; 0b1000:
+            a ^= 0b1011
+    return out
+
+
+def gf8_cube(x: int) -&gt; int:
+    return gf8_mul(gf8_mul(x, x), x)
+
+
+def gf8_trace(x: int) -&gt; int:
+    x2 = gf8_mul(x, x)
+    x4 = gf8_mul(x2, x2)
+    t = x ^ x2 ^ x4
+    assert t in (0, 1)
+    return t
+
+
+def checked_square_inequalities() -&gt; None:
+    # e &gt; 1+1+1/2+1/6 = 8/3, so exp(1/(4e)) &lt; exp(3/32) &lt; 32/29.
+    assert 18 * 18 * 2 &lt; 29 * 29  # 18 sqrt(2) &lt; 29
+    assert 128 * 128 * 2 &lt; 261 * 261  # 128 sqrt(2) &lt; 261
+    assert Fraction(7, 3) &gt; Fraction(9, 4)
+
+
+def gf8_gold_fixture() -&gt; dict[str, object]:
+    # G=GF(8)^2 ~= F2^6, n=8, N=64, K=8.
+    branches = [(x, gf8_cube(x)) for x in range(8)]
+    encoded = [x | (y &lt;&lt; 3) for x, y in branches]
+
+    ordered_sums = Counter(a ^ b for a in encoded for b in encoded)
+    assert ordered_sums[0] == 8
+    nonzero_multiplicities = [v for g, v in ordered_sums.items() if g]
+    assert len(nonzero_multiplicities) == comb(8, 2) == 28
+    assert set(nonzero_multiplicities) == {2}
+    assert len(ordered_sums) == 29
+
+    # Walsh transform of graph indicator under the 6-bit dot-product pairing.
+    walsh = {}
+    for a in range(8):
+        for b in range(8):
+            total = 0
+            for x in range(8):
+                exponent = gf8_trace(gf8_mul(a, x) ^ gf8_mul(b, gf8_cube(x)))
+                total += 1 if exponent == 0 else -1
+            walsh[(a, b)] = total
+
+    assert walsh[(0, 0)] == 8
+    beta_num = max(abs(v) for k, v in walsh.items() if k != (0, 0))
+    assert beta_num == 4
+
+    N, K, n = 64, 8, 8
+    energy = 3 * K * K - 2 * K
+    R = Fraction(N * energy - K**4, K * (N - K))
+    assert R == 16
+    beta_sq = Fraction(beta_num * beta_num, K * K)
+    assert beta_sq == Fraction(R, K * K) == Fraction(1, 4)
+
+    purity = Fraction(1, n) + Fraction(n - 1, n) * beta_sq
+    assert purity == Fraction(11, 32)
+
+    # Exact Bell eigenvalue profile: 1/8 once, 1/32 twenty-eight times.
+    bell_probs = [Fraction(1, K)] + [Fraction(2, K * K)] * comb(K, 2)
+    assert sum(bell_probs) == 1
+    assert bell_probs[0] == Fraction(1, 8)
+    assert set(bell_probs[1:]) == {Fraction(1, 32)}
+
+    h_bell = -sum(float(p) * log(float(p)) for p in bell_probs)
+    h2_lower = -log(float(purity))
+    gap_lower = 2 * h2_lower - h_bell
+    assert gap_lower &lt; 0
+    return {
+        &quot;branches&quot;: len(branches),
+        &quot;input_dimension_n&quot;: n,
+        &quot;pauli_label_count_N&quot;: N,
+        &quot;sidon_pair_sums&quot;: len(nonzero_multiplicities),
+        &quot;max_nontrivial_walsh&quot;: beta_num,
+        &quot;R_energy_lower_bound&quot;: str(R),
+        &quot;purity_upper_bound&quot;: str(purity),
+        &quot;single_entropy_lower_nats&quot;: h2_lower,
+        &quot;bell_entropy_nats&quot;: h_bell,
+        &quot;purity_gap_lower_nats&quot;: gap_lower,
+    }
+
+
+def check_endpoint_formula_fixtures() -&gt; None:
+    # Spot-check the analytic R_K(N), derivative sign, and endpoint formulae.
+    # The proof itself covers all integer K&gt;=3 and real N&gt;=N0.
+    for K in range(3, 101):
+        N0 = 1 + comb(K, 2)
+
+        def R(N: float) -&gt; float:
+            return (N * (3 * K - 2) - K**3) / (N - K)
+
+        assert abs(R(N0) - (K - 2)) &lt; 1e-10
+        for N in (N0, N0 * 1.5, 4 * K * K, 100 * K * K):
+            r = R(N) / K**2
+            f = 1 / sqrt(N) + (1 - 1 / sqrt(N)) * r
+            hb = 2 * log(K) - log(2) - log(K / 2) / K
+            threshold = exp_minus_half(hb)
+            assert f &gt; threshold
+        # The derivative numerator must switch + to - around the larger root.
+        x_plus = K + sqrt(K * (K - 1))
+        assert 2 * K * (sqrt(N0) - 1) &gt; N0 - K
+        assert 2 * K * (2 * x_plus - 1) &lt; (2 * x_plus) ** 2 - K
+
+
+def exp_minus_half(h: float) -&gt; float:
+    from math import exp
+
+    return exp(-h / 2)
+
+
+if __name__ == &quot;__main__&quot;:
+    checked_square_inequalities()
+    check_endpoint_formula_fixtures()
+    print(gf8_gold_fixture())
+    print(&quot;PASS: exact GF(8) and rational checks; numerical endpoint spot checks only&quot;)
+</pre><p><a href="../assets/58744861a3a39efb1e9068d103383054cbf9332aeb88622bf88febeaa705691f.py">Exact original</a></p></html>

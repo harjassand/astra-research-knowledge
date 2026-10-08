@@ -1,0 +1,84 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c5_glycolysis_control_hostile/exactaudit/model_and_proof.md</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c5_glycolysis_control_hostile/exactaudit/model_and_proof.md</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre># Exact model reconstruction and invariant-set proof
+
+## Source model and interface
+
+Primary local source: `work/agents/c4_rational_applications/sources/plos_2021_S1_Model.cellml`, paired with the 2021 PLOS paper, [doi:10.1371/journal.pcbi.1008547](https://doi.org/10.1371/journal.pcbi.1008547). The CellML has variables `FBP`, `ATP`, `Pi`, `GLC`, `Ptot`, `Pivac`; its initial values include FBP=2 mM, ATP=1 mM, Pi=10.4 mM, and reference `kp=0.3 min^-1`. The paper&#x27;s Table 1 gives the kinetic parameters reproduced below. This audit sets its cell-volume growth rate `g=Vfracgrwth` to zero, as required by the candidate interface.
+
+Let `F=FBP`, `A=ATP`, `P=Pi`, and `D=ADP=5-A`. The source equations are
+
+\[
+\begin{aligned}
+L(F,A,P)&amp;=10\frac{F}{1+F}\frac{5-A}{0.1+5-A}\frac{P}{2+P},\\
+U(G,A)&amp;=10\frac{A}{0.1+A(1+A/3)}\frac{G}{0.1+G},\\
+P_v(F,A,P)&amp;=\frac{10}{1+((P+2F+A)/250)^4},\\
+\dot F&amp;=U-L,\\
+\dot A&amp;=-2U+4L-10A,\\
+\dot P&amp;=-2L+10A+k_p(P_v-P).
+\end{aligned}
+\]
+
+Concentrations are mM and reaction rates are mM/min; `kp` has units min^-1. The stoichiometric channels are upper glycolysis `(+1 F,-2 ATP,+2 ADP)`, lower glycolysis `(-1 F,+4 ATP,-2 Pi)`, ATPase `(-1 ATP,+1 ADP,+1 Pi)`, and Pi transport `(+1 Pi)` from the vacuolar store. With `Ptot=P+2F+A`, direct summation gives `d(Ptot)/dt=kp(Pv-P)` at `g=0`; glycolysis and ATPase preserve this phosphate-equivalent pool, while the algebraic vacuolar term transfers it. The CellML has no independent vacuolar-pool state.
+
+The uptake inverse treats external glucose concentration `G` as an instantaneous actuator. Write
+\[
+C(A)=10A/[0.1+A(1+A/3)],\qquad U=C(A)G/(0.1+G).
+\]
+For a requested upper flux `u`, the unique nonnegative inverse exists exactly when `0&lt;=u&lt;C(A)` and is `G=0.1u/(C(A)-u)`.
+
+## Conditional invariant-tube theorem
+
+Define
+\[
+S=\{1.8\le F\le2.2,\;0.3\le A\le1.5,\;P\ge1,\;A+P\le14\}.
+\]
+Use the actual-flux feedback interface
+\[
+U=L(F,A,P)-(F-2)+e,\qquad |e|\le0.18.
+\]
+Assume `kp&gt;=0.4` and `9.5&lt;=Pv&lt;=10` wherever the corresponding facet bounds are evaluated. Substitution gives
+\[
+\dot F=2-F+e,\qquad
+\dot A=2L+2(F-2)-2e-10A,
+\]
+while the Pi equation is unchanged. Each facet has an inward derivative bound:
+
+| Facet | Worst normal derivative | Bound |
+|---|---:|---:|
+| `F=1.8` | `0.2-0.18` | `&gt;= +0.020` mM/min |
+| `F=2.2` | `-0.2+0.18` | `&lt;= -0.020` mM/min |
+| `A=0.3` | `2 L(1.8,0.3,1)-0.4-0.36-3` | `&gt;= +0.43643` mM/min |
+| `A=1.5` | `2 L(2.2,1.5,12.5)+0.4+0.36-15` | `&lt;= -2.71581` mM/min |
+| `P=1` | `-2 L(2.2,0.3,1)+3+0.4(9.5-1)` | `&gt;= +1.91215` mM/min |
+| `A+P=14` | `0.4+0.36+0.4(10-12.5)` | `&lt;= -0.240` mM/min |
+
+`L` is separable and strictly increasing in `F` and `P`, and strictly decreasing in `A`. Those monotonicities locate the ATP and Pi face extrema shown above; on the sum face, `P&gt;=12.5` and `Pv&lt;=10`. The compact polytope has positive denominators and the flux inverse below is well-defined, so the source vector field is locally Lipschitz there. The inward-face conditions give positive forward invariance of `S` for all Carathéodory disturbances `e(t)` with the stated bound. This is a conditional theorem about the reduced model and interface.
+
+The source&#x27;s `Kvac=250 mM` actually implies a stronger vacuolar bound throughout `S`: `Ptot&lt;=14+2(2.2)=18.4 mM`, hence `Pv&gt;=9.99970657 mM`. The weaker `Pv&gt;=9.5` condition follows for `Kvac&gt;=38.416 mM` on this tube. For the `P=1` face alone, `kp=.4` needs only `Pv&gt;=4.71962 mM`; the `A+P=14` facet, not the Pi floor, is the active reason to raise `kp` above the source value. With `|e|=.18` and `Pv&lt;=10`, that facet requires `kp&gt;=0.304 min^-1`. At reference `kp=.3`, the worst source-model derivative is still outward by about `+0.01 mM/min`; at proposed `kp=.4`, it is inward by `0.24`.
+
+## Glucose inverse is feasible
+
+Across `S`, exact monotonic bounds are
+\[
+25/12\le L\le354145/60288
+\quad(2.08333\le L\le5.87423).
+\]
+Thus a conservative independent-extrema bound gives
+\[
+511/300\le u=L-(F-2)+e\le9426361/1507200,
+\]
+i.e. `1.70333&lt;=u&lt;=6.25423 mM/min`. Meanwhile, the minimum source upper-flux saturation rate on `A in [0.3,1.5]` is `C(A)&gt;=C(1.5)=300/47=6.38298`. The uniform gap is at least `0.128758 mM/min`, so the inverse glucose command exists at every state of `S`; even the deliberately loose independent bound gives `G&lt;=4.858 mM`. This is a sufficient bound, not the pointwise optimal glucose interval.
+
+At the published failing core-model start `(F,A,P)=(2,1,9.4)`, `L=37600/7011=5.36300`, `C(1)=300/43=6.97674`, and the zero-error glucose command is `G=0.33233 mM`.
+
+## Static external glucose cannot preserve the full tube
+
+At the lower-F facet, the admissible corner `(F,A,P)=(1.8,0.3,13.7)` requires `U&gt;=L=5.49278`. At the upper-F facet, `(2.2,1.5,1)` requires `U&lt;=L=2.22801`. A fixed external `G` makes the two uptake rates proportional to `C(0.3)` and `C(1.5)`, with ratio `C(1.5)/C(0.3)=43/47`. Satisfying the lower-face condition would force `U(A=1.5)&gt;=5.02531`, violating the upper-face condition. No constant glucose concentration can make all of `S` forward-invariant in this source model.
+
+## Full-source growth terms
+
+The published CellML adds dilution terms `-F g`, `-A g`, and `-P g`; it also evolves cell health `H` and volume. Under the uncorrected no-growth feedback, `Fdot=2-F+e-Fg`. On `F=1.8`, robust inwardness requires `g&lt;=0.02/1.8=1/90 min^-1`. The source growth law at `A&lt;=1.5`, `katp=10`, and its reference expression cost gives `gmax≈0.0100021 min^-1`, so this face remains inward but with only about `0.001996 mM/min` margin when `|e|=.18`. This is a source-parameter calculation, not a biological bound. A growth-aware command `U=L+Fg-(F-2)+e` cancels the dilution term in `Fdot`; its ATP/Pi/sum faces must then be rechecked with measured or bounded `g`. Growth also changes the phosphate balance to `Ptotdot=kp(Pv-P)-Ptot*g`.
+
+## Reproduction
+
+Run `python3 work/agents/c5_glycolysis_control_hostile/exactaudit/certificate.py`. It uses exact rational arithmetic for the facet and inversion bounds; only the Hill-law decimal and growth calculation use floating-point evaluation. Full output is saved at `work/agents/c5_glycolysis_control_hostile/calcs/certificate_output.txt`.
+</pre><p><a href="../assets/c9e23e6480d9945b942b29e2a66379585985cc5805ba607939291af3d2bb7b4a.md">Exact original</a></p></html>

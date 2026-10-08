@@ -1,0 +1,256 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/reaction_dynamics/cycle4/leaves/sparse_geometric_drift/validate_cycle4.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/reaction_dynamics/cycle4/leaves/sparse_geometric_drift/validate_cycle4.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact finite diagnostics for Cycle 4 sparse Foster and WR method audit.
+
+The checks below are finite rational arithmetic. The all-state theorem and
+clock arguments are in REPORT.txt; this script is not a proof of them.
+&quot;&quot;&quot;
+from fractions import Fraction as Q
+from itertools import product
+
+
+def fall(n, k):
+    if n &lt; k:
+        return 0
+    out = 1
+    for z in range(k):
+        out *= n - z
+    return out
+
+
+# Sparse graph fixture. Catalyst A3 is isolated and B3 is an invariant label.
+J, I = 3, 3
+EDGES = {
+    (0, 0): (Q(1), Q(3, 2), Q(1), Q(5, 4), 1),
+    (1, 0): (Q(2), Q(1), Q(3, 2), Q(2), 2),
+    (1, 1): (Q(3, 2), Q(2), Q(2), Q(1), 1),
+}
+ALPHA = (Q(1), Q(3, 2), Q(2))
+DELTA = (Q(2), Q(1), Q(3, 2))
+NEIGHBORS = tuple(tuple(j for j, i in EDGES if i == ii) for ii in range(I))
+I_PLUS = tuple(i for i in range(I) if NEIGHBORS[i])
+R = Q(17, 16)
+ETA = R - 1
+D = 1 - 1 / R
+K = Q(7, 3)
+
+
+def h(a, i):
+    return int(all(a[j] == 0 for j in NEIGHBORS[i]))
+
+
+def value_sparse(x):
+    a, b = x[:J], x[J:]
+    return Q(sum(a)) + sum(R ** b[i] * (1 + h(a, i)) for i in I_PLUS) + K * int(sum(a) == 0)
+
+
+def sparse_formula(x):
+    a, b = x[:J], x[J:]
+    out = sum(ALPHA) - sum(DELTA[j] * a[j] for j in range(J))
+    for (j, i), (p, q, u, v, k) in EDGES.items():
+        m = b[i]
+        out += p * ETA * a[j] * R**m
+        out -= q * D * a[j] * m * R**m
+        out += k * u * a[j] * m
+        out -= k * v * fall(a[j], k + 1) * m
+    out -= K * sum(ALPHA) * int(sum(a) == 0)
+    for j in range(J):
+        out += K * DELTA[j] * int(tuple(a) == tuple(int(k == j) for k in range(J)))
+    for i in I_PLUS:
+        out -= sum(ALPHA[j] for j in NEIGHBORS[i]) * R**b[i] * h(a, i)
+        for j in NEIGHBORS[i]:
+            out += DELTA[j] * R**b[i] * int(
+                all(a[l] == (1 if l == j else 0) for l in NEIGHBORS[i])
+            )
+    return out
+
+
+def direct_sparse(x):
+    a, b = x[:J], x[J:]
+    transitions = []
+    for j in range(J):
+        y = list(x)
+        y[j] += 1
+        transitions.append((ALPHA[j], tuple(y)))
+        if a[j]:
+            y = list(x)
+            y[j] -= 1
+            transitions.append((DELTA[j] * a[j], tuple(y)))
+    for (j, i), (p, q, u, v, k) in EDGES.items():
+        y = list(x)
+        y[J + i] += 1
+        transitions.append((p * a[j], tuple(y)))
+        if b[i]:
+            y = list(x)
+            y[J + i] -= 1
+            transitions.append((q * a[j] * b[i], tuple(y)))
+        y = list(x)
+        y[j] += k
+        transitions.append((u * a[j] * b[i], tuple(y)))
+        y = list(x)
+        y[j] -= k
+        transitions.append((v * fall(a[j], k + 1) * b[i], tuple(y)))
+    v0 = value_sparse(x)
+    return sum((rate * (value_sparse(y) - v0) for rate, y in transitions if rate), Q(0))
+
+
+def sparse_box_constants():
+    # Compact rational box: every rate lies in [1,2]; edge k values fixed.
+    alpha_lo = delta_lo = p_lo = q_lo = u_lo = v_lo = Q(1)
+    alpha_hi = delta_hi = p_hi = q_hi = u_hi = v_hi = Q(2)
+    dmax = max(1, max(sum(1 for j, _ in EDGES if j == jj) for jj in range(J)))
+    eta = delta_lo / (4 * dmax * p_hi)
+    r = 1 + eta
+    d = 1 - 1 / r
+    kmax = max(k for *_, k in EDGES.values())
+    bstar = 1
+    while not (
+        p_hi * eta &lt;= q_lo * d * bstar / 4
+        and kmax * u_hi &lt;= q_lo * d * r**bstar / 4
+        and delta_hi &lt;= q_lo * d * bstar / 4
+    ):
+        bstar += 1
+    def G(m):
+        return p_hi * eta * r**m - q_lo * d * m * r**m + kmax * u_hi * m
+    M = max(Q(0), *(G(m) for m in range(bstar)))
+    L = dmax * M
+    cA = delta_lo / 4
+    Astar = max(2, kmax + 1)
+    while v_lo * Astar * (Astar - 1) &lt; (L + cA) * Astar:
+        Astar += 1
+    CA = (L + cA) * Astar
+    Kbox = (J * alpha_hi + 1) / (J * alpha_lo)
+    beta = min(alpha_lo, q_lo * d * bstar / 4)
+    c = min(cA, beta / 2)
+    m = len(I_PLUS)
+    C0 = J * alpha_hi + Kbox * delta_hi + J * CA + m * delta_hi * r ** (bstar - 1)
+    C = C0 + c * (2 * m * r ** (bstar - 1) + Kbox)
+    return r, bstar, Astar, c, C
+
+
+def check_sparse():
+    states = 0
+    for x in product(range(4), repeat=J + I):
+        assert direct_sparse(x) == sparse_formula(x), (x, direct_sparse(x), sparse_formula(x))
+        states += 1
+    r, bstar, astar, c, C = sparse_box_constants()
+    # The fixture rates belong to the stated rational box; use its common V.
+    old_R, old_K = R, K
+    # The derivation uses the chosen box R and K; these equal the fixture values.
+    assert r == R and K == Q(7, 3)
+    for x in product(range(4), repeat=J + I):
+        assert sparse_formula(x) &lt;= C - c * value_sparse(x), (x, sparse_formula(x), C - c * value_sparse(x))
+    print(f&quot;PASS: sparse generator identity on {states} states (isolated A3 and fixed B3 labels included)&quot;)
+    print(f&quot;PASS: rational rate-box drift inequality on the same grid; R={r}, B={bstar}, A*={astar}, c={c}, C={C}&quot;)
+
+
+# Broader weakly reversible family: base paired edges, cross-conversion pair,
+# and a one-way three-complex catalyst cycle.
+RB = Q(6, 5)
+KB = Q(2)
+
+
+def value_wr(x):
+    a1, a2, b1, b2 = x
+    h0 = int(a1 + a2 == 0)
+    return Q(a1 + a2) + RB**b1 * (1 + h0) + RB**b2 * (1 + h0) + KB * h0
+
+
+def direct_wr(x):
+    a1, a2, b1, b2 = x
+    aa = (a1, a2)
+    bb = (b1, b2)
+    ts = []
+    for j, a in enumerate(aa):
+        y = list(x); y[j] += 1
+        ts.append((Q(1), tuple(y)))
+        if a:
+            y = list(x); y[j] -= 1
+            ts.append((Q(a), tuple(y)))
+    for j, i in product(range(2), repeat=2):
+        a, b = aa[j], bb[i]
+        # A_j &lt;-&gt; A_j+B_i
+        y = list(x); y[2 + i] += 1
+        ts.append((Q(a), tuple(y)))
+        if b:
+            y = list(x); y[2 + i] -= 1
+            ts.append((Q(a * b), tuple(y)))
+        # A_j+B_i &lt;-&gt; 2 A_j+B_i
+        y = list(x); y[j] += 1
+        ts.append((Q(a * b), tuple(y)))
+        if a &gt;= 2 and b:
+            y = list(x); y[j] -= 1
+            ts.append((Q(a * (a - 1) * b), tuple(y)))
+    # A1+B1 &lt;-&gt; A2+B2
+    if a1 and b1:
+        ts.append((Q(a1 * b1), (a1 - 1, a2 + 1, b1 - 1, b2 + 1)))
+    if a2 and b2:
+        ts.append((Q(a2 * b2), (a1 + 1, a2 - 1, b1 + 1, b2 - 1)))
+    # B1+B2 -&gt; A1+B1+B2 -&gt; A1+A2+B1+B2 -&gt; B1+B2
+    if b1 and b2:
+        ts.append((Q(b1 * b2), (a1 + 1, a2, b1, b2)))
+    if a1 and b1 and b2:
+        ts.append((Q(a1 * b1 * b2), (a1, a2 + 1, b1, b2)))
+    if a1 and a2 and b1 and b2:
+        ts.append((Q(a1 * a2 * b1 * b2), (a1 - 1, a2 - 1, b1, b2)))
+    v0 = value_wr(x)
+    return sum((rate * (value_wr(y) - v0) for rate, y in ts if rate), Q(0))
+
+
+def wr_formula(n):
+    # Exact hand-derived value at x_n=(1,1,n,n).
+    return RB**n * (2 * n * n - Q(3, 5) * n + Q(4, 5)) + 2 * n * n + 4 * n
+
+
+def check_complex_balance():
+    zero = (0, 0, 0, 0)
+    e1, e2 = (1, 0, 0, 0), (0, 1, 0, 0)
+    b1, b2 = (0, 0, 1, 0), (0, 0, 0, 1)
+    edges = []
+    for e in (e1, e2):
+        edges.extend(((zero, e), (e, zero)))
+    for j, i in product(range(2), repeat=2):
+        aj = tuple(int(k == j) for k in range(2)) + (0, 0)
+        a_plus_b = list(aj); a_plus_b[2 + i] += 1; a_plus_b = tuple(a_plus_b)
+        twice_a_plus_b = list(a_plus_b); twice_a_plus_b[j] += 1; twice_a_plus_b = tuple(twice_a_plus_b)
+        edges.extend(((aj, a_plus_b), (a_plus_b, aj)))
+        edges.extend(((a_plus_b, twice_a_plus_b), (twice_a_plus_b, a_plus_b)))
+    cross_left, cross_right = (1, 0, 1, 0), (0, 1, 0, 1)
+    edges.extend(((cross_left, cross_right), (cross_right, cross_left)))
+    c0, c1, c2 = b1 + b2, (1, 0, 1, 1), (1, 1, 1, 1)
+    edges.extend(((c0, c1), (c1, c2), (c2, c0)))
+    outflow, inflow = {}, {}
+    for source, target in edges:
+        outflow[source] = outflow.get(source, 0) + 1
+        inflow[target] = inflow.get(target, 0) + 1
+    for y in set(outflow) | set(inflow):
+        assert outflow.get(y, 0) == inflow.get(y, 0), (y, outflow, inflow)
+    assert len(edges) == 25
+    return len(edges)
+
+
+def check_wr():
+    for x in product(range(4), repeat=4):
+        # Exercise all reaction boundaries and confirm the direct generator is rational.
+        assert isinstance(direct_wr(x), Q)
+    for n in range(1, 31):
+        x = (1, 1, n, n)
+        assert direct_wr(x) == wr_formula(n), (n, direct_wr(x), wr_formula(n))
+        assert direct_wr(x) &gt; 0
+    # At c=(1,1,1,1), every listed directed reaction has unit complex flux.
+    # The cycle has one incoming and one outgoing unit flux at each complex;
+    # the remaining reactions are individually reversible unit-flux pairs.
+    directed_count = check_complex_balance()
+    # Under independent Poisson(1) coordinates, E[(X)_m]=1 for every m used,
+    # so each unit-rate reaction has expected propensity 1.
+    stationary_mean_jump_intensity = directed_count
+    assert stationary_mean_jump_intensity == 25
+    print(&quot;PASS: corrected weakly reversible support-switch witness on x_n=(1,1,n,n), n=1..30&quot;)
+    print(&quot;PASS: exact LV=R^n(2n^2-3n/5+4/5)+2n^2+4n &gt; 0&quot;)
+    print(&quot;PASS: 25 unit-flux directed reactions; product-Poisson stationary mean jump intensity 25&quot;)
+    print(&quot;Scope: finite checks do not prove recurrence or nonexplosion; report uses complex-balance theorem&quot;)
+
+
+if __name__ == &quot;__main__&quot;:
+    check_sparse()
+    check_wr()
+</pre><p><a href="../assets/0efb1f17caa8ff94e64f86d6962b804b00c576950fc3300ff5affe69623d42d7.py">Exact original</a></p></html>

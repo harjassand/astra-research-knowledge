@@ -1,0 +1,116 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c7_immunology_discrimination/code/score_interval_audit.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c7_immunology_discrimination/code/score_interval_audit.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Independent-dose and matched-dose ranking audit with censor intervals.
+
+At tmax a trajectory&#x27;s terminal antigen score is right-censored by the model.
+Rather than treating that score as its eventual readout, this script reports
+the AUC interval obtained by allowing each censored score to range from its
+observed n to its physical state-space maximum L. It also reruns affinity
+pairs with either independently drawn or shared dose to separate hidden-dose
+confounding from within-dose ranking.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import json
+import math
+import sys
+from pathlib import Path
+
+import numpy as np
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from model_audit import (  # noqa: E402
+    EB_LOW,
+    EPS_E,
+    TMAX,
+    sample_l0,
+    simulate_one,
+)
+
+
+def _auc_contribution(low_min: int, low_max: int, high_min: int, high_max: int) -&gt; tuple[float, float]:
+    &quot;&quot;&quot;Best/worst tie-adjusted AUC contribution over integer score intervals.&quot;&quot;&quot;
+    worst = 1.0 if high_min &gt; low_max else (0.5 if high_min == low_max else 0.0)
+    best = 1.0 if high_max &gt; low_min else (0.5 if high_max == low_min else 0.0)
+    return worst, best
+
+
+def run_case(name: str, distribution: str, sigma: float, adaptive_mc: float,
+             time_tc: float, pairs: int, seed: int, matched_dose: bool) -&gt; dict:
+    rng = np.random.default_rng(seed)
+    controls = ((&quot;mmax&quot;, adaptive_mc), (&quot;time&quot;, time_tc))
+    out = {&quot;case&quot;: name, &quot;distribution&quot;: distribution, &quot;sigma&quot;: sigma,
+           &quot;pairs&quot;: pairs, &quot;seed&quot;: seed, &quot;matched_dose&quot;: matched_dose,
+           &quot;dose_prior_known_to_both_controllers&quot;: True,
+           &quot;tmax_s&quot;: TMAX, &quot;policies&quot;: {}}
+    for policy, control in controls:
+        auc_values = []
+        lower, upper = [], []
+        low_cens = high_cens = 0
+        times, works = [], []
+        for _ in range(pairs):
+            l_low = sample_l0(rng, distribution, sigma)
+            l_high = l_low if matched_dose else sample_l0(rng, distribution, sigma)
+            low = simulate_one(l_low, EB_LOW, policy, control, 5.0, 800.0, rng)
+            high = simulate_one(l_high, EB_LOW + EPS_E, policy, control, 5.0, 800.0, rng)
+            low_cens += int(low.tmax_censored)
+            high_cens += int(high.tmax_censored)
+            # Scores at a noncensored termination are exact; a censored one
+            # can rise by at most the remaining finite antigen supply.
+            lo_interval = (low.score, l_low if low.tmax_censored else low.score)
+            hi_interval = (high.score, l_high if high.tmax_censored else high.score)
+            w, b = _auc_contribution(*lo_interval, *hi_interval)
+            lower.append(w)
+            upper.append(b)
+            auc_values.append(1.0 if high.score &gt; low.score else 0.5 if high.score == low.score else 0.0)
+            times.extend([low.duration_s, high.duration_s])
+            works.extend([low.force_work_proxy_pN_nm, high.force_work_proxy_pN_nm])
+        auc = float(np.mean(auc_values))
+        sd = float(np.std(auc_values, ddof=1))
+        out[&quot;policies&quot;][policy] = {
+            &quot;control&quot;: control,
+            &quot;auc_observed_at_tmax&quot;: auc,
+            &quot;auc_mc_95pct_normal&quot;: [max(0.0, auc - 1.96 * sd / math.sqrt(pairs)),
+                                    min(1.0, auc + 1.96 * sd / math.sqrt(pairs))],
+            &quot;auc_if_censored_final_scores_are_unknown&quot;: [float(np.mean(lower)), float(np.mean(upper))],
+            &quot;fraction_low_Eb_censored&quot;: low_cens / pairs,
+            &quot;fraction_high_Eb_censored&quot;: high_cens / pairs,
+            &quot;mean_contact_duration_s_both_affinities&quot;: float(np.mean(times)),
+            &quot;mean_model_force_barrier_proxy_pN_nm_both_affinities&quot;: float(np.mean(works)),
+        }
+    return out
+
+
+def main() -&gt; None:
+    pairs = 5000
+    specs = [
+        (&quot;normal_sigma30&quot;, &quot;normal&quot;, 30.0, 60.0, 60.0),
+        (&quot;uniform_5_195&quot;, &quot;uniform_wide&quot;, 0.0, 50.0, 60.0),
+        (&quot;uniform_5_60&quot;, &quot;uniform_low&quot;, 0.0, 30.0, 240.0),
+    ]
+    results = []
+    for i, (name, dist, sigma, mc, tc) in enumerate(specs):
+        for matched in (False, True):
+            results.append(run_case(name, dist, sigma, mc, tc, pairs,
+                                    830001 + i * 100 + int(matched), matched))
+    payload = {
+        &quot;description&quot;: &quot;Fresh independent Gillespie reruns. mc is selected from the finite adaptive threshold scan; time tc is the best AUC on the 9-point finite time-only scan for that prior. Both controls know the dose prior.&quot;,
+        &quot;important_limit&quot;: &quot;tmax-censored scores are bounded only by [observed n, L]; AUC interval is a worst/best completion bound, not a confidence interval. Work value is a barrier-lowering proxy, not physical work or ATP.&quot;,
+        &quot;pairs_per_case_policy&quot;: pairs,
+        &quot;results&quot;: results,
+    }
+    path = Path(__file__).with_name(&quot;score_interval_audit_results.json&quot;)
+    path.write_text(json.dumps(payload, indent=2) + &quot;\n&quot;)
+    print(path)
+    for r in results:
+        print(r[&quot;case&quot;], &quot;matched&quot; if r[&quot;matched_dose&quot;] else &quot;independent&quot;)
+        for policy, x in r[&quot;policies&quot;].items():
+            print(policy, &quot;control&quot;, x[&quot;control&quot;], &quot;AUC&quot;, round(x[&quot;auc_observed_at_tmax&quot;], 4),
+                  &quot;CI&quot;, [round(v, 4) for v in x[&quot;auc_mc_95pct_normal&quot;]],
+                  &quot;censor bounds&quot;, [round(v, 4) for v in x[&quot;auc_if_censored_final_scores_are_unknown&quot;]],
+                  &quot;censored&quot;, round(x[&quot;fraction_low_Eb_censored&quot;], 3), round(x[&quot;fraction_high_Eb_censored&quot;], 3),
+                  &quot;duration&quot;, round(x[&quot;mean_contact_duration_s_both_affinities&quot;], 1))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/92441e812fd932227f2ee7a41a6dd19d848625fc5c7bfada5c6c2490da2ff0b6.py">Exact original</a></p></html>

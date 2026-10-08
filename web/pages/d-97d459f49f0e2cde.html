@@ -1,0 +1,119 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c8_morphogenesis_control/cycle9/code/check_relay_margin.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c8_morphogenesis_control/cycle9/code/check_relay_margin.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Finite algebra checks for the conditional two-gate relay model.
+
+This script checks identities in the written model and reproduces its explicit
+counterexample/reliability numbers. It does not fit or simulate Drosophila.
+All force variables are dimensionless unless independently calibrated.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import json
+import math
+
+
+def margin(o: float, i: float, b: float, theta: float, *, m0: float,
+           gamma: float, k: float, alpha: float, beta: float) -&gt; float:
+    m = m0 + gamma * o * i / (k + i)
+    return alpha * m * math.sin(theta) - beta * b
+
+
+def integrin_derivative(o: float, i: float, theta: float, *, gamma: float,
+                        k: float, alpha: float, beta: float) -&gt; float:
+    return alpha * gamma * o * k * math.sin(theta) / (k + i) ** 2 - beta
+
+
+def critical_cluster(i: float, theta: float, *, gamma: float, k: float,
+                     alpha: float, beta: float) -&gt; float:
+    return beta * (k + i) ** 2 / (alpha * gamma * k * math.sin(theta))
+
+
+def optimal_integrin(o: float, theta: float, *, gamma: float, k: float,
+                     alpha: float, beta: float) -&gt; float:
+    return max(0.0, math.sqrt(alpha * gamma * o * k * math.sin(theta) / beta) - k)
+
+
+def normal_cdf(x: float) -&gt; float:
+    return 0.5 * (1.0 + math.erf(x / math.sqrt(2.0)))
+
+
+def normal_quantile(p: float) -&gt; float:
+    if not 0.0 &lt; p &lt; 1.0:
+        raise ValueError(&quot;p must be strictly between 0 and 1&quot;)
+    lo, hi = -12.0, 12.0
+    for _ in range(200):
+        mid = (lo + hi) / 2.0
+        if normal_cdf(mid) &lt; p:
+            lo = mid
+        else:
+            hi = mid
+    return (lo + hi) / 2.0
+
+
+def reliability_threshold(n: int, epsilon: float) -&gt; float:
+    return normal_quantile((1.0 - epsilon) ** (1.0 / n))
+
+
+def main() -&gt; None:
+    # Same means; distinct weakest-cell outcomes in the named serial model.
+    uniform = [(1.2, 1.0), (1.2, 1.0)]
+    heterogeneous = [(2.2, 0.5), (0.2, 1.5)]
+    force_reserves = {
+        &quot;uniform&quot;: [m - b for m, b in uniform],
+        &quot;heterogeneous&quot;: [m - b for m, b in heterogeneous],
+    }
+    assert math.isclose(sum(m for m, _ in uniform) / 2, 1.2)
+    assert math.isclose(sum(m for m, _ in heterogeneous) / 2, 1.2)
+    assert math.isclose(sum(b for _, b in uniform) / 2, 1.0)
+    assert math.isclose(sum(b for _, b in heterogeneous) / 2, 1.0)
+    assert min(force_reserves[&quot;uniform&quot;]) &gt; 0
+    assert min(force_reserves[&quot;heterogeneous&quot;]) &lt; 0
+
+    # Verify the derivative sign boundary for one arbitrary dimensionless
+    # parameter tuple; these values are algebra fixtures, not biological fits.
+    pars = dict(gamma=2.0, k=0.7, alpha=1.3, beta=0.4)
+    theta = 0.8
+    i = 0.9
+    oc = critical_cluster(i, theta, **pars)
+    deriv_below = integrin_derivative(0.99 * oc, i, theta, **pars)
+    deriv_above = integrin_derivative(1.01 * oc, i, theta, **pars)
+    assert deriv_below &lt; 0 &lt; deriv_above
+    i_star = optimal_integrin(2.0 * oc, theta, **pars)
+    # Interior optimum: derivative is zero at I_star.
+    assert i_star &gt; 0
+    assert abs(integrin_derivative(2.0 * oc, i_star, theta, **pars)) &lt; 1e-12
+
+    reliability = {}
+    for n in (7, 20):
+        z = reliability_threshold(n, 0.05)
+        p_n = normal_cdf(z) ** n
+        assert abs(p_n - 0.95) &lt; 1e-12
+        reliability[str(n)] = {&quot;z_required&quot;: z, &quot;joint_success&quot;: p_n}
+
+    # Verify the conditional fold formulas at a point on the analytic curve.
+    y = 0.4
+    beta_fold = (1 + y * y) ** 2 / (2 * y)
+    h_fold = y * (1 - y * y) / 2
+    rhs = h_fold + beta_fold * y * y / (1 + y * y) - y
+    derivative = 2 * beta_fold * y / (1 + y * y) ** 2 - 1
+    assert abs(rhs) &lt; 1e-14
+    assert abs(derivative) &lt; 1e-14
+
+    print(json.dumps({
+        &quot;scope&quot;: &quot;finite algebra checks only; no biological parameter fitting&quot;,
+        &quot;mean_matched_reserves&quot;: force_reserves,
+        &quot;integrin_sign_switch&quot;: {
+            &quot;critical_cluster_fixture&quot;: oc,
+            &quot;d_delta_dI_below&quot;: deriv_below,
+            &quot;d_delta_dI_above&quot;: deriv_above,
+            &quot;interior_optimum_fixture&quot;: i_star,
+        },
+        &quot;iid_normal_reliability&quot;: reliability,
+        &quot;hill_fold_fixture&quot;: {&quot;y&quot;: y, &quot;beta&quot;: beta_fold, &quot;h&quot;: h_fold},
+        &quot;checks&quot;: &quot;PASS&quot;,
+    }, indent=2, sort_keys=True))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/7d6047ba4a45ea8cbe98a5f712f1298fcb9752254a83b35c117307eb6ff90e2d.py">Exact original</a></p></html>

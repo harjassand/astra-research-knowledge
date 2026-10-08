@@ -1,0 +1,49 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/sol_classicality/CUBATURE_CHECK.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/sol_classicality/CUBATURE_CHECK.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Finite floating checks of the analytic exact Euler/Legendre cubature.
+These checks verify transcription, not the unrestricted broadcasting theorem.
+&quot;&quot;&quot;
+from pathlib import Path
+import json, platform
+import numpy as np
+from sympy import S
+from sympy.physics.wigner import clebsch_gordan
+
+def spin(j2):
+ j=j2/2;d=j2+1;m=np.arange(j,-j-1,-1);z=np.diag(m);p=np.zeros((d,d),complex)
+ for k in range(1,d):p[k-1,k]=np.sqrt((j-m[k])*(j+m[k]+1))
+ return [(p+p.T)/2,(p-p.T)/2j,z]
+def multipoles(j2,l):
+ j=S(j2)/2;d=j2+1;ms=[j-S(k) for k in range(d)];cs=[]
+ for q in range(-l,l+1):
+  T=np.array([[complex((-1)**int(j-m2)*clebsch_gordan(j,j,S(l),m1,-m2,S(q))) for m2 in ms] for m1 in ms])*np.sqrt(d)
+  for A in [(T+T.conj().T)/2,(T-T.conj().T)/2j]:
+   for B in cs:A-=np.trace(B@A).real/d*B
+   n=np.sqrt(np.trace(A@A).real/d)
+   if n&gt;1e-8:cs.append(A/n)
+ return cs
+rows=[]
+for j2 in [2,3]:
+ d=j2+1;j=j2/2;Jx,Jy,Jz=spin(j2);m=np.diag(Jz);e,V=np.linalg.eigh(Jy);z,w=np.polynomial.legendre.leggauss(d);N=2*d-1
+ for t in [0,.35,.75,(1.5 if j2==2 else 1.8)]:
+  sp=np.sqrt(2*t/3) if j2==2 else np.sqrt(5*t/9)
+  psi=np.zeros(d,complex);psi[0]=np.sqrt((1+sp)/2);psi[-1]=np.sqrt((1-sp)/2)
+  sm=np.zeros((d*d,d*d),complex);choi=np.zeros_like(sm);povm=np.zeros((d,d),complex);count=0
+  for a in range(N):
+   Ua=np.diag(np.exp(-1j*(2*np.pi*a/N)*m))
+   for c in range(N):
+    Uc=np.diag(np.exp(-1j*(2*np.pi*c/N)*m))
+    for zz,ww in zip(z,w):
+     Ub=(V*np.exp(-1j*np.arccos(zz)*e))@V.conj().T;v=Ua@Ub@Uc@psi;P=np.outer(v,v.conj());wt=ww/(2*N*N)
+     pvec=P.reshape(-1);sm+=d*wt*np.outer(pvec,pvec.conj());choi+=d*wt*np.kron(P.T,P);povm+=d*wt*P;count+=1
+  expected=[t/3,(2-t)/5] if j2==2 else [t/3,.2,(2-t)/7]
+  residuals=[];observed=[]
+  for l,mu in enumerate(expected,1):
+   Bs=multipoles(j2,l);obs=[]
+   for B in Bs:
+    out=(sm@B.reshape(-1)).reshape(d,d);residuals.append(float(np.linalg.norm(out-mu*B)));obs.append(float(np.trace(B@out).real/d))
+   observed.append(sum(obs)/len(obs))
+  row={&#x27;j&#x27;:j,&#x27;t&#x27;:t,&#x27;outcomes&#x27;:count,&#x27;povm_sum_error&#x27;:float(np.linalg.norm(povm-np.eye(d))),&#x27;choi_min_eig&#x27;:float(np.linalg.eigvalsh(choi)[0]),&#x27;super_min_eig&#x27;:float(np.linalg.eigvalsh(sm)[0]),&#x27;mu_expected&#x27;:expected,&#x27;mu_observed&#x27;:observed,&#x27;max_multipole_error&#x27;:max(residuals)}
+  assert count==d*(2*d-1)**2 and row[&#x27;povm_sum_error&#x27;]&lt;1e-11 and row[&#x27;max_multipole_error&#x27;]&lt;1e-11 and row[&#x27;choi_min_eig&#x27;]&gt;-1e-11
+  rows.append(row)
+result={&#x27;status&#x27;:&#x27;FINITE-EVIDENCE&#x27;,&#x27;purpose&#x27;:&#x27;Transcription check of analytically exact cubature&#x27;,&#x27;python&#x27;:platform.python_version(),&#x27;numpy&#x27;:np.__version__,&#x27;rows&#x27;:rows}
+Path(__file__).with_suffix(&#x27;.json&#x27;).write_text(json.dumps(result,indent=2));print(json.dumps(result,indent=2))
+</pre><p><a href="../assets/2c8e00c9d5ebf511ccfd68c5e61bdfbb938877e12ab42b8f9db182ce7e24b883.py">Exact original</a></p></html>

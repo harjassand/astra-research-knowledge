@@ -1,0 +1,83 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/classicality/cycle5/su3_full_space_check.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/classicality/cycle5/su3_full_space_check.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact SU(3) sector replay for the full-space P_27 factor-two candidate.
+
+The orbit-channel eigenvalue formula is proved in
+regular_su3_unrestricted_eb.txt. This script checks its exact seed projection
+norm inputs and the exact marginal spectrum; it is finite algebraic evidence,
+not a substitute for the Schur-orthogonality proof.
+&quot;&quot;&quot;
+import importlib.util
+from pathlib import Path
+import sympy as sp
+
+source = Path(__file__).parents[1] / &quot;cycle4&quot; / &quot;multiplicity_blocks_check.py&quot;
+spec = importlib.util.spec_from_file_location(&quot;multiplicity_blocks&quot;, source)
+mb = importlib.util.module_from_spec(spec)
+assert spec.loader is not None
+spec.loader.exec_module(mb)
+
+d = 8
+psi = sp.Matrix([1, sp.I, 0, 0, 0, 0, 0, 0]) / sp.sqrt(2)
+P = psi * psi.conjugate().T
+v = sp.Matrix(64, 1, list(P))
+vt = sp.Matrix(64, 1, list(P.T))
+
+sectors = [
+    (&quot;1&quot;, mb.P1, 1, sp.Rational(1, 1)),
+    (&quot;8s&quot;, mb.Ps, 8, sp.Rational(1, 5)),
+    (&quot;8a&quot;, mb.Pa, 8, sp.Rational(1, 3)),
+    (&quot;10+10bar&quot;, mb.P10, 20, sp.Rational(1, 15)),
+    (&quot;27&quot;, mb.P27, 27, sp.Rational(7, 135)),
+]
+
+norms = {}
+for name, projector, dimension, expected_mu in sectors:
+    euclidean = sp.simplify((v.conjugate().T * projector * v)[0])
+    euclidean_transpose = sp.simplify((vt.conjugate().T * projector * vt)[0])
+    assert euclidean == euclidean_transpose
+    tau_norm = sp.simplify(euclidean / d)
+    mu = sp.simplify(d**2 * tau_norm / dimension)
+    assert mu == expected_mu, (name, tau_norm, mu, expected_mu)
+    norms[name] = (tau_norm, mu)
+
+# Exact marginal superoperator eigenvalues from P_27 compression.
+K = mb.marginal_superoperator(mb.P27, 27)
+actual = K.eigenvals()
+expected = {
+    sp.Integer(1): 1,
+    sp.Rational(14, 25): 8,
+    sp.Rational(2, 3): 8,
+    sp.Rational(28, 75): 20,
+    sp.Rational(218, 675): 27,
+}
+assert actual == expected, actual
+
+ratios = {
+    &quot;8s&quot;: sp.Rational(20, 11),
+    &quot;8a&quot;: sp.Integer(2),
+    &quot;10+10bar&quot;: sp.Rational(70, 47),
+    &quot;27&quot;: sp.Rational(640, 457),
+}
+lambda_by_sector = {
+    &quot;8s&quot;: sp.Rational(14, 25),
+    &quot;8a&quot;: sp.Rational(2, 3),
+    &quot;10+10bar&quot;: sp.Rational(28, 75),
+    &quot;27&quot;: sp.Rational(218, 675),
+}
+for name, ratio in ratios.items():
+    _, mu = norms[name]
+    assert sp.simplify((1 - mu) / (1 - lambda_by_sector[name])) == ratio
+    assert ratio &lt;= 2
+assert ratios[&quot;8a&quot;] == 2
+
+# Multiplicity-space matrix is checked independently by the original script.
+assert mb.mode_block(mb.P27, 27) == sp.diag(sp.Rational(14, 25), sp.Rational(2, 3))
+
+print({
+    &quot;marginal_spectrum&quot;: {str(k): v for k, v in actual.items()},
+    &quot;seed_projection_norms_tau&quot;: {k: str(v[0]) for k, v in norms.items()},
+    &quot;orbit_EB_multipliers&quot;: {k: str(v[1]) for k, v in norms.items()},
+    &quot;maximum_deficit_ratio&quot;: &quot;2&quot;,
+    &quot;status&quot;: &quot;exact sector inputs passed&quot;,
+})
+</pre><p><a href="../assets/0527b127d27cf65915d5742205ec389c31e8a07e4c9b535b900861cce6b9a085.py">Exact original</a></p></html>

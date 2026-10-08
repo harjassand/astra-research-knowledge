@@ -1,0 +1,54 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c7_immunology_discrimination/code/local_vs_global.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c7_immunology_discrimination/code/local_vs_global.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Reproduce the paper&#x27;s local alpha_L probe, then juxtapose global ranking.
+
+This is an internal Gillespie audit, not a reanalysis of experimental data.
+&quot;&quot;&quot;
+from __future__ import annotations
+import json, math, sys
+from pathlib import Path
+import numpy as np
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from model_audit import EB_LOW, EPS_E, simulate_one
+
+
+def local(policy: str, control: float, n: int, seed: int) -&gt; dict:
+    rng = np.random.default_rng(seed)
+    scores = {}
+    for label, L, Eb in ((&quot;base&quot;, 100, EB_LOW), (&quot;affinity&quot;, 100, EB_LOW+EPS_E), (&quot;dose_plus24&quot;, 124, EB_LOW)):
+        trajectories = [simulate_one(L, Eb, policy, control, 5.0, 800.0, rng) for _ in range(n)]
+        scores[label] = {
+            &quot;mean_score_at_tmax&quot;: float(np.mean([x.score for x in trajectories])),
+            &quot;sd_score_at_tmax&quot;: float(np.std([x.score for x in trajectories], ddof=1)),
+            &quot;fraction_censored&quot;: float(np.mean([x.tmax_censored for x in trajectories])),
+            &quot;mean_duration_s&quot;: float(np.mean([x.duration_s for x in trajectories])),
+            &quot;mean_work_proxy_pN_nm&quot;: float(np.mean([x.force_work_proxy_pN_nm for x in trajectories])),
+        }
+    sigma = scores[&quot;base&quot;][&quot;sd_score_at_tmax&quot;]
+    scores[&quot;alpha_E&quot;] = (scores[&quot;affinity&quot;][&quot;mean_score_at_tmax&quot;] - scores[&quot;base&quot;][&quot;mean_score_at_tmax&quot;]) / (EPS_E * sigma)
+    scores[&quot;alpha_L_per_ligand&quot;] = (scores[&quot;dose_plus24&quot;][&quot;mean_score_at_tmax&quot;] - scores[&quot;base&quot;][&quot;mean_score_at_tmax&quot;]) / (24.0 * sigma)
+    scores[&quot;alpha_L_for_delta24&quot;] = scores[&quot;alpha_L_per_ligand&quot;] * 24.0
+    return scores
+
+
+def main() -&gt; None:
+    n = 5000
+    res = {
+        &quot;n_per_local_condition&quot;: n,
+        &quot;dose_step&quot;: 24,
+        &quot;affinity_step_kBT&quot;: EPS_E,
+        &quot;conditions&quot;: {
+            &quot;mmax_mc60_beta5_F0800&quot;: local(&quot;mmax&quot;, 60.0, n, 910060),
+            &quot;time_tc60_beta5_F0800&quot;: local(&quot;time&quot;, 60.0, n, 910061),
+        },
+        &quot;definition&quot;: &quot;alpha_E=(mean(n|Eb+0.5)-mean(n|Eb))/(0.5*sd(n|L=100,Eb)); alpha_L=(mean(n|L=124,Eb)-mean(n|L=100,Eb))/(24*sd(n|L=100,Eb)). Means use the tmax-observed score; censor rates are reported alongside.&quot;,
+    }
+    p = Path(__file__).with_name(&quot;local_vs_global_results.json&quot;)
+    p.write_text(json.dumps(res, indent=2)+&quot;\n&quot;)
+    print(p)
+    for name, x in res[&quot;conditions&quot;].items():
+        print(name, &quot;alpha_E&quot;, round(x[&quot;alpha_E&quot;], 4), &quot;alpha_L&quot;, round(x[&quot;alpha_L_per_ligand&quot;], 6), &quot;alpha_L*24&quot;, round(x[&quot;alpha_L_for_delta24&quot;], 4),
+              &quot;base mean&quot;, round(x[&quot;base&quot;][&quot;mean_score_at_tmax&quot;], 3), &quot;base sigma&quot;, round(x[&quot;base&quot;][&quot;sd_score_at_tmax&quot;], 3),
+              &quot;censor&quot;, [round(x[k][&quot;fraction_censored&quot;], 3) for k in (&quot;base&quot;, &quot;affinity&quot;, &quot;dose_plus24&quot;)])
+
+if __name__ == &quot;__main__&quot;: main()
+</pre><p><a href="../assets/6e7f9fe8ddc85ed9322a51bfb235b846f4be9411456cd0646a349a4a4a4a9f0d.py">Exact original</a></p></html>

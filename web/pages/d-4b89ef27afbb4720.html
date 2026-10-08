@@ -1,0 +1,302 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/acquisition_learning/leaves/adaptive_observable_search.txt</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/acquisition_learning/leaves/adaptive_observable_search.txt</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>ADAPTIVE OBSERVABLE DISCOVERY FROM RESET EPISODES
+Date: 2026-10-08
+Status: scoped internal proof candidate; no external validation or novelty claim.
+
+RESULT
+
+There is an explicit O(d)-state binary process family in which (i) every
+predeclared bank of M bounded single-episode observables has an instance whose
+population moment vector is within sqrt(M/[4(2^d-1)]) of a reference process,
+although the two length-(d+R) trajectory laws have TV at least
+1/2-exp(-R theta^2/2); and (ii) an adaptive learner using persistent repeated
+readout recovers the hidden d-bit parity mask, outputs an exact all-horizon
+predictor, and constructs a local predictive-cut bank with singular margin at
+least beta/2. Training, held-out validation, model coding, and arithmetic are
+polynomial in d, beta^-1, and log(1/delta).
+
+The positive result is class-specific. The direct majority-plus-GF(2) decoder
+uses exactly the same observations and achieves the same result, so this is
+not an algorithmic advantage over that comparator. It is a precise interface
+separation: persistence of one latent bit across independent noisy readouts
+makes dense feature acquisition possible; one-shot noisy parity does not have
+this escape under the usual LPN hardness hypothesis.
+
+1. PROCESS AND ACCESS CONTRACT
+
+Fix d&gt;=1. An episode first emits A=(A_1,...,A_d), with the A_i independent
+uniform bits. It then emits B_1,B_2,..., where
+
+    B_j = &lt;s,A&gt; + E_j (mod 2),   E_j iid Bernoulli(eta),
+    theta = 1-2 eta &gt;= beta &gt; 0.
+
+The unknown mask s is in GF(2)^d minus {0}; d and a rational lower bound
+beta are supplied. For the positive theorem eta is also supplied as a known
+rational in (0,1/2), so theta is known and has h-bit encoding. A query is one
+reset or one observed symbol. Resets give independent episodes. Within an
+episode the agent may continue observing the readout tail. It cannot choose
+A, intervene on the hidden state, request a conditional source sample, or
+inspect a transition table. The same s and eta govern all later episodes.
+
+For comparison define Q: it emits the same uniform A, chooses Z uniformly
+and independently of A, then emits B_j=Z+E_j mod 2 with the same noise law.
+Both P_s and Q are time-homogeneous finite-state processes. A clock and one
+parity bit suffice: at input coordinate i, P_s updates the parity by s_i A_i;
+Q keeps its independent initial bit. After coordinate d both retain that bit
+while emitting readouts. Each has at most 2d+2 symbol-transition states, or
+at most 4d+4 ordinary state-emitting HMM states by edge-to-state conversion.
+For eta=1/4 all transition and emission probabilities lie in
+{0,1/4,1/2,3/4,1}.
+
+2. FIXED-BANK OBSTRUCTION ON THIS SAME FAMILY
+
+Theorem 1 (fixed moment bank). Let phi_1,...,phi_M be any [0,1]-valued
+measurable tests fixed before s is known. Each may inspect the full episode,
+including any finite or infinite number of readouts. Then some nonzero mask s
+satisfies
+
+    || (E_{P_s} phi_j - E_Q phi_j)_{j=1}^M ||_2
+       &lt;= sqrt( M / (4(2^d-1)) ).                       (1)
+
+For every nonzero s and every positive odd R, the first d+R symbols nevertheless obey
+
+    TV(P_s[1:d+R], Q[1:d+R]) &gt;= 1/2 - exp(-R theta^2/2). (2)
+
+Proof. For a fixed test phi_j and input a, write m_+(a) and m_-(a) for its
+conditional expectation when the retained latent bit is 0 or 1, respectively,
+averaging over the common independent readout errors. Put
+f_j(a)=(m_+(a)-m_-(a))/2, so |f_j(a)|&lt;=1/2. Under Q the bit is uniform and
+independent of a. Under P_s it is &lt;s,a&gt;. With chi_s(a)=(-1)^{&lt;s,a&gt;},
+
+    E_{P_s} phi_j - E_Q phi_j = E_a[f_j(a) chi_s(a)].
+
+Parseval on GF(2)^d gives sum_s (E f_j chi_s)^2=E f_j^2&lt;=1/4.
+Sum over j and over nonzero s, then average over the 2^d-1 possible masks;
+at least one s satisfies (1).
+
+For (2), on the observed prefix let Zhat be majority(B_1,...,B_R). Under
+P_s, Hoeffding gives Pr[Zhat != &lt;s,A&gt;] &lt;= exp(-R theta^2/2). Under Q,
+Zhat is uniform and independent of A, so Pr[Zhat=&lt;s,A&gt;]=1/2. The event
+{Zhat=&lt;s,A&gt;} witnesses the stated TV gap. This event is used to prove
+separation; the learner need not know s in advance.
+
+Scope: (1) is a population-moment obstruction for a fixed single-episode
+dictionary. It does not lower-bound algorithms that retain raw trajectories,
+compute cross-sample statistics, or choose tests after seeing data. The
+adaptive learner below uses raw paths and a batch GF(2) solve. An M-query
+moment interface with only population means is the object blocked here.
+
+3. ADAPTIVE MASK AND PREDICTOR ACQUISITION
+
+Theorem 2 (persistent-readout acquisition). Let delta in (0,1/2). Set
+
+    N = d + ceil(log2(3/delta)),
+    R = the least odd integer &gt;= (2/beta^2) ln(3N/delta).
+
+Collect N independent episodes, observing d inputs and R readouts in each.
+Majority-decode each readout block to y_i, then solve
+
+    &lt;s,A^(i)&gt; = y_i  (mod 2),  i=1,...,N.
+
+If the system is inconsistent or does not have a unique solution, return
+FAIL. Otherwise output the recovered mask and the compact clock/parity model.
+With probability at least 1-2delta/3, this output is the exact law P_s.
+
+Proof. For a single episode, the probability that majority decoding is wrong
+is at most exp(-R theta^2/2) &lt;= delta/(3N). A union bound makes every decoded
+label correct with probability at least 1-delta/3. The N input vectors are
+independent uniform rows. For each nonzero v, the probability that all rows
+annihilate v is 2^-N. Thus
+
+    Pr[rank(A)&lt;d] &lt;= (2^d-1)2^-N &lt; 2^(d-N) &lt;= delta/3.
+
+On the complement, the unique solution is s. The two failure bounds sum to
+2delta/3.
+
+Exact future predictions follow directly. During the first d symbols, the
+clock emits fair inputs and updates the parity from the stored mask. After
+that it emits independent Bernoulli-noisy copies of the retained parity.
+Thus the learned model gives every finite-word probability and next-symbol
+conditional exactly, at every horizon, including every positive-probability
+history. It is a prediction-task transfer for later episodes from the same
+(s,eta) process; it says nothing about changed masks or a new process family.
+
+4. AN ADAPTIVELY ACQUIRED LOCAL FEATURE BANK AND CERTIFICATE
+
+After recovering s, for each cut t=1,...,d define bounded sign observables
+
+    U_t = (-1)^(sum_{i&lt;=t} s_i A_i),
+    V_t = (-1)^(sum_{i&gt;t} s_i A_i + B_1).
+
+Let phi_t and psi_t be the two indicator coordinates for U_t=+1/-1 and
+V_t=+1/-1. Since V_t=U_t*(-1)^E_1, a cut whose prefix contains a selected
+coordinate has
+
+    H_t = E[phi_t psi_t^T]
+        = (1/4) [[1+theta, 1-theta], [1-theta, 1+theta]],
+    singular values(H_t) = {1/2, theta/2}.
+
+Before the first selected coordinate, U_t is constant and the appropriate
+one-dimensional constant feature has moment 1. The bank is indexed by the
+learned mask and clock cuts. It has O(d) tests and an O(d+h+log d)-bit
+program description (or an explicit state table of O(d log d+h) bits).
+All cuts on one episode can be evaluated with one prefix/suffix scan, O(d)
+bit operations. This margin is local to these specified cuts; it is not a
+claim about the smallest singular value of the inherited complete universal
+Hankel bank.
+
+Independent class-specific held-out certificate. Freeze the learned mask v.
+On J fresh episodes compute
+
+    C_hat_v = (1/J) sum_{j=1}^J (-1)^(B_1^(j)+&lt;v,A^(j)&gt;),
+    J = ceil(32 beta^-2 ln(6/delta)).
+
+Under P_s, E[C_hat_v]=theta if v=s and 0 if v!=s. Hoeffding for [-1,1]
+variables gives |C_hat_v-E C_hat_v|&lt;=beta/4 with probability at least
+1-delta/3. Accept only if C_hat_v-beta/4 &gt;= beta/2. On the confidence event,
+acceptance certifies v=s within this process class and lower-bounds the
+nonzero singular value of every active H_t by
+
+    (C_hat_v-beta/4)/2 &gt;= beta/4.
+
+The class promise is essential: this certificate does not prove arbitrary
+real data belong to P_s. A general-bank alternative estimates all entries of
+the active H_t from the same independent held-out episodes. For
+M_hold &gt;= 128 beta^-2 ln(24d/delta), entry error
+c=sqrt(ln(24d/delta)/(2 M_hold))&lt;=beta/16 simultaneously over at most 4d
+entries with probability &gt;=1-delta/3. The operator error of each 2x2 matrix
+is at most 2c, so sigma_min(Hhat_t)-2c &gt;= beta/4 for every active cut.
+This alternative costs M_hold(d+1) symbols and O(M_hold d) bit operations;
+the class-specific correlation certificate is cheaper.
+
+Combining training and the class-specific certificate gives probability at
+least 1-delta of returning the exact model and a valid local margin
+certificate. Training costs N resets and N(d+R) observed symbols. Validation
+costs J resets and J(d+1) symbols. Majority work is O(NR); row reduction is
+O(Nd^2) bit operations; validation is O(Jd). The learner stores O(Nd) bits
+for a simple batch solve, or O(d^2+R) bits with a streaming pivot basis.
+The learned model code is d mask bits, O(log d) clock bits, and h bits for
+the public rational eta, plus fixed program text. Future prefix evaluation
+uses O(T+d) time for length T and the same model code; a per-symbol simulator
+uses O(1) update work and O(log d) clock plus one parity bit beyond the mask.
+Exact finite-word probabilities have numerator/denominator bit length
+O(T h+d) at horizon T, so exact arithmetic adds polynomial bit cost in T
+and h. A next-symbol conditional query uses O(1) h-bit probability
+operations once the current clock/parity state is known.
+
+5. INHERITED BANK, FAIR COMPARATOR, AND FAILURE BOUNDARY
+
+Inherited universal-bounded-observable interface. For an alphabet of size n
+and supplied state bound m, the prior construction sets d0=2nm,
+K=1+m*d0*(d0-1)/2, and M=K+(n+1)K^2. It supplies M fixed [0,1]
+trajectory moments of maximum length 2d0-1=4nm-1; exact moments give rank
+H=r and a minimal signed realization. With a supplied lower bound
+sigma&lt;=sigma_r(H), horizon T, TV target epsilon, and failure rho, the stated
+exact-arithmetic sample prescription is
+
+    eta0 = epsilon*sigma^3/(300*n*K^4*T),
+    N0 &gt;= ln(2M/rho)/(2 eta0^2).
+
+This is efficient only when the actual population margin is affordable. The
+prior parity-clock obstruction says enlarging a fixed polynomial bank cannot
+make that margin uniform over all finite-state processes. Our P_s/Q theorem
+is a second, same-family version: it preserves a large raw-trajectory TV gap
+while making every predeclared M-dimensional population moment vector close
+for at least one unknown mask. The acquired local cuts below have margin
+beta/2 after a different observation pattern exposes the mask.
+
+The equally informed comparator receives the same d, eta, beta, resets, raw
+symbols, and repeated-readout opportunity. It applies the same majority
+decoder and GF(2) elimination, then outputs the same clock/parity model.
+Therefore no runtime or sample advantage is claimed for constructing the
+observable bank; the useful result is the acquired certified representation
+and its explicit transfer to every later prediction horizon.
+
+The one-shot class P_s^one emits A and one noisy B, then an independent fair
+tail. This is a positive O(d)-state probabilistic automaton realizing noisy
+parity samples. Kearns et al. prove evaluator-learning hardness for this
+class under the Noisy Parity Assumption. A direct interface consequence is:
+if an ordinary-reset learner returned a polynomial-size evaluator q with
+TV(P_s^one[1:d+1],q)&lt;=theta/16 and polynomial-precision joint-word
+evaluation, then sign(q(a,0)-q(a,1)) predicts s dot a on a uniformly random
+a with error below 1/4; a heavy-Fourier-coefficient routine recovers s in
+polynomial time. For finite precision, evaluate each q(a,b) to absolute error
+at most theta*2^(-d)/32, which uses O(d+log(1/theta)) output bits. The sum
+over a of the induced difference error is at most theta/16; total variation
+contributes at most theta/8 in joint L1, so the prediction error is at most
+3/16. This is enough for a constant-threshold Goldreich-Levin search.
+
+The reset simulation is exact: draw one LPN example (a,b) at each episode,
+reveal its a coordinates and then b, and generate any fair tail locally. If
+the learner uses R0 resets and O observed symbols, the reduction consumes
+R0 LPN examples and O(R0*d+O) local bit work. It never asks for an LPN sample
+conditioned on a chosen prefix. The standard reduction is conditional on
+search-LPN hardness, not an unconditional passive-sample or information-
+theoretic lower bound. It also does not apply to a generator-only output that
+cannot evaluate arbitrary words. Persistent repeated readout changes the
+input interface, so it does not contradict this obstruction.
+
+The falsifying condition for the positive theorem is observable: if the R
+readouts do not share one retained latent bit with independent errors (or
+the episodes do not reset independently with uniform A), majority labels
+need not satisfy the linear equations and the exact transfer theorem fails.
+The held-out certificate can reject a wrong mask, but passing it is only a
+class-conditional certificate, not a general process-identification test.
+
+6. PRIOR ART, CLAIM STATUS, AND READ LEDGER
+
+Primary sources:
+
+* Kearns, Mansour, Ron, Rubinfeld, Schapire and Sellie, “On the Learnability
+  of Discrete Distributions,” STOC 1994, Sections 6.1, Theorem 16, pp. 8-9:
+  https://people.csail.mit.edu/ronitt/papers/learndist.pdf
+  The paper defines evaluator versus generator learning, builds the
+  two-track noisy-parity probabilistic automaton, and states evaluator
+  hardness under its noisy-parity assumption. The present one-shot discussion
+  is a restatement/specialization, not a new hardness result.
+* Hsu, Kakade and Zhang, “A Spectral Algorithm for Learning Hidden Markov
+  Models,” arXiv:0811.4413 (2008), JCSS 78(5), 1460-1480 (2012):
+  https://arxiv.org/abs/0811.4413
+  Established spectral HMM learning assumes a separation condition expressed
+  through smallest singular values. This is the relevant supplied-margin
+  comparator, not a universal adaptive-discovery result.
+* Feldman, “On the Power of Membership Queries in Agnostic Learning,” JMLR
+  10 (2009), Theorem 4 discussion of Goldreich-Levin:
+  https://jmlr.org/papers/volume10/feldman09a.html
+  Heavy Fourier coefficient extraction is prior art. No new Fourier method
+  is claimed.
+
+Scoped status ledger:
+
+* Fixed-bank inequality (1): INTERNALLY-PROVED-CANDIDATE; proof is Parseval
+  and averaging, no external review.
+* Persistent-readout acquisition and local cut margin: INTERNALLY-PROVED-
+  CANDIDATE; proofs above are elementary but not independently reviewed.
+* One-shot evaluator barrier: SOURCE-REPORTED/CONDITIONAL on search-LPN;
+  Kearns et al. is the priority-bearing source. Our TV-to-parity reduction is
+  an internal derivation.
+* Finite code checks: FINITE-EVIDENCE only. `python3
+  work/programmes/acquisition_learning/leaves/adaptive_observable_search/check.py`
+  passed 258 exact cut-moment cases (all masks/cuts for d&lt;=5) and seeded
+  acquisition/holdout fixtures at d=3,5,8 with eta=1/4. These do not validate
+  theorem correctness, external novelty, or real-world applicability.
+* Priority and significance of the positive composition: UNKNOWN. No claim
+  of field-breaking advance.
+
+Compact local read ledger (immutable prior; no source files edited):
+
+* work/astra_prior/00_START_HERE.txt: task-first retrieval/status rules.
+* work/astra_prior/cards/P-learning.txt: parity/noise and acquisition caveats.
+* work/astra_prior/cards/N25-acquisition-interface-tests.txt: charged noisy
+  query interface; spliced-teacher and conditional-oracle boundary.
+* work/astra_prior/web/assets/2629830da0554542e203693c3425b0e03c4af89eaca9a67273c145e925c5fca7.txt:
+  universal bounded observable bank, supplied-singular-margin sample bound,
+  fixed-bank parity-clock obstruction, and teacher-free acquisition gap.
+* work/astra_prior/web/assets/574b2e84f15bfb377a5925c66c6b26c18f4272fd433172e088b2c3977b72a4f2.md:
+  prior one-shot LPN boundary and repeated-readout construction; this note
+  narrows it to the same-class fixed-bank theorem (1), states exact access and
+  transfer costs, and preserves the direct majority/GF(2) comparator.
+
+No diagnostics or literature source here establishes external correctness or
+historical priority. See the scratch finite check at
+work/programmes/acquisition_learning/leaves/adaptive_observable_search/check.py.
+</pre><p><a href="../assets/3c024b0a9f79478a4e42f7236dee542151f219a8f7fa79c87f0741f7b15c6a7b.txt">Exact original</a></p></html>

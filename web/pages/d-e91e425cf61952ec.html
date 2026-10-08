@@ -1,0 +1,111 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/systems_metabolism/stochastic_deterministic/sis_boundary.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/systems_metabolism/stochastic_deterministic/sis_boundary.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact log-scale diagnostics for the finite-volume autocatalytic SIS CRN.
+
+Network: A+B -&gt; 2B at beta/V; B -&gt; A at delta; optionally A -&gt; B
+at per-A rate eta_V=exp(-alpha*V). The conserved count is A+B=V.
+
+This uses only Python&#x27;s standard library. It evaluates the exact birth-death
+mean-hit-time recurrence and the exact stationary product weights in log space.
+&quot;&quot;&quot;
+from __future__ import annotations
+import argparse
+import math
+
+
+def logadd(a: float, b: float) -&gt; float:
+    if a &lt; b:
+        a, b = b, a
+    if a == -math.inf:
+        return a
+    return a + math.log1p(math.exp(b - a))
+
+
+def log_mean_absorption(V: int, beta: float = 2.0, delta: float = 1.0,
+                        initial: int | None = None) -&gt; tuple[int, float]:
+    &quot;&quot;&quot;Return (initial state, log E_initial[tau_0]) for eta=0.
+
+    Recurrence: D_i=E_i[tau_0]-E_{i-1}[tau_0]
+    = 1/mu_i + (lambda_i/mu_i)D_{i+1}, D_{V+1}=0.
+    &quot;&quot;&quot;
+    if V &lt; 1 or beta &lt;= delta or delta &lt;= 0:
+        raise ValueError(&quot;require V&gt;=1 and beta&gt;delta&gt;0&quot;)
+    if initial is None:
+        initial = round(V * (1.0 - delta / beta))
+    if not 1 &lt;= initial &lt;= V:
+        raise ValueError(&quot;initial must lie in 1,...,V&quot;)
+
+    log_d = [float(&quot;-inf&quot;)] * (V + 2)
+    for i in range(V, 0, -1):
+        mu = delta * i
+        term = -math.log(mu)
+        if i &lt; V:
+            lam = beta * i * (V - i) / V
+            if lam &gt; 0:
+                term = logadd(term, math.log(lam / mu) + log_d[i + 1])
+        log_d[i] = term
+
+    log_tau = float(&quot;-inf&quot;)
+    for i in range(1, initial + 1):
+        log_tau = logadd(log_tau, log_d[i])
+    return initial, log_tau
+
+
+def stationary_summary(V: int, alpha: float, beta: float = 2.0,
+                       delta: float = 1.0) -&gt; tuple[float, float, float]:
+    &quot;&quot;&quot;For eta_V=exp(-alpha V), return (pi(0), E[I/V], modal I/V).
+
+    Stationary weights satisfy w_0=1 and w_i/w_{i-1}=lambda_{i-1}/mu_i.
+    All calculations stay in log space, including exponentially small eta_V.
+    &quot;&quot;&quot;
+    if V &lt; 1 or alpha &lt;= 0 or beta &lt;= delta or delta &lt;= 0:
+        raise ValueError(&quot;require V&gt;=1, alpha&gt;0, and beta&gt;delta&gt;0&quot;)
+    log_eta = -alpha * V
+    log_w = [0.0]
+    for k in range(1, V + 1):
+        remaining = V - k + 1
+        log_immigration = log_eta + math.log(remaining)
+        if k == 1:
+            log_birth = log_immigration
+        else:
+            log_infection = (math.log(beta) + math.log(k - 1)
+                             + math.log(remaining) - math.log(V))
+            log_birth = logadd(log_infection, log_immigration)
+        log_death = math.log(delta * k)
+        log_w.append(log_w[-1] + log_birth - log_death)
+
+    shift = max(log_w)
+    weights = [math.exp(x - shift) for x in log_w]
+    normalizer = sum(weights)
+    p0 = weights[0] / normalizer
+    mean = sum(i * w for i, w in enumerate(weights)) / (V * normalizer)
+    mode = max(range(V + 1), key=lambda i: log_w[i]) / V
+    return p0, mean, mode
+
+
+def main() -&gt; None:
+    ap = argparse.ArgumentParser()
+    ap.add_argument(&quot;--volumes&quot;, type=int, nargs=&quot;+&quot;, default=[20, 40, 80, 160, 320, 640, 1280])
+    ap.add_argument(&quot;--beta&quot;, type=float, default=2.0)
+    ap.add_argument(&quot;--delta&quot;, type=float, default=1.0)
+    ap.add_argument(&quot;--alpha&quot;, type=float, nargs=&quot;*&quot;, default=[],
+                    help=&quot;optional exponents for eta_V=exp(-alpha*V)&quot;)
+    args = ap.parse_args()
+    xstar = 1.0 - args.delta / args.beta
+    R0 = args.beta / args.delta
+    barrier = math.log(R0) - 1.0 + 1.0 / R0
+    print(f&quot;R0={R0:.12g} x*={xstar:.12g} Delta={barrier:.12g}&quot;)
+    print(&quot;no immigration: V initial log_mean_tau log_mean_tau/V gap_to_Delta&quot;)
+    for V in args.volumes:
+        i, log_tau = log_mean_absorption(V, args.beta, args.delta)
+        print(f&quot;{V} {i} {log_tau:.9f} {log_tau/V:.9f} {log_tau/V-barrier:.9f}&quot;)
+    for alpha in args.alpha:
+        print(f&quot;immigration alpha={alpha:.12g}, eta_V=exp(-alpha V)&quot;)
+        print(&quot;V pi0 E[I/V] mode(I/V)&quot;)
+        for V in args.volumes:
+            p0, mean, mode = stationary_summary(V, alpha, args.beta, args.delta)
+            print(f&quot;{V} {p0:.9g} {mean:.9g} {mode:.9g}&quot;)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/1c657eaeda4733d26f1f587dc28b10b52162718dedce000e57598daba020d93c.py">Exact original</a></p></html>

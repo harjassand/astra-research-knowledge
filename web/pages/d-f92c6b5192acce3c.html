@@ -1,0 +1,144 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/cell_control/cell_controllability/cycle3_controlled_ctmc_check.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/cell_control/cell_controllability/cycle3_controlled_ctmc_check.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Finite arithmetic checks for the cycle-3 actionwise-CLE CTMC witness.
+
+This uses only the standard library. It checks the pointwise observable CLE
+fields for two theta values and evaluates the closed-form first-exit survival
+probabilities at the nuisance-rate interval endpoints. It is not a proof and
+does not validate a biological model.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import json
+import math
+
+
+def cle_fields(x: int, h: int, action: str, theta: float, c: float, kappa: float):
+    &quot;&quot;&quot;Return b,A for observable x by summing all CTMC jump increments.&quot;&quot;&quot;
+    jumps: list[tuple[int, float]] = []
+    if x == 2:
+        if h == 0:
+            jumps.extend([(-1, c), (1, c)])
+        else:
+            jumps.extend([(-2, c / 4.0), (2, c / 4.0)])
+    elif action == &quot;reset&quot;:
+        jumps.append((2 - x, kappa))
+
+    # Hidden switches are included as zero observed increments.
+    if action == &quot;active&quot;:
+        jumps.append((0, theta))
+
+    drift = sum(nu * rate for nu, rate in jumps)
+    covariance = sum(nu * nu * rate for nu, rate in jumps)
+    return drift, covariance
+
+
+def survival(theta: float, c: float, t: float, h: int) -&gt; float:
+    &quot;&quot;&quot;S_h = e_h^T exp((G_theta - diag(2c,c/2))t) 1, by 2x2 formula.&quot;&quot;&quot;
+    d = 0.75 * c
+    m = -theta - 1.25 * c
+    k = math.sqrt(theta * theta + d * d)
+    phase_term = theta - d if h == 0 else theta + d
+    return math.exp(m * t) * (
+        math.cosh(k * t) + phase_term * math.sinh(k * t) / k
+    )
+
+
+def bernoulli_kl(p: float, q: float) -&gt; float:
+    return p * math.log(p / q) + (1.0 - p) * math.log((1.0 - p) / (1.0 - q))
+
+
+def main() -&gt; None:
+    theta_values = (0.1, 3.0)
+    actions = (&quot;passive&quot;, &quot;active&quot;, &quot;reset&quot;)
+    field_max_difference = 0.0
+    field_checks = 0
+    for x in range(5):
+        for h in (0, 1):
+            for action in actions:
+                fields = [cle_fields(x, h, action, theta, 1.0, 0.7) for theta in theta_values]
+                field_max_difference = max(
+                    field_max_difference,
+                    abs(fields[0][0] - fields[1][0]),
+                    abs(fields[0][1] - fields[1][1]),
+                )
+                field_checks += 1
+    assert field_max_difference == 0.0
+
+    rate_box = (0.9, 1.1)
+    classes = (0.1, 3.0)
+    intervals: dict[str, dict[str, list[float]]] = {&quot;h0&quot;: {}, &quot;h1&quot;: {}}
+    for h in (0, 1):
+        for theta in classes:
+            vals = [survival(theta, c, 1.0, h) for c in rate_box]
+            # S_h is decreasing in c, so these two endpoint values give the
+            # exact interval over the continuous nuisance-rate interval.
+            intervals[f&quot;h{h}&quot;][str(theta)] = [min(vals), max(vals)]
+
+    h0_a = intervals[&quot;h0&quot;][&quot;0.1&quot;]
+    h0_b = intervals[&quot;h0&quot;][&quot;3.0&quot;]
+    h1_a = intervals[&quot;h1&quot;][&quot;0.1&quot;]
+    h1_b = intervals[&quot;h1&quot;][&quot;3.0&quot;]
+    gap_h0 = h0_b[0] - h0_a[1]
+    gap_h1 = h1_a[0] - h1_b[1]
+    assert gap_h0 &gt; 0.0576
+    assert gap_h1 &gt; 0.1651
+    delta = min(gap_h0, gap_h1)
+    n_fixed_h0 = math.ceil(2.0 / (gap_h0 * gap_h0) * math.log(20.0))
+    n_fixed_h1 = math.ceil(2.0 / (gap_h1 * gap_h1) * math.log(20.0))
+    # For unknown/mixed hidden phases, center oriented Bernoulli outcomes at
+    # the phase-specific midpoint. Values are in [-1,1], hence the /8 exponent.
+    n_mixed = math.ceil(8.0 / (delta * delta) * math.log(20.0))
+
+    # Bretagnolle-Huber lower bound for the fixed h=0,c=0.9 binary endpoint
+    # pair: sum of type-I and type-II errors &gt;= 0.5 exp(-N KL).
+    p_lower = survival(0.1, 0.9, 1.0, 0)
+    q_lower = survival(3.0, 0.9, 1.0, 0)
+    kl_lower_pair = bernoulli_kl(p_lower, q_lower)
+    n_bh_lower = math.ceil(math.log(1.0 / (4.0 * 0.05)) / kl_lower_pair)
+
+    # Taylor coefficient check: (S0(thetaA)-S0(thetaB))/t^2 approaches
+    # 3c(thetaA-thetaB)/4; reverse sign for h=1.
+    theta_a, theta_b, c = 0.1, 0.8, 1.0
+    expected = 0.75 * c * (theta_a - theta_b)
+    taylor_errors = {}
+    for t in (1e-2, 5e-3, 2.5e-3):
+        observed = (survival(theta_a, c, t, 0) - survival(theta_b, c, t, 0)) / (t * t)
+        observed_h1 = (survival(theta_a, c, t, 1) - survival(theta_b, c, t, 1)) / (t * t)
+        taylor_errors[str(t)] = {
+            &quot;h0_coefficient_error&quot;: observed - expected,
+            &quot;h1_coefficient_error&quot;: observed_h1 + expected,
+        }
+
+    print(
+        json.dumps(
+            {
+                &quot;cle_field_checks&quot;: field_checks,
+                &quot;max_actionwise_field_difference&quot;: field_max_difference,
+                &quot;survival_intervals_c_0_9_to_1_1&quot;: intervals,
+                &quot;robust_phase_gaps&quot;: {&quot;h0&quot;: gap_h0, &quot;h1&quot;: gap_h1},
+                &quot;hoeffding_units_for_5pct_per_hypothesis&quot;: {
+                    &quot;known_h0_stratum&quot;: n_fixed_h0,
+                    &quot;known_h1_stratum&quot;: n_fixed_h1,
+                    &quot;unknown_mixture_phase_centered_score&quot;: n_mixed,
+                },
+                &quot;binary_endpoint_lower_bound_pair&quot;: {
+                    &quot;h&quot;: 0,
+                    &quot;c&quot;: 0.9,
+                    &quot;p_theta_0_1&quot;: p_lower,
+                    &quot;p_theta_3&quot;: q_lower,
+                    &quot;kl_nats&quot;: kl_lower_pair,
+                    &quot;minimum_units_from_bretagnolle_huber_for_5pct_each&quot;: n_bh_lower,
+                },
+                &quot;small_time_coefficient_errors&quot;: taylor_errors,
+                &quot;scope&quot;: &quot;finite numerical checks only; algebraic claims are in CYCLE3_CONTINUATION.md&quot;,
+            },
+            indent=2,
+            sort_keys=True,
+        )
+    )
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/fedc2151a83224793a065e3ab08b4752faca0e61d8f60066923f76208fc9c385.py">Exact original</a></p></html>

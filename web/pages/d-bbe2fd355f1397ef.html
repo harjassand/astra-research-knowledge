@@ -1,0 +1,326 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c8_morphogenesis_control/cycle9/deeper_attack/replay_coupled_fd.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c8_morphogenesis_control/cycle9/deeper_attack/replay_coupled_fd.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Independent explicit-FD replay of the pinned SkullWave notebook model.
+
+This directly transcribes its centered-space/forward-time scheme and Dirichlet
+boundary conditions. It is an independent implementation, not Mathematica
+execution. See source_refs/Tissue_model_simulator.nb around PDEsys,
+discretization1, In[534], and In[546].
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import argparse
+import json
+import math
+from pathlib import Path
+
+import numpy as np
+
+HERE = Path(__file__).resolve().parent
+
+
+def solve_tridiagonal(rhs: np.ndarray, dx: float, eta: float, gamma: float) -&gt; np.ndarray:
+    &quot;&quot;&quot;Solve (eta*dxx-gamma) v = rhs with zero Dirichlet endpoints.&quot;&quot;&quot;
+    n = rhs.size
+    off = eta / (dx * dx)
+    diag = 2.0 * off + gamma
+    # Multiply equation by -1 so the Thomas pivots are positive.
+    cp = np.empty(n, dtype=float)
+    dp = np.empty(n, dtype=float)
+    denom = diag
+    cp[0] = -off / denom
+    dp[0] = -rhs[0] / denom
+    for i in range(1, n):
+        denom = diag + off * cp[i - 1]
+        cp[i] = (-off / denom) if i &lt; n - 1 else 0.0
+        dp[i] = (-rhs[i] + off * dp[i - 1]) / denom
+    out = np.empty(n, dtype=float)
+    out[-1] = dp[-1]
+    for i in range(n - 2, -1, -1):
+        out[i] = dp[i] - cp[i] * out[i + 1]
+    return out
+
+
+def solve_tridiagonal_fft(rhs: np.ndarray, dx: float, eta: float, gamma: float) -&gt; np.ndarray:
+    &quot;&quot;&quot;Diagonalize the same zero-Dirichlet tridiagonal operator by DST-I.
+
+    This is an exact spectral solve of the discrete linear system (up to
+    floating-point roundoff), used only to accelerate high-resolution sweeps.
+    &quot;&quot;&quot;
+    n = rhs.size + 1
+    odd_extension = np.zeros(2 * n, dtype=float)
+    odd_extension[1:n] = rhs
+    odd_extension[n + 1 :] = -rhs[::-1]
+    sine_rhs = -np.fft.fft(odd_extension)[1:n].imag / 2.0
+    k = np.arange(1, n, dtype=float)
+    eigenvalues = -gamma - 4.0 * eta / (dx * dx) * np.sin(np.pi * k / (2.0 * n)) ** 2
+    sine_solution = sine_rhs / eigenvalues
+    spectrum = np.zeros(2 * n, dtype=complex)
+    spectrum[1:n] = -2j * sine_solution
+    spectrum[n + 1 :] = 2j * sine_solution[::-1]
+    return np.fft.ifft(spectrum).real[1:n]
+
+
+def run(
+    nx: int = 200,
+    nt: int = 100,
+    a_phi: float = 4.0,
+    alpha: float = 3.5e-6,
+    eta_scale: float = 1.0,
+    a_rho: float = 4.0,
+    fast_solve: bool = False,
+) -&gt; dict:
+    # Values copied from the pinned notebook&#x27;s parameter and mesh cells.
+    L = 1500.0
+    tmax = 8.0
+    dt = tmax / nt
+    dx = 2.0 * L / nx
+    x = np.linspace(-L, L, nx + 1)
+    t = np.linspace(0.0, tmax, nt + 1)
+
+    rho_a, rho_b, tau = 0.0067, 0.0077, 10.0
+    D = 15.0
+    e_m, e_o = 30.0 * 12.96, 1000.0 * 12.96
+    eta = eta_scale * 1000.0 * 12.96 / 3600.0
+    gamma = 0.8 * 1000.0 * 12.96 / 3600.0
+    rho_h = 1.0 / 1000.0
+    rho = 0.5 * (np.tanh(a_rho * x / L) + 1.0) * (rho_a - rho_b) + rho_b
+    phi = 0.5 * (1.0 - np.tanh(a_phi * x / L))
+    # Enforce the source&#x27;s Dirichlet values at each step (also equal to these
+    # analytical endpoint values in exact arithmetic).
+    rho_left, rho_right = float(rho[0]), float(rho[-1])
+    phi_left, phi_right = float(phi[0]), float(phi[-1])
+
+    rho_out = np.empty((nx + 1, nt + 1), dtype=float)
+    phi_out = np.empty_like(rho_out)
+    vel_out = np.empty_like(rho_out)
+    rho_out[:, 0], phi_out[:, 0] = rho, phi
+    vel_out[:, 0] = 0.0
+
+    for j in range(nt + 1):
+        rho_x = (rho[2:] - rho[:-2]) / (2.0 * dx)
+        phi_x = (phi[2:] - phi[:-2]) / (2.0 * dx)
+        e = e_m + (e_o - e_m) * phi
+        e_x = (e_o - e_m) * phi_x
+        force_rhs = e[1:-1] * rho_x / rho[1:-1] + e_x * np.log(rho[1:-1] / rho_h)
+        v = np.zeros(nx + 1, dtype=float)
+        solve = solve_tridiagonal_fft if fast_solve else solve_tridiagonal
+        v[1:-1] = solve(force_rhs, dx, eta, gamma)
+        vel_out[:, j] = v
+        if j == nt:
+            break
+
+        # Notebook In[534]: central spatial differences, forward Euler time.
+        v_x = (v[2:] - v[:-2]) / (2.0 * dx)
+        k_a = (rho_a - rho[1:-1]) / (rho_a * tau)
+        k_b = (rho_b - rho[1:-1]) / (rho_b * tau)
+        growth = k_a * (1.0 - phi[1:-1]) + k_b * phi[1:-1]
+        rho_new = rho.copy()
+        rho_new[1:-1] += dt * (
+            rho[1:-1] * growth - rho[1:-1] * v_x - v[1:-1] * rho_x
+        )
+
+        e_x_phi = (e_o - e_m) * phi_x
+        delta_k = k_b - k_a
+        k_d = alpha * (e[1:-1] - e_m)
+        phi_xx = (phi[2:] - 2.0 * phi[1:-1] + phi[:-2]) / (dx * dx)
+        phi_rhs = (
+            D * phi_xx
+            + D * rho_x * phi_x / rho[1:-1]
+            + delta_k * phi[1:-1] * (1.0 - phi[1:-1])
+            + k_d * (1.0 - phi[1:-1])
+            - v[1:-1] * phi_x
+        )
+        phi_new = phi.copy()
+        phi_new[1:-1] += dt * phi_rhs
+
+        rho_new[0], rho_new[-1] = rho_left, rho_right
+        phi_new[0], phi_new[-1] = phi_left, phi_right
+        rho, phi = rho_new, phi_new
+        rho_out[:, j + 1], phi_out[:, j + 1] = rho, phi
+
+    return {
+        &quot;x&quot;: x,
+        &quot;time&quot;: t,
+        &quot;rho&quot;: rho_out,
+        &quot;phi&quot;: phi_out,
+        &quot;velocity&quot;: vel_out,
+        &quot;dx_um&quot;: dx,
+        &quot;dt_hr&quot;: dt,
+        &quot;nx&quot;: nx,
+        &quot;nt&quot;: nt,
+        &quot;a_phi&quot;: a_phi,
+        &quot;a_rho&quot;: a_rho,
+        &quot;alpha&quot;: alpha,
+        &quot;eta_scale&quot;: eta_scale,
+        &quot;fast_solve&quot;: fast_solve,
+        &quot;parameters&quot;: {
+            &quot;D_um2_per_hr&quot;: D,
+            &quot;alpha&quot;: alpha,
+            &quot;eM&quot;: e_m,
+            &quot;eO&quot;: e_o,
+            &quot;eta&quot;: eta,
+            &quot;gamma&quot;: gamma,
+            &quot;rhoh&quot;: rho_h,
+            &quot;rhoA&quot;: rho_a,
+            &quot;rhoB&quot;: rho_b,
+            &quot;tau_hr&quot;: tau,
+        },
+    }
+
+
+def front_crossings(x: np.ndarray, phi: np.ndarray, threshold: float = 0.5) -&gt; np.ndarray:
+    out = []
+    for j in range(phi.shape[1]):
+        profile = phi[:, j]
+        ix = np.flatnonzero((profile[:-1] &gt;= threshold) &amp; (profile[1:] &lt; threshold))
+        if len(ix) != 1:
+            out.append(float(&quot;nan&quot;))
+            continue
+        i = int(ix[0])
+        frac = (threshold - profile[i]) / (profile[i + 1] - profile[i])
+        out.append(float(x[i] + frac * (x[i + 1] - x[i])))
+    return np.asarray(out)
+
+
+def summary(run_result: dict, reference_dir: Path | None = None) -&gt; dict:
+    x, t = run_result[&quot;x&quot;], run_result[&quot;time&quot;]
+    rho, phi, velocity = run_result[&quot;rho&quot;], run_result[&quot;phi&quot;], run_result[&quot;velocity&quot;]
+    front = front_crossings(x, phi)
+    slope = float(np.polyfit(t, front, 1)[0])
+    front_dot = np.gradient(front, t, edge_order=2)
+    front_rho = np.array([np.interp(front[j], x, rho[:, j]) for j in range(len(t))])
+    front_v = np.array([np.interp(front[j], x, velocity[:, j]) for j in range(len(t))])
+    dlogrho = np.gradient(rho, x, axis=0, edge_order=2) / rho
+    front_dlogrho = np.array([np.interp(front[j], x, dlogrho[:, j]) for j in range(len(t))])
+    phi_x = np.gradient(phi, x, axis=0, edge_order=2)
+    phi_xx = np.gradient(phi_x, x, axis=0, edge_order=2)
+    front_phi_x = np.array([np.interp(front[j], x, phi_x[:, j]) for j in range(len(t))])
+    front_phi_xx = np.array([np.interp(front[j], x, phi_xx[:, j]) for j in range(len(t))])
+    D = run_result[&quot;parameters&quot;][&quot;D_um2_per_hr&quot;]
+    rho_a, rho_b, tau = 0.0067, 0.0077, 10.0
+    delta_k = (rho_b - rho_a) / (tau * rho_b)
+    alpha = run_result[&quot;parameters&quot;][&quot;alpha&quot;]
+    delta_e = run_result[&quot;parameters&quot;][&quot;eO&quot;] - run_result[&quot;parameters&quot;][&quot;eM&quot;]
+    r = delta_k + alpha * delta_e
+    q0 = 2.0 * run_result[&quot;a_phi&quot;] / 1500.0
+    qstar = math.sqrt(r / D)
+    scalar_relative = D * q0 + r / q0 if q0 &lt; qstar else 2.0 * math.sqrt(D * r)
+    mean_v = float(front_v.mean())
+    mean_density_drift = float(D * front_dlogrho.mean())
+    secant_speed = float((front[-1] - front[0]) / (t[-1] - t[0]))
+    mean_v_integrated = float(np.trapezoid(front_v, t) / (t[-1] - t[0]))
+    mean_dlogrho_integrated = float(np.trapezoid(front_dlogrho, t) / (t[-1] - t[0]))
+    mean_material_relative_speed = secant_speed - mean_v_integrated
+    curvature_term = -D * front_phi_xx / front_phi_x
+    density_term = -D * front_dlogrho
+    delta_k_front = (rho_b - front_rho) / (tau * rho_b) - (rho_a - front_rho) / (tau * rho_a)
+    reaction_rate_front = 0.25 * (delta_k_front + alpha * delta_e)
+    reaction_term = -reaction_rate_front / front_phi_x
+    level_identity_speed = front_v + curvature_term + density_term + reaction_term
+    observed_instantaneous = front_dot
+    closure_error = observed_instantaneous - level_identity_speed
+    stats: dict = {
+        &quot;nx&quot;: run_result[&quot;nx&quot;],
+        &quot;nt&quot;: run_result[&quot;nt&quot;],
+        &quot;dx_um&quot;: run_result[&quot;dx_um&quot;],
+        &quot;dt_hr&quot;: run_result[&quot;dt_hr&quot;],
+        &quot;a_phi&quot;: run_result[&quot;a_phi&quot;],
+        &quot;a_rho&quot;: run_result[&quot;a_rho&quot;],
+        &quot;alpha&quot;: run_result[&quot;alpha&quot;],
+        &quot;eta_scale&quot;: run_result[&quot;eta_scale&quot;],
+        &quot;fast_solve&quot;: run_result[&quot;fast_solve&quot;],
+        &quot;phi_half_start_um&quot;: float(front[0]),
+        &quot;phi_half_end_um&quot;: float(front[-1]),
+        &quot;phi_half_ols_0_to_8_um_per_hr&quot;: slope,
+        &quot;phi_half_secant_0_to_8_um_per_hr&quot;: secant_speed,
+        &quot;mean_V_at_phi_half_um_per_hr&quot;: mean_v,
+        &quot;mean_V_at_phi_half_trapezoid_um_per_hr&quot;: mean_v_integrated,
+        &quot;mean_D_dlogrho_dx_at_phi_half_um_per_hr&quot;: mean_density_drift,
+        &quot;mean_material_relative_front_speed_0_to_8_um_per_hr&quot;: mean_material_relative_speed,
+        &quot;level_set_identity_terms_mean_um_per_hr&quot;: {
+            &quot;tissue_velocity_v&quot;: float(front_v.mean()),
+            &quot;profile_curvature_minus_D_phi_xx_over_phi_x&quot;: float(curvature_term.mean()),
+            &quot;density_gradient_minus_D_dlogrho_dx&quot;: float(density_term.mean()),
+            &quot;local_reaction_minus_R_over_phi_x&quot;: float(reaction_term.mean()),
+            &quot;sum&quot;: float(level_identity_speed.mean()),
+            &quot;finite_difference_front_velocity_mean&quot;: float(observed_instantaneous.mean()),
+            &quot;closure_rmse_vs_front_derivative&quot;: float(np.sqrt(np.mean(closure_error**2))),
+            &quot;closure_max_abs_vs_front_derivative&quot;: float(np.max(np.abs(closure_error))),
+        },
+        &quot;scalar_leading_edge_q_per_um&quot;: q0,
+        &quot;scalar_leading_edge_q_over_qstar&quot;: q0 / qstar,
+        &quot;scalar_leading_edge_qstar_per_um&quot;: qstar,
+        &quot;scalar_KPP_branch_comparator_relative_speed_um_per_hr&quot;: scalar_relative,
+        &quot;scalar_KPP_comparator_total_with_sampled_drift_um_per_hr&quot;: scalar_relative + mean_v_integrated - D * mean_dlogrho_integrated,
+        &quot;full_solver_minus_scalar_total_speed_um_per_hr&quot;: secant_speed - (scalar_relative + mean_v_integrated - D * mean_dlogrho_integrated),
+        &quot;matched_time_window_speeds_um_per_hr&quot;: {},
+        &quot;phi_half_front_positions_um&quot;: front.tolist(),
+        &quot;all_finite&quot;: bool(
+            np.isfinite(run_result[&quot;rho&quot;]).all()
+            and np.isfinite(run_result[&quot;phi&quot;]).all()
+            and np.isfinite(run_result[&quot;velocity&quot;]).all()
+        ),
+        &quot;rho_min&quot;: float(np.min(run_result[&quot;rho&quot;])),
+        &quot;rho_max&quot;: float(np.max(run_result[&quot;rho&quot;])),
+        &quot;phi_min&quot;: float(np.min(run_result[&quot;phi&quot;])),
+        &quot;phi_max&quot;: float(np.max(run_result[&quot;phi&quot;])),
+        &quot;parameters&quot;: run_result[&quot;parameters&quot;],
+    }
+    for lo, hi in ((0.0, 2.0), (2.0, 4.0), (4.0, 6.0), (6.0, 8.0)):
+        keep = (t &gt;= lo) &amp; (t &lt;= hi)
+        duration = hi - lo
+        window_t = t[keep]
+        window_front = front[keep]
+        window_v = front_v[keep]
+        window_dlogrho = front_dlogrho[keep]
+        front_secant = float((window_front[-1] - window_front[0]) / duration)
+        mean_window_v = float(np.trapezoid(window_v, window_t) / duration)
+        mean_window_dlogrho = float(np.trapezoid(window_dlogrho, window_t) / duration)
+        scalar_window = scalar_relative + mean_window_v - D * mean_window_dlogrho
+        stats[&quot;matched_time_window_speeds_um_per_hr&quot;][f&quot;{lo:g}-{hi:g}&quot;] = {
+            &quot;front_secant&quot;: front_secant,
+            &quot;front_ols&quot;: float(np.polyfit(window_t, window_front, 1)[0]),
+            &quot;mean_tissue_velocity&quot;: mean_window_v,
+            &quot;mean_material_relative_front&quot;: front_secant - mean_window_v,
+            &quot;mean_D_dlogrho_dx&quot;: D * mean_window_dlogrho,
+            &quot;scalar_KPP_plus_matched_drift&quot;: scalar_window,
+            &quot;full_minus_scalar_secant&quot;: front_secant - scalar_window,
+        }
+    if reference_dir is not None:
+        ref_phi = np.loadtxt(reference_dir / &quot;best_model_data_phi_1.csv&quot;, delimiter=&quot;,&quot;)
+        ref_rho = np.loadtxt(reference_dir / &quot;best_model_data_rho_1.csv&quot;, delimiter=&quot;,&quot;)
+        ref_v = np.loadtxt(reference_dir / &quot;best_model_data_V_1.csv&quot;, delimiter=&quot;,&quot;)
+        stats[&quot;released_output_comparison&quot;] = {
+            &quot;phi_max_abs_difference&quot;: float(np.max(np.abs(ref_phi - run_result[&quot;phi&quot;]))),
+            &quot;phi_rmse&quot;: float(np.sqrt(np.mean((ref_phi - run_result[&quot;phi&quot;]) ** 2))),
+            &quot;rho_max_abs_difference&quot;: float(np.max(np.abs(ref_rho - run_result[&quot;rho&quot;]))),
+            &quot;rho_rmse&quot;: float(np.sqrt(np.mean((ref_rho - run_result[&quot;rho&quot;]) ** 2))),
+            &quot;velocity_max_abs_difference&quot;: float(np.max(np.abs(ref_v - run_result[&quot;velocity&quot;]))),
+            &quot;velocity_rmse&quot;: float(np.sqrt(np.mean((ref_v - run_result[&quot;velocity&quot;]) ** 2))),
+        }
+    return stats
+
+
+def main() -&gt; None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(&quot;--nx&quot;, type=int, default=200)
+    parser.add_argument(&quot;--nt&quot;, type=int, default=100)
+    parser.add_argument(&quot;--a-phi&quot;, type=float, default=4.0)
+    parser.add_argument(&quot;--alpha&quot;, type=float, default=3.5e-6)
+    parser.add_argument(&quot;--eta-scale&quot;, type=float, default=1.0)
+    parser.add_argument(&quot;--a-rho&quot;, type=float, default=4.0)
+    parser.add_argument(&quot;--fast-solve&quot;, action=&quot;store_true&quot;, help=&quot;use DST-I diagonalization of the same discrete force operator&quot;)
+    parser.add_argument(&quot;--output&quot;, type=Path)
+    parser.add_argument(&quot;--compare-released&quot;, action=&quot;store_true&quot;)
+    args = parser.parse_args()
+    sim = run(args.nx, args.nt, args.a_phi, args.alpha, args.eta_scale, args.a_rho, args.fast_solve)
+    stats = summary(sim, HERE / &quot;source_data&quot; if args.compare_released else None)
+    if args.output:
+        args.output.write_text(json.dumps(stats, indent=2) + &quot;\n&quot;)
+    print(json.dumps(stats, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/a4f2efd4c6c884d12996d9c37be5c9fff150b52353767dac5a21fd8f4b66a1e1.py">Exact original</a></p></html>

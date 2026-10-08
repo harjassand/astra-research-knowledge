@@ -1,0 +1,144 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/sol_collision_precision/evidence/check_hybrid_width.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/sol_collision_precision/evidence/check_hybrid_width.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>&quot;&quot;&quot;New off-diagonal trace, range-width and finite Fantope conventions only.&quot;&quot;&quot;
+import itertools
+import json
+import math
+from pathlib import Path
+
+import numpy as np
+
+
+def hs2(a):
+    return float(np.vdot(a,a).real)
+
+
+def kraus_cases(rng):
+    rows = []
+    for d,q,scale in ((4,1,.01),(6,2,.03),(8,3,.08),(8,2,.2)):
+        a0 = np.diag([1.]+[.8]*(q-1)+[0.]*(d-q)).astype(complex)
+        aa = [a0]
+        for i in range(1,d):
+            a = np.zeros((d,d),complex)
+            a[0,i] = math.sqrt(1-abs(a0[i,i])**2)
+            aa.append(a)
+        assert np.linalg.norm(sum((a.conj().T@a for a in aa),np.zeros((d,d)))-np.eye(d)) &lt; 1e-12
+        xx = [np.eye(d,dtype=complex)[:,0]]
+        for _ in range(5):
+            x = scale*(rng.normal(size=d)+1j*rng.normal(size=d))
+            x[0] += 1
+            x /= np.linalg.norm(x)
+            xx.append(x)
+        lam = np.array([[np.vdot(x,a@x) for x in xx] for a in aa])
+        rr = [[a@x-lam[i,s]*x for i,a in enumerate(aa)] for s,x in enumerate(xx)]
+        errors = []
+        coherence = []
+        for s,x in enumerate(xx):
+            rho = np.outer(x,x.conj())
+            out = sum((a@rho@a.conj().T for a in aa),np.zeros_like(rho))
+            trace = .5*np.abs(np.linalg.eigvalsh(out-rho)).sum()
+            ff = sum(hs2(r) for r in rr[s])
+            u = sum((lam[i,s].conjugate()*r for i,r in enumerate(rr[s])),np.zeros(d,complex))
+            assert ff &lt;= trace+1e-12
+            assert np.linalg.norm(u) &lt;= trace+1e-12
+            errors.append(float(trace))
+            coherence.append(float(np.linalg.norm(u)))
+        eps = max(errors)
+        max_slack = 0.
+        for s,t in itertools.combinations(range(len(xx)),2):
+            b = abs(np.vdot(xx[s],xx[t]))
+            distance = np.linalg.norm(lam[:,s]-lam[:,t])
+            lhs = b*abs(1-np.vdot(lam[:,s],lam[:,t]))
+            rhs = 3*eps+2*math.sqrt(eps)*distance
+            assert lhs &lt;= rhs+1e-12
+            assert distance &lt;= 6*math.sqrt(eps)/b+1e-12
+            max_slack = max(max_slack,float(lhs-rhs))
+        banchor = min(abs(np.vdot(xx[0],x)) for x in xx)
+        tt = np.zeros((d,d),complex)
+        weight = float(np.sum(np.abs(lam[:,0])**2))
+        for i,a in enumerate(aa):
+            uu,ss,_ = np.linalg.svd(a)
+            use = ss &gt; 1e-12
+            assert use.sum() &lt;= q
+            pp = uu[:,use]@uu[:,use].conj().T
+            tt += abs(lam[i,0])**2/weight*pp
+        assert np.linalg.eigvalsh(tt).min() &gt;= -1e-12
+        assert np.linalg.eigvalsh(tt).max() &lt;= 1+1e-12
+        assert np.trace(tt).real &lt;= q+1e-12
+        worst_tail = max(1-float(np.vdot(x,tt@x).real) for x in xx)
+        assert worst_tail &lt;= 148*eps/banchor**2+1e-12
+        covariance = sum((np.outer(x,x.conj()) for x in xx),np.zeros_like(tt))/len(xx)
+        prior_tail = 1-np.linalg.eigvalsh(covariance)[-q:].sum()
+        assert eps &gt;= banchor**2*prior_tail/148-1e-12
+        rows.append({&#x27;D&#x27;:d,&#x27;Q&#x27;:q,&#x27;scale&#x27;:scale,&#x27;error&#x27;:eps,&#x27;anchor_overlap&#x27;:banchor,
+                     &#x27;maximum_offdiag&#x27;:max(coherence),&#x27;range_width_tail&#x27;:worst_tail,
+                     &#x27;prior_covariance_tail&#x27;:float(prior_tail),&#x27;pair_slack&#x27;:max_slack})
+    return rows
+
+
+def fantope_cases(rng):
+    rows = []
+    for d,q in ((3,1),(4,2),(5,2),(6,3)):
+        vertices = []
+        for r in range(q+1):
+            for subset in itertools.combinations(range(d),r):
+                v = np.zeros(d)
+                v[list(subset)] = 1
+                vertices.append(v)
+        vertices = np.array(vertices).T
+        weight = rng.random(vertices.shape[1]); weight /= weight.sum()
+        target = vertices@weight
+        live = np.arange(len(weight))
+        while len(live) &gt; d+1:
+            mat = np.vstack([np.ones(len(live)),vertices[:,live]])
+            _,_,vh = np.linalg.svd(mat,full_matrices=True)
+            null = vh[-1,:]
+            use = null &gt; 1e-12
+            assert use.any()
+            amount = np.min(weight[live][use]/null[use])
+            weight[live] -= amount*null
+            weight[np.abs(weight) &lt; 1e-12] = 0
+            live = np.flatnonzero(weight &gt; 0)
+        assert len(live) &lt;= d+1
+        assert abs(weight.sum()-1) &lt; 1e-11
+        assert np.linalg.norm(vertices@weight-target) &lt; 1e-11
+        assert weight.min() &gt;= -1e-12
+        assert target.min() &gt;= 0 and target.max() &lt;= 1
+        assert target.sum() &lt;= q+1e-12
+        rows.append({&#x27;D&#x27;:d,&#x27;Q&#x27;:q,&#x27;initial_vertices&#x27;:vertices.shape[1],
+                     &#x27;finite_labels&#x27;:len(live),&#x27;barycenter_error&#x27;:float(np.linalg.norm(vertices@weight-target))})
+    return rows
+
+
+def ball_cases():
+    rows = []
+    for r in (1.,2.,3.):
+        mu = r*r
+        probs = [math.exp(-mu)*mu**n/math.factorial(n) for n in range(161)]
+        eigen = [2/r**4*sum(probs[n+2:]) for n in range(80)]
+        mass = sum((n+1)*p for n,p in enumerate(eigen))
+        assert abs(mass-1) &lt; 2e-12
+        assert max(eigen) &lt;= 2/r**4+1e-12
+        assert all(a &gt;= b for a,b in zip(eigen,eigen[1:]))
+        for q in (1,3,6,10):
+            sorted_values = [p for n,p in enumerate(eigen) for _ in range(n+1)]
+            tail = 1-sum(sorted_values[:q])
+            assert tail &gt;= max(0.,1-2*q/r**4)-1e-12
+        rows.append({&#x27;R&#x27;:r,&#x27;covariance_mass&#x27;:mass,&#x27;op_norm&#x27;:eigen[0],
+                     &#x27;proved_op_bound&#x27;:2/r**4})
+    return rows
+
+
+def main():
+    rng = np.random.default_rng(92018)
+    result = {&#x27;status&#x27;:&#x27;FINITE-EVIDENCE&#x27;,
+              &#x27;scope&#x27;:&#x27;Four new rank-Q/nonunital off-diagonal-range fixtures, four finite commuting projection decompositions, three uniform coherent-ball covariance spectra only&#x27;,
+              &#x27;kraus_cases&#x27;:kraus_cases(rng),&#x27;fantope_cases&#x27;:fantope_cases(rng),
+              &#x27;ball_cases&#x27;:ball_cases(),&#x27;old_suites_rerun&#x27;:False,
+              &#x27;uniform_mixed_iid_external_or_novelty_validation&#x27;:False}
+    Path(__file__).with_suffix(&#x27;.json&#x27;).write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({k:v if not k.endswith(&#x27;_cases&#x27;) else len(v)
+                      for k,v in result.items()},indent=2))
+
+
+if __name__ == &#x27;__main__&#x27;:
+    main()
+</pre><p><a href="../assets/ff281354b6cbf1dc9c10564df43433d7db85079ea78f98353431a1845a2d0b9f.py">Exact original</a></p></html>

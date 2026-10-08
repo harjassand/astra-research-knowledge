@@ -1,0 +1,154 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/acquisition_learning/cycle2/spectral_raw/RESULT.txt</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/acquisition_learning/cycle2/spectral_raw/RESULT.txt</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>CYCLE2 RESULT: UNKNOWN-RANK HANKEL/CUR FROM RAW HMM TRAJECTORIES
+Date: 8 October 2026
+Status: CONDITIONAL THEOREM, finite-horizon predictive recovery only
+
+1. CLAIM AND SCOPE
+
+This note gives a legal raw-observation estimator for a substantive hidden finite-state process. Its only data are independent observed trajectories from a stationary finite-alphabet HMM (or trajectories after a charged mixing burn-in). It receives no hidden labels, no event-query interface, and no supplied word dictionary beyond the alphabet and the deterministic set of all words up to a stated length. The number of hidden states is at most a supplied cap R, while the minimal observable/Hankel rank r is unknown.
+
+Under explicit positivity, finite-block completeness, coherence, and singular-gap assumptions, an unknown-rank CUR estimator recovers the rank r and the finite-block predictive row/column spaces with high probability. It also returns a factorized matrix whose every finite-block word probability is within a stated error. This is a finite-horizon prediction theorem. It does not identify hidden states, a unique transition/emission parameterization, or an infinite-horizon positive/stochastic realization.
+
+The sample cost is the cost of raw trajectories, not a count of selected Hankel cells. Each raw trajectory reveals all its observed prefix-word indicators. Therefore the full empirical-Hankel baseline obtains all entries from the same paths; CUR cannot reduce episode/information cost. Under the stated block promise, CUR can reduce the stored matrix values and dense SVD arithmetic. A retained-path or full-count-table predictor remains a competent baseline with the same data and can simulate any CUR output.
+
+2. PROCESS CLASS AND OBSERVATION CONTRACT
+
+Fix an alphabet Sigma of size a&gt;=2 and a state cap R. An instance is a stationary HMM with m&lt;=R hidden states, transition matrix T, stationary law pi, and state-dependent emission probabilities e_i(x). Hidden states and model parameters are never observed. The process promises:
+
+(P1) Uniform positivity: T_ij&gt;=alpha&gt;0 and e_i(x)&gt;=nu&gt;0 for all i,j,x. The constants alpha,nu are known lower bounds. In particular pi_j&gt;=alpha. The hidden chain has Dobrushin contraction at most rho=1-alpha&lt;1 (the sharper 1-m alpha is instance-dependent); thus after B discarded transitions the hidden-state law is within rho^B in total variation of stationarity. Emission positivity implies every word w of length h has probability f(w)&gt;=nu^h.
+
+(P2) Supplied state cap R, but unknown minimal observable rank r. For A_x=diag(e_1(x),...,e_m(x))T, f(w)=pi^T A_{w_1}...A_{w_h}1, and f(empty)=1. The minimal real linear representation dimension of f is r&lt;=m&lt;=R, equivalently the rank of the infinite process Hankel matrix. This is an observable/predictive rank; it need not equal m.
+
+(P3) Choose prefix and suffix horizons k,ell&gt;=R (ell&gt;=1), and let P_k={u:|u|&lt;=k}, S_ell={v:|v|&lt;=ell}. Set p=sum_(i=0)^k a^i, q=sum_(j=0)^ell a^j, L=k+ell, and D_L=sum_(h=0)^L a^h. Let H[u,v]=f(uv). For these horizons the finite block is complete: rank(H)=r. To see the horizon bound, let V_t be the span of representation rows pi^T A_u with |u|&lt;=t. If V_(t+1)=V_t, then V_t is invariant under every A_x and no longer prefix enlarges it; otherwise dimension grows by at least one. The analogous observable-column span has the same property. Both spans stabilize by depth at most m (the stated k,ell&gt;=R are conservative), and the resulting block has the infinite Hankel rank. Let lambda=sigma_r(H)&gt;=lambda_0&gt;0, where lambda_0 is a supplied class lower bound; sigma_(r+1)(H)=0. The rank r itself is not supplied.
+
+(P4) The left/right singular spaces of this finite H satisfy known upper coherence bounds
+  mu_U=(p/r) max_i ||U[i,:]||^2 &lt;= mu_0,
+  mu_V=(q/r) max_j ||V[j,:]||^2 &lt;= mu_0.
+These are explicit assumptions on the finite Hankel block. Positivity and mixing alone do not imply them.
+
+The algorithm is told only the public class bounds (a,R,alpha,nu,lambda_0,mu_0), horizons, and requested confidence/error budgets. It is not told r, H, U, V, transition/emission parameters, or any process-specific word basis.
+
+One raw episode consists of B burn-in emissions, discarded, followed by L observed symbols. If the environment can reset the hidden state exactly to pi, take B=0 and set b_mix=0. Otherwise an independent reset may begin from any hidden distribution; discard B steps and set b_mix=rho^B. The retained L-symbol strings are independent across episodes. No query can request a word event separately: the data are only the observed strings.
+
+3. RAW-TRAJECTORY ESTIMATOR
+
+For each training trajectory x_1...x_L, the algorithm can form its one observed prefix x_1...x_h for each h&lt;=L. It increments a counter only when that observed prefix belongs to the selected set of concatenated words. The full baseline may increment the counters for all D_L words. The CUR procedure is:
+
+1. Draw nested row and column index sets independently of the trajectories, using uniform sampling with replacement until a side&#x27;s target count is at least its ambient size, at which point enumerate that side. Use a doubling schedule. At each phase calculate the certified block-error and gap bounds below; stop at the first phase where the matrix-Chernoff sample and CUR precision conditions pass. The terminal cap is
+   s_R=min(p,ceil(8 mu_0 R log(4R/delta_s))),
+   s_C=min(q,ceil(8 mu_0 R log(4R/delta_s))).
+   Neither the rank nor singular vectors are inputs. Since the selected sets are nested and independent of the trajectories, counts can be accumulated in one streaming pass; all phase estimates are covered by the simultaneous word event below. If no phase passes by the cap, return UNKNOWN.
+2. From the same N training paths, estimate f(w) for the distinct words w=uv needed by the selected rows/columns. Cache a single estimate per word so equal Hankel cells remain equal. Form the noisy cross C_hat, core W_hat, and row block R_hat. Compute certified singular-value intervals for W_hat and set
+   r_hat = #{j: lower_singular_interval_j(W_hat)&gt;2 eps_W},
+   eps_W = sqrt(s_R s_C) eta + zeta_W.
+   Here eta is the uniform word-probability error bound, and zeta_W is an absolute operator-norm SVD/core arithmetic certificate. This cutoff does not use r.
+3. If the current phase does not pass the rank and error certificates, expand the skeleton and continue. Otherwise truncate the core at r_hat and return the factorized candidate
+   H_hat_CUR=C_hat W_hat_(r_hat)^+ R_hat.
+   If a rank interval or numerical certificate remains unresolved at the terminal cap, return UNKNOWN. The finite-class theorem below gives a deterministic training size under which some scheduled cross passes.
+
+The algorithm can stream through the same paths for all phases. Row/column indices do not use hidden labels. The candidate has finite-block predictions for any (u,v) in the rectangle. It is generally not Hankel-consistent across multiple splits of the same concatenated word after CUR multiplication; the theorem bounds each cell&#x27;s probability error but does not assert a positive/stochastic realization.
+
+4. RAW WORD CONFIDENCE AND CUR THEOREM
+
+Let N be the number of independent training episodes, each retaining L symbols after burn-in B. For every word w of length at most L, let f_hat(w) be its empirical prefix frequency. With
+  eta = sqrt(log(2 D_L/delta_e)/(2N)) + b_mix,
+Hoeffding&#x27;s inequality and a union bound give, with probability at least 1-delta_e,
+  max_(|w|&lt;=L) |f_hat(w)-f(w)| &lt;= eta.                         (1)
+The dependence among different word indicators within one path is harmless: for each fixed word the indicators across reset episodes are independent Bernoulli variables, and the union bound does not require independence across words. Probability counters are exact rationals with denominator N; no hidden state or individual event oracle is used.
+
+Let U,V be thin singular bases of H. For s_R independent uniform rows with replacement, matrix Chernoff gives
+  Pr{sigma_min(S_R^T U)^2 &lt; s_R/(2p)} &lt;= r exp(-s_R/(8 mu_U r));
+and analogously for columns. Enumeration of an entire side has exact span. Since r&lt;=R and mu_U,mu_V&lt;=mu_0, the displayed schedule makes both subspace failures at most delta_s (the log(4R/delta_s) leaves slack for both sides).
+
+On the good cross event, with A=S_R^T U and B=V^T S_C,
+  W=A Sigma_H B,
+  sigma_r(W)&gt;=kappa_0 := lambda_0 sqrt(s_R s_C)/(2 sqrt(pq)).       (2)
+This follows from sigma_min(A)^2&gt;=s_R/(2p), sigma_min(B^T)^2&gt;=s_C/(2q), and sigma_r(H)&gt;=lambda_0.
+
+Set M=sqrt(pq), C0=M sqrt(s_C), R0=M sqrt(s_R). With uniform entry error eta, the selected blocks obey
+  e_C=||C_hat-C||_op &lt;=sqrt(p s_C) eta,
+  e_R=||R_hat-R||_op &lt;=sqrt(s_R q) eta,
+  eps_W &gt;=||W_hat-W||_op,
+  eps_W=sqrt(s_R s_C) eta+zeta_W.
+Suppose the numerical rank-r core truncation W_hat_r has ||W_hat_r-W||_op&lt;=2 eps_W. If kappa_0&gt;=4 eps_W, Weyl implies the threshold 2 eps_W returns exactly r: the rth observed singular value is at least kappa_0-eps_W&gt;=3 eps_W and every null singular value is at most eps_W.
+
+For the exact cross CUR identity, write H=U Sigma_H V^T, A=S_R^T U, B=V^T S_C. When A has full column rank and B full row rank,
+  C=U Sigma_H B, R=A Sigma_H V^T, W=A Sigma_H B,
+  W^+=B^+ Sigma_H^(-1) A^+,
+  C W^+ R=H.                                                   (3)
+
+Wedin&#x27;s same-rank pseudoinverse perturbation bound and (3) imply
+  ||H_hat_CUR-H||_op &lt;= E_CUR,
+  E_CUR = 2 e_C (R0+e_R)/kappa_0
+        + 8 C0 eps_W (R0+e_R)/kappa_0^2
+        + C0 e_R/kappa_0 + zeta_CUR.                          (4)
+Here zeta_CUR is a certified product/evaluation error. A directly checkable sufficient allocation for target 0&lt;epsilon&lt;=1 is
+  e_C &lt;= epsilon kappa_0/(32 R0),
+  e_R &lt;= epsilon kappa_0/(16 C0),
+  eps_W &lt;= min{kappa_0/4, epsilon kappa_0^2/(256 C0 R0)},
+  zeta_CUR &lt;= epsilon/8.                                    (5)
+These stronger budgets allow the runtime certificate to use the observable lower bound kappa_L=sigma_hat_r(W_hat)-eps_W: on the good event kappa_L&gt;=kappa_0-2eps_W&gt;=kappa_0/2. Substituting kappa_L into (4) gives E_CUR&lt;=epsilon. The constants allocate at most epsilon/4, epsilon/4, epsilon/8, epsilon/8 to the four terms.
+
+For a single common eta, it suffices to require
+  eta &lt;= min{ kappa_0/(8 sqrt(s_R s_C)),
+              epsilon kappa_0/(32 R0 sqrt(p s_C)),
+              epsilon kappa_0/(16 C0 sqrt(s_R q)),
+              epsilon kappa_0^2/(512 C0 R0 sqrt(s_R s_C)) },   (6)
+and
+  zeta_W &lt;= min{kappa_0/8, epsilon kappa_0^2/(512 C0 R0)}.
+The first terms in (6) enforce the rank margin; the others enforce (5).
+
+THEOREM (unknown-rank raw-HMM finite-block recovery). Under (P1)-(P4), let s_R,s_C be the first schedule sizes where the stated sample and precision conditions pass, and suppose the numerical routine certifies the stated zeta_W,zeta_CUR budgets. If (6) holds and eta is defined in (1), then with probability at least 1-delta_s-delta_e (choose delta_s+delta_e&lt;=delta for overall confidence 1-delta), the raw-trajectory CUR procedure returns r_hat=r and a factorized matrix satisfying
+  ||H_hat_CUR-H||_op &lt;= epsilon.
+Consequently every finite-block cell probability is accurate to epsilon. If epsilon&lt;=lambda_0/4, the estimated left and right singular subspaces differ from those of H by at most 2 epsilon/lambda_0 in sine-angle operator norm (a conservative Wedin bound).
+
+Proof. Equation (1) holds simultaneously for all words. The matrix Chernoff event gives full sampled row and column spaces and (2). Entrywise bounds give the three block perturbation bounds. Weyl and kappa_0&gt;=4eps_W give exact unknown-rank cutoff. The exact identity (3) and pseudoinverse perturbation give (4); budgets (5)-(6) make the data-dependent kappa_L certificate pass and E_CUR&lt;=epsilon. Wedin gives the subspace statement. A single trajectory contributes all word indicators needed for any chosen cross, so no step assumes an event-query oracle. QED.
+
+5. FINITE-CONTEXT PREDICTION CONSEQUENCE
+
+Let beta=nu^k. Positivity gives f(u)&gt;=beta for every context u of length k. Require ell&gt;=1 and epsilon&lt;=min{beta/2,beta/(8a)}. For each such u and next symbol x, form q_x=clip_[0,1](H_hat_CUR[u,x]/H_hat_CUR[u,empty]) and normalize q to a probability vector. Since both numerator and denominator are within epsilon of f(ux), f(u), and the estimated denominator is at least beta/2,
+  |H_hat[u,x]/H_hat[u,empty] - f(ux)/f(u)| &lt;= 4 epsilon/beta.
+Clipping cannot increase coordinatewise error. Because a*4epsilon/beta&lt;=1/2, the normalized vector has total variation distance at most 4a epsilon/beta from the true next-symbol distribution conditioned on the last k symbols u. This is a one-step finite-context guarantee. It does not compare to conditioning on the entire infinite past unless an additional filter-forgetting theorem is supplied; no such claim is made here.
+
+The rank and row/column spaces are predictive objects (equivalence classes of futures after histories). Orthonormal bases are only coordinate choices. This theorem recovers their finite-block subspaces; it does not return hidden labels or identify a unique HMM. If one additionally constructs symbol-shift blocks and a minimal linear realization, exact changes of rank factorization act by a similarity transform, but noisy positive/stochastic realization stability is outside the present claim.
+
+6. SAMPLE, PRECISION, SYMBOL, RESET, QUERY, STORAGE, COMPUTE COSTS
+
+Let eta_* be the right-hand side of (6), including the rank-margin term. A sufficient training size is
+  N &gt;= ceil(2 eta_*^(-2) log(2D_L/delta_e)),
+  B &gt;= ceil(log(2/eta_*)/(-log rho)), rho=1-alpha, for an arbitrary reset and 0&lt;rho&lt;1; if rho=0, B=1 suffices,
+so that both the Hoeffding term and stationarity bias are at most eta_*/2. If exact stationary reset is supplied, B=0 and only the N bound is needed. Each reset costs one reset plus B+L generated symbols (burn-in outputs are discarded). Total generated symbols are N(B+L); this is also the episode cost charged to the full-block baseline. The word horizon is explicit: k,ell&gt;=R, L=k+ell, and all selected events have length &lt;=L.
+
+There is no per-word sample multiplicity n: each episode is one sample for every possible word indicator, even though only one word of each length is observed as a prefix. Probability counts are integer counters needing ceil(log2(N+1)) bits. Word IDs need O(L log a) bits. If probabilities are rounded to b fractional bits, add at most 2^(-b-1) to eta and choose b so this term is within the unused eta budget; exact rational counts avoid that rounding. Numerical precision is stated through certified absolute errors zeta_W,zeta_CUR in (5)-(6), rather than an unverified library bit-complexity claim. A certified interval SVD/product implementation refines until those requested error budgets are met.
+
+If final probability predictions are rounded, b_out&gt;=ceil(log2(1/epsilon)) fractional bits make the rounding error at most epsilon/2, which can be reserved from the target. For a backward-stable interval implementation, a conservative guard-bit scale is
+  b_num = O(log2( (p+q+s_R+s_C)^3 (1+C0)(1+R0)(1+kappa_L^(-1))^2 / zeta_num )),
+where zeta_num=min(zeta_W,zeta_CUR). The exponent 3 safely covers dense core products/SVD dimensions; constants depend on the certified kernel. This is a precision-planning scale, not a verified bit-complexity theorem for an unspecified library. The hard guarantees are the absolute interval budgets in (5)-(6).
+
+For s_R,s_C selected indices, the cross has p*s_C+q*s_R cell slots and s_R*s_C core slots. Equal concatenated words are cached, so the distinct word-counter bound is
+  Q_train &lt;= min(D_L, p*s_C+q*s_R).
+The episode count remains N, not N*Q_train. Streaming input processing takes O(N(B+L)) symbol operations (encode each prefix and hash-check membership in selected words). The selected probability counters use O(Q_train) integer storage, and row/column IDs use O(s_R log p+s_C log q) bits; storing the returned CUR factors uses O(p*s_C+q*s_R+s_R*s_C) numbers. Core SVD costs O(s_R*s_C*min(s_R,s_C)); factorized prediction for one cell costs O(s_R*s_C), or O(r) after forming rank-r factors. Writing a dense p-by-q output costs Omega(pq) and eliminates output-storage savings.
+
+Matched full-block passive baseline. From the identical N paths, it counts all D_L unique prefix words in O(NL) symbol operations, fills H_hat by cache lookup, and performs a full SVD in O(pq*min(p,q)) arithmetic with O(pq+D_L) storage. Its uniform operator perturbation is at most E_full=sqrt(pq) eta+zeta_full. If E_full&lt;=lambda_0/4, full-block singular thresholding also recovers r; its direct full-block estimation/prediction error is at most E_full before rank truncation. For example, zeta_full&lt;=lambda_0/8 and eta&lt;=lambda_0/(8 sqrt(pq)) suffice. At the CUR theorem&#x27;s sample size, the first term in (6) ensures eta&lt;=lambda_0/(16 sqrt(pq)); the same zeta_full budget therefore makes the full-block baseline&#x27;s rank condition hold too. The CUR sufficient eta is already at least twice as stringent as this baseline gap-only tolerance and may be much smaller due to cross conditioning and CUR stability. Thus CUR does not lower the episode count needed by the best matched full-block baseline, and its additional conditions can make its sufficient N larger. The baseline gets the same reset cost and may retain the original paths in O(NL log a) bits for any later predictor. A full-count-table or retained-path predictor can emulate every CUR decision and output. Formally, CUR is a randomized function of (the raw data, independent row/column coins); the baseline has the raw data and can simulate that function. Thus for every loss and every sample size, the best achievable risk using the full observations is no larger than that of the CUR postprocessing. In particular, CUR has no information-theoretic or trajectory-sample advantage under this interface. The theorem establishes a computational/storage route to a finite predictive subspace, not a statistical win over the strongest same-path baseline.
+
+The baseline can also compute a full empirical Hankel SVD and compare nested truncations on held-out raw paths. Such model selection is at least as well informed as CUR under identical observations. No general claim is made that CUR gives better held-out predictive risk.
+
+7. FAILURE MODES AND UNKNOWN RECORD
+
+The statement is conditional. If the finite-block singular gap lambda_0 is too small, required episode counts grow as eta_*^-2 and CUR conditioning grows through kappa_0^-2. If coherence is large, s_R or s_C may reach its ambient dimension; if the cross is poorly conditioned, (6) can require more precision than the full-block baseline. Positivity/mixing gives a legal stationary sampling protocol and lower bounds on context probabilities, but it does not imply finite-block coherence or a useful singular gap.
+
+The algorithm returns UNKNOWN when the core intervals do not certify the rank, when the computed kappa_L/error budget fails, when the declared class constants do not hold, or when the requested sample/precision budget is exhausted. Rank recovery cannot be guaranteed uniformly over all positive HMMs without a quantitative gap: arbitrarily small nonzero singular directions are hidden below finite sampling error. This note does not give a process-valid lower bound for all adaptive methods when coherence fails. It also does not prove stability of a positive HMM realization or prediction given the infinite past. Those remain UNKNOWN.
+
+The no-gap obstruction already occurs inside the positive, mixing, two-state HMM class above. Let hidden states be +/-1 with transition matrix [[1-tau,tau],[tau,1-tau]], where 0&lt;tau&lt;1/2, and stationary law (1/2,1/2). Emit X in {0,1} with P(X=1|S=+1)=1/2+z and P(X=1|S=-1)=1/2-z, for 0&lt;=z&lt;=1/4. Every transition is at least tau, every emission is at least 1/4, and the mixing contraction is 1-2tau. At z=0 the observations are iid fair bits and Hankel rank is 1. At z&gt;0, writing gamma=1-2tau, f(1)=1/2 and f(11)=1/4+z^2 gamma; the {empty,1} minor has determinant z^2 gamma, so the observable rank is 2. For fixed finite k,ell, H(z) is continuous and H(0) has rank 1, hence sigma_2(H(z))-&gt;0 as z-&gt;0. A length-L observed path can be coupled to L iid fair bits with mismatch probability at most Lz, so N independent paths have total variation at most NLz from the z=0 data. Le Cam therefore lower-bounds exact-rank testing error by (1-NLz)/2; choosing z=1/(10NL) leaves error at least 0.45 while all positivity and mixing constants stay fixed. This proves why the supplied gap lower bound is necessary for uniform finite-sample rank recovery in this process class.
+
+Novelty/status: this is a conditional synthesis of standard raw-word concentration, matrix Chernoff, CUR identities, Weyl/Wedin perturbation, and finite-state Hankel realization facts. It is not a novelty or priority claim. The main result versus entry-event CUR is an interface repair: legal raw trajectories support the same rank/subspace statement, but CUR saves only downstream storage/arithmetic, not data acquisition.
+
+8. PRIMARY SOURCES
+
+[1] J. W. Carlyle and A. Paz, “Realizations by Stochastic Finite Automata,” Journal of Computer and System Sciences 5(1), 26–40 (1971), DOI: 10.1016/S0022-0000(71)80005-3. Finite Hankel rank and finite sequential realizations.
+[2] D. Hsu, S. M. Kakade, and T. Zhang, “A Spectral Algorithm for Learning Hidden Markov Models,” JCSS 78(5), 1460–1480 (2012), arXiv:0811.4413. Raw-observation spectral HMM learning under singular separation; our guarantee is a finite-Hankel/CUR statement, not a replacement for their model-learning theorem.
+[3] J. A. Tropp, “User-Friendly Tail Bounds for Sums of Random Matrices,” Foundations of Computational Mathematics 12, 389–434 (2012), arXiv:1004.4389. Matrix Chernoff lower-tail step for sampled singular subspaces.
+[4] P.-A. Wedin, “Perturbation Theory for Pseudo-Inverses,” BIT 13, 217–232 (1973), DOI: 10.1007/BF01933494. Pseudoinverse/subspace perturbation used in CUR and basis error.
+[5] P. Drineas, M. W. Mahoney, and S. Muthukrishnan, “Relative-Error CUR Matrix Decompositions,” SIAM Journal on Matrix Analysis and Applications 30(2), 844–881 (2008), DOI: 10.1137/07070471X. Standard CUR computational context; their algorithms take target rank as input.
+
+Primary links: https://doi.org/10.1016/S0022-0000(71)80005-3 ; https://arxiv.org/abs/0811.4413 ; https://arxiv.org/abs/1004.4389 ; https://doi.org/10.1007/BF01933494 ; https://arxiv.org/abs/0708.3696
+</pre><p><a href="../assets/01b88479aea31d49391823d41e346b0c208ccbba7b389ee24dc3c75ead17c257.txt">Exact original</a></p></html>

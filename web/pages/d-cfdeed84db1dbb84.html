@@ -1,0 +1,149 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/preserve_checkpoint.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/preserve_checkpoint.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>from pathlib import Path
+import os, json, hashlib, shutil, zipfile, datetime, sys
+
+root = Path(__file__).resolve().parent.parent
+name = sys.argv[1]
+out = root / &#x27;outputs&#x27; / &#x27;research&#x27; / name
+if out.exists():
+    raise SystemExit(&#x27;Numbered checkpoint already exists; use a new name.&#x27;)
+out.mkdir(parents=True)
+excluded_dirs = {&#x27;vendor&#x27;, &#x27;sources&#x27;, &#x27;source_maps&#x27;, &#x27;source_text&#x27;, &#x27;downloads&#x27;,
+        &#x27;astra&#x27;, &#x27;astra_cards&#x27;, &#x27;astrasources&#x27;, &#x27;research_notes&#x27;, &#x27;__pycache__&#x27;, &#x27;.cache&#x27;,
+                 &#x27;.venv&#x27;, &#x27;node_modules&#x27;, &#x27;papers&#x27;, &#x27;raw&#x27;}
+extensions = {&#x27;.md&#x27;, &#x27;.txt&#x27;, &#x27;.json&#x27;, &#x27;.py&#x27;, &#x27;.jl&#x27;, &#x27;.sage&#x27;, &#x27;.tex&#x27;, &#x27;.csv&#x27;, &#x27;.lean&#x27;, &#x27;.sh&#x27;, &#x27;.log&#x27;, &#x27;.stdout&#x27;, &#x27;.stderr&#x27;}
+records, ledgers, parse_errors = [], [], []
+source_root = root / &#x27;work&#x27; / &#x27;agents&#x27;
+for current, dirs, files in os.walk(source_root):
+    dirs[:] = [d for d in dirs if d not in excluded_dirs and not d.startswith(&#x27;.&#x27;)
+               and not d.startswith(&#x27;source&#x27;) and not d.endswith(&#x27;_source&#x27;)
+               and not d.endswith(&#x27;_sources&#x27;)]
+    for filename in sorted(files):
+        src = Path(current) / filename
+        lower = filename.lower()
+        if (src.suffix.lower() not in extensions and filename not in (&#x27;lean-toolchain&#x27;, &#x27;lakefile.toml&#x27;)) or src.stat().st_size &gt; 1_500_000:
+            continue
+        if any(term in lower for term in (&#x27;extracted&#x27;, &#x27;paper_body&#x27;, &#x27;fulltext&#x27;, &#x27;manuscript_text&#x27;)):
+            continue
+        if src.suffix == &#x27;.tex&#x27;:
+            continue  # Source-body downloads stay in work; written derivations are retained.
+        if src.suffix in {&#x27;.log&#x27;, &#x27;.stdout&#x27;, &#x27;.stderr&#x27;} and not any(term in lower for term in
+                (&#x27;compile&#x27;, &#x27;audit&#x27;, &#x27;build&#x27;, &#x27;verify&#x27;, &#x27;axiom&#x27;, &#x27;assumption&#x27;)):
+            continue
+        if src.suffix == &#x27;.txt&#x27; and not any(term in lower for term in
+                (&#x27;proof&#x27;, &#x27;report&#x27;, &#x27;deriv&#x27;, &#x27;failure&#x27;, &#x27;source_log&#x27;, &#x27;sources&#x27;,
+                 &#x27;audit&#x27;, &#x27;claim&#x27;, &#x27;result&#x27;, &#x27;cost&#x27;, &#x27;gate&#x27;, &#x27;counterexample&#x27;,
+                 &#x27;readme&#x27;, &#x27;contract&#x27;, &#x27;model&#x27;, &#x27;status&#x27;, &#x27;restart&#x27;, &#x27;compile&#x27;,
+                 &#x27;audit&#x27;, &#x27;verify&#x27;, &#x27;axiom&#x27;, &#x27;build&#x27;, &#x27;hash&#x27;, &#x27;fingerprint&#x27;, &#x27;replay&#x27;, &#x27;run_output&#x27;, &#x27;_run&#x27;)):
+            continue
+        if src.suffix == &#x27;.json&#x27; and any(term in lower for term in
+                (&#x27;preprints_tree&#x27;, &#x27;catalog&#x27;, &#x27;agent__manifest&#x27;)):
+            continue
+        rel = src.relative_to(source_root)
+        data = src.read_bytes()
+        if src.suffix == &#x27;.json&#x27; and &#x27;claim&#x27; in lower:
+            try:
+                value = json.loads(data)
+            except Exception as error:
+                parse_errors.append({&#x27;path&#x27;: str(rel), &#x27;error&#x27;: str(error)})
+                continue
+            ledgers.append({&#x27;original&#x27;: str(src.relative_to(root)),
+                            &#x27;snapshot&#x27;: &#x27;evidence/&#x27; + str(rel), &#x27;ledger&#x27;: value})
+        dst = out / &#x27;evidence&#x27; / rel
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        dst.write_bytes(data)
+        records.append({&#x27;original&#x27;: str(src.relative_to(root)),
+                        &#x27;snapshot&#x27;: str(dst.relative_to(out)), &#x27;bytes&#x27;: len(data),
+                        &#x27;sha256&#x27;: hashlib.sha256(data).hexdigest()})
+# Authored source ledgers sometimes live beside downloaded bodies. Retain only
+# these explicit note filenames from otherwise excluded source directories.
+retained_originals = {row[&#x27;original&#x27;] for row in records}
+for note_name in (&#x27;SOURCES.md&#x27;, &#x27;SOURCE_NOTES.md&#x27;, &#x27;NOTES.md&#x27;, &#x27;PRIOR_ART.md&#x27;):
+    for src in source_root.rglob(note_name):
+        rel = src.relative_to(source_root)
+        original = str(src.relative_to(root))
+        if original in retained_originals or any(p in rel.parts for p in
+                (&#x27;node_modules&#x27;, &#x27;.lake&#x27;, &#x27;.venv&#x27;, &#x27;vendor&#x27;, &#x27;.cache&#x27;)):
+            continue
+        data = src.read_bytes()
+        if len(data) &gt; 1_500_000:
+            continue
+        dst = out / &#x27;evidence&#x27; / rel
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        dst.write_bytes(data)
+        records.append({&#x27;original&#x27;: original, &#x27;snapshot&#x27;: str(dst.relative_to(out)),
+                        &#x27;bytes&#x27;: len(data), &#x27;sha256&#x27;: hashlib.sha256(data).hexdigest()})
+        retained_originals.add(original)
+for rel in (&#x27;work/ROOT_MANDATE.txt&#x27;, &#x27;work/CYCLE2_DIRECTIVE.txt&#x27;, &#x27;work/CYCLE3_DIRECTIVE.txt&#x27;,
+            &#x27;work/CYCLE4_5_DIRECTIVE.txt&#x27;, &#x27;outputs/research/RESEARCH_REPORT.txt&#x27;,
+            &#x27;work/CYCLE6_DIRECTIVE.txt&#x27;,
+            &#x27;work/CYCLE7_DIRECTIVE.txt&#x27;,
+            &#x27;work/CYCLE8_DIRECTIVE.txt&#x27;,
+            &#x27;work/CYCLE9_DIRECTIVE.txt&#x27;,
+            &#x27;work/CYCLE10_DIRECTIVE.txt&#x27;,
+            &#x27;work/CYCLE11_DIRECTIVE.txt&#x27;,
+            &#x27;work/CYCLE12_DIRECTIVE.txt&#x27;,
+            &#x27;work/ROUND_CLOSURE.txt&#x27;,
+            &#x27;work/c12_spin_compiler_root_replay.log&#x27;,
+            &#x27;work/close_round.py&#x27;,
+            &#x27;work/preserve_checkpoint.py&#x27;,
+            &#x27;outputs/research/CYCLE12_PROGRESS.txt&#x27;,
+            &#x27;outputs/research/ROUND_CLOSURE.json&#x27;,
+            &#x27;outputs/research/CYCLE10_PROGRESS.txt&#x27;,
+            &#x27;outputs/research/CYCLE9_PROGRESS.txt&#x27;,
+            &#x27;outputs/research/ACTIVE_GATES.json&#x27;,
+            &#x27;outputs/research/CURRENT_STATE.txt&#x27;,
+            &#x27;outputs/research/PRIOR_MANIFEST.json&#x27;,
+            &#x27;outputs/research/ENTRY_PIN_VERIFICATION.json&#x27;,
+            &#x27;outputs/research/FRONTIER_REFRESH.json&#x27;,
+            &#x27;outputs/research/RECORD_REPAIRS.json&#x27;):
+    src = root / rel
+    if src.exists():
+        shutil.copyfile(src, out / src.name)
+for filename in (&#x27;ROOT_REPLAY_CHECK.json&#x27;, &#x27;PROGRESS_AUDIT.txt&#x27;):
+    src = root / &#x27;outputs&#x27; / &#x27;research&#x27; / filename
+    if src.exists():
+        shutil.copyfile(src, out / filename)
+stamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
+(out / &#x27;CLAIM_LEDGER.json&#x27;).write_text(json.dumps({
+    &#x27;scientific_status&#x27;: &#x27;research stopped at user request after current round; objective unachieved; source/candidate/conditional/finite statuses remain local to each record&#x27;,
+    &#x27;snapshot_time_utc&#x27;: stamp, &#x27;ledgers&#x27;: ledgers, &#x27;parse_errors&#x27;: parse_errors
+}, indent=2) + &#x27;\n&#x27;)
+(out / &#x27;MANIFEST.json&#x27;).write_text(json.dumps({
+    &#x27;snapshot_time_utc&#x27;: stamp, &#x27;retained_files&#x27;: len(records),
+    &#x27;policy&#x27;: &#x27;compact reports, proofs, ledgers, source notes and code; downloaded source/dependency directories excluded&#x27;,
+    &#x27;original_root&#x27;: str(root), &#x27;files&#x27;: records
+}, indent=2) + &#x27;\n&#x27;)
+(out / &#x27;START_HERE.txt&#x27;).write_text(&#x27;ASTRA RESEARCH CHECKPOINT — USER-REQUESTED STOP\n\n&#x27;
+    &#x27;Read ROUND_CLOSURE.json, CYCLE12_PROGRESS.txt, CURRENT_STATE.txt and ACTIVE_GATES.json, then ROOT_MANDATE.txt and numbered directives through CYCLE12_DIRECTIVE.txt.\n&#x27;
+    &#x27;The objective is not complete and no externally validated breakthrough is asserted.\n&#x27;
+    &#x27;CLAIM_LEDGER.json embeds scoped claim ledgers; MANIFEST.json maps original work paths to snapshot evidence paths.\n&#x27;
+    &#x27;Inspect relevant evidence/&lt;lead&gt;/FINAL_REPORT.md and later cycle/attack files selectively.\n&#x27;
+    &#x27;Some report crosslinks retain original workspace paths; use MANIFEST.json when relocating this archive.\n&#x27;
+    &#x27;Downloaded paper bodies and installed dependencies are excluded. Source-note URLs preserve their retrieval routes.\n&#x27;
+    &#x27;Snapshot integrity is a byte-level property, not proof verification, novelty, nature validation or external review.\n&#x27;
+    &#x27;All live workers were instructed to freeze this round; ROUND_CLOSURE.json records their final inventory. No further cycle is authorized for this run.\n&#x27;)
+bad = []
+for row in records:
+    data = (out / row[&#x27;snapshot&#x27;]).read_bytes()
+    if len(data) != row[&#x27;bytes&#x27;] or hashlib.sha256(data).hexdigest() != row[&#x27;sha256&#x27;]:
+        bad.append(row[&#x27;snapshot&#x27;])
+if bad or parse_errors:
+    raise SystemExit(json.dumps({&#x27;hash_errors&#x27;: bad, &#x27;ledger_errors&#x27;: parse_errors}))
+archive = out.with_suffix(&#x27;.zip&#x27;)
+with zipfile.ZipFile(archive, &#x27;w&#x27;, zipfile.ZIP_DEFLATED) as z:
+    for file in sorted(out.rglob(&#x27;*&#x27;)):
+        if file.is_file():
+            z.write(file, Path(name) / file.relative_to(out))
+with zipfile.ZipFile(archive) as z:
+    crc_error = z.testzip()
+if crc_error:
+    raise SystemExit(&#x27;ZIP CRC error: &#x27; + crc_error)
+integrity = {&#x27;snapshot&#x27;: name, &#x27;retained_evidence_files&#x27;: len(records),
+             &#x27;claim_ledgers&#x27;: len(ledgers), &#x27;ledger_parse_errors&#x27;: len(parse_errors),
+             &#x27;evidence_sha256_pass&#x27;: True, &#x27;zip_crc_pass&#x27;: True,
+             &#x27;zip_bytes&#x27;: archive.stat().st_size,
+             &#x27;zip_sha256&#x27;: hashlib.sha256(archive.read_bytes()).hexdigest(),
+             &#x27;scientific_validation&#x27;: &#x27;not implied by these checks&#x27;}
+(out / &#x27;INTEGRITY.json&#x27;).write_text(json.dumps(integrity, indent=2) + &#x27;\n&#x27;)
+print(json.dumps(integrity))
+</pre><p><a href="../assets/4462ad57cb35f5efe6fcbcfa32448ed886d08e3ab121bac369ae675d4cc13068.py">Exact original</a></p></html>

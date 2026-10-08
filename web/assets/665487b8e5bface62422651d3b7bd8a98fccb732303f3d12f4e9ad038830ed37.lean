@@ -1,0 +1,113 @@
+import Mathlib.MeasureTheory.Integral.IntervalIntegral.AbsolutelyContinuousFun
+
+noncomputable section
+
+open Filter Set MeasureTheory
+
+namespace N33Dynamics
+
+/-- An a.e. derivative lower bound for an absolutely continuous scalar barrier integrates
+to the corresponding endpoint increase. The derivative hypothesis is stated on the actual
+closed time interval, matching trajectory segments confined to the reaction box. -/
+theorem absolutelyContinuous_increment_ge
+    {f : ℝ → ℝ} {a b δ : ℝ} (hab : a ≤ b)
+    (hf : AbsolutelyContinuousOnInterval f a b)
+    (hderiv : ∀ᵐ u ∂volume, u ∈ Icc a b → δ ≤ deriv f u) :
+    δ * (b - a) ≤ f b - f a := by
+  have hderivRestrict : (fun _ : ℝ => δ) ≤ᵐ[volume.restrict (Icc a b)] deriv f := by
+    change ∀ᵐ u ∂volume.restrict (Icc a b), δ ≤ deriv f u
+    rw [ae_restrict_iff' measurableSet_Icc]
+    exact hderiv
+  have hConst : IntervalIntegrable (fun _ : ℝ => δ) volume a b :=
+    intervalIntegrable_const
+  have hIntegral := intervalIntegral.integral_mono_ae_restrict
+    (μ := volume) hab hConst hf.intervalIntegrable_deriv hderivRestrict
+  rw [intervalIntegral.integral_const, hf.integral_deriv_eq_sub] at hIntegral
+  simpa [smul_eq_mul, mul_comm] using hIntegral
+
+/-- A barrier superlevel set is forward invariant along an absolutely continuous segment
+whenever its derivative is nonnegative almost everywhere on that segment. -/
+theorem absolutelyContinuous_superlevel_forward_invariant
+    {f : ℝ → ℝ} {a b M : ℝ} (hab : a ≤ b)
+    (hf : AbsolutelyContinuousOnInterval f a b)
+    (hderiv : ∀ᵐ u ∂volume, u ∈ Icc a b → 0 ≤ deriv f u)
+    (hstart : M ≤ f a) :
+    M ≤ f b := by
+  have hinc := absolutelyContinuous_increment_ge hab hf hderiv
+  linarith
+
+/-- A uniformly positive derivative below a target forces the absolutely continuous barrier
+to hit that target before the interval ends, provided the interval is long enough. This is the
+scalar finite-entry principle used for compact plateau entry. -/
+theorem absolutelyContinuous_hits_level
+    {f : ℝ → ℝ} {a b M δ : ℝ} (hab : a ≤ b)
+    (hf : AbsolutelyContinuousOnInterval f a b)
+    (hδ : 0 < δ)
+    (hderivBelow : ∀ᵐ u ∂volume,
+      u ∈ Icc a b → f u < M → δ ≤ deriv f u)
+    (hlong : (M - f a) / δ < b - a) :
+    ∃ u, u ∈ Icc a b ∧ M ≤ f u := by
+  by_contra hNoHit
+  have hbelow : ∀ u, u ∈ Icc a b → f u < M := by
+    intro u hu
+    by_contra hnot
+    exact hNoHit ⟨u, hu, le_of_not_gt hnot⟩
+  have hderiv : ∀ᵐ u ∂volume, u ∈ Icc a b → δ ≤ deriv f u := by
+    filter_upwards [hderivBelow] with u hu
+    intro huIcc
+    exact hu huIcc (hbelow u huIcc)
+  have hinc := absolutelyContinuous_increment_ge hab hf hderiv
+  have hbBelow := hbelow b ⟨hab, le_rfl⟩
+  have hlong' : M - f a < δ * (b - a) := by
+    have hmul : M - f a < (b - a) * δ := (div_lt_iff₀ hδ).mp hlong
+    simpa [mul_comm] using hmul
+  linarith
+
+/-- Endpoint-sharp form of the finite-entry principle. A weak duration bound suffices:
+if the interval length is exactly `(M - f a) / δ`, the barrier must already hit `M` by
+the endpoint. This avoids introducing an arbitrary epsilon into the source's `W_h` bound. -/
+theorem absolutelyContinuous_hits_level_of_duration_ge
+    {f : ℝ → ℝ} {a b M δ : ℝ} (hab : a ≤ b)
+    (hf : AbsolutelyContinuousOnInterval f a b)
+    (hδ : 0 < δ)
+    (hderivBelow : ∀ᵐ u ∂volume,
+      u ∈ Icc a b → f u < M → δ ≤ deriv f u)
+    (hduration : (M - f a) / δ ≤ b - a) :
+    ∃ u, u ∈ Icc a b ∧ M ≤ f u := by
+  by_contra hNoHit
+  have hbelow : ∀ u, u ∈ Icc a b → f u < M := by
+    intro u hu
+    by_contra hnot
+    exact hNoHit ⟨u, hu, le_of_not_gt hnot⟩
+  have hderiv : ∀ᵐ u ∂volume, u ∈ Icc a b → δ ≤ deriv f u := by
+    filter_upwards [hderivBelow] with u hu
+    intro huIcc
+    exact hu huIcc (hbelow u huIcc)
+  have hinc := absolutelyContinuous_increment_ge hab hf hderiv
+  have hbBelow := hbelow b ⟨hab, le_rfl⟩
+  have hlong' : M - f a ≤ δ * (b - a) := by
+    have hmul : M - f a ≤ (b - a) * δ := (div_le_iff₀ hδ).mp hduration
+    simpa [mul_comm] using hmul
+  linarith
+
+/-- Exact one-scale entry bound from a floor `m` and target ceiling `M`. If the starting
+barrier value lies in `[m,M]` and its derivative is at least `δ>0` whenever it is below
+`M`, it reaches `M` by the source-shaped time `(M-m)/δ`. -/
+theorem absolutelyContinuous_hits_level_by_range
+    {f : ℝ → ℝ} {a m M δ : ℝ}
+    (hf : AbsolutelyContinuousOnInterval f a (a + (M - m) / δ))
+    (hδ : 0 < δ)
+    (hmin : m ≤ f a) (hmax : f a ≤ M)
+    (hderivBelow : ∀ᵐ u ∂volume,
+      u ∈ Icc a (a + (M - m) / δ) → f u < M → δ ≤ deriv f u) :
+    ∃ u, u ∈ Icc a (a + (M - m) / δ) ∧ M ≤ f u := by
+  have hmM : m ≤ M := le_trans hmin hmax
+  have hnonneg : 0 ≤ (M - m) / δ :=
+    div_nonneg (sub_nonneg.mpr hmM) hδ.le
+  have hab : a ≤ a + (M - m) / δ := by linarith
+  have hduration : (M - f a) / δ ≤ (a + (M - m) / δ) - a := by
+    rw [add_sub_cancel_left]
+    exact div_le_div_of_nonneg_right (sub_le_sub_left hmin M) hδ.le
+  exact absolutelyContinuous_hits_level_of_duration_ge hab hf hδ hderivBelow hduration
+
+end N33Dynamics

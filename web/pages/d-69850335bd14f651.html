@@ -1,0 +1,154 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/cycle6_constructive_comparator/oracle_sampling/ORACLE_SAMPLING.md</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/cycle6_constructive_comparator/oracle_sampling/ORACLE_SAMPLING.md</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre># Exact sampling for a supplied tree POVM
+
+## Scope and status
+
+This note analyzes only a *supplied* finite binary tree, its leaf PVMs, and an exact dense two-output channel
+
+\[
+  \mathcal B:M_d\longrightarrow M_d\otimes M_d.
+\]
+
+The channel is assumed CPTP and swap-symmetric, as in the comparator setup. The sampling argument itself does not use swap symmetry; it uses that the same linear channel is applied at each internal tree node. The tree, PVMs, and channel are data. This does not construct the dual-dependent tree, the separating comparator, or the input PVMs.
+
+The result is positive under a finite rational input model (and extends to an explicit algebraic number field when its degree and exact-operation costs are polynomially bounded): a joint outcome can be sampled exactly in expected polynomial bit time, without listing the product outcome space. A bounded worst-case polynomial runtime with total-variation error \(\delta\) follows by truncating exact rejection sampling, with failure probability at most \(\delta\). Rare prefixes do not force inverse-probability work if unnormalized conditional states and exact arithmetic are used. With arbitrary-real or physical black-box channel inputs, “input bits” and this classical runtime claim are undefined; numerical robustness then needs separate error bounds.
+
+## Pullback effects, including partial assignments
+
+Let \(T\) be a finite full binary tree. Each internal node applies \(\mathcal B\); each terminal leaf \(v\) has a PVM \(\{P^v_a:a\in A_v\}\) on \(\mathbb C^d\). A full outcome is \(z=(a_v)_{v\in L(T)}\). Define the effective effect at a node recursively:
+
+\[
+ E_{v,a}=P^v_a \quad(v\text{ a leaf}),\qquad
+ E_{v,(z_0,z_1)}=\mathcal B^*(E_{v0,z_0}\otimes E_{v1,z_1})
+ \quad(v\text{ internal}).
+\tag{1}
+\]
+
+For a partial assignment, put \(F_v= P^v_{a_v}\) at an assigned leaf, \(F_v=I\) at an unassigned leaf, and
+
+\[
+ F_v=\mathcal B^*(F_{v0}\otimes F_{v1})
+\tag{2}
+\]
+
+at internal nodes. Then \(F_{\rm root}=\sum_{z\text{ extending the partial assignment}}E_z\). This follows by induction from \(\sum_aP^v_a=I\) and \(\mathcal B^*(I\otimes I)=I\). In particular, \(\{E_z\}\) is a POVM and, for an input state \(\rho\),
+
+\[
+  \Pr_\rho[z]=\operatorname{Tr}(\rho E_z),\qquad
+  p_z=\tau(E_z)=\operatorname{Tr}(E_z)/d
+\tag{3}
+\]
+
+is its distribution on the maximally mixed input \(\rho=I/d\). Formula (2) evaluates any requested partial-prefix mass, but recomputing it from scratch at every step is unnecessary.
+
+For a dense superoperator representation, write its coefficients as
+\(B_{ab,cd;ij}=[\mathcal B(|i\rangle\langle j|)]_{ab,cd}\). Then
+
+\[
+ [\mathcal B(X)]_{ab,cd}=\sum_{ij}B_{ab,cd;ij}X_{ij},
+\]
+
+and \(\mathcal B^*(Z)\) is the corresponding Hilbert--Schmidt adjoint contraction. Each uses \(\Theta(d^6)\) multiply-adds for dense data. The Choi matrix has side length \(d^3\), hence also \(\Theta(d^6)\) entries.
+
+## Linear-tree-work conditional-state sampler
+
+Use an unnormalized positive input \(X\) at each node. The recursive routine `Sample(v,X)` returns both the selected subtree label and its pulled-back effect \(F\).
+
+* At a leaf \(v\), set \(w_a=\operatorname{Tr}(P^v_aX)\), \(t=\operatorname{Tr}X=\sum_aw_a\), sample \(a\) with probability \(w_a/t\), and return \((a,P^v_a)\). A zero-trace input is unreachable from a positive-probability branch; it can be handled as an arbitrary failure convention.
+* At an internal node, form \(Y=\mathcal B(X)\) and its left marginal \(X_0=\operatorname{Tr}_1Y\). Recursively call `Sample(v0,X0)` to get \((z_0,F_0)\). Then form the unnormalized conditional right input
+
+  \[
+    X_1=\operatorname{Tr}_0[(F_0\otimes I)Y],
+  \tag{4}
+  \]
+
+  recursively call `Sample(v1,X1)` to get \((z_1,F_1)\), and return
+
+  \[
+    ((z_0,z_1),\;\mathcal B^*(F_0\otimes F_1)).
+  \tag{5}
+  \]
+
+The operation in (4) is positive for every \(F_0\succeq0\); it is the unnormalized right state after observing the left subtree POVM effect and discarding the left system. It depends only on that effect, not on a choice of measurement instrument, because the left output is discarded.
+
+### Correctness
+
+Inductively, for every positive (not necessarily trace-one) \(X\), the returned subtree label has law
+
+\[
+  \Pr_X[z_v]=\frac{\operatorname{Tr}(X E_{v,z_v})}{\operatorname{Tr}X}.
+\tag{6}
+\]
+
+At an internal node, the left label \(z_0\) has mass
+\(q=\operatorname{Tr}[(F_0\otimes I)Y]\). Equation (4) has trace \(q\). Conditional on \(z_0\), the right recursion therefore gives
+\[
+\frac{\operatorname{Tr}(F_1X_1)}{q}
+=\frac{\operatorname{Tr}[(F_0\otimes F_1)Y]}{q}.
+\]
+Multiplying by the left probability \(q/\operatorname{Tr}X\) gives
+\[
+\frac{\operatorname{Tr}[(F_0\otimes F_1)\mathcal B(X)]}{\operatorname{Tr}X}
+=\frac{\operatorname{Tr}(X\mathcal B^*(F_0\otimes F_1))}{\operatorname{Tr}X},
+\]
+which is (6) by (1). Starting from \(X=I/d\) gives exactly \(p_z=\tau(E_z)\).
+
+This samples correlations correctly. It makes one recursive call at each explicit terminal position (a dummy \(\{I\}\) leaf is deterministic) and never enumerates the \(\prod_v|A_v|\) joint outcomes. If “without enumerating leaves” means avoiding all nontrivial receiver labels while returning the full product label, that is impossible in general: emitting the labels of \(K_{\rm real}\) measured leaves costs \(\Omega(K_{\rm real})\). The useful claim is no enumeration of joint outcome strings.
+
+## Cost and exact finite-bit model
+
+Let \(N\) be the number of internal nodes and \(K\) the terminal leaves, including any dummy leaves assigned the trivial PVM \(\{I\}\). For a full binary tree, \(N=K-1\). A single returned outcome and effect need, at each internal node, one \(\mathcal B\) contraction, one \(\mathcal B^*\) contraction, and one weighted partial trace (4). At each nontrivial leaf the routine evaluates at most \(|A_v|\le d\) scalar traces. Thus the arithmetic count is
+
+\[
+  O(Nd^6+Kd^3)=O((N+K)d^6)
+\tag{7}
+\]
+
+for dense \(\mathcal B\), plus the cost of exact categorical draws. The emitted label length is at most \(K\log_2d\). The routine also returns \(E_z\) by the same bottom-up contractions, so it can form \(p_z\) and \(x_z=E_z/p_z-I\) without a second pass. A depth-first implementation retains one \(d^2\times d^2\) output matrix per active ancestor, for working storage \(O(hd^4)\) entries at tree height \(h\), in addition to the dense channel input \(\Theta(d^6)\). Recomputing instead of retaining these matrices trades memory for more channel contractions.
+
+Assume all channel and PVM entries are rational complex numbers given in binary, and let \(L\) be their *total* input bit length plus the explicit tree encoding. Use exact fractions throughout. All state/effect entries produced by the recursion are rational. Their numerators and denominators have polynomial bit length: the expression at a node has total degree \(O(K)\) in the channel/PVM entries, bounded fan-in contractions, and at most \((d^{O(1)})^{O(K)}\) monomials; input denominators contribute at most \(O(KL)\) bits along a tree computation. Thus a crude bit-length bound is polynomial in \(K,d,L\); with the tree from the comparator application, \(K=O(d^2)\), hence this is polynomial in \(d,L\). Standard integer arithmetic therefore gives a polynomial bit-time implementation of (7). This is not a claim for arbitrary real-number entries, succinctly encoded exponential trees, or PVMs whose exact algebraic representation must first be found.
+
+For each leaf conditional draw, the exact rational probabilities \(w_a/t\) can be put over a common denominator \(D\), yielding integer weights summing to \(D\). Draw a uniform integer in \(\{0,\ldots,D-1\}\) by rejection from \(m=\lceil\log_2D\rceil\) fair bits; acceptance probability is greater than \(1/2\). The exact sampler has expected fewer than two trials per draw and expected random-bit cost \(O(m)\), independent of the smallest category probability. Since \(\log D\) is bounded by the rational bit length of the conditional probabilities, the expected bit cost is polynomial in \(K,d,L\). The full exact sampler is Las Vegas: worst-case rejection time is unbounded. To get a bounded-time sample with TV error at most \(\delta\), cap each of the \(K\) draws at \(R=\lceil\log_2(K/\delta)\rceil\) trials and, if any cap is reached, output a fixed completion. The coupling failure probability is at most \(K2^{-R}\le\delta\). This gives worst-case polynomial time in \(K,d,L,\log(1/\delta)\), stronger than polynomial in \(1/\delta\).
+
+The usual equal-depth frame tree has \(O(d^2)\) nodes. A variable-depth prefix tree may add dummy identity leaves and have more nodes: for a trie of codewords with lengths \(\ell_i\), completing every missing child by one dummy leaf gives a full tree with \(O(1+\sum_i\ell_i)\) nodes. Thus the sampler is polynomial in \(d\), input bits, and the *explicit tree size*; if \(\ell_i=\lceil-\log_2q_i\rceil\) for rational input weights, their bit lengths charge these depths. The sampling cost is not necessarily polynomial in \(d\) alone when codeword lengths are large. If a tree is supplied succinctly with \(K=2^n\) leaves and the requested output is the full length-\(K\) label, no algorithm can run in polynomial time in the succinct tree description: writing the output alone costs \(\Omega(K)\). This output-size obstruction disappears when the tree is explicit and its encoding length is included in inputbits.
+
+## Rare outcomes, precision, and what the oracle does not settle
+
+The sampler never normalizes a postselected matrix state. It carries (4) unnormalized and divides only the scalar weights when drawing the next local outcome. Thus no matrix step multiplies by \(1/p_{\rm prefix}\). A nonzero prefix can have exponentially small mass, but under rational finite-bit inputs its negative log is bounded by the bit length of the exact contraction, which is polynomial in \(K,d,L\). Exact integer sampling does not require work proportional to \(1/p_{\min}\). If the selected final outcome has mass \(p_z&gt;0\), computing \(E_z/p_z\) exactly also costs polynomial bit time; moreover positivity gives the value bound below, even though the reduced rational entries can carry \(O(\log(1/p_z))\) additional bits.
+
+By contrast, a floating-point sampler that renormalizes each rare conditional state is ill-conditioned: an absolute error \(\epsilon\) in unnormalized branch masses can induce conditional-distribution error of order \(\epsilon/p_{\rm prefix}\). Exact rational arithmetic avoids this. For approximate inputs, one can also drop branches whose total probability is at most the TV error budget, but such a robust truncation requires certified mass/error bounds. A finite-precision channel estimate is not the exact channel premise; its per-node error can accumulate over \(K-1\) uses, and rounding can break complete positivity or trace preservation. No stability theorem for the outer separating comparator follows from this sampling analysis.
+
+As a bounded-sample corollary, for any nonzero-probability effect set
+\[
+  S_z=E_z/p_z,\qquad x_z=S_z-I.
+\]
+Then \(\tau(S_z)=1\), \(\mathbb E_p S_z=I\), and \(\mathbb E_p x_z=0\). For \(A\) traceless Hermitian, the canonical measurement map obeys
+\[
+  \Psi_M(A)=\sum_zp_z\,\tau(S_zA)S_z
+           =\mathbb E_p[\tau(x_zA)x_z].
+\tag{8}
+\]
+Also, because \(S_z\succeq0\) and \(\operatorname{Tr}S_z=d\),
+\[
+  \|x_z\|_{2,\tau}^2=\tau(S_z^2)-1\le d-1.
+\tag{9}
+\]
+Thus rare outcomes do not create unbounded sample vectors. For example, Hilbert-space Hoeffding applied to \(|x_z\rangle\langle x_z|\) gives an additive Frobenius (hence operator-norm) covariance estimate \(\delta\) with
+\(N=O((d-1)^2\delta^{-2}\log(1/\eta))\) independent exact samples at failure probability \(\eta\). This estimates the fixed supplied tree POVM&#x27;s covariance; an empirical covariance need not itself be an exactly unital canonical EB channel, and it does not compute the one common comparator obtained by separation.
+
+## Concrete failure of independent-marginal sampling
+
+For \(d=2\), take the exact symmetric measure-and-prepare broadcaster
+\[
+  \mathcal B(\rho)=\sum_{b=0}^1\langle b|\rho|b\rangle\,|bb\rangle\langle bb|.
+\]
+Its Kraus operators are \(|bb\rangle\langle b|\), so it is CPTP and swap-symmetric. On a one-split tree with the computational PVM at both leaves,
+\[
+  E_{ab}=\mathcal B^*(|a\rangle\langle a|\otimes|b\rangle\langle b|)
+        =\mathbf 1_{a=b}|a\rangle\langle a|.
+\]
+On \(I/2\), the joint law is \(p_{00}=p_{11}=1/2\), \(p_{01}=p_{10}=0\). Each marginal is uniform, so independently sampling the two marginals gives the wrong product law at TV distance \(1/2\). The recursive sampler gets the right correlation: after the left result \(a\), (4) is \(\frac12|a\rangle\langle a|\), making the right result deterministically \(a\). The same example extends to a variable-depth three-leaf comb: only \(000\) and \(111\) occur, each with probability \(1/2\).
+
+## Exact conclusion
+
+For an explicitly represented rational dense channel, rational leaf PVMs, and tree, one can sample \(z\sim\tau(E_z)\) exactly and return its full effect \(E_z\) in expected polynomial bit time in \(d\) and total input length \(L\). A bounded-time \(\delta\)-approximate implementation is also polynomial, with only logarithmic dependence on \(1/\delta\). The recursion processes every explicit tree node but never enumerates the exponentially many joint outcomes. No lower bound defeats this claim in the stated rational model. The relevant failure modes are a succinct tree with exponentially long requested output, arbitrary-real/black-box data without finite-bit access, floating-point conditioning on rare prefixes, and confusing this fixed-tree sampling oracle with an efficient construction of the universal separated comparator.
+</pre><p><a href="../assets/8d534ed6de3584cf4de5294bd4f73a403e282d683e6e8a2262e5901368de8b99.md">Exact original</a></p></html>

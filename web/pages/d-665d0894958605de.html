@@ -1,0 +1,72 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c8_genome_engineering/code/boundary_threshold.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c8_genome_engineering/code/boundary_threshold.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Evaluate a conditional linear-invasion threshold for a finite HAC boundary.
+
+This is a screening formula, not a fitted biological model. No source-derived
+values for D, a, gamma, C_star, or local replication age are available. Supply
+them explicitly; the output is conditional on a uniform vulnerable segment,
+fixed low-H3K9 endpoints, and a logistic H3K9 reaction linearized near zero.
+
+Example (dimensionless placeholders only; NOT empirical):
+  python3 boundary_threshold.py --bins 8 --spread 0.02 --amplification 0.4 \
+      --clearance 0.05 --c-star 1.0
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import argparse
+import math
+
+
+def threshold(bins: int, spread: float, amplification: float,
+              clearance: float, c_star: float) -&gt; dict[str, float | str]:
+    if bins &lt; 1:
+        raise ValueError(&quot;bins must be at least 1&quot;)
+    if min(spread, amplification, clearance, c_star) &lt; 0 or c_star == 0:
+        raise ValueError(&quot;rates and C_star must be nonnegative, with C_star &gt; 0&quot;)
+    laplacian_penalty = 4.0 * spread * math.sin(math.pi / (2.0 * (bins + 1))) ** 2
+    critical_deficit = (clearance + laplacian_penalty) / amplification if amplification else math.inf
+    if critical_deficit &gt; 1:
+        critical_c = 0.0
+        regime = &quot;no_invasion_even_at_maximal_deficit_in_this_linear_screen&quot;
+    elif critical_deficit &lt; 0:
+        critical_c = c_star
+        regime = &quot;invasion_for_all_deficits_in_this_linear_screen&quot;
+    else:
+        critical_c = c_star * (1.0 - critical_deficit)
+        regime = &quot;invasion_when_CENP_A_below_critical_level&quot;
+    dominant_growth = amplification - clearance - laplacian_penalty
+    return {
+        &quot;bins&quot;: bins,
+        &quot;effective_spatial_spread_D&quot;: spread,
+        &quot;deficit_amplification_a&quot;: amplification,
+        &quot;clearance_gamma&quot;: clearance,
+        &quot;C_star&quot;: c_star,
+        &quot;diffusion_eigenvalue_penalty&quot;: laplacian_penalty,
+        &quot;critical_CENP_A_deficit_q&quot;: critical_deficit,
+        &quot;critical_CENP_A_level&quot;: critical_c,
+        &quot;max_deficit_dominant_growth_rate_per_hour&quot;: dominant_growth,
+        &quot;maximum_deficit_invades&quot;: dominant_growth &gt; 0,
+        &quot;regime&quot;: regime,
+        &quot;status&quot;: &quot;conditional_model_output_not_measurement_or_validated_prediction&quot;,
+    }
+
+
+def main() -&gt; None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(&quot;--bins&quot;, type=int, required=True)
+    parser.add_argument(&quot;--spread&quot;, type=float, required=True,
+                        help=&quot;effective spatial coupling D, per hour&quot;)
+    parser.add_argument(&quot;--amplification&quot;, type=float, required=True,
+                        help=&quot;max deficit-linked H3K9 growth a, per hour&quot;)
+    parser.add_argument(&quot;--clearance&quot;, type=float, required=True,
+                        help=&quot;H3K9 clearance gamma, per hour&quot;)
+    parser.add_argument(&quot;--c-star&quot;, type=float, required=True,
+                        help=&quot;CENP-A reference level C_star&quot;)
+    args = parser.parse_args()
+    import json
+    print(json.dumps(threshold(args.bins, args.spread, args.amplification,
+                               args.clearance, args.c_star), indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/752fab1b9f97495c2420d2e36f713b9480c76e444a74df1b50b4d6a6cddbf52b.py">Exact original</a></p></html>

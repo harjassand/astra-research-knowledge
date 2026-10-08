@@ -1,0 +1,132 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/systems_metabolism/reaction_graphs/verify_rational_lift_fixture.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/systems_metabolism/reaction_graphs/verify_rational_lift_fixture.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact Fraction replay of the rational-rate common-denominator fixture.&quot;&quot;&quot;
+
+from collections import defaultdict
+from fractions import Fraction as F
+
+
+def add(a, b):
+    out = defaultdict(F)
+    for k, v in a.items():
+        out[k] += v
+    for k, v in b.items():
+        out[k] += v
+    return {k: v for k, v in out.items() if v}
+
+
+def mul(a, b):
+    out = defaultdict(F)
+    for i, ai in a.items():
+        for j, bj in b.items():
+            out[i + j] += ai * bj
+    return {k: v for k, v in out.items() if v}
+
+
+def product(polys):
+    out = {0: F(1)}
+    for p in polys:
+        out = mul(out, p)
+    return out
+
+
+def evaluate(p, x):
+    x = F(x)
+    return sum((c * x**k for k, c in p.items()), F(0))
+
+
+def height(p):
+    return max(p)
+
+
+one_plus_x = {0: F(1), 1: F(1)}
+one_plus_x2 = {0: F(1), 2: F(1)}
+one_plus_x_sq = {0: F(1), 2: F(1)}
+x3 = {3: F(1)}
+
+edges = [
+    {&quot;p&quot;: one_plus_x_sq, &quot;q&quot;: one_plus_x, &quot;k&quot;: F(1), &quot;nu_x&quot;: -1, &quot;nu_y&quot;: 0},
+    {&quot;p&quot;: one_plus_x, &quot;q&quot;: one_plus_x2, &quot;k&quot;: F(1), &quot;nu_x&quot;: 1, &quot;nu_y&quot;: 0},
+    {&quot;p&quot;: x3, &quot;q&quot;: one_plus_x, &quot;k&quot;: F(1), &quot;nu_x&quot;: 0, &quot;nu_y&quot;: 1},
+    {&quot;p&quot;: one_plus_x_sq, &quot;q&quot;: one_plus_x, &quot;k&quot;: F(2), &quot;nu_x&quot;: 1, &quot;nu_y&quot;: 0},
+]
+
+denominator = product([edge[&quot;q&quot;] for edge in edges])
+lifted = []
+for e, edge in enumerate(edges):
+    other_q = [candidate[&quot;q&quot;] for j, candidate in enumerate(edges) if j != e]
+    lifted.append(mul(edge[&quot;p&quot;], product(other_q)))
+
+assert denominator == {0: F(1), 1: F(3), 2: F(4), 3: F(4), 4: F(3), 5: F(1)}
+assert lifted[0] == lifted[3] == {
+    0: F(1), 1: F(2), 2: F(3), 3: F(4), 4: F(3), 5: F(2), 6: F(1)
+}
+assert lifted[1] == {0: F(1), 1: F(4), 2: F(6), 3: F(4), 4: F(1)}
+assert lifted[2] == {3: F(1), 4: F(2), 5: F(2), 6: F(2), 7: F(1)}
+
+# For w=(1,0), all exponents only involve X, so source heights are polynomial degrees.
+h_p = [height(edge[&quot;p&quot;]) for edge in edges]
+h_q = [height(edge[&quot;q&quot;]) for edge in edges]
+tau = [a - b for a, b in zip(h_p, h_q)]
+h_d = height(denominator)
+h_lift = [height(p) for p in lifted]
+assert tau == [1, -1, 2, 1]
+assert h_d == 5
+assert h_lift == [6, 4, 7, 6]
+assert h_lift == [h_d + order for order in tau]
+
+nu_dot_w = [edge[&quot;nu_x&quot;] for edge in edges]
+essential = [i for i, value in enumerate(nu_dot_w) if value != 0]
+essential_max = max(tau[i] for i in essential)
+top_tied = [i for i in essential if tau[i] == essential_max]
+assert essential == [0, 1, 3]
+assert top_tied == [0, 3]
+assert [nu_dot_w[i] for i in top_tied] == [-1, 1]
+assert tau[2] &gt; essential_max and nu_dot_w[2] == 0  # Neutral high-order channel is excluded.
+
+
+def direct_flux_x(x):
+    rates = [edge[&quot;k&quot;] * evaluate(edge[&quot;p&quot;], x) / evaluate(edge[&quot;q&quot;], x) for edge in edges]
+    return sum((edge[&quot;nu_x&quot;] * rate for edge, rate in zip(edges, rates)), F(0))
+
+
+def lifted_flux_x(x):
+    return sum((edge[&quot;k&quot;] * edge[&quot;nu_x&quot;] * evaluate(p, x)
+                for edge, p in zip(edges, lifted)), F(0))
+
+
+measurements = {}
+for x in (10, 100):
+    d_value = evaluate(denominator, x)
+    fx = direct_flux_x(x)
+    gx = lifted_flux_x(x)
+    assert gx == d_value * fx
+    rates = [edge[&quot;k&quot;] * evaluate(edge[&quot;p&quot;], x) / evaluate(edge[&quot;q&quot;], x) for edge in edges]
+    fy = rates[2]
+    gy = evaluate(lifted[2], x)
+    assert gy == d_value * fy
+    measurements[x] = {&quot;D&quot;: d_value, &quot;f_x&quot;: fx, &quot;D_f_x&quot;: gx,
+                       &quot;f_y&quot;: fy, &quot;D_f_y&quot;: gy, &quot;rates&quot;: rates}
+
+ratio_f = measurements[100][&quot;f_x&quot;] / measurements[10][&quot;f_x&quot;]
+ratio_g = measurements[100][&quot;D_f_x&quot;] / measurements[10][&quot;D_f_x&quot;]
+assert measurements[10][&quot;D&quot;] == 134431
+assert measurements[10][&quot;f_x&quot;] == F(10322, 1111)
+assert measurements[10][&quot;D_f_x&quot;] == 1248962
+assert measurements[10][&quot;f_y&quot;] == F(1000, 11)
+assert measurements[10][&quot;D_f_y&quot;] == 12221000
+assert measurements[100][&quot;D&quot;] == 10304040301
+assert measurements[100][&quot;f_x&quot;] == F(100030202, 1010101)
+assert measurements[100][&quot;D_f_x&quot;] == 1020408090602
+assert ratio_f == F(550166111, 51615161)
+assert ratio_g == F(510204045301, 624481)
+
+print(&quot;common denominator coefficients:&quot;, denominator)
+print(&quot;lifted source polynomials:&quot;, lifted)
+print(&quot;tropical orders tau:&quot;, tau)
+print(&quot;common height and lifted heights:&quot;, h_d, h_lift)
+print(&quot;essential indices / top tie indices:&quot;, essential, top_tied)
+print(&quot;exact measurements:&quot;, measurements)
+print(&quot;exact 10-to-100 net X-flux ratio:&quot;, ratio_f)
+print(&quot;exact 10-to-100 lifted X-flux ratio:&quot;, ratio_g)
+print(&quot;PASS: exact expansion, identity, active-tie, and neutral-exclusion checks&quot;)
+</pre><p><a href="../assets/56e96021a9c02b8e7e19dc7bae43d24432190e5604b902068332ecf9cd162b42.py">Exact original</a></p></html>

@@ -1,0 +1,187 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/acquisition_learning/cycle4/renewal_integer_code/nfactorial/RESULT.txt</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/acquisition_learning/cycle4/renewal_integer_code/nfactorial/RESULT.txt</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>CYCLE 4 CONSEQUENCE — N!-SCALED EXACT RENEWAL PREDICTOR
+Date: 2026-10-08
+Status: EXACT ARITHMETIC REFACTOR; FINITE EQUIVALENCE CHECKS PASS; NOVELTY UNKNOWN
+
+1. RESULT
+
+I implemented the existing type-first stationary-renewal predictor with a
+single (N!)^2 integer denominator for every nonzero suffix marginal, where
+N=n+1. The fixed-horizon assignment Q_N, suffix definition, HJW averaging
+rule, raw-path interface, and risk theorem are unchanged. The modified code is
+in work/programmes/acquisition_learning/cycle4/renewal_integer_code/nfactorial/.
+The previous implementation remains untouched.
+
+The arithmetic change is practically useful on dense renewal histories. With
+history 0,1,0,1,... at even lengths, median uninstrumented wall time at n=120
+fell from 1.362 s to 0.399 s (3.41x), and the largest integer in the suffix
+marginal scaling fell from 10,234 to 1,367 bits. Python-tracked peak memory
+fell from 1,273,192 to 1,238,040 bytes (2.8%). The exact final predictor output
+still contains components up to 20,519 bits, so output averaging remains a
+separate large-integer cost. The all-zero path uses the same rational formulas
+in both implementations and showed no consistent speed or memory difference.
+
+The arithmetic refactor does not alter information cost or the guarantee:
+one raw stationary binary history of n bits is still the only data, with no
+resets, event queries, source mean, support cutoff, or hidden labels. For all
+stationary renewal laws with iid positive-integer gaps of finite mean, the
+same fixed-horizon Q_N has pointwise KL redundancy at most
+
+    pi*sqrt(2n/3) + 2*log(n+1) + log(2).
+
+Combining this with Han–Jiang–Wu Proposition 1 and their renewal memory bound
+log(n+2)/n gives the unchanged expected next-symbol KL risk bound
+
+    [pi*sqrt(2n/3) + 2*log(n+1) + log(2) + log(n+2)] / n = O(n^(-1/2)).
+
+The external result states the renewal minimax risk is Theta(n^(-1/2)); the
+implementation here only changes arithmetic constants and bit growth, not
+that statistical result. Source: Han, Jiang, and Wu, arXiv:2404.15454v1,
+Proposition 1, Theorem 4, and Section 3.4:
+https://arxiv.org/html/2404.15454v1
+
+2. EXACT N!-SCALED PREFIX FORMULA
+
+For a suffix y containing a one, let r be the number of already observed
+completed gaps, s0 their total length, and let c be the residual-span cutoff
+from the fixed horizon. Let A_{beta,q}, B_{beta,q}, C_{beta,q} be the same
+integer coefficient arrays as in the prior implementation: A counts
+completion types, B marks residual gaps that preserve the observed trailing
+zeros, and C marks residual gaps that place a one at the next time. Let
+
+    F_q = (r+q)!/(q-1)!,   V_beta = N-s0-beta.
+
+After canceling the common type-class factor, the old exact marginal was
+
+    D = 1/[r!(N-s0)] + sum_{beta,q&gt;=1} B_{beta,q}/(F_q V_beta),
+    M =                 sum_{beta,q&gt;=1} C_{beta,q}/(F_q V_beta),
+    Q_N(y followed by 1) / Q_N(y) = M/D.
+
+The sums use only beta&lt;=c and 1&lt;=q&lt;=beta. If a is the first-one position in
+the suffix, feasibility gives
+
+    r+q &lt;= r+beta &lt;= r+N-s0-a &lt;= N-a &lt;= N-1.
+
+Thus F_q divides N!: N!/F_q = [N!/(r+q)!]*(q-1)! is an integer. The positive
+slack V_beta is at most N and also divides N!. Each factor in
+r!(N-s0) divides N!, so the q=0 term also has denominator dividing (N!)^2.
+All terms can therefore be represented exactly as integers:
+
+    Dbar = (N!/r!)*(N!/(N-s0))
+           + sum B_{beta,q} (N!/F_q)(N!/V_beta),
+    Mbar =   sum C_{beta,q} (N!/F_q)(N!/V_beta),
+    Q_N(y followed by 1) / Q_N(y) = Mbar/Dbar.
+
+The ratios N!/F_q and N!/V_beta are exact divisions. This removes the old
+per-suffix products over every F_q and every V_beta. The all-zero suffix
+formula is left as its direct Fraction calculation; factorial scales are
+skipped altogether if the raw history contains no one.
+
+The coefficient DP is unchanged: the base marked tables take O(N^3) cell
+updates; each newly included completed gap takes O(N^2); and the suffix scan&#x27;s
+weighted marginal sums take O(N^3) cells in total. Hence the arithmetic
+operation count remains O(N^3). Coefficients have O(N) bits. N! and the
+per-suffix scaled marginal have O(N log N) bits. Averaging the n exact
+conditionals can still produce an O(n^2 log n)-scale rational output under
+the conservative denominator-product bound; the observed output widths below
+show that this last stage is not removed by the N! scaling.
+
+3. EXPERIMENTAL COMPARISON
+
+The baseline is the audited Fraction implementation at
+work/programmes/acquisition_learning/cycle4/renewal_integer_code/predictor.py.
+Both implementations receive the same raw sequence and compute the same
+fixed N=n+1 assignment, all suffix conditionals, and exact HJW terminal
+predictor. Wall time is the median of three uninstrumented calls per entry.
+Peak allocation is a separate run measured with Python tracemalloc; these
+numbers are traced Python allocations, not process RSS and not total native
+runtime memory. Environment: Python 3.14.3, macOS 26.4, arm64. Times are local
+measurements, not a hardware-independent complexity claim.
+
+Dense active histories use 0,1,0,1,... with even n, so every suffix contains a
+one and completed gaps all have length two. “Transient bits” is the largest
+old common denominator product or scaled marginal accumulator, versus the
+largest new scale product or scaled marginal accumulator; it excludes the
+final HJW average. “Output bits” is the largest numerator/denominator
+component in the returned exact pair.
+
+ n    old/new seconds   speedup   old/new traced peak KiB   old/new transient bits   output bits
+ 24   0.002589/0.001776  1.46x    47.2/49.0               304/179                762
+ 40   0.008995/0.008927  1.01x   133.1/135.0              915/346               2132
+ 56   0.032270/0.024046  1.34x   259.0/261.6             1911/530               4300
+ 72   0.084469/0.057985  1.46x   430.9/427.3             3321/726               7231
+ 88   0.243165/0.113134  2.15x   647.5/639.5             5167/932              10826
+104   0.623327/0.195155  3.19x   917.6/898.8             7467/1146             15284
+120   1.362278/0.399172  3.41x  1243.4/1209.0           10234/1367             20519
+
+At n=120, the major exact-arithmetic operation ledger for the alternating
+history is:
+
+  * Both: 1,011,501 coefficient-update cells, 295,240 weighted marginal
+    cells, and 4,651,004 integer additions. The latter includes the
+    partition recurrence, A/B/C coefficient updates and two accumulations per
+    weighted cell.
+  * Old: 900,480 integer multiplications and 22,020 exact integer divisions;
+    7,260 q-factor products and 7,380 slack-factor products. The largest
+    common product is 10,234 bits.
+  * New: 885,961 integer multiplications and 14,881 exact integer divisions;
+    largest scale or marginal accumulator is 1,367 bits. The common
+    denominator product is replaced by one N! table and direct N!-quotients.
+  * Both: 245 Fraction constructions, 242 rational additions, zero rational
+    multiplications and one rational division for this all-nonzero-suffix
+    history. These counts include the prefix rational table, all exact suffix
+    fractions, and final average/output arithmetic. Fraction-internal gcd
+    work is included in wall time but not counted as a separate operation.
+  * The input is 120 raw bits. The exact output has p0 numerator/denominator
+    widths 20,519/20,519 bits and p1 widths 20,514/20,519 bits; encoding p1
+    alone takes 41,033 bits as a numerator/denominator pair, with p0=1-p1.
+    The raw JSON ledger also reports the naïve sum of all four component
+    widths.
+
+The integer counters cover explicit Python-level loop additions,
+multiplications and exact divisions in the partition, coefficient, scaling
+and marginal passes. They exclude Python indexing/control and the internal
+arithmetic performed inside math.factorial; the rational operation counts
+exclude the gcd work inside Fraction. These costs are included in the measured
+wall time.
+
+An all-zero path exercises the rational zero-prefix branch instead. At n=120,
+both versions use 245 Fraction constructions, 482 rational additions, 120
+rational multiplications and 361 rational divisions; output widths match
+(largest component 18,044 bits). The benchmark measured 2.53 ms old versus
+3.12 ms new and 53,416 versus 53,616 traced bytes, so this branch has no
+meaningful improvement. This is expected: its formulas remain rational and do
+not use the new integer scaling.
+
+The O(N^3) coefficient recurrence and O(N^3) weighted marginal pass are the
+remaining time costs. A cProfile diagnostic on the alternating n=120 history
+attributed about 1.974 s of the old 2.266 s profiled call to the per-suffix
+common-denominator summation. In the new 0.640 s profiled call, that sum took
+0.362 s; all _update_geometric calls took 0.270 s cumulatively, including
+0.124 s inside the base table constructor (these profiled ranges overlap and
+include instrumentation, so they are not additive and are not the median
+times in the table). The arithmetic refactor makes the unchanged coefficient
+work visible as a co-dominant cost. A per-suffix LCM may reduce scale widths
+further, but was deferred: it introduces many suffix-dependent gcd operations,
+while the current N! scheme already cuts the measured transient width by 7.5x
+at n=120. No claim is made that N! is a bit-optimal common denominator.
+
+4. EXACTNESS CHECKS AND REPRODUCTION
+
+check_equivalence.py passed for all 1,022 raw histories of lengths 1 through
+9 and 40 structured or deterministic-random histories at lengths 10, 12, 16,
+and 20. Across those cases, 8,774 suffix conditional probabilities matched
+both (i) the audited Fraction predictor and (ii) the independent literal
+count-vector type-first prefix formula. The full exact terminal output also
+matched the old predictor on every history. This is finite arithmetic
+evidence; the divisibility argument above supplies the algebraic equivalence.
+
+Reproduce from the repository root:
+
+    python3 work/programmes/acquisition_learning/cycle4/renewal_integer_code/nfactorial/check_equivalence.py
+    python3 work/programmes/acquisition_learning/cycle4/renewal_integer_code/nfactorial/benchmark.py 24 40 56 72 88 104 120
+
+The second command writes no files; the captured measurement used for this
+report is outputs/research/acquisition_learning/cycle4/renewal_integer_code/nfactorial/benchmark.json.
+The executable code and both diagnostics live in the sibling work/.../nfactorial/
+directory. Novelty and priority remain UNKNOWN.
+</pre><p><a href="../assets/924334ac87d49462e3cdff6be83814351d63d03e7afd9ac377ae51f4d945cc2b.txt">Exact original</a></p></html>

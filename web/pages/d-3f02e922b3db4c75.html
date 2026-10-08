@@ -1,0 +1,351 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c9_protein_evolvability/censor_analysis/jun_count_model.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c9_protein_evolvability/censor_analysis/jun_count_model.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Count-level reanalysis of JUN x bZIP DMS with zero outputs retained.
+
+For each JUN variant / wild-type bZIP pair, condition on the two output counts
+(variant, WT JUN) within each biological replicate. Under a common sequencing
+and selection-depth nuisance factor, this is a binomial model whose log-odds
+offset is the ratio of matched input counts. The fitted parameter is the
+variant&#x27;s log relative enrichment versus WT JUN for the same partner. Zero
+outputs are retained as valid likelihood observations; replicate input zero
+is omitted because that replicate gives no input-offset information.
+
+This is a diagnostic count model, not the published MoCHI fit and not a
+biophysical binding-energy model. Its profile intervals condition on observed
+input counts and do not model between-replicate overdispersion.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import csv
+import gzip
+import json
+import math
+import os
+from collections import defaultdict
+
+
+ROOT = os.path.dirname(__file__)
+DATA = os.path.join(
+    ROOT,
+    &quot;../children/released_data/data/GSE245326_Supplementary_Data_3.txt.gz&quot;,
+)
+DATA = os.path.abspath(DATA)
+OUT = ROOT
+CHI2_95_HALF = 1.920729410347062
+TARGET = {&quot;FOS&quot;, &quot;FOSB&quot;, &quot;FOSL1&quot;, &quot;FOSL2&quot;}
+
+
+def read_table(path: str):
+    rows = {}
+    with gzip.open(path, &quot;rt&quot;) as f:
+        for row in csv.DictReader(f, delimiter=&quot;\t&quot;):
+            row[&quot;filt&quot;] = row[&quot;filt&quot;] == &quot;TRUE&quot;
+            rows[(row[&quot;id&quot;], row[&quot;bZ&quot;])] = row
+    return rows
+
+
+def logistic(logit: float) -&gt; float:
+    if logit &gt;= 0:
+        return 1.0 / (1.0 + math.exp(-logit))
+    e = math.exp(logit)
+    return e / (1.0 + e)
+
+
+def log_likelihood(delta: float, obs) -&gt; float:
+    ans = 0.0
+    for i, iw, o, ow in obs:
+        p = logistic(delta + math.log(i) - math.log(iw))
+        total = o + ow
+        if o:
+            ans += o * math.log(p)
+        if ow:
+            ans += ow * math.log1p(-p)
+    return ans
+
+
+def score(delta: float, obs):
+    grad = hess = 0.0
+    for i, iw, o, ow in obs:
+        p = logistic(delta + math.log(i) - math.log(iw))
+        total = o + ow
+        grad += o - total * p
+        hess -= total * p * (1.0 - p)
+    return grad, hess
+
+
+def make_observations(row, wt, min_input=1):
+    obs = []
+    for r in range(1, 7):
+        i = int(row[f&quot;count_e{r}_s0&quot;])
+        iw = int(wt[f&quot;count_e{r}_s0&quot;])
+        o = int(row[f&quot;count_e{r}_s1&quot;])
+        ow = int(wt[f&quot;count_e{r}_s1&quot;])
+        if i &gt;= min_input and iw &gt; 0 and (o + ow) &gt; 0:
+            obs.append((i, iw, o, ow))
+    return obs
+
+
+def fit_profile(row, wt, min_input=1, lr_half=CHI2_95_HALF):
+    &quot;&quot;&quot;MLE and 95% profile-likelihood interval for one variant/partner.
+
+    Infinite MLEs are retained as one-sided confidence bounds. A row with no
+    informative biological replicate returns None.
+    &quot;&quot;&quot;
+    obs = make_observations(row, wt, min_input=min_input)
+    if not obs:
+        return None
+    lo, hi = -40.0, 40.0
+    glo, _ = score(lo, obs)
+    ghi, _ = score(hi, obs)
+    if glo &lt;= 0:
+        # Every informative output count favors the WT comparator.
+        d_hat = -math.inf
+        ll_max = log_likelihood(lo, obs)
+    elif ghi &gt;= 0:
+        d_hat = math.inf
+        ll_max = log_likelihood(hi, obs)
+    else:
+        d_hat = 0.0
+        for _ in range(150):
+            g, h = score(d_hat, obs)
+            if abs(g) &lt; 1e-10:
+                break
+            candidate = d_hat - g / h if h else (lo + hi) / 2
+            if not lo &lt; candidate &lt; hi:
+                candidate = (lo + hi) / 2
+            if g &gt; 0:
+                lo = d_hat
+            else:
+                hi = d_hat
+            d_hat = candidate
+        ll_max = log_likelihood(d_hat, obs)
+
+    threshold = ll_max - lr_half
+
+    def bisect_crossing(a, b):
+        # Return the profile-likelihood boundary between one inside and one
+        # outside endpoint, regardless of which side contains the MLE.
+        inside_a = log_likelihood(a, obs) &gt;= threshold
+        for _ in range(100):
+            mid = (a + b) / 2
+            inside = log_likelihood(mid, obs) &gt;= threshold
+            if inside == inside_a:
+                a = mid
+            else:
+                b = mid
+        return (a + b) / 2
+
+    if d_hat == -math.inf:
+        lower = -math.inf
+        upper = bisect_crossing(-40.0, 40.0)
+    elif d_hat == math.inf:
+        lower = bisect_crossing(-40.0, 40.0)
+        upper = math.inf
+    else:
+        step = 1.0
+        a = d_hat - step
+        while log_likelihood(a, obs) &gt;= threshold and a &gt; -100:
+            step *= 2
+            a = d_hat - step
+        lower = bisect_crossing(a, d_hat)
+        step = 1.0
+        b = d_hat + step
+        while log_likelihood(b, obs) &gt;= threshold and b &lt; 100:
+            step *= 2
+            b = d_hat + step
+        upper = bisect_crossing(d_hat, b)
+    return {&quot;estimate&quot;: d_hat, &quot;lower95&quot;: lower, &quot;upper95&quot;: upper,
+            &quot;n_reps&quot;: len(obs), &quot;loglik&quot;: ll_max}
+
+
+def pearson(xs, ys):
+    n = len(xs)
+    mx = sum(xs) / n
+    my = sum(ys) / n
+    xx = sum((x - mx) ** 2 for x in xs)
+    yy = sum((y - my) ** 2 for y in ys)
+    xy = sum((x - mx) * (y - my) for x, y in zip(xs, ys))
+    return xy / math.sqrt(xx * yy)
+
+
+def normal_cdf(z):
+    return 0.5 * math.erfc(-z / math.sqrt(2.0))
+
+
+def normal_quantile(p):
+    lo, hi = -10.0, 10.0
+    for _ in range(100):
+        mid = (lo + hi) / 2.0
+        if normal_cdf(mid) &lt; p:
+            lo = mid
+        else:
+            hi = mid
+    return (lo + hi) / 2.0
+
+
+def json_number(x):
+    return x if math.isfinite(x) else str(x)
+
+
+def main():
+    rows = read_table(DATA)
+    wt = {partner: row for (variant, partner), row in rows.items()
+          if variant == &quot;0xx&quot;}
+    estimates = {}
+    accepted_pairs = []
+    count_stats = {&quot;all_rows&quot;: len(rows), &quot;source_qc_pass&quot;: 0,
+                   &quot;source_qc_fail&quot;: 0, &quot;zero_output_rows&quot;: 0,
+                   &quot;input_low_rows&quot;: 0, &quot;retained_zero_output_rows&quot;: 0,
+                   &quot;estimable_with_any_positive_input&quot;: 0,
+                   &quot;estimable_with_4plus_replicates&quot;: 0}
+    for (variant, partner), row in rows.items():
+        if variant == &quot;0xx&quot;:
+            continue
+        count_stats[&quot;source_qc_fail&quot; if row[&quot;filt&quot;] else &quot;source_qc_pass&quot;] += 1
+        counts_i = [int(row[f&quot;count_e{r}_s0&quot;]) for r in range(1, 7)]
+        counts_o = [int(row[f&quot;count_e{r}_s1&quot;]) for r in range(1, 7)]
+        zero_o = any(x == 0 for x in counts_o)
+        low_i = any(x &lt;= 10 for x in counts_i)
+        count_stats[&quot;zero_output_rows&quot;] += int(zero_o)
+        count_stats[&quot;input_low_rows&quot;] += int(low_i)
+        count_stats[&quot;retained_zero_output_rows&quot;] += int(zero_o and not row[&quot;filt&quot;])
+        est = fit_profile(row, wt[partner], min_input=1)
+        if est:
+            count_stats[&quot;estimable_with_any_positive_input&quot;] += 1
+            count_stats[&quot;estimable_with_4plus_replicates&quot;] += int(est[&quot;n_reps&quot;] &gt;= 4)
+            estimates[(variant, partner)] = est
+            if not row[&quot;filt&quot;] and math.isfinite(est[&quot;estimate&quot;]):
+                published = row[&quot;rel&quot;]
+                if published not in (&quot;&quot;, &quot;NA&quot;):
+                    accepted_pairs.append((est[&quot;estimate&quot;], float(published)))
+
+    xs = [x for x, y in accepted_pairs]
+    ys = [y for x, y in accepted_pairs]
+    slope = sum(x * y for x, y in accepted_pairs) / sum(x * x for x, y in accepted_pairs)
+    fitted = [slope * x for x in xs]
+    rmse = math.sqrt(sum((p - y) ** 2 for p, y in zip(fitted, ys)) / len(ys))
+    calibration = {&quot;n_accepted_finite_pairs&quot;: len(xs),
+                   &quot;pearson_count_logodds_vs_published_rel&quot;: pearson(xs, ys),
+                   &quot;zero_intercept_scale_published_score_per_logodds&quot;: slope,
+                   &quot;rmse_after_scale&quot;: rmse}
+
+    partners = sorted(wt)
+    variants = sorted({v for v, p in rows if v != &quot;0xx&quot;})
+    ranking = []
+    for variant in variants:
+        all_est = [estimates.get((variant, p)) for p in partners]
+        if sum(e is not None and e[&quot;n_reps&quot;] &gt;= 4 and math.isfinite(e[&quot;estimate&quot;])
+               for e in all_est) &lt; 48:
+            continue
+        by_partner = {p: estimates.get((variant, p)) for p in partners}
+        target = [by_partner[p][&quot;estimate&quot;] for p in sorted(TARGET)
+                  if p in by_partner and by_partner[p] and math.isfinite(by_partner[p][&quot;estimate&quot;])]
+        off = [by_partner[p][&quot;estimate&quot;] for p in partners if p not in TARGET
+               and by_partner[p] and math.isfinite(by_partner[p][&quot;estimate&quot;])]
+        if len(target) != len(TARGET) or len(off) &lt; 40:
+            continue
+        mean_t = sum(target) / len(target)
+        max_off = max(off)
+        ranking.append({&quot;variant&quot;: variant, &quot;target_mean_logodds&quot;: mean_t,
+                        &quot;target_min_logodds&quot;: min(target),
+                        &quot;max_offtarget_logodds&quot;: max_off,
+                        &quot;mean_minus_maxoff_logodds&quot;: mean_t - max_off,
+                        &quot;source_qc_filtered_target_pairs&quot;: sum(rows[(variant,p)][&quot;filt&quot;] for p in TARGET if (variant,p) in rows),
+                        &quot;source_qc_filtered_offtarget_pairs&quot;: sum(rows[(variant,p)][&quot;filt&quot;] for p in partners if p not in TARGET and (variant,p) in rows)})
+    ranking.sort(key=lambda x: x[&quot;mean_minus_maxoff_logodds&quot;], reverse=True)
+
+    # Conservative simultaneous profile-likelihood screening: one two-sided
+    # interval per partner with Bonferroni alpha=0.05/52. This is still
+    # conditional on inputs and does not correct for biological overdispersion.
+    simultaneous_z = normal_quantile(1.0 - 0.05 / (2.0 * len(partners)))
+    simultaneous_lr_half = simultaneous_z * simultaneous_z / 2.0
+    robust_ranking = []
+    source_qc_complete_ranking = []
+    for variant in variants:
+        per_partner = {}
+        all_source_pass = True
+        all_profiles = True
+        for p in partners:
+            row = rows.get((variant, p))
+            if row is None:
+                all_source_pass = False
+                all_profiles = False
+                continue
+            all_source_pass = all_source_pass and not row[&quot;filt&quot;]
+            est = fit_profile(row, wt[p], min_input=1, lr_half=simultaneous_lr_half)
+            per_partner[p] = est
+            if est is None or est[&quot;n_reps&quot;] &lt; 4:
+                all_profiles = False
+        if all_source_pass:
+            measured = {p: rows[(variant, p)][&quot;rel&quot;] for p in partners}
+            if all(v not in (&quot;&quot;, &quot;NA&quot;) for v in measured.values()):
+                target_s = [float(measured[p]) for p in TARGET]
+                off_s = [float(measured[p]) for p in partners if p not in TARGET]
+                source_qc_complete_ranking.append({&quot;variant&quot;: variant,
+                    &quot;target_mean_score&quot;: sum(target_s)/len(target_s),
+                    &quot;target_min_score&quot;: min(target_s),
+                    &quot;max_offtarget_score&quot;: max(off_s),
+                    &quot;target_mean_minus_maxoff_score&quot;: sum(target_s)/len(target_s)-max(off_s)})
+        if not all_profiles:
+            continue
+        if any(per_partner[p][&quot;lower95&quot;] == -math.inf for p in TARGET):
+            target_lower = -math.inf
+        else:
+            target_lower = sum(per_partner[p][&quot;lower95&quot;] for p in TARGET)/len(TARGET)
+        off_upper = max(per_partner[p][&quot;upper95&quot;] for p in partners if p not in TARGET)
+        point_target = sum(per_partner[p][&quot;estimate&quot;] for p in TARGET)/len(TARGET)
+        point_off = max(per_partner[p][&quot;estimate&quot;] for p in partners if p not in TARGET)
+        robust_ranking.append({&quot;variant&quot;: variant,
+            &quot;count_target_mean_score&quot;: json_number(point_target * slope),
+            &quot;count_target_min_score&quot;: json_number(min(per_partner[p][&quot;estimate&quot;] for p in TARGET) * slope),
+            &quot;count_max_offtarget_score&quot;: json_number(point_off * slope),
+            &quot;count_target_mean_minus_maxoff_score&quot;: json_number((point_target-point_off)*slope),
+            &quot;simultaneous_target_mean_lower95_score&quot;: target_lower*slope if math.isfinite(target_lower) else str(target_lower),
+            &quot;simultaneous_max_offtarget_upper95_score&quot;: off_upper*slope if math.isfinite(off_upper) else str(off_upper),
+            &quot;simultaneous_margin_lower95_score&quot;: (target_lower-off_upper)*slope if math.isfinite(target_lower) and math.isfinite(off_upper) else &quot;-inf&quot;,
+            &quot;source_qc_filtered_pairs&quot;: sum(rows[(variant,p)][&quot;filt&quot;] for p in partners)})
+    robust_ranking.sort(key=lambda x: x[&quot;simultaneous_margin_lower95_score&quot;]
+                        if isinstance(x[&quot;simultaneous_margin_lower95_score&quot;], (int,float)) else -math.inf,
+                        reverse=True)
+    source_qc_complete_ranking.sort(key=lambda x: x[&quot;target_mean_minus_maxoff_score&quot;], reverse=True)
+
+    candidate_rows = []
+    for variant in (&quot;1eA&quot;, &quot;4aR&quot;):
+        for partner in partners:
+            row = rows.get((variant, partner))
+            est = estimates.get((variant, partner))
+            if row and est:
+                candidate_rows.append({&quot;variant&quot;: variant, &quot;partner&quot;: partner,
+                    &quot;source_filt&quot;: row[&quot;filt&quot;], &quot;source_rel&quot;: row[&quot;rel&quot;],
+                    &quot;count_logodds&quot;: est[&quot;estimate&quot;],
+                    &quot;lower95&quot;: est[&quot;lower95&quot;] if math.isfinite(est[&quot;lower95&quot;]) else str(est[&quot;lower95&quot;]),
+                    &quot;upper95&quot;: est[&quot;upper95&quot;] if math.isfinite(est[&quot;upper95&quot;]) else str(est[&quot;upper95&quot;]), &quot;n_reps&quot;: est[&quot;n_reps&quot;],
+                    &quot;input_counts&quot;: [int(row[f&quot;count_e{r}_s0&quot;]) for r in range(1,7)],
+                    &quot;output_counts&quot;: [int(row[f&quot;count_e{r}_s1&quot;]) for r in range(1,7)]})
+
+    output = {&quot;interface&quot;: {
+        &quot;model&quot;: &quot;conditional binomial output-count likelihood; matched input count is log-odds offset; WT-JUN x same partner is comparator&quot;,
+        &quot;zero_outputs&quot;: &quot;retained as observed binomial outcomes, not pseudocounts&quot;,
+        &quot;input_zero&quot;: &quot;replicate omitted because its input offset is undefined&quot;,
+        &quot;interval&quot;: &quot;95% one-parameter profile likelihood conditional on observed inputs; no between-replicate random effect&quot;,
+        &quot;scope&quot;: &quot;diagnostic reanalysis of released processed counts, not an experimental result or calibrated thermodynamic-energy model&quot;},
+        &quot;count_stats&quot;: count_stats, &quot;calibration_on_source_qc_pass&quot;: calibration,
+        &quot;top_20_single_mutants_by_count_level_target_margin&quot;: ranking[:20],
+        &quot;simultaneous_95_bonferroni_count_margin_top_20&quot;: robust_ranking[:20],
+        &quot;source_qc_complete_profile_margin_top_20&quot;: source_qc_complete_ranking[:20],
+        &quot;simultaneous_95_bonferroni&quot;: {&quot;family&quot;: &quot;all 52 bZIP partners for a given single mutant&quot;,
+            &quot;z_critical&quot;: simultaneous_z, &quot;profile_loglik_half_threshold&quot;: simultaneous_lr_half,
+            &quot;scope&quot;: &quot;conditional-input likelihood only; no replicate random effect&quot;},
+        &quot;target_candidates&quot;: [x for x in ranking if x[&quot;variant&quot;] in (&quot;1eA&quot;, &quot;4aR&quot;)],
+        &quot;candidate_partner_counts&quot;: candidate_rows}
+    with open(os.path.join(OUT,&quot;count_censor_results.json&quot;),&quot;w&quot;) as f:
+        json.dump(output,f,indent=2,allow_nan=False)
+    with open(os.path.join(OUT,&quot;count_censor_results.json&quot;),&quot;a&quot;) as f:
+        f.write(&quot;\n&quot;)
+    print(json.dumps({&quot;count_stats&quot;: count_stats, &quot;calibration&quot;: calibration,
+                      &quot;top&quot;: ranking[:12], &quot;target_candidates&quot;: [x for x in ranking if x[&#x27;variant&#x27;] in (&#x27;1eA&#x27;,&#x27;4aR&#x27;)]},
+                     indent=2,allow_nan=False))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/aab887769f9b07a8c8f5e572f99be866ec60b98015b86a0ddaa7159882b3a4f1.py">Exact original</a></p></html>

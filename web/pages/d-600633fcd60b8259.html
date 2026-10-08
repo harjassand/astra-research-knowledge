@@ -1,0 +1,51 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c8_photochemistry_sign_hostile/proof/protocol_check.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c8_photochemistry_sign_hostile/proof/protocol_check.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Check RF sign after different green-light prehistories in the six-state ODE.&quot;&quot;&quot;
+import json
+from pathlib import Path
+import runpy
+
+m = runpy.run_path(str(Path(__file__).with_name(&quot;sign_audit.py&quot;)), run_name=&quot;protocol_check_import&quot;)
+p, y0 = m[&quot;TABLE1&quot;], m[&quot;Y0&quot;]
+step, simulate = m[&quot;rk4_step&quot;], m[&quot;simulate_pair&quot;]
+dt, i520, beta_off = 1e-4, 3.8, 0.68
+
+def constant_state(duration):
+    y = tuple(y0)
+    for _ in range(round(duration/dt)):
+        y = step(y, beta_off, p, i520, dt)
+    return y
+
+def invs(y):
+    g,t,r,f,h,q=y
+    return (g+t+r, f+h+q, g+t+2*f+q)
+
+out=[]
+for pre in (0.0, 0.1, 0.5, 1.0, 2.0, 5.0, 10.0):
+    y = constant_state(pre)
+    for label, beta_on in ((&quot;literal positive separation increment&quot;, 0.7151),
+                           (&quot;corrected negative separation increment&quot;, 0.6449)):
+        rows = simulate(y, y, p, i520, beta_off, beta_on, 5.0, dt)
+        on_rows = [r for r in rows if 0 &lt; r[&quot;t&quot;] &lt; 5.0]
+        rel = [(r[&quot;t&quot;], r[&quot;dG&quot;]/r[&quot;G_control&quot;]) for r in on_rows]
+        samples=[]
+        for t in (0.1,0.5,1.0,2.5,5.0):
+            r=next(r for r in rows if abs(r[&quot;t&quot;]-t)&lt;1e-10)
+            samples.append({&quot;t_s&quot;:t,&quot;delta_G_uM&quot;:r[&quot;dG&quot;],
+                            &quot;delta_G_over_G&quot;:r[&quot;dG&quot;]/r[&quot;G_control&quot;],
+                            &quot;G_control_uM&quot;:r[&quot;G_control&quot;],&quot;R_control_uM&quot;:r[&quot;R_control&quot;]})
+        out.append({&quot;green_preexposure_s&quot;:pre,&quot;mapping&quot;:label,
+                    &quot;pre_RF_state_G_T_R_F_H_Q_uM&quot;:list(y),
+                    &quot;pre_RF_invariants&quot;:invs(y),
+                    &quot;first_pulse_delta_G_over_G_minmax&quot;:
+                        {&quot;min&quot;:min(v for _,v in rel),&quot;max&quot;:max(v for _,v in rel)},
+                    &quot;delta_Gdot_at_RF_on_uM_s&quot;:
+                        -(beta_on-beta_off)*p.kred*y[4]*y[1],
+                    &quot;samples&quot;:samples})
+
+path=Path(__file__).with_name(&quot;protocol_check.json&quot;)
+path.write_text(json.dumps(out,indent=2)+&quot;\n&quot;)
+for r in out:
+    print(r[&quot;green_preexposure_s&quot;],r[&quot;mapping&quot;],
+          r[&quot;first_pulse_delta_G_over_G_minmax&quot;],r[&quot;samples&quot;][-1][&quot;delta_G_over_G&quot;],
+          r[&quot;delta_Gdot_at_RF_on_uM_s&quot;])
+</pre><p><a href="../assets/fc7ea3cd565d3caab50a3de05686e4ce9f7888513dcb27e4273409bb8685b5e1.py">Exact original</a></p></html>

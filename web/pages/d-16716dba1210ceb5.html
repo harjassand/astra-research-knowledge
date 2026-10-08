@@ -1,0 +1,72 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c5_scientific_frontier_transfer/cycle7_effective_volume/code/periodic_path_load.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c5_scientific_frontier_transfer/cycle7_effective_volume/code/periodic_path_load.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exhaustively check the routed-pair edge-load bound used in cycle 7.
+
+For each pair on a cubic torus, route coordinates in order 0,1,2 using a
+shortest signed coordinate arc (ties go in the positive direction). The proof
+uses the analytic bound max directed-edge load &lt;= L**4; this script checks it
+for small L and records the exact maxima.
+&quot;&quot;&quot;
+from collections import Counter
+from itertools import product
+import json
+import sys
+
+
+def displacement_steps(x: int, y: int, L: int) -&gt; list[int]:
+    d = (y - x) % L
+    if d &lt;= L // 2:
+        return [1] * d
+    return [-1] * (L - d)
+
+
+def torus_load(L: int) -&gt; dict:
+    vertices = list(product(range(L), repeat=3))
+    load: Counter[tuple[tuple[int, int, int], int, int]] = Counter()
+    max_length = 0
+    for x in vertices:
+        for y in vertices:
+            if x == y:
+                continue
+            pos = list(x)
+            seen = {tuple(pos)}
+            length = 0
+            for axis in range(3):
+                for sign in displacement_steps(pos[axis], y[axis], L):
+                    edge_start = tuple(pos)
+                    load[(edge_start, axis, sign)] += 1
+                    pos[axis] = (pos[axis] + sign) % L
+                    site = tuple(pos)
+                    if site in seen:
+                        raise AssertionError((L, x, y, site))
+                    seen.add(site)
+                    length += 1
+            if tuple(pos) != y:
+                raise AssertionError((L, x, y, tuple(pos)))
+            max_length = max(max_length, length)
+    max_load = max(load.values())
+    return {
+        &quot;L&quot;: L,
+        &quot;volume&quot;: L**3,
+        &quot;ordered_pairs&quot;: L**3 * (L**3 - 1),
+        &quot;max_path_length&quot;: max_length,
+        &quot;analytic_path_length_bound&quot;: 3 * L // 2,
+        &quot;max_directed_edge_load&quot;: max_load,
+        &quot;analytic_load_bound&quot;: L**4,
+        &quot;load_bound_pass&quot;: max_load &lt;= L**4,
+        &quot;path_length_bound_pass&quot;: max_length &lt;= 3 * L / 2,
+    }
+
+
+def main() -&gt; None:
+    sizes = [int(x) for x in sys.argv[1:]] or [4, 6, 8]
+    if any(L &lt; 4 or L % 2 for L in sizes):
+        raise SystemExit(&quot;use even torus sizes L&gt;=4&quot;)
+    rows = [torus_load(L) for L in sizes]
+    if not all(row[&quot;load_bound_pass&quot;] and row[&quot;path_length_bound_pass&quot;] for row in rows):
+        raise SystemExit(json.dumps(rows, indent=2))
+    print(json.dumps({&quot;rows&quot;: rows, &quot;status&quot;: &quot;PASS&quot;}, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/06fc2b789b75b781e77bc764ae81ff68bbe85b76d0e563751333ff3e2230c8e7.py">Exact original</a></p></html>

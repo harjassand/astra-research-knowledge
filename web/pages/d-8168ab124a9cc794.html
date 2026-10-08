@@ -1,0 +1,96 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/root_repulsive_universality/check.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/root_repulsive_universality/check.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Small finite convention checks; not evidence for arbitrary L or prior art.&quot;&quot;&quot;
+from pathlib import Path
+import json, math
+import numpy as np
+from numpy.linalg import eigh
+
+def entropy(r):
+    p=np.linalg.eigvalsh((r+r.T)/2)
+    p=p[p&gt;1e-14]
+    return float(-np.dot(p,np.log(p)))
+
+def gibbs(h,beta):
+    e,u=eigh(h)
+    w=np.exp(-beta*(e-e[0])); z=w.sum()
+    return (u*(w/z))@u.T,float(np.log(z)-beta*e[0])
+
+receipts=[]; minimum=1e100
+for L in range(4,9):
+    J=1.; tau=.09; lam=7.; beta=tau*L*L
+    ns=L-1; D=1&lt;&lt;ns
+    occ=np.array([[(x&gt;&gt;i)&amp;1 for i in range(ns)] for x in range(D)])
+    num=occ.sum(axis=1); K=np.diag(4*J*num.astype(float))
+    for x in range(D):
+        for i in range(ns-1):
+            if occ[x,i]!=occ[x,i+1]: K[x,x^(3&lt;&lt;i)]=-2*J
+    H0=K-np.diag(lam*num/L**2); rho0,logZ0=gibbs(H0,beta)
+    modes=np.arange(1,L); eps=4*J*(1-np.cos(np.pi*modes/L))
+    f=1/(1+np.exp(tau*(L*L*eps-lam)))
+    phi=np.sqrt(2/L)*np.sin(np.pi*np.outer(np.arange(1,L),modes)/L)
+    corr=(phi*f)@phi.T
+    assert abs(np.dot(np.diag(rho0),num)-sum(f))&lt;2e-12
+    for R in (1,2):
+        pairs=[(i,i+r) for r in range(1,R+1) for i in range(ns-r)]
+        pairnum=sum((occ[:,i]*occ[:,j] for i,j in pairs),np.zeros(D,dtype=int))
+        forbidden=pairnum&gt;0; allowed=~forbidden
+        delta=float(np.diag(rho0)[forbidden].sum()); p=1-delta
+        qM=float(np.dot(np.diag(rho0)[forbidden],num[forbidden]))
+        pair_expect=sum(corr[i,i]*corr[j,j]-corr[i,j]**2 for i,j in pairs)
+        assert delta &lt;= pair_expect+2e-12
+        assert qM &lt;= (2+sum(f))*pair_expect+2e-12
+        sigma=rho0*np.outer(allowed,allowed)/p
+        kinetic=float(np.trace(sigma@K)-np.trace(rho0@K))
+        kb=(delta*np.trace(rho0@K)+8*J*qM)/p
+        assert kinetic &lt;= kb+2e-12
+        h2=-(delta*math.log(delta)+(1-delta)*math.log1p(-delta)) if delta else 0
+        sb=(h2+delta*ns*math.log(2))/p
+        assert entropy(rho0)-entropy(sigma)&lt;=sb+3e-12
+        distance0=float(np.abs(np.linalg.eigvalsh(sigma-rho0)).sum())
+        assert distance0&lt;=2*math.sqrt(delta)+3e-12
+        for scale,kind in [(v,&quot;density&quot;) for v in (.2,3.,1000.)]+[(3.,&quot;non_number_conserving&quot;),(1000.,&quot;non_number_conserving&quot;)]:
+            # Inhomogeneous positive values; at zero strength the forbidden
+            # projection would still be legal, so not all pairs need appear.
+            W=sum((scale*(1+(i+2*j)%4)*occ[:,i]*occ[:,j]
+                   for i,j in pairs),np.zeros(D))
+            W=np.diag(W)
+            if kind==&quot;non_number_conserving&quot;:
+                # Rank-one PSD perturbation on the forbidden space, mixing
+                # different M sectors. Its kernel contains P exactly.
+                v=np.where(forbidden,np.cos(np.arange(D)*1.713),0.)
+                v=v/np.linalg.norm(v)
+                W=scale*np.outer(v,v)
+                assert np.linalg.norm(W[:,allowed])&lt;1e-12
+                assert np.linalg.norm(W@np.diag(num)-np.diag(num)@W)&gt;1e-7
+            rhoW,logZW=gibbs(H0+W,beta)
+            ds=-entropy(sigma)+beta*float(np.trace(sigma@H0))+logZW
+            variational=(entropy(rho0)-entropy(sigma)+
+                         beta*float(np.trace((sigma-rho0)@H0)))
+            assert ds&gt;=-1e-9 and ds&lt;=variational+1e-9
+            dsw=float(np.abs(np.linalg.eigvalsh(sigma-rhoW)).sum())
+            assert dsw&lt;=math.sqrt(2*max(0,ds))+2e-7
+            bound=2*math.sqrt(delta)+math.sqrt(2*max(0,variational))
+            dw=float(np.abs(np.linalg.eigvalsh(rhoW-rho0)).sum())
+            assert dw&lt;=bound+2e-7
+            # One fixed free-canonical decoder, valid without [W,M]=0.
+            decoded=np.zeros((D,D)); decoded_free=np.zeros((D,D))
+            for m in range(ns+1):
+                sel=num==m
+                pm=float(np.diag(rho0)[sel].sum())
+                canon=rho0*np.outer(sel,sel)/pm
+                decoded += float(np.diag(rhoW)[sel].sum())*canon
+                decoded_free += pm*canon
+            assert np.linalg.norm(decoded_free-rho0)&lt;2e-12
+            deb=float(np.abs(np.linalg.eigvalsh(decoded-rhoW)).sum())
+            assert deb&lt;=2*dw+2e-7
+            minimum=min(minimum,bound-dw)
+            receipts.append({&#x27;L&#x27;:L,&#x27;R&#x27;:R,&#x27;strength_scale&#x27;:scale,&#x27;interaction_type&#x27;:kind,&#x27;EB_trace_error&#x27;:deb,
+                &#x27;forbidden_probability&#x27;:delta,&#x27;actual_trace_error&#x27;:dw,
+                &#x27;projection_variational_bound&#x27;:bound,
+                &#x27;relative_entropy&#x27;:ds})
+out={&#x27;status&#x27;:&#x27;PASS&#x27;,&#x27;fixtures&#x27;:len(receipts),&#x27;L&#x27;:&#x27;4..8&#x27;,&#x27;minimum_bound_margin&#x27;:minimum,
+     &#x27;arithmetic&#x27;:&#x27;double precision finite matrix diagonalization&#x27;,
+     &#x27;scope&#x27;:&#x27;Convention diagnostics only; all-L proof and external validation separate.&#x27;,
+     &#x27;measurements&#x27;:receipts}
+Path(__file__).with_name(&#x27;CHECKS.json&#x27;).write_text(json.dumps(out,indent=2)+&#x27;\n&#x27;)
+print({k:v for k,v in out.items() if k!=&#x27;measurements&#x27;})
+</pre><p><a href="../assets/dd3d63f9fae51893095ba7500ce7398721692c8c606a5db0054d3e7638c3c2e3.py">Exact original</a></p></html>

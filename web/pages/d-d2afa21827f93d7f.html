@@ -1,0 +1,140 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AD: checkpoint/evidence/c9_aging_control/children/tissue_repair/models/crypt_repair_identifiability.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AD-sources.txt">Source map</a><h1>AD: checkpoint/evidence/c9_aging_control/children/tissue_repair/models/crypt_repair_identifiability.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact toy checks for the Paneth-renewal / crypt-repair identifiability note.
+
+All values in the counterexample section are deliberately synthetic. They are
+not estimates from Andersson et al. (2025), and the functional Notum threshold
+is a model parameter, not a measured biological threshold.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import json
+import math
+from pathlib import Path
+
+
+def functional_crypt_fraction(renewal: list[float], new_notum: float,
+                              old_notum: float, threshold: float) -&gt; float:
+    &quot;&quot;&quot;Fraction passing an illustrative per-crypt mean-Notum threshold.&quot;&quot;&quot;
+    passed = 0
+    for r in renewal:
+        local_notum = (1.0 - r) * old_notum + r * new_notum
+        passed += local_notum &lt;= threshold + 1e-12
+    return passed / len(renewal)
+
+
+def support_bounds(qbar: float, tau: float) -&gt; tuple[float, float]:
+    &quot;&quot;&quot;Sharp bounds on P(R &gt;= tau) given R in [0,1], E[R] = qbar.&quot;&quot;&quot;
+    if not (0.0 &lt;= qbar &lt;= 1.0 and 0.0 &lt; tau &lt;= 1.0):
+        raise ValueError(&quot;require qbar in [0,1] and tau in (0,1]&quot;)
+    lower = max(0.0, (qbar - tau) / (1.0 - tau)) if tau &lt; 1 else float(qbar == 1)
+    upper = min(1.0, qbar / tau)
+    return lower, upper
+
+
+def renewal_rate_alias(window_days: float, mean_labeled_fraction: float,
+                       renewed_crypt_share: float) -&gt; dict[str, float]:
+    &quot;&quot;&quot;Two rate distributions with the same pooled EdU fraction.
+
+    Under a homogeneous Poisson replacement model, f=1-exp(-lambda*T).
+    The heterogeneous model has a fraction `renewed_crypt_share` of crypts
+    with a common positive rate and the rest at zero. The high rate is chosen
+    so the pooled EdU+ fraction is identical.
+    &quot;&quot;&quot;
+    T, fbar, p = window_days, mean_labeled_fraction, renewed_crypt_share
+    if T &lt;= 0 or not (0.0 &lt; fbar &lt; 1.0) or not (fbar &lt; p &lt;= 1.0):
+        raise ValueError(&quot;require T&gt;0, fbar in (0,1), and p&gt;fbar&quot;)
+    homogeneous = -math.log1p(-fbar) / T
+    high_f = fbar / p
+    high_rate = -math.log1p(-high_f) / T
+    heterogeneous_mean = p * high_rate
+    return {
+        &quot;window_days&quot;: T,
+        &quot;pooled_EdU_fraction&quot;: fbar,
+        &quot;active_crypt_share&quot;: p,
+        &quot;homogeneous_mean_rate_per_day&quot;: homogeneous,
+        &quot;active_crypt_label_fraction&quot;: high_f,
+        &quot;heterogeneous_mean_rate_per_day&quot;: heterogeneous_mean,
+        &quot;rate_ratio_heterogeneous_to_homogeneous&quot;: heterogeneous_mean / homogeneous,
+    }
+
+
+def main() -&gt; None:
+    # Equal-sized crypts; 8 Paneth cells each; normalized Notum units.
+    n_crypts = 100
+    paneth_per_crypt = 8
+    old_notum = 1.0
+    new_notum = 0.1
+    notum_threshold = 0.55
+
+    homogeneous = [0.5] * n_crypts
+    clustered = [1.0] * (n_crypts // 2) + [0.0] * (n_crypts // 2)
+
+    def summaries(renewal: list[float]) -&gt; dict[str, float | int]:
+        per_crypt_notum = [
+            (1.0 - r) * old_notum + r * new_notum for r in renewal
+        ]
+        return {
+            &quot;crypt_count&quot;: n_crypts,
+            &quot;Paneth_cells_per_crypt&quot;: paneth_per_crypt,
+            &quot;pooled_EdU_positive_fraction&quot;: sum(renewal) / len(renewal),
+            &quot;mean_normalized_Notum_per_cell&quot;: sum(per_crypt_notum) / len(per_crypt_notum),
+            &quot;mean_Notum_in_EdU_positive_cells&quot;: new_notum,
+            &quot;mean_Notum_in_EdU_negative_cells&quot;: old_notum,
+            &quot;fraction_crypts_passing_functional_threshold&quot;: functional_crypt_fraction(
+                renewal, new_notum, old_notum, notum_threshold
+            ),
+        }
+
+    homogeneous_summary = summaries(homogeneous)
+    clustered_summary = summaries(clustered)
+    assert homogeneous_summary[&quot;pooled_EdU_positive_fraction&quot;] == clustered_summary[&quot;pooled_EdU_positive_fraction&quot;]
+    assert homogeneous_summary[&quot;mean_normalized_Notum_per_cell&quot;] == clustered_summary[&quot;mean_normalized_Notum_per_cell&quot;]
+    assert homogeneous_summary[&quot;mean_Notum_in_EdU_positive_cells&quot;] == clustered_summary[&quot;mean_Notum_in_EdU_positive_cells&quot;]
+    assert homogeneous_summary[&quot;mean_Notum_in_EdU_negative_cells&quot;] == clustered_summary[&quot;mean_Notum_in_EdU_negative_cells&quot;]
+    assert homogeneous_summary[&quot;fraction_crypts_passing_functional_threshold&quot;] == 1.0
+    assert clustered_summary[&quot;fraction_crypts_passing_functional_threshold&quot;] == 0.5
+
+    qbar = 0.5
+    tau = round((old_notum - notum_threshold) / (old_notum - new_notum), 12)
+    bounds = support_bounds(qbar, tau)
+
+    rate_alias = renewal_rate_alias(
+        window_days=21.0,
+        mean_labeled_fraction=0.5,
+        renewed_crypt_share=0.6,
+    )
+    assert abs(rate_alias[&quot;pooled_EdU_fraction&quot;] - 0.5) &lt; 1e-12
+
+    result = {
+        &quot;status&quot;: &quot;synthetic exact arithmetic; not biological data or a fitted model&quot;,
+        &quot;model&quot;: {
+            &quot;new_cell_Notum_ratio_to_old&quot;: new_notum,
+            &quot;functional_threshold_normalized_Notum&quot;: notum_threshold,
+            &quot;equivalent_renewal_threshold&quot;: tau,
+        },
+        &quot;same_aggregate_observables_different_crypt_coverage&quot;: {
+            &quot;homogeneous_renewal&quot;: homogeneous_summary,
+            &quot;clustered_renewal&quot;: clustered_summary,
+        },
+        &quot;sharp_coverage_bounds_given_only_mean_renewal&quot;: {
+            &quot;mean_renewal&quot;: qbar,
+            &quot;local_renewal_threshold&quot;: tau,
+            &quot;minimum_functional_crypt_fraction&quot;: bounds[0],
+            &quot;maximum_functional_crypt_fraction&quot;: bounds[1],
+        },
+        &quot;same_21_day_EdU_mean_different_mean_replacement_rates&quot;: rate_alias,
+        &quot;interpretation&quot;: [
+            &quot;Pooled EdU and pooled Notum summaries do not determine the fraction of crypts crossing a local functional threshold.&quot;,
+            &quot;Even under constant-hazard replacement, a pooled EdU fraction identifies one Laplace-transform value, not the mean rate or its distribution.&quot;,
+        ],
+    }
+
+    out = Path(__file__).with_name(&quot;crypt_repair_identifiability_run.json&quot;)
+    out.write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+    print(json.dumps(result, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/479270d2749f0d34f7ae91ae89d1db3541e8a038b39b0f34b50aeed9e24bdbd9.py">Exact original</a></p></html>

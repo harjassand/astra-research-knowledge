@@ -1,0 +1,272 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/acquisition_learning/leaves/observable_transfer_frontier.txt</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/acquisition_learning/leaves/observable_transfer_frontier.txt</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>ADAPTIVE OBSERVABLE SEARCH AS PREDICTIVE REPRESENTATION LEARNING
+Date: 2026-10-08
+Status: internally proved candidate for the stated controlled-process class; no external validation or novelty claim.
+
+RESULT
+
+Persistent repeated readout can acquire a compact predictive representation,
+not merely a label decoder. The construction below uses an unknown one-hot
+predictive atom among M possibilities, rather than parity. An agent makes
+noisy subset-membership queries, adaptively locates the atom, and emits a
+finite-state predictor that is exact on every later input, with probability
+at least 1-delta. Its code is optimal up to the known noise parameter and
+fixed program text.
+
+The comparison has a sharp negative side. A fixed bank of k&lt;M singleton
+observables misses some atom exactly, so it cannot transfer to all later
+prediction inputs. But adaptivity itself has no advantage over the best
+policy with the same actions, trajectories, and memory: the learner is such
+a policy, and a fixed non-adaptive group-test bank also matches its query and
+sample costs. Strict transfer here requires changing the permitted query
+interface from singleton tests to subset tests (or comparing against a
+strictly smaller query budget). It is not an advantage over an equally
+capable raw-data learner.
+
+1. PROCESS FAMILY AND ACCESS CONTRACT
+
+Let M=2^q with q&gt;=1, and write [M]={0,...,M-1} for the 0-based index set.
+A process has a fixed hidden parameter
+
+    J in {bottom, 0, 1, ..., M-1}.
+
+The public task input is an action. During acquisition an action is
+QUERY(S), where S is a subset of [M]. The action language includes ALL,
+SINGLETON(i), PREFIX(p) (indices whose q-bit names begin with p), and BIT(r)
+(indices whose r-th bit is 1). These name sets without an M-bit mask.
+Descriptor costs are O(1) for ALL, q+O(1) bits for SINGLETON(i),
+|p|+O(1) bits for PREFIX(p), and O(log q) bits for BIT(r). An arbitrary set
+outside these constructors may be sent as an M-bit mask and is not used by
+the protocol. At deployment an action may be TEST(i), equivalent to
+QUERY(SINGLETON(i)). For a query S define
+
+    z_J(S) = 1{J is an integer and J in S}.
+
+The process returns R readout bits
+
+    B_r = z_J(S) xor E_r,  r=1,...,R,
+    E_r iid Bernoulli(eta),   rho = 1-2 eta &gt;= beta &gt; 0.
+
+The same J and eta persist across all action calls; readout errors are fresh
+and independent. The null model J=bottom has z=0 for every action. The
+learner knows M, the action encoding, eta, and beta, but not J. It receives
+only chosen action labels and their output bits. It has no hidden-state,
+conditional-probability, or transition-table access. Eta is a supplied
+rational with h-bit encoding. Each query action costs one control call and
+each returned B_r costs one observed symbol. Query descriptions are charged
+separately below.
+
+This is a controlled finite-state predictive process with M+1 persistent
+states. For any action sequence a_1,...,a_T, the model&#x27;s exact word law is
+
+    Pr(B_1=b_1,...,B_T=b_T | a_1,...,a_T,J)
+      = product_t [1-eta if b_t=z_J(a_t), else eta].
+
+Thus a representation that recovers J predicts all horizons, all histories,
+all subset queries, and every later singleton task. The selected predictive
+observable is the implicit one-hot function i -&gt; 1{i=J}; the process does
+not provide its trajectory-moment bank or its index. The finite action
+language and subset encoder are public. This is sparse atom discovery over
+an implicit index domain, not unrestricted induction of arbitrary feature
+semantics.
+
+2. ADAPTIVE QUERY-AND-CERTIFY PROTOCOL
+
+Let M=2^q. Let R be the least odd integer satisfying
+
+    R &gt;= (32/beta^2) ln(2(q+1)/delta).
+
+For any R-bit block, write p-hat for the fraction of ones and set
+
+    u = sqrt(ln(2(q+1)/delta)/(2R)) &lt;= beta/8.
+
+The learner first queries QUERY([M]) and forms the Hoeffding interval
+[p-hat-u,p-hat+u]. If the interval is wholly below 1/2, it outputs
+P_bottom. If wholly above 1/2, it proceeds; if it intersects 1/2, it returns
+FAIL. At each search level it holds a binary prefix p, initially empty. It
+queries the set S_{p0} of indices whose q-bit name begins with prefix p
+followed by 0 and forms the same interval. If wholly above 1/2 it appends 0;
+if wholly below 1/2 it appends 1; if it intersects 1/2 it returns FAIL.
+After q queries, the resulting q-bit string is j and the learner outputs
+P_j. The initial all-set query independently checks the null-versus-active
+case; every adaptively chosen prefix answer also carries its own confidence
+interval.
+
+Theorem 1 (adaptive predictive representation acquisition). For every
+J in the class, the protocol outputs the exact controlled predictive model
+P_J with probability at least 1-delta, and returns FAIL rather than a model
+on any ambiguous confidence interval.
+
+Proof. Conditional on any query history, the next query&#x27;s latent bit z is
+fixed and its R errors are fresh. Two-sided Hoeffding gives
+
+    Pr(|p-hat-E p-hat| &gt; u) &lt;= delta/(q+1).
+
+There are at most q+1 blocks, including the adaptively chosen ones, so all
+intervals contain their means with probability at least 1-delta. A true
+mean is either eta &lt;= 1/2-beta/2 or 1-eta &gt;= 1/2+beta/2. On the simultaneous
+confidence event, u&lt;=beta/8 implies the interval lies strictly on the
+correct side of 1/2. The all-set query therefore identifies J=bottom versus
+J in [M]. In the latter case, each prefix query correctly selects the next
+bit of J, so after q levels the output index is exact. The model&#x27;s
+transition law is the displayed product law, hence correctness transfers
+to every later action sequence, including previously unqueried singleton
+tests. QED.
+
+The certificate is a class-conditional PAC statement: all-set and prefix
+confidence intervals are simultaneously separated from 1/2 with probability
+at least 1-delta. It is not an external verifier for processes outside the
+stated family.
+
+3. CODE, MEMORY, QUERY, NOISE, AND VALIDATION COSTS
+
+The worst-case acquisition uses q+1=(log2 M)+1 control calls and
+(q+1)R observed symbols. Each interval has miscoverage at most
+delta/(q+1); total confidence failure is at most delta.
+For fixed beta, delta, the symbol cost is
+
+    O(beta^-2 log(M) log(log(M)/delta)).
+
+Using a binary-prefix encoding, the all-set and q adaptive query descriptions
+contain q(q+1)/2+O(q) bits in total; the initial all-set action costs O(1).
+Each interval can be accumulated online. Peak workspace is
+O(q + log R + h) bits, including the current prefix, counter, eta, and
+output code; the raw trajectories need not be retained. The learned model
+code uses ceil(log2(M+1)) bits to identify J, h bits for eta, and O(1)
+shared program text. A literal uncompressed transition table would instead
+cost O(M log M) bits, so the compact code relies on the public structured
+model class.
+
+Evaluating a deployment action uses O(q) bit operations to test i=J (or
+membership J in an encoded subset). Exact length-T word probabilities have
+numerator and denominator bit lengths O(T h); their exact arithmetic cost
+is polynomial in T and h. If a raw-buffer comparator stores every acquisition
+symbol, it uses (q+1)R bits plus query delimiters. A streaming comparator
+can use the same O(q+log R+h)-bit workspace as the learner.
+
+4. PREDICTIVE REPRESENTATION LOWER BOUND
+
+For any two distinct parameters J,J&#x27; in {bottom} union [M], there is an
+index i such that the one-symbol laws under TEST(i) are Bernoulli(1-eta)
+and Bernoulli(eta), respectively. Their total-variation distance is rho.
+Therefore any deterministic predictive code whose worst-case one-step
+error over all TEST(i) is less than rho/2 can represent at most one class
+member: if it represented two, the triangle inequality would make their
+distance less than rho. There are M+1 class members, so such a code needs
+at least ceil(log2(M+1)) bits. The acquired code meets this information
+lower bound, apart from eta and fixed decoder text.
+
+This makes the output a proper predictive representation with certified
+downstream transfer, rather than only a training-label predictor. It does
+not establish a representation-learning advantage over an equally informed
+policy.
+
+5. FIXED BANK, NON-ADAPTIVE CONTROL, AND THE EXACT ADVANTAGE BOUNDARY
+
+Fixed singleton bank. Suppose the acquisition interface supplies only a
+predeclared set B of k singleton tests TEST(i), with k&lt;M; the learner may
+repeat those tests arbitrarily often but cannot query other subsets. Choose
+J outside B. Under P_J and P_bottom every allowed test has z=0, so the entire
+observation transcript has exactly the same law. Yet on the downstream
+action TEST(J), the two next-symbol laws have TV rho. Consequently no
+single output predictor can have worst-case error below rho/2 on both
+models. This is an exact fixed-bank failure, independent of noise or sample
+size. A complete singleton bank can identify J, but costs M singleton
+actions (and MR symbols if each coordinate receives R repetitions).
+
+The adaptive dyadic-set protocol succeeds with q+1 actions. Its strict
+comparison is against the singleton-only interface: subset actions are an
+additional query capability. Adaptivity is not itself necessary. A fixed
+non-adaptive group-test bank consisting of QUERY([M]) and the q coordinate
+sets {j : the r-th bit of j is 1}, r=1,...,q, identifies the null model
+from the all-set response and J from the q membership bits. With R repeats
+per action it has the same q+1 calls, (q+1)R output symbols, failure bound,
+and O(q+log R+h) workspace. Its action descriptions cost O(q log q) bits
+using the BIT(r) constructor, compared with O(q^2) bits for adaptive
+prefixes. So on this family, fixed group tests match or improve on the
+adaptive search costs.
+
+Best-policy simulation theorem. Fix an action/output interface, a maximum
+number K of action calls, a maximum L of observed symbols, a maximum D of
+action-description bits, a B-bit persistent workspace, a computation
+allowance C, and the same downstream predictor interpreter. Let
+Pi(K,L,D,B,C) be all randomized policies meeting these limits, including
+policies that retain raw trajectories if their buffer fits in B. For any
+representation learner A in this class, A itself is an admissible policy;
+equivalently, a comparator can copy A&#x27;s state updates and terminal code.
+Hence
+
+    inf_{pi in Pi(K,L,D,B,C)} Risk(pi) &lt;= Risk(A).
+
+This is exact transcript simulation, not a statistical approximation. In
+the present example, both the adaptive learner and the fixed group-test
+decoder are members of the same class. Thus no strict predictive-transfer
+advantage is possible against the best policy with the same trajectories,
+raw-data access, finite memory, query language, and computation allowance.
+The representation is a useful compression of evidence into a reusable
+predictor; the same-data policy can make that representation too.
+
+The exact resource boundary is therefore:
+
+* If the baseline sees only a fixed, incomplete singleton bank while the
+  learner may issue subset queries, strict transfer is possible, as proved
+  above.
+* If both may issue the same subset queries, a fixed group bank already
+  matches this learner, and the best-policy simulation theorem rules out
+  advantage.
+* If both receive the same raw paths and the same persistent-memory budget,
+  calling one terminal state a “representation” does not add information;
+  strict advantage requires some other asymmetry such as more queries,
+  conditional/action access, more memory, or a restricted output interface.
+
+The older persistent-parity construction has the same conclusion: its
+majority-plus-GF(2) decoder is also a proper all-horizon predictor, but a
+competent same-data policy can run that decoder. The present one-hot class
+removes parity decoding from the positive theorem and isolates the interface
+boundary.
+
+6. PRIOR ART AND STATUS
+
+* Angluin, “Learning Regular Sets from Queries and Counterexamples,”
+  Information and Computation 75(2), 1987,
+  https://doi.org/10.1016/0890-5401(87)90052-6. Membership-query learning
+  predates this example; no novelty claim is made for adaptive querying.
+* Kearns, Mansour, Ron, Rubinfeld, Schapire and Sellie, “On the Learnability
+  of Discrete Distributions,” STOC 1994, Theorem 16,
+  https://people.csail.mit.edu/ronitt/papers/learndist.pdf. Their evaluator
+  hardness for a one-shot noisy-parity PFA is conditional on the Noisy
+  Parity Assumption. Persistent repeated readout changes that observation
+  interface; this report makes no unconditional one-shot hardness claim.
+* Hsu, Kakade and Zhang, “A Spectral Algorithm for Learning Hidden Markov
+  Models,” arXiv:0811.4413 / JCSS 2012,
+  https://arxiv.org/abs/0811.4413. This is the relevant supplied-singular-
+  value separation comparator for spectral HMM learning, not a theorem that
+  adaptive feature acquisition is generally possible.
+
+Local interface/cost control: `work/astra_prior/cards/N25-acquisition-interface-tests.txt`
+was used to keep query access and total acquisition resources explicit.
+`outputs/research/acquisition_learning/leaves/adaptive_observable_search.txt`
+contains the earlier persistent-parity construction and its same-data
+decoder comparison; this report replaces parity with one-hot atom search.
+
+Status ledger:
+
+* Adaptive recovery and transfer theorem: INTERNALLY-PROVED-CANDIDATE for
+  the specified controlled class; elementary majority and tree argument.
+* Predictive-code lower bound: INTERNALLY-PROVED-CANDIDATE by pairwise TV
+  separation and counting.
+* Fixed singleton-bank impossibility and same-interface simulation:
+  INTERNALLY-PROVED-CANDIDATE; exact coupling/inclusion arguments.
+* Finite check: FINITE-EVIDENCE only. The scratch script
+  `work/programmes/acquisition_learning/leaves/observable_transfer_frontier/check.py`
+  passed 72 exact noiseless adaptive-tree, fixed group-bank, null-path, and
+  singleton-bank cases for M=2,4,8,16,32 at eta=1/4. It does not validate
+  the general proofs or external applicability.
+* General unknown-dictionary learning, broad finite-state processes,
+  external correctness, and historical priority: UNKNOWN.
+
+Related local work in `outputs/research/acquisition_learning/leaves/adaptive_observable_search.txt`
+contains the earlier persistent-parity fixed-moment obstruction, local-cut
+margin result, and conditional one-shot LPN boundary. The present report
+narrows the comparison to a non-parity feature-index class and states the
+same-data policy boundary explicitly.
+</pre><p><a href="../assets/93a2f9f82c3664c398116e6a18ed52c70fd4db9beb3c6f8a7e5bc6b5fc81094a.txt">Exact original</a></p></html>

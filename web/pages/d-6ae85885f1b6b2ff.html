@@ -1,0 +1,104 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AE: research/reaction_dynamics/cycle4/leaves/uniform_mixing/check_minorization.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AE-sources.txt">Source map</a><h1>AE: research/reaction_dynamics/cycle4/leaves/uniform_mixing/check_minorization.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact rational illustration of common finite-path minorization.&quot;&quot;&quot;
+
+from fractions import Fraction as F
+from itertools import product
+
+
+T = F(1, 100)
+Q_MAX = F(18)
+EXP_LOWER = 1 - Q_MAX * T  # e^{-x} &gt;= 1-x for x &gt;= 0
+assert EXP_LOWER == F(41, 50) and EXP_LOWER &gt; 0
+
+# Box: alpha, delta, p, u in [1/2,2], q,v in [1,3].
+ALPHA_MIN = DELTA_MIN = F(1, 2)
+Q_MIN = F(1)
+
+
+def path(state):
+    a, b1, b2 = state
+    states = [state]
+    rates = []
+    channels = []
+    if a == 0 and (b1 or b2):
+        # 0 -&gt; A has rate at least alpha_min.
+        a += 1
+        rates.append(ALPHA_MIN)
+        channels.append(&quot;immigration&quot;)
+        states.append((a, b1, b2))
+    for i in range(2):
+        b = b1 if i == 0 else b2
+        while b:
+            # q(A+B_i -&gt; A) * a * b; here a=1 throughout clearing.
+            assert a &gt;= 1
+            rates.append(Q_MIN * a * b)
+            channels.append(f&quot;remove_B{i + 1}&quot;)
+            b -= 1
+            if i == 0:
+                b1 = b
+            else:
+                b2 = b
+            states.append((a, b1, b2))
+    while a:
+        # delta*A -&gt; 0 at rate at least delta_min*A.
+        rates.append(DELTA_MIN * a)
+        channels.append(&quot;catalyst_death&quot;)
+        a -= 1
+        states.append((a, b1, b2))
+    assert states[-1] == (0, 0, 0)
+    return states, rates, channels
+
+
+def path_lower_bound(states, rates):
+    n = len(rates)
+    if n == 0:
+        return EXP_LOWER
+    delta = T / (n + 1)
+    interval_length = delta / 2
+    return EXP_LOWER * interval_length**n * _product(rates)
+
+
+def _product(xs):
+    out = F(1)
+    for x in xs:
+        out *= x
+    return out
+
+
+def main():
+    receipts = []
+    for state in product(range(2), repeat=3):
+        states, rates, channels = path(state)
+        # On every path state, a&lt;=1 and each b_i&lt;=1, so the total exit-rate
+        # upper bound over the box is alpha+2 + death 2 + birth 4
+        # + removal 6 + autocatalysis 4 = 18.
+        assert max(x[0] for x in states) &lt;= 1
+        assert max(x[1] for x in states) &lt;= 1
+        assert max(x[2] for x in states) &lt;= 1
+        eta_x = path_lower_bound(states, rates)
+        receipts.append({
+            &quot;state&quot;: state,
+            &quot;path_length&quot;: len(rates),
+            &quot;channels&quot;: channels,
+            &quot;minimum_channel_rates&quot;: [str(x) for x in rates],
+            &quot;rational_probability_lower_bound&quot;: str(eta_x),
+        })
+    eta = min(F(x[&quot;rational_probability_lower_bound&quot;]) for x in receipts)
+    assert eta &gt; 0
+    print({
+        &quot;status&quot;: &quot;PASS&quot;,
+        &quot;scope&quot;: &quot;exact rational lower bounds for prescribed-path events on F0&quot;,
+        &quot;F0_states&quot;: len(receipts),
+        &quot;T&quot;: str(T),
+        &quot;uniform_total_exit_bound&quot;: str(Q_MAX),
+        &quot;e_minus_QT_lower_bound&quot;: str(EXP_LOWER),
+        &quot;common_minorization_eta&quot;: str(eta),
+        &quot;minorizing_measure&quot;: &quot;delta_(0,0,0)&quot;,
+        &quot;states&quot;: receipts,
+        &quot;scope_limit&quot;: &quot;This checks the finite path-rate and time-window arithmetic only; the all-state drift and the general skeleton ergodicity theorem are separate proof obligations.&quot;,
+    })
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/f72f909e6f1f14a74818e7b645e162a32654adf6f9d7622f059fc6c7b2fb2b76.py">Exact original</a></p></html>

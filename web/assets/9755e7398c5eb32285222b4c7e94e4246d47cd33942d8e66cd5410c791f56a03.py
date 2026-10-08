@@ -1,0 +1,163 @@
+"""Exact finite-data implementation of the family-332 median witness.
+
+Given rational row-stochastic A, t >= 1 and rational vectors x_i in R^m,
+compute y_i = E med(x_{J1}, x_{J2}, x_{J3}), where the J_a are independent
+with law G[i,:] and G = ( (t+1)I - tA )^{-1}.  The implementation uses the
+threshold-cut formula, not an n^3 triple sum or a 2^n cut enumeration.
+
+This is a finite rational-data constructor; it does not implement the global
+Lipschitz extension theorem or an arbitrary-function L1 interface.
+"""
+
+from fractions import Fraction as F
+from itertools import product
+
+
+def inverse(matrix):
+    """Gauss-Jordan inverse over Q. Intended as a transparent reference impl."""
+    n = len(matrix)
+    if any(len(row) != n for row in matrix):
+        raise ValueError("matrix must be square")
+    aug = [[F(v) for v in row] + [F(i == j) for j in range(n)]
+           for i, row in enumerate(matrix)]
+    for col in range(n):
+        pivot = next((r for r in range(col, n) if aug[r][col]), None)
+        if pivot is None:
+            raise ValueError("singular matrix")
+        aug[col], aug[pivot] = aug[pivot], aug[col]
+        scale = aug[col][col]
+        aug[col] = [v / scale for v in aug[col]]
+        for r in range(n):
+            if r != col and aug[r][col]:
+                scale = aug[r][col]
+                aug[r] = [a - scale * b for a, b in zip(aug[r], aug[col])]
+    return [row[n:] for row in aug]
+
+
+def matmul(a, b):
+    return [[sum((a[i][k] * b[k][j] for k in range(len(b))), F(0))
+             for j in range(len(b[0]))] for i in range(len(a))]
+
+
+def expected_median_rounding(A, X, t):
+    """Return exact rational y and geometric endpoint kernel G.
+
+    A is n-by-n rational row-stochastic; X is n-by-m rational.  For each
+    coordinate, only the <= n-1 nonzero upper-level cuts are visited.
+    """
+    n = len(A)
+    if n == 0 or any(len(row) != n for row in A):
+        raise ValueError("A must be nonempty and square")
+    if len(X) != n:
+        raise ValueError("X must have one vector per state")
+    m = len(X[0]) if X else 0
+    if any(len(row) != m for row in X):
+        raise ValueError("X must be rectangular")
+    if not isinstance(t, int) or t < 1:
+        raise ValueError("t must be a positive integer")
+    A = [[F(v) for v in row] for row in A]
+    X = [[F(v) for v in row] for row in X]
+    if any(v < 0 for row in A for v in row):
+        raise ValueError("A must be nonnegative")
+    if any(sum(row) != 1 for row in A):
+        raise ValueError("A must be row-stochastic")
+
+    M = [[(t + 1) * F(i == j) - t * A[i][j] for j in range(n)]
+         for i in range(n)]
+    G = inverse(M)
+    if any(v < 0 for row in G for v in row) or any(sum(row) != 1 for row in G):
+        raise ArithmeticError("resolvent failed the stochastic-kernel invariant")
+
+    Y = [[F(0) for _ in range(m)] for _ in range(n)]
+    for k in range(m):
+        levels = sorted(set(X[i][k] for i in range(n)))
+        for i in range(n):
+            value = levels[0]
+            grouped = {level: F(0) for level in levels}
+            for j in range(n):
+                grouped[X[j][k]] += G[i][j]
+            grouped_mass = [grouped[level] for level in levels]
+            suffix_mass = [F(0)] * (len(levels) + 1)
+            for r in range(len(levels) - 1, -1, -1):
+                suffix_mass[r] = suffix_mass[r + 1] + grouped_mass[r]
+            for r, (lo, hi) in enumerate(zip(levels, levels[1:])):
+                mass = suffix_mass[r + 1]
+                majority = 3 * mass * mass - 2 * mass * mass * mass
+                value += (hi - lo) * majority
+            Y[i][k] = value
+    return Y, G
+
+
+def triple_median_reference(G, X):
+    """Slow exact oracle for differential testing; O(m n^4) arithmetic."""
+    n, m = len(G), len(X[0])
+    out = [[F(0) for _ in range(m)] for _ in range(n)]
+    for i in range(n):
+        for a, b, c in product(range(n), repeat=3):
+            p = G[i][a] * G[i][b] * G[i][c]
+            for k in range(m):
+                out[i][k] += p * sorted((X[a][k], X[b][k], X[c][k]))[1]
+    return out
+
+
+def l1_distance(x, y, atom_weights=None):
+    weights = atom_weights if atom_weights is not None else [F(1)] * len(x)
+    return sum((F(w) * abs(F(a) - F(b)) for a, b, w in zip(x, y, weights)), F(0))
+
+
+def cotype_sides(A, pi, X, Y, t, atom_weights=None):
+    """Compute the released finite cotype inequality sides exactly."""
+    n = len(A)
+    A = [[F(v) for v in row] for row in A]
+    pi = [F(v) for v in pi]
+    if len(pi) != n or any(v < 0 for v in pi) or sum(pi) != 1:
+        raise ValueError("pi must be a probability vector matching A")
+    if any(sum(row) != 1 or any(v < 0 for v in row) for row in A):
+        raise ValueError("A must be row-stochastic")
+    if any(sum((pi[i] * A[i][j] for i in range(n)), F(0)) != pi[j]
+           for j in range(n)):
+        raise ValueError("pi must be stationary for A")
+    I = [[F(i == j) for j in range(n)] for i in range(n)]
+    power, cesaro = I, [[F(0) for _ in range(n)] for _ in range(n)]
+    for _ in range(t):
+        power = matmul(power, A)
+        cesaro = [[cesaro[i][j] + power[i][j] / t for j in range(n)]
+                  for i in range(n)]
+    initial = [[l1_distance(X[i], X[j], atom_weights) for j in range(n)]
+               for i in range(n)]
+    rounded = [[l1_distance(Y[i], Y[j], atom_weights) for j in range(n)]
+               for i in range(n)]
+    displacement = [l1_distance(X[i], Y[i], atom_weights) for i in range(n)]
+    lhs = sum((pi[i] * displacement[i] ** 2 for i in range(n)), F(0))
+    lhs += t * sum((pi[i] * A[i][j] * rounded[i][j] ** 2
+                    for i in range(n) for j in range(n)), F(0))
+    rhs = 3024 * sum((pi[i] * cesaro[i][j] * initial[i][j] ** 2
+                      for i in range(n) for j in range(n)), F(0))
+    return lhs, rhs
+
+
+def self_test():
+    # A stationary, nonreversible 3-state chain and rational data with ties,
+    # negative coordinates and unequal atom weights.
+    A = [[F(1, 2), F(1, 2), F(0)],
+         [F(0), F(1, 2), F(1, 2)],
+         [F(1, 2), F(0), F(1, 2)]]
+    pi = [F(1, 3)] * 3
+    X = [[F(-2), F(3), F(1)],
+         [F(0), F(3), F(-4)],
+         [F(5), F(-1), F(1)]]
+    weights = [F(1, 2), F(2), F(3, 4)]
+    for t in (1, 2, 5):
+        Y, G = expected_median_rounding(A, X, t)
+        assert Y == triple_median_reference(G, X)
+        lhs, rhs = cotype_sides(A, pi, X, Y, t, weights)
+        assert lhs <= rhs, (t, lhs, rhs)
+
+    # Degenerate one-state case, where the witness must reproduce the input.
+    Y1, G1 = expected_median_rounding([[F(1)]], [[F(-7), F(11)]], 3)
+    assert G1 == [[F(1)]] and Y1 == [[F(-7), F(11)]]
+    return "exact differential median and cotype fixtures passed"
+
+
+if __name__ == "__main__":
+    print(self_test())
