@@ -71,6 +71,13 @@ def write_jsonl(name, rows):
 # These are identified proof-bearing documents. Presence does not assert full coverage,
 # validity, independent reconstruction, or that every cited external premise is available.
 PROOF_TEXT = {
+    'N265': [('updates/AQ/package/reports/01_AFFINE_RATIONAL_SMOOTHING.md', 1, None)],
+    'N266': [('updates/AQ/package/reports/01_AFFINE_RATIONAL_SMOOTHING.md', 1, None)],
+    'N267': [('updates/AQ/package/reports/01_AFFINE_RATIONAL_SMOOTHING.md', 1, None)],
+    'N268': [('updates/AQ/package/reports/02_FREE_SUBGROUP_RANDOM_BASIS.txt', 1, None)],
+    'N269': [('updates/AQ/package/reports/02_FREE_SUBGROUP_RANDOM_BASIS.txt', 1, None)],
+    'N270': [('updates/AQ/package/reports/02_FREE_SUBGROUP_RANDOM_BASIS.txt', 1, None)],
+
     'N246': [('updates/AP/package/pit/RESEARCH_STATE.md', 1, None)],
     'N247': [('updates/AP/package/pit/RESEARCH_STATE.md', 1, None)],
     'N248': [('updates/AP/package/pit/RESEARCH_STATE.md', 1, None)],
@@ -392,6 +399,22 @@ ROWS[cid('N251')]['requires_external_validation'].append({'target':'external:rel
 for n in [251,252,253,254,255,256]:
     ROWS[cid('N'+str(n))]['requires_external_validation'].append({'target':cid('N165'),'scope':'Conditional on an actual torsion-free F2 group-ring one-sided inverse/witness; published Lean torsion-bearing scope does not prove the companion torsion-free claim. Do not import disputed positive-characteristic citation unconditionally.','evidence':[card_ev('N165'),card_ev('N252')]})
 
+# AQ rational smoothing and free-subgroup/random-basis reports; no status promotion.
+for owner,target,scope in [
+ ('N268','N254','The source claims a full continuous nonatomic Bernoulli restriction for the defect K on infinite-index free subgroups, whereas N254 concerns a distinct residual tail and cyclic factors. No global G conjugacy follows; exact FIR/duality premises need review.'),
+ ('N269','N256','Adds a distinct iid-pivot-thinning finite-relation obstruction and no global equivariant random well-order. Correlated local-priority bases and nonlinear measurable conjugacy are not excluded.'),
+ ('N270','N255','A measurable equivariant F2-vector-space basis of Rp would give a separate conditionally linear sufficient conjugacy route, avoiding residual cancellation/cocycle stabilization. No such basis is constructed; both spanning and independence are required.'),
+ ('N270','N252','The new source explicitly inherits finite-defect extraction as a working lemma with audit deferred. Its basis route bypasses that lemma; this does not independently validate or refute N252, nor establish finite-power Bernoullicity.'),
+ ('N270','N253','The unconstructed equivariant basis route would yield two-versus-four Bernoulli conjugacy directly from Haar splitting without cancelling the finite residual. It does not close N253 residual Bernoullicity or original Rokhlin-entropy gates.')]:
+    ROWS[cid(target)]['material_updates'].append({'target':cid(owner),'source_card':cid(owner),'relation':'refines_with_scoped_parallel_route_or_obstruction','relation_status':'source_supported_scoped_notice_not_correctness_promotion','scope':scope,'evidence':[card_ev(owner)],'whole_claim_invalidated':False})
+for n in range(265,272):
+    ROWS[cid('N'+str(n))]['status_authority']='AQ exact separately authored reports and clearly separated intake clarification; source analytic reconstructions/conditional statements preserved, no independent intake proof reconstruction, scientific replay or external correctness/priority certification.'
+    ROWS[cid('N'+str(n))]['proof_availability']['unavailable_or_unclassified']='Full report text available; no scientific script/output or external primary-paper fulltext supplied. Imported H10(Q), FIR and actual group-ring witness not independently validated; theorem completeness unclassified.'
+ROWS[cid('N266')]['requires_external_validation'].append({'target':'external:OpenAI-family004-H10Q-pinned-fd4aeeb2','scope':'Only degree-eight undecidability/Turing-degree corollary imports the unverified H10(Q) theorem. The unconditional source smoothing reduction remains logically separate. Independently reconstruct upstream theorem before asserting undecidability.','evidence':[card_ev('N266')]})
+ROWS[cid('N268')]['requires_external_validation'].append({'target':'external:Cohn-free-group-algebra-FIR-exact-scope','scope':'Locate and check exact submodule-freeness theorem, countability, left-coset choice and convolution/duality conventions. Infinite free rank needs finite-generation support argument; separate intake note supplies a clarification, not a whole-proof review receipt. Retain infinite-index assumption.','evidence':[evidence('updates/AQ/package/CURATION_NOTES.md'),card_ev('N268')]})
+for n in [268,269,270]:
+    ROWS[cid('N'+str(n))]['requires_external_validation'].append({'target':cid('N165'),'scope':'Supply/validate the actual F2[G] one-sided inverse with p nonzero; torsion-free companion construction and positive-characteristic citation discrepancy remain unverified. Source theorem is conditional on the witness, not evidence the witness was acquired.','evidence':[card_ev('N165'),card_ev('N268')]})
+
 # The focused branch correction supersedes the earlier unsupported impossibility gloss.
 # It neither refutes BLR's printed claim nor certifies the original hyperbolic candidate.
 state_ev = [evidence('state/2026-10-08-bowen-bernoulli-direct-finiteness/CORRECTED_AUDIT.md', 94, 110),
@@ -567,7 +590,7 @@ gate(26,'G-CIRCUIT-LOGARITHMIC-CONTACT','Decide circuit-size-sensitive logarithm
     'Is there a uniform explicit polynomial contact bound B(n,s,D) for every nonzero admitted small commutative circuit, or a small-circuit counterfamily?',
     'Prove the size/degree/field/constant/evaluation contracts and a polynomial contact bound without expanding exponential derivative closure, or construct a uniform polynomial-size circuit family with superpolynomial contact. Four finite fixtures, large linear-state dimension or the prior small-derivative theorem do not settle this. Keep exact rational generator costs separate from black-box evaluation.',
     'The sufficient reduction is supplied, hypothesis unproved; direct nonlinear contact is not blocked by faithful linear-realization lower bounds.',[card_ev('N250'),card_ev('N249')])
-gate(27,'G-DEFECT-BERNOULLICITY-OR-COCYCLE','Decide a residual Bernoullicity or cocycle-stabilization bridge',['N251','N252','N253','N254','N255','N256','N257','N258','N165','N166'],
+gate(27,'G-DEFECT-BERNOULLICITY-OR-COCYCLE','Decide a residual Bernoullicity or cocycle-stabilization bridge',['N251','N252','N253','N254','N255','N256','N257','N258','N268','N269','N270','N165','N166'],
     'Can the explicit finite defect power be proved Bernoulli, or can a stabilized Bernoulli insertion preserve the original twisted extension cocycle?',
     'Validate the actual torsion-free algebraic witness and the coloring/right-inverse proof, then prove the independent generating-Bernoulli property of K-power/X-times-residual, or exhibit exact measurable displacement lift/cocycle identity with a legal residual automorphism. Finite XOR feasibility, almost-cocycle convergence, infinite weak Pinsker entropy, mutual factors and equal ordinary invariants do not imply conjugacy. Earlier two-defect relative-isomorphism application requires separate exact-source review.',
     'A finite-power exact direct-product candidate is preserved, but unequal-entropy Bernoulli conjugacy and original supremal Rokhlin entropy sign both remain unresolved.',[card_ev('N252'),card_ev('N255'),card_ev('N256'),card_ev('N165')])
@@ -576,6 +599,15 @@ gate(28,'G-RANK-OR-MANIFOLD-TRANSFER','Acquire a bridge beyond rank and PL thick
     'For approximation, supply structure beyond rectangular-word separation without an impossible characteristic-zero lift. For Singer, realize G-times-F2 in a compact aspherical five-manifold or supply a different above-middle homology mechanism, validating source geometry and the exact published reflection theorem. Canonical graph-product spines fail classical local link embeddings. Source rank obstructions and conditional hyperbolic five-manifold deduction are not these endpoints.',
     'Both routes need genuinely new mathematical input; do not treat an explicit obstruction, existing theorem application or repository integration as a historic discovery.',[card_ev('N259'),card_ev('N260'),card_ev('N261')])
 
+gate(29,'G-PROJECTIVE-RATIONAL-POINT-PRESERVATION','Acquire a smooth projective hypersurface rational-point reduction',['N265','N266','N267'],
+    'Can effective affine rational-point smoothing be upgraded to a smooth geometrically integral projective hypersurface while preserving rational solvability?',
+    'Give an effective construction and exact iff rational-existence proof controlling every point at infinity and exceptional divisor, with geometric smoothness/integrality and charged arithmetic costs. Ordinary degree2d homogenization always adds a rational point and is singular there for d>=3. Verify the upstream H10(Q) theorem separately before any undecidability claim, and compare exact primary prior art.',
+    'Source supplies an affine reduction and an explicit failure of naive projectivization, not a projective reduction or an externally validated undecidability/novelty result.',[card_ev('N265'),card_ev('N266'),card_ev('N267')])
+gate(30,'G-RANDOM-EQUIVARIANT-MODULE-BASIS','Construct or obstruct a globally equivariant random defect-module basis',['N268','N269','N270','N165','N166'],
+    'Does Rp admit an iid-environment-measurable finite-support F2-vector-space basis indexed covariantly by G?',
+    'Validate the supplied actual group-ring witness/Haar splitting, then construct measurable v_g with both finite-relation independence and full spanning a.s., and covariance v_hg(h omega)=h v_g(omega) on a common conull set; prove a measurable inverse. Alternatively give an obstruction to this precise conditionally linear class, without extrapolating to every nonlinear measurable conjugacy. Charge support tails, finite bits and computation if an effective algorithm is claimed. Iid thinning/global well-order and subgroup bases alone fail to supply the target.',
+    'A new sufficient conditional mechanism bypasses finite-power residual cancellation, but no random basis, finite-power Bernoullicity or two-versus-four conjugacy is established.',[card_ev('N268'),card_ev('N269'),card_ev('N270'),card_ev('N165')])
+
 write_jsonl('CURRENT_CLAIM_STATUS.jsonl', list(ROWS.values()))
 write_jsonl('OPEN_PROOF_GATES.jsonl', GATES)
 
@@ -583,6 +615,7 @@ priority_lines = ['# Current frontier', '',
     'Read this only for coordination. Workers start with `00_START_HERE.txt` and retrieve the relevant topic/card, its current-status row, scoped material updates, blockers and decisive proof ranges. `01_CORE.txt` is optional.', '',
     'This is a curated decision view of existing evidence, not a new research run. Priority means a supported next decision; it predicts neither correctness nor breakthrough value. Archived restart instructions do not authorize continuation.', '',
     'Source card status is immutable. A later claim can refine an older gap while remaining unverified. Proof availability, reported internal checks, external correctness and historical priority are separate. Unlisted relations and incomplete proof coverage remain UNKNOWN.', '',
+    'AQ N265–271: genus-one rational detector and effective affine smoothing; degree-eight undecidability remains upstream-conditional, projective boundary upgrade open. Infinite-index free-subgroup Bernoulli restriction and iid/global-well-order obstructions lead to an unconstructed random equivariant basis criterion. Full two reports retained, rank inference clarification separately labeled; no scientific replay, full conjugacy or external correctness/priority upgrade.', '',
     'AP six foundational reports plus two formerly missing branches: N246–264 preserve exact PIT representation/lift barriers and prior-art downgrade, conditional finite-power Bernoulli extraction with residual/cocycle and invariant gates, rank/topology transfer obstructions, averaged polar capacity and variable-area birth-degree budgets. Original PIT packet/code retained; other sandbox links unavailable. No foundational endpoint, scientific replay or external correctness/priority upgrade. Old AO programme remains paused.', '',
     'AO checkpoint is user-reported PAUSED: N227–245 preserve26 exact ledger claims, strongest chemical order-five equality/cubic exclusion, collective concentration and narrower charged certification, critical square-root Gibbs marginals. Next source-recommended mathematical gate is two-species order4; no research was resumed. N240 broadens the3D polar upper by attributed published energy-Gram machinery, and N242 makes the actual sampler-law obstacle concrete. Original proofs/audits and negative routes retained; all remain externally unverified.', '',
     'AM/AN: N213–226 include linear PPT decomposition-rank obstructions and a finite-reference non-CP positive-map candidate; N220 refines N213 only within its own ensemble. N223 adds grouped-cut distillability; N224 refutes naive cross-copy overlap multiplicativity without changing the single-copy law. Physical Gaussian channels can have EB squares; no composition or fixed-all-power breakthrough follows. Full authored proofs and original ZIPs retained; external correctness and priority unresolved.', '',
