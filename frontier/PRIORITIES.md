@@ -6,6 +6,8 @@ This is a curated decision view of existing evidence, not a new research run. Pr
 
 Source card status is immutable. A later claim can refine an older gap while remaining unverified. Proof availability, reported internal checks, external correctness and historical priority are separate. Unlisted relations and incomplete proof coverage remain UNKNOWN.
 
+AR N272–275: source claims flat/nonprojective residual dual with pd1/continuum Ext, exact scalar orbit transfers versus unresolved multiplicative coherence, enriched Koopman equivalence without multiplicativity, and conditional all-integer-power lifting/inverse formulas. No acquired compatible insertion/transfer or unequal-entropy conjugacy; residual R/M is distinct from the random-basis target Rp. Exact report preserved; inherited premises, external correctness and priority remain unverified.
+
 AQ N265–271: genus-one rational detector and effective affine smoothing; degree-eight undecidability remains upstream-conditional, projective boundary upgrade open. Infinite-index free-subgroup Bernoulli restriction and iid/global-well-order obstructions lead to an unconstructed random equivariant basis criterion. Full two reports retained, rank inference clarification separately labeled; no scientific replay, full conjugacy or external correctness/priority upgrade.
 
 AP six foundational reports plus two formerly missing branches: N246–264 preserve exact PIT representation/lift barriers and prior-art downgrade, conditional finite-power Bernoulli extraction with residual/cocycle and invariant gates, rank/topology transfer obstructions, averaged polar capacity and variable-area birth-degree budgets. Original PIT packet/code retained; other sandbox links unavailable. No foundational endpoint, scientific replay or external correctness/priority upgrade. Old AO programme remains paused.
@@ -57,4 +59,4 @@ Material corrections: N135 → N160 is a full-proof candidate sharp identical-un
 
 Exact pass conditions and immutable source hashes/line ranges are in `OPEN_PROOF_GATES.jsonl`. One row per card is in `CURRENT_CLAIM_STATUS.jsonl`; never preload the whole status file. Retrieve the relevant card row or sidecar through the repository retrieval interface.
 
-Other historical restarts remain in `state/` and source archives. This dashboard selects 30 concrete gates; it does not exhaustively rank every field or independently reconstruct all 341 cards. Candidate supersession does not externally validate a gate.
+Other historical restarts remain in `state/` and source archives. This dashboard selects 30 concrete gates; it does not exhaustively rank every field or independently reconstruct all 345 cards. Candidate supersession does not externally validate a gate.
