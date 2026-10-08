@@ -1,6 +1,6 @@
 # Astra Research Knowledge
 
-377 scoped research cards, full supplied A–I research documents, J/K result summaries, and 19,894 scientific source pages. Claims retain their assumptions, dependencies, counterexamples and scientific status. Publication is not proof validation or model-weight training.
+391 scoped research cards, full supplied A–I research documents, J/K result summaries, and 20,515 scientific source pages. Claims retain their assumptions, dependencies, counterexamples and scientific status. Publication is not proof validation or model-weight training.
 
 Start with [00_START_HERE.txt](00_START_HERE.txt); [01_CORE.txt](01_CORE.txt) is optional broad orientation, then [result cards](web/llms.txt) and the [paged source library](web/library.txt). The bootstrap is 278 o200k tokens; broad scientific context is loaded on demand. The complete linked new J/K research notes and reproducibility packages were not supplied; their absence is explicit.
 
@@ -134,6 +134,10 @@ Added AU: N298–303: history-independent fixed-BGS-term HF simulation with max 
 
 
 Added AV: N304–307: exact boundary-qutrit all-copy rank-two obligation remains open; any-site endpoint positivity for support planes containing a fully product ray; exact entangled-reference co-Choi method failure with9/−11 and four-site−40(−5/98 normalized), while actual qubit positivity holds. Full14-file proof/source/finite-receipt/probe/array packet preserved. July2-copy and October3-copy source scopes, unexecuted716-term candidate certificate, PPT-zero-key and automata word-length transfer limits explicit. No NPT bound-entanglement resolution, external correctness/novelty clearance or intake scientific replay. [Sources](web/AV-sources.txt);[scopes](web/AV-reports.txt);[archive/availability](web/AV-package.txt).
+
+
+
+Added AW: N308–321: sharp common C2 EB comparators for all defining-O(d) self-compatible channels and products of arbitrary unital self-compatible qubits, including nonnormal channels. All-weight spin1 support/certificate, explicit18/21-atom full-covariant qutrit designs, positive tensor/adjoint-sandwich closures, all-spin cloner/spin3/2/USp families; exact scalar-allocation, naive-product, nontracial-output and unbiased-moment obstructions with scoped repairs. General finiteC and all-spin/all-weight gates remain open. All21 native claims mapped, historicalcheckpoint01 retained, original603-member checkpoint02 ZIP unchanged;600 authored manifest payloads plus3 separately hashed root members. Internal reconstruction/exact checks source-reported; no intake scientific replay or correctness/priority/capability promotion. [Sources](web/AW-sources.txt);[scopes](web/AW-reports.txt);[archive/availability](web/AW-package.txt).
 
 <!-- CURRENT DECISION LAYER -->
 Active frontier: frontier/PRIORITIES.md

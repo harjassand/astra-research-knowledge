@@ -1,0 +1,115 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AW: research/work/agents/spin1_anisotropic_sol/fixed_family_sdp.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AW-sources.txt">Source map</a><h1>AW: research/work/agents/spin1_anisotropic_sol/fixed_family_sdp.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Full603-member original checkpoint02 ZIP,600 authored manifest payloads and3 root members retained;4 intake metadata records separate. Complete proofs, blind/exposed audits, exact receipts, scripts and selected primary-source captures supplied; full repositories/caches/session transcripts excluded. Current STATUS/native21-claim ledger and scoped final audits govern historical pending notes. Scientific proof/check status SOURCE-REPORTED; no intake scientific execution, external/formal correctness or priority certification. Universal finiteC remains UNKNOWN. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Frozen spin-one family; reduced legal broadcaster SDP, with exact support QP.&quot;&quot;&quot;
+from pathlib import Path
+from fractions import Fraction as F
+from itertools import combinations, permutations
+import hashlib, json, platform, time
+import numpy as np
+import sympy as sy
+import cvxpy as cp
+
+OUT = Path(__file__).resolve().parent
+
+def e(a,b,c):
+    x=np.zeros(27); x[9*a+3*b+c]=1; return x
+
+def basis():
+    blocks=[]; names=[]
+    for i in range(3):
+        j,k=[u for u in range(3) if u!=i]
+        blocks.append(np.column_stack([e(i,i,i),e(i,j,j),(e(j,i,j)+e(j,j,i))/np.sqrt(2),e(i,k,k),(e(k,i,k)+e(k,k,i))/np.sqrt(2)]))
+        names.append(f&quot;parity{i+1}_BCplus&quot;)
+        blocks.append(np.column_stack([(e(j,i,j)-e(j,j,i))/np.sqrt(2),(e(k,i,k)-e(k,k,i))/np.sqrt(2)]))
+        names.append(f&quot;parity{i+1}_BCminus&quot;)
+    blocks.append(np.column_stack([(e(i,(i+1)%3,(i+2)%3)+e(i,(i+2)%3,(i+1)%3))/np.sqrt(2) for i in range(3)]))
+    names.append(&quot;odd_BCplus&quot;)
+    blocks.append(np.column_stack([(e(i,(i+1)%3,(i+2)%3)-e(i,(i+2)%3,(i+1)%3))/np.sqrt(2) for i in range(3)]))
+    names.append(&quot;odd_BCminus&quot;)
+    U=np.column_stack(blocks)
+    assert np.linalg.norm(U.T@U-np.eye(27))&lt;1e-14
+    return blocks,names
+
+def spin_matrices():
+    js=[]
+    for i in range(3):
+        x=np.zeros((3,3),complex)
+        for a,b in permutations(range(3),2):
+            if len({i,a,b})==3:
+                inv=sum(u&gt;v for p,u in enumerate((i,a,b)) for v in (i,a,b)[p+1:])
+                x[a,b]=-1j*(-1)**inv
+        js.append(x)
+    assert all(np.linalg.norm(x-x.conj().T)==0 for x in js)
+    return js
+
+def support(a):
+    # A z &gt;= b, with active-row KKT z=A_active.T*lambda, lambda&gt;=0.
+    A=sy.Matrix([[0,1,1],[1,0,1],[1,1,0],[1,0,0],[0,1,0],[0,0,1]])
+    b=sy.Matrix([2*sy.Rational(x.numerator,x.denominator) for x in a]+[0,0,0])
+    candidates=[]
+    for count in range(4):
+        for ids in combinations(range(6),count):
+            if not count:
+                z=sy.zeros(3,1); lam=sy.zeros(0,1)
+            else:
+                Aa=A[list(ids),:]; bb=b[list(ids),:]
+                if (Aa*Aa.T).det()==0: continue
+                lam=(Aa*Aa.T).inv()*bb; z=Aa.T*lam
+            if all(x&gt;=0 for x in lam) and all(x&gt;=0 for x in A*z-b):
+                k=(z.T*z)[0]/3
+                candidates.append((k,z,ids,lam))
+    k,z,ids,lam=min(candidates,key=lambda x:x[0])
+    return {&quot;k_exact&quot;:str(k),&quot;k&quot;:float(k),&quot;z_exact&quot;:[str(x) for x in z],&quot;z&quot;:np.array(z,float).reshape(3),&quot;active_rows&quot;:list(ids),&quot;multipliers_exact&quot;:[str(x) for x in lam]}
+
+def ptrace1(R,reg):
+    t=R.reshape((3,)*6)
+    if reg==0:return np.einsum(&quot;abcdbc-&gt;ad&quot;,t)
+    if reg==1:return np.einsum(&quot;abcaec-&gt;be&quot;,t)
+    return np.einsum(&quot;abcabf-&gt;cf&quot;,t)
+
+def validate(R,W):
+    swapBC=np.zeros((27,27)); swapAB=np.zeros((9,9))
+    for a,b,c in permutations(range(3),3): pass
+    for a in range(3):
+        for b in range(3):
+            swapAB[3*b+a,3*a+b]=1
+            for c in range(3):swapBC[9*a+3*c+b,9*a+3*b+c]=1
+    AB=np.einsum(&quot;abcaec-&gt;abde&quot;,R.reshape((3,)*6)) if False else np.einsum(&quot;abcdec-&gt;abde&quot;,R.reshape((3,)*6))
+    AB=AB.reshape(9,9)
+    return {&quot;min_eig&quot;:float(np.linalg.eigvalsh(R).min()),&quot;trace&quot;:float(np.trace(R)),&quot;marginal_residuals&quot;:[float(np.linalg.norm(ptrace1(R,r)-np.eye(3)/3)) for r in range(3)],&quot;BC_swap_residual&quot;:float(np.linalg.norm(R-swapBC@R@swapBC.T)),&quot;AB_selfadjoint_residual&quot;:float(np.linalg.norm(AB-swapAB@AB@swapAB.T)),&quot;objective_recomputed&quot;:float(np.trace(R@W))}
+
+def run():
+    blocks,names=basis(); js=spin_matrices(); I=np.eye(3)
+    Ws=[np.real(np.kron(j.T,np.kron(j,I))+np.kron(j.T,np.kron(I,j))) for j in js]
+    cases=[(&quot;isotropic&quot;,(F(1),F(1),F(1))),(&quot;single&quot;,(F(1),F(0),F(0))),(&quot;zero&quot;,(F(0),F(0),F(0)))]
+    cases += [(f&quot;axial_{str(t).replace(&#x27;/&#x27;,&#x27;_&#x27;)}&quot;,(t,F(1),F(1))) for t in [F(0),F(1,2),F(3,4),F(1),F(5,4),F(3,2),F(2)]]
+    cases += [(f&quot;triaxial_{str(t).replace(&#x27;/&#x27;,&#x27;_&#x27;)}&quot;,(1+t,F(1),1-t)) for t in [F(1,8),F(1,4),F(1,2)]]
+    metadata={&quot;prereg_sha256&quot;:hashlib.sha256((OUT/&quot;PREREGISTRATION.txt&quot;).read_bytes()).hexdigest(),&quot;python&quot;:platform.python_version(),&quot;numpy&quot;:np.__version__,&quot;cvxpy&quot;:cp.__version__,&quot;sympy&quot;:sy.__version__,&quot;solver&quot;:&quot;CLARABEL&quot;,&quot;installed_solvers&quot;:cp.installed_solvers(),&quot;blocks&quot;:names,&quot;block_dims&quot;:[T.shape[1] for T in blocks],&quot;cases&quot;:[]}
+    for name,a in cases:
+        w=np.array([float(x*x) for x in a]); W=sum(wi*Wi for wi,Wi in zip(w,Ws))
+        X=[cp.Variable((T.shape[1],T.shape[1]),symmetric=True) for T in blocks]
+        R=sum(T@x@T.T for T,x in zip(blocks,X))
+        diag=cp.diag(R)
+        constraints=[x&gt;&gt;0 for x in X]
+        # All constraints below are literal original computational-basis constraints.
+        for reg in range(3):
+            for i in range(3):
+                ids=[9*aa+3*bb+cc for aa in range(3) for bb in range(3) for cc in range(3) if (aa,bb,cc)[reg]==i]
+                constraints.append(cp.sum(diag[ids])==1/3)
+        for i,j in combinations(range(3),2):
+            constraints.append(cp.sum(diag[[9*i+3*j+c for c in range(3)]])==cp.sum(diag[[9*j+3*i+c for c in range(3)]]))
+        objective=sum(cp.trace((T.T@W@T)@x) for T,x in zip(blocks,X))
+        p=cp.Problem(cp.Maximize(objective),constraints)
+        started=time.perf_counter()
+        opt=p.solve(solver=&quot;CLARABEL&quot;,tol_gap_abs=1e-10,tol_gap_rel=1e-10,tol_feas=1e-10,max_iter=300)
+        elapsed=time.perf_counter()-started
+        Rn=np.array(R.value); sp=support(a); z=sp.pop(&quot;z&quot;)
+        V=2*np.sum(w)/3; threshold=V+sp[&quot;k&quot;]
+        G=np.diag(z*z); L=sum(wi*(j@j).real for wi,j in zip(w,js))
+        D=np.kron(L,np.kron(I,I))+(np.kron(I,np.kron(G,I))+np.kron(I,np.kron(I,G)))/2-W
+        output={&quot;name&quot;:name,&quot;sqrt_w_exact&quot;:[str(x) for x in a],&quot;w_exact&quot;:[str(x*x) for x in a],&quot;support&quot;:sp,&quot;V_exact&quot;:str(F(2,3)*sum(x*x for x in a)),&quot;V&quot;:float(V),&quot;threshold&quot;:float(threshold),&quot;status&quot;:p.status,&quot;opt&quot;:float(opt),&quot;gap&quot;:float(opt-threshold),&quot;reverse_dual_min_eig&quot;:float(np.linalg.eigvalsh(D).min()),&quot;seconds&quot;:elapsed,&quot;num_iters&quot;:p.solver_stats.num_iters,&quot;validation&quot;:validate(Rn,W),&quot;eigenvalues_by_block&quot;:[np.linalg.eigvalsh(x.value).tolist() for x in X],&quot;diagonal_constraint_duals&quot;:[np.array(c.dual_value).tolist() for c in constraints[len(X):]]}
+        np.savez(OUT/(name+&quot;.npz&quot;),R=Rn,W=W,D=D,**{f&quot;block_{i}&quot;:x.value for i,x in enumerate(X)})
+        metadata[&quot;cases&quot;].append(output)
+        (OUT/&quot;fixed_family_results.json&quot;).write_text(json.dumps(metadata,indent=2)+&quot;\n&quot;)
+        print(json.dumps({k:output[k] for k in [&quot;name&quot;,&quot;status&quot;,&quot;opt&quot;,&quot;threshold&quot;,&quot;gap&quot;,&quot;reverse_dual_min_eig&quot;,&quot;seconds&quot;]}),flush=True)
+
+if __name__==&quot;__main__&quot;:run()
+</pre><p><a href="../assets/c1492aa8ee029be9e1c3ba750e60e3a433855c0bc8ac53101d04f9e47729917d.py">Exact original</a></p></html>

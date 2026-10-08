@@ -1,0 +1,154 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AW: research/outputs/broadcasting-theorems/tensor/verify_nonselfadjoint.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AW-sources.txt">Source map</a><h1>AW: research/outputs/broadcasting-theorems/tensor/verify_nonselfadjoint.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Full603-member original checkpoint02 ZIP,600 authored manifest payloads and3 root members retained;4 intake metadata records separate. Complete proofs, blind/exposed audits, exact receipts, scripts and selected primary-source captures supplied; full repositories/caches/session transcripts excluded. Current STATUS/native21-claim ledger and scoped final audits govern historical pending notes. Scientific proof/check status SOURCE-REPORTED; no intake scientific execution, external/formal correctness or priority certification. Universal finiteC remains UNKNOWN. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Generic block identities and exact legal skew-transfer failure.&quot;&quot;&quot;
+from pathlib import Path
+from itertools import product
+import hashlib
+import json
+import sympy as s
+
+BASE=Path(__file__).resolve().parent
+R=s.Rational
+I=s.eye(3)
+J=[s.Matrix(3,3,lambda j,k:-s.I*s.LeviCivita(i,j,k)) for i in range(3)]
+checks=[]
+
+def simp(A):return A.applyfunc(s.simplify)
+def record(name,**details):checks.append({&quot;name&quot;:name,&quot;status&quot;:&quot;PASS&quot;,**details})
+def ket(i,j,k):
+    v=s.zeros(27,1);v[9*i+3*j+k]=1;return v
+
+w=s.symbols(&#x27;w0:3&#x27;,real=True)
+k=s.symbols(&#x27;k0:3&#x27;,real=True)
+K=s.diag(*k)
+W=sum((w[i]*(s.kronecker_product(J[i].T,J[i],I)+
+             s.kronecker_product(J[i].T,I,J[i])) for i in range(3)),s.zeros(27))
+D5=3*s.kronecker_product(K,I,I)+s.kronecker_product(I,K,I)+s.kronecker_product(I,I,K)
+Mminus=D5-5*W
+Mplus=D5+5*W
+blocks=[]
+for i in range(3):
+    j=(i+1)%3;ell=(i+2)%3
+    bs=[ket(i,i,i),-ket(i,j,j),-ket(i,ell,ell),
+        (ket(j,i,j)+ket(j,j,i))/s.sqrt(2),
+        (ket(ell,i,ell)+ket(ell,ell,i))/s.sqrt(2)]
+    ba=[(ket(j,i,j)-ket(j,j,i))/s.sqrt(2),
+        (ket(ell,i,ell)-ket(ell,ell,i))/s.sqrt(2)]
+    blocks.append(s.Matrix.hstack(*bs))
+    blocks.append(s.Matrix.hstack(*ba))
+    actual=simp(blocks[-2].T*Mminus*blocks[-2])
+    expected=s.diag(5*k[i],3*k[i]+2*k[j],3*k[i]+2*k[ell],
+                    k[i]+4*k[j],k[i]+4*k[ell])
+    for r,c,v in [(0,3,-5*s.sqrt(2)*w[ell]),(1,3,-5*s.sqrt(2)*w[ell]),
+                  (0,4,-5*s.sqrt(2)*w[j]),(2,4,-5*s.sqrt(2)*w[j]),
+                  (3,4,-5*w[i])]:
+        expected[r,c]=expected[c,r]=v
+    assert actual==expected
+odd_s=[];odd_a=[]
+for i in range(3):
+    j=(i+1)%3;ell=(i+2)%3
+    odd_s.append((ket(i,j,ell)+ket(i,ell,j))/s.sqrt(2))
+    odd_a.append((ket(i,j,ell)-ket(i,ell,j))/s.sqrt(2))
+blocks += [s.Matrix.hstack(*odd_s),s.Matrix.hstack(*odd_a)]
+U=s.Matrix.hstack(*blocks)
+assert U.T*U==s.eye(27)
+full_minus=simp(U.T*Mminus*U)
+full_plus=simp(U.T*Mplus*U)
+minus_blocks=[simp(B.T*Mminus*B) for B in blocks]
+plus_blocks=[simp(B.T*Mplus*B) for B in blocks]
+assert full_minus==s.diag(*minus_blocks)
+assert full_plus==s.diag(*plus_blocks)
+record(&quot;generic_spin_27_block_decomposition&quot;, block_sizes=[5,2,5,2,5,2,3,3],
+       symbolic_weights=3,symbolic_potentials=3)
+for i in [0,2,4]:
+    diagonal=s.diag(*minus_blocks[i].diagonal())
+    assert plus_blocks[i]==2*diagonal-minus_blocks[i]
+    # Every original nonzero off-diagonal coefficient is nonpositive at w&gt;=0.
+    for r,c in product(range(5),repeat=2):
+        if r!=c:
+            poly=s.Poly(minus_blocks[i][r,c],*w)
+            assert all(coef&lt;=0 for coef in poly.coeffs())
+for i in [1,3,5]:
+    sign=s.diag(1,-1)
+    assert plus_blocks[i]==sign*minus_blocks[i]*sign
+assert plus_blocks[6]==minus_blocks[7]
+assert plus_blocks[7]==minus_blocks[6]
+record(&quot;negative_star_sign_transfer&quot;, five_blocks=&quot;diamagnetic absolute-vector bound&quot;,
+       two_blocks=&quot;diagonal sign conjugation&quot;,odd_blocks=&quot;exact exchange&quot;,
+       positivity_premise=&quot;supplied positive-star polynomial theorem&quot;)
+
+# Proper and improper spin-frame rotation identities.
+u=s.Matrix([0,0,1]);v=s.Matrix([s.sqrt(3)/2,0,R(1,2)])
+Rot=s.Matrix([[R(1,2),0,s.sqrt(3)/2],[0,1,0],[-s.sqrt(3)/2,0,R(1,2)]])
+assert Rot.T*Rot==I and Rot.det()==1 and Rot*u==v
+for O in [Rot,-Rot]:
+    eps=O.det();proper=eps*O
+    assert proper.det()==1
+    for i in range(3):
+        frame=sum((O[a,i]*J[a] for a in range(3)),s.zeros(3))
+        assert simp(frame-eps*proper*J[i]*proper.T)==s.zeros(3)
+record(&quot;proper_improper_frame_accounting&quot;, tested_orientations=[1,-1],
+       formula=&quot;J(Oe_i)=det(O)[det(O)O]J_i[det(O)O]^T&quot;)
+
+# Exact unital EB local channel Phi=Ad_R D_(J_u).
+def Jn(n):return sum((n[i]*J[i] for i in range(3)),s.zeros(3))
+def pvm(n):
+    j=Jn(n)
+    return [(j*j+j)/2,(j*j-j)/2,I-j*j]
+pu=pvm(u)
+out=[simp(Rot*p*Rot.T) for p in pu]
+for ps in [pu,out]:
+    assert sum(ps,s.zeros(3))==I
+    for p in ps:
+        assert simp(p*p-p)==s.zeros(3) and p.trace()==1 and p.H==p
+def phi(A):return simp(sum((q*s.trace(p*A) for p,q in zip(pu,out)),s.zeros(3)))
+c=(u.T*v)[0]
+h=(u+v)/s.sqrt(2+2*c)
+ph=pvm(h)
+def realmap(A):return (s.trace(A)*I+A+A.T)/5
+def psi(A):return simp(c*sum((p*s.trace(p*A) for p in ph),s.zeros(3))+(1-c)*realmap(A))
+assert phi(I)==I and psi(I)==I
+E=[s.sqrt(R(3,2))*ji for ji in J]
+T=s.Matrix(3,3,lambda i,j:s.simplify(s.trace(E[i]*phi(E[j]))/3))
+P=s.Matrix(3,3,lambda i,j:s.simplify(s.trace(E[i]*psi(E[j]))/3))
+assert T==v*u.T
+assert simp(P-c*h*h.T)==s.zeros(3)
+local_residual=simp(I-T-T.T+P)
+assert local_residual.eigenvals()=={s.Integer(0):1,s.Integer(1):1,R(3,2):1}
+record(&quot;legal_local_skew_channel_and_C2_comparator&quot;, compressed_T=&quot;v u^T&quot;,
+       c=str(c),local_residual_eigenvalues=[&quot;0&quot;,&quot;1&quot;,&quot;3/2&quot;],
+       legality=&quot;rank-one PVM measure/prepare; both outputs prepare same rotated state&quot;)
+
+# Actual physical two-qutrit observable and twofold map scores.
+Eu=s.sqrt(R(3,2))*Jn(u);Ev=s.sqrt(R(3,2))*Jn(v)
+den=s.sqrt(2*(1+c*c))
+A=(s.kronecker_product(Eu,Eu)+s.kronecker_product(Ev,Ev))/den
+phiA=(s.kronecker_product(phi(Eu),phi(Eu))+s.kronecker_product(phi(Ev),phi(Ev)))/den
+psiA=(s.kronecker_product(psi(Eu),psi(Eu))+s.kronecker_product(psi(Ev),psi(Ev)))/den
+norm=s.simplify(s.trace(A*A)/9)
+phi_score=s.simplify(s.trace(A*phiA)/9)
+psi_score=s.simplify(s.trace(A*psiA)/9)
+excess=s.simplify((norm-psi_score)-2*(norm-phi_score))
+assert norm==1 and phi_score==R(5,8) and psi_score==R(9,40) and excess==R(1,40)
+record(&quot;naive_symmetric_comparator_tensor_failure&quot;, dimension=9,
+       observable_norm=str(norm),broadcast_score=str(phi_score),
+       comparator_score=str(psi_score),C2_excess=str(excess),
+       target_counterexample=False)
+
+# The right/left polar bound on the same exact nonnormal proxy.
+right=u*u.T;left=v*v.T
+assert simp(left+right-T-T.T-(v-u)*(v-u).T)==s.zeros(3)
+assert right*right==right and left*left==left
+total=s.kronecker_product(T,T)
+u2=s.kronecker_product(u,u);v2=s.kronecker_product(v,v)
+right2=s.kronecker_product(right,right);left2=s.kronecker_product(left,left)
+assert simp(left2+right2-total-total.T-(v2-u2)*(v2-u2).T)==s.zeros(9)
+record(&quot;polar_positive_identity_exact_nonnormal_example&quot;, factors=2,
+       residual=&quot;(v tensor v-u tensor u)(v tensor v-u tensor u)^T&quot;)
+
+result={&quot;scope&quot;:&quot;exact generic block/formula audits; supplied star positivity remains a premise&quot;,
+        &quot;proof_sha256&quot;:hashlib.sha256((BASE/&#x27;NONSELFADJOINT_MIXED_SPAN_THEOREM.txt&#x27;).read_bytes()).hexdigest(),
+        &quot;sympy_version&quot;:s.__version__,&quot;tests&quot;:checks,&quot;all_pass&quot;:True,
+        &quot;general_full_qutrit_channel_status&quot;:&quot;UNKNOWN&quot;}
+(BASE/&#x27;nonselfadjoint_replay.json&#x27;).write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+print(json.dumps({&quot;all_pass&quot;:True,&quot;tests&quot;:len(checks),&quot;proof_sha256&quot;:result[&#x27;proof_sha256&#x27;]},indent=2))
+</pre><p><a href="../assets/7470724a84bd591702e9a3ff4ab5c376852c473ff8cb9466903a98c000b54acb.py">Exact original</a></p></html>

@@ -1,0 +1,123 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AW: research/work/agents/ppt_cube_blind_review/cross_audit.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AW-sources.txt">Source map</a><h1>AW: research/work/agents/ppt_cube_blind_review/cross_audit.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Full603-member original checkpoint02 ZIP,600 authored manifest payloads and3 root members retained;4 intake metadata records separate. Complete proofs, blind/exposed audits, exact receipts, scripts and selected primary-source captures supplied; full repositories/caches/session transcripts excluded. Current STATUS/native21-claim ledger and scoped final audits govern historical pending notes. Scientific proof/check status SOURCE-REPORTED; no intake scientific execution, external/formal correctness or priority certification. Universal finiteC remains UNKNOWN. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Independent exact audit of the frozen rational separability certificate.
+
+The target is built with direct L tensor L matrix-unit images, not the
+originator&#x27;s Kraus constructor. Positivity is checked with rational LDL,
+not the originator&#x27;s Bareiss leading determinants.
+&quot;&quot;&quot;
+import hashlib
+import json
+import time
+from fractions import Fraction
+from pathlib import Path
+import numpy as np
+from independent_maps import build_exact, choi
+
+HERE = Path(__file__).parent
+CERT = HERE.parent/&#x27;ppt_cube_chain_sol&#x27;/&#x27;cube_separable_certificate.json&#x27;
+EXPECTED=&#x27;256745ff4887eadb653a8fdb416ccb15e91051756065396eb58d11761173d961&#x27;
+
+def checked_ints(a):
+    if isinstance(a,list):
+        for b in a: checked_ints(b)
+    else:
+        assert type(a) is int, (&#x27;not a Python integer&#x27;,type(a))
+
+def determinant_fraction(a):
+    &quot;&quot;&quot;Ordinary rational Gaussian elimination, with row pivoting.&quot;&quot;&quot;
+    a=[[Fraction(x) for x in r] for r in a]
+    sign=1;result=Fraction(1)
+    for k in range(len(a)):
+        p=next((i for i in range(k,len(a)) if a[i][k]),None)
+        if p is None:return Fraction(0)
+        if p!=k:a[k],a[p]=a[p],a[k];sign=-sign
+        pivot=a[k][k];result*=pivot
+        for i in range(k+1,len(a)):
+            scale=a[i][k]/pivot
+            for j in range(k+1,len(a)):a[i][j]-=scale*a[k][j]
+            a[i][k]=Fraction(0)
+    return sign*result
+
+def positive_by_ldl(a):
+    &quot;&quot;&quot;Exact real symmetric SPD iff every unpivoted LDL pivot is positive.&quot;&quot;&quot;
+    n=len(a)
+    assert all(a[i][j]==a[j][i] for i in range(n) for j in range(n))
+    l=[[Fraction(int(i==j)) for j in range(n)] for i in range(n)]
+    d=[]
+    for i in range(n):
+        pivot=Fraction(a[i][i])-sum(l[i][k]**2*d[k] for k in range(i))
+        assert pivot&gt;0, (&#x27;nonpositive LDL pivot&#x27;,i)
+        d.append(pivot)
+        for j in range(i+1,n):
+            l[j][i]=(Fraction(a[j][i])-sum(l[j][k]*l[i][k]*d[k] for k in range(i)))/pivot
+    # Reconstruct once to audit the recurrence itself, exactly.
+    assert all(sum(l[i][k]*d[k]*l[j][k] for k in range(n))==a[i][j]
+               for i in range(n) for j in range(n))
+    return d
+
+def run():
+    start=time.monotonic()
+    raw=CERT.read_bytes();digest=hashlib.sha256(raw).hexdigest()
+    assert digest==EXPECTED
+    z=json.loads(raw)
+    assert z[&#x27;schema&#x27;]==&#x27;family272_original_cube_separable_v1&#x27;
+    assert z[&#x27;boundary_dim&#x27;]==[10,6]
+    for name in (&#x27;x_numerator&#x27;,&#x27;y_numerator&#x27;,&#x27;filter_denominator&#x27;,&#x27;input_numerators&#x27;,
+                 &#x27;input_denominator&#x27;,&#x27;output_numerators&#x27;,&#x27;output_denominator&#x27;,&#x27;rational_target_trace&#x27;):
+        checked_ints(z[name])
+    xn,yn=z[&#x27;x_numerator&#x27;],z[&#x27;y_numerator&#x27;]
+    vs,bs=z[&#x27;input_numerators&#x27;],z[&#x27;output_numerators&#x27;]
+    qx,qv,den=z[&#x27;filter_denominator&#x27;],z[&#x27;input_denominator&#x27;],z[&#x27;output_denominator&#x27;]
+    assert qx&gt;0 and qv&gt;0 and den&gt;0
+    assert len(xn)==10 and all(len(r)==10 for r in xn)
+    assert len(yn)==6 and all(len(r)==6 for r in yn)
+    assert len(vs)==len(bs)==400
+    assert all(len(v)==10 for v in vs)
+    dx=determinant_fraction(xn);dy=determinant_fraction(yn)
+    assert dx!=0 and dy!=0
+    assert vs[:10]==[[qv*int(i==j) for j in range(10)] for i in range(10)]
+    for b in bs:
+        assert len(b)==6 and all(len(r)==6 for r in b)
+        positive_by_ldl(b)
+        shifted=[[100000*b[i][j]-den*int(i==j) for j in range(6)] for i in range(6)]
+        positive_by_ldl(shifted)
+    A0,K,F4,Q4=build_exact()
+    J=choi(F4,10,6)
+    assert np.array_equal(J,J.T)
+    tr=sum(J[i,i] for i in range(60))
+    assert tr==z[&#x27;rational_target_trace&#x27;] and tr&gt;0
+    # The certificate represents H=(X tensor Y) J(F4)/tr (X tensor Y)^T.
+    # X=xn/qx, Y=yn/qx. Sum of atoms is sum(vv^T tensor b), with
+    # v=vn/qv and b=bn/den. Clear all positive denominators exactly.
+    local=np.kron(np.array(xn,dtype=object),np.array(yn,dtype=object))
+    target=local@J@local.T
+    reconstructed=np.zeros((60,60),dtype=object)
+    for v,b in zip(vs,bs):
+        va=np.array(v,dtype=object)
+        reconstructed+=np.kron(np.outer(va,va),np.array(b,dtype=object))
+    delta=reconstructed*(tr*qx**4)-target*(qv*qv*den)
+    assert all(x==0 for x in delta.ravel())
+    report={
+        &#x27;status&#x27;:&#x27;INDEPENDENT_EXACT_CROSS_AUDIT_PASS&#x27;,
+        &#x27;certificate_sha256&#x27;:digest,
+        &#x27;source_commit&#x27;:&#x27;fd4aeeb2ee4fc729c18d98444fed42fd0529eeeb&#x27;,
+        &#x27;target&#x27;:&#x27;F4=32 ABA composed with Ad_D, reconstructed independently&#x27;,
+        &#x27;target_convention&#x27;:&#x27;Choi ordering (input,output), C-order matrix-unit superoperators&#x27;,
+        &#x27;integer_schema&#x27;:True,
+        &#x27;all_3600_identity_entries_exact&#x27;:True,
+        &#x27;product_terms&#x27;:400,
+        &#x27;positive_output_factors&#x27;:&#x27;400 rational LDL decompositions checked and reconstructed&#x27;,
+        &#x27;strict_output_margin&#x27;:&#x27;all B_r - I6/100000 strictly positive by rational LDL&#x27;,
+        &#x27;coordinate_input_atoms&#x27;:&#x27;first ten exactly e_i&#x27;,
+        &#x27;filter_invertibility&#x27;:&#x27;independent rational Gaussian determinants nonzero&#x27;,
+        &#x27;rational_target_trace&#x27;:int(tr),
+        &#x27;source_c1_c2&#x27;:&#x27;1/1485980&#x27;,
+        &#x27;claim&#x27;:&#x27;J(ABA) separable, hence BAB EB, hence pinned Theta^3 EB&#x27;,
+        &#x27;square_nonEB&#x27;:&#x27;Imported source lower bound; not checked by this audit&#x27;,
+        &#x27;scope&#x27;:&#x27;Finite exact candidate certificate plus hand-derived branch theorem; no external or formal certification&#x27;,
+        &#x27;elapsed_seconds&#x27;:time.monotonic()-start,
+    }
+    (HERE/&#x27;cross_audit_results.json&#x27;).write_text(json.dumps(report,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps(report,indent=2))
+
+if __name__==&#x27;__main__&#x27;:run()
+</pre><p><a href="../assets/88e57dff1695b5db03cc0356c9153fb4ef9acf5e1046055c1ccb0c491c403efb.py">Exact original</a></p></html>

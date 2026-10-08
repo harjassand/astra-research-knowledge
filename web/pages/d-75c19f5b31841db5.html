@@ -1,0 +1,66 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AW: research/outputs/spin1-proof/triaxial_symbolic.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AW-sources.txt">Source map</a><h1>AW: research/outputs/spin1-proof/triaxial_symbolic.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Full603-member original checkpoint02 ZIP,600 authored manifest payloads and3 root members retained;4 intake metadata records separate. Complete proofs, blind/exposed audits, exact receipts, scripts and selected primary-source captures supplied; full repositories/caches/session transcripts excluded. Current STATUS/native21-claim ledger and scoped final audits govern historical pending notes. Scientific proof/check status SOURCE-REPORTED; no intake scientific execution, external/formal correctness or priority certification. Universal finiteC remains UNKNOWN. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;All-weight symbolic attempt from the exact support active-set cones.
+
+This performs no numerical weight evaluations and no additional SDPs.
+It asks whether the explicit dual&#x27;s necessary block determinants have
+nonnegative polynomial coefficients after a sorted-cone parametrization.
+Negative coefficients are retained as a failed certificate, not as a
+refutation of PSD.
+&quot;&quot;&quot;
+from pathlib import Path
+import json,time
+import sympy as s
+
+OUT=Path(__file__).resolve().parent
+p,q,r=s.symbols(&#x27;p q r&#x27;,nonnegative=True)
+
+def symblock(w,K,i):
+    j,k=[a for a in range(3) if a!=i]
+    d=[5*K[i],3*K[i]+2*K[j],K[i]+4*K[j],3*K[i]+2*K[k],K[i]+4*K[k]]
+    M=s.diag(*d)
+    for a,b,v in [(0,2,-5*s.sqrt(2)*w[k]),(1,2,-5*s.sqrt(2)*w[k]),(0,4,-5*s.sqrt(2)*w[j]),(3,4,-5*s.sqrt(2)*w[j]),(2,4,-5*w[i])]:M[a,b]=M[b,a]=v
+    return M[[0,1,3,2,4],[0,1,3,2,4]]
+
+def oddblock(w,K):
+    M=s.diag(*[2*K[i]+sum(K) for i in range(3)])
+    for i in range(3):
+        for j in range(i+1,3):M[i,j]=M[j,i]=-5*w[3-i-j]
+    return M
+
+def check(poly):
+    P=s.Poly(s.expand(poly),p,q,r)
+    negative=[{&#x27;powers&#x27;:list(v),&#x27;coefficient&#x27;:str(c)} for v,c in P.terms() if c&lt;0]
+    positive=[{&#x27;powers&#x27;:list(v),&#x27;coefficient&#x27;:str(c)} for v,c in P.terms() if c&gt;0]
+    return {&#x27;polynomial&#x27;:str(P.as_expr()),&#x27;degree&#x27;:P.total_degree(),&#x27;nonnegative_coefficients&#x27;:not negative,&#x27;negative_terms&#x27;:negative,&#x27;positive_terms&#x27;:positive,&#x27;term_count&#x27;:len(P.terms())}
+
+def run():
+    cones=[
+        (&#x27;A_allactive&#x27;,[2*p+3*q+r,p+3*q+r,p+2*q+r],None),
+        (&#x27;B1_twoactive&#x27;,[2*p+2*q+r,p+q+r,p],None),
+        (&#x27;B2_twoactive&#x27;,[2*p+3*q+r,p+3*q+r,p+2*q],None),
+        (&#x27;C_oneactive&#x27;,[2*p+2*q+r,p+q,p],None),
+    ]
+    report={&#x27;method&#x27;:&#x27;Exact polynomial coefficient signs on four simplicial sorted support cones; no new numerical weight cases&#x27;,&#x27;dual&#x27;:&#x27;5D=3KA+KB+KC-5W&#x27;,&#x27;cones&#x27;:[]}
+    for name,a,_ in cones:
+        started=time.perf_counter()
+        if name.startswith(&#x27;A&#x27;):z=[a[1]+a[2]-a[0],a[0]+a[2]-a[1],a[0]+a[1]-a[2]]
+        elif name.startswith(&#x27;B&#x27;):z=[s.Rational(2,3)*(2*a[1]-a[0]),s.Rational(2,3)*(2*a[0]-a[1]),s.Rational(2,3)*(a[0]+a[1])]
+        else:z=[s.Integer(0),a[0],a[0]]
+        w=[x*x for x in a];K=[sum(w)-w[i]+z[i]**2 for i in range(3)]
+        rec={&#x27;name&#x27;:name,&#x27;a&#x27;:[str(x) for x in a],&#x27;z&#x27;:[str(s.expand(x)) for x in z],&#x27;K&#x27;:[str(s.expand(x)) for x in K],&#x27;minors&#x27;:{}}
+        for i in range(3):
+            M=symblock(w,K,i)
+            for n in [4,5]:
+                P=check(M[:n,:n].det(method=&#x27;domain-ge&#x27;))
+                rec[&#x27;minors&#x27;][f&#x27;parity{i+1}_leading{n}&#x27;]=P
+                print(name,f&#x27;parity{i+1}_leading{n}&#x27;,P[&#x27;nonnegative_coefficients&#x27;],&#x27;negative&#x27;,len(P[&#x27;negative_terms&#x27;]),&#x27;terms&#x27;,P[&#x27;term_count&#x27;],flush=True)
+        M=oddblock(w,K)
+        for n in [2,3]:
+            P=check(M[:n,:n].det(method=&#x27;domain-ge&#x27;))
+            rec[&#x27;minors&#x27;][f&#x27;odd_leading{n}&#x27;]=P
+            print(name,f&#x27;odd_leading{n}&#x27;,P[&#x27;nonnegative_coefficients&#x27;],&#x27;negative&#x27;,len(P[&#x27;negative_terms&#x27;]),&#x27;terms&#x27;,P[&#x27;term_count&#x27;],flush=True)
+        rec[&#x27;seconds&#x27;]=time.perf_counter()-started
+        report[&#x27;cones&#x27;].append(rec)
+        (OUT/&#x27;triaxial_symbolic_certificate.json&#x27;).write_text(json.dumps(report,indent=2)+&#x27;\n&#x27;)
+
+if __name__==&#x27;__main__&#x27;:run()
+</pre><p><a href="../assets/b8e166fd47d5be5b17346f6f3b7e5c004889c68523b081ffe7b689ba64af4d37.py">Exact original</a></p></html>

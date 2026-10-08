@@ -1,0 +1,87 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AW: research/work/agents/covariant_review_sol/axial_review/full_weights_blind.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AW-sources.txt">Source map</a><h1>AW: research/work/agents/covariant_review_sol/axial_review/full_weights_blind.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Full603-member original checkpoint02 ZIP,600 authored manifest payloads and3 root members retained;4 intake metadata records separate. Complete proofs, blind/exposed audits, exact receipts, scripts and selected primary-source captures supplied; full repositories/caches/session transcripts excluded. Current STATUS/native21-claim ledger and scoped final audits govern historical pending notes. Scientific proof/check status SOURCE-REPORTED; no intake scientific execution, external/formal correctness or priority certification. Universal finiteC remains UNKNOWN. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Independent full-spin1 anisotropic certificate; candidate not exposed.&quot;&quot;&quot;
+from sympy import symbols, Matrix, Rational as R, sqrt, Poly, expand, simplify, factor, eye
+from itertools import product
+import json
+from pathlib import Path
+h1,h2,h3=symbols(&#x27;h1 h2 h3&#x27;,real=True)
+z1,z2,z3=symbols(&#x27;z1 z2 z3&#x27;,real=True)
+u,v,w=symbols(&#x27;u v w&#x27;,nonnegative=True)
+h=[h1,h2,h3];z=[z1,z2,z3]
+weights=[x*x for x in h]
+q=[sum(weights)-weights[i]+z[i]**2 for i in range(3)]
+# Complete color-parity and BC-swap decomposition, derived directly below.
+blocks=[]
+for i in range(3):
+    j,k=[x for x in range(3) if x!=i]
+    qi,qj,qk=q[i],q[j],q[k];wi,wj,wk=weights[i],weights[j],weights[k]
+    sym=Matrix([[qi,0,-sqrt(2)*wk,0,-sqrt(2)*wj],
+                [0,(3*qi+2*qj)/5,sqrt(2)*wk,0,0],
+                [-sqrt(2)*wk,sqrt(2)*wk,(qi+4*qj)/5,0,-wi],
+                [0,0,0,(3*qi+2*qk)/5,sqrt(2)*wj],
+                [-sqrt(2)*wj,0,-wi,sqrt(2)*wj,(qi+4*qk)/5]])
+    anti=Matrix([[(qi+4*qj)/5,-wi],[-wi,(qi+4*qk)/5]])
+    blocks.extend([(f&#x27;odd_color{i+1}_sym&#x27;,sym),(f&#x27;odd_color{i+1}_anti&#x27;,anti)])
+di=[(3*q[i]+q[(i+1)%3]+q[(i+2)%3])/5 for i in range(3)]
+for sign in [1,-1]:
+    B=Matrix.diag(*di)
+    for i in range(3):
+        for j in range(i+1,3):
+            k=3-i-j; B[i,j]=B[j,i]=sign*weights[k]
+    blocks.append((f&#x27;color123_{&quot;sym&quot; if sign&gt;0 else &quot;anti&quot;}&#x27;,B))
+assert sum(B.rows for _,B in blocks)==27
+
+# Validate every block against an independently constructed 27x27 vector-
+# representation operator and explicit orthonormal column embeddings.
+I3=eye(3); ii=sqrt(-1)
+J=[Matrix([[0,0,0],[0,0,-ii],[0,ii,0]]),Matrix([[0,0,ii],[0,0,0],[-ii,0,0]]),Matrix([[0,-ii,0],[ii,0,0],[0,0,0]])]
+from sympy import kronecker_product as kron
+Q=Matrix.diag(*q)
+D=(3*kron(Q,I3,I3)+kron(I3,Q,I3)+kron(I3,I3,Q))/5
+D+=sum((weights[i]*(kron(J[i],J[i],I3)+kron(J[i],I3,J[i])) for i in range(3)),Matrix.zeros(27))
+bs=list(product(range(3),repeat=3));idx={st:i for i,st in enumerate(bs)}
+def vector(st):
+    V=Matrix.zeros(27,1);V[idx[st]]=1;return V
+Slist=[]
+for i in range(3):
+    j,k=[x for x in range(3) if x!=i]
+    vecs=[vector((i,i,i))]
+    for a in [j,k]:
+        vecs.extend([vector((i,a,a)),(vector((a,i,a))+vector((a,a,i)))/sqrt(2)])
+    Slist.append(Matrix.hstack(*vecs))
+    Slist.append(Matrix.hstack(*[(vector((a,i,a))-vector((a,a,i)))/sqrt(2) for a in [j,k]]))
+Slist.append(Matrix.hstack(*[(vector((i,(i+1)%3,(i+2)%3))+vector((i,(i+2)%3,(i+1)%3)))/sqrt(2) for i in range(3)]))
+Slist.append(Matrix.hstack(*[(vector((i,(i+1)%3,(i+2)%3))-vector((i,(i+2)%3,(i+1)%3)))/sqrt(2) for i in range(3)]))
+S=Matrix.hstack(*Slist)
+assert simplify(S.T*S)==eye(27)
+for (name,B),SB in zip(blocks,Slist):
+    assert simplify(SB.T*D*SB-B)==Matrix.zeros(B.rows),name
+for a in range(len(Slist)):
+    for b in range(a+1,len(Slist)):
+        assert simplify(Slist[a].T*D*Slist[b])==Matrix.zeros(Slist[a].cols,Slist[b].cols)
+print(&#x27;PASS: complete 27dim orthonormal eight-block color-parity/swap decomposition.&#x27;,flush=True)
+
+# Four CLOSED simplicial cones cover sorted h1&gt;=h2&gt;=h3&gt;=0.
+cones={
+ &#x27;A&#x27;:([u+2*v+2*w,v+w,w],lambda H:[0,H[0],H[0]]),
+ &#x27;B1&#x27;:([u+2*v+2*w,u+v+w,w],lambda H:[R(2,3)*(2*H[1]-H[0]),R(2,3)*(2*H[0]-H[1]),R(2,3)*(H[0]+H[1])]),
+ &#x27;B2&#x27;:([u+3*v+2*w,u+3*v+w,2*v+w],lambda H:[R(2,3)*(2*H[1]-H[0]),R(2,3)*(2*H[0]-H[1]),R(2,3)*(H[0]+H[1])]),
+ &#x27;C&#x27;:([u+3*v+2*w,u+3*v+w,u+2*v+w],lambda H:[sum(H)-2*x for x in H]),
+}
+result=[]
+for cone,(H,zfunc) in cones.items():
+    Z=zfunc(H);sub=dict(zip(h,H));sub.update(zip(z,Z))
+    for name,B in blocks:
+        C=B.subs(sub,simultaneous=True).applyfunc(expand)
+        for k in range(1,B.rows+1):
+            determinant=expand(C[:k,:k].det(method=&#x27;domain-ge&#x27;))
+            p=Poly(determinant,u,v,w)
+            coeffs=p.coeffs()
+            if not coeffs or not all(c.is_nonnegative is True for c in coeffs):
+                print(&#x27;FAIL&#x27;,cone,name,k,&#x27;negative coeffs&#x27;,[(m,str(c)) for m,c in p.terms() if c.is_nonnegative is not True],flush=True)
+                raise AssertionError(&#x27;negative coefficient or identically-zero interior leading minor&#x27;)
+            assert any(c.is_positive is True for c in coeffs)
+            result.append({&#x27;cone&#x27;:cone,&#x27;block&#x27;:name,&#x27;leading_size&#x27;:k,&#x27;degree&#x27;:p.total_degree(),&#x27;terms&#x27;:[[list(m),str(c)] for m,c in p.terms()]})
+    print(&#x27;PASS cone&#x27;,cone,&#x27;27 leading-minor polynomials with nonnegative coefficients; each nonzero, hence strictly positive for u,v,w&gt;0.&#x27;,flush=True)
+Path(__file__).with_name(&#x27;FULL_WEIGHTS_EXACT_COEFFICIENTS.json&#x27;).write_text(json.dumps({&#x27;schema_version&#x27;:1,&#x27;proof_basis&#x27;:&#x27;exact determinant polynomial identities; Sylvester interior, closure continuity&#x27;,&#x27;cones&#x27;:{key:[str(x) for x in val[0]] for key,val in cones.items()},&#x27;certificate&#x27;:result},indent=2)+&#x27;\n&#x27;)
+print(&#x27;FULL ALL-WEIGHTS SPIN1 DCORR THEOREM PASS: all 108 leading-minor polynomial identities exact.&#x27;,flush=True)
+</pre><p><a href="../assets/a388f170d1df19dbd59f63ef0fd58d3776d3010ed62c6ea888df30ed9abace56.py">Exact original</a></p></html>
