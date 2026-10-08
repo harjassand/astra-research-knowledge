@@ -108,6 +108,8 @@ def main() -> None:
             "card_sha256": card_hash,
             "pointers": {
                 "card_local": c["path"],
+                "current_status": f"frontier/cards/{cid}.json",
+                "reviewed_card": f"frontier/review_cards/{cid}.txt",
                 "read_local": f"python3 tools/knowledge.py read {cid}",
                 "card_web": card_web,
                 "read_web": read_web,
@@ -145,6 +147,7 @@ def main() -> None:
         })
 
     input_paths = [INDEX / "claims.jsonl", INDEX / "edges.jsonl", INDEX / "external_dependencies.json", INDEX / "documents.jsonl", INDEX / "knowledge.sqlite3"]
+    input_paths += [p for p in [ROOT/'frontier/CURRENT_CLAIM_STATUS.jsonl', ROOT/'literature/LEMMA_ATLAS.jsonl', ROOT/'literature/COVERAGE.jsonl'] if p.is_file()]
     card_hashes = {c["id"]: c["card_sha256"] for c in catalog}
     generated_by_sha = sha256(Path(__file__))
     card_manifest = "\n".join(f"{cid} {digest}" for cid, digest in sorted(card_hashes.items())).encode("utf-8")
@@ -161,7 +164,7 @@ def main() -> None:
     topic_rows: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for item in catalog:
         for topic in item["topics"]:
-            topic_rows[topic].append({"id": item["id"], "title": item["title"], "status": item["status"], "card_sha256": item["card_sha256"], "card_local": item["pointers"]["card_local"], "read_local": item["pointers"]["read_local"], "card_web": item["pointers"]["card_web"]})
+            topic_rows[topic].append({"id": item["id"], "title": item["title"], "status": item["status"], "current_status": item['pointers']['current_status'], "card_sha256": item["card_sha256"], "card_local": item["pointers"]["card_local"], "read_local": item["pointers"]["read_local"], "card_web": item["pointers"]["card_web"]})
     topic_dir = INDEX / "agent_topics"
     topic_dir.mkdir(parents=True, exist_ok=True)
     for old in topic_dir.glob("*.json"):

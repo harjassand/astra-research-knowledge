@@ -56,3 +56,19 @@ Added AC: N136–141 candidate sharp1/4 entropy coefficient, sector-relative act
 Added AD: N142–147 conditional formal permanenceentry/globalviabilitygap, logarithmic commonEB/densebroadcastercost, exactstabilizerseedcompiler/restrictedmixturegap, suppliedrationalfamilyverifier, observationmap/countermodelaudits, stoppedfrontiercorrections. Exact1854-filecheckpoint/1833payloadhashes retained; notscientificreplay. [Sources](web/AD-sources.txt);[scopes](web/AD-reports.txt);[archive/availability](web/AD-package.txt).
 
 Added AE: N148–159 actualmovinggap iidqutrit sharpQbranchlaw epsilon=n^-zeta fixed0<zeta<1, chargedclassicalupper; exactXXZcoexistencemacroprobability1/movingbelowthresholdcounterexample; SLD/sect orentropy mechanisms, strictKuboarchive, SU3weightedwall, linear/prior andpolynomialGibbs, critical4d/quartic2dEBfloor, hugeinteractingarchive, reconciledcontrols. Current13theoremhashesmatch; derivedauthoredsnapshot+omissionsledger; noexternalproof/priority/breakthrough. [Sources](web/AE-sources.txt);[scopes](web/AE-reports.txt);[archive/availability](web/AE-package.txt).
+
+
+
+
+
+
+
+
+
+<!-- CURRENT DECISION LAYER -->
+Active frontier: frontier/PRIORITIES.md
+Claim status: frontier/CURRENT_CLAIM_STATUS.jsonl (per-card JSON: frontier/cards/)
+Subtheorem routes: literature/topics.tsv; exact atlas and coverage: literature/
+Research effectiveness: evaluation/PROTOCOL.md; no established discovery gain.
+
+<!-- /CURRENT DECISION LAYER -->

@@ -132,7 +132,7 @@ def render_card(row: dict, text: str, attached: list[dict], claims: dict[str, di
     status = row.get("status", "status_unavailable")
     card_path = ROOT / row["path"]
     digest = sha256(card_path)[:12] if card_path.is_file() else "unavailable"
-    lines = [f'\n<CARD id="{row["id"]}" status="{status}" completeness="complete_card" sha256="{digest}">\n', text]
+    lines = [f'\n<CARD id="{row["id"]}" status="{status}" completeness="complete_card" sha256="{digest}">\n', knowledge.decision.banner(row['id']), text]
     if not text.endswith("\n"):
         lines.append("\n")
     pointers = source_pointers(row, attached)
@@ -205,6 +205,7 @@ def make_bundle(query: str, budget: int = 1500, max_bytes: int = 6000, limit: in
         "claims": sha256(CLAIMS),
         "blockers": sha256(BLOCKERS) if BLOCKERS.is_file() else None,
         "build": sha256(BUILD) if BUILD.is_file() else None,
+        "current_status": sha256(ROOT/'frontier/CURRENT_CLAIM_STATUS.jsonl'),
     }
     header = (
         "ASTRA TASK BUNDLE v1\n"
@@ -296,6 +297,8 @@ def make_bundle(query: str, budget: int = 1500, max_bytes: int = 6000, limit: in
         "revision": full_revision,
         "input_hashes": full_hashes,
         "card_hashes": {cid: sha256(ROOT / claims[cid]["path"]) for cid in selected},
+        "current_status": {cid: knowledge.decision.notice(cid) for cid in selected},
+        "omitted_current_status": {cid: knowledge.decision.notice(cid) for cid in order if cid not in selected},
     }
 
 

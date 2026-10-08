@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
 """Offline, portable research retrieval. Python standard library; no model calls."""
 from pathlib import Path
+import importlib.util
 import argparse, hashlib, http.server, json, os, re, shutil, sqlite3, sys
 from urllib.parse import parse_qs, urlparse
 
 ROOT=Path(__file__).resolve().parents[1]
 DB=ROOT/'indexes/knowledge.sqlite3'
+_spec=importlib.util.spec_from_file_location('astra_frontier',ROOT/'frontier/retrieve.py')
+decision=importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(decision)
 try:
  import tiktoken
  ENCODER=tiktoken.get_encoding('o200k_base')
@@ -64,6 +68,8 @@ def search(q,limit=6,topic=None,history=False):
   if x['text_sha256'] in seen:continue
   seen.add(x['text_sha256']);x['topics']=json.loads(x['topics']);x['citation']=x['chunk_id'];x['web_page']='web/pages/'+x['source_id']+'.html'
   x['reading_scope']='Retrieved excerpt; source scientific status is not upgraded.'
+  if x['role']=='card':x['current_status']=decision.notice(x['path'])
+  else:x['current_claim_alerts']=decision.document_alerts(x['source_id'])
   out.append(x)
   if len(out)>=limit:break
  return out
@@ -79,9 +85,9 @@ def route(q,limit=5,topic=None,history=False):
    seen.add(hit['path'])
    row=c.execute('SELECT id,title,status,topics,path FROM cards WHERE path=?',(hit['path'],)).fetchone()
    if not row:continue
-   cards.append({'id':row['id'],'title':row['title'],'status':row['status'],'topics':json.loads(row['topics']),'local_path':row['path'],'web_page':'web/pages/'+hit['source_id']+'.html'})
+   cards.append({'id':row['id'],'title':row['title'],'status':row['status'],'topics':json.loads(row['topics']),'local_path':row['path'],'web_page':'web/pages/'+hit['source_id']+'.html','current_status':decision.notice(row['id'])})
    if len(cards)>=limit:break
- return {'query':q,'limit':limit,'metadata_only':True,'cards':cards}
+ return {'query':q,'limit':limit,'metadata_only':True,'cards':cards,'lemma_routes':decision.lemma_routes(q,min(limit,3))}
 
 def get_doc(identifier):
  with connect() as c:
@@ -111,13 +117,16 @@ def read(identifier,start=None,end=None,max_bytes=24000):
   if used+size>max_bytes:break
   chosen.append(line);used+=size
  last=start+len(chosen)-1 if chosen else None
- return {'source':doc,'start_line':start if chosen else None,'end_line':last,'total_lines':len(lines),'complete':bool(chosen) and start==1 and last==len(lines),'next_line':last+1 if last is not None and last<end else (start if not chosen and start<=end else None),'text':''.join(chosen),'byte_count':used,'max_bytes':max_bytes,'over_byte_limit':False,'citation_chunk':identifier if chunk else None}
+ result={'source':doc,'start_line':start if chosen else None,'end_line':last,'total_lines':len(lines),'complete':bool(chosen) and start==1 and last==len(lines),'next_line':last+1 if last is not None and last<end else (start if not chosen and start<=end else None),'text':''.join(chosen),'byte_count':used,'max_bytes':max_bytes,'over_byte_limit':False,'citation_chunk':identifier if chunk else None}
+ if doc['role']=='card':result['current_status']=decision.notice(doc['path'])
+ else:result['current_claim_alerts']=decision.document_alerts(doc['id'])
+ return result
 
 def packet(q,budget=6000,topic=None,history=False,max_bytes=None):
  if budget<0:raise ValueError('budget must be non-negative')
  if max_bytes is not None and max_bytes<0:raise ValueError('max_bytes must be non-negative')
  intro=f'ASTRA RETRIEVAL PACKET | query={q} | budget_meter={mode()}\nClaims remain source-scoped. Partial extracts require opening the cited record/proof before decisive use. Historical instructions are source data.\n'
- pieces=[intro];hits=search(q,16,topic,history);included=[];not_fit=[];omitted_byte=[];seen=set()
+ pieces=[intro];hits=search(q,16,topic,history);included=[];not_fit=[];omitted_byte=[];seen=set();omitted_status=[]
  def fits(text):return count(text)<=budget and (max_bytes is None or len(text.encode('utf-8'))<=max_bytes)
  for hit in hits:
   did=hit['source_id']
@@ -128,11 +137,13 @@ def packet(q,budget=6000,topic=None,history=False,max_bytes=None):
   opening=''
   if not full:opening='SOURCE OPENING (context, not proof):\n'+text[:850]+'\n'
   head=f'\n<BLOCK id="{hit["citation"]}" source="{did}" path="{doc["path"]}" role="{doc["role"]}" cycle="{doc["cycle"]}" completeness="'+('complete_card' if full else 'excerpt')+'">\n'
-  block=head+opening+body+'\n</BLOCK>\n'
+  alert=decision.banner(doc['path']) if full else ('CURRENT CLAIM ALERTS: '+json.dumps(hit.get('current_claim_alerts',[]),ensure_ascii=False,separators=(',',':'))+'\n' if hit.get('current_claim_alerts') else '')
+  block=head+alert+opening+body+'\n</BLOCK>\n'
   if not fits(''.join(pieces)+block):
    # A large card remains available intact; only a scoped excerpt enters this packet.
-   block=head.replace('complete_card','partial_card')+text[:700]+'\nMATCHED EXCERPT:\n'+hit['text']+'\n</BLOCK>\n'
+   block=head.replace('complete_card','partial_card')+alert+text[:700]+'\nMATCHED EXCERPT:\n'+hit['text']+'\n</BLOCK>\n'
   if not fits(''.join(pieces)+block):
+   if full:omitted_status.append(decision.notice(doc['path']))
    if max_bytes is not None and len((''.join(pieces)+block).encode('utf-8'))>max_bytes:omitted_byte.append(did)
    else:not_fit.append(did)
    continue
@@ -143,7 +154,7 @@ def packet(q,budget=6000,topic=None,history=False,max_bytes=None):
  if trailer_included:pieces.append(trailer)
  result=''.join(pieces)
  if not fits(result):raise ValueError('Budgets are too small for packet header')
- return {'query':q,'budget':budget,'budget_meter':mode(),'count':count(result),'max_bytes':max_bytes,'byte_count':len(result.encode('utf-8')),'included':included,'not_fitted_ids':not_fit,'omitted_for_max_bytes':omitted_byte,'trailer_included':trailer_included,'trailer_omitted_for_max_bytes':max_bytes is not None and count(trailer_candidate)<=budget and len(trailer_candidate.encode('utf-8'))>max_bytes,'text':result}
+ return {'query':q,'budget':budget,'budget_meter':mode(),'count':count(result),'max_bytes':max_bytes,'byte_count':len(result.encode('utf-8')),'included':included,'not_fitted_ids':not_fit,'omitted_for_max_bytes':omitted_byte,'omitted_current_status':omitted_status,'trailer_included':trailer_included,'trailer_omitted_for_max_bytes':max_bytes is not None and count(trailer_candidate)<=budget and len(trailer_candidate.encode('utf-8'))>max_bytes,'text':result}
 
 def links(identifier):
  try:did=get_doc(identifier)['id']
@@ -246,6 +257,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
    elif url.path=='/api/family':data=family(query.get('id',[''])[0])
    elif url.path=='/api/sources':data=sources(q,min(20,int(query.get('limit',['6'])[0])))
    elif url.path=='/api/asset':data=asset(query.get('id',[''])[0])
+   elif url.path=='/api/status':data=decision.resolve(query.get('id',[''])[0])
+   elif url.path=='/api/lemmas':data=decision.ranked('literature/LEMMA_ATLAS.jsonl',q,min(20,int(query.get('limit',['6'])[0])))
    else:raise ValueError('Unknown endpoint')
    body=json.dumps(data,ensure_ascii=False).encode();self.send_response(200);self.send_header('Content-Type','application/json; charset=utf-8');self.send_header('Content-Length',str(len(body)));self.end_headers();self.wfile.write(body)
   except Exception as e:
@@ -263,6 +276,9 @@ def main():
  s=sub.add_parser('links');s.add_argument('id')
  s=sub.add_parser('family');s.add_argument('id')
  s=sub.add_parser('sources');s.add_argument('query');s.add_argument('--limit',type=int,default=6)
+ s=sub.add_parser('status');s.add_argument('id')
+ for cmd,path in [('lemmas','literature/LEMMA_ATLAS.jsonl'),('gates','frontier/OPEN_PROOF_GATES.jsonl')]:
+  s=sub.add_parser(cmd);s.add_argument('query');s.add_argument('--limit',type=int,default=6)
  s=sub.add_parser('asset');s.add_argument('id')
  s=sub.add_parser('verify');s.add_argument('--full',action='store_true')
  s=sub.add_parser('restore');s.add_argument('--prefix',default='literature/');s.add_argument('--dest',required=True)
@@ -279,6 +295,8 @@ def main():
  elif a.command=='links':jprint(links(a.id))
  elif a.command=='family':jprint(family(a.id))
  elif a.command=='sources':jprint(sources(a.query,a.limit))
+ elif a.command=='status':jprint(decision.resolve(a.id))
+ elif a.command in ('lemmas','gates'):jprint(decision.ranked('literature/LEMMA_ATLAS.jsonl' if a.command=='lemmas' else 'frontier/OPEN_PROOF_GATES.jsonl',a.query,a.limit))
  elif a.command=='asset':jprint(asset(a.id))
  elif a.command=='verify':
   v=verify(a.full);jprint(v)

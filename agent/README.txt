@@ -5,3 +5,9 @@ WEB: fetch agent/topics.txt, relevant topic TSV, exact cards, then cited source 
 Typed graph is indexes/agent_graph.json; navigation/provenance edges do not compose proofs. interfaces absent from literal parser are UNKNOWN, not negative claims.
 Blockers are scoped routing records, not generic impossibility claims. mechanism bridge candidates remain hypotheses. Templates retain source hashes, missing lemmas, comparator and falsifier.
 The 20 Luna audits are design evidence; deterministic retrieval fixtures do not test Astra theorem discovery, novelty, mastery or changes to weights.
+
+
+
+<!-- CURRENT DECISION LAYER -->
+v3 routes: frontier/retrieve.py status <ID>; lemmas "query"; gates "query". This stdlib CLI works with either downloaded edition. Reviewed card wrappers preserve raw card bytes and display material updates. Raw immutable cards bypass the overlay; read their status sidecar before use. New layer status is a scoped review of available evidence, not theorem certification. Worker/coordinator prompts: agent/templates/*.txt.
+<!-- /CURRENT DECISION LAYER -->
