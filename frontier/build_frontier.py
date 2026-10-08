@@ -71,6 +71,12 @@ def write_jsonl(name, rows):
 # These are identified proof-bearing documents. Presence does not assert full coverage,
 # validity, independent reconstruction, or that every cited external premise is available.
 PROOF_TEXT = {
+    'N292': [('updates/AT/package/reports/FOUNDATIONAL_GAUSSIAN_CHECKPOINT.txt', 45, 83)],
+    'N293': [('updates/AT/package/reports/FOUNDATIONAL_GAUSSIAN_CHECKPOINT.txt', 84, 146)],
+    'N294': [('updates/AT/package/reports/FOUNDATIONAL_GAUSSIAN_CHECKPOINT.txt', 147, 174)],
+    'N295': [('updates/AT/package/reports/FOUNDATIONAL_GAUSSIAN_CHECKPOINT.txt', 175, 210)],
+    'N296': [('updates/AT/package/reports/FOUNDATIONAL_GAUSSIAN_CHECKPOINT.txt', 211, 264)],
+
     'N276': [('updates/AS/package/ultra/work/agents/ppt_cube_chain_sol/PROOF.txt', 1, None)],
     'N277': [('updates/AS/package/ultra/work/agents/broadcasting_proof_sol/CLIFFORD_FACTOR_TWO.txt', 1, None)],
     'N278': [('updates/AS/package/ultra/work/agents/broadcasting_proof_sol/GENERAL_GATE_AND_FAILED_ROUTES.txt', 1, None)],
@@ -475,6 +481,20 @@ for n in range(276,292):
 ROWS[cid('N276')]['requires_external_validation'].append({'target':'external:AS_square_nonEB','scope':'Exact index3 alone imports the separate source BS square non-EB theorem; the original cube certificate itself does not require it. Finite modular checks do not certify the whole algebraic/formal chain.','evidence':[card_ev('N276')]})
 ROWS[cid('N279')]['requires_external_validation'].append({'target':cid('N165'),'scope':'Acquire an actual countable finite-field group-ring one-sided inverse and check the new-group CRT/freeness/coloring contracts; do not certify the disputed original torsion-free source theorem.','evidence':[card_ev('N279'),card_ev('N165')]})
 
+# AT Gaussian checkpoint: restrictions and failed transfers remain explicit.
+for owner,target,scope in [
+ ('N297','N187','The new checkpoint repeats that mean-only actual-KL cap laws do not meet the full KLS hypotheses. Reported October priority claims lack primary locators; they are not verified solutions or refutations.'),
+ ('N297','N75','Claimed October KLS preprints make novelty screening source-dependent; acquire exact primary versions before using priority status. Historical covariance-only obstruction remains scoped, not a KLS resolution.'),
+ ('N296','N292','Sector optimality requires balance on every radius. The globally balanced coupled radial comparison is unproved and stronger than the original conjecture; it could fail while the conjecture is true.'),
+ ('N294','N293','Slabs can beat the propeller at Hermite level2 while being strictly unstable for total noise stability. A per-level gain does not imply an optimizing partition or a counterexample.'),
+ ('N296','N295','Single-profile near-rho1 concavity is false; this does not refute a coupled3-profile inequality with sum profiles1 at every radius. Exact intermediate-correlation comparison remains open.')]:
+    ROWS[cid(target)]['material_updates'].append({'target':cid(owner),'source_card':cid(owner),'relation':'refines_with_scoped_AT_result_or_limit','relation_status':'source_supported_scoped_notice_not_correctness_promotion','scope':scope,'evidence':[card_ev(owner)],'whole_claim_invalidated':False})
+for n in range(292,298):
+    ROWS[cid('N'+str(n))]['status_authority']='AT exact pasted9Oct2026 checkpoint, source internal reconstructions only. Full written arguments retained; no independent intake proof reconstruction, scientific replay, external correctness, formal verification or historical priority clearance. Rendered citation labels are not immutable source locators.'
+    ROWS[cid('N'+str(n))]['proof_availability']['unavailable_or_unclassified']='No separately supplied scientific code/results, audit receipts or external primary fulltexts. Exact circular rearrangement, optimizer dimension-reduction, perimeter asymptotic and KLS-claim theorem/version locators remain UNKNOWN; checkpoint argument presence does not certify imported assumptions.'
+ROWS[cid('N296')]['requires_external_validation'].append({'target':'external:AT_dimension_reduction','scope':'Verify the precise optimizer dimension-reduction theorem, dimension/balance/attainment contracts before converting a planar result into a full ambient-dimensional simplex consequence.','evidence':[card_ev('N296')]})
+ROWS[cid('N297')]['requires_external_validation'].append({'target':'external:AT_KLS_priority_claims','scope':'Acquire actual primary titles/URLs/immutable versions and exact theorem scopes for source-reported4/6Oct2026 Poincare claims. No historical priority or correctness established by rendered domain labels.','evidence':[card_ev('N297')]})
+
 # The focused branch correction supersedes the earlier unsupported impossibility gloss.
 # It neither refutes BLR's printed claim nor certifies the original hyperbolic candidate.
 state_ev = [evidence('state/2026-10-08-bowen-bernoulli-direct-finiteness/CORRECTED_AUDIT.md', 94, 110),
@@ -673,6 +693,11 @@ gate(31,'G-INVARIANT-INTERPRETATION-RESOURCE-REVIEW','Review fixed-model exponen
     'Reconstruct collective cochain support modulo gradients, KOW quantifier order and finite-presentation/link inputs, arbitrary-rank HF quotient counting, individual constituent orbit bounds and fixed-width encoding. Verify the family243 base homogeneity/equivalence. Distinguish maximum state size with unbounded finite runtime from arbitrary-resource CPT/DeepWL or ordinary PTIME lower bounds; charge growing program width and algorithm acquisition.',
     'The first record strengthens an older scalar route to linear log-orbit support and explicit exponential state size in a specific model; char2 quadratic lifts and quotient-value controls exclude tempting shortcuts. Published-source dependencies and external/priority review remain unverified.',[card_ev('N285'),card_ev('N286'),card_ev('N287')])
 
+gate(32,'G-COUPLED-RADIAL-GAUSSIAN-SIMPLEX','Prove or falsify the stronger coupled radial comparison',['N292','N293','N294','N295','N296','N297'],
+    'Does(L) hold for all measurable coupled radial profiles, including0/1 boundary profiles, and every0<rho<1?',
+    'Give a uniform analytic comparison with exact pointwise sum1 and each Gaussian mass1/3, or a rigorously certified legal profile counterexample. A profile counterexample refutes the stronger relaxation, not automatically the real-partition conjecture. Independently acquire exact circular-Riesz and optimizer dimension-reduction theorem versions/interfaces before any full-conjecture implication. Near0/1 leading terms and finite3-shell numerics are insufficient; coefficientwise Hermite dominance and single-profile Jensen are false.',
+    'The checkpoint supplies two restricted arguments and two failed-promotion counterexamples. The surviving radial inequality is unproved and could be false even if the original conjecture holds. No10/10 objective, external correctness or novelty clearance is established.',[card_ev('N292'),card_ev('N293'),card_ev('N294'),card_ev('N295'),card_ev('N296'),card_ev('N297')])
+
 write_jsonl('CURRENT_CLAIM_STATUS.jsonl', list(ROWS.values()))
 write_jsonl('OPEN_PROOF_GATES.jsonl', GATES)
 
@@ -680,6 +705,7 @@ priority_lines = ['# Current frontier', '',
     'Read this only for coordination. Workers start with `00_START_HERE.txt` and retrieve the relevant topic/card, its current-status row, scoped material updates, blockers and decisive proof ranges. `01_CORE.txt` is optional.', '',
     'This is a curated decision view of existing evidence, not a new research run. Priority means a supported next decision; it predicts neither correctness nor breakthrough value. Archived restart instructions do not authorize continuation.', '',
     'Source card status is immutable. A later claim can refine an older gap while remaining unverified. Proof availability, reported internal checks, external correctness and historical priority are separate. Unlisted relations and incomplete proof coverage remain UNKNOWN.', '',
+    'AT N292–297: source-reconstructed shellwise-balanced all-correlation sector optimality and three-slab instability; Hermite-level dominance and single-profile radial concavity fail. Coupled radial(L) remains a stronger unproved sufficient simplex gate; imported dimension reduction and unlocated KLS priority claims require primary-source review. Exact checkpoint preserved; no foundational breakthrough/external correctness/novelty established.', '',
     'AS N276–291: exact specified PPT cubes plus filtered neighborhoods and scoped no-go/UNKNOWN rotations; Clifford common factor2, general common-frame gate open; conditional enlarged-group Bernoulli repair; restricted log-contact/winding/K1 costs. First record supplies fixed-model interpretation state-size/support/HF candidate, all-copy central log-entropy order with coefficient gap, exact finite determinant obstruction and any-pair Gaussian EB control. Two full captures and original Ultra ZIP preserved; 10/10 objective, external correctness/formal certification/novelty remain unestablished.', '',
     'AR N272–275: source claims flat/nonprojective residual dual with pd1/continuum Ext, exact scalar orbit transfers versus unresolved multiplicative coherence, enriched Koopman equivalence without multiplicativity, and conditional all-integer-power lifting/inverse formulas. No acquired compatible insertion/transfer or unequal-entropy conjugacy; residual R/M is distinct from the random-basis target Rp. Exact report preserved; inherited premises, external correctness and priority remain unverified.', '',
     'AQ N265–271: genus-one rational detector and effective affine smoothing; degree-eight undecidability remains upstream-conditional, projective boundary upgrade open. Infinite-index free-subgroup Bernoulli restriction and iid/global-well-order obstructions lead to an unconstructed random equivariant basis criterion. Full two reports retained, rank inference clarification separately labeled; no scientific replay, full conjugacy or external correctness/priority upgrade.', '',

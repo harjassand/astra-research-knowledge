@@ -1,6 +1,6 @@
 # Astra Research Knowledge
 
-361 scoped research cards, full supplied A–I research documents, J/K result summaries, and 19,840 scientific source pages. Claims retain their assumptions, dependencies, counterexamples and scientific status. Publication is not proof validation or model-weight training.
+367 scoped research cards, full supplied A–I research documents, J/K result summaries, and 19,850 scientific source pages. Claims retain their assumptions, dependencies, counterexamples and scientific status. Publication is not proof validation or model-weight training.
 
 Start with [00_START_HERE.txt](00_START_HERE.txt); [01_CORE.txt](01_CORE.txt) is optional broad orientation, then [result cards](web/llms.txt) and the [paged source library](web/library.txt). The bootstrap is 278 o200k tokens; broad scientific context is loaded on demand. The complete linked new J/K research notes and reproducibility packages were not supplied; their absence is explicit.
 
@@ -122,6 +122,10 @@ Added AR: N272–275: residual dual flat/nonprojective of projective dimension o
 
 
 Added AS: N276–291: exact original21-dimensional PPT cube certificate and filtered neighborhood; simultaneous Clifford-span factor2 comparator with arbitrary-frame common-measurement gate open; conditional finite-field CRT/free-product Bernoulli repair; scoped binomial-log contact, winding/K1 costs, PPT lifetime/alignment/rank obstructions. Separate first record adds fixed invariant-interpretation exponential state-size candidate, collective cofilling/HF interfaces and char2 corrections, all-copy central log entropy bracket, exact contact/determinant obstruction and any-pair Gaussian EB composition. Both full source packages and exact original Ultra ZIP retained, prior versions unchanged. 10/10 objective unachieved; proof/check/audit/resource labels source-reported, no intake scientific replay or external/formal/novelty certification. [Sources](web/AS-sources.txt);[scopes](web/AS-reports.txt);[archive/availability](web/AS-package.txt).
+
+
+
+Added AT: N292–297: all-correlation sector optimality for shellwise-balanced planar Gaussian partitions; exact balanced perturbations make three slabs unstable at every positive correlation; level-two Hermite dominance and single-profile radial concavity shortcuts fail. Coupled radial(L) remains an unproved stronger sufficient simplex gate, with imported dimension reduction unclassified. Exact checkpoint and pin/version/screening state preserved; claimed October KLS resolutions lack primary locators, not validated or promoted. Full written arguments supplied; no scientific code/results/audit receipts or primary fulltexts. Foundational objective unachieved; external correctness/novelty unresolved. [Sources](web/AT-sources.txt);[scopes](web/AT-reports.txt);[archive/availability](web/AT-package.txt).
 
 <!-- CURRENT DECISION LAYER -->
 Active frontier: frontier/PRIORITIES.md
