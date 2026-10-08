@@ -1,0 +1,85 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AO: proofs/spin_tail_blind/verify_spin_tail.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AO-sources.txt">Source map</a><h1>AO: proofs/spin_tail_blind/verify_spin_tail.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Paused user-reported checkpoint; original597-member ZIP retained exactly. Full authored proofs/audits/code/results available; original primary-paper bytes excluded, read scopes and hashes retained. Current CLAIM_LEDGER overrides explicitly historical pending notes. Major breakthrough not established; no source research resumed. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Finite diagnostics for polynomial normalization and counterexample legality.&quot;&quot;&quot;
+from fractions import Fraction
+from math import ceil, comb, exp, factorial, log, log1p, sqrt
+from pathlib import Path
+import json
+
+
+def unshifted_coefficients(n, h, maximum):
+    values = [Fraction(1)]
+    if maximum:
+        values.append(Fraction(h))
+    for k in range(1, maximum):
+        values.append((h*values[k]-(n-k+1)*values[k-1])/(k+1))
+    return values
+
+
+exact_checks = 0
+circle_checks = 0
+for n in range(1, 65):
+    maximum = min(n, 6)
+    for h in range(-n, n+1, 2):
+        positive, negative = (n+h)//2, (n-h)//2
+        unshifted = unshifted_coefficients(n, h, maximum)
+        for k in range(1, maximum+1):
+            for beta in [Fraction(-1, 2), Fraction(0), Fraction(1, 2)]:
+                coefficient = sum(
+                    comb(positive, ell)*comb(negative, k-ell)
+                    * (1-beta)**ell * (-1-beta)**(k-ell)
+                    for ell in range(max(0, k-negative), min(k, positive)+1)
+                )
+                normalized = coefficient/comb(n, k)
+                expanded = sum(Fraction(comb(k, ell), comb(n, ell))
+                               * (-beta)**(k-ell) * unshifted[ell]
+                               for ell in range(k+1))
+                assert normalized == expanded
+                exact_checks += 1
+                radius = min(0.25, sqrt(k/(4.5*n)))
+                circle_bound = (radius**(-k)/comb(n, k)
+                                * exp((abs(h)+n*abs(float(beta)))*radius
+                                      + 2.25*n*radius**2))
+                assert abs(float(normalized)) &lt;= circle_bound*(1+1e-12)
+                circle_checks += 1
+
+# Exact mean Casimir and bounded baseline spin for every N tested.
+for n in range(1, 257):
+    epsilon = Fraction(1, 4*n)
+    rare_casimir = Fraction(n*(n+2), 4)
+    target = (Fraction(3*n, 4)-epsilon*rare_casimir)/(1-epsilon)
+    sectors = [(m, Fraction(m*(m+2), 4)) for m in range(n % 2, n+1, 2)]
+    below = max((entry for entry in sectors if entry[1] &lt;= target), key=lambda x: x[1])
+    above = min((entry for entry in sectors if entry[1] &gt;= target), key=lambda x: x[1])
+    if below == above:
+        baseline = below[1]
+    else:
+        upper_weight = (target-below[1])/(above[1]-below[1])
+        assert 0 &lt;= upper_weight &lt;= 1
+        baseline = (1-upper_weight)*below[1]+upper_weight*above[1]
+    assert (1-epsilon)*baseline+epsilon*rare_casimir == Fraction(3*n, 4)
+    assert above[0]**2 &lt;= 16*n
+    exact_checks += 3
+
+x = Fraction(1, 4)
+series = sum((2*k+1)*x**k for k in range(2, 101))
+closed = x**2*(5-3*x)/(1-x)**2
+assert series &lt;= closed &lt;= 9*x**2
+exact_checks += 1
+
+counterexamples = []
+for n in [100, 10000, 1000000]:
+    log_epsilon = min(-sqrt(n), -log(4*n))
+    epsilon = exp(log_epsilon)  # Underflow only discards a negligible log1p correction.
+    r = ceil(3*sqrt(n)/log(2))
+    assert r &lt;= n
+    log_lower_plus_one = 2*log_epsilon+r*(log(2)-log1p(epsilon))
+    assert log_lower_plus_one &gt;= 0.99*sqrt(n)
+    counterexamples.append({&quot;N&quot;:n,&quot;r&quot;:r,&quot;r_over_N&quot;:r/n,
+                            &quot;log_rare_weight&quot;:log_epsilon,
+                            &quot;log_one_plus_chi_lower&quot;:log_lower_plus_one})
+
+result = {&quot;exact_checks&quot;:exact_checks,&quot;circle_bound_checks&quot;:circle_checks,
+          &quot;counterexample_diagnostics&quot;:counterexamples,
+          &quot;scope&quot;:&quot;Finite normalization/legality diagnostics, not theorem validation&quot;}
+Path(__file__).with_name(&#x27;verification_results.json&#x27;).write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+print(json.dumps(result,indent=2))
+</pre><p><a href="../assets/5063d35929559a6f675e00c5b57c14a49da558fb03ea29b6e7ba44cc4ab72cdb.py">Exact original</a></p></html>

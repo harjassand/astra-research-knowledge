@@ -1,0 +1,76 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AO: proofs/rate_phase_blind/finite_checks.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AO-sources.txt">Source map</a><h1>AO: proofs/rate_phase_blind/finite_checks.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Paused user-reported checkpoint; original597-member ZIP retained exactly. Full authored proofs/audits/code/results available; original primary-paper bytes excluded, read scopes and hashes retained. Current CLAIM_LEDGER overrides explicitly historical pending notes. Major breakthrough not established; no source research resumed. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Finite exact pure-B expectations versus the independently derived formula.
+
+The finite chain is killed at B=0 or B=cap+1. This is a diagnostic only.
+The all-state and critical-boundary proofs are in report.md.
+&quot;&quot;&quot;
+
+from decimal import Decimal, localcontext
+from fractions import Fraction as Q
+
+
+def killed_expected_deaths(beta, cap):
+    A = [[Q(int(i == j)) for j in range(cap)] for i in range(cap)]
+    rhs = [Q(0) for _ in range(cap)]
+    for b in range(1, cap + 1):
+        birth = beta*b
+        death = Q(b*(b-1))
+        p = birth/(birth+death)
+        r = death/(birth+death)
+        if b &lt; cap:
+            A[b-1][b] -= p
+        if b &gt;= 3:
+            A[b-1][b-3] -= r
+        rhs[b-1] = r
+    for j in range(cap):
+        pivot = next(i for i in range(j,cap) if A[i][j])
+        A[j],A[pivot] = A[pivot],A[j]
+        rhs[j],rhs[pivot] = rhs[pivot],rhs[j]
+        x=A[j][j]
+        A[j]=[v/x for v in A[j]]
+        rhs[j]/=x
+        for i in range(j+1,cap):
+            f=A[i][j]
+            if f:
+                A[i]=[a-f*b for a,b in zip(A[i],A[j])]
+                rhs[i]-=f*rhs[j]
+    g=[Q(0)]*cap
+    for i in range(cap-1,-1,-1):
+        g[i]=rhs[i]-sum(A[i][j]*g[j] for j in range(i+1,cap))
+    assert g[0]==g[1]
+    for b in range(1,cap+1):
+        gp=g[b] if b&lt;cap else Q(0)
+        gm=g[b-3] if b&gt;=3 else Q(0)
+        residual=beta*b*(gp-g[b-1])+b*(b-1)*(gm-g[b-1])+b*(b-1)
+        assert residual==0
+    return g[0]
+
+
+def h_series(beta):
+    with localcontext() as ctx:
+        ctx.prec=60
+        x=Decimal(beta.numerator)/Decimal(beta.denominator)
+        term=Decimal(1)
+        total=term/x
+        for n in range(1,500):
+            term*=(-2*x)/n
+            add=term/(x+n)
+            total+=add
+            if n&gt;20 and abs(add)&lt;Decimal(&#x27;1e-55&#x27;):
+                break
+        return (1+x*(2*x).exp()*total)/2
+
+
+for beta in [Q(1,4),Q(1),Q(2)]:
+    g=killed_expected_deaths(beta,30)
+    hd=h_series(beta)
+    gd=Decimal(g.numerator)/Decimal(g.denominator)
+    assert abs(gd-hd)&lt;Decimal(&#x27;1e-9&#x27;), (beta,gd,hd)
+    print(&#x27;beta=&#x27;,beta,&#x27;finite-cap expected deaths=&#x27;,str(gd),&#x27;h formula=&#x27;,str(hd),&#x27;absolute difference=&#x27;,str(abs(gd-hd)))
+
+with localcontext() as ctx:
+    ctx.prec=50
+    expected=(Decimal(2).exp()+1)/4
+    assert abs(h_series(Q(1))-expected)&lt;Decimal(&#x27;1e-45&#x27;)
+print(&#x27;PASS: exact capped Poisson identities and numerical expectation/formula comparisons.&#x27;)
+print(&#x27;The cap comparisons are finite diagnostics; they do not prove the critical theorem.&#x27;)
+</pre><p><a href="../assets/d83f1c5779715e8e89331764c2740ecb09d8f1fab5f1d8d2cc52af124f04a6f1.py">Exact original</a></p></html>

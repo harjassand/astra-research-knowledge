@@ -1,0 +1,116 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AO: proofs/chem_explosion_blind/check_order7.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AO-sources.txt">Source map</a><h1>AO: proofs/chem_explosion_blind/check_order7.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Paused user-reported checkpoint; original597-member ZIP retained exactly. Full authored proofs/audits/code/results available; original primary-paper bytes excluded, read scopes and hashes retained. Current CLAIM_LEDGER overrides explicitly historical pending notes. Major breakthrough not established; no source research resumed. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Exact finite arithmetic diagnostics, not certification of the infinite proof.&quot;&quot;&quot;
+from fractions import Fraction as F
+from itertools import product
+from math import isqrt
+import json
+
+V = ((2, 0), (2, 1), (1, 1), (0, 1), (-2, -2))
+WORDS = [(1, f, 4) for f in (2, 3)]
+WORDS += [(1, f1, f2, 4, f3, 4)
+          for f1, f2, f3 in product((2, 3), repeat=3)]
+
+
+def ff(n, m):
+    r = 1
+    for j in range(m):
+        r *= max(n-j, 0)
+    return r
+
+
+def rates(x, b, ks):
+    k0, k1, k2, k3, k4 = ks
+    return (k0, k1*ff(x, 2), k2*ff(x, 4)*b,
+            k3*ff(x, 4)*b, k4*ff(x, 5)*ff(b, 2))
+
+
+def word(a, sequence, ks):
+    state = (a, 0)
+    probability = F(1)
+    states = [state]
+    for reaction in sequence:
+        x, b = state
+        rs = rates(x, b, ks)
+        assert rs[reaction] &gt; 0
+        probability *= rs[reaction]/sum(rs)
+        dx, db = V[reaction]
+        state = (x+dx, b+db)
+        states.append(state)
+    assert all(b &gt; 0 for x, b in states[1:-1])
+    assert states[-1][1] == 0
+    assert all(a &lt;= x &lt;= a+4 for x, b in states[:-1])
+    assert -2 &lt;= states[-1][0]-a &lt;= 1
+    return states[-1][0]-a, probability, states
+
+
+def ceil(q):
+    return -(-q.numerator//q.denominator)
+
+
+def ceil_sqrt(q):
+    n = isqrt(q.numerator//q.denominator)
+    return n if F(n*n) == q else n+1
+
+
+parameter_sets = [
+    tuple(map(F, (1, 1, 1, 1, 1))),
+    (F(10**6), F(1), F(1, 10**6), F(10**3), F(1, 10**3)),
+    (F(1), F(10**6), F(1, 10**6), F(1, 10**6), F(10**6)),
+    (F(1, 10**6), F(1, 10**3), F(10**6), F(1, 10**6), F(1)),
+]
+cases = 0
+for ks in parameter_sets:
+    k0, k1, k2, k3, k4 = ks
+    aggregate = k2+k3
+    theta = k2/aggregate
+    eps = theta/16
+    m = max(F(1), 2*k0/k1, (16*k0+4*k1)/aggregate,
+            2*aggregate/k4, (16*k0+4*k1)/k4)
+    db = 3*m+5*m*m
+    threshold = max(8, ceil(8*m), 2*ceil_sqrt(db), ceil(32*m/theta))
+    assert 4*eps+8*eps/2+(1-9*eps) == 1-eps
+    for a in sorted(set([8, 16, 64, 1024, threshold,
+                         threshold+1, 2*threshold+3])):
+        endpoints = {v: F(0) for v in (-2, -1, 0, 1)}
+        q = None
+        for sequence in WORDS:
+            delta, probability, states = word(a, sequence, ks)
+            endpoints[delta] += probability
+            if sequence == (1, 2, 4):
+                q = probability
+            for x, b in states[:-1]:
+                rs = rates(x, b, ks)
+                total = sum(rs)
+                assert total &gt;= k1*a*(a-1)
+                if b == 0:
+                    assert 1-rs[1]/total &lt;= m/(a*a)
+                elif b == 1:
+                    assert 1-(rs[2]+rs[3])/total &lt;= m/(a*a)
+                    assert rs[2]/(rs[2]+rs[3]) == theta
+                else:
+                    assert (rs[2]+rs[3])/total &lt;= m/a
+                    assert (rs[0]+rs[1])/total &lt;= m/(a*a*a)
+        accepted = sum(endpoints.values())
+        d = 1-accepted
+        assert d &gt;= 0
+        assert q &gt;= theta*(1-m/a-3*m/(a*a))
+        assert d &lt;= db/(a*a)
+        assert endpoints[-2]+endpoints[-1] &lt;= m/a
+        if a &gt;= threshold:
+            assert q &gt;= theta/2
+            assert d &lt;= F(1, 4)
+            negative = (endpoints[-2]+endpoints[-1])/accepted
+            plus = endpoints[1]/accepted
+            assert negative &lt;= eps
+            assert plus &gt;= 8*eps
+            assert endpoints[-2]/accepted &lt;= eps
+            assert 1-plus &lt;= 1-8*eps
+        cases += 1
+
+print(json.dumps({&quot;status&quot;: &quot;PASS&quot;, &quot;arithmetic&quot;: &quot;exact rational&quot;,
+                  &quot;parameter_sets&quot;: len(parameter_sets), &quot;macro_states&quot;: cases,
+                  &quot;accepted_words_per_state&quot;: len(WORDS),
+                  &quot;checks&quot;: [&quot;all ten legal paths&quot;, &quot;endpoint range&quot;,
+                             &quot;one-step rate bounds&quot;, &quot;abort bound&quot;,
+                             &quot;conditional stochastic dominance&quot;,
+                             &quot;random-walk exponential moment&quot;]}, indent=2))
+</pre><p><a href="../assets/6ec67251001d1cf2a20d914076442780f3928a265bc556ce9815d03b61ddc9f8.py">Exact original</a></p></html>

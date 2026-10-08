@@ -1,0 +1,192 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AO: proofs/cubic_audit/exact_checks.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AO-sources.txt">Source map</a><h1>AO: proofs/cubic_audit/exact_checks.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Paused user-reported checkpoint; original597-member ZIP retained exactly. Full authored proofs/audits/code/results available; original primary-paper bytes excluded, read scopes and hashes retained. Current CLAIM_LEDGER overrides explicitly historical pending notes. Major breakthrough not established; no source research resumed. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Exact rational stress checks, not a proof or a stochastic simulation.&quot;&quot;&quot;
+from fractions import Fraction as Q
+from functools import cmp_to_key
+from math import gcd, floor
+import json
+from pathlib import Path
+
+
+def arrow(y, p, k=1):
+    return (y, (p[0]-y[0], p[1]-y[1]), Q(k))
+
+
+def dot(x, u):
+    return x[0]*u[0]+x[1]*u[1]
+
+
+def directions(rs):
+    &quot;&quot;&quot;Walls of all source-order and jump-sign changes, plus their sectors.&quot;&quot;&quot;
+    rays = {(1,0), (0,1), (-1,0), (0,-1)}
+    def add(x, y):
+        if x or y:
+            g=gcd(abs(x), abs(y)); rays.add((x//g,y//g)); rays.add((-x//g,-y//g))
+    for y,d,k in rs:
+        add(-d[1],d[0])
+        for z,e,l in rs: add(-(y[1]-z[1]),y[0]-z[0])
+    def cmp(u,v):
+        a=0 if u[1]&gt;0 or (u[1]==0 and u[0]&gt;0) else 1
+        b=0 if v[1]&gt;0 or (v[1]==0 and v[0]&gt;0) else 1
+        if a!=b: return -1 if a&lt;b else 1
+        cross=u[0]*v[1]-u[1]*v[0]
+        return -1 if cross&gt;0 else (1 if cross&lt;0 else 0)
+    rays=sorted(rays,key=cmp_to_key(cmp))
+    return rays+[(u[0]+v[0],u[1]+v[1]) for u,v in zip(rays,rays[1:]+rays[:1])]
+
+
+def endotactic(rs):
+    for u in directions(rs):
+        essential=[(y,d) for y,d,k in rs if dot(d,u)]
+        if not essential: continue
+        m=max(dot(y,u) for y,d in essential)
+        if any(dot(y,u)==m and dot(d,u)&gt;0 for y,d in essential): return False,u
+    return True,None
+
+
+def aggregate(rs, y):
+    return tuple(sum((k*d[j] for s,d,k in rs if s==y),Q(0)) for j in (0,1))
+
+
+def fall(a,n):
+    if a&lt;n: return 0
+    p=1
+    for i in range(n): p*=a-i
+    return p
+
+
+def gen(rs,a,b,V,order=None):
+    ans=Q(0)
+    for y,d,k in rs:
+        if order is not None and sum(y)!=order: continue
+        rate=k*fall(a,y[0])*fall(b,y[1])
+        if rate: ans+=rate*(V(a+d[0],b+d[1])-V(a,b))
+    return ans
+
+
+def cutoff_case(name,rs):
+    assert endotactic(rs)[0], (name,endotactic(rs))
+    v=aggregate(rs,(1,2)); h=aggregate(rs,(2,0)); z=aggregate(rs,(1,1))
+    G=2*v[0]+v[1]; H=2*h[0]+h[1]; Z=2*z[0]+z[1]
+    if G&lt;0:
+        p=2+min(Q(1),-G/(2*(max(v[0],0)+1))); q=r=Q(1); regime=&#x27;I&#x27;
+    elif H&lt;0:
+        p=Q(2); q=r=Q(1); regime=&#x27;II&#x27;
+    else:
+        assert Z&lt;0
+        eps=min(Q(1),-Z/(2*(h[1]+max(z[1],0)+1)))
+        p=Q(4); r=Q(2); q=1+eps; regime=&#x27;III&#x27;
+    CA=p*v[0]+r*v[1]
+    cubic=[a for a in rs if sum(a[0])==3]
+    twob=[a for a in rs if a[0]==(0,2)]
+    kap=sum((k*(q*(-d[1])-r*max(d[0],0)) for y,d,k in cubic),Q(0))
+    TB=2*sum((k*max(q*d[1]+r*d[0],0) for y,d,k in twob),Q(0))
+    D=max(abs(d[0]) for y,d,k in rs)
+    K=floor(D+TB/kap+1)+1
+    f=lambda a:max(a-K,0)
+    V=lambda a,b:p*a*a+q*b*b+2*r*b*f(a)
+    def bracket(a):
+        R=sum((k*(2*p*a*d[0]+p*d[0]**2+q*d[1]**2+2*r*d[1]*f(a+d[0])) for y,d,k in cubic),Q(0))
+        g=sum((k*(q*d[1]+r*(f(a+d[0])-f(a))) for y,d,k in cubic),Q(0))
+        return R,g
+    # The proof needs only finite-a boundedness. A closed envelope avoids
+    # enumerating a potentially enormous strip: f&gt;=0 and d_B&lt;=0 there.
+    const=sum((k*(p*d[0]**2+q*d[1]**2+2*r*d[0]*d[1]-2*r*K*d[1]) for y,d,k in cubic),Q(0))
+    base=sum((k*(p*d[0]**2+q*d[1]**2) for y,d,k in cubic),Q(0))
+    rho=-CA if CA&lt;0 else Q(0)
+    CR=max(Q(0),const,base+(2*p*max(v[0],0)+rho)*(K+D))
+    as_={0,1,2, max(0,K-D),max(0,K-D+1),max(0,K-1),K,K+1,K+D,K+D+1,2*K+2*D,10*K+10*D}
+    bs={0,1,2,3,10,100,10000}
+    checks=0
+    for a in sorted(as_):
+        R,g=bracket(a)
+        assert g&lt;=-kap
+        assert R&lt;=-rho*a+CR
+        for b in sorted(bs):
+            exact=gen(rs,a,b,V,3)
+            assert exact==a*b*(b-1)*(2*b*g+R)
+            bound=-rho*a*a*b*b-2*kap*a*b**3+rho*a*a*b+(2*kap+CR)*a*b*b
+            assert exact&lt;=bound
+            left=gen(twob,a,b,V)
+            C2=sum((k*(2*p*a*d[0]+p*d[0]**2+q*d[1]**2) for y,d,k in twob),Q(0))
+            assert left&lt;=TB*b**3*(a&gt;K-D)+C2*b*b
+            assert TB*b**3*(a&gt;K-D)&lt;=kap*a*b**3
+            for y,d,k in rs:
+                if a&lt;y[0] or b&lt;y[1]: continue
+                rhs=2*p*a*d[0]+p*d[0]**2+2*b*(q*d[1]+r*(f(a+d[0])-f(a)))+q*d[1]**2+2*r*d[1]*f(a+d[0])
+                assert V(a+d[0],b+d[1])-V(a,b)==rhs
+            checks+=1
+    return dict(name=name,regime=regime,K=K,D=D,kappa=str(kap),TB=str(TB),states=checks,directions=len(directions(rs)),full_endotactic=True)
+
+
+def both_pure_case(name,rs):
+    cub=[r for r in rs if sum(r[0])==3]
+    assert all(sum(d)&lt;=0 for y,d,k in cub)
+    alpha=min(-aggregate(rs,(3,0))[0],-aggregate(rs,(0,3))[1])
+    S=sum((k*(abs(d[0])+abs(d[1])) for y,d,k in cub),Q(0))
+    H=2*S; Dh=8*S; delta=min(Q(1,4),alpha/Dh)
+    loss=next(k*(-sum(d)) for y,d,k in cub if sum(d)&lt;0)
+    ell0=loss*delta**3; eps=min(Q(1),ell0/(H+1)); c=min(ell0,eps*alpha)
+    assert c&gt;0
+    def leading(t):
+        F=[sum((k*(1-t)**y[0]*t**y[1]*d[j] for y,d,k in cub),Q(0)) for j in (0,1)]
+        ell=-sum(F); h=2*((1-t)*F[0]+t*F[1])
+        return ell,h,-2*ell+eps*h
+    ts={Q(i,128) for i in range(129)}|{delta,delta/2,delta*2,1-delta,1-delta/2,1-delta*2}
+    for t in ts:
+        ell,h,L=leading(t)
+        assert ell&gt;=0 and abs(h)&lt;=H and L&lt;=-c
+        if t&lt;=delta or t&gt;=1-delta: assert h&lt;=-alpha
+        else: assert ell&gt;=ell0
+    V=lambda a,b:(a+b)**2+eps*(a*a+b*b)
+    C3=sum((k*(20*(abs(d[0])+abs(d[1]))+2*(abs(d[0])+abs(d[1]))**2) for y,d,k in cub),Q(0))
+    states=0
+    for a in [0,1,2,3,10,100,10**6]:
+        for b in [0,1,2,3,10,100,10**6]:
+            N=a+b
+            L=N**4*leading(Q(b,N))[2] if N else Q(0)
+            exact=gen(rs,a,b,V,3)
+            assert abs(exact-L)&lt;=C3*N**3
+            assert exact&lt;=-c*N**4+C3*N**3
+            states+=1
+    return dict(name=name,angles=len(ts),states=states,delta=str(delta),epsilon=str(eps),coercivity=str(c),positive_coercivity=True)
+
+
+M=1000
+common=[arrow((0,2),(M,2),Q(10**6)),arrow((0,0),(M,M),Q(1,10**12))]
+cutoffs=[
+ (&#x27;G_strict_large_product&#x27;, [arrow((1,2),(2,0)),arrow((1,2),(1,1),Q(1,10**6)),arrow((2,0),(1,2)),arrow((1,1),(1,2))]+common),
+ (&#x27;H_strict_large_product&#x27;, [arrow((1,2),(2,0),Q(1,10**6)),arrow((2,0),(1,1)),arrow((1,1),(1,2))]+common),
+ (&#x27;Z_strict_large_product&#x27;, [arrow((1,2),(2,0),Q(1,10**6)),arrow((2,0),(1,2),Q(10**6)),arrow((1,1),(0,2),Q(1,10**6)),arrow((0,2),(1,1))]+common),
+]
+pure=[
+ (&#x27;pure_axis_transfer_mixed_loss_large_products&#x27;,[arrow((3,0),(0,3)),arrow((0,3),(3,0)),arrow((2,1),(1,1),Q(1,10**6)),arrow((2,0),(0,M),10**6),arrow((0,2),(M,0),10**6)]),
+ (&#x27;extreme_rate_ratios&#x27;,[arrow((3,0),(0,3),Q(1,10**12)),arrow((0,3),(3,0),10**12),arrow((2,1),(1,1),Q(1,10**12)),arrow((2,0),(0,M),10**12),arrow((0,2),(M,0),10**12)]),
+]
+controls={
+ &#x27;diagonal_single_mixed&#x27;:[arrow((1,2),(0,1)),arrow((0,1),(1,2))],
+ &#x27;all_w_tiers_zero&#x27;:[arrow((1,2),(2,0)),arrow((2,0),(1,2)),arrow((0,2),(0,1)),arrow((0,1),(0,2))],
+ &#x27;mixed_alpha_beta_zero&#x27;:[arrow((2,1),(2,0)),arrow((2,0),(2,1)),arrow((1,2),(0,2)),arrow((0,2),(1,2))],
+ &#x27;mixed_beta_zero&#x27;:[arrow((2,1),(1,1)),arrow((1,1),(2,1)),arrow((1,2),(0,2)),arrow((0,2),(1,2))],
+ &#x27;mixed_all_total_conservative&#x27;:[arrow((2,1),(1,2)),arrow((1,2),(2,1)),arrow((2,0),(0,2)),arrow((0,2),(2,0))],
+ &#x27;pure_all_total_conservative&#x27;:[arrow((3,0),(0,3)),arrow((0,3),(3,0)),arrow((2,0),(0,2)),arrow((0,2),(2,0))],
+ &#x27;no_cubic&#x27;:[arrow((2,0),(0,0)),arrow((0,0),(2,0))],
+}
+control_results=[]
+for name,rs in controls.items():
+    assert endotactic(rs)[0]
+    if name==&#x27;all_w_tiers_zero&#x27;: assert all(dot(d,(2,1))&lt;=0 for y,d,k in rs if sum(y)&gt;=2)
+    if &#x27;total_conservative&#x27; in name: assert all(sum(d)==0 for y,d,k in rs)
+    control_results.append({&#x27;name&#x27;:name,&#x27;full_endotactic&#x27;:True,&#x27;directions&#x27;:len(directions(rs))})
+xu_counter=[arrow((0,0),(1,0)),arrow((1,0),(0,0)),arrow((2,0),(3,0)),arrow((0,3),(0,2))]
+assert endotactic(xu_counter)==(False,(1,0))
+essential=[(y,d) for y,d,k in xu_counter if sum(d)]
+maxdegree=max(sum(y) for y,d in essential)
+assert all(sum(d)&lt;0 for y,d in essential if sum(y)==maxdegree)
+assert (3,0) not in [y for y,d,k in xu_counter]
+out={&#x27;method&#x27;:&#x27;Exact Fraction arithmetic; complete finite 2D direction-fan check for named cutoff networks. These diagnostics do not establish universal claims.&#x27;,
+     &#x27;cutoff&#x27;:[cutoff_case(n,r) for n,r in cutoffs],
+     &#x27;both_pure&#x27;:[both_pure_case(n,r) for n,r in pure],
+     &#x27;classification_controls&#x27;:control_results,
+     &#x27;xu_example_4_11&#x27;:{&#x27;total_direction_endotactic&#x27;:True,&#x27;full_endotactic&#x27;:False,&#x27;violating_direction&#x27;:[1,0],&#x27;pure_cubic_sources&#x27;:1,&#x27;excluded_from_both_targets&#x27;:True}}
+Path(__file__).with_name(&#x27;exact_checks.json&#x27;).write_text(json.dumps(out,indent=2)+&#x27;\n&#x27;)
+print(json.dumps(out,indent=2))
+</pre><p><a href="../assets/1b0c46d8eed9ac64ec6244379122da240274fc79dca98f8c1b724cbdf70a0542.py">Exact original</a></p></html>

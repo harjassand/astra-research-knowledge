@@ -1,0 +1,104 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AO: proofs/independent/phase2/buffer_attack.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AO-sources.txt">Source map</a><h1>AO: proofs/independent/phase2/buffer_attack.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Paused user-reported checkpoint; original597-member ZIP retained exactly. Full authored proofs/audits/code/results available; original primary-paper bytes excluded, read scopes and hashes retained. Current CLAIM_LEDGER overrides explicitly historical pending notes. Major breakthrough not established; no source research resumed. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Reconstruct Larson&#x27;s published binary matroid and bounded buffered paths.&quot;&quot;&quot;
+from itertools import combinations
+from collections import Counter
+import json,time
+
+ROWS=[
+[0,0,1,1,0,0,0,1,0,1,0,1,0,0,0,0,0,0],
+[0,1,0,1,0,1,0,0,0,0,0,0,1,1,0,0,0,0],
+[0,0,0,0,0,0,1,1,0,0,0,0,0,1,0,1,0,1],
+[1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+[0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0],
+[0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0],
+[0,0,0,0,0,0,1,1,0,0,1,1,0,0,0,0,0,0],
+[0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0],
+[0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,1,1],
+]
+COLS=[sum(ROWS[j][i]&lt;&lt;j for j in range(9)) for i in range(18)]
+ALL=(1&lt;&lt;18)-1
+
+def mask(xs):return sum(1&lt;&lt;(x-1) for x in xs)
+def labels(b):return [i+1 for i in range(18) if b&gt;&gt;i&amp;1]
+def rank(xs):
+    piv={}
+    for i in xs:
+        x=COLS[i]
+        while x:
+            k=x.bit_length()-1
+            if k in piv:x^=piv[k]
+            else:piv[k]=x;break
+    return len(piv)
+
+def build_bases():
+    return {sum(1&lt;&lt;i for i in xs) for xs in combinations(range(18),9) if rank(xs)==9}
+
+def bitlist(m):
+    out=[]
+    while m:
+        bit=m&amp;-m;out.append(bit);m-=bit
+    return out
+
+def neighbors(S,bases):
+    out=set()
+    for i,j in combinations(range(len(S)),2):
+        A,B=S[i],S[j]
+        for e in bitlist(A&amp;~B):
+            for f in bitlist(B&amp;~A):
+                ap=A^e^f;bp=B^e^f
+                if ap in bases and bp in bases:
+                    T=list(S);T[i]=ap;T[j]=bp;T=tuple(sorted(T))
+                    if T!=S:out.add(T)
+    return out
+
+def split_count(B):
+    return sum(bool(B&gt;&gt;(2*i)&amp;1)^bool(B&gt;&gt;(2*i+1)&amp;1) for i in range(9))
+
+def bidir(start,goal,bases,cap=100000):
+    parents=[{start:None},{goal:None}]
+    fronts=[{start},{goal}]; expanded=0;edgecount=0
+    while fronts[0] and fronts[1] and expanded&lt;cap:
+        side=0 if len(fronts[0])&lt;=len(fronts[1]) else 1
+        new=set()
+        for S in fronts[side]:
+            expanded+=1
+            for T in neighbors(S,bases):
+                edgecount+=1
+                if T in parents[side]:continue
+                parents[side][T]=S;new.add(T)
+                if T in parents[1-side]:
+                    meet=T
+                    left=[];X=meet
+                    while X is not None:left.append(X);X=parents[0][X]
+                    left.reverse()
+                    right=[];X=parents[1][meet]
+                    while X is not None:right.append(X);X=parents[1][X]
+                    return {&quot;status&quot;:&quot;FOUND&quot;,&quot;path&quot;:left+right,&quot;expanded&quot;:expanded,
+                            &quot;edges&quot;:edgecount,&quot;seen&quot;:[len(x) for x in parents]}
+            if expanded&gt;=cap:break
+        fronts[side]=new
+    return {&quot;status&quot;:&quot;CAP_OR_EXHAUSTED&quot;,&quot;expanded&quot;:expanded,&quot;edges&quot;:edgecount,
+            &quot;seen&quot;:[len(x) for x in parents],&quot;remaining&quot;:[len(x) for x in fronts]}
+
+if __name__==&quot;__main__&quot;:
+    starttime=time.monotonic();bases=build_bases()
+    B=mask([1,2,3,7,8,9,13,14,15])
+    D=mask([1,2,3,5,7,9,11,13,15])
+    assert B in bases and (ALL^B) in bases and D in bases and (ALL^D) in bases
+    paircounts=Counter(split_count(x) for x in bases if ALL^x in bases)
+    R=bidir(tuple(sorted((B,B,ALL^B))),tuple(sorted((B,D,ALL^D))),bases)
+    if &quot;path&quot; in R:
+        P=R[&quot;path&quot;]
+        assert all(all(b in bases for b in S) for S in P)
+        assert all(P[i+1] in neighbors(P[i],bases) for i in range(len(P)-1))
+        for S in P:
+            assert [sum(bool(b&gt;&gt;i&amp;1) for b in S) for i in range(18)]==[
+                2 if B&gt;&gt;i&amp;1 else 1 for i in range(18)]
+        R[&quot;path&quot;]=[[labels(b) for b in S] for S in P]
+        R[&quot;length&quot;]=len(P)-1
+    R.update({&quot;source&quot;:&quot;Larson2607.02208 Example1.4/Theorem1.5&quot;,&quot;rows&quot;:ROWS,
+              &quot;basis_count&quot;:len(bases),&quot;complement_basis_split_counts&quot;:dict(paircounts),
+              &quot;buffer&quot;:labels(B),&quot;B&quot;:labels(B),&quot;D&quot;:labels(D),
+              &quot;wall_seconds&quot;:time.monotonic()-starttime})
+    print(json.dumps(R,indent=2))
+
+</pre><p><a href="../assets/5dd120116f814f598be26f565c179ee3de77752459f7dfb5a9c74919258ac495.py">Exact original</a></p></html>

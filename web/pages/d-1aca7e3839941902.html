@@ -1,0 +1,149 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AO: proofs/excursion_exact/finite_check.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AO-sources.txt">Source map</a><h1>AO: proofs/excursion_exact/finite_check.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Paused user-reported checkpoint; original597-member ZIP retained exactly. Full authored proofs/audits/code/results available; original primary-paper bytes excluded, read scopes and hashes retained. Current CLAIM_LEDGER overrides explicitly historical pending notes. Major breakthrough not established; no source research resumed. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact killed-boundary truncations for the specified B-chain reward.&quot;&quot;&quot;
+
+from __future__ import annotations
+
+from fractions import Fraction
+import json
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent
+BETAS = {
+    &quot;1/5&quot;: Fraction(1, 5),
+    &quot;1&quot;: Fraction(1, 1),
+    &quot;3&quot;: Fraction(3, 1),
+    &quot;5&quot;: Fraction(5, 1),
+}
+N_VALUES = (2, 3, 5, 10, 20, 40)
+
+
+def add(x, y):
+    return x[0] + y[0], x[1] + y[1]
+
+
+def scale(c, x):
+    return c * x[0], c * x[1]
+
+
+def killed_truncation(beta: Fraction, N: int) -&gt; Fraction:
+    &quot;&quot;&quot;Exact E_1[pair deaths before B=0 or birth from N to cemetery].
+
+    At state N, a birth is sent to a reward-free absorbing cemetery; a pair
+    death N-&gt;N-2 still earns one reward and continues in the truncated chain.
+    The resulting value is a pathwise lower bound on the unbounded reward.
+    &quot;&quot;&quot;
+    if beta &lt;= 0 or N &lt; 2:
+        raise ValueError(&quot;require beta&gt;0 and N&gt;=2&quot;)
+
+    # Each unknown f_b is represented as A_b*t + C_b, where t=f_1=f_2.
+    affine = [(Fraction(0), Fraction(0)) for _ in range(N + 2)]
+    affine[1] = (Fraction(1), Fraction(0))
+    affine[2] = (Fraction(1), Fraction(0))
+
+    # Interior Bellman equations, for 2 &lt;= b &lt; N:
+    # (beta+b-1) f_b = beta f_(b+1) + (b-1)(1+f_(b-2)).
+    for b in range(2, N):
+        ab, cb = affine[b]
+        alo, clo = affine[b - 2]
+        affine[b + 1] = (
+            ((beta + b - 1) * ab - (b - 1) * alo) / beta,
+            ((beta + b - 1) * cb - (b - 1) * (1 + clo)) / beta,
+        )
+
+    # At the upper boundary, birth from N exits without further reward:
+    # (beta+N-1) f_N = (N-1)(1+f_(N-2)); this is f_(N+1)=0.
+    an, cn = affine[N]
+    alo, clo = affine[N - 2]
+    coefficient = (beta + N - 1) * an - (N - 1) * alo
+    constant = (beta + N - 1) * cn - (N - 1) * (1 + clo)
+    if coefficient == 0:
+        raise ArithmeticError(&quot;degenerate affine boundary equation&quot;)
+    return -constant / coefficient
+
+
+def main():
+    import mpmath as mp
+
+    mp.mp.dps = 80
+    output = {
+        &quot;chain&quot;: {
+            &quot;birth_rate_at_b&quot;: &quot;beta*b&quot;,
+            &quot;pair_death_rate_at_b&quot;: &quot;b*(b-1), with transition b -&gt; b-2&quot;,
+            &quot;absorbing_state&quot;: 0,
+            &quot;initial_state&quot;: 1,
+            &quot;reward&quot;: &quot;one per pair-death transition&quot;,
+        },
+        &quot;finite_boundary&quot;: {
+            &quot;states&quot;: &quot;0..N plus cemetery&quot;,
+            &quot;boundary_condition&quot;: &quot;birth from state N exits to a reward-free absorbing cemetery; pair deaths from N are still counted&quot;,
+            &quot;recurrence&quot;: &quot;(beta+b-1) f_b = beta f_(b+1) + (b-1)(1+f_(b-2)), 2&lt;=b&lt;N&quot;,
+            &quot;top_equation&quot;: &quot;(beta+N-1) f_N = (N-1)(1+f_(N-2)); equivalently f_(N+1)=0&quot;,
+            &quot;bound_direction&quot;: &quot;lower bound on the unbounded expected pair-death count, by pathwise stopping and nonnegative reward&quot;,
+            &quot;monotonicity&quot;: &quot;nondecreasing in N under the coupled first-upcrossing construction&quot;,
+        },
+        &quot;truncations&quot;: {},
+        &quot;candidate_formula&quot;: {},
+    }
+
+    for label, beta in BETAS.items():
+        b = mp.mpf(beta.numerator) / beta.denominator
+        formula = (1 + b * mp.e ** (2 * b) * (2 * b) ** (-b) * mp.gammainc(b, 0, 2 * b)) / 2
+        output[&quot;candidate_formula&quot;][label] = {
+            &quot;value_decimal_50dp&quot;: mp.nstr(formula, 50),
+            &quot;formula&quot;: &quot;(1 + beta*exp(2*beta)*(2*beta)^(-beta)*gamma_lower(beta,2*beta))/2&quot;,
+        }
+        entries = []
+        previous = None
+        for N in N_VALUES:
+            value = killed_truncation(beta, N)
+            decimal = mp.mpf(value.numerator) / value.denominator
+            drift_upper = 1 - beta * value
+            entries.append({
+                &quot;N&quot;: N,
+                &quot;exact_numerator&quot;: str(value.numerator),
+                &quot;exact_denominator&quot;: str(value.denominator),
+                &quot;lower_bound_decimal_30dp&quot;: mp.nstr(decimal, 30),
+                &quot;formula_minus_lower_bound_decimal_20dp&quot;: mp.nstr(formula - decimal, 20),
+                &quot;monotone_from_previous_N&quot;: None if previous is None else value &gt;= previous,
+                &quot;upper_bound_on_1_minus_beta_h_if_h_is_unbounded_target&quot;: {
+                    &quot;exact_numerator&quot;: str(drift_upper.numerator),
+                    &quot;exact_denominator&quot;: str(drift_upper.denominator),
+                    &quot;decimal_30dp&quot;: mp.nstr(mp.mpf(drift_upper.numerator) / drift_upper.denominator, 30),
+                },
+            })
+            previous = value
+        output[&quot;truncations&quot;][label] = entries
+
+    epsilons = [mp.mpf(&quot;1e-3&quot;), mp.mpf(&quot;1e-6&quot;), mp.mpf(&quot;1e-9&quot;)]
+    limit_checks = []
+    for b in epsilons:
+        h = (1 + b * mp.e ** (2 * b) * (2 * b) ** (-b) * mp.gammainc(b, 0, 2 * b)) / 2
+        limit_checks.append({&quot;beta&quot;: mp.nstr(b, 5), &quot;formula_value&quot;: mp.nstr(h, 30)})
+    output[&quot;small_beta&quot;] = {
+        &quot;asymptotic&quot;: &quot;beta*gamma_lower(beta,2*beta)-&gt;1 and exp(2*beta)*(2*beta)^(-beta)-&gt;1, hence h_1(beta)-&gt;1 as beta decreases to 0 through positive values&quot;,
+        &quot;numerical_checks&quot;: limit_checks,
+    }
+
+    h_fifth = (1 + mp.mpf(1) / 5 * mp.e ** (mp.mpf(2) / 5)
+               * (mp.mpf(2) / 5) ** (-mp.mpf(1) / 5)
+               * mp.gammainc(mp.mpf(1) / 5, 0, mp.mpf(2) / 5)) / 2
+    output[&quot;default_drift&quot;] = {
+        &quot;expression&quot;: &quot;1 - (1/5)*h_1(1/5)&quot;,
+        &quot;value_from_candidate_formula&quot;: mp.nstr(1 - h_fifth / 5, 50),
+        &quot;status&quot;: &quot;numerical evaluation of the candidate functional; not an infinite-chain proof&quot;,
+    }
+
+    (ROOT / &quot;results.json&quot;).write_text(json.dumps(output, indent=2) + &quot;\n&quot;)
+    print(json.dumps({
+        &quot;formula_values&quot;: {key: value[&quot;value_decimal_50dp&quot;]
+                           for key, value in output[&quot;candidate_formula&quot;].items()},
+        &quot;N40_exact_lower_bound_decimals&quot;: {key: rows[-1][&quot;lower_bound_decimal_30dp&quot;]
+                                           for key, rows in output[&quot;truncations&quot;].items()},
+        &quot;default_drift&quot;: output[&quot;default_drift&quot;][&quot;value_from_candidate_formula&quot;],
+        &quot;small_beta_checks&quot;: limit_checks,
+    }, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/0c3f41cf1e2324a73a8b61da6e66c43534817d72a583477a2a8e08f33660df72.py">Exact original</a></p></html>

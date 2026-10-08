@@ -1,0 +1,84 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AO: proofs/independent/phase2/fiber_attack.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AO-sources.txt">Source map</a><h1>AO: proofs/independent/phase2/fiber_attack.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Paused user-reported checkpoint; original597-member ZIP retained exactly. Full authored proofs/audits/code/results available; original primary-paper bytes excluded, read scopes and hashes retained. Current CLAIM_LEDGER overrides explicitly historical pending notes. Major breakthrough not established; no source research resumed. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Exact local-monotonicity attack; no theorem promotion from finite enumeration.&quot;&quot;&quot;
+from itertools import combinations, combinations_with_replacement, permutations
+from collections import defaultdict, deque
+import json, time
+
+def binary_rank(columns):
+    piv={}
+    for x in columns:
+        while x:
+            k=x.bit_length()-1
+            if k in piv: x ^= piv[k]
+            else:
+                piv[k]=x
+                break
+    return len(piv)
+
+def bases_fano():
+    return [tuple(c) for c in combinations(range(7),3)
+            if binary_rank([i+1 for i in c])==3]
+
+def distance(A,B):
+    return min(sum(len(set(x)-set(y)) for x,y in zip(A,P))
+               for P in permutations(B))
+
+def signature(A,n):
+    return tuple(sum(e in b for b in A) for e in range(n))
+
+def adjacent(A,bases_set):
+    out=set()
+    for i,j in combinations(range(len(A)),2):
+        a,b=set(A[i]),set(A[j])
+        for e in a-b:
+            for f in b-a:
+                ap=tuple(sorted((a-{e})|{f}))
+                bp=tuple(sorted((b-{f})|{e}))
+                if ap in bases_set and bp in bases_set:
+                    C=list(A); C[i]=ap; C[j]=bp
+                    C=tuple(sorted(C))
+                    if C!=A: out.add(C)
+    return out
+
+def attack(name,bases,n=7,p=3):
+    start=time.monotonic()
+    bases=sorted(bases)
+    bset=set(bases); fibers=defaultdict(list)
+    for A in combinations_with_replacement(bases,p):
+        fibers[signature(A,n)].append(A)
+    tested=0
+    for sig,F in sorted(fibers.items(),key=lambda kv:-len(kv[1])):
+        if len(F)&lt;2:continue
+        neighbors={A:adjacent(A,bset) for A in F}
+        for A in F:
+            for B in F:
+                if A==B:continue
+                tested+=1
+                d=distance(A,B)
+                nb=[(C,distance(C,B)) for C in sorted(neighbors[A])]
+                if all(dc&gt;=d for C,dc in nb):
+                    prev={A:None}; Q=deque([A])
+                    while Q and B not in prev:
+                        X=Q.popleft()
+                        for Y in neighbors[X]:
+                            if Y not in prev:
+                                prev[Y]=X;Q.append(Y)
+                    path=[]
+                    if B in prev:
+                        X=B
+                        while X is not None:path.append(X);X=prev[X]
+                        path.reverse()
+                    return {&quot;model&quot;:name,&quot;n&quot;:n,&quot;p&quot;:p,&quot;bases&quot;:bases,&quot;signature&quot;:sig,
+                            &quot;A&quot;:A,&quot;B&quot;:B,&quot;distance&quot;:d,&quot;neighbors&quot;:nb,
+                            &quot;path&quot;:path,&quot;path_distances&quot;:[distance(X,B) for X in path],
+                            &quot;fiber_size&quot;:len(F),&quot;tested&quot;:tested,
+                            &quot;wall_seconds&quot;:time.monotonic()-start}
+    return {&quot;model&quot;:name,&quot;n&quot;:n,&quot;p&quot;:p,&quot;status&quot;:&quot;NO_STRICT_LOCAL_MINIMUM_FOUND&quot;,
+            &quot;fibers&quot;:len(fibers),&quot;tested&quot;:tested,&quot;wall_seconds&quot;:time.monotonic()-start}
+
+if __name__==&quot;__main__&quot;:
+    b=bases_fano()
+    results=[]
+    for name,bases in [(&quot;Fano&quot;,b),(&quot;Fano_dual&quot;,[tuple(i for i in range(7) if i not in x) for x in b])]:
+        results.append(attack(name,bases))
+    print(json.dumps(results,indent=2))
+</pre><p><a href="../assets/515bfe14bf11c3059a500f26c02815022f2a7da5eea39536fd73d6ec871baa38.py">Exact original</a></p></html>

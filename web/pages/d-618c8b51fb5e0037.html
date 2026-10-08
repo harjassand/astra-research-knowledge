@@ -1,0 +1,162 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AO: proofs/critical_quantitative_audit/check_critical.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AO-sources.txt">Source map</a><h1>AO: proofs/critical_quantitative_audit/check_critical.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Paused user-reported checkpoint; original597-member ZIP retained exactly. Full authored proofs/audits/code/results available; original primary-paper bytes excluded, read scopes and hashes retained. Current CLAIM_LEDGER overrides explicitly historical pending notes. Major breakthrough not established; no source research resumed. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Fresh finite diagnostics, written without inspecting source diagnostic code.
+
+Exact combinatorial formulas are evaluated in floating-point arithmetic. These
+checks are not interval certificates or a replacement for the analytic proof.
+&quot;&quot;&quot;
+from pathlib import Path
+from math import lgamma, log, log1p, exp, sqrt, gamma, pi, ceil, log2
+from fractions import Fraction
+import hashlib
+import json
+import numpy as np
+
+ROOT = Path(__file__).resolve().parent
+SOURCE = ROOT.parent / &quot;curie_weiss&quot; / &quot;CRITICAL_PROOF_FROZEN.md&quot;
+EXPECTED = &quot;55a256b8a7d90573bed614c844a3bbb3734cb4c0886a82716afe18b281467b07&quot;
+source_bytes = SOURCE.read_bytes()
+assert hashlib.sha256(source_bytes).hexdigest() == EXPECTED
+(ROOT / &quot;CRITICAL_PROOF_snapshot.md&quot;).write_bytes(source_bytes)
+
+def logsumexp(z):
+    m = float(np.max(z))
+    return m + log(float(np.exp(z-m).sum()))
+
+mu2 = sqrt(12)*gamma(1.25)/gamma(.75)
+I2 = 12**.75*gamma(.75)/4
+C0 = 1200*exp(16/9)
+I0 = (48**.25*gamma(.25)+48**.75*gamma(.75))/4
+A0 = C0*exp(1/192)*(I0/2+8)
+
+def sector_check(N):
+    M = np.arange(N % 2, N+1, 2, dtype=float)
+    x = M/N**.75
+    u = M/N
+    k = ((N-M)/2).astype(int)
+    logpr = np.fromiter((lgamma(N+1)-lgamma(int(t)+1)
+                         -lgamma(N-int(t)+1)-N*log(2)
+                         for t in k), dtype=float, count=len(k))
+    logg = log(2)+2*np.log(M+1)-np.log(N+M+2)+logpr+(M*M+2*M)/(2*N)
+    logZ = logsumexp(logg)
+    p = np.exp(logg-logZ)
+    ex2 = float(np.dot(p, x*x))
+    em = float(np.dot(p, M))
+    ej2 = float(np.dot(p, M*(M+2)))/4
+    c = (4*ej2-3*N)/(3*N*(N-1))
+    D = 2*ej2/N-logZ
+    rateI = .5*((1+u)*np.log1p(u)
+                +np.where(u &lt; 1, (1-u)*np.log(np.maximum(1-u, np.finfo(float).tiny)), 0))
+    central = u &lt;= .5
+    ratio_logs = logpr[central]+N*rateI[central]+.5*log(N)
+    envelope_slack = log(200)+np.log1p(x*x)-x**4/24-logg
+    log_moment = logsumexp(np.log(p[p &gt; 0])+(x[p &gt; 0]**2)/48)
+    # P(S=s) = sum_{M &gt;= |s|} p(M)/(M+1), independently reconstructed.
+    pointS = np.cumsum((p/(M+1))[::-1])[::-1]
+    sign_norm = (float(pointS[0]) if N % 2 == 0 else 0) + 2*float(pointS[M &gt; 0].sum())
+    a = sqrt(N)  # r=N; actual readouts coincide with S.
+    trace_threshold = sqrt(N)*a**.25
+    above = M &gt; trace_threshold
+    Ptrace = 2*float(pointS[above].sum())
+    Qtrace = 2*float(np.exp(logpr[above]).sum())
+    KL_threshold = .5*N**.75
+    aboveKL = M &gt; KL_threshold
+    PKL = 2*float(pointS[aboveKL].sum())
+    logQKL = log(2)+logsumexp(logpr[aboveKL])
+    QKL = exp(logQKL)
+    binaryD = (PKL*log(PKL/QKL)+(1-PKL)*log((1-PKL)/(1-QKL)))
+    rho2vals = np.array([(1-3*c)/4, (1+c)/4, (1+c)/4, (1+c)/4])
+    chi2 = 3*c*c
+    delta2 = .75*abs(c)
+    D2 = float(np.dot(rho2vals, np.log(4*rho2vals)))
+    assert float(envelope_slack.min()) &gt;= -1e-7
+    assert float(ratio_logs.min()) &gt;= -log(2)-1e-7
+    assert float(ratio_logs.max()) &lt;= log(2)+1e-7
+    assert logZ &gt;= -.0 + (-16/9-log(6)+.75*log(N))-1e-7
+    assert log_moment &lt;= log(A0)+1e-7
+    assert abs(sign_norm-1) &lt;= 1e-8
+    assert np.min(rho2vals) &gt; 0
+    compact = x &lt;= 2
+    compact_error = float(np.max(np.abs(np.exp(logg[compact])
+                          -2*sqrt(2/pi)*x[compact]**2*np.exp(-x[compact]**4/12))))
+    return {
+        &quot;N&quot;: N, &quot;parity&quot;: N % 2, &quot;sectors&quot;: len(M),
+        &quot;minimum_log_global_envelope_slack&quot;: float(envelope_slack.min()),
+        &quot;central_stirling_ratio_range&quot;: [exp(float(ratio_logs.min())), exp(float(ratio_logs.max()))],
+        &quot;logZ&quot;: logZ, &quot;Z_over_N_three_quarters&quot;: exp(logZ-.75*log(N)),
+        &quot;Z_limit&quot;: sqrt(2/pi)*I2, &quot;EX2&quot;: ex2, &quot;mu2&quot;: mu2,
+        &quot;sqrtN_pair_c&quot;: sqrt(N)*c, &quot;pair_c_limit&quot;: mu2/3,
+        &quot;D_global_over_sqrtN&quot;: D/sqrt(N), &quot;D_global_limit&quot;: mu2/2,
+        &quot;compact_x_le_2_absolute_error&quot;: compact_error,
+        &quot;log_exp_square_moment&quot;: log_moment, &quot;log_A0&quot;: log(A0),
+        &quot;S_distribution_normalization&quot;: sign_norm,
+        &quot;r2_chi_over_predicted&quot;: chi2/(mu2*mu2/(3*N)),
+        &quot;r2_delta_times_sqrtN&quot;: delta2*sqrt(N), &quot;r2_delta_limit&quot;: mu2/4,
+        &quot;r2_KL_times_N&quot;: D2*N, &quot;r2_KL_limit&quot;: mu2*mu2/6,
+        &quot;r_equals_N_trace_threshold_target_probability&quot;: Ptrace,
+        &quot;r_equals_N_trace_threshold_white_probability&quot;: Qtrace,
+        &quot;r_equals_N_bounded_effect_gap&quot;: Ptrace-Qtrace,
+        &quot;r_equals_N_KL_threshold_target_probability&quot;: PKL,
+        &quot;r_equals_N_KL_threshold_white_log_probability&quot;: logQKL,
+        &quot;r_equals_N_binary_KL_over_sqrtN&quot;: binaryD/sqrt(N),
+    }
+
+heat = []
+for r in [2, 3, 4, 8, 16, 64, 256, 1024, 4096]:
+    k = np.arange(r+1)
+    logp = np.fromiter((lgamma(r+1)-lgamma(int(t)+1)-lgamma(r-int(t)+1)-r*log(2)
+                       for t in k), dtype=float, count=r+1)
+    p = np.exp(logp)
+    y = (2*k-r)**2/(4*r)
+    T = float(np.dot(p, np.exp(-y)))
+    q = float(np.dot(p, y*np.exp(-y)))
+    kap = T-4*q
+    coeff_direct = float(np.dot(p, np.exp(-y)*((2*k-r)**2-r)/(r*(r-1))))
+    assert kap &gt;= exp(-12)/8-1e-12
+    assert abs(coeff_direct+kap/(r-1)) &lt; 1e-12
+    heat.append({&quot;r&quot;: r, &quot;kappa&quot;: kap, &quot;pair_coefficient_direct&quot;: coeff_direct,
+                 &quot;EY&quot;: float(np.dot(p,y)), &quot;EY2&quot;: float(np.dot(p,y*y)),
+                 &quot;EY3&quot;: float(np.dot(p,y*y*y)),
+                 &quot;variance_Y&quot;: float(np.dot(p,y*y)-np.dot(p,y)**2)})
+
+# Exact rational check of the deletion estimate actually used in the heat proof.
+deletion_upper = 2*Fraction(15,64)*(Fraction(1,12)+Fraction(1,2*12**2)
+                                  +Fraction(3,16*12**3))
+assert deletion_upper &lt; Fraction(1,16)
+
+counterexamples = []
+for N in [256, 4096, 65536, 1048576]:
+    eps = mu2/sqrt(N)
+    r = ceil(2*log2(N))
+    d = 2**r
+    sym_mass = eps+(1-eps)*(r+1)/d
+    chi = eps*eps*(d/(r+1)-1)
+    delta = eps*(1-(r+1)/d)
+    Deta = sym_mass*log(1-eps+eps*d/(r+1))+(1-sym_mass)*log1p(-eps)
+    Dconvex = eps*(r*log(2)-log(r+1))
+    assert 0 &lt;= Deta &lt;= Dconvex+1e-12
+    assert 0 &lt; delta &lt;= eps &lt; 1
+    counterexamples.append({&quot;N&quot;:N, &quot;r&quot;:r, &quot;epsilon&quot;:eps,
+                            &quot;chi&quot;:chi, &quot;half_trace&quot;:delta, &quot;KL&quot;:Deta,
+                            &quot;KL_convexity_upper&quot;:Dconvex,
+                            &quot;global_half_trace_upper&quot;:eps,
+                            &quot;sqrtN_pair_c&quot;:mu2/3,
+                            &quot;legal_scope&quot;:&quot;PI SU2 separable rare-maxspin mixture; not the exact Gibbs model&quot;})
+
+results = {
+    &quot;source&quot;: str(SOURCE), &quot;source_sha256&quot;: EXPECTED,
+    &quot;method&quot;: &quot;Fresh analytic-formula diagnostic; floating point, not formal or interval validation&quot;,
+    &quot;constants&quot;: {&quot;mu2&quot;: mu2, &quot;A0&quot;: A0, &quot;kappa_floor&quot;: exp(-12)/8,
+                  &quot;heat_tail_deletion_exact&quot;: str(deletion_upper),
+                  &quot;heat_tail_deletion_decimal&quot;: float(deletion_upper)},
+    &quot;sectors&quot;: [sector_check(N) for N in [256,257,512,513,4096,4097,16384,16385,
+                                           65536,65537,1048576,1048577]],
+    &quot;white_heat&quot;: heat,
+    &quot;false_extension_counterexamples&quot;: counterexamples,
+    &quot;scope&quot;: &quot;Both parity grids; exact finite sector formulas; fixed-r=2 full marginal; global-r=N bounded effects. No general marginal eigensolver or external review.&quot;
+}
+(ROOT / &quot;verification_results.json&quot;).write_text(json.dumps(results,indent=2)+&quot;\n&quot;)
+print(json.dumps({&quot;cases&quot;:len(results[&quot;sectors&quot;]),&quot;heat_cases&quot;:len(heat),
+                  &quot;all_assertions_passed&quot;:True,
+                  &quot;largest_even&quot;:results[&quot;sectors&quot;][-2],
+                  &quot;largest_odd&quot;:results[&quot;sectors&quot;][-1]}, indent=2))
+</pre><p><a href="../assets/798086d418b90c8378a78332bf08b57f73acbed61ead752e2ca6fcb9de42466a.py">Exact original</a></p></html>

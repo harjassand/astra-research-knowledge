@@ -1,0 +1,120 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AO: proofs/independent/phase2/verify_certificate.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AO-sources.txt">Source map</a><h1>AO: proofs/independent/phase2/verify_certificate.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Paused user-reported checkpoint; original597-member ZIP retained exactly. Full authored proofs/audits/code/results available; original primary-paper bytes excluded, read scopes and hashes retained. Current CLAIM_LEDGER overrides explicitly historical pending notes. Major breakthrough not established; no source research resumed. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Independent certificate checker: dense F2 elimination and codeword automorphisms.
+Does not import generator/search code.
+&quot;&quot;&quot;
+from pathlib import Path
+from itertools import combinations,permutations
+from collections import Counter
+import json,time
+P=Path(__file__).parent
+C=json.loads((P/&quot;buffer_all_variables_certificate.json&quot;).read_text())
+ROWS=C[&quot;rows&quot;];FULL=(1&lt;&lt;18)-1
+
+def dense_full_rank(mask):
+    cols=[i for i in range(18) if (mask&gt;&gt;i)&amp;1]
+    if len(cols)!=9:return False
+    A=[[ROWS[i][j] for j in cols] for i in range(9)]
+    for k in range(9):
+        pivot=next((i for i in range(k,9) if A[i][k]),None)
+        if pivot is None:return False
+        A[k],A[pivot]=A[pivot],A[k]
+        for i in range(k+1,9):
+            if A[i][k]:A[i]=[x^y for x,y in zip(A[i],A[k])]
+    return True
+
+def permute(x,p):
+    y=0
+    for old,new in enumerate(p):
+        if x&amp;(1&lt;&lt;old):y|=1&lt;&lt;new
+    return y
+
+def split_count(mask):
+    return sum(((mask&gt;&gt;(2*i))&amp;3) in (1,2) for i in range(9))
+
+def exchange_ordered(S,T):
+    changed=[i for i in range(len(S)) if S[i]!=T[i]]
+    if len(changed)!=2:return False
+    i,j=changed;delta=S[i]^T[i]
+    return delta==S[j]^T[j] and delta.bit_count()==2 and (
+        S[i]&amp;delta).bit_count()==1 and (S[j]&amp;delta).bit_count()==1 and (
+        S[i]&amp;delta)!=(S[j]&amp;delta)
+
+def exchange_unordered(S,T):
+    return any(exchange_ordered(S,Q) for Q in permutations(T))
+
+start=time.monotonic()
+bases={sum(1&lt;&lt;j for j in I) for I in combinations(range(18),9)
+       if dense_full_rank(sum(1&lt;&lt;j for j in I))}
+assert len(bases)==14848
+# Verify automorphisms via exact whole binary linear code, independently of RREF.
+row_masks=[sum(x&lt;&lt;j for j,x in enumerate(row)) for row in ROWS]
+code={0}
+for row in row_masks:code|={x^row for x in list(code)}
+assert len(code)==512
+G=C[&quot;automorphisms&quot;]
+for g in G:
+    perm=g[&quot;perm&quot;]
+    assert sorted(perm)==list(range(18))
+    assert all(permute(w,perm) in code for w in code)
+    assert all(perm[2*i]//2==perm[2*i+1]//2 for i in range(9))
+# Orbit trees provide exact coverage and actual automorphism edges.
+covered=set();representatives=[]
+for tree in C[&quot;orbit_parent_trees&quot;]:
+    seen=set();root=tree[0][0];representatives.append(root)
+    for row in tree:
+        x=row[0]
+        assert x in bases and x not in covered
+        if len(row)==1:assert x==root
+        else:
+            parent,gi=row[1:]
+            assert parent in seen
+            assert permute(parent,G[gi][&quot;perm&quot;])==x
+        seen.add(x);covered.add(x)
+assert covered==bases
+# Pair component trees verify connectivity; split levels verify separation.
+pair_cover=set()
+for ci,tree in enumerate(C[&quot;pair_component_parent_trees&quot;]):
+    seen=set()
+    for row in tree:
+        state=tuple(row[:2])
+        assert state[0] in bases and state[1] in bases and state[0]^state[1]==FULL
+        assert state not in pair_cover
+        assert split_count(state[0]) in ({7,9} if ci==0 else {3})
+        if len(row)&gt;2:
+            parent=tuple(row[2:])
+            assert parent in seen and exchange_unordered(parent,state)
+        seen.add(state);pair_cover.add(state)
+all_pairs={tuple(sorted((b,FULL^b))) for b in bases if FULL^b in bases}
+assert pair_cover==all_pairs and len(all_pairs)==2784
+assert {split_count(b) for b in bases if FULL^b in bases}=={3,7,9}
+# A symmetric exchange changes split count by at most 2, separating the sectors.
+for tree in C[&quot;pair_component_parent_trees&quot;]:
+    assert len(tree) in (864,1920)
+B,D=C[&quot;B&quot;],C[&quot;D&quot;]
+assert split_count(B)==3 and split_count(D)==7
+for p in C[&quot;representative_paths&quot;]:
+    N=p[&quot;buffer_mask&quot;];path=[tuple(x) for x in p[&quot;path&quot;]]
+    assert p[&quot;status&quot;]==&quot;FOUND&quot; and N in representatives
+    assert path[0]==tuple(sorted((N,B,FULL^B)))
+    assert path[-1]==tuple(sorted((N,D,FULL^D)))
+    for S in path:
+        assert all(x in bases for x in S)
+        assert [sum((x&gt;&gt;j)&amp;1 for x in S) for j in range(18)]==[
+            2 if (N&gt;&gt;j)&amp;1 else 1 for j in range(18)]
+    assert all(exchange_unordered(S,T) for S,T in zip(path,path[1:]))
+# Ordered certificates support the stronger fixed-slot interface only for representatives.
+OC=json.loads((P/&quot;buffer_ordered_certificate.json&quot;).read_text())
+for p in OC[&quot;paths&quot;]:
+    N=p[&quot;buffer_mask&quot;];path=[tuple(x) for x in p[&quot;path&quot;]]
+    assert path[0]==(N,B,FULL^B) and path[-1]==(N,D,FULL^D)
+    assert all(all(x in bases for x in S) for S in path)
+    assert all(exchange_ordered(S,T) for S,T in zip(path,path[1:]))
+result={&quot;status&quot;:&quot;PASS&quot;,&quot;scope&quot;:&quot;finite matrix/orbit/pair-fiber/path certificate only&quot;,
+        &quot;basis_count&quot;:len(bases),&quot;pair_count&quot;:len(all_pairs),
+        &quot;orbit_count&quot;:len(representatives),&quot;automorphism_count&quot;:len(G),
+        &quot;pair_component_sizes&quot;:[864,1920],
+        &quot;conclusion&quot;:&quot;For this published matroid and distinguished f, f not in J and every basis-variable multiple is in J.&quot;,
+        &quot;formal_replay&quot;:False,&quot;external_validation&quot;:False,
+        &quot;wall_seconds&quot;:time.monotonic()-start}
+(P/&quot;verify_certificate_results.json&quot;).write_text(json.dumps(result,indent=2)+&quot;\n&quot;)
+print(json.dumps(result,indent=2))
+</pre><p><a href="../assets/0af313ede174819e245380143557d76a00cd5760b8f5fc76f815ba7ac9773d9f.py">Exact original</a></p></html>

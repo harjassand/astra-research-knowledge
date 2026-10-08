@@ -1,0 +1,119 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AO: proofs/curie_weiss/exact_marginals.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AO-sources.txt">Source map</a><h1>AO: proofs/curie_weiss/exact_marginals.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Paused user-reported checkpoint; original597-member ZIP retained exactly. Full authored proofs/audits/code/results available; original primary-paper bytes excluded, read scopes and hashes retained. Current CLAIM_LEDGER overrides explicitly historical pending notes. Major breakthrough not established; no source research resumed. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Bounded finite diagnostic of the exact beta=2 local spin marginals.
+
+No theorem is inferred from these floating-point checks. Uses only Python/numpy.
+The Clebsch-Gordan partial trace is summed exactly over legal spin labels; log
+arithmetic avoids the Gibbs exponential&#x27;s overflow. Fresh preparation costs
+are not modeled by this classical finite calculation.
+&quot;&quot;&quot;
+import json
+import math
+from pathlib import Path
+import numpy as np
+
+
+def logsum(a):
+    a = np.asarray(a, dtype=float)
+    m = float(np.max(a))
+    return m + math.log(float(np.exp(a - m).sum()))
+
+
+def white(n):
+    labels = np.arange(n % 2, n + 1, 2, dtype=np.int64)
+    lw = np.array([
+        math.log(2) + 2 * math.log(int(m) + 1) - math.log(n + int(m) + 2)
+        + math.lgamma(n + 1) - math.lgamma((n - int(m)) // 2 + 1)
+        - math.lgamma((n + int(m)) // 2 + 1) - n * math.log(2)
+        for m in labels
+    ])
+    return labels, lw
+
+
+def global_law(n):
+    m, lw = white(n)
+    log_g = lw + m.astype(float) * (m + 2) / (2 * n)
+    log_z = logsum(log_g)
+    p = np.exp(log_g - log_z)
+    mu2 = float(np.dot(p, (m / n**.75)**2))
+    casimir = float(np.dot(p, m.astype(float) * (m + 2)))
+    c = (casimir - 3*n) / (3*n*(n-1))
+    dg = casimir / (2*n) - log_z
+    return log_z, mu2, c, dg
+
+
+def marginal(n, r, log_z):
+    l, log_wr = white(r)
+    k, log_wk = white(n-r)
+    m = np.arange(n % 2, n+1, 2, dtype=np.int64)
+    tilt_dimension = np.log(m+1) + m.astype(float)*(m+2)/(2*n)
+    prefix = np.logaddexp.accumulate(tilt_dimension)
+    log_ratio = []
+    for ell in l:
+        upper = (k + ell - n % 2)//2
+        lower_before = (np.abs(k-ell) - n % 2)//2 - 1
+        high = prefix[upper]
+        low = np.full(k.shape, -np.inf)
+        valid = lower_before &gt;= 0
+        low[valid] = prefix[lower_before[valid]]
+        log_interval = high + np.log(-np.expm1(low-high))
+        lr = logsum(log_wk - np.log(k+1) + log_interval)
+        log_ratio.append(lr - math.log(int(ell)+1) - log_z)
+    log_ratio = np.asarray(log_ratio)
+    log_p = log_wr + log_ratio
+    p, w = np.exp(log_p), np.exp(log_wr)
+    tv = float(.5*np.abs(p-w).sum())
+    kl = float(np.dot(p, log_ratio))
+    chi = float(np.expm1(logsum(log_wr + 2*log_ratio)))
+    return {
+        &quot;N&quot;: n, &quot;r&quot;: r, &quot;a&quot;: r/math.sqrt(n),
+        &quot;target_mass_error&quot;: float(p.sum()-1),
+        &quot;white_mass_error&quot;: float(w.sum()-1),
+        &quot;half_trace&quot;: tv, &quot;KL&quot;: kl, &quot;Petz_chi_square&quot;: chi,
+        &quot;max_abs_r1_log_ratio&quot;: float(np.max(np.abs(log_ratio))) if r == 1 else None,
+    }
+
+
+def main():
+    mu2 = math.sqrt(12)*math.gamma(1.25)/math.gamma(.75)
+    global_rows, local_rows = [], []
+    for n in [64, 256, 1024, 4096, 16384]:
+        z, observed_mu2, c, dg = global_law(n)
+        global_rows.append({&quot;N&quot;: n, &quot;scaled_E_M2&quot;: observed_mu2,
+            &quot;limit_mu2&quot;: mu2, &quot;sqrtN_c&quot;: math.sqrt(n)*c,
+            &quot;limit_sqrtN_c&quot;: mu2/3, &quot;D_global_over_sqrtN&quot;: dg/math.sqrt(n),
+            &quot;limit_D_global_over_sqrtN&quot;: mu2/2,
+            &quot;logZ_minus_threequarter_logN&quot;: z-.75*math.log(n)})
+        rs = sorted(set([1, 2, 4, 8, int(math.sqrt(n)),
+                         min(n, int(4*math.sqrt(n))), n if n&lt;=1024 else 16]))
+        for r in rs:
+            row = marginal(n, r, z)
+            if r &gt;= 2:
+                degree2 = 3*r*(r-1)*c*c/2
+                leading = mu2*mu2*r*(r-1)/(6*n)
+                row.update({&quot;exact_degree2_chi&quot;: degree2,
+                            &quot;asymptotic_degree2_chi&quot;: leading,
+                            &quot;chi_over_asymptotic_leading&quot;: row[&quot;Petz_chi_square&quot;]/leading,
+                            &quot;KL_over_a&quot;: row[&quot;KL&quot;]/row[&quot;a&quot;],
+                            &quot;KL_over_a2&quot;: row[&quot;KL&quot;]/row[&quot;a&quot;]**2})
+                assert row[&quot;Petz_chi_square&quot;] &gt;= degree2 - 2e-8
+            if r == 1:
+                assert row[&quot;max_abs_r1_log_ratio&quot;] &lt; 2e-8
+            assert abs(row[&quot;target_mass_error&quot;]) &lt; 2e-8
+            assert abs(row[&quot;white_mass_error&quot;]) &lt; 2e-8
+            assert row[&quot;KL&quot;] &lt;= r/n*dg + 2e-8
+            assert row[&quot;KL&quot;] + 2e-8 &gt;= 2*row[&quot;half_trace&quot;]**2
+            assert row[&quot;KL&quot;] &lt;= math.log1p(max(0,row[&quot;Petz_chi_square&quot;]))+2e-8
+            local_rows.append(row)
+    out = {&quot;status&quot;: &quot;FINITE_FLOATING_POINT_DIAGNOSTIC_ONLY&quot;,
+        &quot;formula&quot;: &quot;p_r(L)/w_r(L)=Z_N^-1 sum_K w_(N-r)(K)/[(L+1)(K+1)] sum_(M=|L-K|,step2)^(L+K) (M+1) exp[M(M+2)/(2N)]&quot;,
+        &quot;global&quot;: global_rows, &quot;local&quot;: local_rows}
+    dest = Path(__file__).with_name(&quot;exact_marginals.json&quot;)
+    dest.write_text(json.dumps(out,indent=2)+&quot;\n&quot;)
+    print(json.dumps({&quot;passed&quot;: len(local_rows),
+        &quot;max_mass_error&quot;: max(abs(q[&quot;target_mass_error&quot;]) for q in local_rows),
+        &quot;last_global&quot;: global_rows[-1],
+        &quot;last_N_local&quot;: local_rows[-len(rs):]}, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/de96a974857a30656de54a52f95cac301aa250ab0089879d0f5b00b05f7538aa.py">Exact original</a></p></html>

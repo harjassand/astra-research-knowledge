@@ -1,0 +1,171 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AO: proofs/chemistry_audit/independent_checks.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AO-sources.txt">Source map</a><h1>AO: proofs/chemistry_audit/independent_checks.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Paused user-reported checkpoint; original597-member ZIP retained exactly. Full authored proofs/audits/code/results available; original primary-paper bytes excluded, read scopes and hashes retained. Current CLAIM_LEDGER overrides explicitly historical pending notes. Major breakthrough not established; no source research resumed. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Independent exact diagnostics; the all-state proof is in INDEPENDENT_PROOF.md.
+
+No candidate verification script was read or imported. No Monte Carlo inference.
+Run from the workspace root with python3 work/agents/chemistry_audit/independent_checks.py.
+&quot;&quot;&quot;
+from fractions import Fraction as Q
+from itertools import product
+from pathlib import Path
+import json
+
+OUT = Path(__file__).parent
+
+
+def H(b):
+    return Q(3, 2) * ((b + 1) // 2) + (Q(1, 2) if b == 1 else 0)
+
+
+def F(b):
+    return 0 if b == 0 else (5 if b == 1 else 2 ** b)
+
+
+def ff(a, k):
+    if a &lt; k:
+        return 0
+    z = 1
+    for i in range(k):
+        z *= a - i
+    return z
+
+
+def check_state(a, b, coeff):
+    c0, c2, c3, c4, c5 = coeff
+    d = c4 + c5
+    s = c3 * b + c2 / (a - 2)
+    death = d * b * (b - 1)
+    qb = s + death
+    hraw = s * (H(b + 1) - H(b))
+    hraw += death * (H(max(b - 2, 0)) - H(b) + 1)
+    assert hraw &lt;= 0, (a, b, coeff, hraw)
+
+    d0_f = F(max(b - 2, 0))
+    d1_f = 0 if a == 3 else d0_f  # killed on the first A=2 state
+    stopped = (s * F(b + 1) + b * (b - 1) * (c4 * d0_f + c5 * d1_f)) / qb
+    assert stopped &lt;= Q(4, 5) * F(b)
+
+    qfull = c0 + ff(a, 3) * qb
+    full_f = (c0 * F(b) + ff(a, 3) * qb * stopped) / qfull
+    z = c0 / (c0 + 6 * c3)
+    gamma = z + (1 - z) * Q(4, 5)
+    assert full_f &lt;= gamma * F(b)
+    assert c0 / qfull &lt;= z &lt; 1
+
+    # Exact reset distribution conditional on a B-changing event at this state.
+    # An ignored input run is an a.s.-finite mixture of these statewise cases.
+    if a == 3 and b &gt; 2:
+        d1_macro_f = (c0 * F(b - 2) + 2 * c2 * F(b - 1)) / (c0 + 2 * c2)
+    else:
+        d1_macro_f = d0_f  # in particular, stop immediately when b=2
+    macro = (s * F(b + 1) + b * (b - 1) * (c4 * d0_f + c5 * d1_macro_f)) / qb
+    assert macro &lt;= Q(4, 5) * F(b)
+    return stopped / F(b), macro / F(b), full_f / F(b)
+
+
+fixture = tuple(map(Q, (1, 1, 1, 4, 1)))
+parameters = [fixture]
+for c0, c2, c3, c4, c5 in product(
+    [Q(1, 1000), Q(1), Q(10**6)],
+    [Q(19, 20), Q(21, 20)],
+    [Q(19, 20), Q(21, 20)],
+    [Q(79, 20), Q(81, 20)],
+    [Q(19, 20), Q(21, 20)],
+):
+    d = c4 + c5
+    assert 3 * (2 * c3 + c2) &lt; 2 * d
+    assert 8 * (3 * c3 + c2) &lt; 7 * d
+    assert 2 * c5 &lt; d
+    parameters.append((c0, c2, c3, c4, c5))
+
+nchecks = 0
+max_stopped = Q(0)
+max_macro = Q(0)
+max_full = Q(0)
+for coeff in parameters:
+    avals = range(3, 51) if coeff == fixture else [3, 4, 10, 100]
+    bvals = range(1, 257) if coeff == fixture else range(1, 129)
+    for a, b in product(avals, bvals):
+        r1, r2, r3 = check_state(a, b, coeff)
+        max_stopped = max(max_stopped, r1)
+        max_macro = max(max_macro, r2)
+        max_full = max(max_full, r3)
+        nchecks += 1
+
+# Exhaust the small boundary, including every enabled jump&#x27;s destination.
+jumps = [(2, 0), (1, 1), (0, 1), (0, -2), (-1, -2)]
+boundary_checks = 0
+for a, b in product(range(8), range(8)):
+    rates = [1, ff(a, 2), ff(a, 3) * b, 4 * ff(a, 3) * ff(b, 2), ff(a, 3) * ff(b, 2)]
+    for rate, (da, db) in zip(rates, jumps):
+        if rate:
+            assert a + da &gt;= 0 and b + db &gt;= 0
+            if a &gt;= 2:
+                assert a + da &gt;= 2
+    if a &lt; 2:
+        assert [i for i, z in enumerate(rates) if z] == [0]
+    if a == 2:
+        assert [i for i, z in enumerate(rates) if z] == [0, 1]
+    boundary_checks += 1
+
+# Independent exact source-face certificate, including every tied outgoing arrow.
+sources = [(0, 0), (2, 0), (3, 1), (3, 2)]
+arrows = [[(2, 0)], [(1, 1)], [(0, 1)], [(0, -2), (-1, -2)]]
+normals = [(0, -1), (1, -1), (1, 0), (-2, 3)]
+dot = lambda x, y: x[0] * y[0] + x[1] * y[1]
+faces = []
+for normal in normals:
+    top = max(dot(normal, s) for s in sources)
+    rows = []
+    for s, out in zip(sources, arrows):
+        if dot(normal, s) == top:
+            rows.extend({&#x27;source&#x27;: s, &#x27;arrow&#x27;: v, &#x27;projection&#x27;: dot(normal, v)} for v in out)
+    assert all(z[&#x27;projection&#x27;] &lt;= 0 for z in rows)
+    assert any(z[&#x27;projection&#x27;] &lt; 0 for z in rows)
+    faces.append({&#x27;normal&#x27;: normal, &#x27;rows&#x27;: rows})
+for i, out in enumerate(arrows):
+    for v in out:
+        p = [dot(normals[(i - 1) % 4], v), dot(normals[i], v)]
+        assert max(p) &lt;= 0 and min(p) &lt; 0
+
+# Counterexample to conditioning death marks as though their count were independent.
+# From (3,3), D=1 cannot reach B=0; it must stop at A=2 and its only death is D1.
+counterexamples = {
+    &#x27;death_mark_dependence&#x27;: {
+        &#x27;initial_state&#x27;: [3, 3],
+        &#x27;first_D1_probability&#x27;: str(Q(36, 205)),
+        &#x27;conditional_D1_count_given_D_equals_1&#x27;: 1,
+        &#x27;false_binomial_mark_probability&#x27;: str(Q(1, 5)),
+        &#x27;reason&#x27;: &#x27;With only one pair death, B remains positive. Termination must be A=2; hence its sole death is D1.&#x27;,
+    },
+    &#x27;zero_c0&#x27;: {&#x27;initial_state&#x27;: [0, 0], &#x27;all_rates&#x27;: [0, 0, 0, 0, 0], &#x27;explosion_probability&#x27;: 0},
+    &#x27;zero_c2_axis&#x27;: {&#x27;initial_B&#x27;: 0, &#x27;only_enabled_reaction&#x27;: &#x27;constant-rate +2A input&#x27;, &#x27;explosion_probability&#x27;: 0},
+    &#x27;untruncated_ordinary_powers&#x27;: {&#x27;state&#x27;: [1, 1], &#x27;D0_rate&#x27;: 4, &#x27;D0_destination&#x27;: [1, -1], &#x27;valid_CTMC_on_N0_squared&#x27;: False},
+    &#x27;products_need_not_belong_to_source_hull&#x27;: {&#x27;product&#x27;: [3, 0], &#x27;violated_source_hull_edge_inequality&#x27;: &#x27;b &gt;= a-2&#x27;},
+    &#x27;no_deterministic_explosion_deadline&#x27;: {&#x27;initial_state&#x27;: [0, 0], &#x27;bound&#x27;: &#x27;P(T_infinity&gt;t) &gt;= exp(-t) &gt; 0 for every finite t&gt;0&#x27;},
+    &#x27;irreducibility_does_not_amplify_to_one&#x27;: {
+        &#x27;state_space&#x27;: &#x27;Z&#x27;,
+        &#x27;outward_jump_probability_off_zero&#x27;: str(Q(3, 4)),
+        &#x27;rate_positive_states&#x27;: &#x27;n+1&#x27;,
+        &#x27;rate_negative_states&#x27;: &#x27;(|n|+1)^2&#x27;,
+        &#x27;rate_zero&#x27;: 1,
+        &#x27;first_direction_probability&#x27;: str(Q(1, 2)),
+        &#x27;never_return_probability_after_first_step&#x27;: str(Q(2, 3)),
+        &#x27;explosion_probability_lower_bound&#x27;: str(Q(1, 3)),
+        &#x27;nonexplosion_probability_lower_bound&#x27;: str(Q(1, 3)),
+        &#x27;proof_location&#x27;: &#x27;COUNTEREXAMPLES.md&#x27;,
+    },
+}
+result = {
+    &#x27;status&#x27;: &#x27;PASS finite exact arithmetic only; not a theorem proof&#x27;,
+    &#x27;candidate_verification_code_read&#x27;: False,
+    &#x27;local_state_parameter_cases&#x27;: nchecks,
+    &#x27;parameter_tuples&#x27;: len(parameters),
+    &#x27;boundary_states&#x27;: boundary_checks,
+    &#x27;maximum_stopped_B_event_ratio&#x27;: str(max_stopped),
+    &#x27;maximum_reset_macro_ratio&#x27;: str(max_macro),
+    &#x27;maximum_full_reaction_ratio_over_grid&#x27;: str(max_full),
+    &#x27;geometry_faces&#x27;: faces,
+    &#x27;counterexamples&#x27;: counterexamples,
+}
+(OUT / &#x27;independent_checks.json&#x27;).write_text(json.dumps(result, indent=2) + &#x27;\n&#x27;)
+print(json.dumps({k: v for k, v in result.items() if k not in [&#x27;geometry_faces&#x27;, &#x27;counterexamples&#x27;]}, indent=2))
+</pre><p><a href="../assets/186ca645013e7661447c64e357f47add9cd8e3173c6923c84b1a6bf108beb32c.py">Exact original</a></p></html>

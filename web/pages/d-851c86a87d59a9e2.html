@@ -1,0 +1,100 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AO: process/validate_package.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AO-sources.txt">Source map</a><h1>AO: process/validate_package.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Paused user-reported checkpoint; original597-member ZIP retained exactly. Full authored proofs/audits/code/results available; original primary-paper bytes excluded, read scopes and hashes retained. Current CLAIM_LEDGER overrides explicitly historical pending notes. Major breakthrough not established; no source research resumed. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Validate byte identity, JSON syntax and navigation; never theorem correctness.&quot;&quot;&quot;
+from pathlib import Path
+import hashlib
+import json
+import re
+from urllib.parse import unquote
+
+ROOT = Path(__file__).resolve().parents[2]
+PACKAGED = (Path(__file__).resolve().parent.parent / &quot;proofs&quot;).is_dir()
+PACKAGE = Path(__file__).resolve().parent.parent if PACKAGED else ROOT / &quot;outputs&quot; / &quot;research&quot;
+
+def sha(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+def reject_constant(value):
+    raise ValueError(f&quot;Non-standard JSON constant {value}&quot;)
+
+inventory = json.loads((PACKAGE / &quot;ARTIFACT_INVENTORY.json&quot;).read_text())
+errors = []
+included = [r for r in inventory[&quot;records&quot;] if r[&quot;included&quot;]]
+for row in included:
+    target = PACKAGE / row[&quot;package_path&quot;]
+    if not target.is_file() or sha(target) != row[&quot;sha256&quot;]:
+        errors.append(f&quot;Retained source mismatch: {row[&#x27;package_path&#x27;]}&quot;)
+
+frozen = json.loads((PACKAGE / &quot;process/frozen_proofs.json&quot;).read_text())
+for row in frozen[&quot;proofs&quot;]:
+    target = PACKAGE / &quot;proofs&quot; / Path(row[&quot;path&quot;]).relative_to(&quot;work/agents&quot;)
+    if sha(target) != row[&quot;expected_sha256&quot;]:
+        errors.append(f&quot;Frozen proof changed: {row[&#x27;path&#x27;]}&quot;)
+
+ledger = json.loads((PACKAGE / &quot;CLAIM_LEDGER.json&quot;).read_text())
+dependencies = json.loads((PACKAGE / &quot;DEPENDENCIES.json&quot;).read_text())
+claim_ids = {row[&quot;id&quot;] for row in ledger[&quot;claims&quot;]}
+if len(claim_ids) != len(ledger[&quot;claims&quot;]):
+    errors.append(&quot;Duplicate claim identifiers&quot;)
+for evidence_id, row in ledger[&quot;evidence&quot;].items():
+    target = PACKAGE / row[&quot;package_path&quot;]
+    if not target.is_file() or sha(target) != row[&quot;sha256&quot;]:
+        errors.append(f&quot;Ledger evidence mismatch: {evidence_id}&quot;)
+for claim in ledger[&quot;claims&quot;]:
+    for evidence_id in claim[&quot;evidence_ids&quot;]:
+        if evidence_id not in ledger[&quot;evidence&quot;]:
+            errors.append(f&quot;Missing evidence identifier: {claim[&#x27;id&#x27;]} -&gt; {evidence_id}&quot;)
+    for dependency in claim[&quot;depends_on_claims&quot;]:
+        if dependency not in claim_ids:
+            errors.append(f&quot;Missing claim dependency: {claim[&#x27;id&#x27;]} -&gt; {dependency}&quot;)
+node_ids = {row[&quot;id&quot;] for row in dependencies[&quot;nodes&quot;]}
+for edge in dependencies[&quot;edges&quot;]:
+    if edge[&quot;from&quot;] not in node_ids or edge[&quot;to&quot;] not in node_ids:
+        errors.append(f&quot;Dangling dependency edge: {edge}&quot;)
+
+json_count = 0
+for path in PACKAGE.rglob(&quot;*&quot;):
+    if not path.is_file():
+        continue
+    try:
+        if path.suffix == &quot;.json&quot;:
+            json.loads(path.read_text(), parse_constant=reject_constant)
+            json_count += 1
+        elif path.suffix == &quot;.jsonl&quot;:
+            for line in path.read_text().splitlines():
+                if line.strip():
+                    json.loads(line, parse_constant=reject_constant)
+            json_count += 1
+    except Exception as err:
+        errors.append(f&quot;JSON parse failure: {path.relative_to(PACKAGE)}: {err}&quot;)
+
+links = []
+for name in (&quot;README.md&quot;, &quot;REPORT.md&quot;, &quot;PROVENANCE_AND_REPRODUCTION.md&quot;):
+    path = PACKAGE / name
+    if not path.is_file():
+        errors.append(f&quot;Missing navigation file: {name}&quot;)
+        continue
+    for raw in re.findall(r&quot;\]\(([^)]+)\)&quot;, path.read_text()):
+        href = raw.strip().strip(&quot;&lt;&gt;&quot;)
+        if re.match(r&quot;[a-zA-Z][a-zA-Z0-9+.-]*:&quot;, href) or href.startswith(&quot;#&quot;):
+            continue
+        href = unquote(href.split(&quot;#&quot;, 1)[0])
+        target = path.parent / href
+        links.append({&quot;from&quot;: name, &quot;target&quot;: href, &quot;exists&quot;: target.exists()})
+        if not target.exists():
+            errors.append(f&quot;Broken local link: {name} -&gt; {href}&quot;)
+
+payload = {
+    &quot;scope&quot;: &quot;Packaging integrity, strict JSON syntax and top-level navigation only; not proof validation.&quot;,
+    &quot;retained_source_files_checked&quot;: len(included),
+    &quot;frozen_proofs_checked&quot;: len(frozen[&quot;proofs&quot;]),
+    &quot;ledger_evidence_files_checked&quot;: len(ledger[&quot;evidence&quot;]),
+    &quot;dependency_edges_checked&quot;: len(dependencies[&quot;edges&quot;]),
+    &quot;json_or_jsonl_files_checked&quot;: json_count,
+    &quot;local_links&quot;: links,
+    &quot;errors&quot;: errors,
+}
+if not PACKAGED:
+    (PACKAGE / &quot;verification/PACKAGE_VALIDATION.json&quot;).write_text(json.dumps(payload, indent=2) + &quot;\n&quot;)
+print(json.dumps({k:v for k,v in payload.items() if k != &quot;local_links&quot;}, indent=2))
+raise SystemExit(bool(errors))
+</pre><p><a href="../assets/d685f6502dbb1b4fedf9c07173ee85dea62e977ed261fba6656f0c608c3a49c7.py">Exact original</a></p></html>

@@ -1,0 +1,70 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AO: proofs/statistics/acquire_noisy_bank.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AO-sources.txt">Source map</a><h1>AO: proofs/statistics/acquire_noisy_bank.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Paused user-reported checkpoint; original597-member ZIP retained exactly. Full authored proofs/audits/code/results available; original primary-paper bytes excluded, read scopes and hashes retained. Current CLAIM_LEDGER overrides explicitly historical pending notes. Major breakthrough not established; no source research resumed. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Executable finite-budget noisy-parity acquisition; no known noise/margin input.
+The supplied family promise is essential. The fixture simulator is not a learner oracle.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from pathlib import Path
+import json,random
+
+def ceil_log2(q):
+    assert q&gt;=1
+    b=max(0,q.numerator.bit_length()-q.denominator.bit_length())
+    return b+(F(1&lt;&lt;b)&lt;q)
+
+def radius(L,t,N,delta):
+    # ln(2^(L+1)*t*(t+1)/delta) &lt;= L+1+ceil_log2(t*(t+1)/delta).
+    k=L+1+ceil_log2(F(t*(t+1),1)/delta)
+    R=F(1)
+    while R*R*N &lt; 2*k: R*=2
+    while (R/2)**2*N &gt;= 2*k: R/=2
+    return R
+
+def acquire(next_block,L,delta=F(1,10),max_blocks=32768):
+    assert 0&lt;delta&lt;=F(1,2)
+    data=[];t=1;work=0
+    while (1&lt;&lt;t)&lt;=max_blocks:
+        N=1&lt;&lt;t
+        while len(data)&lt;N:
+            u,x,w=next_block()
+            assert u in (0,1) and w in (0,1) and 0&lt;=x&lt;(1&lt;&lt;L)
+            data.append((x,u^w))
+        best_count=-N-1;best=None
+        for r in range(1&lt;&lt;L):
+            score=sum(1 if (((r&amp;x).bit_count()^y)&amp;1)==0 else -1 for x,y in data)
+            work+=N
+            if score&gt;best_count: best_count=score;best=r
+        R=radius(L,t,N,delta)
+        c=F(best_count,N)
+        if c&gt;=4*R:
+            cert=c-R
+            return {&#x27;status&#x27;:&#x27;ACQUIRED&#x27;,&#x27;mask&#x27;:best,&#x27;L&#x27;:L,&#x27;blocks&#x27;:N,
+                    &#x27;observed_bits&#x27;:N*(L+2),&#x27;certificate&#x27;:str(cert),
+                    &#x27;parity_evaluations&#x27;:work,&#x27;mask_bits&#x27;:L,&#x27;stage&#x27;:t}
+        t+=1
+    return {&#x27;status&#x27;:&#x27;UNKNOWN&#x27;,&#x27;blocks&#x27;:len(data),&#x27;observed_bits&#x27;:len(data)*(L+2),
+            &#x27;parity_evaluations&#x27;:work,&#x27;reason&#x27;:&#x27;finite external sample budget exhausted&#x27;}
+
+def suffix_feature(mask,x,w):
+    return 1 if (((mask&amp;x).bit_count()^w)&amp;1)==0 else -1
+
+if __name__==&#x27;__main__&#x27;:
+    fixtures=[]
+    for L,eta,seed in [(5,F(0),1),(5,F(1,8),2),(8,F(1,4),3)]:
+        rng=random.Random(seed);secret=rng.randrange(1&lt;&lt;L)
+        def next_block():
+            u=rng.randrange(2);x=rng.randrange(1&lt;&lt;L)
+            noise=int(rng.randrange(eta.denominator)&lt;eta.numerator)
+            y=((secret&amp;x).bit_count()&amp;1)^noise
+            return u,x,u^y
+        out=acquire(next_block,L,max_blocks=32768)
+        assert out[&#x27;status&#x27;]==&#x27;ACQUIRED&#x27;
+        assert out[&#x27;mask&#x27;]==secret
+        assert 0&lt;F(out[&#x27;certificate&#x27;])&lt;=1-2*eta
+        for x in range(1&lt;&lt;L):
+            for w in (0,1):
+                assert suffix_feature(out[&#x27;mask&#x27;],x,w)==(1 if (((secret&amp;x).bit_count()^w)&amp;1)==0 else -1)
+        fixtures.append({&#x27;L&#x27;:L,&#x27;eta&#x27;:str(eta),&#x27;secret_for_fixture_only&#x27;:secret,&#x27;result&#x27;:out})
+    p=Path(__file__).with_name(&#x27;acquisition_results.json&#x27;)
+    p.write_text(json.dumps({&#x27;status&#x27;:&#x27;PASS&#x27;,&#x27;scope&#x27;:&#x27;Three seeded finite fixtures; not statistical theorem validation&#x27;,&#x27;fixtures&#x27;:fixtures},indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({&#x27;status&#x27;:&#x27;PASS&#x27;,&#x27;fixtures&#x27;:fixtures}))
+</pre><p><a href="../assets/ce22d840366d3da9ce8564237459c7e225f7500031b9c1acd164543e1289cd94.py">Exact original</a></p></html>

@@ -1,0 +1,114 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AO: proofs/statistics/check_feature_contract.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AO-sources.txt">Source map</a><h1>AO: proofs/statistics/check_feature_contract.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Paused user-reported checkpoint; original597-member ZIP retained exactly. Full authored proofs/audits/code/results available; original primary-paper bytes excluded, read scopes and hashes retained. Current CLAIM_LEDGER overrides explicitly historical pending notes. Major breakthrough not established; no source research resumed. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Finite exact checks of derived identities; not theorem certification.&quot;&quot;&quot;
+from fractions import Fraction as F
+from itertools import product
+from pathlib import Path
+import json
+
+
+def chi(s,x): return 1 if (s &amp; x).bit_count()%2 == 0 else -1
+
+def moments(bank,L):
+    size=1&lt;&lt;L
+    mu=[sum(g[x][w] for x in range(size) for w in (0,1))/F(2*size) for g in bank]
+    hs=[[F(g[x][0]-g[x][1],2) for x in range(size)] for g in bank]
+    beta=[[sum(h[x]*chi(s,x) for x in range(size))/size for h in hs] for s in range(size)]
+    return mu,hs,beta
+
+def sigma2_at_least(mu,row,kappa):
+    a=sum(v*v for v in mu)-kappa*kappa
+    d=sum(v*v for v in row)-kappa*kappa
+    c=sum(u*v for u,v in zip(mu,row))
+    return a&gt;=0 and d&gt;=0 and a*d&gt;=c*c
+
+counts={&#x27;hankel_entries&#x27;:0,&#x27;parseval_rows&#x27;:0,&#x27;coverage_bounds&#x27;:0,&#x27;prefix_energy&#x27;:0,&#x27;fourier_tree&#x27;:0,&#x27;bhattacharyya&#x27;:0,&#x27;sharp_attainment&#x27;:0}
+fixtures=[]
+for L in range(1,6):
+    size=1&lt;&lt;L
+    selected=list(range(min(4,size)))
+    bank=[[[F(1),F(1)] for x in range(size)]]
+    bank += [[[F(chi(s,x)),F(-chi(s,x))] for x in range(size)] for s in selected]
+    # Arbitrary bounded dyadic evaluator, not a supplied parity test.
+    bank += [[[F(((13*x+7*w+5)%17)-8,8) for w in (0,1)] for x in range(size)]]
+    mu,hs,beta=moments(bank,L)
+    M=len(bank)
+    for j,h in enumerate(hs):
+        assert sum(beta[s][j]**2 for s in range(size)) == sum(z*z for z in h)/size
+        assert mu[j]**2+sum(z*z for z in h)/size &lt;= 1
+        counts[&#x27;parseval_rows&#x27;]+=1
+    for lam in [F(1),F(1,2),F(3,4)]:
+        for s in range(size):
+            for j,g in enumerate(bank):
+                direct=[F(0),F(0)]
+                for u,x,w in product((0,1),range(size),(0,1)):
+                    p=F(1,4*size)*(1+lam*chi(s,x)*(1 if (u+w)%2==0 else -1))
+                    direct[0]+=p*g[x][w]
+                    direct[1]+=p*(1 if u==0 else -1)*g[x][w]
+                assert direct==[mu[j],lam*beta[s][j]]
+                counts[&#x27;hankel_entries&#x27;]+=2
+        for kappa in [lam,lam/2,lam/4]:
+            covered=[s for s in range(size) if sigma2_at_least(mu,[lam*b for b in beta[s]],kappa)]
+            bound=lam*lam*(M-sum(m*m for m in mu))/(kappa*kappa)
+            assert len(covered)&lt;=bound
+            if covered:
+                sharp_general=lam*lam*(M-kappa*kappa)/(kappa*kappa)
+                assert len(covered)&lt;=sharp_general
+            counts[&#x27;coverage_bounds&#x27;]+=1
+            fixtures.append({&#x27;L&#x27;:L,&#x27;lambda&#x27;:str(lam),&#x27;kappa&#x27;:str(kappa),&#x27;covered&#x27;:len(covered),&#x27;bound&#x27;:str(bound)})
+    # Exact prefix energy identity for an arbitrary bounded real function.
+    h=hs[-1]
+    coeff=[sum(h[x]*chi(s,x) for x in range(size))/size for s in range(size)]
+    for k in range(L+1):
+        for a in range(1&lt;&lt;k):
+            mass=sum(coeff[s]**2 for s in range(size) if s &amp; ((1&lt;&lt;k)-1)==a)
+            total=F(0)
+            for u,up,v in product(range(1&lt;&lt;k),range(1&lt;&lt;k),range(1&lt;&lt;(L-k))):
+                total += h[u | (v&lt;&lt;k)]*h[up | (v&lt;&lt;k)]*chi(a,u ^ up)
+            total/=F(1&lt;&lt;(L+k))
+            assert total==mass
+            counts[&#x27;prefix_energy&#x27;]+=1
+    gamma=F(1,8)
+    surviving=[0]
+    for k in range(1,L+1):
+        nxt=[]
+        for prev in surviving:
+            for bit in (0,1):
+                a=prev | (bit&lt;&lt;(k-1))
+                mass=sum(coeff[s]**2 for s in range(size) if s &amp; ((1&lt;&lt;k)-1)==a)
+                if mass&gt;=3*gamma*gamma/4: nxt.append(a)
+        surviving=nxt
+        assert len(surviving)&lt;=F(2,gamma*gamma)
+    assert all(s in surviving for s in range(size) if abs(coeff[s])&gt;=gamma)
+    counts[&#x27;fourier_tree&#x27;]+=1
+
+# Sharp M-1 coverage at the natural margin is attained, not only bounded.
+for L in range(1,6):
+    size=1&lt;&lt;L
+    for count in range(1,min(4,size)+1):
+        selected=list(range(count))
+        bank=[[[F(1),F(1)] for x in range(size)]]
+        bank += [[[F(chi(s,x)),F(-chi(s,x))] for x in range(size)] for s in selected]
+        mu,hs,beta=moments(bank,L)
+        for lam in [F(1),F(1,2),F(3,4)]:
+            covered=[s for s in range(size) if sigma2_at_least(mu,[lam*b for b in beta[s]],lam)]
+            assert covered==selected
+            assert len(covered)==len(bank)-1
+            counts[&#x27;sharp_attainment&#x27;]+=1
+
+# Squared Gaussian-mixture-free affinity identity, exact at rational square roots.
+for L in range(1,6):
+    size=1&lt;&lt;L
+    # lambda=3/5 gives sqrt(1-lambda^2)=4/5.
+    lam=F(3,5); rho=F(9,10)
+    for s,t in product(range(size),repeat=2):
+        if s==t: continue
+        # x half-agreement, half-disagreement =&gt; affinity rho.
+        same=sum(chi(s,x)==chi(t,x) for x in range(size))
+        affinity=F(same,size)+F(size-same,size)*F(4,5)
+        assert affinity==rho
+        counts[&#x27;bhattacharyya&#x27;]+=1
+
+out={&#x27;status&#x27;:&#x27;PASS&#x27;,&#x27;scope&#x27;:&#x27;Finite exact algebra fixtures, not universal proof or external review&#x27;,&#x27;counts&#x27;:counts,&#x27;coverage_fixtures&#x27;:fixtures}
+Path(__file__).with_name(&#x27;check_results.json&#x27;).write_text(json.dumps(out,indent=2)+&#x27;\n&#x27;)
+print(json.dumps({&#x27;status&#x27;:out[&#x27;status&#x27;],&#x27;counts&#x27;:counts}))
+</pre><p><a href="../assets/af8fd6492570b652f6dabdacb1a3152657117f344a4d2b227c327d29951dbd55.py">Exact original</a></p></html>

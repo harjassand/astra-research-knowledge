@@ -1,0 +1,479 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AO: process/resource_usage.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AO-sources.txt">Source map</a><h1>AO: process/resource_usage.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Paused user-reported checkpoint; original597-member ZIP retained exactly. Full authored proofs/audits/code/results available; original primary-paper bytes excluded, read scopes and hashes retained. Current CLAIM_LEDGER overrides explicitly historical pending notes. Major breakthrough not established; no source research resumed. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Summarize token usage for one Codex thread and its collaboration descendants.
+
+Discovery reads only the first session_meta line of candidate logs. Full JSONL
+content is read only for the root session and logs matched to collaboration
+spawn_agent calls by timestamp. Token usage records are cumulative snapshots;
+the script keeps the latest thread_token_usage snapshot per thread.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import argparse
+import json
+from datetime import date, datetime, timezone
+from pathlib import Path
+from typing import Any
+
+
+DEFAULT_ROOT_SESSION = Path(
+    &quot;/Users/harjas/.codex/sessions/2026/10/08/&quot;
+    &quot;rollout-2026-10-08T19-50-25-01a11aeb-d321-71e3-a5ef-ecd7e0e32bae.jsonl&quot;
+)
+DEFAULT_SESSIONS_ROOT = Path(&quot;/Users/harjas/.codex/sessions&quot;)
+MODEL_RATES_USD_PER_MILLION = {
+    # Supplied standard rate card. Prices are estimates, not billing records.
+    &quot;gpt-6.1-sol&quot;: {&quot;input&quot;: 2.0, &quot;cached_input&quot;: 0.10, &quot;output&quot;: 10.0},
+    &quot;gpt-6-sol&quot;: {&quot;input&quot;: 2.0, &quot;cached_input&quot;: 0.10, &quot;output&quot;: 10.0},
+    &quot;gpt-6-luna&quot;: {&quot;input&quot;: 0.10, &quot;cached_input&quot;: 0.01, &quot;output&quot;: 0.50},
+    &quot;gpt-6-astra&quot;: {&quot;input&quot;: 10.0, &quot;cached_input&quot;: 1.0, &quot;output&quot;: 50.0},
+}
+TOKEN_FIELDS = (
+    &quot;input_tokens&quot;,
+    &quot;cached_input_tokens&quot;,
+    &quot;cache_write_input_tokens&quot;,
+    &quot;output_tokens&quot;,
+    &quot;reasoning_output_tokens&quot;,
+    &quot;total_tokens&quot;,
+)
+
+
+def parse_json_line(line: str) -&gt; dict[str, Any] | None:
+    try:
+        value = json.loads(line)
+    except (json.JSONDecodeError, TypeError):
+        return None
+    return value if isinstance(value, dict) else None
+
+
+def read_session_meta(path: Path) -&gt; dict[str, Any] | None:
+    &quot;&quot;&quot;Read only the first line, and return only non-content identifiers.&quot;&quot;&quot;
+    try:
+        with path.open(&quot;r&quot;, encoding=&quot;utf-8&quot;) as stream:
+            record = parse_json_line(stream.readline())
+    except OSError:
+        return None
+    if not record or record.get(&quot;type&quot;) != &quot;session_meta&quot;:
+        return None
+    payload = record.get(&quot;payload&quot;)
+    if not isinstance(payload, dict):
+        return None
+    return {
+        &quot;id&quot;: payload.get(&quot;id&quot;),
+        &quot;session_id&quot;: payload.get(&quot;session_id&quot;),
+        &quot;timestamp&quot;: payload.get(&quot;timestamp&quot;) or record.get(&quot;timestamp&quot;),
+    }
+
+
+def iso_time(value: Any) -&gt; datetime | None:
+    if not isinstance(value, str):
+        return None
+    try:
+        return datetime.fromisoformat(value.replace(&quot;Z&quot;, &quot;+00:00&quot;))
+    except ValueError:
+        return None
+
+
+def root_date_from_path(path: Path) -&gt; date:
+    # Codex rollout filenames begin rollout-YYYY-MM-DDT...
+    prefix = path.name.removeprefix(&quot;rollout-&quot;)[:10]
+    return date.fromisoformat(prefix)
+
+
+def discover_candidate_logs(sessions_root: Path, first_date: date) -&gt; tuple[list[dict[str, Any]], int]:
+    &quot;&quot;&quot;Scan only session_meta headers from the root date onward.&quot;&quot;&quot;
+    candidates: list[dict[str, Any]] = []
+    scanned = 0
+    for path in sessions_root.rglob(&quot;rollout-*.jsonl&quot;):
+        try:
+            candidate_date = root_date_from_path(path)
+        except ValueError:
+            continue
+        if candidate_date &lt; first_date:
+            continue
+        scanned += 1
+        meta = read_session_meta(path)
+        if meta and isinstance(meta.get(&quot;id&quot;), str):
+            candidates.append({**meta, &quot;path&quot;: path})
+    return candidates, scanned
+
+
+def read_records(path: Path) -&gt; list[dict[str, Any]]:
+    records: list[dict[str, Any]] = []
+    try:
+        with path.open(&quot;r&quot;, encoding=&quot;utf-8&quot;) as stream:
+            for line in stream:
+                record = parse_json_line(line)
+                if record is not None:
+                    records.append(record)
+    except OSError:
+        return records
+    return records
+
+
+def parse_spawn_args(payload: dict[str, Any]) -&gt; dict[str, Any] | None:
+    arguments = payload.get(&quot;arguments&quot;)
+    if isinstance(arguments, str):
+        try:
+            arguments = json.loads(arguments)
+        except json.JSONDecodeError:
+            return None
+    if not isinstance(arguments, dict):
+        return None
+    # Deliberately discard the message/prompt and retain assignment metadata only.
+    return {
+        &quot;task_name&quot;: arguments.get(&quot;task_name&quot;),
+        &quot;requested_model&quot;: arguments.get(&quot;model&quot;),
+        &quot;requested_effort&quot;: arguments.get(&quot;reasoning_effort&quot;),
+    }
+
+
+def spawn_calls(records: list[dict[str, Any]], parent_thread_id: str) -&gt; list[dict[str, Any]]:
+    calls = []
+    for record in records:
+        payload = record.get(&quot;payload&quot;, {})
+        if not isinstance(payload, dict) or record.get(&quot;type&quot;) != &quot;response_item&quot;:
+            continue
+        if payload.get(&quot;type&quot;) != &quot;function_call&quot; or payload.get(&quot;name&quot;) != &quot;spawn_agent&quot;:
+            continue
+        args = parse_spawn_args(payload)
+        if args is None:
+            continue
+        args.update({
+            &quot;call_id&quot;: payload.get(&quot;call_id&quot;),
+            &quot;timestamp&quot;: record.get(&quot;timestamp&quot;),
+            &quot;parent_thread_id&quot;: parent_thread_id,
+        })
+        calls.append(args)
+    return sorted(calls, key=lambda item: item.get(&quot;timestamp&quot;) or &quot;&quot;)
+
+
+def match_child(call: dict[str, Any], candidates: list[dict[str, Any]],
+                used_ids: set[str], root_id: str, max_seconds: float = 600.0) -&gt; dict[str, Any] | None:
+    call_time = iso_time(call.get(&quot;timestamp&quot;))
+    possible = []
+    for candidate in candidates:
+        candidate_id = candidate.get(&quot;id&quot;)
+        if not candidate_id or candidate_id == root_id or candidate_id in used_ids:
+            continue
+        # Codex descendants commonly inherit the root session_id. Some runtimes
+        # instead record the direct parent thread id.
+        if candidate.get(&quot;session_id&quot;) not in (root_id, call.get(&quot;parent_thread_id&quot;)):
+            continue
+        created = iso_time(candidate.get(&quot;timestamp&quot;))
+        if call_time and created:
+            delta = (created - call_time).total_seconds()
+            if delta &lt; -1.0 or delta &gt; max_seconds:
+                continue
+            possible.append((abs(delta), created, candidate))
+        elif created:
+            possible.append((0.0, created, candidate))
+    if not possible:
+        return None
+    possible.sort(key=lambda row: (row[0], row[1]))
+    return possible[0][2]
+
+
+def discover_collaboration_tree(root_path: Path, root_id: str,
+                                candidates: list[dict[str, Any]]) -&gt; tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    by_id: dict[str, list[dict[str, Any]]] = {}
+    for candidate in candidates:
+        by_id.setdefault(candidate[&quot;id&quot;], []).append(candidate)
+    root_entries = by_id.get(root_id, [])
+    if not any(entry[&quot;path&quot;].resolve() == root_path.resolve() for entry in root_entries):
+        meta = read_session_meta(root_path) or {&quot;id&quot;: root_id, &quot;session_id&quot;: root_id, &quot;timestamp&quot;: None}
+        root_entries.append({**meta, &quot;path&quot;: root_path})
+
+    selected: dict[str, dict[str, Any]] = {
+        root_id: {&quot;thread_id&quot;: root_id, &quot;root&quot;: True, &quot;paths&quot;: [root_path],
+                  &quot;session_id&quot;: root_id, &quot;timestamp&quot;: next((x.get(&quot;timestamp&quot;) for x in root_entries), None)}
+    }
+    used_ids = {root_id}
+    pending = [root_id]
+    launches: list[dict[str, Any]] = []
+    processed = set()
+
+    while pending:
+        parent_id = pending.pop(0)
+        if parent_id in processed:
+            continue
+        processed.add(parent_id)
+        parent = selected[parent_id]
+        all_calls = []
+        for path in parent[&quot;paths&quot;]:
+            all_calls.extend(spawn_calls(read_records(path), parent_id))
+        # A call can appear in resumed/duplicated logs; call_id prevents a repeat.
+        unique_calls = {}
+        for call in all_calls:
+            unique_calls[call.get(&quot;call_id&quot;) or (call.get(&quot;timestamp&quot;), call.get(&quot;task_name&quot;))] = call
+        for call in sorted(unique_calls.values(), key=lambda item: item.get(&quot;timestamp&quot;) or &quot;&quot;):
+            child_meta = match_child(call, candidates, used_ids, root_id)
+            launch = dict(call)
+            launch[&quot;matched_thread_id&quot;] = child_meta[&quot;id&quot;] if child_meta else None
+            launch[&quot;match_status&quot;] = &quot;matched_by_launch_time&quot; if child_meta else &quot;log_not_found_yet&quot;
+            launches.append(launch)
+            if child_meta is None:
+                continue
+            child_id = child_meta[&quot;id&quot;]
+            used_ids.add(child_id)
+            same_id_paths = [entry[&quot;path&quot;] for entry in by_id.get(child_id, [])
+                             if entry.get(&quot;session_id&quot;) in (root_id, parent_id)]
+            if child_meta[&quot;path&quot;] not in same_id_paths:
+                same_id_paths.append(child_meta[&quot;path&quot;])
+            selected[child_id] = {
+                &quot;thread_id&quot;: child_id,
+                &quot;root&quot;: False,
+                &quot;paths&quot;: sorted(set(same_id_paths), key=str),
+                &quot;session_id&quot;: child_meta.get(&quot;session_id&quot;),
+                &quot;timestamp&quot;: child_meta.get(&quot;timestamp&quot;),
+                &quot;task_name&quot;: call.get(&quot;task_name&quot;),
+                &quot;requested_model&quot;: call.get(&quot;requested_model&quot;),
+                &quot;requested_effort&quot;: call.get(&quot;requested_effort&quot;),
+                &quot;parent_thread_id&quot;: parent_id,
+            }
+            pending.append(child_id)
+    return list(selected.values()), launches
+
+
+def normalized_usage(value: Any) -&gt; dict[str, int] | None:
+    if not isinstance(value, dict):
+        return None
+    output = {}
+    for key in TOKEN_FIELDS:
+        try:
+            output[key] = max(0, int(value.get(key, 0) or 0))
+        except (TypeError, ValueError):
+            output[key] = 0
+    return output
+
+
+def analyze_thread(thread: dict[str, Any]) -&gt; dict[str, Any]:
+    contexts: set[tuple[str | None, str | None]] = set()
+    record_snapshots: list[tuple[str, dict[str, int]]] = []
+    fallback_snapshots: list[tuple[str, dict[str, int]]] = []
+    record_count = 0
+    event_count = 0
+    for path in thread[&quot;paths&quot;]:
+        for ordinal, record in enumerate(read_records(path)):
+            payload = record.get(&quot;payload&quot;, {})
+            if not isinstance(payload, dict):
+                continue
+            if record.get(&quot;type&quot;) == &quot;turn_context&quot;:
+                contexts.add((payload.get(&quot;model&quot;), payload.get(&quot;effort&quot;)))
+            timestamp = record.get(&quot;timestamp&quot;) or f&quot;{path.name}:{ordinal:012d}&quot;
+            if record.get(&quot;type&quot;) == &quot;token_usage_record&quot;:
+                record_count += 1
+                usage = normalized_usage(payload.get(&quot;thread_token_usage&quot;))
+                if usage is not None:
+                    record_snapshots.append((str(timestamp), usage))
+            elif record.get(&quot;type&quot;) == &quot;event_msg&quot; and payload.get(&quot;type&quot;) == &quot;token_count&quot;:
+                event_count += 1
+                info = payload.get(&quot;info&quot;, {})
+                usage = normalized_usage(info.get(&quot;total_token_usage&quot;) if isinstance(info, dict) else None)
+                if usage is not None:
+                    fallback_snapshots.append((str(timestamp), usage))
+
+    contexts_sorted = sorted(contexts, key=lambda pair: (pair[0] or &quot;&quot;, pair[1] or &quot;&quot;))
+    observed_models = sorted({model for model, _ in contexts_sorted if model})
+    observed_efforts = sorted({effort for _, effort in contexts_sorted if effort})
+    if record_snapshots:
+        source = &quot;latest token_usage_record.thread_token_usage snapshot&quot;
+        snapshot = max(record_snapshots, key=lambda row: row[0])[1]
+        status = &quot;observed&quot;
+    elif fallback_snapshots:
+        source = &quot;latest event_msg.token_count.info.total_token_usage snapshot&quot;
+        snapshot = max(fallback_snapshots, key=lambda row: row[0])[1]
+        status = &quot;fallback_snapshot&quot;
+    else:
+        source = None
+        snapshot = {field: 0 for field in TOKEN_FIELDS}
+        status = &quot;no_snapshot_yet&quot;
+
+    model = observed_models[0] if len(observed_models) == 1 else None
+    requested_model = thread.get(&quot;requested_model&quot;)
+    requested_effort = thread.get(&quot;requested_effort&quot;)
+    model_matches = (None if thread.get(&quot;root&quot;) or not requested_model else model == requested_model)
+    effort_matches = (None if thread.get(&quot;root&quot;) or not requested_effort else
+                      bool(observed_efforts) and all(effort == requested_effort for effort in observed_efforts))
+    input_tokens = snapshot[&quot;input_tokens&quot;]
+    cached_tokens = snapshot[&quot;cached_input_tokens&quot;]
+    uncached_tokens = max(0, input_tokens - cached_tokens)
+    output_tokens = snapshot[&quot;output_tokens&quot;]
+    reasoning_tokens = snapshot[&quot;reasoning_output_tokens&quot;]
+    rates = MODEL_RATES_USD_PER_MILLION.get(model) if model else None
+    if rates and status != &quot;no_snapshot_yet&quot;:
+        estimated_cost = (
+            uncached_tokens * rates[&quot;input&quot;]
+            + cached_tokens * rates[&quot;cached_input&quot;]
+            + output_tokens * rates[&quot;output&quot;]
+        ) / 1_000_000
+    else:
+        estimated_cost = None
+
+    result = {
+        &quot;thread_id&quot;: thread[&quot;thread_id&quot;],
+        &quot;root_thread&quot;: thread.get(&quot;root&quot;, False),
+        &quot;task_name&quot;: &quot;root&quot; if thread.get(&quot;root&quot;) else thread.get(&quot;task_name&quot;),
+        &quot;parent_thread_id&quot;: thread.get(&quot;parent_thread_id&quot;),
+        &quot;requested_model&quot;: requested_model,
+        &quot;requested_effort&quot;: requested_effort,
+        &quot;turn_contexts&quot;: [{&quot;model&quot;: model, &quot;effort&quot;: effort} for model, effort in contexts_sorted],
+        &quot;observed_models&quot;: observed_models,
+        &quot;observed_efforts&quot;: observed_efforts,
+        &quot;requested_model_matches_turn_context&quot;: model_matches,
+        &quot;requested_effort_matches_turn_context&quot;: effort_matches,
+        &quot;usage_status&quot;: status,
+        &quot;usage_snapshot_source&quot;: source,
+        &quot;token_usage_record_count&quot;: record_count,
+        &quot;token_count_event_count_ignored_for_double_counting&quot;: event_count,
+        &quot;usage&quot;: snapshot,
+        &quot;uncached_input_tokens_derived&quot;: uncached_tokens,
+        &quot;estimated_cost_usd_from_supplied_rates&quot;: round(estimated_cost, 8) if estimated_cost is not None else None,
+        &quot;log_paths&quot;: [str(path) for path in thread[&quot;paths&quot;]],
+    }
+    return result
+
+
+def add_totals(thread_rows: list[dict[str, Any]]) -&gt; dict[str, Any]:
+    sums = {field: sum(row[&quot;usage&quot;].get(field, 0) for row in thread_rows) for field in TOKEN_FIELDS}
+    sums[&quot;uncached_input_tokens_derived&quot;] = sum(row[&quot;uncached_input_tokens_derived&quot;] for row in thread_rows)
+    priced_rows = [row for row in thread_rows if row[&quot;estimated_cost_usd_from_supplied_rates&quot;] is not None]
+    cost = sum(row[&quot;estimated_cost_usd_from_supplied_rates&quot;] for row in priced_rows)
+    return {
+        &quot;thread_count&quot;: len(thread_rows),
+        &quot;threads_with_usage_snapshot&quot;: sum(row[&quot;usage_status&quot;] != &quot;no_snapshot_yet&quot; for row in thread_rows),
+        &quot;threads_without_usage_snapshot&quot;: sum(row[&quot;usage_status&quot;] == &quot;no_snapshot_yet&quot; for row in thread_rows),
+        **sums,
+        &quot;output_reasoning_is_subset&quot;: True,
+        &quot;estimated_cost_usd_from_supplied_rates&quot;: round(cost, 8),
+        &quot;unpriced_or_ambiguous_cost_threads&quot;: len(thread_rows) - len(priced_rows),
+        &quot;sol_uncached_input_rate_equivalent_million_tokens&quot;: round(cost / 2.0, 8),
+    }
+
+
+def render_table(rows: list[dict[str, Any]], totals: dict[str, Any]) -&gt; str:
+    def fmt_int(value: Any) -&gt; str:
+        return f&quot;{value:,}&quot; if isinstance(value, int) else &quot;—&quot;
+
+    lines = [
+        &quot;| Thread / task | Configured model / effort | Input | Cached | Output (reasoning subset) | Est. USD |&quot;,
+        &quot;|---|---|---:|---:|---:|---:|&quot;,
+    ]
+    for row in rows:
+        model = &quot;, &quot;.join(row[&quot;observed_models&quot;]) or &quot;unknown&quot;
+        efforts = &quot;, &quot;.join(row[&quot;observed_efforts&quot;]) or &quot;unknown&quot;
+        label = &quot;root&quot; if row[&quot;root_thread&quot;] else (row[&quot;task_name&quot;] or &quot;descendant&quot;)
+        output = fmt_int(row[&quot;usage&quot;][&quot;output_tokens&quot;])
+        reason = fmt_int(row[&quot;usage&quot;][&quot;reasoning_output_tokens&quot;])
+        output_cell = f&quot;{output} ({reason})&quot;
+        usd = row[&quot;estimated_cost_usd_from_supplied_rates&quot;]
+        usd_cell = f&quot;${usd:.4f}&quot; if usd is not None else &quot;—&quot;
+        lines.append(
+            f&quot;| {label} | {model} / {efforts} | {fmt_int(row[&#x27;usage&#x27;][&#x27;input_tokens&#x27;])} &quot;
+            f&quot;| {fmt_int(row[&#x27;usage&#x27;][&#x27;cached_input_tokens&#x27;])} | {output_cell} | {usd_cell} |&quot;
+        )
+    cost = totals[&quot;estimated_cost_usd_from_supplied_rates&quot;]
+    lines.append(
+        f&quot;| **Total, root included** | {totals[&#x27;thread_count&#x27;]} threads | &quot;
+        f&quot;{fmt_int(totals[&#x27;input_tokens&#x27;])} | {fmt_int(totals[&#x27;cached_input_tokens&#x27;])} | &quot;
+        f&quot;{fmt_int(totals[&#x27;output_tokens&#x27;])} ({fmt_int(totals[&#x27;reasoning_output_tokens&#x27;])}) | ${cost:.4f} |&quot;
+    )
+    lines += [
+        &quot;&quot;,
+        &quot;Usage is the latest cumulative thread snapshot per log, never the sum of repeated snapshots. Cached input is a subset of input; reasoning output is a subset of output. USD values apply the supplied standard rate card and are estimates, not billing records. `turn_context` records the configured runtime model and effort; it does not attest backend identity.&quot;,
+    ]
+    return &quot;\n&quot;.join(lines) + &quot;\n&quot;
+
+
+def main() -&gt; int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(&quot;--root-session&quot;, type=Path, default=DEFAULT_ROOT_SESSION)
+    parser.add_argument(&quot;--sessions-root&quot;, type=Path, default=DEFAULT_SESSIONS_ROOT)
+    parser.add_argument(&quot;--output-json&quot;, type=Path, default=Path(__file__).with_name(&quot;resource_usage.json&quot;))
+    parser.add_argument(&quot;--output-table&quot;, type=Path, default=Path(__file__).with_name(&quot;resource_usage.md&quot;))
+    args = parser.parse_args()
+
+    root_path = args.root_session.expanduser().resolve()
+    root_meta = read_session_meta(root_path)
+    if not root_meta or not isinstance(root_meta.get(&quot;id&quot;), str):
+        parser.error(&quot;root session must begin with a valid session_meta record&quot;)
+    root_id = root_meta[&quot;id&quot;]
+    candidates, scanned = discover_candidate_logs(args.sessions_root.expanduser().resolve(), root_date_from_path(root_path))
+    selected, launches = discover_collaboration_tree(root_path, root_id, candidates)
+    rows = [analyze_thread(thread) for thread in selected]
+    rows.sort(key=lambda row: (not row[&quot;root_thread&quot;], row[&quot;task_name&quot;] or &quot;&quot;, row[&quot;thread_id&quot;]))
+    totals = add_totals(rows)
+    assignment_counts: dict[str, int] = {}
+    for launch in launches:
+        key = f&quot;{launch.get(&#x27;requested_model&#x27;) or &#x27;unspecified&#x27;}/{launch.get(&#x27;requested_effort&#x27;) or &#x27;unspecified&#x27;}&quot;
+        assignment_counts[key] = assignment_counts.get(key, 0) + 1
+    mismatches = [
+        {&quot;task_name&quot;: row[&quot;task_name&quot;], &quot;thread_id&quot;: row[&quot;thread_id&quot;],
+         &quot;model_match&quot;: row[&quot;requested_model_matches_turn_context&quot;],
+         &quot;effort_match&quot;: row[&quot;requested_effort_matches_turn_context&quot;]}
+        for row in rows if not row[&quot;root_thread&quot;]
+        and (row[&quot;requested_model_matches_turn_context&quot;] is False
+             or row[&quot;requested_effort_matches_turn_context&quot;] is False)
+    ]
+    report = {
+        &quot;generated_at_utc&quot;: datetime.now(timezone.utc).isoformat(),
+        &quot;scope&quot;: {
+            &quot;root_thread_id&quot;: root_id,
+            &quot;root_session_log&quot;: str(root_path),
+            &quot;collaboration_descendants&quot;: totals[&quot;thread_count&quot;] - 1,
+            &quot;session_discovery&quot;: {
+                &quot;candidate_headers_scanned_from_root_date_forward&quot;: scanned,
+                &quot;header_content_read&quot;: &quot;first session_meta JSONL record only&quot;,
+                &quot;full_jsonl_read&quot;: &quot;root and logs matched to collaboration spawn_agent calls only&quot;,
+                &quot;child_match_rule&quot;: &quot;session metadata timestamp nearest after launch, within ten minutes, with inherited root/direct-parent session_id&quot;,
+            },
+        },
+        &quot;model_identity&quot;: {
+            &quot;evidence&quot;: &quot;session turn_context model/effort fields&quot;,
+            &quot;interpretation&quot;: &quot;configured runtime model and effort only; backend identity is not independently attested&quot;,
+        },
+        &quot;pricing&quot;: {
+            &quot;standard_rates_usd_per_million&quot;: MODEL_RATES_USD_PER_MILLION,
+            &quot;formula&quot;: &quot;(input_tokens - cached_input_tokens)*input_rate + cached_input_tokens*cached_input_rate + output_tokens*output_rate&quot;,
+            &quot;notes&quot;: [
+                &quot;Supplied rate card produces estimates, not actual billing.&quot;,
+                &quot;Reasoning output is reported separately but is already included in output_tokens; it is not added again.&quot;,
+                &quot;cache_write_input_tokens is preserved from the usage record and not added separately because it is a detail of input usage; all observed counts in this run are checked in the per-thread rows.&quot;,
+                &quot;Cost is unknown for missing snapshots or threads with multiple configured models because cumulative tokens cannot be split by model from these records.&quot;,
+            ],
+            &quot;sol_uncached_input_rate_equivalent&quot;: &quot;estimated USD divided by supplied Sol input rate of $2 per million uncached input tokens; this is a rate ratio, not a platform quota unit&quot;,
+        },
+        &quot;assignment_validation&quot;: {
+            &quot;launch_count&quot;: len(launches),
+            &quot;matched_launch_count&quot;: sum(launch.get(&quot;matched_thread_id&quot;) is not None for launch in launches),
+            &quot;requested_assignment_counts&quot;: assignment_counts,
+            &quot;turn_context_mismatches&quot;: mismatches,
+            &quot;launches_without_log_yet&quot;: [
+                {k: launch.get(k) for k in (&quot;task_name&quot;, &quot;requested_model&quot;, &quot;requested_effort&quot;, &quot;timestamp&quot;)}
+                for launch in launches if launch.get(&quot;matched_thread_id&quot;) is None
+            ],
+        },
+        &quot;aggregation&quot;: {
+            &quot;rule&quot;: &quot;latest token_usage_record.thread_token_usage snapshot per thread; event_msg token_count snapshots are fallback only and are not added to token_usage_record counts&quot;,
+            &quot;totals_root_included&quot;: totals,
+            &quot;threads&quot;: rows,
+            &quot;collaboration_launches&quot;: [
+                {k: launch.get(k) for k in (&quot;parent_thread_id&quot;, &quot;task_name&quot;, &quot;requested_model&quot;, &quot;requested_effort&quot;, &quot;timestamp&quot;, &quot;matched_thread_id&quot;, &quot;match_status&quot;)}
+                for launch in launches
+            ],
+        },
+    }
+    args.output_json.parent.mkdir(parents=True, exist_ok=True)
+    args.output_table.parent.mkdir(parents=True, exist_ok=True)
+    args.output_json.write_text(json.dumps(report, indent=2, sort_keys=True) + &quot;\n&quot;, encoding=&quot;utf-8&quot;)
+    table = render_table(rows, totals)
+    args.output_table.write_text(table, encoding=&quot;utf-8&quot;)
+    print(table, end=&quot;&quot;)
+    print(f&quot;JSON: {args.output_json}&quot;)
+    print(f&quot;Table: {args.output_table}&quot;)
+    return 0
+
+
+if __name__ == &quot;__main__&quot;:
+    raise SystemExit(main())
+</pre><p><a href="../assets/93cc3af1517a0b68760ca8cde8f4ce70273e85b17bf629620654264b8fbad6a2.py">Exact original</a></p></html>

@@ -1,0 +1,119 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AO: process/replay_diagnostics.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AO-sources.txt">Source map</a><h1>AO: process/replay_diagnostics.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Paused user-reported checkpoint; original597-member ZIP retained exactly. Full authored proofs/audits/code/results available; original primary-paper bytes excluded, read scopes and hashes retained. Current CLAIM_LEDGER overrides explicitly historical pending notes. Major breakthrough not established; no source research resumed. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Reproduce bounded diagnostics in isolated copies; this is not proof checking.&quot;&quot;&quot;
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timezone
+import hashlib
+import json
+import os
+from pathlib import Path
+import shutil
+import subprocess
+import sys
+import tempfile
+import time
+
+ROOT = Path(__file__).resolve().parents[2]
+STAMP = datetime.now(timezone.utc).strftime(&quot;%Y%m%dT%H%M%SZ&quot;)
+PACKAGE = Path(__file__).resolve().parent.parent
+if (PACKAGE / &quot;proofs&quot;).is_dir():
+    SOURCE = PACKAGE / &quot;proofs&quot;
+    REPLAY_ROOT = Path(tempfile.mkdtemp(prefix=&quot;research-replay-&quot;))
+    STAGE, OUT = REPLAY_ROOT / &quot;scratch&quot;, REPLAY_ROOT / &quot;results&quot;
+else:
+    SOURCE = ROOT / &quot;work&quot; / &quot;agents&quot;
+    STAGE = ROOT / &quot;work&quot; / &quot;replay&quot; / STAMP
+    OUT = ROOT / &quot;outputs&quot; / &quot;research&quot; / &quot;verification&quot; / STAMP
+SCRIPTS = [
+    &quot;chem_geometry/order5/check_order5.py&quot;,
+    &quot;chem_order5_blind/exact_checks.py&quot;,
+    &quot;chem_order5_blind/almost_sure/exact_checks.py&quot;,
+    &quot;chemistry_audit/independent_checks.py&quot;,
+    &quot;excursion_exact/finite_check.py&quot;,
+    &quot;rate_phase_blind/finite_checks.py&quot;,
+    &quot;cubic_audit/exact_checks.py&quot;,
+    &quot;centered_blind/verify_centered.py&quot;,
+    &quot;centered_audit/check_independent.py&quot;,
+    &quot;centered_audit/exact_counterexamples.py&quot;,
+    &quot;sharp_centered/verify_sharp_centered.py&quot;,
+    &quot;qudit_blind/check_interfaces.py&quot;,
+    &quot;collective_concentration/verify_concentration_normalizations.py&quot;,
+    &quot;concentration_blind/verify_concentration.py&quot;,
+    &quot;heat_upper_blind/diagnostic.py&quot;,
+    &quot;heat_upper_blind/calibration_diagnostic.py&quot;,
+    &quot;cubic_one_pure_audit/exact_faces.py&quot;,
+    &quot;cubic_one_pure_audit/critical_replay.py&quot;,
+    &quot;calibration_audit/exact_checks.py&quot;,
+    &quot;sharp_centered_audit/independent_checks.py&quot;,
+    &quot;curie_weiss/exact_marginals.py&quot;,
+    &quot;critical_window_blind/verify_critical_window.py&quot;,
+    &quot;critical_quantitative_audit/check_critical.py&quot;,
+]
+READONLY_DEPENDENCIES = {
+    &quot;critical_quantitative_audit/check_critical.py&quot;: [
+        &quot;curie_weiss/CRITICAL_PROOF_FROZEN.md&quot;,
+    ],
+}
+
+
+def digest(p):
+    return hashlib.sha256(p.read_bytes()).hexdigest()
+
+
+def replay(name):
+    src = SOURCE / name
+    slug = name.replace(&quot;/&quot;, &quot;__&quot;).removesuffix(&quot;.py&quot;)
+    stage_for_script = STAGE / slug
+    target = stage_for_script / name
+    target.parent.mkdir(parents=True, exist_ok=True)
+    for sibling in src.parent.glob(&quot;*.py&quot;):
+        shutil.copy2(sibling, target.parent / sibling.name)
+    for dependency in READONLY_DEPENDENCIES.get(name, []):
+        dependency_target = stage_for_script / dependency
+        dependency_target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(SOURCE / dependency, dependency_target)
+    started = time.monotonic()
+    env = dict(os.environ, OPENBLAS_NUM_THREADS=&quot;1&quot;, OMP_NUM_THREADS=&quot;1&quot;,
+               MKL_NUM_THREADS=&quot;1&quot;, VECLIB_MAXIMUM_THREADS=&quot;1&quot;, PYTHONHASHSEED=&quot;0&quot;)
+    try:
+        proc = subprocess.run([sys.executable, str(target)], cwd=target.parent,
+                              env=env, text=True, capture_output=True, timeout=240)
+        code, stdout, stderr = proc.returncode, proc.stdout, proc.stderr
+        status = &quot;PASS_EXIT&quot; if code == 0 else &quot;FAIL_EXIT&quot;
+    except subprocess.TimeoutExpired as err:
+        code, status = None, &quot;TIMEOUT&quot;
+        stdout = err.stdout or &quot;&quot;
+        stderr = err.stderr or &quot;&quot;
+        if isinstance(stdout, bytes): stdout = stdout.decode(errors=&quot;replace&quot;)
+        if isinstance(stderr, bytes): stderr = stderr.decode(errors=&quot;replace&quot;)
+    (OUT / f&quot;{slug}.stdout.txt&quot;).write_text(stdout)
+    (OUT / f&quot;{slug}.stderr.txt&quot;).write_text(stderr)
+    generated = []
+    for path in target.parent.glob(&quot;*.json&quot;):
+        dest = OUT / slug / path.name
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(path, dest)
+        generated.append({&quot;path&quot;: dest.relative_to(OUT).as_posix(), &quot;sha256&quot;: digest(dest)})
+    return {&quot;script&quot;: name, &quot;script_sha256&quot;: digest(src), &quot;status&quot;: status,
+            &quot;exit_code&quot;: code, &quot;seconds&quot;: round(time.monotonic()-started, 3),
+            &quot;stdout&quot;: f&quot;{slug}.stdout.txt&quot;, &quot;stderr&quot;: f&quot;{slug}.stderr.txt&quot;,
+            &quot;generated&quot;: generated,
+            &quot;interpretation&quot;: &quot;Reproduction of the script&#x27;s scoped exact/numerical diagnostics, not proof certification or external review.&quot;}
+
+
+if __name__ == &quot;__main__&quot;:
+    OUT.mkdir(parents=True, exist_ok=True)
+    STAGE.mkdir(parents=True, exist_ok=True)
+    selected = sys.argv[1:] or SCRIPTS
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(pool.map(replay, selected))
+    payload = {&quot;started_utc&quot;: STAMP, &quot;finished_utc&quot;: datetime.now(timezone.utc).isoformat(),
+               &quot;python&quot;: sys.version, &quot;parallel_processes&quot;: 2,
+               &quot;isolation&quot;: &quot;Scripts copied into a separate scratch tree; frozen research inputs not modified.&quot;,
+               &quot;results&quot;: results}
+    (OUT / &quot;REPLAY.json&quot;).write_text(json.dumps(payload, indent=2) + &quot;\n&quot;)
+    print(json.dumps({&quot;report&quot;: str(OUT / &quot;REPLAY.json&quot;),
+                      &quot;passed&quot;: sum(r[&quot;status&quot;] == &quot;PASS_EXIT&quot; for r in results),
+                      &quot;total&quot;: len(results),
+                      &quot;failures&quot;: [r[&quot;script&quot;] for r in results if r[&quot;status&quot;] != &quot;PASS_EXIT&quot;]}))
+    sys.exit(any(r[&quot;status&quot;] != &quot;PASS_EXIT&quot; for r in results))
+</pre><p><a href="../assets/0fb0ba5fe9a9c91f0c52a28f93c158c896232713ac3b29dc44128e0e53282978.py">Exact original</a></p></html>

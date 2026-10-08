@@ -1,0 +1,265 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AO: proofs/tcs_audit/exact_checks.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AO-sources.txt">Source map</a><h1>AO: proofs/tcs_audit/exact_checks.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Paused user-reported checkpoint; original597-member ZIP retained exactly. Full authored proofs/audits/code/results available; original primary-paper bytes excluded, read scopes and hashes retained. Current CLAIM_LEDGER overrides explicitly historical pending notes. Major breakthrough not established; no source research resumed. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact scoped fixtures for the independently reconstructed gap lemma.
+
+No spectral claims are inferred from floating-point diagonalization. The sharp
+fixture checks an exact local covariance witness and resampling eigenfunction;
+the upper bound and exact-gap inference are supplied by INDEPENDENT_PROOF.md.
+&quot;&quot;&quot;
+
+from collections import defaultdict, deque
+from fractions import Fraction as F
+from pathlib import Path
+import json
+
+
+def pair_from_product_channels(seed_law, channel):
+    pair = defaultdict(F)
+    marginal = defaultdict(F)
+    for seed, weight in seed_law.items():
+        outputs = {q: p for q, p in channel(seed).items() if p}
+        assert sum(outputs.values()) == 1
+        for q, p in outputs.items():
+            marginal[q] += weight * p
+            for r, t in outputs.items():
+                pair[q, r] += weight * p * t
+    assert sum(pair.values()) == 1
+    return dict(pair), dict(marginal)
+
+
+def support_components(pair):
+    graph = defaultdict(set)
+    for (q, r), weight in pair.items():
+        if weight:
+            a, b = (0, q), (1, r)
+            graph[a].add(b)
+            graph[b].add(a)
+    pending = set(graph)
+    count = 0
+    while pending:
+        count += 1
+        seen = {next(iter(pending))}
+        queue = deque(seen)
+        while queue:
+            for neighbor in graph[queue.popleft()]:
+                if neighbor not in seen:
+                    seen.add(neighbor)
+                    queue.append(neighbor)
+        pending.difference_update(seen)
+    return count
+
+
+def witness_statistics(pair, marginal, g):
+    mean = sum(weight * g[q] for q, weight in marginal.items())
+    assert mean == 0
+    var = sum(weight * g[q] ** 2 for q, weight in marginal.items())
+    cov = sum(weight * g[q] * g[r] for (q, r), weight in pair.items())
+    assert var &gt; 0
+    return var, cov, cov / var
+
+
+def sign_law(rho):
+    return {(x, y): (1 + rho * x * y) / 4
+            for x in (-1, 1) for y in (-1, 1)}
+
+
+def branch_channel(eta):
+    def channel(seed):
+        x, y = seed
+        return {(&#x27;A&#x27;, x): eta, (&#x27;B&#x27;, y): eta,
+                (&#x27;F&#x27;, x, y): 1 - 2 * eta}
+    return channel
+
+
+def sharp_fixture(name, rho, eta):
+    seed_law = sign_law(rho)
+    channel = branch_channel(eta)
+    pair, marginal = pair_from_product_channels(seed_law, channel)
+    g_num = defaultdict(F)
+    for seed, weight in seed_law.items():
+        f = sum(seed)
+        for q, p in channel(seed).items():
+            if p:
+                g_num[q] += weight * p * f
+    g = {q: g_num[q] / weight for q, weight in marginal.items()}
+    var, cov, witness_corr = witness_statistics(pair, marginal, g)
+    expected = 1 - eta * (1 - rho)
+    assert witness_corr == expected
+    cond_partner = defaultdict(F)
+    for (q, r), weight in pair.items():
+        cond_partner[q] += weight * g[r]
+    assert all(cond_partner[q] / marginal[q] == expected * g[q]
+               for q in marginal)
+    eigenvalue = (1 + expected) / 2
+    for q, r in pair:
+        h = g[q] + g[r]
+        eq0 = g[q] + cond_partner[q] / marginal[q]
+        eq1 = g[r] + cond_partner[r] / marginal[r]
+        assert (eq0 + eq1) / 2 == eigenvalue * h
+    assert support_components(pair) == 1
+    return {
+        &#x27;name&#x27;: name,
+        &#x27;rho&#x27;: str(rho), &#x27;eta&#x27;: str(eta),
+        &#x27;witness_variance&#x27;: str(var), &#x27;witness_covariance&#x27;: str(cov),
+        &#x27;witness_correlation&#x27;: str(witness_corr),
+        &#x27;resampling_eigenvalue&#x27;: str(eigenvalue),
+        &#x27;gap_from_general_bound_and_eigenvalue&#x27;: str(1 - eigenvalue),
+        &#x27;support_components&#x27;: 1,
+        &#x27;status&#x27;: &#x27;exact fixture passed&#x27;
+    }
+
+
+def common_register_failure():
+    seed_law = {(x, y, r): F(1, 8) for x in (-1, 1)
+                for y in (-1, 1) for r in (-1, 1)}
+    eta = F(1, 9)
+    def channel(seed):
+        x, y, r = seed
+        return {(&#x27;A&#x27;, x, r): eta, (&#x27;B&#x27;, y, r): eta,
+                (&#x27;F&#x27;, x, y, r): 1 - 2 * eta}
+    pair, marginal = pair_from_product_channels(seed_law, channel)
+    g = {q: F(q[-1]) for q in marginal}
+    var, cov, corr = witness_statistics(pair, marginal, g)
+    assert (var, cov, corr) == (1, 1, 1)
+    assert support_components(pair) == 2
+    return {&#x27;name&#x27;: &#x27;forbidden extra shared register on clear branches&#x27;,
+            &#x27;witness_correlation&#x27;: str(corr),
+            &#x27;support_components&#x27;: 2, &#x27;removed_premise&#x27;: &#x27;clear-view restriction&#x27;,
+            &#x27;status&#x27;: &#x27;exact counterexample to dropping premise&#x27;}
+
+
+def selector_failure():
+    def channel(seed):
+        x, y = seed
+        return {(&#x27;A&#x27;, x) if x == 1 else (&#x27;B&#x27;, y): F(1)}
+    pair, marginal = pair_from_product_channels(sign_law(F(0)), channel)
+    g = {q: F(1 if q[0] == &#x27;A&#x27; else -1) for q in marginal}
+    _, _, corr = witness_statistics(pair, marginal, g)
+    assert corr == 1
+    mass_a = sum(p for q, p in marginal.items() if q[0] == &#x27;A&#x27;)
+    assert mass_a == F(1, 2)
+    return {&#x27;name&#x27;: &#x27;seed-dependent selectors reveal base X in the tag&#x27;,
+            &#x27;input_rho&#x27;: &#x27;0&#x27;, &#x27;A_branch_mass&#x27;: str(mass_a),
+            &#x27;B_branch_mass&#x27;: str(1 - mass_a),
+            &#x27;witness_correlation&#x27;: str(corr),
+            &#x27;removed_premise&#x27;: &#x27;selector independent of S&#x27;,
+            &#x27;status&#x27;: &#x27;exact counterexample to dropping premise&#x27;}
+
+
+def postselection_failure():
+    # Independent signs conditioned on X=Y have this exact conditional law.
+    seed_law = {(-1, -1): F(1, 2), (1, 1): F(1, 2)}
+    pair, marginal = pair_from_product_channels(seed_law, branch_channel(F(1, 9)))
+    g = {q: F(q[1]) for q in marginal}
+    _, _, corr = witness_statistics(pair, marginal, g)
+    assert corr == 1
+    return {&#x27;name&#x27;: &#x27;success event X=Y changes an initially independent law&#x27;,
+            &#x27;original_input_rho&#x27;: &#x27;0&#x27;, &#x27;conditional_input_rho&#x27;: &#x27;1&#x27;,
+            &#x27;success_probability&#x27;: &#x27;1/2&#x27;, &#x27;output_witness_correlation&#x27;: str(corr),
+            &#x27;status&#x27;: &#x27;exact postselection warning fixture&#x27;}
+
+
+def pairwise_independence_failure():
+    seed_law = {(x, y, u, u ^ x ^ y): F(1, 8)
+                for x in (0, 1) for y in (0, 1) for u in (0, 1)}
+    for x in (0, 1):
+        for y in (0, 1):
+            for bit in (0, 1):
+                assert sum(p for (a, b, u, v), p in seed_law.items()
+                           if a == x and b == y and u == bit) == F(1, 8)
+                assert sum(p for (a, b, u, v), p in seed_law.items()
+                           if a == x and b == y and v == bit) == F(1, 8)
+    for u in (0, 1):
+        for v in (0, 1):
+            assert sum(p for (a, b, c, d), p in seed_law.items()
+                       if c == u and d == v) == F(1, 4)
+    eta = F(1, 9)
+    def channel(seed):
+        x, y, u, v = seed
+        return {(&#x27;A&#x27;, x, u): eta, (&#x27;B&#x27;, y, v): eta,
+                (&#x27;F&#x27;, x, y, u, v): 1 - 2 * eta}
+    pair, marginal = pair_from_product_channels(seed_law, channel)
+    g = {q: F(1 - 2 * (q[1] ^ (q[3] if q[0] == &#x27;F&#x27; else q[2])))
+         for q in marginal}
+    _, _, corr = witness_statistics(pair, marginal, g)
+    assert corr == 1
+    return {&#x27;name&#x27;: &#x27;pairwise auxiliary independence hides XOR common bit&#x27;,
+            &#x27;input_rho&#x27;: &#x27;0&#x27;, &#x27;witness_correlation&#x27;: str(corr),
+            &#x27;pairwise_objects&#x27;: [&#x27;(X,Y)&#x27;, &#x27;U&#x27;, &#x27;V&#x27;],
+            &#x27;mutually_independent&#x27;: False,
+            &#x27;removed_premise&#x27;: &#x27;joint auxiliary marginal factorization&#x27;,
+            &#x27;status&#x27;: &#x27;exact counterexample to weaker independence reading&#x27;}
+
+
+def loose_certificate_failure():
+    law = sign_law(F(0))
+    bases = [lambda x, y: F(x), lambda x, y: F(y),
+             lambda x, y: F(x * y)]
+    expected_eigenvalues = [F(1, 2), F(1, 2), F(0)]
+    for f, eigenvalue in zip(bases, expected_eigenvalues):
+        for x, y in law:
+            p_x = sum(p for (a, b), p in law.items() if a == x)
+            p_y = sum(p for (a, b), p in law.items() if b == y)
+            cx = sum(p * f(a, b) for (a, b), p in law.items() if a == x) / p_x
+            cy = sum(p * f(a, b) for (a, b), p in law.items() if b == y) / p_y
+            assert (cx + cy) / 2 == eigenvalue * f(x, y)
+    actual_gap = 1 - max(expected_eigenvalues)
+    loose_rho = F(1, 2)
+    false_identity = (1 - loose_rho) / 2
+    assert actual_gap == F(1, 2) and false_identity == F(1, 4)
+    return {&#x27;name&#x27;: &#x27;upper correlation certificate substituted into equality&#x27;,
+            &#x27;actual_rho&#x27;: &#x27;0&#x27;, &#x27;permitted_upper_certificate&#x27;: str(loose_rho),
+            &#x27;actual_gap&#x27;: str(actual_gap), &#x27;false_formula_value&#x27;: str(false_identity),
+            &#x27;status&#x27;: &#x27;exact counterexample to frozen line 23 equality&#x27;}
+
+
+def main():
+    sharp = [sharp_fixture(&#x27;independent signs, Figure eta&#x27;, F(0), F(1, 9)),
+             sharp_fixture(&#x27;correlated signs&#x27;, F(1, 3), F(1, 9)),
+             sharp_fixture(&#x27;eta endpoint, no full branch&#x27;, F(1, 2), F(1, 2))]
+    degenerate = sharp_fixture(&#x27;constant original pair, auxiliary independent signs&#x27;,
+                               F(0), F(1, 9))
+    degenerate.update({&#x27;original_pair_gap_by_singleton_convention&#x27;: &#x27;1&#x27;,
+                       &#x27;naive_eta_times_original_gap&#x27;: &#x27;1/9&#x27;,
+                       &#x27;actual_output_gap&#x27;: &#x27;1/18&#x27;,
+                       &#x27;capped_eta_times_min_gap_half&#x27;: &#x27;1/18&#x27;,
+                       &#x27;status&#x27;: &#x27;exact fixture proves cap necessary&#x27;})
+    # Event denominators of a fixed finite binary seed are powers of two.
+    nondyadic = []
+    for role_mass in (F(1, 3), F(1, 9)):
+        d = role_mass.denominator
+        is_power_two = d &gt; 0 and (d &amp; (d - 1)) == 0
+        assert not is_power_two
+        nondyadic.append({&#x27;event_mass&#x27;: str(role_mass),
+                         &#x27;reduced_denominator&#x27;: d, &#x27;is_dyadic&#x27;: is_power_two})
+    old_coefficient = F(2**32, 117649)
+    universal_coefficient, t2_coefficient = F(36864), F(24576)
+    data = {
+        &#x27;status&#x27;: &#x27;all rational fixture assertions passed&#x27;,
+        &#x27;scope&#x27;: &#x27;finite fixtures and arithmetic, not external or formal validation&#x27;,
+        &#x27;sharpness&#x27;: sharp, &#x27;singleton_cap&#x27;: degenerate,
+        &#x27;premise_failures&#x27;: [common_register_failure(), selector_failure(),
+                             pairwise_independence_failure(),
+                             postselection_failure(), loose_certificate_failure()],
+        &#x27;CL_label_obstruction&#x27;: nondyadic,
+        &#x27;conditional_comparator_arithmetic&#x27;: {
+            &#x27;old_coefficient&#x27;: str(old_coefficient),
+            &#x27;old_coefficient_decimal&#x27;: f&#x27;{float(old_coefficient):.9f}&#x27;,
+            &#x27;universal_coefficient&#x27;: str(universal_coefficient),
+            &#x27;universal_relative_increase&#x27;: str(universal_coefficient / old_coefficient - 1),
+            &#x27;universal_relative_increase_percent&#x27;: f&#x27;{float(100 * (universal_coefficient / old_coefficient - 1)):.9f}&#x27;,
+            &#x27;t2_coefficient&#x27;: str(t2_coefficient),
+            &#x27;t2_relative_copy_reduction&#x27;: str(1 - t2_coefficient / old_coefficient),
+            &#x27;t2_relative_copy_reduction_percent&#x27;: f&#x27;{float(100 * (1 - t2_coefficient / old_coefficient)):.9f}&#x27;,
+            &#x27;premises&#x27;: &#x27;the old/new sufficient bounds are assumed here, not proved&#x27;
+        }
+    }
+    path = Path(__file__).with_name(&#x27;exact_checks.json&#x27;)
+    path.write_text(json.dumps(data, indent=2) + &#x27;\n&#x27;)
+    print(json.dumps({&#x27;status&#x27;: data[&#x27;status&#x27;], &#x27;output&#x27;: str(path),
+                      &#x27;sharp_fixture_count&#x27;: len(sharp),
+                      &#x27;premise_failure_count&#x27;: len(data[&#x27;premise_failures&#x27;])}, indent=2))
+
+
+if __name__ == &#x27;__main__&#x27;:
+    main()
+</pre><p><a href="../assets/fc0cf5614b5136bf0b85ae89a280545f0a3094f6bca7fa4025706e2b77829aef.py">Exact original</a></p></html>

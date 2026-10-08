@@ -1,0 +1,89 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AO: proofs/thermal/exact_purity.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AO-sources.txt">Source map</a><h1>AO: proofs/thermal/exact_purity.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Paused user-reported checkpoint; original597-member ZIP retained exactly. Full authored proofs/audits/code/results available; original primary-paper bytes excluded, read scopes and hashes retained. Current CLAIM_LEDGER overrides explicitly historical pending notes. Major breakthrough not established; no source research resumed. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact rational marginal chi-square for the selected nu=0 state.
+
+Uses the proved Schur generating polynomial. This is a scoped exact finite
+calculation, independent of the double-precision density-matrix diagnostics.
+It is not a formal/all-size proof of the generating-polynomial theorem.
+&quot;&quot;&quot;
+from math import comb, factorial
+from fractions import Fraction
+from pathlib import Path
+import json
+
+
+def falling(n,k):
+    ans=1
+    for q in range(k): ans*=n-q
+    return ans
+
+
+def count_triples(w):
+    for a in range(w+1):
+        for b in range(w-a+1):
+            yield a,b,w-a-b
+
+
+def coefficients(n,maxweight):
+    # F(x,y,z)=sum_M w_M(1-x²-y²-z²)^((N-M)/2)(1-z)^M.
+    sector=[]
+    for m in range(n%2,n+1,2):
+        low=(n-m)//2
+        mult=comb(n,low)-(comb(n,low-1) if low else 0)
+        sector.append((m,low,(m+1)*mult))
+    assert sum(x[2] for x in sector)==2**n
+    result={}
+    for w in range(1,maxweight+1):
+        for a,b,c in count_triples(w):
+            if a%2 or b%2:
+                result[a,b,c]=Fraction(0)
+                continue
+            aa,bb=a//2,b//2
+            numerator=0
+            for m,l,wnum in sector:
+                inner=0
+                for cc in range(c//2+1):
+                    h=c-2*cc
+                    k=aa+bb+cc
+                    if k&gt;l or h&gt;m: continue
+                    multinom=comb(l,aa)*comb(l-aa,bb)*comb(l-aa-bb,cc)
+                    sign=-1 if (k+h)%2 else 1
+                    inner+=sign*multinom*comb(m,h)
+                numerator+=wnum*inner
+            # Convert generating polynomial coefficient into Pauli correlator.
+            result[a,b,c]=Fraction(numerator*factorial(a)*factorial(b)*factorial(c),
+                                    2**n*falling(n,w))
+    return result
+
+
+def exact_chi(n,r):
+    cs=coefficients(n,r)
+    chi=Fraction(0)
+    weights=[]
+    for w in range(1,r+1):
+        term=Fraction(0)
+        for a,b,c in count_triples(w):
+            copies=Fraction(falling(r,w),factorial(a)*factorial(b)*factorial(c))
+            assert copies.denominator==1
+            term+=copies*cs[a,b,c]**2
+        chi+=term
+        weights.append(str(term))
+    bound=Fraction(50000*r,n)
+    assert chi&lt;=bound
+    return dict(N=n,r=r,chi_square_exact=str(chi),
+                chi_square_float=float(chi),N_over_r_times_chi=float(n*chi/r),
+                theorem_bound_exact=str(bound),per_pauli_weight_exact=weights,
+                inequality_exact_rational=True)
+
+
+if __name__==&#x27;__main__&#x27;:
+    cases=[(128,1),(256,2),(512,4),(1024,8)]
+    rows=[exact_chi(n,r) for n,r in cases]
+    record=dict(status=&#x27;exact_finite_rational_not_all_size_proof&#x27;,
+                initial_state=&#x27;I/2^N&#x27;,selected_stationary_occupation=0,
+                method=&#x27;Schur generating polynomial, all Pauli coefficients through r&#x27;,
+                results=rows)
+    path=Path(__file__).resolve().parent/&#x27;exact_purity.json&#x27;
+    path.write_text(json.dumps(record,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps([{k:v for k,v in x.items() if not k.endswith(&#x27;_exact&#x27;)}
+                      for x in rows],indent=2))
+</pre><p><a href="../assets/4f49c596b28bd29fb7e4de190babc6c22a5a198af3987b6df7cf703b89dd2d50.py">Exact original</a></p></html>

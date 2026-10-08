@@ -1,0 +1,120 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AO: process/package_research.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AO-sources.txt">Source map</a><h1>AO: process/package_research.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Paused user-reported checkpoint; original597-member ZIP retained exactly. Full authored proofs/audits/code/results available; original primary-paper bytes excluded, read scopes and hashes retained. Current CLAIM_LEDGER overrides explicitly historical pending notes. Major breakthrough not established; no source research resumed. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Package retained research artifacts without redistributing acquired papers.
+
+Packaging integrity is not mathematical verification. Run stage only after the
+scientific files have been frozen, and seal only after final report edits.
+&quot;&quot;&quot;
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+from datetime import datetime, timezone
+from pathlib import Path
+import shutil
+import zipfile
+
+ROOT = Path(__file__).resolve().parents[2]
+DEST = ROOT / &quot;outputs&quot; / &quot;research&quot;
+ALLOWED = {&quot;.md&quot;, &quot;.txt&quot;, &quot;.json&quot;, &quot;.jsonl&quot;, &quot;.py&quot;, &quot;.log&quot;, &quot;.tex&quot;}
+ACQUIRED_OUTSIDE_SOURCES = {
+    &quot;independent/phase2/backman_et_al2606.13960.txt&quot;,
+    &quot;independent/phase2/larson2607.02208.txt&quot;,
+    &quot;independent/phase2/lason_michalek1302.5236.txt&quot;,
+    &quot;independent/phase2/oh21720652.txt&quot;,
+    &quot;independent/phase2/hodge-02-tensors.tex&quot;,
+}
+
+
+def sha(path: Path) -&gt; str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def utc() -&gt; str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def classification(path: Path, rel: Path) -&gt; tuple[bool, str]:
+    if any(p in {&quot;__pycache__&quot;, &quot;tmp&quot;, &quot;.DS_Store&quot;} for p in rel.parts):
+        return False, &quot;transient file&quot;
+    if rel.as_posix() in ACQUIRED_OUTSIDE_SOURCES:
+        return False, &quot;acquired source text; retain citation and hash, not full text&quot;
+    if &quot;sources&quot; in rel.parts and path.suffix != &quot;.json&quot;:
+        return False, &quot;acquired source; retain citation and hash, not full text&quot;
+    if path.suffix not in ALLOWED:
+        return False, &quot;acquired binary source or unsupported/transient format&quot;
+    if &quot;sources&quot; in rel.parts:
+        return True, &quot;source acquisition metadata&quot;
+    return True, &quot;retained research proof, audit, diagnostic, provenance or history&quot;
+
+
+def stage() -&gt; None:
+    DEST.mkdir(parents=True, exist_ok=True)
+    source = ROOT / &quot;work&quot; / &quot;agents&quot;
+    rows = []
+    for path in sorted(source.rglob(&quot;*&quot;)):
+        if not path.is_file():
+            continue
+        rel = path.relative_to(source)
+        keep, reason = classification(path, rel)
+        row = {&quot;source&quot;: &quot;work/agents/&quot; + rel.as_posix(),
+               &quot;included&quot;: keep, &quot;classification&quot;: reason,
+               &quot;bytes&quot;: path.stat().st_size, &quot;sha256&quot;: sha(path)}
+        if keep:
+            target = DEST / &quot;proofs&quot; / rel
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(path, target)
+            assert sha(target) == row[&quot;sha256&quot;]
+            row[&quot;package_path&quot;] = target.relative_to(DEST).as_posix()
+        rows.append(row)
+    programme = ROOT / &quot;work&quot; / &quot;programme&quot;
+    for name in (&quot;run.json&quot;, &quot;dispatch.jsonl&quot;, &quot;resource_usage.json&quot;,
+                 &quot;resource_usage.md&quot;, &quot;resource_usage.py&quot;, &quot;CHARTER.txt&quot;,
+                 &quot;intake_session.json&quot;, &quot;COORDINATOR_STATE.txt&quot;,
+                 &quot;package_research.py&quot;, &quot;replay_diagnostics.py&quot;, &quot;plot_rate_phase.py&quot;,
+                 &quot;plot_critical_window.py&quot;, &quot;validate_package.py&quot;, &quot;frozen_proofs.json&quot;):
+        path = programme / name
+        if path.is_file():
+            target = DEST / &quot;process&quot; / name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(path, target)
+    payload = {&quot;created_utc&quot;: utc(),
+               &quot;scope&quot;: &quot;Included artifacts are byte-preserving copies. Exclusions remain in the local work directory. This inventory certifies packaging only.&quot;,
+               &quot;records&quot;: rows}
+    (DEST / &quot;ARTIFACT_INVENTORY.json&quot;).write_text(json.dumps(payload, indent=2) + &quot;\n&quot;)
+    print(json.dumps({&quot;included&quot;: sum(r[&quot;included&quot;] for r in rows),
+                      &quot;excluded&quot;: sum(not r[&quot;included&quot;] for r in rows),
+                      &quot;destination&quot;: str(DEST)}))
+
+
+def seal() -&gt; None:
+    rows = []
+    for path in sorted(DEST.rglob(&quot;*&quot;)):
+        if path.is_file() and path.name not in {&quot;SHA256SUMS&quot;, &quot;PACKAGE_MANIFEST.json&quot;}:
+            rows.append({&quot;path&quot;: path.relative_to(DEST).as_posix(),
+                         &quot;bytes&quot;: path.stat().st_size, &quot;sha256&quot;: sha(path)})
+    manifest = {&quot;sealed_utc&quot;: utc(), &quot;status&quot;: &quot;packaging integrity only, not theorem certification&quot;, &quot;files&quot;: rows}
+    (DEST / &quot;PACKAGE_MANIFEST.json&quot;).write_text(json.dumps(manifest, indent=2) + &quot;\n&quot;)
+    checksum_paths = [DEST / row[&quot;path&quot;] for row in rows] + [DEST / &quot;PACKAGE_MANIFEST.json&quot;]
+    (DEST / &quot;SHA256SUMS&quot;).write_text(&quot;&quot;.join(f&quot;{sha(p)}  {p.relative_to(DEST).as_posix()}\n&quot; for p in checksum_paths))
+    archive = DEST.parent / &quot;research-checkpoint.zip&quot;
+    with zipfile.ZipFile(archive, &quot;w&quot;, compression=zipfile.ZIP_DEFLATED) as out:
+        for path in sorted(DEST.rglob(&quot;*&quot;)):
+            if path.is_file():
+                out.write(path, &quot;research/&quot; + path.relative_to(DEST).as_posix())
+    with zipfile.ZipFile(archive) as inp:
+        assert inp.testzip() is None
+        for name in inp.namelist():
+            p = DEST / Path(name).relative_to(&quot;research&quot;)
+            assert hashlib.sha256(inp.read(name)).hexdigest() == sha(p)
+    (DEST.parent / &quot;research-checkpoint.zip.sha256&quot;).write_text(f&quot;{sha(archive)}  {archive.name}\n&quot;)
+    print(json.dumps({&quot;archive&quot;: str(archive), &quot;bytes&quot;: archive.stat().st_size,
+                      &quot;sha256&quot;: sha(archive), &quot;verified_files&quot;: len(rows)}))
+
+
+if __name__ == &quot;__main__&quot;:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(&quot;action&quot;, choices=(&quot;stage&quot;, &quot;seal&quot;))
+    args = parser.parse_args()
+    {&quot;stage&quot;: stage, &quot;seal&quot;: seal}[args.action]()
+</pre><p><a href="../assets/cd0b2fa1aa8882e6d7e50eeaf88ea2494d40242d7283bade1a0e5aad92e42b0c.py">Exact original</a></p></html>

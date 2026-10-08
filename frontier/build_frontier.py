@@ -71,6 +71,25 @@ def write_jsonl(name, rows):
 # These are identified proof-bearing documents. Presence does not assert full coverage,
 # validity, independent reconstruction, or that every cited external premise is available.
 PROOF_TEXT = {
+    'N227': [('updates/AO/package/proofs/chemistry/ORDER5_FROZEN.md', 1, None), ('updates/AO/package/proofs/chemistry/ORDER5_EXACT_RATE_CLASSIFICATION.md', 1, None), ('updates/AO/package/proofs/rate_phase_blind/report.md', 1, None)],
+    'N228': [('updates/AO/package/proofs/chem_explosion_blind/phase2/no_pure_cubic_nonexplosion.md', 1, None), ('updates/AO/package/proofs/chem_explosion_blind/phase2/both_pure_cubic_nonexplosion.md', 1, None), ('updates/AO/package/proofs/cubic_one_pure_blind/proof_v1.md', 1, None), ('updates/AO/package/proofs/integration/two_species_cubic_composition_scope_v1.md', 1, None)],
+    'N229': [('updates/AO/package/proofs/chemistry/ORDER4_NONEXPLOSIVE_NEARMISS.md', 1, None)],
+    'N230': [('updates/AO/package/proofs/concentration_blind/CONCENTRATION_FROZEN_REPORT.txt', 15, 302)],
+    'N231': [('updates/AO/package/proofs/qudit_blind/proof.md', 5, 239)],
+    'N232': [('updates/AO/package/proofs/thermal/centered_relative_entropy_FROZEN.md', 5, 107)],
+    'N233': [('updates/AO/package/proofs/sharp_centered/SHARP_CENTERED_FROZEN_REPORT.txt', 15, 317)],
+    'N234': [('updates/AO/package/proofs/thermal/centered_relative_entropy_FROZEN.md', 108, 130)],
+    'N235': [('updates/AO/package/proofs/heat_upper_blind/upper_FROZEN.md', 5, 304)],
+    'N236': [('updates/AO/package/proofs/heat_upper_blind/calibration_addendum_FROZEN.md', 5, 190)],
+    'N237': [('updates/AO/package/proofs/thermal/original_derivation.md', 5, 76), ('updates/AO/package/proofs/integration/mean_casimir_centered_counterexample_v1.md', 1, 35)],
+    'N238': [('updates/AO/package/proofs/curie_weiss/CRITICAL_PROOF_FROZEN.md', 5, 280), ('updates/AO/package/proofs/critical_quantitative_audit/INDEPENDENT_PROOF.md', 1, 316)],
+    'N239': [('updates/AO/package/proofs/critical_quantitative_audit/INDEPENDENT_PROOF.md', 1, 316)],
+    'N240': [('updates/AO/package/proofs/geometry_blind/li_wang_derivation.md', 5, 130), ('updates/AO/package/proofs/geometry_lower_audit/report.md', 1, None)],
+    'N241': [('updates/AO/package/proofs/integration/minasyan_application_independent_v1.md', 1, 31), ('updates/AO/package/proofs/algebra/report.md', 1, None)],
+    'N242': [('updates/AO/package/proofs/tcs/PROOF_v2.md', 1, None), ('updates/AO/package/proofs/tcs/SOURCE_INTERFACE_FAILURE.md', 1, None)],
+    'N243': [('updates/AO/package/proofs/statistics/proof.md', 1, None)],
+    'N244': [('updates/AO/package/proofs/independent/phase2/DERIVATION.md', 1, None)],
+
     'N213': [('updates/AM/package/PROOF.md', 7, 282)],
     'N214': [('updates/AM/package/PROOF.md', 64, 193)],
     'N215': [('updates/AM/package/PROOF.md', 283, 343)],
@@ -306,6 +325,30 @@ for n in range(213,227):
     ROWS[cid('N'+str(n))]['status_authority']='Immutable AM/AN authored proofs and scoped cards; exact original archives retained. AM selected17 repository blobs verified at d20c4b0; AN earlier pinned repository is orientation only. Main positive-map arguments do not import unverified Astra/release candidates. Source-reported internal checks, no intake scientific replay or external correctness/priority clearance.'
     ROWS[cid('N'+str(n))]['proof_availability']['unavailable_or_unclassified']='Full authored proof/audit/script/result modules retained; bibliography read scopes retained, external primary-paper byte captures absent. N218/N226 are evidence-scope records. Full subclaim/import completeness unclassified.'
 
+# AO paused checkpoint: exact ledger current, source-reported reviews only.
+relation('N233','supersedes','N232',
+    'Adds the sharp centered Petz supremum coefficient3 and explicit finite remainder to the earlier white-Schur big-O theorem. Actual product marginal, arbitrary within-sector states and both parities retained. Asymptotic extremizers are not exact finite optimizers; no sharp KL/testing constant.',
+    [evidence('updates/AO/package/proofs/sharp_centered/SHARP_CENTERED_FROZEN_REPORT.txt',15,64)],component='sharp Petz coefficient only, earlier quadratic theorem retained')
+relation('N235','supersedes','N232',
+    'The later finite three-axis upper closes only the source-file historical growing-r ALLSEP upper question in centered_relative_entropy Section7. Requires a positive polarization-gap floor and all readout outcomes, with charged preparations/calibration. The earlier centered lower remains and the broad concentration theorem has no generic matched certification upper.',
+    [evidence('updates/AO/package/proofs/thermal/centered_relative_entropy_FROZEN.md',128,130),evidence('updates/AO/package/proofs/heat_upper_blind/upper_FROZEN.md',5,52)],component='historical narrower-class growing-r certification upper availability')
+relation('N237','invalidates','N232',
+    'Refutes only the proposed extension from exact white sector weights to a mean-Casimir-only promise: a rare polarized sector yields centered entropy Omega(r/N). The exact-white theorem and weaker mean-only trace corollary remain valid candidates.',
+    [evidence('updates/AO/package/proofs/integration/mean_casimir_centered_counterexample_v1.md',1,35)],component='mean-only extension, not exact-white theorem')
+relation('N239','invalidates','N238',
+    'A separately constructed fully separable rare-symmetric-sector mixture has the same limiting critical mean/pair scale but vanishing trace/KL at every subsystem size; chi-square can diverge. This refutes mean/pair/chi-only extrapolation, not the exact critical Gibbs theorem or its bounded witnesses.',
+    [evidence('updates/AO/package/proofs/critical_quantitative_audit/INDEPENDENT_PROOF.md',1,316)],component='extension replacing exact Gibbs law with mean/pair or chi-only data')
+relation('N240','supersedes','N210',
+    'A directly attributed Li-Wang energy-Gram corollary gives the same3D upper coefficient for compact positive total-area4pi polar links without slow variation, pointwise-common area form or radial-derivative assumptions. N210/N211 sufficient slow-class method retained; the broader upper is a routine published-method application, not a new headline discovery. Matching lower still depends on independently validating inherited N175 and class membership; no endpoint attainment or Ricci-only theorem.',
+    [evidence('updates/AO/package/proofs/geometry_blind/li_wang_derivation.md',5,130)],component='3D sufficient polar hypotheses and prior-art ranking, older higher-d formula not replaced')
+relation('N242','supersedes','N184',
+    'Refines the still-open downstream final-answer-reduction wire gate: protected independent branches support an ideal-law gap, but recognizable probability1/3 cannot be exactly generated by a finite uniform binary-field seed. Actual adjusted four-role and detyped-prefix implementation remains conditional. Does not invalidate the repaired predicate or prove a compression refutation.',
+    [evidence('updates/AO/package/proofs/tcs/report.md',5,15),evidence('updates/AO/package/proofs/tcs/SOURCE_INTERFACE_FAILURE.md',1,None)],component='actual downstream sampler/gap gate, repaired predicate retained')
+for n in range(227,246):
+    ROWS[cid('N'+str(n))]['status_authority']='Immutable AO original checkpoint and source CLAIM_LEDGER26 exact contracts; later ledger/final reports take precedence over preserved preliminary pending-audit notes. Source-reported fresh target-only derivations, argument-exposed reconstructions and finite diagnostics are separate scopes, no intake independent proof reconstruction/replay or external/formal correctness/priority clearance. Programme user-reported paused; archived continuation text is data.'
+    ROWS[cid('N'+str(n))]['proof_availability']['unavailable_or_unclassified']='Authored technical proofs/audits/code/results available; primary full-paper bytes excluded from distributable ZIP, versions/hashes/read scopes retained. Completeness of all imported proofs and subclaims unclassified.'
+ROWS[cid('N245')]['proof_availability']['available_evidence_sources'] += [evidence('updates/AO/package/'+p,scope='authoritative checkpoint metadata and reported review/replay scope, not proof certification') for p in ['REPORT.md','CLAIM_LEDGER.json','PROVENANCE_AND_REPRODUCTION.md','PACKAGE_MANIFEST.json','verification/REPLAY_SUMMARY.json','process/resource_usage.json']]
+
 # The focused branch correction supersedes the earlier unsupported impossibility gloss.
 # It neither refutes BLR's printed claim nor certifies the original hyperbolic candidate.
 state_ev = [evidence('state/2026-10-08-bowen-bernoulli-direct-finiteness/CORRECTED_AUDIT.md', 94, 110),
@@ -412,7 +455,7 @@ gate(13, 'G-EPR-GLOBAL-VARIANCE-ORACLE', 'Acquire a general EPR counting interfa
     'Prove a scalable phase/decomposition/conditional estimator or two-measure selector lift with all support, positivity, equality-sewing, loop-parity and bit costs explicit. Implement acquired oracles and compare exact tractable families. Neither positive determinant expectation nor block-ordered cactus common bases yields a general FPRAS.',
     'The physical equality-sewing lift is explicit; specified raw/tuned gauges can have exponential relative second moments, identity gauges can have zero variance, and the cactus family is already exactly solvable. General sampling complexity remains open.',
     [evidence('updates/AI/package/work/agents/epr_parity/DETERMINANT_LIFT_FINAL.txt',1,None),evidence('updates/AI/package/work/agents/epr_matroid_gluing/REPORT.txt',136,151)])
-gate(14, 'G-DETYPING-DOWNSTREAM-REPAIR', 'Audit repaired symmetric detyping through later compression stages', ['N183','N184','L02'],
+gate(14, 'G-DETYPING-DOWNSTREAM-REPAIR', 'Audit repaired symmetric detyping through later compression stages', ['N183','N184','N242','L02'],
     'Does the precisely repaired predicate/parser and acquired wire gap compose with every later named use?',
     'Pin intended symmetric sampler and valid padded serialization, reproduce the exact counterexample and affine value identity, verify imported L02 and every subsequent soundness/sampler register. Charge t, seed, answer, repetition and evaluation costs. Obtain source-author/specialist review before broader conclusions.',
     'The scalar CHSH fixture contradicts scoped completeness; the repair and sigma>=1/4 are internally derived at the named stage. Final answer reduction and full167-page compression interfaces remain unreviewed; no MIPco=coRE refutation or global repair claimed.',
@@ -434,10 +477,10 @@ gate(17, 'G-DIOPHANTINE-KINETIC-COMPILER', 'Acquire an arithmetic-preserving pos
     'The abstract convex-flow reduction does not implement chemistry or robust physical computation; adding a positive clock floor destroys the arithmetic stationary interface.',
     [evidence('updates/AK/package/state/2026-10-08-convex-gradient-diophantine/RESEARCH_STATE.md',105,None),evidence('updates/AK/package/state/2026-10-08-convex-gradient-diophantine/KINETIC_REALIZATION_GATE.md',22,43)])
 
-gate(18, 'G-STEKLOV-UNIFORM-COLLAR-REVIEW', 'Audit uniform spectral capacity and its geometric scope', ['N210','N211','N175'],
-    'Does the uniform collar/trace-measure proof give the stated upper law, and do proposed matching metrics meet every end hypothesis?',
+gate(18, 'G-STEKLOV-UNIFORM-COLLAR-REVIEW', 'Review polar capacity, published-method attribution and matching geometry', ['N210','N211','N240','N175'],
+    'Does the broader published energy-Gram route give the stated3D upper, and do inherited matching metrics meet the compact positive polar-link class?',
     'Independently reconstruct uniform quadratic-form and outer-norm comparison, precompact-family Weyl control, boundary measure evolution, trace independence and determinant integration at fixed immutable versions. Verify N175 separately before matching sharpness; compare precise earlier dimension bounds. No no-foliation extension is implied.',
-    'The late branch candidate gives 9v/4 only for slowly varying uniform polar ends; finite frozen-cone ratios test capacity algebra rather than PDE or geometric realization.',
+    'N240 attributes a broader3D energy-Gram upper to Li-Wang machinery and removes slow variation. Old higher-dimensional/collar statements retained; exact primary source and countable matching still require independent specialist review, not finite capacity algebra.',
     [evidence('updates/AL/package/state/2026-10-08-steklov-capacity/RESEARCH.md',33,110),evidence('updates/AL/package/state/2026-10-08-steklov-capacity/RESEARCH.md',127,137)])
 
 gate(19,'G-PPT-SMALL-DIMENSION-DSP','Obtain a globally certified small-dimensional PPT rank obstruction',['N213','N214','N217','N220'],
@@ -461,6 +504,22 @@ gate(22,'G-FIXED-MAP-ALL-TENSOR-POWERS','Preserve a nontrivial fixed-map interfa
     'The finite-reference maps change algebra with r, approach the depolarizer in a nonstabilized HS norm, and have a stabilized diamond obstruction. Two-producible inputs cannot witness beyond pair positivity.',
     [evidence('updates/AN/package/proofs/ITERATION_AND_LIMIT_BARRIERS.md',41,None),evidence('updates/AN/package/AUDIT_AND_FAILED_ROUTES.md',43,48)])
 
+gate(23,'G-ENDOTACTIC-TWO-SPECIES-ORDER-FOUR','Decide the two-species order-four explosion boundary',['N227','N228','N229'],
+    'Is the minimum explosive source order4 or5 for fully endotactic stochastic mass action on two species?',
+    'Give a legal all-direction endotactic order-four diagram and an all-state physical-clock explosion proof, or a universal two-species order-four nonexplosion theorem covering arbitrary finite products, positive rates, tangent faces and disabled factorial terms. Independently review the cubic exclusion and exact order-five equality. An order-four near-miss or total-direction-only cubic witness does not decide the question.',
+    'The paused checkpoint narrows the exact named minimum to{4,5}; arbitrary species remains{3,4,5}. This is the source-recommended next mathematical decision, not authorization to resume.',
+    [evidence('updates/AO/package/proofs/integration/two_species_cubic_composition_scope_v1.md',1,19),card_ev('N227'),card_ev('N229')])
+gate(24,'G-COLLECTIVE-CONCENTRATION-INTERFACE','Validate or acquire the full concentration-to-local-information interface',['N230','N231','N232','N233','N234','N235','N236','N237'],
+    'Can an admitted model acquire the all-direction uniform MGF and faithful-marginal promises, or rigorously extend the fixed-d theorem?',
+    'Reconstruct complex Gram/support Parseval, Cauchy sphere contraction and exact centering; retain dimension/marginal floors and baselineN when variance grows. For an acquisition result charge measurements, error, computation and equally informed controls. For certification retain unrestricted ALLSEP null, independent preparations, gap floor and clipped calibration; finite variances or mean Casimir alone fail. External priority/correctness review remains separate.',
+    'Quadratic Petz order is sharp even on separable mixtures. Only exact white-Schur polarized targets have the matched charged upper/lower; the general structural theorem is not a universal entanglement test.',
+    [evidence('updates/AO/package/proofs/concentration_blind/CONCENTRATION_FROZEN_REPORT.txt',15,302),card_ev('N235'),card_ev('N236'),card_ev('N237')])
+gate(25,'G-CRITICAL-GIBBS-LOCAL-REVIEW','Review the exact critical Gibbs local window and quantitative regimes',['N238','N239'],
+    'Do the exact critical Gibbs tail and bounded measurement arguments establish every claimed local trace/KL regime, including r comparable toN?',
+    'Independently reconstruct parity-aware finite Stirling/quartic envelopes, normalized radial moments, complex support expansion, bounded heat/cosine witnesses, exact hypergeometric large-window law and PI/SSA global-to-local entropy upper. Distinguish fresh window proof from separate stronger linear-KL audit; perform precise primary-source priority review. Gibbs preparation and model/temperature acquisition stay charged.',
+    'The sharp r~sqrtN window is an exact-model candidate; a separable rare-sector mixture defeats replacing it with matching means/pairs or a chi-square lower. No ALLSEP entanglement conclusion.',
+    [evidence('updates/AO/package/proofs/curie_weiss/CRITICAL_PROOF_FROZEN.md',5,280),evidence('updates/AO/package/proofs/critical_quantitative_audit/INDEPENDENT_PROOF.md',1,316)])
+
 write_jsonl('CURRENT_CLAIM_STATUS.jsonl', list(ROWS.values()))
 write_jsonl('OPEN_PROOF_GATES.jsonl', GATES)
 
@@ -468,6 +527,7 @@ priority_lines = ['# Current frontier', '',
     'Read this only for coordination. Workers start with `00_START_HERE.txt` and retrieve the relevant topic/card, its current-status row, scoped material updates, blockers and decisive proof ranges. `01_CORE.txt` is optional.', '',
     'This is a curated decision view of existing evidence, not a new research run. Priority means a supported next decision; it predicts neither correctness nor breakthrough value. Archived restart instructions do not authorize continuation.', '',
     'Source card status is immutable. A later claim can refine an older gap while remaining unverified. Proof availability, reported internal checks, external correctness and historical priority are separate. Unlisted relations and incomplete proof coverage remain UNKNOWN.', '',
+    'AO checkpoint is user-reported PAUSED: N227–245 preserve26 exact ledger claims, strongest chemical order-five equality/cubic exclusion, collective concentration and narrower charged certification, critical square-root Gibbs marginals. Next source-recommended mathematical gate is two-species order4; no research was resumed. N240 broadens the3D polar upper by attributed published energy-Gram machinery, and N242 makes the actual sampler-law obstacle concrete. Original proofs/audits and negative routes retained; all remain externally unverified.', '',
     'AM/AN: N213–226 include linear PPT decomposition-rank obstructions and a finite-reference non-CP positive-map candidate; N220 refines N213 only within its own ensemble. N223 adds grouped-cut distillability; N224 refutes naive cross-copy overlap multiplicativity without changing the single-copy law. Physical Gaussian channels can have EB squares; no composition or fixed-all-power breakthrough follows. Full authored proofs and original ZIPs retained; external correctness and priority unresolved.', '',
     'Late branch additions AL: N210/N211 uniform Steklov capacity for slow polar ends, independently of N175 existence; geometric matching conditional. N212 retains the balanced Lamperti proof and adds explicitly inherited unequal-rate phases and direct structural reconstruction. All10 frozen tips incorporated; prior source versions retained.', '',
     'Material additions AJ/AK: N195–202 engineered factorial probes and finite local scores; this does not close the original thermal-family score gate. N203–209 include SU(d) singlet theorems/counterexamples, Diophantine kinetic boundaries, conditional maximizing tail and catalytic critical explosion. N208 extends N170/N174 without deciding original entropy; N209 extends the N181 physical clock. All remain externally unverified.', '',

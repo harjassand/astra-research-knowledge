@@ -1,0 +1,51 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AO: proofs/chemistry/check_geometry.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AO-sources.txt">Source map</a><h1>AO: proofs/chemistry/check_geometry.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Paused user-reported checkpoint; original597-member ZIP retained exactly. Full authored proofs/audits/code/results available; original primary-paper bytes excluded, read scopes and hashes retained. Current CLAIM_LEDGER overrides explicitly historical pending notes. Major breakthrough not established; no source research resumed. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Exact 2D all-face geometry diagnostic; proof is in frozen derivations.&quot;&quot;&quot;
+from functools import cmp_to_key
+from math import gcd
+import json
+from pathlib import Path
+
+NETWORKS = {
+    &#x27;order5&#x27;: [((0,0),(2,0)),((2,0),(1,1)),((3,1),(0,1)),((3,2),(0,-2)),((3,2),(-1,-2))],
+    &#x27;order6&#x27;: [((0,0),(2,0)),((2,0),(2,1)),((4,1),(0,1)),((4,2),(-1,-2))],
+    &#x27;order7&#x27;: [((0,0),(2,0)),((2,0),(2,1)),((4,1),(1,1)),((4,1),(0,1)),((5,2),(-2,-2))],
+    &#x27;order8&#x27;: [((0,0),(2,0)),((2,0),(2,1)),((4,1),(1,2)),((5,3),(-2,-3))],
+    &#x27;failed_order7_chain&#x27;: [((0,0),(2,0)),((2,0),(1,1)),((3,1),(1,2)),((4,3),(-1,-3))],
+    &#x27;failed_order4_split&#x27;: [((0,0),(2,0)),((2,0),(1,1)),((3,1),(0,-1)),((3,1),(-1,-1))],
+}
+
+def check(edges):
+    normals=[v for _,v in edges]
+    normals += [(s[0]-t[0],s[1]-t[1]) for s,_ in edges for t,_ in edges]
+    rays=set()
+    for u,v in normals:
+        if u==v==0: continue
+        g=gcd(abs(u),abs(v));r=(-v//g,u//g)
+        rays.update((r,(-r[0],-r[1])))
+    def half(r):return 0 if r[1]&gt;0 or (r[1]==0 and r[0]&gt;=0) else 1
+    def compare(r,s):
+        if half(r)!=half(s):return half(r)-half(s)
+        c=r[0]*s[1]-r[1]*s[0]
+        return -1 if c&gt;0 else 1 if c&lt;0 else 0
+    rays=sorted(rays,key=cmp_to_key(compare));directions=[]
+    for j,r in enumerate(rays):
+        directions.append(r);t=rays[(j+1)%len(rays)]
+        middle=(r[0]+t[0],r[1]+t[1]);assert middle!=(0,0)
+        directions.append(middle)
+    certificates=[];strong=True;endo=True
+    for w in directions:
+        levels=[w[0]*s[0]+w[1]*s[1] for s,_ in edges]
+        projections=[w[0]*v[0]+w[1]*v[1] for _,v in edges]
+        ix=[j for j,l in enumerate(levels) if l==max(levels)]
+        relevant=[j for j,p in enumerate(projections) if p]
+        active=[j for j in relevant if levels[j]==max(levels[k] for k in relevant)] if relevant else []
+        ok_endo=all(projections[j]&lt;0 for j in active)
+        ok_strong=ok_endo and all(projections[j]&lt;=0 for j in ix) and any(projections[j]&lt;0 for j in ix)
+        strong &amp;=ok_strong;endo &amp;=ok_endo
+        certificates.append(dict(w=w,levels=levels,projections=projections,max_sources=ix,essential_max=active,strong=ok_strong,endotactic=ok_endo))
+    return dict(strong=strong,endotactic=endo,directions=len(directions),max_source_degree=max(sum(s) for s,_ in edges),certificate=certificates)
+
+if __name__==&#x27;__main__&#x27;:
+    result={k:check(e) for k,e in NETWORKS.items()}
+    Path(__file__).with_name(&#x27;geometry_results.json&#x27;).write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({k:{f:v[f] for f in (&#x27;strong&#x27;,&#x27;endotactic&#x27;,&#x27;directions&#x27;,&#x27;max_source_degree&#x27;)} for k,v in result.items()},indent=2))
+</pre><p><a href="../assets/fdbcf58cdf1bb90456cf89f4bf21a1c50e1a04fb813c78258341f4380955ed2d.py">Exact original</a></p></html>

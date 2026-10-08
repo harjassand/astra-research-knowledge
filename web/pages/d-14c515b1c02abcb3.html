@@ -1,0 +1,220 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AO: proofs/chem_geometry/order7/check_order7.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AO-sources.txt">Source map</a><h1>AO: proofs/chem_geometry/order7/check_order7.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Paused user-reported checkpoint; original597-member ZIP retained exactly. Full authored proofs/audits/code/results available; original primary-paper bytes excluded, read scopes and hashes retained. Current CLAIM_LEDGER overrides explicitly historical pending notes. Major breakthrough not established; no source research resumed. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact all-direction check for the proposed order-7 network.
+
+The implementation uses integer dot products and an exact arrangement of all
+reaction-projection zero lines and source-score tie lines. It also checks the
+same chain with the added branch omitted to expose the repaired face.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+from functools import cmp_to_key
+import json
+from math import gcd
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent
+BRANCHED = [
+    ((0, 0), (2, 0)),
+    ((2, 0), (4, 1)),
+    ((4, 1), (5, 2)),
+    ((5, 2), (3, 0)),
+    ((4, 1), (4, 2)),
+]
+CHAIN = BRANCHED[:4]
+
+
+def dot(p, q):
+    return p[0] * q[0] + p[1] * q[1]
+
+
+def cross(p, q):
+    return p[0] * q[1] - p[1] * q[0]
+
+
+def primitive(v):
+    g = gcd(abs(v[0]), abs(v[1]))
+    if not g:
+        raise ValueError(&quot;zero vector&quot;)
+    return (v[0] // g, v[1] // g)
+
+
+def line_direction(form):
+    &quot;&quot;&quot;Primitive direction vector spanning the line form·u=0.&quot;&quot;&quot;
+    d = primitive((-form[1], form[0]))
+    return d if (d[0] &gt; 0 or (d[0] == 0 and d[1] &gt; 0)) else (-d[0], -d[1])
+
+
+def half(v):
+    return 0 if v[1] &gt; 0 or (v[1] == 0 and v[0] &gt; 0) else 1
+
+
+def ray_cmp(p, q):
+    hp, hq = half(p), half(q)
+    if hp != hq:
+        return -1 if hp &lt; hq else 1
+    c = cross(p, q)
+    if c:
+        return -1 if c &gt; 0 else 1
+    return 0
+
+
+def sources_of(reactions):
+    return list(dict.fromkeys(src for src, _ in reactions))
+
+
+def critical_rays(reactions):
+    sources = sources_of(reactions)
+    deltas = [(dst[0] - src[0], dst[1] - src[1]) for src, dst in reactions]
+    lines = {line_direction(delta) for delta in deltas}
+    for i, p in enumerate(sources):
+        for q in sources[i + 1:]:
+            lines.add(line_direction((p[0] - q[0], p[1] - q[1])))
+    return sorted({v for d in lines for v in (d, (-d[0], -d[1]))}, key=cmp_to_key(ray_cmp))
+
+
+def exact_status(reactions, u):
+    sources = sources_of(reactions)
+    source_scores = {src: dot(src, u) for src in sources}
+    projections = [dot((dst[0] - src[0], dst[1] - src[1]), u)
+                   for src, dst in reactions]
+    active_reactions = [i for i, q in enumerate(projections) if q != 0]
+    active_sources = list(dict.fromkeys(reactions[i][0] for i in active_reactions))
+    active_max = max(source_scores[src] for src in active_sources) if active_sources else None
+    active_max_sources = [src for src in active_sources if source_scores[src] == active_max]
+    active_max_ids = [i for i in active_reactions if reactions[i][0] in active_max_sources]
+    violators = [i for i in active_max_ids if projections[i] &gt; 0]
+    global_max = max(source_scores.values())
+    global_max_sources = [src for src in sources if source_scores[src] == global_max]
+    maximal_decreasing = [i for i, ((src, _), q) in enumerate(zip(reactions, projections))
+                          if src in global_max_sources and q &lt; 0]
+    endotactic = not violators
+    return {
+        &quot;u&quot;: list(u),
+        &quot;source_scores&quot;: [[list(src), source_scores[src]] for src in sources],
+        &quot;reaction_projections&quot;: projections,
+        &quot;active_reactions_1based&quot;: [i + 1 for i in active_reactions],
+        &quot;active_max_sources&quot;: [list(src) for src in active_max_sources],
+        &quot;active_max_reactions_1based&quot;: [i + 1 for i in active_max_ids],
+        &quot;active_max_projections&quot;: [projections[i] for i in active_max_ids],
+        &quot;active_max_reaction_records&quot;: [
+            [i + 1, list(reactions[i][0]), projections[i]] for i in active_max_ids
+        ],
+        &quot;violating_reactions_1based&quot;: [i + 1 for i in violators],
+        &quot;global_max_sources&quot;: [list(src) for src in global_max_sources],
+        &quot;maximal_decreasing_reactions_1based&quot;: [i + 1 for i in maximal_decreasing],
+        &quot;endotactic&quot;: endotactic,
+        &quot;strongly_endotactic&quot;: endotactic and bool(maximal_decreasing),
+    }
+
+
+def analyze(reactions):
+    rays = critical_rays(reactions)
+    rows = []
+    for ray in rays:
+        row = exact_status(reactions, ray)
+        row[&quot;stratum&quot;] = &quot;boundary_ray&quot;
+        rows.append(row)
+    for i, p in enumerate(rays):
+        q = rays[(i + 1) % len(rays)]
+        u = (p[0] + q[0], p[1] + q[1])
+        if u == (0, 0):
+            raise AssertionError(&quot;adjacent boundary rays are antipodal&quot;)
+        row = exact_status(reactions, u)
+        row[&quot;stratum&quot;] = &quot;open_sector&quot;
+        row[&quot;boundary_rays&quot;] = [list(p), list(q)]
+        rows.append(row)
+    return rays, rows
+
+
+def reaction_payload(reactions):
+    return [{&quot;reaction_1based&quot;: i + 1, &quot;source&quot;: list(src), &quot;product&quot;: list(dst),
+             &quot;delta&quot;: [dst[0] - src[0], dst[1] - src[1]]}
+            for i, (src, dst) in enumerate(reactions)]
+
+
+def summary(reactions, rays, rows):
+    return {
+        &quot;reactions&quot;: reaction_payload(reactions),
+        &quot;unique_source_complexes&quot;: [list(src) for src in sources_of(reactions)],
+        &quot;critical_line_count&quot;: len(rays) // 2,
+        &quot;critical_rays_ccw_from_positive_x&quot;: [list(v) for v in rays],
+        &quot;boundary_ray_count&quot;: len(rays),
+        &quot;open_sector_count&quot;: len(rays),
+        &quot;all_nonzero_directions_endotactic&quot;: all(r[&quot;endotactic&quot;] for r in rows),
+        &quot;all_nonzero_directions_strongly_endotactic&quot;: all(r[&quot;strongly_endotactic&quot;] for r in rows),
+        &quot;failures&quot;: [r for r in rows if not r[&quot;endotactic&quot;]],
+        &quot;strong_failures&quot;: [r for r in rows if not r[&quot;strongly_endotactic&quot;]],
+        &quot;strata&quot;: rows,
+    }
+
+
+def certificate_text(rays, rows, base_witness):
+    out = [
+        &quot;Exact certificate for the order-7 network; reactions are listed in check_order7.py.&quot;,
+        &quot;u=(a,b), source score s_y=y·u, reaction projection q=(y&#x27;-y)·u.&quot;,
+        &quot;At each ray and sector, all active-source maximizers have q&lt;=0; the final column is&quot;,
+        &quot;the set of decreasing reactions whose source is globally maximal. Nonempty means strong.&quot;,
+        &quot;Critical boundary rays CCW from +a: &quot; + &quot;, &quot;.join(str(tuple(r)) for r in rays),
+        &quot;The seven critical lines are a=0, 4a+b=0, 5a+2b=0, 2a+b=0, 3a+2b=0, a+b=0, b=0.&quot;,
+        &quot;Rows below give stratum | u | active-max records (reaction, source, q) | global-max sources | decreasing global-max reactions.&quot;,
+        &quot;&quot;,
+    ]
+    for row in rows:
+        kind = &quot;ray&quot; if row[&quot;stratum&quot;] == &quot;boundary_ray&quot; else &quot;sector&quot;
+        out.append(
+            f&quot;{kind} | {tuple(row[&#x27;u&#x27;])} | &quot;
+            f&quot;{row[&#x27;active_max_reaction_records&#x27;]} | &quot;
+            f&quot;{row[&#x27;global_max_sources&#x27;]} | {row[&#x27;maximal_decreasing_reactions_1based&#x27;]}&quot;
+        )
+    out += [
+        &quot;&quot;,
+        &quot;Unbranched-chain witness on the exceptional ray u=(1,-1):&quot;,
+        f&quot;scores={base_witness[&#x27;source_scores&#x27;]}; projections={base_witness[&#x27;reaction_projections&#x27;]};&quot;,
+        f&quot;active-max sources={base_witness[&#x27;active_max_sources&#x27;]}; &quot;
+        f&quot;violating reactions={base_witness[&#x27;violating_reactions_1based&#x27;]}; &quot;
+        f&quot;global-max sources={base_witness[&#x27;global_max_sources&#x27;]}; &quot;
+        f&quot;decreasing reactions at global maxima={base_witness[&#x27;maximal_decreasing_reactions_1based&#x27;]}.&quot;,
+    ]
+    return &quot;\n&quot;.join(out) + &quot;\n&quot;
+
+
+def main():
+    rays, rows = analyze(BRANCHED)
+    chain_rays, chain_rows = analyze(CHAIN)
+    base_witness = exact_status(CHAIN, (1, -1))
+    branched_face = exact_status(BRANCHED, (1, -1))
+    result = {
+        &quot;branched_network&quot;: summary(BRANCHED, rays, rows),
+        &quot;chain_without_added_branch&quot;: summary(CHAIN, chain_rays, chain_rows),
+        &quot;exceptional_face_comparison_u_1_minus1&quot;: {
+            &quot;chain_without_branch&quot;: base_witness,
+            &quot;with_added_branch&quot;: branched_face,
+        },
+        &quot;proof_method&quot;: (
+            &quot;Exact central arrangement of every reaction-projection zero line and every &quot;
+            &quot;pairwise source-score tie line. Evaluate every oriented boundary ray and an &quot;
+            &quot;integer interior vector in each open sector; all signs and score orderings &quot;
+            &quot;are constant within each sector.&quot;
+        ),
+    }
+    (ROOT / &quot;exact_results.json&quot;).write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+    (ROOT / &quot;directional_certificate.txt&quot;).write_text(certificate_text(rays, rows, base_witness))
+    print(json.dumps({
+        &quot;branched_endotactic&quot;: result[&quot;branched_network&quot;][&quot;all_nonzero_directions_endotactic&quot;],
+        &quot;branched_strongly_endotactic&quot;: result[&quot;branched_network&quot;][&quot;all_nonzero_directions_strongly_endotactic&quot;],
+        &quot;branched_critical_lines&quot;: result[&quot;branched_network&quot;][&quot;critical_line_count&quot;],
+        &quot;branched_rays&quot;: result[&quot;branched_network&quot;][&quot;boundary_ray_count&quot;],
+        &quot;branched_sectors&quot;: result[&quot;branched_network&quot;][&quot;open_sector_count&quot;],
+        &quot;chain_without_branch_endotactic&quot;: result[&quot;chain_without_added_branch&quot;][&quot;all_nonzero_directions_endotactic&quot;],
+        &quot;chain_without_branch_strong&quot;: result[&quot;chain_without_added_branch&quot;][&quot;all_nonzero_directions_strongly_endotactic&quot;],
+        &quot;chain_failure_count&quot;: len(result[&quot;chain_without_added_branch&quot;][&quot;failures&quot;]),
+        &quot;face_u_1_minus1_chain_violations&quot;: base_witness[&quot;violating_reactions_1based&quot;],
+        &quot;face_u_1_minus1_branched_violations&quot;: branched_face[&quot;violating_reactions_1based&quot;],
+        &quot;face_u_1_minus1_branched_maximal_decreasing&quot;: branched_face[&quot;maximal_decreasing_reactions_1based&quot;],
+    }, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/f2d5378b7656330571848974fee5893bea271731b5aed3889685d5d1f6339920.py">Exact original</a></p></html>

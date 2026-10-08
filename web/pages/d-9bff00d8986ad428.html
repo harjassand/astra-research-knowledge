@@ -1,0 +1,133 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AO: proofs/critical_window_blind/verify_critical_window.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AO-sources.txt">Source map</a><h1>AO: proofs/critical_window_blind/verify_critical_window.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Paused user-reported checkpoint; original597-member ZIP retained exactly. Full authored proofs/audits/code/results available; original primary-paper bytes excluded, read scopes and hashes retained. Current CLAIM_LEDGER overrides explicitly historical pending notes. Major breakthrough not established; no source research resumed. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Finite Gibbs-sector and measurement diagnostics; not a substitute for proof.&quot;&quot;&quot;
+from math import comb, e, exp, gamma, lgamma, log, pi, sqrt
+from pathlib import Path
+import json
+import numpy as np
+
+
+alpha = 4/3
+i0 = gamma(3/4)*alpha**(-3/4)/4
+target_partition = 8*sqrt(2/pi)*i0
+target_second_moment = alpha**(-1/2)*gamma(5/4)/gamma(3/4)
+target_chi_constant = 2*(gamma(5/4)/gamma(3/4))**2
+ustar = 648+24*exp(6)*(480/e)**(5/4)
+astar = 216*ustar
+
+
+def sectors(n):
+    twice_j = np.arange(n % 2, n+1, 2, dtype=int)
+    js = twice_j/2
+    logweights = []
+    for spin_twice, j in zip(twice_j, js):
+        lower = (n-int(spin_twice))//2
+        log_binomial = lgamma(n+1)-lgamma(lower+1)-lgamma(n-lower+1)
+        logweights.append(2*log(2*j+1)-log(n/2+j+1)
+                          +log_binomial-n*log(2)+2*j*(j+1)/n)
+    logweights = np.array(logweights)
+    largest = np.max(logweights)
+    weights = np.exp(logweights-largest)
+    probs = weights/np.sum(weights)
+    partition = exp(largest)*np.sum(weights)
+    return js, probs, partition
+
+
+sector_diagnostics = []
+for n in [256, 257, 512, 1024, 1025, 2048, 4096, 8192, 16384]:
+    js, probs, partition = sectors(n)
+    scale = n**0.75
+    moment = np.dot(probs, np.exp((js/scale)**2))
+    second = np.dot(probs, js*(js+1))/n**1.5
+    assert abs(np.sum(probs)-1) &lt; 1e-13
+    assert partition &gt;= scale/216
+    assert moment &lt;= astar
+    c_pair = ((4/3)*np.dot(probs, js*(js+1))-n)/(n*(n-1))
+    sector_diagnostics.append({&quot;N&quot;: n,
+        &quot;scaled_partition&quot;: float(partition/scale),
+        &quot;partition_limit&quot;: target_partition,
+        &quot;scaled_spin_second_moment&quot;: float(second),
+        &quot;second_moment_limit&quot;: target_second_moment,
+        &quot;exponential_square_moment&quot;: float(moment),
+        &quot;finite_pair_chi_coefficient&quot;: float(1.5*n*c_pair*c_pair),
+        &quot;limiting_pair_chi_coefficient&quot;: target_chi_constant})
+
+
+def measured_local_count(n, r):
+    js, sector_probs, partition = sectors(n)
+    tails = np.cumsum((sector_probs/(2*js+1))[::-1])[::-1]
+    global_m = np.arange(-n, n+1, 2)/2
+    lookup = (np.abs(global_m)-n % 2/2).astype(int)
+    magnetic_probs = tails[lookup]
+    assert abs(np.sum(magnetic_probs)-1) &lt; 1e-12
+    denominator = comb(n, r)
+    local = np.zeros(r+1)
+    for k, weight in enumerate(magnetic_probs):
+        if weight == 0:
+            continue
+        for count in range(max(0, r-(n-k)), min(k, r)+1):
+            local[count] += weight*(comb(k, count)*comb(n-k, r-count)/denominator)
+    assert abs(np.sum(local)-1) &lt; 1e-11
+    assert np.max(abs(local-local[::-1])) &lt; 1e-12
+    return local
+
+
+xgrid = np.linspace(0, 4, 50001)
+density = xgrid*xgrid*np.exp(-alpha*xgrid**4)/i0
+assert abs(np.trapezoid(density, xgrid)-1) &lt; 1e-9
+measurement_diagnostics = []
+for n, r in [(256, 2), (1024, 2), (256, 16), (512, 22),
+             (1024, 32), (256, 32), (1024, 64), (1024, 181)]:
+    local = measured_local_count(n, r)
+    white_count = np.array([comb(r, count)/2**r for count in range(r+1)])
+    magnetic = 2*np.arange(r+1)-r
+    cosine = np.cos(magnetic/sqrt(r))
+    gap = float(np.dot(white_count-local, cosine))
+    critical_ratio = r/sqrt(n)
+    predicted_gap = exp(-0.5)*(1-np.trapezoid(
+        density*np.sinc(2*sqrt(critical_ratio)*xgrid/pi), xgrid))
+    local_js = np.arange(r % 2, r+1, 2)/2
+    spin_probs = []
+    white_spin_probs = []
+    for j in local_js:
+        index = int(r/2+j)
+        next_probability = local[index+1] if index+1 &lt;= r else 0
+        spin_probs.append((2*j+1)*(local[index]-next_probability))
+        lower = int(r/2-j)
+        multiplicity = comb(r, lower)-(comb(r, lower-1) if lower else 0)
+        white_spin_probs.append((2*j+1)*multiplicity/2**r)
+    spin_probs = np.array(spin_probs)
+    white_spin_probs = np.array(white_spin_probs)
+    assert np.min(spin_probs) &gt;= 0
+    assert abs(np.sum(spin_probs)-1) &lt; 1e-10
+    assert abs(np.sum(white_spin_probs)-1) &lt; 1e-12
+    quantum_chi = float(np.sum(spin_probs*spin_probs/white_spin_probs)-1)
+    mask = spin_probs &gt; 0
+    quantum_kl = float(np.sum(spin_probs[mask]*np.log(spin_probs[mask]/white_spin_probs[mask])))
+    quantum_trace = float(np.sum(abs(spin_probs-white_spin_probs))/2)
+    count_mask = local &gt; 0
+    count_kl = float(np.sum(local[count_mask]*np.log(local[count_mask]/white_count[count_mask])))
+    count_trace = float(np.sum(abs(local-white_count))/2)
+    assert quantum_trace &gt;= abs(gap)/2-1e-11
+    assert quantum_kl &gt;= gap*gap/2-1e-11
+    assert quantum_kl &gt;= count_kl-1e-11
+    assert quantum_trace &gt;= count_trace-1e-11
+    assert quantum_kl &lt;= np.log1p(quantum_chi)+1e-10
+    measurement_diagnostics.append({&quot;N&quot;: n, &quot;r&quot;: r,
+        &quot;r_over_sqrt_N&quot;: critical_ratio,
+        &quot;quantum_chi2&quot;: quantum_chi,
+        &quot;below_window_chi_prediction&quot;: target_chi_constant*r*(r-1)/n,
+        &quot;quantum_KL&quot;: quantum_kl,
+        &quot;quantum_trace_distance&quot;: quantum_trace,
+        &quot;count_KL&quot;: count_kl,
+        &quot;count_total_variation&quot;: count_trace,
+        &quot;bounded_cosine_gap&quot;: gap,
+        &quot;critical_limit_cosine_gap&quot;: float(predicted_gap)})
+
+results = {&quot;scope&quot;: &quot;Finite diagnostics of exact sector/count formulas, not theorem validation.&quot;,
+           &quot;explicit_exponential_square_constant&quot;: astar,
+           &quot;quartic_density_normalizer&quot;: i0,
+           &quot;sharp_below_window_chi_constant&quot;: target_chi_constant,
+           &quot;sector_diagnostics&quot;: sector_diagnostics,
+           &quot;measurement_diagnostics&quot;: measurement_diagnostics}
+Path(__file__).with_name(&quot;verification_results.json&quot;).write_text(json.dumps(results, indent=2)+&quot;\n&quot;)
+print(json.dumps(results, indent=2))
+</pre><p><a href="../assets/bcf78d7982d6e422831685f35caa089627db7229cdb1d0bf4a3906662ec60e64.py">Exact original</a></p></html>

@@ -1,0 +1,185 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AO: proofs/chem_geometry/check_endotactic.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AO-sources.txt">Source map</a><h1>AO: proofs/chem_geometry/check_endotactic.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Paused user-reported checkpoint; original597-member ZIP retained exactly. Full authored proofs/audits/code/results available; original primary-paper bytes excluded, read scopes and hashes retained. Current CLAIM_LEDGER overrides explicitly historical pending notes. Major breakthrough not established; no source research resumed. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact all-direction endotacticity check for a finite planar network.
+
+No floating point arithmetic is used. The critical arrangement consists of
+the lines where a reaction projection vanishes or two source scores tie.
+Each critical ray and one integer vector in every open angular cell are tested.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+from functools import cmp_to_key
+import json
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent
+REACTIONS = [
+    ((0, 0), (2, 0)),
+    ((2, 0), (4, 1)),
+    ((4, 1), (5, 3)),
+    ((5, 3), (3, 0)),
+]
+
+
+def dot(a, b):
+    return a[0] * b[0] + a[1] * b[1]
+
+
+def cross(a, b):
+    return a[0] * b[1] - a[1] * b[0]
+
+
+def primitive(v):
+    from math import gcd
+
+    g = gcd(abs(v[0]), abs(v[1]))
+    if not g:
+        raise ValueError(&quot;zero vector&quot;)
+    return (v[0] // g, v[1] // g)
+
+
+def half(v):
+    # Increasing polar angle from +x; exact integer partition.
+    return 0 if (v[1] &gt; 0 or (v[1] == 0 and v[0] &gt; 0)) else 1
+
+
+def ray_cmp(a, b):
+    ha, hb = half(a), half(b)
+    if ha != hb:
+        return -1 if ha &lt; hb else 1
+    c = cross(a, b)
+    if c:
+        return -1 if c &gt; 0 else 1
+    return 0
+
+
+def canonical_line_normal(v):
+    &quot;&quot;&quot;A primitive normal to the line v·u=0, in a canonical sign.&quot;&quot;&quot;
+    n = primitive((-v[1], v[0]))
+    return n if (n[0] &gt; 0 or (n[0] == 0 and n[1] &gt; 0)) else (-n[0], -n[1])
+
+
+def critical_rays():
+    sources = [y for y, _ in REACTIONS]
+    deltas = [(z[0] - y[0], z[1] - y[1]) for y, z in REACTIONS]
+    lines = {canonical_line_normal(d) for d in deltas}
+    for i in range(len(sources)):
+        for j in range(i + 1, len(sources)):
+            diff = (sources[i][0] - sources[j][0], sources[i][1] - sources[j][1])
+            if diff != (0, 0):
+                lines.add(canonical_line_normal(diff))
+    return sorted({v for n in lines for v in (n, (-n[0], -n[1]))}, key=cmp_to_key(ray_cmp))
+
+
+def exact_status(u):
+    ys = [y for y, _ in REACTIONS]
+    ds = [(z[0] - y[0], z[1] - y[1]) for y, z in REACTIONS]
+    scores = [dot(y, u) for y in ys]
+    projections = [dot(d, u) for d in ds]
+    active = [i for i, q in enumerate(projections) if q != 0]
+    active_max = max((scores[i] for i in active), default=None)
+    active_maximizers = [i for i in active if scores[i] == active_max] if active_max is not None else []
+    violations = [
+        i for i in active
+        if projections[i] &gt; 0 and scores[i] == active_max
+    ]
+    endotactic = not violations
+    global_max = max(scores)
+    global_maximizers = [i for i, score in enumerate(scores) if score == global_max]
+    maximal_decreasing = [
+        i for i in range(len(REACTIONS))
+        if projections[i] &lt; 0 and scores[i] == global_max
+    ]
+    strongly_endotactic = endotactic and bool(maximal_decreasing)
+    return {
+        &quot;u&quot;: list(u),
+        &quot;scores&quot;: scores,
+        &quot;projections&quot;: projections,
+        &quot;active_reactions_1based&quot;: [i + 1 for i in active],
+        &quot;active_max_score&quot;: active_max,
+        &quot;active_maximizers_1based&quot;: [i + 1 for i in active_maximizers],
+        &quot;active_maximizer_projections&quot;: [projections[i] for i in active_maximizers],
+        &quot;violating_reactions_1based&quot;: [i + 1 for i in violations],
+        &quot;global_max_score&quot;: global_max,
+        &quot;global_maximizers_1based&quot;: [i + 1 for i in global_maximizers],
+        &quot;maximal_decreasing_reactions_1based&quot;: [i + 1 for i in maximal_decreasing],
+        &quot;endotactic&quot;: endotactic,
+        &quot;strongly_endotactic&quot;: strongly_endotactic,
+    }
+
+
+def all_strata():
+    rays = critical_rays()
+    results = []
+    # Every boundary ray is evaluated separately, preserving all zero and tie cases.
+    for ray in rays:
+        row = exact_status(ray)
+        row[&quot;stratum&quot;] = &quot;boundary_ray&quot;
+        results.append(row)
+    # The sum of two adjacent ray generators lies strictly inside their cone;
+    # all such cones have angle &lt; pi because every critical line contributes
+    # both antipodal rays. The arrangement signs are constant in each cone.
+    for i, a in enumerate(rays):
+        b = rays[(i + 1) % len(rays)]
+        u = (a[0] + b[0], a[1] + b[1])
+        if u == (0, 0):
+            raise AssertionError(&quot;adjacent rays unexpectedly antipodal&quot;)
+        row = exact_status(u)
+        row[&quot;stratum&quot;] = &quot;open_sector&quot;
+        row[&quot;boundary_rays&quot;] = [list(a), list(b)]
+        results.append(row)
+    return rays, results
+
+
+def main():
+    rays, results = all_strata()
+    summary = {
+        &quot;network&quot;: [
+            {&quot;source&quot;: list(y), &quot;product&quot;: list(z), &quot;delta&quot;: [z[0] - y[0], z[1] - y[1]]}
+            for y, z in REACTIONS
+        ],
+        &quot;critical_line_count&quot;: len(rays) // 2,
+        &quot;critical_rays_ccw_from_positive_x&quot;: [list(r) for r in rays],
+        &quot;boundary_ray_count&quot;: len(rays),
+        &quot;open_sector_count&quot;: len(rays),
+        &quot;all_directions_endotactic&quot;: all(r[&quot;endotactic&quot;] for r in results),
+        &quot;all_directions_strongly_endotactic&quot;: all(r[&quot;strongly_endotactic&quot;] for r in results),
+        &quot;first_endotactic_failure&quot;: next((r for r in results if not r[&quot;endotactic&quot;]), None),
+        &quot;first_strong_failure&quot;: next((r for r in results if not r[&quot;strongly_endotactic&quot;]), None),
+        &quot;strata&quot;: results,
+        &quot;method&quot;: (
+            &quot;Exact finite arrangement: all reaction-projection zero lines and all pairwise &quot;
+            &quot;source-score tie lines; evaluate every ray and an integer interior vector in &quot;
+            &quot;each open sector. Sign/order data are constant in every open sector.&quot;
+        ),
+    }
+    out = ROOT / &quot;exact_results.json&quot;
+    out.write_text(json.dumps(summary, indent=2) + &quot;\n&quot;)
+    cert = [
+        &quot;Exact directional certificate. Reaction indices are the listed network order.&quot;,
+        &quot;Each row gives u; the active-source maximizers and their outgoing projections;&quot;,
+        &quot;then the all-source maximizers and indices among them with negative projection.&quot;,
+        &quot;Nonpositive active-max projections prove no violation; a nonempty final set proves strong u-endotacticity.&quot;,
+        &quot;Critical rays are listed below in counterclockwise order; adjacent rays bound the open sectors.&quot;,
+        &quot;Critical rays: &quot; + &quot;, &quot;.join(str(tuple(v)) for v in rays),
+        &quot;&quot;,
+        &quot;stratum | u | active-max sources: q_i | all-source maxima | max-source decreasing reactions&quot;,
+    ]
+    for row in results:
+        kind = &quot;ray&quot; if row[&quot;stratum&quot;] == &quot;boundary_ray&quot; else &quot;sector&quot;
+        cert.append(
+            f&quot;{kind} | {tuple(row[&#x27;u&#x27;])} | &quot;
+            f&quot;{list(zip(row[&#x27;active_maximizers_1based&#x27;], row[&#x27;active_maximizer_projections&#x27;]))} | &quot;
+            f&quot;{row[&#x27;global_maximizers_1based&#x27;]} | {row[&#x27;maximal_decreasing_reactions_1based&#x27;]}&quot;
+        )
+    (ROOT / &quot;directional_certificate.txt&quot;).write_text(&quot;\n&quot;.join(cert) + &quot;\n&quot;)
+    print(json.dumps({k: summary[k] for k in (
+        &quot;critical_line_count&quot;, &quot;boundary_ray_count&quot;, &quot;open_sector_count&quot;,
+        &quot;all_directions_endotactic&quot;, &quot;all_directions_strongly_endotactic&quot;,
+        &quot;first_endotactic_failure&quot;, &quot;first_strong_failure&quot;
+    )}, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/6003bdb30ddea480722e1c3770757d91379f928d97fc66fd56e635d8e6be0e6d.py">Exact original</a></p></html>

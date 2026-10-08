@@ -1,0 +1,201 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AO: proofs/sharp_centered_audit/independent_checks.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AO-sources.txt">Source map</a><h1>AO: proofs/sharp_centered_audit/independent_checks.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Paused user-reported checkpoint; original597-member ZIP retained exactly. Full authored proofs/audits/code/results available; original primary-paper bytes excluded, read scopes and hashes retained. Current CLAIM_LEDGER overrides explicitly historical pending notes. Major breakthrough not established; no source research resumed. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Fresh sharp-step diagnostics and exact finite optimizer counterexamples.
+
+No target verification code is read or imported. Exact rational identities and
+new 4x4 matrix checks complement the proof; they do not prove a supremum.
+&quot;&quot;&quot;
+from fractions import Fraction as Q
+from pathlib import Path
+from math import comb
+import json
+import numpy as np
+
+OUT = Path(__file__).parent
+
+
+def sectors(N):
+    for twoj in range(N % 2, N + 1, 2):
+        k = (N - twoj) // 2
+        mult = comb(N, k) - (comb(N, k - 1) if k else 0)
+        p = Q((twoj + 1) * mult, 2 ** N)
+        yield twoj, mult, p
+
+
+def add(A, B):
+    return [[a+b for a, b in zip(x, y)] for x, y in zip(A, B)]
+
+
+def scale(a, A):
+    return [[a*x for x in row] for row in A]
+
+
+def mul(A, B):
+    return [[sum(A[i][k]*B[k][j] for k in range(len(B)))
+             for j in range(len(B[0]))] for i in range(len(A))]
+
+
+def tr(A):
+    return sum(A[i][i] for i in range(len(A)))
+
+
+I = [[Q(int(i==j)) for j in range(4)] for i in range(4)]
+XX = [[Q(int(i+j==3)) for j in range(4)] for i in range(4)]
+YY = [[Q(0),0,0,-1],[0,0,1,0],[0,1,0,0],[-1,0,0,0]]
+ZZ = [[Q((1,-1,-1,1)[i] if i==j else 0) for j in range(4)] for i in range(4)]
+XI_IX = [[Q(int((i^j) in (1,2))) for j in range(4)] for i in range(4)]
+
+
+def exact_pair_chi(C, t):
+    delta = scale(Q(1,4), add(add(scale(C[0],XX),scale(C[1],YY)),scale(C[2],ZZ)))
+    sigma = scale(Q(1,4),add(add(I,scale(t,XI_IX)),scale(t*t,XX)))
+    inv = scale(4/(1-t*t)**2,add(add(I,scale(-t,XI_IX)),scale(t*t,XX)))
+    assert mul(sigma,inv) == I
+    value = tr(mul(mul(delta,delta),inv))
+    gram = (sum(z*z for z in C)-2*t*t*C[1]*C[2])/(1-t*t)**2
+    assert value == gram
+    return value
+
+
+exact_examples=[]
+for N in [256,257,512,513]:
+    tab=list(sectors(N))
+    assert sum(p for _,_,p in tab)==1
+    casimir=sum(p*Q(j2*(j2+2),4) for j2,_,p in tab)
+    assert casimir==Q(3*N,4)
+    a=sum(p*Q(j2,2) for j2,_,p in tab)
+    v=(1-2*a/N)/(N-1)
+    assert v&gt;0
+    baseline=6*v*v
+    assert exact_pair_chi([-v,-v,2*v],Q(0))==baseline
+    if N%2==0:
+        p1=next(p for j2,_,p in tab if j2==2)
+        shift=2*p1/(N*(N-1))
+        improved=exact_pair_chi([-v+shift,-v-shift,2*v],Q(0))
+        difference=2*shift*shift
+        description=&#x27;Replace spin1 mixture by (|1,+1&gt;+|1,-1&gt;)/sqrt2; b stays zero.&#x27;
+        t=Q(0)
+    else:
+        p_half=next(p for j2,_,p in tab if j2==1)
+        t=p_half/N
+        improved=exact_pair_chi([-v-t*t,-v,2*v],t)
+        difference=t*t*(2*v+16*v*v+t*t*(1-6*v*v))/(1-t*t)**2
+        description=&#x27;Replace spin1/2 mixture by its pure +x state; other sectors unchanged.&#x27;
+    assert improved-baseline==difference&gt;0
+    exact_examples.append({&#x27;N&#x27;:N,&#x27;r&#x27;:2,&#x27;baseline&#x27;:str(baseline),&#x27;improved&#x27;:str(improved),
+                           &#x27;strict_difference&#x27;:str(difference),&#x27;difference_float&#x27;:float(difference),
+                           &#x27;baseline_float&#x27;:float(baseline),&#x27;b_magnitude&#x27;:str(t),
+                           &#x27;legal_sector_modification&#x27;:description})
+
+# Exact algebra in the new tail bound.
+derivative_bound=Q(105*265,256)*Q(128,119)**6
+assert derivative_bound&lt;180
+assert 4*Q(9,8)**5&lt;8
+assert 24**2*3&lt;42**2
+assert 9720*Q(9,2)**3==885735&lt;900000
+f=[Q(1)]
+aa=[Q(1)]
+bb=[Q(1)]
+for k in range(1,25):
+    f.append(f[-1]*Q(2*k+1,k))
+    aa.append(aa[-1]*Q(2*k+5,k))
+    bb.append(bb[-1]*Q(2*k+9,k))
+g=[aa[k]+(3*aa[k-1] if k else 0) for k in range(25)]
+assert g[0]==1 and g[1]==10
+for k in range(3,25):
+    assert 36*k*k*f[k]==108*g[k-1]
+for k in range(23):
+    assert (k+2)*(k+1)*g[k+2]==105*(bb[k]+(bb[k-1] if k else 0))
+
+# Fresh noncommuting covariance and Parseval checks from valid white-sector vectors.
+P=[np.array([[0,1],[1,0]],complex),np.array([[0,-1j],[1j,0]],complex),np.diag([1,-1])]
+I2=np.eye(2)
+eps=np.zeros((3,3,3))
+eps[0,1,2]=eps[1,2,0]=eps[2,0,1]=1
+eps[1,0,2]=eps[0,2,1]=eps[2,1,0]=-1
+rng=np.random.default_rng(481913)
+numeric=[]
+for N in [256,257,384,385,512,513]:
+    for mode in [&#x27;biased_complex&#x27;,&#x27;haar&#x27;]:
+        mu=np.zeros(3)
+        S=np.zeros((3,3))
+        for j2,_,p in sectors(N):
+            j=j2/2
+            dim=j2+1
+            if mode==&#x27;haar&#x27;:
+                psi=rng.normal(size=dim)+1j*rng.normal(size=dim)
+            else:
+                psi=np.zeros(dim,complex)
+                psi[0]=1
+                if dim&gt;1: psi[1]=.37j*np.exp(.31j*j)
+                if dim&gt;2: psi[-1]+=.11*np.exp(.17j*j)
+            psi/=np.linalg.norm(psi)
+            m=j-np.arange(dim)
+            jp=np.zeros(dim,complex); jm=np.zeros(dim,complex)
+            if dim&gt;1:
+                jp[:-1]=np.sqrt(j*(j+1)-m[1:]*(m[1:]+1))*psi[1:]
+                jm[1:]=np.sqrt(j*(j+1)-m[:-1]*(m[:-1]-1))*psi[:-1]
+            acts=[(jp+jm)/2,(jp-jm)/(2j),m*psi]
+            for a in range(3):
+                mu[a]+=float(p)*np.vdot(psi,acts[a]).real
+                for b in range(3): S[a,b]+=float(p)*np.vdot(acts[a],acts[b]).real
+        b=2*mu/N
+        V=S-np.outer(mu,mu)
+        X=4*V/N; Z=X+np.outer(b,b)
+        c=(4*S-N*np.eye(3))/(N*(N-1))
+        C=c-np.outer(b,b)
+        assert np.linalg.eigvalsh(V)[0]&gt;-1e-9
+        assert np.linalg.eigvalsh(Z)[0]&gt;-1e-10
+        assert abs(np.trace(Z)-(3-(N-1)*np.dot(b,b)))&lt;1e-10
+        assert np.linalg.norm(C-(Z-np.eye(3))/(N-1))&lt;1e-12
+        assert np.sum(C*C)&lt;=6/(N-1)**2+1e-13
+        rho=np.eye(4,dtype=complex)
+        for a in range(3):
+            rho+=b[a]*(np.kron(P[a],I2)+np.kron(I2,P[a]))
+            for z in range(3): rho+=c[a,z]*np.kron(P[a],P[z])
+        rho/=4
+        tau=(I2+sum(b[a]*P[a] for a in range(3)))/2
+        sigma=np.kron(tau,tau); delta=rho-sigma
+        assert np.linalg.eigvalsh(rho)[0]&gt;-1e-10
+        chi=np.trace(delta@delta@np.linalg.inv(sigma)).real
+        G=np.eye(3)-np.outer(b,b)+1j*np.einsum(&#x27;abc,c-&gt;ab&#x27;,eps,b)
+        gram=np.vdot(C.ravel(),np.kron(np.linalg.inv(G),np.linalg.inv(G))@C.ravel()).real
+        wrongG=np.eye(3)-np.outer(b,b)
+        wrong=np.vdot(C.ravel(),np.kron(np.linalg.inv(wrongG),np.linalg.inv(wrongG))@C.ravel()).real
+        assert abs(chi-gram)&lt;1e-12
+        t=np.linalg.norm(b)
+        assert chi&lt;=6/((N-1)**2*(1-t)**2)+1e-12
+        numeric.append({&#x27;N&#x27;:N,&#x27;mode&#x27;:mode,&#x27;chi&#x27;:chi,&#x27;parseval_residual&#x27;:abs(chi-gram),
+                        &#x27;commutator_norm&#x27;:float(np.linalg.norm(rho@sigma-sigma@rho)),
+                        &#x27;invalid_real_Gram_discrepancy&#x27;:abs(wrong-chi),
+                        &#x27;minimum_covariance_eigenvalue&#x27;:float(np.linalg.eigvalsh(V)[0])})
+
+N_rare=10**8
+r_rare=4
+alpha=Q(3,N_rare+2)
+pair_norm=Q(6,(N_rare+2)**2)
+d4=Q(3*(N_rare-2),(N_rare+2)*(N_rare-3))
+rare_lower=6*pair_norm+d4*d4
+rare_target=Q(36,N_rare**2)
+rare_error=Q(42*16,N_rare**2*10000)+Q(900000*64,N_rare**3)
+assert rare_lower-rare_target&gt;rare_error
+assert alpha*Q(N_rare*(N_rare+2),4)==Q(3*N_rare,4)
+rare={&#x27;N&#x27;:N_rare,&#x27;r&#x27;:r_rare,&#x27;maximal_spin_weight&#x27;:str(alpha),
+      &#x27;spin0_weight&#x27;:str(1-alpha),&#x27;exact_Casimir&#x27;:str(Q(3*N_rare,4)),
+      &#x27;d_zzzz&#x27;:str(d4),&#x27;chi_lower_bound&#x27;:str(rare_lower),
+      &#x27;would_be_white_target&#x27;:str(rare_target),&#x27;would_be_white_remainder&#x27;:str(rare_error),
+      &#x27;strict_violation&#x27;:str(rare_lower-rare_target-rare_error),
+      &#x27;N_squared_chi_lower_float&#x27;:float(N_rare**2*rare_lower),
+      &#x27;claim_refuted&#x27;:&#x27;Replace exactly white Schur weights by mean Casimir only.&#x27;}
+
+result={&#x27;status&#x27;:&#x27;PASS exact and numerical finite diagnostics; not a supremum proof&#x27;,
+        &#x27;candidate_code_read&#x27;:False,&#x27;exact_finite_optimizer_counterexamples&#x27;:exact_examples,
+        &#x27;exact_mean_Casimir_premise_counterexample&#x27;:rare,
+        &#x27;g_second_derivative_rational_bound&#x27;:str(derivative_bound),
+        &#x27;coefficient_identity_checks&#x27;:45,&#x27;numeric_valid_white_sector_cases&#x27;:numeric}
+(OUT/&#x27;independent_checks.json&#x27;).write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+print(json.dumps({&#x27;counterexample_count&#x27;:len(exact_examples),
+                  &#x27;counterexample_differences&#x27;:[z[&#x27;difference_float&#x27;] for z in exact_examples],
+                  &#x27;numeric_cases&#x27;:len(numeric),
+                  &#x27;maximum_Parseval_residual&#x27;:max(z[&#x27;parseval_residual&#x27;] for z in numeric),
+                  &#x27;maximum_noncommutator&#x27;:max(z[&#x27;commutator_norm&#x27;] for z in numeric),
+                  &#x27;maximum_invalid_real_Gram_discrepancy&#x27;:max(z[&#x27;invalid_real_Gram_discrepancy&#x27;] for z in numeric)},indent=2))
+</pre><p><a href="../assets/9976b9cd86f1f868d17dfb1ed1c7848f8a79eda01b403d93f7b56f4a69f0da4e.py">Exact original</a></p></html>

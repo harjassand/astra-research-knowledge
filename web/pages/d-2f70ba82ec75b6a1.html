@@ -1,0 +1,71 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AO: proofs/tcs/check_view_gap.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AO-sources.txt">Source map</a><h1>AO: proofs/tcs/check_view_gap.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Paused user-reported checkpoint; original597-member ZIP retained exactly. Full authored proofs/audits/code/results available; original primary-paper bytes excluded, read scopes and hashes retained. Current CLAIM_LEDGER overrides explicitly historical pending notes. Major breakthrough not established; no source research resumed. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Bounded diagnostics for PROOF.md; finite SVD is not a proof certificate.&quot;&quot;&quot;
+from itertools import product
+from fractions import Fraction
+from pathlib import Path
+import json
+import numpy as np
+
+states=list(product((-1,1), repeat=5))
+
+def channel(eta, mode=&#x27;full&#x27;, shared_point=False):
+    weights=[eta,eta,1-2*eta]
+    rows=[]; alphabet={}
+    for x,y,u,v,r in states:
+        symbols=[(&#x27;A&#x27;,x,u),(&#x27;B&#x27;,y,u if shared_point else v)]
+        symbols.append((&#x27;F&#x27;,x,y,u,v,r) if mode==&#x27;full&#x27; else (&#x27;F&#x27;,x*y*u*v*r))
+        rows.append(symbols)
+        for symbol in symbols:
+            if symbol not in alphabet: alphabet[symbol]=len(alphabet)
+    matrix=np.zeros((len(states),len(alphabet)))
+    for i,symbols in enumerate(rows):
+        for weight,symbol in zip(weights,symbols):matrix[i,alphabet[symbol]]=float(weight)
+    return matrix,rows,alphabet,weights
+
+def diagnostic(rho,eta,mode=&#x27;independent&#x27;,shared_point=False):
+    pi=np.array([float((1+rho*x*y)/32) for x,y,u,v,r in states])
+    a,rowsa,alpa,weights=channel(eta,shared_point=shared_point)
+    b,rowsb,alpb,_=channel(eta,&#x27;parity&#x27; if mode==&#x27;asymmetric&#x27; else &#x27;full&#x27;,shared_point)
+    if mode==&#x27;correlated_selectors&#x27;:
+        joint=np.zeros((len(alpa),len(alpb)))
+        for i in range(len(states)):
+            for weight,sa,sb in zip(weights,rowsa[i],rowsb[i]):
+                joint[alpa[sa],alpb[sb]]+=pi[i]*float(weight)
+    else:
+        joint=a.T @ (pi[:,None]*b)
+    m0=joint.sum(axis=1);m1=joint.sum(axis=0)
+    norm=joint/np.sqrt(m0[:,None]*m1[None,:])
+    singular=np.linalg.svd(norm,compute_uv=False)
+    rho_out=float(singular[1])
+    sigma_out=(1-rho_out)/2
+    bound=eta*(1-rho)/2
+    return {&#x27;rho_input&#x27;:str(rho),&#x27;eta&#x27;:str(eta),&#x27;mode&#x27;:mode,
+            &#x27;shared_point_register&#x27;:shared_point,
+            &#x27;latent_states&#x27;:len(states),&#x27;joint_shape&#x27;:list(joint.shape),
+            &#x27;rho_output_svd&#x27;:rho_out,&#x27;global_sigma_output_svd&#x27;:sigma_out,
+            &#x27;claimed_bound_if_hypotheses_hold&#x27;:str(bound),
+            &#x27;bound_holds_to_1e_12&#x27;:sigma_out+1e-12&gt;=float(bound),
+            &#x27;analytic_sharp_sigma&#x27;:str(bound) if mode==&#x27;independent&#x27; and not shared_point else None,
+            &#x27;exact_input_probabilities&#x27;:&#x27;mu(x,y)=(1+rho*x*y)/4; U,V,R independent uniform signs&#x27;,
+            &#x27;evidence_type&#x27;:&#x27;finite floating-point SVD diagnostic&#x27;}
+
+rows=[]
+for rho in (Fraction(0),Fraction(1,2),Fraction(7,8)):
+    for eta in (Fraction(1,9),Fraction(1,3)):
+        row=diagnostic(rho,eta)
+        assert row[&#x27;bound_holds_to_1e_12&#x27;]
+        assert abs(row[&#x27;global_sigma_output_svd&#x27;]-float(eta*(1-rho)/2))&lt;1e-12
+        rows.append(row)
+rows.append(diagnostic(Fraction(1,2),Fraction(1,9),&#x27;asymmetric&#x27;))
+assert rows[-1][&#x27;bound_holds_to_1e_12&#x27;]
+rows.append(diagnostic(Fraction(1,2),Fraction(1,9),&#x27;correlated_selectors&#x27;))
+assert abs(rows[-1][&#x27;global_sigma_output_svd&#x27;])&lt;1e-12
+rows.append(diagnostic(Fraction(1,2),Fraction(1,9),shared_point=True))
+assert abs(rows[-1][&#x27;global_sigma_output_svd&#x27;])&lt;1e-12
+out={&#x27;scope&#x27;:&#x27;6 sharp full-seed cases, 1 asymmetric case, 2 deliberate assumption violations&#x27;,
+     &#x27;costs&#x27;:{&#x27;max_latent_states&#x27;:32,&#x27;max_joint_entries&#x27;:1600,&#x27;precision&#x27;:&#x27;numpy float64&#x27;,&#x27;no_support_enumeration_of_actual_verifier&#x27;:True},
+     &#x27;fixtures&#x27;:rows,&#x27;all_expected_checks_pass&#x27;:True}
+Path(__file__).with_name(&#x27;view_gap_diagnostics.json&#x27;).write_text(json.dumps(out,indent=2)+&#x27;\n&#x27;)
+print(json.dumps({&#x27;all_expected_checks_pass&#x27;:True,&#x27;fixtures&#x27;:len(rows),&#x27;sharp_full_seed_cases&#x27;:6,
+                  &#x27;deliberate_assumption_violations&#x27;:2,&#x27;output&#x27;:&#x27;view_gap_diagnostics.json&#x27;}))
+</pre><p><a href="../assets/a19a6948572d8a2a43bdd5aa5151721d23caf42d5a6b2eea24d26242cff176d3.py">Exact original</a></p></html>

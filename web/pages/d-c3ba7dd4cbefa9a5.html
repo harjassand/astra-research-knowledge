@@ -1,0 +1,145 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AO: proofs/concentration_blind/verify_concentration.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AO-sources.txt">Source map</a><h1>AO: proofs/concentration_blind/verify_concentration.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Paused user-reported checkpoint; original597-member ZIP retained exactly. Full authored proofs/audits/code/results available; original primary-paper bytes excluded, read scopes and hashes retained. Current CLAIM_LEDGER overrides explicitly historical pending notes. Major breakthrough not established; no source research resumed. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Finite diagnostics for the independent concentration theorem; not proof validation.&quot;&quot;&quot;
+from fractions import Fraction as F
+from math import comb, sqrt
+from pathlib import Path
+import itertools
+import json
+import numpy as np
+
+
+exact_checks = 0
+for n in range(2, 65):
+    for r in range(1, min(n-1, 16)+1):
+        for k in range(1, r+1):
+            assert F(comb(r, k), comb(n, k)) &lt;= F(r, n)**k
+            falling = 1
+            for ell in range(k):
+                falling *= n-ell
+            assert falling &gt;= (n-r)**k
+            exact_checks += 2
+
+for d in range(2, 9):
+    m = d*d-1
+    for k in range(2, 65):
+        alpha = 1
+        for ell in range(k):
+            alpha *= m+2*ell
+        assert F(alpha) &lt;= (F(k)*(F(m, 2)+1))**k
+        exact_checks += 1
+
+example_checks = []
+for d in range(2, 6):
+    for n in [4, 8, 16, 32, 64]:
+        for r in [2, 3, 4]:
+            if r &gt; n:
+                continue
+            eps = F(2, d*n)
+            direct = ((1+eps)**r+(1-eps)**r)/2-1
+            expansion = sum(F(comb(r, k))*eps**k for k in range(2, r+1, 2))
+            lower = F(2*r*(r-1), d*d*n*n)
+            assert direct == expansion
+            assert direct &gt;= lower
+            exact_checks += 2
+            if n == 64 and r == 4:
+                example_checks.append({&quot;d&quot;: d, &quot;N&quot;: n, &quot;r&quot;: r,
+                                       &quot;chi2&quot;: float(direct),
+                                       &quot;quadratic_term&quot;: float(lower)})
+
+
+def basis(d):
+    answer = []
+    for a in range(d):
+        for b in range(a+1, d):
+            symmetric = np.zeros((d, d), complex)
+            symmetric[a, b] = symmetric[b, a] = 1/sqrt(2)
+            answer.append(symmetric)
+            imaginary = np.zeros((d, d), complex)
+            imaginary[a, b] = -1j/sqrt(2)
+            imaginary[b, a] = 1j/sqrt(2)
+            answer.append(imaginary)
+    for k in range(1, d):
+        diagonal = np.zeros(d)
+        diagonal[:k] = 1/sqrt(k*(k+1))
+        diagonal[k] = -k/sqrt(k*(k+1))
+        answer.append(np.diag(diagonal).astype(complex))
+    return answer
+
+
+def kron_all(items):
+    answer = np.array([[1]], complex)
+    for item in items:
+        answer = np.kron(answer, item)
+    return answer
+
+
+rng = np.random.default_rng(2026100811)
+scalar_checks = 0
+for _ in range(10000):
+    a = rng.uniform(-2, 2)
+    z = rng.uniform(-2, 2)+1j*rng.uniform(-2, 2)
+    lhs = abs(1+z*a)
+    rhs = np.exp(a*z.real+abs(z)**2*a*a/2)
+    assert lhs &lt;= rhs+1e-12
+    scalar_checks += 1
+
+matrix_checks = []
+for d in [2, 3, 4]:
+    fs = basis(d)
+    hs_gram = np.array([[np.trace(left@right) for right in fs] for left in fs])
+    assert np.max(abs(hs_gram-np.eye(d*d-1))) &lt; 1e-12
+    for trial in range(3):
+        w = rng.normal(size=(d, d))+1j*rng.normal(size=(d, d))
+        tau = 0.5*np.eye(d)/d+0.5*(w@w.conj().T)/np.trace(w@w.conj().T).real
+        coefficients = rng.normal(size=d*d-1)
+        k_operator = sum(coefficient*fa for coefficient, fa in zip(coefficients, fs))
+        k_operator /= np.linalg.norm(k_operator, 2)
+        kapp = 0.5/d
+        centered = [fa-np.trace(tau@fa).real*np.eye(d) for fa in fs]
+        gram = np.array([[np.trace(tau@left@right) for right in centered]
+                         for left in centered])
+        assert np.linalg.eigvalsh(gram)[0] &gt;= kapp-1e-12
+        moments = np.array([np.trace(k_operator@fa).real for fa in fs])
+        parsed_k_norm = (moments.conj()@np.linalg.solve(gram, moments)).real
+        direct_k_norm = np.trace(k_operator@k_operator@np.linalg.inv(tau)).real
+        assert abs(parsed_k_norm-direct_k_norm) &lt; 1e-11
+        n = 8
+        epsilon = 0.2/d/sqrt(n)
+        plus = tau+epsilon*k_operator
+        minus = tau-epsilon*k_operator
+        assert np.linalg.eigvalsh(plus)[0] &gt; 0
+        assert np.linalg.eigvalsh(minus)[0] &gt; 0
+        for r in [2, 3]:
+            rho = (kron_all([plus]*r)+kron_all([minus]*r))/2
+            sigma = kron_all([tau]*r)
+            direct = np.trace(rho@rho@np.linalg.inv(sigma)).real-1
+            s = epsilon**2*direct_k_norm
+            exact_branch = ((1+s)**r+(1-s)**r)/2-1
+            parsed = sum(comb(r, k)*(epsilon**2*parsed_k_norm)**k
+                         for k in range(2, r+1, 2))
+            assert abs(direct-exact_branch) &lt; 1e-10
+            assert abs(direct-parsed) &lt; 1e-10
+            eigenvalues = np.linalg.eigvalsh(rho)
+            ref_values, ref_vectors = np.linalg.eigh(sigma)
+            log_sigma = (ref_vectors*np.log(ref_values))@ref_vectors.conj().T
+            entropy = np.sum(eigenvalues*np.log(eigenvalues))-np.trace(rho@log_sigma).real
+            assert entropy &lt;= np.log1p(direct)+1e-10
+            commutator = np.linalg.norm(rho@sigma-sigma@rho)
+            assert commutator &gt; 1e-12
+            matrix_checks.append({&quot;d&quot;: d, &quot;trial&quot;: trial, &quot;N&quot;: n, &quot;r&quot;: r,
+                                  &quot;chi2&quot;: float(direct),
+                                  &quot;gram_error&quot;: float(abs(direct-parsed)),
+                                  &quot;relative_entropy&quot;: float(entropy),
+                                  &quot;commutator_norm&quot;: float(commutator),
+                                  &quot;gram_minimum_eigenvalue&quot;: float(np.linalg.eigvalsh(gram)[0]),
+                                  &quot;kappa&quot;: kapp})
+
+results = {&quot;exact_checks&quot;: exact_checks,
+           &quot;scalar_generating_product_checks&quot;: scalar_checks,
+           &quot;noncommuting_matrix_cases&quot;: len(matrix_checks),
+           &quot;max_gram_error&quot;: max(case[&quot;gram_error&quot;] for case in matrix_checks),
+           &quot;quadratic_rate_example_diagnostics&quot;: example_checks,
+           &quot;matrix_diagnostics&quot;: matrix_checks,
+           &quot;scope&quot;: &quot;Finite diagnostics, not a substitute for the written proof or external validation.&quot;}
+Path(__file__).with_name(&quot;verification_results.json&quot;).write_text(json.dumps(results, indent=2)+&quot;\n&quot;)
+print(json.dumps({k: v for k, v in results.items() if k != &quot;matrix_diagnostics&quot;}, indent=2))
+</pre><p><a href="../assets/1fd4c83920635e0f9824774e5a039f187ef7480b36d351ff2fa86d73e0fb1a19.py">Exact original</a></p></html>
