@@ -71,6 +71,25 @@ def write_jsonl(name, rows):
 # These are identified proof-bearing documents. Presence does not assert full coverage,
 # validity, independent reconstruction, or that every cited external premise is available.
 PROOF_TEXT = {
+    'N175': [('updates/AI/package/work/agents/common_metric_attack/PROOF_v3.txt', 1, None), ('updates/AI/package/work/agents/common_metric_attack/POST_SOURCE_STATUS.txt', 1, None)],
+    'N176': [('updates/AI/package/work/agents/common_metric_attack/PROOF_v3.txt', 114, None), ('updates/AI/package/work/agents/geometry_transfer_audit/POSTFREEZE_AUDIT.txt', 1, None)],
+    'N177': [('updates/AI/package/work/agents/spectral_transversality_audit/REPORT.txt', 1, None), ('updates/AI/package/work/agents/spectral_exact_double_audit/REPORT.txt', 1, None), ('updates/AI/package/work/agents/spectral_crossblock_audit/REPORT.txt', 1, None)],
+    'N178': [('updates/AI/package/work/agents/common_metric_attack/PROOF_v3.txt', 213, 258), ('updates/AI/package/work/agents/geometry_uniformity_redteam/REPORT.txt', 1, None)],
+    'N179': [('updates/AI/package/work/agents/thermal_window/REPORT.txt', 27, 222), ('updates/AI/package/work/agents/thermal_window/COST_ADDENDUM.txt', 1, None)],
+    'N180': [('updates/AI/package/work/agents/thermal_blind/REPORT.txt', 1, None)],
+    'N181': [('updates/AI/package/work/agents/chemical_recurrence/REPORT.txt', 1, None), ('updates/AI/package/work/agents/critical_crn_blind/REPORT.txt', 1, None)],
+    'N182': [('updates/AI/package/work/agents/chemical_recurrence/RETURN_TIME_ADDENDUM.txt', 1, None)],
+    'N183': [('updates/AI/package/work/agents/repetition_application/COUNTEREXAMPLE.txt', 1, 47)],
+    'N184': [('updates/AI/package/work/agents/repetition_application/REPAIRED_DETYPING_GAP.txt', 1, 71)],
+    'N185': [('updates/AI/package/work/agents/thermodynamic_inference/REPORT.txt', 35, 158), ('updates/AI/package/work/agents/entropy_blind_audit/REPORT.txt', 1, None)],
+    'N186': [('updates/AI/package/work/agents/thermodynamic_inference/REPORT.txt', 159, 239)],
+    'N187': [('updates/AI/package/work/agents/kls_mechanism/REPORT.txt', 28, 257)],
+    'N188': [('updates/AI/package/work/agents/learning_acquisition/REPORT.txt', 62, 186), ('updates/AI/package/work/agents/learning_acquisition/REPORT.txt', 246, 268)],
+    'N189': [('updates/AI/package/work/agents/learning_acquisition/REPORT.txt', 186, 245)],
+    'N190': [('updates/AI/package/work/agents/epr_parity/DETERMINANT_LIFT_FINAL.txt', 1, None)],
+    'N191': [('updates/AI/package/work/agents/epr_parity/DETERMINANT_LIFT_FINAL.txt', 1, None)],
+    'N192': [('updates/AI/package/work/agents/epr_matroid_gluing/REPORT.txt', 28, 75), ('updates/AI/package/work/agents/epr_matroid_gluing/REPORT.txt', 136, 151)],
+    'N193': [('updates/AI/package/work/agents/epr_matroid_gluing/REPORT.txt', 76, 118), ('updates/AI/package/work/agents/epr_parity/DETERMINANT_LIFT_FINAL.txt', 1, None)],
     'N174': [('updates/AH/package/state/2026-10-08-family197-infinite-tail/RESEARCH.md', 97, 114)],
     'N165': [('updates/AG/package/state/2026-10-08-bowen-bernoulli-direct-finiteness/CORRECTED_AUDIT.md', 94, 110)],
     'N166': [('updates/AG/package/state/2026-10-08-bowen-bernoulli-direct-finiteness/CORRECTED_AUDIT.md', 11, 81)],
@@ -197,6 +216,20 @@ relation('N174', 'supersedes', 'N170',
     [evidence('updates/AH/package/state/2026-10-08-family197-infinite-tail/RESEARCH.md',97,114)],
     component='additional finite-stage and finite-quotient tail structure; original theorem retained')
 
+# AI source modules advance scoped contracts while keeping historical raw cards.
+relation('N179', 'supersedes', 'N138',
+    'At the stationary nu_N/sqrt(N)->fixed c>0 window, the new authored proof constructs a FULLSEP approximant with explicit asymptotic upper integral (about5.82e-5 atc1) and charged sampler/precision costs. N180 supplies an independent bounded-effect lower bound for c<c_w. This partially advances the historical window gap; exact distance, intrinsic phase boundary and useful finite-N convergence rates remain open. It does not supply the absent AC sharp entropy proof or transfer to post-preparation noise.',
+    [evidence('updates/AI/package/work/agents/thermal_window/REPORT.txt',84,222),evidence('updates/AI/package/work/agents/thermal_blind/REPORT.txt',1,145)],
+    component='critical sqrt(N) stationary-bath window: partial bounds, not full phase diagram')
+relation('N187', 'supersedes', 'N75',
+    'New candidate sharp actual-KL cap functional and exact first-Neumann-gradient diffuse product witness strengthen the earlier mean/covariance plateau obstruction under the stated weaker contract. Cov/P tends1/4, not0; no KLS proof/refutation or imported high-order/posterior hierarchy certification. Historical N75 retained.',
+    [evidence('updates/AI/package/work/agents/kls_mechanism/REPORT.txt',28,257)],
+    component='mean-only actual-information replacement obstruction; anomalous KLS gate remains open')
+for short in [f'N{n}' for n in range(175,195)]:
+    key=cid(short)
+    ROWS[key]['status_authority']='Immutable AI curated card; packet CLAIM_LEDGER current status, geometry POST_SOURCE_STATUS and EPR DETERMINANT_LIFT_FINAL/cactus REPORT Section9 take precedence over explicitly retained historical source freezes; chronology alone does not certify correctness.'
+    ROWS[key]['proof_availability']['unavailable_or_unclassified']='Authored proof/audit/script modules retained; third-party originals listed in AI SOURCE_OMISSIONS are absent from this packet; full subclaim/import completeness unclassified.'
+
 # The focused branch correction supersedes the earlier unsupported impossibility gloss.
 # It neither refutes BLR's printed claim nor certifies the original hyperbolic candidate.
 state_ev = [evidence('state/2026-10-08-bowen-bernoulli-direct-finiteness/CORRECTED_AUDIT.md', 94, 110),
@@ -255,11 +288,11 @@ gate(4, 'G-QUTRIT-ULTRAFINE-AND-COST', 'Resolve an admitted qutrit extension or 
     'Freeze one extension and exact information contract; establish matching lower/upper bounds or a legal counterexample without deleting input tails. For a cost claim, charge classical labels, acquisition, output and implementation and compare an equally informed baseline.',
     'The fixed positive splitting/fixed zeta<1 branch law is source-internally closed; these are the explicitly named uncovered interfaces, not a repeat of the old proof.',
     [evidence('updates/AE/package/research/RESTART.txt',11,21),card_ev('N148',5,7)])
-gate(5, 'G-THERMAL-SQRT-WINDOW', 'Resolve the stationary sqrt(N) bath window', ['N131','N138'],
-    'For nu=c sqrt(N), what is the limiting distance to the full separable set?',
-    'Derive a nontrivial limiting distance/constant threshold or an explicit separable approximant under the same stationary sector weights and arbitrary full-SEP adversary. Distance to I/2^N is only an upper bound; retain preparation, normalization and calibration costs.',
-    'Current state proves only below/above polynomial exponents and identifies this exact remaining window; no complete phase diagram follows.',
-    [evidence('state/2026-10-08-thermal-character-temperature-scaling/RESULT_AND_RESTART.md',68,93)])
+gate(5, 'G-THERMAL-SQRT-WINDOW', 'Close the critical-bath distance and finite-N error gates', ['N131','N138','N179','N180'],
+    'For nu_N/sqrt(N)->fixed c>0, can the explicit upper/lower bounds become an exact full-SEP law or certified finite-N guarantee?',
+    'Independently validate the whole-state tracial-L2 lift and uniform heterogeneous-product heat supremum; derive useful finite-N stationary trace-distance rates/onset, or matching limiting distance/phase-boundary bounds. Charge endpoint truncation, random proposals, precision, calibration and physical measurement. The witness rootc_w is not a separability threshold.',
+    'AI supplies full authored critical-window upper and lower proofs, including about5.82e-5 asymptotic upper integral atc1; exact d(c), intrinsic boundary and finite-N convergence rates remain open. This does not acquire the absent AC entropy-coefficient proof.',
+    [evidence('updates/AI/package/work/agents/thermal_window/REPORT.txt',84,222),evidence('updates/AI/package/work/agents/thermal_window/COST_ADDENDUM.txt',1,None),evidence('updates/AI/package/work/agents/thermal_blind/REPORT.txt',1,145)])
 gate(6, 'G-XXZ-TRICRITICAL-NUMBER', 'Prove a tricritical Gibbs number law', ['N150','N151','N159'],
     'Can partition lower bounds become uniform number-distribution statements at the tricritical scale?',
     'Control growing-sector canonical heat traces, excited multiplicities and all-sector tails; then derive the proposed sqrt(L)/L^(2/3) number laws or cubic density, or give a source-legal counterexample. Keep both endpoint fields and exact moving-threshold contracts.',
@@ -293,6 +326,22 @@ gate(11, 'G-ORIGINAL-FAMILY197-ENTROPY', 'Decide original family-197 entropy bef
     'Branches add concrete support, coding, finite-model and infinite-tail obstructions but do not decide original entropy. Corrected Corollary 7.7 removes the spurious infinite-only loophole; equality of all Bernoulli entropy still does not imply isomorphism.',
     [evidence('state/2026-10-08-bowen-bernoulli-direct-finiteness/CORRECTED_AUDIT.md',39,81),evidence('state/2026-10-08-family197-infinite-tail/RESEARCH.md',84,94)])
 
+gate(12, 'G-SINGLE-METRIC-GEOMETRY-REVIEW', 'Specialist review of the one-manifold harmonic limsup candidate', ['N175','N176','N177','N178'],
+    'Does the complete spectral/PDE/countable-transfer proof survive external exact-contract reconstruction?',
+    'Record a specialist or formal reconstruction at immutable PROOF_v3+POST_SOURCE_STATUS versions: all adjacent spectral inputs, pre-gauge controls, compact-family freezing, whole-local-matrix repair, stage-order quantifiers, birth-only fixed point, all-radius growth and independence. Perform focused primary-source priority comparison; any found gap gets a scoped dependency notice.',
+    'This is the AI packet lead after separate internal source/transfer/uniformity/integration audits. No remaining internal obstruction was reported, but existence is nonquantitative and no external proof/priority clearance or metric materialization exists. This slot does not establish a cross-field value ranking.',
+    [evidence('updates/AI/package/work/agents/common_metric_attack/POST_SOURCE_STATUS.txt',1,None),evidence('updates/AI/package/work/agents/common_metric_attack/PROOF_v3.txt',213,258)])
+gate(13, 'G-EPR-GLOBAL-VARIANCE-ORACLE', 'Acquire a general EPR counting interface beyond positive per-draw determinants', ['N190','N191','N192','N193'],
+    'Can an admitted general physical EPR circuit acquire polynomial relative variance or a valid global counting representation?',
+    'Prove a scalable phase/decomposition/conditional estimator or two-measure selector lift with all support, positivity, equality-sewing, loop-parity and bit costs explicit. Implement acquired oracles and compare exact tractable families. Neither positive determinant expectation nor block-ordered cactus common bases yields a general FPRAS.',
+    'The physical equality-sewing lift is explicit; specified raw/tuned gauges can have exponential relative second moments, identity gauges can have zero variance, and the cactus family is already exactly solvable. General sampling complexity remains open.',
+    [evidence('updates/AI/package/work/agents/epr_parity/DETERMINANT_LIFT_FINAL.txt',1,None),evidence('updates/AI/package/work/agents/epr_matroid_gluing/REPORT.txt',136,151)])
+gate(14, 'G-DETYPING-DOWNSTREAM-REPAIR', 'Audit repaired symmetric detyping through later compression stages', ['N183','N184','L02'],
+    'Does the precisely repaired predicate/parser and acquired wire gap compose with every later named use?',
+    'Pin intended symmetric sampler and valid padded serialization, reproduce the exact counterexample and affine value identity, verify imported L02 and every subsequent soundness/sampler register. Charge t, seed, answer, repetition and evaluation costs. Obtain source-author/specialist review before broader conclusions.',
+    'The scalar CHSH fixture contradicts scoped completeness; the repair and sigma>=1/4 are internally derived at the named stage. Final answer reduction and full167-page compression interfaces remain unreviewed; no MIPco=coRE refutation or global repair claimed.',
+    [evidence('updates/AI/package/work/agents/repetition_application/COUNTEREXAMPLE.txt',1,47),evidence('updates/AI/package/work/agents/repetition_application/REPAIRED_DETYPING_GAP.txt',1,71)])
+
 write_jsonl('CURRENT_CLAIM_STATUS.jsonl', list(ROWS.values()))
 write_jsonl('OPEN_PROOF_GATES.jsonl', GATES)
 
@@ -300,6 +349,7 @@ priority_lines = ['# Current frontier', '',
     'Read this only for coordination. Workers start with `00_START_HERE.txt` and retrieve the relevant topic/card, its current-status row, scoped material updates, blockers and decisive proof ranges. `01_CORE.txt` is optional.', '',
     'This is a curated decision view of existing evidence, not a new research run. Priority means a supported next decision; it predicts neither correctness nor breakthrough value. Archived restart instructions do not authorize continuation.', '',
     'Source card status is immutable. A later claim can refine an older gap while remaining unverified. Proof availability, reported internal checks, external correctness and historical priority are separate. Unlisted relations and incomplete proof coverage remain UNKNOWN.', '',
+    'Material advances AI: N138 → N179/N180 critical-window bounds; exact full-SEP law and finite-N rates open. N75 → N187 actual-KL cap obstruction; anomalous KLS gate retained. N175–178 geometry source closure/whole-matrix repair uses current POST_SOURCE_STATUS while retaining earlier freeze versions. No internal audit becomes external validation.', '',
     'Material corrections: N135 → N160 is a full-proof candidate sharp identical-unital noise threshold; the old sufficient theorem remains valid. N132 → N136 is a candidate coefficient refinement with the full newer packet absent; N133 → N137 is a candidate stronger sufficient preparation bound. N159 invalidates the AE cycle7 N65 actual-origin blocks/audits, not the N65 theorem. N165 corrects the unsupported all-characteristics Formanek impossibility gloss; N47/N129 remain conditional unreviewed candidates and the primary-source discrepancy remains open. N166 corrects the infinite-only entropy caveat by Seward Corollary 7.7; original family197 entropy and Bernoulli isomorphism remain unresolved.', '',
     '| Order | Decision gate | Reason to decide next |', '|---|---|---|']
 for g in GATES:

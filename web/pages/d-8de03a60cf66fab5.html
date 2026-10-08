@@ -1,0 +1,54 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AI: work/agents/epr_parity/scripts/parity_lift_check.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AI-sources.txt">Source map</a><h1>AI: work/agents/epr_parity/scripts/parity_lift_check.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Current geometry status=POST_SOURCE_STATUS+CLAIM_LEDGER; PROOF_v3 retains earlier pending-freeze language. Current EPR formulas=DETERMINANT_LIFT_FINAL and cactus REPORT Section9; initial conventions retained as historical failures. Current integrity authority=root MANIFEST, not historical nested lane manifest. Source status/priority not upgraded.</p><pre>from itertools import product
+from collections import defaultdict
+from fractions import Fraction
+import json
+from pathlib import Path
+
+class DSU:
+    def __init__(self,n): self.p=list(range(n));self.s=[0]*n;self.ok=True
+    def find(self,x):
+        if self.p[x]!=x:
+            y=self.p[x];r,q=self.find(y);self.s[x]^=q;self.p[x]=r
+        return self.p[x],self.s[x]
+    def add(self,x,y,p):
+        rx,sx=self.find(x);ry,sy=self.find(y)
+        if rx==ry:
+            if sx^sy!=p:self.ok=False
+        else:
+            self.p[rx]=ry;self.s[rx]=sx^sy^p
+    def components(self):return len({self.find(i)[0] for i in range(len(self.p))})
+
+def trace(n,edges,word,erase=False):
+    d=DSU(n*(len(edges)+1))
+    for k,((i,j),q) in enumerate(zip(edges,word)):
+        pre=lambda z:k*n+z
+        post=lambda z:(k+1)*n+z
+        for z in range(n):
+            if z not in (i,j):d.add(pre(z),post(z),0)
+        if q==&#x27;a&#x27;:
+            d.add(pre(i),post(i),0);d.add(pre(j),post(j),0)
+        elif q==&#x27;c&#x27;:
+            d.add(pre(i),pre(j),not erase);d.add(post(i),post(j),not erase)
+        elif q==&#x27;d&#x27;:
+            d.add(pre(i),post(j),not erase);d.add(pre(j),post(i),not erase)
+    for z in range(n):d.add(z,len(edges)*n+z,0)
+    loops=d.components()
+    return (2**loops if d.ok else 0),loops
+
+edges=[(0,1),(0,2),(1,2)]
+true=defaultdict(int); erased=defaultdict(int);bad=[]
+rows=[]
+for word in product(&#x27;acd&#x27;,repeat=3):
+    q,L=trace(3,edges,word);q0,L0=trace(3,edges,word,True)
+    assert L==L0
+    monomial=tuple(word.count(z) for z in &#x27;acd&#x27;)
+    true[monomial]+=q;erased[monomial]+=q0
+    if not q:bad.append(&#x27;&#x27;.join(word))
+    rows.append({&#x27;word&#x27;:&#x27;&#x27;.join(word),&#x27;loops&#x27;:L,&#x27;trace&#x27;:q,&#x27;erased_trace&#x27;:q0})
+coeff={&#x27;a&#x27;:Fraction(1),&#x27;c&#x27;:Fraction(1,4),&#x27;d&#x27;:Fraction(3,4)}
+Z=sum(Fraction(r[&#x27;trace&#x27;])*__import__(&#x27;functools&#x27;).reduce(lambda x,z:x*coeff[z],r[&#x27;word&#x27;],Fraction(1)) for r in rows)
+Z0=sum(Fraction(r[&#x27;erased_trace&#x27;])*__import__(&#x27;functools&#x27;).reduce(lambda x,z:x*coeff[z],r[&#x27;word&#x27;],Fraction(1)) for r in rows)
+result={&#x27;triangle_edges&#x27;:edges,&#x27;weights&#x27;:{k:str(v) for k,v in coeff.items()},&#x27;true_polynomial&#x27;:{str(k):v for k,v in true.items()},&#x27;erased_polynomial&#x27;:{str(k):v for k,v in erased.items()},&#x27;frustrated_words&#x27;:bad,&#x27;Z&#x27;:str(Z),&#x27;Z_erased&#x27;:str(Z0),&#x27;acceptance&#x27;:str(Z/Z0),&#x27;rows&#x27;:rows,&#x27;acceptance_100_triangles_float&#x27;:float(Z/Z0)**100}
+Path(&#x27;work/agents/epr_parity/results/triangle_projection.json&#x27;).write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+if __name__ == &quot;__main__&quot;:print(json.dumps(result,indent=2))
+</pre><p><a href="../assets/da725fae8c0e7c385349973dbdb2f9595830140b78e19f61ec36dbaf9d0bf84c.py">Exact original</a></p></html>

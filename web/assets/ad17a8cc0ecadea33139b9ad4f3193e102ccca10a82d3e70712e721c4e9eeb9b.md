@@ -1,0 +1,119 @@
+# Exact stochastic universality inside permanent reaction networks
+
+8 October 2026. Status: reconstructed research arguments, externally unreviewed, historical priority UNKNOWN. No independent subagents or proof assistant were used. Finite diagnostics do not prove the general statements. This record is append-only research capital, not an upgrade to certified science.
+
+## Provenance and scope
+
+Started with 00_START_HERE.txt and 01_CORE.txt at Astra commit bce491e2846a3bafcd561cd9769a13884640d5b1, then selectively read N76, N77, N130, AB routing and newer state metadata. N76's event-chain upper potential does not prove physical-time stability; N77 distinguishes deterministic classes from stochastic accessibility components. These motivated this investigation but are not premises of the theorem below. Official OpenAI release information and Chen--Liu's new common-bases FPRAS interface were checked; no whole-release audit or unqualified quantum sampler was claimed. The reaction results do NOT depend on an unreviewed OpenAI theorem.
+
+Primary dependencies:
+- Anderson, Cappelletti, Kim, Nguyen, Tier structure of strongly endotactic reaction networks, arXiv:1808.05328v2, Definitions 3.1--3.2, 5.2 and Theorem 5.5; established permanence theorem credited there to Gopalkrishnan--Miller--Shiu. https://arxiv.org/html/1808.05328v2
+- Czerwinski and Orlikowski, Reachability in Vector Addition Systems is Ackermann-complete, arXiv:2104.13866v4, Corollary 2. https://arxiv.org/html/2104.13866v4
+- Xu, On the Regulary of Reaction Systems (title as displayed), arXiv:2409.05340v2, Theorem 4.6, Remarks 4.8 and 4.16. https://arxiv.org/html/2409.05340v2
+- Frontier-only, not dependencies: https://openai.com/index/sharing-ai-progress-in-mathematics/ ; https://github.com/openai/math ; https://arxiv.org/html/2610.06724v1 .
+
+The first source already gives stochastic transient/explosive strongly endotactic networks. Do not claim the first deterministic/stochastic discrepancy. The candidate advance is arbitrary exact stochastic embeddings, bounded structural overhead, bounded-order complexity transfer and explicit lower-order mechanisms. Searches did not locate this exact wrapper, but sparse/irrelevant search results leave priority unresolved.
+
+## SU1: exact universal full-rank embedding
+
+Input: d>=1 species, m>=1 nonzero reactions y_r -> y'_r, positive rates k_r. Set R=max |y_r|_1 and P=max |y'_r|_1. Stochastic rates use falling factorials k_r (x)_[y_r]; deterministic rates use monomials k_r x^{y_r}.
+
+Construction: add C,D, lift every reaction to y_r+C+D -> y'_r+C+D with unchanged k_r. Put M=R+1 and U={0,Me_1,...,Me_d}. On
+
+V={v+2C,v+2D:v in U} union {3C}
+
+put one directed cycle, in order 2C,2D,MX_1+2C,MX_1+2D,...,MX_d+2C,MX_d+2D,3C, returning to 2C. All cycle rates may be any positive constants; code defaults to 1.
+
+Conclusion: d+2 species, m+2d+3 channels, full stoichiometric rank d+2, strong endotacticity, source order <=R+3, product order <=max(P+2,R+3). On Gamma={(x,1,1):x in N_0^d}, the complete original CTMC path law, holding times and explosion time are preserved exactly. The deterministic host is permanent on its entire positive orthant by the established theorem. The original deterministic ODE is deliberately not preserved.
+
+Proof of stochastic identity: every cycle source contains 2C,2D or3C and is disabled at C=D=1. Every lifted channel has marker multiplier (1)_[1]^2=1 and leaves both markers unchanged. Thus Gamma is closed and the restricted Q-matrix is identical to the input Q-matrix. Coupling the original clocks identifies paths through explosion and the cemetery state. No approximation, postselection, acquisition oracle or time rescaling occurs.
+
+Proof of rank: cycle differences span all differences of V. These include Me_i, 2(D-C), and C=3C-2C, hence span all d+2 coordinates.
+
+Proof of strong endotacticity, including ties: write w=(u,s,t), U_+=max(0,u_1,...,u_d). The support of U x {2C,2D} is H_0=M U_+ +2max(s,t). Every original lifted source scores <=R U_+ +s+t. If U_+>0 the gap is at least U_+ +|s-t|>0, so no original source is maximal. If U_+=0, all u_i<=0; an original source tying the global maximum must have s=t and u.y_r=0. Its reaction projection is u.y'_r<=0. The extra 3C vertex can only remove ties. A maximal cycle vertex has no outward edge because its target is in V. Since V affinely spans the whole space, any w!=0 has a nonempty proper maximizing subset in V. The directed cycle has an edge from that subset to its complement, giving a strictly inward maximal-source edge. This proves both conditions in every direction.
+
+Permanence means that a compact subset of the positive orthant eventually contains each positive trajectory; it is not a unique-equilibrium theorem. From encoded initial states with nonnegative payload and C=D=1, the displayed cycle produces X_1 from 2D, then sequentially X_{i+1} from MX_i+2D. Positive markers persist locally; variation of constants shows all payload species positive at every positive time. The interior permanence theorem then gives global existence and permanence for these initially boundary payload states too.
+
+Bit costs: M has logarithmic bit length; sparse added channels are O(d), with O(1) nonzero coordinates each. Dense output writes O(d(m+d)) coordinates. Input rational rates are retained exactly. Source order and product order must not be conflated.
+
+Restricted optimality: for RA -> (R+1)A, any completion of the C+D-lift using only channels disabled on the entire Gamma and source order <=R+2 fails endotacticity. Such a disabled source needs c>=2 or d>=2 and in direction (1,-1,-1) scores <=R-2. The original lifted source scores R-2 and has outward projection +1. Thus +3 is optimal only within this architecture, not among all encodings.
+
+## SU2/SU3: polynomial binary serialization and order-five hardness
+
+An arbitrary binary-encoded Petri net is first converted to source/product order <=2 with rates1. For payload X_i use bundles L_{i,k} representing 2^k units, with levels through the largest input/output coefficient's bit length. Canonical initial and final payloads are all at level0; large multiplicities remain binary encoded. Add one IDLE token and private transaction control species, with exactly one token among all controllers.
+
+Packing adjacent levels L,H uses IDLE+L->PACK and PACK+L->IDLE+H. Unpacking uses IDLE+H->UNPACK+L and UNPACK->IDLE+L. Every reaction has order <=2 on both sides. A stalled pack cannot falsely accept because it holds the sole controller outside IDLE.
+
+For each original transition, start IDLE->Q_0; consume each source-coefficient set-bit bundle through Q_j+L->Q_{j+1}; only AFTER ALL INPUTS are consumed produce each target bundle through Q_j->Q_{j+1}+L; return to IDLE. Controllers and steps are private, so transactions cannot interleave.
+
+Soundness: split any canonical-to-canonical run at IDLE. Completed packing/unpacking preserves decoded payload. Completed transition transactions have consumed the entire required input before producing output, so decode to enabled original transitions. Blocked transactions cannot reach another idle endpoint. Completeness: unpack, repack required input bits, execute each original transition, and finally unpack to the target. Output description length is polynomial in input bit length; the accepting path need not be short.
+
+Nonexplosion: exactly one controller is present. Each rate is constant or linear in one payload count; total rate <=K(1+N), and each jump adds at most one payload token. Linear birth comparison and bounded rates on finite boxes exclude explosion on valid initial states. Deadlocks are allowed. This serializer preserves reachability, NOT original rates or time.
+
+Apply SU1 with R,P<=2. The result has source/product order<=5, full rank, strong endotacticity, and a permanent deterministic ODE. The original serialized process is exactly retained on the marker fiber, hence nonexplosive. The composed polynomial reduction transfers the published Ackermann lower bound; the upper bound is ordinary Petri-net reachability. Thus exact reachability remains Ackermann-complete in this promised class, even with nonexplosive specified stochastic initial states and all constants1.
+
+This is DECIDABLE exact reachability with species count part of the input. It is NOT fixed-dimensional hardness, undecidability, or a constant-additive-error probability/sampling lower bound. Positive-probability paths may be extraordinarily long and rare.
+
+## SU4: strictly positive integer states at order seven
+
+For a serialized reaction y->y', put c_i=1_{y_i>0} and replace it by y+c->y'+c. Encode x as x+1 coordinatewise. Enabledness and change vectors then identify the graph exactly; all encoded populations stay >=1. Numerical rates change. Source/product orders <=2 become <=4, and SU1 yields order<=7. Every inactive controller has count1 and cannot enable a source requiring2 controllers; exactly one controller has a second token. Total-population-increasing reactions are control-only production steps, each with rate2. Their total rate is bounded, so finite-box arguments give nonexplosion. The --positive code path and all four complete finite fixtures verify this shifted graph on their tested ranges.
+
+## SU5: explicit order-five explosive benchmark
+
+All rates1:
+
+2A+C+D -> 3A+C+D,
+2C -> 2D -> 3A+2C -> 3A+2D -> 3C -> 2C.
+
+This has three species, six channels, full rank, source/product order<=5, and permanent deterministic dynamics. From (a0,1,1), a0>=2, it is exactly the pure birth process with rate n(n-1). T=sum_{n=a0}^infinity Exp(rate n(n-1)), independently, so E T=1/(a0-1) and T<infinity almost surely. At a0=2, Var(T)=pi^2/3-3; after reaching N the omitted mean lifetime is 1/(N-1).
+
+The conserved-marker alternative uses, for z=2C,2D, z->A+z and3A+z->z. At C=D=1 its ODE is a'=a^2+2-2a^3 with unique attracting positive root approximately1.1974293369. This mode is NOT full-rank.
+
+## MR1: separate low-order modular mechanism
+
+Base network 0->B at lambda, B->A at mu, A+2B->0 at kappa, all positive. Propensities lambda,mu*b,kappa*a*b(b-1). Source triangle (0,0),(0,1),(1,2) is strongly endotactic: the three maximizing-source cones imply respectively v<=0, u-v<=0, and -u-2v<=0; tied boundary rays have another strict edge. Rank2. Birth/convert/annihilate paths show irreducibility. Counts N_1+2N_2<=b0+N_0 with N_0 Poisson exclude explosion.
+
+Let P=b mod2, h=3mu/[2(2lambda+mu)], W=a-b/2+hP, delta=lambda(mu-lambda)/(2lambda+mu). Annihilation preserves W exactly, and
+
+GW=delta+mu(b-P)[3/2+(-1)^P h].
+
+For mu>lambda, exp(-theta W) has generator <=-c exp(-theta W) for small positive theta,c. Among even b the worst ratio is at b0: lambda(exp[-theta(h-1/2)]-1)<0. Among odd b it is at b1: lambda(exp[theta(h+1/2)]-1)+mu(exp[-theta(3/2-h)]-1), with derivative -delta at0. Localization and Ville give
+
+Pr(exists s: W_s<W0-d+(c/theta)s)<=exp(-theta d).
+
+Hence A grows at least linearly up to a finite random intercept. For fixed kappa>0, the exact speed is A_s/s->delta, B_s/s->0. Proof: B is dominated by immigration-death, giving sublinear B. Poisson time changes turn O(s) reaction counts into O(s) integrated propensities. From A_u>=v u eventually, integral_L^s B(B-1) <= C_2(s)/(kappa v L), so its time average vanishes as first s then L tend to infinity. Thus time average of B-P vanishes. GP=lambda(1-2P)+mu B(1-2P), with O(s) martingale bracket, gives odd occupation lambda/(2lambda+mu). Reaction rates then converge to N_1/s=mu lambda/(2lambda+mu), N_2/s=lambda^2/(2lambda+mu), proving the speed.
+
+For mu<lambda, take epsilon=-delta/[2(3lambda-mu)] and V=W+epsilon b^2+1+1/(8epsilon), which dominates1+a+epsilon b^2/2. The identity
+
+G b^2=lambda(2b+1)+mu b(1-2b)-4kappa a b(b-1)^2
+
+gives GV<=delta/2<0 at b0,1. Negative quadratic b drift controls large b; for the finitely many remaining b>=2, negative linear a drift controls large a. Foster therefore proves positive recurrence. Critical mu=lambda is UNCLASSIFIED; a speculative Lamperti threshold was considered but not proved.
+
+## MR2/MR3: exact clocks, explosion and deadline
+
+Translate every base complex by pA:
+pA->pA+B; pA+B->(p+1)A; (p+1)A+2B->pA.
+On the active class physical A=a+p>=p every rate is multiplied by q_p(a)=(a+p)_[p]. Hence t_p(s)=integral_0^s du/q_p(A_u) exactly. Strong endotacticity survives translation, and source order is p+3.
+
+For mu>lambda: p0 has linear escape; p1 is nonexplosive with log(physical A(t))/t->delta; p>=2 explodes almost surely and physical A(t)*[(p-1)delta(T-t)]^{1/(p-1)}->1. These follow from A_s~delta s in the clock integral. For mu<lambda all p are nonexplosive positive recurrent: infinite returns to a fixed state supply infinitely many independent holding times of fixed positive mean; pi_p is proportional to pi_0/q_p and is summable. For p>0 states physical A<p are absorbing and excluded.
+
+Base deterministic ODE: a'=mu b-kappa a b^2, b'=lambda-mu b-2kappa a b^2. Unique positive equilibrium (3mu^2/(kappa lambda),lambda/(3mu)); negative divergence, positive determinant/negative trace at the equilibrium, and permanence imply planar global attraction. Translation multiplies the ODE by a^p and preserves positive trajectories and attraction. Thus p2 gives a two-species, three-channel fifth-order almost-sure explosive stochastic system with globally attracting deterministic equilibrium.
+
+For lambda1,mu4, h1, q=9/10, f=q^(2a-b+2P), c=103/3645, theta=2log(10/9), the exact worst generator ratios are -1/10 and -103/3645. Starting at base(a,b)=(100,0), choose d50. With probability >=1-q^100, a_s>=49+(c/theta)s. For p2 physical A starts102 and
+
+T <= (theta/c)log(51/50)=0.1476695681543226...,
+probability >=0.9999734386011124....
+
+Repair: adding base A->0 at gamma*a gives for L=a+c0*b, c0>1, GL=c0 lambda-(c0-1)mu b-gamma a-(1+2c0)kappa a b(b-1). To transfer through catalytic acceleration, translate this repair too: p2 uses3A->2A, not untransformed slow death. Standard volume scaling changes the base criterion to mu>lambda V versus mu<lambda V; equality remains open. No contradiction with finite-time large-volume limits is claimed.
+
+## Evidence, artifacts and restart
+
+Executed extended checks: 56 compiler/rank fixtures; 2652 exact generator-state fixtures; 67145 finite direction fixtures; 3968 catalytic-factorization fixtures; 1281 parity fixtures; 56 deliberate structural mutations rejected. Four complete reachability fixtures had original state counts6,3,2,4 and serialized/positive-shift state counts149,76,59,24. A coefficient2^30+3 compiled to190 species248 serialized channels. Twenty-four seeded Gillespie paths at lambda1,mu4 had mean empirical speeds0.5113125,0.4934125,0.5052125 for kappa0.1,1,100, versus exact target0.5. These are finite diagnostics, not independent verification or proof of asymptotics. Single ODE fixture approached(48,1/12).
+
+Compact standard-library replay, stored with this record: 78 generator fixtures,5142 direction fixtures,3 exact ranks,1024 parity fixtures,4096 clock identities, and all four complete graph/positive-shift fixtures PASS. Run python replay_core.py after retrieving compiler.py and serialize.py. Compiler modes and serializer flags explicitly distinguish exact kinetics from reachability-only encoding.
+
+Full conversation artifact: astra_stochastic_universality_20261008.zip, SHA256 0f30ae59f37f9f4de5be0129436b828b2301eac927abbbbc03977dcbbea4a9a9. It contains expanded PROOFS.md, AUDIT.md, SOURCES.md, RESEARCH_STATE.json, original verification scripts/results, compilers, example outputs and integrity manifest. The compact repository record/code is independently resumable; the full archive's presence in a later runtime must be checked rather than assumed from this filename. No third-party manuscripts are included.
+
+Critical boundaries: generally NOT weakly reversible; no stochastic irreducibility on the whole host lattice; no generic deterministic unique equilibrium; no sampling hardness from exact reachability; no minimality of fifth-order explosion; no physical finite-fuel implementation or marker-leakage robustness; no independent worker or proof-assistant certification. Full rank is compatible with a closed integer fiber because disabled channels contribute to real stoichiometry but not to that fiber's accessible transitions.
+
+Preserved failures: source-order R+4 completion superseded by R+3 construction; conserved mode not fullrank; naive unary expansion of binary coefficients invalid for complexity; interleaving input consumption and output production invalid for serializer soundness; event-chain drift alone cannot control physical time; critical-line excursion conjecture unproved. Next decisive work: independent proof and priority review of SU1/SU3, formal source-support and controller-invariant verification, minimal explosion order3/4/5, and rigorous critical modular excursion analysis. No weakly reversible extension follows from the current construction.

@@ -1,0 +1,74 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AI: work/agents/epr_parity/scripts/pfaffian_lift_check.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AI-sources.txt">Source map</a><h1>AI: work/agents/epr_parity/scripts/pfaffian_lift_check.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Current geometry status=POST_SOURCE_STATUS+CLAIM_LEDGER; PROOF_v3 retains earlier pending-freeze language. Current EPR formulas=DETERMINANT_LIFT_FINAL and cactus REPORT Section9; initial conventions retained as historical failures. Current integrity authority=root MANIFEST, not historical nested lane manifest. Source status/priority not upgraded.</p><pre>from fractions import Fraction as F
+from itertools import product
+from pathlib import Path
+from collections import Counter
+import json
+from parity_lift_check import trace
+
+def pf(M):
+ A=[row.copy() for row in M];n=len(A);r=F(1)
+ assert n%2==0
+ for k in range(0,n,2):
+  p=next((j for j in range(k+1,n) if A[k][j]),None)
+  if p is None:return F(0)
+  if p!=k+1:
+   A[p],A[k+1]=A[k+1],A[p]
+   for row in A:row[p],row[k+1]=row[k+1],row[p]
+   r=-r
+  a=A[k][k+1];r*=a
+  for i in range(k+2,n):
+   for j in range(i+1,n):
+    A[i][j]+=(A[k+1][i]*A[k][j]-A[k][i]*A[k+1][j])/a
+    A[j][i]=-A[i][j]
+ return r
+
+def network(n,edges):
+ m=len(edges);wires=[]
+ for z in range(n):
+  occ=[(k,0 if z==i else 1) for k,(i,j) in enumerate(edges) if z in (i,j)]
+  if not occ:continue
+  for t,(k,port) in enumerate(occ):
+   kn,pn=occ[(t+1)%len(occ)]
+   wires.append((4*k+port,4*kn+pn+2))
+ return wires
+
+def mat(edges,wires,signs):
+ m=len(edges);A=[[F(0) for _ in range(4*m)] for _ in range(4*m)]
+ # a=4,c=4,d=1,b=9. Uncomplemented local Pfaffian matrix.
+ for k in range(m):
+  for i,j,x in [(0,1,F(1,2)),(2,3,F(1,2)),(0,2,F(3,2)),(1,3,F(3,2)),(0,3,F(1)),(1,2,F(1))]:
+   A[4*k+i][4*k+j]=x;A[4*k+j][4*k+i]=-x
+ for (i,j),s in zip(wires,signs):
+  if i&gt;j:i,j=j,i
+  A[i][j]+=s;A[j][i]-=s
+ return A
+
+def physical(n,edges):
+ coeff={&#x27;a&#x27;:F(4),&#x27;c&#x27;:F(4),&#x27;d&#x27;:F(1)};Z=F(0)
+ for word in product(&#x27;acd&#x27;,repeat=len(edges)):
+  t,_=trace(n,edges,word);w=F(t)
+  for q in word:w*=coeff[q]
+  Z+=w
+ return Z
+
+def main():
+ results=[]
+ for name,n,edges in [
+  (&#x27;one_gate&#x27;,2,[(0,1)]),
+  (&#x27;D2_topology&#x27;,2,[(0,1),(0,1)]),
+  (&#x27;triangle&#x27;,3,[(0,1),(0,2),(1,2)]),
+  (&#x27;four_cycle&#x27;,4,[(0,1),(1,2),(2,3),(3,0)]),
+  (&#x27;interleaved_bowtie&#x27;,5,[(0,1),(0,3),(0,2),(0,4),(1,2),(3,4)])]:
+  wires=network(n,edges);N=2**len(wires);S=F(0);S2=F(0);counts=Counter()
+  for signs in product([-1,1],repeat=len(wires)):
+   val=pf(mat(edges,wires,signs))**2
+   S+=val;S2+=val**2;counts[str(val)]+=1
+  mean=S/N;second=S2/N;Z=physical(n,edges);lift=F(4)**len(edges)*mean
+  assert Z==lift,(name,Z,lift)
+  r={&#x27;name&#x27;:name,&#x27;qubits&#x27;:n,&#x27;gates&#x27;:len(edges),&#x27;wires&#x27;:len(wires),&#x27;weights&#x27;:{&#x27;a&#x27;:&#x27;4&#x27;,&#x27;b&#x27;:&#x27;9&#x27;,&#x27;c&#x27;:&#x27;4&#x27;,&#x27;d&#x27;:&#x27;1&#x27;},&#x27;sign_assignments&#x27;:N,&#x27;physical_Z&#x27;:str(Z),&#x27;lift_Z&#x27;:str(lift),&#x27;mean_det&#x27;:str(mean),&#x27;second_moment_det&#x27;:str(second),&#x27;relative_second_moment&#x27;:str(second/mean**2),&#x27;relative_variance&#x27;:str(second/mean**2-1),&#x27;positive_support_fraction&#x27;:str(F(N-counts[&#x27;0&#x27;],N)),&#x27;det_distribution&#x27;:dict(sorted(counts.items(),key=lambda kv:F(kv[0])))}
+  results.append(r)
+  print(json.dumps({k:v for k,v in r.items() if k!=&#x27;det_distribution&#x27;}))
+ Path(&#x27;work/agents/epr_parity/results/pfaffian_lift.json&#x27;).write_text(json.dumps({&#x27;proof_status&#x27;:&#x27;Parseval coefficient argument; all listed finite cases exact-rational verified&#x27;,&#x27;results&#x27;:results},indent=2)+&#x27;\n&#x27;)
+
+if __name__ == &quot;__main__&quot;: main()
+</pre><p><a href="../assets/d941910410728cfa092625023ceb7f4505ba38161ed5b91de3d1a2641cbf1d4b.py">Exact original</a></p></html>

@@ -1,0 +1,56 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AI: work/agents/epr_parity/scripts/tuned_phase_check.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AI-sources.txt">Source map</a><h1>AI: work/agents/epr_parity/scripts/tuned_phase_check.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Current geometry status=POST_SOURCE_STATUS+CLAIM_LEDGER; PROOF_v3 retains earlier pending-freeze language. Current EPR formulas=DETERMINANT_LIFT_FINAL and cactus REPORT Section9; initial conventions retained as historical failures. Current integrity authority=root MANIFEST, not historical nested lane manifest. Source status/priority not upgraded.</p><pre>from itertools import product
+from pathlib import Path
+import numpy as np,json,math,time
+from pfaffian_lift_check import network
+
+# Positive unbiased Parseval estimator uses |Pf(K)|^2 for complex unit phases.
+def logpf2(A):
+ A=A.copy();N=len(A);value=0.
+ for k in range(0,N,2):
+  p=k+1+int(np.argmax(np.abs(A[k,k+1:])))
+  if abs(A[k,p])&lt;1e-14:return -np.inf
+  if p!=k+1:
+   A[[p,k+1],:]=A[[k+1,p],:];A[:,[p,k+1]]=A[:,[k+1,p]]
+  q=A[k,k+1];value+=2*math.log(abs(q))
+  b=A[k,k+2:];c=A[k+1,k+2:]
+  A[k+2:,k+2:]+=(np.outer(c,b)-np.outer(b,c))/q
+ return value
+
+def setup(n,edges,t,mode):
+ m=len(edges);w=network(n,edges);A=np.zeros((4*m,4*m),complex)
+ vals=[(0,1,math.sqrt(.75*t)),(2,3,math.sqrt(.75*t)),(0,2,math.sqrt(1+t)),(1,3,math.sqrt(1+t)),(0,3,math.sqrt(.25*t)),(1,2,math.sqrt(.25*t))]
+ for k in range(m):
+  for i,j,x in vals:A[4*k+i,4*k+j]=x;A[4*k+j,4*k+i]=-x
+ phases=np.ones(len(w),complex)
+ if mode==&#x27;one_i_per_worldline&#x27;:
+  pos=0
+  for z in range(n):
+   occ=sum(z in e for e in edges)
+   if occ:phases[pos]=1j;pos+=occ
+ elif mode==&#x27;distributed_i_per_worldline&#x27;:
+  pos=0
+  for z in range(n):
+   occ=sum(z in e for e in edges)
+   if occ:phases[pos:pos+occ]=np.exp(1j*math.pi/(2*occ));pos+=occ
+ return A,w,phases
+
+def simulate(n,edges,t,mode,count,seed):
+ A,w,phases=setup(n,edges,t,mode);rng=np.random.default_rng(seed);vals=[]
+ for rep in range(count):
+  B=A.copy();signs=rng.choice([-1,1],len(w))
+  for (i,j),phase,s in zip(w,phases,signs):
+   if i&gt;j:i,j=j,i
+   B[i,j]+=phase*s;B[j,i]-=phase*s
+  vals.append(logpf2(B))
+ top=max(vals);xs=np.exp(np.asarray(vals)-top);mean=xs.mean();r=(xs**2).mean()/mean**2
+ return {&#x27;mode&#x27;:mode,&#x27;samples&#x27;:count,&#x27;sample_mean&#x27;:float(mean*math.exp(top)),&#x27;sample_relative_second_moment&#x27;:float(r),&#x27;sample_zero_fraction&#x27;:float(np.mean(xs==0)),&#x27;status&#x27;:&#x27;finite diagnostic only; not a variance bound&#x27;}
+
+start=time.monotonic();results=[]
+for beta,M in [(0.,1),(1.,1),(1.,2),(1.,4),(1.,8),(3.,4),(3.,8),(6.,8)]:
+ edges=[(0,1),(0,2),(1,2)]*M
+ row={&#x27;qubits&#x27;:3,&#x27;gates&#x27;:len(edges),&#x27;beta&#x27;:beta,&#x27;cycles&#x27;:M,&#x27;t&#x27;:beta/M,&#x27;diagnostics&#x27;:[]}
+ for mode in [&#x27;one_i_per_worldline&#x27;,&#x27;distributed_i_per_worldline&#x27;]:
+  row[&#x27;diagnostics&#x27;].append(simulate(3,edges,beta/M,mode,300,20261008+M))
+ results.append(row);print(json.dumps(row),flush=True)
+Path(&#x27;work/agents/epr_parity/results/tuned_phase_diagnostics.json&#x27;).write_text(json.dumps({&#x27;results&#x27;:results,&#x27;seconds&#x27;:time.monotonic()-start,&#x27;status&#x27;:&#x27;finite floating diagnostics; no acquired polynomial variance or mixing theorem&#x27;},indent=2)+&#x27;\n&#x27;)
+</pre><p><a href="../assets/db364b5c2ce1cc364114cfae26e9fb990b3f4bee4b4d8102e7ea06b12974cf78.py">Exact original</a></p></html>

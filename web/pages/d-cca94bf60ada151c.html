@@ -1,0 +1,167 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AI: work/agents/learning_acquisition/scripts/check_acquisition.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AI-sources.txt">Source map</a><h1>AI: work/agents/learning_acquisition/scripts/check_acquisition.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=0. Current geometry status=POST_SOURCE_STATUS+CLAIM_LEDGER; PROOF_v3 retains earlier pending-freeze language. Current EPR formulas=DETERMINANT_LIFT_FINAL and cactus REPORT Section9; initial conventions retained as historical failures. Current integrity authority=root MANIFEST, not historical nested lane manifest. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Exact finite diagnostics for the adaptive-observable acquisition report.
+
+These checks verify fixtures and identities; the report supplies the proof.
+Run with Python 3 using only the standard library.
+&quot;&quot;&quot;
+from fractions import Fraction as F
+from itertools import product
+from pathlib import Path
+import json
+import math
+import random
+
+OUT = Path(__file__).resolve().parents[1] / &quot;results&quot; / &quot;exact_checks.json&quot;
+
+
+def parity(v):
+    return v.bit_count() % 2
+
+
+def law(L, s, lam):
+    return {(x, y): (1 + lam * (-1) ** (y ^ parity(s &amp; x))) / (2 ** (L + 1))
+            for x in range(2 ** L) for y in (0, 1)}
+
+
+def hmm_probability(L, s, lam, bits):
+    # States (i, a, z): current clock, parity before current bit, current bit.
+    # Two label states (L+1, 0, y) close each block and restart the source.
+    states = {(1, 0, 0): F(1, 2), (1, 0, 1): F(1, 2)}
+    for k, observed in enumerate(bits):
+        filtered = {q: p for q, p in states.items() if q[2] == observed}
+        if k == len(bits) - 1:
+            return sum(filtered.values(), F(0))
+        nxt = {}
+        for (i, a, z), prob in filtered.items():
+            if i &lt;= L:
+                updated = a ^ (((s &gt;&gt; (i - 1)) &amp; 1) * z)
+                if i &lt; L:
+                    choices = [((i + 1, updated, zp), F(1, 2)) for zp in (0, 1)]
+                else:
+                    choices = [((L + 1, 0, yp), (1 + lam * (-1) ** (yp ^ updated)) / 2)
+                               for yp in (0, 1)]
+            else:
+                choices = [((1, 0, zp), F(1, 2)) for zp in (0, 1)]
+            for q, p in choices:
+                nxt[q] = nxt.get(q, F(0)) + prob * p
+        states = nxt
+
+
+def solve(rows, labels, L):
+    pivots = {}
+    for row, label in zip(rows, labels):
+        while row:
+            i = row.bit_length() - 1
+            if i not in pivots:
+                pivots[i] = (row, label)
+                break
+            row ^= pivots[i][0]
+            label ^= pivots[i][1]
+        else:
+            if label != 0:
+                return None, len(pivots)
+    if len(pivots) &lt; L:
+        return None, len(pivots)
+    secret = 0
+    for i in sorted(pivots):
+        row, label = pivots[i]
+        bit = label ^ parity(row &amp; secret)
+        secret |= bit &lt;&lt; i
+    assert all(parity(row &amp; secret) == y for row, y in zip(rows, labels))
+    return secret, L
+
+
+counts = {&quot;hmm_word_probabilities&quot;: 0, &quot;pairwise_tv&quot;: 0, &quot;batch_gram_entries&quot;: 0,
+          &quot;acquired_feature_matrices&quot;: 0, &quot;raw_sample_trials&quot;: 0,
+          &quot;batch_decoder_coordinate_means&quot;: 0}
+for L in range(1, 5):
+    for lam in (F(1, 2), F(1)):
+        laws = [law(L, s, lam) for s in range(2 ** L)]
+        for s, dist in enumerate(laws):
+            assert sum(dist.values()) == 1
+            for (x, y), p in dist.items():
+                bits = tuple((x &gt;&gt; i) &amp; 1 for i in range(L)) + (y,)
+                assert hmm_probability(L, s, lam, bits) == p
+                counts[&quot;hmm_word_probabilities&quot;] += 1
+            for t in range(s):
+                tv = sum(abs(dist[z] - laws[t][z]) for z in dist) / 2
+                assert tv == lam / 2
+                counts[&quot;pairwise_tv&quot;] += 1
+            for cut in range(1, L + 1):
+                if not (s &amp; ((1 &lt;&lt; cut) - 1)):
+                    continue
+                # H = E [[1], [prefix parity]] [1, y_sign*suffix_parity].
+                H = [[F(0), F(0)], [F(0), F(0)]]
+                for (x, y), p in dist.items():
+                    a = (-1) ** parity((s &amp; ((1 &lt;&lt; cut) - 1)) &amp; x)
+                    b = (-1) ** (y ^ parity((s &gt;&gt; cut) &amp; (x &gt;&gt; cut)))
+                    for i, av in enumerate((1, a)):
+                        for j, bv in enumerate((1, b)):
+                            H[i][j] += p * av * bv
+                assert H == [[F(1), F(0)], [F(0), lam]]
+                counts[&quot;acquired_feature_matrices&quot;] += 1
+
+# Direct tensor enumeration checks the central identity without invoking its formula.
+for L in (1, 2, 3):
+    base = list(law(L, 0, F(1)))
+    for lam in (F(1, 2), F(1)):
+        for b in range(1, 4 if L &lt;= 2 else 3):
+            batch = list(product(base, repeat=b))
+            likelihoods = []
+            for s in range(2 ** L):
+                likelihoods.append([math.prod(1 + lam * (-1) ** (y ^ parity(s &amp; x))
+                                              for x, y in z) - 1 for z in batch])
+            variance = (1 + lam * lam) ** b - 1
+            for s in range(2 ** L):
+                for t in range(2 ** L):
+                    inner = sum(a * c for a, c in zip(likelihoods[s], likelihoods[t])) / len(batch)
+                    assert inner == (variance if s == t else 0)
+                    counts[&quot;batch_gram_entries&quot;] += 1
+
+batch_decoder_results = []
+for L in (1, 2):
+    b = L + 2
+    designs = list(product(range(2 ** L), repeat=b))
+    for s in range(2 ** L):
+        sums = [F(0) for _ in range(L)]
+        full = 0
+        for rows in designs:
+            labels = [parity(s &amp; row) for row in rows]
+            got, rank = solve(rows, labels, L)
+            if got is not None:
+                assert got == s
+                full += 1
+                for i in range(L):
+                    sums[i] += (-1) ** ((got &gt;&gt; i) &amp; 1)
+        c = F(full, len(designs))
+        assert c &gt;= F(3, 4)
+        for i in range(L):
+            mean = sums[i] / len(designs)
+            assert mean == c * (-1) ** ((s &gt;&gt; i) &amp; 1)
+            assert abs(mean) &gt;= F(3, 4)
+            counts[&quot;batch_decoder_coordinate_means&quot;] += 1
+    batch_decoder_results.append({&quot;L&quot;: L, &quot;b&quot;: b, &quot;full_rank_probability&quot;: str(c),
+                                  &quot;robust_tolerance&quot;: &quot;1/4&quot;})
+
+rng = random.Random(20261008)
+raw_results = []
+for L in (8, 16, 32, 64):
+    delta = F(1, 1024)
+    N = L + 10
+    successes = 0
+    for _ in range(100):
+        s = rng.randrange(2 ** L)
+        rows = [rng.randrange(2 ** L) for _ in range(N)]
+        labels = [parity(s &amp; row) for row in rows]
+        got, rank = solve(rows, labels, L)
+        assert got is None or got == s
+        successes += got == s
+        counts[&quot;raw_sample_trials&quot;] += 1
+    raw_results.append({&quot;L&quot;: L, &quot;N&quot;: N, &quot;successes_of_100&quot;: successes,
+                        &quot;theorem_failure_upper_bound&quot;: str(2 ** L * F(1, 2) ** N)})
+
+result = {&quot;status&quot;: &quot;PASS&quot;, &quot;counts&quot;: counts, &quot;raw_results&quot;: raw_results,
+          &quot;batch_decoder_results&quot;: batch_decoder_results,
+          &quot;scope&quot;: &quot;Exact finite fixtures plus seeded raw-data diagnostics; universal proofs are in REPORT.txt.&quot;}
+OUT.write_text(json.dumps(result, indent=2) + &quot;\n&quot;)
+print(json.dumps(result, indent=2))
+</pre><p><a href="../assets/ffc09ebec9276cb5fc85ce251486a39a9b656460aa2789de0a50c346f45c0f61.py">Exact original</a></p></html>

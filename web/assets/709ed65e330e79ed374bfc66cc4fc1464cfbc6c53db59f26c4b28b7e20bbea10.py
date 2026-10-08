@@ -1,0 +1,43 @@
+import json, math
+import numpy as np
+
+gx,gw=np.polynomial.legendre.leggauss(96)
+def integrate(fn,a,b):
+    points=sorted(set([a,b]+[x for x in [.005,.01,.025,.05,.065,.1,.2,.4,.8,1.5,3,5,8,10] if a<x<b]+[a+x for x in [.02,.05,.1,.2,.4,.8,1.5,3] if a<a+x<b]))
+    ans=0.0
+    for l,r in zip(points,points[1:]):
+        ts=(l+r)/2+(r-l)*gx/2
+        ans+=(r-l)/2*sum(w*fn(float(t)) for t,w in zip(ts,gw))
+    return ans
+
+def density_s(t):
+    if t <= 0:
+        return 0.0
+    if t < .065:
+        ans = 0.0
+        for k in range(30):
+            a = 2*k+1
+            z = a*a/(4*t)
+            if z > 745:
+                continue
+            ans += (a*a/(2*math.sqrt(math.pi)*t**2.5)-1/(math.sqrt(math.pi)*t**1.5))*math.exp(-z)
+        return ans
+    return 2*math.pi**2*sum((-1)**(n+1)*n*n*math.exp(-math.pi**2*n*n*t) for n in range(1,100))
+
+def K(t,c):
+    a=t/(c*c)
+    return (1+a/2)**(-1.5)*math.exp(1/(c*c*(8+4*a)))
+
+rows=[]
+for c in [.1,.2,.328113703057,.4,.5,.75,1,1.5,2]:
+    norm=integrate(lambda t:density_s(t)*K(t,c),0,10)
+    delta=integrate(lambda t:density_s(t)*K(t,c),c*c,max(10,c*c+5))
+    bound=min(1.0,2*(2/3)**1.5*math.exp(-math.pi**2*c*c+1/(12*c*c)))
+    rows.append(dict(c=c,mixture_normalization=norm,delta_upper=delta,elementary_bound=bound))
+checks=[]
+for u in [.1,.5,1,2,5]:
+    val=integrate(lambda t:density_s(t)*math.exp(-t*u*u),0,10)
+    checks.append(dict(u=u,laplace=val,exact=u/math.sinh(u),error=abs(val-u/math.sinh(u))))
+result=dict(status='finite numerical diagnostics, not proof',rows=rows,laplace_checks=checks)
+with open('work/agents/thermal_window/mixture_checks.json','w') as f: json.dump(result,f,indent=2)
+print(json.dumps(result,indent=2))

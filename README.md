@@ -1,6 +1,6 @@
 # Astra Research Knowledge
 
-244 scoped research cards, full supplied A–I research documents, J/K result summaries, and 18,437 scientific source pages. Claims retain their assumptions, dependencies, counterexamples and scientific status. Publication is not proof validation or model-weight training.
+264 scoped research cards, full supplied A–I research documents, J/K result summaries, and 18,624 scientific source pages. Claims retain their assumptions, dependencies, counterexamples and scientific status. Publication is not proof validation or model-weight training.
 
 Start with [00_START_HERE.txt](00_START_HERE.txt); [01_CORE.txt](01_CORE.txt) is optional broad orientation, then [result cards](web/llms.txt) and the [paged source library](web/library.txt). The bootstrap is 278 o200k tokens; broad scientific context is loaded on demand. The complete linked new J/K research notes and reproducibility packages were not supplied; their absence is explicit.
 
@@ -76,6 +76,12 @@ Added AG: N165–173 six-branch reconciliation: five missing branches merged, on
 
 
 Added AH: N174 pinned family197 branch followup: every finite-stage image is a full-shift-conjugate linear SFT, strict infinite intersection nonSFT; tail contains inflated fullshift from maximal residuallyfinite quotient. Exact amended source/correction preserved; no entropy/conjugacy resolution or external validation. [Sources](web/AH-sources.txt);[scopes](web/AH-reports.txt);[archive/availability](web/AH-package.txt).
+
+
+
+Added AI: N175–194: single Ricci>=0 R3 metric/AVR-v harmonic-dimension limsup candidate with countable transfer, full spectral inputs and whole-local-matrix repair; critical-bath fullSEP upper/lower; critical three-reaction recurrence/passage moments; symmetric detyping counterexample/conditional repair; hidden-metastable EP honesty and charged confidence sequences; actual-KL cap obstruction; adaptive SQ/raw parity boundary; positive EPR determinant lift/variance/cactus compiler/encoding obstructions. Original165-file evidence archive, corrections and omissions preserved. Internal audits/20 finite diagnostics source-reported; no intake scientific replay, external correctness/novelty or discovery-gain claim. [Sources](web/AI-sources.txt);[scopes](web/AI-reports.txt);[archive/availability](web/AI-package.txt).
+
+
 
 <!-- CURRENT DECISION LAYER -->
 Active frontier: frontier/PRIORITIES.md

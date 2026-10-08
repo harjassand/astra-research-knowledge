@@ -1,0 +1,74 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AI: work/agents/thermodynamic_inference/scripts/certificate.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AI-sources.txt">Source map</a><h1>AI: work/agents/thermodynamic_inference/scripts/certificate.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=0. Current geometry status=POST_SOURCE_STATUS+CLAIM_LEDGER; PROOF_v3 retains earlier pending-freeze language. Current EPR formulas=DETERMINANT_LIFT_FINAL and cactus REPORT Section9; initial conventions retained as historical failures. Current integrity authority=root MANIFEST, not historical nested lane manifest. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Anytime EP lower certificate for independent stationary blocks or known mixing.
+
+This implements the reconstructed theorem in REPORT.txt. It cannot verify its
+sampling, stationarity, reversal, or mixing premises from trajectory data.
+Standard-library only. Floating-point arithmetic is not a formal certificate.
+&quot;&quot;&quot;
+from collections import Counter
+from math import exp, log, sinh
+
+
+class ReversalCertificate:
+    def __init__(self, reverse, rate_grid, alpha=.05, clip=.5,
+                 betting_fractions=(.02,.1,.3,.5)):
+        if not (0&lt;alpha&lt;1 and clip&gt;0):
+            raise ValueError(&quot;Require alpha in (0,1) and positive clip&quot;)
+        if not rate_grid or any(s&lt;0 for s in rate_grid):
+            raise ValueError(&quot;Require a nonempty nonnegative rate grid&quot;)
+        if not betting_fractions or any(not 0&lt;e&lt;1 for e in betting_fractions):
+            raise ValueError(&quot;Require fractions strictly between zero and one&quot;)
+        self.reverse=reverse
+        self.grid=tuple(sorted(set(rate_grid)))
+        self.alpha=alpha
+        self.clip=clip
+        self.etas=tuple(betting_fractions)
+        self.counts=Counter()
+        self.log_capital=[[0. for _ in self.etas] for _ in self.grid]
+        self.n=0
+        self.duration=0.
+        self.lower=0.
+
+    def update(self, word, duration, mixing_tv=0.):
+        &quot;&quot;&quot;Consume one new block, with its actual physical duration.
+
+        mixing_tv=0 requires a fresh independent stationary block. Otherwise,
+        pass a supplied, valid upper bound on conditional start-state TV error.
+        Observed words must be hashable, and reverse must be an involution that
+        commutes with physical path reversal. Critics use previous blocks only.
+        &quot;&quot;&quot;
+        if duration&lt;=0 or not 0&lt;=mixing_tv&lt;=1:
+            raise ValueError(&quot;Invalid duration or TV bound&quot;)
+        rw=self.reverse(word)
+        if self.reverse(rw)!=word:
+            raise ValueError(&quot;Reversal must be an involution&quot;)
+        # Symmetric unit pseudocounts imply exact antisymmetry of this critic.
+        critic=log((self.counts[word]+1)/(self.counts[rw]+1))
+        critic=max(-self.clip,min(self.clip,critic))
+        score=critic+1-exp(-critic)
+        score_min=-self.clip+1-exp(self.clip)
+        score_range=2*(self.clip+sinh(self.clip))
+        drift_allowance=score_range*mixing_tv
+        for j,s in enumerate(self.grid):
+            denominator=duration*s+drift_allowance-score_min
+            ratio=(score-score_min)/denominator
+            for k,eta in enumerate(self.etas):
+                self.log_capital[j][k]+=log(1-eta+eta*ratio)
+            mx=max(self.log_capital[j])
+            wealth_log=mx+log(sum(exp(v-mx) for v in self.log_capital[j])/len(self.etas))
+            if wealth_log&gt;=log(1/self.alpha):
+                self.lower=max(self.lower,s)
+        # Updating counts after scoring is essential for predictable learning.
+        self.counts[word]+=1
+        self.n+=1
+        self.duration+=duration
+        return self.lower
+
+
+if __name__==&quot;__main__&quot;:
+    c=ReversalCertificate(lambda x:x[::-1], [i/100 for i in range(101)])
+    for i in range(1000):
+        # Merely an API demonstration; these manufactured words are not CTMC data.
+        c.update((0,1,2) if i%5 else (2,1,0), duration=1.)
+    print({&quot;blocks&quot;:c.n,&quot;example_lower&quot;:c.lower,
+           &quot;note&quot;:&quot;Manufactured API demo, no thermodynamic experiment&quot;})
+</pre><p><a href="../assets/0086c645882d5296233ed1f606afd9614ca6242ccf1aa41a32e7a685ff770974.py">Exact original</a></p></html>
