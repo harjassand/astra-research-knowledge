@@ -1,6 +1,6 @@
 # Astra Research Knowledge
 
-234 scoped research cards, full supplied A–I research documents, J/K result summaries, and 18,386 scientific source pages. Claims retain their assumptions, dependencies, counterexamples and scientific status. Publication is not proof validation or model-weight training.
+243 scoped research cards, full supplied A–I research documents, J/K result summaries, and 18,432 scientific source pages. Claims retain their assumptions, dependencies, counterexamples and scientific status. Publication is not proof validation or model-weight training.
 
 Start with [00_START_HERE.txt](00_START_HERE.txt); [01_CORE.txt](01_CORE.txt) is optional broad orientation, then [result cards](web/llms.txt) and the [paged source library](web/library.txt). The bootstrap is 278 o200k tokens; broad scientific context is loaded on demand. The complete linked new J/K research notes and reproducibility packages were not supplied; their absence is explicit.
 
@@ -68,6 +68,10 @@ Added AE: N148–159 actualmovinggap iidqutrit sharpQbranchlaw epsilon=n^-zeta f
 
 
 Added AF: N160–164 candidate sharp identical-unital thermal-noise boundary tr(TT^T)=1, positive three-local-axis TV/halftrace gap for fixed channel and nu=o(sqrtN), exact depthtwo above nu_star, common Gaussian-mixture/one-sided-tail mechanism, independently derived costly filter witness. Full supplied proof/code/log ZIP exact; strengthens N135 sufficient depolarizing threshold without invalidating old theorem. Diagnostics source-reported, no intake scientific replay; external correctness/novelty UNKNOWN. [Sources](web/AF-sources.txt);[scopes](web/AF-reports.txt);[archive/availability](web/AF-package.txt).
+
+
+
+Added AG: N165–173 six-branch reconciliation: five missing branches merged, one already incorporated; exact proof/checker/history snapshots retained. Corrects unsupported all-char Formanek impossibility and Seward infinite-only caveat; conditional Haar/rank and GxV zeroPOS, support/sparse entropy/coding/microstate/Wold-tail obstructions, exact stopped-path/first-passage identities, all-d uniform logvaluation absorber conditional on OA149. Original entropy/conjugacy and external proof/priority gates remain open; no intake scientific replay. [Sources](web/AG-sources.txt);[scopes](web/AG-reports.txt);[archive/availability](web/AG-package.txt).
 
 <!-- CURRENT DECISION LAYER -->
 Active frontier: frontier/PRIORITIES.md

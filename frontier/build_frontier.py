@@ -71,6 +71,15 @@ def write_jsonl(name, rows):
 # These are identified proof-bearing documents. Presence does not assert full coverage,
 # validity, independent reconstruction, or that every cited external premise is available.
 PROOF_TEXT = {
+    'N165': [('updates/AG/package/state/2026-10-08-bowen-bernoulli-direct-finiteness/CORRECTED_AUDIT.md', 94, 110)],
+    'N166': [('updates/AG/package/state/2026-10-08-bowen-bernoulli-direct-finiteness/CORRECTED_AUDIT.md', 11, 81)],
+    'N167': [('updates/AG/package/state/2026-10-08-bowen-bernoulli-direct-finiteness/CORRECTED_AUDIT.md', 83, 93)],
+    'N168': [('updates/AG/package/state/2026-10-08-family197-support-expansion-entropy.md', 13, 52)],
+    'N169': [('updates/AG/package/state/2026-10-08-family197-coding-and-model-audits/RESEARCH.md', 11, 83)],
+    'N170': [('updates/AG/package/state/2026-10-08-family197-infinite-tail/RESEARCH.md', 16, 73)],
+    'N171': [('updates/AG/package/state/2026-10-08-reversible-singular-explosion/RESEARCH_STATE.md', 11, 25)],
+    'N172': [('updates/AG/package/state/2026-10-08-reversible-singular-explosion/RESEARCH_STATE.md', 27, 90)],
+    'N173': [('updates/AG/package/state/2026-10-08-log-valuation-permanence/PROOF_AND_AUDIT.md', 22, 165)],
     'N160': [('updates/AF/package/THEOREM_AND_PROOF.md', 9, 79), ('updates/AF/package/THEOREM_AND_PROOF.md', 121, 324)],
     'N161': [('updates/AF/package/THEOREM_AND_PROOF.md', 79, 324)],
     'N162': [('updates/AF/package/THEOREM_AND_PROOF.md', 325, 363)],
@@ -182,17 +191,19 @@ relation('N136', 'depends_on', 'N137',
     'The candidate finite-time sharp law is asserted for t>=the N137 sufficient T_sep in the same ideal bath model.',
     [card_ev('N136', 5, 5)])
 
-# State records are not card-version upgrades. Preserve their claimed source review depth.
-state_ev = [evidence('state/2026-10-08-full-proofs-and-audits.md', 10, 22),
-            evidence('state/2026-10-08-formanek-frontier/RESEARCH_STATE.md', 7, 12)]
+# The focused branch correction supersedes the earlier unsupported impossibility gloss.
+# It neither refutes BLR's printed claim nor certifies the original hyperbolic candidate.
+state_ev = [evidence('state/2026-10-08-bowen-bernoulli-direct-finiteness/CORRECTED_AUDIT.md', 94, 110),
+            evidence('state/2026-10-08-formanek-frontier/RESEARCH_STATE.md', 1, 2)]
 for short in ('N47', 'N129'):
-    ROWS[cid(short)]['material_updates'].append({
-        'target': 'state:Formanek-hyperbolic-direct-finiteness-obstruction', 'relation': 'invalidates_scoped_conclusion',
-        'target_component': 'torsion-free word-hyperbolic group with F2 group-ring direct-finiteness failure',
-        'whole_claim_invalidated': False,
-        'scope': 'Current state explicitly withdraws this conjunction by the all-field Formanek trivial-idempotent theorem as recorded by Bartels-Lueck-Reich. At least one construction/preservation premise must fail. It does not identify the failed premise, refute torsion-only/nonhyperbolic targets, or refute separate nonsofic constructions.',
-        'relation_status': 'state_reported_primary_literature_obstruction; no new external verification in this restructure',
-        'evidence': state_ev})
+    relation('N165', 'supersedes', short,
+        'Focused source-reported audit withdraws the earlier all-characteristics Formanek/Burger-Valette impossibility gloss as unsupported by cited originals. Formanek uses characteristic zero; Burger-Valette characteristic-p lemma constrains trace only; BLR prints a stronger claim whose proof scope needs specialist resolution. The original hyperbolic group-ring route remains conditional and unreviewed; neither candidate validity nor impossibility is established, and separate nonsofic constructions are not adjudicated.',
+        state_ev, component='earlier frontier/state all-characteristics impossibility gloss; original candidate not refuted')
+for short in ('N169','N170'):
+    relation('N166', 'supersedes', short,
+        'Corrected Seward Corollary 7.7 removes the historical source-branch infinite-only-positive-entropy caveat: h_sup=0 excludes every positive free ergodic Rokhlin entropy including infinite. Core algebraic/coding/tail deductions are retained; original G entropy and measurable conjugacy remain unresolved.',
+        [evidence('state/2026-10-08-bowen-bernoulli-direct-finiteness/CORRECTED_AUDIT.md',65,81)],
+        component='historical infinite-only entropy caveat; core deduction retained')
 
 # Automatic proof-dependency propagation is deliberately absent. Every existing
 # blocker is only a contrasting retrieval route; outdated clauses can coexist with
@@ -224,14 +235,14 @@ gate(1, 'G-THERMAL-PROOF-AVAILABILITY', 'Acquire and audit the newer sharp therm
     'Obtain immutable full proof/certificates; map the stated model, regularization and time normalization to each claimed step; independently reconstruct the load-bearing bound or record a specific failure. Acquisition alone closes only availability, not correctness.',
     'The newer summary materially changes two old frontier gaps, but its linked full packet is unavailable. Resolve the evidence boundary before using it as a premise.',
     [evidence('updates/AC/package/SOURCE_AVAILABILITY.json',1,5),card_ev('N136',5,7),card_ev('N137',5,8)])
-gate(2, 'G-GROUP-RING-PREMISE-FAILURE', 'Locate the failed hyperbolic group-ring premise', ['N47','N129','N65'],
-    'Which exact premise or preservation step of the hyperbolic direct-finiteness route fails under the Formanek obstruction?',
-    'Pin the primary all-field theorem scope and identify an explicit failing construction, torsion, hyperbolicity, or group-ring-witness step. Do not keep trying to validate the inconsistent conjunction; do not infer a refutation of nonsoficity.',
-    'A documented withdrawal prevents substantial effort on a target the current source review excludes; the actual failing interface remains unidentified.',state_ev)
-gate(3, 'G-PERMANENCE-GLOBAL-COMPOSITION', 'Close global permanence geometry and viability', ['N33','N142','N145'],
+gate(2, 'G-GROUP-RING-PREMISE-FAILURE', 'Resolve the positive-characteristic source discrepancy and candidate geometry', ['N47','N129','N65','N165'],
+    'Is there a valid positive-characteristic torsion-free hyperbolic idempotent theorem, or an identified candidate geometric/witness failure independent of the disputed attribution?',
+    'Obtain a primary statement and proof with exact characteristic and group hypotheses, specialist review or erratum; separately attack the uniform graph, disk/Dehn, torsion-free and witness preservation interfaces. Neither the printed-citation mismatch nor characteristic-zero/trace-only results imply a positive-characteristic impossibility.',
+    'The corrected branch audit withdraws the earlier unsupported no-go gloss. Preserve conditional candidates and concrete proof obligations without certifying either side.',state_ev)
+gate(3, 'G-PERMANENCE-GLOBAL-COMPOSITION', 'Close global permanence geometry and viability', ['N33','N142','N145','N173'],
     'Can conditional one-scale entry be composed into the original measurable-rate class-common absorber theorem?',
     'Construct the usable scale/class representative; prove positive-box or plateau viability from the vector field rather than assume it; establish measurable-rate existence/continuation; compose global class-common absorption with all source interfaces and costs explicit.',
-    'The compiled conditional theorem lists these assumptions explicitly. This isolates the missing global theorem rather than treating kernel success as permanence.',
+    'The older conditional composition gate persists. N173 supplies a full source-conditioned global proof for its strict uniform log-order/inwardness contract; it is not an unconditional solution for every older kinetic class. Audit its inherited affine lemma and exact regularity/viability steps separately.',
     [evidence('updates/AD/package/checkpoint/evidence/c12_permanence_compose/REPORT.md',26,45),evidence('updates/AD/package/checkpoint/ACTIVE_GATES.json',7,17)])
 gate(4, 'G-QUTRIT-ULTRAFINE-AND-COST', 'Resolve an admitted qutrit extension or total-cost bound', ['N148','N149'],
     'What changes at zeta=1/ultrafine precision, vanishing splitting, general collisions, or charged total/classical memory?',
@@ -270,6 +281,12 @@ gate(10, 'G-UNITAL-NOISE-BOUNDED-SCORES', 'Make the three-axis unital-noise sepa
     'Full AF proof/code available; source-reported diagnostics do not emit bounded scores or a useful finite-N threshold. The independent filter has exp[-t sqrt(N)/2+O(1)] herald cost and does not give unfiltered distance by itself.',
     [evidence('updates/AF/package/THEOREM_AND_PROOF.md',317,324),evidence('updates/AF/package/THEOREM_AND_PROOF.md',405,423),evidence('updates/AF/package/RESEARCH_STATE.md',73,81)])
 
+gate(11, 'G-ORIGINAL-FAMILY197-ENTROPY', 'Decide original family-197 entropy before Bernoulli classification', ['N166','N167','N168','N169','N170'],
+    'Can the original family-197 group be proved to have h_sup=0 or >0 under an independently checked witness?',
+    'Acquire actual witness/group-word operations and a rank-density-to-zero sequence, or construct an actual arbitrarily-small-entropy generating measurable partition, or a nonsofic-applicable positive entropy lower bound. State the separate measurable conjugacy/invariant gate. Product G times Thompson V does not answer original G.',
+    'Branches add concrete support, coding, finite-model and infinite-tail obstructions but do not decide original entropy. Corrected Corollary 7.7 removes the spurious infinite-only loophole; equality of all Bernoulli entropy still does not imply isomorphism.',
+    [evidence('state/2026-10-08-bowen-bernoulli-direct-finiteness/CORRECTED_AUDIT.md',39,81),evidence('state/2026-10-08-family197-infinite-tail/RESEARCH.md',84,94)])
+
 write_jsonl('CURRENT_CLAIM_STATUS.jsonl', list(ROWS.values()))
 write_jsonl('OPEN_PROOF_GATES.jsonl', GATES)
 
@@ -277,7 +294,7 @@ priority_lines = ['# Current frontier', '',
     'Read this only for coordination. Workers start with `00_START_HERE.txt` and retrieve the relevant topic/card, its current-status row, scoped material updates, blockers and decisive proof ranges. `01_CORE.txt` is optional.', '',
     'This is a curated decision view of existing evidence, not a new research run. Priority means a supported next decision; it predicts neither correctness nor breakthrough value. Archived restart instructions do not authorize continuation.', '',
     'Source card status is immutable. A later claim can refine an older gap while remaining unverified. Proof availability, reported internal checks, external correctness and historical priority are separate. Unlisted relations and incomplete proof coverage remain UNKNOWN.', '',
-    'Material corrections: N135 → N160 is a full-proof candidate sharp identical-unital noise threshold; the old sufficient theorem remains valid. N132 → N136 is a candidate coefficient refinement with the full newer packet absent; N133 → N137 is a candidate stronger sufficient preparation bound. N159 invalidates the AE cycle7 N65 actual-origin blocks/audits, not the N65 theorem. Current state withdraws N47/N129’s torsion-free hyperbolic group-ring conclusion under Formanek; it does not refute separate nonsofic candidates.', '',
+    'Material corrections: N135 → N160 is a full-proof candidate sharp identical-unital noise threshold; the old sufficient theorem remains valid. N132 → N136 is a candidate coefficient refinement with the full newer packet absent; N133 → N137 is a candidate stronger sufficient preparation bound. N159 invalidates the AE cycle7 N65 actual-origin blocks/audits, not the N65 theorem. N165 corrects the unsupported all-characteristics Formanek impossibility gloss; N47/N129 remain conditional unreviewed candidates and the primary-source discrepancy remains open. N166 corrects the infinite-only entropy caveat by Seward Corollary 7.7; original family197 entropy and Bernoulli isomorphism remain unresolved.', '',
     '| Order | Decision gate | Reason to decide next |', '|---|---|---|']
 for g in GATES:
     priority_lines.append(f'| {g["priority_order"]} | `{g["gate_id"]}` — {g["title"]} | {g["priority_rationale"]} |')
