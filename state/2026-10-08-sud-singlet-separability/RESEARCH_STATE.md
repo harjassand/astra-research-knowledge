@@ -39,6 +39,8 @@ Their central class-character transforms F(g)=Tr rho g^tensor k satisfy the **sa
     F_tar(exp(iH/sqrt(k))) -> exp[-(1-alpha)tr(H²)/(2d)],
     F_sep(exp(iH/sqrt(k))) -> exp[-(1-alpha)tr(H²)/(2d)].
 
+**All-alpha local-saddle scope repair (2026-10-08 audit):** The global off-center Gaussian envelope in the NEXT paragraph uses k<=N/2 and is needed ONLY for the below-threshold separable upper direction. The LOCAL expansion of the target group-integral ratio required in the bounded-witness lower direction is valid for EVERY alpha in [0,1]. Indeed for g=exp(iH/sqrt(k)), ||H||<=R, and u near the SU(d) center Z, one has two cases. If k<=N/2 then |tr u|^(N-k) localizes u to O(N^-1/2) around Z. If k>N/2, then |tr(g u)|^k localizes u to O(N^-1/2) around g^-1 Z, itself O(N^-1/2) from Z. In either case the combined modulus obeys an exp[-c N dist(u,Z)^2+C_(d,R)] domination (from the compact trace-deficit bound and the triangle inequality). This justifies u=z exp(iX/sqrt(N)), dominated Gaussian integration, and the same local limit exp[-(1-alpha)tr H²/(2d)] for all alpha, including alpha=1. DO NOT apply the k<=N/2 global envelope in the high-alpha branch. Independent Schur-weight exact finite evaluations for d=2..4 and alpha=.6,.75,.8 track the all-alpha Casimir-Laplace prediction, but do not prove the limit.
+
 For target, use the exact group-integral ratio
 
     F_tar(g)=Integral_G [tr(g u)]^k [tr u]^(N-k) du
