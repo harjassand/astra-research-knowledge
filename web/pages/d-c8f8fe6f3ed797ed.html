@@ -1,0 +1,209 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AM: verify_obstruction.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AM-sources.txt">Source map</a><h1>AM: verify_obstruction.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=0. Original authored ZIP retained exactly; selected17 repository blobs checked at pinned d20c4b0, not a complete repository audit. Full authored proof/script/results/source scopes available; external primary full-paper snapshots absent. Two-sided rank separation can coexist with EB squares, and it does not settle composition conjectures. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Finite checks for the Gaussian PPT cone obstruction.
+
+These checks verify conventions, exact rejected witnesses, and finite channel
+certificates. They do not certify a global Schmidt-rank optimization or the
+large-dimension existence theorem. The all-dimension argument is in PROOF.md.
+Dependencies: numpy, sympy. Run from any directory with Python 3.
+&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import hashlib
+import json
+import math
+import platform
+import sys
+from pathlib import Path
+
+import numpy as np
+import sympy as sp
+
+
+def pt(x, d):
+    return x.reshape(d, d, d, d).transpose(0, 3, 2, 1).reshape(d*d, d*d)
+
+
+def partial_a(x, d):
+    return np.einsum(&quot;iaib-&gt;ab&quot;, x.reshape(d, d, d, d))
+
+
+def partial_b(x, d):
+    return np.einsum(&quot;iaj a-&gt;ij&quot;.replace(&quot; &quot;, &quot;&quot;), x.reshape(d, d, d, d))
+
+
+def interaction_projection(x, d):
+    ident = np.eye(d)
+    return (
+        x - np.kron(partial_b(x, d), ident)/d
+        - np.kron(ident, partial_a(x, d))/d
+        + np.trace(x)*np.eye(d*d)/(d*d)
+    )
+
+
+def gue(dimension, rng):
+    # Standard real Gaussian in Hermitian matrices for Tr(XY) inner product.
+    raw = rng.normal(size=(dimension, dimension)) + 1j*rng.normal(size=(dimension, dimension))
+    return (raw + raw.conj().T)/2
+
+
+def choi_to_superoperator(x, d):
+    return x.reshape(d, d, d, d).transpose(1, 3, 0, 2).reshape(d*d, d*d)
+
+
+def superoperator_to_choi(x, d):
+    return x.reshape(d, d, d, d).transpose(2, 0, 3, 1).reshape(d*d, d*d)
+
+
+def exact_symplectic_rejection(d=6, k=2):
+    half = d//2
+    omega = sp.zeros(d)
+    for i in range(half):
+        omega[i, half+i] = 1
+        omega[half+i, i] = -1
+    flip = sp.zeros(d*d)
+    for i in range(d):
+        for j in range(d):
+            flip[j*d+i, i*d+j] = 1
+    maximally_entangled = sp.zeros(d*d, 1)
+    for i in range(d):
+        maximally_entangled[i*d+i] = 1
+    # dP is the unnormalized maximally entangled projector.
+    d_p = maximally_entangled*maximally_entangled.T
+    local = sp.kronecker_product(sp.eye(d), omega)
+    twisted_flip = local*flip*local.T
+    w = k*sp.eye(d*d) - d_p - k*twisted_flip
+    w_pt = sp.zeros(d*d)
+    for i in range(d):
+        for a in range(d):
+            for j in range(d):
+                for b in range(d):
+                    w_pt[i*d+a, j*d+b] = w[i*d+b, j*d+a]
+    # A Bell vector on a symplectic pair has Schmidt rank two.
+    v = sp.zeros(d*d, 1)
+    v[half] = 1/sp.sqrt(2)
+    v[half*d] = -1/sp.sqrt(2)
+    value = sp.simplify((v.T*w_pt*v)[0])
+    original = sp.simplify((v.T*w*v)[0])
+    assert value == 1-k
+    assert original == 0
+    return {&quot;dimension&quot;: d, &quot;k&quot;: k, &quot;schmidt_rank&quot;: 2,
+            &quot;original_expectation&quot;: str(original), &quot;partial_transpose_expectation&quot;: str(value),
+            &quot;conclusion&quot;: &quot;The k-Breuer-Hall witness fails even 2-copositivity for k&gt;=2.&quot;}
+
+
+def convention_checks(rng):
+    d = 3
+    x = gue(d*d, rng)
+    y = gue(d*d, rng)
+    g = interaction_projection(x, d)
+    tolerance = 1e-11
+    checks = {
+        &quot;partial_transpose_involution&quot;: np.linalg.norm(pt(pt(x, d), d)-x),
+        &quot;partial_transpose_hs_adjoint&quot;: abs(np.trace(x@pt(y, d))-np.trace(pt(x, d)@y)),
+        &quot;interaction_projection_idempotent&quot;: np.linalg.norm(interaction_projection(g, d)-g),
+        &quot;projection_hs_orthogonal&quot;: abs(np.trace(g@(x-g))),
+        &quot;zero_input_partial_trace&quot;: np.linalg.norm(partial_b(g, d)),
+        &quot;zero_output_partial_trace&quot;: np.linalg.norm(partial_a(g, d)),
+        &quot;projection_commutes_with_pt&quot;: np.linalg.norm(interaction_projection(pt(x, d), d)-pt(g, d)),
+        &quot;reshuffle_inverse&quot;: np.linalg.norm(superoperator_to_choi(choi_to_superoperator(x,d),d)-x),
+        &quot;reshuffle_hs_isometry&quot;: abs(np.linalg.norm(choi_to_superoperator(x,d))-np.linalg.norm(x)),
+    }
+    assert all(value &lt; tolerance for value in checks.values()), checks
+    return {key: float(value) for key, value in checks.items()}
+
+
+def finite_channel_check(d, seed):
+    rng = np.random.default_rng(seed)
+    g = interaction_projection(gue(d*d, rng), d)
+    ident = np.eye(d*d)
+    rho = (ident+g/(9*d))/(d*d)
+    choi = d*rho
+    delta = choi_to_superoperator(ident/d, d)
+    e = choi_to_superoperator(g, d)/(9*d*d)
+    channel = delta+e
+    square = superoperator_to_choi(channel@channel, d)
+    square_perturbation = np.linalg.norm(square-ident/d)
+    e_operator = np.linalg.norm(e, ord=2)
+    e_frobenius = np.linalg.norm(e)
+    norm_bound = e_operator*e_frobenius
+    diagnostics = {
+        &quot;dimension&quot;: d,
+        &quot;seed&quot;: seed,
+        &quot;rho_min_eigenvalue&quot;: float(np.linalg.eigvalsh(rho).min()),
+        &quot;rho_pt_min_eigenvalue&quot;: float(np.linalg.eigvalsh(pt(rho, d)).min()),
+        &quot;trace_error&quot;: float(abs(np.trace(rho)-1)),
+        &quot;tp_error&quot;: float(np.linalg.norm(partial_b(choi,d)-np.eye(d))),
+        &quot;unital_error&quot;: float(np.linalg.norm(partial_a(choi,d)-np.eye(d))),
+        &quot;delta_e_error&quot;: float(np.linalg.norm(delta@e)),
+        &quot;e_delta_error&quot;: float(np.linalg.norm(e@delta)),
+        &quot;square_choi_error&quot;: float(np.linalg.norm(square-(ident/d+superoperator_to_choi(e@e,d)))),
+        &quot;square_choi_hs_distance&quot;: float(square_perturbation),
+        &quot;upper_bound_e_operator_times_frobenius&quot;: float(norm_bound),
+        &quot;separable_ball_radius&quot;: 1/d,
+        &quot;square_has_separable_ball_certificate&quot;: bool(norm_bound &lt; 1/d),
+        &quot;gaussian_hs_squared&quot;: float(np.linalg.norm(g)**2),
+        &quot;gaussian_hs_squared_expectation&quot;: (d*d-1)**2,
+        &quot;global_low_schmidt_certificate&quot;: &quot;NOT COMPUTED&quot;,
+    }
+    assert diagnostics[&quot;rho_min_eigenvalue&quot;] &gt; 0
+    assert diagnostics[&quot;rho_pt_min_eigenvalue&quot;] &gt; 0
+    for key in (&quot;trace_error&quot;, &quot;tp_error&quot;, &quot;unital_error&quot;, &quot;delta_e_error&quot;, &quot;e_delta_error&quot;, &quot;square_choi_error&quot;):
+        assert diagnostics[key] &lt; 1e-10, (key, diagnostics)
+    assert square_perturbation &lt;= norm_bound + 1e-10
+    assert norm_bound &lt; 1/d
+    return diagnostics
+
+
+def constant_checks():
+    # Integer arithmetic validates the sufficient dimension fraction.
+    lhs = 5*48**2*36**2
+    rhs = 2**24
+    assert lhs &lt; rhs
+    # Chaining coefficients: log7&lt;2, log2&lt;.7, sqrt5&lt;9/4, sqrt3&lt;7/4.
+    coefficient = sp.Rational(3) + 6*(sp.Rational(9,4)+2*sp.Rational(7,4))
+    tail_coefficient = sp.Rational(3,2)+6
+    assert coefficient &lt; 40 and tail_coefficient &lt; 8
+    # Lower chi-square tail: log2 &gt;= 2/3 and D&gt;=16.
+    lower_exponent = sp.Rational(225,512)*sp.Rational(2,3)-sp.Rational(1,4)
+    assert lower_exponent &gt;= sp.Rational(1,32)
+    assert sp.Rational(32,81) &lt; 1
+    # Quantitative separation from the normalized DSP cone.
+    separation = (sp.Rational(1,18)-sp.Rational(1,36))/8/2
+    assert separation == sp.Rational(1,576)
+    # Finite orbit extension constants.
+    orbit_leading = 48*math.sqrt(5/(2**26))+8/math.sqrt(2**20)
+    assert orbit_leading &lt; 1/36
+    return {
+        &quot;dimension_fraction&quot;: &quot;2^-24&quot;,
+        &quot;constant_integer_lhs&quot;: lhs,
+        &quot;constant_integer_rhs&quot;: rhs,
+        &quot;chaining_coefficient_upper&quot;: str(coefficient),
+        &quot;chaining_tail_coefficient_upper&quot;: str(tail_coefficient),
+        &quot;chi_square_exponent_lower&quot;: str(lower_exponent),
+        &quot;half_trace_distance_lower&quot;: str(separation),
+        &quot;square_ball_margin&quot;: str(1-sp.Rational(32,81)),
+        &quot;finite_orbit_leading_bound&quot;: orbit_leading,
+    }
+
+
+def main():
+    result = {
+        &quot;scope&quot;: &quot;Exact algebra and finite numerical convention/channel checks; no finite-sample proof of the all-dimension theorem.&quot;,
+        &quot;environment&quot;: {&quot;python&quot;: sys.version, &quot;numpy&quot;: np.__version__, &quot;sympy&quot;: sp.__version__, &quot;platform&quot;: platform.platform()},
+        &quot;constants&quot;: constant_checks(),
+        &quot;exact_rejected_witness&quot;: exact_symplectic_rejection(),
+        &quot;conventions&quot;: convention_checks(np.random.default_rng(197252)),
+        &quot;finite_channels&quot;: [finite_channel_check(d, 2026100800+d) for d in (2, 3, 4, 8, 12, 16)],
+        &quot;unverified&quot;: [&quot;Numerical maximization over all Schmidt-rank-k vectors&quot;, &quot;Explicit matrix at d&gt;=2^24&quot;, &quot;Historical priority&quot;, &quot;External specialist review&quot;, &quot;Proof assistant formalization&quot;],
+    }
+    output = Path(__file__).with_name(&quot;CHECK_RESULTS.json&quot;)
+    output.write_text(json.dumps(result, indent=2)+&quot;\n&quot;)
+    print(json.dumps({&quot;checks&quot;: &quot;PASS&quot;, &quot;exact_rejected_witness&quot;: result[&quot;exact_rejected_witness&quot;],
+                      &quot;finite_dimensions&quot;: [x[&quot;dimension&quot;] for x in result[&quot;finite_channels&quot;]],
+                      &quot;all_finite_square_certificates&quot;: all(x[&quot;square_has_separable_ball_certificate&quot;] for x in result[&quot;finite_channels&quot;]),
+                      &quot;results&quot;: str(output.resolve()), &quot;scope&quot;: result[&quot;scope&quot;]}, indent=2))
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</pre><p><a href="../assets/79b5ced0b3bfb21309b75ce5a942f551540920ac145fddfdea37d738cc39981f.py">Exact original</a></p></html>

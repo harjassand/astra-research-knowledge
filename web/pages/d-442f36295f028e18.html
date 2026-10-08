@@ -1,0 +1,127 @@
+<!-- ASTRA SOURCE STATUS --><aside><pre>Associated claim corrections (exact catalog associations; source text remains historical): [{&quot;card_id&quot;: &quot;N223-factorial-grouped-cut-distillability&quot;, &quot;reported_claim_status&quot;: &quot;source_derived_unreviewed&quot;, &quot;proof_availability&quot;: &quot;proof_text_located_not_completeness_audited&quot;, &quot;material_updates&quot;: [], &quot;dependency_alerts&quot;: [{&quot;dependency&quot;: &quot;N195-universal-factorial-noise-probe&quot;, &quot;scope&quot;: &quot;requires_exact_engineered_factorial_state_definition&quot;, &quot;updates&quot;: [{&quot;target&quot;: &quot;N223-factorial-grouped-cut-distillability&quot;, &quot;relation&quot;: &quot;supersedes&quot;, &quot;source_card&quot;: &quot;N223-factorial-grouped-cut-distillability&quot;, &quot;target_component&quot;: &quot;explicit grouped 2:rest one-copy distillability; original engineered-family theorem retained&quot;, &quot;whole_claim_invalidated&quot;: false, &quot;scope&quot;: &quot;Adds an explicit one-copy Schmidt-rank-two negative partial-transpose vector on the engineered factorial family after grouping two qubits against the rest, for even N&gt;=4. Does not contradict singleton separability, depth two, universal survival, or claim all grouped cuts/distillability rates. A successful local filter yields an entangled two-qubit pair; no pure Bell pair from one copy or efficient success-rate guarantee.&quot;, &quot;relation_status&quot;: &quot;source_supported_scoped_notice_not_correctness_promotion&quot;}], &quot;evidence_in&quot;: &quot;frontier/cards/N195-universal-factorial-noise-probe.json&quot;}], &quot;status_path&quot;: &quot;frontier/cards/N223-factorial-grouped-cut-distillability.json&quot;, &quot;evidence_scope&quot;: &quot;Full hash-pinned evidence and relations in status_path; no correction is silently truncated.&quot;, &quot;external_correctness&quot;: &quot;unverified; newer claims do not certify older ones&quot;}]</pre></aside><!-- /ASTRA SOURCE STATUS --><!doctype html><html lang="en"><meta charset="utf-8"><title>AN: tests/audit_prior_family.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AN-sources.txt">Source map</a><h1>AN: tests/audit_prior_family.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=0. Original authored19-member ZIP plus separately preserved pasted summary. Full proofs/audits/scripts/results available; external primary full-paper snapshots absent. Positive non-CP P and physical PPT Lambda are distinct. For every finite r a map exists, not one fixed map for all tensor powers; main proofs self-contained source derivations, index-two corollary alone imports Gurvits–Barnum. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Fresh dense and exact audit of the supplied double-factorial spin family.
+No imports from the prior candidate&#x27;s computational code.
+&quot;&quot;&quot;
+from __future__ import annotations
+import json, math
+from pathlib import Path
+from fractions import Fraction
+import numpy as np
+import sympy as sp
+
+ROOT=Path(__file__).resolve().parents[1]
+PAULI=[np.array([[0,1],[1,0]],complex),np.array([[0,-1j],[1j,0]]),np.diag([1.,-1.])]
+
+def op_site(a,i,n):
+    r=np.ones((1,1),complex)
+    for q in range(n): r=np.kron(r,a if q==i else np.eye(2))
+    return r
+
+def pt(a,n,subset):
+    axes=list(range(2*n))
+    for i in subset: axes[i],axes[n+i]=axes[n+i],axes[i]
+    return a.reshape([2]*(2*n)).transpose(axes).reshape(2**n,2**n)
+
+def dfac(m): return math.prod(range(1,m+1,2))
+
+def dense(n):
+    js=[sum((op_site(a,i,n)/2 for i in range(n)),start=np.zeros((2**n,2**n),complex)) for a in PAULI]
+    cas=sum((j@j for j in js),start=np.zeros((2**n,2**n),complex))
+    vals,vecs=np.linalg.eigh(cas)
+    weights=np.array([1/dfac(2*int(round((math.sqrt(1+4*max(0,v))-1)/2))+1) for v in vals])
+    rho=(vecs*weights)@vecs.conj().T; rho/=np.trace(rho)
+    cuts=[]
+    for k in range(1,n//2+1):
+        e=np.linalg.eigvalsh(pt(rho,n,range(k)))
+        cuts.append({&#x27;cut_size&#x27;:k,&#x27;pt_min_eigenvalue&#x27;:float(e[0])})
+    return {&#x27;N&#x27;:n,&#x27;casimir&#x27;:float(np.trace(rho@cas).real),&#x27;cuts&#x27;:cuts},rho,cas
+
+def exact_four():
+    sx=sp.Matrix([[0,1],[1,0]]); sy=sp.Matrix([[0,-sp.I],[sp.I,0]]); sz=sp.diag(1,-1)
+    eye=sp.eye(16); js=[]
+    for s in [sx,sy,sz]:
+        j=sp.zeros(16)
+        for i in range(4):
+            j+=sp.kronecker_product(*(s if q==i else sp.eye(2) for q in range(4)))/2
+        js.append(j)
+    c=sum((j*j for j in js),sp.zeros(16))
+    # Spectral projectors from exact Lagrange polynomials in the Casimir.
+    p0=(c-2*eye)*(c-6*eye)/12
+    p1=-c*(c-6*eye)/8
+    p2=c*(c-2*eye)/24
+    r=p0+p1/3+p2/15; r/=sp.trace(r)
+    pt2=sp.zeros(16)
+    for i in range(4):
+        for a in range(4):
+            for j in range(4):
+                for b in range(4): pt2[4*i+a,4*j+b]=r[4*i+b,4*j+a]
+    vals=pt2.eigenvals()
+    assert sp.Rational(-1,48) in vals
+    vectors=(pt2+sp.eye(16)/48).nullspace()
+    # A Schmidt-rank-two vector inside the negative eigenspace proves
+    # one-copy distillability across the two-laboratory 2:2 cut.
+    witnesses=[]
+    for v in vectors:
+        x=sp.Matrix(4,4,list(v))
+        if x.rank()&lt;=2:
+            num=sp.simplify((v.conjugate().T*pt2*v)[0]); den=sp.simplify((v.conjugate().T*v)[0])
+            witnesses.append({&#x27;vector&#x27;:[str(z) for z in v],&#x27;schmidt_rank&#x27;:x.rank(),
+              &#x27;normalized_pt_expectation&#x27;:str(sp.simplify(num/den))})
+    assert witnesses
+    return {&#x27;rho_eigenvalues&#x27;:{str(k):v for k,v in r.eigenvals().items()},
+      &#x27;pt_two_two_eigenvalues&#x27;:{str(k):v for k,v in vals.items()},
+      &#x27;rank_two_negative_vectors&#x27;:witnesses,&#x27;casimir&#x27;:str(sp.trace(r*c))}
+
+def exact_spin_one_block():
+    root2=sp.sqrt(2)
+    sp1=sp.Matrix([[0,root2,0],[0,0,root2],[0,0,0]])
+    sm1=sp1.T
+    ss=[(sp1+sm1)/2,(sp1-sm1)/(2*sp.I),sp.diag(1,0,-1)]
+    jj=[sp.kronecker_product(a,sp.eye(3))+sp.kronecker_product(sp.eye(3),a) for a in ss]
+    c=sum((a*a for a in jj),sp.zeros(9)); eye=sp.eye(9)
+    p0=(c-2*eye)*(c-6*eye)/12
+    p1=-c*(c-6*eye)/8
+    p2=c*(c-2*eye)/24
+    rho=(p0+p1/3+p2/15)*sp.Rational(3,7)
+    tr=sp.zeros(9)
+    for i in range(3):
+        for a in range(3):
+            for j in range(3):
+                for b in range(3): tr[3*i+a,3*j+b]=rho[3*i+b,3*j+a]
+    v=sp.zeros(9,1);v[1]=v[5]=1/root2
+    ev=(v.conjugate().T*tr*v)[0]
+    assert ev==-sp.Rational(1,21)
+    assert sp.Matrix(3,3,list(v)).rank()==2
+    return {&#x27;normalized_block&#x27;:&#x27;(3/7)P_0+(1/7)P_1+(1/35)P_2&#x27;,
+        &#x27;PT_eigenvalues&#x27;:{str(k):v for k,v in tr.eigenvals().items()},
+        &#x27;rank_two_vector&#x27;:&#x27;(|+1,0&gt;+|0,-1&gt;)/sqrt(2)&#x27;,
+        &#x27;PT_expectation&#x27;:str(ev),
+        &#x27;all_even_N_scope&#x27;:&#x27;Every even N&gt;=4 contains this conditional spin-1 versus spin-1 block after operations local to the 2:(N-2) grouped cut.&#x27;}
+
+def main():
+    rows=[]
+    for n in [2,4,6,8]:
+        row,_,_=dense(n); rows.append(row)
+        assert row[&#x27;cuts&#x27;][0][&#x27;pt_min_eigenvalue&#x27;] &gt; -1e-12
+        if n&gt;=4: assert row[&#x27;cuts&#x27;][1][&#x27;pt_min_eigenvalue&#x27;] &lt; -1e-4
+    exact=exact_four()
+    # Cross-copy product of local Bell pairs is separable across the N labs.
+    # For singlet projectors, &lt;Phi_{2^N}|P0 tensor P0|Phi_{2^N}&gt;
+    # =rank(P0)/2^N, which can exceed the square of the single-copy SEP max.
+    cross=[]
+    for n in range(2,13):
+        N=2*n
+        mult=math.comb(N,n)-math.comb(N,n-1)
+        value=Fraction(mult,2**N)
+        single=Fraction(1,n+1)
+        cross.append({&#x27;N&#x27;:N,&#x27;local_bell_two_copy_value&#x27;:str(value),
+          &#x27;squared_single_copy_bound&#x27;:str(single**2),&#x27;strict_violation&#x27;:value&gt;single**2})
+    assert cross[0][&#x27;strict_violation&#x27;]
+    result={&#x27;status&#x27;:&#x27;Fresh internal audit, not external verification&#x27;,
+      &#x27;dense_reconstructions&#x27;:rows,&#x27;exact_four_qubit_certificate&#x27;:exact,&#x27;exact_spin_one_block&#x27;:exact_spin_one_block(),
+      &#x27;failure_of_single_copy_bound_multiplicativity&#x27;:cross,
+      &#x27;scope&#x27;:&#x27;Larger-cut NPT does not contradict singleton separability. It blocks a fully-PPT reinterpretation. A rank-two PT-negative vector certifies distillation only when each side may jointly operate its two qubits.&#x27;}
+    path=ROOT/&#x27;results&#x27;/&#x27;prior_family_audit.json&#x27;; path.write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps(result,indent=2))
+if __name__==&#x27;__main__&#x27;: main()
+</pre><p><a href="../assets/190aee2cec63fe890f8112ada19eaf3c2ddc74a001486b87c2d4a41d3bae55a4.py">Exact original</a></p></html>

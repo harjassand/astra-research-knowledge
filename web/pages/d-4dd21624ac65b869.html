@@ -1,0 +1,216 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AN: tests/verify_gaussian_construction.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AN-sources.txt">Source map</a><h1>AN: tests/verify_gaussian_construction.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=0. Original authored19-member ZIP plus separately preserved pasted summary. Full proofs/audits/scripts/results available; external primary full-paper snapshots absent. Positive non-CP P and physical PPT Lambda are distinct. For every finite r a map exists, not one fixed map for all tensor powers; main proofs self-contained source derivations, index-two corollary alone imports Gurvits–Barnum. Source status/priority not upgraded.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Finite diagnostics for the projected Gaussian construction.
+
+No finite sampled-rank test certifies the uniform low-rank norm used in the
+proof. The theorem-sized matrices are NOT materialized. All tests here check
+identities, scaling and explicit separable decompositions in small dimensions.
+&quot;&quot;&quot;
+from __future__ import annotations
+import json, math, platform
+from pathlib import Path
+from fractions import Fraction
+import numpy as np
+import scipy
+from numpy.linalg import eigh, eigvalsh, norm, svd
+
+ROOT = Path(__file__).resolve().parents[1]
+RNG = np.random.default_rng(2026100803)
+
+
+def basis_sym0(d: int) -&gt; np.ndarray:
+    out = []
+    for i in range(d):
+        for j in range(i + 1, d):
+            a = np.zeros((d, d)); a[i,j] = a[j,i] = 1/math.sqrt(2)
+            out.append(a)
+    for k in range(1, d):
+        a = np.zeros((d, d)); a[np.arange(k),np.arange(k)] = 1
+        a[k,k] = -k
+        out.append(a/math.sqrt(k*(k+1)))
+    return np.array(out)
+
+
+def partial_transpose(a: np.ndarray, d: int) -&gt; np.ndarray:
+    return a.reshape(d,d,d,d).transpose(0,3,2,1).reshape(d*d,d*d)
+
+
+def partial_traces(a: np.ndarray, d: int):
+    q = a.reshape(d,d,d,d)
+    return np.einsum(&#x27;ijil-&gt;jl&#x27;,q), np.einsum(&#x27;ijkj-&gt;ik&#x27;,q)
+
+
+def orthogonal_projection(a: np.ndarray, d: int) -&gt; np.ndarray:
+    # For a real symmetric input, this first average makes both local
+    # transposes invariant. Remove the two identity sectors afterwards.
+    a = (a + partial_transpose(a,d))/2
+    ta,tb = partial_traces(a,d)
+    eye = np.eye(d)
+    return (a - np.kron(eye/d,ta) - np.kron(tb,eye/d)
+            + np.trace(a)*np.eye(d*d)/(d*d))
+
+
+def gaussian_projected(d: int):
+    m=d*d
+    a=RNG.normal(size=(m,m))
+    # Isotropic standard Gaussian in the real symmetric HS space:
+    # diagonal variance 1; off-diagonal variance 1/2.
+    a=(a+a.T)/2
+    return orthogonal_projection(a,d)/d
+
+
+def random_rank_vector(d: int,k: int):
+    u,_=np.linalg.qr(RNG.normal(size=(d,k))+1j*RNG.normal(size=(d,k)))
+    v,_=np.linalg.qr(RNG.normal(size=(d,k))+1j*RNG.normal(size=(d,k)))
+    s=RNG.random(k); s/=norm(s)
+    return ((u*s)@v.conj().T).reshape(-1)
+
+
+def sep_ball_decomposition(e: np.ndarray,r: int,d: int, eps: float):
+    &quot;&quot;&quot;Return positive tensor factors for I+e, provided ||e||&lt;=eps&lt;=1/(2r-1).&quot;&quot;&quot;
+    terms=[]; eye=np.eye(d); blocks=e.reshape(r,d,r,d)
+    for i in range(r):
+        a=np.zeros((r,r),complex); a[i,i]=1
+        b=eye+blocks[i,:,i,:]-2*eps*(r-1)*eye
+        terms.append((a,b))
+    for i in range(r):
+        for j in range(i+1,r):
+            p=np.zeros((r,r),complex); p[i,i]=p[j,j]=1
+            x=np.zeros((r,r),complex); x[i,j]=x[j,i]=1
+            y=np.zeros((r,r),complex); y[i,j]=1j; y[j,i]=-1j
+            z=blocks[i,:,j,:]
+            h=(z+z.conj().T)/2
+            k=(z-z.conj().T)/(2j)
+            for a,b in ((x,h),(y,k)):
+                terms.append(((p+a)/2,eps*eye+b))
+                terms.append(((p-a)/2,eps*eye-b))
+    return terms
+
+
+def map_from_choi(c: np.ndarray,x: np.ndarray,d: int):
+    return np.einsum(&#x27;ij,iajb-&gt;ab&#x27;,x,c.reshape(d,d,d,d))
+
+
+def exact_constants():
+    c=2**23
+    # Relax log(49)&lt;4 and log(9)&lt;5/2; these follow from the exponential series.
+    assert sum(Fraction(4)**i/math.factorial(i) for i in range(10)) &gt; 49
+    assert sum(Fraction(5,2)**i/math.factorial(i) for i in range(10)) &gt; 9
+    assert Fraction(25,8)-Fraction(5,2) &gt; Fraction(1,2)
+    assert Fraction(1,65536)-Fraction(36,c) &gt;= Fraction(1,131072)
+    assert Fraction(1,1)-Fraction(32,6)*Fraction(9,40)==-Fraction(1,5)
+    assert (Fraction(9,40)/6-Fraction(1,64))/10==Fraction(7,3200)
+    assert Fraction(1,5)/Fraction(11,6)==Fraction(6,55)
+    rows=[]
+    for r in range(1,65):
+        d=c*r**3
+        assert 32*Fraction(1,64*r) &lt;= Fraction(1,2*r-1)
+        assert Fraction(d*d,65536*r*r)-36*d*r &gt;= Fraction(d*d,131072*r*r)
+        # All three failure terms are far below exp(-100) at this d.
+        assert d*d/2 &gt; 100 and Fraction(d**4,1600)&gt;100 and Fraction(d*d,131072*r*r)&gt;100
+        rows.append({&#x27;r&#x27;:r,&#x27;sufficient_d&#x27;:d})
+    return {&#x27;dimension_constant&#x27;:c,&#x27;r_eb_examples&#x27;:rows,
+            &#x27;state_half_trace_gap&#x27;:&#x27;7/3200&#x27;,&#x27;map_diamond_gap&#x27;:&#x27;6/55&#x27;,
+            &#x27;strict_witness_pairing_bound&#x27;:&#x27;-1/5&#x27;,&#x27;r2_sufficient_d&#x27;:c*8}
+
+
+def main():
+    maxima={&#x27;basis_gram&#x27;:0.,&#x27;basis_trace&#x27;:0.,&#x27;projection_two_implementations&#x27;:0.,
+      &#x27;gaussian_hs_identity&#x27;:0.,&#x27;partial_transpose&#x27;:0.,&#x27;partial_trace&#x27;:0.,
+      &#x27;separable_reconstruction&#x27;:0.,&#x27;separable_factor_negative&#x27;:0.,
+      &#x27;choi_action&#x27;:0.,&#x27;choi_pure_compression&#x27;:0.,&#x27;map_tp_unital&#x27;:0.,
+      &#x27;svd_split_reconstruction&#x27;:0.}
+    counts={&#x27;basis_dimensions&#x27;:0,&#x27;basis_projection_fixtures&#x27;:0,&#x27;gaussian_samples&#x27;:0,
+      &#x27;complex_rank_pairs&#x27;:0,&#x27;separable_ball_fixtures&#x27;:0,&#x27;choi_fixtures&#x27;:0,
+      &#x27;svd_split_fixtures&#x27;:0}
+    # Two distinct implementations of the same orthogonal projection.
+    for d in range(2,10):
+        s=basis_sym0(d); h=len(s); counts[&#x27;basis_dimensions&#x27;]+=1
+        maxima[&#x27;basis_gram&#x27;]=max(maxima[&#x27;basis_gram&#x27;],float(norm(np.einsum(&#x27;aij,bij-&gt;ab&#x27;,s,s)-np.eye(h))))
+        maxima[&#x27;basis_trace&#x27;]=max(maxima[&#x27;basis_trace&#x27;],float(np.max(abs(np.trace(s,axis1=1,axis2=2)))))
+        for _ in range(4):
+            a=RNG.normal(size=(d*d,d*d)); a=(a+a.T)/2
+            coeff=np.einsum(&#x27;aij,bkl,ikjl-&gt;ab&#x27;,s,s,a.reshape(d,d,d,d), optimize=True)
+            direct=np.einsum(&#x27;ab,aij,bkl-&gt;ikjl&#x27;,coeff,s,s,optimize=True).reshape(d*d,d*d)
+            proj=orthogonal_projection(a,d)
+            maxima[&#x27;projection_two_implementations&#x27;]=max(maxima[&#x27;projection_two_implementations&#x27;],float(norm(direct-proj)))
+            maxima[&#x27;gaussian_hs_identity&#x27;]=max(maxima[&#x27;gaussian_hs_identity&#x27;],float(abs(np.sum(proj*proj)-np.sum(coeff*coeff))))
+            counts[&#x27;basis_projection_fixtures&#x27;]+=1
+    diagnostics=[]
+    for d in [2,3,4,6,8,12,16,24]:
+        for trial in range(3):
+            g=gaussian_projected(d); m=d*d; counts[&#x27;gaussian_samples&#x27;]+=1
+            ev=eigvalsh(g); energy=float(np.sum(g*g)/m)
+            maxima[&#x27;partial_transpose&#x27;]=max(maxima[&#x27;partial_transpose&#x27;],float(norm(g-partial_transpose(g,d))))
+            ta,tb=partial_traces(g,d)
+            maxima[&#x27;partial_trace&#x27;]=max(maxima[&#x27;partial_trace&#x27;],float(max(norm(ta),norm(tb))))
+            rank_results=[]
+            for k in sorted(set([1,min(2,d),min(4,d)])):
+                sampled=0.
+                for _ in range(40):
+                    x=random_rank_vector(d,k); y=random_rank_vector(d,k)
+                    sampled=max(sampled,float(abs(np.vdot(x,g@y))))
+                    counts[&#x27;complex_rank_pairs&#x27;]+=1
+                rank_results.append({&#x27;rank_cap&#x27;:k,&#x27;sampled_bilinear_max_lower_bound_only&#x27;:sampled})
+            rho=(np.eye(m)+g/6)/m; w=np.eye(m)-32*g
+            diagnostics.append({&#x27;d&#x27;:d,&#x27;trial&#x27;:trial,&#x27;op_norm&#x27;:float(max(abs(ev))),
+              &#x27;hs_energy_div_d_squared&#x27;:energy,&#x27;rho_min_eigenvalue&#x27;:float((1+ev[0]/6)/m),
+              &#x27;w_rho_pairing&#x27;:float(np.trace(w@rho)),&#x27;rank_tests&#x27;:rank_results,
+              &#x27;claim&#x27;:&#x27;Not a uniform rank-norm certificate; small d is below theorem regime.&#x27;})
+    for r in [1,2,3,4,6]:
+        for d in [2,3,5,9]:
+            for _ in range(5):
+                z=RNG.normal(size=(r*d,r*d))+1j*RNG.normal(size=(r*d,r*d))
+                e=(z+z.conj().T)/2; eps=1/(2*r-1)
+                e*=eps/max(abs(eigvalsh(e)))
+                terms=sep_ball_decomposition(e,r,d,eps)
+                recovered=sum((np.kron(a,b) for a,b in terms),start=np.zeros_like(e))
+                maxima[&#x27;separable_reconstruction&#x27;]=max(maxima[&#x27;separable_reconstruction&#x27;],float(norm(recovered-np.eye(r*d)-e)))
+                low=min(min(eigvalsh(a)[0],eigvalsh(b)[0]) for a,b in terms)
+                maxima[&#x27;separable_factor_negative&#x27;]=max(maxima[&#x27;separable_factor_negative&#x27;],float(max(0,-low)))
+                counts[&#x27;separable_ball_fixtures&#x27;]+=1
+    for d in [3,4,6,8]:
+        s=basis_sym0(d); h=len(s)
+        for _ in range(5):
+            coeff=RNG.normal(size=(h,h))
+            g=np.einsum(&#x27;ab,aij,bkl-&gt;ikjl&#x27;,coeff,s,s,optimize=True).reshape(d*d,d*d)/d
+            c=(np.eye(d*d)-32*g)/d
+            x=RNG.normal(size=(d,d))+1j*RNG.normal(size=(d,d))
+            direct=np.trace(x)*np.eye(d)/d -32/d**2*np.einsum(&#x27;ab,a,bkl-&gt;kl&#x27;,coeff,np.einsum(&#x27;aij,ji-&gt;a&#x27;,s,x),s)
+            via=map_from_choi(c,x,d)
+            maxima[&#x27;choi_action&#x27;]=max(maxima[&#x27;choi_action&#x27;],float(norm(via-direct)))
+            ta,tb=partial_traces(c,d)
+            maxima[&#x27;map_tp_unital&#x27;]=max(maxima[&#x27;map_tp_unital&#x27;],float(max(norm(ta-np.eye(d)),norm(tb-np.eye(d)))))
+            r=min(2,d); v,_=np.linalg.qr(RNG.normal(size=(d,r))+1j*RNG.normal(size=(d,r)))
+            a=RNG.normal(size=(r,r))+1j*RNG.normal(size=(r,r))
+            psi=(a@v.T).reshape(-1); p=np.outer(psi,psi.conj()).reshape(r,d,r,d)
+            out=np.zeros((r,d,r,d),complex)
+            for i in range(r):
+                for j in range(r): out[i,:,j,:]=map_from_choi(c,p[i,:,j,:],d)
+            iso=np.kron(v.conj(),np.eye(d))
+            compressed=iso.conj().T@c@iso
+            filtered=np.kron(a,np.eye(d))@compressed@np.kron(a.conj().T,np.eye(d))
+            maxima[&#x27;choi_pure_compression&#x27;]=max(maxima[&#x27;choi_pure_compression&#x27;],float(norm(out.reshape(r*d,r*d)-filtered)))
+            counts[&#x27;choi_fixtures&#x27;]+=1
+    for d in [4,8,12]:
+        for k in [1,2]:
+            for _ in range(20):
+                z=random_rank_vector(d,min(2*k,d)).reshape(d,d)
+                u,s,vh=svd(z,full_matrices=False)
+                z1=(u[:,:k]*s[:k])@vh[:k,:]
+                z2=(u[:,k:2*k]*s[k:2*k])@vh[k:2*k,:]
+                maxima[&#x27;svd_split_reconstruction&#x27;]=max(maxima[&#x27;svd_split_reconstruction&#x27;],float(norm(z-z1-z2)))
+                assert norm(z1)+norm(z2)&lt;=math.sqrt(2)+1e-12
+                counts[&#x27;svd_split_fixtures&#x27;]+=1
+    constants=exact_constants()
+    assert max(maxima.values())&lt;1e-9, maxima
+    result={&#x27;status&#x27;:&#x27;INTERNAL FINITE DIAGNOSTICS, not external validation or uniform low-rank certification&#x27;,
+      &#x27;seed&#x27;:2026100803,&#x27;python&#x27;:platform.python_version(),&#x27;numpy&#x27;:np.__version__,&#x27;scipy&#x27;:scipy.__version__,
+      &#x27;counts&#x27;:counts,&#x27;max_absolute_residuals&#x27;:maxima,&#x27;exact_constants&#x27;:constants,
+      &#x27;gaussian_small_dimension_diagnostics&#x27;:diagnostics,
+      &#x27;not_executed&#x27;:[&#x27;The theorem-sized random matrices&#x27;,&#x27;An exhaustive Schmidt-rank net&#x27;,&#x27;A quantifier-elimination certificate&#x27;,&#x27;Tensor-stability for all powers&#x27;]}
+    dest=ROOT/&#x27;results&#x27;/&#x27;gaussian_verification.json&#x27;
+    dest.write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({&#x27;counts&#x27;:counts,&#x27;max_absolute_residuals&#x27;:maxima,&#x27;output&#x27;:str(dest)},indent=2))
+
+if __name__==&#x27;__main__&#x27;: main()
+</pre><p><a href="../assets/5104520a6d651d2702707c04556b0acb276bab9a6c3f83b46b487f1f6e089624.py">Exact original</a></p></html>

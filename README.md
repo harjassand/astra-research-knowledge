@@ -1,6 +1,6 @@
 # Astra Research Knowledge
 
-282 scoped research cards, full supplied A–I research documents, J/K result summaries, and 18,691 scientific source pages. Claims retain their assumptions, dependencies, counterexamples and scientific status. Publication is not proof validation or model-weight training.
+296 scoped research cards, full supplied A–I research documents, J/K result summaries, and 18,757 scientific source pages. Claims retain their assumptions, dependencies, counterexamples and scientific status. Publication is not proof validation or model-weight training.
 
 Start with [00_START_HERE.txt](00_START_HERE.txt); [01_CORE.txt](01_CORE.txt) is optional broad orientation, then [result cards](web/llms.txt) and the [paged source library](web/library.txt). The bootstrap is 278 o200k tokens; broad scientific context is loaded on demand. The complete linked new J/K research notes and reproducibility packages were not supplied; their absence is explicit.
 
@@ -92,6 +92,12 @@ Added AK: N203–209: pinned research branches add fixed-d SU(d) singlet margina
 Added AL: N210–212: late branch capture adds slowly varying polar-end Steklov harmonic-capacity upper theorem and uniform collar/Ky-Fan transfer mechanism; updated Lamperti source adds separately inherited unequal-rate phase diagram, a second drift derivation and direct deterministic structural reconstruction. All10 frozen research tips in main ancestry;3 previously missing research histories merged,4 merge operations including the late follow-up. Prior AK source version retained;7 exact derived source/receipt members preserved. No intake scientific replay, external proof or priority clearance. [Sources](web/AL-sources.txt);[scopes](web/AL-reports.txt);[archive/availability](web/AL-package.txt).
 
 
+
+
+
+Added AM: N213–218: full internally reconstructed linear PPT CP-plus-transposed-CP rank obstruction, quantitative two-image Gaussian width and exact marginals, EB-square transfer limit, exponentially many fixed-isometry extension, exact symplectic copositivity failure and source-audit boundaries. Original32-member ZIP/31 manifest payloads and17 exact pinned Git captures preserved. Established Gaussian antecedents credited; primary full-paper bytes absent. No intake scientific replay or external correctness/priority clearance. [Sources](web/AM-sources.txt);[scopes](web/AM-reports.txt);[archive/availability](web/AM-package.txt).
+
+Added AN: N219–226: indecomposable non-CP positive maps break entanglement with every finite reference, with a robust mathematical diamond gap; PT-invariant stronger linear PPT decomposition-rank constants; explicit asymmetric separable-compression ball and universal complex bilinear net; factorial grouped-cut one-copy distillability and cross-copy/two-producibility barriers; physical PPT channels have EB index exactly two and no fixed-map tensor-stability limit. Original19-member ZIP/18 payloads plus separately captured full pasted summary preserved. Main proof independent of Astra/release candidates, Gaussian/PT-invariant prior art credited; internal source derivations, no new intake scientific replay/external correctness or priority clearance. [Sources](web/AN-sources.txt);[scopes](web/AN-reports.txt);[archive/availability](web/AN-package.txt).
 
 <!-- CURRENT DECISION LAYER -->
 Active frontier: frontier/PRIORITIES.md

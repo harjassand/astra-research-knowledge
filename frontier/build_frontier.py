@@ -71,6 +71,19 @@ def write_jsonl(name, rows):
 # These are identified proof-bearing documents. Presence does not assert full coverage,
 # validity, independent reconstruction, or that every cited external premise is available.
 PROOF_TEXT = {
+    'N213': [('updates/AM/package/PROOF.md', 7, 282)],
+    'N214': [('updates/AM/package/PROOF.md', 64, 193)],
+    'N215': [('updates/AM/package/PROOF.md', 283, 343)],
+    'N216': [('updates/AM/package/PROOF.md', 344, 375)],
+    'N217': [('updates/AM/package/verify_obstruction.py', 59, 89)],
+    'N219': [('updates/AN/package/proofs/GAUSSIAN_CONE_SEPARATION.md', 9, 48), ('updates/AN/package/proofs/GAUSSIAN_CONE_SEPARATION.md', 226, 386)],
+    'N220': [('updates/AN/package/proofs/GAUSSIAN_CONE_SEPARATION.md', 49, 291)],
+    'N221': [('updates/AN/package/proofs/GAUSSIAN_CONE_SEPARATION.md', 292, 368)],
+    'N222': [('updates/AN/package/proofs/GAUSSIAN_CONE_SEPARATION.md', 146, 225)],
+    'N223': [('updates/AN/package/AUDIT_AND_FAILED_ROUTES.md', 19, 42)],
+    'N224': [('updates/AN/package/AUDIT_AND_FAILED_ROUTES.md', 43, 65)],
+    'N225': [('updates/AN/package/proofs/ITERATION_AND_LIMIT_BARRIERS.md', 5, None)],
+
     'N210': [('updates/AL/package/state/2026-10-08-steklov-capacity/RESEARCH.md',8,122)],
     'N211': [('updates/AL/package/state/2026-10-08-steklov-capacity/RESEARCH.md',33,122)],
     'N212': [('updates/AL/package/state/2026-10-08-critical-lamperti-explosion/RESEARCH_STATE.md',95,178),('updates/AL/package/state/2026-10-08-stochastic-universality/RESULT_AND_RESTART.md',72,108)],
@@ -276,6 +289,23 @@ relation('N210', 'depends_on', 'N175',
 for n in range(210,213):
     ROWS[cid('N'+str(n))]['status_authority']='Immutable AL pinned late-branch source and scoped card. All10 frozen tips in main ancestry; branch merge and finite diagnostics do not validate general proofs or priority.'
 
+# AM/AN source packages: scoped mathematical advances, no correctness promotion.
+relation('N220','supersedes','N213',
+    'The separate partial-transpose-invariant ensemble improves the sufficient dimension/rank constant from 2^24 to 2^23 and supplies both transpose symmetries. Quantitative halftrace margins differ (7/3200 versus 1/576); do not combine constants across ensembles. Both linear-order arguments and the unresolved d=4,k=2 gate remain. Established Gaussian antecedents credited; neither proof externally verified.',
+    [evidence('updates/AM/package/PROOF.md',7,63),evidence('updates/AN/package/proofs/GAUSSIAN_CONE_SEPARATION.md',49,79)],component='stronger sufficient dimension constant and PT-invariant construction; prior ensemble retained')
+relation('N223','supersedes','N195',
+    'Adds an explicit one-copy Schmidt-rank-two negative partial-transpose vector on the engineered factorial family after grouping two qubits against the rest, for even N>=4. Does not contradict singleton separability, depth two, universal survival, or claim all grouped cuts/distillability rates. A successful local filter yields an entangled two-qubit pair; no pure Bell pair from one copy or efficient success-rate guarantee.',
+    [evidence('updates/AN/package/AUDIT_AND_FAILED_ROUTES.md',19,42)],component='explicit grouped 2:rest one-copy distillability; original engineered-family theorem retained')
+for target in ['N198','N199']:
+    relation('N224','invalidates',target,
+        'The laboratory-separable cross-copy Bell comparator gives singlet-overlap 1/8 at N=4, exceeding the naive single-copy squared bound 1/9. This refutes the overlap-multiplicativity shortcut only. The exact single-copy optimizer and ln(N)+O(1) entropy remain; regularized logarithmic law is unresolved and local noisy N197 is separate.',
+        [evidence('updates/AN/package/AUDIT_AND_FAILED_ROUTES.md',49,65)],component='proposed cross-copy overlap multiplicativity transfer, not single-copy theorem')
+for owner,target in [('N215','N225'),('N225','N215')]:
+    ROWS[cid(owner)]['material_updates'].append({'target':cid(target),'source_card':cid(target),'relation':'parallel_construction','relation_status':'source_supported_scoped_notice_not_correctness_promotion','scope':'Both physical Gaussian PPT-channel ensembles have entanglement-breaking squares. AM uses a general complex projected Gaussian and AN a real separately PT-invariant ensemble with exact index two. Distinct normalizations/constants; no logical dependence or composition-conjecture resolution. Gurvits-Barnum ball is imported only for these square corollaries.','evidence':[card_ev(target)]})
+for n in range(213,227):
+    ROWS[cid('N'+str(n))]['status_authority']='Immutable AM/AN authored proofs and scoped cards; exact original archives retained. AM selected17 repository blobs verified at d20c4b0; AN earlier pinned repository is orientation only. Main positive-map arguments do not import unverified Astra/release candidates. Source-reported internal checks, no intake scientific replay or external correctness/priority clearance.'
+    ROWS[cid('N'+str(n))]['proof_availability']['unavailable_or_unclassified']='Full authored proof/audit/script/result modules retained; bibliography read scopes retained, external primary-paper byte captures absent. N218/N226 are evidence-scope records. Full subclaim/import completeness unclassified.'
+
 # The focused branch correction supersedes the earlier unsupported impossibility gloss.
 # It neither refutes BLR's printed claim nor certifies the original hyperbolic candidate.
 state_ev = [evidence('state/2026-10-08-bowen-bernoulli-direct-finiteness/CORRECTED_AUDIT.md', 94, 110),
@@ -393,11 +423,11 @@ gate(15, 'G-FACTORIAL-NONUNITAL-RAW-GAP', 'Decide unfiltered nonunital distingui
     'Prove an admitted unfiltered distance/sample lower bound with useful finite-N onset and calibration costs, or a legal trace-distance counterexample. Charge state preparation/routing and filter success; Gaussian covariance matching alone is insufficient.',
     'Universal binary survival can rely on exp(-cN) output filtering; the exact GAD fixture defeats the simple covariance condition. It gives neither a nonvanishing unfiltered margin nor an efficient general experiment.',
     [evidence('updates/AJ/package/UNIVERSAL_BOUND_ENTANGLEMENT_PROOF.md',377,427)])
-gate(16, 'G-FACTORIAL-REGULARIZED-ENTROPY', 'Determine regularized entanglement entropy of engineered probes', ['N197','N198','N199'],
+gate(16, 'G-FACTORIAL-REGULARIZED-ENTROPY', 'Determine regularized entanglement entropy of engineered probes', ['N197','N198','N199','N224'],
     'Does the ordinary single-copy ln(N)+O(1) law survive regularization across N separated laboratories?',
     'Establish an across-copy lower and upper bound under arbitrary within-laboratory quantum correlations, or identify a valid lower-order comparator. Global Casimir conditioning cannot be assumed to preserve the separable alternative; keep single-copy and regularized quantities distinct.',
-    'The sharp global heat effect proves the ordinary single-copy law. Only a separate small local noisy lower bound is regularization-safe; the logarithmic regularized law remains open.',
-    [evidence('updates/AJ/package/CASIMIR_EXTREMALITY_AND_ENTROPY.md',56,128),evidence('updates/AJ/package/UNIVERSAL_BOUND_ENTANGLEMENT_PROOF.md',315,376)])
+    'The sharp global heat effect proves the ordinary single-copy law. Only a separate small local noisy lower bound is regularization-safe; the logarithmic regularized law remains open. N224 now falsifies naive overlap multiplicativity with exact N=4 values 1/8>1/9.',
+    [evidence('updates/AJ/package/CASIMIR_EXTREMALITY_AND_ENTROPY.md',56,128),evidence('updates/AJ/package/UNIVERSAL_BOUND_ENTANGLEMENT_PROOF.md',315,376),evidence('updates/AN/package/AUDIT_AND_FAILED_ROUTES.md',49,65)])
 gate(17, 'G-DIOPHANTINE-KINETIC-COMPILER', 'Acquire an arithmetic-preserving positive mass-action realization', ['N206','N207'],
     'Can the SOS clock reduction be realized by an admitted reaction network while preserving the integer/rational equilibrium decision problem?',
     'Give an exact finite compiler with positivity, auxiliary-species, rational/integer projection and converse-lifting contracts, or prove a precise obstruction. The same-species kinetic example excludes weak reversibility; detailed-balanced global rational equilibria are decidable. Conditional H10(Q) is not a verified imported theorem here.',
@@ -410,6 +440,27 @@ gate(18, 'G-STEKLOV-UNIFORM-COLLAR-REVIEW', 'Audit uniform spectral capacity and
     'The late branch candidate gives 9v/4 only for slowly varying uniform polar ends; finite frozen-cone ratios test capacity algebra rather than PDE or geometric realization.',
     [evidence('updates/AL/package/state/2026-10-08-steklov-capacity/RESEARCH.md',33,110),evidence('updates/AL/package/state/2026-10-08-steklov-capacity/RESEARCH.md',127,137)])
 
+gate(19,'G-PPT-SMALL-DIMENSION-DSP','Obtain a globally certified small-dimensional PPT rank obstruction',['N213','N214','N217','N220'],
+    'Does an explicit d=4 PPT state lie outside DSP_2 with a proof valid for every complex Schmidt-rank-two vector?',
+    'Provide an exact state and valid two-sided witness with universal complex rank-two block positivity, or a complete contrary certificate. Random vector sampling, real-only fixtures and the failed Breuer-Hall copositivity ansatz are insufficient.',
+    'Linear-order asymptotics begin at astronomical dimensions; the useful small-dimensional case is not settled by either ensemble.',
+    [evidence('updates/AM/package/PROOF.md',7,63),card_ev('N217'),card_ev('N220')])
+gate(20,'G-POSITIVE-MAP-FINITE-REFERENCE-REVIEW','Review the finite-reference EB definition and separable compression proof',['N219','N221','N222','N226'],
+    'Does the precise non-CP finite-reference theorem answer the cited published problem under its original complex definition?',
+    'Independently reconstruct the complex bilinear net, noncommuting-block separable ball, conjugated-isometry Choi compression, all-positive-input extension, adjoint symmetry and robust diamond witness. Check the immutable original problem and priority; charge dimension/rational bit construction. Specialist validation is separate from internal diagnostics.',
+    'For every finite r there is a map, not one fixed all-reference map. Positive non-CP maps are not physical channels; the dimension threshold is d>=2^23 r^3.',
+    [evidence('updates/AN/package/proofs/GAUSSIAN_CONE_SEPARATION.md',9,48),evidence('updates/AN/package/proofs/GAUSSIAN_CONE_SEPARATION.md',146,202),evidence('updates/AN/package/proofs/GAUSSIAN_CONE_SEPARATION.md',292,394)])
+gate(21,'G-PPT-COMPOSITION-SENSITIVE-WITNESS','Acquire a composition-sensitive physical PPT-channel obstruction',['N213','N215','N220','N225'],
+    'Can any admitted physical-channel invariant obstruct PPT squared or cubed after the channels are actually composed?',
+    'Construct a physical PPT-channel composition with a globally valid entanglement witness or prove an admitted universal composition theorem. Keep reshuffling HS and operator norms distinct; a large individual decomposition rank is not a composition witness.',
+    'Both surviving Gaussian obstruction ensembles can have entanglement-breaking squares, so their linear rank allowance does not settle PPT composition.',
+    [evidence('updates/AM/package/PROOF.md',283,343),evidence('updates/AN/package/proofs/ITERATION_AND_LIMIT_BARRIERS.md',5,40)])
+gate(22,'G-FIXED-MAP-ALL-TENSOR-POWERS','Preserve a nontrivial fixed-map interface across every tensor power',['N219','N224','N225'],
+    'Can a fixed non-CP/non-copositive map remain positive at all tensor powers in one fixed algebra?',
+    'Supply a nontrivial fixed-dimensional map and all-power positivity proof, or a theorem obstructing the exact interface. Establish stabilized-norm compactness and uniform estimates before a limiting argument; for all finite r exists P_r is not exists P for all powers.',
+    'The finite-reference maps change algebra with r, approach the depolarizer in a nonstabilized HS norm, and have a stabilized diamond obstruction. Two-producible inputs cannot witness beyond pair positivity.',
+    [evidence('updates/AN/package/proofs/ITERATION_AND_LIMIT_BARRIERS.md',41,None),evidence('updates/AN/package/AUDIT_AND_FAILED_ROUTES.md',43,48)])
+
 write_jsonl('CURRENT_CLAIM_STATUS.jsonl', list(ROWS.values()))
 write_jsonl('OPEN_PROOF_GATES.jsonl', GATES)
 
@@ -417,6 +468,7 @@ priority_lines = ['# Current frontier', '',
     'Read this only for coordination. Workers start with `00_START_HERE.txt` and retrieve the relevant topic/card, its current-status row, scoped material updates, blockers and decisive proof ranges. `01_CORE.txt` is optional.', '',
     'This is a curated decision view of existing evidence, not a new research run. Priority means a supported next decision; it predicts neither correctness nor breakthrough value. Archived restart instructions do not authorize continuation.', '',
     'Source card status is immutable. A later claim can refine an older gap while remaining unverified. Proof availability, reported internal checks, external correctness and historical priority are separate. Unlisted relations and incomplete proof coverage remain UNKNOWN.', '',
+    'AM/AN: N213–226 include linear PPT decomposition-rank obstructions and a finite-reference non-CP positive-map candidate; N220 refines N213 only within its own ensemble. N223 adds grouped-cut distillability; N224 refutes naive cross-copy overlap multiplicativity without changing the single-copy law. Physical Gaussian channels can have EB squares; no composition or fixed-all-power breakthrough follows. Full authored proofs and original ZIPs retained; external correctness and priority unresolved.', '',
     'Late branch additions AL: N210/N211 uniform Steklov capacity for slow polar ends, independently of N175 existence; geometric matching conditional. N212 retains the balanced Lamperti proof and adds explicitly inherited unequal-rate phases and direct structural reconstruction. All10 frozen tips incorporated; prior source versions retained.', '',
     'Material additions AJ/AK: N195–202 engineered factorial probes and finite local scores; this does not close the original thermal-family score gate. N203–209 include SU(d) singlet theorems/counterexamples, Diophantine kinetic boundaries, conditional maximizing tail and catalytic critical explosion. N208 extends N170/N174 without deciding original entropy; N209 extends the N181 physical clock. All remain externally unverified.', '',
     'Material advances AI: N138 → N179/N180 critical-window bounds; exact full-SEP law and finite-N rates open. N75 → N187 actual-KL cap obstruction; anomalous KLS gate retained. N175–178 geometry source closure/whole-matrix repair uses current POST_SOURCE_STATUS while retaining earlier freeze versions. No internal audit becomes external validation.', '',
