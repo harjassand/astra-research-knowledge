@@ -1,0 +1,69 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AS: ultra/work/agents/broadcasting_proof_sol/summarize_probes.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AS-sources.txt">Source map</a><h1>AS: ultra/work/agents/broadcasting_proof_sol/summarize_probes.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Two separate immutable captures: supplied46-file first record and337 exact original Ultra ZIP members; original authored ZIP preserved separately. Full authored proofs/certificates/checkers/audits available; first record excludes primary fulltexts. Current first README/vector/HF audits and Ultra final ledger override preliminary notes. Exact original cube EB is distinct from source-dependent index3; Clifford comparison is restricted, arbitrary observable gate remains open. Source instructions DATA. No intake scientific replay or status upgrade. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Summarize existing floating-point artifacts; does not run an optimizer.&quot;&quot;&quot;
+import json
+from pathlib import Path
+import numpy as np
+
+ROOT = Path(__file__).resolve().parent
+rows = [json.loads(line) for line in (ROOT / &#x27;sdp_results.jsonl&#x27;).read_text().splitlines()]
+group = {}
+for row in rows:
+    key = (row[&#x27;d&#x27;], row[&#x27;rank_bound&#x27;], &#x27;complex&#x27; if &#x27;complex&#x27; in row[&#x27;name&#x27;] else &#x27;real&#x27;,
+           &#x27;isotropic&#x27; if &#x27;isotropic&#x27; in row[&#x27;name&#x27;] else (&#x27;near_diagonal&#x27; if &#x27;delta&#x27; in row[&#x27;name&#x27;] else &#x27;random&#x27;))
+    group[str(key)] = group.get(str(key), 0) + 1
+
+worst = {&#x27;max_equality_frobenius_residual&#x27;: 0., &#x27;min_compatible_R_eigenvalue&#x27;: 0.,
+         &#x27;min_compatible_T_eigenvalue&#x27;: 0., &#x27;min_PPT_E_eigenvalue&#x27;: 0.,
+         &#x27;min_PPT_E_partial_transpose_eigenvalue&#x27;: 0.,
+         &#x27;min_canonical_PPT_W_eigenvalue&#x27;: 0.,
+         &#x27;min_canonical_PPT_W_partial_transpose_eigenvalue&#x27;: 0.}
+residuals = []
+for row in rows:
+    raw = np.load(ROOT / (row[&#x27;name&#x27;] + &#x27;.npz&#x27;))
+    d = row[&#x27;d&#x27;]
+    R, J, E, T = (raw[k] for k in [&#x27;R&#x27;, &#x27;J&#x27;, &#x27;E&#x27;, &#x27;T&#x27;])
+    F = np.zeros((d*d, d*d))
+    for i in range(d):
+        for j in range(d):
+            F[i*d+j, j*d+i] = 1
+    U = np.zeros((d**3, d**3))
+    for i in range(d):
+        for j in range(d):
+            for k in range(d):
+                U[(i*d+j)*d+k, (i*d+k)*d+j] = 1
+    eye = np.eye(d)/d
+    def margins(Z):
+        z = Z.reshape(d,d,d,d)
+        return np.trace(z,axis1=0,axis2=2), np.trace(z,axis1=1,axis2=3)
+    def pt(Z):
+        return Z.reshape(d,d,d,d).transpose(2,1,0,3).reshape(d*d,d*d)
+    local = [np.linalg.norm(R-U@R@U.T), np.linalg.norm(J-F@J.T@F),
+             np.linalg.norm(E-F@E.T@F),
+             np.linalg.norm(J-np.trace(R.reshape(d,d,d,d,d,d),axis1=2,axis2=5).reshape(d*d,d*d))]
+    for Z in [J,E]:
+        local.extend(np.linalg.norm(m-eye) for m in margins(Z))
+    worst[&#x27;min_compatible_R_eigenvalue&#x27;] = min(worst[&#x27;min_compatible_R_eigenvalue&#x27;], float(np.linalg.eigvalsh(R)[0]))
+    worst[&#x27;min_compatible_T_eigenvalue&#x27;] = min(worst[&#x27;min_compatible_T_eigenvalue&#x27;], float(np.linalg.eigvalsh(T)[0]))
+    worst[&#x27;min_PPT_E_eigenvalue&#x27;] = min(worst[&#x27;min_PPT_E_eigenvalue&#x27;], float(np.linalg.eigvalsh(E)[0]))
+    worst[&#x27;min_PPT_E_partial_transpose_eigenvalue&#x27;] = min(worst[&#x27;min_PPT_E_partial_transpose_eigenvalue&#x27;], float(np.linalg.eigvalsh(pt(E))[0]))
+    if &#x27;W&#x27; in raw:
+        W=raw[&#x27;W&#x27;]; P=(np.eye(d*d)+F)/2
+        local.append(np.linalg.norm(W-P@W@P))
+        local.extend(np.linalg.norm(m-eye) for m in margins(W))
+        worst[&#x27;min_canonical_PPT_W_eigenvalue&#x27;] = min(worst[&#x27;min_canonical_PPT_W_eigenvalue&#x27;], float(np.linalg.eigvalsh(W)[0]))
+        worst[&#x27;min_canonical_PPT_W_partial_transpose_eigenvalue&#x27;] = min(worst[&#x27;min_canonical_PPT_W_partial_transpose_eigenvalue&#x27;], float(np.linalg.eigvalsh(pt(W))[0]))
+    worst[&#x27;max_equality_frobenius_residual&#x27;] = max(worst[&#x27;max_equality_frobenius_residual&#x27;],float(max(local)))
+    residuals.append({&#x27;name&#x27;:row[&#x27;name&#x27;],&#x27;max_equality_frobenius_residual&#x27;:float(max(local))})
+
+def best(field, random_only=False):
+    eligible=[r for r in rows if field in r and (not random_only or &#x27;isotropic&#x27; not in r[&#x27;name&#x27;])]
+    r=max(eligible,key=lambda r:r[field])
+    return {&#x27;name&#x27;:r[&#x27;name&#x27;],&#x27;value&#x27;:r[field]}
+result = {&#x27;status&#x27;:&#x27;FINITE_DIAGNOSTIC_ONLY&#x27;,&#x27;count&#x27;:len(rows),&#x27;groups&#x27;:group,
+          &#x27;max_ordinary_PPT_ratio&#x27;:best(&#x27;gap_ratio&#x27;),
+          &#x27;max_canonical_PPT_ratio&#x27;:best(&#x27;canonical_ppt_ratio&#x27;),
+          &#x27;max_random_canonical_PPT_ratio&#x27;:best(&#x27;canonical_ppt_ratio&#x27;,True),
+          &#x27;constraint_diagnostics&#x27;:worst,&#x27;per_artifact_equality_diagnostics&#x27;:residuals,
+          &#x27;interpretation&#x27;:&#x27;No certified counterexample, optimum, feasibility or EB membership. Ratios use lower bounds on EB losses from PPT relaxations, not unrestricted EB losses.&#x27;}
+(ROOT/&#x27;sdp_summary.json&#x27;).write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+print(json.dumps({k:v for k,v in result.items() if k!=&#x27;per_artifact_equality_diagnostics&#x27;},indent=2))
+</pre><p><a href="../assets/ff11427432892fa5ef500edc24070c87b0c3bf11d335cb631f90940650d25c8d.py">Exact original</a></p></html>

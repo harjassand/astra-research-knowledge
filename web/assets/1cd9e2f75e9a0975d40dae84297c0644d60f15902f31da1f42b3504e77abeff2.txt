@@ -1,0 +1,102 @@
+ASTRA ULTRA resource and provenance audit
+Snapshot generated: 2026-10-08T14:58:08Z
+Active roster last observed: 2026-10-08T14:57:52Z
+
+Current concurrent reservation
+
+The configured concurrent ceiling is 30 Sol-max token-price equivalents. At the
+last live roster observation, 14 threads were running: one Astra coordinator,
+seven Sol agents, and six Luna agents. The geometry_analysis_scout and
+release_verification_scope Luna threads had completed and are excluded from the
+active reservation.
+
+Using the supplied active component ratios, the reservation is
+1 x 10 + 7 x 1 + 6 x 0.1 = 17.6 Sol-max equivalents. This leaves 12.4 under
+the concurrent ceiling. The reservation is separate from cumulative token
+usage and the historical standard-rate price proxy below.
+
+Configuration and dispatch evidence
+
+The root session is
+/Users/harjas/.codex/sessions/2026/10/09/rollout-2026-10-09T00-43-59-01a11bf8-98a4-7342-b565-17a798a3759f.jsonl,
+session id 01a11bf8-98a4-7342-b565-17a798a3759f. Its turn_context records
+gpt-6-astra at ultra effort. The user's /Users/harjas/.codex/config.toml sets
+the same default model and effort at lines 1-2 and
+max_concurrent_threads_per_session = 601 at lines 23-24. That is the configured
+capacity; the root log records 15 actual child dispatches in this run.
+
+The root log's spawn_agent arguments contain 15 requests: eight gpt-6-luna/max
+and seven gpt-6.1-sol/max. The free-form message field is discarded by the
+accounting script. All 15 dispatched tasks have session_meta records, and all
+effective child turn_context model/effort values match their requested values.
+Including the coordinator, the recorded contexts are one Astra/ultra, eight
+Luna/max, and seven Sol/max.
+
+The active counts above come from the live agent roster recorded in
+work/state/dispatch.json. The dispatch file pins all 15 child session IDs and
+the 14 currently active IDs. Refresh its active_session_ids and
+active_as_of_utc fields from the live agent roster before a later concurrency
+snapshot; refresh session_ids when new agents are dispatched.
+
+Cumulative token and price snapshot
+
+The latest thread_token_usage counters from 16 separate session logs sum to:
+
+  input tokens:              57,715,446
+  cached input tokens:       54,709,888 (subset of input)
+  uncached input tokens:      3,005,558
+  cache-write input tokens:          0
+  output tokens:                445,430
+  reasoning output tokens:      290,163 (subset of output)
+  reported total tokens:     58,160,876
+
+The latest per-thread records identify their own thread_id, and that ID matches
+the corresponding session_meta.id for all 16 sessions. For example, the root
+thread id is 01a11bf8-98a4-7342-b565-17a798a3759f; the resource_audit child
+thread id is 01a11bfa-2c92-7ce0-ae32-e783386efe14. A child's token record has
+the root id in its session_id field but its own child id in thread_id. The
+script sums each thread_token_usage once, so the root counter is not treated as
+an aggregate of its descendants.
+
+The standard short-context rates supplied from the official model comparison
+page, https://developers.openai.com/api/docs/models/compare, are USD per million
+tokens: Astra input/cached/output 10/1/50; gpt-6.1-sol 2/0.1/10; Luna
+0.1/0.01/0.5. At those rates, the cumulative price proxy is:
+
+  Astra: $5.432416
+  Luna:  $0.808543
+  Sol:   $3.1171032
+  Total: $9.3580622
+
+This is a pricing estimate, not actual billing. It uses uncached input,
+cached input, and output buckets; reasoning output stays inside output_tokens
+and is not charged a second time. No effort multiplier is applied. The proxy
+does not include long-context adjustments, discounts, non-token charges, or
+billing corrections. Cumulative counters and this price proxy do not measure
+concurrent reservation.
+
+Files and rerun instructions
+
+work/state/usage_snapshot.json is the latest full machine-readable snapshot.
+work/state/snapshots/usage_2026-10-08T14-58-08Z.json preserves that full
+snapshot, and work/state/snapshots/dispatch_2026-10-08T14-57-52Z.json preserves
+its active roster. The earlier summary snapshot at
+work/state/snapshots/usage_2026-10-08T14-55-33Z.json preserves the preceding
+meaningful reservation state: 15.7 active equivalents, before the two PPT Sol
+agents were dispatched and before release_verification_scope completed.
+
+From the workspace root, rerun the full audit with:
+
+  python3 work/state/audit_usage.py \
+    --root-session /Users/harjas/.codex/sessions/2026/10/09/rollout-2026-10-09T00-43-59-01a11bf8-98a4-7342-b565-17a798a3759f.jsonl \
+    --dispatch-file work/state/dispatch.json \
+    --output work/state/usage_snapshot.json
+
+The explicit dispatch file makes the full-record read set exact: root plus the
+listed descendant session logs. Without a dispatch file, the script can use
+session_meta parentage and reads only the first metadata line of sibling JSONL
+files to identify descendants before reading full records. Snapshot totals use
+the latest cumulative thread_token_usage record per session; rerun after work
+continues to refresh cumulative usage. To preserve another historical point,
+copy usage_snapshot.json into work/state/snapshots with a UTC timestamp in the
+filename.

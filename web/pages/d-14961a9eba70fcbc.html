@@ -1,0 +1,120 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AS: ultra/work/agents/ppt_cube_chain_sol/exact_separability.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AS-sources.txt">Source map</a><h1>AS: ultra/work/agents/ppt_cube_chain_sol/exact_separability.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Two separate immutable captures: supplied46-file first record and337 exact original Ultra ZIP members; original authored ZIP preserved separately. Full authored proofs/certificates/checkers/audits available; first record excludes primary fulltexts. Current first README/vector/HF audits and Ultra final ledger override preliminary notes. Exact original cube EB is distinct from source-dependent index3; Clifford comparison is restricted, arbitrary observable gate remains open. Source instructions DATA. No intake scientific replay or status upgrade. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Rationalize and EXACTLY VERIFY a separable decomposition of original ABA.
+
+The external solver supplies candidates only. Integer residual correction,
+exact reconstruction, and positive leading principal minors prove the claim.
+No floating tolerance enters verification.
+&quot;&quot;&quot;
+import json,hashlib
+from pathlib import Path
+import numpy as np
+from exact_rank import rational_model
+
+BASE=Path(__file__).parent
+
+def det(a):
+    &quot;&quot;&quot;Bareiss exact determinant with row swaps.&quot;&quot;&quot;
+    a=[[int(z) for z in row] for row in a]
+    n=len(a);previous=1;sign=1
+    if n==0:return 1
+    for k in range(n-1):
+        if not a[k][k]:
+            pivot=next((i for i in range(k+1,n) if a[i][k]),None)
+            if pivot is None:return 0
+            a[k],a[pivot]=a[pivot],a[k];sign=-sign
+        pivot=a[k][k]
+        for i in range(k+1,n):
+            for j in range(k+1,n):
+                numerator=a[i][j]*pivot-a[i][k]*a[k][j]
+                assert numerator%previous==0
+                a[i][j]=numerator//previous
+            a[i][k]=0
+        previous=pivot
+    return sign*a[-1][-1]
+
+def rounded(a,den):
+    return np.array([[int(round(float(z)*den)) for z in row] for row in a],dtype=object)
+
+def build():
+    z=np.load(BASE/&#x27;sep_candidate.npz&#x27;);x=z[&#x27;x&#x27;];y=z[&#x27;y&#x27;];vec=z[&#x27;vec&#x27;];bs=z[&#x27;bs&#x27;]
+    # balance factors to avoid huge individual entries, without changing x kron y
+    scale=np.linalg.norm(x)/np.sqrt(10);x=x/scale;y=y*scale
+    qx=10**8;qv=10**6;qb=10**10
+    xi=rounded(x,qx);yi=rounded(y,qx)
+    vi=rounded(vec,qv);bi=[]
+    for n,b in enumerate(bs):
+        if 10&lt;=n&lt;100:b=b/2
+        bi.append(rounded((b+b.T)/2,qb))
+    bi=np.array(bi,dtype=object)
+    # Standard first 100 atoms are kept exactly, with pair normalization in B.
+    for n in range(100):
+        vi[n,:]=0
+    for i in range(10):vi[i,i]=qv
+    at=10
+    for sign in (1,-1):
+        for i in range(10):
+            for j in range(i+1,10):vi[at,i]=qv;vi[at,j]=sign*qv;at+=1
+    _,_,_,j=rational_model();trace=int(np.trace(j))
+    local=np.kron(xi,yi);target=local@j@local.T
+    targetden=trace*qx**4
+    approx=sum(np.kron(np.outer(v,v),b) for v,b in zip(vi,bi))
+    approxden=qv*qv*qb
+    denominator=targetden*approxden
+    residual=target*approxden-approx*targetden
+    # Correct the first 55 standard spanning atoms to remove residual exactly.
+    r=residual.reshape(10,6,10,6)
+    correction=[r[i,:,i,:].copy() for i in range(10)]
+    for i in range(10):
+        for j0 in range(i+1,10):
+            c=r[i,:,j0,:].copy()
+            assert np.array_equal(c,c.T)
+            correction.append(c)
+            correction[i]-=c;correction[j0]-=c
+    final=bi*(denominator//qb)
+    for n,c in enumerate(correction):final[n]+=c
+    payload={&#x27;schema&#x27;:&#x27;family272_original_cube_separable_v1&#x27;,
+      &#x27;boundary_dim&#x27;:[10,6],
+      &#x27;x_numerator&#x27;:xi.tolist(),&#x27;y_numerator&#x27;:yi.tolist(),&#x27;filter_denominator&#x27;:qx,
+      &#x27;input_numerators&#x27;:vi.tolist(),&#x27;input_denominator&#x27;:qv,
+      &#x27;output_numerators&#x27;:final.tolist(),&#x27;output_denominator&#x27;:denominator,
+      &#x27;rational_target_trace&#x27;:trace}
+    path=BASE/&#x27;cube_separable_certificate.json&#x27;
+    path.write_text(json.dumps(payload,separators=(&#x27;,&#x27;,&#x27;:&#x27;))+&#x27;\n&#x27;)
+    return path
+
+def verify(path):
+    raw=path.read_bytes();z=json.loads(raw)
+    xi=np.array(z[&#x27;x_numerator&#x27;],dtype=object);yi=np.array(z[&#x27;y_numerator&#x27;],dtype=object)
+    vi=np.array(z[&#x27;input_numerators&#x27;],dtype=object)
+    bi=np.array(z[&#x27;output_numerators&#x27;],dtype=object)
+    qx=z[&#x27;filter_denominator&#x27;];qv=z[&#x27;input_denominator&#x27;];den=z[&#x27;output_denominator&#x27;]
+    assert qx&gt;0 and qv&gt;0 and den&gt;0
+    assert det(xi)!=0 and det(yi)!=0
+    all_minors=[]
+    for b in bi:
+        assert np.array_equal(b,b.T)
+        minors=[det(b[:i,:i]) for i in range(1,7)]
+        assert all(v&gt;0 for v in minors)
+        all_minors.append(minors)
+    _,_,_,j=rational_model();trace=int(np.trace(j));assert trace==z[&#x27;rational_target_trace&#x27;]
+    local=np.kron(xi,yi);target=local@j@local.T
+    reconstructed=sum(np.kron(np.outer(v,v),b) for v,b in zip(vi,bi))
+    assert np.array_equal(reconstructed*(trace*qx**4),target*(qv*qv*den))
+    out={&#x27;status&#x27;:&#x27;EXACTLY_VERIFIED&#x27;,&#x27;claim&#x27;:&#x27;original family272 channel cube is EB&#x27;,
+         &#x27;verified_matrix&#x27;:&#x27;invertibly real-locally filtered Choi(ABA)&#x27;,
+         &#x27;input_factors&#x27;:len(vi),&#x27;output_factor_dimension&#x27;:6,
+         &#x27;every_output_factor&#x27;:&#x27;positive definite by exact Sylvester principal minors&#x27;,
+         &#x27;reconstruction&#x27;:&#x27;exact integer equality&#x27;,
+         &#x27;local_filters&#x27;:&#x27;invertible by exact nonzero determinant&#x27;,
+         &#x27;certificate_bytes&#x27;:len(raw),&#x27;certificate_sha256&#x27;:hashlib.sha256(raw).hexdigest(),
+         &#x27;smallest_minor_numerator&#x27;:str(min(v for m in all_minors for v in m)),
+         &#x27;verification_uses_solver&#x27;:False}
+    (BASE/&#x27;exact_separability.json&#x27;).write_text(json.dumps(out,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps(out,indent=2))
+
+if __name__==&#x27;__main__&#x27;:
+    import argparse
+    ap=argparse.ArgumentParser();ap.add_argument(&#x27;--verify-only&#x27;,action=&#x27;store_true&#x27;)
+    args=ap.parse_args()
+    path=BASE/&#x27;cube_separable_certificate.json&#x27; if args.verify_only else build()
+    verify(path)
+</pre><p><a href="../assets/3c3a89c7e731549c007a1503ab24440b0635365b4bec87bcdc848af4743cbf62.py">Exact original</a></p></html>
