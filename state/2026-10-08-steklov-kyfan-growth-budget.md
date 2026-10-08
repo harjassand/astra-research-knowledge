@@ -1,10 +1,10 @@
-# A Steklov–Ky Fan growth budget for harmonic functions on uniformly controlled polar ends
+# A Steklov–Ky Fan growth budget for harmonic functions on uniformly regular polar ends
 
 **Date:** 8 October 2026 (Australia/Brisbane).  
 **Status:** Independently derived proof for the explicit geometric class below; not formally certified or independently peer reviewed. Priority remains UNKNOWN. In particular, this note does **not** certify the existing Astra single-metric construction and does not assert a historic open-problem resolution.  
 **Pinned Astra base commit:** 687dfc0640ee80654bcbdbe38cb13d6e1f1586ce.  
 **Related Astra cards:** N175–N178; primary release family 361.  
-**Research purpose:** Test whether the factor 9v/4 suggested by the one-metric angular construction can be a universal sharp ceiling, and whether persistent excess at every sufficiently large growth degree is possible.
+**Research purpose:** Test whether the factor 9v/4 suggested by the one-metric angular construction can be a universal sharp ceiling, and whether persistent excess at every sufficiently large growth degree is possible. **Scope upgrade:** Theorem B below removes the special fixed-area gauge requirement by controlling the derivative of the angular volume form.
 
 ## Theorem (controlled polar harmonic-dimension bounds)
 
@@ -169,6 +169,88 @@ The coordinate r is distance to the origin, since all radial rays have unit spee
 
 Therefore AVR(g)=a^d, as used in the theorem.
 
+## Broader theorem: uniform polar ends without fixed angular area form (stronger result)
+
+The fixed-area hypothesis above makes the exact determinant identity transparent, but is **not needed for the asymptotic conclusion**. Here is a self-contained extension, with its own normalization and proof.
+
+**Theorem B.** Let n=d+1>=2, and let a smooth complete metric, Euclidean near the origin, be of the form
+
+    g=dr^2+r^2 h(log r)
+
+outside a compact set, where h(t) is a family of metrics on S^d precompact in C-infinity and with bounded C^0 norm of partial_t h(t). Suppose that
+
+    Vol(S^d,h(t)) / Vol(S^d,g_round) -> v in (0,infinity).
+
+Then AVR(g)=v and
+
+    liminf_{k->infinity} h_k(g)/(C_d k^d) <= v,
+    limsup_{k->infinity} h_k(g)/(C_d k^d) <= [(d+1)/d]^d v,
+
+where C_d=2/d!. All h_k are finite. If the polynomial-growth harmonic union is infinite-dimensional, its integer birth degrees satisfy
+
+    liminf_{p->infinity} p^(-1-1/d) sum_{i=1}^p b_i
+       >= [d/(d+1)](v C_d)^(-1/d).
+
+This theorem includes the original fixed-area polar case with h(t)=[f(e^t)/e^t]^2H(t), provided f/r->a and H(t) is smooth-precompact, in which case v=a^d. Unlike the special proof above, it permits nonconstant pointwise angular area forms and their variation with t.
+
+**Proof of Theorem B.**
+
+1. **Exact Dirichlet-to-Neumann normalization and collar.** At radius R=e^t define Lambda_t v=R partial_r(E_R v) on the Hilbert space L^2(S^d,dmu_{h(t)}). Its quadratic form is
+
+       <v,Lambda_t v>_{h(t)}
+            = R^(1-d) int_{B_R} |grad E_R v|_g^2 dvol_g.
+
+   In a short log-radius collar s in [t-delta,t], the right-hand energy is bounded below by the collar energy
+
+       int_{t-delta}^t exp[(d-1)(s-t)]
+          [ ||partial_s u||^2_{h(s)} + q_{h(s)}(u) ] ds,
+
+   where the inner trace of u is free. Because h(t) is uniformly elliptic and Lipschitz in t in C^0, choose delta small and then T large so that for all t>=T and every s in that collar both the L^2 and Dirichlet forms of h(s) are within 1+/-eps of those of h(t). Therefore
+
+       Lambda_t >= (1-eps) sqrt(-Delta_{h(t)})
+                              tanh(delta sqrt(-Delta_{h(t)}))
+
+   in quadratic-form order on L^2(dmu_{h(t)}). This is the same exact Neumann-inner-boundary minimizing calculation as in Step 2 of the special-case proof.
+
+   Classical Weyl asymptotics are uniform over a smooth-precompact set. The angular Weyl coefficient is now C(t)=C_d Vol(h(t))/Vol(g_round), which tends to C_d v. Min-max therefore yields, for every arbitrarily small loss after increasing T,
+
+       sum_{j=1}^p lambda_j(Lambda_t)
+          >= ([d/(d+1)](v C_d)^(-1/d)-eps) p^(1+1/d)
+
+   for all t>=T and sufficiently large p, uniformly in t. This use of a short collar is independent of the interior's potentially complex history.
+
+2. **Measure derivative correction.** Write dmu_{h(t)}=rho(t,omega)dmu_round. Since h(t) and h(t)^(-1) are uniformly bounded and partial_t h(t) is bounded, the scalar function m_t=partial_t log rho(t,omega) has a common sup-norm bound K. Entire harmonic boundary traces satisfy partial_t v_i=Lambda_t v_i, as before. But the varying Gram matrix G_ij(t)=int v_i v_j dmu_{h(t)} now satisfies
+
+       G'_ij=2<v_i,Lambda_t v_j>_{h(t)}
+              + <v_i,m_t v_j>_{h(t)}
+
+   in its symmetric matrix sense. Thus with W_p=sqrt(det G) and P_t the L^2(dmu_{h(t)}) projection onto the trace span,
+
+       (log W_p)' = Tr(P_t Lambda_t)+ 0.5 Tr(P_t M_{m_t})
+                   >= sum_{j=1}^p lambda_j(Lambda_t) - (K/2)p.
+
+   This is the only change to the fixed-area volume identity. The correction is O(p), **strictly lower order** than the p^(1+1/d) Weyl contribution as p->infinity.
+
+3. **Growth budget and dimension limits.** An adapted independent family of harmonic functions of individual growth at most b_i obeys by Hadamard's inequality
+
+       W_p(t) <= C_p exp[t sum_{i=1}^p b_i],
+
+   because the angular L^2 measures stay uniformly equivalent on the compact smooth family. Integrate the preceding trace-volume inequality from T to t and send t->infinity. For large p, the uniform Steklov spectral sum overwhelms the -(K/2)p term, leaving exactly
+
+       liminf_{p->infinity} p^(-1-1/d) sum_{i=1}^p b_i
+          >= [d/(d+1)](v C_d)^(-1/d).
+
+   The previously established two elementary counting consequences apply unchanged: p=h_k forces b_i<=k for i<=p, giving the limsup bound; an assumed eventual h_k>=c k^d with c>v C_d would force b_i<=(i/c)^(1/d)+O(1), contradicting the budget, giving the liminf bound. Taking arbitrarily many linearly independent degree-k harmonic functions similarly contradicts the budget and proves finite h_k.
+
+4. **Volume coefficient.** Since r is distance from the origin and the sphere at r has area r^d Vol(h(log r)),
+
+       Vol(B_R)=int_0^R r^d Vol(h(log r))dr
+               ~ v Vol(S^d,g_round) R^(d+1)/(d+1),
+
+   proving AVR=v. QED.
+
+**Why this matters:** The bounded measure-variation term shows the mechanism is geometric and is not an artifact of the Moser fixed-area coordinate gauge. In particular it applies to manifolds with a global smooth polar coordinate system, asymptotically stable rescaled sphere areas, and uniform smooth angular regularity, even when their asymptotic cones are nonunique. It still does **not** cover arbitrary Ricci-nonnegative manifolds, where cut loci and unbounded/nonuniform sphere geometries prevent the uniform collar Weyl estimate.
+
 ## Sanity check against exact cones
 
 For an exact cone with H(t)=the round metric and f(r)=a r on the end, the large-degree radial harmonic exponent corresponding to spherical degree l is
@@ -186,11 +268,11 @@ The candidate N175–N178 construction has d=2, angular metrics with the same ar
 
 In particular, the normalized harmonic-dimension sequence would oscillate and fail to converge on ONE complete smooth Ricci-nonnegative three-manifold. As the candidate allows every c<9v/4, the universal polar-end limsup upper coefficient 9v/4 would be optimal as a supremum over this model class, conditional on the candidate's correctness. This is stronger conceptual organization of its spectral mechanism, NOT independent certification of its existence proof.
 
-The fixed-area constraint is essential to the clean fixed-Hilbert-space trace identity. No general theorem is claimed for all Ricci-nonnegative manifolds or for arbitrary noncompact ends. Dropping angular compactness, the short-collar geometry bound, or pointwise common volume form requires new work.
+The fixed-area constraint is essential only to the **uncorrected** trace identity in the first proof; Theorem B removes it by retaining the bounded measure-derivative term. No theorem is claimed for all Ricci-nonnegative manifolds or arbitrary ends. Dropping uniform angular regularity, collar control or a smooth global polar description requires new work.
 
 ## Adversarial scope and priority ledger
 
-- **Proved here under the listed assumptions:** short-collar Steklov lower spectral asymptotic; fixed-Hilbert-space Gram volume derivative; Ky Fan growth-budget inequality; liminf and limsup dimension bounds.
+- **Proved here under the listed assumptions:** short-collar Steklov lower spectral asymptotic; fixed- and variable-area Gram volume derivatives; Ky Fan growth-budget inequality; liminf and limsup dimension bounds on uniformly regular polar ends (Theorem B).
 - **Not proved here:** existence of a single Ricci-nonnegative metric attaining the limsup excess; external correctness of N175–N178; arbitrary-geodesic-sphere/Ricci-only analogue; historical novelty of the Ky Fan formulation.
 - **Classical prerequisites:** smooth compact-manifold Weyl law, elliptic Dirichlet uniqueness and unique continuation, Ky Fan variational principle, min-max for self-adjoint forms, finite-dimensional Gram determinant identity.
 - **Potential priority overlaps to check with specialists:** Colding–Minicozzi harmonic-dimension estimates; Huang, *Harmonic functions with polynomial growth on manifolds with nonnegative Ricci curvature* (arXiv:2109.07534), which assumes unique tangent cone; literature on Steklov variation and asymptotically conical manifolds.
