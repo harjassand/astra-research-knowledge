@@ -148,6 +148,17 @@ On each B=0 holding interval, its physical clock contribution is an independent 
 
 These cases exhaust the statement. For a finite initial `B>0`, there is a.s. a first return to `B=0` in finite time, so the same dichotomy holds.
 
+## Independent deterministic and structural reconstruction
+
+The network really is **strongly endotactic** without relying on the earlier card. Its source complexes are `(0,0),(0,1),(1,2)` and reaction vectors `(0,1),(1,-1),(-1,-2)`. For any nonzero linear covector `w=(u,v)`, inspect which source maximizes the dot product: if source 0 maximizes, then `v<=0`, so its edge is not outward; if `v=0`, source 1 ties and its edge has strictly negative projection `u<0`. If source 1 maximizes, then `v>=0`, `u+v<=0`, and its edge has strictly negative projection `u-v<0` unless w=0. If source 2 maximizes, then `u+2v>=0`, and its edge projects `-u-2v<=0`; in the zero case source 0 ties and its edge projects `v<0`. This is precisely the maximal-source endotactic requirement. Translation by `pA` adds the same `(p,0)` to all sources and products, leaving these inequalities unchanged.
+
+The original deterministic ODE at `mu=lambda` is
+```
+a' = lambda*b - kappa*a*b^2,
+b' = lambda*(1-b) - 2*kappa*a*b^2 .
+```
+The unique positive equilibrium is `(a*,b*)=(3lambda/kappa,1/3)`. Here is an explicit boundedness argument. After an initial interval `b<=Bmax` since `b'<=lambda(1-b)`. Choose `c0^2=lambda/(16*kappa)`, `eps0=kappa*c0^2/(2lambda)=1/32`, and large `A0`. On `a>=A0`: (i) if `b<c0/sqrt(a)`, then `b'>lambda/2` while `a'<=lambda*c0/sqrt(a)`; (ii) if `c0/sqrt(a)<=b<=eps0`, then `a'<=lambda*eps0-kappa*c0^2<0`; (iii) if `b>=eps0`, then `a'<=lambda*Bmax-kappa*a*eps0^2<0`. Thus the locally Lipschitz barrier `V(a,b)=a+(c0/sqrt(a)-b)_+` has strictly negative upper directional derivative throughout `a>=A0` (on the kink use both one-sided derivatives), so `a` remains bounded. The vector field points inward at `a=0` when `b>0` and at `b=0` (where `b'=lambda`); a bounded trajectory has no boundary omega-limit. The divergence `-kappa*b^2-lambda-4*kappa*a*b` is strictly negative, eliminating periodic orbits by Bendixson. Poincare-Bendixson with a unique interior equilibrium gives global attraction for every positive initial state. The translated deterministic ODE is the original right-hand side times the strictly positive factor `a^p`; it therefore has the same positive trajectories, just different clock parametrization, and inherits global attraction.
+
 ## What is new and what is not
 
 **Potential new internal result:** complete, exact **rate/clock phase diagram** `kappa<2*lambda AND p>=3` for a three-channel, strongly endotactic, deterministic-permanent family at balanced immigration/conversion. This closes a *named open case* in the pinned Astra stochastic-universality record and shows a rate-controlled stochastic explosion bifurcation inside a fixed reaction-graph class.
