@@ -1,0 +1,92 @@
+# Bowen's direct-finiteness / Bernoulli-isomorphism question — research handoff
+Date: 2026-10-08 (Brisbane)
+Status: Exact algebraic statements proved from the explicit hypothesis ab=1 != ba; entropy assertions are rigorous conditional corollaries of named Seward theorems. OpenAI family 197 source theorem itself not independently validated here. This record is NOT an announcement of a resolved Bernoulli isomorphism problem and carries no novelty certification.
+
+## Scope and evidence acquisition
+Task: Lewis Bowen asks whether a group whose group algebra is not directly finite could have all nontrivial Bernoulli shifts measurably isomorphic. Focus F_2 family 197 and previously proposed hyperbolic enhancement. Read 00_START_HERE.txt (blob b8e71d9c13876e0e4d5719d08b230cd7a4bfeffd); 01_CORE.txt (dad3d06fe3916e5f8df8b9b620db5dae37f85ef4); cards/N47-hyperbolic-group-ring.txt (97d74c295801c218a9530ad37fe05b866f91c20b); cards/N129-hyperbolic-direct-finiteness.txt (e0fb964ebd263eafdbb8cbc63fa394c9796f2cc9); web/pages/d-9d9a9fc5fde8402b.html (archived hyperbolic PDF text); web/R-reports.txt; and NEWER main commit 36cb1e0b121ff3d674de7989a331794e566c0548 at state/2026-10-08-formanek-frontier/RESEARCH_STATE.md. Follow the NEWER source status, not older contradictory N47/N129 speculation. No independent specialist, formal proof assistant, or independent subagent was run in this session; technical/prior-art/adversarial tracks were performed by this single agent.
+
+## Relevant external primary sources
+- OpenAI family 197 preprint: https://github.com/openai/math/blob/main/preprints/A-Torsion-Free-Group-Algebra-That-Is-Not-Directly-Finite-October-4-2026/direct-finiteness.pdf ; per archived local reconstruction its graph-parity argument produces a,b,c in F_2[G] with ab=1, ac=0, c!=0, hence ba!=1. Its proposed torsion-free finitely presented group and unsupplied concrete labelled graph are SOURCE CLAIMS, not re-proved here.
+- B. Seward, "Krieger's finite generator theorem for actions of countable groups II," https://mathweb.ucsd.edu/~bseward/Files/krieger2.pdf . Theorem 1.10 finite-entropy Bernoulli min formula; Thm 1.11 products P x G; Thm 1.12 infinite-base dichotomy; Thm 1.3 strict entropy bound and Remark 1.4 sharper estimate; Section 1 p4 defines h_sup as supremum only over FREE ERGODIC actions of FINITE Rokhlin entropy. Be scrupulous distinguishing POS from h_sup>0: Seward states POS=>INF was not known groupwise.
+- B. Seward, "Weak containment and Rokhlin entropy," https://mathweb.ucsd.edu/~bseward/Files/weakcontainrokentropy.pdf , Theorem 1.5 (sharper finite-window bound).
+- L. Bowen, "Finitary random interlacements and the Gaboriau-Lyons problem," https://arxiv.org/abs/1707.09573 : ALL nontrivial Bernoulli shifts of every countable nonamenable G are mutual FACTORS (weakly isomorphic), already prior art, not an isomorphism theorem.
+- B. Seward, "Bernoulli shifts with bases of equal entropy are isomorphic," https://arxiv.org/abs/1805.08279 ; "Positive entropy actions ... factor onto Bernoulli shifts," https://arxiv.org/abs/1804.05269. Equal-base-entropy theorem and Sinai factor theorem do not equate unequal entropies.
+- Bartels-Lueck-Reich, "On the Farrell-Jones Conjecture and its applications," p9, https://him-lueck.uni-bonn.de/data/blr-appl.pdf , quotes Formanek's all-characteristics trivial-idempotent theorem for torsion-free hyperbolic groups (original: Formanek, *Idempotents in Noetherian Group Rings*, https://doi.org/10.4153/CJM-1973-037-6). The later repo state/2026-10-08-formanek-frontier/RESEARCH_STATE.md correctly resolves N129's unresolved contradiction: the hyperbolic direct-finiteness candidate is IMPOSSIBLE, not merely unverified. Nonsofic hyperbolic constructions without one-sided inverse witnesses are unaffected.
+
+## Theorem A: exact equivariant Haar splitting (proved algebraically)
+
+Let G be a countably infinite discrete group, q a prime power, R=F_q[G], and a,b in R with ab=1 but ba != 1. Define r=1-ba !=0; idempotent r^2=r. Let X=F_q^G as a compact abelian group with its left shift (h.x)(g)=x(h^{-1}g) and Haar u_q^G. For u=sum u_s s in R define right-convolution finite-radius cellular automorphism T_u by (T_u x)(g)=sum_s u_s x(gs). These are continuous equivariant group homomorphisms and T_u T_v=T_{uv}.
+
+Write A=T_a, B=T_b, C=T_r=I-BA. Then AB=I; A surjective, B injective; BA and C complementary idempotents, A C=0, C B=0. Put K=ker A=im C; Y=im B=ker C, both compact shift-invariant subgroups. The map
+    Phi:X -> X x K, Phi(x)=(A x,C x)
+is a continuous equivariant topological GROUP isomorphism with inverse
+    Psi(y,z)=B y+z.
+Check: AB y=y, AC x=0, C B y=0, C z=z for z in ker A; B A x+C x=x.
+
+Because Phi is an isomorphism of compact groups, it pushes Haar u_q^G to the PRODUCT Haar u_q^G x m_K: the two coordinates are independent, not just correlated factors. Similarly B:(X,u_q^G)->(Y,m_Y) is a topological measure conjugacy. K is nontrivial since r !=0 gives nonzero T_r. In fact K is infinite and Haar m_K atomless: choose arbitrarily many g_i with disjoint translates g_i supp(r); each (T_r x)(g_i) is a nonzero linear combination of disjoint independent uniform input coordinates and hence the outputs are independent uniform F_q. (As a compact metric group K infinite => atomless Haar.)
+
+When family 197 additionally has ac=0,c!=0, im T_c is a nontrivial compact subgroup of K. The hypothesis ac=0 alone does not imply K is a Bernoulli shift, and neither does the Haar product splitting.
+
+Consequences: X is topologically/equivariantly isomorphic as compact group to X x K, and measurably the Bernoulli shift absorbs nontrivial independent K; inductively X ~= X x K^n for every finite n. This is NOT X ~= X x X and NOT an isomorphism between bases of different entropy. No entropy additivity, relative independence theorem, or characterization of K as measurably Bernoulli has been established.
+
+## Theorem B: explicit finite Rokhlin-entropy upper bound (proved conditionally on Seward)
+
+With r=sum_{s in S} r_s s !=0 and m=|S| (finite), Y=im B is a proper closed G-invariant subgroup, topologically conjugate to the binary (or q-ary) Bernoulli shift. It satisfies for every y in Y the linear constraint
+    sum_{s in S} r_s y(s)=0.
+Let alpha be the coordinate-at-identity partition of (Y,m_Y). The quotient coordinate is uniform F_q, because b !=0 and (B x)(1)=sum b_s x(s) is a nonzero linear form on independent uniform input. Thus H(alpha)=ln(q); alpha is generating. The joint S-coordinate patterns lie in a codimension-1 vector subspace of F_q^S, so H(alpha^{S^{-1}}) <= (m-1)ln(q). In fact each allowed pattern is uniformly distributed on the image linear subspace and the entropy is its dimension times ln(q), but the upper bound suffices. Y is free ergodic since conjugate to the full Bernoulli shift of infinite G.
+
+Apply Seward, "Weak containment and Rokhlin entropy", Theorem 1.5:
+    h_G^Rok(Y,m_Y) <= inf_{T finite} H(alpha^T)/|T|
+                     <= (1-1/m)ln(q) < ln(q).
+Since Y is measure conjugate to X, the same strict bound holds for the Bernoulli q-shift. Apply Seward, Krieger II, Theorem 1.10:
+    h_G^Rok(X) = min(ln(q), h_sup^Rok(G)).
+As the left side is strictly less than ln(q), necessarily
+    0 <= h_sup^Rok(G) = h_G^Rok(F_q^G,u_q^G)
+       <= (1-1/m)ln(q) < ln(q).
+For family 197, q=2 and m=|supp(1-ba)|, an exact finite integer not yet acquired from the source.
+
+A weaker but self-contained-in-Krieger-II bound uses Theorem 1.3 with epsilon approaching ln(q)/m:
+    h_sup(G) <= ln(q)(1-1/(16 m^4)).
+The sharper bound quoted above uses the separately published Theorem 1.5 and is preferred. Both are derived from established theorem ingredients, not independently new ergodic methods. This is a nontrivial bound, stronger than simply observing non-soficity.
+
+## Theorem C: classification obstruction; finite versus infinite base (proved from Seward)
+
+Let s=h_sup^Rok(G), supremum ONLY of finite positive entropy values; and POS(G) mean "some free ergodic pmp G-action has positive Rokhlin entropy," including +infinity.
+
+1. If s>0, for any 0<t<s choose a NONTRIVIAL biased two-atom base with Shannon entropy t, possible continuously as t ranges through (0,min(s,ln2)). Seward Theorem 1.10 gives Bernoulli Rokhlin entropy t. Different t imply nonisomorphic G-Bernoulli shifts (isomorphism invariance), yielding UNCOUNTABLY many pairwise nonisomorphic shifts. Hence Bowen's full-collapse hypothesis forces s=0.
+
+2. This is not yet the strongest necessary condition. Seward Theorem 1.12 says the infinite-Shannon-base Bernoulli shift has Rokhlin entropy +infinity IFF POS(G); otherwise zero. If ALL nontrivial Bernoulli shifts were isomorphic, they would have the same Rokhlin entropy as the finite entropy family; from (1) s=0, so the infinite-base Bernoulli entropy would have to be zero. Thus a full-collapse group MUST fail POS(G): **no free ergodic probability-preserving G-action of positive Rokhlin entropy, finite OR infinite**.
+
+3. Conversely, if POS(G) fails, then every FINITE-Shannon Bernoulli shift has zero Rokhlin entropy by Thm1.10 and every INFINITE-Shannon Bernoulli shift has zero by Thm1.12. Hence "all nontrivial Bernoulli shifts have equal Rokhlin entropy" is equivalent to NOT POS(G), but this equality is MUCH WEAKER than measured isomorphism. No theorem NOT POS => all Bernoulli shifts isomorphic is supplied; that is a precise missing classification bridge.
+
+4. Seward explicitly states POS=>INF is open (Krieg. II p4). One MUST NOT infer NOT POS just from s=0 or from s finite. A group could logically have h_sup=0 but a free ergodic action with +infinite Rokhlin entropy; then infinite-base Bernoulli has +infinite entropy and differs from every finite-base zero-entropy Bernoulli. This adversarial subtlety is central.
+
+5. Seward Thm1.11 supplies a further consequence. For any countable P with arbitrarily large finite subgroups, e.g. P=direct sum of infinitely many C_2, put Gamma=P x G. Our Theorem B gives s(G)<infinity and Thm1.11 gives s(Gamma)=0. Therefore EVERY finite-Shannon nontrivial Bernoulli shift of Gamma has ZERO Rokhlin entropy by Thm1.10. However infinite-Shannon bases need NOT have zero without separately disproving POS(Gamma). Gamma remains non-direct-finite as the given witness embeds from F_q[G]. Gamma is NOT torsion-free or word hyperbolic.
+
+This advances the central question to two exactly separate missing inputs: (i) prove NOT POS(G) for the original family-197 group (an extremely strong zero-entropy statement; s finite alone is insufficient), and (ii) acquire a classification/absorption theorem that turns such entropy collapse into measurable Bernoulli conjugacy, or find another isomorphism invariant to refute collapse.
+
+## Theorem D: topological "kernel is another full shift" is impossible
+
+Specialize q=2. The augmentation map eps:F_2[G]->F_2 satisfies eps(a)eps(b)=1, hence eps(a)=1. A configuration fixed by all shifts is constant t in F_2. On such configurations A acts by multiplication eps(a)=1, so K=ker A has exactly ONE G-fixed point (the zero configuration). A nontrivial full shift M^G over any finite alphabet M with |M|>=2 has at least TWO distinct G-fixed points (constant configurations). Thus K cannot be G-equivariantly HOMEOMORPHIC to any nontrivial finite-alphabet full shift. This blocks a topological/concrete linear-coding route to the desired X ~= X x X, but does not block measure-theoretic Bernoulli isomorphism because fixed points have Haar measure zero in nontrivial Bernoulli shifts.
+
+Similarly X and X x X are never topologically conjugate (|fixed points|=q versus q^2), although measurable isomorphism remains a separate question.
+
+## Hyperbolic status: decisive existing obstruction
+
+Source cards N47/N129 only had a conditional proposed torsion-free hyperbolic F_2 direct-finiteness counterexample, based on geometry of labels and a claimed linear Dehn bound. A newer repository record, state/2026-10-08-formanek-frontier/RESEARCH_STATE.md, correctly invokes Formanek as quoted by Bartels-Lueck-Reich: for every torsion-free word-hyperbolic group H and ANY field F, F[H] has no nontrivial idempotents. If ab=1 !=ba then ba (equivalently r=1-ba) is a nontrivial idempotent, contradiction. Therefore this *hyperbolic strengthening is mathematically impossible* under the source's desired torsion-free and characteristic-2 assumptions. At least one candidate construction/geometric premise is false; exact failing diagram step not isolated here. The OA252/N06 marked-line hyperbolic NONSOFIC candidate does NOT contradict this: nonsoficity does NOT imply group-ring non-direct-finiteness. Also do not confuse Formanek's all-field theorem with earlier insufficient Farrell-Jones/K0-only arguments.
+
+## Independent adversarial and novelty checks
+- Double-checked composition order T_u T_v=T_{uv} with right convolution and left G shift. Wrong order could swap the one-sided inverse and destroy the proof; fixed.
+- B injection/Y proper and A surjection/K nontrivial hold at the level of topological groups; Haar product follows uniquely from compact-group isomorphism, NOT from a heuristic about linear independence of fibers.
+- Uniform base measure is essential: arbitrary biased Bernoulli measures are generally NOT preserved by F_q-linear convolutions. Use Seward to address biased bases, not the convolution map directly.
+- Bowen's all-nonamenable mutual-factor theorem already supplies weak isomorphism for the target G, since non-direct-finiteness => nonsofic => nonamenable. Calling that new would be false.
+- A proper subshift isomorphic to Bernoulli does not imply a Bernoulli kernel K or a factor-isomorphism upgrade. Rokhlin entropy is NOT known to be additive for direct products of these nonamenable systems. Do not subtract entropies from X ~= X x K.
+- The zero-entropy finite Bernoulli family on Gamma=P x G is not a Bernoulli-isomorphism classification.
+- Source-ledger status remains source_derived_unreviewed for N47/N129; family197 group-ring premise remains source-reported. The proofs above are ordinary mathematical deductions conditional on that premise and cited established literature, not external validation of the OpenAI construction or a new peer-reviewed breakthrough.
+
+## High-value next work
+1. Ask Bowen/Seward if for G of family197, POS(G) is known false or if an independent infinity-Rokhlin obstruction survives; obtaining NOT POS would exactly remove ALL Rokhlin-entropy objections.
+2. Characterize compact algebraic kernel K=ker T_a more fully (mixing, ergodicity, algebraic module dual, measurable Bernoulli or new invariant). Prove or refute measure-theoretic K ~= F_2^G; topologically impossible as shown.
+3. Determine whether family197's specific finite supports yield much better inf_{T finite} H(alpha^T)/|T| than (m-1)/m ln2 (a computable finite-window linear-rank problem, provided an explicit a,b graph is acquired).
+4. Investigate the missing measurable absorption theorem: X ~= X x K together with mutual Bernoulli factors does NOT imply X ~= X x X. Search new measurable orbit-equivalence/joining invariants or explicit coding with measurable inverse.
+5. Do not pursue the impossible torsion-free hyperbolic direct-finiteness transfer. Keep possible hyperbolic NONSOFIC OA252 construction separate and verify on its own merits.
