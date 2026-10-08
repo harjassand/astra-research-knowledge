@@ -46,6 +46,10 @@ In particular this is <log 2 for the characteristic-two release. Seward II Theor
   h_sup^Rok(G) <= inf_{T finite} (1-d_T/|T|)log q.
 For n>=1, a^n b^n=1, r_n=1-b^n a^n!=0, Y_n=im(T_{b^n}) is likewise Bernoulli and the same formula holds with Rr_n. Thus the infimum can be taken jointly over n and finite T. A computable lower bound on d_T is rank(span_Fq{g r_n:g supp(r_n) subset T}); no oracle for the infinite ideal is needed for that sufficient estimate.
 
+**Direct finite-matrix form (same bound).** Right multiplication by b on R has kernel Rr: if u b=0 then u=(u b)a+u r=u r, and r b=0. Thus |T|-d_T = dim_Fq span{t b:t in T}. This dimension is computed by a finite coefficient matrix for the translates t b, given an explicit witness and decidable equality of its finitely many group words. In particular
+  h_sup^Rok(G) <= inf_{T finite} [rank_Fq{t b:t in T}/|T|] log q,
+and likewise for b^n. A sequence (n_j,T_j) with normalized rank tending to zero would force h_sup(G)=0; no such sequence is known. This is an exact reduction to finite linear algebra, not a finite-time algorithm unless the group operations/witness can be acquired.
+
 To force h_sup(G)=0 by this method it would suffice to find windows and n such that d_{T,n}/|T| tends to 1. No such rank-density theorem has been proved, nor are actual words a,b available for a numerical test. Iterating X ~= X x K^n does not give that density limit, entropy additivity, or X ~= X x X.
 
 Primary sources:
