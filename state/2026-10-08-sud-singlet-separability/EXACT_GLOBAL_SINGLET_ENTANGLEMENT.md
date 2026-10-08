@@ -106,6 +106,19 @@ So relative entropy grows as [d(d-1)/2]log r - Sum_j log(j!)+o(1), while global 
   d=3,r=3: p=1/40; trace distance 39/40; E_R=log40; R_g=39.
   d=4,r=2: p=1/180; trace distance 179/180; E_R=log180; R_g=179.
 
+## Quantitative ideal white-noise certification (additional corollary)
+
+For t in [0,1], let rho_t=(1-t)Omega_(d,r)+t I/d^(dr), i.e. a GLOBAL depolarizing mixture, not local independent noise. The witness W=pI-P_inv has negative expectation (and thus certifies entanglement) whenever
+
+    (1-t)+t f_(r^d)/d^(dr)>p_(d,r),
+
+equivalently
+
+    t < t_cert=(1-p_(d,r))/(1-f_(r^d)/d^(dr)).
+
+This is a **sufficient entanglement detection region**, NOT the exact full-separability threshold of rho_t. Examples: (d,r)=(3,2) gives t_cert≈0.95096685; (3,3) gives 0.97708492; (4,2) gives 0.99465693. For fixed d as r->infinity, t_cert→1 with 1-t_cert~p_(d,r)~c_d r^(-d(d-1)/2). This quantifies a peculiar globally robust but fixed-depth resource under the precisely defined noise model; not a device-level claim. The P_inv measurement may incur nontrivial Schur-transform/collective-control and readout costs, and local per-site decoherence is a different channel.
+
+
 ## Computational/adversarial tests and scope
 
 1. Exact combinatorial coefficient enumeration (no optimizer) verifies equality in balanced frames for d=2,r=2,3 and d=3,r=2,3; numerical random complex Gram matrices for d=2..4 fall below the proposed bound. Earlier optimization for d=2,3,4,r=2 reached the equality point independently from random seeds. Such finite tests are checks, not proof; proof above is complete.
