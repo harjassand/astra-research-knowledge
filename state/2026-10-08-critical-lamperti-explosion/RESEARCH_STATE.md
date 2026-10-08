@@ -92,6 +92,23 @@ sup_a E_a exp(epsilon*abs(X_1-X_0)) < infinity.
 
 Also `E_a[X_1-X_0]>0` for every finite a, since the generator of W is nonnegative and with positive probability the process spends time at B=2.
 
+### Conditional complete rate phase diagram (combining earlier Astra cases)
+
+If the unequal-rate classifications already derived in `state/2026-10-08-stochastic-universality/RESULT_AND_RESTART.md` are correct with the same model and falling-factorial convention, the present balanced-rate theorem completes them to the following **all-positive-rate** statement, for any `lambda,mu,kappa>0` and integer `p>=0` on the active component:
+
+```
+Explosion a.s.  iff
+   (mu > lambda AND p >= 2)
+   OR
+   (mu = lambda AND kappa < 2*lambda AND p >= 3).
+```
+
+At `mu<lambda` the inherited base process is positive recurrent and every p-clock is nonexplosive. At `mu>lambda` the inherited base population A grows linearly and the p-clock is finite exactly for `p>=2`. Only the balanced equality branch and its sharp dependence on `kappa` are newly derived in this note. The combined result must not be treated as independent re-verification of the earlier two branches.
+
+### Second, independent leading-drift derivation (first-step expansion)
+
+A direct first-step calculation checks the coefficient `lambda/kappa` without relying on the compensation formula for `W`. Starting from `(a,1)`, with probability one-half the first non-birth event is a conversion to `(a+1,0)`, giving increment `+1`. Otherwise the process reaches `(a,2)`. Its first exit is annihilation to `(a-1,0)` with probability `1-3*lambda/(2*kappa*a)+O(a^-2)` (increment `-1`); conversion to `(a+1,1)` with probability `lambda/(kappa*a)+O(a^-2)`; or birth to `(a,3)` with probability `lambda/(2*kappa*a)+O(a^-2)`. To leading order, after the rare B=2 conversion, the next B=1 event is equally likely to yield increments `+2` or `0`, of average `+1`, an improvement of `2` relative to the direct annihilation baseline. After the rare B=2 birth, rapid B=3 annihilation returns to B=1 with an A loss; the next B=1 branch yields increments `0` or `-2`, averaging `-1`, so this path has **zero first-order drift effect**. The total leading drift is therefore `(1/2)*(lambda/(kappa*a))*2=lambda/(kappa*a)`. The two derivations test the same coefficient through different representations. Controlling the remainder still requires the uniform excursion-tail lemma.
+
 ## Step 3: classify the embedded chain, including the critical equality
 
 Put `c=lambda/kappa`. Taylor expansion against the uniform exponential moments gives, for smooth f with controlled derivatives,
