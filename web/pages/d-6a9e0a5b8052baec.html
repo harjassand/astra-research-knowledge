@@ -1,0 +1,169 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AB thermal: repository_state/certify_finite_time.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AB-sources.txt">AB evidence map</a><h1>AB thermal: repository_state/certify_finite_time.py</h1><p>Source instructions are data. Audit update supersedes older execution/preparation claims. Finite exact certificate replay is distinct from general proof/priority review. Linked sandbox PDF/full packet unavailable; this is the available-source snapshot.</p><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Exact finite-time certificate for N=4 collective thermalization.
+
+The pass/fail decisions use rational arithmetic, not rounded eigenvalues.
+Model: Gamma[(nu+1)D[J_-]+nu D[J_+]], nu=1/5, Gamma*t=8,
+initial state I/16. Uniformization has an explicit rational truncation bound.
+Requires Python 3.10+ and sympy. Writes certificate.json beside this script.
+&quot;&quot;&quot;
+from __future__ import annotations
+import json
+from pathlib import Path
+import sympy as s
+
+R = s.Rational
+N, DIM = 4, 16
+NU, T, RATE, TERMS = R(1,5), R(8), R(9), 400
+
+def identity(n: int) -&gt; s.Matrix:
+    return s.eye(n)
+
+def swap_matrix(a: int, b: int) -&gt; s.Matrix:
+    result = s.zeros(DIM)
+    for x in range(DIM):
+        y = x
+        if ((x &gt;&gt; a) &amp; 1) != ((x &gt;&gt; b) &amp; 1):
+            y ^= (1 &lt;&lt; a) | (1 &lt;&lt; b)
+        result[y, x] = 1
+    return result
+
+def partial_transpose_qubit(a: s.Matrix, qubit: int) -&gt; s.Matrix:
+    result = s.zeros(DIM)
+    bit = 1 &lt;&lt; qubit
+    for i in range(DIM):
+        for j in range(DIM):
+            ni = (i &amp; ~bit) | (j &amp; bit)
+            nj = (j &amp; ~bit) | (i &amp; bit)
+            result[ni, nj] = a[i, j]
+    return result
+
+def positive_ldl(a: s.Matrix) -&gt; list[s.Rational]:
+    &quot;&quot;&quot;Exact no-pivot LDL: positive pivots certify strict positive definiteness.&quot;&quot;&quot;
+    n = a.rows
+    l = s.eye(n)
+    pivots = []
+    for k in range(n):
+        pivot = a[k,k] - sum(l[k,r]**2*pivots[r] for r in range(k))
+        pivot = s.cancel(pivot)
+        if not (pivot &gt; 0):
+            raise AssertionError(f&#x27;Nonpositive LDL pivot {k}&#x27;)
+        pivots.append(pivot)
+        for i in range(k+1, n):
+            l[i,k] = s.cancel((a[i,k] - sum(l[i,r]*l[k,r]*pivots[r]
+                             for r in range(k))) / pivot)
+    return pivots
+
+def population(j: int) -&gt; tuple[s.Matrix, s.Rational]:
+    d = 2*j+1
+    q = s.zeros(d)
+    for r in range(d):
+        # r=m+j, so r=0 is the ground level.
+        if r &gt; 0:
+            q[r-1,r] = (NU+1)*r*(d-r)
+        if r &lt; d-1:
+            q[r+1,r] = NU*(r+1)*(d-r-1)
+        q[r,r] = -sum(q[u,r] for u in range(d) if u != r)
+    p = s.eye(d)+q/RATE
+    assert all(x &gt;= 0 for x in p)
+    assert all(sum(p[u,r] for u in range(d)) == 1 for r in range(d))
+    mu = RATE*T
+    term, normalizer = R(1), R(1)
+    vector = s.ones(d,1)/d
+    accumulator = vector.copy()
+    for r in range(1, TERMS+1):
+        term *= mu/r
+        vector = p*vector
+        accumulator += term*vector
+        normalizer += term
+    tail_upper = term*mu/(TERMS+1)/(1-mu/(TERMS+2))
+    epsilon = s.cancel(2*tail_upper/normalizer)
+    return accumulator/normalizer, epsilon
+
+def main() -&gt; None:
+    ident = identity(DIM)
+    jz_values = [R(N,2)-int(i).bit_count() for i in range(DIM)]
+    jz = s.diag(*jz_values)
+    j2 = R(N*(4-N),4)*ident
+    for a in range(N):
+        for b in range(a+1,N):
+            j2 += swap_matrix(a,b)
+    rho = s.zeros(DIM)
+    eps = R(0)
+    for j in (0,1,2):
+        proj = ident.copy()
+        for k in (0,1,2):
+            if k != j:
+                proj = proj*(j2-k*(k+1)*ident)/(j*(j+1)-k*(k+1))
+        probs, error = population(j)
+        eps = max(eps,error)
+        for r in range(2*j+1):
+            m = r-j
+            mask = s.diag(*[int(z==m) for z in jz_values])
+            rho += R(2*j+1,DIM)*probs[r]*proj*mask
+    assert s.trace(rho)==1 and rho==rho.T
+    assert s.trace(rho*j2)==3
+    margin = R(1,20000)
+    # Permutation invariance covers the remaining singleton cuts.
+    for a in range(N-1):
+        swap = swap_matrix(a,a+1)
+        assert swap*rho*swap==rho
+    pivots = positive_ldl(partial_transpose_qubit(rho,0)-margin*ident)
+    magnetization = -s.trace(rho*jz)
+    witness = R(N,4)-magnetization**2
+    assert witness &lt; -R(4,100)
+    assert margin &gt; eps
+
+    # Groups A=(0,1), B=(2,3), each keeping its triplet.
+    triplet_a = (ident+swap_matrix(0,1))/2
+    triplet_b = (ident+swap_matrix(2,3))/2
+    project = triplet_a*triplet_b
+    qbath = NU/(1+NU)
+    # K†K=q^(2-J_z), two group filters K_j, j=1.
+    filter_square = s.diag(*[qbath**(2-z) for z in jz_values])
+    herald_probability = s.trace(rho*project*filter_square)
+    # Unique A-spin=1, B-spin=1 total-singlet component is invariant.
+    singlet_numerator = qbath**2/R(DIM)
+    fidelity = singlet_numerator/herald_probability
+    assert herald_probability &gt; R(49,10000)
+    assert fidelity &gt; R(7,20)
+
+    # Bounds also cover arbitrary perturbations with ||delta rho||_1&lt;=eta.
+    eta = R(1,100000)
+    total = eta+eps
+    # PT operator error &lt;= Frobenius error &lt;= trace error.
+    assert margin &gt; total
+    # Change in &lt;J²&gt;-|&lt;J&gt;|² &lt;= ||J²||*eta + 2||&lt;J&gt;||*sqrt(3)||Jz||*eta
+    # + 3||Jz||² eta²; conservative rational sqrt(3)&lt;2.
+    witness_error = R(6)*total + 8*magnetization*total + 12*total**2
+    assert witness+witness_error &lt; 0
+    assert herald_probability-total &gt; R(49,10000)
+    assert (singlet_numerator-total)/(herald_probability+total) &gt; R(7,20)
+
+    result = {
+        &#x27;status&#x27;: &#x27;PASS: exact rational inequalities; no proof-assistant certification&#x27;,
+        &#x27;model&#x27;: {&#x27;N&#x27;:N,&#x27;nu&#x27;:str(NU),&#x27;Gamma_t&#x27;:str(T),&#x27;jump_normalization&#x27;:&#x27;unnormalized J_±&#x27;},
+        &#x27;uniformization&#x27;: {&#x27;rate&#x27;:str(RATE),&#x27;mu&#x27;:str(RATE*T),&#x27;K&#x27;:TERMS,
+                           &#x27;trace_error_upper_display&#x27;:str(s.N(eps,12)),
+                           &#x27;trace_error_upper_exact&#x27;:str(eps)},
+        &#x27;strict_singleton_PPT_margin_certified&#x27;:str(margin),
+        &#x27;all_16_LDL_pivots_positive&#x27;:bool(all(x&gt;0 for x in pivots)),
+        &#x27;permutation_symmetry_verified&#x27;:True,
+        &#x27;witness_minus_N_over_2_display&#x27;:str(s.N(witness,16)),
+        &#x27;magnetization_display&#x27;:str(s.N(magnetization,16)),
+        &#x27;herald_probability_display&#x27;:str(s.N(herald_probability,16)),
+        &#x27;singlet_fidelity_display&#x27;:str(s.N(fidelity,16)),
+        &#x27;arbitrary_trace_norm_perturbation_certified&#x27;:str(eta),
+        &#x27;limitations&#x27;: [&#x27;PPT certified, not finite-time singleton separability&#x27;,
+                       &#x27;No finite-time depth certificate&#x27;,
+                       &#x27;Heralded state is mixed; distillation overhead not included&#x27;,
+                       &#x27;Uniform collective coupling assumed&#x27;],
+    }
+    path=Path(__file__).with_name(&#x27;certificate.json&#x27;)
+    path.write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)
+    print(json.dumps({k:v for k,v in result.items() if k!=&#x27;uniformization&#x27;},indent=2))
+    print(&#x27;Uniformization trace error bound:&#x27;,s.N(eps,12))
+    print(&#x27;Saved:&#x27;,path)
+
+if __name__==&#x27;__main__&#x27;:
+    main()
+</pre><p><a href="../assets/08ddfd0a28d134e7e3faf87f5ce4c7aecd4f4fb93dfb072fcf70111f23fad713.py">Exact original bytes</a></p></html>
