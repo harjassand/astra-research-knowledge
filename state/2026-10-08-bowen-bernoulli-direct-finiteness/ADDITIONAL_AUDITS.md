@@ -1,3 +1,5 @@
+> **CORRECTED AUDIT (2026-10-08):** The finite-quotient and periodic-point arguments below remain valid. The claim that Formanek excludes characteristic-two torsion-free hyperbolic witnesses is not established by its cited sources, and the assertion that h_sup=0 might allow infinite-positive-Rokhlin free ergodic actions conflicts with Seward Corollary 7.7. See [CORRECTED_AUDIT.md](CORRECTED_AUDIT.md).
+
 # Additional algebraic-dynamical audits of the Bernoulli kernel
 2026-10-08. Companion to RESEARCH.md. Proven solely from ab=1 != ba in F_q[G] with G infinite; no group197 source correctness assumed.
 
