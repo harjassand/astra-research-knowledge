@@ -77,6 +77,47 @@ Since Tr(P_sym Omega_(9,3))=5/42, the two-outcome test P_sym versus I-P_sym yiel
 
 The second-order collective Casimir witness is *exactly saturated* at this (d,N,k), so it cannot certify this entanglement. This disproves the tempting claim that finite-N separability is equivalent in every dimension to (d+1)k<=N+d. It does not refute the earlier ASYMPTOTIC fixed-d threshold.
 
+## Uniform all-d strengthening: sharp finite Casimir equality is NOT sufficient
+
+**Theorem (self-contained, all d>=3).** Put N=d² and retain k=d sites of the maximally mixed global SU(d) singlet. The local collective Casimir of Omega_(d²,d) saturates the *minimum value shared by fully separable pure products*, yet Omega_(d²,d) is NOT fully separable. More precisely,
+
+dist_T(Omega_(d²,d),SEP_d) >= 1/d! - [binom(2d-1,d-1) d! / (d²)_d] >0.
+
+Here (n)_k=n(n-1)...(n-k+1). The gap is exact. Equality holds at d=2, showing d>=3 is sharp for this particular symmetric-projector test.
+
+**Proof.** From the general Casimir identity in RESEARCH_STATE.md, with m=d²-1 and generators tr(T_a T_b)=delta_ab,
+
+Tr(Omega_(d²,d) C_d) = (d²-1)*d*(d²-d)/(d*(d²-1))=d(d-1),
+
+exactly the pure-product lower bound k(d-1). So the quadratic criterion is saturated.
+
+The fully symmetric Young shape lambda=(d) has weight (by the hook/tableau formula given above)
+
+p_sym = dim Sym^d(C^d) (d)_d/(d²)_d
+      = binom(2d-1,d-1)*d!/(d²)_d.
+
+Marcus's permanent >= diagonal-product inequality proves that EVERY d-site fully separable state sigma has Tr(P_sym sigma)>=1/d!. Thus its symmetric-projector two-outcome measurement separates it from Omega whenever
+
+R_d := (d²)_d/[d(2d-1)!] > 1.
+
+Now R_2=1. For d>=2 a direct product calculation gives
+
+R_(d+1)/R_d
+= (d²+d+1)/[2(d+1)(2d+1)] *
+  prod_(j=0)^(d-1) [1+(2d+1)/(d²-j)]
+>= (d²+d+1)/[2(d+1)(2d+1)] *
+   [1+d x+d(d-1)x²/2],
+
+where x=(2d+1)/d². The lower bound minus one simplifies EXACTLY to
+
+(d-1)(2d⁴+2d³+7d²+5d+1) /
+[4d³(d+1)(2d+1)] >0.
+
+Hence R_d is strictly increasing for d>=2, completing the proof. No limit interchange, numerical approximation, or conjectural spectral property is used. d=3 gives 1/21, d=4 gives 7/312.
+
+**Scope:** this does NOT disprove the separate fixed-d asymptotic 1/(d+1) threshold because here k/N=1/d>1/(d+1); it disproves a finite-N strengthening based only on Casimir saturation. Historical novelty UNKNOWN.
+
+
 ## Novelty and significance boundary
 
 - The two qubit identities and the qutrit witness are exact mathematical deductions; their priority relative to prior spin-separability/de Finetti literature is UNKNOWN.
