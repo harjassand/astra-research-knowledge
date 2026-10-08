@@ -1,0 +1,68 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AJ: casimir_extremality_checks.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AJ-sources.txt">Source map</a><h1>AJ: casimir_extremality_checks.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=0. Engineered factorial-spin state differs from existing thermal-family inputs. Full main/companion proofs, diagnostic code/results, source and environment ledgers available; known imported theorem proofs are not all reconstructed. Manifest21 payloads and derived ZIP22 exact members preserve bytes, not mathematics. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Diagnostics for the separate balanced-product extremality derivation.
+Finite tests do not establish optimization over all product states. No subagents.
+Run: OPENBLAS_NUM_THREADS=1 python casimir_extremality_checks.py
+&quot;&quot;&quot;
+import json, math
+from pathlib import Path
+import numpy as np
+from universal_probe_checks import spin_ops, sector_exact, dense_probe
+ROOT=Path(__file__).resolve().parent
+
+def pure_product(rng,N):
+    psi=np.array([1.+0j])
+    for i in range(N):
+        z=rng.normal(size=2)+1j*rng.normal(size=2); z/=np.linalg.norm(z)
+        psi=np.kron(psi,z)
+    return psi
+
+def main():
+    rng=np.random.default_rng(8102028)
+    out={&#x27;status&#x27;:&#x27;internally executed diagnostics, not proof certification&#x27;, &#x27;seed&#x27;:8102028}
+    fixtures=[]; random_cases=[]
+    for N in [2,4,6,8]:
+        rho,Js,J2=dense_probe(N)
+        ev,U=np.linalg.eigh(J2)
+        n=N//2; B=math.comb(N,n)
+        mult=np.array([math.comb(N,n-j)-(math.comb(N,n-j-1) if n-j else 0) for j in range(n+1)])
+        q=mult/B
+        # Computational basis: n up (0), then n down (1).
+        balanced=np.zeros(2**N,complex); balanced[2**n-1]=1
+        en=np.arange(n+1)*(np.arange(n+1)+1)
+        for t in [.01,.1,.5,1.,5.,20.]:
+            A=(U*np.exp(-t*np.maximum(ev,0)))@U.conj().T
+            bound=float(np.dot(q,np.exp(-t*en)))
+            exact=float(np.vdot(balanced,A@balanced).real)
+            fixtures.append({&#x27;N&#x27;:N,&#x27;t&#x27;:t,&#x27;balanced_value&#x27;:exact,&#x27;separable_bound&#x27;:bound,&#x27;equality_error&#x27;:abs(exact-bound)})
+            for z in range(50):
+                psi=pure_product(rng,N)
+                value=float(np.vdot(psi,A@psi).real)
+                random_cases.append({&#x27;N&#x27;:N,&#x27;t&#x27;:t,&#x27;value&#x27;:value,&#x27;bound&#x27;:bound,&#x27;slack&#x27;:bound-value})
+                assert value&lt;=bound+1e-10
+            assert abs(exact-bound)&lt;1e-10
+    entropy=[]
+    for N in [2,4,6,8,16,32,64,128,256,512]:
+        ps,C=sector_exact(N); p=np.array(list(map(float,ps))); n=N//2
+        B=math.comb(N,n)
+        q=np.array([(math.comb(N,n-j)-(math.comb(N,n-j-1) if n-j else 0))/B for j in range(n+1)])
+        ok=p&gt;0
+        upper=float(np.dot(p[ok],np.log(p[ok]/q[ok])))
+        en=np.arange(n+1)*(np.arange(n+1)+1)
+        b=float(np.dot(q,np.exp(-en)))
+        lower=-float(C)-math.log(b)
+        dist_target=float(np.dot(p,np.exp(-en/math.sqrt(N))))
+        dist_sep=float(np.dot(q,np.exp(-en/math.sqrt(N))))
+        dist=dist_target-dist_sep
+        elementary=1-7/math.sqrt(N)-2/N
+        assert lower&lt;=upper+1e-9
+        assert upper&lt;=math.log(n+1)+1e-9
+        assert dist&gt;=elementary-1e-9
+        entropy.append({&#x27;N&#x27;:N,&#x27;relative_entropy_lower_t1&#x27;:lower,&#x27;relative_entropy_to_balanced_twirl&#x27;:upper,
+                        &#x27;upper_minus_logN&#x27;:upper-math.log(N),&#x27;heat_distance_lower&#x27;:dist,&#x27;elementary_distance_lower&#x27;:elementary})
+    out.update({&#x27;balanced_equalities&#x27;:fixtures,&#x27;random_product_cases&#x27;:random_cases,&#x27;entropy_brackets&#x27;:entropy,
+                &#x27;counts&#x27;:{&#x27;balanced_equalities&#x27;:len(fixtures),&#x27;random_products&#x27;:len(random_cases),&#x27;entropy_brackets&#x27;:len(entropy)},
+                &#x27;max_balanced_equality_error&#x27;:max(x[&#x27;equality_error&#x27;] for x in fixtures),
+                &#x27;min_random_product_slack&#x27;:min(x[&#x27;slack&#x27;] for x in random_cases)})
+    (ROOT/&#x27;casimir_extremality_results.json&#x27;).write_text(json.dumps(out,indent=2))
+    print(json.dumps({k:v for k,v in out.items() if k not in [&#x27;balanced_equalities&#x27;,&#x27;random_product_cases&#x27;]},indent=2))
+if __name__==&#x27;__main__&#x27;: main()
+</pre><p><a href="../assets/b7ebdbbdd390a062a6ef434806fa6cf35169e07e8300debedc00027938b1bfaf.py">Exact original</a></p></html>

@@ -71,6 +71,24 @@ def write_jsonl(name, rows):
 # These are identified proof-bearing documents. Presence does not assert full coverage,
 # validity, independent reconstruction, or that every cited external premise is available.
 PROOF_TEXT = {
+    'N210': [('updates/AL/package/state/2026-10-08-steklov-capacity/RESEARCH.md',8,122)],
+    'N211': [('updates/AL/package/state/2026-10-08-steklov-capacity/RESEARCH.md',33,122)],
+    'N212': [('updates/AL/package/state/2026-10-08-critical-lamperti-explosion/RESEARCH_STATE.md',95,178),('updates/AL/package/state/2026-10-08-stochastic-universality/RESULT_AND_RESTART.md',72,108)],
+    'N195': [('updates/AJ/package/UNIVERSAL_BOUND_ENTANGLEMENT_PROOF.md', 54, 72), ('updates/AJ/package/UNIVERSAL_BOUND_ENTANGLEMENT_PROOF.md', 229, 314)],
+    'N196': [('updates/AJ/package/UNIVERSAL_BOUND_ENTANGLEMENT_PROOF.md', 131, 228)],
+    'N197': [('updates/AJ/package/UNIVERSAL_BOUND_ENTANGLEMENT_PROOF.md', 73, 118), ('updates/AJ/package/UNIVERSAL_BOUND_ENTANGLEMENT_PROOF.md', 315, 376)],
+    'N198': [('updates/AJ/package/CASIMIR_EXTREMALITY_AND_ENTROPY.md', 5, 55)],
+    'N199': [('updates/AJ/package/CASIMIR_EXTREMALITY_AND_ENTROPY.md', 56, 128)],
+    'N200': [('updates/AJ/package/UNIVERSAL_BOUND_ENTANGLEMENT_PROOF.md', 377, 427)],
+    'N201': [('updates/AJ/package/UNIVERSAL_BOUND_ENTANGLEMENT_PROOF.md', 428, 451)],
+    'N203': [('updates/AK/package/state/2026-10-08-sud-singlet-separability/RESEARCH_STATE.md', 1, None)],
+    'N204': [('updates/AK/package/state/2026-10-08-sud-singlet-separability/EXACT_GLOBAL_SINGLET_ENTANGLEMENT.md', 5, 108)],
+    'N205': [('updates/AK/package/state/2026-10-08-sud-singlet-separability/FINITE_N_AUDIT.md', 5, 120)],
+    'N206': [('updates/AK/package/state/2026-10-08-convex-gradient-diophantine/RESEARCH_STATE.md', 14, 89)],
+    'N207': [('updates/AK/package/state/2026-10-08-convex-gradient-diophantine/DETAILED_BALANCE_OBSTRUCTION.md', 5, 46), ('updates/AK/package/state/2026-10-08-convex-gradient-diophantine/KINETIC_REALIZATION_GATE.md', 5, 43)],
+    'N208': [('updates/AK/package/state/2026-10-08-family197-maximizing-tail/FAMILY197_RESEARCH.md', 31, 216)],
+    'N209': [('updates/AK/package/state/2026-10-08-critical-lamperti-explosion/RESEARCH_STATE.md', 20, 150)],
+
     'N175': [('updates/AI/package/work/agents/common_metric_attack/PROOF_v3.txt', 1, None), ('updates/AI/package/work/agents/common_metric_attack/POST_SOURCE_STATUS.txt', 1, None)],
     'N176': [('updates/AI/package/work/agents/common_metric_attack/PROOF_v3.txt', 114, None), ('updates/AI/package/work/agents/geometry_transfer_audit/POSTFREEZE_AUDIT.txt', 1, None)],
     'N177': [('updates/AI/package/work/agents/spectral_transversality_audit/REPORT.txt', 1, None), ('updates/AI/package/work/agents/spectral_exact_double_audit/REPORT.txt', 1, None), ('updates/AI/package/work/agents/spectral_crossblock_audit/REPORT.txt', 1, None)],
@@ -230,6 +248,34 @@ for short in [f'N{n}' for n in range(175,195)]:
     ROWS[key]['status_authority']='Immutable AI curated card; packet CLAIM_LEDGER current status, geometry POST_SOURCE_STATUS and EPR DETERMINANT_LIFT_FINAL/cactus REPORT Section9 take precedence over explicitly retained historical source freezes; chronology alone does not certify correctness.'
     ROWS[key]['proof_availability']['unavailable_or_unclassified']='Authored proof/audit/script modules retained; third-party originals listed in AI SOURCE_OMISSIONS are absent from this packet; full subclaim/import completeness unclassified.'
 
+# AJ/AK additions remain scoped candidates, with distinct engineered/thermal inputs.
+relation('N208', 'supersedes', 'N170',
+    'Under the original torsion-free one-sided-inverse premise, the newly captured branch adds relative entropy h(X|Theta)=h(X) and a free mixing residual Haar action attaining the finite-entropy supremum. Original entropy sign and measurable conjugacy remain open; no branch timestamp is proof validation. Its additional Baumslag-Solitar route still depends on the disputed printed positive-characteristic attribution N165.',
+    [evidence('updates/AK/package/state/2026-10-08-family197-maximizing-tail/FAMILY197_RESEARCH.md',31,216)], component='conditional relative entropy and supremal tail; original algebraic structure retained')
+relation('N208', 'supersedes', 'N174',
+    'Adds a conditional maximizing-tail entropy identity to the earlier finite-stage and finite-quotient structural refinement; neither determines the original group entropy sign or Bernoulli isomorphism.',
+    [evidence('updates/AK/package/state/2026-10-08-family197-maximizing-tail/FAMILY197_RESEARCH.md',179,216)], component='conditional tail entropy only')
+relation('N209', 'supersedes', 'N181',
+    'The catalytic polynomial factor (A)_p preserves the named base jump chain but changes its physical clock. The branch candidate classifies explosion iff kappa<2lambda and p>=3, including nonexplosive critical equality. The original p=0 recurrence classification is retained, not contradicted; inherited deterministic geometry is not reconstructed here.',
+    [evidence('updates/AK/package/state/2026-10-08-critical-lamperti-explosion/RESEARCH_STATE.md',20,150)], component='new polynomial catalytic clock and critical explosion boundary')
+relation('N197', 'depends_on', 'N195',
+    'The finite local bounded-score theorem requires the engineered factorial input with tight j=O(1). It does not address G-UNITAL-NOISE-BOUNDED-SCORES for the older thermal input with j~sqrt(N).',
+    [evidence('updates/AJ/package/UNIVERSAL_BOUND_ENTANGLEMENT_PROOF.md',73,118),evidence('updates/AJ/package/UNIVERSAL_BOUND_ENTANGLEMENT_PROOF.md',483,492)])
+for n in range(195,210):
+    key=cid('N'+str(n))
+    ROWS[key]['status_authority']='Immutable AJ supplied-folder or AK pinned-branch source and scoped curated card; source-reported analytic/finite checks, no intake scientific replay or independent proof reconstruction. Newer does not imply correctness.'
+    ROWS[key]['proof_availability']['unavailable_or_unclassified']='Full identified authored proof/code text available for technical cards; completeness of imported published premises and all subclaims unclassified. N202 is an evidence-scope record, not a separate general proof.'
+ROWS[cid('N208')]['requires_external_validation'].append({'target':'external:positive_characteristic_BLR_scope', 'scope':'The ADDITIONAL Baumslag-Solitar application uses a disputed printed positive-characteristic theorem. Do not reuse it unconditionally; N165 discrepancy remains open. The relative/tail entropy argument has a separately stated torsion-free premise.', 'evidence':[evidence('updates/AK/package/state/2026-10-08-family197-maximizing-tail/FAMILY197_RESEARCH.md',236,248),card_ev('N165')]})
+
+relation('N212', 'supersedes', 'N209',
+    'The late pinned source retains the balanced theorem and adds a second leading-drift representation plus a direct deterministic/endotactic reconstruction. Its complete all-positive-rate phase diagram is CONDITIONAL on separately inherited unequal-rate source arguments, not newly reverified here. The AK source/card remain immutable at their earlier version.',
+    [evidence('updates/AL/package/state/2026-10-08-critical-lamperti-explosion/RESEARCH_STATE.md',95,178),evidence('updates/AL/package/state/2026-10-08-stochastic-universality/RESULT_AND_RESTART.md',72,108)],component='late drift/structural proof and inherited unequal-rate combination')
+relation('N210', 'depends_on', 'N175',
+    'ONLY the matching geometric lower-coefficient corollary requires independently validating N175 and all the additional slow-polar-end regularities. The upper bound itself does not use N175; no unconditional geometric optimality or Ricci-only theorem follows.',
+    [evidence('updates/AL/package/state/2026-10-08-steklov-capacity/RESEARCH.md',111,122)])
+for n in range(210,213):
+    ROWS[cid('N'+str(n))]['status_authority']='Immutable AL pinned late-branch source and scoped card. All10 frozen tips in main ancestry; branch merge and finite diagnostics do not validate general proofs or priority.'
+
 # The focused branch correction supersedes the earlier unsupported impossibility gloss.
 # It neither refutes BLR's printed claim nor certifies the original hyperbolic candidate.
 state_ev = [evidence('state/2026-10-08-bowen-bernoulli-direct-finiteness/CORRECTED_AUDIT.md', 94, 110),
@@ -342,6 +388,28 @@ gate(14, 'G-DETYPING-DOWNSTREAM-REPAIR', 'Audit repaired symmetric detyping thro
     'The scalar CHSH fixture contradicts scoped completeness; the repair and sigma>=1/4 are internally derived at the named stage. Final answer reduction and full167-page compression interfaces remain unreviewed; no MIPco=coRE refutation or global repair claimed.',
     [evidence('updates/AI/package/work/agents/repetition_application/COUNTEREXAMPLE.txt',1,47),evidence('updates/AI/package/work/agents/repetition_application/REPAIRED_DETYPING_GAP.txt',1,71)])
 
+gate(15, 'G-FACTORIAL-NONUNITAL-RAW-GAP', 'Decide unfiltered nonunital distinguishability and cost', ['N195','N200','N201'],
+    'For a fixed nonunital non-EA channel, does the engineered input retain a nonvanishing raw full-separability distance or a practical local test?',
+    'Prove an admitted unfiltered distance/sample lower bound with useful finite-N onset and calibration costs, or a legal trace-distance counterexample. Charge state preparation/routing and filter success; Gaussian covariance matching alone is insufficient.',
+    'Universal binary survival can rely on exp(-cN) output filtering; the exact GAD fixture defeats the simple covariance condition. It gives neither a nonvanishing unfiltered margin nor an efficient general experiment.',
+    [evidence('updates/AJ/package/UNIVERSAL_BOUND_ENTANGLEMENT_PROOF.md',377,427)])
+gate(16, 'G-FACTORIAL-REGULARIZED-ENTROPY', 'Determine regularized entanglement entropy of engineered probes', ['N197','N198','N199'],
+    'Does the ordinary single-copy ln(N)+O(1) law survive regularization across N separated laboratories?',
+    'Establish an across-copy lower and upper bound under arbitrary within-laboratory quantum correlations, or identify a valid lower-order comparator. Global Casimir conditioning cannot be assumed to preserve the separable alternative; keep single-copy and regularized quantities distinct.',
+    'The sharp global heat effect proves the ordinary single-copy law. Only a separate small local noisy lower bound is regularization-safe; the logarithmic regularized law remains open.',
+    [evidence('updates/AJ/package/CASIMIR_EXTREMALITY_AND_ENTROPY.md',56,128),evidence('updates/AJ/package/UNIVERSAL_BOUND_ENTANGLEMENT_PROOF.md',315,376)])
+gate(17, 'G-DIOPHANTINE-KINETIC-COMPILER', 'Acquire an arithmetic-preserving positive mass-action realization', ['N206','N207'],
+    'Can the SOS clock reduction be realized by an admitted reaction network while preserving the integer/rational equilibrium decision problem?',
+    'Give an exact finite compiler with positivity, auxiliary-species, rational/integer projection and converse-lifting contracts, or prove a precise obstruction. The same-species kinetic example excludes weak reversibility; detailed-balanced global rational equilibria are decidable. Conditional H10(Q) is not a verified imported theorem here.',
+    'The abstract convex-flow reduction does not implement chemistry or robust physical computation; adding a positive clock floor destroys the arithmetic stationary interface.',
+    [evidence('updates/AK/package/state/2026-10-08-convex-gradient-diophantine/RESEARCH_STATE.md',105,None),evidence('updates/AK/package/state/2026-10-08-convex-gradient-diophantine/KINETIC_REALIZATION_GATE.md',22,43)])
+
+gate(18, 'G-STEKLOV-UNIFORM-COLLAR-REVIEW', 'Audit uniform spectral capacity and its geometric scope', ['N210','N211','N175'],
+    'Does the uniform collar/trace-measure proof give the stated upper law, and do proposed matching metrics meet every end hypothesis?',
+    'Independently reconstruct uniform quadratic-form and outer-norm comparison, precompact-family Weyl control, boundary measure evolution, trace independence and determinant integration at fixed immutable versions. Verify N175 separately before matching sharpness; compare precise earlier dimension bounds. No no-foliation extension is implied.',
+    'The late branch candidate gives 9v/4 only for slowly varying uniform polar ends; finite frozen-cone ratios test capacity algebra rather than PDE or geometric realization.',
+    [evidence('updates/AL/package/state/2026-10-08-steklov-capacity/RESEARCH.md',33,110),evidence('updates/AL/package/state/2026-10-08-steklov-capacity/RESEARCH.md',127,137)])
+
 write_jsonl('CURRENT_CLAIM_STATUS.jsonl', list(ROWS.values()))
 write_jsonl('OPEN_PROOF_GATES.jsonl', GATES)
 
@@ -349,6 +417,8 @@ priority_lines = ['# Current frontier', '',
     'Read this only for coordination. Workers start with `00_START_HERE.txt` and retrieve the relevant topic/card, its current-status row, scoped material updates, blockers and decisive proof ranges. `01_CORE.txt` is optional.', '',
     'This is a curated decision view of existing evidence, not a new research run. Priority means a supported next decision; it predicts neither correctness nor breakthrough value. Archived restart instructions do not authorize continuation.', '',
     'Source card status is immutable. A later claim can refine an older gap while remaining unverified. Proof availability, reported internal checks, external correctness and historical priority are separate. Unlisted relations and incomplete proof coverage remain UNKNOWN.', '',
+    'Late branch additions AL: N210/N211 uniform Steklov capacity for slow polar ends, independently of N175 existence; geometric matching conditional. N212 retains the balanced Lamperti proof and adds explicitly inherited unequal-rate phases and direct structural reconstruction. All10 frozen tips incorporated; prior source versions retained.', '',
+    'Material additions AJ/AK: N195–202 engineered factorial probes and finite local scores; this does not close the original thermal-family score gate. N203–209 include SU(d) singlet theorems/counterexamples, Diophantine kinetic boundaries, conditional maximizing tail and catalytic critical explosion. N208 extends N170/N174 without deciding original entropy; N209 extends the N181 physical clock. All remain externally unverified.', '',
     'Material advances AI: N138 → N179/N180 critical-window bounds; exact full-SEP law and finite-N rates open. N75 → N187 actual-KL cap obstruction; anomalous KLS gate retained. N175–178 geometry source closure/whole-matrix repair uses current POST_SOURCE_STATUS while retaining earlier freeze versions. No internal audit becomes external validation.', '',
     'Material corrections: N135 → N160 is a full-proof candidate sharp identical-unital noise threshold; the old sufficient theorem remains valid. N132 → N136 is a candidate coefficient refinement with the full newer packet absent; N133 → N137 is a candidate stronger sufficient preparation bound. N159 invalidates the AE cycle7 N65 actual-origin blocks/audits, not the N65 theorem. N165 corrects the unsupported all-characteristics Formanek impossibility gloss; N47/N129 remain conditional unreviewed candidates and the primary-source discrepancy remains open. N166 corrects the infinite-only entropy caveat by Seward Corollary 7.7; original family197 entropy and Bernoulli isomorphism remain unresolved.', '',
     '| Order | Decision gate | Reason to decide next |', '|---|---|---|']

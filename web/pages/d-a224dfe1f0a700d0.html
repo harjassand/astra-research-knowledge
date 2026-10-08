@@ -1,0 +1,92 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AJ: bounded_witness_and_certificates.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AJ-sources.txt">Source map</a><h1>AJ: bounded_witness_and_certificates.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=0. Engineered factorial-spin state differs from existing thermal-family inputs. Full main/companion proofs, diagnostic code/results, source and environment ledgers available; known imported theorem proofs are not all reconstructed. Manifest21 payloads and derived ZIP22 exact members preserve bytes, not mathematics. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Separate bounded-observable checks and an exact nonunital certificate.&quot;&quot;&quot;
+import json, math
+from fractions import Fraction as F
+from pathlib import Path
+import numpy as np
+from universal_probe_checks import dense_probe, apply_sites, depol, sector_exact, gad, bloch, P, S, channel, pt
+ROOT=Path(__file__).resolve().parent
+rng=np.random.default_rng(8102028)
+product=[]
+for N in [4,8,16,32,64,128,256]:
+    for rep in range(40):
+        r=rng.normal(size=(N,3)); r/=np.linalg.norm(r,axis=1)[:,None]
+        if rep%3:r*=rng.random(N)[:,None]
+        if rep%5==0:r=np.tile(r[0],(N,1))
+        t=float(10**rng.uniform(-2,.5))
+        got=0.
+        for a in range(3):
+            dist=np.array([1.])
+            for pp in (1+r[:,a])/2:dist=np.convolve(dist,[1-pp,pp])
+            z=(np.arange(N+1)-N/2)/math.sqrt(N)
+            got+=float(dist@np.exp(-t*z*z))
+        upper=1+2/math.sqrt(1+t/2)+3*t**1.5/math.sqrt(N)
+        product.append({&#x27;N&#x27;:N,&#x27;t&#x27;:t,&#x27;score_sum&#x27;:got,&#x27;bound&#x27;:upper,&#x27;slack&#x27;:upper-got})
+        assert got&lt;=upper+1e-11
+
+dense=[]
+for N in [2,4,6,8]:
+    rho,Js,J2=dense_probe(N)
+    for lam in [.4,.58,.8,1.]:
+        z=apply_sites(rho,depol(lam),N)
+        for t in [.02,.3,1.]:
+            value=0.
+            for J in Js:
+                ev,U=np.linalg.eigh(J)
+                obs=(U*np.exp(-t*ev*ev/N))@U.conj().T
+                value+=float(np.trace(z@obs).real)
+            lower=3-t*float(np.trace(z@J2).real)/N
+            dense.append({&#x27;N&#x27;:N,&#x27;lambda&#x27;:lam,&#x27;t&#x27;:t,&#x27;score_sum&#x27;:value,&#x27;lower&#x27;:lower,&#x27;slack&#x27;:value-lower})
+            assert value&gt;=lower-1e-11
+
+# Rational radical isolation for GAD eta=1/4, fixed ground occupation 9/10.
+ql=F(9879,50000); qu=F(19759,100000); q2=F(39,999)
+assert ql*ql&lt;q2&lt;qu*qu
+s_lower=(F(681,800)*ql-F(39,800))/(F(39,800)+F(281,800)*ql)
+assert s_lower&gt;F(101,100)
+assert F(27,40)*qu+F(13,40)&lt;2*(F(37,40)*ql+F(3,40))
+f=F(1); terms=[]
+for j in range(22):
+    terms.append(F(j*(j+1)*(2*j+1)**2)*f*2**j)
+    f/=2*j+3
+# For j&gt;=21, term ratio = 2(j+2)(2j+3)/(j(2j+1)^2)&lt;1/2.
+# Hence the remainder from term 21 is bounded by twice term 21.
+C_upper=sum(terms[:21])+2*terms[21]
+assert C_upper&lt;140
+Ncert=60000
+E_upper=F(Ncert)*F(199,400)+140
+assert E_upper&lt;F(Ncert,2)
+# Exact constant arithmetic for finite-size bounded witness.
+assert F(1,12)-F(8,3*4096)-F(2,64)&gt;F(1,24)
+
+q=math.sqrt(float(q2)); ks=gad(.25,.9); A=np.diag([math.sqrt(q),1.])
+pair=channel([np.kron(k,l) for k in ks for l in ks],S)
+fpair=np.kron(A,A)@pair@np.kron(A,A); pn=float(np.trace(fpair).real); fpair/=pn
+s= -sum(float(np.trace(fpair@np.kron(p,p)).real) for p in P)
+c,T=bloch(ks)
+# Eight Bloch vectors matching limiting first/second fluctuation moments.
+rs=[]
+for zz,rad in [(17/20,1/math.sqrt(10)),(7/20,math.sqrt(2/5))]:
+    for sx in [-1,1]:
+        for sy in [-1,1]:rs.append([sx*rad,sy*rad,zz])
+rs=np.array(rs)
+mean_error=float(np.linalg.norm(rs.mean(0)-c))
+Q_error=float(np.linalg.norm(rs.T@rs/8-(np.outer(c,c)+T@T.T)))
+assert mean_error&lt;1e-12 and Q_error&lt;1e-12
+out={&#x27;status&#x27;:&#x27;internal diagnostics; rational certificate exact, floating checks not a general proof&#x27;,
+     &#x27;seed&#x27;:8102028,&#x27;product_checks&#x27;:len(product),&#x27;dense_target_checks&#x27;:len(dense),
+     &#x27;minimum_product_bound_slack&#x27;:min(v[&#x27;slack&#x27;] for v in product),
+     &#x27;minimum_target_lower_slack&#x27;:min(v[&#x27;slack&#x27;] for v in dense),
+     &#x27;nonunital_certificate&#x27;:{&#x27;eta&#x27;:&#x27;1/4&#x27;,&#x27;ground_occupation&#x27;:&#x27;9/10&#x27;,&#x27;N&#x27;:Ncert,
+       &#x27;q_squared&#x27;:str(q2),&#x27;q_interval&#x27;:[str(ql),str(qu)],&#x27;s_lower&#x27;:str(s_lower),
+       &#x27;s_normal_numerical&#x27;:s,&#x27;naive_affine_score&#x27;:float(c@c+np.sum(T*T)),
+       &#x27;C_exact_upper&#x27;:str(C_upper),&#x27;C_upper_float&#x27;:float(C_upper),
+       &#x27;filtered_J2_upper&#x27;:str(E_upper),&#x27;separable_floor&#x27;:str(F(Ncert,2)),
+       &#x27;pair_PT_min_numerical&#x27;:float(np.linalg.eigvalsh(pt(pair,2)).min()),
+       &#x27;pair_filter_success&#x27;:pn,&#x27;physical_log_success_leading_per_qubit&#x27;:.5*math.log(pn),
+       &#x27;gaussian_match_Bloch_mean_error&#x27;:mean_error,&#x27;gaussian_match_Q_error&#x27;:Q_error},
+     &#x27;bounded_witness_constants&#x27;:{&#x27;N_times_s_minus_1_min&#x27;:4096,&#x27;TV_lower&#x27;:&#x27;(s-1)^2/72&#x27;,
+       &#x27;sufficient_independent_copies&#x27;:&#x27;10368 (s-1)^(-4) log(2/alpha)&#x27;},
+     &#x27;product_rows&#x27;:product,&#x27;dense_rows&#x27;:dense}
+(ROOT/&#x27;bounded_witness_results.json&#x27;).write_text(json.dumps(out,indent=2))
+print(json.dumps({k:v for k,v in out.items() if k not in [&#x27;product_rows&#x27;,&#x27;dense_rows&#x27;]},indent=2))
+</pre><p><a href="../assets/923dda02a5523b234055e56319a4db9e7efae27d37ef55425f39e359f986413f.py">Exact original</a></p></html>

@@ -1,6 +1,6 @@
 # Astra Research Knowledge
 
-264 scoped research cards, full supplied A–I research documents, J/K result summaries, and 18,624 scientific source pages. Claims retain their assumptions, dependencies, counterexamples and scientific status. Publication is not proof validation or model-weight training.
+282 scoped research cards, full supplied A–I research documents, J/K result summaries, and 18,691 scientific source pages. Claims retain their assumptions, dependencies, counterexamples and scientific status. Publication is not proof validation or model-weight training.
 
 Start with [00_START_HERE.txt](00_START_HERE.txt); [01_CORE.txt](01_CORE.txt) is optional broad orientation, then [result cards](web/llms.txt) and the [paged source library](web/library.txt). The bootstrap is 278 o200k tokens; broad scientific context is loaded on demand. The complete linked new J/K research notes and reproducibility packages were not supplied; their absence is explicit.
 
@@ -80,6 +80,16 @@ Added AH: N174 pinned family197 branch followup: every finite-stage image is a f
 
 
 Added AI: N175–194: single Ricci>=0 R3 metric/AVR-v harmonic-dimension limsup candidate with countable transfer, full spectral inputs and whole-local-matrix repair; critical-bath fullSEP upper/lower; critical three-reaction recurrence/passage moments; symmetric detyping counterexample/conditional repair; hidden-metastable EP honesty and charged confidence sequences; actual-KL cap obstruction; adaptive SQ/raw parity boundary; positive EPR determinant lift/variance/cactus compiler/encoding obstructions. Original165-file evidence archive, corrections and omissions preserved. Internal audits/20 finite diagnostics source-reported; no intake scientific replay, external correctness/novelty or discovery-gain claim. [Sources](web/AI-sources.txt);[scopes](web/AI-reports.txt);[archive/availability](web/AI-package.txt).
+
+
+
+
+
+Added AJ: N195–202: one engineered factorial-spin sequence attains every fixed identical-qubit two-body entanglement-annihilation boundary; singleton-PPT increasing-spin optimum, finite local unital bounded-score test, sharp balanced-product Casimir heat effects, ordinary single-copy lnN entropy, exact nonunital counterexample/filter costs, charged preparation and binary lifetime. The engineered tight-spin input does not close the original thermal-family score gate. Full22-file supplied checkpoint and21 manifest payloads preserved; archive derived, not authored atomic. Internal/finite checks source-reported; no intake scientific replay or external correctness/priority validation. [Sources](web/AJ-sources.txt);[scopes](web/AJ-reports.txt);[archive/availability](web/AJ-package.txt).
+
+Added AK: N203–209: pinned research branches add fixed-d SU(d) singlet marginal threshold, exact global-singlet entanglement measures and finite Casimir counterexample; convex SOS Diophantine clock and detailed-balance/kinetic boundaries; maximizing Haar tail and catalytic Lamperti explosion including critical equality. All9 frozen remote branch tips audited,2 missing tips merged with ancestry retained. Exact20-file derived capture includes17 proof/code source files and3 receipts. Published positive-characteristic group-ring discrepancy remains flagged; tail entropy does not resolve the original family197 entropy sign/conjugacy. Source-reported proofs/checks remain externally unverified; no scientific replay. [Sources](web/AK-sources.txt);[scopes](web/AK-reports.txt);[archive/availability](web/AK-package.txt).
+
+Added AL: N210–212: late branch capture adds slowly varying polar-end Steklov harmonic-capacity upper theorem and uniform collar/Ky-Fan transfer mechanism; updated Lamperti source adds separately inherited unequal-rate phase diagram, a second drift derivation and direct deterministic structural reconstruction. All10 frozen research tips in main ancestry;3 previously missing research histories merged,4 merge operations including the late follow-up. Prior AK source version retained;7 exact derived source/receipt members preserved. No intake scientific replay, external proof or priority clearance. [Sources](web/AL-sources.txt);[scopes](web/AL-reports.txt);[archive/availability](web/AL-package.txt).
 
 
 
