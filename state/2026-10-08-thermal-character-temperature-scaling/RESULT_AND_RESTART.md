@@ -66,7 +66,7 @@ This sharpens N131's Chebyshev N^-1/6 rate. It is an explicit candidate bound, N
 A uniform grid of L axes preserves the target bound and changes the separable average by at most O(1/L), since theta->min(1,a/|sin(theta-theta0)|) has bounded total variation on [0,pi]. Even the conservative 4/L from N131 suffices. Per experimental shot: random log L-bit axis, N calibrated single-qubit measurements and classical counting. No global tomography or nonlocal joint measurement. Add instrument noise to the acceptance radius and pay its calibration cost.
 
 ## V. The matching high-occupation upper bound (full proof)
-At beta=0, rho_(N,0)=I/2^N is fully separable. For each j, write the Gibbs distribution p_beta(m)=exp(-beta m)/Z_j(beta) over m=-j,...,j; p_0 is uniform. Then
+At beta=0 (equivalently nu=infinity), the state is I/2^N and fully separable. For each j, write the Gibbs distribution p_beta(m)=exp(-beta m)/Z_j(beta) over m=-j,...,j; p_0 is uniform. Then
   partial_beta p_beta(m)=-(m-E_beta m)p_beta(m).
 Therefore its total-variation speed is
   (1/2) sum_m |partial_beta p_beta(m)| = (1/2) E_beta |m-E_beta m|
