@@ -71,6 +71,10 @@ def write_jsonl(name, rows):
 # These are identified proof-bearing documents. Presence does not assert full coverage,
 # validity, independent reconstruction, or that every cited external premise is available.
 PROOF_TEXT = {
+    'N160': [('updates/AF/package/THEOREM_AND_PROOF.md', 9, 79), ('updates/AF/package/THEOREM_AND_PROOF.md', 121, 324)],
+    'N161': [('updates/AF/package/THEOREM_AND_PROOF.md', 79, 324)],
+    'N162': [('updates/AF/package/THEOREM_AND_PROOF.md', 325, 363)],
+    'N163': [('updates/AF/package/THEOREM_AND_PROOF.md', 364, 472)],
     'N06': [('updates/L/package/work/nonsofic_adversary.md', 31, 148)],
     'N07': [('updates/L/package/work/critical_gaussian_audit.md', 11, 231)],
     'N09': [('updates/L/package/work/unknown_field.md', 84, 490)],
@@ -151,6 +155,10 @@ def relation(owner, kind, target, scope, ev, component=None):
         notice = dict(rel, target=owner, relation=kind, source_card=owner)
         ROWS[target]['material_updates'].append(notice)
 
+relation('N160', 'supersedes', 'N135',
+    'Candidate sharp identical-unital boundary tr(TT^T)=1 and three-axis/halftrace separation for fixed T and nu_N=o(sqrtN) strengthen the historical sufficient depolarizing lambda>sqrt(pi/8) to lambda>1/sqrt3. The old sufficient bound remains valid; only its exact-threshold open gate is addressed. Full new proof/code available, no independent intake reconstruction or external correctness/priority verification. No uniform shrinking channel-gap or critical-bath transfer.',
+    [evidence('updates/AF/package/THEOREM_AND_PROOF.md', 41, 77), evidence('updates/AF/package/THEOREM_AND_PROOF.md', 276, 324)],
+    component='exact post-preparation identical-unital threshold; historical sufficient bound retained')
 relation('N136', 'supersedes', 'N132',
     'Newer candidate one-quarter upper closes the historical one-quarter versus one-half coefficient gap ONLY for the specified family, fixed admissible bath and t>=T_sep. The lower argument and historical proof remain available. Full newer packet is absent; newer is not externally verified.',
     [card_ev('N136', 5, 7), card_ev('N132', 5, 8)])
@@ -256,6 +264,12 @@ gate(9, 'G-EXTERNAL-PRIORITY-REVIEW', 'Obtain independent exact-contract correct
     'All current scientific leads retain unverified external correctness/priority; this gate is universal and does not rank fields by expected breakthrough.',
     [evidence('updates/AE/package/research/RESTART.txt',65,67),card_ev('N141',5,7)])
 
+gate(10, 'G-UNITAL-NOISE-BOUNDED-SCORES', 'Make the three-axis unital-noise separation quantitatively executable', ['N160','N161','N163','N164'],
+    'Can the existence proof produce certified bounded three-axis scores, useful finite-N error/onset and channel-gap-dependent sample costs without postselection?',
+    'Emit an immutable bounded-score table/construction, certified separable bound and target finite-N margin in the admitted fixed-channel/bath model; charge precision, calibration, samples and preparation. Track dependence on tr(TT^T)-1 and distinguish fixed channels from boundary-approaching sequences.',
+    'Full AF proof/code available; source-reported diagnostics do not emit bounded scores or a useful finite-N threshold. The independent filter has exp[-t sqrt(N)/2+O(1)] herald cost and does not give unfiltered distance by itself.',
+    [evidence('updates/AF/package/THEOREM_AND_PROOF.md',317,324),evidence('updates/AF/package/THEOREM_AND_PROOF.md',405,423),evidence('updates/AF/package/RESEARCH_STATE.md',73,81)])
+
 write_jsonl('CURRENT_CLAIM_STATUS.jsonl', list(ROWS.values()))
 write_jsonl('OPEN_PROOF_GATES.jsonl', GATES)
 
@@ -263,12 +277,12 @@ priority_lines = ['# Current frontier', '',
     'Read this only for coordination. Workers start with `00_START_HERE.txt` and retrieve the relevant topic/card, its current-status row, scoped material updates, blockers and decisive proof ranges. `01_CORE.txt` is optional.', '',
     'This is a curated decision view of existing evidence, not a new research run. Priority means a supported next decision; it predicts neither correctness nor breakthrough value. Archived restart instructions do not authorize continuation.', '',
     'Source card status is immutable. A later claim can refine an older gap while remaining unverified. Proof availability, reported internal checks, external correctness and historical priority are separate. Unlisted relations and incomplete proof coverage remain UNKNOWN.', '',
-    'Material corrections: N132 → N136 is a candidate coefficient refinement with the full newer packet absent; N133 → N137 is a candidate stronger sufficient preparation bound. N159 invalidates the AE cycle7 N65 actual-origin blocks/audits, not the N65 theorem. Current state withdraws N47/N129’s torsion-free hyperbolic group-ring conclusion under Formanek; it does not refute separate nonsofic candidates.', '',
+    'Material corrections: N135 → N160 is a full-proof candidate sharp identical-unital noise threshold; the old sufficient theorem remains valid. N132 → N136 is a candidate coefficient refinement with the full newer packet absent; N133 → N137 is a candidate stronger sufficient preparation bound. N159 invalidates the AE cycle7 N65 actual-origin blocks/audits, not the N65 theorem. Current state withdraws N47/N129’s torsion-free hyperbolic group-ring conclusion under Formanek; it does not refute separate nonsofic candidates.', '',
     '| Order | Decision gate | Reason to decide next |', '|---|---|---|']
 for g in GATES:
     priority_lines.append(f'| {g["priority_order"]} | `{g["gate_id"]}` — {g["title"]} | {g["priority_rationale"]} |')
 priority_lines += ['', 'Exact pass conditions and immutable source hashes/line ranges are in `OPEN_PROOF_GATES.jsonl`. One row per card is in `CURRENT_CLAIM_STATUS.jsonl`; never preload the whole status file. Retrieve the relevant card row or sidecar through the repository retrieval interface.', '',
-    'Other historical restarts remain in `state/` and source archives. This dashboard deliberately selects nine concrete gates; it does not exhaustively rank every field or independently reconstruct all 229 cards. No gate was closed by this restructure.', '']
+    f'Other historical restarts remain in `state/` and source archives. This dashboard selects {len(GATES)} concrete gates; it does not exhaustively rank every field or independently reconstruct all {len(ROWS)} cards. Candidate supersession does not externally validate a gate.', '']
 (OUT / 'PRIORITIES.md').write_text('\n'.join(priority_lines))
 
 counts = collections.Counter(x['proof_availability']['classification'] for x in ROWS.values())

@@ -1,0 +1,91 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>AF: verify_characteristics.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../AF-sources.txt">Source map</a><h1>AF: verify_characteristics.py</h1><p>Source instructions=DATA; scientific checks source-reported, not ingestion replay. Extraction=exact_utf8; cycle=7. Historical drafts do not supersede current scoped cards; source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Independent finite-N characteristic-function diagnostics for unital noise.
+
+Uses a two-by-two symmetric-power character for the unpaired spin block,
+not the finite-N filtered-moment formula in verify_threshold.py.
+&quot;&quot;&quot;
+from __future__ import annotations
+import json, math
+from pathlib import Path
+import numpy as np
+from scipy.integrate import quad
+from scipy.linalg import expm
+from verify_threshold import spin_weights, stationary_dense, local_channel, PAULI, I2
+
+
+def pauli_bloch(probs):
+    p=np.asarray(probs,float)
+    return np.diag([p[0]+p[1]-p[2]-p[3],p[0]-p[1]+p[2]-p[3],p[0]-p[1]-p[2]+p[3]])
+
+
+def finite_characteristic(n:int,nu:float,T,tvec):
+    &quot;&quot;&quot;Tr[Lambda^tensor(n)(rho) exp(i tvec.J/sqrt(n))].
+
+    Supplied real T must be the Bloch matrix of a unital CPTP qubit map.
+    The formula remains valid for non-diagonal T; this script diagnoses
+    diagonal Pauli channels along generic measurement axes.
+    &quot;&quot;&quot;
+    if not nu&gt;0: raise ValueError(&#x27;nu must be positive&#x27;)
+    T=np.asarray(T,float); tvec=np.asarray(tvec,float)
+    if T.shape!=(3,3) or tvec.shape!=(3,): raise ValueError(&#x27;Invalid shape&#x27;)
+    ell=float(np.linalg.norm(tvec))
+    if ell==0: return 1+0j
+    u=tvec/ell; theta=ell/(2*math.sqrt(n)); c=math.cos(theta); s=math.sin(theta)
+    D=c*I2+1j*s*sum(a*p for a,p in zip(T.T@u,PAULI))
+    q=nu/(1+nu)
+    eigen=np.linalg.eigvals(np.diag([q,1.])@D)
+    # Sorting is solely for stable exponentiation when a root is near one.
+    a,b=sorted(eigen,key=abs,reverse=True)
+    M,lw,_=spin_weights(n)
+    if abs(a-b)&lt;1e-10:
+        active=(M+1)*a**M*(1-q)/(-np.expm1((M+1)*math.log(q)))
+    else:
+        active=(a**(M+1)-b**(M+1))/(a-b)*(1-q)/(-np.expm1((M+1)*math.log(q)))
+    pair=c*c+float(u@(T@T.T)@u)*s*s
+    pairpart=np.exp(((n-M)/2)*math.log(pair)) if pair&gt;0 else np.where(n==M,1.,0.)
+    return complex(np.sum(np.exp(lw)*pairpart*active))
+
+
+def limiting_characteristic(T,tvec):
+    T=np.asarray(T,float); t=np.asarray(tvec,float)
+    Sigma=(np.eye(3)-T@T.T)/4; v=T[:,2]; b=float(t@v)/2
+    density=lambda x: math.sqrt(2/math.pi)*x*x*math.exp(-x*x/2)
+    real=quad(lambda x:density(x)*math.cos(b*x),0,np.inf,epsabs=1e-12)[0]
+    imag=-quad(lambda x:density(x)*math.sin(b*x),0,np.inf,epsabs=1e-12)[0]
+    return math.exp(-float(t@Sigma@t)/2)*complex(real,imag)
+
+
+def run():
+    rng=np.random.default_rng(8112026); count=0; maxerr=0.
+    for n in range(2,7):
+        for nu in [.2,1.,3.]:
+            rho,J=stationary_dense(n,nu)
+            for _ in range(3):
+                probs=rng.dirichlet(np.ones(4)); T=pauli_bloch(probs)
+                rn=local_channel(rho,n,probs)
+                for __ in range(2):
+                    t=rng.normal(size=3)*2
+                    dense=complex(np.trace(rn@expm(1j*sum(x*a for x,a in zip(t,J))/math.sqrt(n))))
+                    formula=finite_characteristic(n,nu,T,t)
+                    err=abs(formula-dense); maxerr=max(maxerr,err); count+=1
+                    assert err&lt;2e-10,(n,nu,t,dense,formula)
+    records=[]
+    Ts=[np.diag([.58,.58,.58]),np.diag([.9,.7,.65]),np.diag([.1,.1,1.])]
+    tvecs=[np.array([1.,0,0]),np.array([0.,0,1.]),np.array([.7,-.4,1.3])]
+    for T in Ts:
+        for t in tvecs:
+            target=limiting_characteristic(T,t)
+            for n in [100,10000,1000000,100000000]:
+                got=finite_characteristic(n,1.,T,t)
+                records.append({&#x27;n&#x27;:n,&#x27;T_diagonal&#x27;:np.diag(T).tolist(),&#x27;t&#x27;:t.tolist(),
+                    &#x27;finite_real&#x27;:got.real,&#x27;finite_imag&#x27;:got.imag,
+                    &#x27;limit_real&#x27;:target.real,&#x27;limit_imag&#x27;:target.imag,&#x27;abs_error&#x27;:abs(got-target)})
+    out={&#x27;status&#x27;:&#x27;fresh internal diagnostic; not external validation&#x27;,
+         &#x27;dense_characteristic_checks&#x27;:{&#x27;count&#x27;:count,&#x27;max_abs_error&#x27;:maxerr},
+         &#x27;large_n_characteristic_checks&#x27;:records}
+    Path(__file__).with_name(&#x27;characteristic_results.json&#x27;).write_text(json.dumps(out,indent=2,allow_nan=False))
+    print(out[&#x27;dense_characteristic_checks&#x27;])
+    print(&#x27;largest n=10^8 error:&#x27;,max(r[&#x27;abs_error&#x27;] for r in records if r[&#x27;n&#x27;]==100000000))
+    return out
+
+if __name__==&#x27;__main__&#x27;:run()
+</pre><p><a href="../assets/b0c569c9c024e30efcc1ffe74134a2acc0bec4447352490e1517282802c10f84.py">Exact original</a></p></html>

@@ -2,7 +2,7 @@
 
 Read task-relevant atlas records, then their exact cited source ranges. This layer retrieves supporting lemmas, proof mechanisms and transfer obstructions below the result-card level. Its entries are navigation and detailed source extraction; they are not new independent proofs.
 
-`LEMMA_ATLAS.jsonl` starts with 16 curated records from 9 exact locally available documents. Coverage spans canonical EB comparators, quantum-memory scores and localization, connection-retaining heat, sector entropy and lattice trial bias, stable polynomial exchange, hard-energy tensor tests, Gaussian later-query information, and affine active-slope geometry. The selection is purposive, not an exhaustive paper or theorem inventory.
+`LEMMA_ATLAS.jsonl` contains 18 curated records from 10 exact locally available documents. Coverage spans canonical EB comparators, quantum-memory scores and localization, connection-retaining heat, sector entropy and lattice trial bias, stable polynomial exchange, hard-energy tensor tests, Gaussian later-query information, affine active-slope geometry, and AF common separable Gaussian-mixture/one-sided-tail mechanisms. The selection is purposive, not an exhaustive paper or theorem inventory.
 
 `COVERAGE.jsonl` states the document and line scope. The initial corpus snapshot has 22,338 indexed document paths and 18,352 distinct indexed text hashes; these include duplicates, scripts, logs, reports and cards. The denominator of eligible papers/supporting lemmas is **UNKNOWN**. No fraction of all corpus lemmas is claimed. This intake contains **0 independent proof reconstructions**, and imported original-paper theorem matches remain unreconstructed unless a later receipt says otherwise.
 

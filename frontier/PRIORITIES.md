@@ -6,7 +6,7 @@ This is a curated decision view of existing evidence, not a new research run. Pr
 
 Source card status is immutable. A later claim can refine an older gap while remaining unverified. Proof availability, reported internal checks, external correctness and historical priority are separate. Unlisted relations and incomplete proof coverage remain UNKNOWN.
 
-Material corrections: N132 → N136 is a candidate coefficient refinement with the full newer packet absent; N133 → N137 is a candidate stronger sufficient preparation bound. N159 invalidates the AE cycle7 N65 actual-origin blocks/audits, not the N65 theorem. Current state withdraws N47/N129’s torsion-free hyperbolic group-ring conclusion under Formanek; it does not refute separate nonsofic candidates.
+Material corrections: N135 → N160 is a full-proof candidate sharp identical-unital noise threshold; the old sufficient theorem remains valid. N132 → N136 is a candidate coefficient refinement with the full newer packet absent; N133 → N137 is a candidate stronger sufficient preparation bound. N159 invalidates the AE cycle7 N65 actual-origin blocks/audits, not the N65 theorem. Current state withdraws N47/N129’s torsion-free hyperbolic group-ring conclusion under Formanek; it does not refute separate nonsofic candidates.
 
 | Order | Decision gate | Reason to decide next |
 |---|---|---|
@@ -19,7 +19,8 @@ Material corrections: N132 → N136 is a candidate coefficient refinement with t
 | 7 | `G-COMMON-EB-ARBITRARY-RANK` — Decide the universal constant common-EB gate | The logarithmic-dimension comparator is a concrete candidate improvement, while the dimension-free and continuous-support gates remain explicitly open. |
 | 8 | `G-CONDITIONAL-SAMPLER-COMPILER` — Implement and audit the admitted conditional sampler interface | The current source review reports no end-to-end FPRAS/compiler execution and exposes astronomical sufficient schedules; finite Hamiltonian checks do not settle this operational gate. |
 | 9 | `G-EXTERNAL-PRIORITY-REVIEW` — Obtain independent exact-contract correctness and priority review | All current scientific leads retain unverified external correctness/priority; this gate is universal and does not rank fields by expected breakthrough. |
+| 10 | `G-UNITAL-NOISE-BOUNDED-SCORES` — Make the three-axis unital-noise separation quantitatively executable | Full AF proof/code available; source-reported diagnostics do not emit bounded scores or a useful finite-N threshold. The independent filter has exp[-t sqrt(N)/2+O(1)] herald cost and does not give unfiltered distance by itself. |
 
 Exact pass conditions and immutable source hashes/line ranges are in `OPEN_PROOF_GATES.jsonl`. One row per card is in `CURRENT_CLAIM_STATUS.jsonl`; never preload the whole status file. Retrieve the relevant card row or sidecar through the repository retrieval interface.
 
-Other historical restarts remain in `state/` and source archives. This dashboard deliberately selects nine concrete gates; it does not exhaustively rank every field or independently reconstruct all 229 cards. No gate was closed by this restructure.
+Other historical restarts remain in `state/` and source archives. This dashboard selects 10 concrete gates; it does not exhaustively rank every field or independently reconstruct all 234 cards. Candidate supersession does not externally validate a gate.

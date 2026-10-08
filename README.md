@@ -1,6 +1,6 @@
 # Astra Research Knowledge
 
-229 scoped research cards, full supplied A–I research documents, J/K result summaries, and 18,367 scientific source pages. Claims retain their assumptions, dependencies, counterexamples and scientific status. Publication is not proof validation or model-weight training.
+234 scoped research cards, full supplied A–I research documents, J/K result summaries, and 18,386 scientific source pages. Claims retain their assumptions, dependencies, counterexamples and scientific status. Publication is not proof validation or model-weight training.
 
 Start with [00_START_HERE.txt](00_START_HERE.txt); [01_CORE.txt](01_CORE.txt) is optional broad orientation, then [result cards](web/llms.txt) and the [paged source library](web/library.txt). The bootstrap is 278 o200k tokens; broad scientific context is loaded on demand. The complete linked new J/K research notes and reproducibility packages were not supplied; their absence is explicit.
 
@@ -64,6 +64,10 @@ Added AE: N148–159 actualmovinggap iidqutrit sharpQbranchlaw epsilon=n^-zeta f
 
 
 
+
+
+
+Added AF: N160–164 candidate sharp identical-unital thermal-noise boundary tr(TT^T)=1, positive three-local-axis TV/halftrace gap for fixed channel and nu=o(sqrtN), exact depthtwo above nu_star, common Gaussian-mixture/one-sided-tail mechanism, independently derived costly filter witness. Full supplied proof/code/log ZIP exact; strengthens N135 sufficient depolarizing threshold without invalidating old theorem. Diagnostics source-reported, no intake scientific replay; external correctness/novelty UNKNOWN. [Sources](web/AF-sources.txt);[scopes](web/AF-reports.txt);[archive/availability](web/AF-package.txt).
 
 <!-- CURRENT DECISION LAYER -->
 Active frontier: frontier/PRIORITIES.md
