@@ -1,6 +1,6 @@
 # Astra Research Knowledge
 
-462 scoped research cards, full supplied A–I research documents, J/K result summaries, and 23,871 scientific source pages. Claims retain their assumptions, dependencies, counterexamples and scientific status. Publication is not proof validation or model-weight training.
+471 scoped research cards, full supplied A–I research documents, J/K result summaries, and 23,918 scientific source pages. Claims retain their assumptions, dependencies, counterexamples and scientific status. Publication is not proof validation or model-weight training.
 
 Start with [00_START_HERE.txt](00_START_HERE.txt); [01_CORE.txt](01_CORE.txt) is optional broad orientation, then [result cards](web/llms.txt) and the [paged source library](web/library.txt). The bootstrap is 278 o200k tokens; broad scientific context is loaded on demand. The complete linked new J/K research notes and reproducibility packages were not supplied; their absence is explicit.
 
@@ -182,6 +182,12 @@ Added BD: N380–387: exact restricted Werner rank-two qutrit lifting/local-dime
 
 
 Added BE: N388–392: unreviewed arbitrary-independent-input amplifier EPnI/signed-multiport variational candidate; exact signed thermal/four-weight interpolation transfer, reversed defects/OU characteristic covariance/centered-energy cancellation, proposed non-passive weighted Fock substitute and exact nonpositive phase-space dilation obstruction. Full273-line note preserved; substantial imported analytic/Lean source captures and independent squeezing-domain audits absent. Global closure remains a candidate, not a solved historic conjecture. No intake scientific replay/kernel audit/priority or capability promotion. [Sources](web/BE-sources.txt);[scopes](web/BE-reports.txt);[archive/availability](web/BE-package.txt).
+
+
+
+Added BF: N393–401: planar radial Coulomb computer-assisted Monge nonattainment/equal infima; every-screening radial Yukawa consequence; all-N repulsive-kernel polygon extension; conditional single-metric uniform-Weyl endpoint; dimension-free pure-broadcast Gram residual and exact trine/binary shortcut failures; logarithm column-cutoff2d barrier; equivariant-state/randomness/NC² boundaries; open infinity-harmonic linear-cylinder endpoint. All supplied originals/proofs/audits/scripts preserved; selected3 replay receipts separate, no external/formal/priority or discovery-gain certification. [Sources](web/BF-sources.txt);[scopes](web/BF-reports.txt);[archive/availability](web/BF-package.txt).
+
+
 
 <!-- CURRENT DECISION LAYER -->
 Active frontier: frontier/PRIORITIES.md

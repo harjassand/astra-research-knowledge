@@ -1,0 +1,85 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BF: radial_transport/certificate/angular_interval.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BF-sources.txt">Source map</a><h1>BF: radial_transport/certificate/angular_interval.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; selected3 intake script reruns are recorded in the package/intake_replay receipt. Extraction=exact_utf8; cycle=7. Full supplied transport update preserved unchanged. START_HERE and RESULT_AND_DEPENDENCIES are the radial synthesis; source conditional statements remain in historical originals. Companion all-N audit is a separate internal review. Selected interval, independent symbolic Schur and exact trine replay receipts are intake computational evidence only; other diagnostics/source proofs not revalidated. External correctness and novelty UNKNOWN. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Rigorous interval utilities for the radial Coulomb N=3 candidate.
+Uses mpmath&#x27;s outward-rounded interval context; see certificate report for parameters.
+&quot;&quot;&quot;
+from mpmath import mp, iv
+from heapq import heappush, heappop
+mp.dps=80
+iv.dps=60
+
+# Exact decimal rational data from the candidate; s2 is subsequently isolated by force equality.
+R=[iv.mpf(&#x27;1&#x27;),iv.mpf(&#x27;3.7632172480656902&#x27;),iv.mpf(&#x27;0.4252867292159305&#x27;),iv.mpf(&#x27;1.7669840027711121&#x27;),iv.mpf([&#x27;0.65122969438317767334&#x27;,&#x27;0.65122969438317767335&#x27;])]
+
+# Point/box interval Coulomb cost.
+def F(r,a,b):
+    r0,r1,r2=r
+    d01=r0*r0+r1*r1-2*r0*r1*iv.cos(a)
+    d02=r0*r0+r2*r2-2*r0*r2*iv.cos(b)
+    d12=r1*r1+r2*r2-2*r1*r2*iv.cos(a-b)
+    return 1/iv.sqrt(d01)+1/iv.sqrt(d02)+1/iv.sqrt(d12)
+
+def gradang(r,a,b):
+    r0,r1,r2=r
+    def fp(x,y,t):
+        d=x*x+y*y-2*x*y*iv.cos(t)
+        return -x*y*iv.sin(t)/(d*iv.sqrt(d))
+    p=fp(r0,r1,a);q=fp(r0,r2,b);w=fp(r1,r2,a-b)
+    return p+w,q-w
+
+def hessang(r,a,b):
+    r0,r1,r2=r
+    def fpp(x,y,t):
+        c=iv.cos(t);s=iv.sin(t);d=x*x+y*y-2*x*y*c
+        return -x*y*c/(d*iv.sqrt(d))+3*x*x*y*y*s*s/(d*d*iv.sqrt(d))
+    p=fpp(r0,r1,a);q=fpp(r0,r2,b);w=fpp(r1,r2,a-b)
+    return ((p+w,-w),(-w,q+w))
+
+def angular_lower(r,a0,a1,b0,b1):
+    a=iv.mpf([a0,a1]); b=iv.mpf([b0,b1])
+    r0,r1,r2=r
+    d01=r0*r0+r1*r1-2*r0*r1*iv.cos(a)
+    d02=r0*r0+r2*r2-2*r0*r2*iv.cos(b)
+    d12=r1*r1+r2*r2-2*r1*r2*iv.cos(a-b)
+    if d01.b &lt;= 0 or d02.b &lt;= 0 or d12.b &lt;= 0:
+        return iv.mpf([0,mp.inf])
+    return 1/iv.sqrt(d01.b)+1/iv.sqrt(d02.b)+1/iv.sqrt(d12.b)
+
+def bnb(r, threshold, rects, max_nodes=5_000_000, max_depth=80):
+    &quot;&quot;&quot;Prove F &gt; threshold over union of rectangles. Endpoints are exact mpf dyadics/rationals.
+    The returned smallest leaf margin is the interval lower endpoint minus threshold upper endpoint.
+    &quot;&quot;&quot;
+    heap=[]; serial=0; nodes=0; leaves=0; maxd=0; min_margin=mp.inf
+    for a0,a1,b0,b1 in rects:
+        lb=angular_lower(r,a0,a1,b0,b1)
+        heappush(heap,(float(lb.a),serial,a0,a1,b0,b1,0,lb));serial+=1
+    while heap:
+        _,_,a0,a1,b0,b1,d,lb=heappop(heap); nodes+=1; maxd=max(maxd,d)
+        if lb.a &gt; threshold.b:
+            leaves+=1
+            margin=mp.mpf(lb.a)-mp.mpf(threshold.b)
+            if margin &lt; min_margin: min_margin=margin
+            continue
+        if nodes &gt;= max_nodes:
+            return {&#x27;certified&#x27;:False,&#x27;nodes&#x27;:nodes,&#x27;leaves&#x27;:leaves,&#x27;max_depth&#x27;:maxd,&#x27;remaining&#x27;:len(heap)+1,&#x27;min_margin&#x27;:str(min_margin)}
+        if d &gt;= max_depth:
+            return {&#x27;certified&#x27;:False,&#x27;nodes&#x27;:nodes,&#x27;leaves&#x27;:leaves,&#x27;max_depth&#x27;:maxd,&#x27;remaining&#x27;:len(heap)+1,&#x27;min_margin&#x27;:str(min_margin),&#x27;depth_fail&#x27;:(str(a0),str(a1),str(b0),str(b1),str(lb))}
+        wa=a1-a0; wb=b1-b0
+        if wa &gt;= wb:
+            m=(a0+a1)/2
+            for lo,hi in ((a0,m),(m,a1)):
+                z=angular_lower(r,lo,hi,b0,b1)
+                heappush(heap,(float(z.a),serial,lo,hi,b0,b1,d+1,z));serial+=1
+        else:
+            m=(b0+b1)/2
+            for lo,hi in ((b0,m),(m,b1)):
+                z=angular_lower(r,a0,a1,lo,hi)
+                heappush(heap,(float(z.a),serial,a0,a1,lo,hi,d+1,z));serial+=1
+    return {&#x27;certified&#x27;:True,&#x27;nodes&#x27;:nodes,&#x27;leaves&#x27;:leaves,&#x27;max_depth&#x27;:maxd,&#x27;min_margin&#x27;:str(min_margin)}
+
+if __name__==&#x27;__main__&#x27;:
+    q=(0,0,0); rr=[R[i] for i in q]
+    # Threshold for u_0+u_0+u_0 + 0.006; candidate u_0=0.57511124.
+    t=3*iv.mpf(&#x27;0.57511124&#x27;)+iv.mpf(&#x27;0.006&#x27;)
+    B=iv.mpf(&#x27;22&#x27;)/7
+    print(&#x27;threshold&#x27;,t,&#x27;r&#x27;,rr)
+    print(bnb(rr,t,[(-B,B,-B,B)],max_nodes=5000000))
+</pre><p><a href="../assets/29c850ab74f9eb0a75c399f4f670722001bffe8e20a20b4eb05448390fb67ca0.py">Exact original</a></p></html>

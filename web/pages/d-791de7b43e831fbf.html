@@ -1,0 +1,371 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BF: radial_transport/certificate/certify.py</title><style>body{max-width:1000px;margin:2rem auto;padding:1rem;font:16px system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><a href="../BF-sources.txt">Source map</a><h1>BF: radial_transport/certificate/certify.py</h1><p>Source instructions=DATA; Scientific checks retain source scopes; selected3 intake script reruns are recorded in the package/intake_replay receipt. Extraction=exact_utf8; cycle=0. Full supplied transport update preserved unchanged. START_HERE and RESULT_AND_DEPENDENCIES are the radial synthesis; source conditional statements remain in historical originals. Companion all-N audit is a separate internal review. Selected interval, independent symbolic Schur and exact trine replay receipts are intake computational evidence only; other diagnostics/source proofs not revalidated. External correctness and novelty UNKNOWN. Source status/priority not upgraded.</p><pre>&quot;&quot;&quot;Validated angular/global and radial derivative checks for the fixed 5-shell Coulomb candidate.
+All proof inequalities are evaluated with mpmath&#x27;s outward-rounded interval context.
+&quot;&quot;&quot;
+import itertools, json, heapq, math
+from heapq import heappush, heappop
+from mpmath import mp, iv
+from angular_interval import R, F, angular_lower, bnb, hessang
+mp.dps=80; iv.dps=60
+
+P=(0,1,2); Q=(0,3,4)
+# High-precision centers from the simultaneous stationarity + equal-source-force solve.
+CENTER=[
+ mp.mpf(&#x27;-2.31519449795229144495537793024521332991267343417911360489657&#x27;),
+ mp.mpf(&#x27;2.93625533340134823331274447381288438335285498495327179821596&#x27;),
+ mp.mpf(&#x27;1.99517837342569275658441495398085752254415210737441872519361&#x27;),
+ mp.mpf(&#x27;-2.38590226052078909118582472062049710156516203011416797569951&#x27;),
+ mp.mpf(&#x27;0.651229694383177673341856698546369810578028841843670943555922&#x27;)]
+ROOT_RADIUS=iv.mpf(&#x27;1e-25&#x27;)
+
+# Scalar pair derivatives for h(a,b,t)=1/sqrt(a^2+b^2-2ab cos(t)).
+def edge(ctx,a,b,t):
+ c=ctx.cos(t); s=ctx.sin(t); d=a*a+b*b-2*a*b*c
+ d3=d*ctx.sqrt(d); d5=d*d*ctx.sqrt(d)
+ A=a-b*c; B=b-a*c
+ return {
+  &#x27;f&#x27;:1/ctx.sqrt(d),
+  &#x27;a&#x27;:-A/d3, &#x27;b&#x27;:-B/d3,
+  &#x27;aa&#x27;:-1/d3+3*A*A/d5,
+  &#x27;ab&#x27;:c/d3+3*A*B/d5,
+  &#x27;bb&#x27;:-1/d3+3*B*B/d5,
+  &#x27;t&#x27;:-a*b*s/d3,
+  &#x27;tt&#x27;:-a*b*c/d3+3*a*a*b*b*s*s/d5,
+  &#x27;at&#x27;:-b*s/d3+3*a*b*A*s/d5,
+  &#x27;bt&#x27;:-a*s/d3+3*a*b*B*s/d5,
+ }
+
+def profile_edges(ctx, radii, a, b):
+ r0,r1,r2=radii
+ return edge(ctx,r0,r1,a), edge(ctx,r0,r2,b), edge(ctx,r1,r2,a-b)
+
+def angular_gradient(ctx,radii,a,b):
+ e01,e02,e12=profile_edges(ctx,radii,a,b)
+ return e01[&#x27;t&#x27;]+e12[&#x27;t&#x27;], e02[&#x27;t&#x27;]-e12[&#x27;t&#x27;]
+
+def source_force(ctx,radii,a,b):
+ e01,e02,_=profile_edges(ctx,radii,a,b)
+ return e01[&#x27;a&#x27;]+e02[&#x27;a&#x27;]
+
+def reduced_radial_hessian(ctx,radii,alpha,beta):
+ &quot;&quot;&quot;Angular Schur complement C_rr-C_rθ(C_θθ)^-1 C_θr.&quot;&quot;&quot;
+ e01,e02,e12=profile_edges(ctx,radii,alpha,beta)
+ t01,t02,t12=e01[&#x27;tt&#x27;],e02[&#x27;tt&#x27;],e12[&#x27;tt&#x27;]
+ h11=t01+t12; h12=-t12; h22=t02+t12
+ det=h11*h22-h12*h12
+ # B = C_{r,theta}; rows correspond to (r0,r1,r2), columns to (alpha,beta).
+ B=((e01[&#x27;at&#x27;],e02[&#x27;at&#x27;]),
+    (e01[&#x27;bt&#x27;]+e12[&#x27;at&#x27;],-e12[&#x27;at&#x27;]),
+    (e12[&#x27;bt&#x27;],e02[&#x27;bt&#x27;]-e12[&#x27;bt&#x27;]))
+ D=((e01[&#x27;aa&#x27;]+e02[&#x27;aa&#x27;],e01[&#x27;ab&#x27;],e02[&#x27;ab&#x27;]),
+    (e01[&#x27;ab&#x27;],e01[&#x27;bb&#x27;]+e12[&#x27;aa&#x27;],e12[&#x27;ab&#x27;]),
+    (e02[&#x27;ab&#x27;],e12[&#x27;ab&#x27;],e02[&#x27;bb&#x27;]+e12[&#x27;bb&#x27;]))
+ Hinv=((h22/det,-h12/det),(-h12/det,h11/det))
+ S=[]
+ for i in range(3):
+  row=[]
+  for j in range(3):
+   schur=sum((B[i][p]*Hinv[p][q]*B[j][q]
+              for p in range(2) for q in range(2)),ctx.mpf(0))
+   row.append(D[i][j]-schur)
+  S.append(tuple(row))
+ return tuple(S),det,(h11,h12,h22)
+
+def G5(ctx,x):
+ a,b,c,d,s=x
+ pR=[ctx.mpf(1),ctx.mpf(&#x27;3.7632172480656902&#x27;),ctx.mpf(&#x27;0.4252867292159305&#x27;)]
+ qR=[ctx.mpf(1),ctx.mpf(&#x27;1.7669840027711121&#x27;),s]
+ gp=angular_gradient(ctx,pR,a,b); gq=angular_gradient(ctx,qR,c,d)
+ return (gp[0],gp[1],gq[0],gq[1],source_force(ctx,pR,a,b)-source_force(ctx,qR,c,d))
+
+def J5(ctx,x):
+ a,b,c,d,s=x
+ pR=[ctx.mpf(1),ctx.mpf(&#x27;3.7632172480656902&#x27;),ctx.mpf(&#x27;0.4252867292159305&#x27;)]
+ qR=[ctx.mpf(1),ctx.mpf(&#x27;1.7669840027711121&#x27;),s]
+ p01,p02,p12=profile_edges(ctx,pR,a,b)
+ q01,q02,q12=profile_edges(ctx,qR,c,d)
+ J=[[ctx.mpf(0) for _ in range(5)] for __ in range(5)]
+ # P angular Hessian
+ J[0][0]=p01[&#x27;tt&#x27;]+p12[&#x27;tt&#x27;]; J[0][1]=-p12[&#x27;tt&#x27;]
+ J[1][0]=-p12[&#x27;tt&#x27;]; J[1][1]=p02[&#x27;tt&#x27;]+p12[&#x27;tt&#x27;]
+ # Q angular Hessian
+ J[2][2]=q01[&#x27;tt&#x27;]+q12[&#x27;tt&#x27;]; J[2][3]=-q12[&#x27;tt&#x27;]
+ J[3][2]=-q12[&#x27;tt&#x27;]; J[3][3]=q02[&#x27;tt&#x27;]+q12[&#x27;tt&#x27;]
+ # Q angular gradients versus r2=s
+ J[2][4]=q12[&#x27;bt&#x27;]
+ J[3][4]=q02[&#x27;bt&#x27;]-q12[&#x27;bt&#x27;]
+ # force difference versus angles and s
+ J[4][0]=p01[&#x27;at&#x27;]; J[4][1]=p02[&#x27;at&#x27;]
+ J[4][2]=-q01[&#x27;at&#x27;]; J[4][3]=-q02[&#x27;at&#x27;]
+ J[4][4]=-q02[&#x27;ab&#x27;]
+ return J
+
+def as_iv_point(x): return iv.mpf(x)
+def mpf_iv_lo(x): return mp.mpf(x.a)
+def mpf_iv_hi(x): return mp.mpf(x.b)
+
+def root_box(x0):
+ rad=ROOT_RADIUS
+ return [iv.mpf(c)+iv.mpf([-rad.b,rad.b]) for c in x0]
+
+def krawczyk():
+ x0=CENTER; X=root_box(x0)
+ G0=G5(iv,[as_iv_point(v) for v in x0])
+ JX=J5(iv,X)
+ J0=J5(mp,x0)
+ A=mp.matrix(J0)**-1
+ Aiv=[[iv.mpf(A[i,j]) for j in range(5)] for i in range(5)]
+ K=[]; row_norm=[]
+ for i in range(5):
+  corr=iv.mpf(0); row_sum=iv.mpf(0)
+  for j in range(5):
+   corr += Aiv[i][j]*G0[j]
+   Mij=iv.mpf(1 if i==j else 0)
+   for k in range(5): Mij -= Aiv[i][k]*JX[k][j]
+   row_sum += abs(Mij)
+  # K_i = x0_i - A G(x0) + (I-AJ(X))(X-x0)
+  ki=as_iv_point(x0[i])-corr
+  for j in range(5):
+   Mij=iv.mpf(1 if i==j else 0)
+   for k in range(5): Mij -= Aiv[i][k]*JX[k][j]
+   ki += Mij*(X[j]-as_iv_point(x0[j]))
+  K.append(ki);row_norm.append(row_sum.b)
+ incl=[]
+ for i in range(5):
+  incl.append((K[i].a &gt; X[i].a) and (K[i].b &lt; X[i].b))
+ return {&#x27;X&#x27;:[str(z) for z in X], &#x27;G0&#x27;:[str(z) for z in G0], &#x27;K&#x27;:[str(z) for z in K], &#x27;inside&#x27;:incl, &#x27;row_sum_upper&#x27;:[str(z) for z in row_norm], &#x27;all_inside&#x27;:all(incl), &#x27;contraction&#x27;:max(row_norm)&lt;1}
+
+def local_rect(center, half=mp.mpf(&#x27;0.1&#x27;)):
+ return (center[0]-half,center[0]+half,center[1]-half,center[1]+half)
+
+def rect_complement(local):
+ a0,a1,b0,b1=local; edge=mp.mpf(4)  # exact integer, strictly larger than pi
+ return [(-edge,edge,-edge,b0),(-edge,edge,b1,edge),(-edge,a0,b0,b1),(a1,edge,b0,b1)]
+
+def cp_cq_potentials(X):
+ rr=R.copy(); rr[4]=X[4]
+ rp=[rr[i] for i in P]; rq=[rr[i] for i in Q]
+ cp=F(rp,X[0],X[1]); cq=F(rq,X[2],X[3])
+ u=[iv.mpf(&#x27;0&#x27;) for _ in range(5)]
+ u[0]=iv.mpf(&#x27;0.57511124&#x27;); u[1]=iv.mpf(&#x27;-0.25224512&#x27;)
+ u[3]=iv.mpf(&#x27;0.21401706&#x27;)
+ u[2]=cp-u[0]-u[1]; u[4]=cq-u[0]-u[3]
+ return rr,cp,cq,u
+
+def certify_global_and_finite_lp():
+ X=root_box(CENTER)
+ rr,cp,cq,u=cp_cq_potentials(X)
+ # Strict angular convexity on a closed local box containing the certified root.
+ local_data=[]
+ for name, q, j, k in [(&#x27;P&#x27;,P,0,1),(&#x27;Q&#x27;,Q,2,3)]:
+  rad=[rr[i] for i in q]
+  box=local_rect(CENTER[j:k+1])
+  A=iv.mpf([box[0],box[1]])
+  B=iv.mpf([box[2],box[3]])
+  H=hessang(rad,A,B)
+  det=H[0][0]*H[1][1]-H[0][1]*H[1][0]
+  local_data.append({&#x27;profile&#x27;:name,&#x27;local_box&#x27;:[str(z) for z in box], &#x27;H11&#x27;:str(H[0][0]), &#x27;det&#x27;:str(det), &#x27;PD&#x27;:(H[0][0].a&gt;0 and det.a&gt;0)})
+ # Global search outside each local convex box; strict interval LB exceeds the enclosed contact value.
+ glob=[]
+ for name,q,j,k,contact in [(&#x27;P&#x27;,P,0,1,cp),(&#x27;Q&#x27;,Q,2,3,cq)]:
+  rad=[rr[i] for i in q]
+  rect=rect_complement(local_rect(CENTER[j:k+1]))
+  result=bnb(rad,contact,rect,max_nodes=5_000_000,max_depth=90)
+  result[&#x27;profile&#x27;]=name
+  glob.append(result)
+ # All 33 noncontact shell triples: global angular lower bound exceeds the dual sum by at least 0.006.
+ noncontact=[]; edge=mp.mpf(4)  # exact interval cover for [-pi,pi]^2
+ triples=list(itertools.combinations_with_replacement(range(5),3))
+ for q in triples:
+  if q in (P,Q): continue
+  rad=[rr[i] for i in q]
+  pot=u[q[0]]+u[q[1]]+u[q[2]]
+  result=bnb(rad,pot+iv.mpf(&#x27;0.006&#x27;),[(-edge,edge,-edge,edge)],max_nodes=5_000_000,max_depth=90)
+  result[&#x27;q&#x27;]=q
+  noncontact.append(result)
+  print(&#x27;triple&#x27;,q,result,flush=True)
+ return {&#x27;contact_costs&#x27;:{&#x27;P&#x27;:str(cp),&#x27;Q&#x27;:str(cq)},
+         &#x27;dual_potentials&#x27;:[str(v) for v in u],
+         &#x27;local_strict_convexity&#x27;:local_data,
+         &#x27;global_contact_exclusion&#x27;:glob,
+         &#x27;noncontact_triples&#x27;:noncontact,
+         &#x27;all_contact_PD&#x27;:all(z[&#x27;PD&#x27;] for z in local_data),
+         &#x27;all_global_contact&#x27;:all(z[&#x27;certified&#x27;] for z in glob),
+         &#x27;all_noncontact&#x27;:all(z[&#x27;certified&#x27;] for z in noncontact)}
+
+# Alternative global covering coordinates: after fixing angle 0 at the first particle,
+# every configuration is covered by the two cyclic orders 0-1-2 and 0-2-1, with
+# successive gaps g1,g2,g3 &gt;= 0 and g1+g2+g3=2*pi. This is an exact parametrization.
+TWO_PI=2*iv.pi
+GAP_EDGE=mp.mpf(7)     # exact integer edge; 2*pi &lt; 7, so this covers the closed gap simplex
+
+def gap_lower(r, order, g10,g11,g20,g21):
+ # Boxes lie in the exact rational square [0,7]^2. Every valid configuration
+ # has g3=2*pi-g1-g2 &gt;= 0; interval clipping below retains all such points.
+ A=iv.mpf([g10,g11])
+ B=iv.mpf([g20,g21])
+ G3=TWO_PI-A-B
+ if G3.b &lt; 0: return None
+ g30=iv.mpf(0).a if G3.a &lt; 0 else G3.a
+ # Since 2*pi &lt; 7 and A,B are nonnegative, G3.b is already below 7.
+ C=iv.mpf([g30,G3.b])
+ p0,p1,p2=(r[i] for i in order)
+ # Since a gap is an unsigned cyclic increment, each order contributes its three edge distances.
+ ds=[p0*p0+p1*p1-2*p0*p1*iv.cos(A),
+     p1*p1+p2*p2-2*p1*p2*iv.cos(B),
+     p2*p2+p0*p0-2*p2*p0*iv.cos(C)]
+ if any(d.b&lt;=0 for d in ds): return iv.mpf([0,mp.inf])
+ return sum((1/iv.sqrt(d.b) for d in ds),iv.mpf(0))
+
+def gap_bnb(r, order, threshold, rects, max_nodes=5_000_000, max_depth=90):
+ heap=[]; serial=0; nodes=0; leaves=0; skipped=0; maxd=0; min_margin=None
+ for a0,a1,b0,b1 in rects:
+  lb=gap_lower(r,order,a0,a1,b0,b1)
+  if lb is None: skipped+=1;continue
+  heappush(heap,(float(lb.a),serial,a0,a1,b0,b1,0,lb));serial+=1
+ while heap:
+  _,_,a0,a1,b0,b1,d,lb=heappop(heap);nodes+=1;maxd=max(maxd,d)
+  if lb.a &gt; threshold.b:
+   leaves+=1
+   m=(lb-threshold).a
+   if min_margin is None or m&lt;min_margin:min_margin=m
+   continue
+  if nodes&gt;=max_nodes:
+   return {&#x27;certified&#x27;:False,&#x27;nodes&#x27;:nodes,&#x27;leaves&#x27;:leaves,&#x27;max_depth&#x27;:maxd,&#x27;remaining&#x27;:len(heap)+1,&#x27;min_margin_lower&#x27;:None if min_margin is None else str(iv.mpf([min_margin,min_margin]))}
+  if d&gt;=max_depth:
+   return {&#x27;certified&#x27;:False,&#x27;nodes&#x27;:nodes,&#x27;leaves&#x27;:leaves,&#x27;max_depth&#x27;:maxd,&#x27;remaining&#x27;:len(heap)+1,&#x27;min_margin_lower&#x27;:None if min_margin is None else str(iv.mpf([min_margin,min_margin])),&#x27;depth_fail&#x27;:(str(a0),str(a1),str(b0),str(b1),str(lb))}
+  wa=a1-a0;wb=b1-b0
+  if wa&gt;=wb:
+   m=(a0+a1)/2
+   for lo,hi in ((a0,m),(m,a1)):
+    z=gap_lower(r,order,lo,hi,b0,b1)
+    if z is None:skipped+=1;continue
+    heappush(heap,(float(z.a),serial,lo,hi,b0,b1,d+1,z));serial+=1
+  else:
+   m=(b0+b1)/2
+   for lo,hi in ((b0,m),(m,b1)):
+    z=gap_lower(r,order,a0,a1,lo,hi)
+    if z is None:skipped+=1;continue
+    heappush(heap,(float(z.a),serial,a0,a1,lo,hi,d+1,z));serial+=1
+ return {&#x27;certified&#x27;:True,&#x27;nodes&#x27;:nodes,&#x27;leaves&#x27;:leaves,&#x27;skipped&#x27;:skipped,&#x27;max_depth&#x27;:maxd,&#x27;min_margin_lower&#x27;:str(iv.mpf([min_margin,min_margin]))}
+
+def root_angles_to_gap(a,b):
+ &quot;&quot;&quot;Outward interval transform of a root angle box to its cyclic-gap chart.&quot;&quot;&quot;
+ def mod_2pi(x):
+  if x.a &gt; 0: return x
+  if x.b &lt; 0: return x+TWO_PI
+  raise ValueError(&#x27;root angle box crosses the zero cut&#x27;)
+ aa=mod_2pi(a); bb=mod_2pi(b)
+ if aa.b &lt; bb.a:
+  return (0,1,2),(aa,bb-aa)
+ if bb.b &lt; aa.a:
+  return (0,2,1),(bb,aa-bb)
+ raise ValueError(&#x27;root angle ordering is not certified&#x27;)
+
+def gap_local(order, center, half=mp.mpf(&#x27;0.04&#x27;)):
+ (g1,g2)=center
+ return (g1-half,g1+half,g2-half,g2+half)
+
+def gap_rect_complement(local):
+ a0,a1,b0,b1=local;edge=GAP_EDGE
+ return [(mp.mpf(0),edge,mp.mpf(0),b0),
+         (mp.mpf(0),edge,b1,edge),
+         (mp.mpf(0),a0,b0,b1),
+         (a1,edge,b0,b1)]
+
+def gap_to_angle_box(order, local):
+ a0,a1,b0,b1=local
+ # Interval-valued affine transform; use interval 2*pi, never scalar mp.pi.
+ A=iv.mpf([a0,a1])
+ B=iv.mpf([b0,b1])
+ theta_second=A+B-TWO_PI
+ if order==(0,1,2):
+  alpha=A
+  beta=theta_second
+ else:
+  beta=A
+  alpha=theta_second
+ return alpha,beta
+
+def interval_root_in_gap_box(root_gaps, local):
+ a0,a1,b0,b1=local
+ return (root_gaps[0].a &gt; a0 and root_gaps[0].b &lt; a1 and
+         root_gaps[1].a &gt; b0 and root_gaps[1].b &lt; b1)
+
+def certify_gap_global_and_lp():
+ X=root_box(CENTER)
+ rr,cp,cq,u=cp_cq_potentials(X)
+ local_results=[]; contact_result=[]
+ # Each contact has two reflected angular minima, one in each cyclic order.
+ for name,q,j,k,contact_center in [(&#x27;P&#x27;,P,0,1,(CENTER[0],CENTER[1])),(&#x27;Q&#x27;,Q,2,3,(CENTER[2],CENTER[3]))]:
+  rad=[rr[i] for i in q]
+  contact=cp if name==&#x27;P&#x27; else cq
+  root_angles=[X[j:k+1],[-X[j],-X[k]]]
+  profile_local=[]
+  for idx,(a_box,b_box) in enumerate(root_angles):
+   order, root_gaps = root_angles_to_gap(a_box,b_box)
+   gapcenter=tuple((mp.mpf(g.a)+mp.mpf(g.b))/2 for g in root_gaps)
+   loc=gap_local(order,gapcenter)
+   root_inside=interval_root_in_gap_box(root_gaps,loc)
+   abox,bbox=gap_to_angle_box(order,loc)
+   H=hessang(rad,abox,bbox);det=H[0][0]*H[1][1]-H[0][1]*H[1][0]
+   pdat={&#x27;profile&#x27;:name,&#x27;mirror_index&#x27;:idx,&#x27;order&#x27;:order,&#x27;gap_center&#x27;:[str(z) for z in gapcenter],
+         &#x27;gap_local&#x27;:[str(z) for z in loc],&#x27;angle_box&#x27;:[str(abox),str(bbox)],
+         &#x27;root_gaps&#x27;:[str(z) for z in root_gaps], &#x27;root_inside_local&#x27;:root_inside,
+         &#x27;H11&#x27;:str(H[0][0]),&#x27;det&#x27;:str(det),&#x27;PD&#x27;:(H[0][0].a&gt;0 and det.a&gt;0)}
+   local_results.append(pdat);profile_local.append((order,loc))
+  for rel_order,loc in profile_local:
+   result=gap_bnb(rad,rel_order,contact,gap_rect_complement(loc),max_nodes=5_000_000,max_depth=100)
+   result.update({&#x27;profile&#x27;:name,&#x27;order&#x27;:rel_order})
+   contact_result.append(result)
+ # Finite shell dual: all 33 noncontacts, both cyclic orders.
+ triples=list(itertools.combinations_with_replacement(range(5),3))
+ noncontact=[]
+ for q in triples:
+  if q in (P,Q):continue
+  rad=[rr[i] for i in q];pot=u[q[0]]+u[q[1]]+u[q[2]]
+  for ord0 in ((0,1,2),(0,2,1)):
+   res=gap_bnb(rad,ord0,pot+iv.mpf(&#x27;0.006&#x27;),[(mp.mpf(0),GAP_EDGE,mp.mpf(0),GAP_EDGE)],max_nodes=5_000_000,max_depth=100)
+   res.update({&#x27;q&#x27;:q,&#x27;order&#x27;:ord0});noncontact.append(res)
+   print(&#x27;gap-triple&#x27;,q,ord0,res,flush=True)
+ return {&#x27;contact_costs&#x27;:{&#x27;P&#x27;:str(cp),&#x27;Q&#x27;:str(cq)},&#x27;dual_potentials&#x27;:[str(z) for z in u],
+  &#x27;local_reflection_boxes&#x27;:local_results,&#x27;global_contact_exclusion&#x27;:contact_result,
+  &#x27;noncontact_triples&#x27;:noncontact,
+  &#x27;all_local_PD&#x27;:all(z[&#x27;PD&#x27;] for z in local_results),
+  &#x27;all_root_gaps_inside_local&#x27;:all(z[&#x27;root_inside_local&#x27;] for z in local_results),
+  &#x27;all_global_contact&#x27;:all(z[&#x27;certified&#x27;] for z in contact_result),
+  &#x27;all_noncontact&#x27;:all(z[&#x27;certified&#x27;] for z in noncontact)}
+
+def certify_reduced_radial(X):
+ &quot;&quot;&quot;Interval certificate for all reduced radial cross-derivatives at P and Q.&quot;&quot;&quot;
+ rr=R.copy(); rr[4]=X[4]
+ out=[]
+ for name,q,j,k in [(&#x27;P&#x27;,P,0,1),(&#x27;Q&#x27;,Q,2,3)]:
+  radii=[rr[i] for i in q]
+  angle_boxes=((X[j],X[k]),(-X[j],-X[k]))
+  for mirror,(alpha,beta) in enumerate(angle_boxes):
+   S,det,H=reduced_radial_hessian(iv,radii,alpha,beta)
+   cross={&#x27;c01&#x27;:S[0][1],&#x27;c02&#x27;:S[0][2],&#x27;c12&#x27;:S[1][2]}
+   pos={key:(value.a&gt;0) for key,value in cross.items()}
+   out.append({&#x27;profile&#x27;:name,&#x27;mirror_index&#x27;:mirror,
+               &#x27;angular_det&#x27;:str(det),&#x27;angular_hessian_entries&#x27;:[str(x) for x in H],
+               &#x27;angular_pd&#x27;:(H[0].a&gt;0 and det.a&gt;0),
+               &#x27;cross_derivatives&#x27;:{key:str(value) for key,value in cross.items()},
+               &#x27;strictly_positive&#x27;:pos,&#x27;all_nonzero&#x27;:all(pos.values())})
+ return {&#x27;root_box&#x27;:[str(x) for x in X], &#x27;branches&#x27;:out,
+         &#x27;all_contact_branch_cross_derivatives_positive&#x27;:all(z[&#x27;all_nonzero&#x27;] for z in out)}
+
+if __name__==&#x27;__main__&#x27;:
+ import sys, time
+ if len(sys.argv)&gt;1 and sys.argv[1]==&#x27;all&#x27;:
+  start=time.time()
+  fr=krawczyk(); X=root_box(CENTER)
+  ans={&#x27;force_root&#x27;:fr,&#x27;global_and_lp&#x27;:certify_gap_global_and_lp(),
+       &#x27;reduced_radial_derivatives&#x27;:certify_reduced_radial(X)}
+  ans[&#x27;elapsed_seconds&#x27;]=time.time()-start
+  out=&#x27;validated_certificate.json&#x27;
+  with open(out,&#x27;w&#x27;) as f: json.dump(ans,f,indent=2)
+  print(&#x27;wrote&#x27;,out,&#x27;elapsed&#x27;,ans[&#x27;elapsed_seconds&#x27;],flush=True)
+  print(json.dumps(ans[&#x27;global_and_lp&#x27;][&#x27;global_contact_exclusion&#x27;],indent=2),flush=True)
+ else:
+  print(json.dumps(krawczyk(),indent=2))
+</pre><p><a href="../assets/5511e4ac5fdbda052e3669f24453de985bcc75c4077c1784fcc3f5267865cc19.py">Exact original</a></p></html>
